@@ -17,9 +17,9 @@ result = <<~MD
 
 MD
 
-# カレントフォルダ内の「sampleで始まり.htmlで終わる」ファイルを列挙
+# カレントフォルダ内の「toc.html以外の.htmlファイル」を列挙
 current = Pathname.new('.')
-current.glob('sample*.html').each do |target|
+current.glob('*.html').reject { |file| file.basename.to_s == 'toc.html' }.each do |target|
   # puts target
   content = target.read(encoding: 'utf-8')
   doc = Nokogiri::HTML(content)

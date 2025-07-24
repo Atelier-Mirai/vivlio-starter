@@ -10,7 +10,7 @@ require 'fileutils'
 
 # デフォルト設定
 options = {
-  replace:      true,   # HTMLReplace（htmlreplace.rb）を実行するかどうか（デフォルトで有効）
+  replace:      true,   # HTMLReplace（html_replacer.rb）を実行するかどうか（デフォルトで有効）
   replace_json: nil,    # HTMLReplace用のJSONファイル
   output_dir:   nil,    # 出力先ディレクトリ
   verbose:      false,  # 詳細出力モード
@@ -83,9 +83,9 @@ unless system("which vfm > /dev/null 2>&1")
   exit 1
 end
 
-# HTMLReplaceが必要な場合、htmlreplace.rbが存在するか確認
-if options[:replace] && !File.exist?("htmlreplace.rb")
-  puts "Error: htmlreplace.rb not found. Please make sure it exists in the current directory."
+# HTMLReplaceが必要な場合、html_replacer.rbが存在するか確認
+if options[:replace] && !File.exist?("html_replacer.rb")
+  puts "Error: html_replacer.rb not found. Please make sure it exists in the current directory."
   exit 1
 end
 
@@ -125,14 +125,14 @@ md_files.each do |md_file|
     
     # HTMLReplace処理が指定されている場合は実行
     if options[:replace] && File.exist?(html_file)
-      replace_cmd = "./htmlreplace.rb"
+      replace_cmd = "./html_replacer.rb"
       replace_cmd += " --json #{options[:replace_json]}" if options[:replace_json]
       replace_cmd += " #{html_file}"
       
       if system(replace_cmd)
         puts "  ✅ Replaced patterns in #{html_file}" if options[:verbose]
       else
-        puts "  ❌ Error running htmlreplace.rb on #{html_file}"
+        puts "  ❌ Error running html_replacer.rb on #{html_file}"
       end
     end
   else
