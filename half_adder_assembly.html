@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <title>半加算器のアセンブリ実装</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="stylesheets/style.css">
+  </head>
+  <body>
+    <section class="level1" aria-labelledby="h1_1">
+      <h1 id="h1_1" class="chapter">半加算器のアセンブリ実装</h1>
+      <div class="subtitle">『Vivliostyle CSS組版入門』サンプル</div>
+      <section class="level2" aria-labelledby="h2_1">
+        <h2 id="h2_1" class="section">半加算器の回路図</h2>
+        <figure>
+          <img src="images/half_adder.svg" alt="半加算器の回路図" width="210" class="float-right">
+          <figcaption aria-hidden="true">半加算器の回路図</figcaption>
+        </figure>
+      </section>
+      <section class="level2" aria-labelledby="回路図の解析">
+        <h2 id="回路図の解析">回路図の解析</h2>
+        <p>半加算器の回路図から読み取れる論理：</p>
+        <ul>
+          <li>OR ゲート: A と B の少なくとも一方が1なら1</li>
+          <li>NOT ゲート: 入力を反転</li>
+          <li>AND ゲート: A と B が両方1なら1</li>
+        </ul>
+        <p>最終的に</p>
+        <ul>
+          <li><strong>出力S（和）</strong>: A XOR B</li>
+          <li><strong>出力C（桁上がり）</strong>: A AND B</li>
+        </ul>
+        <section class="level3" aria-labelledby="アセンブリコードx86-64-att構文">
+          <h3 id="アセンブリコードx86-64-att構文">アセンブリコード（x86-64 AT&#x26;T構文）</h3>
+          <pre class="language-assembly"><code class="language-assembly"># データセクション
+.data
+    input_a:  .byte 0    # 入力A
+    input_b:  .byte 0    # 入力B
+    output_s: .byte 0    # 出力S（和）
+    output_c: .byte 0    # 出力C（桁上がり）
+
+# テキストセクション
+.text
+.globl _main
+
+_main:
+    # 入力値を設定（例：A=1, B=1）
+    movb $1, input_a     # A = 1
+    movb $1, input_b     # B = 1
+    
+    # 半加算器の実行
+    call half_adder
+    
+    # プログラム終了
+    mov $60, %rax        # sys_exit
+    mov $0, %rdi         # exit status
+    syscall
+
+half_adder:
+    # 入力値をレジスタにロード
+    movb input_a, %al    # A を al にロード
+    movb input_b, %bl    # B を bl にロード
+    
+    # S = A XOR B の計算
+    movb %al, %cl        # A を cl にコピー
+    xorb %bl, %cl        # cl = A XOR B
+    movb %cl, output_s   # 結果をSに保存
+    
+    # C = A AND B の計算
+    movb %al, %dl        # A を dl にコピー
+    andb %bl, %dl        # dl = A AND B
+    movb %dl, output_c   # 結果をCに保存
+    
+    ret</code></pre>
+        </section>
+      </section>
+      <section class="level2" aria-labelledby="使用するアセンブリ命令">
+        <h2 id="使用するアセンブリ命令">使用するアセンブリ命令</h2>
+        <section class="level3" aria-labelledby="1-データ移動命令">
+          <h3 id="1-データ移動命令">1. データ移動命令</h3>
+          <ul>
+            <li><code>movb</code>: 8ビットデータの移動</li>
+            <li><code>movb $1, %al</code>: 即値1をalレジスタに格納</li>
+            <li><code>movb %al, %cl</code>: alレジスタの値をclレジスタにコピー</li>
+          </ul>
+        </section>
+        <section class="level3" aria-labelledby="2-論理演算命令">
+          <h3 id="2-論理演算命令">2. 論理演算命令</h3>
+          <ul>
+            <li><code>xorb %bl, %cl</code>: XOR演算（排他的論理和）</li>
+            <li><code>andb %bl, %dl</code>: AND演算（論理積）</li>
+          </ul>
+        </section>
+        <section class="level3" aria-labelledby="3-制御命令">
+          <h3 id="3-制御命令">3. 制御命令</h3>
+          <ul>
+            <li><code>call half_adder</code>: 関数呼び出し</li>
+            <li><code>ret</code>: 関数からの復帰</li>
+          </ul>
+        </section>
+      </section>
+      <section class="level2" aria-labelledby="真理値表">
+        <h2 id="真理値表">真理値表</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>A</th>
+              <th>B</th>
+              <th>S (A XOR B)</th>
+              <th>C (A AND B)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>0</td>
+              <td>0</td>
+              <td>0</td>
+              <td>0</td>
+            </tr>
+            <tr>
+              <td>0</td>
+              <td>1</td>
+              <td>1</td>
+              <td>0</td>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>0</td>
+              <td>1</td>
+              <td>0</td>
+            </tr>
+            <tr>
+              <td>1</td>
+              <td>1</td>
+              <td>0</td>
+              <td>1</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+      <section class="level2" aria-labelledby="レジスタの使用">
+        <h2 id="レジスタの使用">レジスタの使用</h2>
+        <ul>
+          <li><code>%al, %bl</code>: 入力値A, Bの格納</li>
+          <li><code>%cl</code>: XOR演算の結果（和S）</li>
+          <li><code>%dl</code>: AND演算の結果（桁上がりC）</li>
+        </ul>
+      </section>
+      <section class="level2" aria-labelledby="実行手順">
+        <h2 id="実行手順">実行手順</h2>
+        <ol>
+          <li>入力値A, Bをメモリに設定</li>
+          <li><code>half_adder</code>関数を呼び出し</li>
+          <li>レジスタに入力値をロード</li>
+          <li>XOR演算でS（和）を計算</li>
+          <li>AND演算でC（桁上がり）を計算</li>
+          <li>結果をメモリに保存</li>
+          <li>関数から復帰</li>
+        </ol>
+        <pre class="language-c"><code class="language-c"><span class="token macro property"><span class="token directive-hash">#</span><span class="token directive keyword">include</span> <span class="token string">&#x3C;stdio.h></span></span>
+
+<span class="token comment">// C言語での半加算器実装（アセンブリ相当の動作）</span>
+<span class="token keyword">void</span> <span class="token function">half_adder</span><span class="token punctuation">(</span><span class="token keyword">int</span> a<span class="token punctuation">,</span> <span class="token keyword">int</span> b<span class="token punctuation">,</span> <span class="token keyword">int</span> <span class="token operator">*</span>s<span class="token punctuation">,</span> <span class="token keyword">int</span> <span class="token operator">*</span>c<span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token comment">// アセンブリでの XOR 操作に相当</span>
+    <span class="token operator">*</span>s <span class="token operator">=</span> a <span class="token operator">^</span> b<span class="token punctuation">;</span>  <span class="token comment">// S = A XOR B</span>
+    
+    <span class="token comment">// アセンブリでの AND 操作に相当</span>
+    <span class="token operator">*</span>c <span class="token operator">=</span> a <span class="token operator">&#x26;</span> b<span class="token punctuation">;</span>  <span class="token comment">// C = A AND B</span>
+<span class="token punctuation">}</span>
+
+<span class="token keyword">int</span> <span class="token function">main</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token comment">// 実際の計算例</span>
+    <span class="token function">printf</span><span class="token punctuation">(</span><span class="token string">"\n計算例:\n"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">printf</span><span class="token punctuation">(</span><span class="token string">"=======\n"</span><span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token keyword">int</span> s<span class="token punctuation">,</span> c<span class="token punctuation">;</span>
+    
+    <span class="token function">half_adder</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">,</span> <span class="token operator">&#x26;</span>s<span class="token punctuation">,</span> <span class="token operator">&#x26;</span>c<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">printf</span><span class="token punctuation">(</span><span class="token string">"1 + 1 = %d%d (2進数)\n"</span><span class="token punctuation">,</span> c<span class="token punctuation">,</span> s<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">printf</span><span class="token punctuation">(</span><span class="token string">"       = %d (10進数)\n"</span><span class="token punctuation">,</span> c <span class="token operator">*</span> <span class="token number">2</span> <span class="token operator">+</span> s<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    
+    <span class="token function">half_adder</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token number">0</span><span class="token punctuation">,</span> <span class="token operator">&#x26;</span>s<span class="token punctuation">,</span> <span class="token operator">&#x26;</span>c<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">printf</span><span class="token punctuation">(</span><span class="token string">"1 + 0 = %d%d (2進数)\n"</span><span class="token punctuation">,</span> c<span class="token punctuation">,</span> s<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    <span class="token function">printf</span><span class="token punctuation">(</span><span class="token string">"       = %d (10進数)\n"</span><span class="token punctuation">,</span> c <span class="token operator">*</span> <span class="token number">2</span> <span class="token operator">+</span> s<span class="token punctuation">)</span><span class="token punctuation">;</span>
+    
+    <span class="token keyword">return</span> <span class="token number">0</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span></code></pre>
+        <pre class="language-zsh"><code class="language-zsh">計算例:
+=======
+0 + 0 = 00 (2進数)
+      =  0 (10進数)
+0 + 1 = 01 (2進数)
+      =  1 (10進数)
+1 + 0 = 01 (2進数)
+      =  1 (10進数)
+1 + 1 = 10 (2進数)
+      =  2 (10進数)</code></pre>
+      </section>
+    </section>
+  </body>
+</html>
+

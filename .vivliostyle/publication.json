@@ -1,0 +1,29 @@
+{
+  "@context": [
+    "https://schema.org",
+    "https://www.w3.org/ns/pub-context"
+  ],
+  "type": "Book",
+  "conformsTo": "https://github.com/vivliostyle/vivliostyle-cli",
+  "name": "hobbytech",
+  "author": "アトリヱ未來",
+  "inLanguage": "la",
+  "readingProgression": "rtl",
+  "dateModified": "2025-07-24T08:05:48.890Z",
+  "readingOrder": [
+    {
+      "url": "toc.html",
+      "name": "目次"
+    },
+    {
+      "url": "sample1.html",
+      "name": "コンピュータの重箱の隅"
+    },
+    {
+      "url": "half_adder_assembly.html",
+      "name": "半加算器のアセンブリ実装"
+    }
+  ],
+  "resources": [],
+  "links": []
+}
