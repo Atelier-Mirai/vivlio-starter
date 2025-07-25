@@ -6,10 +6,19 @@ const vivliostyleConfig = {
   language: 'la',
   readingProgression: 'rtl', // reading progression direction, 'ltr' or 'rtl'.
   size: 'A5',
-  // theme: './stylesheets/style.css', // .css or local dir or npm package. default to undefined
+  // theme: './stylesheets/body.css', // .css or local dir or npm package. default to undefined
   image: 'ghcr.io/vivliostyle/cli:9.4.0',
   entry: [ 
-    "toc.html", "sample1.html", "half_adder_assembly.html"
+    "toc.html",
+    "00-preface.html",
+    "01-gift.html",
+    "02-source.html",
+    "03-unit.html",
+    "04-electricity.html",
+    "05-electronics.html",
+    "06-transistor.html",
+    "07-ai.html",
+    "99-postface.html"
     // **required field**
     // 'introduction.md', // 'title' is automatically guessed from the file (frontmatter > first heading)
     // {
@@ -33,7 +42,7 @@ const vivliostyleConfig = {
   //   htmlPath: 'index.html',
   //   sectionDepth: 3,
   // },
-  // cover: './cover.png', // cover image. default to undefined.
+  cover: './cover.png', // cover image. default to undefined.
   // vfm: { // options of VFM processor
   //   replace: [ // specify replace handlers to modify HTML outputs
   //     {
