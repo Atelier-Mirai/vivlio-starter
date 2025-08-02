@@ -5,66 +5,25 @@
   ],
   "type": "Book",
   "conformsTo": "https://github.com/vivliostyle/vivliostyle-cli",
-  "name": "hobbytech",
+  "name": "電気・電子技術への招待 ～古代の叡智から現代AIまで～",
   "author": "アトリヱ未來",
-  "inLanguage": "la",
+  "inLanguage": "ja",
   "readingProgression": "rtl",
-  "dateModified": "2025-07-25T10:11:36.348Z",
+  "dateModified": "2025-08-02T17:25:10.250Z",
   "readingOrder": [
-    {
-      "url": "cover.html",
-      "name": "hobbytech",
-      "rel": "cover",
-      "type": "LinkedResource"
-    },
-    {
-      "url": "toc.html",
-      "name": "目次"
-    },
     {
       "url": "00-preface.html",
       "name": "始めに"
     },
     {
-      "url": "01-gift.html",
+      "url": "01-toc.html",
+      "name": "目次"
+    },
+    {
+      "url": "11-gift.html",
       "name": "挑戦することの贈り物"
-    },
-    {
-      "url": "02-source.html",
-      "name": "万物の根源を求めて"
-    },
-    {
-      "url": "03-unit.html",
-      "name": "国際単位系(SI単位)の話"
-    },
-    {
-      "url": "04-electricity.html",
-      "name": "電気について"
-    },
-    {
-      "url": "05-electronics.html",
-      "name": "電子工作について"
-    },
-    {
-      "url": "06-transistor.html",
-      "name": "トランジスタについて"
-    },
-    {
-      "url": "07-ai.html",
-      "name": "人工知能(AI)について"
-    },
-    {
-      "url": "99-postface.html",
-      "name": "終わりに"
     }
   ],
-  "resources": [
-    {
-      "rel": "cover",
-      "url": "cover.png",
-      "name": "Cover image",
-      "encodingFormat": "image/png"
-    }
-  ],
+  "resources": [],
   "links": []
 }
