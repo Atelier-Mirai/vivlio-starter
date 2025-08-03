@@ -42,24 +42,24 @@ task :entries do |t, args|
       end
       
       # デフォルトのタイトルマッピング（フォールバック）
-      title_mapping = {
-        "preface"     => "始めに",
-        "toc"         => "目次",
-        "gift"        => "挑戦することの贈り物",
-        "source"      => "万物の根源を求めて",
-        "unit"        => "単位と測定",
-        "electricity" => "電気の基礎",
-        "electronics" => "電子回路の基礎",
-        "ai"          => "AIへの道",
-        "appendix-a"  => "付録A",
-        "appendix-b"  => "付録B",
-        "appendix-c"  => "付録C",
-        "postface"    => "あとがき",
-        "colophon"    => ""
-      }
+      # title_mapping = {
+      #   "preface"     => "始めに",
+      #   "toc"         => "目次",
+      #   "gift"        => "挑戦することの贈り物",
+      #   "source"      => "万物の根源を求めて",
+      #   "unit"        => "単位と測定",
+      #   "electricity" => "電気の基礎",
+      #   "electronics" => "電子回路の基礎",
+      #   "ai"          => "AIへの道",
+      #   "appendix-a"  => "付録A",
+      #   "appendix-b"  => "付録B",
+      #   "appendix-c"  => "付録C",
+      #   "postface"    => "あとがき",
+      #   "colophon"    => ""
+      # }
       
-      # マッピングにあればそれを使用
-      title = title_mapping[title] if title_mapping.key?(title)
+      # # マッピングにあればそれを使用
+      # title = title_mapping[title] if title_mapping.key?(title)
     end
     
     # エントリーを生成

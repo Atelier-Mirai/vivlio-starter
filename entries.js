@@ -32,24 +32,16 @@ export default [
     "title": "人工知能"
   },
   {
-    "path": "21-history.html",
-    "title": "History"
-  },
-  {
-    "path": "22-future.html",
-    "title": "Future"
-  },
-  {
     "path": "91-appendix-a.html",
     "title": "Appendix A"
   },
   {
     "path": "92-appendix-b.html",
-    "title": "付録B"
+    "title": "appendix-b"
   },
   {
     "path": "93-appendix-c.html",
-    "title": "付録C"
+    "title": "appendix-c"
   },
   {
     "path": "98-postface.html",
