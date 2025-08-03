@@ -14,11 +14,11 @@
   counter-reset: chapter-counter 1;
 }
 
-/* @page: nth(1) { */
-@page: first {
+@page: nth(1) {
+/* @page: first { */
   margin: 0;
   /* background-size: calc(var(--page-width) + 6mm); */
-  background: url("images/door.png") no-repeat center center fixed;
+  background: url("images/door2.png") no-repeat center center fixed;
   /* background-size: cover; */
   /* background-position: -3mm; */
 
@@ -114,7 +114,7 @@ h2::before {
 
   /* 背景画像 */
   /* background-color: #88ddff; */
-  background-image: url("images/section-header-slim.png");
+  background-image: url("images/section-header3.png");
   background-size: contain;
   background-repeat: no-repeat;
   /* inline-size: 157mm; */

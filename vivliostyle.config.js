@@ -72,6 +72,6 @@ const vivliostyleConfig = {
   //   hardLineBreaks: true, // converts line breaks of VFM to <br> tags. default to 'false'.
   //   disableFormatHtml: true, // disables HTML formatting. default to 'false'.
   // },
-};
+}
 
 export default vivliostyleConfig;

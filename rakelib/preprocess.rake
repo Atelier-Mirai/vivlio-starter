@@ -3,21 +3,27 @@ require_relative 'common'
 # 前処理関連タスク
 desc "Markdownファイルの前処理を行います"
 task :preprocess do |t, args|
-  puts "📝 Markdownファイルの前処理を行っています..."
-  
   # コマンドライン引数を取得
   files_arg = BookBuild.process_args
   
   # 処理対象のファイルを決定
   md_files = if files_arg.any?
-    puts "  🔍 指定されたファイルのみ処理します: #{files_arg.join(', ')}"
-    files_arg.map { |f| "#{BookBuild::CONTENT_DIR}/#{f}.md" }.select { |f| File.exist?(f) }
+    # 存在しないファイルをチェック
+    missing_files = files_arg.reject { |f| File.exist?("#{BookBuild::CONTENT_DIR}/#{f}.md") }
+    if missing_files.any?
+      puts "  ⚠️ エラー: 次のファイルが存在しません: #{missing_files.join(', ')}"
+      puts "  ❗ ビルドを中止します"
+      exit(1)
+    end
+    
+    files_arg.map { |f| "#{BookBuild::CONTENT_DIR}/#{f}.md" }
   else
     # 引数がない場合は全Markdownファイルを処理
     Dir.glob("#{BookBuild::CONTENT_DIR}/*.md")
   end
   
   # 各Markdownファイルを処理
+  puts "📝 Markdownファイルの前処理を行っています..."
   md_files.each do |md_file|
     filename = File.basename(md_file)
     output_file = filename  # プロジェクトルートに出力
@@ -51,10 +57,13 @@ task :preprocess do |t, args|
           
           # YAMLに変換
           new_frontmatter_yaml = YAML.dump(merged_frontmatter)
-          
+          puts "    ✅ フロントマター併合"
+          puts new_frontmatter_yaml
+
+
           # フロントマターを置換
-          content = content.sub(/\A---\n.*?\n---\n/m, "---\n#{new_frontmatter_yaml}---\n")
-          
+          content = content.sub(/\A---\n.*?\n---\n/m, "#{new_frontmatter_yaml}---\n")
+
           puts "    ✅ フロントマター更新"
         rescue => e
           puts "    ⚠️ フロントマターのパースに失敗しました: #{e.message}"
@@ -64,14 +73,15 @@ task :preprocess do |t, args|
       # フロントマターがない場合は追加
       new_frontmatter = BookBuild.generate_frontmatter(file_type, chapter_num)
       new_frontmatter_yaml = YAML.dump(new_frontmatter)
-      content = "---\n#{new_frontmatter_yaml}---\n\n#{content}"
-      
+
+      content = "#{new_frontmatter_yaml}---\n\n#{content}"
       puts "    ✅ フロントマター追加"
+      puts new_frontmatter_yaml
     end
     
     # 画像パスを修正
     content = BookBuild.fix_image_paths(content, filename)
-    puts "    ✅ 画像パス修正"
+    puts "    ✅ 画像パス修正 #{filename}"
     
     # 処理後のファイルを保存
     File.write(output_file, content, encoding: 'utf-8')

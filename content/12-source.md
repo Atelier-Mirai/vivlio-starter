@@ -32,7 +32,7 @@
 - **特徴**: 重く、安定
 - **象徴**: 物質性、安定性、豊穣
 
-![](images/02-source/elements.png)
+![](elements.png)
 
 
 
@@ -99,7 +99,7 @@
 - **象徴**: 意識、悟り、仏性
 - **五輪塔**: 最上段の宝珠形
 
-![](images/02-source/godai.png){width="95%"}
+![](godai.png){width="95%"}
 
 ### 歴史的背景
 
@@ -215,7 +215,7 @@
 神道における世界の根源は、物質的要素ではなく**「神という霊的エネルギー」「{産霊|むすひ}という生命創造力」**であり、これが日本独特の自然観や生命観の基盤となっています。
 
 
-![](images/02-source/shinto.png){width="100%"}
+![](shinto.png){width="100%"}
 
 
 
@@ -336,4 +336,4 @@
 
 <br>
 
-![](images/02-source/Quantum.png){width="75%"}
+![](Quantum.png){width="75%"}

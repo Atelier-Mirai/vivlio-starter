@@ -58,20 +58,83 @@ desc "HTMLファイルのポスト置換処理を行います"
 task :post_replace do
   return unless File.exist?(BookBuild::POST_REPLACE_FILE)
   
-  replace_rules = JSON.parse(File.read(BookBuild::POST_REPLACE_FILE))
-  html_files = Dir.glob("*.html")
-  
-  html_files.each do |html_file|
-    content = File.read(html_file, encoding: 'utf-8')
+  begin
+    # JSONファイルを読み込み
+    json_content = File.read(BookBuild::POST_REPLACE_FILE, encoding: 'utf-8')
+    replace_rules = JSON.parse(json_content)
     
-    replace_rules.each do |rule|
-      if rule['pattern'] && rule['replacement']
-        content.gsub!(Regexp.new(rule['pattern']), rule['replacement'])
+    # JSONが配列でない場合はエラー
+    unless replace_rules.is_a?(Array)
+      puts "    ❌ エラー: JSONファイルは置換オブジェクトの配列を含む必要があります"
+      return
+    end
+    
+    html_files = Dir.glob("*.html")
+    total_replacements = 0
+    
+    html_files.each do |html_file|
+      puts "    🔄 処理中: #{html_file}"
+      
+      # HTMLファイルを読み込み
+      html_content = File.read(html_file, encoding: 'utf-8')
+      original_content = html_content.dup
+      file_replacements = 0
+      
+      # 置換処理
+      replace_rules.each_with_index do |item, index|
+        unless item.is_a?(Hash) && item.key?('f') && item.key?('r')
+          next
+        end
+        
+        pattern_str = item['f']
+        replacement_str = item['r']
+        
+        begin
+          # 正規表現パターンを作成
+          pattern = Regexp.new(pattern_str)
+          
+          # 置換実行（キャプチャグループを考慮）
+          matches_found = 0
+          html_content.gsub!(pattern) do |match|
+            matches_found += 1
+            match_data = pattern.match(match)
+            result = replacement_str.dup
+            
+            # キャプチャグループの置換 ($1, $2, etc.)
+            if match_data && match_data.captures.length > 0
+              match_data.captures.each_with_index do |capture, cap_index|
+                result.gsub!("$#{cap_index + 1}", capture.to_s) if capture
+              end
+            end
+            
+            result
+          end
+          
+          if matches_found > 0
+            file_replacements += matches_found
+            puts "      ✅ パターン '#{pattern_str}' → #{matches_found}個の置換"
+          end
+          
+        rescue RegexpError => e
+          puts "      ⚠️ 警告: 正規表現パターンが無効です: #{pattern_str}"
+        end
+      end
+      
+      # 結果の出力と保存
+      if html_content != original_content
+        # HTMLファイルを上書き
+        File.write(html_file, html_content, encoding: 'utf-8')
+        total_replacements += file_replacements
+        puts "      ✅ #{file_replacements}個の置換が行われました"
       end
     end
     
-    File.write(html_file, content, encoding: 'utf-8')
+    puts "    ✅ ポスト置換処理完了 (合計: #{total_replacements}個の置換)"
+    
+  rescue JSON::ParserError => e
+    puts "    ❌ エラー: #{BookBuild::POST_REPLACE_FILE} のJSON形式が無効です"
+    puts "      #{e.message}"
+  rescue => e
+    puts "    ❌ エラー: #{e.message}"
   end
-  
-  puts "    ✅ ポスト置換処理完了"
 end

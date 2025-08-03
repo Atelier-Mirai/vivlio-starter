@@ -1,8 +1,3 @@
----
-title: 奥付
-class: colophon
----
-
 :::{.colophon-content}
 
 ## 書名

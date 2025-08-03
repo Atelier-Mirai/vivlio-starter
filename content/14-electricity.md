@@ -84,7 +84,7 @@
 
 <br>
 
-![](images/04-electricity/Zeus.png){width=100% .float-bottom}
+![](Zeus.png){width=100% .float-bottom}
 
 ---
 
@@ -111,7 +111,7 @@
 
 <br>
 
-![](images/04-electricity/dcac.png){width=100% .float-bottom}
+![](dcac.png){width=100% .float-bottom}
 
 
 

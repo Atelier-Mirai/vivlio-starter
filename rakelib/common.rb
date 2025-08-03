@@ -80,8 +80,7 @@ module BookBuild
   
   # 画像パスを修正
   def self.fix_image_paths(content, filename)
-    base_name = filename.sub(/\.md$/, '')
-    chapter_dir = base_name.sub(/^(\d+)-.*/, '\1-\2')
+    chapter_dir = filename.sub(/\.md$/, '')
     
     # ![alt](image.jpg) → ![alt](images/11-chapter/image.jpg)
     content.gsub(/!\[(.*?)\]\((?!https?:\/\/)(.*?)\)/) do
@@ -99,8 +98,18 @@ module BookBuild
   
   # 引数処理用ヘルパー
   def self.process_args
-    files_arg = ARGV[1..-1]
-    files_arg.each { |arg| Rake::Task[arg.to_sym].clear if Rake::Task.task_defined?(arg.to_sym) }
+    # ARGVからRakeタスク名とオプションを除外した引数を取得
+    files_arg = ARGV.reject { |a| a =~ /^(rake|build|--)/i }
+    
+    # 引数をタスクとして解釈されないようにダミータスクを作成
+    files_arg.each do |arg|
+      task_name = arg.to_sym
+      if Rake::Task.task_defined?(task_name)
+        Rake::Task[task_name].clear
+      end
+      Rake::Task.define_task(task_name) {}
+    end
+    
     files_arg
   end
 end

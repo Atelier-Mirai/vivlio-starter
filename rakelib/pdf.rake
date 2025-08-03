@@ -4,25 +4,8 @@ require_relative 'common'
 desc "PDFを生成します"
 task :pdf do |t, args|
   puts "📖 PDFを生成しています..."
-  
-  # コマンドライン引数を取得
-  files_arg = BookBuild.process_args
-  
-  # ES Module形式に統一したため、変換処理は不要
-  
-  # Vivliostyle Build
-  puts "  🔧 Vivliostyle Build実行中..."
-  
-  if files_arg.any?
-    # 指定されたファイルのみビルド
-    html_files = files_arg.map { |f| "#{f}.html" }.join(' ')
-    system("npx vivliostyle build #{html_files}")
-    puts "  🔍 指定ファイルのみビルド: #{files_arg.join(', ')}"
-  else
-    # すべてのファイルをビルド
-    system('npx vivliostyle build')
-  end
-  
+  system('npx vivliostyle build')
+
   if $?.success?
     puts "  ✅ PDF生成完了"
   else
