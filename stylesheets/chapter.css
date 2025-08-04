@@ -11,15 +11,29 @@
 }
 
 :root {
-  counter-reset: chapter-counter 1;
+  /* 最初の章をChapter 1にするための設定 */
+  /* counter-reset: chapter-counter 0; */
+
+  /* 章番号の設定について：
+    - Markdownファイルを連結して単一HTMLとしてビルドする場合は、
+    ここで counter-reset: chapter-counter 0;
+    を有効にし、 h1 { counter-increment: chapter-counter; }
+    と組み合わせることで 自動的に章番号が増加する仕組みが有効になる
+
+    - 各章のHTMLファイルは独立してビルドされるため、
+       デフォルトでは全ての章が「Chapter 1」と表示される
+    - この問題を解決するため、各章専用のCSSファイル（11.css, 12.css等）で
+       counter-reset: chapter-counter N; を設定している
+    - これにより、PDFビルド時に各章が正しい番号で表示される
+  */
 }
 
 @page: nth(1) {
 /* @page: first { */
   margin: 0;
   /* background-size: calc(var(--page-width) + 6mm); */
-  background: url("images/door2.png") no-repeat center center fixed;
-  /* background-size: cover; */
+  background: url("images/door2-4.png") no-repeat center center fixed;
+  background-size: cover;
   /* background-position: -3mm; */
 
   /* 扉ノンブル */
@@ -57,13 +71,14 @@ h1 {
   line-height: 50Q;
   margin-block-start: 57mm;
   text-align: center;
+  /* 各章専用のcssでchapter-counterを設定しているので、コメントアウト */
   /* counter-increment: chapter-counter; */
-  /* counter-reset: section-counter 0; */
+  counter-reset: section-counter 0;
   string-set: chapter-title content(), chapter-number content(before);
 }
 
 h1::before {
-  content: "Chapter" counter(chapter-counter);
+  content: "Chapter " counter(chapter-counter);
   font-size: 30Q;
   position: absolute;
   text-align: center;
@@ -75,7 +90,9 @@ h1::before {
 }
 
 .chapter-lead {
-  font-weight: 400;
+  font-weight: 500;
+  font-size: larger;
+  line-height: 1.7;
   margin-block-start: 24mm;
   margin-inline: auto;
   text-align: justify;

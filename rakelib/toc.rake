@@ -63,6 +63,11 @@ task :toc do
   
   # VFMで変換
   system("#{BookBuild::VFM_COMMAND} 01-toc.md > 01-toc.html")
-  
+
+  # 01-toc.html <body class="toc">に変更
+  content = File.read('01-toc.html', encoding: 'utf-8')
+  content.sub!('<body>', '<body class="toc">')
+  File.write('01-toc.html', content, encoding: 'utf-8') 
+
   puts "✅ 目次生成完了"
 end

@@ -128,25 +128,40 @@
   }
 }
 
-/* body {
-  background: #eee;
-} */
-
-/* 本文のページでのみmain-pageカウンターをインクリメント */
-.main-content {
-  counter-reset: main-page;
-  page: main-content-page; /* メインコンテンツ用の名前付きページを指定 */
+/* 前書きや目次のページではchapter-pageカウンターをインクリメントしない */
+.preface {
+  page: preface-page; /* 前書き用の名前付きページを指定 */
+}
+@page preface-page {
+  counter-increment: none;
 }
 
-@page main-content-page {
-  counter-increment: main-page;
+.toc {
+  page: toc-page; /* 目次用の名前付きページを指定 */
+}
+@page toc-page {
+  counter-increment: none;
 }
 
-/* 前書きや目次のページではmain-pageカウンターをインクリメントしない */
-.frontmatter {
-  page: frontmatter-page; /* 前付け用の名前付きページを指定 */
+/* 本文のページでのみchapter-pageカウンターをインクリメント */
+.chapter {
+  counter-reset: chapter-page;
+  page: chapter-page;
+}
+@page chapter-page {
+  counter-increment: chapter-page;
 }
 
-@page frontmatter-page {
+.appendix {
+  page: appendix-page; /* 付録用の名前付きページを指定 */
+}
+@page appendix-page {
+  counter-increment: none;
+}
+
+.postface {
+  page: postface-page; /* 後書き用の名前付きページを指定 */
+}
+@page postface-page {
   counter-increment: none;
 }

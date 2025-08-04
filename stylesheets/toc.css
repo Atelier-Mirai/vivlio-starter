@@ -27,7 +27,7 @@
 }
 
 #toc a::after {
-  content: target-counter(attr(href url), main-page);
+  content: target-counter(attr(href url), page);
   margin-inline-start: 1em;
   text-align: end;
 }
@@ -74,7 +74,7 @@ li:has(> .toc-chapter) {
 }
 
 .toc-chapter-no-number::after {
-  content: target-counter(attr(href url), main-page);
+  content: target-counter(attr(href url), page);
   margin-inline-start: 1em;
   text-align: end;
 }
@@ -101,7 +101,7 @@ li:has(> .toc-section) {
 }
 
 #toc .toc-section::after {
-  content: leader(dotted) target-counter(attr(href url), main-page);
+  content: leader(dotted) target-counter(attr(href url), page);
   margin-inline-start: 0.5em;
 }
 

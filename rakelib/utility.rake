@@ -151,6 +151,7 @@ task :clean do
   cleanup_patterns = [
     '*.html',     # HTMLファイル
     '01-toc.md',  # 生成された目次MD
+    'entries.js', # 生成されたentries.js
   ]
   
   # content/からコピーされたMDファイルを削除
