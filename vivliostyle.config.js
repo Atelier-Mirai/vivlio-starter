@@ -1,5 +1,5 @@
 // 章立てのインポート
-import entries from './entries.js';
+// import entries from './entries.js';
 
 // @ts-check
 /** @type {import('@vivliostyle/cli').VivliostyleConfigSchema} */
@@ -8,10 +8,11 @@ const vivliostyleConfig = {
   author: 'アトリヱ未來', // default to 'author' in 'package.json' or undefined
   language: 'ja',
   readingProgression: 'rtl', // reading progression direction, 'ltr' or 'rtl'.
-  size: 'A5',
+  // size: 'A5',
+  // size: 'A4',
   // theme: './stylesheets/body.css', // .css or local dir or npm package. default to undefined
   image: 'ghcr.io/vivliostyle/cli:9.5.0',
-  entry: entries,
+  entry: '11-gift.html',
     // **required field**
     // 'introduction.md', // 'title' is automatically guessed from the file (frontmatter > first heading)
     // {

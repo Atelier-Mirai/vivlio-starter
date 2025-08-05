@@ -43,7 +43,7 @@ namespace :new do
       puts "  ℹ️ 全ての章のCSSファイルを生成します"
       
       # Markdownファイルの一覧を取得
-      md_files = Dir.glob("#{BookBuild::CONTENT_DIR}/*.md")
+      md_files = Dir.glob("#{BookBuild::CONTENTS_DIR}/*.md")
       
       # 章タイプのファイルを抜き出し、章番号を取得
       chapter_numbers = md_files.map do |file_path|

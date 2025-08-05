@@ -9,17 +9,17 @@ task :preprocess do |t, args|
   # 処理対象のファイルを決定
   md_files = if files_arg.any?
     # 存在しないファイルをチェック
-    missing_files = files_arg.reject { |f| File.exist?("#{BookBuild::CONTENT_DIR}/#{f}.md") }
+    missing_files = files_arg.reject { |f| File.exist?("#{BookBuild::CONTENTS_DIR}/#{f}.md") }
     if missing_files.any?
       puts "  ⚠️ エラー: 次のファイルが存在しません: #{missing_files.join(', ')}"
       puts "  ❗ ビルドを中止します"
       exit(1)
     end
     
-    files_arg.map { |f| "#{BookBuild::CONTENT_DIR}/#{f}.md" }
+    files_arg.map { |f| "#{BookBuild::CONTENTS_DIR}/#{f}.md" }
   else
     # 引数がない場合は全Markdownファイルを処理
-    Dir.glob("#{BookBuild::CONTENT_DIR}/*.md")
+    Dir.glob("#{BookBuild::CONTENTS_DIR}/*.md")
   end
   
   # 各Markdownファイルを処理

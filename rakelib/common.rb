@@ -5,9 +5,10 @@ require 'yaml'
 # 書籍ビルドシステムの共通モジュール
 module BookBuild
   # 設定
-  CONTENT_DIR       = 'content'
+  CONTENTS_DIR      = 'contents'
   STYLESHEETS_DIR   = 'stylesheets'
   IMAGES_DIR        = 'images'
+  CODES_DIR         = 'codes'
   VFM_COMMAND       = 'vfm'
   POST_REPLACE_FILE = '_postReplaceList.json'
   

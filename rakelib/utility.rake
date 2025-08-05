@@ -6,7 +6,7 @@ task :init do
   puts "🔧 プロジェクトを初期化しています..."
   
   # 必要なディレクトリを作成
-  [BookBuild::CONTENT_DIR, BookBuild::STYLESHEETS_DIR, BookBuild::IMAGES_DIR].each do |dir|
+  [BookBuild::CONTENTS_DIR, BookBuild::STYLESHEETS_DIR, BookBuild::IMAGES_DIR].each do |dir|
     unless Dir.exist?(dir)
       FileUtils.mkdir_p(dir)
       puts "  📂 #{dir}/ ディレクトリを作成しました"
@@ -50,7 +50,7 @@ namespace :new do
     filename = "#{filename}.md" unless filename.end_with?('.md')
     
     # ファイルパスを生成
-    file_path = "#{BookBuild::CONTENT_DIR}/#{filename}"
+    file_path = "#{BookBuild::CONTENTS_DIR}/#{filename}"
     
     # ファイルが既に存在するか確認
     if File.exist?(file_path)
@@ -119,7 +119,7 @@ task :images do
   puts "🖼️  画像ディレクトリを生成しています..."
   
   # content/以下のMarkdownファイルから必要な画像ディレクトリを抽出
-  md_files = Dir.glob("#{BookBuild::CONTENT_DIR}/*.md")
+  md_files = Dir.glob("#{BookBuild::CONTENTS_DIR}/*.md")
   
   md_files.each do |md_file|
     filename = File.basename(md_file)
