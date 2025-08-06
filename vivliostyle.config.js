@@ -1,5 +1,5 @@
 // 章立てのインポート
-// import entries from './entries.js';
+import entries from './entries.js';
 
 // @ts-check
 /** @type {import('@vivliostyle/cli').VivliostyleConfigSchema} */
@@ -12,7 +12,7 @@ const vivliostyleConfig = {
   // size: 'A4',
   // theme: './stylesheets/body.css', // .css or local dir or npm package. default to undefined
   image: 'ghcr.io/vivliostyle/cli:9.5.0',
-  entry: '11-gift.html',
+  entry: entries,
     // **required field**
     // 'introduction.md', // 'title' is automatically guessed from the file (frontmatter > first heading)
     // {

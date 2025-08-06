@@ -50,6 +50,10 @@ task :convert do |t, args|
     Rake::Task['post_replace'].invoke
   end
   
+  # Prism.jsの行番号を追加
+  puts "  🔢 Prism.js行番号を追加中..."
+  Rake::Task['prism:lines_all'].invoke
+
   puts "✅ HTML変換完了"
 end
 
