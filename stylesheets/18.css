@@ -1,10 +1,10 @@
 @charset "utf-8";
 
-/* 第7章用スタイル */
+/* 第8章用スタイル */
 
 /* 章番号を設定 */
 :root {
-  counter-reset: chapter-counter 7;
+  counter-reset: chapter-counter 8;
 }
 
 /* 章固有のスタイルをここに追加 */
