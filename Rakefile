@@ -11,7 +11,7 @@ module Kernel
     if args.any? { |arg| arg.to_s =~ /(❌|⚠️|error|エラー|失敗)/i }
       original_puts(*args)
     # それ以外はverboseモードでのみ表示
-    elsif ARGV.include?('-v') || ARGV.include?('--verbose')
+    elsif defined?(BookBuild) && BookBuild.respond_to?(:verbose?) && BookBuild.verbose?
       original_puts(*args)
     end
   end
@@ -36,12 +36,20 @@ end
 desc "電子書籍ビルドの全工程を実行します"
 task :default => :build
 
-# 全てのタスクは rakelib ディレクトリの各ファイルに分割されています
-# - common.rb: 共通モジュールと設定
-# - preprocess.rake: 前処理関連タスク
-# - convert.rake: HTML変換関連タスク
-# - css.rake: CSS生成関連タスク
-# - toc.rake: 目次生成関連タスク
-# - pdf.rake: PDF生成関連タスク
-# - build.rake: ビルド関連タスク
-# - utility.rake: ユーティリティタスク
+# 全てのタスクは rakelib/ 配下に分割されています（主要ファイル）
+# - common.rb: 共通モジュール・設定・ログ
+# - options.rb: コマンドラインオプション解析
+# - init.rake: プロジェクト初期化
+# - preprocess.rake: 前処理（画像パス付与・フロントマター生成・コード取り込み）
+# - convert.rake: HTML変換と置換（vfm -> html, post-replace）
+# - prism_lines.rake: Prism.js の行番号付与
+# - toc.rake: 目次（toc.html）生成
+# - entries.rake: 章立て（entries.js）生成
+# - pdf.rake: PDF生成・PDFを開く（open:pdf, エイリアス: open）
+# - clean.rake: 生成物のクリーンアップ
+# - build.rake: 一括ビルド（preprocess → convert → toc → entries → pdf → clean → open）
+# - create.rake: 新規章の作成
+# - delete.rake: 章の削除
+# - renumber.rake: 章番号の変更・整列
+# - vivliostyle.rake: vivliostyle.config.js 生成（vivliostyle:generate_config）
+# - help.rake: ヘルプ（`rake -T` を置き換え）

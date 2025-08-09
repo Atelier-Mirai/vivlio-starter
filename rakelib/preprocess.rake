@@ -191,14 +191,10 @@ task :preprocess do |t, args|
     # ファイルの内容を読み込み
     content = File.read(md_file, encoding: 'utf-8')
     
-    # ファイル名から章番号を抽出
-    chapter_num = nil
-    if filename =~ /^(\d+)-/
-      chapter_num = $1
-    end
-    
     # ファイルタイプを判定
     file_type = BookBuild.get_file_type(filename)
+    # ファイル名から章番号を抽出
+    chapter_num = BookBuild.get_chapter_number(filename)
     
     # フロントマターを処理
     if content.start_with?('---')

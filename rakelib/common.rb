@@ -73,9 +73,17 @@ module BookBuild
     chapter_num = filename[/^(\d+)-/, 1]
   end
 
+  def self.verbose?
+    return true if %w[1 true yes on].include?((ENV['VERBOSE'] || '').downcase)
+    argv = defined?(ARGV) ? ARGV : []
+    argv.include?('-v') || argv.include?('--verbose')
+  rescue
+    false
+  end
+
   # 共通ログ出力（日本語 + 絵文字）
   def self.log_info(msg)
-    puts "ℹ️ #{msg}"
+    puts "ℹ️ #{msg}" if verbose?
   end
 
   def self.log_success(msg)

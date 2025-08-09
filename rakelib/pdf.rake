@@ -20,6 +20,10 @@ task :pdf do |t, args|
   end
 end
 
+# エイリアス: `rake open` で `open:pdf` を呼び出す
+desc "生成された PDF を開きます（エイリアス: open:pdf）"
+task :open => 'open:pdf'
+
 # PDFを開く
 namespace :open do
   desc "生成された PDF を開きます"
