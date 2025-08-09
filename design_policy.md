@@ -85,3 +85,15 @@ rake images
 
 ## 不要ファイルの削除用
 rake clean
+
+
+## TODO
+- README.md
+- rake help きれいに
+- rake init で一式作成できるように
+- re:view starter を参考にconfig.ymlファイル
+- re:view starter を参考に奥付
+- re:view starter を参考に、本の最初の扉のページ
+- ruby gem化する。
+- A4, B5, A5 本の大きさや文字の大きさを整える
+- 

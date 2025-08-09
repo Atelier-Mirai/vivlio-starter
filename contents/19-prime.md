@@ -1,10 +1,3 @@
----
-lang: ja
-link:
-  - rel: 'stylesheet'
-    href: 'prism.css'
----
-
 # Prismでの行番号表示
 
 ```Ruby``` / ```HTML&CSS``` / ```JavaScript``` / ```C言語``` / ```Java``` での素数を求めるコード例です。

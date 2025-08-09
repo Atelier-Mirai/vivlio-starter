@@ -1,9 +1,9 @@
+# 目次関連タスク
 require_relative 'common'
 
-# 目次関連タスク
 desc "目次HTMLを生成します"
 task :toc do
-  puts "📚 目次を生成しています..."
+  BookBuild.log_info("目次の生成を開始します...")
   
   require 'nokogiri'
   
@@ -69,5 +69,5 @@ task :toc do
   content.sub!('<body>', '<body class="toc">')
   File.write('01-toc.html', content, encoding: 'utf-8') 
 
-  puts "✅ 目次生成完了"
+  BookBuild.log_success("目次生成完了")
 end

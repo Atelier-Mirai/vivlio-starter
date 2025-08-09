@@ -1,16 +1,52 @@
 require 'fileutils'
 require 'json'
 require 'yaml'
+require_relative 'options'
 
 # 書籍ビルドシステムの共通モジュール
 module BookBuild
-  # 設定
-  CONTENTS_DIR      = 'contents'
-  STYLESHEETS_DIR   = 'stylesheets'
-  IMAGES_DIR        = 'images'
-  CODES_DIR         = 'codes'
-  VFM_COMMAND       = 'vfm'
-  POST_REPLACE_FILE = '_postReplaceList.json'
+  # 設定ファイルを読み込み
+  CONFIG_FILE = 'config/book.yml'
+  
+  def self.load_config
+    if File.exist?(CONFIG_FILE)
+      YAML.load_file(CONFIG_FILE)
+    else
+      puts "⚠️ 設定ファイルが見つかりません: #{CONFIG_FILE}"
+      puts "⚠️ デフォルト設定を使用します"
+      {
+        'directories' => {
+          'contents' => 'contents',
+          'stylesheets' => 'stylesheets',
+          'images' => 'images',
+          'codes' => 'codes',
+          'templates' => 'templates'
+        },
+        'commands' => {
+          'vfm' => 'vfm'
+        },
+        'files' => {
+          'post_replace' => '_postReplaceList.json'
+        }
+      }
+    end
+  end
+  
+  # 設定を読み込み
+  CONFIG = load_config
+  
+  # ディレクトリ設定
+  CONTENTS_DIR      = CONFIG['directories']['contents']
+  STYLESHEETS_DIR   = CONFIG['directories']['stylesheets']
+  IMAGES_DIR        = CONFIG['directories']['images']
+  CODES_DIR         = CONFIG['directories']['codes']
+  TEMPLATES_DIR     = CONFIG['directories']['templates']
+  
+  # コマンド設定
+  VFM_COMMAND       = CONFIG['commands']['vfm']
+  
+  # ファイル設定
+  POST_REPLACE_FILE = CONFIG['files']['post_replace']
   
   # ファイルタイプを判定
   def self.get_file_type(filename)
@@ -31,86 +67,69 @@ module BookBuild
       'chapter'  # デフォルト
     end
   end
-  
-  # フロントマターを生成
-  def self.generate_frontmatter(file_type, chapter_num = nil, existing_frontmatter = {})
-    # ファイルタイプに対応する基本スタイルシート
-    stylesheets = ["#{file_type}.css"]
 
-    # チャプター固有のCSSを追加
-    if file_type == 'chapter' && chapter_num
-      stylesheets << "#{chapter_num}.css"
+  # 章番号を抽出（例: 21-history.md → 21）
+  def self.get_chapter_number(filename)
+    chapter_num = filename[/^(\d+)-/, 1]
+  end
+
+  # 共通ログ出力（日本語 + 絵文字）
+  def self.log_info(msg)
+    puts "ℹ️ #{msg}"
+  end
+
+  def self.log_success(msg)
+    puts "✅ #{msg}"
+  end
+
+  def self.log_warn(msg)
+    puts "⚠️ #{msg}"
+  end
+
+  def self.log_error(msg)
+    puts "❌ #{msg}"
+  end
+
+  def self.log_action(msg)
+    puts "🔧 #{msg}"
+  end
+
+  # 引数/オプションの共通パース
+  # 戻り値: { files: [...], options: { ... } }
+  def self.process_args(task_name = nil, argv = ARGV)
+    # ARGV を破壊しないよう複製
+    argv_copy = argv.dup
+    # Options.parse は argv_copy からオプションを取り除き、残りを files として返す
+    parsed = Options.parse(argv_copy)
+    # files から当該タスク名を除去（例: "rake entries 20-number" で "entries" が混入するのを防止）
+    files = (parsed[:files] || []).reject do |f|
+      next false unless task_name
+      f == task_name || f.start_with?("#{task_name}[") || f.start_with?("#{task_name}:")
     end
-    
-    # 新しいフロントマターのベースを作成
-    new_frontmatter = {
-      'link' => stylesheets.map { |css| 
-        { 'rel' => 'stylesheet', 'href' => "stylesheets/#{css}" }
-      },
-      'lang' => 'ja'
+
+    # Rake が追加のコマンド引数を「タスク名」と誤認して実行後にエラーになるのを防ぐため、
+    # ファイル引数らしきトークンに対してダミーの no-op タスクを事前定義する。
+    # 例: `rake build 11-gift` の "11-gift" をダミータスク化。
+    begin
+      if defined?(Rake)
+        files.each do |name|
+          # コロン付きは明示的な名前空間タスクの可能性があるため除外
+          next if name.include?(":")
+          # 既に定義済みならスキップ
+          next if Rake::Task.task_defined?(name) rescue false
+          # 記号的に妥当な "ファイル/スラッグ風" のもののみ対象
+          if name =~ /\A[\w\-\.\/~]+\z/
+            Rake::Task.define_task(name) {}
+          end
+        end
+      end
+    rescue => _e
+      # ここで失敗してもビルド自体は続行（ログは冗長化を避けて抑止）
+    end
+    # 互換のため必ず keys を揃える
+    {
+      files: files,
+      options: parsed[:options] || {}
     }
-    
-    # 既存のフロントマターと新しいフロントマターを併合
-    merged_frontmatter = {}
-    
-    # 既存のフロントマターをベースにする
-    merged_frontmatter = existing_frontmatter.dup
-    
-    # 新しいフロントマターを適用
-    new_frontmatter.each do |key, value|
-      if key == 'link' && merged_frontmatter['link']
-        # linkは配列なので特別処理
-        # 既存のリンクを保持しつつ、新しいリンクを追加
-        existing_links = merged_frontmatter['link']
-        new_links = value
-        
-        # 重複しないようにマージ
-        merged_frontmatter['link'] = existing_links + new_links.reject { |new_link|
-          existing_links.any? { |existing_link|
-            existing_link['href'] == new_link['href']
-          }
-        }
-      else
-        # その他のキーは上書き
-        merged_frontmatter[key] = value
-      end
-    end
-    
-    merged_frontmatter
-  end
-  
-  # 画像パスを修正
-  def self.fix_image_paths(content, filename)
-    chapter_dir = filename.sub(/\.md$/, '')
-    
-    # ![alt](image.jpg) → ![alt](images/11-chapter/image.jpg)
-    content.gsub(/!\[(.*?)\]\((?!https?:\/\/)(.*?)\)/) do
-      alt_text = $1
-      image_path = $2
-      
-      # 既に images/ で始まる場合はそのまま
-      if image_path.start_with?('images/')
-        "![#{alt_text}](#{image_path})"
-      else
-        "![#{alt_text}](images/#{chapter_dir}/#{image_path})"
-      end
-    end
-  end
-  
-  # 引数処理用ヘルパー
-  def self.process_args
-    # ARGVからRakeタスク名とオプションを除外した引数を取得
-    files_arg = ARGV.reject { |a| a =~ /^(rake|build|--)/i }
-    
-    # 引数をタスクとして解釈されないようにダミータスクを作成
-    files_arg.each do |arg|
-      task_name = arg.to_sym
-      if Rake::Task.task_defined?(task_name)
-        Rake::Task[task_name].clear
-      end
-      Rake::Task.define_task(task_name) {}
-    end
-    
-    files_arg
   end
 end

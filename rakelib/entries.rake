@@ -2,25 +2,24 @@ require_relative 'common'
 
 # entries.js生成タスク
 desc "entries.jsを生成します"
-task :entries do
-  puts "📋 entries.jsを生成しています..."
+task :entries do |t, args|
+  args = BookBuild.process_args('entries')
+  files = args[:files] || []
+  options = args[:options] || {}
+
+  # デバッグ用にオプションを表示
+  BookBuild.log_action("entries.jsを生成しています...")
   
-  # ARGV から引数を取得（最初の要素 'entries' をスキップ）
-  files_arg = ARGV.drop(1)
-  
-  # HTMLファイルを取得
-  html_files = if files_arg.any?
-    files_arg.map { |f| "#{f}.html" }
-  else
-    # 01-toc.htmlを含める
+  unless files.any?
+    # 目次を生成
     Rake::Task['toc'].invoke
-    Dir.glob("*.html")
   end
   
-  # ARGV の残りの引数をタスクとして実行されないようにする
-  files_arg.each { |arg| task arg.to_sym do ; end }
+  # 全HTMLファイルを取得
+  html_files = Dir.glob("*.html")
   
-  puts "  📄 処理対象ファイル: #{html_files.join(', ')}"
+  # 処理対象ファイルを表示
+  BookBuild.log_info("目次作成対象ファイル: #{html_files.join(', ')}")
   
   # entries.jsの生成
   entries = html_files.map do |html_file|
@@ -61,5 +60,5 @@ task :entries do
     f.puts "];"
   end
   
-  puts "✅ entries.js生成完了: #{entries.length}件のエントリを登録"
+  BookBuild.log_success("entries.js生成完了: #{entries.length}件のエントリを登録")
 end

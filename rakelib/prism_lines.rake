@@ -11,61 +11,47 @@ end
 def add_prism_line_numbers(input_file, output_file = nil, verbose = false)
   output_file = input_file if output_file.nil?
   
-  begin
-    # HTMLを読み込む
-    puts "Processing: #{input_file}" if verbose
-    doc = Nokogiri::HTML.parse(URI.open(input_file))
+  # HTMLを読み込む
+  doc = Nokogiri::HTML.parse(URI.open(input_file))
+  
+  # <pre>要素を取得
+  pre_tags = doc.css("pre")
+  
+  pre_tags.each_with_index do |pre, index|
     
-    # <pre>要素を取得
-    pre_tags = doc.css("pre")
-    puts "Found #{pre_tags.length} <pre> elements" if verbose
+    # クラスを追加
+    original_class = pre[:class] || ""
+    pre[:class] = "#{original_class} line-numbers".strip
     
-    pre_tags.each_with_index do |pre, index|
-      puts "\nProcessing <pre> element #{index + 1}/#{pre_tags.length}" if verbose
+    code = pre.css("code").first
+    if code
+      original_code_class = code[:class] || ""
+      code[:class] = "#{original_code_class} line-numbers".strip
       
-      # クラスを追加
-      original_class = pre[:class] || ""
-      pre[:class] = "#{original_class} line-numbers".strip
+      # 行番号の為の <span>要素を作成
+      span = Nokogiri::XML::Node.new("span", doc)
+      span["aria-hidden"] = "true"
+      span["class"] = "line-numbers-rows"
       
-      code = pre.css("code").first
-      if code
-        original_code_class = code[:class] || ""
-        code[:class] = "#{original_code_class} line-numbers".strip
-        
-        # 行番号の為の <span>要素を作成
-        span = Nokogiri::XML::Node.new("span", doc)
-        span["aria-hidden"] = "true"
-        span["class"] = "line-numbers-rows"
-        
-        # <span></span>要素を、コードの行数分追加する
-        line_count(pre).times do
-          span_line = Nokogiri::XML::Node.new('span', doc)
-          span.add_child(span_line)
-        end
-        
-        # <code>要素の末尾に追加する
-        code.add_child(span)
-        
-        puts "  Added line numbers (#{line_count(pre)} lines)" if verbose
-      else
-        puts "  Warning: No <code> element found in <pre>" if verbose
+      # <span></span>要素を、コードの行数分追加する
+      line_count(pre).times do
+        span_line = Nokogiri::XML::Node.new('span', doc)
+        span.add_child(span_line)
       end
+      
+      # <code>要素の末尾に追加する
+      code.add_child(span)
     end
-    
-    # ファイルに出力
-    puts "Writing to: #{output_file}" if verbose
-    File.write(output_file, doc.to_html)
-    puts "✅ Successfully processed #{input_file}" + (output_file != input_file ? " -> #{output_file}" : "")
-    
-  rescue => e
-    puts "Error: #{e.message}"
-    raise e
   end
+  
+  # ファイルに出力
+  File.write(output_file, doc.to_html)
+  BookBuild.log_success("行番号付与完了: #{input_file}" + (output_file != input_file ? " -> #{output_file}" : ""))
 end
 
 namespace :prism do
   desc "HTMLファイル内のPrism.jsコードブロックに行番号を追加します"
-  task :lines do
+  task :lines do |t, args|
     # ARGV から引数を取得（最初の要素 'prism:lines' をスキップ）
     args = ARGV.drop(1)
     
@@ -94,7 +80,7 @@ namespace :prism do
     verbose = ENV['VERBOSE'] == 'true'
     
     unless File.exist?(input_file)
-      puts "Error: Input file '#{input_file}' does not exist"
+      BookBuild.log_error("エラー: 入力ファイル '#{input_file}' が存在しません")
       exit 1
     end
     
@@ -110,17 +96,14 @@ namespace :prism do
     html_files = Dir.glob("*.html")
     
     if html_files.empty?
-      puts "現在のディレクトリにHTMLファイルが見つかりません"
+      BookBuild.log_info("現在のディレクトリにHTMLファイルが見つかりません")
       exit 0
     end
     
-    puts "#{html_files.length}個のHTMLファイルを処理中..." if verbose
-    
     html_files.each do |file|
-      puts "\n=== #{file} を処理中 ===" if verbose
       add_prism_line_numbers(file, nil, verbose)
     end
     
-    puts "\n✅ #{html_files.length}個のHTMLファイルを処理完了"
+    BookBuild.log_success("#{html_files.length}個のHTMLファイルを処理完了")
   end
 end

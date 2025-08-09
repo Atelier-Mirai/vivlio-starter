@@ -1,49 +1,79 @@
 require_relative 'common'
 
-# ビルド関連タスク
-desc "書籍をビルドします (引数を指定するとそのファイルのみをビルド)"
-task :build do |t, args|
-  puts "📚 書籍をビルドしています..."
-  
-  # コマンドライン引数を取得
-  files_arg = BookBuild.process_args
-  
-  # 引数の有無で処理を分岐
-  if files_arg.any?
-    # 指定されたファイルのみ処理
-    puts "  🔍 指定されたファイルのみ処理します: #{files_arg.join(', ')}"
-    # 前処理
-    Rake::Task['preprocess'].invoke(*files_arg)
-    # 変換処理
-    Rake::Task['convert'].invoke(*files_arg)
-    # entries.js生成
-    Rake::Task['entries'].invoke(*files_arg)
-    # PDF生成
-    Rake::Task['pdf'].invoke
-    # クリーンアップ
-    # Rake::Task['clean'].invoke
-    # PDFを開く
+# 責務: サブタスクを同一プロセスで実行しつつ、一時的な ARGV 差し替えで引数汚染を防ぐ
+def __run_task_with_argv(task_name, argv_override = nil)
+  __orig_argv = ARGV.dup
+  ARGV.replace(argv_override) if argv_override
+  Rake::Task[task_name].invoke
+ensure
+  ARGV.replace(__orig_argv)
+end
+
+# 責務: 指定配列のサブタスクを順次（直列）実行する実行器
+def __run_tasks(task_names, argv_override)
+  task_names.each { |t| __run_task_with_argv(t, argv_override) }
+end
+
+# 責務: ビルド成果物の確認体験を統一（macOS のみ自動オープン）
+def __open_pdf_if_macos
+  if RUBY_PLATFORM.include?('darwin')
     Rake::Task['open:pdf'].invoke
-    puts "  ✅ 指定ファイルのビルド完了"
   else
-    # 引数がない場合は全ファイルを処理
-    puts "  ℹ️ 全ファイルをビルドします"
-    # 前処理
-    Rake::Task['preprocess'].invoke
-    # 変換処理
-    Rake::Task['convert'].invoke
-    # 目次生成
-    Rake::Task['toc'].invoke
-    # entries.js生成
-    Rake::Task['entries'].invoke
-    # PDF生成
-    Rake::Task['pdf'].invoke
-    # クリーンアップ
-    # Rake::Task['clean'].invoke
-    # PDFを開く
-    Rake::Task['open:pdf'].invoke
-    puts "  ✅ 全ファイルのビルド完了"
+    BookBuild.log_info("PDFファイルが生成されました（macOS以外のため自動で開きません）")
   end
+end
+
+# 責務: モード（files/all）別のビルド手順を一元管理する単一の真実源
+TASKS_FOR = {
+  files: %w[preprocess convert entries],
+  all:   %w[preprocess convert toc entries]
+}
+
+# セクション: エントリーポイント（build）— 引数解釈 → シーケンス実行 → 後処理
+# ビルド関連タスク
+desc <<~DESC
+  書籍をビルドします
+
+  例:
+      rake build                     # 全ファイルをビルド
+      rake build 00-preface          # 00-preface のみをビルド
+      rake build -v                  # 詳細な出力を表示
+
+  オプション:
+      -v, --verbose     詳細な出力を表示します
+  DESC
+task :build do |t, args|
+  # コマンドライン引数を取得
+  args    = BookBuild.process_args('build')
+  files   = args[:files]
+  options = args[:options]
+
+  BookBuild.log_action("書籍をビルドしています...")
+  
+  # モード判定とタスクリスト
+  if files.any?
+    BookBuild.log_info("指定されたファイルのみ処理します: #{files.join(', ')}")
+    mode = :files
+    argv = files
+  else
+    BookBuild.log_info("全ファイルをビルドします")
+    mode = :all
+    argv = []
+  end
+
+  # タスクの実行
+  __run_tasks(TASKS_FOR[mode], argv)
+  __run_task_with_argv('pdf', [])
+
+  # 完了メッセージ
+  BookBuild.log_success(mode == :files ? "指定ファイルのビルド完了" : "全ファイルのビルド完了")
+
+  # クリーンアップ
+  BookBuild.log_action("クリーンアップを実行しています...")
+  Rake::Task['clean'].invoke
+
+  # PDFを開く
+  __open_pdf_if_macos
 end
 
 # 全体ビルド（デフォルトタスク）

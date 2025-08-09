@@ -1,0 +1,68 @@
+# -*- coding: utf-8 -*-
+
+##
+## 注：タブ文字を使わないこと（使うとエラーになる）
+##
+
+## まえがき
+PREDEF:
+  - 00-preface.re
+
+## 本文
+CHAPS:
+  - 01-bonus.re
+  - 02-top.re
+  - 03-footer.re
+  - 04-kiji.re
+  - 05-about.re
+  - 06-contact.re
+  - 07-modaal.re
+  - 08-shuffle-text.re
+  - 09-sakura.re
+  - 10-scroll-animation.re
+  - 11-fixed-footer.re
+  - 12-follow-menu.re
+  - 13-mobile-menu.re
+  - 14-muuri.re
+  - 15-chart.re
+  - 26-pwa.re
+
+# ## 付録
+APPENDIX:
+  - 91-books.re
+  - 92-links.re
+  - 93-cheats.re
+
+# ## あとがき
+POSTDEF:
+  - 99-postface.re
+
+## 【Tips】
+##
+## ・付録やまえがきやあとがきがなければ、空にする。
+##   例：
+##
+##     PREDEF:
+##
+##     CHAPS:
+##       - 01-install.re
+##
+##     APPENDIX:
+##
+##     POSTDEF:
+##
+##
+## ・第I部、第II部、…のように「部」を使うには、次のようにする。
+##   （部タイトルの最後に半角の「:」をつけることに注意）
+##
+##     CHAPS:
+##       - 初級編:
+##           - 01-install.re
+##           - 02-tutorial.re
+##       - 中級編:
+##           - 03-syntax.re
+##           - 04-customize.re
+##       - 上級編:
+##           - 05-faq.re
+##           - 06-bestpractice.re
+##
