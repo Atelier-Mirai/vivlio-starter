@@ -1,0 +1,11 @@
+# パスに基づき PR に自動ラベル付与
+frontend:
+  - 'web/**'
+backend:
+  - 'server/**'
+docs:
+  - '**/*.md'
+ci:
+  - '.github/workflows/**'
+release:
+  - 'CHANGELOG.md'

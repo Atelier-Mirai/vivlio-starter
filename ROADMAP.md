@@ -57,3 +57,46 @@
 - `help` と `README` の一覧を自動生成/検証する小タスク追加
 - `config/book.yml` スキーマの最小バリデーション導入
 - `generate_frontmatter` と `process_args` に基本テストを用意
+
+## 近々（Short-term）
+- [ ] Vivliostyleのページ番号制御の調査・整備
+  - vivliostyle.config.js にページカウンタ設定オプションがあるか確認し、前書きを負の値（例: -10）から開始し、本文開始で 1 にリセットする要件を実装。
+  - CSSカウンタ（@page counter-reset/counter-increment）の現行設定の見直しと検証。
+- [ ] 奥付（colophon）の自動生成
+  - 発行者、発行日、著者名等を含むHTML（例: `colophon.html`）を生成するRakeタスクを追加。
+  - Frontmatterとビルドへの組み込み。
+- [ ] 段落のクラス付与（.aki / .aki2）の安定化
+  - `_postReplaceList.json` は現在 `{.aki}` と `{.aki2}` のみサポート。現状はこれで確定運用。
+  - 生成HTMLの回帰チェック（クラス属性の引用符・バックスラッシュ混入の再発防止）。
+- [ ] リストの体裁改善（lower-alpha 等）
+  - Markdownでは `a.`/`b.` がリストとして解釈されないため、必要箇所は `<ol type="a">` の生HTMLを採用。
+  - 必要であれば `ol.lower-alpha { list-style-type: lower-alpha; }` 用のユーティリティCSSを追加。
+- [ ] CSS Lintの整理
+  - `stylesheets/page_settings_a4.css` の警告（`text-spacing`、`@bottom-center` など）を精査。
+  - Paged Media（Vivliostyle）特有の拡張の扱い方をドキュメント化し、一般的なCSS Lintとの共存方針を決定。
+- [ ] VFMコンテナの複数クラス対応（`text-2dan gap-s`）
+   - `:::{.text-2dan .gap-s}` を正しく HTML に反映（`class="text-2dan gap-s"`）できるようにする。
+   - 対応案:
+     1) VFM の設定/バージョン確認（複数クラス付与の既定動作の把握）
+     2) 変換後ポストプロセスでの補正（必要なら fenced container を検出して class を統合）
+     3) ドキュメント・使用例の更新（`contents/11-gift.md` の例で `gap-s` が効くことを確認）
+   - 受入基準: `text-2dan gap-s` の併用で段組とギャップユーティリティが同時に適用される。
+
+## 中期（Mid-term）
+- [ ] Post-processingの単体テスト整備
+  - `_postReplaceList.json` の主要ルール（段落クラス付与、見出し・bodyクラス、各種クレンジング）のスナップショットテストを追加。
+  - 想定外パターン（複数ブレース、引用符・バックスラッシュ混入等）の回帰防止。
+- [ ] Markdown → HTML 変換の拡張設計
+  - 段落以外（blockquote, list, figure）へのクラス付与要件を洗い出し、必要なら生HTMLか前処理で対応方針を策定。
+- [ ] ビルドログ整備
+  - Rakeの各タスクに要約出力とエラーヒントを追加。
+
+## 長期（Long-term）
+- [ ] スタイルガイドの整備
+  - 章タイプ別（preface/chapter/appendix/postface）スタイルの設計指針、ユーティリティクラス（`.aki`, `.aki2`, ほか）一覧、使用例をドキュメント化。
+- [ ] 自動検証パイプライン（CI）
+  - 最小サンプルでのビルド、Lint、HTMLポスト処理テストの自動実行。
+
+## メモ
+- Frontmatter生成は `generate_frontmatter` の併合ロジックにより安定化済み。
+- `<body>` のファイルタイプ自動クラス付与は導入済み（スタイル適用の基盤として継続利用）。

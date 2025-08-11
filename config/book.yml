@@ -46,7 +46,7 @@ pdf:
   # x, y: 左上角の座標
   # width, height: ウィンドウのサイズ
   window_bounds: "{3072, 0, 4096, 2160}"  # 右側モニター全画面
-  
+
   # その他の設定例:
   # output_file: '電気・電子技術への招待.pdf'  # 日本語ファイル名
   # output_file: 'book_v1.0.pdf'                      # バージョン付き

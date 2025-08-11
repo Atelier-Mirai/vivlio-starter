@@ -1,0 +1,14 @@
+changelog:
+  categories:
+    - title: 💥 破壊的変更
+      labels: [breaking-change]
+    - title: ✨ 新機能
+      labels: [feature, enhancement]
+    - title: 🐛 不具合修正
+      labels: [bug, fix]
+    - title: 📚 ドキュメント
+      labels: [docs]
+    - title: 🧰 メンテナンス
+      labels: [chore, refactor, ci]
+  exclude:
+    labels: [skip-changelog]

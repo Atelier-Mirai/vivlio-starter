@@ -1,0 +1,21 @@
+name: タスク
+description: 小規模作業や雑務はこちら
+labels: [task]
+assignees: []
+body:
+  - type: textarea
+    id: todo
+    attributes:
+      label: やること
+      placeholder: 箇条書きで記載
+    validations:
+      required: true
+  - type: textarea
+    id: definition_of_done
+    attributes:
+      label: 完了条件
+      placeholder: 何ができれば完了か
+  - type: textarea
+    id: notes
+    attributes:
+      label: 補足

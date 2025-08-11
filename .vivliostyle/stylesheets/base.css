@@ -1,0 +1,13 @@
+/* base.css
+   全体で共通利用するリセット/ベーススタイルを定義する。
+   - ここでは box-sizing を border-box に統一。
+   - ほかに共通で使いたい初期化があれば、このファイルに追加していく。
+*/
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}

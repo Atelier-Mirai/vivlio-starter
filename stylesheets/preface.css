@@ -1,14 +1,12 @@
 @charset "utf-8";
 
-@import "page_settings_a4.css";
+@import "base.css";
+@import "theme.css";
+@import "page-settings-a4.css";
 
 /* 前書き用スタイル */
 
-*,
-*::after,
-*::before {
-  box-sizing: border-box;
-}
+ 
 
 :root {
   --preface-font: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "HiraMinProN-W3", "HiraMinProN-W6", "HG明朝E", "ＭＳ Ｐ明朝", "ＭＳ 明朝", serif;

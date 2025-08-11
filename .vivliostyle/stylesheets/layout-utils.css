@@ -1,0 +1,93 @@
+/* Vivliostyle 書籍用レイアウトユーティリティ */
+
+/* 写真グリッド: ページ幅に応じて列数を自動調整 */
+.pictures {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(12em, 1fr));
+}
+.pictures img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* 画像＋本文の横並び */
+/* 使用例（VFM コンテナ）:
+   ::: img-text   # 左:画像 右:本文
+   ![alt](path.jpg)
+   説明文…
+   :::
+
+   ::: text-img   # 左:本文 右:画像
+   説明文…
+   ![alt](path.jpg)
+   :::
+*/
+/* 両バリエーション共通の基礎グリッド */
+.img-text,
+.text-img {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+/* 2:1 比率バリエーション */
+.img-text2,
+.text2-img {
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+}
+/* 列幅 */
+.img-text2 { grid-template-columns: 1fr 2fr; }
+.text2-img { grid-template-columns: 2fr 1fr; }
+/* 並び順ルール（要素タイプで安定化） */
+/* 左:画像 右:本文 */
+.img-text > img { grid-column: 1; }
+.img-text > :not(img) { grid-column: 2; }
+/* 左:画像 右:本文（本文広め 2） */
+.img-text2 > img { grid-column: 1; }
+.img-text2 > :not(img) { grid-column: 2; }
+/* 左:本文 右:画像（テキストノード先頭でも img を右に配置） */
+.text-img > img { grid-column: 2; }
+.text-img > :not(img) { grid-column: 1; }
+/* 左:本文 右:画像（本文広め 2） */
+.text2-img > :not(img) { grid-column: 1; }
+.text2-img > img { grid-column: 2; }
+
+/* 狭い画面でのプレビュー時は1カラムに（画面表示のみ） */
+/* @media screen and (max-width: 640px) {
+  .img-text,
+  .text-img { grid-template-columns: 1fr; }
+  .img-text > *:first-child,
+  .img-text > *:last-child,
+  .text-img > *:first-child,
+  .text-img > *:last-child { grid-column: auto; }
+} */
+
+/* 本文の二段組ブロック */
+.two-col,
+.text-2dan {
+  column-count: 2;
+  column-gap: 1.2em;
+}
+
+/* ユーティリティ（任意） */
+.pictures,
+.img-text,
+.text-img,
+.img-text2,
+.text2-img,
+.text-2dan,
+.two-col {
+  /* 周囲との視覚的な余白（上下 0.5 行高） */
+  margin-block: 0.5lh;
+}
+
+.gap-s { gap: 0.5rem; }
+.gap-m { gap: 1rem; }
+.gap-l { gap: 1.5rem; }
+.align-top { align-items: start; }
+.align-center { align-items: center; }
+.align-bottom { align-items: end; }

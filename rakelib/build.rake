@@ -69,8 +69,8 @@ task :build do |t, args|
   BookBuild.log_success(mode == :files ? "指定ファイルのビルド完了" : "全ファイルのビルド完了")
 
   # クリーンアップ
-  BookBuild.log_action("クリーンアップを実行しています...")
-  Rake::Task['clean'].invoke
+  # BookBuild.log_action("クリーンアップを実行しています...")
+  # Rake::Task['clean'].invoke
 
   # PDFを開く
   __open_pdf_if_macos

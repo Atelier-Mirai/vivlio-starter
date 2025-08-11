@@ -1,0 +1,68 @@
+@charset "utf-8";
+
+/* 表 */
+table {
+  border-collapse: collapse;
+  font-size: var(--base-font-size);
+  line-height: 1.25em;
+  /* ページ中央に配置（横方向） */
+  margin-inline: auto;
+  /* テーブル間のアキ（上下） */
+  margin-block: 0.5lh;
+}
+
+/* 表の直前にある見出し相当の段落・見出しを中央寄せ */
+p:has(+ table),
+h1:has(+ table),
+h2:has(+ table),
+h3:has(+ table),
+h4:has(+ table),
+h5:has(+ table),
+h6:has(+ table) {
+  text-align: center;
+  /* 印刷/組版でも安定して中央に置くため display: table + auto margin を採用 */
+  display: table;
+  margin-inline: auto;
+  margin-block-end: 0.25lh;
+}
+
+/* 見出し風のフォントスタイル（段落のみ） */
+p:has(+ table) {
+  /* h4 相当のトーンに寄せる */
+  font-family: var(--header-font);
+  text-spacing: no-autospace;
+  font-size: var(--base-font-size);
+  font-weight: normal;
+  text-indent: 0; /* 本文の字下げを打ち消し */
+}
+
+/* h4 と同様の先頭マーカー */
+p:has(+ table)::before {
+  content: none;
+}
+
+td,
+th {
+  border: solid 0.1mm #000;
+  padding: 1mm;
+}
+
+th {
+  background: #bbb;
+  min-inline-size: 7em;
+}
+
+tr:nth-child(even) {
+  background: #eee;
+}
+
+.long-table {
+  font-size: 11Q;
+}
+.long-table th {
+  min-inline-size: auto;
+}
+.long-table td {
+  text-align: end;
+  vertical-align: bottom;
+}
