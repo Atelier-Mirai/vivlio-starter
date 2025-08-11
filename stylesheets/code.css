@@ -18,66 +18,12 @@
   - 既存プロパティの意味が変わらない範囲でのみ並び替える。
 */
 
-/* コード背景テーマ変数 */
-:root {
-  /* 行送りとサイズ（Q単位） */
-  --code-font-size: 13Q;
-  /* 単位なし行送り倍率（フォールバック互換性重視） */
-  --code-lh: 1.46; /* 19Q ÷ 13Q ≒ 1.46 */
-  /* 行送りに同期する長さ（em基準）。1em = font-size */
-  --code-line-step: calc(1em * var(--code-lh));
-  /* 微調整用（見た目合わせ）。例: -0.2mm 〜 +0.2mm */
-  --code-bg-finetune: 0mm;
-
-  /* 通常用: 薄い罫線（行間19Qに同期） */
-  --code-bg-normal: repeating-linear-gradient(
-    #eee 0,
-    #eee var(--code-line-step),
-    #fff var(--code-line-step),
-    #fff calc(var(--code-line-step) * 2)
-  );
-  /* 無地用: 背景なし（紙面に依存）または白 */
-  --code-bg-plain: #fff; /* 透明にしたい場合は transparent */
-  /* デバッグ用: 高コントラスト罫線（行間19Qに同期） */
-  --code-bg-debug: repeating-linear-gradient(
-    0deg,
-    rgba(255, 0, 0, 0.22) 0,
-    rgba(255, 0, 0, 0.22) var(--code-line-step),
-    rgba(0, 120, 255, 0.22) var(--code-line-step),
-    rgba(0, 120, 255, 0.22) calc(var(--code-line-step) * 2)
-  );
-  /* 現在の適用背景（通常/無地/デバッグのいずれかを選択） */
-  --code-bg: var(--code-bg-normal);
-  --code-bg: var(--code-bg-plain);
-  --code-bg: var(--code-bg-debug);
-}
-
 /* コード */
 code {
   font-family: var(--code-font);
 }
 
-pre {
-  /* box-size */
-  inline-size: 100%;
-  /* spacing */
-  padding-block: 0;
-  padding-inline: 0.8mm;
-  margin-block: 3mm;
-  margin-inline: 0;
-  /* typography */
-  font-family: var(--code-font);
-  white-space: pre-wrap;
-  line-break: anywhere;
-  text-spacing: none;
-  font-size: var(--code-font-size);
-  line-height: calc(1em * var(--code-lh));
-  /* visual */
-  border: solid 0.35mm #888;
-  border-radius: 1mm;
-}
-
-/* Prism.js の pre[class*="language-"] を上書き */
+pre,
 pre[class*="language-"] {
   /* box-size */
   inline-size: 100%;
@@ -90,46 +36,21 @@ pre[class*="language-"] {
   font-family: var(--code-font);
   white-space: pre-wrap;
   line-break: anywhere;
-  text-spacing: none;
-  font-size: var(--code-font-size);
-  line-height: calc(1em * var(--code-lh));
+  font-size: 13Q;
+  line-height: 1.46;
   /* visual */
+  background: #fff;
   border: solid 0.35mm #888;
   border-radius: 1mm;
 }
 
-/* 背景の集約: Prism/Markdown の figure 内の pre にのみ適用 */
-figure[class^="language-"] > pre[class*="language-"],
-figure[class*=" language-"] > pre[class*="language-"] {
-  /* visual */
-  background: var(--code-bg);
-  background-repeat: repeat-y;
-  /* パディング上端から開始し、行送りと同期 */
-  background-origin: padding-box;
-  background-clip: padding-box;
-  background-position-y: var(--code-bg-finetune);
-}
-
-/* Prism line-numbers の行番号カラムにも同じ背景を適用（左右で差が出ないように） */
-figure[class^="language-"] > pre.line-numbers[class*="language-"] .line-numbers-rows,
-figure[class*=" language-"] > pre.line-numbers[class*="language-"] .line-numbers-rows {
-  /* typography */
-  line-height: inherit;
-  /* visual */
-  background: var(--code-bg);
-  background-repeat: repeat-y;
-  background-origin: padding-box;
-  background-clip: padding-box;
-  background-position-y: var(--code-bg-finetune);
-}
-
-/* 内側の code 要素の行送り・サイズを pre に揃える */
+/* 内側の code 要素の行送り・サイズを pre に揃える（Prism の token が崩さないように） */
 figure[class^="language-"] > pre[class*="language-"] > code[class*="language-"],
 figure[class*=" language-"] > pre[class*="language-"] > code[class*="language-"] {
   /* typography */
   font-size: inherit;
   line-height: inherit;
-  /* layout: ブロック化して行取りを一致させる */
+  /* layout */
   display: block;
 }
 /* Prism のトークン断片もメトリクスを継承させる */
@@ -143,7 +64,6 @@ figure[class*=" language-"] > pre[class*="language-"] > code[class*="language-"]
 :not(pre)>code[class*="language-"] {
   /* visual */
   background: transparent;
-  /* または var(--任意色) */
 }
 
 .codenum-elem {
@@ -236,8 +156,6 @@ figure[class*=" language-"] > figcaption + pre {
   line-height: 12Q;
   font-weight: bold;
   /* visual */
-  /* background: #fff; */
-  /* border: solid 0.15mm #f88; */
   color: #f00;
 }
 .codered::before {
