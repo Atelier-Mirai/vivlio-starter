@@ -23,97 +23,111 @@
 */
 
 .colophon {
-    page-break-before: always;
-    padding: 1.5rem;
-    margin-block-start: 66vh; /* ページ下部1/3に収まるように上側2/3をマージンに */
-    font-family: var(--main-text-font);
-    line-height: 1.6;
+    /* layout */
+    page: colophon;
+    width: 100%;
+    margin-block-start: 70vh; /* 下1/4配置（必要に応じて微調整） */
+    /* spacing */
+    padding: 40px;
+    /* typography */
+    font-family: 'Hiragino Mincho ProN', '游明朝', serif;
+    line-height: 1.5;
+    /* visual */
+    color: #333;
 }
 
-.colophon-title {
-    text-align: center;
-    font-size: 1.3rem;
-    font-weight: bold;
-    margin-bottom: 2rem;
-    border-bottom: 2px solid #333;
-    padding-bottom: 0.8rem;
+/* 奥付（名前付きページ）の下側余白を詰め、ノンブルを非表示に */
+@page colophon {
+    margin-bottom: 8mm;
+    @bottom-center { content: none; }
+    @bottom-left { content: none; }
+    @bottom-right { content: none; }
 }
 
-.colophon-content {
-    max-width: 600px;
-    margin: 0 auto;
-}
-
-/* 見出し（h2）をcolophon-itemとしてスタイリング */
-.colophon-content h2 {
-    display: flex;
-    margin-bottom: 1rem;
-    align-items: baseline;
-    font-size: 1rem;
-    font-weight: normal;
-}
-
-/* 見出しの前にラベルを追加 */
-.colophon-content h2::before {
-    content: attr(data-label);
-    min-width: 120px;
-    font-weight: bold;
-    margin-right: 1rem;
-}
-
-/* 各見出しにデータ属性を追加 */
-.colophon-content h2:nth-of-type(1)::before { content: '書名'; }
-.colophon-content h2:nth-of-type(2)::before { content: '著者'; }
-.colophon-content h2:nth-of-type(3)::before { content: '発行者'; }
-.colophon-content h2:nth-of-type(4)::before { content: '発行日'; }
-.colophon-content h2:nth-of-type(5)::before { content: '版型'; }
-.colophon-content h2:nth-of-type(6)::before { content: '印刷・製本'; }
-
-/* 書名のスタイリング */
-.colophon-content h2:first-of-type {
-    font-size: 1.1rem;
-    font-weight: bold;
-    line-height: 1.6;
-    margin-bottom: 1.5rem;
-}
-
-/* 旧スタイル（後方互換性のため保持） */
-.colophon-item {
-    display: flex;
-    margin-bottom: 1rem;
-    align-items: baseline;
-}
-
-.colophon-label {
-    min-width: 120px;
-    font-weight: bold;
-    margin-right: 1rem;
-}
-
-.colophon-value {
-    flex: 1;
-}
-
+/* 書籍名 */
 .book-title {
-    font-size: 1.1rem;
-    font-weight: bold;
-    line-height: 1.6;
+    /* typography */
+    font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', sans-serif; /* ゴシック */
+    font-size: 14pt;
+    font-weight: 700;
+}
+/* 書籍名の下にページ幅いっぱいの下線 */
+.book-title::after {
+    content: "";
+    display: block;
+    inline-size: 100vw;              /* ページ幅 */
+    margin-inline: calc(50% - 50vw); /* 中央に合わせて全幅へ拡張 */
+    border-bottom: 1px solid currentColor;
+    margin-block: 8pt 0;             /* タイトル直下に配置 */
+}
+
+/* 出版情報 */
+.publication-info {
+    /* typography */
+    font-size: 10pt;
+    /* spacing */
+    margin-block-start: 5pt;
+    margin-block-end: 12pt; /* 下に1行分の空き */
+}
+
+/* 情報リスト */
+.info-list {
+    /* layout: 2カラム（ラベル/値） */
+    display: grid;
+    grid-template-columns: 3em 1fr; /* ラベル列=4文字分 */
+    column-gap: 8pt;
+    row-gap: 4pt;
+    /* spacing */
+    margin-block-start: 18pt;
+    padding-block-end: 8pt; /* 下線のためのスペース確保 */
+    position: relative;      /* ::after を絶対配置するための基準 */
+}
+
+/* 情報リストの下にページ幅いっぱいの下線 */
+.info-list::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    inline-size: 100vw;            /* ページ幅 */
+    border-bottom: 1px solid currentColor;
+    inset-block-end: 0;            /* 下端に配置 */
+}
+
+.info-list dt {
+    /* layout */
+    grid-column: 1;
+    /* typography */
+    font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', sans-serif; /* ゴシック */
+    font-weight: 700;
+    font-size: 10pt;
+}
+
+/* ラベル（dt）を両端揃えにする */
+.info-list dt {
+    text-align: justify;
+    text-align-last: justify;
+    text-justify: inter-ideograph; /* CJK 両端揃え */
+}
+
+.info-list dd {
+    /* layout */
+    grid-column: 2;
+    /* typography */
+    font-size: 10pt;
 }
 
 .copyright {
-    text-align: center;
-    margin-top: 2rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid #ccc;
-    font-size: 0.9rem;
-    color: #666;
+    font-size: 10pt;
 }
 
-.note {
-    margin-top: 1.5rem;
-    padding: 0.8rem;
-    background-color: #f9f9f9;
-    border-left: 4px solid #007acc;
-    font-size: 0.85rem;
-    line-height: 1.5;
+.powered-by {
+    font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', sans-serif;
+    /* layout: ページ右端に揃える（全幅ブロック） */
+    display: block;
+    inline-size: 100vw;
+    margin-inline: calc(50% - 50vw);
+    text-align: right;
+    /* typography */
+    font-size: 10pt;
 }

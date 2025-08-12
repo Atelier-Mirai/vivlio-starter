@@ -1,39 +1,24 @@
-:::{.colophon-content}
+<h1 class="book-title">電気・電子技術への招待</h1>
 
-## 書名
-電気・電子技術への招待  
-～古代の叡智から現代AIまで～
+<p class="publication-info">令和七年七月二十七日 初版第1刷発行</p>
 
-## 著者
-アトリヱ未來
+<dl class="info-list">
+    <dt>著者</dt>
+    <dd>アトリヱ未來</dd>
+    <dt>発行者</dt>
+    <dd>早乙女 遙香</dd>
+    <dt>連絡先</dt>
+    <dd>contact@atelier-mirai.net</dd>
+</dl>
 
-## 発行者
-アトリヱ未來
+<p class="copyright">
+    <small>
+        &copy; 令和七年 アトリヱ未來 All rights reserved.
+    </small>
+</p>
 
-## 発行日
-令和7年7月27日 初版第1刷発行
-
-## 版型
-A4判
-
-## 印刷・製本
-デジタル印刷
-
-<!--
-## ISBN
-978-4-XXXX-XXXX-X（仮）
--->
-
-:::{.note}
-**本書について**  
-本書は教育目的で作成された入門書です。内容の正確性には十分注意を払っておりますが、
-技術的な詳細については、より専門的な文献もあわせてご参照ください。
-本書の内容を参考にした結果生じた損害について、著者・発行者は責任を負いかねます。
-:::
-
-:::{.copyright}
-© 令和7年 アトリヱ未來 All rights reserved.  
-本書の無断複製・転載を禁じます。
-:::
-
-:::
+<p class="powered-by">
+    <small>
+        (powered by Vivlio Starter)
+    </small>
+</p>

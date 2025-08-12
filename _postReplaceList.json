@@ -1,5 +1,9 @@
 [
   {
+    "f": ":{3,}\\{\\.colophon\\s+\\.dev-guide\\}",
+    "r": "<div class=\"colophon dev-guide\">"
+  },
+  {
     "f": ":{3,}\\{\\.?([a-z|0-9|\\-|_|\\s]+)\\}",
     "r": "<div class=\"$1\">"
   },
