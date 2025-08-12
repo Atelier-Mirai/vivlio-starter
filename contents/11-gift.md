@@ -44,7 +44,8 @@
    - 分子の大きさ・アボガドロ数を評価する方法を提示し、物質観に実証的基盤を与えた。
 
 
-![](Einstein.png){width=40% .float-right}
+<!-- ![](Einstein.png){width=40% .float-right} -->
+![](Einstein.png){width=40%}
 
 
 ```javascript:app1.js

@@ -87,18 +87,25 @@ end
 # 画像パスを修正
 def fix_image_paths(content, filename)
   chapter_dir = filename.sub(/\.md$/, '')
-  
-  # ![alt](image.jpg) → ![alt](images/11-chapter/image.jpg)
-  content.gsub(/!\[(.*?)\]\((?!https?:\/\/)(.*?)\)/) do
-    alt_text = $1
+
+  # 画像参照を統一
+  # 1) 相対参照は images/<chapter>/ を前置
+  # 2) 拡張子 .png/.jpg/.jpeg は .webp に変換
+  content.gsub(/!\[(.*?)\]\((?!https?:\/\/)([^)]+)\)/) do
+    alt_text  = $1
     image_path = $2
-    
-    # 既に images/ で始まる場合はそのまま
-    if image_path.start_with?('images/')
-      "![#{alt_text}](#{image_path})"
-    else
-      "![#{alt_text}](images/#{chapter_dir}/#{image_path})"
-    end
+
+    # 章ディレクトリの付与（既に images/ 始まりならそのまま）
+    normalized = if image_path.start_with?('images/')
+                   image_path
+                 else
+                   "images/#{chapter_dir}/#{image_path}"
+                 end
+
+    # 拡張子を .webp へ
+    normalized = normalized.sub(/\.(png|jpe?g)\z/i, '.webp')
+
+    "![#{alt_text}](#{normalized})"
   end
 end
 
