@@ -95,7 +95,7 @@ h1 {
 }
 
 h1::before {
-  content: "Chapter " counter(chapter-counter);
+  content: "第 " counter(chapter-counter) " 章";
   /* layout */
   position: absolute;
   display: block;

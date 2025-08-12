@@ -45,46 +45,56 @@
 }
 
 #toc a::after {
-  content: target-counter(attr(href url), page);
   margin-inline-start: 1em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
   text-align: end;
+  content: target-counter(attr(href url), page);
 }
 
 /* 章目次（Grid） */
 .toc-chapter {
-  font-size: 18Q;
+  display: grid;
+  grid-template-columns: auto 4em;
+  margin-block-end: 2mm;
+  font-size: 22Q;
   line-height: 1.25em;
   font-weight: 700;
-  margin-block-end: 2mm;
-  display: grid;
-  grid-template-columns: auto 3em;
 }
 
 .toc-chapter::before {
-  content: "Chapter " counters(toc-list-counter, "-");
-  counter-increment: toc-list-counter;
   grid-column: 1/3;
-  font-size: 15Q;
+  font-size: 19Q;
   line-height: 1.5em;
   border-block-end: solid 0.5mm #000;
+  content: "第 " counters(toc-list-counter, "-") " 章";
+  counter-increment: toc-list-counter;
 }
 
 .toc-chapter::after {
-  font-size: 12Q;
+  font-size: 16Q;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
 li:has(> .toc-chapter) {
-  margin-block-end: 8mm;
+  break-inside: avoid;
+  margin-block-end: 10mm;
+}
+
+/* 章目次（番号なし）のリストも改ページで割れにくくする */
+li:has(> .toc-chapter-no-number) {
+  break-inside: avoid;
 }
 
 /* 章目次（番号なし） */
 .toc-chapter-no-number {
-  font-size: 18Q;
+  display: grid;
+  grid-template-columns: auto 4em;
+  margin-block-end: 2mm;
+  font-size: 22Q;
   line-height: 1.25em;
   font-weight: 700;
-  margin-block-end: 2mm;
-  display: grid;
-  grid-template-columns: auto 3em;
 }
 
 .toc-chapter-no-number::before {
@@ -92,60 +102,64 @@ li:has(> .toc-chapter) {
 }
 
 .toc-chapter-no-number::after {
-  content: target-counter(attr(href url), page);
   margin-inline-start: 1em;
   text-align: end;
+  content: target-counter(attr(href url), page);
 }
 
 /* 節目次（before＋リーダー） */
 li:has(> .toc-section) {
-  font-size: 12Q;
-  line-height: 1.2em;
-  font-weight: 700;
+  position: relative;
+  break-inside: avoid;
   margin-inline-start: 15mm;
   margin-block-end: 2mm;
-  break-inside: avoid;
-  position: relative;
+  font-size: 16Q;
+  line-height: 1.2em;
+  font-weight: 700;
 }
 
 .toc-section::before {
-  content: counters(toc-list-counter, "-");
-  counter-increment: toc-list-counter;
   position: absolute;
   inset-inline-start: -15mm;
   display: block;
   inline-size: 13mm;
   text-align: end;
+  content: counters(toc-list-counter, "-");
+  counter-increment: toc-list-counter;
 }
 
 #toc .toc-section::after {
-  content: leader(dotted) target-counter(attr(href url), page);
   margin-inline-start: 0.5em;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  color: #333;
+  content: leader(dotted) " " target-counter(attr(href url), page);
 }
 
 li:has(> .toc-section)>ul {
-  margin-block-start: 1mm;
+  margin-block-start: 2mm;
 }
 
 /* 項目次（ぶら下げ） */
 li:has(> .toc-subsection) {
-  font-size: 9Q;
-  line-height: 1.25em;
-  font-weight: 400;
   margin-inline-start: 3em;
-  text-indent: -3em;
   margin-inline-end: 1em;
   margin-block-end: 0.1em;
+  font-size: 13Q;
+  line-height: 1.25em;
+  font-weight: 400;
+  text-indent: -3em;
 }
 
 .toc-subsection::before {
-  content: counters(toc-list-counter, "-");
-  counter-increment: toc-list-counter;
   display: inline-block;
   min-inline-size: 2.5em;
-  text-indent: 0;
   margin-inline-end: 0.5em;
+  text-indent: 0;
   text-align: start;
+  content: counters(toc-list-counter, "-");
+  counter-increment: toc-list-counter;
 }
 
 @page: left {
@@ -160,14 +174,17 @@ h2::before {
   content: none;
 }
 h2 {
-  font-size: 36Q;
-  line-height: 42Q;
+  display: grid;
   inline-size: 10em;
   block-size: 2lh;
   margin-block: 0;
-  display: grid;
+  font-size: 42Q;
+  line-height: 48Q;
   align-content: center;
   font-family: var(--header-font);
+  letter-spacing: 0.02em;
+  padding-block-end: 1mm;
+  border-block-end: none;
 }
 
 hr {

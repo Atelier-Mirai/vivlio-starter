@@ -24,8 +24,8 @@ task :convert do |t, args|
     
     files.map { |f| "#{f}.md" }
   else
-    # 引数がない場合は全Markdownファイルを処理（README.mdとdesign_policy.mdを除く）
-    Dir.glob("*.md").reject { |f| ['README.md', 'design_policy.md'].include?(f) }
+    # 引数がない場合は全Markdownファイルを処理（README.mdとROADMAP.mdを除く）
+    Dir.glob("*.md").reject { |f| ['README.md', 'ROADMAP.md'].include?(f) }
   end
   
   # ファイル引数をタスクとして実行されないようにダミータスクを作成
