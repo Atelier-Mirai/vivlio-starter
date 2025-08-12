@@ -156,3 +156,39 @@
   @bottom-left  { content: none; }
   @bottom-right { content: none; }
 }
+
+/* =====================================================================
+   脚注（全体共通）
+   - 本文より一回り小さく
+   - 行間と余白の最適化
+   - 返りリンク（↩）の装飾と間隔
+===================================================================== */
+section.footnotes {
+  font-size: 0.9em;
+  line-height: 1.6;           /* 行間やや広め */
+  margin-block-start: 12pt;   /* 本文からの余白 */
+}
+
+section.footnotes hr.pagebreak {
+  margin-block: 8pt 10pt;     /* 罫線前後の余白を抑える */
+}
+
+section.footnotes ol {
+  margin: 0;                  /* 余白を詰める */
+  padding-inline-start: 1.4em;/* 番号と本文の間隔 */
+  list-style-position: outside;
+}
+
+section.footnotes li {
+  margin-block: 4pt;          /* 各脚注間の余白 */
+}
+
+section.footnotes li p {
+  margin: 0;                  /* 段落の上下余白なし */
+  text-indent: 0;             /* 脚注の先頭は字下げしない */
+}
+
+section.footnotes a.footnote-back {
+  margin-inline-start: 0.4em; /* ↩ と本文の間隔 */
+  border: none;               /* 下線装飾は不要 */
+}
