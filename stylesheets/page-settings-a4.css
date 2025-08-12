@@ -30,8 +30,6 @@
   font-style: normal;
 }
 
- 
-
 /* フォント定義 */
 @font-face {
   font-family: udevgothic-r;
@@ -95,8 +93,8 @@
 
   /* その他の指定 */
   text-spacing: auto; /* 文字間隔 */
-  widows:       1;    /* 最後の行を次のページに移動させない */
-  orphans:      1;    /* 最初の行を前のページに移動させない */
+  widows:       2;    /* 最後の行を次のページに移動させない（2行以上残す） */
+  orphans:      2;    /* 最初の行を前のページに移動させない（2行以上送る） */
 }
 
 @page {

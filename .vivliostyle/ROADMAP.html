@@ -1,0 +1,236 @@
+<!DOCTYPE html><html lang="ja"><head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <title>Roadmap</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head>
+  <body class="chapter">
+    <section class="level1" aria-labelledby="roadmap">
+      <h1 id="roadmap">Roadmap</h1>
+      <p>本プロジェクト（Rake ベースの Vivliostyle ビルドシステム）の改良計画を記録します。</p>
+      <section class="level2" aria-labelledby="目標ゴール">
+        <h2 id="目標ゴール">目標（ゴール）</h2>
+        <ul>
+          <li>ビルドの安定性と再現性の向上（設定の一元管理と検証）</li>
+          <li>ログとエラー報告の改善（原因特定しやすさの向上）</li>
+          <li>タスク体系の明確化（名前空間・エイリアスの整理とドキュメント同期）</li>
+          <li>パフォーマンス最適化（不要処理の削減・並列化の検討）</li>
+        </ul>
+      </section>
+      <section class="level2" aria-labelledby="マイルストーン案">
+        <h2 id="マイルストーン案">マイルストーン（案）</h2>
+        <ul>
+          <li>M1: 2025-09 ビルドの安定化と開発者 UX 向上
+            <ul>
+              <li>失敗時のリカバリ提案・詳細ログ・中間生成物のトレース</li>
+              <li>
+<code>help</code>/<code>README</code>/<code>Rakefile</code> コメントの整合性自動チェック</li>
+            </ul>
+          </li>
+          <li>M2: 2025-10 パフォーマンス改善
+            <ul>
+              <li>差分ビルド、キャッシュ戦略（HTML/画像/entries/toc）</li>
+              <li>並列実行（独立タスクの並列化）検討</li>
+            </ul>
+          </li>
+          <li>M3: 2025-11 配布・運用
+            <ul>
+              <li>Docker/Devcontainer、CI（Lint/テスト/ビルド）</li>
+              <li>リリース手順・CHANGELOG 整備</li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+      <section class="level2" aria-labelledby="改良候補backlog">
+        <h2 id="改良候補backlog">改良候補（Backlog）</h2>
+        <ul>
+          <li>設定/引数処理
+            <ul>
+              <li>
+<code>config/book.yml</code> のスキーマ検証（必須フィールド・型チェック）</li>
+              <li>
+<code>BookBuild.Options</code> の引数パース整理（重複排除・単体テスト追加）</li>
+              <li>
+<code>VERBOSE</code> 以外の共通フラグ（<code>DRY_RUN</code> 等）導入の検討</li>
+            </ul>
+          </li>
+          <li>タスク体系／機能
+            <ul>
+              <li>
+<code>code:</code> 名前空間の拡張（例: <code>code:include</code>, <code>code:extract</code>, <code>code:lint</code>）</li>
+              <li>
+<code>vivliostyle:</code> まわりの操作性強化（<code>vivliostyle:preview</code> 等の検討）</li>
+              <li>
+<code>open</code> の出力先・ビューア選択を設定化（マルチ OS 対応含む）</li>
+              <li>章テンプレートの拡充（<code>rake create</code> の雛形選択）</li>
+            </ul>
+          </li>
+          <li>変換・前処理
+            <ul>
+              <li>HTML 生成の差分適用（再生成対象の最小化）</li>
+              <li>
+<code>&lt;body&gt;</code> クラス付与ロジックの拡張（appendix/postface/colophon の網羅テスト）</li>
+              <li>Prism.js 行番号・テーマの切替（設定化）</li>
+            </ul>
+          </li>
+          <li>品質・テスト
+            <ul>
+              <li>重要ヘルパ（<code>generate_frontmatter</code>, <code>process_args</code>）の単体テスト</li>
+              <li>サンプル章によるエンドツーエンド（E2E）テスト（最小データセット）</li>
+              <li>エラー時のヒント表示（例: vfm/vivliostyle 未インストール、パス誤り）</li>
+            </ul>
+          </li>
+          <li>ドキュメント
+            <ul>
+              <li>
+<code>README</code> のスクリーンショット/サンプル PDF 追加</li>
+              <li>
+<code>HELP</code> と <code>rake -T</code> 表示の自動同期（生成スクリプト化）</li>
+              <li>
+<code>CONTRIBUTING.md</code>, <code>CHANGELOG.md</code> 追加</li>
+            </ul>
+          </li>
+          <li>配布・環境
+            <ul>
+              <li>Docker/Devcontainer での再現環境提供</li>
+              <li>GitHub Actions/CI でのビルド検証</li>
+            </ul>
+          </li>
+          <li>ライセンス・著者表記
+            <ul>
+              <li>分離ライセンスの明記継続（コード: MIT / 本文: CC BY-NC-SA 4.0）</li>
+              <li>著者名の統一「アトリヱ未來」の自動検査（pre-commit）</li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+      <section class="level2" aria-labelledby="リスク検討事項">
+        <h2 id="リスク検討事項">リスク・検討事項</h2>
+        <ul>
+          <li>ARGV 操作の副作用（タスクチェーンへの影響）</li>
+          <li>外部 CLI（vfm / vivliostyle）依存のバージョン固定と更新戦略</li>
+          <li>OS 差異（mac / Linux / Windows）における <code>open</code> コマンド挙動</li>
+        </ul>
+      </section>
+      <section class="level2" aria-labelledby="直近のアクションnext">
+        <h2 id="直近のアクションnext">直近のアクション（Next）</h2>
+        <ul>
+          <li>
+<code>help</code> と <code>README</code> の一覧を自動生成/検証する小タスク追加</li>
+          <li>
+<code>config/book.yml</code> スキーマの最小バリデーション導入</li>
+          <li>
+<code>generate_frontmatter</code> と <code>process_args</code> に基本テストを用意</li>
+        </ul>
+      </section>
+      <section class="level2" aria-labelledby="近々short-term">
+        <h2 id="近々short-term">近々（Short-term）</h2>
+        <ul class="contains-task-list">
+          <li class="task-list-item">
+<input type="checkbox" disabled=""> Vivliostyleのページ番号制御の調査・整備
+            <ul>
+              <li>vivliostyle.config.js にページカウンタ設定オプションがあるか確認し、前書きを負の値（例: -10）から開始し、本文開始で 1 にリセットする要件を実装。</li>
+              <li>CSSカウンタ（@page counter-reset/counter-increment）の現行設定の見直しと検証。</li>
+            </ul>
+          </li>
+          <li class="task-list-item">
+<input type="checkbox" disabled=""> 奥付（colophon）の自動生成
+            <ul>
+              <li>発行者、発行日、著者名等を含むHTML（例: <code>colophon.html</code>）を生成するRakeタスクを追加。</li>
+              <li>Frontmatterとビルドへの組み込み。</li>
+            </ul>
+          </li>
+          <li class="task-list-item">
+<input type="checkbox" disabled=""> 段落のクラス付与（.aki / .aki2）の安定化
+            <ul>
+              <li>
+<code>_postReplaceList.json</code> は現在 <code>{.aki}</code> と <code>{.aki2}</code> のみサポート。現状はこれで確定運用。</li>
+              <li>生成HTMLの回帰チェック（クラス属性の引用符・バックスラッシュ混入の再発防止）。</li>
+            </ul>
+          </li>
+          <li class="task-list-item">
+<input type="checkbox" disabled=""> リストの体裁改善（lower-alpha 等）
+            <ul>
+              <li>Markdownでは <code>a.</code>/<code>b.</code> がリストとして解釈されないため、必要箇所は <code>&lt;ol type="a"&gt;</code> の生HTMLを採用。</li>
+              <li>必要であれば <code>ol.lower-alpha { list-style-type: lower-alpha; }</code> 用のユーティリティCSSを追加。</li>
+            </ul>
+          </li>
+          <li class="task-list-item">
+<input type="checkbox" disabled=""> CSS Lintの整理
+            <ul>
+              <li>
+<code>stylesheets/page_settings_a4.css</code> の警告（<code>text-spacing</code>、<code>@bottom-center</code> など）を精査。</li>
+              <li>Paged Media（Vivliostyle）特有の拡張の扱い方をドキュメント化し、一般的なCSS Lintとの共存方針を決定。</li>
+            </ul>
+          </li>
+          <li class="task-list-item">
+<input type="checkbox" disabled=""> VFMコンテナの複数クラス対応（<code>text-2dan gap-s</code>）
+            <ul>
+              <li>
+<code>{.text-2dan .gap-s}</code> を正しく HTML に反映（<code>class="text-2dan gap-s"</code>）できるようにする。</li>
+              <li>対応案:
+                <ol>
+                  <li>VFM の設定/バージョン確認（複数クラス付与の既定動作の把握）</li>
+                  <li>変換後ポストプロセスでの補正（必要なら fenced container を検出して class を統合）</li>
+                  <li>ドキュメント・使用例の更新（<code>contents/11-gift.md</code> の例で <code>gap-s</code> が効くことを確認）</li>
+                </ol>
+              </li>
+              <li>受入基準: <code>text-2dan gap-s</code> の併用で段組とギャップユーティリティが同時に適用される。</li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+      <section class="level2" aria-labelledby="中期mid-term">
+        <h2 id="中期mid-term">中期（Mid-term）</h2>
+        <ul class="contains-task-list">
+          <li class="task-list-item">
+<input type="checkbox" disabled=""> Post-processingの単体テスト整備
+            <ul>
+              <li>
+<code>_postReplaceList.json</code> の主要ルール（段落クラス付与、見出し・bodyクラス、各種クレンジング）のスナップショットテストを追加。</li>
+              <li>想定外パターン（複数ブレース、引用符・バックスラッシュ混入等）の回帰防止。</li>
+            </ul>
+          </li>
+          <li class="task-list-item">
+<input type="checkbox" disabled=""> Markdown → HTML 変換の拡張設計
+            <ul>
+              <li>段落以外（blockquote, list, figure）へのクラス付与要件を洗い出し、必要なら生HTMLか前処理で対応方針を策定。</li>
+            </ul>
+          </li>
+          <li class="task-list-item">
+<input type="checkbox" disabled=""> ビルドログ整備
+            <ul>
+              <li>Rakeの各タスクに要約出力とエラーヒントを追加。</li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+      <section class="level2" aria-labelledby="長期long-term">
+        <h2 id="長期long-term">長期（Long-term）</h2>
+        <ul class="contains-task-list">
+          <li class="task-list-item">
+<input type="checkbox" disabled=""> スタイルガイドの整備
+            <ul>
+              <li>章タイプ別（preface/chapter/appendix/postface）スタイルの設計指針、ユーティリティクラス（<code>.aki</code>, <code>.aki2</code>, ほか）一覧、使用例をドキュメント化。</li>
+            </ul>
+          </li>
+          <li class="task-list-item">
+<input type="checkbox" disabled=""> 自動検証パイプライン（CI）
+            <ul>
+              <li>最小サンプルでのビルド、Lint、HTMLポスト処理テストの自動実行。</li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+      <section class="level2" aria-labelledby="メモ">
+        <h2 id="メモ">メモ</h2>
+        <ul>
+          <li>Frontmatter生成は <code>generate_frontmatter</code> の併合ロジックにより安定化済み。</li>
+          <li>
+<code>&lt;body&gt;</code> のファイルタイプ自動クラス付与は導入済み（スタイル適用の基盤として継続利用）。</li>
+        </ul>
+      </section>
+    </section>
+  
+
+</body></html>

@@ -31,37 +31,42 @@
    ![alt](path.jpg)
    :::
 */
-/* 両バリエーション共通の基礎グリッド */
+/* バリエーション共通の基礎グリッド */
 .img-text,
-.text-img {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  align-items: start;
-}
-/* 2:1 比率バリエーション */
+.text-img,
 .img-text2,
-.text2-img {
+.text2-img,
+.img-text3,
+.text3-img {
   display: grid;
   gap: 1rem;
   align-items: start;
 }
 /* 列幅 */
+.imt-text { grid-template-columns: 1fr 1fr; }
 .img-text2 { grid-template-columns: 1fr 2fr; }
+.img-text3 { grid-template-columns: 1fr 3fr; }
 .text2-img { grid-template-columns: 2fr 1fr; }
-/* 並び順ルール（要素タイプで安定化） */
+.text3-img { grid-template-columns: 3fr 1fr; }
+/* 並び順ルール */
 /* 左:画像 右:本文 */
 .img-text > img { grid-column: 1; }
 .img-text > :not(img) { grid-column: 2; }
 /* 左:画像 右:本文（本文広め 2） */
 .img-text2 > img { grid-column: 1; }
 .img-text2 > :not(img) { grid-column: 2; }
-/* 左:本文 右:画像（テキストノード先頭でも img を右に配置） */
+/* 左:画像 右:本文（本文広め 3） */
+.img-text3 > img { grid-column: 1; }
+.img-text3 > :not(img) { grid-column: 2; }
+/* 左:本文 右:画像 */
 .text-img > img { grid-column: 2; }
 .text-img > :not(img) { grid-column: 1; }
 /* 左:本文 右:画像（本文広め 2） */
 .text2-img > :not(img) { grid-column: 1; }
 .text2-img > img { grid-column: 2; }
+/* 左:本文 右:画像（本文広め 3） */
+.text3-img > :not(img) { grid-column: 1; }
+.text3-img > img { grid-column: 2; }
 
 /* 狭い画面でのプレビュー時は1カラムに（画面表示のみ） */
 /* @media screen and (max-width: 640px) {
@@ -96,6 +101,83 @@
 .gap-s { gap: 0.5rem; }
 .gap-m { gap: 1rem; }
 .gap-l { gap: 1.5rem; }
+
+/* 回り込み配置（画像などを右端＝行内終端へ） */
+.float-end,
+.float-right {
+  /* layout */
+  float: inline-end;
+  /* spacing */
+  margin-inline-start: 1em;
+  margin-block-end: 0.5em;
+}
+
+/* inline-end 未対応ブラウザ向けフォールバック */
+@supports not (float: inline-end) {
+  .float-end,
+  .float-right {
+    float: right;
+  }
+}
+
+/* 左側回り込み（対称ユーティリティ） */
+.float-start {
+  /* layout */
+  float: inline-start;
+  /* spacing */
+  margin-inline-end: 1em;
+  margin-block-end: 0.5em;
+}
+@supports not (float: inline-start) {
+  .float-start { float: left; }
+}
+
+/* 回り込み画像の最大幅（安全策） */
+.float-end,
+.float-right,
+.float-start {
+  max-inline-size: 45%;
+}
+
+/* 回り込み解除ユーティリティ */
+.clear-both { clear: both; }
+.clear-inline { clear: inline-end; }
+@supports not (clear: inline-end) {
+  .clear-inline { clear: right; }
+}
+
+/* 段組内の分割回避 */
+.two-col > *,
+.text-2dan > * {
+  break-inside: avoid;
+}
+
+/* 図版（figure）体裁と回り込み対応 */
+figure {
+  margin: 0 0 0.5em;
+  break-inside: avoid;
+}
+figcaption {
+  font-size: 0.9em;
+  color: #666;
+  text-align: center;
+}
+figure.float-end,
+figure.float-right {
+  float: inline-end;
+  margin-inline-start: 1em;
+}
+@supports not (float: inline-end) {
+  figure.float-end,
+  figure.float-right { float: right; }
+}
+figure.float-start {
+  float: inline-start;
+  margin-inline-end: 1em;
+}
+@supports not (float: inline-start) {
+  figure.float-start { float: left; }
+}
 
 /* グリッド内の配置 */
 .align-top { align-items: start; }

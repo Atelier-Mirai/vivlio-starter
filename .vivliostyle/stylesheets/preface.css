@@ -3,6 +3,7 @@
 @import "base.css";
 @import "theme.css";
 @import "page-settings-a4.css";
+@import "layout-utils.css";
 
 /*
   プロパティ並び順ガイドライン
@@ -24,15 +25,13 @@
 
 /* 前書き用スタイル */
 :root {
-  --preface-font: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "HiraMinProN-W3", "HiraMinProN-W6", "HG明朝E", "ＭＳ Ｐ明朝", "ＭＳ 明朝", serif;
-  --header-font: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic Medium", "Meiryo", sans-serif;
+  --preface-font: var(--main-text-font);
   --text-color: #333;
   --header-color: #2c3e50;
   --link-color: #3498db;
   --accent-color: #e74c3c;
   /* additional theme neutrals */
   --border-color: #ddd;      /* rules, separators */
-  --border-color: #f9f9f9;      /* rules, separators */
   --surface-color: #f9f9f9;  /* subtle backgrounds */
 }
 
@@ -58,18 +57,22 @@
 /* 基本設定 */
 body {
   font-family: var(--preface-font);
-  font-size: 11.25Q;
-  line-height: 1.6;
+  font-size: var(--base-font-size);
+  line-height: var(--base-line-height);
   color: var(--text-color);
   text-align: justify;
   hanging-punctuation: allow-end;
+  /* 数字の視認性と欧文の折返しを改善 */
+  font-variant-numeric: lining-nums tabular-nums;
+  hyphens: auto;
 }
 
 /* 見出し */
 h1 {
   font-family: var(--header-font);
-  font-size: 20Q;
+  font-size: 24Q;
   font-weight: bold;
+  letter-spacing: 0.1em;
   color: var(--header-color);
   text-align: center;
   margin-block-end: 30pt;
@@ -80,25 +83,25 @@ h1 {
 
 h2 {
   font-family: var(--header-font);
-  font-size: 13.75Q;
+  font-size: 20Q;
   font-weight: bold;
   color: var(--header-color);
   margin-block: 25pt 15pt;
   padding-block: 8pt;
   padding-inline-start: 15pt;
-  border-inline-start: 4px solid var(--accent-color);
-  background: linear-gradient(90deg, rgba(231, 76, 60, 0.1) 0%, rgba(231, 76, 60, 0.05) 50%, transparent 100%);
+  border-inline-start: 3px solid var(--accent-color);
+  background: linear-gradient(90deg, rgba(231, 76, 60, 0.08) 0%, rgba(231, 76, 60, 0.03) 50%, transparent 100%);
   page-break-after: avoid;
 }
 
 h3 {
   font-family: var(--header-font);
-  font-size: 12.5Q;
+  font-size: 16Q;
   font-weight: bold;
   color: var(--header-color);
   margin-block: 20pt 12pt;
   padding-block: 5pt;
-  border-block-end: 1px solid var(--border-color);
+  border-block-end: 1px solid color-mix(in oklab, var(--border-color) 70%, transparent);
   page-break-after: avoid;
 }
 

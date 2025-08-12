@@ -26,7 +26,7 @@
     page-break-before: always;
     padding: 1.5rem;
     margin-block-start: 66vh; /* ページ下部1/3に収まるように上側2/3をマージンに */
-    font-family: 'Noto Serif JP', serif;
+    font-family: var(--main-text-font);
     line-height: 1.6;
 }
 

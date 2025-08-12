@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <title>電子工作</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="stylesheets/chapter.css">
+    <link rel="stylesheet" href="stylesheets/15.css">
+    <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+  </head>
+  <body class="chapter">
+    <section class="level1" aria-labelledby="電子工作">
+      <h1 id="電子工作">電子工作</h1>
+      <p>
+        </p>
+<div class="chapter-lead">
+        電子工作は、抵抗器、コンデンサ、ダイオード、トランジスタなどの電子部品を組み合わせて回路を構築し、様々な電子機器を作り上げる技術です。この章では、オームの法則・キルヒホッフの法則や、各種電子部品の紹介を行います。
+        電子工作の世界は、LEDを光らせる簡単な回路から、センサーを使った測定装置、マイコンを活用した制御システムまで、無限の可能性に満ちています。現代のIoT機器やスマートデバイスの多くも、これらの基本的な電子部品と回路設計の原理に基づいて作られており、電子工作の知識は現代社会を理解する上でも重要な基盤となります。
+        </div>
+      
+      <section class="level2" aria-labelledby="オームの法則">
+        <h2 id="オームの法則">オームの法則</h2>
+        <p>
+          </p>
+<div class="section-lead">
+          オームの法則は、電気回路の最も基本的な法則です。<br><strong>電圧V（ボルト、V）、電流I（アンペア、A）、抵抗R（オーム、Ω）</strong>の関係を表します。
+          </div>
+        
+        <section class="level4" aria-labelledby="基本公式">
+          <h4 id="基本公式">基本公式</h4>
+          <ul>
+            <li>電圧を求める: <span class="math inline" data-math-typeset="true">\(V = I \times R\)</span>
+</li>
+            <li>電流を求める: <span class="math inline" data-math-typeset="true">\(I = \frac{V}{R}\)</span>
+</li>
+            <li>抵抗を求める: <span class="math inline" data-math-typeset="true">\(R = \frac{V}{I}\)</span>
+</li>
+          </ul>
+<br>
+          <p>
+            <img src="images/15-electronics/ohm.png" width="60%" class="float-bottom">
+          </p>
+        </section>
+        <section class="level4" aria-labelledby="実用例">
+          <h4 id="実用例">実用例</h4>
+          <ul>
+            <li>
+<strong>LEDの電流制限</strong>: LEDに流れる電流を制限するための抵抗値を計算</li>
+            <li>
+<strong>電源設計</strong>: 必要な電圧や電流を決定</li>
+            <li>
+<strong>部品選定</strong>: 抵抗値や定格電力の選定</li>
+          </ul>
+          <p>電子工作では、この法則を使って回路の動作を予測し、安全な回路を設計します。</p>
+        </section>
+        <section class="level3" aria-labelledby="ゲオルクジーモンオーム">
+          <h3 id="ゲオルクジーモンオーム">ゲオルク・ジーモン・オーム</h3>
+          <p><strong>ゲオルク・ジーモン・オーム</strong>（1789-1854）は、ドイツの物理学者・数学者で、電気学の基礎を築いた人物です。</p>
+          <section class="level4" aria-labelledby="経歴と業績">
+            <h4 id="経歴と業績">経歴と業績</h4>
+            <ul>
+              <li>
+<strong>生年月日</strong>: 1789年3月16日（バイエルン、ドイツ）</li>
+              <li>
+<strong>死亡</strong>: 1854年7月6日（ミュンヘン、ドイツ）</li>
+              <li>
+<strong>職業</strong>: 物理学者、数学者、教師</li>
+              <li>
+<strong>主な業績</strong>: オームの法則の発見（1827年）</li>
+            </ul>
+          </section>
+          <section class="level4" aria-labelledby="オームの法則の発見">
+            <h4 id="オームの法則の発見">オームの法則の発見</h4>
+            <p>オームは1820年代に、電気回路における電圧、電流、抵抗の関係を精密に実験しました。当時はまだ電気学が未熟な分野であり、安定した電源や測定器具がない中での研究でした。</p>
+          </section>
+          <section class="level4" aria-labelledby="困難と挑戦">
+            <h4 id="困難と挑戦">困難と挑戦</h4>
+            <ul>
+              <li>
+<strong>技術的困難</strong>: 安定した電源（ガルバニ電池）の作製</li>
+              <li>
+<strong>測定の精度</strong>: 原始的な測定器具での精密測定</li>
+              <li>
+<strong>学界の反対</strong>: 初期は学界からの理解を得られなかった</li>
+            </ul>
+          </section>
+          <section class="level4" aria-labelledby="遺産と影響">
+            <h4 id="遺産と影響">遺産と影響</h4>
+            <p>オームの法則は、現代のすべての電気・電子技術の基礎となっています。彼の名前は電気抵抗の単位「オーム（Ω）」として不滅に刻まれています。</p>
+          </section>
+        </section>
+      </section>
+      <section class="level2" aria-labelledby="キルヒホッフの法則">
+        <h2 id="キルヒホッフの法則">キルヒホッフの法則</h2>
+        <p>
+          </p>
+<div class="section-lead">
+          キルヒホッフの法則は、複雑な電気回路を解析するための基本法則で、<strong>電流則</strong>と<strong>電圧則</strong>の2つから構成されます。
+          </div>
+        
+        <section class="level3" aria-labelledby="第1法則電流則">
+          <h3 id="第1法則電流則">第1法則（電流則）</h3>
+          <p><strong>「任意の節点（ノード）において、流入する電流の総和と流出する電流の総和は等しい」</strong></p>
+          <p><span class="math display" data-math-typeset="true">$$\sum I_{in} = \sum I_{out}$$</span></p>
+          <p>
+            または、節点に集まるすべての電流の代数和は0です。
+            <span class="math display" data-math-typeset="true">$$\sum I = 0$$</span>
+          </p>
+<br>
+          <p>
+            <img src="images/15-electronics/i.jpg" width="50%" class="float-bottom">
+          </p>
+          <p><span class="math display" data-math-typeset="true">$$I_1 = I_2 + I_3 = I_4$$</span></p>
+        </section>
+        <section class="level3" aria-labelledby="第2法則電圧則">
+          <h3 id="第2法則電圧則">第2法則（電圧則）</h3>
+          <p><strong>「任意の闉回路（ループ）において、電圧の総和は0である」</strong></p>
+          <p><span class="math display" data-math-typeset="true">$$\sum V = 0$$</span></p>
+<br>
+          <p>
+            <img src="images/15-electronics/e.jpg" width="50%" class="float-bottom">
+          </p>
+          <p><span class="math display" data-math-typeset="true">$$E_1 = V_1 + V_2$$</span></p>
+          <section class="level4" aria-labelledby="実用例-1">
+            <h4 id="実用例-1">実用例</h4>
+            <ul>
+              <li>
+<strong>並列回路の解析</strong>: 各枝路の電流分配を計算</li>
+              <li>
+<strong>直列回路の解析</strong>: 各部品にかかる電圧を計算</li>
+              <li>
+<strong>複合回路の設計</strong>: 複数の電源や負荷を持つ回路の解析</li>
+              <li>
+<strong>電源回路</strong>: 電源の内部抵抗を考慮した設計</li>
+            </ul>
+            <p>オームの法則と組み合わせることで、どんな複雑な電気回路でも解析できます。</p>
+          </section>
+        </section>
+        <section class="level3" aria-labelledby="グスタフロベルトキルヒホッフ">
+          <h3 id="グスタフロベルトキルヒホッフ">グスタフ・ロベルト・キルヒホッフ</h3>
+          <p><strong>グスタフ・ロベルト・キルヒホッフ</strong>（1824-1887）は、ドイツの物理学者で、電気学と分光学の分野で大きな貢献をしました。</p>
+          <section class="level4" aria-labelledby="経歴と業績-1">
+            <h4 id="経歴と業績-1">経歴と業績</h4>
+            <ul>
+              <li>
+<strong>生年月日</strong>: 1824年3月12日（ケーニヒスベルク、プロイセン）</li>
+              <li>
+<strong>死亡</strong>: 1887年10月17日（ベルリン、ドイツ）</li>
+              <li>
+<strong>職業</strong>: 物理学者、大学教授</li>
+              <li>
+<strong>主な業績</strong>: キルヒホッフの法則（1845年）、黒体放射の研究</li>
+            </ul>
+          </section>
+          <section class="level4" aria-labelledby="研究の背景">
+            <h4 id="研究の背景">研究の背景</h4>
+            <p>キルヒホッフは21歳の時に、電気回路の基本法則を発見しました。彼の法則は、オームの法則と並んで電気学の基礎を形成し、現代の電気・電子工学の土台となっています。</p>
+          </section>
+          <section class="level4" aria-labelledby="その他の業績">
+            <h4 id="その他の業績">その他の業績</h4>
+            <ul>
+              <li>
+<strong>分光学</strong>: フラウンホーファー線の研究</li>
+              <li>
+<strong>熱放射</strong>: 黒体放射の理論的基礎</li>
+              <li>
+<strong>化学</strong>: ブンゼンとロベルト・ブンゼンの共同発見</li>
+            </ul>
+<!-- 
+            ### 直流、交流
+            
+            電気には、**直流（DC: Direct Current）**と**交流（AC: Alternating Current）**の2つの基本的な形態があります。
+            
+            #### 直流（DC: Direct Current）
+            **直流**は、電流の大きさと方向が一定の電気です。
+            
+            ##### 特徴
+            - **電流の方向**: 常に一定（+から-へ）
+            - **電圧**: 時間とともに変化しない
+            - **波形**: 水平線（定電圧の場合）
+            
+            ##### 主な電源
+            - **乾電池**: 単三電池、アルカリ電池など
+            - **蓄電池**: リチウムイオン電池、ニッケル水素電池など
+            - **DC電源装置**: ACをDCに変換する装置
+            - **太陽電池**: ソーラーパネル
+            
+            ##### 用途
+            - **電子機器**: スマートフォン、パソコン、LED照明
+            - **電子部品**: IC、トランジスタ、マイコン
+            - **自動車**: バッテリー、電装品
+            
+            #### 交流（AC: Alternating Current）
+            **交流**は、電流の大きさと方向が周期的に変化する電気です。
+            
+            ##### 特徴
+            - **電流の方向**: 周期的に反転
+            - **電圧**: 正弦波状に変化
+            - **周波数**: 日本では50Hz（関西）または60Hz（関東）
+            - **波形**: 正弦波（サイン波）
+            
+            ##### 主な電源
+            - **商用電源**: 家庭用コンセント（100V）
+            - **発電所**: 火力、水力、原子力、太陽光発電
+            - **インバーター**: DCをACに変換する装置
+            
+            ##### 用途
+            - **家電製品**: エアコン、冷蔵庫、洗濯機
+            - **照明**: 白熱電球、蛍光灯
+            - **モーター**: 交流モーター、ファン
+            
+            #### 直流と交流の比較
+            
+            | 項目 | 直流（DC） | 交流（AC） |
+            |------|---------|----------|
+            | 電流の方向 | 一定 | 周期的に変化 |
+            | 電圧波形 | 水平線 | 正弦波 |
+            | 変圧 | 困難 | トランスで簡単 |
+            | 長距離送電 | 損失大 | 損失小 |
+            | 蓄電 | 可能 | 直接は不可 |
+            | 安全性 | 高（低電圧） | 注意必要 |
+            
+            #### 電子工作での重要性
+            - **DC回路**: マイコン、センサー、LEDなどの基本回路
+            - **AC回路**: 電源回路、モーター制御
+            - **変換回路**: AC-DCコンバーター、DC-DCコンバーター
+            
+            電子工作では主にDCを使用しますが、電源部やモーター制御ではACの理解も必要です。 -->
+          </section>
+        </section>
+      </section>
+      <section class="level2" aria-labelledby="直列接続と並列接続">
+        <h2 id="直列接続と並列接続">直列接続と並列接続</h2>
+        <p>
+          </p>
+<div class="section-lead">
+          電子部品を接続する方法には、<strong>直列接続</strong>と<strong>並列接続</strong>の2つの基本的な方法があります。これらの接続方法によって、回路の電気的特性が大きく変わります。
+          </div>
+        
+        <section class="level3" aria-labelledby="直列接続series-connection">
+          <h3 id="直列接続series-connection">直列接続（Series Connection）</h3>
+          <p><strong>直列接続</strong>は、部品を一列につなげて、電流が一つの経路しか通らないようにした接続方法です。</p>
+          <section class="level4" aria-labelledby="特徴">
+            <h4 id="特徴">特徴</h4>
+            <ul>
+              <li>
+                <strong>電流</strong>: すべての部品に同じ電流が流れる
+                <span class="math display" data-math-typeset="true">$$I_{total} = I_1 = I_2 = I_3 = \cdots$$</span>
+              </li>
+              <li>
+                <strong>電圧</strong>: 各部品の電圧の合計が全体の電圧になる
+                <span class="math display" data-math-typeset="true">$$V_{total} = V_1 + V_2 + V_3 + \cdots$$</span>
+              </li>
+              <li>
+                <strong>抵抗</strong>: 各抵抗の合計が全体の抵抗になる
+                <span class="math display" data-math-typeset="true">$$R_{total} = R_1 + R_2 + R_3 + \cdots$$</span>
+              </li>
+            </ul>
+<br>
+            <p>
+              <img src="images/15-electronics/series.png" width="50%" class="float-bottom">
+            </p>
+          </section>
+          <section class="level4" aria-labelledby="実用例-2">
+            <h4 id="実用例-2">実用例</h4>
+            <ul>
+              <li>
+<strong>LEDの電流制限</strong>: LEDと制限抵抗を直列接続</li>
+              <li>
+<strong>電池の電圧増加</strong>: 乾電池を直列接続で高電圧化</li>
+              <li>
+<strong>分圧回路</strong>: 電圧を分割して使用</li>
+              <li>
+<strong>スイッチ回路</strong>: スイッチで回路全体を制御</li>
+            </ul>
+          </section>
+          <section class="level4" aria-labelledby="注意点">
+            <h4 id="注意点">注意点</h4>
+            <ul>
+              <li>一つの部品が故障すると全体が停止</li>
+              <li>電流が全部品で同じなので、定格電流に注意</li>
+            </ul>
+          </section>
+        </section>
+        <section class="level3" aria-labelledby="並列接続parallel-connection">
+          <h3 id="並列接続parallel-connection">並列接続（Parallel Connection）</h3>
+          <p><strong>並列接続</strong>は、部品を並べてつなげて、電流が複数の経路に分かれるようにした接続方法です。</p>
+          <section class="level4" aria-labelledby="特徴-1">
+            <h4 id="特徴-1">特徴</h4>
+            <ul>
+              <li>
+                <strong>電圧</strong>: すべての部品に同じ電圧がかかる
+                <span class="math display" data-math-typeset="true">$$V_{total} = V_1 = V_2 = V_3 = \cdots$$</span>
+              </li>
+              <li>
+                <strong>電流</strong>: 各部品の電流の合計が全体の電流になる
+                <span class="math display" data-math-typeset="true">$$I_{total} = I_1 + I_2 + I_3 + \cdots$$</span>
+              </li>
+              <li>
+                <strong>抵抗</strong>: 合成抵抗は各抵抗の逆数の合計の逆数
+                <span class="math display" data-math-typeset="true">$$\frac{1}{R_{total}} = \frac{1}{R_1} + \frac{1}{R_2} + \frac{1}{R_3} + \cdots$$</span>
+              </li>
+            </ul>
+<br>
+            <p>
+              <img src="images/15-electronics/parallel.png" width="50%" class="float-bottom">
+            </p>
+          </section>
+          <section class="level4" aria-labelledby="実用例-3">
+            <h4 id="実用例-3">実用例</h4>
+            <ul>
+              <li>
+<strong>電源分配</strong>: 複数の回路に電源を供給</li>
+              <li>
+<strong>LEDの明るさ制御</strong>: 複数のLEDを独立制御</li>
+              <li>
+<strong>バックアップ電源</strong>: 電池を並列接続で容量増加</li>
+              <li>
+<strong>コンセント配線</strong>: 家庭の電気配線</li>
+            </ul>
+          </section>
+          <section class="level4" aria-labelledby="注意点-1">
+            <h4 id="注意点-1">注意点</h4>
+            <ul>
+              <li>一つの部品が故障しても他は動作続行</li>
+              <li>電流が分散するので、各部品の電流値に注意</li>
+            </ul>
+            <hr class="pagebreak">
+          </section>
+        </section>
+        <section class="level3" aria-labelledby="直列と並列の比較">
+          <h3 id="直列と並列の比較">直列と並列の比較</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>項目</th>
+                <th>直列接続</th>
+                <th>並列接続</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>電流</td>
+                <td>全部品で同じ</td>
+                <td>各部品で異なる</td>
+              </tr>
+              <tr>
+                <td>電圧</td>
+                <td>各部品で異なる</td>
+                <td>全部品で同じ</td>
+              </tr>
+              <tr>
+                <td>全体抵抗</td>
+                <td>各抵抗の合計</td>
+                <td>各抵抗より小</td>
+              </tr>
+              <tr>
+                <td>故障時</td>
+                <td>全体停止</td>
+                <td>他は継続動作</td>
+              </tr>
+              <tr>
+                <td>電力消費</td>
+                <td>各部品の合計</td>
+                <td>各部品の合計</td>
+              </tr>
+              <tr>
+                <td>制御</td>
+                <td>一括制御</td>
+                <td>個別制御</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+        <section class="level3" aria-labelledby="複合回路">
+          <h3 id="複合回路">複合回路</h3>
+          <p>実際の電子回路では、直列と並列を組み合わせた<strong>複合回路</strong>が一般的です。この場合、キルヒホッフの法則やオームの法則を使って段階的に解析します。</p>
+        </section>
+        <section class="level3" aria-labelledby="電子工作での応用">
+          <h3 id="電子工作での応用">電子工作での応用</h3>
+          <ul>
+            <li>
+<strong>ブレッドボード</strong>: 直列・並列接続の実験</li>
+            <li>
+<strong>LED回路</strong>: 明るさや色の制御</li>
+            <li>
+<strong>センサー回路</strong>: 複数センサーの組み合わせ</li>
+            <li>
+<strong>電源回路</strong>: 安定した電源供給</li>
+          </ul>
+          <p>直列と並列の特性を理解することで、効率的で安全な電子回路を設計できます。</p>
+        </section>
+      </section>
+      <section class="level2" aria-labelledby="受動部品">
+        <h2 id="受動部品">受動部品</h2>
+        <p>
+          </p>
+<div class="section-lead">
+          受動部品は、電子回路の基本的な構成要素で、外部からのエネルギー供給なしに動作する部品です。主要な受動部品には、電流を制限する<strong>抵抗（レジスタ）</strong>、電荷を蓄える<strong>コンデンサ（キャパシタ）</strong>、磁気エネルギーを蓄える<strong>インダクタ（コイル）</strong>があります。これらの部品は、電圧・電流・周波数特性を制御し、フィルタリング、タイミング制御、エネルギー貯蔵など、回路設計において不可欠な役割を果たします。
+          </div>
+        
+        <section class="level3" aria-labelledby="抵抗">
+          <h3 id="抵抗">抵抗</h3>
+          <p>抵抗は、電流を制御する基本的な部品です。抵抗値は、電流が通過する難易度を表し、抵抗値が高いほど電流が流れるのが難しくなります。</p>
+          <section class="level4" aria-labelledby="抵抗値の単位">
+            <h4 id="抵抗値の単位">抵抗値の単位</h4>
+            <ul>
+              <li>
+<strong>オーム（Ω）</strong>: 基本単位</li>
+              <li>
+<strong>キロオーム（kΩ）</strong>: 1,000Ω</li>
+              <li>
+<strong>メガオーム（MΩ）</strong>: 1,000,000Ω</li>
+            </ul>
+          </section>
+          <section class="level4" aria-labelledby="抵抗値の選定">
+            <h4 id="抵抗値の選定">抵抗値の選定</h4>
+            <p>抵抗値は、電流が通過する難易度を表し、抵抗値が高いほど電流が流れるのが難しくなります。</p>
+          </section>
+        </section>
+        <section class="level3" aria-labelledby="コイルインダクタ">
+          <h3 id="コイルインダクタ">コイル（インダクタ）</h3>
+          <p>コイル（インダクタ）は、電線をらせん状に巻いた部品で、<strong>磁気エネルギーを蓄える</strong>性質を持ちます。交流電流の変化に対して抵抗し、直流に対してはほぼ無抵抗です。</p>
+          <section class="level4" aria-labelledby="基本特性">
+            <h4 id="基本特性">基本特性</h4>
+            <ul>
+              <li>
+<strong>インダクタンス（L）</strong>: 磁気エネルギーを蓄える能力</li>
+              <li>
+<strong>単位</strong>: ヘンリー（H）、ミリヘンリー（mH）、マイクロヘンリー（μH）</li>
+              <li>
+<strong>直流抵抗</strong>: ほぼ0Ω（理想的な場合）</li>
+              <li>
+<strong>交流インピーダンス</strong>: <span class="math inline" data-math-typeset="true">\(X_L = 2\pi fL\)</span>（fは周波数）</li>
+            </ul>
+          </section>
+          <section class="level4" aria-labelledby="動作原理">
+            <h4 id="動作原理">動作原理</h4>
+            <ol>
+              <li>
+<strong>電流変化時</strong>: コイル周囲に磁界が発生</li>
+              <li>
+<strong>磁界変化</strong>: ファラデーの電磁誘導法則により逆起電力が発生</li>
+              <li>
+<strong>電流変化を妨げる</strong>: レンツの法則により変化に抵抗</li>
+            </ol>
+          </section>
+          <section class="level4" aria-labelledby="主な種類">
+            <h4 id="主な種類">主な種類</h4>
+            <ul>
+              <li>
+<strong>空心コイル</strong>: コアなし、低インダクタンス</li>
+              <li>
+<strong>フェライトコアコイル</strong>: フェライトコア使用、高インダクタンス</li>
+              <li>
+<strong>トロイダルコイル</strong>: ドーナツ型コア、磁気漏れ少</li>
+              <li>
+<strong>可変インダクタ</strong>: インダクタンスを調整可能</li>
+            </ul>
+          </section>
+          <section class="level4" aria-labelledby="実用例-4">
+            <h4 id="実用例-4">実用例</h4>
+            <ul>
+              <li>
+<strong>フィルタ回路</strong>: ローパスフィルタ、ハイパスフィルタ</li>
+              <li>
+<strong>電源回路</strong>: スイッチング電源のエネルギー蓄積</li>
+              <li>
+<strong>発振回路</strong>: LC発振回路、共振回路</li>
+              <li>
+<strong>チョークコイル</strong>: 高周波ノイズの除去</li>
+              <li>
+<strong>トランスフォーマー</strong>: 電圧変換、絶縁</li>
+            </ul>
+          </section>
+          <section class="level4" aria-labelledby="注意点-2">
+            <h4 id="注意点-2">注意点</h4>
+            <ul>
+              <li>
+<strong>逆起電力</strong>: 電源を切った時に高電圧が発生する可能性</li>
+              <li>
+<strong>磁気飽和</strong>: コア材料によっては大電流で飽和</li>
+              <li>
+<strong>寄生容量</strong>: 巻き線間の容量が高周波特性に影響</li>
+              <li>
+<strong>直流抵抗</strong>: 線材の抵抗で発熱する可能性</li>
+            </ul>
+          </section>
+          <section class="level4" aria-labelledby="電子工作での応用-1">
+            <h4 id="電子工作での応用-1">電子工作での応用</h4>
+            <ul>
+              <li>
+<strong>フィルタ設計</strong>: ノイズ除去、信号整形</li>
+              <li>
+<strong>電源回路</strong>: スムージング、リップル除去</li>
+              <li>
+<strong>RF回路</strong>: アンテナマッチング、共振回路</li>
+              <li>
+<strong>モーター制御</strong>: インバーター回路</li>
+            </ul>
+            <p>コイルは、電気エネルギーを磁気エネルギーとして一時的に蓄えることで、様々な電気的機能を実現します。</p>
+          </section>
+        </section>
+        <section class="level3" aria-labelledby="コンデンサキャパシタ">
+          <h3 id="コンデンサキャパシタ">コンデンサ（キャパシタ）</h3>
+          <p>コンデンサ（キャパシタ）は、2枚の導体板を絶縁体で挿んだ構造の部品で、<strong>電気エネルギーを蓄える</strong>性質を持ちます。直流を通さず、交流に対しては周波数に反比例したインピーダンスを示します。</p>
+          <section class="level4" aria-labelledby="基本特性-1">
+            <h4 id="基本特性-1">基本特性</h4>
+            <ul>
+              <li>
+<strong>静電容量（C）</strong>: 電荷を蓄える能力</li>
+              <li>
+<strong>単位</strong>: ファラド（F）、マイクロファラド（μF）、ナノファラド（nF）、ピコファラド（pF）</li>
+              <li>
+<strong>直流インピーダンス</strong>: 無限大（理想的な場合）</li>
+              <li>
+<strong>交流インピーダンス</strong>: <span class="math inline" data-math-typeset="true">\(X_C = \frac{1}{2\pi fC}\)</span>（fは周波数）</li>
+              <li>
+<strong>耐電圧</strong>: 定格電圧以上で破壊</li>
+            </ul>
+          </section>
+          <section class="level4" aria-labelledby="動作原理-1">
+            <h4 id="動作原理-1">動作原理</h4>
+            <ol>
+              <li>
+<strong>充電時</strong>: 一方の極板に正電荷、他方に負電荷が蓄積</li>
+              <li>
+<strong>電界形成</strong>: 極板間に電界が形成されエネルギー蓄積</li>
+              <li>
+<strong>放電時</strong>: 蓄積した電荷が放出され電流が流れる</li>
+              <li>
+<strong>AC応答</strong>: 電圧変化に対して電流が90°位相進み</li>
+            </ol>
+          </section>
+          <section class="level4" aria-labelledby="主な種類-1">
+            <h4 id="主な種類-1">主な種類</h4>
+            <ul>
+              <li>
+<strong>セラミックコンデンサ</strong>: 小容量、高安定、無極性</li>
+              <li>
+<strong>電解コンデンサ</strong>: 大容量、極性あり、低耐電圧</li>
+              <li>
+<strong>タンタルコンデンサ</strong>: 小型で大容量、極性あり</li>
+              <li>
+<strong>フィルムコンデンサ</strong>: 高精度、低損失、無極性</li>
+              <li>
+<strong>可変コンデンサ</strong>: 容量を調整可能</li>
+            </ul>
+          </section>
+          <section class="level4" aria-labelledby="実用例-5">
+            <h4 id="実用例-5">実用例</h4>
+            <ul>
+              <li>
+<strong>電源回路</strong>: 平滑コンデンサ、リップル除去</li>
+              <li>
+<strong>フィルタ回路</strong>: ローパスフィルタ、ハイパスフィルタ</li>
+              <li>
+<strong>結合コンデンサ</strong>: AC信号の伝達、DCカット</li>
+              <li>
+<strong>バイパスコンデンサ</strong>: 高周波ノイズのグランドバイパス</li>
+              <li>
+<strong>タイマー回路</strong>: RC時定数回路</li>
+              <li>
+<strong>発振回路</strong>: LC発振回路、水晶発振子</li>
+            </ul>
+          </section>
+          <section class="level4" aria-labelledby="接続時の注意点">
+            <h4 id="接続時の注意点">接続時の注意点</h4>
+            <ul>
+              <li>
+<strong>極性</strong>: 電解コンデンサは+/-を間違えると破壊</li>
+              <li>
+<strong>耐電圧</strong>: 定格電圧を超えると破壊、爆発の危険</li>
+              <li>
+<strong>初期突入電流</strong>: 充電時に大電流が流れる可能性</li>
+              <li>
+<strong>残留電荷</strong>: 電源を切っても電荷が残る</li>
+            </ul>
+          </section>
+          <section class="level4" aria-labelledby="容量の計算">
+            <h4 id="容量の計算">容量の計算</h4>
+            <ul>
+              <li>
+<strong>直列接続</strong>: <span class="math inline" data-math-typeset="true">\(\frac{1}{C_{total}} = \frac{1}{C_1} + \frac{1}{C_2} + \frac{1}{C_3} + \cdots\)</span>
+</li>
+              <li>
+<strong>並列接続</strong>: <span class="math inline" data-math-typeset="true">\(C_{total} = C_1 + C_2 + C_3 + \cdots\)</span>
+</li>
+            </ul>
+          </section>
+          <section class="level4" aria-labelledby="電子工作での応用-2">
+            <h4 id="電子工作での応用-2">電子工作での応用</h4>
+            <ul>
+              <li>
+<strong>電源安定化</strong>: リップル除去、ノイズ対策</li>
+              <li>
+<strong>信号処理</strong>: AC結合、DCブロック</li>
+              <li>
+<strong>タイミング回路</strong>: 遅延回路、パルス整形</li>
+              <li>
+<strong>フィルタ設計</strong>: 周波数特性の制御</li>
+            </ul>
+            <p>コンデンサは、電気エネルギーを電界エネルギーとして蓄えることで、電気回路における様々な機能を実現します。</p>
+          </section>
+        </section>
+      </section>
+      <section class="level2" aria-labelledby="半導体の基礎">
+        <h2 id="半導体の基礎">半導体の基礎</h2>
+        <p>
+          </p>
+<div class="section-lead">
+          半導体は、<strong>導体と絶縁体の中間的な電気的性質を持つ物質</strong>で、現代電子技術の根幹を成しています。温度や不純物の添加によって電気伝導性を制御できる特性が、トランジスタ、ダイオード、ICなどの電子部品を可能にしています。
+          </div>
+        
+        <section class="level3" aria-labelledby="半導体の電気的性質">
+          <h3 id="半導体の電気的性質"><strong>半導体の電気的性質</strong></h3>
+          <p>半導体の電気的性質を理解するために、まず物質の電気的性質を考えてみましょう。物質は電気の流れやすさによって、3つのグループに分けられます。</p>
+          <ul>
+            <li>
+<strong>導体</strong>：電気がよく流れる（例：銅、銀）</li>
+            <li>
+<strong>絶縁体</strong>：電気がほとんど流れない（例：ゴム、ガラス）</li>
+            <li>
+<strong>半導体</strong>：条件によって電気が流れたり流れなかったりする（例：シリコン）</li>
+          </ul>
+          <section class="level4" aria-labelledby="電子と正孔の話">
+            <h4 id="電子と正孔の話"><strong>電子と正孔の話</strong></h4>
+            <p>半導体では、電気を運ぶ「運び屋さん」が2種類います。</p>
+            <ul>
+              <li>
+<strong>電子</strong>：マイナスの電気を持つ小さな粒</li>
+              <li>
+<strong>正孔（ホール）</strong>：電子がいなくなった「空き家」のようなもの</li>
+            </ul>
+            <p>正孔は実際には空っぽですが、電子が次々と移動してくることで、まるでプラスの電気が動いているように見えます。</p>
+          </section>
+        </section>
+        <section class="level3" aria-labelledby="不純物を混ぜる技術">
+          <h3 id="不純物を混ぜる技術"><strong>不純物を混ぜる技術</strong></h3>
+          <p>半導体の性質を変えるために、純粋なシリコンに少しだけ他の原子を混ぜます。これを「ドーピング」と呼びます。</p>
+          <section class="level4" aria-labelledby="n型半導体電子が多いタイプ">
+            <h4 id="n型半導体電子が多いタイプ"><strong>n型半導体（電子が多いタイプ）</strong></h4>
+            <p>シリコンにリンやヒ素を混ぜると、余った電子が生まれます。この電子が電気を運ぶ主役になります。「n」は「negative（マイナス）」の意味です。</p>
+          </section>
+          <section class="level4" aria-labelledby="p型半導体正孔が多いタイプ">
+            <h4 id="p型半導体正孔が多いタイプ"><strong>p型半導体（正孔が多いタイプ）</strong></h4>
+            <p>シリコンにホウ素やアルミニウムを混ぜると、電子が不足して正孔が生まれます。この正孔が電気を運ぶ主役になります。「p」は「positive（プラス）」の意味です。</p>
+          </section>
+        </section>
+        <section class="level3" aria-labelledby="pn接合ダイオードの秘密">
+          <h3 id="pn接合ダイオードの秘密"><strong>pn接合：ダイオードの秘密</strong></h3>
+          <section class="level4" aria-labelledby="2つの半導体をくっつけると">
+            <h4 id="2つの半導体をくっつけると"><strong>2つの半導体をくっつけると…</strong></h4>
+            <p>p型とn型の半導体をくっつけると、接合面で面白いことが起こります。n型からの電子とp型からの正孔が出会って、お互いに打ち消し合います。すると、接合面には電気を運ぶものがいない「空っぽの層」ができます。</p>
+          </section>
+          <section class="level4" aria-labelledby="一方通行の仕組み">
+            <h4 id="一方通行の仕組み"><strong>一方通行の仕組み</strong></h4>
+            <p>この接合面に電気をかけると、不思議なことが起こります。</p>
+            <ul>
+              <li>
+<strong>順方向</strong>（p側をプラス、n側をマイナスにつなぐ）：電気がよく流れる</li>
+              <li>
+<strong>逆方向</strong>（p側をマイナス、n側をプラスにつなぐ）：電気がほとんど流れない</li>
+            </ul>
+            <p>この「一方通行」の性質が、ダイオードの基本的な働きです。まるで電気の「逆止弁」のような働きをします。</p>
+          </section>
+          <section class="level4" aria-labelledby="トンネル効果">
+            <h4 id="トンネル効果"><strong>トンネル効果</strong></h4>
+            <p>極薄の絶縁層では、古典的には不可能な電子の通過が量子力学的に可能になります。この<strong>トンネル効果</strong>は、トンネルダイオードやフラッシュメモリに応用されています。</p>
+          </section>
+          <section class="level4" aria-labelledby="量子閉じ込め効果">
+            <h4 id="量子閉じ込め効果"><strong>量子閉じ込め効果</strong></h4>
+            <p>ナノスケールの半導体構造では、電子や正孔が空間的に閉じ込められ、エネルギーレベルが離散化します。この<strong>量子閉じ込め効果</strong>は、量子ドットレーザーや量子ビットの基礎となっています。</p>
+          </section>
+          <section class="level4" aria-labelledby="電子工作での応用-3">
+            <h4 id="電子工作での応用-3"><strong>電子工作での応用</strong></h4>
+            <ul>
+              <li>
+<strong>ダイオード</strong>: 整流、電圧安定化</li>
+              <li>
+<strong>トランジスタ</strong>: スイッチング、増幅</li>
+              <li>
+<strong>LED</strong>: 発光素子、表示デバイス</li>
+              <li>
+<strong>センサー</strong>: 光センサー、温度センサー</li>
+              <li>
+<strong>電源IC</strong>: 電圧レギュレーター、スイッチング電源</li>
+            </ul>
+            <p>半導体は、量子力学の原理に基づいた精密な制御により、現代電子技術の基盤を形成しています。</p>
+          </section>
+        </section>
+        <section class="level3" aria-labelledby="ダイオードled発光ダイオード">
+          <h3 id="ダイオードled発光ダイオード">ダイオード、LED（発光ダイオード）</h3>
+          <p><strong>ダイオード</strong>は、pn接合の整流作用を利用した最も基本的な半導体素子で、電流を一方向にのみ流す性質を持ちます。順方向（アノードを正、カソードを負）では約0.7V（シリコン）の電圧降下で電流が流れ、逆方向では電流をほぼ遮断します。電子工作では整流回路、電圧安定化、逆流防止などに使用されます。</p>
+          <p><strong>LED（発光ダイオード）</strong>は、pn接合で電子と正孔が再結合する際に光エネルギーを放出する特殊なダイオードです。使用する半導体材料によって発光色が決まり、赤色（GaAsP）、緑色（GaP）、青色（GaN）などがあります。低消費電力、長寿命、高効率という特徴から、表示装置、照明、光通信など幅広い分野で活用されています。電子工作では状態表示、イルミネーション、センサー光源として重要な部品です。</p>
+          <p>ダイオードとLEDは、pn接合の特性を利用した半導体素子で、電子工作における重要な部品です。ダイオードは整流回路や電圧安定化に、LEDは発光素子や表示デバイスとして使用されます。両者の特性を理解することで、電子回路の設計や応用が可能になります。</p>
+        </section>
+        <section class="level3" aria-labelledby="トランジスタ">
+          <h3 id="トランジスタ">トランジスタ</h3>
+          <ul>
+            <li>バイポーラトランジスタ（BJT）</li>
+            <li>電界効果トランジスタ（FET）</li>
+          </ul>
+          <p><strong>トランジスタ</strong>は、3つの端子を持つ半導体素子で、<strong>増幅</strong>と<strong>スイッチング</strong>の2つの基本機能を持つ現代電子技術の中核部品です。小さな入力信号で大きな出力を制御できる特性により、コンピュータから家電製品まで、あらゆる電子機器に使用されています。</p>
+          <p><strong>バイポーラトランジスタ（BJT）</strong>は、エミッタ、ベース、コレクタの3端子を持ち、ベース電流によってコレクタ電流を制御します。npn型とpnp型があり、電流増幅率（hFE）は通常50～300程度です。ベース-エミッタ間の約0.7Vの電圧で動作し、アナログ増幅回路やスイッチング回路に適しています。電子工作では音声増幅、LED駆動、リレー制御などに使用されます。</p>
+          <p><strong>電界効果トランジスタ（FET）</strong>は、ゲート、ソース、ドレインの3端子を持ち、ゲート電圧によってソース-ドレイン間の電流を制御します。MOSFET（金属酸化膜半導体FET）が最も一般的で、入力インピーダンスが非常に高く、高速スイッチングが可能です。消費電力が少なく、デジタル回路やパワーエレクトロニクスに適しています。電子工作ではモーター制御、電源スイッチング、高周波回路などに使用されます。</p>
+          <p>トランジスタの理解は、アナログ回路とデジタル回路の両方において電子工作の基礎となる重要な知識です。</p>
+        </section>
+        <section class="level3" aria-labelledby="集積回路ic">
+          <h3 id="集積回路ic">集積回路（IC）</h3>
+          <ul>
+            <li>オペアンプ</li>
+            <li>ロジックIC</li>
+            <li>タイマーIC（555など）</li>
+          </ul>
+          <p><strong>集積回路（IC：Integrated Circuit）</strong>は、1つのチップ上に数百万から数十億個のトランジスタを集積した半導体デバイスで、現代電子工作の中核を成す部品です。1958年にジャック・キルビーによって発明されたICは、電子機器の小型化・高性能化を飛躍的に進歩させ、コンピュータから家電製品まで、あらゆる電子機器に不可欠な存在となっています。</p>
+          <p><strong>オペアンプ（演算増幅器）</strong>は、理想的には無限大の増幅率を持つアナログICで、電子工作で最も頻繁に使用される部品の一つです。反転入力と非反転入力の2つの入力端子を持ち、その電圧差を増幅して出力します。外部回路との組み合わせにより、増幅回路、フィルタ回路、比較回路、発振回路など多様な機能を実現できます。代表的なLM358やNE5532などは、音声増幅、センサー信号処理、アクティブフィルタなどに広く使用されています。高入力インピーダンス、低出力インピーダンスという特性により、信号の劣化を最小限に抑えた回路設計が可能です。</p>
+          <p><strong>ロジックIC</strong>は、デジタル信号（0と1）を処理する集積回路で、論理演算（AND、OR、NOT、XORなど）を実行します。TTL（Transistor-Transistor Logic）やCMOS（Complementary Metal-Oxide-Semiconductor）などの技術により実現され、74シリーズ（74HC00、74HC08など）が代表的です。これらは論理ゲート、フリップフロップ、カウンタ、デコーダなどの基本的なデジタル回路を構成し、マイコンとの組み合わせでより複雑なデジタルシステムを構築できます。電子工作では、LED表示制御、モーター駆動回路、通信インターフェースなどに活用されています。</p>
+          <p><strong>タイマーIC</strong>の代表格である555タイマーは、1972年に開発された汎用タイマーICで、現在でも電子工作で広く使用されています。内部に比較器、フリップフロップ、出力段を内蔵し、外部の抵抗とコンデンサの組み合わせで動作時間を設定できます。モノステーブル（ワンショット）、アステーブル（発振）、バイステーブル（フリップフロップ）の3つの動作モードを持ち、LED点滅回路、PWM信号生成、時間遅延回路、発振回路などに応用できます。シンプルな構成でありながら高い汎用性を持つため、初心者から上級者まで幅広く愛用されている定番ICです。</p>
+          <p>ICの活用により、複雑な回路を簡単に実現でき、電子工作の可能性が大幅に広がります。各ICの特性を理解し、適切に組み合わせることで、高機能な電子システムを効率的に構築することができます。</p>
+        </section>
+      </section>
+      <section class="level2" aria-labelledby="マイコン組み込みプログラミング">
+        <h2 id="マイコン組み込みプログラミング">マイコン・組み込みプログラミング</h2>
+        <p>
+          </p>
+<div class="section-lead">
+          マイコン・組み込みプログラミングは、現代電子工作において最も重要な分野の一つで、ハードウェアとソフトウェアを組み合わせた高度な電子システムを構築する技術です。現代の組み込みシステムは自動車、スマートフォン、IoTデバイス、医療機器などの様々な分野で使用され、社会インフラの重要な一部となっています。
+          </div>
+        
+        <p><strong>マイクロコントローラー（マイコン）</strong>は、CPU、メモリ、入出力インターフェースを一つのチップに統合した小型コンピュータで、プログラムによって様々な制御や処理を実行できます。組み込みプログラミングでは、限られたリソースの制約下で、リアルタイム性、信頼性、省電力性を実現する特殊なプログラミング手法が求められます。</p>
+        <p><strong>アセンブラ</strong>は、マイコンの機械語に最も近い低レベルプログラミング言語で、CPUの命令セットを直接操作することで、最高の実行効率とハードウェア制御を実現できます。アセンブラプログラミングは、メモリ使用量の最小化、リアルタイム処理、特殊なハードウェア機能の活用などが必要な場面で特に有効です。一方で、学習コストが高く、開発効率が低いというデメリットもあります。</p>
+        <p><strong>C言語</strong>は、組み込みプログラミングの事実上の標準言語として幅広く使用されている高級プログラミング言語で、アセンブラと高級言語の中間的な位置づけです。C言語の特徴は、ハードウェアに近い低レベルな操作が可能でありながら、可読性と保守性に優れ、ポータビリティが高いことです。マイコンプログラミングでは、レジスタ操作、割り込み処理、タイマー制御、通信プロトコル実装などの様々な機能を効率的に実装でき、多くのマイコンメーカーが公式にサポートしています。</p>
+        <p><strong>PICマイコン</strong>は、マイクロチップ社が開発した代表的なマイコンファミリーで、特に組み込みシステムや電子工作の分野で幅広く使用されています。PICマイコンの特徴は、シンプルなアーキテクチャ、低消費電力、豊富な周辺機能（PWM、ADC、UARTなど）で、初心者から上級者まで幅広いユーザーに支持されています。PIC16F84A、PIC18F4550などの人気機種は、LED制御、センサーデータ収集、モーター制御などの基本的な電子工作プロジェクトに最適です。プログラミングは主にC言語やアセンブラで行われ、MPLAB X IDEやXCコンパイラなどの無料開発環境が提供されています。</p>
+        <p><strong>Arduino</strong>は、2005年にイタリアで開発されたオープンソースのマイコンボードで、電子工作の民主化を進めた革命的なプラットフォームです。Arduino IDE、豊富なライブラリ、コミュニティサポートが特徴で、C/C++ベースの簡略化言語とsetup()・loop()関数により初心者でも学習しやすく、IoT、ロボティクス、ホームオートメーションで広く活用されています。</p>
+        <p><strong>Raspberry Pi</strong>は、英国Raspberry Pi財団が開発したシングルボードコンピュータで、Linuxを実行できる本格的なコンピュータです。ARMプロセッサ、RAM、GPIO等を搭載し、Python、C/C++等の多様な言語に対応。高い計算能力とネットワーク機能により、AI・機械学習、コンピュータビジョンなどの高度なプロジェクトに適しています。</p>
+        <p>これらの技術を組み合わせることで、初心者は簡単なLED点滅から始まり、最終的には高度なIoTシステムやロボティクスプロジェクトまで実現できるようになります。マイコン・プログラミングの習得は、現代電子工作において不可欠なスキルであり、ハードウェアとソフトウェアの両方を理解することで、真に革新的な電子システムを構築することが可能になります。</p>
+<br>
+        <p>
+          <img src="images/15-electronics/electronics.png" width="85%" class="float-bottom">
+        </p>
+      </section>
+      <section class="level2" aria-labelledby="トランジスタ-1">
+        <h2 id="トランジスタ-1">トランジスタ</h2>
+        <p>
+          </p>
+<div class="section-lead">
+          <strong>トランジスタ</strong>は、現代電子工学において最も重要な半導体素子の一つで、電流や電圧を制御・増幅する能力を持つ三端子デバイスです。1947年にベル研究所で発明されたトランジスタは、電子工学に革命をもたらし、現代のデジタル社会の基盤となっています。
+          </div>
+        
+        <section class="level3" aria-labelledby="バイポーラ接合トランジスタbjtの構造">
+          <h3 id="バイポーラ接合トランジスタbjtの構造">バイポーラ接合トランジスタ（BJT）の構造</h3>
+          <p>バイポーラ接合トランジスタは、<strong>ベース（Base）</strong>、<strong>エミッタ（Emitter）</strong>、<strong>コレクタ（Collector）</strong>の三つの端子を持つ半導体素子です。これらの端子は、P型とN型の半導体を組み合わせた構造により形成されます。</p>
+          <p><strong>P型半導体</strong>とは、純粋なシリコン結晶にホウ素（ボロン）やアルミニウムなどの3価原子を添加（ドーピング）した半導体で、電子が不足した状態（正孔またはホール）を持ちます。一方、<strong>N型半導体</strong>は、リンやヒ素などの5価原子をドーピングした半導体で、余剰な電子を持ち、電気伝導性が高い特性を持ちます。このドーピング技術により、半導体の電気的性質を精密に制御でき、トランジスタの動作を可能にしています。</p>
+        </section>
+        <section class="level3" aria-labelledby="npnトランジスタ">
+          <h3 id="npnトランジスタ">NPNトランジスタ</h3>
+          <p><strong>NPNトランジスタ</strong>は、N型半導体-P型半導体-N型半導体の順に配置された構造を持ちます。中央のP型半導体がベースとなり、両側のN型半導体がエミッタとコレクタを形成します。NPNトランジスタでは、エミッタからコレクタへ電子が流れることで電流が制御されます。</p>
+          <p>
+            NPNトランジスタの動作は、ベース-エミッタ接合を順方向バイアス（約0.7Vの正電圧）で、ベース-コレクタ接合を逆方向バイアスで動作させることで実現されます。ベースに小さな正の電圧を印加することで、微小なベース電流（小信号用トランジスタで数十μA～数mA、パワートランジスタで数十mA～数百mA）によって、エミッタからの電子がベースを通ってコレクタへ流れる経路が開かれ、エミッタ-コレクタ間の大きな電流（小信号用トランジスタで数十mA～数百mA、パワートランジスタで数A～数十A）を制御できるため、電流増幅作用が得られます。直流電流増幅率（hFEまたはβ）は100～500程度ですが、大きいものでは1000程度になることもあります。
+            NPNトランジスタは、一般的に電源電圧が正の回路で使用され、スイッチング速度がPNPトランジスタよりも速い特徴があります。
+          </p>
+<br>
+          <p>
+            <img src="images/15-electronics/npn.jpg" width="100%" class="float-bottom">
+          </p>
+        </section>
+        <section class="level3" aria-labelledby="pnpトランジスタ">
+          <h3 id="pnpトランジスタ">PNPトランジスタ</h3>
+          <p><strong>PNPトランジスタ</strong>は、P型半導体-N型半導体-P型半導体の順に配置された構造で、NPNトランジスタとは逆の極性を持ちます。中央のN型半導体がベースとなり、両側のP型半導体がエミッタとコレクタを形成します。PNPトランジスタでは、正孔（ホール）がエミッタからコレクタへ移動することで電流が制御されます。</p>
+          <p>PNPトランジスタの動作は、NPNトランジスタとは逆のバイアス条件で行われます。ベースに負の電圧（約-0.7V）を印加することで、エミッタからの正孔がベースを通ってコレクタへ流れる経路が形成されます。PNPトランジスタは、一般的に負電源回路やハイサイドスイッチング回路で使用され、NPNトランジスタと組み合わせることで、プッシュプル回路やコンプリメンタリ回路などの高性能なアナログ回路を構成できます。</p>
+        </section>
+        <section class="level3" aria-labelledby="動作原理と特性">
+          <h3 id="動作原理と特性">動作原理と特性</h3>
+          <p>トランジスタの基本動作は、<strong>ベース電流</strong>によって<strong>コレクタ電流</strong>を制御することです。ベースに流れる微小な電流（通常はマイクロアンペア～ミリアンペア）により、コレクタ-エミッタ間に流れる大きな電流（通常はミリアンペア～アンペア）を制御できます。この電流増幅率は<strong>hFE</strong>（直流電流増幅率）やβ（ベータ）と呼ばれ、通常50～500程度の値を持ちます。</p>
+          <p>トランジスタには<strong>能動領域</strong>、<strong>飽和領域</strong>、<strong>遮断領域</strong>の三つの動作領域があります。能動領域では線形増幅動作を行い、飽和領域ではスイッチのON状態、遮断領域ではOFF状態として機能します。また、トランジスタの重要な特性として、<strong>周波数特性</strong>、<strong>温度特性</strong>、<strong>雑音特性</strong>があり、これらは回路設計において重要な考慮要素となります。</p>
+        </section>
+        <section class="level3" aria-labelledby="電界効果トランジスタfet">
+          <h3 id="電界効果トランジスタfet">電界効果トランジスタ（FET）</h3>
+          <p>バイポーラトランジスタと並んで重要なのが<strong>電界効果トランジスタ（FET）</strong>です。FETは<strong>ゲート</strong>、<strong>ソース</strong>、<strong>ドレイン</strong>の三端子を持ち、ゲート電圧によってソース-ドレイン間の電流を制御します。FETは入力インピーダンスが非常に高く、消費電力が少ないため、CMOS集積回路の基本素子として広く使用されています。</p>
+        </section>
+        <section class="level3" aria-labelledby="応用分野と重要性">
+          <h3 id="応用分野と重要性">応用分野と重要性</h3>
+          <p>トランジスタは、<strong>増幅回路</strong>、<strong>スイッチング回路</strong>、<strong>発振回路</strong>、<strong>電源回路</strong>など、あらゆる電子回路の基本構成要素として使用されます。アナログ回路では信号増幅器、フィルタ、発振器として、デジタル回路では論理ゲート、メモリセル、マイクロプロセッサの基本素子として機能します。現代のマイクロプロセッサには数十億個のトランジスタが集積されており、コンピュータ、スマートフォン、IoTデバイス、自動車の制御システムなど、私たちの生活を支える電子機器の心臓部となっています。</p>
+          <p>電子工作においても、LED駆動回路、モータ制御回路、センサー信号処理回路など、様々な用途でトランジスタが活用されています。トランジスタの理解は、電子工作から最先端の集積回路設計まで、電子工学のあらゆる分野において不可欠な知識であり、現代技術社会の基盤を支える重要な技術です。</p>
+        </section>
+      </section>
+    </section>
+  </body>
+</html>

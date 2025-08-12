@@ -9,11 +9,91 @@
   "author": "アトリヱ未來",
   "inLanguage": "ja",
   "readingProgression": "ltr",
-  "dateModified": "2025-08-12T01:12:37.863Z",
+  "dateModified": "2025-08-12T06:21:47.534Z",
   "readingOrder": [
     {
       "url": "00-preface.html",
       "name": "始めに"
+    },
+    {
+      "url": "01-toc.html",
+      "name": "目次"
+    },
+    {
+      "url": "11-gift.html",
+      "name": "挑戦することの贈り物"
+    },
+    {
+      "url": "12-source.html",
+      "name": "万物の根源を求めて"
+    },
+    {
+      "url": "13-unit.html",
+      "name": "国際単位系(SI単位)の話"
+    },
+    {
+      "url": "14-electricity.html",
+      "name": "電気について"
+    },
+    {
+      "url": "15-electronics.html",
+      "name": "電子工作"
+    },
+    {
+      "url": "16-ai.html",
+      "name": "人工知能"
+    },
+    {
+      "url": "17-math.html",
+      "name": "Math"
+    },
+    {
+      "url": "18-programming.html",
+      "name": "Programming"
+    },
+    {
+      "url": "19-prime.html",
+      "name": "Prismでの行番号表示"
+    },
+    {
+      "url": "20-number.html",
+      "name": "Number"
+    },
+    {
+      "url": "21-integer.html",
+      "name": "Integer"
+    },
+    {
+      "url": "22-sample.html",
+      "name": "Sample"
+    },
+    {
+      "url": "91-appendix-a.html",
+      "name": "Appendix A"
+    },
+    {
+      "url": "92-appendix-b.html",
+      "name": "付録C"
+    },
+    {
+      "url": "93-books.html",
+      "name": "Books"
+    },
+    {
+      "url": "94-appendix-d.html",
+      "name": "Appendix e"
+    },
+    {
+      "url": "98-postface.html",
+      "name": "終わりに"
+    },
+    {
+      "url": "99-colophon.html",
+      "name": "書名"
+    },
+    {
+      "url": "ROADMAP.html",
+      "name": "Roadmap"
     }
   ],
   "resources": [],
