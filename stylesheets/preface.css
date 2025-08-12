@@ -4,10 +4,25 @@
 @import "theme.css";
 @import "page-settings-a4.css";
 
+/*
+  プロパティ並び順ガイドライン
+  --------------------------------------------------
+  各ルール内のプロパティは下記の順で記述する。
+  1) layout        : display / position / float / break-* / z-index / inset-*
+  2) box-size      : width / height / inline-size / block-size / box-sizing
+  3) spacing       : margin-* → padding-*（論理プロパティ優先）
+  4) typography    : font-* / line-height / text-* / letter-spacing
+  5) alignment     : text-align / align-* / justify-*
+  6) visual        : color / background / border / outline / shadow / opacity
+  7) counters/meta : counter-* / string-set / content などのメタ情報
+
+  備考:
+  - コメントでセクション見出し（layout等）を付ける。
+  - 値は論理プロパティ（margin-inline 等）を優先する。
+  - 既存プロパティの意味が変わらない範囲でのみ並び替える。
+*/
+
 /* 前書き用スタイル */
-
- 
-
 :root {
   --preface-font: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "HiraMinProN-W3", "HiraMinProN-W6", "HG明朝E", "ＭＳ Ｐ明朝", "ＭＳ 明朝", serif;
   --header-font: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic Medium", "Meiryo", sans-serif;
@@ -15,38 +30,21 @@
   --header-color: #2c3e50;
   --link-color: #3498db;
   --accent-color: #e74c3c;
+  /* additional theme neutrals */
+  --border-color: #ddd;      /* rules, separators */
+  --surface-color: #f9f9f9;  /* subtle backgrounds */
 }
 
 /* ページ設定 */
 @page {
-  size: A4;
-  /* margin: 25mm 20mm; */
-  
   @top-center {
-    /* content: "始めに";
-    font-family: var(--header-font);
-    font-size: 10pt;
-    color: #666;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 5pt; */
     content: none;
-  }
-  
-  @bottom-center {
-    /* content: counter(page);
-    font-family: var(--header-font);
-    font-size: 10pt;
-    color: #666; */
   }
 }
 
 /* 最初のページの設定 */
 @page :first {
-  /* 他のページと同じマージンを使用 */
-  /* margin: 25mm 20mm; */
-  /* 背景色を無しにする */
   background: none !important;
-  background-color: transparent !important;
   
   @top-center {
     content: none;
@@ -59,7 +57,7 @@
 /* 基本設定 */
 body {
   font-family: var(--preface-font);
-  font-size: 11.25Q !important;
+  font-size: 11.25Q;
   line-height: 1.6;
   color: var(--text-color);
   text-align: justify;
@@ -69,43 +67,43 @@ body {
 /* 見出し */
 h1 {
   font-family: var(--header-font);
-  font-size: 20Q !important;
+  font-size: 20Q;
   font-weight: bold;
   color: var(--header-color);
   text-align: center;
-  margin: 0 0 30pt 0;
-  padding: 20pt 0;
-  border-bottom: 3px solid var(--accent-color);
+  margin-block-end: 30pt;
+  padding-block: 20pt;
+  border-block-end: 3px solid var(--accent-color);
   page-break-after: avoid;
-  background: none;
 }
 
 h2 {
   font-family: var(--header-font);
-  font-size: 13.75Q !important;
+  font-size: 13.75Q;
   font-weight: bold;
   color: var(--header-color);
-  margin: 25pt 0 15pt 0;
-  padding: 8pt 0 8pt 15pt;
-  border-left: 4px solid var(--accent-color);
+  margin-block: 25pt 15pt;
+  padding-block: 8pt;
+  padding-inline-start: 15pt;
+  border-inline-start: 4px solid var(--accent-color);
   background: linear-gradient(90deg, rgba(231, 76, 60, 0.1) 0%, rgba(231, 76, 60, 0.05) 50%, transparent 100%);
   page-break-after: avoid;
 }
 
 h3 {
   font-family: var(--header-font);
-  font-size: 12.5Q !important;
+  font-size: 12.5Q;
   font-weight: bold;
   color: var(--header-color);
-  margin: 20pt 0 12pt 0;
-  padding: 5pt 0;
-  border-bottom: 1px solid #ddd;
+  margin-block: 20pt 12pt;
+  padding-block: 5pt;
+  border-block-end: 1px solid var(--border-color);
   page-break-after: avoid;
 }
 
 /* 段落 */
 p {
-  margin: 0 0 12pt 0;
+  margin-block-end: 12pt;
   text-indent: 1em;
 }
 
@@ -118,51 +116,36 @@ h3 + p {
 
 /* リスト */
 ol, ul {
-  margin: 12pt 0;
-  padding-left: 20pt;
+  margin-block: 12pt;
+  padding-inline-start: 20pt;
 }
 
 ol li {
-  margin: 6pt 0;
-  padding-left: 5pt;
+  margin-block: 6pt;
+  padding-inline-start: 5pt;
 }
 
 ul li {
-  margin: 6pt 0;
-  padding-left: 5pt;
+  margin-block: 6pt;
+  padding-inline-start: 5pt;
 }
 
 /* リンク */
 a {
   color: var(--link-color);
   text-decoration: none;
-  border-bottom: 1px dotted var(--link-color);
+  border-block-end: 1px dotted var(--link-color);
 }
 
 a:hover {
   color: var(--accent-color);
-  border-bottom-color: var(--accent-color);
-}
-
-/* コード */
-code {
-  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
-  font-size: 12.5Q;
-  background: #f8f9fa;
-  padding: 2pt 4pt;
-  border-radius: 3pt;
-  border: 1px solid #e9ecef;
+  border-block-end-color: var(--accent-color);
 }
 
 /* 強調 */
 strong, b {
   font-weight: bold;
   color: var(--header-color);
-}
-
-em, i {
-  font-style: italic;
-  color: var(--accent-color);
 }
 
 /* ルビ */
@@ -172,20 +155,20 @@ ruby {
 
 rt {
   font-size: 0.6em;
-  color: #666;
+  color: var(--text-color);
 }
 
 /* 水平線 */
 hr {
   border: none;
   height: 1px;
-  background: linear-gradient(90deg, transparent, #ddd 20%, #ddd 80%, transparent);
-  margin: 25pt 0;
+  background: linear-gradient(90deg, transparent, var(--border-color) 20%, var(--border-color) 80%, transparent);
+  margin-block: 25pt;
 }
 
 /* セクション */
 section {
-  margin-bottom: 20pt;
+  margin-block-end: 20pt;
 }
 
 .level1 {
@@ -202,63 +185,14 @@ section {
   color: var(--accent-color);
 }
 
-/* 改ページ制御 */
-.page-break-before {
-  page-break-before: always;
-}
-
-.page-break-after {
-  page-break-after: always;
-}
-
-.no-break {
-  page-break-inside: avoid;
-}
-
-/* 印刷用調整 */
-@media print {
-  body {
-    font-size: 10pt;
-    line-height: 1.6;
-  }
-  
-  h1 {
-    font-size: 20pt;
-  }
-  
-  h2 {
-    font-size: 14pt;
-  }
-  
-  h3 {
-    font-size: 12pt;
-  }
-  
-  a {
-    color: var(--text-color);
-    border-bottom: none;
-  }
-  
-  a::after {
-    content: " (" attr(href) ")";
-    font-size: 9pt;
-    color: #666;
-  }
-}
-
-/* 日本語組版調整 */
-.japanese-typography {
-  word-break: auto-phrase;
-  line-break: strict;
-  overflow-wrap: anywhere;
-}
-
 /* 引用 */
 blockquote {
-  margin: 15pt 20pt;
-  padding: 10pt 15pt;
-  border-left: 3px solid var(--accent-color);
-  background: #f9f9f9;
+  margin-block: 15pt;
+  margin-inline: 20pt;
+  padding-block: 10pt;
+  padding-inline: 15pt;
+  border-inline-start: 3px solid var(--accent-color);
+  background: var(--surface-color);
   font-style: italic;
 }
 
@@ -268,38 +202,3 @@ blockquote p {
 }
 
 /* 脚注 */
-.footnote {
-  font-size: 9pt;
-  line-height: 1.4;
-  margin-top: 15pt;
-  padding-top: 10pt;
-  border-top: 1px solid #ddd;
-}
-
-/* 目次用（将来的に使用する可能性） */
-.toc {
-  margin: 20pt 0;
-}
-
-.toc ul {
-  list-style: none;
-  padding-left: 0;
-}
-
-.toc li {
-  margin: 8pt 0;
-  padding: 5pt 0;
-  border-bottom: 1px dotted #ddd;
-}
-
-.toc a {
-  display: flex;
-  justify-content: space-between;
-  text-decoration: none;
-  border: none;
-}
-
-.toc a::after {
-  content: target-counter(attr(href), page);
-  font-weight: bold;
-}

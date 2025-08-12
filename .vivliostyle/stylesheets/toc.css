@@ -3,8 +3,24 @@
 @import "base.css";
 @import "theme.css";
 @import "page-settings-a4.css";
-/* @import "body.css"; */
-/* @import "variable_and_page.css"; */
+
+/*
+  プロパティ並び順ガイドライン
+  --------------------------------------------------
+  各ルール内のプロパティは下記の順で記述する。
+  1) layout        : display / position / float / break-* / z-index / inset-*
+  2) box-size      : width / height / inline-size / block-size / box-sizing
+  3) spacing       : margin-* → padding-*（論理プロパティ優先）
+  4) typography    : font-* / line-height / text-* / letter-spacing
+  5) alignment     : text-align / align-* / justify-*
+  6) visual        : color / background / border / outline / shadow / opacity
+  7) counters/meta : counter-* / string-set / content などのメタ情報
+
+  備考:
+  - コメントでセクション見出し（layout等）を付ける。
+  - 値は論理プロパティ（margin-inline 等）を優先する。
+  - 既存プロパティの意味が変わらない範囲でのみ並び替える。
+*/
 
 /* 目次タイトルなど */
 #toc-title::before {

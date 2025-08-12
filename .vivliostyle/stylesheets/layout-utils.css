@@ -1,6 +1,13 @@
 /* Vivliostyle 書籍用レイアウトユーティリティ */
 
 /* 写真グリッド: ページ幅に応じて列数を自動調整 */
+/* 使用例（VFM コンテナ）:
+   ::: pictures
+   ![alt](path.jpg)
+   ![alt](path.jpg)
+   ![alt](path.jpg)
+   :::
+*/
 .pictures {
   display: grid;
   gap: 0.75rem;
@@ -85,9 +92,12 @@
   margin-block: 0.5lh;
 }
 
+/* グリッド間の余白 */
 .gap-s { gap: 0.5rem; }
 .gap-m { gap: 1rem; }
 .gap-l { gap: 1.5rem; }
+
+/* グリッド内の配置 */
 .align-top { align-items: start; }
 .align-center { align-items: center; }
 .align-bottom { align-items: end; }
