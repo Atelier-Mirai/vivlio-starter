@@ -30,7 +30,7 @@
     /* layout */
     page: colophon;
     width: 100%;
-    margin-block-start: 70vh; /* 下1/4配置（必要に応じて微調整） */
+    margin-block-start: calc(70vh - 24pt); /* 副題1行分(約24pt)だけ上に詰める */
     /* spacing */
     padding: 40px;
     /* typography */
@@ -55,15 +55,38 @@
     font-size: 14pt;
     font-weight: 700;
 }
-/* 書籍名の下にページ幅いっぱいの下線 */
-.book-title::after {
-    content: "";
+
+
+/* 副題 */
+.subtitle {
+    /* typography */
+    font-size: 12pt;
+    font-style: italic; /* 任意 */
+    /* alignment */
+    text-align: left; /* 左揃え */
+    /* spacing */
+    margin-block: 6pt 0;           /* タイトルとの間隔はそのまま */
+
+    /* 下線（ページ幅いっぱい） */
     display: block;
     inline-size: 100vw;              /* ページ幅 */
-    margin-inline: calc(50% - 50vw); /* 中央に合わせて全幅へ拡張 */
+    margin-inline: calc(50% - 50vw); /* 中央基準で全幅へ拡張 */
     border-bottom: 1px solid currentColor;
-    margin-block: 8pt 0;             /* タイトル直下に配置 */
+
+    /* 行頭位置を .book-title と揃える（コンテナの左右 40px に合わせる） */
+    padding-inline-start: 40px;
+
+    /* adornments (configurable) */
+    --subtitle-prefix: ""; /* デフォルト装飾なし */
+    --subtitle-suffix: "";
 }
+.subtitle::before { content: var(--subtitle-prefix); }
+.subtitle::after  { content: var(--subtitle-suffix); }
+
+/* ヘルパークラス */
+.subtitle--wave { --subtitle-prefix: "～"; --subtitle-suffix: "～"; }
+.subtitle--bar  { --subtitle-prefix: "ー"; --subtitle-suffix: "ー"; }
+.subtitle--none { --subtitle-prefix: "";  --subtitle-suffix: ""; }
 
 /* 出版情報 */
 .publication-info {

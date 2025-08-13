@@ -1,4 +1,5 @@
 <h1 class="book-title">電気・電子技術への招待</h1>
+<p class="subtitle subtitle--wave">古代の叡智から現代AIまで</p>
 
 <p class="author"><span>[著]</span> アトリヱ未來</p>
 

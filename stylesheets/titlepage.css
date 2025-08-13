@@ -74,6 +74,46 @@
     transform: translateY(-50%);
 }
 
+/* 副題 */
+.subtitle {
+    /* typography */
+    font-size: 16pt;
+    font-style: italic; /* 任意: 副題らしく */
+    /* layout: タイトル中心の約18mm下に配置 */
+    position: absolute;
+    inset-inline: 0;
+    inset-block-start: calc(65mm - var(--page-block-margin-start) + 18mm);
+    transform: translateY(-50%);
+    /* spacing */
+    margin: 0;
+
+    /* adornments (configurable) */
+    --subtitle-prefix: ""; /* デフォルトは装飾なし */
+    --subtitle-suffix: "";
+}
+
+/* 副題の前後装飾（疑似要素） */
+.subtitle::before { content: var(--subtitle-prefix); }
+.subtitle::after  { content: var(--subtitle-suffix); }
+
+/* ヘルパークラス: 波ダッシュで括る */
+.subtitle--wave {
+    --subtitle-prefix: "～";
+    --subtitle-suffix: "～";
+}
+
+/* ヘルパークラス: 長音記号で括る */
+.subtitle--bar {
+    --subtitle-prefix: "ー";
+    --subtitle-suffix: "ー";
+}
+
+/* ヘルパークラス: 装飾なし（明示） */
+.subtitle--none {
+    --subtitle-prefix: "";
+    --subtitle-suffix: "";
+}
+
 .author {
     font-size: 14.4pt; /* 1.2rem 相当 */
     /* 見出し（.book-title）のボックス中央から下に35mmの位置に配置 */
