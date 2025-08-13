@@ -36,7 +36,7 @@ desc <<~DESC
 
   例:
       rake build                     # 全ファイルをビルド
-      rake build 00-preface          # 00-preface のみをビルド
+      rake build 02-preface          # 02-preface のみをビルド
       rake build -v                  # 詳細な出力を表示
 
   オプション:

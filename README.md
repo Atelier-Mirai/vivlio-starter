@@ -71,7 +71,7 @@ VERBOSE=1 rake build
   - `rake init`
 - ビルド
   - `rake build`
-  - `rake build 00-preface`（特定章のみの関連処理）
+  - `rake build 02-preface`（特定章のみの関連処理）
 - 表示
   - `rake open` / `rake open:pdf`
 - 生成物削除
@@ -114,7 +114,7 @@ pdf:
 `rake build` は概ね次の順で実行されます。
 
 1. preprocess.rake
-   - 画像パスの付与（例: `![](shogiban.png)` → `![](images/00-preface/shogiban.png)`）
+   - 画像パスの付与（例: `![](shogiban.png)` → `![](images/02-preface/shogiban.png)`）
    - フロントマターの生成（既存があれば併合）
    - ソースコードの取り込み
    - プロジェクトルートへ書き出し

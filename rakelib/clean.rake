@@ -12,7 +12,7 @@ task :clean do
   # プロジェクトルートの一時ファイルを削除
   cleanup_patterns = [
     '*.html',     # HTMLファイル
-    '01-toc.md',  # 生成された目次MD
+    '03-toc.md',  # 生成された目次MD
     'entries.js', # 生成されたentries.js
   ]
   

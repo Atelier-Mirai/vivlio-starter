@@ -20,8 +20,8 @@ task :toc do
 
   MD
 
-  # プロジェクトルート内の「01-toc.htmlおよ゙99-colophon.html以外の.htmlファイル」を列挙
-  Dir.glob('*.html').reject { |file| file == '01-toc.html' || file == '99-colophon.html' }.sort.each do |target|
+  # プロジェクトルート内の「03-toc.htmlおよ゙99-colophon.html以外の.htmlファイル」を列挙
+  Dir.glob('*.html').reject { |file| file == '03-toc.html' || file == '99-colophon.html' }.sort.each do |target|
     content = File.read(target, encoding: 'utf-8')
     doc     = Nokogiri::HTML(content)
     
@@ -59,15 +59,15 @@ task :toc do
   result += "\n</nav>"
   
   # Markdownファイルとして保存
-  File.write('01-toc.md', result, encoding: 'utf-8')
+  File.write('03-toc.md', result, encoding: 'utf-8')
   
   # VFMで変換
-  system("#{BookBuild::VFM_COMMAND} 01-toc.md > 01-toc.html")
+  system("#{BookBuild::VFM_COMMAND} 03-toc.md > 03-toc.html")
 
-  # 01-toc.html <body class="toc">に変更
-  content = File.read('01-toc.html', encoding: 'utf-8')
+  # 03-toc.html <body class="toc">に変更
+  content = File.read('03-toc.html', encoding: 'utf-8')
   content.sub!('<body>', '<body class="toc">')
-  File.write('01-toc.html', content, encoding: 'utf-8') 
+  File.write('03-toc.html', content, encoding: 'utf-8') 
 
   BookBuild.log_success("目次生成完了")
 end

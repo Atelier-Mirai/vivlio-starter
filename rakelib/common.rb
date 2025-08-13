@@ -52,8 +52,12 @@ module BookBuild
   def self.get_file_type(filename)
     case filename
     when /^00-/
+      'titlepage'
+    when /^01-/
+      'legalpage'
+    when /^02-/
       'preface'
-    when /^01-toc/
+    when /^03-/
       'toc'
     when /^1[1-9]-/, /^[2-8][0-9]-/
       'chapter'
