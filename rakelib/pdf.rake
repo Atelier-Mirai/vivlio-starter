@@ -18,6 +18,55 @@ task :pdf do |t, args|
   else
     BookBuild.log_error("PDF生成失敗")
   end
+
+# PDF圧縮
+namespace :pdf do
+  desc "生成済みPDFを圧縮します (gs または qpdf を自動選択)"
+  task :compress do
+    pdf_config = BookBuild::CONFIG['pdf'] || {}
+    input_pdf  = pdf_config['output_file'] || 'output.pdf'
+    output_pdf = pdf_config['output_file_compressed'] || 'output_compressed.pdf'
+
+    unless File.exist?(input_pdf)
+      BookBuild.log_error("エラー: 入力PDFが見つかりません: #{input_pdf}")
+      next
+    end
+
+    BookBuild.log_action("PDFを圧縮しています... (入力: #{input_pdf} → 出力: #{output_pdf})")
+
+    # 利用可能なコマンドを検出
+    has_gs   = system('which gs >/dev/null 2>&1')
+    has_qpdf = system('which qpdf >/dev/null 2>&1')
+
+    compressed = false
+
+    if has_gs
+      # Ghostscript を使って強めに圧縮（/ebook はバランス良）
+      cmd = [
+        'gs', '-sDEVICE=pdfwrite', '-dCompatibilityLevel=1.5',
+        '-dPDFSETTINGS=/ebook', '-dNOPAUSE', '-dQUIET', '-dBATCH',
+        "-sOutputFile=#{output_pdf}", input_pdf
+      ].join(' ')
+      compressed = system(cmd)
+    elsif has_qpdf
+      # qpdf: 線形化・圧縮を期待（実サイズ減少はコンテンツ依存）
+      cmd = [
+        'qpdf', '--linearize', '--compress-streams=y', '--object-streams=generate',
+        input_pdf, output_pdf
+      ].join(' ')
+      compressed = system(cmd)
+    else
+      BookBuild.log_warn('gs も qpdf も見つかりません。圧縮をスキップします。')
+      next
+    end
+
+    if compressed && File.exist?(output_pdf)
+      BookBuild.log_success("圧縮PDFを出力しました: #{File.expand_path(output_pdf)}")
+    else
+      BookBuild.log_error('PDF圧縮に失敗しました')
+    end
+  end
+end
 end
 
 # エイリアス: `rake open` で `open:pdf` を呼び出す

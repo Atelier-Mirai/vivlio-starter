@@ -2,7 +2,16 @@
 
 # 書籍情報
 book:
-  title: '電気・電子技術への招待 ～古代の叡智から現代AIまで～'
+  # 書籍名
+  main_title: '電気・電子技術への招待'
+  subtitle: '古代の叡智から現代AIまで'
+  subtitle_style: wave  # bar | none も可
+
+  # 付帯情報（任意）
+  series: '技術書典 19 新刊'
+  release: '令和七年十一月十五日 初版発行'
+  publisher: '早乙女 遙香'
+  contact: 'contact@atelier-mirai.net'
   author: 'アトリヱ未來'
   language: 'ja'
 
@@ -40,6 +49,8 @@ vivliostyle:
 pdf:
   # 出力PDFファイル名
   output_file: 'output.pdf'
+  # 圧縮PDFファイル名（rake pdf:compress の既定値）
+  output_file_compressed: 'output_compressed.pdf'
   
   # PDFを開く際のウィンドウ位置とサイズ
   # 形式: "{x, y, width, height}"

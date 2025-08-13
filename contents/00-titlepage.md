@@ -5,5 +5,5 @@
 
 <div class="publication-info">
     <p class="series">技術書典 19 新刊</p>
-    <p class="release-info">令和七年十一月十五日 初版第1刷発行</p>
+    <p class="release-info">令和七年十一月十五日 初版発行</p>
 </div>

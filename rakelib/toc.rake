@@ -20,8 +20,12 @@ task :toc do
 
   MD
 
-  # プロジェクトルート内の「03-toc.htmlおよ゙99-colophon.html以外の.htmlファイル」を列挙
-  Dir.glob('*.html').reject { |file| file == '03-toc.html' || file == '99-colophon.html' }.sort.each do |target|
+  # プロジェクトルート内の .html のうち、以下を除いて列挙する:
+  # 00-titlepage.html / 01-legalpage.html / 03-toc.html / 99-colophon.html
+  Dir.glob('*.html').reject { |file| file == '00-titlepage.html' || 
+                                     file == '01-legalpage.html' || 
+                                     file == '03-toc.html' || 
+                                     file == '99-colophon.html' }.sort.each do |target|
     content = File.read(target, encoding: 'utf-8')
     doc     = Nokogiri::HTML(content)
     
