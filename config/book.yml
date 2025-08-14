@@ -29,7 +29,7 @@ commands:
 
 # ファイル設定
 files:
-  post_replace: '_postReplaceList.json'  # 後処理用置換リストファイル
+  post_replace: '_post_replace_list.yml'  # 後処理用置換リストファイル
 
 # Vivliostyle設定
 vivliostyle:

@@ -29,8 +29,9 @@ project/
 ├─ rakelib/                 # Rake タスク群
 │  ├─ common.rb             # 共通処理・設定・ログ
 │  ├─ options.rb            # オプション解析
-│  ├─ preprocess.rake       # 前処理（画像パス付与・フロントマター生成・コード取り込み）
+│  ├─ pre_process.rake      # 前処理（画像パス付与・フロントマター生成・コード取り込み）
 │  ├─ convert.rake          # HTML 変換と置換（vfm -> html, post-replace）
+│  ├─ post_process.rake     # HTML ポスト置換
 │  ├─ prism_lines.rake      # Prism.js 行番号付与
 │  ├─ toc.rake              # 目次（toc.html）生成
 │  ├─ entries.rake          # 章立て（entries.js）生成
@@ -121,7 +122,7 @@ pdf:
 2. convert.rake
    - vfm による Markdown → HTML 変換
    - `<body>` にファイルタイプクラスを付与
-   - `_postReplaceList.json` に基づく置換処理
+   - `_post_replace_list.yml` に基づく置換処理
    - Prism.js を用いたソースコードへの行番号追加
 3. toc.rake
    - `toc.html` を生成

@@ -1,5 +1,11 @@
 # 電気・電子技術への招待 ～古代の叡智から現代AIまで～ ビルドシステム
 
+# Bundler の文脈を自動有効化（bundle exec 省略のため）
+begin
+  require 'bundler/setup'
+rescue LoadError
+  # bundler が無い環境でも実行できるように無視
+end
 
 # 標準出力を抑制するためのモンキーパッチ（デバッグ中は無効化）
 module Kernel

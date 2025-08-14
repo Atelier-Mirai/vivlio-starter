@@ -1,0 +1,168 @@
+# 置換リスト（YAML）
+# このファイルは `rakelib/post_process.rake` で読み込まれる置換ルール定義です。
+# 各要素は { f: 正規表現, r: 置換文字列 } を表します。
+# - f: Ruby の正規表現パターン文字列（先頭/末尾のスラッシュは不要）。
+# - r: 置換文字列。$1, $2 などでキャプチャ参照が可能です。
+# 記法の注意:
+# - バックスラッシュや { } を含む場合は必ずクォート推奨（原則シングルクォート）。
+# - YAML の都合で長文になった場合でもクォートで記述してください（>| は非推奨）。
+# 適用順:
+# - 上から順に gsub! で全体置換します。後段のルールは前段の結果に影響します。
+# 無効化:
+# - 一時的に無効化する場合は、そのルールの行を # でコメントアウトしてください。
+# 例:
+# - f: ':{3,}\\{\\.?(?<cls>[a-z0-9\-_ ]+)\\}'
+#   r: '<div class="\\k<cls>">'
+---
+# :::{.class} 記法（Pandoc拡張風）を <div class="..."> に変換（開始）
+- f: ":{3,}\\{\\.?([a-z|0-9|\\-|_|\\s]+)\\}"
+  r: <div class="$1">
+# ::: ブロック終端を </div> に変換（終了）
+- f: ":{3,}"
+  r: "</div>"
+# 簡易マクロ @div:CLASS → <div class="CLASS">
+- f: "@div:([a-z|0-9|_ ]+)"
+  r: <div class="$1">
+# 簡易マクロ @divend → </div>
+- f: "@divend"
+  r: "</div>"
+# <hr> を 改ページ用の <hr class="pagebreak"> に
+- f: "<hr>"
+  r: <hr class="pagebreak">
+# 余白（上方向へ）マイナス mm を挿入 @nega:N
+- f: "@nega:(\\d+)"
+  r: <div style="margin-top:-$1mm"></div>
+# 余白（下方向へ）プラス mm を挿入 @posi:N
+- f: "@posi:(\\d+)"
+  r: <div style="margin-top:$1mm"></div>
+# 浮動要素回り込み解除 @clear
+- f: "@clear"
+  r: <div class="floatclear"></div>
+# コメント囲み @comment:...@commend → <span class="hen-comment">...</span>
+- f: "@comment:([^@]*)@commend"
+  r: <span class="hen-comment">$1</span>
+# 例（@lu）
+# 置換前: <li class="item">内容@lu30,20@15,40</li>
+# 置換後: <li class="item" style="position:absolute;left:15mm;top:40mm;" class="movitem-lu"><svg viewbox="0 0 30 20" width="30mm" height="20mm" style="position:absolute;left:-30mm;top:-20mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="20"/><line fill="none" stroke="#888" x1="0" y1="20" x2="30" y2="20" /></svg>内容</li>
+# 位置指定（left-up系）@luW,H@X,Y → 絶対配置＋ガイド
+- f: "<li([^>]*)>(.*)@lu([0-9]+),([0-9]+)@([0-9]+),([0-9]+)</li>"
+  r: <li$1 style="position:absolute;left:$5mm;top:$6mm;" class="movitem-lu"><svg viewbox="0 0 $3 $4" width="$3mm" height="$4mm" style="position:absolute;left:-$3mm;top:-$4mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="$4"/><line fill="none" stroke="#888" x1="0" y1="$4" x2="$3" y2="$4" /></svg>$2</li>
+# 例（@ld）
+# 置換前: <li class="item">内容@ld30,20@15,40</li>
+# 置換後: <li class="item" style="position:absolute;left:15mm;top:40mm;" class="movitem-ld"><svg viewbox="0 0 30 20" width="30mm" height="20mm" style="position:absolute;left:-30mm;top:2mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="30" y2="0"/><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="20" /></svg>内容</li>
+# 位置指定（left-down系）@ldW,H@X,Y → 絶対配置＋ガイド
+- f: "<li([^>]*)>(.*)@ld([0-9]+),([0-9]+)@([0-9]+),([0-9]+)</li>"
+  r: <li$1 style="position:absolute;left:$5mm;top:$6mm;" class="movitem-ld"><svg viewbox="0 0 $3 $4" width="$3mm" height="$4mm" style="position:absolute;left:-$3mm;top:2mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="$3" y2="0"/><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="$4" /></svg>$2</li>
+# 例（@ru）
+# 置換前: <li class="item">内容@ru30,20@15,40</li>
+# 置換後: <li class="item" style="position:absolute;left:15mm;top:40mm;" class="movitem-ru"><svg viewbox="0 0 30 20" width="30mm" height="20mm" style="position:absolute;right:-30mm;top:-20mm"><line fill="none" stroke="#888" x1="30" y1="0" x2="30" y2="20"/><line fill="none" stroke="#888" x1="0" y1="20" x2="30" y2="20" /></svg>内容</li>
+# 位置指定（right-up系）@ruW,H@X,Y → 絶対配置＋ガイド
+- f: "<li([^>]*)>(.*)@ru([0-9]+),([0-9]+)@([0-9]+),([0-9]+)</li>"
+  r: <li$1 style="position:absolute;left:$5mm;top:$6mm;" class="movitem-ru"><svg viewbox="0 0 $3 $4" width="$3mm" height="$4mm" style="position:absolute;right:-$3mm;top:-$4mm"><line fill="none" stroke="#888" x1="$3" y1="0" x2="$3" y2="$4"/><line fill="none" stroke="#888" x1="0" y1="$4" x2="$3" y2="$4" /></svg>$2</li>
+# 例（@rd）
+# 置換前: <li class="item">内容@rd30,20@15,40</li>
+# 置換後: <li class="item" style="position:absolute;left:15mm;top:40mm;" class="movitem-rd"><svg viewbox="0 0 30 20" width="30mm" height="20mm" style="position:absolute;right:-30mm;top:2mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="30" y2="0"/><line fill="none" stroke="#888" x1="30" y1="0" x2="30" y2="20" /></svg>内容</li>
+# 位置指定（right-down系）@rdW,H@X,Y → 絶対配置＋ガイド
+- f: "<li([^>]*)>(.*)@rd([0-9]+),([0-9]+)@([0-9]+),([0-9]+)</li>"
+  r: <li$1 style="position:absolute;left:$5mm;top:$6mm;" class="movitem-rd"><svg viewbox="0 0 $3 $4" width="$3mm" height="$4mm" style="position:absolute;right:-$3mm;top:2mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="$3" y2="0"/><line fill="none" stroke="#888" x1="$3" y1="0" x2="$3" y2="$4" /></svg>$2</li>
+# 位置指定（up-right系）@urW,H@X,Y → 絶対配置＋ガイド
+- f: "<li([^>]*)>(.*)@ur(\\d+),(\\d+)@(\\d+),(\\d+)</li>"
+  r: <li$1 style="position:absolute;left:$5mm;top:$6mm;" class="movitem-ur"><svg viewbox="0 0 $3 $4" width="$3mm" height="$4mm" style="position:absolute;left:2mm;top:-$4mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="$4"/><line fill="none" stroke="#888" x1="0" y1="0" x2="$3" y2="0" /></svg>$2</li>
+# 水平ガイド線（左方向）@lsW@X,Y
+- f: "<li([^>]*)>(.*)@ls([0-9]+)@([0-9]+),([0-9]+)</li>"
+  r: <li$1 style="position:absolute;left:$4mm;top:$5mm;" class="movitem-ls"><svg viewbox="0 0 $3 1" width="$3mm" height="1mm" style="position:absolute;left:-$3mm;top:0"><line fill="none" stroke="#888" x1="0" y1="0" x2="$3" y2="0"/></svg>$2</li>
+# 垂直ガイド線（上方向）@usH@X,Y
+- f: "<li([^>]*)>(.*)@us([0-9]+)@([0-9]+),([0-9]+)</li>"
+  r: <li$1 style="position:absolute;left:$4mm;top:$5mm;" class="movitem-us"><svg viewbox="0 0 1 $3" width="1mm" height="$3mm" style="position:absolute;left:2mm;top:-$3mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="$3"/></svg>$2</li>
+# 垂直ガイド線（下方向）@dsH@X,Y
+- f: "<li([^>]*)>(.*)@ds([0-9]+)@([0-9]+),([0-9]+)</li>"
+  r: <li$1 style="position:absolute;left:$4mm;top:$5mm;" class="movitem-ds"><svg viewbox="0 0 1 $3" width="1mm" height="$3mm" style="position:absolute;left:2mm;bottom:-$3mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="$3"/></svg>$2</li>
+# 水平ガイド線（右方向）@rsW@X,Y
+- f: "<li([^>]*)>(.*)@rs([0-9]+)@([0-9]+),([0-9]+)</li>"
+  r: <li$1 style="position:absolute;left:$4mm;top:$5mm;" class="movitem-rs"><svg viewbox="0 0 $3 1" width="$3mm" height="1mm" style="position:absolute;right:-$3mm;top:3mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="$3" y2="0"/></svg>$2</li>
+# リストの先頭記号 ▶ を「青コメ」用クラスに
+- f: "<li[^>]*>▶"
+  r: <li class="aokome">
+# 囲み数字で始まる項目を「赤コメ」化
+- f: "<li[^>]*>([❶-❿⓫-⓴]+)"
+  r: <li class="akakome"><span>$1</span>
+# コード見出し（h6）を装飾クラス付きに
+- f: "<h6([^>]*)>"
+  r: <h6$1 class="codetitle"><span>
+# Prism コメントで #← を赤強調
+- f: <span class="token comment"([^>]*)>#←
+  r: <span class="token comment codered"$1>
+# Prism コメントで //← を赤強調
+- f: <span class="token comment"([^>]*)>//←
+  r: <span class="token comment codered"$1>
+# Prism コメントで /*←← ... */ を右寄せ＋赤強調
+- f: <span class="token comment"([^>]*)>/\*←←(.*)\*/
+  r: <span class="token comment codered codered-right"$1>$2
+# Prism コメントで /*← ... */ を赤強調
+- f: <span class="token comment"([^>]*)>/\*←(.*)\*/
+  r: <span class="token comment codered"$1>$2
+# HTML コメント ← を赤強調
+- f: "<span class=&quot;token comment&quot;([^>]*)>&lt;!--←(.*)--&gt;"
+  r: <span class="token comment codered"$1>$2
+# 〘〙 を <kbd>...</kbd> に
+- f: "〘"
+  r: "<kbd>"
+- f: "〙"
+  r: "</kbd>"
+# 会話：先生ラベルをクラス化
+- f: "<p[^>]*>【先生([^】]+)】"
+  r: <p class="kaiwa sense $1">
+# 会話：生徒ラベルをクラス化
+- f: "<p[^>]*>【生徒([^】]+)】"
+  r: <p class="kaiwa deshi $1">
+# p が余分に div を囲っているのを除去（div 先頭を裸に）
+- f: <p>(<div class="[^"]+">)</p>
+  r: "$1"
+# p と div の並び修正 </div> の外側 p を除去
+- f: "<p></div></p>"
+  r: "</div>"
+# 同上: 末尾が p→</div> の順の崩れを修正
+- f: "<p></div>"
+  r: "</div>"
+# 同上: </div></p> を </div> に
+- f: "</div></p>"
+  r: "</div>"
+# div の直後に余分な </p> が来た場合の修正
+- f: (<div class="[^"]+">)</p>
+  r: "$1"
+# <p>(<div ...>) の余分な p を除去
+- f: <p>(<div class="[^"]+">)
+  r: "$1"
+# hr の直後の </p> を除去（前後関係の崩れ修正）
+- f: (<hr class="[^"]+">)</p>
+  r: "$1"
+# <p>(<hr ...>) の余分な p を除去
+- f: <p>(<hr class="[^"]+">)
+  r: "$1"
+# <svg> を p が囲っているだけの場合、p を除去
+- f: "<p>(<svg [^>]+>)</p>"
+  r: "$1"
+# <image> 前にある余分な p を除去
+- f: "<p>(<image [^>]+>)"
+  r: "$1"
+# <image> の後ろにある余分な </p> を除去
+- f: "(<image [^>]+>)</p>"
+  r: "$1"
+# </svg> を p が囲っているだけの場合、p を除去
+- f: "<p>(</svg>)"
+  r: "$1"
+# </svg> の直後の </p> を除去
+- f: "(</svg>)</p>"
+  r: "$1"
+# 空段落を除去（改行・空白を含むあらゆる空段落）
+- f: "<p>\\s*</p>"
+  r: ''
+# 空段落を除去（&nbsp;/&#160;/&#xA0; のみ、または空白との組み合わせ）
+- f: "<p>(?:\\s|&nbsp;|&#160;|&#xA0;)*</p>"
+  r: ''
+# 段落末の {.aki} をクラス化
+- f: "<p>(.*?)\\{\\.aki\\}\\s*</p>"
+  r: <p class="aki">$1</p>
+# 段落末の {.aki2} をクラス化
+- f: "<p>(.*?)\\{\\.aki2\\}\\s*</p>"
+  r: <p class="aki2">$1</p>

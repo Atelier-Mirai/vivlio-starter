@@ -1,5 +1,4 @@
 # Prism.jsのコードブロックに行番号を追加するRakeタスク
-require "open-uri"
 require "nokogiri"
 
 # コードの行数を返す
@@ -12,7 +11,13 @@ def add_prism_line_numbers(input_file, output_file = nil, verbose = false)
   output_file = input_file if output_file.nil?
   
   # HTMLを読み込む
-  doc = Nokogiri::HTML.parse(URI.open(input_file))
+  html = File.read(input_file, encoding: 'UTF-8')
+  # HTML5パーサが使える場合は優先
+  if defined?(Nokogiri::HTML5)
+    doc = Nokogiri::HTML5.parse(html)
+  else
+    doc = Nokogiri::HTML.parse(html, nil, 'UTF-8')
+  end
   
   # <pre>要素を取得
   pre_tags = doc.css("pre")
@@ -45,7 +50,11 @@ def add_prism_line_numbers(input_file, output_file = nil, verbose = false)
   end
   
   # ファイルに出力
-  File.write(output_file, doc.to_html)
+  # 不要な Content-Type の meta タグを除去（charset指定は <meta charset> を優先）
+  doc.css('meta[http-equiv="Content-Type"]').each do |meta|
+    meta.remove
+  end
+  File.write(output_file, doc.to_html(encoding: 'UTF-8'))
   BookBuild.log_success("行番号付与完了: #{input_file}" + (output_file != input_file ? " -> #{output_file}" : ""))
 end
 

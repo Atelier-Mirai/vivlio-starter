@@ -188,19 +188,15 @@ module FrontMatterCreator
   end
 
   def safe_write(path, content)
-    if File.exist?(path) && (ENV['FORCE'].to_s.empty?)
-      BookBuild.log_warn("#{path} は既に存在します。上書きするには FORCE=1 を指定してください。")
-      return false
-    end
     FileUtils.mkdir_p(File.dirname(path))
     File.write(path, content, encoding: 'utf-8')
-    BookBuild.log_success("#{path} を生成しました")
+    BookBuild.log_success("#{path} を生成・更新しました")
     true
   end
 end
 
 namespace :create do
-  desc "タイトルページを config/book.yml から生成 (FORCE=1 で上書き)"
+  desc "タイトルページを config/book.yml から生成"
   task :titlepage do
     cfg = BookBuild::CONFIG
     title, subtitle = FrontMatterCreator.extract_title_and_subtitle(cfg)
@@ -229,7 +225,7 @@ namespace :create do
     FrontMatterCreator.safe_write(out, content)
   end
 
-  desc "奥付を config/book.yml から生成 (FORCE=1 で上書き)"
+  desc "奥付を config/book.yml から生成"
   task :colophon do
     cfg = BookBuild::CONFIG
     title, subtitle = FrontMatterCreator.extract_title_and_subtitle(cfg)
@@ -324,5 +320,12 @@ namespace :create do
     out = File.join(BookBuild::CONTENTS_DIR, '99-colophon.md')
     FrontMatterCreator.safe_write(out, content)
   end
+
+  # タイトルページ + 奥付を一括生成
+  desc "タイトルページと奥付を一括生成します (create:titlepage → create:colophon)"
+  task :titlphon => [:titlepage, :colophon]
 end
 
+# エイリアス: `rake titlephon` で `create:titlphon` を呼び出す
+desc "タイトルページと奥付の一括生成（エイリアス）"
+task :titlephon => 'create:titlphon'

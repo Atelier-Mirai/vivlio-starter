@@ -43,7 +43,7 @@
   align-items: start;
 }
 /* 列幅 */
-.imt-text { grid-template-columns: 1fr 1fr; }
+.img-text { grid-template-columns: 1fr 1fr; }
 .img-text2 { grid-template-columns: 1fr 2fr; }
 .img-text3 { grid-template-columns: 1fr 3fr; }
 .text2-img { grid-template-columns: 2fr 1fr; }
@@ -56,9 +56,18 @@
 .img-text2 > img { grid-column: 1; }
 .img-text2 > :not(img) { grid-column: 2; }
 /* 左:画像 右:本文（本文広め 3） */
-.img-text3 > img { grid-column: 1; }
-.img-text3 > :not(img) { grid-column: 2; }
-/* 左:本文 右:画像 */
+.img-text3 > img {
+  grid-column: 1;
+  grid-row: 1 / -1; /* 左列を縦に占有して、後続ノードを右列へ */
+  /* box-size */
+  inline-size: 100%;
+  block-size: auto;
+  /* visual */
+  object-fit: contain;
+}
+.img-text3 > :not(img) { grid-column: 2; grid-row: 1 / -1; }
+
+ /* 左:本文 右:画像 */
 .text-img > img { grid-column: 2; }
 .text-img > :not(img) { grid-column: 1; }
 /* 左:本文 右:画像（本文広め 2） */
@@ -67,16 +76,6 @@
 /* 左:本文 右:画像（本文広め 3） */
 .text3-img > :not(img) { grid-column: 1; }
 .text3-img > img { grid-column: 2; }
-
-/* 狭い画面でのプレビュー時は1カラムに（画面表示のみ） */
-/* @media screen and (max-width: 640px) {
-  .img-text,
-  .text-img { grid-template-columns: 1fr; }
-  .img-text > *:first-child,
-  .img-text > *:last-child,
-  .text-img > *:first-child,
-  .text-img > *:last-child { grid-column: auto; }
-} */
 
 /* 本文の二段組ブロック */
 .two-col,

@@ -25,8 +25,8 @@ end
 
 # 責務: モード（files/all）別のビルド手順を一元管理する単一の真実源
 TASKS_FOR = {
-  files: %w[preprocess convert entries],
-  all:   %w[preprocess convert toc entries]
+  files: %w[pre_process convert post_process entries],
+  all:   %w[pre_process convert post_process toc entries]
 }
 
 # セクション: エントリーポイント（build）— 引数解釈 → シーケンス実行 → 後処理
