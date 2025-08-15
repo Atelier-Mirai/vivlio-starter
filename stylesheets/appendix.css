@@ -2,6 +2,7 @@
 
 @import "base.css";
 @import "theme.css";
+@import "theme-blue.css";
 @import "page-settings-a4.css";
 @import "prism.css";
 @import "code.css";
@@ -10,6 +11,7 @@
 @import "layout-utils.css";
 @import "components.css";
 
+@import "preface.css";
 /*
   プロパティ並び順ガイドライン
   --------------------------------------------------
@@ -31,3 +33,50 @@
 /* =====================================================================
    Appendix (付録)
    ===================================================================== */
+
+:root {
+  --appendix-letter: "B";
+  --appendix-accent-color: #3da8c9;
+  /* 付録Bのアクセント色（青緑系） */
+  --appendix-on-accent-color: #fff;
+  /* アクセント面の文字色 */
+}
+
+/* 章タイトル（付録B） */
+h1 {
+  break-before: recto;
+  margin-block-start: 20mm;
+  text-align: center;
+  font-family: var(--header-font);
+  font-size: 42Q;
+  line-height: 50Q;
+  /* 青い帯(h1::before, 24mm)が重ならないよう内側余白を追加 */
+  padding-block-start: 14mm; /* 24mm帯 - 14mmのオフセット + 余白 ≒ 14mm */
+  position: relative;
+  counter-reset: section-counter 0;
+}
+
+h1::before {
+  content: "APPENDIX " var(--appendix-letter);
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: -14mm;
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  block-size: 24mm;
+  color: var(--appendix-on-accent-color);
+  background: var(--appendix-accent-color);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/* h2 番号のみを表示 */
+
+/* 節番号は B-1, B-2 ... */
+h2::before {
+  content: "\00a0\00a0\00a0" var(--appendix-letter) "-" counter(section-counter) "\00a0\00a0";
+  color: var(--appendix-accent-color);
+  text-shadow: none;
+  background: none;
+}
