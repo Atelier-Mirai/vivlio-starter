@@ -1,0 +1,20 @@
+:root {
+  /* 既定テーマ: neutral（黒〜濃灰ベース） */
+  --appendix-accent-color: #111;        /* neutral */
+  --appendix-on-accent-color: #fff;     /* neutral上の文字色 */
+}
+
+html[data-accent="neutral"] {
+  --appendix-accent-color: #111;
+  --appendix-on-accent-color: #fff;
+}
+
+html[data-accent="red"] {
+  --appendix-accent-color: #c62828;     /* 落ち着いた赤 */
+  --appendix-on-accent-color: #fff;
+}
+
+html[data-accent="blue"] {
+  --appendix-accent-color: #3da8c9;     /* 爽やかな青 */
+  --appendix-on-accent-color: #fff;
+}

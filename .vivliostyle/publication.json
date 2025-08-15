@@ -1,0 +1,97 @@
+{
+  "@context": [
+    "https://schema.org",
+    "https://www.w3.org/ns/pub-context"
+  ],
+  "type": "Book",
+  "conformsTo": "https://github.com/vivliostyle/vivliostyle-cli",
+  "name": "電気・電子技術への招待 ～古代の叡智から現代AIまで～",
+  "author": "アトリヱ未来",
+  "inLanguage": "ja",
+  "readingProgression": "ltr",
+  "dateModified": "2025-08-15T09:06:25.124Z",
+  "readingOrder": [
+    {
+      "url": "00-titlepage.html",
+      "name": "titlepage"
+    },
+    {
+      "url": "01-legalpage.html",
+      "name": "legalpage"
+    },
+    {
+      "url": "02-preface.html",
+      "name": "始めに"
+    },
+    {
+      "url": "03-toc.html",
+      "name": "目次"
+    },
+    {
+      "url": "11-gift.html",
+      "name": "挑戦することの贈り物"
+    },
+    {
+      "url": "12-source.html",
+      "name": "万物の根源を求めて"
+    },
+    {
+      "url": "13-unit.html",
+      "name": "国際単位系(SI単位)の話"
+    },
+    {
+      "url": "14-electricity.html",
+      "name": "電気について"
+    },
+    {
+      "url": "15-electronics.html",
+      "name": "電子工作"
+    },
+    {
+      "url": "16-ai.html",
+      "name": "人工知能"
+    },
+    {
+      "url": "17-math.html",
+      "name": "Math"
+    },
+    {
+      "url": "18-programming.html",
+      "name": "Programming"
+    },
+    {
+      "url": "19-prime.html",
+      "name": "Prismでの行番号表示"
+    },
+    {
+      "url": "20-number.html",
+      "name": "Number"
+    },
+    {
+      "url": "21-integer.html",
+      "name": "Integer"
+    },
+    {
+      "url": "22-sample.html",
+      "name": "Sample"
+    },
+    {
+      "url": "55-sample.html",
+      "name": "挑戦することの贈り物"
+    },
+    {
+      "url": "90-appendices.html",
+      "name": "珠玉の書籍紹介"
+    },
+    {
+      "url": "98-postface.html",
+      "name": "終わりに"
+    },
+    {
+      "url": "99-colophon.html",
+      "name": "colophon"
+    }
+  ],
+  "resources": [],
+  "links": []
+}

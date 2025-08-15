@@ -43,6 +43,7 @@
 
 ## CSS
 
+:::{.table-rotate}
 | 機能 | 構文 | 例 | 備考 |
 |---|---|---|---|
 | セレクタ | 要素/クラス/ID | `h1 {}`, `.btn {}`, `#main {}` | 優先度: ID > クラス > 要素 |
@@ -53,6 +54,8 @@
 | フォント | `@font-face` | `@font-face { font-family: X; src: url(x.woff2) format('woff2'); }` | 表示最適化に注意 |
 | アニメーション | `@keyframes` と `animation` | `@keyframes fade{...} .el{animation: fade 1s}` | 簡易トランジションは `transition` |
 | 変換/配置 | `transform`, `flex`, `grid` | `display: grid; gap: 1rem;` | レイアウトの基本 |
+:::
+
 
 参考
 - 詳細は Appendix-B のリンク（MDN/WHATWG など）を参照。

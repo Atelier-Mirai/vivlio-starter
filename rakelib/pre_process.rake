@@ -137,6 +137,73 @@ def convert_book_card_inner_markdown(content)
   end
 end
 
+# パイプテーブルを簡易HTML化（Kramdown不在時のフォールバック）
+def pipe_table_to_html(md_text)
+  text = md_text.to_s.strip
+  lines = text.split(/\r?\n/).map { |l| l.rstrip }
+  return nil if lines.size < 2
+
+  header = lines[0]
+  sep    = lines[1]
+  return nil unless header.include?("|")
+  return nil unless sep && sep =~ /^\s*\|?[\s:\-\|]+\|?\s*$/
+
+  rows = lines[2..] || []
+
+  to_cells = lambda do |line|
+    parts = line.split("|")
+    # 先頭/末尾の空要素（縦棒の外側）を除去
+    parts.shift if parts.first&.strip == ""
+    parts.pop   if parts.last&.strip  == ""
+    parts.map { |c| c.strip }
+  end
+
+  esc_code = lambda do |s|
+    # 簡易的にコードスパンのみ対応（`code`）
+    s.gsub(/`([^`]+)`/) { "<code>#{$1}</code>" }
+      .gsub(/&/, "&amp;")
+      .gsub(/</, "&lt;")
+      .gsub(/>/, "&gt;")
+  end
+
+  thead_cells = to_cells.call(header)
+  tbody_rows  = rows.map { |r| to_cells.call(r) }
+
+  html = []
+  html << "<table>"
+  html << "  <thead>"
+  html << "    <tr>#{thead_cells.map { |c| "<th>#{esc_code.call(c)}</th>" }.join}</tr>"
+  html << "  </thead>"
+  if tbody_rows.any?
+    html << "  <tbody>"
+    tbody_rows.each do |cells|
+      html << "    <tr>#{cells.map { |c| "<td>#{esc_code.call(c)}</td>" }.join}</tr>"
+    end
+    html << "  </tbody>"
+  end
+  html << "</table>"
+  html.join("\n")
+end
+
+# <div class="table-rotate"> ... </div> の内側MarkdownをHTMLへ
+def convert_table_rotate_inner_markdown(content)
+  content.gsub(/<div class=\"table-rotate\">\s*(.*?)\s*<\/div>/m) do
+    inner = $1
+    # まずはKramdownによる通常のMarkdown→HTML化を試みる
+    normalized = "\n\n#{inner.to_s.strip}\n\n"
+    html = render_markdown_to_html(normalized).to_s.strip
+
+    # フォールバック: なおも '|' を多用するテーブルが <table> に変換されていない場合は自力変換
+    if !html.include?("<table") && inner.include?("|")
+      table_html = pipe_table_to_html(inner)
+      html = table_html if table_html
+    end
+
+    # そのまま .table-rotate 内に埋め込む
+    "<div class=\"table-rotate\">\n#{html}\n<\/div>"
+  end
+end
+
 # book-card の中身を、カード表示しやすいよう整形 (画像、タイトル、説明文)
 # components.css参照
 def format_book_card_inner_html(inner_html)
@@ -414,7 +481,6 @@ task :pre_process do |t, args|
     BookBuild.log_success("ソースコード読み込み処理完了")
 
     # .book-card マークダウンブロックのみを事前にHTMLの<div>に変換（行走査・状態管理）
-    # 注意: HTMLブロック内ではMarkdownは解釈されません。意図通りの仕様です。
     BookBuild.log_action("book-cardブロックをHTMLのdivに変換中...")
     in_book_card = false
     opened_count = 0
@@ -439,6 +505,32 @@ task :pre_process do |t, args|
     BookBuild.log_action("book-card内のMarkdownをHTMLへ変換中...")
     content = convert_book_card_inner_markdown(content)
     BookBuild.log_success("book-card内MarkdownのHTML化 完了")
+
+    # .table-rotate マークダウンブロックを事前にHTMLの<div>に変換（行走査・状態管理）
+    BookBuild.log_action("table-rotateブロックをHTMLのdivに変換中...")
+    in_table_rotate = false
+    tr_opened_count = 0
+    tr_closed_count = 0
+    tr_converted_lines = content.lines.map do |line|
+      if line.match(/^\s*:::\{\.table-rotate\}\s*$/)
+        in_table_rotate = true
+        tr_opened_count += 1
+        "<div class=\"table-rotate\">\n"
+      elsif in_table_rotate && line.match(/^\s*:::\s*$/)
+        in_table_rotate = false
+        tr_closed_count += 1
+        "</div>\n"
+      else
+        line
+      end
+    end
+    content = tr_converted_lines.join
+    BookBuild.log_success("table-rotateブロックの事前変換 完了 開始:#{tr_opened_count} 終了:#{tr_closed_count}")
+
+    # table-rotate の内側に残る素のMarkdown（表など）をHTMLへ変換
+    BookBuild.log_action("table-rotate内のMarkdownをHTMLへ変換中...")
+    content = convert_table_rotate_inner_markdown(content)
+    BookBuild.log_success("table-rotate内MarkdownのHTML化 完了")
 
     # 処理後のファイルを保存
     File.write(output_file, content, encoding: 'utf-8')

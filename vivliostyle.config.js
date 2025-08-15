@@ -9,6 +9,7 @@ const vivliostyleConfig = {
   readingProgression: 'ltr', // 読み進め方向（ltr: 横書き, rtl: 縦書き）
   image: 'ghcr.io/vivliostyle/cli:9.5.0', // VivliostyleのDockerイメージ
   entry: entries, // 章立て構成（entries.jsから読み込み）
+  // entry: '93-appendix-c.html',
   output: [ // 出力ファイル設定
     './output.pdf' // PDFファイル
   ]
