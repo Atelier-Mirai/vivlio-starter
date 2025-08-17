@@ -74,4 +74,5 @@ namespace :merge do
 
     puts "✅ 出力しました: #{out_path}"
   end
+
 end

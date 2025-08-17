@@ -59,7 +59,7 @@ module BookBuild
       'preface'
     when /^03-/
       'toc'
-    when /^1[1-9]-/, /^[2-8][0-9]-/
+    when /^1[0-9]-/, /^[2-8][0-9]-/
       'chapter'
     when /^9[0-7]-/
       'appendix'
