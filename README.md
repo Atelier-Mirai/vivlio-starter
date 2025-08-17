@@ -146,8 +146,20 @@ pdf:
 
 本リポジトリは「コード」と「書籍本文（コンテンツ）」でライセンスを分けています。
 
-- コード（Rake タスク、スクリプト等）: MIT License
-  - 詳細は `LICENSE` を参照してください。
-- 本文（`content/` 配下の Markdown、画像・図版・イラスト等）: CC BY-NC-SA 4.0
-  - 詳細は `LICENSE-content` を参照してください。
-  - 商用利用は不可です。商用での利用については著作権者にお問い合わせください。
+### ライセンス(コード)
+このリポジトリのビルド用スクリプトなどのソースコードは MIT ライセンスです。
+
+- ライセンス本文: [LICENSE](./LICENSE)
+
+### ライセンス(コンテンツ)
+本文（`content/` 配下の Markdown、画像・図版・イラスト等）は CC BY-NC-SA 4.0 です（商用利用不可）。
+
+- ライセンス本文: [LICENSE-content](./LICENSE-content)
+- クリエイティブ・コモンズ: https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+### 第三者ライセンス（Third-Party Licenses）
+
+本プロジェクトでは PDF/HTML 生成のために Vivliostyle CLI（AGPLv3）を利用しています。
+
+- Vivliostyle ライセンス: https://www.gnu.org/licenses/agpl-3.0.html
+- 第三者ライセンス一覧: [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LICENSES.md)

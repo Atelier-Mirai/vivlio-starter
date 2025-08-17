@@ -7,12 +7,7 @@ const vivliostyleConfig = {
   author: 'アトリヱ未来', // 著者名
   language: 'ja', // 言語設定
   readingProgression: 'ltr', // 読み進め方向（ltr: 横書き, rtl: 縦書き）
-  // entry: entries, // 章立て構成（entries.jsから読み込み）
-  // entry: "10-chapters.html", // 章立て構成（entries.jsから読み込み）
-  entry: "11-gift.html",
-  // entry: '93-appendix-c.html',
-  // entry: ["03-toc.html", "11-gift.html", "90-appendices.html"],
-  // entry: ["91-appendix-a.html"],
+  entry: entries, // 章立て構成（entries.jsから読み込み）
   output: [ // 出力ファイル設定
     './output.pdf' // PDFファイル
   ]

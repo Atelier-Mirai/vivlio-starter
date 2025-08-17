@@ -1,0 +1,27 @@
+単一ビルド
+rake build 11-gift
+
+複数ビルド
+rake build 11-gift 12-source
+
+一括ビルド
+rake build
+
+    設計方針
+    1) rake build preface により、preface.pdf 生成。
+        前書きページ数を取得する。
+    2) rake build 91-appendix-a 〜 95-appendix-e により、
+        91-appendix-a.html 〜 95-appendix-e.html 生成。
+        rake merge:appendices により、90-appendices.html 生成。
+    3) rake build 11-gift 〜 16-ai により、11-gift.html 〜 16-ai.html 生成。
+    4) rake build toc により、11-gift.html 〜 16-ai.html 90-appendices.html から、03-toc.html生成。
+    5) vivliostyle build 03-toc.html により 03-toc.pdf を生成。03-toc.pdfのページ数を取得する。
+        vivliostyle config.jsのentryを、03-toc.htmlに変更する。
+        output.pdf を 03-toc.pdf として出力する。
+    6) vivliostyle build 11-gift.html 〜 16-ai.html 90-appendices.html 03-toc.htmlにより、temp.pdfを生成する
+        vivliostyle config.jsのentryを、11-gift.html 〜 16-ai.html 90-appendices.html 03-toc.htmlに変更する。
+        output.pdf を temp.pdf として出力する。
+        目次のページ数に基づき、temp.pdf を、chapters_appendices.pdf と toc.pdfに分割する。
+    6) toc.pdf のページ番号を、preface.pdf からの連番に変更する。
+    7) rake create:titlephon により、titlepage.pdf と colophone.pdf 生成。
+    8) titlepage.pdf, preface.pdf, toc.pdf, chapters_appendices.pdf, colophone.pdfを、output.pdf として、結合する。
