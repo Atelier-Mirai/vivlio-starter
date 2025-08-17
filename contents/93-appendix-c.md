@@ -1,4 +1,4 @@
-# Appendix-C 簡易文法リファレンス（Ruby / HTML / CSS）
+# 簡易文法リファレンス（Ruby / HTML / CSS）
 
 :::{.chapter-lead}
 よく使う構文だけを表形式で最短ルックアップできるようにまとめました。詳細は Appendix-B の公式ドキュメントを参照してください。

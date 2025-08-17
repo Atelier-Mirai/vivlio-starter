@@ -1,0 +1,16 @@
+{
+  "name": "hobby-tech-book",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:pdf": "vivliostyle build -c vivliostyle.config.js",
+    "build:pdf:verbose": "vivliostyle build -c vivliostyle.config.js --verbose",
+    "viv:version": "vivliostyle --version",
+    "vfm:version": "vfm --version"
+  },
+  "devDependencies": {
+    "@vivliostyle/cli": "9.6.0",
+    "vfm": "2.2.1"
+  }
+}

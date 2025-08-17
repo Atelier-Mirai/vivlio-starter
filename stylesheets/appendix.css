@@ -44,34 +44,63 @@ body.appendix {
   counter-reset: appendix 0; /* 文書内の先頭で初期化 */
 }
 
-/* 章タイトル（付録B） */
+/* 章タイトル（付録） */
 h1 {
+
+  padding-block: 0;
+  /* layout */
+  position: relative;
+  display: grid;              /* 帯内で本文を上下左右中央に */
+  place-items: center;
+  align-content: center;      /* コンテンツ領域も中央に */
+  justify-content: center;
+  gap: 0;
   break-before: recto;
+
+  /* box-size */
+  min-block-size: 36mm;       /* 帯の最小高さ */
+
+  /* spacing */
   margin-block-start: 20mm;
-  text-align: center;
+  padding-inline-start: 4em;  /* ラベル分の左余白 */
+  padding-block-start: 0;     /* 帯に重ねるため不要 */
+
+  /* typography */
   font-family: var(--header-font);
   font-size: 42Q;
-  line-height: 50Q;
-  /* 青い帯(h1::before, 24mm)が重ならないよう内側余白を追加 */
-  padding-block-start: 14mm; /* 24mm帯 - 14mmのオフセット + 余白 ≒ 14mm */
-  position: relative;
+  line-height: 1;             /* ベースライン差を最小化 */
+  text-align: left;
+
+  /* counters/meta */
   counter-increment: appendix;       /* 付録レター(A,B,...)を進める */
   counter-reset: section-counter 0;  /* 節番号を付録ごとにリセット */
+
+  /* visual */
+  color: var(--appendix-on-accent-color);
+  border-block-end: none;
 }
 
 h1::before {
-  content: "APPENDIX " counter(appendix, upper-alpha);
+  /* content: "付録 " counter(appendix, upper-alpha); */
+  content: "";
   position: absolute;
-  inset-inline: 0;
-  inset-block-start: -14mm;
-  display: grid;
-  place-items: center;
-  inline-size: 100%;
-  block-size: 24mm;
-  color: var(--appendix-on-accent-color);
+  inset: 0;                         /* h1 全面を覆う帯 */
+  display: block;
   background: var(--appendix-accent-color);
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  z-index: -1;                       /* テキスト背面 */
+}
+
+/* ラベル: 付録 A をテキストの前に表示 */
+h1::after {
+  content: "付録" counter(appendix, upper-alpha);
+  position: absolute;
+  inset-inline-start: 0;             /* 見出しの左端に配置 */
+  inset-block: 0;                    /* 上下 0 で帯内の縦中央をとる */
+  display: flex;
+  align-items: center;               /* 縦中央 */
+  padding-inline-start: 0.8em;       /* 左端の余白 */
+  color: inherit;
+  font-weight: inherit;
 }
 
 /* h2 番号のみを表示 */

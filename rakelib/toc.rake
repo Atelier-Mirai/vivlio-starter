@@ -32,6 +32,8 @@ task :toc do
     # 本文なら、h1, h2, h3を取得
     if BookBuild.get_file_type(target) == 'chapter'
       elems = doc.css('h1, h2, h3')
+    elsif BookBuild.get_file_type(target) == 'appendix'
+      elems = doc.css('h1, h2')
     else
       elems = doc.css('h1')
     end
@@ -44,6 +46,8 @@ task :toc do
       when 'h1'
         if BookBuild.get_file_type(target) == 'chapter'
           result += %{- <a class="toc-chapter" href="#{target}##{id}">}
+        elsif BookBuild.get_file_type(target) == 'appendix'
+          result += %{- <a class="toc-chapter-appendix" href="#{target}##{id}">}
         else
           result += %{- <a class="toc-chapter-no-number" href="#{target}##{id}">}
         end

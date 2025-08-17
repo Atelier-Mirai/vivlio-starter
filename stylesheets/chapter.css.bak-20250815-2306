@@ -1,0 +1,413 @@
+@charset "utf-8";
+
+@import "base.css";
+@import "theme.css";
+@import "theme-blue.css";
+@import "page-settings-a4.css";
+@import "prism.css";
+@import "code.css";
+@import "table.css";
+@import "spacing.css";
+@import "layout-utils.css";
+@import "components.css";
+
+/*
+  プロパティ並び順ガイドライン
+  --------------------------------------------------
+  各ルール内のプロパティは下記の順で記述する。
+  1) layout        : display / position / float / break-* / z-index / inset-*
+  2) box-size      : width / height / inline-size / block-size / box-sizing
+  3) spacing       : margin-* → padding-*（論理プロパティ優先）
+  4) typography    : font-* / line-height / text-* / letter-spacing
+  5) alignment     : text-align / align-* / justify-*
+  6) visual        : color / background / border / outline / shadow / opacity
+  7) counters/meta : counter-* / string-set / content などのメタ情報
+
+  備考:
+  - コメントでセクション見出し（layout等）を付ける。
+  - 値は論理プロパティ（margin-inline 等）を優先する。
+  - 既存プロパティの意味が変わらない範囲でのみ並び替える。
+*/
+
+/* =====================================================================
+   Chapter (章)
+   ===================================================================== */
+
+.chapter,
+body.chapter {
+  /* 章ドキュメントに名前付きページを割り当て（前付けと区別するため） */
+  page: chapter;
+}
+
+:root {
+  /* 最初の章をChapter 1にするための設定 */
+  /* counter-reset: chapter-counter 0; */
+
+  /* 章番号の設定について：
+    - Markdownファイルを連結して単一HTMLとしてビルドする場合は、
+    ここで counter-reset: chapter-counter 0;
+    を有効にし、 h1 { counter-increment: chapter-counter; }
+    と組み合わせることで 自動的に章番号が増加する仕組みが有効になる
+
+    - 各章のHTMLファイルは独立してビルドされるため、
+       デフォルトでは全ての章が「Chapter 1」と表示される
+    - この問題を解決するため、各章専用のCSSファイル（11.css, 12.css等）で
+       counter-reset: chapter-counter N; を設定している
+    - これにより、PDFビルド時に各章が正しい番号で表示される
+  */
+
+  /* 調整用カスタムプロパティ（見出し・節番号・背景の位置と余白） */
+  --h2-offset-inline: 30mm;           /* 見出しの左右移動 */
+  --h2-offset-block-start: -9mm;      /* 見出しの上余白（上が負で上に寄せる） */
+  --h2-offset-block-end: 40mm;        /* 見出しの下余白 */
+  --h2-padding-inline-start: 5mm;     /* 見出しテキストの内側左余白 */
+
+  --section-number-padding-inline-start: 17mm; /* 節番号テキストの内側左余白 */
+  --section-number-padding-block-start: 15mm;  /* 節番号テキストの上側余白 */
+
+  --section-bg-inset-inline: 13mm;        /* 背景画像の基準 左右位置 */
+  --section-bg-inset-block: 9mm;          /* 背景画像の基準 上下位置（ページ基準使用時）*/
+
+  --section-lead-margin-start: -15mm; /* 節リードの見出し直下の間隔 */
+  --section-lead-margin-end: 1.5rlh;  /* 節リードと本文の間隔 */
+}
+
+@page: nth(1) {
+  background: center / cover no-repeat var(--chapter-door-image) fixed;
+}
+
+/* 見出し類 */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--header-font);
+  text-spacing: no-autospace;
+}
+
+/* 章タイトル */
+h1 {
+  /* layout */
+  break-before: recto;
+  /* spacing */
+  margin-block-start: 57mm;
+  /* typography */
+  font-size: 44Q;
+  line-height: 50Q;
+  /* alignment */
+  text-align: center;
+  /* counters */
+  /* 各章専用のcssでchapter-counterを設定しているので、コメントアウト */
+  /* counter-increment: chapter-counter; */
+  /* 節カウンタのみリセット。ページ番号は @page で制御 */
+  counter-reset: section-counter 0;
+  string-set: chapter-title content(), chapter-number content(before);
+}
+
+h1::before {
+  content: "第 " counter(chapter-counter) " 章";
+  /* layout */
+  position: absolute;
+  display: block;
+  /* box-size */
+  inline-size: 40mm;
+  block-size: 2lh;
+  /* alignment */
+  text-align: center;
+  /* typography */
+  font-size: 30Q;
+  /* inset */
+  inset-inline-start: 50mm;
+  inset-block-start: 40mm;
+}
+
+/* 章リード */
+.chapter-lead {
+  font-weight: 500;
+  font-size: larger;
+  line-height: 1.7;
+  margin-block: 2rlh;
+  margin-inline: auto;
+  text-align: justify;
+  inline-size: 32em;
+  /* 先頭がテキストノードの場合も1字下げ */
+  text-indent: 1em;
+}
+
+.chapter-lead p {
+  text-indent: 1em;
+}
+
+/* 節 */
+h2 {
+  /* layout */
+  display: grid;
+  break-before: page;
+  /* box-size */
+  inline-size: 10em;
+  block-size: 2lh;
+  /* spacing */
+  margin-inline-start: var(--h2-offset-inline);
+  margin-block: var(--h2-offset-block-start) var(--h2-offset-block-end);
+  padding-inline-start: var(--h2-padding-inline-start);
+  /* typography */
+  font-size: 36Q;
+  line-height: 48Q;
+  /* alignment */
+  align-content: center;
+  string-set: section-title content(), section-number content(before);
+}
+
+/* 節番号 */
+h2::before {
+  content: "\00a0\00a0\00a0" counter(chapter-counter) "-" counter(section-counter);
+  color: var(--section-number-color); /* テーマに応じた節番号色 */
+  text-shadow: 0 0.6mm 1mm var(--color-shadow); /* 背景上での可読性を向上 */
+  counter-increment: section-counter;
+  font-size: 48Q;
+  font-weight: 900;
+  line-height: 14mm;
+  text-align: left;
+  padding-inline-start: var(--section-number-padding-inline-start);
+  padding-block-start: var(--section-number-padding-block-start);
+
+  /* 背景画像 */
+  background: center / contain no-repeat var(--section-bg-image);
+  inline-size: 182mm;
+  block-size: 49mm;
+  position: absolute;
+  /* ページ余白を基準に背景と番号を配置 */
+  inset-inline-start: calc(var(--page-inline-margin) * -1 + var(--section-bg-inset-inline));
+  inset-block-start: calc((var(--page-block-margin-start) * -1) + var(--section-bg-inset-block));
+  z-index: -1;
+}
+
+/* 節リード */
+.section-lead {
+  display: block;               /* 通常フローで配置 */
+  inline-size: 32em;
+  /* 10mm 上へずらし、中央寄せ */
+  margin-block: var(--section-lead-margin-start) var(--section-lead-margin-end);
+  margin-inline: auto;
+  font-weight: 700;
+  /* 先頭がテキストノードの場合も1字下げ */
+  text-indent: 1em;
+}
+
+/* 段落タグを使う場合も1字下げ */
+.section-lead p {
+  text-indent: 1em;
+}
+
+/* 項見出し */
+h3 {
+  /* box-size */
+  block-size: 10mm;
+  /* spacing */
+  margin-block-start: 1rlh;
+  margin-block-end: 0.5rlh;
+  margin-break: auto;
+  padding-block: 2mm;
+  padding-inline-start: 0mm;
+  /* typography */
+  font-size: 18Q;
+  line-height: 22Q;
+}
+h3::before {
+  content: "◆";
+  color: var(--color-mark);
+  font-size: 5mm;
+  padding: 0;
+}
+
+/* 目見出し */
+h4 {
+  /* spacing */
+  /* none */
+  /* typography */
+  font-size: var(--base-font-size);
+}
+h4::before {
+  content: "●";
+}
+
+/* 号見出し */
+h5 {
+  /* spacing */
+  margin-block-end: 2mm;
+  /* typography */
+  font-size: var(--base-font-size);
+}
+
+/* 補助見出し */
+h6 {
+  /* spacing */
+  margin-block-end: 2mm;
+  /* typography */
+  font-size: var(--base-font-size);
+}
+
+/* hr（改ページ）の直後のh3 */
+hr + h3,
+hr + section > h3:first-child,
+section:has(hr:last-child) + section > h3:first-child {
+  margin-break: discard;
+}
+
+p {
+  text-indent: 1em;
+  text-align: justify;
+  margin-block: 0;
+}
+
+/* 箇条書き（リスト） */
+ul,
+ol {
+  margin-block: 0.5lh;
+  margin-inline: 0 2em;
+  font-weight: 700;
+  padding-inline-start: 2em;
+}
+/* 入れ子のときは上下アキなし */
+li :is(ul, ol) {
+  margin-block: 0;
+}
+
+/* 強意 */
+em {
+  font-style: normal;
+  text-decoration: underline;
+  text-decoration-thickness: 0.4em;
+  text-decoration-color: var(--color-em-underline);
+  text-underline-offset: -0.1em;
+  text-decoration-skip-ink: none;
+}
+
+/* 強調（重要） */
+strong {
+  font-weight: 900;
+  color: var(--color-strong);
+}
+
+/* キーボードフォント */
+kbd {
+  font-family: keyfont;
+}
+
+/* 改ページ */
+hr.pagebreak {
+  break-after: page;
+  visibility: hidden;
+}
+hr.blankline {
+  height: var(--base-line-height);
+  visibility: hidden;
+}
+
+a {
+  color: var(--color-link);
+  text-decoration: none;
+}
+
+/* 図版 */
+:is(.figure, figure) {
+  display: flex;
+  flex-direction: row;
+  /*横並びにする*/
+  align-items: flex-start;
+  justify-content: flex-start;
+  /*縦に伸ばさない*/
+  flex-wrap: wrap;
+  position: relative;
+
+  margin-block: 4mm;
+  margin-inline: 0;
+}
+:is(.figure, figure) :is(img, svg) {
+  border: solid 0.5mm var(--color-figure-border);
+}
+
+:is(.figure, figure).float-right {
+  float: inline-end;
+  inline-size: 17em;
+  margin-block: 2mm;
+  margin-inline: 2em 0;
+}
+:is(.figure, figure) p {
+  text-indent: 0;
+}
+/* 図中文字 */
+:is(.figure, figure) ul {
+  position: absolute;
+  font-size: 11Q;
+  max-inline-size: 14em;
+  inline-size: fit-content;
+  right: 0;
+  inset-inline-end: none;
+  list-style: none;
+  margin: 0;
+}
+:is(.figure, figure) li {
+  font-size: 11Q;
+  line-height: 16Q;
+  border: solid 0.25mm var(--color-danger);
+  background: var(--color-overlay);
+  margin-bottom: 2mm;
+  padding: 0 0.5mm;
+}
+
+img {
+  max-inline-size: 100%;
+  border: solid 0.5mm var(--color-border);
+}
+
+img[src$=".svg"] {
+  border: none;
+}
+
+/* 図版右寄せ */
+.figure.right {
+  float: inline-end;
+  margin-left: 1em;
+}
+
+/* インライン画像の配置 */
+p > img {
+  vertical-align: text-bottom;
+}
+
+/* 引用 */
+blockquote p {
+  text-indent: 0;
+  font-style: italic;
+}
+blockquote {
+  border-inline-start: solid 2mm var(--color-border-weak);
+  margin-block: 4mm;
+  margin-inline: 0;
+  padding: 0;
+  padding-inline: 2em;
+}
+
+/* コラム枠 */
+.column {
+  border: solid 0.2mm var(--color-column-border);
+  border-radius: 10px;
+  padding: 4mm;
+  padding-inline-end: 6mm;
+  padding-inline-start: 6mm;
+  margin-block-start: 6mm;
+  margin-inline: auto;
+  width: 114mm;
+  background: var(--color-column-bg);
+}
+.column h5 {
+  /* spacing */
+  margin-top: 0;
+  /* typography */
+  font-size: 14Q;
+  /* visual */
+  color: var(--color-mark);
+}

@@ -61,7 +61,7 @@ module BookBuild
       'toc'
     when /^1[1-9]-/, /^[2-8][0-9]-/
       'chapter'
-    when /^9[1-7]-/
+    when /^9[0-7]-/
       'appendix'
     when /^98-/
       'postface'

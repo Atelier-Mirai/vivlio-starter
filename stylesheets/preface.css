@@ -35,23 +35,22 @@
   --surface-color: #f9f9f9;  /* subtle backgrounds */
 }
 
-/* ページ設定 */
-@page {
-  @top-center {
-    content: none;
-  }
+/* 前付け（preface）は名前付きページ 'front' を使用し、ローマ数字でノンブル表示 */
+body.preface { page: front; }
+
+@page front {
+  /* ノンブルをローマ数字（小文字）で表示 */
+  @bottom-center { content: counter(page, lower-roman); }
+  @top-center { content: none; }
 }
 
-/* 最初のページの設定 */
-@page :first {
+/* 前付けの最初のページ設定（i から開始） */
+@page front:first {
   background: none !important;
-  
-  @top-center {
-    content: none;
-  }
-  @bottom-center {
-    content: none;
-  }
+  /* i から開始（= 1表示）にするため 0 リセット */
+  counter-reset: page 0;
+  @top-center { content: none; }
+  /* 最初のページもノンブルを表示する（必要なら content: none に変更可） */
 }
 
 /* 基本設定 */
