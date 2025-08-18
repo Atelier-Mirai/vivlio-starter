@@ -43,6 +43,45 @@ qpdf --version  # バージョン表示
 - CI でも `brew install poppler qpdf`（または Linux なら `apt-get install poppler-utils qpdf`）で導入可能です。
 - どちらもビルド時に外部コマンドとして呼び出すのみで、プロジェクトのライセンスには影響しません。
 
+### Vivliostyle CLI / VFM の導入
+
+本プロジェクトでは、`package.json` の devDependencies に以下を含めています。
+
+- `@vivliostyle/cli`（Vivliostyle CLI）
+- `vfm`（Vivliostyle Flavored Markdown）
+
+クリーン環境から始める場合の導入例（任意のパッケージマネージャで可）:
+
+```bash
+# npm
+npm install --save-dev @vivliostyle/cli vfm
+
+# yarn
+yarn add -D @vivliostyle/cli vfm
+
+# pnpm
+pnpm add -D @vivliostyle/cli vfm
+```
+
+バージョン確認（package.json の scripts を利用）:
+
+```bash
+npm run viv:version  # Vivliostyle CLI のバージョン
+npm run vfm:version  # VFM のバージョン
+```
+
+PDF ビルド（scripts 経由）:
+
+```bash
+npm run build:pdf            # vivliostyle build -c vivliostyle.config.js
+npm run build:pdf:verbose    # 追加ログ付き
+```
+
+備考:
+
+- ローカルにインストール済みの CLI は `npx vivliostyle` / `npx vfm` でも呼び出せます。
+- Vivliostyle CLI のバージョンは `package.json` に固定しており、CI/他環境でも同一結果を狙います。
+
 ## ディレクトリ構成（抜粋）
 
 ```
