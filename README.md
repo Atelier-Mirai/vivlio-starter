@@ -24,11 +24,12 @@
 
 - pdfinfo（poppler）: PDF のページ数などのメタ情報取得
 - qpdf: PDF の分割・結合・ページ抽出（非破壊）
+ - Ghostscript: PDF 圧縮（サイズ削減）
 
 インストール（macOS/Homebrew）:
 
 ```bash
-brew install poppler qpdf
+brew install poppler qpdf ghostscript
 ```
 
 動作確認:
@@ -36,12 +37,25 @@ brew install poppler qpdf
 ```bash
 pdfinfo -v      # バージョン表示
 qpdf --version  # バージョン表示
+gs --version    # Ghostscript のバージョン表示
 ```
 
 補足:
 
-- CI でも `brew install poppler qpdf`（または Linux なら `apt-get install poppler-utils qpdf`）で導入可能です。
+- CI でも `brew install poppler qpdf ghostscript`（または Linux なら `apt-get install poppler-utils qpdf ghostscript`）で導入可能です。
 - どちらもビルド時に外部コマンドとして呼び出すのみで、プロジェクトのライセンスには影響しません。
+
+Ghostscript による簡易圧縮例:
+
+```bash
+# 画質とサイズのバランス例（/ebook は可読性を保ちつつ縮小）
+gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 \
+   -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH \
+   -sOutputFile=output.compressed.pdf output.pdf
+
+# より高画質にしたい場合は /prepress、もっと小さくしたい場合は /screen を検討
+# /default, /screen, /ebook, /printer, /prepress
+```
 
 ### Vivliostyle CLI / VFM の導入
 
