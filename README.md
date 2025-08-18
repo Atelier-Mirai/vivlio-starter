@@ -18,6 +18,31 @@
 必要に応じて以下をインストールしてください。
 - Vivliostyle CLI は npx 経由で自動取得されます。
 
+### 追加ツールのインストール（PDF 操作）
+
+一括ビルドで PDF のページ数取得・分割/結合を行うため、以下の CLI を利用します。
+
+- pdfinfo（poppler）: PDF のページ数などのメタ情報取得
+- qpdf: PDF の分割・結合・ページ抽出（非破壊）
+
+インストール（macOS/Homebrew）:
+
+```bash
+brew install poppler qpdf
+```
+
+動作確認:
+
+```bash
+pdfinfo -v      # バージョン表示
+qpdf --version  # バージョン表示
+```
+
+補足:
+
+- CI でも `brew install poppler qpdf`（または Linux なら `apt-get install poppler-utils qpdf`）で導入可能です。
+- どちらもビルド時に外部コマンドとして呼び出すのみで、プロジェクトのライセンスには影響しません。
+
 ## ディレクトリ構成（抜粋）
 
 ```
