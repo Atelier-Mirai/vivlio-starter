@@ -222,6 +222,12 @@ pdf:
 
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC_BY--NC--SA_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
+以下のライセンス文書を参照してください：
+
+- コードのライセンス: [LICENSE](./LICENSE)
+- コンテンツのライセンス: [CONTENT-LICENSE.md](./CONTENT-LICENSE.md)
+- サードパーティ: [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LICENSES.md)
+
 本リポジトリは「コード」と「書籍本文（コンテンツ）」でライセンスを分けています。
 
 ### ライセンス(コード)
@@ -232,7 +238,7 @@ pdf:
 ### ライセンス(コンテンツ)
 本文（`content/` 配下の Markdown、画像・図版・イラスト等）は CC BY-NC-SA 4.0 です（商用利用不可）。
 
-- ライセンス本文: [LICENSE-content](./LICENSE-content)
+- ライセンス本文: [CONTENT-LICENSE.md](./CONTENT-LICENSE.md)
 - クリエイティブ・コモンズ: https://creativecommons.org/licenses/by-nc-sa/4.0/
 
 ### 第三者ライセンス（Third-Party Licenses）

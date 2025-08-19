@@ -7,5 +7,5 @@ node_modules/
 *.tmp
 .DS_Store
 Thumbs.db
-output.pdf
+*.pdf
 entries.js

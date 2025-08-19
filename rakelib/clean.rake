@@ -18,7 +18,7 @@ task :clean do
   
   # content/からコピーされたMDファイルを削除
   # README.mdとROADMAP.mdは保持
-  keep_files = ['README.md', 'ROADMAP.md']
+  keep_files = ['README.md', 'ROADMAP.md', 'CONTENT-LICENSE.md', 'THIRD-PARTY-LICENSES.md']
   Dir.glob('*.md').each do |file|
     next if keep_files.include?(file)
     cleanup_patterns << file
