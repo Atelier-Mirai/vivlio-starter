@@ -18,6 +18,7 @@ task :pdf do |t, args|
   else
     BookBuild.log_error("PDF生成失敗")
   end
+end
 
 # PDF圧縮
 namespace :pdf do
@@ -66,7 +67,6 @@ namespace :pdf do
       BookBuild.log_error('PDF圧縮に失敗しました')
     end
   end
-end
 end
 
 # エイリアス: `rake open` で `open:pdf` を呼び出す

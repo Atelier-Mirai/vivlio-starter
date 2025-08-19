@@ -17,11 +17,17 @@ rake build
     4) rake build toc により、11-gift.html 〜 16-ai.html 90-appendices.html から、03-toc.html生成。
     5) vivliostyle build 03-toc.html により 03-toc.pdf を生成。03-toc.pdfのページ数を取得する。
         vivliostyle config.jsのentryを、03-toc.htmlに変更する。
+        TOCビルドにカウンタ初期値を与え、pdf分割前から正しい番号が印字されるようにする
+        (toc.cssのcounter-reset: page <目次のページ数>;)
         output.pdf を 03-toc.pdf として出力する。
     6) vivliostyle build 11-gift.html 〜 16-ai.html 90-appendices.html 03-toc.htmlにより、temp.pdfを生成する
         vivliostyle config.jsのentryを、11-gift.html 〜 16-ai.html 90-appendices.html 03-toc.htmlに変更する。
         output.pdf を temp.pdf として出力する。
         目次のページ数に基づき、temp.pdf を、chapters_appendices.pdf と toc.pdfに分割する。
     6) toc.pdf のページ番号を、preface.pdf からの連番に変更する。
-    7) rake create:titlephon により、titlepage.pdf と colophone.pdf 生成。
+    7) rake create:titlephon により、titlepage.md と colophone.md 生成。
+       rake build titlepage により、titlepage.html 生成。
+       rake build colophone により、colophone.html 生成。
+       vivliostyle build titlepage.html により、titlepage.pdf 生成。
+       vivliostyle build colophone.html により、colophone.pdf 生成。
     8) titlepage.pdf, preface.pdf, toc.pdf, chapters_appendices.pdf, colophone.pdfを、output.pdf として、結合する。

@@ -1,12 +1,16 @@
 # 目次関連タスク
 require_relative 'common'
 
-desc "目次HTMLを生成します"
+desc "目次HTMLを生成します（引数でHTMLを列挙した場合はそれらのみ対象）"
 task :toc do
   BookBuild.log_info("目次の生成を開始します...")
-  
+
   require 'nokogiri'
-  
+
+  # 引数処理（ARGV から 'toc' を除去済みで files のみ取得）
+  args = BookBuild.process_args('toc')
+  files = (args[:files] || []).select { |f| f.end_with?('.html') }
+
   result = <<~MD
           ---
           link: 
@@ -20,12 +24,38 @@ task :toc do
 
   MD
 
-  # プロジェクトルート内の .html のうち、以下を除いて列挙する:
-  # 00-titlepage.html / 01-legalpage.html / 03-toc.html / 99-colophon.html
-  Dir.glob('*.html').reject { |file| file == '00-titlepage.html' || 
-                                     file == '01-legalpage.html' || 
-                                     file == '03-toc.html' || 
-                                     file == '99-colophon.html' }.sort.each do |target|
+  # 対象HTMLの選定
+  targets = if files.any?
+              files
+            else
+              # プロジェクトルート内の .html のうち、以下を除いて列挙する:
+              # 00-titlepage.html / 01-legalpage.html / 03-toc.html / 99-colophon.html
+              Dir.glob('*.html').reject { |file| file == '00-titlepage.html' ||
+                                             file == '01-legalpage.html' ||
+                                             file == '03-toc.html' ||
+                                             file == '99-colophon.html' }.sort
+            end
+
+  # 先頭に前書き(02-preface.html)のH1を必ず入れる（targetsに含まれていない場合のみ）
+  begin
+    unless targets.include?('02-preface.html')
+      if File.exist?('02-preface.html')
+        preface_html = File.read('02-preface.html', encoding: 'utf-8')
+        pre_doc = Nokogiri::HTML(preface_html)
+        h1 = pre_doc.at_css('h1')
+        if h1 && h1['id'] && !h1.text.strip.empty?
+          preface_id = h1['id']
+          preface_text = h1.text.strip
+          result += %{- <a class="toc-chapter-no-number" href="02-preface.html##{preface_id}">}
+          result += preface_text + "</a>\n"
+        end
+      end
+    end
+  rescue => _e
+    # 目次生成自体は続行（ログ冗長を避けて抑止）
+  end
+
+  targets.each do |target|
     content = File.read(target, encoding: 'utf-8')
     doc     = Nokogiri::HTML(content)
     

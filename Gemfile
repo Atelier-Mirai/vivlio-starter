@@ -16,5 +16,5 @@ source "https://rubygems.org"
 gem "kramdown", "~> 2.4"
 gem "nokogiri", "~> 1.16"
 
-# （任意）RakeをBundler管理したい場合は以下を有効化
-# gem "rake", "~> 13.2"
+# RakeをBundler管理（bundle exec rake ... が利用可能になる）
+gem "rake", "~> 13.2"
