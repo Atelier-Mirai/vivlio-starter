@@ -1,18 +1,28 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    cmdparse (3.0.7)
+    geom2d (0.4.1)
+    hexapdf (1.4.0)
+      cmdparse (~> 3.0, >= 3.0.3)
+      geom2d (~> 0.4, >= 0.4.1)
+      openssl (>= 2.2.1)
+      strscan (>= 3.1.2)
     kramdown (2.5.1)
       rexml (>= 3.3.9)
     nokogiri (1.18.9-arm64-darwin)
       racc (~> 1.4)
+    openssl (3.3.0)
     racc (1.8.1)
     rake (13.3.0)
     rexml (3.4.1)
+    strscan (3.1.5)
 
 PLATFORMS
   arm64-darwin-24
 
 DEPENDENCIES
+  hexapdf
   kramdown (~> 2.4)
   nokogiri (~> 1.16)
   rake (~> 13.2)

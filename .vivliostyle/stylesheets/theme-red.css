@@ -1,0 +1,9 @@
+/* theme-red.css
+   red系テーマのプリセット。theme.css の後に読み込んで上書きする。*/
+:root {
+  --theme-accent: var(--accent-red);
+  --section-bg-image: url("images/frame-red.png");
+  /* 必要なら扉絵も切替可
+  --chapter-door-image: url("images/door4.png");
+  */
+}

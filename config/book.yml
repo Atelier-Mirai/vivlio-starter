@@ -51,6 +51,8 @@ pdf:
   output_file: 'output.pdf'
   # 圧縮PDFファイル名（rake pdf:compress の既定値）
   output_file_compressed: 'output_compressed.pdf'
+  # Vivliostyleビルド時のコンソール出力を抑制（ENV VIVLIO_QUIET=1 でも可）
+  quiet: true
   
   # PDFを開く際のウィンドウ位置とサイズ
   # 形式: "{x, y, width, height}"

@@ -5,14 +5,22 @@ desc "PDFを生成します"
 task :pdf do |t, args|
   BookBuild.log_action("PDFを生成しています...")
   
-  # コマンドを実行
-  system('npx vivliostyle build')
+  # 出力抑制フラグ（ENV または config.yml の pdf.quiet）
+  pdf_config = BookBuild::CONFIG['pdf'] || {}
+  quiet = (ENV['VIVLIO_QUIET'] == '1') || (pdf_config['quiet'] == true)
+
+  # コマンドを実行（quiet の場合は /dev/null へ）
+  cmd = 'npx vivliostyle build'
+  if quiet
+    system(cmd, out: File::NULL, err: File::NULL)
+  else
+    system(cmd)
+  end
 
   if $?.success?
     BookBuild.log_success("PDF生成完了")
     
     # 生成されたPDFのパスを表示
-    pdf_config = BookBuild::CONFIG['pdf'] || {}
     pdf_path = pdf_config['output_file'] || 'output.pdf'
     BookBuild.log_info("出力先: #{File.expand_path(pdf_path)}")
   else

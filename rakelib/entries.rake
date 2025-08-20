@@ -10,13 +10,19 @@ task :entries do |t, args|
   # デバッグ用にオプションを表示
   BookBuild.log_action("entries.jsを生成しています...")
   
-  unless files.any?
-    # 目次を生成
-    Rake::Task['toc'].invoke
-  end
+  # unless files.any?
+  #   # 目次を生成
+  #   Rake::Task['toc'].invoke
+  # end
   
-  # 全HTMLファイルを取得
-  html_files = Dir.glob("*.html")
+  # 処理対象のHTMLファイル一覧を取得
+  if files.any?
+    # 引数で指定されたファイル群のみを対象（拡張子未指定なら .html を補完）
+    html_files = files.map { |f| File.extname(f).empty? ? "#{f}.html" : f }
+  else
+    # カレントディレクトリの .html 全てを対象
+    html_files = Dir.glob("*.html")
+  end
   
   # 処理対象ファイルを表示
   BookBuild.log_info("目次作成対象ファイル: #{html_files.join(', ')}")

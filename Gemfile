@@ -16,5 +16,8 @@ source "https://rubygems.org"
 gem "kramdown", "~> 2.4"
 gem "nokogiri", "~> 1.16"
 
+# PDF 編集用（PageLabels の付与に使用）
+gem "hexapdf"
+
 # RakeをBundler管理（bundle exec rake ... が利用可能になる）
 gem "rake", "~> 13.2"

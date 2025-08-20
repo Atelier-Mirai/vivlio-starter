@@ -1,0 +1,89 @@
+@charset "utf-8";
+
+/*
+  プロパティ並び順ガイドライン
+  --------------------------------------------------
+  各ルール内のプロパティは下記の順で記述する。
+  1) layout        : display / position / float / break-* / z-index / inset-*
+  2) box-size      : width / height / inline-size / block-size / box-sizing
+  3) spacing       : margin-* → padding-*（論理プロパティ優先）
+  4) typography    : font-* / line-height / text-* / letter-spacing
+  5) alignment     : text-align / align-* / justify-*
+  6) visual        : color / background / border / outline / shadow / opacity
+  7) counters/meta : counter-* / string-set / content などのメタ情報
+
+  備考:
+  - コメントでセクション見出し（layout等）を付ける。
+  - 値は論理プロパティ（margin-inline 等）を優先する。
+  - 既存プロパティの意味が変わらない範囲でのみ並び替える。
+*/
+
+/* コンポーネントスタイル: 書籍横断で再利用するカード等を定義する */
+/* =====================================================================
+   Book Card（参考書籍カード）
+   - 左: カバー画像 / 右: 書籍情報
+   - `book.html` の完成形イメージに合わせた見た目を移植
+   - Vivliostyle 出力時も破綻しにくいプロパティのみ使用
+   ===================================================================== */
+
+  /*
+    ::: {.book-card}
+    ![](ruby.png)
+    **ARuby入門**
+    初心者でも楽しみながらプログラミングを学べる一冊！
+    :::
+  */
+
+  /* 
+    <div class="book-card">
+      <img src="images/91-appendix-a/ruby.webp">
+      <div class="book-info">
+        <p class="book-title">CRuby入門</p>
+        <div class="book-description">
+          <p>初心者でも楽しみながらプログラミングを学べる一冊！</p>
+        </div>
+      </div>
+    </div>
+  */
+
+.book-card {
+  /* layout */
+  display: grid;
+  grid-template-columns: 1fr 3fr;
+  /* box-size */
+  width: 100%;
+  /* spacing */
+  margin-bottom: 5mm;
+  gap: 3mm;
+  /* visual */
+  background-color: #fff;
+  border-radius: 8px;
+}
+
+.book-card img {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.book-info {
+  /* layout */
+  display: grid;
+  grid-auto-rows: max-content;
+  /* spacing */
+  padding: 3mm;
+  row-gap: 3mm;
+}
+
+.book-title {
+  margin-block-start: 0;
+  margin-block-end: 1.5mm;
+  font-size: 14pt;
+}
+
+.book-description {
+  margin-block-end: 0;
+  font-size: 11pt;
+  line-height: 1.4;
+}

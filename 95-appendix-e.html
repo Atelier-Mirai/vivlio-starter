@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <title>コマンド／操作チートシート</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="stylesheets/appendix.css">
+  </head>
+  <body class="appendix">
+    <section class="level1" aria-labelledby="コマンド操作チートシート">
+      <h1 id="コマンド操作チートシート">コマンド／操作チートシート</h1>
+      <p>
+        <div class="chapter-lead">
+        頻出のコマンドと操作を最小限の説明でまとめました。安全に試せる順で並べ、破壊的操作には注意喚起を付けています。
+        </div>
+      </p>
+      <section class="level2" aria-labelledby="よく使う-rake-タスクプロジェクト内">
+        <h2 id="よく使う-rake-タスクプロジェクト内">よく使う Rake タスク（プロジェクト内）</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>コマンド</th>
+              <th>用途</th>
+              <th>補足</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>rake</code></td>
+              <td>デフォルトの一括ビルド（<code>build</code> 実行）</td>
+              <td>失敗時は下の個別手順で切り分け</td>
+            </tr>
+            <tr>
+              <td><code>rake help</code></td>
+              <td>利用可能なタスクの一覧と説明</td>
+              <td><code>rake -T</code> 相当を置換</td>
+            </tr>
+            <tr>
+              <td><code>rake preprocess</code></td>
+              <td>前処理（画像パス付与・FM生成・コード取り込み）</td>
+              <td>ログで差分を確認</td>
+            </tr>
+            <tr>
+              <td><code>rake convert</code></td>
+              <td>VFM→HTML 変換と post-replace</td>
+              <td>正規表現置換が走る点に注意</td>
+            </tr>
+            <tr>
+              <td><code>rake toc</code></td>
+              <td>目次 <code>toc.html</code> 生成</td>
+              <td>ブラウザ確認推奨</td>
+            </tr>
+            <tr>
+              <td><code>rake entries</code></td>
+              <td>章立て <code>entries.js</code> 生成</td>
+              <td>章追加後に実行</td>
+            </tr>
+            <tr>
+              <td><code>rake pdf</code></td>
+              <td>PDF 生成</td>
+              <td>失敗時は画像/テンプレの項を参照</td>
+            </tr>
+            <tr>
+              <td><code>rake open</code></td>
+              <td>生成した PDF を開く</td>
+              <td><code>pdf</code> のエイリアス</td>
+            </tr>
+            <tr>
+              <td><code>rake clean</code></td>
+              <td>生成物のクリーンアップ</td>
+              <td>ビルド不整合時の切り札</td>
+            </tr>
+            <tr>
+              <td><code>rake build</code></td>
+              <td>preprocess→convert→toc→entries→pdf→clean→open</td>
+              <td>時間計測に便利</td>
+            </tr>
+            <tr>
+              <td><code>rake vivliostyle:generate_config</code></td>
+              <td><code>vivliostyle.config.js</code> 再生成</td>
+              <td>設定更新時</td>
+            </tr>
+            <tr>
+              <td><code>rake create[番号-スラッグ]</code></td>
+              <td>新規章の作成</td>
+              <td>例: <code>rake create[21-sample]</code></td>
+            </tr>
+            <tr>
+              <td><code>rake delete[番号]</code></td>
+              <td>章の削除</td>
+              <td>例: <code>rake delete[21]</code>（破壊的）</td>
+            </tr>
+            <tr>
+              <td><code>rake renumber[旧,新]</code></td>
+              <td>章番号の変更/整列</td>
+              <td>例: <code>rake renumber[21,22]</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <p>Tips</p>
+        <ul>
+          <li>まず <code>rake clean &#x26;&#x26; rake</code> で不整合を解消してから個別切り分け</li>
+          <li>ログが抑制されている場合は verbose モードで再実行（必要なら）</li>
+        </ul>
+      </section>
+      <section class="level2" aria-labelledby="作業フロー別ミニレシピ">
+        <h2 id="作業フロー別ミニレシピ">作業フロー別ミニレシピ</h2>
+        <section class="level3" aria-labelledby="新しい章を追加してビルド">
+          <h3 id="新しい章を追加してビルド">新しい章を追加してビルド</h3>
+          <ol>
+            <li><code>rake create[95-appendix-e]</code></li>
+            <li>原稿を書く（<code>contents/</code> 配下）</li>
+            <li><code>rake</code> で一括ビルド → <code>rake open</code></li>
+          </ol>
+        </section>
+        <section class="level3" aria-labelledby="ビルドが不安定変更が反映されない">
+          <h3 id="ビルドが不安定変更が反映されない">ビルドが不安定/変更が反映されない</h3>
+          <ol>
+            <li><code>rake clean</code></li>
+            <li>画像パス/存在を確認（特に PNG/JPG の拡張子）</li>
+            <li><code>rake preprocess convert pdf</code></li>
+          </ol>
+        </section>
+        <section class="level3" aria-labelledby="pdf-生成が落ちる">
+          <h3 id="pdf-生成が落ちる">PDF 生成が落ちる</h3>
+          <ul>
+            <li>大きすぎる画像を圧縮/変換</li>
+            <li>テンプレ/フロントマターの構文を確認</li>
+          </ul>
+        </section>
+      </section>
+      <section class="level2" aria-labelledby="よく使うコマンド断片汎用">
+        <h2 id="よく使うコマンド断片汎用">よく使うコマンド断片（汎用）</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>スニペット</th>
+              <th>用途</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>which &#x3C;cmd></code></td>
+              <td>実体パスの確認</td>
+            </tr>
+            <tr>
+              <td><code>echo $PATH</code></td>
+              <td>PATH の並び確認</td>
+            </tr>
+            <tr>
+              <td><code>ls -l &#x3C;file></code></td>
+              <td>権限/所有者</td>
+            </tr>
+            <tr>
+              <td><code>curl -I &#x3C;url></code></td>
+              <td>ネットワーク到達性/ヘッダ</td>
+            </tr>
+            <tr>
+              <td><code>file &#x3C;path></code></td>
+              <td>画像/文書の実拡張・エンコーディング確認</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>注意</p>
+        <ul>
+          <li><code>delete</code> や <code>renumber</code> は破壊的になり得ます。実行前に Git 管理と差分確認を。</li>
+        </ul>
+        <hr class="pagebreak">
+        <p>末尾メモ: 表のカラム幅は CSS（<code>stylesheets/appendix-e.css</code>）で調整できます。</p>
+      </section>
+    </section>
+  </body>
+</html>
+

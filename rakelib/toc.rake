@@ -94,6 +94,35 @@ task :toc do
     end
   end
 
+  # 末尾に後書き(98-postface.html)のH1を必ず入れる（targetsに含まれていない場合のみ）
+  begin
+    unless targets.include?('98-postface.html')
+      if File.exist?('98-postface.html')
+        postface_html = File.read('98-postface.html', encoding: 'utf-8')
+        po_doc = Nokogiri::HTML(postface_html)
+        h1 = po_doc.at_css('h1')
+        if h1 && h1['id'] && !h1.text.strip.empty?
+          postface_id = h1['id']
+          postface_text = h1.text.strip
+          result += %{- <a class="toc-chapter-no-number" href="98-postface.html##{postface_id}">}
+          result += postface_text + "</a>\n"
+        end
+      elsif File.exist?(File.join('contents', '98-postface.md'))
+        # HTML が未生成の場合は Markdown から H1 を抽出して使用
+        md = File.read(File.join('contents', '98-postface.md'), encoding: 'utf-8')
+        if (m = md.match(/^\s*#\s+(.+?)\s*$/))
+          postface_text = m[1].strip
+          # VFM の見出しID生成に厳密一致は保証できないが、素直にテキストを ID として用いる
+          postface_id = postface_text
+          result += %{- <a class="toc-chapter-no-number" href="98-postface.html##{postface_id}">}
+          result += postface_text + "</a>\n"
+        end
+      end
+    end
+  rescue => _e
+    # 目次生成自体は続行（ログ冗長を避けて抑止）
+  end
+
   result += "\n</nav>"
   
   # Markdownファイルとして保存
