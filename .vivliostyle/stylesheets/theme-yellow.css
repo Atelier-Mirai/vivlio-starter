@@ -1,9 +1,0 @@
-/* theme-yellow.css
-   yellow系テーマのプリセット。theme.css の後に読み込んで上書きする。*/
-:root {
-  --theme-accent: var(--accent-yellow);
-  --section-bg-image: url("images/frame-yellow.png");
-  /* 必要なら扉絵も切替可
-  --chapter-door-image: url("images/door2.png");
-  */
-}
