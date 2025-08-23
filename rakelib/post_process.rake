@@ -103,6 +103,9 @@ task :post_process do |t, _args|
 
   # 行番号を追加(Prism.js対応)
   BookBuild.log_action('ソースコードに行番号を追加中...')
+  # 同一プロセス内で post_process が複数回呼ばれるケースに対応するため、
+  # prism:lines_all を毎回実行できるように reenable してから invoke する
+  Rake::Task['prism:lines_all'].reenable
   Rake::Task['prism:lines_all'].invoke
 
   BookBuild.log_success("ポスト置換処理完了 (合計: #{total_replacements}個の置換)")

@@ -46,10 +46,12 @@ body.chapter {
 /* 最初のページでページ番号を 1 表示にする */
 @page chapter:first { counter-reset: page 0; }
 
+/* stylelint-disable */
 /* ドキュメントの1ページ目に章扉背景を設定 */
 @page :nth(1) {
   background: center / cover no-repeat var(--chapter-door-image) fixed;
 }
+/* stylelint-enable */
 
 :root {
   /* 調整用カスタムプロパティ（見出し・節番号・背景の位置と余白） */
