@@ -1,3 +1,10 @@
+---
+link:
+- rel: stylesheet
+  href: stylesheets/postface.css
+lang: ja
+---
+
 # 終わりに
 
 「福祉」。「福」「祉[^1]」どちらも「めぐみ、さいわい」という意味を持ちます。
@@ -60,9 +67,12 @@ https://github.com/Atelier-Mirai/hobby-tech/tree/master も見てね。
 
 <https://github.com/Atelier-Mirai/hobby-tech/tree/master> も見てね。
 
-最新の進捗やソースコードは [GitHub](https://github.com/Atelier-Mirai/hobby-tech/tree/master) リポジトリも見てね。
+最新の進捗やソースコードは [GitHub](https://github.com/Atelier-Mirai/hobby-tech/tree/master) [^url1] リポジトリも見てね。
 
 
 [^1]: 「祉い」と書いて、「さいわい」と読みます。天からの恵みがその身に止まる意味です。サンプル文字列サンプル文字列サンプル文字列サンプル文字列。
 [^2]: 「祉い」と書いて、「さいわい」と読みます。天からの恵みがその身に止まる意味です。サンプル文字列サンプル文字列サンプル文字列サンプル文字列。
 [^3]: 「祉い」と書いて、「さいわい」と読みます。天からの恵みがその身に止まる意味です。サンプル文字列サンプル文字列サンプル文字列サンプル文字列。
+
+
+[^url1]: https://github.com/Atelier-Mirai/hobby-tech/tree/master

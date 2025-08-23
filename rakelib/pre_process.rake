@@ -103,6 +103,56 @@ def render_markdown_to_html(md_text)
   end
 end
 
+# Markdown内のリンク記法 [text](https://...) を脚注化し、文末にURL脚注を追加
+# - 画像リンク (![]()) は対象外
+# - 同一URLは同じ脚注番号に集約
+# - 既存の [^urlN]: がある場合は最大Nを検出して継続採番
+def transform_links_to_footnotes(md_text)
+  text = md_text.to_s
+
+  # 既存の url 脚注番号の最大を取得
+  max_n = 0
+  text.scan(/\[\^url(\d+)\]:/).each do |m|
+    n = m[0].to_i
+    max_n = n if n > max_n
+  end
+
+  url_id = {}
+  replacements = []
+
+  # リンク本体を置換（画像の直後 ! は除外）。URLのみ対象。
+  # 既に直後に脚注 [^urlN] がある場合は重複付与を避ける
+  replaced = text.gsub(/(?<!\!)\[(.+?)\]\((https?:[^\s)]+)\)(?!\[\^url\d+\])/) do |match|
+    label = $1
+    url   = $2
+    id = (url_id[url] ||= begin
+      max_n += 1
+      "url#{max_n}"
+    end)
+    # 置換後は「[ラベル](URL) [^urlN]」で、元のリンクは残す
+    replacements << [id, url]
+    "[#{label}](#{url}) [^#{id}]"
+  end
+
+  # 追加する脚注定義を生成（既に定義済みのものは重複させない）
+  existing_defs = {}
+  text.scan(/\[\^(url\d+)\]:\s*(\S+)/) { |id, u| existing_defs[id] = u }
+
+  new_defs = url_id.map { |u, id|
+    next nil if existing_defs.key?(id)
+    "[^#{id}]: #{u}"
+  }.compact
+
+  return replaced if new_defs.empty?
+
+  # 文末に空行2つを挟んで脚注定義を追記
+  if replaced.strip.end_with?("\n")
+    replaced + "\n" + new_defs.join("\n") + "\n"
+  else
+    replaced + "\n\n" + new_defs.join("\n") + "\n"
+  end
+end
+
 # book-card 内のMarkdownを事前整形（画像行/太字行の直後に空行を補う）
 def normalize_book_card_md(md_text)
   lines = md_text.to_s.split(/\r?\n/, -1) # 末尾の空行も保持
@@ -531,6 +581,16 @@ task :pre_process do |t, args|
     BookBuild.log_action("table-rotate内のMarkdownをHTMLへ変換中...")
     content = convert_table_rotate_inner_markdown(content)
     BookBuild.log_success("table-rotate内MarkdownのHTML化 完了")
+
+    # リンク記法を脚注化（印刷時にURLが明示されるようにする）
+    BookBuild.log_action("リンク記法を脚注化しています...")
+    before = content.dup
+    content = transform_links_to_footnotes(content)
+    if content != before
+      BookBuild.log_success("リンクの脚注化を適用")
+    else
+      BookBuild.log_info("脚注化の対象リンクはありません")
+    end
 
     # 処理後のファイルを保存
     File.write(output_file, content, encoding: 'utf-8')
