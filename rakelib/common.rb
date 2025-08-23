@@ -119,6 +119,21 @@ module BookBuild
       f == task_name || f.start_with?("#{task_name}[") || f.start_with?("#{task_name}:")
     end
 
+    # ファイル指定の正規化
+    # - 末尾の拡張子 .md を許容し、除去（例: 98-postface.md -> 98-postface）
+    # - 先頭のディレクトリ contents/ を許容し、除去（例: contents/98-postface -> 98-postface）
+    begin
+      contents_prefix = %r{\A#{Regexp.escape(BookBuild::CONTENTS_DIR)}/}
+      files = files.map { |name|
+        n = name.to_s
+        n = n.sub(contents_prefix, '')
+        n = File.basename(n, '.md')
+        n
+      }.reject { |n| n.nil? || n.strip.empty? }.uniq
+    rescue => _e
+      # 失敗時は無変換のまま続行
+    end
+
     # Rake が追加のコマンド引数を「タスク名」と誤認して実行後にエラーになるのを防ぐため、
     # ファイル引数らしきトークンに対してダミーの no-op タスクを事前定義する。
     # 例: `rake build 11-gift` の "11-gift" をダミータスク化。
