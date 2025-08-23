@@ -1,17 +1,17 @@
 @charset "utf-8";
 
-@import "base.css";
-@import "theme.css";
-@import "theme-blue.css";
-@import "page-settings-a4.css";
-@import "prism.css";
-@import "code.css";
-@import "table.css";
-@import "spacing.css";
-@import "layout-utils.css";
-@import "components.css";
+@import url("base.css");
+@import url("theme.css");
+@import url("theme-blue.css");
+@import url("page-settings-a4.css");
+@import url("prism.css");
+@import url("code.css");
+@import url("table.css");
+@import url("spacing.css");
+@import url("layout-utils.css");
+@import url("components.css");
+@import url("preface.css");
 
-@import "preface.css";
 /*
   プロパティ並び順ガイドライン
   --------------------------------------------------
@@ -46,14 +46,13 @@ body.appendix {
 
 /* 章タイトル（付録） */
 h1 {
-
   padding-block: 0;
+
   /* layout */
   position: relative;
   display: grid;              /* 帯内で本文を上下左右中央に */
   place-items: center;
-  align-content: center;      /* コンテンツ領域も中央に */
-  justify-content: center;
+  place-content: center center;      /* コンテンツ領域も中央に */
   gap: 0;
   break-before: recto;
 

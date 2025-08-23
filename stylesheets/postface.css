@@ -1,6 +1,6 @@
 @charset "utf-8";
 
-@import "base.css";
-@import "theme.css";
-@import "page-settings-a4.css";
-@import "preface.css";
+@import url("base.css");
+@import url("theme.css");
+@import url("page-settings-a4.css");
+@import url("preface.css");

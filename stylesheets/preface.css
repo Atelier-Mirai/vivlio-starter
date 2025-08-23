@@ -1,9 +1,9 @@
 @charset "utf-8";
 
-@import "base.css";
-@import "theme.css";
-@import "page-settings-a4.css";
-@import "layout-utils.css";
+@import url("base.css");
+@import url("theme.css");
+@import url("page-settings-a4.css");
+@import url("layout-utils.css");
 
 /*
   プロパティ並び順ガイドライン
@@ -30,6 +30,7 @@
   --header-color: #2c3e50;
   --link-color: #3498db;
   --accent-color: #e74c3c;
+
   /* additional theme neutrals */
   --border-color: #ddd;      /* rules, separators */
   --surface-color: #f9f9f9;  /* subtle backgrounds */
@@ -40,16 +41,21 @@ body.preface { page: front; }
 
 @page front {
   /* ノンブルをローマ数字（小文字）で表示 */
+  
   @bottom-center { content: counter(page, lower-roman); }
+  
   @top-center { content: none; }
 }
 
 /* 前付けの最初のページ設定（i から開始） */
 @page front:first {
   background: none !important;
+
   /* i から開始（= 1表示）にするため 0 リセット */
   counter-reset: page 0;
+  
   @top-center { content: none; }
+
   /* 最初のページもノンブルを表示する（必要なら content: none に変更可） */
 }
 
@@ -61,6 +67,7 @@ body {
   color: var(--text-color);
   text-align: justify;
   hanging-punctuation: allow-end;
+
   /* 数字の視認性と欧文の折返しを改善 */
   font-variant-numeric: lining-nums tabular-nums;
   hyphens: auto;
@@ -89,7 +96,7 @@ h2 {
   padding-block: 8pt;
   padding-inline-start: 15pt;
   border-inline-start: 3px solid var(--accent-color);
-  background: linear-gradient(90deg, rgba(231, 76, 60, 0.08) 0%, rgba(231, 76, 60, 0.03) 50%, transparent 100%);
+  background: linear-gradient(90deg, rgb(231 76 60 / 8%) 0%, rgb(231 76 60 / 3%) 50%, transparent 100%);
   page-break-after: avoid;
 }
 

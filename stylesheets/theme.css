@@ -23,14 +23,15 @@
   --color-column-bg:       #eef;           /* コラム背景 */
   --color-column-border:   #8df;           /* コラム枠 */
   --color-figure-border:   #ccc;           /* 図枠 */
-  --color-overlay:         rgba(255,255,255,0.7);
-  --color-shadow:          rgba(0,0,0,0.15);
+  --color-overlay:         rgb(255 255 255 / 70%);
+  --color-shadow:          rgb(0 0 0 / 15%);
   --color-danger:          #f00;
   --color-mark:            var(--theme-accent); /* h3マーク等 */
 
   /* 節番号テーマ（デフォルトはイエロー） */
   --section-number-color:  var(--theme-accent);
   --section-bg-image:      url("images/frame-yellow.png");
+
   /* テーマは yellow / blue / red から選択可能。
      変更する場合は :root で以下のように上書きする。
        - yellow: --theme-accent: var(--accent-yellow); --section-bg-image: url("images/frame-yellow.png");

@@ -3,6 +3,7 @@
 ========================================================================== */
 
 @charset "utf-8";
+
 @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Zen+Maru+Gothic:wght@700&display=swap");
 @import url('https://fonts.googleapis.com/css2?family=Zen+Kurenaido&display=swap');
 
@@ -52,7 +53,6 @@
   --base-line-height: 27.2Q;  /* 1.6倍行送り（17Q × 1.6） */
   --letters-per-line: 38;     /* 1行38字（全角換算） */
   --lines-per-page:   36;     /* 1ページ34行 */
-
   --page-margin-top:    28mm; /* 天地マージン：天のみ明示。地は自動計算 */
   --page-margin-xshift: -5.0mm; /* 左右マージンの微調整（正で右へ、負で左へ） */
   --column-font-size:   10.5Q;/* コラムのフォントサイズ */
@@ -63,7 +63,7 @@
   --code-font:      "udevgothic-r";     /* コードフォント */
 
   /* ノンブル（ページ番号）用 */
-  --folio-font:      "Hiragino Sans", "Helvetica Neue", Arial, sans-serif;
+  --folio-font:      "Hiragino Sans", "Helvetica Neue", arial, sans-serif;
   --folio-font-size: 13Q; /* ≒ 9.2pt（1Q≒0.709pt, 12.7Q≒9pt → 実用上13Q） */
   --folio-color:     #666;
 
@@ -92,16 +92,16 @@
   font-weight: 400;
 
   /* その他の指定 */
+  /* stylelint-disable-next-line property-no-unknown */
   text-spacing: auto; /* 文字間隔 */
   widows:       2;    /* 最後の行を次のページに移動させない（2行以上残す） */
   orphans:      2;    /* 最初の行を前のページに移動させない（2行以上送る） */
 }
 
 @page {
-  size:               var(--page-width) var(--page-height); /* 幅と高さ */
-  margin-block-start: var(--page-block-margin-start);  /* 上マージン */
-  margin-block-end:   var(--page-block-margin-end);    /* 下マージン */
-  margin-inline:      var(--page-inline-margin);       /* 左右マージン */
+  size: var(--page-width) var(--page-height); /* 幅と高さ */
+  margin-block: var(--page-block-margin-start) var(--page-block-margin-end); /* 上 下 */
+  margin-inline: var(--page-inline-margin); /* 左右マージン */
 
   /* ノンブル（共通） */
   @bottom-center {
@@ -114,10 +114,11 @@
   }
 }
 
-@page: left {
+@page :left {
   font-family:         var(--header-font);
-  margin-inline-start: calc(var(--page-inline-margin) + var(--page-margin-xshift));
-  margin-inline-end:   calc(var(--page-inline-margin) - var(--page-margin-xshift));
+  margin-inline: calc(var(--page-inline-margin) + var(--page-margin-xshift))
+                 calc(var(--page-inline-margin) - var(--page-margin-xshift));
+
   /* ノンブル */
   @bottom-left {
     /* 左ページ側ノンブル（デフォルトは無効） */
@@ -126,10 +127,11 @@
   }
 }
 
-@page: right {
+@page :right {
   font-family:         var(--header-font);
-  margin-inline-start: calc(var(--page-inline-margin) - var(--page-margin-xshift));
-  margin-inline-end:   calc(var(--page-inline-margin) + var(--page-margin-xshift));
+  margin-inline: calc(var(--page-inline-margin) - var(--page-margin-xshift))
+                 calc(var(--page-inline-margin) + var(--page-margin-xshift));
+
   /* ノンブル */
   @bottom-right {
     /* 右ページ側ノンブル（デフォルトは無効） */
@@ -147,13 +149,15 @@
 }
 
 /* 扉ページの設定 */
-@page: nth(1) {
+@page :first {
   /* タイトルを付けない */
   @top-right { content: none; }
 
   /* ページ番号を付けない */
   @bottom-center { content: none; }
+
   @bottom-left  { content: none; }
+
   @bottom-right { content: none; }
 }
 

@@ -3,6 +3,7 @@
 /* 第7章用スタイル */
 
 /* 章番号を設定 */
+
 /* TODO: 連番になるようにする */
 :root {
   counter-reset: chapter-counter 6;

@@ -57,6 +57,7 @@ body.toc { page: front; }
 
 #toc {
   /* typography */
+  /* stylelint-disable-next-line property-no-unknown */
   text-spacing: no-autospace;
 }
 

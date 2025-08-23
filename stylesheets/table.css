@@ -23,35 +23,25 @@ table {
   border-collapse: collapse;
   font-size: var(--base-font-size);
   line-height: 1.25em;
+  
   /* ページ中央に配置（横方向） */
   margin-inline: auto;
+  
   /* テーブル間のアキ（上下） */
   margin-block: 0.5lh;
+  
   /* ページ幅を超えないよう最大幅を制限 */
   max-inline-size: 100%;
+  
   /* 内容に応じて列幅を自動調整（固定幅にしない） */
   table-layout: auto;
-}
-
-/* 表の直前にある見出し相当の段落・見出しを中央寄せ */
-body:not(.appendix) p:has(+ table),
-body:not(.appendix) h1:has(+ table),
-body:not(.appendix) h2:has(+ table),
-body:not(.appendix) h3:has(+ table),
-body:not(.appendix) h4:has(+ table),
-body:not(.appendix) h5:has(+ table),
-body:not(.appendix) h6:has(+ table) {
-  text-align: center;
-  /* 印刷/組版でも安定して中央に置くため display: table + auto margin を採用 */
-  display: table;
-  margin-inline: auto;
-  margin-block-end: 0.25lh;
 }
 
 /* 見出し風のフォントスタイル（段落のみ） */
 p:has(+ table) {
   /* h4 相当のトーンに寄せる */
   font-family: var(--header-font);
+  /* stylelint-disable-next-line property-no-unknown */
   text-spacing: no-autospace;
   font-size: var(--base-font-size);
   font-weight: normal;
@@ -63,10 +53,27 @@ p:has(+ table)::before {
   content: none;
 }
 
+/* 表の直前にある見出し相当の段落・見出しを中央寄せ */
+body:not(.appendix) p:has(+ table),
+body:not(.appendix) h1:has(+ table),
+body:not(.appendix) h2:has(+ table),
+body:not(.appendix) h3:has(+ table),
+body:not(.appendix) h4:has(+ table),
+body:not(.appendix) h5:has(+ table),
+body:not(.appendix) h6:has(+ table) {
+  text-align: center;
+  
+  /* 印刷/組版でも安定して中央に置くため display: table + auto margin を採用 */
+  display: table;
+  margin-inline: auto;
+  margin-block-end: 0.25lh;
+}
+
 td,
 th {
   border: solid 0.1mm #000;
   padding: 1mm;
+  
   /* 長い単語/URL/コードでのはみ出し抑制 */
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -85,9 +92,11 @@ tr:nth-child(even) {
 .long-table {
   font-size: 11Q;
 }
+
 .long-table th {
   min-inline-size: auto;
 }
+
 .long-table td {
   text-align: end;
   vertical-align: bottom;
@@ -101,6 +110,7 @@ tr:nth-child(even) {
 .table-scroll {
   overflow-x: auto;
 }
+
 .table-scroll > table {
   min-inline-size: 100%;
 }
