@@ -6,7 +6,7 @@ task :clean do
   BookBuild.log_action(".vivliostyle ディレクトリを削除中...")
   FileUtils.rm_rf('.vivliostyle')
   
-  # 生成されたPDF以外のファイルを削除
+  # 生成ファイルを削除（PDFも含む）
   BookBuild.log_action("生成ファイルを削除中...")
   
   # プロジェクトルートの一時ファイルを削除
@@ -14,6 +14,7 @@ task :clean do
     '*.html',     # HTMLファイル
     '03-toc.md',  # 生成された目次MD
     'entries.js', # 生成されたentries.js
+    '*.pdf',      # 生成されたPDF
   ]
   
   # content/からコピーされたMDファイルを削除
