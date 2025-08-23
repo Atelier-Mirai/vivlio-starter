@@ -1,8 +1,8 @@
 @charset "utf-8";
 
-@import "base.css";
-@import "theme.css";
-@import "page-settings-a4.css";
+@import url("base.css");
+@import url("theme.css");
+@import url("page-settings-a4.css");
 
 /*
   プロパティ並び順ガイドライン
@@ -40,6 +40,8 @@
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
+  
+  /* visual */
   color: #333;
 
   /* counters/meta */
@@ -48,6 +50,7 @@
 
 /* 目次も前付け（front）としてローマ数字ノンブルを共通化 */
 body.toc { page: front; }
+
 @page front {
   @bottom-center { content: counter(page, lower-roman); }
 }
@@ -58,8 +61,10 @@ body.toc { page: front; }
 }
 
 #toc ul {
-  /* spacing */
+  /* visual */
   list-style: none;
+
+  /* spacing */
   margin-inline-start: 0;
   padding-inline-start: 0;
 
@@ -75,10 +80,12 @@ body.toc { page: front; }
 
 /* 目次参照（アンカーを使わないので色・下線の調整は不要） */
 
-/* 章目次（Grid） */
+/* 章目次 */
 .toc-chapter {
   /* layout */
-  
+  display: flex;
+  flex-wrap: wrap;          /* ULを次の行へ回す */
+  align-items: baseline;
 
   /* spacing */
   margin-block-end: 2mm;
@@ -92,18 +99,21 @@ body.toc { page: front; }
 .toc-chapter::before {
   /* layout */
   display: block;
+  flex-basis: 100%;        /* 見出しの直前に全幅ラインを出す */
+  
+  /* box-size */
   inline-size: 100%;
 
   /* typography */
   font-size: 19Q;
   line-height: 1.5;
 
+  /* spacing */
+  margin-block: 3mm 1mm;   /* 上3mm 下1mm */
+  padding-block-end: 1mm;  /* タイトル行に適度な余白 */
+
   /* visual */
   border-block-end: solid 0.5mm #000;
-  /* ensure the title appears on next line with a little breathing room */
-  padding-block-end: 1mm;
-  margin-block-start: 3mm; /* 章番号ラインの上に3mm */
-  margin-block-end: 1mm;
 
   /* counters/meta */
   content: "第 " counters(toc-list-counter, "-") " 章";
@@ -122,25 +132,33 @@ body.toc { page: front; }
   border-block-end: none;
 
   /* counters/meta */
+  
   /* 章のような別行・下線は付けず、行頭にラベルを付与 */
   content: "付録" counter(toc-list-appendix-counter, upper-alpha) ": ";
   counter-increment: toc-list-appendix-counter;
 }
 
 .toc-chapter::after {
-  font-size: 16Q;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
-  /* counters/meta */
-  content: leader(dotted) " " target-counter(attr(data-href url), page);
+  /* layout */
+  order: 1;                 /* タイトルの直後に配置 */
+  flex: 1 1 auto;           /* 右側を満たしてリーダーを引く */
+
   /* spacing */
   margin-inline-start: 1em;
+
   /* typography */
+  font-size: 16Q;
   letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+
+  /* visual */
   color: #333;
+
+  /* counters/meta */
+  content: leader(dotted) " " target-counter(attr(data-href url), page);
 }
 
-li:has(> .toc-chapter),
 li.toc-chapter {
   /* layout */
   break-inside: avoid;
@@ -149,9 +167,7 @@ li.toc-chapter {
   margin-block-end: 10mm;
 }
 
-/* 章目次（番号なし）のリストも改ページで割れにくくする */
-li:has(> .toc-chapter-no-number),
-li:has(> .toc-chapter-appendix),
+/* 章目次（番号なし）リストも改ページで割れにくくする */
 li.toc-chapter-no-number,
 li.toc-chapter-appendix {
   /* layout */
@@ -162,10 +178,12 @@ li.toc-chapter-appendix {
 .toc-chapter-no-number,
 .toc-chapter-appendix {
   /* layout */
+  
   /* display: grid;
   grid-template-columns: auto 4em; */
 
   /* spacing */
+  
   /* margin-block-end: 2mm; */
 
   /* typography */
@@ -179,7 +197,6 @@ li.toc-chapter-appendix {
 }
 
 /* 節目次（before＋リーダー） */
-li:has(> .toc-section),
 li.toc-section {
   /* layout */
   display: flex;
@@ -209,11 +226,13 @@ li.toc-section {
 
   /* alignment */
   text-align: end;
-  margin-inline-end: 2mm;
 
   /* counters/meta */
   content: counters(toc-list-counter, "-");
   counter-increment: toc-list-counter;
+
+  /* spacing */
+  margin-inline-end: 2mm;
 }
 
 /* 項（h3）のページ番号 */
@@ -225,20 +244,26 @@ li.toc-section {
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
+  
+  /* visual */
   color: #333;
 
   /* counters/meta */
   content: leader(dotted) " " target-counter(attr(data-href url), page);
 }
 
-/* 付録配下の節見出しは A-1, A-2 ... のように表示（セレクタを li クラスに対応） */
+/* 付録配下の節見出しは A-1, A-2 ... のように表示 */
+/* stylelint-disable no-descending-specificity */
+
 /* 付録 LI 直下の UL で節カウンタをリセット */
 li.toc-chapter-appendix > ul {
   /* counters/meta */
   counter-reset: appendix-sec 0;
 }
+/* stylelint-enable no-descending-specificity */
 
 /* その UL 配下の .toc-section を A-1, A-2 ... で採番 */
+
 /* まず汎用の節カウンタ挙動を打ち消し、表示専用にする */
 li.toc-chapter-appendix > ul .toc-section::before {
   /* counters/meta */
@@ -255,28 +280,34 @@ li.toc-chapter-appendix > ul > li {
 /* セクションのページ番号リーダーはリンク廃止に伴い非表示（削除） */
 
 /* セクション項目直下の子UL（小節リスト）の余白 */
-#toc li:has(> .toc-section) > ul,
 #toc li.toc-section > ul {
   /* layout */
   order: 2;                 /* 節行（番号・タイトル・リーダー）の次の行に配置 */
+  
   /* layout */
   flex-basis: 100%;       /* 次の行に回す */
+  
   /* spacing */
   margin-block-start: 2mm;
   padding-inline-start: 0; /* インデントは各小節LI側で与える */
 }
 
 /* 章タイトルの下に3mm（配下の小節リストを下げる） */
+/* stylelint-disable no-descending-specificity */
 li.toc-chapter > ul {
+  /* layout */
+  order: 2;                 /* タイトル行の次に回す */
+  flex-basis: 100%;
+
   /* spacing */
   margin-block-start: 3mm;
 }
+/* stylelint-enable no-descending-specificity */
 
 /* 小節（li.toc-subsection のみを対象） */
 li.toc-subsection {
   /* spacing */
-  margin-inline-start: 0;
-  margin-inline-end: 1em;
+  margin-inline: 0 1em;
   margin-block-end: 0.1em;
   padding-inline-start: 30mm; /* 小節の先頭に30mmの空白を確保 */
 
@@ -306,27 +337,36 @@ li.toc-subsection {
   counter-increment: toc-list-counter;
 }
 
-@page: left {
+@page :left {
   background: none;
 }
 
-@page: right {
+@page :right {
   background: none;
 }
 
 h2::before {
   content: none;
 }
+
 h2 {
-  
+  /* box-size */
   block-size: 2lh;
+
+  /* spacing */
   margin-block: 0;
+  padding-block-end: 1mm;
+
+  /* typography */
   font-size: 42Q;
   line-height: 48Q;
-  align-content: center;
   font-family: var(--header-font);
   letter-spacing: 0.02em;
-  padding-block-end: 1mm;
+
+  /* alignment */
+  align-content: center;
+
+  /* visual */
   border-block-end: none;
 }
 

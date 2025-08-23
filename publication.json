@@ -1,0 +1,21 @@
+{
+  "@context": [
+    "https://schema.org",
+    "https://www.w3.org/ns/pub-context"
+  ],
+  "type": "Book",
+  "conformsTo": "https://github.com/vivliostyle/vivliostyle-cli",
+  "name": "電気・電子技術への招待 ～古代の叡智から現代AIまで～",
+  "author": "アトリヱ未来",
+  "inLanguage": "ja",
+  "readingProgression": "ltr",
+  "dateModified": "2025-08-23T18:42:40.511Z",
+  "readingOrder": [
+    {
+      "url": "99-colophon.html",
+      "name": "colophon"
+    }
+  ],
+  "resources": [],
+  "links": []
+}
