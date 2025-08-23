@@ -83,7 +83,7 @@ body.toc { page: front; }
   grid-template-columns: auto 4em; */
 
   /* spacing */
-  margin-block-end: 2mm;
+  margin-block-end: 3mm;
 
   /* typography */
   font-size: 22Q;

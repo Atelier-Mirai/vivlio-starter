@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/stylelintrc",
+  "extends": [
+    "stylelint-config-standard"
+  ],
+  "rules": {
+    "property-no-unknown": [true, { "ignoreProperties": ["text-spacing"] }],
+    "unit-no-unknown": [true, { "ignoreUnits": ["Q"] }],
+    "function-no-unknown": [true, { "ignoreFunctions": ["leader", "target-counter", "target-text"] }],
+    "no-empty-source": null
+  }
+}

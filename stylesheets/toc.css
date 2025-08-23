@@ -27,8 +27,12 @@
   content: none;
 }
 
-/* 節（h2）のページ番号 */
+/* 節（h2）のページ番号はタイトルと同一行に表示（Flex 方式） */
 .toc-section::after {
+  /* layout */
+  flex: 1 1 auto;           /* 残り幅を占有してリーダーを引く */
+  order: 1;                 /* タイトルの直後、UL より先に配置 */
+
   /* spacing */
   margin-inline-start: 0.5em;
 
@@ -178,11 +182,13 @@ li.toc-chapter-appendix {
 li:has(> .toc-section),
 li.toc-section {
   /* layout */
-  position: relative;
+  display: flex;
+  flex-wrap: wrap;        /* 小節ULを次の行へ */
+  align-items: baseline;
   break-inside: avoid;
 
   /* spacing */
-  margin-inline-start: 15mm;
+  margin-inline-start: 0;
   margin-block-end: 2mm;
 
   /* typography */
@@ -193,15 +199,17 @@ li.toc-section {
 
 .toc-section::before {
   /* layout */
-  position: absolute;
-  inset-inline-start: -15mm;
-  display: block;
+  display: inline-block;  /* Flexアイテムとして振る舞う */
+
+  /* flex-size */
+  flex: 0 0 13mm;         /* 固定幅の番号欄 */
 
   /* box-size */
   inline-size: 13mm;
 
   /* alignment */
   text-align: end;
+  margin-inline-end: 2mm;
 
   /* counters/meta */
   content: counters(toc-list-counter, "-");
@@ -247,10 +255,15 @@ li.toc-chapter-appendix > ul > li {
 /* セクションのページ番号リーダーはリンク廃止に伴い非表示（削除） */
 
 /* セクション項目直下の子UL（小節リスト）の余白 */
-li:has(> .toc-section) > ul,
-li.toc-section > ul {
+#toc li:has(> .toc-section) > ul,
+#toc li.toc-section > ul {
+  /* layout */
+  order: 2;                 /* 節行（番号・タイトル・リーダー）の次の行に配置 */
+  /* layout */
+  flex-basis: 100%;       /* 次の行に回す */
   /* spacing */
   margin-block-start: 2mm;
+  padding-inline-start: 0; /* インデントは各小節LI側で与える */
 }
 
 /* 章タイトルの下に3mm（配下の小節リストを下げる） */
@@ -259,19 +272,19 @@ li.toc-chapter > ul {
   margin-block-start: 3mm;
 }
 
-/* 項目次（ぶら下げ） */
-li:has(> .toc-subsection),
+/* 小節（li.toc-subsection のみを対象） */
 li.toc-subsection {
   /* spacing */
-  margin-inline-start: 3em;
+  margin-inline-start: 0;
   margin-inline-end: 1em;
   margin-block-end: 0.1em;
+  padding-inline-start: 30mm; /* 小節の先頭に30mmの空白を確保 */
 
   /* typography */
   font-size: 13Q;
   line-height: 1.25;
   font-weight: 400;
-  text-indent: -3em;
+  text-indent: 0; /* ぶら下げを解除 */
 }
 
 .toc-subsection::before {
@@ -279,7 +292,7 @@ li.toc-subsection {
   display: inline-block;
 
   /* box-size */
-  min-inline-size: 2.5em;
+  min-inline-size: 2.5em; /* 番号欄（必要に応じて調整可） */
 
   /* spacing */
   margin-inline-end: 0.5em;

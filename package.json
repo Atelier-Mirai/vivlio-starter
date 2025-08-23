@@ -7,10 +7,24 @@
     "build:pdf": "vivliostyle build -c vivliostyle.config.js",
     "build:pdf:verbose": "vivliostyle build -c vivliostyle.config.js --verbose",
     "viv:version": "vivliostyle --version",
-    "vfm:version": "vfm --version"
+    "vfm:version": "vfm --version",
+    "lint:css": "stylelint \"stylesheets/**/*.css\"",
+    "lint:css:fix": "stylelint --fix \"stylesheets/**/*.css\""
   },
   "devDependencies": {
-    "@vivliostyle/cli": "9.6.0",
-    "vfm": "2.2.1"
+    "@vivliostyle/cli": "^8.20.0",
+    "@vivliostyle/vfm": "^2.2.1",
+    "stylelint": "^16.8.0",
+    "stylelint-config-standard": "^36.0.0"
+  },
+  "overrides": {
+    "prismjs": ">=1.30.0",
+    "refractor": {
+      "prismjs": ">=1.30.0"
+    },
+    "remark-parse": {
+      "trim": "0.0.3"
+    },
+    "trim": "0.0.3"
   }
 }
