@@ -17,6 +17,13 @@
 
 ## 謝辞
 
+https://github.com/Atelier-Mirai/hobby-tech/tree/master も見てね。
+
+<https://github.com/Atelier-Mirai/hobby-tech/tree/master> も見てね。
+
+最新の進捗やソースコードは [GitHub](https://github.com/Atelier-Mirai/hobby-tech/tree/master) リポジトリも見てね。
+
+
 本書の制作にあたり、日々学び合い、励まし合ってくださった皆さまに心より御礼申し上げます。読者の皆さまの「気づき」と「実践」が、著者にとって最大の原動力でした。校正を手伝ってくれた友人たち、貴重なご指摘をくださった先達、そして静かな環境を支えてくれた家族に、深い感謝を捧げます。
 
 ## 本書を読み終えたあなたへ
@@ -33,6 +40,9 @@
 - 気づきを3行でメモする（事実・解釈・次の一歩）。
 - 1つの用語を辞書で引き直す（語源・対義語を調べる）。
 - ありがとうを言葉で伝える（対象と行為を具体化する）。
+
+最新の進捗やソースコードは [GitHub](https://github.com/Atelier-Mirai/hobby-tech/tree/master) リポジトリも見てね。
+
 
 継続のコツは「無理をしないこと」と「続けられる形式を自分で設計すること」です。
 
@@ -52,15 +62,12 @@
 
 本書は、原稿管理にGit、組版にVivliostyle、スタイル検査にStylelintを用いて制作しました。ビルド工程ではRakeタスクを用いて、前処理・変換・後処理を段階的に実行し、図版最適化やコードハイライト、目次生成などを自動化しています。細部の改善は、読者体験の一貫性を高めるための反復の積み重ねでした。ここに記す手法は一例に過ぎません。あなたの環境・規模・目的に合わせて、自由に作り替えてください。
 
+最新の進捗やソースコードは [GitHub](https://github.com/Atelier-Mirai/hobby-tech/tree/master) リポジトリも見てね。
+
 ## おわりに（ふたたび）
 
 あなたがあなたの現場で、静かに、しかし確かに、次の一歩を踏み出せますように。小さな改善の連鎖が、やがて大きな変化を生むと信じています。どうか健やかに、朗らかに。
 
-https://github.com/Atelier-Mirai/hobby-tech/tree/master も見てね。
-
-<https://github.com/Atelier-Mirai/hobby-tech/tree/master> も見てね。
-
-最新の進捗やソースコードは [GitHub](https://github.com/Atelier-Mirai/hobby-tech/tree/master) リポジトリも見てね。
 
 
 [^1]: 「祉い」と書いて、「さいわい」と読みます。天からの恵みがその身に止まる意味です。サンプル文字列サンプル文字列サンプル文字列サンプル文字列。

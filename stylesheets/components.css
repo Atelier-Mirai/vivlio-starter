@@ -91,3 +91,59 @@
   font-size: 11pt;
   line-height: 1.4;
 }
+
+/* =====================================================================
+   Page Footnotes (Vivliostyle)
+   - post_process で本文直後に挿入される <aside class="page-footnote"> を
+     ページ下部の脚注として配置するための共通スタイル
+   ===================================================================== */
+.page-footnote {
+  /* layout */
+  display: inline;
+  float: none; /* 章内インライン脚注として扱う */
+
+  /* spacing */
+  margin-block: 0;
+  margin-inline-start: 0.25em;
+
+  /* typography */
+  font-size: inherit;
+  line-height: inherit;
+  text-indent: 0;
+}
+
+.page-footnote::before {
+  /* インライン脚注では番号を重複表示しない */
+  content: none;
+}
+
+/* 画面ではインライン脚注本文は非表示（行を維持するためにDOMは残す） */
+.page-footnote-inline {
+  display: none !important;
+}
+
+/* 印刷/PDF（Vivliostyle）では文脈に応じて切替:
+   - span.page-footnote: インライン（段落を分断しない）
+   - aside.page-footnote: ページ下部脚注
+*/
+@media print {
+  /* 段落内のインライン脚注本文は印刷でも非表示 */
+  span.page-footnote,
+  .page-footnote-inline {
+    display: none !important;
+  }
+
+  /* ブロック文脈の脚注はページ脚注へ */
+  aside.page-footnote {
+    display: block;
+    float: footnote;
+    margin-block: 0.5rlh 0;
+    margin-inline-start: 0;
+    font-size: 0.85em;
+    line-height: 1.4;
+  }
+  aside.page-footnote::before {
+    content: counter(footnote) ". ";
+    font-weight: 700;
+  }
+}
