@@ -124,6 +124,44 @@ project/
 └─ README.md                # このファイル
 ```
 
+## インストール（Gem/CLI）
+
+本プロジェクトは Gem としても利用できます（CLI 同梱）。
+
+```bash
+# Bundler（推奨）
+gem "vivlio-starter", "~> 0.1"
+
+# またはローカル .gem を直接インストール
+gem install ./vivlio-starter-0.1.0.gem
+```
+
+CLI は以下の 2 つのコマンド名で呼び出せます（同等）。
+
+- `vivlio-starter ...`
+- `vs ...`（省略形）
+
+主な使い方:
+
+```bash
+# タスク一覧（ヘルプ）
+vs help
+
+# 一括ビルド（PDF まで）
+vs build
+
+# 生成物クリーンアップ
+vs clean
+
+# PDF を開く
+vs open
+```
+
+備考:
+
+- CLI は内部で `Rakefile`/`rakelib/` をロードし、`rake` と同じタスクを提供します。
+- `VERBOSE=1` または `-v` で詳細ログを出せます（例: `vs build -v`）。
+
 ## クイックスタート
 
 ```bash
@@ -247,3 +285,38 @@ pdf:
 
 - Vivliostyle ライセンス: https://www.gnu.org/licenses/agpl-3.0.html
 - 第三者ライセンス一覧: [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LICENSES.md)
+
+## リリース手順（RubyGems）
+
+Gem を公開・更新する手順です。
+
+1. バージョン更新
+   - `lib/vivlio/starter/version.rb` の `VERSION` を更新
+   - CHANGELOG（必要に応じて）更新
+
+2. ビルド
+   ```bash
+   gem build vivlio-starter.gemspec
+   ls *.gem  # 生成物を確認
+   ```
+
+3. 公開（RubyGems）
+   ```bash
+   gem push vivlio-starter-<VERSION>.gem
+   ```
+
+4. Git タグ（任意）
+   ```bash
+   git commit -am "release: v<VERSION>"
+   git tag v<VERSION>
+   git push --tags
+   ```
+
+5. 利用側更新（Bundler）
+   - `Gemfile` で `gem "vivlio-starter", "~> <MAJOR>.<MINOR>"` を指定
+   - `bundle update vivlio-starter`
+
+## Changelog
+
+変更履歴は `CHANGELOG.md` を参照してください。
+

@@ -9,3 +9,7 @@ node_modules/
 Thumbs.db
 *.pdf
 entries.js
+
+# RubyGem artifacts
+*.gem
+pkg/*.gem

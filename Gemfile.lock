@@ -1,3 +1,11 @@
+PATH
+  remote: .
+  specs:
+    vivlio-starter (0.1.0)
+      hexapdf (~> 1.0)
+      kramdown (~> 2.4)
+      nokogiri (~> 1.16)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -22,10 +30,9 @@ PLATFORMS
   arm64-darwin-24
 
 DEPENDENCIES
-  hexapdf
-  kramdown (~> 2.4)
-  nokogiri (~> 1.16)
+  bundler (~> 2.5)
   rake (~> 13.2)
+  vivlio-starter!
 
 BUNDLED WITH
    2.6.9
