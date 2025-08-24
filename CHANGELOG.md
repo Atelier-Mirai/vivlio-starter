@@ -6,7 +6,12 @@
 
 ## [Unreleased]
 
-- 未定（TBD）
+—
+
+## [0.2.0] - 2025-08-25
+
+### 追加（Added）
+- CLI: `vs new <name>` で書籍プロジェクトの雛形を生成するコマンドを追加
 
 ## [0.1.0] - 2025-08-24
 
@@ -20,5 +25,6 @@
 - バージョンファイル追加: `lib/vivlio/starter/version.rb`（0.1.0）
 - README にインストール方法・CLI の使い方・リリース手順を追記
 
-[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Atelier-Mirai/vivlio-starter/releases/tag/v0.1.0

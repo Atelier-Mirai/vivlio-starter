@@ -162,7 +162,21 @@ vs open
 - CLI は内部で `Rakefile`/`rakelib/` をロードし、`rake` と同じタスクを提供します。
 - `VERBOSE=1` または `-v` で詳細ログを出せます（例: `vs build -v`）。
 
-## クイックスタート
+## クイックスタート（プロジェクト生成）
+
+```bash
+# 新しい書籍プロジェクトを作成
+vs new mybook
+
+cd mybook
+
+# 執筆開始（テンプレートの 01-chapter.md を編集）
+code contents/01-chapter.md
+
+# プレビュー/ビルド（例）
+vivliostyle preview   # または npx vivliostyle preview
+# 本リポジトリの Rake タスクがある場合は vs/rake も利用できます
+```
 
 ```bash
 # 初期化（必要ファイルの雛形など）
