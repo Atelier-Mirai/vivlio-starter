@@ -15,13 +15,24 @@ Gem::Specification.new do |spec|
 
   spec.required_ruby_version = ">= 3.0"
 
-  # Files
-  if File.exist?(".git") && system("git --version > /dev/null 2>&1")
-    spec.files = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
-  else
-    spec.files = Dir.glob("{bin,lib,stylesheets,contents,images,templates,config,rakelib}/**/*", File::FNM_DOTMATCH)
-    spec.files += %w[README.md LICENSE Rakefile Gemfile]
+  # Files (robust to uncommitted deletions): prefer git, filter to paths that exist
+  files = nil
+  if File.directory?(".git") && system("git --version > /dev/null 2>&1")
+    begin
+      files = `git ls-files -z`.split("\x0")
+    rescue
+      files = nil
+    end
   end
+
+  if files.nil? || files.empty?
+    files = Dir.glob("{bin,lib,config,rakelib}/**/*", File::FNM_DOTMATCH)
+    files += %w[README.md LICENSE Rakefile Gemfile]
+  end
+
+  # Keep only real files, exclude directories and missing paths; drop tests/specs
+  spec.files = files.select { |f| File.file?(f) }
+                   .reject { |f| f.match(%r{^(test|spec|features)/}) }
   spec.bindir        = "bin"
   spec.executables   = ["vivlio-starter", "vs"]
   spec.require_paths = ["lib"]
@@ -30,8 +41,9 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency "kramdown", "~> 2.4"
   spec.add_runtime_dependency "nokogiri", "~> 1.16"
   spec.add_runtime_dependency "hexapdf", "~> 1.0"
+  spec.add_runtime_dependency "mini_magick", "~> 4.12"
+  spec.add_runtime_dependency "rake", "~> 13.2"
 
   # Development dependencies
-  spec.add_development_dependency "rake", "~> 13.2"
   spec.add_development_dependency "bundler", "~> 2.5"
 end
