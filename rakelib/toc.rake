@@ -11,6 +11,9 @@ task :toc do
   args = BookBuild.process_args('toc')
   files = (args[:files] || []).select { |f| f.end_with?('.html') }
 
+  # ベースディレクトリ（常にプロジェクトルート）
+  base_dir = '.'
+
   result = <<~MD
           ---
           link: 
@@ -27,21 +30,23 @@ task :toc do
 
   # 対象HTMLの選定
   targets = if files.any?
-              files
+              files.map { |f| File.dirname(f) == '.' ? File.join(base_dir, f) : f }
             else
-              # プロジェクトルート内の .html のうち、以下を除いて列挙する:
+              # base_dir 内の .html のうち、以下を除いて列挙する:
               # 00-titlepage.html / 01-legalpage.html / 03-toc.html / 99-colophon.html
-              Dir.glob('*.html').reject { |file| file == '00-titlepage.html' ||
-                                             file == '01-legalpage.html' ||
-                                             file == '03-toc.html' ||
-                                             file == '99-colophon.html' }.sort
+              Dir.glob(File.join(base_dir, '*.html')).reject { |file|
+                                               File.basename(file) == '00-titlepage.html' ||
+                                               File.basename(file) == '01-legalpage.html' ||
+                                               File.basename(file) == '03-toc.html' ||
+                                               File.basename(file) == '99-colophon.html' }.sort
             end
 
   # 先頭に前書き(02-preface.html)のH1テキストを必ず入れる（targetsに含まれていない場合のみ）
   begin
-    unless targets.include?('02-preface.html')
-      if File.exist?('02-preface.html')
-        preface_html = File.read('02-preface.html', encoding: 'utf-8')
+    preface_path = File.join(base_dir, '02-preface.html')
+    unless targets.include?(preface_path)
+      if File.exist?(preface_path)
+        preface_html = File.read(preface_path, encoding: 'utf-8')
         pre_doc = Nokogiri::HTML(preface_html)
         h1 = pre_doc.at_css('h1')
         if h1 && !h1.text.strip.empty?
@@ -126,7 +131,8 @@ task :toc do
 
       # 対応する見出しのIDを使って data-href を付与
       elem_id   = elem['id']
-      data_href = elem_id && !elem_id.empty? ? "#{target}##{elem_id}" : target
+      rel = File.basename(target)
+      data_href = elem_id && !elem_id.empty? ? "#{rel}##{elem_id}" : rel
 
       open_item.call(klass, text, data_href)
     end
@@ -167,15 +173,15 @@ task :toc do
   result += "</ul>\n</nav>"
   
   # Markdownファイルとして保存（YAMLフロントマターとMarkdown見出しを含むため）
-  File.write('03-toc.md', result, encoding: 'utf-8')
+  File.write(File.join(base_dir, '03-toc.md'), result, encoding: 'utf-8')
   
   # VFMで変換
-  system("#{BookBuild::VFM_COMMAND} 03-toc.md > 03-toc.html")
-
+  system(%(#{BookBuild::VFM_COMMAND} "#{File.join(base_dir, '03-toc.md')}" > "#{File.join(base_dir, '03-toc.html')}"))
+  
   # 03-toc.html <body class="toc">に変更
-  content = File.read('03-toc.html', encoding: 'utf-8')
+  content = File.read(File.join(base_dir, '03-toc.html'), encoding: 'utf-8')
   content.sub!('<body>', '<body class="toc">')
-  File.write('03-toc.html', content, encoding: 'utf-8') 
+  File.write(File.join(base_dir, '03-toc.html'), content, encoding: 'utf-8') 
 
   BookBuild.log_success("目次生成完了")
 end

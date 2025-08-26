@@ -2,8 +2,7 @@
 
 @import url("base.css");
 @import url("theme.css");
-@import url("theme-blue.css");
-@import url("page-settings-a4.css");
+@import url("page-settings.css");
 @import url("prism.css");
 @import url("code.css");
 @import url("table.css");
@@ -43,8 +42,10 @@ body.chapter {
   @bottom-center { content: counter(page); }
 }
 
-/* 最初のページでページ番号を 1 表示にする */
-@page chapter:first { counter-reset: page 0; }
+@page chapter:first { 
+  /* 最初のページでページ番号を 1 表示にする */
+  counter-reset: page 0; 
+}
 
 /* stylelint-disable */
 /* ドキュメントの1ページ目に章扉背景を設定 */
@@ -194,7 +195,32 @@ h2 {
 h2::before {
   /* layout */
   position: absolute;
-  z-index: -1;
+  z-index: -2; /* 背景レイヤーを最背面に */
+
+  /* box-size */
+  inline-size: 182mm;
+  block-size: 49mm;
+
+  /* spacing */
+  padding-inline-start: var(--section-number-padding-inline-start);
+  padding-block-start: var(--section-number-padding-block-start);
+
+  /* 背景専用（番号テキストは ::after に分離） */
+  background: center / contain no-repeat var(--section-bg-image);
+
+  /* inset */
+  inset-inline-start: calc(var(--page-inline-margin) * -1 + var(--section-bg-inset-inline));
+  inset-block-start: calc((var(--page-block-margin-start) * -1) + var(--section-bg-inset-block));
+
+  /* counters/meta */
+  content: "";
+}
+
+/* 節番号テキスト（影付き）: 背景とは別レイヤーに分離して圧縮時の灰色化を回避 */
+h2::after {
+  /* layout */
+  position: absolute;
+  z-index: -1; /* 背景(::before)の一つ上に配置 */
 
   /* box-size */
   inline-size: 182mm;
@@ -214,12 +240,7 @@ h2::before {
 
   /* visual */
   color: var(--section-number-color);
-
-  /* テーマに応じた節番号色 */
   text-shadow: 0 0.6mm 1mm var(--color-shadow);
-
-  /* 背景上での可読性を向上 */
-  background: center / contain no-repeat var(--section-bg-image);
 
   /* inset */
   inset-inline-start: calc(var(--page-inline-margin) * -1 + var(--section-bg-inset-inline));

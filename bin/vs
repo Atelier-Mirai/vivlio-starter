@@ -1,7 +1,30 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'bundler/setup' rescue nil
+# Early re-exec with RUBYOPT=-W0 to suppress warnings from process start (incl. Bundler init)
+# Skip when debugging/warnings enabled explicitly.
+unless ENV['VS_DEBUG'] == '1' || ENV['VS_WARNINGS'] == '1' || ENV['VS_NO_REEXEC'] == '1'
+  rubopt = (ENV['RUBYOPT'] || '')
+  unless rubopt.split.include?('-W0')
+    ENV['RUBYOPT'] = (['-W0'] + rubopt.split).join(' ')
+    ENV['VS_NO_REEXEC'] = '1'
+    # Prefer re-exec via bundler so dependency resolution stays intact
+    begin
+      exec('bundle', 'exec', RbConfig.ruby, __FILE__, *ARGV)
+    rescue
+      # Fallback: run without bundler
+      exec(RbConfig.ruby, __FILE__, *ARGV)
+    end
+  end
+end
+
+# Quiet mode by default (suppress Ruby warnings). Enable with VS_DEBUG=1 or VS_WARNINGS=1
+$VERBOSE = nil unless ENV['VS_DEBUG'] == '1' || ENV['VS_WARNINGS'] == '1'
+
+# Prefer local library when running from this repository
+libdir = File.expand_path('../lib', __dir__)
+$LOAD_PATH.unshift(libdir) if File.directory?(libdir) && !$LOAD_PATH.include?(libdir)
+
 require 'vivlio/starter'
 
 exit Vivlio::Starter::CLI.start(ARGV)

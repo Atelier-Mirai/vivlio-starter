@@ -1,7 +1,7 @@
-<h1 class="book-title">電気・電子技術への招待</h1>
-<p class="subtitle subtitle--wave">古代の叡智から現代AIまで</p>
+<h1 class="book-title">技術書執筆への招待</h1>
+<p class="subtitle subtitle--wave">Vivlio Starter を使って</p>
 
-<p class="author"><span>[著]</span> アトリヱ未來</p>
+<p class="author"><span>[著]</span> 早乙女遙香</p>
 
 <div class="publication-info">
     <p class="series">技術書典 19 新刊</p>

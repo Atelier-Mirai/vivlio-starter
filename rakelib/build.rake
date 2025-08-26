@@ -216,7 +216,7 @@ task :build do |t, args|
   files   = args[:files]
   options = args[:options]
 
-  BookBuild.log_action("書籍をビルドしています...")
+  BookBuild.log_action("書籍をビルドしています…")
   
   # モード判定とタスクリスト
   if files.any?
@@ -229,7 +229,7 @@ task :build do |t, args|
     argv = []
   end
 
-  # フルビルド時の事前ステップ（Step 1）: 02-preface を単独ビルド → ページ数取得
+  # フルビルド時の事前ステップ（Step 2）: 02-preface を単独ビルド → ページ数取得
   if mode == :all
     # Step 0: まずはクリーンアップを実行
     BookBuild.log_action("[Step 0] クリーンアップを実行します…")
@@ -240,8 +240,43 @@ task :build do |t, args|
       BookBuild.log_warn("[Step 0] クリーンアップでエラー: #{e}")
     end
 
-    # Step 1: 02-preface のみ先行ビルド
-    BookBuild.log_action("[Step 1] 前書き (02-preface) のみ先行ビルドを実行します…")
+    # Step 1: 画像のリサイズ/最適化（WebP 変換）
+    begin
+      if options[:resize] == false
+        BookBuild.log_action("[Step 1] 画像最適化をスキップします（--no-resize）")
+      else
+        # プリセット選択: --high / --medium / --low （既定: --medium）
+        preset_task = if options[:high]
+                        'resize:high'
+                      elsif options[:low]
+                        'resize:low'
+                      elsif options[:medium]
+                        'resize:medium'
+                      else
+                        'resize:medium'
+                      end
+
+        BookBuild.log_action("[Step 1] 画像の最適化（WebP 変換/リサイズ）を実行します… preset=#{preset_task.split(':').last}")
+        # 対象ディレクトリ（存在するもののみ処理）
+        dirs = ['images', 'stylesheets/images']
+        dirs.each do |d|
+          if Dir.exist?(d)
+            BookBuild.log_info("[Step 1] 対象ディレクトリ: #{d}（preset: #{preset_task.split(':').last}）")
+            task = Rake::Task[preset_task]
+            task.reenable
+            task.invoke(d)
+          else
+            BookBuild.log_info("[Step 1] スキップ（存在しません）: #{d}")
+          end
+        end
+        BookBuild.log_success('[Step 1] 画像最適化が完了しました')
+      end
+    rescue => e
+      BookBuild.log_warn("[Step 1] 画像最適化でエラー: #{e}。ビルドは続行します")
+    end
+
+    # Step 2: 02-preface のみ先行ビルド
+    BookBuild.log_action("[Step 2] 前書き (02-preface) のみ先行ビルドを実行します…")
     begin
       # 02-preface のみを対象に、通常の files モードと同じ下位タスクを実行
       __run_tasks(TASKS_FOR[:files], ['02-preface'])
@@ -264,44 +299,61 @@ task :build do |t, args|
         BookBuild.log_warn("出力PDFが見つかりません: #{output_pdf}")
       end
     rescue => e
-      BookBuild.log_warn("[Step 1] 前書き先行ビルドでエラー: #{e}")
+      BookBuild.log_warn("[Step 2] 前書き先行ビルドでエラー: #{e}")
     end
 
-    # Step 2: 付録 (91〜97で始まる章) をビルドし、結合HTMLを作成
-    BookBuild.log_action("[Step 2] 付録章 (91〜97で始まる章) をビルドします…")
+    # Step 3: 付録 (91〜97で始まる章) をビルドし、結合HTMLを作成
+    BookBuild.log_action("[Step 3] 付録章 (91〜97で始まる章) をビルドします…")
     begin
       # contents/ 配下から 91〜97 で始まる .md を探索し、ベース名をビルド対象にする
       appendix_paths   = Dir[File.join('contents', '{91,92,93,94,95,96,97}-*.md')]
       appendix_targets = appendix_paths.map { |p| File.basename(p, '.md') }.uniq.sort
 
       if appendix_targets.empty?
-        BookBuild.log_warn('[Step 2] 付録候補(91〜97)が見つかりません。Step 2 をスキップします。')
+        BookBuild.log_warn('[Step 3] 付録候補(91〜97)が見つかりません。Step 3 をスキップします。')
       else
-        BookBuild.log_info("[Step 2] 対象: #{appendix_targets.join(', ')}")
+        BookBuild.log_info("[Step 3] 対象: #{appendix_targets.join(', ')}")
         # HTML生成（pdfはここでは未実施）
         __run_tasks(TASKS_FOR[:files], appendix_targets)
 
         # 以下とほぼ等価
         # verbose = BookBuild.verbose? ? ' -v' : ''
         # appendix_targets.each do |target|
-        #   system("rake pre_process #{target}#{verbose}")  or raise "[Step 2] pre_process failed: #{target}"
-        #   system("rake convert #{target}#{verbose}")      or raise "[Step 2] convert failed: #{target}"
-        #   system("rake post_process #{target}#{verbose}") or raise "[Step 2] post_process failed: #{target}"
+        #   system("rake pre_process #{target}#{verbose}")  or raise "[Step 3] pre_process failed: #{target}"
+        #   system("rake convert #{target}#{verbose}")      or raise "[Step 3] convert failed: #{target}"
+        #   system("rake post_process #{target}#{verbose}") or raise "[Step 3] post_process failed: #{target}"
         # end
 
         # 付録HTMLを結合して 90-appendices.html を生成
-        BookBuild.log_action("[Step 2] 付録HTMLを結合して 90-appendices.html を生成します…")
+        BookBuild.log_action("[Step 3] 付録HTMLを結合して 90-appendices.html を生成します…")
         Rake::Task['merge:appendices'].reenable
         Rake::Task['merge:appendices'].invoke
-        BookBuild.log_success("[Step 2] 90-appendices.html を生成しました")
+        BookBuild.log_success("[Step 3] 90-appendices.html を生成しました")
+
+        # 個別付録HTML (91-*.html 〜 97-*.html) をクリーンアップ
+        begin
+          removed = []
+          Dir.glob('{91,92,93,94,95,96,97}-*.html').each do |f|
+            next unless File.file?(f)
+            File.delete(f)
+            removed << File.basename(f)
+          end
+          if removed.any?
+            BookBuild.log_info("[Step 3] 個別付録HTMLを削除: #{removed.join(', ')}")
+          else
+            BookBuild.log_info("[Step 3] 削除対象の個別付録HTMLはありません")
+          end
+        rescue => e
+          BookBuild.log_warn("[Step 3] 個別付録HTMLのクリーンアップでエラー: #{e}")
+        end
       end
     rescue => e
-      BookBuild.log_warn("[Step 2] 付録ビルド/結合でエラー: #{e}")
+      BookBuild.log_warn("[Step 3] 付録ビルド/結合でエラー: #{e}")
     end
 
-    # Step 3: 章をビルドし、各HTMLを生成（11-*.md 〜 89-*.md が対象）
+    # Step 4: 章をビルドし、各HTMLを生成（11-*.md 〜 89-*.md が対象）
     # 例: rake build 11-gift -> 11-gift.html を生成
-    BookBuild.log_action("[Step 3] 章をビルドします…")
+    BookBuild.log_action("[Step 4] 章をビルドします…")
     begin
       # contents/ 配下の *.md を走査し、先頭の番号が 11..89 のものを対象にする
       chapter_paths = Dir[File.join('contents', '*.md')]
@@ -312,38 +364,39 @@ task :build do |t, args|
         .sort
 
       if chapter_targets.empty?
-        BookBuild.log_warn('[Step 3] 章が見つかりません。Step 3 をスキップします。')
+        BookBuild.log_warn('[Step 4] 章が見つかりません。Step 4 をスキップします。')
       else
-        BookBuild.log_info("[Step 3] 対象: #{chapter_targets.join(', ')}")
+        BookBuild.log_info("[Step 4] 対象: #{chapter_targets.join(', ')}")
         # HTML生成（pdfはここでは未実施）
         __run_tasks(TASKS_FOR[:files], chapter_targets)
-        BookBuild.log_success("[Step 3] 章 HTML を生成しました")
+        BookBuild.log_success("[Step 4] 章 HTML を生成しました")
       end
     rescue => e
-      BookBuild.log_warn("[Step 3] エラー: #{e}")
+      BookBuild.log_warn("[Step 4] エラー: #{e}")
     end
 
-    # Step 4: 目次の生成（11-*.html 〜 89-*.html ＋ 90-appendices.html を対象）
-    BookBuild.log_action("[Step 4] 目次(03-toc.html / 03-toc.pdf)を生成します…")
+    # Step 5: 目次の生成（11-*.html 〜 89-*.html ＋ 90-appendices.html を対象）
+    BookBuild.log_action("[Step 5] 目次(03-toc.html / 03-toc.pdf)を生成します…")
     begin
+      base_dir = '.'
       # 章HTML（11..89）を列挙
-      chapter_htmls = Dir.glob('*.html')
-                         .select { |f| f =~ /\A(\d+)-.*\.html\z/ && (11..89).include?($1.to_i) }
+      chapter_htmls = Dir.glob(File.join(base_dir, '*.html'))
+                         .select { |f| File.basename(f) =~ /\A(\d+)-.*\.html\z/ && (11..89).include?($1.to_i) }
                          .sort
       # 付録結合HTMLを追加（存在する場合）
-      appendix_html = '90-appendices.html'
+      appendix_html = File.join(base_dir, '90-appendices.html')
       targets_for_toc = chapter_htmls
       targets_for_toc << appendix_html if File.exist?(appendix_html)
 
       if targets_for_toc.empty?
-        BookBuild.log_warn('[Step 4] 対象HTMLが見つかりません。Step 4 をスキップします。')
+        BookBuild.log_warn('[Step 5] 対象HTMLが見つかりません。Step 5 をスキップします。')
       else
-        BookBuild.log_info("[Step 4] 対象: #{targets_for_toc.join(', ')}")
+        BookBuild.log_info("[Step 5] 対象: #{targets_for_toc.map { |p| File.basename(p) }.join(', ')}")
         # toc タスクに対象HTMLを引数として渡して実行
         __run_task_with_argv('toc', targets_for_toc)
 
         # 目次のPDFを生成
-        __run_task_with_argv('entries', ['03-toc.html'])
+        __run_task_with_argv('entries', [File.join(base_dir, '03-toc.html')])
         __run_task_with_argv('pdf', [])
 
         # output.pdf を 03-toc.pdf にリネーム
@@ -356,27 +409,28 @@ task :build do |t, args|
           FileUtils.mv(output_pdf, toc_pdf)
         end
 
-        BookBuild.log_success('[Step 4] 03-toc.pdf を生成しました')
+        BookBuild.log_success('[Step 5] 03-toc.pdf を生成しました')
       end
     rescue => e
-      BookBuild.log_warn("[Step 4] 目次生成でエラー: #{e}")
+      BookBuild.log_warn("[Step 5] 目次生成でエラー: #{e}")
     end
 
-    # Step 5: 章HTMLをPDF化（前付け+目次+本文）し、frontmatter/chapters に分割
-    BookBuild.log_action("[Step 5] 全体PDFを生成し、frontmatter/chapters に分割します…")
+    # Step 6: 章HTMLをPDF化（前付け+目次+本文）し、frontmatter/chapters に分割
+    BookBuild.log_action("[Step 6] 全体PDFを生成し、frontmatter/chapters に分割します…")
     begin
       # ビルド対象HTMLの順序を定義
-      toc_html = ['03-toc.html'].select { |f| File.exist?(f) }
-      chapter_htmls_for_pdf = Dir.glob('*.html')
-                                 .select { |f| f =~ /\A(\d+)-.*\.html\z/ && (11..89).include?($1.to_i) }
+      base_dir = '.'
+      toc_html = [File.join(base_dir, '03-toc.html')].select { |f| File.exist?(f) }
+      chapter_htmls_for_pdf = Dir.glob(File.join(base_dir, '*.html'))
+                                 .select { |f| File.basename(f) =~ /\A(\d+)-.*\.html\z/ && (11..89).include?($1.to_i) }
                                  .sort
-      appendix_html_for_pdf = File.exist?('90-appendices.html') ? ['90-appendices.html'] : []
+      appendix_html_for_pdf = File.exist?(File.join(base_dir, '90-appendices.html')) ? [File.join(base_dir, '90-appendices.html')] : []
       targets_for_pdf = chapter_htmls_for_pdf + appendix_html_for_pdf + toc_html
 
       if targets_for_pdf.empty?
-        BookBuild.log_warn('[Step 5] 対象HTMLが見つかりません。Step 5 をスキップします。')
+        BookBuild.log_warn('[Step 6] 対象HTMLが見つかりません。Step 6 をスキップします。')
       else
-        BookBuild.log_info("[Step 5] 対象: #{targets_for_pdf.join(', ')}")
+        BookBuild.log_info("[Step 6] 対象: #{targets_for_pdf.map { |p| File.basename(p) }.join(', ')}")
         __run_task_with_argv('entries', targets_for_pdf)
         __run_task_with_argv('pdf', [])
 
@@ -384,13 +438,13 @@ task :build do |t, args|
         output_pdf   = pdf_config['output_file'] || 'output.pdf'
 
         unless File.exist?(output_pdf)
-          BookBuild.log_warn("[Step 5] 出力PDFが見つかりません: #{output_pdf}")
+          BookBuild.log_warn("[Step 6] 出力PDFが見つかりません: #{output_pdf}")
         else
           # toc ページ数を算出（02-preface.pdf + 03-toc.pdf の合計）
           toc_pages     = (page_count('03-toc.pdf') || '0').to_i
 
           if toc_pages <= 0
-            BookBuild.log_warn('[Step 5] toc のページ数が 0 です。分割をスキップします。')
+            BookBuild.log_warn('[Step 6] toc のページ数が 0 です。分割をスキップします。')
           else
             # 本文.pdf と 目次.pdf に分割する
             split_pdf_chapters_then_frontmatter(
@@ -403,10 +457,10 @@ task :build do |t, args|
         end
       end
     rescue => e
-      BookBuild.log_warn("[Step 5] 章PDF化/分割でエラー: #{e}")
+      BookBuild.log_warn("[Step 6] 章PDF化/分割でエラー: #{e}")
     end
 
-    # Step 6: frontmatter.pdf に ローマ小 i〜 のページラベルを設定し、紙面にも描画する
+    # Step 7: frontmatter.pdf に ローマ小 i〜 のページラベルを設定し、紙面にも描画する
     begin
       # frontmatter.pdf を作成: 02-preface.pdf + (必要なら空白1ページ) + 03-toc.pdf
       preface_pdf      = '02-preface.pdf'
@@ -414,7 +468,7 @@ task :build do |t, args|
       frontmatter_pdf  = 'frontmatter.pdf'
 
       unless File.exist?(preface_pdf) && File.exist?(toc_pdf)
-        BookBuild.log_warn("[Step 6] frontmatter 構成ファイルが見つかりません: #{[preface_pdf, toc_pdf].reject { |f| File.exist?(f) }.join(', ')}")
+        BookBuild.log_warn("[Step 7] frontmatter 構成ファイルが見つかりません: #{[preface_pdf, toc_pdf].reject { |f| File.exist?(f) }.join(', ')}")
         raise "必要ファイル不足"
       end
 
@@ -424,21 +478,21 @@ task :build do |t, args|
         preface_pages = HexaPDF::Document.open(preface_pdf).pages.count
         insert_blank = preface_pages.odd?
       rescue => e
-        BookBuild.log_warn("[Step 6] #{preface_pdf} のページ数取得に失敗 (#{e})。空白挿入なしで続行します")
+        BookBuild.log_warn("[Step 7] #{preface_pdf} のページ数取得に失敗 (#{e})。空白挿入なしで続行します")
       end
 
       parts = [preface_pdf]
       blank_tmp = 'blank_frontmatter_insert.pdf'
       if insert_blank
         begin
-          # A4 Portrait: 595.28 x 841.89 pt（Step 8 と同等）
+          # A4 Portrait: 595.28 x 841.89 pt（Step 9 と同等）
           doc = HexaPDF::Document.new
           doc.pages.add([0, 0, 595.28, 841.89])
           doc.write(blank_tmp, optimize: true)
           parts << blank_tmp
-          BookBuild.log_info('[Step 6] 03-toc.pdf を奇数開始にするため、空白1ページを挿入します')
+          BookBuild.log_info('[Step 7] 03-toc.pdf を奇数開始にするため、空白1ページを挿入します')
         rescue => e
-          BookBuild.log_warn("[Step 6] 空白ページPDFの作成に失敗: #{e}。挿入をスキップします")
+          BookBuild.log_warn("[Step 7] 空白ページPDFの作成に失敗: #{e}。挿入をスキップします")
         end
       end
       parts << toc_pdf
@@ -446,9 +500,9 @@ task :build do |t, args|
       FileUtils.rm_f(frontmatter_pdf)
       cmd = ['bundle', 'exec', 'hexapdf', 'merge', *parts, frontmatter_pdf].join(' ')
       if system(cmd) && File.exist?(frontmatter_pdf)
-        BookBuild.log_success("[Step 6] frontmatter.pdf を生成しました (構成: #{parts.join(' + ')})")
+        BookBuild.log_success("[Step 7] frontmatter.pdf を生成しました (構成: #{parts.join(' + ')})")
       else
-        BookBuild.log_warn('[Step 6] frontmatter.pdf の生成に失敗しました')
+        BookBuild.log_warn('[Step 7] frontmatter.pdf の生成に失敗しました')
         raise 'frontmatter merge failed'
       end
 
@@ -457,15 +511,15 @@ task :build do |t, args|
 
       apply_page_labels_hexapdf('frontmatter.pdf', 0)
       if overlay_roman_page_numbers!('frontmatter.pdf')
-        BookBuild.log_success('[Step 6] frontmatter.pdf にローマ小 i〜 を描画しました')
+        BookBuild.log_success('[Step 7] frontmatter.pdf にローマ小 i〜 を描画しました')
       else
-        BookBuild.log_warn('[Step 6] frontmatter.pdf へのローマ小描画をスキップ/失敗')
+        BookBuild.log_warn('[Step 7] frontmatter.pdf へのローマ小描画をスキップ/失敗')
       end
     rescue => e
-      BookBuild.log_warn("[Step 6] ページ番号連番化処理でエラー: #{e}")
+      BookBuild.log_warn("[Step 7] ページ番号連番化処理でエラー: #{e}")
     end
 
-    # Step 7: 本扉、扉裏、後書き、奥付を生成する
+    # Step 8: 本扉、扉裏、後書き、奥付を生成する
     begin
       # 本扉（タイトルページ）
       Rake::Task['create:titlepage'].reenable
@@ -475,9 +529,9 @@ task :build do |t, args|
       FileUtils.rm_f('titlepage.pdf')
       if File.exist?('output.pdf')
         FileUtils.mv('output.pdf', '00-titlepage.pdf')
-        BookBuild.log_success('[Step 7] 00-titlepage.pdf を生成しました')
+        BookBuild.log_success('[Step 8] 00-titlepage.pdf を生成しました')
       else
-        BookBuild.log_warn('[Step 7] 00-titlepage の output.pdf が見つかりません')
+        BookBuild.log_warn('[Step 8] 00-titlepage の output.pdf が見つかりません')
       end
 
       # 扉裏（法的免責、商標等）
@@ -486,20 +540,62 @@ task :build do |t, args|
       FileUtils.rm_f('legalpage.pdf')
       if File.exist?('output.pdf')
         FileUtils.mv('output.pdf', '01-legalpage.pdf')
-        BookBuild.log_success('[Step 7] 01-legalpage.pdf を生成しました')
+        BookBuild.log_success('[Step 8] 01-legalpage.pdf を生成しました')
       else
-        BookBuild.log_warn('[Step 7] 01-legalpage の output.pdf が見つかりません')
+        BookBuild.log_warn('[Step 8] 01-legalpage の output.pdf が見つかりません')
       end
 
       # 後書き
+      # 直前までに生成された chapters_appendices.pdf のページ数から
+      # postface の開始ページ番号を算出し、postface.css の counter-reset を更新する
+      begin
+        ca_pdf = 'chapters_appendices.pdf'
+        postface_css = File.join('stylesheets', 'postface.css')
+        if File.exist?(ca_pdf) && File.exist?(postface_css)
+          ca_pages = HexaPDF::Document.open(ca_pdf).pages.count
+          # 付録/本文の直後から始まるため +1。さらに章末が奇数（=ca_pagesが奇数）の場合、
+          # 右ページ開始にするため空白1ページが入るのでさらに +1。
+          start_page_number = ca_pages + 1
+          start_page_number += 1 if ca_pages.odd?
+          reset_value = start_page_number - 1
+
+          css = File.read(postface_css, encoding: 'utf-8')
+          updated = nil
+          if css.include?('counter-reset: page')
+            updated = css.gsub(/counter-reset:\s*page\s*\d+/, "counter-reset: page #{reset_value}")
+          else
+            # 既存の @page postface:first ブロックが無い/書き換え対象が見つからない場合は追記
+            append_block = <<~CSS
+
+            @page postface:first {
+                /* 自動設定: 後書き開始ページ番号 */
+                counter-reset: page #{reset_value};
+            }
+            CSS
+            updated = css + append_block
+          end
+
+          if updated != css
+            File.write(postface_css, updated, encoding: 'utf-8')
+            BookBuild.log_info("[Step 8] postface.css の開始ページを #{start_page_number} に設定しました (counter-reset: #{reset_value})")
+          else
+            BookBuild.log_info('[Step 8] postface.css の更新対象が見つかりませんでした（変更なし）')
+          end
+        else
+          BookBuild.log_warn('[Step 8] chapters_appendices.pdf または stylesheets/postface.css が見つからないため、postface 開始ページの自動設定をスキップします')
+        end
+      rescue => e
+        BookBuild.log_warn("[Step 8] postface 開始ページ設定でエラー: #{e}")
+      end
+
       __run_tasks(TASKS_FOR[:files], ['98-postface'])
       __run_task_with_argv('pdf', [])
       FileUtils.rm_f('postface.pdf')
       if File.exist?('output.pdf')
         FileUtils.mv('output.pdf', '98-postface.pdf')
-        BookBuild.log_success('[Step 7] 98-postface.pdf を生成しました')
+        BookBuild.log_success('[Step 8] 98-postface.pdf を生成しました')
       else
-        BookBuild.log_warn('[Step 7] 98-postface の output.pdf が見つかりません')
+        BookBuild.log_warn('[Step 8] 98-postface の output.pdf が見つかりません')
       end
 
       # 奥付（colophon）
@@ -510,16 +606,16 @@ task :build do |t, args|
       FileUtils.rm_f('colophon.pdf')
       if File.exist?('output.pdf')
         FileUtils.mv('output.pdf', '99-colophon.pdf')
-        BookBuild.log_success('[Step 7] 99-colophon.pdf を生成しました')
+        BookBuild.log_success('[Step 8] 99-colophon.pdf を生成しました')
       else
-        BookBuild.log_warn('[Step 7] 99-colophon の output.pdf が見つかりません')
+        BookBuild.log_warn('[Step 8] 99-colophon の output.pdf が見つかりません')
       end
     rescue => e
-      BookBuild.log_warn("[Step 7] タイトル/奥付の生成でエラー: #{e}")
+      BookBuild.log_warn("[Step 8] タイトル/奥付の生成でエラー: #{e}")
     end
 
-    # Step 8: 本扉、扉裏、前書き、目次、本文、付録、後書き、奥付を結合
-    BookBuild.log_action("[Step 8] 本扉、扉裏、前書き、目次、本文、付録、後書き、奥付を結合します…")
+    # Step 9: 本扉、扉裏、前書き、目次、本文、付録、後書き、奥付を結合
+    BookBuild.log_action("[Step 9] 本扉、扉裏、前書き、目次、本文、付録、後書き、奥付を結合します…")
 
     files_to_merge = [
       '00-titlepage.pdf',
@@ -533,10 +629,10 @@ task :build do |t, args|
     existing_files = files_to_merge.select { |f| File.exist?(f) }
     missing_files  = files_to_merge - existing_files
 
-    BookBuild.log_warn("[Step 8] 結合対象が見つかりません: #{missing_files.join(', ')}") if missing_files.any?
+    BookBuild.log_warn("[Step 9] 結合対象が見つかりません: #{missing_files.join(', ')}") if missing_files.any?
 
     if existing_files.empty?
-      BookBuild.log_error('[Step 8] 結合対象PDFがありません。処理を中止します')
+      BookBuild.log_error('[Step 9] 結合対象PDFがありません。処理を中止します')
     else
       # 98-postface.pdf を右ページ開始（奇数ページ開始）に調整
       begin
@@ -562,26 +658,52 @@ task :build do |t, args|
               doc.pages.add([0, 0, 595.28, 841.89])
               doc.write(blank_path, optimize: true)
               existing_files.insert(idx, blank_path)
-              BookBuild.log_info('[Step 8] 98-postface.pdf を奇数開始にするため、空白1ページを挿入しました')
+              BookBuild.log_info('[Step 9] 98-postface.pdf を奇数開始にするため、空白1ページを挿入しました')
             rescue => e
-              BookBuild.log_warn("[Step 8] 空白ページPDFの作成に失敗: #{e}。調整をスキップします")
+              BookBuild.log_warn("[Step 9] 空白ページPDFの作成に失敗: #{e}。調整をスキップします")
             end
           end
         end
       rescue => e
-        BookBuild.log_warn("[Step 8] 奇数ページ開始調整中にエラー: #{e}")
+        BookBuild.log_warn("[Step 9] 奇数ページ開始調整中にエラー: #{e}")
       end
 
-      BookBuild.log_info("[Step 8] 結合順: #{existing_files.join(' -> ')}")
+      BookBuild.log_info("[Step 9] 結合順: #{existing_files.join(' -> ')}")
       FileUtils.rm_f('output.pdf')
       cmd = ['bundle', 'exec', 'hexapdf', 'merge', *existing_files, 'output.pdf'].join(' ')
       merged = system(cmd)
       if merged && File.exist?('output.pdf')
-        BookBuild.log_success('[Step 8] output.pdf を生成しました')
+        BookBuild.log_success('[Step 9] output.pdf を生成しました')
       else
-        BookBuild.log_error('[Step 8] PDF結合に失敗しました')
+        BookBuild.log_error('[Step 9] PDF結合に失敗しました')
       end
     end
+  end
+
+  # Step 10: 生成PDFを圧縮（--no-compress でスキップ）
+  begin
+    if options[:compress] == false
+      BookBuild.log_action("[Step 10] PDF圧縮をスキップします（--no-compress）")
+    else
+      BookBuild.log_action("[Step 10] 生成PDFを圧縮します…")
+      Rake::Task['pdf:compress'].reenable
+      Rake::Task['pdf:compress'].invoke
+    end
+  rescue => e
+    BookBuild.log_warn("[Step 10] PDF圧縮でエラー: #{e}")
+  end
+
+  # Step 11: 中間生成物のクリーンアップ（--no-clean でスキップ）
+  begin
+    if options[:clean] == false
+      BookBuild.log_action("[Step 11] クリーンアップをスキップします（--no-clean）")
+    else
+      BookBuild.log_action("[Step 11] 中間生成物をクリーンアップします…")
+      Rake::Task['clean'].reenable
+      Rake::Task['clean'].invoke
+    end
+  rescue => e
+    BookBuild.log_warn("[Step 11] クリーンアップでエラー: #{e}")
   end
 
   # タスクの実行
@@ -591,11 +713,7 @@ task :build do |t, args|
   end
 
   # 完了メッセージ
-  BookBuild.log_success(mode == :files ? "指定ファイルのビルド完了" : "全ファイルのビルド完了")
-
-  # クリーンアップ
-  # BookBuild.log_action("クリーンアップを実行しています...")
-  # Rake::Task['clean'].invoke
+  BookBuild.log_success(mode == :files ? "指定したファイルのビルドが完了しました" : "全ファイルのビルドが完了しました")
 
   # PDFを開く
   __open_pdf_if_macos

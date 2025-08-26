@@ -14,7 +14,6 @@ task :clean do
     '*.html',     # HTMLファイル
     '03-toc.md',  # 生成された目次MD
     'entries.js', # 生成されたentries.js
-    '*.pdf',      # 生成されたPDF
   ]
   
   # content/からコピーされたMDファイルを削除
@@ -25,13 +24,39 @@ task :clean do
     cleanup_patterns << file
   end
   
+  # 中間PDF（結合・作業用）を削除対象に追加（最終成果物は除外）
+  intermediate_pdfs = [
+    '00-titlepage.pdf',
+    '01-legalpage.pdf',
+    '02-preface.pdf',
+    '03-toc.pdf',
+    'frontmatter.pdf',
+    'chapters_appendices.pdf',
+    '98-postface.pdf',
+    '99-colophon.pdf',
+    'blank_page.pdf',
+    'blank_frontmatter_insert.pdf'
+  ]
+  cleanup_patterns.concat(intermediate_pdfs)
+  
+  # 最終成果物は保持
+  final_pdfs = [
+    (BookBuild::CONFIG.dig('pdf', 'output_file') || 'output.pdf'),
+    (BookBuild::CONFIG.dig('pdf', 'output_file_compressed') || 'output_compressed.pdf')
+  ].uniq
+  
   cleanup_patterns.each do |pattern|
     Dir.glob(pattern).each do |file|
       next if File.directory?(file)
       
-      FileUtils.rm(file)
+      # 最終成果物は削除しない
+      if final_pdfs.include?(file)
+        BookBuild.log_info("保持: #{file}")
+        next
+      end
+      
+      FileUtils.rm_f(file)
       BookBuild.log_info("#{file} を削除しました")
     end
-  end
-  
+  end  
 end

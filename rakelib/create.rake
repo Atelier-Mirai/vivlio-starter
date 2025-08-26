@@ -29,7 +29,7 @@ module ChapterCreator
   
   # テンプレートからコンテンツを生成する
   def self.generate_content_from_template(title)
-    template_path = "#{BookBuild::TEMPLATES_DIR}/chapter_template.md"
+    template_path = "#{BookBuild::CHAPTER_TEMPLATES_DIR}/chapter_template.md"
     
     if File.exist?(template_path)
       template_content = File.read(template_path)

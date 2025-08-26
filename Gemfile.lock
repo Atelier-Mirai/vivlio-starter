@@ -1,10 +1,12 @@
 PATH
   remote: .
   specs:
-    vivlio-starter (0.1.0)
+    vivlio-starter (0.3.0)
       hexapdf (~> 1.0)
       kramdown (~> 2.4)
+      mini_magick (~> 4.12)
       nokogiri (~> 1.16)
+      rake (~> 13.2)
 
 GEM
   remote: https://rubygems.org/
@@ -18,6 +20,7 @@ GEM
       strscan (>= 3.1.2)
     kramdown (2.5.1)
       rexml (>= 3.3.9)
+    mini_magick (4.13.2)
     nokogiri (1.18.9-arm64-darwin)
       racc (~> 1.4)
     openssl (3.3.0)
@@ -31,7 +34,6 @@ PLATFORMS
 
 DEPENDENCIES
   bundler (~> 2.5)
-  rake (~> 13.2)
   vivlio-starter!
 
 BUNDLED WITH

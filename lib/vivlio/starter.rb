@@ -1,6 +1,13 @@
 # frozen_string_literal: true
 
 require 'rake'
+require 'vivlio/starter/version'
+
+begin
+  require 'vivlio/starter/commands/new'
+rescue LoadError
+  # In case the command file is not available (older installs), ignore.
+end
 
 module Vivlio
   module Starter
@@ -17,13 +24,29 @@ module Vivlio
           # Load tasks packaged within this gem
           gem_root = File.expand_path('../../..', __FILE__)
           rakelib_dir = File.join(gem_root, 'rakelib')
-          # Load helper Ruby files first, then .rake task files
-          Dir[File.join(rakelib_dir, '*.rb')].sort.each { |f| load f }
+          # Load helper Ruby files first with require (idempotent), then .rake task files with load
+          Dir[File.join(rakelib_dir, '*.rb')].sort.each { |f| require f }
           Dir[File.join(rakelib_dir, '*.rake')].sort.each { |f| load f }
         end
       end
 
       def start(argv)
+        # Mark this process as CLI-driven so Rakefile guards allow execution
+        ENV['VS_CLI'] ||= '1'
+
+        # Built-in: version
+        if argv && (argv.first == '--version' || argv.first == '-V' || argv.first == 'version')
+          puts "vivlio-starter #{Vivlio::Starter::VERSION}"
+          return 0
+        end
+
+        # Intercept built-in commands that should work even if a project Rakefile exists
+        if argv && argv.first == 'new'
+          argv.shift # remove 'new'
+          name = argv.shift
+          return Commands::New.run(name) if defined?(Commands::New)
+        end
+
         load_tasks
 
         # Extract global flags

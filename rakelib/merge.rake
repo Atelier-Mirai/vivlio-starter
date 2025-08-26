@@ -1,18 +1,20 @@
 # frozen_string_literal: true
-# 付録HTML(91-*.html〜95-*.html)を単一HTMLに結合するRakeタスク
+# 付録HTML(91-*.html〜97-*.html)を単一HTMLに結合するRakeタスク
 # 使い方:
 #   rake merge:appendix [DIR=入力ディレクトリ OUT=出力先]
 # 既定:
-#   DIR=.
-#   OUT=appendices.html
+#   DIR='.'
+#   OUT=90-appendices.html（DIR 配下）
 
 require 'pathname'
+require_relative 'common'
 
 namespace :merge do
-  desc '付録HTML(91-*.html〜95-*.html)を単一HTMLに結合して出力する'
+  desc '付録HTML(91-*.html〜97-*.html)を単一HTMLに結合して出力する'
   task :appendices do
-    dir = ENV['DIR'] || '.'
-    out = ENV['OUT'] || '90-appendices.html'
+    base_dir = '.'
+    dir = ENV['DIR'] || base_dir
+    out = ENV['OUT'] || File.join(dir, '90-appendices.html')
 
     root = Pathname.new(dir)
     base_dir = root.expand_path
@@ -21,6 +23,7 @@ namespace :merge do
       exit 1
     end
 
+    # グロブで 91〜97 の章HTMLを抽出
     patterns = %w[91-*.html 92-*.html 93-*.html 94-*.html 95-*.html 96-*.html 97-*.html]
     files = patterns.flat_map { |p| Dir[base_dir.join(p).to_s] }
     files.sort!

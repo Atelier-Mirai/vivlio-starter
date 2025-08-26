@@ -11,11 +11,12 @@ task :help do
 
       rake create <chapter_name>   - 新しい章を作成
       rake delete <chapter_name>   - 章を削除
-      rake renumber <n1> <n2>      - 章番号を変更
+      rake renumber <n1> <n2>      - 章番号を変更（rename の別名）
       rake renumber                - 章番号を整列
+      rake rename <old> <new>      - 章名/番号を変更（例: 81-install → 81-introduction, 81 → 72）
 
-      rake vivliostyle:generate_config - vivliostyle.config.js生成
-      rake vs:config                   - 上記の短縮形
+      rake config                  - vivliostyle.config.jsを生成
+      vs config                    - 上記の短縮形（推奨）
 
       ## 以下は内部タスク
       rake preprocess              - 前処理（全ファイル）

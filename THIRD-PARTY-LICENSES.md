@@ -43,3 +43,14 @@ Notes:
 
 補足:
 - `stylesheets/prism.css` は PrismJS からダウンロードしたビルド版です。ファイル先頭に MIT ライセンスの注記を含めています。
+
+## HackGen / HackGen35
+- License: SIL Open Font License 1.1 (OFL-1.1)
+- Project: https://github.com/yuru7/HackGen
+- Copyright: (c) 2019, Yuko OTAWARA. with Reserved Font Name "白源", "HackGen"
+- License Text: included at `stylesheets/fonts/hackgen35/LICENSE`
+
+補足:
+- 未改変のフォントファイルを本プロジェクトに同梱・再配布することは OFL-1.1 のもとで許可されています（フォント単体販売は不可）。
+- 改変（サブセット化・合成など）を行う場合は Reserved Font Name を使用できません。別名にリネームして配布してください。
+- 電子出版物や PDF などへの埋め込みは許可されています。

@@ -2,9 +2,18 @@
 
 # Bundler の文脈を自動有効化（bundle exec 省略のため）
 begin
-  require 'bundler/setup'
+  # 既に Bundler が読み込まれている場合は二重初期化を避ける
+  require 'bundler/setup' unless defined?(Bundler)
 rescue LoadError
   # bundler が無い環境でも実行できるように無視
+end
+
+# 直接 `rake` コマンドの実行を抑止し、CLI 経由のみ許可
+if File.basename($0) == 'rake' && ENV['VS_ALLOW_RAKE'] != '1' && ENV['VS_CLI'] != '1'
+  # 最初の非オプション引数をタスク名として推定（無ければ build）
+  requested_task = ARGV.find { |a| a !~ /^-/ } || 'build'
+  warn "❌ このプロジェクトでは rake の直接実行は禁止です。代わりに `vs #{requested_task}` または `vivlio-starter #{requested_task}` を使用してください。"
+  exit 1
 end
 
 # 標準出力を抑制するためのモンキーパッチ（デバッグ中は無効化）

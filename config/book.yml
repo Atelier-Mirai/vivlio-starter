@@ -3,17 +3,79 @@
 # 書籍情報
 book:
   # 書籍名
-  main_title: '電気・電子技術への招待'
-  subtitle: '古代の叡智から現代AIまで'
+  main_title: '技術書執筆への招待'
+  subtitle: 'Vivlio Starter を使って'
   subtitle_style: wave  # bar | none も可
 
   # 付帯情報（任意）
   series: '技術書典 19 新刊'
   release: '令和七年十一月十五日 初版発行'
-  publisher: '早乙女 遙香'
-  contact: 'contact@atelier-mirai.net'
-  author: 'アトリヱ未來'
+  publisher: '○○印刷所' # 日光企画 ねこのしっぽ
+  contact: 'haruka@example.com'
+  author: '早乙女遙香' # 著者名
   language: 'ja'
+
+# テーマ
+theme:
+  door: 5        # 扉絵の画像番号（1から7 または 'door5' の形式で設定)
+  name: 'yellow' # yellow | blue | red の三色から選択
+
+# ページ設定
+page:
+  # 紙サイズ（A4 / B5 / A5）。指定すると幅・高さが自動設定されます。
+  size: A4
+  # 任意: 自動設定を上書きしたいときのみ指定
+  # width: '210mm'
+  # height: '297mm'
+
+  # 基本文字サイズ（Q: 和文組版の単位。1Q ≒ 0.25mm ≒ 0.709pt）
+  base_font_size: '17Q'
+  # 行送り（ベースライン間隔）。例: 27.2Q は 17Q × 1.6倍相当
+  base_line_height: '27.2Q'
+
+  # 1行の想定文字数（全角換算）
+  letters_per_line: '38'
+  # 1ページの想定行数
+  lines_per_page: '36'
+
+  # 上余白（天マージン）。下余白は版面計算で自動算出
+  margin_top: '28mm'
+  # 左右マージンの微調整（負で左へ、正で右へシフト）
+  margin_xshift: '-5mm'
+
+  # コラム（補足欄など）のフォントサイズ
+  column_font_size: '10.5Q'
+
+  # 本文フォント（単一名は無引用でOK。スペース含む場合は自動で引用）
+  main_text_font: Zen Kurenaido
+  # 見出しフォント
+  header_font: Zen Maru Gothic
+  # コード用フォント
+  # code_font: udevgothic-r
+  code_font: hackgen35
+
+  # ノンブル（ページ番号）のフォント
+  # 複数フォントを列挙する場合はカンマ区切りで、全体を二重引用符で囲むのが確実
+  folio_font: '"Hiragino Sans", "Helvetica Neue", arial, sans-serif'
+  # ノンブルのフォントサイズ（Q指定推奨）
+  folio_font_size: '13Q'
+  # ノンブルの色（CSSカラー値）
+  folio_color: '#666'
+
+  # ノンブル配置（center=中央/ sides=左右）
+  folio_placement: center
+
+# リーガル（免責・商標など）
+legal:
+  # 免責事項（Markdown可、複数段落可）
+  disclaimer: |
+    本書は教育目的で作成された入門書であり、情報の提供のみを目的としています。内容の正確性には万全を期しておりますが、技術的な詳細については、専門的な文献もあわせてご参照ください。
+    本書の内容を参考にした結果生じた損害や、本書の内容を実行・運用・適用したことによって発生した問題について、著者・発行者および関係者は一切の責任を負いかねます。
+
+  # 商標に関する事項（Markdown可、複数段落可）
+  trademark: |
+    本書に登場するシステム名や製品名は、関係各社の商標または登録商標です。
+    本書では ™、®、© などのマークは省略しています。
 
 # ディレクトリ設定
 directories:
@@ -21,7 +83,7 @@ directories:
   stylesheets: 'stylesheets' # CSSファイル
   images: 'images'           # 画像ファイル
   codes: 'codes'             # ソースコードファイル
-  templates: 'templates'     # テンプレートファイル
+  chapter_templates: 'chapter_templates'     # 章テンプレートファイル
 
 # コマンド設定
 commands:
@@ -51,6 +113,8 @@ pdf:
   output_file: 'output.pdf'
   # 圧縮PDFファイル名（rake pdf:compress の既定値）
   output_file_compressed: 'output_compressed.pdf'
+  # 圧縮エンジンの指定（qpdf | gs）。未指定時は qpdf 優先
+  compress_engine: qpdf
   # Vivliostyleビルド時のコンソール出力を抑制（ENV VIVLIO_QUIET=1 でも可）
   quiet: true
   

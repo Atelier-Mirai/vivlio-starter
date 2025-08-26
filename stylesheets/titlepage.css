@@ -2,7 +2,7 @@
 
 @import url("base.css");
 @import url("theme.css");
-@import url("page-settings-a4.css");
+@import url("page-settings.css");
 
 /*
   プロパティ並び順ガイドライン
@@ -26,12 +26,13 @@
    Title Page (本扉)
    ===================================================================== */
 
-.titlepage {
+body.titlepage {
     /* layout */
     page: titlepage;
     width: 100%;
 
     /* spacing */
+    margin: 0;
     padding-block: 0 var(--titlepage-padding-block, 80px);
 
     /* typography */

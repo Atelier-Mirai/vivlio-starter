@@ -6,7 +6,14 @@ require_relative 'options'
 # 書籍ビルドシステムの共通モジュール
 module BookBuild
   # 設定ファイルを読み込み
-  CONFIG_FILE = 'config/book.yml'
+  # プロジェクトの設定ファイルのみを対象: ./config/book.yml
+  DEFAULT_CONFIG_FILE  = 'config/book.yml'
+  CONFIG_FILE = DEFAULT_CONFIG_FILE
+  # <prefix>/config/book.yml を検出した場合は <prefix> をプレフィックスとして採用する
+  # 例: awesomebook/config/book.yml -> CONFIG_PREFIX = 'awesomebook'
+  #     config/book.yml              -> CONFIG_PREFIX = ''
+  # 現行の実装では CONFIG_FILE は常に 'config/book.yml' を指すため、
+  # プレフィックスの前置は行わない（簡素化）。
   
   def self.load_config
     if File.exist?(CONFIG_FILE)
@@ -20,7 +27,7 @@ module BookBuild
           'stylesheets' => 'stylesheets',
           'images' => 'images',
           'codes' => 'codes',
-          'templates' => 'templates'
+          'chapter_templates' => 'chapter_templates'
         },
         'commands' => {
           'vfm' => 'vfm'
@@ -36,11 +43,11 @@ module BookBuild
   CONFIG = load_config
   
   # ディレクトリ設定
-  CONTENTS_DIR      = CONFIG['directories']['contents']
-  STYLESHEETS_DIR   = CONFIG['directories']['stylesheets']
-  IMAGES_DIR        = CONFIG['directories']['images']
-  CODES_DIR         = CONFIG['directories']['codes']
-  TEMPLATES_DIR     = CONFIG['directories']['templates']
+  CONTENTS_DIR           = CONFIG['directories']['contents']
+  STYLESHEETS_DIR        = CONFIG['directories']['stylesheets']
+  IMAGES_DIR             = CONFIG['directories']['images']
+  CODES_DIR              = CONFIG['directories']['codes']
+  CHAPTER_TEMPLATES_DIR  = CONFIG['directories']['chapter_templates']
   
   # コマンド設定
   VFM_COMMAND       = CONFIG['commands']['vfm']
@@ -50,7 +57,8 @@ module BookBuild
   
   # ファイルタイプを判定
   def self.get_file_type(filename)
-    case filename
+    name = File.basename(filename.to_s)
+    case name
     when /^00-/
       'titlepage'
     when /^01-/
@@ -158,5 +166,40 @@ module BookBuild
       files: files,
       options: parsed[:options] || {}
     }
+  end
+
+  # 付録番号を文字(A=91..G=97)に変換
+  def self.appendix_number_to_letter(number)
+    case number.to_i
+    when 91 then 'a'
+    when 92 then 'b'
+    when 93 then 'c'
+    when 94 then 'd'
+    when 95 then 'e'
+    when 96 then 'f'
+    when 97 then 'g'
+    else 'x'
+    end
+  end
+
+  # CSSファイル内の counter-reset とコメントを章番号に合わせて更新
+  def self.update_css_counter(css_file, chapter_number)
+    return unless File.exist?(css_file)
+
+    content = File.read(css_file, encoding: 'utf-8')
+    updated = content.gsub(
+      /counter-reset:\s*chapter-counter\s+\d+/, 
+      "counter-reset: chapter-counter #{chapter_number - 10}"
+    )
+
+    updated = updated.gsub(
+      /\* 第\d+章用スタイル \*\//,
+      "* 第#{chapter_number - 10}章用スタイル */"
+    )
+
+    if content != updated
+      File.write(css_file, updated, encoding: 'utf-8')
+      BookBuild.log_info("counter-reset を #{chapter_number - 10} に更新")
+    end
   end
 end

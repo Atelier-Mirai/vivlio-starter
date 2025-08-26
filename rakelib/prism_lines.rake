@@ -102,7 +102,8 @@ namespace :prism do
   desc "HTMLファイル内のすべてのPrism.jsコードブロックに行番号を追加します"
   task :lines_all do
     verbose = ENV['VERBOSE'] == 'true'
-    html_files = Dir.glob("*.html")
+    base_dir = '.'
+    html_files = Dir.glob(File.join(base_dir, "*.html"))
     
     if html_files.empty?
       BookBuild.log_info("現在のディレクトリにHTMLファイルが見つかりません")

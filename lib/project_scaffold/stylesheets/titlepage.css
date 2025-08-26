@@ -1,0 +1,160 @@
+@charset "utf-8";
+
+@import url("base.css");
+@import url("theme.css");
+@import url("page-settings.css");
+
+/*
+  プロパティ並び順ガイドライン
+  --------------------------------------------------
+  各ルール内のプロパティは下記の順で記述する。
+  1) layout        : display / position / float / break-* / z-index / inset-*
+  2) box-size      : width / height / inline-size / block-size / box-sizing
+  3) spacing       : margin-* → padding-*（論理プロパティ優先）
+  4) typography    : font-* / line-height / text-* / letter-spacing
+  5) alignment     : text-align / align-* / justify-*
+  6) visual        : color / background / border / outline / shadow / opacity
+  7) counters/meta : counter-* / string-set / content などのメタ情報
+
+  備考:
+  - コメントでセクション見出し（layout等）を付ける。
+  - 値は論理プロパティ（margin-inline 等）を優先する。
+  - 既存プロパティの意味が変わらない範囲でのみ並び替える。
+*/
+
+/* =====================================================================
+   Title Page (本扉)
+   ===================================================================== */
+
+.titlepage {
+    /* layout */
+    page: titlepage;
+    width: 100%;
+
+    /* spacing */
+    padding-block: 0 var(--titlepage-padding-block, 80px);
+
+    /* typography */
+    font-family: 'Hiragino Mincho ProN', '游明朝', serif;
+    line-height: 1.5;
+    text-align: center;
+
+    /* alignment */
+    
+
+    /* visual */
+    color: #333; /* 子要素は継承させる */
+
+    /* container */
+    position: relative;            /* 絶対/固定配置の基準 */
+    min-block-size: 100vh;         /* ページ高に合わせて安定 */
+}
+
+/* 本扉の下側余白を詰め、ノンブルを非表示に */
+@page titlepage {
+    margin-bottom: 0;
+
+    @bottom-center {
+        content: none;
+    }
+
+    @bottom-left {
+        content: none;
+    }
+
+    @bottom-right {
+        content: none;
+    }
+}
+
+.book-title {
+    font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', sans-serif;
+    font-size: 33.6pt; /* 2.8rem 相当 */
+    font-weight: bold;
+
+    /* 見出しボックスの中央をページ上端から 65mm に配置 */
+    position: absolute;
+    inset-inline: 0;
+    inset-block-start: calc(65mm - var(--page-block-margin-start));
+    transform: translateY(-50%);
+}
+
+/* 副題 */
+.subtitle {
+    /* typography */
+    font-size: 16pt;
+    font-style: italic; /* 任意: 副題らしく */
+
+    /* layout: タイトル中心の約18mm下に配置 */
+    position: absolute;
+    inset-inline: 0;
+    inset-block-start: calc(65mm - var(--page-block-margin-start) + 18mm);
+    transform: translateY(-50%);
+    
+    /* spacing */
+    margin: 0;
+
+    /* adornments (configurable) */
+    --subtitle-prefix: ""; /* デフォルトは装飾なし */
+    --subtitle-suffix: "";
+}
+
+/* 副題の前後装飾（疑似要素） */
+.subtitle::before { content: var(--subtitle-prefix); }
+.subtitle::after  { content: var(--subtitle-suffix); }
+
+/* ヘルパークラス: 波ダッシュで括る */
+/* stylelint-disable-next-line selector-class-pattern */
+.subtitle--wave {
+    --subtitle-prefix: "～";
+    --subtitle-suffix: "～";
+}
+
+/* ヘルパークラス: 長音記号で括る */
+/* stylelint-disable-next-line selector-class-pattern */
+.subtitle--bar {
+    --subtitle-prefix: "ー";
+    --subtitle-suffix: "ー";
+}
+
+/* ヘルパークラス: 装飾なし（明示） */
+/* stylelint-disable-next-line selector-class-pattern */
+.subtitle--none {
+    --subtitle-prefix: "";
+    --subtitle-suffix: "";
+}
+
+.author {
+    font-size: 14.4pt; /* 1.2rem 相当 */
+
+    /* 見出し（.book-title）のボックス中央から下に35mmの位置に配置 */
+    position: absolute;
+    inset-inline: 0;
+    inset-block-start: calc(65mm - var(--page-block-margin-start) + 35mm);
+    margin: 0;
+    display: grid;
+    grid-auto-flow: column;   /* 横並び */
+    justify-content: center;  /* 全体を中央寄せ */
+    align-items: center;      /* 全体を中央寄せ */
+    column-gap: 0.4em;        /* ラベルと本文の間隔 */
+}
+
+.author span {
+    font-size: 0.9em; /* 親(.author)の90%で一回り小さく */
+}
+
+.publication-info {
+    /* ページ下端から 40mm 位置に配置 */
+    position: fixed;
+    inset-inline: 0;               /* 左右いっぱい（中央揃えを維持） */
+    bottom: 40mm;
+    font-size: 12pt; /* 1rem 相当 */
+}
+
+.series {
+    font-size: 14.4pt; /* 1.2rem 相当 */
+}
+
+.release-info {
+    margin: 0.5rem 0 0;
+}

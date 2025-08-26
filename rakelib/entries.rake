@@ -15,13 +15,19 @@ task :entries do |t, args|
   #   Rake::Task['toc'].invoke
   # end
   
+  # ベースディレクトリ（mybook 設定が有効なら mybook/ 配下）
+  base_dir = '.'
+
   # 処理対象のHTMLファイル一覧を取得
   if files.any?
     # 引数で指定されたファイル群のみを対象（拡張子未指定なら .html を補完）
-    html_files = files.map { |f| File.extname(f).empty? ? "#{f}.html" : f }
+    html_files = files.map do |f|
+      name = File.extname(f).empty? ? "#{f}.html" : f
+      File.dirname(name) == '.' ? File.join(base_dir, name) : name
+    end
   else
     # カレントディレクトリの .html 全てを対象
-    html_files = Dir.glob("*.html")
+    html_files = Dir.glob(File.join(base_dir, "*.html"))
   end
   
   # 処理対象ファイルを表示
@@ -55,7 +61,7 @@ task :entries do |t, args|
   end
   
   # entries.jsをES Module形式で書き込み
-  File.open("entries.js", "w") do |f|
+  File.open(File.join(base_dir, "entries.js"), "w") do |f|
     f.puts "export default ["
     entries.each_with_index do |entry, i|
       f.puts "  {"
@@ -63,7 +69,7 @@ task :entries do |t, args|
       f.puts "    \"title\": \"#{entry[:title]}\""
       f.puts "  }#{i < entries.length - 1 ? ',' : ''}"
     end
-    f.puts "];"
+    f.puts "]";
   end
   
   BookBuild.log_success("entries.js生成完了: #{entries.length}件のエントリを登録")

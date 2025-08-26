@@ -3,6 +3,7 @@
 log/
 tmp/
 node_modules/
+_sandbox/
 *.log
 *.tmp
 .DS_Store

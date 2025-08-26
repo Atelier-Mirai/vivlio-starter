@@ -221,11 +221,17 @@ task :post_process do |t, _args|
   files   = args[:files]
   options = args[:options]
 
+  # ベースディレクトリ（常にプロジェクトルート）
+  base_dir = '.'
+
   # 引数があれば .html のみを対象にする
   html_files = if files.any?
-    files.map { |f| f.end_with?('.html') ? f : "#{f}.html" }.uniq
+    files.map { |f|
+      name = f.end_with?('.html') ? f : "#{f}.html"
+      File.dirname(name) == '.' ? File.join(base_dir, name) : name
+    }.uniq
   else
-    Dir.glob('*.html')
+    Dir.glob(File.join(base_dir, '*.html'))
   end
 
   # file_typeを取得して、<body> にクラスを付与

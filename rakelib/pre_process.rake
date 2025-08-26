@@ -298,7 +298,205 @@ end
 # フロントマターを生成
 def generate_frontmatter(file_type, chapter_num = nil, existing_frontmatter = {})
   # ファイルタイプに対応する基本スタイルシート
-  stylesheets = ["#{file_type}.css"]
+  # 先頭にテーマCSSを注入: theme.css -> theme-<name>.css（book.yml の theme.name に基づく。既定: yellow）
+  theme_name = begin
+    cfg = BookBuild::CONFIG
+    t = (cfg && cfg['theme'] && cfg['theme']['name']) || 'yellow'
+    t = t.to_s.strip.downcase
+    %w[yellow blue red green purple].include?(t) ? t : 'yellow'
+  rescue
+    'yellow'
+  end
+
+  # 扉画像の選択（door1.webp〜door7.webp）。book.yml の theme.door は 1..7 または "doorN" を許容。
+  door_token = begin
+    cfg = BookBuild::CONFIG
+    raw = (cfg && cfg['theme'] && cfg['theme']['door'])
+    if raw.nil?
+      'door2' # 既定
+    else
+      s = raw.to_s.strip.downcase
+      if s =~ /^door([1-7])$/
+        "door#{$1}"
+      elsif s =~ /^[1-7]$/
+        "door#{s}"
+      else
+        'door2'
+      end
+    end
+  rescue
+    'door2'
+  end
+
+  # 選択されたテーマ値で stylesheets/theme.css を直接上書き（:root 変数を書き換え）
+  begin
+    theme_css_path = File.join(BookBuild::STYLESHEETS_DIR, 'theme.css')
+    css = File.read(theme_css_path, encoding: 'utf-8')
+
+    # --theme-accent を選択テーマに更新
+    css = css.gsub(/(--theme-accent:\s*var\()(--accent-[^)]+)(\)\s*;)/) do
+      pre, _old, post = $1, $2, $3
+      "#{pre}--accent-#{theme_name}#{post}"
+    end
+
+    # --section-bg-image を選択テーマのフレームに更新
+    css = css.gsub(/(--section-bg-image:\s*url\(")[^"]+("\)\s*;)/) do
+      pre, post = $1, $2
+      "#{pre}images/frame-#{theme_name}.webp#{post}"
+    end
+
+    # --chapter-door-image を door_token に更新
+    css = css.gsub(/(--chapter-door-image:\s*url\(")[^"]+("\)\s*;)/) do
+      pre, post = $1, $2
+      "#{pre}images/#{door_token}.webp#{post}"
+    end
+
+    File.write(theme_css_path, css, encoding: 'utf-8')
+    BookBuild.log_success("theme.css を更新: theme=#{theme_name}, door=#{door_token}")
+  rescue => _e
+    # 失敗しても前処理は継続（ログは静かに）
+  end
+
+  # appendix.css のアクセント色を設定（book.yml の theme.appendix_accent）
+  begin
+    appendix_choice = begin
+      cfg = BookBuild::CONFIG
+      a = (cfg && cfg['theme'] && cfg['theme']['appendix_accent']) || 'blue'
+      a = a.to_s.strip.downcase
+      %w[neutral red blue].include?(a) ? a : 'blue'
+    rescue
+      'blue'
+    end
+
+    color_map = {
+      'neutral' => '#111',
+      'red'     => '#c62828',
+      'blue'    => '#3da8c9'
+    }
+    hex = color_map[appendix_choice]
+
+    appendix_css_path = File.join(BookBuild::STYLESHEETS_DIR, 'appendix.css')
+    if File.exist?(appendix_css_path)
+      a_css = File.read(appendix_css_path, encoding: 'utf-8')
+      # --appendix-accent-color を置換（最初の定義のみ）
+      replaced = a_css.sub(/(--appendix-accent-color:\s*)#[0-9a-fA-F]{3,8}(\s*;)/, "\\1#{hex}\\2")
+      if replaced != a_css
+        File.write(appendix_css_path, replaced, encoding: 'utf-8')
+        BookBuild.log_success("appendix.css を更新: appendix_accent=#{appendix_choice} (#{hex})")
+      else
+        BookBuild.log_info('appendix.css に --appendix-accent-color の定義が見つかりません（置換なし）')
+      end
+    else
+      BookBuild.log_info("appendix.css が見つかりません: #{appendix_css_path}")
+    end
+  rescue => _e
+    # 前処理続行
+  end
+
+  # page-settings.css の各種変数を book.yml の page セクションから反映
+  begin
+    cfg = BookBuild::CONFIG
+    page_cfg = (cfg && cfg['page']).is_a?(Hash) ? cfg['page'] : {}
+
+    # 紙サイズ -> 既定の幅・高さ（mm）
+    size_map = {
+      'A4' => ['210mm', '297mm'],
+      'B5' => ['182mm', '257mm'],
+      'A5' => ['148mm', '210mm']
+    }
+    sz = page_cfg['size']
+    if sz && sz.to_s.strip != ''
+      key = sz.to_s.strip.upcase
+      if size_map[key]
+        # width/height が明示されていない場合のみサイズから補う
+        page_cfg['width']  = page_cfg['width']  && page_cfg['width'].to_s.strip != '' ? page_cfg['width']  : size_map[key][0]
+        page_cfg['height'] = page_cfg['height'] && page_cfg['height'].to_s.strip != '' ? page_cfg['height'] : size_map[key][1]
+      end
+    end
+
+    # ノンブル配置: YAMLの folio_center/left/right を無視し、folio_placement のみから強制設定
+    placement = page_cfg['folio_placement'].to_s.strip.downcase
+    placement = 'center' unless %w[center sides].include?(placement)
+    case placement
+    when 'center'
+      page_cfg['folio_center'] = 'counter(page)'
+      page_cfg['folio_left']   = 'none'
+      page_cfg['folio_right']  = 'none'
+    when 'sides'
+      page_cfg['folio_center'] = 'none'
+      page_cfg['folio_left']   = 'counter(page)'
+      page_cfg['folio_right']  = 'counter(page)'
+    end
+
+    # 値は単位付き文字列で設定（例: '210mm', '17Q', '#666', 'counter(page)', 'none' 等）
+    mappings = [
+      ['--page-width',            page_cfg['width']],
+      ['--page-height',           page_cfg['height']],
+      ['--base-font-size',        page_cfg['base_font_size']],
+      ['--base-line-height',      page_cfg['base_line_height']],
+      ['--letters-per-line',      page_cfg['letters_per_line']],
+      ['--lines-per-page',        page_cfg['lines_per_page']],
+      ['--page-margin-top',       page_cfg['margin_top']],
+      ['--page-margin-xshift',    page_cfg['margin_xshift']],
+      ['--column-font-size',      page_cfg['column_font_size']],
+      ['--main-text-font',        page_cfg['main_text_font'],  :font],
+      ['--header-font',           page_cfg['header_font'],     :font],
+      ['--code-font',             page_cfg['code_font'],       :font],
+      ['--folio-font',            page_cfg['folio_font'],      :font],
+      ['--folio-font-size',       page_cfg['folio_font_size']],
+      ['--folio-color',           page_cfg['folio_color']],
+      ['--folio-center-content',  page_cfg['folio_center']],
+      ['--folio-left-content',    page_cfg['folio_left']],
+      ['--folio-right-content',   page_cfg['folio_right']]
+    ]
+
+    # 対象CSSの候補（page-settings.css のみ）
+    candidates = []
+    primary_new = File.join(BookBuild::STYLESHEETS_DIR, 'page-settings.css')
+    candidates << primary_new
+    alt_new = File.join('awesomebook', 'stylesheets', 'page-settings.css')
+    candidates << alt_new unless alt_new == primary_new
+
+    candidates.uniq.each do |css_path|
+      next unless File.exist?(css_path)
+      css = File.read(css_path, encoding: 'utf-8')
+
+      updated = css.dup
+      mappings.each do |name, val, kind|
+        next if val.nil? || val.to_s.strip.empty?
+        v = val.to_s.strip
+        # フォント系は二重引用符で括る（既に引用符があればそのまま）
+        if kind == :font
+          # フォントリスト（カンマ区切り）の場合はそのまま
+          unless v.include?(',')
+            v = v =~ /^\s*".*"\s*$/ ? v : '"' + v + '"'
+          end
+        end
+
+        # content系は none や counter(page) 等をそのまま使う
+        # 一般的な置換（: root 内の --var: value; を対象）
+        updated = updated.sub(/(#{Regexp.escape(name)}:\s*)[^;]+(\s*;)/) do
+          pre, post = $1, $2
+          "#{pre}#{v}#{post}"
+        end
+      end
+
+      if updated != css
+        File.write(css_path, updated, encoding: 'utf-8')
+        BookBuild.log_success("#{File.basename(css_path)} を更新: #{css_path}")
+      else
+        BookBuild.log_info("#{File.basename(css_path)} に適用すべき差分はありません: #{css_path}")
+      end
+    end
+  rescue => _e
+    # 失敗しても続行
+  end
+
+  # フロントマターのCSSは theme.css と各ファイル種別のCSSのみを使用
+  stylesheets = [
+    'theme.css',
+    "#{file_type}.css"
+  ]
 
   # チャプター固有のCSSを追加
   if file_type == 'chapter' && chapter_num
@@ -318,6 +516,13 @@ def generate_frontmatter(file_type, chapter_num = nil, existing_frontmatter = {}
   
   # 既存のフロントマターをベースにする
   merged_frontmatter = existing_frontmatter.dup
+  # 既存の link から旧テーマCSSを除去（theme-*.css, theme-overrides.css）
+  if merged_frontmatter['link'].is_a?(Array)
+    merged_frontmatter['link'] = merged_frontmatter['link'].reject do |lnk|
+      href = (lnk && lnk['href']).to_s
+      href.match(%r{stylesheets/(theme-(yellow|blue|red|accent)\.css|theme-overrides\.css)})
+    end
+  end
   
   # 新しいフロントマターを適用
   new_frontmatter.each do |key, value|
@@ -449,7 +654,8 @@ task :pre_process do |t, args|
   BookBuild.log_action("Markdownファイルの前処理を行っています...")
   md_files.each do |md_file|
     filename = File.basename(md_file)
-    output_file = filename  # プロジェクトルートに出力
+    # 出力先: 常にプロジェクトルート
+    output_file = filename
     
     BookBuild.log_info("#{md_file} → #{output_file}")
     
@@ -523,15 +729,15 @@ task :pre_process do |t, args|
     
     # 画像パスを修正
     content = fix_image_paths(content, filename)
-    BookBuild.log_success("画像パス修正 #{filename}")
+    BookBuild.log_success("画像パスを修正しました: #{filename}")
     
     # ソースコードを取り込む
-    BookBuild.log_action("ソースコード読み込み記法をスキャン中...")
+    BookBuild.log_action("ソースコード読み込み記法をスキャンしています…")
     content = process_code_include(content)
-    BookBuild.log_success("ソースコード読み込み処理完了")
+    BookBuild.log_success("ソースコード読み込み処理が完了しました")
 
     # .book-card マークダウンブロックのみを事前にHTMLの<div>に変換（行走査・状態管理）
-    BookBuild.log_action("book-cardブロックをHTMLのdivに変換中...")
+    BookBuild.log_action("book-cardブロックをHTMLのdiv要素に変換しています…")
     in_book_card = false
     opened_count = 0
     closed_count = 0
@@ -549,15 +755,15 @@ task :pre_process do |t, args|
       end
     end
     content = converted_lines.join
-    BookBuild.log_success("book-cardブロックの事前変換 完了 開始:#{opened_count} 終了:#{closed_count}")
+    BookBuild.log_success("book-cardブロックの事前変換が完了しました（開始:#{opened_count}件 終了:#{closed_count}件）")
 
     # book-card の内側に残る素のMarkdownをHTMLへ変換
-    BookBuild.log_action("book-card内のMarkdownをHTMLへ変換中...")
+    BookBuild.log_action("book-card内のMarkdownをHTMLへ変換しています…")
     content = convert_book_card_inner_markdown(content)
-    BookBuild.log_success("book-card内MarkdownのHTML化 完了")
+    BookBuild.log_success("book-card内のMarkdownをHTMLへ変換しました")
 
     # .table-rotate マークダウンブロックを事前にHTMLの<div>に変換（行走査・状態管理）
-    BookBuild.log_action("table-rotateブロックをHTMLのdivに変換中...")
+    BookBuild.log_action("table-rotateブロックをHTMLのdiv要素に変換しています…")
     in_table_rotate = false
     tr_opened_count = 0
     tr_closed_count = 0
@@ -575,27 +781,27 @@ task :pre_process do |t, args|
       end
     end
     content = tr_converted_lines.join
-    BookBuild.log_success("table-rotateブロックの事前変換 完了 開始:#{tr_opened_count} 終了:#{tr_closed_count}")
+    BookBuild.log_success("table-rotateブロックの事前変換が完了しました（開始:#{tr_opened_count}件 終了:#{tr_closed_count}件）")
 
     # table-rotate の内側に残る素のMarkdown（表など）をHTMLへ変換
-    BookBuild.log_action("table-rotate内のMarkdownをHTMLへ変換中...")
+    BookBuild.log_action("table-rotate内のMarkdownをHTMLへ変換しています…")
     content = convert_table_rotate_inner_markdown(content)
-    BookBuild.log_success("table-rotate内MarkdownのHTML化 完了")
+    BookBuild.log_success("table-rotate内のMarkdownをHTMLへ変換しました")
 
     # リンク記法を脚注化（印刷時にURLが明示されるようにする）
-    BookBuild.log_action("リンク記法を脚注化しています...")
+    BookBuild.log_action("リンク記法を脚注化しています…")
     before = content.dup
     content = transform_links_to_footnotes(content)
     if content != before
-      BookBuild.log_success("リンクの脚注化を適用")
+      BookBuild.log_success("リンクの脚注化を適用しました")
     else
       BookBuild.log_info("脚注化の対象リンクはありません")
     end
 
     # 処理後のファイルを保存
     File.write(output_file, content, encoding: 'utf-8')
-    BookBuild.log_success("保存完了")
+    BookBuild.log_success("保存が完了しました")
   end
   
-  BookBuild.log_success("Markdown前処理完了")
+  BookBuild.log_success("Markdownの前処理が完了しました")
 end
