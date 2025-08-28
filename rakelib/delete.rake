@@ -6,30 +6,11 @@ require_relative 'common'
 # vs delete 11-install 12-tutorial
 # vs delete 11-21
 # vs delete 11 21-31
+  # 削除の確認を求める（--force / -f / --y があれば確認をスキップ）
 
+  
 module ChapterDeleter
   extend self
-
-  # 引数を検証し、正規化する
-  def ensure_filename(filename)
-    name = filename.to_s.strip
-    if name.empty?
-      BookBuild.log_error("ファイル名を指定してください (例: vs delete 21-history)")
-      return nil
-    end
-
-    # 拡張子付与
-    name << '.md' unless name.end_with?('.md')
-
-    # 既存チェック
-    file_path = "#{BookBuild::CONTENTS_DIR}/#{name}"
-    unless File.exist?(file_path)
-      BookBuild.log_warn("#{file_path} は存在しません")
-      return nil
-    end
-
-    name
-  end
 
   # 削除の確認を求める（--force / -f / --y があれば確認をスキップ）
   def confirm_deletion(file_path, options = {})
@@ -136,6 +117,31 @@ module ChapterDeleter
     path = File.join(BookBuild::CONTENTS_DIR, name)
     return File.exist?(path) ? [name] : []
   end
+
+  # --- ここから: dry-run 用ユーティリティ ---
+  def dry_run?(options)
+    opts = options || {}
+    !!(opts[:dry_run] || opts[:n])
+  end
+
+  def preview_deletions(basename, options)
+    base = basename.sub(/\.md$/, '')
+    md_file = File.join(BookBuild::CONTENTS_DIR, basename)
+    img_dir = File.join(BookBuild::IMAGES_DIR, base)
+    css_file = nil
+    if (num = BookBuild.get_chapter_number(basename))
+      css_file = File.join(BookBuild::STYLESHEETS_DIR, "#{num}.css")
+    end
+
+    puts "[DRY-RUN] #{base} の削除予定:"
+    puts "  - 文書:       #{md_file} #{File.exist?(md_file) ? '(exists)' : '(not found)'}"
+    puts "  - 画像Dir:    #{img_dir} #{Dir.exist?(img_dir) ? '(exists)' : '(not found)'}"
+    if css_file
+      puts "  - CSS:        #{css_file} #{File.exist?(css_file) ? '(exists)' : '(not found)'}"
+    else
+      puts "  - CSS:        (対象外)"
+    end
+  end
 end
 
 desc "指定した章を削除します (例: rake delete 21-history)"
@@ -157,6 +163,14 @@ task :delete do |t, args|
   if targets.empty?
     BookBuild.log_warn("指定に一致する章ファイルが見つかりませんでした: #{files.join(' ')}")
     exit 1
+  end
+
+  # dry-run: 削除予定を表示して終了
+  if ChapterDeleter.dry_run?(options)
+    puts "\n== Dry Run: 削除予定一覧 =="
+    targets.each { |basename| ChapterDeleter.preview_deletions(basename, options) }
+    puts "\n合計 #{targets.size} 章が対象（dry-run、実ファイルは変更されません）。"
+    exit 0
   end
 
   # 各ターゲットを削除

@@ -11,8 +11,8 @@
 #     - capitalization: 大文字小文字を正規表記（`name`/`abbr`）に統一（HTML/PDF など）
 #     - lowercase: 小文字表記に統一（例: `gem`）
 #     - hyphenation: ハイフン有無を統一（例: `vivlio-starter`）
-#     - spacing: スペースの有無/種別（将来拡張）
-#     - punctuation: 記号（コロン/ハイフン等）の種別や位置（将来拡張）
+  #     - spacing: スペースの有無/種別（将来拡張）
+  #     - punctuation: 記号（コロン/ハイフン等）の種別や位置（将来拡張）
 #     - wording: 語彙選択の指針（自動修正しません）
 #   - 現状の自動チェック/修正対象: capitalization / lowercase / hyphenation
 
