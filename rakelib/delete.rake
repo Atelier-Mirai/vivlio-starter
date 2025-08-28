@@ -21,6 +21,7 @@ module ChapterDeleter
     response == 'y' || response == 'yes'
   end
 
+
   # Markdownファイルを削除する
   def delete_markdown_file(filename, options)
     md_file = "#{BookBuild::CONTENTS_DIR}/#{filename}"
@@ -124,6 +125,17 @@ module ChapterDeleter
     !!(opts[:dry_run] || opts[:n])
   end
 
+  # Rake のグローバル dry-run（-n）を検出
+  def rake_dry_run?
+    if defined?(Rake) && Rake.respond_to?(:application)
+      app = Rake.application rescue nil
+      return !!(app && app.options && app.options.respond_to?(:dryrun) && app.options.dryrun)
+    end
+    false
+  rescue
+    false
+  end
+
   def preview_deletions(basename, options)
     base = basename.sub(/\.md$/, '')
     md_file = File.join(BookBuild::CONTENTS_DIR, basename)
@@ -132,15 +144,37 @@ module ChapterDeleter
     if (num = BookBuild.get_chapter_number(basename))
       css_file = File.join(BookBuild::STYLESHEETS_DIR, "#{num}.css")
     end
-
-    puts "[DRY-RUN] #{base} の削除予定:"
-    puts "  - 文書:       #{md_file} #{File.exist?(md_file) ? '(exists)' : '(not found)'}"
-    puts "  - 画像Dir:    #{img_dir} #{Dir.exist?(img_dir) ? '(exists)' : '(not found)'}"
+    
+    BookBuild.echo_always "[DRY-RUN] #{base} の削除予定:"
+    BookBuild.echo_always "  - 文書:       #{md_file} #{File.exist?(md_file) ? '(exists)' : '(not found)'}"
+    BookBuild.echo_always "  - 画像Dir:    #{img_dir} #{Dir.exist?(img_dir) ? '(exists)' : '(not found)'}"
     if css_file
-      puts "  - CSS:        #{css_file} #{File.exist?(css_file) ? '(exists)' : '(not found)'}"
+      BookBuild.echo_always "  - CSS:        #{css_file} #{File.exist?(css_file) ? '(exists)' : '(not found)'}"
     else
-      puts "  - CSS:        (対象外)"
+      BookBuild.echo_always "  - CSS:        (対象外)"
     end
+  end
+end
+
+namespace :delete do
+  # 明示的なプレビュー用タスク（Rake の -n に依存せず常に一覧を表示）
+  desc "削除予定を表示します（例: rake delete:preview 11-21 12-tutorial）"
+  task :preview do
+    args = BookBuild.process_args('delete:preview')
+    files   = args[:files]
+    options = args[:options]
+    if files.empty?
+      BookBuild.log_error("エラー: 対象章を指定してください (例: rake delete:preview 11-21)")
+      exit 1
+    end
+    targets = files.flat_map { |tok| ChapterDeleter.expand_token_to_basenames(tok) }.uniq
+    if targets.empty?
+      BookBuild.log_warn("指定に一致する章ファイルが見つかりませんでした: #{files.join(' ')}")
+      exit 1
+    end
+    BookBuild.echo_always "\n== 削除予定一覧 =="
+    targets.each { |basename| ChapterDeleter.preview_deletions(basename, options) }
+    BookBuild.echo_always "\n合計 #{targets.size} 章が対象（プレビューのみ。実ファイルは変更されません）。"
   end
 end
 
@@ -165,11 +199,11 @@ task :delete do |t, args|
     exit 1
   end
 
-  # dry-run: 削除予定を表示して終了
-  if ChapterDeleter.dry_run?(options)
-    puts "\n== Dry Run: 削除予定一覧 =="
+  # dry-run: 削除予定を表示して終了（自前 --dry-run または Rake の -n どちらでも対応）
+  if ChapterDeleter.dry_run?(options) || ChapterDeleter.rake_dry_run?
+    BookBuild.echo_always "\n== Dry Run: 削除予定一覧 =="
     targets.each { |basename| ChapterDeleter.preview_deletions(basename, options) }
-    puts "\n合計 #{targets.size} 章が対象（dry-run、実ファイルは変更されません）。"
+    BookBuild.echo_always "\n合計 #{targets.size} 章が対象（dry-run、実ファイルは変更されません）。"
     exit 0
   end
 
@@ -178,5 +212,35 @@ task :delete do |t, args|
     ChapterDeleter.delete_markdown_file(basename, options)
     ChapterDeleter.delete_image_directory(basename, options)
     ChapterDeleter.delete_css_file(basename, options)
+  end
+end
+
+# Rake の -n（dry-run）時はタスクのアクションが実行されず、上記の一覧が出ない。
+# そのため、ファイルロード時に ARGV を解析し、delete タスクが指定されていて
+# かつ Rake が dryrun のときは at_exit でプレビューを表示する。
+if defined?(Rake) && Rake.respond_to?(:application)
+  begin
+    app = Rake.application
+    if app && app.options && app.options.respond_to?(:dryrun) && app.options.dryrun
+      # delete タスクがターゲットかをざっくり判定
+      invoked_delete = ARGV.any? { |a| a == 'delete' || a.start_with?('delete[') || a.start_with?('delete:') }
+      if invoked_delete
+        at_exit do
+          args = BookBuild.process_args('delete')
+          files   = args[:files]
+          options = args[:options]
+          targets = files.flat_map { |tok| ChapterDeleter.expand_token_to_basenames(tok) }.uniq
+          if targets.empty?
+            BookBuild.log_warn("指定に一致する章ファイルが見つかりませんでした: #{files.join(' ')}")
+          else
+            BookBuild.echo_always "\n== Dry Run: 削除予定一覧 (Rake -n 検出) =="
+            targets.each { |basename| ChapterDeleter.preview_deletions(basename, options) }
+            BookBuild.echo_always "\n合計 #{targets.size} 章が対象（dry-run、実ファイルは変更されません）。"
+          end
+        end
+      end
+    end
+  rescue => _e
+    # 失敗してもビルドには影響させない
   end
 end
