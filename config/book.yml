@@ -3,8 +3,8 @@
 # 書籍情報
 book:
   # 書籍名
-  main_title: '技術書執筆への招待'
-  subtitle: 'Vivlio Starter を使って'
+  main_title: 'はじめての技術書づくり'
+  subtitle: 'Vivlio Starter 実践ガイド'
   subtitle_style: wave  # bar | none も可
 
   # 付帯情報（任意）

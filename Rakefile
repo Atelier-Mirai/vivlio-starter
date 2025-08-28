@@ -8,10 +8,28 @@ rescue LoadError
   # bundler が無い環境でも実行できるように無視
 end
 
+# 内部コマンドのリスト
+INTERNAL_COMMANDS = %w[
+  pre_process
+  convert
+  post_process
+  toc
+  entries
+  config
+  merge:appendices
+].freeze
+
 # 直接 `rake` コマンドの実行を抑止し、CLI 経由のみ許可
 if File.basename($0) == 'rake' && ENV['VS_ALLOW_RAKE'] != '1' && ENV['VS_CLI'] != '1'
-  # 最初の非オプション引数をタスク名として推定（無ければ build）
+  # 最初の非オプション引数をタスク名として取得
   requested_task = ARGV.find { |a| a !~ /^-/ } || 'build'
+  
+  # 内部コマンドの直接実行をブロック
+  if INTERNAL_COMMANDS.any? { |cmd| requested_task.start_with?(cmd) }
+    warn "❌ このコマンドは内部コマンドのため、直接実行できません。代わりに `vs build` を使用してください。"
+    exit 1
+  end
+  
   warn "❌ このプロジェクトでは rake の直接実行は禁止です。代わりに `vs #{requested_task}` または `vivlio-starter #{requested_task}` を使用してください。"
   exit 1
 end

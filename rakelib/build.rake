@@ -1,5 +1,8 @@
 require_relative 'common'
 require 'hexapdf'
+require 'yaml'
+require 'json'
+require 'fileutils'
 
 # 責務: サブタスクを同一プロセスで実行しつつ、一時的な ARGV 差し替えで引数汚染を防ぐ
 def __run_task_with_argv(task_name, argv_override = nil)
@@ -218,6 +221,31 @@ task :build do |t, args|
 
   BookBuild.log_action("書籍をビルドしています…")
   
+  # 設定ファイルの更新を確認・実行（必要な場合のみ）
+  begin
+    book_yml_path = File.join('config', 'book.yml')
+    vivliostyle_config_js_path = 'vivliostyle.config.js'
+    
+    # ファイルの最終更新日時を比較
+    if !File.exist?(vivliostyle_config_js_path) || 
+       File.mtime(book_yml_path) > File.mtime(vivliostyle_config_js_path)
+      
+      BookBuild.log_action("設定ファイルを更新しています...")
+      if system("vs config")
+        # 更新日時を現在時刻に設定（次回の不要な更新を防ぐため）
+        FileUtils.touch(vivliostyle_config_js_path)
+        BookBuild.log_success("設定ファイルを更新しました")
+      else
+        raise "vs config の実行に失敗しました"
+      end
+    else
+      BookBuild.log_info("設定ファイルは最新です。スキップします。")
+    end
+  rescue => e
+    BookBuild.log_warn("設定ファイルの更新中にエラーが発生しました: #{e}")
+    BookBuild.log_warn("ビルドは続行しますが、設定ファイルが最新でない可能性があります")
+  end
+
   # モード判定とタスクリスト
   if files.any?
     BookBuild.log_info("指定されたファイルのみ処理します: #{files.join(', ')}")

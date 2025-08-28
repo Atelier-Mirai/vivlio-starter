@@ -1,4 +1,4 @@
-# 電気・電子技術への招待 ～古代の叡智から現代AIまで～
+# はじめての技術書づくり ～Vivlio Starter 実践ガイド～
 
 このリポジトリは、Rake ベースのビルドシステムで電子書籍（Vivliostyle PDF）を生成するプロジェクトです。Markdown を前処理し、HTML 変換・差し替え・目次/章立て生成・PDF化・クリーンアップ・表示までを自動化します。
 
@@ -223,7 +223,8 @@ VERBOSE=1 rake build
 
 ```yaml
 book:
-  title: 電気・電子技術への招待 ～古代の叡智から現代AIまで～
+  main_title: 'はじめての技術書づくり'
+  subtitle: 'Vivlio Starter 実践ガイド'
   author: アトリヱ未來
   
   language: ja

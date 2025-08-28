@@ -1,5 +1,5 @@
-<h1 class="book-title">技術書執筆への招待</h1>
-<p class="subtitle subtitle--wave">Vivlio Starter を使って</p>
+<h1 class="book-title">はじめての技術書づくり</h1>
+<p class="subtitle subtitle--wave">Vivlio Starter 実践ガイド</p>
 
 <p class="publication-info">令和七年十一月十五日 初版発行</p>
 

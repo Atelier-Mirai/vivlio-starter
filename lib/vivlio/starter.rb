@@ -34,7 +34,17 @@ module Vivlio
         # Mark this process as CLI-driven so Rakefile guards allow execution
         ENV['VS_CLI'] ||= '1'
 
-        # Built-in: version
+        # Built-in: help and version
+        if argv && (argv.first == '--help' || argv.first == '-h' || argv.first == 'help')
+          help_file = File.expand_path('rakelib/help.rb', Dir.pwd)
+          if File.exist?(help_file)
+            load help_file
+          else
+            puts "ヘルプファイルが見つかりません: #{help_file}"
+          end
+          return 0
+        end
+
         if argv && (argv.first == '--version' || argv.first == '-V' || argv.first == 'version')
           puts "vivlio-starter #{Vivlio::Starter::VERSION}"
           return 0
