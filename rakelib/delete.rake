@@ -1,11 +1,20 @@
 require_relative 'common'
 
+# 使い方
+# vs delete 11-install
+# vs delete 11-install.md
+# vs delete 11-install 12-tutorial
+# vs delete 11-21
+# vs delete 11 21-31
+
 module ChapterDeleter
+  extend self
+
   # 引数を検証し、正規化する
-  def self.ensure_filename(filename)
+  def ensure_filename(filename)
     name = filename.to_s.strip
     if name.empty?
-      BookBuild.log_error("ファイル名を指定してください (例: rake delete 21-history)")
+      BookBuild.log_error("ファイル名を指定してください (例: vs delete 21-history)")
       return nil
     end
 
@@ -23,14 +32,14 @@ module ChapterDeleter
   end
 
   # 削除の確認を求める
-  def self.confirm_deletion(file_path)
+  def confirm_deletion(file_path)
     print "⚠️ 本当に #{file_path} を削除しますか？ (y/N): "
     response = $stdin.gets.chomp.downcase
     response == 'y' || response == 'yes'
   end
 
   # Markdownファイルを削除する
-  def self.delete_markdown_file(filename, options)
+  def delete_markdown_file(filename, options)
     md_file = "#{BookBuild::CONTENTS_DIR}/#{filename}"
 
     if File.exist?(md_file)
@@ -46,7 +55,7 @@ module ChapterDeleter
   end
 
   # 画像ディレクトリを削除する
-  def self.delete_image_directory(filename, options)
+  def delete_image_directory(filename, options)
     base_filename = filename.gsub(/\.md$/, '')
     image_dir = "#{BookBuild::IMAGES_DIR}/#{base_filename}"
     
@@ -63,7 +72,7 @@ module ChapterDeleter
   end
   
   # CSSファイルを削除する
-  def self.delete_css_file(filename, options)
+  def delete_css_file(filename, options)
     chapter_num = BookBuild.get_chapter_number(filename)
     return false unless chapter_num
     

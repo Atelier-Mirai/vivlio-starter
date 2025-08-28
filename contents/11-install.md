@@ -114,7 +114,7 @@ npm install
 
 vivlio-starter のビルドでは、以下のツールが必要/推奨です：
 
-- **HexaPDF** (Ruby gem): PDF の最適化・圧縮（Gem として自動導入）
+- **HexaPDF** (Ruby gem): PDF の最適化・圧縮（gem として自動導入）
 - **qpdf**: PDF の結合・分割（`qpdf` コマンド）
 - **Ghostscript**: PDF の最適化（`gs` コマンド）
 - **ImageMagick**: 画像処理（`convert` など、WebP 変換を含む）
@@ -240,9 +240,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - uses: ruby/setup-ruby@v1
+      - uses: Ruby/setup-Ruby@v1
         with:
-          ruby-version: '3.4'
+          Ruby-version: '3.4'
           bundler-cache: true
       - name: Install system deps
         run: |
@@ -257,8 +257,8 @@ jobs:
       - run: bundle install --jobs 4
       - name: Build
         run: |
-          rake build
+          Rake build
       - uses: actions/upload-artifact@v4
         with:
-          name: pdf
-          path: output.pdf
+          name: PDF
+          path: output.PDF

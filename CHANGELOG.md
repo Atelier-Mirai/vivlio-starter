@@ -21,6 +21,10 @@
 - [High] 日本語表記・組版Lint（スタイルガイド）
 - [High] リンク・画像の自動検証
 - [Medium] スペルチェック（辞書拡張対応）
+- [Medium] 用語候補抽出と一括追加（glossary）: `contents/` を走査し `ABBR(Full Name)`/`Full Name(ABBR)` パターンを検出して候補一覧を作成。対話的に選択して `config/glossary.yml` に一括追加するタスク（例: `glossary:suggest` → `glossary:import_selected`）。
+- [Medium] 用語集・索引自動生成 （それらしい専門用語を抽出して、`config/glossary.yml` に一括追加するタスク）
+- [Medium] glossary `style: spacing` の実装（スペースの有無/種別の検出・自動修正）
+- [Medium] glossary `style: punctuation` の実装（コロン/ハイフン等の記号種別・位置の検出・自動修正）
 
 #### 参照・索引・書誌
 
@@ -28,6 +32,8 @@
 - [Medium] 図表キャプション規約の統一（Figure 1.1/表1.1 自動採番）。
 - [Low] 用語集・索引自動生成
 - [Low] 脚注・参考文献サポート（簡易BibTeX/CSL）
+- [Medium] 用語集の付録化（`config/glossary.yml` → 付録章に整形出力、名称/略称/説明/スタイルを一覧化）
+- [Medium] 初出ページ付き索引の生成（用語の文書走査→初出箇所のページ番号抽出→索引章に出力）
 
 #### コンテンツ/テンプレート
 

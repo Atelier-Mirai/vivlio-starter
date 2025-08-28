@@ -1,0 +1,353 @@
+# 用語と表記ルールのための用語集
+# - key: 内部識別子（snake_case）
+# - name: 初出で用いる正規の名称
+# - abbr: 初出以降に用いる短縮形（不要なら null）
+# - first_full_form: true の場合、初出は「name（abbr）」を用いる
+# - description: 簡単な説明（任意）
+# - aliases: リント対象となる別表記/ニックネーム（任意）
+# - style: 表記ルールのヒント
+#   - 目的: `aliases` をすべて書かなくても代表的な表記ゆれを検出・修正する指針
+#   - 値の例:
+#     - capitalization: 大文字小文字を正規表記（`name`/`abbr`）に統一（HTML/PDF など）
+#     - lowercase: 小文字表記に統一（例: `gem`）
+#     - hyphenation: ハイフン有無を統一（例: `vivlio-starter`）
+#     - spacing: スペースの有無/種別（将来拡張）
+#     - punctuation: 記号（コロン/ハイフン等）の種別や位置（将来拡張）
+#     - wording: 語彙選択の指針（自動修正しません）
+#   - 現状の自動チェック/修正対象: capitalization / lowercase / hyphenation
+
+---
+terms:
+  - key: build
+    name: ビルド
+    abbr:
+    first_full_form: false
+    description: |-
+      原稿とスタイルから成果物（PDF/HTML等）を生成する工程。
+    aliases: [ビルドする, ビルド手順]
+    style: wording
+
+  - key: chapter
+    name: 章
+    abbr:
+    first_full_form: false
+    description: |-
+      書籍の構成単位。ファイル名は先頭に番号を付す慣習。
+    aliases: [チャプター]
+    style: wording
+
+  - key: css
+    name: Cascading Style Sheets
+    abbr: CSS
+    first_full_form: false
+    description: |-
+      ウェブページの見た目（色、フォント、レイアウトなど）を定義するためのスタイルシート言語
+      HTMLと組み合わせてコンテンツに装飾を加え、JavaScriptと組み合わせて動的な表現を実現
+    aliases: [css, Css]
+    style: capitalization
+
+  - key: css_typesetting
+    name: CSS組版
+    abbr:
+    first_full_form: false
+    description: |-
+      HTML/CSSを用いてページレイアウトを行う手法。
+    aliases: [CSS 組版]
+    style: spacing
+
+  - key: gem
+    name: gem
+    abbr:
+    first_full_form: false
+    description: |-
+      RubyGemsのパッケージ（小文字表記を推奨）。
+    aliases: [Gem, Gems]
+    style: lowercase
+
+  - key: html
+    name: HyperText Markup Language
+    abbr: HTML
+    first_full_form: true
+    description: |-
+      ウェブページのコンテンツと構造を記述するためのマークアップ言語
+    aliases: [html, Html]
+    style: capitalization
+
+  - key: markdown
+    name: Markdown
+    abbr:
+    first_full_form: false
+    description: |-
+      プレーンテキストベースの軽量マークアップ言語。
+    aliases: [markdown, MarkDown]
+    style: capitalization
+
+  - key: pdf
+    name: Portable Document Format
+    abbr: PDF
+    first_full_form: true
+    description: |-
+      Portable Document Format。書籍の最終出力形式として想定。
+    aliases: [pdf, Pdf]
+    style: capitalization
+
+  - key: rake
+    name: Ruby Make
+    abbr: Rake
+    first_full_form: true
+    description: |-
+      Rubyによるビルドタスク管理ツール。
+    aliases: [rake]
+    style: capitalization
+
+  - key: review_starter
+    name: Re:VIEW Starter
+    abbr:
+    first_full_form: false
+    description: |-
+      Re:VIEWベースの執筆テンプレート。
+    aliases: [Review Starter, Re:View Starter]
+    style: punctuation
+
+  - key: ruby
+    name: Ruby
+    abbr:
+    first_full_form: false
+    description: |-
+      本プロジェクトで利用するプログラミング言語。
+    aliases: [ruby]
+    style: capitalization
+
+  - key: template
+    name: テンプレート
+    abbr:
+    first_full_form: false
+    description: |-
+      原稿や章の雛形となるファイルや設定。
+    aliases: [雛形]
+    style: wording
+
+  - key: vfm
+    name: Vivliostyle Flavored Markdown
+    abbr: VFM
+    first_full_form: true
+    description: |-
+      Vivliostyle向けに拡張されたMarkdown方言。
+    aliases: [Vivliostyle-Flavored Markdown, Vfm]
+    style: capitalization
+
+  - key: vivlio_starter
+    name: vivlio-starter
+    abbr:
+    first_full_form: false
+    description: |-
+      Vivliostyleを扱いやすくするRuby製ツール（gem）。
+    aliases: [VS, vs]
+    style: hyphenation
+
+  - key: vivliostyle
+    name: Vivliostyle
+    abbr:
+    first_full_form: false
+    description: |-
+      CSS組版エンジン。Web技術で紙のようなレイアウトを実現する。
+    aliases: []
+    style: capitalization
+
+  - key: windsurf
+    name: WindSurf
+    abbr:
+    first_full_form: false
+    description: |-
+      AIコーディングアシスタント/IDE拡張。
+    aliases: [Windsurf, windsurf]
+    style: capitalization
+
+  - key: git
+    name: Git
+    abbr:
+    first_full_form: false
+    description: |-
+      分散型バージョン管理システム。
+    aliases: [git]
+    style: capitalization
+
+  - key: github
+    name: GitHub
+    abbr:
+    first_full_form: false
+    description: |-
+      Gitリポジトリのホスティング/コラボレーションプラットフォーム。
+    aliases: [Github, github]
+    style: capitalization
+
+  - key: repository
+    name: リポジトリ
+    abbr:
+    first_full_form: false
+    description: |-
+      ソースコードや履歴を保存する保管場所。Gitではリポジトリ単位で管理する。
+    aliases: [レポジトリ, リポジトリー, repository]
+    style: wording
+
+  - key: branch
+    name: ブランチ
+    abbr:
+    first_full_form: false
+    description: |-
+      作業用の分岐。新機能や修正を独立して進めるための枝。
+    aliases: [branch]
+    style: wording
+
+  - key: commit
+    name: コミット
+    abbr:
+    first_full_form: false
+    description: |-
+      変更履歴の単位。ステージした変更を履歴に記録する操作。
+    aliases: [commit]
+    style: wording
+
+  - key: merge
+    name: マージ
+    abbr:
+    first_full_form: false
+    description: |-
+      別ブランチの変更を統合する操作。
+    aliases: [merge]
+    style: wording
+
+  - key: rebase
+    name: リベース
+    abbr:
+    first_full_form: false
+    description: |-
+      ベースを付け替えて履歴を付け替える操作。
+    aliases: [rebase]
+    style: wording
+
+  - key: pull_request
+    name: Pull Request
+    abbr: PR
+    first_full_form: true
+    description: |-
+      変更の提案。レビューとマージを促すGitHubの仕組み。
+    aliases: [pr, Pr, PullRequest, pull request]
+    style: capitalization
+
+  - key: issue
+    name: Issue
+    abbr:
+    first_full_form: false
+    description: |-
+      課題・バグ・要望などのトラッキング単位。
+    aliases: [issue, issues]
+    style: capitalization
+
+  - key: continuous_integration
+    name: Continuous Integration
+    abbr: CI
+    first_full_form: true
+    description: |-
+      継続的インテグレーション。変更の自動ビルド/テストを継続実行するプラクティス。
+    aliases: [ci, Ci]
+    style: capitalization
+
+  - key: continuous_delivery
+    name: Continuous Delivery
+    abbr: CD
+    first_full_form: true
+    description: |-
+      継続的デリバリー。変更を安全に本番へ届けるプラクティス。
+    aliases: [cd, Cd]
+    style: capitalization
+
+  - key: workflow
+    name: ワークフロー
+    abbr:
+    first_full_form: false
+    description: |-
+      自動化された処理の流れ。GitHub Actions などで利用。
+    aliases: [workflow]
+    style: wording
+
+  - key: ide
+    name: Integrated Development Environment
+    abbr: IDE
+    first_full_form: true
+    description: |-
+      統合開発環境。エディタ/デバッガ/ビルドなどを統合した開発ツール。
+    aliases: [ide, Ide]
+    style: capitalization
+
+  - key: ai
+    name: Artificial Intelligence
+    abbr: AI
+    first_full_form: true
+    description: |-
+      人工知能。学習・推論などにより知的な振る舞いを行う技術分野。
+    aliases: [ai, Ai]
+    style: capitalization
+
+  - key: gpt_5
+    name: Generative Pre-trained Transformer 5
+    abbr: GPT-5
+    first_full_form: true
+    description: |-
+      GPT 系列の第5世代モデルを指す略称。
+    aliases: [gpt-5, Gpt-5, GPT5, gpt5]
+    style: hyphenation
+
+  - key: swe_1
+    name: SWE-1
+    abbr:
+    first_full_form: false
+    description: |-
+      ソフトウェアエンジニアリング系のモデル名表記。
+    aliases: [SWE1, swe-1, Swe-1]
+    style: hyphenation
+
+  - key: sonnet_4
+    name: Sonnet 4
+    abbr:
+    first_full_form: false
+    description: |-
+      モデル名の一種。固有名詞としての大文字小文字を維持。
+    aliases: [sonnet 4, Sonnet4]
+    style: capitalization
+
+  - key: gemini_2_5_pro
+    name: Gemini 2.5 Pro
+    abbr:
+    first_full_form: false
+    description: |-
+      Gemini 系列のモデル名。バージョン番号を含む表記。
+    aliases: [gemini 2.5 pro, Gemini2.5 Pro, Gemini 2.5 pro]
+    style: capitalization
+
+  - key: openai
+    name: OpenAI
+    abbr:
+    first_full_form: false
+    description: |-
+      生成系AI/大規模言語モデルの研究・提供を行う組織/企業。
+    aliases: [Openai, openai]
+    style: capitalization
+
+  - key: anthropic
+    name: Anthropic
+    abbr:
+    first_full_form: false
+    description: |-
+      大規模言語モデルとAI安全性の研究・提供を行う企業。
+    aliases: [anthropic]
+    style: capitalization
+
+  - key: google_ai_studio
+    name: Google AI Studio
+    abbr:
+    first_full_form: false
+    description: |-
+      Google 提供の生成AI/LLM 開発者向けツール群・管理コンソール。
+    aliases: [GoogleAI Studio, Google AIStudio, google ai studio]
+    style: capitalization

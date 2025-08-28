@@ -6,8 +6,8 @@
 
 ## Ruby
 
-- 公式サイト: https://www.ruby-lang.org/ja/
-- 公式ドキュメント（rdoc）: https://docs.ruby-lang.org/ja/
+- 公式サイト: https://www.Ruby-lang.org/ja/
+- 公式ドキュメント（rdoc）: https://docs.Ruby-lang.org/ja/
 - Ruby Style Guide: https://rubystyle.guide/
 - Bundler: https://bundler.io/
 - RSpec: https://rspec.info/
