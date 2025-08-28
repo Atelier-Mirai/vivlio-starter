@@ -114,6 +114,11 @@ module BookBuild
     puts "🔧 #{msg}"
   end
 
+  # 常に表示（vs などのラッパーが標準出力を抑制しても見えるよう STDERR に出す）
+  def self.echo_always(msg)
+    $stderr.puts msg
+  end
+
   # 引数/オプションの共通パース
   # 戻り値: { files: [...], options: { ... } }
   def self.process_args(task_name = nil, argv = ARGV)
