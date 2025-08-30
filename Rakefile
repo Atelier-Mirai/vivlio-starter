@@ -1,4 +1,6 @@
-# 電気・電子技術への招待 ～古代の叡智から現代AIまで～ ビルドシステム
+# **はじめての技術書づくり ～Vivlio Starter 実践ガイド～**
+# Rake: プロジェクトの内部的なビルドタスクやメンテナンススクリプトの実行に向いています。
+# Thor: ユーザーが直接使うコマンドラインツールの構築に向いています。
 
 # Bundler の文脈を自動有効化（bundle exec 省略のため）
 begin
@@ -34,37 +36,7 @@ INTERNAL_COMMANDS = %w[
 #   exit 1
 # end
 
-# 標準出力を抑制するためのモンキーパッチ（デバッグ中は無効化）
-module Kernel
-  # 元のputsをエイリアス
-  alias_method :original_puts, :puts unless method_defined?(:original_puts)
-  
-  def puts(*args)
-    # エラーメッセージや重要なメッセージは表示
-    if args.any? { |arg| arg.to_s =~ /(❌|⚠️|error|エラー|失敗)/i }
-      original_puts(*args)
-    # それ以外はverboseモードでのみ表示
-    elsif defined?(BookBuild) && BookBuild.respond_to?(:verbose?) && BookBuild.verbose?
-      original_puts(*args)
-    end
-  end
-end
-
-# rake -T / --tasks を help に差し替える（Rake のトップレベル処理をフック）
-Rake::Application.class_eval do
-  alias_method :__orig_top_level, :top_level unless method_defined?(:__orig_top_level)
-
-  def top_level
-    # -T/--tasks が指定された場合は help タスクを実行して終了
-    if respond_to?(:options) && options&.show_tasks && Rake::Task.task_defined?('help')
-      Rake::Task['help'].invoke
-      exit 0
-    end
-    __orig_top_level
-  end
-end
-
-
+#
 # デフォルトタスク - ビルドを実行
 desc "電子書籍ビルドの全工程を実行します"
 task :default => :build

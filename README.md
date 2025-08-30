@@ -1,10 +1,10 @@
 # はじめての技術書づくり ～Vivlio Starter 実践ガイド～
 
-このリポジトリは、Rake ベースのビルドシステムで電子書籍（Vivliostyle PDF）を生成するプロジェクトです。Markdown を前処理し、HTML 変換・差し替え・目次/章立て生成・PDF化・クリーンアップ・表示までを自動化します。
+このリポジトリは、Thor ベースの CLI（`vs`/`vivlio-starter`）で電子書籍（Vivliostyle PDF）を生成するプロジェクトです。Markdown を前処理し、HTML 変換・差し替え・目次/章立て生成・PDF化・クリーンアップ・表示までを自動化します。
 
 ## 特長
 
-- 直感的な Rake タスクでワンコマンドビルド（`rake build`）
+- 直感的な CLI コマンドでワンコマンドビルド（`vs build`）
 - `config/book.yml` による一元的な設定管理
 - ファイルタイプに応じたスタイル適用（`<body class="preface|chapter|appendix|postface|colophon">`）
 - `vivliostyle.config.js` の自動生成（バックアップは最新版のみ保持）
@@ -13,7 +13,7 @@
 ## 前提条件（依存関係）
 
 - Node.js / npm（`npx vivliostyle` を使用）
-- Ruby（Rake 実行）
+- Ruby（CLI 実行）
 
 必要に応じて以下をインストールしてください。
 - Vivliostyle CLI は npx 経由で自動取得されます。
@@ -104,7 +104,7 @@ project/
 │  └─ book.yml              # 書籍の設定（タイトル、著者、vivliostyle、pdf など）
 ├─ content/                 # 章の Markdown 原稿（編集元）
 ├─ stylesheets/             # PDF 用 CSS
-├─ rakelib/                 # Rake タスク群
+├─ rakelib/                 # ビルドタスク群（内部実装）
 │  ├─ common.rb             # 共通処理・設定・ログ
 │  ├─ options.rb            # オプション解析
 │  ├─ pre_process.rake      # 前処理（画像パス付与・フロントマター生成・コード取り込み）
@@ -120,7 +120,7 @@ project/
 │  ├─ delete.rake           # 章の削除
 │  ├─ renumber.rake         # 章番号の変更・整列
 │  └─ vivliostyle.rake      # vivliostyle.config.js 生成/差分
-├─ Rakefile                 # エントリポイント
+├─ Rakefile                 # CLI から内部的に利用されるエントリポイント
 └─ README.md                # このファイル
 ```
 
@@ -159,7 +159,7 @@ vs open
 
 備考:
 
-- CLI は内部で `Rakefile`/`rakelib/` をロードし、`rake` と同じタスクを提供します。
+- CLI は Thor ベースで、`vs`（または `vivlio-starter`）として利用できます。
 - `VERBOSE=1` または `-v` で詳細ログを出せます（例: `vs build -v`）。
 
 ## クイックスタート（プロジェクト生成）
@@ -175,47 +175,43 @@ code contents/01-chapter.md
 
 # プレビュー/ビルド（例）
 vivliostyle preview   # または npx vivliostyle preview
-# 本リポジトリの Rake タスクがある場合は vs/rake も利用できます
+# 本リポジトリの CLI を利用する場合は vs コマンドを使えます
 ```
 
 ```bash
-# 初期化（必要ファイルの雛形など）
-rake init
-
 # 全ファイルビルド（PDF 生成まで一括）
-rake build
+vs build
 
 # 生成された PDF を開く
-rake open        # または rake open:pdf
+vs open          # = vs open:pdf
 ```
 
 冗長ログを見たい場合は `-v` もしくは環境変数を利用します。
 
 ```bash
-rake build -v
-VERBOSE=1 rake build
+vs build -v
+VERBOSE=1 vs build
 ```
 
 ## 主なコマンド
 
-- 初期化
-  - `rake init`
 - ビルド
-  - `rake build`
-  - `rake build 02-preface`（特定章のみの関連処理）
+  - `vs build`
+  - `vs build 02-preface`（特定章のみの関連処理）
 - 表示
-  - `rake open` / `rake open:pdf`
+  - `vs open` / `vs open:pdf`
 - 生成物削除
-  - `rake clean`
+  - `vs clean`
 - 章の管理
-  - 新規作成: `rake create 21-history`
-  - 削除: `rake delete 21-history`
-  - 番号変更: `rake renumber 31 21`
-  - 番号整列: `rake renumber`
+  - 新規作成: `vs create 21-history`
+  - 削除: `vs delete 21-history`
+  - リネーム: `vs rename 31-history 21-history`
+  - 番号変更: `vs renumber 31 21`
+  - 番号整列: `vs renumber`
 - Vivliostyle 設定
-  - 生成: `rake vivliostyle:generate_config`（短縮: `rake vs:config`）
-- タスク一覧
-  - `rake -T` / `rake --tasks` / `rake help`
+  - 生成: `vs vivliostyle:config`
+- タスク一覧/ヘルプ
+  - `vs help` / `vs <cmd> --help`
 
 ## 設定（config/book.yml）
 
@@ -239,11 +235,11 @@ pdf:
   window_bounds: '{3072, 0, 4096, 2160}'
 ```
 
-`vivliostyle:generate_config` 実行時、既存の `vivliostyle.config.js` がある場合はバックアップを最新版 1 件のみ保持します。
+`vs vivliostyle:config` 実行時、既存の `vivliostyle.config.js` がある場合はバックアップを最新版 1 件のみ保持します。
 
 ## ビルドの流れ（開発者用）
 
-`rake build` は概ね次の順で実行されます。
+`vs build` は概ね次の順で実行されます（内部では各処理を順に呼び出します）。
 
 1. preprocess.rake
    - 画像パスの付与（例: `![](shogiban.png)` → `![](images/02-preface/shogiban.png)`）
@@ -264,12 +260,12 @@ pdf:
 6. clean.rake
    - 生成した PDF 以外の生成物をクリーンアップ
 7. pdf.rake
-   - `rake open`（=`open:pdf`）で PDF を開く
+   - `vs open`（=`open:pdf`）で PDF を開く
 
 ### ログの冗長度（Verbose）
 
 - `BookBuild.verbose?` により統一制御
-- `rake ... -v` または `VERBOSE=1 rake ...` で詳細ログが出ます
+- `vs ... -v` または `VERBOSE=1 vs ...` で詳細ログが出ます
 
 ## ライセンス
 

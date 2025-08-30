@@ -7,6 +7,7 @@
 ## [Unreleased]
  
 ### Planned
+付録も右ページ始まりにする
 
 #### ビルド/出力
 
@@ -41,21 +42,30 @@
 - [Low] テンプレ断片スニペット（注意/補足/Tipのコンポーネント化）。
 
 
+## [0.5.0] - 2025-08-30
 
 ### Added
-
-- なし
+- Thor への移行を完了し、CLI として独立実行可能に
+  - 例: `vs build --verbose --no-compress`
+- `create:legalpage` を追加（リーガルページ生成を [create.rb](cci:7://file:///Users/mirai/projects/vivlio-starter/lib/vivlio/starter/cli/create.rb:0:0-0:0) に統合）
 
 ### Changed
+- ヘルプとログを日本語化し、ユーザビリティを向上
+- コマンド/オプション定義を整理（`desc` / `long_desc` / `method_option` の整備）
+- 共通ヘルパー（`Common` ほか）を統合し保守性を改善
+- `require_relative` 群をアルファベット順に整理し重複を解消（[lib/vivlio/starter/cli.rb](cci:7://file:///Users/mirai/projects/vivlio-starter/lib/vivlio/starter/cli.rb:0:0-0:0)）
 
-- **フルビルド後処理の自動化**  
-  - ビルド完了後に 画像最適化・PDF圧縮・`clean` を自動実行（`rakelib/build.rake`）。
+### Removed
+- [legalpage.rb](cci:7://file:///Users/mirai/projects/vivlio-starter/lib/vivlio/starter/cli/legalpage.rb:0:0-0:0) を削除（機能は `create:legalpage` に移管）
 
-- **後書きページ番号の通し番号化**  
-  - 後書きページも本編と同一カウンタで出力。
-
-- **章扉のページ番号非表示（第2章以降）**  
-  - 章扉ページにページ番号が付与されないように修正。
+### Notes
+- 実質コード行数は Rake 相当から約 1.5 倍に増加（機能拡張・ログ/ヘルプ充実のため）
+- 既存の Rake タスクは引き続き利用可能だが、推奨は Thor CLI（`vs ...`）
+- 生成系コマンドは [safe_write](cci:1://file:///Users/mirai/projects/vivlio-starter/lib/vivlio/starter/cli/create.rb:246:14-251:17) 採用でディレクトリ自動作成・エンコーディング統一を保証
+- 共通オプション `-v/--verbose` を全コマンドでサポート（ENV `VERBOSE=1` をセット）
+- コマンド公開名を [ThorCLI.commands_supported](cci:1://file:///Users/mirai/projects/vivlio-starter/lib/vivlio/starter/cli.rb:47:6-67:9) に集約し、ルーティングとヘルプ整合性を確保
+- `BuildHelpers` を増強し、ステップごとのログ粒度と失敗時の継続性を改善
+- 互換性: 既存プロジェクトはそのまま動作する想定。Rake 拡張に依存する場合は `vs` 相当のコマンドへ移行を推奨
 
 ## [0.4.0] - 2025-08-26
 
@@ -82,6 +92,17 @@
     - 画像最適化: `--no-resize` / `--high` / `--medium` / `--low`（既定: medium）
     - PDF圧縮: `--no-compress` でスキップ（既定: 圧縮する）
     - クリーン: `--no-clean` でスキップ（既定: 実行）
+
+### Changed
+
+- **フルビルド後処理の自動化**  
+  - ビルド完了後に 画像最適化・PDF圧縮・`clean` を自動実行（`rakelib/build.rake`）。
+
+- **後書きページ番号の通し番号化**  
+  - 後書きページも本編と同一カウンタで出力。
+
+- **章扉のページ番号非表示（第2章以降）**  
+  - 章扉ページにページ番号が付与されないように修正。
 
 ### Fixed
 
