@@ -62,7 +62,7 @@ module Vivlio
           end
           Vivlio::Starter::ThorCLI.start(['pdf'])
 
-          pdf_config   = CONFIG['pdf'] || {}
+          pdf_config   = Common::CONFIG['pdf'] || {}
           output_pdf   = pdf_config['output_file'] || 'output.pdf'
           preface_pdf  = '02-preface.pdf'
           if File.exist?(output_pdf)
@@ -256,7 +256,7 @@ module Vivlio
           Vivlio::Starter::ThorCLI.start(['entries', File.join(base_dir, '03-toc.html')])
           Vivlio::Starter::ThorCLI.start(['pdf'])
 
-          pdf_config   = CONFIG['pdf'] || {}
+          pdf_config   = Common::CONFIG['pdf'] || {}
           output_pdf   = pdf_config['output_file'] || 'output.pdf'
           toc_pdf      = '03-toc.pdf'
           if File.exist?(output_pdf)
@@ -303,7 +303,7 @@ module Vivlio
           Vivlio::Starter::ThorCLI.start(['entries', *targets_for_pdf])
           Vivlio::Starter::ThorCLI.start(['pdf'])
 
-          pdf_config   = CONFIG['pdf'] || {}
+          pdf_config   = Common::CONFIG['pdf'] || {}
           output_pdf   = pdf_config['output_file'] || 'output.pdf'
           unless File.exist?(output_pdf)
             Common.log_warn("[Step 6] 出力PDFが見つかりません: #{output_pdf}")

@@ -47,6 +47,9 @@ module Vivlio
             # 引数:
             #   name    プロジェクト名（必須）
             # ================================================================
+            method_option :auto_install, type: :boolean, default: true, desc: '必要ツールを自動インストール (macOS Homebrew)'
+            method_option :interactive, type: :boolean, default: false, desc: '対話的に確認しながら実行'
+            method_option :manual_install, type: :boolean, default: false, desc: 'doctor の自動実行を無効化'
             def new(name)
               ENV['VERBOSE'] = '1' if options[:verbose]
               # Common ベース実装
@@ -74,6 +77,7 @@ module Vivlio
               source_readme_tpl   = File.join(scaffold_root, 'README.md')
               source_config_book  = File.join(gem_root, 'config', 'book.yml')
               source_gemfile      = File.join(scaffold_root, 'Gemfile')
+              source_ci_workflow  = File.join(scaffold_root, '.github', 'workflows', 'build.yml')
 
               Common.log_action("[vivlio-starter] Creating new project: #{name}")
 
@@ -143,6 +147,13 @@ module Vivlio
               *.pdf
               entries.js
               GITIGNORE
+
+              # GitHub Actions ワークフロー（任意だが有用）
+              if File.file?(source_ci_workflow)
+                ci_dir = File.join(dest, '.github', 'workflows')
+                FileUtils.mkdir_p(ci_dir)
+                FileUtils.cp(source_ci_workflow, File.join(ci_dir, 'build.yml'))
+              end
 
               # スタイル一式コピー（章個別CSSは後で自動生成されることがあります）
               if Dir.exist?(source_styles_dir)
@@ -317,6 +328,34 @@ module Vivlio
 
               Common.log_success("[vivlio-starter] Done. cd #{name} で移動し、執筆を開始できます。")
               Common.log_info("例: vivliostyle preview などのコマンドを実行")
+
+              # ---- 仕上げ: 依存診断の案内/実行（A+B 同時対応）
+              begin
+                Dir.chdir(dest) do
+                  if options[:manual_install]
+                    Common.echo_always('doctor の自動実行をスキップします (--manual-install)')
+                  elsif options[:auto_install]
+                    Common.echo_always('必要ツールの自動インストールを有効にして doctor を実行します (--auto-install)')
+                    args = ['doctor', '--fix']
+                    args << '--yes' unless options[:interactive]
+                    Vivlio::Starter::ThorCLI.start(args)
+                  else
+                    proceed = false
+                    if $stdin.tty?
+                      $stdout.print("qpdf / pdfinfo の診断を実行しますか？ [y/N]: ")
+                      ans = $stdin.gets
+                      proceed = ans && ans.strip.downcase == 'y'
+                    end
+                    if proceed
+                      Vivlio::Starter::ThorCLI.start(['doctor'])
+                    else
+                      Common.echo_always('後で実行する場合: vs doctor もしくは vs doctor --fix (macOS)')
+                    end
+                  end
+                end
+              rescue => e
+                Common.log_warn("doctor 実行フローでエラーが発生しました: #{e}")
+              end
             end
           end
         end

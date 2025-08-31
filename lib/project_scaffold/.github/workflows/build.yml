@@ -1,0 +1,35 @@
+name: Build PDF
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: Ruby/setup-Ruby@v1
+        with:
+          Ruby-version: '3.4'
+          bundler-cache: true
+      - name: Install system deps
+        run: |
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            sudo apt-get update
+            sudo apt-get install -y qpdf ghostscript poppler-utils imagemagick
+          else
+            brew update
+            brew install qpdf ghostscript poppler imagemagick
+          fi
+      - run: npm ci
+      - run: bundle install --jobs 4
+      - name: Build
+        run: |
+          vs build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PDF
+          path: output_compressed.pdf

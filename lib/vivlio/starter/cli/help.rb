@@ -32,6 +32,11 @@ module Vivlio
                   vs build <chapter_name>        - 指定した章のみをビルド
                   vs open                        - 生成されたPDFを開く(macOS専用)
                   vs pdf:compress                - 生成されたPDFを圧縮
+                  vs doctor                      - 必要ツールの診断とセットアップ(macOS)
+                    （Xcode Command Line Tools / Homebrew / Node.js / qpdf / pdfinfo / gs / ImageMagick 等）
+                    --fix                        # 不足ツールを自動インストール(Homebrew)。Homebrew が無ければ自動導入を案内
+                                             # macOS では CLT 未導入時にインストーラを起動し、完了を待機
+                    -y, --yes                    # 確認を省略（Homebrew 導入や npm -g 実行時の確認をスキップ）
 
                   # ビルドオプション:
                   --high                # 高画質でビルド（画像の品質優先）
@@ -49,6 +54,12 @@ module Vivlio
                                               （例: 11-install → 12-setup, 21 → 32）
                   vs renumber                    - 章番号・付録番号を整列
                   vs clean                       - ビルド生成物をクリーンアップ
+
+                プロジェクト作成:
+                  vs new <name>                  - 新規書籍プロジェクトを作成
+                    (既定) 依存ツールの自動インストールを実行し、確認を省略します
+                    --interactive                # 対話的に確認しながら実行
+                    --manual-install             # doctor の自動実行を無効化
 
                 ヘルプ:
                   vs help                        - このヘルプを表示

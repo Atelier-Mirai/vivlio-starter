@@ -5,12 +5,50 @@
 記法は「Keep a Changelog」に基づき、Semantic Versioning（セマンティックバージョニング）に準拠します。
 
 ## [Unreleased]
- 
+
+### Added
+
+### Changed
+
+### Fixed
+
+## [0.6.0] - 2025-08-31
+
+### Added
+- `vs doctor` が不足ツールの自動導入に対応（macOS）
+  - Homebrew 未導入時の自動インストール（確認あり、`-y/--yes` で省略）
+  - Node.js（`brew install node@20` 優先）/ Vivliostyle CLI（`npm install -g @vivliostyle/cli`）
+  - qpdf / poppler(pdfinfo) / Ghostscript / ImageMagick の自動導入
+- `vs doctor` に Xcode Command Line Tools の診断と `--fix` 時のインストーラ起動・待機を追加（macOS）
+- `vs doctor` にオプションを追加
+  - `--fix`: 不足ツールを自動インストール
+  - `-y, --yes`: 確認プロンプトを省略
+- `bin/install-ruby.zsh`
+  - 既定の Ruby バージョン指定を「最新安定版（latest）」に変更し、自動解決を実装
+  - Xcode Command Line Tools の検出とインストーラ起動（案内）を追加
+- `vs new` 実行時に GitHub Actions ワークフローを自動配置
+  - 同梱テンプレート: `lib/project_scaffold/.github/workflows/build.yml`
+  - 生成先: `mybook/.github/workflows/build.yml`
+
+### Changed
+- ドキュメント（`contents/11-install.md`）を更新
+  - CI セクション: `vs build` の圧縮挙動・既定名（`output_compressed.pdf`）・エンジン選択（`qpdf/gs`、ENV/設定）を明記
+  - YAML スニペットの成果物パスを `output_compressed.pdf` に統一
+  - 順序調整: 「vs build の圧縮オプション」を先、Ghostscript 例を後に
+  - 付録: Windsurf エディタの紹介・インストール手順・ショートカット（macOS 優先）を追加
+- ヘルプ（`lib/vivlio/starter/cli/help.rb`）を更新
+  - `vs doctor` の説明に Xcode Command Line Tools の診断/誘導を追記
+
+### Notes
+- 既定で PDF 圧縮を実行（`--no-compress` でスキップ可能）。圧縮後の既定ファイル名は `output_compressed.pdf`。
+
 ### Planned
-付録も右ページ始まりにする
+
 
 #### ビルド/出力
 
+- [High] 付録が奇数ページから始まるように
+- [High] 奥付が偶数ページになるように
 - [High] 縦に長い表のレイアウト崩れ
 - [High] 任意の複数章を指定して、フルビルドする
 - [High] 任意章フルビルド（既出の計画を拡張）章IDの指定順で束ね、目次・通し番号も整合。実装目安: rake build --chapters=11,12,21 形式。
@@ -149,7 +187,10 @@
 - バージョンファイル追加: `lib/vivlio/starter/version.rb`（0.1.0）
 - README にインストール方法・CLI の使い方・リリース手順を追記
 
-[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Atelier-Mirai/vivlio-starter/releases/tag/v0.1.0

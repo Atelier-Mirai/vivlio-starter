@@ -18,5 +18,5 @@ body.postface {
 
 @page postface:first {
     /* 最初のページでページ番号を 71 表示にする */
-    counter-reset: page 68;
+    counter-reset: page 74;
 }

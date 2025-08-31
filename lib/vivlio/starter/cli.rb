@@ -22,6 +22,7 @@ require_relative 'cli/renumber'
 require_relative 'cli/resize'
 require_relative 'cli/toc'
 require_relative 'cli/vivliostyle'
+require_relative 'cli/doctor'
 
 module Vivlio
   module Starter
@@ -64,6 +65,7 @@ module Vivlio
           merge:appendices new open open:pdf pdf pdf:compress post_process
           pre_process prism:lines rename renumber resize
           resize:high resize:low resize:medium toc vivliostyle:config
+          doctor
         ]
       end
 
@@ -174,6 +176,7 @@ module Vivlio
       include Vivlio::Starter::CLI::HelpCommands
       include Vivlio::Starter::CLI::MergeCommands
       include Vivlio::Starter::CLI::NewCommands
+      include Vivlio::Starter::CLI::DoctorCommands
       include Vivlio::Starter::CLI::PdfCommands
       include Vivlio::Starter::CLI::PostProcessCommands
       include Vivlio::Starter::CLI::PreProcessCommands

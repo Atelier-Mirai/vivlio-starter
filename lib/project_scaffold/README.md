@@ -13,11 +13,11 @@
 #### カスタマイズ方法
 1. `chapter_template.md`を編集して、お好みのテンプレートに変更
 2. プレースホルダー `{{TITLE}}` は必ず残してください
-3. 変更後、`rake create <filename>` で新しいテンプレートが使用されます
+3. 変更後、`vs create <filename>` で新しいテンプレートが使用されます
 
 #### 使用例
 ```bash
-rake create 21-quantum-physics
+vs create 21-quantum-physics
 ```
 
 上記コマンドで、`{{TITLE}}` が "Quantum physics"（量子物理学）に置換されたファイルが生成されます。
