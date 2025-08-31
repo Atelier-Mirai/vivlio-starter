@@ -95,9 +95,6 @@ files:
 
 # Vivliostyle設定
 vivliostyle:
-  # Dockerイメージバージョン
-  image: 'ghcr.io/vivliostyle/cli:9.5.0'
-  
   # 読み進め方向
   reading_progression: 'ltr'  # 'ltr': 左から右へ（横書き）, 'rtl': 右から左へ（縦書き）
   

@@ -17,6 +17,9 @@
 
 必要に応じて以下をインストールしてください。
 - Vivliostyle CLI は npx 経由で自動取得されます。
+- Ruby の導入は同梱スクリプト `bin/install-ruby.zsh` が簡単・安全です（対話/無人どちらも可）。
+  - 例: `bin/install-ruby.zsh`（対話）/ `bin/install-ruby.zsh -y`（無人）
+  - 依存の自動診断/導入: `vs doctor --fix`
 
 ### 追加ツールのインストール（PDF 操作）
 
@@ -24,12 +27,13 @@
 
 - pdfinfo（poppler）: PDF のページ数などのメタ情報取得
 - qpdf: PDF の分割・結合・ページ抽出（非破壊）
- - Ghostscript: PDF 圧縮（サイズ削減）
+- Ghostscript: PDF 圧縮（サイズ削減）
+- ImageMagick: 画像変換（WebP 等）
 
 インストール（macOS/Homebrew）:
 
 ```bash
-brew install poppler qpdf ghostscript
+brew install poppler qpdf ghostscript imagemagick
 ```
 
 動作確認:
@@ -102,27 +106,22 @@ npm run build:pdf:verbose    # 追加ログ付き
 project/
 ├─ config/
 │  └─ book.yml              # 書籍の設定（タイトル、著者、vivliostyle、pdf など）
-├─ content/                 # 章の Markdown 原稿（編集元）
+├─ contents/                # 章の Markdown 原稿（編集元）
 ├─ stylesheets/             # PDF 用 CSS
-├─ rakelib/                 # ビルドタスク群（内部実装）
-│  ├─ common.rb             # 共通処理・設定・ログ
-│  ├─ options.rb            # オプション解析
-│  ├─ pre_process.rake      # 前処理（画像パス付与・フロントマター生成・コード取り込み）
-│  ├─ convert.rake          # HTML 変換と置換（vfm -> html, post-replace）
-│  ├─ post_process.rake     # HTML ポスト置換
-│  ├─ prism_lines.rake      # Prism.js 行番号付与
-│  ├─ toc.rake              # 目次（toc.html）生成
-│  ├─ entries.rake          # 章立て（entries.js）生成
-│  ├─ pdf.rake              # PDF 生成・PDF を開く（open:pdf, エイリアス: open）
-│  ├─ clean.rake            # 生成物クリーンアップ
-│  ├─ build.rake            # 一括ビルド
-│  ├─ create.rake           # 新規章の作成
-│  ├─ delete.rake           # 章の削除
-│  ├─ renumber.rake         # 章番号の変更・整列
-│  └─ vivliostyle.rake      # vivliostyle.config.js 生成/差分
-├─ Rakefile                 # CLI から内部的に利用されるエントリポイント
+├─ bin/
+│  └─ install-ruby.zsh      # Ruby の自動セットアップスクリプト（macOS）
+├─ lib/                     # CLI/ロジック（Thor ベースの `vs`）
 └─ README.md                # このファイル
 ```
+
+### 主要コマンド（抜粋）
+
+- ビルド: `vs build` / `vs build <chapter_id>`
+- 表示: `vs open` / `vs open:pdf`
+- 生成物削除: `vs clean`
+- 章の作成/削除/変更: `vs create <id>` / `vs delete <id>` / `vs rename <old> <new>` / `vs renumber [<from> <to>]`
+- Vivliostyle 設定生成: `vs vivliostyle:config`
+- ヘルプ: `vs help` / `vs <cmd> --help`
 
 ## インストール（Gem/CLI）
 
@@ -130,10 +129,10 @@ project/
 
 ```bash
 # Bundler（推奨）
-gem "vivlio-starter", "~> 0.1"
+gem "vivlio-starter", "~> 0.6"
 
-# またはローカル .gem を直接インストール
-gem install ./vivlio-starter-0.1.0.gem
+# または RubyGems から直接インストール
+gem install vivlio-starter
 ```
 
 CLI は以下の 2 つのコマンド名で呼び出せます（同等）。
@@ -170,15 +169,13 @@ vs new mybook
 
 cd mybook
 
-# 執筆開始（テンプレートの 01-chapter.md を編集）
-code contents/01-chapter.md
+# 執筆開始（テンプレートの 02-preface.md を編集）
+# Windsurf の場合
+windsurf contents/02-preface.md
+# （CLI 未設定の場合の代替）open -a "Windsurf" contents/02-preface.md
+# VS Code の場合
+code contents/02-preface.md
 
-# プレビュー/ビルド（例）
-vivliostyle preview   # または npx vivliostyle preview
-# 本リポジトリの CLI を利用する場合は vs コマンドを使えます
-```
-
-```bash
 # 全ファイルビルド（PDF 生成まで一括）
 vs build
 
@@ -228,7 +225,6 @@ vivliostyle:
   reading_progression: ltr
   entries_file: entries.js
   config_file: vivliostyle.config.js
-  image: ghcr.io/vivliostyle/cli:9.5.0
 pdf:
   output_file: output.pdf
   close_existing_windows: true
@@ -239,28 +235,25 @@ pdf:
 
 ## ビルドの流れ（開発者用）
 
-`vs build` は概ね次の順で実行されます（内部では各処理を順に呼び出します）。
+`vs build` は概ね次の順で実行されます（内部処理の概要）。
 
-1. preprocess.rake
+1. 前処理
    - 画像パスの付与（例: `![](shogiban.png)` → `![](images/02-preface/shogiban.png)`）
    - フロントマターの生成（既存があれば併合）
    - ソースコードの取り込み
    - プロジェクトルートへ書き出し
-2. convert.rake
+2. 変換
    - vfm による Markdown → HTML 変換
    - `<body>` にファイルタイプクラスを付与
    - `_post_replace_list.yml` に基づく置換処理
    - Prism.js を用いたソースコードへの行番号追加
-3. toc.rake
-   - `toc.html` を生成
-4. entries.rake
-   - `entries.js` を生成
-5. pdf.rake
-   - `npx vivliostyle build` により PDF 生成
-6. clean.rake
-   - 生成した PDF 以外の生成物をクリーンアップ
-7. pdf.rake
-   - `vs open`（=`open:pdf`）で PDF を開く
+3. 目次/章立て
+   - `toc.html` / `entries.js` を生成
+4. PDF 生成
+   - `vivliostyle build` により PDF 生成（圧縮を既定で実施、スキップ可）
+5. クリーン/表示
+   - 生成物のクリーンアップ
+   - `vs open` で PDF を開く
 
 ### ログの冗長度（Verbose）
 

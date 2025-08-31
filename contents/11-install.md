@@ -66,7 +66,6 @@ gem install vivlio-starter
 
 ```bash
 vs new mybook                       # 新規プロジェクトを作成（必要ツールを自動導入）
-p
 vs new mybook --interactive         # 必要ツールのインストールを対話的に確認しながら実行する
 ```
 
