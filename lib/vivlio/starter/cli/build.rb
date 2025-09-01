@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 require 'rbconfig'
 require 'fileutils'
-require 'hexapdf'
 
 module Vivlio
   module Starter
@@ -52,6 +51,8 @@ module Vivlio
             method_option :low,      type: :boolean, default: false, desc: '画像最適化プリセット: 低品質'
             method_option :compress, type: :boolean, default: true,  desc: 'PDF圧縮を行う（--no-compress で無効）'
             method_option :clean,    type: :boolean, default: true,  desc: '中間生成物をクリーンアップ（--no-clean で無効）'
+            method_option :dry_run,  type: :boolean, aliases: '-n',  desc: '実行せずにビルド予定のみを表示（試行）'
+            method_option :merge,    type: :boolean, aliases: '-m',  desc: '生成された各PDFを結合して出力（出力名: output.pdf / output_compressed.pdf）'
 
             # ================================================================
             # Command: build（統合ビルドエントリポイント）
@@ -77,19 +78,90 @@ module Vivlio
               # Common ベース実装
 
               files = Common.normalize_tokens(tokens)
+              # delete.rb と同様の規則でトークンを展開（数値/レンジ/拡張子→実在 .md ベース名）
+              expanded_basenames = expand_tokens_to_targets(files)
+              # Thor タスクに渡すトークンは拡張子なし
+              expanded_tokens = expanded_basenames.map { |bn| bn.sub(/\.md\z/, '') }
 
-              # 指定ターゲットのみ HTML を生成して終了（pre_process → convert → post_process → entries）
-              if files.any?
-                Common.log_action("ターゲットHTML生成のみ実行: #{files.join(', ')}")
-                files.each do |target|
+              # 指定ターゲットのみ 単章/複数章ビルドを実行（pre_process → convert → post_process → entries → pdf → リネーム）
+              if expanded_tokens.any?
+                Common.log_action("単章/選択ビルドを実行します: #{expanded_tokens.join(', ')}")
+
+                if options[:dry_run]
+                  Common.echo_always "\n== Dry Run: ビルド予定一覧 =="
+                  expanded_tokens.each do |t|
+                    Common.echo_always "  - 章: #{t} → 生成予定: #{t}.pdf"
+                  end
+                  if options[:merge]
+                    Common.echo_always "  - 結合: output.pdf（圧縮有効時は output_compressed.pdf も生成）"
+                  end
+                  Common.echo_always "\n合計 #{expanded_tokens.size} 章（dry-run、実処理は行いません）。"
+                  return
+                end
+
+                generated_pdfs = []
+                last_pdf = nil
+                expanded_tokens.each do |target|
                   %w[pre_process convert post_process entries].each do |t|
                     Vivlio::Starter::ThorCLI.start([t, target])
                   end
+                  # 単章PDFを生成
+                  Vivlio::Starter::ThorCLI.start(['pdf'])
+                  pdf_config = Common::CONFIG['pdf'] || {}
+                  output_pdf = pdf_config['output_file'] || 'output.pdf'
+                  chapter_pdf = "#{target}.pdf"
+                  if File.exist?(output_pdf)
+                    begin
+                      FileUtils.rm_f(chapter_pdf)
+                      FileUtils.mv(output_pdf, chapter_pdf)
+                      Common.log_success("単章PDFを生成しました: #{chapter_pdf}")
+                      generated_pdfs << chapter_pdf
+                      last_pdf = chapter_pdf
+                    rescue => e
+                      Common.log_warn("単章PDFのリネームに失敗しました: #{e}")
+                    end
+                  else
+                    Common.log_warn("出力PDFが見つかりません: #{output_pdf}")
+                  end
                 end
-                Common.log_success('指定ターゲットのHTML生成が完了しました')
-                # 単体ビルドでも完了後に一度だけPDFを開く（OS判定は open_pdf 側に委譲）
+
+                # 複数生成時の結合処理
+                if options[:merge] && generated_pdfs.any?
+                  Common.log_action('[Merge] 生成した章PDFを結合して output.pdf を作成します…')
+                  begin
+                    FileUtils.rm_f('output.pdf')
+                    cmd = ['bundle', 'exec', 'hexapdf', 'merge', *generated_pdfs, 'output.pdf'].join(' ')
+                    merged = system(cmd)
+                    if merged && File.exist?('output.pdf')
+                      Common.log_success('[Merge] output.pdf を生成しました')
+                      if options[:compress] != false
+                        # 既定の圧縮フローを利用
+                        begin
+                          Vivlio::Starter::ThorCLI.start(['pdf_compress'])
+                        rescue => e
+                          Common.log_warn("[Merge] 圧縮に失敗またはスキップ: #{e}")
+                        end
+                      end
+                      # 最後に open:pdf（圧縮があれば圧縮版が優先される実装）
+                      begin
+                        open_pdf
+                      rescue => _e
+                        # 続行
+                      end
+                      return
+                    else
+                      Common.log_error('[Merge] PDF結合に失敗しました（output.pdf 未生成）')
+                    end
+                  rescue => e
+                    Common.log_warn("[Merge] 結合中にエラー: #{e}")
+                  end
+                end
+
+                # 生成した単章PDFを一度だけ開く（macOS のみ）
                 begin
-                  open_pdf
+                  if last_pdf && RbConfig::CONFIG['host_os'] =~ /darwin|mac os/i
+                    system(%(open -a Preview "#{last_pdf}"))
+                  end
                 rescue => _e
                   # 失敗しても処理は継続
                 end
@@ -260,6 +332,43 @@ module Vivlio
               end
 
               Common.log_success('全ファイルのビルドが完了しました')
+            end
+
+            no_commands do
+              # delete.rb のロジックを参照したトークン展開
+              def list_contents_basenames
+                Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |p| File.basename(p) }
+              end
+
+              def chapter_number_from_basename(basename)
+                (basename[/^(\d+)-/, 1] || nil)&.to_i
+              end
+
+              def find_basenames_in_range(from_num, to_num)
+                a, b = [from_num.to_i, to_num.to_i].minmax
+                list_contents_basenames.select do |bn|
+                  n = chapter_number_from_basename(bn)
+                  n && n >= a && n <= b
+                end
+              end
+
+              def expand_token_to_basenames(token)
+                t = token.to_s.strip
+                return [] if t.empty?
+                if t =~ /(\A\d+)-(\d+\z)/
+                  return find_basenames_in_range($1, $2)
+                end
+                if t =~ /\A\d+\z/
+                  return list_contents_basenames.select { |bn| bn.start_with?("#{t}-") }
+                end
+                name = t + '.md'
+                path = File.join(Common::CONTENTS_DIR, name)
+                File.exist?(path) ? [name] : []
+              end
+
+              def expand_tokens_to_targets(tokens)
+                Array(tokens).compact.flat_map { |tok| expand_token_to_basenames(tok) }.uniq
+              end
             end
           end
         end
