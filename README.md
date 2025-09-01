@@ -53,10 +53,8 @@ Ghostscript による簡易圧縮例:
 
 ```bash
 # 画質とサイズのバランス例（/ebook は可読性を保ちつつ縮小）
-gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 \
-   -dPDFSETTINGS=/ebook -dNOPAUSE -dQUIET -dBATCH \
-   -sOutputFile=output.compressed.pdf output.pdf
-
+gs -sDEVICE=pdfwrite -dPDFSETTINGS=/ebook -dCompatibilityLevel=1.7 \
+   -dNOPAUSE -dQUIET -dBATCH -sOutputFile=output.compressed.pdf output.pdf
 # より高画質にしたい場合は /prepress、もっと小さくしたい場合は /screen を検討
 # /default, /screen, /ebook, /printer, /prepress
 ```

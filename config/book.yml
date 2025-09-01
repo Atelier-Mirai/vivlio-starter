@@ -104,18 +104,16 @@ vivliostyle:
   # 設定ファイル名
   config_file: 'vivliostyle.config.js'
 
-# PDF表示設定（macOSのみ）
+# PDF設定
 pdf:
   # 出力PDFファイル名
   output_file: 'output.pdf'
   # 圧縮PDFファイル名（rake pdf:compress の既定値）
   output_file_compressed: 'output_compressed.pdf'
-  # 圧縮エンジンの指定（qpdf | gs）。未指定時は qpdf 優先
-  compress_engine: qpdf
   # Vivliostyleビルド時のコンソール出力を抑制（ENV VIVLIO_QUIET=1 でも可）
   quiet: true
   
-  # PDFを開く際のウィンドウ位置とサイズ
+  # PDFを開く際のウィンドウ位置とサイズ（macOSのみ）
   # 形式: "{x, y, width, height}"
   # x, y: 左上角の座標
   # width, height: ウィンドウのサイズ

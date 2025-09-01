@@ -315,7 +315,7 @@ vs --version
   - vs build の圧縮オプション:
     - 既定で圧縮を実行します。スキップしたい場合は `vs build --no-compress`。
     - 圧縮後の既定ファイル名は `output_compressed.pdf`。`config.yml` の `pdf.output_file_compressed` で変更可。
-    - 圧縮エンジンは Ghostscript を用いています。
+    - 圧縮エンジンは Ghostscript を用いています（理由: qpdf は再圧縮で効果が乏しいケースが多く、GS(pdfwrite) の方が安定して圧縮率を得やすいため）。
     - 既存PDFを後から圧縮する場合は `vs pdf:compress` を使用（内部で Ghostscript を使用）。
 
   - Ghostscript で圧縮:

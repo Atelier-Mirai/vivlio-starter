@@ -5,11 +5,11 @@ module Vivlio
   module Starter
     module CLI
       # ================================================================
-      # Module: Thor コマンド群: pdf / vivliostyle 関連
+      # Module: Thor コマンド群: pdf 関連
       # ------------------------------------------------
       # - 目的: Vivliostyle CLI を用いた PDF 生成と周辺ユーティリティ
-      # - 提供コマンド: pdf, pdf_compress, open:pdf, config
-      # - 主な処理: PDFビルド、圧縮（qpdf/gs）、Previewでの表示、設定JS生成
+      # - 提供コマンド: pdf, pdf_compress, open:pdf
+      # - 主な処理: PDFビルド、圧縮（Ghostscript）、Previewでの表示
       # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
       # ================================================================
       module PdfCommands
@@ -58,13 +58,11 @@ module Vivlio
               end
             end
 
-            desc 'pdf_compress', '生成済みPDFを圧縮します (gs または qpdf を自動選択)'
+            desc 'pdf_compress', '生成済みPDFを圧縮します (Ghostscript)'
             long_desc <<~DESC
-              生成済みのPDFファイルを圧縮します。
+              生成済みのPDFファイルを Ghostscript(pdfwrite) を用いて圧縮します。
 
-              使用可能なツールを自動検出し、優先順位で選択：
-              1. qpdf（品質保持に優れた推奨ツール）
-              2. gs（Ghostscript）
+              既定の品質プリセットは /ebook（中庸）です。
 
               オプション:
                 -v, --verbose  詳細な処理情報を表示
@@ -72,10 +70,10 @@ module Vivlio
             # ================================================================
             # Command: pdf_compress（PDF圧縮）
             # ------------------------------------------------
-            # - 概要: qpdf または gs を用いて PDF を圧縮
+            # - 概要: Ghostscript を用いて PDF を圧縮
             # - 入力: config.yml の pdf.output_file（既定: output.pdf）
             # - 出力: config.yml の pdf.output_file_compressed（既定: output_compressed.pdf）
-            # - 補足: 優先エンジンは ENV/設定に従い qpdf を既定で優先
+            # - 補足: 既定のプリセットは /ebook。必要に応じてコード変更で調整してください。
             # ================================================================
             def pdf_compress
               ENV['VERBOSE'] = '1' if options[:verbose]
@@ -92,21 +90,8 @@ module Vivlio
 
               # 利用可能なコマンドを検出
               has_gs   = system('which gs >/dev/null 2>&1')
-              has_qpdf = system('which qpdf >/dev/null 2>&1')
-
-              # 圧縮エンジンの優先度（ENV > config.yml）
-              # 値: 'qpdf' | 'gs' を想定。未指定時は qpdf を優先し、なければ gs。
-              preferred = (ENV['VIVLIO_COMPRESS_ENGINE'] || pdf_config['compress_engine'] || '').downcase
-
+              
               compressed = false
-
-              run_qpdf = proc do
-                cmd = [
-                  'qpdf', '--linearize', '--compress-streams=y', '--object-streams=generate',
-                  input_pdf, output_pdf
-                ].join(' ')
-                system(cmd)
-              end
 
               run_gs = proc do
                 # 透明度保持互換性の改善のため 1.7 を指定
@@ -118,17 +103,10 @@ module Vivlio
                 system(cmd)
               end
 
-              if preferred == 'qpdf' && has_qpdf
-                compressed = run_qpdf.call
-              elsif preferred == 'gs' && has_gs
-                compressed = run_gs.call
-              elsif has_qpdf
-                # 既定: qpdf を優先（描画への影響が小さいため）
-                compressed = run_qpdf.call
-              elsif has_gs
+              if has_gs
                 compressed = run_gs.call
               else
-                Common.log_warn('gs も qpdf も見つかりません。圧縮をスキップします。')
+                Common.log_warn('Ghostscript(gs) が見つかりません。圧縮をスキップします。')
                 exit(1)
               end
 
@@ -207,90 +185,6 @@ module Vivlio
               APPLE_SCRIPT
 
               Common.log_success("PDFを開きました")
-            end
-
-            desc 'config', 'config/book.yml の設定から vivliostyle.config.js を生成します'
-            long_desc <<~DESC
-              book.yml の設定から vivliostyle.config.js を生成します。
-
-              生成内容:
-              - タイトル、著者、言語設定
-              - 読み進め方向（ltr/rtl）
-              - エントリーファイル（entries.js）
-              - 出力PDFファイル名
-
-              既存ファイルは自動バックアップされます。
-            DESC
-            # ================================================================
-            # Command: config（vivliostyle.config.js 生成）
-            # ------------------------------------------------
-            # - 概要: book.yml 等の設定から vivliostyle.config.js を生成
-            # - 入力: config.yml の book/vivliostyle/pdf セクション
-            # - 出力: vivliostyle.config.js（既存はバックアップ後に上書き）
-            # ================================================================
-            def config
-              ENV['VERBOSE'] = '1' if options[:verbose]
-              Common.log_action("vivliostyle.config.jsを生成しています...")
-
-              # 設定を取得
-              config             = Common::CONFIG
-              book_config        = config['book'] || {}
-              vivliostyle_config = config['vivliostyle'] || {}
-              pdf_config         = config['pdf'] || {}
-
-              # JS 文字列に安全に埋め込むための簡易エスケープ
-              esc = ->(s) { s.to_s.gsub('\\', '\\\\').gsub("'", "\\'") }
-
-              # 設定値を取得（デフォルト値付き）
-              # title が未設定の場合は main_title と subtitle を結合して使う
-              combined_title = [book_config['main_title'], book_config['subtitle']].compact.join(' ').strip
-              title_raw = book_config['title']
-              title = (title_raw && !title_raw.to_s.strip.empty?) ? title_raw : (combined_title.empty? ? '書籍タイトル' : combined_title)
-              author              = book_config['author'] || '著者名'
-              language            = book_config['language'] || 'ja'
-              reading_progression = vivliostyle_config['reading_progression'] || 'ltr'
-              entries_file        = vivliostyle_config['entries_file'] || 'entries.js'
-              output_file         = pdf_config['output_file'] || 'output.pdf'
-              config_file         = vivliostyle_config['config_file'] || 'vivliostyle.config.js'
-
-              # バックアップ処理（最新のみ保持）
-              if File.exist?(config_file)
-                Dir.glob("#{config_file}.backup_*").each { |f| FileUtils.rm_f(f) }
-                timestamp = Time.now.strftime('%Y%m%d_%H%M%S')
-                backup_file = "#{config_file}.backup_#{timestamp}"
-                FileUtils.cp(config_file, backup_file)
-                Common.log_info("既存ファイルをバックアップしました: #{backup_file}")
-              end
-
-              # vivliostyle.config.jsの内容を生成
-              config_content = <<~JS
-                import entries from './#{esc.call(entries_file)}';
-
-                // @ts-check
-                /** @type {import('@vivliostyle/cli').VivliostyleConfigSchema} */
-                const vivliostyleConfig = {
-                  title: '#{esc.call(title)}', // 書籍のタイトル
-                  author: '#{esc.call(author)}', // 著者名
-                  language: '#{esc.call(language)}', // 言語設定
-                  readingProgression: '#{esc.call(reading_progression)}', // 読み進め方向（ltr: 横書き, rtl: 縦書き）
-                  entry: entries, // 章立て構成（#{entries_file}から読み込み）
-                  output: [ // 出力ファイル設定
-                    './#{esc.call(output_file)}' // PDFファイル
-                  ]
-                };
-
-                export default vivliostyleConfig;
-              JS
-
-              # ファイルに書き込み
-              File.write(config_file, config_content)
-
-              Common.log_success("#{config_file} を生成しました")
-              Common.log_info("タイトル: #{title}")
-              Common.log_info("著者: #{author}")
-              Common.log_info("言語: #{language}")
-              Common.log_info("読み進め方向: #{reading_progression}")
-              Common.log_info("出力ファイル: #{output_file}")
             end
           end
         end

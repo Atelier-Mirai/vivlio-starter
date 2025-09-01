@@ -8,14 +8,14 @@ module Vivlio
       # ==============================================================================
       # Module: DoctorCommands
       # ------------------------------------------------------------------------------
-      # 必要な外部ツール(Xcode Command Line Tools, qpdf, pdfinfo 他)の存在チェックと、
+      # 必要な外部ツール(Xcode Command Line Tools, qpdf, pdfinfo, gs, ImageMagick 他)の存在チェックと、
       # macOS + Homebrew 環境での自動インストール支援を行うコマンド。
       # ==============================================================================
       module DoctorCommands
         extend self
         def included(base)
           base.class_eval do
-            desc 'doctor', '必要ツール(Xcode Command Line Tools, qpdf, pdfinfo)の診断とセットアップを行います'
+            desc 'doctor', '必要ツール(Xcode Command Line Tools, qpdf, pdfinfo, gs, ImageMagick)の診断とセットアップを行います'
             long_desc <<~DESC
               環境診断を行い、以下の外部コマンドの存在をチェックします:
                 - Xcode Command Line Tools (macOS)
@@ -25,6 +25,10 @@ module Vivlio
                 - vivliostyle
                 - gs
                 - imagemagick
+
+              役割の補足:
+                - 圧縮は Ghostscript(pdfwrite) を使用します
+                - qpdf は分割/結合・ページ抽出などの PDF 操作用に使用します（圧縮用途ではありません）
 
               --fix オプション指定時、macOS かつ Homebrew が利用可能であれば
               不足しているツールの自動インストールを試みます。
