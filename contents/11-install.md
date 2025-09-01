@@ -84,11 +84,20 @@ vs build  # PDF を生成
 
 以下のツール群が、`vs new` コマンドで自動導入されます。
  - Xcode Command Line Tools（未導入ならインストーラ起動と完了待機）
+   - 概要: Apple 純正の開発用コマンドラインツール群（コンパイラやビルド関連の基盤）。
+   - 用途: Homebrew や rbenv でのビルド・インストールに必要。PDF/画像処理ツール群の導入を安定させます。
  - Homebrew が未導入なら自動インストール（確認あり。`-y` で省略）
+   - 概要: macOS 用パッケージマネージャ。
+   - 用途: Node.js や qpdf, poppler, Ghostscript, ImageMagick などの外部依存を自動導入します。
  - Node.js（node@20 優先）/ npm の導入
+   - 概要: JavaScript 実行環境とパッケージマネージャ（npm）。
+   - 用途: Vivliostyle CLI の実行に必須。テンプレートのフロントエンド依存やビルド支援スクリプトの実行にも使用します。
  - Vivliostyle CLI（`npm install -g @vivliostyle/cli`）の導入
+   - 概要: CSS 組版エンジン Vivliostyle を操作するコマンドラインツール。
+   - 用途: Markdown/HTML+CSS から PDF を生成する中核。`vs build` 内部で呼び出されます。
  - qpdf / poppler(pdfinfo) / Ghostscript / ImageMagick の導入
-
+   - 概要: PDF/画像処理のユーティリティ群。
+   - 用途: qpdf は PDF の分割・結合・ページ抽出等、pdfinfo(poppler) はページ数取得、Ghostscript は PDF 圧縮、ImageMagick は画像の変換・最適化（WebP 変換やリサイズ等）に使用します。
 
 ```bash
 vs new mybook --manual-install      # 必要ツールは手動で導入する
@@ -158,6 +167,7 @@ vivliostyle --version
 brew install qpdf poppler ghostscript imagemagick
 ```
 補足: `poppler` に含まれる `pdfinfo` を `BuildHelpers.page_count()` が利用します。
+補足: PDF 圧縮は Ghostscript(pdfwrite) を使用します。qpdf は分割/結合のために利用します。
 補足: HexaPDF は gem 依存として自動導入されるため、`vs doctor` の対象外です。
 
 7) vivlio-starter（gem）
@@ -269,6 +279,7 @@ vs --version
     vs doctor --fix
     # 手動で導入する場合は Homebrew
     brew install qpdf ghostscript poppler imagemagick
+    # 圧縮は Ghostscript 固定（qpdf は分割/結合用）
     # それでも見つからない場合はシェルの PATH を見直してください
     echo $PATH
     ```
@@ -304,13 +315,14 @@ vs --version
   - vs build の圧縮オプション:
     - 既定で圧縮を実行します。スキップしたい場合は `vs build --no-compress`。
     - 圧縮後の既定ファイル名は `output_compressed.pdf`。`config.yml` の `pdf.output_file_compressed` で変更可。
-    - 圧縮エンジンは `qpdf` を優先（なければ `gs`）。`VIVLIO_COMPRESS_ENGINE=qpdf|gs` または `config.yml` の `pdf.compress_engine` で選択可能。
-    - 既存PDFを後から圧縮する場合は `vs pdf:compress` を使用。
+    - 圧縮エンジンは Ghostscript を用いています。
+    - 既存PDFを後から圧縮する場合は `vs pdf:compress` を使用（内部で Ghostscript を使用）。
 
   - Ghostscript で圧縮:
     ```bash
-    gs -sDEVICE=pdfwrite -dPDFSETTINGS=/ebook -dCompatibilityLevel=1.4 \
-      -dNOPAUSE -dQUIET -dBATCH -sOutputFile=output.compressed.pdf output.pdf
+    # 透明度保持のため `-dCompatibilityLevel=1.7` を指定しています（`vs pdf:compress` の実装と同一）。
+    gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.7 -dPDFSETTINGS=/ebook \
+      -dNOPAUSE -dQUIET -dBATCH -sOutputFile=output_compressed.pdf output.pdf
     ```
 - アーティファクト名や公開用パスは（既定名）`output_compressed.pdf` を推奨します。
 - .gitignore で PDF を許可: リポジトリに PDF を含める場合は、`.gitignore` の無視設定を調整（例: 末尾に `!*.pdf` を追加）してください。
