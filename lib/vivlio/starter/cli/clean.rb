@@ -33,7 +33,9 @@ module Vivlio
               - ディレクトリ: .vivliostyle を削除
               - 生成ファイル: *.html, 03-toc.md, entries.js など
               - 中間PDF: titlepage/frontmatter などの作業用 PDF（保持対象外）
+              ※ 完全に一掃する場合は --purge（PDF含む）をご利用ください。
             DESC
+            method_option :purge, type: :boolean, aliases: '-P', desc: '生成物（PDF含む）をすべて削除します'
             # ================================================================
             # Command: clean（生成物のクリーンアップ）
             # ------------------------------------------------
@@ -72,13 +74,14 @@ module Vivlio
                 (Common::CONFIG.dig('pdf', 'output_file_compressed') || 'output_compressed.pdf')
               ].uniq
 
+              # --purge 指定時は最終PDFも削除対象に含める
+              if options[:purge]
+                cleanup_patterns.concat(final_pdfs)
+              end
+
               cleanup_patterns.each do |pattern|
                 Dir.glob(pattern).each do |file|
                   next if File.directory?(file)
-                  if final_pdfs.include?(file)
-                    Common.log_info("保持: #{file}")
-                    next
-                  end
                   FileUtils.rm_f(file)
                   Common.log_info("#{file} を削除しました")
                 end

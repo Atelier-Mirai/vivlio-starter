@@ -10,6 +10,7 @@
 - `vs build` の章指定方法を拡充（`11-install`, `11-install.md 12-tutorial`, `11-21`, `11 21-31` に対応）。
 - `vs build` に `--dry-run, -n` を追加（実行せずにビルド予定のみを表示）。
 - `vs build` に `--merge, -m` を追加（単章で生成された各PDFを結合して `output.pdf` / `output_compressed.pdf` を出力）。
+- `vs clean` に `--purge, -P` を追加（生成物（PDF含む）をすべて削除）。
 
 ### Fixed
 - CI セクションの圧縮エンジン表記の不整合を修正し、Ghostscript 固定に統一（例も `-dCompatibilityLevel=1.7` に合わせて更新）。固定理由: qpdf は再圧縮で効果が乏しいケースが多く、Ghostscript(pdfwrite) の方が安定して圧縮率を得やすいため。
