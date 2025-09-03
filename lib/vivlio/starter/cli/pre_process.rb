@@ -107,13 +107,18 @@ module Vivlio
           'yml'  => 'yaml'
         }.freeze
 
-        # ファイル拡張子から言語を推定
+        # 拡張子からPrism等で使う言語名を推定（未知拡張子は 'text'）
         def detect_language(file_path)
           ext = File.extname(file_path).downcase.delete_prefix('.')
           EXT_TO_LANG.fetch(ext, 'text')
         end
 
         # 簡易Markdown→HTML 変換
+        # - まず Kramdown を使用（利用不可の場合は最小限の自前パーサにフォールバック）
+        # - フォールバックでは「画像」「太字見出し相当」「番号リスト」「段落」のみを扱う
+        # - 段落バッファ flush_p により空行で段落を確定、<ol> の開閉も整合性を保つ
+        # - 認識優先順位: 空行 → 画像 → 太字行 → 番号リスト → それ以外は段落としてバッファ
+        # - 未対応のMarkdown記法はそのまま段落テキストとして残る（厳密な互換は目的外）
         def render_markdown_to_html(md_text)
           # まずはKramdownを試す
           begin
@@ -156,6 +161,7 @@ module Vivlio
               end
 
               # 番号リスト
+              # - 連続する行に対して <ol> を1回だけ開き、非連続になったら </ol> を閉じる
               if m = line.match(/^\s*(\d+)\.\s+(.*)$/)
                 flush_p.call
                 html_parts << "<ol>" unless in_ol
@@ -179,6 +185,9 @@ module Vivlio
         end
 
         # Markdown内のリンク記法を脚注化
+        # - 画像リンクは (?<!\!) により除外
+        # - 既存の [^urlN] を検出して最大番号から連番を継続
+        # - 本文のリンク直後に脚注参照を追記し、末尾に定義を追加（既存定義は重複作成しない）
         def transform_links_to_footnotes(md_text)
           text = md_text.to_s
 
@@ -193,6 +202,12 @@ module Vivlio
           replacements = []
 
           # リンク本体を置換
+          # - パターン: (?<!\!)\[(.+?)\]\((https?:[^\s)]+)\)(?!\[\^url\d+\])
+          #   - (?<!\!) で画像記法 ![]() を除外
+          #   - (https?:...) の外部URLのみ対象（相対リンク/アンカーは対象外）
+          #   - (?!\[\^url\d+\]) で既に脚注参照 [^urlN] が直後にあるケースを除外
+          # - 同一URLは同一脚注IDに束ね、章内で連番を継続（既存最大番号から開始）
+          # - 末尾の脚注定義は既存定義があれば重複作成しない
           replaced = text.gsub(/(?<!\!)\[(.+?)\]\((https?:[^\s)]+)\)(?!\[\^url\d+\])/) do |match|
             label = $1
             url   = $2
@@ -224,6 +239,7 @@ module Vivlio
         end
 
         # book-card 内のMarkdownを事前整形
+        # - 画像のみの行/太字のみの行の直後に空行を補い、後段のHTML整形を安定化
         def normalize_book_card_md(md_text)
           lines = md_text.to_s.split(/\r?\n/, -1)
           out = []
@@ -247,7 +263,9 @@ module Vivlio
         end
 
         # <div class="book-card"> ... </div> の内側MarkdownをHTMLへ
+        # - 内側Markdownを normalize → 簡易レンダラでHTML化 → 本テンプレ構造に組み替え
         def convert_book_card_inner_markdown(content)
+          # 開始/終了タグの直後に改行が入っているテンプレ構造を前提に、内側をキャプチャ
           content.gsub(/<div class=\"book-card\">\n(.*?)\n<\/div>/m) do
             inner = $1
             normalized = normalize_book_card_md(inner)
@@ -258,6 +276,9 @@ module Vivlio
         end
 
         # パイプテーブルを簡易HTML化
+        # - 1行目をヘッダ、2行目の区切り行（-|:|\s）で判定
+        # - セル内の `code` と <>& エスケープに対応
+        # - アラインメントや複雑なMarkdown表現は非対応の簡易実装
         def pipe_table_to_html(md_text)
           text = md_text.to_s.strip
           lines = text.split(/\r?\n/).map { |l| l.rstrip }
@@ -304,6 +325,8 @@ module Vivlio
         end
 
         # <div class="table-rotate"> ... </div> の内側MarkdownをHTMLへ
+        # - 通常は簡易レンダラでHTML化
+        # - HTMLに<table>が含まれないが '|' を含む場合、pipe_table_to_html にフォールバック
         def convert_table_rotate_inner_markdown(content)
           content.gsub(/<div class=\"table-rotate\">\s*(.*?)\s*<\/div>/m) do
             inner = $1
@@ -311,6 +334,8 @@ module Vivlio
             html = render_markdown_to_html(normalized).to_s.strip
 
             # フォールバック
+            # - 簡易レンダラが<table>を生成していないが、Markdownパイプテーブルらしき記号'|'がある場合のみ
+            #   文字列ヒューリスティックで pipe_table_to_html を試す
             if !html.include?("<table") && inner.include?("|")
               table_html = pipe_table_to_html(inner)
               html = table_html if table_html
@@ -321,14 +346,17 @@ module Vivlio
         end
 
         # book-card の内側を整形
+        # - 画像タグ(<img ...>)と太字タイトル(<strong>...</strong>)を抽出
+        # - 残りを説明HTMLとして扱い、所定の .book-info 構造に再配置
         def format_book_card_inner_html(inner_html)
           html = inner_html.to_s.strip
 
           # 1) 画像タグを抽出
           img_match = html.match(/<img[^>]*>/i)
+          # 必須要素が欠ける場合（画像やタイトルがない等）は変換せず原文を返す
           return inner_html unless img_match
           img_tag = img_match[0]
-          img_tag = img_tag.gsub(/\s*\/?>/i) { |m| '>' }
+          img_tag = img_tag.gsub(/\s*\/?\>/i) { |m| '>' }
 
           # 画像のみの<p>ラッパーを除去
           if html.sub!(/<p>\s*#{Regexp.escape(img_match[0])}\s*<\/p>/i, '')
@@ -339,6 +367,7 @@ module Vivlio
 
           # 2) タイトルを抽出
           title_match = html.match(/<p>\s*<strong>(.*?)<\/strong>\s*<\/p>/im)
+          # タイトルが見つからない場合も変換不可
           return inner_html unless title_match
           title_text = title_match[1].strip
           html.sub!(title_match[0], '')
@@ -359,6 +388,9 @@ module Vivlio
         end
 
         # フロントマターを生成
+        # - config を参照して theme.css / appendix.css / page-settings.css を更新
+        # - page 設定を CSS 変数へ写像（フォント名は引用符で囲み、既存値は簡易置換で更新）
+        # - frontmatter の link 配列は重複を避けつつマージ
         def generate_frontmatter(file_type, chapter_num = nil, existing_frontmatter = {})
           # ファイルタイプに対応する基本スタイルシート
           theme_name = begin
@@ -592,6 +624,8 @@ module Vivlio
         end
 
         # 画像パスを修正
+        # - 相対パス画像を images/<章basename>/ 配下に正規化
+        # - png/jpg は .webp に拡張子を変換（生成物の指針に合わせる）
         def fix_image_paths(content, filename)
           chapter_dir = filename.sub(/\.md$/, '')
 
@@ -599,12 +633,14 @@ module Vivlio
             alt_text  = $1
             image_path = $2
 
+            # すでに images/ から始まる場合はそのまま。相対パスは images/<章ディレクトリ>/ に正規化
             normalized = if image_path.start_with?('images/')
                            image_path
                          else
                            "images/#{chapter_dir}/#{image_path}"
                          end
 
+            # 生成物ポリシーに合わせて拡張子を .webp に寄せる（png/jpg のみ対象）
             normalized = normalized.sub(/\.(png|jpe?g)\z/i, '.webp')
 
             "![#{alt_text}](#{normalized})"
@@ -612,6 +648,9 @@ module Vivlio
         end
 
         # ソースコード読み込み処理
+        # - ```include:path[:start-end]``` を検出し、codes/ または絶対パスから読込
+        # - 行範囲が指定されていればその部分のみを抽出
+        # - 言語は拡張子から推定し、```lang:original_path タグで注釈
         def process_code_include(content)
           matches_found = 0
 
@@ -636,9 +675,12 @@ module Vivlio
               lines = source_content.lines
 
               code_content = if start_line && end_line
+                               # 1-origin の範囲指定を Ruby の配列スライスに合わせて 0-origin に補正（end も含む）
                                selected_lines = lines[(start_line-1)..(end_line-1)]
+                               # join は末尾改行を付与しないため、原文の改行をそのまま連結
                                selected_lines.join
                              else
+                               # 範囲未指定時はファイル全体を取り込み、コードブロックの体裁が崩れないよう末尾に改行を追加
                                source_content + "\n"
                              end
 
@@ -658,6 +700,10 @@ module Vivlio
         end
 
         # 単一のMarkdownファイルを処理
+        # 処理パイプライン概要:
+        # 1) フロントマター生成/併合 → 2) 画像パス正規化 → 3) ソースコード取込
+        # 4) book-card/table-rotate のブロック検出と事前変換/内側HTML化
+        # 5) リンク脚注化 → 6) 上書き保存
         def process_single_markdown_file(md_file)
           filename = File.basename(md_file)
           output_file = filename
@@ -704,6 +750,7 @@ module Vivlio
                     finish = [idx + 2, fm_lines.length - 1].min
                     snippet = fm_lines[start..finish].each_with_index.map { |l, i2| "#{start + i2 + 1}: #{l.chomp}" }.join("\n")
                     err_line_text = fm_lines[idx].to_s.chomp
+                    # エラー列位置の下に ^ を表示し、周辺5行を抜粋（可読性を高めるため）
                     caret_line = (column && column > 0) ? (" " * (column - 1) + "^") : ""
                     Common.log_info("問題のフロントマター（抜粋）:\n---\n#{snippet}\n---\n該当行:\n#{err_line_text}\n#{caret_line}")
                   else

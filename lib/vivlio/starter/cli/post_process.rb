@@ -41,6 +41,9 @@ module Vivlio
             # - 入力: *.html（引数未指定時はカレント直下の *.html）
             # - 出力: 上書き保存
             # - 補足: 置換ルールは _post_replace_list.yml（YAML配列）
+            # - パイプライン概要:
+            #   (1) 対象HTML解決 → (2) <body> に file_type クラス付与 →
+            #   (3) YAML置換の適用 → (4) 章末脚注をページ脚注へ変換 → (5) Prism行番号付与
             # ================================================================
             def post_process(*tokens)
               ENV['VERBOSE'] = '1' if options[:verbose]
@@ -51,6 +54,7 @@ module Vivlio
               base_dir = '.'
 
               # 引数があれば .html のみを対象にする
+              # - トークンは拡張子 .html を強制し、相対指定はプロジェクトルートに解決
               html_files = if files.any?
                 files.map { |f|
                   name = f.end_with?('.html') ? f : "#{f}.html"
@@ -64,6 +68,9 @@ module Vivlio
               html_files.each do |html_file|
                 content   = File.read(html_file, encoding: 'utf-8')
                 file_type = Common.get_file_type(html_file)
+                # 単純置換で <body> にクラスを付与
+                # - 既存 class 属性が無いテンプレ構成を前提に、文字列置換で高速に処理
+                # - 今後 <body> に既に属性が付く可能性がある場合は、正規表現に切替が必要
                 updated   = content.gsub('<body>', "<body class=\"#{file_type}\">")
                 File.write(html_file, updated, encoding: 'utf-8')
                 Common.log_info("#{html_file}: <body>→class追加(#{file_type})")
@@ -77,6 +84,9 @@ module Vivlio
                 begin
                   yml_content = File.read(target_yml, encoding: 'utf-8')
                   parsed = YAML.safe_load(yml_content, permitted_classes: [], aliases: true)
+                  # 期待スキーマ: 配列 [ { 'f': '正規表現文字列', 'r': '置換文字列' }, ... ]
+                  # - 'f' は Ruby Regexp として評価
+                  # - 'r' はキャプチャ $1..$n をサポート（gsub ブロック内で展開）
                   replace_rules = parsed.is_a?(Array) ? parsed : nil
                   Common.log_error('エラー: YAMLファイルは置換オブジェクト配列である必要があります') unless replace_rules
                   Common.log_info("置換ルール: #{File.basename(target_yml)} を使用")
@@ -120,6 +130,9 @@ module Vivlio
 
         # 指定HTMLファイルに対して、replace_rulesに基づく置換を適用
         # 戻り値: { changed: true/false, replacements: Integer }
+        # - 各 item は { 'f': 正規表現文字列, 'r': 置換文字列 } を想定
+        # - 'f' は Regexp として評価し、'r' は $1..$n をキャプチャに展開
+        # - ファイル単位で置換回数を集計し、差分があれば保存
         def process_html_file(html_file, replace_rules)
           html_content     = File.read(html_file, encoding: 'utf-8')
           original_content = html_content.dup
@@ -134,6 +147,8 @@ module Vivlio
               replacement_str = item['r'].dup
               matches_found   = 0
 
+              # String#gsub(Regexp) { |match| ... } を用い、各一致ごとに置換文字列を生成
+              # - ブロック内で pattern.match(match) を取り直してキャプチャ順で $1..$n を展開
               html_content.gsub!(pattern) do |match|
                 matches_found += 1
                 m      = pattern.match(match)
@@ -145,6 +160,7 @@ module Vivlio
               end
 
               if matches_found > 0
+                # このファイルで何件置換したかを集計してログに反映
                 file_replacements += matches_found
                 Common.log_info("パターン '#{item['f']}' → #{matches_found}個の置換")
               end
@@ -160,6 +176,16 @@ module Vivlio
         end
 
         # 章末の endnotes をページ脚注へ変換
+        # アルゴリズム概要:
+        # 1) Nokogiri(HTML5優先)で解析し、section.footnotes 内の <li id="fnN"> を収集
+        # 2) 戻りリンク/空段落を除去した内側HTMLを defs[fid] として保持
+        # 3) footnotes セクションを削除
+        # 4) 本文の参照アンカー <a href="#fid"> 直後に
+        #    - 画面用: <span class="page-footnote page-footnote-inline" role="doc-footnote">
+        #    - 印刷用: <aside class="page-footnote page-footnote-print" role="doc-footnote">
+        #    を挿入。インライン後の空白は NBSP に置換し改行を抑止
+        # 5) アンカー未検出の定義は <body> 末尾に aside を追加（フォールバック）
+        # 6) 定義のない脚注参照 a.footnote-ref についても前方のリンクURLから本文を推定して補完
         def convert_endnotes_to_page_footnotes!(html)
           # Nokogiri で解析（HTML5があれば優先）
           doc = if defined?(Nokogiri::HTML5)
@@ -204,6 +230,7 @@ module Vivlio
                 anchor.add_next_sibling(span)
 
                 # 直後の空白をノーブレークスペースに変換して改行を防止
+                # - 行末の脚注で折り返されると読みにくい問題に対応
                 following = span.next_sibling
                 if following && following.text?
                   txt = following.text
@@ -219,6 +246,7 @@ module Vivlio
                 aside['id'] = fid
                 aside.inner_html = body
                 # 段落を壊さないよう、<p> の直後に配置
+                # - ブロックレベルでページ脚注を出すため、段落ノードの直後に sibling として置く
                 para = anchor.ancestors('p').first
                 if para
                   para.add_next_sibling("\n")
@@ -261,6 +289,8 @@ module Vivlio
             next if doc.at_css(%(##{fid}))
 
             # 直前のリンク要素からURLを推定
+            # - Kramdown の [:ref] と生成物の差異により参照のみで定義が無いケースがあるため、
+            #   実用上もっとも近い preceding <a> の href を本文として補完
             prev_link = anchor.previous_element
             while prev_link && prev_link.name != 'a'
               prev_link = prev_link.previous_element
