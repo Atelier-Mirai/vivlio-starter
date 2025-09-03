@@ -13,13 +13,13 @@
   --accent-red:           #d33;
   --accent-green:         #3cb371;  /* mediumseagreen 系 */
   --accent-purple:        #7d4aa6;  /* 紫系 */
-  --theme-accent:         var(--accent-yellow); /* 既定: yellow 系。blue/red/green/purple にする場合は var(--accent-*) に変更 */
+  --theme-accent:         var(--accent-green); /* 既定: yellow 系。blue/red/green/purple にする場合は var(--accent-*) に変更 */
 
   /* カラートークン（共通） */
   --color-text:            #000;
   --color-link:            #000;           /* 必要に応じ変更 */
-  --color-strong:          #b40;           /* 強調（重要） */
-  --color-em-underline:    #fd0;           /* 強意の下線色 */
+  --color-strong:          var(--theme-accent);           /* 強調（重要） */
+  --color-em-underline:    var(--theme-accent);           /* 強意の下線色 */
   --color-border:          #ccc;           /* 画像など汎用枠 */
   --color-border-weak:     #ddd;           /* 引用枠など */
   --color-column-bg:       #eef;           /* コラム背景 */
@@ -32,19 +32,19 @@
 
   /* 節番号テーマ（デフォルトはイエロー） */
   --section-number-color:  var(--theme-accent);
-  --section-bg-image:      url("images/frame-yellow.webp");
+  --section-bg-image:      url("images/frame-green.webp");
 
   /* テーマは yellow / blue / red / green / purple から選択可能。
      変更する場合は :root で以下のように上書きする。
-       - yellow: --theme-accent: var(--accent-yellow); --section-bg-image: url("images/frame-yellow.webp");
-       - blue:   --theme-accent: var(--accent-yellow);   --section-bg-image: url("images/frame-yellow.webp");
-       - red:    --theme-accent: var(--accent-yellow);    --section-bg-image: url("images/frame-yellow.webp");
-       - green:  --theme-accent: var(--accent-yellow);  --section-bg-image: url("images/frame-yellow.webp");
-       - purple: --theme-accent: var(--accent-yellow); --section-bg-image: url("images/frame-yellow.webp");
+       - yellow: --theme-accent: var(--accent-green); --section-bg-image: url("images/frame-green.webp");
+       - blue:   --theme-accent: var(--accent-green);   --section-bg-image: url("images/frame-green.webp");
+       - red:    --theme-accent: var(--accent-green);    --section-bg-image: url("images/frame-green.webp");
+       - green:  --theme-accent: var(--accent-green);  --section-bg-image: url("images/frame-green.webp");
+       - purple: --theme-accent: var(--accent-green); --section-bg-image: url("images/frame-green.webp");
   */
 
   /* 扉画像（door1.webp〜door7.webp などに差し替え可） */
-  --chapter-door-image:    url("images/door5.webp");
+  --chapter-door-image:    url("images/door2.webp");
 }
 
 @font-face {

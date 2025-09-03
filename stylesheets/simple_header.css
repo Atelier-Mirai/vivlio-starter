@@ -1,0 +1,113 @@
+/* simple_header.css
+   シンプル版（画像なし）の章ヘッダースタイル。
+   chapter.css から @import される想定。
+*/
+
+/* 章タイトル */
+h1 {
+  /* layout */
+  break-before: recto;
+
+  /* spacing */
+  margin-block-start: calc(40mm - var(--page-block-margin-start)); /* ページ上端から40mmで上線が来るように */
+  /* 幅は章リードと同じ 32em、中央寄せ */
+  margin-inline: auto;
+  inline-size: 163.2mm; /* 32em ≒ 32 × 17Q × 1.2 = 652.8Q = 163.2mm */
+  box-sizing: border-box;
+  padding-inline: 0;
+  padding-block: 10mm; /* 余白をやや詰める */
+
+  /* typography */
+  font-size: 44Q;
+  line-height: 50Q;
+  color: var(--heading-text);
+
+  /* alignment */
+  text-align: center;
+
+  /* visual: 灰色パネル + 上下ライン（50% 幅, 0.5mm 高さ） */
+  background:
+    linear-gradient(var(--heading-accent), var(--heading-accent)) top center / 100% 2mm no-repeat,
+    linear-gradient(var(--heading-accent), var(--heading-accent)) bottom center / 100% 2mm no-repeat;
+  background-color: var(--heading-gray);
+
+  /* 節カウンタのみリセット。ページ番号は @page で制御 */
+  counter-reset: section-counter 0;
+  string-set: chapter-title content(), chapter-number content(before);
+}
+
+h1::before {
+  /* layout */
+  position: static; /* 中央配置を素直に反映 */
+  display: block;
+
+  /* box-size */
+  inline-size: auto;
+  block-size: auto;
+
+  /* alignment */
+  text-align: center;
+
+  /* typography */
+  font-size: 30Q;
+  color: var(--heading-text);
+
+  /* spacing */
+  margin-block-end: 6mm;
+
+  /* counters/meta */
+  content: "第 " counter(chapter-counter) " 章";
+}
+
+/* 節見出し（左バッジ + 右灰色帯） */
+h2 {
+  position: relative;
+  display: block;
+
+  /* spacing */
+  margin-inline-start: 0;
+  margin-block: 5mm 5mm; /* 上下5mmの隙間 */
+  padding-block: 3mm;
+  padding-inline: 6mm;
+  padding-inline-start: calc(22mm + 6mm); /* バッジ拡大に追随 */
+
+  /* typography */
+  font-size: 36Q;
+  line-height: 1.3;
+  font-weight: 800;
+  color: var(--heading-text);
+
+  /* alignment */
+  text-align: left;
+
+  /* box-size */
+  inline-size: 100%;
+
+  /* pagination */
+  break-before: page;
+
+  /* visual */
+  background: var(--section-gray);
+
+  /* meta */
+  string-set: section-title content(), section-number content(before);
+  counter-increment: section-counter;
+}
+
+/* 左の番号バッジ（アクセント色に白字） */
+h2::before {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 0;
+  inline-size: 22mm; /* バッジ幅を拡大 */
+  block-size: 100%;
+  display: grid;
+  place-items: center;
+  background: var(--heading-accent);
+  color: #fff;
+  font-weight: 900;
+  content: counter(chapter-counter) "." counter(section-counter);
+}
+
+/* 旧装飾を無効化 */
+h2::after { content: none; }

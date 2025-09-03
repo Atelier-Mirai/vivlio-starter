@@ -26,11 +26,13 @@ chapters:
   - 02-preface
   - 11-install
   - 12-tutorial.md
+  - 91-appendix-a.md
 
 # テーマ
 theme:
-  door: 5        # 扉絵の画像番号（1から7 または 'door5' の形式で設定)
-  name: 'yellow' # yellow | blue | red の三色から選択
+  style: image   # simple: 画像なし / image: 画像あり
+  color: green   # yellow | blue | red | green | purple の五色から選択
+  door: 2         # 扉絵の画像番号（1から7 または 'door5' の形式で設定)
 
 # ページ設定
 page:

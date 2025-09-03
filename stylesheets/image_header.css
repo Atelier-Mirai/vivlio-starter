@@ -1,0 +1,155 @@
+/* image_header.css
+   画像あり版の章ヘッダースタイル。
+   chapter.css から @import される想定。
+*/
+
+/* ドキュメントの1ページ目に章扉背景を設定（@page で全ページボックスに描画）
+   必要に応じて theme.css 側の --chapter-door-image を設定してください。 */
+
+/* stylelint-disable */
+@page :nth(1) {
+  background: center / cover no-repeat var(--chapter-door-image) fixed;
+}
+/* stylelint-enable */
+
+/* 章タイトル */
+h1 {
+  /* layout */
+  break-before: recto;
+
+  /* spacing */
+  margin-block-start: 57mm;
+
+  /* typography */
+  font-size: 44Q;
+  line-height: 50Q;
+
+  /* alignment */
+  text-align: center;
+
+  /* 節カウンタのみリセット。ページ番号は @page で制御 */
+  counter-reset: section-counter 0;
+  string-set: chapter-title content(), chapter-number content(before);
+}
+
+h1::before {
+  /* layout */
+  position: absolute;
+  display: block;
+
+  /* box-size */
+  inline-size: 40mm;
+  block-size: 2lh;
+
+  /* alignment */
+  text-align: center;
+
+  /* typography */
+  font-size: 30Q;
+
+  /* inset */
+  inset-inline-start: 50%;
+  inset-block-start: 40mm;
+  transform: translateX(-50%);
+
+  /* counters/meta */
+  content: "第 " counter(chapter-counter) " 章";
+}
+
+
+/* 節見出し（背景画像 + 大きな番号） */
+h2 {
+  /* layout */
+  display: grid;
+  break-before: page;
+
+  /* box-size */
+  inline-size: max-content;
+  block-size: 2lh;
+
+  /* spacing */
+  margin-inline-start: calc(var(--h2-offset-inline) + 5mm);
+  margin-block: -4mm 0;
+  padding-inline-start: var(--h2-padding-inline-start);
+
+  /* typography */
+  font-size: 36Q;
+  line-height: 48Q;
+
+  /* alignment */
+  align-content: center;
+  white-space: nowrap; /* 折り返し防止（横一行） */
+  string-set: section-title content(), section-number content(before);
+
+  /* counters: 節カウンタは h2 で進める */
+  counter-increment: section-counter;
+}
+
+/* 節背景（元の位置/サイズで描画） */
+h2::before {
+  /* layout */
+  position: absolute;
+  z-index: -2; /* 最背面 */
+
+  /* box-size */
+  inline-size: 182mm;
+  block-size: 49mm;
+
+  /* spacing */
+  padding-inline-start: var(--section-number-padding-inline-start);
+  padding-block-start: var(--section-number-padding-block-start);
+
+  /* 背景専用（番号テキストは ::after で描画） */
+  background: center / contain no-repeat var(--section-bg-image);
+
+  /* inset */
+  inset-inline-start: calc(var(--page-inline-margin) * -1 + var(--section-bg-inset-inline));
+  inset-block-start: calc((var(--page-block-margin-start) * -1) + var(--section-bg-inset-block));
+
+  /* counters/meta */
+  content: "";
+}
+
+/* 節番号テキスト（本体） */
+h2::after {
+  /* layout */
+  position: absolute;
+  z-index: -1; /* 背景(::before)の一つ上に配置 */
+
+  /* box-size */
+  inline-size: 182mm;
+  block-size: 49mm;
+
+  /* spacing */
+  padding-inline-start: var(--section-number-padding-inline-start);
+  padding-block-start: var(--section-number-padding-block-start);
+
+  /* alignment */
+  text-align: left;
+
+  /* typography */
+  font-size: 48Q;
+  font-weight: 900;
+  line-height: 14mm;
+
+  /* visual */
+  color: var(--section-number-color);
+  -webkit-text-stroke: 0.3mm rgba(0, 0, 0, 0.30);
+
+  /* inset */
+  inset-inline-start: calc(var(--page-inline-margin) * -1 + var(--section-bg-inset-inline) + 10mm);
+  inset-block-start: calc((var(--page-block-margin-start) * -1) + var(--section-bg-inset-block) + 5mm);
+
+  /* counters/meta */
+  content: "\00a0\00a0\00a0" counter(chapter-counter) "-" counter(section-counter);
+}
+
+/* 節リード（節冒頭のリード文） */
+.section-lead {
+  display: block;
+  inline-size: 32em;
+  /* margin-block: 5mm var(--section-lead-margin-end); */
+  margin-inline: auto;
+  font-weight: 700;
+  text-indent: 1em;
+}

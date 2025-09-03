@@ -7,7 +7,7 @@
     "stylesheets/prism.css"
   ],
   "rules": {
-    "property-no-unknown": [true, { "ignoreProperties": ["text-spacing"] }],
+    "property-no-unknown": [true, { "ignoreProperties": ["text-spacing", "string-set"] }],
     "unit-no-unknown": [true, { "ignoreUnits": ["Q"] }],
     "function-no-unknown": [true, { "ignoreFunctions": ["leader", "target-counter", "target-text"] }],
     "selector-pseudo-class-no-unknown": [true, { "ignorePseudoClasses": ["nth"] }],

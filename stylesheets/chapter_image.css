@@ -9,16 +9,6 @@
 @import url("spacing.css");
 @import url("layout-utils.css");
 @import url("components.css");
-/* Header style variant (default: simple). Switch to image_header.css for image variant. */
-@import url("image_header.css");
-
-/* --------------------------------------------------
-   No-Image デザイン バリアント切替（必要な1行のみアンコメント）
-   Plan 2 は本ファイル末尾に内蔵。Plan 3〜5 を使う場合は以下を有効化。
-   -------------------------------------------------- */
-/* @import url("chapter_plan3.css");  */
-/* @import url("chapter_plan4.css");  */
-/* @import url("chapter_plan5.css");  */
 
 /*
   プロパティ並び順ガイドライン
@@ -56,7 +46,13 @@ body.chapter {
   /* 最初のページでページ番号を 1 表示にする */
   counter-reset: page 0; 
 }
-/* 章扉のページ全面背景は使用しない（コンポーネント背景で表現） */
+
+/* stylelint-disable */
+/* ドキュメントの1ページ目に章扉背景を設定 */
+@page :nth(1) {
+  background: center / cover no-repeat var(--chapter-door-image) fixed;
+}
+/* stylelint-enable */
 
 :root {
   /* 調整用カスタムプロパティ（見出し・節番号・背景の位置と余白） */
@@ -70,12 +66,6 @@ body.chapter {
   --section-bg-inset-block: 9mm;  /* 背景画像の基準 上下位置（ページ基準使用時） */
   --section-lead-margin-start: -15mm;  /* 節リードの見出し直下の間隔 */
   --section-lead-margin-end: 1.5rlh;  /* 節リードと本文の間隔 */
-
-  /* Re:VIEW Starter 由来の色味 */
-  --heading-accent: var(--theme-accent); /* テーマに連動（yellow/blue/red/green/purple） */
-  --heading-gray:   color-mix(in srgb, var(--theme-accent) 10%, white); /* アクセントの淡色を自動生成 */
-  --section-gray:   color-mix(in srgb, var(--theme-accent) 6%, white);  /* 見出し帯の淡色（少し薄め） */
-  --heading-text:   #333;     /* 文字色 */
 }
 
 /* 見出し類 */
@@ -89,12 +79,59 @@ h6 {
   text-spacing: no-autospace;
 }
 
-/* h1 styles are imported from simple_header.css or image_header.css */
+/* 章タイトル */
+h1 {
+  /* layout */
+  break-before: recto;
+
+  /* spacing */
+  margin-block-start: 57mm;
+
+  /* typography */
+  font-size: 44Q;
+  line-height: 50Q;
+
+  /* alignment */
+  text-align: center;
+
+  /* counters */
+
+  /* 各章専用のcssでchapter-counterを設定しているので、コメントアウト */
+
+  /* counter-increment: chapter-counter; */
+
+  /* 節カウンタのみリセット。ページ番号は @page で制御 */
+  counter-reset: section-counter 0;
+  string-set: chapter-title content(), chapter-number content(before);
+}
+
+h1::before {
+  /* layout */
+  position: absolute;
+  display: block;
+
+  /* box-size */
+  inline-size: 40mm;
+  block-size: 2lh;
+
+  /* alignment */
+  text-align: center;
+
+  /* typography */
+  font-size: 30Q;
+
+  /* inset */
+  inset-inline-start: 50mm;
+  inset-block-start: 40mm;
+
+  /* counters/meta */
+  content: "第 " counter(chapter-counter) " 章";
+}
 
 /* 章リード（章冒頭のリード文） */
 .chapter-lead {
   /* box-size */
-  inline-size: 163.2mm; /* 32em 相当の物理長に固定し h1 と一致 */
+  inline-size: 32em;
 
   /* spacing */
   margin-block: 2rlh;
@@ -102,7 +139,7 @@ h6 {
 
   /* typography */
   font-weight: 500;
-  font-size: 19Q; /* 少し小さくして読みやすさを確保（本文17Qよりやや大きめ） */
+  font-size: larger;
   line-height: 1.7;
   text-align: justify;
 
@@ -130,7 +167,93 @@ blockquote p {
   text-indent: 1em;
 }
 
-/* h2 styles are imported from simple_header.css or image_header.css */
+/* 節見出し */
+h2 {
+  /* layout */
+  display: grid;
+  break-before: page;
+
+  /* box-size */
+  inline-size: 10em;
+  block-size: 2lh;
+
+  /* spacing */
+  margin-inline-start: var(--h2-offset-inline);
+  margin-block: var(--h2-offset-block-start) var(--h2-offset-block-end);
+  padding-inline-start: var(--h2-padding-inline-start);
+
+  /* typography */
+  font-size: 36Q;
+  line-height: 48Q;
+
+  /* alignment */
+  align-content: center;
+  string-set: section-title content(), section-number content(before);
+
+  /* counters: 節カウンタは h2 で進める（擬似要素の表示を同期させる） */
+  counter-increment: section-counter;
+}
+
+/* 節背景（元の位置/サイズで描画） */
+h2::before {
+  /* layout */
+  position: absolute;
+  z-index: -2; /* 最背面 */
+
+  /* box-size */
+  inline-size: 182mm;
+  block-size: 49mm;
+
+  /* spacing */
+  padding-inline-start: var(--section-number-padding-inline-start);
+  padding-block-start: var(--section-number-padding-block-start);
+
+  /* 背景専用（番号テキストは ::after で描画） */
+  background: center / contain no-repeat var(--section-bg-image);
+
+  /* inset */
+  inset-inline-start: calc(var(--page-inline-margin) * -1 + var(--section-bg-inset-inline));
+  inset-block-start: calc((var(--page-block-margin-start) * -1) + var(--section-bg-inset-block));
+
+  /* counters/meta */
+  content: "";
+}
+
+/* 節番号テキスト（本体） */
+h2::after {
+  /* layout */
+  position: absolute;
+  z-index: -1; /* 背景(::before)の一つ上に配置 */
+
+  /* box-size */
+  inline-size: 182mm;
+  block-size: 49mm;
+
+  /* spacing */
+  padding-inline-start: var(--section-number-padding-inline-start);
+  padding-block-start: var(--section-number-padding-block-start);
+
+  /* alignment */
+  text-align: left;
+
+  /* typography */
+  font-size: 48Q;
+  font-weight: 900;
+  line-height: 14mm;
+
+  /* visual */
+  color: var(--section-number-color);
+  /* text-shadow は使わない（ラスタライズ回避） */
+  /* 視認性補強（必要に応じ有効化）: 薄い縁取りで疑似シャドウ風 */
+  -webkit-text-stroke: 0.3mm rgba(0, 0, 0, 0.30);
+
+  /* inset */
+  inset-inline-start: calc(var(--page-inline-margin) * -1 + var(--section-bg-inset-inline));
+  inset-block-start: calc((var(--page-block-margin-start) * -1) + var(--section-bg-inset-block));
+
+  /* counters/meta */
+  content: "\00a0\00a0\00a0" counter(chapter-counter) "-" counter(section-counter);
+}
 
 /* 節リード（節冒頭のリード文） */
 .section-lead {
@@ -139,9 +262,8 @@ blockquote p {
   /* 通常フローで配置 */
   inline-size: 32em;
 
-  /* 見出し h2 の直下に 15mm のアキを確保し、中央寄せ */
-  margin-block-start: 15mm; /* h2 の直後から 15mm 下げて開始 */
-  margin-block-end: var(--section-lead-margin-end);
+  /* 10mm 上へずらし、中央寄せ */
+  margin-block: var(--section-lead-margin-start) var(--section-lead-margin-end);
   margin-inline: auto;
   font-weight: 700;
 
@@ -344,13 +466,10 @@ img {
   /* visual */
   border: solid 0.5mm var(--color-border);
 }
- 
+
 img[src$=".svg"] {
   border: none;
 }
- 
-
-
 
 /* 図版右寄せ */
 .figure.right {

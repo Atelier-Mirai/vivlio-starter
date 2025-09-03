@@ -393,14 +393,33 @@ module Vivlio
         # - frontmatter の link 配列は重複を避けつつマージ
         def generate_frontmatter(file_type, chapter_num = nil, existing_frontmatter = {})
           # ファイルタイプに対応する基本スタイルシート
+          # 設定キー: theme.color（必須ではないが、指定時は厳密に検証）
           theme_name = begin
             cfg = Common::CONFIG
-            t = (cfg && cfg['theme'] && cfg['theme']['name']) || 'yellow'
-            t = t.to_s.strip.downcase
-            %w[yellow blue red green purple].include?(t) ? t : 'yellow'
-          rescue
-            'yellow'
+            raw = (cfg && cfg['theme'] && cfg['theme']['color'])
+            t = raw.to_s.strip.downcase
+            allowed = %w[yellow blue red green purple]
+            if t.empty?
+              'yellow'
+            elsif allowed.include?(t)
+              t
+            else
+              Common.log_error("設定エラー: theme.color は #{allowed.join('/')} のいずれかを指定してください（現在: '#{raw}'）。ファイル: #{Common::CONFIG_FILE}")
+              exit 1
+            end
           end
+
+          # テーマのスタイル（simple: 画像なし / image: 画像あり）
+          theme_style = begin
+            cfg = Common::CONFIG
+            s = (cfg && cfg['theme'] && cfg['theme']['style']) || 'image'
+            s = s.to_s.strip.downcase
+            %w[simple image].include?(s) ? s : 'image'
+          rescue
+            'image'
+          end
+
+          # theme.color の救済は行わない（不正値は直前でエラー終了）
 
           # 扉画像の選択
           door_token = begin
@@ -432,20 +451,54 @@ module Vivlio
               "#{pre}--accent-#{theme_name}#{post}"
             end
 
-            css = css.gsub(/(--section-bg-image:\s*url\(")[^"]+("\)\s*;)/) do
-              pre, post = $1, $2
-              "#{pre}images/frame-#{theme_name}.webp#{post}"
-            end
+            # 強調色・強意の下線色もテーマアクセントに追従させる
+            css = css.sub(/(--color-strong:\s*)[^;]+(\s*;)/, "\\1var(--theme-accent)\\2")
+            css = css.sub(/(--color-em-underline:\s*)[^;]+(\s*;)/, "\\1var(--theme-accent)\\2")
 
-            css = css.gsub(/(--chapter-door-image:\s*url\(")[^"]+("\)\s*;)/) do
-              pre, post = $1, $2
-              "#{pre}images/#{door_token}.webp#{post}"
+            if theme_style == 'simple'
+              # 画像を使わないシンプルスタイル
+              css = css.sub(/(--section-bg-image:\s*)[^;]+(\s*;)/, "\\1none\\2")
+              css = css.sub(/(--chapter-door-image:\s*)[^;]+(\s*;)/, "\\1none\\2")
+            else
+              # 画像ありスタイル（従来通り）
+              # none でも url("...") でも置換できるように包括的なパターンで上書き
+              css = css.sub(/(--section-bg-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
+                pre, post = $1, $2
+                "#{pre}url(\"images/frame-#{theme_name}.webp\")#{post}"
+              end
+
+              css = css.sub(/(--chapter-door-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
+                pre, post = $1, $2
+                "#{pre}url(\"images/#{door_token}.webp\")#{post}"
+              end
             end
 
             File.write(theme_css_path, css, encoding: 'utf-8')
-            Common.log_success("theme.css を更新: theme=#{theme_name}, door=#{door_token}")
+            Common.log_success("theme.css を更新: theme=#{theme_name}, style=#{theme_style}, door=#{door_token}")
           rescue => _e
             # 失敗しても前処理は継続
+          end
+
+          # chapter.css のヘッダ import を theme.style に連動して切替
+          begin
+            chapter_css_path = File.join(Common::STYLESHEETS_DIR, 'chapter.css')
+            if File.exist?(chapter_css_path)
+              ccss = File.read(chapter_css_path, encoding: 'utf-8')
+              desired = theme_style == 'image' ? 'image_header.css' : 'simple_header.css'
+              updated = ccss
+                .sub(/@import\s+url\("simple_header\.css"\);/, '@import url("' + desired + '");')
+                .sub(/@import\s+url\("image_header\.css"\);/, '@import url("' + desired + '");')
+              if updated != ccss
+                File.write(chapter_css_path, updated, encoding: 'utf-8')
+                Common.log_success("chapter.css のヘッダーimportを切替: #{desired}")
+              else
+                Common.log_info("chapter.css のヘッダーimportは既に最新です: #{desired}")
+              end
+            else
+              Common.log_info("chapter.css が見つかりません: #{chapter_css_path}")
+            end
+          rescue => _e
+            # 続行
           end
 
           # appendix.css のアクセント色を設定
@@ -576,9 +629,15 @@ module Vivlio
           end
 
           # フロントマターのCSS
+          # chapter は常に chapter.css を参照し、ヘッダーは chapter.css 内の import で切替
+          chapter_css = if file_type == 'chapter'
+                          'chapter.css'
+                        else
+                          "#{file_type}.css"
+                        end
           stylesheets = [
             'theme.css',
-            "#{file_type}.css"
+            chapter_css
           ]
 
           # チャプター固有のCSSを追加
