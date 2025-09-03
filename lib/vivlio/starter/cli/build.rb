@@ -169,13 +169,40 @@ module Vivlio
               end
 
               # chapters 指定（keep）を取得（'all' または未設定は nil）
-              begin
-                keep = BuildHelpers.configured_chapters
-                if keep && keep.any?
-                  Common.log_action("[Subset] 退避なしで論理的に対象を限定してビルドします: #{keep.inspect}")
-                else
-                  Common.log_action('[Subset] chapters 設定なし/\'all\'のため、フルビルドします（退避なし）')
+              keep = BuildHelpers.configured_chapters
+              if keep && keep.any?
+                Common.log_action("[Subset] 退避なしで論理的に対象を限定してビルドします: #{keep.inspect}")
+              else
+                Common.log_action("[Subset] chapters 設定なし/'all'のため、フルビルドします（退避なし）")
+              end
+
+              # ================================================================
+              # Dry Run (Full build): 実処理を行わず予定のみを表示
+              # ================================================================
+              if options[:dry_run]
+                Common.echo_always "\n== Dry Run: フルビルド予定 =="
+                # 画像最適化の予定
+                resize_desc = if options[:resize] == false
+                                 'スキップ'
+                               else
+                                 preset = ([:high, :low].find { |k| options[k] } || :medium)
+                                 "実行 (#{preset})"
+                               end
+                main_targets = BuildHelpers.main_text_basenames(keep)
+                appendix_targets = BuildHelpers.appendix_basenames(keep)
+                Common.echo_always "  - 画像最適化: #{resize_desc}"
+                Common.echo_always "  - 本文(11..89): #{main_targets.empty? ? '対象なし' : main_targets.join(', ')}"
+                Common.echo_always "  - 付録(91..97): #{appendix_targets.empty? ? '対象なし' : appendix_targets.join(', ')}"
+                Common.echo_always "  - TOC: 03-toc.html / 03-toc.pdf"
+                Common.echo_always "  - 全体PDF: chapters_appendices.pdf → 章/TOCに分割"
+                Common.echo_always "  - PDF圧縮: #{options[:compress] == false ? 'スキップ' : '実行'}"
+                Common.echo_always "  - クリーン: #{options[:clean] == false ? 'スキップ' : '実行'}"
+                if options[:merge]
+                  Common.echo_always "  - 結合: output.pdf（圧縮有効時は output_compressed.pdf も生成）"
                 end
+                Common.echo_always "\n計画のみを表示しました（dry-run、実処理は行いません）。"
+                return
+              end
 
               # ================================================================
               # Step 0: 事前クリーンアップ（フルビルド前の初期化）
@@ -264,7 +291,7 @@ module Vivlio
               # - build_helpers.generate_toc_and_pdf!('.')
               # ================================================================
               begin
-                BuildHelpers.generate_toc_and_pdf!('.')
+                BuildHelpers.generate_toc_and_pdf!('.', keep)
               rescue => e
                 Common.log_warn("[Step 6] 目次生成でエラー: #{e}")
               end
@@ -275,7 +302,7 @@ module Vivlio
               # - build_helpers.build_overall_pdf_and_split_from_dir!('.')
               # ================================================================
               begin
-                BuildHelpers.build_overall_pdf_and_split_from_dir!('.')
+                BuildHelpers.build_overall_pdf_and_split_from_dir!('.', keep)
               rescue => e
                 Common.log_warn("[Step 7] 章PDF化/分割でエラー: #{e}")
               end
@@ -319,7 +346,7 @@ module Vivlio
               # - build_helpers.restore_chapter_css_backups_for_book!
               # ================================================================
               begin
-                BuildHelpers.restore_chapter_css_backups_for_book!
+                BuildHelpers.restore_chapter_css_backups_for_book!(keep)
               rescue => e
                 Common.log_warn("[Step 11] CSS復元でエラー: #{e}")
               end
@@ -363,9 +390,6 @@ module Vivlio
               end
 
               Common.log_success('全ファイルのビルドが完了しました')
-              ensure
-                # 退避方式は廃止のため、復元処理は不要
-              end
             end
 
             # ==============================================================================
@@ -398,7 +422,9 @@ module Vivlio
                 if t =~ /\A\d+\z/
                   return list_contents_basenames.select { |bn| bn.start_with?("#{t}-") }
                 end
-                name = t + '.md'
+                # Support explicit basename with or without .md, optionally prefixed by contents/
+                name = t.sub(%r{\A#{Regexp.escape(Common::CONTENTS_DIR)}/}, '')
+                name = name.end_with?('.md') ? name : (name + '.md')
                 path = File.join(Common::CONTENTS_DIR, name)
                 File.exist?(path) ? [name] : []
               end

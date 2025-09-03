@@ -47,6 +47,16 @@
 
 
 
+## [0.7.1] - 2025-09-03
+
+### Changed
+- `vs build` 内部実装をリファクタリングし、`config/book.yml` の `chapters` サブセット（keep）が Step 6/7/11 に貫通する実装を安定化（退避・復元なしの論理フィルタを前提に整理）。
+
+### Fixed
+- `vs build` のトークン展開で、`.md` を含む入力（例: `11-install.md`）や `contents/` 接頭の入力を正しく解決するよう修正。
+- `build.rb` のクォート不備（シェル式の `\'\''`）により構文エラーとなる箇所を修正。
+- `base.class_eval` ブロックを早期に閉じていた余分な `end` を削除し、構文エラーを解消。
+
 ## [0.7.0] - 2025-09-03
 
 ### Added
@@ -207,7 +217,8 @@
 - バージョンファイル追加: `lib/vivlio/starter/version.rb`（0.1.0）
 - README にインストール方法・CLI の使い方・リリース手順を追記
 
-[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.4.0...v0.5.0
