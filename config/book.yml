@@ -15,6 +15,18 @@ book:
   author: '早乙女遙香' # 著者名
   language: 'ja'
 
+# 章選択（フルビルド対象）
+# - all: すべての章を対象
+# - 配列: 指定した .md ベース名のみを対象
+# - 複数行文字列: 行ごとに .md ベース名
+# - '11-install' と '11-install.md' の両方を許可（拡張子は省略可）
+
+# chapters: all
+chapters:
+  - 02-preface
+  - 11-install
+  - 12-tutorial.md
+
 # テーマ
 theme:
   door: 5        # 扉絵の画像番号（1から7 または 'door5' の形式で設定)
@@ -97,10 +109,8 @@ files:
 vivliostyle:
   # 読み進め方向
   reading_progression: 'ltr'  # 'ltr': 左から右へ（横書き）, 'rtl': 右から左へ（縦書き）
-  
   # エントリーファイル
   entries_file: 'entries.js'
-  
   # 設定ファイル名
   config_file: 'vivliostyle.config.js'
 

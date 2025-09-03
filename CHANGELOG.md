@@ -4,55 +4,14 @@
 
 記法は「Keep a Changelog」に基づき、Semantic Versioning（セマンティックバージョニング）に準拠します。
 
-## [Unreleased]
 
-### Added
-- `vs build` の章指定方法を拡充（`11-install`, `11-install.md 12-tutorial`, `11-21`, `11 21-31` に対応）。
-- `vs build` に `--dry-run, -n` を追加（実行せずにビルド予定のみを表示）。
-- `vs build` に `--merge, -m` を追加（単章で生成された各PDFを結合して `output.pdf` / `output_compressed.pdf` を出力）。
-- `vs clean` に `--purge, -P` を追加（生成物（PDF含む）をすべて削除）。
 
-### Fixed
-- CI セクションの圧縮エンジン表記の不整合を修正し、Ghostscript 固定に統一（例も `-dCompatibilityLevel=1.7` に合わせて更新）。固定理由: qpdf は再圧縮で効果が乏しいケースが多く、Ghostscript(pdfwrite) の方が安定して圧縮率を得やすいため。
-- 見出しの節番号がにじんで見える問題を改善（`stylesheets/chapter.css` の `h2` 装飾の縁取り/ストロークを調整）。
- - `vs build <chapter>`（単章ビルド）時に既存の `output.pdf`/`output_compressed.pdf` を誤って開いて終了してしまう問題を修正。各章を個別に PDF 化して `11-install.pdf` のようにリネームし、最後にその単章PDFを開くように変更。
-
-## [0.6.0] - 2025-08-31
-
-### Added
-- `vs doctor` が不足ツールの自動導入に対応（macOS）
-  - Homebrew 未導入時の自動インストール（確認あり、`-y/--yes` で省略）
-  - Node.js（`brew install node@20` 優先）/ Vivliostyle CLI（`npm install -g @vivliostyle/cli`）
-  - qpdf / poppler(pdfinfo) / Ghostscript / ImageMagick の自動導入
-- `vs doctor` に Xcode Command Line Tools の診断と `--fix` 時のインストーラ起動・待機を追加（macOS）
-- `vs doctor` にオプションを追加
-  - `--fix`: 不足ツールを自動インストール
-  - `-y, --yes`: 確認プロンプトを省略
-- `bin/install-ruby.zsh`
-  - 既定の Ruby バージョン指定を「最新安定版（latest）」に変更し、自動解決を実装
-  - Xcode Command Line Tools の検出とインストーラ起動（案内）を追加
-- `vs new` 実行時に GitHub Actions ワークフローを自動配置
-  - 同梱テンプレート: `lib/project_scaffold/.github/workflows/build.yml`
-  - 生成先: `mybook/.github/workflows/build.yml`
-
-### Changed
-- ドキュメント（`contents/11-install.md`）を更新
-  - CI セクション: `vs build` の圧縮挙動・既定名（`output_compressed.pdf`）・エンジン選択（`qpdf/gs`、ENV/設定）を明記
-  - YAML スニペットの成果物パスを `output_compressed.pdf` に統一
-  - 順序調整: 「vs build の圧縮オプション」を先、Ghostscript 例を後に
-  - 付録: Windsurf エディタの紹介・インストール手順・ショートカット（macOS 優先）を追加
-- ヘルプ（`lib/vivlio/starter/cli/help.rb`）を更新
-  - `vs doctor` の説明に Xcode Command Line Tools の診断/誘導を追記
-
-### Notes
-- 既定で PDF 圧縮を実行（`--no-compress` でスキップ可能）。圧縮後の既定ファイル名は `output_compressed.pdf`。
 
 ### Planned
 
 
 #### ビルド/出力
-
-- [High] 付録が奇数ページから始まるように
+- [Medium] book.yml の chapters を、contents/と連動するように。
 - [High] 奥付が偶数ページになるように
 - [High] 縦に長い表のレイアウト崩れ
 - [High] 任意の複数章を指定して、フルビルドする
@@ -83,6 +42,62 @@
 
 - [Crucial] 11-install.mdなどを、書き直す
 - [Low] テンプレ断片スニペット（注意/補足/Tipのコンポーネント化）。
+
+## [Unreleased]
+
+
+
+## [0.7.0] - 2025-09-03
+
+### Added
+- `vs build` の章指定方法を拡充（`11-install`, `11-install.md 12-tutorial`, `11-21`, `11 21-31` に対応）。
+- `vs build` に `--dry-run, -n` を追加（実行せずにビルド予定のみを表示）。
+- `vs build` に `--merge, -m` を追加（単章で生成された各PDFを結合して `output.pdf` / `output_compressed.pdf` を出力）。
+- `vs clean` に `--purge, -P` を追加（生成物（PDF含む）をすべて削除）。
+- `vs renumber` に `--chapter-step, -S` を追加（連番付け直し時の章番号の刻み幅を指定。`rename` と同等の挙動。互換: `--step` も使用可）。
+- `config/book.yml` の `chapters` で指定した対象のみを論理的にフィルタしてビルドするようにしました。
+
+### Changed
+- フルビルド時の PDF 結合（`build_helpers.rb` の `merge_all_pdfs!`）で、奥付（`99-colophon.pdf`）が必ず偶数ページ（左ページ）で開始されるよう自動調整（必要に応じて直前に空白1ページを挿入）。
+
+### Fixed
+- CI セクションの圧縮エンジン表記の不整合を修正し、Ghostscript 固定に統一（例も `-dCompatibilityLevel=1.7` に合わせて更新）。固定理由: qpdf は再圧縮で効果が乏しいケースが多く、Ghostscript(pdfwrite) の方が安定して圧縮率を得やすいため。
+- 見出しの節番号がにじんで見える問題を改善（`stylesheets/chapter.css` の `h2` 装飾の縁取り/ストロークを調整）。
+- `vs build <chapter>`（単章ビルド）時に既存の `output.pdf`/`output_compressed.pdf` を誤って開いて終了してしまう問題を修正。各章を個別に PDF 化して `11-install.pdf` のようにリネームし、最後にその単章PDFを開くように変更。
+
+### Notes
+- `configured_chapters` は `contents/` 接頭辞と拡張子の有無を正規化し、`['11-foo.md', ...]` の形式で扱います。
+- CSS の仮想連番（Step 2）は引き続き `.orig` バックアップを用いた復元（Step 11）を行いますが、章の選定は `keep` に基づきます。
+
+## [0.6.0] - 2025-08-31
+
+### Added
+- `vs doctor` が不足ツールの自動導入に対応（macOS）
+  - Homebrew 未導入時の自動インストール（確認あり、`-y/--yes` で省略）
+  - Node.js（`brew install node@20` 優先）/ Vivliostyle CLI（`npm install -g @vivliostyle/cli`）
+  - qpdf / poppler(pdfinfo) / Ghostscript / ImageMagick の自動導入
+- `vs doctor` に Xcode Command Line Tools の診断と `--fix` 時のインストーラ起動・待機を追加（macOS）
+- `vs doctor` にオプションを追加
+  - `--fix`: 不足ツールを自動インストール
+  - `-y, --yes`: 確認プロンプトを省略
+- `bin/install-ruby.zsh`
+  - 既定の Ruby バージョン指定を「最新安定版（latest）」に変更し、自動解決を実装
+  - Xcode Command Line Tools の検出とインストーラ起動（案内）を追加
+- `vs new` 実行時に GitHub Actions ワークフローを自動配置
+  - 同梱テンプレート: `lib/project_scaffold/.github/workflows/build.yml`
+  - 生成先: `mybook/.github/workflows/build.yml`
+
+### Changed
+- ドキュメント（`contents/11-install.md`）を更新
+  - CI セクション: `vs build` の圧縮挙動・既定名（`output_compressed.pdf`）・エンジン選択（`qpdf/gs`、ENV/設定）を明記
+  - YAML スニペットの成果物パスを `output_compressed.pdf` に統一
+  - 順序調整: 「vs build の圧縮オプション」を先、Ghostscript 例を後に
+  - 付録: Windsurf エディタの紹介・インストール手順・ショートカット（macOS 優先）を追加
+- ヘルプ（`lib/vivlio/starter/cli/help.rb`）を更新
+  - `vs doctor` の説明に Xcode Command Line Tools の診断/誘導を追記
+
+### Notes
+- 既定で PDF 圧縮を実行（`--no-compress` でスキップ可能）。圧縮後の既定ファイル名は `output_compressed.pdf`。
 
 
 ## [0.5.0] - 2025-08-30
@@ -192,7 +207,8 @@
 - バージョンファイル追加: `lib/vivlio/starter/version.rb`（0.1.0）
 - README にインストール方法・CLI の使い方・リリース手順を追記
 
-[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.3.0...v0.4.0

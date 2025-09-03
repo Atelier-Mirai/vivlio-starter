@@ -79,8 +79,8 @@ module Vivlio
                 exit(1)
               end
 
-              puts '📝 対象ファイル:'
-              files.each { |f| puts "  - #{Pathname.new(f).relative_path_from(base_dir_path)}" }
+              Common.log_action('対象ファイル:')
+              files.each { |f| Common.log_info("  - #{Pathname.new(f).relative_path_from(base_dir_path)}") }
 
               read_text = ->(path) { File.read(path, encoding: 'UTF-8') }
               extract = ->(html, tag) do
@@ -121,7 +121,7 @@ module Vivlio
               out_pathname = Pathname.new(out_path)
               File.write(out_pathname, final_html, mode: 'w', encoding: 'UTF-8')
 
-              puts "✅ 出力しました: #{out_pathname}"
+              Common.log_success("出力しました: #{out_pathname}")
             end
           end
         end

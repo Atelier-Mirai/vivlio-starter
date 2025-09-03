@@ -136,10 +136,9 @@ module Vivlio
               end
               return 0
             end
-            # オプションを前方へ正規化して Thor に渡す
-            opts, args = argv.partition { |a| a.start_with?('--') || (a.start_with?('-') && a != '-') }
-            normalized = [cmd, *opts, *args]
-            Vivlio::Starter::ThorCLI.start(normalized)
+            # 重要: オプションとその値の順序を保持したまま Thor に委譲する
+            # （前方正規化は値つきオプションを壊すため中止）
+            Vivlio::Starter::ThorCLI.start([cmd, *argv])
             return 0
           end
         rescue SystemExit => e

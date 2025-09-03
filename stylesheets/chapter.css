@@ -59,7 +59,7 @@ body.chapter {
   --h2-offset-inline: 30mm;  /* 見出しの左右移動 */
   --h2-offset-block-start: -9mm;  /* 見出しの上余白（上が負で上に寄せる） */
   --h2-offset-block-end: 40mm;  /* 見出しの下余白 */
-  --h2-padding-inline-start: 5mm;  /* 見出しテキストの内側左余白 */
+  --h2-padding-inline-start: 10mm;  /* 見出しテキストの内側左余白 */
   --section-number-padding-inline-start: 17mm;  /* 節番号テキストの内側左余白 */
   --section-number-padding-block-start: 15mm;  /* 節番号テキストの上側余白 */
   --section-bg-inset-inline: 13mm;  /* 背景画像の基準 左右位置 */

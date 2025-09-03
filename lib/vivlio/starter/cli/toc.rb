@@ -59,7 +59,8 @@ module Vivlio
               Common.log_action("目次の生成を開始します… 対象: #{targets.map { |p| File.basename(p) }.join(', ')}")
 
               # YAMLフロントマター付きのMarkdownを構築（Rake実装）
-              result = <<~MD
+              result = String.new
+              result << <<~MD
                 ---
                 link: 
                   - rel: "stylesheet"

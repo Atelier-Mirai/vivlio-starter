@@ -22,6 +22,62 @@ module Vivlio
         module_function
 
         # ================================================================
+        # Config: 章サブセット（config/book.yml の chapters キー）
+        # ------------------------------------------------
+        # - 'all' の場合はフルビルド（nil を返して従来どおり）
+        # - 配列（['11-foo.md', '12-bar.md', ...]）指定時は、その章のみを残す
+        # ================================================================
+        def configured_chapters
+          cfg = Common::CONFIG['chapters'] rescue nil
+          begin
+            Common.log_info("[Subset] raw chapters config=#{cfg.inspect}") unless cfg.nil?
+          rescue
+            # ignore logging errors
+          end
+          return nil if cfg.nil?
+          if cfg.is_a?(String)
+            str = cfg.to_s
+            return nil if str.strip.downcase == 'all'
+            # 複数行の文字列もサポート（行ごとに1ファイル名）
+            items = str.lines.map { |l| l.to_s.strip }.reject(&:empty?)
+            # 正規化: contents/ 接頭や拡張子省略を許容
+            items = items.map { |s|
+              name = s.sub(%r{\A#{Regexp.escape(Common::CONTENTS_DIR)}/}, '')
+              name = name + '.md' unless name.end_with?('.md')
+              name
+            }
+            begin
+              Common.log_info("[Subset] normalized keep(list)=#{items.inspect}") if items.any?
+            rescue
+              # ignore logging errors
+            end
+            return items if items.any?
+            return nil
+          elsif cfg.is_a?(Array)
+            items = cfg.map { |s| s.to_s.strip }.reject(&:empty?)
+            items = items.map { |s|
+              name = s.sub(%r{\A#{Regexp.escape(Common::CONTENTS_DIR)}/}, '')
+              name = name + '.md' unless name.end_with?('.md')
+              name
+            }
+            begin
+              Common.log_info("[Subset] normalized keep(array)=#{items.inspect}") if items.any?
+            rescue
+              # ignore logging errors
+            end
+            return items
+          end
+          nil
+        rescue => _e
+          nil
+        end
+
+        # Note: Legacy backup-based subset utilities were removed in favor of
+        # logical filtering with configured_chapters (no file moves).
+
+        
+
+        # ================================================================
         # Step 1: 画像最適化（WebP 変換/リサイズ）
         # ------------------------------------------------
         # - 対象: images/, stylesheets/images
@@ -48,14 +104,74 @@ module Vivlio
         end
 
         # ================================================================
-        # Step 2: 前書き (02-preface) のみ先行ビルド
+        # Step 2: PDF 生成前に CSS を 1,2,3… の仮想連番へ更新
+        # ------------------------------------------------
+        # - 対象: 11..89 章に対応する stylesheets/NN.css
+        # - 各 CSS の .orig を作成（未作成時のみ）し、counter とコメントを仮想番号へ更新
+        # - 元への復元は Step 9.5（.orig から復元）で実施
+        # ================================================================
+        def apply_virtual_chapter_numbers_for_book!(keep = nil)
+          # 11..89 の順序に対応する stylesheets/NN.css を算出
+          basenames = if keep && keep.any?
+                        keep.map { |bn| File.basename(bn, '.md') }
+                      else
+                        Dir[File.join('contents', '*.md')].map { |p| File.basename(p, '.md') }
+                      end
+          numbers = basenames
+                      .map { |bn| bn[/\A(\d+)-/, 1] }
+                      .compact
+                      .map(&:to_i)
+                      .select { |n| n.between?(11, 89) }
+                      .uniq
+                      .sort
+          css_paths = numbers
+                        .map { |n| File.join('stylesheets', "#{n}.css") }
+                        .select { |css| File.exist?(css) }
+          if css_paths.empty?
+            Common.log_info('[Step 2] 対象CSSが見つかりません（stylesheets/NN.css が存在しません）')
+            return
+          end
+          Common.log_action("[Step 2] 章CSSを仮想連番 1..#{css_paths.size} に更新します…（対象章: #{numbers.join(', ')}）")
+          css_paths.each_with_index do |css, idx|
+            begin
+              backup = css + '.orig'
+              unless File.exist?(backup)
+                FileUtils.cp(css, backup)
+              end
+              update_css_counter(css, idx + 1)
+            rescue => e
+              Common.log_warn("[Step 2] 仮想連番更新に失敗: #{css} (#{e})")
+            end
+          end
+        end
+
+        # ================================================================
+        # Step 3: 前書き (02-preface) のみ先行ビルド
         # ------------------------------------------------
         # - pre_process -> convert -> post_process -> entries -> pdf
         # - 出力 output.pdf を 02-preface.pdf にリネーム
         # - ページ数を取得してログ出力
         # ================================================================
-        def preface_prebuild!
-          Common.log_action('[Step 2] 前書き (02-preface) のみ先行ビルドを実行します…')
+        def preface_prebuild!(keep = nil)
+          Common.log_action('[Step 3] 前書き (02-preface) のみ先行ビルドを実行します…')
+
+          # chapters 指定がある場合は、含まれないときスキップ
+          if keep && !keep.include?('02-preface.md')
+            Common.log_action('[Step 3] 02-preface は chapters 設定に含まれないためスキップします')
+            return
+          end
+
+          # 02-preface.md が存在しない場合はスキップ（ページ数0相当で続行）
+          begin
+            md_path = File.join(Common::CONTENTS_DIR, '02-preface.md')
+            unless File.exist?(md_path)
+              Common.log_warn('[Step 3] 02-preface.md が見つかりません。先行ビルドをスキップします（ページ数0として続行）')
+              return
+            end
+          rescue => e
+            Common.log_warn("[Step 3] 02-preface の存在確認に失敗: #{e}。スキップします")
+            return
+          end
 
           %w[pre_process convert post_process entries].each do |t|
             Vivlio::Starter::ThorCLI.start([t, '02-preface'])
@@ -77,24 +193,29 @@ module Vivlio
         end
 
         # ================================================================
-        # Step 3: 付録 (91〜97) のビルドと結合
+        # Step 4: 付録 (91〜97) のビルドと結合
         # ------------------------------------------------
         # - 91..97 の章を HTML 生成
         # - merge_appendices で 90-appendices.html を生成
         # - 個別付録 HTML をクリーンアップ
         # ================================================================
-        def build_appendices_and_merge_html!
-          Common.log_action('[Step 3] 付録章 (91〜97) をビルドします…')
+        def build_appendices_and_merge_html!(keep = nil)
+          Common.log_action('[Step 4] 付録章 (91〜97) をビルドします…')
 
           appendix_paths   = Dir[File.join('contents', '{91,92,93,94,95,96,97}-*.md')]
           appendix_targets = appendix_paths.map { |p| File.basename(p, '.md') }.uniq.sort
 
+          # chapters 指定がある場合は、含まれる付録のみ対象
+          if keep && keep.any?
+            appendix_targets.select! { |t| keep.include?("#{t}.md") }
+          end
+
           if appendix_targets.empty?
-            Common.log_warn('[Step 3] 付録候補(91〜97)が見つかりません。Step 3 をスキップします。')
+            Common.log_warn('[Step 4] 付録候補(91〜97)が見つかりません。Step 4 をスキップします。')
             return
           end
 
-          Common.log_info("[Step 3] 対象: #{appendix_targets.join(', ')}")
+          Common.log_info("[Step 4] 対象: #{appendix_targets.join(', ')}")
           appendix_targets.each do |target|
             %w[pre_process convert post_process].each do |tn|
               Vivlio::Starter::ThorCLI.start([tn, target])
@@ -102,9 +223,9 @@ module Vivlio
           end
 
           # 付録HTMLを結合して 90-appendices.html を生成
-          Common.log_action('[Step 3] 付録HTMLを結合して 90-appendices.html を生成します…')
+          Common.log_action('[Step 4] 付録HTMLを結合して 90-appendices.html を生成します…')
           Vivlio::Starter::ThorCLI.start(['merge_appendices'])
-          Common.log_success('[Step 3] 90-appendices.html を生成しました')
+          Common.log_success('[Step 4] 90-appendices.html を生成しました')
 
           # 個別付録HTMLをクリーンアップ
           begin
@@ -115,25 +236,25 @@ module Vivlio
               removed << File.basename(f)
             end
             if removed.any?
-              Common.log_info("[Step 3] 個別付録HTMLを削除: #{removed.join(', ')}")
+              Common.log_info("[Step 4] 個別付録HTMLを削除: #{removed.join(', ')}")
             else
-              Common.log_info('[Step 3] 削除対象の個別付録HTMLはありません')
+              Common.log_info('[Step 4] 削除対象の個別付録HTMLはありません')
             end
           rescue => e
-            Common.log_warn("[Step 3] 個別付録HTMLのクリーンアップでエラー: #{e}")
+            Common.log_warn("[Step 4] 個別付録HTMLのクリーンアップでエラー: #{e}")
           end
         rescue => e
-          Common.log_warn("[Step 3] 付録ビルド/結合でエラー: #{e}")
+          Common.log_warn("[Step 4] 付録ビルド/結合でエラー: #{e}")
         end
 
         # ================================================================
-        # Step 4: 本文章 (11..89) をビルド（HTML生成）
+        # Step 5: 本文章 (11..89) をビルド（HTML生成）
         # ------------------------------------------------
         # - 対象: contents/*.md のうち 11..89 の接頭辞
         # - 実行: pre_process -> convert -> post_process
         # ================================================================
-        def build_chapters_html!
-          Common.log_action('[Step 4] 章をビルドします…')
+        def build_chapters_html!(keep = nil)
+          Common.log_action('[Step 5] 章をビルドします…（仮想連番: 1,2,3…）')
           chapter_paths = Dir[File.join('contents', '*.md')]
           chapter_targets = chapter_paths
                               .map { |p| File.basename(p, '.md') }
@@ -141,99 +262,28 @@ module Vivlio
                               .uniq
                               .sort
 
+          # chapters 指定がある場合は、含まれる本文章のみ対象
+          if keep && keep.any?
+            chapter_targets.select! { |t| keep.include?("#{t}.md") }
+          end
+
           if chapter_targets.empty?
-            Common.log_warn('[Step 4] 章が見つかりません。Step 4 をスキップします。')
+            Common.log_warn('[Step 5] 章が見つかりません。Step 5 をスキップします。')
             return
           end
 
-          Common.log_info("[Step 4] 対象: #{chapter_targets.join(', ')}")
+          Common.log_info("[Step 5] 対象: #{chapter_targets.join(', ')}")
           chapter_targets.each do |target|
             %w[pre_process convert post_process].each do |tn|
               Vivlio::Starter::ThorCLI.start([tn, target])
             end
           end
         rescue => e
-          Common.log_warn("[Step 4] 章ビルドでエラー: #{e}")
+          Common.log_warn("[Step 5] 章ビルドでエラー: #{e}")
         end
-
-        # qpdf で「本文+付録（先頭〜frontmatter直前）」と「末尾frontmatter」を抽出
-        def split_pdf_chapters_then_frontmatter(output_pdf, frontmatter_pages, front_pdf, body_pdf)
-          total_pages = (BuildHelpers.page_count(output_pdf) || '0').to_i
-          if total_pages <= 0
-            Common.log_warn("[Step 5] 総ページ数の取得に失敗しました: #{output_pdf}")
-            return false
-          end
-
-          unless system('which qpdf >/dev/null 2>&1')
-            Common.log_warn('[Step 5] qpdf が見つかりません。`brew install qpdf` でインストールしてください。')
-            return false
-          end
-
-          FileUtils.rm_f(front_pdf)
-          FileUtils.rm_f(body_pdf)
-
-          body_end = total_pages - frontmatter_pages
-          ok1 = ok2 = true
-
-          if body_end > 0
-            Common.log_action("[Step 5] 本文・付録を抽出しています (1-#{body_end})…")
-            ok1 = system(%(qpdf "#{output_pdf}" --pages "#{output_pdf}" 1-#{body_end} -- "#{body_pdf}"))
-          else
-            Common.log_warn('[Step 5] 本文側のページがありません。frontmatter が全ページを占めています。')
-          end
-
-          if frontmatter_pages < total_pages
-            start_last = body_end + 1
-            Common.log_action("[Step 5] frontmatter を抽出しています (#{start_last}-z)…")
-            ok2 = system(%(qpdf "#{output_pdf}" --pages "#{output_pdf}" #{start_last}-z -- "#{front_pdf}"))
-          else
-            Common.log_warn('[Step 5] frontmatter が全ページを占めています。frontmatter 側のみ生成します。')
-          end
-
-          if ok1 && ok2
-            Common.log_success("[Step 5] 分割完了: #{front_pdf}, #{body_pdf}")
-            true
-          else
-            Common.log_warn('[Step 5] PDF の分割に失敗しました (qpdf 実行エラー)')
-            false
-          end
-        end
-
-        # 付録の番号(91..97)を appendix-[a..g] の letter に対応付け
-        def appendix_number_to_letter(num)
-          n = num.to_i
-          return nil unless n.between?(91, 97)
-          ("a".."g").to_a[n - 91]
-        rescue
-          nil
-        end
-
-        # stylesheets/NN.css の chapter-counter を与えた番号に更新
-        def update_css_counter(css_path, number)
-          return false unless File.exist?(css_path)
-          begin
-            css = File.read(css_path, encoding: 'utf-8')
-            updated = css.gsub(/(counter-reset:\s*chapter-counter\s*)\d+(\s*;)/) do
-              pre, post = $1, $2
-              "#{pre}#{number.to_i}#{post}"
-            end
-            if updated != css
-              File.write(css_path, updated, encoding: 'utf-8')
-              Common.log_success("CSSの章番号を更新しました: #{File.basename(css_path)} → #{number}")
-              true
-            else
-              Common.log_info("CSSに更新対象の counter-reset が見つかりません: #{css_path}")
-              false
-            end
-          rescue => e
-            Common.log_warn("CSS更新に失敗しました: #{css_path} (#{e})")
-            false
-          end
-        end
-
 
         # ================================================================
-        # Step 5: TOC 生成（03-toc.html, 03-toc.pdf）
+        # Step 6: TOC 生成（03-toc.html, 03-toc.pdf）
         # ------------------------------------------------
         # - 対象: 章HTML + 90-appendices.html(存在時)
         # - 実行: toc -> entries(03-toc.html) -> pdf -> 03-toc.pdf へリネーム
@@ -247,13 +297,18 @@ module Vivlio
           targets_for_toc << appendix_html if File.exist?(appendix_html)
 
           if targets_for_toc.empty?
-            Common.log_warn('[Step 5] 対象HTMLが見つかりません。Step 5 をスキップします。')
+            Common.log_warn('[Step 6] 対象HTMLが見つかりません。Step 6 をスキップします。')
             return
           end
 
-          Common.log_info("[Step 5] 対象: #{targets_for_toc.map { |p| File.basename(p) }.join(', ')}")
+          Common.log_info("[Step 6] 対象: #{targets_for_toc.map { |p| File.basename(p) }.join(', ')}")
           Vivlio::Starter::ThorCLI.start(['toc', *targets_for_toc])
-          Vivlio::Starter::ThorCLI.start(['entries', File.join(base_dir, '03-toc.html')])
+          toc_html = File.join(base_dir, '03-toc.html')
+          unless File.exist?(toc_html)
+            Common.log_warn('[Step 6] 03-toc.html が見つかりません。TOC の PDF 生成をスキップします。')
+            return
+          end
+          Vivlio::Starter::ThorCLI.start(['entries', '03-toc'])
           Vivlio::Starter::ThorCLI.start(['pdf'])
 
           pdf_config   = Common::CONFIG['pdf'] || {}
@@ -263,12 +318,12 @@ module Vivlio
             Common.log_action("output.pdf をリネームしています: #{output_pdf} → #{toc_pdf}")
             FileUtils.rm_f(toc_pdf)
             FileUtils.mv(output_pdf, toc_pdf)
-            Common.log_success('[Step 5] 03-toc.pdf を生成しました')
+            Common.log_success('[Step 6] 03-toc.pdf を生成しました')
           end
         end
 
         # ================================================================
-        # Step 6: 全体PDF生成→分割（ディレクトリスキャン版）
+        # Step 7: 全体PDF生成→分割（ディレクトリスキャン版）
         # ------------------------------------------------
         # - base_dir から対象HTML収集
         # - compile_overall_pdf_and_split! に委譲
@@ -279,15 +334,47 @@ module Vivlio
                                      .select { |f| File.basename(f) =~ /\A(\d+)-.*\.html\z/ && (11..89).include?($1.to_i) }
                                      .sort
           appendix_html_for_pdf = File.exist?(File.join(base_dir, '90-appendices.html')) ? [File.join(base_dir, '90-appendices.html')] : []
-          targets_for_pdf = chapter_htmls_for_pdf + appendix_html_for_pdf + toc_html
+
+          # 付録を奇数（右）ページ開始にするためのガードページを挿入
+          guard_html = nil
+          if appendix_html_for_pdf.any?
+            guard_html = File.join(base_dir, '90-appendices-guard.html')
+            begin
+              # break-before:right により、直前が右ページなら空白1ページが自動挿入される
+              html = <<~HTML
+                <!doctype html>
+                <html>
+                <head>
+                  <meta charset="utf-8">
+                  <title>Appendices Guard</title>
+                  <style>
+                    /* 直前ページが右の場合のみ空白1ページが入る（Vivliostyle） */
+                    body { break-before: right; }
+                  </style>
+                </head>
+                <body></body>
+                </html>
+              HTML
+              File.write(guard_html, html, encoding: 'utf-8')
+            rescue => e
+              Common.log_warn("[Step 7] 付録ガードHTMLの作成に失敗: #{e}。ガードをスキップします")
+              guard_html = nil
+            end
+          end
+
+          targets_for_pdf = if guard_html
+                               chapter_htmls_for_pdf + [guard_html] + appendix_html_for_pdf + toc_html
+                             else
+                               chapter_htmls_for_pdf + appendix_html_for_pdf + toc_html
+                             end
 
           BuildHelpers.compile_overall_pdf_and_split!(targets_for_pdf)
         rescue => e
-          Common.log_warn("[Step 6] 章PDF化/分割でエラー: #{e}")
+          Common.log_warn("[Step 7] 章PDF化/分割でエラー: #{e}")
         end
 
         # ================================================================
-        # Step 6: 全体PDF生成 → frontmatter/chapters に分割
+        # Step 7: 全体PDF生成 → frontmatter/chapters に分割
         # ------------------------------------------------
         # - entries.js 生成 -> pdf 出力(output.pdf)
         # - 03-toc.pdf のページ数取得
@@ -392,51 +479,99 @@ module Vivlio
         end
 
         # ================================================================
-        # Step 7: frontmatter.pdf 構成 + ローマ小付与
+        # Step 8: frontmatter.pdf 構成 + ローマ小付与
         # ------------------------------------------------
         # - 02-preface.pdf + 03-toc.pdf を merge
         # - HexaPDF PageLabels 設定 → 小文字ローマ数字をオーバーレイ描画
         # ================================================================
         def build_frontmatter_pdf!
-          Common.log_action('[Step 7] frontmatter.pdf を構成し、ローマ小 i〜 を付与します…')
+          Common.log_action('[Step 8] frontmatter.pdf を構成し、ローマ小 i〜 を付与します…')
 
           files_to_merge = ['02-preface.pdf', '03-toc.pdf']
           existing_files = files_to_merge.select { |f| File.exist?(f) }
           missing_files  = files_to_merge - existing_files
-          Common.log_warn("[Step 7] 結合対象が見つかりません: #{missing_files.join(', ')}") if missing_files.any?
+          Common.log_warn("[Step 8] 結合対象が見つかりません: #{missing_files.join(', ')}") if missing_files.any?
 
-          if existing_files.empty?
-            Common.log_error('[Step 7] 結合対象PDFがありません。処理を中止します')
-            return
-          end
+          # どちらか1つだけ存在する場合は、それを frontmatter.pdf として採用
+          if existing_files.length == 1
+            src = existing_files.first
+            FileUtils.rm_f('frontmatter.pdf')
+            FileUtils.cp(src, 'frontmatter.pdf')
+            Common.log_success("[Step 8] frontmatter.pdf を単一ソースから生成しました: #{src}")
 
-          Common.log_info("[Step 7] 結合順: #{existing_files.join(' -> ')}")
-          cmd = ['bundle', 'exec', 'hexapdf', 'merge', *existing_files, 'frontmatter.pdf'].join(' ')
-          merged = system(cmd)
-          if merged && File.exist?('frontmatter.pdf')
-            Common.log_success('[Step 7] frontmatter.pdf を生成しました')
+            # frontmatter のページ数が奇数なら、末尾に空白1ページを追加して本文を右ページ開始に揃える
+            begin
+              pages = (BuildHelpers.page_count('frontmatter.pdf') || '0').to_i
+              if pages.odd?
+                doc = HexaPDF::Document.open('frontmatter.pdf')
+                first_box = doc.pages[0].box(:media)
+                doc.pages.add([first_box.left, first_box.bottom, first_box.right, first_box.top])
+                doc.write('frontmatter.pdf', optimize: true)
+                Common.log_info('[Step 8] frontmatter.pdf が奇数ページのため、空白1ページを末尾に挿入しました')
+              end
+            rescue => e
+              Common.log_warn("[Step 8] frontmatter への空白ページ追加に失敗: #{e}")
+            end
 
             BuildHelpers.apply_page_labels_hexapdf('frontmatter.pdf', 0)
             if BuildHelpers.overlay_roman_page_numbers!('frontmatter.pdf')
-              Common.log_success('[Step 7] frontmatter.pdf にローマ小 i〜 を描画しました')
+              Common.log_success('[Step 8] frontmatter.pdf にローマ小 i〜 を描画しました')
             else
-              Common.log_warn('[Step 7] frontmatter.pdf へのローマ小描画をスキップ/失敗')
+              Common.log_warn('[Step 8] frontmatter.pdf へのローマ小描画をスキップ/失敗')
+            end
+            return
+          elsif existing_files.empty?
+            Common.log_warn('[Step 8] frontmatter 構成対象PDFがありません。frontmatter.pdf の生成をスキップします')
+            return
+          end
+
+          Common.log_info("[Step 8] 結合順: #{existing_files.join(' -> ')}")
+          cmd = ['bundle', 'exec', 'hexapdf', 'merge', *existing_files, 'frontmatter.pdf'].join(' ')
+          merged = system(cmd)
+          if merged && File.exist?('frontmatter.pdf')
+            Common.log_success('[Step 8] frontmatter.pdf を生成しました')
+
+            # frontmatter のページ数が奇数なら、末尾に空白1ページを追加して本文を右ページ開始に揃える
+            begin
+              pages = (BuildHelpers.page_count('frontmatter.pdf') || '0').to_i
+              if pages.odd?
+                doc = HexaPDF::Document.open('frontmatter.pdf')
+                first_box = doc.pages[0].box(:media)
+                doc.pages.add([first_box.left, first_box.bottom, first_box.right, first_box.top])
+                doc.write('frontmatter.pdf', optimize: true)
+                Common.log_info('[Step 8] frontmatter.pdf が奇数ページのため、空白1ページを末尾に挿入しました')
+              end
+            rescue => e
+              Common.log_warn("[Step 8] frontmatter への空白ページ追加に失敗: #{e}")
+            end
+
+            BuildHelpers.apply_page_labels_hexapdf('frontmatter.pdf', 0)
+            if BuildHelpers.overlay_roman_page_numbers!('frontmatter.pdf')
+              Common.log_success('[Step 8] frontmatter.pdf にローマ小 i〜 を描画しました')
+            else
+              Common.log_warn('[Step 8] frontmatter.pdf へのローマ小描画をスキップ/失敗')
             end
           else
-            Common.log_error('[Step 7] frontmatter.pdf の生成に失敗しました')
+            Common.log_error('[Step 8] frontmatter.pdf の生成に失敗しました')
           end
         rescue => e
-          Common.log_warn("[Step 7] ページ番号連番化処理でエラー: #{e}")
+          Common.log_warn("[Step 8] ページ番号連番化処理でエラー: #{e}")
         end
 
         # ================================================================
-        # Step 8: 本扉・扉裏・後書き・奥付の生成
+        # Step 9: 本扉・扉裏・後書き・奥付の生成
         # ------------------------------------------------
         # - 00-titlepage/01-legalpage/98-postface/99-colophon を個別に PDF 化
         # - postface 開始ページ番号を自動設定（可能なら）
         # ================================================================
         def build_front_pages_and_tail!
           Vivlio::Starter::ThorCLI.start(['create:titlepage'])
+          # legalpage も自動生成（存在しない場合を補完）
+          begin
+            Vivlio::Starter::ThorCLI.start(['create:legalpage'])
+          rescue => e
+            Common.log_warn("[Step 9] legalpage の自動生成に失敗/スキップ: #{e}")
+          end
           %w[pre_process convert post_process entries].each do |t|
             Vivlio::Starter::ThorCLI.start([t, '00-titlepage'])
           end
@@ -444,9 +579,9 @@ module Vivlio
           FileUtils.rm_f('titlepage.pdf')
           if File.exist?('output.pdf')
             FileUtils.mv('output.pdf', '00-titlepage.pdf')
-            Common.log_success('[Step 8] 00-titlepage.pdf を生成しました')
+            Common.log_success('[Step 9] 00-titlepage.pdf を生成しました')
           else
-            Common.log_warn('[Step 8] 00-titlepage の output.pdf が見つかりません')
+            Common.log_warn('[Step 9] 00-titlepage の output.pdf が見つかりません')
           end
 
           %w[pre_process convert post_process entries].each do |t|
@@ -456,9 +591,9 @@ module Vivlio
           FileUtils.rm_f('legalpage.pdf')
           if File.exist?('output.pdf')
             FileUtils.mv('output.pdf', '01-legalpage.pdf')
-            Common.log_success('[Step 8] 01-legalpage.pdf を生成しました')
+            Common.log_success('[Step 9] 01-legalpage.pdf を生成しました')
           else
-            Common.log_warn('[Step 8] 01-legalpage の output.pdf が見つかりません')
+            Common.log_warn('[Step 9] 01-legalpage の output.pdf が見つかりません')
           end
 
           begin
@@ -486,27 +621,36 @@ module Vivlio
               end
               if updated != css
                 File.write(postface_css, updated, encoding: 'utf-8')
-                Common.log_info("[Step 8] postface.css の開始ページを #{start_page_number} に設定しました (counter-reset: #{reset_value})")
+                Common.log_info("[Step 9] postface.css の開始ページを #{start_page_number} に設定しました (counter-reset: #{reset_value})")
               else
-                Common.log_info('[Step 8] postface.css の更新対象が見つかりませんでした（変更なし）')
+                Common.log_info('[Step 9] postface.css の更新対象が見つかりませんでした（変更なし）')
               end
             else
-              Common.log_warn('[Step 8] chapters_appendices.pdf または stylesheets/postface.css が見つからないため、postface 開始ページの自動設定をスキップします')
+              Common.log_warn('[Step 9] chapters_appendices.pdf または stylesheets/postface.css が見つからないため、postface 開始ページの自動設定をスキップします')
             end
           rescue => e
-            Common.log_warn("[Step 8] postface 開始ページ設定でエラー: #{e}")
+            Common.log_warn("[Step 9] postface 開始ページ設定でエラー: #{e}")
           end
 
-          %w[pre_process convert post_process entries].each do |t|
-            Vivlio::Starter::ThorCLI.start([t, '98-postface'])
-          end
-          Vivlio::Starter::ThorCLI.start(['pdf'])
-          FileUtils.rm_f('postface.pdf')
-          if File.exist?('output.pdf')
-            FileUtils.mv('output.pdf', '98-postface.pdf')
-            Common.log_success('[Step 8] 98-postface.pdf を生成しました')
-          else
-            Common.log_warn('[Step 8] 98-postface の output.pdf が見つかりません')
+          begin
+            postface_md = File.join(Common::CONTENTS_DIR, '98-postface.md')
+            if File.exist?(postface_md)
+              %w[pre_process convert post_process entries].each do |t|
+                Vivlio::Starter::ThorCLI.start([t, '98-postface'])
+              end
+              Vivlio::Starter::ThorCLI.start(['pdf'])
+              FileUtils.rm_f('postface.pdf')
+              if File.exist?('output.pdf')
+                FileUtils.mv('output.pdf', '98-postface.pdf')
+                Common.log_success('[Step 9] 98-postface.pdf を生成しました')
+              else
+                Common.log_warn('[Step 9] 98-postface の output.pdf が見つかりません')
+              end
+            else
+              Common.log_warn('[Step 9] 98-postface.md が見つかりません。後書きPDF生成をスキップします')
+            end
+          rescue => e
+            Common.log_warn("[Step 9] 98-postface の生成でエラー: #{e}")
           end
 
           Vivlio::Starter::ThorCLI.start(['create:colophon'])
@@ -517,29 +661,31 @@ module Vivlio
           FileUtils.rm_f('colophon.pdf')
           if File.exist?('output.pdf')
             FileUtils.mv('output.pdf', '99-colophon.pdf')
-            Common.log_success('[Step 8] 99-colophon.pdf を生成しました')
+            Common.log_success('[Step 9] 99-colophon.pdf を生成しました')
           else
-            Common.log_warn('[Step 8] 99-colophon の output.pdf が見つかりません')
+            Common.log_warn('[Step 9] 99-colophon の output.pdf が見つかりません')
           end
         end
 
         # ================================================================
-        # Step 9: すべてのPDFを結合して output.pdf を生成
+        # Step 10: すべてのPDFを結合して output.pdf を生成
         # ------------------------------------------------
         # - 必要に応じて 98-postface.pdf の奇数開始調整（空白ページ挿入）
         # - HexaPDF で結合
         # ================================================================
         def merge_all_pdfs!
-          Common.log_action('[Step 9] 本扉、扉裏、前書き、目次、本文、付録、後書き、奥付を結合します…')
+          Common.log_action('[Step 10] 本扉、扉裏、前書き、目次、本文、付録、後書き、奥付を結合します…')
+          # 存在するPDFのみで結合を続行します（preface/postface が無くても処理継続）
+          Common.log_info('[Step 10] 存在するPDFのみで結合を実行します（02-preface.pdf / 98-postface.pdf は任意）')
           files_to_merge = [
             '00-titlepage.pdf', '01-legalpage.pdf', 'frontmatter.pdf',
             'chapters_appendices.pdf', '98-postface.pdf', '99-colophon.pdf'
           ]
           existing_files = files_to_merge.select { |f| File.exist?(f) }
           missing_files  = files_to_merge - existing_files
-          Common.log_warn("[Step 9] 結合対象が見つかりません: #{missing_files.join(', ')}") if missing_files.any?
+          Common.log_warn("[Step 10] 結合対象が見つかりません: #{missing_files.join(', ')}") if missing_files.any?
           if existing_files.empty?
-            Common.log_error('[Step 9] 結合対象PDFがありません。処理を中止します')
+            Common.log_error('[Step 10] 結合対象PDFがありません。処理を中止します')
             return
           end
 
@@ -552,7 +698,7 @@ module Vivlio
                 begin
                   total_before += HexaPDF::Document.open(pf).pages.count
                 rescue => e
-                  Common.log_warn("[Step 9] ページ数取得失敗: #{pf} (#{e})。0ページとして扱います")
+                  Common.log_warn("[Step 10] ページ数取得失敗: #{pf} (#{e})。0ページとして扱います")
                 end
               end
               if total_before.odd?
@@ -562,38 +708,102 @@ module Vivlio
                   doc.pages.add([0, 0, 595.28, 841.89])
                   doc.write(blank_path, optimize: true)
                   existing_files.insert(idx, blank_path)
-                  Common.log_info('[Step 9] 98-postface.pdf を奇数開始にするため、空白1ページを挿入しました')
+                  Common.log_info('[Step 10] 98-postface.pdf を奇数開始にするため、空白1ページを挿入しました')
                 rescue => e
-                  Common.log_warn("[Step 9] 空白ページPDFの作成に失敗: #{e}。調整をスキップします")
+                  Common.log_warn("[Step 10] 空白ページPDFの作成に失敗: #{e}。調整をスキップします")
+                end
+              end
+            end
+
+            # 99-colophon.pdf は偶数ページ（左ページ）開始になるように調整
+            colophon_name = '99-colophon.pdf'
+            idx_c = existing_files.index(colophon_name)
+            if idx_c
+              total_before_c = 0
+              existing_files[0...idx_c].each do |pf|
+                begin
+                  total_before_c += HexaPDF::Document.open(pf).pages.count
+                rescue => e
+                  Common.log_warn("[Step 10] ページ数取得失敗: #{pf} (#{e})。0ページとして扱います")
+                end
+              end
+              # 次ページ (total_before_c + 1) を偶数にするには、total_before_c が偶数なら空白1ページを追加する
+              if total_before_c.even?
+                blank_path = 'blank_page.pdf'
+                begin
+                  unless File.exist?(blank_path)
+                    doc = HexaPDF::Document.new
+                    doc.pages.add([0, 0, 595.28, 841.89])
+                    doc.write(blank_path, optimize: true)
+                  end
+                  existing_files.insert(idx_c, blank_path)
+                  Common.log_info('[Step 10] 99-colophon.pdf を偶数開始にするため、空白1ページを挿入しました')
+                rescue => e
+                  Common.log_warn("[Step 10] 空白ページPDFの作成に失敗: #{e}。調整をスキップします")
                 end
               end
             end
           rescue => e
-            Common.log_warn("[Step 9] 奇数ページ開始調整中にエラー: #{e}")
+            Common.log_warn("[Step 10] 奇数ページ開始調整中にエラー: #{e}")
           end
 
-          Common.log_info("[Step 9] 結合順: #{existing_files.join(' -> ')}")
+          Common.log_info("[Step 10] 結合順: #{existing_files.join(' -> ')}")
           FileUtils.rm_f('output.pdf')
           cmd = ['bundle', 'exec', 'hexapdf', 'merge', *existing_files, 'output.pdf'].join(' ')
           merged = system(cmd)
           if merged && File.exist?('output.pdf')
-            Common.log_success('[Step 9] output.pdf を生成しました')
+            Common.log_success('[Step 10] output.pdf を生成しました')
           else
-            Common.log_error('[Step 9] PDF結合に失敗しました')
+            Common.log_error('[Step 10] PDF結合に失敗しました')
           end
         end
 
         # ================================================================
-        # Step 10: 生成PDFを圧縮（output.pdf -> output_compressed.pdf）
+        # Step 11: ビルド完了前に .orig バックアップから CSS を復元
+        # ------------------------------------------------
+        # - 11..89 章に対応する stylesheets/NN.css を対象
+        # - 存在する .orig を元ファイルへ復元し、変更を巻き戻す
+        # ================================================================
+        def restore_chapter_css_backups_for_book!
+          # 11..89 の順序に対応する stylesheets/NN.css をここで直接算出（インライン化）
+          css_paths = Dir[File.join('contents', '*.md')]
+                        .map { |p| File.basename(p, '.md') }
+                        .map { |bn| bn[/\A(\d+)-/, 1] }
+                        .compact
+                        .map(&:to_i)
+                        .select { |n| n.between?(11, 89) }
+                        .uniq
+                        .sort
+                        .map { |n| File.join('stylesheets', "#{n}.css") }
+                        .select { |css| File.exist?(css) }
+          if css_paths.empty?
+            Common.log_info('[Step 11] 復元対象CSSが見つかりません')
+            return
+          end
+          Common.log_action('[Step 11] 章CSSをバックアップから復元します…')
+          css_paths.each do |css|
+            backup = css + '.orig'
+            next unless File.exist?(backup)
+            begin
+              FileUtils.mv(backup, css, force: true)
+              Common.log_info("[Step 11] 復元: #{File.basename(css)}")
+            rescue => e
+              Common.log_warn("[Step 11] 復元に失敗: #{css} (#{e})")
+            end
+          end
+        end
+
+        # ================================================================
+        # Step 12: 生成PDFを圧縮（output.pdf -> output_compressed.pdf）
         # ------------------------------------------------
         # - Vivlio::Starter::ThorCLI.start(['pdf_compress']) を呼び出し
         # - 失敗時は警告ログのみ（ビルド継続）
         # ================================================================
         def compress_pdf!
-          Common.log_action('[Step 10] 生成PDFを圧縮します…')
+          Common.log_action('[Step 12] 生成PDFを圧縮します…')
           Vivlio::Starter::ThorCLI.start(['pdf_compress'])
         rescue => e
-          Common.log_warn("[Step 10] PDF圧縮でエラー: #{e}")
+          Common.log_warn("[Step 12] PDF圧縮でエラー: #{e}")
         end
 
         # ================================================================
@@ -611,6 +821,90 @@ module Vivlio
             return pages if pages
           end
           nil
+        end
+
+        # qpdf で「本文+付録（先頭〜frontmatter直前）」と「末尾frontmatter」を抽出
+        def split_pdf_chapters_then_frontmatter(output_pdf, frontmatter_pages, front_pdf, body_pdf)
+          total_pages = (BuildHelpers.page_count(output_pdf) || '0').to_i
+          if total_pages <= 0
+            Common.log_warn("[Step 5] 総ページ数の取得に失敗しました: #{output_pdf}")
+            return false
+          end
+
+          unless system('which qpdf >/dev/null 2>&1')
+            Common.log_warn('[Step 5] qpdf が見つかりません。`brew install qpdf` でインストールしてください。')
+            return false
+          end
+
+          FileUtils.rm_f(front_pdf)
+          FileUtils.rm_f(body_pdf)
+
+          body_end = total_pages - frontmatter_pages
+          ok1 = ok2 = true
+
+          if body_end > 0
+            Common.log_action("[Step 5] 本文・付録を抽出しています (1-#{body_end})…")
+            ok1 = system(%(qpdf "#{output_pdf}" --pages "#{output_pdf}" 1-#{body_end} -- "#{body_pdf}"))
+          else
+            Common.log_warn('[Step 5] 本文側のページがありません。frontmatter が全ページを占めています。')
+          end
+
+          if frontmatter_pages < total_pages
+            start_last = body_end + 1
+            Common.log_action("[Step 5] frontmatter を抽出しています (#{start_last}-z)…")
+            ok2 = system(%(qpdf "#{output_pdf}" --pages "#{output_pdf}" #{start_last}-z -- "#{front_pdf}"))
+          else
+            Common.log_warn('[Step 5] frontmatter が全ページを占めています。frontmatter 側のみ生成します。')
+          end
+
+          if ok1 && ok2
+            Common.log_success("[Step 5] 分割完了: #{front_pdf}, #{body_pdf}")
+            true
+          else
+            Common.log_warn('[Step 5] PDF の分割に失敗しました (qpdf 実行エラー)')
+            false
+          end
+        end
+
+        # 付録の番号(91..97)を appendix-[a..g] の letter に対応付け
+        def appendix_number_to_letter(num)
+          n = num.to_i
+          return nil unless n.between?(91, 97)
+          ("a".."g").to_a[n - 91]
+        rescue
+          nil
+        end
+
+        # stylesheets/NN.css の chapter-counter と章コメントを与えた番号に更新
+        def update_css_counter(css_path, number)
+          return false unless File.exist?(css_path)
+          begin
+            num = number.to_i
+            css = File.read(css_path, encoding: 'utf-8')
+
+            updated_css = css.dup
+            # counter-reset: chapter-counter XX;
+            updated_css = updated_css.gsub(/(counter-reset:\s*chapter-counter\s*)\d+(\s*;)/) do
+              pre, post = $1, $2
+              "#{pre}#{num}#{post}"
+            end
+            # コメント: /* 第XX章用スタイル */
+            updated_css = updated_css.gsub(/\/\*\s*第\s*\d+\s*章用スタイル\s*\*\//) do
+              "/* 第#{num}章用スタイル */"
+            end
+
+            if updated_css != css
+              File.write(css_path, updated_css, encoding: 'utf-8')
+              Common.log_success("CSSの章番号/コメントを更新しました: #{File.basename(css_path)} → #{num}")
+              true
+            else
+              Common.log_info("CSSに更新対象が見つかりません: #{css_path}")
+              false
+            end
+          rescue => e
+            Common.log_warn("CSS更新に失敗しました: #{css_path} (#{e})")
+            false
+          end
         end
       end
     end

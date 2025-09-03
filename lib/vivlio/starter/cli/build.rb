@@ -168,6 +168,15 @@ module Vivlio
                 return
               end
 
+              # chapters 指定（keep）を取得（'all' または未設定は nil）
+              begin
+                keep = BuildHelpers.configured_chapters
+                if keep && keep.any?
+                  Common.log_action("[Subset] 退避なしで論理的に対象を限定してビルドします: #{keep.inspect}")
+                else
+                  Common.log_action('[Subset] chapters 設定なし/\'all\'のため、フルビルドします（退避なし）')
+                end
+
               # ================================================================
               # Step 0: 事前クリーンアップ（フルビルド前の初期化）
               # ------------------------------------------------
@@ -205,123 +214,145 @@ module Vivlio
               end
 
               # ================================================================
-              # Step 2: 前書き (02-preface) のみ先行ビルド
+              # Step 2: CSS を仮想連番 1,2,3… に更新（.orig バックアップ作成）
+              # ------------------------------------------------
+              # - build_helpers.apply_virtual_chapter_numbers_for_book!
+              # ================================================================
+              begin
+                BuildHelpers.apply_virtual_chapter_numbers_for_book!(keep)
+              rescue => e
+                Common.log_warn("[Step 2] 仮想連番適用でエラー: #{e}")
+              end
+
+              # ================================================================
+              # Step 3: 前書き (02-preface) のみ先行ビルド
               # ------------------------------------------------
               # - build_helpers.preface_prebuild! を実行
               # - 失敗時は警告のみ
               # ================================================================
               begin
-                BuildHelpers.preface_prebuild!
+                BuildHelpers.preface_prebuild!(keep)
               rescue => e
-                Common.log_warn("[Step 2] エラー: #{e}")
+                Common.log_warn("[Step 3] エラー: #{e}")
               end
 
               # ================================================================
-              # Step 3: 付録 (91〜97) をビルドし、結合HTMLを作成
+              # Step 4: 付録 (91〜97) をビルドし、結合HTMLを作成
               # ------------------------------------------------
               # - build_helpers.build_appendices_and_merge_html!
               # ================================================================
               begin
-                BuildHelpers.build_appendices_and_merge_html!
+                BuildHelpers.build_appendices_and_merge_html!(keep)
               rescue => e
-                Common.log_warn("[Step 3] 付録ビルド/結合でエラー: #{e}")
+                Common.log_warn("[Step 4] 付録ビルド/結合でエラー: #{e}")
               end
 
               # ================================================================
-              # Step 4: 本文章 (11..89) をビルド（HTML生成）
+              # Step 5: 本文章 (11..89) をビルド（HTML生成）
               # ------------------------------------------------
               # - build_helpers.build_chapters_html!
               # ================================================================
               begin
-                BuildHelpers.build_chapters_html!
+                BuildHelpers.build_chapters_html!(keep)
               rescue => e
-                Common.log_warn("[Step 4] 章ビルドでエラー: #{e}")
+                Common.log_warn("[Step 5] 章ビルドでエラー: #{e}")
               end
 
               # ================================================================
-              # Step 5: TOC 生成（11..89 + 90-appendices.html を対象）
+              # Step 6: TOC 生成（11..89 + 90-appendices.html を対象）
               # ------------------------------------------------
               # - build_helpers.generate_toc_and_pdf!('.')
               # ================================================================
               begin
                 BuildHelpers.generate_toc_and_pdf!('.')
               rescue => e
-                Common.log_warn("[Step 5] 目次生成でエラー: #{e}")
+                Common.log_warn("[Step 6] 目次生成でエラー: #{e}")
               end
 
               # ================================================================
-              # Step 6: 全体PDF生成 → chapters_appendices.pdf/03-toc.pdf に分割
+              # Step 7: 全体PDF生成 → chapters_appendices.pdf/03-toc.pdf に分割
               # ------------------------------------------------
               # - build_helpers.build_overall_pdf_and_split_from_dir!('.')
               # ================================================================
               begin
                 BuildHelpers.build_overall_pdf_and_split_from_dir!('.')
               rescue => e
-                Common.log_warn("[Step 6] 章PDF化/分割でエラー: #{e}")
+                Common.log_warn("[Step 7] 章PDF化/分割でエラー: #{e}")
               end
 
               # ================================================================
-              # Step 7: frontmatter.pdf 構成 + ローマ小付与
+              # Step 8: frontmatter.pdf 構成 + ローマ小付与
               # ------------------------------------------------
               # - build_helpers.build_frontmatter_pdf!
               # ================================================================
               begin
                 BuildHelpers.build_frontmatter_pdf!
               rescue => e
-                Common.log_warn("[Step 7] ページ番号連番化処理でエラー: #{e}")
+                Common.log_warn("[Step 8] ページ番号連番化処理でエラー: #{e}")
               end
 
               # ================================================================
-              # Step 8: 本扉・扉裏・後書き・奥付
+              # Step 9: 本扉・扉裏・後書き・奥付
               # ------------------------------------------------
               # - build_helpers.build_front_pages_and_tail!
               # ================================================================
               begin
                 BuildHelpers.build_front_pages_and_tail!
               rescue => e
-                Common.log_warn("[Step 8] タイトル/奥付の生成でエラー: #{e}")
+                Common.log_warn("[Step 9] タイトル/奥付の生成でエラー: #{e}")
               end
 
               # ================================================================
-              # Step 9: すべてのPDFを結合して output.pdf を生成
+              # Step 10: すべてのPDFを結合して output.pdf を生成
               # ------------------------------------------------
               # - build_helpers.merge_all_pdfs!
               # ================================================================
               begin
                 BuildHelpers.merge_all_pdfs!
               rescue => e
-                Common.log_warn("[Step 9] PDF結合でエラー: #{e}")
+                Common.log_warn("[Step 10] PDF結合でエラー: #{e}")
               end
 
               # ================================================================
-              # Step 10: 生成PDFを圧縮（--no-compress でスキップ可）
+              # Step 11: CSS をバックアップ(.orig)から復元
+              # ------------------------------------------------
+              # - build_helpers.restore_chapter_css_backups_for_book!
+              # ================================================================
+              begin
+                BuildHelpers.restore_chapter_css_backups_for_book!
+              rescue => e
+                Common.log_warn("[Step 11] CSS復元でエラー: #{e}")
+              end
+
+              # ================================================================
+              # Step 12: 生成PDFを圧縮（--no-compress でスキップ可）
               # ------------------------------------------------
               # - build_helpers.compress_pdf!
               # ================================================================
               begin
                 if options[:compress] == false
-                  Common.log_action('[Step 10] PDF圧縮をスキップします（--no-compress）')
+                  Common.log_action('[Step 12] PDF圧縮をスキップします（--no-compress）')
                 else
                   BuildHelpers.compress_pdf!
                 end
               rescue => e
-                Common.log_warn("[Step 10] PDF圧縮でエラー: #{e}")
+                Common.log_warn("[Step 12] PDF圧縮でエラー: #{e}")
               end
 
               # ================================================================
-              # Step 11: 中間生成物クリーン（--no-clean でスキップ可）
+              # Step 13: 中間生成物クリーン（--no-clean でスキップ可）
               # ------------------------------------------------
               # - Thor 'clean' を呼び出し
               # ================================================================
               begin
                 if options[:clean] == false
-                  Common.log_action('[Step 11] クリーンアップをスキップします（--no-clean）')
+                  Common.log_action('[Step 13] クリーンアップをスキップします（--no-clean）')
                 else
-                  Common.log_action('[Step 11] 中間生成物をクリーンアップします…')
+                  Common.log_action('[Step 13] 中間生成物をクリーンアップします…')
                   Vivlio::Starter::ThorCLI.start(['clean'])
                 end
               rescue => e
-                Common.log_warn("[Step 11] クリーンアップでエラー: #{e}")
+                Common.log_warn("[Step 13] クリーンアップでエラー: #{e}")
               end
 
               # 最後に1度だけPDFをオープン（OS判定は open_pdf 側に委譲）
@@ -332,8 +363,14 @@ module Vivlio
               end
 
               Common.log_success('全ファイルのビルドが完了しました')
+              ensure
+                # 退避方式は廃止のため、復元処理は不要
+              end
             end
 
+            # ==============================================================================
+            # Helper methods
+            # ==============================================================================
             no_commands do
               # delete.rb のロジックを参照したトークン展開
               def list_contents_basenames

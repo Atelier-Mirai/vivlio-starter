@@ -105,12 +105,25 @@ module Vivlio
             [100, 'c'], [90, 'xc'], [50, 'l'], [40, 'xl'],
             [10, 'x'], [9, 'ix'], [5, 'v'], [4, 'iv'], [1, 'i']
           ]
-          res = ''
+          res = String.new
           mapping.each do |val, sym|
             count, n = n.divmod(val)
             res << sym * count
           end
           res
+        end
+
+        # ================================================================
+        # Utility: 付録番号(91..97)を appendix-[a..g] の letter に変換
+        # ------------------------------------------------
+        # - 無効範囲は nil を返す
+        # ================================================================
+        def appendix_number_to_letter(num)
+          n = num.to_i
+          return nil unless n.between?(91, 97)
+          ("a".."g").to_a[n - 91]
+        rescue
+          nil
         end
 
         # ================================================================
