@@ -118,7 +118,7 @@ module Vivlio
               end
             end
 
-            desc 'open:pdf', '生成されたPDFを開きます'
+            desc 'open:pdf [PATH]', '生成されたPDFを開きます（PATH 指定可）'
             long_desc <<~DESC
               生成されたPDFファイルをPreview.appで開きます。
 
@@ -126,6 +126,8 @@ module Vivlio
               - 圧縮版PDFが存在すれば優先的に開く
               - 既存のPDFウィンドウを閉じる
               - 指定されたウィンドウ位置に配置
+
+              PATH を与えた場合はそのファイルを開き、同様にウィンドウ位置を適用します。
             DESC
             # ================================================================
             # Command: open:pdf（PDFを開く）
@@ -134,14 +136,19 @@ module Vivlio
             # - 入力: 圧縮版が存在すればそれを優先、なければ通常版
             # - 補足: 非 macOS では案内のみ表示
             # ================================================================
-            def open_pdf
+            def open_pdf(path = nil)
               ENV['VERBOSE'] = '1' if options[:verbose]
               # PDF設定を取得
               pdf_config = Common::CONFIG['pdf'] || {}
-              # 圧縮版があれば優先、なければ通常版
-              compressed_path = pdf_config['output_file_compressed'] || 'output_compressed.pdf'
-              normal_path     = pdf_config['output_file'] || 'output.pdf'
-              pdf_path        = File.exist?(compressed_path) ? compressed_path : normal_path
+              # 開く対象の決定: 引数優先。未指定時は圧縮版があれば優先、なければ通常版
+              pdf_path = nil
+              if path && !path.to_s.strip.empty?
+                pdf_path = path.to_s
+              else
+                compressed_path = pdf_config['output_file_compressed'] || 'output_compressed.pdf'
+                normal_path     = pdf_config['output_file'] || 'output.pdf'
+                pdf_path        = File.exist?(compressed_path) ? compressed_path : normal_path
+              end
 
               Common.log_action("PDFを開いています…")
               Common.log_info("ファイルパス: #{File.expand_path(pdf_path)}")

@@ -54,19 +54,18 @@ h1 {
   place-items: center;
   place-content: center center;      /* コンテンツ領域も中央に */
   gap: 0;
-  break-before: recto;
 
   /* box-size */
-  min-block-size: 36mm;       /* 帯の最小高さ */
+  min-block-size: clamp(25.2mm, calc(var(--paper-scale) * 36mm), 36mm);       /* 帯の最小高さをスケール */
 
   /* spacing */
-  margin-block-start: 20mm;
+  margin-block-start: clamp(14mm, calc(var(--paper-scale) * 20mm), 20mm);
   padding-inline-start: 4em;  /* ラベル分の左余白 */
   padding-block-start: 0;     /* 帯に重ねるため不要 */
 
   /* typography */
   font-family: var(--header-font);
-  font-size: 42Q;
+  font-size: clamp(29.4Q, calc(var(--paper-scale) * 42Q), 42Q);
   line-height: 1;             /* ベースライン差を最小化 */
   text-align: left;
 
@@ -97,7 +96,7 @@ h1::after {
   inset-block: 0;                    /* 上下 0 で帯内の縦中央をとる */
   display: flex;
   align-items: center;               /* 縦中央 */
-  padding-inline-start: 0.8em;       /* 左端の余白 */
+  padding-inline-start: 0.8em;       /* 左端の余白（em は相対のためスケール不要） */
   color: inherit;
   font-weight: inherit;
 }

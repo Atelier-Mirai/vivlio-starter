@@ -59,6 +59,8 @@ body.chapter {
 /* 章扉のページ全面背景は使用しない（コンポーネント背景で表現） */
 
 :root {
+  --h4-marker: "◆";
+  --h3-marker: "♣";
   /* 調整用カスタムプロパティ（見出し・節番号・背景の位置と余白） */
   --h2-offset-inline: 30mm;  /* 見出しの左右移動 */
   --h2-offset-block-start: -9mm;  /* 見出しの上余白（上が負で上に寄せる） */
@@ -94,7 +96,7 @@ h6 {
 /* 章リード（章冒頭のリード文） */
 .chapter-lead {
   /* box-size */
-  inline-size: 163.2mm; /* 32em 相当の物理長に固定し h1 と一致 */
+  inline-size: clamp(114.24mm, calc(var(--paper-scale) * 163.2mm), 163.2mm); /* 32em 相当(A4基準)をスケール */
 
   /* spacing */
   margin-block: 2rlh;
@@ -102,7 +104,7 @@ h6 {
 
   /* typography */
   font-weight: 500;
-  font-size: 19Q; /* 少し小さくして読みやすさを確保（本文17Qよりやや大きめ） */
+  font-size: clamp(13.3Q, calc(var(--paper-scale) * 19Q), 19Q); /* A4基準19Qをスケール（下限≈A5相当） */
   line-height: 1.7;
   text-align: justify;
 
@@ -140,7 +142,7 @@ blockquote p {
   inline-size: 32em;
 
   /* 見出し h2 の直下に 15mm のアキを確保し、中央寄せ */
-  margin-block-start: 15mm; /* h2 の直後から 15mm 下げて開始 */
+  margin-block-start: clamp(10.5mm, calc(var(--paper-scale) * 15mm), 15mm); /* A4基準15mmをスケール */
   margin-block-end: var(--section-lead-margin-end);
   margin-inline: auto;
   font-weight: 700;
@@ -173,7 +175,11 @@ h3 {
 }
 
 h3::before {
+  /* layout */
+  display: inline-block;
+
   /* spacing */
+  margin-inline-end: 0.5em;
   padding: 0;
 
   /* typography */
@@ -183,7 +189,7 @@ h3::before {
   color: var(--color-mark);
 
   /* counters/meta */
-  content: "◆";
+  content: var(--h3-marker, "◆");
 }
 
 /* 目見出し */
@@ -197,7 +203,15 @@ h4 {
 }
 
 h4::before {
-  content: "●";
+  /* layout */
+  display: inline-block;
+
+  /* spacing */
+  margin-inline-end: 0.5em;
+  padding: 0;
+
+  /* counters/meta */
+  content: var(--h4-marker, "●");
 }
 
 /* 号見出し */
@@ -377,13 +391,13 @@ blockquote {
 /* コラム枠 */
 .column {
   /* box-size */
-  width: 114mm;
+  width: clamp(79.8mm, calc(var(--paper-scale) * 114mm), 114mm); /* A4基準114mmをスケール */
 
   /* spacing */
-  margin-block-start: 6mm;
+  margin-block-start: clamp(4.2mm, calc(var(--paper-scale) * 6mm), 6mm);
   margin-inline: auto;
-  padding: 4mm;
-  padding-inline: 6mm;
+  padding: clamp(2.8mm, calc(var(--paper-scale) * 4mm), 4mm);
+  padding-inline: clamp(4.2mm, calc(var(--paper-scale) * 6mm), 6mm);
 
   /* visual */
   border: solid 0.2mm var(--color-column-border);

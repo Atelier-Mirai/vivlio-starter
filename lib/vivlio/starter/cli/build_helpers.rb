@@ -362,7 +362,9 @@ module Vivlio
           if appendix_html_for_pdf.any?
             guard_html = File.join(base_dir, '90-appendices-guard.html')
             begin
-              # break-before:right により、直前が右ページなら空白1ページが自動挿入される
+              # @page size を現在の book 設定（A4/B5/A5）に合わせる（共通ヘルパ使用）
+              width, height = BuildHelpers.page_size_strings_from_config
+
               html = <<~HTML
                 <!doctype html>
                 <html>
@@ -370,8 +372,10 @@ module Vivlio
                   <meta charset="utf-8">
                   <title>Appendices Guard</title>
                   <style>
-                    /* 直前ページが右の場合のみ空白1ページが入る（Vivliostyle） */
-                    body { break-before: right; }
+                    /* 用紙サイズを book.yml に合わせる */
+                    @page {
+                      size: #{width} #{height};
+                    }
                   </style>
                 </head>
                 <body></body>
@@ -849,17 +853,61 @@ module Vivlio
           []
         end
 
-        # A4 サイズの空白1ページPDFを生成（既存時は何もしない）
+        # 空白1ページPDFを生成（既存時は何もしない）
+        # - 用紙サイズは book.yml の page 設定に追従（共有ヘルパ使用）
         def ensure_blank_page_pdf(path = 'blank_page.pdf')
           return path if File.exist?(path)
           doc = HexaPDF::Document.new
-          # 595.28 x 841.89 pt (A4 portrait)
-          doc.pages.add([0, 0, 595.28, 841.89])
+
+          begin
+            w_pt, h_pt = BuildHelpers.page_size_points_from_config
+            doc.pages.add([0, 0, w_pt, h_pt])
+          rescue => _e
+            # 失敗時は B5 で生成
+            mm_to_pt = 72.0 / 25.4
+            doc.pages.add([0, 0, 182.0 * mm_to_pt, 257.0 * mm_to_pt])
+          end
+
           doc.write(path, optimize: true)
           path
         rescue => _e
           # 失敗時は既存の path 不在でも無視（呼び出し側で rescue 済み）
           nil
+        end
+
+        # 共有ヘルパ: 現在の設定からページサイズ（文字列: mm/pt）を取得
+        def page_size_strings_from_config
+          page_cfg = (Common::CONFIG['page'] || {})
+          Common.resolve_page_size(page_cfg)
+        rescue
+          ['182mm', '257mm'] # B5 既定
+        end
+
+        # 共有ヘルパ: 現在の設定からページサイズ（pt）を取得
+        def page_size_points_from_config
+          width_s, height_s = BuildHelpers.page_size_strings_from_config
+          mm_to_pt = 72.0 / 25.4
+          parse_len = lambda { |s|
+            str = s.to_s.strip.downcase
+            if str.end_with?('mm')
+              str.sub(/mm\z/, '').to_f * mm_to_pt
+            elsif str.end_with?('pt')
+              str.sub(/pt\z/, '').to_f
+            else
+              # 単位不明 → 数値のみなら pt と解釈
+              str.to_f
+            end
+          }
+          w_pt = parse_len.call(width_s)
+          h_pt = parse_len.call(height_s)
+          if w_pt <= 0 || h_pt <= 0
+            w_pt = 182.0 * mm_to_pt
+            h_pt = 257.0 * mm_to_pt
+          end
+          [w_pt, h_pt]
+        rescue
+          mm_to_pt = 72.0 / 25.4
+          [182.0 * mm_to_pt, 257.0 * mm_to_pt]
         end
 
         # qpdf で「本文+付録（先頭〜frontmatter直前）」と「末尾frontmatter」を抽出

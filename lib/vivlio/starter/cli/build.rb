@@ -157,10 +157,10 @@ module Vivlio
                   end
                 end
 
-                # 生成した単章PDFを一度だけ開く（macOS のみ）
+                # 生成した単章PDFを一度だけ開く（open_pdf を用いてウィンドウ位置も適用）
                 begin
-                  if last_pdf && RbConfig::CONFIG['host_os'] =~ /darwin|mac os/i
-                    system(%(open -a Preview "#{last_pdf}"))
+                  if last_pdf
+                    open_pdf(last_pdf)
                   end
                 rescue => _e
                   # 失敗しても処理は継続

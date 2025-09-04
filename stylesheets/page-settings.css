@@ -45,17 +45,19 @@
 
 :root {
   /* 基本体裁（A4 縦） */
-  --page-width:  210mm; /* 幅 */
-  --page-height: 297mm; /* 高さ */
+  --page-width:  148mm; /* 幅 */
+  --page-height: 210mm; /* 高さ */
+  /* 用紙スケール（A4=1.0 を基準に B5/A5 などで前処理から上書き） */
+  --paper-scale: 0.7048;
 
   /* 組版パラメータ（A4向け：本文約12pt相当／36字×36行） */
-  --base-font-size:   17Q;    /* ≒ 12.0pt（17Q × 0.709pt ≒ 12.1pt） */
-  --base-line-height: 27.2Q;  /* 1.6倍行送り（17Q × 1.6） */
-  --letters-per-line: 38;     /* 1行38字（全角換算） */
-  --lines-per-page:   36;     /* 1ページ34行 */
-  --page-margin-top:    28mm; /* 天地マージン：天のみ明示。地は自動計算 */
-  --page-margin-xshift: -5mm; /* 左右マージンの微調整（正で右へ、負で左へ） */
-  --column-font-size:   10.5Q;/* コラムのフォントサイズ */
+  --base-font-size:   10pt;    /* ≒ 12.0pt（17Q × 0.709pt ≒ 12.1pt） */
+  --base-line-height: 17pt;  /* 10.5pt × 1.7 = 17.85pt（未上書き時の保険） */
+  --letters-per-line: 35;     /* 1行38字（全角換算） */
+  --lines-per-page:   32;     /* 1ページ34行 */
+  --page-margin-top:    20mm; /* 天地マージン：天のみ明示。地は自動計算 */
+  --page-margin-xshift: -4mm; /* 左右マージンの微調整（正で右へ、負で左へ） */
+  --column-font-size:   7.445pt;/* コラムのフォントサイズ */
 
   /* フォント指定 */
   --main-text-font: "Zen Kurenaido";    /* メイン本文フォント */
@@ -64,7 +66,7 @@
 
   /* ノンブル（ページ番号）用 */
   --folio-font:      "Hiragino Sans", "Helvetica Neue", arial, sans-serif;
-  --folio-font-size: 13Q; /* ≒ 9.2pt（1Q≒0.709pt, 12.7Q≒9pt → 実用上13Q） */
+  --folio-font-size: 9.217pt; /* ≒ 9.2pt（1Q≒0.709pt, 12.7Q≒9pt → 実用上13Q） */
   --folio-color:     #666;
 
   /* ノンブル配置切替用（中央 or 左右）

@@ -1,19 +1,24 @@
-# 書籍プロジェクト設定ファイル
+# ============================================================
+#  書籍プロジェクト設定ファイル
+# ============================================================
+# このファイルは Vivlio Starter のブック全体の設定を管理します。
+# 主なセクション: book, chapters, theme, page, legal, 
+#              directories, commands, files, vivliostyle, pdf
 
 # 書籍情報
 book:
   # 書籍名
   main_title: 'はじめての技術書づくり'
   subtitle: 'Vivlio Starter 実践ガイド'
-  subtitle_style: wave  # bar | none も可
+  subtitle_style: wave  # 副題の装飾（wave | bar | none）から選択
 
   # 付帯情報（任意）
-  series: '技術書典 19 新刊'
-  release: '令和七年十一月十五日 初版発行'
-  publisher: '○○印刷所' # 日光企画 ねこのしっぽ
-  contact: 'haruka@example.com'
-  author: '早乙女遙香' # 著者名
-  language: 'ja'
+  series: '技術書典 19 新刊'            # 連載名
+  release: '令和七年十一月十五日 初版発行' # 発行日
+  publisher: '○○印刷所'                # 日光企画 ねこのしっぽ
+  contact: 'haruka@example.com'       # 連絡先
+  author: '早乙女遙香'                  # 著者名
+  language: 'ja'                      # 言語
 
 # 章選択（フルビルド対象）
 # - all: すべての章を対象
@@ -21,41 +26,51 @@ book:
 # - 複数行文字列: 行ごとに .md ベース名
 # - '11-install' と '11-install.md' の両方を許可（拡張子は省略可）
 
-# chapters: all
-chapters:
-  - 02-preface
-  - 11-install
-  - 12-tutorial.md
-  - 91-appendix-a.md
+chapters: all
+# chapters:
+#   - 02-preface
+#   - 11-install
+#   - 12-tutorial.md
+#   - 91-appendix-a.md
 
 # テーマ
 theme:
   style: image   # simple: 画像なし / image: 画像あり
   color: green   # yellow | blue | red | green | purple の五色から選択
   door: 2         # 扉絵の画像番号（1から7 または 'door5' の形式で設定)
+  markers: 
+    h3: '♣'
+    h4: '◆'
 
 # ページ設定
 page:
+  # page_presets.yml の b5_standard プリセットを適用する
+  use: a5_paperback
+  # use: b5_standard
+  # use: a4_standard
+
+
   # 紙サイズ（A4 / B5 / A5）。指定すると幅・高さが自動設定されます。
-  size: A4
-  # 任意: 自動設定を上書きしたいときのみ指定
-  # width: '210mm'
-  # height: '297mm'
+  # size: A4
+  # # 任意: 自動設定を上書きしたいときのみ指定
+  # # width: '210mm'
+  # # height: '297mm'
 
-  # 基本文字サイズ（Q: 和文組版の単位。1Q ≒ 0.25mm ≒ 0.709pt）
-  base_font_size: '17Q'
-  # 行送り（ベースライン間隔）。例: 27.2Q は 17Q × 1.6倍相当
-  base_line_height: '27.2Q'
+  # # 基本文字サイズ（Q: 和文組版の単位。1Q ≒ 0.25mm ≒ 0.709pt）
+  # base_font_size: '17Q'
+  # # 行送り（ベースライン間隔）。例: 27.2Q は 17Q × 1.6倍相当
+  # base_line_height: '27.2Q'
 
-  # 1行の想定文字数（全角換算）
-  letters_per_line: '38'
-  # 1ページの想定行数
-  lines_per_page: '36'
+  # # 1行の想定文字数（全角換算）
+  # letters_per_line: '38'
+  # # 1ページの想定行数
+  # lines_per_page: '36'
 
-  # 上余白（天マージン）。下余白は版面計算で自動算出
-  margin_top: '28mm'
-  # 左右マージンの微調整（負で左へ、正で右へシフト）
-  margin_xshift: '-5mm'
+  # # 上余白（天マージン）。下余白は版面計算で自動算出
+  # margin_top: '28mm'
+  # # 左右マージンの微調整（負で左へ、正で右へシフト）
+  # margin_xshift: '-5mm'
+
 
   # コラム（補足欄など）のフォントサイズ
   column_font_size: '10.5Q'

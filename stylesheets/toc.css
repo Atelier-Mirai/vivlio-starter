@@ -89,10 +89,10 @@ body.toc { page: front; }
   align-items: baseline;
 
   /* spacing */
-  margin-block-end: 2mm;
+  margin-block-end: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
 
   /* typography */
-  font-size: 22Q;
+  font-size: clamp(15.4Q, calc(var(--paper-scale) * 22Q), 22Q);
   line-height: 1.25;
   font-weight: 700;
 }
@@ -106,15 +106,15 @@ body.toc { page: front; }
   inline-size: 100%;
 
   /* typography */
-  font-size: 19Q;
+  font-size: clamp(13.3Q, calc(var(--paper-scale) * 19Q), 19Q);
   line-height: 1.5;
 
   /* spacing */
-  margin-block: 3mm 1mm;   /* 上3mm 下1mm */
-  padding-block-end: 1mm;  /* タイトル行に適度な余白 */
+  margin-block: clamp(2.1mm, calc(var(--paper-scale) * 3mm), 3mm) clamp(0.7mm, calc(var(--paper-scale) * 1mm), 1mm);   /* 上3mm 下1mm */
+  padding-block-end: clamp(0.7mm, calc(var(--paper-scale) * 1mm), 1mm);  /* タイトル行に適度な余白 */
 
   /* visual */
-  border-block-end: solid 0.5mm #000;
+  border-block-end: solid clamp(0.35mm, calc(var(--paper-scale) * 0.5mm), 0.5mm) #000;
 
   /* counters/meta */
   content: "第 " counters(toc-list-counter, "-") " 章";
@@ -148,7 +148,7 @@ body.toc { page: front; }
   margin-inline-start: 1em;
 
   /* typography */
-  font-size: 16Q;
+  font-size: clamp(11.2Q, calc(var(--paper-scale) * 16Q), 16Q);
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
@@ -165,7 +165,7 @@ li.toc-chapter {
   break-inside: avoid;
 
   /* spacing */
-  margin-block-end: 10mm;
+  margin-block-end: clamp(7mm, calc(var(--paper-scale) * 10mm), 10mm);
 }
 
 /* 章目次（番号なし）リストも改ページで割れにくくする */
@@ -188,7 +188,7 @@ li.toc-chapter-appendix {
   /* margin-block-end: 2mm; */
 
   /* typography */
-  font-size: 22Q;
+  font-size: clamp(15.4Q, calc(var(--paper-scale) * 22Q), 22Q);
   line-height: 1.25em;
   font-weight: 700;
 }
@@ -207,10 +207,10 @@ li.toc-section {
 
   /* spacing */
   margin-inline-start: 0;
-  margin-block-end: 2mm;
+  margin-block-end: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
 
   /* typography */
-  font-size: 16Q;
+  font-size: clamp(11.2Q, calc(var(--paper-scale) * 16Q), 16Q);
   line-height: 1.2;
   font-weight: 700;
 }
@@ -220,10 +220,10 @@ li.toc-section {
   display: inline-block;  /* Flexアイテムとして振る舞う */
 
   /* flex-size */
-  flex: 0 0 13mm;         /* 固定幅の番号欄 */
+  flex: 0 0 clamp(9.1mm, calc(var(--paper-scale) * 13mm), 13mm);         /* 固定幅の番号欄 */
 
   /* box-size */
-  inline-size: 13mm;
+  inline-size: clamp(9.1mm, calc(var(--paper-scale) * 13mm), 13mm);
 
   /* alignment */
   text-align: end;
@@ -233,7 +233,7 @@ li.toc-section {
   counter-increment: toc-list-counter;
 
   /* spacing */
-  margin-inline-end: 2mm;
+  margin-inline-end: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
 }
 
 /* 項（h3）のページ番号 */
@@ -289,7 +289,7 @@ li.toc-chapter-appendix > ul > li {
   flex-basis: 100%;       /* 次の行に回す */
   
   /* spacing */
-  margin-block-start: 2mm;
+  margin-block-start: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
   padding-inline-start: 0; /* インデントは各小節LI側で与える */
 }
 
@@ -301,7 +301,7 @@ li.toc-chapter > ul {
   flex-basis: 100%;
 
   /* spacing */
-  margin-block-start: 3mm;
+  margin-block-start: clamp(2.1mm, calc(var(--paper-scale) * 3mm), 3mm);
 }
 /* stylelint-enable no-descending-specificity */
 
@@ -310,10 +310,10 @@ li.toc-subsection {
   /* spacing */
   margin-inline: 0 1em;
   margin-block-end: 0.1em;
-  padding-inline-start: 30mm; /* 小節の先頭に30mmの空白を確保 */
+  padding-inline-start: clamp(21mm, calc(var(--paper-scale) * 30mm), 30mm); /* 小節の先頭に30mmの空白を確保 */
 
   /* typography */
-  font-size: 13Q;
+  font-size: clamp(9.1Q, calc(var(--paper-scale) * 13Q), 13Q);
   line-height: 1.25;
   font-weight: 400;
   text-indent: 0; /* ぶら下げを解除 */
@@ -356,11 +356,11 @@ h2 {
 
   /* spacing */
   margin-block: 0;
-  padding-block-end: 1mm;
+  padding-block-end: clamp(0.7mm, calc(var(--paper-scale) * 1mm), 1mm);
 
   /* typography */
-  font-size: 42Q;
-  line-height: 48Q;
+  font-size: clamp(29.4Q, calc(var(--paper-scale) * 42Q), 42Q);
+  line-height: clamp(33.6Q, calc(var(--paper-scale) * 48Q), 48Q);
   font-family: var(--header-font);
   letter-spacing: 0.02em;
 
@@ -379,7 +379,7 @@ hr {
 /* 付録および番号なし章タイトルの前余白 */
 #toc>ul>li.toc-chapter-appendix,
 #toc>ul>li.toc-chapter-no-number {
-  margin-block-start: 5mm;
+  margin-block-start: clamp(3.5mm, calc(var(--paper-scale) * 5mm), 5mm);
 }
 
 /* 付録および番号なし章タイトルはページ番号を非表示 */

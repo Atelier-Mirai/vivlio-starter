@@ -33,7 +33,7 @@ body.titlepage {
 
     /* spacing */
     margin: 0;
-    padding-block: 0 var(--titlepage-padding-block, 80px);
+    padding-block: 0 clamp(56px, calc(var(--paper-scale) * var(--titlepage-padding-block, 80px)), 80px);
 
     /* typography */
     font-family: 'Hiragino Mincho ProN', '游明朝', serif;
@@ -70,26 +70,26 @@ body.titlepage {
 
 .book-title {
     font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', sans-serif;
-    font-size: 33.6pt; /* 2.8rem 相当 */
+    font-size: clamp(23.52pt, calc(var(--paper-scale) * 33.6pt), 33.6pt); /* 2.8rem 相当 */
     font-weight: bold;
 
     /* 見出しボックスの中央をページ上端から 65mm に配置 */
     position: absolute;
     inset-inline: 0;
-    inset-block-start: calc(65mm - var(--page-block-margin-start));
+    inset-block-start: calc(clamp(45.5mm, calc(var(--paper-scale) * 65mm), 65mm) - var(--page-block-margin-start));
     transform: translateY(-50%);
 }
 
 /* 副題 */
 .subtitle {
     /* typography */
-    font-size: 16pt;
+    font-size: clamp(11.2pt, calc(var(--paper-scale) * 16pt), 16pt);
     font-style: italic; /* 任意: 副題らしく */
 
     /* layout: タイトル中心の約18mm下に配置 */
     position: absolute;
     inset-inline: 0;
-    inset-block-start: calc(65mm - var(--page-block-margin-start) + 18mm);
+    inset-block-start: calc(clamp(45.5mm, calc(var(--paper-scale) * 65mm), 65mm) - var(--page-block-margin-start) + clamp(12.6mm, calc(var(--paper-scale) * 18mm), 18mm));
     transform: translateY(-50%);
     
     /* spacing */
@@ -126,12 +126,12 @@ body.titlepage {
 }
 
 .author {
-    font-size: 14.4pt; /* 1.2rem 相当 */
+    font-size: clamp(10.08pt, calc(var(--paper-scale) * 14.4pt), 14.4pt); /* 1.2rem 相当 */
 
     /* 見出し（.book-title）のボックス中央から下に35mmの位置に配置 */
     position: absolute;
     inset-inline: 0;
-    inset-block-start: calc(65mm - var(--page-block-margin-start) + 35mm);
+    inset-block-start: calc(clamp(45.5mm, calc(var(--paper-scale) * 65mm), 65mm) - var(--page-block-margin-start) + clamp(24.5mm, calc(var(--paper-scale) * 35mm), 35mm));
     margin: 0;
     display: grid;
     grid-auto-flow: column;   /* 横並び */
@@ -148,12 +148,12 @@ body.titlepage {
     /* ページ下端から 40mm 位置に配置 */
     position: fixed;
     inset-inline: 0;               /* 左右いっぱい（中央揃えを維持） */
-    bottom: 40mm;
-    font-size: 12pt; /* 1rem 相当 */
+    bottom: clamp(28mm, calc(var(--paper-scale) * 40mm), 40mm);
+    font-size: clamp(8.4pt, calc(var(--paper-scale) * 12pt), 12pt); /* 1rem 相当 */
 }
 
 .series {
-    font-size: 14.4pt; /* 1.2rem 相当 */
+    font-size: clamp(10.08pt, calc(var(--paper-scale) * 14.4pt), 14.4pt); /* 1.2rem 相当 */
 }
 
 .release-info {

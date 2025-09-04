@@ -71,8 +71,9 @@ body:not(.appendix) h6:has(+ table) {
 
 td,
 th {
-  border: solid 0.1mm #000;
-  padding: 1mm;
+  /* 線幅とパディングを用紙スケールで調整 */
+  border: solid clamp(0.08mm, calc(0.1mm * var(--paper-scale)), 0.14mm) #000;
+  padding: clamp(0.6mm, calc(1mm * var(--paper-scale)), 1.4mm);
   
   /* 長い単語/URL/コードでのはみ出し抑制 */
   overflow-wrap: anywhere;
@@ -90,7 +91,8 @@ tr:nth-child(even) {
 }
 
 .long-table {
-  font-size: 11Q;
+  /* 長い表はわずかに小さめ。スケール追従しつつ下限/上限を設ける */
+  font-size: clamp(9Q, calc(11Q * var(--paper-scale)), 12Q);
 }
 
 .long-table th {
@@ -150,7 +152,7 @@ table code {
 
   /* ラッパのサイズ（暫定。必要に応じて調整） */
   width: 100%;
-  height: 500px;
+  height: clamp(320px, calc(500px * var(--paper-scale)), 560px);
 }
 
 .table-rotate > table {
@@ -158,7 +160,10 @@ table code {
   top: 50%;
   left: 50%;
   transform-origin: center center;
-  transform: translate(-50%, +30%) rotate(-90deg) scale(0.9);
+  /* 回転時の縮尺は上書き可能な変数を用意（既定 0.9）。
+     ペーパー倍率との二重縮小を避けるため、既定では paper-scale を掛けない。 */
+  --table-rotate-scale: 0.9;
+  transform: translate(-50%, +30%) rotate(-90deg) scale(var(--table-rotate-scale));
   margin: 0;
   inline-size: max-content;
   max-inline-size: none;
@@ -167,6 +172,7 @@ table code {
 
 /* table-rotate 用のページ: 上下20mmの余白（ノンブル用）/ 左右は0で最大幅確保 */
 @page table-rotate {
-  margin-block: 20mm;
+  /* ノンブルのための上下余白をスケール追従 */
+  margin-block: clamp(14mm, calc(20mm * var(--paper-scale)), 22mm);
   margin-inline: 0;
 }

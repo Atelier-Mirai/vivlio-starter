@@ -62,9 +62,9 @@ body {
 
 /* 見出し */
 h2 {
-  font-size: 10.56pt; /* 13.2pt の 0.8倍（<small>相当スケールに調整） */
+  font-size: clamp(7.392pt, calc(var(--paper-scale) * 10.56pt), 10.56pt); /* 13.2pt の 0.8倍（<small>相当スケールに調整） */
   font-weight: 700;
-  margin-block: 2rem 0.5rem;
+  margin-block: clamp(1.4rem, calc(var(--paper-scale) * 2rem), 2rem) clamp(0.35rem, calc(var(--paper-scale) * 0.5rem), 0.5rem);
 }
 
 /* セクション間余白 */
@@ -75,9 +75,9 @@ h2 {
 
 /* 段落 */
 p {
-  font-size: 9.6pt; /* <small>相当: 12pt の 0.8倍 */
+  font-size: clamp(6.72pt, calc(var(--paper-scale) * 9.6pt), 9.6pt); /* <small>相当: 12pt の 0.8倍 */
   text-indent: 1em;
-  margin-block: 0.5rem 0;
+  margin-block: clamp(0.35rem, calc(var(--paper-scale) * 0.5rem), 0.5rem) 0;
 }
 
 /* 商標ブロック内の2段落目は上マージンを詰める */

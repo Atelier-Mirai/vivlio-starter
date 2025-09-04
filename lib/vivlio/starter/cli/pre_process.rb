@@ -494,6 +494,47 @@ module Vivlio
               else
                 Common.log_info("chapter.css のヘッダーimportは既に最新です: #{desired}")
               end
+
+              # 章見出しマーカー（h3/h4 の ::before）を設定
+              # - keys (後方互換なし):
+              #   - theme.markers.h3
+              #   - theme.markers.h4
+              begin
+                cfg = Common::CONFIG
+                markers = (cfg && cfg['theme'] && cfg['theme']['markers']).is_a?(Hash) ? cfg['theme']['markers'] : {}
+                mark_h3 = markers['h3'].to_s
+                mark_h4 = markers['h4'].to_s
+
+                css = File.read(chapter_css_path, encoding: 'utf-8')
+
+                set_marker = lambda do |css_text, var_name, value|
+                  return css_text if value.to_s.strip.empty?
+                  esc = value.gsub('\\', '\\').gsub('"', '\\"')
+                  if css_text.match(/#{Regexp.escape(var_name)}:\s*[^;]+;/)
+                    css_text.sub(/(#{Regexp.escape(var_name)}:\s*)[^;]+(;)/, "\\1\"#{esc}\"\\2")
+                  elsif css_text.match(/:root\s*\{/) # :root ブロックに追加
+                    css_text.sub(/:root\s*\{/, ":root {\n  #{var_name}: \"#{esc}\";")
+                  else
+                    " :root {\n  #{var_name}: \"#{esc}\";\n }\n\n" + css_text
+                  end
+                end
+
+                before_css = css.dup
+                css = set_marker.call(css, '--h3-marker', mark_h3) unless mark_h3.to_s.strip.empty?
+                css = set_marker.call(css, '--h4-marker', mark_h4) unless mark_h4.to_s.strip.empty?
+
+                if css != before_css
+                  File.write(chapter_css_path, css, encoding: 'utf-8')
+                  logs = []
+                  logs << "h3='#{mark_h3}'" unless mark_h3.to_s.strip.empty?
+                  logs << "h4='#{mark_h4}'" unless mark_h4.to_s.strip.empty?
+                  Common.log_success("chapter.css にマーカーを反映: #{logs.join(', ')}")
+                else
+                  Common.log_info('theme.markers による変更はありません（既存定義を維持）')
+                end
+              rescue => _e
+                # 続行（マーカー設定は任意）
+              end
             else
               Common.log_info("chapter.css が見つかりません: #{chapter_css_path}")
             end
@@ -541,19 +582,35 @@ module Vivlio
             cfg = Common::CONFIG
             page_cfg = (cfg && cfg['page']).is_a?(Hash) ? cfg['page'] : {}
 
-            # 紙サイズ
-            size_map = {
-              'A4' => ['210mm', '297mm'],
-              'B5' => ['182mm', '257mm'],
-              'A5' => ['148mm', '210mm']
-            }
-            sz = page_cfg['size']
-            if sz && sz.to_s.strip != ''
-              key = sz.to_s.strip.upcase
-              if size_map[key]
-                page_cfg['width']  = page_cfg['width']  && page_cfg['width'].to_s.strip != '' ? page_cfg['width']  : size_map[key][0]
-                page_cfg['height'] = page_cfg['height'] && page_cfg['height'].to_s.strip != '' ? page_cfg['height'] : size_map[key][1]
+            # 紙サイズ（size/width/height）を共通ヘルパで正規化
+            Common.normalize_page_size!(page_cfg)
+
+            # 用紙スケール（A4=1.0 基準）を算出して CSS 変数として注入
+            # - 例: B5(182x257) およそ min(182/210, 257/297) ≒ 0.867
+            # - 例: A5(148x210) およそ min(148/210, 210/297) ≒ 0.704
+            parse_to_mm = lambda do |val|
+              s = val.to_s.strip
+              if m = s.match(/^([0-9]+(?:\.[0-9]+)?)\s*(mm|pt)$/i)
+                num = m[1].to_f
+                unit = m[2].downcase
+                unit == 'pt' ? (num * 0.3527777778) : num
+              else
+                # 単位未指定などの場合は数値として扱い mm とみなす
+                s.to_f
               end
+            end
+
+            a4_w_mm = 210.0
+            a4_h_mm = 297.0
+            w_mm = parse_to_mm.call(page_cfg['width'])
+            h_mm = parse_to_mm.call(page_cfg['height'])
+            if w_mm > 0 && h_mm > 0
+              scale_w = w_mm / a4_w_mm
+              scale_h = h_mm / a4_h_mm
+              paper_scale = [scale_w, scale_h].min
+              # 0.5〜1.0 の安全域に丸め（極端値の暴れを抑制）
+              paper_scale = [[paper_scale, 0.5].max, 1.0].min
+              page_cfg['paper_scale'] = paper_scale.round(4)
             end
 
             # ノンブル配置
@@ -573,6 +630,7 @@ module Vivlio
             mappings = [
               ['--page-width',            page_cfg['width']],
               ['--page-height',           page_cfg['height']],
+              ['--paper-scale',           page_cfg['paper_scale']],
               ['--base-font-size',        page_cfg['base_font_size']],
               ['--base-line-height',      page_cfg['base_line_height']],
               ['--letters-per-line',      page_cfg['letters_per_line']],
@@ -781,7 +839,7 @@ module Vivlio
             if frontmatter_match
               frontmatter_yaml = frontmatter_match[1]
               begin
-                existing_frontmatter = YAML.safe_load(frontmatter_yaml) || {}
+                existing_frontmatter = YAML.safe_load(frontmatter_yaml, permitted_classes: [], aliases: true) || {}
 
                 merged_frontmatter = generate_frontmatter(file_type, chapter_num, existing_frontmatter)
 

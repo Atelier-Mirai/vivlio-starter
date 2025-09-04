@@ -77,6 +77,9 @@ module Vivlio
               # --purge 指定時は最終PDFも削除対象に含める
               if options[:purge]
                 cleanup_patterns.concat(final_pdfs)
+                # 単章PDF（例: 11-install.pdf, 81-install.pdf など）も削除
+                # 既に個別に列挙している中間PDFと重複しても問題ない
+                cleanup_patterns << '[0-9][0-9]-*.pdf'
               end
 
               cleanup_patterns.each do |pattern|

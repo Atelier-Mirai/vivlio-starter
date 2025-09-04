@@ -31,7 +31,8 @@ module Vivlio
         # ================================================================
         def load_config
           if File.exist?(CONFIG_FILE)
-            cfg = YAML.load_file(CONFIG_FILE)
+            cfg_text = File.read(CONFIG_FILE, encoding: 'utf-8')
+            cfg = YAML.safe_load(cfg_text, permitted_classes: [], aliases: true)
             unless cfg.is_a?(Hash)
               puts "⚠️ 設定ファイルの内容が不正です（Hash ではありません）: #{CONFIG_FILE}"
               puts "⚠️ デフォルト設定を使用します"
@@ -50,6 +51,46 @@ module Vivlio
                   'post_replace' => '_postReplaceList.json'
                 }
               }
+            end
+
+            # ------------------------------------------------------------
+            # 多段ロード/マージ: page.preset or page.use を解決
+            # - config/page_presets.yml から該当プリセットを読み込み
+            # - プリセット値に book.yml の page 値を上書き（ユーザー設定優先）
+            # - 未指定/未検出の場合はそのまま
+            # ------------------------------------------------------------
+            begin
+              page_cfg = (cfg['page'].is_a?(Hash) ? cfg['page'] : {})
+              preset_name = page_cfg['preset'] || page_cfg['use'] || page_cfg['preset_name']
+              if preset_name && !preset_name.to_s.strip.empty?
+                presets_path = File.join('config', 'page_presets.yml')
+                if File.exist?(presets_path)
+                  presets_text = File.read(presets_path, encoding: 'utf-8')
+                  presets = YAML.safe_load(presets_text, permitted_classes: [], aliases: true)
+                  if presets.is_a?(Hash)
+                    selected = presets[preset_name.to_s]
+                    if selected.is_a?(Hash)
+                      # preset/use/preset_name キーはマージ対象から除外
+                      overrides = page_cfg.reject { |k, _| %w[preset use preset_name].include?(k.to_s) }
+                      cfg['page'] = selected.merge(overrides)
+                      # 単位正規化（pt へ統一）
+                      begin
+                        normalize_page_units!(cfg['page'])
+                      rescue => e
+                        puts "⚠️ base_line_height の単位正規化で例外: #{e.class}: #{e.message}"
+                      end
+                    else
+                      puts "⚠️ ページプリセットが見つかりません: #{preset_name} (#{presets_path})"
+                    end
+                  else
+                    puts "⚠️ #{presets_path} の形式が不正です（Hash ではありません）"
+                  end
+                else
+                  puts "⚠️ ページプリセットファイルが見つかりません: #{presets_path}"
+                end
+              end
+            rescue => e
+              puts "⚠️ ページプリセットの適用中にエラー: #{e.class}: #{e.message}"
             end
             cfg
           else
@@ -71,6 +112,112 @@ module Vivlio
               }
             }
           end
+        end
+
+        # ================================================================
+        # Utility: normalize_page_units!
+        # ------------------------------------------------
+        # - 目的: page 設定内の単位を pt に正規化
+        # - 対象: base_font_size（Q→pt）, base_line_height（倍率/Em/Q→pt）
+        # - 振る舞い: 引数の Hash を破壊的に更新
+        # ================================================================
+        def normalize_page_units!(pcfg)
+          return pcfg unless pcfg.is_a?(Hash)
+
+          to_pt = lambda { |val|
+            s = val.to_s.strip
+            return nil if s.empty?
+            if s =~ /pt\z/i
+              s # 既に pt
+            elsif s =~ /q\z/i
+              # 1Q ≒ 0.709pt
+              num = s.sub(/q\z/i, '').to_f
+              (num * 0.709).round(3).to_s + 'pt'
+            else
+              s
+            end
+          }
+
+          # base_font_size / column_font_size / folio_font_size の Q → pt を一括処理
+          %w[base_font_size column_font_size folio_font_size].each do |key|
+            v = pcfg[key]
+            next unless v && !v.to_s.strip.empty?
+            s = v.to_s.strip
+            next unless s =~ /q\z/i
+            pcfg[key] = to_pt.call(s)
+          end
+
+          # 数値の pt 値を Float で取得
+          get_pt_value = lambda { |s|
+            m = s.to_s.strip.match(/\A([0-9]+(?:\.[0-9]+)?)pt\z/i)
+            m ? m[1].to_f : nil
+          }
+
+          # line-height を pt に正規化
+          blh = pcfg['base_line_height']
+          bfs_pt = get_pt_value.call(pcfg['base_font_size'])
+          if blh && bfs_pt
+            str = blh.to_s.strip
+            if str =~ /pt\z/i
+              # 既に pt → そのまま
+            elsif str =~ /q\z/i
+              # Q → pt
+              pcfg['base_line_height'] = to_pt.call(str)
+            elsif str =~ /em\z/i
+              # em はフォントサイズ倍率
+              mult = str.sub(/em\z/i, '').to_f
+              pcfg['base_line_height'] = (bfs_pt * mult).round(3).to_s + 'pt'
+            elsif str =~ /\A[0-9]+(?:\.[0-9]+)?\z/
+              # 単位なし（行送り倍率）
+              mult = str.to_f
+              pcfg['base_line_height'] = (bfs_pt * mult).round(3).to_s + 'pt'
+            end
+          end
+
+          pcfg
+        end
+
+        # ================================================================
+        # Utility: ページサイズ解決 resolve_page_size / normalize_page_size!
+        # ------------------------------------------------
+        # - 入力: page 設定 Hash（size/width/height を想定）
+        # - 仕様:
+        #   - size が A4/B5/A5 のいずれかなら、その既定寸法を基準にする
+        #   - width/height が明示されていれば size より優先
+        #   - どれも無ければ B5（182mm x 257mm）
+        # - 出力:
+        #   - resolve_page_size: [width, height] を返す
+        #   - normalize_page_size!: 引数 Hash を破壊的に width/height 付与して返す
+        # ================================================================
+        def resolve_page_size(page_cfg)
+          pcfg = page_cfg.is_a?(Hash) ? page_cfg : {}
+          size = (pcfg['size'] || '').to_s.strip.upcase
+          case size
+          when 'A4'
+            default_w, default_h = '210mm', '297mm'
+          when 'A5'
+            default_w, default_h = '148mm', '210mm'
+          else
+            # 既定: B5
+            default_w, default_h = '182mm', '257mm'
+          end
+
+          width  = pcfg['width']
+          height = pcfg['height']
+          width  = width.to_s.strip unless width.nil?
+          height = height.to_s.strip unless height.nil?
+
+          width  = (width && !width.empty?)   ? width  : default_w
+          height = (height && !height.empty?) ? height : default_h
+          [width, height]
+        end
+
+        def normalize_page_size!(page_cfg)
+          return page_cfg unless page_cfg.is_a?(Hash)
+          w, h = resolve_page_size(page_cfg)
+          page_cfg['width']  = w
+          page_cfg['height'] = h
+          page_cfg
         end
 
         # ================================================================
