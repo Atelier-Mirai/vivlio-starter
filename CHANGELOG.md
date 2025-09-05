@@ -52,6 +52,13 @@
 
 ### Notes
 
+## [0.8.1] - 2025-09-05
+
+### Changed
+
+- 節見出し（`stylesheets/image_header.css` の `h2` / `h2::before`）の体裁調整を完了。
+- 0.8.0 の「image_header.css の位置調整は一旦保留（TODO）」を解消。
+
 ## [0.8.0] - 2025-09-04
 
 ### Added

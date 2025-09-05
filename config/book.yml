@@ -45,9 +45,9 @@ theme:
 # ページ設定
 page:
   # page_presets.yml の b5_standard プリセットを適用する
-  use: a5_paperback
+  # use: a5_paperback
   # use: b5_standard
-  # use: a4_standard
+  use: a4_standard
 
 
   # 紙サイズ（A4 / B5 / A5）。指定すると幅・高さが自動設定されます。

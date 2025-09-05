@@ -109,6 +109,24 @@ module Vivlio
                   Common.log_info("#{html_file}: 変更なし")
                 end
 
+                # theme.style: image のとき、section.level2 内の h2（および直後の .section-lead）を
+                # <article class="section-topic"> でラップする
+                begin
+                  content_before = File.read(html_file, encoding: 'utf-8')
+                  content_after  = wrap_h2_with_article_if_image_style!(content_before)
+                  if content_after != content_before
+                    File.write(html_file, content_after, encoding: 'utf-8')
+                    Common.log_success("#{html_file}: h2 を <article.section-topic> でラップ（theme.style=image）")
+                    # ラップ後に生じた空段落などを除去するため、置換ルールを再適用
+                    result2 = process_html_file(html_file, replace_rules)
+                    if result2[:changed]
+                      Common.log_success("#{html_file}: ラップ後の不要な空段落をクリーンアップ (#{result2[:replacements]}件)")
+                    end
+                  end
+                rescue => e
+                  Common.log_error("#{html_file}: section-topic ラップ中にエラー: #{e.message}")
+                end
+
                 # 章末脚注→ページ脚注 変換
                 content = File.read(html_file, encoding: 'utf-8')
                 converted = convert_endnotes_to_page_footnotes!(content)
@@ -173,6 +191,77 @@ module Vivlio
           end
 
           { changed: changed, replacements: file_replacements }
+        end
+
+        # theme.style が image の場合に、章セクションの見出しを <article.section-topic>
+        # でラップし、CSS グリッドの対象構造を整える。
+        # 規則:
+        # - 対象: <section class="level2"> の直下にある <h2>
+        # - 直後にある .section-lead（要素ノード）も一緒にラップする（存在すれば）
+        # - 既に <article.section-topic> でラップ済みの場合は何もしない
+        def wrap_h2_with_article_if_image_style!(html)
+          return html unless Common::CONFIG.dig('theme', 'style') == 'image'
+
+          doc = if defined?(Nokogiri::HTML5)
+                  Nokogiri::HTML5.parse(html)
+                else
+                  Nokogiri::HTML.parse(html, nil, 'UTF-8')
+                end
+
+          changed = false
+
+          doc.css('section.level2').each do |section|
+            # section 直下の h2 を対象
+            h2 = section.at_css('> h2')
+            next unless h2
+            # 既に article.section-topic 配下ならスキップ
+            next if h2.ancestors('article.section-topic').any?
+
+            # h2 の直後に現れる .section-lead（要素ノード）を探索
+            # 空の <p> などはスキップし、はじめに見つかった .section-lead を採用
+            lead = nil
+            node = h2.next_sibling
+            while node
+              if node.element?
+                classes = node['class']&.split || []
+                if classes.include?('section-lead')
+                  lead = node
+                  break
+                end
+                # 空段落 <p> はスキップ（改行や空白・ゼロ幅文字のみ）
+                if node.name == 'p' && (node.text.gsub(/[\u200B\u200C\u200D\u2060\uFEFF\u180E]/, '').strip.empty?)
+                  node = node.next_sibling
+                  next
+                end
+                # それ以外の要素が来たら探索終了
+                break
+              else
+                # テキストノードやコメントはスキップ
+                node = node.next_sibling
+              end
+            end
+
+            article = Nokogiri::XML::Node.new('article', doc)
+            article['class'] = 'section-topic'
+
+            # h2 の直前に article を挿入し、h2 と（あれば）lead を移動
+            h2.add_previous_sibling("\n")
+            h2.add_previous_sibling(article)
+            article.add_child(h2)
+            if lead
+              article.add_child("\n")
+              article.add_child(lead)
+            end
+            changed = true
+          end
+
+          return html unless changed
+
+          if doc.respond_to?(:to_html)
+            doc.to_html
+          else
+            doc.to_s
+          end
         end
 
         # 章末の endnotes をページ脚注へ変換

@@ -59,130 +59,76 @@ h1::before {
 
 
 /* 節見出し（背景画像 + 大きな番号） */
-h2 {
-  /* layout */
+.section-topic {
   display: grid;
+  grid-template:
+    "section-title" 150px
+    "section-lead" auto
+    / 100%;
+  gap: 1em;
+  margin-block-end: 1em;
+}
+
+.section-topic h2,
+.section-topic h2::before {
+  font-family: var(--header-font);
+  /* 章の見出しと同じフォントに */
+  font-weight: 900;
+}
+
+/* 節見出し */
+.section-topic h2 {
+  /* layout */
   break-before: page;
-  position: relative; /* 擬似要素の基準にしてフロー内で高さを確保 */
-
-  /* box-size */
-  inline-size: 100%;
-  /* ヒーローブロックの高さ分だけフロー内で場所を確保して重なり防止 */
-  min-block-size: var(--section-hero-height);
-  /* 背景・番号・見出しの共通パラメータ（用紙サイズに追従） */
-  --section-bg-width:  clamp(127.4mm, calc(var(--paper-scale) * 182mm), 182mm);
-  --section-bg-height: clamp(34.3mm,  calc(var(--paper-scale) * 49mm),  49mm);
-  --section-num-offset-x: clamp(7mm,  calc(var(--paper-scale) * 10mm), 10mm);
-  --section-num-offset-y: clamp(3.5mm, calc(var(--paper-scale) * 5mm),  5mm);
-  /* リクエストによる微調整量（スケール追従） */
-  /* TODO(image_header.css): 見出し/リードの上下位置は暫定値。各用紙サイズでの視認性を確認して再調整すること。 */
-  /* FIXME(image_header.css): 背景とリードの接触/重なりが発生する場合、--section-hero-height か section-lead のマージンで余白を増やす。 */
-  --delta-bg-inline-left: clamp(28mm, calc(var(--paper-scale) * 40mm), 40mm); /* 背景を40mm左へ */
-  --delta-num-block-up:   clamp(4.9mm, calc(var(--paper-scale) * 7mm),  7mm);  /* 番号を7mm上へ */
-  --delta-title-inline:   clamp(35mm, calc(var(--paper-scale) * 50mm), 50mm); /* タイトルを50mm右へ */
-  --delta-title-block-down: clamp(17.5mm, calc(var(--paper-scale) * 25mm), 25mm); /* タイトルを25mm下へ */
-  --delta-lead-block-up:    clamp(17.5mm, calc(var(--paper-scale) * 25mm), 25mm);  /* リードを25mm上へ（前回より5mm下げ） */
-  /* ページ左上（本文領域の左上=ページマージン内側）を基準にするアンカー */
-  --section-anchor-inline: var(--page-inline-margin);
-  --section-anchor-block:  var(--page-block-margin-start);
-  /* 見出しテキストのアンカーからのオフセット */
-  --section-title-offset-x: 0;
-  --section-title-offset-y: clamp(33mm, calc(var(--paper-scale) * 47mm), 47mm);
-  /* ヒーローブロック全体の高さ（リードを押し下げるために使用） */
-  --section-hero-height: calc(var(--section-bg-height) + clamp(6mm, calc(var(--paper-scale) * 8mm), 10mm));
-
-  /* spacing: フロー上の余白は最小限 */
   margin: 0;
-  /* タイトルの水平方向調整（50mm 右へ） */
-  padding-inline-start: var(--delta-title-inline);
-  /* タイトルの垂直方向調整（合計 25mm 下へ） */
-  /* TODO(image_header.css): セクション番号とタイトルのベースライン整合を再検証し、必要なら +/- 数mm 調整する。 */
-  transform: translateY(var(--delta-title-block-down));
-
   /* typography */
   font-size: clamp(25.2Q, calc(var(--paper-scale) * 36Q), 36Q);
   line-height: clamp(33.6Q, calc(var(--paper-scale) * 48Q), 48Q);
 
   /* alignment */
-  align-content: center;
+  align-self: center;
   white-space: nowrap; /* 折り返し防止（横一行） */
   /* stylelint-disable-next-line property-no-unknown */
   string-set: section-title content(), section-number content(before);
 
   /* counters: 節カウンタは h2 で進める */
   counter-increment: section-counter;
+
+  /* h2 自身をグリッドにする */
+  display: grid;
+  grid-auto-flow: column;           /* 子を横方向に流す */
+  grid-template-columns: auto 1fr;  /* 左:番号(自動幅) / 右:タイトル(可変) */
+  column-gap: 0.7em;
+  align-items: center;               /* 垂直中央 */
+  padding-inline-start: 1em;
+
+  /* 背景 */
+  background-image: var(--section-bg-image);
+  background-repeat: no-repeat;
+  background-origin: border-box;     /* padding の影響を受けない */
+  background-clip: border-box;
+  background-position: -15mm center; /* 左へオフセット */
+  background-size: 110% 150px;       /* 横:110% / 縦:150px */
+  min-block-size: 150px;
 }
 
-/* 節背景（元の位置/サイズで描画） */
-h2::before {
-  /* layout */
-  position: absolute; /* h2 を基準に配置 */
-  z-index: -2; /* 最背面 */
-
-  /* box-size */
-  inline-size: var(--section-bg-width);
-  block-size: var(--section-bg-height);
-
-  /* spacing */
-  padding-inline-start: var(--section-number-padding-inline-start);
-  padding-block-start: var(--section-number-padding-block-start);
-
-  /* 背景専用（番号テキストは ::after で描画） */
-  background: center / contain no-repeat var(--section-bg-image);
-
-  /* inset: h2 の左上からの相対（背景を40mm左へ移動） */
-  inset-inline-start: calc(var(--section-bg-inset-inline) - var(--delta-bg-inline-left));
-  inset-block-start:  var(--section-bg-inset-block);
-
-  /* counters/meta */
-  content: "";
-}
-
-/* 節番号テキスト（本体） */
-h2::after {
-  /* layout */
-  position: absolute; /* h2 を基準に配置 */
-  z-index: -1; /* 背景(::before)の一つ上に配置 */
-
-  /* box-size */
-  inline-size: var(--section-bg-width);
-  block-size: var(--section-bg-height);
-
-  /* spacing */
-  padding-inline-start: var(--section-number-padding-inline-start);
-  padding-block-start: var(--section-number-padding-block-start);
-
-  /* alignment */
-  text-align: left;
-
-  /* typography */
-  font-size: clamp(33.6Q, calc(var(--paper-scale) * 48Q), 48Q);
-  font-weight: 900;
-  line-height: clamp(9.8mm, calc(var(--paper-scale) * 14mm), 14mm);
-
-  /* visual */
-  color: var(--section-number-color);
-  -webkit-text-stroke: 0.3mm rgba(0, 0, 0, 0.30);
-
-  /* inset */
-  /* 番号の配置は背景に追従（h2 基準）。背景の40mm左移動に連動しつつ、さらに7mm上へ。 */
-  inset-inline-start: calc((var(--section-bg-inset-inline) - var(--delta-bg-inline-left)) + var(--section-num-offset-x));
-  inset-block-start:  calc(var(--section-bg-inset-block)  + var(--section-num-offset-y) - var(--delta-num-block-up));
-
-  /* counters/meta */
+/* 節番号 */
+.section-topic h2::before {
   content: "\00a0\00a0\00a0" counter(chapter-counter) "-" counter(section-counter);
+  font-size: calc(1em * 1.10); /* h2 に対して ≒10%拡大で視覚調整 */
+  font-weight: 900;
+  color: var(--section-number-color);
+  -webkit-text-stroke: 0.3mm rgba(0, 0, 0, .30);
+
+  /* 配置 */
+  justify-self: start;
+  align-self: center;
 }
 
-/* 節リード（節冒頭のリード文） */
-.section-lead {
-  display: block;
-  inline-size: 32em;
-  /* h2 がフロー内で高さを確保するため、通常の余白設定でよい */
-  margin-inline: auto;
-  margin-block: 0 var(--section-lead-margin-end);
-  font-weight: 700;
+/* 節リード */
+.section-topic .section-lead {
+  grid-area: section-lead;
   text-indent: 1em;
-  /* TODO(image_header.css): リードが背景と近すぎる場合、上げ量(--delta-lead-block-up)か下側マージンを見直す。 */
-  /* リードを上方向へ（30mm）移動（レイアウトフローを崩さないため transform を使用） */
-  transform: translateY(calc(-1 * var(--delta-lead-block-up)));
+  margin-block-start: 0 !important;
+  margin-block-end: 0 !important;
 }
