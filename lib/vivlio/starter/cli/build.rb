@@ -379,23 +379,32 @@ module Vivlio
                   title_md    = File.join(Common::CONTENTS_DIR, '00-titlepage.md')
                   legal_md    = File.join(Common::CONTENTS_DIR, '01-legalpage.md')
                   colophon_md = File.join(Common::CONTENTS_DIR, '99-colophon.md')
+                  book_yml    = File.join('config', 'book.yml')
+                  front_pdf   = '00-01-front.pdf'
+                  col_pdf     = '99-colophon.pdf'
+
+                  newer_than_any = lambda do |target, sources|
+                    return true unless File.exist?(target)
+                    t_mtime = File.mtime(target) rescue Time.at(0)
+                    Array(sources).any? { |s| File.exist?(s) && File.mtime(s) > t_mtime }
+                  end
 
                   begin
-                    targets = [
-                      [title_md,    'create:titlepage'],
-                      [legal_md,    'create:legalpage'],
-                      [colophon_md, 'create:colophon']
-                    ]
-                    targets.each do |path, cmd|
-                      next if File.exist?(path) && !options[:force]
-                      args = [cmd]
-                      args << '--force' if options[:force]
-                      Vivlio::Starter::ThorCLI.start(args)
+                    # 00/01 は front_pdf の鮮度に基づいて再生成
+                    if options[:force] || newer_than_any.call(front_pdf, [title_md, legal_md, book_yml])
+                      [['create:titlepage', title_md], ['create:legalpage', legal_md]].each do |cmd, _path|
+                        Vivlio::Starter::ThorCLI.start([cmd, '--force'])
+                      end
+                    end
+
+                    # 99 は col_pdf の鮮度に基づいて再生成
+                    if options[:force] || newer_than_any.call(col_pdf, [colophon_md, book_yml])
+                      Vivlio::Starter::ThorCLI.start(['create:colophon', '--force'])
                     end
                   rescue => e
                     Common.log_warn("[Step 9] create:* の生成でエラー: #{e}")
                   end
-                  BuildHelpers.build_front_pages_and_tail!
+                  BuildHelpers.build_front_pages_and_tail!(options[:force] ? true : false)
                 rescue => e
                   Common.log_warn("[Step 9] タイトル/奥付の生成でエラー: #{e}")
                 end

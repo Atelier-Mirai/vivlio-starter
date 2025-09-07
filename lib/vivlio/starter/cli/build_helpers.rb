@@ -1026,42 +1026,74 @@ module Vivlio
         # ================================================================
         # Step 9: 本扉・扉裏・後書き・奥付の生成
         # ------------------------------------------------
-        # - 00-titlepage/01-legalpage/98-postface/99-colophon を個別に PDF 化
+        # - 00-titlepage/01-legalpage をまとめて 00-01-front.pdf に統合
+        # - 98-postface/99-colophon を個別に PDF 化
         # - postface 開始ページ番号を自動設定（可能なら）
         # ================================================================
-        def build_front_pages_and_tail!
-          %w[pre_process convert post_process entries].each do |t|
-            Vivlio::Starter::ThorCLI.start([t, '00-titlepage'])
-          end
-          # entries.js 経由で PDF 生成し、出力を 00-titlepage.pdf にリネーム
-          Vivlio::Starter::ThorCLI.start(['pdf'])
-          pdf_config   = Common::CONFIG['pdf'] || {}
-          output_pdf   = pdf_config['output_file'] || 'output.pdf'
-          if File.exist?(output_pdf)
-            FileUtils.rm_f('00-titlepage.pdf')
-            FileUtils.mv(output_pdf, '00-titlepage.pdf')
-          end
-          if File.exist?('00-titlepage.pdf')
-            Common.log_success('[Step 9] 00-titlepage.pdf を生成しました')
-          else
-            Common.log_warn('[Step 9] 00-titlepage.pdf の生成に失敗しました')
+        def build_front_pages_and_tail!(force = false)
+          # 判定ヘルパ
+          front_srcs = [
+            File.join(Common::CONTENTS_DIR, '00-titlepage.md'),
+            File.join(Common::CONTENTS_DIR, '01-legalpage.md'),
+            File.join('config', 'book.yml'),
+          ]
+          colophon_srcs = [
+            File.join(Common::CONTENTS_DIR, '99-colophon.md'),
+            File.join('config', 'book.yml'),
+          ]
+
+          newer_than_any = lambda do |target, sources|
+            return true unless File.exist?(target)
+            t_mtime = File.mtime(target) rescue Time.at(0)
+            Array(sources).any? { |s| File.exist?(s) && File.mtime(s) > t_mtime }
           end
 
-          %w[pre_process convert post_process entries].each do |t|
-            Vivlio::Starter::ThorCLI.start([t, '01-legalpage'])
+          front_pdf = '00-01-front.pdf'
+          need_front = force || newer_than_any.call(front_pdf, front_srcs)
+
+          if need_front
+            # 00,01 の HTML を生成（entries は後で 2本を指定して1つのPDF化）
+            %w[pre_process convert post_process].each do |t|
+              Vivlio::Starter::ThorCLI.start([t, '00-titlepage'])
+            end
+            %w[pre_process convert post_process].each do |t|
+              Vivlio::Starter::ThorCLI.start([t, '01-legalpage'])
+            end
+            # マージは行わず、2本のHTMLを entries に渡して単一PDF化
+            Vivlio::Starter::ThorCLI.start(['entries', '00-titlepage.html', '01-legalpage.html'])
+            Vivlio::Starter::ThorCLI.start(['pdf'])
+            pdf_config   = Common::CONFIG['pdf'] || {}
+            output_pdf   = pdf_config['output_file'] || 'output.pdf'
+            if File.exist?(output_pdf)
+              FileUtils.rm_f(front_pdf)
+              FileUtils.mv(output_pdf, front_pdf)
+            end
+            if File.exist?(front_pdf)
+              Common.log_success("[Step 9] #{front_pdf} を生成しました")
+            else
+              Common.log_warn("[Step 9] #{front_pdf} の生成に失敗しました")
+            end
+          else
+            Common.log_action("[Step 9] フロント/奥付PDFは最新のため再利用します: #{front_pdf}, 99-colophon.pdf")
+            # フロントが最新であれば奥付も最新という前提に基づき、ここで終了
+            return
           end
-          # entries.js 経由で PDF 生成し、出力を 01-legalpage.pdf にリネーム
+
+          # ここから奥付の生成（フロントを再生成した場合は必ず奥付も再生成）
+          %w[pre_process convert post_process entries].each do |t|
+            Vivlio::Starter::ThorCLI.start([t, '99-colophon'])
+          end
           Vivlio::Starter::ThorCLI.start(['pdf'])
           pdf_config   = Common::CONFIG['pdf'] || {}
           output_pdf   = pdf_config['output_file'] || 'output.pdf'
           if File.exist?(output_pdf)
-            FileUtils.rm_f('01-legalpage.pdf')
-            FileUtils.mv(output_pdf, '01-legalpage.pdf')
+            FileUtils.rm_f('99-colophon.pdf')
+            FileUtils.mv(output_pdf, '99-colophon.pdf')
           end
-          if File.exist?('01-legalpage.pdf')
-            Common.log_success('[Step 9] 01-legalpage.pdf を生成しました')
+          if File.exist?('99-colophon.pdf')
+            Common.log_success('[Step 9] 99-colophon.pdf を生成しました')
           else
-            Common.log_warn('[Step 9] 01-legalpage.pdf の生成に失敗しました')
+            Common.log_warn('[Step 9] 99-colophon.pdf の生成に失敗しました')
           end
 
           begin
@@ -1126,7 +1158,6 @@ module Vivlio
             Common.log_warn("[Step 9] 98-postface の生成でエラー: #{e}")
           end
 
-          Vivlio::Starter::ThorCLI.start(['create:colophon'])
           %w[pre_process convert post_process entries].each do |t|
             Vivlio::Starter::ThorCLI.start([t, '99-colophon'])
           end
@@ -1152,11 +1183,11 @@ module Vivlio
         # - HexaPDF で結合
         # ================================================================
         def merge_all_pdfs!
-          Common.log_action('[Step 10] 本扉、扉裏、前書き、目次、本文、付録、後書き、奥付を結合します…')
+          Common.log_action('[Step 10] フロント(00-01)、前書き、目次、本文、付録、後書き、奥付を結合します…')
           # 存在するPDFのみで結合を続行します（preface/postface が無くても処理継続）
           Common.log_info('[Step 10] 存在するPDFのみで結合を実行します（02-preface.pdf / 98-postface.pdf は任意）')
           files_to_merge = [
-            '00-titlepage.pdf', '01-legalpage.pdf', 'frontmatter.pdf',
+            '00-01-front.pdf', 'frontmatter.pdf',
             'chapters_appendices.pdf', '98-postface.pdf', '99-colophon.pdf'
           ]
           existing_files = files_to_merge.select { |f| File.exist?(f) }

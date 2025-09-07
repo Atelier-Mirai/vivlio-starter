@@ -45,6 +45,27 @@
 
 ## [Unreleased]
 
+### Added
+- `merge:html OUT FILES...` を追加（`lib/vivlio/starter/cli/merge.rb`）。任意の複数 HTML を結合して単一 HTML を生成します。
+  - 先頭ファイルの `<html lang>` / `<title>` を採用し、全入力の `<link rel="stylesheet">` を重複排除して集約。
+  - `lib/vivlio/starter/cli.rb` に `map 'merge:html' => 'merge_html'` を追加し、コロン表記で呼び出し可能に。
+
+### Changed
+- Step 9（`build_helpers.build_front_pages_and_tail!`）の再生成条件を整理。
+  - フロント（00/01）PDF のキャッシュ判定に `config/book.yml` の mtime を含め、book 情報更新で確実に再生成。
+  - 再生成が必要な場合のみ `create:titlepage`/`create:legalpage`/`create:colophon` を呼び出し、常に `--force` で上書き（スキップ警告を抑止）。
+- 00/01 の結合方式を一時的に「単一 HTML にマージして単一 entry 化」へ変更したのち、レイアウト影響（改ページ/センタリング等）を鑑み、元の「entries に 2 本の HTML を渡す」方式へ戻しました。
+  - 現在は `entries 00-titlepage.html 01-legalpage.html` → `pdf` → `00-01-front.pdf` リネームのフローに確定。
+- Step 9 のキャッシュロジックを簡素化。
+  - フロントPDFが最新の場合は、その時点で Step 9 を終了（奥付も最新とみなす）。
+  - フロントを再生成した場合は、奥付も必ず再生成。
+- ログ文言の調整。
+  - フロント/奥付が最新の場合のメッセージを併記表現に変更。
+
+### Fixed
+- `create:colophon` を `--force` なしで呼び出してしまい「既に存在するためスキップ」の警告が出る問題を解消。
+- Step 9 で奥付 PDF 生成時のリネーム処理を整理（`output.pdf` → `99-colophon.pdf` の単一移動に統一）。
+
 
 ## [0.8.2] - 2025-09-07
 

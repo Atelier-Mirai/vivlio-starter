@@ -46,6 +46,7 @@ module Vivlio
       map 'prism:lines' => 'prism_lines'
       # Merge コマンドのコロン表記をメソッド名にマップ
       map 'merge:appendices' => 'merge_appendices'
+      map 'merge:html' => 'merge_html'
       # このクラスで扱うコマンド一覧（router から参照される）
       # ================================================================
       # Method: self.commands_supported（公開コマンド一覧）
@@ -62,7 +63,7 @@ module Vivlio
           create create:colophon create:legalpage create:titlepage
           delete entries glossary:add glossary:canonicalize
           glossary:canonicalize:check glossary:fix glossary:lint help 
-          merge:appendices new open open:pdf pdf pdf:compress post_process
+          merge:appendices merge:html new open open:pdf pdf pdf:compress post_process
           pre_process prism:lines rename renumber resize
           resize:high resize:low resize:medium toc vivliostyle:config
           doctor
