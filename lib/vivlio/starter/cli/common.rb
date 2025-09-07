@@ -303,8 +303,7 @@ module Vivlio
         CACHE_DIR  = (CACHE_CFG['dir'] || '.cache/vs')
 
         def cache_enabled?
-          val = CACHE_CFG.key?('enabled') ? CACHE_CFG['enabled'] : true
-          !!val
+          fetch_bool(CACHE_CFG, %w[enabled], true)
         rescue
           true
         end
@@ -316,6 +315,46 @@ module Vivlio
         def ensure_cache_dir!
           FileUtils.mkdir_p(CACHE_DIR)
           CACHE_DIR
+        end
+
+        # ================================================================
+        # Utility: truthy?/falsey?（柔軟な真偽値解釈）
+        # ------------------------------------------------
+        # - true/false に加えて 'true'/'false', 'yes'/'no', 'on'/'off', '1'/'0' を解釈
+        # ================================================================
+        def truthy?(val)
+          case val
+          when true then true
+          when false, nil then false
+          else
+            s = val.to_s.strip.downcase
+            %w[true yes on 1].include?(s)
+          end
+        rescue
+          false
+        end
+
+        def falsey?(val)
+          !truthy?(val)
+        end
+
+        # ================================================================
+        # Utility: fetch_bool（ネストしたキーから柔軟に真偽値を取得）
+        # ------------------------------------------------
+        # - keys: ['pdf', 'quiet'] のように配列で渡す
+        # - default: 値が未設定/不正な場合の既定
+        # - 例: fetch_bool(CONFIG, %w[pdf quiet], false)
+        # ================================================================
+        def fetch_bool(obj, keys, default = false)
+          cur = obj
+          Array(keys).each do |k|
+            return default unless cur.is_a?(Hash)
+            cur = cur[k]
+          end
+          return default if cur.nil?
+          truthy?(cur)
+        rescue
+          default
         end
 
         # ================================================================

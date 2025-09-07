@@ -42,8 +42,11 @@
 
 - [Crucial] 11-install.mdなどを、書き直す
 - [Low] テンプレ断片スニペット（注意/補足/Tipのコンポーネント化）。
+- [High] プロジェクト生成時に、.cache/vs/ を生成する。
+
 
 ## [Unreleased]
+
 
 次のステップ（ご相談）
 
@@ -78,6 +81,9 @@ vs clean:cache サブコマンド追加。
   - `lib/vivlio/starter/cli.rb` に `map 'merge:html' => 'merge_html'` を追加し、コロン表記で呼び出し可能に。
  - キャッシュ設定を追加（段階1）: `cache.enabled`（既定: true）, `cache.dir`（既定: `.cache/vs`）。
  - `clean:cache` コマンドを追加（段階3）: キャッシュディレクトリのみを安全に削除。
+ - 真偽値の柔軟解釈ヘルパ `Common.truthy?`/`falsey?` と `Common.fetch_bool` を追加（`yes`/`no`, `on`/`off`, `1`/`0` を解釈）。
+   - 本ヘルパは今後の全設定キーで共通利用可能。
+   - 現時点での適用箇所: `pdf.quiet`, `pdf.single_doc`, `pdf.close_existing_windows`, `cache.enabled`。
 
 ### Changed
 - Step 9（`build_helpers.build_front_pages_and_tail!`）の再生成条件を整理。

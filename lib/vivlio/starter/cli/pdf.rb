@@ -37,10 +37,10 @@ module Vivlio
 
               # 出力抑制フラグ（ENV または config.yml の pdf.quiet）
               pdf_config = Common::CONFIG['pdf'] || {}
-              quiet = (ENV['VIVLIO_QUIET'] == '1') || (pdf_config['quiet'] == true)
+              quiet = (ENV['VIVLIO_QUIET'] == '1') || Common.truthy?(pdf_config['quiet'])
 
               # single-doc フラグ（ENV または config.yml の pdf.single_doc）
-              single_doc = (ENV['VIVLIO_SINGLE_DOC'] == '1') || (pdf_config['single_doc'] == true)
+              single_doc = (ENV['VIVLIO_SINGLE_DOC'] == '1') || Common.truthy?(pdf_config['single_doc'])
 
               # 注意: --single-doc は「単一HTML」を想定する Vivliostyle CLI のモードです。
               # 本プロジェクトは通常 entries.js（配列）を entry に渡すため、そのまま -d を付けると
@@ -208,7 +208,7 @@ module Vivlio
               end
 
               # PDF表示設定を取得
-              close_existing = pdf_config['close_existing_windows'] != false  # デフォルトtrue
+              close_existing = Common.fetch_bool({ 'flag' => pdf_config['close_existing_windows'] }, %w[flag], true)
               window_bounds = pdf_config['window_bounds'] || '{3072, 0, 4096, 2160}'
 
               # 既存のPDFウィンドウを閉じる（設定で有効な場合）
