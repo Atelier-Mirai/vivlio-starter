@@ -8,7 +8,7 @@
 # 書籍情報
 book:
   # 書籍名
-  main_title: 'はじめての技術書づくり!!'
+  main_title: 'はじめての技術書づくり！'
   subtitle: 'Vivlio Starter 実践ガイド'
   subtitle_style: wave  # 副題の装飾（wave | bar | none）から選択
 
@@ -110,31 +110,6 @@ legal:
     本書に登場するシステム名や製品名は、関係各社の商標または登録商標です。
     本書では ™、®、© などのマークは省略しています。
 
-# ディレクトリ設定
-directories:
-  contents: 'contents'        # Markdownファイル
-  stylesheets: 'stylesheets' # CSSファイル
-  images: 'images'           # 画像ファイル
-  codes: 'codes'             # ソースコードファイル
-  chapter_templates: 'chapter_templates'     # 章テンプレートファイル
-
-# コマンド設定
-commands:
-  vfm: 'vfm'                 # VFM（Vivliostyle Flavored Markdown）コマンド
-
-# ファイル設定
-files:
-  post_replace: '_post_replace_list.yml'  # 後処理用置換リストファイル
-
-# Vivliostyle設定
-vivliostyle:
-  # 読み進め方向
-  reading_progression: 'ltr'  # 'ltr': 左から右へ（横書き）, 'rtl': 右から左へ（縦書き）
-  # エントリーファイル
-  entries_file: 'entries.js'
-  # 設定ファイル名
-  config_file: 'vivliostyle.config.js'
-
 # PDF設定
 pdf:
   # 出力PDFファイル名
@@ -159,3 +134,35 @@ pdf:
   
   # Previewアプリの既存ウィンドウを閉じるかどうか
   close_existing_windows: true
+
+# ディレクトリ設定
+directories:
+  contents: 'contents'        # Markdownファイル
+  stylesheets: 'stylesheets' # CSSファイル
+  images: 'images'           # 画像ファイル
+  codes: 'codes'             # ソースコードファイル
+  chapter_templates: 'chapter_templates'     # 章テンプレートファイル
+
+# キャッシュ設定
+cache:
+  enabled: true
+  dir: .cache/vs/
+
+# コマンド設定
+commands:
+  vfm: 'vfm'                 # VFM（Vivliostyle Flavored Markdown）コマンド
+
+# ファイル設定
+files:
+  post_replace: '_post_replace_list.yml'  # 後処理用置換リストファイル
+
+# Vivliostyle設定
+vivliostyle:
+  # 読み進め方向
+  reading_progression: 'ltr'  # 'ltr': 左から右へ（横書き）, 'rtl': 右から左へ（縦書き）
+  # エントリーファイル
+  entries_file: 'entries.js'
+  # 設定ファイル名
+  config_file: 'vivliostyle.config.js'
+
+

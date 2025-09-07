@@ -394,3 +394,333 @@
   - Step 13 (final clean)                0.00s
   = TOTAL                               70.04s
 ```
+
+## Build Step Timings (2025-09-08T04:02:52+09:00)
+
+```
+
+== Build Step Timings ==
+  - Step 0 (clean)                       0.00s
+  - Step 1 (optimize images)             0.01s
+  - Step 2 (apply virtual chapter numbers)   0.01s
+  - Step 3 (preface prebuild)            8.78s
+  - Step 4 (build appendices and merge html)   1.04s
+  - Step 5 (build chapters html)         2.36s
+  - Step 6 (generate toc and pdf)        5.31s
+  - Step 7 (build overall pdf and split)  14.09s
+  - Step 8 (build frontmatter pdf)       1.22s
+  - Step 9 (build front pages and tail)   0.00s
+  - Step 10 (merge all pdfs)             0.61s
+  - Step 11 (restore chapter css backups)   0.00s
+  - Step 12 (compress pdf)              12.13s
+  - Step 13 (final clean)                0.02s
+  = TOTAL                               45.59s
+```
+
+## Build Step Timings (2025-09-08T04:07:16+09:00)
+
+```
+
+== Build Step Timings ==
+  - Step 0 (clean)                       0.00s
+  - Step 1 (optimize images)             0.03s
+  - Step 2 (apply virtual chapter numbers)   0.01s
+  - Step 3 (preface prebuild)            6.90s
+  - Step 4 (build appendices and merge html)   1.13s
+  - Step 5 (build chapters html)         2.34s
+  - Step 6 (generate toc and pdf)        6.44s
+  - Step 7 (build overall pdf and split)  11.26s
+  - Step 8 (build frontmatter pdf)       1.18s
+  - Step 9 (build front pages and tail)  25.04s
+  - Step 10 (merge all pdfs)             1.28s
+  - Step 11 (restore chapter css backups)   0.00s
+  - Step 12 (compress pdf)              12.31s
+  - Step 13 (final clean)                0.02s
+  = TOTAL                               67.96s
+```
+
+## Build Step Timings (2025-09-08T04:08:51+09:00)
+
+```
+
+== Build Step Timings ==
+  - Step 0 (clean)                       0.00s
+  - Step 1 (optimize images)             0.02s
+  - Step 2 (apply virtual chapter numbers)   0.01s
+  - Step 3 (preface prebuild)            5.15s
+  - Step 4 (build appendices and merge html)   0.89s
+  - Step 5 (build chapters html)         2.40s
+  - Step 6 (generate toc and pdf)        4.75s
+  - Step 7 (build overall pdf and split)  11.17s
+  - Step 8 (build frontmatter pdf)       1.42s
+  - Step 9 (build front pages and tail)  20.56s
+  - Step 10 (merge all pdfs)             0.85s
+  - Step 11 (restore chapter css backups)   0.00s
+  - Step 12 (compress pdf)              12.65s
+  - Step 13 (final clean)                0.02s
+  = TOTAL                               59.90s
+```
+
+## Build Step Timings (2025-09-08T04:16:32+09:00)
+
+```
+
+== Build Step Timings ==
+  - Step 0 (clean)                       0.00s
+  - Step 1 (optimize images)             0.02s
+  - Step 2 (apply virtual chapter numbers)   0.01s
+  - Step 3 (preface prebuild)            5.68s
+  - Step 4 (build appendices and merge html)   0.90s
+  - Step 5 (build chapters html)         2.42s
+  - Step 6 (generate toc and pdf)        4.99s
+  - Step 7 (build overall pdf and split)  11.45s
+  - Step 8 (build frontmatter pdf)       1.08s
+  - Step 9 (build front pages and tail)  21.12s
+  - Step 10 (merge all pdfs)             0.84s
+  - Step 11 (restore chapter css backups)   0.00s
+  - Step 12 (compress pdf)              12.87s
+  - Step 13 (final clean)                0.02s
+  = TOTAL                               61.39s
+```
+
+## Build Step Timings (2025-09-08T04:23:46+09:00)
+
+```
+
+== Build Step Timings ==
+  - Step 0 (clean)                       0.00s
+  - Step 1 (optimize images)             0.02s
+  - Step 2 (apply virtual chapter numbers)   0.01s
+  - Step 3 (preface prebuild)            5.45s
+  - Step 4 (build appendices and merge html)   0.90s
+  - Step 5 (build chapters html)         2.35s
+  - Step 6 (generate toc and pdf)        4.81s
+  - Step 7 (build overall pdf and split)  11.06s
+  - Step 8 (build frontmatter pdf)       1.04s
+  - Step 9 (build front pages and tail)  20.09s
+  - Step 10 (merge all pdfs)             0.85s
+  - Step 11 (restore chapter css backups)   0.00s
+  - Step 12 (compress pdf)              12.48s
+  - Step 13 (final clean)                0.02s
+  = TOTAL                               59.06s
+```
+
+## Build Step Timings (2025-09-08T04:28:00+09:00)
+
+```
+
+== Build Step Timings ==
+  - Step 0 (clean)                       0.00s
+  - Step 1 (optimize images)             0.02s
+  - Step 2 (apply virtual chapter numbers)   0.01s
+  - Step 3 (preface prebuild)            6.09s
+  - Step 4 (build appendices and merge html)   0.91s
+  - Step 5 (build chapters html)         2.40s
+  - Step 6 (generate toc and pdf)        7.39s
+  - Step 7 (build overall pdf and split)  12.47s
+  - Step 8 (build frontmatter pdf)       1.00s
+  - Step 9 (build front pages and tail)  21.80s
+  - Step 10 (merge all pdfs)             0.81s
+  - Step 11 (restore chapter css backups)   0.00s
+  - Step 12 (compress pdf)              12.30s
+  - Step 13 (final clean)                0.02s
+  = TOTAL                               65.22s
+```
+
+## Build Step Timings (2025-09-08T04:30:03+09:00)
+
+```
+
+== Build Step Timings ==
+  - Step 0 (clean)                       0.00s
+  - Step 1 (optimize images)             0.02s
+  - Step 2 (apply virtual chapter numbers)   0.00s
+  - Step 3 (preface prebuild)            5.15s
+  - Step 4 (build appendices and merge html)   0.94s
+  - Step 5 (build chapters html)         2.37s
+  - Step 6 (generate toc and pdf)        4.75s
+  - Step 7 (build overall pdf and split)  11.26s
+  - Step 8 (build frontmatter pdf)       0.88s
+  - Step 9 (build front pages and tail)  19.49s
+  - Step 10 (merge all pdfs)             0.97s
+  - Step 11 (restore chapter css backups)   0.00s
+  - Step 12 (compress pdf)              12.78s
+  - Step 13 (final clean)                0.02s
+  = TOTAL                               58.63s
+```
+
+## Build Step Timings (2025-09-08T04:39:57+09:00)
+
+```
+
+== Build Step Timings ==
+  - Step 0 (clean)                       0.00s
+  - Step 1 (optimize images)             0.02s
+  - Step 2 (apply virtual chapter numbers)   0.01s
+  - Step 3 (preface prebuild)            5.47s
+  - Step 4 (build appendices and merge html)   1.81s
+  - Step 5 (build chapters html)         2.37s
+  - Step 6 (generate toc and pdf)        5.48s
+  - Step 7 (build overall pdf and split)  12.18s
+  - Step 8 (build frontmatter pdf)       1.06s
+  - Step 9 (build front pages and tail)   0.00s
+  - Step 10 (merge all pdfs)             0.74s
+  - Step 11 (restore chapter css backups)   0.00s
+  - Step 12 (compress pdf)              12.73s
+  - Step 13 (final clean)                0.02s
+  = TOTAL                               41.87s
+```
+
+## Build Step Timings (2025-09-08T04:41:27+09:00)
+
+```
+
+== Build Step Timings ==
+  - Step 0 (clean)                       0.00s
+  - Step 1 (optimize images)             0.02s
+  - Step 2 (apply virtual chapter numbers)   0.01s
+  - Step 3 (preface prebuild)            6.15s
+  - Step 4 (build appendices and merge html)   0.96s
+  - Step 5 (build chapters html)         2.39s
+  - Step 6 (generate toc and pdf)        5.11s
+  - Step 7 (build overall pdf and split)  10.99s
+  - Step 8 (build frontmatter pdf)       0.96s
+  - Step 9 (build front pages and tail)  21.14s
+  - Step 10 (merge all pdfs)             0.95s
+  - Step 11 (restore chapter css backups)   0.00s
+  - Step 12 (compress pdf)              12.35s
+  - Step 13 (final clean)                0.02s
+  = TOTAL                               61.05s
+```
+
+## Build Step Timings (2025-09-08T04:52:05+09:00)
+
+```
+
+== Build Step Timings ==
+  - Step 0 (clean)                       0.00s
+  - Step 1 (optimize images)             0.02s
+  - Step 2 (apply virtual chapter numbers)   0.01s
+  - Step 3 (preface prebuild)            5.43s
+  - Step 4 (build appendices and merge html)   0.92s
+  - Step 5 (build chapters html)         2.38s
+  - Step 6 (generate toc and pdf)        4.70s
+  - Step 7 (build overall pdf and split)  10.92s
+  - Step 8 (build frontmatter pdf)       0.99s
+  - Step 9 (build front pages and tail)  16.36s
+  - Step 10 (merge all pdfs)             1.85s
+  - Step 11 (restore chapter css backups)   0.00s
+  - Step 12 (compress pdf)              24.99s
+  - Step 13 (final clean)                0.02s
+  = TOTAL                               68.58s
+```
+
+## Build Step Timings (2025-09-08T05:03:56+09:00)
+
+```
+
+== Build Step Timings ==
+  - Step 0 (clean)                       0.00s
+  - Step 1 (optimize images)             0.02s
+  - Step 2 (apply virtual chapter numbers)   0.01s
+  - Step 3 (preface prebuild)            5.59s
+  - Step 4 (build appendices and merge html)   0.89s
+  - Step 5 (build chapters html)         2.37s
+  - Step 6 (generate toc and pdf)        4.70s
+  - Step 7 (build overall pdf and split)  11.22s
+  - Step 8 (build frontmatter pdf)       1.46s
+  - Step 9 (build front pages and tail)  22.94s
+  - Step 10 (merge all pdfs)             0.82s
+  - Step 11 (restore chapter css backups)   0.00s
+  - Step 12 (compress pdf)              12.30s
+  - Step 13 (final clean)                0.02s
+  = TOTAL                               62.35s
+```
+
+## Build Step Timings (2025-09-08T05:05:54+09:00)
+
+```
+
+== Build Step Timings ==
+  - Step 0 (clean)                       0.00s
+  - Step 1 (optimize images)             0.02s
+  - Step 2 (apply virtual chapter numbers)   0.01s
+  - Step 3 (preface prebuild)            5.62s
+  - Step 4 (build appendices and merge html)   0.88s
+  - Step 5 (build chapters html)         2.36s
+  - Step 6 (generate toc and pdf)        4.97s
+  - Step 7 (build overall pdf and split)  10.61s
+  - Step 8 (build frontmatter pdf)       0.99s
+  - Step 9 (build front pages and tail)  22.32s
+  - Step 10 (merge all pdfs)             0.81s
+  - Step 11 (restore chapter css backups)   0.00s
+  - Step 12 (compress pdf)              12.27s
+  - Step 13 (final clean)                0.00s
+  = TOTAL                               60.85s
+```
+
+## Build Step Timings (2025-09-08T05:14:16+09:00)
+
+```
+
+== Build Step Timings ==
+  - Step 0 (clean)                       0.02s
+  - Step 1 (optimize images)             0.01s
+  - Step 2 (apply virtual chapter numbers)   0.01s
+  - Step 3 (preface prebuild)            6.90s
+  - Step 4 (build appendices and merge html)   1.25s
+  - Step 5 (build chapters html)         2.37s
+  - Step 6 (generate toc and pdf)        5.52s
+  - Step 7 (build overall pdf and split)  11.51s
+  - Step 8 (build frontmatter pdf)       1.01s
+  - Step 9 (build front pages and tail)  21.40s
+  - Step 10 (merge all pdfs)             1.14s
+  - Step 11 (restore chapter css backups)   0.00s
+  - Step 12 (compress pdf)              12.55s
+  - Step 13 (final clean)                0.00s
+  = TOTAL                               63.70s
+```
+
+## Build Step Timings (2025-09-08T05:28:35+09:00)
+
+```
+
+== Build Step Timings ==
+  - Step 0 (clean)                       0.03s
+  - Step 1 (optimize images)             0.02s
+  - Step 2 (apply virtual chapter numbers)   0.01s
+  - Step 3 (preface prebuild)            6.08s
+  - Step 4 (build appendices and merge html)   0.89s
+  - Step 5 (build chapters html)         2.39s
+  - Step 6 (generate toc and pdf)        5.93s
+  - Step 7 (build overall pdf and split)  11.43s
+  - Step 8 (build frontmatter pdf)       1.02s
+  - Step 9 (build front pages and tail)   0.00s
+  - Step 10 (merge all pdfs)             0.71s
+  - Step 11 (restore chapter css backups)   0.00s
+  - Step 12 (compress pdf)              12.11s
+  - Step 13 (final clean)                0.00s
+  = TOTAL                               40.61s
+```
+
+## Build Step Timings (2025-09-08T05:30:00+09:00)
+
+```
+
+== Build Step Timings ==
+  - Step 0 (clean)                       0.02s
+  - Step 1 (optimize images)             0.01s
+  - Step 2 (apply virtual chapter numbers)   0.01s
+  - Step 3 (preface prebuild)            6.46s
+  - Step 4 (build appendices and merge html)   0.97s
+  - Step 5 (build chapters html)         2.41s
+  - Step 6 (generate toc and pdf)        5.93s
+  - Step 7 (build overall pdf and split)  12.25s
+  - Step 8 (build frontmatter pdf)       1.14s
+  - Step 9 (build front pages and tail)  20.19s
+  - Step 10 (merge all pdfs)             0.84s
+  - Step 11 (restore chapter css backups)   0.00s
+  - Step 12 (compress pdf)              12.54s
+  - Step 13 (final clean)                0.00s
+  = TOTAL                               62.79s
+```
