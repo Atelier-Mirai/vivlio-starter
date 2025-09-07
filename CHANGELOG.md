@@ -45,10 +45,39 @@
 
 ## [Unreleased]
 
+次のステップ（ご相談）
+
+段階2（章PDFの個別キャッシュ）
+安定に導入するため、Step 7 のどの方式に載せるか整理が必要です。
+現行の「entries → output.pdf → split」の分割結果から章ごと PDF を切り出してキャッシュに保存・再利用する方式
+もしくは「章ごと PDF を生成 → merge」に寄せる方式（既存の実験関数 
+build_chapter_pdfs_in_parallel_and_merge!
+ をベースに拡充）
+いずれの方式でも「付録の右ページ開始」「TOC/前付けのパリティ調整」との整合を確保します。
+ご希望の方針（分割ベース vs 章別生成ベース）をお知らせいただければ、その方針で段階2をまとめて実装します。
+ご要望があれば、段階2の詳細設計（ハッシュキーの定義、再生成判定、結合時の並び・パリティ調整）まで一気に実装します。
+
+段階1（初期導入）
+保存先だけ .cache/vs/ に変更（front/colophon/将来的に章PDF）。
+結合時は .cache/vs/... からルートに所定名でコピーして使う。
+設定：cache.enabled（既定: true）、
+     false または --forceオプション指定時は、キャッシュを使わずに生成する。
+     cache.dir（既定: .cache/vs/）。
+
+段階2（最適化）
+章PDFを個別キャッシュ（例: .cache/vs/11-install-<hash>.pdf）。
+全体結合時は変更章のみ再生成、
+他はキャッシュから展開。
+
+段階3（メンテナンス）
+vs clean:cache サブコマンド追加。
+
 ### Added
 - `merge:html OUT FILES...` を追加（`lib/vivlio/starter/cli/merge.rb`）。任意の複数 HTML を結合して単一 HTML を生成します。
   - 先頭ファイルの `<html lang>` / `<title>` を採用し、全入力の `<link rel="stylesheet">` を重複排除して集約。
   - `lib/vivlio/starter/cli.rb` に `map 'merge:html' => 'merge_html'` を追加し、コロン表記で呼び出し可能に。
+ - キャッシュ設定を追加（段階1）: `cache.enabled`（既定: true）, `cache.dir`（既定: `.cache/vs`）。
+ - `clean:cache` コマンドを追加（段階3）: キャッシュディレクトリのみを安全に削除。
 
 ### Changed
 - Step 9（`build_helpers.build_front_pages_and_tail!`）の再生成条件を整理。
@@ -61,6 +90,7 @@
   - フロントを再生成した場合は、奥付も必ず再生成。
 - ログ文言の調整。
   - フロント/奥付が最新の場合のメッセージを併記表現に変更。
+ - front/colophon PDF を `.cache/vs/` にキャッシュ保存し、再生成不要時は必要に応じてキャッシュから復元（段階1）。`--force` 指定時はキャッシュ不使用。
 
 ### Fixed
 - `create:colophon` を `--force` なしで呼び出してしまい「既に存在するためスキップ」の警告が出る問題を解消。

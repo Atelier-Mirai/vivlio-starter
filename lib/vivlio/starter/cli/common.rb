@@ -294,6 +294,31 @@ module Vivlio
         POST_REPLACE_FILE = CONFIG['files']['post_replace']
 
         # ================================================================
+        # Cache settings
+        # ------------------------------------------------
+        # - 既定: 有効(enabled=true)、ディレクトリ: .cache/vs
+        # - 用途: front/colophon など再利用可能な生成物の保存先
+        # ================================================================
+        CACHE_CFG  = (CONFIG['cache'].is_a?(Hash) ? CONFIG['cache'] : {})
+        CACHE_DIR  = (CACHE_CFG['dir'] || '.cache/vs')
+
+        def cache_enabled?
+          val = CACHE_CFG.key?('enabled') ? CACHE_CFG['enabled'] : true
+          !!val
+        rescue
+          true
+        end
+
+        def cache_dir
+          CACHE_DIR
+        end
+
+        def ensure_cache_dir!
+          FileUtils.mkdir_p(CACHE_DIR)
+          CACHE_DIR
+        end
+
+        # ================================================================
         # Utility: ファイルタイプ判定 get_file_type
         # ------------------------------------------------
         # - 章番号の接頭辞から種別を返す（titlepage/legalpage/...）

@@ -1049,6 +1049,9 @@ module Vivlio
           end
 
           front_pdf = '00-01-front.pdf'
+          cache_on = Common.cache_enabled? && !force
+          cache_dir = Common.ensure_cache_dir! if cache_on rescue nil
+          front_cache = cache_on ? File.join(cache_dir, '00-01-front.pdf') : nil
           need_front = force || newer_than_any.call(front_pdf, front_srcs)
 
           if need_front
@@ -1070,11 +1073,36 @@ module Vivlio
             end
             if File.exist?(front_pdf)
               Common.log_success("[Step 9] #{front_pdf} を生成しました")
+              # キャッシュへ保存
+              if cache_on
+                begin
+                  FileUtils.cp(front_pdf, front_cache)
+                  Common.log_info("[Step 9] キャッシュへ保存しました: #{front_cache}")
+                rescue => e
+                  Common.log_warn("[Step 9] フロントPDFのキャッシュ保存に失敗: #{e}")
+                end
+              end
             else
               Common.log_warn("[Step 9] #{front_pdf} の生成に失敗しました")
             end
           else
             Common.log_action("[Step 9] フロント/奥付PDFは最新のため再利用します: #{front_pdf}, 99-colophon.pdf")
+            # ルートにファイルが無ければキャッシュから復元
+            if cache_on
+              begin
+                if !File.exist?(front_pdf) && front_cache && File.exist?(front_cache)
+                  FileUtils.cp(front_cache, front_pdf)
+                  Common.log_info("[Step 9] キャッシュから復元しました: #{front_pdf}")
+                end
+                colo_cache = File.join(cache_dir, '99-colophon.pdf')
+                if !File.exist?('99-colophon.pdf') && File.exist?(colo_cache)
+                  FileUtils.cp(colo_cache, '99-colophon.pdf')
+                  Common.log_info('[Step 9] キャッシュから復元しました: 99-colophon.pdf')
+                end
+              rescue => e
+                Common.log_warn("[Step 9] キャッシュからの復元に失敗: #{e}")
+              end
+            end
             # フロントが最新であれば奥付も最新という前提に基づき、ここで終了
             return
           end
@@ -1089,6 +1117,16 @@ module Vivlio
           if File.exist?(output_pdf)
             FileUtils.rm_f('99-colophon.pdf')
             FileUtils.mv(output_pdf, '99-colophon.pdf')
+            # キャッシュへ保存
+            if cache_on
+              begin
+                colo_cache = File.join(cache_dir, '99-colophon.pdf')
+                FileUtils.cp('99-colophon.pdf', colo_cache)
+                Common.log_info("[Step 9] キャッシュへ保存しました: #{colo_cache}")
+              rescue => e
+                Common.log_warn("[Step 9] 奥付PDFのキャッシュ保存に失敗: #{e}")
+              end
+            end
           end
           if File.exist?('99-colophon.pdf')
             Common.log_success('[Step 9] 99-colophon.pdf を生成しました')

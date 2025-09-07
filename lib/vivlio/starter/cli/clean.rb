@@ -65,7 +65,7 @@ module Vivlio
 
               intermediate_pdfs = [
                 '00-titlepage.pdf', '01-legalpage.pdf', '02-preface.pdf', '03-toc.pdf',
-                'frontmatter.pdf', 'chapters_appendices.pdf', '98-postface.pdf', '99-colophon.pdf',
+                'frontmatter.pdf', 'chapters_appendices.pdf', '98-postface.pdf',
                 'blank_page.pdf', 'blank_frontmatter_insert.pdf'
               ]
               cleanup_patterns.concat(intermediate_pdfs)
@@ -83,14 +83,45 @@ module Vivlio
                 cleanup_patterns << '[0-9][0-9]-*.pdf'
               end
 
+              # 保持対象（キャッシュ）: 00-01-front.pdf / 99-colophon.pdf は常に保持
+              keep_pdfs = ['00-01-front.pdf', '99-colophon.pdf']
+
               cleanup_patterns.each do |pattern|
                 Dir.glob(pattern).each do |file|
                   next if File.directory?(file)
+                  # ワイルドカード削除でも保持対象はスキップ
+                  if keep_pdfs.include?(file)
+                    Common.log_info("保持対象のため削除しません: #{file}")
+                    next
+                  end
                   FileUtils.rm_f(file)
                   Common.log_info("#{file} を削除しました")
                 end
               end
               Common.log_success('不要ファイルの削除が完了しました')
+            end
+
+            desc 'clean:cache', 'キャッシュ(.cache/vs 既定)のみを削除します'
+            long_desc <<~DESC
+              キャッシュディレクトリ（既定: .cache/vs）配下のみを安全に削除します。
+              - 最終成果物や生成物（*.html, entries.js など）には影響しません。
+              - 設定で cache.dir を変更している場合は、そのディレクトリが対象です。
+            DESC
+            def clean_cache
+              dir = Common.cache_dir rescue '.cache/vs'
+              if dir.nil? || dir.to_s.strip.empty?
+                Common.log_warn('キャッシュディレクトリが不明のため中止します')
+                return
+              end
+              if File.directory?(dir)
+                Common.log_action("キャッシュディレクトリを削除中: #{dir}")
+                FileUtils.rm_rf(dir)
+                Common.log_success('キャッシュ削除が完了しました')
+              else
+                Common.log_info("キャッシュディレクトリは存在しません: #{dir}")
+              end
+            rescue => e
+              Common.log_warn("clean:cache 実行中にエラー: #{e}")
             end
           end
         end
