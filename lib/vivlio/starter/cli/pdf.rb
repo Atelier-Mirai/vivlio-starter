@@ -39,8 +39,51 @@ module Vivlio
               pdf_config = Common::CONFIG['pdf'] || {}
               quiet = (ENV['VIVLIO_QUIET'] == '1') || (pdf_config['quiet'] == true)
 
+              # single-doc フラグ（ENV または config.yml の pdf.single_doc）
+              single_doc = (ENV['VIVLIO_SINGLE_DOC'] == '1') || (pdf_config['single_doc'] == true)
+
+              # 注意: --single-doc は「単一HTML」を想定する Vivliostyle CLI のモードです。
+              # 本プロジェクトは通常 entries.js（配列）を entry に渡すため、そのまま -d を付けると
+              # entries.js を HTML と誤解され、"Start tag expected, '<' not found" になることがあります。
+              # そこで、entries.js のエントリ数が 1 件のときのみ -d を有効化します。
+              enable_single_doc = false
+              if single_doc
+                begin
+                  # vivliostyle.config.js が entries.js を参照している場合は -d 無効
+                  begin
+                    cfg_path = File.join(Dir.pwd, 'vivliostyle.config.js')
+                    if File.exist?(cfg_path)
+                      cfg_txt = File.read(cfg_path, encoding: 'utf-8')
+                      if cfg_txt.match?(/entries\.(js|mjs)\b/)
+                        Common.log_info('[pdf] vivliostyle.config.js が entries.js を参照しているため --single-doc を無効化します')
+                        single_doc = false
+                      end
+                    end
+                  rescue => e
+                    # 読み取り失敗時は何もしない（後段の entries.js 判定に任せる）
+                  end
+                  entries_path = File.join(Dir.pwd, 'entries.js')
+                  if File.exist?(entries_path)
+                    txt = File.read(entries_path, encoding: 'utf-8')
+                    # かなり単純だが十分: "path": の出現数で判定
+                    paths = txt.scan(/\"path\"\s*:/)
+                    if paths.size == 1 && single_doc
+                      enable_single_doc = true
+                    else
+                      Common.log_info("[pdf] entries.js に複数エントリ(#{paths.size})があるため --single-doc は無効化します")
+                    end
+                  else
+                    # entries.js がない場合は安全側で無効化
+                    Common.log_info('[pdf] entries.js が見つからないため --single-doc は無効化します')
+                  end
+                rescue => e
+                  Common.log_warn("[pdf] --single-doc 判定に失敗: #{e}。安全側で無効化します")
+                end
+              end
+
               # コマンドを実行（quiet の場合は /dev/null へ）
               cmd = 'npx vivliostyle build'
+              cmd += ' -d' if enable_single_doc
               if quiet
                 system(cmd, out: File::NULL, err: File::NULL)
               else

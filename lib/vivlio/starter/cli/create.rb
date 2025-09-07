@@ -73,6 +73,7 @@ module Vivlio
 
             # create:titlepage
             desc 'create:titlepage', 'タイトルページを config/book.yml から生成 (Thor)'
+            method_option :force, type: :boolean, aliases: '-f', desc: '既存ファイルを強制上書き'
             # ================================================================
             # Command: create:titlepage（タイトルページ生成）
             # ------------------------------------------------
@@ -105,11 +106,16 @@ module Vivlio
               MD
 
               out = File.join(Common::CONTENTS_DIR, '00-titlepage.md')
+              if File.exist?(out) && !options[:force]
+                Common.log_warn("既に存在するためスキップします: #{out} (--force で上書き)")
+                return
+              end
               safe_write(out, content)
             end
 
             # create:colophon
             desc 'create:colophon', '奥付を config/book.yml から生成 (Thor)'
+            method_option :force, type: :boolean, aliases: '-f', desc: '既存ファイルを強制上書き'
             # ================================================================
             # Command: create:colophon（奥付生成）
             # ------------------------------------------------
@@ -171,6 +177,10 @@ module Vivlio
               MD
 
               out = File.join(Common::CONTENTS_DIR, '99-colophon.md')
+              if File.exist?(out) && !options[:force]
+                Common.log_warn("既に存在するためスキップします: #{out} (--force で上書き)")
+                return
+              end
               safe_write(out, content)
             end
 

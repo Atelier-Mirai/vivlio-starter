@@ -8,7 +8,7 @@
 # 書籍情報
 book:
   # 書籍名
-  main_title: 'はじめての技術書づくり'
+  main_title: 'はじめての技術書づくり!!'
   subtitle: 'Vivlio Starter 実践ガイド'
   subtitle_style: wave  # 副題の装飾（wave | bar | none）から選択
 
@@ -35,12 +35,16 @@ chapters: all
 
 # テーマ
 theme:
-  style: image   # simple: 画像なし / image: 画像あり
-  color: green   # yellow | blue | red | green | purple の五色から選択
-  door: 2         # 扉絵の画像番号（1から7 または 'door5' の形式で設定)
+  style: image      # simple: 画像なし / image: 画像あり
+  color: '#ff0000'  # yellow | orange | amber | red  | magenta | purple | 
+                    # indigo | blue   | cyan  | teal | green   | lime から選択
+                    # または HEX 記法も指定可（YAMLでは先頭#はコメントになるため引用符が必要）
+                    # 例: '#ff0000'（引用符必須）/ ff0000（引用符不要）/ f00（引用符不要）/ 0xFF0000（引用符不要）
+  frontispiece: door2    # 扉絵の主ファイル名（例: 'door5'）。stylesheets/images/door5.webp を指す
+  ornament: frame-blue   # 節見出しの背景画像ファイル名(例: 'frame-blue')。stylesheets/images/frame-blue.webp を指す
   markers: 
-    h3: '♣'
-    h4: '◆'
+    h3: '♣' # 目見出しの記号。h3見出しの前に表示される。一文字推奨。
+    h4: '◆' # 号見出しの記号。h4見出しの前に表示される。一文字推奨。
 
 # ページ設定
 page:

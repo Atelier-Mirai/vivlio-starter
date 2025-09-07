@@ -45,10 +45,26 @@
 
 ## [Unreleased]
 
+
+## [0.8.2] - 2025-09-07
+
 ### Added
+- `build`: `--force` を追加（Step 9 で 00/01/99 を強制再生成）。
+  - `vs build --force` 実行時、`create:titlepage --force` / `create:legalpage --force` / `create:colophon --force` を自動呼び出し。
+- `config/book.yml` のテーマ系オプションを拡充（実装）。
+  - `style: image|simple`, `color: '#ff0000'`（HEX 記法は引用符推奨）、
+    `frontispiece: door2`（扉絵）、`ornament: frame-blue`（節見出し装飾）、`markers:`（見出し用マーカー）
 
 ### Changed
-
+- ログ出力制御を `--log[=level]` に統一しました（`lib/vivlio/starter/cli/common.rb`）。
+  - `--log=error`(0) / `--log=warn`(1) / `--log=info|success|action`(2, 既定) / `--log=debug`(3)
+  - `--log`（レベル省略）は `--log=info` と同義です。
+  - 既定（未指定）は `warn` レベルです。
+  - 互換性: 旧オプション `-q` / `-v` / `-vv` や `--verbose`、環境変数 `VERBOSE`/`DEBUG`/`LOG_LEVEL` は廃止しました。
+- `vs clean` の削除対象/挙動を見直し。
+  - pre_process 展開などで生成される章系 Markdown（`00-*.md`〜`99-*.md` のみ）を削除対象に追加。
+  - それ以外の Markdown（README.md などユーザー資産）は、`--purge` 指定でも削除しない安全仕様に固定。
+  - これに伴いヘルプ文言（`--purge` の説明）を更新。
 
 ### Notes
 
@@ -258,7 +274,8 @@
 - バージョンファイル追加: `lib/vivlio/starter/version.rb`（0.1.0）
 - README にインストール方法・CLI の使い方・リリース手順を追記
 
-[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.8.2...HEAD
+[0.8.2]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.8.1...v0.8.2
 [0.8.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.6.0...v0.7.0

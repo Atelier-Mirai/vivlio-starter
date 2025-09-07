@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 require 'rbconfig'
 require 'fileutils'
+require 'time'
 
 module Vivlio
   module Starter
@@ -20,7 +21,7 @@ module Vivlio
       #   --no-resize / --high / --medium / --low    画像最適化の制御・プリセット
       #   --no-compress                               PDF 圧縮をスキップ
       #   --no-clean                                  中間生成物のクリーンをスキップ
-      #   -v, --verbose                               詳細ログ（ENV['VERBOSE']=1）
+      #   --log[=level]                               ログレベル（error/warn/info/debug、無指定は info）
       #
       # 備考:
       #   - 処理は安全側で例外を握りつぶしつつ継続する（各 Step で警告ログ）。
@@ -43,6 +44,7 @@ module Vivlio
                 --low           画像最適化プリセット: 低品質
                 --no-compress   PDF圧縮をスキップ
                 --no-clean      中間生成物のクリーンアップをスキップ
+                --log[=level]   ログ出力の詳細度（error/warn/info/debug、未指定時は info）
             DESC
 
             method_option :resize,   type: :boolean, default: true,  desc: '画像最適化を行う（--no-resize で無効）'
@@ -53,6 +55,10 @@ module Vivlio
             method_option :clean,    type: :boolean, default: true,  desc: '中間生成物をクリーンアップ（--no-clean で無効）'
             method_option :dry_run,  type: :boolean, aliases: '-n',  desc: '実行せずにビルド予定のみを表示（試行）'
             method_option :merge,    type: :boolean, aliases: '-m',  desc: '生成された各PDFを結合して出力（出力名: output.pdf / output_compressed.pdf）'
+            method_option :parallel_pdf, type: :boolean, default: false, desc: '実験: 章PDFを並列生成して結合（Step 7 を置換）'
+            method_option :single_html,  type: :boolean, default: false, desc: '実験: 本文(11..89)を chapters.html に結合してから PDF 生成（Step 7 を置換）'
+            method_option :log,      type: :string,  banner: '[level]', desc: 'ログレベルを指定（error/warn/info/debug）'
+            method_option :force,    type: :boolean, default: false, desc: 'タイトル/リーガル/奥付を強制再生成'
 
             # ================================================================
             # Command: build（統合ビルドエントリポイント）
@@ -68,15 +74,14 @@ module Vivlio
             #
             # オプション:
             #   --no-resize / --high / --medium / --low
-            #   --no-compress, --no-clean, -v/--verbose
+            #   --no-compress, --no-clean
+            #   --parallel_pdf, --single_html
+            #   --log[=level]（error/warn/info/debug、未指定は info）
             #
             # 注意:
-            #   options[:verbose] 指定時に ENV['VERBOSE']=1 をセットして詳細ログを出力。
+            #   --log により Common.current_log_level を制御（既定 warn）。
             # ================================================================
             def build(*tokens)
-              ENV['VERBOSE'] = '1' if options[:verbose]
-              # Common ベース実装
-
               files = Common.normalize_tokens(tokens)
               # delete.rb と同様の規則でトークンを展開（数値/レンジ/拡張子→実在 .md ベース名）
               expanded_basenames = expand_tokens_to_targets(files)
@@ -103,10 +108,14 @@ module Vivlio
                 last_pdf = nil
                 expanded_tokens.each do |target|
                   %w[pre_process convert post_process entries].each do |t|
-                    Vivlio::Starter::ThorCLI.start([t, target])
+                    BuildHelpers.time_step_for_chapter(target, t) do
+                      Vivlio::Starter::ThorCLI.start([t, target])
+                    end
                   end
                   # 単章PDFを生成
-                  Vivlio::Starter::ThorCLI.start(['pdf'])
+                  BuildHelpers.time_step_for_chapter(target, 'pdf') do
+                    Vivlio::Starter::ThorCLI.start(['pdf'])
+                  end
                   pdf_config = Common::CONFIG['pdf'] || {}
                   output_pdf = pdf_config['output_file'] || 'output.pdf'
                   chapter_pdf = "#{target}.pdf"
@@ -204,17 +213,34 @@ module Vivlio
                 return
               end
 
+              # タイマー初期化（フルビルド用）
+              build_timings = []
+              time_step = lambda do |label, &blk|
+                t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+                Common.log_action("[Timer] #{label} start")
+                begin
+                  blk && blk.call
+                ensure
+                  t1 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+                  dt = (t1 - t0)
+                  build_timings << [label, dt]
+                  Common.log_action("[Timer] #{label} finish: #{format('%.2f', dt)}s")
+                end
+              end
+
               # ================================================================
               # Step 0: 事前クリーンアップ（フルビルド前の初期化）
               # ------------------------------------------------
               # - Rake に依存しない統合ビルドの初期化として clean を実行
               # - 失敗しても警告のみで続行
               # ================================================================
-              begin
-                Common.log_action('[Step 0] クリーンアップを実行します…')
-                Vivlio::Starter::ThorCLI.start(['clean'])
-              rescue => e
-                Common.log_warn("[Step 0] クリーンアップでエラー: #{e}")
+              time_step.call('Step 0 (clean)') do
+                begin
+                  Common.log_action('[Step 0] クリーンアップを実行します…')
+                  Vivlio::Starter::ThorCLI.start(['clean'])
+                rescue => e
+                  Common.log_warn("[Step 0] クリーンアップでエラー: #{e}")
+                end
               end
 
               # ================================================================
@@ -224,20 +250,22 @@ module Vivlio
               # - プリセット: --high / --medium(既定) / --low
               # - build_helpers.optimize_images! を呼び出し
               # ================================================================
-              begin
-                if options[:resize] != false
-                  # --high と --low の同時指定は high を優先（ユーザーに警告）
-                  if options.values_at(:high, :low).count(true) > 1
-                    Common.log_warn('[Step 1] --high と --low が同時指定されています。--high を優先します')
+              time_step.call('Step 1 (optimize images)') do
+                begin
+                  if options[:resize] != false
+                    # --high と --low の同時指定は high を優先（ユーザーに警告）
+                    if options.values_at(:high, :low).count(true) > 1
+                      Common.log_warn('[Step 1] --high と --low が同時指定されています。--high を優先します')
+                    end
+                    # --high が優先、次に --low。指定がなければ medium を既定値とする
+                    preset = ([:high, :low].find { |k| options[k] } || :medium)
+                    BuildHelpers.optimize_images!(preset)
+                  else
+                    Common.log_action('[Step 1] 画像最適化をスキップします（--no-resize）')
                   end
-                  # --high が優先、次に --low。指定がなければ medium を既定値とする
-                  preset = ([:high, :low].find { |k| options[k] } || :medium)
-                  BuildHelpers.optimize_images!(preset)
-                else
-                  Common.log_action('[Step 1] 画像最適化をスキップします（--no-resize）')
+                rescue => e
+                  Common.log_warn("[Step 1] エラー: #{e}")
                 end
-              rescue => e
-                Common.log_warn("[Step 1] エラー: #{e}")
               end
 
               # ================================================================
@@ -245,10 +273,12 @@ module Vivlio
               # ------------------------------------------------
               # - build_helpers.apply_virtual_chapter_numbers_for_book!
               # ================================================================
-              begin
-                BuildHelpers.apply_virtual_chapter_numbers_for_book!(keep)
-              rescue => e
-                Common.log_warn("[Step 2] 仮想連番適用でエラー: #{e}")
+              time_step.call('Step 2 (apply virtual chapter numbers)') do
+                begin
+                  BuildHelpers.apply_virtual_chapter_numbers_for_book!(keep)
+                rescue => e
+                  Common.log_warn("[Step 2] 仮想連番適用でエラー: #{e}")
+                end
               end
 
               # ================================================================
@@ -257,10 +287,12 @@ module Vivlio
               # - build_helpers.preface_prebuild! を実行
               # - 失敗時は警告のみ
               # ================================================================
-              begin
-                BuildHelpers.preface_prebuild!(keep)
-              rescue => e
-                Common.log_warn("[Step 3] エラー: #{e}")
+              time_step.call('Step 3 (preface prebuild)') do
+                begin
+                  BuildHelpers.preface_prebuild!(keep)
+                rescue => e
+                  Common.log_warn("[Step 3] エラー: #{e}")
+                end
               end
 
               # ================================================================
@@ -268,10 +300,12 @@ module Vivlio
               # ------------------------------------------------
               # - build_helpers.build_appendices_and_merge_html!
               # ================================================================
-              begin
-                BuildHelpers.build_appendices_and_merge_html!(keep)
-              rescue => e
-                Common.log_warn("[Step 4] 付録ビルド/結合でエラー: #{e}")
+              time_step.call('Step 4 (build appendices and merge html)') do
+                begin
+                  BuildHelpers.build_appendices_and_merge_html!(keep)
+                rescue => e
+                  Common.log_warn("[Step 4] 付録ビルド/結合でエラー: #{e}")
+                end
               end
 
               # ================================================================
@@ -279,10 +313,12 @@ module Vivlio
               # ------------------------------------------------
               # - build_helpers.build_chapters_html!
               # ================================================================
-              begin
-                BuildHelpers.build_chapters_html!(keep)
-              rescue => e
-                Common.log_warn("[Step 5] 章ビルドでエラー: #{e}")
+              time_step.call('Step 5 (build chapters html)') do
+                begin
+                  BuildHelpers.build_chapters_html!(keep)
+                rescue => e
+                  Common.log_warn("[Step 5] 章ビルドでエラー: #{e}")
+                end
               end
 
               # ================================================================
@@ -290,10 +326,12 @@ module Vivlio
               # ------------------------------------------------
               # - build_helpers.generate_toc_and_pdf!('.')
               # ================================================================
-              begin
-                BuildHelpers.generate_toc_and_pdf!('.', keep)
-              rescue => e
-                Common.log_warn("[Step 6] 目次生成でエラー: #{e}")
+              time_step.call('Step 6 (generate toc and pdf)') do
+                begin
+                  BuildHelpers.generate_toc_and_pdf!('.', keep)
+                rescue => e
+                  Common.log_warn("[Step 6] 目次生成でエラー: #{e}")
+                end
               end
 
               # ================================================================
@@ -301,10 +339,20 @@ module Vivlio
               # ------------------------------------------------
               # - build_helpers.build_overall_pdf_and_split_from_dir!('.')
               # ================================================================
-              begin
-                BuildHelpers.build_overall_pdf_and_split_from_dir!('.', keep)
-              rescue => e
-                Common.log_warn("[Step 7] 章PDF化/分割でエラー: #{e}")
+              time_step.call('Step 7 (build overall pdf and split)') do
+                begin
+                  if options[:parallel_pdf] || ENV['VIVLIO_EXPERIMENTAL_PARALLEL_PDF'] == '1'
+                    Common.log_info('[Step 7] 実験モード: 章PDFの並列生成＋結合を使用します')
+                    BuildHelpers.build_chapter_pdfs_in_parallel_and_merge!(keep)
+                  elsif options[:single_html] || ENV['VIVLIO_EXPERIMENTAL_SINGLE_HTML'] == '1'
+                    Common.log_info('[Step 7] 実験モード: 本文(11..89)を chapters.html に結合してから PDF 生成します')
+                    BuildHelpers.build_overall_pdf_from_single_chapters_html!('.', keep)
+                  else
+                    BuildHelpers.build_overall_pdf_and_split_from_dir!('.', keep)
+                  end
+                rescue => e
+                  Common.log_warn("[Step 7] 章PDF化/分割でエラー: #{e}")
+                end
               end
 
               # ================================================================
@@ -312,10 +360,12 @@ module Vivlio
               # ------------------------------------------------
               # - build_helpers.build_frontmatter_pdf!
               # ================================================================
-              begin
-                BuildHelpers.build_frontmatter_pdf!
-              rescue => e
-                Common.log_warn("[Step 8] ページ番号連番化処理でエラー: #{e}")
+              time_step.call('Step 8 (build frontmatter pdf)') do
+                begin
+                  BuildHelpers.build_frontmatter_pdf!
+                rescue => e
+                  Common.log_warn("[Step 8] ページ番号連番化処理でエラー: #{e}")
+                end
               end
 
               # ================================================================
@@ -323,10 +373,32 @@ module Vivlio
               # ------------------------------------------------
               # - build_helpers.build_front_pages_and_tail!
               # ================================================================
-              begin
-                BuildHelpers.build_front_pages_and_tail!
-              rescue => e
-                Common.log_warn("[Step 9] タイトル/奥付の生成でエラー: #{e}")
+              time_step.call('Step 9 (build front pages and tail)') do
+                begin
+                  # 00/01/99 の有無を確認し、--force 指定時は常に再生成、未指定時は無いものだけ生成
+                  title_md    = File.join(Common::CONTENTS_DIR, '00-titlepage.md')
+                  legal_md    = File.join(Common::CONTENTS_DIR, '01-legalpage.md')
+                  colophon_md = File.join(Common::CONTENTS_DIR, '99-colophon.md')
+
+                  begin
+                    targets = [
+                      [title_md,    'create:titlepage'],
+                      [legal_md,    'create:legalpage'],
+                      [colophon_md, 'create:colophon']
+                    ]
+                    targets.each do |path, cmd|
+                      next if File.exist?(path) && !options[:force]
+                      args = [cmd]
+                      args << '--force' if options[:force]
+                      Vivlio::Starter::ThorCLI.start(args)
+                    end
+                  rescue => e
+                    Common.log_warn("[Step 9] create:* の生成でエラー: #{e}")
+                  end
+                  BuildHelpers.build_front_pages_and_tail!
+                rescue => e
+                  Common.log_warn("[Step 9] タイトル/奥付の生成でエラー: #{e}")
+                end
               end
 
               # ================================================================
@@ -334,10 +406,12 @@ module Vivlio
               # ------------------------------------------------
               # - build_helpers.merge_all_pdfs!
               # ================================================================
-              begin
-                BuildHelpers.merge_all_pdfs!
-              rescue => e
-                Common.log_warn("[Step 10] PDF結合でエラー: #{e}")
+              time_step.call('Step 10 (merge all pdfs)') do
+                begin
+                  BuildHelpers.merge_all_pdfs!
+                rescue => e
+                  Common.log_warn("[Step 10] PDF結合でエラー: #{e}")
+                end
               end
 
               # ================================================================
@@ -345,10 +419,12 @@ module Vivlio
               # ------------------------------------------------
               # - build_helpers.restore_chapter_css_backups_for_book!
               # ================================================================
-              begin
-                BuildHelpers.restore_chapter_css_backups_for_book!(keep)
-              rescue => e
-                Common.log_warn("[Step 11] CSS復元でエラー: #{e}")
+              time_step.call('Step 11 (restore chapter css backups)') do
+                begin
+                  BuildHelpers.restore_chapter_css_backups_for_book!(keep)
+                rescue => e
+                  Common.log_warn("[Step 11] CSS復元でエラー: #{e}")
+                end
               end
 
               # ================================================================
@@ -356,14 +432,16 @@ module Vivlio
               # ------------------------------------------------
               # - build_helpers.compress_pdf!
               # ================================================================
-              begin
-                if options[:compress] == false
-                  Common.log_action('[Step 12] PDF圧縮をスキップします（--no-compress）')
-                else
-                  BuildHelpers.compress_pdf!
+              time_step.call('Step 12 (compress pdf)') do
+                begin
+                  if options[:compress] == false
+                    Common.log_action('[Step 12] PDF圧縮をスキップします（--no-compress）')
+                  else
+                    BuildHelpers.compress_pdf!
+                  end
+                rescue => e
+                  Common.log_warn("[Step 12] PDF圧縮でエラー: #{e}")
                 end
-              rescue => e
-                Common.log_warn("[Step 12] PDF圧縮でエラー: #{e}")
               end
 
               # ================================================================
@@ -371,15 +449,50 @@ module Vivlio
               # ------------------------------------------------
               # - Thor 'clean' を呼び出し
               # ================================================================
-              begin
-                if options[:clean] == false
-                  Common.log_action('[Step 13] クリーンアップをスキップします（--no-clean）')
-                else
-                  Common.log_action('[Step 13] 中間生成物をクリーンアップします…')
-                  Vivlio::Starter::ThorCLI.start(['clean'])
+              time_step.call('Step 13 (final clean)') do
+                begin
+                  if options[:clean] == false
+                    Common.log_action('[Step 13] クリーンアップをスキップします（--no-clean）')
+                  else
+                    Common.log_action('[Step 13] 中間生成物をクリーンアップします…')
+                    Vivlio::Starter::ThorCLI.start(['clean'])
+                  end
+                rescue => e
+                  Common.log_warn("[Step 13] クリーンアップでエラー: #{e}")
                 end
-              rescue => e
-                Common.log_warn("[Step 13] クリーンアップでエラー: #{e}")
+              end
+
+              # タイマーサマリー
+              begin
+                total = build_timings.map { |(_, dt)| dt }.inject(0.0, :+)
+                Common.echo_always "\n== Build Step Timings =="
+                build_timings.each do |label, dt|
+                  Common.echo_always sprintf("  - %-34s %6.2fs", label, dt)
+                end
+                Common.echo_always sprintf("  = %-34s %6.2fs", 'TOTAL', total)
+                Common.echo_always "==========================\n"
+
+                # timings_summary.md に追記
+                begin
+                  ts = Time.now.iso8601
+                  lines = []
+                  lines << "\n## Build Step Timings (#{ts})\n"
+                  lines << "```\n"
+                  lines << "== Build Step Timings =="
+                  build_timings.each do |label, dt|
+                    lines << sprintf("  - %-34s %6.2fs", label, dt)
+                  end
+                  lines << sprintf("  = %-34s %6.2fs", 'TOTAL', total)
+                  lines << "`````".sub('`````', "```")
+                  File.open(File.join(Dir.pwd, 'timings_summary.md'), 'a', encoding: 'utf-8') do |f|
+                    f.write(lines.join("\n"))
+                    f.write("\n")
+                  end
+                rescue => _e
+                  # ignore file append errors
+                end
+              rescue => _e
+                # ignore summary errors
               end
 
               # 最後に1度だけPDFをオープン（OS判定は open_pdf 側に委譲）

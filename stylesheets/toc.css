@@ -37,9 +37,12 @@
   margin-inline-start: 0.5em;
 
   /* typography */
+  font-family: var(--folio-font);       /* ページ番号と同一フォントで桁幅を統一 */
   letter-spacing: 0.01em;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  font-kerning: none;                   /* 視覚的なズレ抑制 */
+  text-align: end;                      /* 算用数字を右端に揃える */
   
   /* visual */
   color: #333;
@@ -73,6 +76,8 @@ body.toc { page: front; }
   counter-reset: toc-list-counter 0; /* 各ULで節/項カウンタを初期化 */
 }
 
+/* 目次の LI のページ分割は各要素で個別に制御（全体には指定しない） */
+
 /* 付録カウンタは最上位ULでのみ初期化（ネストULでリセットされないようにする） */
 #toc > ul {
   /* counters/meta */
@@ -84,11 +89,9 @@ body.toc { page: front; }
 /* 章目次 */
 .toc-chapter {
   /* layout */
-  display: flex;
-  flex-wrap: wrap;          /* ULを次の行へ回す */
+  display: flex;            /* 章タイトル行は Flex でリーダーと頁を整列 */
   align-items: baseline;
-
-  /* spacing */
+  flex-wrap: wrap;          /* 配下の UL は次の行へ */
   margin-block-end: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
 
   /* typography */
@@ -141,17 +144,21 @@ body.toc { page: front; }
 
 .toc-chapter::after {
   /* layout */
-  order: 1;                 /* タイトルの直後に配置 */
+  display: inline;          /* 見出し行の末尾でリーダーを引く */
+  order: 1;                 /* タイトルの直後に配置（子ULより先） */
   flex: 1 1 auto;           /* 右側を満たしてリーダーを引く */
 
   /* spacing */
   margin-inline-start: 1em;
 
   /* typography */
+  font-family: var(--folio-font);       /* ページ番号と同一フォントで桁幅を統一 */
   font-size: clamp(11.2Q, calc(var(--paper-scale) * 16Q), 16Q);
   letter-spacing: 0.01em;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  font-kerning: none;
+  text-align: end;
 
   /* visual */
   color: #333;
@@ -162,17 +169,23 @@ body.toc { page: front; }
 
 li.toc-chapter {
   /* layout */
-  break-inside: avoid;
+  break-inside: auto;          /* ページ内分割を許容して空白を減らす */
+  page-break-inside: auto;
+  widows: 1;                   /* さらに詰めるため最小1行に緩和 */
+  orphans: 1;
 
   /* spacing */
-  margin-block-end: clamp(7mm, calc(var(--paper-scale) * 10mm), 10mm);
+  margin-block-end: clamp(3mm, calc(var(--paper-scale) * 6mm), 6mm);
 }
 
 /* 章目次（番号なし）リストも改ページで割れにくくする */
 li.toc-chapter-no-number,
 li.toc-chapter-appendix {
   /* layout */
-  break-inside: avoid;
+  break-inside: auto;
+  page-break-inside: auto;
+  widows: 2;
+  orphans: 2;
 }
 
 /* 章目次（番号なし） */
@@ -200,10 +213,13 @@ li.toc-chapter-appendix {
 /* 節目次（before＋リーダー） */
 li.toc-section {
   /* layout */
-  display: flex;
-  flex-wrap: wrap;        /* 小節ULを次の行へ */
+  display: flex;          /* 項目行は Flex のまま（番号／タイトル／リーダー／頁） */
   align-items: baseline;
-  break-inside: avoid;
+  flex-wrap: wrap;        /* タイトル行 + 子UL を行分け（タイトル行を1段、子ULを次段） */
+  break-inside: auto;     /* セクションが大きすぎる場合は分割を許容 */
+  page-break-inside: auto;
+  widows: 2;
+  orphans: 2;
 
   /* spacing */
   margin-inline-start: 0;
@@ -213,6 +229,7 @@ li.toc-section {
   font-size: clamp(11.2Q, calc(var(--paper-scale) * 16Q), 16Q);
   line-height: 1.2;
   font-weight: 700;
+  /* タイトルは必要なら折返し可（子ULは別行に送るため行全体は崩れない） */
 }
 
 .toc-section::before {
@@ -242,9 +259,12 @@ li.toc-section {
   margin-inline-start: 0.5em;
 
   /* typography */
+  font-family: var(--folio-font);       /* ページ番号と同一フォントで桁幅を統一 */
   letter-spacing: 0.01em;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  font-kerning: none;
+  text-align: end;
   
   /* visual */
   color: #333;
@@ -283,11 +303,9 @@ li.toc-chapter-appendix > ul > li {
 /* セクション項目直下の子UL（小節リスト）の余白 */
 #toc li.toc-section > ul {
   /* layout */
-  order: 2;                 /* 節行（番号・タイトル・リーダー）の次の行に配置 */
-  
-  /* layout */
-  flex-basis: 100%;       /* 次の行に回す */
-  
+  order: 2;                 /* 節行の次の行に配置（Flex の改行） */
+  flex-basis: 100%;         /* 次の行に回す */
+
   /* spacing */
   margin-block-start: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
   padding-inline-start: 0; /* インデントは各小節LI側で与える */
@@ -297,7 +315,7 @@ li.toc-chapter-appendix > ul > li {
 /* stylelint-disable no-descending-specificity */
 li.toc-chapter > ul {
   /* layout */
-  order: 2;                 /* タイトル行の次に回す */
+  order: 2;                 /* タイトル行の次に配置（Flex の改行） */
   flex-basis: 100%;
 
   /* spacing */
@@ -305,12 +323,18 @@ li.toc-chapter > ul {
 }
 /* stylelint-enable no-descending-specificity */
 
+/* 付録の章タイトル下は少し余白を増やす（小節リストの頭を下げる） */
+#toc li.toc-chapter-appendix > ul {
+  /* spacing */
+  margin-block-start: clamp(3.5mm, calc(var(--paper-scale) * 5mm), 5mm);
+}
+
 /* 小節（li.toc-subsection のみを対象） */
 li.toc-subsection {
   /* spacing */
   margin-inline: 0 1em;
   margin-block-end: 0.1em;
-  padding-inline-start: clamp(21mm, calc(var(--paper-scale) * 30mm), 30mm); /* 小節の先頭に30mmの空白を確保 */
+  padding-inline-start: clamp(21mm, calc(var(--paper-scale) * 30mm), 30mm); /* 既定のインデントに戻す */
 
   /* typography */
   font-size: clamp(9.1Q, calc(var(--paper-scale) * 13Q), 13Q);
@@ -321,7 +345,7 @@ li.toc-subsection {
 
 .toc-subsection::before {
   /* layout */
-  display: inline-block;
+  display: inline-block;   /* 番号欄 */
 
   /* box-size */
   min-inline-size: 2.5em; /* 番号欄（必要に応じて調整可） */
@@ -371,10 +395,10 @@ h2 {
   border-block-end: none;
 }
 
-hr {
+/* hr {
   break-after: page;
   visibility: hidden;
-}
+} */
 
 /* 付録および番号なし章タイトルの前余白 */
 #toc>ul>li.toc-chapter-appendix,

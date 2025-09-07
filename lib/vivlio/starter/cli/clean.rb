@@ -51,16 +51,17 @@ module Vivlio
 
               Common.log_action('生成ファイルを削除中...')
               cleanup_patterns = [
+                # HTML/JS 中間生成物
                 '*.html',
-                '03-toc.md',
                 'entries.js',
+                # 生成される一時/補助的な Markdown（任意）
+                '03-toc.md',
+                # pre_process によりプロジェクトルートへ展開される章系の Markdown のみ削除対象に限定
+                # 例: 11-install.md など（任意の *.md やドキュメントは削除しない）
+                '[0-9][0-9]-*.md',
+                # フロント/テイル系の生成MD（存在時のみ）
+                '00-titlepage.md', '01-legalpage.md', '98-postface.md', '99-colophon.md',
               ]
-
-              keep_files = ['README.md', 'ROADMAP.md', 'CONTENT-LICENSE.md', 'THIRD-PARTY-LICENSES.md', 'CHANGELOG.md']
-              Dir.glob('*.md').each do |file|
-                next if keep_files.include?(file)
-                cleanup_patterns << file
-              end
 
               intermediate_pdfs = [
                 '00-titlepage.pdf', '01-legalpage.pdf', '02-preface.pdf', '03-toc.pdf',

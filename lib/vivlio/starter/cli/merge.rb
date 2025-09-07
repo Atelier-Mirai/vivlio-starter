@@ -105,7 +105,37 @@ module Vivlio
               sections = files.map do |file|
                 html = read_text.call(file)
                 body_inner = extract.call(html, 'body') || html
-                body_inner.strip
+
+                # Appendices ID prefix to avoid duplicates across merged file
+                # Determine prefix by leading number in filename: 91 -> appendix-a, 92 -> appendix-b, ...
+                base = File.basename(file)
+                leading = base[/^(\d{2})-/, 1]
+                prefix = case leading
+                         when '91' then 'appendix-a'
+                         when '92' then 'appendix-b'
+                         when '93' then 'appendix-c'
+                         when '94' then 'appendix-d'
+                         when '95' then 'appendix-e'
+                         when '96' then 'appendix-f'
+                         when '97' then 'appendix-g'
+                         else 'appendix-x'
+                         end
+
+                # Rewrite id="..." to id="<prefix>-..."
+                rewritten = body_inner.gsub(/\bid=("|')(.*?)(\1)/) do |_m|
+                  q = Regexp.last_match(1)
+                  id = Regexp.last_match(2)
+                  %(id=#{q}#{prefix}-#{id}#{q})
+                end
+
+                # Rewrite href="#..." (fragment links) accordingly
+                rewritten = rewritten.gsub(/\bhref=("|')#(.*?)(\1)/) do |_m|
+                  q = Regexp.last_match(1)
+                  frag = Regexp.last_match(2)
+                  %(href=#{q}##{prefix}-#{frag}#{q})
+                end
+
+                rewritten.strip
               end.join("\n\n")
 
               final_html = <<~HTML

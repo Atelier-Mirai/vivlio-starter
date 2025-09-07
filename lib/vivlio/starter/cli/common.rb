@@ -333,34 +333,72 @@ module Vivlio
         end
 
         # ================================================================
-        # Utility: verbose? 判定
+        # Logging config: ログレベル/詳細度
         # ------------------------------------------------
-        # - ENV['VERBOSE'] または ARGV の -v/--verbose を検査
+        # 制御方法: --log[=level]
+        #   --log=error  -> 0
+        #   --log=warn   -> 1
+        #   --log=info   -> 2  （標準）
+        #   --log=success-> 2  （info 同等）
+        #   --log=action -> 2  （info 同等）
+        #   --log=debug  -> 3
+        #   --log        -> 2  （レベル省略時は info 相当）
+        # 既定（--log 未指定時）は warn(1)
         # ================================================================
-        def verbose?
-          return true if %w[1 true yes on].include?((ENV['VERBOSE'] || '').downcase)
+        LEVELS = { 'error' => 0, 'warn' => 1, 'info' => 2, 'success' => 2, 'action' => 2, 'debug' => 3 }.freeze
+
+        def current_log_level
           argv = defined?(ARGV) ? ARGV : []
-          argv.include?('-v') || argv.include?('--verbose')
+          log_level_token = nil
+          argv.each_with_index do |arg, i|
+            next unless arg.start_with?('--log')
+            if arg.include?('=')
+              log_level_token = arg.split('=', 2)[1].to_s.strip.downcase
+            else
+              # 次のトークンがレベルなら採用、無ければ省略扱い（=info）
+              nxt = argv[i + 1]
+              if nxt && !nxt.start_with?('-')
+                log_level_token = nxt.to_s.strip.downcase
+              else
+                log_level_token = ''
+              end
+            end
+            break
+          end
+
+          if log_level_token.nil?
+            # --log 未指定 → 既定 warn(1)
+            return 1
+          end
+
+          # --log 指定時
+          return 2 if log_level_token.empty? # --log のみ → info 相当
+          return LEVELS.fetch(log_level_token, 2)
         rescue
-          false
+          1
+        end
+
+        # 互換: 従来の verbose? は info レベル以上を true とする
+        def verbose?
+          current_log_level >= 2
         end
 
         # ================================================================
         # Logging: 共通ログ出力（日本語 + 絵文字）
         # ------------------------------------------------
-        # - log_info/log_success/log_warn は verbose? 時のみ出力
-        # - log_error は常に出力
+        # - レベル閾値: error=0, warn=1, info=2, debug=3
+        # - 既定 warn(1): warn 以上のみ表示
         # ================================================================
         def log_info(msg)
-          puts "ℹ️ #{msg}" if verbose?
+          puts "ℹ️ #{msg}" if current_log_level >= 2
         end
 
         def log_success(msg)
-          puts "✅ #{msg}" if verbose?
+          puts "✅ #{msg}" if current_log_level >= 2
         end
 
         def log_warn(msg)
-          puts "⚠️ #{msg}" if verbose?
+          puts "⚠️ #{msg}" if current_log_level >= 1
         end
 
         def log_error(msg)
@@ -368,7 +406,12 @@ module Vivlio
         end
 
         def log_action(msg)
-          puts "🔧 #{msg}" if verbose?
+          puts "🔧 #{msg}" if current_log_level >= 2
+        end
+
+        # 追加: デバッグ専用ログ
+        def log_debug(msg)
+          puts "🧪 #{msg}" if current_log_level >= 3
         end
 
         # ================================================================

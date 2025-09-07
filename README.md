@@ -8,7 +8,7 @@
 - `config/book.yml` による一元的な設定管理
 - ファイルタイプに応じたスタイル適用（`<body class="preface|chapter|appendix|postface|colophon">`）
 - `vivliostyle.config.js` の自動生成（バックアップは最新版のみ保持）
-- 冗長ログの統一制御（`-v` または `VERBOSE=1`）
+- 冗長ログの統一制御（`--log[=level]`）
 
 ## 前提条件（依存関係）
 
@@ -157,7 +157,7 @@ vs open
 備考:
 
 - CLI は Thor ベースで、`vs`（または `vivlio-starter`）として利用できます。
-- `VERBOSE=1` または `-v` で詳細ログを出せます（例: `vs build -v`）。
+- ログ出力は `--log[=level]` で制御できます（後述）。
 
 ## クイックスタート（プロジェクト生成）
 
@@ -181,11 +181,20 @@ vs build
 vs open          # = vs open:pdf
 ```
 
-冗長ログを見たい場合は `-v` もしくは環境変数を利用します。
+ログ出力レベルを指定するには `--log[=level]` を使います。
 
 ```bash
-vs build -v
-VERBOSE=1 vs build
+# 既定（指定なし）: warn レベル（警告・エラーのみ）
+vs build
+
+# 標準（おすすめ）: info レベル（情報/成功/操作ログを含む）
+vs build --log          # = --log=info と同義
+
+# デバッグ: debug レベル（すべてのログを出力）
+vs build --log=debug
+
+# 最小: error レベル（エラーのみ）
+vs build --log=error
 ```
 
 ## 主なコマンド
@@ -253,10 +262,15 @@ pdf:
    - 生成物のクリーンアップ
    - `vs open` で PDF を開く
 
-### ログの冗長度（Verbose）
+### ログの冗長度（Logging）
 
-- `BookBuild.verbose?` により統一制御
-- `vs ... -v` または `VERBOSE=1 vs ...` で詳細ログが出ます
+- ログは `--log[=level]` で制御します。`level` は次のいずれかです。
+  - `error` → レベル0（`log_error` のみ）
+  - `warn` → レベル1（`log_warn` 以上）
+  - `info` / `success` / `action` → レベル2（標準。`log_info`/`log_success`/`log_action` 以上）
+  - `debug` → レベル3（`log_debug` を含む全ログ）
+- `--log`（レベル省略）は `--log=info` と同義です。
+- 既定（`--log` 未指定）は `warn` レベルです。
 
 ## ライセンス
 

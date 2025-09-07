@@ -3,6 +3,7 @@
 require 'rbconfig'
 require 'fileutils'
 require 'hexapdf'
+require 'time'
 
 module Vivlio
   module Starter
@@ -20,6 +21,106 @@ module Vivlio
       # ==============================================================================
       module BuildHelpers 
         module_function
+
+        # 内部ユーティリティ: --single-doc を強制無効化して pdf を実行
+        def run_pdf_without_single_doc!
+          prev = ENV['VIVLIO_SINGLE_DOC']
+          begin
+            ENV['VIVLIO_SINGLE_DOC'] = '0'
+            Vivlio::Starter::ThorCLI.start(['pdf'])
+          ensure
+            if prev.nil?
+              ENV.delete('VIVLIO_SINGLE_DOC')
+            else
+              ENV['VIVLIO_SINGLE_DOC'] = prev
+            end
+          end
+        end
+
+        # 単一HTMLを単独PDFにする補助（一時config + single-docで直接ビルド）
+        # html: プロジェクトルート相対の HTML パス（例: '00-titlepage.html')
+        # out_pdf: 生成先のPDFファイル名（プロジェクトルートに配置）
+        def build_single_html_to_pdf!(html, out_pdf)
+          return unless File.exist?(html)
+          require 'tmpdir'
+          Dir.mktmpdir('vs_cfg_') do |dir|
+            # proj/ シンボリックリンク（ローカルサーバ配下の相対参照にする）
+            proj_link = File.join(dir, 'proj')
+            begin
+              File.symlink(Dir.pwd, proj_link)
+            rescue
+              proj_link = Dir.pwd
+            end
+            width, height = BuildHelpers.page_size_strings_from_config
+            tmp_config = File.join(dir, 'vivliostyle.tmp.config.js')
+            File.open(tmp_config, 'w', encoding: 'utf-8') do |f|
+              f.puts <<~JS
+                /** @type {import('@vivliostyle/cli').VivliostyleConfigSchema} */
+                const vivliostyleConfig = {
+                  entry: [ './proj/#{html}' ],
+                  output: [ './out.pdf' ],
+                  size: '#{width} #{height}'
+                };
+                export default vivliostyleConfig;
+              JS
+            end
+            # single-docで直接ビルド（entries.jsを介さない）
+            system('npx', 'vivliostyle', 'build', '-c', tmp_config, '-d', chdir: dir)
+            src = File.join(dir, 'out.pdf')
+            if File.exist?(src)
+              FileUtils.rm_f(out_pdf)
+              FileUtils.cp(src, out_pdf)
+              true
+            else
+              Common.log_warn("[single-doc] PDF が生成されませんでした: #{html}")
+              false
+            end
+          end
+        rescue => e
+          Common.log_warn("[single-doc] 生成でエラー: #{html} (#{e})")
+          false
+        end
+
+        # ------------------------------------------------
+        # Timing utilities: 章別×ステップ別の計測を timings.csv に追記
+        # ------------------------------------------------
+        # - CSV フォーマット: chapter,step,seconds
+        # - 既存ファイルにヘッダーが無い場合はヘッダーを追記
+        # - 例外は握りつぶしてビルド継続
+        def record_timing(chapter, step, seconds)
+          begin
+            path = File.join(Dir.pwd, 'timings.csv')
+            write_header = !File.exist?(path) || File.zero?(path)
+            File.open(path, 'a', encoding: 'utf-8') do |f|
+              if write_header
+                f.puts 'chapter,step,seconds'
+              end
+              f.puts [chapter.to_s, step.to_s, format('%.2f', seconds.to_f)].join(',')
+            end
+          rescue => e
+            begin
+              Common.log_warn("[Timing] timings.csv への書き込みに失敗: #{e}")
+            rescue
+              # ignore logging failures
+            end
+          end
+        end
+
+        def time_step_for_chapter(chapter, step)
+          t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          begin
+            yield if block_given?
+          ensure
+            t1 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            dt = (t1 - t0)
+            begin
+              Common.log_action("[Timer] #{chapter} / #{step} : #{format('%.2f', dt)}s")
+            rescue
+              # ignore
+            end
+            record_timing(chapter, step, dt)
+          end
+        end
 
         # ================================================================
         # Config: 章サブセット（config/book.yml の chapters キー）
@@ -210,21 +311,28 @@ module Vivlio
           end
 
           %w[pre_process convert post_process entries].each do |t|
-            Vivlio::Starter::ThorCLI.start([t, '02-preface'])
+            BuildHelpers.time_step_for_chapter('02-preface', t) do
+              Vivlio::Starter::ThorCLI.start([t, '02-preface'])
+            end
           end
-          Vivlio::Starter::ThorCLI.start(['pdf'])
-
-          pdf_config   = Common::CONFIG['pdf'] || {}
-          output_pdf   = pdf_config['output_file'] || 'output.pdf'
+          BuildHelpers.time_step_for_chapter('02-preface', 'pdf') do
+            # 従来ルート: entries.js 経由で pdf を生成し、output.pdf を 02-preface.pdf にリネーム
+            Vivlio::Starter::ThorCLI.start(['pdf'])
+            pdf_config   = Common::CONFIG['pdf'] || {}
+            output_pdf   = pdf_config['output_file'] || 'output.pdf'
+            preface_pdf  = '02-preface.pdf'
+            if File.exist?(output_pdf)
+              Common.log_action("#{output_pdf} をリネームしています: #{output_pdf} → #{preface_pdf}")
+              FileUtils.rm_f(preface_pdf)
+              FileUtils.mv(output_pdf, preface_pdf)
+            else
+              Common.log_warn("[Step 3] 出力PDFが見つかりません: #{output_pdf}")
+            end
+          end
           preface_pdf  = '02-preface.pdf'
-          if File.exist?(output_pdf)
-            Common.log_action("preface PDF をリネームしています: #{output_pdf} → #{preface_pdf}")
-            FileUtils.rm_f(preface_pdf)
-            FileUtils.mv(output_pdf, preface_pdf)
+          if File.exist?(preface_pdf)
             pages = BuildHelpers.page_count(preface_pdf)
             pages ? Common.log_success("ページ数: #{pages} (#{preface_pdf})") : Common.log_warn("ページ数の取得に失敗しました: #{preface_pdf}")
-          else
-            Common.log_warn("出力PDFが見つかりません: #{output_pdf}")
           end
         end
 
@@ -254,7 +362,9 @@ module Vivlio
           Common.log_info("[Step 4] 対象: #{appendix_targets.join(', ')}")
           appendix_targets.each do |target|
             %w[pre_process convert post_process].each do |tn|
-              Vivlio::Starter::ThorCLI.start([tn, target])
+              BuildHelpers.time_step_for_chapter(target, tn) do
+                Vivlio::Starter::ThorCLI.start([tn, target])
+              end
             end
           end
 
@@ -265,16 +375,19 @@ module Vivlio
 
           # 個別付録HTMLをクリーンアップ
           begin
+            patterns = ['{91,92,93,94,95,96,97}-*.html', '{91,92,93,94,95,96,97}-*.md']
             removed = []
-            Dir.glob('{91,92,93,94,95,96,97}-*.html').each do |f|
-              next unless File.file?(f)
-              File.delete(f)
-              removed << File.basename(f)
+            patterns.each do |pattern|
+              Dir.glob(pattern).each do |f|
+                next unless File.file?(f)
+                File.delete(f)
+                removed << File.basename(f)
+              end
             end
             if removed.any?
-              Common.log_info("[Step 4] 個別付録HTMLを削除: #{removed.join(', ')}")
+              Common.log_info("[Step 4] 個別付録(HTML/MD)を削除: #{removed.join(', ')}")
             else
-              Common.log_info('[Step 4] 削除対象の個別付録HTMLはありません')
+              Common.log_info('[Step 4] 削除対象の個別付録(HTML/MD)はありません')
             end
           rescue => e
             Common.log_warn("[Step 4] 個別付録HTMLのクリーンアップでエラー: #{e}")
@@ -299,11 +412,54 @@ module Vivlio
           end
 
           Common.log_info("[Step 5] 対象: #{chapter_targets.join(', ')}")
-          chapter_targets.each do |target|
-            %w[pre_process convert post_process].each do |tn|
-              Vivlio::Starter::ThorCLI.start([tn, target])
+
+          # 並列度（未設定/1以下は逐次）
+          concurrency = (ENV['VIVLIO_BUILD_CONCURRENCY'] || '').to_i
+          concurrency = 1 if concurrency <= 0
+
+          if concurrency == 1
+            chapter_targets.each do |target|
+              %w[pre_process convert post_process].each do |tn|
+                BuildHelpers.time_step_for_chapter(target, tn) do
+                  Vivlio::Starter::ThorCLI.start([tn, target])
+                end
+              end
+            end
+            return
+          end
+
+          # スレッドプールで並列実行
+          require 'thread'
+          q = Queue.new
+          chapter_targets.each { |t| q << t }
+          workers = []
+          Common.log_info("[Step 5] 並列実行を開始します（concurrency=#{concurrency}、対象=#{chapter_targets.size}）")
+          concurrency.times do |i|
+            workers << Thread.new do
+              Thread.current[:name] = "builder-#{i+1}"
+              while true
+                target = nil
+                begin
+                  target = q.pop(true)
+                rescue ThreadError
+                  break
+                end
+                begin
+                  %w[pre_process convert post_process].each do |tn|
+                    BuildHelpers.time_step_for_chapter(target, tn) do
+                      Vivlio::Starter::ThorCLI.start([tn, target])
+                    end
+                  end
+                rescue => e
+                  begin
+                    Common.log_warn("[Step 5] 並列ビルド中にエラー: #{target} (#{e})")
+                  rescue
+                  end
+                end
+              end
             end
           end
+          workers.each(&:join)
         rescue => e
           Common.log_warn("[Step 5] 章ビルドでエラー: #{e}")
         end
@@ -400,6 +556,99 @@ module Vivlio
         end
 
         # ================================================================
+        # Step 7 (Alternative): 本文(11..89)を単一 chapters.html に結合してから PDF 生成
+        # ------------------------------------------------
+        # - base_dir の 11..89 章 HTML を収集し、1つの HTML に結合
+        # - 付録(90-appendices.html) と TOC(03-toc.html) は従来どおり別扱い
+        # - 生成した chapters.html を先頭に据えて compile_overall_pdf_and_split!
+        # ================================================================
+        def build_overall_pdf_from_single_chapters_html!(base_dir = '.', keep = nil)
+          Common.log_action('[Step 7] 単一 HTML への結合モードで全体PDFを生成します…')
+          chapter_htmls = BuildHelpers.main_text_htmls(base_dir, keep)
+          if chapter_htmls.empty?
+            Common.log_warn('[Step 7] 本文HTMLが見つかりません。結合モードをスキップします。')
+            return
+          end
+
+          combined_path = File.join(base_dir, 'chapters.html')
+          begin
+            # head は先頭章から流用し、body は各章の <body> 内のみを抽出して結合
+            first = chapter_htmls.first
+            first_text = File.read(first, encoding: 'utf-8') rescue ''
+            head_html = (first_text[/<head[\s\S]*?<\/head>/i] || <<~HEAD)
+              <head>
+                <meta charset="utf-8">
+                <title>Chapters</title>
+              </head>
+            HEAD
+
+            bodies = []
+            chapter_htmls.each do |path|
+              name = File.basename(path)
+              text = File.read(path, encoding: 'utf-8') rescue ''
+              inner = text[/<body[^>]*>([\s\S]*?)<\/body>/i, 1] || text
+              bodies << "<section data-chapter=\"#{name}\">\n#{inner}\n</section>"
+            end
+
+            width, height = BuildHelpers.page_size_strings_from_config
+            html = <<~HTML
+              <!doctype html>
+              <html>
+              #{head_html}
+              <body>
+              <!-- Combined chapters (11..89) -->
+              #{bodies.join("\n\n")}
+              </body>
+              </html>
+            HTML
+            File.write(combined_path, html, encoding: 'utf-8')
+            Common.log_success("[Step 7] chapters.html を生成しました（#{chapter_htmls.size} 章を結合）")
+          rescue => e
+            Common.log_warn("[Step 7] chapters.html の生成に失敗: #{e}")
+            return
+          end
+
+          appendix_html_for_pdf = File.exist?(File.join(base_dir, '90-appendices.html')) ? [File.join(base_dir, '90-appendices.html')] : []
+          toc_html = [File.join(base_dir, '03-toc.html')].select { |f| File.exist?(f) }
+
+          # 付録を奇数（右）ページ開始にするためのガードページを挿入（従来と同じ）
+          guard_html = nil
+          if appendix_html_for_pdf.any?
+            guard_html = File.join(base_dir, '90-appendices-guard.html')
+            begin
+              width, height = BuildHelpers.page_size_strings_from_config
+              html = <<~HTML
+                <!doctype html>
+                <html>
+                <head>
+                  <meta charset="utf-8">
+                  <title>Appendices Guard</title>
+                  <style>
+                    @page { size: #{width} #{height}; }
+                  </style>
+                </head>
+                <body></body>
+                </html>
+              HTML
+              File.write(guard_html, html, encoding: 'utf-8')
+            rescue => e
+              Common.log_warn("[Step 7] 付録ガードHTMLの作成に失敗: #{e}。ガードをスキップします")
+              guard_html = nil
+            end
+          end
+
+          targets_for_pdf = if guard_html
+                               [combined_path] + [guard_html] + appendix_html_for_pdf + toc_html
+                             else
+                               [combined_path] + appendix_html_for_pdf + toc_html
+                             end
+
+          BuildHelpers.compile_overall_pdf_and_split!(targets_for_pdf)
+        rescue => e
+          Common.log_warn("[Step 7] 結合 chapters.html でのPDF生成に失敗: #{e}")
+        end
+
+        # ================================================================
         # Step 7: 全体PDF生成 → frontmatter/chapters に分割
         # ------------------------------------------------
         # - entries.js 生成 -> pdf 出力(output.pdf)
@@ -435,6 +684,196 @@ module Vivlio
             '03-toc.pdf',
             'chapters_appendices.pdf'
           )
+        end
+
+        # ================================================================
+        # Experimental: 章PDFを並列生成して chapters_appendices.pdf に結合
+        # ------------------------------------------------
+        # - 本文(11..89)の各章を個別PDF化（pre/convert/post/entries/pdf）
+        # - 90-appendices.html があれば 90-appendices.pdf も生成
+        # - 生成した PDF 群を hexapdf merge で chapters_appendices.pdf に結合
+        # - 並列度は ENV['VIVLIO_PDF_CONCURRENCY']（既定: 2）
+        # 注意:
+        # - 付録の右ページ開始（奇数ページ頭）ガードは簡略化のため未実装（実験段階）
+        # ================================================================
+        def build_chapter_pdfs_in_parallel_and_merge!(keep = nil)
+          Common.log_action('[Step 7-EXPERIMENT] 章PDFを並列生成し、結合します…')
+          chapter_targets = BuildHelpers.main_text_basenames(keep)
+          if chapter_targets.empty?
+            Common.log_warn('[Step 7-EXPERIMENT] 本文章が見つかりません。処理をスキップします。')
+            return
+          end
+
+          # 並列度
+          concurrency = (ENV['VIVLIO_PDF_CONCURRENCY'] || '2').to_i
+          concurrency = 2 if concurrency <= 0
+
+          # 章を並列でPDF化
+          require 'thread'
+          q = Queue.new
+          chapter_targets.each { |t| q << t }
+          pdfs_mutex = Mutex.new
+          generated_pdfs = []
+          port_counter = 0
+          port_mutex = Mutex.new
+
+          workers = []
+          concurrency.times do |i|
+            workers << Thread.new do
+              while true
+                target = nil
+                begin
+                  target = q.pop(true)
+                rescue ThreadError
+                  break
+                end
+                begin
+                  %w[pre_process convert post_process].each do |tn|
+                    BuildHelpers.time_step_for_chapter(target, tn) do
+                      Vivlio::Starter::ThorCLI.start([tn, target])
+                    end
+                  end
+                  # 単一HTMLとして Vivliostyle CLIを直接呼び出し（entries.js を共有しない）
+                  chapter_html = "#{target}.html"
+                  unless File.exist?(chapter_html)
+                    Common.log_warn("[Step 7-EXPERIMENT] HTMLが見つかりません: #{chapter_html}")
+                    next
+                  end
+                  tmp_config = nil
+                  require 'tmpdir'
+                  BuildHelpers.time_step_for_chapter(target, 'pdf') do
+                    Dir.mktmpdir("vs_cfg_") do |dir|
+                      # 作業ディレクトリを隔離し、プロジェクト全体にシンボリックリンクを張る
+                      proj_link = File.join(dir, 'proj')
+                      begin
+                        File.symlink(Dir.pwd, proj_link)
+                      rescue
+                        # symlink 失敗時はフォールバックでそのまま参照（絶対パスに戻す）
+                        proj_link = Dir.pwd
+                      end
+
+                      tmp_config = File.join(dir, 'vivliostyle.tmp.config.js')
+                      width, height = BuildHelpers.page_size_strings_from_config
+                      # proj/ 経由で参照（ローカルサーバ配下の相対パスになる）
+                      entry_path = "./proj/#{chapter_html}"
+                      output_path = "./#{target}.pdf"
+                      File.open(tmp_config, 'w', encoding: 'utf-8') do |f|
+                        f.puts <<~JS
+                          // auto-generated temporary config for single-doc build
+                          /** @type {import('@vivliostyle/cli').VivliostyleConfigSchema} */
+                          const vivliostyleConfig = {
+                            title: '#{Common::CONFIG.dig('book', 'title') || 'chapter'}',
+                            author: '#{Common::CONFIG.dig('book', 'author') || ''}',
+                            language: '#{Common::CONFIG.dig('book', 'language') || 'ja'}',
+                            readingProgression: 'ltr',
+                            entry: [ '#{entry_path.gsub("'", "\\'")}' ],
+                            output: [ '#{output_path.gsub("'", "\\'")}' ],
+                            size: '#{width} #{height}'
+                          };
+                          export default vivliostyleConfig;
+                        JS
+                      end
+                      # ユニークポート採番
+                      port = nil
+                      port_mutex.synchronize do
+                        port_counter += 1
+                        port = 13000 + (port_counter % 1000)
+                      end
+                      system('npx', 'vivliostyle', 'build', '-c', 'vivliostyle.tmp.config.js', '--port', port.to_s, '-d', chdir: dir)
+                      # 生成PDFをプロジェクトルートへコピー
+                      src_pdf = File.join(dir, "#{target}.pdf")
+                      if File.exist?(src_pdf)
+                        pdfs_mutex.synchronize do
+                          FileUtils.rm_f("#{target}.pdf")
+                          FileUtils.cp(src_pdf, "#{target}.pdf")
+                          generated_pdfs << "#{target}.pdf"
+                          Common.log_success("[Step 7-EXPERIMENT] 章PDF生成: #{target}.pdf")
+                        end
+                      else
+                        Common.log_warn("[Step 7-EXPERIMENT] 出力PDFが見つかりません: #{target}.pdf")
+                      end
+                    end
+                  end
+                rescue => e
+                  Common.log_warn("[Step 7-EXPERIMENT] 章PDF生成でエラー: #{target} (#{e})")
+                end
+              end
+            end
+          end
+          workers.each(&:join)
+
+          # 付録PDF（存在時）
+          appendix_pdf = nil
+          begin
+            if File.exist?('90-appendices.html')
+              BuildHelpers.time_step_for_chapter('90-appendices', 'pdf') do
+                Dir.mktmpdir("vs_cfg_") do |dir|
+                  # プロジェクトルートへのシンボリックリンクを張る
+                  proj_link = File.join(dir, 'proj')
+                  begin
+                    File.symlink(Dir.pwd, proj_link)
+                  rescue
+                    proj_link = Dir.pwd
+                  end
+                  tmp_config = File.join(dir, 'vivliostyle.tmp.config.js')
+                  width, height = BuildHelpers.page_size_strings_from_config
+                  File.open(tmp_config, 'w', encoding: 'utf-8') do |f|
+                    f.puts <<~JS
+                      /** @type {import('@vivliostyle/cli').VivliostyleConfigSchema} */
+                      const vivliostyleConfig = {
+                        title: 'appendices',
+                        author: '#{Common::CONFIG.dig('book', 'author') || ''}',
+                        language: '#{Common::CONFIG.dig('book', 'language') || 'ja'}',
+                        readingProgression: 'ltr',
+                        entry: [ './proj/90-appendices.html' ],
+                        output: [ './90-appendices.pdf' ],
+                        size: '#{width} #{height}'
+                      };
+                      export default vivliostyleConfig;
+                    JS
+                  end
+                  # ユニークポート採番
+                  port = nil
+                  port_mutex.synchronize do
+                    port_counter += 1
+                    port = 13000 + (port_counter % 1000)
+                  end
+                  system('npx', 'vivliostyle', 'build', '-c', tmp_config, '--port', port.to_s, '-d', chdir: dir)
+                  # 移動
+                  src_pdf = File.join(dir, '90-appendices.pdf')
+                  if File.exist?(src_pdf)
+                    FileUtils.rm_f('90-appendices.pdf')
+                    FileUtils.cp(src_pdf, '90-appendices.pdf')
+                  end
+                end
+              end
+              appendix_pdf = '90-appendices.pdf' if File.exist?('90-appendices.pdf')
+            end
+          rescue => e
+            Common.log_warn("[Step 7-EXPERIMENT] 付録PDF生成でエラー: #{e}")
+          end
+
+          # 結合順: 本文章 → 付録（存在時）
+          merge_list = generated_pdfs.sort_by { |p| p[/^(\d+)-/, 1].to_i }
+          merge_list << appendix_pdf if appendix_pdf && File.exist?(appendix_pdf)
+
+          if merge_list.empty?
+            Common.log_warn('[Step 7-EXPERIMENT] 結合対象PDFがありません。')
+            return
+          end
+
+          begin
+            FileUtils.rm_f('chapters_appendices.pdf')
+            cmd = ['bundle', 'exec', 'hexapdf', 'merge', *merge_list, 'chapters_appendices.pdf'].join(' ')
+            merged = system(cmd)
+            if merged && File.exist?('chapters_appendices.pdf')
+              Common.log_success('[Step 7-EXPERIMENT] chapters_appendices.pdf を生成しました（並列章PDF結合）')
+            else
+              Common.log_error('[Step 7-EXPERIMENT] chapters_appendices.pdf の生成に失敗しました')
+            end
+          rescue => e
+            Common.log_warn("[Step 7-EXPERIMENT] PDF結合でエラー: #{e}")
+          end
         end
 
         # 指定PDFの全ページ下部にローマ小を描画（紙面上オーバーレイ）
@@ -591,35 +1030,38 @@ module Vivlio
         # - postface 開始ページ番号を自動設定（可能なら）
         # ================================================================
         def build_front_pages_and_tail!
-          Vivlio::Starter::ThorCLI.start(['create:titlepage'])
-          # legalpage も自動生成（存在しない場合を補完）
-          begin
-            Vivlio::Starter::ThorCLI.start(['create:legalpage'])
-          rescue => e
-            Common.log_warn("[Step 9] legalpage の自動生成に失敗/スキップ: #{e}")
-          end
           %w[pre_process convert post_process entries].each do |t|
             Vivlio::Starter::ThorCLI.start([t, '00-titlepage'])
           end
+          # entries.js 経由で PDF 生成し、出力を 00-titlepage.pdf にリネーム
           Vivlio::Starter::ThorCLI.start(['pdf'])
-          FileUtils.rm_f('titlepage.pdf')
-          if File.exist?('output.pdf')
-            FileUtils.mv('output.pdf', '00-titlepage.pdf')
+          pdf_config   = Common::CONFIG['pdf'] || {}
+          output_pdf   = pdf_config['output_file'] || 'output.pdf'
+          if File.exist?(output_pdf)
+            FileUtils.rm_f('00-titlepage.pdf')
+            FileUtils.mv(output_pdf, '00-titlepage.pdf')
+          end
+          if File.exist?('00-titlepage.pdf')
             Common.log_success('[Step 9] 00-titlepage.pdf を生成しました')
           else
-            Common.log_warn('[Step 9] 00-titlepage の output.pdf が見つかりません')
+            Common.log_warn('[Step 9] 00-titlepage.pdf の生成に失敗しました')
           end
 
           %w[pre_process convert post_process entries].each do |t|
             Vivlio::Starter::ThorCLI.start([t, '01-legalpage'])
           end
+          # entries.js 経由で PDF 生成し、出力を 01-legalpage.pdf にリネーム
           Vivlio::Starter::ThorCLI.start(['pdf'])
-          FileUtils.rm_f('legalpage.pdf')
-          if File.exist?('output.pdf')
-            FileUtils.mv('output.pdf', '01-legalpage.pdf')
+          pdf_config   = Common::CONFIG['pdf'] || {}
+          output_pdf   = pdf_config['output_file'] || 'output.pdf'
+          if File.exist?(output_pdf)
+            FileUtils.rm_f('01-legalpage.pdf')
+            FileUtils.mv(output_pdf, '01-legalpage.pdf')
+          end
+          if File.exist?('01-legalpage.pdf')
             Common.log_success('[Step 9] 01-legalpage.pdf を生成しました')
           else
-            Common.log_warn('[Step 9] 01-legalpage の output.pdf が見つかりません')
+            Common.log_warn('[Step 9] 01-legalpage.pdf の生成に失敗しました')
           end
 
           begin
@@ -664,13 +1106,18 @@ module Vivlio
               %w[pre_process convert post_process entries].each do |t|
                 Vivlio::Starter::ThorCLI.start([t, '98-postface'])
               end
+              # entries.js 経由で PDF 生成し、出力を 98-postface.pdf にリネーム
               Vivlio::Starter::ThorCLI.start(['pdf'])
-              FileUtils.rm_f('postface.pdf')
-              if File.exist?('output.pdf')
-                FileUtils.mv('output.pdf', '98-postface.pdf')
+              pdf_config   = Common::CONFIG['pdf'] || {}
+              output_pdf   = pdf_config['output_file'] || 'output.pdf'
+              if File.exist?(output_pdf)
+                FileUtils.rm_f('98-postface.pdf')
+                FileUtils.mv(output_pdf, '98-postface.pdf')
+              end
+              if File.exist?('98-postface.pdf')
                 Common.log_success('[Step 9] 98-postface.pdf を生成しました')
               else
-                Common.log_warn('[Step 9] 98-postface の output.pdf が見つかりません')
+                Common.log_warn('[Step 9] 98-postface.pdf の生成に失敗しました')
               end
             else
               Common.log_warn('[Step 9] 98-postface.md が見つかりません。後書きPDF生成をスキップします')
@@ -683,13 +1130,18 @@ module Vivlio
           %w[pre_process convert post_process entries].each do |t|
             Vivlio::Starter::ThorCLI.start([t, '99-colophon'])
           end
+          # entries.js 経由で PDF 生成し、出力を 99-colophon.pdf にリネーム
           Vivlio::Starter::ThorCLI.start(['pdf'])
-          FileUtils.rm_f('colophon.pdf')
-          if File.exist?('output.pdf')
-            FileUtils.mv('output.pdf', '99-colophon.pdf')
+          pdf_config   = Common::CONFIG['pdf'] || {}
+          output_pdf   = pdf_config['output_file'] || 'output.pdf'
+          if File.exist?(output_pdf)
+            FileUtils.rm_f('99-colophon.pdf')
+            FileUtils.mv(output_pdf, '99-colophon.pdf')
+          end
+          if File.exist?('99-colophon.pdf')
             Common.log_success('[Step 9] 99-colophon.pdf を生成しました')
           else
-            Common.log_warn('[Step 9] 99-colophon の output.pdf が見つかりません')
+            Common.log_warn('[Step 9] 99-colophon.pdf の生成に失敗しました')
           end
         end
 

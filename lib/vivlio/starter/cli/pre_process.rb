@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'yaml'
+require 'shellwords'
 
 module Vivlio
   module Starter
@@ -57,7 +58,6 @@ module Vivlio
                   Common.log_warn("前処理を中止します")
                   exit(1)
                 end
-
                 files.map { |f| "#{Common::CONTENTS_DIR}/#{f}.md" }
               else
                 # 引数がない場合は全Markdownファイルを処理
@@ -76,6 +76,52 @@ module Vivlio
         end
 
         private
+
+        # 汎用: 画像ライクな指定を解決して CSS 用相対パス/URL を返す
+        # - raw が nil/空の場合は default_when_nil を返す（nil 指定可）
+        # - url("...") / http(s)://... はそのまま返す
+        # - それ以外はファイル名/相対パスとして扱い、images/ 補完・.webp 補完を行う
+        # - .webp が無ければ .png/.jpg/.jpeg を探索し、見つかったディレクトリで vs resize:high を実行
+        # - downcase_if: 与えた正規表現にマッチする場合は小文字化してから解決
+        def resolve_image_path(raw, default_when_nil:, downcase_if: nil)
+          return default_when_nil if raw.nil? || raw.to_s.strip.empty?
+
+          s = raw.to_s.strip
+          return s if s =~ /^url\(/i || s =~ /^https?:\/\//i
+
+          path = s
+          path = path.downcase if downcase_if && path =~ downcase_if
+          path = "images/#{path}" unless path.include?("/")
+
+          styles_dir = Common::STYLESHEETS_DIR
+          abs_path   = File.join(styles_dir, path)
+          base_noext = File.extname(abs_path).empty? ? abs_path : abs_path.sub(/\.[^.]+\z/, '')
+          webp_abs   = base_noext + '.webp'
+
+          unless File.exist?(webp_abs)
+            candidates = [base_noext + '.png', base_noext + '.jpg', base_noext + '.jpeg']
+            src = candidates.find { |p| File.exist?(p) }
+            if src
+              dir = File.dirname(src)
+              Common.log_action("WebP を生成します: #{File.basename(src)} → #{File.basename(webp_abs)}")
+              system("vs resize:high #{Shellwords.escape(dir)}")
+            end
+          end
+
+          rel = base_noext.sub(%r{\A#{Regexp.escape(styles_dir)}/}, '')
+          rel += '.webp'
+          rel
+        end
+
+        # frontispiece (扉絵) の解決（未指定時は door2.webp を返す）
+        def resolve_frontispiece_path(raw)
+          resolve_image_path(raw, default_when_nil: 'images/door2.webp', downcase_if: /^door[1-7]$/i)
+        end
+
+        # ornament (節見出し背景) の解決（未指定時は frame-yellow.webp を返す）
+        def resolve_ornament_path(raw)
+          resolve_image_path(raw, default_when_nil: 'images/frame-yellow.webp', downcase_if: /^frame-[a-z0-9_-]+$/i)
+        end
 
         # 拡張子→言語の対応表
         EXT_TO_LANG = {
@@ -394,17 +440,32 @@ module Vivlio
         def generate_frontmatter(file_type, chapter_num = nil, existing_frontmatter = {})
           # ファイルタイプに対応する基本スタイルシート
           # 設定キー: theme.color（必須ではないが、指定時は厳密に検証）
-          theme_name = begin
+          theme_name, theme_accent_value = begin
             cfg = Common::CONFIG
             raw = (cfg && cfg['theme'] && cfg['theme']['color'])
-            t = raw.to_s.strip.downcase
-            allowed = %w[yellow blue red green purple]
+            s = raw.to_s.strip
+            t = s.downcase
+            allowed = %w[yellow orange amber red magenta purple indigo blue cyan teal green lime]
+            hex_ok      = t.match(/^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i)
+            hex_bare_ok = t.match(/^(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i)
+            hex_0x_ok   = t.match(/^0x(?:[0-9a-f]{6}|[0-9a-f]{8})$/i)
             if t.empty?
-              'yellow'
+              ['yellow', 'var(--accent-yellow)']
+            elsif hex_ok
+              # HEX 指定があればそのまま CSS 値として適用
+              [t, t]
+            elsif hex_bare_ok
+              # 先頭#なし（ff0000 / f00 / rrggbbaa）にも対応
+              normalized = "#" + t
+              [normalized, normalized]
+            elsif hex_0x_ok
+              # 0xRRGGBB / 0xRRGGBBAA にも対応
+              normalized = "#" + t.sub(/^0x/i, '')
+              [normalized, normalized]
             elsif allowed.include?(t)
-              t
+              [t, "var(--accent-#{t})"]
             else
-              Common.log_error("設定エラー: theme.color は #{allowed.join('/')} のいずれかを指定してください（現在: '#{raw}'）。ファイル: #{Common::CONFIG_FILE}")
+              Common.log_error("設定エラー: theme.color は #{allowed.join('/')} または #rrggbb/#rrggbbaa のHEXを指定してください（現在: '#{raw}'）。ファイル: #{Common::CONFIG_FILE}")
               exit 1
             end
           end
@@ -421,34 +482,24 @@ module Vivlio
 
           # theme.color の救済は行わない（不正値は直前でエラー終了）
 
-          # 扉画像の選択
-          door_token = begin
-            cfg = Common::CONFIG
-            raw = (cfg && cfg['theme'] && cfg['theme']['door'])
-            if raw.nil?
-              'door2'
-            else
-              s = raw.to_s.strip.downcase
-              if s =~ /^door([1-7])$/
-                "door#{$1}"
-              elsif s =~ /^[1-7]$/
-                "door#{s}"
-              else
-                'door2'
-              end
-            end
-          rescue
-            'door2'
-          end
+          # 扉画像の選択（frontispiece のみを使用）
+          # - 受理形式:
+          #   1) ファイルパス/ファイル名（拡張子省略時は .webp を補う）
+          #   2) http(s) URL（そのまま使用）
+          #   3) url("...") 文字列（そのまま使用）
+          cfg = Common::CONFIG
+          theme_cfg = (cfg && cfg['theme']) || {}
+          frontispiece_path = resolve_frontispiece_path(theme_cfg['frontispiece'])
 
           # テーマCSSを更新
           begin
             theme_css_path = File.join(Common::STYLESHEETS_DIR, 'theme.css')
             css = File.read(theme_css_path, encoding: 'utf-8')
 
-            css = css.gsub(/(--theme-accent:\s*var\()(--accent-[^)]+)(\)\s*;)/) do
-              pre, _old, post = $1, $2, $3
-              "#{pre}--accent-#{theme_name}#{post}"
+            # --theme-accent を named の場合は var(--accent-<name>)、HEX の場合は生の色に設定
+            css = css.sub(/(--theme-accent:\s*)[^;]+(\s*;)/) do
+              pre, post = $1, $2
+              "#{pre}#{theme_accent_value}#{post}"
             end
 
             # 強調色・強意の下線色もテーマアクセントに追従させる
@@ -462,19 +513,42 @@ module Vivlio
             else
               # 画像ありスタイル（従来通り）
               # none でも url("...") でも置換できるように包括的なパターンで上書き
-              css = css.sub(/(--section-bg-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
-                pre, post = $1, $2
-                "#{pre}url(\"images/frame-#{theme_name}.webp\")#{post}"
+              # ornament の指定があればそれを優先。なければ従来のテーマ色マップ
+              ornament_path = resolve_ornament_path(theme_cfg['ornament'])
+              if ornament_path
+                ornament_value = if ornament_path =~ /^url\(/i
+                                    ornament_path
+                                  else
+                                    "url(\"#{ornament_path}\")"
+                                  end
+                css = css.sub(/(--section-bg-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
+                  pre, post = $1, $2
+                  "#{pre}#{ornament_value}#{post}"
+                end
+              else
+                # ornament 未指定時は既定の frame-yellow.webp を使用
+                css = css.sub(/(--section-bg-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
+                  pre, post = $1, $2
+                  "#{pre}url(\"images/frame-yellow.webp\")#{post}"
+                end
               end
+
+              # frontispiece_path は url(...) / http(s) / 相対パスのいずれか。
+              # CSS の値として url("...") を組み立てる（url(...) が既に含まれていればそのまま）。
+              door_value = if frontispiece_path =~ /^url\(/i
+                              frontispiece_path
+                            else
+                              "url(\"#{frontispiece_path}\")"
+                            end
 
               css = css.sub(/(--chapter-door-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
                 pre, post = $1, $2
-                "#{pre}url(\"images/#{door_token}.webp\")#{post}"
+                "#{pre}#{door_value}#{post}"
               end
             end
 
             File.write(theme_css_path, css, encoding: 'utf-8')
-            Common.log_success("theme.css を更新: theme=#{theme_name}, style=#{theme_style}, door=#{door_token}")
+            Common.log_success("theme.css を更新: theme=#{theme_name}, style=#{theme_style}, door=#{frontispiece_path}, ornament=#{theme_cfg['ornament']}")
           rescue => _e
             # 失敗しても前処理は継続
           end
