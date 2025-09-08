@@ -34,6 +34,8 @@ module Vivlio
             else
               ENV['VIVLIO_SINGLE_DOC'] = prev
             end
+          end
+        end
 
         # ================================================================
         # Plan A: chapters_appendices.pdf から章ごとPDFを切り出し・キャッシュ
