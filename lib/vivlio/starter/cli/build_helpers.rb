@@ -1031,6 +1031,7 @@ module Vivlio
         # - postface 開始ページ番号を自動設定（可能なら）
         # ================================================================
         def build_front_pages_and_tail!(force = false)
+          front_regenerated = false
           # 判定ヘルパ
           front_srcs = [
             File.join(Common::CONTENTS_DIR, '00-titlepage.md'),
@@ -1082,6 +1083,7 @@ module Vivlio
                   Common.log_warn("[Step 9] フロントPDFのキャッシュ保存に失敗: #{e}")
                 end
               end
+              front_regenerated = true
             else
               Common.log_warn("[Step 9] #{front_pdf} の生成に失敗しました")
             end
@@ -1103,35 +1105,34 @@ module Vivlio
                 Common.log_warn("[Step 9] キャッシュからの復元に失敗: #{e}")
               end
             end
-            # フロントが最新であれば奥付も最新という前提に基づき、ここで終了
-            return
+            # フロントが最新でも、後書き(postface)の生成はこの後に続行する
           end
 
           # ここから奥付の生成（フロントを再生成した場合は必ず奥付も再生成）
-          %w[pre_process convert post_process entries].each do |t|
-            Vivlio::Starter::ThorCLI.start([t, '99-colophon'])
-          end
-          Vivlio::Starter::ThorCLI.start(['pdf'])
-          pdf_config   = Common::CONFIG['pdf'] || {}
-          output_pdf   = pdf_config['output_file'] || 'output.pdf'
-          if File.exist?(output_pdf)
-            FileUtils.rm_f('99-colophon.pdf')
-            FileUtils.mv(output_pdf, '99-colophon.pdf')
-            # キャッシュへ保存
-            if cache_on
-              begin
-                colo_cache = File.join(cache_dir, '99-colophon.pdf')
-                FileUtils.cp('99-colophon.pdf', colo_cache)
-                Common.log_info("[Step 9] キャッシュへ保存しました: #{colo_cache}")
-              rescue => e
-                Common.log_warn("[Step 9] 奥付PDFのキャッシュ保存に失敗: #{e}")
+          if front_regenerated
+            %w[pre_process convert post_process entries].each do |t|
+              Vivlio::Starter::ThorCLI.start([t, '99-colophon'])
+            end
+            Vivlio::Starter::ThorCLI.start(['pdf'])
+            pdf_config   = Common::CONFIG['pdf'] || {}
+            output_pdf   = pdf_config['output_file'] || 'output.pdf'
+            if File.exist?(output_pdf)
+              FileUtils.rm_f('99-colophon.pdf')
+              FileUtils.mv(output_pdf, '99-colophon.pdf')
+              Common.log_success('[Step 9] 99-colophon.pdf を生成しました')
+              # キャッシュへ保存
+              if cache_on
+                begin
+                  colo_cache = File.join(cache_dir, '99-colophon.pdf')
+                  FileUtils.cp('99-colophon.pdf', colo_cache)
+                  Common.log_info("[Step 9] キャッシュへ保存しました: #{colo_cache}")
+                rescue => e
+                  Common.log_warn("[Step 9] 奥付PDFのキャッシュ保存に失敗: #{e}")
+                end
               end
             end
-          end
-          if File.exist?('99-colophon.pdf')
-            Common.log_success('[Step 9] 99-colophon.pdf を生成しました')
           else
-            Common.log_warn('[Step 9] 99-colophon.pdf の生成に失敗しました')
+            Common.log_info('[Step 9] フロントが最新のため、奥付の再生成はスキップしました（キャッシュ/既存を利用）')
           end
 
           begin
@@ -1195,23 +1196,7 @@ module Vivlio
           rescue => e
             Common.log_warn("[Step 9] 98-postface の生成でエラー: #{e}")
           end
-
-          %w[pre_process convert post_process entries].each do |t|
-            Vivlio::Starter::ThorCLI.start([t, '99-colophon'])
-          end
-          # entries.js 経由で PDF 生成し、出力を 99-colophon.pdf にリネーム
-          Vivlio::Starter::ThorCLI.start(['pdf'])
-          pdf_config   = Common::CONFIG['pdf'] || {}
-          output_pdf   = pdf_config['output_file'] || 'output.pdf'
-          if File.exist?(output_pdf)
-            FileUtils.rm_f('99-colophon.pdf')
-            FileUtils.mv(output_pdf, '99-colophon.pdf')
-          end
-          if File.exist?('99-colophon.pdf')
-            Common.log_success('[Step 9] 99-colophon.pdf を生成しました')
-          else
-            Common.log_warn('[Step 9] 99-colophon.pdf の生成に失敗しました')
-          end
+          # （重複していた奥付再生成ブロックを削除。必要時は上で実行済み）
         end
 
         # ================================================================
@@ -1230,7 +1215,17 @@ module Vivlio
           ]
           existing_files = files_to_merge.select { |f| File.exist?(f) }
           missing_files  = files_to_merge - existing_files
-          Common.log_warn("[Step 10] 結合対象が見つかりません: #{missing_files.join(', ')}") if missing_files.any?
+          # 任意ファイル（存在しなくても正常）
+          optional_files = ['98-postface.pdf']
+          missing_required = missing_files - optional_files
+          if missing_required.any?
+            Common.log_warn("[Step 10] 結合対象が見つかりません: #{missing_required.join(', ')}")
+          end
+          # 任意欠落は情報として出すに留める
+          missing_optional = missing_files & optional_files
+          if missing_optional.any?
+            Common.log_info("[Step 10] 任意のPDFが見つかりません（スキップ）: #{missing_optional.join(', ')}")
+          end
           if existing_files.empty?
             Common.log_error('[Step 10] 結合対象PDFがありません。処理を中止します')
             return
