@@ -63,40 +63,32 @@ module Vivlio
             return false
           end
 
-          # 各章単体のページ数を計測（一時的に単一HTML→単一PDFを生成）
-          require 'tmpdir'
-          page_counts = []
-          temp_pdfs = []
-          basenames.each do |bn|
-            html = "#{bn}.html"
-            tmp_pdf = nil
-            Dir.mktmpdir("vs_ch_") do |dir|
-              tmp_pdf = File.join(dir, "#{bn}.pdf")
-              ok = BuildHelpers.build_single_html_to_pdf!(html, tmp_pdf)
-              if ok && File.exist?(tmp_pdf)
-                c = (BuildHelpers.page_count(tmp_pdf) || '0').to_i
-                page_counts << c
-                temp_pdfs << tmp_pdf
-                Common.log_info("[PlanA] #{bn} 単体ページ数: #{c}")
+          # 章開始ページを PDF 本文からマーカーで検出（pdftotext 必須）
+          ranges = []
+          starts = nil
+          if system('which pdftotext >/dev/null 2>&1')
+            starts = BuildHelpers.detect_chapter_starts_by_markers(body_pdf, basenames)
+          end
+          if starts && starts.any?
+            # start の昇順に並び替え、安全に end を決定（次の start - 1）
+            ordered = starts.sort_by { |bn, p| p || 10**9 }
+            ordered.each_with_index do |(bn, s), i|
+              if s
+                e = if i + 1 < ordered.size
+                      nxt = ordered[i+1][1]
+                      nxt ? (nxt - 1) : nil
+                    else
+                      # 最終章の終端は本文PDFの総ページ数
+                      (BuildHelpers.page_count(body_pdf) || '0').to_i
+                    end
+                ranges << [bn, s, e]
               else
-                page_counts << 0
-                Common.log_warn("[PlanA] #{bn} 単体PDFの生成に失敗（ページ数0として扱います）")
+                ranges << [bn, nil, nil]
               end
             end
-          end
-
-          # 範囲テーブルを組み立て（1-origin）
-          ranges = []
-          current = 1
-          basenames.zip(page_counts).each do |bn, cnt|
-            if cnt.to_i > 0
-              start_p = current
-              end_p   = current + cnt.to_i - 1
-              ranges << [bn, start_p, end_p]
-              current = end_p + 1
-            else
-              ranges << [bn, nil, nil]
-            end
+          else
+            Common.log_warn('[PlanA] マーカー検出に失敗したため、章単体のページ数推定はスキップします（分割を行いません）')
+            return false
           end
 
           # 出力ディレクトリ（キャッシュ）
@@ -139,8 +131,54 @@ module Vivlio
           Common.log_warn("[PlanA] 章別切り出しでエラー: #{e}")
           false
         end
+
+        # 章HTMLに不可視のマーカーを先頭注入（VS-CHAPTER: <basename>）
+        def inject_chapter_markers!(basenames)
+          basenames.each do |bn|
+            path = "#{bn}.html"
+            next unless File.exist?(path)
+            begin
+              html = File.read(path, encoding: 'utf-8')
+              marker_text = "VS-CHAPTER: #{bn}"
+              next if html.include?(marker_text)
+              # <body> 直後に不可視マーカーを挿入（PDFにテキストとして描画される必要があるため、オフページ配置は避ける）
+              # 視認困難な極小かつ白文字で流し込み、版面には影響を与えない
+              marker = %Q{<div class="vs-ch-marker" style="font-size:0.1pt; line-height:0; color:#ffffff">#{marker_text}</div>}
+              if html =~ /<body[^>]*>/i
+                html.sub!(/(<body[^>]*>)/i, "\\1\n#{marker}\n")
+              else
+                # body が見つからない場合は先頭に挿入
+                html = marker + "\n" + html
+              end
+              File.write(path, html, encoding: 'utf-8')
+              Common.log_info("[PlanA] マーカーを注入しました: #{bn}.html")
+            rescue => e
+              Common.log_warn("[PlanA] マーカー注入に失敗: #{path} (#{e})")
+            end
           end
         end
+
+        # pdftotext を用いて本文PDFの各ページからマーカーを探索し章開始ページを返す
+        # 戻り値: { '11-install' => 5, ... } の Hash
+        def detect_chapter_starts_by_markers(pdf_path, basenames)
+          total = (BuildHelpers.page_count(pdf_path) || '0').to_i
+          return {} if total <= 0
+          targets = basenames.map { |bn| [bn, "VS-CHAPTER: #{bn}"] }.to_h
+          found = {}
+          (1..total).each do |p|
+            text = `pdftotext -f #{p} -l #{p} "#{pdf_path}" - 2>/dev/null`
+            basenames.each do |bn|
+              next if found.key?(bn)
+              marker = targets[bn]
+              if text.include?(marker)
+                found[bn] = p
+              end
+            end
+            break if found.size == basenames.size
+          end
+          found
+        end
+
 
         # 単一HTMLを単独PDFにする補助（一時config + single-docで直接ビルド）
         # html: プロジェクトルート相対の HTML パス（例: '00-titlepage.html')
@@ -530,6 +568,8 @@ module Vivlio
                 end
               end
             end
+            # 章HTMLへ不可視マーカーを注入（VS-CHAPTER: <basename>）
+            BuildHelpers.inject_chapter_markers!(chapter_targets)
             return
           end
 
@@ -565,6 +605,8 @@ module Vivlio
             end
           end
           workers.each(&:join)
+          # 章HTMLへ不可視マーカーを注入（VS-CHAPTER: <basename>）
+          BuildHelpers.inject_chapter_markers!(chapter_targets)
         rescue => e
           Common.log_warn("[Step 5] 章ビルドでエラー: #{e}")
         end
