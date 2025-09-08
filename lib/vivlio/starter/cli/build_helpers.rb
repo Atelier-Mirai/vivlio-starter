@@ -34,6 +34,109 @@ module Vivlio
             else
               ENV['VIVLIO_SINGLE_DOC'] = prev
             end
+
+        # ================================================================
+        # Plan A: chapters_appendices.pdf から章ごとPDFを切り出し・キャッシュ
+        # ------------------------------------------------
+        # - 範囲決定: 章単体PDF（temporary）を生成しページ数を計測して合計 → 範囲を決定
+        #   （将来: アウトラインが取得できる場合はそれを優先）
+        # - 切り出し: qpdf で chapters_appendices.pdf から各章範囲を抽出
+        # - キャッシュ: .cache/vs/chapters/<basename>.pdf に保存
+        # - 実験用: 第1〜8章を .cache/vs/experiments/split_chapters/<timestamp>/ に複製
+        # ================================================================
+        def split_and_cache_chapters_from_body_pdf!(body_pdf, keep = nil)
+          unless File.exist?(body_pdf)
+            Common.log_warn("[PlanA] 本文PDF(#{body_pdf})が見つかりません。章別切り出しをスキップします")
+            return false
+          end
+          unless system('which qpdf >/dev/null 2>&1')
+            Common.log_warn('[PlanA] qpdf が見つかりません。`brew install qpdf` でインストールしてください。章別切り出しをスキップします')
+            return false
+          end
+
+          # 章順（basename配列）と番号
+          basenames = BuildHelpers.main_text_basenames(keep)
+          if basenames.empty?
+            Common.log_info('[PlanA] 章候補がありません（11..89）。章別切り出しをスキップします')
+            return false
+          end
+
+          # 各章単体のページ数を計測（一時的に単一HTML→単一PDFを生成）
+          require 'tmpdir'
+          page_counts = []
+          temp_pdfs = []
+          basenames.each do |bn|
+            html = "#{bn}.html"
+            tmp_pdf = nil
+            Dir.mktmpdir("vs_ch_") do |dir|
+              tmp_pdf = File.join(dir, "#{bn}.pdf")
+              ok = BuildHelpers.build_single_html_to_pdf!(html, tmp_pdf)
+              if ok && File.exist?(tmp_pdf)
+                c = (BuildHelpers.page_count(tmp_pdf) || '0').to_i
+                page_counts << c
+                temp_pdfs << tmp_pdf
+                Common.log_info("[PlanA] #{bn} 単体ページ数: #{c}")
+              else
+                page_counts << 0
+                Common.log_warn("[PlanA] #{bn} 単体PDFの生成に失敗（ページ数0として扱います）")
+              end
+            end
+          end
+
+          # 範囲テーブルを組み立て（1-origin）
+          ranges = []
+          current = 1
+          basenames.zip(page_counts).each do |bn, cnt|
+            if cnt.to_i > 0
+              start_p = current
+              end_p   = current + cnt.to_i - 1
+              ranges << [bn, start_p, end_p]
+              current = end_p + 1
+            else
+              ranges << [bn, nil, nil]
+            end
+          end
+
+          # 出力ディレクトリ（キャッシュ）
+          cache_dir = File.join('.cache', 'vs', 'chapters')
+          FileUtils.mkdir_p(cache_dir)
+
+          # 実験用ディレクトリ（第1〜8章コピー先）
+          ts = Time.now.strftime('%Y%m%d-%H%M%S') rescue ('now')
+          experiment_dir = File.join('.cache', 'vs', 'experiments', 'split_chapters', ts)
+          FileUtils.mkdir_p(experiment_dir)
+
+          # 切り出し実行
+          ranges.each_with_index do |(bn, s, e), idx|
+            out_pdf = File.join(cache_dir, "#{bn}.pdf")
+            if s && e && e >= s
+              Common.log_action("[PlanA] 切り出し: #{bn} (#{s}-#{e}) → #{out_pdf}")
+              FileUtils.rm_f(out_pdf)
+              ok = system(%(qpdf "#{body_pdf}" --pages "#{body_pdf}" #{s}-#{e} -- "#{out_pdf}"))
+              if ok && File.exist?(out_pdf)
+                Common.log_success("[PlanA] 章PDFをキャッシュしました: #{out_pdf}")
+                # 実験用に第1〜8章を複製
+                if idx < 8
+                  begin
+                    FileUtils.cp(out_pdf, File.join(experiment_dir, File.basename(out_pdf)))
+                  rescue => e
+                    Common.log_warn("[PlanA] 実験用コピーに失敗: #{out_pdf} (#{e})")
+                  end
+                end
+              else
+                Common.log_warn("[PlanA] 切り出しに失敗: #{bn} (#{s}-#{e})")
+              end
+            else
+              Common.log_warn("[PlanA] 範囲が無効のためスキップ: #{bn} (#{s}-#{e})")
+            end
+          end
+
+          Common.log_success("[PlanA] 章別PDFの切り出し・キャッシュが完了しました（キャッシュ: #{cache_dir}、検証: #{experiment_dir}）")
+          true
+        rescue => e
+          Common.log_warn("[PlanA] 章別切り出しでエラー: #{e}")
+          false
+        end
           end
         end
 
@@ -550,7 +653,7 @@ module Vivlio
                                chapter_htmls_for_pdf + appendix_html_for_pdf + toc_html
                              end
 
-          BuildHelpers.compile_overall_pdf_and_split!(targets_for_pdf)
+          BuildHelpers.compile_overall_pdf_and_split!(targets_for_pdf, keep)
         rescue => e
           Common.log_warn("[Step 7] 章PDF化/分割でエラー: #{e}")
         end
@@ -643,7 +746,7 @@ module Vivlio
                                [combined_path] + appendix_html_for_pdf + toc_html
                              end
 
-          BuildHelpers.compile_overall_pdf_and_split!(targets_for_pdf)
+          BuildHelpers.compile_overall_pdf_and_split!(targets_for_pdf, keep)
         rescue => e
           Common.log_warn("[Step 7] 結合 chapters.html でのPDF生成に失敗: #{e}")
         end
@@ -655,7 +758,7 @@ module Vivlio
         # - 03-toc.pdf のページ数取得
         # - qpdf により本文+付録と frontmatter に分割
         # ================================================================
-        def compile_overall_pdf_and_split!(targets_for_pdf)
+        def compile_overall_pdf_and_split!(targets_for_pdf, keep = nil)
           if targets_for_pdf.empty?
             Common.log_warn('[Step 7] 対象HTMLが見つかりません。Step 7 をスキップします。')
             return
@@ -684,6 +787,15 @@ module Vivlio
             '03-toc.pdf',
             'chapters_appendices.pdf'
           )
+
+          # 章ごとPDFの切り出しとキャッシュ（Plan A 実験）
+          begin
+            BuildHelpers.split_and_cache_chapters_from_body_pdf!(
+              'chapters_appendices.pdf', keep
+            )
+          rescue => e
+            Common.log_warn("[Step 7] 章別PDFの切り出し・キャッシュでエラー: #{e}")
+          end
         end
 
         # ================================================================
