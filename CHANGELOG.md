@@ -11,6 +11,11 @@
 
 
 #### ビルド/出力
+
+00, 01, 11-98, 02, 03, 99 で一括生成 (vivliostyle cli 一回呼び出しでpdf生成)
+00, 01, 02, 03, 11-98, 99 に並び替え。02-03 の頁番号をローマ数字小文字に付け替える。
+00, 01, (blank), 02, (blank), 03, (blank), 11-89, (blank), 91-97(blank), 99 として結合
+
 - [Medium] book.yml の chapters を、contents/と連動するように。
 - [High] 奥付が偶数ページになるように
 - [High] 縦に長い表のレイアウト崩れ
@@ -48,61 +53,49 @@
 
 ## [Unreleased]
 
+### Added
+- なし
 
-次のステップ（ご相談）
+### Changed
+- なし
 
-段階2（章PDFの個別キャッシュ）
-安定に導入するため、Step 7 のどの方式に載せるか整理が必要です。
-現行の「entries → output.pdf → split」の分割結果から章ごと PDF を切り出してキャッシュに保存・再利用する方式
-もしくは「章ごと PDF を生成 → merge」に寄せる方式（既存の実験関数 
-build_chapter_pdfs_in_parallel_and_merge!
- をベースに拡充）
-いずれの方式でも「付録の右ページ開始」「TOC/前付けのパリティ調整」との整合を確保します。
-ご希望の方針（分割ベース vs 章別生成ベース）をお知らせいただければ、その方針で段階2をまとめて実装します。
-ご要望があれば、段階2の詳細設計（ハッシュキーの定義、再生成判定、結合時の並び・パリティ調整）まで一気に実装します。
+### Fixed
+- なし
 
-段階1（初期導入）
-保存先だけ .cache/vs/ に変更（front/colophon/将来的に章PDF）。
-結合時は .cache/vs/... からルートに所定名でコピーして使う。
-設定：cache.enabled（既定: true）、
-     false または --forceオプション指定時は、キャッシュを使わずに生成する。
-     cache.dir（既定: .cache/vs/）。
 
-段階2（最適化）
-章PDFを個別キャッシュ（例: .cache/vs/11-install-<hash>.pdf）。
-全体結合時は変更章のみ再生成、
-他はキャッシュから展開。
-
-段階3（メンテナンス）
-vs clean:cache サブコマンド追加。
+## [0.9.0] - 2025-09-09
 
 ### Added
-- `merge:html OUT FILES...` を追加（`lib/vivlio/starter/cli/merge.rb`）。任意の複数 HTML を結合して単一 HTML を生成します。
-  - 先頭ファイルの `<html lang>` / `<title>` を採用し、全入力の `<link rel="stylesheet">` を重複排除して集約。
-  - `lib/vivlio/starter/cli.rb` に `map 'merge:html' => 'merge_html'` を追加し、コロン表記で呼び出し可能に。
+- PDF アウトライン（ブックマーク）実装
+  - 11-89(章)HTML 見出しから PDF アウトラインを付与できるようにしました。
+  - 実装: `post_process` による見出しメタ（`class="vs-h-marker"` と `data-heading`/`data-hN`）の付与を徹底。
  - キャッシュ設定を追加（段階1）: `cache.enabled`（既定: true）, `cache.dir`（既定: `.cache/vs`）。
  - `clean:cache` コマンドを追加（段階3）: キャッシュディレクトリのみを安全に削除。
- - 真偽値の柔軟解釈ヘルパ `Common.truthy?`/`falsey?` と `Common.fetch_bool` を追加（`yes`/`no`, `on`/`off`, `1`/`0` を解釈）。
-   - 本ヘルパは今後の全設定キーで共通利用可能。
-   - 現時点での適用箇所: `pdf.quiet`, `pdf.single_doc`, `pdf.close_existing_windows`, `cache.enabled`。
+ - 真偽値の柔軟解釈ヘルパ `Common.truthy?`/`falsey?` と `Common.fetch_bool` を追加（`yes`/`no`, `on`/`off`, `1`/`0`）。
+   - 現時点の適用箇所: `pdf.quiet`, `pdf.single_doc`, `pdf.close_existing_windows`, `cache.enabled`。
+
+### Removed
+- Plan A（章別PDFの分割/キャッシュ）を廃止し、関連コードを削除。
+  - 削除: `split_and_cache_chapters_from_body_pdf!` / `detect_chapter_starts_by_markers`
+  - Step 7 内の Plan A 呼び出しも削除
+- Step 7 (Alternative) の実験実装（chapters.html に結合してから PDF 生成）を削除。
 
 ### Changed
 - Step 9（`build_helpers.build_front_pages_and_tail!`）の再生成条件を整理。
   - フロント（00/01）PDF のキャッシュ判定に `config/book.yml` の mtime を含め、book 情報更新で確実に再生成。
   - 再生成が必要な場合のみ `create:titlepage`/`create:legalpage`/`create:colophon` を呼び出し、常に `--force` で上書き（スキップ警告を抑止）。
-- 00/01 の結合方式を一時的に「単一 HTML にマージして単一 entry 化」へ変更したのち、レイアウト影響（改ページ/センタリング等）を鑑み、元の「entries に 2 本の HTML を渡す」方式へ戻しました。
-  - 現在は `entries 00-titlepage.html 01-legalpage.html` → `pdf` → `00-01-front.pdf` リネームのフローに確定。
+- 00/01 の結合方式は最終的に「entries に 2 本の HTML を渡す」方式に確定（`entries 00-titlepage.html 01-legalpage.html` → `pdf` → `00-01-front.pdf`）。
 - Step 9 のキャッシュロジックを簡素化。
   - フロントPDFが最新の場合は、その時点で Step 9 を終了（奥付も最新とみなす）。
   - フロントを再生成した場合は、奥付も必ず再生成。
-- ログ文言の調整。
-  - フロント/奥付が最新の場合のメッセージを併記表現に変更。
- - front/colophon PDF を `.cache/vs/` にキャッシュ保存し、再生成不要時は必要に応じてキャッシュから復元（段階1）。`--force` 指定時はキャッシュ不使用。
+- front/colophon PDF を `.cache/vs/` にキャッシュ保存し、再生成不要時は必要に応じてキャッシュから復元（段階1）。`--force` 指定時はキャッシュ不使用。
 
 ### Fixed
 - `create:colophon` を `--force` なしで呼び出してしまい「既に存在するためスキップ」の警告が出る問題を解消。
 - Step 9 で奥付 PDF 生成時のリネーム処理を整理（`output.pdf` → `99-colophon.pdf` の単一移動に統一）。
 
+### Notes
+本リリースでは、章別PDFの分割/キャッシュ（旧 Plan A）を正式に廃止しました。将来的な最適化は「論理フィルタ（book.yml chapters）を前提とした通常フロー」の改善に集約し、必要であれば Experimental な「章別並列生成→結合（`build_chapter_pdfs_in_parallel_and_merge!`）」の強化で対応します。キャッシュ方針は次のとおりです: Plan A（分割ベースの章別キャッシュ）は撤回済み。一方で、Plan B（章別並列生成→結合ベース）の章単位キャッシュ計画は継続検討中です。front/colophon 等の再生成短縮キャッシュは引き続き有効です。
 
 ## [0.8.2] - 2025-09-07
 
@@ -332,7 +325,8 @@ vs clean:cache サブコマンド追加。
 - バージョンファイル追加: `lib/vivlio/starter/version.rb`（0.1.0）
 - README にインストール方法・CLI の使い方・リリース手順を追記
 
-[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.8.2...HEAD
+[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.8.2...v0.9.0
 [0.8.2]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.8.1...v0.8.2
 [0.8.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.7.0...v0.7.1

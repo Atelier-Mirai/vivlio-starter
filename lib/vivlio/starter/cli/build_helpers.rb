@@ -3,6 +3,7 @@
 require 'rbconfig'
 require 'fileutils'
 require 'hexapdf'
+require 'nokogiri'
 require 'time'
 
 module Vivlio
@@ -37,147 +38,11 @@ module Vivlio
           end
         end
 
-        # ================================================================
-        # Plan A: chapters_appendices.pdf から章ごとPDFを切り出し・キャッシュ
-        # ------------------------------------------------
-        # - 範囲決定: 章単体PDF（temporary）を生成しページ数を計測して合計 → 範囲を決定
-        #   （将来: アウトラインが取得できる場合はそれを優先）
-        # - 切り出し: qpdf で chapters_appendices.pdf から各章範囲を抽出
-        # - キャッシュ: .cache/vs/chapters/<basename>.pdf に保存
-        # - 実験用: 第1〜8章を .cache/vs/experiments/split_chapters/<timestamp>/ に複製
-        # ================================================================
-        def split_and_cache_chapters_from_body_pdf!(body_pdf, keep = nil)
-          unless File.exist?(body_pdf)
-            Common.log_warn("[PlanA] 本文PDF(#{body_pdf})が見つかりません。章別切り出しをスキップします")
-            return false
-          end
-          unless system('which qpdf >/dev/null 2>&1')
-            Common.log_warn('[PlanA] qpdf が見つかりません。`brew install qpdf` でインストールしてください。章別切り出しをスキップします')
-            return false
-          end
+        
 
-          # 章順（basename配列）と番号
-          basenames = BuildHelpers.main_text_basenames(keep)
-          if basenames.empty?
-            Common.log_info('[PlanA] 章候補がありません（11..89）。章別切り出しをスキップします')
-            return false
-          end
+        
 
-          # 章開始ページを PDF 本文からマーカーで検出（pdftotext 必須）
-          ranges = []
-          starts = nil
-          if system('which pdftotext >/dev/null 2>&1')
-            starts = BuildHelpers.detect_chapter_starts_by_markers(body_pdf, basenames)
-          end
-          if starts && starts.any?
-            # start の昇順に並び替え、安全に end を決定（次の start - 1）
-            ordered = starts.sort_by { |bn, p| p || 10**9 }
-            ordered.each_with_index do |(bn, s), i|
-              if s
-                e = if i + 1 < ordered.size
-                      nxt = ordered[i+1][1]
-                      nxt ? (nxt - 1) : nil
-                    else
-                      # 最終章の終端は本文PDFの総ページ数
-                      (BuildHelpers.page_count(body_pdf) || '0').to_i
-                    end
-                ranges << [bn, s, e]
-              else
-                ranges << [bn, nil, nil]
-              end
-            end
-          else
-            Common.log_warn('[PlanA] マーカー検出に失敗したため、章単体のページ数推定はスキップします（分割を行いません）')
-            return false
-          end
-
-          # 出力ディレクトリ（キャッシュ）
-          cache_dir = File.join('.cache', 'vs', 'chapters')
-          FileUtils.mkdir_p(cache_dir)
-
-          # 実験用ディレクトリ（第1〜8章コピー先）
-          ts = Time.now.strftime('%Y%m%d-%H%M%S') rescue ('now')
-          experiment_dir = File.join('.cache', 'vs', 'experiments', 'split_chapters', ts)
-          FileUtils.mkdir_p(experiment_dir)
-
-          # 切り出し実行
-          ranges.each_with_index do |(bn, s, e), idx|
-            out_pdf = File.join(cache_dir, "#{bn}.pdf")
-            if s && e && e >= s
-              Common.log_action("[PlanA] 切り出し: #{bn} (#{s}-#{e}) → #{out_pdf}")
-              FileUtils.rm_f(out_pdf)
-              ok = system(%(qpdf "#{body_pdf}" --pages "#{body_pdf}" #{s}-#{e} -- "#{out_pdf}"))
-              if ok && File.exist?(out_pdf)
-                Common.log_success("[PlanA] 章PDFをキャッシュしました: #{out_pdf}")
-                # 実験用に第1〜8章を複製
-                if idx < 8
-                  begin
-                    FileUtils.cp(out_pdf, File.join(experiment_dir, File.basename(out_pdf)))
-                  rescue => e
-                    Common.log_warn("[PlanA] 実験用コピーに失敗: #{out_pdf} (#{e})")
-                  end
-                end
-              else
-                Common.log_warn("[PlanA] 切り出しに失敗: #{bn} (#{s}-#{e})")
-              end
-            else
-              Common.log_warn("[PlanA] 範囲が無効のためスキップ: #{bn} (#{s}-#{e})")
-            end
-          end
-
-          Common.log_success("[PlanA] 章別PDFの切り出し・キャッシュが完了しました（キャッシュ: #{cache_dir}、検証: #{experiment_dir}）")
-          true
-        rescue => e
-          Common.log_warn("[PlanA] 章別切り出しでエラー: #{e}")
-          false
-        end
-
-        # 章HTMLに不可視のマーカーを先頭注入（VS-CHAPTER: <basename>）
-        def inject_chapter_markers!(basenames)
-          basenames.each do |bn|
-            path = "#{bn}.html"
-            next unless File.exist?(path)
-            begin
-              html = File.read(path, encoding: 'utf-8')
-              marker_text = "VS-CHAPTER: #{bn}"
-              next if html.include?(marker_text)
-              # <body> 直後に不可視マーカーを挿入（PDFにテキストとして描画される必要があるため、オフページ配置は避ける）
-              # 視認困難な極小かつ白文字で流し込み、版面には影響を与えない
-              marker = %Q{<div class="vs-ch-marker" style="font-size:0.1pt; line-height:0; color:#ffffff">#{marker_text}</div>}
-              if html =~ /<body[^>]*>/i
-                html.sub!(/(<body[^>]*>)/i, "\\1\n#{marker}\n")
-              else
-                # body が見つからない場合は先頭に挿入
-                html = marker + "\n" + html
-              end
-              File.write(path, html, encoding: 'utf-8')
-              Common.log_info("[PlanA] マーカーを注入しました: #{bn}.html")
-            rescue => e
-              Common.log_warn("[PlanA] マーカー注入に失敗: #{path} (#{e})")
-            end
-          end
-        end
-
-        # pdftotext を用いて本文PDFの各ページからマーカーを探索し章開始ページを返す
-        # 戻り値: { '11-install' => 5, ... } の Hash
-        def detect_chapter_starts_by_markers(pdf_path, basenames)
-          total = (BuildHelpers.page_count(pdf_path) || '0').to_i
-          return {} if total <= 0
-          targets = basenames.map { |bn| [bn, "VS-CHAPTER: #{bn}"] }.to_h
-          found = {}
-          (1..total).each do |p|
-            text = `pdftotext -f #{p} -l #{p} "#{pdf_path}" - 2>/dev/null`
-            basenames.each do |bn|
-              next if found.key?(bn)
-              marker = targets[bn]
-              if text.include?(marker)
-                found[bn] = p
-              end
-            end
-            break if found.size == basenames.size
-          end
-          found
-        end
+        
 
 
         # 単一HTMLを単独PDFにする補助（一時config + single-docで直接ビルド）
@@ -516,6 +381,18 @@ module Vivlio
           Vivlio::Starter::ThorCLI.start(['merge_appendices'])
           Common.log_success('[Step 4] 90-appendices.html を生成しました')
 
+          # 付録結合後に post_process を適用して見出しメタ等を付与（PDFアウトライン用）
+          begin
+            if File.exist?('90-appendices.html')
+              Vivlio::Starter::ThorCLI.start(['post_process', '90-appendices'])
+              Common.log_info('[Step 4] 90-appendices.html に post_process を適用しました（見出しメタ付与）')
+            else
+              Common.log_warn('[Step 4] 90-appendices.html が見つからないため post_process をスキップします')
+            end
+          rescue => e
+            Common.log_warn("[Step 4] 90-appendices.html の post_process でエラー: #{e}")
+          end
+
           # 個別付録HTMLをクリーンアップ
           begin
             patterns = ['{91,92,93,94,95,96,97}-*.html', '{91,92,93,94,95,96,97}-*.md']
@@ -568,8 +445,6 @@ module Vivlio
                 end
               end
             end
-            # 章HTMLへ不可視マーカーを注入（VS-CHAPTER: <basename>）
-            BuildHelpers.inject_chapter_markers!(chapter_targets)
             return
           end
 
@@ -605,8 +480,7 @@ module Vivlio
             end
           end
           workers.each(&:join)
-          # 章HTMLへ不可視マーカーを注入（VS-CHAPTER: <basename>）
-          BuildHelpers.inject_chapter_markers!(chapter_targets)
+          
         rescue => e
           Common.log_warn("[Step 5] 章ビルドでエラー: #{e}")
         end
@@ -634,6 +508,13 @@ module Vivlio
           unless File.exist?(toc_html)
             Common.log_warn('[Step 6] 03-toc.html が見つかりません。TOC の PDF 生成をスキップします。')
             return
+          end
+          # TOC も post_process を適用して見出しメタを付与（PDFアウトライン用）
+          begin
+            Vivlio::Starter::ThorCLI.start(['post_process', '03-toc'])
+            Common.log_info('[Step 6] 03-toc.html に post_process を適用しました（見出しメタ付与）')
+          rescue => e
+            Common.log_warn("[Step 6] 03-toc.html の post_process でエラー: #{e}")
           end
           Vivlio::Starter::ThorCLI.start(['entries', '03-toc'])
           Vivlio::Starter::ThorCLI.start(['pdf'])
@@ -702,98 +583,6 @@ module Vivlio
           Common.log_warn("[Step 7] 章PDF化/分割でエラー: #{e}")
         end
 
-        # ================================================================
-        # Step 7 (Alternative): 本文(11..89)を単一 chapters.html に結合してから PDF 生成
-        # ------------------------------------------------
-        # - base_dir の 11..89 章 HTML を収集し、1つの HTML に結合
-        # - 付録(90-appendices.html) と TOC(03-toc.html) は従来どおり別扱い
-        # - 生成した chapters.html を先頭に据えて compile_overall_pdf_and_split!
-        # ================================================================
-        def build_overall_pdf_from_single_chapters_html!(base_dir = '.', keep = nil)
-          Common.log_action('[Step 7] 単一 HTML への結合モードで全体PDFを生成します…')
-          chapter_htmls = BuildHelpers.main_text_htmls(base_dir, keep)
-          if chapter_htmls.empty?
-            Common.log_warn('[Step 7] 本文HTMLが見つかりません。結合モードをスキップします。')
-            return
-          end
-
-          combined_path = File.join(base_dir, 'chapters.html')
-          begin
-            # head は先頭章から流用し、body は各章の <body> 内のみを抽出して結合
-            first = chapter_htmls.first
-            first_text = File.read(first, encoding: 'utf-8') rescue ''
-            head_html = (first_text[/<head[\s\S]*?<\/head>/i] || <<~HEAD)
-              <head>
-                <meta charset="utf-8">
-                <title>Chapters</title>
-              </head>
-            HEAD
-
-            bodies = []
-            chapter_htmls.each do |path|
-              name = File.basename(path)
-              text = File.read(path, encoding: 'utf-8') rescue ''
-              inner = text[/<body[^>]*>([\s\S]*?)<\/body>/i, 1] || text
-              bodies << "<section data-chapter=\"#{name}\">\n#{inner}\n</section>"
-            end
-
-            width, height = BuildHelpers.page_size_strings_from_config
-            html = <<~HTML
-              <!doctype html>
-              <html>
-              #{head_html}
-              <body>
-              <!-- Combined chapters (11..89) -->
-              #{bodies.join("\n\n")}
-              </body>
-              </html>
-            HTML
-            File.write(combined_path, html, encoding: 'utf-8')
-            Common.log_success("[Step 7] chapters.html を生成しました（#{chapter_htmls.size} 章を結合）")
-          rescue => e
-            Common.log_warn("[Step 7] chapters.html の生成に失敗: #{e}")
-            return
-          end
-
-          appendix_html_for_pdf = File.exist?(File.join(base_dir, '90-appendices.html')) ? [File.join(base_dir, '90-appendices.html')] : []
-          toc_html = [File.join(base_dir, '03-toc.html')].select { |f| File.exist?(f) }
-
-          # 付録を奇数（右）ページ開始にするためのガードページを挿入（従来と同じ）
-          guard_html = nil
-          if appendix_html_for_pdf.any?
-            guard_html = File.join(base_dir, '90-appendices-guard.html')
-            begin
-              width, height = BuildHelpers.page_size_strings_from_config
-              html = <<~HTML
-                <!doctype html>
-                <html>
-                <head>
-                  <meta charset="utf-8">
-                  <title>Appendices Guard</title>
-                  <style>
-                    @page { size: #{width} #{height}; }
-                  </style>
-                </head>
-                <body></body>
-                </html>
-              HTML
-              File.write(guard_html, html, encoding: 'utf-8')
-            rescue => e
-              Common.log_warn("[Step 7] 付録ガードHTMLの作成に失敗: #{e}。ガードをスキップします")
-              guard_html = nil
-            end
-          end
-
-          targets_for_pdf = if guard_html
-                               [combined_path] + [guard_html] + appendix_html_for_pdf + toc_html
-                             else
-                               [combined_path] + appendix_html_for_pdf + toc_html
-                             end
-
-          BuildHelpers.compile_overall_pdf_and_split!(targets_for_pdf, keep)
-        rescue => e
-          Common.log_warn("[Step 7] 結合 chapters.html でのPDF生成に失敗: #{e}")
-        end
 
         # ================================================================
         # Step 7: 全体PDF生成 → frontmatter/chapters に分割
@@ -831,15 +620,6 @@ module Vivlio
             '03-toc.pdf',
             'chapters_appendices.pdf'
           )
-
-          # 章ごとPDFの切り出しとキャッシュ（Plan A 実験）
-          begin
-            BuildHelpers.split_and_cache_chapters_from_body_pdf!(
-              'chapters_appendices.pdf', keep
-            )
-          rescue => e
-            Common.log_warn("[Step 7] 章別PDFの切り出し・キャッシュでエラー: #{e}")
-          end
         end
 
         # ================================================================
@@ -1362,6 +1142,14 @@ module Vivlio
         # - HexaPDF で結合
         # ================================================================
         def merge_all_pdfs!
+          # NOTE: 呼び出し元から keep（chapters サブセット）を受け取りたいケースがあるため
+          #       後方互換のため引数なし定義を残し、内部で nil を扱う新メソッドへ委譲します。
+          merge_all_pdfs_with_outline!(nil)
+        end
+
+        # 章サブセット keep を尊重して結合し、可能なら HTML 見出しから PDF アウトラインを付与
+        # - keep: ['11-install.md', '81-install.md', ...] 形式または nil
+        def merge_all_pdfs_with_outline!(keep = nil)
           Common.log_action('[Step 10] フロント(00-01)、前書き、目次、本文、付録、後書き、奥付を結合します…')
           # 存在するPDFのみで結合を続行します（preface/postface が無くても処理継続）
           Common.log_info('[Step 10] 存在するPDFのみで結合を実行します（02-preface.pdf / 98-postface.pdf は任意）')
@@ -1443,9 +1231,176 @@ module Vivlio
           merged = system(cmd)
           if merged && File.exist?('output.pdf')
             Common.log_success('[Step 10] output.pdf を生成しました')
+            # 可能なら、本文HTMLの見出し(h1〜h3)からアウトラインを生成して付与
+            begin
+              chapter_htmls = BuildHelpers.main_text_htmls('.', keep)
+              if chapter_htmls.any?
+                Common.log_action('[Step 10] 本文HTMLの h1〜h3 から PDF ブックマーク（アウトライン）を付与します…')
+                # 先頭の front(00-01) + frontmatter(02+03) をスキップして本文へジャンプ
+                fr_pages = (BuildHelpers.page_count('00-01-front.pdf')   || '0').to_i
+                fm_pages = (BuildHelpers.page_count('frontmatter.pdf')   || '0').to_i
+                start_from = [[fr_pages + fm_pages + 1, 1].max, 10**9].min
+                begin
+                  Common.log_info("[Outline] page offset: front=#{fr_pages}, frontmatter=#{fm_pages}, start_page=#{start_from}")
+                rescue
+                end
+                BuildHelpers.add_outline_from_headings!(
+                  'output.pdf',
+                  chapter_htmls,
+                  max_level: 3,
+                  start_page: start_from
+                )
+              else
+                Common.log_info('[Step 10] 本文HTMLが見つからないため、アウトライン付与をスキップします')
+              end
+            rescue => e
+              Common.log_warn("[Step 10] アウトライン付与でエラー: #{e}")
+            end
           else
             Common.log_error('[Step 10] PDF結合に失敗しました')
           end
+        end
+
+        # HTML から h1..max_level を抽出し、output_pdf にアウトラインを付与
+        # - pdf_path: 対象 PDF（上書き保存）
+        # - html_paths: 章 HTML 群（結合順）
+        # - max_level: 1..6（既定: 3）
+        # 実装メモ:
+        # - 以前は見出し内に不可視テキスト "VS-H: <text>" を注入して PDF 検索の安定化を図っていたが、
+        #   レイアウトに悪影響があるため廃止。
+        # - 代替として、章先頭に注入する不可視テキスト "VS-CHAPTER: <basename>" を利用し、
+        #   章ごとのページ範囲を特定した上で、その範囲内で見出しテキストを検索することで誤検出を抑制する。
+        def add_outline_from_headings!(pdf_path, html_paths, max_level: 3, start_page: 1)
+          unless File.exist?(pdf_path)
+            Common.log_warn("[Outline] PDF が見つかりません: #{pdf_path}")
+            return false
+          end
+          if html_paths.nil? || html_paths.empty?
+            Common.log_info('[Outline] HTML が空のためスキップします')
+            return false
+          end
+          max_level = [[max_level.to_i, 1].max, 6].min
+
+          # Nokogiri で h1..hN 見出しを抽出（テキストのみ + 所属章）
+          # - post_process で data-heading を付与している場合はそれを優先
+          # - 旧実装の 'VS-H:' 接頭は念のため除去して正規化
+          headings = [] # [{level:, text:, chapter:}]
+          chapter_order = [] # ['11-install', ...]（html_paths の順）
+          html_paths.each do |hp|
+            next unless File.exist?(hp)
+            begin
+              html = File.read(hp, encoding: 'utf-8')
+              doc  = Nokogiri::HTML.parse(html)
+              bn   = File.basename(hp, '.html')
+              chapter_order << bn
+              (1..max_level).each do |lvl|
+                doc.css("h#{lvl}").each do |h|
+                  text = h['data-heading'].to_s.strip
+                  text = h.text.to_s.strip if text.nil? || text.empty?
+                  text = text.sub(/\AVS-H:\s*/, '')
+                  next if text.empty?
+                  headings << { level: lvl, text: text, chapter: bn }
+                end
+              end
+            rescue => e
+              Common.log_warn("[Outline] HTML 解析に失敗: #{hp} (#{e})")
+            end
+          end
+          if headings.empty?
+            Common.log_info('[Outline] 見出しが検出できませんでした（h1..h3）。スキップします')
+            return false
+          end
+
+          # pdftotext でページ単位テキストを走査するヘルパ
+          unless system('which pdftotext >/dev/null 2>&1')
+            Common.log_warn('[Outline] pdftotext が見つかりません。`brew install poppler` を実行してください。アウトライン付与をスキップします')
+            return false
+          end
+
+          total_pages = (BuildHelpers.page_count(pdf_path) || '0').to_i
+          if total_pages <= 0
+            Common.log_warn('[Outline] PDF のページ数を取得できませんでした')
+            return false
+          end
+
+          page_cache = {}
+          from_base = [[start_page.to_i, 1].max, total_pages].min
+          get_page_text = lambda do |p|
+            txt = page_cache[p]
+            unless txt
+              txt = `pdftotext -f #{p} -l #{p} "#{pdf_path}" - 2>/dev/null`
+              page_cache[p] = txt
+            end
+            txt
+          end
+          find_page_in_range = lambda do |needle, from_p, to_p|
+            fr = [[from_p.to_i, from_base].max, total_pages].min
+            to = [[to_p.to_i, total_pages].min, fr].max
+            (fr..to).each do |p|
+              text = get_page_text.call(p)
+              return p if text && !text.empty? && text.include?(needle)
+            end
+            nil
+          end
+
+          # 章開始ページを 'VS-CHAPTER: <basename>' マーカーから検出
+          chapter_starts = {}
+          chapter_order.each do |bn|
+            p = find_page_in_range.call("VS-CHAPTER: #{bn}", from_base, total_pages)
+            chapter_starts[bn] = p
+          end
+          # 章ごとのページ範囲を決定（次章開始 - 1）。未知の場合は本文全体を範囲とする
+          chapter_ranges = {}
+          chapter_order.each_with_index do |bn, i|
+            s = chapter_starts[bn] || from_base
+            e = if i + 1 < chapter_order.size
+                  nxt_bn = chapter_order[i + 1]
+                  nxt_s  = chapter_starts[nxt_bn]
+                  (nxt_s && nxt_s > 0) ? (nxt_s - 1) : total_pages
+                else
+                  total_pages
+                end
+            chapter_ranges[bn] = [s, e]
+          end
+
+          items = [] # [{level:, text:, page:}]
+          headings.each do |h|
+            rng = chapter_ranges[h[:chapter]] || [from_base, total_pages]
+            p = find_page_in_range.call(h[:text], rng[0], rng[1])
+            # 章範囲で見つからない場合は本文全体でフォールバック検索
+            p ||= find_page_in_range.call(h[:text], from_base, total_pages)
+            items << { level: h[:level], text: h[:text], page: p } if p
+          end
+          if items.empty?
+            Common.log_info('[Outline] 対応ページが見つからなかったため、アウトライン付与をスキップします')
+            return false
+          end
+
+          # HexaPDF でアウトラインを構築
+          doc = HexaPDF::Document.open(pdf_path)
+          root = doc.outline
+          # 既存のアウトラインはクリア
+          begin
+            root.delete_all
+          rescue
+          end
+          parents = { 1 => root }
+          items.each do |it|
+            lvl = [[it[:level].to_i, 1].max, max_level].min
+            parent = parents[lvl] || parents[parents.keys.select { |k| k < lvl }.max] || root
+            # HexaPDF destination array must be of the form [page, :Fit] etc.
+            # Use :Fit so the page is displayed entirely.
+            page_obj = doc.pages[it[:page] - 1]
+            parent.add_item(it[:text], destination: [page_obj, :Fit]) do |node|
+              parents[lvl + 1] = node
+            end
+          end
+          doc.write(pdf_path, optimize: true)
+          Common.log_success('[Outline] PDF にブックマーク（アウトライン）を付与しました')
+          true
+        rescue => e
+          Common.log_warn("[Outline] 付与に失敗: #{e}")
+          false
         end
 
         # ================================================================

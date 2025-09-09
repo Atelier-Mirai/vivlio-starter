@@ -137,6 +137,14 @@ module Vivlio
 
                 # 行番号を追加(Prism.js対応) — 各ファイルごとに処理
                 Vivlio::Starter::ThorCLI.start(['prism_lines', html_file])
+
+                # 見出し(h1..h3)にクラス/data属性を付与（PDF参照用のメタ）
+                begin
+                  inject_heading_markers!([html_file], max_level: 3)
+                  Common.log_info("#{html_file}: 見出しメタを付与 (class=data)")
+                rescue => e
+                  Common.log_warn("#{html_file}: 見出しメタ付与に失敗: #{e}")
+                end
               end
 
               Common.log_success("ポスト置換処理完了 (合計: #{total_replacements}個の置換)")
@@ -145,6 +153,62 @@ module Vivlio
         end
 
         private
+
+        # 見出し(h1..hN)に本文参照用のマーカー（class と data 属性）を付与
+        # - class: vs-h-marker（既存クラスは保持）
+        # - data-heading: 見出しテキスト（汎用）
+        # - data-hN: 見出しテキスト（レベル別）
+        # 旧実装による直前の <div.vs-h-marker> は除去し、版面崩れを防ぐ
+        def inject_heading_markers!(html_paths, max_level: 3)
+          paths = Array(html_paths).select { |p| File.exist?(p) }
+          return if paths.empty?
+          max_l = [[max_level.to_i, 1].max, 6].min
+          paths.each do |path|
+            begin
+              html = File.read(path, encoding: 'utf-8')
+              doc  = if defined?(Nokogiri::HTML5)
+                        Nokogiri::HTML5.parse(html)
+                      else
+                        Nokogiri::HTML.parse(html, nil, 'UTF-8')
+                      end
+              modified = false
+              (1..max_l).each do |lvl|
+                doc.css("h#{lvl}").each do |h|
+                  # 見出し要素自体に vs-h-marker クラスを付与
+                  classes = (h['class'] || '').split
+                  unless classes.include?('vs-h-marker')
+                    classes << 'vs-h-marker'
+                    h['class'] = classes.join(' ').strip
+                    modified = true
+                  end
+
+                  # 見出しテキストを data 属性として付与（PDFアウトライン等の外部処理向け）
+                  heading_text = h.text.to_s.strip
+                  if heading_text && !heading_text.empty?
+                    # data-heading（汎用）と data-h{level}（レベル別）の両方を設定
+                    if h['data-heading'] != heading_text
+                      h['data-heading'] = heading_text
+                      modified = true
+                    end
+                    lvl_key = "data-h#{lvl}"
+                    if h[lvl_key] != heading_text
+                      h[lvl_key] = heading_text
+                      modified = true
+                    end
+                  end
+                end
+              end
+              if modified
+                out = doc.respond_to?(:to_html) ? doc.to_html : doc.to_s
+                File.write(path, out, encoding: 'utf-8')
+              end
+            rescue => e
+              Common.log_warn("見出しメタ付与に失敗: #{path} (#{e})")
+            end
+          end
+        end
+
+        
 
         # 指定HTMLファイルに対して、replace_rulesに基づく置換を適用
         # 戻り値: { changed: true/false, replacements: Integer }

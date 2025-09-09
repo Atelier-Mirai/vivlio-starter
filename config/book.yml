@@ -28,10 +28,8 @@ book:
 
 chapters: all
 # chapters:
-#   - 02-preface
-#   - 11-install
-#   - 12-tutorial.md
-#   - 91-appendix-a.md
+  # - 11-install
+  # - 81-install
 
 # テーマ
 theme:

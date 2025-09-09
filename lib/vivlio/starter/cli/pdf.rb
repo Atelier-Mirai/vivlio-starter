@@ -190,7 +190,28 @@ module Vivlio
               else
                 compressed_path = pdf_config['output_file_compressed'] || 'output_compressed.pdf'
                 normal_path     = pdf_config['output_file'] || 'output.pdf'
-                pdf_path        = File.exist?(compressed_path) ? compressed_path : normal_path
+                if File.exist?(compressed_path) && File.exist?(normal_path)
+                  begin
+                    c_mtime = File.mtime(compressed_path) rescue Time.at(0)
+                    n_mtime = File.mtime(normal_path)     rescue Time.at(0)
+                    if c_mtime >= n_mtime
+                      pdf_path = compressed_path
+                      Common.log_info("open: 圧縮版(#{compressed_path})が新しいためこちらを開きます")
+                    else
+                      pdf_path = normal_path
+                      Common.log_info("open: 通常版(#{normal_path})が新しいためこちらを開きます")
+                    end
+                  rescue
+                    # 取得できない場合は圧縮版優先の従来挙動
+                    pdf_path = compressed_path
+                  end
+                elsif File.exist?(compressed_path)
+                  pdf_path = compressed_path
+                  Common.log_info("open: 圧縮版のみ存在するためこちらを開きます")
+                else
+                  pdf_path = normal_path
+                  Common.log_info("open: 通常版を開きます")
+                end
               end
 
               Common.log_action("PDFを開いています…")

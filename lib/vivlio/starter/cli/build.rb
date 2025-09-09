@@ -58,7 +58,8 @@ module Vivlio
             method_option :parallel_pdf, type: :boolean, default: false, desc: '実験: 章PDFを並列生成して結合（Step 7 を置換）'
             method_option :single_html,  type: :boolean, default: false, desc: '実験: 本文(11..89)を chapters.html に結合してから PDF 生成（Step 7 を置換）'
             method_option :log,      type: :string,  banner: '[level]', desc: 'ログレベルを指定（error/warn/info/debug）'
-            method_option :force,    type: :boolean, default: false, desc: 'タイトル/リーガル/奥付を強制再生成'
+            method_option :force,    type: :boolean, default: false, desc: 'タイトル/リーガル/奥付を強制再生成（--no-cache のエイリアス）'
+            method_option :'no-cache', type: :boolean, default: false, desc: 'キャッシュを無効化（--force と同義）'
 
             # ================================================================
             # Command: build（統合ビルドエントリポイント）
@@ -74,7 +75,7 @@ module Vivlio
             #
             # オプション:
             #   --no-resize / --high / --medium / --low
-            #   --no-compress, --no-clean
+            #   --no-compress, --no-clean, --no-cache (--force と同義)
             #   --parallel_pdf, --single_html
             #   --log[=level]（error/warn/info/debug、未指定は info）
             #
@@ -82,6 +83,8 @@ module Vivlio
             #   --log により Common.current_log_level を制御（既定 warn）。
             # ================================================================
             def build(*tokens)
+              # --no-cache は --force のエイリアス
+              options[:force] ||= options[:'no-cache']
               files = Common.normalize_tokens(tokens)
               # delete.rb と同様の規則でトークンを展開（数値/レンジ/拡張子→実在 .md ベース名）
               expanded_basenames = expand_tokens_to_targets(files)
@@ -417,7 +420,8 @@ module Vivlio
               # ================================================================
               time_step.call('Step 10 (merge all pdfs)') do
                 begin
-                  BuildHelpers.merge_all_pdfs!
+                  # 章サブセット（keep）を尊重しつつ結合し、アウトライン付与を行う
+                  BuildHelpers.merge_all_pdfs_with_outline!(keep)
                 rescue => e
                   Common.log_warn("[Step 10] PDF結合でエラー: #{e}")
                 end
@@ -481,21 +485,32 @@ module Vivlio
                 Common.echo_always sprintf("  = %-34s %6.2fs", 'TOTAL', total)
                 Common.echo_always "==========================\n"
 
-                # timings_summary.md に追記
+                # timings_summary.md の先頭に追記（新しいビルド結果をファイル先頭に）
                 begin
                   ts = Time.now.iso8601
-                  lines = []
-                  lines << "\n## Build Step Timings (#{ts})\n"
-                  lines << "```\n"
-                  lines << "== Build Step Timings =="
+                  new_block = []
+                  new_block << "\n## Build Step Timings (#{ts})\n"
+                  new_block << "```\n"
+                  new_block << "== Build Step Timings =="
                   build_timings.each do |label, dt|
-                    lines << sprintf("  - %-34s %6.2fs", label, dt)
+                    new_block << sprintf("  - %-34s %6.2fs", label, dt)
                   end
-                  lines << sprintf("  = %-34s %6.2fs", 'TOTAL', total)
-                  lines << "`````".sub('`````', "```")
-                  File.open(File.join(Dir.pwd, 'timings_summary.md'), 'a', encoding: 'utf-8') do |f|
-                    f.write(lines.join("\n"))
+                  new_block << sprintf("  = %-34s %6.2fs", 'TOTAL', total)
+                  new_block << "`````".sub('`````', "```")
+
+                  path = File.join(Dir.pwd, 'timings_summary.md')
+                  previous = ''
+                  if File.exist?(path)
+                    begin
+                      previous = File.read(path, encoding: 'utf-8')
+                    rescue
+                      previous = ''
+                    end
+                  end
+                  File.open(path, 'w', encoding: 'utf-8') do |f|
+                    f.write(new_block.join("\n"))
                     f.write("\n")
+                    f.write(previous.to_s)
                   end
                 rescue => _e
                   # ignore file append errors
