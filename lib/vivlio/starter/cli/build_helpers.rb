@@ -23,54 +23,54 @@ module Vivlio
       module BuildHelpers 
         module_function
 
-        # 内部ユーティリティ: --single-doc を強制無効化して pdf を実行
-        def run_pdf_without_single_doc!
-          prev = ENV['VIVLIO_SINGLE_DOC']
-          begin
-            ENV['VIVLIO_SINGLE_DOC'] = '0'
-            Vivlio::Starter::ThorCLI.start(['pdf'])
-          ensure
-            if prev.nil?
-              ENV.delete('VIVLIO_SINGLE_DOC')
-            else
-              ENV['VIVLIO_SINGLE_DOC'] = prev
-            end
-          end
-        end
-
-        
-
-        
-
-        
-
+        # 章レンジ（定数化）
+        MAIN_RANGE = (11..89)
+        APPX_RANGE = (91..97)
 
         # ------------------------------------------------
-        # Timing utilities: 章別×ステップ別の計測を timings.csv に追記
+        # Helper: ensure_appendices_guard_html
         # ------------------------------------------------
-        # - CSV フォーマット: chapter,step,seconds
-        # - 既存ファイルにヘッダーが無い場合はヘッダーを追記
-        # - 例外は握りつぶしてビルド継続
-        def record_timing(chapter, step, seconds)
-          begin
-            path = File.join(Dir.pwd, 'timings.csv')
-            write_header = !File.exist?(path) || File.zero?(path)
-            File.open(path, 'a', encoding: 'utf-8') do |f|
-              if write_header
-                f.puts 'chapter,step,seconds'
-              end
-              f.puts [chapter.to_s, step.to_s, format('%.2f', seconds.to_f)].join(',')
-            end
-          rescue => e
-            begin
-              Common.log_warn("[Timing] timings.csv への書き込みに失敗: #{e}")
-            rescue
-              # ignore logging failures
-            end
-          end
+        # - 目的: 付録を奇数（右）開始にするための 1ページ空白HTMLを生成
+        # - 入力: base_dir（生成先ディレクトリ）
+        # - 出力: 生成した guard HTML のパス（失敗時は nil）
+        # ------------------------------------------------
+        def ensure_appendices_guard_html(base_dir = '.')
+          path = File.join(base_dir, '90-appendices-guard.html')
+          # @page size を現在の book 設定（A4/B5/A5）に合わせる（共通ヘルパ使用）
+          width, height = BuildHelpers.page_size_strings_from_config
+          html = <<~HTML
+            <!doctype html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <title>Appendices Guard</title>
+              <style>
+                /* 用紙サイズを book.yml に合わせる */
+                @page {
+                  size: #{width} #{height};
+                }
+              </style>
+            </head>
+            <body></body>
+            </html>
+          HTML
+          File.write(path, html, encoding: 'utf-8')
+          path
+        rescue => e
+          Common.log_warn("[Guard] 付録ガードHTMLの作成に失敗: #{e}。ガードをスキップします")
+          nil
         end
+        module_function :ensure_appendices_guard_html
 
+        # 章ごとの各ステップ処理に計時を付与して実行するユーティリティ。
+        # 引数:
+        #   chapter: 計測対象の章名（例: '11-install' など）
+        #   step:    計測対象のステップ名（例: 'pre_process', 'pdf' など）
+        # 仕様:
+        #   - 例外の有無に関わらず ensure で計測終了し、ログ出力を行う。
+        #   - 計測には単調増加クロック（CLOCK_MONOTONIC）を使用し、システム時刻変更の影響を受けない。
         def time_step_for_chapter(chapter, step)
+          # 計測開始（単調クロック）
           t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           begin
             yield if block_given?
@@ -82,7 +82,6 @@ module Vivlio
             rescue
               # ignore
             end
-            record_timing(chapter, step, dt)
           end
         end
 
@@ -137,57 +136,78 @@ module Vivlio
           nil
         end
 
-        # Note: Legacy backup-based subset utilities were removed in favor of
-        # logical filtering with configured_chapters (no file moves).
-
         # ------------------------------------------------
-        # Shared helpers: 章の抽出（11..89 本文、付録）
+        # Shared helper: ベース名配列を章番号レンジ＋keepでフィルタ
         # ------------------------------------------------
-        # - main_text_basenames(keep): '11-install' のような拡張子なしベース名を返す
-        # - main_text_htmls(base_dir, keep): ディレクトリ内の HTML を 11..89 (+ keep で限定) で抽出
-        # - appendix_basenames(keep): '91-foo' 等の付録ベース名（拡張子なし）を返す
-        def main_text_basenames(keep = nil)
-          basenames = if keep && keep.any?
-                        Array(keep).map { |s| File.basename(s.to_s, '.md') }
-                      else
-                        Dir[File.join(Common::CONTENTS_DIR, '*.md')].map { |p| File.basename(p, '.md') }
-                      end
-          basenames
-            .select { |bn| bn =~ /\A(\d+)-/ && $1.to_i.between?(11, 89) }
+        # - basenames: 拡張子なしのベース名配列（例: ['11-install', '21-customize']）
+        # - range:     章番号レンジ（例: 11..89, 91..97）
+        # - keep_numbers: nil または許可する章番号配列（nil の場合は全許可）
+        # 返り値: フィルタ済みベース名配列（uniq + sort 済み）
+        def filter_basenames_by_range(basenames, range, keep_numbers = nil)
+          keep_set = keep_numbers && keep_numbers.respond_to?(:include?) ? keep_numbers : nil
+          Array(basenames)
+            .map { |bn| bn.to_s }
+            .select { |bn| bn =~ /\A(\d+)-/ }
+            .select { |bn|
+              n = bn[/\A(\d+)-/, 1].to_i
+              in_range = range.include?(n)
+              allowed  = keep_set ? keep_set.include?(n) : true
+              in_range && allowed
+            }
             .uniq
             .sort
         rescue => _e
           []
         end
+        module_function :filter_basenames_by_range
 
-        def main_text_htmls(base_dir = '.', keep = nil)
-          numbers = BuildHelpers.chapter_numbers_for_book(keep)
-          limit_by_keep = keep && keep.any?
-          Dir.glob(File.join(base_dir, '*.html'))
-            .select { |f|
-              bn = File.basename(f)
-              if bn =~ /\A(\d+)-.*\.html\z/
-                n = $1.to_i
-                (11..89).include?(n) && (!limit_by_keep || numbers.include?(n))
-              else
-                false
+        # ------------------------------------------------
+        # Shared helper: ディレクトリ内の *.html から、章番号レンジと keep_numbers でフィルタ
+        # ------------------------------------------------
+        def htmls_for_range(base_dir, range, keep_numbers = nil)
+          Dir.glob(File.join(base_dir, '*.html')).select { |path|
+            bn = File.basename(path, '.html')
+            n = bn[/\A(\d+)-/, 1]&.to_i
+            n && range.include?(n) && (keep_numbers.nil? || keep_numbers.include?(n))
+          }.sort
+        rescue => _e
+          []
+        end
+        module_function :htmls_for_range
+
+        # ------------------------------------------------
+        # Shared helper: 簡易スレッドプールで並列実行
+        # ------------------------------------------------
+        def parallel_each(items, concurrency: 1)
+          list = Array(items)
+          return list.each { |it| yield(it) } if concurrency.to_i <= 1
+          require 'thread'
+          q = Queue.new
+          list.each { |it| q << it }
+          workers = []
+          concurrency.times do
+            workers << Thread.new do
+              while true
+                it = nil
+                begin
+                  it = q.pop(true)
+                rescue ThreadError
+                  break
+                end
+                begin
+                  yield(it)
+                rescue => e
+                  begin
+                    Common.log_warn("[parallel_each] 処理中にエラー: #{it} (#{e})")
+                  rescue
+                  end
+                end
               end
-            }
-            .sort
-        rescue => _e
-          []
-        end
-
-        def appendix_basenames(keep = nil)
-          appendix_paths   = Dir[File.join(Common::CONTENTS_DIR, '{91,92,93,94,95,96,97}-*.md')]
-          appendix_targets = appendix_paths.map { |p| File.basename(p, '.md') }.uniq.sort
-          if keep && keep.any?
-            appendix_targets.select! { |t| keep.include?("#{t}.md") }
+            end
           end
-          appendix_targets
-        rescue => _e
-          []
+          workers.each(&:join)
         end
+        module_function :parallel_each
 
         # ================================================================
         # Step 1: 画像最適化（WebP 変換/リサイズ）
@@ -256,23 +276,8 @@ module Vivlio
         def preface_prebuild!(keep = nil)
           Common.log_action('[Step 3] 前書き (02-preface) のみ先行ビルドを実行します…')
 
-          # chapters 指定がある場合は、含まれないときスキップ
-          if keep && !keep.include?('02-preface.md')
-            Common.log_action('[Step 3] 02-preface は chapters 設定に含まれないためスキップします')
-            return
-          end
-
-          # 02-preface.md が存在しない場合はスキップ（ページ数0相当で続行）
-          begin
-            md_path = File.join(Common::CONTENTS_DIR, '02-preface.md')
-            unless File.exist?(md_path)
-              Common.log_warn('[Step 3] 02-preface.md が見つかりません。先行ビルドをスキップします（ページ数0として続行）')
-              return
-            end
-          rescue => e
-            Common.log_warn("[Step 3] 02-preface の存在確認に失敗: #{e}。スキップします")
-            return
-          end
+          # 汎用ガードで対象/存在を確認
+          return unless BuildHelpers.buildable?('02-preface', keep)
 
           %w[pre_process convert post_process entries].each do |t|
             BuildHelpers.time_step_for_chapter('02-preface', t) do
@@ -280,25 +285,37 @@ module Vivlio
             end
           end
           BuildHelpers.time_step_for_chapter('02-preface', 'pdf') do
-            # 従来ルート: entries.js 経由で pdf を生成し、output.pdf を 02-preface.pdf にリネーム
-            Vivlio::Starter::ThorCLI.start(['pdf'])
-            pdf_config   = Common::CONFIG['pdf'] || {}
-            output_pdf   = pdf_config['output_file'] || 'output.pdf'
-            preface_pdf  = '02-preface.pdf'
-            if File.exist?(output_pdf)
-              Common.log_action("#{output_pdf} をリネームしています: #{output_pdf} → #{preface_pdf}")
-              FileUtils.rm_f(preface_pdf)
-              FileUtils.mv(output_pdf, preface_pdf)
-            else
-              Common.log_warn("[Step 3] 出力PDFが見つかりません: #{output_pdf}")
-            end
-          end
-          preface_pdf  = '02-preface.pdf'
-          if File.exist?(preface_pdf)
-            pages = BuildHelpers.page_count(preface_pdf)
-            pages ? Common.log_success("ページ数: #{pages} (#{preface_pdf})") : Common.log_warn("ページ数の取得に失敗しました: #{preface_pdf}")
+            # 改良された pdf コマンドに出力ファイル名を渡してリネームも一括処理
+            Vivlio::Starter::ThorCLI.start(['pdf', '02-preface.pdf'])
           end
         end
+
+        # ------------------------------------------------
+        # Helper: buildable?
+        # ------------------------------------------------
+        # - 目的: 指定ベース名(basename)の対象判定と存在確認を一元化
+        # - 引数: basename (例: '02-preface')、keep（configの chapters 正規化リスト or nil）
+        # - 戻り値: true（処理続行）/false（スキップ）
+        # - ログ: 各条件で適切に出力（章名は basename で汎用化）
+        # ------------------------------------------------
+        def buildable?(basename, keep)
+          # chapters 指定: 対象外ならスキップ
+          if keep && !keep.include?("#{basename}.md")
+            Common.log_action("[Guard] #{basename} は chapters 設定に含まれないためスキップします")
+            return false
+          end
+          # 存在確認
+          md_path = File.join(Common::CONTENTS_DIR, "#{basename}.md")
+          unless File.exist?(md_path)
+            Common.log_warn("[Guard] #{basename}.md が見つかりません。処理をスキップします")
+            return false
+          end
+          true
+        rescue => e
+          Common.log_warn("[Guard] #{basename} の存在確認に失敗: #{e}。スキップします")
+          false
+        end
+        module_function :buildable?
 
         # ================================================================
         # Step 4: 付録 (91〜97) のビルドと結合
@@ -313,9 +330,9 @@ module Vivlio
           appendix_paths   = Dir[File.join(Common::CONTENTS_DIR, '{91,92,93,94,95,96,97}-*.md')]
           appendix_targets = appendix_paths.map { |p| File.basename(p, '.md') }.uniq.sort
 
-          # chapters 指定がある場合は、含まれる付録のみ対象
+          # chapters 指定がある場合は、含まれる付録のみ対象（存在確認も含めて汎用ガードで判定）
           if keep && keep.any?
-            appendix_targets.select! { |t| keep.include?("#{t}.md") }
+            appendix_targets.select! { |t| BuildHelpers.buildable?(t, keep) }
           end
 
           if appendix_targets.empty?
@@ -380,7 +397,9 @@ module Vivlio
         # ================================================================
         def build_chapters_html!(keep = nil)
           Common.log_action('[Step 5] 章をビルドします…（仮想連番: 1,2,3…）')
-          chapter_targets = BuildHelpers.main_text_basenames(keep)
+          keep_numbers = BuildHelpers.chapter_numbers_for_book(keep)
+          all_md_basenames = Dir[File.join(Common::CONTENTS_DIR, '*.md')].map { |p| File.basename(p, '.md') }
+          chapter_targets = BuildHelpers.filter_basenames_by_range(all_md_basenames, MAIN_RANGE, keep_numbers)
 
           if chapter_targets.empty?
             Common.log_warn('[Step 5] 章が見つかりません。Step 5 をスキップします。')
@@ -404,38 +423,14 @@ module Vivlio
             return
           end
 
-          # スレッドプールで並列実行
-          require 'thread'
-          q = Queue.new
-          chapter_targets.each { |t| q << t }
-          workers = []
           Common.log_info("[Step 5] 並列実行を開始します（concurrency=#{concurrency}、対象=#{chapter_targets.size}）")
-          concurrency.times do |i|
-            workers << Thread.new do
-              Thread.current[:name] = "builder-#{i+1}"
-              while true
-                target = nil
-                begin
-                  target = q.pop(true)
-                rescue ThreadError
-                  break
-                end
-                begin
-                  %w[pre_process convert post_process].each do |tn|
-                    BuildHelpers.time_step_for_chapter(target, tn) do
-                      Vivlio::Starter::ThorCLI.start([tn, target])
-                    end
-                  end
-                rescue => e
-                  begin
-                    Common.log_warn("[Step 5] 並列ビルド中にエラー: #{target} (#{e})")
-                  rescue
-                  end
-                end
+          BuildHelpers.parallel_each(chapter_targets, concurrency: concurrency) do |target|
+            %w[pre_process convert post_process].each do |tn|
+              BuildHelpers.time_step_for_chapter(target, tn) do
+                Vivlio::Starter::ThorCLI.start([tn, target])
               end
             end
           end
-          workers.each(&:join)
           
         rescue => e
           Common.log_warn("[Step 5] 章ビルドでエラー: #{e}")
@@ -448,7 +443,9 @@ module Vivlio
         # - 実行: toc -> entries(03-toc.html) -> pdf -> 03-toc.pdf へリネーム
         # ================================================================
         def generate_toc_and_pdf!(base_dir = '.', keep = nil)
-          chapter_htmls = BuildHelpers.main_text_htmls(base_dir, keep)
+          keep_numbers = BuildHelpers.chapter_numbers_for_book(keep)
+          # base_dir 内の HTML から本文(11..89)のみ抽出
+          chapter_htmls = BuildHelpers.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers)
           appendix_html = File.join(base_dir, '90-appendices.html')
           targets_for_toc = chapter_htmls
           targets_for_toc << appendix_html if File.exist?(appendix_html)
@@ -473,17 +470,9 @@ module Vivlio
             Common.log_warn("[Step 6] 03-toc.html の post_process でエラー: #{e}")
           end
           Vivlio::Starter::ThorCLI.start(['entries', '03-toc'])
-          Vivlio::Starter::ThorCLI.start(['pdf'])
-
-          pdf_config   = Common::CONFIG['pdf'] || {}
-          output_pdf   = pdf_config['output_file'] || 'output.pdf'
-          toc_pdf      = '03-toc.pdf'
-          if File.exist?(output_pdf)
-            Common.log_action("output.pdf をリネームしています: #{output_pdf} → #{toc_pdf}")
-            FileUtils.rm_f(toc_pdf)
-            FileUtils.mv(output_pdf, toc_pdf)
-            Common.log_success('[Step 6] 03-toc.pdf を生成しました')
-          end
+          # 改良された pdf コマンドに出力ファイル名を渡してリネームも一括処理
+          Vivlio::Starter::ThorCLI.start(['pdf', '03-toc.pdf'])
+          Common.log_success('[Step 6] 03-toc.pdf を生成しました') if File.exist?('03-toc.pdf')
         end
 
         # ================================================================
@@ -494,38 +483,14 @@ module Vivlio
         # ================================================================
         def build_overall_pdf_and_split_from_dir!(base_dir = '.', keep = nil)
           toc_html = [File.join(base_dir, '03-toc.html')].select { |f| File.exist?(f) }
-          chapter_htmls_for_pdf = BuildHelpers.main_text_htmls(base_dir, keep)
+          keep_numbers = BuildHelpers.chapter_numbers_for_book(keep)
+          chapter_htmls_for_pdf = BuildHelpers.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers)
           appendix_html_for_pdf = File.exist?(File.join(base_dir, '90-appendices.html')) ? [File.join(base_dir, '90-appendices.html')] : []
 
           # 付録を奇数（右）ページ開始にするためのガードページを挿入
           guard_html = nil
           if appendix_html_for_pdf.any?
-            guard_html = File.join(base_dir, '90-appendices-guard.html')
-            begin
-              # @page size を現在の book 設定（A4/B5/A5）に合わせる（共通ヘルパ使用）
-              width, height = BuildHelpers.page_size_strings_from_config
-
-              html = <<~HTML
-                <!doctype html>
-                <html>
-                <head>
-                  <meta charset="utf-8">
-                  <title>Appendices Guard</title>
-                  <style>
-                    /* 用紙サイズを book.yml に合わせる */
-                    @page {
-                      size: #{width} #{height};
-                    }
-                  </style>
-                </head>
-                <body></body>
-                </html>
-              HTML
-              File.write(guard_html, html, encoding: 'utf-8')
-            rescue => e
-              Common.log_warn("[Step 7] 付録ガードHTMLの作成に失敗: #{e}。ガードをスキップします")
-              guard_html = nil
-            end
+            guard_html = BuildHelpers.ensure_appendices_guard_html(base_dir)
           end
 
           targets_for_pdf = if guard_html
@@ -590,7 +555,9 @@ module Vivlio
         # ================================================================
         def build_chapter_pdfs_in_parallel_and_merge!(keep = nil)
           Common.log_action('[Step 7-EXPERIMENT] 章PDFを並列生成し、結合します…')
-          chapter_targets = BuildHelpers.main_text_basenames(keep)
+          keep_numbers = BuildHelpers.chapter_numbers_for_book(keep)
+          all_md_basenames = Dir[File.join(Common::CONTENTS_DIR, '*.md')].map { |p| File.basename(p, '.md') }
+          chapter_targets = BuildHelpers.filter_basenames_by_range(all_md_basenames, (11..89), keep_numbers)
           if chapter_targets.empty?
             Common.log_warn('[Step 7-EXPERIMENT] 本文章が見つかりません。処理をスキップします。')
             return
@@ -957,13 +924,8 @@ module Vivlio
             end
             # マージは行わず、2本のHTMLを entries に渡して単一PDF化
             Vivlio::Starter::ThorCLI.start(['entries', '00-titlepage.html', '01-legalpage.html'])
-            Vivlio::Starter::ThorCLI.start(['pdf'])
-            pdf_config   = Common::CONFIG['pdf'] || {}
-            output_pdf   = pdf_config['output_file'] || 'output.pdf'
-            if File.exist?(output_pdf)
-              FileUtils.rm_f(front_pdf)
-              FileUtils.mv(output_pdf, front_pdf)
-            end
+            # 直接フロントPDF名を指定して生成
+            Vivlio::Starter::ThorCLI.start(['pdf', front_pdf])
             if File.exist?(front_pdf)
               Common.log_success("[Step 9] #{front_pdf} を生成しました")
               # キャッシュへ保存
@@ -1005,12 +967,8 @@ module Vivlio
             %w[pre_process convert post_process entries].each do |t|
               Vivlio::Starter::ThorCLI.start([t, '99-colophon'])
             end
-            Vivlio::Starter::ThorCLI.start(['pdf'])
-            pdf_config   = Common::CONFIG['pdf'] || {}
-            output_pdf   = pdf_config['output_file'] || 'output.pdf'
-            if File.exist?(output_pdf)
-              FileUtils.rm_f('99-colophon.pdf')
-              FileUtils.mv(output_pdf, '99-colophon.pdf')
+            Vivlio::Starter::ThorCLI.start(['pdf', '99-colophon.pdf'])
+            if File.exist?('99-colophon.pdf')
               Common.log_success('[Step 9] 99-colophon.pdf を生成しました')
               # キャッシュへ保存
               if cache_on
@@ -1069,14 +1027,8 @@ module Vivlio
               %w[pre_process convert post_process entries].each do |t|
                 Vivlio::Starter::ThorCLI.start([t, '98-postface'])
               end
-              # entries.js 経由で PDF 生成し、出力を 98-postface.pdf にリネーム
-              Vivlio::Starter::ThorCLI.start(['pdf'])
-              pdf_config   = Common::CONFIG['pdf'] || {}
-              output_pdf   = pdf_config['output_file'] || 'output.pdf'
-              if File.exist?(output_pdf)
-                FileUtils.rm_f('98-postface.pdf')
-                FileUtils.mv(output_pdf, '98-postface.pdf')
-              end
+              # entries.js 経由で PDF 生成（直接ファイル名を指定）
+              Vivlio::Starter::ThorCLI.start(['pdf', '98-postface.pdf'])
               if File.exist?('98-postface.pdf')
                 Common.log_success('[Step 9] 98-postface.pdf を生成しました')
               else
@@ -1189,7 +1141,12 @@ module Vivlio
             Common.log_success('[Step 10] output.pdf を生成しました')
             # 可能なら、本文HTMLの見出し(h1〜h3)からアウトラインを生成して付与
             begin
-              chapter_htmls = BuildHelpers.main_text_htmls('.', keep)
+              keep_numbers = BuildHelpers.chapter_numbers_for_book(keep)
+              chapter_htmls = Dir.glob(File.join('.', '*.html')).select { |path|
+                bn = File.basename(path, '.html')
+                n = bn[/\A(\d+)-/, 1]&.to_i
+                n && (11..89).include?(n) && (keep_numbers.nil? || keep_numbers.include?(n))
+              }.sort
               if chapter_htmls.any?
                 Common.log_action('[Step 10] 本文HTMLの h1〜h3 から PDF ブックマーク（アウトライン）を付与します…')
                 # 先頭の front(00-01) + frontmatter(02+03) をスキップして本文へジャンプ
@@ -1239,7 +1196,6 @@ module Vivlio
 
           # Nokogiri で h1..hN 見出しを抽出（テキストのみ + 所属章）
           # - post_process で data-heading を付与している場合はそれを優先
-          # - 旧実装の 'VS-H:' 接頭は念のため除去して正規化
           headings = [] # [{level:, text:, chapter:}]
           chapter_order = [] # ['11-install', ...]（html_paths の順）
           html_paths.each do |hp|
@@ -1253,7 +1209,6 @@ module Vivlio
                 doc.css("h#{lvl}").each do |h|
                   text = h['data-heading'].to_s.strip
                   text = h.text.to_s.strip if text.nil? || text.empty?
-                  text = text.sub(/\AVS-H:\s*/, '')
                   next if text.empty?
                   headings << { level: lvl, text: text, chapter: bn }
                 end
@@ -1433,7 +1388,7 @@ module Vivlio
             .uniq
             .sort
         rescue => _e
-          []
+          nil
         end
 
         # 空白1ページPDFを生成（既存時は何もしない）

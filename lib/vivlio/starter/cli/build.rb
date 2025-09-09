@@ -56,7 +56,6 @@ module Vivlio
             method_option :dry_run,  type: :boolean, aliases: '-n',  desc: '実行せずにビルド予定のみを表示（試行）'
             method_option :merge,    type: :boolean, aliases: '-m',  desc: '生成された各PDFを結合して出力（出力名: output.pdf / output_compressed.pdf）'
             method_option :parallel_pdf, type: :boolean, default: false, desc: '実験: 章PDFを並列生成して結合（Step 7 を置換）'
-            method_option :single_html,  type: :boolean, default: false, desc: '実験: 本文(11..89)を chapters.html に結合してから PDF 生成（Step 7 を置換）'
             method_option :log,      type: :string,  banner: '[level]', desc: 'ログレベルを指定（error/warn/info/debug）'
             method_option :force,    type: :boolean, default: false, desc: 'タイトル/リーガル/奥付を強制再生成（--no-cache のエイリアス）'
             method_option :'no-cache', type: :boolean, default: false, desc: 'キャッシュを無効化（--force と同義）'
@@ -83,8 +82,8 @@ module Vivlio
             #   --log により Common.current_log_level を制御（既定 warn）。
             # ================================================================
             def build(*tokens)
-              # --no-cache は --force のエイリアス
-              options[:force] ||= options[:'no-cache']
+              # --no-cache は --force のエイリアス（options は凍結される可能性があるため不変のまま扱う）
+              force = (options[:force] || options[:'no-cache']) ? true : false
               files = Common.normalize_tokens(tokens)
               # delete.rb と同様の規則でトークンを展開（数値/レンジ/拡張子→実在 .md ベース名）
               expanded_basenames = expand_tokens_to_targets(files)
@@ -200,8 +199,15 @@ module Vivlio
                                  preset = ([:high, :low].find { |k| options[k] } || :medium)
                                  "実行 (#{preset})"
                                end
-                main_targets = BuildHelpers.main_text_basenames(keep)
-                appendix_targets = BuildHelpers.appendix_basenames(keep)
+                # 章リストを論理フィルタで算出（ファイル移動なし）
+                begin
+                  keep_numbers = BuildHelpers.chapter_numbers_for_book(keep)
+                rescue
+                  keep_numbers = nil
+                end
+                all_md_basenames = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |p| File.basename(p, '.md') }
+                main_targets     = BuildHelpers.filter_basenames_by_range(all_md_basenames, (11..89), keep_numbers)
+                appendix_targets = BuildHelpers.filter_basenames_by_range(all_md_basenames, (91..97), keep_numbers)
                 Common.echo_always "  - 画像最適化: #{resize_desc}"
                 Common.echo_always "  - 本文(11..89): #{main_targets.empty? ? '対象なし' : main_targets.join(', ')}"
                 Common.echo_always "  - 付録(91..97): #{appendix_targets.empty? ? '対象なし' : appendix_targets.join(', ')}"
@@ -239,8 +245,12 @@ module Vivlio
               # ================================================================
               time_step.call('Step 0 (clean)') do
                 begin
-                  Common.log_action('[Step 0] クリーンアップを実行します…')
-                  Vivlio::Starter::ThorCLI.start(['clean'])
+                  if options[:clean] == false
+                    Common.log_action('[Step 0] クリーンアップをスキップします（--no-clean）')
+                  else
+                    Common.log_action('[Step 0] クリーンアップを実行します…')
+                    Vivlio::Starter::ThorCLI.start(['clean'])
+                  end
                 rescue => e
                   Common.log_warn("[Step 0] クリーンアップでエラー: #{e}")
                 end
@@ -347,9 +357,6 @@ module Vivlio
                   if options[:parallel_pdf] || ENV['VIVLIO_EXPERIMENTAL_PARALLEL_PDF'] == '1'
                     Common.log_info('[Step 7] 実験モード: 章PDFの並列生成＋結合を使用します')
                     BuildHelpers.build_chapter_pdfs_in_parallel_and_merge!(keep)
-                  elsif options[:single_html] || ENV['VIVLIO_EXPERIMENTAL_SINGLE_HTML'] == '1'
-                    Common.log_info('[Step 7] 実験モード: 本文(11..89)を chapters.html に結合してから PDF 生成します')
-                    BuildHelpers.build_overall_pdf_from_single_chapters_html!('.', keep)
                   else
                     BuildHelpers.build_overall_pdf_and_split_from_dir!('.', keep)
                   end
@@ -392,22 +399,23 @@ module Vivlio
                     Array(sources).any? { |s| File.exist?(s) && File.mtime(s) > t_mtime }
                   end
 
+                  force = options[:force]
                   begin
                     # 00/01 は front_pdf の鮮度に基づいて再生成
-                    if options[:force] || newer_than_any.call(front_pdf, [title_md, legal_md, book_yml])
+                    if force || newer_than_any.call(front_pdf, [title_md, legal_md, book_yml])
                       [['create:titlepage', title_md], ['create:legalpage', legal_md]].each do |cmd, _path|
                         Vivlio::Starter::ThorCLI.start([cmd, '--force'])
                       end
                     end
 
                     # 99 は col_pdf の鮮度に基づいて再生成
-                    if options[:force] || newer_than_any.call(col_pdf, [colophon_md, book_yml])
+                    if force || newer_than_any.call(col_pdf, [colophon_md, book_yml])
                       Vivlio::Starter::ThorCLI.start(['create:colophon', '--force'])
                     end
                   rescue => e
                     Common.log_warn("[Step 9] create:* の生成でエラー: #{e}")
                   end
-                  BuildHelpers.build_front_pages_and_tail!(options[:force] ? true : false)
+                  BuildHelpers.build_front_pages_and_tail!(force)
                 rescue => e
                   Common.log_warn("[Step 9] タイトル/奥付の生成でエラー: #{e}")
                 end

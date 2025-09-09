@@ -88,21 +88,19 @@ module Vivlio
 
         # 組み込み: helpとversion
         if argv && (argv.first == '--help' || argv.first == '-h' || argv.first == 'help')
-          # Thor CLI のヘルプを表示
-          Vivlio::Starter::ThorCLI.start(['help'])
-          return 0
+          # Thor CLI のヘルプを表示（読み込み失敗時はメッセージを出して終了）
+          if defined?(Vivlio::Starter::ThorCLI)
+            Vivlio::Starter::ThorCLI.start(['help'])
+            return 0
+          else
+            warn '❌ CLI を初期化できませんでした（ThorCLI 未定義）。インストール/依存関係をご確認ください。'
+            return 1
+          end
         end
 
         if argv && (argv.first == '--version' || argv.first == '-V' || argv.first == 'version')
           puts "vivlio-starter #{Vivlio::Starter::VERSION}"
           return 0
-        end
-
-        # プロジェクトのRakefileが存在する場合でも動作すべき組み込みコマンドを傍受
-        if argv && argv.first == 'new'
-          argv.shift # remove 'new'
-          name = argv.shift
-          return Commands::New.run(name) if defined?(Commands::New)
         end
 
         # グローバルフラグを抽出
@@ -118,11 +116,16 @@ module Vivlio
         end
         ENV['VERBOSE'] = '1' if verbose
 
-        # Thor へ委譲（Rake フォールバックは撤去）
+        # Thor へ委譲
         cmd = argv.shift
         if cmd.nil? || %w[help -h --help].include?(cmd)
-          Vivlio::Starter::ThorCLI.start(['help'])
-          return 0
+          if defined?(Vivlio::Starter::ThorCLI)
+            Vivlio::Starter::ThorCLI.start(['help'])
+            return 0
+          else
+            warn '❌ CLI を初期化できませんでした（ThorCLI 未定義）。インストール/依存関係をご確認ください。'
+            return 1
+          end
         end
 
         begin

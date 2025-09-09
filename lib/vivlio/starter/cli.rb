@@ -23,7 +23,6 @@ require_relative 'cli/resize'
 require_relative 'cli/toc'
 require_relative 'cli/vivliostyle'
 require_relative 'cli/doctor'
-require_relative 'cli/timings'
 
 module Vivlio
   module Starter
@@ -47,7 +46,6 @@ module Vivlio
       map 'prism:lines' => 'prism_lines'
       # Merge コマンドのコロン表記をメソッド名にマップ
       map 'merge:appendices' => 'merge_appendices'
-      map 'timings:sort' => 'timings_sort'
       # このクラスで扱うコマンド一覧（router から参照される）
       # ================================================================
       # Method: self.commands_supported（公開コマンド一覧）
@@ -62,12 +60,11 @@ module Vivlio
         %w[
           build clean config convert 
           create create:colophon create:legalpage create:titlepage
-          delete entries glossary:add glossary:canonicalize
+          delete doctor entries glossary:add glossary:canonicalize
           glossary:canonicalize:check glossary:fix glossary:lint help 
           merge:appendices new open open:pdf pdf pdf:compress post_process
           pre_process prism:lines rename renumber resize
           resize:high resize:low resize:medium toc vivliostyle:config
-          doctor timings:sort
         ]
       end
 
@@ -188,7 +185,6 @@ module Vivlio
       include Vivlio::Starter::CLI::ResizeCommands
       include Vivlio::Starter::CLI::TocCommands
       include Vivlio::Starter::CLI::VivliostyleCommands
-      include Vivlio::Starter::CLI::TimingsCommands
     end
   end
 end

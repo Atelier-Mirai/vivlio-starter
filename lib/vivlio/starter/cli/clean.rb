@@ -53,6 +53,8 @@ module Vivlio
               cleanup_patterns = [
                 # HTML/JS 中間生成物
                 '*.html',
+                # 付録ガードHTML（明示指定; パターン変更時の保険）
+                '90-appendices-guard.html',
                 'entries.js',
                 # 生成される一時/補助的な Markdown（任意）
                 '03-toc.md',

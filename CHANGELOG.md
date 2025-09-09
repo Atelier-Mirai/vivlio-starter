@@ -51,16 +51,63 @@
 - [High] プロジェクト生成時に、.cache/vs/ を生成する。
 
 
+改善策（効果が出やすい順）
+
+VIVLIO_BUILD_CONCURRENCY を設定して Step 5 も並列化
+例: VIVLIO_BUILD_CONCURRENCY=4 ./bin/vs build ...
+章 HTML の pre/convert/post を並列化すると、Step 7 前の待ち時間が短縮します。
+並列 PDF 生成の並列度を調整（スイートスポット探索）
+VIVLIO_PDF_CONCURRENCY=2〜4 程度を試し、CPU/メモリ圧と起動コストのバランスを最適化。
+8 は過大でオーバーヘッドや競合が勝つ可能性。
+Chromium 起動回数の削減（将来案）
+章ごとに vivliostyle を毎回起動せず、ワーカーごとに「長寿命の Vivliostyle 環境」を使い回す（現行の実験実装では都度起動）。起動コストの削減が鍵。
+画像やフォントの重さを抑える
+重い画像（特に高解像度 PNG）や多数の Web フォントは描画コストを増やします。WebP 化や不要フォント削減でページ描画が軽くなります。
+圧縮フローの見直し
+圧縮が必要なビルドとそうでないビルドを分ける（必要なときのみ pdf_compress）。圧縮は 10秒級のコストがあります。
+マシン側最適化（任意）
+ビルドディレクトリを RAM ディスクに（I/O 短縮）。
+同時に動く重いプロセスを減らす（ブラウザ/Editor のタブ削減など）。
+
 ## [Unreleased]
 
+（次回リリース候補の変更はここに追加してください）
+
+
+## [0.9.1] - 2025-09-09
+
 ### Added
-- なし
+- `pdf [OUTPUT]`: 出力ファイル名を引数で指定可能に（指定時は生成後にリネームを自動実行）。
+- ビルド対象/存在チェックの汎用ヘルパ `BuildHelpers.buildable?(basename, keep)` を追加。
 
 ### Changed
-- なし
+- `vs build --no-clean` が Step 0（事前クリーン）でも有効になるよう変更（従来は Step 13 のみ）。
+- `build_helpers.preface_prebuild!` は `Vivlio::Starter::ThorCLI.start(['pdf', '02-preface.pdf'])` を使用し、リネーム処理を `pdf` コマンド側へ集約。
+- 付録の対象抽出で `buildable?` を使用して `keep` と存在を同時に判定。
+- `chapter_numbers_for_book(keep)` が例外時に `nil` を返す仕様に変更。これに伴い呼び出し側の `begin/rescue` を削除し、代入1行へ簡素化。
+- ルーター（`lib/vivlio/starter.rb`）から Rake 時代の残滓（`new` の特別扱い、コメント）を整理し、Thor 委譲に一本化。
 
 ### Fixed
-- なし
+- `vs build` 実行時に Thor の `options` を直接書き換えてしまい `FrozenError` で無音終了する問題を修正。
+  - 対応: `options[:force] ||= options[:'no-cache']` を廃止し、ローカル変数 `force` に展開して使用。
+
+### Removed
+- `--single_html` オプションを削除しました。Step 7 の通常経路は以下に整理されています。
+  - 指定あり（または `VIVLIO_EXPERIMENTAL_PARALLEL_PDF=1`）: `build_chapter_pdfs_in_parallel_and_merge!`
+  - 指定なし（既定）: `build_overall_pdf_and_split_from_dir!('.', keep)`
+
+### Refactored
+- レンジ定数を導入: `MAIN_RANGE=(11..89)`, `APPX_RANGE=(91..97)`（重複するリテラルを排除）。
+- HTML収集の共通化: `BuildHelpers.htmls_for_range(base_dir, range, keep_numbers)` を追加し、Step 6/7 で使用。
+- 並列処理ユーティリティ: `BuildHelpers.parallel_each(items, concurrency:)` を追加し、Step 5 の並列ビルド実装を簡素化。
+- `pdf [OUTPUT]` に寄せるリファクタリング: TOC/フロント/奥付/後書きの PDF 生成で手動リネームを廃止。
+- 付録ガードHTML: `ensure_appendices_guard_html` ヘルパを追加し、Step 7 から呼び出すよう変更。`clean` に `90-appendices-guard.html` を明示追加。
+- 互換コードの整理: `run_pdf_without_single_doc!` を削除（`--single-doc` 廃止済み）。
+- アウトライン抽出を簡素化: 旧 `VS-H:` 接頭辞の除去処理を削除し、`data-heading`/見出しテキストのみに統一。
+
+### Notes
+- 将来的に、特定 basename を扱う他ステップ（例: `98-postface` や `99-colophon` 相当）にも `buildable?` の導入を検討し、対象判定と存在チェックの一元化を進めます。
+
 
 
 ## [0.9.0] - 2025-09-09

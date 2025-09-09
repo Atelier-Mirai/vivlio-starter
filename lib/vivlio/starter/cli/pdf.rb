@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 require 'rbconfig'
+require 'fileutils'
 
 module Vivlio
   module Starter
@@ -16,12 +17,14 @@ module Vivlio
         extend self
         def included(base)
           base.class_eval do
-            desc 'pdf', 'PDFを生成します'
+            desc 'pdf [OUTPUT]', 'PDFを生成します（OUTPUT 指定時はそのファイル名で出力）'
             long_desc <<~DESC
               PDFファイルを生成します。
 
               Vivliostyle CLIを使用してHTMLファイルからPDFを生成します。
               出力ファイル名は vivliostyle.config.js の設定に従います。
+              引数 OUTPUT を指定した場合、生成後に設定上の出力ファイル（例: output.pdf）を
+              OUTPUT へとリネームします（既存ファイルがあれば上書き）。
             DESC
             # ================================================================
             # Command: pdf（VivliostyleでPDF生成）
@@ -31,7 +34,7 @@ module Vivlio
             # - 出力: 設定ファイルの output に指定された PDF
             # - オプション: --verbose（ENV['VIVLIO_QUIET']=1 で出力抑制）
             # ================================================================
-            def pdf
+            def pdf(target_output = nil)
               ENV['VERBOSE'] = '1' if options[:verbose]
               Common.log_action("PDFを生成しています…")
 
@@ -91,11 +94,33 @@ module Vivlio
               end
 
               if $?.success?
-                Common.log_success("PDFの生成が完了しました")
+                # 生成ファイル名（設定に基づく）
+                output_path = pdf_config['output_file'] || 'output.pdf'
 
-                # 生成されたPDFのパスを表示
-                pdf_path = pdf_config['output_file'] || 'output.pdf'
-                Common.log_info("出力先: #{File.expand_path(pdf_path)}")
+                # OUTPUT 引数が与えられていれば、生成直後にリネーム
+                if target_output && !target_output.to_s.strip.empty?
+                  begin
+                    if File.exist?(output_path)
+                      if File.expand_path(output_path) != File.expand_path(target_output)
+                        FileUtils.rm_f(target_output)
+                        FileUtils.mv(output_path, target_output)
+                        Common.log_success("PDFの生成が完了しました（リネーム: #{output_path} → #{target_output}）")
+                        Common.log_info("出力先: #{File.expand_path(target_output)}")
+                      else
+                        # 同一パス指定ならリネーム不要
+                        Common.log_success("PDFの生成が完了しました")
+                        Common.log_info("出力先: #{File.expand_path(output_path)}")
+                      end
+                    else
+                      Common.log_warn("PDF生成は成功しましたが、出力ファイルが見つかりません: #{output_path}")
+                    end
+                  rescue => e
+                    Common.log_warn("PDFのリネームに失敗しました: #{e}")
+                  end
+                else
+                  Common.log_success("PDFの生成が完了しました")
+                  Common.log_info("出力先: #{File.expand_path(output_path)}")
+                end
               else
                 Common.log_error("PDFの生成に失敗しました")
               end
