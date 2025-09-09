@@ -45,50 +45,6 @@ module Vivlio
         
 
 
-        # 単一HTMLを単独PDFにする補助（一時config + single-docで直接ビルド）
-        # html: プロジェクトルート相対の HTML パス（例: '00-titlepage.html')
-        # out_pdf: 生成先のPDFファイル名（プロジェクトルートに配置）
-        def build_single_html_to_pdf!(html, out_pdf)
-          return unless File.exist?(html)
-          require 'tmpdir'
-          Dir.mktmpdir('vs_cfg_') do |dir|
-            # proj/ シンボリックリンク（ローカルサーバ配下の相対参照にする）
-            proj_link = File.join(dir, 'proj')
-            begin
-              File.symlink(Dir.pwd, proj_link)
-            rescue
-              proj_link = Dir.pwd
-            end
-            width, height = BuildHelpers.page_size_strings_from_config
-            tmp_config = File.join(dir, 'vivliostyle.tmp.config.js')
-            File.open(tmp_config, 'w', encoding: 'utf-8') do |f|
-              f.puts <<~JS
-                /** @type {import('@vivliostyle/cli').VivliostyleConfigSchema} */
-                const vivliostyleConfig = {
-                  entry: [ './proj/#{html}' ],
-                  output: [ './out.pdf' ],
-                  size: '#{width} #{height}'
-                };
-                export default vivliostyleConfig;
-              JS
-            end
-            # single-docで直接ビルド（entries.jsを介さない）
-            system('npx', 'vivliostyle', 'build', '-c', tmp_config, '-d', chdir: dir)
-            src = File.join(dir, 'out.pdf')
-            if File.exist?(src)
-              FileUtils.rm_f(out_pdf)
-              FileUtils.cp(src, out_pdf)
-              true
-            else
-              Common.log_warn("[single-doc] PDF が生成されませんでした: #{html}")
-              false
-            end
-          end
-        rescue => e
-          Common.log_warn("[single-doc] 生成でエラー: #{html} (#{e})")
-          false
-        end
-
         # ------------------------------------------------
         # Timing utilities: 章別×ステップ別の計測を timings.csv に追記
         # ------------------------------------------------
