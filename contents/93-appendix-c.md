@@ -55,7 +55,3 @@
 | アニメーション | `@keyframes` と `animation` | `@keyframes fade{...} .el{animation: fade 1s}` | 簡易トランジションは `transition` |
 | 変換/配置 | `transform`, `flex`, `grid` | `display: grid; gap: 1rem;` | レイアウトの基本 |
 :::
-
-
-参考
-- 詳細は Appendix-B のリンク（MDN/WHATWG など）を参照。

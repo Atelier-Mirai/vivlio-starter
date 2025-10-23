@@ -1,0 +1,70 @@
+１．一括レンダリングについて：
+最終順そのもの（00,01,02,03,11-98,99）で行い、PDF後段のページ並べ替えを不要化したいのはやまやまですが、
+03-tocで生成されるページ数が、02, 03 を含んだページ数となることから断念しています。
+
+２．「VS-SECTION: 」不可視テキストを先頭注入について：
+不可視テキストの注入に拘泥していますが、絶対にやめてください。レイアウト崩れの原因となります。
+現状 h1/h2/h3タグへclass名やdata属性を付与していますから、これを活用してください。
+
+３．空白ページ挿入について：
+HTML ではなく PDF 後処理で統一。これはOKです。
+
+４．ページラベル・アウトラインは「最終合成後」に一括適用について：
+合成後にローマ数字小文字ページ番号が可能であれば、OKです。
+実装可能か、検証が必要です。
+
+５．keep（chapters subset）対応の仕様整理について：
+00, 01, 99 は必須。それ以外は(02, 03)も含め、keepに従うこととします。
+
+６．並列化の最適点について：
+HTMLではなく、pdf生成を並列化することが処理時間の短縮に寄与します。
+== Build Step Timings ==
+  - Step 0 (clean)                       0.00s
+  - Step 1 (optimize images)             0.02s
+  - Step 2 (apply virtual chapter numbers)   0.01s
+  - Step 3 (preface prebuild)            9.16s
+  - Step 4 (build appendices and merge html)   1.09s
+  - Step 5 (build chapters html)         2.40s
+  - Step 6 (generate toc and pdf)        9.63s
+  - Step 7 (build overall pdf and split)  13.90s
+  - Step 8 (build frontmatter pdf)       0.85s
+  - Step 9 (build front pages and tail)   6.03s
+  - Step 10 (merge all pdfs)             2.95s
+  - Step 11 (restore chapter css backups)   0.00s
+  - Step 12 (compress pdf)              13.47s
+  - Step 13 (final clean)                0.02s
+  = TOTAL                               59.52s
+
+７．VIVLIO_BUILD_CONCURRENCY のデフォルト値について：
+マシンコア数ベースに自動推奨（例: min(4, n_cores)）賛成です。実装してください。
+
+８．Vivliostyle 設定の動的生成について：
+一括エントリ（entry: []）を動的に生成するヘルパとして、entries.rbがすでにあります。
+vivliostyle.rbと統合して、vivlio.config.jsを生成する方針でもOKです。
+（実行時間にはあまりかかわらない部分なので、コードが美しくなる方向に寄せます）
+
+９．段階的移行の安全策について：
+フラグスイッチ: --onepass（既定） / --legacy は不要です。
+git branch 作成済みなので、すぐに元に戻せますので、一括で移行します。
+
+１０．自動検証について：
+セクション境界のページ奇偶（00/01/02/03/11-98/99 の開始ページが意図どおりか）
+PageLabels の整合（02-03 が i.. / 本文が 1.. ）
+アウトライン階層（h1..h3 まで、章ごとに範囲内検出）をサマリー出力など、チェック機能があると良いです。
+
+１１．余剰ステップの削減について：
+先行ビルド（02）と付録 merge を廃止する方向で実装を進めます。
+CSS 仮想連番（Step 2/11）に関しては、処理時間への影響が皆無です。このまま継続します。
+
+１２．一括 Vivliostyle 実行について：
+すでに実験済みですが、一括 Vivliostyle build より、
+章ごとに並列化してPDF生成、結合したほうが高速である旨、実験結果が出ています。
+@dev_note/bench_20250907.md
+章ごとに並列化してPDF生成した場合、そのままキャッシュ化することも容易です。
+
+
+
+
+
+
+

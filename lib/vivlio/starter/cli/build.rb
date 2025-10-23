@@ -55,7 +55,6 @@ module Vivlio
             method_option :clean,    type: :boolean, default: true,  desc: '中間生成物をクリーンアップ（--no-clean で無効）'
             method_option :dry_run,  type: :boolean, aliases: '-n',  desc: '実行せずにビルド予定のみを表示（試行）'
             method_option :merge,    type: :boolean, aliases: '-m',  desc: '生成された各PDFを結合して出力（出力名: output.pdf / output_compressed.pdf）'
-            method_option :parallel_pdf, type: :boolean, default: false, desc: '実験: 章PDFを並列生成して結合（Step 7 を置換）'
             method_option :log,      type: :string,  banner: '[level]', desc: 'ログレベルを指定（error/warn/info/debug）'
             method_option :force,    type: :boolean, default: false, desc: 'タイトル/リーガル/奥付を強制再生成（--no-cache のエイリアス）'
             method_option :'no-cache', type: :boolean, default: false, desc: 'キャッシュを無効化（--force と同義）'
@@ -75,7 +74,7 @@ module Vivlio
             # オプション:
             #   --no-resize / --high / --medium / --low
             #   --no-compress, --no-clean, --no-cache (--force と同義)
-            #   --parallel_pdf, --single_html
+            #   --single_html
             #   --log[=level]（error/warn/info/debug、未指定は info）
             #
             # 注意:
@@ -122,15 +121,11 @@ module Vivlio
                   output_pdf = pdf_config['output_file'] || 'output.pdf'
                   chapter_pdf = "#{target}.pdf"
                   if File.exist?(output_pdf)
-                    begin
-                      FileUtils.rm_f(chapter_pdf)
-                      FileUtils.mv(output_pdf, chapter_pdf)
-                      Common.log_success("単章PDFを生成しました: #{chapter_pdf}")
-                      generated_pdfs << chapter_pdf
-                      last_pdf = chapter_pdf
-                    rescue => e
-                      Common.log_warn("単章PDFのリネームに失敗しました: #{e}")
-                    end
+                    FileUtils.rm_f(chapter_pdf)
+                    FileUtils.mv(output_pdf, chapter_pdf)
+                    Common.log_success("単章PDFを生成しました: #{chapter_pdf}")
+                    generated_pdfs << chapter_pdf
+                    last_pdf = chapter_pdf
                   else
                     Common.log_warn("出力PDFが見つかりません: #{output_pdf}")
                   end
@@ -139,32 +134,20 @@ module Vivlio
                 # 複数生成時の結合処理
                 if options[:merge] && generated_pdfs.any?
                   Common.log_action('[Merge] 生成した章PDFを結合して output.pdf を作成します…')
-                  begin
-                    FileUtils.rm_f('output.pdf')
-                    cmd = ['bundle', 'exec', 'hexapdf', 'merge', *generated_pdfs, 'output.pdf'].join(' ')
-                    merged = system(cmd)
-                    if merged && File.exist?('output.pdf')
-                      Common.log_success('[Merge] output.pdf を生成しました')
-                      if options[:compress] != false
-                        # 既定の圧縮フローを利用
-                        begin
-                          Vivlio::Starter::ThorCLI.start(['pdf_compress'])
-                        rescue => e
-                          Common.log_warn("[Merge] 圧縮に失敗またはスキップ: #{e}")
-                        end
-                      end
-                      # 最後に open:pdf（圧縮があれば圧縮版が優先される実装）
-                      begin
-                        open_pdf
-                      rescue => _e
-                        # 続行
-                      end
-                      return
-                    else
-                      Common.log_error('[Merge] PDF結合に失敗しました（output.pdf 未生成）')
+                  FileUtils.rm_f('output.pdf')
+                  cmd = ['bundle', 'exec', 'hexapdf', 'merge', *generated_pdfs, 'output.pdf'].join(' ')
+                  merged = system(cmd)
+                  if merged && File.exist?('output.pdf')
+                    Common.log_success('[Merge] output.pdf を生成しました')
+                    if options[:compress] != false
+                      # 既定の圧縮フローを利用
+                      Vivlio::Starter::ThorCLI.start(['pdf_compress'])
                     end
-                  rescue => e
-                    Common.log_warn("[Merge] 結合中にエラー: #{e}")
+                    # 最後に open:pdf（圧縮があれば圧縮版が優先される実装）
+                    open_pdf
+                    return
+                  else
+                    Common.log_error('[Merge] PDF結合に失敗しました（output.pdf 未生成）')
                   end
                 end
 
@@ -212,7 +195,7 @@ module Vivlio
                 Common.echo_always "  - 本文(11..89): #{main_targets.empty? ? '対象なし' : main_targets.join(', ')}"
                 Common.echo_always "  - 付録(91..97): #{appendix_targets.empty? ? '対象なし' : appendix_targets.join(', ')}"
                 Common.echo_always "  - TOC: 03-toc.html / 03-toc.pdf"
-                Common.echo_always "  - 全体PDF: chapters_appendices.pdf → 章/TOCに分割"
+                Common.echo_always "  - 全体PDF: sections.pdf → 章/TOCに分割"
                 Common.echo_always "  - PDF圧縮: #{options[:compress] == false ? 'スキップ' : '実行'}"
                 Common.echo_always "  - クリーン: #{options[:clean] == false ? 'スキップ' : '実行'}"
                 if options[:merge]
@@ -244,15 +227,11 @@ module Vivlio
               # - 失敗しても警告のみで続行
               # ================================================================
               time_step.call('Step 0 (clean)') do
-                begin
-                  if options[:clean] == false
-                    Common.log_action('[Step 0] クリーンアップをスキップします（--no-clean）')
-                  else
-                    Common.log_action('[Step 0] クリーンアップを実行します…')
-                    Vivlio::Starter::ThorCLI.start(['clean'])
-                  end
-                rescue => e
-                  Common.log_warn("[Step 0] クリーンアップでエラー: #{e}")
+                if options[:clean] == false
+                  Common.log_action('[Step 0] クリーンアップをスキップします（--no-clean）')
+                else
+                  Common.log_action('[Step 0] クリーンアップを実行します…')
+                  Vivlio::Starter::ThorCLI.start(['clean'])
                 end
               end
 
@@ -264,20 +243,14 @@ module Vivlio
               # - build_helpers.optimize_images! を呼び出し
               # ================================================================
               time_step.call('Step 1 (optimize images)') do
-                begin
-                  if options[:resize] != false
-                    # --high と --low の同時指定は high を優先（ユーザーに警告）
-                    if options.values_at(:high, :low).count(true) > 1
-                      Common.log_warn('[Step 1] --high と --low が同時指定されています。--high を優先します')
-                    end
-                    # --high が優先、次に --low。指定がなければ medium を既定値とする
-                    preset = ([:high, :low].find { |k| options[k] } || :medium)
-                    BuildHelpers.optimize_images!(preset)
-                  else
-                    Common.log_action('[Step 1] 画像最適化をスキップします（--no-resize）')
+                if options[:resize] != false
+                  if options.values_at(:high, :low).count(true) > 1
+                    Common.log_warn('[Step 1] --high と --low が同時指定されています。--high を優先します')
                   end
-                rescue => e
-                  Common.log_warn("[Step 1] エラー: #{e}")
+                  preset = ([:high, :low].find { |k| options[k] } || :medium)
+                  BuildHelpers.optimize_images!(preset)
+                else
+                  Common.log_action('[Step 1] 画像最適化をスキップします（--no-resize）')
                 end
               end
 
@@ -287,82 +260,52 @@ module Vivlio
               # - build_helpers.apply_virtual_chapter_numbers_for_book!
               # ================================================================
               time_step.call('Step 2 (apply virtual chapter numbers)') do
-                begin
-                  BuildHelpers.apply_virtual_chapter_numbers_for_book!(keep)
-                rescue => e
-                  Common.log_warn("[Step 2] 仮想連番適用でエラー: #{e}")
-                end
+                BuildHelpers.apply_virtual_chapter_numbers_for_book!(keep)
               end
 
+              # Step 3/4 は廃止（02 の先行生成と付録 merge をやめ、通常フローに統合）
+
               # ================================================================
-              # Step 3: 前書き (02-preface) のみ先行ビルド
+              # Step 5: 本文(11..89) + 付録(91..97) + 後書き(98) をビルド（HTML生成）
               # ------------------------------------------------
-              # - build_helpers.preface_prebuild! を実行
-              # - 失敗時は警告のみ
+              # - build_helpers.build_sections_html!
               # ================================================================
-              time_step.call('Step 3 (preface prebuild)') do
-                begin
-                  BuildHelpers.preface_prebuild!(keep)
-                rescue => e
-                  Common.log_warn("[Step 3] エラー: #{e}")
-                end
+              time_step.call('Step 5 (build sections html)') do
+                BuildHelpers.build_sections_html!(keep)
+              end
+
+              if ENV['VIVLIO_STOP_AFTER_STEP5']&.downcase == 'true'
+                Common.log_action('[Step 5] VIVLIO_STOP_AFTER_STEP5=true のため処理を終了します')
+                return
               end
 
               # ================================================================
-              # Step 4: 付録 (91〜97) をビルドし、結合HTMLを作成
-              # ------------------------------------------------
-              # - build_helpers.build_appendices_and_merge_html!
-              # ================================================================
-              time_step.call('Step 4 (build appendices and merge html)') do
-                begin
-                  BuildHelpers.build_appendices_and_merge_html!(keep)
-                rescue => e
-                  Common.log_warn("[Step 4] 付録ビルド/結合でエラー: #{e}")
-                end
-              end
-
-              # ================================================================
-              # Step 5: 本文章 (11..89) をビルド（HTML生成）
-              # ------------------------------------------------
-              # - build_helpers.build_chapters_html!
-              # ================================================================
-              time_step.call('Step 5 (build chapters html)') do
-                begin
-                  BuildHelpers.build_chapters_html!(keep)
-                rescue => e
-                  Common.log_warn("[Step 5] 章ビルドでエラー: #{e}")
-                end
-              end
-
-              # ================================================================
-              # Step 6: TOC 生成（11..89 + 90-appendices.html を対象）
+              # Step 6: TOC 生成（11..97 を対象）
               # ------------------------------------------------
               # - build_helpers.generate_toc_and_pdf!('.')
               # ================================================================
               time_step.call('Step 6 (generate toc and pdf)') do
-                begin
-                  BuildHelpers.generate_toc_and_pdf!('.', keep)
-                rescue => e
-                  Common.log_warn("[Step 6] 目次生成でエラー: #{e}")
-                end
+                BuildHelpers.generate_toc_and_pdf!('.', keep)
+              end
+
+              if ENV['VIVLIO_STOP_AFTER_STEP6']&.downcase == 'true'
+                Common.log_action('[Step 6] VIVLIO_STOP_AFTER_STEP6=true のため処理を終了します')
+                return
               end
 
               # ================================================================
-              # Step 7: 全体PDF生成 → chapters_appendices.pdf/03-toc.pdf に分割
+              # Step 7: 全体PDF生成（従来の entries.js → output.pdf → 分割）
               # ------------------------------------------------
-              # - build_helpers.build_overall_pdf_and_split_from_dir!('.')
+              # - BuildHelpers.compile_overall_pdf_and_split! を経由するディレクトリスキャン版
               # ================================================================
               time_step.call('Step 7 (build overall pdf and split)') do
-                begin
-                  if options[:parallel_pdf] || ENV['VIVLIO_EXPERIMENTAL_PARALLEL_PDF'] == '1'
-                    Common.log_info('[Step 7] 実験モード: 章PDFの並列生成＋結合を使用します')
-                    BuildHelpers.build_chapter_pdfs_in_parallel_and_merge!(keep)
-                  else
-                    BuildHelpers.build_overall_pdf_and_split_from_dir!('.', keep)
-                  end
-                rescue => e
-                  Common.log_warn("[Step 7] 章PDF化/分割でエラー: #{e}")
-                end
+                Common.log_info('[Step 7] 従来フローで全体PDFを生成し分割します')
+                BuildHelpers.build_overall_pdf_and_split_from_dir!('.', keep)
+              end
+
+              if ENV['VIVLIO_STOP_AFTER_STEP7']&.downcase == 'true'
+                Common.log_action('[Step 7] VIVLIO_STOP_AFTER_STEP7=true のため処理を終了します')
+                return
               end
 
               # ================================================================
@@ -371,11 +314,7 @@ module Vivlio
               # - build_helpers.build_frontmatter_pdf!
               # ================================================================
               time_step.call('Step 8 (build frontmatter pdf)') do
-                begin
-                  BuildHelpers.build_frontmatter_pdf!
-                rescue => e
-                  Common.log_warn("[Step 8] ページ番号連番化処理でエラー: #{e}")
-                end
+                BuildHelpers.build_frontmatter_pdf!(keep)
               end
 
               # ================================================================
@@ -384,41 +323,31 @@ module Vivlio
               # - build_helpers.build_front_pages_and_tail!
               # ================================================================
               time_step.call('Step 9 (build front pages and tail)') do
-                begin
-                  # 00/01/99 の有無を確認し、--force 指定時は常に再生成、未指定時は無いものだけ生成
-                  title_md    = File.join(Common::CONTENTS_DIR, '00-titlepage.md')
-                  legal_md    = File.join(Common::CONTENTS_DIR, '01-legalpage.md')
-                  colophon_md = File.join(Common::CONTENTS_DIR, '99-colophon.md')
-                  book_yml    = File.join('config', 'book.yml')
-                  front_pdf   = '00-01-front.pdf'
-                  col_pdf     = '99-colophon.pdf'
+                title_md    = File.join(Common::CONTENTS_DIR, '00-titlepage.md')
+                legal_md    = File.join(Common::CONTENTS_DIR, '01-legalpage.md')
+                colophon_md = File.join(Common::CONTENTS_DIR, '99-colophon.md')
+                book_yml    = File.join('config', 'book.yml')
+                front_pdf   = '00-01-front.pdf'
+                col_pdf     = '99-colophon.pdf'
 
-                  newer_than_any = lambda do |target, sources|
-                    return true unless File.exist?(target)
-                    t_mtime = File.mtime(target) rescue Time.at(0)
-                    Array(sources).any? { |s| File.exist?(s) && File.mtime(s) > t_mtime }
-                  end
-
-                  force = options[:force]
-                  begin
-                    # 00/01 は front_pdf の鮮度に基づいて再生成
-                    if force || newer_than_any.call(front_pdf, [title_md, legal_md, book_yml])
-                      [['create:titlepage', title_md], ['create:legalpage', legal_md]].each do |cmd, _path|
-                        Vivlio::Starter::ThorCLI.start([cmd, '--force'])
-                      end
-                    end
-
-                    # 99 は col_pdf の鮮度に基づいて再生成
-                    if force || newer_than_any.call(col_pdf, [colophon_md, book_yml])
-                      Vivlio::Starter::ThorCLI.start(['create:colophon', '--force'])
-                    end
-                  rescue => e
-                    Common.log_warn("[Step 9] create:* の生成でエラー: #{e}")
-                  end
-                  BuildHelpers.build_front_pages_and_tail!(force)
-                rescue => e
-                  Common.log_warn("[Step 9] タイトル/奥付の生成でエラー: #{e}")
+                newer_than_any = lambda do |target, sources|
+                  return true unless File.exist?(target)
+                  t_mtime = File.mtime(target) rescue Time.at(0)
+                  Array(sources).any? { |s| File.exist?(s) && File.mtime(s) > t_mtime }
                 end
+
+                force = options[:force]
+                if force || newer_than_any.call(front_pdf, [title_md, legal_md, book_yml])
+                  [['create:titlepage', title_md], ['create:legalpage', legal_md]].each do |cmd, _path|
+                    Vivlio::Starter::ThorCLI.start([cmd, '--force'])
+                  end
+                end
+
+                if force || newer_than_any.call(col_pdf, [colophon_md, book_yml])
+                  Vivlio::Starter::ThorCLI.start(['create:colophon', '--force'])
+                end
+
+                BuildHelpers.build_front_pages_and_tail!(force)
               end
 
               # ================================================================
@@ -427,12 +356,8 @@ module Vivlio
               # - build_helpers.merge_all_pdfs!
               # ================================================================
               time_step.call('Step 10 (merge all pdfs)') do
-                begin
-                  # 章サブセット（keep）を尊重しつつ結合し、アウトライン付与を行う
-                  BuildHelpers.merge_all_pdfs_with_outline!(keep)
-                rescue => e
-                  Common.log_warn("[Step 10] PDF結合でエラー: #{e}")
-                end
+                # 章サブセット（keep）を尊重しつつ結合し、アウトライン付与を行う
+                BuildHelpers.merge_all_pdfs_with_outline!(keep)
               end
 
               # ================================================================
@@ -441,11 +366,7 @@ module Vivlio
               # - build_helpers.restore_chapter_css_backups_for_book!
               # ================================================================
               time_step.call('Step 11 (restore chapter css backups)') do
-                begin
-                  BuildHelpers.restore_chapter_css_backups_for_book!(keep)
-                rescue => e
-                  Common.log_warn("[Step 11] CSS復元でエラー: #{e}")
-                end
+                BuildHelpers.restore_chapter_css_backups_for_book!(keep)
               end
 
               # ================================================================
@@ -454,14 +375,10 @@ module Vivlio
               # - build_helpers.compress_pdf!
               # ================================================================
               time_step.call('Step 12 (compress pdf)') do
-                begin
-                  if options[:compress] == false
-                    Common.log_action('[Step 12] PDF圧縮をスキップします（--no-compress）')
-                  else
-                    BuildHelpers.compress_pdf!
-                  end
-                rescue => e
-                  Common.log_warn("[Step 12] PDF圧縮でエラー: #{e}")
+                if options[:compress] == false
+                  Common.log_action('[Step 12] PDF圧縮をスキップします（--no-compress）')
+                else
+                  BuildHelpers.compress_pdf!
                 end
               end
 
@@ -471,60 +388,44 @@ module Vivlio
               # - Thor 'clean' を呼び出し
               # ================================================================
               time_step.call('Step 13 (final clean)') do
-                begin
-                  if options[:clean] == false
-                    Common.log_action('[Step 13] クリーンアップをスキップします（--no-clean）')
-                  else
-                    Common.log_action('[Step 13] 中間生成物をクリーンアップします…')
-                    Vivlio::Starter::ThorCLI.start(['clean'])
-                  end
-                rescue => e
-                  Common.log_warn("[Step 13] クリーンアップでエラー: #{e}")
+                if options[:clean] == false
+                  Common.log_action('[Step 13] クリーンアップをスキップします（--no-clean）')
+                else
+                  Common.log_action('[Step 13] 中間生成物をクリーンアップします…')
+                  Vivlio::Starter::ThorCLI.start(['clean'])
                 end
               end
 
               # タイマーサマリー
-              begin
-                total = build_timings.map { |(_, dt)| dt }.inject(0.0, :+)
-                Common.echo_always "\n== Build Step Timings =="
-                build_timings.each do |label, dt|
-                  Common.echo_always sprintf("  - %-34s %6.2fs", label, dt)
-                end
-                Common.echo_always sprintf("  = %-34s %6.2fs", 'TOTAL', total)
-                Common.echo_always "==========================\n"
+              total = build_timings.map { |(_, dt)| dt }.inject(0.0, :+)
+              label_width = build_timings.map { |(label, _)| label.to_s.length }.max || 0
+              label_width = [label_width, 'TOTAL'.length, 34].max
+              value_width = 7
+              Common.echo_always "\n== Build Step Timings =="
+              build_timings.each do |label, dt|
+                Common.echo_always sprintf("  - %-#{label_width}s %#{value_width}.2fs", label, dt)
+              end
+              Common.echo_always sprintf("  = %-#{label_width}s %#{value_width}.2fs", 'TOTAL', total)
+              Common.echo_always "==========================\n"
 
-                # timings_summary.md の先頭に追記（新しいビルド結果をファイル先頭に）
-                begin
-                  ts = Time.now.iso8601
-                  new_block = []
-                  new_block << "\n## Build Step Timings (#{ts})\n"
-                  new_block << "```\n"
-                  new_block << "== Build Step Timings =="
-                  build_timings.each do |label, dt|
-                    new_block << sprintf("  - %-34s %6.2fs", label, dt)
-                  end
-                  new_block << sprintf("  = %-34s %6.2fs", 'TOTAL', total)
-                  new_block << "`````".sub('`````', "```")
+              # timings_summary.md の先頭に追記（新しいビルド結果をファイル先頭に）
+              ts = Time.now.iso8601
+              new_block = []
+              new_block << "\n## Build Step Timings (#{ts})\n"
+              new_block << "````\n"
+              new_block << "== Build Step Timings =="
+              build_timings.each do |label, dt|
+                new_block << sprintf("  - %-#{label_width}s %#{value_width}.2fs", label, dt)
+              end
+              new_block << sprintf("  = %-#{label_width}s %#{value_width}.2fs", 'TOTAL', total)
+              new_block << "```"
 
-                  path = File.join(Dir.pwd, 'timings_summary.md')
-                  previous = ''
-                  if File.exist?(path)
-                    begin
-                      previous = File.read(path, encoding: 'utf-8')
-                    rescue
-                      previous = ''
-                    end
-                  end
-                  File.open(path, 'w', encoding: 'utf-8') do |f|
-                    f.write(new_block.join("\n"))
-                    f.write("\n")
-                    f.write(previous.to_s)
-                  end
-                rescue => _e
-                  # ignore file append errors
-                end
-              rescue => _e
-                # ignore summary errors
+              path = File.join(Dir.pwd, 'timings_summary.md')
+              previous = File.exist?(path) ? File.read(path, encoding: 'utf-8') : ''
+              File.open(path, 'w', encoding: 'utf-8') do |f|
+                f.write(new_block.join("\n"))
+                f.write("\n")
+                f.write(previous.to_s)
               end
 
               # 最後に1度だけPDFをオープン（OS判定は open_pdf 側に委譲）

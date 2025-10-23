@@ -45,7 +45,7 @@ module Vivlio
                   --no-resize           # 画像のリサイズ/最適化をスキップ
                   --no-compress         # PDFの圧縮をスキップ
                   --no-clean            # 中間ファイルのクリーンアップをスキップ
-                  -v                    # 詳細な出力を表示
+                  --log[=level]         # ログレベルを指定（error/warn/info/debug、既定は info）
 
                 章の管理:
                   vs create <chapter_name>       - 新しい章を作成
