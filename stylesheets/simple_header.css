@@ -17,6 +17,12 @@ h1 {
   padding-inline: 0;
   padding-block: clamp(7mm, calc(var(--paper-scale) * 10mm), 10mm); /* 余白をスケール */
 
+  /* layout (flex to stack number/title) */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(4.2mm, calc(var(--paper-scale) * 6mm), 6mm);
+
   /* typography */
   font-size: clamp(30.8Q, calc(var(--paper-scale) * 44Q), 44Q);
   line-height: clamp(35Q, calc(var(--paper-scale) * 50Q), 50Q);
@@ -33,43 +39,32 @@ h1 {
 
   /* 節カウンタのみリセット。ページ番号は @page で制御 */
   counter-reset: section-counter 0;
-  string-set: chapter-title content(), chapter-number content(before);
+  string-set: chapter-title attr(data-chapter-title), chapter-number attr(data-chapter-number-display);
 }
 
-h1::before {
-  /* layout */
-  position: static; /* 中央配置を素直に反映 */
-  display: block;
-
-  /* box-size */
-  inline-size: auto;
-  block-size: auto;
-
-  /* alignment */
-  text-align: center;
-
-  /* typography */
+h1 .chapter-number {
   font-size: clamp(21Q, calc(var(--paper-scale) * 30Q), 30Q);
+  font-weight: 700;
+  line-height: 1.1;
   color: var(--heading-text);
+}
 
-  /* spacing */
-  margin-block-end: clamp(4.2mm, calc(var(--paper-scale) * 6mm), 6mm);
-
-  /* counters/meta */
-  content: "第 " counter(chapter-counter) " 章";
+h1 .chapter-title {
+  display: block;
 }
 
 /* 節見出し（左バッジ + 右灰色帯） */
 h2 {
   position: relative;
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: clamp(3mm, calc(var(--paper-scale) * 5mm), 5mm);
 
   /* spacing */
   margin-inline-start: 0;
   margin-block: clamp(3.5mm, calc(var(--paper-scale) * 5mm), 5mm) clamp(3.5mm, calc(var(--paper-scale) * 5mm), 5mm);
   padding-block: clamp(2.1mm, calc(var(--paper-scale) * 3mm), 3mm);
   padding-inline: 6mm;
-  padding-inline-start: calc(clamp(15.4mm, calc(var(--paper-scale) * 22mm), 22mm) + 6mm); /* バッジ幅スケールに追随 */
 
   /* typography */
   font-size: clamp(25.2Q, calc(var(--paper-scale) * 36Q), 36Q);
@@ -90,24 +85,22 @@ h2 {
   background: var(--section-gray);
 
   /* meta */
-  string-set: section-title content(), section-number content(before);
+  string-set: section-title attr(data-section-title), section-number attr(data-section-number-display);
   counter-increment: section-counter;
 }
 
-/* 左の番号バッジ（アクセント色に白字） */
-h2::before {
-  position: absolute;
-  inset-inline-start: 0;
-  inset-block-start: 0;
-  inline-size: clamp(15.4mm, calc(var(--paper-scale) * 22mm), 22mm); /* バッジ幅をスケール */
+h2 .section-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: clamp(15.4mm, calc(var(--paper-scale) * 22mm), 22mm);
   block-size: 100%;
-  display: grid;
-  place-items: center;
+  padding-inline: clamp(2mm, calc(var(--paper-scale) * 3mm), 3mm);
   background: var(--heading-accent);
   color: #fff;
   font-weight: 900;
-  content: counter(chapter-counter) "." counter(section-counter);
 }
 
-/* 旧装飾を無効化 */
-h2::after { content: none; }
+h2 .section-title {
+  flex: 1 1 auto;
+}

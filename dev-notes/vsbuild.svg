@@ -1,0 +1,25 @@
+<svg width="180" height="48" viewBox="0 0 180 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="vGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#6aa84f;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#38761d;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="sGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#4a86e8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1c4587;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="vivlioTextGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#4a86e8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1c4587;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="starterTextGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#6aa84f;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#38761d;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <text x="0" y="40" font-family="Arial, sans-serif" font-size="48" font-weight="bold">
+    <tspan fill="url(#vivlioTextGradient)">vs</tspan>
+    <tspan x="60" y="40" fill="url(#starterTextGradient)">build</tspan>
+  </text>
+</svg>

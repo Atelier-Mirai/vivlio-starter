@@ -1,0 +1,29 @@
+---
+link:
+- rel: stylesheet
+  href: stylesheets/theme.css
+- rel: stylesheet
+  href: stylesheets/chapter.css
+- rel: stylesheet
+  href: stylesheets/31.css
+lang: ja
+---
+
+# Thor
+
+:::{.chapter-lead}
+各章の冒頭に置かれる短い導入文を記述します。この章で扱うテーマや内容の概要を読者に伝える文章を書いてください。
+:::
+
+ここにThorの内容を記述します。
+
+## 見出し
+
+:::{.section-lead}
+章の中の各セクション（節）の冒頭に置かれる導入文を記述します。
+・このセクションで扱うトピックの簡潔な紹介
+・読者の興味を引きつける導入部
+・セクションの内容に関する背景情報の提供
+・セクションの重要性や他の内容との関連性の説明
+などを記述してください。
+:::

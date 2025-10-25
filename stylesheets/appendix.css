@@ -49,18 +49,16 @@ h1 {
 
   /* layout */
   position: relative;
-  display: grid;              /* 帯内で本文を上下左右中央に */
-  place-items: center;
-  place-content: center center;      /* コンテンツ領域も中央に */
-  gap: 0;
+  display: flex;
+  align-items: center;
+  gap: 1em;
 
   /* box-size */
   min-block-size: clamp(25.2mm, calc(var(--paper-scale) * 36mm), 36mm);       /* 帯の最小高さをスケール */
 
   /* spacing */
   margin-block-start: clamp(14mm, calc(var(--paper-scale) * 20mm), 20mm);
-  padding-inline-start: 4em;  /* ラベル分の左余白 */
-  padding-block-start: 0;     /* 帯に重ねるため不要 */
+  padding-inline: clamp(3mm, calc(var(--paper-scale) * 5mm), 5mm) clamp(6mm, calc(var(--paper-scale) * 9mm), 9mm);
 
   /* typography */
   font-family: var(--header-font);
@@ -69,45 +67,38 @@ h1 {
   text-align: left;
 
   /* counters/meta */
-  counter-increment: appendix;       /* 付録レター(A,B,...)を進める */
   counter-reset: section-counter 0;  /* 節番号を付録ごとにリセット */
+  string-set: chapter-title attr(data-chapter-title), chapter-number attr(data-chapter-number-display);
 
   /* visual */
   color: var(--appendix-on-accent-color);
+  background: var(--appendix-accent-color);
   border-block-end: none;
 }
 
-h1::before {
-  /* content: "付録 " counter(appendix, upper-alpha); */
-  content: "";
-  position: absolute;
-  inset: 0;                         /* h1 全面を覆う帯 */
-  display: block;
-  background: var(--appendix-accent-color);
-  z-index: -1;                       /* テキスト背面 */
+h1 .chapter-number {
+  font-weight: 700;
+  letter-spacing: 0.1em;
 }
 
-/* ラベル: 付録 A をテキストの前に表示 */
-h1::after {
-  content: "付録" counter(appendix, upper-alpha);
-  position: absolute;
-  inset-inline-start: 0;             /* 見出しの左端に配置 */
-  inset-block: 0;                    /* 上下 0 で帯内の縦中央をとる */
-  display: flex;
-  align-items: center;               /* 縦中央 */
-  padding-inline-start: 0.8em;       /* 左端の余白（em は相対のためスケール不要） */
-  color: inherit;
-  font-weight: inherit;
+h1 .chapter-title {
+  flex: 1 1 auto;
 }
 
 /* h2 番号のみを表示 */
 
 /* 節番号は B-1, B-2 ... */
-h2::before {
-  content: "\00a0\00a0\00a0" counter(appendix, upper-alpha) "-" counter(section-counter) "\00a0\00a0";
+h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  counter-increment: section-counter;
+  string-set: section-title attr(data-section-title), section-number attr(data-section-number-display);
+}
+
+h2 .section-number {
+  font-weight: 800;
   color: var(--appendix-accent-color);
-  text-shadow: none;
-  background: none;
 }
 
 /* 節カウンタの増加は preface.css の .level2 で行う（二重増加を防ぐため本ファイルでは未指定） */

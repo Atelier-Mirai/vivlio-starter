@@ -4,6 +4,7 @@ require 'rbconfig'
 require 'fileutils'
 require 'hexapdf'
 require 'nokogiri'
+require 'cgi'
 require 'time'
 require 'etc'
 
@@ -21,7 +22,14 @@ module Vivlio
       # 直接 Thor コマンドではなく、`BuildCommands#build` から順序制御される想定。
       # 例外は基本的に握りつぶしてログし、可能な限り後続ステップを継続する。
       # ==============================================================================
-      module BuildHelpers 
+      module BuildHelpers
+        @last_outline_debug_info = nil
+
+        def last_outline_debug_info
+          @last_outline_debug_info
+        end
+        module_function :last_outline_debug_info
+
         module_function
 
         def cache_store_file(cache_on, source, dest, step_label)
@@ -30,6 +38,7 @@ module Vivlio
           Common.log_info("[#{step_label}] キャッシュへ保存しました: #{dest}")
           true
         end
+
         module_function :cache_store_file
 
         def cache_restore_file(cache_on, source, dest, step_label)
@@ -40,7 +49,31 @@ module Vivlio
         end
         module_function :cache_restore_file
 
+        def chapter_order_from(basenames, base_dir = '.')
+          basenames = Array(basenames).map { |bn| bn.to_s.strip }.reject(&:empty?).uniq
+          return [] if basenames.empty?
+
+          sort_key = lambda do |bn|
+            number = Common.get_chapter_number(bn)
+            number ? [number.to_i, bn] : [Float::INFINITY, bn]
+          end
+
+          html_basenames = Dir.glob(File.join(base_dir, '*.html'))
+                              .map { |path| File.basename(path, '.html') }
+                              .uniq
+                              .sort_by { |bn| sort_key.call(bn) }
+
+          ordered = html_basenames.select { |bn| basenames.include?(bn) }
+
+          remaining = basenames - ordered
+          remaining_sorted = remaining.sort_by { |bn| sort_key.call(bn) }
+
+          ordered + remaining_sorted
+        end
+        module_function :chapter_order_from
+
         # 章レンジ（定数化）
+        PREFACE_RANGE  = (2..2)
         MAIN_RANGE     = (11..89)
         APPX_RANGE     = (91..97)
         POSTFACE_RANGE = (98..98)
@@ -219,141 +252,9 @@ module Vivlio
           Common.log_success('[Step 1] 画像最適化が完了しました')
         end
 
-        # ================================================================
-        # Step 2: PDF 生成前に CSS を 1,2,3… の仮想連番へ更新
-        # ------------------------------------------------
-        # - 対象: 11..89 章に対応する stylesheets/NN.css
-        # - 各 CSS の .orig を作成（未作成時のみ）し、counter とコメントを仮想番号へ更新
-        # - 元への復元は Step 11（.orig から復元）で実施
-        # ================================================================
-        def apply_virtual_chapter_numbers_for_book!(keep = nil)
-          # 11..89 の順序に対応する stylesheets/NN.css を算出（共通ロジックに委譲）
-          numbers = BuildHelpers.chapter_numbers_for_book(keep)
-          css_paths = numbers
-                        .map { |n| File.join(Common::STYLESHEETS_DIR, "#{n}.css") }
-                        .select { |css| File.exist?(css) }
-          if css_paths.empty?
-            Common.log_info("[Step 2] 対象CSSが見つかりません（#{Common::STYLESHEETS_DIR}/NN.css が存在しません）")
-            return
-          end
-          Common.log_action("[Step 2] 章CSSを仮想連番 1..#{css_paths.size} に更新します…（対象章: #{numbers.join(', ')}）")
-          css_paths.each_with_index do |css, idx|
-            backup = css + '.orig'
-            unless File.exist?(backup)
-              FileUtils.cp(css, backup)
-            end
-            update_css_counter(css, idx + 1)
-          end
-        end
-
-        # ================================================================
-        # Step 3: 前書き (02-preface) のみ先行ビルド
-        # ------------------------------------------------
-        # - pre_process -> convert -> post_process -> entries -> pdf
-        # - 出力 output.pdf を 02-preface.pdf にリネーム
-        # - ページ数を取得してログ出力
-        # ================================================================
-        def preface_prebuild!(keep = nil)
-          Common.log_action('[Step 3] 前書き (02-preface) のみ先行ビルドを実行します…')
-
-          # 汎用ガードで対象/存在を確認
-          return unless BuildHelpers.buildable?('02-preface', keep)
-
-          %w[pre_process convert post_process entries].each do |t|
-            BuildHelpers.time_step_for_chapter('02-preface', t) do
-              Vivlio::Starter::ThorCLI.start([t, '02-preface'])
-            end
-          end
-          BuildHelpers.time_step_for_chapter('02-preface', 'pdf') do
-            # 改良された pdf コマンドに出力ファイル名を渡してリネームも一括処理
-            Vivlio::Starter::ThorCLI.start(['pdf', '02-preface.pdf'])
-          end
-        end
-
-        # ------------------------------------------------
-        # Helper: buildable?
-        # ------------------------------------------------
-        # - 目的: 指定ベース名(basename)の対象判定と存在確認を一元化
-        # - 引数: basename (例: '02-preface')、keep（configの chapters 正規化リスト or nil）
-        # - 戻り値: true（処理続行）/false（スキップ）
-        # - ログ: 各条件で適切に出力（章名は basename で汎用化）
-        # ------------------------------------------------
-        def buildable?(basename, keep)
-          # chapters 指定: 対象外ならスキップ
-          if keep && !keep.include?("#{basename}.md")
-            Common.log_action("[Guard] #{basename} は chapters 設定に含まれないためスキップします")
-            return false
-          end
-          # 存在確認
-          md_path = File.join(Common::CONTENTS_DIR, "#{basename}.md")
-          unless File.exist?(md_path)
-            Common.log_warn("[Guard] #{basename}.md が見つかりません。処理をスキップします")
-            return false
-          end
-          true
-        end
-        module_function :buildable?
-
-        # ================================================================
-        # Step 4: 付録 (91〜97) のビルドと結合
-        # ------------------------------------------------
-        # - 91..97 の章を HTML 生成
-        # - merge_appendices で 90-appendices.html を生成
-        # - 個別付録 HTML をクリーンアップ
-        # ================================================================
-        def build_appendices_and_merge_html!(keep = nil)
-          Common.log_action('[Step 4] 付録章 (91〜97) をビルドします…')
-
-          appendix_paths   = Dir[File.join(Common::CONTENTS_DIR, '{91,92,93,94,95,96,97}-*.md')]
-          appendix_targets = appendix_paths.map { |p| File.basename(p, '.md') }.uniq.sort
-
-          # chapters 指定がある場合は、含まれる付録のみ対象（存在確認も含めて汎用ガードで判定）
-          if keep && keep.any?
-            appendix_targets.select! { |t| BuildHelpers.buildable?(t, keep) }
-          end
-
-          if appendix_targets.empty?
-            Common.log_warn('[Step 4] 付録候補(91〜97)が見つかりません。Step 4 をスキップします。')
-            return
-          end
-
-          Common.log_info("[Step 4] 対象: #{appendix_targets.join(', ')}")
-          appendix_targets.each do |target|
-            %w[pre_process convert post_process].each do |tn|
-              BuildHelpers.time_step_for_chapter(target, tn) do
-                Vivlio::Starter::ThorCLI.start([tn, target])
-              end
-            end
-          end
-
-          # 付録HTMLを結合して 90-appendices.html を生成
-          Common.log_action('[Step 4] 付録HTMLを結合して 90-appendices.html を生成します…')
-          Vivlio::Starter::ThorCLI.start(['merge_appendices'])
-          Common.log_success('[Step 4] 90-appendices.html を生成しました')
-
-          # 付録結合後に post_process を適用して見出しメタ等を付与（PDFアウトライン用）
-          if File.exist?('90-appendices.html')
-            Vivlio::Starter::ThorCLI.start(['post_process', '90-appendices'])
-            Common.log_info('[Step 4] 90-appendices.html に post_process を適用しました（見出しメタ付与）')
-          else
-            Common.log_warn('[Step 4] 90-appendices.html が見つからないため post_process をスキップします')
-          end
-
-          # 個別付録HTMLをクリーンアップ
-          patterns = ['{91,92,93,94,95,96,97}-*.html', '{91,92,93,94,95,96,97}-*.md']
-          removed = []
-          patterns.each do |pattern|
-            Dir.glob(pattern).each do |f|
-              next unless File.file?(f)
-              File.delete(f)
-              removed << File.basename(f)
-            end
-          end
-          if removed.any?
-            Common.log_info("[Step 4] 個別付録(HTML/MD)を削除: #{removed.join(', ')}")
-          else
-            Common.log_info('[Step 4] 削除対象の個別付録(HTML/MD)はありません')
-          end
+        # 章別CSSは廃止されたため関連する操作は不要
+        def apply_virtual_chapter_numbers_for_book!(_keep = nil)
+          Common.log_info('[Step 2] apply_virtual_chapter_numbers_for_book! は廃止されました。処理をスキップします。')
         end
 
         # ================================================================
@@ -548,7 +449,7 @@ module Vivlio
             output_pdf,
             toc_pages,
             '03-toc.pdf',
-            'sections.pdf'
+            '11-98-sections.pdf'
           )
         end
 
@@ -606,13 +507,13 @@ module Vivlio
         end
 
         # ================================================================
-        # Step 8: frontmatter.pdf 構成 + ローマ小付与
+        # Step 8: 02-03-front.pdf 構成 + ローマ小付与
         # ------------------------------------------------
         # - 02-preface.pdf + 03-toc.pdf を merge
         # - HexaPDF PageLabels 設定 → 小文字ローマ数字をオーバーレイ描画
         # ================================================================
         def build_frontmatter_pdf!(keep = nil)
-          Common.log_action('[Step 8] frontmatter.pdf を構成し、ローマ小 i〜 を付与します…')
+          Common.log_action('[Step 8] 02-03-front.pdf を構成し、ローマ小 i〜 を付与します…')
           # keep 方針: 02/03 は keep に従う（nil=フルビルド時は両方含める）
           include_preface = keep.nil? || Array(keep).map(&:to_s).any? { |s| File.basename(s) == '02-preface.md' }
           include_toc     = keep.nil? || Array(keep).map(&:to_s).any? { |s| File.basename(s) == '03-toc.md' }
@@ -631,6 +532,7 @@ module Vivlio
                 Vivlio::Starter::ThorCLI.start([t, '02-preface'])
               end
               Vivlio::Starter::ThorCLI.start(['pdf', '02-preface.pdf'])
+              Common.log_success('[Step 8] 02-preface.pdf を生成しました') if File.exist?('02-preface.pdf')
               cache_store_file(cache_on, '02-preface.pdf', preface_cache, 'Step 8')
             else
               Common.log_action('[Step 8] 前書きPDFは最新のため再利用します: 02-preface.pdf')
@@ -644,59 +546,61 @@ module Vivlio
           missing_files  = files_to_merge - existing_files
           Common.log_warn("[Step 8] 結合対象が見つかりません: #{missing_files.join(', ')}") if missing_files.any?
 
-          # どちらか1つだけ存在する場合は、それを frontmatter.pdf として採用
+          # どちらか1つだけ存在する場合は、それを 02-03-front.pdf として採用
           if existing_files.length == 1
             src = existing_files.first
-            FileUtils.rm_f('frontmatter.pdf')
-            FileUtils.cp(src, 'frontmatter.pdf')
-            Common.log_success("[Step 8] frontmatter.pdf を単一ソースから生成しました: #{src}")
+            FileUtils.rm_f('02-03-front.pdf')
+            FileUtils.cp(src, '02-03-front.pdf')
+            Common.log_success("[Step 8] 02-03-front.pdf を単一ソースから生成しました: #{src}")
 
             # frontmatter のページ数が奇数なら、末尾に空白1ページを追加して本文を右ページ開始に揃える
-            pages = (BuildHelpers.page_count('frontmatter.pdf') || '0').to_i
+            pages = (BuildHelpers.page_count('02-03-front.pdf') || '0').to_i
             if pages.odd?
-              doc = HexaPDF::Document.open('frontmatter.pdf')
+              doc = HexaPDF::Document.open('02-03-front.pdf')
               first_box = doc.pages[0].box(:media)
               doc.pages.add([first_box.left, first_box.bottom, first_box.right, first_box.top])
-              doc.write('frontmatter.pdf', optimize: true)
-              Common.log_info('[Step 8] frontmatter.pdf が奇数ページのため、空白1ページを末尾に挿入しました')
+              doc.write('02-03-front.pdf', optimize: true)
+              Common.log_info('[Step 8] 02-03-front.pdf が奇数ページのため、空白1ページを末尾に挿入しました')
             end
 
-            BuildHelpers.apply_page_labels_hexapdf('frontmatter.pdf', 0)
-            if BuildHelpers.overlay_roman_page_numbers!('frontmatter.pdf')
-              Common.log_success('[Step 8] frontmatter.pdf にローマ小 i〜 を描画しました')
+            BuildHelpers.apply_page_labels_hexapdf('02-03-front.pdf', 0)
+            if BuildHelpers.overlay_roman_page_numbers!('02-03-front.pdf')
+              Common.log_success('[Step 8] 02-03-front.pdf にローマ小 i〜 を描画しました')
             else
-              Common.log_warn('[Step 8] frontmatter.pdf へのローマ小描画をスキップ/失敗')
+              Common.log_warn('[Step 8] 02-03-front.pdf へのローマ小描画をスキップ/失敗')
             end
+
             return
           elsif existing_files.empty?
-            Common.log_warn('[Step 8] frontmatter 構成対象PDFがありません。frontmatter.pdf の生成をスキップします')
+            Common.log_warn('[Step 8] frontmatter 構成対象PDFがありません。02-03-front.pdf の生成をスキップします')
             return
           end
 
           Common.log_info("[Step 8] 結合順: #{existing_files.join(' -> ')}")
-          cmd = ['bundle', 'exec', 'hexapdf', 'merge', *existing_files, 'frontmatter.pdf'].join(' ')
+          FileUtils.rm_f('02-03-front.pdf')
+          cmd = ['bundle', 'exec', 'hexapdf', 'merge', *existing_files, '02-03-front.pdf'].join(' ')
           merged = system(cmd)
-          if merged && File.exist?('frontmatter.pdf')
-            Common.log_success('[Step 8] frontmatter.pdf を生成しました')
+          if merged && File.exist?('02-03-front.pdf')
+            Common.log_success('[Step 8] 02-03-front.pdf を生成しました')
 
             # frontmatter のページ数が奇数なら、末尾に空白1ページを追加して本文を右ページ開始に揃える
-            pages = (BuildHelpers.page_count('frontmatter.pdf') || '0').to_i
+            pages = (BuildHelpers.page_count('02-03-front.pdf') || '0').to_i
             if pages.odd?
-              doc = HexaPDF::Document.open('frontmatter.pdf')
+              doc = HexaPDF::Document.open('02-03-front.pdf')
               first_box = doc.pages[0].box(:media)
               doc.pages.add([first_box.left, first_box.bottom, first_box.right, first_box.top])
-              doc.write('frontmatter.pdf', optimize: true)
-              Common.log_info('[Step 8] frontmatter.pdf が奇数ページのため、空白1ページを末尾に挿入しました')
+              doc.write('02-03-front.pdf', optimize: true)
+              Common.log_info('[Step 8] 02-03-front.pdf が奇数ページのため、空白1ページを末尾に挿入しました')
             end
 
-            BuildHelpers.apply_page_labels_hexapdf('frontmatter.pdf', 0)
-            if BuildHelpers.overlay_roman_page_numbers!('frontmatter.pdf')
-              Common.log_success('[Step 8] frontmatter.pdf にローマ小 i〜 を描画しました')
+            BuildHelpers.apply_page_labels_hexapdf('02-03-front.pdf', 0)
+            if BuildHelpers.overlay_roman_page_numbers!('02-03-front.pdf')
+              Common.log_success('[Step 8] 02-03-front.pdf にローマ小 i〜 を描画しました')
             else
-              Common.log_warn('[Step 8] frontmatter.pdf へのローマ小描画をスキップ/失敗')
+              Common.log_warn('[Step 8] 02-03-front.pdf へのローマ小描画をスキップ/失敗')
             end
           else
-            Common.log_error('[Step 8] frontmatter.pdf の生成に失敗しました')
+            Common.log_error('[Step 8] 02-03-front.pdf の生成に失敗しました')
           end
         end
 
@@ -798,8 +702,8 @@ module Vivlio
           # 存在するPDFのみで結合を続行します（02-preface.pdf が無くても処理継続）
           Common.log_info('[Step 10] 存在するPDFのみで結合を実行します（02-preface.pdf は任意）')
           files_to_merge = [
-            '00-01-front.pdf', 'frontmatter.pdf',
-            'sections.pdf', '99-colophon.pdf'
+            '00-01-front.pdf', '02-03-front.pdf',
+            '11-98-sections.pdf', '99-colophon.pdf'
           ]
           existing_files = files_to_merge.select { |f| File.exist?(f) }
           missing_files  = files_to_merge - existing_files
@@ -825,22 +729,19 @@ module Vivlio
           if merged && File.exist?('output.pdf')
             Common.log_success('[Step 10] output.pdf を生成しました')
             # 可能なら、本文HTMLの見出し(h1〜h3)からアウトラインを生成して付与
-            keep_numbers = BuildHelpers.chapter_numbers_for_book(keep)
+            keep_numbers = BuildHelpers.chapter_numbers_for_outline(keep)
             chapter_htmls = Dir.glob(File.join('.', '*.html')).select { |path|
               bn = File.basename(path, '.html')
               n = bn[/\A(\d+)-/, 1]&.to_i
               next false unless n
-              in_scope = MAIN_RANGE.include?(n) || APPX_RANGE.include?(n) || POSTFACE_RANGE.include?(n)
-              allowed = keep_numbers.nil? || keep_numbers.include?(n) || POSTFACE_RANGE.include?(n)
-              in_scope && allowed
+              allowed = keep_numbers.nil? || keep_numbers.include?(n)
+              allowed
             }.sort
             if chapter_htmls.any?
               Common.log_action('[Step 10] 本文HTMLの h1〜h3 から PDF ブックマーク（アウトライン）を付与します…')
-              # 先頭の front(00-01) + frontmatter(02+03) をスキップして本文へジャンプ
-              fr_pages = (BuildHelpers.page_count('00-01-front.pdf')   || '0').to_i
-              fm_pages = (BuildHelpers.page_count('frontmatter.pdf')   || '0').to_i
-              start_from = [[fr_pages + fm_pages + 1, 1].max, 10**9].min
-              Common.log_info("[Outline] page offset: front=#{fr_pages}, frontmatter=#{fm_pages}, start_page=#{start_from}")
+              total_pages   = (BuildHelpers.page_count('output.pdf') || '0').to_i
+              start_from    = 1
+              Common.log_info("[Outline] page offset: start_page=#{start_from}")
               BuildHelpers.add_outline_from_headings!(
                 'output.pdf',
                 chapter_htmls,
@@ -855,6 +756,371 @@ module Vivlio
           end
         end
 
+        def extract_headings_from_html_file(path, max_level:, include_appendix_label: true)
+          html = File.read(path, encoding: 'utf-8')
+          doc  = Nokogiri::HTML.parse(html)
+          basename = File.basename(path, '.html')
+          headings = []
+          (1..max_level).each do |lvl|
+            doc.css("h#{lvl}").each do |node|
+              text = node["data-h#{lvl}"].to_s.strip
+              text = node['data-heading'].to_s.strip if text.empty?
+              text = node.text.to_s.strip if text.empty?
+              next if text.empty?
+              appendix_label = nil
+              if include_appendix_label && lvl == 1
+                appendix_label = BuildHelpers.appendix_label_for_basename(basename)
+              end
+              chapter_token = node['data-chapter'].to_s.strip
+              chapter_token = basename if chapter_token.empty?
+              heading_attr = node['data-heading'].to_s.strip
+
+              number_text = case lvl
+                            when 1
+                              val = node['data-chapter-number-display'].to_s.strip
+                              val = node.at_css('span.chapter-number')&.text&.strip if val.empty?
+                              val
+                            when 2
+                              val = node['data-section-number-display'].to_s.strip
+                              val = node.at_css('span.section-number')&.text&.strip if val.empty?
+                              val
+                            when 3
+                              val = node['data-subsection-number-display'].to_s.strip
+                              val = node.at_css('span.subsection-marker')&.text&.strip if val.empty?
+                              val
+                            else
+                              nil
+                            end
+
+              title_text = case lvl
+                           when 1
+                             node['data-chapter-title'].to_s.strip
+                           when 2
+                             node['data-section-title'].to_s.strip
+                           when 3
+                             node['data-subsection-title'].to_s.strip
+                           else
+                             ''
+                           end
+              title_text = text if title_text.empty?
+
+              search_terms = []
+              number_variants = []
+              if number_text && !number_text.empty?
+                unless title_text.empty?
+                  number_variants << "#{number_text}#{title_text}"
+                  number_variants << "#{number_text} #{title_text}"
+                end
+                number_variants << number_text
+              end
+              search_terms.concat(number_variants)
+              search_terms << heading_attr unless heading_attr.empty?
+              search_terms << text
+              search_terms << appendix_label.to_s unless appendix_label.to_s.empty?
+              search_terms = search_terms.compact.map { |term| term.to_s.strip }.reject(&:empty?).uniq
+
+              headings << {
+                level: lvl,
+                text: text,
+                chapter: chapter_token,
+                id: node['id'].to_s.strip,
+                appendix_label: appendix_label,
+                search_terms: search_terms
+              }
+            end
+          end
+          headings
+        end
+        module_function :extract_headings_from_html_file
+
+        def extract_headings_from_markdown_file(path, max_level: 2)
+          headings = []
+          return headings unless File.exist?(path)
+
+          title = nil
+          subtitles = []
+          File.foreach(path, encoding: 'utf-8') do |line|
+            stripped = line.strip
+            if max_level >= 1 && title.nil? && stripped.start_with?('# ')
+              title = stripped.sub('\A#\\s+', '').strip
+              next
+            end
+            if max_level >= 2 && stripped.start_with?('## ')
+              subtitles << stripped.sub('\A##\\s+', '').strip
+            end
+            break if max_level <= 2 && !title.nil? && !subtitles.empty?
+          end
+          headings << { level: 1, text: title } if title && !title.empty?
+          if max_level >= 2
+            subtitles.each do |text|
+              next if text.empty?
+              headings << { level: 2, text: text }
+            end
+          end
+          headings
+        end
+        module_function :extract_headings_from_markdown_file
+
+        def heading_page_entries(pdf_path, html_paths, max_level: 3, start_page: 1)
+          @last_outline_debug_info = nil
+          unless File.exist?(pdf_path)
+            Common.log_warn("[Outline] PDF が見つかりません: #{pdf_path}")
+            return []
+          end
+          if html_paths.nil? || html_paths.empty?
+            Common.log_warn('[Outline] HTML ファイルが指定されていません')
+            return []
+          end
+          if html_paths.any? { |path| !File.exist?(path) }
+            Common.log_warn('[Outline] HTML ファイルが存在しません')
+            return []
+          end
+
+          unless system('which pdftotext >/dev/null 2>&1')
+            Common.log_warn('[Outline] pdftotext が見つかりません。`brew install poppler` を実行してください。アウトライン付与をスキップします')
+            return []
+          end
+
+          total_pages = (BuildHelpers.page_count(pdf_path) || '0').to_i
+          if total_pages <= 0
+            Common.log_warn('[Outline] PDF のページ数を取得できませんでした')
+            return []
+          end
+
+          from_base = [[start_page.to_i, 1].max, total_pages].min
+          max_level = [[max_level.to_i, 1].max, 6].min
+
+          chapter_paths = {}
+          html_paths.each do |path|
+            bn = File.basename(path, '.html')
+            chapter_paths[bn] = path
+          end
+          html_basenames = chapter_paths.keys
+
+          chapter_order = BuildHelpers.chapter_order_from(html_basenames)
+
+          headings_by_chapter = Hash.new { |h, k| h[k] = [] }
+          chapter_markers = {}
+
+          chapter_order.each do |bn|
+            path = chapter_paths[bn]
+            next unless path
+            headings = BuildHelpers.extract_headings_from_html_file(path, max_level: max_level, include_appendix_label: true)
+            headings_by_chapter[bn].concat(headings)
+
+            primary = headings.find { |h| h[:level] == 1 } || headings.first
+            markers = []
+            if primary
+              markers.concat(Array(primary[:search_terms]))
+              markers << primary[:text]
+            end
+            markers = markers.compact.map { |s| s.to_s.strip }.reject(&:empty?).uniq
+            chapter_markers[bn] = markers if markers.any?
+          end
+
+          page_cache = {}
+          normalized_cache = {}
+          normalize = lambda do |str|
+            str.to_s.gsub(/[[:space:]\u00A0\u2000-\u200B\u202F\u205F\u3000]+/, '')
+          end
+          fetch_page_text = lambda do |page|
+            page = [[page.to_i, 1].max, total_pages].min
+            page_cache[page] ||= begin
+              `pdftotext -f #{page} -l #{page} "#{pdf_path}" - 2>/dev/null`
+            end
+          end
+          find_page_in_pdf = lambda do |term, from_page, to_page|
+            term = term.to_s.strip
+            return nil if term.empty?
+            normalized_term = normalize.call(term)
+            from_page = [[from_page.to_i, 1].max, total_pages].min
+            to_page = [[to_page.to_i, total_pages].min, from_page].max
+            return nil if from_page > to_page
+            (from_page..to_page).each do |page|
+              text = fetch_page_text.call(page)
+              next if text.nil? || text.empty?
+              return page if text.include?(term)
+              normalized_text = normalized_cache[page]
+              unless normalized_text
+                normalized_text = normalize.call(text)
+                normalized_cache[page] = normalized_text
+              end
+              return page if !normalized_term.empty? && normalized_text.include?(normalized_term)
+            end
+            nil
+          end
+          search_markers = lambda do |markers, from_page, to_page|
+            Array(markers).each do |term|
+              page = find_page_in_pdf.call(term, from_page, to_page)
+              return page if page
+            end
+            nil
+          end
+
+          preface_pages = (BuildHelpers.page_count('02-preface.pdf') || '0').to_i
+          toc_pages      = (BuildHelpers.page_count('03-toc.pdf') || '0').to_i
+
+          chapter_starts = {}
+          chapter_ranges = {}
+
+          prev_bn = nil
+
+          chapter_order.each do |bn|
+            start_page = nil
+            end_page = nil
+
+            case bn
+            when '00-titlepage'
+              start_page = [from_base, 1].max
+              end_page = 1
+            when '01-legalpage'
+              start_page = [[2, from_base].max, total_pages].min
+              end_page = start_page
+            when '02-preface'
+              start_page = [[3, from_base].max, total_pages].min
+              if preface_pages.positive?
+                end_page = [start_page + preface_pages - 1, total_pages].min
+              else
+                end_page = start_page
+              end
+            when '03-toc'
+              preface_end = chapter_ranges['02-preface']&.[](1) || (start_page || 3) + preface_pages - 1
+              start_candidate = preface_end ? preface_end + 1 : 4
+              start_page = [[start_candidate, from_base].max, total_pages].min
+              if toc_pages.positive?
+                end_page = [start_page + toc_pages - 1, total_pages].min
+              else
+                end_page = start_page
+              end
+            when '11-install'
+              toc_end = chapter_ranges['03-toc']&.[](1)
+              start_candidate = toc_end ? toc_end + 1 : (chapter_starts[prev_bn] || from_base)
+              start_page = [[start_candidate, from_base].max, total_pages].min
+              end_page = total_pages
+            when '99-colophon'
+              start_page = total_pages
+              end_page = total_pages
+            when '98-postface'
+              search_from = chapter_starts[prev_bn] || from_base
+              search_from = [[search_from, from_base].max, total_pages].min
+              markers = chapter_markers[bn] || ['終わりに']
+              start_page = search_markers.call(markers, search_from, total_pages)
+              if start_page.nil? && search_from > from_base
+                start_page = search_markers.call(markers, from_base, total_pages)
+              end
+              start_page ||= search_from
+              end_page = [total_pages - 1, total_pages].min
+              end_page = start_page if end_page < start_page
+            else
+              search_from = chapter_starts[prev_bn] || from_base
+              search_from = [[search_from, from_base].max, total_pages].min
+              markers = chapter_markers[bn] || []
+              start_page = search_markers.call(markers, search_from, total_pages)
+              if start_page.nil? && search_from > from_base
+                start_page = search_markers.call(markers, from_base, total_pages)
+              end
+              start_page ||= search_from
+              end_page = total_pages
+            end
+
+            if prev_bn && chapter_ranges[prev_bn]
+              prev_start = chapter_ranges[prev_bn][0] || from_base
+              prev_end = [start_page - 1, total_pages].min
+              prev_end = prev_start if prev_end < prev_start
+              chapter_ranges[prev_bn][1] = prev_end
+            end
+
+            chapter_starts[bn] = start_page
+            chapter_ranges[bn] = [start_page, end_page]
+            prev_bn = bn
+          end
+
+          unless chapter_ranges.empty?
+            chapter_ranges.each do |bn, rng|
+              next unless rng
+              rng[0] = [[rng[0], from_base].max, total_pages].min
+              rng[1] = [[rng[1], rng[0]].max, total_pages].min
+            end
+          end
+
+          items = []
+          fallback_items = []
+          headings_by_chapter.each do |bn, headings|
+            range = chapter_ranges[bn]
+            next unless range
+            range_start = range[0]
+            range_end   = range[1]
+            headings.each do |heading|
+              search_terms = Array(heading[:search_terms]) + [heading[:text], heading[:appendix_label]]
+              search_terms = search_terms.compact.map { |s| s.to_s.strip }.reject(&:empty?).uniq
+              page = search_markers.call(search_terms, range_start, range_end)
+              if page.nil?
+                page = search_markers.call(search_terms, range_start, total_pages)
+              end
+              if page.nil?
+                fallback_items << {
+                  chapter: bn,
+                  text: heading[:text],
+                  target_page: range_start,
+                  search_terms: search_terms
+                }
+                page = range_start
+              end
+              items << {
+                level: heading[:level],
+                text: heading[:text],
+                page: page,
+                chapter: bn,
+                id: heading[:id]
+              }
+            end
+          end
+
+          if chapter_ranges['03-toc'] && !chapter_order.include?('03-toc'.dup)
+            # no-op placeholder; kept for backward compatibility structure
+          end
+
+          if chapter_ranges['03-toc']
+            toc_range = chapter_ranges['03-toc']
+            toc_page = search_markers.call(['目次'], toc_range[0], toc_range[1]) || toc_range[0]
+            insert_index = items.index do |it|
+              chapter_order.index(it[:chapter]) && chapter_order.index(it[:chapter]) > chapter_order.index('03-toc')
+            end
+            insert_index ||= items.length
+            items.insert(insert_index, { level: 1, text: '目次', page: toc_page, chapter: '03-toc', id: nil })
+          end
+
+          if fallback_items.any?
+            Common.log_warn('[Outline] 以下の見出しはページ検出に失敗したため章先頭へフォールバックしました:')
+            fallback_items.each do |fb|
+              terms = fb[:search_terms].join(' / ')
+              Common.log_warn("  - #{fb[:chapter]} ##{fb[:text]} (fallback page=#{fb[:target_page]}, search terms=#{terms})")
+            end
+          end
+
+          @last_outline_debug_info = {
+            chapter_order: chapter_order.dup,
+            chapter_starts: chapter_starts.dup,
+            chapter_ranges: chapter_ranges.transform_values(&:dup),
+            items: items.map(&:dup)
+          }
+
+          items
+        end
+        module_function :heading_page_entries
+
+        # ------------------------------------------------
+        # Appendix helpers
+        # ------------------------------------------------
+        def appendix_label_for_basename(basename)
+          number = Common.get_chapter_number(basename)
+          return nil unless number && APPX_RANGE.include?(number.to_i)
+          letter = Common.appendix_number_to_letter(number)
+          return nil unless letter
+          "付録#{letter.upcase}"
+        end
+        module_function :appendix_label_for_basename
+
         # HTML から h1..max_level を抽出し、output_pdf にアウトラインを付与
         # - pdf_path: 対象 PDF（上書き保存）
         # - html_paths: 章 HTML 群（結合順）
@@ -865,104 +1131,8 @@ module Vivlio
         # - 代替として、章先頭に注入する不可視テキスト "VS-CHAPTER: <basename>" を利用し、
         #   章ごとのページ範囲を特定した上で、その範囲内で見出しテキストを検索することで誤検出を抑制する。
         def add_outline_from_headings!(pdf_path, html_paths, max_level: 3, start_page: 1)
-          unless File.exist?(pdf_path)
-            Common.log_warn("[Outline] PDF が見つかりません: #{pdf_path}")
-            return false
-          end
-          if html_paths.nil? || html_paths.empty?
-            Common.log_info('[Outline] HTML が空のためスキップします')
-            return false
-          end
-          max_level = [[max_level.to_i, 1].max, 6].min
-
-          # Nokogiri で h1..hN 見出しを抽出（テキストのみ + 所属章）
-          # - post_process で data-heading を付与している場合はそれを優先
-          headings = [] # [{level:, text:, chapter:}]
-          chapter_order = [] # ['11-install', ...]（html_paths の順）
-          html_paths.each do |hp|
-            next unless File.exist?(hp)
-            html = File.read(hp, encoding: 'utf-8')
-            doc  = Nokogiri::HTML.parse(html)
-            bn   = File.basename(hp, '.html')
-            chapter_order << bn
-            (1..max_level).each do |lvl|
-              doc.css("h#{lvl}").each do |h|
-                text = h['data-heading'].to_s.strip
-                text = h.text.to_s.strip if text.nil? || text.empty?
-                next if text.empty?
-                headings << { level: lvl, text: text, chapter: bn }
-              end
-            end
-          end
-          if headings.empty?
-            Common.log_info('[Outline] 見出しが検出できませんでした（h1..h3）。スキップします')
-            return false
-          end
-
-          # pdftotext でページ単位テキストを走査するヘルパ
-          unless system('which pdftotext >/dev/null 2>&1')
-            Common.log_warn('[Outline] pdftotext が見つかりません。`brew install poppler` を実行してください。アウトライン付与をスキップします')
-            return false
-          end
-
-          total_pages = (BuildHelpers.page_count(pdf_path) || '0').to_i
-          if total_pages <= 0
-            Common.log_warn('[Outline] PDF のページ数を取得できませんでした')
-            return false
-          end
-
-          page_cache = {}
-          from_base = [[start_page.to_i, 1].max, total_pages].min
-          get_page_text = lambda do |p|
-            txt = page_cache[p]
-            unless txt
-              txt = `pdftotext -f #{p} -l #{p} "#{pdf_path}" - 2>/dev/null`
-              page_cache[p] = txt
-            end
-            txt
-          end
-          find_page_in_range = lambda do |needle, from_p, to_p|
-            fr = [[from_p.to_i, from_base].max, total_pages].min
-            to = [[to_p.to_i, total_pages].min, fr].max
-            (fr..to).each do |p|
-              text = get_page_text.call(p)
-              return p if text && !text.empty? && text.include?(needle)
-            end
-            nil
-          end
-
-          # 章開始ページを 'VS-CHAPTER: <basename>' マーカーから検出
-          chapter_starts = {}
-          chapter_order.each do |bn|
-            p = find_page_in_range.call("VS-CHAPTER: #{bn}", from_base, total_pages)
-            chapter_starts[bn] = p
-          end
-          # 章ごとのページ範囲を決定（次章開始 - 1）。未知の場合は本文全体を範囲とする
-          chapter_ranges = {}
-          chapter_order.each_with_index do |bn, i|
-            s = chapter_starts[bn] || from_base
-            e = if i + 1 < chapter_order.size
-                  nxt_bn = chapter_order[i + 1]
-                  nxt_s  = chapter_starts[nxt_bn]
-                  (nxt_s && nxt_s > 0) ? (nxt_s - 1) : total_pages
-                else
-                  total_pages
-                end
-            chapter_ranges[bn] = [s, e]
-          end
-
-          items = [] # [{level:, text:, page:}]
-          headings.each do |h|
-            rng = chapter_ranges[h[:chapter]] || [from_base, total_pages]
-            p = find_page_in_range.call(h[:text], rng[0], rng[1])
-            # 章範囲で見つからない場合は本文全体でフォールバック検索
-            p ||= find_page_in_range.call(h[:text], from_base, total_pages)
-            items << { level: h[:level], text: h[:text], page: p } if p
-          end
-          if items.empty?
-            Common.log_info('[Outline] 対応ページが見つからなかったため、アウトライン付与をスキップします')
-            return false
-          end
+          items = heading_page_entries(pdf_path, html_paths, max_level: max_level, start_page: start_page)
+          return false if items.empty?
 
           # HexaPDF でアウトラインを構築
           doc = HexaPDF::Document.open(pdf_path)
@@ -984,42 +1154,20 @@ module Vivlio
           parents = { 1 => root }
           items.each do |it|
             lvl = [[it[:level].to_i, 1].max, max_level].min
+            parents.keys.select { |k| k > lvl }.each { |k| parents.delete(k) }
             parent = parents[lvl] || parents[parents.keys.select { |k| k < lvl }.max] || root
+            parents[lvl] = parent
             # HexaPDF destination array must be of the form [page, :Fit] etc.
             # Use :Fit so the page is displayed entirely.
             page_obj = doc.pages[it[:page] - 1]
             parent.add_item(it[:text], destination: [page_obj, :Fit]) do |node|
+              parents.keys.select { |k| k > lvl }.each { |k| parents.delete(k) }
               parents[lvl + 1] = node
             end
           end
           doc.write(pdf_path, optimize: true)
           Common.log_success('[Outline] PDF にブックマーク（アウトライン）を付与しました')
           true
-        end
-
-        # ================================================================
-        # Step 11: ビルド完了前に .orig バックアップから CSS を復元
-        # ------------------------------------------------
-        # - 11..89 章に対応する stylesheets/NN.css を対象
-        # - 存在する .orig を元ファイルへ復元し、変更を巻き戻す
-        # ================================================================
-        def restore_chapter_css_backups_for_book!(keep = nil)
-          # Step 2 で仮想連番を適用した章に対応する stylesheets/NN.css を同じ規則で決定
-          numbers = BuildHelpers.chapter_numbers_for_book(keep)
-          css_paths = numbers
-                        .map { |n| File.join(Common::STYLESHEETS_DIR, "#{n}.css") }
-                        .select { |css| File.exist?(css) }
-          if css_paths.empty?
-            Common.log_info('[Step 11] 復元対象CSSが見つかりません')
-            return
-          end
-          Common.log_action('[Step 11] 章CSSをバックアップから復元します…')
-          css_paths.each do |css|
-            backup = css + '.orig'
-            next unless File.exist?(backup)
-            FileUtils.mv(backup, css, force: true)
-            Common.log_info("[Step 11] 復元: #{File.basename(css)}")
-          end
         end
 
         # ================================================================
@@ -1064,6 +1212,29 @@ module Vivlio
             .select { |n| n.between?(11, 89) }
             .uniq
             .sort
+        end
+
+        def chapter_numbers_for_outline(keep = nil)
+          allowed_numbers = [0, 1, 2, 3, 99] + MAIN_RANGE.to_a + APPX_RANGE.to_a + POSTFACE_RANGE.to_a
+          basenames = if keep && keep.any?
+                        Array(keep).map do |entry|
+                          name = File.basename(entry.to_s)
+                          name.sub(/\.[^.]+\z/, '')
+                        end
+                      else
+                        md = Dir[File.join(Common::CONTENTS_DIR, '*.md')].map { |p| File.basename(p, '.md') }
+                        html = Dir[File.join('.', '*.html')].map { |p| File.basename(p, '.html') }
+                        (md + html)
+                      end
+
+          numbers = basenames
+                      .map { |bn| Common.get_chapter_number(bn) }
+                      .compact
+                      .map(&:to_i)
+                      .select { |n| allowed_numbers.include?(n) }
+          numbers.uniq!
+          numbers.sort!
+          numbers
         end
 
         # 空白1ページPDFを生成（既存時は何もしない）
@@ -1156,30 +1327,9 @@ module Vivlio
         end
 
         # stylesheets/NN.css の chapter-counter と章コメントを与えた番号に更新
-        def update_css_counter(css_path, number)
-          return false unless File.exist?(css_path)
-          num = number.to_i
-          css = File.read(css_path, encoding: 'utf-8')
-
-          updated_css = css.dup
-          # counter-reset: chapter-counter XX;
-          updated_css = updated_css.gsub(/(counter-reset:\s*chapter-counter\s*)\d+(\s*;)/) do
-            pre, post = Regexp.last_match(1), Regexp.last_match(2)
-            "#{pre}#{num}#{post}"
-          end
-          # コメント: /* 第XX章用スタイル */
-          updated_css = updated_css.gsub(/\/\*\s*第\s*\d+\s*章用スタイル\s*\*\//) do
-            "/* 第#{num}章用スタイル */"
-          end
-
-          if updated_css != css
-            File.write(css_path, updated_css, encoding: 'utf-8')
-            Common.log_success("CSSの章番号/コメントを更新しました: #{File.basename(css_path)} → #{num}")
-            true
-          else
-            Common.log_info("CSSに更新対象が見つかりません: #{css_path}")
-            false
-          end
+        def update_css_counter(_css_path, _number)
+          Common.log_info('update_css_counter は廃止されました。処理をスキップします。')
+          false
         end
       end
     end

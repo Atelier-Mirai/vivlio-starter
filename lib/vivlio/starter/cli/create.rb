@@ -60,7 +60,6 @@ module Vivlio
                   content = generate_content_from_template(title)
                   path    = create_markdown_file(fname, content)
                   create_image_directory(fname, {})
-                  create_css_file_if_chapter(fname)
                   Common.log_success("#{path} を作成しました")
                 rescue => e
                   had_error = true
@@ -237,23 +236,6 @@ module Vivlio
                 dir
               end
 
-              # 章番号(11..89)のみ CSS を stylesheets/<NN>.css に生成
-              def create_css_file_if_chapter(fname)
-                num = Common.get_chapter_number(File.basename(fname.to_s))
-                return nil unless num && num.to_i.between?(11, 89)
-                css = File.join(Common::STYLESHEETS_DIR, format('%02d.css', num.to_i))
-                return css if File.exist?(css)
-                content = <<~CSS
-                  /* 第#{num.to_i - 10}章用スタイル */
-                  @page {
-                    /* 章開始ページ番号（必要に応じて変更） */
-                    counter-reset: chapter-counter #{num.to_i - 10};
-                  }
-                CSS
-                safe_write(css, content)
-                css
-              end
-
               # 安全書き込み
               def safe_write(path, content)
                 FileUtils.mkdir_p(File.dirname(path))
@@ -338,6 +320,7 @@ module Vivlio
 
               # Markdown 本文（見出しは本文側で与える。フロントマターは pre_process で自動付与）
               body = <<~MD
+                <h1 style="display: none;">本書について</h1>
                 <div class="disclaimer">
                   <h2>■免責</h2>
                   #{disclaimer.split(/\r?\n/).map { |l| "  <p>#{l}</p>" }.join("\n")}

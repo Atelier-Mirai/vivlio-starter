@@ -255,13 +255,11 @@ module Vivlio
               end
 
               # ================================================================
-              # Step 2: CSS を仮想連番 1,2,3… に更新（.orig バックアップ作成）
+              # Step 2: 旧章別CSS仮想連番処理（廃止済み）
               # ------------------------------------------------
-              # - build_helpers.apply_virtual_chapter_numbers_for_book!
-              # ================================================================
-              time_step.call('Step 2 (apply virtual chapter numbers)') do
-                BuildHelpers.apply_virtual_chapter_numbers_for_book!(keep)
-              end
+              # time_step.call('Step 2 (chapter css virtual numbers)') do
+              #   Common.log_info('[Step 2] 章別CSSの仮想連番処理は廃止されました。処理をスキップします。')
+              # end
 
               # Step 3/4 は廃止（02 の先行生成と付録 merge をやめ、通常フローに統合）
 
@@ -274,10 +272,10 @@ module Vivlio
                 BuildHelpers.build_sections_html!(keep)
               end
 
-              if ENV['VIVLIO_STOP_AFTER_STEP5']&.downcase == 'true'
-                Common.log_action('[Step 5] VIVLIO_STOP_AFTER_STEP5=true のため処理を終了します')
-                return
-              end
+              # if ENV['VIVLIO_STOP_AFTER_STEP5']&.downcase == 'true'
+              #   Common.log_action('[Step 5] VIVLIO_STOP_AFTER_STEP5=true のため処理を終了します')
+              #   return
+              # end
 
               # ================================================================
               # Step 6: TOC 生成（11..97 を対象）
@@ -286,11 +284,6 @@ module Vivlio
               # ================================================================
               time_step.call('Step 6 (generate toc and pdf)') do
                 BuildHelpers.generate_toc_and_pdf!('.', keep)
-              end
-
-              if ENV['VIVLIO_STOP_AFTER_STEP6']&.downcase == 'true'
-                Common.log_action('[Step 6] VIVLIO_STOP_AFTER_STEP6=true のため処理を終了します')
-                return
               end
 
               # ================================================================
@@ -303,17 +296,12 @@ module Vivlio
                 BuildHelpers.build_overall_pdf_and_split_from_dir!('.', keep)
               end
 
-              if ENV['VIVLIO_STOP_AFTER_STEP7']&.downcase == 'true'
-                Common.log_action('[Step 7] VIVLIO_STOP_AFTER_STEP7=true のため処理を終了します')
-                return
-              end
-
               # ================================================================
-              # Step 8: frontmatter.pdf 構成 + ローマ小付与
+              # Step 8: 02-03-front.pdf 構成 + ローマ小付与
               # ------------------------------------------------
               # - build_helpers.build_frontmatter_pdf!
               # ================================================================
-              time_step.call('Step 8 (build frontmatter pdf)') do
+              time_step.call('Step 8 (build 02-03-front.pdf)') do
                 BuildHelpers.build_frontmatter_pdf!(keep)
               end
 
@@ -351,23 +339,21 @@ module Vivlio
               end
 
               # ================================================================
-              # Step 10: すべてのPDFを結合して output.pdf を生成
+              # Step 10: すべてのPDFを結合して output.pdf を生成（アウトライン付与）
               # ------------------------------------------------
-              # - build_helpers.merge_all_pdfs!
+              # - build_helpers.merge_all_pdfs_with_outline!
               # ================================================================
-              time_step.call('Step 10 (merge all pdfs)') do
+              time_step.call('Step 10 (merge all pdfs with outline)') do
                 # 章サブセット（keep）を尊重しつつ結合し、アウトライン付与を行う
                 BuildHelpers.merge_all_pdfs_with_outline!(keep)
               end
 
               # ================================================================
-              # Step 11: CSS をバックアップ(.orig)から復元
+              # Step 11: 旧章別CSSバックアップ復元処理（廃止済み）
               # ------------------------------------------------
-              # - build_helpers.restore_chapter_css_backups_for_book!
-              # ================================================================
-              time_step.call('Step 11 (restore chapter css backups)') do
-                BuildHelpers.restore_chapter_css_backups_for_book!(keep)
-              end
+              # time_step.call('Step 11 (restore chapter css backups)') do
+              #   Common.log_info('[Step 11] 章別CSSのバックアップ復元処理は廃止されました。処理をスキップします。')
+              # end
 
               # ================================================================
               # Step 12: 生成PDFを圧縮（--no-compress でスキップ可）
@@ -407,6 +393,31 @@ module Vivlio
               end
               Common.echo_always sprintf("  = %-#{label_width}s %#{value_width}.2fs", 'TOTAL', total)
               Common.echo_always "==========================\n"
+              outline_info = BuildHelpers.last_outline_debug_info
+              if outline_info
+                Common.echo_always "-- Outline Debug Info --"
+                outline_info[:items].each do |item|
+                  next unless item[:chapter] && item[:text]
+                  level_tag = case item[:level].to_i
+                              when 1 then 'H1'
+                              when 2 then 'H2'
+                              when 3 then 'H3'
+                              else "H#{item[:level]}"
+                              end
+                  Common.echo_always sprintf("  %s / [%s] %s -> page %d", item[:chapter], level_tag, item[:text], item[:page])
+                end
+                chapter_ranges = outline_info[:chapter_ranges] || {}
+                chapter_order  = outline_info[:chapter_order] || []
+                if chapter_ranges.any?
+                  Common.echo_always "-- Chapter Ranges --"
+                  order = chapter_order.is_a?(Array) && !chapter_order.empty? ? chapter_order : chapter_ranges.keys.sort
+                  order.each do |bn|
+                    rng = chapter_ranges[bn]
+                    next unless rng
+                    Common.echo_always sprintf("  %s %s %s", bn, rng[0] || '-', rng[1] || '-')
+                  end
+                end
+              end
 
               # timings_summary.md の先頭に追記（新しいビルド結果をファイル先頭に）
               ts = Time.now.iso8601

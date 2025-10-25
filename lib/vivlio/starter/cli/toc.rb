@@ -68,7 +68,7 @@ module Vivlio
                 lang: 'ja'
                 ---
 
-                ## 目次
+                # 目次
                 <nav id="toc" role="doc-toc">
                 <ul>
               MD
@@ -120,11 +120,11 @@ module Vivlio
                   case Common.get_file_type(target)
                   when 'chapter'   then doc.css('h1, h2, h3')
                   when 'appendix'  then doc.css('h1, h2')
-                  else                   doc.css('h1')
+                  else                  doc.css('h1')
                   end
 
                 elems.each do |elem|
-                  text = elem.text.strip
+                  text = extract_toc_heading_text(elem)
                   next if text.empty?
 
                   level = case elem.name
@@ -221,6 +221,32 @@ module Vivlio
                 Common.log_success("目次生成完了")
               else
                 Common.log_warn('03-toc.html の生成に失敗しました（VFM 実行エラー）')
+              end
+            end
+
+            no_commands do
+              def extract_toc_heading_text(element)
+                return '' unless element
+
+                preferred = case element.name
+                            when 'h1' then element.at_css('span.chapter-title')
+                            when 'h2' then element.at_css('span.section-title')
+                            when 'h3' then element.at_css('span.subsection-title')
+                            else nil
+                            end
+
+                text = preferred&.text&.strip
+                return text if text && !text.empty?
+
+                begin
+                  clone = element.dup
+                  clone.css('.chapter-number, .section-number, .subsection-number, .subsection-marker')&.each(&:remove)
+                  text = clone.text.to_s.strip
+                rescue NoMethodError
+                  text = element.text.to_s.strip
+                end
+
+                text || ''
               end
             end
           end

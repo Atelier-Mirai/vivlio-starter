@@ -89,8 +89,9 @@ module Vivlio
               intermediate_pdfs = [
                 '00-titlepage.pdf', '01-legalpage.pdf', '02-preface.pdf', '03-toc.pdf',
                 '00-01-front.pdf', '99-colophon.pdf',
-                'frontmatter.pdf', 'sections.pdf',
-                'blank_page.pdf', 'blank_frontmatter_insert.pdf'
+                '02-03-front.pdf', '11-98-sections.pdf',
+                'blank_page.pdf', 'blank_frontmatter_insert.pdf',
+                'output_tmp*.pdf'
               ]
               cleanup_patterns.concat(intermediate_pdfs)
 

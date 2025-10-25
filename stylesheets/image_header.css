@@ -3,62 +3,60 @@
    chapter.css から @import される想定。
 */
 
-/* ドキュメントの1ページ目に章扉背景を設定（@page で全ページボックスに描画）
-   必要に応じて theme.css 側の --chapter-door-image を設定してください。 */
-
-/* stylelint-disable */
-@page :nth(1) {
-  background: center / cover no-repeat var(--chapter-door-image) fixed;
+/* 章扉 */
+.chapter-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  justify-items: center;
+  margin-block-end: clamp(12mm, calc(var(--paper-scale) * 18mm), 18mm);
+  gap: clamp(6mm, calc(var(--paper-scale) * 9mm), 9mm);
 }
-/* stylelint-enable */
+
+.chapter-hero h1 {
+  display: grid;
+  grid-template-columns: auto;
+  grid-template-rows:
+    minmax(30mm, auto)
+    auto;
+  gap: clamp(6mm, calc(var(--paper-scale) * 9mm), 9mm);
+  align-items: center;
+  justify-items: center;
+  text-align: center;
+  inline-size: clamp(114.24mm, calc(var(--paper-scale) * 163.2mm), 163.2mm);
+  margin: 0;
+  padding: 0;
+  counter-reset: section-counter 0;
+  string-set: chapter-title attr(data-chapter-title), chapter-number attr(data-chapter-number-display);
+}
+
+.chapter-hero h1 .chapter-number {
+  inline-size: clamp(45mm, calc(var(--paper-scale) * 65mm), 65mm);
+  block-size: clamp(45mm, calc(var(--paper-scale) * 65mm), 65mm);
+  display: grid;
+  place-items: center;
+  font-size: clamp(50Q, calc(var(--paper-scale) * 70Q), 70Q);
+  font-weight: 900;
+  color: transparent;
+  -webkit-text-stroke: 0.6mm rgba(0, 0, 0, .15);
+  text-stroke: 0.6mm rgba(0, 0, 0, .15);
+  border-radius: 50%;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 50%), rgb(255 255 255 / 100%)),
+    linear-gradient(120deg, var(--chapter-number-bg) 0%, rgb(0 0 0 / 0%) 45%, rgb(0 0 0 / 7%) 100%);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 6%);
+}
+
+.chapter-hero h1 .chapter-title {
+  font-size: clamp(28Q, calc(var(--paper-scale) * 40Q), 40Q);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
 
 /* 章タイトル */
-h1 {
-  /* layout */
-  break-before: recto;
-
-  /* spacing */
-  margin-block-start: clamp(39.9mm, calc(var(--paper-scale) * 57mm), 57mm);
-
-  /* typography */
-  font-size: clamp(30.8Q, calc(var(--paper-scale) * 44Q), 44Q);
-  line-height: clamp(35Q, calc(var(--paper-scale) * 50Q), 50Q);
-
-  /* alignment */
-  text-align: center;
-
-  /* 節カウンタのみリセット。ページ番号は @page で制御 */
-  counter-reset: section-counter 0;
-  /* stylelint-disable-next-line property-no-unknown */
-  string-set: chapter-title content(), chapter-number content(before);
-}
-
-h1::before {
-  /* layout */
-  position: absolute;
-  display: block;
-
-  /* box-size */
-  inline-size: clamp(28mm, calc(var(--paper-scale) * 40mm), 40mm);
-  block-size: 2lh;
-
-  /* alignment */
-  text-align: center;
-
-  /* typography */
-  font-size: clamp(21Q, calc(var(--paper-scale) * 30Q), 30Q);
-
-  /* inset */
-  inset-inline-start: 50%;
-  inset-block-start: clamp(28mm, calc(var(--paper-scale) * 40mm), 40mm);
-  transform: translateX(-50%);
-
-  /* counters/meta */
-  content: "第 " counter(chapter-counter) " 章";
-}
-
-
 /* 節見出し（背景画像 + 大きな番号） */
+
 .section-topic {
   display: grid;
   grid-template:
@@ -69,60 +67,37 @@ h1::before {
   margin-block-end: 1em;
 }
 
-.section-topic h2,
-.section-topic h2::before {
-  font-family: var(--header-font);
-  /* 章の見出しと同じフォントに */
-  font-weight: 900;
-}
-
-/* 節見出し */
 .section-topic h2 {
-  /* layout */
+  font-family: var(--header-font);
+  font-weight: 900;
   break-before: page;
   margin: 0;
-  /* typography */
   font-size: clamp(25.2Q, calc(var(--paper-scale) * 36Q), 36Q);
   line-height: clamp(33.6Q, calc(var(--paper-scale) * 48Q), 48Q);
-
-  /* alignment */
   align-self: center;
-  white-space: nowrap; /* 折り返し防止（横一行） */
-  /* stylelint-disable-next-line property-no-unknown */
-  string-set: section-title content(), section-number content(before);
-
-  /* counters: 節カウンタは h2 で進める */
+  white-space: nowrap;
   counter-increment: section-counter;
-
-  /* h2 自身をグリッドにする */
+  string-set: section-title attr(data-section-title), section-number attr(data-section-number-display);
   display: grid;
-  grid-auto-flow: column;           /* 子を横方向に流す */
-  grid-template-columns: auto 1fr;  /* 左:番号(自動幅) / 右:タイトル(可変) */
+  grid-auto-flow: column;
+  grid-template-columns: auto 1fr;
   column-gap: 0.7em;
-  align-items: center;               /* 垂直中央 */
+  align-items: center;
   padding-inline-start: 1em;
-
-  /* 背景 */
   background-image: var(--section-bg-image);
   background-repeat: no-repeat;
-  background-origin: border-box;     /* padding の影響を受けない */
+  background-origin: border-box;
   background-clip: border-box;
-  background-position: -15mm center; /* 左へオフセット */
-  background-size: 110% 150px;       /* 横:110% / 縦:150px */
+  background-position: -15mm center;
+  background-size: 110% 150px;
   min-block-size: 150px;
 }
 
-/* 節番号 */
-.section-topic h2::before {
-  content: "\00a0\00a0\00a0" counter(chapter-counter) "-" counter(section-counter);
-  font-size: calc(1em * 1.10); /* h2 に対して ≒10%拡大で視覚調整 */
+.section-topic h2 .section-number {
+  font-size: calc(1em * 1.10);
   font-weight: 900;
   color: var(--section-number-color);
   -webkit-text-stroke: 0.3mm rgba(0, 0, 0, .30);
-
-  /* 配置 */
-  justify-self: start;
-  align-self: center;
 }
 
 /* 節リード */

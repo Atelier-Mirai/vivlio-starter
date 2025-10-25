@@ -9,8 +9,10 @@ _sandbox/
 .DS_Store
 Thumbs.db
 *.pdf
-entries.js
 
 # RubyGem artifacts
 *.gem
 pkg/*.gem
+
+# Vivliostyle build artifacts
+/.vivliostyle/

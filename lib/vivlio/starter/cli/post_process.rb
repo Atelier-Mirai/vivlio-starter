@@ -145,6 +145,13 @@ module Vivlio
                 rescue => e
                   Common.log_warn("#{html_file}: 見出しメタ付与に失敗: #{e}")
                 end
+
+                begin
+                  inject_heading_number_spans!(html_file)
+                  Common.log_info("#{html_file}: 見出し番号スパンを構築")
+                rescue => e
+                  Common.log_warn("#{html_file}: 見出し番号スパン構築に失敗: #{e}")
+                end
               end
 
               Common.log_success("ポスト置換処理完了 (合計: #{total_replacements}個の置換)")
@@ -172,6 +179,8 @@ module Vivlio
                         Nokogiri::HTML.parse(html, nil, 'UTF-8')
                       end
               modified = false
+              chapter_token = File.basename(path, File.extname(path)).to_s.strip
+              chapter_token = nil if chapter_token.empty?
               (1..max_l).each do |lvl|
                 doc.css("h#{lvl}").each do |h|
                   # 見出し要素自体に vs-h-marker クラスを付与
@@ -183,7 +192,7 @@ module Vivlio
                   end
 
                   # 見出しテキストを data 属性として付与（PDFアウトライン等の外部処理向け）
-                  heading_text = h.text.to_s.strip
+                  heading_text = extract_heading_core_text(h)
                   if heading_text && !heading_text.empty?
                     # data-heading（汎用）と data-h{level}（レベル別）の両方を設定
                     if h['data-heading'] != heading_text
@@ -195,6 +204,16 @@ module Vivlio
                       h[lvl_key] = heading_text
                       modified = true
                     end
+
+                    if lvl == 1 && (h['id'].to_s.strip.empty?)
+                      h['id'] = heading_text
+                      modified = true
+                    end
+                  end
+
+                  if chapter_token && h['data-chapter'] != chapter_token
+                    h['data-chapter'] = chapter_token
+                    modified = true
                   end
                 end
               end
@@ -208,7 +227,230 @@ module Vivlio
           end
         end
 
-        
+        MAIN_CHAPTER_RANGE = (11..89).freeze
+
+        def inject_heading_number_spans!(html_path)
+          return unless File.exist?(html_path)
+
+          html = File.read(html_path, encoding: 'utf-8')
+          doc = if defined?(Nokogiri::HTML5)
+                  Nokogiri::HTML5.parse(html)
+                else
+                  Nokogiri::HTML.parse(html, nil, 'UTF-8')
+                end
+
+          file_type = Common.get_file_type(html_path)
+          chapter_token = File.basename(html_path, File.extname(html_path))
+          chapter_number = Common.get_chapter_number(chapter_token)
+          chapter_number_i = chapter_number ? chapter_number.to_i : nil
+
+          chapter_display_number = resolve_main_chapter_display_number(chapter_token, chapter_number_i)
+          appendix_letter = nil
+
+          if chapter_number_i && chapter_number_i.between?(91, 97)
+            appendix_letter = Common.appendix_number_to_letter(chapter_number_i)&.upcase
+          end
+
+          process_h1 = %w[chapter appendix].include?(file_type)
+          process_h2 = %w[chapter appendix].include?(file_type)
+          process_h3 = %w[chapter appendix].include?(file_type)
+
+          modified = false
+
+          if process_h1
+            if (h1 = doc.at_css('h1'))
+              title_text = extract_heading_core_text(h1)
+              number_text = if file_type == 'appendix'
+                              appendix_letter ? "付録 #{appendix_letter}" : nil
+                            elsif chapter_display_number
+                              "第#{chapter_display_number}章"
+                            end
+              modified |= rebuild_heading_with_spans(h1, number_text, title_text, :chapter, doc)
+              if number_text
+                h1['data-chapter-number-display'] = number_text
+              else
+                h1.delete('data-chapter-number-display')
+              end
+              if title_text
+                h1['data-chapter-title'] = title_text
+              else
+                h1.delete('data-chapter-title')
+              end
+            end
+          end
+
+          if process_h2
+            section_index = 0
+            doc.css('h2').each do |h2|
+              section_index += 1
+              title_text = extract_heading_core_text(h2)
+              number_text = if file_type == 'appendix'
+                              appendix_letter ? "#{appendix_letter}-#{section_index}" : section_index.to_s
+                            elsif chapter_display_number
+                              "#{chapter_display_number}-#{section_index}"
+                            else
+                              section_index.to_s
+                            end
+              modified |= rebuild_heading_with_spans(h2, number_text, title_text, :section, doc)
+              h2['data-section-number-display'] = number_text if number_text
+              h2['data-section-title'] = title_text if title_text
+            end
+          end
+
+          if process_h3
+            marker = Common::CONFIG.dig('theme', 'markers', 'h3') || '♣'
+            doc.css('h3').each do |h3|
+              title_text = extract_heading_core_text(h3)
+              modified |= rebuild_heading_with_spans(h3, marker, title_text, :subsection, doc)
+              h3['data-subsection-title'] = title_text if title_text
+            end
+          end
+
+          return unless modified
+
+          out = doc.respond_to?(:to_html) ? doc.to_html : doc.to_s
+          File.write(html_path, out, encoding: 'utf-8')
+        end
+
+        def rebuild_heading_with_spans(node, number_text, title_text, kind, doc)
+          number_text = number_text.to_s.strip
+          title_text = title_text.to_s.strip
+
+          number_class, title_class = case kind
+                                      when :chapter then %w[chapter-number chapter-title]
+                                      when :section then %w[section-number section-title]
+                                      when :subsection then %w[subsection-marker subsection-title]
+                                      else [nil, nil]
+                                      end
+
+          current_number_span = number_class ? node.at_css("span.#{number_class}") : nil
+          current_title_span  = title_class ? node.at_css("span.#{title_class}") : nil
+
+          current_number = current_number_span&.text&.strip
+          current_title  = current_title_span&.text&.strip
+          current_title ||= extract_heading_core_text(current_title_span || node)
+
+          needs_update = false
+          needs_update ||= (number_text.empty? ? !current_number.to_s.empty? : current_number != number_text)
+          needs_update ||= (current_title != title_text)
+
+          return false unless needs_update
+
+          original_title_nodes = if current_title_span
+                                   current_title_span.children.map(&:dup)
+                                 else
+                                   node.children.reject { |child|
+                                     number_class && child.element? && child['class'].to_s.split.include?(number_class)
+                                   }.map(&:dup)
+                                 end
+
+          node.children.remove
+
+          if number_class && !number_text.empty?
+            span = Nokogiri::XML::Node.new('span', doc)
+            span['class'] = number_class
+            span.content = number_text
+            node.add_child(span)
+          end
+
+          if title_class
+            span = Nokogiri::XML::Node.new('span', doc)
+            span['class'] = title_class
+            if original_title_nodes.empty?
+              span.content = title_text
+            else
+              original_title_nodes.each { |child| span.add_child(child) }
+            end
+            node.add_child(span)
+          else
+            node.add_child(Nokogiri::XML::Text.new(title_text, doc)) unless title_text.empty?
+          end
+
+          true
+        end
+
+        def extract_heading_core_text(node)
+          %w[chapter-title section-title subsection-title].each do |cls|
+            span = node.at_css("span.#{cls}")
+            return span.text.to_s.strip if span
+          end
+          node.text.to_s.strip
+        end
+
+        def resolve_main_chapter_display_number(chapter_token, chapter_number_i = nil)
+          return nil if chapter_token.nil? || chapter_token.empty?
+
+          chapter_number_i ||= Common.get_chapter_number(chapter_token)&.to_i
+          return nil unless chapter_number_i && MAIN_CHAPTER_RANGE.include?(chapter_number_i)
+
+          order = main_chapter_order
+          if (idx = order.index(chapter_token))
+            return idx + 1
+          end
+
+          chapter_number_i - 10
+        end
+
+        def main_chapter_order
+          @main_chapter_order ||= begin
+            configured = configured_main_chapter_tokens
+            tokens = configured && configured.any? ? configured : discovered_main_chapter_tokens
+            tokens
+          end
+        end
+
+        def configured_main_chapter_tokens
+          cfg = Common::CONFIG['chapters']
+          raw_list = case cfg
+                     when nil
+                       nil
+                     when String
+                       str = cfg.to_s
+                       return nil if str.strip.casecmp('all').zero?
+                       str.lines.map(&:strip).reject(&:empty?)
+                     when Array
+                       cfg.map { |s| s.to_s.strip }.reject(&:empty?)
+                     else
+                       nil
+                     end
+          return nil unless raw_list&.any?
+
+          normalize_and_filter_tokens(raw_list)
+        end
+
+        def discovered_main_chapter_tokens
+          html_tokens = Dir.glob(File.join('.', '*.html')).map { |path| File.basename(path, '.html') }
+          normalize_and_filter_tokens(html_tokens).sort_by { |token| Common.get_chapter_number(token).to_i }
+        end
+
+        def normalize_and_filter_tokens(list)
+          seen = {}
+          Array(list).each_with_object([]) do |entry, acc|
+            token = normalize_chapter_token(entry)
+            next unless token
+            next unless main_chapter_token?(token)
+            next if seen[token]
+            seen[token] = true
+            acc << token
+          end
+        end
+
+        def normalize_chapter_token(entry)
+          s = entry.to_s.strip
+          return nil if s.empty?
+          s = s.sub(%r{\A\./}, '')
+          s = s.sub(%r{\A#{Regexp.escape(Common::CONTENTS_DIR)}/}i, '')
+          s = s.sub(/\.(html|md)\z/i, '')
+          s = s.sub(/\.(html|md)\z/i, '') # 念のため二重拡張を排除
+          s = s.strip
+          return nil if s.empty?
+          s
+        end
+
+        def main_chapter_token?(token)
+          num = Common.get_chapter_number(token)
+          num && MAIN_CHAPTER_RANGE.include?(num.to_i)
+        end
 
         # 指定HTMLファイルに対して、replace_rulesに基づく置換を適用
         # 戻り値: { changed: true/false, replacements: Integer }

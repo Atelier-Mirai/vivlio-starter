@@ -59,8 +59,8 @@ body.chapter {
 /* 章扉のページ全面背景は使用しない（コンポーネント背景で表現） */
 
 :root {
-  --h4-marker: "◆";
   --h3-marker: "♣";
+  --h4-marker: "◆";
   /* 調整用カスタムプロパティ（見出し・節番号・背景の位置と余白） */
   --h2-offset-inline: 30mm;  /* 見出しの左右移動 */
   --h2-offset-block-start: -9mm;  /* 見出しの上余白（上が負で上に寄せる） */
@@ -92,6 +92,22 @@ h6 {
 }
 
 /* h1 styles are imported from simple_header.css or image_header.css */
+
+/* 見出し共通スパン構造 */
+h1 .chapter-number,
+h1 .chapter-title,
+h2 .section-number,
+h2 .section-title,
+h3 .subsection-marker,
+h3 .subsection-title {
+  display: inline-block;
+}
+
+h1 .chapter-number,
+h2 .section-number,
+h3 .subsection-marker {
+  font-weight: 800;
+}
 
 /* 章リード（章冒頭のリード文） */
 .chapter-lead {
@@ -160,9 +176,9 @@ blockquote p {
 h3 {
   /* layout */
   margin-break: auto;
-
-  /* box-size */
-  block-size: 10mm;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
 
   /* spacing */
   margin-block: 1rlh 0.5rlh;
@@ -174,30 +190,17 @@ h3 {
   line-height: 22Q;
 }
 
-h3::before {
-  /* layout */
-  display: inline-block;
-
-  /* spacing */
-  margin-inline-end: 0.5em;
-  padding: 0;
-
-  /* typography */
+h3 .subsection-marker {
   font-size: 5mm;
-
-  /* visual */
   color: var(--color-mark);
+}
 
-  /* counters/meta */
-  content: var(--h3-marker, "◆");
+h3 .subsection-title {
+  flex: 1 1 auto;
 }
 
 /* 目見出し */
 h4 {
-  /* spacing */
-
-  /* none */
-
   /* typography */
   font-size: var(--base-font-size);
 }

@@ -7,7 +7,7 @@ module Vivlio
       # ================================================================
       # Module: Thor コマンド群: delete（章の削除ユーティリティ）
       # ------------------------------------------------
-      # - 目的: 指定章の Markdown・画像ディレクトリ・章別CSS を削除
+      # - 目的: 指定章の Markdown・画像ディレクトリを削除
       # - 提供コマンド: delete
       # - 補足: 確認プロンプト、dry-run対応、force指定に対応
       # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
@@ -20,7 +20,7 @@ module Vivlio
             # delete 本体
             desc 'delete TOKENS...', '指定した章を削除します (Thor)'
             long_desc <<~DESC
-              指定した章（単体/複数/範囲）に対して、Markdown・画像ディレクトリ・章別CSSを削除します。
+              指定した章（単体/複数/範囲）に対して、Markdown と画像ディレクトリを削除します。
 
               例:
                 vs delete 11-install
@@ -75,7 +75,6 @@ module Vivlio
               targets.each do |bn|
                 delete_markdown_file(bn, args_opts)
                 delete_image_directory(bn, args_opts)
-                delete_css_file(bn, args_opts)
               end
             end
 
@@ -131,25 +130,6 @@ module Vivlio
                 end
               end
 
-              def delete_css_file(filename, options)
-                chapter_num = Common.get_chapter_number(filename)
-                return false unless chapter_num
-                css_file = "#{Common::STYLESHEETS_DIR}/#{chapter_num}.css"
-                if File.exist?(css_file)
-                  if confirm_deletion("CSSファイル: #{css_file}", options)
-                    File.delete(css_file)
-                    Common.log_success("CSSファイルを削除しました: #{css_file}")
-                    true
-                  else
-                    Common.log_info("CSSファイルの削除をスキップしました: #{css_file}")
-                    false
-                  end
-                else
-                  Common.log_info("CSSファイルは存在しません: #{css_file}")
-                  false
-                end
-              end
-
               # --- トークン展開系 ---
               def list_contents_basenames
                 Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |p| File.basename(p) }
@@ -195,18 +175,9 @@ module Vivlio
                 base = basename.sub(/\.md$/, '')
                 md_file = File.join(Common::CONTENTS_DIR, basename)
                 img_dir = File.join(Common::IMAGES_DIR, base)
-                css_file = nil
-                if (num = Common.get_chapter_number(basename))
-                  css_file = File.join(Common::STYLESHEETS_DIR, "#{num}.css")
-                end
                 Common.echo_always "[DRY-RUN] #{base} の削除予定:"
                 Common.echo_always "  - 文書:       #{md_file} #{File.exist?(md_file) ? '(exists)' : '(not found)'}"
                 Common.echo_always "  - 画像Dir:    #{img_dir} #{Dir.exist?(img_dir) ? '(exists)' : '(not found)'}"
-                if css_file
-                  Common.echo_always "  - CSS:        #{css_file} #{File.exist?(css_file) ? '(exists)' : '(not found)'}"
-                else
-                  Common.echo_always "  - CSS:        (対象外)"
-                end
               end
             end
           end
