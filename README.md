@@ -2,7 +2,14 @@
 
 このリポジトリは、Thor ベースの CLI（`vs`/`vivlio-starter`）で電子書籍（Vivliostyle PDF）を生成するプロジェクトです。Markdown を前処理し、HTML 変換・差し替え・目次/章立て生成・PDF化・クリーンアップ・表示までを自動化します。
 
+![Vivlio Starter ロゴ](dev-notes/vivlio_starter_logo.webp)
+
+> **ブランドアイデンティティ**  
+> ロゴの緑は Markdown から始まる執筆の第一歩と継続的な成長を表し、青は CLI や CSS 組版が支える技術的信頼性と出力のゴールを象徴します。シンプルな操作で確かな技術に裏打ちされた書籍制作を提供するという Vivlio Starter のメッセージを表現しています。
+
 ## 特長
+Vivlio Starter は Markdown から HTMLに変換、CSS組版技術を用いて、電子書籍（Vivliostyle PDF）を生成します。
+直感的な CLI コマンドでワンコマンドビルド（`vs build`）や、`config/book.yml` による一元的な設定管理、ファイルタイプに応じたスタイル適用（`<body class="preface|chapter|appendix|postface|colophon">`）など、便利な機能を提供します。
 
 - 直感的な CLI コマンドでワンコマンドビルド（`vs build`）
 - `config/book.yml` による一元的な設定管理
