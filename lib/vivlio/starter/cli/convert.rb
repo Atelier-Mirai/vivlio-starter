@@ -11,17 +11,23 @@ module Vivlio
       # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb` を参照
       # ================================================================
       module ConvertCommands
-        extend self
+        module_function
+
+        CONVERT_DESC = {
+          short: 'Markdown を HTML に変換します (Thor)',
+          long: <<~DESC
+            指定した Markdown（拡張子 .md 省略可）を HTML に変換します。指定が無い場合はカレントディレクトリ直下の全 .md を対象にします。
+
+            例:
+              vs convert 11-install
+              vs convert 11-install.md 12-tutorial
+          DESC
+        }.freeze
+
         def included(base)
           base.class_eval do
-            desc 'convert [TOKENS...]', 'Markdown を HTML に変換します (Thor)'
-            long_desc <<~DESC
-              指定した Markdown（拡張子 .md 省略可）を HTML に変換します。指定が無い場合はカレントディレクトリ直下の全 .md を対象にします。
-
-              例:
-                vs convert 11-install
-                vs convert 11-install.md 12-tutorial
-            DESC
+            desc 'convert [TOKENS...]', CONVERT_DESC[:short]
+            long_desc CONVERT_DESC[:long]
             # ================================================================
             # Command: convert（Markdown → HTML 変換）
             # ------------------------------------------------
@@ -41,7 +47,7 @@ module Vivlio
               # md の解決ヘルパー（与えられたトークンを base_dir 配下のパスに正規化）
               normalize_md = lambda do |name|
                 n = name.to_s
-                n = n =~ /\.md\z/ ? n : "#{n}.md"
+                n = "#{n}.md" unless n =~ /\.md\z/
                 if File.dirname(n) == '.'
                   File.join(base_dir, n)
                 else

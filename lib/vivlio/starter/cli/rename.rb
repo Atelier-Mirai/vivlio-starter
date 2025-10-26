@@ -13,30 +13,36 @@ module Vivlio
       # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
       # ================================================================
       module RenameCommands
-        extend self
+        module_function
+
+        RENAME_DESC = {
+          short: '章のスラッグ/番号変更（単体 or 一括連番）(Thor)',
+          long: <<~DESC
+            使い方:
+              ・引数あり: 指定した章のスラッグ（名前）と番号を変更します。
+              ・引数なし: contents ディレクトリを走査し、通常章/付録を一括で連番に付け直します。
+
+            受理パターン（単体変更）:
+              1) NN-slug → NN-slug
+              2) NN → NN （番号のみ変更: 既存 slug を維持。付録番号(91..97)の場合は appendix-letter を調整）
+
+            例:
+              vs rename 81-install 81-introduction
+              vs rename 81-install.md 81-introduction.md
+              vs rename 81 72
+              vs rename -S 10      # 一括連番（章刻み幅=10）
+
+            備考:
+              ・拡張子 .md は省略可能です（自動付与/内部で除去）
+              ・images/NN-slug ディレクトリがある場合は新しい番号/スラッグにリネームします
+              ・番号変更時に stylesheets/NN.css がある場合は CSS もリネームし counter-reset を更新します
+          DESC
+        }.freeze
+
         def included(base)
           base.class_eval do
-            desc 'rename [OLD NEW]', '章のスラッグ/番号変更（単体 or 一括連番）(Thor)'
-            long_desc <<~DESC
-              使い方:
-                ・引数あり: 指定した章のスラッグ（名前）と番号を変更します。
-                ・引数なし: contents ディレクトリを走査し、通常章/付録を一括で連番に付け直します。
-
-              受理パターン（単体変更）:
-                1) NN-slug → NN-slug
-                2) NN → NN （番号のみ変更: 既存 slug を維持。付録番号(91..97)の場合は appendix-letter を調整）
-
-              例:
-                vs rename 81-install 81-introduction
-                vs rename 81-install.md 81-introduction.md
-                vs rename 81 72
-                vs rename -S 10      # 一括連番（章刻み幅=10）
-
-              備考:
-                ・拡張子 .md は省略可能です（自動付与/内部で除去）
-                ・images/NN-slug ディレクトリがある場合は新しい番号/スラッグにリネームします
-                ・番号変更時に stylesheets/NN.css がある場合は CSS もリネームし counter-reset を更新します
-            DESC
+            desc 'rename [OLD NEW]', RENAME_DESC[:short]
+            long_desc RENAME_DESC[:long]
             method_option :dry_run, type: :boolean, aliases: '-n', desc: '変更予定のみ表示（実行しない）'
             method_option :force,   type: :boolean, aliases: %w[-f -y], desc: '確認なしで変更を実行'
             # 一括連番向けオプション（renumber からマージ）
@@ -59,9 +65,9 @@ module Vivlio
               if old_arg.nil? && new_arg.nil?
                 # 走査
                 chapter_files = Dir.glob("#{Common::CONTENTS_DIR}/*.md")
-                                    .select { |f| File.basename(f) =~ /^\d+-/ }
-                                    .reject { |f| File.basename(f) =~ /^(0\d|98|99)-/ }
-                                    .sort
+                                   .select { |f| File.basename(f) =~ /^\d+-/ }
+                                   .reject { |f| File.basename(f) =~ /^(0\d|98|99)-/ }
+                                   .sort
 
                 regular_chapters = chapter_files.select { |f| File.basename(f) =~ /^[1-8]\d-/ }
                 appendix_files   = chapter_files.select { |f| File.basename(f) =~ /^9[0-7]-/ }
@@ -83,10 +89,10 @@ module Vivlio
                   effective_step = [requested_step, max_step].min
                 end
 
-                if requested_step != effective_step
-                  Common.log_warn("章の刻み幅 #{requested_step} は 11..89 の範囲に収まらないため、#{effective_step} に調整しました")
-                else
+                if requested_step == effective_step
                   Common.log_info("章の刻み幅: #{effective_step}")
+                else
+                  Common.log_warn("章の刻み幅 #{requested_step} は 11..89 の範囲に収まらないため、#{effective_step} に調整しました")
                 end
 
                 Common.log_info('対象ファイル:')
@@ -96,7 +102,7 @@ module Vivlio
                   Common.log_info('通常の章:')
                   regular_chapters.each_with_index do |file, index|
                     old_name   = File.basename(file, '.md')
-                    new_number = format('%02d', 11 + index * effective_step)
+                    new_number = format('%02d', 11 + (index * effective_step))
                     Common.log_info("#{old_name} → #{new_number}-#{old_name.split('-', 2)[1]}")
                   end
                 end
@@ -114,15 +120,15 @@ module Vivlio
                       new_name_part = name_tail.sub(/appendix-[a-z]/, "appendix-#{new_letter}")
                       Common.log_info("#{old_name} → #{new_number}-#{new_name_part}")
                     end
-                  rescue => e
+                  rescue StandardError => e
                     Common.log_warn("付録の一覧表示でエラーが発生しました: #{e}")
                   end
                 end
 
                 # 確認
-                if !(options[:force] || options[:dry_run])
+                unless options[:force] || options[:dry_run]
                   print '  ❓ 連番付け直しを実行しますか？ (y/N): '
-                  response = STDIN.gets&.chomp&.downcase
+                  response = $stdin.gets&.chomp&.downcase
                   if response != 'y' && response != 'yes'
                     Common.log_warn('連番付け直しをキャンセルしました')
                     exit 0
@@ -139,8 +145,9 @@ module Vivlio
                 regular_chapters.each_with_index do |file, index|
                   old_basename = File.basename(file, '.md')
                   old_number   = old_basename.split('-')[0]
-                  new_number   = format('%02d', 11 + index * effective_step)
+                  new_number   = format('%02d', 11 + (index * effective_step))
                   next if old_number == new_number
+
                   new_basename = old_basename.sub(/^\d+/, new_number)
                   rename_map[old_basename] = {
                     old_number: old_number,
@@ -152,25 +159,24 @@ module Vivlio
                 end
 
                 appendix_files.each_with_index do |file, index|
-                  begin
-                    old_basename = File.basename(file, '.md')
-                    old_number   = old_basename.split('-')[0]
-                    new_number   = format('%02d', index + 91)
-                    next if old_number == new_number
-                    new_letter = Common.appendix_number_to_letter(new_number) ||
-                                 Common.appendix_number_to_letter(old_number) || 'a'
-                    new_basename = (old_basename.sub(/^\d+/, new_number))
-                                     .sub(/appendix-[a-z]/, "appendix-#{new_letter}")
-                    rename_map[old_basename] = {
-                      old_number: old_number,
-                      new_number: new_number,
-                      new_basename: new_basename,
-                      old_file: file,
-                      new_file: File.join(Common::CONTENTS_DIR, "#{new_basename}.md")
-                    }
-                  rescue => e
-                    Common.log_warn("付録のリネームマッピングでエラーが発生しました: #{e} (#{old_basename})")
-                  end
+                  old_basename = File.basename(file, '.md')
+                  old_number   = old_basename.split('-')[0]
+                  new_number   = format('%02d', index + 91)
+                  next if old_number == new_number
+
+                  new_letter = Common.appendix_number_to_letter(new_number) ||
+                               Common.appendix_number_to_letter(old_number) || 'a'
+                  new_basename = old_basename.sub(/^\d+/, new_number)
+                                             .sub(/appendix-[a-z]/, "appendix-#{new_letter}")
+                  rename_map[old_basename] = {
+                    old_number: old_number,
+                    new_number: new_number,
+                    new_basename: new_basename,
+                    old_file: file,
+                    new_file: File.join(Common::CONTENTS_DIR, "#{new_basename}.md")
+                  }
+                rescue StandardError => e
+                  Common.log_warn("付録のリネームマッピングでエラーが発生しました: #{e} (#{old_basename})")
                 end
 
                 if rename_map.empty?
@@ -188,30 +194,31 @@ module Vivlio
 
                 # 2. CSS リネーム
                 Common.log_action('CSSファイルの更新中...')
-                rename_map.each do |old_basename, info|
+                rename_map.each_value do |info|
                   old_css = "stylesheets/#{info[:old_number]}.css"
                   new_css = "stylesheets/#{info[:new_number]}.css"
-                  if File.exist?(old_css)
-                    Common.log_info("#{old_css} → #{new_css}")
-                    FileUtils.mv(old_css, new_css)
-                    # 章番号から10引いた値をCSSの counter-reset に設定
-                    BuildHelpers.update_css_counter(new_css, info[:new_number].to_i - 10)
-                  end
+                  next unless File.exist?(old_css)
+
+                  Common.log_info("#{old_css} → #{new_css}")
+                  FileUtils.mv(old_css, new_css)
+                  # 章番号から10引いた値をCSSの counter-reset に設定
+                  BuildHelpers.update_css_counter(new_css, info[:new_number].to_i - 10)
                 end
 
                 # 3. 画像ディレクトリのリネーム
                 Common.log_action('画像ディレクトリの更新中...')
-                rename_map.each do |old_basename, info|
+                rename_map.each_value do |info|
                   old_img_glob = "images/#{info[:old_number]}-*"
                   Dir.glob(old_img_glob).each do |old_dir|
                     next unless File.directory?(old_dir)
+
                     new_dir = if info[:new_number].to_i.between?(91, 97)
-                      new_letter = Common.appendix_number_to_letter(info[:new_number])
-                      old_dir.sub(/\/#{info[:old_number]}-/, "/#{info[:new_number]}-")
-                             .sub(/appendix-[a-z]/, "appendix-#{new_letter}")
-                    else
-                      old_dir.sub(/\/#{info[:old_number]}-/, "/#{info[:new_number]}-")
-                    end
+                                new_letter = Common.appendix_number_to_letter(info[:new_number])
+                                old_dir.sub(%r{/#{info[:old_number]}-}, "/#{info[:new_number]}-")
+                                       .sub(/appendix-[a-z]/, "appendix-#{new_letter}")
+                              else
+                                old_dir.sub(%r{/#{info[:old_number]}-}, "/#{info[:new_number]}-")
+                              end
                     Common.log_info("#{old_dir} → #{new_dir}")
                     FileUtils.mv(old_dir, new_dir)
                   end
@@ -221,7 +228,7 @@ module Vivlio
                 Common.log_action('既存の生成ファイルをクリーンアップ中...')
                 begin
                   Vivlio::Starter::ThorCLI.start(['clean'])
-                rescue => e
+                rescue StandardError => e
                   Common.log_warn("クリーンアップ中にエラー: #{e}")
                 end
 
@@ -246,7 +253,7 @@ module Vivlio
                 old_number = old_name
                 new_number = new_name
                 # 旧番号のMDを一意に特定
-                old_md_candidates = Dir.glob(File.join(contents_dir, "#{old_number}-*.md")).sort
+                old_md_candidates = Dir.glob(File.join(contents_dir, "#{old_number}-*.md"))
                 if old_md_candidates.empty?
                   Common.log_error("#{old_number}章のファイルが見つかりません")
                   exit 1
@@ -291,9 +298,9 @@ module Vivlio
 
               # 確認プロンプト
               unless options[:force] || options[:dry_run]
-                print "  ❓ 章名・番号変更を実行しますか？ (y/N): "
-                response = STDIN.gets&.chomp&.downcase
-                unless response == 'y' || response == 'yes'
+                print '  ❓ 章名・番号変更を実行しますか？ (y/N): '
+                response = $stdin.gets&.chomp&.downcase
+                unless %w[y yes].include?(response)
                   Common.log_warn('章名・番号変更をキャンセルしました')
                   exit 0
                 end

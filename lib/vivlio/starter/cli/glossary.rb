@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'yaml'
-require 'set'
 
 module Vivlio
   module Starter
@@ -24,11 +23,12 @@ module Vivlio
       #   - Markdown のコードブロック/インラインコードは検査・修正から除外。
       # ==============================================================================
       module GlossaryCommands
-        extend self
-        def included(base)
-          base.class_eval do
-            desc 'glossary:add [INPUT]', '用語を対話的に追加します（glossary.yml に追記）'
-            long_desc <<~DESC
+        module_function
+
+        GLOSSARY_DESC = {
+          add: {
+            short: '用語を対話的に追加します（glossary.yml に追記）',
+            long: <<~DESC
               用語を対話的に追加します。glossary.yml に追記します。
 
               引数:
@@ -38,6 +38,75 @@ module Vivlio
                 vs glossary:add
                 vs glossary:add "HTML(HyperText Markup Language)"
             DESC
+          },
+          canonicalize_check: {
+            short: 'config/glossary.yml を正準化（dry-run）し、差分の有無を返します',
+            long: <<~DESC
+              config/glossary.yml を正準化（dry-run）し、差分の有無を返します。
+              実際のファイル書き込みは行いません。
+
+              差分が存在する場合は終了ステータス 1 を返します。
+
+              例:
+                vs glossary:canonicalize:check
+            DESC
+          },
+          canonicalize: {
+            short: 'config/glossary.yml を正準化します（descriptionのブロック化、空行整形、key順ソート）',
+            long: <<~DESC
+              config/glossary.yml を正準化します。
+              - description を |- ブロックスカラへ統一
+              - 空行の整形
+              - key 順へのソート
+
+              例:
+                vs glossary:canonicalize
+            DESC
+          },
+          lint: {
+            short: '用語集（config/glossary.yml）に基づいて Markdown を検査します',
+            long: <<~DESC
+              用語集に基づいて Markdown を検査します。
+
+              対象:
+                - contents/*.md
+                - config/glossary.yml
+
+              例:
+                vs glossary:lint
+            DESC
+          },
+          fix: {
+            short: '用語集（config/glossary.yml）に基づいて Markdown を自動修正します',
+            long: <<~DESC
+              用語集に基づいて Markdown を自動修正します。
+
+              対象:
+                - contents/*.md
+                - config/glossary.yml
+
+              例:
+                vs glossary:fix
+            DESC
+          }
+        }.freeze
+
+        def included(base)
+          base.class_eval do
+            desc 'glossary:add', GLOSSARY_DESC[:add][:short]
+            long_desc GLOSSARY_DESC[:add][:long]
+
+            desc 'glossary:canonicalize:check', GLOSSARY_DESC[:canonicalize_check][:short]
+            long_desc GLOSSARY_DESC[:canonicalize_check][:long]
+
+            desc 'glossary:canonicalize', GLOSSARY_DESC[:canonicalize][:short]
+            long_desc GLOSSARY_DESC[:canonicalize][:long]
+
+            desc 'glossary:lint', GLOSSARY_DESC[:lint][:short]
+            long_desc GLOSSARY_DESC[:lint][:long]
+
+            desc 'glossary:fix', GLOSSARY_DESC[:fix][:short]
+            long_desc GLOSSARY_DESC[:fix][:long]
 
             # ================================================================
             # Command: glossary:add（用語の追加）
@@ -68,11 +137,11 @@ module Vivlio
 
               if raw && !raw.empty?
                 # 形式1: ABBR(Full Name) / ABBR（Full Name）
-                if (m = raw.match(/\A\s*([A-Za-z0-9+\-\/]+)\s*[\(（]\s*([^\)）]+?)\s*[\)）]\s*\z/))
+                if (m = raw.match(%r{\A\s*([A-Za-z0-9+\-/]+)\s*[(（]\s*([^)）]+?)\s*[)）]\s*\z}))
                   abbr = m[1]
                   name = m[2]
                 # 形式2: Full Name (ABBR) / Full Name（ABBR）
-                elsif (m = raw.match(/\A\s*([^\(（]+?)\s*[\(（]\s*([A-Za-z0-9+\-\/]+)\s*[\)）]\s*\z/))
+                elsif (m = raw.match(%r{\A\s*([^(（]+?)\s*[(（]\s*([A-Za-z0-9+\-/]+)\s*[)）]\s*\z}))
                   name = m[1]
                   abbr = m[2]
                 end
@@ -81,11 +150,11 @@ module Vivlio
               # 対話で不足項目を補う
               if abbr.nil? || abbr.empty?
                 print '略称（例: HTML）: '
-                abbr = STDIN.gets&.strip.to_s
+                abbr = $stdin.gets&.strip.to_s
               end
               if name.nil? || name.empty?
                 print '正式名称（例: HyperText Markup Language）: '
-                name = STDIN.gets&.strip.to_s
+                name = $stdin.gets&.strip.to_s
               end
 
               if abbr.empty? || name.empty?
@@ -95,7 +164,7 @@ module Vivlio
 
               # 初出表記の確認（既定: yes）
               print "初出は『#{name}（#{abbr}）』にしますか？ [Y/n]: "
-              ans = STDIN.gets&.strip
+              ans = $stdin.gets&.strip
               first_full = ans.nil? || ans.empty? || ans.match?(/\A[yY]\z/)
 
               # エイリアス提案
@@ -109,13 +178,13 @@ module Vivlio
                   - 例  : html, Html, HTML5
                 （空欄=既定 #{default_aliases.inspect} を採用）
               ALIAS_GUIDE
-              print "入力: "
-              alias_in = STDIN.gets&.strip.to_s
+              print '入力: '
+              alias_in = $stdin.gets&.strip.to_s
               aliases = if alias_in.empty?
-                default_aliases
-              else
-                alias_in.split(',').map(&:strip).reject(&:empty?).uniq
-              end
+                          default_aliases
+                        else
+                          alias_in.split(',').map(&:strip).reject(&:empty?).uniq
+                        end
 
               # style の自動推定（新規追加時の初期値）
               inferred_style = infer_style(abbr, name, aliases)
@@ -128,17 +197,15 @@ module Vivlio
                   - 入力 : 上書き（選択肢: #{allowed_styles.join(', ')})
               STYLE_GUIDE
               print "style 上書き（Enterで '#{inferred_style}'）: "
-              style_input = STDIN.gets&.strip.to_s
+              style_input = $stdin.gets&.strip.to_s
               style_to_use = if style_input.empty?
-                inferred_style
-              else
-                if allowed_styles.include?(style_input)
-                  style_input
-                else
-                  warn "[glossary:add] 不正な style 入力です。推定値 '#{inferred_style}' を採用します。"
-                  inferred_style
-                end
-              end
+                               inferred_style
+                             elsif allowed_styles.include?(style_input)
+                               style_input
+                             else
+                               warn "[glossary:add] 不正な style 入力です。推定値 '#{inferred_style}' を採用します。"
+                               inferred_style
+                             end
 
               # description 入力（複数行対応: 単独の '.' 行で終了。空欄終了=新規は未設定/更新は既存維持）
               $stdout.puts <<~DESC_GUIDE
@@ -150,18 +217,18 @@ module Vivlio
               $stdout.puts '入力開始（終了するには単独で "." を入力）:'
               description_lines = []
               loop do
-                line = STDIN.gets
-                if line.nil?
-                  break
-                end
+                line = $stdin.gets
+                break if line.nil?
+
                 line = line.chomp
                 break if line == '.'
+
                 description_lines << line
               end
-              description_text = description_lines.join("\n")
+              description_lines.join("\n")
 
               # key 生成
-              key_source = (abbr && !abbr.empty?) ? abbr : name
+              key_source = abbr && !abbr.empty? ? abbr : name
               key = key_source.downcase.gsub(/[^a-z0-9_]/, '_').gsub(/_+/, '_').gsub(/^_|_$/, '')
 
               # 重複チェック（key/abbr/name）
@@ -172,7 +239,7 @@ module Vivlio
                 # 既存エントリを表示し、更新するか確認
                 target = existing_by_key || existing_by_abbr || existing_by_name
                 existing_aliases = Array(target['aliases']).map(&:to_s)
-                existing_style = (target['style'] || 'capitalization')
+                existing_style = target['style'] || 'capitalization'
                 existing_desc  = target['description']
                 existing_preview = [
                   "- key: #{target['key']}",
@@ -185,10 +252,10 @@ module Vivlio
                 ].join("\n")
 
                 prev_desc_block = if description_lines.empty?
-                  "  description: "
-                else
-                  (["  description: |-" ] + description_lines.map { |l| "    #{l}" }).join("\n")
-                end
+                                    '  description: '
+                                  else
+                                    (['  description: |-'] + description_lines.map { |l| "    #{l}" }).join("\n")
+                                  end
                 proposed_preview = [
                   "- key: #{key}",
                   "  name: #{name}",
@@ -206,7 +273,7 @@ module Vivlio
                 $stdout.puts proposed_preview
                 $stdout.puts '----------------------'
                 print 'このエントリを更新しますか？ [Y/n]: '
-                ans2 = STDIN.gets&.strip
+                ans2 = $stdin.gets&.strip
                 if ans2.nil? || ans2.empty? || ans2.match?(/\A[yY]\z/)
                   # ファイルを行単位で読み、該当ブロックを差し替え
                   original_text = File.read(glossary_path, encoding: 'UTF-8')
@@ -215,22 +282,20 @@ module Vivlio
                   start_i = nil
                   indent_for_dash = nil
                   lines.each_with_index do |l, i|
-                    if l =~ /^(\s*)-\s+key:\s+#{Regexp.escape(target['key'])}\s*$/
-                      start_i = i
-                      indent_for_dash = Regexp.last_match(1)
-                      break
-                    end
+                    next unless l =~ /^(\s*)-\s+key:\s+#{Regexp.escape(target['key'])}\s*$/
+
+                    start_i = i
+                    indent_for_dash = Regexp.last_match(1)
+                    break
                   end
                   unless start_i
-                    warn "[glossary:add] 既存エントリの位置を特定できませんでした。中止します。"
+                    warn '[glossary:add] 既存エントリの位置を特定できませんでした。中止します。'
                     exit 1
                   end
-                  indent_kv = (indent_for_dash || '') + '  '
+                  indent_kv = "#{indent_for_dash || ''}  "
                   # ブロック終端を次の '- key:' か EOF とする
                   j = start_i + 1
-                  while j < lines.length && !(lines[j] =~ /^#{Regexp.escape(indent_for_dash)}-\s+key:\s+/)
-                    j += 1
-                  end
+                  j += 1 while j < lines.length && lines[j] !~ /^#{Regexp.escape(indent_for_dash)}-\s+key:\s+/
                   end_i = j - 1
 
                   # 置換用ブロック（description は入力があればブロックで上書き, なければ既存のまま）
@@ -248,8 +313,9 @@ module Vivlio
                     m = desc_start
                     while m <= end_i
                       # 次の key-value 開始（"  name:" 等）や次の項目開始で止める
-                      break if m > desc_start && lines[m] =~ /^#{Regexp.escape(indent_kv)}\w[\w\-]*:\s|
+                      break if m > desc_start && lines[m] =~ /^#{Regexp.escape(indent_kv)}\w[\w-]*:\s|
 ^#{Regexp.escape(indent_for_dash)}-\s+key:/
+
                       desc_buf << lines[m]
                       m += 1
                     end
@@ -260,12 +326,12 @@ module Vivlio
 
                   # description 行（入力があればブロックで上書き, なければ既存のまま）
                   desc_line = if description_lines.empty?
-                    existing_desc
-                  else
-                    block = "#{indent_kv}description: |-\n"
-                    block << description_lines.map { |l| "#{indent_kv}  #{l}\n" }.join
-                    block
-                  end
+                                existing_desc
+                              else
+                                block = "#{indent_kv}description: |-\n"
+                                block << description_lines.map { |l| "#{indent_kv}  #{l}\n" }.join
+                                block
+                              end
 
                   # 新しい aliases はインライン表記
                   aliases_line = "#{indent_kv}aliases: [#{aliases.join(', ')}]\n"
@@ -308,20 +374,18 @@ module Vivlio
 
               indent_for_dash = '  ' # 既定は2スペース
               # terms: 以降で最初の "- " 行を探し、その先頭空白を採用
-              if (after = lines[(terms_idx + 1)..-1])
+              if (after = lines[(terms_idx + 1)..])
                 sample = after.find { |l| l =~ /^(\s*)-\s+\w/ }
-                if sample && sample.match(/^(\s*)-\s+\w/)
-                  indent_for_dash = Regexp.last_match(1)
-                end
+                indent_for_dash = Regexp.last_match(1) if sample&.match(/^(\s*)-\s+\w/)
               end
-              indent_kv = indent_for_dash + '  '
+              indent_kv = "#{indent_for_dash}  "
 
               # description ブロックを構築
               desc_block = if description_lines.empty?
-                "#{indent_kv}description: \n"
-              else
-                "#{indent_kv}description: |-\n" + description_lines.map { |l| "#{indent_kv}  #{l}\n" }.join
-              end
+                             "#{indent_kv}description: \n"
+                           else
+                             "#{indent_kv}description: |-\n" + description_lines.map { |l| "#{indent_kv}  #{l}\n" }.join
+                           end
 
               # YAMLフラグメント生成（インライン aliases、style の後に空行）
               fragment = <<~YAML
@@ -341,11 +405,8 @@ module Vivlio
               $stdout.puts "[glossary:add] 追加しました: #{abbr}(#{name}) -> key: #{key}"
             end
 
-            desc 'glossary:canonicalize:check', 'config/glossary.yml を正準化（dry-run）し、差分の有無を返します'
-            long_desc <<~DESC
-              config/glossary.yml を正準化（dry-run）し、差分の有無を返します。
-              実際のファイル書き込みは行いません。
-            DESC
+            desc 'glossary:canonicalize:check', GLOSSARY_DESC[:canonicalize_check][:short]
+            long_desc GLOSSARY_DESC[:canonicalize_check][:long]
 
             # ================================================================
             # Command: glossary:canonicalize:check（正準化の差分確認: dry-run）
@@ -371,13 +432,8 @@ module Vivlio
               end
             end
 
-            desc 'glossary:canonicalize', 'config/glossary.yml を正準化します（descriptionのブロック化、空行整形、key順ソート）'
-            long_desc <<~DESC
-              config/glossary.yml を正準化します。
-              - description を |- ブロックスカラへ統一
-              - 各 - key: ブロックの直前に1行の空行
-              - key の昇順でソート
-            DESC
+            desc 'glossary:canonicalize', GLOSSARY_DESC[:canonicalize][:short]
+            long_desc GLOSSARY_DESC[:canonicalize][:long]
 
             # ================================================================
             # Command: glossary:canonicalize（正準化を実行）
@@ -405,15 +461,8 @@ module Vivlio
               end
             end
 
-            desc 'glossary:lint', '用語集（config/glossary.yml）に基づいて Markdown を検査します'
-            long_desc <<~DESC
-              用語集に基づいて Markdown を検査します。
-
-              チェック内容:
-              - エイリアス使用の検出
-              - first_full_form ルール（初出は正式名（略称））
-              - スタイル統一（capitalization/lowercase/hyphenation）
-            DESC
+            desc 'glossary:lint', GLOSSARY_DESC[:lint][:short]
+            long_desc GLOSSARY_DESC[:lint][:long]
 
             # ================================================================
             # Command: glossary:lint（Markdown の検査）
@@ -435,13 +484,13 @@ module Vivlio
                   key: t['key'],
                   name: t['name'],
                   abbr: t['abbr'],
-                  first_full_form: !!t['first_full_form'],
+                  first_full_form: !t['first_full_form'].nil?,
                   aliases: (t['aliases'] || []).uniq,
                   style: t['style']
                 }
               end
 
-              md_files = Dir.glob(File.join('contents', '**', '*.md')).sort
+              md_files = Dir.glob(File.join('contents', '**', '*.md'))
               violations = []
 
               # フェンス付きコードブロック（``` 言語 ... ```）とインラインコード（`...`）を除去
@@ -455,7 +504,7 @@ module Vivlio
 
               md_files.each do |path|
                 original = File.read(path, encoding: 'UTF-8')
-                text = strip_code.call(original)
+                strip_code.call(original)
 
                 terms.each do |term|
                   name = term[:name]
@@ -477,42 +526,46 @@ module Vivlio
                     line_check = line.gsub(/`[^`]*`/, '')
                     aliases.each do |ali|
                       next if ali.to_s.strip.empty?
+
                       # ラテン文字の語境界を用いた検出（長い単語中の部分一致を除外）
                       pattern = /(?<![A-Za-z0-9_])#{Regexp.escape(ali)}(?![A-Za-z0-9_])/
-                      if line_check.match?(pattern)
-                        violations << {
-                          file: path,
-                          rule: '別表記',
-                          line: lineno,
-                          message: "エイリアス '#{ali}' が使われています。正規表記 '#{name}'#{abbr ? "（または '#{abbr}'）" : ''} を使用してください。",
-                        }
-                      end
+                      next unless line_check.match?(pattern)
+
+                      violations << {
+                        file: path,
+                        rule: '別表記',
+                        line: lineno,
+                        message: "エイリアス '#{ali}' が使われています。正規表記 '#{name}'#{"（または '#{abbr}'）" if abbr} を使用してください。"
+                      }
                     end
 
                     # スタイル検出（Latinトークンのみ）
                     st = term[:style].to_s
-                    if !st.empty?
+                    unless st.empty?
                       case st
                       when 'capitalization'
                         # name
                         if name.to_s =~ /[A-Za-z]/
                           pat_ci = /(?<![A-Za-z0-9_])#{Regexp.escape(name)}(?![A-Za-z0-9_])/i
                           if line_check.match?(pat_ci) && !line_check.match?(/(?<![A-Za-z0-9_])#{Regexp.escape(name)}(?![A-Za-z0-9_])/)
-                            violations << { file: path, rule: 'スタイル:大文字小文字', line: lineno, message: "大文字小文字を '#{name}' に統一してください。" }
+                            violations << { file: path, rule: 'スタイル:大文字小文字', line: lineno,
+                                            message: "大文字小文字を '#{name}' に統一してください。" }
                           end
                         end
                         # abbr
                         if abbr.to_s =~ /[A-Za-z]/
                           pat_ci = /(?<![A-Za-z0-9_])#{Regexp.escape(abbr)}(?![A-Za-z0-9_])/i
                           if line_check.match?(pat_ci) && !line_check.match?(/(?<![A-Za-z0-9_])#{Regexp.escape(abbr)}(?![A-Za-z0-9_])/)
-                            violations << { file: path, rule: 'スタイル:大文字小文字', line: lineno, message: "大文字小文字を '#{abbr}' に統一してください。" }
+                            violations << { file: path, rule: 'スタイル:大文字小文字', line: lineno,
+                                            message: "大文字小文字を '#{abbr}' に統一してください。" }
                           end
                         end
                       when 'lowercase'
                         if name.to_s =~ /[A-Za-z]/
                           pat_ci = /(?<![A-Za-z0-9_])#{Regexp.escape(name)}(?![A-Za-z0-9_])/i
                           if line_check.match?(pat_ci) && !line_check.match?(/(?<![A-Za-z0-9_])#{Regexp.escape(name)}(?![A-Za-z0-9_])/)
-                            violations << { file: path, rule: 'スタイル:小文字', line: lineno, message: "小文字表記 '#{name}' に統一してください。" }
+                            violations << { file: path, rule: 'スタイル:小文字', line: lineno,
+                                            message: "小文字表記 '#{name}' に統一してください。" }
                           end
                         end
                       when 'hyphenation'
@@ -521,10 +574,11 @@ module Vivlio
                           spc  = name.gsub('-', ' ')
                           [nohy, spc].each do |bad|
                             pattern = /(?<![A-Za-z0-9_])#{Regexp.escape(bad)}(?![A-Za-z0-9_])/i
-                            if line_check.match?(pattern)
-                              violations << { file: path, rule: 'スタイル:ハイフン表記', line: lineno, message: "ハイフン表記は '#{name}' に統一してください。" }
-                              break
-                            end
+                            next unless line_check.match?(pattern)
+
+                            violations << { file: path, rule: 'スタイル:ハイフン表記', line: lineno,
+                                            message: "ハイフン表記は '#{name}' に統一してください。" }
+                            break
                           end
                         end
                       end
@@ -560,7 +614,7 @@ module Vivlio
 
                     # この行での最初の出現を決定
                     cand = { full: idx_full, name: idx_name, abbr: idx_abbr }.compact
-                    kind, min_idx = cand.min_by { |_, v| v }
+                    kind, = cand.min_by { |_, v| v }
 
                     first_kind = kind
                     first_line = lineno
@@ -571,14 +625,14 @@ module Vivlio
                   next if first_kind.nil?
 
                   # 最初の出現が正式名（略称）でなければ違反（行番号付き）
-                  if first_kind != :full
-                    violations << {
-                      file: path,
-                      rule: '初出:正式名（略称）',
-                      line: first_line,
-                      message: "最初の出現は '#{full_form}' にしてください。",
-                    }
-                  end
+                  next unless first_kind != :full
+
+                  violations << {
+                    file: path,
+                    rule: '初出:正式名（略称）',
+                    line: first_line,
+                    message: "最初の出現は '#{full_form}' にしてください。"
+                  }
                 end
               end
 
@@ -625,12 +679,12 @@ module Vivlio
                   key: t['key'],
                   name: t['name'],
                   abbr: t['abbr'],
-                  first_full_form: !!t['first_full_form'],
-                  aliases: (t['aliases'] || []).uniq,
+                  first_full_form: !t['first_full_form'].nil?,
+                  aliases: (t['aliases'] || []).uniq
                 }
               end
 
-              md_files = Dir.glob(File.join('contents', '**', '*.md')).sort
+              md_files = Dir.glob(File.join('contents', '**', '*.md'))
 
               # Markdown を [[:text, 文字列], [:code, 文字列], ...] のセグメントに分割
               split_segments = lambda do |s|
@@ -640,15 +694,11 @@ module Vivlio
                 regex = /```[\s\S]*?```|`[^`]*`/m
                 s.to_enum(:scan, regex).each do
                   m = Regexp.last_match
-                  if m.begin(0) > last
-                    segments << [:text, s[last...m.begin(0)]]
-                  end
+                  segments << [:text, s[last...m.begin(0)]] if m.begin(0) > last
                   segments << [:code, m[0]]
                   last = m.end(0)
                 end
-                if last < s.length
-                  segments << [:text, s[last..-1]]
-                end
+                segments << [:text, s[last..]] if last < s.length
                 segments
               end
 
@@ -658,6 +708,7 @@ module Vivlio
                 terms.each do |term|
                   (term[:aliases] || []).each do |ali|
                     next if ali.to_s.strip.empty?
+
                     if ali.downcase == 'vs'
                       # 単独の vs をインラインコードに置換（ASCII 境界で判定）
                       pattern = /(?<![A-Za-z0-9_])#{Regexp.escape(ali)}(?![A-Za-z0-9_])/i
@@ -680,6 +731,7 @@ module Vivlio
                 terms.each do |t|
                   next unless t[:first_full_form]
                   next if t[:name].to_s.empty? || t[:abbr].to_s.empty?
+
                   state[t[:key]] = { handled: false }
                 end
 
@@ -690,6 +742,7 @@ module Vivlio
                   # 各用語に対して、first_full_form の変換を段階的に適用
                   terms.each do |t|
                     next unless t[:first_full_form]
+
                     name = t[:name]
                     abbr = t[:abbr]
                     next if name.to_s.empty? || abbr.to_s.empty?
@@ -714,25 +767,22 @@ module Vivlio
 
                     idx_name = text.index(name)
                     idx_abbr = text.index(abbr)
-                    if idx_name.nil? && idx_abbr.nil?
-                      next
-                    end
+                    next if idx_name.nil? && idx_abbr.nil?
 
                     # このセグメントで先に出現する方を採用
-                    target = nil
-                    if !idx_abbr.nil? && (idx_name.nil? || idx_abbr < idx_name)
-                      target = :abbr
-                    else
-                      target = :name
-                    end
+                    target = if !idx_abbr.nil? && (idx_name.nil? || idx_abbr < idx_name)
+                               :abbr
+                             else
+                               :name
+                             end
 
-                    if target == :abbr
-                      # 最初の abbr を「正式名（略称）」に置換
-                      text = text.sub(abbr, full)
-                    else
-                      # 最初の name を「正式名（略称）」に置換
-                      text = text.sub(name, full)
-                    end
+                    text = if target == :abbr
+                             # 最初の abbr を「正式名（略称）」に置換
+                             text.sub(abbr, full)
+                           else
+                             # 最初の name を「正式名（略称）」に置換
+                             text.sub(name, full)
+                           end
                     st[:handled] = true if st
 
                     # 初出設定後、このセグメントの残りにある単独 name は abbr に変換
@@ -764,9 +814,7 @@ module Vivlio
 
                 # 3) Style fixes (capitalization/lowercase/hyphenation)
                 segments = segments.map do |kind, str|
-                  if kind != :text
-                    [kind, str]
-                  else
+                  if kind == :text
                     text = str.dup
                     terms.each do |t|
                       st = t[:style].to_s
@@ -795,16 +843,18 @@ module Vivlio
                       end
                     end
                     [:text, text]
+                  else
+                    [kind, str]
                   end
                 end
 
-                fixed = segments.map { |k, s| s }.join
+                fixed = segments.map { |_k, s| s }.join
 
-                if fixed != original
-                  File.write(path, fixed)
-                  changed << path
-                  puts "[glossary:fix] 更新: #{path}"
-                end
+                next unless fixed != original
+
+                File.write(path, fixed)
+                changed << path
+                puts "[glossary:fix] 更新: #{path}"
               end
 
               if changed.empty?
@@ -831,9 +881,12 @@ module Vivlio
           if hyphen_in_canonical || hyphen_in_alias
             # さらに、ハイフン有無だけが違う alias があるかを軽く確認
             base = ab.empty? ? nm : ab
-            if !base.empty? && als.any? { |a| a.tr('-','') == base.tr('-','') && (a.include?('-') != base.include?('-')) }
+            if !base.empty? && als.any? do |a|
+              a.tr('-', '') == base.tr('-', '') && (a.include?('-') != base.include?('-'))
+            end
               return 'hyphenation'
             end
+
             # canonical がハイフンを含む場合も hyphenation を推奨
             return 'hyphenation'
           end
@@ -845,6 +898,7 @@ module Vivlio
           if ab.match?(/\A[a-z0-9]+\z/)
             # ただし、name が頭字語中心(全大文字語を含む)なら capitalization のほうが無難
             return 'capitalization' if nm.split.any? { |w| w.match?(/\A[A-Z0-9]{2,}\z/) }
+
             return 'lowercase'
           end
 
@@ -861,7 +915,7 @@ module Vivlio
           return text unless terms_idx # terms が無ければそのまま
 
           header = lines[0..terms_idx]
-          body = lines[(terms_idx + 1)..-1] || []
+          body = lines[(terms_idx + 1)..] || []
 
           # アイテムのインデント（terms: 直下の `- key:` の先頭空白）を推定
           item_indent = nil
@@ -878,12 +932,10 @@ module Vivlio
           blocks = []
           current = []
           body.each do |l|
-            if l =~ /^#{Regexp.escape(item_indent)}-\s*key:\s*\S+/
-              # 新しいブロック開始
-              unless current.empty?
-                blocks << current
-                current = []
-              end
+            # 新しいブロック開始
+            if (l =~ /^#{Regexp.escape(item_indent)}-\s*key:\s*\S+/) && !current.empty?
+              blocks << current
+              current = []
             end
             current << l
           end
@@ -904,9 +956,7 @@ module Vivlio
           # 再構成: 先頭ブロックの前には空行なし、以降は1行の空行
           rebuilt = []
           items.each_with_index do |(_k, blk), idx|
-            if idx.positive?
-              rebuilt << "\n"
-            end
+            rebuilt << "\n" if idx.positive?
             rebuilt.concat(blk)
           end
 
@@ -917,6 +967,7 @@ module Vivlio
         def extract_key_from_block(block_lines)
           first = block_lines.find { |l| l =~ /-\s*key:\s*\S+/ }
           return nil unless first
+
           m = first.match(/-\s*key:\s*(\S+)/)
           m ? m[1] : nil
         end
@@ -928,14 +979,15 @@ module Vivlio
           while i < block_lines.length
             line = block_lines[i]
             # すでにブロック記法ならそのまま
-            if line =~ /^(\s*)description:\s*\|\-?\s*$/
+            if line =~ /^(\s*)description:\s*\|-?\s*$/
               out << line
               i += 1
               # 以降のブロック本文（インデント2空白分）はそのまま写経
               while i < block_lines.length && block_lines[i] =~ /^(\s{2,}|\s*)\S|^\s*$/
                 # terminate only when next top-level field at same indent appears
                 # 実際には次のフィールド行を検出したいが、元テキストを変えないため単純に次の `\s*\w+:` を検出
-                break if block_lines[i] =~ /^(\s*)\w[\w\-]*:\s/
+                break if block_lines[i] =~ /^(\s*)\w[\w-]*:\s/
+
                 out << block_lines[i]
                 i += 1
               end
@@ -965,12 +1017,8 @@ module Vivlio
         # 先頭末尾の空行を除去
         def strip_blank_edges(arr)
           a = arr.dup
-          while !a.empty? && a.first.strip.empty?
-            a.shift
-          end
-          while !a.empty? && a.last.strip.empty?
-            a.pop
-          end
+          a.shift while !a.empty? && a.first.strip.empty?
+          a.pop while !a.empty? && a.last.strip.empty?
           a
         end
       end

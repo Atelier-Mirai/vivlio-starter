@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
+
 require 'hexapdf'
 
 if ARGV.empty?
@@ -27,14 +28,14 @@ ARGV.each do |path|
       first = node[:First]
       while first
         title = (first[:Title] || '').to_s.encode('UTF-8', invalid: :replace, undef: :replace)
-        puts ("  " * depth) + "- #{title}"
+        puts ('  ' * depth) + "- #{title}"
         count += 1
         stack << [first, depth + 1] if first[:First]
         first = first[:Next]
       end
     end
     puts "#{path}: TOTAL_OUTLINES=#{count}"
-  rescue => e
+  rescue StandardError => e
     puts "#{path}: OPEN_ERROR: #{e}"
   end
 end

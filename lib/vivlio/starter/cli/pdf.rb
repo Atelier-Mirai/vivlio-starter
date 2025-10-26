@@ -1,4 +1,7 @@
 # frozen_string_literal: true
+
+require 'English'
+
 require 'rbconfig'
 require 'fileutils'
 
@@ -14,11 +17,12 @@ module Vivlio
       # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
       # ================================================================
       module PdfCommands
-        extend self
-        def included(base)
-          base.class_eval do
-            desc 'pdf [OUTPUT]', 'PDFを生成します（OUTPUT 指定時はそのファイル名で出力）'
-            long_desc <<~DESC
+        module_function
+
+        PDF_DESC = {
+          pdf: {
+            short: 'PDFを生成します（OUTPUT 指定時はそのファイル名で出力）',
+            long: <<~DESC
               PDFファイルを生成します。
 
               Vivliostyle CLIを使用してHTMLファイルからPDFを生成します。
@@ -26,6 +30,37 @@ module Vivlio
               引数 OUTPUT を指定した場合、生成後に設定上の出力ファイル（例: output.pdf）を
               OUTPUT へとリネームします（既存ファイルがあれば上書き）。
             DESC
+          },
+          compress: {
+            short: '生成済みPDFを圧縮します (Ghostscript)',
+            long: <<~DESC
+              生成済みのPDFファイルを Ghostscript(pdfwrite) を用いて圧縮します。
+
+              既定の品質プリセットは /ebook（中庸）です。
+
+              オプション:
+                -v, --verbose  詳細な処理情報を表示
+            DESC
+          },
+          open: {
+            short: '生成されたPDFを開きます（PATH 指定可）',
+            long: <<~DESC
+              生成されたPDFファイルをPreview.appで開きます。
+
+              設定に応じて：
+              - 圧縮版PDFが存在すれば優先的に開く
+              - 既存のPDFウィンドウを閉じる
+              - 指定されたウィンドウ位置に配置
+
+              PATH を与えた場合はそのファイルを開き、同様にウィンドウ位置を適用します。
+            DESC
+          }
+        }.freeze
+
+        def included(base)
+          base.class_eval do
+            desc 'pdf [OUTPUT]', PDF_DESC[:pdf][:short]
+            long_desc PDF_DESC[:pdf][:long]
             # ================================================================
             # Command: pdf（VivliostyleでPDF生成）
             # ------------------------------------------------
@@ -36,7 +71,7 @@ module Vivlio
             # ================================================================
             def pdf(target_output = nil)
               ENV['VERBOSE'] = '1' if options[:verbose]
-              Common.log_action("PDFを生成しています…")
+              Common.log_action('PDFを生成しています…')
 
               # 出力抑制フラグ（ENV または config.yml の pdf.quiet）
               pdf_config = Common::CONFIG['pdf'] || {}
@@ -62,14 +97,14 @@ module Vivlio
                         single_doc = false
                       end
                     end
-                  rescue => e
+                  rescue StandardError
                     # 読み取り失敗時は何もしない（後段の entries.js 判定に任せる）
                   end
                   entries_path = File.join(Dir.pwd, 'entries.js')
                   if File.exist?(entries_path)
                     txt = File.read(entries_path, encoding: 'utf-8')
                     # かなり単純だが十分: "path": の出現数で判定
-                    paths = txt.scan(/\"path\"\s*:/)
+                    paths = txt.scan(/"path"\s*:/)
                     if paths.size == 1 && single_doc
                       enable_single_doc = true
                     else
@@ -79,7 +114,7 @@ module Vivlio
                     # entries.js がない場合は安全側で無効化
                     Common.log_info('[pdf] entries.js が見つからないため --single-doc は無効化します')
                   end
-                rescue => e
+                rescue StandardError => e
                   Common.log_warn("[pdf] --single-doc 判定に失敗: #{e}。安全側で無効化します")
                 end
               end
@@ -93,7 +128,7 @@ module Vivlio
                 system(cmd)
               end
 
-              if $?.success?
+              if $CHILD_STATUS.success?
                 # 生成ファイル名（設定に基づく）
                 output_path = pdf_config['output_file'] || 'output.pdf'
 
@@ -101,40 +136,33 @@ module Vivlio
                 if target_output && !target_output.to_s.strip.empty?
                   begin
                     if File.exist?(output_path)
-                      if File.expand_path(output_path) != File.expand_path(target_output)
+                      if File.expand_path(output_path) == File.expand_path(target_output)
+                        # 同一パス指定ならリネーム不要
+                        Common.log_success('PDFの生成が完了しました')
+                        Common.log_info("出力先: #{File.expand_path(output_path)}")
+                      else
                         FileUtils.rm_f(target_output)
                         FileUtils.mv(output_path, target_output)
                         Common.log_success("PDFの生成が完了しました（リネーム: #{output_path} → #{target_output}）")
                         Common.log_info("出力先: #{File.expand_path(target_output)}")
-                      else
-                        # 同一パス指定ならリネーム不要
-                        Common.log_success("PDFの生成が完了しました")
-                        Common.log_info("出力先: #{File.expand_path(output_path)}")
                       end
                     else
                       Common.log_warn("PDF生成は成功しましたが、出力ファイルが見つかりません: #{output_path}")
                     end
-                  rescue => e
+                  rescue StandardError => e
                     Common.log_warn("PDFのリネームに失敗しました: #{e}")
                   end
                 else
-                  Common.log_success("PDFの生成が完了しました")
+                  Common.log_success('PDFの生成が完了しました')
                   Common.log_info("出力先: #{File.expand_path(output_path)}")
                 end
               else
-                Common.log_error("PDFの生成に失敗しました")
+                Common.log_error('PDFの生成に失敗しました')
               end
             end
 
-            desc 'pdf_compress', '生成済みPDFを圧縮します (Ghostscript)'
-            long_desc <<~DESC
-              生成済みのPDFファイルを Ghostscript(pdfwrite) を用いて圧縮します。
-
-              既定の品質プリセットは /ebook（中庸）です。
-
-              オプション:
-                -v, --verbose  詳細な処理情報を表示
-            DESC
+            desc 'pdf_compress', PDF_DESC[:compress][:short]
+            long_desc PDF_DESC[:compress][:long]
             # ================================================================
             # Command: pdf_compress（PDF圧縮）
             # ------------------------------------------------
@@ -157,8 +185,8 @@ module Vivlio
               Common.log_action("PDFを圧縮しています…（入力: #{input_pdf} → 出力: #{output_pdf}）")
 
               # 利用可能なコマンドを検出
-              has_gs   = system('which gs >/dev/null 2>&1')
-              
+              has_gs = system('which gs >/dev/null 2>&1')
+
               compressed = false
 
               run_gs = proc do
@@ -186,17 +214,8 @@ module Vivlio
               end
             end
 
-            desc 'open:pdf [PATH]', '生成されたPDFを開きます（PATH 指定可）'
-            long_desc <<~DESC
-              生成されたPDFファイルをPreview.appで開きます。
-
-              設定に応じて：
-              - 圧縮版PDFが存在すれば優先的に開く
-              - 既存のPDFウィンドウを閉じる
-              - 指定されたウィンドウ位置に配置
-
-              PATH を与えた場合はそのファイルを開き、同様にウィンドウ位置を適用します。
-            DESC
+            desc 'open:pdf [PATH]', PDF_DESC[:open][:short]
+            long_desc PDF_DESC[:open][:long]
             # ================================================================
             # Command: open:pdf（PDFを開く）
             # ------------------------------------------------
@@ -217,8 +236,16 @@ module Vivlio
                 normal_path     = pdf_config['output_file'] || 'output.pdf'
                 if File.exist?(compressed_path) && File.exist?(normal_path)
                   begin
-                    c_mtime = File.mtime(compressed_path) rescue Time.at(0)
-                    n_mtime = File.mtime(normal_path)     rescue Time.at(0)
+                    c_mtime = begin
+                      File.mtime(compressed_path)
+                    rescue StandardError
+                      Time.at(0)
+                    end
+                    n_mtime = begin
+                      File.mtime(normal_path)
+                    rescue StandardError
+                      Time.at(0)
+                    end
                     if c_mtime >= n_mtime
                       pdf_path = compressed_path
                       Common.log_info("open: 圧縮版(#{compressed_path})が新しいためこちらを開きます")
@@ -226,20 +253,20 @@ module Vivlio
                       pdf_path = normal_path
                       Common.log_info("open: 通常版(#{normal_path})が新しいためこちらを開きます")
                     end
-                  rescue
+                  rescue StandardError
                     # 取得できない場合は圧縮版優先の従来挙動
                     pdf_path = compressed_path
                   end
                 elsif File.exist?(compressed_path)
                   pdf_path = compressed_path
-                  Common.log_info("open: 圧縮版のみ存在するためこちらを開きます")
+                  Common.log_info('open: 圧縮版のみ存在するためこちらを開きます')
                 else
                   pdf_path = normal_path
-                  Common.log_info("open: 通常版を開きます")
+                  Common.log_info('open: 通常版を開きます')
                 end
               end
 
-              Common.log_action("PDFを開いています…")
+              Common.log_action('PDFを開いています…')
               Common.log_info("ファイルパス: #{File.expand_path(pdf_path)}")
 
               # macOS 以外では案内のみ表示して終了
@@ -261,8 +288,8 @@ module Vivlio
               if close_existing
                 # Shell 経由のクォート崩れを避けるため、引数配列形式で実行
                 begin
-                  system("osascript", "-e", 'tell application "Preview" to close every window')
-                rescue
+                  system('osascript', '-e', 'tell application "Preview" to close every window')
+                rescue StandardError
                   # 失敗しても致命的ではないため黙って続行
                 end
               end
@@ -280,7 +307,7 @@ module Vivlio
                   end tell'
               APPLE_SCRIPT
 
-              Common.log_success("PDFを開きました")
+              Common.log_success('PDFを開きました')
             end
           end
         end

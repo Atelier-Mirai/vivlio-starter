@@ -17,23 +17,29 @@ module Vivlio
       # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
       # ================================================================
       module PostProcessCommands
-        extend self
+        module_function
+
+        POST_PROCESS_DESC = {
+          short: 'HTMLファイルのポスト置換処理を行います',
+          long: <<~DESC
+            指定した HTML ファイルの後処理を行います。指定が無い場合はプロジェクトルートの全 .html を対象にします。
+
+            処理内容:
+            - <body> タグにファイルタイプクラスを付与
+            - _post_replace_list.yml に基づく置換処理
+            - 章末脚注をページ脚注に変換
+            - ソースコードに行番号を追加（Prism.js対応）
+
+            例:
+              vs post_process 11-install
+              vs post_process 11-install.html 12-tutorial
+          DESC
+        }.freeze
+
         def included(base)
           base.class_eval do
-            desc 'post_process [TOKENS...]', 'HTMLファイルのポスト置換処理を行います'
-            long_desc <<~DESC
-              指定した HTML ファイルの後処理を行います。指定が無い場合はプロジェクトルートの全 .html を対象にします。
-
-              処理内容:
-              - <body> タグにファイルタイプクラスを付与
-              - _post_replace_list.yml に基づく置換処理
-              - 章末脚注をページ脚注に変換
-              - ソースコードに行番号を追加（Prism.js対応）
-
-              例:
-                vs post_process 11-install
-                vs post_process 11-install.html 12-tutorial
-            DESC
+            desc 'post_process [TOKENS...]', POST_PROCESS_DESC[:short]
+            long_desc POST_PROCESS_DESC[:long]
             # ================================================================
             # Command: post_process（HTML 後処理）
             # ------------------------------------------------
@@ -56,13 +62,13 @@ module Vivlio
               # 引数があれば .html のみを対象にする
               # - トークンは拡張子 .html を強制し、相対指定はプロジェクトルートに解決
               html_files = if files.any?
-                files.map { |f|
-                  name = f.end_with?('.html') ? f : "#{f}.html"
-                  File.dirname(name) == '.' ? File.join(base_dir, name) : name
-                }.uniq
-              else
-                Dir.glob(File.join(base_dir, '*.html'))
-              end
+                             files.map do |f|
+                               name = f.end_with?('.html') ? f : "#{f}.html"
+                               File.dirname(name) == '.' ? File.join(base_dir, name) : name
+                             end.uniq
+                           else
+                             Dir.glob(File.join(base_dir, '*.html'))
+                           end
 
               # file_typeを取得して、<body> にクラスを付与
               html_files.each do |html_file|
@@ -90,7 +96,7 @@ module Vivlio
                   replace_rules = parsed.is_a?(Array) ? parsed : nil
                   Common.log_error('エラー: YAMLファイルは置換オブジェクト配列である必要があります') unless replace_rules
                   Common.log_info("置換ルール: #{File.basename(target_yml)} を使用")
-                rescue => e
+                rescue StandardError => e
                   Common.log_error("YAMLの読み込みに失敗: #{e.message}")
                 end
               else
@@ -123,7 +129,7 @@ module Vivlio
                       Common.log_success("#{html_file}: ラップ後の不要な空段落をクリーンアップ (#{result2[:replacements]}件)")
                     end
                   end
-                rescue => e
+                rescue StandardError => e
                   Common.log_error("#{html_file}: section-topic ラップ中にエラー: #{e.message}")
                 end
 
@@ -142,14 +148,14 @@ module Vivlio
                 begin
                   inject_heading_markers!([html_file], max_level: 3)
                   Common.log_info("#{html_file}: 見出しメタを付与 (class=data)")
-                rescue => e
+                rescue StandardError => e
                   Common.log_warn("#{html_file}: 見出しメタ付与に失敗: #{e}")
                 end
 
                 begin
                   inject_heading_number_spans!(html_file)
                   Common.log_info("#{html_file}: 見出し番号スパンを構築")
-                rescue => e
+                rescue StandardError => e
                   Common.log_warn("#{html_file}: 見出し番号スパン構築に失敗: #{e}")
                 end
               end
@@ -169,65 +175,64 @@ module Vivlio
         def inject_heading_markers!(html_paths, max_level: 3)
           paths = Array(html_paths).select { |p| File.exist?(p) }
           return if paths.empty?
+
           max_l = [[max_level.to_i, 1].max, 6].min
           paths.each do |path|
-            begin
-              html = File.read(path, encoding: 'utf-8')
-              doc  = if defined?(Nokogiri::HTML5)
-                        Nokogiri::HTML5.parse(html)
-                      else
-                        Nokogiri::HTML.parse(html, nil, 'UTF-8')
-                      end
-              modified = false
-              chapter_token = File.basename(path, File.extname(path)).to_s.strip
-              chapter_token = nil if chapter_token.empty?
-              (1..max_l).each do |lvl|
-                doc.css("h#{lvl}").each do |h|
-                  # 見出し要素自体に vs-h-marker クラスを付与
-                  classes = (h['class'] || '').split
-                  unless classes.include?('vs-h-marker')
-                    classes << 'vs-h-marker'
-                    h['class'] = classes.join(' ').strip
+            html = File.read(path, encoding: 'utf-8')
+            doc  = if defined?(Nokogiri::HTML5)
+                     Nokogiri::HTML5.parse(html)
+                   else
+                     Nokogiri::HTML.parse(html, nil, 'UTF-8')
+                   end
+            modified = false
+            chapter_token = File.basename(path, File.extname(path)).to_s.strip
+            chapter_token = nil if chapter_token.empty?
+            (1..max_l).each do |lvl|
+              doc.css("h#{lvl}").each do |h|
+                # 見出し要素自体に vs-h-marker クラスを付与
+                classes = (h['class'] || '').split
+                unless classes.include?('vs-h-marker')
+                  classes << 'vs-h-marker'
+                  h['class'] = classes.join(' ').strip
+                  modified = true
+                end
+
+                # 見出しテキストを data 属性として付与（PDFアウトライン等の外部処理向け）
+                heading_text = extract_heading_core_text(h)
+                if heading_text && !heading_text.empty?
+                  # data-heading（汎用）と data-h{level}（レベル別）の両方を設定
+                  if h['data-heading'] != heading_text
+                    h['data-heading'] = heading_text
+                    modified = true
+                  end
+                  lvl_key = "data-h#{lvl}"
+                  if h[lvl_key] != heading_text
+                    h[lvl_key] = heading_text
                     modified = true
                   end
 
-                  # 見出しテキストを data 属性として付与（PDFアウトライン等の外部処理向け）
-                  heading_text = extract_heading_core_text(h)
-                  if heading_text && !heading_text.empty?
-                    # data-heading（汎用）と data-h{level}（レベル別）の両方を設定
-                    if h['data-heading'] != heading_text
-                      h['data-heading'] = heading_text
-                      modified = true
-                    end
-                    lvl_key = "data-h#{lvl}"
-                    if h[lvl_key] != heading_text
-                      h[lvl_key] = heading_text
-                      modified = true
-                    end
-
-                    if lvl == 1 && (h['id'].to_s.strip.empty?)
-                      h['id'] = heading_text
-                      modified = true
-                    end
-                  end
-
-                  if chapter_token && h['data-chapter'] != chapter_token
-                    h['data-chapter'] = chapter_token
+                  if lvl == 1 && h['id'].to_s.strip.empty?
+                    h['id'] = heading_text
                     modified = true
                   end
                 end
+
+                if chapter_token && h['data-chapter'] != chapter_token
+                  h['data-chapter'] = chapter_token
+                  modified = true
+                end
               end
-              if modified
-                out = doc.respond_to?(:to_html) ? doc.to_html : doc.to_s
-                File.write(path, out, encoding: 'utf-8')
-              end
-            rescue => e
-              Common.log_warn("見出しメタ付与に失敗: #{path} (#{e})")
             end
+            if modified
+              out = doc.respond_to?(:to_html) ? doc.to_html : doc.to_s
+              File.write(path, out, encoding: 'utf-8')
+            end
+          rescue StandardError => e
+            Common.log_warn("見出しメタ付与に失敗: #{path} (#{e})")
           end
         end
 
-        MAIN_CHAPTER_RANGE = (11..89).freeze
+        MAIN_CHAPTER_RANGE = (11..89)
 
         def inject_heading_number_spans!(html_path)
           return unless File.exist?(html_path)
@@ -242,12 +247,12 @@ module Vivlio
           file_type = Common.get_file_type(html_path)
           chapter_token = File.basename(html_path, File.extname(html_path))
           chapter_number = Common.get_chapter_number(chapter_token)
-          chapter_number_i = chapter_number ? chapter_number.to_i : nil
+          chapter_number_i = chapter_number&.to_i
 
           chapter_display_number = resolve_main_chapter_display_number(chapter_token, chapter_number_i)
           appendix_letter = nil
 
-          if chapter_number_i && chapter_number_i.between?(91, 97)
+          if chapter_number_i&.between?(91, 97)
             appendix_letter = Common.appendix_number_to_letter(chapter_number_i)&.upcase
           end
 
@@ -257,25 +262,23 @@ module Vivlio
 
           modified = false
 
-          if process_h1
-            if (h1 = doc.at_css('h1'))
-              title_text = extract_heading_core_text(h1)
-              number_text = if file_type == 'appendix'
-                              appendix_letter ? "付録 #{appendix_letter}" : nil
-                            elsif chapter_display_number
-                              "第#{chapter_display_number}章"
-                            end
-              modified |= rebuild_heading_with_spans(h1, number_text, title_text, :chapter, doc)
-              if number_text
-                h1['data-chapter-number-display'] = number_text
-              else
-                h1.delete('data-chapter-number-display')
-              end
-              if title_text
-                h1['data-chapter-title'] = title_text
-              else
-                h1.delete('data-chapter-title')
-              end
+          if process_h1 && (h1 = doc.at_css('h1'))
+            title_text = extract_heading_core_text(h1)
+            number_text = if file_type == 'appendix'
+                            appendix_letter ? "付録 #{appendix_letter}" : nil
+                          elsif chapter_display_number
+                            "第#{chapter_display_number}章"
+                          end
+            modified |= rebuild_heading_with_spans(h1, number_text, title_text, :chapter, doc)
+            if number_text
+              h1['data-chapter-number-display'] = number_text
+            else
+              h1.delete('data-chapter-number-display')
+            end
+            if title_text
+              h1['data-chapter-title'] = title_text
+            else
+              h1.delete('data-chapter-title')
             end
           end
 
@@ -339,9 +342,9 @@ module Vivlio
           original_title_nodes = if current_title_span
                                    current_title_span.children.map(&:dup)
                                  else
-                                   node.children.reject { |child|
+                                   node.children.reject do |child|
                                      number_class && child.element? && child['class'].to_s.split.include?(number_class)
-                                   }.map(&:dup)
+                                   end.map(&:dup)
                                  end
 
           node.children.remove
@@ -394,7 +397,7 @@ module Vivlio
         def main_chapter_order
           @main_chapter_order ||= begin
             configured = configured_main_chapter_tokens
-            tokens = configured && configured.any? ? configured : discovered_main_chapter_tokens
+            tokens = configured&.any? ? configured : discovered_main_chapter_tokens
             tokens
           end
         end
@@ -407,11 +410,10 @@ module Vivlio
                      when String
                        str = cfg.to_s
                        return nil if str.strip.casecmp('all').zero?
+
                        str.lines.map(&:strip).reject(&:empty?)
                      when Array
                        cfg.map { |s| s.to_s.strip }.reject(&:empty?)
-                     else
-                       nil
                      end
           return nil unless raw_list&.any?
 
@@ -430,6 +432,7 @@ module Vivlio
             next unless token
             next unless main_chapter_token?(token)
             next if seen[token]
+
             seen[token] = true
             acc << token
           end
@@ -438,12 +441,14 @@ module Vivlio
         def normalize_chapter_token(entry)
           s = entry.to_s.strip
           return nil if s.empty?
+
           s = s.sub(%r{\A\./}, '')
           s = s.sub(%r{\A#{Regexp.escape(Common::CONTENTS_DIR)}/}i, '')
           s = s.sub(/\.(html|md)\z/i, '')
           s = s.sub(/\.(html|md)\z/i, '') # 念のため二重拡張を排除
           s = s.strip
           return nil if s.empty?
+
           s
         end
 
@@ -463,38 +468,32 @@ module Vivlio
           file_replacements = 0
 
           # 置換ルール適用
-          if replace_rules
-            replace_rules.each do |item|
-              next unless item.is_a?(Hash) && item.key?('f') && item.key?('r')
+          replace_rules&.each do |item|
+            next unless item.is_a?(Hash) && item.key?('f') && item.key?('r')
 
-              pattern         = Regexp.new(item['f'])
-              replacement_str = item['r'].dup
-              matches_found   = 0
+            pattern         = Regexp.new(item['f'])
+            replacement_str = item['r'].dup
+            matches_found   = 0
 
-              # String#gsub(Regexp) { |match| ... } を用い、各一致ごとに置換文字列を生成
-              # - ブロック内で pattern.match(match) を取り直してキャプチャ順で $1..$n を展開
-              html_content.gsub!(pattern) do |match|
-                matches_found += 1
-                m      = pattern.match(match)
-                result = replacement_str.dup
-                if m && m.captures.any?
-                  m.captures.each_with_index { |cap, i| result.gsub!("$#{i + 1}", cap.to_s) }
-                end
-                result
-              end
-
-              if matches_found > 0
-                # このファイルで何件置換したかを集計してログに反映
-                file_replacements += matches_found
-                Common.log_info("パターン '#{item['f']}' → #{matches_found}個の置換")
-              end
+            # String#gsub(Regexp) { |match| ... } を用い、各一致ごとに置換文字列を生成
+            # - ブロック内で pattern.match(match) を取り直してキャプチャ順で $1..$n を展開
+            html_content.gsub!(pattern) do |match|
+              matches_found += 1
+              m      = pattern.match(match)
+              result = replacement_str.dup
+              m.captures.each_with_index { |cap, i| result.gsub!("$#{i + 1}", cap.to_s) } if m&.captures&.any?
+              result
             end
+
+            next unless matches_found.positive?
+
+            # このファイルで何件置換したかを集計してログに反映
+            file_replacements += matches_found
+            Common.log_info("パターン '#{item['f']}' → #{matches_found}個の置換")
           end
 
           changed = html_content != original_content
-          if changed
-            File.write(html_file, html_content, encoding: 'utf-8')
-          end
+          File.write(html_file, html_content, encoding: 'utf-8') if changed
 
           { changed: changed, replacements: file_replacements }
         end
@@ -535,7 +534,7 @@ module Vivlio
                   break
                 end
                 # 空段落 <p> はスキップ（改行や空白・ゼロ幅文字のみ）
-                if node.name == 'p' && (node.text.gsub(/[\u200B\u200C\u200D\u2060\uFEFF\u180E]/, '').strip.empty?)
+                if node.name == 'p' && node.text.gsub(/[\u200B\u200C\u200D\u2060\uFEFF\u180E]/, '').strip.empty?
                   node = node.next_sibling
                   next
                 end
@@ -627,11 +626,9 @@ module Vivlio
                 # 直後の空白をノーブレークスペースに変換して改行を防止
                 # - 行末の脚注で折り返されると読みにくい問題に対応
                 following = span.next_sibling
-                if following && following.text?
+                if following&.text?
                   txt = following.text
-                  if txt.start_with?(' ')
-                    following.content = "\u00A0" + txt.lstrip
-                  end
+                  following.content = " #{txt.lstrip}" if txt.start_with?(' ')
                 end
 
                 # 印刷: ページ脚注用 aside（画面では非表示）
@@ -679,6 +676,7 @@ module Vivlio
           doc.css('a.footnote-ref[href^="#fn"]').each do |anchor|
             href = anchor['href']
             next unless href&.start_with?('#')
+
             fid = href.delete_prefix('#')
             # 既に処理済みならスキップ
             next if doc.at_css(%(##{fid}))
@@ -687,14 +685,12 @@ module Vivlio
             # - Kramdown の [:ref] と生成物の差異により参照のみで定義が無いケースがあるため、
             #   実用上もっとも近い preceding <a> の href を本文として補完
             prev_link = anchor.previous_element
-            while prev_link && prev_link.name != 'a'
-              prev_link = prev_link.previous_element
-            end
+            prev_link = prev_link.previous_element while prev_link && prev_link.name != 'a'
             url = prev_link&.[]('href')
             next unless url && !url.empty?
 
             # 本文HTML: URLをそのまま表示するリンク
-            body = %Q(<a href="#{url}">#{url}</a>)
+            body = %(<a href="#{url}">#{url}</a>)
 
             in_paragraph = anchor.ancestors('p').any?
             if in_paragraph
@@ -707,11 +703,9 @@ module Vivlio
 
               # 改行防止のノーブレークスペース
               following = span.next_sibling
-              if following && following.text?
+              if following&.text?
                 txt = following.text
-                if txt.start_with?(' ')
-                  following.content = "\u00A0" + txt.lstrip
-                end
+                following.content = " #{txt.lstrip}" if txt.start_with?(' ')
               end
 
               aside = Nokogiri::XML::Node.new('aside', doc)

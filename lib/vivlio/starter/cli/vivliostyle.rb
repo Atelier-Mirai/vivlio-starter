@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require 'fileutils'
 
 module Vivlio
@@ -16,13 +17,12 @@ module Vivlio
       #   - 生成先ファイル名は設定（vivliostyle.config_file）またはデフォルトを使用。
       # ==============================================================================
       module VivliostyleCommands
-        extend self
-        def included(base)
-          base.class_eval do
-            # ルーターが受け付ける公開名（vivliostyle:config）と Thor メソッド名（vivliostyle_config）を対応付け
-            map 'vivliostyle:config' => :vivliostyle_config
-            desc 'vivliostyle:config', 'config/book.yml の設定から vivliostyle.config.js を生成します'
-            long_desc <<~DESC
+        module_function
+
+        VIVLIOSTYLE_DESC = {
+          config: {
+            short: 'config/book.yml の設定から vivliostyle.config.js を生成します',
+            long: <<~DESC
               book.yml の設定から vivliostyle.config.js を生成します。
 
               生成内容:
@@ -33,6 +33,15 @@ module Vivlio
 
               既存ファイルは自動バックアップされます。
             DESC
+          }
+        }.freeze
+
+        def included(base)
+          base.class_eval do
+            # ルーターが受け付ける公開名（vivliostyle:config）と Thor メソッド名（vivliostyle_config）を対応付け
+            map 'vivliostyle:config' => :vivliostyle_config
+            desc 'vivliostyle:config', VIVLIOSTYLE_DESC[:config][:short]
+            long_desc VIVLIOSTYLE_DESC[:config][:long]
 
             # ================================================================
             # Command: vivliostyle:config（設定ファイル生成）
@@ -46,7 +55,7 @@ module Vivlio
             def vivliostyle_config
               ENV['VERBOSE'] = '1' if options[:verbose]
 
-              Common.log_action("vivliostyle.config.jsを生成しています...")
+              Common.log_action('vivliostyle.config.jsを生成しています...')
 
               # 設定を取得
               config             = Common::CONFIG
@@ -61,7 +70,11 @@ module Vivlio
               # title が未設定の場合は main_title と subtitle を結合して使う
               combined_title = [book_config['main_title'], book_config['subtitle']].compact.join(' ').strip
               title_raw = book_config['title']
-              title = (title_raw && !title_raw.to_s.strip.empty?) ? title_raw : (combined_title.empty? ? '書籍タイトル' : combined_title)
+              title = if title_raw && !title_raw.to_s.strip.empty?
+                        title_raw
+                      else
+                        (combined_title.empty? ? '書籍タイトル' : combined_title)
+                      end
               author              = book_config['author'] || '著者名'
               language            = book_config['language'] || 'ja'
               reading_progression = vivliostyle_config['reading_progression'] || 'ltr'

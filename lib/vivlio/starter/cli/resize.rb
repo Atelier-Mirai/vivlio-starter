@@ -13,15 +13,12 @@ module Vivlio
       # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
       # ================================================================
       module ResizeCommands
-        extend self
-        def included(base)
-          base.class_eval do
-            # Thor エイリアス: Rake風のコマンド名に対応
-            map 'resize:high'   => :resize_high
-            map 'resize:low'    => :resize_low
-            map 'resize:medium' => :resize_medium
-            desc 'resize:high [DIR]', '画像を高品質WebPに変換します'
-            long_desc <<~DESC
+        module_function
+
+        RESIZE_DESC = {
+          high: {
+            short: '画像を高品質WebPに変換します',
+            long: <<~DESC
               画像を高品質WebPに変換します（quality=90, max_px=2000）。
 
               対象: .png, .jpg, .jpeg
@@ -34,19 +31,10 @@ module Vivlio
                 vs resize:high
                 vs resize:high assets/images
             DESC
-            # ================================================================
-            # Command: resize:high（高精細 WebP 変換）
-            # ------------------------------------------------
-            # - 概要: 高品質プリセット（quality=90, max_px=2000）で WebP 変換
-            # - 入力: DIR 配下の .png/.jpg/.jpeg
-            # - 出力: 同名 .webp
-            # ================================================================
-            def resize_high(dir = 'images')
-              resize_with_preset('高精細', dir)
-            end
-
-            desc 'resize:medium [DIR]', '画像を標準品質WebPに変換します'
-            long_desc <<~DESC
+          },
+          medium: {
+            short: '画像を標準品質WebPに変換します',
+            long: <<~DESC
               画像を標準品質WebPに変換します（quality=85, max_px=1600）。
 
               対象: .png, .jpg, .jpeg
@@ -59,19 +47,10 @@ module Vivlio
                 vs resize:medium
                 vs resize:medium assets/images
             DESC
-            # ================================================================
-            # Command: resize:medium（標準 WebP 変換）
-            # ------------------------------------------------
-            # - 概要: 標準品質プリセット（quality=85, max_px=1600）で WebP 変換
-            # - 入力: DIR 配下の .png/.jpg/.jpeg
-            # - 出力: 同名 .webp
-            # ================================================================
-            def resize_medium(dir = 'images')
-              resize_with_preset('標準', dir)
-            end
-
-            desc 'resize:low [DIR]', '画像を軽量品質WebPに変換します'
-            long_desc <<~DESC
+          },
+          low: {
+            short: '画像を軽量品質WebPに変換します',
+            long: <<~DESC
               画像を軽量品質WebPに変換します（quality=75, max_px=1200）。
 
               対象: .png, .jpg, .jpeg
@@ -84,19 +63,10 @@ module Vivlio
                 vs resize:low
                 vs resize:low assets/images
             DESC
-            # ================================================================
-            # Command: resize:low（軽量 WebP 変換）
-            # ------------------------------------------------
-            # - 概要: 軽量品質プリセット（quality=75, max_px=1200）で WebP 変換
-            # - 入力: DIR 配下の .png/.jpg/.jpeg
-            # - 出力: 同名 .webp
-            # ================================================================
-            def resize_low(dir = 'images')
-              resize_with_preset('軽量', dir)
-            end
-
-            desc 'resize [DIR]', '画像をWebPに変換します（標準品質）'
-            long_desc <<~DESC
+          },
+          default: {
+            short: '画像をWebPに変換します（標準品質）',
+            long: <<~DESC
               画像をWebPに変換します（標準品質が既定）。
 
               対象: .png, .jpg, .jpeg
@@ -116,6 +86,56 @@ module Vivlio
                 vs resize --high
                 vs resize --force
             DESC
+          }
+        }.freeze
+
+        def included(base)
+          base.class_eval do
+            # Thor エイリアス: Rake風のコマンド名に対応
+            map 'resize:high'   => :resize_high
+            map 'resize:low'    => :resize_low
+            map 'resize:medium' => :resize_medium
+            desc 'resize:high [DIR]', RESIZE_DESC[:high][:short]
+            long_desc RESIZE_DESC[:high][:long]
+            # ================================================================
+            # Command: resize:high（高精細 WebP 変換）
+            # ------------------------------------------------
+            # - 概要: 高品質プリセット（quality=90, max_px=2000）で WebP 変換
+            # - 入力: DIR 配下の .png/.jpg/.jpeg
+            # - 出力: 同名 .webp
+            # ================================================================
+            def resize_high(dir = 'images')
+              resize_with_preset('高精細', dir)
+            end
+
+            desc 'resize:medium [DIR]', RESIZE_DESC[:medium][:short]
+            long_desc RESIZE_DESC[:medium][:long]
+            # ================================================================
+            # Command: resize:medium（標準 WebP 変換）
+            # ------------------------------------------------
+            # - 概要: 標準品質プリセット（quality=85, max_px=1600）で WebP 変換
+            # - 入力: DIR 配下の .png/.jpg/.jpeg
+            # - 出力: 同名 .webp
+            # ================================================================
+            def resize_medium(dir = 'images')
+              resize_with_preset('標準', dir)
+            end
+
+            desc 'resize:low [DIR]', RESIZE_DESC[:low][:short]
+            long_desc RESIZE_DESC[:low][:long]
+            # ================================================================
+            # Command: resize:low（軽量 WebP 変換）
+            # ------------------------------------------------
+            # - 概要: 軽量品質プリセット（quality=75, max_px=1200）で WebP 変換
+            # - 入力: DIR 配下の .png/.jpg/.jpeg
+            # - 出力: 同名 .webp
+            # ================================================================
+            def resize_low(dir = 'images')
+              resize_with_preset('軽量', dir)
+            end
+
+            desc 'resize [DIR]', RESIZE_DESC[:default][:short]
+            long_desc RESIZE_DESC[:default][:long]
 
             method_option :force, type: :boolean, aliases: '-f', desc: '既存ファイルも強制再生成'
             method_option :high,  type: :boolean, desc: '高品質プリセットを使用'
@@ -130,12 +150,12 @@ module Vivlio
             # ================================================================
             def resize(dir = 'images')
               preset = if options[:high]
-                        '高精細'
-                      elsif options[:low]
-                        '軽量'
-                      else
-                        '標準'
-                      end
+                         '高精細'
+                       elsif options[:low]
+                         '軽量'
+                       else
+                         '標準'
+                       end
 
               ENV['FORCE'] = '1' if options[:force]
               resize_with_preset(preset, dir)
@@ -166,7 +186,7 @@ module Vivlio
 
               # ImageMagick の存在確認
               unless system('which magick >/dev/null 2>&1')
-                Common.log_error("Error: ImageMagick (magick) が見つかりません。brew install imagemagick 等で導入してください。")
+                Common.log_error('Error: ImageMagick (magick) が見つかりません。brew install imagemagick 等で導入してください。')
                 exit(1)
               end
 

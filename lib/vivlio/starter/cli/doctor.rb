@@ -12,31 +12,37 @@ module Vivlio
       # macOS + Homebrew 環境での自動インストール支援を行うコマンド。
       # ==============================================================================
       module DoctorCommands
-        extend self
+        module_function
+
+        DOCTOR_DESC = {
+          short: '必要ツール(Xcode Command Line Tools, qpdf, pdfinfo, gs, ImageMagick)の診断とセットアップを行います',
+          long: <<~DESC
+            環境診断を行い、以下の外部コマンドの存在をチェックします:
+              - Xcode Command Line Tools (macOS)
+              - qpdf
+              - pdfinfo (poppler)
+              - node
+              - vivliostyle
+              - gs
+              - imagemagick
+
+            役割の補足:
+              - 圧縮は Ghostscript(pdfwrite) を使用します
+              - qpdf は分割/結合・ページ抽出などの PDF 操作用に使用します（圧縮用途ではありません）
+
+            --fix オプション指定時、macOS かつ Homebrew が利用可能であれば
+            不足しているツールの自動インストールを試みます。
+
+            例:
+              vs doctor
+              vs doctor --fix
+          DESC
+        }.freeze
+
         def included(base)
           base.class_eval do
-            desc 'doctor', '必要ツール(Xcode Command Line Tools, qpdf, pdfinfo, gs, ImageMagick)の診断とセットアップを行います'
-            long_desc <<~DESC
-              環境診断を行い、以下の外部コマンドの存在をチェックします:
-                - Xcode Command Line Tools (macOS)
-                - qpdf
-                - pdfinfo (poppler)
-                - node
-                - vivliostyle
-                - gs
-                - imagemagick
-
-              役割の補足:
-                - 圧縮は Ghostscript(pdfwrite) を使用します
-                - qpdf は分割/結合・ページ抽出などの PDF 操作用に使用します（圧縮用途ではありません）
-
-              --fix オプション指定時、macOS かつ Homebrew が利用可能であれば
-              不足しているツールの自動インストールを試みます。
-
-              例:
-                vs doctor
-                vs doctor --fix
-            DESC
+            desc 'doctor', DOCTOR_DESC[:short]
+            long_desc DOCTOR_DESC[:long]
             method_option :fix, type: :boolean, default: false, desc: '不足ツールを自動インストール (macOS Homebrew)'
             method_option :yes, aliases: '-y', type: :boolean, default: false, desc: '確認を省略して実行'
             def doctor
@@ -59,12 +65,12 @@ module Vivlio
 
               # コマンド存在チェック定義
               checks = {
-                'node'        => 'node',
+                'node' => 'node',
                 'vivliostyle' => 'vivliostyle',
-                'qpdf'        => 'qpdf',
-                'pdfinfo'     => 'pdfinfo',
-                'gs'          => 'gs',               # Ghostscript
-                'imagemagick' => nil                 # 特殊判定（convert か magick のどちらか）
+                'qpdf' => 'qpdf',
+                'pdfinfo' => 'pdfinfo',
+                'gs' => 'gs', # Ghostscript
+                'imagemagick' => nil # 特殊判定（convert か magick のどちらか）
               }
 
               Common.echo_always('🔎 環境診断を開始します…')
@@ -107,12 +113,10 @@ module Vivlio
               # 先に CLT を処理（GUI 承認が必要）
               if missing.include?('xcode-command-line-tools')
                 proceed = options[:yes]
-                unless proceed
-                  if $stdin.tty?
-                    $stdout.print('Xcode Command Line Tools をインストールしますか？ [y/N]: ')
-                    ans = $stdin.gets
-                    proceed = ans && ans.strip.downcase == 'y'
-                  end
+                if !proceed && $stdin.tty?
+                  $stdout.print('Xcode Command Line Tools をインストールしますか？ [y/N]: ')
+                  ans = $stdin.gets
+                  proceed = ans && ans.strip.downcase == 'y'
                 end
                 if proceed
                   Common.echo_always('Xcode Command Line Tools のインストーラを起動します…')
@@ -137,25 +141,23 @@ module Vivlio
               unless system('which brew >/dev/null 2>&1')
                 Common.echo_always('Homebrew が見つかりません。自動インストールを試みます。')
                 proceed = options[:yes]
-                unless proceed
-                  if $stdin.tty?
-                    $stdout.print('Homebrew をインストールしますか？ [y/N]: ')
-                    ans = $stdin.gets
-                    proceed = ans && ans.strip.downcase == 'y'
-                  end
+                if !proceed && $stdin.tty?
+                  $stdout.print('Homebrew をインストールしますか？ [y/N]: ')
+                  ans = $stdin.gets
+                  proceed = ans && ans.strip.downcase == 'y'
                 end
                 if proceed
                   begin
                     # 公式インストーラ実行（要ネットワーク）
-                    cmd = %q{/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"}
+                    cmd = '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
                     system(cmd)
-                  rescue => e
+                  rescue StandardError => e
                     Common.log_warn("Homebrew のインストールでエラー: #{e}")
                   end
                   # PATH 調整（Apple Silicon / Intel を想定）
                   brew_bins = ['/opt/homebrew/bin', '/usr/local/bin']
                   brew_bin = brew_bins.find { |p| File.exist?(File.join(p, 'brew')) }
-                  ENV['PATH'] = [brew_bin, ENV['PATH']].compact.join(':') if brew_bin
+                  ENV['PATH'] = [brew_bin, ENV.fetch('PATH', nil)].compact.join(':') if brew_bin
                 else
                   Common.echo_always('Homebrew をインストールしないため、自動インストール処理を中止します。手動で https://brew.sh/ を参照してください。')
                   return
@@ -173,9 +175,7 @@ module Vivlio
                   Common.echo_always('node をインストールします（node@20 優先）…')
                   ok = system('brew install node@20')
                   ok ||= system('brew install node')
-                  unless ok
-                    Common.echo_always('node の Homebrew インストールに失敗しました。手動インストールをご検討ください。')
-                  end
+                  Common.echo_always('node の Homebrew インストールに失敗しました。手動インストールをご検討ください。') unless ok
                 end
 
                 # qpdf / pdfinfo(poppler)
@@ -186,10 +186,8 @@ module Vivlio
                 system('brew install ghostscript') if missing.include?('gs')
 
                 # ImageMagick
-                if missing.include?('imagemagick')
-                  system('brew install imagemagick')
-                end
-              rescue => e
+                system('brew install imagemagick') if missing.include?('imagemagick')
+              rescue StandardError => e
                 Common.log_warn("brew 実行でエラー: #{e}")
               end
 
@@ -203,7 +201,7 @@ module Vivlio
                     Common.echo_always('npm が見つかりません。node のインストール後に `npm install -g @vivliostyle/cli` を実行してください。')
                   end
                 end
-              rescue => e
+              rescue StandardError => e
                 Common.log_warn("npm 実行でエラー: #{e}")
               end
 

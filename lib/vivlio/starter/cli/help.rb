@@ -10,11 +10,17 @@ module Vivlio
       # 実際の処理は標準出力へ固定のチートシートを表示するのみ。
       # ==============================================================================
       module HelpCommands
-        extend self
+        module_function
+
+        HELP_DESC = {
+          short: 'Vivlio Starter のヘルプを表示します',
+          long: '主要コマンドとオプションのチートシートを表示します。'
+        }.freeze
+
         def included(base)
           base.class_eval do
-            desc 'help', 'Vivlio Starter のヘルプを表示します'
-            long_desc '主要コマンドとオプションのチートシートを表示します。'
+            desc 'help', HELP_DESC[:short]
+            long_desc HELP_DESC[:long]
             # ================================================================
             # Command: help（ヘルプ表示）
             # ------------------------------------------------

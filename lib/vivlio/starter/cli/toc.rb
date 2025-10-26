@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require 'nokogiri'
 module Vivlio
   module Starter
@@ -12,18 +13,24 @@ module Vivlio
       # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
       # ================================================================
       module TocCommands
-        extend self
+        module_function
+
+        TOC_DESC = {
+          short: '目次HTMLを生成します（引数でHTMLを列挙した場合はそれらのみ対象）',
+          long: <<~DESC
+            指定した HTML を対象に目次を生成します。引数が無い場合はプロジェクト直下の HTML を自動検出し、
+            以下を除外して処理します: 00-titlepage.html / 01-legalpage.html / 03-toc.html / 99-colophon.html。
+
+            例:
+              vs toc 11-gift.html 12-tutorial.html
+              vs toc                # 自動検出
+          DESC
+        }.freeze
+
         def included(base)
           base.class_eval do
-            desc 'toc [HTMLs...]', '目次HTMLを生成します（引数でHTMLを列挙した場合はそれらのみ対象）'
-            long_desc <<~DESC
-              指定した HTML を対象に目次を生成します。引数が無い場合はプロジェクト直下の HTML を自動検出し、
-              以下を除外して処理します: 00-titlepage.html / 01-legalpage.html / 03-toc.html / 99-colophon.html。
-
-              例:
-                vs toc 11-gift.html 12-tutorial.html
-                vs toc                # 自動検出
-            DESC
+            desc 'toc [HTMLs...]', TOC_DESC[:short]
+            long_desc TOC_DESC[:long]
             # ================================================================
             # Command: toc（目次生成）
             # ------------------------------------------------
@@ -44,11 +51,10 @@ module Vivlio
                         else
                           # base_dir 内の .html のうち、以下を除いて列挙する:
                           # 00-titlepage.html / 01-legalpage.html / 03-toc.html / 99-colophon.html
-                          Dir.glob(File.join(base_dir, '*.html')).reject { |file|
-                                                       File.basename(file) == '00-titlepage.html' ||
-                                                       File.basename(file) == '01-legalpage.html' ||
-                                                       File.basename(file) == '03-toc.html' ||
-                                                       File.basename(file) == '99-colophon.html' }.sort
+                          Dir.glob(File.join(base_dir, '*.html')).reject do |file|
+                            ['00-titlepage.html', '01-legalpage.html', '03-toc.html',
+                             '99-colophon.html'].include?(File.basename(file))
+                          end.sort
                         end
 
               if targets.empty?
@@ -62,7 +68,7 @@ module Vivlio
               result = String.new
               result << <<~MD
                 ---
-                link: 
+                link:#{' '}
                   - rel: "stylesheet"
                     href: "stylesheets/toc.css"
                 lang: 'ja'
@@ -76,20 +82,18 @@ module Vivlio
               # 先頭に前書き(02-preface.html)のH1テキストを必ず入れる（targetsに含まれていない場合のみ）
               begin
                 preface_path = File.join(base_dir, '02-preface.html')
-                unless targets.include?(preface_path)
-                  if File.exist?(preface_path)
-                    preface_html = File.read(preface_path, encoding: 'utf-8')
-                    pre_doc = Nokogiri::HTML(preface_html)
-                    h1 = pre_doc.at_css('h1')
-                    if h1 && !h1.text.strip.empty?
-                      preface_text = h1.text.strip
-                      preface_id   = h1['id']
-                      data_href    = preface_id && !preface_id.empty? ? "02-preface.html##{preface_id}" : "02-preface.html"
-                      result += %(<li class="toc-chapter-no-number" data-href="#{data_href}">#{preface_text}</li>\n)
-                    end
+                if !targets.include?(preface_path) && File.exist?(preface_path)
+                  preface_html = File.read(preface_path, encoding: 'utf-8')
+                  pre_doc = Nokogiri::HTML(preface_html)
+                  h1 = pre_doc.at_css('h1')
+                  if h1 && !h1.text.strip.empty?
+                    preface_text = h1.text.strip
+                    preface_id   = h1['id']
+                    data_href    = preface_id && !preface_id.empty? ? "02-preface.html##{preface_id}" : '02-preface.html'
+                    result += %(<li class="toc-chapter-no-number" data-href="#{data_href}">#{preface_text}</li>\n)
                   end
                 end
-              rescue => _e
+              rescue StandardError => _e
                 # 目次生成自体は続行（ログ冗長を避けて抑止）
               end
 
@@ -97,11 +101,11 @@ module Vivlio
               current_level = 1
               opened_item = false
               open_item = lambda do |klass, text, data_href|
-                if data_href && !data_href.empty?
-                  result << "<li class=\"#{klass}\" data-href=\"#{data_href}\">#{text}"
-                else
-                  result << "<li class=\"#{klass}\">#{text}"
-                end
+                result << if data_href && !data_href.empty?
+                            "<li class=\"#{klass}\" data-href=\"#{data_href}\">#{text}"
+                          else
+                            "<li class=\"#{klass}\">#{text}"
+                          end
                 opened_item = true
               end
               close_item = lambda do
@@ -162,7 +166,7 @@ module Vivlio
                           end
 
                   # 対応する見出しのIDを使って data-href を付与
-                  elem_id   = elem['id']
+                  elem_id = elem['id']
                   rel = File.basename(target)
                   data_href = elem_id && !elem_id.empty? ? "#{rel}##{elem_id}" : rel
 
@@ -187,7 +191,7 @@ module Vivlio
                     if h1 && !h1.text.strip.empty?
                       postface_text = h1.text.strip
                       postface_id   = h1['id']
-                      data_href     = postface_id && !postface_id.empty? ? "98-postface.html##{postface_id}" : "98-postface.html"
+                      data_href     = postface_id && !postface_id.empty? ? "98-postface.html##{postface_id}" : '98-postface.html'
                       result << %(<li class="toc-chapter-no-number" data-href="#{data_href}">#{postface_text}</li>\n)
                     end
                   elsif File.exist?(File.join('contents', '98-postface.md'))
@@ -198,7 +202,7 @@ module Vivlio
                     end
                   end
                 end
-              rescue => _e
+              rescue StandardError => _e
                 # 目次生成自体は続行（ログ冗長を避けて抑止）
               end
 
@@ -218,7 +222,7 @@ module Vivlio
                 content = File.read(html_path, encoding: 'utf-8')
                 content.sub!('<body>', '<body class="toc">')
                 File.write(html_path, content, encoding: 'utf-8')
-                Common.log_success("目次生成完了")
+                Common.log_success('目次生成完了')
               else
                 Common.log_warn('03-toc.html の生成に失敗しました（VFM 実行エラー）')
               end
@@ -232,7 +236,6 @@ module Vivlio
                             when 'h1' then element.at_css('span.chapter-title')
                             when 'h2' then element.at_css('span.section-title')
                             when 'h3' then element.at_css('span.subsection-title')
-                            else nil
                             end
 
                 text = preferred&.text&.strip

@@ -20,11 +20,12 @@ module Vivlio
       # ==============================================================================
       # Thor コマンド群: merge（ファイル結合）
       module MergeCommands
-        extend self
-        def included(base)
-          base.class_eval do
-            desc 'merge:appendices [DIR] [OUT]', '付録HTML(91-*.html〜97-*.html)を単一HTMLに結合して出力する'
-            long_desc <<~DESC
+        module_function
+
+        MERGE_DESC = {
+          appendices: {
+            short: '付録HTML(91-*.html〜97-*.html)を単一HTMLに結合して出力する',
+            long: <<~DESC
               付録HTMLファイルを単一のHTMLファイルに結合します。
 
               対象ファイル: 91-*.html 〜 97-*.html
@@ -38,6 +39,13 @@ module Vivlio
                 vs merge:appendices
                 vs merge:appendices . output.html
             DESC
+          }
+        }.freeze
+
+        def included(base)
+          base.class_eval do
+            desc 'merge:appendices [DIR] [OUT]', MERGE_DESC[:appendices][:short]
+            long_desc MERGE_DESC[:appendices][:long]
 
             # ================================================================
             # Command: merge:appendices（付録HTMLを結合）
@@ -83,24 +91,24 @@ module Vivlio
               files.each { |f| Common.log_info("  - #{Pathname.new(f).relative_path_from(base_dir_path)}") }
 
               read_text = ->(path) { File.read(path, encoding: 'UTF-8') }
-              extract = ->(html, tag) do
-                m = html.match(/<#{tag}\b[^>]*>(.*?)<\/#{tag}>/im)
+              extract = lambda do |html, tag|
+                m = html.match(%r{<#{tag}\b[^>]*>(.*?)</#{tag}>}im)
                 m ? m[1] : nil
               end
 
               first_html = read_text.call(files.first)
               head_inner = extract.call(first_html, 'head')
               head_html = if head_inner && !head_inner.strip.empty?
-                "<head>\n#{head_inner}\n</head>"
-              else
-                <<~HEAD
-                <head>
-                  <meta charset="utf-8" />
-                  <meta name="viewport" content="width=device-width, initial-scale=1" />
-                  <title>Appendices</title>
-                </head>
-                HEAD
-              end
+                            "<head>\n#{head_inner}\n</head>"
+                          else
+                            <<~HEAD
+                              <head>
+                                <meta charset="utf-8" />
+                                <meta name="viewport" content="width=device-width, initial-scale=1" />
+                                <title>Appendices</title>
+                              </head>
+                            HEAD
+                          end
 
               sections = files.map do |file|
                 html = read_text.call(file)
@@ -139,13 +147,13 @@ module Vivlio
               end.join("\n\n")
 
               final_html = <<~HTML
-              <!doctype html>
-              <html>
-              #{head_html}
-              <body class="appendix">
-              #{sections}
-              </body>
-              </html>
+                <!doctype html>
+                <html>
+                #{head_html}
+                <body class="appendix">
+                #{sections}
+                </body>
+                </html>
               HTML
 
               out_pathname = Pathname.new(out_path)

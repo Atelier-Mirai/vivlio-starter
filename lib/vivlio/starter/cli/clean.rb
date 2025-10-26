@@ -24,17 +24,23 @@ module Vivlio
       #   - 保持対象 PDF 名は config の pdf.output_file / pdf.output_file_compressed を優先
       # ==============================================================================
       module CleanCommands
-        extend self
+        module_function
+
+        CLEAN_DESC = {
+          short: '不要ファイルやキャッシュを削除します',
+          long: <<~DESC
+            生成物（HTML/中間PDF など）を削除する標準クリーンに加えて、
+            `--cache` オプションでキャッシュ(.cache/vs 既定)のみを削除できます。
+            - `vs clean`            : 生成物（HTML / 中間PDF 等）を削除（最終PDFは保持）
+            - `vs clean --purge`    : 最終PDFも含めてすべて削除
+            - `vs clean --cache`    : キャッシュディレクトリのみ削除（生成物は保持）
+          DESC
+        }.freeze
+
         def included(base)
           base.class_eval do
-            desc 'clean', '不要ファイルやキャッシュを削除します'
-            long_desc <<~DESC
-              生成物（HTML/中間PDF など）を削除する標準クリーンに加えて、
-              `--cache` オプションでキャッシュ(.cache/vs 既定)のみを削除できます。
-              - `vs clean`            : 生成物（HTML / 中間PDF 等）を削除（最終PDFは保持）
-              - `vs clean --purge`    : 最終PDFも含めてすべて削除
-              - `vs clean --cache`    : キャッシュディレクトリのみ削除（生成物は保持）
-            DESC
+            desc 'clean', CLEAN_DESC[:short]
+            long_desc CLEAN_DESC[:long]
             method_option :purge, type: :boolean, aliases: '-P', desc: '生成物（PDF含む）をすべて削除します'
             method_option :cache, type: :boolean, aliases: '-C', desc: 'キャッシュ(.cache/vs 既定)のみを削除します'
             # ================================================================
@@ -48,7 +54,11 @@ module Vivlio
             def clean
               if options[:cache]
                 begin
-                  dir = Common.cache_dir rescue '.cache/vs'
+                  dir = begin
+                    Common.cache_dir
+                  rescue StandardError
+                    '.cache/vs'
+                  end
                   if dir.nil? || dir.to_s.strip.empty?
                     Common.log_warn('キャッシュディレクトリが不明のため中止します')
                     return
@@ -60,7 +70,7 @@ module Vivlio
                   else
                     Common.log_info("キャッシュディレクトリは存在しません: #{dir}")
                   end
-                rescue => e
+                rescue StandardError => e
                   Common.log_warn("clean --cache 実行中にエラー: #{e}")
                 end
                 return unless options[:purge]
@@ -83,7 +93,7 @@ module Vivlio
                 # 例: 11-install.md など（任意の *.md やドキュメントは削除しない）
                 '[0-9][0-9]-*.md',
                 # フロント/テイル系の生成MD（存在時のみ）
-                '00-titlepage.md', '01-legalpage.md', '98-postface.md', '99-colophon.md',
+                '00-titlepage.md', '01-legalpage.md', '98-postface.md', '99-colophon.md'
               ]
 
               intermediate_pdfs = [
@@ -96,8 +106,8 @@ module Vivlio
               cleanup_patterns.concat(intermediate_pdfs)
 
               final_pdfs = [
-                (Common::CONFIG.dig('pdf', 'output_file') || 'output.pdf'),
-                (Common::CONFIG.dig('pdf', 'output_file_compressed') || 'output_compressed.pdf')
+                Common::CONFIG.dig('pdf', 'output_file') || 'output.pdf',
+                Common::CONFIG.dig('pdf', 'output_file_compressed') || 'output_compressed.pdf'
               ].uniq
 
               # --purge 指定時は最終PDFも削除対象に含める
@@ -111,13 +121,13 @@ module Vivlio
               cleanup_patterns.each do |pattern|
                 Dir.glob(pattern).each do |file|
                   next if File.directory?(file)
+
                   FileUtils.rm_f(file)
                   Common.log_info("#{file} を削除しました")
                 end
               end
               Common.log_success('不要ファイルの削除が完了しました')
             end
-
           end
         end
       end

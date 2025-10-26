@@ -9,7 +9,7 @@ module Vivlio
   module Starter
     module CLI
       module Common
-        extend self
+        module_function
 
         # ================================================================
         # Config: 設定ファイルと定数
@@ -20,7 +20,7 @@ module Vivlio
         # ================================================================
         # 設定ファイルを読み込み
         # プロジェクトの設定ファイルのみを対象: ./config/book.yml
-        DEFAULT_CONFIG_FILE  = 'config/book.yml'
+        DEFAULT_CONFIG_FILE = 'config/book.yml'
         CONFIG_FILE = DEFAULT_CONFIG_FILE
 
         # ================================================================
@@ -35,7 +35,7 @@ module Vivlio
             cfg = YAML.safe_load(cfg_text, permitted_classes: [], aliases: true)
             unless cfg.is_a?(Hash)
               puts "⚠️ 設定ファイルの内容が不正です（Hash ではありません）: #{CONFIG_FILE}"
-              puts "⚠️ デフォルト設定を使用します"
+              puts '⚠️ デフォルト設定を使用します'
               cfg = {
                 'directories' => {
                   'contents' => 'contents',
@@ -76,7 +76,7 @@ module Vivlio
                       # 単位正規化（pt へ統一）
                       begin
                         normalize_page_units!(cfg['page'])
-                      rescue => e
+                      rescue StandardError => e
                         puts "⚠️ base_line_height の単位正規化で例外: #{e.class}: #{e.message}"
                       end
                     else
@@ -89,13 +89,13 @@ module Vivlio
                   puts "⚠️ ページプリセットファイルが見つかりません: #{presets_path}"
                 end
               end
-            rescue => e
+            rescue StandardError => e
               puts "⚠️ ページプリセットの適用中にエラー: #{e.class}: #{e.message}"
             end
             cfg
           else
             puts "⚠️ 設定ファイルが見つかりません: #{CONFIG_FILE}"
-            puts "⚠️ デフォルト設定を使用します"
+            puts '⚠️ デフォルト設定を使用します'
             {
               'directories' => {
                 'contents' => 'contents',
@@ -127,12 +127,13 @@ module Vivlio
           to_pt = lambda { |val|
             s = val.to_s.strip
             return nil if s.empty?
+
             if s =~ /pt\z/i
               s # 既に pt
             elsif s =~ /q\z/i
               # 1Q ≒ 0.709pt
               num = s.sub(/q\z/i, '').to_f
-              (num * 0.709).round(3).to_s + 'pt'
+              "#{(num * 0.709).round(3)}pt"
             else
               s
             end
@@ -142,8 +143,10 @@ module Vivlio
           %w[base_font_size column_font_size folio_font_size].each do |key|
             v = pcfg[key]
             next unless v && !v.to_s.strip.empty?
+
             s = v.to_s.strip
             next unless s =~ /q\z/i
+
             pcfg[key] = to_pt.call(s)
           end
 
@@ -158,19 +161,20 @@ module Vivlio
           bfs_pt = get_pt_value.call(pcfg['base_font_size'])
           if blh && bfs_pt
             str = blh.to_s.strip
-            if str =~ /pt\z/i
+            case str
+            when /pt\z/i
               # 既に pt → そのまま
-            elsif str =~ /q\z/i
+            when /q\z/i
               # Q → pt
               pcfg['base_line_height'] = to_pt.call(str)
-            elsif str =~ /em\z/i
+            when /em\z/i
               # em はフォントサイズ倍率
               mult = str.sub(/em\z/i, '').to_f
-              pcfg['base_line_height'] = (bfs_pt * mult).round(3).to_s + 'pt'
-            elsif str =~ /\A[0-9]+(?:\.[0-9]+)?\z/
+              pcfg['base_line_height'] = "#{(bfs_pt * mult).round(3)}pt"
+            when /\A[0-9]+(?:\.[0-9]+)?\z/
               # 単位なし（行送り倍率）
               mult = str.to_f
-              pcfg['base_line_height'] = (bfs_pt * mult).round(3).to_s + 'pt'
+              pcfg['base_line_height'] = "#{(bfs_pt * mult).round(3)}pt"
             end
           end
 
@@ -194,12 +198,15 @@ module Vivlio
           size = (pcfg['size'] || '').to_s.strip.upcase
           case size
           when 'A4'
-            default_w, default_h = '210mm', '297mm'
+            default_w = '210mm'
+            default_h = '297mm'
           when 'A5'
-            default_w, default_h = '148mm', '210mm'
+            default_w = '148mm'
+            default_h = '210mm'
           else
             # 既定: B5
-            default_w, default_h = '182mm', '257mm'
+            default_w = '182mm'
+            default_h = '257mm'
           end
 
           width  = pcfg['width']
@@ -207,13 +214,14 @@ module Vivlio
           width  = width.to_s.strip unless width.nil?
           height = height.to_s.strip unless height.nil?
 
-          width  = (width && !width.empty?)   ? width  : default_w
-          height = (height && !height.empty?) ? height : default_h
+          width  = default_w unless width && !width.empty?
+          height = default_h unless height && !height.empty?
           [width, height]
         end
 
         def normalize_page_size!(page_cfg)
           return page_cfg unless page_cfg.is_a?(Hash)
+
           w, h = resolve_page_size(page_cfg)
           page_cfg['width']  = w
           page_cfg['height'] = h
@@ -228,13 +236,13 @@ module Vivlio
         # ================================================================
         def normalize_tokens(files)
           contents_prefix = %r{\A#{Regexp.escape(CONTENTS_DIR)}/}
-          Array(files).compact.map { |name|
+          Array(files).compact.map do |name|
             n = name.to_s
             n = n.sub(contents_prefix, '')
             n = File.basename(n, '.md')
             n
-          }.reject { |n| n.nil? || n.strip.empty? }.uniq
-        rescue
+          end.reject { |n| n.nil? || n.strip.empty? }.uniq
+        rescue StandardError
           Array(files).compact
         end
 
@@ -246,6 +254,7 @@ module Vivlio
         # ================================================================
         def to_roman_lower(n)
           return '' if n.to_i <= 0
+
           n = n.to_i
           mapping = [
             [1000, 'm'], [900, 'cm'], [500, 'd'], [400, 'cd'],
@@ -255,7 +264,7 @@ module Vivlio
           res = String.new
           mapping.each do |val, sym|
             count, n = n.divmod(val)
-            res << sym * count
+            res << (sym * count)
           end
           res
         end
@@ -268,8 +277,9 @@ module Vivlio
         def appendix_number_to_letter(num)
           n = num.to_i
           return nil unless n.between?(91, 97)
-          ("a".."g").to_a[n - 91]
-        rescue
+
+          ('a'..'g').to_a[n - 91]
+        rescue StandardError
           nil
         end
 
@@ -300,11 +310,11 @@ module Vivlio
         # - 用途: front/colophon など再利用可能な生成物の保存先
         # ================================================================
         CACHE_CFG  = (CONFIG['cache'].is_a?(Hash) ? CONFIG['cache'] : {})
-        CACHE_DIR  = (CACHE_CFG['dir'] || '.cache/vs')
+        CACHE_DIR  = CACHE_CFG['dir'] || '.cache/vs'
 
         def cache_enabled?
           fetch_bool(CACHE_CFG, %w[enabled], true)
-        rescue
+        rescue StandardError
           true
         end
 
@@ -330,7 +340,7 @@ module Vivlio
             s = val.to_s.strip.downcase
             %w[true yes on 1].include?(s)
           end
-        rescue
+        rescue StandardError
           false
         end
 
@@ -349,11 +359,13 @@ module Vivlio
           cur = obj
           Array(keys).each do |k|
             return default unless cur.is_a?(Hash)
+
             cur = cur[k]
           end
           return default if cur.nil?
+
           truthy?(cur)
-        rescue
+        rescue StandardError
           default
         end
 
@@ -383,7 +395,7 @@ module Vivlio
           when /^99-colophon/
             'colophon'
           else
-            'chapter'  # デフォルト
+            'chapter' # デフォルト
           end
         end
 
@@ -393,7 +405,7 @@ module Vivlio
         # - 例: 21-history.md → 21（String または nil）
         # ================================================================
         def get_chapter_number(filename)
-          chapter_num = filename[/^(\d+)-/, 1]
+          filename[/^(\d+)-/, 1]
         end
 
         # ================================================================
@@ -416,16 +428,17 @@ module Vivlio
           log_level_token = nil
           argv.each_with_index do |arg, i|
             next unless arg.start_with?('--log')
+
             if arg.include?('=')
               log_level_token = arg.split('=', 2)[1].to_s.strip.downcase
             else
               # 次のトークンがレベルなら採用、無ければ省略扱い（=info）
               nxt = argv[i + 1]
-              if nxt && !nxt.start_with?('-')
-                log_level_token = nxt.to_s.strip.downcase
-              else
-                log_level_token = ''
-              end
+              log_level_token = if nxt && !nxt.start_with?('-')
+                                  nxt.to_s.strip.downcase
+                                else
+                                  ''
+                                end
             end
             break
           end
@@ -437,8 +450,9 @@ module Vivlio
 
           # --log 指定時
           return 2 if log_level_token.empty? # --log のみ → info 相当
-          return LEVELS.fetch(log_level_token, 2)
-        rescue
+
+          LEVELS.fetch(log_level_token, 2)
+        rescue StandardError
           1
         end
 
@@ -484,7 +498,7 @@ module Vivlio
         # - ラッパー等で標準出力が抑制されても見えるよう STDERR に出力
         # ================================================================
         def echo_always(msg)
-          $stderr.puts msg
+          warn msg
         end
       end
     end

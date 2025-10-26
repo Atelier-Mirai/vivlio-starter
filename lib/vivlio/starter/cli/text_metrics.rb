@@ -15,19 +15,24 @@ module Vivlio
       #     contents/ 以下の Markdown ファイルについて行数・文字数を集計
       # ------------------------------------------------
       module TextMetricsCommands
-        extend self
+        module_function
+
+        TEXT_METRICS_DESC = {
+          short: 'Markdown の行数・文字数などを集計します',
+          long: <<~DESC
+            contents/ ディレクトリ以下の Markdown ファイルについて、行数と文字数を集計して一覧表示します。
+            引数にベース名を指定すると、そのファイルのみを対象にします（拡張子省略可／contents/ 接頭辞可）。
+
+            例:
+              vs text_metrics            # 全 Markdown を対象
+              vs text_metrics 11-install 21-customize
+          DESC
+        }.freeze
 
         def included(base)
           base.class_eval do
-            desc 'text_metrics [BASENAME ...]', 'Markdown の行数・文字数などを集計します'
-            long_desc <<~DESC
-              contents/ ディレクトリ以下の Markdown ファイルについて、行数と文字数を集計して一覧表示します。
-              引数にベース名を指定すると、そのファイルのみを対象にします（拡張子省略可／contents/ 接頭辞可）。
-
-              例:
-                vs text_metrics            # 全 Markdown を対象
-                vs text_metrics 11-install 21-customize
-            DESC
+            desc 'text_metrics [BASENAME ...]', TEXT_METRICS_DESC[:short]
+            long_desc TEXT_METRICS_DESC[:long]
             option :json, type: :boolean, desc: '結果を JSON 形式で出力'
             option :yaml, type: :boolean, desc: '結果を YAML 形式で出力'
 
@@ -72,7 +77,7 @@ module Vivlio
                     basenames = Common.normalize_tokens(targets)
                     basenames.map { |name| File.join(base_dir, "#{name}.md") }
                   else
-                    Dir.glob(File.join(base_dir, '**', '*.md')).sort
+                    Dir.glob(File.join(base_dir, '**', '*.md'))
                   end
 
           missing = paths.reject { |path| File.exist?(path) }
@@ -119,17 +124,17 @@ module Vivlio
         module_function :totals
 
         def print_table(stats)
-          header = format("%-40s %10s %12s %18s", 'path', 'lines', 'chars', 'chars(no CR/LF)')
+          header = 'path                                          lines        chars    chars(no CR/LF)'
           puts header
           puts '-' * header.length
           stats.each do |stat|
-            puts format("%-40s %10d %12d %18d",
+            puts format('%-40s %10d %12d %18d',
                         stat['path'], stat['lines'], stat['chars'], stat['chars_without_newline'])
           end
 
           total = totals(stats)
           puts '-' * header.length
-          puts format("%-40s %10d %12d %18d", 'TOTAL', total['lines'], total['chars'], total['chars_without_newline'])
+          puts format('%-40s %10d %12d %18d', 'TOTAL', total['lines'], total['chars'], total['chars_without_newline'])
         end
         module_function :print_table
       end

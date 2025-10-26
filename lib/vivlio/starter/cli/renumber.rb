@@ -13,19 +13,25 @@ module Vivlio
       # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
       # ================================================================
       module RenumberCommands
-        extend self
+        module_function
+
+        RENUMBER_DESC = {
+          short: 'rename の別名（単体変更 or 一括連番）',
+          long: <<~DESC
+            このコマンドは rename の完全な別名です。
+            ・引数あり: 章のスラッグ/番号の単体変更（旧: rename と同じ）
+            ・引数なし: 一括連番（旧: renumber の機能）
+
+            例:
+              vs renumber            # 一括連番（--chapter-step/-S 使用可）
+              vs renumber 17 16      # 単体番号変更
+          DESC
+        }.freeze
+
         def included(base)
           base.class_eval do
-            desc 'renumber [OLD NEW]', 'rename の別名（単体変更 or 一括連番）'
-            long_desc <<~DESC
-              このコマンドは rename の完全な別名です。
-              ・引数あり: 章のスラッグ/番号の単体変更（旧: rename と同じ）
-              ・引数なし: 一括連番（旧: renumber の機能）
-
-              例:
-                vs renumber            # 一括連番（--chapter-step/-S 使用可）
-                vs renumber 17 16      # 単体番号変更
-            DESC
+            desc 'renumber [OLD NEW]', RENUMBER_DESC[:short]
+            long_desc RENUMBER_DESC[:long]
             # rename と同じオプションをそのまま転送（Thor のヘルプ表示互換のため定義）
             method_option :dry_run, type: :boolean, aliases: '-n', desc: '変更予定のみ表示（実行しない）'
             method_option :force,   type: :boolean, aliases: %w[-f -y], desc: '確認なしで変更を実行'

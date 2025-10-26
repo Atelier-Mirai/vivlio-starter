@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require 'fileutils'
 
 module Vivlio
@@ -13,32 +14,38 @@ module Vivlio
       # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
       # ================================================================
       module DeleteCommands
-        extend self
+        module_function
+
+        DELETE_DESC = {
+          short: '指定した章を削除します (Thor)',
+          long: <<~DESC
+            指定した章（単体/複数/範囲）に対して、Markdown と画像ディレクトリを削除します。
+
+            例:
+              vs delete 11-install
+              vs delete 11-install.md 12-tutorial
+              vs delete 11-21
+              vs delete 11 21-31
+
+            オプション:
+              --dry-run, -n   実行せずに削除予定のみを表示します（削除の試行）
+              --force, -f, -y 確認プロンプト無しで削除を実行します
+              --verbose, -v   冗長ログを表示します
+
+            備考:
+              ・ユーザー利便性のため、オプションは引数の前後どちらに置いても構いません
+                例: vs delete --force 31-33 / vs delete 31-33 --force
+              ・--dry-run と --force を同時指定した場合、--dry-run を優先し --force は無視されます
+          DESC
+        }.freeze
+
         def included(base)
           # class_option はベース側に定義済み（verbose）
           base.class_eval do
             # delete 本体
-            desc 'delete TOKENS...', '指定した章を削除します (Thor)'
-            long_desc <<~DESC
-              指定した章（単体/複数/範囲）に対して、Markdown と画像ディレクトリを削除します。
+            desc 'delete TOKENS...', DELETE_DESC[:short]
+            long_desc DELETE_DESC[:long]
 
-              例:
-                vs delete 11-install
-                vs delete 11-install.md 12-tutorial
-                vs delete 11-21
-                vs delete 11 21-31
-
-              オプション:
-                --dry-run, -n   実行せずに削除予定のみを表示します（削除の試行）
-                --force, -f, -y 確認プロンプト無しで削除を実行します
-                --verbose, -v   冗長ログを表示します
-
-              備考:
-                ・ユーザー利便性のため、オプションは引数の前後どちらに置いても構いません
-                  例: vs delete --force 31-33 / vs delete 31-33 --force
-                ・--dry-run と --force を同時指定した場合、--dry-run を優先し --force は無視されます
-            DESC
-            
             method_option :dry_run, type: :boolean, aliases: '-n', desc: '変更せずに削除予定を表示'
             method_option :force,   type: :boolean, aliases: %w[-f -y], desc: '確認なしで削除'
             # ================================================================
@@ -85,9 +92,7 @@ module Vivlio
                 if respond_to?(:options) && options
                   o[:dry_run] = true if options[:dry_run]
                   o[:n]       = true if options[:dry_run]
-                  if options[:force]
-                    o[:force] = o[:f] = o[:y] = true
-                  end
+                  o[:force] = o[:f] = o[:y] = true if options[:force]
                 end
                 o
               end
@@ -96,9 +101,10 @@ module Vivlio
               def confirm_deletion(file_path, options = {})
                 opts = options || {}
                 return true if opts[:force] || opts[:f] || opts[:y]
+
                 print "⚠️ 本当に #{file_path} を削除しますか？ (y/N): "
                 response = $stdin.gets&.chomp&.downcase
-                response == 'y' || response == 'yes'
+                %w[y yes].include?(response)
               end
 
               def delete_markdown_file(filename, options)
@@ -150,13 +156,10 @@ module Vivlio
               def expand_token_to_basenames(token)
                 t = token.to_s.strip
                 return [] if t.empty?
-                if t =~ /(\A\d+)-(\d+\z)/
-                  return find_basenames_in_range($1, $2)
-                end
-                if t =~ /\A\d+\z/
-                  return list_contents_basenames.select { |bn| bn.start_with?("#{t}-") }
-                end
-                name = t + '.md'
+                return find_basenames_in_range(::Regexp.last_match(1), ::Regexp.last_match(2)) if t =~ /(\A\d+)-(\d+\z)/
+                return list_contents_basenames.select { |bn| bn.start_with?("#{t}-") } if t =~ /\A\d+\z/
+
+                name = "#{t}.md"
                 path = File.join(Common::CONTENTS_DIR, name)
                 File.exist?(path) ? [name] : []
               end
@@ -171,7 +174,7 @@ module Vivlio
                 !!(opts[:dry_run] || opts[:n])
               end
 
-              def preview_deletions(basename, options)
+              def preview_deletions(basename, _options)
                 base = basename.sub(/\.md$/, '')
                 md_file = File.join(Common::CONTENTS_DIR, basename)
                 img_dir = File.join(Common::IMAGES_DIR, base)

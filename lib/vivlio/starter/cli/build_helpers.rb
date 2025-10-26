@@ -34,6 +34,7 @@ module Vivlio
 
         def cache_store_file(cache_on, source, dest, step_label)
           return false unless cache_on && source && dest && File.exist?(source)
+
           FileUtils.cp(source, dest)
           Common.log_info("[#{step_label}] キャッシュへ保存しました: #{dest}")
           true
@@ -43,6 +44,7 @@ module Vivlio
 
         def cache_restore_file(cache_on, source, dest, step_label)
           return false unless cache_on && source && File.exist?(source) && dest && !File.exist?(dest)
+
           FileUtils.cp(source, dest)
           Common.log_info("[#{step_label}] キャッシュから復元しました: #{dest}")
           true
@@ -139,27 +141,30 @@ module Vivlio
           cfg = Common::CONFIG['chapters']
           Common.log_info("[Subset] raw chapters config=#{cfg.inspect}") unless cfg.nil?
           return nil if cfg.nil?
+
           if cfg.is_a?(String)
             str = cfg.to_s
             return nil if str.strip.downcase == 'all'
+
             # 複数行の文字列もサポート（行ごとに1ファイル名）
             items = str.lines.map { |l| l.to_s.strip }.reject(&:empty?)
             # 正規化: contents/ 接頭や拡張子省略を許容
-            items = items.map { |s|
+            items = items.map do |s|
               name = s.sub(%r{\A#{Regexp.escape(Common::CONTENTS_DIR)}/}, '')
-              name = name + '.md' unless name.end_with?('.md')
+              name = "#{name}.md" unless name.end_with?('.md')
               name
-            }
+            end
             Common.log_info("[Subset] normalized keep(list)=#{items.inspect}") if items.any?
             return items if items.any?
+
             return nil
           elsif cfg.is_a?(Array)
             items = cfg.map { |s| s.to_s.strip }.reject(&:empty?)
-            items = items.map { |s|
+            items = items.map do |s|
               name = s.sub(%r{\A#{Regexp.escape(Common::CONTENTS_DIR)}/}, '')
-              name = name + '.md' unless name.end_with?('.md')
+              name = "#{name}.md" unless name.end_with?('.md')
               name
-            }
+            end
             Common.log_info("[Subset] normalized keep(array)=#{items.inspect}") if items.any?
             return items
           end
@@ -174,16 +179,16 @@ module Vivlio
         # - keep_numbers: nil または許可する章番号配列（nil の場合は全許可）
         # 返り値: フィルタ済みベース名配列（uniq + sort 済み）
         def filter_basenames_by_range(basenames, range, keep_numbers = nil)
-          keep_set = keep_numbers && keep_numbers.respond_to?(:include?) ? keep_numbers : nil
+          keep_set = keep_numbers.respond_to?(:include?) ? keep_numbers : nil
           Array(basenames)
-            .map { |bn| bn.to_s }
-            .select { |bn| bn =~ /\A(\d+)-/ }
-            .select { |bn|
+            .map(&:to_s)
+            .grep(/\A(\d+)-/)
+            .select do |bn|
               n = bn[/\A(\d+)-/, 1].to_i
               in_range = range.include?(n)
               allowed  = keep_set ? keep_set.include?(n) : true
               in_range && allowed
-            }
+            end
             .uniq
             .sort
         end
@@ -193,24 +198,24 @@ module Vivlio
         # Shared helper: ディレクトリ内の *.html から、章番号レンジと keep_numbers でフィルタ
         # ------------------------------------------------
         def htmls_for_range(base_dir, range, keep_numbers = nil)
-          Dir.glob(File.join(base_dir, '*.html')).select { |path|
+          Dir.glob(File.join(base_dir, '*.html')).select do |path|
             bn = File.basename(path, '.html')
             n = bn[/\A(\d+)-/, 1]&.to_i
             n && range.include?(n) && (keep_numbers.nil? || keep_numbers.include?(n))
-          }.sort
+          end.sort
         end
         module_function :htmls_for_range
 
         # ------------------------------------------------
         # Shared helper: 簡易スレッドプールで並列実行
         # ------------------------------------------------
-        def parallel_each(items, concurrency: 1)
+        def parallel_each(items, concurrency: 1, &)
           list = Array(items)
           effective_concurrency = concurrency.to_i
           effective_concurrency = 1 if effective_concurrency <= 0
           Common.log_info("[parallel_each] concurrency=#{effective_concurrency}")
-          return list.each { |it| yield(it) } if effective_concurrency <= 1
-          require 'thread'
+          return list.each(&) if effective_concurrency <= 1
+
           q = Queue.new
           list.each { |it| q << it }
           sentinel = Object.new
@@ -220,6 +225,7 @@ module Vivlio
               loop do
                 it = q.pop
                 break if it.equal?(sentinel)
+
                 yield(it)
               end
             end
@@ -235,18 +241,26 @@ module Vivlio
 
           needs_regeneration = !File.exist?(html_path)
           unless needs_regeneration
-            html_mtime = File.mtime(html_path) rescue Time.at(0)
+            html_mtime = begin
+              File.mtime(html_path)
+            rescue StandardError
+              Time.at(0)
+            end
             latest_source_mtime = sources.select { |src| File.exist?(src) }
-                                         .map { |src| File.mtime(src) rescue Time.at(0) }
+                                         .map do |src|
+              File.mtime(src)
+            rescue StandardError
+              Time.at(0)
+            end
                                          .max
             needs_regeneration = latest_source_mtime && latest_source_mtime > html_mtime
           end
 
-          if needs_regeneration
-            Common.log_info("[HTML] 再生成します: #{basename}.html")
-            %w[pre_process convert post_process].each do |task|
-              Vivlio::Starter::ThorCLI.start([task, basename])
-            end
+          return unless needs_regeneration
+
+          Common.log_info("[HTML] 再生成します: #{basename}.html")
+          %w[pre_process convert post_process].each do |task|
+            Vivlio::Starter::ThorCLI.start([task, basename])
           end
         end
         module_function :ensure_chapter_html_up_to_date!
@@ -259,7 +273,7 @@ module Vivlio
         # - 実行: Thor タスク resize:*
         # ================================================================
         def optimize_images!(preset = nil)
-          p = (preset&.to_sym || :medium)
+          p = preset&.to_sym || :medium
           preset_task = { high: 'resize:high', low: 'resize:low' }[p] || 'resize:medium'
 
           Common.log_action("[Step 1] 画像の最適化（WebP 変換/リサイズ）を実行します… preset=#{p}")
@@ -292,17 +306,17 @@ module Vivlio
           # 付録の keep 抽出（91..97）
           keep_numbers_appx = nil
           keep_numbers_post = nil
-          if keep && keep.any?
+          if keep&.any?
             normalized_keep = Array(keep)
-                                .map { |s| File.basename(s.to_s, '.md') }
+                              .map { |s| File.basename(s.to_s, '.md') }
             keep_numbers_appx = normalized_keep
-                                  .map { |bn| Common.get_chapter_number(bn) }
-                                  .compact.map(&:to_i)
-                                  .select { |n| APPX_RANGE.include?(n) }
+                                .map { |bn| Common.get_chapter_number(bn) }
+                                .compact.map(&:to_i)
+                                .select { |n| APPX_RANGE.include?(n) }
             keep_numbers_post = normalized_keep
-                                  .map { |bn| Common.get_chapter_number(bn) }
-                                  .compact.map(&:to_i)
-                                  .select { |n| POSTFACE_RANGE.include?(n) }
+                                .map { |bn| Common.get_chapter_number(bn) }
+                                .compact.map(&:to_i)
+                                .select { |n| POSTFACE_RANGE.include?(n) }
           end
           all_md_basenames = Dir[File.join(Common::CONTENTS_DIR, '*.md')].map { |p| File.basename(p, '.md') }
           main_targets     = BuildHelpers.filter_basenames_by_range(all_md_basenames, MAIN_RANGE, keep_numbers_main)
@@ -357,18 +371,17 @@ module Vivlio
           keep_numbers_main = BuildHelpers.chapter_numbers_for_book(keep)
           # 付録側の keep（91..97）
           keep_numbers_appx = nil
-          keep_numbers_post = nil
-          if keep && keep.any?
+          if keep&.any?
             normalized_keep = Array(keep)
-                                .map { |s| File.basename(s.to_s, '.md') }
+                              .map { |s| File.basename(s.to_s, '.md') }
             keep_numbers_appx = normalized_keep
-                                  .map { |bn| Common.get_chapter_number(bn) }
-                                  .compact.map(&:to_i)
-                                  .select { |n| APPX_RANGE.include?(n) }
-            keep_numbers_post = normalized_keep
-                                  .map { |bn| Common.get_chapter_number(bn) }
-                                  .compact.map(&:to_i)
-                                  .select { |n| POSTFACE_RANGE.include?(n) }
+                                .map { |bn| Common.get_chapter_number(bn) }
+                                .compact.map(&:to_i)
+                                .select { |n| APPX_RANGE.include?(n) }
+            normalized_keep
+              .map { |bn| Common.get_chapter_number(bn) }
+              .compact.map(&:to_i)
+              .select { |n| POSTFACE_RANGE.include?(n) }
           end
           # base_dir 内の HTML から本文(11..89) + 付録(91..97) を抽出
           chapter_htmls_main = BuildHelpers.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers_main)
@@ -388,9 +401,9 @@ module Vivlio
             return
           end
           # TOC も post_process を適用して見出しメタを付与（PDFアウトライン用）
-          Vivlio::Starter::ThorCLI.start(['post_process', '03-toc'])
+          Vivlio::Starter::ThorCLI.start(%w[post_process 03-toc])
           Common.log_info('[Step 6] 03-toc.html に post_process を適用しました（見出しメタ付与）')
-          Vivlio::Starter::ThorCLI.start(['entries', '03-toc'])
+          Vivlio::Starter::ThorCLI.start(%w[entries 03-toc])
           # 改良された pdf コマンドに出力ファイル名を渡してリネームも一括処理
           Vivlio::Starter::ThorCLI.start(['pdf', '03-toc.pdf'])
           Common.log_success('[Step 6] 03-toc.pdf を生成しました') if File.exist?('03-toc.pdf')
@@ -407,17 +420,17 @@ module Vivlio
           keep_numbers_main = BuildHelpers.chapter_numbers_for_book(keep)
           keep_numbers_appx = nil
           keep_numbers_post = nil
-          if keep && keep.any?
+          if keep&.any?
             normalized_keep = Array(keep)
-                                .map { |s| File.basename(s.to_s, '.md') }
+                              .map { |s| File.basename(s.to_s, '.md') }
             keep_numbers_appx = normalized_keep
-                                  .map { |bn| Common.get_chapter_number(bn) }
-                                  .compact.map(&:to_i)
-                                  .select { |n| APPX_RANGE.include?(n) }
+                                .map { |bn| Common.get_chapter_number(bn) }
+                                .compact.map(&:to_i)
+                                .select { |n| APPX_RANGE.include?(n) }
             keep_numbers_post = normalized_keep
-                                  .map { |bn| Common.get_chapter_number(bn) }
-                                  .compact.map(&:to_i)
-                                  .select { |n| POSTFACE_RANGE.include?(n) }
+                                .map { |bn| Common.get_chapter_number(bn) }
+                                .compact.map(&:to_i)
+                                .select { |n| POSTFACE_RANGE.include?(n) }
           end
           chapter_htmls_for_pdf = [
             BuildHelpers.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers_main),
@@ -426,7 +439,6 @@ module Vivlio
           ].flatten
 
           # 付録を奇数（右）ページ開始にするためのガードページを挿入
-          guard_html = nil
           # 付録はCSSで右ページ開始を徹底するため、ガードHTMLの自動挿入は行わない
 
           pdf_target_names = chapter_htmls_for_pdf.map { |p| File.basename(p) }
@@ -437,7 +449,6 @@ module Vivlio
           BuildHelpers.compile_overall_pdf_and_split!(targets_for_pdf, keep)
         end
 
-
         # ================================================================
         # Step 7: 全体PDF生成 → toc(目次)とsections(本文+付録+後書き)に分割
         # ------------------------------------------------
@@ -445,7 +456,7 @@ module Vivlio
         # - 03-toc.pdf のページ数取得
         # - qpdf によりtoc(目次)とsections(本文+付録+後書き)に分割
         # ================================================================
-        def compile_overall_pdf_and_split!(targets_for_pdf, keep = nil)
+        def compile_overall_pdf_and_split!(targets_for_pdf, _keep = nil)
           if targets_for_pdf.empty?
             Common.log_warn('[Step 7] 対象HTMLが見つかりません。Step 7 をスキップします。')
             return
@@ -479,6 +490,7 @@ module Vivlio
         # 指定PDFの全ページ下部にローマ小を描画（紙面上オーバーレイ）
         def overlay_roman_page_numbers!(pdf_path, options = {})
           return false unless File.exist?(pdf_path)
+
           opts = { margin_bottom: 24, font: 'Helvetica', size: 10, color: [0, 0, 0] }.merge(options)
 
           doc = HexaPDF::Document.open(pdf_path)
@@ -487,7 +499,7 @@ module Vivlio
           (0...total).each do |i|
             page = doc.pages[i]
             media_box = page.box(:media)
-            width  = media_box.width
+            width = media_box.width
             y = media_box.bottom + opts[:margin_bottom] + (3 * mm)
             text = Common.to_roman_lower(i + 1)
 
@@ -514,6 +526,7 @@ module Vivlio
         # HexaPDF で PageLabels を設定する
         def apply_page_labels_hexapdf(pdf_path, body_pages)
           return false unless File.exist?(pdf_path)
+
           doc = HexaPDF::Document.open(pdf_path)
           total = doc.pages.count
           nums = []
@@ -643,15 +656,16 @@ module Vivlio
           front_srcs = [
             File.join(Common::CONTENTS_DIR, '00-titlepage.md'),
             File.join(Common::CONTENTS_DIR, '01-legalpage.md'),
-            File.join('config', 'book.yml'),
+            File.join('config', 'book.yml')
           ]
-          colophon_srcs = [
+          [
             File.join(Common::CONTENTS_DIR, '99-colophon.md'),
-            File.join('config', 'book.yml'),
+            File.join('config', 'book.yml')
           ]
 
           newer_than_any = lambda do |target, sources|
             return true unless File.exist?(target)
+
             t_mtime = File.exist?(target) ? File.mtime(target) : Time.at(0)
             Array(sources).any? { |s| File.exist?(s) && File.mtime(s) > t_mtime }
           end
@@ -685,8 +699,8 @@ module Vivlio
           end
 
           # ここから奥付の生成（フロントを再生成した場合は必ず奥付も再生成）
+          BuildHelpers.ensure_chapter_html_up_to_date!('99-colophon', extra_sources: File.join('config', 'book.yml'))
           if front_regenerated
-            BuildHelpers.ensure_chapter_html_up_to_date!('99-colophon', extra_sources: File.join('config', 'book.yml'))
             Vivlio::Starter::ThorCLI.start(['entries', '99-colophon.html'])
             Vivlio::Starter::ThorCLI.start(['pdf', '99-colophon.pdf'])
             if File.exist?('99-colophon.pdf')
@@ -695,7 +709,6 @@ module Vivlio
               cache_store_file(cache_on, '99-colophon.pdf', colo_cache, 'Step 9')
             end
           else
-            BuildHelpers.ensure_chapter_html_up_to_date!('99-colophon', extra_sources: File.join('config', 'book.yml'))
             Common.log_info('[Step 9] フロントが最新のため、奥付の再生成はスキップしました（キャッシュ/既存を利用）')
           end
 
@@ -708,17 +721,8 @@ module Vivlio
         # - 必要に応じて 98-postface.pdf の奇数開始調整（空白ページ挿入）
         # - HexaPDF で結合
         # ================================================================
-        def merge_all_pdfs!
-          # NOTE: 呼び出し元から keep（chapters サブセット）を受け取りたいケースがあるため
-          #       後方互換のため引数なし定義を残し、内部で nil を扱う新メソッドへ委譲します。
-          merge_all_pdfs_with_outline!(nil)
-        end
-
-        # 章サブセット keep を尊重して結合し、可能なら HTML 見出しから PDF アウトラインを付与
-        # - keep: ['11-install.md', '81-install.md', ...] 形式または nil
-        def merge_all_pdfs_with_outline!(keep = nil)
+        def merge_all_pdfs_only!(_keep = nil)
           Common.log_action('[Step 10] フロント(00-01)、前書き、目次、本文、付録、奥付を結合します…')
-          # 存在するPDFのみで結合を続行します（02-preface.pdf が無くても処理継続）
           Common.log_info('[Step 10] 存在するPDFのみで結合を実行します（02-preface.pdf は任意）')
           files_to_merge = [
             '00-01-front.pdf', '02-03-front.pdf',
@@ -726,20 +730,14 @@ module Vivlio
           ]
           existing_files = files_to_merge.select { |f| File.exist?(f) }
           missing_files  = files_to_merge - existing_files
-          # 任意ファイル（存在しなくても正常）
           optional_files = []
           missing_required = missing_files - optional_files
-          if missing_required.any?
-            Common.log_warn("[Step 10] 結合対象が見つかりません: #{missing_required.join(', ')}")
-          end
-          # 任意欠落は情報として出すに留める
+          Common.log_warn("[Step 10] 結合対象が見つかりません: #{missing_required.join(', ')}") if missing_required.any?
           missing_optional = missing_files & optional_files
-          if missing_optional.any?
-            Common.log_info("[Step 10] 任意のPDFが見つかりません（スキップ）: #{missing_optional.join(', ')}")
-          end
+          Common.log_info("[Step 10] 任意のPDFが見つかりません（スキップ）: #{missing_optional.join(', ')}") if missing_optional.any?
           if existing_files.empty?
             Common.log_error('[Step 10] 結合対象PDFがありません。処理を中止します')
-            return
+            return false
           end
 
           FileUtils.rm_f('output.pdf')
@@ -747,31 +745,43 @@ module Vivlio
           merged = system(cmd)
           if merged && File.exist?('output.pdf')
             Common.log_success('[Step 10] output.pdf を生成しました')
-            # 可能なら、本文HTMLの見出し(h1〜h3)からアウトラインを生成して付与
-            keep_numbers = BuildHelpers.chapter_numbers_for_outline(keep)
-            chapter_htmls = Dir.glob(File.join('.', '*.html')).select { |path|
-              bn = File.basename(path, '.html')
-              n = bn[/\A(\d+)-/, 1]&.to_i
-              next false unless n
-              allowed = keep_numbers.nil? || keep_numbers.include?(n)
-              allowed
-            }.sort
-            if chapter_htmls.any?
-              Common.log_action('[Step 10] 本文HTMLの h1〜h3 から PDF ブックマーク（アウトライン）を付与します…')
-              total_pages   = (BuildHelpers.page_count('output.pdf') || '0').to_i
-              start_from    = 1
-              Common.log_info("[Outline] page offset: start_page=#{start_from}")
-              BuildHelpers.add_outline_from_headings!(
-                'output.pdf',
-                chapter_htmls,
-                max_level: 3,
-                start_page: start_from
-              )
-            else
-              Common.log_info('[Step 10] 本文HTMLが見つからないため、アウトライン付与をスキップします')
-            end
+            true
           else
             Common.log_error('[Step 10] PDF結合に失敗しました')
+            false
+          end
+        end
+
+        def add_outline_to_output_pdf!(keep = nil)
+          unless File.exist?('output.pdf')
+            Common.log_warn('[Step 11] output.pdf がまだ存在しないため、アウトライン付与をスキップします')
+            return false
+          end
+
+          keep_numbers = BuildHelpers.chapter_numbers_for_outline(keep)
+          chapter_htmls = Dir.glob(File.join('.', '*.html')).select do |path|
+            bn = File.basename(path, '.html')
+            n = bn[/\A(\d+)-/, 1]&.to_i
+            next false unless n
+
+            keep_numbers.nil? || keep_numbers.include?(n)
+          end.sort
+
+          if chapter_htmls.any?
+            Common.log_action('[Step 11] 本文HTMLの h1〜h3 から PDF ブックマーク（アウトライン）を付与します…')
+            total_pages = (BuildHelpers.page_count('output.pdf') || '0').to_i
+            start_from  = 1
+            Common.log_info("[Outline] page offset: start_page=#{start_from}, total_pages=#{total_pages}")
+            BuildHelpers.add_outline_from_headings!(
+              'output.pdf',
+              chapter_htmls,
+              max_level: 3,
+              start_page: start_from
+            )
+            true
+          else
+            Common.log_info('[Step 11] 本文HTMLが見つからないため、アウトライン付与をスキップします')
+            false
           end
         end
 
@@ -791,9 +801,7 @@ module Vivlio
             next if text.empty?
 
             appendix_label = nil
-            if include_appendix_label && lvl == 1
-              appendix_label = BuildHelpers.appendix_label_for_basename(basename)
-            end
+            appendix_label = BuildHelpers.appendix_label_for_basename(basename) if include_appendix_label && lvl == 1
 
             chapter_token = node['data-chapter'].to_s.strip
             chapter_token = basename if chapter_token.empty?
@@ -812,8 +820,6 @@ module Vivlio
                             val = node['data-subsection-number-display'].to_s.strip
                             val = node.at_css('span.subsection-marker')&.text&.strip if val.empty?
                             val
-                          else
-                            nil
                           end
 
             title_text = case lvl
@@ -869,15 +875,14 @@ module Vivlio
               title = stripped.sub('\A#\\s+', '').strip
               next
             end
-            if max_level >= 2 && stripped.start_with?('## ')
-              subtitles << stripped.sub('\A##\\s+', '').strip
-            end
+            subtitles << stripped.sub('\A##\\s+', '').strip if max_level >= 2 && stripped.start_with?('## ')
             break if max_level <= 2 && !title.nil? && !subtitles.empty?
           end
           headings << { level: 1, text: title } if title && !title.empty?
           if max_level >= 2
             subtitles.each do |text|
               next if text.empty?
+
               headings << { level: 2, text: text }
             end
           end
@@ -934,7 +939,8 @@ module Vivlio
             path = chapter_paths[bn]
             headings = []
             if path
-              headings = BuildHelpers.extract_headings_from_html_file(path, max_level: max_level, include_appendix_label: true)
+              headings = BuildHelpers.extract_headings_from_html_file(path, max_level: max_level,
+                                                                            include_appendix_label: true)
             end
             headings_by_chapter[bn].concat(headings) if headings.any?
 
@@ -955,21 +961,22 @@ module Vivlio
           end
           fetch_page_text = lambda do |page|
             page = [[page.to_i, 1].max, total_pages].min
-            page_cache[page] ||= begin
-              `pdftotext -f #{page} -l #{page} "#{pdf_path}" - 2>/dev/null`
-            end
+            page_cache[page] ||= `pdftotext -f #{page} -l #{page} "#{pdf_path}" - 2>/dev/null`
           end
           find_page_in_pdf = lambda do |term, from_page, to_page|
             term = term.to_s.strip
             return nil if term.empty?
+
             normalized_term = normalize.call(term)
             from_page = [[from_page.to_i, 1].max, total_pages].min
             to_page = [[to_page.to_i, total_pages].min, from_page].max
             return nil if from_page > to_page
+
             (from_page..to_page).each do |page|
               text = fetch_page_text.call(page)
               next if text.nil? || text.empty?
               return page if text.include?(term)
+
               normalized_text = normalized_cache[page]
               unless normalized_text
                 normalized_text = normalize.call(text)
@@ -1008,20 +1015,20 @@ module Vivlio
               end_page = start_page
             when '02-preface'
               start_page = [[3, from_base].max, total_pages].min
-              if preface_pages.positive?
-                end_page = [start_page + preface_pages - 1, total_pages].min
-              else
-                end_page = start_page
-              end
+              end_page = if preface_pages.positive?
+                           [start_page + preface_pages - 1, total_pages].min
+                         else
+                           start_page
+                         end
             when '03-toc'
-              preface_end = chapter_ranges['02-preface']&.[](1) || (start_page || 3) + preface_pages - 1
+              preface_end = chapter_ranges['02-preface']&.[](1) || ((start_page || 3) + preface_pages - 1)
               start_candidate = preface_end ? preface_end + 1 : 4
               start_page = [[start_candidate, from_base].max, total_pages].min
-              if toc_pages.positive?
-                end_page = [start_page + toc_pages - 1, total_pages].min
-              else
-                end_page = start_page
-              end
+              end_page = if toc_pages.positive?
+                           [start_page + toc_pages - 1, total_pages].min
+                         else
+                           start_page
+                         end
             when first_chapter_bn
               toc_end = chapter_ranges['03-toc']&.[](1)
               start_candidate = toc_end ? toc_end + 1 : (chapter_starts[prev_bn] || from_base)
@@ -1066,8 +1073,9 @@ module Vivlio
           end
 
           unless chapter_ranges.empty?
-            chapter_ranges.each do |bn, rng|
+            chapter_ranges.each_value do |rng|
               next unless rng
+
               rng[0] = [[rng[0], from_base].max, total_pages].min
               rng[1] = [[rng[1], rng[0]].max, total_pages].min
             end
@@ -1078,15 +1086,14 @@ module Vivlio
           headings_by_chapter.each do |bn, headings|
             range = chapter_ranges[bn]
             next unless range
+
             range_start = range[0]
             range_end   = range[1]
             headings.each do |heading|
               search_terms = Array(heading[:search_terms]) + [heading[:text], heading[:appendix_label]]
               search_terms = search_terms.compact.map { |s| s.to_s.strip }.reject(&:empty?).uniq
               page = search_markers.call(search_terms, range_start, range_end)
-              if page.nil?
-                page = search_markers.call(search_terms, range_start, total_pages)
-              end
+              page = search_markers.call(search_terms, range_start, total_pages) if page.nil?
               if page.nil?
                 fallback_items << {
                   chapter: bn,
@@ -1101,18 +1108,14 @@ module Vivlio
                 display_text = '奥付'
               elsif heading[:appendix_label] && heading[:level].to_i == 1
                 label = heading[:appendix_label].to_s.strip
-                if !label.empty? && !display_text.start_with?(label)
-                  display_text = "#{label} #{display_text}".strip
-                end
+                display_text = "#{label} #{display_text}".strip if !label.empty? && !display_text.start_with?(label)
               elsif heading[:level].to_i == 1
                 number_display = heading[:number_display].to_s.strip
                 if number_display.empty?
                   chapter_number = Common.get_chapter_number(bn)
                   if chapter_number
                     number = chapter_number.to_i
-                    if number >= 11 && number <= 89
-                      number_display = "第#{number - 10}章"
-                    end
+                    number_display = "第#{number - 10}章" if number.between?(11, 89)
                   end
                 end
                 unless number_display.empty? || display_text.start_with?(number_display)
@@ -1171,8 +1174,10 @@ module Vivlio
         def appendix_label_for_basename(basename)
           number = Common.get_chapter_number(basename)
           return nil unless number && APPX_RANGE.include?(number.to_i)
+
           letter = Common.appendix_number_to_letter(number)
           return nil unless letter
+
           "付録#{letter.upcase}"
         end
         module_function :appendix_label_for_basename
@@ -1197,11 +1202,9 @@ module Vivlio
             existing_items = []
             root.each_item { |item, _level| existing_items << item }
             existing_items.each do |item|
-              begin
-                doc.delete(item)
-              rescue StandardError
-                # 既存のブックマーク削除で失敗しても続行
-              end
+              doc.delete(item)
+            rescue StandardError
+              # 既存のブックマーク削除で失敗しても続行
             end
             root.delete(:First)
             root.delete(:Last)
@@ -1246,6 +1249,7 @@ module Vivlio
         # ================================================================
         def page_count(file)
           return nil unless File.exist?(file)
+
           if system('which pdfinfo >/dev/null 2>&1')
             info = `pdfinfo "#{file}" 2>/dev/null`
             pages = info[/^Pages:\s+(\d+)/i, 1]
@@ -1256,7 +1260,7 @@ module Vivlio
 
         # 11..89 範囲の章番号（整数）の配列を返す。keep（.md 含む可）指定時はその集合に限定。
         def chapter_numbers_for_book(keep = nil)
-          basenames = if keep && keep.any?
+          basenames = if keep&.any?
                         Array(keep).map { |s| File.basename(s.to_s, '.md') }
                       else
                         Dir[File.join(Common::CONTENTS_DIR, '*.md')].map { |p| File.basename(p, '.md') }
@@ -1272,7 +1276,7 @@ module Vivlio
 
         def chapter_numbers_for_outline(keep = nil)
           allowed_numbers = [0, 1, 2, 3, 99] + MAIN_RANGE.to_a + APPX_RANGE.to_a + POSTFACE_RANGE.to_a
-          basenames = if keep && keep.any?
+          basenames = if keep&.any?
                         Array(keep).map do |entry|
                           name = File.basename(entry.to_s)
                           name.sub(/\.[^.]+\z/, '')
@@ -1284,10 +1288,10 @@ module Vivlio
                       end
 
           numbers = basenames
-                      .map { |bn| Common.get_chapter_number(bn) }
-                      .compact
-                      .map(&:to_i)
-                      .select { |n| allowed_numbers.include?(n) }
+                    .map { |bn| Common.get_chapter_number(bn) }
+                    .compact
+                    .map(&:to_i)
+                    .select { |n| allowed_numbers.include?(n) }
           numbers.uniq!
           numbers.sort!
           numbers
@@ -1297,6 +1301,7 @@ module Vivlio
         # - 用紙サイズは book.yml の page 設定に追従（共有ヘルパ使用）
         def ensure_blank_page_pdf(path = 'blank_page.pdf')
           return path if File.exist?(path)
+
           doc = HexaPDF::Document.new
           w_pt, h_pt = BuildHelpers.page_size_points_from_config
           doc.pages.add([0, 0, w_pt, h_pt])
@@ -1306,12 +1311,14 @@ module Vivlio
 
         # 共有ヘルパ: 現在の設定からページサイズ（文字列: mm/pt）を取得
         def page_size_strings_from_config
-          page_cfg = (Common::CONFIG['page'] || {})
+          page_cfg = Common::CONFIG['page'] || {}
           result = Common.resolve_page_size(page_cfg)
-          if result.is_a?(Array) && result.size == 2 && result.all? { |dim| dim.to_s.strip.match?(/\A[0-9.]+(mm|pt)?\z/) }
+          if result.is_a?(Array) && result.size == 2 && result.all? do |dim|
+            dim.to_s.strip.match?(/\A[0-9.]+(mm|pt)?\z/)
+          end
             result
           else
-            ['182mm', '257mm']
+            %w[182mm 257mm]
           end
         end
 
@@ -1358,7 +1365,7 @@ module Vivlio
           body_end = total_pages - frontmatter_pages
           ok1 = ok2 = true
 
-          if body_end > 0
+          if body_end.positive?
             Common.log_action("[Step 7] 本文・付録を抽出しています (1-#{body_end})…")
             ok1 = system(%(qpdf "#{output_pdf}" --pages "#{output_pdf}" 1-#{body_end} -- "#{body_pdf}"))
           else

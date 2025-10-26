@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require 'fileutils'
 
 module Vivlio
@@ -12,12 +13,12 @@ module Vivlio
       # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
       # ================================================================
       module CreateCommands
-        extend self
-        def included(base)
-          base.class_eval do
-            # create（章の作成）
-            desc 'create NAME [NAME ...]', '新しい章を作成します (Thor)'
-            long_desc <<~DESC
+        module_function
+
+        CREATE_DESC = {
+          create: {
+            short: '新しい章を作成します (Thor)',
+            long: <<~DESC
               新しい章ファイルを作成し、画像ディレクトリを用意し、章別 CSS（該当時）を生成します。
 
               例:
@@ -28,6 +29,39 @@ module Vivlio
                 ・拡張子 .md は省略可能です（自動付与）
                 ・既存ファイルがある場合は作成を中止します
             DESC
+          },
+          titlepage: {
+            short: 'タイトルページを config/book.yml から生成 (Thor)'
+          },
+          colophon: {
+            short: '奥付を config/book.yml から生成 (Thor)'
+          },
+          legalpage: {
+            short: 'リーガルページを config/book.yml から生成 (Thor)',
+            long: <<~DESC
+              著作権ページや免責事項を含むリーガルページを生成します。
+
+              config/book.yml の legal セクションから設定を読み取り、
+              contents/01-legalpage.md を生成します。
+
+              設定項目:
+              - legal.disclaimer: 免責事項
+              - legal.trademark: 商標情報
+
+              未設定の場合はテンプレート文面を使用します。
+
+              オプション:
+                -f, --force    既存ファイルを強制上書き
+                -v, --verbose  詳細な処理情報を表示
+            DESC
+          }
+        }.freeze
+
+        def included(base)
+          base.class_eval do
+            # create（章の作成）
+            desc 'create NAME [NAME ...]', CREATE_DESC[:create][:short]
+            long_desc CREATE_DESC[:create][:long]
             # ================================================================
             # Command: create（章の作成）
             # ------------------------------------------------
@@ -61,7 +95,7 @@ module Vivlio
                   path    = create_markdown_file(fname, content)
                   create_image_directory(fname, {})
                   Common.log_success("#{path} を作成しました")
-                rescue => e
+                rescue StandardError => e
                   had_error = true
                   Common.log_error("作成に失敗しました: #{fname} (#{e.class}: #{e.message})")
                 end
@@ -71,7 +105,7 @@ module Vivlio
             end
 
             # create:titlepage
-            desc 'create:titlepage', 'タイトルページを config/book.yml から生成 (Thor)'
+            desc 'create:titlepage', CREATE_DESC[:titlepage][:short]
             method_option :force, type: :boolean, aliases: '-f', desc: '既存ファイルを強制上書き'
             # ================================================================
             # Command: create:titlepage（タイトルページ生成）
@@ -86,22 +120,22 @@ module Vivlio
               title, subtitle = extract_title_and_subtitle(cfg)
               author   = (cfg.dig('book', 'author') || '').to_s
               series   = (cfg.dig('book', 'series') || '').to_s
-              contact  = (cfg.dig('book', 'contact') || '').to_s
-              release  = (cfg.dig('book', 'release') || '').to_s
+              (cfg.dig('book', 'contact') || '').to_s
+              release = (cfg.dig('book', 'release') || '').to_s
               style = (cfg.dig('book', 'subtitle_style') || 'wave').to_s.downcase
               style = 'wave' unless %w[wave bar none].include?(style)
               subtitle_class = "subtitle subtitle--#{style}"
 
               content = <<~MD
                 <h1 class="book-title">#{title}</h1>
-                #{subtitle.empty? ? '' : %Q(<p class="#{subtitle_class}">#{subtitle}</p>)}
+                #{%(<p class="#{subtitle_class}">#{subtitle}</p>) unless subtitle.empty?}
 
-                #{author.empty? ? '' : %Q(<p class="author"><span>[著]</span> #{author}</p>)}
+                #{%(<p class="author"><span>[著]</span> #{author}</p>) unless author.empty?}
 
-                #{(series.empty? && release.empty?) ? '' : %Q(<div class="publication-info">)}
-                #{series.empty? ? '' : %Q(    <p class="series">#{series}</p>)}
-                #{release.empty? ? '' : %Q(    <p class="release-info">#{release}</p>)}
-                #{(series.empty? && release.empty?) ? '' : %Q(</div>)}
+                #{%(<div class="publication-info">) unless series.empty? && release.empty?}
+                #{%(    <p class="series">#{series}</p>) unless series.empty?}
+                #{%(    <p class="release-info">#{release}</p>) unless release.empty?}
+                #{%(</div>) unless series.empty? && release.empty?}
               MD
 
               out = File.join(Common::CONTENTS_DIR, '00-titlepage.md')
@@ -113,7 +147,7 @@ module Vivlio
             end
 
             # create:colophon
-            desc 'create:colophon', '奥付を config/book.yml から生成 (Thor)'
+            desc 'create:colophon', CREATE_DESC[:colophon][:short]
             method_option :force, type: :boolean, aliases: '-f', desc: '既存ファイルを強制上書き'
             # ================================================================
             # Command: create:colophon（奥付生成）
@@ -135,15 +169,16 @@ module Vivlio
               subtitle_class = "subtitle subtitle--#{style}"
 
               to_kan = lambda do |n|
-                km = %w(〇 一 二 三 四 五 六 七 八 九)
-                return '〇' if n == 0
+                km = %w[〇 一 二 三 四 五 六 七 八 九]
+                return '〇' if n.zero?
                 return km[n] if n < 10
                 return '十' if n == 10
+
                 tens = n / 10
                 ones = n % 10
                 s = ''
-                s += (tens == 1 ? '' : km[tens]) + '十'
-                s += (ones == 0 ? '' : km[ones])
+                s += "#{km[tens] unless tens == 1}十"
+                s += (ones.zero? ? '' : km[ones])
                 s
               end
 
@@ -152,14 +187,14 @@ module Vivlio
 
               content = <<~MD
                 <h1 class="book-title">#{title}</h1>
-                #{subtitle.empty? ? '' : %Q(<p class="#{subtitle_class}">#{subtitle}</p>)}
+                #{%(<p class="#{subtitle_class}">#{subtitle}</p>) unless subtitle.empty?}
 
-                #{release.empty? ? '' : %Q(<p class="publication-info">#{release}</p>)}
+                #{%(<p class="publication-info">#{release}</p>) unless release.empty?}
 
                 <dl class="info-list">
-                    #{author.empty? ? '' : %Q(<dt>著者</dt>\n                    <dd>#{author}</dd>)}
-                    #{publisher.empty? ? '' : %Q(<dt>発行者</dt>\n                    <dd>#{publisher}</dd>)}
-                    #{contact.empty? ? '' : %Q(<dt>連絡先</dt>\n                    <dd>#{contact}</dd>)}
+                    #{%(<dt>著者</dt>\n                    <dd>#{author}</dd>) unless author.empty?}
+                    #{%(<dt>発行者</dt>\n                    <dd>#{publisher}</dd>) unless publisher.empty?}
+                    #{%(<dt>連絡先</dt>\n                    <dd>#{contact}</dd>) unless contact.empty?}
                 </dl>
 
                 <p class="copyright">
@@ -188,12 +223,14 @@ module Vivlio
               # '11-install' / '11-install.md' を検証し '11-install.md' を返す
               def ensure_filename(name)
                 return nil if name.nil?
+
                 n = name.to_s.strip
                 n = File.basename(n)
                 n = File.basename(n, '.md')
-                return nil unless n =~ /\A\d+-[\w\.-]+\z/
-                n + '.md'
-              rescue
+                return nil unless n =~ /\A\d+-[\w.-]+\z/
+
+                "#{n}.md"
+              rescue StandardError
                 nil
               end
 
@@ -214,7 +251,7 @@ module Vivlio
                     # #{title}
 
                     <!-- 章テンプレートが見つからなかったため、デフォルトの骨子を生成しました -->
-                    
+
                     ここに#{title}の内容を記述してください。
                   MD
                 end
@@ -224,6 +261,7 @@ module Vivlio
               def create_markdown_file(fname, content)
                 path = File.join(Common::CONTENTS_DIR, fname)
                 raise "既に存在します: #{path}" if File.exist?(path)
+
                 safe_write(path, content)
                 path
               end
@@ -232,7 +270,7 @@ module Vivlio
               def create_image_directory(fname, _options = {})
                 base = File.basename(fname.to_s, '.md')
                 dir  = File.join(Common::IMAGES_DIR, base)
-                FileUtils.mkdir_p(dir) unless Dir.exist?(dir)
+                FileUtils.mkdir_p(dir)
                 dir
               end
 
@@ -254,23 +292,8 @@ module Vivlio
             end
 
             # create:legalpage
-            desc 'create:legalpage', 'リーガルページを config/book.yml から生成 (Thor)'
-            long_desc <<~DESC
-              著作権ページや免責事項を含むリーガルページを生成します。
-
-              config/book.yml の legal セクションから設定を読み取り、
-              contents/01-legalpage.md を生成します。
-
-              設定項目:
-              - legal.disclaimer: 免責事項
-              - legal.trademark: 商標情報
-
-              未設定の場合はテンプレート文面を使用します。
-
-              オプション:
-                -f, --force    既存ファイルを強制上書き
-                -v, --verbose  詳細な処理情報を表示
-            DESC
+            desc 'create:legalpage', CREATE_DESC[:legalpage][:short]
+            long_desc CREATE_DESC[:legalpage][:long]
 
             method_option :force, type: :boolean, aliases: '-f', desc: '既存ファイルを強制上書き'
 
@@ -302,7 +325,7 @@ module Vivlio
               end
 
               cfg = Common::CONFIG || {}
-              legal = (cfg['legal'] || {})
+              legal = cfg['legal'] || {}
               disclaimer = (legal['disclaimer'] || '').strip
               trademark  = (legal['trademark'] || '').strip
 

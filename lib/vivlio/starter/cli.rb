@@ -59,10 +59,10 @@ module Vivlio
       # ================================================================
       def self.commands_supported
         %w[
-          build clean config convert 
+          build clean config convert
           create create:colophon create:legalpage create:titlepage
           delete doctor entries glossary:add glossary:canonicalize
-          glossary:canonicalize:check glossary:fix glossary:lint help 
+          glossary:canonicalize:check glossary:fix glossary:lint help
           merge:appendices new open open:pdf pdf pdf:compress post_process
           pre_process prism:lines rename renumber resize text_metrics
           resize:high resize:low resize:medium toc vivliostyle:config
@@ -97,7 +97,11 @@ module Vivlio
       # ================================================================
       def self.jp_task_help(cmd)
         # Thor 内部のコマンド定義にアクセス
-        commands = respond_to?(:all_commands) ? all_commands : (respond_to?(:all_tasks) ? all_tasks : {})
+        commands = if respond_to?(:all_commands)
+                     all_commands
+                   else
+                     (respond_to?(:all_tasks) ? all_tasks : {})
+                   end
         task = commands[cmd]
         unless task
           puts "使い方: vs #{cmd} [オプション]"
@@ -108,7 +112,7 @@ module Vivlio
         usage = if respond_to?(:banner)
                   begin
                     banner(task)
-                  rescue
+                  rescue StandardError
                     task.respond_to?(:usage) ? task.usage : "#{cmd} [ARGS]"
                   end
                 else
@@ -134,10 +138,8 @@ module Vivlio
             puts 'オプション:'
             opts.each do |name, opt|
               switches = []
-              if opt.respond_to?(:aliases) && opt.aliases
-                switches.concat(Array(opt.aliases))
-              end
-              switches << "--#{name.to_s.tr('_','-')}"
+              switches.concat(Array(opt.aliases)) if opt.respond_to?(:aliases) && opt.aliases
+              switches << "--#{name.to_s.tr('_', '-')}"
               sw = switches.join(', ')
               desc = if opt.respond_to?(:description)
                        opt.description
@@ -149,13 +151,14 @@ module Vivlio
               puts "  #{sw}  #{desc}"
             end
           end
-        rescue
+        rescue StandardError
           # オプション出力に失敗してもヘルプ本体は表示できているので黙って続行
         end
       end
       class_option :verbose, type: :boolean, aliases: '-v', desc: '冗長出力'
 
-      no_commands do; end
+      no_commands do
+      end
 
       # ================================================================
       # Section: コマンド群の登録（モジュール include）

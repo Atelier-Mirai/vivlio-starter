@@ -65,6 +65,7 @@ module Vivlio
       #   - `vivlio/starter/cli`（Thor 実装）
       #   - `vivlio/starter/commands/new`（組み込み new コマンド）
       # ================================================================
+
       module_function
 
       # ================================================================
@@ -87,7 +88,7 @@ module Vivlio
         ENV['VS_CLI'] ||= '1'
 
         # 組み込み: helpとversion
-        if argv && (argv.first == '--help' || argv.first == '-h' || argv.first == 'help')
+        if argv && ['--help', '-h', 'help'].include?(argv.first)
           # Thor CLI のヘルプを表示（読み込み失敗時はメッセージを出して終了）
           if defined?(Vivlio::Starter::ThorCLI)
             Vivlio::Starter::ThorCLI.start(['help'])
@@ -98,7 +99,7 @@ module Vivlio
           end
         end
 
-        if argv && (argv.first == '--version' || argv.first == '-V' || argv.first == 'version')
+        if argv && ['--version', '-V', 'version'].include?(argv.first)
           puts "vivlio-starter #{Vivlio::Starter::VERSION}"
           return 0
         end
@@ -131,7 +132,7 @@ module Vivlio
         begin
           if defined?(Vivlio::Starter::ThorCLI)
             # `vs <cmd> --help` を日本語ヘルプ対応で処理
-            if argv.any? { |a| a == '--help' || a == '-h' || a == 'help' }
+            if argv.any? { |a| ['--help', '-h', 'help'].include?(a) }
               if Vivlio::Starter::ThorCLI.respond_to?(:jp_task_help)
                 Vivlio::Starter::ThorCLI.jp_task_help(cmd)
               else

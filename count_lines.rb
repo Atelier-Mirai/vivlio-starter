@@ -48,7 +48,7 @@ rb_files.each do |path|
 
     code += 1
 
-    if line =~ /<<[-~]?['\"]?([A-Za-z0-9_]+)['\"]?/
+    if line =~ /<<[-~]?['"]?([A-Za-z0-9_]+)['"]?/
       heredoc_end = Regexp.last_match(1)
       in_heredoc = true
     end
@@ -97,12 +97,12 @@ format_line = lambda do |label, total_lines, code_lines, comment_lines|
 end
 
 puts 'Ruby files (lib/vivlio/**/*.rb)'
-puts format('%-60s %6s %6s %6s', 'path', 'total', 'code', 'comment')
+puts 'path                                                          total   code comment'
 ruby_results.each { |row| puts format_line.call(*row) }
 
 puts
 puts 'CSS files (stylesheets/**/*.css)'
-puts format('%-60s %6s %6s %6s', 'path', 'total', 'code', 'comment')
+puts 'path                                                          total   code comment'
 css_results.each { |row| puts format_line.call(*row) }
 
 ruby_totals = ruby_results.transpose[1..3].map { |arr| arr.reduce(0, :+) }

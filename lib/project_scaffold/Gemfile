@@ -1,5 +1,6 @@
 # frozen_string_literal: true
-source "https://rubygems.org"
+
+source 'https://rubygems.org'
 
 # このプロジェクトのビルド/CLIに必要な gem を定義します。
-gem "vivlio-starter"
+gem 'vivlio-starter'

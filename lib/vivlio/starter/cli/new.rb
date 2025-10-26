@@ -14,27 +14,33 @@ module Vivlio
       # README/Gemfile/.gitignore の配置を行う。
       # ==============================================================================
       module NewCommands
-        extend self
+        module_function
+
+        NEW_DESC = {
+          short: '新しい書籍プロジェクトを作成します',
+          long: <<~DESC
+            新しい書籍プロジェクトを作成します。
+
+            引数:
+              NAME    プロジェクト名（必須）
+
+            作成内容:
+            - プロジェクトディレクトリの作成
+            - 設定ファイル(config/book.yml)のコピー
+            - コンテンツファイルのテンプレートコピー
+            - スタイルシート・画像・コードのコピー
+            - タイトルページ・リーガルページ・奥付の自動生成
+            - README・Gemfile・.gitignoreの作成
+
+            使用例:
+              vs new mybook
+          DESC
+        }.freeze
+
         def included(base)
           base.class_eval do
-            desc 'new NAME', '新しい書籍プロジェクトを作成します'
-            long_desc <<~DESC
-              新しい書籍プロジェクトを作成します。
-
-              引数:
-                NAME    プロジェクト名（必須）
-
-              作成内容:
-              - プロジェクトディレクトリの作成
-              - 設定ファイル(config/book.yml)のコピー
-              - コンテンツファイルのテンプレートコピー
-              - スタイルシート・画像・コードのコピー
-              - タイトルページ・リーガルページ・奥付の自動生成
-              - README・Gemfile・.gitignoreの作成
-
-              使用例:
-                vs new mybook
-            DESC
+            desc 'new NAME', NEW_DESC[:short]
+            long_desc NEW_DESC[:long]
 
             # ================================================================
             # Command: new（新規プロジェクト作成）
@@ -56,7 +62,7 @@ module Vivlio
 
               name = name&.strip
               if name.nil? || name.empty?
-                Common.log_error("Error: プロジェクト名を指定してください。例: vs new mybook")
+                Common.log_error('Error: プロジェクト名を指定してください。例: vs new mybook')
                 exit(1)
               end
 
@@ -97,7 +103,8 @@ module Vivlio
               if File.file?(source_config_book)
                 FileUtils.cp(source_config_book, target_book)
               else
-                File.write(target_book, "# book.yml\nbook:\n  main_title: ''\n  subtitle: ''\n  subtitle_style: wave\n  author: ''\n  language: 'ja'\n")
+                File.write(target_book,
+                           "# book.yml\nbook:\n  main_title: ''\n  subtitle: ''\n  subtitle_style: wave\n  author: ''\n  language: 'ja'\n")
               end
 
               # 既存コンテンツのコピー: 指定されたファイル群
@@ -133,19 +140,17 @@ module Vivlio
               end
 
               # Gemfile（任意）
-              if File.file?(source_gemfile)
-                FileUtils.cp(source_gemfile, File.join(dest, 'Gemfile'))
-              end
+              FileUtils.cp(source_gemfile, File.join(dest, 'Gemfile')) if File.file?(source_gemfile)
 
               # 最小の .gitignore（生成物は追跡しない推奨）
               gi = File.join(dest, '.gitignore')
               File.write(gi, <<~GITIGNORE)
-              .DS_Store
-              node_modules/
-              *.log
-              *.tmp
-              *.pdf
-              entries.js
+                .DS_Store
+                node_modules/
+                *.log
+                *.tmp
+                *.pdf
+                entries.js
               GITIGNORE
 
               # GitHub Actions ワークフロー（任意だが有用）
@@ -185,22 +190,20 @@ module Vivlio
               # newプロジェクトの book.yml を読み込み、同等ロジックで生成
               cfg = begin
                 YAML.load_file(target_book)
-              rescue
+              rescue StandardError
                 {}
               end
 
-              book = (cfg['book'] || {})
+              book = cfg['book'] || {}
               full  = (book['title'] || '').to_s
               main  = (book['main_title'] || '').to_s
               sub   = (book['subtitle'] || '').to_s
 
               title = main.empty? ? full : main
               subtitle = sub
-              if subtitle.empty? && !full.empty?
-                if full =~ /(.*?)[ \u3000]*[～〜](.+?)[～〜]\s*$/
-                  title = $1.to_s.strip
-                  subtitle = $2.to_s.strip
-                end
+              if subtitle.empty? && !full.empty? && (full =~ /(.*?)[ \u3000]*[～〜](.+?)[～〜]\s*$/)
+                title = ::Regexp.last_match(1).to_s.strip
+                subtitle = ::Regexp.last_match(2).to_s.strip
               end
               title = title.to_s.gsub(/[ \u3000]*[～〜].*$/, '').strip
 
@@ -213,42 +216,42 @@ module Vivlio
 
               # 00-titlepage.md
               titlepage = <<~MD
-              <h1 class="book-title">#{title}</h1>
-              #{subtitle.empty? ? '' : %Q(<p class="#{subtitle_class}">#{subtitle}</p>)}
+                <h1 class="book-title">#{title}</h1>
+                #{%(<p class="#{subtitle_class}">#{subtitle}</p>) unless subtitle.empty?}
 
-              #{author.empty? ? '' : %Q(<p class="author"><span>[著]</span> #{author}</p>)}
+                #{%(<p class="author"><span>[著]</span> #{author}</p>) unless author.empty?}
 
-              #{(series.empty? && release.empty?) ? '' : %Q(<div class="publication-info">)}
-              #{series.empty? ? '' : %Q(    <p class="series">#{series}</p>)}
-              #{release.empty? ? '' : %Q(    <p class="release-info">#{release}</p>)}
-              #{(series.empty? && release.empty?) ? '' : %Q(</div>)}
+                #{%(<div class="publication-info">) unless series.empty? && release.empty?}
+                #{%(    <p class="series">#{series}</p>) unless series.empty?}
+                #{%(    <p class="release-info">#{release}</p>) unless release.empty?}
+                #{%(</div>) unless series.empty? && release.empty?}
               MD
               File.write(File.join(dest, 'contents', '00-titlepage.md'), titlepage, encoding: 'utf-8')
 
               # 01-legalpage.md
-              legal = (cfg['legal'] || {})
+              legal = cfg['legal'] || {}
               disclaimer = (legal['disclaimer'] || '').to_s.strip
               trademark  = (legal['trademark']  || '').to_s.strip
               if disclaimer.empty? && trademark.empty?
                 disclaimer = <<~TXT.strip
-                本書は教育目的で作成された入門書であり、情報の提供のみを目的としています。内容の正確性には万全を期しておりますが、技術的な詳細については、専門的な文献もあわせてご参照ください。
-                本書の内容を参考にした結果生じた損害や、本書の内容を実行・運用・適用したことによって発生した問題について、著者・発行者および関係者は一切の責任を負いかねます。
+                  本書は教育目的で作成された入門書であり、情報の提供のみを目的としています。内容の正確性には万全を期しておりますが、技術的な詳細については、専門的な文献もあわせてご参照ください。
+                  本書の内容を参考にした結果生じた損害や、本書の内容を実行・運用・適用したことによって発生した問題について、著者・発行者および関係者は一切の責任を負いかねます。
                 TXT
                 trademark = <<~TXT.strip
-                本書に登場するシステム名や製品名は、関係各社の商標または登録商標です。
-                本書では ™、®、© などのマークは省略しています。
+                  本書に登場するシステム名や製品名は、関係各社の商標または登録商標です。
+                  本書では ™、®、© などのマークは省略しています。
                 TXT
               end
               legal_md = <<~MD
-              <div class="disclaimer">
-                <h2>■免責</h2>
-                #{disclaimer.split(/\r?\n/).map { |l| "  <p>#{l}</p>" }.join("\n")}
-              </div>
+                <div class="disclaimer">
+                  <h2>■免責</h2>
+                  #{disclaimer.split(/\r?\n/).map { |l| "  <p>#{l}</p>" }.join("\n")}
+                </div>
 
-              <div class="trademark">
-                <h2>■商標</h2>
-                #{trademark.split(/\r?\n/).map { |l| "  <p>#{l}</p>" }.join("\n")}
-              </div>
+                <div class="trademark">
+                  <h2>■商標</h2>
+                  #{trademark.split(/\r?\n/).map { |l| "  <p>#{l}</p>" }.join("\n")}
+                </div>
               MD
               File.write(File.join(dest, 'contents', '01-legalpage.md'), legal_md, encoding: 'utf-8')
 
@@ -258,19 +261,20 @@ module Vivlio
               current_year = Time.now.year
               start_year = nil
               if release =~ /令和([一二三四五六七八九十百]+)年/
-                kan = $1
-                kan_map = { '零'=>0, '一'=>1, '二'=>2, '三'=>3, '四'=>4, '五'=>5, '六'=>6, '七'=>7, '八'=>8, '九'=>9 }
+                kan = ::Regexp.last_match(1)
+                kan_map = { '零' => 0, '一' => 1, '二' => 2, '三' => 3, '四' => 4, '五' => 5, '六' => 6, '七' => 7, '八' => 8,
+                            '九' => 9 }
                 to_int = lambda do |s|
                   total = 0
                   if s.include?('百')
-                    s = s.sub('百','')
+                    s = s.sub('百', '')
                     total += 100
                   end
                   if s.include?('十')
                     parts = s.split('十', 2)
                     tens = parts[0].empty? ? 1 : kan_map[parts[0]]
                     ones = parts[1].to_s.empty? ? 0 : kan_map[parts[1]]
-                    total += tens.to_i * 10 + ones.to_i
+                    total += (tens.to_i * 10) + ones.to_i
                   else
                     total += kan_map[s].to_i
                   end
@@ -279,55 +283,56 @@ module Vivlio
                 n = to_int.call(kan)
                 start_year = 2018 + n
               elsif release =~ /(\d{4})/
-                start_year = $1.to_i
+                start_year = ::Regexp.last_match(1).to_i
               end
               to_kan = lambda do |n|
-                km = %w(零 一 二 三 四 五 六 七 八 九)
-                return '零' if n == 0
+                km = %w[零 一 二 三 四 五 六 七 八 九]
+                return '零' if n.zero?
                 return km[n] if n < 10
                 return '十' if n == 10
+
                 tens = n / 10
                 ones = n % 10
                 s = ''
-                s += (tens == 1 ? '' : km[tens]) + '十'
-                s += (ones == 0 ? '' : km[ones])
+                s += "#{km[tens] unless tens == 1}十"
+                s += (ones.zero? ? '' : km[ones])
                 s
               end
               current_wareki = "令和#{to_kan.call(current_year - 2018)}年"
               copyright_years = if start_year && start_year != current_year && start_year >= 2019
-                start_wareki = "令和#{to_kan.call(start_year - 2018)}年"
-                "#{start_wareki} #{current_wareki}"
-              else
-                current_wareki
-              end
+                                  start_wareki = "令和#{to_kan.call(start_year - 2018)}年"
+                                  "#{start_wareki} #{current_wareki}"
+                                else
+                                  current_wareki
+                                end
               colophon_md = <<~MD
-              <h1 class="book-title">#{title}</h1>
-              #{subtitle.empty? ? '' : %Q(<p class="#{subtitle_class}">#{subtitle}</p>)}
+                <h1 class="book-title">#{title}</h1>
+                #{%(<p class="#{subtitle_class}">#{subtitle}</p>) unless subtitle.empty?}
 
-              #{release.empty? ? '' : %Q(<p class="publication-info">#{release}</p>)}
+                #{%(<p class="publication-info">#{release}</p>) unless release.empty?}
 
-              <dl class="info-list">
-                  #{author.empty? ? '' : %Q(<dt>著者</dt>\n        <dd>#{author}</dd>)}
-                  #{publisher.empty? ? '' : %Q(<dt>発行者</dt>\n        <dd>#{publisher}</dd>)}
-                  #{contact.empty? ? '' : %Q(<dt>連絡先</dt>\n        <dd>#{contact}</dd>)}
-              </dl>
+                <dl class="info-list">
+                    #{%(<dt>著者</dt>\n        <dd>#{author}</dd>) unless author.empty?}
+                    #{%(<dt>発行者</dt>\n        <dd>#{publisher}</dd>) unless publisher.empty?}
+                    #{%(<dt>連絡先</dt>\n        <dd>#{contact}</dd>) unless contact.empty?}
+                </dl>
 
-              <p class="copyright">
-                  <small>
-                      &copy; #{copyright_years} #{author.empty? ? '著者' : author} All rights reserved.
-                  </small>
-              </p>
+                <p class="copyright">
+                    <small>
+                        &copy; #{copyright_years} #{author.empty? ? '著者' : author} All rights reserved.
+                    </small>
+                </p>
 
-              <p class="powered-by">
-                  <small>
-                      (powered by Vivlio Starter)
-                  </small>
-              </p>
+                <p class="powered-by">
+                    <small>
+                        (powered by Vivlio Starter)
+                    </small>
+                </p>
               MD
               File.write(File.join(dest, 'contents', '99-colophon.md'), colophon_md, encoding: 'utf-8')
 
               Common.log_success("[vivlio-starter] Done. cd #{name} で移動し、執筆を開始できます。")
-              Common.log_info("例: vivliostyle preview などのコマンドを実行")
+              Common.log_info('例: vivliostyle preview などのコマンドを実行')
 
               # ---- 仕上げ: 依存診断の案内/実行（A+B 同時対応）
               begin
@@ -342,7 +347,7 @@ module Vivlio
                   else
                     proceed = false
                     if $stdin.tty?
-                      $stdout.print("qpdf / pdfinfo の診断を実行しますか？ [y/N]: ")
+                      $stdout.print('qpdf / pdfinfo の診断を実行しますか？ [y/N]: ')
                       ans = $stdin.gets
                       proceed = ans && ans.strip.downcase == 'y'
                     end
@@ -353,7 +358,7 @@ module Vivlio
                     end
                   end
                 end
-              rescue => e
+              rescue StandardError => e
                 Common.log_warn("doctor 実行フローでエラーが発生しました: #{e}")
               end
             end

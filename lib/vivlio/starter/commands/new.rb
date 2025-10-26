@@ -11,12 +11,10 @@ module Vivlio
 
         def run(name)
           name = (name || '').strip
-          abort "Error: プロジェクト名を指定してください。例: vs new mybook" if name.empty?
+          abort 'Error: プロジェクト名を指定してください。例: vs new mybook' if name.empty?
 
           dest = File.expand_path(name)
-          if File.exist?(dest)
-            abort "Error: '#{name}' は既に存在します。別名を指定してください。"
-          end
+          abort "Error: '#{name}' は既に存在します。別名を指定してください。" if File.exist?(dest)
 
           gem_root = File.expand_path('../../../..', __dir__)
           scaffold_root       = File.join(gem_root, 'lib', 'project_scaffold')
@@ -51,7 +49,8 @@ module Vivlio
           if File.file?(source_config_book)
             FileUtils.cp(source_config_book, target_book)
           else
-            File.write(target_book, "# book.yml\nbook:\n  main_title: ''\n  subtitle: ''\n  subtitle_style: wave\n  author: ''\n  language: 'ja'\n")
+            File.write(target_book,
+                       "# book.yml\nbook:\n  main_title: ''\n  subtitle: ''\n  subtitle_style: wave\n  author: ''\n  language: 'ja'\n")
           end
 
           # _post_replace_list.yml をプロジェクト直下にコピー（置換ルール定義）
@@ -73,14 +72,18 @@ module Vivlio
           # 対話形式で book.yml の主要3項目を入力（TTY の場合のみ）
           if $stdin.tty?
             begin
-              cfg = YAML.load_file(target_book) rescue {}
+              cfg = begin
+                YAML.load_file(target_book)
+              rescue StandardError
+                {}
+              end
               cfg = {} unless cfg.is_a?(Hash)
-              book_cfg = (cfg['book'] || {})
+              book_cfg = cfg['book'] || {}
 
               def self.prompt_with_default(label, current)
                 print "#{label} [#{current}]: "
-                input = STDIN.gets&.strip
-                (input.nil? || input.empty?) ? current : input
+                input = $stdin.gets&.strip
+                input.nil? || input.empty? ? current : input
               end
 
               puts "\n[vivlio-starter] 書籍情報を入力してください（未入力は現状の値を維持）"
@@ -109,29 +112,30 @@ module Vivlio
 
                 keys = {
                   'main_title' => new_title,
-                  'subtitle'   => new_sub,
-                  'author'     => new_auth
+                  'subtitle' => new_sub,
+                  'author' => new_auth
                 }
 
-                present = { 'main_title'=>false, 'subtitle'=>false, 'author'=>false }
+                present = { 'main_title' => false, 'subtitle' => false, 'author' => false }
 
                 # 既存行の置換（末尾コメント保持）
                 ((book_idx + 1)...end_idx).each do |i|
                   line = lines[i]
-                  if line =~ /^(\s{2})(main_title|subtitle|author):\s*([^#\n]*)(\s*#.*)?$/
-                    indent = $1
-                    key    = $2
-                    comment= $4.to_s
-                    value  = keys[key]
-                    lines[i] = "#{indent}#{key}: '#{value}'#{comment}\n"
-                    present[key] = true
-                  end
+                  next unless line =~ /^(\s{2})(main_title|subtitle|author):\s*([^#\n]*)(\s*#.*)?$/
+
+                  indent = ::Regexp.last_match(1)
+                  key    = ::Regexp.last_match(2)
+                  comment = ::Regexp.last_match(4).to_s
+                  value = keys[key]
+                  lines[i] = "#{indent}#{key}: '#{value}'#{comment}\n"
+                  present[key] = true
                 end
 
                 # 足りないキーを、book: 直後に追記（main_title, subtitle, author 順）
                 insert_pos = book_idx + 1
-                [ 'main_title', 'subtitle', 'author' ].each do |key|
+                %w[main_title subtitle author].each do |key|
                   next if present[key]
+
                   value = keys[key]
                   lines.insert(insert_pos, "  #{key}: '#{value}'\n")
                   insert_pos += 1
@@ -143,14 +147,14 @@ module Vivlio
                 # フォールバック: book: が見つからない場合は追記
                 File.open(target_book, 'a:utf-8') do |f|
                   f.puts
-                  f.puts "book:"
+                  f.puts 'book:'
                   f.puts "  main_title: '#{new_title}'"
                   f.puts "  subtitle: '#{new_sub}'"
                   f.puts "  author: '#{new_auth}'"
                 end
                 puts "[vivlio-starter] book.yml に book セクションを追記しました。\n"
               end
-            rescue => e
+            rescue StandardError => e
               warn "[vivlio-starter] book.yml の対話入力に失敗しました: #{e}"
             end
           end
@@ -274,22 +278,20 @@ module Vivlio
           # ----- 自動生成: 00 / 01 / 99 -----
           cfg = begin
             YAML.load_file(target_book)
-          rescue
+          rescue StandardError
             {}
           end
 
-          book = (cfg['book'] || {})
+          book = cfg['book'] || {}
           full  = (book['title'] || '').to_s
           main  = (book['main_title'] || '').to_s
           sub   = (book['subtitle'] || '').to_s
 
           title = main.empty? ? full : main
           subtitle = sub
-          if subtitle.empty? && !full.empty?
-            if full =~ /(.*?)[ \u3000]*[～〜](.+?)[～〜]\s*$/
-              title = $1.to_s.strip
-              subtitle = $2.to_s.strip
-            end
+          if subtitle.empty? && !full.empty? && (full =~ /(.*?)[ \u3000]*[～〜](.+?)[～〜]\s*$/)
+            title = ::Regexp.last_match(1).to_s.strip
+            subtitle = ::Regexp.last_match(2).to_s.strip
           end
           title = title.to_s.gsub(/[ \u3000]*[～〜].*$/, '').strip
 
@@ -303,19 +305,19 @@ module Vivlio
           # 00-titlepage.md
           titlepage = <<~MD
             <h1 class="book-title">#{title}</h1>
-            #{subtitle.empty? ? '' : %Q(<p class="#{subtitle_class}">#{subtitle}</p>)}
+            #{%(<p class="#{subtitle_class}">#{subtitle}</p>) unless subtitle.empty?}
 
-            #{author.empty? ? '' : %Q(<p class="author"><span>[著]</span> #{author}</p>)}
+            #{%(<p class="author"><span>[著]</span> #{author}</p>) unless author.empty?}
 
-            #{(series.empty? && release.empty?) ? '' : %Q(<div class="publication-info">)}
-            #{series.empty? ? '' : %Q(    <p class="series">#{series}</p>)}
-            #{release.empty? ? '' : %Q(    <p class="release-info">#{release}</p>)}
-            #{(series.empty? && release.empty?) ? '' : %Q(</div>)}
+            #{%(<div class="publication-info">) unless series.empty? && release.empty?}
+            #{%(    <p class="series">#{series}</p>) unless series.empty?}
+            #{%(    <p class="release-info">#{release}</p>) unless release.empty?}
+            #{%(</div>) unless series.empty? && release.empty?}
           MD
           File.write(File.join(dest, 'contents', '00-titlepage.md'), titlepage, encoding: 'utf-8')
 
           # 01-legalpage.md
-          legal = (cfg['legal'] || {})
+          legal = cfg['legal'] || {}
           disclaimer = (legal['disclaimer'] || '').to_s.strip
           trademark  = (legal['trademark']  || '').to_s.strip
           if disclaimer.empty? && trademark.empty?
@@ -347,19 +349,20 @@ module Vivlio
           current_year = Time.now.year
           start_year = nil
           if release =~ /令和([一二三四五六七八九十百]+)年/
-            kan = $1
-            kan_map = { '零'=>0, '一'=>1, '二'=>2, '三'=>3, '四'=>4, '五'=>5, '六'=>6, '七'=>7, '八'=>8, '九'=>9 }
+            kan = ::Regexp.last_match(1)
+            kan_map = { '零' => 0, '一' => 1, '二' => 2, '三' => 3, '四' => 4, '五' => 5, '六' => 6, '七' => 7, '八' => 8,
+                        '九' => 9 }
             to_int = lambda do |s|
               total = 0
               if s.include?('百')
-                s = s.sub('百','')
+                s = s.sub('百', '')
                 total += 100
               end
               if s.include?('十')
                 parts = s.split('十', 2)
                 tens = parts[0].empty? ? 1 : kan_map[parts[0]]
                 ones = parts[1].to_s.empty? ? 0 : kan_map[parts[1]]
-                total += tens.to_i * 10 + ones.to_i
+                total += (tens.to_i * 10) + ones.to_i
               else
                 total += kan_map[s].to_i
               end
@@ -368,37 +371,38 @@ module Vivlio
             n = to_int.call(kan)
             start_year = 2018 + n
           elsif release =~ /(\d{4})/
-            start_year = $1.to_i
+            start_year = ::Regexp.last_match(1).to_i
           end
           to_kan = lambda do |n|
-            km = %w(零 一 二 三 四 五 六 七 八 九)
-            return '零' if n == 0
+            km = %w[零 一 二 三 四 五 六 七 八 九]
+            return '零' if n.zero?
             return km[n] if n < 10
             return '十' if n == 10
+
             tens = n / 10
             ones = n % 10
             s = ''
-            s += (tens == 1 ? '' : km[tens]) + '十'
-            s += (ones == 0 ? '' : km[ones])
+            s += "#{km[tens] unless tens == 1}十"
+            s += (ones.zero? ? '' : km[ones])
             s
           end
           current_wareki = "令和#{to_kan.call(current_year - 2018)}年"
           copyright_years = if start_year && start_year != current_year && start_year >= 2019
-            start_wareki = "令和#{to_kan.call(start_year - 2018)}年"
-            "#{start_wareki} #{current_wareki}"
-          else
-            current_wareki
-          end
+                              start_wareki = "令和#{to_kan.call(start_year - 2018)}年"
+                              "#{start_wareki} #{current_wareki}"
+                            else
+                              current_wareki
+                            end
           colophon_md = <<~MD
             <h1 class="book-title">#{title}</h1>
-            #{subtitle.empty? ? '' : %Q(<p class="#{subtitle_class}">#{subtitle}</p>)}
+            #{%(<p class="#{subtitle_class}">#{subtitle}</p>) unless subtitle.empty?}
 
-            #{release.empty? ? '' : %Q(<p class="publication-info">#{release}</p>)}
+            #{%(<p class="publication-info">#{release}</p>) unless release.empty?}
 
             <dl class="info-list">
-                #{author.empty? ? '' : %Q(<dt>著者</dt>\n                <dd>#{author}</dd>)}
-                #{publisher.empty? ? '' : %Q(<dt>発行者</dt>\n                <dd>#{publisher}</dd>)}
-                #{contact.empty? ? '' : %Q(<dt>連絡先</dt>\n                <dd>#{contact}</dd>)}
+                #{%(<dt>著者</dt>\n                <dd>#{author}</dd>) unless author.empty?}
+                #{%(<dt>発行者</dt>\n                <dd>#{publisher}</dd>) unless publisher.empty?}
+                #{%(<dt>連絡先</dt>\n                <dd>#{contact}</dd>) unless contact.empty?}
             </dl>
 
             <p class="copyright">
@@ -419,7 +423,7 @@ module Vivlio
           begin
             # `vs` は gem 同梱のコマンド。プロジェクト直下で実行して設定を生成する。
             system({ 'VIVLIO_QUIET' => '1' }, 'vs', 'config', chdir: dest)
-          rescue => e
+          rescue StandardError => e
             warn "[vivlio-starter] vivliostyle 設定生成に失敗しました（スキップ）: #{e}"
           end
 
@@ -454,10 +458,8 @@ module Vivlio
 
           # プロジェクト用 Gemfile が用意されている場合はコピー（任意）
           begin
-            if File.file?(source_gemfile)
-              FileUtils.cp(source_gemfile, File.join(dest, 'Gemfile'))
-            end
-          rescue => e
+            FileUtils.cp(source_gemfile, File.join(dest, 'Gemfile')) if File.file?(source_gemfile)
+          rescue StandardError => e
             warn "[vivlio-starter] Gemfile のコピーに失敗しました（継続）: #{e}"
           end
 
@@ -473,18 +475,18 @@ module Vivlio
             js.gsub!(/(^\s*author:\s*)['"][^'"]*['"]/,       "\\1'#{author}'")
             js.gsub!(/(^\s*language:\s*)['"][^'"]*['"]/,     "\\1'#{lang}'")
             js.gsub!(/(^\s*readingProgression:\s*)['"][^'"]*['"]/, "\\1'#{rp}'")
-            js.gsub!(/(^\s*['\"]\.\/output\.pdf['\"])|(^\s*['\"][^'\"]*\.pdf['\"])/, "'./#{outf}'")
+            js.gsub!(%r{(^\s*['"]\./output\.pdf['"])|(^\s*['"][^'"]*\.pdf['"])}, "'./#{outf}'")
 
             # output: [ './file.pdf' ] の形式に限定して安全に置換
             js.gsub!(/(^\s*output:\s*\[\s*)['"][^'"]*\.pdf['"](\s*\])/m, "\\1'./#{outf}'\\2")
 
             File.write(target_viv_config, js, encoding: 'utf-8')
-          rescue => e
+          rescue StandardError => e
             warn "[vivlio-starter] vivliostyle.config.js の同期に失敗しました（継続）: #{e}"
           end
 
           puts "[vivlio-starter] 完了しました。cd #{name} で移動し、執筆を開始できます。"
-          puts "例: vivlio-starter build で執筆した書籍をPDFで作成できます。"
+          puts '例: vivlio-starter build で執筆した書籍をPDFで作成できます。'
           0
         end
       end

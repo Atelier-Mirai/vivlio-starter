@@ -16,24 +16,30 @@ module Vivlio
       # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
       # ================================================================
       module PreProcessCommands
-        extend self
+        module_function
+
+        PRE_PROCESS_DESC = {
+          short: 'Markdownファイルの前処理を行います',
+          long: <<~DESC
+            指定した Markdown ファイルの前処理を行います。指定が無い場合は contents/ 配下の全 .md を対象にします。
+
+            処理内容:
+            - フロントマターの生成/更新
+            - 画像パスの修正
+            - ソースコードインクルード
+            - book-card/table-rotate ブロックの変換
+            - リンクの脚注化
+
+            例:
+              vs pre_process 11-install
+              vs pre_process 11-install.md 12-tutorial
+          DESC
+        }.freeze
+
         def included(base)
           base.class_eval do
-            desc 'pre_process [TOKENS...]', 'Markdownファイルの前処理を行います'
-            long_desc <<~DESC
-              指定した Markdown ファイルの前処理を行います。指定が無い場合は contents/ 配下の全 .md を対象にします。
-
-              処理内容:
-              - フロントマターの生成/更新
-              - 画像パスの修正
-              - ソースコードインクルード
-              - book-card/table-rotate ブロックの変換
-              - リンクの脚注化
-
-              例:
-                vs pre_process 11-install
-                vs pre_process 11-install.md 12-tutorial
-            DESC
+            desc 'pre_process [TOKENS...]', PRE_PROCESS_DESC[:short]
+            long_desc PRE_PROCESS_DESC[:long]
             # ================================================================
             # Command: pre_process（Markdown 前処理）
             # ------------------------------------------------
@@ -51,26 +57,26 @@ module Vivlio
 
               # 処理対象のファイルを決定
               md_files = if files.any?
-                # 存在しないファイルをチェック
-                missing_files = files.reject { |f| File.exist?("#{Common::CONTENTS_DIR}/#{f}.md") }
-                if missing_files.any?
-                  Common.log_error("エラー: 次のファイルが存在しません: #{missing_files.join(', ')}")
-                  Common.log_warn("前処理を中止します")
-                  exit(1)
-                end
-                files.map { |f| "#{Common::CONTENTS_DIR}/#{f}.md" }
-              else
-                # 引数がない場合は全Markdownファイルを処理
-                Dir.glob("#{Common::CONTENTS_DIR}/*.md")
-              end
+                           # 存在しないファイルをチェック
+                           missing_files = files.reject { |f| File.exist?("#{Common::CONTENTS_DIR}/#{f}.md") }
+                           if missing_files.any?
+                             Common.log_error("エラー: 次のファイルが存在しません: #{missing_files.join(', ')}")
+                             Common.log_warn('前処理を中止します')
+                             exit(1)
+                           end
+                           files.map { |f| "#{Common::CONTENTS_DIR}/#{f}.md" }
+                         else
+                           # 引数がない場合は全Markdownファイルを処理
+                           Dir.glob("#{Common::CONTENTS_DIR}/*.md")
+                         end
 
               # 各Markdownファイルを処理
-              Common.log_action("Markdownファイルの前処理を行っています...")
+              Common.log_action('Markdownファイルの前処理を行っています...')
               md_files.each do |md_file|
                 process_single_markdown_file(md_file)
               end
 
-              Common.log_success("Markdownの前処理が完了しました")
+              Common.log_success('Markdownの前処理が完了しました')
             end
           end
         end
@@ -87,19 +93,19 @@ module Vivlio
           return default_when_nil if raw.nil? || raw.to_s.strip.empty?
 
           s = raw.to_s.strip
-          return s if s =~ /^url\(/i || s =~ /^https?:\/\//i
+          return s if s =~ /^url\(/i || s =~ %r{^https?://}i
 
           path = s
           path = path.downcase if downcase_if && path =~ downcase_if
-          path = "images/#{path}" unless path.include?("/")
+          path = "images/#{path}" unless path.include?('/')
 
           styles_dir = Common::STYLESHEETS_DIR
           abs_path   = File.join(styles_dir, path)
           base_noext = File.extname(abs_path).empty? ? abs_path : abs_path.sub(/\.[^.]+\z/, '')
-          webp_abs   = base_noext + '.webp'
+          webp_abs   = "#{base_noext}.webp"
 
           unless File.exist?(webp_abs)
-            candidates = [base_noext + '.png', base_noext + '.jpg', base_noext + '.jpeg']
+            candidates = ["#{base_noext}.png", "#{base_noext}.jpg", "#{base_noext}.jpeg"]
             src = candidates.find { |p| File.exist?(p) }
             if src
               dir = File.dirname(src)
@@ -125,32 +131,32 @@ module Vivlio
 
         # 拡張子→言語の対応表
         EXT_TO_LANG = {
-          'c'    => 'c',
-          'cc'   => 'cpp',
-          'cpp'  => 'cpp',
-          'cs'   => 'csharp',
-          'css'  => 'css',
-          'cxx'  => 'cpp',
-          'go'   => 'go',
+          'c' => 'c',
+          'cc' => 'cpp',
+          'cpp' => 'cpp',
+          'cs' => 'csharp',
+          'css' => 'css',
+          'cxx' => 'cpp',
+          'go' => 'go',
           'html' => 'html',
           'java' => 'java',
-          'js'   => 'javascript',
+          'js' => 'javascript',
           'json' => 'json',
-          'kt'   => 'kotlin',
-          'md'   => 'markdown',
-          'php'  => 'php',
-          'py'   => 'python',
-          'rb'   => 'ruby',
-          'rs'   => 'rust',
-          'scala'=> 'scala',
+          'kt' => 'kotlin',
+          'md' => 'markdown',
+          'php' => 'php',
+          'py' => 'python',
+          'rb' => 'ruby',
+          'rs' => 'rust',
+          'scala' => 'scala',
           'scss' => 'scss',
-          'sh'   => 'bash',
-          'sql'  => 'sql',
-          'swift'=> 'swift',
-          'ts'   => 'typescript',
-          'xml'  => 'xml',
+          'sh' => 'bash',
+          'sql' => 'sql',
+          'swift' => 'swift',
+          'ts' => 'typescript',
+          'xml' => 'xml',
           'yaml' => 'yaml',
-          'yml'  => 'yaml'
+          'yml' => 'yaml'
         }.freeze
 
         # 拡張子からPrism等で使う言語名を推定（未知拡張子は 'text'）
@@ -167,67 +173,64 @@ module Vivlio
         # - 未対応のMarkdown記法はそのまま段落テキストとして残る（厳密な互換は目的外）
         def render_markdown_to_html(md_text)
           # まずはKramdownを試す
-          begin
-            require 'kramdown'
-            return Kramdown::Document.new(md_text).to_html
-          rescue LoadError
-            # フォールバック: 最小限のMarkdownをHTMLへ
-            lines = md_text.to_s.split(/\r?\n/)
-            html_parts = []
-            in_ol = false
-            buffer_p = []
 
-            flush_p = lambda do
-              unless buffer_p.empty?
-                paragraph = buffer_p.join(" ").strip
-                html_parts << "<p>#{paragraph}</p>" unless paragraph.empty?
-                buffer_p.clear
-              end
+          require 'kramdown'
+          Kramdown::Document.new(md_text).to_html
+        rescue LoadError
+          # フォールバック: 最小限のMarkdownをHTMLへ
+          lines = md_text.to_s.split(/\r?\n/)
+          html_parts = []
+          in_ol = false
+          buffer_p = []
+
+          flush_p = lambda do
+            unless buffer_p.empty?
+              paragraph = buffer_p.join(' ').strip
+              html_parts << "<p>#{paragraph}</p>" unless paragraph.empty?
+              buffer_p.clear
             end
-
-            lines.each do |line|
-              if line.strip.empty?
-                flush_p.call
-                next
-              end
-
-              # 画像
-              if m = line.match(/^\s*!\[[^\]]*\]\(([^)]+)\)\s*$/)
-                flush_p.call
-                src = m[1]
-                html_parts << "<img src=\"#{src}\">"
-                next
-              end
-
-              # 見出し相当の太字行
-              if m = line.match(/^\s*\*\*(.+?)\*\*\s*$/)
-                flush_p.call
-                html_parts << "<p><strong>#{m[1]}</strong></p>"
-                next
-              end
-
-              # 番号リスト
-              # - 連続する行に対して <ol> を1回だけ開き、非連続になったら </ol> を閉じる
-              if m = line.match(/^\s*(\d+)\.\s+(.*)$/)
-                flush_p.call
-                html_parts << "<ol>" unless in_ol
-                in_ol = true
-                html_parts << "<li>#{m[2]}</li>"
-                next
-              else
-                if in_ol
-                  html_parts << "</ol>"
-                  in_ol = false
-                end
-              end
-
-              buffer_p << line
-            end
-
-            flush_p.call
-            html_parts << "</ol>" if in_ol
-            html_parts.join("\n")
           end
+
+          lines.each do |line|
+            if line.strip.empty?
+              flush_p.call
+              next
+            end
+
+            # 画像
+            if (m = line.match(/^\s*!\[[^\]]*\]\(([^)]+)\)\s*$/))
+              flush_p.call
+              src = m[1]
+              html_parts << "<img src=\"#{src}\">"
+              next
+            end
+
+            # 見出し相当の太字行
+            if (m = line.match(/^\s*\*\*(.+?)\*\*\s*$/))
+              flush_p.call
+              html_parts << "<p><strong>#{m[1]}</strong></p>"
+              next
+            end
+
+            # 番号リスト
+            # - 連続する行に対して <ol> を1回だけ開き、非連続になったら </ol> を閉じる
+            if (m = line.match(/^\s*(\d+)\.\s+(.*)$/))
+              flush_p.call
+              html_parts << '<ol>' unless in_ol
+              in_ol = true
+              html_parts << "<li>#{m[2]}</li>"
+              next
+            elsif in_ol
+              html_parts << '</ol>'
+              in_ol = false
+            end
+
+            buffer_p << line
+          end
+
+          flush_p.call
+          html_parts << '</ol>' if in_ol
+          html_parts.join("\n")
         end
 
         # Markdown内のリンク記法を脚注化
@@ -254,9 +257,9 @@ module Vivlio
           #   - (?!\[\^url\d+\]) で既に脚注参照 [^urlN] が直後にあるケースを除外
           # - 同一URLは同一脚注IDに束ね、章内で連番を継続（既存最大番号から開始）
           # - 末尾の脚注定義は既存定義があれば重複作成しない
-          replaced = text.gsub(/(?<!\!)\[(.+?)\]\((https?:[^\s)]+)\)(?!\[\^url\d+\])/) do |match|
-            label = $1
-            url   = $2
+          replaced = text.gsub(/(?<!!)\[(.+?)\]\((https?:[^\s)]+)\)(?!\[\^url\d+\])/) do |_match|
+            label = ::Regexp.last_match(1)
+            url   = ::Regexp.last_match(2)
             id = (url_id[url] ||= begin
               max_n += 1
               "url#{max_n}"
@@ -269,18 +272,19 @@ module Vivlio
           existing_defs = {}
           text.scan(/\[\^(url\d+)\]:\s*(\S+)/) { |id, u| existing_defs[id] = u }
 
-          new_defs = url_id.map { |u, id|
+          new_defs = url_id.map do |u, id|
             next nil if existing_defs.key?(id)
+
             "[^#{id}]: #{u}"
-          }.compact
+          end.compact
 
           return replaced if new_defs.empty?
 
           # 文末に空行2つを挟んで脚注定義を追記
           if replaced.strip.end_with?("\n")
-            replaced + "\n" + new_defs.join("\n") + "\n"
+            "#{replaced}\n#{new_defs.join("\n")}\n"
           else
-            replaced + "\n\n" + new_defs.join("\n") + "\n"
+            "#{replaced}\n\n#{new_defs.join("\n")}\n"
           end
         end
 
@@ -295,14 +299,10 @@ module Vivlio
 
             # 画像のみの行の直後に空行を補う
             if line.match(/^\s*!\[[^\]]*\]\([^)]+\)\s*$/)
-              if next_line && next_line.strip != ""
-                out << ""
-              end
+              out << '' if next_line && next_line.strip != ''
             # 太字のみの行の直後に空行を補う
             elsif line.match(/^\s*\*\*[^*].*\*\*\s*$/)
-              if next_line && next_line.strip != ""
-                out << ""
-              end
+              out << '' if next_line && next_line.strip != ''
             end
           end
           out.join("\n")
@@ -312,8 +312,8 @@ module Vivlio
         # - 内側Markdownを normalize → 簡易レンダラでHTML化 → 本テンプレ構造に組み替え
         def convert_book_card_inner_markdown(content)
           # 開始/終了タグの直後に改行が入っているテンプレ構造を前提に、内側をキャプチャ
-          content.gsub(/<div class=\"book-card\">\n(.*?)\n<\/div>/m) do
-            inner = $1
+          content.gsub(%r{<div class="book-card">\n(.*?)\n</div>}m) do
+            inner = ::Regexp.last_match(1)
             normalized = normalize_book_card_md(inner)
             html = render_markdown_to_html(normalized)
             formatted = format_book_card_inner_html(html)
@@ -327,46 +327,46 @@ module Vivlio
         # - アラインメントや複雑なMarkdown表現は非対応の簡易実装
         def pipe_table_to_html(md_text)
           text = md_text.to_s.strip
-          lines = text.split(/\r?\n/).map { |l| l.rstrip }
+          lines = text.split(/\r?\n/).map(&:rstrip)
           return nil if lines.size < 2
 
           header = lines[0]
           sep    = lines[1]
-          return nil unless header.include?("|")
-          return nil unless sep && sep =~ /^\s*\|?[\s:\-\|]+\|?\s*$/
+          return nil unless header.include?('|')
+          return nil unless sep && sep =~ /^\s*\|?[\s:\-|]+\|?\s*$/
 
           rows = lines[2..] || []
 
           to_cells = lambda do |line|
-            parts = line.split("|")
-            parts.shift if parts.first&.strip == ""
-            parts.pop   if parts.last&.strip  == ""
-            parts.map { |c| c.strip }
+            parts = line.split('|')
+            parts.shift if parts.first&.strip == ''
+            parts.pop   if parts.last&.strip  == ''
+            parts.map(&:strip)
           end
 
           esc_code = lambda do |s|
-            s.gsub(/`([^`]+)`/) { "<code>#{$1}</code>" }
-              .gsub(/&/, "&amp;")
-              .gsub(/</, "&lt;")
-              .gsub(/>/, "&gt;")
+            s.gsub(/`([^`]+)`/) { "<code>#{::Regexp.last_match(1)}</code>" }
+             .gsub('&', '&amp;')
+             .gsub('<', '&lt;')
+             .gsub('>', '&gt;')
           end
 
           thead_cells = to_cells.call(header)
           tbody_rows  = rows.map { |r| to_cells.call(r) }
 
           html = []
-          html << "<table>"
-          html << "  <thead>"
+          html << '<table>'
+          html << '  <thead>'
           html << "    <tr>#{thead_cells.map { |c| "<th>#{esc_code.call(c)}</th>" }.join}</tr>"
-          html << "  </thead>"
+          html << '  </thead>'
           if tbody_rows.any?
-            html << "  <tbody>"
+            html << '  <tbody>'
             tbody_rows.each do |cells|
               html << "    <tr>#{cells.map { |c| "<td>#{esc_code.call(c)}</td>" }.join}</tr>"
             end
-            html << "  </tbody>"
+            html << '  </tbody>'
           end
-          html << "</table>"
+          html << '</table>'
           html.join("\n")
         end
 
@@ -374,20 +374,20 @@ module Vivlio
         # - 通常は簡易レンダラでHTML化
         # - HTMLに<table>が含まれないが '|' を含む場合、pipe_table_to_html にフォールバック
         def convert_table_rotate_inner_markdown(content)
-          content.gsub(/<div class=\"table-rotate\">\s*(.*?)\s*<\/div>/m) do
-            inner = $1
+          content.gsub(%r{<div class="table-rotate">\s*(.*?)\s*</div>}m) do
+            inner = ::Regexp.last_match(1)
             normalized = "\n\n#{inner.to_s.strip}\n\n"
             html = render_markdown_to_html(normalized).to_s.strip
 
             # フォールバック
             # - 簡易レンダラが<table>を生成していないが、Markdownパイプテーブルらしき記号'|'がある場合のみ
             #   文字列ヒューリスティックで pipe_table_to_html を試す
-            if !html.include?("<table") && inner.include?("|")
+            if !html.include?('<table') && inner.include?('|')
               table_html = pipe_table_to_html(inner)
               html = table_html if table_html
             end
 
-            "<div class=\"table-rotate\">\n#{html}\n<\/div>"
+            "<div class=\"table-rotate\">\n#{html}\n</div>"
           end
         end
 
@@ -401,20 +401,22 @@ module Vivlio
           img_match = html.match(/<img[^>]*>/i)
           # 必須要素が欠ける場合（画像やタイトルがない等）は変換せず原文を返す
           return inner_html unless img_match
+
           img_tag = img_match[0]
-          img_tag = img_tag.gsub(/\s*\/?\>/i) { |m| '>' }
+          img_tag = img_tag.gsub(%r{\s*/?>}i) { |_m| '>' }
 
           # 画像のみの<p>ラッパーを除去
-          if html.sub!(/<p>\s*#{Regexp.escape(img_match[0])}\s*<\/p>/i, '')
+          if html.sub!(%r{<p>\s*#{Regexp.escape(img_match[0])}\s*</p>}i, '')
             # removed wrapped <p> with img
           else
             html.sub!(img_match[0], '')
           end
 
           # 2) タイトルを抽出
-          title_match = html.match(/<p>\s*<strong>(.*?)<\/strong>\s*<\/p>/im)
+          title_match = html.match(%r{<p>\s*<strong>(.*?)</strong>\s*</p>}im)
           # タイトルが見つからない場合も変換不可
           return inner_html unless title_match
+
           title_text = title_match[1].strip
           html.sub!(title_match[0], '')
 
@@ -424,12 +426,12 @@ module Vivlio
           # 4) 目標の構造で出力
           parts = []
           parts << "  #{img_tag}"
-          parts << "  <div class=\"book-info\">"
+          parts << '  <div class="book-info">'
           parts << "    <p class=\"book-title\">#{title_text}</p>"
-          parts << "    <div class=\"book-description\">"
+          parts << '    <div class="book-description">'
           parts << "      #{description_html}"
-          parts << "    </div>"
-          parts << "  </div>"
+          parts << '    </div>'
+          parts << '  </div>'
           parts.join("\n")
         end
 
@@ -442,7 +444,7 @@ module Vivlio
           # 設定キー: theme.color（必須ではないが、指定時は厳密に検証）
           theme_name, theme_accent_value = begin
             cfg = Common::CONFIG
-            raw = (cfg && cfg['theme'] && cfg['theme']['color'])
+            raw = cfg && cfg['theme'] && cfg['theme']['color']
             s = raw.to_s.strip
             t = s.downcase
             allowed = %w[yellow orange amber red magenta purple indigo blue cyan teal green lime]
@@ -456,11 +458,11 @@ module Vivlio
               [t, t]
             elsif hex_bare_ok
               # 先頭#なし（ff0000 / f00 / rrggbbaa）にも対応
-              normalized = "#" + t
+              normalized = "##{t}"
               [normalized, normalized]
             elsif hex_0x_ok
               # 0xRRGGBB / 0xRRGGBBAA にも対応
-              normalized = "#" + t.sub(/^0x/i, '')
+              normalized = "##{t.sub(/^0x/i, '')}"
               [normalized, normalized]
             elsif allowed.include?(t)
               [t, "var(--accent-#{t})"]
@@ -476,7 +478,7 @@ module Vivlio
             s = (cfg && cfg['theme'] && cfg['theme']['style']) || 'image'
             s = s.to_s.strip.downcase
             %w[simple image].include?(s) ? s : 'image'
-          rescue
+          rescue StandardError
             'image'
           end
 
@@ -498,18 +500,19 @@ module Vivlio
 
             # --theme-accent を named の場合は var(--accent-<name>)、HEX の場合は生の色に設定
             css = css.sub(/(--theme-accent:\s*)[^;]+(\s*;)/) do
-              pre, post = $1, $2
+              pre = ::Regexp.last_match(1)
+              post = ::Regexp.last_match(2)
               "#{pre}#{theme_accent_value}#{post}"
             end
 
             # 強調色・強意の下線色もテーマアクセントに追従させる
-            css = css.sub(/(--color-strong:\s*)[^;]+(\s*;)/, "\\1var(--theme-accent)\\2")
-            css = css.sub(/(--color-em-underline:\s*)[^;]+(\s*;)/, "\\1var(--theme-accent)\\2")
+            css = css.sub(/(--color-strong:\s*)[^;]+(\s*;)/, '\\1var(--theme-accent)\\2')
+            css = css.sub(/(--color-em-underline:\s*)[^;]+(\s*;)/, '\\1var(--theme-accent)\\2')
 
             if theme_style == 'simple'
               # 画像を使わないシンプルスタイル
-              css = css.sub(/(--section-bg-image:\s*)[^;]+(\s*;)/, "\\1none\\2")
-              css = css.sub(/(--chapter-door-image:\s*)[^;]+(\s*;)/, "\\1none\\2")
+              css = css.sub(/(--section-bg-image:\s*)[^;]+(\s*;)/, '\\1none\\2')
+              css = css.sub(/(--chapter-door-image:\s*)[^;]+(\s*;)/, '\\1none\\2')
             else
               # 画像ありスタイル（従来通り）
               # none でも url("...") でも置換できるように包括的なパターンで上書き
@@ -517,18 +520,20 @@ module Vivlio
               ornament_path = resolve_ornament_path(theme_cfg['ornament'])
               if ornament_path
                 ornament_value = if ornament_path =~ /^url\(/i
-                                    ornament_path
-                                  else
-                                    "url(\"#{ornament_path}\")"
-                                  end
+                                   ornament_path
+                                 else
+                                   "url(\"#{ornament_path}\")"
+                                 end
                 css = css.sub(/(--section-bg-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
-                  pre, post = $1, $2
+                  pre = ::Regexp.last_match(1)
+                  post = ::Regexp.last_match(2)
                   "#{pre}#{ornament_value}#{post}"
                 end
               else
                 # ornament 未指定時は既定の frame-yellow.webp を使用
                 css = css.sub(/(--section-bg-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
-                  pre, post = $1, $2
+                  pre = ::Regexp.last_match(1)
+                  post = ::Regexp.last_match(2)
                   "#{pre}url(\"images/frame-yellow.webp\")#{post}"
                 end
               end
@@ -536,20 +541,21 @@ module Vivlio
               # frontispiece_path は url(...) / http(s) / 相対パスのいずれか。
               # CSS の値として url("...") を組み立てる（url(...) が既に含まれていればそのまま）。
               door_value = if frontispiece_path =~ /^url\(/i
-                              frontispiece_path
-                            else
-                              "url(\"#{frontispiece_path}\")"
-                            end
+                             frontispiece_path
+                           else
+                             "url(\"#{frontispiece_path}\")"
+                           end
 
               css = css.sub(/(--chapter-door-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
-                pre, post = $1, $2
+                pre = ::Regexp.last_match(1)
+                post = ::Regexp.last_match(2)
                 "#{pre}#{door_value}#{post}"
               end
             end
 
             File.write(theme_css_path, css, encoding: 'utf-8')
             Common.log_success("theme.css を更新: theme=#{theme_name}, style=#{theme_style}, door=#{frontispiece_path}, ornament=#{theme_cfg['ornament']}")
-          rescue => _e
+          rescue StandardError => _e
             # 失敗しても前処理は継続
           end
 
@@ -560,13 +566,13 @@ module Vivlio
               ccss = File.read(chapter_css_path, encoding: 'utf-8')
               desired = theme_style == 'image' ? 'image_header.css' : 'simple_header.css'
               updated = ccss
-                .sub(/@import\s+url\("simple_header\.css"\);/, '@import url("' + desired + '");')
-                .sub(/@import\s+url\("image_header\.css"\);/, '@import url("' + desired + '");')
-              if updated != ccss
+                        .sub(/@import\s+url\("simple_header\.css"\);/, "@import url(\"#{desired}\");")
+                        .sub(/@import\s+url\("image_header\.css"\);/, "@import url(\"#{desired}\");")
+              if updated == ccss
+                Common.log_info("chapter.css のヘッダーimportは既に最新です: #{desired}")
+              else
                 File.write(chapter_css_path, updated, encoding: 'utf-8')
                 Common.log_success("chapter.css のヘッダーimportを切替: #{desired}")
-              else
-                Common.log_info("chapter.css のヘッダーimportは既に最新です: #{desired}")
               end
 
               # 章見出しマーカー（h3/h4 の ::before）を設定
@@ -583,6 +589,7 @@ module Vivlio
 
                 set_marker = lambda do |css_text, var_name, value|
                   return css_text if value.to_s.strip.empty?
+
                   esc = value.gsub('\\', '\\').gsub('"', '\\"')
                   if css_text.match(/#{Regexp.escape(var_name)}:\s*[^;]+;/)
                     css_text.sub(/(#{Regexp.escape(var_name)}:\s*)[^;]+(;)/, "\\1\"#{esc}\"\\2")
@@ -597,22 +604,22 @@ module Vivlio
                 css = set_marker.call(css, '--h3-marker', mark_h3) unless mark_h3.to_s.strip.empty?
                 css = set_marker.call(css, '--h4-marker', mark_h4) unless mark_h4.to_s.strip.empty?
 
-                if css != before_css
+                if css == before_css
+                  Common.log_info('theme.markers による変更はありません（既存定義を維持）')
+                else
                   File.write(chapter_css_path, css, encoding: 'utf-8')
                   logs = []
                   logs << "h3='#{mark_h3}'" unless mark_h3.to_s.strip.empty?
                   logs << "h4='#{mark_h4}'" unless mark_h4.to_s.strip.empty?
                   Common.log_success("chapter.css にマーカーを反映: #{logs.join(', ')}")
-                else
-                  Common.log_info('theme.markers による変更はありません（既存定義を維持）')
                 end
-              rescue => _e
+              rescue StandardError => _e
                 # 続行（マーカー設定は任意）
               end
             else
               Common.log_info("chapter.css が見つかりません: #{chapter_css_path}")
             end
-          rescue => _e
+          rescue StandardError => _e
             # 続行
           end
 
@@ -623,14 +630,14 @@ module Vivlio
               a = (cfg && cfg['theme'] && cfg['theme']['appendix_accent']) || 'blue'
               a = a.to_s.strip.downcase
               %w[neutral red blue].include?(a) ? a : 'blue'
-            rescue
+            rescue StandardError
               'blue'
             end
 
             color_map = {
               'neutral' => '#111',
-              'red'     => '#c62828',
-              'blue'    => '#3da8c9'
+              'red' => '#c62828',
+              'blue' => '#3da8c9'
             }
             hex = color_map[appendix_choice]
 
@@ -638,16 +645,16 @@ module Vivlio
             if File.exist?(appendix_css_path)
               a_css = File.read(appendix_css_path, encoding: 'utf-8')
               replaced = a_css.sub(/(--appendix-accent-color:\s*)#[0-9a-fA-F]{3,8}(\s*;)/, "\\1#{hex}\\2")
-              if replaced != a_css
+              if replaced == a_css
+                Common.log_info('appendix.css に --appendix-accent-color の定義が見つかりません（置換なし）')
+              else
                 File.write(appendix_css_path, replaced, encoding: 'utf-8')
                 Common.log_success("appendix.css を更新: appendix_accent=#{appendix_choice} (#{hex})")
-              else
-                Common.log_info('appendix.css に --appendix-accent-color の定義が見つかりません（置換なし）')
               end
             else
               Common.log_info("appendix.css が見つかりません: #{appendix_css_path}")
             end
-          rescue => _e
+          rescue StandardError => _e
             # 前処理続行
           end
 
@@ -664,7 +671,7 @@ module Vivlio
             # - 例: A5(148x210) およそ min(148/210, 210/297) ≒ 0.704
             parse_to_mm = lambda do |val|
               s = val.to_s.strip
-              if m = s.match(/^([0-9]+(?:\.[0-9]+)?)\s*(mm|pt)$/i)
+              if (m = s.match(/^([0-9]+(?:\.[0-9]+)?)\s*(mm|pt)$/i))
                 num = m[1].to_f
                 unit = m[2].downcase
                 unit == 'pt' ? (num * 0.3527777778) : num
@@ -678,7 +685,7 @@ module Vivlio
             a4_h_mm = 297.0
             w_mm = parse_to_mm.call(page_cfg['width'])
             h_mm = parse_to_mm.call(page_cfg['height'])
-            if w_mm > 0 && h_mm > 0
+            if w_mm.positive? && h_mm.positive?
               scale_w = w_mm / a4_w_mm
               scale_h = h_mm / a4_h_mm
               paper_scale = [scale_w, scale_h].min
@@ -731,32 +738,31 @@ module Vivlio
 
             candidates.uniq.each do |css_path|
               next unless File.exist?(css_path)
+
               css = File.read(css_path, encoding: 'utf-8')
 
               updated = css.dup
               mappings.each do |name, val, kind|
                 next if val.nil? || val.to_s.strip.empty?
+
                 v = val.to_s.strip
-                if kind == :font
-                  unless v.include?(',')
-                    v = v =~ /^\s*".*"\s*$/ ? v : '"' + v + '"'
-                  end
-                end
+                v = "\"#{v}\"" if (kind == :font) && !v.include?(',') && v !~ /^\s*".*"\s*$/
 
                 updated = updated.sub(/(#{Regexp.escape(name)}:\s*)[^;]+(\s*;)/) do
-                  pre, post = $1, $2
+                  pre = ::Regexp.last_match(1)
+                  post = ::Regexp.last_match(2)
                   "#{pre}#{v}#{post}"
                 end
               end
 
-              if updated != css
+              if updated == css
+                Common.log_info("#{File.basename(css_path)} に適用すべき差分はありません: #{css_path}")
+              else
                 File.write(css_path, updated, encoding: 'utf-8')
                 Common.log_success("#{File.basename(css_path)} を更新: #{css_path}")
-              else
-                Common.log_info("#{File.basename(css_path)} に適用すべき差分はありません: #{css_path}")
               end
             end
-          rescue => _e
+          rescue StandardError => _e
             # 失敗しても続行
           end
 
@@ -773,20 +779,17 @@ module Vivlio
           ]
 
           # チャプター固有のCSSを追加
-          if file_type == 'chapter' && chapter_num
-            stylesheets << "#{chapter_num}.css"
-          end
+          stylesheets << "#{chapter_num}.css" if file_type == 'chapter' && chapter_num
 
           # 新しいフロントマターのベースを作成
           new_frontmatter = {
-            'link' => stylesheets.map { |css|
+            'link' => stylesheets.map do |css|
               { 'rel' => 'stylesheet', 'href' => "stylesheets/#{css}" }
-            },
+            end,
             'lang' => 'ja'
           }
 
           # 既存のフロントマターと新しいフロントマターを併合
-          merged_frontmatter = {}
 
           merged_frontmatter = existing_frontmatter.dup
           if merged_frontmatter['link'].is_a?(Array)
@@ -801,11 +804,11 @@ module Vivlio
               existing_links = merged_frontmatter['link']
               new_links = value
 
-              merged_frontmatter['link'] = existing_links + new_links.reject { |new_link|
-                existing_links.any? { |existing_link|
+              merged_frontmatter['link'] = existing_links + new_links.reject do |new_link|
+                existing_links.any? do |existing_link|
                   existing_link['href'] == new_link['href']
-                }
-              }
+                end
+              end
             else
               merged_frontmatter[key] = value
             end
@@ -820,9 +823,9 @@ module Vivlio
         def fix_image_paths(content, filename)
           chapter_dir = filename.sub(/\.md$/, '')
 
-          content.gsub(/!\[(.*?)\]\((?!https?:\/\/)([^)]+)\)/) do
-            alt_text  = $1
-            image_path = $2
+          content.gsub(%r{!\[(.*?)\]\((?!https?://)([^)]+)\)}) do
+            alt_text = ::Regexp.last_match(1)
+            image_path = ::Regexp.last_match(2)
 
             # すでに images/ から始まる場合はそのまま。相対パスは images/<章ディレクトリ>/ に正規化
             normalized = if image_path.start_with?('images/')
@@ -847,9 +850,9 @@ module Vivlio
 
           content.gsub!(/```include:([^:`\s]+)(?::(\d+)-(\d+))?\s*```/) do |match|
             matches_found += 1
-            original_path = $1
-            start_line = $2&.to_i
-            end_line = $3&.to_i
+            original_path = ::Regexp.last_match(1)
+            start_line = ::Regexp.last_match(2)&.to_i
+            end_line = ::Regexp.last_match(3)&.to_i
 
             Common.log_action("マッチ発見: #{match.strip}")
             Common.log_info("元のパス: #{original_path}")
@@ -867,12 +870,12 @@ module Vivlio
 
               code_content = if start_line && end_line
                                # 1-origin の範囲指定を Ruby の配列スライスに合わせて 0-origin に補正（end も含む）
-                               selected_lines = lines[(start_line-1)..(end_line-1)]
+                               selected_lines = lines[(start_line - 1)..(end_line - 1)]
                                # join は末尾改行を付与しないため、原文の改行をそのまま連結
                                selected_lines.join
                              else
                                # 範囲未指定時はファイル全体を取り込み、コードブロックの体裁が崩れないよう末尾に改行を追加
-                               source_content + "\n"
+                               "#{source_content}\n"
                              end
 
               language = detect_language(file_path)
@@ -886,7 +889,7 @@ module Vivlio
             end
           end
 
-          Common.log_info("#{matches_found}個のinclude記法を処理") if matches_found > 0
+          Common.log_info("#{matches_found}個のinclude記法を処理") if matches_found.positive?
           content
         end
 
@@ -918,36 +921,38 @@ module Vivlio
                 merged_frontmatter = generate_frontmatter(file_type, chapter_num, existing_frontmatter)
 
                 new_frontmatter_yaml = YAML.dump(merged_frontmatter)
-                Common.log_success("フロントマター併合")
+                Common.log_success('フロントマター併合')
 
                 content = content.sub(/\A---\n.*?\n---\n/m, "#{new_frontmatter_yaml}---\n")
 
-                Common.log_success("フロントマター更新")
-              rescue => e
-                line = (e.respond_to?(:line) && e.line) ? e.line.to_i : (e.message[/line (\d+)/i, 1]&.to_i)
-                column = (e.respond_to?(:column) && e.column) ? e.column.to_i : (e.message[/column (\d+)/i, 1]&.to_i)
+                Common.log_success('フロントマター更新')
+              rescue StandardError => e
+                line = e.respond_to?(:line) && e.line ? e.line.to_i : e.message[/line (\d+)/i, 1]&.to_i
+                column = e.respond_to?(:column) && e.column ? e.column.to_i : e.message[/column (\d+)/i, 1]&.to_i
 
-                if line && line > 0
-                  Common.log_warn("フロントマター（--- ～ ---）の記述に誤りがあります（位置: 行#{line} 列#{column && column > 0 ? column : '?'}）。内容を見直してください。")
+                if line&.positive?
+                  Common.log_warn("フロントマター（--- ～ ---）の記述に誤りがあります（位置: 行#{line} 列#{column&.positive? ? column : '?'}）。内容を見直してください。")
                 else
-                  Common.log_warn("フロントマター（--- ～ ---）の記述に誤りがあります。内容を見直してください。")
+                  Common.log_warn('フロントマター（--- ～ ---）の記述に誤りがあります。内容を見直してください。')
                 end
 
                 begin
                   fm_lines = frontmatter_yaml.to_s.lines
-                  if line && line > 0 && line <= fm_lines.length
+                  if line&.positive? && line <= fm_lines.length
                     idx = line - 1
                     start = [idx - 2, 0].max
                     finish = [idx + 2, fm_lines.length - 1].min
-                    snippet = fm_lines[start..finish].each_with_index.map { |l, i2| "#{start + i2 + 1}: #{l.chomp}" }.join("\n")
+                    snippet = fm_lines[start..finish].each_with_index.map do |l, i2|
+                      "#{start + i2 + 1}: #{l.chomp}"
+                    end.join("\n")
                     err_line_text = fm_lines[idx].to_s.chomp
                     # エラー列位置の下に ^ を表示し、周辺5行を抜粋（可読性を高めるため）
-                    caret_line = (column && column > 0) ? (" " * (column - 1) + "^") : ""
+                    caret_line = column&.positive? ? "#{' ' * (column - 1)}^" : ''
                     Common.log_info("問題のフロントマター（抜粋）:\n---\n#{snippet}\n---\n該当行:\n#{err_line_text}\n#{caret_line}")
                   else
                     Common.log_info("問題のフロントマター（抜粋）:\n---\n#{frontmatter_yaml}\n---")
                   end
-                rescue => _ignore
+                rescue StandardError => _ignore
                   Common.log_info("問題のフロントマター（抜粋）:\n---\n#{frontmatter_yaml}\n---")
                 end
               end
@@ -957,7 +962,7 @@ module Vivlio
             new_frontmatter_yaml = YAML.dump(new_frontmatter)
 
             content = "#{new_frontmatter_yaml}---\n\n#{content}"
-            Common.log_success("フロントマター追加")
+            Common.log_success('フロントマター追加')
           end
 
           # 画像パスを修正
@@ -965,12 +970,12 @@ module Vivlio
           Common.log_success("画像パスを修正しました: #{filename}")
 
           # ソースコードを取り込む
-          Common.log_action("ソースコード読み込み記法をスキャンしています…")
+          Common.log_action('ソースコード読み込み記法をスキャンしています…')
           content = process_code_include(content)
-          Common.log_success("ソースコード読み込み処理が完了しました")
+          Common.log_success('ソースコード読み込み処理が完了しました')
 
           # .book-card マークダウンブロックをHTMLに変換
-          Common.log_action("book-cardブロックをHTMLのdiv要素に変換しています…")
+          Common.log_action('book-cardブロックをHTMLのdiv要素に変換しています…')
           in_book_card = false
           opened_count = 0
           closed_count = 0
@@ -991,12 +996,12 @@ module Vivlio
           Common.log_success("book-cardブロックの事前変換が完了しました（開始:#{opened_count}件 終了:#{closed_count}件）")
 
           # book-card の内側MarkdownをHTMLへ変換
-          Common.log_action("book-card内のMarkdownをHTMLへ変換しています…")
+          Common.log_action('book-card内のMarkdownをHTMLへ変換しています…')
           content = convert_book_card_inner_markdown(content)
-          Common.log_success("book-card内のMarkdownをHTMLへ変換しました")
+          Common.log_success('book-card内のMarkdownをHTMLへ変換しました')
 
           # .table-rotate マークダウンブロックをHTMLに変換
-          Common.log_action("table-rotateブロックをHTMLのdiv要素に変換しています…")
+          Common.log_action('table-rotateブロックをHTMLのdiv要素に変換しています…')
           in_table_rotate = false
           tr_opened_count = 0
           tr_closed_count = 0
@@ -1017,23 +1022,23 @@ module Vivlio
           Common.log_success("table-rotateブロックの事前変換が完了しました（開始:#{tr_opened_count}件 終了:#{tr_closed_count}件）")
 
           # table-rotate の内側MarkdownをHTMLへ変換
-          Common.log_action("table-rotate内のMarkdownをHTMLへ変換しています…")
+          Common.log_action('table-rotate内のMarkdownをHTMLへ変換しています…')
           content = convert_table_rotate_inner_markdown(content)
-          Common.log_success("table-rotate内のMarkdownをHTMLへ変換しました")
+          Common.log_success('table-rotate内のMarkdownをHTMLへ変換しました')
 
           # リンク記法を脚注化
-          Common.log_action("リンク記法を脚注化しています…")
+          Common.log_action('リンク記法を脚注化しています…')
           before = content.dup
           content = transform_links_to_footnotes(content)
-          if content != before
-            Common.log_success("リンクの脚注化を適用しました")
+          if content == before
+            Common.log_info('脚注化の対象リンクはありません')
           else
-            Common.log_info("脚注化の対象リンクはありません")
+            Common.log_success('リンクの脚注化を適用しました')
           end
 
           # 処理後のファイルを保存
           File.write(output_file, content, encoding: 'utf-8')
-          Common.log_success("保存が完了しました")
+          Common.log_success('保存が完了しました')
         end
       end
     end
