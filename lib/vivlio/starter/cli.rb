@@ -21,6 +21,7 @@ require_relative 'cli/rename'
 require_relative 'cli/renumber'
 require_relative 'cli/resize'
 require_relative 'cli/toc'
+require_relative 'cli/text_metrics'
 require_relative 'cli/vivliostyle'
 require_relative 'cli/doctor'
 
@@ -63,7 +64,7 @@ module Vivlio
           delete doctor entries glossary:add glossary:canonicalize
           glossary:canonicalize:check glossary:fix glossary:lint help 
           merge:appendices new open open:pdf pdf pdf:compress post_process
-          pre_process prism:lines rename renumber resize
+          pre_process prism:lines rename renumber resize text_metrics
           resize:high resize:low resize:medium toc vivliostyle:config
         ]
       end
@@ -180,6 +181,7 @@ module Vivlio
       include Vivlio::Starter::CLI::PostProcessCommands
       include Vivlio::Starter::CLI::PreProcessCommands
       include Vivlio::Starter::CLI::PrismLinesCommands
+      include Vivlio::Starter::CLI::TextMetricsCommands
       include Vivlio::Starter::CLI::RenameCommands
       include Vivlio::Starter::CLI::RenumberCommands
       include Vivlio::Starter::CLI::ResizeCommands

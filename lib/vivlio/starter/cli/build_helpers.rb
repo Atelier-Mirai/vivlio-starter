@@ -228,6 +228,29 @@ module Vivlio
         end
         module_function :parallel_each
 
+        def ensure_chapter_html_up_to_date!(basename, extra_sources: [])
+          html_path = File.join('.', "#{basename}.html")
+          md_path = File.join(Common::CONTENTS_DIR, "#{basename}.md")
+          sources = [md_path, *Array(extra_sources)].compact
+
+          needs_regeneration = !File.exist?(html_path)
+          unless needs_regeneration
+            html_mtime = File.mtime(html_path) rescue Time.at(0)
+            latest_source_mtime = sources.select { |src| File.exist?(src) }
+                                         .map { |src| File.mtime(src) rescue Time.at(0) }
+                                         .max
+            needs_regeneration = latest_source_mtime && latest_source_mtime > html_mtime
+          end
+
+          if needs_regeneration
+            Common.log_info("[HTML] 再生成します: #{basename}.html")
+            %w[pre_process convert post_process].each do |task|
+              Vivlio::Starter::ThorCLI.start([task, basename])
+            end
+          end
+        end
+        module_function :ensure_chapter_html_up_to_date!
+
         # ================================================================
         # Step 1: 画像最適化（WebP 変換/リサイズ）
         # ------------------------------------------------
@@ -523,6 +546,7 @@ module Vivlio
             cache_on = Common.cache_enabled?
             cache_dir = cache_on ? Common.ensure_cache_dir! : nil
             preface_cache = cache_on && cache_dir ? File.join(cache_dir, '02-preface.pdf') : nil
+            BuildHelpers.ensure_chapter_html_up_to_date!('02-preface', extra_sources: File.join('config', 'book.yml'))
 
             needs_preface = !File.exist?('02-preface.pdf')
             needs_preface &&= !cache_restore_file(cache_on, preface_cache, '02-preface.pdf', 'Step 8')
@@ -613,6 +637,8 @@ module Vivlio
         # ================================================================
         def build_front_pages_and_tail!(force = false)
           front_regenerated = false
+          BuildHelpers.ensure_chapter_html_up_to_date!('00-titlepage', extra_sources: File.join('config', 'book.yml'))
+          BuildHelpers.ensure_chapter_html_up_to_date!('01-legalpage', extra_sources: File.join('config', 'book.yml'))
           # 判定ヘルパ
           front_srcs = [
             File.join(Common::CONTENTS_DIR, '00-titlepage.md'),
@@ -640,13 +666,6 @@ module Vivlio
           need_front = force || front_missing || newer_than_any.call(front_pdf, front_srcs)
 
           if need_front
-            # 00,01 の HTML を生成（entries は後で 2本を指定して1つのPDF化）
-            %w[pre_process convert post_process].each do |t|
-              Vivlio::Starter::ThorCLI.start([t, '00-titlepage'])
-            end
-            %w[pre_process convert post_process].each do |t|
-              Vivlio::Starter::ThorCLI.start([t, '01-legalpage'])
-            end
             # マージは行わず、2本のHTMLを entries に渡して単一PDF化
             Vivlio::Starter::ThorCLI.start(['entries', '00-titlepage.html', '01-legalpage.html'])
             # 直接フロントPDF名を指定して生成
@@ -667,9 +686,8 @@ module Vivlio
 
           # ここから奥付の生成（フロントを再生成した場合は必ず奥付も再生成）
           if front_regenerated
-            %w[pre_process convert post_process entries].each do |t|
-              Vivlio::Starter::ThorCLI.start([t, '99-colophon'])
-            end
+            BuildHelpers.ensure_chapter_html_up_to_date!('99-colophon', extra_sources: File.join('config', 'book.yml'))
+            Vivlio::Starter::ThorCLI.start(['entries', '99-colophon.html'])
             Vivlio::Starter::ThorCLI.start(['pdf', '99-colophon.pdf'])
             if File.exist?('99-colophon.pdf')
               Common.log_success('[Step 9] 99-colophon.pdf を生成しました')
@@ -677,6 +695,7 @@ module Vivlio
               cache_store_file(cache_on, '99-colophon.pdf', colo_cache, 'Step 9')
             end
           else
+            BuildHelpers.ensure_chapter_html_up_to_date!('99-colophon', extra_sources: File.join('config', 'book.yml'))
             Common.log_info('[Step 9] フロントが最新のため、奥付の再生成はスキップしました（キャッシュ/既存を利用）')
           end
 
@@ -761,73 +780,78 @@ module Vivlio
           doc  = Nokogiri::HTML.parse(html)
           basename = File.basename(path, '.html')
           headings = []
-          (1..max_level).each do |lvl|
-            doc.css("h#{lvl}").each do |node|
-              text = node["data-h#{lvl}"].to_s.strip
-              text = node['data-heading'].to_s.strip if text.empty?
-              text = node.text.to_s.strip if text.empty?
-              next if text.empty?
-              appendix_label = nil
-              if include_appendix_label && lvl == 1
-                appendix_label = BuildHelpers.appendix_label_for_basename(basename)
-              end
-              chapter_token = node['data-chapter'].to_s.strip
-              chapter_token = basename if chapter_token.empty?
-              heading_attr = node['data-heading'].to_s.strip
+          selector = (1..max_level).map { |lvl| "h#{lvl}" }.join(',')
+          doc.css(selector).each do |node|
+            lvl = node.name.delete_prefix('h').to_i
+            next unless lvl.positive? && lvl <= max_level
 
-              number_text = case lvl
-                            when 1
-                              val = node['data-chapter-number-display'].to_s.strip
-                              val = node.at_css('span.chapter-number')&.text&.strip if val.empty?
-                              val
-                            when 2
-                              val = node['data-section-number-display'].to_s.strip
-                              val = node.at_css('span.section-number')&.text&.strip if val.empty?
-                              val
-                            when 3
-                              val = node['data-subsection-number-display'].to_s.strip
-                              val = node.at_css('span.subsection-marker')&.text&.strip if val.empty?
-                              val
-                            else
-                              nil
-                            end
+            text = node["data-h#{lvl}"].to_s.strip
+            text = node['data-heading'].to_s.strip if text.empty?
+            text = node.text.to_s.strip if text.empty?
+            next if text.empty?
 
-              title_text = case lvl
-                           when 1
-                             node['data-chapter-title'].to_s.strip
-                           when 2
-                             node['data-section-title'].to_s.strip
-                           when 3
-                             node['data-subsection-title'].to_s.strip
-                           else
-                             ''
-                           end
-              title_text = text if title_text.empty?
-
-              search_terms = []
-              number_variants = []
-              if number_text && !number_text.empty?
-                unless title_text.empty?
-                  number_variants << "#{number_text}#{title_text}"
-                  number_variants << "#{number_text} #{title_text}"
-                end
-                number_variants << number_text
-              end
-              search_terms.concat(number_variants)
-              search_terms << heading_attr unless heading_attr.empty?
-              search_terms << text
-              search_terms << appendix_label.to_s unless appendix_label.to_s.empty?
-              search_terms = search_terms.compact.map { |term| term.to_s.strip }.reject(&:empty?).uniq
-
-              headings << {
-                level: lvl,
-                text: text,
-                chapter: chapter_token,
-                id: node['id'].to_s.strip,
-                appendix_label: appendix_label,
-                search_terms: search_terms
-              }
+            appendix_label = nil
+            if include_appendix_label && lvl == 1
+              appendix_label = BuildHelpers.appendix_label_for_basename(basename)
             end
+
+            chapter_token = node['data-chapter'].to_s.strip
+            chapter_token = basename if chapter_token.empty?
+            heading_attr = node['data-heading'].to_s.strip
+
+            number_text = case lvl
+                          when 1
+                            val = node['data-chapter-number-display'].to_s.strip
+                            val = node.at_css('span.chapter-number')&.text&.strip if val.empty?
+                            val
+                          when 2
+                            val = node['data-section-number-display'].to_s.strip
+                            val = node.at_css('span.section-number')&.text&.strip if val.empty?
+                            val
+                          when 3
+                            val = node['data-subsection-number-display'].to_s.strip
+                            val = node.at_css('span.subsection-marker')&.text&.strip if val.empty?
+                            val
+                          else
+                            nil
+                          end
+
+            title_text = case lvl
+                         when 1
+                           node['data-chapter-title'].to_s.strip
+                         when 2
+                           node['data-section-title'].to_s.strip
+                         when 3
+                           node['data-subsection-title'].to_s.strip
+                         else
+                           ''
+                         end
+            title_text = text if title_text.empty?
+
+            search_terms = []
+            number_variants = []
+            if number_text && !number_text.empty?
+              unless title_text.empty?
+                number_variants << "#{number_text}#{title_text}"
+                number_variants << "#{number_text} #{title_text}"
+              end
+              number_variants << number_text
+            end
+            search_terms.concat(number_variants)
+            search_terms << heading_attr unless heading_attr.empty?
+            search_terms << text
+            search_terms << appendix_label.to_s unless appendix_label.to_s.empty?
+            search_terms = search_terms.compact.map { |term| term.to_s.strip }.reject(&:empty?).uniq
+
+            headings << {
+              level: lvl,
+              text: text,
+              chapter: chapter_token,
+              id: node['id'].to_s.strip,
+              appendix_label: appendix_label,
+              search_terms: search_terms,
+              number_display: number_text
+            }
           end
           headings
         end
@@ -898,15 +922,21 @@ module Vivlio
           html_basenames = chapter_paths.keys
 
           chapter_order = BuildHelpers.chapter_order_from(html_basenames)
+          frontmatter_sequence = %w[00-titlepage 01-legalpage 02-preface 03-toc]
+          chapter_order = (frontmatter_sequence + chapter_order).uniq
 
           headings_by_chapter = Hash.new { |h, k| h[k] = [] }
           chapter_markers = {}
 
+          first_chapter_bn = chapter_order.find { |token| Common.get_file_type("#{token}.html") == 'chapter' }
+
           chapter_order.each do |bn|
             path = chapter_paths[bn]
-            next unless path
-            headings = BuildHelpers.extract_headings_from_html_file(path, max_level: max_level, include_appendix_label: true)
-            headings_by_chapter[bn].concat(headings)
+            headings = []
+            if path
+              headings = BuildHelpers.extract_headings_from_html_file(path, max_level: max_level, include_appendix_label: true)
+            end
+            headings_by_chapter[bn].concat(headings) if headings.any?
 
             primary = headings.find { |h| h[:level] == 1 } || headings.first
             markers = []
@@ -992,7 +1022,7 @@ module Vivlio
               else
                 end_page = start_page
               end
-            when '11-install'
+            when first_chapter_bn
               toc_end = chapter_ranges['03-toc']&.[](1)
               start_candidate = toc_end ? toc_end + 1 : (chapter_starts[prev_bn] || from_base)
               start_page = [[start_candidate, from_base].max, total_pages].min
@@ -1066,9 +1096,32 @@ module Vivlio
                 }
                 page = range_start
               end
+              display_text = heading[:text]
+              if bn == '99-colophon' && heading[:level].to_i == 1
+                display_text = '奥付'
+              elsif heading[:appendix_label] && heading[:level].to_i == 1
+                label = heading[:appendix_label].to_s.strip
+                if !label.empty? && !display_text.start_with?(label)
+                  display_text = "#{label} #{display_text}".strip
+                end
+              elsif heading[:level].to_i == 1
+                number_display = heading[:number_display].to_s.strip
+                if number_display.empty?
+                  chapter_number = Common.get_chapter_number(bn)
+                  if chapter_number
+                    number = chapter_number.to_i
+                    if number >= 11 && number <= 89
+                      number_display = "第#{number - 10}章"
+                    end
+                  end
+                end
+                unless number_display.empty? || display_text.start_with?(number_display)
+                  display_text = "#{number_display} #{display_text}".strip
+                end
+              end
               items << {
                 level: heading[:level],
-                text: heading[:text],
+                text: display_text,
                 page: page,
                 chapter: bn,
                 id: heading[:id]
@@ -1083,14 +1136,17 @@ module Vivlio
           if chapter_ranges['03-toc']
             toc_range = chapter_ranges['03-toc']
             toc_page = search_markers.call(['目次'], toc_range[0], toc_range[1]) || toc_range[0]
-            insert_index = items.index do |it|
-              chapter_order.index(it[:chapter]) && chapter_order.index(it[:chapter]) > chapter_order.index('03-toc')
+            already_has_toc = items.any? { |it| it[:chapter] == '03-toc' }
+            unless already_has_toc
+              insert_index = items.index do |it|
+                chapter_order.index(it[:chapter]) && chapter_order.index(it[:chapter]) > chapter_order.index('03-toc')
+              end
+              insert_index ||= items.length
+              items.insert(insert_index, { level: 1, text: '目次', page: toc_page, chapter: '03-toc', id: nil })
             end
-            insert_index ||= items.length
-            items.insert(insert_index, { level: 1, text: '目次', page: toc_page, chapter: '03-toc', id: nil })
           end
 
-          if fallback_items.any?
+          if fallback_items.any? && Common.current_log_level >= 3
             Common.log_warn('[Outline] 以下の見出しはページ検出に失敗したため章先頭へフォールバックしました:')
             fallback_items.each do |fb|
               terms = fb[:search_terms].join(' / ')

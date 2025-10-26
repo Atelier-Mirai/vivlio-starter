@@ -394,7 +394,7 @@ module Vivlio
               Common.echo_always sprintf("  = %-#{label_width}s %#{value_width}.2fs", 'TOTAL', total)
               Common.echo_always "==========================\n"
               outline_info = BuildHelpers.last_outline_debug_info
-              if outline_info
+              if outline_info && Common.current_log_level >= 3
                 Common.echo_always "-- Outline Debug Info --"
                 outline_info[:items].each do |item|
                   next unless item[:chapter] && item[:text]

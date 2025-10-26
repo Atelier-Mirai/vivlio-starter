@@ -8,6 +8,7 @@ lang: 'ja'
 # 目次
 <nav id="toc" role="doc-toc">
 <ul>
+<li class="toc-chapter-no-number" data-href="02-preface.html#始めに">始めに</li>
 <li class="toc-chapter" data-href="11-install.html#インストール">インストール
 <ul>
 <li class="toc-section" data-href="11-install.html#簡単インストール推奨">簡単インストール（推奨）
