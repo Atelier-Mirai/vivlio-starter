@@ -59,14 +59,13 @@ module Vivlio
             # ================================================================
             def prism_lines(input_file, output_file = nil)
               output_file ||= input_file
-              verbose = options[:verbose]
 
               unless File.exist?(input_file)
                 Common.log_error("エラー: 入力ファイル '#{input_file}' が存在しません")
                 exit(1)
               end
 
-              add_prism_line_numbers(input_file, output_file, verbose)
+              add_prism_line_numbers(input_file, output_file)
             end
           end
         end
@@ -79,52 +78,64 @@ module Vivlio
         end
 
         # Prism.jsの行番号を追加する処理
-        def add_prism_line_numbers(input_file, output_file = nil, _verbose = false)
-          output_file = input_file if output_file.nil?
+        def add_prism_line_numbers(input_file, output_file = nil)
+          document = parse_html(input_file)
+          document.css('pre').each { |pre| decorate_pre_tag(pre, document) }
+          remove_legacy_meta(document)
 
-          # HTMLを読み込む
-          html = File.read(input_file, encoding: 'UTF-8')
-          # HTML5パーサが使える場合は優先
-          doc = if defined?(Nokogiri::HTML5)
-                  Nokogiri::HTML5.parse(html)
-                else
-                  Nokogiri::HTML.parse(html, nil, 'UTF-8')
-                end
+          target = output_file || input_file
+          File.write(target, document.to_html(encoding: 'UTF-8'))
+          log_result(input_file, target)
+        end
 
-          # <pre>要素を取得
-          pre_tags = doc.css('pre')
+        # HTMLファイルを Nokogiri ドキュメントに変換
+        def parse_html(path)
+          html = File.read(path, encoding: 'UTF-8')
+          if defined?(Nokogiri::HTML5)
+            Nokogiri::HTML5.parse(html)
+          else
+            Nokogiri::HTML.parse(html, nil, 'UTF-8')
+          end
+        end
 
-          pre_tags.each_with_index do |pre, _index|
-            # クラスを追加
-            original_class = pre[:class] || ''
-            pre[:class] = "#{original_class} line-numbers".strip
+        # <pre> 要素と内包する <code> に行番号用クラスと要素を付与
+        def decorate_pre_tag(pre, document)
+          pre[:class] = combine_class(pre[:class], 'line-numbers')
+          code = pre.at_css('code')
+          return unless code
 
-            code = pre.css('code').first
-            next unless code
+          code[:class] = combine_class(code[:class], 'line-numbers')
+          code.add_child(build_line_numbers_span(document, line_count(pre)))
+        end
 
-            original_code_class = code[:class] || ''
-            code[:class] = "#{original_code_class} line-numbers".strip
+        # 行数分の <span> line-numbers-rows 構造を生成
+        def build_line_numbers_span(document, lines)
+          span = Nokogiri::XML::Node.new('span', document)
+          span['aria-hidden'] = 'true'
+          span['class'] = 'line-numbers-rows'
 
-            # 行番号の為の <span>要素を作成
-            span = Nokogiri::XML::Node.new('span', doc)
-            span['aria-hidden'] = 'true'
-            span['class'] = 'line-numbers-rows'
-
-            # <span></span>要素を、コードの行数分追加する
-            line_count(pre).times do
-              span_line = Nokogiri::XML::Node.new('span', doc)
-              span.add_child(span_line)
-            end
-
-            # <code>要素の末尾に追加する
-            code.add_child(span)
+          lines.times do
+            span.add_child(Nokogiri::XML::Node.new('span', document))
           end
 
-          # ファイルに出力
-          # 不要な Content-Type の meta タグを除去（charset指定は <meta charset> を優先）
-          doc.css('meta[http-equiv="Content-Type"]').each(&:remove)
-          File.write(output_file, doc.to_html(encoding: 'UTF-8'))
-          Common.log_success("行番号付与完了: #{input_file}" + (output_file == input_file ? '' : " -> #{output_file}"))
+          span
+        end
+
+        # 不要な Content-Type メタタグを除去
+        def remove_legacy_meta(document)
+          document.css('meta[http-equiv="Content-Type"]').each(&:remove)
+        end
+
+        # 既存クラス文字列に安全にクラスを追加
+        def combine_class(original, addition)
+          classes = [original, addition].compact.reject(&:empty?)
+          classes.join(' ')
+        end
+
+        # 処理完了メッセージを出力
+        def log_result(input_file, output_file)
+          suffix = input_file == output_file ? '' : " -> #{output_file}"
+          Common.log_success("行番号付与完了: #{input_file}#{suffix}")
         end
       end
     end

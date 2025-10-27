@@ -289,11 +289,6 @@ module Vivlio
           Common.log_success('[Step 1] 画像最適化が完了しました')
         end
 
-        # 章別CSSは廃止されたため関連する操作は不要
-        def apply_virtual_chapter_numbers_for_book!(_keep = nil)
-          Common.log_info('[Step 2] apply_virtual_chapter_numbers_for_book! は廃止されました。処理をスキップします。')
-        end
-
         # ================================================================
         # Step 5: 本文、付録、後書き (11..98) をビルド（HTML生成）
         # ------------------------------------------------

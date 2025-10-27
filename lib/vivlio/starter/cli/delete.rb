@@ -39,6 +39,7 @@ module Vivlio
           DESC
         }.freeze
 
+        # Thor 基底クラスに delete コマンドを登録する
         def included(base)
           # class_option はベース側に定義済み（verbose）
           base.class_eval do
@@ -55,134 +56,227 @@ module Vivlio
             # - 入力: TOKENS（単体/複数/範囲指定に対応: 11-install, 11-21, 11 21-31 など）
             # - オプション: --dry-run (-n), --force (-f, -y), --verbose (-v)
             # ================================================================
+            # delete コマンドのエントリポイント
             def delete(*tokens)
-              ENV['VERBOSE'] = '1' if options[:verbose]
+              DeleteCommandExecutor.new(self, tokens).call
+            end
+          end
+        end
 
-              files = Common.normalize_tokens(tokens)
-              args_opts = build_options
+        # 実行時のオプション解釈・対象解決・削除処理をまとめる実行クラス
+        class DeleteCommandExecutor
+          # コマンドとトークンから削除処理に必要な依存を構築する
+          def initialize(command, tokens)
+            @options = DeleteOptions.new(command)
+            @resolver = TargetResolver.new(tokens)
+            @deletion = ChapterDeletion.new(@options)
+          end
 
-              # 矛盾オプションの警告: --dry-run と --force が同時指定された場合
-              if dry_run?(args_opts) && (args_opts[:force] || args_opts[:f] || args_opts[:y])
-                Common.log_warn('--dry-run が指定されているため、--force は無視されます。実ファイルは変更されません。')
-              end
+          # delete コマンドの実際の制御フローを実行する
+          def call
+            options.apply_verbose!
+            options.warn_conflict!
+            ensure_targets!
+            return perform_dry_run if options.dry_run?
 
-              targets = expand_tokens_to_targets(files)
-              if targets.empty?
-                Common.log_warn("指定に一致する章ファイルが見つかりませんでした: #{files.join(' ')}")
-                exit 1
-              end
+            targets.each { |basename| deletion.remove(basename) }
+          end
 
-              if dry_run?(args_opts)
-                Common.echo_always "\n== Dry Run: 削除予定一覧 =="
-                targets.each { |bn| preview_deletions(bn, args_opts) }
-                Common.echo_always "\n合計 #{targets.size} 章が対象（dry-run、実ファイルは変更されません）。"
-                exit 0
-              end
+          private
 
-              targets.each do |bn|
-                delete_markdown_file(bn, args_opts)
-                delete_image_directory(bn, args_opts)
-              end
+          attr_reader :options, :resolver, :deletion
+
+          # 削除対象が存在しない場合は警告して終了する
+          def ensure_targets!
+            return unless targets.empty?
+
+            Common.log_warn("指定に一致する章ファイルが見つかりませんでした: #{resolver.tokens_for_message}")
+            exit 1
+          end
+
+          # dry-run 時に削除予定をダンプ表示する
+          def perform_dry_run
+            Common.echo_always "\n== Dry Run: 削除予定一覧 =="
+            targets.each { |basename| deletion.preview(basename) }
+            Common.echo_always "\n合計 #{targets.size} 章が対象（dry-run、実ファイルは変更されません）。"
+            exit 0
+          end
+
+          # 解決済みの削除対象リストを返す
+          def targets
+            resolver.targets
+          end
+        end
+
+        # Thor オプションを CLI 用オプションに正規化
+        class DeleteOptions
+          # Thor のオプションハッシュを保持する
+          def initialize(command)
+            @thor_options = command.respond_to?(:options) ? command.options || {} : {}
+          end
+
+          # verbose オプションがある場合に冗長ログを有効にする
+          def apply_verbose!
+            ENV['VERBOSE'] = '1' if verbose?
+          end
+
+          # dry-run と force の同時指定時に警告を出力する
+          def warn_conflict!
+            return unless dry_run? && force?
+
+            Common.log_warn('--dry-run が指定されているため、--force は無視されます。実ファイルは変更されません。')
+          end
+
+          # dry-run オプションの有無を返す
+          def dry_run?
+            !!thor_options[:dry_run]
+          end
+
+          # force オプションの有無を返す
+          def force?
+            !!thor_options[:force]
+          end
+
+          # verbose オプションの有無を返す
+          def verbose?
+            !!thor_options[:verbose]
+          end
+
+          private
+
+          attr_reader :thor_options
+        end
+
+        # トークンから削除対象章ファイルを決定
+        class TargetResolver
+          # ユーザー入力されたトークン情報を受け取る
+          def initialize(tokens)
+            @tokens = tokens
+          end
+
+          # ログ出力用に正規化済みトークンを結合して返す
+          def tokens_for_message
+            normalized_tokens.join(' ')
+          end
+
+          # 削除対象となる章ファイル名の一覧を返す
+          def targets
+            @targets ||= expand_tokens_to_targets(normalized_tokens)
+          end
+
+          private
+
+          attr_reader :tokens
+
+          # トークンを正規化（拡張子付与など）する
+          def normalized_tokens
+            @normalized_tokens ||= Common.normalize_tokens(tokens)
+          end
+
+          # トークン列から削除対象のファイル名配列を生成する
+          def expand_tokens_to_targets(values)
+            Array(values).compact.flat_map { |token| expand_token_to_basenames(token) }.uniq
+          end
+
+          # 単一トークンから対応する章ファイル名リストを求める
+          def expand_token_to_basenames(token)
+            stripped = token.to_s.strip
+            return [] if stripped.empty?
+
+            if stripped =~ /(\A\d+)-(\d+\z)/
+              return find_basenames_in_range(::Regexp.last_match(1), ::Regexp.last_match(2))
             end
 
-            no_commands do
-              # Thor の options から Rake 互換のオプションハッシュに変換（delete 専用ローカル実装）
-              def build_options
-                o = {}
-                if respond_to?(:options) && options
-                  o[:dry_run] = true if options[:dry_run]
-                  o[:n]       = true if options[:dry_run]
-                  o[:force] = o[:f] = o[:y] = true if options[:force]
-                end
-                o
-              end
-
-              # --- 削除処理系 ---
-              def confirm_deletion(file_path, options = {})
-                opts = options || {}
-                return true if opts[:force] || opts[:f] || opts[:y]
-
-                print "⚠️ 本当に #{file_path} を削除しますか？ (y/N): "
-                response = $stdin.gets&.chomp&.downcase
-                %w[y yes].include?(response)
-              end
-
-              def delete_markdown_file(filename, options)
-                md_file = "#{Common::CONTENTS_DIR}/#{filename}"
-                if File.exist?(md_file)
-                  if confirm_deletion("文書ファイル: #{md_file}", options)
-                    File.delete(md_file)
-                    Common.log_success("文書ファイルを削除しました: #{md_file}")
-                  else
-                    Common.log_info("文書ファイルの削除をスキップしました: #{md_file}")
-                  end
-                else
-                  Common.log_info("文書ファイルは存在しません: #{md_file}")
-                end
-              end
-
-              def delete_image_directory(filename, options)
-                base_filename = filename.gsub(/\.md$/, '')
-                image_dir = "#{Common::IMAGES_DIR}/#{base_filename}"
-                if Dir.exist?(image_dir)
-                  if confirm_deletion("画像ディレクトリ: #{image_dir}", options)
-                    FileUtils.remove_dir(image_dir, true)
-                    Common.log_success("画像ディレクトリを削除しました: #{image_dir}")
-                  else
-                    Common.log_info("画像ディレクトリの削除をスキップしました: #{image_dir}")
-                  end
-                else
-                  Common.log_info("画像ディレクトリは存在しません: #{image_dir}")
-                end
-              end
-
-              # --- トークン展開系 ---
-              def list_contents_basenames
-                Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |p| File.basename(p) }
-              end
-
-              def chapter_number_from_basename(basename)
-                (basename[/^(\d+)-/, 1] || nil)&.to_i
-              end
-
-              def find_basenames_in_range(from_num, to_num)
-                a, b = [from_num.to_i, to_num.to_i].minmax
-                list_contents_basenames.select do |bn|
-                  n = chapter_number_from_basename(bn)
-                  n && n >= a && n <= b
-                end
-              end
-
-              def expand_token_to_basenames(token)
-                t = token.to_s.strip
-                return [] if t.empty?
-                return find_basenames_in_range(::Regexp.last_match(1), ::Regexp.last_match(2)) if t =~ /(\A\d+)-(\d+\z)/
-                return list_contents_basenames.select { |bn| bn.start_with?("#{t}-") } if t =~ /\A\d+\z/
-
-                name = "#{t}.md"
-                path = File.join(Common::CONTENTS_DIR, name)
-                File.exist?(path) ? [name] : []
-              end
-
-              def expand_tokens_to_targets(tokens)
-                Array(tokens).compact.flat_map { |tok| expand_token_to_basenames(tok) }.uniq
-              end
-
-              # --- dry-run 系 ---
-              def dry_run?(options)
-                opts = options || {}
-                !!(opts[:dry_run] || opts[:n])
-              end
-
-              def preview_deletions(basename, _options)
-                base = basename.sub(/\.md$/, '')
-                md_file = File.join(Common::CONTENTS_DIR, basename)
-                img_dir = File.join(Common::IMAGES_DIR, base)
-                Common.echo_always "[DRY-RUN] #{base} の削除予定:"
-                Common.echo_always "  - 文書:       #{md_file} #{File.exist?(md_file) ? '(exists)' : '(not found)'}"
-                Common.echo_always "  - 画像Dir:    #{img_dir} #{Dir.exist?(img_dir) ? '(exists)' : '(not found)'}"
-              end
+            if stripped =~ /\A\d+\z/
+              return list_contents_basenames.select { |basename| basename.start_with?("#{stripped}-") }
             end
+
+            name = "#{stripped}.md"
+            path = File.join(Common::CONTENTS_DIR, name)
+            File.exist?(path) ? [name] : []
+          end
+
+          # contents ディレクトリ内の章ファイル名一覧を取得する
+          def list_contents_basenames
+            Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |path| File.basename(path) }
+          end
+
+          # 数値範囲指定トークンから該当する章ファイル名を抽出する
+          def find_basenames_in_range(from_num, to_num)
+            lower, upper = [from_num.to_i, to_num.to_i].minmax
+            list_contents_basenames.select do |basename|
+              basename[/^(\d+)-/, 1]&.to_i&.between?(lower, upper)
+            end
+          end
+        end
+
+        # 章ファイルと関連ディレクトリの削除処理
+        class ChapterDeletion
+          # 削除時に参照するオプションを受け取る
+          def initialize(options)
+            @options = options
+          end
+
+          # dry-run 時に対象ファイル・ディレクトリを表示する
+          def preview(basename)
+            base = basename.sub(/\.md\z/, '')
+            md_file = File.join(Common::CONTENTS_DIR, basename)
+            img_dir = File.join(Common::IMAGES_DIR, base)
+            Common.echo_always "[DRY-RUN] #{base} の削除予定:"
+            Common.echo_always "  - 文書:       #{md_file} #{File.exist?(md_file) ? '(exists)' : '(not found)'}"
+            Common.echo_always "  - 画像Dir:    #{img_dir} #{Dir.exist?(img_dir) ? '(exists)' : '(not found)'}"
+          end
+
+          # 指定された章ファイルと画像ディレクトリを削除する
+          def remove(basename)
+            delete_markdown_file(basename)
+            delete_image_directory(basename)
+          end
+
+          private
+
+          attr_reader :options
+
+          # Markdown ファイル削除とログ出力を行う
+          def delete_markdown_file(filename)
+            md_file = File.join(Common::CONTENTS_DIR, filename)
+            unless File.exist?(md_file)
+              Common.log_info("文書ファイルは存在しません: #{md_file}")
+              return
+            end
+
+            if confirm_deletion?("文書ファイル: #{md_file}")
+              File.delete(md_file)
+              Common.log_success("文書ファイルを削除しました: #{md_file}")
+            else
+              Common.log_info("文書ファイルの削除をスキップしました: #{md_file}")
+            end
+          end
+
+          # 対応する画像ディレクトリの削除とログ出力を行う
+          def delete_image_directory(filename)
+            base_filename = filename.sub(/\.md\z/, '')
+            image_dir = File.join(Common::IMAGES_DIR, base_filename)
+            unless Dir.exist?(image_dir)
+              Common.log_info("画像ディレクトリは存在しません: #{image_dir}")
+              return
+            end
+
+            if confirm_deletion?("画像ディレクトリ: #{image_dir}")
+              FileUtils.remove_dir(image_dir, true)
+              Common.log_success("画像ディレクトリを削除しました: #{image_dir}")
+            else
+              Common.log_info("画像ディレクトリの削除をスキップしました: #{image_dir}")
+            end
+          end
+
+          # ユーザーに削除確認を求め、許可された場合のみ実行する
+          def confirm_deletion?(label)
+            return true if options.force?
+
+            print "⚠️ 本当に #{label} を削除しますか？ (y/N): "
+            response = $stdin.gets&.chomp&.downcase
+            %w[y yes].include?(response)
           end
         end
       end

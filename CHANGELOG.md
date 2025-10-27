@@ -27,14 +27,47 @@
 
 #### 校正/Lint・品質
 
+リファクタリング前 519 件 -> 508件
 - [High] RuboCop が全面的に通るよう CLI/ビルド系スクリプトを継続的にリファクタリング。
+102 lib/vivlio/starter/cli/build_helpers.rb
+ 42 lib/vivlio/starter/cli/post_process.rb
+ 44 lib/vivlio/starter/cli/pre_process.rb
+169 lib/vivlio/starter/cli/glossary.rb
+ 17 lib/vivlio/starter/cli/common.rb
+ 11 lib/vivlio/starter/cli/create.rb
+ 29 lib/vivlio/starter/cli/build.rb
+ 0 lib/vivlio/starter/cli/pdf.rb
+ 0 lib/vivlio/starter/cli/toc.rb
+ 0 lib/vivlio/starter/cli/text_metrics.rb
+ 0 lib/vivlio/starter/cli/delete.rb
+ 11 lib/vivlio/starter/cli/doctor.rb
+ 11 lib/vivlio/starter/cli/new.rb
+ 10 lib/vivlio/starter/cli/resize.rb
+ 10 lib/vivlio/starter/cli/rename.rb
+  9 lib/vivlio/starter/cli/merge.rb
+  9 lib/vivlio/starter/cli/vivliostyle.rb
+  9 lib/vivlio/starter/cli/entries.rb
+  9 lib/vivlio/starter/cli/clean.rb
+  8 lib/vivlio/starter/cli/convert.rb
+  8 lib/vivlio/starter/commands/new.rb
+  0 lib/vivlio/starter/cli.rb
+  0 lib/vivlio/starter/cli/prism_lines.rb
+  0 lib/vivlio/starter/cli/help.rb
+  0 lib/vivlio/starter/cli/renumber.rb
+  0 lib/vivlio/starter/version.rb
+
 - [High] 日本語表記・組版Lint（スタイルガイド）
 - [High] リンク・画像の自動検証
 - [Medium] スペルチェック（辞書拡張対応）
 - [Medium] 用語候補抽出と一括追加（glossary）: `contents/` を走査し `ABBR(Full Name)`/`Full Name(ABBR)` パターンを検出して候補一覧を作成。対話的に選択して `config/glossary.yml` に一括追加するタスク（例: `glossary:suggest` → `glossary:import_selected`）。
 - [Medium] 用語集・索引自動生成 （それらしい専門用語を抽出して、`config/glossary.yml` に一括追加するタスク）
+- [Medium] 基本的に良く用いる用語をまとめた用語集テンプレートを標準添付し、プロジェクト作成時または後から選択適用できるようにする。
 - [Medium] glossary `style: spacing` の実装（スペースの有無/種別の検出・自動修正）
 - [Medium] glossary `style: punctuation` の実装（コロン/ハイフン等の記号種別・位置の検出・自動修正）
+- [Medium] text_metrics に語の平均長・漢字比率など語彙難度指標を追加する
+- [Medium] text_metrics に語彙多様度（TTR 等）の集計を追加する
+- [Low] text_metrics で日本語向け読解難度スコア（Flesch/Kincaid 等を応用）を算出する
+- [Low] text_metrics で見出し/セクション単位の分量バランスを可視化する
 
 #### 参照・索引・書誌
 
@@ -77,11 +110,12 @@ Chromium 起動回数の削減（将来案）
 
 ### Added
 - README 冒頭に Vivlio Starter ロゴとブランド要約を追記。
+- text_metrics コマンドに平均文長・文数・読点数・句数・平均句長を追加し、JSON/YAML/表すべてで出力できるよう拡張。
 
 ### Changed
 - CLI コマンド群をリファクタリングし、`module_function` 化とコマンド説明文の定数化を実施（thor DSL の記述揺れを解消）。
-
-## [0.10.0] - 2025-10-26
+- `build.rb` の単章ビルド処理をパイプライン化し、実行フローと付随処理（マージ・オープン）を専用クラスへ分割。
+- `pre_process.rb` / `post_process.rb` の大型メソッドを段階的ヘルパーへ分解し、前後処理の責務を明確化。
 
 ### Added
 - 目次の構成を見直し、ブックマークが所定の階層で揃うよう調整（「始めに」配下の見出し整理、および奥付・付録の固定ラベル化）。HTML 出力に章番号用の `<span class="chapter-number">…</span>` を導入し、抽出アルゴリズムを改良したことで、フルビルド時にも目次が欠落なく生成されるよう改善。

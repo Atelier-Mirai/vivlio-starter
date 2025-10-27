@@ -22,6 +22,24 @@ module Vivlio
         # プロジェクトの設定ファイルのみを対象: ./config/book.yml
         DEFAULT_CONFIG_FILE = 'config/book.yml'
         CONFIG_FILE = DEFAULT_CONFIG_FILE
+        FONT_SIZE_KEYS = %w[base_font_size column_font_size folio_font_size].freeze
+        DEFAULT_CONFIG_TEMPLATE = {
+          'directories' => {
+            'contents' => 'contents',
+            'stylesheets' => 'stylesheets',
+            'images' => 'images',
+            'codes' => 'codes',
+            'chapter_templates' => 'chapter_templates'
+          },
+          'commands' => {
+            'vfm' => 'vfm'
+          },
+          'files' => {
+            'post_replace' => '_postReplaceList.json'
+          }
+        }.freeze
+        PAGE_PRESETS_FILE = File.join('config', 'page_presets.yml')
+        PAGE_PRESET_EXCLUDE_KEYS = %w[preset use preset_name].freeze
 
         # ================================================================
         # Utility: 設定読み込み load_config
@@ -29,90 +47,109 @@ module Vivlio
         # - YAML を読み込み、Hash でない場合はデフォルトにフォールバック
         # - 存在しない場合もデフォルトにフォールバック
         # ================================================================
+        # config/book.yml を読み込み、必要に応じてプリセットを適用した設定を返す
         def load_config
           if File.exist?(CONFIG_FILE)
-            cfg_text = File.read(CONFIG_FILE, encoding: 'utf-8')
-            cfg = YAML.safe_load(cfg_text, permitted_classes: [], aliases: true)
-            unless cfg.is_a?(Hash)
-              puts "⚠️ 設定ファイルの内容が不正です（Hash ではありません）: #{CONFIG_FILE}"
-              puts '⚠️ デフォルト設定を使用します'
-              cfg = {
-                'directories' => {
-                  'contents' => 'contents',
-                  'stylesheets' => 'stylesheets',
-                  'images' => 'images',
-                  'codes' => 'codes',
-                  'chapter_templates' => 'chapter_templates'
-                },
-                'commands' => {
-                  'vfm' => 'vfm'
-                },
-                'files' => {
-                  'post_replace' => '_postReplaceList.json'
-                }
-              }
-            end
-
-            # ------------------------------------------------------------
-            # 多段ロード/マージ: page.preset or page.use を解決
-            # - config/page_presets.yml から該当プリセットを読み込み
-            # - プリセット値に book.yml の page 値を上書き（ユーザー設定優先）
-            # - 未指定/未検出の場合はそのまま
-            # ------------------------------------------------------------
-            begin
-              page_cfg = (cfg['page'].is_a?(Hash) ? cfg['page'] : {})
-              preset_name = page_cfg['preset'] || page_cfg['use'] || page_cfg['preset_name']
-              if preset_name && !preset_name.to_s.strip.empty?
-                presets_path = File.join('config', 'page_presets.yml')
-                if File.exist?(presets_path)
-                  presets_text = File.read(presets_path, encoding: 'utf-8')
-                  presets = YAML.safe_load(presets_text, permitted_classes: [], aliases: true)
-                  if presets.is_a?(Hash)
-                    selected = presets[preset_name.to_s]
-                    if selected.is_a?(Hash)
-                      # preset/use/preset_name キーはマージ対象から除外
-                      overrides = page_cfg.reject { |k, _| %w[preset use preset_name].include?(k.to_s) }
-                      cfg['page'] = selected.merge(overrides)
-                      # 単位正規化（pt へ統一）
-                      begin
-                        normalize_page_units!(cfg['page'])
-                      rescue StandardError => e
-                        puts "⚠️ base_line_height の単位正規化で例外: #{e.class}: #{e.message}"
-                      end
-                    else
-                      puts "⚠️ ページプリセットが見つかりません: #{preset_name} (#{presets_path})"
-                    end
-                  else
-                    puts "⚠️ #{presets_path} の形式が不正です（Hash ではありません）"
-                  end
-                else
-                  puts "⚠️ ページプリセットファイルが見つかりません: #{presets_path}"
-                end
-              end
-            rescue StandardError => e
-              puts "⚠️ ページプリセットの適用中にエラー: #{e.class}: #{e.message}"
-            end
-            cfg
+            config = load_config_from_file
+            apply_page_preset!(config)
+            config
           else
-            puts "⚠️ 設定ファイルが見つかりません: #{CONFIG_FILE}"
-            puts '⚠️ デフォルト設定を使用します'
-            {
-              'directories' => {
-                'contents' => 'contents',
-                'stylesheets' => 'stylesheets',
-                'images' => 'images',
-                'codes' => 'codes',
-                'chapter_templates' => 'chapter_templates'
-              },
-              'commands' => {
-                'vfm' => 'vfm'
-              },
-              'files' => {
-                'post_replace' => '_postReplaceList.json'
-              }
-            }
+            warn_missing_config_file
+            default_config
           end
         end
+
+        # config/book.yml を読み込み Hash を返す（異常時はデフォルト設定）
+        def load_config_from_file
+          cfg_text = File.read(CONFIG_FILE, encoding: 'utf-8')
+          cfg = YAML.safe_load(cfg_text, permitted_classes: [], aliases: true)
+          return cfg if cfg.is_a?(Hash)
+
+          warn_invalid_config_structure
+          default_config
+        rescue StandardError => e
+          warn_config_load_error(e)
+          default_config
+        end
+
+        # DEFAULT_CONFIG_TEMPLATE のディープコピーを返す
+        def default_config
+          Marshal.load(Marshal.dump(DEFAULT_CONFIG_TEMPLATE))
+        end
+
+        # 設定ファイルが存在しない場合の警告を出力
+        def warn_missing_config_file
+          puts "⚠️ 設定ファイルが見つかりません: #{CONFIG_FILE}"
+          puts '⚠️ デフォルト設定を使用します'
+        end
+
+        # 設定ファイルが異常な構造だった場合の警告を出力
+        def warn_invalid_config_structure
+          puts "⚠️ 設定ファイルの内容が不正です（Hash ではありません）: #{CONFIG_FILE}"
+          puts '⚠️ デフォルト設定を使用します'
+        end
+
+        # 読み込み時の例外を通知する
+        def warn_config_load_error(error)
+          puts "⚠️ 設定ファイルの読み込みに失敗しました: #{CONFIG_FILE} (#{error.class}: #{error.message})"
+          puts '⚠️ デフォルト設定を使用します'
+        end
+
+        # page プリセット設定を解決し、単位を正規化する
+        def apply_page_preset!(cfg)
+          page_cfg = cfg['page'].is_a?(Hash) ? cfg['page'] : {}
+          preset_name = extract_page_preset_name(page_cfg)
+          return cfg if blank?(preset_name)
+
+          presets = load_page_presets
+          return cfg unless presets.is_a?(Hash)
+
+          selected = presets[preset_name.to_s]
+          unless selected.is_a?(Hash)
+            puts "⚠️ ページプリセットが見つかりません: #{preset_name} (#{PAGE_PRESETS_FILE})"
+            return cfg
+          end
+
+          overrides = page_cfg.reject { |k, _| PAGE_PRESET_EXCLUDE_KEYS.include?(k.to_s) }
+          cfg['page'] = selected.merge(overrides)
+
+          begin
+            normalize_page_units!(cfg['page'])
+          rescue StandardError => e
+            puts "⚠️ base_line_height の単位正規化で例外: #{e.class}: #{e.message}"
+          end
+
+          cfg
+        rescue StandardError => e
+          puts "⚠️ ページプリセットの適用中にエラー: #{e.class}: #{e.message}"
+          cfg
+        end
+
+        # page 設定からプリセット名を抽出する
+        def extract_page_preset_name(page_cfg)
+          return nil unless page_cfg.is_a?(Hash)
+
+          page_cfg['preset'] || page_cfg['use'] || page_cfg['preset_name']
+        end
+
+        # ページプリセット定義を読み込む
+        def load_page_presets
+          unless File.exist?(PAGE_PRESETS_FILE)
+            puts "⚠️ ページプリセットファイルが見つかりません: #{PAGE_PRESETS_FILE}"
+            return nil
+          end
+
+          presets_text = File.read(PAGE_PRESETS_FILE, encoding: 'utf-8')
+          presets = YAML.safe_load(presets_text, permitted_classes: [], aliases: true)
+          return presets if presets.is_a?(Hash)
+
+          puts "⚠️ #{PAGE_PRESETS_FILE} の形式が不正です（Hash ではありません）"
+          nil
+        rescue StandardError => e
+          puts "⚠️ ページプリセットの読み込みに失敗しました: #{PAGE_PRESETS_FILE} (#{e.class}: #{e.message})"
+          nil
+        end
+
 
         # ================================================================
         # Utility: normalize_page_units!
@@ -124,61 +161,85 @@ module Vivlio
         def normalize_page_units!(pcfg)
           return pcfg unless pcfg.is_a?(Hash)
 
-          to_pt = lambda { |val|
-            s = val.to_s.strip
-            return nil if s.empty?
-
-            if s =~ /pt\z/i
-              s # 既に pt
-            elsif s =~ /q\z/i
-              # 1Q ≒ 0.709pt
-              num = s.sub(/q\z/i, '').to_f
-              "#{(num * 0.709).round(3)}pt"
-            else
-              s
-            end
-          }
-
-          # base_font_size / column_font_size / folio_font_size の Q → pt を一括処理
-          %w[base_font_size column_font_size folio_font_size].each do |key|
-            v = pcfg[key]
-            next unless v && !v.to_s.strip.empty?
-
-            s = v.to_s.strip
-            next unless s =~ /q\z/i
-
-            pcfg[key] = to_pt.call(s)
-          end
-
-          # 数値の pt 値を Float で取得
-          get_pt_value = lambda { |s|
-            m = s.to_s.strip.match(/\A([0-9]+(?:\.[0-9]+)?)pt\z/i)
-            m ? m[1].to_f : nil
-          }
-
-          # line-height を pt に正規化
-          blh = pcfg['base_line_height']
-          bfs_pt = get_pt_value.call(pcfg['base_font_size'])
-          if blh && bfs_pt
-            str = blh.to_s.strip
-            case str
-            when /pt\z/i
-              # 既に pt → そのまま
-            when /q\z/i
-              # Q → pt
-              pcfg['base_line_height'] = to_pt.call(str)
-            when /em\z/i
-              # em はフォントサイズ倍率
-              mult = str.sub(/em\z/i, '').to_f
-              pcfg['base_line_height'] = "#{(bfs_pt * mult).round(3)}pt"
-            when /\A[0-9]+(?:\.[0-9]+)?\z/
-              # 単位なし（行送り倍率）
-              mult = str.to_f
-              pcfg['base_line_height'] = "#{(bfs_pt * mult).round(3)}pt"
-            end
-          end
+          normalize_font_sizes!(pcfg)
+          normalize_base_line_height!(pcfg)
 
           pcfg
+        end
+
+        # base_font_size 等の Q 単位を pt へ揃える
+        def normalize_font_sizes!(pcfg)
+          FONT_SIZE_KEYS.each do |key|
+            value = pcfg[key]
+            next if blank?(value)
+
+            str = normalized_string(value)
+            next unless str =~ /q\z/i
+
+            pcfg[key] = q_to_pt(str)
+          end
+        end
+
+        # base_line_height をフォントサイズ基準で pt 化する
+        # base_line_height の値は、フォントサイズの倍率、Em 単位、Q 単位のいずれかを想定
+        # これらの値を pt 単位に正規化する
+        def normalize_base_line_height!(pcfg)
+          line_height = pcfg['base_line_height']
+          return if blank?(line_height)
+
+          font_size_pt = pt_value(pcfg['base_font_size'])
+          return unless font_size_pt
+
+          pcfg['base_line_height'] = line_height_to_pt(normalized_string(line_height), font_size_pt)
+        end
+
+        # 文字列化された行送り値を pt に変換する
+        # 行送り値は pt 単位、Q 単位、Em 単位、または倍率のいずれかを想定
+        # これらの値を pt 単位に正規化する
+        def line_height_to_pt(str, font_size_pt)
+          case str
+          when /pt\z/i
+            str
+          when /q\z/i
+            q_to_pt(str)
+          when /em\z/i
+            format_pt(font_size_pt * str.sub(/em\z/i, '').to_f)
+          when /\A[0-9]+(?:\.[0-9]+)?\z/
+            format_pt(font_size_pt * str.to_f)
+          else
+            str
+          end
+        end
+
+        # Q 単位の値を pt に変換する
+        def q_to_pt(value)
+          str = normalized_string(value)
+          return str unless str =~ /q\z/i
+
+          num = str.sub(/q\z/i, '').to_f
+          format_pt(num * 0.709)
+        end
+
+        # pt 表記の数値部分を Float で返す
+        def pt_value(value)
+          str = normalized_string(value)
+          match = str.match(/\A([0-9]+(?:\.[0-9]+)?)pt\z/i)
+          match ? match[1].to_f : nil
+        end
+
+        # pt 値を小数第3位で丸めて文字列化する
+        def format_pt(value)
+          "#{value.round(3)}pt"
+        end
+
+        # 値を文字列化し前後空白を除去する
+        def normalized_string(value)
+          value.to_s.strip
+        end
+
+        # blank? 判定の簡易版
+        def blank?(value)
+          value.nil? || value.to_s.strip.empty?
         end
 
         # ================================================================
@@ -219,6 +280,7 @@ module Vivlio
           [width, height]
         end
 
+        # ページ設定に width/height を補完する
         def normalize_page_size!(page_cfg)
           return page_cfg unless page_cfg.is_a?(Hash)
 
@@ -313,7 +375,7 @@ module Vivlio
         CACHE_DIR  = CACHE_CFG['dir'] || '.cache/vs'
 
         def cache_enabled?
-          fetch_bool(CACHE_CFG, %w[enabled], true)
+          fetch_bool(CACHE_CFG, %w[enabled], default: true)
         rescue StandardError
           true
         end
@@ -355,7 +417,7 @@ module Vivlio
         # - default: 値が未設定/不正な場合の既定
         # - 例: fetch_bool(CONFIG, %w[pdf quiet], false)
         # ================================================================
-        def fetch_bool(obj, keys, default = false)
+        def fetch_bool(obj, keys, default: false)
           cur = obj
           Array(keys).each do |k|
             return default unless cur.is_a?(Hash)
@@ -386,7 +448,7 @@ module Vivlio
             'preface'
           when /^03-/
             'toc'
-          when /^1[0-9]-/, /^[2-8][0-9]-/
+          when /^[1-8][0-9]-/
             'chapter'
           when /^9[0-7]-/
             'appendix'

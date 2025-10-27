@@ -17,7 +17,6 @@ module Vivlio
       # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
       # ================================================================
       module PdfCommands
-        module_function
 
         PDF_DESC = {
           pdf: {
@@ -57,258 +56,425 @@ module Vivlio
           }
         }.freeze
 
-        def included(base)
+        def self.included(base)
           base.class_eval do
-            desc 'pdf [OUTPUT]', PDF_DESC[:pdf][:short]
-            long_desc PDF_DESC[:pdf][:long]
-            # ================================================================
-            # Command: pdf（VivliostyleでPDF生成）
-            # ------------------------------------------------
-            # - 概要: Vivliostyle CLI で HTML→PDF をビルド
-            # - 入力: vivliostyle.config.js の entry 設定に基づく HTML 群
-            # - 出力: 設定ファイルの output に指定された PDF
-            # - オプション: --verbose（ENV['VIVLIO_QUIET']=1 で出力抑制）
-            # ================================================================
-            def pdf(target_output = nil)
-              ENV['VERBOSE'] = '1' if options[:verbose]
-              Common.log_action('PDFを生成しています…')
-
-              # 出力抑制フラグ（ENV または config.yml の pdf.quiet）
-              pdf_config = Common::CONFIG['pdf'] || {}
-              quiet = (ENV['VIVLIO_QUIET'] == '1') || Common.truthy?(pdf_config['quiet'])
-
-              # single-doc フラグ（ENV または config.yml の pdf.single_doc）
-              single_doc = (ENV['VIVLIO_SINGLE_DOC'] == '1') || Common.truthy?(pdf_config['single_doc'])
-
-              # 注意: --single-doc は「単一HTML」を想定する Vivliostyle CLI のモードです。
-              # 本プロジェクトは通常 entries.js（配列）を entry に渡すため、そのまま -d を付けると
-              # entries.js を HTML と誤解され、"Start tag expected, '<' not found" になることがあります。
-              # そこで、entries.js のエントリ数が 1 件のときのみ -d を有効化します。
-              enable_single_doc = false
-              if single_doc
-                begin
-                  # vivliostyle.config.js が entries.js を参照している場合は -d 無効
-                  begin
-                    cfg_path = File.join(Dir.pwd, 'vivliostyle.config.js')
-                    if File.exist?(cfg_path)
-                      cfg_txt = File.read(cfg_path, encoding: 'utf-8')
-                      if cfg_txt.match?(/entries\.(js|mjs)\b/)
-                        Common.log_info('[pdf] vivliostyle.config.js が entries.js を参照しているため --single-doc を無効化します')
-                        single_doc = false
-                      end
-                    end
-                  rescue StandardError
-                    # 読み取り失敗時は何もしない（後段の entries.js 判定に任せる）
-                  end
-                  entries_path = File.join(Dir.pwd, 'entries.js')
-                  if File.exist?(entries_path)
-                    txt = File.read(entries_path, encoding: 'utf-8')
-                    # かなり単純だが十分: "path": の出現数で判定
-                    paths = txt.scan(/"path"\s*:/)
-                    if paths.size == 1 && single_doc
-                      enable_single_doc = true
-                    else
-                      Common.log_info("[pdf] entries.js に複数エントリ(#{paths.size})があるため --single-doc は無効化します")
-                    end
-                  else
-                    # entries.js がない場合は安全側で無効化
-                    Common.log_info('[pdf] entries.js が見つからないため --single-doc は無効化します')
-                  end
-                rescue StandardError => e
-                  Common.log_warn("[pdf] --single-doc 判定に失敗: #{e}。安全側で無効化します")
-                end
-              end
-
-              # コマンドを実行（quiet の場合は /dev/null へ）
-              cmd = 'npx vivliostyle build'
-              cmd += ' -d' if enable_single_doc
-              if quiet
-                system(cmd, out: File::NULL, err: File::NULL)
-              else
-                system(cmd)
-              end
-
-              if $CHILD_STATUS.success?
-                # 生成ファイル名（設定に基づく）
-                output_path = pdf_config['output_file'] || 'output.pdf'
-
-                # OUTPUT 引数が与えられていれば、生成直後にリネーム
-                if target_output && !target_output.to_s.strip.empty?
-                  begin
-                    if File.exist?(output_path)
-                      if File.expand_path(output_path) == File.expand_path(target_output)
-                        # 同一パス指定ならリネーム不要
-                        Common.log_success('PDFの生成が完了しました')
-                        Common.log_info("出力先: #{File.expand_path(output_path)}")
-                      else
-                        FileUtils.rm_f(target_output)
-                        FileUtils.mv(output_path, target_output)
-                        Common.log_success("PDFの生成が完了しました（リネーム: #{output_path} → #{target_output}）")
-                        Common.log_info("出力先: #{File.expand_path(target_output)}")
-                      end
-                    else
-                      Common.log_warn("PDF生成は成功しましたが、出力ファイルが見つかりません: #{output_path}")
-                    end
-                  rescue StandardError => e
-                    Common.log_warn("PDFのリネームに失敗しました: #{e}")
-                  end
-                else
-                  Common.log_success('PDFの生成が完了しました')
-                  Common.log_info("出力先: #{File.expand_path(output_path)}")
-                end
-              else
-                Common.log_error('PDFの生成に失敗しました')
-              end
+            desc 'pdf [OUTPUT]', PdfCommands::PDF_DESC[:pdf][:short]
+            long_desc PdfCommands::PDF_DESC[:pdf][:long]
+            # PDF ビルドコマンドのエントリポイント
+            define_method(:pdf) do |target_output = nil|
+              PdfCommands::PdfCommandRunner.new(self, target_output).call
             end
 
-            desc 'pdf_compress', PDF_DESC[:compress][:short]
-            long_desc PDF_DESC[:compress][:long]
-            # ================================================================
-            # Command: pdf_compress（PDF圧縮）
-            # ------------------------------------------------
-            # - 概要: Ghostscript を用いて PDF を圧縮
-            # - 入力: config.yml の pdf.output_file（既定: output.pdf）
-            # - 出力: config.yml の pdf.output_file_compressed（既定: output_compressed.pdf）
-            # - 補足: 既定のプリセットは /ebook。必要に応じてコード変更で調整してください。
-            # ================================================================
-            def pdf_compress
-              ENV['VERBOSE'] = '1' if options[:verbose]
-              pdf_config = Common::CONFIG['pdf'] || {}
-              input_pdf  = pdf_config['output_file'] || 'output.pdf'
-              output_pdf = pdf_config['output_file_compressed'] || 'output_compressed.pdf'
-
-              unless File.exist?(input_pdf)
-                Common.log_error("エラー: 入力PDFが見つかりません: #{input_pdf}")
-                exit(1)
-              end
-
-              Common.log_action("PDFを圧縮しています…（入力: #{input_pdf} → 出力: #{output_pdf}）")
-
-              # 利用可能なコマンドを検出
-              has_gs = system('which gs >/dev/null 2>&1')
-
-              compressed = false
-
-              run_gs = proc do
-                # 透明度保持互換性の改善のため 1.7 を指定
-                cmd = [
-                  'gs', '-sDEVICE=pdfwrite', '-dCompatibilityLevel=1.7',
-                  '-dPDFSETTINGS=/ebook', '-dNOPAUSE', '-dQUIET', '-dBATCH',
-                  "-sOutputFile=#{output_pdf}", input_pdf
-                ].join(' ')
-                system(cmd)
-              end
-
-              if has_gs
-                compressed = run_gs.call
-              else
-                Common.log_warn('Ghostscript(gs) が見つかりません。圧縮をスキップします。')
-                exit(1)
-              end
-
-              if compressed && File.exist?(output_pdf)
-                Common.log_success("圧縮したPDFを出力しました: #{File.expand_path(output_pdf)}")
-              else
-                Common.log_error('PDFの圧縮に失敗しました')
-                exit(1)
-              end
+            desc 'pdf_compress', PdfCommands::PDF_DESC[:compress][:short]
+            long_desc PdfCommands::PDF_DESC[:compress][:long]
+            # PDF 圧縮コマンドのエントリポイント
+            define_method(:pdf_compress) do
+              PdfCommands::PdfCompressor.new(self).call
             end
 
-            desc 'open:pdf [PATH]', PDF_DESC[:open][:short]
-            long_desc PDF_DESC[:open][:long]
-            # ================================================================
-            # Command: open:pdf（PDFを開く）
-            # ------------------------------------------------
-            # - 概要: macOS の Preview.app で PDF を開き、ウィンドウ位置を設定
-            # - 入力: 圧縮版が存在すればそれを優先、なければ通常版
-            # - 補足: 非 macOS では案内のみ表示
-            # ================================================================
-            def open_pdf(path = nil)
-              ENV['VERBOSE'] = '1' if options[:verbose]
-              # PDF設定を取得
-              pdf_config = Common::CONFIG['pdf'] || {}
-              # 開く対象の決定: 引数優先。未指定時は圧縮版があれば優先、なければ通常版
-              pdf_path = nil
-              if path && !path.to_s.strip.empty?
-                pdf_path = path.to_s
-              else
-                compressed_path = pdf_config['output_file_compressed'] || 'output_compressed.pdf'
-                normal_path     = pdf_config['output_file'] || 'output.pdf'
-                if File.exist?(compressed_path) && File.exist?(normal_path)
-                  begin
-                    c_mtime = begin
-                      File.mtime(compressed_path)
-                    rescue StandardError
-                      Time.at(0)
-                    end
-                    n_mtime = begin
-                      File.mtime(normal_path)
-                    rescue StandardError
-                      Time.at(0)
-                    end
-                    if c_mtime >= n_mtime
-                      pdf_path = compressed_path
-                      Common.log_info("open: 圧縮版(#{compressed_path})が新しいためこちらを開きます")
-                    else
-                      pdf_path = normal_path
-                      Common.log_info("open: 通常版(#{normal_path})が新しいためこちらを開きます")
-                    end
-                  rescue StandardError
-                    # 取得できない場合は圧縮版優先の従来挙動
-                    pdf_path = compressed_path
-                  end
-                elsif File.exist?(compressed_path)
-                  pdf_path = compressed_path
-                  Common.log_info('open: 圧縮版のみ存在するためこちらを開きます')
-                else
-                  pdf_path = normal_path
-                  Common.log_info('open: 通常版を開きます')
-                end
-              end
-
-              Common.log_action('PDFを開いています…')
-              Common.log_info("ファイルパス: #{File.expand_path(pdf_path)}")
-
-              # macOS 以外では案内のみ表示して終了
-              unless RbConfig::CONFIG['host_os'] =~ /darwin|mac os/i
-                Common.log_info('この環境では自動オープンは未対応です（macOS専用機能）。PDFは手動で開いてください。')
-                return
-              end
-
-              unless File.exist?(pdf_path)
-                Common.log_error("エラー: PDFファイルが見つかりません: #{pdf_path}")
-                exit(1)
-              end
-
-              # PDF表示設定を取得
-              close_existing = Common.fetch_bool({ 'flag' => pdf_config['close_existing_windows'] }, %w[flag], true)
-              window_bounds = pdf_config['window_bounds'] || '{3072, 0, 4096, 2160}'
-
-              # 既存のPDFウィンドウを閉じる（設定で有効な場合）
-              if close_existing
-                # Shell 経由のクォート崩れを避けるため、引数配列形式で実行
-                begin
-                  system('osascript', '-e', 'tell application "Preview" to close every window')
-                rescue StandardError
-                  # 失敗しても致命的ではないため黙って続行
-                end
-              end
-
-              # PDFを開く
-              open_cmd = "open -a Preview \"#{pdf_path}\""
-              system(open_cmd)
-
-              # Previewウィンドウを指定位置に配置
-              system <<~APPLE_SCRIPT
-                osascript -e '
-                  tell application "Preview"
-                    activate
-                    set bounds of front window to #{window_bounds}
-                  end tell'
-              APPLE_SCRIPT
-
-              Common.log_success('PDFを開きました')
+            desc 'open:pdf [PATH]', PdfCommands::PDF_DESC[:open][:short]
+            long_desc PdfCommands::PDF_DESC[:open][:long]
+            # PDF を開くコマンドのエントリポイント
+            define_method(:open_pdf) do |path = nil|
+              PdfCommands::PdfOpener.new(self, path).call
             end
+          end
+        end
+
+        # npx vivliostyle build をラップして PDF を生成する
+        class PdfCommandRunner
+          def initialize(command, target_output)
+            @command = command
+            @target_output = target_output
+            @config = Common::CONFIG['pdf'] || {}
+            @build_success = false
+          end
+
+          # PDF 生成処理を実行する
+          def call
+            apply_verbose_option
+            Common.log_action('PDFを生成しています…')
+            execute_build
+            handle_build_result
+          end
+
+          private
+
+          attr_reader :command, :target_output, :config
+
+          # Thor の options を取得する
+          def options
+            command.respond_to?(:options) ? command.options || {} : {}
+          end
+
+          # --verbose 指定時に環境変数を設定する
+          def apply_verbose_option
+            ENV['VERBOSE'] = '1' if options[:verbose]
+          end
+
+          # Vivliostyle CLI を実行して PDF を生成する
+          def execute_build
+            @build_success = if quiet_mode?
+                               system(build_command, out: File::NULL, err: File::NULL)
+                             else
+                               system(build_command)
+                             end
+          end
+
+          # quiet モードが有効かどうか返す
+          def quiet_mode?
+            @quiet_mode ||= (ENV['VIVLIO_QUIET'] == '1') || Common.truthy?(config['quiet'])
+          end
+
+          # 実行するビルドコマンド文字列を組み立てる
+          def build_command
+            cmd = 'npx vivliostyle build'
+            cmd += ' -d' if SingleDocDecider.new(config).call
+            cmd
+          end
+
+          # ビルド結果に応じてログを出す
+          def handle_build_result
+            if @build_success
+              handle_successful_build
+            else
+              Common.log_error('PDFの生成に失敗しました')
+            end
+          end
+
+          # 成功時の出力ファイル処理を行う
+          def handle_successful_build
+            return finalize_default_output unless rename_requested?
+
+            rename_output_file
+          end
+
+          # リネーム指定があるかどうか返す
+          def rename_requested?
+            target_output && !target_output.to_s.strip.empty?
+          end
+
+          # 出力ファイルのパスを返す
+          def output_path
+            config['output_file'] || 'output.pdf'
+          end
+
+          # 出力先の絶対パスをログ出力する
+          def log_output_location(path)
+            Common.log_info("出力先: #{File.expand_path(path)}")
+          end
+
+          # 生成された PDF をターゲットにリネームする
+          def rename_output_file
+            unless File.exist?(output_path)
+              Common.log_warn("PDF生成は成功しましたが、出力ファイルが見つかりません: #{output_path}")
+              return
+            end
+
+            return finalize_default_output if same_target_path?
+
+            perform_rename
+          end
+
+          # 出力先をそのまま利用する際の後処理
+          def finalize_default_output
+            Common.log_success('PDFの生成が完了しました')
+            log_output_location(output_path)
+          end
+
+          # 出力先とターゲットが同一パスか判定する
+          def same_target_path?
+            File.expand_path(output_path) == File.expand_path(target_output)
+          end
+
+          # 出力 PDF をターゲットへ移動する
+          def perform_rename
+            FileUtils.rm_f(target_output)
+            FileUtils.mv(output_path, target_output)
+            Common.log_success("PDFの生成が完了しました（リネーム: #{output_path} → #{target_output}）")
+            log_output_location(target_output)
+          rescue StandardError => e
+            Common.log_warn("PDFのリネームに失敗しました: #{e}")
+          end
+        end
+
+        # --single-doc オプションの有効化可否を判定する
+        class SingleDocDecider
+          def initialize(config)
+            @config = config
+          end
+
+          # single-doc を有効化すべきかどうか返す
+          def call
+            return false unless requested?
+            return false unless config_allows_single_doc?
+            return false unless entries_js_allows_single_doc?
+
+            true
+          rescue StandardError => e
+            Common.log_warn("[pdf] --single-doc 判定に失敗: #{e}。安全側で無効化します")
+            false
+          end
+
+          private
+
+          attr_reader :config
+
+          # single_doc 設定が要求されているか
+          def requested?
+            (ENV['VIVLIO_SINGLE_DOC'] == '1') || Common.truthy?(config['single_doc'])
+          end
+
+          # vivliostyle.config.js が entries.js を参照していないか
+          def config_allows_single_doc?
+            path = root_join('vivliostyle.config.js')
+            return true unless File.exist?(path)
+
+            text = File.read(path, encoding: 'utf-8')
+            return true unless text.match?(/entries\.(js|mjs)\b/)
+
+            Common.log_info('[pdf] vivliostyle.config.js が entries.js を参照しているため --single-doc を無効化します')
+            false
+          rescue StandardError
+            true
+          end
+
+          # entries.js のエントリ数が 1 件か判定する
+          def entries_js_allows_single_doc?
+            path = root_join('entries.js')
+            unless File.exist?(path)
+              Common.log_info('[pdf] entries.js が見つからないため --single-doc は無効化します')
+              return false
+            end
+
+            text = File.read(path, encoding: 'utf-8')
+            paths = text.scan(/"path"\s*:/)
+            return true if paths.size == 1
+
+            Common.log_info("[pdf] entries.js に複数エントリ(#{paths.size})があるため --single-doc は無効化します")
+            false
+          end
+
+          # プロジェクトルート配下のファイルパスを返す
+          def root_join(name)
+            File.join(Dir.pwd, name)
+          end
+        end
+
+        # Ghostscript を利用して PDF を圧縮する
+        class PdfCompressor
+          def initialize(command)
+            @command = command
+            @config = Common::CONFIG['pdf'] || {}
+            @input_pdf = nil
+            @output_pdf = nil
+            @compression_success = false
+          end
+
+          # PDF 圧縮処理を実行する
+          def call
+            apply_verbose_option
+            determine_paths
+            ensure_input_exists
+            Common.log_action("PDFを圧縮しています…（入力: #{input_pdf} → 出力: #{output_pdf}）")
+            compress_pdf
+            report_result
+          end
+
+          private
+
+          attr_reader :command, :config, :input_pdf, :output_pdf, :compression_success
+
+          # Thor の options を取得する
+          def options
+            command.respond_to?(:options) ? command.options || {} : {}
+          end
+
+          # --verbose 指定時に環境変数を設定する
+          def apply_verbose_option
+            ENV['VERBOSE'] = '1' if options[:verbose]
+          end
+
+          # 入出力ファイルのパスを決定する
+          def determine_paths
+            @input_pdf  = config['output_file'] || 'output.pdf'
+            @output_pdf = config['output_file_compressed'] || 'output_compressed.pdf'
+          end
+
+          # 入力 PDF の存在を確認する
+          def ensure_input_exists
+            return if File.exist?(input_pdf)
+
+            Common.log_error("エラー: 入力PDFが見つかりません: #{input_pdf}")
+            exit(1)
+          end
+
+          # Ghostscript を実行して PDF を圧縮する
+          def compress_pdf
+            if ghostscript_available?
+              @compression_success = run_ghostscript
+            else
+              Common.log_warn('Ghostscript(gs) が見つかりません。圧縮をスキップします。')
+              exit(1)
+            end
+          end
+
+          # Ghostscript コマンドが利用可能かを判定する
+          def ghostscript_available?
+            system('which gs >/dev/null 2>&1')
+          end
+
+          # Ghostscript を起動し圧縮処理を行う
+          def run_ghostscript
+            cmd = [
+              'gs', '-sDEVICE=pdfwrite', '-dCompatibilityLevel=1.7',
+              '-dPDFSETTINGS=/ebook', '-dNOPAUSE', '-dQUIET', '-dBATCH',
+              "-sOutputFile=#{output_pdf}", input_pdf
+            ]
+            system(cmd.join(' '))
+          end
+
+          # 圧縮結果に応じてログを出す
+          def report_result
+            if compression_success && File.exist?(output_pdf)
+              Common.log_success("圧縮したPDFを出力しました: #{File.expand_path(output_pdf)}")
+            else
+              Common.log_error('PDFの圧縮に失敗しました')
+              exit(1)
+            end
+          end
+        end
+
+        # macOS の Preview.app で PDF を開く
+        class PdfOpener
+          def initialize(command, path)
+            @command = command
+            @explicit_path = path
+            @config = Common::CONFIG['pdf'] || {}
+          end
+
+          # PDF を開く処理を実行する
+          def call
+            apply_verbose_option
+            pdf_path = resolve_pdf_path
+            Common.log_action('PDFを開いています…')
+            Common.log_info("ファイルパス: #{File.expand_path(pdf_path)}")
+
+            unless macos?
+              inform_unsupported_platform
+              return
+            end
+
+            ensure_pdf_exists(pdf_path)
+            close_existing_windows_if_needed
+            open_pdf(pdf_path)
+            position_window
+            Common.log_success('PDFを開きました')
+          end
+
+          private
+
+          attr_reader :command, :explicit_path, :config
+
+          # Thor の options を取得する
+          def options
+            command.respond_to?(:options) ? command.options || {} : {}
+          end
+
+          # --verbose 指定時に環境変数を設定する
+          def apply_verbose_option
+            ENV['VERBOSE'] = '1' if options[:verbose]
+          end
+
+          # 開くべき PDF ファイルのパスを決定する
+          def resolve_pdf_path
+            return explicit_path.to_s unless explicit_path.nil? || explicit_path.to_s.strip.empty?
+
+            select_preferred_pdf
+          end
+
+          # 既定の PDF を選択する
+          def select_preferred_pdf
+            compressed = config['output_file_compressed'] || 'output_compressed.pdf'
+            normal = config['output_file'] || 'output.pdf'
+
+            if File.exist?(compressed) && File.exist?(normal)
+              choose_by_timestamp(compressed, normal)
+            elsif File.exist?(compressed)
+              Common.log_info('open: 圧縮版のみ存在するためこちらを開きます')
+              compressed
+            else
+              Common.log_info('open: 通常版を開きます')
+              normal
+            end
+          end
+
+          # 圧縮版と通常版の更新日時から優先度を決める
+          def choose_by_timestamp(compressed, normal)
+            c_mtime = safe_mtime(compressed)
+            n_mtime = safe_mtime(normal)
+            if c_mtime >= n_mtime
+              Common.log_info("open: 圧縮版(#{compressed})が新しいためこちらを開きます")
+              compressed
+            else
+              Common.log_info("open: 通常版(#{normal})が新しいためこちらを開きます")
+              normal
+            end
+          rescue StandardError
+            compressed
+          end
+
+          # mtime 取得に失敗した場合のフォールバックを提供する
+          def safe_mtime(path)
+            File.mtime(path)
+          rescue StandardError
+            Time.at(0)
+          end
+
+          # macOS 以外であることを案内する
+          def inform_unsupported_platform
+            Common.log_info('この環境では自動オープンは未対応です（macOS専用機能）。PDFは手動で開いてください。')
+          end
+
+          # 指定された PDF の存在を確認する
+          def ensure_pdf_exists(path)
+            return if File.exist?(path)
+
+            Common.log_error("エラー: PDFファイルが見つかりません: #{path}")
+            exit(1)
+          end
+
+          # macOS かどうか判定する
+          def macos?
+            RbConfig::CONFIG['host_os'] =~ /darwin|mac os/i
+          end
+
+          # 既存の Preview ウィンドウを閉じる
+          def close_existing_windows_if_needed
+            return unless Common.fetch_bool({ 'flag' => config['close_existing_windows'] }, %w[flag], default: true)
+
+            begin
+              system('osascript', '-e', 'tell application "Preview" to close every window')
+            rescue StandardError
+              # 失敗しても処理続行
+            end
+          end
+
+          # Preview.app で PDF を開く
+          def open_pdf(path)
+            system("open -a Preview \"#{path}\"")
+          end
+
+          # Preview ウィンドウを設定された位置に移動する
+          def position_window
+            bounds = config['window_bounds'] || '{3072, 0, 4096, 2160}'
+            system <<~APPLE_SCRIPT
+              osascript -e '
+                tell application "Preview"
+                  activate
+                  set bounds of front window to #{bounds}
+                end tell'
+            APPLE_SCRIPT
           end
         end
       end

@@ -507,66 +507,71 @@ module Vivlio
         def wrap_h2_with_article_if_image_style!(html)
           return html unless Common::CONFIG.dig('theme', 'style') == 'image'
 
-          doc = if defined?(Nokogiri::HTML5)
-                  Nokogiri::HTML5.parse(html)
-                else
-                  Nokogiri::HTML.parse(html, nil, 'UTF-8')
-                end
+          doc = parse_html_document(html)
+          transformed = wrap_sections_with_article!(doc)
+          transformed ? render_html_document(doc) : html
+        end
 
+        # Nokogiri を用いて HTML 文字列からドキュメントオブジェクトを生成する
+        def parse_html_document(html)
+          if defined?(Nokogiri::HTML5)
+            Nokogiri::HTML5.parse(html)
+          else
+            Nokogiri::HTML.parse(html, nil, 'UTF-8')
+          end
+        end
+
+        # Nokogiri ドキュメントを HTML 文字列へ戻す（HTML5/HTML 両対応）
+        def render_html_document(doc)
+          doc.respond_to?(:to_html) ? doc.to_html : doc.to_s
+        end
+
+        # section.level2 直下の h2 を article.section-topic でラップする
+        def wrap_sections_with_article!(doc)
           changed = false
-
           doc.css('section.level2').each do |section|
-            # section 直下の h2 を対象
             h2 = section.at_css('> h2')
-            next unless h2
-            # 既に article.section-topic 配下ならスキップ
-            next if h2.ancestors('article.section-topic').any?
+            next unless h2 && h2.ancestors('article.section-topic').empty?
 
-            # h2 の直後に現れる .section-lead（要素ノード）を探索
-            # 空の <p> などはスキップし、はじめに見つかった .section-lead を採用
-            lead = nil
-            node = h2.next_sibling
-            while node
-              if node.element?
-                classes = node['class']&.split || []
-                if classes.include?('section-lead')
-                  lead = node
-                  break
-                end
-                # 空段落 <p> はスキップ（改行や空白・ゼロ幅文字のみ）
-                if node.name == 'p' && node.text.gsub(/[\u200B\u200C\u200D\u2060\uFEFF\u180E]/, '').strip.empty?
-                  node = node.next_sibling
-                  next
-                end
-                # それ以外の要素が来たら探索終了
-                break
-              else
-                # テキストノードやコメントはスキップ
-                node = node.next_sibling
-              end
-            end
-
-            article = Nokogiri::XML::Node.new('article', doc)
-            article['class'] = 'section-topic'
-
-            # h2 の直前に article を挿入し、h2 と（あれば）lead を移動
-            h2.add_previous_sibling("\n")
-            h2.add_previous_sibling(article)
-            article.add_child(h2)
-            if lead
-              article.add_child("\n")
-              article.add_child(lead)
-            end
+            lead = find_section_lead_for(h2)
+            wrap_with_article(section, h2, lead)
             changed = true
           end
+          changed
+        end
 
-          return html unless changed
+        # h2 に続く .section-lead ノードを探索して返す
+        def find_section_lead_for(h2)
+          node = h2.next_sibling
+          while node
+            return node if node.element? && (node['class']&.split || []).include?('section-lead')
 
-          if doc.respond_to?(:to_html)
-            doc.to_html
-          else
-            doc.to_s
+            if node.element? && node.name == 'p' && zero_width_text?(node.text)
+              node = node.next_sibling
+              next
+            end
+
+            node = node.element? ? nil : node.next_sibling
           end
+          nil
+        end
+
+        # ゼロ幅スペース等のみで構成されているかを判定する
+        def zero_width_text?(text)
+          text.gsub(/[\u200B\u200C\u200D\u2060\uFEFF\u180E]/, '').strip.empty?
+        end
+
+        # h2 と（存在すれば）section-lead を article.section-topic で包む
+        def wrap_with_article(section, h2, lead)
+          article = Nokogiri::XML::Node.new('article', section.document)
+          article['class'] = 'section-topic'
+          h2.add_previous_sibling("\n")
+          h2.add_previous_sibling(article)
+          article.add_child(h2)
+          return unless lead
+
+          article.add_child("\n")
+          article.add_child(lead)
         end
 
         # 章末の endnotes をページ脚注へ変換
@@ -581,88 +586,86 @@ module Vivlio
         # 5) アンカー未検出の定義は <body> 末尾に aside を追加（フォールバック）
         # 6) 定義のない脚注参照 a.footnote-ref についても前方のリンクURLから本文を推定して補完
         def convert_endnotes_to_page_footnotes!(html)
-          # Nokogiri で解析（HTML5があれば優先）
-          doc = if defined?(Nokogiri::HTML5)
-                  Nokogiri::HTML5.parse(html)
-                else
-                  Nokogiri::HTML.parse(html, nil, 'UTF-8')
-                end
-
+          doc = parse_html_document(html)
           footnotes = doc.at_css('section.footnotes')
           return html unless footnotes
 
-          # 定義の収集: <li id="fn1"> ... </li>
-          defs = {}
-          footnotes.css('li[id]').each do |li|
-            fid = li['id']
-            cleaned = li.dup
-            # 戻りリンク除去
-            cleaned.css('a.footnote-back, a.footnote-backref').each(&:remove)
-            # 空段落除去
-            cleaned.css('p').select { |p| p.text.strip.empty? }.each(&:remove)
-            # <li> の内側HTML
-            inner = cleaned.children.map(&:to_html).join.strip
-            defs[fid] = inner
-          end
-
-          # footnotes セクション自体を除去
+          definitions = extract_footnote_definitions(footnotes)
           footnotes.remove
 
-          # 参照直後に脚注ノードを挿入
-          defs.each do |fid, body|
-            # アンカー参照（もっとも一般的）
+          insert_footnotes_for_references!(doc, definitions)
+          append_unused_footnotes_to_body!(doc, definitions)
+          fill_missing_footnote_references!(doc)
+
+          render_html_document(doc)
+        end
+
+        # section.footnotes 内の脚注定義を id => HTML として抽出する
+        def extract_footnote_definitions(footnotes_section)
+          footnotes_section.css('li[id]').each_with_object({}) do |li, memo|
+            fid = li['id']
+            cleaned = li.dup
+            cleaned.css('a.footnote-back, a.footnote-backref').each(&:remove)
+            cleaned.css('p').select { |p| p.text.strip.empty? }.each(&:remove)
+            memo[fid] = cleaned.children.map(&:to_html).join.strip
+          end
+        end
+
+        # 本文中の脚注参照アンカーへ定義を差し込む
+        def insert_footnotes_for_references!(doc, definitions)
+          definitions.keys.each do |fid|
+            body = definitions[fid]
             anchor = doc.at_css(%(a[href="##{fid}"]))
-            if anchor
-              in_paragraph = anchor.ancestors('p').any?
-              if in_paragraph
-                # 画面: インライン用 span
-                span = Nokogiri::XML::Node.new('span', doc)
-                span['role'] = 'doc-footnote'
-                span['class'] = 'page-footnote page-footnote-inline'
-                span['id'] = fid
-                span.inner_html = body
-                anchor.add_next_sibling(span)
+            next unless anchor
 
-                # 直後の空白をノーブレークスペースに変換して改行を防止
-                # - 行末の脚注で折り返されると読みにくい問題に対応
-                following = span.next_sibling
-                if following&.text?
-                  txt = following.text
-                  following.content = " #{txt.lstrip}" if txt.start_with?(' ')
-                end
+            insert_footnote_for_anchor!(doc, anchor, fid, body)
+            definitions.delete(fid)
+          end
+        end
 
-                # 印刷: ページ脚注用 aside（画面では非表示）
-                aside = Nokogiri::XML::Node.new('aside', doc)
-                aside['role'] = 'doc-footnote'
-                aside['class'] = 'page-footnote page-footnote-print'
-                aside['id'] = fid
-                aside.inner_html = body
-                # 段落を壊さないよう、<p> の直後に配置
-                # - ブロックレベルでページ脚注を出すため、段落ノードの直後に sibling として置く
-                para = anchor.ancestors('p').first
-                if para
-                  para.add_next_sibling("\n")
-                  para.add_next_sibling(aside)
-                else
-                  # 念のためのフォールバック
-                  anchor.add_next_sibling("\n")
-                  anchor.add_next_sibling(aside)
-                end
-              else
-                # 段落外: 従来どおり aside を使用
-                aside = Nokogiri::XML::Node.new('aside', doc)
-                aside['role'] = 'doc-footnote'
-                aside['class'] = 'page-footnote page-footnote-print'
-                aside['id'] = fid
-                aside.inner_html = body
-                anchor.add_next_sibling("\n")
-                anchor.add_next_sibling(aside)
-              end
-              next
-            end
+        # アンカー位置に応じてインライン/印刷脚注を挿入する
+        def insert_footnote_for_anchor!(doc, anchor, fid, body)
+          if anchor.ancestors('p').any?
+            insert_inline_footnote!(doc, anchor, fid, body)
+            insert_print_footnote_after_paragraph!(doc, anchor, fid, body)
+          else
+            insert_print_footnote_after_anchor!(doc, anchor, fid, body)
+          end
+        end
 
-            # フォールバック: 本文末尾に追加
-            body_el = doc.at_css('body') || doc
+        # インライン脚注 span を参照アンカー直後に挿入する
+        def insert_inline_footnote!(doc, anchor, fid, body)
+          span = build_inline_footnote_node(doc, fid, body)
+          anchor.add_next_sibling(span)
+          adjust_following_whitespace(span)
+        end
+
+        # 段落内参照の場合、段落直後に印刷用脚注 aside を差し込む
+        def insert_print_footnote_after_paragraph!(doc, anchor, fid, body)
+          aside = build_print_footnote_node(doc, fid, body)
+          para = anchor.ancestors('p').first
+          if para
+            para.add_next_sibling("\n")
+            para.add_next_sibling(aside)
+          else
+            anchor.add_next_sibling("\n")
+            anchor.add_next_sibling(aside)
+          end
+        end
+
+        # 段落外参照の場合、アンカーの直後に印刷用脚注を配置する
+        def insert_print_footnote_after_anchor!(doc, anchor, fid, body)
+          aside = build_print_footnote_node(doc, fid, body)
+          anchor.add_next_sibling("\n")
+          anchor.add_next_sibling(aside)
+        end
+
+        # 残った脚注定義を本文末尾の aside として追加する
+        def append_unused_footnotes_to_body!(doc, definitions)
+          return if definitions.empty?
+
+          body_el = doc.at_css('body') || doc
+          definitions.each do |fid, body|
             aside = Nokogiri::XML::Node.new('aside', doc)
             aside['role'] = 'doc-footnote'
             aside['class'] = 'page-footnote'
@@ -671,73 +674,64 @@ module Vivlio
             body_el.add_child("\n")
             body_el.add_child(aside)
           end
+        end
 
-          # 追加パス: 定義のない脚注参照にも対応
+        # 定義が存在しない脚注参照を前方リンクから推測して補完する
+        def fill_missing_footnote_references!(doc)
           doc.css('a.footnote-ref[href^="#fn"]').each do |anchor|
-            href = anchor['href']
-            next unless href&.start_with?('#')
-
-            fid = href.delete_prefix('#')
-            # 既に処理済みならスキップ
+            fid = anchor['href']&.delete_prefix('#')
+            next unless fid
             next if doc.at_css(%(##{fid}))
 
-            # 直前のリンク要素からURLを推定
-            # - Kramdown の [:ref] と生成物の差異により参照のみで定義が無いケースがあるため、
-            #   実用上もっとも近い preceding <a> の href を本文として補完
-            prev_link = anchor.previous_element
-            prev_link = prev_link.previous_element while prev_link && prev_link.name != 'a'
-            url = prev_link&.[]('href')
-            next unless url && !url.empty?
+            body = inferred_body_from_previous_link(anchor)
+            next unless body
 
-            # 本文HTML: URLをそのまま表示するリンク
-            body = %(<a href="#{url}">#{url}</a>)
-
-            in_paragraph = anchor.ancestors('p').any?
-            if in_paragraph
-              span = Nokogiri::XML::Node.new('span', doc)
-              span['role'] = 'doc-footnote'
-              span['class'] = 'page-footnote page-footnote-inline'
-              span['id'] = fid
-              span.inner_html = body
-              anchor.add_next_sibling(span)
-
-              # 改行防止のノーブレークスペース
-              following = span.next_sibling
-              if following&.text?
-                txt = following.text
-                following.content = " #{txt.lstrip}" if txt.start_with?(' ')
-              end
-
-              aside = Nokogiri::XML::Node.new('aside', doc)
-              aside['role'] = 'doc-footnote'
-              aside['class'] = 'page-footnote page-footnote-print'
-              aside['id'] = fid
-              aside.inner_html = body
-              para = anchor.ancestors('p').first
-              if para
-                para.add_next_sibling("\n")
-                para.add_next_sibling(aside)
-              else
-                anchor.add_next_sibling("\n")
-                anchor.add_next_sibling(aside)
-              end
+            if anchor.ancestors('p').any?
+              insert_inline_footnote!(doc, anchor, fid, body)
+              insert_print_footnote_after_paragraph!(doc, anchor, fid, body)
             else
-              aside = Nokogiri::XML::Node.new('aside', doc)
-              aside['role'] = 'doc-footnote'
-              aside['class'] = 'page-footnote page-footnote-print'
-              aside['id'] = fid
-              aside.inner_html = body
-              anchor.add_next_sibling("\n")
-              anchor.add_next_sibling(aside)
+              insert_print_footnote_after_anchor!(doc, anchor, fid, body)
             end
           end
+        end
 
-          # HTML 文字列として返却
-          if doc.respond_to?(:to_html)
-            doc.to_html
-          else
-            doc.to_s
-          end
+        # 脚注参照直前のリンク要素から本文 HTML を推定する
+        def inferred_body_from_previous_link(anchor)
+          prev_link = anchor.previous_element
+          prev_link = prev_link.previous_element while prev_link && prev_link.name != 'a'
+          url = prev_link&.[]('href')
+          return unless url && !url.empty?
+
+          %(<a href="#{url}">#{url}</a>)
+        end
+
+        # インライン脚注用の span ノードを生成する
+        def build_inline_footnote_node(doc, fid, body)
+          span = Nokogiri::XML::Node.new('span', doc)
+          span['role'] = 'doc-footnote'
+          span['class'] = 'page-footnote page-footnote-inline'
+          span['id'] = fid
+          span.inner_html = body
+          span
+        end
+
+        # 印刷用脚注の aside ノードを生成する
+        def build_print_footnote_node(doc, fid, body)
+          aside = Nokogiri::XML::Node.new('aside', doc)
+          aside['role'] = 'doc-footnote'
+          aside['class'] = 'page-footnote page-footnote-print'
+          aside['id'] = fid
+          aside.inner_html = body
+          aside
+        end
+
+        # インライン脚注後の空白をノーブレークスペースへ変換する
+        def adjust_following_whitespace(node)
+          following = node.next_sibling
+          return unless following&.text?
+
+          text = following.text
+          following.content = " #{text.lstrip}" if text.start_with?(' ')
         end
       end
     end

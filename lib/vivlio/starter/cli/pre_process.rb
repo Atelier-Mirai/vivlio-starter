@@ -16,6 +16,113 @@ module Vivlio
       # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
       # ================================================================
       module PreProcessCommands
+        PreProcessContext = Struct.new(
+          :source_path,
+          :output_path,
+          :filename,
+          :file_type,
+          :chapter_number,
+          :content,
+          keyword_init: true
+        )
+
+        # Markdown 前処理を段階的に実行するクラス
+        class MarkdownPreprocessor
+          attr_reader :context
+
+          def initialize(md_file)
+            filename = File.basename(md_file)
+            @context = PreProcessContext.new(
+              source_path: md_file,
+              output_path: filename,
+              filename: filename,
+              file_type: Common.get_file_type(filename),
+              chapter_number: Common.get_chapter_number(filename),
+              content: File.read(md_file, encoding: 'utf-8')
+            )
+          end
+
+          # 指定Markdownの前処理パイプラインを順次実行する
+          def run
+            Common.log_info("#{context.source_path} → #{context.output_path}")
+            apply_frontmatter!
+            normalize_image_paths!
+            process_code_includes!
+            transform_book_cards!
+            transform_table_rotations!
+            transform_links!
+            write_output!
+          end
+
+          private
+
+          # フロントマターを生成または併合して更新する
+          def apply_frontmatter!
+            context.content = PreProcessCommands.apply_frontmatter(
+              context.content,
+              context.file_type,
+              context.chapter_number
+            )
+          end
+
+          # 画像パスを生成規約に従って正規化する
+          def normalize_image_paths!
+            context.content = PreProcessCommands.fix_image_paths(context.content, context.filename)
+            Common.log_success("画像パスを修正しました: #{context.filename}")
+          end
+
+          # include 記法によるソースコード取り込みを実行する
+          def process_code_includes!
+            Common.log_action('ソースコード読み込み記法をスキャンしています…')
+            context.content = PreProcessCommands.process_code_include(context.content)
+            Common.log_success('ソースコード読み込み処理が完了しました')
+          end
+
+          # book-card 記法をHTMLに変換し、内部Markdownを整形する
+          def transform_book_cards!
+            context.content, opened, closed = PreProcessCommands.convert_container_blocks(
+              context.content,
+              class_name: 'book-card'
+            )
+            Common.log_success("book-cardブロックの事前変換が完了しました（開始:#{opened}件 終了:#{closed}件）")
+
+            Common.log_action('book-card内のMarkdownをHTMLへ変換しています…')
+            context.content = PreProcessCommands.convert_book_card_inner_markdown(context.content)
+            Common.log_success('book-card内のMarkdownをHTMLへ変換しました')
+          end
+
+          # table-rotate 記法をHTMLに変換し、内部Markdownを整形する
+          def transform_table_rotations!
+            context.content, opened, closed = PreProcessCommands.convert_container_blocks(
+              context.content,
+              class_name: 'table-rotate'
+            )
+            Common.log_success("table-rotateブロックの事前変換が完了しました（開始:#{opened}件 終了:#{closed}件）")
+
+            Common.log_action('table-rotate内のMarkdownをHTMLへ変換しています…')
+            context.content = PreProcessCommands.convert_table_rotate_inner_markdown(context.content)
+            Common.log_success('table-rotate内のMarkdownをHTMLへ変換しました')
+          end
+
+          # 外部リンクを脚注化して本文を整える
+          def transform_links!
+            Common.log_action('リンク記法を脚注化しています…')
+            before = context.content.dup
+            context.content = PreProcessCommands.transform_links_to_footnotes(context.content)
+            if context.content == before
+              Common.log_info('脚注化の対象リンクはありません')
+            else
+              Common.log_success('リンクの脚注化を適用しました')
+            end
+          end
+
+          # 加工済みコンテンツを書き戻す
+          def write_output!
+            File.write(context.output_path, context.content, encoding: 'utf-8')
+            Common.log_success('保存が完了しました')
+          end
+        end
+
         module_function
 
         PRE_PROCESS_DESC = {
@@ -893,152 +1000,91 @@ module Vivlio
           content
         end
 
-        # 単一のMarkdownファイルを処理
-        # 処理パイプライン概要:
-        # 1) フロントマター生成/併合 → 2) 画像パス正規化 → 3) ソースコード取込
-        # 4) book-card/table-rotate のブロック検出と事前変換/内側HTML化
-        # 5) リンク脚注化 → 6) 上書き保存
-        def process_single_markdown_file(md_file)
-          filename = File.basename(md_file)
-          output_file = filename
+        # 既存フロントマターを併合するか新規生成して Markdown に反映する
+        def apply_frontmatter(content, file_type, chapter_num)
+          text = content.dup
+          if text.start_with?('---')
+            frontmatter_match = text.match(/\A---\n(.*?)\n---\n/m)
+            return text unless frontmatter_match
 
-          Common.log_info("#{md_file} → #{output_file}")
-
-          content = File.read(md_file, encoding: 'utf-8')
-
-          file_type = Common.get_file_type(filename)
-          chapter_num = Common.get_chapter_number(filename)
-
-          # フロントマターを処理
-          if content.start_with?('---')
-            frontmatter_match = content.match(/\A---\n(.*?)\n---\n/m)
-
-            if frontmatter_match
-              frontmatter_yaml = frontmatter_match[1]
-              begin
-                existing_frontmatter = YAML.safe_load(frontmatter_yaml, permitted_classes: [], aliases: true) || {}
-
-                merged_frontmatter = generate_frontmatter(file_type, chapter_num, existing_frontmatter)
-
-                new_frontmatter_yaml = YAML.dump(merged_frontmatter)
-                Common.log_success('フロントマター併合')
-
-                content = content.sub(/\A---\n.*?\n---\n/m, "#{new_frontmatter_yaml}---\n")
-
-                Common.log_success('フロントマター更新')
-              rescue StandardError => e
-                line = e.respond_to?(:line) && e.line ? e.line.to_i : e.message[/line (\d+)/i, 1]&.to_i
-                column = e.respond_to?(:column) && e.column ? e.column.to_i : e.message[/column (\d+)/i, 1]&.to_i
-
-                if line&.positive?
-                  Common.log_warn("フロントマター（--- ～ ---）の記述に誤りがあります（位置: 行#{line} 列#{column&.positive? ? column : '?'}）。内容を見直してください。")
-                else
-                  Common.log_warn('フロントマター（--- ～ ---）の記述に誤りがあります。内容を見直してください。')
-                end
-
-                begin
-                  fm_lines = frontmatter_yaml.to_s.lines
-                  if line&.positive? && line <= fm_lines.length
-                    idx = line - 1
-                    start = [idx - 2, 0].max
-                    finish = [idx + 2, fm_lines.length - 1].min
-                    snippet = fm_lines[start..finish].each_with_index.map do |l, i2|
-                      "#{start + i2 + 1}: #{l.chomp}"
-                    end.join("\n")
-                    err_line_text = fm_lines[idx].to_s.chomp
-                    # エラー列位置の下に ^ を表示し、周辺5行を抜粋（可読性を高めるため）
-                    caret_line = column&.positive? ? "#{' ' * (column - 1)}^" : ''
-                    Common.log_info("問題のフロントマター（抜粋）:\n---\n#{snippet}\n---\n該当行:\n#{err_line_text}\n#{caret_line}")
-                  else
-                    Common.log_info("問題のフロントマター（抜粋）:\n---\n#{frontmatter_yaml}\n---")
-                  end
-                rescue StandardError => _ignore
-                  Common.log_info("問題のフロントマター（抜粋）:\n---\n#{frontmatter_yaml}\n---")
-                end
-              end
+            frontmatter_yaml = frontmatter_match[1]
+            begin
+              existing_frontmatter = YAML.safe_load(frontmatter_yaml, permitted_classes: [], aliases: true) || {}
+              merged_frontmatter = generate_frontmatter(file_type, chapter_num, existing_frontmatter)
+              new_frontmatter_yaml = YAML.dump(merged_frontmatter)
+              Common.log_success('フロントマター併合')
+              Common.log_success('フロントマター更新')
+              return text.sub(/\A---\n.*?\n---\n/m, "#{new_frontmatter_yaml}---\n")
+            rescue StandardError => e
+              report_frontmatter_error(e, frontmatter_yaml)
+              return text
             end
           else
             new_frontmatter = generate_frontmatter(file_type, chapter_num)
             new_frontmatter_yaml = YAML.dump(new_frontmatter)
-
-            content = "#{new_frontmatter_yaml}---\n\n#{content}"
             Common.log_success('フロントマター追加')
+            "#{new_frontmatter_yaml}---\n\n#{text}"
+          end
+        end
+
+        # フロントマター解析時のエラー内容を詳細ログへ出力する
+        def report_frontmatter_error(error, frontmatter_yaml)
+          line = error.respond_to?(:line) && error.line ? error.line.to_i : error.message[/line (\d+)/i, 1]&.to_i
+          column = error.respond_to?(:column) && error.column ? error.column.to_i : error.message[/column (\d+)/i, 1]&.to_i
+
+          if line&.positive?
+            Common.log_warn("フロントマター（--- ～ ---）の記述に誤りがあります（位置: 行#{line} 列#{column&.positive? ? column : '?'}）。内容を見直してください。")
+          else
+            Common.log_warn('フロントマター（--- ～ ---）の記述に誤りがあります。内容を見直してください。')
           end
 
-          # 画像パスを修正
-          content = fix_image_paths(content, filename)
-          Common.log_success("画像パスを修正しました: #{filename}")
+          begin
+            fm_lines = frontmatter_yaml.to_s.lines
+            if line&.positive? && line <= fm_lines.length
+              idx = line - 1
+              start = [idx - 2, 0].max
+              finish = [idx + 2, fm_lines.length - 1].min
+              snippet = fm_lines[start..finish].each_with_index.map do |l, i2|
+                "#{start + i2 + 1}: #{l.chomp}"
+              end.join("\n")
+              err_line_text = fm_lines[idx].to_s.chomp
+              caret_line = column&.positive? ? "#{' ' * (column - 1)}^" : ''
+              Common.log_info("問題のフロントマター（抜粋）:\n---\n#{snippet}\n---\n該当行:\n#{err_line_text}\n#{caret_line}")
+            else
+              Common.log_info("問題のフロントマター（抜粋）:\n---\n#{frontmatter_yaml}\n---")
+            end
+          rescue StandardError
+            Common.log_info("問題のフロントマター（抜粋）:\n---\n#{frontmatter_yaml}\n---")
+          end
+        end
 
-          # ソースコードを取り込む
-          Common.log_action('ソースコード読み込み記法をスキャンしています…')
-          content = process_code_include(content)
-          Common.log_success('ソースコード読み込み処理が完了しました')
-
-          # .book-card マークダウンブロックをHTMLに変換
-          Common.log_action('book-cardブロックをHTMLのdiv要素に変換しています…')
-          in_book_card = false
+        # ::: {.class} 記法で囲まれたコンテナを div に変換して件数を返す
+        def convert_container_blocks(content, class_name:)
           opened_count = 0
           closed_count = 0
-          converted_lines = content.lines.map do |line|
-            if line.match(/^\s*:::\{\.book-card\}\s*$/)
-              in_book_card = true
+          in_block = false
+
+          converted = content.lines.map do |line|
+            if line.match(/^\s*:::\{\.(#{Regexp.escape(class_name)})\}\s*$/)
+              in_block = true
               opened_count += 1
-              "<div class=\"book-card\">\n"
-            elsif in_book_card && line.match(/^\s*:::\s*$/)
-              in_book_card = false
+              "<div class=\"#{class_name}\">\n"
+            elsif in_block && line.match(/^\s*:::\s*$/)
+              in_block = false
               closed_count += 1
               "</div>\n"
             else
               line
             end
-          end
-          content = converted_lines.join
-          Common.log_success("book-cardブロックの事前変換が完了しました（開始:#{opened_count}件 終了:#{closed_count}件）")
+          end.join
 
-          # book-card の内側MarkdownをHTMLへ変換
-          Common.log_action('book-card内のMarkdownをHTMLへ変換しています…')
-          content = convert_book_card_inner_markdown(content)
-          Common.log_success('book-card内のMarkdownをHTMLへ変換しました')
+          [converted, opened_count, closed_count]
+        end
 
-          # .table-rotate マークダウンブロックをHTMLに変換
-          Common.log_action('table-rotateブロックをHTMLのdiv要素に変換しています…')
-          in_table_rotate = false
-          tr_opened_count = 0
-          tr_closed_count = 0
-          tr_converted_lines = content.lines.map do |line|
-            if line.match(/^\s*:::\{\.table-rotate\}\s*$/)
-              in_table_rotate = true
-              tr_opened_count += 1
-              "<div class=\"table-rotate\">\n"
-            elsif in_table_rotate && line.match(/^\s*:::\s*$/)
-              in_table_rotate = false
-              tr_closed_count += 1
-              "</div>\n"
-            else
-              line
-            end
-          end
-          content = tr_converted_lines.join
-          Common.log_success("table-rotateブロックの事前変換が完了しました（開始:#{tr_opened_count}件 終了:#{tr_closed_count}件）")
+        module_function :apply_frontmatter, :report_frontmatter_error, :convert_container_blocks
 
-          # table-rotate の内側MarkdownをHTMLへ変換
-          Common.log_action('table-rotate内のMarkdownをHTMLへ変換しています…')
-          content = convert_table_rotate_inner_markdown(content)
-          Common.log_success('table-rotate内のMarkdownをHTMLへ変換しました')
-
-          # リンク記法を脚注化
-          Common.log_action('リンク記法を脚注化しています…')
-          before = content.dup
-          content = transform_links_to_footnotes(content)
-          if content == before
-            Common.log_info('脚注化の対象リンクはありません')
-          else
-            Common.log_success('リンクの脚注化を適用しました')
-          end
-
-          # 処理後のファイルを保存
-          File.write(output_file, content, encoding: 'utf-8')
-          Common.log_success('保存が完了しました')
+        def process_single_markdown_file(md_file)
+          MarkdownPreprocessor.new(md_file).run
         end
       end
     end

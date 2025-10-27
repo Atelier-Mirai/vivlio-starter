@@ -1,0 +1,1 @@
+bundle exec ruby -W2 bin/vs clean --purge
