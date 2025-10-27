@@ -5,11 +5,11 @@
 
 <dl class="info-list">
     <dt>著者</dt>
-                    <dd>早乙女遙香</dd>
+                <dd>早乙女遙香</dd>
     <dt>発行者</dt>
-                    <dd>○○印刷所</dd>
+                <dd>○○印刷所</dd>
     <dt>連絡先</dt>
-                    <dd>haruka@example.com</dd>
+                <dd>haruka@example.com</dd>
 </dl>
 
 <p class="copyright">

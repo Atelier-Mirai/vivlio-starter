@@ -124,6 +124,7 @@ module Vivlio
 
           exit 1 if errors
         end
+        module_function :execute_create
 
         # create:titlepage コマンドの実処理を担う
         def execute_titlepage(command)
@@ -151,6 +152,7 @@ module Vivlio
 
           safe_write(path, content)
         end
+        module_function :execute_titlepage
 
         # create:colophon コマンドの実処理を担う
         def execute_colophon(command)
@@ -194,6 +196,7 @@ module Vivlio
 
           safe_write(path, content)
         end
+        module_function :execute_colophon
 
         # create:legalpage コマンドの実処理を担う
         def execute_legalpage(command)
@@ -219,6 +222,7 @@ module Vivlio
           safe_write(target, body)
           Common.log_success("生成しました: #{target}")
         end
+        module_function :execute_legalpage
 
         # =========================== Helpers =============================
 

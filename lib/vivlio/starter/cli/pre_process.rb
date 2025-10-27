@@ -1081,7 +1081,13 @@ module Vivlio
           [converted, opened_count, closed_count]
         end
 
-        module_function :apply_frontmatter, :report_frontmatter_error, :convert_container_blocks
+        module_function :apply_frontmatter, :report_frontmatter_error, :convert_container_blocks,
+                        :generate_frontmatter, :resolve_image_path, :resolve_frontispiece_path,
+                        :resolve_ornament_path, :fix_image_paths, :process_code_include,
+                        :convert_book_card_inner_markdown, :convert_table_rotate_inner_markdown,
+                        :transform_links_to_footnotes, :normalize_book_card_md,
+                        :render_markdown_to_html, :pipe_table_to_html, :format_book_card_inner_html
+        module_function :detect_language
 
         def process_single_markdown_file(md_file)
           MarkdownPreprocessor.new(md_file).run

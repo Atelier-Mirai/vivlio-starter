@@ -560,7 +560,7 @@ module Vivlio
         # - ラッパー等で標準出力が抑制されても見えるよう STDERR に出力
         # ================================================================
         def echo_always(msg)
-          warn msg
+          puts msg
         end
       end
     end
