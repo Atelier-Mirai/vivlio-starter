@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    vivlio-starter (0.10.0)
+    vivlio-starter (0.11.0)
       hexapdf (~> 1.0)
       kramdown (~> 2.4)
       mini_magick (~> 4.12)
@@ -25,6 +25,7 @@ GEM
     language_server-protocol (3.17.0.5)
     lint_roller (1.1.0)
     mini_magick (4.13.2)
+    minitest (5.26.0)
     nokogiri (1.18.9-arm64-darwin)
       racc (~> 1.4)
     openssl (3.3.0)
@@ -64,6 +65,7 @@ PLATFORMS
 
 DEPENDENCIES
   bundler (~> 2.5)
+  minitest (~> 5.22)
   rake (~> 13.2)
   rubocop (~> 1.65)
   vivlio-starter!

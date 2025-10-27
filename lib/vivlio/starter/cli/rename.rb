@@ -51,7 +51,7 @@ module Vivlio
             # ================================================================
             # Command: rename（章のスラッグ/番号変更）
             # ------------------------------------------------
-            # - 概要: Markdown, 章別CSS, 画像ディレクトリの名称を一貫して変更
+            # - 概要: Markdown と画像ディレクトリの名称を一貫して変更
             # - 入力: OLD NEW（NN→NN または NN-slug→NN-slug）
             # - オプション: --dry-run (-n), --force (-f, -y), --verbose (-v)
             # ================================================================
@@ -316,21 +316,7 @@ module Vivlio
               FileUtils.mv(old_md, new_md)
               Common.log_success('Markdownの変更が完了しました')
 
-              # 2. CSS のリネーム（番号が変わる場合）
-              old_css = File.join('stylesheets', "#{old_number}.css")
-              new_css = File.join('stylesheets', "#{new_number}.css")
-              if old_number != new_number && File.exist?(old_css)
-                if File.exist?(new_css)
-                  Common.log_warn("#{File.basename(new_css)} が既に存在するため、CSSファイルは手動で統合してください")
-                else
-                  FileUtils.mv(old_css, new_css)
-                  # 章番号から10引いた値をCSSの counter-reset に設定
-                  BuildHelpers.update_css_counter(new_css, new_number.to_i - 10)
-                  Common.log_success('CSSファイルの変更が完了しました')
-                end
-              end
-
-              # 3. 画像ディレクトリのリネーム（存在する場合）
+              # 2. 画像ディレクトリのリネーム（存在する場合）
               old_img_dir = File.join('images', "#{old_number}-#{old_slug}")
               new_img_dir = File.join('images', "#{new_number}-#{new_slug}")
               if File.directory?(old_img_dir)

@@ -108,6 +108,10 @@ Chromium 起動回数の削減（将来案）
 ## [Unreleased]
 （次回リリース候補の変更はここに追加してください）
 
+### Added
+- minitest を導入し、バージョン定数およびフルビルドパイプラインの基本動作を検証する最初のテストスイートを整備。
+- CLI コマンド（build/open/create/delete/rename/renumber/new/doctor/glossary/text_metrics/help/version）の挙動を確認する追加テストを整備し、主要サブコマンドのユースケースをカバー。
+
 ## [0.11.0] - 2025-10-27
 
 

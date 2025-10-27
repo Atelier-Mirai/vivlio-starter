@@ -30,9 +30,8 @@ Gem::Specification.new do |spec|
     files += %w[README.md LICENSE Rakefile Gemfile]
   end
 
-  # Keep only real files, exclude directories and missing paths; drop tests/specs
+  # Keep only real files, exclude directories and missing paths
   spec.files = files.select { |f| File.file?(f) }
-                    .reject { |f| f.match(%r{^(test|spec|features)/}) }
   spec.bindir        = 'bin'
   spec.executables   = %w[vivlio-starter vs]
   spec.require_paths = ['lib']
@@ -48,5 +47,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'bundler', '~> 2.5'
   spec.add_development_dependency 'rake', '~> 13.2'
   spec.add_development_dependency 'rubocop', '~> 1.65'
+  spec.add_development_dependency 'minitest', '~> 5.22'
   spec.metadata['rubygems_mfa_required'] = 'true'
 end
