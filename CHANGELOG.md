@@ -8,6 +8,7 @@
 
 
 ### Planned
+- gem 公開時には `vivlio-starter.gemspec` の summary/description が現行仕様に即しているか必ず再確認する
 
 
 #### ビルド/出力

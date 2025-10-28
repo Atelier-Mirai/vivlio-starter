@@ -192,20 +192,7 @@ module Vivlio
                   FileUtils.mv(info[:old_file], info[:new_file])
                 end
 
-                # 2. CSS リネーム
-                Common.log_action('CSSファイルの更新中...')
-                rename_map.each_value do |info|
-                  old_css = "stylesheets/#{info[:old_number]}.css"
-                  new_css = "stylesheets/#{info[:new_number]}.css"
-                  next unless File.exist?(old_css)
-
-                  Common.log_info("#{old_css} → #{new_css}")
-                  FileUtils.mv(old_css, new_css)
-                  # 章番号から10引いた値をCSSの counter-reset に設定
-                  BuildHelpers.update_css_counter(new_css, info[:new_number].to_i - 10)
-                end
-
-                # 3. 画像ディレクトリのリネーム
+                # 2. 画像ディレクトリのリネーム
                 Common.log_action('画像ディレクトリの更新中...')
                 rename_map.each_value do |info|
                   old_img_glob = "images/#{info[:old_number]}-*"
@@ -224,7 +211,7 @@ module Vivlio
                   end
                 end
 
-                # 4. 既存生成物のクリーンアップ（Thor の clean コマンドを呼び出し）
+                # 3. 既存生成物のクリーンアップ（Thor の clean コマンドを呼び出し）
                 Common.log_action('既存の生成ファイルをクリーンアップ中...')
                 begin
                   Vivlio::Starter::ThorCLI.start(['clean'])

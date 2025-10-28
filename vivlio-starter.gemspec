@@ -30,8 +30,8 @@ Gem::Specification.new do |spec|
     files += %w[README.md LICENSE Rakefile Gemfile]
   end
 
-  # Keep only real files, exclude directories and missing paths
-  spec.files = files.select { |f| File.file?(f) }
+  # Keep only real files, exclude directories, missing paths, and test/
+  spec.files = files.select { |f| File.file?(f) && !f.start_with?('test/') }
   spec.bindir        = 'bin'
   spec.executables   = %w[vivlio-starter vs]
   spec.require_paths = ['lib']
