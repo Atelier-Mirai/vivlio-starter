@@ -68,7 +68,7 @@ module Vivlio
             add_step('Step 5 (build sections html)', -> { BuildHelpers.build_sections_html!(keep) })
             add_step('Step 6 (generate toc and pdf)', -> { BuildHelpers.generate_toc_and_pdf!('.', keep) })
             add_step('Step 7 (build overall pdf and split)', -> {
-              Common.log_info('[Step 7] 従来フローで全体PDFを生成し分割します')
+              Common.log_info('[Step 7] 全体PDF生成 → toc(目次)とsections(本文+付録+後書き)に分割')
               BuildHelpers.build_overall_pdf_and_split_from_dir!('.', keep)
             })
             add_step('Step 8 (build 02-03-front.pdf)', -> { BuildHelpers.build_frontmatter_pdf!(keep) })

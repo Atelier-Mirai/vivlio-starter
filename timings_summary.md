@@ -1,4 +1,99 @@
 
+## Build Step Timings (2025-10-28T10:54:24+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step 0 (clean)                           0.00s
+  - Step 1 (optimize images)                 0.02s
+  - Step 5 (build sections html)             1.70s
+  - Step 6 (generate toc and pdf)           10.42s
+  - Step 7 (build overall pdf and split)    16.55s
+  - Step 8 (build 02-03-front.pdf)           1.12s
+  - Step 9 (build front pages and tail)      0.00s
+  - Step 10 (merge all pdfs with outline)    0.65s
+  - Step 11 (apply outline to output pdf)    2.38s
+  - Step 12 (compress pdf)                  13.16s
+  - Step 13 (final clean)                    0.00s
+  = TOTAL                                   46.00s
+```
+
+## Build Step Timings (2025-10-28T10:19:24+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step 0 (clean)                           0.00s
+  - Step 1 (optimize images)                 0.01s
+  - Step 5 (build sections html)             1.30s
+  - Step 6 (generate toc and pdf)            7.80s
+  - Step 7 (build overall pdf and split)    13.57s
+  - Step 8 (build 02-03-front.pdf)           0.91s
+  - Step 9 (build front pages and tail)      0.00s
+  - Step 10 (merge all pdfs with outline)    0.65s
+  - Step 11 (apply outline to output pdf)    2.38s
+  - Step 12 (compress pdf)                  12.45s
+  - Step 13 (final clean)                    0.00s
+  = TOTAL                                   39.08s
+```
+
+## Build Step Timings (2025-10-28T10:18:26+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step 0 (clean)                           0.00s
+  - Step 1 (optimize images)                 0.02s
+  - Step 5 (build sections html)             1.23s
+  - Step 6 (generate toc and pdf)            6.22s
+  - Step 7 (build overall pdf and split)    12.58s
+  - Step 8 (build 02-03-front.pdf)           0.91s
+  - Step 9 (build front pages and tail)      0.00s
+  - Step 10 (merge all pdfs with outline)    0.64s
+  - Step 11 (apply outline to output pdf)    2.40s
+  - Step 12 (compress pdf)                  12.71s
+  - Step 13 (final clean)                    0.00s
+  = TOTAL                                   36.70s
+```
+
+## Build Step Timings (2025-10-28T10:15:38+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step 0 (clean)                           0.00s
+  - Step 1 (optimize images)                 0.02s
+  - Step 5 (build sections html)             1.86s
+  - Step 6 (generate toc and pdf)            8.49s
+  - Step 7 (build overall pdf and split)    18.22s
+  - Step 8 (build 02-03-front.pdf)           0.98s
+  - Step 9 (build front pages and tail)      0.00s
+  - Step 10 (merge all pdfs with outline)    0.64s
+  - Step 11 (apply outline to output pdf)    2.35s
+  - Step 12 (compress pdf)                  12.44s
+  - Step 13 (final clean)                    0.00s
+  = TOTAL                                   45.00s
+```
+
+## Build Step Timings (2025-10-28T09:57:59+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step 0 (clean)                           0.00s
+  - Step 1 (optimize images)                 3.04s
+  - Step 5 (build sections html)             1.41s
+  - Step 6 (generate toc and pdf)           13.46s
+  - Step 7 (build overall pdf and split)    15.10s
+  - Step 8 (build 02-03-front.pdf)          10.25s
+  - Step 9 (build front pages and tail)     12.72s
+  - Step 10 (merge all pdfs with outline)    1.68s
+  - Step 11 (apply outline to output pdf)    2.63s
+  - Step 12 (compress pdf)                  12.57s
+  - Step 13 (final clean)                    0.00s
+  = TOTAL                                   72.85s
+```
+
 ## Build Step Timings (2025-10-27T21:41:32+09:00)
 
 ````

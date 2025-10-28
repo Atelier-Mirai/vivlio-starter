@@ -328,7 +328,8 @@ module Vivlio
           def run_ghostscript
             cmd = [
               'gs', '-sDEVICE=pdfwrite', '-dCompatibilityLevel=1.7',
-              '-dPDFSETTINGS=/ebook', '-dNOPAUSE', '-dQUIET', '-dBATCH',
+              '-dPDFSETTINGS=/ebook', '-dFastWebView=true', '-dDetectDuplicateImages=true',
+              '-dNOPAUSE', '-dQUIET', '-dBATCH',
               "-sOutputFile=#{output_pdf}", input_pdf
             ]
             system(cmd.join(' '))
