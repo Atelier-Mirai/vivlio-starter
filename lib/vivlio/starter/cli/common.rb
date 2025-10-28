@@ -308,6 +308,39 @@ module Vivlio
           Array(files).compact
         end
 
+        VIVLIOSTYLE_TIMINGS_KEY = :vivlio_starter_vivliostyle_timings
+
+        def reset_vivliostyle_build_timings
+          Thread.current[VIVLIOSTYLE_TIMINGS_KEY] = []
+        end
+
+        def record_vivliostyle_build(duration, label = nil)
+          timings = Thread.current[VIVLIOSTYLE_TIMINGS_KEY] ||= []
+          label_text = label.to_s
+          label_text = 'Vivliostyle build' if label_text.empty?
+          timings << { duration: duration.to_f, label: label_text }
+        end
+
+        def consume_vivliostyle_build_timings
+          timings = Thread.current[VIVLIOSTYLE_TIMINGS_KEY] || []
+          Thread.current[VIVLIOSTYLE_TIMINGS_KEY] = []
+          timings
+        end
+
+        VIVLIOSTYLE_CURRENT_STEP_KEY = :vivlio_starter_current_step_label
+
+        def with_current_step_label(label)
+          previous = Thread.current[VIVLIOSTYLE_CURRENT_STEP_KEY]
+          Thread.current[VIVLIOSTYLE_CURRENT_STEP_KEY] = label.to_s
+          yield
+        ensure
+          Thread.current[VIVLIOSTYLE_CURRENT_STEP_KEY] = previous
+        end
+
+        def current_step_label
+          Thread.current[VIVLIOSTYLE_CURRENT_STEP_KEY]
+        end
+
         # ================================================================
         # Utility: ローマ数字（小文字）変換 to_roman_lower
         # ------------------------------------------------

@@ -51,6 +51,7 @@ module Vivlio
 
           # 登録済みステップを順に実行し、経過時間を収集する
           def run
+            Common.reset_vivliostyle_build_timings
             @steps.each do |step|
               execute(step)
             end
@@ -88,7 +89,9 @@ module Vivlio
           def execute(step)
             start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
             Common.log_action("[Timer] #{step.label} start")
-            step.handler.call
+            Common.with_current_step_label(step.label) do
+              step.handler.call
+            end
           ensure
             finish_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
             elapsed = finish_time - start_time
@@ -451,8 +454,34 @@ module Vivlio
               label_width = [label_width, 'TOTAL'.length, 34].max
               value_width = 7
               Common.echo_always "\n== Build Step Timings =="
+              vs_timings = Common.consume_vivliostyle_build_timings
+              vs_map = vs_timings.group_by { |entry| entry[:label].to_s }
+              sub_label = '(vivliostyle build)'
+
               build_timings.each do |label, dt|
-                Common.echo_always format("  - %-#{label_width}s %#{value_width}.2fs", label, dt)
+                raw_label = label.to_s
+                display_label = raw_label.sub(/\AStep (\d)(?=\D)/, 'Step  \1')
+                value_text = format("%#{value_width}.2fs", dt)
+                label_text = format("%-#{label_width}s", display_label)
+                line = "  - #{label_text} #{value_text}"
+                Common.echo_always line
+
+                entries = vs_map[raw_label]
+                next unless entries&.any?
+
+                paren_idx = line.index('(') || line.index(label.to_s.strip) || 4
+                value_start_idx = line.length - value_text.length
+                value_digit_idx = line.length - value_text.lstrip.length
+                prefix_spaces = ' ' * paren_idx
+
+                entries.each do |entry|
+                  entry_value = format("(%.2fs)", entry[:duration])
+                  label_segment = "#{prefix_spaces}#{sub_label}"
+                  digit_column = value_digit_idx
+                  target_length = [digit_column - 1, label_segment.length + 1].max
+                  line_segment = label_segment.ljust(target_length)
+                  Common.echo_always("#{line_segment}#{entry_value}")
+                end
               end
               Common.echo_always format("  = %-#{label_width}s %#{value_width}.2fs", 'TOTAL', total)
               Common.echo_always "==========================\n"
@@ -492,7 +521,29 @@ module Vivlio
               new_block << "````\n"
               new_block << '== Build Step Timings =='
               build_timings.each do |label, dt|
-                new_block << format("  - %-#{label_width}s %#{value_width}.2fs", label, dt)
+                raw_label = label.to_s
+                display_label = raw_label.sub(/\AStep (\d)(?=\D)/, 'Step  \1')
+                value_text = format("%#{value_width}.2fs", dt)
+                label_text = format("%-#{label_width}s", display_label)
+                line = "  - #{label_text} #{value_text}"
+                new_block << line
+
+                entries = vs_map[raw_label]
+                next unless entries&.any?
+
+                paren_idx = line.index('(') || line.index(label.to_s.strip) || 4
+                value_start_idx = line.length - value_text.length
+                value_digit_idx = line.length - value_text.lstrip.length
+                prefix_spaces = ' ' * paren_idx
+
+                entries.each do |entry|
+                  entry_value = format("(%.2fs)", entry[:duration])
+                  label_segment = "#{prefix_spaces}#{sub_label}"
+                  digit_column = value_digit_idx
+                  target_length = [digit_column - 1, label_segment.length + 1].max
+                  line_segment = label_segment.ljust(target_length)
+                  new_block << "#{line_segment}#{entry_value}"
+                end
               end
               new_block << format("  = %-#{label_width}s %#{value_width}.2fs", 'TOTAL', total)
               new_block << '```'

@@ -114,11 +114,17 @@ module Vivlio
 
           # Vivliostyle CLI を実行して PDF を生成する
           def execute_build
+            start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
             @build_success = if quiet_mode?
                                system(build_command, out: File::NULL, err: File::NULL)
                              else
                                system(build_command)
                              end
+
+            elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
+            Common.log_info(format('[pdf] vivliostyle build 所要時間: %.2fs', elapsed))
+            Common.record_vivliostyle_build(elapsed, Common.current_step_label)
           end
 
           # quiet モードが有効かどうか返す
@@ -332,7 +338,7 @@ module Vivlio
               '-dNOPAUSE', '-dQUIET', '-dBATCH',
               "-sOutputFile=#{output_pdf}", input_pdf
             ]
-            system(cmd.join(' '))
+            system(*cmd, out: File::NULL, err: File::NULL)
           end
 
           # 圧縮結果に応じてログを出す

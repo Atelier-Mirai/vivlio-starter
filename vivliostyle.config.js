@@ -10,7 +10,10 @@ const vivliostyleConfig = {
   entry: entries, // 章立て構成（entries.jsから読み込み）
   output: [ // 出力ファイル設定
     './output.pdf' // PDFファイル
-  ]
+  ],
+  server: {
+    port: 13000
+  }
 };
 
 export default vivliostyleConfig;

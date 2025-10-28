@@ -647,13 +647,14 @@ module Vivlio
           front_regenerated = false
           BuildHelpers.ensure_chapter_html_up_to_date!('00-titlepage', extra_sources: File.join('config', 'book.yml'))
           BuildHelpers.ensure_chapter_html_up_to_date!('01-legalpage', extra_sources: File.join('config', 'book.yml'))
+          BuildHelpers.ensure_chapter_html_up_to_date!('99-colophon', extra_sources: File.join('config', 'book.yml'))
           # 判定ヘルパ
           front_srcs = [
             File.join(Common::CONTENTS_DIR, '00-titlepage.md'),
             File.join(Common::CONTENTS_DIR, '01-legalpage.md'),
             File.join('config', 'book.yml')
           ]
-          [
+          colophon_srcs = [
             File.join(Common::CONTENTS_DIR, '99-colophon.md'),
             File.join('config', 'book.yml')
           ]
@@ -666,11 +667,17 @@ module Vivlio
           end
 
           front_pdf = '00-01-front.pdf'
+          colophon_pdf = '99-colophon.pdf'
           cache_on = Common.cache_enabled? && !force
           cache_dir = cache_on ? Common.ensure_cache_dir! : nil
           front_cache = cache_on && cache_dir ? File.join(cache_dir, front_pdf) : nil
+          colophon_cache = cache_on && cache_dir ? File.join(cache_dir, colophon_pdf) : nil
+
           front_missing = !File.exist?(front_pdf)
           front_missing &&= !cache_restore_file(cache_on, front_cache, front_pdf, 'Step 9')
+
+          colophon_missing = !File.exist?(colophon_pdf)
+          colophon_missing &&= !cache_restore_file(cache_on, colophon_cache, colophon_pdf, 'Step 9')
 
           need_front = force || front_missing || newer_than_any.call(front_pdf, front_srcs)
 
@@ -687,27 +694,25 @@ module Vivlio
               Common.log_warn("[Step 9] #{front_pdf} の生成に失敗しました")
             end
           else
-            Common.log_action("[Step 9] フロント/奥付PDFは最新のため再利用します: #{front_pdf}, 99-colophon.pdf")
-            colo_cache = cache_on && cache_dir ? File.join(cache_dir, '99-colophon.pdf') : nil
-            cache_restore_file(cache_on, front_cache, front_pdf, 'Step 9')
-            cache_restore_file(cache_on, colo_cache, '99-colophon.pdf', 'Step 9')
+            Common.log_action("[Step 9] フロント/奥付PDFは最新のため再利用します: #{front_pdf}, #{colophon_pdf}")
+            cache_restore_file(cache_on, front_cache, front_pdf, 'Step 9') unless File.exist?(front_pdf)
+            cache_restore_file(cache_on, colophon_cache, colophon_pdf, 'Step 9') unless File.exist?(colophon_pdf)
           end
 
-          # ここから奥付の生成（フロントを再生成した場合は必ず奥付も再生成）
-          BuildHelpers.ensure_chapter_html_up_to_date!('99-colophon', extra_sources: File.join('config', 'book.yml'))
-          if front_regenerated
+          # ここから奥付の生成（必要に応じて再生成）
+          need_colophon = force || front_regenerated || colophon_missing || newer_than_any.call(colophon_pdf, colophon_srcs)
+          if need_colophon
             Vivlio::Starter::ThorCLI.start(['entries', '99-colophon.html'])
-            Vivlio::Starter::ThorCLI.start(['pdf', '99-colophon.pdf'])
-            if File.exist?('99-colophon.pdf')
+            Vivlio::Starter::ThorCLI.start(['pdf', colophon_pdf])
+            if File.exist?(colophon_pdf)
               Common.log_success('[Step 9] 99-colophon.pdf を生成しました')
-              colo_cache = cache_on && cache_dir ? File.join(cache_dir, '99-colophon.pdf') : nil
-              cache_store_file(cache_on, '99-colophon.pdf', colo_cache, 'Step 9')
+              cache_store_file(cache_on, colophon_pdf, colophon_cache, 'Step 9')
+            else
+              Common.log_warn('[Step 9] 99-colophon.pdf の生成に失敗しました')
             end
           else
-            Common.log_info('[Step 9] フロントが最新のため、奥付の再生成はスキップしました（キャッシュ/既存を利用）')
+            Common.log_info('[Step 9] 奥付は最新のため、再生成をスキップしました（既存/キャッシュを利用）')
           end
-
-          # （重複していた奥付再生成ブロックを削除。必要時は上で実行済み）
         end
 
         # ================================================================
@@ -1362,7 +1367,7 @@ module Vivlio
 
           if body_end.positive?
             Common.log_action("[Step 7] 本文・付録を抽出しています (1-#{body_end})…")
-            ok1 = system(%(qpdf "#{output_pdf}" --pages "#{output_pdf}" 1-#{body_end} -- "#{body_pdf}"))
+            ok1 = system(%(qpdf "#{output_pdf}" --pages "#{output_pdf}" 1-#{body_end} -- "#{body_pdf}" > /dev/null))
           else
             Common.log_warn('[Step 7] 本文側のページがありません。frontmatter が全ページを占めています。')
           end
@@ -1370,7 +1375,7 @@ module Vivlio
           if frontmatter_pages < total_pages
             start_last = body_end + 1
             Common.log_action("[Step 7] frontmatter を抽出しています (#{start_last}-z)…")
-            ok2 = system(%(qpdf "#{output_pdf}" --pages "#{output_pdf}" #{start_last}-z -- "#{front_pdf}"))
+            ok2 = system(%(qpdf "#{output_pdf}" --pages "#{output_pdf}" #{start_last}-z -- "#{front_pdf}" > /dev/null))
           else
             Common.log_warn('[Step 7] frontmatter が全ページを占めています。frontmatter 側のみ生成します。')
           end

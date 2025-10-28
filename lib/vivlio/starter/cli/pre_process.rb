@@ -2,6 +2,7 @@
 
 require 'yaml'
 require 'shellwords'
+require 'cgi'
 
 module Vivlio
   module Starter
@@ -603,7 +604,18 @@ module Vivlio
           # テーマCSSを更新
           begin
             theme_css_path = File.join(Common::STYLESHEETS_DIR, 'theme.css')
-            css = File.read(theme_css_path, encoding: 'utf-8')
+            # TODO: gem公開時にはパスが変わるので更新すること
+            template_path = File.expand_path('../../project_scaffold/stylesheets/theme.css', __dir__)
+            css = begin
+              exists = File.exist?(theme_css_path)
+              content = exists ? File.read(theme_css_path, encoding: 'utf-8') : ''
+              if !exists || content.strip.empty? || !content.include?('--theme-accent')
+                Common.log_info("theme.css をテンプレートから再展開します: #{theme_css_path}")
+                content = File.read(template_path, encoding: 'utf-8')
+                File.write(theme_css_path, content, encoding: 'utf-8')
+              end
+              content
+            end
 
             # --theme-accent を named の場合は var(--accent-<name>)、HEX の場合は生の色に設定
             css = css.sub(/(--theme-accent:\s*)[^;]+(\s*;)/) do
@@ -885,9 +897,6 @@ module Vivlio
             chapter_css
           ]
 
-          # チャプター固有のCSSを追加
-          stylesheets << "#{chapter_num}.css" if file_type == 'chapter' && chapter_num
-
           # 新しいフロントマターのベースを作成
           new_frontmatter = {
             'link' => stylesheets.map do |css|
@@ -927,6 +936,10 @@ module Vivlio
         # 画像パスを修正
         # - 相対パス画像を images/<章basename>/ 配下に正規化
         # - png/jpg は .webp に拡張子を変換（生成物の指針に合わせる）
+        PLACEHOLDER_IMAGE_PATH = File.join('stylesheets', 'images', 'no_image.svg').freeze
+        PLACEHOLDER_IMAGE_FS_PATH = File.join(Common::STYLESHEETS_DIR, 'images', 'no_image.svg').freeze
+
+        # Markdown 内の画像リンクを生成規約に合わせて正規化する
         def fix_image_paths(content, filename)
           chapter_dir = filename.sub(/\.md$/, '')
 
@@ -944,8 +957,62 @@ module Vivlio
             # 生成物ポリシーに合わせて拡張子を .webp に寄せる（png/jpg のみ対象）
             normalized = normalized.sub(/\.(png|jpe?g)\z/i, '.webp')
 
-            "![#{alt_text}](#{normalized})"
+            resolved_placeholder_or_path(alt_text, normalized)
           end
+        end
+
+        # 既存画像なら元のパスを、無い場合はプレースホルダーを返す
+        def resolved_placeholder_or_path(alt_text, normalized_path)
+          return "![#{alt_text}](#{normalized_path})" if image_exists_for?(normalized_path)
+
+          Common.log_warn("画像が見つかりません: #{normalized_path} プレースホルダーを使用します")
+          placeholder_path = placeholder_image_path(normalized_path)
+          "![#{alt_text}](#{placeholder_path})"
+        end
+
+        # 画像ディレクトリ内の拡張子違いを含めて存在を確認する
+        def image_exists_for?(normalized_path)
+          relative_path = normalized_path.sub(%r{\Aimages/}, '')
+          base_path = File.expand_path(relative_path, Common::IMAGES_DIR)
+          base_without_ext = base_path.sub(/\.webp\z/i, '')
+          %w[.webp .png .jpg .jpeg].any? do |ext|
+            File.exist?("#{base_without_ext}#{ext}")
+          end
+        end
+
+        # プレースホルダーSVGを読み込み、必要に応じてデータURIを生成する
+        def placeholder_image_path(missing_image_path = nil)
+          unless File.exist?(PLACEHOLDER_IMAGE_FS_PATH)
+            Common.log_warn("プレースホルダー画像が見つかりません: #{PLACEHOLDER_IMAGE_FS_PATH}")
+            return PLACEHOLDER_IMAGE_PATH
+          end
+
+          return PLACEHOLDER_IMAGE_PATH unless missing_image_path
+
+          begin
+            svg_template = File.read(PLACEHOLDER_IMAGE_FS_PATH, encoding: 'utf-8')
+            filename = File.basename(missing_image_path)
+            replacement = sanitize_placeholder_text(filename)
+            svg_with_filename = svg_template.gsub('filename.webp', replacement)
+            svg_to_data_uri(svg_with_filename)
+          rescue StandardError => e
+            Common.log_warn("プレースホルダー画像の生成に失敗しました: #{e.class}: #{e.message}")
+            PLACEHOLDER_IMAGE_PATH
+          end
+        end
+
+        # プレースホルダーに差し込むファイル名をサニタイズする
+        def sanitize_placeholder_text(filename)
+          text = filename.to_s.strip
+          text = 'missing image' if text.empty?
+          CGI.escapeHTML(text)
+        end
+
+        # SVGコンテンツをURLエンコードした data URI に変換する
+        def svg_to_data_uri(svg_content)
+          escaped = CGI.escape(svg_content.encode('utf-8'))
+          escaped = escaped.gsub('+', '%20')
+          "data:image/svg+xml;charset=utf-8,#{escaped}"
         end
 
         # ソースコード読み込み処理
@@ -1083,7 +1150,9 @@ module Vivlio
 
         module_function :apply_frontmatter, :report_frontmatter_error, :convert_container_blocks,
                         :generate_frontmatter, :resolve_image_path, :resolve_frontispiece_path,
-                        :resolve_ornament_path, :fix_image_paths, :process_code_include,
+                        :resolve_ornament_path, :fix_image_paths, :resolved_placeholder_or_path,
+                        :image_exists_for?, :placeholder_image_path, :sanitize_placeholder_text,
+                        :svg_to_data_uri, :process_code_include,
                         :convert_book_card_inner_markdown, :convert_table_rotate_inner_markdown,
                         :transform_links_to_footnotes, :normalize_book_card_md,
                         :render_markdown_to_html, :pipe_table_to_html, :format_book_card_inner_html

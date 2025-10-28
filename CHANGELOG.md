@@ -8,8 +8,11 @@
 
 
 ### Planned
-- gem 公開時には `vivlio-starter.gemspec` の summary/description が現行仕様に即しているか必ず再確認する
 
+### Pre-release Checklist
+- gem 公開時には `vivlio-starter.gemspec` の summary/description が現行仕様に即しているか再確認する。
+- `pre_process.rb` で参照する theme.css テンプレート（`lib/project_scaffold/stylesheets/theme.css`）が gem に同梱されているか確認する。
+- リリースノートの作成
 
 #### ビルド/出力
 
@@ -115,6 +118,7 @@ Chromium 起動回数の削減（将来案）
 
 ### Changed
 - `pdf_compress` の Ghostscript オプションに線形化（Fast Web View）と重複画像検出を追加し、閲覧時の初期表示とページ遷移を高速化。
+
 
 ## [0.11.0] - 2025-10-27
 
