@@ -26,7 +26,7 @@
    Colophon (奥付)
    ===================================================================== */
 
-.colophon {
+body {
     /* layout */
     page: colophon;
     width: 100%;
@@ -36,7 +36,7 @@
     padding: clamp(28px, calc(var(--paper-scale) * 40px), 40px);
 
     /* typography */
-    font-family: 'Hiragino Mincho ProN', '游明朝', serif;
+    font-family: var(--main-text-font);
     line-height: 1.5;
 
     /* visual */
@@ -55,9 +55,14 @@
 }
 
 /* 書籍名 */
+h1,
+h2 {
+    font-family: var(--header-font);
+}
+
 .book-title {
     /* typography */
-    font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', sans-serif; /* ゴシック */
+    font-family: var(--header-font);
     font-size: clamp(9.8pt, calc(var(--paper-scale) * 14pt), 14pt);
     font-weight: 700;
 }
@@ -145,7 +150,7 @@
     grid-column: 1;
 
     /* typography */
-    font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', sans-serif; /* ゴシック */
+    font-family: var(--main-text-font);
     font-weight: 700;
     font-size: clamp(7pt, calc(var(--paper-scale) * 10pt), 10pt);
 
@@ -168,7 +173,7 @@
 }
 
 .powered-by {
-    font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', sans-serif;
+    font-family: var(--main-text-font);
 
     /* layout: ページ右端に揃える（全幅ブロック） */
     display: block;

@@ -70,6 +70,14 @@ module Vivlio
                   else
                     Common.log_info("キャッシュディレクトリは存在しません: #{dir}")
                   end
+
+                  if File.directory?('.vivliostyle')
+                    Common.log_action('.vivliostyle ディレクトリを削除中...')
+                    FileUtils.rm_rf('.vivliostyle')
+                    Common.log_info('.vivliostyle ディレクトリを削除しました')
+                  else
+                    Common.log_info('.vivliostyle ディレクトリは存在しません')
+                  end
                 rescue StandardError => e
                   Common.log_warn("clean --cache 実行中にエラー: #{e}")
                 end

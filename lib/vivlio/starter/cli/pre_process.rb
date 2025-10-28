@@ -4,6 +4,8 @@ require 'yaml'
 require 'shellwords'
 require 'cgi'
 
+require_relative 'font_manager'
+
 module Vivlio
   module Starter
     module CLI
@@ -782,6 +784,15 @@ module Vivlio
             cfg = Common::CONFIG
             page_cfg = (cfg && cfg['page']).is_a?(Hash) ? cfg['page'] : {}
 
+            font_names = [
+              page_cfg['main_text_font'],
+              page_cfg['header_font'],
+              page_cfg['column_font'],
+              page_cfg['code_font'],
+              page_cfg['folio_font']
+            ]
+            FontManager.ensure_fonts_available(font_names)
+
             # 紙サイズ（size/width/height）を共通ヘルパで正規化
             Common.normalize_page_size!(page_cfg)
 
@@ -841,6 +852,7 @@ module Vivlio
               ['--main-text-font',        page_cfg['main_text_font'],  :font],
               ['--header-font',           page_cfg['header_font'],     :font],
               ['--code-font',             page_cfg['code_font'],       :font],
+              ['--column-font',           page_cfg['column_font'],     :font],
               ['--folio-font',            page_cfg['folio_font'],      :font],
               ['--folio-font-size',       page_cfg['folio_font_size']],
               ['--folio-color',           page_cfg['folio_color']],

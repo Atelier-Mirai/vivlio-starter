@@ -74,22 +74,30 @@ page:
   # margin_xshift: '-5mm'
 
 
+  # 標準添付書体
+  # 明朝体	Noto Serif JP
+  # ゴシック体	Noto Sans JP
+  # 丸ゴシック体 Zen Maru Gothic
+  # プログラミング用フォント hackgen35
+
+  # 本文用フォント
+  # main_text_font: Noto Serif JP
+  main_text_font: Hachi Maru Pop
+  # 見出し用フォント
+  # header_font: Noto Sans JP
+  header_font: Rampart One
+  # コラム用フォント
+  column_font: Zen Maru Gothic
+  # コード用フォント
+  # code_font: hackgen35
+  code_font: Zen Maru Gothic
+  # ノンブル（ページ番号）用フォント
+  folio_font: Noto Sans JP
+
   # コラム（補足欄など）のフォントサイズ
   column_font_size: '10.5Q'
-
-  # 本文フォント（単一名は無引用でOK。スペース含む場合は自動で引用）
-  main_text_font: Zen Kurenaido
-  # 見出しフォント
-  header_font: Zen Maru Gothic
-  # コード用フォント
-  # code_font: udevgothic-r
-  code_font: hackgen35
-
-  # ノンブル（ページ番号）のフォント
-  # 複数フォントを列挙する場合はカンマ区切りで、全体を二重引用符で囲むのが確実
-  folio_font: '"Hiragino Sans", "Helvetica Neue", arial, sans-serif'
-  # ノンブルのフォントサイズ（Q指定推奨）
-  folio_font_size: '13Q'
+  # ノンブルのフォントサイズ
+  folio_font_size: 13Q
   # ノンブルの色（CSSカラー値）
   folio_color: '#666'
 

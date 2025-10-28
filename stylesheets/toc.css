@@ -54,6 +54,14 @@
 /* 目次も前付け（front）としてローマ数字ノンブルを共通化 */
 body.toc { page: front; }
 
+body.toc {
+  font-family: var(--main-text-font);
+}
+
+h1 {
+  font-family: var(--header-font);
+}
+
 @page front {
   @bottom-center { content: counter(page, lower-roman); }
 }
@@ -95,6 +103,7 @@ body.toc { page: front; }
   margin-block-end: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
 
   /* typography */
+  font-family: var(--main-text-font);
   font-size: clamp(15.4Q, calc(var(--paper-scale) * 22Q), 22Q);
   line-height: 1.25;
   font-weight: 700;
@@ -201,6 +210,7 @@ li.toc-chapter-appendix {
   /* margin-block-end: 2mm; */
 
   /* typography */
+  font-family: var(--main-text-font);
   font-size: clamp(15.4Q, calc(var(--paper-scale) * 22Q), 22Q);
   line-height: 1.25em;
   font-weight: 700;
@@ -226,6 +236,7 @@ li.toc-section {
   margin-block-end: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
 
   /* typography */
+  font-family: var(--main-text-font);
   font-size: clamp(11.2Q, calc(var(--paper-scale) * 16Q), 16Q);
   line-height: 1.2;
   font-weight: 700;
@@ -337,6 +348,7 @@ li.toc-subsection {
   padding-inline-start: clamp(21mm, calc(var(--paper-scale) * 30mm), 30mm); /* 既定のインデントに戻す */
 
   /* typography */
+  font-family: var(--main-text-font);
   font-size: clamp(9.1Q, calc(var(--paper-scale) * 13Q), 13Q);
   line-height: 1.25;
   font-weight: 400;

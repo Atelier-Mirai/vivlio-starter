@@ -469,18 +469,28 @@ module Vivlio
                 entries = vs_map[raw_label]
                 next unless entries&.any?
 
-                paren_idx = line.index('(') || line.index(label.to_s.strip) || 4
                 value_start_idx = line.length - value_text.length
-                value_digit_idx = line.length - value_text.lstrip.length
-                prefix_spaces = ' ' * paren_idx
+                indent = ' ' * 4
 
                 entries.each do |entry|
                   entry_value = format("(%.2fs)", entry[:duration])
-                  label_segment = "#{prefix_spaces}#{sub_label}"
-                  digit_column = value_digit_idx
-                  target_length = [digit_column - 1, label_segment.length + 1].max
-                  line_segment = label_segment.ljust(target_length)
-                  Common.echo_always("#{line_segment}#{entry_value}")
+                  extra_spaces = if entry[:duration] >= 100
+                                   0
+                                 elsif entry[:duration] >= 10
+                                   1
+                                 else
+                                   2
+                                 end
+
+                  target_index = value_start_idx + extra_spaces
+                  label_segment = format("%-#{label_width}s", sub_label)
+                  base_prefix = "#{indent}#{label_segment} "
+
+                  if base_prefix.length < target_index
+                    base_prefix += ' ' * (target_index - base_prefix.length)
+                  end
+
+                  Common.echo_always("#{base_prefix}#{entry_value}")
                 end
               end
               Common.echo_always format("  = %-#{label_width}s %#{value_width}.2fs", 'TOTAL', total)

@@ -108,16 +108,21 @@ Chromium 起動回数の削減（将来案）
 ビルドディレクトリを RAM ディスクに（I/O 短縮）。
 同時に動く重いプロセスを減らす（ブラウザ/Editor のタブ削減など）。
 
-
 ## [Unreleased]
 （次回リリース候補の変更はここに追加してください）
+
+## [0.12.0] - 2025-10-28
 
 ### Added
 - minitest を導入し、バージョン定数およびフルビルドパイプラインの基本動作を検証する最初のテストスイートを整備。
 - CLI コマンド（build/open/create/delete/rename/renumber/new/doctor/glossary/text_metrics/help/version）の挙動を確認する追加テストを整備し、主要サブコマンドのユースケースをカバー。
+- 画像が見当たらない場合、代替画像でビルドする機能を`pre_process.rb`に追加。
+- `vs doctor` が macOS 環境で Google Fonts 用 SSL 証明書の診断を行い、`--fix` 指定時に Homebrew で openssl@3 / ca-certificates を整備し `SSL_CERT_FILE` / `SSL_CERT_DIR` を自動設定する機能。
+- book.yml に指定したフォントを Google Fonts からローカルへ自動取得し、可読性の高いファイル名で保存したうえで `google-fonts.css` に集約する FontManager を整備。
 
 ### Changed
 - `pdf_compress` の Ghostscript オプションに線形化（Fast Web View）と重複画像検出を追加し、閲覧時の初期表示とページ遷移を高速化。
+- `vs clean --cache` 実行時に `.vivliostyle` ディレクトリも削除するようクリーン処理を拡張。
 
 
 ## [0.11.0] - 2025-10-27

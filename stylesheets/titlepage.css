@@ -36,7 +36,7 @@ body.titlepage {
     padding-block: 0 clamp(56px, calc(var(--paper-scale) * var(--titlepage-padding-block, 80px)), 80px);
 
     /* typography */
-    font-family: 'Hiragino Mincho ProN', '游明朝', serif;
+    font-family: var(--main-text-font);
     line-height: 1.5;
     text-align: center;
 
@@ -49,6 +49,11 @@ body.titlepage {
     /* container */
     position: relative;            /* 絶対/固定配置の基準 */
     min-block-size: 100vh;         /* ページ高に合わせて安定 */
+}
+
+h1,
+h2 {
+    font-family: var(--header-font);
 }
 
 /* 本扉の下側余白を詰め、ノンブルを非表示に */
@@ -69,7 +74,7 @@ body.titlepage {
 }
 
 .book-title {
-    font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', sans-serif;
+    font-family: var(--header-font);
     font-size: clamp(23.52pt, calc(var(--paper-scale) * 33.6pt), 33.6pt); /* 2.8rem 相当 */
     font-weight: bold;
 

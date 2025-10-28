@@ -4,8 +4,7 @@
 
 @charset "utf-8";
 
-@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Zen+Maru+Gothic:wght@700&display=swap");
-@import url('https://fonts.googleapis.com/css2?family=Zen+Kurenaido&display=swap');
+@import url("fonts/google-fonts.css"); /* FontManager が自動生成する（存在しない場合は空ファイル） */
 
 /*
   プロパティ並び順ガイドライン
@@ -31,16 +30,59 @@
   font-style: normal;
 }
 
-/* フォント定義 */
+/* バンドル済みフォント定義 */
 @font-face {
-  font-family: udevgothic-r;
-  src:         url("fonts/UDEVGothic-Regular.ttf");
+  font-family: "Noto Serif JP";
+  font-style: normal;
+  font-weight: 100 900;
+  src: url("fonts/Noto_Serif_JP/NotoSerifJP-VariableFont_wght.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noto Sans JP";
+  font-style: normal;
+  font-weight: 100 900;
+  src: url("fonts/Noto_Sans_JP/NotoSansJP-VariableFont_wght.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Zen Maru Gothic";
+  font-style: normal;
+  font-weight: 400;
+  src: url("fonts/Zen_Maru_Gothic/ZenMaruGothic-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Zen Maru Gothic";
+  font-style: normal;
+  font-weight: 700;
+  src: url("fonts/Zen_Maru_Gothic/ZenMaruGothic-Bold.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "hackgen35";
+  font-style: normal;
+  font-weight: 400;
+  src: url("fonts/hackgen35/HackGen35-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "hackgen35";
+  font-style: normal;
+  font-weight: 700;
+  src: url("fonts/hackgen35/HackGen35-Bold.ttf") format("truetype");
+  font-display: swap;
 }
 
 /* キーボードフォント */
 @font-face {
   font-family: keyfont;
-  src:         url("fonts/keyboard-JP-Regular.otf");
+  src:         url("fonts/Keyboard_font/Keyboard-JP-Regular.otf");
 }
 
 :root {
@@ -60,12 +102,13 @@
   --column-font-size:   7.445pt;/* コラムのフォントサイズ */
 
   /* フォント指定 */
-  --main-text-font: "Zen Kurenaido";    /* メイン本文フォント */
-  --header-font:    "Zen Maru Gothic";  /* 見出しフォント */
-  --code-font:      "hackgen35";     /* コードフォント */
+  --main-text-font: "Hachi Maru Pop";     /* メイン本文フォント */
+  --header-font:    "Rampart One";      /* 見出しフォント */
+  --column-font:    "Zen Maru Gothic";   /* コラムフォント */
+  --code-font:      "Zen Maru Gothic";         /* コードフォント */
 
   /* ノンブル（ページ番号）用 */
-  --folio-font:      "Hiragino Sans", "Helvetica Neue", arial, sans-serif;
+  --folio-font:      "Noto Sans JP";
   --folio-font-size: 9.217pt; /* ≒ 9.2pt（1Q≒0.709pt, 12.7Q≒9pt → 実用上13Q） */
   --folio-color:     #666;
 

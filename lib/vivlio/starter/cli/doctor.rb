@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rbconfig'
+require 'fileutils'
 
 module Vivlio
   module Starter
@@ -89,12 +90,21 @@ module Vivlio
                 end
               end
 
+              if is_macos
+                if ssl_certificate_configured?
+                  Common.echo_always('✅ Google Fonts 用 SSL 証明書: OK')
+                else
+                  Common.echo_always('❌ Google Fonts 用 SSL 証明書: 未設定 (Google Fonts のダウンロードに必要)')
+                  missing << 'ssl-certificates'
+                end
+              end
+
               if missing.empty?
                 Common.echo_always('🎉 すべての必要ツールが見つかりました')
                 return
               end
 
-              Common.echo_always("不足しているツール: #{missing.join(', ')}")
+              Common.echo_always("不足しているツール: #{describe_missing(missing).join(', ')}")
 
               unless options[:fix]
                 Common.echo_always('ヒント: macOS の場合は `vs doctor --fix` で自動インストールを試行できます')
@@ -187,6 +197,10 @@ module Vivlio
 
                 # ImageMagick
                 system('brew install imagemagick') if missing.include?('imagemagick')
+
+                if missing.include?('ssl-certificates')
+                  install_ssl_certificates!
+                end
               rescue StandardError => e
                 Common.log_warn("brew 実行でエラー: #{e}")
               end
@@ -217,13 +231,106 @@ module Vivlio
                 end
                 still_missing << label unless ok
               end
+              if is_macos && !ssl_certificate_configured?
+                still_missing << 'ssl-certificates'
+              end
               if still_missing.empty?
                 Common.echo_always('✅ すべてのツールがインストールされました')
               else
-                Common.echo_always("❗ まだ見つからないツールがあります: #{still_missing.join(', ')}。手動でのセットアップをご確認ください。")
+                Common.echo_always("❗ まだ見つからないツールがあります: #{describe_missing(still_missing).join(', ')}。手動でのセットアップをご確認ください。")
               end
             end
           end
+        end
+      end
+    end
+  end
+end
+
+module Vivlio
+  module Starter
+    module CLI
+      module DoctorCommands
+        module_function
+
+        def ssl_certificate_configured?
+          test_cmd = "ruby -ropen-uri -e 'URI.open(\"https://fonts.googleapis.com/css2?family=Roboto&display=swap\") { |r| exit(r.status.first == \"200\" ? 0 : 1) }'"
+          system(test_cmd)
+        rescue StandardError
+          false
+        end
+
+        def install_ssl_certificates!
+          Common.echo_always('Google Fonts 用に ca-certificates / openssl@3 を設定します…')
+          system('brew update >/dev/null 2>&1')
+          system('brew install openssl@3') unless system('brew list --versions openssl@3 >/dev/null 2>&1')
+          system('brew reinstall ca-certificates')
+
+          openssl_prefix = capture_command('brew --prefix openssl@3').strip
+          openssl_prefix = File.join(capture_command('brew --prefix').strip, 'opt', 'openssl@3') if openssl_prefix.empty?
+
+          cert_file = File.join(openssl_prefix, 'etc', 'openssl@3', 'cert.pem')
+          cert_dir  = File.join(openssl_prefix, 'etc', 'openssl@3', 'certs')
+
+          if File.file?(cert_file)
+            ENV['SSL_CERT_FILE'] = cert_file
+            ENV['SSL_CERT_DIR'] = cert_dir if Dir.exist?(cert_dir)
+
+            persist_env('SSL_CERT_FILE', cert_file)
+            persist_env('SSL_CERT_DIR', cert_dir) if Dir.exist?(cert_dir)
+
+            Common.echo_always("✅ SSL_CERT_FILE を #{cert_file} に設定しました")
+            Common.echo_always("✅ SSL_CERT_DIR を #{cert_dir} に設定しました") if Dir.exist?(cert_dir)
+          else
+            Common.echo_always("⚠️ 証明書ファイルが見つかりませんでした。#{openssl_prefix} に openssl@3 が存在するか確認してください。")
+          end
+        end
+
+        def capture_command(cmd)
+          `#{cmd}`
+        rescue StandardError
+          ''
+        end
+
+        def persist_env(key, value)
+          return if value.nil? || value.empty?
+
+          line = %(export #{key}="#{value}")
+          profiles = %w[~/.zshrc ~/.bash_profile ~/.bashrc]
+          profiles.each do |path|
+            expanded = File.expand_path(path)
+            begin
+              if File.exist?(expanded)
+                next if File.read(expanded, encoding: 'utf-8').include?(line)
+
+                File.open(expanded, 'a', encoding: 'utf-8') do |f|
+                  f.puts unless File.read(expanded, encoding: 'utf-8').end_with?("\n")
+                  f.puts(line)
+                end
+              else
+                FileUtils.mkdir_p(File.dirname(expanded))
+                File.write(expanded, "#{line}\n", mode: 'a', encoding: 'utf-8')
+              end
+            rescue StandardError => e
+              Common.log_warn("環境変数 #{key} の永続化に失敗しました (#{expanded}): #{e.class}: #{e.message}")
+            end
+          end
+        end
+
+        def describe_missing(keys)
+          return [] unless keys
+
+          label_map = {
+            'xcode-command-line-tools' => 'Xcode Command Line Tools',
+            'node' => 'node',
+            'vivliostyle' => 'Vivliostyle CLI',
+            'qpdf' => 'qpdf',
+            'pdfinfo' => 'pdfinfo (poppler)',
+            'gs' => 'Ghostscript',
+            'imagemagick' => 'ImageMagick',
+            'ssl-certificates' => 'Google Fonts 用 SSL 証明書'
+          }
+          keys.uniq.map { |key| label_map[key] || key }
         end
       end
     end
