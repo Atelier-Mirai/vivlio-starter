@@ -7,13 +7,25 @@
 */
 
 :root {
-  /* テーマ・アクセント（yellow/blue/red で切替可能） */
-  --accent-yellow:        #f0a000;
-  --accent-blue:          #3da8c9;
+  /* テーマ・アクセント（config/theme.color と連動） */
+  --accent-yellow:        #ffd54f;
+  --accent-amber:         #ffb300;
+  --accent-orange:        #ff8c00;
+  --accent-peach:         #ffa07a;
+  --accent-coral:         #ff6f61;
   --accent-red:           #d33;
-  --accent-green:         #3cb371;  /* mediumseagreen 系 */
-  --accent-purple:        #7d4aa6;  /* 紫系 */
-  --theme-accent:         var(--accent-yellow); /* 既定: yellow 系。blue/red/green/purple にする場合は var(--accent-*) に変更 */
+  --accent-magenta:       #b21662;
+  --accent-plum:          #8e44ad;
+  --accent-purple:        #7d4aa6;
+  --accent-indigo:        #3f51b5;
+  --accent-navy:          #1a237e;
+  --accent-blue:          #3da8c9;
+  --accent-cyan:          #00acc1;
+  --accent-teal:          #00897b;
+  --accent-mint:          #4caf50;
+  --accent-green:         #3cb371;
+  --accent-lime:          #c0ca33;
+  --theme-accent:         var(--accent-navy); /* 既定: yellow 系。config/theme.color で上書き */
 
   /* カラートークン（共通） */
   --color-text:            #000;

@@ -111,6 +111,12 @@ Chromium 起動回数の削減（将来案）
 ## [Unreleased]
 （次回リリース候補の変更はここに追加してください）
 
+### Added
+- テーマカラー候補に coral / navy / mint / plum / peach を追加し、yellow 系の色味を調整。
+
+### Changed
+- simple テーマ向け header スタイルを刷新し、章タイトル・節見出しをバナー調に再設計。
+
 ## [0.12.0] - 2025-10-28
 
 ### Added

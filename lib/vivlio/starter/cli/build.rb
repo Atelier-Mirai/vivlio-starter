@@ -187,18 +187,21 @@ module Vivlio
         # - PDF 生成後は output.pdf を <chapter>.pdf にリネームして返す
         # ------------------------------------------------
         class SingleChapterRunner
-          attr_reader :command, :chapter
+          attr_reader :command, :chapter, :timings
 
           def initialize(command, chapter)
             @command = command
             @chapter = chapter
             @generated_pdfs = []
+            @timings = []
           end
 
           # 章向けの全ステップを順番に実行し、生成PDFを返す
           def run
-            steps.each do |label, callable|
-              BuildHelpers.time_step_for_chapter(chapter, label) { callable.call }
+            steps.each do |step_name, callable|
+              duration = BuildHelpers.time_step_for_chapter(chapter, step_name) { callable.call }
+              duration ||= 0.0
+              timings << { step: step_name, duration: duration }
             end
             generated_pdfs.dup
           end
@@ -393,10 +396,66 @@ module Vivlio
                   return
                 end
 
+                Common.reset_vivliostyle_build_timings
                 generated_pdfs = []
+                timing_rows = []
+
                 expanded_tokens.each do |target|
-                  chapter_pdfs = run_single_chapter_pipeline(target)
+                  runner = SingleChapterRunner.new(self, target)
+                  chapter_pdfs = runner.run
                   generated_pdfs.concat(chapter_pdfs)
+                  runner.timings.each do |entry|
+                    label = "#{target} / #{entry[:step]}"
+                    timing_rows << [label, entry[:duration].to_f]
+                  end
+                end
+
+                vs_timings = Common.consume_vivliostyle_build_timings
+                vs_map = vs_timings.group_by { |entry| entry[:label].to_s }
+
+                if timing_rows.any?
+                  total = timing_rows.map { |(_, dt)| dt }.inject(0.0, :+)
+                  label_width = timing_rows.map { |(label, _)| label.length }.max || 0
+                  label_width = [label_width, 'TOTAL'.length, 34].max
+                  value_width = 7
+
+                  Common.echo_always "\n== Build Step Timings =="
+                  timing_rows.each do |label, dt|
+                    value_text = format("%#{value_width}.2fs", dt)
+                    label_text = format("%-#{label_width}s", label)
+                    line = "  - #{label_text} #{value_text}"
+                    Common.echo_always line
+
+                    entries = vs_map[label]
+                    next unless entries&.any?
+
+                    value_start_idx = line.length - value_text.length
+                    indent = ' ' * 4
+                    sub_label = '(vivliostyle build)'
+
+                    entries.each do |entry|
+                      entry_value = format("(%.2fs)", entry[:duration])
+                      extra_spaces = if entry[:duration] >= 100
+                                       0
+                                     elsif entry[:duration] >= 10
+                                       1
+                                     else
+                                       2
+                                     end
+
+                      target_index = value_start_idx + extra_spaces
+                      label_segment = format("%-#{label_width}s", sub_label)
+                      base_prefix = "#{indent}#{label_segment} "
+
+                      if base_prefix.length < target_index
+                        base_prefix += ' ' * (target_index - base_prefix.length)
+                      end
+
+                      Common.echo_always("#{base_prefix}#{entry_value}")
+                    end
+                  end
+                  Common.echo_always format("  = %-#{label_width}s %#{value_width}.2fs", 'TOTAL', total)
+                  Common.echo_always "==========================\n"
                 end
 
                 handled = handle_single_chapter_merge(generated_pdfs)

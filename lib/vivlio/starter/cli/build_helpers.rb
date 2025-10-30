@@ -120,15 +120,19 @@ module Vivlio
         #   - 例外の有無に関わらず ensure で計測終了し、ログ出力を行う。
         #   - 計測には単調増加クロック（CLOCK_MONOTONIC）を使用し、システム時刻変更の影響を受けない。
         def time_step_for_chapter(chapter, step)
-          # 計測開始（単調クロック）
-          t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          label = "#{chapter} / #{step}"
+          start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          elapsed = nil
           begin
-            yield if block_given?
+            Common.with_current_step_label(label) do
+              yield if block_given?
+            end
           ensure
-            t1 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-            dt = (t1 - t0)
-            Common.log_action("[Timer] #{chapter} / #{step} : #{format('%.2f', dt)}s")
+            finish = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            elapsed = finish - start
+            Common.log_action("[Timer] #{label} : #{format('%.2f', elapsed)}s")
           end
+          elapsed
         end
 
         # ================================================================

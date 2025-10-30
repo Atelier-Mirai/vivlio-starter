@@ -557,7 +557,7 @@ module Vivlio
             raw = cfg && cfg['theme'] && cfg['theme']['color']
             s = raw.to_s.strip
             t = s.downcase
-            allowed = %w[yellow orange amber red magenta purple indigo blue cyan teal green lime]
+            allowed = %w[yellow amber orange peach coral red magenta plum purple indigo navy blue cyan teal mint green lime]
             hex_ok      = t.match(/^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i)
             hex_bare_ok = t.match(/^(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i)
             hex_0x_ok   = t.match(/^0x(?:[0-9a-f]{6}|[0-9a-f]{8})$/i)
@@ -714,11 +714,12 @@ module Vivlio
                 mark_h3 = markers['h3'].to_s
                 mark_h4 = markers['h4'].to_s
 
+                mark_h3 = '♣' if mark_h3.strip.empty?
+                mark_h4 = '◆' if mark_h4.strip.empty?
+
                 css = File.read(chapter_css_path, encoding: 'utf-8')
 
                 set_marker = lambda do |css_text, var_name, value|
-                  return css_text if value.to_s.strip.empty?
-
                   esc = value.gsub('\\', '\\').gsub('"', '\\"')
                   if css_text.match(/#{Regexp.escape(var_name)}:\s*[^;]+;/)
                     css_text.sub(/(#{Regexp.escape(var_name)}:\s*)[^;]+(;)/, "\\1\"#{esc}\"\\2")
@@ -730,16 +731,16 @@ module Vivlio
                 end
 
                 before_css = css.dup
-                css = set_marker.call(css, '--h3-marker', mark_h3) unless mark_h3.to_s.strip.empty?
-                css = set_marker.call(css, '--h4-marker', mark_h4) unless mark_h4.to_s.strip.empty?
+                css = set_marker.call(css, '--h3-marker', mark_h3)
+                css = set_marker.call(css, '--h4-marker', mark_h4)
 
                 if css == before_css
                   Common.log_info('theme.markers による変更はありません（既存定義を維持）')
                 else
                   File.write(chapter_css_path, css, encoding: 'utf-8')
                   logs = []
-                  logs << "h3='#{mark_h3}'" unless mark_h3.to_s.strip.empty?
-                  logs << "h4='#{mark_h4}'" unless mark_h4.to_s.strip.empty?
+                  logs << "h3='#{mark_h3}'"
+                  logs << "h4='#{mark_h4}'"
                   Common.log_success("chapter.css にマーカーを反映: #{logs.join(', ')}")
                 end
               rescue StandardError => _e
