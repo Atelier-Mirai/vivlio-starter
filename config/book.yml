@@ -33,13 +33,14 @@ chapters: all
 
 # テーマ
 theme:
-  style: image      # simple: 画像なし / image: 画像あり
-  color: '#ff0000'  # yellow | orange | amber | red  | magenta | purple | 
+  style: simple      # simple: 画像なし / image: 画像あり
+  # color: '#ff0000'  # yellow | orange | amber | red  | magenta | purple | 
+  color: 'yellow'  # yellow | orange | amber | red  | magenta | purple | 
                     # indigo | blue   | cyan  | teal | green   | lime から選択
                     # または HEX 記法も指定可（YAMLでは先頭#はコメントになるため引用符が必要）
                     # 例: '#ff0000'（引用符必須）/ ff0000（引用符不要）/ f00（引用符不要）/ 0xFF0000（引用符不要）
-  frontispiece: door2    # 扉絵の主ファイル名（例: 'door5'）。stylesheets/images/door5.webp を指す
-  ornament: frame-blue   # 節見出しの背景画像ファイル名(例: 'frame-blue')。stylesheets/images/frame-blue.webp を指す
+  frontispiece: sl    # 扉絵の主ファイル名（例: 'door5'）。stylesheets/images/door5.webp を指す
+  ornament: frame-green   # 節見出しの背景画像ファイル名(例: 'frame-blue')。stylesheets/images/frame-blue.webp を指す
   markers: 
     h3: '♣' # 目見出しの記号。h3見出しの前に表示される。一文字推奨。
     h4: '◆' # 号見出しの記号。h4見出しの前に表示される。一文字推奨。
@@ -81,16 +82,16 @@ page:
   # プログラミング用フォント hackgen35
 
   # 本文用フォント
-  # main_text_font: Noto Serif JP
-  main_text_font: Hachi Maru Pop
+  main_text_font: Noto Serif JP
+  # main_text_font: Hachi Maru Pop
   # 見出し用フォント
-  # header_font: Noto Sans JP
-  header_font: Rampart One
+  header_font: Noto Sans JP
+  # header_font: Rampart One
   # コラム用フォント
   column_font: Zen Maru Gothic
   # コード用フォント
-  # code_font: hackgen35
-  code_font: Zen Maru Gothic
+  code_font: hackgen35
+  # code_font: Zen Maru Gothic
   # ノンブル（ページ番号）用フォント
   folio_font: Noto Sans JP
 

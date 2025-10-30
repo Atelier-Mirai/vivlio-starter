@@ -3,22 +3,13 @@
 @import url("base.css");
 @import url("theme.css");
 @import url("page-settings.css");
+@import url("simple_header.css");
 @import url("prism.css");
 @import url("code.css");
 @import url("table.css");
 @import url("spacing.css");
 @import url("layout-utils.css");
 @import url("components.css");
-/* Header style variant (default: simple). Switch to image_header.css for image variant. */
-@import url("image_header.css");
-
-/* --------------------------------------------------
-   No-Image デザイン バリアント切替（必要な1行のみアンコメント）
-   Plan 2 は本ファイル末尾に内蔵。Plan 3〜5 を使う場合は以下を有効化。
-   -------------------------------------------------- */
-/* @import url("chapter_plan3.css");  */
-/* @import url("chapter_plan4.css");  */
-/* @import url("chapter_plan5.css");  */
 
 /*
   プロパティ並び順ガイドライン
@@ -52,32 +43,30 @@ body.chapter {
   @bottom-center { content: counter(page); }
 }
 
-@page chapter:first { 
-  /* 最初のページでページ番号を 1 表示にする */
-  counter-reset: page 0; 
+/* 最初のページでページ番号を 1 表示にする */
+@page chapter:first { counter-reset: page 0; }
+
+/* stylelint-disable */
+/* ドキュメントの1ページ目に章扉背景を設定 */
+@page :nth(1) {
+  background: center / cover no-repeat var(--chapter-door-image) fixed;
 }
-/* 章扉のページ全面背景は使用しない（コンポーネント背景で表現） */
+/* stylelint-enable */
 
 :root {
-  --h3-marker: "♣";
   --h4-marker: "◆";
+  --h3-marker: "♣";
   /* 調整用カスタムプロパティ（見出し・節番号・背景の位置と余白） */
   --h2-offset-inline: 30mm;  /* 見出しの左右移動 */
   --h2-offset-block-start: -9mm;  /* 見出しの上余白（上が負で上に寄せる） */
   --h2-offset-block-end: 40mm;  /* 見出しの下余白 */
-  --h2-padding-inline-start: 10mm;  /* 見出しテキストの内側左余白 */
+  --h2-padding-inline-start: 5mm;  /* 見出しテキストの内側左余白 */
   --section-number-padding-inline-start: 17mm;  /* 節番号テキストの内側左余白 */
   --section-number-padding-block-start: 15mm;  /* 節番号テキストの上側余白 */
   --section-bg-inset-inline: 13mm;  /* 背景画像の基準 左右位置 */
   --section-bg-inset-block: 9mm;  /* 背景画像の基準 上下位置（ページ基準使用時） */
   --section-lead-margin-start: -15mm;  /* 節リードの見出し直下の間隔 */
   --section-lead-margin-end: 1.5rlh;  /* 節リードと本文の間隔 */
-
-  /* Re:VIEW Starter 由来の色味 */
-  --heading-accent: var(--theme-accent); /* テーマに連動（yellow/blue/red/green/purple） */
-  --heading-gray:   color-mix(in srgb, var(--theme-accent) 10%, white); /* アクセントの淡色を自動生成 */
-  --section-gray:   color-mix(in srgb, var(--theme-accent) 6%, white);  /* 見出し帯の淡色（少し薄め） */
-  --heading-text:   #333;     /* 文字色 */
 }
 
 /* 見出し類 */
@@ -91,28 +80,10 @@ h6 {
   text-spacing: no-autospace;
 }
 
-/* h1 styles are imported from simple_header.css or image_header.css */
-
-/* 見出し共通スパン構造 */
-h1 .chapter-number,
-h1 .chapter-title,
-h2 .section-number,
-h2 .section-title,
-h3 .subsection-marker,
-h3 .subsection-title {
-  display: inline-block;
-}
-
-h1 .chapter-number,
-h2 .section-number,
-h3 .subsection-marker {
-  font-weight: 800;
-}
-
 /* 章リード（章冒頭のリード文） */
 .chapter-lead {
   /* box-size */
-  inline-size: clamp(114.24mm, calc(var(--paper-scale) * 163.2mm), 163.2mm); /* 32em 相当(A4基準)をスケール */
+  inline-size: 32em;
 
   /* spacing */
   margin-block: 2rlh;
@@ -120,7 +91,7 @@ h3 .subsection-marker {
 
   /* typography */
   font-weight: 500;
-  font-size: clamp(13.3Q, calc(var(--paper-scale) * 19Q), 19Q); /* A4基準19Qをスケール（下限≈A5相当） */
+  font-size: larger;
   line-height: 1.7;
   text-align: justify;
 
@@ -148,8 +119,6 @@ blockquote p {
   text-indent: 1em;
 }
 
-/* h2 styles are imported from simple_header.css or image_header.css */
-
 /* 節リード（節冒頭のリード文） */
 .section-lead {
   display: block;
@@ -157,9 +126,8 @@ blockquote p {
   /* 通常フローで配置 */
   inline-size: 32em;
 
-  /* 見出し h2 の直下に 15mm のアキを確保し、中央寄せ */
-  margin-block-start: clamp(10.5mm, calc(var(--paper-scale) * 15mm), 15mm); /* A4基準15mmをスケール */
-  margin-block-end: var(--section-lead-margin-end);
+  /* 10mm 上へずらし、中央寄せ */
+  margin-block: var(--section-lead-margin-start) var(--section-lead-margin-end);
   margin-inline: auto;
   font-weight: 700;
 
@@ -176,9 +144,9 @@ blockquote p {
 h3 {
   /* layout */
   margin-break: auto;
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
+
+  /* box-size */
+  block-size: 10mm;
 
   /* spacing */
   margin-block: 1rlh 0.5rlh;
@@ -190,31 +158,32 @@ h3 {
   line-height: 22Q;
 }
 
-h3 .subsection-marker {
-  font-size: 5mm;
-  color: var(--color-mark);
-}
+h3::before {
+  /* spacing */
+  padding: 0;
 
-h3 .subsection-title {
-  flex: 1 1 auto;
+  /* typography */
+  font-size: 5mm;
+
+  /* visual */
+  color: var(--color-mark);
+
+  /* counters/meta */
+  content: "◆";
 }
 
 /* 目見出し */
 h4 {
+  /* spacing */
+
+  /* none */
+
   /* typography */
   font-size: var(--base-font-size);
 }
 
 h4::before {
-  /* layout */
-  display: inline-block;
-
-  /* spacing */
-  margin-inline-end: 0.5em;
-  padding: 0;
-
-  /* counters/meta */
-  content: var(--h4-marker, "●");
+  content: "●";
 }
 
 /* 号見出し */
@@ -361,13 +330,10 @@ img {
   /* visual */
   border: solid 0.5mm var(--color-border);
 }
- 
+
 img[src$=".svg"] {
   border: none;
 }
- 
-
-
 
 /* 図版右寄せ */
 .figure.right {
@@ -394,13 +360,13 @@ blockquote {
 /* コラム枠 */
 .column {
   /* box-size */
-  width: clamp(79.8mm, calc(var(--paper-scale) * 114mm), 114mm); /* A4基準114mmをスケール */
+  width: 114mm;
 
   /* spacing */
-  margin-block-start: clamp(4.2mm, calc(var(--paper-scale) * 6mm), 6mm);
+  margin-block-start: 6mm;
   margin-inline: auto;
-  padding: clamp(2.8mm, calc(var(--paper-scale) * 4mm), 4mm);
-  padding-inline: clamp(4.2mm, calc(var(--paper-scale) * 6mm), 6mm);
+  padding: 4mm;
+  padding-inline: 6mm;
 
   /* visual */
   border: solid 0.2mm var(--color-column-border);

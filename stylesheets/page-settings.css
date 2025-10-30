@@ -102,10 +102,10 @@
   --column-font-size:   7.445pt;/* コラムのフォントサイズ */
 
   /* フォント指定 */
-  --main-text-font: "Hachi Maru Pop";     /* メイン本文フォント */
-  --header-font:    "Rampart One";      /* 見出しフォント */
+  --main-text-font: "Noto Serif JP";     /* メイン本文フォント */
+  --header-font:    "Noto Sans JP";      /* 見出しフォント */
   --column-font:    "Zen Maru Gothic";   /* コラムフォント */
-  --code-font:      "Zen Maru Gothic";         /* コードフォント */
+  --code-font:      "hackgen35";         /* コードフォント */
 
   /* ノンブル（ページ番号）用 */
   --folio-font:      "Noto Sans JP";

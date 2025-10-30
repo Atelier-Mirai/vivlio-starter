@@ -607,16 +607,12 @@ module Vivlio
           begin
             theme_css_path = File.join(Common::STYLESHEETS_DIR, 'theme.css')
             # TODO: gem公開時にはパスが変わるので更新すること
-            template_path = File.expand_path('../../project_scaffold/stylesheets/theme.css', __dir__)
-            css = begin
-              exists = File.exist?(theme_css_path)
-              content = exists ? File.read(theme_css_path, encoding: 'utf-8') : ''
-              if !exists || content.strip.empty? || !content.include?('--theme-accent')
-                Common.log_info("theme.css をテンプレートから再展開します: #{theme_css_path}")
-                content = File.read(template_path, encoding: 'utf-8')
-                File.write(theme_css_path, content, encoding: 'utf-8')
-              end
-              content
+            template_path = File.expand_path('../../../project_scaffold/stylesheets/theme.css', __dir__)
+            css = File.read(theme_css_path, encoding: 'utf-8') if File.exist?(theme_css_path)
+            if css.nil? || css.strip.empty? || !css.include?('--theme-accent')
+              Common.log_info("theme.css をテンプレートから再展開します: #{theme_css_path}")
+              css = File.read(template_path, encoding: 'utf-8')
+              File.write(theme_css_path, css, encoding: 'utf-8')
             end
 
             # --theme-accent を named の場合は var(--accent-<name>)、HEX の場合は生の色に設定
@@ -686,14 +682,26 @@ module Vivlio
             if File.exist?(chapter_css_path)
               ccss = File.read(chapter_css_path, encoding: 'utf-8')
               desired = theme_style == 'image' ? 'image_header.css' : 'simple_header.css'
-              updated = ccss
-                        .sub(/@import\s+url\("simple_header\.css"\);/, "@import url(\"#{desired}\");")
-                        .sub(/@import\s+url\("image_header\.css"\);/, "@import url(\"#{desired}\");")
-              if updated == ccss
-                Common.log_info("chapter.css のヘッダーimportは既に最新です: #{desired}")
+
+              if ccss.include?('@import url("simple_header.css");') || ccss.include?('@import url("image_header.css");')
+                updated = ccss
+                          .sub(/@import\s+url\("simple_header\.css"\);/, "@import url(\"#{desired}\");")
+                          .sub(/@import\s+url\("image_header\.css"\);/, "@import url(\"#{desired}\");")
+
+                if updated == ccss
+                  Common.log_info("chapter.css のヘッダーimportは既に最新です: #{desired}")
+                else
+                  File.write(chapter_css_path, updated, encoding: 'utf-8')
+                  Common.log_success("chapter.css のヘッダーimportを切替: #{desired}")
+                end
               else
+                insert_point = ccss.index(';', ccss.index('@import')).to_i + 1 rescue 0
+                insert_point = ccss.index("\n", insert_point).to_i + 1
+                insert_point = 0 if insert_point.negative?
+                header_import = "@import url(\"#{desired}\");\n"
+                updated = ccss.dup.insert(insert_point, header_import)
                 File.write(chapter_css_path, updated, encoding: 'utf-8')
-                Common.log_success("chapter.css のヘッダーimportを切替: #{desired}")
+                Common.log_success("chapter.css にヘッダーimportを追加: #{desired}")
               end
 
               # 章見出しマーカー（h3/h4 の ::before）を設定
