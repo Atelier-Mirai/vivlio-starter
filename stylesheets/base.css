@@ -4,10 +4,23 @@
    - ほかに共通で使いたい初期化があれば、このファイルに追加していく。
 */
 
+/* 全ての要素に対して共通の初期化 */
 *,
 *::before,
 *::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+}
+
+/* 見出しが区切りの良いところで折り返すようにする */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    text-wrap: balance;   /* 対応ブラウザでは行長をちょうど良く分割 */
+    line-break: strict;   /* 日本語の行分割規則を厳しめに適用 */
+    word-break: keep-all; /* 単語を分割しない */
 }

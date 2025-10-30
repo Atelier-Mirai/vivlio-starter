@@ -25,7 +25,7 @@
   --accent-mint:          #4caf50;
   --accent-green:         #3cb371;
   --accent-lime:          #c0ca33;
-  --theme-accent:         var(--accent-navy); /* 既定: yellow 系。config/theme.color で上書き */
+  --theme-accent:         var(--accent-teal); /* 既定: yellow 系。config/theme.color で上書き */
 
   /* カラートークン（共通） */
   --color-text:            #000;
@@ -44,7 +44,7 @@
 
   /* 節番号テーマ（デフォルトはイエロー） */
   --section-number-color:  var(--theme-accent);
-  --section-bg-image:      none;
+  --section-bg-image:      url("images/sunflower_landscape.webp");
 
   /* テーマは yellow / blue / red / green / purple から選択可能。
      変更する場合は :root で以下のように上書きする。
@@ -56,7 +56,11 @@
   */
 
   /* 扉画像（door1.webp〜door7.webp などに差し替え可） */
-  --chapter-door-image:    none;
+  --frontispiece-padding: 0mm;
+  --frontispiece-background-size: calc(100% - 2 * var(--frontispiece-padding)) calc(100% - 2 * var(--frontispiece-padding));
+  --frontispiece-image:    url("images/sunflower.webp");
+  --frontispiece-heading-width: 120mm;
+  --frontispiece-lead-width: 100mm;
 }
 
 @font-face {

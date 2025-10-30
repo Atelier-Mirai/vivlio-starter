@@ -20,27 +20,36 @@ book:
   author: '早乙女遙香'                  # 著者名
   language: 'ja'                      # 言語
 
-# 章選択（フルビルド対象）
-# - all: すべての章を対象
-# - 配列: 指定した .md ベース名のみを対象
-# - 複数行文字列: 行ごとに .md ベース名
-# - '11-install' と '11-install.md' の両方を許可（拡張子は省略可）
+# ビルド対象にする章の指定
+chapters: all # 全ての章を対象
 
-chapters: all
-# chapters:
-  # - 11-install
-  # - 81-install
+# chapters:       # 一部の章のみを対象としたい場合は、以下のように指定します。
+  # - 11-install  # 拡張子(.md)は、省略できます。
+  # - 12-tutorial
 
 # テーマ
 theme:
-  style: simple       # simple: 画像なし / image: 画像あり
-  color: navy      # yellow / amber / orange / peach
-                      # coral / red / magenta / plum
-                      # purple / indigo / navy / blue
-                      # cyan / teal / mint / green / lime から選択
-                      # ff0000 のような HEX 記法も指定可
-  frontispiece: sl    # 扉絵の主ファイル名（例: door5） stylesheets/images/door5.webp を指す
-  ornament: frame-yellow   # 節見出しの背景画像ファイル名(例: frame-blue)。stylesheets/images/frame-blue.webp を指す
+  # 章扉や節見出しの装飾スタイル
+  style: image     # simple: 画像なし / image: 画像あり
+
+  # テーマカラー
+  color: teal      # yellow / amber / orange / peach
+                   # coral / red / magenta / plum
+                   # purple / indigo / navy / blue
+                   # cyan / teal / mint / green / lime から選択
+                   # ff0000 のような HEX 記法も指定可
+
+  # 章扉の背景画像
+  frontispiece: 
+    image: sunflower    # 主ファイル名 stylesheets/images/sunflower.webp を指す
+    padding: 0mm
+    heading_width: 120mm
+    lead_width: 100mm
+
+  # 節見出しの背景画像
+  ornament: sunflower_landscape   # stylesheets/images/sunflower_landscape.webp を指す
+
+  # 目や号の見出し記号
   markers: 
     h3: ♣ # 目見出しの記号。h3見出しの前に表示される。一文字推奨。
     h4: ♦ # 号見出しの記号。h4見出しの前に表示される。一文字推奨。

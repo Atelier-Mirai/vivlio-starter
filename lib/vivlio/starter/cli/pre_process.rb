@@ -601,7 +601,30 @@ module Vivlio
           #   3) url("...") 文字列（そのまま使用）
           cfg = Common::CONFIG
           theme_cfg = (cfg && cfg['theme']) || {}
-          frontispiece_path = resolve_frontispiece_path(theme_cfg['frontispiece'])
+          frontispiece_raw = theme_cfg['frontispiece']
+          frontispiece_cfg = frontispiece_raw.is_a?(Hash) ? frontispiece_raw : {}
+          frontispiece_source = frontispiece_cfg.key?('image') ? frontispiece_cfg['image'] : frontispiece_raw
+          frontispiece_path = resolve_frontispiece_path(frontispiece_source)
+          normalize_css_length = lambda do |value, label:, default: nil, fallback_unit: 'mm'|
+            return default if value.nil?
+            v = value.to_s.strip
+            return default if v.empty?
+
+            if v =~ /^-?\d+(?:\.\d+)?$/
+              "#{v}#{fallback_unit}"
+            elsif v =~ /^-?\d+(?:\.\d+)?(?:mm|cm|in|px|pt|pc|em|rem|vw|vh|vmin|vmax|%)$/i
+              v
+            else
+              Common.log_warn("#{label} の形式が想定外です (#{v})。#{fallback_unit}単位として扱います。")
+              numeric = v.gsub(/[^0-9.\-]/, '')
+              return default if numeric.empty?
+              "#{numeric}#{fallback_unit}"
+            end
+          end
+
+          door_padding_value = normalize_css_length.call(frontispiece_cfg['padding'], label: 'theme.frontispiece.padding', default: '0mm')
+          heading_width_value = normalize_css_length.call(frontispiece_cfg['heading_width'], label: 'theme.frontispiece.heading_width')
+          lead_width_value = normalize_css_length.call(frontispiece_cfg['lead_width'], label: 'theme.frontispiece.lead_width')
 
           # テーマCSSを更新
           begin
@@ -629,7 +652,7 @@ module Vivlio
             if theme_style == 'simple'
               # 画像を使わないシンプルスタイル
               css = css.sub(/(--section-bg-image:\s*)[^;]+(\s*;)/, '\\1none\\2')
-              css = css.sub(/(--chapter-door-image:\s*)[^;]+(\s*;)/, '\\1none\\2')
+              css = css.sub(/(--frontispiece-image:\s*)[^;]+(\s*;)/, '\\1none\\2')
             else
               # 画像ありスタイル（従来通り）
               # none でも url("...") でも置換できるように包括的なパターンで上書き
@@ -663,15 +686,37 @@ module Vivlio
                              "url(\"#{frontispiece_path}\")"
                            end
 
-              css = css.sub(/(--chapter-door-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
+              css = css.sub(/(--frontispiece-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
                 pre = ::Regexp.last_match(1)
                 post = ::Regexp.last_match(2)
                 "#{pre}#{door_value}#{post}"
               end
+
+              css = css.sub(/(--frontispiece-padding:\s*)[^;]+(\s*;)/) do
+                pre = ::Regexp.last_match(1)
+                post = ::Regexp.last_match(2)
+                "#{pre}#{door_padding_value}#{post}"
+              end
+            end
+
+            if heading_width_value
+              css = css.sub(/(--frontispiece-heading-width:\s*)[^;]+(\s*;)/) do
+                pre = ::Regexp.last_match(1)
+                post = ::Regexp.last_match(2)
+                "#{pre}#{heading_width_value}#{post}"
+              end
+            end
+
+            if lead_width_value
+              css = css.sub(/(--frontispiece-lead-width:\s*)[^;]+(\s*;)/) do
+                pre = ::Regexp.last_match(1)
+                post = ::Regexp.last_match(2)
+                "#{pre}#{lead_width_value}#{post}"
+              end
             end
 
             File.write(theme_css_path, css, encoding: 'utf-8')
-            Common.log_success("theme.css を更新: theme=#{theme_name}, style=#{theme_style}, door=#{frontispiece_path}, ornament=#{theme_cfg['ornament']}")
+            Common.log_success("theme.css を更新: theme=#{theme_name}, style=#{theme_style}, door=#{frontispiece_path}, padding=#{door_padding_value}, ornament=#{theme_cfg['ornament']}")
           rescue StandardError => _e
             # 失敗しても前処理は継続
           end
