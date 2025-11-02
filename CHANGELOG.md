@@ -16,21 +16,20 @@
 
 #### ビルド/出力
 
-- 00, 01, 11-98, 02, 03, 99 で一括生成 (vivliostyle cli 一回呼び出しでpdf生成 / 並列処理)
-- 00, 01, 02, 03, 11-98, 99 に並び替え。02-03 の頁番号をローマ数字小文字に付け替える。
 - 00, 01, (blank), 02, (blank), 03, (blank), 11-98(cssにより右頁始まり), (blank), 99 として結合
-
 - [Medium] book.yml の chapters を、contents/と連動するように。
 - [High] 奥付が偶数ページになるように
 - [High] 縦に長い表のレイアウト崩れ
-- [High] 任意の複数章を指定して、フルビルドする
-- [High] 任意章フルビルド（既出の計画を拡張）章IDの指定順で束ね、目次・通し番号も整合。実装目安: rake build --chapters=11,12,21 形式。
 - [Medium] A4 以外の紙サイズを指定する（推奨文字サイズの確認）
 - [Medium] 出力バリアント PDF（裁ち落とし/ノンブル有無）、Web/EPUB（任意）。
+
+#### 実装済み
+
+- [High] 任意の複数章を指定して、フルビルドする
+- [High] 任意章フルビルド（既出の計画を拡張）章IDの指定順で束ね、目次・通し番号も整合。実装目安: rake build --chapters=11,12,21 形式。
 - [High] PDF に章アウトライン（ブックマーク）を付与（本文PDF/最終PDF）。読者のナビゲーション向上のため、Step 7/10 後段で HexaPDF により後付け。
 
 #### 校正/Lint・品質
-
 リファクタリング前 519 件 -> 508件
 - [High] RuboCop が全面的に通るよう CLI/ビルド系スクリプトを継続的にリファクタリング。
 102 lib/vivlio/starter/cli/build_helpers.rb
@@ -87,7 +86,6 @@
 - [Crucial] 11-install.mdなどを、書き直す
 - [Low] テンプレ断片スニペット（注意/補足/Tipのコンポーネント化）。
 - [High] プロジェクト生成時に、.cache/vs/ を生成する。
-- [Low] `stylesheets/prism.css` を Prism 1.6.0 に合わせて更新。
 
 
 改善策（効果が出やすい順）
@@ -113,9 +111,12 @@ Chromium 起動回数の削減（将来案）
 
 ### Added
 - テーマカラー候補に coral / navy / mint / plum / peach を追加し、yellow 系の色味を調整。
+- `theme.frontispiece` をネスト構造で受け取り、padding / heading_width / lead_width を CSS カスタムプロパティとして展開。
+- macOS 環境の `vs doctor --fix` で waifu2x を自動ダウンロード・展開し、`$HOME/.local/bin/waifu2x/` 以下へ配置できるよう対応。
 
 ### Changed
 - simple テーマ向け header スタイルを刷新し、章タイトル・節見出しをバナー調に再設計。
+- image テーマの章扉レイアウトと節見出し装飾を再設計し、frontispiece 余白・見出し幅・装飾画像のアスペクト比・折り返し制御を改善。
 
 ## [0.12.0] - 2025-10-28
 

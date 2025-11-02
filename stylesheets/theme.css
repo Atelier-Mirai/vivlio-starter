@@ -7,25 +7,13 @@
 */
 
 :root {
-  /* テーマ・アクセント（config/theme.color と連動） */
-  --accent-yellow:        #ffd54f;
-  --accent-amber:         #ffb300;
-  --accent-orange:        #ff8c00;
-  --accent-peach:         #ffa07a;
-  --accent-coral:         #ff6f61;
-  --accent-red:           #d33;
-  --accent-magenta:       #b21662;
-  --accent-plum:          #8e44ad;
-  --accent-purple:        #7d4aa6;
-  --accent-indigo:        #3f51b5;
-  --accent-navy:          #1a237e;
+  /* テーマ・アクセント（yellow/blue/red で切替可能） */
+  --accent-yellow:        #f0a000;
   --accent-blue:          #3da8c9;
-  --accent-cyan:          #00acc1;
-  --accent-teal:          #00897b;
-  --accent-mint:          #4caf50;
-  --accent-green:         #3cb371;
-  --accent-lime:          #c0ca33;
-  --theme-accent:         var(--accent-teal); /* 既定: yellow 系。config/theme.color で上書き */
+  --accent-red:           #d33;
+  --accent-green:         #3cb371;  /* mediumseagreen 系 */
+  --accent-purple:        #7d4aa6;  /* 紫系 */
+  --theme-accent:         var(--accent-teal); /* 既定: yellow 系。blue/red/green/purple にする場合は var(--accent-*) に変更 */
 
   /* カラートークン（共通） */
   --color-text:            #000;
@@ -58,7 +46,7 @@
   /* 扉画像（door1.webp〜door7.webp などに差し替え可） */
   --frontispiece-padding: 0mm;
   --frontispiece-background-size: calc(100% - 2 * var(--frontispiece-padding)) calc(100% - 2 * var(--frontispiece-padding));
-  --frontispiece-image:    url("images/sunflower.webp");
+  --frontispiece-image:    url("images/sl.webp");
   --frontispiece-heading-width: 120mm;
   --frontispiece-lead-width: 100mm;
 }

@@ -41,12 +41,14 @@ theme:
 
   # 章扉の背景画像
   frontispiece: 
-    image: sunflower    # 主ファイル名 stylesheets/images/sunflower.webp を指す
+    # image: bundled/himawari_portrait   # 主ファイル名 stylesheets/images/sunflower.webp を指す
+    image: sl   # 主ファイル名 stylesheets/images/sunflower.webp を指す
     padding: 0mm
     heading_width: 120mm
     lead_width: 100mm
 
   # 節見出しの背景画像
+  # ornament: bundled/himawari_landscape   # stylesheets/images/sunflower_landscape.webp を指す
   ornament: sunflower_landscape   # stylesheets/images/sunflower_landscape.webp を指す
 
   # 目や号の見出し記号

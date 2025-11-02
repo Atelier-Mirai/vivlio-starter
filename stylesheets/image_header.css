@@ -49,14 +49,13 @@ h1 .chapter-number {
 }
 
 h1 .chapter-title {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(2mm, calc(var(--paper-scale) * 3mm), 3mm);
+  display: block;
+  text-align: center;
   font-size: clamp(38Q, calc(var(--paper-scale) * 52Q), 52Q);
   font-weight: 800;
   letter-spacing: 0.1em;
   color: #111;
+  line-height: 1.35;
   width: fit-content;
   margin: 0 auto;
   padding-block: clamp(5mm, calc(var(--paper-scale) * 7mm), 7mm);

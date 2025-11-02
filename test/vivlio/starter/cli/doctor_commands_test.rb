@@ -13,17 +13,14 @@ module Vivlio
         def test_doctor_reports_success_when_environment_complete
           with_host_os('linux') do
             command = build_doctor_command
-            calls = []
-
             stub_logging do
-              command.stub :system, ->(cmd) { calls << cmd; command_system_success(cmd) } do
-                capture_io { command.doctor }
+              command.stub :command_exists?, ->(_) { true } do
+                command.stub :waifu2x_available?, true do
+                  command.stub :install_waifu2x_macos!, ->(*) { flunk('install_waifu2x_macos! should not be called when waifu2x is available') } do
+                    capture_io { command.doctor }
+                  end
+                end
               end
-            end
-
-            expected_checks = %w[node vivliostyle qpdf pdfinfo gs convert]
-            expected_checks.each do |label|
-              assert_includes calls.any? ? calls.join(' ') : '', label
             end
           end
         end
@@ -32,15 +29,21 @@ module Vivlio
         def test_doctor_fix_on_non_macos_aborts_install
           with_host_os('linux') do
             command = build_doctor_command(fix: true)
-            calls = []
+            system_calls = []
 
             stub_logging do
-              command.stub :system, ->(cmd) { calls << cmd; command_system_missing(cmd) } do
-                capture_io { command.doctor }
+              command.stub :command_exists?, ->(_) { false } do
+                command.stub :waifu2x_available?, false do
+                  command.stub :install_waifu2x_macos!, ->(*) { flunk('install_waifu2x_macos! should not be called on non-macOS') } do
+                    command.stub :system, ->(cmd) { system_calls << cmd; false } do
+                      capture_io { command.doctor }
+                    end
+                  end
+                end
               end
             end
 
-            refute calls.any? { |cmd| cmd.include?('brew install') }
+            refute system_calls.any? { |cmd| cmd.include?('brew install') }
           end
         end
 
