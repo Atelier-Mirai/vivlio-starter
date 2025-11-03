@@ -54,11 +54,11 @@
 
 | プラグイン名 | 目的 | チェックする主な内容 |
 | :--- | :--- | :--- |
-| **`textlint-rule-ja-no-mixed-period`** | **文末の句読点の統一** | 文書全体で句読点のスタイル（「です。」と「である。」の混在など）が統一されているかをチェックします。 |
-| **`textlint-rule-no-doubled-conjunctive-word`** | **接続詞の重複** | 同じ意味を持つ接続詞や副詞（例: 「したがって、しかしながら」）が連続して使用されることを検出します。 |
-| **`textlint-rule-no-doubled-joshi`** | **助詞の重複** | 同じ助詞（てにをは）が連続で使用されている、不自然な文を検出します。 |
-| **`textlint-rule-no-exclamation-question-mark`** | **感嘆符・疑問符の制限** | 正式な文書における感嘆符（`!`）や疑問符（`?`）の過度な使用を制限し、文体を統一します。 |
-| **`textlint-rule-ja-no-successive-word`** | **同単語の連続出現** | 同じ単語が短い間隔で連続して出現している箇所をチェックし、文章の単調さを改善します。 |
+| **`textlint-rule-ja-no-mixed-period`** | **文末の句読点の統一** | 文書全体で句読点のスタイル（「です。」と「である。」の混在など）が統一されているかをチェックする。 |
+| **`textlint-rule-no-doubled-conjunctive-word`** | **接続詞の重複** | 同じ意味を持つ接続詞や副詞（例: 「したがって、しかしながら」）が連続して使用されることを検出する。 |
+| **`textlint-rule-no-doubled-joshi`** | **助詞の重複** | 同じ助詞（てにをは）が連続で使用されている、不自然な文を検出する。 |
+| **`textlint-rule-no-exclamation-question-mark`** | **感嘆符・疑問符の制限** | 正式な文書における感嘆符（`!`）や疑問符（`?`）の過度な使用を制限し、文体を統一する。 |
+| **`textlint-rule-ja-no-successive-word`** | **同単語の連続出現** | 同じ単語が短い間隔で連続して出現している箇所をチェックし、文章の単調さを改善する。 |
 
 ### 3.3. 設定管理
 
@@ -67,159 +67,143 @@
 
 ### 3.4. プラグインのカスタマイズ 
 
-標準で用意される`.textlintrc`ファイルは、次の通りである。
+標準で用意される`.textlintrc.yml`ファイルは、次の通りである。
 
-```json
-# 📄 推奨 Textlint 設定ファイル (`.textlintrc`)
+```yaml
+# 📄 推奨 Textlint 設定ファイル (`.textlintrc.yml`)
 
-{
-  "plugins": [],
-  "filters": {},
-  "rules": {
-    // ====================================================================
-    // 3.1. 初期導入検討リスト（ベースライン）
-    // ====================================================================
+plugins: []
 
-    // 技術文書のスタイルをチェックする標準プリセット
-    "preset-ja-technical-writing": {
-      // 厳格なチェックを行うため、デフォルト設定（全て有効）を採用
-      "prefer-ja-no-space-around-paren": true, // かっこの周りのスペースを禁止
-      "no-exclamation-question-mark": {
-        "allowFullWidth": true // 全角の！や？は許可（部分的にカスタム）
-      }
-    },
+filters:
+  # コードブロックやインラインコードを校正対象から除外するための設定。
+  # textlint-filter-rule-node-types を利用する想定。
+  node-types:
+    nodeTypes:
+      - Code
+      - CodeBlock
 
-    // 固有名詞や特定の用語の表記揺れをチェック（辞書ファイルの指定が必要）
-    // ※ 辞書ファイルは別途 `prh.yml` などで定義する必要があります
-    "prh": {
-      "rulePaths": ["./prh.yml"]
-    },
+rules:
+  # ====================================================================
+  # 3.1. 初期導入検討リスト（ベースライン）
+  # ====================================================================
 
-    // 一般的な日本語スタイルチェックのプリセット（ja-technical-writingと重複するルールもあるため、必要なものを有効化）
-    "preset-japanese": {
-      // 基本的には ja-technical-writing に任せるが、独自のチェック項目を追加する
-      "no-mix-dearu-desumasu": true // 文体の混在（だ・である調とです・ます調）を禁止
-    },
+  # 技術文書のスタイルをチェックする標準プリセット
+  preset-ja-technical-writing:
+    # 厳格なチェックを行うため、デフォルト設定（全て有効）を採用
+    prefer-ja-no-space-around-paren: true  # かっこの周りのスペースを禁止
+    no-exclamation-question-mark:
+      allowFullWidth: true  # 全角の！や？は許可（部分的にカスタム）
 
-    // 「ら抜き言葉」の検出
-    "no-dropping-the-ra": true,
+  # 固有名詞や特定の用語の表記揺れをチェック（辞書ファイルの指定が必要）
+  # ※ 辞書ファイルは `config/textlint/` 配下に配置する想定
+  prh:
+    rulePaths:
+      - ./config/textlint/icsmedia.yml
+      - ./config/textlint/js_primer.yml
+      - ./config/textlint/prh.yml
 
-    // ====================================================================
-    // 3.2. 追加導入推奨リスト（品質向上）
-    // ====================================================================
+  # 一般的な日本語スタイルチェックのプリセット（ja-technical-writingと重複するルールもあるため、必要なものを有効化）
+  preset-japanese:
+    # 基本的には ja-technical-writing に任せるが、独自のチェック項目を追加する
+    no-mix-dearu-desumasu: true  # 文体の混在（だ・である調とです・ます調）を禁止
 
-    // 文末の句読点の統一
-    // 句点（。）と読点（、）以外の句読点の混在をチェック
-    "ja-no-mixed-period": {
-      "periodMarks": [".", "。", "！", "？"], // 文末に許可する記号（必要に応じてカスタマイズ）
-      "allowPeriodMarks": ["。", "."] // 基本的に「。」と「.」の混在を許可
-    },
+  # 「ら抜き言葉」の検出
+  no-dropping-the-ra: true
 
-    // 接続詞の重複チェック
-    "no-doubled-conjunctive-word": true,
+  # ====================================================================
+  # 3.2. 追加導入推奨リスト（品質向上）
+  # ====================================================================
 
-    // 助詞の重複チェック
-    "no-doubled-joshi": {
-      "base": ["は", "が", "を", "に", "と", "より", "から", "で"], // チェック対象とする助詞
-      "min": 3 // 連続する最小回数（デフォルトの3回を使用）
-    },
+  # 文末の句読点の統一
+  # 句点（。）と読点（、）以外の句読点の混在をチェック
+  ja-no-mixed-period:
+    periodMarks: [".", "。", "！", "？"]  # 文末に許可する記号（必要に応じてカスタマイズ）
+    allowPeriodMarks: ["。", "."]  # 基本的に「。」と「.」の混在を許可
 
-    // 感嘆符・疑問符の制限
-    // ja-technical-writingで部分的に制御されているが、ここではより厳格に設定
-    "no-exclamation-question-mark": {
-      "allowFullWidth": false, // 全角であっても原則禁止
-      "allowHalfWidth": false // 半角も禁止
-      // 文体によっては、この設定を削除し、ja-technical-writingのデフォルトに任せることも検討
-    },
+  # 接続詞の重複チェック
+  no-doubled-conjunctive-word: true
 
-    // 同単語の連続出現チェック
-    "ja-no-successive-word": {
-      "dict": "default", // デフォルト辞書を使用
-      "maxRepeated": 2 // 2回連続までを許容（3回以上でエラー）
-    },
+  # 助詞の重複チェック
+  no-doubled-joshi:
+    base: ["は", "が", "を", "に", "と", "より", "から", "で"]  # チェック対象とする助詞
+    min: 3  # 連続する最小回数（デフォルトの3回を使用）
 
-    // ====================================================================
-    // その他：推奨される汎用的な設定
-    // ====================================================================
+  # 感嘆符・疑問符の制限
+  # ja-technical-writingで部分的に制御されているが、ここではより厳格に設定
+  no-exclamation-question-mark:
+    allowFullWidth: false  # 全角であっても原則禁止
+    allowHalfWidth: false  # 半角も禁止
+    # 文体によっては、この設定を削除し、ja-technical-writingのデフォルトに任せることも検討
 
-    // 一文に含まれる読点（テン）の最大数を制限
-    "max-ten": {
-      "max": 4 // 一文あたりの読点の最大数（一般的に4が推奨される）
-    },
+  # 同単語の連続出現チェック
+  ja-no-successive-word:
+    dict: default  # デフォルト辞書を使用
+    maxRepeated: 2  # 2回連続までを許容（3回以上でエラー）
 
-    // 全角と半角カタカナの混在をチェック
-    "ja-no-mixed-period": true
-  }
-}
+  # ====================================================================
+  # その他：推奨される汎用的な設定
+  # ====================================================================
+
+  # 一文に含まれる読点（テン）の最大数を制限
+  max-ten:
+    max: 4  # 一文あたりの読点の最大数（一般的に4が推奨される）
+
+  # 全角と半角カタカナの混在をチェック
+  # 必要に応じて他のルールに置き換えてください
+  ja-no-mixed-kana: true
 ```
 
 ## 4. Textlint prh 標準辞書（ルールセット）の導入
 
-textlint-rule-prh で用いる辞書ファイルは、prh/rules リポジトリでオープンソースとして公開されています。これにより、技術用語の表記揺れチェックを容易に導入できます。
-
-```json
-"prh": {
-      "rulePaths": ["./prh.yml"]
-    },
-```
-
-上記で用いることとなる辞書セットは、次の方法で取得する。
-
 ### 4.1 推奨される標準辞書ファイル
-以下の辞書ファイルは、技術文書の表記揺れチェックに特に有用です。
+以下の辞書ファイルは、技術文書の表記揺れチェックに特に有用で、いずれも MIT ライセンスで公開されていることから、推奨される辞書ファイルとして、Vivlio Starter に組み込むことにより、利用者に提供する。
 
-辞書ファイル	目的
-media/WEB+DB_PRESS.yml	技術雑誌『WEB+DB PRESS』の用語統一ルールに基づいた辞書。IT用語の表記統一に最適。
-media/js-primer.yml	『JavaScript Primer』で使用されているJavaScript関連用語の統一ルール。
+| 辞書名 | 入手先 | 主な用途 |
+| :--- | :--- | :--- |
+| **ICS MEDIA** | [github.com/ics-creative/textlint-rule-preset-icsmedia/tree/master/dict](https://github.com/ics-creative/textlint-rule-preset-icsmedia/tree/master/dict) | Web 技術全般の用語統一に利用可能な辞書が複数含まれる。 |
+| **js-primer** | [github.com/asciidwango/js-primer/blob/master/prh.yml](https://github.com/asciidwango/js-primer/blob/master/prh.yml) | JavaScript 関連用語の表記揺れ統一。 |
 
-### 4.2. 📁 辞書ファイルの取得方法（Git Submodule）
-Textlintプロジェクトで辞書ファイルを管理する標準的な方法は、Gitのサブモジュールとして取得する方法です。
+### 4.2. 📁 辞書ファイルの配備先
 
-ステップ 2-1: prh/rules リポジトリの追加
-
-プロジェクトのルートディレクトリで、prh-rules などの分かりやすい名前で辞書リポジトリを追加します。
+プロジェクトルート直下に `config/textlint/` を用意し、必要な辞書ファイルを配置する。
 
 ```bash
-# prh/rules リポジトリを prh-rules ディレクトリとしてプロジェクトに追加
-git submodule add https://github.com/prh/rules.git prh-rules
+config/textlint/
+├── icsmedia.yml
+├── prh_cho_on.yml
+├── prh_corporation.yml
+├── prh_duplicate.yml
+├── prh_idiom.yml
+├── prh_open_close.yml
+├── prh_redundancy.yml
+├── prh_web_technology.yml
+└── js_primer.yml
+└── prh.yml（独自辞書）
 ```
 
-ステップ 2-2: サブモジュールの初期化
+ICS MEDIA リポジトリ（[dict/ ディレクトリ](https://github.com/ics-creative/textlint-rule-preset-icsmedia/tree/master/dict)）には、用途別に分割された辞書ファイルが複数用意されている。
 
-サブモジュールを初期化し、内容を取得します。
+- [prh_cho_on.yml](https://github.com/ics-creative/textlint-rule-preset-icsmedia/blob/master/dict/prh_cho_on.yml)
+- [prh_corporation.yml](https://github.com/ics-creative/textlint-rule-preset-icsmedia/blob/master/dict/prh_corporation.yml)
+- [prh_duplicate.yml](https://github.com/ics-creative/textlint-rule-preset-icsmedia/blob/master/dict/prh_duplicate.yml)
+- [prh_idiom.yml](https://github.com/ics-creative/textlint-rule-preset-icsmedia/blob/master/dict/prh_idiom.yml)
+- [prh_open_close.yml](https://github.com/ics-creative/textlint-rule-preset-icsmedia/blob/master/dict/prh_open_close.yml)
+- [prh_redundancy.yml](https://github.com/ics-creative/textlint-rule-preset-icsmedia/blob/master/dict/prh_redundancy.yml)
+- [prh_web_technology.yml](https://github.com/ics-creative/textlint-rule-preset-icsmedia/blob/master/dict/prh_web_technology.yml)
+- [prh.yml](https://github.com/ics-creative/textlint-rule-preset-icsmedia/blob/master/dict/prh.yml)（Vivlio Starter では `icsmedia.yml` にリネームして利用）
 
-```bash
-git submodule update --init --recursive
-```
+js-primer 辞書も同様に公開されており、[prh.yml](https://github.com/asciidwango/js-primer/blob/master/prh.yml) を取得して `js_primer.yml` として保存する。（後述する独自辞書との競合を避けるため）
 
-### 4.3. ⚙️ .textlintrc での設定
-辞書ファイルをプロジェクトに追加したら、.textlintrc ファイルの prh ルール設定を更新し、これらの辞書を参照するように指定します。
+### 4.3. ⚙️ .textlintrc.yml の設定
+プロジェクトルート直下に `.textlintrc.yml` を配備する。そして、`.textlintrc.yml` の `prh.rulePaths` を更新して参照する。
 
-```json
-// .textlintrc の一部
-"prh": {
-  "rulePaths": [
-    // 取得した prh-rules ディレクトリ内の辞書ファイルを指定
-    "./prh-rules/media/WEB+DB_PRESS.yml",
-    "./prh-rules/media/js-primer.yml"
-    // プロジェクト独自の prh.yml がある場合はそれも追加
-    // "./prh.yml"
-  ]
-},
-```
-
-この設定により、vivlio-starter text:lint コマンドが実行された際に、これらの標準的な技術用語の表記揺れチェックが自動的に適用されます。
+この設定により、`vivlio-starter text:lint` コマンド実行時に、ICS MEDIA 辞書と JS Primer 辞書、独自辞書をまとめて適用する。
 
 ### 4.4. 📁 プロジェクト独自の辞書ファイル
 
-プロジェクト独自の辞書ファイル（通常 prh.yml とします）は、YAML形式で作成します。
-
-このファイルには、修正すべき**パターン（表記ゆれ）と、それに置き換えるべき正しい表記（期待値）**を定義します。
-
-textlint-rule-prh の基盤である prh は、正規表現を使って表記ゆれを検出・置換できますが、最も基本的な形式は「この単語を見つけたら、この単語に直す」というシンプルなルールです。
-
-以下に、vivlio-starter の表記を統一するための辞書ファイルの例を示します。
-
+プロジェクト独自の辞書ファイル（prh.yml）は、YAML形式で作成する。
+辞書ファイルには、修正すべき**パターン（表記ゆれ）と、それに置き換えるべき正しい表記（期待値）**を定義する。
+以下に、vivlio-starter の表記を統一するための辞書ファイルの例を示す。
 
 #### 📁 プロジェクト独自の辞書ファイル（prh.yml）作成例
 
@@ -293,28 +277,3 @@ rules:
     patterns:
       - 'GitHubActions'
 ```
-
-#### 💡 prh 設定のポイント
-
-最も重要なのは、vivlio-starter の表記がコードブロックやインラインコード内で使われている場合、Textlintのチェック対象から除外することです。
-
-Textlintには、特定の範囲をチェック対象から外すフィルター機能があります。
-
-1. インラインコードの除外
-
-Markdownのインラインコード (\`` で囲まれた部分) やコードブロック内のテキストをチェック対象外にするフィルターを .textlintrc に設定します。
-
-これにより、文章中の Vivlio Starter はチェックされますが、コマンドを示す text:lint や vivlio-starter は無視されます。
-
-```json
-// .textlintrc の一部
-"filters": [
-  {
-    "name": "textlint-filter-code-block",
-    "options": {
-      "ignoreCodeBlock": true
-    }
-  }
-]
-```
-
