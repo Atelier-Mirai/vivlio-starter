@@ -110,9 +110,17 @@ Chromium 起動回数の削減（将来案）
 （次回リリース候補の変更はここに追加してください）
 
 ### Added
+
+### Changed
+
+## [0.13.0] - 2025-11-03
+
+### Added
 - テーマカラー候補に coral / navy / mint / plum / peach を追加し、yellow 系の色味を調整。
 - `theme.frontispiece` をネスト構造で受け取り、padding / heading_width / lead_width を CSS カスタムプロパティとして展開。
 - macOS 環境の `vs doctor --fix` で waifu2x を自動ダウンロード・展開し、`$HOME/.local/bin/waifu2x/` 以下へ配置できるよう対応。
+- frontispiece / ornament の解決時に `_portrait` / `_landscape` バリアントを自動生成し、次回以降は既存ファイルを優先利用するよう改良。
+- 扉絵・節装飾に利用できるバンドル画像セットを 36 種類（ajisai など）に拡充し、即座に `_portrait` / `_landscape` バリアントへ展開可能に。
 
 ### Changed
 - simple テーマ向け header スタイルを刷新し、章タイトル・節見出しをバナー調に再設計。

@@ -8,6 +8,9 @@ require 'cgi'
 require 'time'
 require 'etc'
 
+require_relative 'common'
+require_relative 'pre_process'
+
 module Vivlio
   module Starter
     module CLI
@@ -291,6 +294,55 @@ module Vivlio
             end
           end
           Common.log_success('[Step 1] 画像最適化が完了しました')
+        end
+
+        # ================================================================
+        # Step 2: frontispiece / ornament の事前生成
+        # ------------------------------------------------
+        # - config/book.yml の theme 設定を読み込み、必要なバリアントを非並列で生成
+        # - 既存ファイルがあれば再生成しない
+        # ================================================================
+        def prepare_theme_images!
+          Common.log_action('[Step 2] frontispiece / ornament の準備を開始します…')
+
+          cfg = Common::CONFIG
+          theme_cfg = cfg.is_a?(Hash) ? cfg['theme'] : nil
+          unless theme_cfg.is_a?(Hash)
+            Common.log_info('[Step 2] theme 設定が存在しないためスキップします')
+            return
+          end
+
+          frontispiece_entry = theme_cfg['frontispiece']
+          ornament_entry = theme_cfg['ornament']
+
+          frontispiece_source = if frontispiece_entry.is_a?(Hash)
+                                  frontispiece_entry['image']
+                                else
+                                  frontispiece_entry
+                                end
+          ornament_source = ornament_entry
+
+          generated_any = false
+
+          if frontispiece_source && !frontispiece_source.to_s.strip.empty?
+            path = Vivlio::Starter::CLI::PreProcessCommands.resolve_frontispiece_path(frontispiece_source, allow_generation: true)
+            Common.log_success("[Step 2] frontispiece を準備しました: #{path}")
+            generated_any = true
+          else
+            Common.log_info('[Step 2] frontispiece 設定なし（既定画像を使用）')
+          end
+
+          if ornament_source && !ornament_source.to_s.strip.empty?
+            path = Vivlio::Starter::CLI::PreProcessCommands.resolve_ornament_path(ornament_source, allow_generation: true)
+            Common.log_success("[Step 2] ornament を準備しました: #{path}")
+            generated_any = true
+          else
+            Common.log_info('[Step 2] ornament 設定なし（既定画像を使用）')
+          end
+
+          Common.log_info('[Step 2] 追加生成は不要でした') unless generated_any
+        rescue StandardError => e
+          Common.log_warn("[Step 2] frontispiece / ornament 準備中にエラーが発生しました: #{e.message}")
         end
 
         # ================================================================

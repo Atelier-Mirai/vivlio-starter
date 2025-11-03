@@ -30,6 +30,7 @@ module Vivlio
           stubs = [
             [pipeline, :run_step0_clean, -> { order << 'step0' }],
             [pipeline, :run_step1_optimize_images, -> { order << 'step1' }],
+            [BuildHelpers, :prepare_theme_images!, -> { order << 'step2' }],
             [BuildHelpers, :build_sections_html!, lambda { |keep|
               test_case.assert_nil keep
               order << 'step5'
@@ -66,12 +67,13 @@ module Vivlio
           end
 
           # 期待する実行順を明示し、スタブ記録と照合する
-          expected_order = %w[step0 step1 step5 step6 step7 step8 step9 step10 step11 step12 step13]
+          expected_order = %w[step0 step1 step2 step5 step6 step7 step8 step9 step10 step11 step12 step13]
           assert_equal expected_order, order
 
           expected_labels = [
             'Step 0 (clean)',
             'Step 1 (optimize images)',
+            'Step 2 (prepare theme images)',
             'Step 5 (build sections html)',
             'Step 6 (generate toc and pdf)',
             'Step 7 (build overall pdf and split)',

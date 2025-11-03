@@ -66,6 +66,7 @@ module Vivlio
           def register_steps
             add_step('Step 0 (clean)',            -> { run_step0_clean })
             add_step('Step 1 (optimize images)', -> { run_step1_optimize_images })
+            add_step('Step 2 (prepare theme images)', -> { BuildHelpers.prepare_theme_images! })
             add_step('Step 5 (build sections html)', -> { BuildHelpers.build_sections_html!(keep) })
             add_step('Step 6 (generate toc and pdf)', -> { BuildHelpers.generate_toc_and_pdf!('.', keep) })
             add_step('Step 7 (build overall pdf and split)', -> {

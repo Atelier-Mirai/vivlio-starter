@@ -3,6 +3,9 @@
 require 'yaml'
 require 'shellwords'
 require 'cgi'
+require 'fileutils'
+require 'open3'
+require 'tmpdir'
 
 require_relative 'font_manager'
 
@@ -19,6 +22,23 @@ module Vivlio
       # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
       # ================================================================
       module PreProcessCommands
+        DEFAULT_WAIFU2X_BIN = ENV['WAIFU2X_BIN'] || File.expand_path('~/.local/bin/waifu2x/waifu2x-ncnn-vulkan')
+        FRONTISPIECE_VARIANTS = {
+          portrait: Math.sqrt(2),
+          landscape: 1.0 / 2.39
+        }.freeze
+        FRONTISPIECE_SCALE = 2
+        FRONTISPIECE_TARGET_WIDTH = 2880
+        FRONTISPIECE_WEBP_QUALITY = 90
+        FRONTISPIECE_WAIFU2X_NOISE = 0
+        FRONTISPIECE_ALLOWED_RATIOS = [4.0 / 3.0, Math.sqrt(2)].freeze
+        FRONTISPIECE_RATIO_TOLERANCE = 0.10
+        FRONTISPIECE_DEFAULT_PATH = 'images/door2.webp'
+        ORNAMENT_DEFAULT_PATH = 'images/frame-yellow.webp'
+        FRONTISPIECE_PLACEHOLDER_FS_PATH = File.join(Common::STYLESHEETS_DIR, 'images', 'no_frontispiece.svg').freeze
+        ORNAMENT_PLACEHOLDER_FS_PATH = File.join(Common::STYLESHEETS_DIR, 'images', 'no_ornament.svg').freeze
+        THEME_IMAGE_EXTENSIONS = %w[.webp .png .jpg .jpeg].freeze
+
         PreProcessContext = Struct.new(
           :source_path,
           :output_path,
@@ -230,13 +250,449 @@ module Vivlio
         end
 
         # frontispiece (扉絵) の解決（未指定時は door2.webp を返す）
-        def resolve_frontispiece_path(raw)
-          resolve_image_path(raw, default_when_nil: 'images/door2.webp', downcase_if: /^door[1-7]$/i)
+        def resolve_frontispiece_path(raw, allow_generation: false)
+          resolve_theme_image_path(
+            raw,
+            variant: :portrait,
+            default_path: FRONTISPIECE_DEFAULT_PATH,
+            placeholder_fs: FRONTISPIECE_PLACEHOLDER_FS_PATH,
+            allow_generation: allow_generation,
+            slug_transform: lambda do |value|
+              value =~ /^door[1-7](?:_portrait)?(?:\.[^.]+)?$/i ? value.downcase : value
+            end
+          )
         end
 
-        # ornament (節見出し背景) の解決（未指定時は frame-yellow.webp を返す）
-        def resolve_ornament_path(raw)
-          resolve_image_path(raw, default_when_nil: 'images/frame-yellow.webp', downcase_if: /^frame-[a-z0-9_-]+$/i)
+        def resolve_ornament_path(raw, allow_generation: false)
+          return ORNAMENT_DEFAULT_PATH if raw.nil? || raw.to_s.strip.empty?
+
+          value = raw.to_s.strip
+          return value if value =~ /^url\(/i || value =~ %r{^https?://}i
+
+          slug_value = value =~ /^frame-[a-z0-9_-]+(?:_landscape)?(?:\.[^.]+)?$/i ? value.downcase : value
+          slug = normalize_theme_image_slug(slug_value)
+          base_slug, requested_variant, ext = split_slug_and_variant(slug)
+
+          if requested_variant == :landscape
+            if (direct = find_existing_theme_image(slug, location_order: [:user, :bundled]))
+              return theme_relative_path(direct)
+            end
+          elsif (variant_specific = find_existing_theme_image("#{base_slug}_landscape", location_order: [:user, :bundled]))
+            return theme_relative_path(variant_specific)
+          end
+
+          base_query = ext.empty? ? base_slug : "#{base_slug}#{ext}"
+
+          if (direct = find_existing_theme_image(base_query, location_order: [:user, :bundled]))
+            if allow_generation && (generated = ensure_variant_generated(direct, :landscape))
+              return theme_relative_path(generated)
+            end
+
+            return theme_relative_path(direct)
+          end
+
+          resolve_theme_image_path(
+            slug,
+            variant: :landscape,
+            default_path: ORNAMENT_DEFAULT_PATH,
+            placeholder_fs: ORNAMENT_PLACEHOLDER_FS_PATH,
+            allow_generation: allow_generation
+          )
+        end
+
+        def ensure_magick_available!
+          _out, status = Open3.capture2('magick', '-version')
+          raise 'ImageMagick (magick) が見つかりません。インストールを確認してください。' unless status.success?
+        rescue Errno::ENOENT
+          raise 'magick コマンドが見つかりません。ImageMagick をインストールしてください。'
+        end
+
+        def command_available?(cmd)
+          return File.executable?(cmd) if cmd.include?(File::SEPARATOR)
+
+          ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |path|
+            candidate = File.join(path, cmd)
+            File.executable?(candidate)
+          end
+        end
+
+        def resolve_image_reference(images_root, image_spec)
+          spec = image_spec.to_s.strip
+          raise '画像指定が空です' if spec.empty?
+
+          normalized_root = File.expand_path(images_root)
+          base_dir = normalized_root.end_with?(File::SEPARATOR) ? normalized_root : normalized_root + File::SEPARATOR
+          relative = spec.sub(%r{^/+}, '')
+          absolute = File.expand_path(relative, base_dir)
+
+          unless absolute == normalized_root || absolute.start_with?(normalized_root + File::SEPARATOR)
+            raise "画像指定が不正です: #{spec}"
+          end
+
+          return absolute if File.exist?(absolute)
+
+          if File.extname(relative).empty?
+            %w[.webp .png .jpg .jpeg].each do |ext|
+              candidate = absolute + ext
+              return candidate if File.exist?(candidate)
+            end
+          else
+            stem = absolute.sub(/\.[^.]+\z/, '')
+            exts = %w[.webp .png .jpg .jpeg]
+            ([absolute] + exts.map { |ext| "#{stem}#{ext}" }).each do |candidate|
+              return candidate if File.exist?(candidate)
+            end
+          end
+
+          raise "画像が見つかりません: #{spec}"
+        end
+
+        def trim_image_to(source_path, destination_path, fuzz)
+          FileUtils.mkdir_p(File.dirname(destination_path))
+          command = ['magick', source_path, '-alpha', 'set']
+          command += ['-fuzz', fuzz] if fuzz
+          command += ['-bordercolor', 'none', '-border', '1x1', '-trim', '+repage', "PNG32:#{destination_path}"]
+          run_command!(command, label: "トリミング (#{File.basename(source_path)})")
+        end
+
+        def generate_diagonal_variant(input_png, output_png, ratio)
+          dims, status = Open3.capture2('magick', 'identify', '-format', '%w %h', input_png)
+          raise "寸法取得に失敗しました: #{input_png}" unless status.success?
+
+          width_str, height_str = dims.strip.split
+          width = width_str.to_i
+          height = height_str.to_i
+          raise "不正な寸法です: #{input_png}" if width <= 0 || height <= 0
+
+          ratio = ratio.to_f
+          current_ratio = height.to_f / width
+          if ratio >= current_ratio
+            new_width = width
+            new_height = (width * ratio).round
+            bottom_x_offset = 0
+            bottom_y_offset = new_height - height
+          else
+            new_height = height
+            new_width = (height / ratio).round
+            bottom_x_offset = new_width - width
+            bottom_y_offset = 0
+          end
+
+          top_path = output_png.sub(/\.png\z/, '_top.png')
+          bottom_path = output_png.sub(/\.png\z/, '_bottom.png')
+
+          top_cmd = [
+            'magick', input_png,
+            '-background', 'white', '-flatten',
+            '(', '-size', "#{width}x#{height}", 'xc:none', '-fill', 'white', '-draw', "polygon 0,0 #{width},0 0,#{height}", ')',
+            '-compose', 'CopyAlpha', '-composite', "PNG32:#{top_path}"
+          ]
+          bottom_cmd = [
+            'magick', input_png,
+            '-background', 'white', '-flatten',
+            '(', '-size', "#{width}x#{height}", 'xc:none', '-fill', 'white', '-draw', "polygon #{width},#{height} #{width},0 0,#{height}", ')',
+            '-compose', 'CopyAlpha', '-composite', "PNG32:#{bottom_path}"
+          ]
+          composite_cmd = [
+            'magick',
+            '-size', "#{new_width}x#{new_height}",
+            'xc:white',
+            '-alpha', 'set',
+            '+repage',
+            top_path, '-geometry', "+0+0", '-compose', 'Over', '-composite',
+            bottom_path, '-geometry', "+#{bottom_x_offset}+#{bottom_y_offset}", '-compose', 'Over', '-composite',
+            '-transparent', 'white',
+            "PNG32:#{output_png}"
+          ]
+
+          run_command!(top_cmd, label: '対角線分割 (上)')
+          run_command!(bottom_cmd, label: '対角線分割 (下)')
+          run_command!(composite_cmd, label: '対角線分割 (合成)')
+        ensure
+          FileUtils.rm_f(top_path)
+          FileUtils.rm_f(bottom_path)
+        end
+
+        def generate_variant_output(input_png, target_path, variant:, waifu2x_available:, waifu2x:, waifu2x_args:,
+                                     waifu2x_noise:, scale:, target_width:, webp_quality:, keep_intermediate:)
+          FileUtils.mkdir_p(File.dirname(target_path))
+
+          variant_label = File.basename(target_path)
+
+          if waifu2x_available
+            alpha_path = target_path.sub(/\.webp\z/, '_alpha.png')
+            alpha_scaled_path = target_path.sub(/\.webp\z/, "_alpha_x#{scale}.png")
+            color_path = target_path.sub(/\.webp\z/, "_color_x#{scale}.png")
+            merged_path = target_path.sub(/\.webp\z/, "_merged_x#{scale}.png")
+
+            run_command!(
+              ['magick', input_png, '-alpha', 'extract', "PNG32:#{alpha_path}"],
+              label: "アルファ抽出 (#{variant_label})"
+            )
+
+            waifu_cmd = [waifu2x, '-i', input_png, '-o', color_path, '-n', waifu2x_noise.to_s, '-s', scale.to_s] + waifu2x_args
+            run_command!(
+              waifu_cmd,
+              label: "waifu2x (#{variant_label})",
+              stream_output: Common.current_log_level >= 3
+            )
+
+            scale_percent = format('%.2f%%', scale.to_f * 100)
+            run_command!(
+              ['magick', alpha_path, '-filter', 'catrom', '-resize', scale_percent, "PNG32:#{alpha_scaled_path}"],
+              label: "アルファ拡大 (#{variant_label})"
+            )
+
+            run_command!(
+              ['magick', color_path, alpha_scaled_path, '-compose', 'CopyAlpha', '-composite', "PNG32:#{merged_path}"],
+              label: "アルファ再適用 (#{variant_label})"
+            )
+
+            source_for_webp = merged_path
+          else
+            source_for_webp = input_png
+            alpha_path = alpha_scaled_path = color_path = merged_path = nil
+          end
+
+          convert_cmd = [
+            'magick', source_for_webp,
+            '-alpha', 'set',
+            '-background', 'none',
+            '-transparent', 'white',
+            '-resize', "#{target_width}x",
+            '-quality', webp_quality.to_s,
+            target_path
+          ]
+          run_command!(convert_cmd, label: "WebP 変換 (#{variant_label})")
+
+          unless keep_intermediate
+            [alpha_path, alpha_scaled_path, color_path, merged_path].compact.each { |path| FileUtils.rm_f(path) }
+          end
+        end
+
+        def run_command!(cmd, label:, stream_output: false)
+          Common.log_action("  $ #{Shellwords.join(cmd.map(&:to_s))}")
+
+          if stream_output
+            success = system(*cmd)
+            raise "#{label} に失敗しました" unless success
+            return
+          end
+
+          stdout_str, stderr_str, status = Open3.capture3(*cmd)
+
+          if status.success?
+            if Common.current_log_level >= 3
+              [stdout_str, stderr_str].each do |chunk|
+                next if chunk.nil? || chunk.strip.empty?
+                chunk.each_line { |line| Common.log_debug("#{label}: #{line.rstrip}") }
+              end
+            end
+            return
+          end
+
+          combined = [stdout_str, stderr_str].map(&:to_s).reject(&:empty?).join("\n")
+          message = combined.empty? ? "#{label} に失敗しました" : "#{label} に失敗しました:\n#{combined}"
+          raise message
+        end
+
+        def resolve_theme_image_path(raw, variant:, default_path:, placeholder_fs:, allow_generation: false, slug_transform: nil)
+          return default_path if raw.nil? || raw.to_s.strip.empty?
+
+          value = raw.to_s.strip
+          return value if value =~ /^url\(/i || value =~ %r{^https?://}i
+
+          slug_value = slug_transform ? slug_transform.call(value) : value
+          slug = normalize_theme_image_slug(slug_value)
+          base_slug, requested_variant, ext = split_slug_and_variant(slug)
+
+          if requested_variant == variant
+            if (direct = find_existing_theme_image(slug, location_order: [:user, :bundled]))
+              return theme_relative_path(direct)
+            end
+          end
+
+          if (variant_specific = find_existing_theme_variant(base_slug, variant))
+            return theme_relative_path(variant_specific)
+          end
+
+          base_query = ext.empty? ? base_slug : "#{base_slug}#{ext}"
+
+          if (user_source = find_existing_theme_image(base_query, location_order: [:user]))
+            ratio = image_ratio(user_source)
+            if ratio && ratio_accepted_for_frontispiece?(ratio)
+              return theme_relative_path(user_source)
+            end
+
+            if allow_generation && (generated = ensure_variant_generated(user_source, variant))
+              return theme_relative_path(generated)
+            end
+          end
+
+          if allow_generation && (bundled_source = find_existing_theme_image(base_query, location_order: [:bundled], allowed_extensions: ['.webp']))
+            if (generated = ensure_variant_generated(bundled_source, variant))
+              return theme_relative_path(generated)
+            end
+          end
+
+          placeholder_uri(base_slug, placeholder_fs)
+        end
+
+        def ensure_variant_generated(source_path, variant)
+          images_root = theme_images_root
+          relative = source_path.sub(%r{\A#{Regexp.escape(images_root)}/}, '')
+          return nil if relative.empty?
+
+          base = relative.sub(/\.[^.]+\z/, '')
+          target = File.join(images_root, "#{base}_#{variant}.webp")
+          return target if File.exist?(target)
+
+          spec = relative
+          success = generate_frontispiece_and_ornament_from(spec)
+          success ? target : nil
+        end
+        module_function :ensure_variant_generated
+
+        def find_existing_theme_variant(base_slug, variant)
+          find_existing_theme_image("#{base_slug}_#{variant}", location_order: [:user, :bundled], allowed_extensions: ['.webp'])
+        end
+        module_function :find_existing_theme_variant
+
+        def normalize_theme_image_slug(value)
+          value.to_s.strip.sub(%r{\Aimages/}, '').sub(%r{\A/+}, '')
+        end
+
+        def split_slug_and_variant(slug)
+          ext = File.extname(slug)
+          without_ext = ext.empty? ? slug : slug.sub(/\.[^.]+\z/, '')
+          case without_ext.downcase
+          when /_portrait\z/
+            [without_ext.sub(/_portrait\z/i, ''), :portrait, ext]
+          when /_landscape\z/
+            [without_ext.sub(/_landscape\z/i, ''), :landscape, ext]
+          else
+            [without_ext, nil, ext]
+          end
+        end
+
+        def find_existing_theme_image(slug, location_order: [:user, :bundled], allowed_extensions: THEME_IMAGE_EXTENSIONS)
+          base = normalize_theme_image_slug(slug)
+          ext = File.extname(base)
+          stem = ext.empty? ? base : base.sub(/\.[^.]+\z/, '')
+          candidates = if ext.empty?
+                         allowed_extensions.map { |e| "#{stem}#{e}" }
+                       else
+                         ["#{stem}#{ext}"]
+                       end
+
+          location_order.each do |loc|
+            dir = loc == :user ? theme_images_root : File.join(theme_images_root, 'bundled')
+            candidates.each do |candidate|
+              path = File.join(dir, candidate)
+              return path if File.exist?(path)
+            end
+          end
+
+          nil
+        end
+
+        def theme_images_root
+          @theme_images_root ||= File.join(Common::STYLESHEETS_DIR, 'images')
+        end
+
+        def theme_relative_path(path)
+          path.sub(%r{\A#{Regexp.escape(theme_images_root)}/}, 'images/')
+        end
+
+        def image_ratio(path)
+          out, status = Open3.capture2('magick', 'identify', '-format', '%w %h', path)
+          return nil unless status.success?
+
+          width_str, height_str = out.strip.split
+          width = width_str.to_f
+          height = height_str.to_f
+          return nil if width <= 0 || height <= 0
+
+          height / width
+        rescue StandardError
+          nil
+        end
+
+        def ratio_accepted_for_frontispiece?(ratio)
+          FRONTISPIECE_ALLOWED_RATIOS.any? do |allowed|
+            ((ratio - allowed).abs / allowed) <= FRONTISPIECE_RATIO_TOLERANCE
+          end
+        end
+
+        def placeholder_uri(base_slug, placeholder_fs)
+          base_name = base_slug.to_s.strip.empty? ? 'missing' : File.basename(base_slug)
+          filename = "#{base_name}.webp"
+          svg_placeholder_uri(placeholder_fs, filename)
+        end
+
+        def svg_placeholder_uri(fs_path, filename)
+          unless File.exist?(fs_path)
+            Common.log_warn("プレースホルダーSVGが見つかりません: #{fs_path}")
+            return File.basename(fs_path)
+          end
+
+          svg = File.read(fs_path, encoding: 'utf-8')
+          replaced = svg.gsub('filename.webp', CGI.escapeHTML(filename))
+          svg_to_data_uri(replaced)
+        rescue StandardError => e
+          Common.log_warn("プレースホルダー生成に失敗しました: #{e.message}")
+          File.basename(fs_path)
+        end
+
+        def generate_frontispiece_and_ornament_from(image_spec, fuzz: nil, waifu2x: DEFAULT_WAIFU2X_BIN,
+                                                    waifu2x_args: [], waifu2x_noise: FRONTISPIECE_WAIFU2X_NOISE,
+                                                    scale: FRONTISPIECE_SCALE, target_width: FRONTISPIECE_TARGET_WIDTH,
+                                                    webp_quality: FRONTISPIECE_WEBP_QUALITY, keep_intermediate: false)
+          ensure_magick_available!
+
+          images_root = File.join(Common::STYLESHEETS_DIR, 'images')
+          source_path = resolve_image_reference(images_root, image_spec)
+          base_dir = File.dirname(source_path)
+          basename = File.basename(source_path, '.*')
+
+          Common.log_action("frontispiece/ornament 生成: #{image_spec} → #{basename}_portrait.webp / #{basename}_landscape.webp")
+
+          waifu2x_available = waifu2x && !waifu2x.strip.empty? && command_available?(waifu2x)
+          unless waifu2x_available
+            Common.log_warn("waifu2x (#{waifu2x}) が見つかりません。ImageMagick のみで生成します。")
+          end
+
+          Dir.mktmpdir('frontispiece-one') do |tmpdir|
+            trimmed_path = File.join(tmpdir, "#{basename}_trimmed.png")
+            trim_image_to(source_path, trimmed_path, fuzz)
+
+            FRONTISPIECE_VARIANTS.each do |variant, ratio|
+              variant_png = File.join(tmpdir, "#{basename}_#{variant}.png")
+              generate_diagonal_variant(trimmed_path, variant_png, ratio)
+
+              target_path = File.join(base_dir, "#{basename}_#{variant}.webp")
+              generate_variant_output(
+                variant_png,
+                target_path,
+                variant: variant,
+                waifu2x_available: waifu2x_available,
+                waifu2x: waifu2x,
+                waifu2x_args: waifu2x_args,
+                waifu2x_noise: waifu2x_noise,
+                scale: scale,
+                target_width: target_width,
+                webp_quality: webp_quality,
+                keep_intermediate: keep_intermediate
+              )
+
+              Common.log_success("生成しました: #{target_path}")
+            end
+          end
+
+          true
+        rescue StandardError => e
+          Common.log_error("frontispiece/ornament 生成に失敗しました: #{e.message}")
+          false
         end
 
         # 拡張子→言語の対応表
@@ -632,7 +1088,8 @@ module Vivlio
             # TODO: gem公開時にはパスが変わるので更新すること
             template_path = File.expand_path('../../../project_scaffold/stylesheets/theme.css', __dir__)
             css = File.read(theme_css_path, encoding: 'utf-8') if File.exist?(theme_css_path)
-            if css.nil? || css.strip.empty? || !css.include?('--theme-accent')
+            required_tokens = ['--theme-accent', '--section-bg-image', '--frontispiece-image']
+            if css.nil? || css.strip.empty? || required_tokens.any? { |token| !css.include?(token) }
               Common.log_info("theme.css をテンプレートから再展開します: #{theme_css_path}")
               css = File.read(template_path, encoding: 'utf-8')
               File.write(theme_css_path, css, encoding: 'utf-8')
@@ -1216,12 +1673,21 @@ module Vivlio
 
         module_function :apply_frontmatter, :report_frontmatter_error, :convert_container_blocks,
                         :generate_frontmatter, :resolve_image_path, :resolve_frontispiece_path,
-                        :resolve_ornament_path, :fix_image_paths, :resolved_placeholder_or_path,
-                        :image_exists_for?, :placeholder_image_path, :sanitize_placeholder_text,
-                        :svg_to_data_uri, :process_code_include,
-                        :convert_book_card_inner_markdown, :convert_table_rotate_inner_markdown,
-                        :transform_links_to_footnotes, :normalize_book_card_md,
-                        :render_markdown_to_html, :pipe_table_to_html, :format_book_card_inner_html
+                        :resolve_ornament_path, :resolve_theme_image_path, :ensure_magick_available!,
+                        :command_available?, :resolve_image_reference, :trim_image_to,
+                        :generate_diagonal_variant, :generate_variant_output, :run_command!,
+                        :generate_frontispiece_and_ornament_from, :fix_image_paths,
+                        :resolved_placeholder_or_path, :image_exists_for?, :placeholder_image_path,
+                        :placeholder_uri, :svg_placeholder_uri, :ensure_variant_generated,
+                        :normalize_theme_image_slug, :split_slug_and_variant, :find_existing_theme_image,
+                        :find_existing_theme_variant,
+                        :theme_images_root, :theme_relative_path, :image_ratio,
+                        :ratio_accepted_for_frontispiece?, :sanitize_placeholder_text,
+                        :svg_to_data_uri,
+                        :process_code_include, :normalize_book_card_md, :convert_book_card_inner_markdown,
+                        :convert_table_rotate_inner_markdown, :transform_links_to_footnotes,
+                        :normalize_book_card_md, :render_markdown_to_html, :pipe_table_to_html,
+                        :format_book_card_inner_html
         module_function :detect_language
 
         def process_single_markdown_file(md_file)

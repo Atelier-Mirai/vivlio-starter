@@ -1,3 +1,5 @@
+@import url("fonts.css");
+
 /* base.css
    全体で共通利用するリセット/ベーススタイルを定義する。
    - ここでは box-sizing を border-box に統一。
