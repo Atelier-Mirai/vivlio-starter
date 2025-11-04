@@ -23,6 +23,26 @@ module Vivlio
       module DoctorCommands
         module_function
 
+        TEXTLINT_NPM_PACKAGES = %w[
+          textlint
+          textlint-rule-preset-ja-technical-writing
+          textlint-rule-preset-japanese
+          textlint-rule-prh
+          textlint-filter-rule-node-types
+          textlint-filter-rule-allowlist
+          textlint-filter-rule-comments
+          textlint-rule-no-dropping-the-ra
+          textlint-rule-max-ten
+          textlint-rule-ja-no-mixed-period
+          textlint-rule-no-doubled-conjunction@3.0.0
+          textlint-rule-no-doubled-joshi
+          textlint-rule-ja-no-successive-word
+          textlint-rule-preset-ja-spacing
+          textlint-rule-spellcheck-tech-word
+          textlint-rule-no-dead-link
+          textlint-rule-ng-word
+        ].freeze
+
         DOCTOR_DESC = {
           short: '必要ツール(Xcode Command Line Tools, qpdf, pdfinfo, gs, ImageMagick)の診断とセットアップを行います',
           long: <<~DESC
@@ -76,6 +96,7 @@ module Vivlio
               # コマンド存在チェック定義
               checks = {
                 'node' => 'node',
+                'textlint' => 'textlint',
                 'vivliostyle' => 'vivliostyle',
                 'qpdf' => 'qpdf',
                 'pdfinfo' => 'pdfinfo',
@@ -127,6 +148,7 @@ module Vivlio
               end
 
               if missing.empty?
+                copy_textlint_assets_from_scaffold! if options[:fix]
                 Common.echo_always('🎉 すべての必要ツールが見つかりました')
                 return
               end
@@ -246,6 +268,22 @@ module Vivlio
                 Common.log_warn("npm 実行でエラー: #{e}")
               end
 
+              # textlint と推奨ルール
+              begin
+                if missing.include?('textlint')
+                  if system('which npm >/dev/null 2>&1')
+                    Common.echo_always('textlint と推奨 Textlint ルールをグローバルインストールします…')
+                    packages = TEXTLINT_NPM_PACKAGES.map { |pkg| Shellwords.escape(pkg) }.join(' ')
+                    installed = system("npm install -g #{packages}")
+                    copy_textlint_assets_from_scaffold! if installed
+                  else
+                    Common.echo_always('npm が見つかりません。node のインストール後に `npm install -g textlint textlint-rule-preset-ja-technical-writing ...` を実行してください。')
+                  end
+                end
+              rescue StandardError => e
+                Common.log_warn("npm 実行でエラー: #{e}")
+              end
+
               # 再診断
               Common.echo_always('🔁 インストール後の再診断…')
               still_missing = []
@@ -346,6 +384,88 @@ module Vivlio
           end
         end
 
+        def copy_textlint_assets_from_scaffold!
+          gem_root = File.expand_path('../../../..', __dir__)
+          scaffold_root = File.join(gem_root, 'lib', 'project_scaffold')
+          target_config_dir = File.join(Dir.pwd, 'config')
+
+          FileUtils.mkdir_p(target_config_dir)
+
+          copy_textlint_config(scaffold_root, target_config_dir)
+          copy_textlint_allowlist(scaffold_root, target_config_dir)
+          copy_textlint_prh(scaffold_root, target_config_dir)
+          copy_textlint_dictionaries(scaffold_root, target_config_dir)
+        rescue StandardError => e
+          Common.log_warn("textlint 設定ファイルのコピーに失敗しました: #{e.class}: #{e.message}")
+        end
+
+        def copy_textlint_config(scaffold_root, target_config_dir)
+          source_config = File.join(scaffold_root, '.textlintrc.yml')
+          return unless File.file?(source_config)
+
+          dest_config = File.join(target_config_dir, '.textlintrc.yml')
+          if File.exist?(dest_config)
+            Common.echo_always('ℹ️ config/.textlintrc.yml は既に存在するためコピーをスキップしました。')
+          else
+            FileUtils.cp(source_config, dest_config)
+            Common.echo_always('✅ config/.textlintrc.yml を配置しました。')
+          end
+        end
+
+        def copy_textlint_allowlist(scaffold_root, target_config_dir)
+          source_allowlist = File.join(scaffold_root, 'textlint_allowlist.yml')
+          return unless File.file?(source_allowlist)
+
+          dest_allowlist = File.join(target_config_dir, 'textlint_allowlist.yml')
+          if File.exist?(dest_allowlist)
+            Common.echo_always('ℹ️ config/textlint_allowlist.yml は既に存在するためコピーをスキップしました。')
+          else
+            FileUtils.cp(source_allowlist, dest_allowlist)
+            Common.echo_always('✅ config/textlint_allowlist.yml を配置しました。')
+          end
+        end
+
+        def copy_textlint_prh(scaffold_root, target_config_dir)
+          source_prh = File.join(scaffold_root, 'textlint_prh.yml')
+          return unless File.file?(source_prh)
+
+          dest_prh = File.join(target_config_dir, 'textlint_prh.yml')
+          if File.exist?(dest_prh)
+            Common.echo_always('ℹ️ config/textlint_prh.yml は既に存在するためコピーをスキップしました。')
+          else
+            FileUtils.cp(source_prh, dest_prh)
+            Common.echo_always('✅ config/textlint_prh.yml を配置しました。')
+          end
+        end
+
+        def copy_textlint_dictionaries(scaffold_root, target_config_dir)
+          source_dir = File.join(scaffold_root, 'textlint_dictionaries')
+          return unless Dir.exist?(source_dir)
+
+          dest_dir = File.join(target_config_dir, 'textlint_dictionaries')
+          FileUtils.mkdir_p(dest_dir)
+
+          copied = false
+          Dir.children(source_dir).each do |entry|
+            src = File.join(source_dir, entry)
+            dst = File.join(dest_dir, entry)
+            next if File.exist?(dst)
+
+            if File.directory?(src)
+              FileUtils.cp_r(src, dst)
+            else
+              FileUtils.cp(src, dst)
+            end
+            copied = true
+          end
+
+          if copied
+            Common.echo_always('✅ config/textlint_dictionaries/ を更新しました。')
+          else
+            Common.echo_always('ℹ️ config/textlint_dictionaries/ は既に最新です。')
+          end
+        end
+
         def describe_missing(keys)
           return [] unless keys
 
@@ -353,6 +473,7 @@ module Vivlio
             'xcode-command-line-tools' => 'Xcode Command Line Tools',
             'node' => 'node',
             'vivliostyle' => 'Vivliostyle CLI',
+            'textlint' => 'textlint',
             'qpdf' => 'qpdf',
             'pdfinfo' => 'pdfinfo (poppler)',
             'gs' => 'Ghostscript',

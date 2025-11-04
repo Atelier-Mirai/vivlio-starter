@@ -1,16 +1,16 @@
 # インストール
 
 :::{.chapter-lead}
-この章では、vivlio-starter gemのインストール手順を詳しく説明します。
+この章では、Vivlio Starter gemのインストール手順を詳しく説明します。
 
-vivlio-starterを活用するための最初のステップとして、適切な環境構築とセットアップは非常に重要です。この章では、以下の内容を順を追って説明します：
+Vivlio Starterを活用するための最初のステップとして、適切な環境構築とセットアップは非常に重要です。この章では、次の内容を順を追って説明します：
 
 - 必要なソフトウェアとバージョンの確認方法
 - gemのインストール手順と依存関係の解決
 - 新規プロジェクトの作成と初期設定
 - インストール後の動作確認方法
 
-各手順には、トラブルシューティングのヒントも併せて記載しています。特に初めての方は、順を追って進めることでスムーズに環境構築が行えるでしょう。
+各手順には、トラブルシューティングのヒントも併せて記載しています。とくにはじめての方は、順を追って進めることでスムーズに環境構築が行えるでしょう。
 
 **注意**: 本ガイドでは、macOSを前提とした手順を記載しています。他のOSをご利用の場合は、適宜読み替えてください。
 :::
@@ -20,21 +20,21 @@ vivlio-starterを活用するための最初のステップとして、適切な
 
 ## 簡単インストール（推奨）
 :::{.section-lead}
-このセクションでは、vivlio-starterを利用するために必要なソフトウェアのインストール手順を説明します。
+このセクションでは、Vivlio Starterを利用するために必要なソフトウェアのインストール手順を説明します。
 :::
 
 ### Rubyのインストール
-vivlio-starterはRubyで書かれたgemです。お使いのコンピュータにRubyがインストールされていない場合には、以下の手順で最新のRubyをインストールしてください。
+Vivlio StarterはRubyで書かれたgemです。お使いのコンピューターにRubyがインストールされていない場合には、次の手順で最新のRubyをインストールしてください。
 
 補足（簡単・推奨）: スクリプトによる自動セットアップ
-Ruby などの導入は、同梱のスクリプト `bin/install-ruby.zsh` を使うと簡単・安全に行えます。
-Homebrew と rbenv/ruby-build の導入、Ruby 本体のインストールと `rbenv global` 設定、bundler の導入まで一括で対応します。
-さらに、Xcode Command Line Tools の有無を検出し、未導入ならインストーラ起動を案内します。最新安定版の自動判定に対応し、対話/無人（`-y`）どちらの実行形態も選べます。
+Rubyなどの導入は、同梱のスクリプト `bin/install-ruby.zsh` を使うと簡単・安全に行えます。
+Homebrewとrbenv/Ruby-buildの導入、Ruby本体のインストールと `rbenv global` 設定、bundlerの導入まで一括で対応します。
+さらに、Xcode Command Line Toolsの有無を検出し、未導入ならインストーラー起動を案内します。最新安定版の自動判定に対応し、対話/無人（`-y`）どちらの実行形態も選べます。
 
-macOS でターミナルを開くには:
+macOSでターミナルを開くには:
 
- - Spotlight から: Cmd + Space →「Terminal」と入力 → Enter
- - Finder から: アプリケーション > ユーティリティ > Terminal.app を起動
+ - Spotlightから: Cmd + Space →「Terminal」と入力 → Enter
+ - Finderから: アプリケーション > ユーティリティ > Terminal.appを起動
  - 代替ターミナル: [iTerm2](https://iterm2.com/) や [Warp](https://www.warp.dev/) なども利用可能です。
 
 ```bash
@@ -51,15 +51,15 @@ bin/install-ruby.zsh -v latest
 bin/install-ruby.zsh -v 3.3.5
 ```
 
-### vivlio-starterの導入
-Ruby の準備ができたら、以下のコマンドで `vivlio-starter` をインストールしてください。
+### Vivlio Starterの導入
+Rubyの準備ができたら、次のコマンドで `vivlio-starter` をインストールしてください。
 
 ```bash
 gem install vivlio-starter
 ```
 
 ### 新規プロジェクトの作成と必要ツールの自動診断・導入
-`vivlio-starter` の導入が完了したら、次のコマンドで新規プロジェクトを作成して下さい。
+`vivlio-starter` の導入が完了したら、次のコマンドで新規プロジェクトを作成してください。
 書籍作成の為の必要ツールを自動診断・導入します。
 
 <small>(注: `mybook` はサンプルのプロジェクト名です。任意の名前に置き換えてください。)</small>
@@ -69,7 +69,7 @@ vs new mybook                       # 新規プロジェクトを作成（必要
 vs new mybook --interactive         # 必要ツールのインストールを対話的に確認しながら実行する
 ```
 
-これで、インストール完了です。すぐにPDF を生成できます（既定設定の場合）。
+これで、インストール完了です。すぐにPDFを生成できます（デフォルト設定の場合）。
 
 ```bash
 cd mybook # プロジェクトルートに移動
@@ -82,22 +82,22 @@ vs build  # PDF を生成
 
 #### 必要ツール一覧
 
-以下のツール群が、`vs new` コマンドで自動導入されます。
- - Xcode Command Line Tools（未導入ならインストーラ起動と完了待機）
-   - 概要: Apple 純正の開発用コマンドラインツール群（コンパイラやビルド関連の基盤）。
-   - 用途: Homebrew や rbenv でのビルド・インストールに必要。PDF/画像処理ツール群の導入を安定させます。
- - Homebrew が未導入なら自動インストール（確認あり。`-y` で省略）
-   - 概要: macOS 用パッケージマネージャ。
-   - 用途: Node.js や qpdf, poppler, Ghostscript, ImageMagick などの外部依存を自動導入します。
- - Node.js（node@20 優先）/ npm の導入
-   - 概要: JavaScript 実行環境とパッケージマネージャ（npm）。
-   - 用途: Vivliostyle CLI の実行に必須。テンプレートのフロントエンド依存やビルド支援スクリプトの実行にも使用します。
+次のツール群が、`vs new` コマンドで自動導入されます。
+ - Xcode Command Line Tools（未導入ならインストーラー起動と完了待機）
+   - 概要: Apple純正の開発用コマンドラインツール群（コンパイラやビルド関連の基盤）。
+   - 用途: Homebrewやrbenvでのビルド・インストールに必要。PDF/画像処理ツール群の導入を安定させます。
+ - Homebrewが未導入なら自動インストール（確認あり。`-y` で省略）
+   - 概要: macOS用パッケージマネージャー。
+   - 用途: Node.jsやqpdf, poppler, Ghostscript, ImageMagickなどの外部依存を自動導入します。
+ - Node.js（node@20優先）/ npmの導入
+   - 概要: JavaScript実行環境とパッケージマネージャー（npm）。
+   - 用途: Vivliostyle CLIの実行に必須。テンプレートのフロントエンド依存やビルド支援スクリプトの実行にも使用します。
  - Vivliostyle CLI（`npm install -g @vivliostyle/cli`）の導入
-   - 概要: CSS 組版エンジン Vivliostyle を操作するコマンドラインツール。
-   - 用途: Markdown/HTML+CSS から PDF を生成する中核。`vs build` 内部で呼び出されます。
- - qpdf / poppler(pdfinfo) / Ghostscript / ImageMagick の導入
+   - 概要: CSS組版エンジンVivliostyleを操作するコマンドラインツール。
+   - 用途: Markdown/HTML+CSSからPDFを生成する中核。`vs build` 内部で呼び出されます。
+ - qpdf / poppler（pdfinfo）/ Ghostscript / ImageMagickの導入
    - 概要: PDF/画像処理のユーティリティ群。
-   - 用途: qpdf は PDF の分割・結合・ページ抽出等、pdfinfo(poppler) はページ数取得、Ghostscript は PDF 圧縮、ImageMagick は画像の変換・最適化（WebP 変換やリサイズ等）に使用します。
+   - 用途: qpdfはPDFの分割・結合・ページ抽出等、pdfinfo（poppler）はページ数取得、GhostscriptはPDF圧縮、ImageMagickは画像の変換・最適化（WebP変換やリサイズ等）に使用します。
 
 ```bash
 vs new mybook --manual-install      # 必要ツールは手動で導入する
@@ -126,14 +126,14 @@ xcode-select --install
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
-インストール後、必要に応じて PATH を設定（zsh）：
+インストール後、必要に応じてPATHを設定（zsh）：
 ```bash
 echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile   # Apple Silicon
 echo 'eval "$(/usr/local/bin/brew shellenv)"' >> ~/.zprofile      # Intel（必要時）
 source ~/.zprofile
 ```
 
-3) Ruby（rbenv でユーザーインストール）
+3) Ruby（rbenvでユーザーインストール）
 ```bash
 brew install rbenv ruby-build
 echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.zprofile
@@ -149,7 +149,7 @@ rbenv global 3.x.y
 ruby -v
 ```
 
-4) Node.js（LTS 20 系を推奨）
+4) Node.js（LTS 20系を推奨）
 ```bash
 brew install node@20 || brew install node
 node -v
@@ -167,10 +167,10 @@ vivliostyle --version
 brew install qpdf poppler ghostscript imagemagick
 ```
 補足: `poppler` に含まれる `pdfinfo` を `BuildHelpers.page_count()` が利用します。
-補足: PDF 圧縮は Ghostscript(pdfwrite) を使用します。qpdf は分割/結合のために利用します。
-補足: HexaPDF は gem 依存として自動導入されるため、`vs doctor` の対象外です。
+補足: PDF圧縮はGhostscript（pdfwrite）を使用します。qpdfは分割/結合のために利用します。
+補足: HexaPDFはgem依存として自動導入されるため、`vs doctor` の対象外です。
 
-7) vivlio-starter（gem）
+7) Vivlio Starter（gem）
 ```bash
 gem install vivlio-starter
 vs --version
@@ -197,14 +197,14 @@ sudo apt-get update
 sudo apt-get install -y build-essential curl git \
   qpdf ghostscript imagemagick poppler-utils
 ```
-2) Node.js（LTS は nvm 推奨）
+2) Node.js（LTSはnvm推奨）
 ```bash
 curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 source ~/.nvm/nvm.sh
 nvm install --lts
 node -v && npm -v
 ```
-3) Ruby（rbenv 推奨）
+3) Ruby（rbenv推奨）
 ```bash
 sudo apt-get install -y libssl-dev libreadline-dev zlib1g-dev
 curl -fsSL https://github.com/rbenv/rbenv-installer/raw/main/bin/rbenv-installer | bash
@@ -212,7 +212,7 @@ export PATH="$HOME/.rbenv/bin:$PATH" && eval "$(rbenv init - bash)"
 rbenv install 3.4.4 && rbenv global 3.4.4
 ruby -v
 ```
-4) Vivliostyle CLI と vivlio-starter
+4) Vivliostyle CLIとVivlio Starter
 ```bash
 npm install -g @vivliostyle/cli
 gem install vivlio-starter
@@ -226,17 +226,17 @@ npm install
 vs build
 ```
 
-ヘッドレス環境等では PDF ビューアの自動起動は行われません。`output.pdf` を任意のビューアで確認してください。
+ヘッドレス環境等ではPDFビューアーの自動起動は行われません。`output.pdf` を任意のビューアーで確認してください。
 
 ### C. Windows（ネイティブの代替手順）
-原則として WSL2 + Ubuntu の利用を推奨します（上記 B を参照）。どうしてもネイティブで行う場合の最小手順です。
+原則としてWSL2 + Ubuntuの利用を推奨します（上記Bを参照）。どうしてもネイティブで行う場合の最小手順です。
 
-1) Chocolatey の場合（管理者 PowerShell）
+1) Chocolateyの場合（管理者PowerShell）
 ```powershell
 choco install -y git ruby nodejs-lts qpdf ghostscript imagemagick poppler
 ```
 
-2) Scoop の場合（PowerShell）
+2) Scoopの場合（PowerShell）
 ```powershell
 set-executionpolicy RemoteSigned -scope CurrentUser
 iwr -useb get.scoop.sh | iex
@@ -244,7 +244,7 @@ scoop bucket add main
 scoop install git ruby nodejs-lts qpdf ghostscript imagemagick poppler
 ```
 
-3) Vivliostyle CLI と vivlio-starter（共通）
+3) Vivliostyle CLIとVivlio Starter（共通）
 ```powershell
 npm install -g @vivliostyle/cli
 gem install vivlio-starter
@@ -285,20 +285,20 @@ vs --version
     ```
 
 - **Homebrew の PATH 問題（Apple Silicon）**：
-  `/opt/homebrew/bin` が PATH に含まれているか確認。
+  `/opt/homebrew/bin` がPATHに含まれているか確認。
   ```bash
   echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
   eval "$([ -x /opt/homebrew/bin/brew ] && /opt/homebrew/bin/brew shellenv)"
   ```
 
 - **ImageMagick の WebP 変換で失敗**：
-  ImageMagick が WebP 対応でビルドされていない可能性があります。`magick -version` 出力に `webp` が含まれるか確認し、含まれない場合は再インストールしてください。
+  ImageMagickがWebP対応でビルドされていない可能性があります。`magick -version` 出力に `webp` が含まれるか確認し、含まれない場合は再インストールしてください。
   ```bash
   magick -version | grep -i webp || brew reinstall imagemagick
   ```
 
 - **ファイル権限の問題（macOS/Linux）**：
-  Git から取得したスクリプトに実行権限がない場合は付与してください。
+  Gitから取得したスクリプトに実行権限がない場合は付与してください。
   ```bash
   chmod +x bin/*
   ```
@@ -306,26 +306,26 @@ vs --version
 ## CI（GitHub Actions）でのビルド例
 
 :::{.section-lead}
-簡易的な PDF ビルド（macOS と Ubuntu の matrix）。プロジェクトルートに `.github/workflows/build.yml` を作成して利用します。
+簡易的なPDFビルド（macOSとUbuntuのmatrix）。プロジェクトルートに `.github/workflows/build.yml` を作成して利用します。
 :::
 
 補足:
-- チーム開発で有益: プルリクごとに自動ビルドされた PDF を共有でき、レビューや回 regress の検出が容易になります（同一手順・同一環境で再現性も確保）。
-- GitHub の 100MB 制約: 大きな PDF は push できません。CI で圧縮版を生成・アップロードすることを推奨します。
-  - vs build の圧縮オプション:
-    - 既定で圧縮を実行します。スキップしたい場合は `vs build --no-compress`。
-    - 圧縮後の既定ファイル名は `output_compressed.pdf`。`config.yml` の `pdf.output_file_compressed` で変更可。
-    - 圧縮エンジンは Ghostscript を用いています（理由: qpdf は再圧縮で効果が乏しいケースが多く、GS(pdfwrite) の方が安定して圧縮率を得やすいため）。
-    - 既存PDFを後から圧縮する場合は `vs pdf:compress` を使用（内部で Ghostscript を使用）。
+- チーム開発で有益: プルリクごとに自動ビルドされたPDFを共有でき、レビューや回regressの検出が容易になります（同一手順・同一環境で再現性も確保）。
+- GitHubの100MB制約: 大きなPDFはpushできません。CIで圧縮版を生成・アップロードすることを推奨します。
+  - vs buildの圧縮オプション:
+    - デフォルトで圧縮を実行します。スキップしたい場合は `vs build --no-compress`。
+    - 圧縮後のデフォルトファイル名は `output_compressed.pdf`。`config.yml` の `pdf.output_file_compressed` で変更可。
+    - 圧縮エンジンはGhostscriptを用いています（理由: qpdfは再圧縮で効果が乏しいケースが多く、GS（pdfwrite）の方が安定して圧縮率を得やすいため）。
+    - 既存PDFを後から圧縮する場合は `vs pdf:compress` を使用（内部でGhostscriptを使用）。
 
-  - Ghostscript で圧縮:
+  - Ghostscriptで圧縮:
     ```bash
     # 透明度保持のため `-dCompatibilityLevel=1.7` を指定しています（`vs pdf:compress` の実装と同一）。
     gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.7 -dPDFSETTINGS=/ebook \
       -dNOPAUSE -dQUIET -dBATCH -sOutputFile=output_compressed.pdf output.pdf
     ```
-- アーティファクト名や公開用パスは（既定名）`output_compressed.pdf` を推奨します。
-- .gitignore で PDF を許可: リポジトリに PDF を含める場合は、`.gitignore` の無視設定を調整（例: 末尾に `!*.pdf` を追加）してください。
+- アーティファクト名や公開用パスは（デフォルト名）`output_compressed.pdf` を推奨します。
+- .gitignoreでPDFを許可: リポジトリにPDFを含める場合は、`.gitignore` の無視設定を調整（例: 末尾に `!*.pdf` を追加）してください。
 
 ```yaml
 name: Build PDF
@@ -368,27 +368,27 @@ jobs:
 ## WindSurf のインストール
 
 :::{.section-lead}
-Windsurf は AI 支援のモダンなコードエディタです。ドキュメント中心のプロジェクトでも、内蔵ターミナルや AI ペアプロで効率よく作業できます。
+WindsurfはAI支援のモダンなコードエディターです。ドキュメント中心のプロジェクトでも、内蔵ターミナルやAIペアプロで効率よく作業できます。
 :::
 
 ### 特長（抜粋）
-- 内蔵 AI アシスタント（Cascade）によるコード/ドキュメント編集支援
-- VS Code に近い UI/拡張互換の操作感（ショートカットも類似）
+- 内蔵AIアシスタント（Cascade）によるコード/ドキュメント編集支援
+- VS Codeに近いUI/拡張互換の操作感（ショートカットも類似）
 - 統合ターミナルから `vs build` などのコマンドを即実行可能
 
 ### インストール（macOS）
-1) 公式サイトから最新のインストーラをダウンロードしてインストール
+1) 公式サイトから最新のインストーラーをダウンロードしてインストール
    - 参考: https://codeium.com/windsurf
-2) 初回起動時にサインイン（GitHub/Google など）
+2) 初回起動時にサインイン（GitHub/Googleなど）
 3) 必要に応じて日本語フォント/表示倍率を調整（設定 > Appearance）
-   - 拡張機能: Markdown のシンタックスハイライトを有効にすると便利です（設定/拡張機能から Markdown 関連を有効化）。
-   - 内蔵ターミナル: メニューの View > Terminal から開けます（ショートカット: Cmd+`、Windows/Linux は Ctrl+`）。
+   - 拡張機能: Markdownのシンタックスハイライトを有効にすると便利です（設定/拡張機能からMarkdown関連を有効化）。
+   - 内蔵ターミナル: メニューのView > Terminalから開けます（ショートカット: Cmd+`、Windows/Linux は Ctrl+`）。
 
 ### 本プロジェクトでの使い方
-- プロジェクトを開く: 「Open Folder」から本リポジトリのルートを選択
+- プロジェクトを開く:「Open Folder」から本リポジトリのルートを選択
 - 統合ターミナルを開く: Cmd+`（Windows/Linux は Ctrl+`）
 - ビルド: ターミナルで `vs build` を実行
 - 依存の診断/導入: `vs doctor --fix`
-- GitHub Actions の確認: `.github/workflows/build.yml` を開き、必要に応じて編集
+- GitHub Actionsの確認: `.github/workflows/build.yml` を開き、必要に応じて編集
 
-ヒント: ターミナルのシェルが zsh で PATH が正しく通っているか確認してください（`vs --version` が表示されれば OK）。
+ヒント: ターミナルのシェルがzshでPATHが正しく通っているか確認してください（`vs --version` が表示されればOK）。

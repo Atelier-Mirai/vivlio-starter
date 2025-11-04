@@ -21,4 +21,4 @@
 最後までお読みくださりありがとうございました。この書籍が皆様のお役に立てば幸いです。
 
 <!-- 画像は以下のように記述します -->
-![](physicist.png){width=40% .float-right}
+![](physicist.png){width=40％ .float-right}

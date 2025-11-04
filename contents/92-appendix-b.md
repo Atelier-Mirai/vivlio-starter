@@ -33,7 +33,7 @@
 - MDN Web Docs（CSS）: https://developer.mozilla.org/ja/docs/Web/CSS
 - CSS Tricks（実用パターン）: https://css-tricks.com/
 - PostCSS: https://postcss.org/
-- Autoprefixer: https://github.com/postcss/autoprefixer
+- Autoプレフィックスer: https://github.com/postcss/autoprefixer
 - Sass（Dart Sass）: https://sass-lang.com/
 
 ## ツール / 実務で役立つリンク

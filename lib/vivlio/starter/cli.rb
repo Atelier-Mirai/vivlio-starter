@@ -20,6 +20,7 @@ require_relative 'cli/prism_lines'
 require_relative 'cli/rename'
 require_relative 'cli/renumber'
 require_relative 'cli/resize'
+require_relative 'cli/text_lint'
 require_relative 'cli/text_metrics'
 require_relative 'cli/toc'
 require_relative 'cli/vivliostyle'
@@ -137,6 +138,10 @@ module Vivlio
           glossary:canonicalize:check
           glossary:fix
           glossary:lint
+          text:lint
+          text:check
+          test:lint
+          test:check
           help
           merge:appendices
           new
@@ -161,6 +166,8 @@ module Vivlio
         map %w[-h --help help] => :help_banner
         map 'open' => 'open_pdf'
         map 'prism:lines' => 'prism_lines'
+        map 'test:lint' => 'text_lint'
+        map 'test:check' => 'text_lint'
 
         class << self
           # 公開コマンド一覧を返す
@@ -179,7 +186,9 @@ module Vivlio
           # 個別コマンドの日本語ヘルプを出力
           # @param cmd [String]
           def jp_task_help(cmd)
-            task = commands_map[cmd]
+            # Thorはコロンをアンダースコアに変換するため、変換して検索
+            normalized_cmd = cmd.tr(':', '_')
+            task = commands_map[normalized_cmd]
             unless task
               puts "使い方: vs #{cmd} [オプション]"
               return
@@ -211,6 +220,7 @@ module Vivlio
         include Vivlio::Starter::CLI::PostProcessCommands
         include Vivlio::Starter::CLI::PreProcessCommands
         include Vivlio::Starter::CLI::PrismLinesCommands
+        include Vivlio::Starter::CLI::TextLintCommands
         include Vivlio::Starter::CLI::RenameCommands
         include Vivlio::Starter::CLI::RenumberCommands
         include Vivlio::Starter::CLI::ResizeCommands

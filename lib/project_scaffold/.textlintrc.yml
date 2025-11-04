@@ -1,0 +1,60 @@
+# =============================================================
+#  ✨ Vivlio Starter 推奨 Textlint 設定ガイド ✨
+# -------------------------------------------------------------
+#  • 既定では contents/**/*.md を対象とします（CLI 側で解決）
+#  • config/textlint_dictionaries/ 配下に配置した prh 辞書を読み込みます
+#  • 必要に応じてプロジェクト固有のルールを調整してください
+# =============================================================
+
+plugins: []
+
+filters:
+  # コードブロックやインラインコードなどを校正対象から除外するための設定。
+  node-types:
+    nodeTypes:
+      - Code
+      - CodeBlock
+      - Link
+      - Image
+  
+  # HTMLコメントによる除外（<!-- textlint-disable -->と<!-- textlint-enable -->で囲んだ部分を除外）
+  comments: true
+  
+  # 除外語句リスト（外部ファイルで管理）
+  allowlist:
+    allowlistConfigPaths:
+      - ./textlint_allowlist.yml  # VFM記法、書籍名、資格名称などを定義
+
+rules:
+  # 技術文書のスタイルをチェックする標準プリセット
+  preset-ja-technical-writing:
+    tech-word: true
+    prefer-ja-no-space-around-paren: true  # かっこの周りのスペースを禁止
+    max-kanji-continuous-len:
+      max: 10  # 漢字の連続を10文字まで許可（書籍名・専門用語対応）
+    no-exclamation-question-mark:
+      allowFullWidthExclamation: true  # 全角の！を許可
+      allowFullWidthQuestion: true     # 全角の？を許可
+      allowHalfWidthExclamation: true  # 半角の!を許可
+      allowHalfWidthQuestion: true     # 半角の?を許可
+
+  # 固有名詞や特定の用語の表記揺れをチェック（辞書ファイルの指定）
+  # ※ 辞書ファイルは `config/textlint_dictionaries/` 配下に配置
+  prh:
+    rulePaths:
+      - ./textlint_dictionaries/icsmedia.yml
+      - ./textlint_dictionaries/js_primer.yml
+      - ./textlint_prh.yml
+
+  # 一般的な日本語スタイルチェックのプリセット
+  preset-japanese:
+    no-mix-dearu-desumasu: true  # 文体の混在（だ・である調とです・ます調）を禁止
+
+  # 和文・欧文のスペース統一（技術書での可読性向上）
+  preset-ja-spacing:
+    jaSpacing: true
+    spaceAroundCode: true
+
+  # 技術用語のスペルチェック（誤記防止）
+  spellcheck-tech-word:
+    skip: []  # プロジェクト固有の例外語があれば追記

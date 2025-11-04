@@ -11,7 +11,7 @@
 技術の産物としての社会ではなく、世界を {耀|かがや}かせるために技術を用いてください。[^3]
 技術に使われるのではなく、技術を使いこなし、人の道に役立てる人となってください。
 
-  令和の御世を生きる皆さんが素晴らしい人生を生き、素晴らしい日本を創ることを願って筆を置きます。
+  令和の御世を生きる皆さんがすばらしい人生を生き、すばらしい日本を創ることを願って筆を置きます。
 
   {彌榮|いやさか}
 
@@ -19,7 +19,7 @@
 
 https://github.com/Atelier-Mirai/hobby-tech/tree/master も見てね。
 
-<https://github.com/Atelier-Mirai/hobby-tech/tree/master> も見てね。
+<https://github.com/Atelier-Mirai/hobby-tech/tree/master> も見てね。{.aki}
 
 最新の進捗やソースコードは [GitHub](https://github.com/Atelier-Mirai/hobby-tech/tree/master) リポジトリも見てね。
 
@@ -36,7 +36,7 @@ https://github.com/Atelier-Mirai/hobby-tech/tree/master も見てね。
 
 ## 今日からできる小さな実践
 
-- 小さな自動化を1つだけ始める（5分短縮でも可）。
+- 小さな自動化を1つだけはじめる（5分短縮でも可）。
 - 気づきを3行でメモする（事実・解釈・次の一歩）。
 - 1つの用語を辞書で引き直す（語源・対義語を調べる）。
 - ありがとうを言葉で伝える（対象と行為を具体化する）。
@@ -64,7 +64,7 @@ https://github.com/Atelier-Mirai/hobby-tech/tree/master も見てね。
 
 最新の進捗やソースコードは [GitHub](https://github.com/Atelier-Mirai/hobby-tech/tree/master) リポジトリも見てね。
 
-## おわりに（ふたたび）
+## おわりに（再び）
 
 あなたがあなたの現場で、静かに、しかし確かに、次の一歩を踏み出せますように。小さな改善の連鎖が、やがて大きな変化を生むと信じています。どうか健やかに、朗らかに。
 

@@ -1,20 +1,11 @@
-# 用語と表記ルールのための用語集
-# - key: 内部識別子（snake_case）
-# - name: 初出で用いる正規の名称
-# - abbr: 初出以降に用いる短縮形（不要なら null）
-# - first_full_form: true の場合、初出は「name（abbr）」を用いる
-# - description: 簡単な説明（任意）
-# - aliases: リント対象となる別表記/ニックネーム（任意）
-# - style: 表記ルールのヒント
-#   - 目的: `aliases` をすべて書かなくても代表的な表記ゆれを検出・修正する指針
-#   - 値の例:
-#     - capitalization: 大文字小文字を正規表記（`name`/`abbr`）に統一（HTML/PDF など）
-#     - lowercase: 小文字表記に統一（例: `gem`）
-#     - hyphenation: ハイフン有無を統一（例: `vivlio-starter`）
-  #     - spacing: スペースの有無/種別（将来拡張）
-  #     - punctuation: 記号（コロン/ハイフン等）の種別や位置（将来拡張）
-#     - wording: 語彙選択の指針（自動修正しません）
-#   - 現状の自動チェック/修正対象: capitalization / lowercase / hyphenation
+# =============================================================
+#  📖 Vivlio Starter 用語集ガイド 📖
+# -------------------------------------------------------------
+#  • 用語と表記ルールを統一するためのリファレンスです。
+#  • 各項目: key, name, abbr, first_full_form, description, aliases, style
+#  • style 例: capitalization / lowercase / hyphenation（自動チェック対応）
+#    そのほか spacing・punctuation・wording など拡張ヒントも記載できます。
+# =============================================================
 
 ---
 terms:

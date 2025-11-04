@@ -88,28 +88,19 @@
 - [High] プロジェクト生成時に、.cache/vs/ を生成する。
 
 
-改善策（効果が出やすい順）
-
-VIVLIO_BUILD_CONCURRENCY を設定して Step 5 も並列化
-例: VIVLIO_BUILD_CONCURRENCY=4 ./bin/vs build ...
-章 HTML の pre/convert/post を並列化すると、Step 7 前の待ち時間が短縮します。
-並列 PDF 生成の並列度を調整（スイートスポット探索）
-VIVLIO_PDF_CONCURRENCY=2〜4 程度を試し、CPU/メモリ圧と起動コストのバランスを最適化。
-8 は過大でオーバーヘッドや競合が勝つ可能性。
-Chromium 起動回数の削減（将来案）
-章ごとに vivliostyle を毎回起動せず、ワーカーごとに「長寿命の Vivliostyle 環境」を使い回す（現行の実験実装では都度起動）。起動コストの削減が鍵。
-画像やフォントの重さを抑える
-重い画像（特に高解像度 PNG）や多数の Web フォントは描画コストを増やします。WebP 化や不要フォント削減でページ描画が軽くなります。
-圧縮フローの見直し
-圧縮が必要なビルドとそうでないビルドを分ける（必要なときのみ pdf_compress）。圧縮は 10秒級のコストがあります。
-マシン側最適化（任意）
-ビルドディレクトリを RAM ディスクに（I/O 短縮）。
-同時に動く重いプロセスを減らす（ブラウザ/Editor のタブ削減など）。
 
 ## [Unreleased]
 （次回リリース候補の変更はここに追加してください）
 
 ### Added
+- （なし）
+
+### Changed
+
+## [0.14.0] - 2025-11-04
+
+### Added
+- Textlint を日本語対応ワークフローとして再構築し、カスタムフォーマッターの導入・VFM 記法向け allowlist/filter 対応・scaffold/`vs doctor --fix` による設定一式の自動配備を実装。
 
 ### Changed
 
