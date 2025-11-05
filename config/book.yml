@@ -31,7 +31,7 @@ chapters: all # 全ての章を対象
 # テーマ
 theme:
   # 章扉や節見出しの装飾スタイル
-  style: image     # image: 画像あり / simple: 画像なし
+  style: simple     # image: 画像あり / simple: 画像なし
 
   # テーマカラー
   color: teal      # yellow / amber / orange / peach

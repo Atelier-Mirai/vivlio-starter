@@ -54,12 +54,12 @@
 
   /* 節番号テーマ */
   --section-number-color:  var(--theme-accent);
-  --section-bg-image:      url("images/bundled/himawari_landscape.webp");
+  --section-bg-image:      none;
 
   /* 扉絵設定（config/book.yml の theme.frontispiece により自動更新） */
   --frontispiece-padding: 10mm;
   --frontispiece-background-size: calc(100% - 2 * var(--frontispiece-padding)) calc(100% - 2 * var(--frontispiece-padding));
-  --frontispiece-image:    url("images/bundled/himawari_portrait.webp");
+  --frontispiece-image:    none;
   --frontispiece-heading-width: 120mm;
   --frontispiece-lead-width: 120mm;
 }
