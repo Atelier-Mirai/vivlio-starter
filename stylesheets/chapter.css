@@ -40,27 +40,41 @@ body.chapter {
 
 /* ノンブル（ページ番号）を常に下中央に表示 */
 @page {
-  @bottom-center { content: counter(page); }
+  @bottom-center {
+    content: counter(page);
+  }
 }
 
 /* 最初のページでページ番号を 1 表示にする */
-@page chapter:first { counter-reset: page 0; }
+@page chapter:first {
+  counter-reset: page 0;
+}
 
 :root {
   --h3-marker: "♣";
   --h4-marker: "♦";
   /* 調整用カスタムプロパティ（見出し・節番号・背景の位置と余白） */
-  --h2-offset-inline: 30mm;  /* 見出しの左右移動 */
-  --h2-offset-block-start: -9mm;  /* 見出しの上余白（上が負で上に寄せる） */
-  --h2-offset-block-end: 40mm;  /* 見出しの下余白 */
-  --h2-padding-inline-start: 5mm;  /* 見出しテキストの内側左余白 */
-  
-  --section-number-padding-inline-start: 17mm;  /* 節番号テキストの内側左余白 */
-  --section-number-padding-block-start: 15mm;  /* 節番号テキストの上側余白 */
-  --section-bg-inset-inline: 13mm;  /* 背景画像の基準 左右位置 */
-  --section-bg-inset-block: 9mm;  /* 背景画像の基準 上下位置（ページ基準使用時） */
-  --section-lead-margin-start: -15mm;  /* 節リードの見出し直下の間隔 */
-  --section-lead-margin-end: 1.5rlh;  /* 節リードと本文の間隔 */
+  --h2-offset-inline: 30mm;
+  /* 見出しの左右移動 */
+  --h2-offset-block-start: -9mm;
+  /* 見出しの上余白（上が負で上に寄せる） */
+  --h2-offset-block-end: 40mm;
+  /* 見出しの下余白 */
+  --h2-padding-inline-start: 5mm;
+  /* 見出しテキストの内側左余白 */
+
+  --section-number-padding-inline-start: 17mm;
+  /* 節番号テキストの内側左余白 */
+  --section-number-padding-block-start: 15mm;
+  /* 節番号テキストの上側余白 */
+  --section-bg-inset-inline: 13mm;
+  /* 背景画像の基準 左右位置 */
+  --section-bg-inset-block: 9mm;
+  /* 背景画像の基準 上下位置（ページ基準使用時） */
+  --section-lead-margin-start: -15mm;
+  /* 節リードの見出し直下の間隔 */
+  --section-lead-margin-end: 1.5rlh;
+  /* 節リードと本文の間隔 */
 }
 
 /* 見出し類 */

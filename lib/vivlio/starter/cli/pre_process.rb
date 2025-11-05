@@ -35,9 +35,137 @@ module Vivlio
         FRONTISPIECE_RATIO_TOLERANCE = 0.10
         FRONTISPIECE_DEFAULT_PATH = 'images/door2.webp'
         ORNAMENT_DEFAULT_PATH = 'images/frame-yellow.webp'
-        FRONTISPIECE_PLACEHOLDER_FS_PATH = File.join(Common::STYLESHEETS_DIR, 'images', 'no_frontispiece.svg').freeze
-        ORNAMENT_PLACEHOLDER_FS_PATH = File.join(Common::STYLESHEETS_DIR, 'images', 'no_ornament.svg').freeze
         THEME_IMAGE_EXTENSIONS = %w[.webp .png .jpg .jpeg].freeze
+
+        # プレースホルダーSVGテンプレート（ハードコーディング）
+        FRONTISPIECE_PLACEHOLDER_SVG = <<~SVG.freeze
+          <svg width="2880" height="4072" viewBox="0 0 2880 4072" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="vivlioTextGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#4a86e8;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#1c4587;stop-opacity:1" />
+              </linearGradient>
+              <linearGradient id="starterTextGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#6aa84f;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#38761d;stop-opacity:1" />
+              </linearGradient>
+              <linearGradient id="backgroundGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:#E0F2F7;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#E8F5E9;stop-opacity:1" />
+              </linearGradient>
+            </defs>
+            <rect x="0" y="0" width="2880" height="4072" fill="url(#backgroundGradient)" />
+            <text
+              x="1440"
+              y="1748"
+              font-family="Arial, sans-serif"
+              font-size="345.6"
+              font-weight="bold"
+              text-anchor="middle"
+              dominant-baseline="middle"
+            >
+              <tspan fill="url(#vivlioTextGradient)">filename.webp</tspan>
+            </text>
+            <text
+              x="1440"
+              y="2324"
+              font-family="Arial, sans-serif"
+              font-size="345.6"
+              font-weight="bold"
+              text-anchor="middle"
+              dominant-baseline="middle"
+            >
+              <tspan fill="url(#starterTextGradient)">No Image</tspan>
+            </text>
+          </svg>
+        SVG
+
+        ORNAMENT_PLACEHOLDER_SVG = <<~SVG.freeze
+          <svg width="2880" height="1205" viewBox="0 0 2880 1205" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="vivlioTextGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#4a86e8;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#1c4587;stop-opacity:1" />
+              </linearGradient>
+              <linearGradient id="starterTextGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#6aa84f;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#38761d;stop-opacity:1" />
+              </linearGradient>
+              <linearGradient id="backgroundGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:#E0F2F7;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#E8F5E9;stop-opacity:1" />
+              </linearGradient>
+            </defs>
+            <rect x="0" y="0" width="2880" height="1205" fill="url(#backgroundGradient)" />
+            <text
+              x="1440"
+              y="314.5"
+              font-family="Arial, sans-serif"
+              font-size="345.6"
+              font-weight="bold"
+              text-anchor="middle"
+              dominant-baseline="middle"
+            >
+              <tspan fill="url(#vivlioTextGradient)">filename.webp</tspan>
+            </text>
+            <text
+              x="1440"
+              y="890.5"
+              font-family="Arial, sans-serif"
+              font-size="345.6"
+              font-weight="bold"
+              text-anchor="middle"
+              dominant-baseline="middle"
+            >
+              <tspan fill="url(#starterTextGradient)">No Image</tspan>
+            </text>
+          </svg>
+        SVG
+
+        NO_IMAGE_PLACEHOLDER_SVG = <<~SVG.freeze
+          <svg width="600" height="400" viewBox="0 0 600 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                  <linearGradient id="vivlioTextGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#4a86e8;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#1c4587;stop-opacity:1" />
+              </linearGradient>
+              <linearGradient id="starterTextGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#6aa84f;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#38761d;stop-opacity:1" />
+              </linearGradient>
+              <linearGradient id="backgroundGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:#E0F2F7;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#E8F5E9;stop-opacity:1" />
+              </linearGradient>
+            </defs>
+
+            <rect x="0" y="0" width="600" height="400" fill="url(#backgroundGradient)" />
+
+            <text 
+              x="300" 
+              y="140" 
+              font-family="Arial, sans-serif" 
+              font-size="72" 
+              font-weight="bold"
+              text-anchor="middle"
+              dominant-baseline="middle"
+            >
+              <tspan fill="url(#vivlioTextGradient)">filename.webp</tspan>
+            </text>
+
+            <text 
+              x="300" 
+              y="260" 
+              font-family="Arial, sans-serif" 
+              font-size="72" 
+              font-weight="bold"
+              text-anchor="middle"
+              dominant-baseline="middle"
+            >
+              <tspan fill="url(#starterTextGradient)">No Image</tspan>
+            </text>
+          </svg>
+        SVG
 
         PreProcessContext = Struct.new(
           :source_path,
@@ -255,7 +383,7 @@ module Vivlio
             raw,
             variant: :portrait,
             default_path: FRONTISPIECE_DEFAULT_PATH,
-            placeholder_fs: FRONTISPIECE_PLACEHOLDER_FS_PATH,
+            placeholder_svg: FRONTISPIECE_PLACEHOLDER_SVG,
             allow_generation: allow_generation,
             slug_transform: lambda do |value|
               value =~ /^door[1-7](?:_portrait)?(?:\.[^.]+)?$/i ? value.downcase : value
@@ -295,7 +423,7 @@ module Vivlio
             slug,
             variant: :landscape,
             default_path: ORNAMENT_DEFAULT_PATH,
-            placeholder_fs: ORNAMENT_PLACEHOLDER_FS_PATH,
+            placeholder_svg: ORNAMENT_PLACEHOLDER_SVG,
             allow_generation: allow_generation
           )
         end
@@ -496,7 +624,7 @@ module Vivlio
           raise message
         end
 
-        def resolve_theme_image_path(raw, variant:, default_path:, placeholder_fs:, allow_generation: false, slug_transform: nil)
+        def resolve_theme_image_path(raw, variant:, default_path:, placeholder_svg:, allow_generation: false, slug_transform: nil)
           return default_path if raw.nil? || raw.to_s.strip.empty?
 
           value = raw.to_s.strip
@@ -535,7 +663,7 @@ module Vivlio
             end
           end
 
-          placeholder_uri(base_slug, placeholder_fs)
+          placeholder_uri(base_slug, placeholder_svg)
         end
 
         def ensure_variant_generated(source_path, variant)
@@ -624,24 +752,18 @@ module Vivlio
           end
         end
 
-        def placeholder_uri(base_slug, placeholder_fs)
+        def placeholder_uri(base_slug, placeholder_svg)
           base_name = base_slug.to_s.strip.empty? ? 'missing' : File.basename(base_slug)
           filename = "#{base_name}.webp"
-          svg_placeholder_uri(placeholder_fs, filename)
+          svg_placeholder_uri(placeholder_svg, filename)
         end
 
-        def svg_placeholder_uri(fs_path, filename)
-          unless File.exist?(fs_path)
-            Common.log_warn("プレースホルダーSVGが見つかりません: #{fs_path}")
-            return File.basename(fs_path)
-          end
-
-          svg = File.read(fs_path, encoding: 'utf-8')
-          replaced = svg.gsub('filename.webp', CGI.escapeHTML(filename))
+        def svg_placeholder_uri(svg_template, filename)
+          replaced = svg_template.gsub('filename.webp', CGI.escapeHTML(filename))
           svg_to_data_uri(replaced)
         rescue StandardError => e
           Common.log_warn("プレースホルダー生成に失敗しました: #{e.message}")
-          File.basename(fs_path)
+          'data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%2F%3E'
         end
 
         def generate_frontispiece_and_ornament_from(image_spec, fuzz: nil, waifu2x: DEFAULT_WAIFU2X_BIN,
@@ -1459,8 +1581,6 @@ module Vivlio
         # 画像パスを修正
         # - 相対パス画像を images/<章basename>/ 配下に正規化
         # - png/jpg は .webp に拡張子を変換（生成物の指針に合わせる）
-        PLACEHOLDER_IMAGE_PATH = File.join('stylesheets', 'images', 'no_image.svg').freeze
-        PLACEHOLDER_IMAGE_FS_PATH = File.join(Common::STYLESHEETS_DIR, 'images', 'no_image.svg').freeze
 
         # Markdown 内の画像リンクを生成規約に合わせて正規化する
         def fix_image_paths(content, filename)
@@ -1503,24 +1623,18 @@ module Vivlio
           end
         end
 
-        # プレースホルダーSVGを読み込み、必要に応じてデータURIを生成する
+        # プレースホルダーSVGを使用してデータURIを生成する
         def placeholder_image_path(missing_image_path = nil)
-          unless File.exist?(PLACEHOLDER_IMAGE_FS_PATH)
-            Common.log_warn("プレースホルダー画像が見つかりません: #{PLACEHOLDER_IMAGE_FS_PATH}")
-            return PLACEHOLDER_IMAGE_PATH
-          end
-
-          return PLACEHOLDER_IMAGE_PATH unless missing_image_path
+          return 'data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%2F%3E' unless missing_image_path
 
           begin
-            svg_template = File.read(PLACEHOLDER_IMAGE_FS_PATH, encoding: 'utf-8')
             filename = File.basename(missing_image_path)
             replacement = sanitize_placeholder_text(filename)
-            svg_with_filename = svg_template.gsub('filename.webp', replacement)
+            svg_with_filename = NO_IMAGE_PLACEHOLDER_SVG.gsub('filename.webp', replacement)
             svg_to_data_uri(svg_with_filename)
           rescue StandardError => e
             Common.log_warn("プレースホルダー画像の生成に失敗しました: #{e.class}: #{e.message}")
-            PLACEHOLDER_IMAGE_PATH
+            'data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%2F%3E'
           end
         end
 

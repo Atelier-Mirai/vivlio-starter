@@ -31,7 +31,7 @@ chapters: all # 全ての章を対象
 # テーマ
 theme:
   # 章扉や節見出しの装飾スタイル
-  style: image     # simple: 画像なし / image: 画像あり
+  style: image     # image: 画像あり / simple: 画像なし
 
   # テーマカラー
   color: teal      # yellow / amber / orange / peach
@@ -43,10 +43,10 @@ theme:
   # 章扉の背景画像
   frontispiece: 
     # image: bundled/himawari_portrait   # 主ファイル名 stylesheets/images/sunflower.webp を指す
-    image: himawari234   # 主ファイル名 stylesheets/images/sunflower.webp を指す
+    image: himawari   # 主ファイル名 stylesheets/images/sunflower.webp を指す
     padding: 10mm
     heading_width: 120mm
-    lead_width: 100mm
+    lead_width: 120mm
 
   # 節見出しの背景画像
   # ornament: bundled/himawari_landscape   # stylesheets/images/sunflower_landscape.webp を指す

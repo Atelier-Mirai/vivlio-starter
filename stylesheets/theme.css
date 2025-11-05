@@ -1,19 +1,41 @@
-/* theme.css
-   色・扉絵・節背景のテーマ変数を定義するファイル。
-   本ファイルを読み込むことで、全体の配色と扉画像、節番号フレームを切り替えできる。
-
-   既定テーマ: yellow 系
-   blue/red に切り替える場合は、下記のコメントの例を参照して上書きしてください。
-*/
+/* =============================================================
+   theme.css - テーマ変数定義ファイル
+   =============================================================
+   
+   ⚠️ 注意: このファイルは自動生成されます ⚠️
+   
+   このファイルは config/book.yml の設定に基づいて、
+   pre_process.rb によって自動的に生成・更新されます。
+   
+   テーマカラーや扉絵の設定を変更したい場合は、
+   このファイルを直接編集せず、config/book.yml の
+   theme セクションを編集してください。
+   
+   手動でこのファイルを編集しても、次回のビルド時に
+   設定内容が上書きされます。
+   
+   ============================================================= */
 
 :root {
-  /* テーマ・アクセント（yellow/blue/red で切替可能） */
+  /* テーマ・アクセント（各色で切替可能） */
   --accent-yellow:        #f0a000;
-  --accent-blue:          #3da8c9;
-  --accent-red:           #d33;
-  --accent-green:         #3cb371;  /* mediumseagreen 系 */
-  --accent-purple:        #7d4aa6;  /* 紫系 */
-  --theme-accent:         var(--accent-teal); /* 既定: yellow 系。blue/red/green/purple にする場合は var(--accent-*) に変更 */
+  --accent-amber:         #f59e0b;
+  --accent-orange:        #ea580c;
+  --accent-peach:         #fb7185;
+  --accent-coral:         #f97316;
+  --accent-red:           #dc2626;
+  --accent-magenta:       #e11d48;
+  --accent-plum:          #a21caf;
+  --accent-purple:        #7c3aed;
+  --accent-indigo:        #4f46e5;
+  --accent-navy:          #1e40af;
+  --accent-blue:          #0ea5e9;
+  --accent-cyan:          #06b6d4;
+  --accent-teal:          #0d9488;
+  --accent-mint:          #10b981;
+  --accent-green:         #16a34a;
+  --accent-lime:          #65a30d;
+  --theme-accent:         var(--accent-teal); /* config/book.yml の theme.color 設定により自動更新 */
 
   /* カラートークン（共通） */
   --color-text:            #000;
@@ -30,25 +52,16 @@
   --color-danger:          #f00;
   --color-mark:            var(--theme-accent); /* h3マーク等 */
 
-  /* 節番号テーマ（デフォルトはイエロー） */
+  /* 節番号テーマ */
   --section-number-color:  var(--theme-accent);
   --section-bg-image:      url("images/bundled/himawari_landscape.webp");
 
-  /* テーマは yellow / blue / red / green / purple から選択可能。
-     変更する場合は :root で以下のように上書きする。
-       - yellow: --theme-accent: var(--accent-yellow); --section-bg-image: url("images/frame-yellow.webp");
-       - blue:   --theme-accent: var(--accent-yellow);   --section-bg-image: url("images/frame-yellow.webp");
-       - red:    --theme-accent: var(--accent-yellow);    --section-bg-image: url("images/frame-yellow.webp");
-       - green:  --theme-accent: var(--accent-yellow);  --section-bg-image: url("images/frame-yellow.webp");
-       - purple: --theme-accent: var(--accent-yellow); --section-bg-image: url("images/frame-yellow.webp");
-  */
-
-  /* 扉画像（door1.webp〜door7.webp などに差し替え可） */
+  /* 扉絵設定（config/book.yml の theme.frontispiece により自動更新） */
   --frontispiece-padding: 10mm;
   --frontispiece-background-size: calc(100% - 2 * var(--frontispiece-padding)) calc(100% - 2 * var(--frontispiece-padding));
-  --frontispiece-image:    url("data:image/svg+xml;charset=utf-8,%3Csvg%20width%3D%222880%22%20height%3D%224072%22%20viewBox%3D%220%200%202880%204072%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%20%20%3Cdefs%3E%0A%20%20%20%20%3ClinearGradient%20id%3D%22vivlioTextGradient%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%220%25%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20style%3D%22stop-color%3A%234a86e8%3Bstop-opacity%3A1%22%20%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20style%3D%22stop-color%3A%231c4587%3Bstop-opacity%3A1%22%20%2F%3E%0A%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%20%20%3ClinearGradient%20id%3D%22starterTextGradient%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%220%25%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20style%3D%22stop-color%3A%236aa84f%3Bstop-opacity%3A1%22%20%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20style%3D%22stop-color%3A%2338761d%3Bstop-opacity%3A1%22%20%2F%3E%0A%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%20%20%3ClinearGradient%20id%3D%22backgroundGradient%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%220%25%22%20y2%3D%22100%25%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20style%3D%22stop-color%3A%23E0F2F7%3Bstop-opacity%3A1%22%20%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%22100%25%22%20style%3D%22stop-color%3A%23E8F5E9%3Bstop-opacity%3A1%22%20%2F%3E%0A%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%3C%2Fdefs%3E%0A%20%20%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%222880%22%20height%3D%224072%22%20fill%3D%22url%28%23backgroundGradient%29%22%20%2F%3E%0A%20%20%3Ctext%0A%20%20%20%20x%3D%221440%22%0A%20%20%20%20y%3D%221748%22%0A%20%20%20%20font-family%3D%22Arial%2C%20sans-serif%22%0A%20%20%20%20font-size%3D%22345.6%22%0A%20%20%20%20font-weight%3D%22bold%22%0A%20%20%20%20text-anchor%3D%22middle%22%0A%20%20%20%20dominant-baseline%3D%22middle%22%0A%20%20%3E%0A%20%20%20%20%3Ctspan%20fill%3D%22url%28%23vivlioTextGradient%29%22%3Ehimawari234.webp%3C%2Ftspan%3E%0A%20%20%3C%2Ftext%3E%0A%20%20%3Ctext%0A%20%20%20%20x%3D%221440%22%0A%20%20%20%20y%3D%222324%22%0A%20%20%20%20font-family%3D%22Arial%2C%20sans-serif%22%0A%20%20%20%20font-size%3D%22345.6%22%0A%20%20%20%20font-weight%3D%22bold%22%0A%20%20%20%20text-anchor%3D%22middle%22%0A%20%20%20%20dominant-baseline%3D%22middle%22%0A%20%20%3E%0A%20%20%20%20%3Ctspan%20fill%3D%22url%28%23starterTextGradient%29%22%3ENo%20Image%3C%2Ftspan%3E%0A%20%20%3C%2Ftext%3E%0A%3C%2Fsvg%3E");
+  --frontispiece-image:    url("images/bundled/himawari_portrait.webp");
   --frontispiece-heading-width: 120mm;
-  --frontispiece-lead-width: 100mm;
+  --frontispiece-lead-width: 120mm;
 }
 
 @font-face {

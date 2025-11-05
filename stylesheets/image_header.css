@@ -16,15 +16,15 @@
   background-attachment: fixed;
   background-size: var(--frontispiece-background-size);
 }
+
 /* stylelint-enable */
 
 h1 {
   display: grid;
   grid-template-columns: auto;
   grid-template-rows:
-    minmax(30mm, auto)
-    auto;
-  gap: clamp(8mm, calc(var(--paper-scale) * 12mm), 12mm);
+    minmax(30mm, auto) auto;
+  gap: clamp(4mm, calc(var(--paper-scale) * 6mm), 8mm);
   align-items: center;
   justify-items: center;
   text-align: center;
@@ -45,7 +45,7 @@ h1 .chapter-number {
   font-weight: 700;
   letter-spacing: 0.3em;
   color: black;
-  margin-block-end: clamp(2mm, calc(var(--paper-scale) * 3mm), 3mm);
+  margin-block-end: -10mm;
 }
 
 h1 .chapter-title {
@@ -104,7 +104,7 @@ h1::after {
   padding-block: clamp(6mm, calc(var(--paper-scale) * 9mm), 9mm);
   aspect-ratio: 239 / 100;
   min-block-size: 120px;
-  text-align: center;
+  text-align: left;
 }
 
 .section-topic h2::before {
@@ -118,7 +118,7 @@ h1::after {
   z-index: -1;
 }
 
-.section-topic h2 > * {
+.section-topic h2>* {
   position: relative;
   z-index: 1;
   display: inline-flex;
@@ -134,11 +134,12 @@ h1::after {
   -webkit-text-stroke: 0.3mm rgba(0, 0, 0, .30);
   white-space: nowrap;
   flex-shrink: 0;
+  margin-inline-start: clamp(6mm, calc(var(--paper-scale) * 8mm), 10mm);
 }
 
 .section-topic .section-lead {
   grid-area: section-lead;
   text-indent: 1em;
-  margin-block-start: clamp(12mm, calc(var(--paper-scale) * 16mm), 16mm) !important;
+  margin-block-start: clamp(10mm, calc(var(--paper-scale) * 16mm), 16mm) !important;
   margin-block-end: 0 !important;
 }
