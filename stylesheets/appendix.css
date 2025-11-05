@@ -9,96 +9,34 @@
 @import url("spacing.css");
 @import url("layout-utils.css");
 @import url("components.css");
-@import url("preface.css");
-
-/*
-  プロパティ並び順ガイドライン
-  --------------------------------------------------
-  各ルール内のプロパティは下記の順で記述する。
-  1) layout        : display / position / float / break-* / z-index / inset-*
-  2) box-size      : width / height / inline-size / block-size / box-sizing
-  3) spacing       : margin-* → padding-*（論理プロパティ優先）
-  4) typography    : font-* / line-height / text-* / letter-spacing
-  5) alignment     : text-align / align-* / justify-*
-  6) visual        : color / background / border / outline / shadow / opacity
-  7) counters/meta : counter-* / string-set / content などのメタ情報
-
-  備考:
-  - コメントでセクション見出し（layout等）を付ける。
-  - 値は論理プロパティ（margin-inline 等）を優先する。
-  - 既存プロパティの意味が変わらない範囲でのみ並び替える。
-*/
+@import url("simple_header.css");
+@import url("chapter-common.css");
 
 /* =====================================================================
    Appendix (付録)
    ===================================================================== */
 
 :root {
-  --appendix-accent-color: #3da8c9; /* アクセント色（既定: 青系） */
-  --appendix-on-accent-color: #fff;  /* アクセント面の文字色 */
+  /* 付録のアクセント色（config/book.yml の theme.appendix_color により自動更新）
+     指定がない場合は --theme-accent（本文と同じ色）を使用 */
+  --appendix-accent-color: var(--accent-cyan);
+  
+  /* simple_header.css互換のため変数をマッピング */
+  --heading-accent: var(--appendix-accent-color);
+  --heading-text: var(--color-text);
+  --heading-gray: var(--color-gray);
+  --section-gray: var(--color-gray);
+  
+  /* マーカー（ビルド時に更新される） */
+  --h3-marker: "♣";
+  --h4-marker: "♦";
 }
 
-/* 単一HTMLで付録(A,B,C,...)を自動採番 */
-body.appendix {
-  counter-reset: appendix 0; /* 文書内の先頭で初期化 */
+/* h3, h4 のマーカー色を付録のアクセント色に変更 */
+.subsection-marker {
+  color: var(--heading-accent);
 }
 
-/* 章タイトル（付録） */
-h1 {
-  padding-block: 0;
-
-  /* layout */
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 1em;
-
-  /* box-size */
-  min-block-size: clamp(25.2mm, calc(var(--paper-scale) * 36mm), 36mm);       /* 帯の最小高さをスケール */
-
-  /* spacing */
-  margin-block-start: clamp(14mm, calc(var(--paper-scale) * 20mm), 20mm);
-  padding-inline: clamp(3mm, calc(var(--paper-scale) * 5mm), 5mm) clamp(6mm, calc(var(--paper-scale) * 9mm), 9mm);
-
-  /* typography */
-  font-family: var(--header-font);
-  font-size: clamp(29.4Q, calc(var(--paper-scale) * 42Q), 42Q);
-  line-height: 1;             /* ベースライン差を最小化 */
-  text-align: left;
-
-  /* counters/meta */
-  counter-reset: section-counter 0;  /* 節番号を付録ごとにリセット */
-  string-set: chapter-title attr(data-chapter-title), chapter-number attr(data-chapter-number-display);
-
-  /* visual */
-  color: var(--appendix-on-accent-color);
-  background: var(--appendix-accent-color);
-  border-block-end: none;
+h4::before {
+  color: var(--heading-accent);
 }
-
-h1 .chapter-number {
-  font-weight: 700;
-  letter-spacing: 0.1em;
-}
-
-h1 .chapter-title {
-  flex: 1 1 auto;
-}
-
-/* h2 番号のみを表示 */
-
-/* 節番号は B-1, B-2 ... */
-h2 {
-  display: flex;
-  align-items: center;
-  gap: 0.6em;
-  counter-increment: section-counter;
-  string-set: section-title attr(data-section-title), section-number attr(data-section-number-display);
-}
-
-h2 .section-number {
-  font-weight: 800;
-  color: var(--appendix-accent-color);
-}
-
-/* 節カウンタの増加は preface.css の .level2 で行う（二重増加を防ぐため本ファイルでは未指定） */

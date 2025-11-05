@@ -1,9 +1,11 @@
-# 簡易文法リファレンス（Ruby / HTML / CSS）
+# 長い長い<br>簡易文法リファレンス
 
 :::{.chapter-lead}
 よく使う構文だけを表形式で最短ルックアップできるようにまとめました。詳細はAppendix-Bの公式ドキュメントを参照してください。
 :::
 
+
+## Ruby
 
 :::{.section-lead}
 この付録は「最短で書き方を思い出す」ための逆引きです。
@@ -12,8 +14,6 @@
 - 詳細はAppendix-Bの公式ドキュメントへ
 :::
 
-
-## Ruby
 
 | 機能 | 構文 | 例 | 備考 |
 |---|---|---|---|
@@ -27,6 +27,23 @@
 | 例外 | `begin ... rescue ... ensure end` | `rescue StandardError => e` | `raise` で送出 |
 | 正規表現 | `/pattern/` | `/^a.+z$/ =~ str` | `=~`, `match` |
 | 実行 | `ruby file.rb` |  | shebang で実行可 |
+
+
+### 機能紹介
+
+Ruby は スクリプト言語であり、主に Web アプリケーションの開発に使用されます。
+
+
+#### 構文
+
+次のように書きます。
+
+```ruby
+puts "Hello, World!"
+```
+
+
+
 
 ## HTML
 

@@ -34,11 +34,15 @@ theme:
   style: simple     # image: 画像あり / simple: 画像なし
 
   # テーマカラー
-  color: teal      # yellow / amber / orange / peach
+  color: yellow      # yellow / amber / orange / peach
                    # coral / red / magenta / plum
                    # purple / indigo / navy / blue
                    # cyan / teal / mint / green / lime から選択
                    # ff0000 のような HEX 記法も指定可
+
+  # 付録専用カラー（オプション）
+  # 指定しない場合は上記の color と同じ色が使用されます
+  appendix_color: cyan  # 付録だけ別の色にしたい場合に指定
 
   # 章扉の背景画像
   frontispiece: 

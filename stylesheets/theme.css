@@ -35,7 +35,7 @@
   --accent-mint:          #10b981;
   --accent-green:         #16a34a;
   --accent-lime:          #65a30d;
-  --theme-accent:         var(--accent-teal); /* config/book.yml の theme.color 設定により自動更新 */
+  --theme-accent:         var(--accent-yellow); /* config/book.yml の theme.color 設定により自動更新 */
 
   /* カラートークン（共通） */
   --color-text:            #000;
@@ -57,7 +57,7 @@
   --section-bg-image:      none;
 
   /* 扉絵設定（config/book.yml の theme.frontispiece により自動更新） */
-  --frontispiece-padding: 10mm;
+  --frontispiece-padding: 12mm;
   --frontispiece-background-size: calc(100% - 2 * var(--frontispiece-padding)) calc(100% - 2 * var(--frontispiece-padding));
   --frontispiece-image:    none;
   --frontispiece-heading-width: 120mm;

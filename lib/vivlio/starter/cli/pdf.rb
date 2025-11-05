@@ -78,6 +78,9 @@ module Vivlio
             define_method(:open_pdf) do |path = nil|
               PdfCommands::PdfOpener.new(self, path).call
             end
+
+            # コマンドエイリアス定義
+            map 'pdf:compress' => :pdf_compress
           end
         end
 

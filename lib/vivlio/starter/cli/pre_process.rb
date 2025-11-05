@@ -1300,6 +1300,69 @@ module Vivlio
             # 失敗しても前処理は継続
           end
 
+          # appendix.css の付録専用色とマーカーを更新
+          begin
+            appendix_css_path = File.join(Common::STYLESHEETS_DIR, 'appendix.css')
+            if File.exist?(appendix_css_path)
+              appendix_css = File.read(appendix_css_path, encoding: 'utf-8')
+              updated = false
+              
+              # 付録専用色を更新（theme.appendix_color が指定されている場合）
+              appendix_color = theme_cfg['appendix_color']
+              if appendix_color && !appendix_color.to_s.strip.empty?
+                # appendix_color を色名または HEX として解釈
+                appendix_accent_value = if appendix_color.start_with?('#')
+                                          appendix_color
+                                        else
+                                          "var(--accent-#{appendix_color})"
+                                        end
+                
+                # --appendix-accent-color を更新
+                appendix_css = appendix_css.sub(/(--appendix-accent-color:\s*)[^;]+(\s*;)/) do
+                  pre = ::Regexp.last_match(1)
+                  post = ::Regexp.last_match(2)
+                  "#{pre}#{appendix_accent_value}#{post}"
+                end
+                updated = true
+              end
+              
+              # マーカー（h3/h4）を設定
+              cfg = Common::CONFIG
+              markers = (cfg && cfg['theme'] && cfg['theme']['markers']).is_a?(Hash) ? cfg['theme']['markers'] : {}
+              mark_h3 = markers['h3'].to_s
+              mark_h4 = markers['h4'].to_s
+              
+              mark_h3 = '♣' if mark_h3.strip.empty?
+              mark_h4 = '♦' if mark_h4.strip.empty?
+              
+              set_marker = lambda do |css_text, var_name, value|
+                esc = value.gsub('\\', '\\\\').gsub('"', '\\"')
+                if css_text.match(/#{Regexp.escape(var_name)}:\s*[^;]+;/)
+                  css_text.sub(/(#{Regexp.escape(var_name)}:\s*)[^;]+(;)/, "\\1\"#{esc}\"\\2")
+                elsif css_text.match(/:root\s*\{/)
+                  css_text.sub(/:root\s*\{/, ":root {\n  #{var_name}: \"#{esc}\";")
+                else
+                  ":root {\n  #{var_name}: \"#{esc}\";\n}\n\n" + css_text
+                end
+              end
+              
+              before_markers = appendix_css.dup
+              appendix_css = set_marker.call(appendix_css, '--h3-marker', mark_h3)
+              appendix_css = set_marker.call(appendix_css, '--h4-marker', mark_h4)
+              updated = true if appendix_css != before_markers
+              
+              if updated
+                File.write(appendix_css_path, appendix_css, encoding: 'utf-8')
+                logs = []
+                logs << "appendix_color=#{appendix_color}" if appendix_color
+                logs << "h3='#{mark_h3}', h4='#{mark_h4}'"
+                Common.log_success("appendix.css を更新: #{logs.join(', ')}")
+              end
+            end
+          rescue StandardError => e
+            Common.log_warn("appendix.css の更新に失敗: #{e.message}")
+          end
+
           # chapter.css のヘッダ import を theme.style に連動して切替
           begin
             chapter_css_path = File.join(Common::STYLESHEETS_DIR, 'chapter.css')

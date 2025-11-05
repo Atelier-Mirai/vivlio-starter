@@ -24,9 +24,9 @@ h1 {
   overflow: hidden;
   border: 1mm solid var(--heading-accent);
   border-radius: clamp(3mm, calc(var(--paper-scale) * 5mm), 6mm);
-  box-shadow:
+  /* box-shadow:
     0 2mm 6mm rgb(0 0 0 / 15%),
-    0 0 0 1mm rgb(255 255 255 / 60%);
+    0 0 0 1mm rgb(255 255 255 / 60%); */
 
   /* spacing */
   margin-block-start: calc(clamp(28mm, calc(var(--paper-scale) * 40mm), 40mm) - var(--page-block-margin-start)); /* A4基準40mmをスケール */
@@ -140,8 +140,10 @@ h2 {
       rgba(255 255 255 / 0) 100%);
   background-color: var(--section-gray);
   border-radius: clamp(2mm, calc(var(--paper-scale) * 4mm), 5mm);
-  border-left: clamp(3mm, calc(var(--paper-scale) * 4mm), 5mm) solid var(--heading-accent);
-  box-shadow: 0 1.2mm 4mm rgb(0 0 0 / 12%);
+  border-inline-start: clamp(3mm, calc(var(--paper-scale) * 4mm), 5mm) solid var(--heading-accent);
+  /* box-shadow: 0 1.2mm 4mm rgb(0 0 0 / 12%); */
+  border-inline-end: 1px solid var(--heading-accent);
+  border-block: 1px solid var(--heading-accent);
 }
 
 /* 節リードとの間隔を確保 */

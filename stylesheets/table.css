@@ -162,8 +162,8 @@ table code {
   transform-origin: center center;
   /* 回転時の縮尺は上書き可能な変数を用意（既定 0.9）。
      ペーパー倍率との二重縮小を避けるため、既定では paper-scale を掛けない。 */
-  --table-rotate-scale: 0.9;
-  transform: translate(-50%, +30%) rotate(-90deg) scale(var(--table-rotate-scale));
+  --table-rotate-scale: 0.75;
+  transform: translate(-50%, +65%) rotate(-90deg) scale(var(--table-rotate-scale));
   margin: 0;
   inline-size: max-content;
   max-inline-size: none;
@@ -173,6 +173,6 @@ table code {
 /* table-rotate 用のページ: 上下20mmの余白（ノンブル用）/ 左右は0で最大幅確保 */
 @page table-rotate {
   /* ノンブルのための上下余白をスケール追従 */
-  margin-block: clamp(14mm, calc(20mm * var(--paper-scale)), 22mm);
+  margin-block-start: clamp(14mm, calc(20mm * var(--paper-scale)), 22mm);
   margin-inline: 0;
 }
