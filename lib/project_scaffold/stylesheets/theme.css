@@ -63,19 +63,3 @@
   --frontispiece-heading-width: clamp(114.24mm, calc(var(--paper-scale) * 163.2mm), 163.2mm);
   --frontispiece-lead-width: 32em;
 }
-
-@font-face {
-  font-family: "hackgen35";
-  src: url("fonts/hackgen35/HackGen35-Regular.ttf") format("truetype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "hackgen35";
-  src: url("fonts/hackgen35/HackGen35-Bold.ttf") format("truetype");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}

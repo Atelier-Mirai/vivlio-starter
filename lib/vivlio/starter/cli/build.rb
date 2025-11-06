@@ -163,10 +163,41 @@ module Vivlio
 
           # 必要に応じて生成済みPDFを圧縮する
           def run_step12_compress_pdf
-            if options[:compress] == false
-              Common.log_action('[Step 12] PDF圧縮をスキップします（--no-compress）')
-            else
+            should_compress = determine_compress_setting
+            
+            if should_compress
               BuildHelpers.compress_pdf!
+            else
+              source = compress_setting_source
+              Common.log_action("[Step 12] PDF圧縮をスキップします（#{source}）")
+            end
+          end
+
+          # 圧縮設定を判定（オプション優先、次に book.yml）
+          def determine_compress_setting
+            # --compress または --no-compress が明示的に指定されている場合はそれを優先
+            return options[:compress] unless options[:compress].nil?
+            
+            # オプション未指定の場合は book.yml の pdf.compress を参照（デフォルト: false）
+            config = Common::CONFIG
+            pdf_config = config&.dig('pdf')
+            pdf_config&.dig('compress') == true
+          end
+
+          # 圧縮設定のソース（ログ用）
+          def compress_setting_source
+            unless options[:compress].nil?
+              return options[:compress] ? '--compress オプション' : '--no-compress オプション'
+            end
+            
+            config = Common::CONFIG
+            pdf_config = config&.dig('pdf')
+            if pdf_config&.dig('compress') == true
+              'book.yml: pdf.compress = true'
+            elsif pdf_config&.dig('compress') == false
+              'book.yml: pdf.compress = false'
+            else
+              'デフォルト設定 (compress: false)'
             end
           end
 
@@ -349,7 +380,7 @@ module Vivlio
             method_option :high,     type: :boolean, default: false, desc: '画像最適化プリセット: 高品質'
             method_option :medium,   type: :boolean, default: false, desc: '画像最適化プリセット: 中品質'
             method_option :low,      type: :boolean, default: false, desc: '画像最適化プリセット: 低品質'
-            method_option :compress, type: :boolean, default: true,  desc: 'PDF圧縮を行う（--no-compress で無効）'
+            method_option :compress, type: :boolean, default: nil,   desc: 'PDF圧縮を行う（--no-compress で無効、未指定時は book.yml の設定に従う）'
             method_option :clean,    type: :boolean, default: true,  desc: '中間生成物をクリーンアップ（--no-clean で無効）'
             method_option :dry_run,  type: :boolean, aliases: '-n',  desc: '実行せずにビルド予定のみを表示（試行）'
             method_option :merge,    type: :boolean, aliases: '-m',

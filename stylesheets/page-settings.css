@@ -87,18 +87,18 @@
 
 :root {
   /* 基本体裁（A4 縦） */
-  --page-width:  210mm; /* 幅 */
-  --page-height: 297mm; /* 高さ */
+  --page-width:  182mm; /* 幅 */
+  --page-height: 257mm; /* 高さ */
   /* 用紙スケール（A4=1.0 を基準に B5/A5 などで前処理から上書き） */
-  --paper-scale: 1.0;
+  --paper-scale: 0.8653;
 
   /* 組版パラメータ（A4向け：本文約12pt相当／36字×36行） */
-  --base-font-size:   12pt;    /* ≒ 12.0pt（17Q × 0.709pt ≒ 12.1pt） */
-  --base-line-height: 19.2pt;  /* 10.5pt × 1.7 = 17.85pt（未上書き時の保険） */
-  --letters-per-line: 38;     /* 1行38字（全角換算） */
-  --lines-per-page:   36;     /* 1ページ34行 */
-  --page-margin-top:    28mm; /* 天地マージン：天のみ明示。地は自動計算 */
-  --page-margin-xshift: -5mm; /* 左右マージンの微調整（正で右へ、負で左へ） */
+  --base-font-size:   10.5pt;    /* ≒ 12.0pt（17Q × 0.709pt ≒ 12.1pt） */
+  --base-line-height: 17.85pt;  /* 10.5pt × 1.7 = 17.85pt（未上書き時の保険） */
+  --letters-per-line: 36;     /* 1行38字（全角換算） */
+  --lines-per-page:   35;     /* 1ページ34行 */
+  --page-margin-top:    25mm; /* 天地マージン：天のみ明示。地は自動計算 */
+  --page-margin-xshift: -4mm; /* 左右マージンの微調整（正で右へ、負で左へ） */
   --column-font-size:   7.445pt;/* コラムのフォントサイズ */
 
   /* フォント指定 */

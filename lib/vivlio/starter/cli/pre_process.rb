@@ -1363,6 +1363,41 @@ module Vivlio
             Common.log_warn("appendix.css の更新に失敗: #{e.message}")
           end
 
+          # preface.css の前書き専用色を更新
+          begin
+            preface_css_path = File.join(Common::STYLESHEETS_DIR, 'preface.css')
+            if File.exist?(preface_css_path)
+              preface_css = File.read(preface_css_path, encoding: 'utf-8')
+              updated = false
+              
+              # 前書き専用色を更新（theme.preface_color が指定されている場合）
+              preface_color = theme_cfg['preface_color']
+              if preface_color && !preface_color.to_s.strip.empty?
+                # preface_color を色名または HEX として解釈
+                preface_accent_value = if preface_color.start_with?('#')
+                                         preface_color
+                                       else
+                                         "var(--accent-#{preface_color})"
+                                       end
+                
+                # --preface-accent-color を更新
+                preface_css = preface_css.sub(/(--preface-accent-color:\s*)[^;]+(\s*;)/) do
+                  pre = ::Regexp.last_match(1)
+                  post = ::Regexp.last_match(2)
+                  "#{pre}#{preface_accent_value}#{post}"
+                end
+                updated = true
+              end
+              
+              if updated
+                File.write(preface_css_path, preface_css, encoding: 'utf-8')
+                Common.log_success("preface.css を更新: preface_color=#{preface_color}")
+              end
+            end
+          rescue StandardError => e
+            Common.log_warn("preface.css の更新に失敗: #{e.message}")
+          end
+
           # chapter.css のヘッダ import を theme.style に連動して切替
           begin
             chapter_css_path = File.join(Common::STYLESHEETS_DIR, 'chapter.css')
@@ -1594,8 +1629,10 @@ module Vivlio
           end
 
           # フロントマターのCSS
-          # chapter は常に chapter.css を参照し、ヘッダーは chapter.css 内の import で切替
-          chapter_css = if file_type == 'chapter'
+          # front matterに stylesheet が指定されている場合はそれを優先
+          chapter_css = if existing_frontmatter['stylesheet']
+                          existing_frontmatter['stylesheet']
+                        elsif file_type == 'chapter'
                           'chapter.css'
                         else
                           "#{file_type}.css"
@@ -1616,6 +1653,8 @@ module Vivlio
           # 既存のフロントマターと新しいフロントマターを併合
 
           merged_frontmatter = existing_frontmatter.dup
+          # stylesheet フィールドは link に変換されるので削除
+          merged_frontmatter.delete('stylesheet')
           if merged_frontmatter['link'].is_a?(Array)
             merged_frontmatter['link'] = merged_frontmatter['link'].reject do |lnk|
               href = (lnk && lnk['href']).to_s
@@ -1680,6 +1719,13 @@ module Vivlio
         def image_exists_for?(normalized_path)
           relative_path = normalized_path.sub(%r{\Aimages/}, '')
           base_path = File.expand_path(relative_path, Common::IMAGES_DIR)
+          
+          # SVGの場合は直接チェック
+          if base_path.end_with?('.svg')
+            return File.exist?(base_path)
+          end
+          
+          # その他の画像形式は拡張子違いをチェック
           base_without_ext = base_path.sub(/\.webp\z/i, '')
           %w[.webp .png .jpg .jpeg].any? do |ext|
             File.exist?("#{base_without_ext}#{ext}")

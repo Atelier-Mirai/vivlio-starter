@@ -54,28 +54,12 @@
 
   /* 節番号テーマ */
   --section-number-color:  var(--theme-accent);
-  --section-bg-image:      none;
+  --section-bg-image:      url("images/bundled/himawari_landscape.webp");
 
   /* 扉絵設定（config/book.yml の theme.frontispiece により自動更新） */
-  --frontispiece-padding: 12mm;
+  --frontispiece-padding: 10mm;
   --frontispiece-background-size: calc(100% - 2 * var(--frontispiece-padding)) calc(100% - 2 * var(--frontispiece-padding));
-  --frontispiece-image:    none;
+  --frontispiece-image:    url("images/bundled/himawari_portrait.webp");
   --frontispiece-heading-width: 120mm;
   --frontispiece-lead-width: 120mm;
-}
-
-@font-face {
-  font-family: "hackgen35";
-  src: url("fonts/hackgen35/HackGen35-Regular.ttf") format("truetype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "hackgen35";
-  src: url("fonts/hackgen35/HackGen35-Bold.ttf") format("truetype");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
 }

@@ -1,3 +1,7 @@
+---
+# stylesheet: preface5.css  # または preface2.css, preface3.css など
+---
+
 # はじめに
 
 <!-- **技術書執筆への招待 ～Vivlio Starter を使って～** -->

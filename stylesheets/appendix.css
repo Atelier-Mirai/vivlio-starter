@@ -1,42 +1,5 @@
-@charset "utf-8";
-
-@import url("base.css");
-@import url("theme.css");
-@import url("page-settings.css");
-@import url("prism.css");
-@import url("code.css");
-@import url("table.css");
-@import url("spacing.css");
-@import url("layout-utils.css");
-@import url("components.css");
-@import url("simple_header.css");
-@import url("chapter-common.css");
-
-/* =====================================================================
-   Appendix (付録)
-   ===================================================================== */
-
 :root {
-  /* 付録のアクセント色（config/book.yml の theme.appendix_color により自動更新）
-     指定がない場合は --theme-accent（本文と同じ色）を使用 */
-  --appendix-accent-color: var(--accent-cyan);
-  
-  /* simple_header.css互換のため変数をマッピング */
-  --heading-accent: var(--appendix-accent-color);
-  --heading-text: var(--color-text);
-  --heading-gray: var(--color-gray);
-  --section-gray: var(--color-gray);
-  
-  /* マーカー（ビルド時に更新される） */
-  --h3-marker: "♣";
   --h4-marker: "♦";
+  --h3-marker: "♣";
 }
 
-/* h3, h4 のマーカー色を付録のアクセント色に変更 */
-.subsection-marker {
-  color: var(--heading-accent);
-}
-
-h4::before {
-  color: var(--heading-accent);
-}

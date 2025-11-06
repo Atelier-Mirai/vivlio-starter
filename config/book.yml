@@ -23,7 +23,6 @@ book:
 
 # ビルド対象にする章の指定
 chapters: all # 全ての章を対象
-
 # chapters:       # 一部の章のみを対象としたい場合は、以下のように指定します。
   # - 11-install  # 拡張子(.md)は、省略できます。
   # - 12-tutorial
@@ -31,18 +30,22 @@ chapters: all # 全ての章を対象
 # テーマ
 theme:
   # 章扉や節見出しの装飾スタイル
-  style: simple     # image: 画像あり / simple: 画像なし
+  style: image     # image: 画像あり / simple: 画像なし
 
   # テーマカラー
-  color: yellow      # yellow / amber / orange / peach
-                   # coral / red / magenta / plum
-                   # purple / indigo / navy / blue
-                   # cyan / teal / mint / green / lime から選択
-                   # ff0000 のような HEX 記法も指定可
+  color: yellow     # yellow / amber / orange / peach
+                    # coral / red / magenta / plum
+                    # purple / indigo / navy / blue
+                    # cyan / teal / mint / green / lime から選択
+                    # '#ff0000' のような HEX 記法も指定可
 
   # 付録専用カラー（オプション）
   # 指定しない場合は上記の color と同じ色が使用されます
   appendix_color: cyan  # 付録だけ別の色にしたい場合に指定
+
+  # 前書き専用カラー（オプション）
+  # 指定しない場合は上記の color と同じ色が使用されます
+  preface_color: green  # 前書きだけ別の色にしたい場合に指定
 
   # 章扉の背景画像
   frontispiece: 
@@ -62,35 +65,22 @@ theme:
     h3: ♣ # 目見出しの記号。h3見出しの前に表示される。一文字推奨。
     h4: ♦ # 号見出しの記号。h4見出しの前に表示される。一文字推奨。
 
+# 出力のターゲット。
+target: pdf             # iPad閲覧用のPDFを出力。
+# target: print_pdf     # トンボ・塗り足し付きの印刷用PDFを出力。
+# target: epub          # 電子出版用のEPUBを出力(将来構想)
+
+# 表表紙と裏表紙の指定 (iPad閲覧用PDFの場合)
+frontcover_file: frontcover.pdf
+backcover_file:  backcover.pdf
+
 # ページ設定
 page:
-  # page_presets.yml の b5_standard プリセットを適用する
+  # 紙サイズ（A4 / B5 / A5）を指定できます。
+  # 詳細な設定は page_presets.yml を編集することで行なえます。
   # use: a5_paperback
-  # use: b5_standard
-  use: a4_standard
-
-
-  # 紙サイズ（A4 / B5 / A5）。指定すると幅・高さが自動設定されます。
-  # size: A4
-  # # 任意: 自動設定を上書きしたいときのみ指定
-  # # width: '210mm'
-  # # height: '297mm'
-
-  # # 基本文字サイズ（Q: 和文組版の単位。1Q ≒ 0.25mm ≒ 0.709pt）
-  # base_font_size: '17Q'
-  # # 行送り（ベースライン間隔）。例: 27.2Q は 17Q × 1.6倍相当
-  # base_line_height: '27.2Q'
-
-  # # 1行の想定文字数（全角換算）
-  # letters_per_line: '38'
-  # # 1ページの想定行数
-  # lines_per_page: '36'
-
-  # # 上余白（天マージン）。下余白は版面計算で自動算出
-  # margin_top: '28mm'
-  # # 左右マージンの微調整（負で左へ、正で右へシフト）
-  # margin_xshift: '-5mm'
-
+  use: b5_standard
+  # use: a4_standard
 
   # 標準添付書体
   # 明朝体	Noto Serif JP
@@ -140,6 +130,9 @@ pdf:
   output_file: 'output.pdf'
   # 圧縮PDFファイル名（rake pdf:compress の既定値）
   output_file_compressed: 'output_compressed.pdf'
+  # PDF圧縮を有効にするか（デフォルト: false）
+  # true に設定すると、ビルド時に自動的に圧縮を実行します（処理時間が増加します）
+  compress: false
   # Vivliostyleビルド時のコンソール出力を抑制（ENV VIVLIO_QUIET=1 でも可）
   quiet: true
   
