@@ -93,15 +93,15 @@
   --paper-scale: 0.8653;
 
   /* タイポグラフィ設定 */
-  --base-font-size:   12.5pt;    /* 基準文字サイズ */
-  --base-line-height: 21.25pt;   /* 行送り（10.5pt × 1.7 = 17.85pt） */
+  --base-font-size:   10.5pt;    /* 基準文字サイズ */
+  --base-line-height: 17.85pt;   /* 行送り（10.5pt × 1.7 = 17.85pt） */
   --letter-spacing:   0em;       /* 字間調整 */
 
   /* 版面の余白（見開き対応） */
   --page-margin-top:    25mm;    /* 天（上余白） */
   --page-margin-bottom: 25mm;    /* 地（下余白） */
   --page-margin-inner:  25mm;    /* ノド（綴じ側、左右ページで自動的に位置が変わる） */
-  --page-margin-outer:  10mm;    /* 小口（外側、左右ページで自動的に位置が変わる） */
+  --page-margin-outer:  20mm;    /* 小口（外側、左右ページで自動的に位置が変わる） */
 
   --column-font-size:   10.5Q; /* コラムのフォントサイズ */
 
