@@ -221,11 +221,11 @@ output:
   # ----------------------------
   pdf:
     # ..............................
-    # 表表紙と裏表紙
+    # 表表紙と裏表紙（本文と結合して出力）
     # ..............................
     cover:
-      front: frontcover.pdf  # 表表紙（.pdf / .png / .jpg / .webp）
-      back: backcover.pdf    # 裏表紙（.pdf / .png / .jpg / .webp）
+      front: frontcover_rgb.pdf  # 表表紙（PDF）
+      back: backcover_rgb.pdf    # 裏表紙（PDF）
     
     # ..............................
     # PDF圧縮設定
@@ -236,22 +236,29 @@ output:
       # vs build --compress / --no-compress で上書き可能
   
   # ----------------------------
-  # 印刷用PDF設定
+  # 印刷所 入稿用PDF設定
   # ----------------------------
   print_pdf:
     bleed: 3mm         # 塗り足し幅（必須）
-    crop_marks: true   # トンボを付ける
+    crop_marks: true   # トンボを付ける（任意）
     # 注: Vivliostyle CLI の --press-ready オプションで以下が自動実行される
     #     - CMYK変換
     #     - フォント埋め込み
     #     - 印刷最適化
     # 圧縮設定は適用されない（--press-ready で最適化済み）
+
+    # ..............................
+    # 表表紙と裏表紙（本文とは独立して出力）
+    # ..............................
+    cover:
+      front: frontcover_cmyk.pdf  # 表表紙（PDF/X-1a）
+      back: backcover_cmyk.pdf    # 裏表紙（PDF/X-1a）
   
   # ----------------------------
   # EPUB設定
   # ----------------------------
   epub:
-    cover: cover.jpg        # EPUBカバー画像（1枚のみ）
+    cover: cover.jpg # EPUBカバー画像（1600x2560推奨）
     layout: reflowable      # reflowable（リフロー型） / fixed（固定レイアウト型）
     # 注: メタデータ（title, author, language, isbn, publisher）は
     #     book セクションから自動的に流用される
@@ -265,6 +272,7 @@ directories:
   images: 'images'           # 画像ファイル
   codes: 'codes'             # ソースコードファイル
   chapter_templates: 'chapter_templates'     # 章テンプレートファイル
+  covers: 'covers'           # カバー画像ファイル
 
 # ========================================
 # キャッシュ設定

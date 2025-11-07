@@ -6,6 +6,7 @@ require_relative 'cli/build_helpers'
 require_relative 'cli/clean'
 require_relative 'cli/common'
 require_relative 'cli/convert'
+require_relative 'cli/cover'
 require_relative 'cli/create'
 require_relative 'cli/delete'
 require_relative 'cli/doctor'
@@ -126,6 +127,11 @@ module Vivlio
           clean
           config
           convert
+          cover
+          cover:a4
+          cover:a5
+          cover:b5
+          cover:epub
           create
           create:colophon
           create:legalpage
@@ -209,6 +215,7 @@ module Vivlio
         include Vivlio::Starter::CLI::BuildCommands
         include Vivlio::Starter::CLI::CleanCommands
         include Vivlio::Starter::CLI::ConvertCommands
+        include Vivlio::Starter::CLI::CoverCommands
         include Vivlio::Starter::CLI::CreateCommands
         include Vivlio::Starter::CLI::DeleteCommands
         include Vivlio::Starter::CLI::DoctorCommands
