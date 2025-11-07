@@ -1514,6 +1514,18 @@ module Vivlio
           begin
             cfg = Common::CONFIG
             page_cfg = (cfg && cfg['page']).is_a?(Hash) ? cfg['page'] : {}
+            typo_cfg = (cfg && cfg['typography']).is_a?(Hash) ? cfg['typography'] : {}
+
+            # typography セクションからフォント設定を読み込み、page_cfg にマージ
+            page_cfg['main_text_font']   = typo_cfg.dig('body', 'font')
+            page_cfg['header_font']      = typo_cfg.dig('heading', 'font')
+            page_cfg['column_font']      = typo_cfg.dig('column', 'font')
+            page_cfg['code_font']        = typo_cfg.dig('code', 'font')
+            page_cfg['folio_font']       = typo_cfg.dig('folio', 'font')
+            page_cfg['column_font_size'] = typo_cfg.dig('column', 'font_size')
+            page_cfg['folio_font_size']  = typo_cfg.dig('folio', 'font_size')
+            page_cfg['folio_color']      = typo_cfg.dig('folio', 'color')
+            page_cfg['folio_placement']  = typo_cfg.dig('folio', 'placement')
 
             font_names = [
               page_cfg['main_text_font'],
@@ -1575,10 +1587,11 @@ module Vivlio
               ['--paper-scale',           page_cfg['paper_scale']],
               ['--base-font-size',        page_cfg['base_font_size']],
               ['--base-line-height',      page_cfg['base_line_height']],
-              ['--letters-per-line',      page_cfg['letters_per_line']],
-              ['--lines-per-page',        page_cfg['lines_per_page']],
+              ['--letter-spacing',        page_cfg['letter_spacing'] || '0em'],
               ['--page-margin-top',       page_cfg['margin_top']],
-              ['--page-margin-xshift',    page_cfg['margin_xshift']],
+              ['--page-margin-bottom',    page_cfg['margin_bottom']],
+              ['--page-margin-inner',     page_cfg['margin_inner']],
+              ['--page-margin-outer',     page_cfg['margin_outer']],
               ['--column-font-size',      page_cfg['column_font_size']],
               ['--main-text-font',        page_cfg['main_text_font'],  :font],
               ['--header-font',           page_cfg['header_font'],     :font],

@@ -86,20 +86,24 @@
 }
 
 :root {
-  /* 基本体裁（A4 縦） */
+  /* 基本体裁（B5 縦） */
   --page-width:  182mm; /* 幅 */
   --page-height: 257mm; /* 高さ */
   /* 用紙スケール（A4=1.0 を基準に B5/A5 などで前処理から上書き） */
   --paper-scale: 0.8653;
 
-  /* 組版パラメータ（A4向け：本文約12pt相当／36字×36行） */
-  --base-font-size:   10.5pt;    /* ≒ 12.0pt（17Q × 0.709pt ≒ 12.1pt） */
-  --base-line-height: 17.85pt;  /* 10.5pt × 1.7 = 17.85pt（未上書き時の保険） */
-  --letters-per-line: 36;     /* 1行38字（全角換算） */
-  --lines-per-page:   35;     /* 1ページ34行 */
-  --page-margin-top:    25mm; /* 天地マージン：天のみ明示。地は自動計算 */
-  --page-margin-xshift: -4mm; /* 左右マージンの微調整（正で右へ、負で左へ） */
-  --column-font-size:   7.445pt;/* コラムのフォントサイズ */
+  /* タイポグラフィ設定 */
+  --base-font-size:   12.5pt;    /* 基準文字サイズ */
+  --base-line-height: 21.25pt;   /* 行送り（10.5pt × 1.7 = 17.85pt） */
+  --letter-spacing:   0em;       /* 字間調整 */
+
+  /* 版面の余白（見開き対応） */
+  --page-margin-top:    25mm;    /* 天（上余白） */
+  --page-margin-bottom: 25mm;    /* 地（下余白） */
+  --page-margin-inner:  25mm;    /* ノド（綴じ側、左右ページで自動的に位置が変わる） */
+  --page-margin-outer:  10mm;    /* 小口（外側、左右ページで自動的に位置が変わる） */
+
+  --column-font-size:   10.5Q; /* コラムのフォントサイズ */
 
   /* フォント指定 */
   --main-text-font: "Noto Serif JP";     /* メイン本文フォント */
@@ -109,7 +113,7 @@
 
   /* ノンブル（ページ番号）用 */
   --folio-font:      "Noto Sans JP";
-  --folio-font-size: 9.217pt; /* ≒ 9.2pt（1Q≒0.709pt, 12.7Q≒9pt → 実用上13Q） */
+  --folio-font-size: 13Q; /* ≒ 9.2pt（1Q≒0.709pt, 12.7Q≒9pt → 実用上13Q） */
   --folio-color:     #666;
 
   /* ノンブル配置切替用（中央 or 左右）
@@ -124,12 +128,12 @@
   --folio-left-content:   none;
   --folio-right-content:  none;
 
-  /* ページマージン自動計算（本文の想定ボディから余白を算出） */
-  --page-body-width:         calc(var(--base-font-size) * var(--letters-per-line));
-  --page-body-height:        calc(var(--base-line-height) * var(--lines-per-page));
-  --page-inline-margin:      calc((var(--page-width) - var(--page-body-width)) / 2);
-  --page-block-margin-start: var(--page-margin-top);
-  --page-block-margin-end:   calc(var(--page-height) - var(--page-body-height) - var(--page-block-margin-start));
+  /* 参考: 版面サイズ（余白から自動計算される）
+     版面幅  = page-width - margin-inner - margin-outer
+     版面高  = page-height - margin-top - margin-bottom
+     文字数  ≒ 版面幅 / (base-font-size + letter-spacing)
+     行数    ≒ 版面高 / base-line-height
+  */
 
   font-size:   var(--base-font-size);
   line-height: var(--base-line-height);
@@ -144,9 +148,9 @@
 }
 
 @page {
-  size: var(--page-width) var(--page-height); /* 幅と高さ */
-  margin-block: var(--page-block-margin-start) var(--page-block-margin-end); /* 上 下 */
-  margin-inline: var(--page-inline-margin); /* 左右マージン */
+  size: var(--page-width) var(--page-height);
+  margin-top: var(--page-margin-top);
+  margin-bottom: var(--page-margin-bottom);
 
   /* ノンブル（共通） */
   @bottom-center {
@@ -160,9 +164,10 @@
 }
 
 @page :left {
-  font-family:         var(--header-font);
-  margin-inline: calc(var(--page-inline-margin) + var(--page-margin-xshift))
-                 calc(var(--page-inline-margin) - var(--page-margin-xshift));
+  font-family: var(--header-font);
+  /* 左ページ: [ノド（inner）] 版面 [小口（outer）] */
+  margin-left: var(--page-margin-inner);
+  margin-right: var(--page-margin-outer);
 
   /* ノンブル */
   @bottom-left {
@@ -173,9 +178,10 @@
 }
 
 @page :right {
-  font-family:         var(--header-font);
-  margin-inline: calc(var(--page-inline-margin) - var(--page-margin-xshift))
-                 calc(var(--page-inline-margin) + var(--page-margin-xshift));
+  font-family: var(--header-font);
+  /* 右ページ: [小口（outer）] 版面 [ノド（inner）] */
+  margin-left: var(--page-margin-outer);
+  margin-right: var(--page-margin-inner);
 
   /* ノンブル */
   @bottom-right {
