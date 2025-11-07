@@ -30,10 +30,11 @@ module Vivlio
           short: '不要ファイルやキャッシュを削除します',
           long: <<~DESC
             生成物（HTML/中間PDF など）を削除する標準クリーンに加えて、
-            `--cache` オプションでキャッシュ(.cache/vs 既定)のみを削除できます。
+            各オプションで特定のファイルのみを削除できます。
             - `vs clean`            : 生成物（HTML / 中間PDF 等）を削除（最終PDFは保持）
             - `vs clean --purge`    : 最終PDFも含めてすべて削除
             - `vs clean --cache`    : キャッシュディレクトリのみ削除（生成物は保持）
+            - `vs clean --cover`    : 生成されたカバー画像のみを削除（マスターは保持）
           DESC
         }.freeze
 
@@ -43,6 +44,7 @@ module Vivlio
             long_desc CLEAN_DESC[:long]
             method_option :purge, type: :boolean, aliases: '-P', desc: '生成物（PDF含む）をすべて削除します'
             method_option :cache, type: :boolean, aliases: '-C', desc: 'キャッシュ(.cache/vs 既定)のみを削除します'
+            method_option :cover, type: :boolean, desc: '生成されたカバー画像のみを削除します（マスターは保持）'
             # ================================================================
             # Command: clean（生成物のクリーンアップ）
             # ------------------------------------------------
@@ -52,6 +54,9 @@ module Vivlio
             #   THIRD-PARTY-LICENSES.md, CHANGELOG.md
             # ================================================================
             def clean
+              # --cover オプション: 生成されたカバー画像を削除
+              CleanCommands.clean_cover_files if options[:cover]
+
               if options[:cache]
                 begin
                   dir = begin
@@ -81,7 +86,13 @@ module Vivlio
                 rescue StandardError => e
                   Common.log_warn("clean --cache 実行中にエラー: #{e}")
                 end
-                return unless options[:purge]
+              end
+
+              # --cache または --cover のみが指定された場合は通常のクリーン処理をスキップ
+              # --purge が指定されている、またはオプションなしの場合は通常のクリーン処理を実行
+              if (options[:cache] || options[:cover]) && !options[:purge]
+                # --cache または --cover のみの場合はここで終了
+                return
               end
 
               # BuildHelpers.clean_generated_files! と等価の処理をここに実装
@@ -136,6 +147,70 @@ module Vivlio
               end
               Common.log_success('不要ファイルの削除が完了しました')
             end
+          end
+        end
+
+        # 生成されたカバー画像を削除（マスターは保持）
+        def clean_cover_files
+          config = Common.load_config
+          covers_dir = config.dig('directories', 'covers') || 'covers'
+
+          unless File.directory?(covers_dir)
+            Common.log_info("カバーディレクトリが存在しません: #{covers_dir}")
+            return
+          end
+
+          Common.log_action('生成されたカバー画像を削除中...')
+
+          # book.yml の設定から削除対象ファイルを収集
+          cover_files = []
+          
+          # PDF用カバー（RGB版）
+          if (front = config.dig('output', 'pdf', 'cover', 'front'))
+            cover_files << front
+          end
+          if (back = config.dig('output', 'pdf', 'cover', 'back'))
+            cover_files << back
+          end
+          
+          # 印刷用PDF（CMYK版）
+          if (front = config.dig('output', 'print_pdf', 'cover', 'front'))
+            cover_files << front
+          end
+          if (back = config.dig('output', 'print_pdf', 'cover', 'back'))
+            cover_files << back
+          end
+          
+          # EPUB用カバー
+          if (cover = config.dig('output', 'epub', 'cover'))
+            cover_files << cover
+          end
+          
+          # 重複を削除
+          cover_files.uniq!
+          
+          if cover_files.empty?
+            Common.log_info('book.yml にカバー画像の設定が見つかりませんでした')
+            return
+          end
+
+          deleted_count = 0
+          cover_files.each do |filename|
+            # ファイル名のみを抽出（パスが含まれている場合に対応）
+            basename = File.basename(filename)
+            file_path = File.join(covers_dir, basename)
+            
+            if File.exist?(file_path)
+              FileUtils.rm_f(file_path)
+              Common.log_info("#{file_path} を削除しました")
+              deleted_count += 1
+            end
+          end
+
+          if deleted_count.zero?
+            Common.log_info('削除対象のカバー画像はありませんでした')
+          else
+            Common.log_success("カバー画像を削除しました（#{deleted_count}ファイル）")
           end
         end
       end
