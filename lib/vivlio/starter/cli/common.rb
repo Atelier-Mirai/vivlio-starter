@@ -3,6 +3,7 @@
 require 'fileutils'
 require 'json'
 require 'yaml'
+require 'pathname'
 
 # 書籍ビルドシステムの共通モジュール（Thor CLI用）
 module Vivlio
@@ -25,6 +26,7 @@ module Vivlio
         FONT_SIZE_KEYS = %w[base_font_size column_font_size folio_font_size].freeze
         DEFAULT_CONFIG_TEMPLATE = {
           'directories' => {
+            'config' => 'config',
             'contents' => 'contents',
             'stylesheets' => 'stylesheets',
             'images' => 'images',
@@ -35,7 +37,7 @@ module Vivlio
             'vfm' => 'vfm'
           },
           'files' => {
-            'post_replace' => '_postReplaceList.json'
+            'post_replace' => 'post_replace_list.yml'
           }
         }.freeze
         PAGE_PRESETS_FILE = File.join('config', 'page_presets.yml')
@@ -237,9 +239,103 @@ module Vivlio
           value.to_s.strip
         end
 
+        # 出力ファイル名を生成する
+        # @param target [String] ターゲットタイプ ('pdf', 'print_pdf', 'epub')
+        # @param suffix [String, nil] 圧縮接尾辞（例: 'compressed'）※省略時は自動判定しない
+        # @return [String] 生成されたファイル名
+        def generate_output_filename(target = 'pdf', suffix: nil)
+          config = CONFIG
+          project_name = config.dig('project', 'name') || 'vivlio_starter'
+          project_version = config.dig('project', 'version')
+          include_version = config.dig('output', 'filename', 'include_version') || false
+
+          # ベース名を構築
+          filename = project_name.to_s.dup
+
+          # print_pdf ターゲットの場合は _print 接頭辞を追加
+          filename += '_print' if target == 'print_pdf'
+
+          # バージョンを含める場合は _v{version} を追加
+          if include_version && !blank?(project_version)
+            filename += "_v#{project_version}"
+          end
+
+          # 圧縮接尾辞を追加（pdfターゲットのみ対応、print_pdf/epubは対象外）
+          if suffix && !blank?(suffix) && target == 'pdf'
+            # suffixが既に _ で始まっている場合はそのまま、そうでなければ _ を追加
+            filename += suffix.to_s.start_with?('_') ? suffix : "_#{suffix}"
+          end
+
+          # 拡張子を追加
+          case target
+          when 'pdf', 'print_pdf'
+            filename += '.pdf'
+          when 'epub'
+            filename += '.epub'
+          else
+            filename += '.pdf' # デフォルトはPDF
+          end
+
+          filename
+        end
+
+        # print_pdf ターゲット用のファイル名を生成する
+        # @return [String] print_pdf用のファイル名
+        def generate_print_pdf_filename
+          generate_output_filename('print_pdf')
+        end
+
+        # epub ターゲット用のファイル名を生成する
+        # @return [String] epub用のファイル名
+        def generate_epub_filename
+          generate_output_filename('epub')
+        end
+
+        # 圧縮PDF用のファイル名を生成する（設定から圧縮接尾辞を自動取得）
+        # @param target [String] ターゲットタイプ（'pdf' のみ対応、print_pdf/epubは圧縮対象外）
+        # @return [String] 圧縮PDF用のファイル名
+        def generate_compressed_pdf_filename(target = 'pdf')
+          config = CONFIG
+          compress_suffix = config.dig('output', 'pdf', 'compress', 'suffix') || 'compressed'
+          generate_output_filename(target, suffix: compress_suffix)
+        end
+
         # blank? 判定の簡易版
         def blank?(value)
           value.nil? || value.to_s.strip.empty?
+        end
+
+        def resolve_path_from_root(path)
+          return nil if blank?(path)
+
+          pn = Pathname.new(path)
+          pn = Pathname.new(Dir.pwd).join(pn) unless pn.absolute?
+          pn.cleanpath.to_s
+        rescue StandardError
+          path
+        end
+
+        def relative_path_from_root(path)
+          return path if blank?(path)
+
+          Pathname.new(path).relative_path_from(Pathname.new(Dir.pwd)).to_s
+        rescue StandardError
+          path.to_s
+        end
+
+        def config_dir_path
+          resolve_path_from_root(CONFIG_DIR)
+        end
+
+        def post_replace_file_path
+          return nil if blank?(POST_REPLACE_FILE)
+
+          pn = Pathname.new(POST_REPLACE_FILE)
+          base = Pathname.new(config_dir_path)
+          pn = base.join(pn) unless pn.absolute?
+          pn.cleanpath.to_s
+        rescue StandardError
+          resolve_path_from_root(POST_REPLACE_FILE)
         end
 
         # ================================================================
@@ -386,17 +482,24 @@ module Vivlio
         CONFIG = load_config
 
         # ディレクトリ設定
-        CONTENTS_DIR           = CONFIG['directories']['contents']
-        STYLESHEETS_DIR        = CONFIG['directories']['stylesheets']
-        IMAGES_DIR             = CONFIG['directories']['images']
-        CODES_DIR              = CONFIG['directories']['codes']
-        CHAPTER_TEMPLATES_DIR  = CONFIG['directories']['chapter_templates']
+        CONFIG_DIR            = begin
+                                  dir = CONFIG.dig('directories', 'config')
+                                  dir.nil? || dir.to_s.strip.empty? ? 'config' : dir
+                                end
+        CONTENTS_DIR          = CONFIG['directories']['contents']
+        STYLESHEETS_DIR       = CONFIG['directories']['stylesheets']
+        IMAGES_DIR            = CONFIG['directories']['images']
+        CODES_DIR             = CONFIG['directories']['codes']
+        CHAPTER_TEMPLATES_DIR = CONFIG['directories']['chapter_templates']
 
         # コマンド設定
         VFM_COMMAND       = CONFIG['commands']['vfm']
 
         # ファイル設定
-        POST_REPLACE_FILE = CONFIG['files']['post_replace']
+        POST_REPLACE_FILE = begin
+                              file = CONFIG.dig('files', 'post_replace')
+                              file.nil? || file.to_s.strip.empty? ? 'post_replace_list.yml' : file
+                            end
 
         # ================================================================
         # Cache settings

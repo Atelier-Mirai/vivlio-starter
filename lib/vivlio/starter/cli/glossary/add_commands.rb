@@ -7,10 +7,12 @@ module Vivlio
       module GlossaryAddCommands
         include GlossarySharedHelpers
 
+        GLOSSARY_PATH_DISPLAY = GlossarySharedHelpers::GLOSSARY_DISPLAY_PATH
+
         ADD_DESC = {
-          short: '用語を対話的に追加します（glossary.yml に追記）',
+          short: "用語を対話的に追加します（#{GLOSSARY_PATH_DISPLAY} に追記）",
           long: <<~DESC
-            用語を対話的に追加します。glossary.yml に追記します。
+            用語を対話的に追加します。#{GLOSSARY_PATH_DISPLAY} に追記します。
 
             引数:
               INPUT    1行入力形式（例: "HTML(HyperText Markup Language)" または "HyperText Markup Language(HTML)")

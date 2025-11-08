@@ -7,10 +7,12 @@ module Vivlio
       module GlossaryCanonicalizeCommands
         include GlossarySharedHelpers
 
+        GLOSSARY_PATH_DISPLAY = GlossarySharedHelpers::GLOSSARY_DISPLAY_PATH
+
         CANONICALIZE_CHECK_DESC = {
-          short: 'config/glossary.yml を正準化（dry-run）し、差分の有無を返します',
+          short: "#{GLOSSARY_PATH_DISPLAY} を正準化（dry-run）し、差分の有無を返します",
           long: <<~DESC
-            config/glossary.yml を正準化（dry-run）し、差分の有無を返します。
+            #{GLOSSARY_PATH_DISPLAY} を正準化（dry-run）し、差分の有無を返します。
             実際のファイル書き込みは行いません。
 
             差分が存在する場合は終了ステータス 1 を返します。
@@ -21,9 +23,9 @@ module Vivlio
         }.freeze
 
         CANONICALIZE_DESC = {
-          short: 'config/glossary.yml を正準化します（description のブロック化、空行整形、key 順ソート）',
+          short: "#{GLOSSARY_PATH_DISPLAY} を正準化します（description のブロック化、空行整形、key 順ソート）",
           long: <<~DESC
-            config/glossary.yml を正準化します。
+            #{GLOSSARY_PATH_DISPLAY} を正準化します。
             - description を |- ブロックスカラへ統一
             - 空行の整形
             - key 順へのソート

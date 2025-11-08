@@ -26,7 +26,7 @@ module Vivlio
 
             処理内容:
             - <body> タグにファイルタイプクラスを付与
-            - _post_replace_list.yml に基づく置換処理
+            - book.yml の files.post_replace で指定された YAML に基づく置換処理
             - 章末脚注をページ脚注に変換
             - ソースコードに行番号を追加（Prism.js対応）
 
@@ -46,7 +46,7 @@ module Vivlio
             # - 概要: HTML に各種後処理を適用
             # - 入力: *.html（引数未指定時はカレント直下の *.html）
             # - 出力: 上書き保存
-            # - 補足: 置換ルールは _post_replace_list.yml（YAML配列）
+            # - 補足: 置換ルールは book.yml の files.post_replace（YAML配列）
             # - パイプライン概要:
             #   (1) 対象HTML解決 → (2) <body> に file_type クラス付与 →
             #   (3) YAML置換の適用 → (4) 章末脚注をページ脚注へ変換 → (5) Prism行番号付与
@@ -84,9 +84,10 @@ module Vivlio
 
               # 置換ルールの読み込み（YAMLのみ）
               replace_rules = nil
-              target_yml = '_post_replace_list.yml'
+              target_yml = Common.post_replace_file_path
+              display_yml = target_yml && Common.relative_path_from_root(target_yml)
 
-              if File.exist?(target_yml)
+              if target_yml && File.exist?(target_yml)
                 begin
                   yml_content = File.read(target_yml, encoding: 'utf-8')
                   parsed = YAML.safe_load(yml_content, permitted_classes: [], aliases: true)
@@ -95,12 +96,21 @@ module Vivlio
                   # - 'r' はキャプチャ $1..$n をサポート（gsub ブロック内で展開）
                   replace_rules = parsed.is_a?(Array) ? parsed : nil
                   Common.log_error('エラー: YAMLファイルは置換オブジェクト配列である必要があります') unless replace_rules
-                  Common.log_info("置換ルール: #{File.basename(target_yml)} を使用")
+                  Common.log_info("置換ルール: #{display_yml || target_yml} を使用")
                 rescue StandardError => e
                   Common.log_error("YAMLの読み込みに失敗: #{e.message}")
                 end
               else
-                Common.log_error("置換ルールYAMLが見つかりません: #{target_yml}")
+                missing_label = if display_yml
+                                  display_yml
+                                elsif target_yml
+                                  target_yml
+                                elsif Common::POST_REPLACE_FILE
+                                  Common::POST_REPLACE_FILE
+                                else
+                                  '(未設定)'
+                                end
+                Common.log_error("置換ルールYAMLが見つかりません: #{missing_label}")
               end
 
               # 置換ルールをもとにHTMLファイルの置換処理

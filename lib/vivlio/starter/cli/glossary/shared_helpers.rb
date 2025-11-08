@@ -7,13 +7,21 @@ module Vivlio
     module CLI
       # Glossary 関連コマンドで共通利用するユーティリティ群
       module GlossarySharedHelpers
+        GLOSSARY_RELATIVE_PATH = File.join(Common::CONFIG_DIR, 'glossary.yml')
+        GLOSSARY_DISPLAY_PATH = begin
+                                  absolute = Common.resolve_path_from_root(GLOSSARY_RELATIVE_PATH)
+                                  Common.relative_path_from_root(absolute) || absolute
+                                end
+
         private
 
         # 指定コマンド名で glossary.yml の存在を検証しパスを返す
         def glossary_path_or_exit(command_label)
-          path = File.join('config', 'glossary.yml')
-          unless File.file?(path)
-            warn "[#{command_label}] #{path} が見つかりません"
+          path = Common.resolve_path_from_root(GLOSSARY_RELATIVE_PATH)
+          display_path = Common.relative_path_from_root(path) || GLOSSARY_DISPLAY_PATH
+
+          unless path && File.file?(path)
+            warn "[#{command_label}] #{display_path} が見つかりません"
             exit 1
           end
           path

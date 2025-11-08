@@ -135,6 +135,8 @@ module Vivlio
                 # 単章PDF（例: 11-install.pdf, 81-install.pdf など）も削除
                 # 既に個別に列挙している中間PDFと重複しても問題ない
                 cleanup_patterns << '[0-9][0-9]-*.pdf'
+                # 動的ファイル名のPDFも削除対象に追加
+                add_dynamic_filename_patterns(cleanup_patterns)
               end
 
               cleanup_patterns.each do |pattern|
@@ -148,6 +150,20 @@ module Vivlio
               Common.log_success('不要ファイルの削除が完了しました')
             end
           end
+        end
+
+        # 動的ファイル名のパターンを削除対象に追加する
+        def add_dynamic_filename_patterns(patterns)
+          # project.name から動的ファイル名のパターンを生成
+          config = Common::CONFIG
+          project_name = config.dig('project', 'name')
+          return unless project_name
+
+          # バージョン付き・なしの両方のパターンを追加
+          # 例: vivlio_starter*.pdf, vivlio_starter_v*.pdf
+          patterns << "#{project_name}*.pdf"
+          patterns << "#{project_name}_v*.pdf"
+          patterns << "#{project_name}_print*.pdf"
         end
 
         # 生成されたカバー画像を削除（マスターは保持）

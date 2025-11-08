@@ -12,6 +12,10 @@ module Vivlio
     module CLI
       # Textlint を実行する CLI コマンド群
       module TextLintCommands
+        DEFAULT_CONFIG_RELATIVE = File.join(Common::CONFIG_DIR, '.textlintrc.yml')
+        DEFAULT_CONFIG_PATH = Common.resolve_path_from_root(DEFAULT_CONFIG_RELATIVE)
+        DEFAULT_CONFIG_DISPLAY = Common.relative_path_from_root(DEFAULT_CONFIG_PATH) || DEFAULT_CONFIG_PATH
+
         TEXT_LINT_DESC = {
           short: 'contents/ 以下の Markdown を textlint で検査します',
           long: <<~DESC
@@ -33,14 +37,13 @@ module Vivlio
 
             オプション:
               --config PATH    使用する .textlintrc.yml のパスを切り替えます。
-                               省略時は config/.textlintrc.yml を使用します。
+                               省略時は #{DEFAULT_CONFIG_DISPLAY} を使用します。
               --format NAME    textlint の出力フォーマットを指定します。
                                stylish(既定値)/compact/pretty-error が選択可能。
               --fix            自動修正可能なエラーを修正します。
           DESC
         }.freeze
 
-        DEFAULT_CONFIG_PATH = File.join('config', '.textlintrc.yml')
         DEFAULT_FORMAT = 'stylish'
         TEXTLINT_ENV_VAR = 'VIVLIO_TEXTLINT_BIN'
 
@@ -48,7 +51,7 @@ module Vivlio
           base.class_eval do
             desc 'text:lint [BASENAME ...]', TEXT_LINT_DESC[:short]
             long_desc TEXT_LINT_DESC[:long]
-            option :config, type: :string, desc: '使用する .textlintrc.yml のパス'
+            option :config, type: :string, desc: "使用する .textlintrc.yml のパス（既定: #{DEFAULT_CONFIG_DISPLAY}）"
             option :format, type: :string, desc: 'textlint の出力フォーマット (stylish/compact/pretty-error, 既定: stylish)'
             option :fix, type: :boolean, desc: '自動修正可能なエラーを修正します', default: false
 
@@ -153,7 +156,8 @@ module Vivlio
             path = config_path
             return if File.file?(path)
 
-            raise TextLintError, "textlint 設定ファイルが見つかりません: #{path}"
+            display_path = Common.relative_path_from_root(path) || path
+            raise TextLintError, "textlint 設定ファイルが見つかりません: #{display_path}"
           end
 
           def resolve_targets
@@ -171,8 +175,10 @@ module Vivlio
 
           def config_path
             path = options[:config]&.to_s
-            path = DEFAULT_CONFIG_PATH if path.nil? || path.strip.empty?
-            File.expand_path(path)
+            path = DEFAULT_CONFIG_RELATIVE if path.nil? || path.strip.empty?
+
+            resolved = Common.resolve_path_from_root(path)
+            resolved || File.expand_path(path)
           end
 
           def format_option

@@ -78,7 +78,8 @@ module Vivlio
             add_step('Step 10 (merge all pdfs with outline)', -> { BuildHelpers.merge_all_pdfs_only!(keep) })
             add_step('Step 11 (apply outline to output pdf)', -> { BuildHelpers.add_outline_to_output_pdf!(keep) })
             add_step('Step 12 (compress pdf)', -> { run_step12_compress_pdf })
-            add_step('Step 13 (final clean)', -> { run_step13_final_clean })
+            add_step('Step 13 (rename output pdfs)', -> { BuildHelpers.rename_output_pdfs! })
+            add_step('Step 14 (final clean)', -> { run_step14_final_clean })
           end
 
           # ステップを記録して順次処理できるようにする
@@ -202,11 +203,11 @@ module Vivlio
           end
 
           # 最終的なクリーン処理を担当する
-          def run_step13_final_clean
+          def run_step14_final_clean
             if options[:clean] == false
-              Common.log_action('[Step 13] クリーンアップをスキップします（--no-clean）')
+              Common.log_action('[Step 14] クリーンアップをスキップします（--no-clean）')
             else
-              Common.log_action('[Step 13] 中間生成物をクリーンアップします…')
+              Common.log_action('[Step 14] 中間生成物をクリーンアップします…')
               Vivlio::Starter::ThorCLI.start(['clean'])
             end
           end
@@ -309,6 +310,7 @@ module Vivlio
             if merged && File.exist?('output.pdf')
               Common.log_success('[Merge] output.pdf を生成しました')
               compress_if_needed
+              rename_output_pdfs
               command.send(:open_pdf)
               true
             else
@@ -322,6 +324,11 @@ module Vivlio
             return if command.options[:compress] == false
 
             Vivlio::Starter::ThorCLI.start(['pdf_compress'])
+          end
+
+          # 出力PDFを動的ファイル名にリネームする
+          def rename_output_pdfs
+            BuildHelpers.rename_output_pdfs!
           end
         end
 
@@ -384,7 +391,7 @@ module Vivlio
             method_option :clean,    type: :boolean, default: true,  desc: '中間生成物をクリーンアップ（--no-clean で無効）'
             method_option :dry_run,  type: :boolean, aliases: '-n',  desc: '実行せずにビルド予定のみを表示（試行）'
             method_option :merge,    type: :boolean, aliases: '-m',
-                                     desc: '生成された各PDFを結合して出力（出力名: output.pdf / output_compressed.pdf）'
+                                     desc: '生成された各PDFを結合して出力（出力名: book.yml設定に基づく動的ファイル名）'
             method_option :log,      type: :string,  banner: '[level]', desc: 'ログレベルを指定（error/warn/info/debug）'
             method_option :force,    type: :boolean, default: false, desc: 'タイトル/リーガル/奥付を強制再生成（--no-cache のエイリアス）'
             method_option :'no-cache', type: :boolean, default: false, desc: 'キャッシュを無効化（--force と同義）'
@@ -531,7 +538,11 @@ module Vivlio
                 Common.echo_always '  - 全体PDF: sections.pdf → 章/TOCに分割'
                 Common.echo_always "  - PDF圧縮: #{options[:compress] == false ? 'スキップ' : '実行'}"
                 Common.echo_always "  - クリーン: #{options[:clean] == false ? 'スキップ' : '実行'}"
-                Common.echo_always '  - 結合: output.pdf（圧縮有効時は output_compressed.pdf も生成）' if options[:merge]
+                if options[:merge]
+                  normal_name = Common.generate_output_filename('pdf')
+                  compressed_name = Common.generate_compressed_pdf_filename('pdf')
+                  Common.echo_always "  - 結合: #{normal_name}（圧縮有効時は #{compressed_name} も生成）"
+                end
                 Common.echo_always "\n計画のみを表示しました（dry-run、実処理は行いません）。"
                 return
               end
@@ -718,7 +729,11 @@ module Vivlio
               tokens.each do |t|
                 Common.echo_always "  - 章: #{t} → 生成予定: #{t}.pdf"
               end
-              Common.echo_always '  - 結合: output.pdf（圧縮有効時は output_compressed.pdf も生成）' if options[:merge]
+              if options[:merge]
+                normal_name = Common.generate_output_filename('pdf')
+                compressed_name = Common.generate_compressed_pdf_filename('pdf')
+                Common.echo_always "  - 結合: #{normal_name}（圧縮有効時は #{compressed_name} も生成）"
+              end
               Common.echo_always "\n合計 #{tokens.size} 章（dry-run、実処理は行いません）。"
             end
 

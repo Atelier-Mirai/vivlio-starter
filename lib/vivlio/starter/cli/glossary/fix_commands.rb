@@ -7,8 +7,10 @@ module Vivlio
       module GlossaryFixCommands
         include GlossarySharedHelpers
 
+        GLOSSARY_PATH_DISPLAY = GlossarySharedHelpers::GLOSSARY_DISPLAY_PATH
+
         FIX_DESC = {
-          short: '用語集（config/glossary.yml）に基づいて Markdown を自動修正します',
+          short: "用語集（#{GLOSSARY_PATH_DISPLAY}）に基づいて Markdown を自動修正します",
           long: <<~DESC
             用語集に基づいて Markdown を自動修正します。
 

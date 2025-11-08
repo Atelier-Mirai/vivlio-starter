@@ -7,14 +7,16 @@ module Vivlio
       module GlossaryLintCommands
         include GlossarySharedHelpers
 
+        GLOSSARY_PATH_DISPLAY = GlossarySharedHelpers::GLOSSARY_DISPLAY_PATH
+
         LINT_DESC = {
-          short: '用語集（config/glossary.yml）に基づいて Markdown を検査します',
+          short: "用語集（#{GLOSSARY_PATH_DISPLAY}）に基づいて Markdown を検査します",
           long: <<~DESC
             用語集に基づいて Markdown を検査します。
 
             対象:
               - contents/**/*.md
-              - config/glossary.yml
+              - #{GLOSSARY_PATH_DISPLAY}
 
             例:
               vs glossary:lint

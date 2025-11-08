@@ -19,8 +19,12 @@
 - 00, 01, (blank), 02, (blank), 03, (blank), 11-98(cssにより右頁始まり), (blank), 99 として結合
 - [Medium] book.yml の chapters を、contents/と連動するように。
 - [High] 奥付が偶数ページになるように
+
+
 - [High] 縦に長い表のレイアウト崩れ
+
 - [Medium] A4 以外の紙サイズを指定する（推奨文字サイズの確認）
+
 - [Medium] 出力バリアント PDF（裁ち落とし/ノンブル有無）、Web/EPUB（任意）。
 
 #### 実装済み
@@ -88,9 +92,26 @@
 - [High] プロジェクト生成時に、.cache/vs/ を生成する。
 
 
+ビルドのマニュアルを書く
+ビルド時にcover画像も含むように
+塗り足しやepub対応
+pdf_reader -> mdに
+
+review starter -> vivlio-starter
 
 ## [Unreleased]
 （次回リリース候補の変更はここに追加してください）
+
+### Breaking Changes
+- `book.yml` の PDF プレビュー関連設定を `output.build` から `output.pdf_preview` に移行し、Vivliostyle のコンソール抑制設定を `vivliostyle.quiet` へ統合。旧構成はサポートされません。
+
+### Fixed
+- `vs open` コマンドが `output.pdf_preview` セクションの `close_existing_windows` と `window_bounds` を参照するよう更新し、`book.yml` の設定に従って Preview ウィンドウを制御。
+- `vs build` コマンドが `vivliostyle.quiet` を参照して Vivliostyle CLI の出力抑制を切り替えるよう対応。
+
+### Changed
+- `vs build` の完了時に、`output.pdf` および `output_compressed.pdf` を `book.yml` の設定に基づく動的ファイル名へリネームし、生成物がプロジェクト名・バージョンを反映した名称で出力されるように調整（例: `vivlio_starter_v1.0.0.pdf` / `vivlio_starter_v1.0.0_compressed.pdf`）。
+
 
 ## [0.15.0] - 2025-11-07
 

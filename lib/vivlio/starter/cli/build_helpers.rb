@@ -1297,6 +1297,39 @@ module Vivlio
         end
 
         # ================================================================
+        # Step 13: 出力PDFを最終ファイル名にリネーム
+        # ------------------------------------------------
+        # - output.pdf → 動的生成されたファイル名
+        # - output_compressed.pdf → 圧縮版の動的ファイル名
+        # ================================================================
+        def rename_output_pdfs!
+          rename_main_pdf
+          rename_compressed_pdf if File.exist?('output_compressed.pdf')
+        end
+
+        # output.pdf を動的生成されたファイル名にリネーム
+        def rename_main_pdf
+          return unless File.exist?('output.pdf')
+
+          target_name = Common.generate_output_filename('pdf')
+          return if target_name == 'output.pdf' # 既に同名なら何もしない
+
+          FileUtils.rm_f(target_name)
+          FileUtils.mv('output.pdf', target_name)
+          Common.log_success("出力PDFをリネームしました: output.pdf → #{target_name}")
+        end
+
+        # output_compressed.pdf を動的生成されたファイル名にリネーム
+        def rename_compressed_pdf
+          target_name = Common.generate_compressed_pdf_filename('pdf')
+          return if target_name == 'output_compressed.pdf' # 既に同名なら何もしない
+
+          FileUtils.rm_f(target_name)
+          FileUtils.mv('output_compressed.pdf', target_name)
+          Common.log_success("圧縮PDFをリネームしました: output_compressed.pdf → #{target_name}")
+        end
+
+        # ================================================================
         # Utility: PDF のページ数を取得（pdfinfo が必要）
         # ------------------------------------------------
         # - which pdfinfo で存在確認

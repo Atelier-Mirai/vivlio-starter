@@ -132,7 +132,12 @@ module Vivlio
 
           # quiet モードが有効かどうか返す
           def quiet_mode?
-            @quiet_mode ||= (ENV['VIVLIO_QUIET'] == '1') || Common.truthy?(config['quiet'])
+            @quiet_mode ||= (ENV['VIVLIO_QUIET'] == '1') || Common.truthy?(vivliostyle_config['quiet'])
+          end
+
+          # vivliostyle 設定を返す
+          def vivliostyle_config
+            @vivliostyle_config ||= Common::CONFIG['vivliostyle'] || {}
           end
 
           # 実行するビルドコマンド文字列を組み立てる
@@ -360,7 +365,8 @@ module Vivlio
           def initialize(command, path)
             @command = command
             @explicit_path = path
-            @config = Common::CONFIG['pdf'] || {}
+            @pdf_config = Common::CONFIG['pdf'] || {}
+            @pdf_preview_config = Common::CONFIG.dig('output', 'pdf_preview') || {}
           end
 
           # PDF を開く処理を実行する
@@ -384,7 +390,7 @@ module Vivlio
 
           private
 
-          attr_reader :command, :explicit_path, :config
+          attr_reader :command, :explicit_path, :pdf_config, :pdf_preview_config
 
           # Thor の options を取得する
           def options
@@ -405,18 +411,36 @@ module Vivlio
 
           # 既定の PDF を選択する
           def select_preferred_pdf
-            compressed = config['output_file_compressed'] || 'output_compressed.pdf'
-            normal = config['output_file'] || 'output.pdf'
+            # 動的ファイル名を優先、次に固定ファイル名、最後にconfig設定
+            compressed_dynamic = Common.generate_compressed_pdf_filename('pdf')
+            normal_dynamic = Common.generate_output_filename('pdf')
+            compressed_fixed = 'output_compressed.pdf'
+            normal_fixed = 'output.pdf'
+            compressed_config = pdf_config['output_file_compressed']
+            normal_config = pdf_config['output_file']
 
-            if File.exist?(compressed) && File.exist?(normal)
+            # 存在するファイルを優先度順に探す
+            compressed = find_existing_file([compressed_dynamic, compressed_fixed, compressed_config].compact)
+            normal = find_existing_file([normal_dynamic, normal_fixed, normal_config].compact)
+
+            if compressed && normal
               choose_by_timestamp(compressed, normal)
-            elsif File.exist?(compressed)
+            elsif compressed
               Common.log_info('open: 圧縮版のみ存在するためこちらを開きます')
               compressed
-            else
+            elsif normal
               Common.log_info('open: 通常版を開きます')
               normal
+            else
+              # どちらも見つからない場合はデフォルト
+              Common.log_warn('open: PDFファイルが見つかりません')
+              normal_dynamic
             end
+          end
+
+          # ファイルリストから最初に存在するファイルを返す
+          def find_existing_file(paths)
+            paths.find { |path| File.exist?(path) }
           end
 
           # 圧縮版と通常版の更新日時から優先度を決める
@@ -461,7 +485,7 @@ module Vivlio
 
           # 既存の Preview ウィンドウを閉じる
           def close_existing_windows_if_needed
-            return unless Common.fetch_bool({ 'flag' => config['close_existing_windows'] }, %w[flag], default: true)
+            return unless close_existing_windows?
 
             begin
               system('osascript', '-e', 'tell application "Preview" to close every window')
@@ -477,7 +501,7 @@ module Vivlio
 
           # Preview ウィンドウを設定された位置に移動する
           def position_window
-            bounds = config['window_bounds'] || '{3072, 0, 4096, 2160}'
+            bounds = resolved_window_bounds
             system <<~APPLE_SCRIPT
               osascript -e '
                 tell application "Preview"
@@ -485,6 +509,23 @@ module Vivlio
                   set bounds of front window to #{bounds}
                 end tell'
             APPLE_SCRIPT
+          end
+
+          def close_existing_windows?
+            if pdf_preview_config.key?('close_existing_windows')
+              Common.fetch_bool({ 'flag' => pdf_preview_config['close_existing_windows'] }, %w[flag], default: true)
+            else
+              Common.fetch_bool({ 'flag' => pdf_config['close_existing_windows'] }, %w[flag], default: true)
+            end
+          rescue StandardError
+            true
+          end
+
+          def resolved_window_bounds
+            bounds = pdf_preview_config['window_bounds']
+            bounds = pdf_config['window_bounds'] if bounds.nil? || bounds.to_s.strip.empty?
+            bounds = '{3072, 0, 4096, 2160}' if bounds.to_s.strip.empty?
+            bounds
           end
         end
       end
