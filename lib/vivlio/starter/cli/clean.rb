@@ -45,6 +45,7 @@ module Vivlio
             method_option :purge, type: :boolean, aliases: '-P', desc: '生成物（PDF含む）をすべて削除します'
             method_option :cache, type: :boolean, aliases: '-C', desc: 'キャッシュ(.cache/vs 既定)のみを削除します'
             method_option :cover, type: :boolean, desc: '生成されたカバー画像のみを削除します（マスターは保持）'
+            method_option :all,   type: :boolean, hide: true
             # ================================================================
             # Command: clean（生成物のクリーンアップ）
             # ------------------------------------------------
@@ -54,10 +55,15 @@ module Vivlio
             #   THIRD-PARTY-LICENSES.md, CHANGELOG.md
             # ================================================================
             def clean
-              # --cover オプション: 生成されたカバー画像を削除
-              CleanCommands.clean_cover_files if options[:cover]
+              all_mode = options[:all]
+              cover_requested = options[:cover] || all_mode
+              cache_requested = options[:cache] || all_mode
+              purge_requested = options[:purge] || all_mode
 
-              if options[:cache]
+              # --cover / --all オプション: 生成されたカバー画像を削除
+              CleanCommands.clean_cover_files if cover_requested
+
+              if cache_requested
                 begin
                   dir = begin
                     Common.cache_dir
@@ -90,7 +96,7 @@ module Vivlio
 
               # --cache または --cover のみが指定された場合は通常のクリーン処理をスキップ
               # --purge が指定されている、またはオプションなしの場合は通常のクリーン処理を実行
-              if (options[:cache] || options[:cover]) && !options[:purge]
+              if (cache_requested || cover_requested) && !purge_requested
                 # --cache または --cover のみの場合はここで終了
                 return
               end
@@ -130,7 +136,7 @@ module Vivlio
               ].uniq
 
               # --purge 指定時は最終PDFも削除対象に含める
-              if options[:purge]
+              if purge_requested
                 cleanup_patterns.concat(final_pdfs)
                 # 単章PDF（例: 11-install.pdf, 81-install.pdf など）も削除
                 # 既に個別に列挙している中間PDFと重複しても問題ない

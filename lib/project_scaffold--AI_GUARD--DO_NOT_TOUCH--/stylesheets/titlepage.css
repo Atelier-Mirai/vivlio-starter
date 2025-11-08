@@ -29,25 +29,24 @@
 .titlepage {
     /* layout */
     page: titlepage;
+    display: grid;
+    grid-template-rows: auto auto auto 1fr auto; /* タイトル、副題、著者、空白、出版情報 */
+    align-items: start;
     width: 100%;
+    min-block-size: 100vh;
 
     /* spacing */
-    padding-block: 0 var(--titlepage-padding-block, 80px);
+    padding-block-start: 18%;      /* 上部余白（版面高の18%） */
+    padding-block-end: 8%;         /* 下部余白（版面高の8%） */
+    padding-inline: 5%;            /* 左右余白（版面幅の5%） */
 
     /* typography */
     font-family: 'Hiragino Mincho ProN', '游明朝', serif;
     line-height: 1.5;
     text-align: center;
 
-    /* alignment */
-    
-
     /* visual */
-    color: #333; /* 子要素は継承させる */
-
-    /* container */
-    position: relative;            /* 絶対/固定配置の基準 */
-    min-block-size: 100vh;         /* ページ高に合わせて安定 */
+    color: #333;
 }
 
 /* 本扉の下側余白を詰め、ノンブルを非表示に */
@@ -68,31 +67,31 @@
 }
 
 .book-title {
-    font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', sans-serif;
-    font-size: 33.6pt; /* 2.8rem 相当 */
-    font-weight: bold;
+    /* layout */
+    grid-row: 1; /* Grid の1行目に配置 */
 
-    /* 見出しボックスの中央をページ上端から 65mm に配置 */
-    position: absolute;
-    inset-inline: 0;
-    inset-block-start: calc(65mm - var(--page-block-margin-start));
-    transform: translateY(-50%);
+    /* typography */
+    font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', sans-serif;
+    font-size: clamp(1.8rem, 4vw, 2.8rem); /* レスポンシブ: 1.8rem〜2.8rem */
+    font-weight: bold;
+    line-height: 1.4;
+
+    /* spacing */
+    margin: 0; /* 下の余白はgrid row-gapで管理 */
 }
 
 /* 副題 */
 .subtitle {
-    /* typography */
-    font-size: 16pt;
-    font-style: italic; /* 任意: 副題らしく */
+    /* layout */
+    grid-row: 2; /* Grid の2行目に配置 */
 
-    /* layout: タイトル中心の約18mm下に配置 */
-    position: absolute;
-    inset-inline: 0;
-    inset-block-start: calc(65mm - var(--page-block-margin-start) + 18mm);
-    transform: translateY(-50%);
-    
+    /* typography */
+    font-size: clamp(1rem, 2.5vw, 1.33rem); /* レスポンシブ: 1rem〜1.33rem (16pt相当) */
+    font-style: italic;
+    line-height: 1.5;
+
     /* spacing */
-    margin: 0;
+    margin: 1rem 0 0 0; /* 上に1remの余白 */
 
     /* adornments (configurable) */
     --subtitle-prefix: ""; /* デフォルトは装飾なし */
@@ -125,18 +124,20 @@
 }
 
 .author {
-    font-size: 14.4pt; /* 1.2rem 相当 */
-
-    /* 見出し（.book-title）のボックス中央から下に35mmの位置に配置 */
-    position: absolute;
-    inset-inline: 0;
-    inset-block-start: calc(65mm - var(--page-block-margin-start) + 35mm);
-    margin: 0;
+    /* layout */
+    grid-row: 3; /* Grid の3行目に配置 */
     display: grid;
     grid-auto-flow: column;   /* 横並び */
     justify-content: center;  /* 全体を中央寄せ */
     align-items: center;      /* 全体を中央寄せ */
     column-gap: 0.4em;        /* ラベルと本文の間隔 */
+
+    /* typography */
+    font-size: clamp(0.9rem, 2vw, 1.2rem); /* レスポンシブ: 0.9rem〜1.2rem (14.4pt相当) */
+    line-height: 1.5;
+
+    /* spacing */
+    margin: 1.5rem 0 0 0; /* 上に1.5remの余白 */
 }
 
 .author span {
@@ -144,17 +145,27 @@
 }
 
 .publication-info {
-    /* ページ下端から 40mm 位置に配置 */
-    position: fixed;
-    inset-inline: 0;               /* 左右いっぱい（中央揃えを維持） */
-    bottom: 40mm;
-    font-size: 12pt; /* 1rem 相当 */
+    /* layout */
+    grid-row: 5; /* Grid の5行目（下部）に配置 */
+    align-self: end;
+
+    /* typography */
+    font-size: clamp(0.85rem, 1.8vw, 1rem); /* レスポンシブ: 0.85rem〜1rem (12pt相当) */
+    line-height: 1.6;
+
+    /* spacing */
+    margin: 0;
 }
 
 .series {
-    font-size: 14.4pt; /* 1.2rem 相当 */
+    /* typography */
+    font-size: clamp(1rem, 2vw, 1.2rem); /* レスポンシブ: 1rem〜1.2rem (14.4pt相当) */
+
+    /* spacing */
+    margin: 0;
 }
 
 .release-info {
+    /* spacing */
     margin: 0.5rem 0 0;
 }

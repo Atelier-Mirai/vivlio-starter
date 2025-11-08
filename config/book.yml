@@ -112,6 +112,8 @@ theme:
 page:
   # プリセットを選択（page_presets.yml から）
   # 紙サイズ、余白、文字サイズ、行送りなど版面の物理的構造を一括指定
+  # use: a5_compact
+  # use: b5_airy
   use: a4_standard
   # 他のプリセット例:
   # use: b5_airy      # B5 判 - 行間広め

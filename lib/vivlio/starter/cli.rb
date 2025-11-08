@@ -62,7 +62,11 @@ module Vivlio
 
           puts
           puts 'オプション:'
-          options.each { |name, opt| print_option_line(name, opt) }
+          options.each do |name, opt|
+            next if option_hidden?(opt)
+
+            print_option_line(name, opt)
+          end
         rescue StandardError
           # オプション出力が失敗してもヘルプ本体は表示できているため黙って続行
         end
@@ -104,6 +108,10 @@ module Vivlio
           else
             ''
           end
+        end
+
+        def option_hidden?(opt)
+          opt.respond_to?(:hide) && opt.hide
         end
       end
 

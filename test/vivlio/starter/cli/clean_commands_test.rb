@@ -132,6 +132,28 @@ module Vivlio
           end
         end
 
+        # --all 指定で clean 実行時、開発者用のフルクリーンが行われることを確認
+        def test_clean_with_all_option
+          within_temp_dir do
+            setup_generated_files
+            setup_cover_files
+            setup_config_for_cover
+            cache_dir = Vivlio::Starter::CLI::Common.cache_dir
+            FileUtils.mkdir_p(cache_dir)
+            write_file(File.join(cache_dir, 'cached.pdf'))
+
+            build_clean_command(all: true).clean
+
+            # カバー画像が削除されること
+            assert_cover_files_removed
+            # キャッシュが削除されること
+            refute Dir.exist?(cache_dir), '--all ではキャッシュを削除するはずです'
+            # 通常のクリーンも実行されること
+            assert_clean_directory
+            assert_final_pdfs_removed
+          end
+        end
+
         # book.yml の設定に基づいてカバー画像が削除されることを確認
         def test_clean_cover_respects_config
           within_temp_dir do
@@ -182,7 +204,13 @@ module Vivlio
             end
           end
 
-          command_class.new({ cache: false }.merge(options))
+          defaults = {
+            cache: false,
+            cover: false,
+            purge: false,
+            all: false
+          }
+          command_class.new(defaults.merge(options))
         end
 
         # 一時ディレクトリ配下でテストを実行する
