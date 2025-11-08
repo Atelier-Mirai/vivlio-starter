@@ -180,7 +180,13 @@ module Vivlio
           def append_headings(buffer)
             list_state = ListState.new(buffer)
 
-            targets.each do |target|
+            # 前書き・後書きは SupplementEntryProvider で専用処理されるため除外
+            filtered_targets = targets.reject do |target|
+              basename = File.basename(target)
+              basename == '02-preface.html' || basename == '98-postface.html'
+            end
+
+            filtered_targets.each do |target|
               HeadingExtractor.new(target).headings.each do |heading|
                 list_state.transition_to(heading.level)
                 list_state.open_item(heading.list_markup)
