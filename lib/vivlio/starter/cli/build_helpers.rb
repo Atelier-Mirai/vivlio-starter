@@ -225,83 +225,115 @@ module Vivlio
         end
         module_function :all_integers?
 
+        # contents ディレクトリ内の全 .md ファイルのベース名を取得
+        # 返り値: ソート済みのファイル名配列（例: ["02-preface.md", "11-install.md", ...]）
+        def all_chapter_files
+          Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |f| File.basename(f) }.sort
+        end
+        module_function :all_chapter_files
+
+        # book.yml の chapters 設定を解析し、対象とする章ファイル名のリストを返す
+        # 
+        # 対応形式:
+        #   - nil または未指定 → 全章
+        #   - "all" → 全章
+        #   - "02, 11-13, 91" → 章番号指定（範囲・カンマ区切り）
+        #   - [2, 11, 12, 91] → 章番号指定（配列）
+        #   - ["11-install", "12-tutorial"] → ファイル名指定（配列）
+        #   - 複数行文字列 → ファイル名指定（行ごと）
+        # 
+        # 返り値: ファイル名配列（例: ["02-preface.md", "11-install.md", ...]）
+        #         または nil（設定が空の場合）
         def configured_chapters
           cfg = Common::CONFIG['chapters']
           Common.log_info("[Subset] raw chapters config=#{cfg.inspect}") unless cfg.nil?
           
-          # 重複チェック（全形式共通）
-          duplicates = detect_duplicate_chapter_numbers
-          if duplicates.any?
-            error_msg = "❌ 同一章番号で複数のファイルが存在します。ファイル名を見直してください:\n"
-            duplicates.each do |num, files|
-              error_msg += "  章番号 #{num}: #{files.join(', ')}\n"
-            end
-            Common.log_error(error_msg)
-            raise StandardError, error_msg
-          end
+          # 章番号重複チェック（全形式共通）
+          validate_no_duplicate_chapter_numbers!
 
-          # chapters が未指定または nil の場合、全章を対象
-          if cfg.nil?
-            all_files = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |f| File.basename(f) }.sort
-            Common.log_info("[Subset] chapters=nil → 全章を対象: #{all_files.inspect}")
-            return all_files
-          end
+          # 設定に応じて処理を分岐
+          return all_chapter_files if cfg.nil? || (cfg.is_a?(String) && cfg.strip.downcase == 'all')
+          return process_string_config(cfg) if cfg.is_a?(String)
+          return process_array_config(cfg) if cfg.is_a?(Array)
 
-          if cfg.is_a?(String)
-            str = cfg.to_s.strip
-            # "all" も全章のファイル名リストを返す
-            if str.downcase == 'all'
-              all_files = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |f| File.basename(f) }.sort
-              Common.log_info("[Subset] chapters=all → 全章を対象: #{all_files.inspect}")
-              return all_files
-            end
-
-            # カンマ区切りの番号指定かチェック
-            if str.include?(',') || str.match?(/\A\d+-\d+\z/)
-              # 番号指定（範囲・カンマ区切り）
-              begin
-                numbers = parse_chapter_numbers_from_string(str)
-                Common.log_info("[Subset] parsed chapter numbers=#{numbers.inspect}")
-                return convert_numbers_to_filenames(numbers)
-              rescue ArgumentError => e
-                Common.log_error("❌ chapters 設定エラー: #{e.message}")
-                raise StandardError, e.message
-              end
-            end
-
-            # 複数行の文字列もサポート（行ごとに1ファイル名）
-            items = str.lines.map { |l| l.to_s.strip }.reject(&:empty?)
-            # 正規化: contents/ 接頭や拡張子省略を許容
-            items = items.map do |s|
-              name = s.sub(%r{\A#{Regexp.escape(Common::CONTENTS_DIR)}/}, '')
-              name = "#{name}.md" unless name.end_with?('.md')
-              name
-            end
-            Common.log_info("[Subset] normalized keep(list)=#{items.inspect}") if items.any?
-            return items if items.any?
-
-            return nil
-          elsif cfg.is_a?(Array)
-            # 配列が全て整数なら番号指定、そうでなければファイル名指定
-            if all_integers?(cfg)
-              # 番号指定
-              numbers = cfg.map { |n| n.to_s.strip.to_i }.uniq.sort
-              Common.log_info("[Subset] chapter numbers from array=#{numbers.inspect}")
-              return convert_numbers_to_filenames(numbers)
-            else
-              # ファイル名指定
-              items = cfg.map { |s| s.to_s.strip }.reject(&:empty?)
-              items = items.map do |s|
-                name = s.sub(%r{\A#{Regexp.escape(Common::CONTENTS_DIR)}/}, '')
-                name = "#{name}.md" unless name.end_with?('.md')
-                name
-              end
-              Common.log_info("[Subset] normalized keep(array)=#{items.inspect}") if items.any?
-              return items
-            end
-          end
           nil
         end
+
+        # 章番号の重複を検証し、重複があればエラーを発生させる
+        def validate_no_duplicate_chapter_numbers!
+          duplicates = detect_duplicate_chapter_numbers
+          return unless duplicates.any?
+
+          error_msg = "❌ 同一章番号で複数のファイルが存在します。ファイル名を見直してください:\n"
+          duplicates.each do |num, files|
+            error_msg += "  章番号 #{num}: #{files.join(', ')}\n"
+          end
+          Common.log_error(error_msg)
+          raise StandardError, error_msg
+        end
+        module_function :validate_no_duplicate_chapter_numbers!
+
+        # 文字列形式の chapters 設定を処理
+        # 番号指定（カンマ区切り・範囲）またはファイル名指定（複数行）に対応
+        def process_string_config(str)
+          str = str.to_s.strip
+
+          # 番号指定（カンマ区切りまたは範囲）の場合
+          if str.include?(',') || str.match?(/\A\d+-\d+\z/)
+            return process_number_string(str)
+          end
+
+          # ファイル名指定（複数行）の場合
+          process_filename_list(str.lines)
+        end
+        module_function :process_string_config
+
+        # 番号指定文字列を処理（例: "02, 11-13, 91"）
+        def process_number_string(str)
+          numbers = parse_chapter_numbers_from_string(str)
+          Common.log_info("[Subset] parsed chapter numbers=#{numbers.inspect}")
+          convert_numbers_to_filenames(numbers)
+        rescue ArgumentError => e
+          Common.log_error("❌ chapters 設定エラー: #{e.message}")
+          raise StandardError, e.message
+        end
+        module_function :process_number_string
+
+        # 配列形式の chapters 設定を処理
+        # 全て整数なら番号指定、そうでなければファイル名指定
+        def process_array_config(arr)
+          if all_integers?(arr)
+            # 番号指定の場合
+            numbers = arr.map { |n| n.to_s.strip.to_i }.uniq.sort
+            Common.log_info("[Subset] chapter numbers from array=#{numbers.inspect}")
+            convert_numbers_to_filenames(numbers)
+          else
+            # ファイル名指定の場合
+            process_filename_list(arr)
+          end
+        end
+        module_function :process_array_config
+
+        # ファイル名リストを正規化
+        # contents/ 接頭辞や .md 拡張子の省略を許容
+        def process_filename_list(items)
+          normalized = Array(items)
+                       .map { |s| s.to_s.strip }
+                       .reject(&:empty?)
+                       .map { |s| normalize_chapter_filename(s) }
+          
+          Common.log_info("[Subset] normalized filenames=#{normalized.inspect}") if normalized.any?
+          normalized.any? ? normalized : nil
+        end
+        module_function :process_filename_list
+
+        # 章ファイル名を正規化（contents/ 接頭辞削除、.md 拡張子補完）
+        def normalize_chapter_filename(name)
+          name = name.sub(%r{\A#{Regexp.escape(Common::CONTENTS_DIR)}/}, '')
+          name = "#{name}.md" unless name.end_with?('.md')
+          name
+        end
+        module_function :normalize_chapter_filename
 
         # 章番号配列をファイル名配列に変換
         # 例: [2, 11, 12] → ["02-preface.md", "11-install.md", "12-tutorial.md"]
@@ -1227,13 +1259,19 @@ module Vivlio
                            start_page
                          end
             when '03-toc'
-              # 前書きがビルドされているかは preface_pages で判定
+              # 目次の開始ページは、前書きの有無によって決まる
+              # - 前書きあり: 前書きの終了ページ + 1
+              # - 前書きなし: 3ページ目（表紙1p、奥付2p、目次3p〜）
+              # 
+              # 注意: chapter_ranges['02-preface'] の存在だけでは判定不可
+              #      （chapter_order には常に含まれるため）
+              #      実際に 02-preface.pdf が生成されているかは preface_pages で判定
               if preface_pages.positive?
                 # 前書きがある場合はその終了ページの次から
                 preface_end = chapter_ranges['02-preface']&.[](1) || (3 + preface_pages - 1)
                 start_candidate = preface_end + 1
               else
-                # 前書きがない場合、目次は3ページ目から始まる（表紙1p、legal 1p、目次3p〜）
+                # 前書きがない場合、目次は3ページ目から始まる
                 start_candidate = 3
               end
               start_page = [[start_candidate, from_base].max, total_pages].min
@@ -1303,7 +1341,11 @@ module Vivlio
             range_start = range[0]
             range_end   = range[1]
             headings.each do |heading|
-              # 目次（03-toc）の見出しは検索せず、計算済みのrange_startを使用
+              # 目次（03-toc）の見出しは、PDFテキスト検索をスキップして
+              # 計算済みの range_start（3ページ目）を直接使用する
+              # 理由: テキスト検索では「目次」という文字列が目次ページ内の
+              #       途中の位置で見つかる可能性があり、正確な先頭ページを
+              #       指定できないため
               if bn == '03-toc'
                 page = range_start
               else
@@ -1525,6 +1567,17 @@ module Vivlio
             .sort
         end
 
+        # PDF アウトライン生成対象の章番号リストを取得
+        # 
+        # keep パラメータで指定された章のみをフィルタリングする。
+        # ただし、目次（章番号3）は常に自動生成されるため、
+        # keep に含まれていなくても強制的に追加する。
+        # 
+        # 例: chapters: "11-21" の場合
+        #     - keep から得られる番号: [11, 12, ..., 21]
+        #     - 目次を追加: [3, 11, 12, ..., 21]
+        # 
+        # 返り値: ソート済みの章番号配列（例: [0, 1, 3, 11, 12, ...]）
         def chapter_numbers_for_outline(keep = nil)
           allowed_numbers = [0, 1, 2, 3, 99] + MAIN_RANGE.to_a + APPX_RANGE.to_a + POSTFACE_RANGE.to_a
           basenames = if keep&.any?
@@ -1543,8 +1596,11 @@ module Vivlio
                     .compact
                     .map(&:to_i)
                     .select { |n| allowed_numbers.include?(n) }
-          # 目次（3）は常に自動生成されるため、常に含める
+          
+          # 目次（3）は Step 6 で常に自動生成されるため、
+          # chapters 設定に関わらず、アウトライン対象に強制的に含める
           numbers << 3 if File.exist?('03-toc.html')
+          
           numbers.uniq!
           numbers.sort!
           numbers

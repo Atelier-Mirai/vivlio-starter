@@ -181,6 +181,8 @@ module Vivlio
             list_state = ListState.new(buffer)
 
             # 前書き・後書きは SupplementEntryProvider で専用処理されるため除外
+            # これにより、前書き・後書きが重複して表示される問題を防ぐ
+            # （append_preface/append_postface で専用のエントリとして追加される）
             filtered_targets = targets.reject do |target|
               basename = File.basename(target)
               basename == '02-preface.html' || basename == '98-postface.html'
@@ -260,18 +262,24 @@ module Vivlio
         end
 
         # 前書き／後書きのエントリを生成する
+        # 
+        # 前書き（02-preface）や後書き（98-postface）は、通常の章とは異なる扱いをする。
+        # - 章番号を表示しない（CSS: toc-chapter-no-number）
+        # - ビルド対象に含まれている場合のみ、目次に追加する
+        # - 通常の見出し抽出ロジック（HeadingExtractor）は使用せず、h1 のみを抽出
         class SupplementEntryProvider
           CSS_CLASS = 'toc-chapter-no-number'
 
           def initialize(targets:, base_dir:, file_name:)
-            @targets = targets
+            @targets = targets      # ビルド対象の HTML ファイルリスト
             @base_dir = Pathname.new(base_dir)
-            @file_name = file_name
+            @file_name = file_name  # 対象ファイル名（例: '02-preface.html'）
           end
 
           # 指定された補助 HTML から TOC 項目を生成する
+          # 返り値: TOC エントリの HTML 文字列、または nil（対象外の場合）
           def call
-            # targets に含まれていない場合は追加しない
+            # targets に含まれていない場合は追加しない（chapters 設定で除外されている場合）
             return unless included_in_targets?
             return unless File.exist?(html_path)
 
