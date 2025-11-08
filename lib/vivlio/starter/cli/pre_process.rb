@@ -1326,37 +1326,10 @@ module Vivlio
                 updated = true
               end
               
-              # マーカー（h3/h4）を設定
-              cfg = Common::CONFIG
-              markers = (cfg && cfg['theme'] && cfg['theme']['markers']).is_a?(Hash) ? cfg['theme']['markers'] : {}
-              mark_h3 = markers['h3'].to_s
-              mark_h4 = markers['h4'].to_s
-              
-              mark_h3 = '♣' if mark_h3.strip.empty?
-              mark_h4 = '♦' if mark_h4.strip.empty?
-              
-              set_marker = lambda do |css_text, var_name, value|
-                esc = value.gsub('\\', '\\\\').gsub('"', '\\"')
-                if css_text.match(/#{Regexp.escape(var_name)}:\s*[^;]+;/)
-                  css_text.sub(/(#{Regexp.escape(var_name)}:\s*)[^;]+(;)/, "\\1\"#{esc}\"\\2")
-                elsif css_text.match(/:root\s*\{/)
-                  css_text.sub(/:root\s*\{/, ":root {\n  #{var_name}: \"#{esc}\";")
-                else
-                  ":root {\n  #{var_name}: \"#{esc}\";\n}\n\n" + css_text
-                end
-              end
-              
-              before_markers = appendix_css.dup
-              appendix_css = set_marker.call(appendix_css, '--h3-marker', mark_h3)
-              appendix_css = set_marker.call(appendix_css, '--h4-marker', mark_h4)
-              updated = true if appendix_css != before_markers
               
               if updated
                 File.write(appendix_css_path, appendix_css, encoding: 'utf-8')
-                logs = []
-                logs << "appendix_color=#{appendix_color}" if appendix_color
-                logs << "h3='#{mark_h3}', h4='#{mark_h4}'"
-                Common.log_success("appendix.css を更新: #{logs.join(', ')}")
+                Common.log_success("appendix.css を更新: appendix_color=#{appendix_color}")
               end
             end
           rescue StandardError => e
@@ -1426,47 +1399,40 @@ module Vivlio
                 Common.log_success("chapter.css にヘッダーimportを追加: #{desired}")
               end
 
-              # 章見出しマーカー（h3/h4 の ::before）を設定
-              # - keys (後方互換なし):
-              #   - theme.markers.h3
-              #   - theme.markers.h4
+              # 章・付録共通マーカー（h3/h4）を chapter-common.css で設定
               begin
-                cfg = Common::CONFIG
-                markers = (cfg && cfg['theme'] && cfg['theme']['markers']).is_a?(Hash) ? cfg['theme']['markers'] : {}
-                mark_h3 = markers['h3'].to_s
-                mark_h4 = markers['h4'].to_s
+                chapter_common_css_path = File.join(Common::STYLESHEETS_DIR, 'chapter-common.css')
+                if File.exist?(chapter_common_css_path)
+                  cfg = Common::CONFIG
+                  markers = (cfg && cfg['theme'] && cfg['theme']['markers']).is_a?(Hash) ? cfg['theme']['markers'] : {}
+                  mark_h3 = markers['h3'].to_s
+                  mark_h4 = markers['h4'].to_s
 
-                mark_h3 = '♣' if mark_h3.strip.empty?
-                mark_h4 = '◆' if mark_h4.strip.empty?
+                  mark_h3 = '♣' if mark_h3.strip.empty?
+                  mark_h4 = '♦' if mark_h4.strip.empty?
 
-                css = File.read(chapter_css_path, encoding: 'utf-8')
+                  css = File.read(chapter_common_css_path, encoding: 'utf-8')
+                  before_css = css.dup
 
-                set_marker = lambda do |css_text, var_name, value|
-                  esc = value.gsub('\\', '\\').gsub('"', '\\"')
-                  if css_text.match(/#{Regexp.escape(var_name)}:\s*[^;]+;/)
-                    css_text.sub(/(#{Regexp.escape(var_name)}:\s*)[^;]+(;)/, "\\1\"#{esc}\"\\2")
-                  elsif css_text.match(/:root\s*\{/) # :root ブロックに追加
-                    css_text.sub(/:root\s*\{/, ":root {\n  #{var_name}: \"#{esc}\";")
+                  # 単純な正規表現置換でマーカーを更新
+                  esc_h3 = mark_h3.gsub('\\', '\\\\').gsub('"', '\\"')
+                  esc_h4 = mark_h4.gsub('\\', '\\\\').gsub('"', '\\"')
+                  
+                  css = css.sub(/(--h3-marker:\s*)"."(\s*;)/, "\\1\"#{esc_h3}\"\\2")
+                  css = css.sub(/(--h4-marker:\s*)"."(\s*;)/, "\\1\"#{esc_h4}\"\\2")
+
+                  if css == before_css
+                    Common.log_info('theme.markers による変更はありません（既存定義を維持）')
                   else
-                    " :root {\n  #{var_name}: \"#{esc}\";\n }\n\n" + css_text
+                    File.write(chapter_common_css_path, css, encoding: 'utf-8')
+                    logs = []
+                    logs << "h3='#{mark_h3}'"
+                    logs << "h4='#{mark_h4}'"
+                    Common.log_success("chapter-common.css にマーカーを反映: #{logs.join(', ')}")
                   end
                 end
-
-                before_css = css.dup
-                css = set_marker.call(css, '--h3-marker', mark_h3)
-                css = set_marker.call(css, '--h4-marker', mark_h4)
-
-                if css == before_css
-                  Common.log_info('theme.markers による変更はありません（既存定義を維持）')
-                else
-                  File.write(chapter_css_path, css, encoding: 'utf-8')
-                  logs = []
-                  logs << "h3='#{mark_h3}'"
-                  logs << "h4='#{mark_h4}'"
-                  Common.log_success("chapter.css にマーカーを反映: #{logs.join(', ')}")
-                end
-              rescue StandardError => _e
-                # 続行（マーカー設定は任意）
+              rescue StandardError => e
+                Common.log_warn("chapter-common.css のマーカー更新に失敗: #{e.message}")
               end
             else
               Common.log_info("chapter.css が見つかりません: #{chapter_css_path}")

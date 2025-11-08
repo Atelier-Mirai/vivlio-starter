@@ -24,8 +24,4 @@
   /* simple_header.css の変数を付録色にマッピング */
   --heading-accent: var(--appendix-accent-color);
   --color-mark: var(--appendix-accent-color);
-  
-  /* マーカー（book.ymlのtheme.markersで自動更新） */
-  --h3-marker: "♠";
-  --h4-marker: "♠";
 }
