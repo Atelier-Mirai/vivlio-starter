@@ -265,7 +265,8 @@ module Vivlio
 
           # 指定された補助 HTML から TOC 項目を生成する
           def call
-            return if included_in_targets?
+            # targets に含まれていない場合は追加しない
+            return unless included_in_targets?
             return unless File.exist?(html_path)
 
             build_entry(html_path)

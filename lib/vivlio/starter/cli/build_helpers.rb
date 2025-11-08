@@ -144,14 +144,130 @@ module Vivlio
         # - 'all' の場合はフルビルド（nil を返して従来どおり）
         # - 配列（['11-foo.md', '12-bar.md', ...]）指定時は、その章のみを残す
         # ================================================================
+        # ================================================================
+        # 章番号指定の解析ヘルパー
+        # ================================================================
+
+        # 範囲指定文字列（"02-12"）を章番号配列に展開
+        # 例: "02-12" → [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        def expand_chapter_range(range_str)
+          return [] unless range_str.is_a?(String)
+
+          match = range_str.strip.match(/\A(\d+)-(\d+)\z/)
+          return [] unless match
+
+          start_num = match[1].to_i
+          end_num = match[2].to_i
+          return [] if start_num > end_num
+
+          (start_num..end_num).to_a
+        rescue StandardError
+          []
+        end
+        module_function :expand_chapter_range
+
+        # カンマ区切り文字列から章番号配列を抽出（範囲展開含む）
+        # 例: "02, 11-13, 91" → [2, 11, 12, 13, 91]
+        def parse_chapter_numbers_from_string(str)
+          return [] unless str.is_a?(String)
+
+          parts = str.split(',').map(&:strip).reject(&:empty?)
+          numbers = []
+
+          parts.each do |part|
+            if part.match?(/\A\d+-\d+\z/)
+              # 範囲指定
+              numbers.concat(expand_chapter_range(part))
+            elsif part.match?(/\A\d+\z/)
+              # 単一番号
+              numbers << part.to_i
+            else
+              # 数字でない → ファイル名指定の可能性
+              raise ArgumentError, "混在形式は非対応です: '#{part}' は番号指定として無効です。"
+            end
+          end
+
+          numbers.uniq.sort
+        rescue ArgumentError => e
+          raise e
+        rescue StandardError => e
+          Common.log_error("章番号の解析に失敗しました: #{e.message}")
+          []
+        end
+        module_function :parse_chapter_numbers_from_string
+
+        # 章番号の重複をチェック（同一番号で複数ファイルが存在する場合）
+        # 返り値: { 章番号 => [ファイル名配列] } の Hash（重複がある番号のみ）
+        def detect_duplicate_chapter_numbers
+          files = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md'))
+          number_to_files = Hash.new { |h, k| h[k] = [] }
+
+          files.each do |file|
+            basename = File.basename(file, '.md')
+            num = Common.get_chapter_number(basename)
+            next unless num
+
+            number_to_files[num.to_i] << basename
+          end
+
+          # 重複があるもののみ返す
+          number_to_files.select { |_num, files_list| files_list.size > 1 }
+        end
+        module_function :detect_duplicate_chapter_numbers
+
+        # 配列が全て整数（または整数文字列）かチェック
+        def all_integers?(arr)
+          return false unless arr.is_a?(Array)
+
+          arr.all? do |item|
+            item.to_s.strip.match?(/\A\d+\z/)
+          end
+        end
+        module_function :all_integers?
+
         def configured_chapters
           cfg = Common::CONFIG['chapters']
           Common.log_info("[Subset] raw chapters config=#{cfg.inspect}") unless cfg.nil?
-          return nil if cfg.nil?
+          
+          # 重複チェック（全形式共通）
+          duplicates = detect_duplicate_chapter_numbers
+          if duplicates.any?
+            error_msg = "❌ 同一章番号で複数のファイルが存在します。ファイル名を見直してください:\n"
+            duplicates.each do |num, files|
+              error_msg += "  章番号 #{num}: #{files.join(', ')}\n"
+            end
+            Common.log_error(error_msg)
+            raise StandardError, error_msg
+          end
+
+          # chapters が未指定または nil の場合、全章を対象
+          if cfg.nil?
+            all_files = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |f| File.basename(f) }.sort
+            Common.log_info("[Subset] chapters=nil → 全章を対象: #{all_files.inspect}")
+            return all_files
+          end
 
           if cfg.is_a?(String)
-            str = cfg.to_s
-            return nil if str.strip.downcase == 'all'
+            str = cfg.to_s.strip
+            # "all" も全章のファイル名リストを返す
+            if str.downcase == 'all'
+              all_files = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |f| File.basename(f) }.sort
+              Common.log_info("[Subset] chapters=all → 全章を対象: #{all_files.inspect}")
+              return all_files
+            end
+
+            # カンマ区切りの番号指定かチェック
+            if str.include?(',') || str.match?(/\A\d+-\d+\z/)
+              # 番号指定（範囲・カンマ区切り）
+              begin
+                numbers = parse_chapter_numbers_from_string(str)
+                Common.log_info("[Subset] parsed chapter numbers=#{numbers.inspect}")
+                return convert_numbers_to_filenames(numbers)
+              rescue ArgumentError => e
+                Common.log_error("❌ chapters 設定エラー: #{e.message}")
+                raise StandardError, e.message
+              end
+            end
 
             # 複数行の文字列もサポート（行ごとに1ファイル名）
             items = str.lines.map { |l| l.to_s.strip }.reject(&:empty?)
@@ -166,17 +282,49 @@ module Vivlio
 
             return nil
           elsif cfg.is_a?(Array)
-            items = cfg.map { |s| s.to_s.strip }.reject(&:empty?)
-            items = items.map do |s|
-              name = s.sub(%r{\A#{Regexp.escape(Common::CONTENTS_DIR)}/}, '')
-              name = "#{name}.md" unless name.end_with?('.md')
-              name
+            # 配列が全て整数なら番号指定、そうでなければファイル名指定
+            if all_integers?(cfg)
+              # 番号指定
+              numbers = cfg.map { |n| n.to_s.strip.to_i }.uniq.sort
+              Common.log_info("[Subset] chapter numbers from array=#{numbers.inspect}")
+              return convert_numbers_to_filenames(numbers)
+            else
+              # ファイル名指定
+              items = cfg.map { |s| s.to_s.strip }.reject(&:empty?)
+              items = items.map do |s|
+                name = s.sub(%r{\A#{Regexp.escape(Common::CONTENTS_DIR)}/}, '')
+                name = "#{name}.md" unless name.end_with?('.md')
+                name
+              end
+              Common.log_info("[Subset] normalized keep(array)=#{items.inspect}") if items.any?
+              return items
             end
-            Common.log_info("[Subset] normalized keep(array)=#{items.inspect}") if items.any?
-            return items
           end
           nil
         end
+
+        # 章番号配列をファイル名配列に変換
+        # 例: [2, 11, 12] → ["02-preface.md", "11-install.md", "12-tutorial.md"]
+        # 存在しないファイルはスキップ
+        def convert_numbers_to_filenames(numbers)
+          return [] unless numbers.is_a?(Array)
+
+          files = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md'))
+          number_to_file = {}
+
+          files.each do |file|
+            basename = File.basename(file, '.md')
+            num = Common.get_chapter_number(basename)
+            next unless num
+
+            number_to_file[num.to_i] = "#{basename}.md"
+          end
+
+          result = numbers.map { |n| number_to_file[n] }.compact
+          Common.log_info("[Subset] converted to filenames=#{result.inspect}")
+          result
+        end
+        module_function :convert_numbers_to_filenames
 
         # ------------------------------------------------
         # Shared helper: ベース名配列を章番号レンジ＋keepでフィルタ
@@ -352,28 +500,28 @@ module Vivlio
         # - 実行: pre_process -> convert -> post_process
         # ================================================================
         def build_sections_html!(keep = nil)
-          Common.log_action('[Step 5] セクション（本文/付録/後書き）をビルドします…（仮想連番: 1,2,3…）')
+          Common.log_action('[Step 5] セクション（前書き/本文/付録/後書き）をビルドします…（仮想連番: 1,2,3…）')
           keep_numbers_main = BuildHelpers.chapter_numbers_for_book(keep)
-          # 付録の keep 抽出（91..97）
+          # 前書き、付録、後書きの keep 抽出
+          keep_numbers_preface = nil
           keep_numbers_appx = nil
           keep_numbers_post = nil
           if keep&.any?
             normalized_keep = Array(keep)
                               .map { |s| File.basename(s.to_s, '.md') }
-            keep_numbers_appx = normalized_keep
-                                .map { |bn| Common.get_chapter_number(bn) }
-                                .compact.map(&:to_i)
-                                .select { |n| APPX_RANGE.include?(n) }
-            keep_numbers_post = normalized_keep
-                                .map { |bn| Common.get_chapter_number(bn) }
-                                .compact.map(&:to_i)
-                                .select { |n| POSTFACE_RANGE.include?(n) }
+            chapter_numbers = normalized_keep
+                              .map { |bn| Common.get_chapter_number(bn) }
+                              .compact.map(&:to_i)
+            keep_numbers_preface = chapter_numbers.select { |n| PREFACE_RANGE.include?(n) }
+            keep_numbers_appx = chapter_numbers.select { |n| APPX_RANGE.include?(n) }
+            keep_numbers_post = chapter_numbers.select { |n| POSTFACE_RANGE.include?(n) }
           end
           all_md_basenames = Dir[File.join(Common::CONTENTS_DIR, '*.md')].map { |p| File.basename(p, '.md') }
+          preface_targets  = BuildHelpers.filter_basenames_by_range(all_md_basenames, PREFACE_RANGE, keep_numbers_preface)
           main_targets     = BuildHelpers.filter_basenames_by_range(all_md_basenames, MAIN_RANGE, keep_numbers_main)
           appendix_targets = BuildHelpers.filter_basenames_by_range(all_md_basenames, APPX_RANGE, keep_numbers_appx)
           postface_targets = BuildHelpers.filter_basenames_by_range(all_md_basenames, POSTFACE_RANGE, keep_numbers_post)
-          chapter_targets  = (main_targets + appendix_targets + postface_targets).uniq.sort
+          chapter_targets  = (preface_targets + main_targets + appendix_targets + postface_targets).uniq.sort
 
           if chapter_targets.empty?
             Common.log_warn('[Step 5] 章が見つかりません。Step 5 をスキップします。')
@@ -420,24 +568,26 @@ module Vivlio
         # ================================================================
         def generate_toc_and_pdf!(base_dir = '.', keep = nil)
           keep_numbers_main = BuildHelpers.chapter_numbers_for_book(keep)
-          # 付録側の keep（91..97）
+          # 前書き、付録、後書きの keep を抽出
+          keep_numbers_preface = nil
           keep_numbers_appx = nil
+          keep_numbers_post = nil
           if keep&.any?
             normalized_keep = Array(keep)
                               .map { |s| File.basename(s.to_s, '.md') }
-            keep_numbers_appx = normalized_keep
-                                .map { |bn| Common.get_chapter_number(bn) }
-                                .compact.map(&:to_i)
-                                .select { |n| APPX_RANGE.include?(n) }
-            normalized_keep
-              .map { |bn| Common.get_chapter_number(bn) }
-              .compact.map(&:to_i)
-              .select { |n| POSTFACE_RANGE.include?(n) }
+            chapter_numbers = normalized_keep
+                              .map { |bn| Common.get_chapter_number(bn) }
+                              .compact.map(&:to_i)
+            keep_numbers_preface = chapter_numbers.select { |n| PREFACE_RANGE.include?(n) }
+            keep_numbers_appx = chapter_numbers.select { |n| APPX_RANGE.include?(n) }
+            keep_numbers_post = chapter_numbers.select { |n| POSTFACE_RANGE.include?(n) }
           end
-          # base_dir 内の HTML から本文(11..89) + 付録(91..97) を抽出
+          # base_dir 内の HTML から前書き(02) + 本文(11..89) + 付録(91..97) + 後書き(98) を抽出
+          chapter_htmls_preface = BuildHelpers.htmls_for_range(base_dir, PREFACE_RANGE, keep_numbers_preface)
           chapter_htmls_main = BuildHelpers.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers_main)
           chapter_htmls_appx = BuildHelpers.htmls_for_range(base_dir, APPX_RANGE, keep_numbers_appx)
-          targets_for_toc = (chapter_htmls_main + chapter_htmls_appx).uniq.sort
+          chapter_htmls_post = BuildHelpers.htmls_for_range(base_dir, POSTFACE_RANGE, keep_numbers_post)
+          targets_for_toc = (chapter_htmls_preface + chapter_htmls_main + chapter_htmls_appx + chapter_htmls_post).uniq.sort
 
           if targets_for_toc.empty?
             Common.log_warn('[Step 6] 対象HTMLが見つかりません。Step 6 をスキップします。')
@@ -469,20 +619,20 @@ module Vivlio
         def build_overall_pdf_and_split_from_dir!(base_dir = '.', keep = nil)
           toc_html = [File.join(base_dir, '03-toc.html')].select { |f| File.exist?(f) }
           keep_numbers_main = BuildHelpers.chapter_numbers_for_book(keep)
+          keep_numbers_preface = nil
           keep_numbers_appx = nil
           keep_numbers_post = nil
           if keep&.any?
             normalized_keep = Array(keep)
                               .map { |s| File.basename(s.to_s, '.md') }
-            keep_numbers_appx = normalized_keep
-                                .map { |bn| Common.get_chapter_number(bn) }
-                                .compact.map(&:to_i)
-                                .select { |n| APPX_RANGE.include?(n) }
-            keep_numbers_post = normalized_keep
-                                .map { |bn| Common.get_chapter_number(bn) }
-                                .compact.map(&:to_i)
-                                .select { |n| POSTFACE_RANGE.include?(n) }
+            chapter_numbers = normalized_keep
+                              .map { |bn| Common.get_chapter_number(bn) }
+                              .compact.map(&:to_i)
+            keep_numbers_preface = chapter_numbers.select { |n| PREFACE_RANGE.include?(n) }
+            keep_numbers_appx = chapter_numbers.select { |n| APPX_RANGE.include?(n) }
+            keep_numbers_post = chapter_numbers.select { |n| POSTFACE_RANGE.include?(n) }
           end
+          # 前書き（02）はStep 8で02-03-front.pdfとして処理されるため、ここでは除外
           chapter_htmls_for_pdf = [
             BuildHelpers.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers_main),
             BuildHelpers.htmls_for_range(base_dir, APPX_RANGE, keep_numbers_appx),
@@ -601,9 +751,9 @@ module Vivlio
         # ================================================================
         def build_frontmatter_pdf!(keep = nil)
           Common.log_action('[Step 8] 02-03-front.pdf を構成し、ローマ小 i〜 を付与します…')
-          # keep 方針: 02/03 は keep に従う（nil=フルビルド時は両方含める）
-          include_preface = keep.nil? || Array(keep).map(&:to_s).any? { |s| File.basename(s) == '02-preface.md' }
-          include_toc     = keep.nil? || Array(keep).map(&:to_s).any? { |s| File.basename(s) == '03-toc.md' }
+          # keep 方針: 02 は keep に従う。03（目次）は Step 6 で自動生成されるため、ファイルの存在で判定
+          include_preface = keep && Array(keep).map(&:to_s).any? { |s| File.basename(s) == '02-preface.md' }
+          include_toc     = File.exist?('03-toc.pdf')
 
           # 02-preface.pdf をキャッシュから復元（必要なら再生成）
           if include_preface && File.exist?(File.join(Common::CONTENTS_DIR, '02-preface.md'))
@@ -1077,8 +1227,15 @@ module Vivlio
                            start_page
                          end
             when '03-toc'
-              preface_end = chapter_ranges['02-preface']&.[](1) || ((start_page || 3) + preface_pages - 1)
-              start_candidate = preface_end ? preface_end + 1 : 4
+              # 前書きがビルドされているかは preface_pages で判定
+              if preface_pages.positive?
+                # 前書きがある場合はその終了ページの次から
+                preface_end = chapter_ranges['02-preface']&.[](1) || (3 + preface_pages - 1)
+                start_candidate = preface_end + 1
+              else
+                # 前書きがない場合、目次は3ページ目から始まる（表紙1p、legal 1p、目次3p〜）
+                start_candidate = 3
+              end
               start_page = [[start_candidate, from_base].max, total_pages].min
               end_page = if toc_pages.positive?
                            [start_page + toc_pages - 1, total_pages].min
@@ -1146,18 +1303,23 @@ module Vivlio
             range_start = range[0]
             range_end   = range[1]
             headings.each do |heading|
-              search_terms = Array(heading[:search_terms]) + [heading[:text], heading[:appendix_label]]
-              search_terms = search_terms.compact.map { |s| s.to_s.strip }.reject(&:empty?).uniq
-              page = search_markers.call(search_terms, range_start, range_end)
-              page = search_markers.call(search_terms, range_start, total_pages) if page.nil?
-              if page.nil?
-                fallback_items << {
-                  chapter: bn,
-                  text: heading[:text],
-                  target_page: range_start,
-                  search_terms: search_terms
-                }
+              # 目次（03-toc）の見出しは検索せず、計算済みのrange_startを使用
+              if bn == '03-toc'
                 page = range_start
+              else
+                search_terms = Array(heading[:search_terms]) + [heading[:text], heading[:appendix_label]]
+                search_terms = search_terms.compact.map { |s| s.to_s.strip }.reject(&:empty?).uniq
+                page = search_markers.call(search_terms, range_start, range_end)
+                page = search_markers.call(search_terms, range_start, total_pages) if page.nil?
+                if page.nil?
+                  fallback_items << {
+                    chapter: bn,
+                    text: heading[:text],
+                    target_page: range_start,
+                    search_terms: search_terms
+                  }
+                  page = range_start
+                end
               end
               display_text = heading[:text]
               if bn == '99-colophon' && heading[:level].to_i == 1
@@ -1381,6 +1543,8 @@ module Vivlio
                     .compact
                     .map(&:to_i)
                     .select { |n| allowed_numbers.include?(n) }
+          # 目次（3）は常に自動生成されるため、常に含める
+          numbers << 3 if File.exist?('03-toc.html')
           numbers.uniq!
           numbers.sort!
           numbers
