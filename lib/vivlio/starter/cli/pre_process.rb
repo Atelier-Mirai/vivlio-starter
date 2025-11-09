@@ -1170,6 +1170,28 @@ module Vivlio
             'image'
           end
 
+          normalize_accent_value = lambda do |raw_value, fallback_value:, label:|
+            raw_string = raw_value.to_s.strip
+            return fallback_value if raw_string.empty?
+
+            normalized = raw_string.downcase
+
+            if normalized.match?(/^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/)
+              raw_string.start_with?('#') ? raw_string : "##{normalized.sub(/^#/, '')}"
+            elsif normalized.match?(/^(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/)
+              "##{normalized}"
+            elsif normalized.match?(/^0x(?:[0-9a-f]{6}|[0-9a-f]{8})$/)
+              "##{normalized.sub(/^0x/, '')}"
+            elsif normalized.start_with?('var(')
+              raw_string
+            elsif allowed.include?(normalized)
+              "var(--accent-#{normalized})"
+            else
+              Common.log_warn("設定警告: #{label} に指定された色 '#{raw_value}' は認識できません。theme.color を使用します。")
+              fallback_value
+            end
+          end
+
           # theme.color の救済は行わない（不正値は直前でエラー終了）
 
           # 扉画像の選択（frontispiece のみを使用）
@@ -1344,28 +1366,28 @@ module Vivlio
               updated = false
               
               # 前書き専用色を更新（theme.preface_color が指定されている場合）
-              preface_color = theme_cfg['preface_color']
-              if preface_color && !preface_color.to_s.strip.empty?
-                # preface_color を色名または HEX として解釈
-                preface_accent_value = if preface_color.start_with?('#')
-                                         preface_color
-                                       else
-                                         "var(--accent-#{preface_color})"
-                                       end
-                
-                # --preface-accent-color を更新
-                preface_css = preface_css.sub(/(--preface-accent-color:\s*)[^;]+(\s*;)/) do
-                  pre = ::Regexp.last_match(1)
-                  post = ::Regexp.last_match(2)
-                  "#{pre}#{preface_accent_value}#{post}"
-                end
+              preface_color_raw = theme_cfg['preface_color']
+              preface_accent_value = normalize_accent_value.call(
+                preface_color_raw,
+                fallback_value: theme_accent_value,
+                label: 'theme.preface_color'
+              )
+
+              replaced_css = preface_css.sub(/(--preface-accent-color:\s*)[^;]+(\s*;)/) do
+                pre = ::Regexp.last_match(1)
+                post = ::Regexp.last_match(2)
+                "#{pre}#{preface_accent_value}#{post}"
+              end
+
+              if replaced_css != preface_css
+                preface_css = replaced_css
                 updated = true
+                log_preface_color = preface_color_raw.to_s.strip
+                log_preface_color = log_preface_color.empty? ? 'theme.color(default)' : log_preface_color
+                Common.log_success("preface.css を更新: preface_color=#{log_preface_color} => #{preface_accent_value}")
               end
-              
-              if updated
-                File.write(preface_css_path, preface_css, encoding: 'utf-8')
-                Common.log_success("preface.css を更新: preface_color=#{preface_color}")
-              end
+
+              File.write(preface_css_path, preface_css, encoding: 'utf-8') if updated
             end
           rescue StandardError => e
             Common.log_warn("preface.css の更新に失敗: #{e.message}")

@@ -27,8 +27,3 @@ body.chapter {
     content: counter(page);
   }
 }
-
-/* 最初のページでページ番号を 1 表示にする */
-@page chapter:first {
-  counter-reset: page 0;
-}
