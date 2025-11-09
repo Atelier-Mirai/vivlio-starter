@@ -1,36 +1,14 @@
 /* =========================================================================
-   A4用ページ設定（新ファイル名: page-settings.css）
+   ページ設定
 ========================================================================== */
 
 @charset "utf-8";
 
-@import url("fonts/google-fonts.css"); /* FontManager が自動生成する（存在しない場合は空ファイル） */
-
-/*
-  プロパティ並び順ガイドライン
-  --------------------------------------------------
-  各ルール内のプロパティは下記の順で記述する。
-  1) layout        : display / position / float / break-* / z-index / inset-*
-  2) box-size      : width / height / inline-size / block-size / box-sizing
-  3) spacing       : margin-* → padding-*（論理プロパティ優先）
-  4) typography    : font-* / line-height / text-* / letter-spacing
-  5) alignment     : text-align / align-* / justify-*
-  6) visual        : color / background / border / outline / shadow / opacity
-  7) counters/meta : counter-* / string-set / content などのメタ情報
-
-  備考:
-  - コメントでセクション見出し（layout等）を付ける。
-  - 値は論理プロパティ（margin-inline 等）を優先する。
-  - 既存プロパティの意味が変わらない範囲でのみ並び替える。
-*/
-
-.zen-kurenaido-regular {
-  font-family: "Zen Kurenaido", sans-serif;
-  font-weight: 400;
-  font-style: normal;
-}
+/* FontManager が自動生成する（存在しない場合は空ファイル） */
+@import url("fonts/google-fonts.css"); 
 
 /* バンドル済みフォント定義 */
+/* 本文（明朝体）: Noto Serif JP Variable Font */
 @font-face {
   font-family: "Noto Serif JP";
   font-style: normal;
@@ -39,6 +17,7 @@
   font-display: swap;
 }
 
+/* 見出し・UI（ゴシック体）: Noto Sans JP Variable Font */
 @font-face {
   font-family: "Noto Sans JP";
   font-style: normal;
@@ -47,6 +26,7 @@
   font-display: swap;
 }
 
+/* コラム用（丸ゴシック）: Zen Maru Gothic Regular */
 @font-face {
   font-family: "Zen Maru Gothic";
   font-style: normal;
@@ -55,6 +35,7 @@
   font-display: swap;
 }
 
+/* コラム用（丸ゴシック太字）: Zen Maru Gothic Bold */
 @font-face {
   font-family: "Zen Maru Gothic";
   font-style: normal;
@@ -63,6 +44,7 @@
   font-display: swap;
 }
 
+/* コード用（等幅）: HackGen35 Regular */
 @font-face {
   font-family: "hackgen35";
   font-style: normal;
@@ -71,6 +53,7 @@
   font-display: swap;
 }
 
+/* コード用（等幅太字）: HackGen35 Bold */
 @font-face {
   font-family: "hackgen35";
   font-style: normal;
@@ -79,14 +62,14 @@
   font-display: swap;
 }
 
-/* キーボードフォント */
+/* キーボードアイコン用フォント */
 @font-face {
   font-family: keyfont;
   src:         url("fonts/Keyboard_font/Keyboard-JP-Regular.otf");
 }
 
 :root {
-  /* 基本体裁（B5 縦） */
+  /* 基本体裁（A4 縦） */
   --page-width:  210mm; /* 幅 */
   --page-height: 297mm; /* 高さ */
   /* 用紙スケール（A4=1.0 を基準に B5/A5 などで前処理から上書き） */
@@ -94,16 +77,16 @@
 
   /* タイポグラフィ設定 */
   --base-font-size:   12pt;    /* 基準文字サイズ */
-  --base-line-height: 19.2pt;   /* 行送り（10.5pt × 1.7 = 17.85pt） */
-  --letter-spacing:   0em;       /* 字間調整 */
+  --base-line-height: 19.2pt;  /* 行送り（10.5pt × 1.7 = 17.85pt） */
+  --letter-spacing:   0em;     /* 字間調整 */
 
   /* 版面の余白（見開き対応） */
-  --page-margin-top:    30mm;    /* 天（上余白） */
-  --page-margin-bottom: 30mm;    /* 地（下余白） */
-  --page-margin-inner:  28mm;    /* ノド（綴じ側、左右ページで自動的に位置が変わる） */
-  --page-margin-outer:  22mm;    /* 小口（外側、左右ページで自動的に位置が変わる） */
+  --page-margin-top:    30mm;  /* 天（上余白） */
+  --page-margin-bottom: 30mm;  /* 地（下余白） */
+  --page-margin-inner:  28mm;  /* ノド（綴じ側、左右ページで自動的に位置が変わる） */
+  --page-margin-outer:  22mm;  /* 小口（外側、左右ページで自動的に位置が変わる） */
 
-  --column-font-size:   10.5Q; /* コラムのフォントサイズ */
+  --column-font-size:   10.5Q;  /* コラムのフォントサイズ */
 
   /* フォント指定 */
   --main-text-font: "Noto Serif JP";     /* メイン本文フォント */
@@ -113,20 +96,24 @@
 
   /* ノンブル（ページ番号）用 */
   --folio-font:      "Noto Sans JP";
-  --folio-font-size: 13Q; /* ≒ 9.2pt（1Q≒0.709pt, 12.7Q≒9pt → 実用上13Q） */
+  --folio-font-size: 13Q;
   --folio-color:     #666;
 
   /* ノンブル配置切替用（中央 or 左右）
      既定: 中央に表示。左右は無効。
      左右に切り替えるには、以下の3変数を入れ替えてください。
        例) 左右表示にする:
-           --folio-center-content: counter(page);
-           --folio-left-content:   none;
-           --folio-right-content:  none;
+           --folio-center-content: none;
+           --folio-left-content:   counter(page);
+           --folio-right-content:  counter(page);
   */
-  --folio-center-content: counter(page);
+  /* --folio-center-content: counter(page);
   --folio-left-content:   none;
-  --folio-right-content:  none;
+  --folio-right-content:  none; */
+
+  --folio-center-content: none;
+  --folio-left-content:   counter(page);
+  --folio-right-content:  counter(page);
 
   /* 参考: 版面サイズ（余白から自動計算される）
      版面幅  = page-width - margin-inner - margin-outer

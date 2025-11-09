@@ -30,7 +30,13 @@ body.preface { page: front; }
 
 @page front {
   /* ノンブルをローマ数字（小文字）で表示 */
-    @bottom-center { content: counter(page, lower-roman); }
+  @bottom-center { 
+    content: counter(page, lower-roman); 
+    font-family: var(--folio-font);
+    font-size:   var(--folio-font-size);
+    font-weight: 300;
+    color:       var(--folio-color);
+  }
   
   /* 章題を表示しない */
   @top-left   { content: none; }

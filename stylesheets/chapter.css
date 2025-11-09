@@ -16,14 +16,27 @@
    Chapter (章)
    ===================================================================== */
 
-/* 章ドキュメントに named page を割り当て（任意。単章HTMLでも可） */
-body.chapter {
-  page: chapter;
-}
-
 /* ノンブル（ページ番号）を常に下中央に表示 */
 @page {
   @bottom-center {
+    /* content: counter(page); */
+  }
+}
+/* 
+@page {
+  @bottom-center {
+    content: none;
+  }
+}
+
+@page :left {
+  @bottom-left {
     content: counter(page);
   }
 }
+
+@page :right {
+  @bottom-right {
+    content: counter(page);
+  }
+} */

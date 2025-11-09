@@ -168,7 +168,7 @@ typography:
     font: Noto Sans JP
     font_size: 13Q          # 版面外の要素なので独立設定
     color: '#666'
-    placement: center       # center / sides
+    placement: sides       # center / sides
 
 # ========================================
 # リーガル（免責・商標など）
