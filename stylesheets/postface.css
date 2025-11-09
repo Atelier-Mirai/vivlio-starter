@@ -6,17 +6,6 @@
 @import url("components.css");
 @import url("preface.css");
 
-
 /* =====================================================================
    Postface (後書き)
    ===================================================================== */
-
-/* 章ドキュメントに named page を割り当て（任意。単章HTMLでも可） */
-body.postface {
-    page: postface;
-}
-
-@page postface:first {
-    /* 最初のページでページ番号を 71 表示にする */
-    counter-reset: page 76;
-}

@@ -6,7 +6,11 @@
 @import url("layout-utils.css");
 @import url("components.css");
 
-/* 前書き用スタイル */
+/* =====================================================================
+   Preface (前書き)
+   ===================================================================== */
+
+/* カスタム変数 */
 :root {
   --preface-font: var(--main-text-font);
   --preface-accent-color: var(--accent-purple); /* pre_process.rb により book.yml の theme.preface_color へ同期 */

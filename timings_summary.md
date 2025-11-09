@@ -1,4 +1,53 @@
 
+## Build Step Timings (2025-11-09T12:48:13+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.03s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  5 (build sections html)            0.78s
+  - Step  6 (generate toc and pdf)           3.83s
+            (vivliostyle build)             (3.54s)
+  - Step  7 (build overall pdf and split)    8.52s
+            (vivliostyle build)             (8.19s)
+  - Step  8 (build 02-03-front.pdf)          1.10s
+  - Step  9 (build front pages and tail)     0.97s
+  - Step 10 (merge all pdfs with outline)    1.13s
+  - Step 11 (apply outline to output pdf)    2.39s
+  - Step 12 (compress pdf)                   0.00s
+  - Step 13 (rename output pdfs)             0.05s
+  - Step 14 (final clean)                    0.03s
+  = TOTAL                                   18.84s
+```
+
+## Build Step Timings (2025-11-09T12:45:54+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.03s
+  - Step  1 (optimize images)                0.01s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  5 (build sections html)            0.76s
+  - Step  6 (generate toc and pdf)           3.88s
+            (vivliostyle build)             (3.60s)
+  - Step  7 (build overall pdf and split)    8.62s
+            (vivliostyle build)             (8.28s)
+  - Step  8 (build 02-03-front.pdf)          6.00s
+            (vivliostyle build)             (3.77s)
+  - Step  9 (build front pages and tail)     7.87s
+            (vivliostyle build)             (3.55s)
+            (vivliostyle build)             (3.49s)
+  - Step 10 (merge all pdfs with outline)    1.18s
+  - Step 11 (apply outline to output pdf)    2.33s
+  - Step 12 (compress pdf)                   0.00s
+  - Step 13 (rename output pdfs)             0.05s
+  - Step 14 (final clean)                    0.03s
+  = TOTAL                                   30.75s
+```
+
 ## Build Step Timings (2025-11-09T12:43:33+09:00)
 
 ````
