@@ -1398,12 +1398,12 @@ module Vivlio
             chapter_css_path = File.join(Common::STYLESHEETS_DIR, 'chapter.css')
             if File.exist?(chapter_css_path)
               ccss = File.read(chapter_css_path, encoding: 'utf-8')
-              desired = theme_style == 'image' ? 'image_header.css' : 'simple_header.css'
+              desired = theme_style == 'image' ? 'image-header.css' : 'simple-header.css'
 
-              if ccss.include?('@import url("simple_header.css");') || ccss.include?('@import url("image_header.css");')
+              if ccss.include?('@import url("simple-header.css");') || ccss.include?('@import url("image-header.css");')
                 updated = ccss
-                          .sub(/@import\s+url\("simple_header\.css"\);/, "@import url(\"#{desired}\");")
-                          .sub(/@import\s+url\("image_header\.css"\);/, "@import url(\"#{desired}\");")
+                          .sub(/@import\s+url\("simple-header\.css"\);/, "@import url(\"#{desired}\");")
+                          .sub(/@import\s+url\("image-header\.css"\);/, "@import url(\"#{desired}\");")
 
                 if updated == ccss
                   Common.log_info("chapter.css のヘッダーimportは既に最新です: #{desired}")

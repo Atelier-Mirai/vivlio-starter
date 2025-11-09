@@ -448,7 +448,7 @@ theme:
 - 章扉の背景画像が無効化（`--frontispiece-image: none`）
 - 節見出しの装飾画像が無効化（`--section-bg-image: none`）
 - テーマカラーを使った美しいグラデーションとボーダー
-- `simple_header.css` の読み込み
+- `simple-header.css` の読み込み
 
 この設定だけで、章扉と節見出しがテーマカラーを基調としたシンプルなデザインになります。frontispiece や ornament の設定は無視されます（設定が残っていても問題ありません）。
 
