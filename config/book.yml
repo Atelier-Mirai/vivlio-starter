@@ -67,12 +67,12 @@ theme:
   # ----------------------------
   # 装飾スタイル
   # ----------------------------
-  style: image     # image: 画像あり / simple: 画像なし
+  style: simple     # image: 画像あり / simple: 画像なし
 
   # ----------------------------
   # テーマカラー
   # ----------------------------
-  color: yellow     # yellow / amber / orange / peach
+  color: peach     # yellow / amber / orange / peach
                     # coral / red / magenta / plum
                     # purple / indigo / navy / blue
                     # cyan / teal / mint / green / lime から選択
@@ -80,18 +80,18 @@ theme:
 
   # 付録専用カラー（オプション）
   # 指定しない場合は上記の color と同じ色が使用されます
-  appendix_color: red  # 付録だけ別の色にしたい場合に指定
+  appendix_color: mint  # 付録だけ別の色にしたい場合に指定
 
   # 前書き専用カラー（オプション）
   # 指定しない場合は上記の color と同じ色が使用されます
-  preface_color: purple  # 前書きだけ別の色にしたい場合に指定
+  preface_color: green  # 前書きだけ別の色にしたい場合に指定
 
   # ----------------------------
   # 章扉の背景画像
   # ----------------------------
   frontispiece: 
     # image: bundled/himawari_portrait   # 主ファイル名 stylesheets/images/sunflower.webp を指す
-    image: himawari   # 主ファイル名 stylesheets/images/sunflower.webp を指す
+    image: asagao   # 主ファイル名 stylesheets/images/sunflower.webp を指す
     padding: 10mm
     heading_width: 120mm
     lead_width: 120mm
@@ -101,14 +101,14 @@ theme:
   # ----------------------------
   # ornament: bundled/himawari_landscape   # stylesheets/images/sunflower_landscape.webp を指す
   # ornament: sunflower_landscape   # stylesheets/images/sunflower_landscape.webp を指す
-  ornament: himawari   # stylesheets/images/sunflower_landscape.webp を指す
+  ornament: asagao2   # stylesheets/images/sunflower_landscape.webp を指す
 
   # ----------------------------
   # 見出し記号
   # ----------------------------
   markers: 
-    h3: ♣ # 目見出しの記号。h3見出しの前に表示される。一文字推奨。
-    h4: ♦ # 号見出しの記号。h4見出しの前に表示される。一文字推奨。
+    h3: ❤️ # 目見出しの記号。h3見出しの前に表示される。一文字推奨。
+    h4: ♠️ # 号見出しの記号。h4見出しの前に表示される。一文字推奨。
 
 # ========================================
 # ページ設定（版面レイアウト）

@@ -19,8 +19,8 @@
 :root {
   /* 付録のアクセント色 */
   /* book.ymlのtheme.appendix_color(未設定の場合はtheme.color)で自動更新 */
-  --appendix-accent-color: var(--accent-red); 
-  
+  --appendix-accent-color: var(--accent-mint);
+
   /* simple-header.css の変数を付録色にマッピング */
   --heading-accent: var(--appendix-accent-color);
   --color-mark: var(--appendix-accent-color);
