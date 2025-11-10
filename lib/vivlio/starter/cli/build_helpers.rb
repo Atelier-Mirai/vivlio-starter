@@ -794,8 +794,19 @@ module Vivlio
             preface_cache = cache_on && cache_dir ? File.join(cache_dir, '02-preface.pdf') : nil
             BuildHelpers.ensure_chapter_html_up_to_date!('02-preface', extra_sources: File.join('config', 'book.yml'))
 
-            needs_preface = !File.exist?('02-preface.pdf')
-            needs_preface &&= !cache_restore_file(cache_on, preface_cache, '02-preface.pdf', 'Step 8')
+            # book.yml や preface.md が更新されたかチェック
+            preface_sources = [
+              File.join(Common::CONTENTS_DIR, '02-preface.md'),
+              File.join('config', 'book.yml')
+            ]
+            preface_outdated = false
+            if File.exist?('02-preface.pdf')
+              pdf_mtime = File.mtime('02-preface.pdf')
+              preface_outdated = preface_sources.any? { |s| File.exist?(s) && File.mtime(s) > pdf_mtime }
+            end
+
+            needs_preface = !File.exist?('02-preface.pdf') || preface_outdated
+            needs_preface &&= !cache_restore_file(cache_on, preface_cache, '02-preface.pdf', 'Step 8') unless preface_outdated
 
             if needs_preface
               %w[pre_process convert post_process entries].each do |t|

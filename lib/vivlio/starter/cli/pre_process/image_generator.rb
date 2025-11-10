@@ -13,15 +13,15 @@ module Vivlio
       module PreProcessCommands
         # 画像生成処理を担当するモジュール（waifu2x連携、ImageMagick操作）
         module ImageGenerator
-          DEFAULT_WAIFU2X_BIN = 'waifu2x-ncnn-vulkan'
+          DEFAULT_WAIFU2X_BIN = File.expand_path('~/.local/bin/waifu2x/waifu2x-ncnn-vulkan')
           FRONTISPIECE_WAIFU2X_NOISE = 1
           FRONTISPIECE_SCALE = 2
-          FRONTISPIECE_TARGET_WIDTH = 1240
+          FRONTISPIECE_TARGET_WIDTH = 2880  # frontispiece推奨横幅
           FRONTISPIECE_WEBP_QUALITY = 90
 
           FRONTISPIECE_VARIANTS = {
-            portrait: 1.414,
-            landscape: 0.707
+            portrait: 1.414,      # frontispiece用 √2:1（A4縦）
+            landscape: (1.0 / 2.39)  # ornament用 2.39:1（シネマスコープ）
           }.freeze
 
           module_function
@@ -53,7 +53,7 @@ module Vivlio
             base_dir = File.dirname(source_path)
             basename = File.basename(source_path, '.*')
 
-            Common.log_action("frontispiece/ornament 生成: #{image_spec} → #{basename}_portrait.webp / #{basename}_landscape.webp")
+            Common.log_action("frontispiece/ornament 生成: #{image_spec} → #{basename}_portrait/landscape.webp")
 
             waifu2x_available = waifu2x && !waifu2x.strip.empty? && command_available?(waifu2x)
             unless waifu2x_available

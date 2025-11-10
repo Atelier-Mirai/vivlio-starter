@@ -43,20 +43,14 @@ module Vivlio
                               door_padding_value:, ornament_path:, heading_width_value: nil, 
                               lead_width_value: nil)
             theme_css_path = File.join(Common::STYLESHEETS_DIR, 'theme.css')
-            template_path = File.expand_path('../../../project_scaffold/stylesheets/theme.css', __dir__)
 
-            # テンプレートから復元が必要かチェック
-            css = if File.exist?(theme_css_path)
-                    File.read(theme_css_path, encoding: 'utf-8')
-                  else
-                    ''
-                  end
-
-            required_tokens = ['--theme-accent', '--section-bg-image', '--frontispiece-image']
-            if css.strip.empty? || required_tokens.any? { |token| !css.include?(token) }
-              Common.log_info("theme.css をテンプレートから再展開します: #{theme_css_path}")
-              css = File.read(template_path, encoding: 'utf-8')
+            # 既存のtheme.cssを読み込む
+            unless File.exist?(theme_css_path)
+              Common.log_error("theme.css が見つかりません: #{theme_css_path}")
+              return
             end
+
+            css = File.read(theme_css_path, encoding: 'utf-8')
 
             # --theme-accent を更新
             css = css.sub(/(--theme-accent:\s*)[^;]+(\s*;)/) do
@@ -145,21 +139,33 @@ module Vivlio
             preface_css_path = File.join(Common::STYLESHEETS_DIR, 'preface.css')
             return unless File.exist?(preface_css_path)
 
+            # preface_colorが未指定の場合はスキップ
+            if preface_color.to_s.strip.empty?
+              return
+            end
+
             preface_accent_value = normalize_color_value(preface_color, fallback: theme_accent_value)
 
             changed = safe_css_update(preface_css_path) do |css|
-              css.sub(/(--preface-accent-color:\s*)[^;]+(\s*;)/) do
+              result = css.sub(/(--preface-accent-color:\s*)[^;]+(\s*;)/) do
                 "#{::Regexp.last_match(1)}#{preface_accent_value}#{::Regexp.last_match(2)}"
               end
+              # デバッグ: 変換結果を確認
+              if result.strip.empty?
+                Common.log_warn("CSS変換結果が空です。元のCSS長: #{css.length}, 正規表現マッチ: #{css =~ /(--preface-accent-color:\s*)[^;]+(\s*;)/}")
+              end
+              result
             end
 
             if changed
               log_color = preface_color.to_s.strip
-              log_color = 'theme.color(default)' if log_color.empty?
               Common.log_success("preface.css を更新: preface_color=#{log_color} => #{preface_accent_value}")
+            else
+              Common.log_info("preface.css: 更新不要または変更なし (既に #{preface_accent_value})")
             end
           rescue StandardError => e
             Common.log_warn("preface.css の更新に失敗: #{e.message}")
+            Common.log_warn("  スタックトレース: #{e.backtrace.first(3).join("\n  ")}")
           end
 
           # chapter.css のヘッダ import を theme.style に連動して切替

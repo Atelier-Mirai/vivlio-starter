@@ -56,6 +56,7 @@ module Vivlio
             slug = normalize_theme_image_slug(slug_value)
             base_slug, requested_variant, ext = split_slug_and_variant(slug)
 
+            # ornament用に landscape バリアント（2.39:1）を使用
             if requested_variant == :landscape
               if (direct = find_existing_theme_image(slug, location_order: [:user, :bundled]))
                 return theme_relative_path(direct)
@@ -69,6 +70,7 @@ module Vivlio
             if (direct = find_existing_theme_image(base_query, location_order: [:user, :bundled]))
               if allow_generation
                 require_relative 'image_generator'
+                # ornamentはlandscapeバリアントを生成
                 if (generated = ImageGenerator.ensure_variant_generated(direct, :landscape))
                   return theme_relative_path(generated)
                 end

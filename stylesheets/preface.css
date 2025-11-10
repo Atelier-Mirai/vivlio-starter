@@ -13,7 +13,7 @@
 /* カスタム変数 */
 :root {
   --preface-font: var(--main-text-font);
-  --preface-accent-color: var(--accent-green); /* pre_process.rb により book.yml の theme.preface_color へ同期 */
+  --preface-accent-color: var(--accent-indigo); /* pre_process.rb により book.yml の theme.preface_color へ同期 */
   --preface-accent-glow-strong: color-mix(in oklab, var(--preface-accent-color) 22%, transparent);
   --preface-accent-glow-weak: color-mix(in oklab, var(--preface-accent-color) 8%, transparent);
   --text-color: #333;

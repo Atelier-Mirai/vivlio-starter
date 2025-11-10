@@ -39,8 +39,8 @@ module Vivlio
             heading_width_value = normalize_css_length(frontispiece_cfg['heading_width'], label: 'theme.frontispiece.heading_width')
             lead_width_value = normalize_css_length(frontispiece_cfg['lead_width'], label: 'theme.frontispiece.lead_width')
             
-            # ornament 設定を解析
-            ornament_path = ThemeImageResolver.resolve_ornament_path(theme_cfg['ornament'])
+            # ornament 設定を解析（cinema バリアント生成を許可）
+            ornament_path = ThemeImageResolver.resolve_ornament_path(theme_cfg['ornament'], allow_generation: true)
             
             # 各CSSファイルを更新
             update_all_css_files(

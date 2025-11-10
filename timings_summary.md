@@ -1,4 +1,335 @@
 
+## Build Step Timings (2025-11-11T01:54:21+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  5 (build sections html)            1.00s
+  - Step  6 (generate toc and pdf)           3.90s
+            (vivliostyle build)             (3.62s)
+  - Step  7 (build overall pdf and split)    9.54s
+            (vivliostyle build)             (9.21s)
+  - Step  8 (build 02-03-front.pdf)          1.25s
+  - Step  9 (build front pages and tail)     0.00s
+  - Step 10 (merge all pdfs with outline)    1.19s
+  - Step 11 (apply outline to output pdf)    2.84s
+  - Step 12 (compress pdf)                   0.00s
+  - Step 13 (rename output pdfs)             0.04s
+  - Step 14 (final clean)                    0.00s
+  = TOTAL                                   19.79s
+```
+
+## Build Step Timings (2025-11-11T01:53:37+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  5 (build sections html)            0.98s
+  - Step  6 (generate toc and pdf)           4.29s
+            (vivliostyle build)             (3.98s)
+  - Step  7 (build overall pdf and split)    9.46s
+            (vivliostyle build)             (9.11s)
+  - Step  8 (build 02-03-front.pdf)          5.42s
+            (vivliostyle build)             (3.70s)
+  - Step  9 (build front pages and tail)     7.97s
+            (vivliostyle build)             (3.37s)
+            (vivliostyle build)             (3.74s)
+  - Step 10 (merge all pdfs with outline)    1.24s
+  - Step 11 (apply outline to output pdf)    2.71s
+  - Step 12 (compress pdf)                   0.00s
+  - Step 13 (rename output pdfs)             0.04s
+  - Step 14 (final clean)                    0.00s
+  = TOTAL                                   32.12s
+```
+
+## Build Step Timings (2025-11-11T01:52:52+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  5 (build sections html)            1.66s
+  - Step  6 (generate toc and pdf)           6.77s
+            (vivliostyle build)             (6.49s)
+  - Step  7 (build overall pdf and split)   10.37s
+            (vivliostyle build)            (10.05s)
+  - Step  8 (build 02-03-front.pdf)          5.80s
+            (vivliostyle build)             (4.17s)
+  - Step  9 (build front pages and tail)     0.00s
+  - Step 10 (merge all pdfs with outline)    1.19s
+  - Step 11 (apply outline to output pdf)    2.74s
+  - Step 12 (compress pdf)                   0.00s
+  - Step 13 (rename output pdfs)             0.04s
+  - Step 14 (final clean)                    0.00s
+  = TOTAL                                   28.60s
+```
+
+## Build Step Timings (2025-11-11T01:19:31+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  5 (build sections html)            0.81s
+  - Step  6 (generate toc and pdf)           4.38s
+            (vivliostyle build)             (4.10s)
+  - Step  7 (build overall pdf and split)    9.47s
+            (vivliostyle build)             (9.18s)
+  - Step  8 (build 02-03-front.pdf)          1.06s
+  - Step  9 (build front pages and tail)     0.00s
+  - Step 10 (merge all pdfs with outline)    1.11s
+  - Step 11 (apply outline to output pdf)    2.39s
+  - Step 12 (compress pdf)                   0.00s
+  - Step 13 (rename output pdfs)             0.05s
+  - Step 14 (final clean)                    0.00s
+  = TOTAL                                   19.29s
+```
+
+## Build Step Timings (2025-11-11T01:17:11+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  5 (build sections html)            0.98s
+  - Step  6 (generate toc and pdf)           4.36s
+            (vivliostyle build)             (4.09s)
+  - Step  7 (build overall pdf and split)    9.37s
+            (vivliostyle build)             (9.03s)
+  - Step  8 (build 02-03-front.pdf)          1.09s
+  - Step  9 (build front pages and tail)     7.96s
+            (vivliostyle build)             (3.43s)
+            (vivliostyle build)             (3.57s)
+  - Step 10 (merge all pdfs with outline)    1.17s
+  - Step 11 (apply outline to output pdf)    2.36s
+  - Step 12 (compress pdf)                   0.00s
+  - Step 13 (rename output pdfs)             0.05s
+  - Step 14 (final clean)                    0.00s
+  = TOTAL                                   27.36s
+```
+
+## Build Step Timings (2025-11-11T01:16:14+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  5 (build sections html)            0.86s
+  - Step  6 (generate toc and pdf)           4.38s
+            (vivliostyle build)             (4.10s)
+  - Step  7 (build overall pdf and split)    9.36s
+            (vivliostyle build)             (9.00s)
+  - Step  8 (build 02-03-front.pdf)          6.45s
+            (vivliostyle build)             (4.26s)
+  - Step  9 (build front pages and tail)     8.82s
+            (vivliostyle build)             (4.37s)
+            (vivliostyle build)             (3.64s)
+  - Step 10 (merge all pdfs with outline)    1.19s
+  - Step 11 (apply outline to output pdf)    2.57s
+  - Step 12 (compress pdf)                   0.00s
+  - Step 13 (rename output pdfs)             0.05s
+  - Step 14 (final clean)                    0.00s
+  = TOTAL                                   33.70s
+```
+
+## Build Step Timings (2025-11-11T01:14:58+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)          11.49s
+  - Step  5 (build sections html)            0.98s
+  - Step  6 (generate toc and pdf)           5.67s
+            (vivliostyle build)             (5.38s)
+  - Step  7 (build overall pdf and split)   10.48s
+            (vivliostyle build)            (10.17s)
+  - Step  8 (build 02-03-front.pdf)          1.13s
+  - Step  9 (build front pages and tail)     0.92s
+  - Step 10 (merge all pdfs with outline)    1.14s
+  - Step 11 (apply outline to output pdf)    2.41s
+  - Step 12 (compress pdf)                   0.00s
+  - Step 13 (rename output pdfs)             0.05s
+  - Step 14 (final clean)                    0.00s
+  = TOTAL                                   34.29s
+```
+
+## Build Step Timings (2025-11-11T01:09:48+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  5 (build sections html)            0.95s
+  - Step  6 (generate toc and pdf)           5.87s
+            (vivliostyle build)             (5.61s)
+  - Step  7 (build overall pdf and split)    9.85s
+            (vivliostyle build)             (9.56s)
+  - Step  8 (build 02-03-front.pdf)          1.74s
+  - Step  9 (build front pages and tail)     0.91s
+  - Step 10 (merge all pdfs with outline)    1.11s
+  - Step 11 (apply outline to output pdf)    2.42s
+  - Step 12 (compress pdf)                   0.00s
+  - Step 13 (rename output pdfs)             0.05s
+  - Step 14 (final clean)                    0.02s
+  = TOTAL                                   22.93s
+```
+
+## Build Step Timings (2025-11-11T01:01:22+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           6.02s
+  - Step  5 (build sections html)            1.14s
+  - Step  6 (generate toc and pdf)           6.38s
+            (vivliostyle build)             (6.09s)
+  - Step  7 (build overall pdf and split)   10.16s
+            (vivliostyle build)            (9.84s)
+  - Step  8 (build 02-03-front.pdf)          1.17s
+  - Step  9 (build front pages and tail)     0.99s
+  - Step 10 (merge all pdfs with outline)    1.18s
+  - Step 11 (apply outline to output pdf)    2.56s
+  - Step 12 (compress pdf)                   0.00s
+  - Step 13 (rename output pdfs)             0.04s
+  - Step 14 (final clean)                    0.02s
+  = TOTAL                                   29.68s
+```
+
+## Build Step Timings (2025-11-11T00:40:51+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.01s
+  - Step  2 (prepare theme images)           3.03s
+  - Step  5 (build sections html)            0.77s
+  - Step  6 (generate toc and pdf)           4.35s
+            (vivliostyle build)             (4.07s)
+  - Step  7 (build overall pdf and split)    9.46s
+            (vivliostyle build)             (9.17s)
+  - Step  8 (build 02-03-front.pdf)          1.11s
+  - Step  9 (build front pages and tail)     0.98s
+  - Step 10 (merge all pdfs with outline)    1.19s
+  - Step 11 (apply outline to output pdf)    2.42s
+  - Step 12 (compress pdf)                   0.00s
+  - Step 13 (rename output pdfs)             0.05s
+  - Step 14 (final clean)                    0.02s
+  = TOTAL                                   23.41s
+```
+
+## Build Step Timings (2025-11-11T00:37:46+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  5 (build sections html)            0.88s
+  - Step  6 (generate toc and pdf)           4.49s
+            (vivliostyle build)             (4.19s)
+  - Step  7 (build overall pdf and split)    9.19s
+            (vivliostyle build)             (8.83s)
+  - Step  8 (build 02-03-front.pdf)          1.15s
+  - Step  9 (build front pages and tail)     0.99s
+  - Step 10 (merge all pdfs with outline)    1.21s
+  - Step 11 (apply outline to output pdf)    2.59s
+  - Step 12 (compress pdf)                   0.00s
+  - Step 13 (rename output pdfs)             0.05s
+  - Step 14 (final clean)                    0.03s
+  = TOTAL                                   20.60s
+```
+
+## Build Step Timings (2025-11-11T00:35:29+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  5 (build sections html)            1.03s
+  - Step  6 (generate toc and pdf)           6.00s
+            (vivliostyle build)             (5.71s)
+  - Step  7 (build overall pdf and split)   10.22s
+            (vivliostyle build)            (9.90s)
+  - Step  8 (build 02-03-front.pdf)          1.10s
+  - Step  9 (build front pages and tail)     1.03s
+  - Step 10 (merge all pdfs with outline)    1.22s
+  - Step 11 (apply outline to output pdf)    2.59s
+  - Step 12 (compress pdf)                   0.00s
+  - Step 13 (rename output pdfs)             0.05s
+  - Step 14 (final clean)                    0.02s
+  = TOTAL                                   23.29s
+```
+
+## Build Step Timings (2025-11-11T00:24:41+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  5 (build sections html)            1.04s
+  - Step  6 (generate toc and pdf)           6.44s
+            (vivliostyle build)             (6.14s)
+  - Step  7 (build overall pdf and split)    9.99s
+            (vivliostyle build)             (9.67s)
+  - Step  8 (build 02-03-front.pdf)          1.12s
+  - Step  9 (build front pages and tail)     0.96s
+  - Step 10 (merge all pdfs with outline)    1.20s
+  - Step 11 (apply outline to output pdf)    2.55s
+  - Step 12 (compress pdf)                   0.00s
+  - Step 13 (rename output pdfs)             0.04s
+  - Step 14 (final clean)                    0.02s
+  = TOTAL                                   23.37s
+```
+
+## Build Step Timings (2025-11-11T00:07:56+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  5 (build sections html)            1.51s
+  - Step  6 (generate toc and pdf)           9.93s
+            (vivliostyle build)             (9.67s)
+  - Step  7 (build overall pdf and split)   10.08s
+            (vivliostyle build)            (9.75s)
+  - Step  8 (build 02-03-front.pdf)          1.53s
+  - Step  9 (build front pages and tail)     0.94s
+  - Step 10 (merge all pdfs with outline)    1.13s
+  - Step 11 (apply outline to output pdf)    2.47s
+  - Step 12 (compress pdf)                   0.00s
+  - Step 13 (rename output pdfs)             0.05s
+  - Step 14 (final clean)                    0.03s
+  = TOTAL                                   27.71s
+```
+
 ## Build Step Timings (2025-11-10T17:09:51+09:00)
 
 ````
