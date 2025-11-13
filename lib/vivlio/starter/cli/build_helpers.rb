@@ -1560,6 +1560,23 @@ module Vivlio
           items = heading_page_entries(pdf_path, html_paths, max_level: max_level, start_page: start_page)
           return false if items.empty?
 
+          book_cfg = Common::CONFIG.fetch('book', {}) rescue {}
+          main_title = book_cfg.fetch('main_title', '').to_s.strip
+          fallback_title = book_cfg.fetch('title', '').to_s.strip
+          cover_title = main_title.empty? ? fallback_title : main_title
+          cover_title = '表紙' if cover_title.empty?
+
+          unless items.any? { |it| it[:page].to_i == 1 && it[:text] == cover_title }
+            cover_item = {
+              level: 1,
+              text: cover_title,
+              page: 1,
+              chapter: '00-titlepage',
+              id: nil
+            }
+            items.unshift(cover_item)
+          end
+
           # HexaPDF でアウトラインを構築
           doc = HexaPDF::Document.open(pdf_path)
           root = doc.outline
