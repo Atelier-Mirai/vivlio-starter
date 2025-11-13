@@ -726,39 +726,128 @@ module Vivlio
         end
 
         # 指定PDFの全ページ下部にローマ小を描画（紙面上オーバーレイ）
+        # book.yml 設定を反映: フォント、サイズ、色、配置
         def overlay_roman_page_numbers!(pdf_path, options = {})
           return false unless File.exist?(pdf_path)
 
-          opts = { margin_bottom: 24, font: 'Helvetica', size: 10, color: [0, 0, 0] }.merge(options)
+          # book.yml 設定を読み込み
+          cfg = Common::CONFIG || {}
+          typo_cfg = cfg['typography'] || {}
+          page_cfg = cfg['page'] || {}
+          
+          # フォント設定
+          folio_font = typo_cfg.dig('folio', 'font') || 'Noto Sans JP'
+          base_font_size_str = page_cfg['base_font_size'] || '12pt'
+          base_font_size = base_font_size_str.to_s.gsub(/[^\d.]/, '').to_f
+          folio_size = base_font_size * 0.75  # 本文の75%
+          
+          # 色設定 (#777 = RGB 119/255)
+          folio_color = [119.0 / 255.0, 119.0 / 255.0, 119.0 / 255.0]
+          # debug 用 (赤)
+          # folio_color = [255.0 / 255.0, 0.0 / 255.0, 0.0 / 255.0]
+          
+          # 配置設定
+          placement = typo_cfg.dig('folio', 'placement') || 'center'
+          placement = 'center' unless %w[center sides].include?(placement)
 
           doc = HexaPDF::Document.open(pdf_path)
           total = doc.pages.count
           mm = 72.0 / 25.4
+          
+          # フォントファイルのパス（Noto Sans JP）
+          font_path = File.join(Common::STYLESHEETS_DIR, 'fonts', 'Noto_Sans_JP', 'NotoSansJP-VariableFont_wght.ttf')
+          font_name = if File.exist?(font_path)
+                        doc.fonts.add(font_path)
+                      else
+                        Common.log_warn("フォントファイルが見つかりません: #{font_path}。Helveticaを使用します。")
+                        'Helvetica'
+                      end
+
+          # マージン設定を取得
+          page_margin_bottom_str = page_cfg['margin_bottom'] || '30mm'
+          page_margin_outer_str = page_cfg['margin_outer'] || '22mm'
+          page_margin_inner_str = page_cfg['margin_inner'] || '28mm'
+          margin_bottom_mm = page_margin_bottom_str.to_s.gsub(/[^\d.]/, '').to_f
+          margin_outer_mm = page_margin_outer_str.to_s.gsub(/[^\d.]/, '').to_f
+          margin_inner_mm = page_margin_inner_str.to_s.gsub(/[^\d.]/, '').to_f
+
           (0...total).each do |i|
             page = doc.pages[i]
             media_box = page.box(:media)
             width = media_box.width
-            y = media_box.bottom + opts[:margin_bottom] + (3 * mm)
+            height = media_box.height
             text = Common.to_roman_lower(i + 1)
 
-            canvas = page.canvas(type: :overlay)
-            canvas.save_graphics_state
-            canvas.fill_color(1.0, 1.0, 1.0)
-            canvas.opacity(fill_alpha: 1.0, stroke_alpha: 1.0)
-            canvas.rectangle(media_box.left, media_box.bottom, width, 25 * mm)
-            canvas.fill
-            canvas.restore_graphics_state
+            # Vivliostyle の @bottom-* と同じ位置を計算
+            # margin-bottom 領域の約半分の高さにベースラインを配置（一文字分上げる）
+            # 0.45 〜 0.55 の範囲で調整
+            y = media_box.bottom + (margin_bottom_mm * mm * 0.45)
 
-            canvas.font(opts[:font], size: opts[:size])
-            canvas.fill_color(*opts[:color])
-            est_text_width = text.length * opts[:size] * 0.5
-            x = media_box.left + (width / 2.0) - (est_text_width / 2.0)
-            x += ((i + 1) % 2).zero? ? 6 * mm : -4 * mm
+            canvas = page.canvas(type: :overlay)
+            canvas.font(font_name, size: folio_size, variant: :none)
+            canvas.fill_color(*folio_color)
+            
+            # 下部の既存ページ番号を隠す白帯を描画
+            band_height = margin_bottom_mm * mm
+            if band_height.positive?
+              canvas.save_graphics_state do
+                canvas.fill_color(1.0, 1.0, 1.0)
+                canvas.rectangle(media_box.left, media_box.bottom, width, band_height)
+                canvas.fill
+              end
+              canvas.fill_color(*folio_color)
+            end
+
+            # 水平位置の計算（版面基準、margin_outer も考慮）
+            x = case placement
+                when 'center'
+                  # 中央配置: @bottom-center と同じ（版面の中央）
+                  # 左右ページで margin_inner と margin_outer の位置が入れ替わる
+                  est_char_width = folio_size * 0.45
+                  text_width = text.length * est_char_width
+                  
+                  if (i + 1).odd?
+                    # 右ページ（奇数ページ）: margin_left = margin_outer, margin_right = margin_inner
+                    text_area_left = media_box.left + margin_outer_mm * mm
+                    text_area_right = media_box.right - margin_inner_mm * mm
+                    text_area_center = text_area_left + (text_area_right - text_area_left) / 2.0
+                    text_area_center - (text_width / 2.0)
+                  else
+                    # 左ページ（偶数ページ）: margin_left = margin_inner, margin_right = margin_outer
+                    text_area_left = media_box.left + margin_inner_mm * mm
+                    text_area_right = media_box.right - margin_outer_mm * mm
+                    text_area_center = text_area_left + (text_area_right - text_area_left) / 2.0
+                    text_area_center - (text_width / 2.0)
+                  end
+                when 'sides'
+                  # 左右配置: @bottom-left / @bottom-right と同じ（版面基準）
+                  
+                  if (i + 1).odd?
+                    # 右ページ（奇数ページ）: @bottom-right
+                    # 版面の右端 = media_box.right - margin_inner
+                    # 右寄せなので、右端から左にテキスト幅分移動
+                    # 文字幅係数を小さくして右に移動させる
+                    est_char_width = folio_size * 0.3
+                    text_width = text.length * est_char_width
+                    text_area_right = media_box.right - margin_inner_mm * mm
+                    text_area_right - text_width
+                  else
+                    # 左ページ（偶数ページ）: @bottom-left
+                    # 版面の左端 = media_box.left + margin_inner
+                    # 左寄せなので、左端から開始
+                    media_box.left + margin_inner_mm * mm
+                  end
+                end
+            
             canvas.text(text, at: [x, y])
           end
 
           doc.write(pdf_path, optimize: true)
+          Common.log_info("ノンブル描画: フォント=#{folio_font}, サイズ=#{folio_size.round(1)}pt, 配置=#{placement}")
           true
+        rescue StandardError => e
+          Common.log_warn("ローマ数字描画中にエラー: #{e.message}")
+          false
         end
 
         # HexaPDF で PageLabels を設定する
@@ -851,7 +940,7 @@ module Vivlio
 
             BuildHelpers.apply_page_labels_hexapdf('02-03-front.pdf', 0)
             if BuildHelpers.overlay_roman_page_numbers!('02-03-front.pdf')
-              Common.log_success('[Step 8] 02-03-front.pdf にローマ小 i〜 を描画しました')
+              Common.log_success('[Step 8] 02-03-front.pdf にローマ小を描画しました')
             else
               Common.log_warn('[Step 8] 02-03-front.pdf へのローマ小描画をスキップ/失敗')
             end
@@ -881,7 +970,7 @@ module Vivlio
 
             BuildHelpers.apply_page_labels_hexapdf('02-03-front.pdf', 0)
             if BuildHelpers.overlay_roman_page_numbers!('02-03-front.pdf')
-              Common.log_success('[Step 8] 02-03-front.pdf にローマ小 i〜 を描画しました')
+              Common.log_success('[Step 8] 02-03-front.pdf にローマ小を描画しました')
             else
               Common.log_warn('[Step 8] 02-03-front.pdf へのローマ小描画をスキップ/失敗')
             end

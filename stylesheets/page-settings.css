@@ -110,9 +110,9 @@
      center: 中央配置
      sides:  左右配置（左ページは左下、右ページは右下）
   */
-  --folio-center-content: counter(page);
-  --folio-left-content:   none;
-  --folio-right-content:  none;
+  --folio-center-content: none;
+  --folio-left-content:   counter(page);
+  --folio-right-content:  counter(page);
 
   /* その他の指定 */
   /* stylelint-disable-next-line property-no-unknown */

@@ -4,24 +4,6 @@
 @import url("theme.css");
 @import url("page-settings.css");
 
-/*
-  プロパティ並び順ガイドライン
-  --------------------------------------------------
-  各ルール内のプロパティは下記の順で記述する。
-  1) layout        : display / position / float / break-* / z-index / inset-*
-  2) box-size      : width / height / inline-size / block-size / box-sizing
-  3) spacing       : margin-* → padding-*（論理プロパティ優先）
-  4) typography    : font-* / line-height / text-* / letter-spacing
-  5) alignment     : text-align / align-* / justify-*
-  6) visual        : color / background / border / outline / shadow / opacity
-  7) counters/meta : counter-* / string-set / content などのメタ情報
-
-  備考:
-  - コメントでセクション見出し（layout等）を付ける。
-  - 値は論理プロパティ（margin-inline 等）を優先する。
-  - 既存プロパティの意味が変わらない範囲でのみ並び替える。
-*/
-
 /* 目次タイトルなど */
 #toc-title::before {
   content: none;
@@ -52,7 +34,7 @@
 }
 
 /* 目次も前付け（front）としてローマ数字ノンブルを共通化 */
-body.toc { page: front; }
+/* body.toc { page: front; } */
 
 body.toc {
   font-family: var(--font-main-text);
@@ -62,9 +44,9 @@ h1 {
   font-family: var(--font-header);
 }
 
-@page front {
-  @bottom-center { content: counter(page, lower-roman); }
-}
+/* @page front { */
+  /* @bottom-center { content: counter(page, lower-roman); } */
+/* } */
 
 #toc {
   /* typography */

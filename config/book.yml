@@ -162,7 +162,7 @@ typography:
   # ----------------------------
   folio:
     font: Noto Sans JP
-    placement: center       # center / sides
+    placement: sides       # center / sides
 
 # ========================================
 # リーガル（免責・商標など）
