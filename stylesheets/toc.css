@@ -4,24 +4,6 @@
 @import url("theme.css");
 @import url("page-settings.css");
 
-/*
-  プロパティ並び順ガイドライン
-  --------------------------------------------------
-  各ルール内のプロパティは下記の順で記述する。
-  1) layout        : display / position / float / break-* / z-index / inset-*
-  2) box-size      : width / height / inline-size / block-size / box-sizing
-  3) spacing       : margin-* → padding-*（論理プロパティ優先）
-  4) typography    : font-* / line-height / text-* / letter-spacing
-  5) alignment     : text-align / align-* / justify-*
-  6) visual        : color / background / border / outline / shadow / opacity
-  7) counters/meta : counter-* / string-set / content などのメタ情報
-
-  備考:
-  - コメントでセクション見出し（layout等）を付ける。
-  - 値は論理プロパティ（margin-inline 等）を優先する。
-  - 既存プロパティの意味が変わらない範囲でのみ並び替える。
-*/
-
 /* 目次タイトルなど */
 #toc-title::before {
   content: none;
@@ -37,7 +19,7 @@
   margin-inline-start: 0.5em;
 
   /* typography */
-  font-family: var(--folio-font);       /* ページ番号と同一フォントで桁幅を統一 */
+  font-family: var(--font-folio);       /* ページ番号と同一フォントで桁幅を統一 */
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: "tnum" 1, "lnum" 1;
@@ -52,19 +34,19 @@
 }
 
 /* 目次も前付け（front）としてローマ数字ノンブルを共通化 */
-body.toc { page: front; }
+/* body.toc { page: front; } */
 
 body.toc {
-  font-family: var(--main-text-font);
+  font-family: var(--font-main-text);
 }
 
 h1 {
-  font-family: var(--header-font);
+  font-family: var(--font-header);
 }
 
-@page front {
-  @bottom-center { content: counter(page, lower-roman); }
-}
+/* @page front { */
+  /* @bottom-center { content: counter(page, lower-roman); } */
+/* } */
 
 #toc {
   /* typography */
@@ -103,7 +85,7 @@ h1 {
   margin-block-end: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
 
   /* typography */
-  font-family: var(--main-text-font);
+  font-family: var(--font-main-text);
   font-size: clamp(15.4Q, calc(var(--paper-scale) * 22Q), 22Q);
   line-height: 1.25;
   font-weight: 700;
@@ -161,7 +143,7 @@ h1 {
   margin-inline-start: 1em;
 
   /* typography */
-  font-family: var(--folio-font);       /* ページ番号と同一フォントで桁幅を統一 */
+  font-family: var(--font-folio);       /* ページ番号と同一フォントで桁幅を統一 */
   font-size: clamp(11.2Q, calc(var(--paper-scale) * 16Q), 16Q);
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums lining-nums;
@@ -210,7 +192,7 @@ li.toc-chapter-appendix {
   /* margin-block-end: 2mm; */
 
   /* typography */
-  font-family: var(--main-text-font);
+  font-family: var(--font-main-text);
   font-size: clamp(15.4Q, calc(var(--paper-scale) * 22Q), 22Q);
   line-height: 1.25em;
   font-weight: 700;
@@ -236,7 +218,7 @@ li.toc-section {
   margin-block-end: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
 
   /* typography */
-  font-family: var(--main-text-font);
+  font-family: var(--font-main-text);
   font-size: clamp(11.2Q, calc(var(--paper-scale) * 16Q), 16Q);
   line-height: 1.2;
   font-weight: 700;
@@ -270,7 +252,7 @@ li.toc-section {
   margin-inline-start: 0.5em;
 
   /* typography */
-  font-family: var(--folio-font);       /* ページ番号と同一フォントで桁幅を統一 */
+  font-family: var(--font-folio);       /* ページ番号と同一フォントで桁幅を統一 */
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: "tnum" 1, "lnum" 1;
@@ -348,7 +330,7 @@ li.toc-subsection {
   padding-inline-start: clamp(21mm, calc(var(--paper-scale) * 30mm), 30mm); /* 既定のインデントに戻す */
 
   /* typography */
-  font-family: var(--main-text-font);
+  font-family: var(--font-main-text);
   font-size: clamp(9.1Q, calc(var(--paper-scale) * 13Q), 13Q);
   line-height: 1.25;
   font-weight: 400;
@@ -397,7 +379,7 @@ h2 {
   /* typography */
   font-size: clamp(29.4Q, calc(var(--paper-scale) * 42Q), 42Q);
   line-height: clamp(33.6Q, calc(var(--paper-scale) * 48Q), 48Q);
-  font-family: var(--header-font);
+  font-family: var(--font-header);
   letter-spacing: 0.02em;
 
   /* alignment */

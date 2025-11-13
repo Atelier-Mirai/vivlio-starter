@@ -69,69 +69,61 @@
 }
 
 :root {
+  /* 参考: 版面サイズ（余白から自動計算される）
+    版面幅  = page-width - margin-inner - margin-outer
+    版面高  = page-height - margin-top - margin-bottom
+    文字数  ≒ 版面幅 / (base-font-size + letter-spacing)
+    行数    ≒ 版面高 / base-line-height
+  */
+
   /* 基本体裁（A4 縦） */
-  --page-width:  210mm; /* 幅 */
-  --page-height: 297mm; /* 高さ */
+  --page-width:  148mm; /* 幅 */
+  --page-height: 210mm; /* 高さ */
   /* 用紙スケール（A4=1.0 を基準に B5/A5 などで前処理から上書き） */
-  --paper-scale: 1.0;
+  --paper-scale: 0.7048;
 
   /* タイポグラフィ設定 */
-  --base-font-size:   12pt;    /* 基準文字サイズ */
-  --base-line-height: 19.2pt;  /* 行送り（10.5pt × 1.7 = 17.85pt） */
+  --base-font-size:   9.5pt;    /* 基準文字サイズ */
+  --base-line-height: 15.77pt;  /* 行送り（10.5pt × 1.7 = 17.85pt） */
   --letter-spacing:   0em;     /* 字間調整 */
 
   /* 版面の余白（見開き対応） */
-  --page-margin-top:    30mm;  /* 天（上余白） */
-  --page-margin-bottom: 30mm;  /* 地（下余白） */
-  --page-margin-inner:  28mm;  /* ノド（綴じ側、左右ページで自動的に位置が変わる） */
-  --page-margin-outer:  22mm;  /* 小口（外側、左右ページで自動的に位置が変わる） */
+  --page-margin-top:    20mm;  /* 天（上余白） */
+  --page-margin-bottom: 20mm;  /* 地（下余白） */
+  --page-margin-inner:  20mm;  /* ノド（綴じ側、左右ページで自動的に位置が変わる） */
+  --page-margin-outer:  16mm;  /* 小口（外側、左右ページで自動的に位置が変わる） */
 
-  --column-font-size:   10.5Q;  /* コラムのフォントサイズ */
+  --column-font-size:   8pt;  /* コラムのフォントサイズ */
 
   /* フォント指定 */
-  --main-text-font: "Noto Serif JP";     /* メイン本文フォント */
-  --header-font:    "Noto Sans JP";      /* 見出しフォント */
-  --column-font:    "Zen Maru Gothic";   /* コラムフォント */
-  --code-font:      "hackgen35";         /* コードフォント */
+  --font-main-text: "Noto Serif JP";     /* メイン本文フォント */
+  --font-header:    "Noto Sans JP";      /* 見出しフォント */
+  --font-column:    "Zen Maru Gothic";   /* コラムフォント */
+  --font-code:      "hackgen35";         /* コードフォント */
+  --font-folio:     "Noto Sans JP";   /* ノンブル(ページ番号)フォント */
 
-  /* ノンブル（ページ番号）用 */
-  --folio-font:      "Noto Sans JP";
-  --folio-font-size: 13Q;
-  --folio-color:     #666;
+  /* ノンブル（ページ番号）設定 */
+  --folio-font-size: calc(var(--base-font-size) * 0.75);
+  --folio-color: #777;
 
-  /* ノンブル配置切替用（中央 or 左右）
-     既定: 中央に表示。左右は無効。
-     左右に切り替えるには、以下の3変数を入れ替えてください。
-       例) 左右表示にする:
-           --folio-center-content: none;
-           --folio-left-content:   counter(page);
-           --folio-right-content:  counter(page);
+  /* ノンブル配置（book.yml の typography.folio.placement により自動設定）
+     center: 中央配置
+     sides:  左右配置（左ページは左下、右ページは右下）
   */
-  /* --folio-center-content: counter(page);
-  --folio-left-content:   none;
-  --folio-right-content:  none; */
-
   --folio-center-content: none;
   --folio-left-content:   counter(page);
   --folio-right-content:  counter(page);
 
-  /* 参考: 版面サイズ（余白から自動計算される）
-     版面幅  = page-width - margin-inner - margin-outer
-     版面高  = page-height - margin-top - margin-bottom
-     文字数  ≒ 版面幅 / (base-font-size + letter-spacing)
-     行数    ≒ 版面高 / base-line-height
-  */
+  /* その他の指定 */
+  /* stylelint-disable-next-line property-no-unknown */
+  text-spacing: auto;    /* 文字間隔 */
+  widows: 2;             /* 最後の行を次のページに移動させない（2行以上残す） */
+  orphans: 2;            /* 最初の行を前のページに移動させない（2行以上送る） */
 
   font-size:   var(--base-font-size);
   line-height: var(--base-line-height);
-  font-family: var(--main-text-font);
+  font-family: var(--font-main-text);
   font-weight: 400;
-
-  /* その他の指定 */
-  /* stylelint-disable-next-line property-no-unknown */
-  text-spacing: auto; /* 文字間隔 */
-  widows:       2;    /* 最後の行を次のページに移動させない（2行以上残す） */
-  orphans:      2;    /* 最初の行を前のページに移動させない（2行以上送る） */
 }
 
 @page {
@@ -139,11 +131,11 @@
   margin-top: var(--page-margin-top);
   margin-bottom: var(--page-margin-bottom);
 
-  /* ノンブル（共通） */
+  /* ノンブル（中央配置時） */
   @bottom-center {
     content:     var(--folio-center-content);
     text-align:  center;
-    font-family: var(--folio-font);
+    font-family: var(--font-folio);
     font-size:   var(--folio-font-size);
     font-weight: 300;
     color:       var(--folio-color);
@@ -151,37 +143,43 @@
 }
 
 @page :left {
-  font-family: var(--header-font);
+  font-family: var(--font-header);
   /* 左ページ: [ノド（inner）] 版面 [小口（outer）] */
   margin-left: var(--page-margin-inner);
   margin-right: var(--page-margin-outer);
 
-  /* ノンブル */
+  /* ノンブル（左右配置時：左ページ） */
   @bottom-left {
-    /* 左ページ側ノンブル（デフォルトは無効） */
-    content:    var(--folio-left-content);
-    text-align: left;
+    content:     var(--folio-left-content);
+    text-align:  left;
+    font-family: var(--font-folio);
+    font-size:   var(--folio-font-size);
+    font-weight: 300;
+    color:       var(--folio-color);
   }
 }
 
 @page :right {
-  font-family: var(--header-font);
+  font-family: var(--font-header);
   /* 右ページ: [小口（outer）] 版面 [ノド（inner）] */
   margin-left: var(--page-margin-outer);
   margin-right: var(--page-margin-inner);
 
-  /* ノンブル */
+  /* ノンブル（左右配置時：右ページ） */
   @bottom-right {
-    /* 右ページ側ノンブル（デフォルトは無効） */
-    content:    var(--folio-right-content);
-    text-align: right;
+    content:     var(--folio-right-content);
+    text-align:  right;
+    font-family: var(--font-folio);
+    font-size:   var(--folio-font-size);
+    font-weight: 300;
+    color:       var(--folio-color);
   }
 
   /* タイトル */
   @top-right {
     content:     string(chapter-number, first) " " string(chapter-title, first);
     text-align:  right;
-    font-family: var(--main-text-font);
+    font-family: var(--font-main-text);
     font-size:   9Q;
   }
 }
@@ -199,6 +197,7 @@
   @bottom-right { content: none; }
 }
 /* stylelint-enable */
+
 
 /* =====================================================================
    脚注（全体共通）

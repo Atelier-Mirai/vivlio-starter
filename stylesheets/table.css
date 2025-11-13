@@ -40,7 +40,7 @@ table {
 /* 見出し風のフォントスタイル（段落のみ） */
 p:has(+ table) {
   /* h4 相当のトーンに寄せる */
-  font-family: var(--header-font);
+  font-family: var(--font-header);
   /* stylelint-disable-next-line property-no-unknown */
   text-spacing: no-autospace;
   font-size: var(--base-font-size);

@@ -50,7 +50,7 @@ body {
   padding: 0;                 /* フル幅・余白なし */
 
   /* typography */
-  font-family: var(--main-text-font);
+  font-family: var(--font-main-text);
   line-height: 1.5; /* 行間を詰める */
 
   /* visual */
@@ -62,7 +62,7 @@ body {
 
 /* 見出し */
 h2 {
-  font-family: var(--header-font);
+  font-family: var(--font-header);
   font-size: clamp(7.392pt, calc(var(--paper-scale) * 10.56pt), 10.56pt); /* 13.2pt の 0.8倍（<small>相当スケールに調整） */
   font-weight: 700;
   margin-block: clamp(1.4rem, calc(var(--paper-scale) * 2rem), 2rem) clamp(0.35rem, calc(var(--paper-scale) * 0.5rem), 0.5rem);

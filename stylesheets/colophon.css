@@ -36,7 +36,7 @@ body {
     padding: clamp(28px, calc(var(--paper-scale) * 40px), 40px);
 
     /* typography */
-    font-family: var(--main-text-font);
+    font-family: var(--font-main-text);
     line-height: 1.5;
 
     /* visual */
@@ -57,12 +57,12 @@ body {
 /* 書籍名 */
 h1,
 h2 {
-    font-family: var(--header-font);
+    font-family: var(--font-header);
 }
 
 .book-title {
     /* typography */
-    font-family: var(--header-font);
+    font-family: var(--font-header);
     font-size: clamp(9.8pt, calc(var(--paper-scale) * 14pt), 14pt);
     font-weight: 700;
 }
@@ -150,7 +150,7 @@ h2 {
     grid-column: 1;
 
     /* typography */
-    font-family: var(--main-text-font);
+    font-family: var(--font-main-text);
     font-weight: 700;
     font-size: clamp(7pt, calc(var(--paper-scale) * 10pt), 10pt);
 
@@ -173,7 +173,7 @@ h2 {
 }
 
 .powered-by {
-    font-family: var(--main-text-font);
+    font-family: var(--font-body);
 
     /* layout: ページ右端に揃える（全幅ブロック） */
     display: block;

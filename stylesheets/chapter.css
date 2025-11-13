@@ -1,3 +1,7 @@
+/* =====================================================================
+   Chapter (章)
+   ===================================================================== */
+
 @charset "utf-8";
 
 @import url("base.css");
@@ -12,31 +16,3 @@
 @import url("components.css");
 @import url("chapter-common.css");
 
-/* =====================================================================
-   Chapter (章)
-   ===================================================================== */
-
-/* ノンブル（ページ番号）を常に下中央に表示 */
-@page {
-  @bottom-center {
-    /* content: counter(page); */
-  }
-}
-/* 
-@page {
-  @bottom-center {
-    content: none;
-  }
-}
-
-@page :left {
-  @bottom-left {
-    content: counter(page);
-  }
-}
-
-@page :right {
-  @bottom-right {
-    content: counter(page);
-  }
-} */
