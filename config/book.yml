@@ -112,9 +112,9 @@ theme:
 page:
   # プリセットを選択（page_presets.yml から）
   # 紙サイズ、余白、文字サイズ、行送りなど版面の物理的構造を一括指定
-  # use: a5_compact
+  use: a5_compact
   # use: b5_airy
-  use: a4_standard
+  # use: a4_standard
   # 他のプリセット例:
   # use: b5_airy      # B5 判 - 行間広め
   # use: a5_paperback # A5 判 - 文庫本風
@@ -222,6 +222,7 @@ output:
     # 表表紙と裏表紙（本文と結合して出力）
     # ..............................
     cover:
+      enabled: true        # true で front/back を結合、false で除外
       front: frontcover_rgb.pdf  # 表表紙（PDF）
       back: backcover_rgb.pdf    # 裏表紙（PDF）
     

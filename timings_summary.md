@@ -1,4 +1,56 @@
 
+## Build Step Timings (2025-11-13T16:21:53+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  5 (build sections html)            0.81s
+  - Step  6 (generate toc and pdf)           4.05s
+            (vivliostyle build)             (3.76s)
+  - Step  7 (build overall pdf and split)    9.49s
+            (vivliostyle build)             (9.19s)
+  - Step  8 (build 02-03-front.pdf)          5.96s
+            (vivliostyle build)             (3.74s)
+  - Step  9 (build front pages and tail)     7.92s
+            (vivliostyle build)             (3.60s)
+            (vivliostyle build)             (3.52s)
+  - Step 10 (merge all pdfs with outline)    1.20s
+  - Step 11 (apply outline to output pdf)    2.54s
+  - Step 12 (compress pdf)                   0.00s
+  - Step 13 (rename output pdfs)             0.05s
+  - Step 14 (final clean)                    0.02s
+  = TOTAL                                   32.05s
+```
+
+## Build Step Timings (2025-11-13T16:20:54+09:00)
+
+````
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  5 (build sections html)            0.85s
+  - Step  6 (generate toc and pdf)           4.57s
+            (vivliostyle build)             (4.30s)
+  - Step  7 (build overall pdf and split)    9.26s
+            (vivliostyle build)             (8.93s)
+  - Step  8 (build 02-03-front.pdf)          7.11s
+            (vivliostyle build)             (5.53s)
+  - Step  9 (build front pages and tail)     8.20s
+            (vivliostyle build)             (3.64s)
+            (vivliostyle build)             (3.76s)
+  - Step 10 (merge all pdfs with outline)    1.14s
+  - Step 11 (apply outline to output pdf)    2.49s
+  - Step 12 (compress pdf)                   0.00s
+  - Step 13 (rename output pdfs)             0.05s
+  - Step 14 (final clean)                    0.02s
+  = TOTAL                                   33.71s
+```
+
 ## Build Step Timings (2025-11-13T16:15:52+09:00)
 
 ````

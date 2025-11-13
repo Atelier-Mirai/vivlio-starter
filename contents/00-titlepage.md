@@ -1,4 +1,4 @@
-<h1 class="book-title">はじめての技術書づくりdayo</h1>
+<h1 class="book-title">はじめての技術書づくり</h1>
 <p class="subtitle subtitle--wave">Vivlio Starter 実践ガイド</p>
 
 <p class="author"><span>[著]</span> 早乙女遙香</p>
