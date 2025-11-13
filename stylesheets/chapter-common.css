@@ -6,8 +6,8 @@
 
 /* マーカー変数（book.ymlのtheme.markersで自動更新） */
 :root {
-  --h3-marker: "❤️";
-  --h4-marker: "♠️";
+  --h3-marker: "♣";
+  --h4-marker: "♦";
 }
 
 /* -------------------------------------------------------------
@@ -19,7 +19,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--header-font);
+  font-family: var(--font-header);
   text-spacing: no-autospace;
 }
 

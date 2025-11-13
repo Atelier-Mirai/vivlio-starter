@@ -12,52 +12,18 @@
 
 /* カスタム変数 */
 :root {
-  --preface-font: var(--main-text-font);
-  --preface-accent-color: var(--accent-indigo); /* pre_process.rb により book.yml の theme.preface_color へ同期 */
-  --preface-accent-glow-strong: color-mix(in oklab, var(--preface-accent-color) 22%, transparent);
-  --preface-accent-glow-weak: color-mix(in oklab, var(--preface-accent-color) 8%, transparent);
-  --text-color: #333;
-  --header-color: #2c3e50;
-  --link-color: var(--preface-accent-color);
-
-  /* additional theme neutrals */
-  --border-color: #ddd;      /* rules, separators */
-  --surface-color: #f9f9f9;  /* subtle backgrounds */
-}
-
-/* 前付け（preface）は名前付きページ 'front' を使用し、ローマ数字でノンブル表示 */
-body.preface { page: front; }
-
-@page front {
-  /* ノンブルをローマ数字（小文字）で表示 */
-  @bottom-center { 
-    content: counter(page, lower-roman); 
-    font-family: var(--folio-font);
-    font-size:   var(--folio-font-size);
-    font-weight: 300;
-    color:       var(--folio-color);
-  }
-  
-  /* 章題を表示しない */
-  @top-left   { content: none; }
-  @top-center { content: none; }
-  @top-right  { content: none; }
-}
-
-/* 前付けの最初のページ設定 */
-@page front:first {
-  /* ページ番号を表示しない */
-  @bottom-left   { content: none; }
-  @bottom-center { content: none; }
-  @bottom-right  { content: none; }
+  --color-preface-accent: var(--accent-indigo); /* pre_process.rb により book.yml の theme.preface_color へ同期 */
+  --color-preface-accent-glow-strong: color-mix(in oklab, var(--color-preface-accent) 22%, transparent);
+  --color-preface-accent-glow-weak: color-mix(in oklab, var(--color-preface-accent) 8%, transparent);
+  --color-link: var(--color-preface-accent);
 }
 
 /* 基本設定 */
 body {
-  font-family: var(--preface-font);
+  font-family: var(--font-main-text);
   font-size: var(--base-font-size);
   line-height: var(--base-line-height);
-  color: var(--text-color);
+  color: var(--color-text);
   text-align: justify;
   hanging-punctuation: allow-end;
 
@@ -68,45 +34,45 @@ body {
 
 /* 見出し */
 h1 {
-  font-family: var(--header-font);
+  font-family: var(--font-header);
   font-size: clamp(16.8Q, calc(var(--paper-scale) * 24Q), 24Q);
   font-weight: bold;
   letter-spacing: 0.1em;
-  color: var(--header-color);
+  color: var(--color-header);
   text-align: center;
   margin-block-end: clamp(21pt, calc(var(--paper-scale) * 30pt), 30pt);
   padding-block: clamp(14pt, calc(var(--paper-scale) * 20pt), 20pt);
-  border-block-end: 3px solid var(--preface-accent-color);
+  border-block-end: 3px solid var(--color-preface-accent);
   page-break-after: avoid;
 }
 
 h2 {
-  font-family: var(--header-font);
+  font-family: var(--font-header);
   font-size: clamp(14Q, calc(var(--paper-scale) * 20Q), 20Q);
   font-weight: bold;
-  color: var(--header-color);
+  color: var(--color-header);
   margin-block: clamp(17.5pt, calc(var(--paper-scale) * 25pt), 25pt) clamp(10.5pt, calc(var(--paper-scale) * 15pt), 15pt);
   padding-block: clamp(5.6pt, calc(var(--paper-scale) * 8pt), 8pt);
   padding-inline-start: clamp(10.5pt, calc(var(--paper-scale) * 15pt), 15pt);
-  border-inline-start: 3px solid var(--preface-accent-color);
-  background: linear-gradient(90deg, var(--preface-accent-glow-strong) 0%, var(--preface-accent-glow-weak) 50%, transparent 100%);
+  border-inline-start: 3px solid var(--color-preface-accent);
+  background: linear-gradient(90deg, var(--color-preface-accent-glow-strong) 0%, var(--color-preface-accent-glow-weak) 50%, transparent 100%);
   page-break-after: avoid;
 }
 
 h3 {
-  font-family: var(--header-font);
+  font-family: var(--font-header);
   font-size: clamp(11.2Q, calc(var(--paper-scale) * 16Q), 16Q);
   font-weight: bold;
-  color: var(--header-color);
+  color: var(--color-header);
   margin-block: clamp(14pt, calc(var(--paper-scale) * 20pt), 20pt) clamp(8.4pt, calc(var(--paper-scale) * 12pt), 12pt);
   padding-block: clamp(3.5pt, calc(var(--paper-scale) * 5pt), 5pt);
-  border-block-end: 1px solid color-mix(in oklab, var(--border-color) 70%, transparent);
+  border-block-end: 1px solid color-mix(in oklab, var(--color-border) 70%, transparent);
   page-break-after: avoid;
 }
 
 h3::before {
   content: "📚 ";
-  color: var(--preface-accent-color);
+  color: var(--color-preface-accent);
 }
 
 /* 段落 */
@@ -141,21 +107,21 @@ ul li p {
 
 /* リンク */
 a {
-  color: var(--link-color);
+  color: var(--color-link);
   text-decoration: none;
-  border-block-end: 1px dotted var(--link-color);
+  border-block-end: 1px dotted var(--color-link);
 }
 
 a:hover {
-  color: var(--preface-accent-color);
-  border-block-end-color: var(--preface-accent-color);
+  color: var(--color-preface-accent);
+  border-block-end-color: var(--color-preface-accent);
 }
 
 /* 強調 */
 strong,
 b {
   font-weight: bold;
-  color: var(--header-color);
+  color: var(--color-header);
 }
 
 /* ルビ */
@@ -165,14 +131,14 @@ ruby {
 
 rt {
   font-size: 0.6em;
-  color: var(--text-color);
+  color: var(--color-text);
 }
 
 /* 水平線 */
 hr {
   border: none;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border-color) 20%, var(--border-color) 80%, transparent);
+  background: linear-gradient(90deg, transparent, var(--color-border) 20%, var(--color-border) 80%, transparent);
   margin-block: clamp(17.5pt, calc(var(--paper-scale) * 25pt), 25pt);
 }
 
@@ -187,12 +153,13 @@ blockquote {
   margin-inline: clamp(14pt, calc(var(--paper-scale) * 20pt), 20pt);
   padding-block: clamp(7pt, calc(var(--paper-scale) * 10pt), 10pt);
   padding-inline: clamp(10.5pt, calc(var(--paper-scale) * 15pt), 15pt);
-  border-inline-start: 3px solid var(--preface-accent-color);
-  background: var(--surface-color);
+  border-inline-start: 3px solid var(--color-preface-accent);
+  background: var(--color-surface);
   font-style: italic;
 }
 
 blockquote p {
   text-indent: 0;
   margin: 0;
+  color: var(--color-text);
 }

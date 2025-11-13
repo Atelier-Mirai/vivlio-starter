@@ -28,6 +28,7 @@ book:
   # ----------------------------
   main_title: 'はじめての技術書づくり'
   subtitle: 'Vivlio Starter 実践ガイド'
+  # subtitle_style: wave  # 副題の装飾（wave | bar | none）から選択
   subtitle_style: wave  # 副題の装飾（wave | bar | none）から選択
 
   # ----------------------------
@@ -38,8 +39,8 @@ book:
   publisher: '○○印刷所'                # 日光企画 ねこのしっぽ
   contact: 'haruka@example.com'       # 連絡先
   author: '早乙女遙香'                  # 著者名
-  language: 'ja'                      # 言語
-  isbn: ''                            # 任意（独自ISBN取得の場合。Kindle は ASIN 自動割り当て）
+  language: 'ja'                       # 言語
+  isbn: ''                   # 任意（独自ISBN取得の場合。Kindle は ASIN 自動割り当て）
 
 # ========================================
 # プロジェクト情報
@@ -56,8 +57,6 @@ project:
   # - 11-install  # 拡張子(.md)は、省略できます。
   # - 12-tutorial
 # chapters: 02, 11-12, 91 # 章番号のみでのカンマ区切りや範囲指定も指定可能です。
-# chapters: 02, 11-12, 91
-# chapters: 05-21, 98
 chapters: 02-21, 91-93, 98
 
 # ========================================
@@ -72,7 +71,7 @@ theme:
   # ----------------------------
   # テーマカラー
   # ----------------------------
-  color: peach     # yellow / amber / orange / peach
+  color: blue     # yellow / amber / orange / peach
                     # coral / red / magenta / plum
                     # purple / indigo / navy / blue
                     # cyan / teal / mint / green / lime から選択
@@ -90,8 +89,7 @@ theme:
   # 章扉の背景画像
   # ----------------------------
   frontispiece: 
-    # image: bundled/himawari_portrait   # 主ファイル名 stylesheets/images/sunflower.webp を指す
-    image: asagao   # 主ファイル名 stylesheets/images/sunflower.webp を指す
+    image: ajisai
     padding: 10mm
     heading_width: 120mm
     lead_width: 120mm
@@ -99,9 +97,7 @@ theme:
   # ----------------------------
   # 節見出しの背景画像
   # ----------------------------
-  # ornament: bundled/himawari_landscape   # stylesheets/images/sunflower_landscape.webp を指す
-  # ornament: sunflower_landscape   # stylesheets/images/sunflower_landscape.webp を指す
-  ornament: asagao2   # stylesheets/images/sunflower_landscape.webp を指す
+  ornament: ajisai2
 
   # ----------------------------
   # 見出し記号
@@ -153,7 +149,7 @@ typography:
   # ----------------------------
   column:
     font: Zen Maru Gothic
-    font_size: '10.5Q'      # 本文より小さいため独立設定
+    font_size: 8pt      # 本文より小さいため独立設定
   
   # ----------------------------
   # コード
@@ -166,9 +162,7 @@ typography:
   # ----------------------------
   folio:
     font: Noto Sans JP
-    font_size: 13Q          # 版面外の要素なので独立設定
-    color: '#666'
-    placement: sides       # center / sides
+    placement: center       # center / sides
 
 # ========================================
 # リーガル（免責・商標など）

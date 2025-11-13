@@ -16,6 +16,49 @@ module Vivlio
 
           module_function
 
+          # CSS更新のみを実行（ビルド時にStep 2で呼ばれる）
+          def update_css_only!(cfg = nil)
+            cfg ||= Common::CONFIG
+            theme_cfg = (cfg && cfg['theme']) || {}
+            
+            # テーマカラーを決定
+            theme_name, theme_accent_value = parse_theme_color(theme_cfg['color'])
+            
+            # テーマスタイルを決定（simple または image）
+            theme_style = parse_theme_style(theme_cfg['style'])
+            
+            # frontispiece 設定を解析
+            frontispiece_raw = theme_cfg['frontispiece']
+            frontispiece_cfg = frontispiece_raw.is_a?(Hash) ? frontispiece_raw : {}
+            frontispiece_source = frontispiece_cfg.key?('image') ? frontispiece_cfg['image'] : frontispiece_raw
+            frontispiece_path = ThemeImageResolver.resolve_frontispiece_path(frontispiece_source)
+            
+            # CSS長さ値を正規化
+            door_padding_value = normalize_css_length(frontispiece_cfg['padding'], label: 'theme.frontispiece.padding', default: '0mm')
+            heading_width_value = normalize_css_length(frontispiece_cfg['heading_width'], label: 'theme.frontispiece.heading_width')
+            lead_width_value = normalize_css_length(frontispiece_cfg['lead_width'], label: 'theme.frontispiece.lead_width')
+            
+            # ornament 設定を解析
+            ornament_path = ThemeImageResolver.resolve_ornament_path(theme_cfg['ornament'], allow_generation: true)
+            
+            # 各CSSファイルを更新
+            update_all_css_files(
+              theme_name: theme_name,
+              theme_accent_value: theme_accent_value,
+              theme_style: theme_style,
+              theme_cfg: theme_cfg,
+              frontispiece_path: frontispiece_path,
+              door_padding_value: door_padding_value,
+              heading_width_value: heading_width_value,
+              lead_width_value: lead_width_value,
+              ornament_path: ornament_path
+            )
+
+            Common.log_success('[Step 2] CSS設定を更新しました')
+          rescue StandardError => e
+            Common.log_warn("[Step 2] CSS更新に失敗: #{e.message}")
+          end
+
           # フロントマターを生成
           def generate_frontmatter(file_type, chapter_num = nil, existing_frontmatter = {})
             # テーマ設定を取得
@@ -65,13 +108,16 @@ module Vivlio
                           end
             
             stylesheets = ['theme.css', chapter_css]
-            
+
+            lang = (Common::CONFIG.dig('book', 'language') || 'ja').to_s.strip
+            lang = 'ja' if lang.empty?
+
             # 新しいフロントマターのベースを作成
             new_frontmatter = {
               'link' => stylesheets.map do |css|
                 { 'rel' => 'stylesheet', 'href' => "stylesheets/#{css}" }
               end,
-              'lang' => 'ja'
+              'lang' => lang
             }
             
             # 既存のフロントマターと新しいフロントマターを併合

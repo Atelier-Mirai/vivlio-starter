@@ -492,6 +492,11 @@ module Vivlio
             return
           end
 
+          # CSS更新のためにfrontmatter生成を実行（HTMLファイルは生成しない）
+          require_relative 'pre_process/frontmatter_generator'
+          require_relative 'pre_process/css_updater'
+          Vivlio::Starter::CLI::PreProcessCommands::FrontmatterGenerator.update_css_only!(cfg)
+
           frontispiece_entry = theme_cfg['frontispiece']
           ornament_entry = theme_cfg['ornament']
 

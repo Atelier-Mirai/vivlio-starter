@@ -44,66 +44,76 @@ module Vivlio
                               lead_width_value: nil)
             theme_css_path = File.join(Common::STYLESHEETS_DIR, 'theme.css')
 
-            # 既存のtheme.cssを読み込む
             unless File.exist?(theme_css_path)
               Common.log_error("theme.css が見つかりません: #{theme_css_path}")
               return
             end
 
             css = File.read(theme_css_path, encoding: 'utf-8')
+            if css.strip.empty?
+              Common.log_error("theme.css が空です: #{theme_css_path}")
+              return
+            end
+
+            updated = css.dup
 
             # --theme-accent を更新
-            css = css.sub(/(--theme-accent:\s*)[^;]+(\s*;)/) do
+            updated = updated.sub(/(--theme-accent:\s*)[^;]+(\s*;)/) do
               "#{::Regexp.last_match(1)}#{theme_accent_value}#{::Regexp.last_match(2)}"
             end
 
             # 強調色・強意の下線色もテーマアクセントに追従
-            css = css.sub(/(--color-strong:\s*)[^;]+(\s*;)/, '\\1var(--theme-accent)\\2')
-            css = css.sub(/(--color-em-underline:\s*)[^;]+(\s*;)/, '\\1var(--theme-accent)\\2')
+            updated = updated.sub(/(--color-strong:\s*)[^;]+(\s*;)/, '\\1var(--theme-accent)\\2')
+            updated = updated.sub(/(--color-em-underline:\s*)[^;]+(\s*;)/, '\\1var(--theme-accent)\\2')
 
             if theme_style == 'simple'
               # 画像を使わないシンプルスタイル
-              css = css.sub(/(--section-bg-image:\s*)[^;]+(\s*;)/, '\\1none\\2')
-              css = css.sub(/(--frontispiece-image:\s*)[^;]+(\s*;)/, '\\1none\\2')
+              updated = updated.sub(/(--section-bg-image:\s*)[^;]+(\s*;)/, '\\1none\\2')
+              updated = updated.sub(/(--frontispiece-image:\s*)[^;]+(\s*;)/, '\\1none\\2')
             else
               # 画像ありスタイル
               # ornament の指定があればそれを優先
               if ornament_path
                 ornament_value = ornament_path.start_with?('url(') ? ornament_path : "url(\"#{ornament_path}\")"
-                css = css.sub(/(--section-bg-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
+                updated = updated.sub(/(--section-bg-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
                   "#{::Regexp.last_match(1)}#{ornament_value}#{::Regexp.last_match(2)}"
                 end
               else
                 # ornament 未指定時は既定の frame-yellow.webp を使用
-                css = css.sub(/(--section-bg-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
+                updated = updated.sub(/(--section-bg-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
                   "#{::Regexp.last_match(1)}url(\"images/frame-yellow.webp\")#{::Regexp.last_match(2)}"
                 end
               end
 
               # frontispiece_path を CSS の url(...) 形式で設定
               door_value = frontispiece_path.start_with?('url(') ? frontispiece_path : "url(\"#{frontispiece_path}\")"
-              css = css.sub(/(--frontispiece-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
+              updated = updated.sub(/(--frontispiece-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
                 "#{::Regexp.last_match(1)}#{door_value}#{::Regexp.last_match(2)}"
               end
 
-              css = css.sub(/(--frontispiece-padding:\s*)[^;]+(\s*;)/) do
+              updated = updated.sub(/(--frontispiece-padding:\s*)[^;]+(\s*;)/) do
                 "#{::Regexp.last_match(1)}#{door_padding_value}#{::Regexp.last_match(2)}"
               end
             end
 
             if heading_width_value
-              css = css.sub(/(--frontispiece-heading-width:\s*)[^;]+(\s*;)/) do
+              updated = updated.sub(/(--frontispiece-heading-width:\s*)[^;]+(\s*;)/) do
                 "#{::Regexp.last_match(1)}#{heading_width_value}#{::Regexp.last_match(2)}"
               end
             end
 
             if lead_width_value
-              css = css.sub(/(--frontispiece-lead-width:\s*)[^;]+(\s*;)/) do
+              updated = updated.sub(/(--frontispiece-lead-width:\s*)[^;]+(\s*;)/) do
                 "#{::Regexp.last_match(1)}#{lead_width_value}#{::Regexp.last_match(2)}"
               end
             end
 
-            File.write(theme_css_path, css, encoding: 'utf-8')
+            if updated == css
+              Common.log_info('theme.css: 更新不要（変更なし）')
+              return
+            end
+
+            File.write(theme_css_path, updated, encoding: 'utf-8')
             Common.log_success("theme.css を更新: theme=#{theme_name}, style=#{theme_style}")
           rescue StandardError => e
             Common.log_error("theme.css の更新に失敗: #{e.message}")
@@ -139,29 +149,25 @@ module Vivlio
             preface_css_path = File.join(Common::STYLESHEETS_DIR, 'preface.css')
             return unless File.exist?(preface_css_path)
 
-            # preface_colorが未指定の場合はスキップ
-            if preface_color.to_s.strip.empty?
-              return
-            end
-
+            using_theme_color = preface_color.to_s.strip.empty?
             preface_accent_value = normalize_color_value(preface_color, fallback: theme_accent_value)
 
             changed = safe_css_update(preface_css_path) do |css|
-              result = css.sub(/(--preface-accent-color:\s*)[^;]+(\s*;)/) do
+              result = css.sub(/(--color-preface-accent:\s*)[^;]+(\s*;)/) do
                 "#{::Regexp.last_match(1)}#{preface_accent_value}#{::Regexp.last_match(2)}"
               end
               # デバッグ: 変換結果を確認
               if result.strip.empty?
-                Common.log_warn("CSS変換結果が空です。元のCSS長: #{css.length}, 正規表現マッチ: #{css =~ /(--preface-accent-color:\s*)[^;]+(\s*;)/}")
+                Common.log_warn("CSS変換結果が空です。元のCSS長: #{css.length}, 正規表現マッチ: #{css =~ /(--color-preface-accent:\s*)[^;]+(\s*;)/}")
               end
               result
             end
 
             if changed
-              log_color = preface_color.to_s.strip
+              log_color = using_theme_color ? 'theme.color (fallback)' : preface_color.to_s.strip
               Common.log_success("preface.css を更新: preface_color=#{log_color} => #{preface_accent_value}")
             else
-              Common.log_info("preface.css: 更新不要または変更なし (既に #{preface_accent_value})")
+              Common.log_info("preface.css: 更新不要または変更なし (適用値 #{preface_accent_value})")
             end
           rescue StandardError => e
             Common.log_warn("preface.css の更新に失敗: #{e.message}")
@@ -217,8 +223,9 @@ module Vivlio
               esc_h3 = mark_h3.gsub('\\', '\\\\\\\\').gsub('"', '\\"')
               esc_h4 = mark_h4.gsub('\\', '\\\\\\\\').gsub('"', '\\"')
 
-              css = css.sub(/(--h3-marker:\s*)"."(\s*;)/, "\\1\"#{esc_h3}\"\\2")
-              css = css.sub(/(--h4-marker:\s*)"."(\s*;)/, "\\1\"#{esc_h4}\"\\2")
+              # 正規表現を修正：絵文字などの複数バイト文字にも対応
+              css = css.sub(/(--h3-marker:\s*)"[^"]*"(\s*;)/, "\\1\"#{esc_h3}\"\\2")
+              css = css.sub(/(--h4-marker:\s*)"[^"]*"(\s*;)/, "\\1\"#{esc_h4}\"\\2")
               css
             end
 
@@ -240,8 +247,6 @@ module Vivlio
             page_cfg['code_font']        = typo_cfg.dig('code', 'font')
             page_cfg['folio_font']       = typo_cfg.dig('folio', 'font')
             page_cfg['column_font_size'] = typo_cfg.dig('column', 'font_size')
-            page_cfg['folio_font_size']  = typo_cfg.dig('folio', 'font_size')
-            page_cfg['folio_color']      = typo_cfg.dig('folio', 'color')
             page_cfg['folio_placement']  = typo_cfg.dig('folio', 'placement')
 
             # 紙サイズを正規化
@@ -353,10 +358,12 @@ module Vivlio
               page_cfg['folio_center'] = 'counter(page)'
               page_cfg['folio_left']   = 'none'
               page_cfg['folio_right']  = 'none'
+              Common.log_info("ノンブル配置: 中央")
             when 'sides'
               page_cfg['folio_center'] = 'none'
               page_cfg['folio_left']   = 'counter(page)'
               page_cfg['folio_right']  = 'counter(page)'
+              Common.log_info("ノンブル配置: 左右")
             end
           end
 
@@ -374,13 +381,11 @@ module Vivlio
               ['--page-margin-inner',     page_cfg['margin_inner']],
               ['--page-margin-outer',     page_cfg['margin_outer']],
               ['--column-font-size',      page_cfg['column_font_size']],
-              ['--main-text-font',        page_cfg['main_text_font'],  :font],
-              ['--header-font',           page_cfg['header_font'],     :font],
-              ['--code-font',             page_cfg['code_font'],       :font],
-              ['--column-font',           page_cfg['column_font'],     :font],
-              ['--folio-font',            page_cfg['folio_font'],      :font],
-              ['--folio-font-size',       page_cfg['folio_font_size']],
-              ['--folio-color',           page_cfg['folio_color']],
+              ['--font-main-text',        page_cfg['main_text_font'],  :font],
+              ['--font-header',           page_cfg['header_font'],     :font],
+              ['--font-code',             page_cfg['code_font'],       :font],
+              ['--font-column',           page_cfg['column_font'],     :font],
+              ['--font-folio',            page_cfg['folio_font'],      :font],
               ['--folio-center-content',  page_cfg['folio_center']],
               ['--folio-left-content',    page_cfg['folio_left']],
               ['--folio-right-content',   page_cfg['folio_right']]
