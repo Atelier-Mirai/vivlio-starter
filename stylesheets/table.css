@@ -143,7 +143,6 @@ table code {
   break-before: page;
   break-after: page;
   break-inside: avoid;
-  page: table-rotate; /* 上下余白ありの named page を使用 */
 
   /* ページ領域いっぱい確保（@page の margin を除く） */
   block-size: 100%;
@@ -162,17 +161,10 @@ table code {
   transform-origin: center center;
   /* 回転時の縮尺は上書き可能な変数を用意（既定 0.9）。
      ペーパー倍率との二重縮小を避けるため、既定では paper-scale を掛けない。 */
-  --table-rotate-scale: 0.75;
-  transform: translate(-50%, +65%) rotate(-90deg) scale(var(--table-rotate-scale));
+  --table-rotate-scale: 0.70;
+  transform: translate(-50%, +25%) rotate(-90deg) scale(var(--table-rotate-scale));
   margin: 0;
   inline-size: max-content;
   max-inline-size: none;
   z-index: 0;
-}
-
-/* table-rotate 用のページ: 上下20mmの余白（ノンブル用）/ 左右は0で最大幅確保 */
-@page table-rotate {
-  /* ノンブルのための上下余白をスケール追従 */
-  margin-block-start: clamp(14mm, calc(20mm * var(--paper-scale)), 22mm);
-  margin-inline: 0;
 }
