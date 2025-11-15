@@ -72,3 +72,33 @@ puts "Hello, World!"
 | アニメーション | `@keyframes` と `animation` | `@keyframes fade{...} .el{animation: fade 1s}` | 簡易トランジションは `transition` |
 | 変換/配置 | `transform`, `flex`, `grid` | `display: grid; gap: 1rem;` | レイアウトの基本 |
 :::
+
+## CSS 調整版
+
+:::{.table-rotate scale:60% shift-y:20%}
+| 機能 | 構文 | 例 | 備考 |
+|---|---|---|---|
+| セレクター | 要素/クラス/ID | `h1 {}`, `.btn {}`, `#main {}` | 優先度: ID > クラス > 要素 |
+| 子/子孫/隣接 | `>`, 空白, `+`, `~` | `.card > img`, `.nav a`, `h2 + p` | 関係で範囲制御 |
+| プロパティ | `prop: value;` | `color: #333;`, `margin: 1rem;` | 終端セミコロン推奨 |
+| 変数 | `--var` と `var()` | `:root { --gap: 8px } .g { gap: var(--gap) }` | カスケード変数 |
+| メディア | `@media` | `@media (min-width: 768px) { ... }` | レスポンシブ |
+| フォント | `@font-face` | `@font-face { font-family: X; src: url(x.woff2) format('woff2'); }` | 表示最適化に注意 |
+| アニメーション | `@keyframes` と `animation` | `@keyframes fade{...} .el{animation: fade 1s}` | 簡易トランジションは `transition` |
+| 変換/配置 | `transform`, `flex`, `grid` | `display: grid; gap: 1rem;` | レイアウトの基本 |
+:::
+
+## CSS 調整版その２
+
+:::{.table-rotate scale:0.50 shift-y:0.10}
+| 機能 | 構文 | 例 | 備考 |
+|---|---|---|---|
+| セレクター | 要素/クラス/ID | `h1 {}`, `.btn {}`, `#main {}` | 優先度: ID > クラス > 要素 |
+| 子/子孫/隣接 | `>`, 空白, `+`, `~` | `.card > img`, `.nav a`, `h2 + p` | 関係で範囲制御 |
+| プロパティ | `prop: value;` | `color: #333;`, `margin: 1rem;` | 終端セミコロン推奨 |
+| 変数 | `--var` と `var()` | `:root { --gap: 8px } .g { gap: var(--gap) }` | カスケード変数 |
+| メディア | `@media` | `@media (min-width: 768px) { ... }` | レスポンシブ |
+| フォント | `@font-face` | `@font-face { font-family: X; src: url(x.woff2) format('woff2'); }` | 表示最適化に注意 |
+| アニメーション | `@keyframes` と `animation` | `@keyframes fade{...} .el{animation: fade 1s}` | 簡易トランジションは `transition` |
+| 変換/配置 | `transform`, `flex`, `grid` | `display: grid; gap: 1rem;` | レイアウトの基本 |
+:::

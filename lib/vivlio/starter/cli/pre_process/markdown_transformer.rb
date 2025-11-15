@@ -231,10 +231,15 @@ module Vivlio
             html.join("\n")
           end
 
-          # <div class="table-rotate"> ... </div> の内側MarkdownをHTMLへ
+          # <div ... class="... table-rotate ..." ...> ... </div> の内側MarkdownをHTMLへ
+          # - class="table-rotate" を含む任意の属性を保持したまま変換する
           def convert_table_rotate_inner_markdown(content)
-            content.gsub(%r{<div class="table-rotate">\s*(.*?)\s*</div>}m) do
-              inner = ::Regexp.last_match(1)
+            # 例: <div class="table-rotate scale-60" style="--table-rotate-scale:0.60;"> ... </div>
+            # 属性部全体（class, style 等）を attrs としてキャプチャし、そのまま再利用する
+            content.gsub(%r{<div\s+([^>]*\bclass="[^"]*\btable-rotate\b[^"]*"[^>]*)>\s*(.*?)\s*</div>}m) do
+              attrs = ::Regexp.last_match(1)
+              inner = ::Regexp.last_match(2)
+
               normalized = "\n\n#{inner.to_s.strip}\n\n"
               html = render_markdown_to_html(normalized).to_s.strip
 
@@ -244,7 +249,7 @@ module Vivlio
                 html = table_html if table_html
               end
 
-              "<div class=\"table-rotate\">\n#{html}\n</div>"
+              "<div #{attrs}>\n#{html}\n</div>"
             end
           end
 
@@ -288,25 +293,84 @@ module Vivlio
             parts.join("\n")
           end
 
-          # ::: {.class} 記法で囲まれたコンテナを div に変換して件数を返す
+          # ::: {.class ...} 記法で囲まれたコンテナを div に変換して件数を返す
+          # - 例: :::{.table-rotate scale:60% shift-y:20%}
+          #   → <div class="table-rotate" style="--table-rotate-scale:0.60; --table-rotate-shift-y:+20%;"> ... </div>
           def convert_container_blocks(content, class_name:)
             opened_count = 0
             closed_count = 0
-            in_block = false
 
-            converted = content.lines.map do |line|
-              if line.match(/^\s*:::\{\.(#{Regexp.escape(class_name)})\}\s*$/)
-                in_block = true
-                opened_count += 1
-                "<div class=\"#{class_name}\">\n"
-              elsif in_block && line.match(/^\s*:::\s*$/)
-                in_block = false
-                closed_count += 1
-                "</div>\n"
+            # 1行形式のコンテナブロックをまとめてキャプチャする
+            #  - 1行目: ::: {.class ...}
+            #  - 中身:   任意行（非貪欲）
+            #  - 終了行: :::
+            # 行頭・行末のアンカーに依存せず、テキスト中のどこにあってもマッチするようにする
+            # 終了タグの後の改行も含めてマッチさせる
+            pattern = %r!:::\s*\{\.([^}]+)\}\s*\n(.*?)\n:::\s*(?:\n|$)!m
+
+            converted = content.gsub(pattern) do
+              raw_token_str = ::Regexp.last_match(1)
+              inner         = ::Regexp.last_match(2)
+
+              raw_tokens   = raw_token_str.split
+              
+              # 最初のトークンは必ずクラス名（既に . は除かれている）
+              # その後のトークンはパラメータ（: を含む）または追加クラス（. で始まる）
+              first_class = raw_tokens.first
+              additional_tokens = raw_tokens.drop(1)
+              
+              # 追加のクラストークン（. で始まるもの）を抽出
+              additional_classes = additional_tokens.select { |t| t.start_with?('.') }.map { |c| c.delete_prefix('.') }
+              
+              # パラメータトークン（: を含むもの）を抽出
+              param_tokens = additional_tokens.reject { |t| t.start_with?('.') }
+
+              # 対象クラスを含まない場合はそのまま返す
+              unless first_class == class_name || additional_classes.include?(class_name)
+                ::Regexp.last_match(0)
               else
-                line
+                opened_count += 1
+                closed_count += 1
+
+                # クラス属性を構築
+                all_classes = [first_class] + additional_classes
+                class_attr = all_classes.join(' ')
+
+                # table-rotate 用のパラメータトークンを style 属性へ変換
+                # 両方ともパーセント形式で出力する
+                style_parts = []
+                param_tokens.each do |token|
+                  # 例: scale:60% → 60%, scale:0.60 → 60%
+                  if (m_scale = token.match(/^scale:(.+)$/))
+                    raw = m_scale[1].strip
+                    scale_percent = if raw.end_with?('%')
+                                      raw.to_f
+                                    else
+                                      raw.to_f * 100.0
+                                    end
+                    scale_int = scale_percent.round
+                    style_parts << "--table-rotate-scale:#{scale_int}%;"
+                  end
+
+                  # 例: shift-y:20% → +20%, shift-y:0.20 → +20%
+                  if (m_shift = token.match(/^shift-y:(.+)$/))
+                    raw = m_shift[1].strip
+                    shift_percent = if raw.end_with?('%')
+                                      raw.to_f
+                                    else
+                                      raw.to_f * 100.0
+                                    end
+                    shift_int = shift_percent.round
+                    sign = shift_int.negative? ? '' : '+'
+                    style_parts << "--table-rotate-shift-y:#{sign}#{shift_int}%;"
+                  end
+                end
+
+                style_attr = style_parts.empty? ? '' : " style=\"#{style_parts.join(' ')}\""
+
+                "<div class=\"#{class_attr}\"#{style_attr}>\n#{inner}\n</div>\n\n"
               end
-            end.join
+            end
 
             [converted, opened_count, closed_count]
           end

@@ -127,11 +127,6 @@ table code {
 
 /* =====================================================================
    縦置きのまま「表だけ」を 90 度回転してページいっぱいに配置するユーティリティ（90°固定）
-   - ページ頭出し＆専用ページ化（break-before/after: page）
-   - 左下を原点（transform-origin: bottom left）に回転
-   - 縮尺は CSS 変数 --scale で調整（既定 0.95）
-   - 微調整は --tx/--ty で平行移動
-   - 例: <div class="table-rotate" style="--scale:0.95; --tx:0; --ty:0"><table>…</table></div>
    ===================================================================== */
 
 .table-rotate {
@@ -149,6 +144,10 @@ table code {
   min-block-size: 100%;
   overflow: visible;
 
+  /* 既定の回転テーブル用パラメータ（必要に応じてスタイル属性で上書き） */
+  --table-rotate-scale: 70%;
+  --table-rotate-shift-y: +25%;
+
   /* ラッパのサイズ（暫定。必要に応じて調整） */
   width: 100%;
   height: clamp(320px, calc(500px * var(--paper-scale)), 560px);
@@ -161,8 +160,7 @@ table code {
   transform-origin: center center;
   /* 回転時の縮尺は上書き可能な変数を用意（既定 0.9）。
      ペーパー倍率との二重縮小を避けるため、既定では paper-scale を掛けない。 */
-  --table-rotate-scale: 0.70;
-  transform: translate(-50%, +25%) rotate(-90deg) scale(var(--table-rotate-scale));
+  transform: translate(-50%, var(--table-rotate-shift-y)) rotate(-90deg) scale(var(--table-rotate-scale));
   margin: 0;
   inline-size: max-content;
   max-inline-size: none;
