@@ -53,7 +53,7 @@ output:
     layout_type: reflowable 
     
     metadata:
-      title: "はじめての技術書づくり" # 必須
+      title: "はじめての技術書づくり" # 必須 
       author: "著者名"             # 必須
       language: "ja"               # 必須 (例: ja, en)
       isbn: "978-4-XXXX-XXXX-X"   # 任意（独自ISBN取得の場合。Amazon ASIN自動割り当て）
