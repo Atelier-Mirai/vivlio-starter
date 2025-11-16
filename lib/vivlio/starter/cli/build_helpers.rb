@@ -1062,7 +1062,7 @@ module Vivlio
         # Step 10: すべてのPDFを結合して output.pdf を生成
         # ------------------------------------------------
         # - 必要に応じて 98-postface.pdf の奇数開始調整（空白ページ挿入）
-        # - HexaPDF で結合
+        # - qpdf で結合（内部リンク/注釈を保持するため）
         # ================================================================
         def merge_all_pdfs_only!(_keep = nil)
           Common.log_action('[Step 10] フロント(00-01)、前書き、目次、本文、付録、奥付を結合します…')
@@ -1083,9 +1083,26 @@ module Vivlio
             return false
           end
 
+          unless system('which qpdf >/dev/null 2>&1')
+            Common.log_warn('[Step 10] qpdf が見つかりません。`brew install qpdf` でインストールしてください。')
+            return false
+          end
+
+          # 可能であれば 11-98-sections.pdf をベースPDFとして使用し、
+          # Vivliostyle が生成した本文側の内部リンク・宛先情報を優先的に保持する
+          base_pdf = if existing_files.include?('11-98-sections.pdf')
+                       '11-98-sections.pdf'
+                     else
+                       existing_files.first
+                     end
+
           FileUtils.rm_f('output.pdf')
-          cmd = ['bundle', 'exec', 'hexapdf', 'merge', *existing_files, 'output.pdf'].join(' ')
+
+          # qpdf base.pdf --pages file1 1-z file2 1-z ... -- output.pdf
+          ranges = existing_files.map { |f| %("#{f}" 1-z) }.join(' ')
+          cmd = %(qpdf "#{base_pdf}" --pages #{ranges} -- "output.pdf" > /dev/null)
           merged = system(cmd)
+
           if merged && File.exist?('output.pdf')
             Common.log_success('[Step 10] output.pdf を生成しました')
             true

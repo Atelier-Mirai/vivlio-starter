@@ -46,3 +46,6 @@ print(fibonacci(10))
 - この章の要素: @sample-code-56, @data-table-56, @diagram-56
 
 すべての参照が正しく番号付きリンクに変換されるはずです。
+
+
+１３章の最後の文章です。@einstein の参照先、１２章にジャンプします。

@@ -2,6 +2,7 @@
 
 require 'cgi'
 require_relative '../common'
+require_relative '../post_process/heading_processor'
 
 module Vivlio
   module Starter
@@ -501,6 +502,45 @@ module Vivlio
             match ? match[1] : '0'
           end
 
+          def main_chapter_order_for_xref
+            tokens = PostProcessCommands::HeadingProcessor.configured_main_chapter_tokens
+            if tokens && !tokens.empty?
+              tokens
+            else
+              md_tokens = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |p| File.basename(p, '.md') }
+              seen = {}
+              filtered = []
+
+              md_tokens.each do |entry|
+                token = PostProcessCommands::HeadingProcessor.normalize_chapter_token(entry)
+                next unless token
+                next unless PostProcessCommands::HeadingProcessor.main_chapter_token?(token)
+                next if seen[token]
+
+                seen[token] = true
+                filtered << token
+              end
+
+              filtered.sort_by { |token| Common.get_chapter_number(token).to_i }
+            end
+          end
+
+          def display_chapter_number_for_filename(filename)
+            chapter_number = extract_chapter_number(filename)
+            chapter_number_i = chapter_number.to_i
+
+            range = PostProcessCommands::HeadingProcessor::MAIN_CHAPTER_RANGE
+            return chapter_number unless range.include?(chapter_number_i)
+
+            chapter_token = File.basename(filename, File.extname(filename))
+            order = main_chapter_order_for_xref
+            if (idx = order.index(chapter_token))
+              return (idx + 1).to_s
+            end
+
+            (chapter_number_i - 10).to_s
+          end
+
           # 章全体をスキャンしてラベル定義を収集
           # @param content [String] 章のMarkdownテキスト
           # @param source_file [String] ソースファイル名
@@ -620,7 +660,7 @@ module Vivlio
               # 自動IDの場合はカウンターを増やしてIDを生成
               if caption_info[:auto]
                 auto_counters[block_type] += 1
-                chapter_num = extract_chapter_number(filename)
+                chapter_num = display_chapter_number_for_filename(filename)
                 generated_id = "#{block_type}-#{chapter_num}-#{auto_counters[block_type]}"
                 label = labels_map[generated_id]
               else
@@ -704,7 +744,8 @@ module Vivlio
             when 'right'
               figure_classes << 'cross-ref-align-right'
             end
-            html << "<figure class=\"#{figure_classes.join(' ')}\">"
+            id_attr = label ? " id=\"#{label.id}\"" : ''
+            html << "<figure#{id_attr} class=\"#{figure_classes.join(' ')}\">"
             html << "  #{img_html}"
             html << "  <figcaption>#{caption_text}</figcaption>"
             html << '</figure>'
@@ -737,7 +778,8 @@ module Vivlio
 
             # tableタグをキャプション付きで包む
             html = []
-            html << '<div class="cross-ref-table">'
+            id_attr = label ? " id=\"#{label.id}\"" : ''
+            html << "<div#{id_attr} class=\"cross-ref-table\">"
             html << "  <p class=\"table-caption\">#{caption_text}</p>"
             html << "  #{table_html}"
             html << '</div>'
@@ -783,7 +825,8 @@ module Vivlio
 
             # コードブロックをキャプション付きで包む
             html = []
-            html << '<div class="cross-ref-list">'
+            id_attr = label ? " id=\"#{label.id}\"" : ''
+            html << "<div#{id_attr} class=\"cross-ref-list\">"
             html << "  <p class=\"code-caption\">#{caption_text}</p>"
             html << "  <pre><code#{lang_class}>#{escaped_code}</code></pre>"
             html << '</div>'
@@ -871,9 +914,24 @@ module Vivlio
                   label = labels_map[label_id]
 
                   if label
-                    # ラベルが存在する場合、番号付きテキストに置換
-                    # 例: リスト 4-1, 表 3-2, 図 1-5
-                    label.full_number
+                    anchor_id = label.id.to_s
+                    link_text = label.full_number.to_s
+
+                    # ラベル定義元の章ファイルからターゲットHTMLファイル名を推測
+                    # 例: source_file="55-cross-reference2.md" → "55-cross-reference2.html"
+                    href = begin
+                             src = label.source_file.to_s
+                             if src.empty?
+                               "##{anchor_id}"
+                             else
+                               base = File.basename(src, File.extname(src))
+                               "#{base}.html##{anchor_id}"
+                             end
+                           rescue StandardError
+                             "##{anchor_id}"
+                           end
+
+                    %(<a href="#{href}" class="cross-ref-link">#{CGI.escapeHTML(link_text)}</a>)
                   else
                     # 未定義の場合はエラーとして記録
                     location = if filename && line_number

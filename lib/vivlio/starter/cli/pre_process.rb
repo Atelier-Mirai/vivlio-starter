@@ -297,7 +297,7 @@ module Vivlio
           contents_files.each do |md_path|
             filename = File.basename(md_path)
             content = File.read(md_path, encoding: 'utf-8')
-            chapter_number = MarkdownTransformer.extract_chapter_number(filename)
+            chapter_number = MarkdownTransformer.display_chapter_number_for_filename(filename)
 
             result = MarkdownTransformer.collect_labels(content, filename, chapter_number)
             all_labels.concat(result[:labels])
