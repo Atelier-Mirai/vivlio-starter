@@ -422,6 +422,560 @@ module Vivlio
             Common.log_info("#{matches_found}個のinclude記法を処理") if matches_found.positive?
             content
           end
+
+          # =====================================================================
+          # クロスリファレンス（相互参照）機能
+          # =====================================================================
+
+          # ラベル定義情報を保持する構造体
+          Label = Struct.new(:id, :type, :chapter, :number, :title, :source_file, :line, :auto) do
+            def display_name
+              case type
+              when :list
+                'リスト'
+              when :table
+                '表'
+              when :fig
+                '図'
+              else
+                '要素'
+              end
+            end
+
+            def full_number
+              "#{display_name} #{number}"
+            end
+          end
+
+          # キャプション行のパターン（** タイトル @id ** 形式）
+          CAPTION_PATTERN = /^\*\*\s*(.+?)\s+@([a-zA-Z0-9_\-]+)\s*\*\*\s*$/
+
+          # キャプション行を検出してラベル情報を抽出
+          # @param line [String] 検査対象の行
+          # @return [Hash, nil] { title: String, id: String, auto: Boolean } or nil
+          def extract_caption_label(line)
+            match = line.match(CAPTION_PATTERN)
+            return nil unless match
+
+            title_with_id = match[1].strip
+            label_id = match[2].strip
+
+            # @auto または @omakase の場合は自動ID扱い
+            auto_mode = %w[auto omakase].include?(label_id)
+
+            { title: title_with_id, id: label_id, auto: auto_mode }
+          end
+
+          # 次の非空行を取得し、種別を判定
+          # @param lines [Array<String>] 行配列
+          # @param current_index [Integer] キャプション行のインデックス
+          # @return [Symbol, nil] :list, :table, :fig, または nil
+          def detect_block_type(lines, current_index)
+            # キャプションの次の行から非空行を探す
+            (current_index + 1...lines.size).each do |i|
+              line = lines[i].strip
+              next if line.empty?
+
+              # コードブロック → list
+              return :list if line.start_with?('```')
+
+              # テーブル → table
+              return :table if line.start_with?('|') && line.count('|') > 1
+
+              # 画像 → fig
+              return :fig if line.start_with?('![')
+
+              # どれにも該当しない場合は nil（エラー扱い）
+              return nil
+            end
+
+            nil
+          end
+
+          # 章番号を抽出（ファイル名から）
+          # @param filename [String] 章ファイル名（例: "71-install.md"）
+          # @return [String] 章番号（例: "71"）
+          def extract_chapter_number(filename)
+            basename = File.basename(filename, '.*')
+            match = basename.match(/^(\d+)/)
+            match ? match[1] : '0'
+          end
+
+          # 章全体をスキャンしてラベル定義を収集
+          # @param content [String] 章のMarkdownテキスト
+          # @param source_file [String] ソースファイル名
+          # @param chapter_number [String] 章番号
+          # @return [Hash] { labels: Array<Label>, errors: Array<String> }
+          def collect_labels(content, source_file, chapter_number)
+            lines = content.lines
+            labels = []
+            errors = []
+            counters = { list: 0, table: 0, fig: 0 }
+
+            # コードフェンス内の例示用キャプションはラベルとして扱わない
+            in_code_block = false
+
+            lines.each_with_index do |line, index|
+              stripped = line.lstrip
+
+              # ``` / ```lang で始まる行でコードブロックの開始・終了をトグル
+              if stripped.start_with?('```')
+                in_code_block = !in_code_block
+                next
+              end
+
+              # コードブロック内はラベル解析の対象外
+              next if in_code_block
+
+              caption_info = extract_caption_label(line)
+              next unless caption_info
+
+              # 種別判定
+              block_type = detect_block_type(lines, index)
+              unless block_type
+                errors << "#{source_file}:#{index + 1} - キャプション行に@idがありますが、" \
+                          "直後のブロックから種別（リスト/表/図）を判定できませんでした"
+                next
+              end
+
+              # 番号の採番
+              counters[block_type] += 1
+              number = "#{chapter_number}-#{counters[block_type]}"
+
+              # 自動IDの場合はIDを生成
+              label_id = if caption_info[:auto]
+                           "#{block_type}-#{chapter_number}-#{counters[block_type]}"
+                         else
+                           caption_info[:id]
+                         end
+
+              # Labelオブジェクトを作成
+              label = Label.new(
+                label_id,
+                block_type,
+                chapter_number,
+                number,
+                caption_info[:title],
+                source_file,
+                index + 1,
+                caption_info[:auto]
+              )
+
+              labels << label
+            end
+
+            { labels: labels, errors: errors }
+          end
+
+          # キャプション行と直後のブロックをHTML化（図・表・コード）
+          # @param content [String] 章のMarkdownテキスト
+          # @param filename [String] ソースファイル名（画像パス正規化用）
+          # @param labels_map [Hash<String, Label>] ラベルID → Label のマップ
+          # @return [String] 変換後のコンテンツ
+          def transform_captioned_blocks(content, filename, labels_map)
+            lines = content.lines
+            output = []
+            i = 0
+            
+            # 自動IDのカウンター（章ごとに各種別をカウント）
+            auto_counters = { list: 0, table: 0, fig: 0 }
+
+            while i < lines.size
+              line = lines[i]
+              caption_info = extract_caption_label(line)
+
+              # キャプション行でない場合はそのまま出力
+              unless caption_info
+                output << line
+                i += 1
+                next
+              end
+
+              # キャプション行の場合、種別を判定
+              block_type = detect_block_type(lines, i)
+              unless block_type
+                # 種別が不明な場合はそのまま出力（エラーは既にcollect_labelsで記録済み）
+                output << line
+                i += 1
+                next
+              end
+
+              # 自動IDの場合はカウンターを増やしてIDを生成
+              if caption_info[:auto]
+                auto_counters[block_type] += 1
+                chapter_num = extract_chapter_number(filename)
+                generated_id = "#{block_type}-#{chapter_num}-#{auto_counters[block_type]}"
+                label = labels_map[generated_id]
+              else
+                label = labels_map[caption_info[:id]]
+              end
+
+              # ブロックの開始位置を探す
+              block_start = i + 1
+              while block_start < lines.size && lines[block_start].strip.empty?
+                block_start += 1
+              end
+
+              # ブロック種別に応じて処理
+              case block_type
+              when :fig
+                html = transform_figure_block(lines, i, block_start, caption_info, label, filename)
+                output << html
+                i = find_block_end(lines, block_start, :fig) + 1
+
+              when :table
+                html = transform_table_block(lines, i, block_start, caption_info, label)
+                output << html
+                i = find_block_end(lines, block_start, :table) + 1
+
+              when :list
+                html = transform_code_block(lines, i, block_start, caption_info, label)
+                output << html
+                i = find_block_end(lines, block_start, :list) + 1
+
+              else
+                output << line
+                i += 1
+              end
+            end
+
+            output.join
+          end
+
+          # 図ブロックのHTML変換
+          def transform_figure_block(lines, caption_index, block_start, caption_info, label, filename)
+            # 画像行を取得（既に画像パス正規化済み）
+            img_line = lines[block_start].strip
+            
+            # Markdown画像記法をHTMLに変換
+            img_html = if img_line =~ /!\[(.*?)\]\((.*?)\)(?:\{([^}]+)\})?/
+                         alt = Regexp.last_match(1)
+                         src = Regexp.last_match(2)
+                         attrs = Regexp.last_match(3)
+                         
+                         # 属性を処理
+                         style_parts = []
+                         classes = []
+                         if attrs
+                           attrs.scan(/width=(\d+%)/) { |w| style_parts << "width: #{w[0]}" }
+                           attrs.scan(/\.([a-z\-]+)/) { |c| classes << c[0] }
+                         end
+                         
+                         class_attr = classes.any? ? " class=\"#{classes.join(' ')}\"" : ''
+                         style_attr = style_parts.any? ? " style=\"#{style_parts.join('; ')}\"" : ''
+                         
+                         "<img src=\"#{src}\" alt=\"#{alt}\"#{class_attr}#{style_attr}>"
+                       else
+                         img_line
+                       end
+            
+            # キャプションテキストを生成
+            caption_text = if label
+                             "#{label.full_number}: #{caption_info[:title]}"
+                           else
+                             caption_info[:title]
+                           end
+            
+            # figure要素として出力
+            html = []
+            html << '<figure class="cross-ref-figure">'
+            html << "  #{img_html}"
+            html << "  <figcaption>#{caption_text}</figcaption>"
+            html << '</figure>'
+            html << ''
+            html.join("\n")
+          end
+
+          # 表ブロックのHTML変換
+          def transform_table_block(lines, caption_index, block_start, caption_info, label)
+            # テーブル行を収集
+            table_lines = []
+            i = block_start
+            while i < lines.size
+              line = lines[i]
+              break if line.strip.empty? || !line.include?('|')
+              table_lines << line
+              i += 1
+            end
+
+            # Markdownテーブルを結合してKramdownで変換
+            table_md = table_lines.join
+            table_html = render_markdown_to_html(table_md).strip
+
+            # キャプションテキストを生成
+            caption_text = if label
+                             "#{label.full_number}: #{caption_info[:title]}"
+                           else
+                             caption_info[:title]
+                           end
+
+            # tableタグをキャプション付きで包む
+            html = []
+            html << '<div class="cross-ref-table">'
+            html << "  <p class=\"table-caption\">#{caption_text}</p>"
+            html << "  #{table_html}"
+            html << '</div>'
+            html << ''
+            html.join("\n")
+          end
+
+          # コードブロックのHTML変換
+          def transform_code_block(lines, caption_index, block_start, caption_info, label)
+            # コードブロックを収集
+            i = block_start
+            
+            # 開始行（```）から言語を取得
+            first_line = lines[i] || ''
+            # ```lang や ```lang:filename のような形式を想定し、言語部分のみ抽出
+            lang_match = first_line.to_s.match(/```([a-zA-Z0-9_\-]+)?/)
+            language = (lang_match && lang_match[1]).to_s
+            i += 1
+
+            # コードの内容を収集（終了の```まで）
+            code_content = []
+            while i < lines.size
+              line = lines[i]
+              break if line.strip.start_with?('```')
+              code_content << line
+              i += 1
+            end
+
+            # コードをHTMLエスケープ
+            escaped_code = code_content.join.gsub('&', '&amp;')
+                                            .gsub('<', '&lt;')
+                                            .gsub('>', '&gt;')
+
+            # キャプションテキストを生成
+            caption_text = if label
+                             "#{label.full_number}: #{caption_info[:title]}"
+                           else
+                             caption_info[:title]
+                           end
+
+            # 言語クラスを設定
+            lang_class = language.empty? ? '' : " class=\"language-#{language}\""
+
+            # コードブロックをキャプション付きで包む
+            html = []
+            html << '<div class="cross-ref-list">'
+            html << "  <p class=\"code-caption\">#{caption_text}</p>"
+            html << "  <pre><code#{lang_class}>#{escaped_code}</code></pre>"
+            html << '</div>'
+            html << ''
+            html.join("\n")
+          end
+
+          # ブロックの終了位置を探す
+          def find_block_end(lines, start_index, block_type)
+            case block_type
+            when :fig
+              # 画像は1行で終了
+              start_index
+            when :table
+              # テーブルは | を含む行が続く限り
+              i = start_index
+              while i < lines.size && lines[i].include?('|')
+                i += 1
+              end
+              i - 1
+            when :list
+              # コードブロックは ``` で終了
+              i = start_index + 1
+              while i < lines.size
+                return i if lines[i].strip.start_with?('```')
+                i += 1
+              end
+              i - 1
+            else
+              start_index
+            end
+          end
+
+          # 本文中の @id を番号付きリンクに置換
+          # @param content [String] 章のMarkdownテキスト
+          # @param labels_map [Hash<String, Label>] ラベルID → Label のマップ
+          # @param filename [String, nil] ログ用のファイル名
+          # @return [Hash] { content: String, errors: Array<String> }
+          def replace_references(content, labels_map, filename = nil)
+            errors = []
+            in_code_block = false
+
+            processed_lines = []
+
+            content.lines.each_with_index do |line, idx|
+              line_number = idx + 1
+              stripped = line.lstrip
+
+              # フェンス付きコードブロック (``` ～ ``` ) 内はそのまま残す
+              if stripped.start_with?('```')
+                in_code_block = !in_code_block
+                processed_lines << line
+              elsif in_code_block
+                processed_lines << line
+              else
+                processed_lines << replace_references_in_line(line, labels_map, errors, filename, line_number)
+              end
+            end
+
+            { content: processed_lines.join, errors: errors }
+          end
+
+          # 1行分のテキストについて、インラインコード（`...` や <code>...</code>）の外側だけ @id を置換する
+          def replace_references_in_line(line, labels_map, errors, filename = nil, line_number = nil)
+            # まず HTML の <code>...</code> セグメントをコードとして扱い、それ以外の部分だけを処理する
+            parts = line.split(/(<code[^>]*>.*?<\/code>)/)
+
+            parts.map! do |part|
+              # <code>...</code> はそのまま残す
+              if part.start_with?('<code')
+                part
+              else
+                # `code` や ``code`` など、バッククォートで囲まれた部分を保持しつつ、それ以外だけを変換する
+                segments = part.scan(/`+[^`]*`+|[^`]+/)
+
+                segments.map! do |segment|
+                  # バッククォートで囲まれた部分はインラインコードとしてそのまま残す
+                  if segment.start_with?('`')
+                    segment
+                  else
+                    segment.gsub(/@([a-zA-Z0-9_\-]+)/) do
+                      label_id = Regexp.last_match(1)
+                      label = labels_map[label_id]
+
+                      if label
+                        # ラベルが存在する場合、番号付きテキストに置換
+                        # 例: リスト 4-1, 表 3-2, 図 1-5
+                        label.full_number
+                      else
+                        # 未定義の場合はエラーとして記録
+                        location = if filename && line_number
+                                     "#{filename}:#{line_number}"
+                                   elsif line_number
+                                     "行#{line_number}"
+                                   else
+                                     '(位置情報なし)'
+                                   end
+                        errors << "#{location} - 未定義のラベルID: @#{label_id}"
+                        "@#{label_id}" # そのまま残す
+                      end
+                    end
+                  end
+                end
+
+                segments.join
+              end
+            end
+
+            parts.join
+          end
+
+          # 複数章のラベルを統合し、重複チェックを行う
+          # @param all_labels [Array<Label>] 全章から収集したラベルの配列
+          # @return [Hash] { labels_map: Hash, duplicates: Array<String> }
+          def build_labels_map_with_duplicates_check(all_labels)
+            labels_map = {}
+            duplicates = []
+
+            all_labels.each do |label|
+              if labels_map.key?(label.id)
+                # 重複を検出
+                existing = labels_map[label.id]
+                duplicates << "ラベルID '@#{label.id}' が重複しています:\n" \
+                              "  - #{existing.source_file}:#{existing.line}\n" \
+                              "  - #{label.source_file}:#{label.line}"
+              else
+                labels_map[label.id] = label
+              end
+            end
+
+            { labels_map: labels_map, duplicates: duplicates }
+          end
+
+          # ID一覧レポートを生成
+          # @param all_labels [Array<Label>] 全ラベルの配列
+          # @return [String] レポート文字列（Markdown形式）
+          def generate_cross_reference_report(all_labels)
+            report = ["# Cross Reference Map\n"]
+
+            # ファイルごとにグルーピング
+            labels_by_file = all_labels.group_by(&:source_file)
+
+            labels_by_file.each do |file, labels|
+              report << "\n- #{file}"
+              labels.each do |label|
+                mode = label.auto ? 'auto' : 'manual'
+                report << "  - @#{label.id.ljust(30)} (#{label.full_number.ljust(12)}, #{mode.ljust(6)}) 「#{label.title}」"
+              end
+            end
+
+            report.join("\n")
+          end
+
+          # クロスリファレンス処理のメインエントリーポイント
+          # @param chapters [Hash] { filename => content } の形式
+          # @return [Hash] { chapters: Hash, report: String, errors: Array<String> }
+          def process_cross_references(chapters)
+            all_labels = []
+            all_errors = []
+            processed_chapters = {}
+
+            # Phase 1: 全章からラベル定義を収集
+            Common.log_info('Phase 1: ラベル定義を収集中...')
+            chapters.each do |filename, content|
+              chapter_number = extract_chapter_number(filename)
+              result = collect_labels(content, filename, chapter_number)
+
+              all_labels.concat(result[:labels])
+              all_errors.concat(result[:errors])
+
+              Common.log_info("  #{filename}: #{result[:labels].size}個のラベルを検出")
+            end
+
+            # Phase 2: ラベルマップを構築し、重複をチェック
+            Common.log_info('Phase 2: ラベルマップ構築と重複チェック...')
+            map_result = build_labels_map_with_duplicates_check(all_labels)
+            labels_map = map_result[:labels_map]
+            duplicates = map_result[:duplicates]
+
+            if duplicates.any?
+              Common.log_error("ラベルIDの重複を検出しました:")
+              duplicates.each { |dup| Common.log_error(dup) }
+              all_errors.concat(duplicates)
+            end
+
+            # Phase 3: キャプション付きブロックをHTML化
+            Common.log_info('Phase 3: キャプション付きブロックをHTML化中...')
+            chapters.each do |filename, content|
+              transformed = transform_captioned_blocks(content, filename, labels_map)
+              processed_chapters[filename] = transformed
+            end
+
+            # Phase 4: 本文中の @id を置換
+            Common.log_info('Phase 4: 本文中の @id 参照を置換中...')
+            processed_chapters.each do |filename, content|
+              result = replace_references(content, labels_map, filename)
+              processed_chapters[filename] = result[:content]
+              all_errors.concat(result[:errors])
+
+              if result[:errors].any?
+                Common.log_warn("  #{filename}: #{result[:errors].size}個の未定義参照を検出")
+                result[:errors].each do |msg|
+                  Common.log_warn("    - #{msg}")
+                end
+              end
+            end
+
+            # Phase 5: レポート生成
+            report = generate_cross_reference_report(all_labels)
+
+            # 結果を返す
+            {
+              chapters: processed_chapters,
+              report: report,
+              errors: all_errors,
+              labels_count: all_labels.size
+            }
+          end
         end
       end
     end

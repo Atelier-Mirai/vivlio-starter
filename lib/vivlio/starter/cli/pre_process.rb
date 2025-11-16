@@ -95,13 +95,23 @@ module Vivlio
                            Dir.glob("#{Common::CONTENTS_DIR}/*.md")
                          end
 
-              # 各Markdownファイルを処理
+              # 各Markdownファイルを処理（contents/ → プロジェクトルートの .md を生成）
               Common.log_action('Markdownファイルの前処理を行っています...')
               md_files.each do |md_file|
                 process_single_markdown_file(md_file)
               end
 
               Common.log_success('Markdownの前処理が完了しました')
+
+              # クロスリファレンス処理を実行（プロジェクトルート直下の .md を対象）
+              output_files = md_files.map { |md_file| File.basename(md_file) }
+              Common.log_action("\nクロスリファレンス処理を開始します...")
+              result = process_cross_references_for_files(output_files)
+
+              unless result
+                Common.log_error('クロスリファレンス処理でエラーが発生しました')
+                exit(1)
+              end
             end
           end
         end
@@ -257,6 +267,104 @@ module Vivlio
           ImageGenerator.ensure_variant_generated(source_path, variant)
         end
         module_function :ensure_variant_generated
+
+        # ================================================================
+        # クロスリファレンス関連メソッド (MarkdownTransformer への委譲)
+        # ================================================================
+        def process_cross_references(chapters)
+          MarkdownTransformer.process_cross_references(chapters)
+        end
+        module_function :process_cross_references
+
+        # 全章ファイルのクロスリファレンス処理を一括実行
+        # @param md_files [Array<String>] 処理対象ファイル（プロジェクトルート直下 .md）の配列
+        def process_cross_references_for_files(md_files)
+          return true if md_files.empty?
+
+          Common.log_info('=== クロスリファレンス処理を開始 ===')
+
+          # ------------------------------------------------
+          # Phase 1: contents/ 配下の全Markdownからラベル定義を収集
+          # ------------------------------------------------
+          all_labels = []
+          all_errors = []
+
+          # 全体の整合性を保つため、contents/ 配下の全Markdownをラベル収集対象とする
+          contents_files = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).sort
+          Common.log_info("ラベル収集対象ファイル: #{contents_files.size}件")
+
+          contents_files.each do |md_path|
+            filename = File.basename(md_path)
+            content = File.read(md_path, encoding: 'utf-8')
+            chapter_number = MarkdownTransformer.extract_chapter_number(filename)
+
+            result = MarkdownTransformer.collect_labels(content, filename, chapter_number)
+            all_labels.concat(result[:labels])
+            all_errors.concat(result[:errors])
+          end
+
+          # ------------------------------------------------
+          # Phase 2: ラベルマップ構築 & 重複チェック
+          # ------------------------------------------------
+          map_result = MarkdownTransformer.build_labels_map_with_duplicates_check(all_labels)
+          labels_map = map_result[:labels_map]
+          duplicates = map_result[:duplicates]
+
+          if duplicates.any?
+            Common.log_error("ラベルIDの重複を検出しました:")
+            duplicates.each { |dup| Common.log_error(dup) }
+            all_errors.concat(duplicates)
+            return false
+          end
+
+          # ------------------------------------------------
+          # Phase 3: 対象のルート直下 .md に対してのみ変換を適用
+          # ------------------------------------------------
+          processed_chapters = {}
+
+          md_files.each do |md_file|
+            filename = File.basename(md_file)
+            next unless File.exist?(filename)
+
+            content = File.read(filename, encoding: 'utf-8')
+
+            # キャプション付きブロックをHTML化
+            transformed = MarkdownTransformer.transform_captioned_blocks(content, filename, labels_map)
+
+            # 本文中の @id を番号付きテキストに置換
+            ref_result = MarkdownTransformer.replace_references(transformed, labels_map, filename)
+            processed_chapters[filename] = ref_result[:content]
+            all_errors.concat(ref_result[:errors])
+
+            if ref_result[:errors].any?
+              Common.log_warn("  #{filename}: #{ref_result[:errors].size}個の未定義参照を検出")
+              ref_result[:errors].each do |msg|
+                Common.log_warn("    - #{msg}")
+              end
+            end
+          end
+
+          # 処理済みのファイルを書き戻す（プロジェクトルート直下の .md）
+          processed_chapters.each do |filename, content|
+            File.write(filename, content, encoding: 'utf-8')
+            Common.log_success("更新: #{filename}")
+          end
+
+          # ------------------------------------------------
+          # Phase 4: レポート出力
+          # ------------------------------------------------
+          report = MarkdownTransformer.generate_cross_reference_report(all_labels)
+          report_path = 'cross_reference_report.md'
+          File.write(report_path, report, encoding: 'utf-8')
+          Common.log_success("レポートを生成: #{report_path}")
+
+          Common.log_success("\n=== クロスリファレンス処理が完了しました ===")
+          Common.log_info("検出ラベル数: #{all_labels.size}個")
+          Common.log_info("エラー数: #{all_errors.size}個")
+
+          true
+        end
+        module_function :process_cross_references_for_files
       end
     end
   end
