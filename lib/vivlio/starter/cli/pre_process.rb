@@ -338,7 +338,7 @@ module Vivlio
             all_errors.concat(ref_result[:errors])
 
             if ref_result[:errors].any?
-              Common.log_warn("  #{filename}: #{ref_result[:errors].size}個の未定義参照を検出")
+              Common.log_warn(" #{filename}: #{ref_result[:errors].size}個の未定義参照を検出")
               ref_result[:errors].each do |msg|
                 Common.log_warn("    - #{msg}")
               end
