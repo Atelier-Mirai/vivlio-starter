@@ -828,42 +828,42 @@ module Vivlio
             parts.map! do |part|
               # <code>...</code> はそのまま残す
               if part.start_with?('<code')
-                part
-              else
-                # `code` や ``code`` など、バッククォートで囲まれた部分を保持しつつ、それ以外だけを変換する
-                segments = part.scan(/`+[^`]*`+|[^`]+/)
+                next part
+              end
 
-                segments.map! do |segment|
-                  # バッククォートで囲まれた部分はインラインコードとしてそのまま残す
-                  if segment.start_with?('`')
-                    segment
-                  else
-                    segment.gsub(/@([a-zA-Z0-9_\-]+)/) do
-                      label_id = Regexp.last_match(1)
-                      label = labels_map[label_id]
+              # `code` や ``code`` など、バッククォートで囲まれた部分を保持しつつ、それ以外だけを変換する
+              segments = part.scan(/`+[^`]*`+|[^`]+/)
 
-                      if label
-                        # ラベルが存在する場合、番号付きテキストに置換
-                        # 例: リスト 4-1, 表 3-2, 図 1-5
-                        label.full_number
-                      else
-                        # 未定義の場合はエラーとして記録
-                        location = if filename && line_number
-                                     "#{filename}:#{line_number}"
-                                   elsif line_number
-                                     "行#{line_number}"
-                                   else
-                                     '(位置情報なし)'
-                                   end
-                        errors << "#{location} - 未定義のラベルID: @#{label_id}"
-                        "@#{label_id}" # そのまま残す
-                      end
-                    end
-                  end
+              segments.map! do |segment|
+                # バッククォートで囲まれた部分はインラインコードとしてそのまま残す
+                if segment.start_with?('`')
+                  next segment
                 end
 
-                segments.join
+                segment.gsub(/@([a-zA-Z0-9_\-]+)/) do
+                  label_id = Regexp.last_match(1)
+                  label = labels_map[label_id]
+
+                  if label
+                    # ラベルが存在する場合、番号付きテキストに置換
+                    # 例: リスト 4-1, 表 3-2, 図 1-5
+                    label.full_number
+                  else
+                    # 未定義の場合はエラーとして記録
+                    location = if filename && line_number
+                                 "#{filename}:#{line_number}"
+                               elsif line_number
+                                 "行#{line_number}"
+                               else
+                                 '(位置情報なし)'
+                               end
+                    errors << "#{location} - 未定義のラベルID: @#{label_id}"
+                    "@#{label_id}" # そのまま残す
+                  end
+                end
               end
+
+              segments.join
             end
 
             parts.join
