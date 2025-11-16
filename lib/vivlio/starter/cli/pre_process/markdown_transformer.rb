@@ -576,12 +576,29 @@ module Vivlio
             lines = content.lines
             output = []
             i = 0
-            
+            in_code_block = false
+
             # 自動IDのカウンター（章ごとに各種別をカウント）
             auto_counters = { list: 0, table: 0, fig: 0 }
 
             while i < lines.size
               line = lines[i]
+
+              stripped = line.lstrip
+
+              if stripped.start_with?('```')
+                in_code_block = !in_code_block
+                output << line
+                i += 1
+                next
+              end
+
+              if in_code_block
+                output << line
+                i += 1
+                next
+              end
+
               caption_info = extract_caption_label(line)
 
               # キャプション行でない場合はそのまま出力

@@ -333,13 +333,28 @@ module Vivlio
             transformed = MarkdownTransformer.transform_captioned_blocks(content, filename, labels_map)
 
             # 本文中の @id を番号付きテキストに置換
-            ref_result = MarkdownTransformer.replace_references(transformed, labels_map, filename)
-            processed_chapters[filename] = ref_result[:content]
-            all_errors.concat(ref_result[:errors])
+            # - 実際の置換はプロジェクトルート直下の .md に対して実行
+            # - 警告用の行番号は contents/ 配下の元Markdownに対して計算してログ出力する
 
-            if ref_result[:errors].any?
-              Common.log_warn(" #{filename}: #{ref_result[:errors].size}個の未定義参照を検出")
-              ref_result[:errors].each do |msg|
+            # 1) contents/ 側で未定義参照を検出（警告・行番号用）
+            contents_path = File.join(Common::CONTENTS_DIR, filename)
+            logging_errors = []
+            if File.exist?(contents_path)
+              source_content = File.read(contents_path, encoding: 'utf-8')
+              logging_result = MarkdownTransformer.replace_references(source_content, labels_map, contents_path)
+              logging_errors = logging_result[:errors]
+            end
+
+            # 2) ルート直下 .md に対して置換を適用（こちらのエラーは行番号がずれるため無視）
+            ref_result = MarkdownTransformer.replace_references(transformed, labels_map, nil)
+            processed_chapters[filename] = ref_result[:content]
+
+            # 3) エラー集計とログは contents/ 側の行番号に基づく
+            all_errors.concat(logging_errors)
+
+            if logging_errors.any?
+              Common.log_warn(" #{filename}: #{logging_errors.size}個の未定義参照を検出")
+              logging_errors.each do |msg|
                 Common.log_warn("    - #{msg}")
               end
             end

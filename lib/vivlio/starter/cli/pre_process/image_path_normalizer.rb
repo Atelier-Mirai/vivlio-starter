@@ -61,25 +61,36 @@ module Vivlio
             chapter_dir = filename.sub(/\.md$/, '')
 
             lines = content.lines
+            in_code_block = false
+
             transformed_lines = lines.each_with_index.map do |line, idx|
               line_number = idx + 1
+              stripped = line.lstrip
 
-              line.gsub(%r{!\[(.*?)\]\((?!https?://)([^)]+)\)}) do
-                alt_text = ::Regexp.last_match(1)
-                image_path = ::Regexp.last_match(2)
+              # フェンス付きコードブロック (``` ～ ``` ) 内はそのまま残す
+              if stripped.start_with?('```')
+                in_code_block = !in_code_block
+                line
+              elsif in_code_block
+                line
+              else
+                line.gsub(%r{!\[(.*?)\]\((?!https?://)([^)]+)\)}) do
+                  alt_text = ::Regexp.last_match(1)
+                  image_path = ::Regexp.last_match(2)
 
-                # すでに images/ から始まる場合はそのまま。相対パスは images/<章ディレクトリ>/ に正規化
-                normalized = if image_path.start_with?('images/')
-                               image_path
-                             else
-                               "images/#{chapter_dir}/#{image_path}"
-                             end
+                  # すでに images/ から始まる場合はそのまま。相対パスは images/<章ディレクトリ>/ に正規化
+                  normalized = if image_path.start_with?('images/')
+                                 image_path
+                               else
+                                 "images/#{chapter_dir}/#{image_path}"
+                               end
 
-                # 生成物ポリシーに合わせて拡張子を .webp に寄せる（png/jpg のみ対象）
-                normalized = normalized.sub(/\.(png|jpe?g)\z/i, '.webp')
+                  # 生成物ポリシーに合わせて拡張子を .webp に寄せる（png/jpg のみ対象）
+                  normalized = normalized.sub(/\.(png|jpe?g)\z/i, '.webp')
 
-                original_image_name = File.basename(image_path)
-                resolved_placeholder_or_path(alt_text, normalized, filename, line_number, original_image_name)
+                  original_image_name = File.basename(image_path)
+                  resolved_placeholder_or_path(alt_text, normalized, filename, line_number, original_image_name)
+                end
               end
             end
 
