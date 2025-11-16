@@ -279,6 +279,7 @@ module Vivlio
         # 全章ファイルのクロスリファレンス処理を一括実行
         # @param md_files [Array<String>] 処理対象ファイル（プロジェクトルート直下 .md）の配列
         def process_cross_references_for_files(md_files)
+          md_files = md_files.reject { |path| File.basename(path) == '99-colophon.md' }
           return true if md_files.empty?
 
           Common.log_info('=== クロスリファレンス処理を開始 ===')
