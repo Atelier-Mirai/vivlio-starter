@@ -665,22 +665,24 @@ module Vivlio
             img_line = lines[block_start].strip
             
             # Markdown画像記法をHTMLに変換
+            align_value = nil
             img_html = if img_line =~ /!\[(.*?)\]\((.*?)\)(?:\{([^}]+)\})?/
                          alt = Regexp.last_match(1)
                          src = Regexp.last_match(2)
                          attrs = Regexp.last_match(3)
-                         
+
                          # 属性を処理
                          style_parts = []
                          classes = []
                          if attrs
                            attrs.scan(/width=(\d+%)/) { |w| style_parts << "width: #{w[0]}" }
+                           attrs.scan(/align=(left|center|right)/) { |a| align_value ||= a[0] }
                            attrs.scan(/\.([a-z\-]+)/) { |c| classes << c[0] }
                          end
-                         
+
                          class_attr = classes.any? ? " class=\"#{classes.join(' ')}\"" : ''
                          style_attr = style_parts.any? ? " style=\"#{style_parts.join('; ')}\"" : ''
-                         
+
                          "<img src=\"#{src}\" alt=\"#{alt}\"#{class_attr}#{style_attr}>"
                        else
                          img_line
@@ -695,7 +697,14 @@ module Vivlio
             
             # figure要素として出力
             html = []
-            html << '<figure class="cross-ref-figure">'
+            figure_classes = ['cross-ref-figure']
+            case align_value
+            when 'center'
+              figure_classes << 'cross-ref-align-center'
+            when 'right'
+              figure_classes << 'cross-ref-align-right'
+            end
+            html << "<figure class=\"#{figure_classes.join(' ')}\">"
             html << "  #{img_html}"
             html << "  <figcaption>#{caption_text}</figcaption>"
             html << '</figure>'

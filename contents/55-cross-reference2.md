@@ -10,11 +10,11 @@
 
 **アインシュタインの写真 @einstein**
 
-![](Einstein.png){width=40%}
+![](Einstein.png){width=40% align=center}
 
 **テスト図（自動ID） @auto**
 
-![](Einstein.png){width=30%}
+![](Einstein.png){width=30% align=right}
 
 本文中で@einsteinを参照すると、自動的に番号付きリンクに変換されます。
 また、自動ID（@fig-55-2）で指定した図も参照できます。

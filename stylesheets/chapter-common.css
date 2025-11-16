@@ -202,6 +202,18 @@ hr.blankline {
   margin-inline: 0;
 }
 
+figure.cross-ref-figure {
+  flex-direction: column;
+}
+
+figure.cross-ref-figure.cross-ref-align-center {
+  align-items: center;
+}
+
+figure.cross-ref-figure.cross-ref-align-right {
+  align-items: flex-end;
+}
+
 :is(.figure, figure) :is(img, svg) {
   border: solid 0.5mm var(--color-figure-border);
 }
