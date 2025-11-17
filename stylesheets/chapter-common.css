@@ -262,6 +262,11 @@ img {
   border: solid 0.5mm var(--color-border);
 }
 
+img[align="center"] {
+  display: block;
+  margin-inline: auto;
+}
+
 img[src$=".svg"] {
   border: none;
 }
