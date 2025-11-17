@@ -48,6 +48,13 @@ p:has(+ table) {
   text-indent: 0; /* 本文の字下げを打ち消し */
 }
 
+/* 表直前のキャプション段落内の strong は、通常の強調ではなく
+   表キャプションとして扱う（色は本文色・太さは中程度） */
+p:has(+ table) strong {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
 /* h4 と同様の先頭マーカー */
 p:has(+ table)::before {
   content: none;
@@ -69,6 +76,18 @@ body:not(.appendix) h6:has(+ table) {
   margin-block-end: 0.25lh;
 }
 
+/* クロスリファレンス付き表のキャプション */
+.table-caption {
+  font-family: var(--font-header);
+  /* stylelint-disable-next-line property-no-unknown */
+  text-spacing: no-autospace;
+  font-size: var(--base-font-size);
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: center;
+  margin-block: 0.25lh;
+}
+
 td,
 th {
   /* 線幅とパディングを用紙スケールで調整 */
@@ -83,7 +102,7 @@ th {
 
 th {
   background: #bbb;
-  min-inline-size: 7em;
+  min-inline-size: 4em;
 }
 
 tr:nth-child(even) {
@@ -100,8 +119,8 @@ tr:nth-child(even) {
 }
 
 .long-table td {
-  text-align: end;
-  vertical-align: bottom;
+  text-align: center;
+  vertical-align: middle;
 }
 
 /* =====================================================================

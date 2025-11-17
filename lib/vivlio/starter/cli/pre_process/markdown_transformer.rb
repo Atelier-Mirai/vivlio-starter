@@ -476,6 +476,8 @@ module Vivlio
             (current_index + 1...lines.size).each do |i|
               line = lines[i].strip
               next if line.empty?
+              # :::{.クラス名} のような div ラッパーはスキップして中身を見る
+              next if line.match?(/^:::\{/)
 
               # コードブロック → list
               return :list if line.start_with?('```')
@@ -667,9 +669,16 @@ module Vivlio
                 label = labels_map[caption_info[:id]]
               end
 
-              # ブロックの開始位置を探す
+              # ブロックの開始位置を探す（空行や :::{} ラッパーをスキップ）
               block_start = i + 1
-              while block_start < lines.size && lines[block_start].strip.empty?
+              wrapper_class = nil
+              while block_start < lines.size
+                line_stripped = lines[block_start].strip
+                break unless line_stripped.empty? || line_stripped.match?(/^:::\{/)
+                # :::{.クラス名} の形式ならクラス名を抽出
+                if line_stripped.match?(/^:::\{\.([a-z\-]+)\}/)
+                  wrapper_class = line_stripped.match(/^:::\{\.([a-z\-]+)\}/)[1]
+                end
                 block_start += 1
               end
 
@@ -678,17 +687,17 @@ module Vivlio
               when :fig
                 html = transform_figure_block(lines, i, block_start, caption_info, label, filename)
                 output << html
-                i = find_block_end(lines, block_start, :fig) + 1
+                i = find_block_end(lines, block_start, :fig, wrapper_class) + 1
 
               when :table
-                html = transform_table_block(lines, i, block_start, caption_info, label)
+                html = transform_table_block(lines, i, block_start, caption_info, label, wrapper_class)
                 output << html
-                i = find_block_end(lines, block_start, :table) + 1
+                i = find_block_end(lines, block_start, :table, wrapper_class) + 1
 
               when :list
                 html = transform_code_block(lines, i, block_start, caption_info, label)
                 output << html
-                i = find_block_end(lines, block_start, :list) + 1
+                i = find_block_end(lines, block_start, :list, wrapper_class) + 1
 
               else
                 output << line
@@ -754,7 +763,7 @@ module Vivlio
           end
 
           # 表ブロックのHTML変換
-          def transform_table_block(lines, caption_index, block_start, caption_info, label)
+          def transform_table_block(lines, caption_index, block_start, caption_info, label, wrapper_class = nil)
             # テーブル行を収集
             table_lines = []
             i = block_start
@@ -769,6 +778,16 @@ module Vivlio
             table_md = table_lines.join
             table_html = render_markdown_to_html(table_md).strip
 
+            # 列数が多い「横に長い表」は、自動的に long-table クラスを付与して
+            # フォントサイズやセル内余白をやや小さめにする
+            auto_long_table = begin
+                                header_line = table_lines.first.to_s
+                                pipe_count = header_line.count('|')
+                                pipe_count >= 8 # 7列以上を「長い表」とみなす（|が8個以上）
+                              rescue StandardError
+                                false
+                              end
+
             # キャプションテキストを生成
             caption_text = if label
                              "#{label.full_number}: #{caption_info[:title]}"
@@ -779,7 +798,10 @@ module Vivlio
             # tableタグをキャプション付きで包む
             html = []
             id_attr = label ? " id=\"#{label.id}\"" : ''
-            html << "<div#{id_attr} class=\"cross-ref-table\">"
+            classes = ['cross-ref-table']
+            # 手動で :::{.long-table} が指定されている場合、またはカラム数が多い場合に long-table を適用
+            classes << 'long-table' if wrapper_class == 'long-table' || auto_long_table
+            html << "<div#{id_attr} class=\"#{classes.join(' ')}\">"
             html << "  <p class=\"table-caption\">#{caption_text}</p>"
             html << "  #{table_html}"
             html << '</div>'
@@ -835,29 +857,45 @@ module Vivlio
           end
 
           # ブロックの終了位置を探す
-          def find_block_end(lines, start_index, block_type)
+          def find_block_end(lines, start_index, block_type, wrapper_class = nil)
             case block_type
             when :fig
               # 画像は1行で終了
-              start_index
+              end_index = start_index
             when :table
               # テーブルは | を含む行が続く限り
               i = start_index
               while i < lines.size && lines[i].include?('|')
                 i += 1
               end
-              i - 1
+              end_index = i - 1
             when :list
               # コードブロックは ``` で終了
               i = start_index + 1
               while i < lines.size
-                return i if lines[i].strip.start_with?('```')
+                if lines[i].strip.start_with?('```')
+                  end_index = i
+                  break
+                end
                 i += 1
               end
-              i - 1
+              end_index ||= i - 1
             else
-              start_index
+              end_index = start_index
             end
+
+            # :::{} ラッパーがある場合は、その終了 ::: までスキップ
+            if wrapper_class
+              i = end_index + 1
+              while i < lines.size
+                if lines[i].strip == ':::'
+                  return i
+                end
+                i += 1
+              end
+            end
+
+            end_index
           end
 
           # 本文中の @id を番号付きリンクに置換
