@@ -451,6 +451,10 @@ module Vivlio
           # キャプション行のパターン（** タイトル @id ** 形式）
           CAPTION_PATTERN = /^\*\*\s*(.+?)\s+@([a-zA-Z0-9_\-]+)\s*\*\*\s*$/
 
+          # 本文中で説明用に登場しても「参照」と見なさない予約済みID
+          # 例: 「手動IDと自動ID（@auto / @omakase）」のような説明テキスト
+          RESERVED_INLINE_LABEL_IDS = %w[auto omakase id].freeze
+
           # キャプション行を検出してラベル情報を抽出
           # @param line [String] 検査対象の行
           # @return [Hash, nil] { title: String, id: String, auto: Boolean } or nil
@@ -988,38 +992,45 @@ module Vivlio
 
                 segment.gsub(/@([a-zA-Z0-9_\-]+)/) do
                   label_id = Regexp.last_match(1)
-                  label = labels_map[label_id]
 
-                  if label
-                    anchor_id = label.id.to_s
-                    link_text = label.full_number.to_s
-
-                    # ラベル定義元の章ファイルからターゲットHTMLファイル名を推測
-                    # 例: source_file="55-cross-reference2.md" → "55-cross-reference2.html"
-                    href = begin
-                             src = label.source_file.to_s
-                             if src.empty?
-                               "##{anchor_id}"
-                             else
-                               base = File.basename(src, File.extname(src))
-                               "#{base}.html##{anchor_id}"
-                             end
-                           rescue StandardError
-                             "##{anchor_id}"
-                           end
-
-                    %(<a href="#{href}" class="cross-ref-link">#{CGI.escapeHTML(link_text)}</a>)
+                  # 説明用に登場する予約ID（@auto / @omakase / @id）は
+                  # クロスリファレンス対象ではないので、そのまま残してエラーにも記録しない
+                  if RESERVED_INLINE_LABEL_IDS.include?(label_id)
+                    "@#{label_id}"
                   else
-                    # 未定義の場合はエラーとして記録
-                    location = if filename && line_number
-                                 "#{filename}:#{line_number}"
-                               elsif line_number
-                                 "行#{line_number}"
+                    label = labels_map[label_id]
+
+                    if label
+                      anchor_id = label.id.to_s
+                      link_text = label.full_number.to_s
+
+                      # ラベル定義元の章ファイルからターゲットHTMLファイル名を推測
+                      # 例: source_file="55-cross-reference2.md" → "55-cross-reference2.html"
+                      href = begin
+                               src = label.source_file.to_s
+                               if src.empty?
+                                 "##{anchor_id}"
                                else
-                                 '(位置情報なし)'
+                                 base = File.basename(src, File.extname(src))
+                                 "#{base}.html##{anchor_id}"
                                end
-                    errors << "#{location} - 未定義のラベルID: @#{label_id}"
-                    "@#{label_id}" # そのまま残す
+                             rescue StandardError
+                               "##{anchor_id}"
+                             end
+
+                      %(<a href="#{href}" class="cross-ref-link">#{CGI.escapeHTML(link_text)}</a>)
+                    else
+                      # 未定義の場合はエラーとして記録
+                      location = if filename && line_number
+                                   "#{filename}:#{line_number}"
+                                 elsif line_number
+                                   "行#{line_number}"
+                                 else
+                                   '(位置情報なし)'
+                                 end
+                      errors << "#{location} - 未定義のラベルID: @#{label_id}"
+                      "@#{label_id}" # そのまま残す
+                    end
                   end
                 end
               end
