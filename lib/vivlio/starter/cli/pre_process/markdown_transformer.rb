@@ -505,26 +505,33 @@ module Vivlio
           end
 
           def main_chapter_order_for_xref
-            tokens = PostProcessCommands::HeadingProcessor.configured_main_chapter_tokens
-            if tokens && !tokens.empty?
-              tokens
-            else
-              md_tokens = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |p| File.basename(p, '.md') }
-              seen = {}
-              filtered = []
-
-              md_tokens.each do |entry|
-                token = PostProcessCommands::HeadingProcessor.normalize_chapter_token(entry)
-                next unless token
-                next unless PostProcessCommands::HeadingProcessor.main_chapter_token?(token)
-                next if seen[token]
-
-                seen[token] = true
-                filtered << token
-              end
-
-              filtered.sort_by { |token| Common.get_chapter_number(token).to_i }
+            # 1. build コマンド側から一時的な章リストが指定されている場合はそれを優先
+            override = PostProcessCommands::HeadingProcessor.chapter_tokens_override
+            if override && !override.empty?
+              tokens = PostProcessCommands::HeadingProcessor.normalize_and_filter_tokens(override)
+              return tokens if tokens && !tokens.empty?
             end
+
+            # 2. config/book.yml の chapters 設定を優先
+            tokens = PostProcessCommands::HeadingProcessor.configured_main_chapter_tokens
+            return tokens if tokens && !tokens.empty?
+
+            # 3. フォールバック: contents/ 配下の .md からメイン章を自動検出
+            md_tokens = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |p| File.basename(p, '.md') }
+            seen = {}
+            filtered = []
+
+            md_tokens.each do |entry|
+              token = PostProcessCommands::HeadingProcessor.normalize_chapter_token(entry)
+              next unless token
+              next unless PostProcessCommands::HeadingProcessor.main_chapter_token?(token)
+              next if seen[token]
+
+              seen[token] = true
+              filtered << token
+            end
+
+            filtered.sort_by { |token| Common.get_chapter_number(token).to_i }
           end
 
           def display_chapter_number_for_filename(filename)

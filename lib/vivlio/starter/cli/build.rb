@@ -3,6 +3,7 @@
 require 'rbconfig'
 require 'fileutils'
 require 'time'
+require_relative 'post_process/heading_processor'
 
 module Vivlio
   module Starter
@@ -433,71 +434,80 @@ module Vivlio
                   return
                 end
 
-                Common.reset_vivliostyle_build_timings
-                generated_pdfs = []
-                timing_rows = []
+                begin
+                  # 章番号の表示用に、選択された章トークンの並びを HeadingProcessor に伝える
+                  # これにより、vs build 54-56 のような範囲ビルド時に「第1章〜」として振り直される
+                  PostProcessCommands::HeadingProcessor.chapter_tokens_override = expanded_tokens
 
-                expanded_tokens.each do |target|
-                  runner = SingleChapterRunner.new(self, target)
-                  chapter_pdfs = runner.run
-                  generated_pdfs.concat(chapter_pdfs)
-                  runner.timings.each do |entry|
-                    label = "#{target} / #{entry[:step]}"
-                    timing_rows << [label, entry[:duration].to_f]
-                  end
-                end
+                  Common.reset_vivliostyle_build_timings
+                  generated_pdfs = []
+                  timing_rows = []
 
-                vs_timings = Common.consume_vivliostyle_build_timings
-                vs_map = vs_timings.group_by { |entry| entry[:label].to_s }
-
-                if timing_rows.any?
-                  total = timing_rows.map { |(_, dt)| dt }.inject(0.0, :+)
-                  label_width = timing_rows.map { |(label, _)| label.length }.max || 0
-                  label_width = [label_width, 'TOTAL'.length, 34].max
-                  value_width = 7
-
-                  Common.echo_always "\n== Build Step Timings =="
-                  timing_rows.each do |label, dt|
-                    value_text = format("%#{value_width}.2fs", dt)
-                    label_text = format("%-#{label_width}s", label)
-                    line = "  - #{label_text} #{value_text}"
-                    Common.echo_always line
-
-                    entries = vs_map[label]
-                    next unless entries&.any?
-
-                    value_start_idx = line.length - value_text.length
-                    indent = ' ' * 4
-                    sub_label = '(vivliostyle build)'
-
-                    entries.each do |entry|
-                      entry_value = format("(%.2fs)", entry[:duration])
-                      extra_spaces = if entry[:duration] >= 100
-                                       0
-                                     elsif entry[:duration] >= 10
-                                       1
-                                     else
-                                       2
-                                     end
-
-                      target_index = value_start_idx + extra_spaces
-                      label_segment = format("%-#{label_width}s", sub_label)
-                      base_prefix = "#{indent}#{label_segment} "
-
-                      if base_prefix.length < target_index
-                        base_prefix += ' ' * (target_index - base_prefix.length)
-                      end
-
-                      Common.echo_always("#{base_prefix}#{entry_value}")
+                  expanded_tokens.each do |target|
+                    runner = SingleChapterRunner.new(self, target)
+                    chapter_pdfs = runner.run
+                    generated_pdfs.concat(chapter_pdfs)
+                    runner.timings.each do |entry|
+                      label = "#{target} / #{entry[:step]}"
+                      timing_rows << [label, entry[:duration].to_f]
                     end
                   end
-                  Common.echo_always format("  = %-#{label_width}s %#{value_width}.2fs", 'TOTAL', total)
-                  Common.echo_always "==========================\n"
-                end
 
-                handled = handle_single_chapter_merge(generated_pdfs)
-                open_last_generated_pdf(generated_pdfs) unless handled
-                return
+                  vs_timings = Common.consume_vivliostyle_build_timings
+                  vs_map = vs_timings.group_by { |entry| entry[:label].to_s }
+
+                  if timing_rows.any?
+                    total = timing_rows.map { |(_, dt)| dt }.inject(0.0, :+)
+                    label_width = timing_rows.map { |(label, _)| label.length }.max || 0
+                    label_width = [label_width, 'TOTAL'.length, 34].max
+                    value_width = 7
+
+                    Common.echo_always "\n== Build Step Timings =="
+                    timing_rows.each do |label, dt|
+                      value_text = format("%#{value_width}.2fs", dt)
+                      label_text = format("%-#{label_width}s", label)
+                      line = "  - #{label_text} #{value_text}"
+                      Common.echo_always line
+
+                      entries = vs_map[label]
+                      next unless entries&.any?
+
+                      value_start_idx = line.length - value_text.length
+                      indent = ' ' * 4
+                      sub_label = '(vivliostyle build)'
+
+                      entries.each do |entry|
+                        entry_value = format('(%.2fs)', entry[:duration])
+                        extra_spaces = if entry[:duration] >= 100
+                                         0
+                                       elsif entry[:duration] >= 10
+                                         1
+                                       else
+                                         2
+                                       end
+
+                        target_index = value_start_idx + extra_spaces
+                        label_segment = format("%-#{label_width}s", sub_label)
+                        base_prefix = "#{indent}#{label_segment} "
+
+                        if base_prefix.length < target_index
+                          base_prefix += ' ' * (target_index - base_prefix.length)
+                        end
+
+                        Common.echo_always("#{base_prefix}#{entry_value}")
+                      end
+                    end
+                    Common.echo_always format("  = %-#{label_width}s %#{value_width}.2fs", 'TOTAL', total)
+                    Common.echo_always "==========================\n"
+                  end
+
+                  handled = handle_single_chapter_merge(generated_pdfs)
+                  open_last_generated_pdf(generated_pdfs) unless handled
+                  return
+                ensure
+                  # 単章ビルドが終了したら、次回ビルドへの影響を避けるためオーバーライドを解除
+                  PostProcessCommands::HeadingProcessor.chapter_tokens_override = nil
+                end
               end
 
               # chapters 指定（keep）を取得（'all' または未設定は nil）
