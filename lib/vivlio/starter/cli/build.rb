@@ -360,27 +360,25 @@ module Vivlio
 
         BUILD_DESC = {
           build: {
-            short: '書籍をビルドします（Rake に依存しない統合版）',
+            short: '書籍全体または指定章をビルドします',
             long: <<~DESC
-              Rake タスクに依存せず、CLI から直接ビルドの各ステップを実行します。
-              将来的な完全置換の第一段階として、主要な自動生成フロー（前書き→目次→本文/付録→frontmatter→後書き/奥付→結合→圧縮→クリーン）
-              を Thor コマンド内で統合しています。
+              CLI から書籍のビルドを一括実行します。
 
-              オプション:
-                --no-resize     Step1 画像最適化をスキップ
-                --high          画像最適化プリセット: 高品質
-                --medium        画像最適化プリセット: 中品質（既定）
-                --low           画像最適化プリセット: 低品質
-                --no-compress   PDF圧縮をスキップ
-                --no-clean      中間生成物のクリーンアップをスキップ
-                --log[=level]   ログ出力の詳細度（error/warn/info/debug、未指定時は info）
+              引数を指定しない場合は、画像最適化、本文/付録の HTML 生成、目次や frontmatter/後書きの生成、
+              PDF 結合とアウトライン付与、圧縮、クリーンアップまでを順番に実行し、書籍全体の PDF を生成します。
+
+              引数として章ベース名（例: 11-install 21-customize）を指定した場合は、その章だけを対象に
+              必要な変換処理を実行して各章の PDF を生成します。オプションに応じて、生成した章 PDF の結合（--merge）
+              や圧縮（--compress）も行えます。
+
+              利用可能なオプションと既定値の詳細は、下記の「オプション」セクションを参照してください。
             DESC
           }
         }.freeze
 
         def included(base)
           base.class_eval do
-            desc 'build [TOKENS...]', BUILD_DESC[:build][:short]
+            desc 'build [TARGETS...]', BUILD_DESC[:build][:short]
             long_desc BUILD_DESC[:build][:long]
 
             method_option :resize,   type: :boolean, default: true,  desc: '画像最適化を行う（--no-resize で無効）'

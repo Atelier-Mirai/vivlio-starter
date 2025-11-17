@@ -31,9 +31,24 @@ module Vivlio
             DESC
           },
           compress: {
-            short: '生成済みPDFを圧縮します (Ghostscript)',
+            short: '生成済みPDFを圧縮します（INPUT [OUTPUT] 形式）',
             long: <<~DESC
               生成済みのPDFファイルを Ghostscript(pdfwrite) を用いて圧縮します。
+
+              使い方:
+                vs pdf:compress INPUT [OUTPUT]
+
+              引数:
+                INPUT   圧縮対象とするPDFファイル名（必須）。
+                OUTPUT  圧縮後の出力ファイル名。
+                        省略時は INPUT に "_compressed" サフィックスを付加した名前で出力します。
+
+              例:
+                vs pdf:compress filename.pdf
+                  # filename.pdf -> filename_compressed.pdf
+
+                vs pdf:compress input.pdf output.pdf
+                  # input.pdf -> output.pdf
 
               既定の品質プリセットは /ebook（中庸）です。
 
@@ -65,11 +80,11 @@ module Vivlio
               PdfCommands::PdfCommandRunner.new(self, target_output).call
             end
 
-            desc 'pdf_compress', PdfCommands::PDF_DESC[:compress][:short]
+            desc 'pdf:compress INPUT [OUTPUT]', PdfCommands::PDF_DESC[:compress][:short]
             long_desc PdfCommands::PDF_DESC[:compress][:long]
             # PDF 圧縮コマンドのエントリポイント
-            define_method(:pdf_compress) do
-              PdfCommands::PdfCompressor.new(self).call
+            define_method(:pdf_compress) do |input = nil, output = nil|
+              PdfCommands::PdfCompressor.new(self, input, output).call
             end
 
             desc 'open:pdf [PATH]', PdfCommands::PDF_DESC[:open][:short]
@@ -79,7 +94,7 @@ module Vivlio
               PdfCommands::PdfOpener.new(self, path).call
             end
 
-            # コマンドエイリアス定義
+            # コマンドエイリアス定義（後方互換用）
             map 'pdf:compress' => :pdf_compress
           end
         end
@@ -277,9 +292,11 @@ module Vivlio
 
         # Ghostscript を利用して PDF を圧縮する
         class PdfCompressor
-          def initialize(command)
+          def initialize(command, cli_input = nil, cli_output = nil)
             @command = command
             @config = Common::CONFIG['pdf'] || {}
+            @cli_input = cli_input
+            @cli_output = cli_output
             @input_pdf = nil
             @output_pdf = nil
             @compression_success = false
@@ -297,7 +314,7 @@ module Vivlio
 
           private
 
-          attr_reader :command, :config, :input_pdf, :output_pdf, :compression_success
+          attr_reader :command, :config, :cli_input, :cli_output, :input_pdf, :output_pdf, :compression_success
 
           # Thor の options を取得する
           def options
@@ -311,8 +328,41 @@ module Vivlio
 
           # 入出力ファイルのパスを決定する
           def determine_paths
-            @input_pdf  = config['output_file'] || 'output.pdf'
-            @output_pdf = config['output_file_compressed'] || 'output_compressed.pdf'
+            if cli_input_present? && cli_output_present?
+              # vs pdf:compress input.pdf output.pdf
+              @input_pdf  = cli_input
+              @output_pdf = cli_output
+            elsif cli_input_present?
+              # vs pdf:compress filename.pdf
+              @input_pdf  = cli_input
+              @output_pdf = default_compressed_name(cli_input)
+            else
+              # vs pdf:compress
+              @input_pdf  = config['output_file'] || 'output.pdf'
+              @output_pdf = config['output_file_compressed'] || default_compressed_name(@input_pdf)
+            end
+          end
+
+          def cli_input_present?
+            !cli_input.nil? && !cli_input.to_s.strip.empty?
+          end
+
+          def cli_output_present?
+            !cli_output.nil? && !cli_output.to_s.strip.empty?
+          end
+
+          # 入力ファイル名からデフォルトの圧縮後ファイル名を生成する
+          # 例: "output.pdf" -> "output_compressed.pdf"
+          def default_compressed_name(path)
+            base = File.basename(path)
+            dir  = File.dirname(path)
+
+            if base.downcase.end_with?('.pdf')
+              stem = base[0...-4]
+              File.join(dir, "#{stem}_compressed.pdf")
+            else
+              File.join(dir, "#{base}_compressed.pdf")
+            end
           end
 
           # 入力 PDF の存在を確認する
