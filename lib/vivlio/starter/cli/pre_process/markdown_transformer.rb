@@ -52,7 +52,7 @@ module Vivlio
           def render_markdown_to_html(md_text)
             # まずはKramdownを試す
             require 'kramdown'
-            Kramdown::Document.new(md_text).to_html
+            Kramdown::Document.new(md_text, syntax_highlighter: nil).to_html
           rescue LoadError
             # フォールバック: 最小限のMarkdownをHTMLへ
             lines = md_text.to_s.split(/\r?\n/)
@@ -629,6 +629,8 @@ module Vivlio
 
             # 自動IDのカウンター（章ごとに各種別をカウント）
             auto_counters = { list: 0, table: 0, fig: 0 }
+            # collect_labels と同様に、全キャプションに対する種別別カウンターも保持する
+            counters = { list: 0, table: 0, fig: 0 }
 
             while i < lines.size
               line = lines[i]
@@ -666,11 +668,15 @@ module Vivlio
                 next
               end
 
+              # collect_labels と同様に、この章内での種別別インデックスを進める
+              counters[block_type] += 1
+
               # 自動IDの場合はカウンターを増やしてIDを生成
               if caption_info[:auto]
                 auto_counters[block_type] += 1
                 chapter_num = display_chapter_number_for_filename(filename)
-                generated_id = "#{block_type}-#{chapter_num}-#{auto_counters[block_type]}"
+                # collect_labels で生成している ID と同じ規則（block_type + chapter_num + 通し番号）で参照する
+                generated_id = "#{block_type}-#{chapter_num}-#{counters[block_type]}"
                 label = labels_map[generated_id]
               else
                 label = labels_map[caption_info[:id]]
@@ -702,9 +708,30 @@ module Vivlio
                 i = find_block_end(lines, block_start, :table, wrapper_class) + 1
 
               when :list
-                html = transform_code_block(lines, i, block_start, caption_info, label)
-                output << html
-                i = find_block_end(lines, block_start, :list, wrapper_class) + 1
+                # コードブロック自体のレンダリングは VFM/Prism に任せる。
+                # ここではキャプション行だけを番号付きタイトルに書き換え、
+                # さらに直後にマーカーコメント <!--xref:ID--> を挿入する。
+                # 変換後のMarkdown例:
+                #   **リスト 2-1: ソースコードです**
+                #   <!--xref:list-2-1-->
+                #   ```ruby
+                #   ...
+                #   ```
+                caption_text = if label
+                                 "#{label.full_number}: #{caption_info[:title]}"
+                               else
+                                 caption_info[:title]
+                               end
+                data_id = (label && label.id) || caption_info[:id]
+
+                # Markdown の見出し行として出力（Prism 対象の通常コードと同じ形式）
+                output << "**#{caption_text}**\n"
+                # 後続の post_process でラップ対象を特定するためのマーカーコメント
+                output << "<!--xref:#{data_id}-->\n"
+
+                # この後のフェンス付きコードブロックは通常のMarkdownとして残し、
+                # ループの次回以降でそのまま出力する
+                i += 1
 
               else
                 output << line
@@ -817,13 +844,13 @@ module Vivlio
           end
 
           # コードブロックのHTML変換
+          # Prism用の基本HTML構造を生成し、prism_lines.rbに処理を任せる
           def transform_code_block(lines, caption_index, block_start, caption_info, label)
             # コードブロックを収集
             i = block_start
-            
+
             # 開始行（```）から言語を取得
             first_line = lines[i] || ''
-            # ```lang や ```lang:filename のような形式を想定し、言語部分のみ抽出
             lang_match = first_line.to_s.match(/```([a-zA-Z0-9_\-]+)?/)
             language = (lang_match && lang_match[1]).to_s
             i += 1
@@ -838,9 +865,12 @@ module Vivlio
             end
 
             # コードをHTMLエスケープ
-            escaped_code = code_content.join.gsub('&', '&amp;')
-                                            .gsub('<', '&lt;')
-                                            .gsub('>', '&gt;')
+            # 空行を含むコードを正しく処理するため、まず結合してからエスケープ
+            code_text = code_content.join
+            escaped_code = code_text.gsub('&', '&amp;')
+                                    .gsub('<', '&lt;')
+                                    .gsub('>', '&gt;')
+                                    .gsub(/\n\n/, "\n&#10;\n")  # 連続する改行を保護
 
             # キャプションテキストを生成
             caption_text = if label
@@ -849,10 +879,12 @@ module Vivlio
                              caption_info[:title]
                            end
 
-            # 言語クラスを設定
+            # 言語クラスを設定（Prism用）
+            # prism_lines.rb がこのクラスを認識してシンタックスハイライトを適用
             lang_class = language.empty? ? '' : " class=\"language-#{language}\""
 
             # コードブロックをキャプション付きで包む
+            # prism_lines.rb が後で行番号とシンタックスハイライトを追加
             html = []
             id_attr = label ? " id=\"#{label.id}\"" : ''
             html << "<div#{id_attr} class=\"cross-ref-list\">"

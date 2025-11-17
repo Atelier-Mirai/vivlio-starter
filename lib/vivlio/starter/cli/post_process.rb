@@ -140,6 +140,9 @@ module Vivlio
                 # Step 4: 行番号を追加(Prism.js対応)
                 Vivlio::Starter::ThorCLI.start(['prism_lines', html_file])
 
+                # Step 4.1: クロスリファレンス用コードブロックをラップ
+                wrap_cross_ref_code_blocks!(html_file)
+
                 # Step 5: 見出しにクラス/data属性を付与
                 begin
                   HeadingProcessor.inject_heading_markers!([html_file], max_level: 3)
@@ -161,6 +164,99 @@ module Vivlio
             end
           end
         end
+
+        # ================================================================
+        # クロスリファレンス用コードブロックのラップ
+        # ----------------------------------------------------------------
+        # pre_process で挿入した "<!--xref:ID-->" コメントを基準に、
+        # 直前の <p>（キャプション）と直後の <pre>（Prism済みコード）を
+        # <div id="ID" class="cross-ref-list"> で包みます。
+        # 旧スタイルの <p class="code-caption" data-xref-id> にも対応します。
+        # 行番号付与 (prism_lines) 後に実行します。
+        # ================================================================
+        def wrap_cross_ref_code_blocks!(html_file)
+          content = File.read(html_file, encoding: 'utf-8')
+
+          doc = if defined?(Nokogiri::HTML5)
+                  Nokogiri::HTML5.parse(content)
+                else
+                  Nokogiri::HTML.parse(content, nil, 'UTF-8')
+                end
+
+          changed = false
+
+          # パターン1: <!--xref:ID--> コメントを基準にラップ
+          doc.xpath('//comment()').each do |comment|
+            text = comment.text.to_s.strip
+            next unless text.start_with?('xref:')
+
+            id = text.sub(/\Axref:/, '')
+            next if id.empty?
+
+            caption = comment.previous_element
+            pre = comment.next_element
+
+            next unless caption&.name == 'p'
+            next unless pre&.name == 'pre'
+
+            # キャプションに code-caption クラスを付与（既存クラスは保持）
+            existing_classes = caption['class'].to_s.split(/\s+/).reject(&:empty?)
+            unless existing_classes.include?('code-caption')
+              caption['class'] = (existing_classes + ['code-caption']).uniq.join(' ')
+            end
+
+            wrapper = Nokogiri::XML::Node.new('div', doc)
+            wrapper['id'] = id
+            wrapper['class'] = 'cross-ref-list'
+
+            # wrapper を caption の直前に挿入し、caption と pre を移動
+            caption.add_previous_sibling(wrapper)
+            wrapper.add_child(caption)
+            wrapper.add_child(pre)
+
+            # マーカーコメントは削除
+            comment.remove
+
+            changed = true
+          end
+
+          # パターン2（後方互換）: <p class="code-caption" data-xref-id> + <pre>
+          doc.css('p.code-caption[data-xref-id]').each do |p|
+            id = p['data-xref-id'].to_s
+            next if id.empty?
+
+            node = p.next_sibling
+            pre = nil
+            while node
+              if node.element?
+                if node.name == 'pre'
+                  pre = node
+                end
+                break
+              end
+              node = node.next_sibling
+            end
+            next unless pre
+
+            wrapper = Nokogiri::XML::Node.new('div', doc)
+            wrapper['id'] = id
+            wrapper['class'] = 'cross-ref-list'
+
+            p.remove_attribute('data-xref-id')
+
+            p.add_previous_sibling(wrapper)
+            wrapper.add_child(p)
+            wrapper.add_child(pre)
+
+            changed = true
+          end
+
+          return unless changed
+
+          File.write(html_file, doc.to_html(encoding: 'UTF-8'))
+          Common.log_success("#{html_file}: cross-ref list code blocks wrapped")
+        end
+        module_function :wrap_cross_ref_code_blocks!
 
         # ================================================================
         # 置換ルールの読み込み

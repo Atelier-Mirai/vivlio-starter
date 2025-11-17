@@ -22,6 +22,48 @@
 
 ## 表のテスト
 
+**画像です**
+![](Einstein.png){width=30% align=right}
+
+**表です**
+
+| 項目 | 値 | 備考 |
+|------|-----|------|
+| A | 100 | テスト |
+| B | 200 | サンプル |
+| C | 300 | データ |
+
+**ソースコードです**
+```ruby
+def hello(name)
+  puts "Hello, #{name}!"
+end
+
+hello("World")
+```
+
+---
+
+**画像です @auto**
+![](Einstein.png){width=30% align=right}
+
+**表です @auto**
+
+| 項目 | 値 | 備考 |
+|------|-----|------|
+| A | 100 | テスト |
+| B | 200 | サンプル |
+| C | 300 | データ |
+
+**ソースコードです @auto**
+```ruby
+def hello(name)
+  puts "Hello, #{name}!"
+end
+
+hello("World")
+```
+
 **相互参照しない表**
 
 | 項目 | 値 | 備考 |
