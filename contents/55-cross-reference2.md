@@ -57,22 +57,32 @@ hello("World")
 ![](sample.png){width=30% align=right}
 
 **画像(ID指定) @gazou**
-![](sample.png){width=30% align=center}
+![](sample.png){width=30% align=right}
 
 ## 画像のテスト その２
 
-ただの画像です。
+30%画像です。
 
 ![](sample.png){width=30%}
 
-**画像(参照無)**
+**30%left**
 ![](sample.png){width=30% align=left}
 
-**画像(自動ID) @auto**
+**30%center @auto**
 ![](sample.png){width=30% align=center}
 
-**画像(ID指定) @gazou2**
+**50%right @gazou2**
 ![](sample.png){width=50% align=right}
+
+
+
+
+
+
+
+
+
+
 
 ---
 **画像です @auto**
