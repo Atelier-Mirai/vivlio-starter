@@ -150,26 +150,6 @@ strong {
   color: var(--color-strong);
 }
 
-/* コード＋キャプション（スタイルだけキャプション風） */
-p:has(+ pre) {
-  margin-block: 0;
-  text-indent: 0;
-  font-family: var(--font-header);
-  text-spacing: no-autospace;
-  font-size: var(--base-font-size);
-  font-weight: normal;
-}
-
-p:has(+ pre) strong {
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-body:not(.appendix) p:has(+ pre) {
-  text-align: left;
-  margin-block-end: 0.25lh;
-}
-
 /* キーボードフォント */
 kbd {
   font-family: keyfont, monospace;

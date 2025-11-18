@@ -206,6 +206,11 @@ function main() {
 
 ### サンプルコード
 
+
+`include`文を用いてコードを埋め込むことができます。
+
+```include:sample1.js```
+
 **@include-sample1**
 ```include:sample1.js```
 
