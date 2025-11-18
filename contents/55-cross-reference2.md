@@ -74,8 +74,21 @@ hello("World")
 **50%right @gazou2**
 ![](sample.png){width=50% align=right}
 
+## 画像のテスト その３
+
+サンプル画像です。
+
+![](300x200.png)
+![](300x200.png){align=right}
+![](300x200.png){width=30%}
+![](300x200.png){width=30% align=right}
+
+![](600x400.png){width=15% align=right}
+![](600x400.png){width=30% align=right}
 
 
+
+---
 
 
 

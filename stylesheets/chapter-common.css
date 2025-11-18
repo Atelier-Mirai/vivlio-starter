@@ -212,13 +212,6 @@ hr.blankline {
 /* -------------------------------------------------------------
    図版
    ------------------------------------------------------------- */
-/* section をサブグリッドコンテナとして扱い、align-right の配置を可能にする */
-section.level2,
-section.level3 {
-  display: grid;
-  grid-template-columns: 1fr;
-}
-
 /* 図版全般（旧来の .figure と素の figure をまとめて扱う） */
 :is(.figure, figure) {
   display: block;
@@ -226,54 +219,42 @@ section.level3 {
   margin-block: 4mm;
 }
 
-/* align-* クラスが付いていない figure のみに margin-inline: 0 を適用 */
-:is(.figure, figure):not(.align-center):not(.align-right):not(.align-left) {
-  margin-inline: 0;
+/* デフォルト（および align-left）: 左寄せ。幅は style="width: .." で制御 */
+:is(.figure, figure):not(.align-center):not(.align-right) {
+  margin-inline-start: 0;
+  margin-inline-end: auto;
 }
 
-/* 汎用 align-* クラス付き figure
-   - figure.align-center: 画像+キャプションを中央寄せ
-   - figure.align-right : 画像+キャプションを右端寄せ */
-
-/* 中央寄せ: 画像とキャプションを縦に並べて中央配置 */
-figure.align-center {
-  display: grid !important;
-  grid-template-columns: 1fr;
-  justify-items: center;
-  inline-size: fit-content;
-  max-inline-size: 100%;
+/* 中央寄せ: figure 自体を中央に配置 */
+:is(.figure, figure).align-center {
   margin-inline: auto;
 }
 
-/* 右寄せ: 2カラムグリッドで左側を空け、右側にコンテンツを配置 */
-figure.align-right {
-  display: grid !important;
-  /* 左側70%を空け、右側30%にコンテンツを配置 */
-  grid-template-columns: 70% 30%;
-  /* imgとfigcaptionを縦に並べる */
-  grid-template-rows: auto auto;
-  /* figure自体は親要素いっぱいに広げる */
+/* 右寄せ: figure 自体を右端に配置 */
+:is(.figure, figure).align-right {
+  margin-inline-start: auto;
+  margin-inline-end: 0;
+}
+
+/* width スタイルを持たない align-center / align-right 図版は
+     コンテンツ幅に縮むようにし、auto マージンで正しく配置できるようにする */
+:is(.figure, figure).align-center:not([style*="width"]),
+:is(.figure, figure).align-right:not([style*="width"]) {
+  inline-size: fit-content;
+}
+
+/* width 指定のない align-right 図版内の画像だけを右寄せする */
+:is(.figure, figure).align-right:not([style*="width"]) > img {
+  display: block;
+  margin-inline-start: auto;
+  margin-inline-end: 0;
+}
+
+/* 図版で width スタイルを持つ場合は画像を枠いっぱいに広げる */
+:is(.figure, figure)[style*="width"] > img {
+  display: block;
   width: 100%;
-  margin-inline: 0;
-}
-
-/* 右寄せ figure 内の img と figcaption を右側カラムに配置 */
-figure.align-right > img {
-  grid-column: 2 / 3;
-  grid-row: 1 / 2;
-  /* 画像を右側カラム（30%）いっぱいに広げる */
-  width: 100% !important;
   height: auto;
-  justify-self: center;
-}
-
-figure.align-right > figcaption {
-  grid-column: 2 / 3;
-  grid-row: 2 / 3;
-  /* キャプションも中央揃え */
-  justify-self: center;
-  text-align: center;
-  margin-block-start: 0.25lh;
 }
 
 /* figcaption 全般のスタイル（ゴシック体＋太字） */

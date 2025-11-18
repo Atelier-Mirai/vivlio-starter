@@ -656,8 +656,10 @@ module Vivlio
 
               caption_info = extract_caption_label(line)
 
-              # キャプション行でない場合は、align=right 画像まわりの単純なパターンをここで処理する
+              # キャプション行でない場合は、シンプルな画像パターンをここで処理する
               unless caption_info
+                stripped = line.strip
+
                 # パターン1: 単純な太字キャプション行 + 直後の画像行
                 if (plain_caption_match = line.match(/^\s*\*\*(.+?)\*\*\s*$/))
                   caption_text = plain_caption_match[1].strip
@@ -667,22 +669,28 @@ module Vivlio
                   j += 1 while j < lines.size && lines[j].strip.empty?
 
                   if j < lines.size
-                    img_info = parse_markdown_image_line(lines[j].strip)
-                    if img_info && img_info[:align] == 'right'
-                      html = build_plain_figure_html(img_info, caption_text: caption_text)
-                      output << html
-                      i = j + 1
-                      next
+                    img_line_candidate = lines[j].strip
+                    # 行全体が画像1つだけの行に限定する（インライン画像は変換しない）
+                    if img_line_candidate.match?(/^!\[[^\]]*\]\([^\)]+\)(?:\{[^}]+\})?$/)
+                      img_info = parse_markdown_image_line(img_line_candidate)
+                      if img_info
+                        html = build_plain_figure_html(img_info, caption_text: caption_text)
+                        output << html
+                        i = j + 1
+                        next
+                      end
                     end
                   end
                 end
 
-                # パターン2: 単独の画像行（align=right）だけを <figure> に変換
-                if (img_info = parse_markdown_image_line(line.strip)) && img_info[:align] == 'right'
-                  html = build_plain_figure_html(img_info, caption_text: nil)
-                  output << html
-                  i += 1
-                  next
+                # パターン2: 単独の画像行だけを <figure> に変換（align の有無を問わない）
+                if stripped.match?(/^!\[[^\]]*\]\([^\)]+\)(?:\{[^}]+\})?$/)
+                  if (img_info = parse_markdown_image_line(stripped))
+                    html = build_plain_figure_html(img_info, caption_text: nil)
+                    output << html
+                    i += 1
+                    next
+                  end
                 end
 
                 # 上記どちらにも該当しない場合はそのまま出力
@@ -806,12 +814,18 @@ module Vivlio
           end
 
           # シンプルな画像/画像+キャプションを <figure> として出力
+          # - width=.. は <figure> の style に付与し、画像自体は常に枠いっぱい (width:100%) で表示する
           def build_plain_figure_html(img_info, caption_text: nil)
-            style_parts = []
-            style_parts << "width: #{img_info[:width]}" if img_info[:width]
-            style_attr = style_parts.any? ? " style=\"#{style_parts.join('; ')}\"" : ''
+            figure_style_parts = []
+            figure_style_parts << "width: #{img_info[:width]}" if img_info[:width]
+            figure_style_attr = if figure_style_parts.any?
+                                  " style=\"#{figure_style_parts.join('; ')}\""
+                                else
+                                  ''
+                                end
 
-            img_tag = "<img src=\"#{img_info[:src]}\" alt=\"#{img_info[:alt]}\"#{style_attr}>"
+            # img には幅スタイルを付けず、CSS 側で figure の幅にフィットさせる
+            img_tag = "<img src=\"#{img_info[:src]}\" alt=\"#{img_info[:alt]}\">"
 
             figure_classes = []
             case img_info[:align]
@@ -825,7 +839,7 @@ module Vivlio
             class_attr = figure_classes.any? ? " class=\"#{figure_classes.join(' ')}\"" : ''
 
             html = []
-            html << "<figure#{class_attr}>"
+            html << "<figure#{class_attr}#{figure_style_attr}>"
             html << "  #{img_tag}"
             html << "  <figcaption>#{caption_text}</figcaption>" if caption_text
             html << '</figure>'
@@ -834,6 +848,7 @@ module Vivlio
           end
 
           # 図ブロックのHTML変換
+          # - width=.. は <figure> の style に付与し、画像自体は常に枠いっぱい (width:100%) で表示する
           def transform_figure_block(lines, caption_index, block_start, caption_info, label, filename)
             # 画像行を取得（既に画像パス正規化済み）
             img_line = lines[block_start].strip
@@ -841,11 +856,17 @@ module Vivlio
             # Markdown画像記法をHTMLに変換
             img_info = parse_markdown_image_line(img_line)
             align_value = img_info && img_info[:align]
+
+            figure_style_attr = ''
             img_html = if img_info
-                         style_parts = []
-                         style_parts << "width: #{img_info[:width]}" if img_info[:width]
-                         style_attr = style_parts.any? ? " style=\"#{style_parts.join('; ')}\"" : ''
-                         "<img src=\"#{img_info[:src]}\" alt=\"#{img_info[:alt]}\"#{style_attr}>"
+                         figure_style_parts = []
+                         figure_style_parts << "width: #{img_info[:width]}" if img_info[:width]
+                         figure_style_attr = if figure_style_parts.any?
+                                               " style=\"#{figure_style_parts.join('; ')}\""
+                                             else
+                                               ''
+                                             end
+                         "<img src=\"#{img_info[:src]}\" alt=\"#{img_info[:alt]}\">"
                        else
                          img_line
                        end
@@ -865,10 +886,12 @@ module Vivlio
               figure_classes << 'align-center'
             when 'right'
               figure_classes << 'align-right'
+            when 'left'
+              figure_classes << 'align-left'
             end
             id_attr = label ? " id=\"#{label.id}\"" : ''
             class_attr = figure_classes.any? ? " class=\"#{figure_classes.join(' ')}\"" : ''
-            html << "<figure#{id_attr}#{class_attr}>"
+            html << "<figure#{id_attr}#{class_attr}#{figure_style_attr}>"
             html << "  #{img_html}"
             html << "  <figcaption>#{caption_text}</figcaption>"
             html << '</figure>'
