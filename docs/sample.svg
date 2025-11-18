@@ -1,0 +1,39 @@
+<svg width="600" height="400" viewBox="0 0 600 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="vivlioTextGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#4a86e8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1c4587;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="starterTextGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#6aa84f;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#38761d;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="backgroundGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#E0F2F7;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E8F5E9;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="600" height="400" fill="url(#backgroundGradient)" />
+  <text
+    x="300"
+    y="140"
+    font-family="Arial, sans-serif"
+    font-size="72"
+    font-weight="bold"
+    text-anchor="middle"
+    dominant-baseline="middle"
+  >
+    <tspan fill="url(#vivlioTextGradient)">Sample</tspan>
+  </text>
+  <text
+    x="300"
+    y="260"
+    font-family="Arial, sans-serif"
+    font-size="72"
+    font-weight="bold"
+    text-anchor="middle"
+    dominant-baseline="middle"
+  >
+    <tspan fill="url(#starterTextGradient)">Image</tspan>
+  </text>
+</svg>

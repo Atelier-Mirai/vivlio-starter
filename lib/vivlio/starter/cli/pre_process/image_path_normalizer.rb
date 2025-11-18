@@ -60,29 +60,64 @@ module Vivlio
           def fix_image_paths(content, filename)
             chapter_dir = filename.sub(/\.md$/, '')
 
-            content.gsub(%r{!\[(.*?)\]\((?!https?://)([^)]+)\)}) do
-              alt_text = ::Regexp.last_match(1)
-              image_path = ::Regexp.last_match(2)
+            lines = content.lines
+            in_code_block = false
 
-              # すでに images/ から始まる場合はそのまま。相対パスは images/<章ディレクトリ>/ に正規化
-              normalized = if image_path.start_with?('images/')
-                             image_path
-                           else
-                             "images/#{chapter_dir}/#{image_path}"
-                           end
+            transformed_lines = lines.each_with_index.map do |line, idx|
+              line_number = idx + 1
+              stripped = line.lstrip
 
-              # 生成物ポリシーに合わせて拡張子を .webp に寄せる（png/jpg のみ対象）
-              normalized = normalized.sub(/\.(png|jpe?g)\z/i, '.webp')
+              # フェンス付きコードブロック (``` ～ ``` ) 内はそのまま残す
+              if stripped.start_with?('```')
+                in_code_block = !in_code_block
+                line
+              elsif in_code_block
+                line
+              else
+                line.gsub(%r{!\[(.*?)\]\((?!https?://)([^)]+)\)}) do
+                  alt_text = ::Regexp.last_match(1)
+                  image_path = ::Regexp.last_match(2)
 
-              resolved_placeholder_or_path(alt_text, normalized)
+                  # すでに images/ から始まる場合はそのまま。相対パスは images/<章ディレクトリ>/ に正規化
+                  normalized = if image_path.start_with?('images/')
+                                 image_path
+                               else
+                                 "images/#{chapter_dir}/#{image_path}"
+                               end
+
+                  # 生成物ポリシーに合わせて拡張子を .webp に寄せる（png/jpg のみ対象）
+                  normalized = normalized.sub(/\.(png|jpe?g)\z/i, '.webp')
+
+                  original_image_name = File.basename(image_path)
+                  resolved_placeholder_or_path(alt_text, normalized, filename, line_number, original_image_name)
+                end
+              end
             end
+
+            transformed_lines.join
           end
 
           # 既存画像なら元のパスを、無い場合はプレースホルダーを返す
-          def resolved_placeholder_or_path(alt_text, normalized_path)
+          def resolved_placeholder_or_path(alt_text, normalized_path, source_filename = nil, line_number = nil, original_image_name = nil)
             return "![#{alt_text}](#{normalized_path})" if image_exists_for?(normalized_path)
 
-            Common.log_warn("画像が見つかりません: #{normalized_path} プレースホルダーを使用します")
+            image_name = original_image_name || File.basename(normalized_path)
+
+            if source_filename && line_number
+              # 1行目: ファイル名と行番号、元の画像名、代替画像使用の案内
+              # 先頭にスペースを入れて、⚠️ の後ろが常に2スペースになるように調整
+              message = " #{source_filename}:#{line_number} - 画像 '#{image_name}' が見つかりません（代替画像を使用します）"
+              Common.log_warn(message)
+
+              # 2行目: 1行目の「画像」と同じ位置にそろえて、実際に参照した画像パスを表示
+              indent_width = message.index('画像') || 0
+              Common.log_warn("#{' ' * indent_width}画像の場所: #{normalized_path}")
+            else
+              # 位置情報が取れない場合のフォールバック
+              Common.log_warn("画像 '#{image_name}' が見つかりません（代替画像を使用します）")
+              Common.log_warn("画像の場所: #{normalized_path}")
+            end
+
             placeholder_path = placeholder_image_path(normalized_path)
             "![#{alt_text}](#{placeholder_path})"
           end

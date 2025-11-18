@@ -161,6 +161,11 @@ a {
   color: var(--color-link);
 }
 
+/* クロスリファレンス用リンク（図/表/リスト参照）は太字で表示 */
+a.cross-ref-link {
+  font-weight: 700;
+}
+
 /* -------------------------------------------------------------
    リスト
    ------------------------------------------------------------- */
@@ -192,14 +197,60 @@ hr.blankline {
 /* -------------------------------------------------------------
    図版
    ------------------------------------------------------------- */
+/* 図版全般（旧来の .figure と素の figure をまとめて扱う） */
 :is(.figure, figure) {
-  display: flex;
-  flex-flow: row wrap;
-  align-items: flex-start;
-  justify-content: flex-start;
+  display: block;
   position: relative;
   margin-block: 4mm;
-  margin-inline: 0;
+}
+
+/* デフォルト（および align-left）: 左寄せ。幅は style="width: .." で制御 */
+:is(.figure, figure):not(.align-center):not(.align-right) {
+  margin-inline-start: 0;
+  margin-inline-end: auto;
+}
+
+/* 中央寄せ: figure 自体を中央に配置 */
+:is(.figure, figure).align-center {
+  margin-inline: auto;
+}
+
+/* 右寄せ: figure 自体を右端に配置 */
+:is(.figure, figure).align-right {
+  margin-inline-start: auto;
+  margin-inline-end: 0;
+}
+
+/* width スタイルを持たない align-center / align-right 図版は
+     コンテンツ幅に縮むようにし、auto マージンで正しく配置できるようにする */
+:is(.figure, figure).align-center:not([style*="width"]),
+:is(.figure, figure).align-right:not([style*="width"]) {
+  inline-size: fit-content;
+}
+
+/* width 指定のない align-right 図版内の画像だけを右寄せする */
+:is(.figure, figure).align-right:not([style*="width"]) > img {
+  display: block;
+  margin-inline-start: auto;
+  margin-inline-end: 0;
+}
+
+/* 図版で width スタイルを持つ場合は画像を枠いっぱいに広げる */
+:is(.figure, figure)[style*="width"] > img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* figcaption 全般のスタイル（ゴシック体＋太字） */
+figcaption {
+  font-family: var(--font-header);
+  text-spacing: no-autospace;
+  font-size: var(--base-font-size);
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: center;
+  margin-block-start: 0.25lh;
 }
 
 :is(.figure, figure) :is(img, svg) {

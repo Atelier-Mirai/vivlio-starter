@@ -31,6 +31,22 @@ module Vivlio
 
           module_function
 
+          # 一時的な章トークンの並びを外部から指定するためのオーバーライド
+          # 例: vs build 54-56 のような単章/範囲ビルド時に、
+          #     そのビルド対象だけを 1,2,3... の順番で扱いたい場合に使用する。
+          #
+          # - nil または空配列の場合はオーバーライドなし（従来どおり CONFIG['chapters'] や HTML から自動検出）
+          # - 設定された場合は、その並びを優先的に main_chapter_order の候補として利用する
+          def chapter_tokens_override=(tokens)
+            @chapter_tokens_override = Array(tokens).compact.map(&:to_s)
+            # 章並びを再計算させるためキャッシュを無効化
+            @main_chapter_order = nil
+          end
+
+          def chapter_tokens_override
+            @chapter_tokens_override || []
+          end
+
           # 見出し(h1..hN)に本文参照用のマーカー（class と data 属性）を付与
           # @param html_paths [Array<String>] HTMLファイルパスの配列
           # @param max_level [Integer] 処理する見出しの最大レベル（デフォルト: 3）
@@ -284,31 +300,128 @@ module Vivlio
           # メイン章の順序を取得
           # @return [Array<String>] 章トークンの配列
           def main_chapter_order
-            @main_chapter_order ||= begin
-              configured = configured_main_chapter_tokens
-              tokens = configured&.any? ? configured : discovered_main_chapter_tokens
-              tokens
+            return @main_chapter_order if @main_chapter_order
+
+            # ビルドコマンド等から一時的な章リストが与えられている場合はそれを優先
+            override = chapter_tokens_override
+            if override && !override.empty?
+              tokens = normalize_and_filter_tokens(override)
+              if tokens && !tokens.empty?
+                @main_chapter_order = tokens
+                return @main_chapter_order
+              end
             end
+
+            configured = configured_main_chapter_tokens
+            tokens = configured&.any? ? configured : discovered_main_chapter_tokens
+            @main_chapter_order = tokens
           end
 
           # 設定ファイルから章トークンを取得
           # @return [Array<String>, nil] 章トークンの配列
+          #
+          # 対応形式（config/book.yml の chapters キー）:
+          #   - nil / 'all'        → フルビルド（nil を返す）
+          #   - "54-56"            → 章番号指定（11..89 の範囲）
+          #   - "02, 11-13, 91"   → カンマ区切り + 範囲指定
+          #   - [54, 55, 56]       → 章番号配列
+          #   - "11-install\n12-tutorial" → ファイルベース名（行ごと）
+          #   - ["11-install", "12-tutorial"] → ファイルベース名配列
           def configured_main_chapter_tokens
             cfg = Common::CONFIG['chapters']
-            raw_list = case cfg
-                       when nil
-                         nil
-                       when String
-                         str = cfg.to_s
-                         return nil if str.strip.casecmp('all').zero?
 
-                         str.lines.map(&:strip).reject(&:empty?)
-                       when Array
-                         cfg.map { |s| s.to_s.strip }.reject(&:empty?)
-                       end
-            return nil unless raw_list&.any?
+            case cfg
+            when nil
+              return nil
+            when String
+              str = cfg.to_s
+              return nil if str.strip.casecmp('all').zero?
 
-            normalize_and_filter_tokens(raw_list)
+              # 数字/レンジ指定（例: "54-56" や "11, 12-13"）として解釈できる場合
+              if chapter_number_string?(str)
+                numbers = parse_chapter_numbers_from_string(str)
+                return tokens_from_chapter_numbers(numbers) if numbers && !numbers.empty?
+                return nil
+              end
+
+              # それ以外は、行ごとのトークン（ファイルベース名）として扱う
+              raw_list = str.lines.map(&:strip).reject(&:empty?)
+              return nil if raw_list.empty?
+
+              normalize_and_filter_tokens(raw_list)
+            when Array
+              arr = cfg.map { |s| s.to_s.strip }.reject(&:empty?)
+              return nil if arr.empty?
+
+              # 全要素が整数として解釈できる場合は章番号配列
+              if all_integer_strings?(arr)
+                numbers = arr.map(&:to_i).uniq.sort
+                return tokens_from_chapter_numbers(numbers)
+              end
+
+              # それ以外はトークン配列として扱う
+              normalize_and_filter_tokens(arr)
+            else
+              nil
+            end
+          end
+
+          # 文字列が「章番号/範囲」のみで構成されているか判定
+          # 例: "11, 12-13" → true / "11-install" → false
+          def chapter_number_string?(str)
+            parts = str.to_s.split(',').map(&:strip).reject(&:empty?)
+            return false if parts.empty?
+
+            parts.all? do |part|
+              part.match?(/\A\d+\z/) || part.match?(/\A\d+-\d+\z/)
+            end
+          end
+
+          # 配列の全要素が整数文字列かどうか
+          def all_integer_strings?(arr)
+            Array(arr).all? { |s| s.to_s.strip.match?(/\A\d+\z/) }
+          end
+
+          # カンマ区切り + 範囲指定文字列から章番号配列を抽出
+          # 例: "02, 11-13, 91" → [2, 11, 12, 13, 91]
+          def parse_chapter_numbers_from_string(str)
+            parts = str.to_s.split(',').map(&:strip).reject(&:empty?)
+            numbers = []
+
+            parts.each do |part|
+              if (m = part.match(/\A(\d+)-(\d+)\z/))
+                start_num = m[1].to_i
+                end_num   = m[2].to_i
+                next if start_num > end_num
+
+                numbers.concat((start_num..end_num).to_a)
+              elsif part.match?(/\A\d+\z/)
+                numbers << part.to_i
+              else
+                # 数字以外が混在している場合は番号指定としては扱わない
+                return nil
+              end
+            end
+
+            numbers.uniq.sort
+          rescue StandardError
+            nil
+          end
+
+          # 章番号配列からメイン章トークンの配列を生成
+          # 対象は contents/*.md のうち MAIN_CHAPTER_RANGE に入る章
+          def tokens_from_chapter_numbers(numbers)
+            return nil unless numbers&.any?
+
+            allowed = numbers.map(&:to_i).uniq
+
+            md_tokens = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |p| File.basename(p, '.md') }
+            candidates = normalize_and_filter_tokens(md_tokens)
+
+            candidates.select do |token|
+              num = Common.get_chapter_number(token)
+              num && allowed.include?(num.to_i)
+            end
           end
 
           # 発見されたHTMLファイルから章トークンを取得
