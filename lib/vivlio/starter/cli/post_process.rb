@@ -194,10 +194,19 @@ module Vivlio
             next if id.empty?
 
             caption = comment.previous_element
-            pre = comment.next_element
+            block = comment.next_element
 
             next unless caption&.name == 'p'
-            next unless pre&.name == 'pre'
+            next unless block
+
+            # 直後が <pre> 単体、または <figure> 内に <pre> を含むパターンの両方に対応
+            if block.name == 'pre'
+              code_container = block
+            elsif block.name == 'figure' && block.at_css('pre')
+              code_container = block
+            else
+              next
+            end
 
             # キャプションに code-caption クラスを付与（既存クラスは保持）
             existing_classes = caption['class'].to_s.split(/\s+/).reject(&:empty?)
@@ -209,10 +218,10 @@ module Vivlio
             wrapper['id'] = id
             wrapper['class'] = 'cross-ref-list'
 
-            # wrapper を caption の直前に挿入し、caption と pre を移動
+            # wrapper を caption の直前に挿入し、caption とコードブロック要素を移動
             caption.add_previous_sibling(wrapper)
             wrapper.add_child(caption)
-            wrapper.add_child(pre)
+            wrapper.add_child(code_container)
 
             # マーカーコメントは削除
             comment.remove

@@ -206,23 +206,21 @@ function main() {
 
 ### サンプルコード
 
-
 `include`文を用いてコードを埋め込むことができます。
 
-```include:sample1.js```
 
-**Sample1 @include-sample1**
-```include:sample1.js```
+```include:prime.rb```
 
-**Sample2 @include-sample2**
-```include:sample2.js```
+**Prime2 @prime2**
+```include:prime2.rb```
 
-### サンプルコード 範囲指定
-**Sample2範囲指定 @include-sample2-range**
-```include:sample2.js:12-16```
+**Prime3 @prime3**
+```include:prime3.rb```
 
-@ruby-sampleや@js-sampleのように、コードリストも参照できます。
+**Prime3範囲指定 @prime3-range**
+```include:prime3.rb:18-20```
 
 
-１２章の最後の文章です。@einstein の参照先、１２章にジャンプします。
-@complex-table を参照します。
+@js-sample2 は、javascriptのコードにジャンプできます。
+
+@prime2や@prime3も同様にコードリストにジャンプできます。

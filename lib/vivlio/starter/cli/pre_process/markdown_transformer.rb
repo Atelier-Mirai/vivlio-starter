@@ -572,7 +572,9 @@ module Vivlio
               stripped = line.lstrip
 
               # ``` / ```lang で始まる行でコードブロックの開始・終了をトグル
-              if stripped.start_with?('```')
+              # ただし、```include:...``` のような 1 行完結の include 記法は
+              # 実際のコードブロックとはみなさず、in_code_block を変更しない
+              if stripped.start_with?('```') && !stripped.start_with?('```include:')
                 in_code_block = !in_code_block
                 next
               end
