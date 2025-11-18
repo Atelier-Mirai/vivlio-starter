@@ -211,14 +211,14 @@ function main() {
 
 ```include:sample1.js```
 
-**@include-sample1**
+**Sample1 @include-sample1**
 ```include:sample1.js```
 
-**@include-sample2**
+**Sample2 @include-sample2**
 ```include:sample2.js```
 
 ### サンプルコード 範囲指定
-**@include-sample2-range**
+**Sample2範囲指定 @include-sample2-range**
 ```include:sample2.js:12-16```
 
 @ruby-sampleや@js-sampleのように、コードリストも参照できます。
