@@ -18,7 +18,7 @@
 ![](Einstein.png){width=30% align=right}
 
 本文中で`@einstein`を参照すると、自動的に番号付きリンク@einsteinに変換されます。
-また、自動ID（@fig-55-2）で指定した図も参照できます。
+また、自動ID（`@fig-55-2`）で指定した図も参照できます。
 
 ## 表のテスト
 
@@ -44,8 +44,39 @@ hello("World")
 
 ---
 
+## 画像のテスト
+
+ただの画像です。
+
+![](sample.png){width=30% align=right}
+
+**画像(参照無)**
+![](sample.png){width=30% align=right}
+
+**画像(自動ID) @auto**
+![](sample.png){width=30% align=right}
+
+**画像(ID指定) @gazou**
+![](sample.png){width=30% align=center}
+
+## 画像のテスト その２
+
+ただの画像です。
+
+![](sample.png){width=30%}
+
+**画像(参照無)**
+![](sample.png){width=30% align=left}
+
+**画像(自動ID) @auto**
+![](sample.png){width=30% align=center}
+
+**画像(ID指定) @gazou2**
+![](sample.png){width=50% align=right}
+
+---
 **画像です @auto**
-![](Einstein.png){width=30% align=right}
+![](sample.png){width=30% align=right}
 
 **表です @auto**
 
@@ -117,7 +148,7 @@ hello("World")
 本文中で@basic-tableを参照すると、表番号が表示されます。
 
 本文中で`@einstein`を参照すると、自動的に番号付きリンク@einsteinに変換されます。
-また、自動ID（@fig-55-2）で指定した図も参照できます。
+また、自動ID（`@fig-55-2`）で指定した図も参照できます。
 
 
 ## コードのテスト

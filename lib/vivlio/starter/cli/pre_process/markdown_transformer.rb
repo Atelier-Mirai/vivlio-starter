@@ -656,8 +656,36 @@ module Vivlio
 
               caption_info = extract_caption_label(line)
 
-              # キャプション行でない場合はそのまま出力
+              # キャプション行でない場合は、align=right 画像まわりの単純なパターンをここで処理する
               unless caption_info
+                # パターン1: 単純な太字キャプション行 + 直後の画像行
+                if (plain_caption_match = line.match(/^\s*\*\*(.+?)\*\*\s*$/))
+                  caption_text = plain_caption_match[1].strip
+
+                  # 次の非空行を画像行として探す
+                  j = i + 1
+                  j += 1 while j < lines.size && lines[j].strip.empty?
+
+                  if j < lines.size
+                    img_info = parse_markdown_image_line(lines[j].strip)
+                    if img_info && img_info[:align] == 'right'
+                      html = build_plain_figure_html(img_info, caption_text: caption_text)
+                      output << html
+                      i = j + 1
+                      next
+                    end
+                  end
+                end
+
+                # パターン2: 単独の画像行（align=right）だけを <figure> に変換
+                if (img_info = parse_markdown_image_line(line.strip)) && img_info[:align] == 'right'
+                  html = build_plain_figure_html(img_info, caption_text: nil)
+                  output << html
+                  i += 1
+                  next
+                end
+
+                # 上記どちらにも該当しない場合はそのまま出力
                 output << line
                 i += 1
                 next
@@ -746,31 +774,78 @@ module Vivlio
             output.join
           end
 
+          # Markdown の画像1行 (![](...) {width=.. align=..}) をパース
+          # @param line [String]
+          # @return [Hash, nil] { alt:, src:, align:, width:, classes: [] }
+          def parse_markdown_image_line(line)
+            return nil unless line
+
+            stripped = line.strip
+            return nil unless stripped =~ /!\[(.*?)\]\((.*?)\)(?:\{([^}]+)\})?/
+
+            alt = Regexp.last_match(1)
+            src = Regexp.last_match(2)
+            attrs = Regexp.last_match(3)
+
+            align = nil
+            width = nil
+            classes = []
+            if attrs
+              attrs.scan(/width=(\d+%)/) { |w| width ||= w[0] }
+              attrs.scan(/align=(left|center|right)/) { |a| align ||= a[0] }
+              attrs.scan(/\.([a-z\-]+)/) { |c| classes << c[0] }
+            end
+
+            {
+              alt: alt.to_s,
+              src: src.to_s,
+              align: align,
+              width: width,
+              classes: classes
+            }
+          end
+
+          # シンプルな画像/画像+キャプションを <figure> として出力
+          def build_plain_figure_html(img_info, caption_text: nil)
+            style_parts = []
+            style_parts << "width: #{img_info[:width]}" if img_info[:width]
+            style_attr = style_parts.any? ? " style=\"#{style_parts.join('; ')}\"" : ''
+
+            img_tag = "<img src=\"#{img_info[:src]}\" alt=\"#{img_info[:alt]}\"#{style_attr}>"
+
+            figure_classes = []
+            case img_info[:align]
+            when 'center'
+              figure_classes << 'align-center'
+            when 'right'
+              figure_classes << 'align-right'
+            when 'left'
+              figure_classes << 'align-left'
+            end
+            class_attr = figure_classes.any? ? " class=\"#{figure_classes.join(' ')}\"" : ''
+
+            html = []
+            html << "<figure#{class_attr}>"
+            html << "  #{img_tag}"
+            html << "  <figcaption>#{caption_text}</figcaption>" if caption_text
+            html << '</figure>'
+            html << ''
+            html.join("\n")
+          end
+
           # 図ブロックのHTML変換
           def transform_figure_block(lines, caption_index, block_start, caption_info, label, filename)
             # 画像行を取得（既に画像パス正規化済み）
             img_line = lines[block_start].strip
             
             # Markdown画像記法をHTMLに変換
-            align_value = nil
-            img_html = if img_line =~ /!\[(.*?)\]\((.*?)\)(?:\{([^}]+)\})?/
-                         alt = Regexp.last_match(1)
-                         src = Regexp.last_match(2)
-                         attrs = Regexp.last_match(3)
-
-                         # 属性を処理
+            img_info = parse_markdown_image_line(img_line)
+            align_value = img_info && img_info[:align]
+            img_html = if img_info
                          style_parts = []
-                         classes = []
-                         if attrs
-                           attrs.scan(/width=(\d+%)/) { |w| style_parts << "width: #{w[0]}" }
-                           attrs.scan(/align=(left|center|right)/) { |a| align_value ||= a[0] }
-                           attrs.scan(/\.([a-z\-]+)/) { |c| classes << c[0] }
-                         end
-
-                         class_attr = classes.any? ? " class=\"#{classes.join(' ')}\"" : ''
+                         style_parts << "width: #{img_info[:width]}" if img_info[:width]
                          style_attr = style_parts.any? ? " style=\"#{style_parts.join('; ')}\"" : ''
-
-                         "<img src=\"#{src}\" alt=\"#{alt}\"#{class_attr}#{style_attr}>"
+                         "<img src=\"#{img_info[:src]}\" alt=\"#{img_info[:alt]}\"#{style_attr}>"
                        else
                          img_line
                        end
@@ -784,15 +859,16 @@ module Vivlio
             
             # figure要素として出力
             html = []
-            figure_classes = ['cross-ref-figure']
+            figure_classes = []
             case align_value
             when 'center'
-              figure_classes << 'cross-ref-align-center'
+              figure_classes << 'align-center'
             when 'right'
-              figure_classes << 'cross-ref-align-right'
+              figure_classes << 'align-right'
             end
             id_attr = label ? " id=\"#{label.id}\"" : ''
-            html << "<figure#{id_attr} class=\"#{figure_classes.join(' ')}\">"
+            class_attr = figure_classes.any? ? " class=\"#{figure_classes.join(' ')}\"" : ''
+            html << "<figure#{id_attr}#{class_attr}>"
             html << "  #{img_html}"
             html << "  <figcaption>#{caption_text}</figcaption>"
             html << '</figure>'

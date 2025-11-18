@@ -150,44 +150,6 @@ strong {
   color: var(--color-strong);
 }
 
-/* 画像＋キャプション（スタイルだけキャプション風） */
-p:has(> img) {
-  margin-block: 0;
-  text-indent: 0;
-  font-family: var(--font-header);
-  text-spacing: no-autospace;
-  font-size: var(--base-font-size);
-  font-weight: normal;
-  display: grid;
-  grid-template-columns: 1fr;
-  justify-items: center;
-  width: fit-content;
-}
-
-p:has(> img) strong {
-  font-weight: 600;
-  color: var(--color-text);
-  grid-row: 2;
-  margin-block-start: 0.25lh;
-}
-
-p:has(> img) img {
-  grid-row: 1;
-  display: block;
-  float: none;
-}
-
-/* 画像が右寄せの場合 */
-p:has(> img[align="right"]) {
-  margin-inline-start: auto;
-  margin-inline-end: 0;
-}
-
-body:not(.appendix) p:has(> img) {
-  text-align: center;
-  margin-block-end: 0.25lh;
-}
-
 /* コード＋キャプション（スタイルだけキャプション風） */
 p:has(+ pre) {
   margin-block: 0;
@@ -250,27 +212,79 @@ hr.blankline {
 /* -------------------------------------------------------------
    図版
    ------------------------------------------------------------- */
+/* section をサブグリッドコンテナとして扱い、align-right の配置を可能にする */
+section.level2,
+section.level3 {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+/* 図版全般（旧来の .figure と素の figure をまとめて扱う） */
 :is(.figure, figure) {
-  display: flex;
-  flex-flow: row wrap;
-  align-items: flex-start;
-  justify-content: flex-start;
+  display: block;
   position: relative;
   margin-block: 4mm;
+}
+
+/* align-* クラスが付いていない figure のみに margin-inline: 0 を適用 */
+:is(.figure, figure):not(.align-center):not(.align-right):not(.align-left) {
   margin-inline: 0;
 }
 
-figure.cross-ref-figure {
-  flex-direction: column;
+/* 汎用 align-* クラス付き figure
+   - figure.align-center: 画像+キャプションを中央寄せ
+   - figure.align-right : 画像+キャプションを右端寄せ */
+
+/* 中央寄せ: 画像とキャプションを縦に並べて中央配置 */
+figure.align-center {
+  display: grid !important;
+  grid-template-columns: 1fr;
+  justify-items: center;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  margin-inline: auto;
 }
 
-figure.cross-ref-figure.cross-ref-align-center {
-  align-items: center;
+/* 右寄せ: 2カラムグリッドで左側を空け、右側にコンテンツを配置 */
+figure.align-right {
+  display: grid !important;
+  /* 左側70%を空け、右側30%にコンテンツを配置 */
+  grid-template-columns: 70% 30%;
+  /* imgとfigcaptionを縦に並べる */
+  grid-template-rows: auto auto;
+  /* figure自体は親要素いっぱいに広げる */
+  width: 100%;
+  margin-inline: 0;
 }
 
-figure.cross-ref-figure.cross-ref-align-right {
-  align-items: center;
-  margin-inline-start: auto;
+/* 右寄せ figure 内の img と figcaption を右側カラムに配置 */
+figure.align-right > img {
+  grid-column: 2 / 3;
+  grid-row: 1 / 2;
+  /* 画像を右側カラム（30%）いっぱいに広げる */
+  width: 100% !important;
+  height: auto;
+  justify-self: center;
+}
+
+figure.align-right > figcaption {
+  grid-column: 2 / 3;
+  grid-row: 2 / 3;
+  /* キャプションも中央揃え */
+  justify-self: center;
+  text-align: center;
+  margin-block-start: 0.25lh;
+}
+
+/* figcaption 全般のスタイル（ゴシック体＋太字） */
+figcaption {
+  font-family: var(--font-header);
+  text-spacing: no-autospace;
+  font-size: var(--base-font-size);
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: center;
+  margin-block-start: 0.25lh;
 }
 
 :is(.figure, figure) :is(img, svg) {
@@ -319,11 +333,6 @@ figure.cross-ref-figure.cross-ref-align-right {
 img {
   max-inline-size: 100%;
   border: solid 0.5mm var(--color-border);
-}
-
-img[align="center"] {
-  display: block;
-  margin-inline: auto;
 }
 
 img[src$=".svg"] {
