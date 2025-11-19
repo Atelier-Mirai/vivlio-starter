@@ -21,3 +21,4 @@ pkg/*.gem
 # /[0-9][0-9]-*.html
 # /[0-9][0-9]-*.md
 /entries.js
+/source_material/images/

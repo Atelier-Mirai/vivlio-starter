@@ -1,0 +1,123 @@
+# -*- coding: utf-8 -*-
+
+##
+## 注：タブ文字を使わないこと（使うとエラーになる）
+##
+
+## まえがき
+PREDEF:
+  # - 00-preface.re
+
+## 本文
+CHAPS:
+  - 11-life.re
+  - 12-history.re
+  - 13-person.re
+  - 14-computers-work.re
+  - 15-binary.re
+  - 16-algorithm.re
+  - 17-programming.re
+  - 18-web.re
+  - 19-env.re
+  - 20-html.re
+  - 21-css.re
+  - 22-javascript.re
+  - 23-javascript.re
+  - 24-netlify.re
+  - 25-pwa.re
+  - 26-env.re
+  - 27-first-html.re
+  - 28-first-css.re
+  - 29-iphone-css.re
+  - 30-ipad-css.re
+  - 31-study-js.re
+  - 32-sakura.re
+  - 33-netlify.re
+  - 34-netlify-form.re
+  - 35-env.re
+  - 36-hello-js.re
+  - 37-variable.re
+  - 38-operator.re
+  - 39-condition.re
+  - 40-loop.re
+  - 41-type.re
+  - 42-array.re
+  - 43-hash.re
+  - 44-function.re
+  - 45-oop.re
+  - 46-dom.re
+  - 47-eventlistener-org.re
+  - 47-eventlistener.re
+  - 48-work.re
+  - 49-koyomi.re
+  - 50-calendar.re
+  - 51-netlify.re
+  - 52-bonus.re
+  - 53-top.re
+  - 54-footer.re
+  - 55-kiji.re
+  - 56-about.re
+  - 57-contact.re
+  - 58-modaal.re
+  - 59-shuffle-text.re
+  - 60-sakura.re
+  - 61-pwa.re
+  - 61-scroll-animation.re
+  - 62-fixed-footer.re
+  - 63-follow-menu.re
+  - 64-mobile-menu.re
+  - 65-muuri.re
+  - 66-chart.re
+  - 67-pwa.re
+
+## 付録
+APPENDIX:
+  - 91-books.re
+  - 92-links.re
+  - 93-cheats.re
+  - 94-books.re
+  - 95-links.re
+  - 96-grid.re
+  - 97-devtool.re
+  - 98-cheats.re
+  - 99-books.re
+  - 100-links.re
+  - 101-cheats.re
+  - 102-books.re
+  - 103-links.re
+  - 104-cheats.re
+
+## あとがき
+POSTDEF:
+  # - 99-postface.re
+
+##
+## 【Tips】
+##
+## ・付録やまえがきやあとがきがなければ、空にする。
+##   例：
+##
+##     PREDEF:
+##
+##     CHAPS:
+##       - 01-install.re
+##
+##     APPENDIX:
+##
+##     POSTDEF:
+##
+##
+## ・第I部、第II部、…のように「部」を使うには、次のようにする。
+##   （部タイトルの最後に半角の「:」をつけることに注意）
+##
+##     CHAPS:
+##       - 初級編:
+##           - 01-install.re
+##           - 02-tutorial.re
+##       - 中級編:
+##           - 03-syntax.re
+##           - 04-customize.re
+##       - 上級編:
+##           - 05-faq.re
+##           - 06-bestpractice.re
+##

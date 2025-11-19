@@ -83,3 +83,15 @@ Vivlio Starter 環境に存在する **既存の `book.yml` を読み込み**、
     * `key: 連絡先` があれば、その値を解析。
     * **メールアドレス形式のみ** を抽出し、`book.contact` (リスト) を**完全に置き換える**（マージではなく置換）。
     * URL (`http`等で始まる文字列) は除外する。
+
+
+## 参考
+| ディレクトリ名             | .reファイル数  |
+| :------------------------- | :------------- |
+| book_c                     | 26             |
+| book_janken                | 20             |
+| book_java                  | 26             |
+| book_ruby                  | 26             |
+| book_sakura_fubuki         | 16             |
+| book_study_js              | 23             |
+| book_yutakana_website_old  | 22             |

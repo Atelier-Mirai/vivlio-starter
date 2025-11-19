@@ -42,6 +42,7 @@ module Vivlio
             apply_frontmatter!
             normalize_image_paths!
             process_code_includes!
+            transform_text_right_inlines!
             transform_book_cards!
             transform_table_rotations!
             transform_links!
@@ -70,6 +71,41 @@ module Vivlio
             Common.log_action('ソースコード読み込み記法をスキャンしています…')
             context.content = MarkdownTransformer.process_code_include(context.content)
             Common.log_success('ソースコード読み込み処理が完了しました')
+          end
+
+          # 行末の `{.right}` / `{.text-right}` を VFM コンテナ `:::{.text-right}` に変換する
+          # 例:
+          #   **著者: Matz**{.right}
+          #   ->
+          #   ::: {.text-right}
+          #   **著者: Matz**
+          #   :::
+          def transform_text_right_inlines!
+            lines = context.content.lines
+            out = []
+            in_code_block = false
+
+            lines.each do |line|
+              stripped = line.lstrip
+
+              if stripped.start_with?('```')
+                in_code_block = !in_code_block
+                out << line
+                next
+              end
+
+              if !in_code_block && (m = line.match(/^(\s*)(.+)\{\.(right|text-right)\}\s*$/))
+                indent = m[1]
+                inner  = m[2].rstrip
+                out << "#{indent}::: {.text-right}\n"
+                out << "#{indent}#{inner}\n"
+                out << "#{indent}:::\n"
+              else
+                out << line
+              end
+            end
+
+            context.content = out.join
           end
 
           # book-card 記法をHTMLに変換し、内部Markdownを整形する

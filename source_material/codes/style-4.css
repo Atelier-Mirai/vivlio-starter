@@ -1,0 +1,12 @@
+body { width: 500px; margin: 0 auto; }
+h1 { color: orange; text-align: center; }
+p, li { line-height: 2; }
+
+.hardware { border-bottom: solid 3px lime; }
+.software { border-bottom: double 3px magenta; }
+.effect   { font-weight: bold; font-style: italic; }
+
+#html       { background: orange; }
+#css        { background: cyan; }
+#CascadingStyleSheet { background: blue; color: white; }
+#javascript { background: yellow; }

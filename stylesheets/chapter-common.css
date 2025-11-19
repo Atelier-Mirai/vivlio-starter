@@ -121,6 +121,15 @@ p {
   text-align: justify;
 }
 
+/* 右寄せユーティリティ */
+.text-right {
+  text-align: right;
+}
+
+.text-right p {
+  text-indent: 0;
+}
+
 blockquote p {
   text-indent: 0;
   font-style: italic;
@@ -327,4 +336,17 @@ p>img {
   margin-top: 0;
   font-size: 14Q;
   color: var(--color-mark);
+}
+
+.tip {
+  margin-block: 3mm;
+  margin-inline: auto;
+  padding: 3mm 4mm;
+  border-radius: 6px;
+  border: solid 0.2mm var(--color-border-weak);
+  background: var(--color-overlay);
+}
+
+.tip p {
+  text-indent: 0;
 }

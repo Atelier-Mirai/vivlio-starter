@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <!-- サイトに関する設定事項を記述します -->
+  <head>
+    <!-- 文字コードの指定 -->
+    <meta charset="utf-8">
+
+    <!-- ページのタイトル -->
+    <title>WAVE</title>
+
+    <!-- ビューポート(視点)の指定 -->
+    <meta name="viewport" content="width=device-width">
+
+    <!-- ファビコンの指定 -->
+    <!-- https://ao-system.net/favicongenerator/ -->
+    <link rel="icon" href="images/favicon.ico" type="image/ico">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon-180x180.png" type="image/png" sizes="180x180">
+
+    <!-- 検索時に表示される、ウェブサイトの要約文 -->
+    <meta name="description" content="概ね80文字前後のサイトの
+    紹介文が、検索時に表示されます。">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Yuji+Boku&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- PWA (Progressive Web Apps) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#477294">
+    <meta name="theme-color" content="#477294">
+    <meta name="apple-mobile-web-app-title" content="WAVE">
+    <link rel="manifest" href="/manifest.json">
+    <script src="app.js"></script>
+
+    <!-- 自分で作ったスタイルシート -->
+    <link rel="stylesheet" href="stylesheets/master.css">
+  </head>
+
+  <!-- 表示したい内容・出し物・コンテンツを記述します -->
+  <body class="top">
+    <!-- ヘッダー(サイト名) -->
+    <header>
+      <a href="index.html">さくら</a>
+    </header>
+
+    <!-- ナビゲーションメニュー -->
+    <nav>
+      <ul>
+        <!-- fa-lgは1.33倍、la-2xは2倍の大きさ、fa-fwは横に少し間隔が空く -->
+        <!-- 2021年最新版、Font Awesome アイコンの使い方と便利な機能のまとめ -->
+        <!-- https://coliss.com/articles/build-websites/operation/work/font-awesome-guide-and-useful-tricks.html -->
+        <li><a href="index.html"><i class="fa-solid fa-house fa-lg fa-fw"></i>トップ</a></li>
+        <li><a href="about.html"><i class="fa-brands fa-pagelines fa-lg fa-fw"></i>サイトについて</a></li>
+        <li><a href="contact.html"><i class="fa-solid fa-envelope fa-lg fa-fw"></i>お問い合わせ</a></li>
+      </ul>
+    </nav>
+
+    <!-- ヒーローイメージ -->
+    <figure class="hero">
+      <img src="images/sakura/sakura.jpg" alt="青空と咲き誇る小彼岸桜">
+    </figure>
+
+    <!-- タイトル(キャッチフレーズ) -->
+    <!-- <h1>Best place to visit in the world</h1> -->
+    <h1 class="sakura_catch_phrase">
+      <div class="lefted text">扇にて</div>
+      <div class="centered text">酒くむかげや</div>
+      <div class="righted text">ちる櫻</div>
+    </h1>
+
+    <!-- サブタイトル -->
+    <p>
+      <img src="images/circle.svg" alt=""><br>
+      <a href="https://ja.wikipedia.org/wiki/%E6%9D%BE%E5%B0%BE%E8%8A%AD%E8%95%89">松尾芭蕉</a>
+    </p>
+
+    <section>
+      <h2>さくらを詠んだ俳句</h2>
+
+      <article>
+        <a href="https://ja.wikipedia.org/wiki/%E5%B0%8F%E6%9E%97%E4%B8%80%E8%8C%B6">
+          <figure>
+            <img src="images/sakura/ipponzakura.jpg" alt="">
+          </figure>
+          <h3>穀つぶし　櫻の下に　くらしけり</h3>
+          <cite>小林一茶</cite>
+        </a>
+      </article>
+      <article>
+        <a href="https://ja.wikipedia.org/wiki/%E5%8A%A0%E8%B3%80%E5%8D%83%E4%BB%A3%E5%A5%B3">
+          <figure>
+            <img src="images/sakura/aozora_to_sakura.jpg" alt="">
+          </figure>
+          <h3>影は滝 空は花なり 糸桜</h3>
+          <cite>加賀千代女</cite>
+        </a>
+      </article>
+      <article>
+        <a href="https://ja.wikipedia.org/wiki/%E9%AB%98%E6%B5%9C%E8%99%9A%E5%AD%90">
+          <figure>
+            <img src="images/sakura/yamazakura.jpg" alt="">
+          </figure>
+          <h3>徐ろに 眼を移しつつ 初桜</h3>
+          <cite>高浜虚子</cite>
+        </a>
+      </article>
+      <article>
+        <a href="https://ja.wikipedia.org/wiki/%E6%AD%A3%E5%B2%A1%E5%AD%90%E8%A6%8F">
+          <figure>
+            <img src="images/sakura/sakura_tabidachi.jpg" alt="">
+          </figure>
+          <h3>観音の 大悲の桜 咲きにけり</h3>
+          <cite>正岡子規</cite>
+        </a>
+      </article>
+      <article>
+        <a href="https://ja.wikipedia.org/wiki/%E5%AE%A4%E7%94%9F%E7%8A%80%E6%98%9F">
+          <figure>
+            <img src="images/sakura/mizuho_sakura.jpg" alt="">
+          </figure>
+          <h3>さくら木に さくら一杯に つきにけり</h3>
+          <cite>室生犀星</cite>
+        </a>
+      </article>
+      <article>
+        <a href="https://ja.wikipedia.org/wiki/%E6%B3%89%E9%8F%A1%E8%8A%B1">
+          <figure>
+            <img src="images/sakura/sakura_mejiro.jpg" alt="">
+          </figure>
+          <h3>町内の 鶯来たり 朝櫻</h3>
+          <cite>泉鏡花</cite>
+        </a>
+      </article>
+    </section>
+    <!-- 写真の出典は ぱくたそ https://www.pakutaso.com/ より-->
+    <!-- 作者名を右寄せに -->
+    <style>
+      section h2::before, section h3::before { content: "🌸 "; }
+      section h2::after,  section h3::after  { content: " 🌸"; }
+      cite { display: block; text-align: right; font-size: 12px; }
+    </style>
+
+    <!-- フッター -->
+    <footer>&copy; さくら</footer>
+
+    <!-- 桜吹雪の効果 -->
+    <!-- https://actyway.com/8351 -->
+    <link rel="stylesheet" href="sakura.css">
+    <!-- <div id="sakura"> -->
+    <!-- <script src="sakura.js"></script> -->
+    <script src="sakura2.js"></script>
+  </body>
+</html>
