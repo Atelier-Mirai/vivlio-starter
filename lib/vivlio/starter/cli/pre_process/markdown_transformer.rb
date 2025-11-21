@@ -341,8 +341,8 @@ module Vivlio
                 # 両方ともパーセント形式で出力する
                 style_parts = []
                 param_tokens.each do |token|
-                  # 例: scale:60% → 60%, scale:0.60 → 60%
-                  if (m_scale = token.match(/^scale:(.+)$/))
+                  # 例: scale=60% → 60%, scale=0.60 → 60%
+                  if (m_scale = token.match(/^scale=(.+)$/))
                     raw = m_scale[1].strip
                     scale_percent = if raw.end_with?('%')
                                       raw.to_f
@@ -353,8 +353,8 @@ module Vivlio
                     style_parts << "--table-rotate-scale:#{scale_int}%;"
                   end
 
-                  # 例: shift-y:20% → +20%, shift-y:0.20 → +20%
-                  if (m_shift = token.match(/^shift-y:(.+)$/))
+                  # 例: shift-y=20% → +20%, shift-y=0.20 → +20%
+                  if (m_shift = token.match(/^shift-y=(.+)$/))
                     raw = m_shift[1].strip
                     shift_percent = if raw.end_with?('%')
                                       raw.to_f

@@ -129,7 +129,14 @@ module Vivlio
                   Common.log_error("#{html_file}: section-topicラップ中にエラー: #{e.message}")
                 end
 
-                # Step 3: 章末脚注→ページ脚注変換
+                # Step 3: sideimage コンテナ内のテキストノードをラップ
+                begin
+                  wrap_sideimage_blocks!(html_file)
+                rescue StandardError => e
+                  Common.log_error("#{html_file}: sideimage ラップ中にエラー: #{e.message}")
+                end
+
+                # Step 4: 章末脚注→ページ脚注変換
                 content = File.read(html_file, encoding: 'utf-8')
                 converted = FootnoteConverter.convert_endnotes_to_page_footnotes!(content)
                 if converted != content
@@ -137,13 +144,13 @@ module Vivlio
                   Common.log_success("#{html_file}: 章末脚注をページ脚注に変換")
                 end
 
-                # Step 4: 行番号を追加(Prism.js対応)
+                # Step 5: 行番号を追加(Prism.js対応)
                 Vivlio::Starter::ThorCLI.start(['prism_lines', html_file])
 
-                # Step 4.1: クロスリファレンス用コードブロックをラップ
+                # Step 5.1: クロスリファレンス用コードブロックをラップ
                 wrap_cross_ref_code_blocks!(html_file)
 
-                # Step 5: 見出しにクラス/data属性を付与
+                # Step 6: 見出しにクラス/data属性を付与
                 begin
                   HeadingProcessor.inject_heading_markers!([html_file], max_level: 3)
                   Common.log_info("#{html_file}: 見出しメタを付与 (class=data)")
@@ -151,7 +158,7 @@ module Vivlio
                   Common.log_warn("#{html_file}: 見出しメタ付与に失敗: #{e}")
                 end
 
-                # Step 6: 見出し番号スパンを構築
+                # Step 7: 見出し番号スパンを構築
                 begin
                   HeadingProcessor.inject_heading_number_spans!(html_file)
                   Common.log_info("#{html_file}: 見出し番号スパンを構築")
@@ -266,6 +273,72 @@ module Vivlio
           Common.log_success("#{html_file}: cross-ref list code blocks wrapped")
         end
         module_function :wrap_cross_ref_code_blocks!
+
+        # ================================================================
+        # sideimage コンテナ内テキストのラップ
+        # ----------------------------------------------------------------
+        # Vivliostyle/VFM が出力する
+        #   <div class="sideimage-right">
+        #     <figure>…</figure>本文テキスト…
+        #   </div>
+        # のような構造では、figure 以外がテキストノードとなり
+        # CSS Grid の .sideimage-right > :not(figure) セレクタでは拾えない。
+        # そこで、figure 以外の子ノードを <div class="sideimage-body"> で
+        # まとめて包み、常に
+        #   <div class="sideimage-right">
+        #     <figure>…</figure>
+        #     <div class="sideimage-body">本文…</div>
+        #   </div>
+        # という 2 要素構造に正規化する。
+        # ================================================================
+        def wrap_sideimage_blocks!(html_file)
+          content = File.read(html_file, encoding: 'utf-8')
+
+          doc = if defined?(Nokogiri::HTML5)
+                  Nokogiri::HTML5.parse(content)
+                else
+                  Nokogiri::HTML.parse(content, nil, 'UTF-8')
+                end
+
+          changed = false
+
+          doc.css('div.sideimage-right, div.sideimage-left').each do |container|
+            figure = container.at_css('> figure')
+            next unless figure
+
+            children = container.children
+
+            body_nodes = children.reject do |node|
+              node == figure || (node.text? && node.text.strip.empty?)
+            end
+
+            # すでに sideimage-body がひとつだけある場合は何もしない
+            if body_nodes.size == 1 && body_nodes.first.element? &&
+               body_nodes.first['class'].to_s.split.include?('sideimage-body')
+              next
+            end
+
+            next if body_nodes.empty?
+
+            body_wrapper = Nokogiri::XML::Node.new('div', doc)
+            body_wrapper['class'] = 'sideimage-body'
+
+            first_body = body_nodes.first
+            first_body.add_previous_sibling(body_wrapper)
+
+            body_nodes.each do |node|
+              body_wrapper.add_child(node)
+            end
+
+            changed = true
+          end
+
+          return unless changed
+
+          File.write(html_file, doc.to_html(encoding: 'UTF-8'))
+          Common.log_success("#{html_file}: sideimage コンテナを正規化しました")
+        end
+        module_function :wrap_sideimage_blocks!
 
         # ================================================================
         # 置換ルールの読み込み

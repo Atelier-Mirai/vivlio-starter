@@ -204,6 +204,49 @@ figure.float-start {
   figure.float-start { float: left; }
 }
 
+/* 文章横に画像を並べるサイドイメージ用コンテナ（CSS Grid 版） */
+.sideimage-right,
+.sideimage-left {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  grid-template-rows: auto;
+  gap: 1rem;
+  align-items: start;
+  margin-block: 0.5lh;
+}
+
+/* sideimage-* コンテナ直下の要素は常に 1 行目に配置する */
+.sideimage-right > *,
+.sideimage-left > * {
+  grid-row: 1;
+}
+
+/* sideimage-right: テキスト左・画像右 */
+.sideimage-right > figure {
+  grid-column: 2;
+}
+
+.sideimage-right > :not(figure) {
+  grid-column: 1;
+}
+
+/* sideimage-left: 画像左・テキスト右 */
+.sideimage-left > figure {
+  grid-column: 1;
+}
+
+.sideimage-left > :not(figure) {
+  grid-column: 2;
+}
+
+/* サイドイメージ内の画像サイズ
+   - 列幅を超えないようにしつつ、{width=30%} などの個別指定は尊重する */
+.sideimage-right img,
+.sideimage-left img {
+  max-inline-size: 100%;
+  block-size: auto;
+}
+
 /* グリッド内の配置 */
 .align-top { align-items: start; }
 .align-center { align-items: center; }
