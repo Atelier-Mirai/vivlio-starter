@@ -42,6 +42,7 @@ module Vivlio
             apply_frontmatter!
             normalize_image_paths!
             process_code_includes!
+            escape_inline_code_html!
             transform_text_right_inlines!
             transform_book_cards!
             transform_table_rotations!
@@ -71,6 +72,37 @@ module Vivlio
             Common.log_action('ソースコード読み込み記法をスキャンしています…')
             context.content = MarkdownTransformer.process_code_include(context.content)
             Common.log_success('ソースコード読み込み処理が完了しました')
+          end
+
+          # インラインコード内の HTML 予約文字をエスケープする
+          # - 著者は `` `<h1>` `` のように素直に書ける
+          # - 前処理後の Markdown では `&lt;h1&gt;` のようにエスケープされた形になる
+          # - フェンス付きコードブロック内部はそのまま残す
+          def escape_inline_code_html!
+            lines = context.content.lines
+            out = []
+            in_code_block = false
+
+            lines.each do |line|
+              stripped = line.lstrip
+
+              # ``` / ```lang で始まる行でコードブロックの開始・終了をトグル
+              # ただし、```include:...``` のような 1 行完結の include 記法は
+              # 実際のコードブロックとはみなさず、フラグを変更しない
+              if stripped.start_with?('```') && !stripped.start_with?('```include:')
+                in_code_block = !in_code_block
+                out << line
+                next
+              end
+
+              if in_code_block
+                out << line
+              else
+                out << MarkdownTransformer.escape_inline_code_html(line)
+              end
+            end
+
+            context.content = out.join
           end
 
           # 行末の `{.right}` / `{.text-right}` を VFM コンテナ `:::{.text-right}` に変換する

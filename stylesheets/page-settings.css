@@ -83,8 +83,8 @@
   --paper-scale: 1.0;
 
   /* タイポグラフィ設定 */
-  --base-font-size:   12pt;    /* 基準文字サイズ */
-  --base-line-height: 19.2pt;  /* 行送り（10.5pt × 1.7 = 17.85pt） */
+  --base-font-size:   11pt;    /* 基準文字サイズ */
+  --base-line-height: 17.6pt;  /* 行送り（10.5pt × 1.7 = 17.85pt） */
   --letter-spacing:   0em;     /* 字間調整 */
 
   /* 版面の余白（見開き対応） */

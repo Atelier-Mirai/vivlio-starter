@@ -42,6 +42,48 @@ module Vivlio
 
           module_function
 
+          CODE_SPAN_PLACEHOLDER_PREFIX = '__VS_CODE_SPAN__'
+
+          # コードスパン（バッククォートで囲まれた部分）を一時的に退避し、
+          # その中身を後続のテキスト変形処理から除外するためのユーティリティ
+          def extract_code_spans(text)
+            spans = {}
+            counter = 0
+
+            protected_text = text.to_s.gsub(/`([^`]*?)`/) do |match|
+              key = "#{CODE_SPAN_PLACEHOLDER_PREFIX}#{counter}__"
+              spans[key] = match
+              counter += 1
+              key
+            end
+
+            [protected_text, spans]
+          end
+
+          # extract_code_spans で退避したコードスパンを元に戻す
+          def restore_code_spans(text, spans)
+            restored = text.to_s
+            spans.each do |placeholder, original|
+              restored = restored.gsub(placeholder, original)
+            end
+            restored
+          end
+
+          # インラインコード（`...`）内の HTML 予約文字をエスケープする
+          # - 著者は `` `<h1>` `` のように素直に書ける
+          # - ビルド用に生成される Markdown では `&lt;h1&gt;` に変換される
+          # - バッククォート自体はそのまま維持する
+          def escape_inline_code_html(md_text)
+            text = md_text.to_s
+
+            text.gsub(/`([^`]*?)`/) do
+              inner = ::Regexp.last_match(1)
+              # ここでは < と > を主にエスケープし、& は既存の実体参照を壊さないようにそのまま残す
+              escaped = inner.gsub('<', '&lt;').gsub('>', '&gt;')
+              "`#{escaped}`"
+            end
+          end
+
           # 拡張子から言語名を推定
           def detect_language(file_path)
             ext = File.extname(file_path).downcase.delete_prefix('.')
@@ -111,7 +153,10 @@ module Vivlio
 
           # Markdown内のリンク記法を脚注化
           def transform_links_to_footnotes(md_text)
-            text = md_text.to_s
+            original = md_text.to_s
+
+            # コードスパン内はそのまま残し、外側だけを脚注化の対象とする
+            text, code_spans = extract_code_spans(original)
 
             # 既存の url 脚注番号の最大を取得
             max_n = 0
@@ -123,8 +168,8 @@ module Vivlio
             url_id = {}
             replacements = []
 
-            # リンク本体を置換
-            replaced = text.gsub(/(?<!!)\[(.+?)\]\((https?:[^\s)]+)\)(?!\[\^url\d+\])/) do |_match|
+            # リンク本体を置換（コードスパンは既に退避済み）
+            replaced = text.gsub(/(?<!!)[\[](.+?)[\)]\((https?:[^\s)]+)\)(?!\[\^url\d+\])/) do |_match|
               label = ::Regexp.last_match(1)
               url   = ::Regexp.last_match(2)
               id = (url_id[url] ||= begin
@@ -145,14 +190,19 @@ module Vivlio
               "[^#{id}]: #{u}"
             end.compact
 
-            return replaced if new_defs.empty?
+            result = if new_defs.empty?
+                       replaced
+                     else
+                       # 文末に空行2つを挟んで脚注定義を追記
+                       if replaced.strip.end_with?("\n")
+                         "#{replaced}\n#{new_defs.join("\n")}\n"
+                       else
+                         "#{replaced}\n\n#{new_defs.join("\n")}\n"
+                       end
+                     end
 
-            # 文末に空行2つを挟んで脚注定義を追記
-            if replaced.strip.end_with?("\n")
-              "#{replaced}\n#{new_defs.join("\n")}\n"
-            else
-              "#{replaced}\n\n#{new_defs.join("\n")}\n"
-            end
+            # 退避していたコードスパンを元に戻す
+            restore_code_spans(result, code_spans)
           end
 
           # book-card 内のMarkdownを事前整形

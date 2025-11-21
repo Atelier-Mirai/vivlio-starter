@@ -71,11 +71,11 @@ a5_compact:
   margin_inner: 20mm
   margin_outer: 16mm
 
-# A4 判 (210×297mm) - 技術書向け標準
+# A4 判 (210×297mm) - 技術書向け標準（ややコンパクト）
 a4_standard:
   size: A4
-  base_font_size: 12pt
-  base_line_height: 1.6        # 1.6倍（12pt × 1.6 = 19.2pt）
+  base_font_size: 11pt
+  base_line_height: 1.6        # 1.6倍（11pt × 1.6 = 17.6pt）
   letter_spacing: 0em
   margin_top: 30mm
   margin_bottom: 30mm

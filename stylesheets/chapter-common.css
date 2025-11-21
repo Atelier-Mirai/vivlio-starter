@@ -147,10 +147,10 @@ blockquote {
 em {
   font-style: normal;
   text-decoration: underline;
-  text-decoration-thickness: 0.4em;
+  text-decoration-thickness: 0.10em;
   text-decoration-color: var(--color-em-underline);
-  text-underline-offset: -0.1em;
-  text-decoration-skip-ink: none;
+  text-underline-offset: 0.08em;
+  text-decoration-skip-ink: auto;
 }
 
 /* 強調（太字・色） */

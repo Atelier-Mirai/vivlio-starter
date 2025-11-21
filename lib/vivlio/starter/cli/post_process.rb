@@ -333,6 +333,35 @@ module Vivlio
             changed = true
           end
 
+          # sideimage-body 内に残っているバッククォート付きコードを <code> 要素に変換
+          doc.css('div.sideimage-body').each do |body|
+            body.traverse do |node|
+              next unless node.text?
+
+              text = node.text
+              next unless text.include?('`')
+
+              segments = text.split(/(`[^`]*`)/)
+              next if segments.length == 1
+
+              # 元のテキストノードの直前に、新しいノードを順番に挿入していく
+              segments.each do |seg|
+                if seg.start_with?('`') && seg.end_with?('`') && seg.length >= 2
+                  inner = seg[1..-2]
+                  code = Nokogiri::XML::Node.new('code', doc)
+                  code.content = inner
+                  node.add_previous_sibling(code)
+                else
+                  node.add_previous_sibling(Nokogiri::XML::Text.new(seg, doc))
+                end
+              end
+
+              # 役目を終えた元のテキストノードは削除する
+              node.remove
+              changed = true
+            end
+          end
+
           return unless changed
 
           File.write(html_file, doc.to_html(encoding: 'UTF-8'))

@@ -48,26 +48,51 @@
 }
 
 /* 列幅 */
-.img-text { grid-template-columns: 1fr 1fr; }
-.img-text2 { grid-template-columns: 1fr 2fr; }
-.img-text3 { grid-template-columns: 1fr 3fr; }
-.text2-img { grid-template-columns: 2fr 1fr; }
-.text3-img { grid-template-columns: 3fr 1fr; }
+.img-text {
+  grid-template-columns: 1fr 1fr;
+}
+
+.img-text2 {
+  grid-template-columns: 1fr 2fr;
+}
+
+.img-text3 {
+  grid-template-columns: 1fr 3fr;
+}
+
+.text2-img {
+  grid-template-columns: 2fr 1fr;
+}
+
+.text3-img {
+  grid-template-columns: 3fr 1fr;
+}
 
 /* 並び順ルール */
 
 /* 左:画像 右:本文 */
-.img-text > img { grid-column: 1; }
-.img-text > :not(img) { grid-column: 2; }
+.img-text>img {
+  grid-column: 1;
+}
+
+.img-text> :not(img) {
+  grid-column: 2;
+}
 
 /* 左:画像 右:本文（本文広め 2） */
-.img-text2 > img { grid-column: 1; }
-.img-text2 > :not(img) { grid-column: 2; }
+.img-text2>img {
+  grid-column: 1;
+}
+
+.img-text2> :not(img) {
+  grid-column: 2;
+}
 
 /* 左:画像 右:本文（本文広め 3） */
-.img-text3 > img {
+.img-text3>img {
   grid-column: 1;
-  grid-row: 1 / -1; /* 左列を縦に占有して、後続ノードを右列へ */
+  grid-row: 1 / -1;
+  /* 左列を縦に占有して、後続ノードを右列へ */
 
   /* box-size */
   inline-size: 100%;
@@ -77,22 +102,37 @@
   object-fit: contain;
 }
 
-.img-text3 > :not(img) {
+.img-text3> :not(img) {
   grid-column: 2;
   grid-row: 1 / -1;
 }
 
- /* 左:本文 右:画像 */
-.text-img > img { grid-column: 2; }
-.text-img > :not(img) { grid-column: 1; }
+/* 左:本文 右:画像 */
+.text-img>img {
+  grid-column: 2;
+}
+
+.text-img> :not(img) {
+  grid-column: 1;
+}
 
 /* 左:本文 右:画像（本文広め 2） */
-.text2-img > :not(img) { grid-column: 1; }
-.text2-img > img { grid-column: 2; }
+.text2-img> :not(img) {
+  grid-column: 1;
+}
+
+.text2-img>img {
+  grid-column: 2;
+}
 
 /* 左:本文 右:画像（本文広め 3） */
-.text3-img > :not(img) { grid-column: 1; }
-.text3-img > img { grid-column: 2; }
+.text3-img> :not(img) {
+  grid-column: 1;
+}
+
+.text3-img>img {
+  grid-column: 2;
+}
 
 /* 本文の二段組ブロック */
 .two-col,
@@ -114,9 +154,17 @@
 }
 
 /* グリッド間の余白 */
-.gap-s { gap: 0.5rem; }
-.gap-m { gap: 1rem; }
-.gap-l { gap: 1.5rem; }
+.gap-s {
+  gap: 0.5rem;
+}
+
+.gap-m {
+  gap: 1rem;
+}
+
+.gap-l {
+  gap: 1.5rem;
+}
 
 /* 回り込み配置（画像などを右端＝行内終端へ） */
 .float-end,
@@ -131,6 +179,7 @@
 
 /* inline-end 未対応ブラウザ向けフォールバック */
 @supports not (float: inline-end) {
+
   .float-end,
   .float-right {
     float: right;
@@ -148,7 +197,9 @@
 }
 
 @supports not (float: inline-start) {
-  .float-start { float: left; }
+  .float-start {
+    float: left;
+  }
 }
 
 /* 回り込み画像の最大幅（安全策） */
@@ -159,16 +210,23 @@
 }
 
 /* 回り込み解除ユーティリティ */
-.clear-both { clear: both; }
-.clear-inline { clear: inline-end; }
+.clear-both {
+  clear: both;
+}
+
+.clear-inline {
+  clear: inline-end;
+}
 
 @supports not (clear: inline-end) {
-  .clear-inline { clear: right; }
+  .clear-inline {
+    clear: right;
+  }
 }
 
 /* 段組内の分割回避 */
-.two-col > *,
-.text-2dan > * {
+.two-col>*,
+.text-2dan>* {
   break-inside: avoid;
 }
 
@@ -191,8 +249,11 @@ figure.float-right {
 }
 
 @supports not (float: inline-end) {
+
   figure.float-end,
-  figure.float-right { float: right; }
+  figure.float-right {
+    float: right;
+  }
 }
 
 figure.float-start {
@@ -201,7 +262,9 @@ figure.float-start {
 }
 
 @supports not (float: inline-start) {
-  figure.float-start { float: left; }
+  figure.float-start {
+    float: left;
+  }
 }
 
 /* 文章横に画像を並べるサイドイメージ用コンテナ（CSS Grid 版） */
@@ -216,26 +279,26 @@ figure.float-start {
 }
 
 /* sideimage-* コンテナ直下の要素は常に 1 行目に配置する */
-.sideimage-right > *,
-.sideimage-left > * {
+.sideimage-right>*,
+.sideimage-left>* {
   grid-row: 1;
 }
 
 /* sideimage-right: テキスト左・画像右 */
-.sideimage-right > figure {
+.sideimage-right>figure {
   grid-column: 2;
 }
 
-.sideimage-right > :not(figure) {
+.sideimage-right> :not(figure) {
   grid-column: 1;
 }
 
 /* sideimage-left: 画像左・テキスト右 */
-.sideimage-left > figure {
+.sideimage-left>figure {
   grid-column: 1;
 }
 
-.sideimage-left > :not(figure) {
+.sideimage-left> :not(figure) {
   grid-column: 2;
 }
 
@@ -248,6 +311,14 @@ figure.float-start {
 }
 
 /* グリッド内の配置 */
-.align-top { align-items: start; }
-.align-center { align-items: center; }
-.align-bottom { align-items: end; }
+.align-top {
+  align-items: start;
+}
+
+.align-center {
+  align-items: center;
+}
+
+.align-bottom {
+  align-items: end;
+}
