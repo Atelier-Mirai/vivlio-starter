@@ -12,7 +12,7 @@
 @page :nth(1) {
   background-image: var(--frontispiece-image);
   background-repeat: no-repeat;
-  background-position: center;
+  background-position: calc(50% + var(--frontispiece-binding-offset));
   background-attachment: fixed;
   background-size: var(--frontispiece-background-size);
 }

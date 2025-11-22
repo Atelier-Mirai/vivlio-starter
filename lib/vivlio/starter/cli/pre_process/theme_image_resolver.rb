@@ -12,7 +12,10 @@ module Vivlio
           FRONTISPIECE_DEFAULT_PATH = 'images/door2.webp'
           ORNAMENT_DEFAULT_PATH = 'images/frame-yellow.webp'
 
-          FRONTISPIECE_ALLOWED_RATIOS = [1.4, 1.414].freeze
+          DEFAULT_PAGE_WIDTH_MM = 210.0
+          DEFAULT_PAGE_HEIGHT_MM = 297.0
+          MIN_BINDING_RATIO = 1.35
+          MAX_BINDING_RATIO = 2.2
           FRONTISPIECE_RATIO_TOLERANCE = 0.05
 
           FRONTISPIECE_PLACEHOLDER_SVG = <<~SVG
@@ -239,8 +242,51 @@ module Vivlio
 
           # frontispiece 用の許容アスペクト比かチェック
           def ratio_accepted_for_frontispiece?(ratio)
-            FRONTISPIECE_ALLOWED_RATIOS.any? do |allowed|
+            frontispiece_allowed_ratios.any? do |allowed|
+              next false if allowed.zero?
+
               ((ratio - allowed).abs / allowed) <= FRONTISPIECE_RATIO_TOLERANCE
+            end
+          end
+
+          def frontispiece_allowed_ratios
+            [binding_safe_portrait_ratio, 1.414].uniq
+          end
+
+          def binding_safe_portrait_ratio
+            page_cfg = Common::CONFIG['page'] || {}
+            width_mm = css_length_to_mm(page_cfg['width']) || DEFAULT_PAGE_WIDTH_MM
+            height_mm = css_length_to_mm(page_cfg['height']) || DEFAULT_PAGE_HEIGHT_MM
+            margin_inner_mm = css_length_to_mm(page_cfg['margin_inner']) || 0
+            margin_outer_mm = css_length_to_mm(page_cfg['margin_outer']) || 0
+
+            binding_delta = [margin_inner_mm - margin_outer_mm, 0].max
+            effective_width = width_mm - binding_delta
+            effective_width = width_mm * 0.4 if effective_width <= width_mm * 0.4
+            ratio = height_mm / [effective_width, 1.0].max
+
+            [[ratio, MIN_BINDING_RATIO].max, MAX_BINDING_RATIO].min
+          rescue StandardError
+            1.414
+          end
+
+          def css_length_to_mm(value)
+            s = value.to_s.strip
+            return nil if s.empty?
+
+            if (m = s.match(/^([0-9]+(?:\.[0-9]+)?)\s*(mm|cm|in|pt)$/i))
+              num = m[1].to_f
+              unit = m[2].downcase
+              case unit
+              when 'mm' then num
+              when 'cm' then num * 10.0
+              when 'in' then num * 25.4
+              when 'pt' then num * 0.3527777778
+              else
+                num
+              end
+            else
+              s.to_f
             end
           end
 

@@ -1,0 +1,131 @@
+/* 基本設定 */
+* {                          /* 全ての要素(*)を対象に */
+  margin: 0;                 /* 余白を0にする */
+  box-sizing: border-box;    /* 要素の幅を制御しやすくする */
+}
+
+img {                         /* 全ての画像要素(img)を対象に */
+  display: block;             /* ブロック要素にする */
+  width: 100%;                /* 幅を100% にする */
+  max-width: 75%;             /* 最大幅を100% にする */
+  height: auto;               /* 高さは 幅に応じて 自動調整する */
+}
+
+/* 色の指定 (CSSカスタムプロパティ) */
+:root {
+  --kyohiiro:          #ff251e; /* 京緋色(きょうひいろ) */
+  --shinonomeiro:      #f19072; /* 東雲色(しののめいろ) */
+  --nanohanairo:       #ffec47; /* 菜の花色(なのはないろ) */
+  --sanaeiro:          #67a70c; /* 早苗色(さなえいろ) */
+  --amairo:            #2ca9e1; /* 天色(あまいろ) */
+  --utsushiiro:        #3d6eda; /* 移色(うつしいろ) */
+  --botaniro:          #e7609e; /* 牡丹色(ぼたんいろ) */
+  --ayameiro:          #674196; /* 菖蒲色(あやめいろ) */
+  --sakurairo:         #fef4f4; /* 桜色(さくらいろ) */
+  --momijiiro:         #a61017; /* 紅葉色(もみじいろ) */
+  --nibiiro:           #9ea1a3; /* 鈍色(にびいろ) */
+  --kurohairo:         #0d0d0d; /* 黒羽色(くろはいろ) */
+
+  --harukazeiro:       transparent; /* 春風色(はるかぜいろ) */
+}
+
+/* ヘッダー */
+header h1 {                   /* header 内の h1 (大見出しの指定) */
+  font-size: 40px;            /* 書体の大きさは40px */
+  color: var(--kurohairo);    /* 文字の色は、黒羽色 #0d0d0d; */
+  text-shadow: 3px 4px 5px var(--nibiiro); /* 右に3px 下に4pxずれた所に
+                                              ぼかし幅5pxで
+                                              鈍色 #9ea1a3 の影を付ける */
+  text-align: center;         /* 文字は中央揃えにする */
+}
+
+/* メイン(サイト主要機能部) */
+main figure img {
+  margin: 0 auto;             /* 上下に 0px 左右に 均等に 余白を入れる */
+                              /* (= 左右中央揃えにする) */
+  max-width: 280px;           /* 最大幅を280pxにする */
+}
+
+main p {                      /* じゃんけんの説明文 */
+  text-align: center;         /* 文字は中央揃えにする */
+  margin-bottom: 20px;        /* 下側に少し余白を設ける */
+}
+
+/* クラス属性.score と、id属性#playを付与した要素を対象に */
+main .score,
+main #play {
+  font-size: 24px;    /* 書体の大きさは24px */
+  margin: 10px 0;     /* 上下に10px 左右に0px の余白 */
+}
+
+/* グーチョキパー各ボタンの大きさを指定 */
+main .player_hand_type button {
+  background: transparent;    /* 背景色を透明に */
+  background-size: 100% 100%; /* 背景画像の大きさは縦横100% */
+  border: none;               /* ボタンの枠線は無し */
+  width: 100px;               /* ボタンの幅は100px */
+  height: 100px;              /* ボタンの高さは100px */
+  padding: 0;                 /* 内部への詰め物は無し */
+  cursor: pointer;            /* カーソルの形状は pointer(手のマーク) */
+}
+
+/* html で id="guu"とid属性を付けたグーの背景画像の設定 */
+main #guu   { background-image: url('player_guu.webp');   }
+main #choki { background-image: url('player_choki.webp'); }
+main #paa   { background-image: url('player_paa.webp');   }
+
+/* <a class="button"> と buttonクラスを付与したa要素を対象に */
+main .button {
+  background: var(--amairo);  /* 背景色は 天色 */
+  color: white;               /* 文字の色は白*/
+  border: solid 1px white;    /* 枠線はしっかりした(solid)線で 1px幅の白 */
+  border-radius: 15px;        /* 角は 半径(radius) 15pxで丸くする */
+  padding: 10px;              /* 詰め物は 上下左右に10px */
+  text-decoration: none;      /* 下線による飾り付け(decoration)は無し */
+  cursor: pointer;            /* カーソルの形状は pointer(手のマーク) */
+}
+
+/* じゃんけん紹介記事 */
+article {                     /* aritcle 要素を対象に */
+  border: 5px double var(--utsushiiro); /* 枠線は5pxの二重線 色は移色 */
+  border-radius:  1rem;       /* 角を1文字分丸くする */
+  margin-bottom:  1rem;       /* 要素下側に1文字分余白を設ける */
+  padding-bottom: 1rem;       /* 要素下側に1文字分詰め物をする */
+}
+
+article p {                   /* aritcle 要素 内の p要素を対象に */
+  font-size: 18px;            /* 書体の大きさは10px */
+  text-align: left;           /* 文字は左寄せ */
+  padding: 1rem;              /* 1文字分詰め物をする */
+  text-indent: 1rem;          /* 文字を1文字字下げする */
+}
+
+/* aritcle内の figure内の figcaption要素を対象に */
+article figure figcaption {
+  font-size: 24px;            /* 書体の大きさは24px */
+  font-weight: bold;          /* 文字は太字 */
+  text-align: center;         /* 文字は中央揃え */
+  margin-bottom: 1rem;        /* 下側に1文字分間隔を取る */
+}
+
+/* aritcle内の figure内の img要素を対象に */
+article figure img {
+  margin: 0 auto;           /* 上下に 0px 左右に 均等に 余白を入れる */
+                            /* (= 左右中央揃えにする) */
+  max-width: 280px;         /* 最大幅を280pxにする */
+}
+
+/* aritcle内の ul要素を対象に */
+article ul {                  /* aritcle内の ul内の li要素を対象に */
+  list-style: none;           /* 箇条書きの・(黒丸)は不要 */
+  padding: 0;                 /* 詰め物も不要 */
+}
+
+/* フッター */
+footer {                      /* footer 要素を対象に */
+  background: var(--sakurairo); /* 背景色は桜色 */
+}
+
+footer div {                  /* footer 要素の中のdiv要素を対象に */
+  text-align: center;         /* 文字は中央揃え */
+}

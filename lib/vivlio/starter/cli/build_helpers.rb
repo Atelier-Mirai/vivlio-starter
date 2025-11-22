@@ -798,24 +798,24 @@ module Vivlio
               canvas.fill_color(*folio_color)
             end
 
-            # 水平位置の計算（版面基準、margin_outer も考慮）
+            # 水平位置の計算（版面基準、margin_inner / margin_outer を考慮）
             x = case placement
                 when 'center'
                   # 中央配置: @bottom-center と同じ（版面の中央）
-                  # 左右ページで margin_inner と margin_outer の位置が入れ替わる
+                  # 左右ページで margin_inner（ノド）と margin_outer（小口）の位置が入れ替わる
                   est_char_width = folio_size * 0.45
                   text_width = text.length * est_char_width
                   
                   if (i + 1).odd?
-                    # 右ページ（奇数ページ）: margin_left = margin_outer, margin_right = margin_inner
-                    text_area_left = media_box.left + margin_outer_mm * mm
-                    text_area_right = media_box.right - margin_inner_mm * mm
+                    # 右ページ（奇数ページ）: margin_left = margin_inner, margin_right = margin_outer
+                    text_area_left = media_box.left + margin_inner_mm * mm
+                    text_area_right = media_box.right - margin_outer_mm * mm
                     text_area_center = text_area_left + (text_area_right - text_area_left) / 2.0
                     text_area_center - (text_width / 2.0)
                   else
-                    # 左ページ（偶数ページ）: margin_left = margin_inner, margin_right = margin_outer
-                    text_area_left = media_box.left + margin_inner_mm * mm
-                    text_area_right = media_box.right - margin_outer_mm * mm
+                    # 左ページ（偶数ページ）: margin_left = margin_outer, margin_right = margin_inner
+                    text_area_left = media_box.left + margin_outer_mm * mm
+                    text_area_right = media_box.right - margin_inner_mm * mm
                     text_area_center = text_area_left + (text_area_right - text_area_left) / 2.0
                     text_area_center - (text_width / 2.0)
                   end
@@ -824,18 +824,18 @@ module Vivlio
                   
                   if (i + 1).odd?
                     # 右ページ（奇数ページ）: @bottom-right
-                    # 版面の右端 = media_box.right - margin_inner
+                    # 版面の右端 = media_box.right - margin_outer（右ページでは小口側）
                     # 右寄せなので、右端から左にテキスト幅分移動
                     # 文字幅係数を小さくして右に移動させる
                     est_char_width = folio_size * 0.3
                     text_width = text.length * est_char_width
-                    text_area_right = media_box.right - margin_inner_mm * mm
+                    text_area_right = media_box.right - margin_outer_mm * mm
                     text_area_right - text_width
                   else
                     # 左ページ（偶数ページ）: @bottom-left
-                    # 版面の左端 = media_box.left + margin_inner
+                    # 版面の左端 = media_box.left + margin_outer（左ページでは小口側）
                     # 左寄せなので、左端から開始
-                    media_box.left + margin_inner_mm * mm
+                    media_box.left + margin_outer_mm * mm
                   end
                 end
             

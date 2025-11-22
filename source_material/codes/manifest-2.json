@@ -1,0 +1,15 @@
+{
+	"name": "WAVE",
+	"short_name": "WAVE",
+	"start_url": "/",
+	"background_color": "#ffffff",
+	"theme_color": "#477294",
+	"display": "standalone",
+	"icons": [
+		{
+			"src": "images/icon-512x512.png",
+			"sizes": "512x512",
+			"type": "image/png"
+		}
+	]
+}

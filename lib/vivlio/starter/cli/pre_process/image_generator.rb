@@ -19,12 +19,15 @@ module Vivlio
           FRONTISPIECE_TARGET_WIDTH = 2880  # frontispiece推奨横幅
           FRONTISPIECE_WEBP_QUALITY = 90
 
-          FRONTISPIECE_VARIANTS = {
-            portrait: 1.414,      # frontispiece用 √2:1（A4縦）
-            landscape: (1.0 / 2.39)  # ornament用 2.39:1（シネマスコープ）
-          }.freeze
-
           module_function
+
+          def frontispiece_variants
+            portrait_ratio = ThemeImageResolver.binding_safe_portrait_ratio
+            {
+              portrait: portrait_ratio,
+              landscape: (1.0 / 2.39) # ornament用 2.39:1（シネマスコープ）
+            }
+          end
 
           # バリアント画像が存在しなければ生成
           def ensure_variant_generated(source_path, variant)
@@ -64,7 +67,7 @@ module Vivlio
               trimmed_path = File.join(tmpdir, "#{basename}_trimmed.png")
               trim_image_to(source_path, trimmed_path, fuzz)
 
-              FRONTISPIECE_VARIANTS.each do |variant, ratio|
+              frontispiece_variants.each do |variant, ratio|
                 variant_png = File.join(tmpdir, "#{basename}_#{variant}.png")
                 generate_diagonal_variant(trimmed_path, variant_png, ratio)
 

@@ -50,7 +50,7 @@ puts "Hello, World!"
 | 要素 | 目的 | 例 | 備考 |
 |---|---|---|---|
 | 文書型/言語 | HTML5 宣言/言語 | `<!doctype html>`, `<html lang="ja">` | 先頭に宣言 |
-| メタ | 文字コード/viewport | `<meta charset="utf-8">`, `<meta name="viewport" content="width=device-width, initial-scale=1">` | UTF-8 推奨 |
+| メタ | 文字コード/viewport | `<meta charset="utf-8">`, `<meta name="viewport" content="width=device-width">` | UTF-8 推奨 |
 | 見出し/段落 | 構造化 | `<h1>..</h1>`, `<p>..</p>` | 見出しは階層順 |
 | リンク/画像 | ナビ/画像 | `<a href="/">`, `<img src="a.png" alt="">` | `alt` は必須 |
 | リスト | 箇条書き | `<ul><li>..</li></ul>`, `<ol>` | 入れ子可 |

@@ -1,0 +1,102 @@
+html, body {
+  overflow-x: hidden;
+  overflow-x: clip;
+  position: relative;
+}
+
+.hana {
+  position: absolute;
+  height: 0;
+  width: 0;
+  border: 10px solid transparent;
+  border-radius: 15px;
+  border-top-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.hana::after {
+  content: "";
+  display: block;
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  height: 0;
+  width: 0;
+  border: 10px solid transparent;
+  border-radius: 15px;
+  border-top-right-radius: 0;
+  border-bottom-left-radius: 0;
+  transform: rotate(15deg);
+}
+
+.t1, .t1::after { border-color: #fef4f4; }
+.t2, .t2::after { border-color: #ffd1d9; }
+.t3, .t3::after { border-color: #ffc0cb; }
+.t4, .t4::after { border-color: #ffc0cb; }
+.t5, .t5::after { border-color: #ffafbd; }
+
+.a1 { -webkit-animation: a1 12s infinite; }
+.a2 { -webkit-animation: a2 10s infinite; }
+.a3 { -webkit-animation: a3  9s infinite; }
+.a4 { -webkit-animation: a4  9s infinite; }
+.a5 { -webkit-animation: a5  8s infinite; }
+
+@-webkit-keyframes a1 {
+  from {
+    -webkit-transform: rotate(0deg) scale(.9);
+  }
+  50% {
+    -webkit-transform: rotate(270deg) scale(.9);
+  }
+  to {
+    -webkit-transform: rotate(1deg) scale(.9);
+  }
+}
+
+@-webkit-keyframes a2 {
+  from {
+    -webkit-transform: rotate(-90deg) scale(.8);
+  }
+  50% {
+    -webkit-transform: rotate(-360deg) scale(.8);
+  }
+  to {
+    -webkit-transform: rotate(-89deg) scale(.8);
+  }
+}
+
+@-webkit-keyframes a3 {
+  from {
+    -webkit-transform: rotate(30deg) scale(.7);
+  }
+  50% {
+    -webkit-transform: rotate(300deg) scale(.7);
+  }
+  to {
+    -webkit-transform: rotate(29deg) scale(.7);
+  }
+}
+
+@-webkit-keyframes a4 {
+  from {
+    -webkit-transform: rotate(-120deg) scale(.6);
+  }
+  50% {
+    -webkit-transform: rotate(-390deg) scale(.6);
+  }
+  to {
+    -webkit-transform: rotate(-119deg) scale(.6);
+  }
+}
+
+@-webkit-keyframes a5 {
+  from {
+    -webkit-transform: rotate(60deg) scale(.5);
+  }
+  50% {
+    -webkit-transform: rotate(330deg) scale(.5);
+  }
+  to {
+    -webkit-transform: rotate(59deg) scale(.5);
+  }
+}

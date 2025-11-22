@@ -1,0 +1,299 @@
+<link rel="stylesheet" href="table.css">
+
+<table class="fullwidth-table">
+ <tbody>
+  <tr>
+   <th style="width: 5rem;">優先順位</th>
+   <th style="width: 10rem;">演算子の種類</th>
+   <th style="width: 5rem;">結合性</th>
+   <th style="width: 10rem;">演算子</th>
+  </tr>
+  <tr>
+   <td>21</td>
+   <td><a href="/ja/docs/Web/JavaScript/Reference/Operators/Grouping">グループ化</a></td>
+   <td>n/a</td>
+   <td><code>( … )</code></td>
+  </tr>
+  <tr>
+   <td colspan="1" rowspan="5">20</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators/Property_Accessors#dot_notation">メンバーへのアクセス</a></td>
+   <td>左から右</td>
+   <td><code>… . …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators/Property_Accessors#bracket_notation">計算値による<br>メンバーへの<br>アクセス</a></td>
+   <td>左から右</td>
+   <td><code>… [ … ]</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators/new"><code>new</code></a> (引数リスト付き)</td>
+   <td>なし</td>
+   <td><code>new … ( … )</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Guide/Functions">関数呼び出し</a></td>
+   <td>左から右</td>
+   <td><code>… ( <var>… </var>)</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators/Optional_chaining">オプショナル<br>チェイニング</a></td>
+   <td>左から右</td>
+   <td><code>?.</code></td>
+  </tr>
+  <tr>
+   <td rowspan="1">19</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators/new"><code>new</code></a> (引数リストなし)</td>
+   <td>右から左</td>
+   <td><code>new …</code></td>
+  </tr>
+  <tr>
+   <td rowspan="2">18</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#increment">後置インクリメント</a></td>
+   <td colspan="1" rowspan="2">なし</td>
+   <td><code>… ++</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#decrement">後置デクリメント</a></td>
+   <td><code>… --</code></td>
+  </tr>
+  <tr>
+   <td colspan="1" rowspan="10">17</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#logical_not">論理 NOT</a></td>
+   <td colspan="1" rowspan="10">右から左</td>
+   <td><code>! …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#bitwise_not">ビットごとの NOT</a></td>
+   <td><code>~ …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#unary_plus">単項 +</a></td>
+   <td><code>+ …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#unary_negation">単項 -</a></td>
+   <td><code>- …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#increment">前置インクリメント</a></td>
+   <td><code>++ …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#decrement">前置デクリメント</a></td>
+   <td><code>-- …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators/typeof"><code>typeof</code></a></td>
+   <td><code>typeof …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators/void"><code>void</code></a></td>
+   <td><code>void …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators/delete"><code>delete</code></a></td>
+   <td><code>delete …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators/await"><code>await</code></a></td>
+   <td><code>await …</code></td>
+  </tr>
+  <tr>
+   <td>16</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#exponentiation">べき乗</a></td>
+   <td>右から左</td>
+   <td><code>… ** …</code></td>
+  </tr>
+  <tr>
+   <td rowspan="3">15</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#multiplication">乗算</a></td>
+   <td colspan="1" rowspan="3">左から右</td>
+   <td><code>… * …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#division">除算</a></td>
+   <td><code>… / …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#remainder">剰余</a></td>
+   <td><code>… % …</code></td>
+  </tr>
+  <tr>
+   <td rowspan="2">14</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#addition">加算</a></td>
+   <td colspan="1" rowspan="2">左から右</td>
+   <td><code>… + …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#subtraction">減算</a></td>
+   <td><code>… - …</code></td>
+  </tr>
+  <tr>
+   <td rowspan="3">13</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators">左ビットシフト</a></td>
+   <td colspan="1" rowspan="3">左から右</td>
+   <td><code>… &lt;&lt; …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators">右ビットシフト</a></td>
+   <td><code>… &gt;&gt; …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators">符号なし<br>右ビットシフト</a></td>
+   <td><code>… &gt;&gt;&gt; …</code></td>
+  </tr>
+  <tr>
+   <td rowspan="6">12</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#less_than_operator">小なり</a></td>
+   <td colspan="1" rowspan="6">左から右</td>
+   <td><code>… &lt; …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#less_than__or_equal_operator">小なりイコール</a></td>
+   <td><code>… &lt;= …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#greater_than_operator">大なり</a></td>
+   <td><code>… &gt; …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#greater_than_or_equal_operator">大なりイコール</a></td>
+   <td><code>… &gt;= …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators/in"><code>in</code></a></td>
+   <td><code>… in …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators/instanceof"><code>instanceof</code></a></td>
+   <td><code>… instanceof …</code></td>
+  </tr>
+  <tr>
+   <td rowspan="4">11</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#equality">等価</a></td>
+   <td colspan="1" rowspan="4">左から右</td>
+   <td><code>… == …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#inequality">不等価</a></td>
+   <td><code>… != …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#identity">厳密等価</a></td>
+   <td><code>… === …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#nonidentity">厳密不等価</a></td>
+   <td><code>… !== …</code></td>
+  </tr>
+  <tr>
+   <td>10</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#bitwise_and">ビット単位 AND</a></td>
+   <td>左から右</td>
+   <td><code>… &amp; …</code></td>
+  </tr>
+  <tr>
+   <td>9</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#bitwise_xor">ビット単位 XOR</a></td>
+   <td>左から右</td>
+   <td><code>… ^ …</code></td>
+  </tr>
+  <tr>
+   <td>8</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#bitwise_or">ビット単位 OR</a></td>
+   <td>左から右</td>
+   <td><code>… | …</code></td>
+  </tr>
+  <tr>
+   <td>7</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#logical_and">論理 AND</a></td>
+   <td>左から右</td>
+   <td><code>… &amp;&amp; …</code></td>
+  </tr>
+  <tr>
+   <td>6</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#logical_or">論理 OR</a></td>
+   <td>左から右</td>
+   <td><code>… || …</code></td>
+  </tr>
+  <tr>
+   <td>5</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators/Nullish_coalescing_operator">Null 合体</a></td>
+   <td>左から右</td>
+   <td><code>… ?? …</code></td>
+  </tr>
+  <tr>
+   <td>4</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators/Conditional_Operator">条件</a></td>
+   <td>右から左</td>
+   <td><code>… ? … : …</code></td>
+  </tr>
+  <tr>
+   <td rowspan="16">3</td>
+   <td rowspan="16" style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators#Assignment_operators">代入</a></td>
+   <td rowspan="16">右から左</td>
+   <td><code>… = …</code></td>
+  </tr>
+  <tr>
+   <td><code>… += …</code></td>
+  </tr>
+  <tr>
+   <td><code>… -= …</code></td>
+  </tr>
+  <tr>
+   <td><code>… **= …</code></td>
+  </tr>
+  <tr>
+   <td><code>… *= …</code></td>
+  </tr>
+  <tr>
+   <td><code>… /= …</code></td>
+  </tr>
+  <tr>
+   <td><code>… %= …</code></td>
+  </tr>
+  <tr>
+   <td><code>… &lt;&lt;= …</code></td>
+  </tr>
+  <tr>
+   <td><code>… &gt;&gt;= …</code></td>
+  </tr>
+  <tr>
+   <td><code>… &gt;&gt;&gt;= …</code></td>
+  </tr>
+  <tr>
+   <td><code>… &amp;= …</code></td>
+  </tr>
+  <tr>
+   <td><code>… ^= …</code></td>
+  </tr>
+  <tr>
+   <td><code>… |= …</code></td>
+  </tr>
+  <tr>
+   <td><code>… &amp;&amp;= …</code></td>
+  </tr>
+  <tr>
+   <td><code>… ||= …</code></td>
+  </tr>
+  <tr>
+   <td><code>… ??= …</code></td>
+  </tr>
+  <tr>
+   <td rowspan="2">2</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators/yield"><code>yield</code></a></td>
+   <td colspan="1" rowspan="2">右から左</td>
+   <td><code>yield …</code></td>
+  </tr>
+  <tr>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators/yield*"><code>yield*</code></a></td>
+   <td><code>yield* …</code></td>
+  </tr>
+  <tr>
+   <td>1</td>
+   <td style="text-align: left;"><a href="/ja/docs/Web/JavaScript/Reference/Operators/Comma_Operator">カンマ / シーケンス</a></td>
+   <td>左から右</td>
+   <td><code>… , …</code></td>
+  </tr>
+ </tbody>
+</table>

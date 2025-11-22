@@ -177,6 +177,20 @@ Dir.chdir(SOURCE_ROOT) do
         ":::{.tip}\n#{inner}\n:::\n"
       end
 
+      # [note] ... [/note] -> .note コンテナ
+      fixed.gsub!(/^\[note\][^\n]*\n(.*?)^\[\/note\]\s*$/m) do
+        inner = Regexp.last_match(1)
+        inner = inner.gsub(/\A\n+|\n+\z/, "")
+        ":::{.note}\n#{inner}\n:::\n"
+      end
+
+      # [notice] ... [/notice] -> .notice コンテナ
+      fixed.gsub!(/^\[notice\][^\n]*\n(.*?)^\[\/notice\]\s*$/m) do
+        inner = Regexp.last_match(1)
+        inner = inner.gsub(/\A\n+|\n+\z/, "")
+        ":::{.notice}\n#{inner}\n:::\n"
+      end
+
       # <span class="caption">...</span> -> 太字キャプション
       fixed.gsub!(%r{<span\s+class="caption">(.*?)</span>}) do
         "**#{Regexp.last_match(1).strip}**"

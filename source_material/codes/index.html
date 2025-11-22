@@ -1,0 +1,80 @@
+<!-- DOCTYPE(ドクタイプ)宣言。歴史的経緯から一番先頭に書きます。-->
+<!DOCTYPE html>
+<!-- HTMLの始まり。lang="ja"と書き、日本語のサイトであることを示します -->
+<html lang="ja">
+  <!-- head には、文書に関する設定事項を書きます。 -->
+  <head>
+    <!-- 文字コードは utf-8 を使います -->
+    <meta charset="utf-8">
+    <!-- ビューポート(表示領域)を設定します。 -->
+    <!-- これにより、iPhoneでも綺麗に見られるようになります。 -->
+    <meta name="viewport" content="width=device-width">
+    <!-- このページのタイトルを示すタグです。ブラウザのタブに表示されます。-->
+    <title>じゃんけんゲーム</title>
+    <!-- ファビコンとアップルタッチアイコンの指定 -->
+    <link rel="icon"
+          href="images/favicon.ico"
+          type="image/ico">
+    <link rel="apple-touch-icon"
+          href="images/apple-touch-icon-180x180.png"
+          type="image/png"
+          sizes="180x180">
+    <!-- このウェブサイトの説明（検索エンジンに表示されます） -->
+    <meta name="description" content="初めてのウェブアプリ入門 - HTMLとCSSとJavaScriptで作るじゃんけんゲームです。">
+
+    <!-- PWA (Progressive Web Apps) にするための設定 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#fef4f4">
+    <meta name="theme-color" content="#fef4f4">
+    <meta name="apple-mobile-web-app-title" content="じゃんけん">
+    <link rel="manifest" href="/manifest.json">
+    <script src="/app.js" defer></script>
+
+    <!-- スタイルシートを読み込み、サイトを飾り付けします。-->
+    <link rel="stylesheet" href="janken.css">
+    <!-- JavaScriptを読み込み、じゃんけんゲームを動かします。 -->
+    <script src="janken.js" defer></script>
+  </head>
+
+  <!-- body タグには、サイトのコンテンツ（内容・出し物）を記述します。
+       全ての要素は このbodyタグの中に書きます。-->
+  <body>
+    <!-- header タグは、サイト名などの表示に用います。 -->
+    <header>
+      <!-- h1 タグは、大見出しを表すタグです。 -->
+      <h1>じゃんけんゲーム</h1>
+    </header>
+
+    <!-- figure タグは 図版(figure)を示すタグです。 -->
+    <figure>
+      <!-- img タグは、絵(image)を表示するためのタグです。 -->
+      <img id="hand" src="images/guu.webp" alt="グー">
+    </figure>
+
+    <!-- p は 段落(paragraph)を表す際に用いるタグです。 -->
+    <!-- 複数のpタグがあるので、class属性をnoteとして、区別します。-->
+    <p class="note">
+      <!-- br タグを入れると、途中で改行できます。 -->
+      みんな知っているじゃんけん<br>
+      「開始」ボタンを押すと始まるよ<br>
+      グー・チョキ・パー どれかを押してね
+    </p>
+
+    <!-- プレイヤーの手を選ぶ為のボタンです。 -->
+    <!-- button タグを使って、画面に「グーチョキパー」のボタンを表示します。
+         JavaScriptでの操作用に id属性をguu 値を0 にします。 -->
+    <button id="guu"   value="0" title="グー"></button>
+    <button id="choki" value="1" title="チョキ"></button>
+    <button id="paa"   value="2" title="パー"></button>
+    <!-- 得点領域です。 -->
+    <!-- 複数のpタグがあるので、class属性をscoreとして、区別します -->
+    <p class="score">
+      <!-- JavaScriptから操作しやすいよう、id属性をwinとloseにします。 -->
+      <span id="win">0</span> 勝
+      <span id="lose">0</span> 敗
+    </p>
+    <!-- button タグを使って、画面に「開始」ボタンを表示します。
+         このボタンにも、id="play" と ID を付与しておきます。 -->
+    <button id="play">開始</button>
+  </body>
+</html>

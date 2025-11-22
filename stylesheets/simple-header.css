@@ -30,9 +30,10 @@ h1 {
 
   /* spacing */
   margin-block-start: calc(clamp(28mm, calc(var(--paper-scale) * 40mm), 40mm) - var(--page-block-margin-start)); /* A4基準40mmをスケール */
-  /* 幅は章リードと同じ 32em、中央寄せ */
+  /* 幅は章リードと同じ 32em を上限としつつ、ページ幅内で中央寄せ */
   margin-inline: auto;
-  inline-size: clamp(114.24mm, calc(var(--paper-scale) * 163.2mm), 163.2mm); /* 32em 相当をスケール */
+  inline-size: 100%;
+  max-inline-size: clamp(114.24mm, calc(var(--paper-scale) * 163.2mm), 163.2mm); /* 32em 相当をスケール */
   box-sizing: border-box;
   padding-inline: clamp(6mm, calc(var(--paper-scale) * 8mm), 12mm);
   padding-block: clamp(9mm, calc(var(--paper-scale) * 12mm), 14mm); /* 余白をスケール */
@@ -121,7 +122,8 @@ h2 {
   padding-inline: clamp(6mm, calc(var(--paper-scale) * 9mm), 12mm);
 
   /* box-size */
-  inline-size: clamp(120mm, calc(var(--paper-scale) * 170mm), 185mm);
+  inline-size: 100%;
+  max-inline-size: clamp(120mm, calc(var(--paper-scale) * 170mm), 185mm);
 
   /* pagination */
   break-before: page;

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>モーダルウィンドウ</title>
+    <meta name="viewport" content="width=device-width">
+
+    <!-- Modaal を CDN から読み込みます -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Modaal/0.4.4/css/modaal.min.css">
+
+    <style>
+      /* 通常時にモーダルウィンドウ内のコンテンツを表示させないために */
+      .hidden { display: none !important; }
+      /* Safari で a タグをクリックした際に 輪郭線を表示させないために */
+      a { outline: 0; }
+    </style>
+  </head>
+
+  <body>
+    <h1>モーダルウィンドウ ライブラリ Modaal 使用例</h1>
+
+    <h2>インライン（基本）</h2>
+    <p>ページ内の既存の要素（IDを使用）からコンテンツを取得し、コンテンツに読み込みます。</p>
+    <a href="#inline" class="inline">Inline</a>
+    <div id="inline" class="hidden">
+      ここに書かれたインラインコンテンツが表示されます
+    </div>
+
+    <h2>フルスクリーン</h2>
+    <a href="#fullscreen" class="fullscreen">Fullscreen</a>
+    <p>フルスクリーンモードでは、Modaalウィンドウがビューポート全体に広がるように開きます。コンテンツがウィンドウの高さを超える場合は、ダイアログが垂直方向にスクロールし、すべてのコンテンツにアクセスできるようになります。</p>
+    <div id="fullscreen" class="hidden">
+      ここに書かれたインラインコンテンツがフルスクリーンで表示されます
+    </div>
+
+    <h2>画像(一枚)</h2>
+    <p>1枚の画像を開きます。開いた画像の下にラベルを表示したり、data-modaal-desc="My Image Description "を使ってアクセス可能なラベルを表示することもできます。</p>
+    <a href="images/sea01.jpg" class="image" data-modaal-desc="空飛ぶ鷗">
+      <img src="images/sea01_s.jpg" alt="空飛ぶ鷗">
+    </a>
+
+    <h2>画像ギャラリー(複数枚)</h2>
+    <p>data-group="group-name "属性でリンクされた一連の画像を開きます。group-nameは、あなたのギャラリーグループの識別子に置き換えてください。</p>
+    <div style="display: grid; grid-auto-flow: column">
+      <a href="images/sea01.jpg" data-group="gallery" class="gallery" data-modaal-desc="空飛ぶ鷗">
+        <img src="images/sea01_s.jpg" alt="空飛ぶ鷗">
+      </a>
+      <!-- (略) -->
+      <a href="images/sea07.jpg" data-group="gallery" class="gallery" data-modaal-desc="幾星霜に耐えた老松">
+        <img src="images/sea07_s.jpg" alt="幾星霜に耐えた老松">
+      </a>
+    </div>
+
+    <h2>動画</h2>
+    <h3>YouTube</h3>
+    <p>リンクのhref属性で指定された埋め込み動画をiframeに読み込みます。現在テストされているフォーマットは、YoutubeとVimeoです。その他、iframeでの埋め込みに対応しているものも動作するはずです。</p>
+    <p>Modaalのビデオタイプは、VimeoとYoutubeの両方で徹底的にテストされています。最良の結果を得るためには、URLフォーマットが以下のようになっていることを確認してください。私たちはこのURLをiframeに移植し、そこから各サービスプロバイダーが必要な再生をすべてコントロールします。</p>
+    <br>
+    <p>https://www.youtube.com/embed/cBJyo0tgLnw、最後のIDはあなたのユニークなビデオIDです。これは、youtubeの動画で「共有」を選択し、「埋め込み」をクリックすると表示されます。提示されたコンテンツの中にこのURLがあります。</p>
+    <a href="https://www.youtube.com/embed/cBJyo0tgLnw" class="youtube">
+      <img src="images/youtube.jpg" alt="YouTube" width="136">
+    </a>
+
+    <h3>Vimeo</h3>
+    <p>https://player.vimeo.com/video/109626219、最後のIDはお客様固有のビデオIDです。これは、vimeoの動画で「共有」を選択し（一般的に右側に表示されます）、「埋め込み」内のコンテンツを選択することで確認できます。埋め込みコードの一番最初にあるsrc=""の中に必要なURLがあります。</p>
+    <a href="https://player.vimeo.com/video/109626219" class="vimeo">
+      <img src="images/vimeo.jpg" alt="Vimeo" width="136">
+    </a>
+
+    <h2>iframeで、他のウェブサイトの内容を開く</h2>
+    <p>リンクのhref属性で定義されたURLを、iframeに読み込みます。このためには、モーダルの幅と高さも設定する必要があります。</p>
+    <a href="http://humaan.com" class="iframe">iframe</a>
+
+    <h2>確認画面</h2>
+    <p>ユーザーに特定のアクションの「確認」または「取消」を促すモーダルなウィンドウ。必要に応じて、コールバックイベントを含むコンテンツをプッシュすることができます。デフォルトでは、一度開くと、アクション（確認／取消など）が選択されるまで閉じることができません。</p>
+    <a href="#" class="confirm">confirm</a>
+
+    <!-- jQuery を CDN から読み込みます -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+    <!-- Modaal を CDN から読み込みます -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Modaal/0.4.4/js/modaal.min.js"></script>
+    <!-- Modaal 設定用の JavaScript(jQuery)です -->
+    <script src="modaal-custom.js"></script>
+  </body>
+</html>

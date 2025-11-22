@@ -1,0 +1,15 @@
+{
+	"name": "じゃんけんゲーム",
+	"short_name": "じゃんけん",
+	"start_url": "/",
+	"background_color": "#fef4f4",
+	"theme_color": "#fef4f4",
+	"display": "standalone",
+	"icons": [
+		{
+			"src": "/images/icon-512x512.png",
+			"sizes": "512x512",
+			"type": "image/png"
+		}
+	]
+}

@@ -258,6 +258,10 @@ module Vivlio
             # ノンブル配置
             apply_folio_placement!(page_cfg)
 
+            page_cfg['frontispiece_binding_offset'] = calculate_frontispiece_binding_offset(
+              page_cfg['margin_inner'], page_cfg['margin_outer']
+            )
+
             # CSS変数マッピング
             mappings = build_css_variable_mappings(page_cfg)
 
@@ -348,6 +352,18 @@ module Vivlio
             end
           end
 
+          def calculate_frontispiece_binding_offset(margin_inner, margin_outer)
+            inner_mm = parse_to_mm(margin_inner)
+            outer_mm = parse_to_mm(margin_outer)
+            diff = inner_mm - outer_mm
+            return '0mm' unless diff.positive?
+
+            offset = diff / 2.0
+            format('%<value>.2fmm', value: offset.round(2))
+          rescue StandardError
+            '0mm'
+          end
+
           # ノンブル配置を適用
           def apply_folio_placement!(page_cfg)
             placement = page_cfg['folio_placement'].to_s.strip.downcase
@@ -380,6 +396,7 @@ module Vivlio
               ['--page-margin-bottom',    page_cfg['margin_bottom']],
               ['--page-margin-inner',     page_cfg['margin_inner']],
               ['--page-margin-outer',     page_cfg['margin_outer']],
+              ['--frontispiece-binding-offset', page_cfg['frontispiece_binding_offset']],
               ['--column-font-size',      page_cfg['column_font_size']],
               ['--font-main-text',        page_cfg['main_text_font'],  :font],
               ['--font-header',           page_cfg['header_font'],     :font],

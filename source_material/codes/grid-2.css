@@ -1,0 +1,64 @@
+.container > div {
+  border-radius: 5px;  padding: 10px;
+  background: #cfe8dc;  border: 2px solid #4fb9e3;
+}
+
+/* .container { width: 430px; } */
+
+.container {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-rows:    1fr 1fr 1fr 1fr;
+  gap: 20px;
+}
+
+.container {
+  grid-template-rows:    1fr 1fr 1fr 1fr;
+}
+
+.container {
+  grid-template-rows:
+    [header]  1fr
+    [main]    1fr
+    [article] 1fr
+    [footer]  1fr;
+}
+
+
+/* .one   { grid-column: 1 / 5;  grid-row: 1;     }
+.two   { grid-column: 1;      grid-row: 2 / 4; }
+.three { grid-column: 2 / 4;  grid-row: 2;     }
+.four  { grid-column: 4;      grid-row: 2;     }
+.five  { grid-column: 2 / 4;  grid-row: 3;     }
+.six   { grid-column: 4;      grid-row: 3;     }
+.seven { grid-column: 1 / 5;  grid-row: 4;     } */
+
+/*
+.two   { align-self: end; }
+
+.one { justify-self: end; } */
+
+/* .one   { grid-column: 1 / 5;  grid-row: header;        }
+.two   { grid-column: 1;      grid-row: main / span 2; }
+.three { grid-column: 2 / 4;  grid-row: main;          }
+.four  { grid-column: 4;      grid-row: main;          }
+.five  { grid-column: 2 / 4;  grid-row: article;       }
+.six   { grid-column: 4;      grid-row: article;       }
+.seven { grid-column: 1 / 5;  grid-row: footer;        } */
+
+/* @media (1000px <= width <= 1900px) {
+  h1 { color: red; }
+} */
+
+
+
+.container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (min-width: 768px){
+  .container {
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+  }
+}

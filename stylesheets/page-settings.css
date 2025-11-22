@@ -83,15 +83,16 @@
   --paper-scale: 1.0;
 
   /* タイポグラフィ設定 */
-  --base-font-size:   11pt;    /* 基準文字サイズ */
-  --base-line-height: 17.6pt;  /* 行送り（10.5pt × 1.7 = 17.85pt） */
+  --base-font-size:   10.5pt;    /* 基準文字サイズ */
+  --base-line-height: 15.75pt;  /* 行送り（10.5pt × 1.7 = 17.85pt） */
   --letter-spacing:   0em;     /* 字間調整 */
 
   /* 版面の余白（見開き対応） */
-  --page-margin-top:    30mm;  /* 天（上余白） */
-  --page-margin-bottom: 30mm;  /* 地（下余白） */
-  --page-margin-inner:  28mm;  /* ノド（綴じ側、左右ページで自動的に位置が変わる） */
+  --page-margin-top:    28mm;  /* 天（上余白） */
+  --page-margin-bottom: 28mm;  /* 地（下余白） */
+  --page-margin-inner:  58mm;  /* ノド（綴じ側、左右ページで自動的に位置が変わる） */
   --page-margin-outer:  22mm;  /* 小口（外側、左右ページで自動的に位置が変わる） */
+  --frontispiece-binding-offset: 18.00mm; /* ノド/小口差分による背景オフセット */
 
   --column-font-size:   8pt;  /* コラムのフォントサイズ */
 
@@ -144,9 +145,9 @@
 
 @page :left {
   font-family: var(--font-header);
-  /* 左ページ: [ノド（inner）] 版面 [小口（outer）] */
-  margin-left: var(--page-margin-inner);
-  margin-right: var(--page-margin-outer);
+  /* 左ページ: [小口（outer）] 版面 [ノド（inner）] */
+  margin-left: var(--page-margin-outer);
+  margin-right: var(--page-margin-inner);
 
   /* ノンブル（左右配置時：左ページ） */
   @bottom-left {
@@ -161,9 +162,9 @@
 
 @page :right {
   font-family: var(--font-header);
-  /* 右ページ: [小口（outer）] 版面 [ノド（inner）] */
-  margin-left: var(--page-margin-outer);
-  margin-right: var(--page-margin-inner);
+  /* 右ページ: [ノド（inner）] 版面 [小口（outer）] */
+  margin-left: var(--page-margin-inner);
+  margin-right: var(--page-margin-outer);
 
   /* ノンブル（左右配置時：右ページ） */
   @bottom-right {

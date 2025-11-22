@@ -69,19 +69,11 @@ module Vivlio
             restored
           end
 
-          # インラインコード（`...`）内の HTML 予約文字をエスケープする
-          # - 著者は `` `<h1>` `` のように素直に書ける
-          # - ビルド用に生成される Markdown では `&lt;h1&gt;` に変換される
-          # - バッククォート自体はそのまま維持する
+          # インラインコード（`...`）内は、そのままの文字列を維持する
+          # - バッククォート内の内容は変形せず Markdown エンジンに渡し、
+          #   HTML 変換時の通常のエスケープ処理に任せる
           def escape_inline_code_html(md_text)
-            text = md_text.to_s
-
-            text.gsub(/`([^`]*?)`/) do
-              inner = ::Regexp.last_match(1)
-              # ここでは < と > を主にエスケープし、& は既存の実体参照を壊さないようにそのまま残す
-              escaped = inner.gsub('<', '&lt;').gsub('>', '&gt;')
-              "`#{escaped}`"
-            end
+            md_text.to_s
           end
 
           # 拡張子から言語名を推定
@@ -851,8 +843,10 @@ module Vivlio
             width = nil
             classes = []
             if attrs
-              attrs.scan(/width=(\d+%)/) { |w| width ||= w[0] }
-              attrs.scan(/align=(left|center|right)/) { |a| align ||= a[0] }
+              # width=30% に加えて width="30%" / width='30%' のような指定も解釈する
+              attrs.scan(/width=(?:"|')?(\d+%)(?:"|')?/) { |w| width ||= w[0] }
+              # align=center に加えて align="center" / align='center' のような指定も解釈する
+              attrs.scan(/align=(?:"|')?(left|center|right)(?:"|')?/) { |a| align ||= a[0] }
               attrs.scan(/\.([a-z\-]+)/) { |c| classes << c[0] }
             end
 

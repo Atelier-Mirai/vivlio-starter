@@ -45,6 +45,7 @@ module Vivlio
             method_option :purge, type: :boolean, aliases: '-P', desc: '生成物（PDF含む）をすべて削除します'
             method_option :cache, type: :boolean, aliases: '-C', desc: 'キャッシュ(.cache/vs 既定)のみを削除します'
             method_option :cover, type: :boolean, desc: '生成されたカバー画像のみを削除します（マスターは保持）'
+            method_option :generated_images, type: :boolean, desc: '生成された扉絵/装飾などの画像を削除します'
             method_option :all,   type: :boolean, hide: true
             # ================================================================
             # Command: clean（生成物のクリーンアップ）
@@ -59,9 +60,11 @@ module Vivlio
               cover_requested = options[:cover] || all_mode
               cache_requested = options[:cache] || all_mode
               purge_requested = options[:purge] || all_mode
+              variant_cleanup_requested = options[:generated_images] || all_mode
 
               # --cover / --all オプション: 生成されたカバー画像を削除
               CleanCommands.clean_cover_files if cover_requested
+              CleanCommands.clean_bundled_variant_images if variant_cleanup_requested
 
               if cache_requested
                 begin
@@ -170,6 +173,37 @@ module Vivlio
           patterns << "#{project_name}*.pdf"
           patterns << "#{project_name}_v*.pdf"
           patterns << "#{project_name}_print*.pdf"
+        end
+
+        # bundled テーマ画像のバリアントを削除（--all 用）
+        def clean_bundled_variant_images
+          images_dir = File.join(Common::STYLESHEETS_DIR, 'images', 'bundled')
+          unless Dir.exist?(images_dir)
+            Common.log_info("bundled テーマ画像ディレクトリが存在しません: #{images_dir}")
+            return
+          end
+
+          Common.log_action('bundled テーマバリアント画像を削除中...')
+          patterns = ['*_portrait.webp', '*_landscape.webp']
+          deleted = 0
+
+          patterns.each do |pattern|
+            Dir.glob(File.join(images_dir, pattern)).each do |file|
+              next unless File.file?(file)
+
+              FileUtils.rm_f(file)
+              Common.log_info("#{file} を削除しました")
+              deleted += 1
+            end
+          end
+
+          if deleted.zero?
+            Common.log_info('削除対象の bundled バリアント画像はありませんでした')
+          else
+            Common.log_success("bundled テーマバリアントを削除しました（#{deleted}ファイル）")
+          end
+        rescue StandardError => e
+          Common.log_warn("bundled テーマバリアント削除中にエラー: #{e.message}")
         end
 
         # 生成されたカバー画像を削除（マスターは保持）

@@ -17,7 +17,7 @@
 
 **▼配列**
 
-```
+```js
 // 配列の宣言と初期値設定
 let scores = [85, 95, 85, 75]
 ```
@@ -30,7 +30,7 @@ let scores = [85, 95, 85, 75]
 
 **▼連想配列**
 
-```
+```js
 // 連想配列の宣言と初期値設定
 let hash_scores = { kokugo: 85, sansuu: 95, rika: 85, shakai: 75 }
 ```
@@ -45,14 +45,14 @@ let hash_scores = { kokugo: 85, sansuu: 95, rika: 85, shakai: 75 }
 
 国語の点数を取得する為には、キー `kokugo` を用いて、次のように書きます（`[]ブラケット`を使うので、ブラケット記法と呼ばれます）。
 
-```
+```js
 // 要素の取得
 hash_scores["kokugo"]
 ```
 
 連想配列の各要素にアクセスしやすいよう、`.` を用いるドット記法も用意されています。
 
-```
+```js
 // 要素の取得
 hash_scores.kokugo
 ```
@@ -64,7 +64,7 @@ hash_scores.kokugo
 
 国語の点数を95点に更新する例です。ブラケット記法、ドット記法、それぞれの例を示します。
 
-```
+```js
 // 要素の更新
 hash_scores["kokugo"] = 95
 hash_scores.kokugo = 95
@@ -75,7 +75,7 @@ hash_scores.kokugo = 95
 
 新しい要素を追加することも出来ます。
 
-```
+```js
 // 要素の追加
 hash_scores["programming"] = 100
 hash_scores.programming = 100
@@ -86,7 +86,7 @@ hash_scores.programming = 100
 
 連想配列の要素を削除するためには、`delete` 演算子を用います。
 
-```
+```js
 // 要素の削除
 delete hash_scores["shakai"]
 delete hash_scores.shakai
@@ -106,7 +106,7 @@ delete hash_scores.shakai
 
 [for...in](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Statements/for...in) 文は、配列の際の `for...of` 文 と同様、「連想配列の全ての要素」を処理する際に便利な繰り返しの為の構文です。
 
-```
+```js
 // 連想配列を宣言 ＆ 初期データを投入
 let hash_scores = { kokugo: 85, sansuu: 95, rika: 85, shakai: 75 }
 

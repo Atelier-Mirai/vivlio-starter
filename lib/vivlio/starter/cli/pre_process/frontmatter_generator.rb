@@ -31,7 +31,7 @@ module Vivlio
             frontispiece_raw = theme_cfg['frontispiece']
             frontispiece_cfg = frontispiece_raw.is_a?(Hash) ? frontispiece_raw : {}
             frontispiece_source = frontispiece_cfg.key?('image') ? frontispiece_cfg['image'] : frontispiece_raw
-            frontispiece_path = ThemeImageResolver.resolve_frontispiece_path(frontispiece_source)
+            frontispiece_path = ThemeImageResolver.resolve_frontispiece_path(frontispiece_source, allow_generation: true)
             
             # CSS長さ値を正規化
             door_padding_value = normalize_css_length(frontispiece_cfg['padding'], label: 'theme.frontispiece.padding', default: '0mm')
@@ -75,7 +75,7 @@ module Vivlio
             frontispiece_raw = theme_cfg['frontispiece']
             frontispiece_cfg = frontispiece_raw.is_a?(Hash) ? frontispiece_raw : {}
             frontispiece_source = frontispiece_cfg.key?('image') ? frontispiece_cfg['image'] : frontispiece_raw
-            frontispiece_path = ThemeImageResolver.resolve_frontispiece_path(frontispiece_source)
+            frontispiece_path = ThemeImageResolver.resolve_frontispiece_path(frontispiece_source, allow_generation: true)
             
             # CSS長さ値を正規化
             door_padding_value = normalize_css_length(frontispiece_cfg['padding'], label: 'theme.frontispiece.padding', default: '0mm')
