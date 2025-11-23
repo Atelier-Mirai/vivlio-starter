@@ -81,6 +81,14 @@
 
 また、カウプラン機関極東支部さまが公開されている「Re:VIEW Starter」（https://kauplan.org/reviewstarter/）から多大な示唆と影響を受けました。ここに記して謝意を表します。
 
+//sideimage[hayase_hiromu][25mm][sep=5mm,side=R]{
+また、表紙絵の女の子は、千葉県松戸市在住のフリーランスSDイラストレーター @<href>{https://hiromu-hayase.tumblr.com,早瀬ひろむ}さんの作品です。素敵なイラストを描いてくださり、ありがとうございます。
+//}
+//flushright{
+@<B>{早瀬ひろむ} さん　
+//}
+
+
 ## 著者紹介
 
 卓越した技能を有する者として認められる国家資格「応用情報技術者」を保持。平成30年より「[アトリヱ未來](https://atelier-mirai.net/)」を創業。HTML講座やRuby講座などプログラミングの個人指導や、ITパスポート講座等の資格講座の開催、ウェブサイト作成等を受注している。

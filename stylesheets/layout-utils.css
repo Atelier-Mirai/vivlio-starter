@@ -271,7 +271,9 @@ figure.float-start {
 .sideimage-right,
 .sideimage-left {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  grid-template-columns:
+    minmax(0, var(--sideimage-text-fr, 3fr))
+    minmax(0, var(--sideimage-img-fr,  2fr));
   grid-template-rows: auto;
   gap: 1rem;
   align-items: start;

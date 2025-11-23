@@ -161,7 +161,7 @@ module Vivlio
             replacements = []
 
             # リンク本体を置換（コードスパンは既に退避済み）
-            replaced = text.gsub(/(?<!!)[\[](.+?)[\)]\((https?:[^\s)]+)\)(?!\[\^url\d+\])/) do |_match|
+            replaced = text.gsub(/(?<!!)\[(.+?)\]\((https?:[^\s)]+)\)(?!\s*\[^url\d+\])/) do |_match|
               label = ::Regexp.last_match(1)
               url   = ::Regexp.last_match(2)
               id = (url_id[url] ||= begin

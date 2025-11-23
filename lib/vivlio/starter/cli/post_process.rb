@@ -306,6 +306,31 @@ module Vivlio
             figure = container.at_css('> figure')
             next unless figure
 
+            # 画像幅指定（width=50% など）から列比率を推定し、CSS変数として埋め込む
+            if (fraction = extract_sideimage_width_fraction(figure))
+              text_fr = (1.0 - fraction).round(3)
+              img_fr  = fraction.round(3)
+
+              existing_style = container['style'].to_s
+              # 既存の sideimage 用変数定義を一度取り除く
+              cleaned_style = existing_style
+                               .gsub(/--sideimage-text-fr:[^;]+;?/, '')
+                               .gsub(/--sideimage-img-fr:[^;]+;?/, '')
+                               .strip
+
+              var_style = "--sideimage-text-fr: #{text_fr}fr; --sideimage-img-fr: #{img_fr}fr"
+
+              container['style'] = if cleaned_style.empty?
+                                     var_style
+                                   else
+                                     "#{cleaned_style.chomp(';')}; #{var_style}"
+                                   end
+
+              normalize_sideimage_figure_width!(figure)
+
+              changed = true
+            end
+
             children = container.children
 
             body_nodes = children.reject do |node|
@@ -368,6 +393,59 @@ module Vivlio
           Common.log_success("#{html_file}: sideimage コンテナを正規化しました")
         end
         module_function :wrap_sideimage_blocks!
+
+        # sideimage コンテナ内の figure/img から width 指定（%）を取り出し、
+        # 0.0〜1.0 の範囲の比率として返す
+        def extract_sideimage_width_fraction(figure)
+          # figure 要素・子 img 要素の両方を対象とする
+          img = figure.at_css('img')
+
+          width_attr = figure['width'].to_s
+          width_attr = img['width'].to_s if width_attr.empty? && img
+
+          if (m = width_attr.match(/([0-9]+(?:\.[0-9]+)?)\s*%/))
+            return sanitize_sideimage_fraction(m[1].to_f / 100.0)
+          end
+
+          style_sources = []
+          style_sources << figure['style'].to_s
+          style_sources << img['style'].to_s if img
+
+          style_sources.compact.each do |style|
+            if (m = style.match(/width\s*:\s*([0-9]+(?:\.[0-9]+)?)\s*%/))
+              return sanitize_sideimage_fraction(m[1].to_f / 100.0)
+            end
+          end
+
+          nil
+        end
+
+        # パーセンテージから得た比率を安全な範囲に丸める
+        def sanitize_sideimage_fraction(raw)
+          return nil unless raw.positive?
+
+          # 極端な比率を避けるため、5%〜95% にクランプ
+          [[raw, 0.05].max, 0.95].min
+        end
+
+        # 列幅でレイアウトを制御するため、figure/img 側の width 指定は取り除く
+        def normalize_sideimage_figure_width!(figure)
+          img = figure.at_css('img')
+
+          [figure, img].compact.each do |node|
+            node.remove_attribute('width')
+
+            style = node['style'].to_s
+            next if style.empty?
+
+            cleaned = style.gsub(/width\s*:\s*[^;]+;?/, '').strip
+            if cleaned.empty?
+              node.remove_attribute('style')
+            else
+              node['style'] = cleaned
+            end
+          end
+        end
 
         # ================================================================
         # 置換ルールの読み込み

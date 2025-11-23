@@ -63,11 +63,13 @@ module Vivlio
           # @param doc [Nokogiri::HTML::Document] Nokogiriドキュメント
           # @param definitions [Hash<String, String>] 脚注定義
           def insert_footnotes_for_references!(doc, definitions)
-            definitions.keys.each do |fid|
-              body = definitions[fid]
-              anchor = doc.at_css(%(a[href="##{fid}"]))
-              next unless anchor
+            # DOM順序で脚注参照を処理するため、本文中の全参照アンカーを取得
+            doc.css('a.footnote-ref[href^="#fn"]').each do |anchor|
+              fid = anchor['href']&.delete_prefix('#')
+              next unless fid
+              next unless definitions.key?(fid)
 
+              body = definitions[fid]
               insert_footnote_for_anchor!(doc, anchor, fid, body)
               definitions.delete(fid)
             end
@@ -109,12 +111,29 @@ module Vivlio
             aside = build_print_footnote_node(doc, fid, body)
             para = anchor.ancestors('p').first
             if para
-              para.add_next_sibling("\n")
-              para.add_next_sibling(aside)
+              insertion_point = find_last_print_footnote_sibling(para)
+              insertion_point.add_next_sibling(aside)
+              aside.add_next_sibling("\n")
             else
-              anchor.add_next_sibling("\n")
               anchor.add_next_sibling(aside)
+              aside.add_next_sibling("\n")
             end
+          end
+
+          def find_last_print_footnote_sibling(node)
+            current = node
+            while (sibling = current.next_sibling)
+              break unless print_footnote_related_node?(sibling)
+              current = sibling
+            end
+            current
+          end
+
+          def print_footnote_related_node?(node)
+            return false unless node
+
+            (node.text? && node.text.strip.empty?) ||
+              (node.element? && node['class'].to_s.split.any? { |c| c == 'page-footnote' })
           end
 
           # 段落外参照の場合、アンカーの直後に印刷用脚注を配置する
@@ -202,6 +221,9 @@ module Vivlio
             aside['role'] = 'doc-footnote'
             aside['class'] = 'page-footnote page-footnote-print'
             aside['id'] = fid
+            # IDから脚注番号を抽出（例: fn5 -> 5, fnurl1 -> url1）
+            footnote_number = fid.sub(/^fn/, '')
+            aside['data-footnote-number'] = footnote_number
             aside.inner_html = body
             aside
           end

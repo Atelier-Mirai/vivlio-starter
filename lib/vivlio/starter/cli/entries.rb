@@ -54,10 +54,20 @@ module Vivlio
 
               # 処理対象のHTMLファイル一覧を取得
               html_files = if files.any?
-                             # 引数で指定されたファイル群のみを対象（拡張子未指定なら .html を補完）
-                             files.map do |f|
-                               name = File.extname(f).empty? ? "#{f}.html" : f
-                               File.dirname(name) == '.' ? File.join(base_dir, name) : name
+                             # 引数で指定されたファイル群のみを対象
+                             files.flat_map do |f|
+                               # 拡張子が.htmlで終わる場合はそのまま使用
+                               if File.extname(f) == '.html'
+                                 name = File.dirname(f) == '.' ? File.join(base_dir, f) : f
+                                 File.exist?(name) ? [name] : []
+                               else
+                                 # トークン（例: 46）に対してマッチする HTMLファイルを検索
+                                 # パターン: #{token}.html または #{token}-*.html
+                                 pattern1 = File.join(base_dir, "#{f}.html")
+                                 pattern2 = File.join(base_dir, "#{f}-*.html")
+                                 candidates = Dir.glob([pattern1, pattern2])
+                                 candidates.empty? ? [] : candidates
+                               end
                              end
                            else
                              # カレントディレクトリの .html 全てを対象

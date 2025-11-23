@@ -444,6 +444,7 @@ module Vivlio
                   timing_rows = []
 
                   expanded_tokens.each do |target|
+                    Common.log_info("[DEBUG] Building chapter: #{target}")
                     runner = SingleChapterRunner.new(self, target)
                     chapter_pdfs = runner.run
                     generated_pdfs.concat(chapter_pdfs)
