@@ -2,7 +2,6 @@
 
 require 'thor'
 require_relative 'cli/build'
-require_relative 'cli/build_helpers'
 require_relative 'cli/clean'
 require_relative 'cli/common'
 require_relative 'cli/convert'
