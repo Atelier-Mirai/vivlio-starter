@@ -21,7 +21,7 @@ module Vivlio
             build_helpers_calls = []
             thor_calls = []
 
-            BuildHelpers.stub :update_css_counter, ->(path, value) { build_helpers_calls << [path, value] } do
+            Build::stub :update_css_counter, ->(path, value) { build_helpers_calls << [path, value] } do
               Vivlio::Starter::ThorCLI.stub :start, ->(args) { thor_calls << args } do
                 capture_io { command.rename('11-old', '12-new') }
               end
@@ -48,7 +48,7 @@ module Vivlio
             build_helpers_calls = []
             thor_calls = []
 
-            BuildHelpers.stub :update_css_counter, ->(path, value) { build_helpers_calls << [path, value] } do
+            Build::stub :update_css_counter, ->(path, value) { build_helpers_calls << [path, value] } do
               Vivlio::Starter::ThorCLI.stub :start, ->(args) { thor_calls << args } do
                 error = assert_raises(SystemExit) do
                   capture_io { command.rename }

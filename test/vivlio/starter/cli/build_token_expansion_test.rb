@@ -1,0 +1,226 @@
+# frozen_string_literal: true
+
+require 'test_helper'
+require 'tmpdir'
+require 'fileutils'
+require 'vivlio/starter/cli/common'
+require 'vivlio/starter/cli/build_helpers'
+require 'vivlio/starter/cli/build'
+require 'vivlio/starter/cli'
+
+module Vivlio
+  module Starter
+    module CLI
+      # ================================================================
+      # Token Expansion Tests
+      # ================================================================
+      # build コマンドのトークン展開ロジックをテスト
+      # 注: BuildCommands のメソッドは Thor の build コマンド内で定義されるため、
+      #     テスト用のヘルパークラスで再実装してテストする
+      class TokenExpansionTest < Minitest::Test
+        def setup
+          @expander = TokenExpander.new
+        end
+
+        # 単一の章番号からベース名への展開
+        def test_expand_single_number_token
+          @expander.mock_files = ['45-first-html.md', '46-first-css.md', '47-wave-studio-css.md']
+          result = @expander.expand_token_to_basenames('45')
+          assert_equal ['45-first-html.md'], result
+        end
+
+        # 範囲指定からベース名への展開
+        def test_expand_range_token
+          @expander.mock_files = ['45-first-html.md', '46-first-css.md', '47-wave-studio-css.md', '48-legacy-work.md']
+          result = @expander.expand_token_to_basenames('45-47')
+          expected = ['45-first-html.md', '46-first-css.md', '47-wave-studio-css.md']
+          assert_equal expected.sort, result.sort
+        end
+
+        # 明示的なベース名での展開
+        def test_expand_explicit_basename
+          @expander.mock_files = ['45-first-html.md', '46-first-css.md']
+          result = @expander.expand_token_to_basenames('45-first-html')
+          assert_equal ['45-first-html.md'], result
+        end
+
+        # .md 拡張子付きでの展開
+        def test_expand_with_md_extension
+          @expander.mock_files = ['45-first-html.md', '46-first-css.md']
+          result = @expander.expand_token_to_basenames('45-first-html.md')
+          assert_equal ['45-first-html.md'], result
+        end
+
+        # 存在しない番号は空配列を返す
+        def test_expand_nonexistent_number
+          @expander.mock_files = ['45-first-html.md', '46-first-css.md']
+          result = @expander.expand_token_to_basenames('99')
+          assert_equal [], result
+        end
+
+        # 複数トークンの展開
+        def test_expand_multiple_tokens
+          @expander.mock_files = ['45-first-html.md', '46-first-css.md', '54-operator.md', '55-condition.md']
+          result = @expander.expand_tokens_to_targets(['45', '54-55'])
+          expected = ['45-first-html.md', '54-operator.md', '55-condition.md']
+          assert_equal expected.sort, result.sort
+        end
+
+        # 重複は除去される
+        def test_expand_removes_duplicates
+          @expander.mock_files = ['45-first-html.md', '46-first-css.md']
+          result = @expander.expand_tokens_to_targets(['45', '45-first-html', '45-46'])
+          expected = ['45-first-html.md', '46-first-css.md']
+          assert_equal expected.sort, result.sort
+        end
+
+        # 空のトークンは無視される
+        def test_expand_ignores_empty_tokens
+          @expander.mock_files = ['45-first-html.md']
+          result = @expander.expand_tokens_to_targets(['', nil, '45'])
+          assert_equal ['45-first-html.md'], result
+        end
+      end
+
+      # BuildCommands のトークン展開ロジックを再実装したテスト用ヘルパー
+      class TokenExpander
+        attr_accessor :mock_files
+
+        def initialize
+          @mock_files = []
+        end
+
+        def list_contents_basenames
+          @mock_files
+        end
+
+        def chapter_number_from_basename(basename)
+          (basename[/^(\d+)-/, 1] || nil)&.to_i
+        end
+
+        def find_basenames_in_range(from_num, to_num)
+          a, b = [from_num.to_i, to_num.to_i].minmax
+          list_contents_basenames.select do |bn|
+            n = chapter_number_from_basename(bn)
+            n && n >= a && n <= b
+          end
+        end
+
+        def expand_token_to_basenames(token)
+          t = token.to_s.strip
+          return [] if t.empty?
+          return find_basenames_in_range(::Regexp.last_match(1), ::Regexp.last_match(2)) if t =~ /(\A\d+)-(\d+\z)/
+          return list_contents_basenames.select { |bn| bn.start_with?("#{t}-") } if t =~ /\A\d+\z/
+
+          # 明示的なベース名
+          name = t.sub(%r{\Acontents/}, '')
+          name = "#{name}.md" unless name.end_with?('.md')
+          list_contents_basenames.include?(name) ? [name] : []
+        end
+
+        def expand_tokens_to_targets(tokens)
+          Array(tokens).compact.flat_map { |tok| expand_token_to_basenames(tok) }.uniq
+        end
+      end
+
+      # ================================================================
+      # Single Mode Integration Test
+      # ================================================================
+      # 単章ビルドのワークフロー全体をテスト
+      class SingleModeIntegrationTest < Minitest::Test
+        def test_single_mode_invokes_correct_thor_tasks
+          within_temp_dir do
+            pipeline = build_pipeline(['11-sample'])
+            calls = []
+
+            # ThorCLI.start をスタブして呼び出しを記録
+            Vivlio::Starter::ThorCLI.stub :start, ->(args) { calls << args } do
+              # build_target_sections_html を直接呼び出してテスト
+              pipeline.send(:build_target_sections_html)
+            end
+
+            expected_calls = [
+              ['pre_process', '11-sample'],
+              ['convert', '11-sample'],
+              ['post_process', '11-sample']
+            ]
+            assert_equal expected_calls, calls
+          end
+        end
+
+        def test_single_mode_generates_entries_and_pdf
+          within_temp_dir do
+            pipeline = build_pipeline(['11-sample', '12-tutorial'])
+            calls = []
+
+            Vivlio::Starter::ThorCLI.stub :start, ->(args) { calls << args } do
+              pipeline.send(:generate_entries_and_pdf)
+            end
+
+            # entries コマンドにターゲットが渡される
+            assert_equal ['entries', '11-sample', '12-tutorial'], calls[0]
+            # pdf コマンドが呼ばれる
+            assert_equal ['pdf'], calls[1]
+          end
+        end
+
+        def test_rename_single_mode_pdf_single_chapter
+          within_temp_dir do
+            # output.pdf を作成
+            FileUtils.touch('output.pdf')
+
+            pipeline = build_pipeline(['54-operator'])
+
+            # CONFIG をモック
+            with_mock_config({ 'pdf' => { 'output_file' => 'output.pdf' } }) do
+              pipeline.send(:rename_single_mode_pdf)
+            end
+
+            assert File.exist?('54-operator.pdf'), '単章PDFにリネームされるべき'
+            refute File.exist?('output.pdf'), 'output.pdf は削除されるべき'
+            assert_equal '54-operator.pdf', pipeline.generated_pdf_name
+          end
+        end
+
+        def test_rename_single_mode_pdf_multiple_chapters
+          within_temp_dir do
+            FileUtils.touch('output.pdf')
+
+            pipeline = build_pipeline(['54-operator', '55-condition', '56-loop'])
+
+            with_mock_config({ 'pdf' => { 'output_file' => 'output.pdf' } }) do
+              pipeline.send(:rename_single_mode_pdf)
+            end
+
+            assert File.exist?('54-56.pdf'), '範囲名のPDFにリネームされるべき'
+            assert_equal '54-56.pdf', pipeline.generated_pdf_name
+          end
+        end
+
+        private
+
+        def build_pipeline(targets)
+          options = { clean: true, resize: true, compress: true, high: false, low: false }
+          command = Struct.new(:options).new(options)
+          BuildCommands::UnifiedBuildPipeline.new(command, targets: targets, mode: :single)
+        end
+
+        def within_temp_dir
+          Dir.mktmpdir do |dir|
+            Dir.chdir(dir) { yield dir }
+          end
+        end
+
+        def with_mock_config(config_hash)
+          original_config = Common.const_get(:CONFIG).dup rescue {}
+          Common.send(:remove_const, :CONFIG) if Common.const_defined?(:CONFIG)
+          Common.const_set(:CONFIG, config_hash)
+          yield
+        ensure
+          Common.send(:remove_const, :CONFIG) if Common.const_defined?(:CONFIG)
+          Common.const_set(:CONFIG, original_config)
+        end
+      end
+    end
+  end
+end
