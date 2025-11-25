@@ -92,8 +92,8 @@ theme:
   frontispiece: 
     image: ajisai
     padding: 10mm
-    heading_width: 120mm
-    lead_width: 120mm
+    heading_width: 128mm
+    lead_width: 128mm
 
   # ----------------------------
   # 節見出しの背景画像

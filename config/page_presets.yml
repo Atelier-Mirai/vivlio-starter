@@ -77,7 +77,7 @@ a4_standard:
   base_font_size: 10.5pt
   base_line_height: 1.5        # 1.6倍（11pt × 1.6 = 17.6pt）
   letter_spacing: 0em
-  margin_top: 27mm
-  margin_bottom: 27mm
-  margin_inner: 27mm
+  margin_top: 26mm
+  margin_bottom: 26mm
+  margin_inner: 26mm
   margin_outer: 22mm

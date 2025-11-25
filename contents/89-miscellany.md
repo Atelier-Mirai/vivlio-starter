@@ -150,3 +150,146 @@ function sendBirthdayMail(users) {
 いったん「リファクタリングという考え方がある」と知っておいて、
 コードが少し長くなってきたタイミングで、また読み返していただければうれしいです。
 
+
+
+
+
+
+
+
+---
+
+
+### 見出しや本文の色・フォントを整える
+
+まずは、ページ全体の文字まわりを整えるところから始めましょう。
+
+たとえば、トップページ全体を囲む `<body class="top">` や、ヒーローイメージ上のタイトル `<h1 class="glow text catch_phrase">`、最新記事カードのタイトル `<h3>` には、実際の `wave-studio` でも次のようなスタイルを（ここでは少し簡略化して）指定しています。
+
+```css
+/* サイト全体のベースフォントと背景 */
+body.top {
+  font-family: "Helvetica Neue",
+               Arial,
+               "Hiragino Kaku Gotic ProN",
+               "Hiragino Sans",
+               Meiryo,
+               sans-serif;
+  background: linear-gradient(to top,
+                              #FFFFFF80,
+                              #6DD5FA40,
+                              #2980B980);
+}
+
+/* ヒーローイメージ上の大きな見出し */
+.top h1.catch_phrase {
+  font-size: 50px;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--sakurairo);
+  text-shadow: 0 0 5px var(--nibiiro);
+  font-family: "Yuji Boku", serif;
+}
+
+/* 最新記事カードのタイトル */
+#recent h3 {
+  font-size: 14px;
+  margin-block-start: 10px;
+}
+```
+
+実際の `wave-studio` プロジェクトでは、和色のカスタムプロパティや細かな余白の設定など、もう少し多くのプロパティを組み合わせていますが、ここでは「フォント・行間・文字色・背景色」を押さえておけば十分です。
+
+
+### CSS グリッドで「最新記事」を並べる
+
+次に、`index.html` の中央に並んでいる「最新記事」セクションを見てみましょう。
+
+```html
+<!-- 最新記事の一覧 -->
+<section id="recent">
+  <h2>最新記事</h2>
+
+  <!-- それぞれの記事の紹介 -->
+  <article>
+    <a href="post01.html">
+      <figure>
+        <img src="images/note.webp" alt="海辺の風景を描くスケッチノート">
+      </figure>
+      <h3>海辺のスケッチノート</h3>
+    </a>
+  </article>
+
+  ...（中略）...
+
+</section>
+```
+
+この `#recent` の中に並ぶ複数の `<article>` を、「海辺のライフスタイル誌」の誌面のように、きれいなグリッド状に並べるのに使うのが **CSS グリッドレイアウト** です。
+
+CSS グリッドレイアウトは、ページ上に「行（row）」と「列（column）」からなる二次元の格子（グリッド）を用意し、そのマス目の上に要素を配置していく仕組みです。雑誌の紙面を考えるときに、見出し・本文・写真を「どの段・どの列に置くか」を決めていくのと、とてもよく似ています。
+
+`#recent` に対して、次のような CSS を指定してみましょう。
+
+```css
+/* 最新記事セクションをグリッドレイアウトにする */
+#recent {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: auto;
+  gap: 24px;
+}
+
+#recent > article {
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px;
+}
+```
+
+ここで登場する 2 つのプロパティが、この章で特に覚えておきたい **`grid-template-columns`（列の設計図）** と **`grid-template-rows`（行の設計図）** です。
+
+- `display: grid;` で、`#recent` を「グリッドコンテナ」にする
+- `grid-template-columns: repeat(3, 1fr);` で、横方向に同じ幅の列を 3 本用意する
+- `grid-template-rows: auto;` で、縦方向の行は中身の高さに合わせて伸縮させる
+- `gap: 24px;` で、行と列のあいだに 24px の余白をあける
+
+といった形で、誌面の「マス目」を決めていきます。`#recent` の直下にある `<article>` たちは、このグリッドコンテナの「マス目」に自動的に横 3 枚ずつ、縦に折り返しながら配置されます。
+
+グリッドコンテナ（`#recent`）の中に、`grid-template-columns` や `grid-template-rows` で「行・列の設計図」を描き、その上に `<article>` という記事カードをポンポンとのせていくイメージです。
+
+
+### 行と列を数えて配置してみる
+
+もう少し踏み込んで、グリッドの「行番号・列番号」を意識した配置も体験してみましょう。
+
+グリッドでは、左端の列の線が `1`、次が `2`、… と番号づけされ、同様に一番上の行の線が `1`、その下が `2`、… というふうに数えられます。
+
+たとえば、次のように `grid-template-columns` と `grid-template-rows` を定義したとします。
+
+```css
+/* 行・列にマス目を切っておく */
+.front-page-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;  /* 横 4 列 */
+  grid-template-rows:    1fr 1fr 1fr 1fr;  /* 縦 4 行 */
+  gap: 20px;
+}
+```
+
+ここに、`.hero`, `.recent`, `.footer` といったブロックを載せていくとしましょう。
+
+```css
+.hero   { grid-column: 1 / 5; grid-row: 1; }
+.recent { grid-column: 1 / 5; grid-row: 2 / 4; }
+.footer { grid-column: 1 / 5; grid-row: 4; }
+```
+
+- `.hero` は「列 1 本目から 5 本目まで」「行 1 行目」に配置
+- `.recent` は「列 1 本目から 5 本目まで」「行 2 行目〜4 行目」にわたって配置
+- `.footer` は「列 1 本目から 5 本目まで」「行 4 行目」に配置
+
+という具合に、**誌面のどの段・どの行をどのブロックに割り当てるか** を CSS のコードで表現できます。
+
+実際の `wave-studio` では、完全に同じコードではありませんが、考え方としてはこのように「行と列の設計図（`grid-template-rows` / `grid-template-columns`）」と「どのブロックをどのマス目に置くか（`grid-row` / `grid-column`）」を組み合わせて、トップページ全体のレイアウトを組み立てています。
+
