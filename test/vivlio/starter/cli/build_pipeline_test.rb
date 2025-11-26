@@ -21,36 +21,36 @@ module Vivlio
           stubs = [
             [pipeline, :run_step1_clean, -> { order << 'step1' }],
             [pipeline, :run_step2_optimize_images, -> { order << 'step2' }],
-            [Build, :prepare_theme_images!, -> { order << 'step3' }],
-            [Build, :build_sections_html!, lambda { |keep|
+            [Build::ImageOptimizer, :prepare_theme_images!, -> { order << 'step3' }],
+            [Build::SectionBuilder, :build_sections_html!, lambda { |keep|
               test_case.assert_nil keep
               order << 'step4'
             }],
-            [Build, :generate_toc_and_pdf!, lambda { |dir, keep|
+            [Build::TocGenerator, :generate_toc_and_pdf!, lambda { |dir, keep|
               test_case.assert_equal '.', dir
               test_case.assert_nil keep
               order << 'step6'
             }],
-            [Build, :build_overall_pdf_and_split_from_dir!, lambda { |dir, keep|
+            [Build::PdfBuilder, :build_overall_pdf_and_split_from_dir!, lambda { |dir, keep|
               test_case.assert_equal '.', dir
               test_case.assert_nil keep
               order << 'step7'
             }],
-            [Build, :build_frontmatter_pdf!, lambda { |keep|
+            [Build::PdfBuilder, :build_frontmatter_pdf!, lambda { |keep|
               test_case.assert_nil keep
               order << 'step8'
             }],
             [pipeline, :run_step9_front_pages_and_tail, -> { order << 'step9' }],
-            [Build, :merge_all_pdfs_only!, lambda { |keep|
+            [Build::PdfMerger, :merge_all_pdfs_only!, lambda { |keep|
               test_case.assert_nil keep
               order << 'step10'
             }],
-            [Build, :add_outline_to_output_pdf!, lambda { |keep|
+            [Build::PdfMerger, :add_outline_to_output_pdf!, lambda { |keep|
               test_case.assert_nil keep
               order << 'step11'
             }],
             [pipeline, :run_step12_compress_pdf, -> { order << 'step12' }],
-            [Build, :rename_output_pdfs!, -> { order << 'step13' }],
+            [Build::PdfFinalizer, :rename_output_pdfs!, -> { order << 'step13' }],
             [pipeline, :run_step14_final_clean, -> { order << 'step14' }]
           ]
 
@@ -67,7 +67,7 @@ module Vivlio
           pipeline = build_full_pipeline(keep: nil)
           stub_all_steps(pipeline)
 
-          pipeline.run
+          with_build_stubs { pipeline.run }
 
           expected_labels = [
             'Step  1 (clean)',
@@ -76,7 +76,7 @@ module Vivlio
             'Step  4 (build sections html)',
             'Step  6 (generate toc and pdf)',
             'Step  7 (build overall pdf and split)',
-            'Step  8 (build 02-03-front.pdf)',
+            'Step  8 (build _preface_toc.pdf)',
             'Step  9 (build front pages and tail)',
             'Step 10 (merge all pdfs with outline)',
             'Step 11 (apply outline to output pdf)',
@@ -92,7 +92,7 @@ module Vivlio
           pipeline = build_full_pipeline(keep: nil)
           stub_all_steps(pipeline)
 
-          pipeline.run
+          with_build_stubs { pipeline.run }
 
           pipeline.timings.each do |(_, duration)|
             assert duration.is_a?(Numeric), 'each timing entry should record elapsed seconds'
@@ -125,20 +125,32 @@ module Vivlio
         end
 
         def stub_all_steps(pipeline)
-          # スタブで実際の処理をスキップ
+          # インスタンスメソッドのスタブ
           pipeline.define_singleton_method(:run_step1_clean) {}
           pipeline.define_singleton_method(:run_step2_optimize_images) {}
           pipeline.define_singleton_method(:run_step9_front_pages_and_tail) {}
           pipeline.define_singleton_method(:run_step12_compress_pdf) {}
           pipeline.define_singleton_method(:run_step14_final_clean) {}
-          Build::define_singleton_method(:prepare_theme_images!) {}
-          Build::define_singleton_method(:build_sections_html!) { |_| }
-          Build::define_singleton_method(:generate_toc_and_pdf!) { |_, _| }
-          Build::define_singleton_method(:build_overall_pdf_and_split_from_dir!) { |_, _| }
-          Build::define_singleton_method(:build_frontmatter_pdf!) { |_| }
-          Build::define_singleton_method(:merge_all_pdfs_only!) { |_| }
-          Build::define_singleton_method(:add_outline_to_output_pdf!) { |_| }
-          Build::define_singleton_method(:rename_output_pdfs!) {}
+        end
+
+        def with_build_stubs
+          Build::ImageOptimizer.stub :prepare_theme_images!, -> {} do
+            Build::SectionBuilder.stub :build_sections_html!, ->(_) {} do
+              Build::TocGenerator.stub :generate_toc_and_pdf!, ->(_, _) {} do
+                Build::PdfBuilder.stub :build_overall_pdf_and_split_from_dir!, ->(_, _) {} do
+                  Build::PdfBuilder.stub :build_frontmatter_pdf!, ->(_) {} do
+                    Build::PdfMerger.stub :merge_all_pdfs_only!, ->(_) {} do
+                      Build::PdfMerger.stub :add_outline_to_output_pdf!, ->(_) {} do
+                        Build::PdfFinalizer.stub :rename_output_pdfs!, -> {} do
+                          yield
+                        end
+                      end
+                    end
+                  end
+                end
+              end
+            end
+          end
         end
 
         def with_stubs(stubs, &block)
@@ -164,7 +176,7 @@ module Vivlio
           stubs = [
             [pipeline, :run_step1_clean, -> { order << 'step1' }],
             [pipeline, :run_step2_optimize_images, -> { order << 'step2' }],
-            [Build, :prepare_theme_images!, -> { order << 'step3' }],
+            [Build::ImageOptimizer, :prepare_theme_images!, -> { order << 'step3' }],
             [pipeline, :build_target_sections_html, -> { order << 'step4' }],
             [pipeline, :generate_entries_and_pdf, -> { order << 'step5' }],
             [pipeline, :rename_single_mode_pdf, -> { order << 'step13' }]
@@ -182,7 +194,9 @@ module Vivlio
           pipeline = build_single_pipeline(targets: ['45-first-html'])
           stub_all_single_mode_steps(pipeline)
 
-          pipeline.run
+          Build::ImageOptimizer.stub :prepare_theme_images!, -> {} do
+            pipeline.run
+          end
 
           expected_labels = [
             'Step  1 (clean)',
@@ -233,7 +247,6 @@ module Vivlio
           pipeline.define_singleton_method(:build_target_sections_html) {}
           pipeline.define_singleton_method(:generate_entries_and_pdf) {}
           pipeline.define_singleton_method(:rename_single_mode_pdf) {}
-          Build::define_singleton_method(:prepare_theme_images!) {}
         end
 
         def with_stubs(stubs, &block)
@@ -388,9 +401,9 @@ module Vivlio
       class BuildTimingMeasurementTest < Minitest::Test
         def test_timings_are_recorded_for_each_step
           pipeline = build_full_pipeline
-          stub_all_steps(pipeline)
+          stub_pipeline_steps(pipeline)
 
-          pipeline.run
+          with_build_stubs { pipeline.run }
 
           # 各ステップの timing が記録されていることを確認
           assert pipeline.timings.length.positive?, 'タイミングが記録されるべき'
@@ -403,9 +416,11 @@ module Vivlio
 
         def test_single_mode_timings_has_6_entries
           pipeline = build_single_pipeline(['45-test'])
-          stub_single_mode_steps(pipeline)
+          stub_single_pipeline_steps(pipeline)
 
-          pipeline.run
+          Build::ImageOptimizer.stub :prepare_theme_images!, -> {} do
+            pipeline.run
+          end
 
           # single mode は 6 ステップ
           assert_equal 6, pipeline.timings.length, 'single mode は 6 ステップを記録するべき'
@@ -413,9 +428,9 @@ module Vivlio
 
         def test_full_mode_timings_has_13_entries
           pipeline = build_full_pipeline
-          stub_all_steps(pipeline)
+          stub_pipeline_steps(pipeline)
 
-          pipeline.run
+          with_build_stubs { pipeline.run }
 
           # full mode は 13 ステップ（Step 5 を除く）
           assert_equal 13, pipeline.timings.length, 'full mode は 13 ステップを記録するべき'
@@ -435,29 +450,40 @@ module Vivlio
           BuildCommands::UnifiedBuildPipeline.new(command, targets: targets, mode: :single)
         end
 
-        def stub_all_steps(pipeline)
+        def stub_pipeline_steps(pipeline)
           pipeline.define_singleton_method(:run_step1_clean) {}
           pipeline.define_singleton_method(:run_step2_optimize_images) {}
           pipeline.define_singleton_method(:run_step9_front_pages_and_tail) {}
           pipeline.define_singleton_method(:run_step12_compress_pdf) {}
           pipeline.define_singleton_method(:run_step14_final_clean) {}
-          Build::define_singleton_method(:prepare_theme_images!) {}
-          Build::define_singleton_method(:build_sections_html!) { |_| }
-          Build::define_singleton_method(:generate_toc_and_pdf!) { |_, _| }
-          Build::define_singleton_method(:build_overall_pdf_and_split_from_dir!) { |_, _| }
-          Build::define_singleton_method(:build_frontmatter_pdf!) { |_| }
-          Build::define_singleton_method(:merge_all_pdfs_only!) { |_| }
-          Build::define_singleton_method(:add_outline_to_output_pdf!) { |_| }
-          Build::define_singleton_method(:rename_output_pdfs!) {}
         end
 
-        def stub_single_mode_steps(pipeline)
+        def stub_single_pipeline_steps(pipeline)
           pipeline.define_singleton_method(:run_step1_clean) {}
           pipeline.define_singleton_method(:run_step2_optimize_images) {}
           pipeline.define_singleton_method(:build_target_sections_html) {}
           pipeline.define_singleton_method(:generate_entries_and_pdf) {}
           pipeline.define_singleton_method(:rename_single_mode_pdf) {}
-          Build::define_singleton_method(:prepare_theme_images!) {}
+        end
+
+        def with_build_stubs
+          Build::ImageOptimizer.stub :prepare_theme_images!, -> {} do
+            Build::SectionBuilder.stub :build_sections_html!, ->(_) {} do
+              Build::TocGenerator.stub :generate_toc_and_pdf!, ->(_, _) {} do
+                Build::PdfBuilder.stub :build_overall_pdf_and_split_from_dir!, ->(_, _) {} do
+                  Build::PdfBuilder.stub :build_frontmatter_pdf!, ->(_) {} do
+                    Build::PdfMerger.stub :merge_all_pdfs_only!, ->(_) {} do
+                      Build::PdfMerger.stub :add_outline_to_output_pdf!, ->(_) {} do
+                        Build::PdfFinalizer.stub :rename_output_pdfs!, -> {} do
+                          yield
+                        end
+                      end
+                    end
+                  end
+                end
+              end
+            end
+          end
         end
       end
     end

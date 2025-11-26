@@ -62,7 +62,7 @@ module Vivlio
               Common.log_info('[Step 7] 全体PDF生成 → toc(目次)とsections(本文+付録+後書き)に分割')
               Build::PdfBuilder.build_overall_pdf_and_split_from_dir!('.', keep)
             })
-            add_step('Step  8 (build 02-03-front.pdf)',       -> { Build::PdfBuilder.build_frontmatter_pdf!(keep) })
+            add_step('Step  8 (build _preface_toc.pdf)',       -> { Build::PdfBuilder.build_frontmatter_pdf!(keep) })
             add_step('Step  9 (build front pages and tail)',  -> { run_step9_front_pages_and_tail })
             add_step('Step 10 (merge all pdfs with outline)', -> { Build::PdfMerger.merge_all_pdfs_only!(keep) })
             add_step('Step 11 (apply outline to output pdf)', -> { Build::PdfMerger.add_outline_to_output_pdf!(keep) })
@@ -176,12 +176,13 @@ module Vivlio
 
           # タイトル・リーガルページなど front/tail PDF を生成する
           def run_step9_front_pages_and_tail
-            title_md    = File.join(Common::CONTENTS_DIR, '00-titlepage.md')
-            legal_md    = File.join(Common::CONTENTS_DIR, '01-legalpage.md')
-            colophon_md = File.join(Common::CONTENTS_DIR, '99-colophon.md')
+            # 新仕様: 内部 basename 方式
+            title_md    = File.join(Common::CONTENTS_DIR, '_titlepage.md')
+            legal_md    = File.join(Common::CONTENTS_DIR, '_legalpage.md')
+            colophon_md = File.join(Common::CONTENTS_DIR, '_colophon.md')
             book_yml    = File.join('config', 'book.yml')
-            front_pdf   = '00-01-front.pdf'
-            col_pdf     = '99-colophon.pdf'
+            front_pdf   = '_titlepage_legalpage.pdf'
+            col_pdf     = '_colophon.pdf'
 
             newer_than_any = lambda do |target, sources|
               return true unless File.exist?(target)
@@ -191,6 +192,12 @@ module Vivlio
             end
 
             force = options[:force]
+
+            # 特殊ページが存在しない場合は自動生成
+            ensure_special_page_exists!('titlepage', title_md)
+            ensure_special_page_exists!('legalpage', legal_md)
+            ensure_special_page_exists!('colophon', colophon_md)
+
             if force || newer_than_any.call(front_pdf, [title_md, legal_md, book_yml])
               [['create:titlepage', title_md], ['create:legalpage', legal_md]].each do |cmd, _path|
                 Vivlio::Starter::ThorCLI.start([cmd, '--force'])
@@ -202,6 +209,14 @@ module Vivlio
             end
 
             Build::PdfBuilder.build_front_pages_and_tail!(force)
+          end
+
+          # 特殊ページが存在しない場合は自動生成
+          def ensure_special_page_exists!(type, path)
+            return if File.exist?(path)
+
+            Common.log_info("#{type} が存在しないため自動生成します: #{path}")
+            Vivlio::Starter::ThorCLI.start(["create:#{type}"])
           end
 
           # MTime 取得時の例外を吸収して 0 時刻にフォールバックする

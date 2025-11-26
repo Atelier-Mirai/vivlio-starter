@@ -20,7 +20,7 @@ module Vivlio
           short: '目次HTMLを生成します（引数でHTMLを列挙した場合はそれらのみ対象）',
           long: <<~DESC
             指定した HTML を対象に目次を生成します。引数が無い場合はプロジェクト直下の HTML を自動検出し、
-            以下を除外して処理します: 00-titlepage.html / 01-legalpage.html / 03-toc.html / 99-colophon.html。
+            以下を除外して処理します: _titlepage.html / _legalpage.html / 03-toc.html / _colophon.html。
 
             例:
               vs toc 11-gift.html 12-tutorial.html
@@ -88,7 +88,9 @@ module Vivlio
 
         # 対象となる HTML ファイルを解決する
         class HtmlTargetResolver
-          EXCLUDE_FILES = %w[00-titlepage.html 01-legalpage.html 03-toc.html 99-colophon.html].freeze
+          # 新仕様: _titlepage, _legalpage, _colophon を除外
+          EXCLUDE_FILES = %w[_titlepage.html _legalpage.html 03-toc.html _colophon.html
+                             00-titlepage.html 01-legalpage.html 99-colophon.html].freeze
 
           def initialize(htmls, base_dir:)
             @htmls = Array(htmls)
@@ -166,12 +168,12 @@ module Vivlio
 
           attr_reader :targets, :base_dir
 
-          # 前書きエントリを必要に応じて追加する
+          # 前書きエントリを必要に応じて追加する（新仕様: 00-preface）
           def append_preface(buffer)
             entry = SupplementEntryProvider.new(
               targets: targets,
               base_dir: base_dir,
-              file_name: '02-preface.html'
+              file_name: '00-preface.html'
             ).call
             buffer << entry if entry
           end
@@ -185,7 +187,7 @@ module Vivlio
             # （append_preface/append_postface で専用のエントリとして追加される）
             filtered_targets = targets.reject do |target|
               basename = File.basename(target)
-              basename == '02-preface.html' || basename == '98-postface.html'
+              basename == '00-preface.html' || basename == '99-postface.html'
             end
 
             filtered_targets.each do |target|
@@ -198,12 +200,12 @@ module Vivlio
             list_state.prepare_for_postface
           end
 
-          # 後書きエントリを必要に応じて追加する
+          # 後書きエントリを必要に応じて追加する（新仕様: 99-postface）
           def append_postface(buffer)
             entry = SupplementEntryProvider.new(
               targets: targets,
               base_dir: base_dir,
-              file_name: '98-postface.html'
+              file_name: '99-postface.html'
             ).call
             buffer << entry if entry
           end
@@ -263,7 +265,7 @@ module Vivlio
 
         # 前書き／後書きのエントリを生成する
         # 
-        # 前書き（02-preface）や後書き（98-postface）は、通常の章とは異なる扱いをする。
+        # 前書き（00-preface）や後書き（99-postface）は、通常の章とは異なる扱いをする。
         # - 章番号を表示しない（CSS: toc-chapter-no-number）
         # - ビルド対象に含まれている場合のみ、目次に追加する
         # - 通常の見出し抽出ロジック（HeadingExtractor）は使用せず、h1 のみを抽出
@@ -273,7 +275,7 @@ module Vivlio
           def initialize(targets:, base_dir:, file_name:)
             @targets = targets      # ビルド対象の HTML ファイルリスト
             @base_dir = Pathname.new(base_dir)
-            @file_name = file_name  # 対象ファイル名（例: '02-preface.html'）
+            @file_name = file_name  # 対象ファイル名（例: '00-preface.html'）
           end
 
           # 指定された補助 HTML から TOC 項目を生成する

@@ -1135,7 +1135,8 @@ module Vivlio
                   next segment
                 end
 
-                segment.gsub(/@([a-zA-Z0-9_\-]+)/) do
+                # メールアドレスの @ を誤検出しないよう、@ の前に英数字がない場合のみマッチ
+                segment.gsub(/(?<![a-zA-Z0-9_.])@([a-zA-Z0-9_\-]+)/) do
                   label_id = Regexp.last_match(1)
 
                   # 説明用に登場する予約ID（@auto / @omakase / @id）は

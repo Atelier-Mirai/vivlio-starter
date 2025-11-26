@@ -1,6 +1,10 @@
-##
-## 章の配置
-##
+# ========================================
+# ビルド対象にする章の指定
+# ========================================
+# 一部の章のみを対象としたい場合は、以下のように指定します。
+  # - 11-install  # 拡張子(.md)は、省略できます。
+  # - 12-tutorial
+# CHAPTERS: 11-12, 13-15, 25 # 章番号のみでのカンマ区切り, 範囲指定も指定可能です。
 
 ## まえがき
 PREFACE:
@@ -8,28 +12,11 @@ PREFACE:
 
 ## 本文
 CHAPTERS:
-  - 01-bonus
-  - 02-top
-  - 03-footer
-  - 04-kiji
-  - 05-about
-  - 06-contact
-  - 07-modaal
-  - 08-shuffle-text
-  - 09-sakura
-  - 10-scroll-animation
-  - 11-fixed-footer
-  - 12-follow-menu
-  - 13-mobile-menu
-  - 14-muuri
-  - 15-chart
-  - 26-pwa
+  - 11-15
 
 # ## 付録
 APPENDICES:
-  - 91-books
-  - 92-links
-  - 93-cheats
+  - 91-92
 
 # ## あとがき
 POSTFACE:

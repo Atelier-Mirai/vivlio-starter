@@ -58,6 +58,14 @@ module Vivlio
             Dir.chdir(dir) do
               FileUtils.mkdir_p('contents')
               FileUtils.mkdir_p('images')
+              FileUtils.mkdir_p('config')
+              # catalog.yml を作成（CatalogUpdater が必要とする）
+              File.write('config/catalog.yml', <<~YAML)
+                PREFACE:
+                CHAPTERS:
+                APPENDICES:
+                POSTFACE:
+              YAML
               yield dir
             end
           end

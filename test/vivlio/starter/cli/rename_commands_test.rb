@@ -5,7 +5,7 @@ require 'tmpdir'
 require 'fileutils'
 require 'vivlio/starter/cli/common'
 require 'vivlio/starter/cli/rename'
-require 'vivlio/starter/cli/build_helpers'
+require 'vivlio/starter/cli/build'
 require 'vivlio/starter/cli'
 
 module Vivlio
@@ -18,13 +18,9 @@ module Vivlio
             command = build_rename_command(force: true)
             setup_single_chapter_fixture('11-old', css: true, images: true, html: true)
 
-            build_helpers_calls = []
             thor_calls = []
-
-            Build::stub :update_css_counter, ->(path, value) { build_helpers_calls << [path, value] } do
-              Vivlio::Starter::ThorCLI.stub :start, ->(args) { thor_calls << args } do
-                capture_io { command.rename('11-old', '12-new') }
-              end
+            Vivlio::Starter::ThorCLI.stub :start, ->(args) { thor_calls << args } do
+              capture_io { command.rename('11-old', '12-new') }
             end
 
             assert File.exist?(File.join(Common::CONTENTS_DIR, '12-new.md'))
@@ -33,7 +29,6 @@ module Vivlio
             refute Dir.exist?('images/11-old')
             refute File.exist?('11-old.html')
 
-            assert_empty build_helpers_calls
             assert_empty thor_calls
           end
         end
@@ -45,16 +40,12 @@ module Vivlio
             setup_single_chapter_fixture('11-alpha', css: true, images: true)
             setup_single_chapter_fixture('31-beta', css: true, images: true)
 
-            build_helpers_calls = []
             thor_calls = []
-
-            Build::stub :update_css_counter, ->(path, value) { build_helpers_calls << [path, value] } do
-              Vivlio::Starter::ThorCLI.stub :start, ->(args) { thor_calls << args } do
-                error = assert_raises(SystemExit) do
-                  capture_io { command.rename }
-                end
-                assert_equal 0, error.status
+            Vivlio::Starter::ThorCLI.stub :start, ->(args) { thor_calls << args } do
+              error = assert_raises(SystemExit) do
+                capture_io { command.rename }
               end
+              assert_equal 0, error.status
             end
 
             assert File.exist?(File.join(Common::CONTENTS_DIR, '11-alpha.md'))
@@ -64,7 +55,6 @@ module Vivlio
             assert Dir.exist?('images/12-beta')
             refute Dir.exist?('images/31-beta')
 
-            assert_empty build_helpers_calls
             assert_equal [['clean']], thor_calls
           end
         end

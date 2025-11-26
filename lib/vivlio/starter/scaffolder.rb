@@ -9,7 +9,7 @@ module Vivlio
     module Scaffolder
       DEFAULT_DIRECTORIES = %w[config contents images stylesheets codes chapter_templates].freeze
       DEFAULT_CONTENT_FILES = %w[
-        02-preface.md
+        00-preface.md
         11-install.md
         12-tutorial.md
         21-customize.md
@@ -17,7 +17,7 @@ module Vivlio
         91-appendix-a.md
         92-appendix-b.md
         93-appendix-c.md
-        98-postface.md
+        99-postface.md
       ].freeze
       DEFAULT_NEEDED_CHAPTER_CSS = %w[11 12 21 31].freeze
       DEFAULT_GITIGNORE = <<~GITIGNORE.freeze
@@ -54,9 +54,9 @@ module Vivlio
           language: 'ja',
           readingProgression: 'ltr',
           entry: [
-            'contents/00-titlepage.md',
-            'contents/01-legalpage.md',
-            'contents/02-preface.md',
+            'contents/_titlepage.md',
+            'contents/_legalpage.md',
+            'contents/00-preface.md',
             'contents/11-install.md',
             'contents/12-tutorial.md',
             'contents/21-customize.md',
@@ -64,8 +64,8 @@ module Vivlio
             'contents/91-appendix-a.md',
             'contents/92-appendix-b.md',
             'contents/93-appendix-c.md',
-            'contents/98-postface.md',
-            'contents/99-colophon.md'
+            'contents/99-postface.md',
+            'contents/_colophon.md'
           ],
           output: [
             './output.pdf'
@@ -319,7 +319,7 @@ module Vivlio
           #{%(<div class="publication-info">) unless series.empty? && release.empty?}
           #{%(    <p class="series">#{series}</p>) unless series.empty?}
           #{%(    <p class="release-info">#{release}</p>) unless release.empty?}
-          #{%(</div>) unless series.empty() && release.empty?}
+          #{%(</div>) unless series.empty? && release.empty?}
         MD
         File.write(File.join(contents_dir, '00-titlepage.md'), title_md, encoding: 'utf-8')
 

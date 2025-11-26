@@ -72,68 +72,43 @@ module Vivlio
         end
 
         # ================================================================
-        # configured_chapters のテスト（統合テスト）
+        # configured_chapters のテスト（catalog.yml ベース）
         # ================================================================
-        def test_configured_chapters_all
-          with_mock_chapter_files(['02-preface.md', '11-install.md', '12-tutorial.md', '91-appendix.md']) do
-            with_config({ 'chapters' => 'all' }) do
+        def test_configured_chapters_from_catalog
+          catalog = {
+            'PREFACE' => ['00-preface'],
+            'CHAPTERS' => ['11-install', '12-tutorial'],
+            'APPENDICES' => ['91-appendix'],
+            'POSTFACE' => ['99-postface']
+          }
+          with_mock_catalog(catalog) do
+            with_mock_chapter_files(['00-preface.md', '11-install.md', '12-tutorial.md', '91-appendix.md', '99-postface.md']) do
               result = Build::ChapterConfig.configured_chapters
-              # 'all' は全章のファイル名リストを返す
-              assert_equal ['02-preface.md', '11-install.md', '12-tutorial.md', '91-appendix.md'], result
+              assert_equal ['00-preface.md', '11-install.md', '12-tutorial.md', '91-appendix.md', '99-postface.md'], result
             end
           end
         end
 
-        def test_configured_chapters_filename_array
-          with_config({ 'chapters' => ['11-install', '12-tutorial'] }) do
-            result = Build::ChapterConfig.configured_chapters
-            assert_equal ['11-install.md', '12-tutorial.md'], result
-          end
-        end
-
-        def test_configured_chapters_number_array
-          # テスト用のダミーファイルを想定（実際のファイルは不要）
-          with_mock_chapter_files(['02-preface.md', '11-install.md', '12-tutorial.md']) do
-            with_config({ 'chapters' => [2, 11, 12] }) do
-              result = Build::ChapterConfig.configured_chapters
-              assert_equal ['02-preface.md', '11-install.md', '12-tutorial.md'], result
-            end
-          end
-        end
-
-        def test_configured_chapters_comma_separated_string
-          with_mock_chapter_files(['02-preface.md', '11-install.md', '91-appendix.md']) do
-            with_config({ 'chapters' => '02, 11, 91' }) do
-              result = Build::ChapterConfig.configured_chapters
-              assert_equal ['02-preface.md', '11-install.md', '91-appendix.md'], result
-            end
-          end
-        end
-
-        def test_configured_chapters_range_string
-          with_mock_chapter_files(['11-install.md', '12-tutorial.md', '13-advanced.md']) do
-            with_config({ 'chapters' => '11-13' }) do
+        def test_configured_chapters_with_shorthand
+          catalog = {
+            'CHAPTERS' => ['11-13']  # ショートハンド
+          }
+          with_mock_catalog(catalog) do
+            with_mock_chapter_files(['11-install.md', '12-tutorial.md', '13-advanced.md']) do
               result = Build::ChapterConfig.configured_chapters
               assert_equal ['11-install.md', '12-tutorial.md', '13-advanced.md'], result
             end
           end
         end
 
-        def test_configured_chapters_range_with_comma
-          with_mock_chapter_files(['02-preface.md', '11-install.md', '12-tutorial.md', '91-appendix.md']) do
-            with_config({ 'chapters' => '02, 11-12, 91' }) do
+        def test_configured_chapters_missing_files
+          catalog = {
+            'CHAPTERS' => ['11-install', '12-tutorial', '13-nonexistent']
+          }
+          with_mock_catalog(catalog) do
+            with_mock_chapter_files(['11-install.md', '12-tutorial.md']) do
               result = Build::ChapterConfig.configured_chapters
-              assert_equal ['02-preface.md', '11-install.md', '12-tutorial.md', '91-appendix.md'], result
-            end
-          end
-        end
-
-        def test_configured_chapters_nonexistent_numbers
-          # 存在しない番号はスキップされる
-          with_mock_chapter_files(['11-install.md', '12-tutorial.md']) do
-            with_config({ 'chapters' => [02, 11, 12, 13] }) do
-              result = Build::ChapterConfig.configured_chapters
-              # 02 と 13 は存在しないのでスキップ
+              # 存在しない 13-nonexistent はスキップ
               assert_equal ['11-install.md', '12-tutorial.md'], result
             end
           end
@@ -141,23 +116,21 @@ module Vivlio
 
         private
 
-        # CONFIG を一時的に上書き
-        def with_config(config_hash)
-          original_config = Common.const_get(:CONFIG).dup
-          merged_config = original_config.merge(config_hash)
-          Common.send(:remove_const, :CONFIG) if Common.const_defined?(:CONFIG)
-          Common.const_set(:CONFIG, merged_config)
-          yield
-        ensure
-          Common.send(:remove_const, :CONFIG) if Common.const_defined?(:CONFIG)
-          Common.const_set(:CONFIG, original_config)
+        # catalog.yml をモック
+        def with_mock_catalog(catalog_hash)
+          Build::CatalogLoader.stub(:load_catalog, catalog_hash) do
+            yield
+          end
         end
 
         # Dir.glob をスタブしてモックファイルを返す
         def with_mock_chapter_files(files)
           full_paths = files.map { |f| File.join(Common::CONTENTS_DIR, f) }
           Dir.stub(:glob, full_paths) do
-            yield
+            # File.exist? もモック
+            File.stub(:exist?, ->(path) { full_paths.include?(path) || path == Build::CatalogLoader::CATALOG_FILE }) do
+              yield
+            end
           end
         end
       end

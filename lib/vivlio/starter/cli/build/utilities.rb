@@ -44,7 +44,7 @@ module Vivlio
             nil
           end
 
-          # 11..89 範囲の章番号（整数）の配列を返す
+          # 1..89 範囲の章番号（整数）の配列を返す（新仕様）
           def chapter_numbers_for_book(keep = nil)
             basenames = if keep&.any?
                           Array(keep).map { |s| File.basename(s.to_s, '.md') }
@@ -55,14 +55,15 @@ module Vivlio
               .map { |bn| Common.get_chapter_number(bn) }
               .compact
               .map(&:to_i)
-              .select { |n| n.between?(11, 89) }
+              .select { |n| n.between?(1, 89) }
               .uniq
               .sort
           end
 
-          # PDF アウトライン生成対象の章番号リストを取得
+          # PDF アウトライン生成対象の章番号リストを取得（新仕様）
           def chapter_numbers_for_outline(keep = nil)
-            allowed_numbers = [0, 1, 2, 3, 99] + (11..89).to_a + (91..97).to_a + (98..98).to_a
+            # 新仕様: 0=PREFACE, 1-89=CHAPTERS, 90-98=APPENDICES, 99=POSTFACE
+            allowed_numbers = [0, 99] + (1..89).to_a + (90..98).to_a
             basenames = if keep&.any?
                           Array(keep).map do |entry|
                             name = File.basename(entry.to_s)

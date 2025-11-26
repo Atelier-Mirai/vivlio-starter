@@ -13,11 +13,11 @@ module Vivlio
         # 並列処理、キャッシュ管理、章順序の管理を含む。
         # ------------------------------------------------
         module SectionBuilder
-          # 章レンジ（定数）
-          PREFACE_RANGE  = (2..2)
-          MAIN_RANGE     = (11..89)
-          APPX_RANGE     = (91..97)
-          POSTFACE_RANGE = (98..98)
+          # 章レンジ（定数）- 新仕様に合わせて更新
+          PREFACE_RANGE  = (0..0)
+          MAIN_RANGE     = (1..89)
+          APPX_RANGE     = (90..98)
+          POSTFACE_RANGE = (99..99)
 
           module_function
 
@@ -140,30 +140,21 @@ module Vivlio
             end
           end
 
-          # Step 4: 本文、付録、後書き (11..98) をビルド（HTML生成）
+          # Step 4: セクション（前書き/本文/付録/後書き）をビルド（HTML生成）
+          # catalog.yml で指定された章のみを対象とする
           def build_sections_html!(keep = nil)
-            Common.log_action('[Step 4] セクション（前書き/本文/付録/後書き）をビルドします…（仮想連番: 1,2,3…）')
-            keep_numbers_main = Build::Utilities.chapter_numbers_for_book(keep)
-            # 前書き、付録、後書きの keep 抽出
-            keep_numbers_preface = nil
-            keep_numbers_appx = nil
-            keep_numbers_post = nil
-            if keep&.any?
-              normalized_keep = Array(keep)
-                                .map { |s| File.basename(s.to_s, '.md') }
-              chapter_numbers = normalized_keep
-                                .map { |bn| Common.get_chapter_number(bn) }
-                                .compact.map(&:to_i)
-              keep_numbers_preface = chapter_numbers.select { |n| PREFACE_RANGE.include?(n) }
-              keep_numbers_appx = chapter_numbers.select { |n| APPX_RANGE.include?(n) }
-              keep_numbers_post = chapter_numbers.select { |n| POSTFACE_RANGE.include?(n) }
-            end
-            all_md_basenames = Dir[File.join(Common::CONTENTS_DIR, '*.md')].map { |p| File.basename(p, '.md') }
-            preface_targets  = Build::ChapterConfig.filter_basenames_by_range(all_md_basenames, PREFACE_RANGE, keep_numbers_preface)
-            main_targets     = Build::ChapterConfig.filter_basenames_by_range(all_md_basenames, MAIN_RANGE, keep_numbers_main)
-            appendix_targets = Build::ChapterConfig.filter_basenames_by_range(all_md_basenames, APPX_RANGE, keep_numbers_appx)
-            postface_targets = Build::ChapterConfig.filter_basenames_by_range(all_md_basenames, POSTFACE_RANGE, keep_numbers_post)
-            chapter_targets  = (preface_targets + main_targets + appendix_targets + postface_targets).uniq.sort
+            Common.log_action('[Step 4] セクション（前書き/本文/付録/後書き）をビルドします…')
+
+            # catalog.yml から対象章を取得（keep パラメータをそのまま使用）
+            chapter_targets = if keep&.any?
+                                Array(keep).map { |s| File.basename(s.to_s, '.md') }.sort
+                              else
+                                # keep が空の場合は contents/ 内の全章をビルド
+                                Dir[File.join(Common::CONTENTS_DIR, '*.md')]
+                                  .map { |p| File.basename(p, '.md') }
+                                  .reject { |bn| bn.start_with?('_') } # 特殊ページは除外
+                                  .sort
+                              end
 
             if chapter_targets.empty?
               Common.log_warn('[Step 4] 章が見つかりません。Step 4 をスキップします。')

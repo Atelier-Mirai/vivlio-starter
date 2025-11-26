@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 require 'fileutils'
+require_relative 'build/catalog_loader'
+require_relative 'build/catalog_updater'
+
 module Vivlio
   module Starter
     module CLI
@@ -186,10 +189,12 @@ module Vivlio
 
                 Common.log_action('ファイル名変更を実行中...')
 
-                # 1. Markdown リネーム
+                # 1. Markdown リネーム + catalog.yml 更新
                 rename_map.each do |old_basename, info|
                   Common.log_info("#{old_basename}.md → #{info[:new_basename]}.md")
                   FileUtils.mv(info[:old_file], info[:new_file])
+                  # catalog.yml を更新
+                  Build::CatalogUpdater.rename_chapter(old_basename, info[:new_basename])
                 end
 
                 # 2. 画像ディレクトリのリネーム
@@ -302,6 +307,11 @@ module Vivlio
               # 1. Markdown のリネーム
               FileUtils.mv(old_md, new_md)
               Common.log_success('Markdownの変更が完了しました')
+
+              # catalog.yml を更新
+              old_basename = "#{old_number}-#{old_slug}"
+              new_basename = "#{new_number}-#{new_slug}"
+              Build::CatalogUpdater.rename_chapter(old_basename, new_basename)
 
               # 2. 画像ディレクトリのリネーム（存在する場合）
               old_img_dir = File.join('images', "#{old_number}-#{old_slug}")
