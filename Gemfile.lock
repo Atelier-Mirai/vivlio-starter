@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    vivlio-starter (0.16.0)
+    vivlio-starter (0.17.0)
       hexapdf (~> 1.0)
       kramdown (~> 2.4)
       mini_magick (~> 4.12)

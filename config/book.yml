@@ -26,10 +26,12 @@ book:
   # ----------------------------
   # 書籍名
   # ----------------------------
-  main_title: 'はじめての技術書づくり'
-  subtitle: 'Vivlio Starter 実践ガイド'
+  # main_title: 'はじめての技術書づくり'
+  # subtitle: 'Vivlio Starter 実践ガイド'
+  main_title: 'AIと学ぶモダンWebサイト入門'
+  subtitle: '1つのWebサイトで学ぶHTML/CSSグリッドと<br>やさしいJavaScriptの基本'
   # subtitle_style: wave  # 副題の装飾（wave | bar | none）から選択
-  subtitle_style: wave  # 副題の装飾（wave | bar | none）から選択
+  subtitle_style: none  # 副題の装飾（wave | bar | none）から選択
 
   # ----------------------------
   # 付帯情報（任意）
@@ -46,7 +48,7 @@ book:
 # プロジェクト情報
 # ========================================
 project:
-  name: vivlio_starter  # 出力ファイル名のベース
+  name: ai_web_starter  # 出力ファイル名のベース
   version: 1.0.0        # 書籍のバージョン（デフォルト: 1.0.0）
 
 # ========================================
