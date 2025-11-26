@@ -10,11 +10,11 @@ module Vivlio
         # TOCのHTML/PDF生成を担当する。
         # ------------------------------------------------
         module TocGenerator
-          # 章レンジ（定数）
-          PREFACE_RANGE  = (2..2)
-          MAIN_RANGE     = (11..89)
-          APPX_RANGE     = (91..97)
-          POSTFACE_RANGE = (98..98)
+          # 章レンジ（定数）- 新仕様に合わせて更新
+          PREFACE_RANGE  = (0..0)   # 00-preface
+          MAIN_RANGE     = (1..89)  # 01..89 本文
+          APPX_RANGE     = (90..98) # 90..98 付録
+          POSTFACE_RANGE = (99..99) # 99-postface
 
           module_function
 

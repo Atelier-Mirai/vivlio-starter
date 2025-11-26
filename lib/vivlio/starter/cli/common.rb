@@ -571,27 +571,41 @@ module Vivlio
         # Utility: ファイルタイプ判定 get_file_type
         # ------------------------------------------------
         # - 章番号の接頭辞から種別を返す（titlepage/legalpage/...）
+        # - 特殊ページ（_titlepage 等）も判定可能
         # - デフォルトは 'chapter'
         # ================================================================
+        # 章番号レンジ定数（catalog_spec.md 準拠）
+        PREFACE_RANGE  = (0..0).freeze
+        MAIN_RANGE     = (1..89).freeze
+        APPX_RANGE     = (90..98).freeze
+        POSTFACE_RANGE = (99..99).freeze
+
         def get_file_type(filename)
           name = File.basename(filename.to_s)
+
+          # 特殊ページ（内部 basename）の判定
           case name
-          when /^00-/
-            'titlepage'
-          when /^01-/
-            'legalpage'
-          when /^02-/
+          when /^_titlepage/
+            return 'titlepage'
+          when /^_legalpage/
+            return 'legalpage'
+          when /^_colophon/
+            return 'colophon'
+          end
+
+          # 章番号から判定
+          num = get_chapter_number(name)&.to_i
+          return 'chapter' unless num
+
+          case num
+          when PREFACE_RANGE
             'preface'
-          when /^03-/
-            'toc'
-          when /^[1-8][0-9]-/
+          when MAIN_RANGE
             'chapter'
-          when /^9[0-7]-/
+          when APPX_RANGE
             'appendix'
-          when /^98-/
+          when POSTFACE_RANGE
             'postface'
-          when /^99-colophon/
-            'colophon'
           else
             'chapter' # デフォルト
           end

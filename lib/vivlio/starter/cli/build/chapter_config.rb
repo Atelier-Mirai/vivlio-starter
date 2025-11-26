@@ -87,36 +87,27 @@ module Vivlio
           end
 
           # contents ディレクトリ内の全 .md ファイルのベース名を取得
-          # 返り値: ソート済みのファイル名配列（例: ["02-preface.md", "11-install.md", ...]）
+          # 返り値: ソート済みのファイル名配列（例: ["00-preface.md", "11-install.md", ...]）
           def all_chapter_files
             Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |f| File.basename(f) }.sort
           end
 
-          # book.yml の chapters 設定を解析し、対象とする章ファイル名のリストを返す
+          # catalog.yml から対象とする章ファイル名のリストを返す
           #
-          # 対応形式:
-          #   - nil または未指定 → 全章
-          #   - "all" → 全章
-          #   - "02, 11-13, 91" → 章番号指定（範囲・カンマ区切り）
-          #   - [2, 11, 12, 91] → 章番号指定（配列）
-          #   - ["11-install", "12-tutorial"] → ファイル名指定（配列）
-          #   - 複数行文字列 → ファイル名指定（行ごと）
+          # catalog.yml の PREFACE / CHAPTERS / APPENDICES / POSTFACE から
+          # basename を収集し、存在するファイルのみを返す。
           #
-          # 返り値: ファイル名配列（例: ["02-preface.md", "11-install.md", ...]）
-          #         または nil（設定が空の場合）
+          # 返り値: ファイル名配列（例: ["00-preface.md", "11-install.md", ...]）
+          #         または空配列
           def configured_chapters
-            cfg = Common::CONFIG['chapters']
-            Common.log_info("[Subset] raw chapters config=#{cfg.inspect}") unless cfg.nil?
+            basenames = CatalogLoader.load_existing_basenames
+            Common.log_info("[Catalog] loaded basenames=#{basenames.inspect}")
 
-            # 章番号重複チェック（全形式共通）
-            validate_no_duplicate_chapter_numbers!
-
-            # 設定に応じて処理を分岐
-            return all_chapter_files if cfg.nil? || (cfg.is_a?(String) && cfg.strip.downcase == 'all')
-            return process_string_config(cfg) if cfg.is_a?(String)
-            return process_array_config(cfg) if cfg.is_a?(Array)
-
-            nil
+            # ファイル名配列に変換（.md 付き）
+            basenames.map { |bn| "#{bn}.md" }
+          rescue StandardError => e
+            Common.log_error("catalog.yml の読み込みに失敗しました: #{e.message}")
+            raise
           end
 
           # 章番号の重複を検証し、重複があればエラーを発生させる
@@ -132,65 +123,8 @@ module Vivlio
             raise StandardError, error_msg
           end
 
-          # 文字列形式の chapters 設定を処理
-          # 番号指定（カンマ区切り・範囲）またはファイル名指定（複数行）に対応
-          def process_string_config(str)
-            str = str.to_s.strip
-
-            # 番号指定（カンマ区切りまたは範囲）の場合
-            if str.include?(',') || str.match?(/\A\d+-\d+\z/)
-              return process_number_string(str)
-            end
-
-            # ファイル名指定（複数行）の場合
-            process_filename_list(str.lines)
-          end
-
-          # 番号指定文字列を処理（例: "02, 11-13, 91"）
-          def process_number_string(str)
-            numbers = parse_chapter_numbers_from_string(str)
-            Common.log_info("[Subset] parsed chapter numbers=#{numbers.inspect}")
-            convert_numbers_to_filenames(numbers)
-          rescue ArgumentError => e
-            Common.log_error("❌ chapters 設定エラー: #{e.message}")
-            raise StandardError, e.message
-          end
-
-          # 配列形式の chapters 設定を処理
-          # 全て整数なら番号指定、そうでなければファイル名指定
-          def process_array_config(arr)
-            if all_integers?(arr)
-              # 番号指定の場合
-              numbers = arr.map { |n| n.to_s.strip.to_i }.uniq.sort
-              Common.log_info("[Subset] chapter numbers from array=#{numbers.inspect}")
-              convert_numbers_to_filenames(numbers)
-            else
-              # ファイル名指定の場合
-              process_filename_list(arr)
-            end
-          end
-
-          # ファイル名リストを正規化
-          # contents/ 接頭辞や .md 拡張子の省略を許容
-          def process_filename_list(items)
-            normalized = Array(items)
-                         .map { |s| s.to_s.strip }
-                         .reject(&:empty?)
-                         .map { |s| normalize_chapter_filename(s) }
-
-            Common.log_info("[Subset] normalized filenames=#{normalized.inspect}") if normalized.any?
-            normalized.any? ? normalized : nil
-          end
-
-          # 章ファイル名を正規化（contents/ 接頭辞削除、.md 拡張子補完）
-          def normalize_chapter_filename(name)
-            name = name.sub(%r{\A#{Regexp.escape(Common::CONTENTS_DIR)}/}, '')
-            name = "#{name}.md" unless name.end_with?('.md')
-            name
-          end
-
           # 章番号配列をファイル名配列に変換
-          # 例: [2, 11, 12] → ["02-preface.md", "11-install.md", "12-tutorial.md"]
+          # 例: [0, 11, 12] → ["00-preface.md", "11-install.md", "12-tutorial.md"]
           # 存在しないファイルはスキップ
           def convert_numbers_to_filenames(numbers)
             return [] unless numbers.is_a?(Array)

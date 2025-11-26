@@ -24,7 +24,7 @@
 
 トップレベルのキーとして、以下を定義可能です。
 
-- `PREFACE`    … まえがき相当（例: 02-preface）
+- `PREFACE`    … まえがき（例: 00-preface）
 - `CHAPTERS`   … 本文
 - `APPENDICES` … 付録
 - `POSTFACE`   … あとがき
@@ -33,7 +33,7 @@
 
 ```yaml
 PREFACE:
-  - 02-preface
+  - 00-preface
 
 CHAPTERS:
   - 11-fixed-footer
@@ -48,7 +48,7 @@ APPENDICES:
   - 93-cheats
 
 POSTFACE:
-  - 98-postface
+  - 99-postface
 ```
 
 各要素は **basename（拡張子なし）** で記述し、実際のファイルは `contents/<basename>.md` として参照されます。
@@ -66,7 +66,9 @@ POSTFACE:
 - `21-25`         … 章番号 21〜25 に対応する章
 - `21-25, 38`     … 21〜25 と 38 の組み合わせ
 
-これらのトークンはビルド時に展開され、実際の basename リストに変換されます（章番号は `contents/` 以下のファイル名から解決されます）。
+これらのトークンはビルド時に展開され、実際の basename リストに変換されます。章番号は `contents/` 以下のファイル名から解決されます。
+
+例： 21-25 と書いた場合、contents/21-*.md, contents/22-*.md, ... を実際にファイルシステムから探します。カタログに 21-25 と書いてあっても、contents/23-foo.md が無ければ 23 は対象外になります（特にエラーメッセージや警告は出力せず、ビルドを続行します）。
 
 ---
 
@@ -102,12 +104,12 @@ CHAPTERS:
 
 ビルド内部では、章番号レンジを以下のように扱います（既存実装と同様）:
 
-- `PREFACE_RANGE`  = `2..2`    （例: 02-preface）
-- `MAIN_RANGE`     = `11..89`  （本文）
-- `APPX_RANGE`     = `91..97`  （付録）
-- `POSTFACE_RANGE` = `98..98`  （あとがき）
+- `PREFACE_RANGE`  = `0..0`    （まえがき 注: 00-prefaceも含みます。）
+- `MAIN_RANGE`     = `1..89`  （本文 注: 01-introduction なども含みます。）
+- `APPX_RANGE`     = `90..98`  （付録）
+- `POSTFACE_RANGE` = `99..99`  （あとがき）
 
-また、番号 `00` / `01` / `99` が `catalog.yml` に書かれている場合は、次のように解釈します。
+なお、番号 `00` / `01` / `99` が `catalog.yml` に書かれている場合は、次のように解釈します。
 
 - `00-*.md` … 実質的に `PREFACE` と同等の扱い
 - `01-*.md` … 実質的に `CHAPTERS` と同等の扱い
@@ -153,7 +155,43 @@ CHAPTERS:
 これらは最終的に `output.pdf`（およびリネーム後の最終出力）へマージされる中間成果物であり、
 章番号レンジからは切り離されます。
 
----
+clean コマンドの振る舞いも変更されます。
+旧 `00-01-front.pdf` に対応するファイルは、`_titlepage_legalpage.pdf` となります。
+旧 `02-03-front.pdf` に対応するファイルは、`_preface_toc.pdf` となります。
+旧 `99-colophon.pdf` に対応するファイルは、`_colophon.pdf` となりますので、
+これらのファイルは、`clean` コマンドの削除対象となります。
+
+### 5.1 `vs create:titlepage` / `legalpage` / `colophon` との関係
+
+従来の `vs create:titlepage` / `vs create:legalpage` / `vs create:colophon` は、
+それぞれ `00-titlepage.md` / `01-legalpage.md` / `99-colophon.md` を生成する前提でした。
+
+本仕様に合わせて、これらのコマンドも **内部 basename 方式** に追従します。
+
+- `vs create:titlepage`  → `contents/_titlepage.md` を生成する
+- `vs create:legalpage`  → `contents/_legalpage.md` を生成する
+- `vs create:colophon`   → `contents/_colophon.md` を生成する
+
+これらは「通常の章」とは別枠の特殊ページであり、
+`catalog.yml` には原則として登場しません。そのため、上記の `vs create:*` コマンドも
+**catalog.yml を更新しないユーティリティコマンド** として扱います。
+
+### contents/_titlepage.md が存在しない状態で vs build した場合:
+vs build （フルビルド）の場合には、タイトルページなどは必須です。
+内部的に、vs create:titlepage, vs create:legalpage, vs create:colophon を実行して、
+これらのファイルを生成します。その後、通常どおりビルドを続行します。
+（その後、.cache ディレクトリにこれらの生成ファイルを保存します）
+
+### contents/_titlepage.md が存在する状態で vs build した場合:
+cacheを使うよう指定されている場合には、cacheディレクトリ内の、_titlepage等を利用して、ビルドを実行します。
+cacheを使わないように指定されている場合(--no-cacheオプションが指定されている場合)には、
+vs create:titlepage, vs create:legalpage, vs create:colophon を実行して、
+これらのファイルを生成します。その後、通常どおりビルドを続行します。
+
+### contents/_titlepage.md が存在しない状態で vs build 21-25 した場合:
+vs build 21-25 は、21,22,23,24,25に対応するファイルをビルドします。
+単章ビルドですので、タイトルページなどは必須ではありません。
+そのままビルドを実行します。
 
 ## 6. `vs build` とサブセット指定
 
@@ -164,7 +202,8 @@ CHAPTERS:
 ```bash
 vs build          # catalog.yml に定義された全章をビルド
 vs build 11-13    # 章番号 11〜13 に該当する basename のみビルド
-vs build 02,11,98 # 章番号 2, 11, 98 に該当する basename のみビルド
+vs build 00,11,90,99 # 章番号 00, 11, 90, 99 に該当する basename のみビルド(00はまえがき、90は付録、99はあとがき)
+vs build 00 11 90 99 # 章番号 00, 11, 90, 99 に該当する basename のみビルド(カンマ区切り、空白区切り どちらも許容します）
 ```
 
 ### 6.2 トークンの解釈
@@ -206,6 +245,14 @@ vs build 02,11,98 # 章番号 2, 11, 98 に該当する basename のみビルド
 
 - **catalog.yml のパースエラー**  
   `catalog.yml` 自体が不正な YAML でパースに失敗した場合は、その時点でエラーとしてビルドを中止する。
+```yaml
+PREFACE:
+CHAPTERS:
+APPENDICES:
+POSTFACE:
+```
+のように、全セクションが空（章が 0 個）の場合も、「ビルド対象がありません」というエラーメッセージを表示して、ビルドを中止します。
+
 - **重複章番号**  
   同じ章番号を持つ basename が複数存在する場合はエラーとし、ビルドを中止する。
 - **不整合な catalog.yml**  
@@ -247,7 +294,7 @@ vs build 02,11,98 # 章番号 2, 11, 98 に該当する basename のみビルド
 - `vs create` で新しい章（例: `21-new-chapter.md`）を作成した場合、章番号に応じて次の規則でセクションを決定し、basename を追記する。
   - 0（`00-*.md`）        → `PREFACE`
   - 1〜89                 → `CHAPTERS`
-  - 91〜98                → `APPENDICES`
+  - 90〜98                → `APPENDICES`
   - 99（`99-*.md`）       → `POSTFACE`
   ユーザーが手動で `catalog.yml` を編集して別セクションへ移すことも可能だが、
   通常はコマンド経由での更新を推奨する（マニュアルで注意喚起する想定）。

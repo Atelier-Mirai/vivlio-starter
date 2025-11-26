@@ -120,14 +120,15 @@ module Vivlio
                 # pre_process によりプロジェクトルートへ展開される章系の Markdown のみ削除対象に限定
                 # 例: 11-install.md など（任意の *.md やドキュメントは削除しない）
                 '[0-9][0-9]-*.md',
-                # フロント/テイル系の生成MD（存在時のみ）
-                '00-titlepage.md', '01-legalpage.md', '98-postface.md', '99-colophon.md'
+                # 内部 basename 方式の特殊ページ
+                '_titlepage.md', '_legalpage.md', '_colophon.md'
               ]
 
               intermediate_pdfs = [
-                '00-titlepage.pdf', '01-legalpage.pdf', '02-preface.pdf', '03-toc.pdf',
-                '00-01-front.pdf', '99-colophon.pdf',
-                '02-03-front.pdf', '11-98-sections.pdf',
+                # 内部名ベースの中間PDF
+                '_titlepage.pdf', '_legalpage.pdf', '_colophon.pdf',
+                '_titlepage_legalpage.pdf', '_preface_toc.pdf', '_sections.pdf',
+                '00-preface.pdf', '03-toc.pdf',
                 'blank_page.pdf', 'blank_frontmatter_insert.pdf',
                 'output_tmp*.pdf'
               ]

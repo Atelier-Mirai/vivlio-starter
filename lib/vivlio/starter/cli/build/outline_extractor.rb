@@ -216,7 +216,8 @@ module Vivlio
 
           def build_chapter_order(html_basenames)
             chapter_order = Build::SectionBuilder.chapter_order_from(html_basenames)
-            frontmatter_sequence = %w[00-titlepage 01-legalpage 02-preface 03-toc]
+            # 新仕様: _titlepage, _legalpage を使用
+            frontmatter_sequence = %w[_titlepage _legalpage 00-preface 03-toc]
             (frontmatter_sequence + chapter_order).uniq
           end
 
@@ -282,7 +283,7 @@ module Vivlio
 
           def calculate_chapter_ranges(chapter_order, chapter_markers, search_helpers, from_base, total_pages)
             search_markers = search_helpers[:search_markers]
-            preface_pages = (Build::Utilities.page_count('02-preface.pdf') || '0').to_i
+            preface_pages = (Build::Utilities.page_count('00-preface.pdf') || '0').to_i
             toc_pages = (Build::Utilities.page_count('03-toc.pdf') || '0').to_i
 
             chapter_starts = {}
@@ -315,17 +316,17 @@ module Vivlio
 
           def calculate_page_range(bn, chapter_order, chapter_markers, chapter_ranges, chapter_starts, search_markers, from_base, total_pages, preface_pages, toc_pages, first_chapter_bn, prev_bn)
             case bn
-            when '00-titlepage'
+            when '_titlepage'
               [[from_base, 1].max, 1]
-            when '01-legalpage'
+            when '_legalpage'
               start_page = [[2, from_base].max, total_pages].min
               [start_page, start_page]
-            when '02-preface'
+            when '00-preface'
               start_page = [[3, from_base].max, total_pages].min
               end_page = preface_pages.positive? ? [start_page + preface_pages - 1, total_pages].min : start_page
               [start_page, end_page]
             when '03-toc'
-              start_candidate = preface_pages.positive? ? (chapter_ranges['02-preface']&.[](1) || (3 + preface_pages - 1)) + 1 : 3
+              start_candidate = preface_pages.positive? ? (chapter_ranges['00-preface']&.[](1) || (3 + preface_pages - 1)) + 1 : 3
               start_page = [[start_candidate, from_base].max, total_pages].min
               end_page = toc_pages.positive? ? [start_page + toc_pages - 1, total_pages].min : start_page
               [start_page, end_page]
@@ -335,7 +336,7 @@ module Vivlio
               [[[start_candidate, from_base].max, total_pages].min, total_pages]
             when '99-colophon'
               [total_pages, total_pages]
-            when '98-postface'
+            when '99-postface'
               search_from = [[chapter_starts[prev_bn] || from_base, from_base].max, total_pages].min
               markers = chapter_markers[bn] || ['終わりに']
               start_page = search_markers.call(markers, search_from, total_pages)
@@ -434,7 +435,7 @@ module Vivlio
 
             return items if items.any? { |it| it[:page].to_i == 1 && it[:text] == cover_title }
 
-            items.unshift({ level: 1, text: cover_title, page: 1, chapter: '00-titlepage', id: nil })
+            items.unshift({ level: 1, text: cover_title, page: 1, chapter: '_titlepage', id: nil })
             items
           end
 

@@ -143,11 +143,11 @@
 
 ### Breaking Changes
 - `book.yml` の PDF プレビュー関連設定を `output.build` から `output.pdf_preview` に移行し、Vivliostyle のコンソール抑制設定を `vivliostyle.quiet` へ統合。旧構成はサポートされません。
+- **章構成設定の移行**: 章構成は `book.yml` の `chapters` セクションではなく、新しい `config/catalog.yml` から読み込むように変更。旧来の `chapters` 設定は無視されます。
 
 ### Changed
 - `vs build` の完了時に、`output.pdf` および `output_compressed.pdf` を `book.yml` の設定に基づく動的ファイル名へリネームし、生成物がプロジェクト名・バージョンを反映した名称で出力されるように調整（例: `vivlio_starter_v1.0.0.pdf` / `vivlio_starter_v1.0.0_compressed.pdf`）。
 - `lib/project_scaffold/stylesheets/titlepage.css` と `stylesheets/titlepage.css` を更新し、タイトル・副題・著者名が紙サイズに応じて重ならず整列するよう CSS Grid ベースのレイアウトに再設計。
-
 
 ## [0.15.0] - 2025-11-07
 

@@ -1,0 +1,34 @@
+<svg viewBox="0 0 1600 360" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景なし（透明） -->
+  
+  <!-- テキストコンテンツ -->
+  <text x="90" y="55" font-family="'Noto Sans JP', 'Hiragino Sans', sans-serif" font-size="48" font-weight="bold" fill="#2C2C2C" transform="scale(1, 1.2)">
+    AI×HTML/CSS×やさしいJavaScriptで作る、はじめての一冊!
+  </text>
+  
+  <text x="90" y="145" font-family="'Noto Sans JP', 'Hiragino Sans', sans-serif" font-size="44" font-weight="bold" fill="#2C2C2C">
+    AI時代のWebサイト入門。生成AIとWindSurfをフル活用!
+  </text>
+  
+  <!-- 箇条書き（黒丸） -->
+  <circle cx="105" cy="212" r="10" fill="#2C2C2C"/>
+  <text x="130" y="223" font-family="'Noto Sans JP', 'Hiragino Sans', sans-serif" font-size="32" font-weight="500" fill="#2C2C2C">
+    お問い合わせフォーム付きWebサイトを「標準的でちゃんと動く」形まで完走!
+  </text>
+  
+  <circle cx="105" cy="262" r="10" fill="#2C2C2C"/>
+  <text x="130" y="273" font-family="'Noto Sans JP', 'Hiragino Sans', sans-serif" font-size="32" font-weight="500" fill="#2C2C2C">
+    生成AIとWindSurfの実践的活用法をマスター!
+  </text>
+  
+  <circle cx="105" cy="312" r="10" fill="#2C2C2C"/>
+  <text x="130" y="323" font-family="'Noto Sans JP', 'Hiragino Sans', sans-serif" font-size="32" font-weight="500" fill="#2C2C2C">
+    初心者でも安心!コードの解説とサンプルが充実。
+  </text>
+  
+  <!-- キラキラ装飾 -->
+  <g transform="translate(1520, 320)">
+    <path d="M 0,-20 L -5,-5 L -20,0 L -5,5 L 0,20 L 5,5 L 20,0 L 5,-5 Z" fill="#FFD700" opacity="0.8"/>
+    <path d="M 0,-12 L -3,-3 L -12,0 L -3,3 L 0,12 L 3,3 L 12,0 L 3,-3 Z" fill="#FFFFFF"/>
+  </g>
+</svg>

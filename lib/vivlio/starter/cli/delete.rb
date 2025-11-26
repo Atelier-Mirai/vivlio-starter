@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'fileutils'
+require_relative 'build/catalog_loader'
+require_relative 'build/catalog_updater'
 
 module Vivlio
   module Starter
@@ -231,6 +233,10 @@ module Vivlio
           def remove(basename)
             delete_markdown_file(basename)
             delete_image_directory(basename)
+
+            # catalog.yml から削除
+            base = basename.sub(/\.md\z/, '')
+            Build::CatalogUpdater.remove_chapter(base)
           end
 
           private

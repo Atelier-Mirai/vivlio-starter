@@ -41,18 +41,19 @@ module Vivlio
           with_temp_theme_images do |images_root|
             bundled = File.join(images_root, 'bundled')
             FileUtils.mkdir_p(bundled)
-            File.write(File.join(bundled, 'ajisai.webp'), 'base')
+            base_path = File.join(bundled, 'ajisai.webp')
+            File.write(base_path, 'base')
 
-            generator = lambda do |spec, **_kwargs|
-              relative = spec.sub(/\.webp\z/, '')
-              stem = File.join(images_root, relative)
-              FileUtils.mkdir_p(File.dirname(stem))
-              File.write("#{stem}_portrait.webp", 'portrait')
-              File.write("#{stem}_landscape.webp", 'landscape')
-              true
+            # ImageGenerator.ensure_variant_generated をスタブして、バリアントファイルを生成
+            generator = lambda do |source_path, variant|
+              dir = File.dirname(source_path)
+              basename = File.basename(source_path, '.*')
+              variant_path = File.join(dir, "#{basename}_#{variant}.webp")
+              File.write(variant_path, variant.to_s)
+              variant_path
             end
 
-            PreProcessCommands.stub(:generate_frontispiece_and_ornament_from, generator) do
+            PreProcessCommands::ImageGenerator.stub(:ensure_variant_generated, generator) do
               front = PreProcessCommands.resolve_frontispiece_path('ajisai', allow_generation: true)
               ornament = PreProcessCommands.resolve_ornament_path('ajisai', allow_generation: true)
 
@@ -68,22 +69,24 @@ module Vivlio
         private
 
         # テストごとに stylesheets/images 相当の一時ディレクトリを差し替える
+        # ThemeImageResolver モジュールの @theme_images_root を差し替える
         def with_temp_theme_images
-          original_defined = PreProcessCommands.instance_variable_defined?(:@theme_images_root)
-          original_root = PreProcessCommands.instance_variable_get(:@theme_images_root)
+          resolver = PreProcessCommands::ThemeImageResolver
+          original_defined = resolver.instance_variable_defined?(:@theme_images_root)
+          original_root = resolver.instance_variable_get(:@theme_images_root)
 
           Dir.mktmpdir('theme-images-test') do |tmp|
             images_root = File.join(tmp, 'images')
             FileUtils.mkdir_p(images_root)
 
             begin
-              PreProcessCommands.instance_variable_set(:@theme_images_root, images_root)
+              resolver.instance_variable_set(:@theme_images_root, images_root)
               yield images_root
             ensure
               if original_defined
-                PreProcessCommands.instance_variable_set(:@theme_images_root, original_root)
-              elsif PreProcessCommands.instance_variable_defined?(:@theme_images_root)
-                PreProcessCommands.remove_instance_variable(:@theme_images_root)
+                resolver.instance_variable_set(:@theme_images_root, original_root)
+              elsif resolver.instance_variable_defined?(:@theme_images_root)
+                resolver.remove_instance_variable(:@theme_images_root)
               end
             end
           end

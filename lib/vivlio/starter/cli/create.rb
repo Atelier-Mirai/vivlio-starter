@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'fileutils'
+require_relative 'build/catalog_loader'
+require_relative 'build/catalog_updater'
 
 module Vivlio
   module Starter
@@ -42,7 +44,7 @@ module Vivlio
               著作権ページや免責事項を含むリーガルページを生成します。
 
               config/book.yml の legal セクションから設定を読み取り、
-              contents/01-legalpage.md を生成します。
+              contents/_legalpage.md を生成します。
 
               設定項目:
               - legal.disclaimer: 免責事項
@@ -147,7 +149,7 @@ module Vivlio
             #{%(</div>) unless series.empty? && release.empty?}
           MD
 
-          path = File.join(Common::CONTENTS_DIR, '00-titlepage.md')
+          path = File.join(Common::CONTENTS_DIR, '_titlepage.md')
           return skip_existing(path) if File.exist?(path) && !forced?(command)
 
           safe_write(path, content)
@@ -191,7 +193,7 @@ module Vivlio
             </p>
           MD
 
-          path = File.join(Common::CONTENTS_DIR, '99-colophon.md')
+          path = File.join(Common::CONTENTS_DIR, '_colophon.md')
           return skip_existing(path) if File.exist?(path) && !forced?(command)
 
           safe_write(path, content)
@@ -202,7 +204,7 @@ module Vivlio
         def execute_legalpage(command)
           enable_verbose(command)
           FileUtils.mkdir_p(Common::CONTENTS_DIR)
-          target = File.join(Common::CONTENTS_DIR, '01-legalpage.md')
+          target = File.join(Common::CONTENTS_DIR, '_legalpage.md')
           return skip_existing(target) if File.exist?(target) && !forced?(command)
 
           disclaimer, trademark = legal_texts
@@ -250,6 +252,11 @@ module Vivlio
           content = generate_content_from_template(title)
           path    = create_markdown_file(fname, content)
           create_image_directory(fname, {})
+
+          # catalog.yml に追加
+          basename = File.basename(fname, '.md')
+          Build::CatalogUpdater.add_chapter(basename)
+
           Common.log_success("#{path} を作成しました")
         end
 

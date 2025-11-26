@@ -4,7 +4,6 @@ require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
 require 'vivlio/starter/cli/common'
-require 'vivlio/starter/cli/build_helpers'
 require 'vivlio/starter/cli/build'
 require 'vivlio/starter/cli'
 

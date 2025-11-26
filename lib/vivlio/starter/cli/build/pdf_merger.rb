@@ -16,9 +16,10 @@ module Vivlio
 
           # Step 10: すべてのPDFを結合して output.pdf を生成
           def merge_all_pdfs_only!(_keep = nil)
-            Common.log_action('[Step 10] フロント(00-01)、前書き、目次、本文、付録、奥付を結合します…')
-            Common.log_info('[Step 10] 存在するPDFのみで結合を実行します（02-preface.pdf は任意）')
-            files_to_merge = ['00-01-front.pdf', '02-03-front.pdf', '11-98-sections.pdf', '99-colophon.pdf']
+            Common.log_action('[Step 10] フロント、前書き、目次、本文、付録、奥付を結合します…')
+            Common.log_info('[Step 10] 存在するPDFのみで結合を実行します')
+            # 新仕様: 内部名ベースの中間PDF
+            files_to_merge = %w[_titlepage_legalpage.pdf _preface_toc.pdf _sections.pdf _colophon.pdf]
             existing_files = files_to_merge.select { |f| File.exist?(f) }
             missing_files  = files_to_merge - existing_files
             Common.log_warn("[Step 10] 結合対象が見つかりません: #{missing_files.join(', ')}") if missing_files.any?
@@ -32,7 +33,7 @@ module Vivlio
               return false
             end
 
-            base_pdf = existing_files.include?('11-98-sections.pdf') ? '11-98-sections.pdf' : existing_files.first
+            base_pdf = existing_files.include?('_sections.pdf') ? '_sections.pdf' : existing_files.first
             FileUtils.rm_f('output.pdf')
             ranges = existing_files.map { |f| %("#{f}" 1-z) }.join(' ')
             cmd = %(qpdf "#{base_pdf}" --pages #{ranges} -- "output.pdf" > /dev/null)
