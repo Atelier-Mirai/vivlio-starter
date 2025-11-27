@@ -46,9 +46,10 @@ module Vivlio
               yaml_text = File.read(relative_path, encoding: 'utf-8')
               data = YAML.safe_load(yaml_text, permitted_classes: [], aliases: true)
 
-              # パース結果が Hash でなければ不正（空ファイルや配列など）
-              unless data.is_a?(Hash)
-                puts "❌ 必須設定ファイルの形式が不正です: #{relative_path}"
+              # パース結果が nil（空ファイルや全コメント）の場合は不正
+              # Hash または Array であれば有効とする
+              if data.nil?
+                puts "❌ 必須設定ファイルの内容が空です: #{relative_path}"
                 puts '❌ コマンドを中止します'
                 raise SystemExit, 1
               end
