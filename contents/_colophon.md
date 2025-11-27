@@ -1,5 +1,5 @@
 <h1 class="book-title">AIと学ぶモダンWebサイト入門</h1>
-<p class="subtitle subtitle--wave">1つのWebサイトで学ぶHTML/CSSグリッドと<br>やさしいJavaScriptの基本</p>
+<p class="subtitle subtitle--none">1つのWebサイトで学ぶHTML/CSSグリッドと<br>やさしいJavaScriptの基本</p>
 
 <p class="publication-info">令和七年十一月十五日 初版発行</p>
 

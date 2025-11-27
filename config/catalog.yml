@@ -1,53 +1,12 @@
-# ========================================
-# ビルド対象にする章の指定
-# ========================================
-# 一部の章のみを対象としたい場合は、以下のように指定します。
-  # - 11-install  # 拡張子(.md)は、省略できます。
-  # - 12-tutorial
-# CHAPTERS: 11-12, 13-15, 25 # 章番号のみでのカンマ区切り, 範囲指定も指定可能です。
-
-## まえがき
+---
 PREFACE:
-  - 00-preface
-
-## 本文
+- 00-preface
 CHAPTERS:
-  - 11-15
-
-# ## 付録
+- 01-computer-journey
+- 11-install
+- 12-tutorial
+- 13-customize
 APPENDICES:
-  - 91-92
-
-# ## あとがき
+- 91-92
 POSTFACE:
-  - 99-postface
-
-## 【Tips】
-##
-## ・付録やまえがきやあとがきがなければ、空にする。
-##   例：
-##
-##     PREFACE:
-##
-##     CHAPTERS:
-##       - 01-install.re
-##
-##     APPENDICES:
-##
-##     POSTFACE:
-##
-##
-## ・第I部、第II部、…のように「部」を使うには、次のようにする。
-##   （部タイトルの最後に半角の「:」をつけることに注意）
-##
-##     CHAPTERS:
-##       - 初級編:
-##           - 01-install.re
-##           - 02-tutorial.re
-##       - 中級編:
-##           - 03-syntax.re
-##           - 04-customize.re
-##       - 上級編:
-##           - 05-faq.re
-##           - 06-bestpractice.re
-##
+- 99-postface

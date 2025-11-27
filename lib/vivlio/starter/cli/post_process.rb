@@ -144,6 +144,21 @@ module Vivlio
                   Common.log_success("#{html_file}: 章末脚注をページ脚注に変換")
                 end
 
+                # Step 4.5: sideimage 内の脚注参照を処理
+                # （Step 4 で page-footnote-print が生成された後に実行）
+                begin
+                  process_sideimage_footnotes!(html_file)
+                rescue StandardError => e
+                  Common.log_error("#{html_file}: sideimage 脚注処理中にエラー: #{e.message}")
+                end
+
+                # Step 4.6: 脚注をドキュメント出現順に再番号付け
+                begin
+                  renumber_footnotes_by_document_order!(html_file)
+                rescue StandardError => e
+                  Common.log_error("#{html_file}: 脚注再番号付け中にエラー: #{e.message}")
+                end
+
                 # Step 5: 行番号を追加(Prism.js対応)
                 Vivlio::Starter::ThorCLI.start(['prism_lines', html_file])
 
@@ -387,12 +402,272 @@ module Vivlio
             end
           end
 
+          # sideimage-body 内のマークダウンリンクを <a> タグに変換
+          # [テキスト](URL) → <a href="URL">テキスト</a>
+          # 脚注参照 [^urlN] は一旦そのまま残す（後で process_sideimage_footnotes! で処理）
+          doc.css('div.sideimage-body').each do |body|
+            body.traverse do |node|
+              next unless node.text?
+
+              text = node.text
+              next unless text.match?(/\[.+?\]\(.+?\)/)
+
+              # マークダウンリンクと脚注参照を分割（脚注参照は後で処理するので残す）
+              pattern = /(\[[^\]]+\]\([^)]+\))/
+              segments = text.split(pattern)
+              next if segments.length == 1
+
+              segments.each do |seg|
+                if (m = seg.match(/^\[([^\]]+)\]\(([^)]+)\)$/))
+                  # マークダウンリンク: [text](url) → <a>text</a>
+                  link_text = m[1]
+                  link_url = m[2]
+                  anchor = Nokogiri::XML::Node.new('a', doc)
+                  anchor['href'] = link_url
+                  anchor.content = link_text
+                  node.add_previous_sibling(anchor)
+                else
+                  # 通常テキスト（脚注参照 [^urlN] も含む）
+                  node.add_previous_sibling(Nokogiri::XML::Text.new(seg, doc))
+                end
+              end
+
+              node.remove
+              changed = true
+            end
+          end
+
           return unless changed
 
           File.write(html_file, doc.to_html(encoding: 'UTF-8'))
           Common.log_success("#{html_file}: sideimage コンテナを正規化しました")
         end
         module_function :wrap_sideimage_blocks!
+
+        # ================================================================
+        # sideimage 内の脚注参照を処理
+        # ----------------------------------------------------------------
+        # Step 4 で page-footnote-print が生成された後に呼び出され、
+        # sideimage-body 内の [^urlN] を <sup><a href="#fnN">N</a></sup> に変換する。
+        # 印刷読者のために、リンクのURLを脚注として表示する。
+        # ================================================================
+        def process_sideimage_footnotes!(html_file)
+          content = File.read(html_file, encoding: 'utf-8')
+
+          doc = if defined?(Nokogiri::HTML5)
+                  Nokogiri::HTML5.parse(content)
+                else
+                  Nokogiri::HTML.parse(content, nil, 'UTF-8')
+                end
+
+          changed = false
+
+          # URLと脚注番号のマッピングを構築
+          url_to_footnote = {}
+          doc.css('aside.page-footnote-print').each do |aside|
+            fn_num = aside['data-footnote-number']
+            next unless fn_num
+
+            link = aside.at_css('a')
+            if link && link['href']
+              url_to_footnote[link['href']] = fn_num
+            end
+          end
+
+          return if url_to_footnote.empty?
+
+          # sideimage-body 内の <a> タグの直後にある [^urlN] を処理
+          doc.css('div.sideimage-body').each do |body|
+            body.css('a').each do |link_elem|
+              next_node = link_elem.next_sibling
+              next unless next_node&.text?
+
+              text = next_node.text
+              # [^urlN] または [^N] パターンを検出
+              next unless text.match?(/^\s*\[\^(?:url)?\d+\]/)
+
+              # リンクのURLから脚注番号を取得
+              target_url = link_elem['href']
+              fn_num = url_to_footnote[target_url]
+
+              if fn_num
+                # 脚注参照をスーパースクリプトリンクに置換
+                modified = text.sub(/^\s*\[\^(?:url)?\d+\]/, '')
+
+                # スーパースクリプトリンクを生成
+                sup = Nokogiri::XML::Node.new('sup', doc)
+                anchor = Nokogiri::XML::Node.new('a', doc)
+                anchor['href'] = "#fn#{fn_num}"
+                anchor['class'] = 'footnote-ref'
+                anchor['role'] = 'doc-noteref'
+                anchor.content = fn_num
+                sup.add_child(anchor)
+
+                # <a>タグの直後にスーパースクリプトを挿入
+                link_elem.add_next_sibling(sup)
+
+                # 残りのテキストを更新
+                if modified.strip.empty?
+                  next_node.remove
+                else
+                  next_node.content = modified
+                end
+
+                changed = true
+              else
+                # 対応する脚注が見つからない場合は参照を削除
+                cleaned = text.gsub(/\s*\[\^(?:url)?\d+\]/, '')
+                if cleaned.empty?
+                  next_node.remove
+                else
+                  next_node.content = cleaned
+                end
+                changed = true
+              end
+            end
+          end
+
+          return unless changed
+
+          File.write(html_file, doc.to_html(encoding: 'UTF-8'))
+          Common.log_success("#{html_file}: sideimage 脚注参照を変換しました")
+        end
+        module_function :process_sideimage_footnotes!
+
+        # ================================================================
+        # 脚注をドキュメント出現順に再番号付け
+        # ----------------------------------------------------------------
+        # sideimage 内の脚注と本文の脚注が混在する場合、処理順序により
+        # 番号が出現順にならないことがある。この関数で修正する。
+        # ================================================================
+        def renumber_footnotes_by_document_order!(html_file)
+          content = File.read(html_file, encoding: 'utf-8')
+
+          doc = if defined?(Nokogiri::HTML5)
+                  Nokogiri::HTML5.parse(content)
+                else
+                  Nokogiri::HTML.parse(content, nil, 'UTF-8')
+                end
+
+          # ドキュメント内のすべての脚注参照を出現順に収集
+          # footnote-ref クラスを持つ <a> タグ、または <sup> 内の <a> タグ
+          footnote_refs = []
+          doc.traverse do |node|
+            next unless node.element?
+
+            # <a class="footnote-ref"> または <sup><a class="footnote-ref">
+            if node.name == 'a' && node['class']&.include?('footnote-ref') && node['href']&.start_with?('#fn')
+              # 非表示の脚注アンカー（footnote-anchor）はスキップ
+              parent = node.parent
+              next if parent&.name == 'span' && parent['class']&.include?('footnote-anchor')
+
+              footnote_refs << node
+            end
+          end
+
+          return if footnote_refs.empty?
+
+          # 現在の脚注番号と新しい番号のマッピングを作成
+          # old_fn_id => new_number
+          renumber_map = {}
+          footnote_refs.each_with_index do |ref, idx|
+            new_number = idx + 1
+            old_fn_id = ref['href'].sub('#', '') # "fn5" -> "fn5"
+            renumber_map[old_fn_id] = new_number
+          end
+
+          # 既に正しい順序なら何もしない
+          needs_renumber = renumber_map.any? do |old_id, new_num|
+            old_num = old_id.sub('fn', '').to_i
+            old_num != new_num
+          end
+          return unless needs_renumber
+
+          # 脚注参照を更新
+          footnote_refs.each_with_index do |ref, idx|
+            new_number = idx + 1
+            old_href = ref['href']
+            old_fn_id = old_href.sub('#', '')
+
+            # href と id を更新
+            ref['href'] = "#fn#{new_number}"
+            ref['id'] = "fnref#{new_number}" if ref['id']
+
+            # 表示テキストを更新（<sup> 内か直接かを考慮）
+            if ref.parent&.name == 'sup'
+              ref.content = new_number.to_s
+            elsif ref.at_css('sup')
+              ref.at_css('sup').content = new_number.to_s
+            else
+              ref.content = new_number.to_s
+            end
+          end
+
+          # 脚注定義（aside と span）を更新
+          renumber_map.each do |old_fn_id, new_number|
+            # aside.page-footnote-print
+            aside = doc.at_css("aside##{old_fn_id}")
+            if aside
+              aside['id'] = "fn#{new_number}"
+              aside['data-footnote-number'] = new_number.to_s
+            end
+
+            # span.page-footnote-inline
+            inline = doc.at_css("span##{old_fn_id}")
+            if inline
+              inline['id'] = "fn#{new_number}"
+            end
+
+            # fnref も更新
+            old_fnref_id = old_fn_id.sub('fn', 'fnref')
+            fnref = doc.at_css("a##{old_fnref_id}")
+            if fnref
+              fnref['id'] = "fnref#{new_number}"
+            end
+          end
+
+          # 不要になった footnote-anchor 要素を削除
+          doc.css('span.footnote-anchor').each do |anchor|
+            parent = anchor.parent
+            anchor.remove
+            # 親が空の <p> になった場合は削除
+            parent.remove if parent&.name == 'p' && parent.content.strip.empty?
+          end
+
+          # 脚注定義を番号順にソート
+          # 各セクション内の aside.page-footnote-print を番号順に並び替える
+          doc.css('section').each do |section|
+            asides = section.css('> aside.page-footnote-print').to_a
+            next if asides.size < 2
+
+            # 番号順にソート
+            sorted_asides = asides.sort_by do |aside|
+              aside['data-footnote-number'].to_i
+            end
+
+            # 既にソート済みならスキップ
+            next if asides.map { |a| a['data-footnote-number'] } == sorted_asides.map { |a| a['data-footnote-number'] }
+
+            # 最初の aside の直前にマーカーを挿入
+            marker = Nokogiri::XML::Comment.new(doc, 'footnote-sort-marker')
+            asides.first.add_previous_sibling(marker)
+
+            # 元の aside を全て削除
+            asides.each(&:remove)
+
+            # マーカーの後にソート順に挿入
+            sorted_asides.reverse_each do |aside|
+              marker.add_next_sibling(aside)
+            end
+
+            # マーカーを削除
+            marker.remove
+          end
+
+          File.write(html_file, doc.to_html(encoding: 'UTF-8'))
+          Common.log_success("#{html_file}: 脚注を出現順に再番号付けしました")
+        end
+        module_function :renumber_footnotes_by_document_order!
 
         # sideimage コンテナ内の figure/img から width 指定（%）を取り出し、
         # 0.0〜1.0 の範囲の比率として返す

@@ -42,11 +42,13 @@ module Vivlio
             apply_frontmatter!
             normalize_image_paths!
             process_code_includes!
+            normalize_html_block_boundaries!
             escape_inline_code_html!
             transform_text_right_inlines!
             transform_book_cards!
             transform_table_rotations!
             transform_links!
+            expose_container_footnotes!
             write_output!
           end
 
@@ -72,6 +74,76 @@ module Vivlio
             Common.log_action('ソースコード読み込み記法をスキャンしています…')
             context.content = MarkdownTransformer.process_code_include(context.content)
             Common.log_success('ソースコード読み込み処理が完了しました')
+          end
+
+          # HTML ブロック終了タグの直後に Markdown 記法が続く場合、空行を挿入する
+          # VFM/CommonMark では、HTML ブロックの直後に空行がないと
+          # Markdown として解釈されないため、この正規化が必要
+          # 例:
+          #   </small>## 見出し
+          #   ->
+          #   </small>
+          #
+          #   ## 見出し
+          #
+          # また、</small> の後に空白のみの行がある場合も真の空行に置換する
+          def normalize_html_block_boundaries!
+            html_closing_tags = %w[small div span p blockquote pre table ul ol li dl dt dd figure figcaption aside article section header footer nav main]
+            closing_tag_pattern = %r{</\s*(#{html_closing_tags.join('|')})\s*>}
+
+            # コードブロック内では変換しない
+            lines = context.content.lines
+            out = []
+            in_code_block = false
+            prev_was_html_closing = false
+
+            lines.each do |line|
+              stripped = line.lstrip
+
+              if stripped.start_with?('```') && !stripped.start_with?('```include:')
+                in_code_block = !in_code_block
+                out << line
+                prev_was_html_closing = false
+                next
+              end
+
+              if in_code_block
+                out << line
+                prev_was_html_closing = false
+                next
+              end
+
+              # 前の行が HTML 閉じタグで、現在行が空白のみまたは Markdown 記法で始まる場合
+              # 真の空行を挿入して Markdown として解釈されるようにする
+              if prev_was_html_closing
+                if line.strip.empty?
+                  # 空白のみの行を真の空行に置換
+                  out << "\n"
+                  prev_was_html_closing = false
+                  next
+                elsif line.match?(/^\s*(#|\*|-|\d+\.)/)
+                  # Markdown 記法で始まる行の前に空行を追加
+                  out << "\n"
+                end
+              end
+
+              # HTML 閉じタグの直後に Markdown 見出し(#)や段落が続く場合、空行を挿入
+              # 例: </small>## 見出し → </small>\n\n## 見出し
+              if line.match?(%r{#{closing_tag_pattern}\s*(#|\*|-)})
+                # 閉じタグ部分と Markdown 部分を分離
+                modified = line.gsub(%r{(#{closing_tag_pattern})\s*(#|\*|-)}) do
+                  "#{::Regexp.last_match(1)}\n\n#{::Regexp.last_match(3)}"
+                end
+                out << modified
+                prev_was_html_closing = false
+              else
+                out << line
+                # 現在行が HTML 閉じタグで終わっているかチェック
+                prev_was_html_closing = line.strip.match?(closing_tag_pattern)
+              end
+            end
+
+            context.content = out.join
           end
 
           # インラインコード内の HTML 予約文字をエスケープする
@@ -175,6 +247,41 @@ module Vivlio
               Common.log_info('脚注化の対象リンクはありません')
             else
               Common.log_success('リンクの脚注化を適用しました')
+            end
+          end
+
+          # sideimage などのコンテナ内の脚注参照を VFM が認識できるように露出する
+          # VFM は :::{.class} コンテナ内の [^id] を認識しないため、
+          # コンテナ外に非表示の参照を追加して脚注定義を生成させる
+          def expose_container_footnotes!
+            # コンテナ内の脚注参照を収集
+            container_footnotes = []
+            in_container = false
+
+            context.content.lines.each do |line|
+              if line.match?(/^:::\s*\{\.sideimage/)
+                in_container = true
+              elsif line.strip == ':::'
+                in_container = false
+              elsif in_container
+                # [^urlN] または [^N] パターンを検出
+                line.scan(/\[\^(url\d+|\d+)\]/).each do |match|
+                  container_footnotes << match[0]
+                end
+              end
+            end
+
+            return if container_footnotes.empty?
+
+            # 脚注定義の直前に非表示の参照を追加
+            # これにより VFM が脚注定義を認識して <aside> を生成する
+            hidden_refs = container_footnotes.uniq.map { |id| "[^#{id}]" }.join('')
+            hidden_span = "<span class=\"footnote-anchor\" style=\"display:none\">#{hidden_refs}</span>\n\n"
+
+            # 最初の脚注定義の直前に挿入
+            if context.content.match?(/^\[\^url\d+\]:/m)
+              context.content = context.content.sub(/^(\[\^url\d+\]:)/m, "#{hidden_span}\\1")
+              Common.log_success("コンテナ内脚注参照を露出しました（#{container_footnotes.uniq.size}件）")
             end
           end
 
