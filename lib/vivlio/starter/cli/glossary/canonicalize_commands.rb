@@ -50,6 +50,9 @@ module Vivlio
             def glossary_canonicalize_check
               glossary_path = glossary_path_or_exit('glossary:canonicalize:check')
 
+              # YAML としての整合性も検証しておく（壊れていればここで終了）
+              load_glossary(glossary_path)
+
               original = File.read(glossary_path, encoding: 'UTF-8')
               canonical = canonicalize_glossary_text(original)
 
@@ -75,6 +78,9 @@ module Vivlio
             # ================================================================
             def glossary_canonicalize
               glossary_path = glossary_path_or_exit('glossary:canonicalize')
+
+              # YAML としての整合性も検証しておく（壊れていればここで終了）
+              load_glossary(glossary_path)
 
               original = File.read(glossary_path, encoding: 'UTF-8')
               canonical = canonicalize_glossary_text(original)

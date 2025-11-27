@@ -13,117 +13,82 @@ module Vivlio
         module_function
 
         # ================================================================
-        # Config: 設定ファイルと定数
-        # ------------------------------------------------
-        # - 対象: ./config/book.yml（プロジェクト設定）
-        # - 読み込み関数: load_config（Hash 正常化を含む）
-        # - 定数: CONFIG, 各種ディレクトリ/コマンド/ファイル設定
+        # Config: 必須設定ファイルと定数
         # ================================================================
-        # 設定ファイルを読み込み
-        # プロジェクトの設定ファイルのみを対象: ./config/book.yml
-        DEFAULT_CONFIG_FILE = 'config/book.yml'
-        CONFIG_FILE = DEFAULT_CONFIG_FILE
+        # 必須 YAML ファイル（config/ 配下）
+        REQUIRED_YAML_FILES = %w[
+          config/book.yml
+          config/catalog.yml
+          config/page_presets.yml
+          config/post_replace_list.yml
+        ].freeze
+
+        CONFIG_FILE = 'config/book.yml'
+        PAGE_PRESETS_FILE = 'config/page_presets.yml'
         FONT_SIZE_KEYS = %w[base_font_size column_font_size folio_font_size].freeze
-        DEFAULT_CONFIG_TEMPLATE = {
-          'directories' => {
-            'config' => 'config',
-            'contents' => 'contents',
-            'stylesheets' => 'stylesheets',
-            'images' => 'images',
-            'codes' => 'codes',
-            'chapter_templates' => 'chapter_templates'
-          },
-          'commands' => {
-            'vfm' => 'vfm'
-          },
-          'files' => {
-            'post_replace' => 'post_replace_list.yml'
-          }
-        }.freeze
-        PAGE_PRESETS_FILE = File.join('config', 'page_presets.yml')
         PAGE_PRESET_EXCLUDE_KEYS = %w[preset use preset_name].freeze
+
+        # ================================================================
+        # Utility: 必須 YAML ファイルの事前検証
+        # ------------------------------------------------
+        # - CONFIG 構築前に呼び出し、必須ファイルの存在・パースを一括検証
+        # - 不足または不正な場合はエラーメッセージを表示して終了
+        # ================================================================
+        def ensure_required_yaml_files!
+          REQUIRED_YAML_FILES.each do |relative_path|
+            unless File.file?(relative_path)
+              puts "❌ 必須設定ファイルが見つかりません: #{relative_path}"
+              puts '❌ コマンドを中止します'
+              raise SystemExit, 1
+            end
+
+            begin
+              yaml_text = File.read(relative_path, encoding: 'utf-8')
+              data = YAML.safe_load(yaml_text, permitted_classes: [], aliases: true)
+
+              # パース結果が Hash でなければ不正（空ファイルや配列など）
+              unless data.is_a?(Hash)
+                puts "❌ 必須設定ファイルの形式が不正です: #{relative_path}"
+                puts '❌ コマンドを中止します'
+                raise SystemExit, 1
+              end
+            rescue SystemExit
+              raise
+            rescue StandardError
+              puts "❌ 必須設定ファイルの形式が不正です: #{relative_path}"
+              puts '❌ コマンドを中止します'
+              raise SystemExit, 1
+            end
+          end
+        end
 
         # ================================================================
         # Utility: 設定読み込み load_config
         # ------------------------------------------------
-        # - YAML を読み込み、Hash でない場合はデフォルトにフォールバック
-        # - 存在しない場合もデフォルトにフォールバック
+        # - ensure_required_yaml_files! で事前検証済みの前提
+        # - config/book.yml を読み込み、ページプリセットを適用して返す
         # ================================================================
-        # config/book.yml を読み込み、必要に応じてプリセットを適用した設定を返す
         def load_config
-          if File.exist?(CONFIG_FILE)
-            config = load_config_from_file
-            apply_page_preset!(config)
-            config
-          else
-            warn_missing_config_file
-            default_config
-          end
-        end
-
-        # config/book.yml を読み込み Hash を返す（異常時はデフォルト設定）
-        def load_config_from_file
           cfg_text = File.read(CONFIG_FILE, encoding: 'utf-8')
-          cfg = YAML.safe_load(cfg_text, permitted_classes: [], aliases: true)
-          return cfg if cfg.is_a?(Hash)
-
-          warn_invalid_config_structure
-          default_config
-        rescue StandardError => e
-          warn_config_load_error(e)
-          default_config
-        end
-
-        # DEFAULT_CONFIG_TEMPLATE のディープコピーを返す
-        def default_config
-          Marshal.load(Marshal.dump(DEFAULT_CONFIG_TEMPLATE))
-        end
-
-        # 設定ファイルが存在しない場合の警告を出力
-        def warn_missing_config_file
-          puts "⚠️ 設定ファイルが見つかりません: #{CONFIG_FILE}"
-          puts '⚠️ デフォルト設定を使用します'
-        end
-
-        # 設定ファイルが異常な構造だった場合の警告を出力
-        def warn_invalid_config_structure
-          puts "⚠️ 設定ファイルの内容が不正です（Hash ではありません）: #{CONFIG_FILE}"
-          puts '⚠️ デフォルト設定を使用します'
-        end
-
-        # 読み込み時の例外を通知する
-        def warn_config_load_error(error)
-          puts "⚠️ 設定ファイルの読み込みに失敗しました: #{CONFIG_FILE} (#{error.class}: #{error.message})"
-          puts '⚠️ デフォルト設定を使用します'
+          config = YAML.safe_load(cfg_text, permitted_classes: [], aliases: true)
+          apply_page_preset!(config)
+          config
         end
 
         # page プリセット設定を解決し、単位を正規化する
+        # config/page_presets.yml は ensure_required_yaml_files! で事前検証済み
         def apply_page_preset!(cfg)
           page_cfg = cfg['page'].is_a?(Hash) ? cfg['page'] : {}
           preset_name = extract_page_preset_name(page_cfg)
           return cfg if blank?(preset_name)
 
           presets = load_page_presets
-          return cfg unless presets.is_a?(Hash)
-
           selected = presets[preset_name.to_s]
-          unless selected.is_a?(Hash)
-            puts "⚠️ ページプリセットが見つかりません: #{preset_name} (#{PAGE_PRESETS_FILE})"
-            return cfg
-          end
+          return cfg unless selected.is_a?(Hash)
 
           overrides = page_cfg.reject { |k, _| PAGE_PRESET_EXCLUDE_KEYS.include?(k.to_s) }
           cfg['page'] = selected.merge(overrides)
-
-          begin
-            normalize_page_units!(cfg['page'])
-          rescue StandardError => e
-            puts "⚠️ base_line_height の単位正規化で例外: #{e.class}: #{e.message}"
-          end
-
-          cfg
-        rescue StandardError => e
-          puts "⚠️ ページプリセットの適用中にエラー: #{e.class}: #{e.message}"
+          normalize_page_units!(cfg['page'])
           cfg
         end
 
@@ -135,21 +100,11 @@ module Vivlio
         end
 
         # ページプリセット定義を読み込む
+        # config/page_presets.yml の存在・YAML パースは ensure_core_yaml_files! で
+        # 事前に検証済みである前提とし、ここでは単純に読み込んで返す。
         def load_page_presets
-          unless File.exist?(PAGE_PRESETS_FILE)
-            puts "⚠️ ページプリセットファイルが見つかりません: #{PAGE_PRESETS_FILE}"
-            return nil
-          end
-
           presets_text = File.read(PAGE_PRESETS_FILE, encoding: 'utf-8')
-          presets = YAML.safe_load(presets_text, permitted_classes: [], aliases: true)
-          return presets if presets.is_a?(Hash)
-
-          puts "⚠️ #{PAGE_PRESETS_FILE} の形式が不正です（Hash ではありません）"
-          nil
-        rescue StandardError => e
-          puts "⚠️ ページプリセットの読み込みに失敗しました: #{PAGE_PRESETS_FILE} (#{e.class}: #{e.message})"
-          nil
+          YAML.safe_load(presets_text, permitted_classes: [], aliases: true)
         end
 
 
@@ -479,6 +434,7 @@ module Vivlio
         # ------------------------------------------------
         # - CONFIG をロードし、各種ディレクトリ/コマンド/ファイルの定数を定義
         # ================================================================
+        ensure_required_yaml_files!
         CONFIG = load_config
 
         # ディレクトリ設定

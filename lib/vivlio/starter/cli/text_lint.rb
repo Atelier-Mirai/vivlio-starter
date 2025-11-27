@@ -16,6 +16,10 @@ module Vivlio
         DEFAULT_CONFIG_PATH = Common.resolve_path_from_root(DEFAULT_CONFIG_RELATIVE)
         DEFAULT_CONFIG_DISPLAY = Common.relative_path_from_root(DEFAULT_CONFIG_PATH) || DEFAULT_CONFIG_PATH
 
+        # textlint 用サポート YAML（allowlist/prh）の既定パス
+        TEXTLINT_ALLOWLIST_RELATIVE = File.join(Common::CONFIG_DIR, 'textlint_allowlist.yml')
+        TEXTLINT_PRH_RELATIVE       = File.join(Common::CONFIG_DIR, 'textlint_prh.yml')
+
         TEXT_LINT_DESC = {
           short: 'contents/ 以下の Markdown を textlint で検査します',
           long: <<~DESC
@@ -80,6 +84,7 @@ module Vivlio
           def call
             ensure_textlint_available!
             ensure_config_present!
+            ensure_support_yaml_files!
 
             files = resolve_targets
             if files.empty?
@@ -158,6 +163,25 @@ module Vivlio
 
             display_path = Common.relative_path_from_root(path) || path
             raise TextLintError, "textlint 設定ファイルが見つかりません: #{display_path}"
+          end
+
+          # textlint 用サポート YAML (allowlist/prh) の存在・パースを検証する
+          def ensure_support_yaml_files!
+            [TEXTLINT_ALLOWLIST_RELATIVE, TEXTLINT_PRH_RELATIVE].each do |rel|
+              path = Common.resolve_path_from_root(rel)
+              display = Common.relative_path_from_root(path) || path
+
+              unless path && File.file?(path)
+                raise TextLintError, "textlint サポート用設定ファイルが見つかりません: #{display}"
+              end
+
+              begin
+                yaml_text = File.read(path, encoding: 'UTF-8')
+                YAML.safe_load(yaml_text, permitted_classes: [], aliases: true)
+              rescue StandardError => e
+                raise TextLintError, "textlint サポート用設定ファイルの読み込みに失敗しました: #{display} (#{e.class}: #{e.message})"
+              end
+            end
           end
 
           def resolve_targets

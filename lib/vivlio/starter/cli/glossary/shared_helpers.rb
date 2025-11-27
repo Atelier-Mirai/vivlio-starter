@@ -28,10 +28,21 @@ module Vivlio
         end
 
         # glossary.yml を読み込み、terms セクション付きの Hash を返す
+        # YAML として壊れている場合や Hash でない場合はエラー終了する
         def load_glossary(path)
-          (YAML.load_file(path) || {}).tap do |hash|
-            hash['terms'] ||= []
+          text = File.read(path, encoding: 'UTF-8')
+          data = YAML.safe_load(text, permitted_classes: [], aliases: true)
+
+          unless data.is_a?(Hash)
+            warn "[glossary] YAML の形式が不正です（Hash ではありません）: #{GLOSSARY_DISPLAY_PATH}"
+            exit 1
           end
+
+          data['terms'] ||= []
+          data
+        rescue StandardError => e
+          warn "[glossary] YAML の読み込みに失敗しました: #{GLOSSARY_DISPLAY_PATH} (#{e.class}: #{e.message})"
+          exit 1
         end
 
         # lint / fix コマンドが扱いやすい形に terms を整形して取得する
