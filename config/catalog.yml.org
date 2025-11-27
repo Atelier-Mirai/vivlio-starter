@@ -12,10 +12,7 @@ PREFACE:
 
 ## 本文
 CHAPTERS:
-  - 01-computer-journey
-  - 11-install
-  - 12-tutorial
-  - 13-customize
+  - 11-15
 
 # ## 付録
 APPENDICES:

@@ -99,6 +99,7 @@
 ### Fixed
 - **前書きのHTMLブロック境界の正規化**: `pre_process` で HTML ブロック閉じタグ直後の空行を正規化し、`</small>` 直後の `## 対象読者` などが Markdown 見出しとして正しく解釈されるように修正。
 - **sideimage 内の外部リンク脚注サポート**: `:::{.sideimage-right}` / `:::{.sideimage-left}` コンテナ内の Markdown リンクを後処理で `<a>` タグに変換し、対応する URL 脚注をページ脚注として生成。sideimage 内の脚注参照も本文の出現順に合わせて番号付けし、脚注定義も番号順に並ぶように調整。
+- **catalog.yml 更新時のコメント保持**: `CatalogUpdater` の保存処理を見直し、`vs create` / `vs delete` / `vs rename` / `vs renumber` などで `catalog.yml` を更新する際にも、冒頭の説明コメントと各セクション見出しコメント、および Tips セクションを含むフッターコメントが失われないようにした。
 
 ## [0.17.0] - 2025-11-26
 
