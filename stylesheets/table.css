@@ -37,8 +37,10 @@ table {
   table-layout: auto;
 }
 
-/* 見出し風のフォントスタイル（段落のみ） */
-p:has(+ table) {
+/* 見出し風のフォントスタイル（太字のみの段落のみ）
+   **見出し** のように全体が太字の段落のみキャプションとして扱う。
+   通常のテキストは普通の段落として表示する。 */
+p:has(> strong:only-child):has(+ table) {
   /* h4 相当のトーンに寄せる */
   font-family: var(--font-header);
   /* stylelint-disable-next-line property-no-unknown */
@@ -50,18 +52,19 @@ p:has(+ table) {
 
 /* 表直前のキャプション段落内の strong は、通常の強調ではなく
    表キャプションとして扱う（色は本文色・太さは中程度） */
-p:has(+ table) strong {
+p:has(> strong:only-child):has(+ table) strong {
   font-weight: 600;
   color: var(--color-text);
 }
 
 /* h4 と同様の先頭マーカー */
-p:has(+ table)::before {
+p:has(> strong:only-child):has(+ table)::before {
   content: none;
 }
 
-/* 表の直前にある見出し相当の段落・見出しを中央寄せ */
-body:not(.appendix) p:has(+ table),
+/* 表の直前にある見出し相当の段落・見出しを中央寄せ
+   段落の場合は、内容が太字のみ（**見出し**）のときだけ中央寄せ */
+body:not(.appendix) p:has(> strong:only-child):has(+ table),
 body:not(.appendix) h1:has(+ table),
 body:not(.appendix) h2:has(+ table),
 body:not(.appendix) h3:has(+ table),

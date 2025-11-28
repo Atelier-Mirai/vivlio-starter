@@ -101,6 +101,8 @@
 - **sideimage 内の外部リンク脚注サポート**: `:::{.sideimage-right}` / `:::{.sideimage-left}` コンテナ内の Markdown リンクを後処理で `<a>` タグに変換し、対応する URL 脚注をページ脚注として生成。sideimage 内の脚注参照も本文の出現順に合わせて番号付けし、脚注定義も番号順に並ぶように調整。
 - **catalog.yml 更新時のコメント保持**: `CatalogUpdater` の保存処理を見直し、`vs create` / `vs delete` / `vs rename` / `vs renumber` などで `catalog.yml` を更新する際にも、冒頭の説明コメントと各セクション見出しコメント、および Tips セクションを含むフッターコメントが失われないようにした。
 
+ - **テーブル直前段落のキャプション判定の改善**: `stylesheets/table.css` の `p:has(+ table)` セレクタを `p:has(> strong:only-child):has(+ table)` に変更し、テーブル直前の通常段落はキャプション扱いにせず、`**見出し**` 形式の段落のみを表キャプションとしてスタイリングするように修正。
+
 ### Changed
 - **設定 YAML の事前検査を強化**: `vs` コマンド起動時に `config/book.yml` 不在/破損で即座にエラー終了するようにし、さらに `config/catalog.yml` / `config/page_presets.yml` / `config/post_replace_list.yml` についても存在確認と YAML パースのプリフライトチェックを追加。`vs glossary:*` 実行時には `config/glossary.yml` の YAML 構造を検証し、`vs text:lint` 実行時には `config/textlint_allowlist.yml` / `config/textlint_prh.yml` の存在・パースエラーを明示的に報告して処理を中止するようにした。
 
