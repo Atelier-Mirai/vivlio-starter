@@ -136,6 +136,13 @@ module Vivlio
                   Common.log_error("#{html_file}: sideimage ラップ中にエラー: #{e.message}")
                 end
 
+                # Step 3.5: image-group コンテナの列比率を設定
+                begin
+                  process_image_groups!(html_file)
+                rescue StandardError => e
+                  Common.log_error("#{html_file}: image-group 処理中にエラー: #{e.message}")
+                end
+
                 # Step 4: 章末脚注→ページ脚注変換
                 content = File.read(html_file, encoding: 'utf-8')
                 converted = FootnoteConverter.convert_endnotes_to_page_footnotes!(content)
@@ -443,6 +450,123 @@ module Vivlio
           Common.log_success("#{html_file}: sideimage コンテナを正規化しました")
         end
         module_function :wrap_sideimage_blocks!
+
+        # ================================================================
+        # image-group コンテナの列比率設定
+        # ----------------------------------------------------------------
+        # VFM が出力する
+        #   <div class="image-group">
+        #     <figure><img width="30%">...</figure>
+        #     <figure><img>...</figure>
+        #   </div>
+        # のような構造で、先頭画像の width 指定を検出し、
+        # CSS 変数 --image-group-col1, --image-group-col2 として
+        # コンテナの style 属性に埋め込む。
+        # ================================================================
+        def process_image_groups!(html_file)
+          content = File.read(html_file, encoding: 'utf-8')
+
+          doc = if defined?(Nokogiri::HTML5)
+                  Nokogiri::HTML5.parse(content)
+                else
+                  Nokogiri::HTML.parse(content, nil, 'UTF-8')
+                end
+
+          changed = false
+
+          doc.css('div.image-group').each do |container|
+            # 先頭の figure または img を取得
+            first_figure = container.at_css('> figure')
+            first_img = first_figure&.at_css('img') || container.at_css('> img')
+
+            next unless first_img || first_figure
+
+            # 先頭画像の width 指定を取得
+            fraction = extract_image_group_width_fraction(first_figure, first_img)
+            next unless fraction
+
+            col1_fr = fraction.round(3)
+            col2_fr = (1.0 - fraction).round(3)
+
+            existing_style = container['style'].to_s
+            # 既存の image-group 用変数定義を一度取り除く
+            cleaned_style = existing_style
+                             .gsub(/--image-group-col1:[^;]+;?/, '')
+                             .gsub(/--image-group-col2:[^;]+;?/, '')
+                             .strip
+
+            var_style = "--image-group-col1: #{col1_fr}fr; --image-group-col2: #{col2_fr}fr"
+
+            container['style'] = if cleaned_style.empty?
+                                   var_style
+                                 else
+                                   "#{cleaned_style.chomp(';')}; #{var_style}"
+                                 end
+
+            # 画像側の width 指定を削除（グリッド列幅で制御）
+            normalize_image_group_width!(first_figure, first_img)
+
+            changed = true
+          end
+
+          return unless changed
+
+          File.write(html_file, doc.to_html(encoding: 'UTF-8'))
+          Common.log_success("#{html_file}: image-group コンテナの列比率を設定しました")
+        end
+        module_function :process_image_groups!
+
+        # image-group 内の先頭画像から width 指定（%）を取り出し、
+        # 0.0〜1.0 の範囲の比率として返す
+        def extract_image_group_width_fraction(figure, img)
+          width_attr = ''
+          width_attr = figure['width'].to_s if figure
+          width_attr = img['width'].to_s if width_attr.empty? && img
+
+          if (m = width_attr.match(/([0-9]+(?:\.[0-9]+)?)\s*%/))
+            return sanitize_image_group_fraction(m[1].to_f / 100.0)
+          end
+
+          style_sources = []
+          style_sources << figure['style'].to_s if figure
+          style_sources << img['style'].to_s if img
+
+          style_sources.compact.each do |style|
+            if (m = style.match(/width\s*:\s*([0-9]+(?:\.[0-9]+)?)\s*%/))
+              return sanitize_image_group_fraction(m[1].to_f / 100.0)
+            end
+          end
+
+          nil
+        end
+        module_function :extract_image_group_width_fraction
+
+        # パーセンテージから得た比率を安全な範囲に丸める
+        def sanitize_image_group_fraction(raw)
+          return nil unless raw.positive?
+
+          # 極端な比率を避けるため、5%〜95% にクランプ
+          [[raw, 0.05].max, 0.95].min
+        end
+        module_function :sanitize_image_group_fraction
+
+        # 列幅でレイアウトを制御するため、figure/img 側の width 指定は取り除く
+        def normalize_image_group_width!(figure, img)
+          [figure, img].compact.each do |node|
+            node.remove_attribute('width')
+
+            style = node['style'].to_s
+            next if style.empty?
+
+            cleaned = style.gsub(/width\s*:\s*[^;]+;?/, '').strip
+            if cleaned.empty?
+              node.remove_attribute('style')
+            else
+              node['style'] = cleaned
+            end
+          end
+        end
+        module_function :normalize_image_group_width!
 
         # ================================================================
         # sideimage 内の脚注参照を処理

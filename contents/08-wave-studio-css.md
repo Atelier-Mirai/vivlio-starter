@@ -1,7 +1,7 @@
-# wave-studio を作ろう
+# studio-wave を作ろう
 
 :::{.chapter-lead}
-前章までで、HTMLとCSSの考え方を学びました。この章では、実際に手を動かしながら `wave-studio` のトップページを段階的に作り上げていきます。
+前章までで、HTMLとCSSの考え方を学びました。この章では、実際に手を動かしながら `studio-wave` のトップページを段階的に作り上げていきます。
 
 3つのステップを経て、シンプルな骨組みから、色と余白を整え、最終的にはコンポーネントに分割された本格的なサイトへと育てていきましょう。
 :::
@@ -10,7 +10,7 @@
 
 ## 3つのステップで学ぶ
 
-`wave-studio` プロジェクトには、学習用に3つの段階が用意されています：
+`studio-wave` プロジェクトには、学習用に3つの段階が用意されています：
 
 | ステップ | フォルダ | 学べること |
 |---------|---------|-----------|
@@ -20,50 +20,46 @@
 
 各ステップで完成形のコードが用意されていますので、手元で動かしながら学べます。分からないところはAIに質問しながら進めましょう。
 
+---
+
 ### 各ステップの完成イメージ
 
 3つのステップを経て、サイトがどのように変化していくかを見てみましょう。
 
 **Step 1（work/）: 骨組み**
 
-:::{.flex-container}
+　　　
+
 ![iPhone表示](work_iphone.webp){width=35%}
-![iPad表示](work_ipad.webp){width=55%}
-:::
 
 CSS Grid で基本的なレイアウトを作成。装飾は最小限ですが、構造は整っています。
 
+---
+
 **Step 2（work2/）: 見た目の強化**
 
-:::{.flex-container}
-![iPhone表示](work2_iphone.webp){width=35%}
-![iPad表示](work2_ipad.webp){width=55%}
-:::
+　　　
+
+![iPhone表示](work2_iphone.webp){width=30%}
 
 色・フォント・グラデーション・ホバーエフェクトが加わり、洗練された印象に。
 
+---
+
 **Step 3（work3/）: コンポーネント分割**
 
-:::{.flex-container}
-![iPhone表示](work3_iphone.webp){width=35%}
-![iPad表示](work3_ipad.webp){width=55%}
+:::{.image-group}
+![iPhone表示](work3_iphone.webp){width=30%}
+![iPad表示](work3_ipad.webp)
 :::
 
-外部リソース（Font Awesome、Google Fonts）も活用した完成形。CSSはファイル分割され保守しやすい構成に。
-
-
+外部リソース（Font Awesome）も活用した完成形。レスポンシブ対応も果たし、CSSはファイル分割され保守しやすい構成に。
 
 ## Step 1: 骨組みを作る
 
 ### 目標
 
 まずは `work/` フォルダで、HTML と最小限の CSS を使って基本的なレイアウトを作ります。
-
-:::{.sideimage-right}
-![](work_iphone.webp){width=30%}
-
-Step 1 の完成形（iPhone表示）です。装飾は最小限ですが、CSS Grid によってヘッダー・メイン・フッターが整然と配置されています。
-:::
 
 ### HTMLの構造
 
@@ -156,12 +152,6 @@ Step 1 で分からないことがあったら：
 ### 目標
 
 `work2/` フォルダでは、Step 1 の骨組みに色・フォント・エフェクトを追加して、見た目を整えます。
-
-:::{.sideimage-right}
-![](work2_iphone.webp){width=30%}
-
-Step 2 の完成形（iPhone表示）です。日本の伝統色、Webフォント、ホバーエフェクトなどが加わり、洗練された印象になっています。
-:::
 
 ### CSSカスタムプロパティで色を定義
 
@@ -297,12 +287,6 @@ Step 2 で分からないことがあったら：
 ### 目標
 
 `work3/` フォルダでは、CSSを役割ごとのファイルに分割し、保守しやすい構成にします。
-
-:::{.sideimage-right}
-![](work3_iphone.webp){width=30%}
-
-Step 3 の完成形（iPhone表示）です。見た目はStep 2とほぼ同じですが、CSSがコンポーネント単位で整理され、アイコンフォントも加わっています。
-:::
 
 ### ファイル構成
 
@@ -449,7 +433,7 @@ Step 3 で分からないことがあったら：
 
 ### 4. 完成形のコードを参考にする
 
-`wave-studio` のコード全体は [GitHub](https://github.com/Atelier-Mirai/wave-studio) で公開しています。困ったときは完成形を見て、自分のコードと比較してみましょう。
+`studio-wave` のコード全体は [GitHub](https://github.com/Atelier-Mirai/studio-wave) で公開しています。困ったときは完成形を見て、自分のコードと比較してみましょう。
 
 
 

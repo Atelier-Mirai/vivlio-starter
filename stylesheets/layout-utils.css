@@ -312,6 +312,37 @@ figure.float-start {
   block-size: auto;
 }
 
+/* 画像を横並びにするコンテナ（CSS Grid 版）
+   使用例（VFM コンテナ）:
+   :::{.image-group}
+   ![alt](a.webp)
+   ![alt](b.webp)
+   :::
+
+   比率指定（先頭画像の幅を指定）:
+   :::{.image-group}
+   ![alt](small.webp){width=30%}
+   ![alt](large.webp)
+   :::
+   ※ post_process で width=30% を検出し、
+     --image-group-col1: 0.3fr; --image-group-col2: 0.7fr; に変換
+*/
+.image-group {
+  display: grid;
+  grid-template-columns:
+    minmax(0, var(--image-group-col1, 1fr))
+    minmax(0, var(--image-group-col2, 1fr));
+  gap: 1rem;
+  align-items: start;
+  margin-block: 0.5lh;
+}
+
+.image-group img {
+  inline-size: 100%;
+  block-size: auto;
+  object-fit: contain;
+}
+
 /* グリッド内の配置 */
 .align-top {
   align-items: start;

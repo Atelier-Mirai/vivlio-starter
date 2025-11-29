@@ -20,7 +20,7 @@ module Vivlio
           short: '目次HTMLを生成します（引数でHTMLを列挙した場合はそれらのみ対象）',
           long: <<~DESC
             指定した HTML を対象に目次を生成します。引数が無い場合はプロジェクト直下の HTML を自動検出し、
-            以下を除外して処理します: _titlepage.html / _legalpage.html / 03-toc.html / _colophon.html。
+            以下を除外して処理します: _titlepage.html / _legalpage.html / _toc.html / _colophon.html。
 
             例:
               vs toc 11-gift.html 12-tutorial.html
@@ -89,8 +89,7 @@ module Vivlio
         # 対象となる HTML ファイルを解決する
         class HtmlTargetResolver
           # 新仕様: _titlepage, _legalpage, _colophon を除外
-          EXCLUDE_FILES = %w[_titlepage.html _legalpage.html 03-toc.html _colophon.html
-                             00-titlepage.html 01-legalpage.html 99-colophon.html].freeze
+          EXCLUDE_FILES = %w[_titlepage.html _legalpage.html _toc.html _colophon.html].freeze
 
           def initialize(htmls, base_dir:)
             @htmls = Array(htmls)
@@ -315,7 +314,7 @@ module Vivlio
             return if text.empty? || heading_id.nil? || heading_id.empty?
 
             href = "#{file_name}##{heading_id}"
-            %(<li class="#{CSS_CLASS}" data-href="#{href}">#{text}</li>\n)
+            %(<li class="#{CSS_CLASS}" data-href="#{href}"><span class="toc-title" data-href="#{href}"><span class="toc-label">#{text}</span></span></li>\n)
           end
         end
 
@@ -323,7 +322,9 @@ module Vivlio
           # 見出し情報から TOC 用の <li> 文字列を生成する
           def list_markup
             href_attribute = href && !href.empty? ? %( data-href="#{href}") : ''
-            %(<li class="#{css_class}"#{href_attribute}>#{text})
+            title_attrs = ['class="toc-title"']
+            title_attrs << %(data-href="#{href}") if href && !href.empty?
+            %(<li class="#{css_class}"#{href_attribute}><span #{title_attrs.join(' ')}><span class="toc-label">#{text}</span></span>)
           end
         end
 
@@ -468,12 +469,12 @@ module Vivlio
 
           attr_reader :document, :base_dir
 
-          # 03-toc.md を書き出す
+          # _toc.md を書き出す
           def write_markdown
             File.write(md_path, document, encoding: 'utf-8')
           end
 
-          # VFM を呼び出し 03-toc.html を生成する
+          # VFM を呼び出し _toc.html を生成する
           def generate_html
             system(%(#{Common::VFM_COMMAND} "#{md_path}" > "#{html_path}"))
           end
@@ -486,18 +487,18 @@ module Vivlio
               File.write(html_path, content, encoding: 'utf-8')
               Common.log_success('目次生成完了')
             else
-              Common.log_warn('03-toc.html の生成に失敗しました（VFM 実行エラー）')
+              Common.log_warn('_toc.html の生成に失敗しました（VFM 実行エラー）')
             end
           end
 
-          # 03-toc.md のパスを返す
+          # _toc.md のパスを返す
           def md_path
-            @md_path ||= base_dir.join('03-toc.md')
+            @md_path ||= base_dir.join('_toc.md')
           end
 
-          # 03-toc.html のパスを返す
+          # _toc.html のパスを返す
           def html_path
-            @html_path ||= base_dir.join('03-toc.html')
+            @html_path ||= base_dir.join('_toc.html')
           end
         end
       end
