@@ -81,7 +81,7 @@ module Vivlio
                       .map(&:to_i)
                       .select { |n| allowed_numbers.include?(n) }
 
-            numbers << 3 if File.exist?('03-toc.html')
+            # TOC (_toc.html) はアウトライン生成時に別途処理されるため、ここでは追加不要
 
             numbers.uniq!
             numbers.sort!

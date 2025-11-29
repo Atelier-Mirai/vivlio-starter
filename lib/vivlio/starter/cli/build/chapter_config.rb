@@ -146,9 +146,10 @@ module Vivlio
           end
 
           # ベース名配列を章番号レンジ＋keepでフィルタ
+          # 注: _toc.html などアンダースコア始まりのファイルは \A(\d+)- パターンにマッチしないため自動的に除外される
           #
           # @param basenames [Array<String>] 拡張子なしのベース名配列
-          # @param range [Range] 章番号レンジ（例: 11..89, 91..97）
+          # @param range [Range] 章番号レンジ（例: 1..89, 90..98）
           # @param keep_numbers [Array<Integer>, nil] 許可する章番号配列
           # @return [Array<String>] フィルタ済みベース名配列
           def filter_basenames_by_range(basenames, range, keep_numbers = nil)
@@ -167,6 +168,7 @@ module Vivlio
           end
 
           # ディレクトリ内の *.html から、章番号レンジと keep_numbers でフィルタ
+          # 注: アンダースコア始まりのファイルは \A(\d+)- パターンにマッチしないため自動的に除外される
           def htmls_for_range(base_dir, range, keep_numbers = nil)
             Dir.glob(File.join(base_dir, '*.html')).select do |path|
               bn = File.basename(path, '.html')

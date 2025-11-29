@@ -44,29 +44,6 @@ module Vivlio
             ordered + remaining_sorted
           end
 
-          # 付録を奇数（右）開始にするための空白HTMLを生成
-          def ensure_appendices_guard_html(base_dir = '.')
-            path = File.join(base_dir, '90-appendices-guard.html')
-            width, height = Build::Utilities.page_size_strings_from_config
-            html = <<~HTML
-              <!doctype html>
-              <html>
-              <head>
-                <meta charset="utf-8">
-                <title>Appendices Guard</title>
-                <style>
-                  @page {
-                    size: #{width} #{height};
-                  }
-                </style>
-              </head>
-              <body></body>
-              </html>
-            HTML
-            File.write(path, html, encoding: 'utf-8')
-            path
-          end
-
           # 章ごとの処理に計時を付与して実行
           def time_step_for_chapter(chapter, step)
             label = "#{chapter} / #{step}"

@@ -176,7 +176,7 @@ module Vivlio
               Common.echo_always "  - 画像最適化: #{resize_desc}"
               Common.echo_always "  - 本文(11..89): #{main_targets.empty? ? '対象なし' : main_targets.join(', ')}"
               Common.echo_always "  - 付録(91..97): #{appendix_targets.empty? ? '対象なし' : appendix_targets.join(', ')}"
-              Common.echo_always '  - TOC: 03-toc.html / 03-toc.pdf'
+              Common.echo_always '  - TOC: _toc.html / _toc.pdf'
               Common.echo_always '  - 全体PDF: sections.pdf → 章/TOCに分割'
               Common.echo_always "  - PDF圧縮: #{options[:compress] == false ? 'スキップ' : '実行'}"
               Common.echo_always "  - クリーン: #{options[:clean] == false ? 'スキップ' : '実行'}"

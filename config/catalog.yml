@@ -13,14 +13,17 @@ PREFACE:
 ## 本文
 CHAPTERS:
   - 01-computer-journey
+  - 02-person
+  - 03-ai-overview
   - 04-ai-coding
-  - 11-install
-  - 12-tutorial
-  - 13-customize
+  - 05-env
+  - 06-first-html
+  - 07-first-css
+  - 08-wave-studio-css
 
 # ## 付録
-APPENDICES:
-  - 91-92
+# APPENDICES:
+  # - 91-92
 
 # ## あとがき
 POSTFACE:

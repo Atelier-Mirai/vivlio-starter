@@ -9,12 +9,12 @@ module Vivlio
       # Module: CleanCommands
       # ------------------------------------------------------------------------------
       # ビルド生成物や中間ファイルを安全にクリーンアップするコマンド群。
-      # .vivliostyle ディレクトリ、生成された *.html や 03-toc.md、entries.js、
+      # .vivliostyle ディレクトリ、生成された *.html や _toc.md、entries.js、
       # 一時/中間PDF を削除し、最終成果物（output.pdf, output_compressed.pdf）は保持する。
       #
       # 主な削除対象:
       #   - ディレクトリ: .vivliostyle
-      #   - 生成ファイル: *.html, 03-toc.md, entries.js
+      #   - 生成ファイル: *.html, _toc.md, entries.js
       #   - 中間PDF: titlepage/frontmatter/chapters_appendices 等の作業用PDF
       # 主な保持対象:
       #   - 最終PDF: output.pdf, output_compressed.pdf（configにより名称可変）
@@ -50,7 +50,7 @@ module Vivlio
             # ================================================================
             # Command: clean（生成物のクリーンアップ）
             # ------------------------------------------------
-            # - 削除: .vivliostyle, *.html, 03-toc.md, entries.js, 一時/中間PDF
+            # - 削除: .vivliostyle, *.html, _toc.md, entries.js, 一時/中間PDF
             # - 保持: 最終成果物の PDF（output.pdf, output_compressed.pdf）
             # - 既知の保持対象MD: README.md, ROADMAP.md, CONTENT-LICENSE.md,
             #   THIRD-PARTY-LICENSES.md, CHANGELOG.md
@@ -112,11 +112,9 @@ module Vivlio
               cleanup_patterns = [
                 # HTML/JS 中間生成物
                 '*.html',
-                # 付録ガードHTML（明示指定; パターン変更時の保険）
-                '90-appendices-guard.html',
                 'entries.js',
                 # 生成される一時/補助的な Markdown（任意）
-                '03-toc.md',
+                '_toc.md',
                 # pre_process によりプロジェクトルートへ展開される章系の Markdown のみ削除対象に限定
                 # 例: 11-install.md など（任意の *.md やドキュメントは削除しない）
                 '[0-9][0-9]-*.md',
@@ -128,7 +126,7 @@ module Vivlio
                 # 内部名ベースの中間PDF
                 '_titlepage.pdf', '_legalpage.pdf', '_colophon.pdf',
                 '_titlepage_legalpage.pdf', '_preface_toc.pdf', '_sections.pdf',
-                '00-preface.pdf', '03-toc.pdf',
+                '00-preface.pdf', '_toc.pdf',
                 'blank_page.pdf', 'blank_frontmatter_insert.pdf',
                 'output_tmp*.pdf'
               ]

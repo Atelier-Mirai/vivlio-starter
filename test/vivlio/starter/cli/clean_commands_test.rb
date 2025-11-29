@@ -225,7 +225,7 @@ module Vivlio
           FileUtils.mkdir_p('.vivliostyle')
           write_file('.vivliostyle/placeholder.txt')
 
-          %w[11-sample.html entries.js 03-toc.md 11-sample.md _titlepage.md].each do |name|
+          %w[11-sample.html entries.js _toc.md 11-sample.md _titlepage.md].each do |name|
             write_file(name)
           end
 
@@ -239,7 +239,7 @@ module Vivlio
         def assert_clean_directory
           refute Dir.exist?('.vivliostyle'), '.vivliostyle ディレクトリは削除されるべきです'
 
-          %w[11-sample.html entries.js 03-toc.md 11-sample.md _titlepage.md
+          %w[11-sample.html entries.js _toc.md 11-sample.md _titlepage.md
              _titlepage.pdf _titlepage_legalpage.pdf output_tmp1.pdf].each do |name|
             refute File.exist?(name), "#{name} は削除されるべきです"
           end

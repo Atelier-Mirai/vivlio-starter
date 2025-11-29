@@ -23,7 +23,7 @@ module Vivlio
 
           # Step 7: 全体PDF生成→分割（ディレクトリスキャン版）
           def build_overall_pdf_and_split_from_dir!(base_dir = '.', keep = nil)
-            toc_html = [File.join(base_dir, '03-toc.html')].select { |f| File.exist?(f) }
+            toc_html = [File.join(base_dir, '_toc.html')].select { |f| File.exist?(f) }
             keep_numbers_main = Build::Utilities.chapter_numbers_for_book(keep)
             keep_numbers_preface = nil
             keep_numbers_appx = nil
@@ -67,14 +67,14 @@ module Vivlio
               return
             end
 
-            toc_pages = (Build::Utilities.page_count('03-toc.pdf') || '0').to_i
+            toc_pages = (Build::Utilities.page_count('_toc.pdf') || '0').to_i
             if toc_pages <= 0
               Common.log_warn('[Step 7] toc のページ数が 0 です。分割をスキップします。')
               return
             end
 
             # 新仕様: _sections.pdf（本文+付録+後書き）
-            Build::Utilities.split_pdf_into_toc_and_sections(output_pdf, toc_pages, '03-toc.pdf', '_sections.pdf')
+            Build::Utilities.split_pdf_into_toc_and_sections(output_pdf, toc_pages, '_toc.pdf', '_sections.pdf')
           end
 
           # Step 8: _preface_toc.pdf 構成 + ローマ小付与
@@ -82,7 +82,7 @@ module Vivlio
           def build_frontmatter_pdf!(keep = nil)
             Common.log_action('[Step 8] _preface_toc.pdf を構成し、ローマ小 i〜 を付与します…')
             include_preface = keep && Array(keep).map(&:to_s).any? { |s| File.basename(s) == '00-preface.md' }
-            include_toc     = File.exist?('03-toc.pdf')
+            include_toc     = File.exist?('_toc.pdf')
 
             if include_preface && File.exist?(File.join(Common::CONTENTS_DIR, '00-preface.md'))
               cache_on = Common.cache_enabled?
@@ -117,7 +117,7 @@ module Vivlio
 
             files_to_merge = []
             files_to_merge << '00-preface.pdf' if include_preface
-            files_to_merge << '03-toc.pdf'     if include_toc
+            files_to_merge << '_toc.pdf'     if include_toc
             existing_files = files_to_merge.select { |f| File.exist?(f) }
             missing_files  = files_to_merge - existing_files
             Common.log_warn("[Step 8] 結合対象が見つかりません: #{missing_files.join(', ')}") if missing_files.any?

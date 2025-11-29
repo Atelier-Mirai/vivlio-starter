@@ -217,7 +217,7 @@ module Vivlio
           def build_chapter_order(html_basenames)
             chapter_order = Build::SectionBuilder.chapter_order_from(html_basenames)
             # 新仕様: _titlepage, _legalpage を使用
-            frontmatter_sequence = %w[_titlepage _legalpage 00-preface 03-toc]
+            frontmatter_sequence = %w[_titlepage _legalpage 00-preface _toc]
             (frontmatter_sequence + chapter_order).uniq
           end
 
@@ -284,7 +284,7 @@ module Vivlio
           def calculate_chapter_ranges(chapter_order, chapter_markers, search_helpers, from_base, total_pages)
             search_markers = search_helpers[:search_markers]
             preface_pages = (Build::Utilities.page_count('00-preface.pdf') || '0').to_i
-            toc_pages = (Build::Utilities.page_count('03-toc.pdf') || '0').to_i
+            toc_pages = (Build::Utilities.page_count('_toc.pdf') || '0').to_i
 
             chapter_starts = {}
             chapter_ranges = {}
@@ -325,13 +325,13 @@ module Vivlio
               start_page = [[3, from_base].max, total_pages].min
               end_page = preface_pages.positive? ? [start_page + preface_pages - 1, total_pages].min : start_page
               [start_page, end_page]
-            when '03-toc'
+            when '_toc'
               start_candidate = preface_pages.positive? ? (chapter_ranges['00-preface']&.[](1) || (3 + preface_pages - 1)) + 1 : 3
               start_page = [[start_candidate, from_base].max, total_pages].min
               end_page = toc_pages.positive? ? [start_page + toc_pages - 1, total_pages].min : start_page
               [start_page, end_page]
             when first_chapter_bn
-              toc_end = chapter_ranges['03-toc']&.[](1)
+              toc_end = chapter_ranges['_toc']&.[](1)
               start_candidate = toc_end ? toc_end + 1 : (chapter_starts[prev_bn] || from_base)
               [[[start_candidate, from_base].max, total_pages].min, total_pages]
             when '99-colophon'
@@ -364,7 +364,7 @@ module Vivlio
               next unless range
 
               headings.each do |heading|
-                page = if bn == '03-toc'
+                page = if bn == '_toc'
                          range[0]
                        else
                          search_terms = (Array(heading[:search_terms]) + [heading[:text], heading[:appendix_label]]).compact.map { |s| s.to_s.strip }.reject(&:empty?).uniq
@@ -405,15 +405,15 @@ module Vivlio
           end
 
           def add_toc_entry(items, chapter_ranges, chapter_order, search_helpers)
-            return items unless chapter_ranges['03-toc']
+            return items unless chapter_ranges['_toc']
 
-            toc_range = chapter_ranges['03-toc']
+            toc_range = chapter_ranges['_toc']
             toc_page = search_helpers[:search_markers].call(['目次'], toc_range[0], toc_range[1]) || toc_range[0]
 
-            return items if items.any? { |it| it[:chapter] == '03-toc' }
+            return items if items.any? { |it| it[:chapter] == '_toc' }
 
-            insert_index = items.index { |it| chapter_order.index(it[:chapter])&.> chapter_order.index('03-toc') } || items.length
-            items.insert(insert_index, { level: 1, text: '目次', page: toc_page, chapter: '03-toc', id: nil })
+            insert_index = items.index { |it| chapter_order.index(it[:chapter])&.> chapter_order.index('_toc') } || items.length
+            items.insert(insert_index, { level: 1, text: '目次', page: toc_page, chapter: '_toc', id: nil })
             items
           end
 
