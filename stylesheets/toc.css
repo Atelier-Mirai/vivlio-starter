@@ -22,18 +22,6 @@
   text-align: end;
   color: #333;
 }
-
-/* 節（h2）のページ番号はタイトルと同一行に表示 */
-.toc-section::after {
-  content: none;
-}
-
-#toc li.toc-section > .toc-title::after {
-  margin-inline-start: 0.5em;
-
-  content: leader(dotted) " " target-counter(attr(data-href url), page);
-}
-
 /* 目次も前付け（front）としてローマ数字ノンブルを共通化 */
 body.toc { page: front; }
 
@@ -42,11 +30,13 @@ body.toc { page: front; }
 }
 
 #toc {
+  /* 目次コンテナ全体の文字組み設定（自動組版の自動スペース調整を抑制） */
   /* stylelint-disable-next-line property-no-unknown */
   text-spacing: no-autospace;
 }
 
 #toc ul {
+  /* 目次リストのリセットとカウンタ初期化 */
   list-style: none;
   margin-inline-start: 0;
   padding-inline-start: 0;
@@ -61,6 +51,9 @@ body.toc { page: front; }
   counter-reset: toc-list-counter 0 toc-list-appendix-counter 0;
 }
 
+/* ========================================================= */
+/*  章レベル（Chapter TOC）                                  */
+/* ========================================================= */
 /* 章目次 */
 .toc-chapter {
   display: flex;            /* 章タイトル行は Flex でリーダーと頁を整列 */
@@ -143,6 +136,21 @@ li.toc-chapter-appendix {
   content: none; /* 番号なし章のみ番号を非表示 */
 }
 
+/* 付録および番号なし章タイトルの前余白 */
+#toc>ul>li.toc-chapter-appendix,
+#toc>ul>li.toc-chapter-no-number {
+  margin-block-start: clamp(3.5mm, calc(var(--paper-scale) * 5mm), 5mm);
+}
+
+/* 付録および番号なし章タイトルはページ番号を非表示 */
+.toc-chapter-appendix::after,
+.toc-chapter-no-number::after {
+  content: none !important;
+}
+
+/* ========================================================= */
+/*  節レベル（Section TOC）                                  */
+/* ========================================================= */
 /* 節目次（before＋リーダー） */
 li.toc-section {
   display: flex;          /* 項目行は Flex のまま（番号／タイトル／リーダー／頁） */
@@ -173,8 +181,12 @@ li.toc-section {
   margin-inline-end: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
 }
 
-/* 項（h3）のページ番号 */
-.toc-subsection::after {
+/* 節（h2）のページ番号はタイトルと同一行に表示 */
+.toc-section::after {
+  content: none;
+}
+
+#toc li.toc-section > .toc-title::after {
   margin-inline-start: 0.5em;
   content: leader(dotted) " " target-counter(attr(data-href url), page);
 }
@@ -223,6 +235,9 @@ li.toc-chapter > ul {
   margin-block-start: clamp(3.5mm, calc(var(--paper-scale) * 5mm), 5mm);
 }
 
+/* ========================================================= */
+/*  項レベル（Subsection TOC）                               */
+/* ========================================================= */
 /* 小節（li.toc-subsection のみを対象） */
 li.toc-subsection {
   margin-inline: 0 1em;
@@ -244,7 +259,14 @@ li.toc-subsection {
   content: counters(toc-list-counter, "-");
   counter-increment: toc-list-counter;
 }
+ 
+/* 項（h3）のページ番号 */
+.toc-subsection::after {
+  margin-inline-start: 0.5em;
+  content: leader(dotted) " " target-counter(attr(data-href url), page);
+}
 
+/* 目次セクションの左右ページ背景を無効化 */
 @page :left {
   background: none;
 }
@@ -257,6 +279,7 @@ h2::before {
   content: none;
 }
 
+/* 目次内で使用する本文 h2 見出しのスタイル */
 h2 {
   block-size: 2lh;
   margin-block: 0;
@@ -267,16 +290,4 @@ h2 {
   letter-spacing: 0.02em;
   align-content: center;
   border-block-end: none;
-}
-
-/* 付録および番号なし章タイトルの前余白 */
-#toc>ul>li.toc-chapter-appendix,
-#toc>ul>li.toc-chapter-no-number {
-  margin-block-start: clamp(3.5mm, calc(var(--paper-scale) * 5mm), 5mm);
-}
-
-/* 付録および番号なし章タイトルはページ番号を非表示 */
-.toc-chapter-appendix::after,
-.toc-chapter-no-number::after {
-  content: none !important;
 }
