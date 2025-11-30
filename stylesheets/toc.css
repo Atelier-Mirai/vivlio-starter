@@ -4,69 +4,32 @@
 @import url("theme.css");
 @import url("page-settings.css");
 
-/*
-  プロパティ並び順ガイドライン
-  --------------------------------------------------
-  各ルール内のプロパティは下記の順で記述する。
-  1) layout        : display / position / float / break-* / z-index / inset-*
-  2) box-size      : width / height / inline-size / block-size / box-sizing
-  3) spacing       : margin-* → padding-*（論理プロパティ優先）
-  4) typography    : font-* / line-height / text-* / letter-spacing
-  5) alignment     : text-align / align-* / justify-*
-  6) visual        : color / background / border / outline / shadow / opacity
-  7) counters/meta : counter-* / string-set / content などのメタ情報
-
-  備考:
-  - コメントでセクション見出し（layout等）を付ける。
-  - 値は論理プロパティ（margin-inline 等）を優先する。
-  - 既存プロパティの意味が変わらない範囲でのみ並び替える。
-*/
-
 /* 目次タイトルなど */
 #toc-title::before {
   content: none;
 }
 
-/* 節（h2）のページ番号はタイトルと同一行に表示（Flex 方式） */
-.toc-section::after {
-  
-  /* layout */
-  /* display: flex; */
-  /* 残り幅を占有してリーダーを引く */
-  /* flex: 1 1 auto;            */
-  /* タイトルの直後、UL より先に配置 */
-  /* order: 1;                  */
-
-  /* typography */
-  font-family: var(--folio-font);       /* ページ番号と同一フォントで桁幅を統一 */
-  letter-spacing: 0.01em;
-  font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: "tnum" 1, "lnum" 1;
-  font-kerning: none;                   /* 視覚的なズレ抑制 */
-  text-align: end;                      /* 算用数字を右端に揃える */
-  
-  /* visual */
-  color: #333;
-
-  /* counters/meta */
-  content: none;
-
-  /* content: "X"; */
-
-  /* content: " [p=" target-counter(attr(data-href url), page) "]"; */
-}
-
-#toc li.toc-section > .toc-title::after {
-  margin-inline-start: 0.5em;
-
+/* 目次のページ番号用 共通タイポグラフィ */
+.toc-section::after,
+#toc li.toc-section > .toc-title::after,
+.toc-subsection::after,
+#toc li.toc-chapter > .toc-title::after {
   font-family: var(--folio-font);
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: "tnum" 1, "lnum" 1;
   font-kerning: none;
   text-align: end;
-
   color: #333;
+}
+
+/* 節（h2）のページ番号はタイトルと同一行に表示 */
+.toc-section::after {
+  content: none;
+}
+
+#toc li.toc-section > .toc-title::after {
+  margin-inline-start: 0.5em;
 
   content: leader(dotted) " " target-counter(attr(data-href url), page);
 }
@@ -79,20 +42,14 @@ body.toc { page: front; }
 }
 
 #toc {
-  /* typography */
   /* stylelint-disable-next-line property-no-unknown */
   text-spacing: no-autospace;
 }
 
 #toc ul {
-  /* visual */
   list-style: none;
-
-  /* spacing */
   margin-inline-start: 0;
   padding-inline-start: 0;
-
-  /* counters/meta */
   counter-reset: toc-list-counter 0; /* 各ULで節/項カウンタを初期化 */
 }
 
@@ -104,106 +61,52 @@ body.toc { page: front; }
   counter-reset: toc-list-counter 0 toc-list-appendix-counter 0;
 }
 
-/* 目次参照（アンカーを使わないので色・下線の調整は不要） */
-
 /* 章目次 */
 .toc-chapter {
-  /* layout */
   display: flex;            /* 章タイトル行は Flex でリーダーと頁を整列 */
   align-items: baseline;
   flex-wrap: wrap;          /* 配下の UL は次の行へ */
   margin-block-end: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
 
-  /* typography */
   font-size: clamp(15.4Q, calc(var(--paper-scale) * 22Q), 22Q);
   line-height: 1.25;
   font-weight: 700;
 }
 
 .toc-chapter::before {
-  /* layout */
   display: block;
   flex-basis: 100%;        /* 見出しの直前に全幅ラインを出す */
-  
-  /* box-size */
   inline-size: 100%;
-
-  /* typography */
   font-size: clamp(13.3Q, calc(var(--paper-scale) * 19Q), 19Q);
   line-height: 1.5;
-
-  /* spacing */
   margin-block: clamp(2.1mm, calc(var(--paper-scale) * 3mm), 3mm) clamp(0.7mm, calc(var(--paper-scale) * 1mm), 1mm);   /* 上3mm 下1mm */
   padding-block-end: clamp(0.7mm, calc(var(--paper-scale) * 1mm), 1mm);  /* タイトル行に適度な余白 */
-
-  /* visual */
   border-block-end: solid clamp(0.35mm, calc(var(--paper-scale) * 0.5mm), 0.5mm) #000;
-
-  /* counters/meta */
   content: "第 " counters(toc-list-counter, "-") " 章";
   counter-increment: toc-list-counter;
 }
 
 .toc-chapter-appendix::before {
-  /* layout */
   display: inline;
-
-  /* typography */
   font-size: inherit;
   line-height: inherit;
-
-  /* visual */
   border-block-end: none;
-
-  /* counters/meta */
-  
   /* 章のような別行・下線は付けず、行頭にラベルを付与 */
   content: "付録" counter(toc-list-appendix-counter, upper-alpha) ": ";
   counter-increment: toc-list-appendix-counter;
 }
 
 .toc-chapter::after {
-  /* layout */
   display: inline;          /* 見出し行の末尾でリーダーを引く */
   order: 1;                 /* タイトルの直後に配置（子ULより先） */
   flex: 1 1 auto;           /* 右側を満たしてリーダーを引く */
-
-  /* spacing */
   margin-inline-start: 1em;
-
-  /* typography */
-  font-family: var(--folio-font);       /* ページ番号と同一フォントで桁幅を統一 */
-  font-size: clamp(11.2Q, calc(var(--paper-scale) * 16Q), 16Q);
-  letter-spacing: 0.01em;
-  font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: "tnum" 1, "lnum" 1;
-  font-kerning: none;
-  text-align: end;
-
-  /* visual */
-  color: #333;
-
-  /* counters/meta */
   content: none;
 }
 
 #toc li.toc-chapter > .toc-title::after {
-  /* spacing */
   margin-inline-start: 1em;
-
-  /* typography */
-  font-family: var(--folio-font);
   font-size: clamp(11.2Q, calc(var(--paper-scale) * 16Q), 16Q);
-  letter-spacing: 0.01em;
-  font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: "tnum" 1, "lnum" 1;
-  font-kerning: none;
-  text-align: end;
-
-  /* visual */
-  color: #333;
-
-  /* counters/meta */
   content: leader(dotted) " " target-counter(attr(data-href url), page);
 }
 
@@ -231,16 +134,6 @@ li.toc-chapter-appendix {
 /* 章目次（番号なし） */
 .toc-chapter-no-number,
 .toc-chapter-appendix {
-  /* layout */
-  
-  /* display: grid;
-  grid-template-columns: auto 4em; */
-
-  /* spacing */
-  
-  /* margin-block-end: 2mm; */
-
-  /* typography */
   font-size: clamp(15.4Q, calc(var(--paper-scale) * 22Q), 22Q);
   line-height: 1.25em;
   font-weight: 700;
@@ -252,7 +145,6 @@ li.toc-chapter-appendix {
 
 /* 節目次（before＋リーダー） */
 li.toc-section {
-  /* layout */
   display: flex;          /* 項目行は Flex のまま（番号／タイトル／リーダー／頁） */
   align-items: baseline;
   flex-wrap: wrap;        /* タイトル行 + 子UL を行分け（タイトル行を1段、子ULを次段） */
@@ -261,11 +153,9 @@ li.toc-section {
   widows: 2;
   orphans: 2;
 
-  /* spacing */
   margin-inline-start: 0;
   margin-block-end: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
 
-  /* typography */
   font-size: clamp(11.2Q, calc(var(--paper-scale) * 16Q), 16Q);
   line-height: 1.2;
   font-weight: 700;
@@ -273,43 +163,19 @@ li.toc-section {
 }
 
 .toc-section::before {
-  /* layout */
   display: inline-block;  /* Flexアイテムとして振る舞う */
+  flex: 0 0 clamp(9.1mm, calc(var(--paper-scale) * 13mm), 13mm); /* 固定幅の番号欄 */
 
-  /* flex-size */
-  flex: 0 0 clamp(9.1mm, calc(var(--paper-scale) * 13mm), 13mm);         /* 固定幅の番号欄 */
-
-  /* box-size */
   inline-size: clamp(9.1mm, calc(var(--paper-scale) * 13mm), 13mm);
-
-  /* alignment */
   text-align: end;
-
-  /* counters/meta */
   content: counters(toc-list-counter, "-");
   counter-increment: toc-list-counter;
-
-  /* spacing */
   margin-inline-end: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
 }
 
 /* 項（h3）のページ番号 */
 .toc-subsection::after {
-  /* spacing */
   margin-inline-start: 0.5em;
-
-  /* typography */
-  font-family: var(--folio-font);       /* ページ番号と同一フォントで桁幅を統一 */
-  letter-spacing: 0.01em;
-  font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: "tnum" 1, "lnum" 1;
-  font-kerning: none;
-  text-align: end;
-  
-  /* visual */
-  color: #333;
-
-  /* counters/meta */
   content: leader(dotted) " " target-counter(attr(data-href url), page);
 }
 
@@ -318,35 +184,27 @@ li.toc-section {
 
 /* 付録 LI 直下の UL で節カウンタをリセット */
 li.toc-chapter-appendix > ul {
-  /* counters/meta */
   counter-reset: appendix-sec 0;
 }
-/* stylelint-enable no-descending-specificity */
 
 /* その UL 配下の .toc-section を A-1, A-2 ... で採番 */
 
 /* まず汎用の節カウンタ挙動を打ち消し、表示専用にする */
 li.toc-chapter-appendix > ul .toc-section::before {
-  /* counters/meta */
   content: counter(toc-list-appendix-counter, upper-alpha) "-" counter(appendix-sec);
   counter-increment: none; /* ここでは増分しない（重複回避） */
 }
 
 /* 実際のカウントは各 li 自体で行う（描画順に確実に増える） */
 li.toc-chapter-appendix > ul > li {
-  /* counters/meta */
   counter-increment: appendix-sec;
 }
 
-/* セクションのページ番号リーダーはリンク廃止に伴い非表示（削除） */
-
 /* セクション項目直下の子UL（小節リスト）の余白 */
 #toc li.toc-section > ul {
-  /* layout */
   order: 2;                 /* 節行の次の行に配置（Flex の改行） */
   flex-basis: 100%;         /* 次の行に回す */
 
-  /* spacing */
   margin-block-start: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
   padding-inline-start: 0; /* インデントは各小節LI側で与える */
 }
@@ -354,29 +212,23 @@ li.toc-chapter-appendix > ul > li {
 /* 章タイトルの下に3mm（配下の小節リストを下げる） */
 /* stylelint-disable no-descending-specificity */
 li.toc-chapter > ul {
-  /* layout */
   order: 2;                 /* タイトル行の次に配置（Flex の改行） */
   flex-basis: 100%;
-
-  /* spacing */
   margin-block-start: clamp(2.1mm, calc(var(--paper-scale) * 3mm), 3mm);
 }
 /* stylelint-enable no-descending-specificity */
 
 /* 付録の章タイトル下は少し余白を増やす（小節リストの頭を下げる） */
 #toc li.toc-chapter-appendix > ul {
-  /* spacing */
   margin-block-start: clamp(3.5mm, calc(var(--paper-scale) * 5mm), 5mm);
 }
 
 /* 小節（li.toc-subsection のみを対象） */
 li.toc-subsection {
-  /* spacing */
   margin-inline: 0 1em;
   margin-block-end: 0.1em;
   padding-inline-start: clamp(21mm, calc(var(--paper-scale) * 30mm), 30mm); /* 既定のインデントに戻す */
 
-  /* typography */
   font-size: clamp(9.1Q, calc(var(--paper-scale) * 13Q), 13Q);
   line-height: 1.25;
   font-weight: 400;
@@ -384,20 +236,11 @@ li.toc-subsection {
 }
 
 .toc-subsection::before {
-  /* layout */
   display: inline-block;   /* 番号欄 */
-
-  /* box-size */
   min-inline-size: 2.5em; /* 番号欄（必要に応じて調整可） */
-
-  /* spacing */
   margin-inline-end: 0.5em;
   text-indent: 0;
-
-  /* alignment */
   text-align: start;
-
-  /* counters/meta */
   content: counters(toc-list-counter, "-");
   counter-increment: toc-list-counter;
 }
@@ -415,30 +258,16 @@ h2::before {
 }
 
 h2 {
-  /* box-size */
   block-size: 2lh;
-
-  /* spacing */
   margin-block: 0;
   padding-block-end: clamp(0.7mm, calc(var(--paper-scale) * 1mm), 1mm);
-
-  /* typography */
   font-size: clamp(29.4Q, calc(var(--paper-scale) * 42Q), 42Q);
   line-height: clamp(33.6Q, calc(var(--paper-scale) * 48Q), 48Q);
   font-family: var(--header-font);
   letter-spacing: 0.02em;
-
-  /* alignment */
   align-content: center;
-
-  /* visual */
   border-block-end: none;
 }
-
-/* hr {
-  break-after: page;
-  visibility: hidden;
-} */
 
 /* 付録および番号なし章タイトルの前余白 */
 #toc>ul>li.toc-chapter-appendix,
