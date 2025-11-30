@@ -1,3 +1,12 @@
+---
+link:
+- rel: stylesheet
+  href: stylesheets/theme.css
+- rel: stylesheet
+  href: stylesheets/titlepage.css
+lang: ja
+---
+
 <h1 class="book-title">AIと学ぶモダンWebサイト入門</h1>
 <p class="subtitle subtitle--none">1つのWebサイトで学ぶHTML/CSSグリッドと<br>やさしいJavaScriptの基本</p>
 

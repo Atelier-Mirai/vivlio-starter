@@ -36,6 +36,8 @@
   /* flex: 1 1 auto;            */
   /* タイトルの直後、UL より先に配置 */
   /* order: 1;                  */
+  /* spacing */
+  margin-inline-start: 0.5em;
 
   /* typography */
   font-family: var(--folio-font);       /* ページ番号と同一フォントで桁幅を統一 */
@@ -49,26 +51,13 @@
   color: #333;
 
   /* counters/meta */
-  content: none;
+  content: leader(dotted) " " target-counter(attr(data-href url), page);
 
+  background: rgba(255 0 0 / 20%);
+  min-inline-size: 2em;
   /* content: "X"; */
 
   /* content: " [p=" target-counter(attr(data-href url), page) "]"; */
-}
-
-#toc li.toc-section > .toc-title::after {
-  margin-inline-start: 0.5em;
-
-  font-family: var(--folio-font);
-  letter-spacing: 0.01em;
-  font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: "tnum" 1, "lnum" 1;
-  font-kerning: none;
-  text-align: end;
-
-  color: #333;
-
-  content: leader(dotted) " " target-counter(attr(data-href url), page);
 }
 
 /* 目次も前付け（front）としてローマ数字ノンブルを共通化 */
@@ -173,26 +162,6 @@ body.toc { page: front; }
 
   /* typography */
   font-family: var(--folio-font);       /* ページ番号と同一フォントで桁幅を統一 */
-  font-size: clamp(11.2Q, calc(var(--paper-scale) * 16Q), 16Q);
-  letter-spacing: 0.01em;
-  font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: "tnum" 1, "lnum" 1;
-  font-kerning: none;
-  text-align: end;
-
-  /* visual */
-  color: #333;
-
-  /* counters/meta */
-  content: none;
-}
-
-#toc li.toc-chapter > .toc-title::after {
-  /* spacing */
-  margin-inline-start: 1em;
-
-  /* typography */
-  font-family: var(--folio-font);
   font-size: clamp(11.2Q, calc(var(--paper-scale) * 16Q), 16Q);
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums lining-nums;
