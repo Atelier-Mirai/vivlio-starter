@@ -1,5 +1,20 @@
 # frozen_string_literal: true
 
+# ================================================================
+# Test: text_lint_commands_test.rb
+# ================================================================
+# テスト対象:
+#   TextLintCommands（lib/vivlio/starter/cli/text_lint.rb）
+#
+# 検証内容:
+#   - Markdown ファイル未検出時の警告
+#   - textlint 実行結果の解析
+#   - 終了コードの適切な設定
+#
+# テスト環境:
+#   - VIVLIO_TEXTLINT_BIN をスタブ化
+# ================================================================
+
 require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
@@ -8,6 +23,7 @@ require 'vivlio/starter/cli/text_lint'
 module Vivlio
   module Starter
     module CLI
+      # TextLintCommands のユニットテスト
       class TextLintCommandsTest < Minitest::Test
         def setup
           @original_pwd = Dir.pwd
@@ -27,13 +43,15 @@ module Vivlio
         def test_runner_warns_when_no_markdown_found
           FileUtils.rm_rf('contents')
 
+          status = nil
           with_stubbed_textlint_available do
             stdout, stderr = capture_io do
-              TextLintCommands.execute_text_lint([], {})
+              status = TextLintCommands.execute_text_lint([], {})
             end
             assert_match(/textlint 対象となる Markdown ファイルが見つかりません。/, stdout)
             assert_empty(stderr)
           end
+          assert_equal 0, status
         end
 
         def test_runner_invokes_textlint_with_resolved_targets
@@ -41,23 +59,25 @@ module Vivlio
           FileUtils.touch('contents/21-customize.md')
 
           expected_command = nil
-          status = Struct.new(:success?).new(true)
-          def status.exitstatus
+          fake_status = Struct.new(:success?).new(true)
+          def fake_status.exitstatus
             0
           end
 
+          returned_status = nil
           with_stubbed_textlint_available do
             Open3.stub(:capture3, ->(*args) do
               expected_command = args
-              ['STDOUT', 'STDERR', status]
+              ['STDOUT', 'STDERR', fake_status]
             end) do
               stdout, stderr = capture_io do
-                TextLintCommands.execute_text_lint(['11-install'], format: nil)
+                returned_status = TextLintCommands.execute_text_lint(['11-install'], format: nil)
               end
               assert_equal 'STDOUT', stdout
               assert_equal 'STDERR', stderr
             end
           end
+          assert_equal 0, returned_status
 
           assert_equal [
             'textlint',
@@ -67,7 +87,7 @@ module Vivlio
           ], expected_command
         end
 
-        def test_runner_exits_with_non_zero_status
+        def test_runner_returns_non_zero_status_on_failure
           FileUtils.touch('contents/11-install.md')
 
           failure_status = Struct.new(:success?).new(false)
@@ -75,37 +95,42 @@ module Vivlio
             3
           end
 
+          returned_status = nil
           with_stubbed_textlint_available do
-            error = assert_raises(SystemExit) do
+            stdout, stderr = capture_io do
               Open3.stub(:capture3, ->(*_) { ['', '', failure_status] }) do
-                capture_io { TextLintCommands.execute_text_lint([], {}) }
+                returned_status = TextLintCommands.execute_text_lint([], {})
               end
             end
-            assert_equal 3, error.status
+            assert_match(/textlint: ❌/, stdout)
+            assert_empty(stderr)
           end
+          assert_equal 3, returned_status
         end
 
         def test_fix_option_includes_fix_flag
           FileUtils.touch('contents/11-install.md')
 
           expected_command = nil
-          status = Struct.new(:success?).new(true)
-          def status.exitstatus
+          fake_status = Struct.new(:success?).new(true)
+          def fake_status.exitstatus
             0
           end
 
+          returned_status = nil
           with_stubbed_textlint_available do
             Open3.stub(:capture3, ->(*args) do
               expected_command = args
-              ['STDOUT', 'STDERR', status]
+              ['STDOUT', 'STDERR', fake_status]
             end) do
               stdout, stderr = capture_io do
-                TextLintCommands.execute_text_lint(['11-install'], { fix: true })
+                returned_status = TextLintCommands.execute_text_lint(['11-install'], { fix: true })
               end
               assert_equal 'STDOUT', stdout
               assert_equal 'STDERR', stderr
             end
           end
+          assert_equal 0, returned_status
 
           assert_includes expected_command, '--fix'
         end
@@ -117,23 +142,25 @@ module Vivlio
           FileUtils.touch('contents/93-appendix-d.md')
 
           expected_command = nil
-          status = Struct.new(:success?).new(true)
-          def status.exitstatus
+          fake_status = Struct.new(:success?).new(true)
+          def fake_status.exitstatus
             0
           end
 
+          returned_status = nil
           with_stubbed_textlint_available do
             Open3.stub(:capture3, ->(*args) do
               expected_command = args
-              ['STDOUT', 'STDERR', status]
+              ['STDOUT', 'STDERR', fake_status]
             end) do
               stdout, stderr = capture_io do
-                TextLintCommands.execute_text_lint(['91', '93'], {})
+                returned_status = TextLintCommands.execute_text_lint(['91', '93'], {})
               end
               assert_equal 'STDOUT', stdout
               assert_equal 'STDERR', stderr
             end
           end
+          assert_equal 0, returned_status
 
           # 91 と 93 で始まるファイルが含まれていることを確認
           assert_includes expected_command, File.join('contents', '91-appendix-a.md')
@@ -150,23 +177,25 @@ module Vivlio
           FileUtils.touch('contents/21-customize.md')
 
           expected_command = nil
-          status = Struct.new(:success?).new(true)
-          def status.exitstatus
+          fake_status = Struct.new(:success?).new(true)
+          def fake_status.exitstatus
             0
           end
 
+          returned_status = nil
           with_stubbed_textlint_available do
             Open3.stub(:capture3, ->(*args) do
               expected_command = args
-              ['STDOUT', 'STDERR', status]
+              ['STDOUT', 'STDERR', fake_status]
             end) do
               stdout, stderr = capture_io do
-                TextLintCommands.execute_text_lint(['11-13'], {})
+                returned_status = TextLintCommands.execute_text_lint(['11-13'], {})
               end
               assert_equal 'STDOUT', stdout
               assert_equal 'STDERR', stderr
             end
           end
+          assert_equal 0, returned_status
 
           # 11-13 の範囲のファイルが含まれていることを確認
           assert_includes expected_command, File.join('contents', '11-install.md')
@@ -183,23 +212,25 @@ module Vivlio
           FileUtils.touch('contents/91-appendix-a.md')
 
           expected_command = nil
-          status = Struct.new(:success?).new(true)
-          def status.exitstatus
+          fake_status = Struct.new(:success?).new(true)
+          def fake_status.exitstatus
             0
           end
 
+          returned_status = nil
           with_stubbed_textlint_available do
             Open3.stub(:capture3, ->(*args) do
               expected_command = args
-              ['STDOUT', 'STDERR', status]
+              ['STDOUT', 'STDERR', fake_status]
             end) do
               stdout, stderr = capture_io do
-                TextLintCommands.execute_text_lint(['11-install', '91', '12-21'], {})
+                returned_status = TextLintCommands.execute_text_lint(['11-install', '91', '12-21'], {})
               end
               assert_equal 'STDOUT', stdout
               assert_equal 'STDERR', stderr
             end
           end
+          assert_equal 0, returned_status
 
           # すべての指定されたファイルが含まれていることを確認
           assert_includes expected_command, File.join('contents', '11-install.md')
@@ -245,7 +276,11 @@ module Vivlio
         def setup_project_structure
           FileUtils.mkdir_p('contents')
           FileUtils.mkdir_p('config/textlint_dictionaries')
+
           File.write('config/.textlintrc.yml', "rules: {}\n")
+          File.write('config/textlint_allowlist.yml', "allow: []\n")
+          File.write('config/textlint_prh.yml', "rules: []\n")
+
           File.write('config/textlint_dictionaries/prh.yml', "version: 1\nrules: []\n")
           File.write('config/textlint_dictionaries/icsmedia.yml', "version: 1\nrules: []\n")
           File.write('config/textlint_dictionaries/js_primer.yml', "version: 1\nrules: []\n")

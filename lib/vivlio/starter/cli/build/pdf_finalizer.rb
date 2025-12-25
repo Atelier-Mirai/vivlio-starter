@@ -1,23 +1,38 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/build/pdf_finalizer.rb
+# ================================================================
+# 責務:
+#   生成した PDF の圧縮と最終ファイル名へのリネームを行う。
+#
+# 処理内容:
+#   - Step 12: Ghostscript による PDF 圧縮
+#   - Step 13: output.pdf → 書籍名_v1.0.0.pdf へリネーム
+#
+# ファイル名生成:
+#   - config/book.yml の output.filename 設定に基づく
+#   - include_version: true の場合はバージョン番号を付与
+#
+# 依存:
+#   - PdfCommands: PDF 圧縮の実装
+#   - Common: ファイル名生成
+# ================================================================
+
 require 'fileutils'
 
 module Vivlio
   module Starter
     module CLI
       module Build
-        # ------------------------------------------------
-        # PdfFinalizer: PDF圧縮・リネームモジュール
-        # ------------------------------------------------
-        # PDF圧縮と最終ファイル名へのリネームを担当する。
-        # ------------------------------------------------
+        # PDF 圧縮・リネームモジュール
         module PdfFinalizer
           module_function
 
           # Step 12: 生成PDFを圧縮
           def compress_pdf!
             Common.log_action('[Step 12] 生成PDFを圧縮します…')
-            Vivlio::Starter::ThorCLI.start(['pdf_compress'])
+            PdfCommands.execute_pdf_compress({})
           end
 
           # Step 13: 出力PDFを最終ファイル名にリネーム

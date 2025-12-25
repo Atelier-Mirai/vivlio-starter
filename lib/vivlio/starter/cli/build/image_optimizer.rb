@@ -22,7 +22,14 @@ module Vivlio
             dirs.each do |d|
               if Dir.exist?(d)
                 Common.log_info("[Step 2] 対象ディレクトリ: #{d}（preset: #{p}）")
-                Vivlio::Starter::ThorCLI.start([preset_task, d])
+                case preset_task
+                when 'resize:high'
+                  ResizeCommands.execute_resize_high(d)
+                when 'resize:low'
+                  ResizeCommands.execute_resize_low(d)
+                else
+                  ResizeCommands.execute_resize_medium(d)
+                end
               else
                 Common.log_info("[Step 2] スキップ（存在しません）: #{d}")
               end

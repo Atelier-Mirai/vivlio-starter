@@ -1,5 +1,29 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/new.rb
+# ================================================================
+# 責務:
+#   新規書籍プロジェクトの雛形を作成するコマンドを提供する。
+#
+# 生成されるプロジェクト構成:
+#   - contents/: 章 Markdown ファイル
+#   - images/: 画像ファイル
+#   - stylesheets/: CSS スタイルシート
+#   - config/: 設定ファイル（book.yml, catalog.yml）
+#   - templates/: テンプレートファイル
+#   - Gemfile, README.md, .gitignore
+#
+# オプション:
+#   - --auto-install: 必要ツールを自動インストール（doctor --fix を実行）
+#   - --manual-install: doctor の自動実行をスキップ
+#   - --interactive: 対話的に確認しながら実行
+#
+# 依存:
+#   - Scaffolder: プロジェクト雛形の生成
+#   - DoctorCommands: 必要ツールの診断・インストール
+# ================================================================
+
 require 'yaml'
 require 'fileutils'
 require_relative '../scaffolder'
@@ -7,114 +31,80 @@ require_relative '../scaffolder'
 module Vivlio
   module Starter
     module CLI
-      # ==============================================================================
-      # Module: NewCommands
-      # ------------------------------------------------------------------------------
-      # 新規書籍プロジェクトの雛形を作成するコマンド群。
-      # ディレクトリ構成の作成、テンプレートのコピー、初期 Markdown 生成、
-      # README/Gemfile/.gitignore の配置を行う。
-      # ==============================================================================
+      # 新規プロジェクト作成コマンド
       module NewCommands
         module_function
 
-        NEW_DESC = {
-          short: '新しい書籍プロジェクトを作成します',
-          long: <<~DESC
-            新しい書籍プロジェクトを作成します。
+        # 新規書籍プロジェクトを作成する
+        #
+        # @param name [String, nil] プロジェクト名（ディレクトリ名として使用）
+        # @param options [Hash] オプション設定
+        #   - :verbose [Boolean] 詳細ログを出力
+        #   - :auto_install [Boolean] 必要ツールを自動インストール
+        #   - :manual_install [Boolean] doctor の自動実行をスキップ
+        #   - :interactive [Boolean] 対話的に確認
+        # @return [void]
+        # @raise [SystemExit] プロジェクト名が未指定または既存の場合
+        #
+        # 副作用:
+        #   - 指定名のディレクトリを作成し、プロジェクト雛形を配置
+        #   - --auto-install 時は qpdf/pdfinfo 等を Homebrew でインストール
+        def execute_new(name, options = {})
+          ENV['VERBOSE'] = '1' if options[:verbose]
 
-            引数:
-              NAME    プロジェクト名（必須）
+          name = name&.strip
+          if name.nil? || name.empty?
+            Common.log_error('Error: プロジェクト名を指定してください。例: vs new mybook')
+            exit(1)
+          end
 
-            作成内容:
-            - プロジェクトディレクトリの作成
-            - 設定ファイル(config/book.yml)のコピー
-            - コンテンツファイルのテンプレートコピー
-            - スタイルシート・画像・コードのコピー
-            - タイトルページ・リーガルページ・奥付の自動生成
-            - README・Gemfile・.gitignoreの作成
+          dest = File.expand_path(name)
+          if File.exist?(dest)
+            Common.log_error("Error: '#{name}' は既に存在します。別名を指定してください。")
+            exit(1)
+          end
 
-            使用例:
-              vs new mybook
-          DESC
-        }.freeze
+          gem_root = File.expand_path('..', __dir__)
 
-        def included(base)
-          base.class_eval do
-            desc 'new NAME', NEW_DESC[:short]
-            long_desc NEW_DESC[:long]
+          Common.log_action("[vivlio-starter] Creating new project: #{name}")
 
-            # ================================================================
-            # Command: new（新規プロジェクト作成）
-            # ------------------------------------------------
-            # 概要:
-            #   NAME で指定したディレクトリ配下に、Vivlio Starter の標準構成を生成。
-            #   設定・テンプレート・初期コンテンツ・スタイル・画像・コードを展開し、
-            #   タイトル/リーガル/奥付ページの Markdown を自動生成する。
-            #
-            # 引数:
-            #   name    プロジェクト名（必須）
-            # ================================================================
-            method_option :auto_install, type: :boolean, default: true, desc: '必要ツールを自動インストール (macOS Homebrew)'
-            method_option :interactive, type: :boolean, default: false, desc: '対話的に確認しながら実行'
-            method_option :manual_install, type: :boolean, default: false, desc: 'doctor の自動実行を無効化'
-            def new(name)
-              ENV['VERBOSE'] = '1' if options[:verbose]
+          result = Vivlio::Starter::Scaffolder.scaffold_project(
+            name: name,
+            dest: dest,
+            gem_root: gem_root,
+            copy_styles_mode: :all,
+            include_ci_workflow: true,
+            include_viv_config_update: true
+          )
 
-              name = name&.strip
-              if name.nil? || name.empty?
-                Common.log_error('Error: プロジェクト名を指定してください。例: vs new mybook')
-                exit(1)
-              end
+          Common.log_success("[vivlio-starter] Done. cd #{name} で移動し、執筆を開始できます。")
+          Common.log_info('例: vivliostyle preview などのコマンドを実行')
 
-              dest = File.expand_path(name)
-              if File.exist?(dest)
-                Common.log_error("Error: '#{name}' は既に存在します。別名を指定してください。")
-                exit(1)
-              end
-
-              gem_root = File.expand_path('..', __dir__)
-
-              Common.log_action("[vivlio-starter] Creating new project: #{name}")
-
-              result = Vivlio::Starter::Scaffolder.scaffold_project(
-                name: name,
-                dest: dest,
-                gem_root: gem_root,
-                copy_styles_mode: :all,
-                include_ci_workflow: true,
-                include_viv_config_update: true
-              )
-
-              Common.log_success("[vivlio-starter] Done. cd #{name} で移動し、執筆を開始できます。")
-              Common.log_info('例: vivliostyle preview などのコマンドを実行')
-
-              begin
-                Dir.chdir(result.dest) do
-                  if options[:manual_install]
-                    Common.echo_always('doctor の自動実行をスキップします (--manual-install)')
-                  elsif options[:auto_install]
-                    Common.echo_always('必要ツールの自動インストールを有効にして doctor を実行します (--auto-install)')
-                    args = ['doctor', '--fix']
-                    args << '--yes' unless options[:interactive]
-                    Vivlio::Starter::ThorCLI.start(args)
-                  else
-                    proceed = false
-                    if $stdin.tty?
-                      $stdout.print('qpdf / pdfinfo の診断を実行しますか？ [y/N]: ')
-                      ans = $stdin.gets
-                      proceed = ans && ans.strip.downcase == 'y'
-                    end
-                    if proceed
-                      Vivlio::Starter::ThorCLI.start(['doctor'])
-                    else
-                      Common.echo_always('後で実行する場合: vs doctor もしくは vs doctor --fix (macOS)')
-                    end
-                  end
+          begin
+            Dir.chdir(result.dest) do
+              if options[:manual_install]
+                Common.echo_always('doctor の自動実行をスキップします (--manual-install)')
+              elsif options[:auto_install]
+                Common.echo_always('必要ツールの自動インストールを有効にして doctor を実行します (--auto-install)')
+                opts = { fix: true }
+                opts[:yes] = true unless options[:interactive]
+                DoctorCommands.execute_doctor({ options: opts })
+              else
+                proceed = false
+                if $stdin.tty?
+                  $stdout.print('qpdf / pdfinfo の診断を実行しますか？ [y/N]: ')
+                  ans = $stdin.gets
+                  proceed = ans && ans.strip.downcase == 'y'
                 end
-              rescue StandardError => e
-                Common.log_warn("doctor 実行フローでエラーが発生しました: #{e}")
+                if proceed
+                  DoctorCommands.execute_doctor({})
+                else
+                  Common.echo_always('後で実行する場合: vs doctor もしくは vs doctor --fix (macOS)')
+                end
               end
             end
+          rescue StandardError => e
+            Common.log_warn("doctor 実行フローでエラーが発生しました: #{e}")
           end
         end
       end

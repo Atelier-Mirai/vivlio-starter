@@ -1,5 +1,21 @@
 # frozen_string_literal: true
 
+# ================================================================
+# Test: build_pipeline_test.rb
+# ================================================================
+# テスト対象:
+#   UnifiedBuildPipeline（lib/vivlio/starter/cli/build/pipeline.rb）
+#
+# 検証内容:
+#   - フルビルドモード: 全ステップの実行順序
+#   - 単章ビルドモード: 指定章のみの処理
+#   - 各ステップへの引数渡し（keep オプション等）
+#
+# テスト手法:
+#   - 各ステップをスタブ化して呼び出し順を記録
+#   - 引数の検証をラムダ内で実行
+# ================================================================
+
 require 'test_helper'
 require 'vivlio/starter/cli/common'
 require 'vivlio/starter/cli/build'
@@ -7,11 +23,9 @@ require 'vivlio/starter/cli/build'
 module Vivlio
   module Starter
     module CLI
-      # ================================================================
-      # UnifiedBuildPipeline Full Mode Tests
-      # ================================================================
+      # UnifiedBuildPipeline フルモードのユニットテスト
       class UnifiedBuildPipelineFullModeTest < Minitest::Test
-        # フルビルドパイプラインが登録順にステップを実行し計時することを確認
+        # フルビルドパイプラインが登録順にステップを実行することを確認
         def test_run_executes_each_step_in_order
           pipeline = build_full_pipeline(keep: nil)
           order = []

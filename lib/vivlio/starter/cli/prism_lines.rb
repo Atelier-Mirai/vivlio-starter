@@ -40,35 +40,20 @@ module Vivlio
           DESC
         }.freeze
 
-        def included(base)
-          base.class_eval do
-            desc 'prism:lines INPUT_FILE [OUTPUT_FILE]', PRISM_LINES_DESC[:short]
-            long_desc PRISM_LINES_DESC[:long]
+        def included(base); end
 
-            # ================================================================
-            # Command: prism:lines（行番号の付与）
-            # ------------------------------------------------
-            # 概要:
-            #   入力HTMLの <pre><code> に Prism.js の行番号用クラス/要素を追加し、
-            #   出力HTMLとして書き出す。OUTPUT_FILE 未指定時は入力を上書き。
-            # 引数:
-            #   input_file     入力HTML（必須）
-            #   output_file    出力HTML（省略可）
-            # オプション:
-            #   -v, --verbose  詳細ログを表示
-            # ================================================================
-            def prism_lines(input_file, output_file = nil)
-              output_file ||= input_file
+        # Samovar/直接呼び出し用エントリポイント
+        def execute_prism_lines(input_file, output_file = nil)
+          output_file ||= input_file
 
-              unless File.exist?(input_file)
-                Common.log_error("エラー: 入力ファイル '#{input_file}' が存在しません")
-                exit(1)
-              end
-
-              add_prism_line_numbers(input_file, output_file)
-            end
+          unless File.exist?(input_file)
+            Common.log_error("エラー: 入力ファイル '#{input_file}' が存在しません")
+            return
           end
+
+          add_prism_line_numbers(input_file, output_file)
         end
+        module_function :execute_prism_lines
 
         private
 

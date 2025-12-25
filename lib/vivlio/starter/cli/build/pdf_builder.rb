@@ -57,8 +57,8 @@ module Vivlio
             end
             Common.log_info("[Step 7] 対象: #{targets_for_pdf.map { |p| File.basename(p) }.join(', ')}")
 
-            Vivlio::Starter::ThorCLI.start(['entries', *targets_for_pdf])
-            Vivlio::Starter::ThorCLI.start(['pdf'])
+            EntriesCommands.execute_entries({}, targets_for_pdf)
+            PdfCommands.execute_pdf({})
 
             pdf_config   = Common::CONFIG['pdf'] || {}
             output_pdf   = pdf_config['output_file'] || 'output.pdf'
@@ -104,10 +104,11 @@ module Vivlio
               needs_preface &&= !Build::Utilities.cache_restore_file(cache_on, preface_cache, '00-preface.pdf', 'Step 8') unless preface_outdated
 
               if needs_preface
-                %w[pre_process convert post_process entries].each do |t|
-                  Vivlio::Starter::ThorCLI.start([t, '00-preface'])
-                end
-                Vivlio::Starter::ThorCLI.start(['pdf', '00-preface.pdf'])
+                PreProcessCommands.execute_pre_process({}, ['00-preface'])
+                ConvertCommands.execute_convert({}, ['00-preface'])
+                PostProcessCommands.execute_post_process({}, ['00-preface'])
+                EntriesCommands.execute_entries({}, ['00-preface'])
+                PdfCommands.execute_pdf({}, '00-preface.pdf')
                 Common.log_success('[Step 8] 00-preface.pdf を生成しました') if File.exist?('00-preface.pdf')
                 Build::Utilities.cache_store_file(cache_on, '00-preface.pdf', preface_cache, 'Step 8')
               else
@@ -205,8 +206,8 @@ module Vivlio
             need_front = force || front_missing || newer_than_any.call(front_pdf, front_srcs)
 
             if need_front
-              Vivlio::Starter::ThorCLI.start(['entries', '_titlepage.html', '_legalpage.html'])
-              Vivlio::Starter::ThorCLI.start(['pdf', front_pdf])
+              EntriesCommands.execute_entries({}, ['_titlepage.html', '_legalpage.html'])
+              PdfCommands.execute_pdf({}, front_pdf)
               if File.exist?(front_pdf)
                 Common.log_success("[Step 9] #{front_pdf} を生成しました")
                 Build::Utilities.cache_store_file(cache_on, front_pdf, front_cache, 'Step 9')
@@ -222,8 +223,8 @@ module Vivlio
 
             need_colophon = force || front_regenerated || colophon_missing || newer_than_any.call(colophon_pdf, colophon_srcs)
             if need_colophon
-              Vivlio::Starter::ThorCLI.start(['entries', '_colophon.html'])
-              Vivlio::Starter::ThorCLI.start(['pdf', colophon_pdf])
+              EntriesCommands.execute_entries({}, ['_colophon.html'])
+              PdfCommands.execute_pdf({}, colophon_pdf)
               if File.exist?(colophon_pdf)
                 Common.log_success('[Step 9] _colophon.pdf を生成しました')
                 Build::Utilities.cache_store_file(cache_on, colophon_pdf, colophon_cache, 'Step 9')

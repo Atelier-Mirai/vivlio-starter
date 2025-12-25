@@ -1,5 +1,21 @@
 # frozen_string_literal: true
 
+# ================================================================
+# Test: doctor_commands_test.rb
+# ================================================================
+# テスト対象:
+#   DoctorCommands モジュール（lib/vivlio/starter/cli/doctor.rb）
+#
+# 検証内容:
+#   - 全ツール揃っている場合の正常終了
+#   - --fix オプションでの textlint 設定コピー
+#   - macOS 環境での Homebrew インストール処理
+#
+# テスト環境:
+#   - ホスト OS をスタブ化（darwin/linux）
+#   - command_exists? をスタブ化
+# ================================================================
+
 require 'test_helper'
 require 'tmpdir'
 require 'vivlio/starter/cli'
@@ -8,16 +24,16 @@ require 'vivlio/starter/cli/doctor'
 module Vivlio
   module Starter
     module CLI
+      # DoctorCommands のユニットテスト
       class DoctorCommandsTest < Minitest::Test
-        # すべてのツールが揃っている場合、案内だけで終了することを確認
+        # すべてのツールが揃っている場合、正常終了することを確認
         def test_doctor_reports_success_when_environment_complete
           with_host_os('linux') do
-            command = build_doctor_command
             stub_logging do
-              command.stub :command_exists?, ->(_) { true } do
-                command.stub :waifu2x_available?, true do
-                  command.stub :install_waifu2x_macos!, ->(*) { flunk('install_waifu2x_macos! should not be called when waifu2x is available') } do
-                    capture_io { command.doctor }
+              DoctorCommands.stub :command_exists?, ->(_) { true } do
+                DoctorCommands.stub :waifu2x_available?, true do
+                  DoctorCommands.stub :install_waifu2x_macos!, ->(*) { flunk('install_waifu2x_macos! should not be called when waifu2x is available') } do
+                    capture_io { DoctorCommands.execute_doctor(options_context) }
                   end
                 end
               end
@@ -27,15 +43,14 @@ module Vivlio
 
         def test_doctor_fix_copies_textlint_assets_when_environment_complete
           with_host_os('darwin') do
-            command = build_doctor_command(fix: true, yes: true)
             copy_called = false
 
             stub_logging do
-              command.stub :ssl_certificate_configured?, true do
-                command.stub :waifu2x_available?, true do
-                  command.stub :command_exists?, ->(_) { true } do
-                    command.stub :copy_textlint_assets_from_scaffold!, -> { copy_called = true } do
-                      capture_io { command.doctor }
+              DoctorCommands.stub :ssl_certificate_configured?, true do
+                DoctorCommands.stub :waifu2x_available?, true do
+                  DoctorCommands.stub :command_exists?, ->(_) { true } do
+                    DoctorCommands.stub :copy_textlint_assets_from_scaffold!, -> { copy_called = true } do
+                      capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
                     end
                   end
                 end
@@ -48,15 +63,13 @@ module Vivlio
 
         def test_doctor_reports_missing_textlint_without_fix
           with_host_os('linux') do
-            command = build_doctor_command
-
             outputs = []
 
             Common.stub :echo_always, ->(message) { outputs << message } do
               stub_logging_without_echo do
-                command.stub :waifu2x_available?, true do
-                  command.stub :command_exists?, ->(cmd) { cmd != 'textlint' } do
-                    command.doctor
+                DoctorCommands.stub :waifu2x_available?, true do
+                  DoctorCommands.stub :command_exists?, ->(cmd) { cmd != 'textlint' } do
+                    DoctorCommands.execute_doctor(options_context)
                   end
                 end
               end
@@ -68,38 +81,37 @@ module Vivlio
 
         def test_doctor_fix_installs_textlint_when_missing
           with_host_os('darwin') do
-            command = build_doctor_command(fix: true, yes: true)
             system_calls = []
             textlint_installed = false
             copy_called = false
 
             stub_logging do
-              command.stub :ssl_certificate_configured?, true do
-                command.stub :waifu2x_available?, true do
-                  command.stub :command_exists?, lambda { |cmd|
+              DoctorCommands.stub :ssl_certificate_configured?, true do
+                DoctorCommands.stub :waifu2x_available?, true do
+                  DoctorCommands.stub :command_exists?, lambda { |cmd|
                     case cmd
                     when 'textlint' then textlint_installed
                     else true
                     end
                   } do
-                    command.stub :copy_textlint_assets_from_scaffold!, -> { copy_called = true } do
-                    command.stub :system, lambda { |cmd|
-                      system_calls << cmd
+                    DoctorCommands.stub :copy_textlint_assets_from_scaffold!, -> { copy_called = true } do
+                      DoctorCommands.stub :system, lambda { |cmd|
+                        system_calls << cmd
 
-                      case cmd
-                      when /xcode-select -p/ then true
-                      when /which brew/ then true
-                      when /brew install/ then true
-                      when /which npm/ then true
-                      when /npm install -g /
-                        textlint_installed = true
-                        true
-                      else
-                        true
+                        case cmd
+                        when /xcode-select -p/ then true
+                        when /which brew/ then true
+                        when /brew install/ then true
+                        when /which npm/ then true
+                        when /npm install -g /
+                          textlint_installed = true
+                          true
+                        else
+                          true
+                        end
+                      } do
+                        capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
                       end
-                    } do
-                      capture_io { command.doctor }
-                    end
                     end
                   end
                 end
@@ -121,15 +133,14 @@ module Vivlio
         # --fix 指定が非 macOS 環境ではインストールを試みず終了することを確認
         def test_doctor_fix_on_non_macos_aborts_install
           with_host_os('linux') do
-            command = build_doctor_command(fix: true)
             system_calls = []
 
             stub_logging do
-              command.stub :command_exists?, ->(_) { false } do
-                command.stub :waifu2x_available?, false do
-                  command.stub :install_waifu2x_macos!, ->(*) { flunk('install_waifu2x_macos! should not be called on non-macOS') } do
-                    command.stub :system, ->(cmd) { system_calls << cmd; false } do
-                      capture_io { command.doctor }
+              DoctorCommands.stub :command_exists?, ->(_) { false } do
+                DoctorCommands.stub :waifu2x_available?, false do
+                  DoctorCommands.stub :install_waifu2x_macos!, ->(*) { flunk('install_waifu2x_macos! should not be called on non-macOS') } do
+                    DoctorCommands.stub :system, ->(cmd) { system_calls << cmd; false } do
+                      capture_io { DoctorCommands.execute_doctor(options_context(fix: true)) }
                     end
                   end
                 end
@@ -142,23 +153,8 @@ module Vivlio
 
         private
 
-        # テスト用 Doctor コマンドを生成
-        def build_doctor_command(options = {})
-          Class.new do
-            # Thor DSL のスタブ
-            def self.desc(*) = nil
-            def self.long_desc(*) = nil
-            def self.method_option(*) = nil
-
-            include DoctorCommands
-
-            attr_reader :options
-
-            def initialize(options)
-              defaults = { fix: false, yes: false, verbose: false }
-              @options = defaults.merge(options)
-            end
-          end.new(options)
+        def options_context(opts = {})
+          { options: { fix: false, yes: false, verbose: false }.merge(opts) }
         end
 
         # 指定した host_os を一時的に設定

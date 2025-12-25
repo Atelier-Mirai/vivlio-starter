@@ -106,7 +106,7 @@ module Vivlio
               Common.log_action('[Step 1] クリーンアップをスキップします（--no-clean）')
             else
               Common.log_action('[Step 1] クリーンアップを実行します…')
-              Vivlio::Starter::ThorCLI.start(['clean'])
+              CleanCommands.execute_clean({})
             end
           end
 
@@ -129,7 +129,14 @@ module Vivlio
             Common.log_action("[Step 4] 対象章をビルドします: #{targets.join(', ')}")
             targets.each do |target|
               %w[pre_process convert post_process].each do |task|
-                Vivlio::Starter::ThorCLI.start([task, target])
+                case task
+                when 'pre_process'
+                  PreProcessCommands.execute_pre_process({}, [target])
+                when 'convert'
+                  ConvertCommands.execute_convert({}, [target])
+                when 'post_process'
+                  PostProcessCommands.execute_post_process({}, [target])
+                end
               end
             end
           end
@@ -138,9 +145,9 @@ module Vivlio
           def generate_entries_and_pdf
             Common.log_action('[Step 5] entries.js を生成して PDF をビルドします…')
             # 対象章のみを含む entries.js を生成
-            Vivlio::Starter::ThorCLI.start(['entries', *targets])
+            EntriesCommands.execute_entries({}, targets)
             # PDF を生成
-            Vivlio::Starter::ThorCLI.start(['pdf'])
+            PdfCommands.execute_pdf({})
           end
 
           # single mode: 出力 PDF を章名にリネーム（54.pdf または 54-56.pdf）
@@ -200,12 +207,17 @@ module Vivlio
 
             if force || newer_than_any.call(front_pdf, [title_md, legal_md, book_yml])
               [['create:titlepage', title_md], ['create:legalpage', legal_md]].each do |cmd, _path|
-                Vivlio::Starter::ThorCLI.start([cmd, '--force'])
+                case cmd
+                when 'create:titlepage'
+                  CreateCommands.execute_titlepage({ options: { force: true } })
+                when 'create:legalpage'
+                  CreateCommands.execute_legalpage({ options: { force: true } })
+                end
               end
             end
 
             if force || newer_than_any.call(col_pdf, [colophon_md, book_yml])
-              Vivlio::Starter::ThorCLI.start(['create:colophon', '--force'])
+              CreateCommands.execute_colophon({ options: { force: true } })
             end
 
             Build::PdfBuilder.build_front_pages_and_tail!(force)
@@ -216,7 +228,14 @@ module Vivlio
             return if File.exist?(path)
 
             Common.log_info("#{type} が存在しないため自動生成します: #{path}")
-            Vivlio::Starter::ThorCLI.start(["create:#{type}"])
+            case type
+            when 'titlepage'
+              CreateCommands.execute_titlepage({})
+            when 'legalpage'
+              CreateCommands.execute_legalpage({})
+            when 'colophon'
+              CreateCommands.execute_colophon({})
+            end
           end
 
           # MTime 取得時の例外を吸収して 0 時刻にフォールバックする
@@ -272,7 +291,7 @@ module Vivlio
               Common.log_action('[Step 14] クリーンアップをスキップします（--no-clean）')
             else
               Common.log_action('[Step 14] 中間生成物をクリーンアップします…')
-              Vivlio::Starter::ThorCLI.start(['clean'])
+              CleanCommands.execute_clean({})
             end
           end
         end

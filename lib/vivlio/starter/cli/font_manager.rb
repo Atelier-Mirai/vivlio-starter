@@ -1,5 +1,28 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/font_manager.rb
+# ================================================================
+# 責務:
+#   Google Fonts からフォントをダウンロードし、ローカルにキャッシュする。
+#   書籍のスタイルシートで使用するフォントを事前に準備する。
+#
+# 機能:
+#   - Google Fonts CSS API からフォント URL を取得
+#   - TTF/OTF/WOFF/WOFF2 ファイルをダウンロード
+#   - ローカルの fonts/ ディレクトリにキャッシュ
+#   - @font-face を定義した CSS バンドルを生成
+#
+# 標準フォント（ダウンロード不要）:
+#   - Noto Serif JP, Noto Sans JP: 和文本文用
+#   - Zen Maru Gothic: 見出し・装飾用
+#   - hackgen35: コードブロック用
+#
+# 依存:
+#   - Common: ログ出力・設定読み込み
+#   - Net::HTTP: Google Fonts API へのリクエスト
+# ================================================================
+
 require 'fileutils'
 require 'net/http'
 require 'set'
@@ -9,9 +32,12 @@ require 'openssl'
 module Vivlio
   module Starter
     module CLI
+      # Google Fonts ダウンロード・キャッシュ管理
       module FontManager
         USER_AGENT = 'VivlioStarter/FontManager (+https://github.com/Atelier-Mirai/vivlio-starter)'.freeze
         GOOGLE_FONTS_ENDPOINT = 'https://fonts.googleapis.com/css2'.freeze
+
+        # 標準搭載フォント（ダウンロード不要）
         STANDARD_FONT_FAMILIES = Set.new([
           'Noto Serif JP',
           'Noto Sans JP',
@@ -21,6 +47,16 @@ module Vivlio
 
         module_function
 
+        # 指定されたフォントが利用可能か確認し、不足分をダウンロードする
+        #
+        # @param font_names [Array<String>, String] フォント名（複数可）
+        # @return [void]
+        #
+        # 処理フロー:
+        #   1. 標準フォントはスキップ
+        #   2. 既にキャッシュ済みのフォントはスキップ
+        #   3. Google Fonts から CSS を取得しフォントファイルをダウンロード
+        #   4. @font-face バンドル CSS を更新
         def ensure_fonts_available(font_names)
           names = normalize_font_names(font_names)
           return if names.empty?

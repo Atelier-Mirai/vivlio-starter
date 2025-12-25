@@ -1,16 +1,33 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/build/pdf_merger.rb
+# ================================================================
+# 責務:
+#   複数の中間 PDF を結合して最終的な output.pdf を生成する。
+#
+# マージ対象（順序）:
+#   1. _titlepage_legalpage.pdf: 表紙・法的ページ
+#   2. _preface_toc.pdf: 前書き・目次
+#   3. _sections.pdf: 本文・付録
+#   4. _colophon.pdf: 奥付
+#
+# アウトライン:
+#   - qpdf --add-outline で目次リンクを付与
+#   - pdfinfo でページ数を取得して各章の開始位置を計算
+#
+# 依存:
+#   - qpdf: PDF 結合・アウトライン付与
+#   - pdfinfo: ページ数取得
+# ================================================================
+
 require 'fileutils'
 
 module Vivlio
   module Starter
     module CLI
       module Build
-        # ------------------------------------------------
-        # PdfMerger: PDFマージモジュール
-        # ------------------------------------------------
-        # Step 10, 11 の PDF マージ・アウトライン付与を担当する。
-        # ------------------------------------------------
+        # PDF 結合・アウトライン付与モジュール
         module PdfMerger
           module_function
 

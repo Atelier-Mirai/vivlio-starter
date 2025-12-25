@@ -1,13 +1,32 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/pre_process/css_updater.rb
+# ================================================================
+# 責務:
+#   テーマ設定に基づいて CSS ファイルのカスタムプロパティを更新する。
+#
+# 更新対象ファイル:
+#   - stylesheets/theme.css: テーマカラー・扉絵・飾り画像
+#   - stylesheets/appendix.css: 付録用スタイル
+#   - stylesheets/preface.css: 前書き用スタイル
+#   - stylesheets/chapter.css: 章共通スタイル
+#   - stylesheets/page-settings.css: ページサイズ・余白
+#
+# 更新する CSS カスタムプロパティ:
+#   - --theme-accent: アクセントカラー
+#   - --frontispiece-image: 扉絵画像 URL
+#   - --ornament-image: 飾り画像 URL
+#   - --page-width, --page-height: ページサイズ
+# ================================================================
+
 require_relative '../common'
 
 module Vivlio
   module Starter
     module CLI
       module PreProcessCommands
-        # CSS更新処理を担当するモジュール
-        # theme.css, appendix.css, preface.css, chapter.css, chapter-common.css, page-settings.css を更新
+        # CSS ファイル更新モジュール
         module CssUpdater
           ALLOWED_COLORS = %w[yellow amber orange peach coral red magenta plum purple indigo navy blue cyan teal mint green lime].freeze
 

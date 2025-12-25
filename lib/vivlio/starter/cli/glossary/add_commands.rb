@@ -1,65 +1,52 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/glossary/add_commands.rb
+# ================================================================
+# 責務:
+#   用語集（glossary.yml）に新しい用語を対話的に追加する。
+#
+# 収集する情報:
+#   - 略称（abbr）: 本文中で使用する短い表記
+#   - 正式名称（name）: フルスペル表記
+#   - 初出フルフォーム: 初回登場時の表記形式
+#   - エイリアス: 使用を避けるべき別表記
+#   - スタイル: english/katakana
+#   - 説明文: 用語の定義・補足
+#
+# 依存:
+#   - GlossarySharedHelpers: 用語集読み込み・保存
+# ================================================================
+
 module Vivlio
   module Starter
     module CLI
-      # glossary:add 系のコマンド実装と補助処理をまとめたモジュール
+      # 用語集への新規エントリ追加コマンド
       module GlossaryAddCommands
         include GlossarySharedHelpers
 
         GLOSSARY_PATH_DISPLAY = GlossarySharedHelpers::GLOSSARY_DISPLAY_PATH
 
-        ADD_DESC = {
-          short: "用語を対話的に追加します（#{GLOSSARY_PATH_DISPLAY} に追記）",
-          long: <<~DESC
-            用語を対話的に追加します。#{GLOSSARY_PATH_DISPLAY} に追記します。
+        def self.execute_glossary_add(input = nil, options = {})
+          ENV['VERBOSE'] = '1' if options[:verbose]
+          $stdout.sync = true
 
-            引数:
-              INPUT    1行入力形式（例: "HTML(HyperText Markup Language)" または "HyperText Markup Language(HTML)")
+          glossary_path = glossary_path_or_exit('glossary:add')
+          glossary = load_glossary(glossary_path)
 
-            例:
-              vs glossary:add
-              vs glossary:add "HTML(HyperText Markup Language)"
-          DESC
-        }.freeze
+          term = collect_term_metadata(input)
+          ensure_term_presence(term)
 
-        # Thor クラスへ glossary:add コマンドを登録する
-        def self.included(base)
-          base.class_eval do
-            desc 'glossary:add', GlossaryAddCommands::ADD_DESC[:short]
-            long_desc GlossaryAddCommands::ADD_DESC[:long]
+          term[:first_full_form] = ask_first_full_form(term)
+          term[:aliases] = ask_aliases(term[:abbr])
+          term[:style] = ask_style(term)
+          term[:description_lines] = ask_description_lines
+          term[:key] = generate_term_key(term)
 
-            # ================================================================
-            # Command: glossary:add（用語の追加）
-            # ------------------------------------------------
-            # 概要:
-            #   1行入力または対話により、abbr/name、別表記(aliases)、style、説明を収集し
-            #   glossary.yml に追記または既存エントリの更新を行う。
-            # 引数:
-            #   input  "HTML(HyperText Markup Language)" 等の1行入力（省略可）
-            # ================================================================
-            def glossary_add(input = nil)
-              ENV['VERBOSE'] = '1' if options[:verbose]
-              $stdout.sync = true
+          status = handle_existing_entry(glossary_path, glossary, term)
+          return if status == :updated
 
-              glossary_path = glossary_path_or_exit('glossary:add')
-              glossary = load_glossary(glossary_path)
-
-              term = collect_term_metadata(input)
-              ensure_term_presence(term)
-
-              term[:first_full_form] = ask_first_full_form(term)
-              term[:aliases] = ask_aliases(term[:abbr])
-              term[:style] = ask_style(term)
-              term[:description_lines] = ask_description_lines
-              term[:key] = generate_term_key(term)
-
-              status = handle_existing_entry(glossary_path, glossary, term)
-              return if status == :updated
-
-              append_new_entry(glossary_path, term)
-            end
-          end
+          append_new_entry(glossary_path, term)
         end
 
         private

@@ -1,5 +1,28 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/text_lint.rb
+# ================================================================
+# 責務:
+#   textlint を使用した Markdown ファイルの文章校正を実行する。
+#   日本語技術文書向けのルールセットで文章品質をチェックする。
+#
+# 機能:
+#   - contents/ 以下の Markdown ファイルを textlint で検査
+#   - 章番号指定・範囲指定による部分検査
+#   - 英語エラーメッセージの日本語翻訳
+#
+# 使用される textlint ルール:
+#   - textlint-rule-preset-ja-technical-writing: 技術文書向け
+#   - textlint-rule-preset-japanese: 日本語一般
+#   - textlint-rule-prh: 表記揺れ検出
+#
+# 依存:
+#   - textlint: npm グローバルインストール
+#   - TextlintFormatter: エラーメッセージの日本語化
+#   - Common: ファイル解決・ログ出力
+# ================================================================
+
 require 'open3'
 require 'shellwords'
 require 'rbconfig'
@@ -10,7 +33,7 @@ require_relative 'textlint_formatter'
 module Vivlio
   module Starter
     module CLI
-      # Textlint を実行する CLI コマンド群
+      # textlint による文章校正コマンド
       module TextLintCommands
         DEFAULT_CONFIG_RELATIVE = File.join(Common::CONFIG_DIR, '.textlintrc.yml')
         DEFAULT_CONFIG_PATH = Common.resolve_path_from_root(DEFAULT_CONFIG_RELATIVE)
@@ -51,23 +74,6 @@ module Vivlio
         DEFAULT_FORMAT = 'stylish'
         TEXTLINT_ENV_VAR = 'VIVLIO_TEXTLINT_BIN'
 
-        def self.included(base)
-          base.class_eval do
-            desc 'text:lint [BASENAME ...]', TEXT_LINT_DESC[:short]
-            long_desc TEXT_LINT_DESC[:long]
-            option :config, type: :string, desc: "使用する .textlintrc.yml のパス（既定: #{DEFAULT_CONFIG_DISPLAY}）"
-            option :format, type: :string, desc: 'textlint の出力フォーマット (stylish/compact/pretty-error, 既定: stylish)'
-            option :fix, type: :boolean, desc: '自動修正可能なエラーを修正します', default: false
-
-            def text_lint(*targets)
-              Vivlio::Starter::CLI::TextLintCommands.execute_text_lint(targets, options)
-            end
-
-            map 'text:lint' => :text_lint
-            map 'text:check' => :text_lint
-          end
-        end
-
         def self.execute_text_lint(targets, options = {})
           TextLintRunner.new(targets, options).call
         end
@@ -89,7 +95,7 @@ module Vivlio
             files = resolve_targets
             if files.empty?
               Common.log_warn('textlint 対象となる Markdown ファイルが見つかりません。')
-              return
+              return 0
             end
 
             command = build_command(files)
@@ -104,25 +110,10 @@ module Vivlio
             $stdout.print(stdout) unless stdout.nil? || stdout.empty?
             $stderr.print(stderr) unless stderr.nil? || stderr.empty?
 
-            if status.success?
-              Common.log_success('textlint: ✅ 文章チェックで問題は見つかりませんでした。')
-            else
-              Common.log_error("textlint: ❌ 文章チェックでエラーが発生しました (#{status.exitstatus})")
-              
-              # 自動修正可能な問題がある場合は案内メッセージを表示
-              fixable_count = extract_fixable_count(stdout)
-              if fixable_count > 0 && !options[:fix]
-                $stdout.puts ""
-                $stdout.puts "💡 #{fixable_count}個のエラーは自動修正可能です。次のコマンドで修正できます:"
-                $stdout.puts "   vs text:lint --fix"
-                $stdout.flush
-              end
-              
-              Kernel.exit(status.exitstatus || 1)
-            end
+            return handle_status(status, stdout)
           rescue TextLintError => e
             Common.log_error(e.message)
-            Kernel.exit(1)
+            1
           end
 
           private
@@ -246,6 +237,26 @@ module Vivlio
 
           def windows_platform?
             !!(RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin|bccwin|wince|emx/i)
+          end
+
+          def handle_status(status, stdout)
+            if status.success?
+              Common.log_success('textlint: ✅ 文章チェックで問題は見つかりませんでした。')
+              return 0
+            end
+
+            Common.log_error("textlint: ❌ 文章チェックでエラーが発生しました (#{status.exitstatus})")
+
+            # 自動修正可能な問題がある場合は案内メッセージを表示
+            fixable_count = extract_fixable_count(stdout)
+            if fixable_count > 0 && !options[:fix]
+              $stdout.puts ''
+              $stdout.puts "💡 #{fixable_count}個のエラーは自動修正可能です。次のコマンドで修正できます:"
+              $stdout.puts '   vs text:lint --fix'
+              $stdout.flush
+            end
+
+            status.exitstatus || 1
           end
 
           # Markdown 対象ファイルの解決

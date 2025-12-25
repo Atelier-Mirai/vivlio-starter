@@ -1,5 +1,17 @@
 # frozen_string_literal: true
 
+# ================================================================
+# Test: build_helpers_test.rb
+# ================================================================
+# テスト対象:
+#   Build::ChapterConfig（lib/vivlio/starter/cli/build/chapter_config.rb）
+#
+# 検証内容:
+#   - expand_chapter_range: 範囲文字列 "2-5" → [2,3,4,5] への展開
+#   - parse_chapter_numbers_from_string: カンマ区切り・範囲の解析
+#   - 無効な入力（逆順、文字列等）のエラーハンドリング
+# ================================================================
+
 require 'test_helper'
 require 'vivlio/starter/cli/common'
 require 'vivlio/starter/cli/build'
@@ -7,10 +19,9 @@ require 'vivlio/starter/cli/build'
 module Vivlio
   module Starter
     module CLI
+      # Build::ChapterConfig のユニットテスト
       class BuildHelpersTest < Minitest::Test
-        # ================================================================
-        # expand_chapter_range のテスト
-        # ================================================================
+        # expand_chapter_range: 正常系
         def test_expand_chapter_range_valid
           assert_equal [2, 3, 4, 5], Build::ChapterConfig.expand_chapter_range('2-5')
           assert_equal [11, 12, 13], Build::ChapterConfig.expand_chapter_range('11-13')

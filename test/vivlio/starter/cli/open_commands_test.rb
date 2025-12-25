@@ -1,5 +1,17 @@
 # frozen_string_literal: true
 
+# ================================================================
+# Test: open_commands_test.rb
+# ================================================================
+# テスト対象:
+#   PDF ファイルを開くロジック（lib/vivlio/starter/cli/pdf.rb）
+#
+# 検証内容:
+#   - 圧縮版 PDF が新しい場合の優先選択
+#   - 圧縮版が存在しない場合のフォールバック
+#   - 複数 PDF ファイルの選択ロジック
+# ================================================================
+
 require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
@@ -9,8 +21,9 @@ require 'vivlio/starter/cli/pdf'
 module Vivlio
   module Starter
     module CLI
+      # PDF オープン機能のユニットテスト
       class OpenCommandsTest < Minitest::Test
-        # 圧縮版PDFが新しい場合に優先して開くことを確認
+        # 圧縮版 PDF が新しい場合に優先して開くことを確認
         def test_open_pdf_prefers_compressed_when_newer
           within_temp_dir do
             setup_pdf_files

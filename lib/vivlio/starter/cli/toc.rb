@@ -28,17 +28,13 @@ module Vivlio
           DESC
         }.freeze
 
-        def included(base)
-          base.class_eval do
-            desc 'toc [HTMLs...]', TOC_DESC[:short]
-            long_desc TOC_DESC[:long]
+        def included(base); end
 
-            # toc サブコマンドのエントリポイント
-            def toc(*htmls)
-              TocCommandExecutor.new(self, htmls).call
-            end
-          end
+        # Samovar/直接呼び出し用エントリポイント
+        def execute_toc(context_or_options, htmls = [])
+          TocCommandExecutor.new(context_or_options, htmls).call
         end
+        module_function :execute_toc
 
         # toc コマンドのエントリ処理を統括する
         class TocCommandExecutor

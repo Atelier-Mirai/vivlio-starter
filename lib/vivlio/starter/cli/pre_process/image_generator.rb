@@ -1,5 +1,26 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/pre_process/image_generator.rb
+# ================================================================
+# 責務:
+#   テーマ画像のバリアント（portrait/landscape）を生成する。
+#   waifu2x による高解像度化と ImageMagick によるクロップを行う。
+#
+# 生成処理:
+#   1. waifu2x-ncnn-vulkan で 2x アップスケール + ノイズ除去
+#   2. ImageMagick で指定アスペクト比にクロップ
+#   3. WebP 形式で出力（quality=90）
+#
+# バリアント:
+#   - portrait: 扉絵用（ページ比率に合わせた縦長）
+#   - landscape: 飾り画像用（2.39:1 シネマスコープ横長）
+#
+# 依存:
+#   - waifu2x-ncnn-vulkan: GPU 高速化画像拡大
+#   - ImageMagick: クロップ・変換
+# ================================================================
+
 require 'open3'
 require 'fileutils'
 require 'tmpdir'
@@ -11,7 +32,7 @@ module Vivlio
   module Starter
     module CLI
       module PreProcessCommands
-        # 画像生成処理を担当するモジュール（waifu2x連携、ImageMagick操作）
+        # テーマ画像バリアント生成モジュール
         module ImageGenerator
           DEFAULT_WAIFU2X_BIN = File.expand_path('~/.local/bin/waifu2x/waifu2x-ncnn-vulkan')
           FRONTISPIECE_WAIFU2X_NOISE = 1

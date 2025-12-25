@@ -4,7 +4,7 @@
 # Section: 必要ファイルのロードとフォールバック方針
 # ------------------------------------------------
 # 目的:
-#   - CLI 実装(Thor)・バージョン・組み込み new コマンドをロードする。
+#   - CLI 実装(Samovar)・バージョン・組み込み new コマンドをロードする。
 # 方針:
 #   - version は必須: バージョン表示や gem 情報のため常に必要。
 #   - cli は実質必須: 通常のコマンド実行/ヘルプ表示のため。ただし互換性を重視
@@ -16,19 +16,14 @@
 #     fail-fast 化が可能（本ファイルでは互換性優先のため現状維持）。
 # ================================================================
 
-begin
-  # Thor ベースの CLI 実装。正常に読めれば `Vivlio::Starter::ThorCLI` が利用可能。
-  require 'vivlio/starter/cli'
-rescue LoadError
-  # 互換性優先: ここでは例外を握りつぶし、後で `defined?(...)` により安全に判定。
-  # 例: 極端な最小環境でもプロセス起動自体は継続させる。
-end
+# Samovar ベースの CLI
+require 'vivlio/starter/cli/samovar'
 
 # バージョンは必須。`Vivlio::Starter::VERSION` を CLI 表示や gem 情報で使用。
 require 'vivlio/starter/version'
 
 begin
-  # 組み込み new（最小ブートストラップ）。存在すれば `vs new` を Thor に依存せず実行。
+  # 組み込み new（最小ブートストラップ）。存在すれば `vs new` を実行。
   require 'vivlio/starter/commands/new'
 rescue LoadError
   # 古いインストール等で未同梱でも動作継続。`defined?(Commands::New)` で分岐済み。
@@ -58,11 +53,11 @@ module Vivlio
       # Module: Vivlio::Starter::CLI
       # ------------------------------------------------
       # 役割:
-      #   コマンドライン実行の中核。`start(argv)` を提供し Thor へ委譲。
+      #   コマンドライン実行の中核。`start(argv)` を提供し Samovar へ委譲。
       # エクスポート:
       #   - module_function により `Vivlio::Starter::CLI.start` として利用。
       # 依存:
-      #   - `vivlio/starter/cli`（Thor 実装）
+      #   - `vivlio/starter/cli/samovar`（Samovar 実装）
       #   - `vivlio/starter/commands/new`（組み込み new コマンド）
       # ================================================================
 
@@ -72,86 +67,25 @@ module Vivlio
       # Method: start(argv)
       # ------------------------------------------------
       # 役割:
-      #   vivlio-starter のエントリポイント。組み込み(--help/--version/new)を処理し、
-      #   それ以外は Thor CLI に委譲する。
+      #   vivlio-starter のエントリポイント。Samovar CLI に処理を委譲する。
       # 振る舞い:
       #   - VS_CLI 環境変数で CLI 実行をマーク
       #   - --help/--version を先行処理
       #   - new は Commands::New に直行
       #   - -v/--verbose を抽出し ENV['VERBOSE']='1'
-      #   - `vs <cmd> --help` は日本語ヘルプ(jp_task_help)に対応
-      #   - オプションを前方に正規化して Thor に渡す
+      #   - `vs <cmd> --help` は日本語ヘルプに対応
       # 返り値: 成功時 0、エラー時 非0
       # ================================================================
       def start(argv)
-        # Rakefileのガードが実行を許可するように、このプロセスをCLI駆動としてマーク
-        ENV['VS_CLI'] ||= '1'
+        args = Array(argv).dup
 
-        # 組み込み: helpとversion
-        if argv && ['--help', '-h', 'help'].include?(argv.first)
-          # Thor CLI のヘルプを表示（読み込み失敗時はメッセージを出して終了）
-          if defined?(Vivlio::Starter::ThorCLI)
-            Vivlio::Starter::ThorCLI.start(['help'])
-            return 0
-          else
-            warn '❌ CLI を初期化できませんでした（ThorCLI 未定義）。インストール/依存関係をご確認ください。'
-            return 1
-          end
-        end
-
-        if argv && ['--version', '-V', 'version'].include?(argv.first)
-          puts "vivlio-starter #{Vivlio::Starter::VERSION}"
-          return 0
-        end
-
-        # グローバルフラグを抽出
-        verbose = false
-        argv = argv.reject do |a|
-          case a
-          when '-v', '--verbose'
-            verbose = true
-            true
-          else
-            false
-          end
-        end
-        ENV['VERBOSE'] = '1' if verbose
-
-        # Thor へ委譲
-        cmd = argv.shift
-        if cmd.nil? || %w[help -h --help].include?(cmd)
-          if defined?(Vivlio::Starter::ThorCLI)
-            Vivlio::Starter::ThorCLI.start(['help'])
-            return 0
-          else
-            warn '❌ CLI を初期化できませんでした（ThorCLI 未定義）。インストール/依存関係をご確認ください。'
-            return 1
-          end
-        end
-
-        begin
-          if defined?(Vivlio::Starter::ThorCLI)
-            # `vs <cmd> --help` を日本語ヘルプ対応で処理
-            if argv.any? { |a| ['--help', '-h', 'help'].include?(a) }
-              if Vivlio::Starter::ThorCLI.respond_to?(:jp_task_help)
-                Vivlio::Starter::ThorCLI.jp_task_help(cmd)
-              else
-                Vivlio::Starter::ThorCLI.start(['help', cmd])
-              end
-              return 0
-            end
-            # 重要: オプションとその値の順序を保持したまま Thor に委譲する
-            # （前方正規化は値つきオプションを壊すため中止）
-            Vivlio::Starter::ThorCLI.start([cmd, *argv])
-            return 0
-          end
-        rescue SystemExit => e
-          return e.status
-        rescue Exception => e
-          warn "❌ #{e.class}: #{e.message}"
-          warn e.backtrace.join("\n") if ENV['VS_DEBUG']
-          return 1
-        end
+        result = Vivlio::Starter::CLI::SamovarCommands::RootCommand.call(args)
+        result.is_a?(Integer) ? result : 0
+      rescue SystemExit => e
+        e.status
+      rescue Exception => e
+        warn "❌ #{e.class}: #{e.message}"
+        warn e.backtrace.join("\n") if ENV['VS_DEBUG']
         1
       end
     end

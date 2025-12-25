@@ -1,5 +1,22 @@
 # frozen_string_literal: true
 
+# ================================================================
+# Test: clean_commands_test.rb
+# ================================================================
+# テスト対象:
+#   CleanCommands モジュール（lib/vivlio/starter/cli/clean.rb）
+#
+# 検証内容:
+#   - --purge なし: 中間生成物のみ削除、最終 PDF は保持
+#   - --purge あり: 最終 PDF も含めてすべて削除
+#   - --cache: キャッシュディレクトリのみ削除
+#   - --cover: カバー画像のみ削除（マスターは保持）
+#
+# テスト環境:
+#   - 一時ディレクトリで副作用を隔離
+#   - 必須設定ファイルを自動生成
+# ================================================================
+
 require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
@@ -10,12 +27,13 @@ require 'vivlio/starter/cli/clean'
 module Vivlio
   module Starter
     module CLI
+      # CleanCommands のユニットテスト
       class CleanCommandsTest < Minitest::Test
-        # --purge なしで clean 実行時、生成物のみ削除され最終PDFが残ることを確認
+        # --purge なしで中間生成物のみ削除され最終 PDF が残ることを確認
         def test_clean_preserves_final_pdfs_without_purge
           within_temp_dir do
             setup_generated_files
-            build_clean_command.clean
+            CleanCommands.execute_clean({})
 
             assert_clean_directory
             assert_final_pdfs_exist
@@ -27,7 +45,7 @@ module Vivlio
         def test_clean_with_purge_removes_final_outputs
           within_temp_dir do
             setup_generated_files
-            build_clean_command(purge: true).clean
+            CleanCommands.execute_clean({ purge: true })
 
             assert_clean_directory
             assert_final_pdfs_removed
@@ -43,7 +61,7 @@ module Vivlio
             FileUtils.mkdir_p(cache_dir)
             write_file(File.join(cache_dir, 'cached.pdf'))
 
-            build_clean_command(cache: true).clean
+            CleanCommands.execute_clean({ cache: true })
 
             refute Dir.exist?(cache_dir), 'キャッシュディレクトリは削除されるべきです'
             assert File.exist?('11-sample.html'), '--cache では生成物を削除しないはずです'
@@ -59,7 +77,7 @@ module Vivlio
             setup_cover_files
             setup_config_for_cover
 
-            build_clean_command(cover: true).clean
+            CleanCommands.execute_clean({ cover: true })
 
             # カバー画像が削除されること
             assert_cover_files_removed
@@ -81,7 +99,7 @@ module Vivlio
             FileUtils.mkdir_p(cache_dir)
             write_file(File.join(cache_dir, 'cached.pdf'))
 
-            build_clean_command(cover: true, cache: true).clean
+            CleanCommands.execute_clean({ cover: true, cache: true })
 
             # カバー画像が削除されること
             assert_cover_files_removed
@@ -100,7 +118,7 @@ module Vivlio
             setup_cover_files
             setup_config_for_cover
 
-            build_clean_command(cover: true, purge: true).clean
+            CleanCommands.execute_clean({ cover: true, purge: true })
 
             # カバー画像が削除されること
             assert_cover_files_removed
@@ -120,7 +138,7 @@ module Vivlio
             FileUtils.mkdir_p(cache_dir)
             write_file(File.join(cache_dir, 'cached.pdf'))
 
-            build_clean_command(cover: true, cache: true, purge: true).clean
+            CleanCommands.execute_clean({ cover: true, cache: true, purge: true })
 
             # カバー画像が削除されること
             assert_cover_files_removed
@@ -142,7 +160,7 @@ module Vivlio
             FileUtils.mkdir_p(cache_dir)
             write_file(File.join(cache_dir, 'cached.pdf'))
 
-            build_clean_command(all: true).clean
+            CleanCommands.execute_clean({ all: true })
 
             # カバー画像が削除されること
             assert_cover_files_removed
@@ -170,7 +188,7 @@ module Vivlio
             # カスタム設定を作成
             setup_custom_config_for_cover('custom_front.pdf', 'custom_back.pdf', 'custom_cover.jpg')
 
-            build_clean_command(cover: true).clean
+            CleanCommands.execute_clean({ cover: true })
 
             # カスタムファイル名のカバー画像が削除されること
             refute File.exist?(File.join(covers_dir, 'custom_front.pdf')),
@@ -186,32 +204,6 @@ module Vivlio
         end
 
         private
-
-        # テスト用の簡易 Thor コマンドクラスを生成する
-        def build_clean_command(options = {})
-          command_class = Class.new do
-            # Thor DSL メソッドのスタブを用意してからモジュールを include する
-            def self.desc(*) = nil
-            def self.long_desc(*) = nil
-            def self.method_option(*) = nil
-
-            include Vivlio::Starter::CLI::CleanCommands
-
-            attr_reader :options
-
-            def initialize(options)
-              @options = options
-            end
-          end
-
-          defaults = {
-            cache: false,
-            cover: false,
-            purge: false,
-            all: false
-          }
-          command_class.new(defaults.merge(options))
-        end
 
         # 一時ディレクトリ配下でテストを実行する
         def within_temp_dir

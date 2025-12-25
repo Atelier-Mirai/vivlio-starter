@@ -59,22 +59,8 @@ module Vivlio
             vs --version                   - バージョン情報を表示
         HELP
 
-        def included(base)
-          base.class_eval do
-            desc 'help', HELP_DESC[:short]
-            long_desc HELP_DESC[:long]
-            # ================================================================
-            # Command: help（ヘルプ表示）
-            # ------------------------------------------------
-            # 概要:
-            #   Vivlio Starter の主要コマンド・オプションを一覧表示する。
-            # 備考:
-            #   - 固定のヘルプテキストを標準出力に表示。
-            # ================================================================
-            def help_banner
-              print HELP_MESSAGE
-            end
-          end
+        def print_help
+          print HELP_MESSAGE
         end
       end
     end

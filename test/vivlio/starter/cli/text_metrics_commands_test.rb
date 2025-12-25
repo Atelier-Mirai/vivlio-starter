@@ -1,5 +1,17 @@
 # frozen_string_literal: true
 
+# ================================================================
+# Test: text_metrics_commands_test.rb
+# ================================================================
+# テスト対象:
+#   TextMetricsCommands（lib/vivlio/starter/cli/text_metrics.rb）
+#
+# 検証内容:
+#   - 対象ファイル未検出時の警告出力
+#   - JSON 形式での統計出力
+#   - 文字数・段落数などのメトリクス計算
+# ================================================================
+
 require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
@@ -10,13 +22,12 @@ require 'vivlio/starter/cli/text_metrics'
 module Vivlio
   module Starter
     module CLI
+      # TextMetricsCommands のユニットテスト
       class TextMetricsCommandsTest < Minitest::Test
         # 対象 Markdown が見つからない場合に警告を出力することを確認
         def test_text_metrics_warns_when_no_targets
           within_temp_dir do
-            command = build_text_metrics_command
-
-            output = capture_io { command.text_metrics('missing') }.first
+            output = capture_io { TextMetricsCommands.execute_text_metrics(['missing']) }.first
 
             assert_includes output, '見つかりません'
           end
@@ -25,10 +36,9 @@ module Vivlio
         # JSON 出力オプションで統計が JSON 形式になることを確認
         def test_text_metrics_outputs_json
           within_temp_dir do
-            command = build_text_metrics_command(json: true)
             write_markdown('contents/11-sample.md', "本文。テストです、はい。\n")
 
-            output = capture_io { command.text_metrics }.first
+            output = capture_io { TextMetricsCommands.execute_text_metrics([], { json: true }) }.first
             parsed = JSON.parse(output)
 
             assert_equal ['stats', 'totals'], parsed.keys.sort
@@ -37,23 +47,6 @@ module Vivlio
         end
 
         private
-
-        def build_text_metrics_command(options = {})
-          Class.new do
-            # Thor DSL のスタブ
-            def self.desc(*) = nil
-            def self.long_desc(*) = nil
-            def self.option(*) = nil
-
-            include TextMetricsCommands
-
-            attr_reader :options
-
-            def initialize(options)
-              @options = options
-            end
-          end.new(options)
-        end
 
         def within_temp_dir
           Dir.mktmpdir do |dir|

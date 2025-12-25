@@ -41,7 +41,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'kramdown', '~> 2.4'
   spec.add_dependency 'mini_magick', '~> 4.12'
   spec.add_dependency 'nokogiri', '~> 1.16'
-  spec.add_dependency 'thor', '~> 1.2'
+  spec.add_dependency 'samovar', '~> 2.1'
 
   # Development dependencies
   spec.add_development_dependency 'bundler', '~> 2.5'

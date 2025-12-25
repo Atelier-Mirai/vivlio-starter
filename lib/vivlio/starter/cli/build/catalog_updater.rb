@@ -1,15 +1,33 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/build/catalog_updater.rb
+# ================================================================
+# 責務:
+#   config/catalog.yml を自動的に更新する。
+#   章の追加・削除・リネーム時に呼び出される。
+#
+# 呼び出し元:
+#   - vs create: 新規章の追加
+#   - vs delete: 章の削除
+#   - vs rename: 章のリネーム
+#   - vs renumber: 章番号の付け直し
+#
+# catalog.yml 構造:
+#   PREFACE:    # 前書き（章番号 00）
+#   CHAPTERS:   # 本文（章番号 01-89）
+#   APPENDICES: # 付録（章番号 90-98）
+#   POSTFACE:   # 後書き（章番号 99）
+#
+# 依存:
+#   - CatalogLoader: catalog.yml の読み込み
+# ================================================================
+
 module Vivlio
   module Starter
     module CLI
       module Build
-        # ------------------------------------------------
-        # CatalogUpdater: catalog.yml の更新処理
-        # ------------------------------------------------
-        # vs create / delete / rename / renumber コマンドから呼び出され、
-        # catalog.yml を自動的に更新する。
-        # ------------------------------------------------
+        # catalog.yml の自動更新モジュール
         module CatalogUpdater
           module_function
 
