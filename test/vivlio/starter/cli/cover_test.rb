@@ -1,5 +1,17 @@
 # frozen_string_literal: true
 
+# ================================================================
+# Test: cover_test.rb
+# ================================================================
+# テスト対象:
+#   CoverCommands モジュール（lib/vivlio/starter/cli/cover.rb）
+#
+# 検証内容:
+#   - マスターファイル存在チェック
+#   - カバー画像生成（RGB/CMYK 変換）
+#   - 出力形式ごとのカバー設定
+# ================================================================
+
 require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
@@ -10,8 +22,9 @@ require 'vivlio/starter/cli/cover'
 module Vivlio
   module Starter
     module CLI
+      # CoverCommands のユニットテスト
       class CoverCommandsTest < Minitest::Test
-        # マスターファイルが存在しない場合、警告を表示してスキップすることを確認
+        # マスターファイルが存在しない場合、false を返すことを確認
         def test_check_master_files_returns_false_when_missing
           within_temp_dir do
             setup_config
@@ -42,7 +55,7 @@ module Vivlio
             setup_config
             covers_dir = 'covers'
             FileUtils.mkdir_p(covers_dir)
-            create_dummy_png(File.join(covers_dir, 'frontcover_master.png'))
+            create_dummy_master_files(covers_dir, back: false)
 
             result = CoverCommands.check_master_files(covers_dir)
             assert result, '表紙マスターのみでもtrueを返すべきです'
@@ -75,7 +88,7 @@ module Vivlio
 
         # RGB PDF生成のテスト（ImageMagickが必要）
         def test_generate_rgb_pdf_single
-          skip 'ImageMagickが必要です' unless command_available?('convert')
+          skip 'ImageMagickが必要です' unless imagemagick_available?
 
           within_temp_dir do
             setup_config
@@ -96,7 +109,7 @@ module Vivlio
 
         # EPUB用JPEG生成のテスト（ImageMagickが必要）
         def test_generate_epub_cover
-          skip 'ImageMagickが必要です' unless command_available?('convert')
+          skip 'ImageMagickが必要です' unless imagemagick_available?
 
           within_temp_dir do
             setup_config
@@ -117,7 +130,7 @@ module Vivlio
 
         # execute_a4のテスト
         def test_execute_a4
-          skip 'ImageMagickが必要です' unless command_available?('convert')
+          skip 'ImageMagickが必要です' unless imagemagick_available?
 
           within_temp_dir do
             setup_config
@@ -137,7 +150,7 @@ module Vivlio
 
         # execute_epubのテスト
         def test_execute_epub
-          skip 'ImageMagickが必要です' unless command_available?('convert')
+          skip 'ImageMagickが必要です' unless imagemagick_available?
 
           within_temp_dir do
             setup_config
@@ -211,28 +224,81 @@ module Vivlio
             }
           }
           File.write('config/book.yml', config.to_yaml)
+          File.write('config/page_presets.yml', DUMMY_PAGE_PRESETS.to_yaml)
+          File.write('config/post_replace_list.yml', { 'replacements' => [] }.to_yaml)
         end
 
-        # ダミーのマスター画像ファイルを生成
-        def create_dummy_master_files(covers_dir)
-          create_dummy_png(File.join(covers_dir, 'frontcover_master.png'))
-          create_dummy_png(File.join(covers_dir, 'backcover_master.png'))
+        # テスト用のマスター画像を配置
+        def create_dummy_master_files(covers_dir, front: true, back: true)
+          copy_fixture_master_files(covers_dir, front: front, back: back)
         end
 
         # ダミーのPNG画像を生成（ImageMagickが必要）
         def create_dummy_png(path, width: 100, height: 100)
-          if command_available?('convert')
-            system("convert -size #{width}x#{height} xc:white #{path}", out: File::NULL, err: File::NULL)
+          if (convert_cmd = imagemagick_convert_command)
+            system(*convert_cmd, '-size', "#{width}x#{height}", 'xc:white', path, out: File::NULL, err: File::NULL)
           else
             # ImageMagickがない場合は空ファイルを作成
             FileUtils.touch(path)
           end
         end
 
-        # コマンドが利用可能かチェック
-        def command_available?(command)
-          system("which #{command}", out: File::NULL, err: File::NULL)
+        # コマンドが利用可能かチェック（PATHを直接探索してハングを防止）
+        def imagemagick_available?
+          !imagemagick_convert_command.nil?
         end
+
+        def imagemagick_convert_command
+          return ['magick', 'convert'] if command_in_path?('magick')
+          return ['convert'] if command_in_path?('convert')
+          nil
+        end
+
+        def command_in_path?(command)
+          return false if command.to_s.empty?
+
+          ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |dir|
+            path = File.join(dir, command)
+            File.executable?(path) && !File.directory?(path)
+          end
+        end
+
+        def copy_fixture_master_files(covers_dir, front: true, back: true)
+          FileUtils.mkdir_p(covers_dir)
+
+          if front
+            copy_or_stub_fixture(FRONT_MASTER_FIXTURE, File.join(covers_dir, 'frontcover_master.png'))
+          end
+
+          if back
+            copy_or_stub_fixture(BACK_MASTER_FIXTURE, File.join(covers_dir, 'backcover_master.png'))
+          end
+        end
+
+        def copy_or_stub_fixture(source, destination)
+          if File.exist?(source)
+            FileUtils.cp(source, destination)
+          else
+            create_dummy_png(destination, width: 2894, height: 4092)
+          end
+        end
+
+        DUMMY_PAGE_PRESETS = {
+          'b5_standard' => {
+            'size' => 'B5',
+            'base_font_size' => '10.5pt',
+            'base_line_height' => '17pt',
+            'margin_top' => '20mm',
+            'margin_bottom' => '20mm',
+            'margin_inner' => '20mm',
+            'margin_outer' => '20mm'
+          }
+        }.freeze
+
+        PROJECT_ROOT = File.expand_path('../../../../..', __dir__)
+        FIXTURE_COVERS_DIR = File.join(PROJECT_ROOT, 'covers')
+        FRONT_MASTER_FIXTURE = File.join(FIXTURE_COVERS_DIR, 'frontcover_master.png')
+        BACK_MASTER_FIXTURE = File.join(FIXTURE_COVERS_DIR, 'backcover_master.png')
       end
     end
   end

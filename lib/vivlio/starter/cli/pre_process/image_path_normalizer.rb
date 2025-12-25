@@ -1,5 +1,21 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/pre_process/image_path_normalizer.rb
+# ================================================================
+# 責務:
+#   Markdown 内の画像パスを正規化し、存在しない画像にはプレースホルダーを生成する。
+#
+# 処理内容:
+#   - 相対パス → images/ 配下のパスに正規化
+#   - 存在しない画像 → SVG プレースホルダーの data URI に置換
+#   - WebP 優先: .png/.jpg があっても .webp を優先参照
+#
+# プレースホルダー:
+#   - 「Vivlio Starter」ロゴと「画像準備中」メッセージを表示
+#   - ファイル名を表示して不足画像を特定しやすくする
+# ================================================================
+
 require 'cgi'
 require_relative '../common'
 
@@ -7,7 +23,7 @@ module Vivlio
   module Starter
     module CLI
       module PreProcessCommands
-        # 画像パス正規化処理を担当するモジュール
+        # 画像パス正規化・プレースホルダー生成モジュール
         module ImagePathNormalizer
           NO_IMAGE_PLACEHOLDER_SVG = <<~SVG.freeze
             <svg width="600" height="400" viewBox="0 0 600 400" fill="none" xmlns="http://www.w3.org/2000/svg">

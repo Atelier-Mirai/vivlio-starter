@@ -1,5 +1,28 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/pre_process/frontmatter_generator.rb
+# ================================================================
+# 責務:
+#   Markdown ファイルの YAML フロントマターを生成・更新する。
+#   テーマ設定に基づいて CSS カスタムプロパティを設定する。
+#
+# 生成するフロントマター:
+#   - title: 章タイトル
+#   - class: body クラス（chapter/appendix/titlepage 等）
+#   - theme: テーマカラー・スタイル設定
+#
+# CSS 更新内容:
+#   - --theme-accent: テーマアクセントカラー
+#   - --frontispiece-image: 扉絵画像パス
+#   - --ornament-image: 飾り画像パス
+#
+# 依存:
+#   - CssUpdater: CSS ファイルの更新
+#   - ThemeImageResolver: テーマ画像パスの解決
+#   - FontManager: フォントの準備
+# ================================================================
+
 require 'yaml'
 require_relative '../common'
 require_relative '../font_manager'
@@ -10,7 +33,7 @@ module Vivlio
   module Starter
     module CLI
       module PreProcessCommands
-        # フロントマター生成・更新処理を担当するモジュール
+        # フロントマター生成・CSS 更新を担当するモジュール
         module FrontmatterGenerator
           ALLOWED_COLORS = %w[yellow amber orange peach coral red magenta plum purple indigo navy blue cyan teal mint green lime].freeze
 

@@ -1,11 +1,35 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/scaffolder.rb
+# ================================================================
+# 責務:
+#   新規書籍プロジェクトの雛形を生成する。
+#   vs new コマンドから呼び出される。
+#
+# 生成されるディレクトリ:
+#   - config/: 設定ファイル（book.yml, catalog.yml 等）
+#   - contents/: 章 Markdown ファイル
+#   - images/: 画像ファイル
+#   - stylesheets/: CSS ファイル
+#   - codes/: コードサンプル
+#   - chapter_templates/: 章テンプレート
+#
+# 生成されるファイル:
+#   - Gemfile, README.md, .gitignore
+#   - vivliostyle.config.js
+#   - 初期章ファイル（00-preface.md 〜 99-postface.md）
+#
+# 依存:
+#   - gem_root 内の templates/ ディレクトリ
+# ================================================================
+
 require 'fileutils'
 require 'yaml'
 
 module Vivlio
   module Starter
-    # 共通のプロジェクト雛形生成ロジックを提供するモジュール
+    # プロジェクト雛形生成モジュール
     module Scaffolder
       DEFAULT_DIRECTORIES = %w[config contents images stylesheets codes chapter_templates].freeze
       DEFAULT_CONTENT_FILES = %w[

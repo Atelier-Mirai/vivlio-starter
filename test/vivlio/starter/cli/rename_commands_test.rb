@@ -1,27 +1,41 @@
 # frozen_string_literal: true
 
+# ================================================================
+# Test: rename_commands_test.rb
+# ================================================================
+# テスト対象:
+#   RenameCommandExecutor（lib/vivlio/starter/cli/rename.rb）
+#
+# 検証内容:
+#   - 単一章リネーム: Markdown/画像ディレクトリの一括変更
+#   - 全章連番付け直し: 章番号の再割り当て
+#   - catalog.yml の自動更新
+#
+# テスト環境:
+#   - 一時ディレクトリで副作用を隔離
+#   - CleanCommands をスタブ化してクリーンアップをスキップ
+# ================================================================
+
 require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
 require 'vivlio/starter/cli/common'
 require 'vivlio/starter/cli/rename'
+require 'vivlio/starter/cli/clean'
 require 'vivlio/starter/cli/build'
-require 'vivlio/starter/cli'
 
 module Vivlio
   module Starter
     module CLI
+      # RenameCommandExecutor のユニットテスト
       class RenameCommandsTest < Minitest::Test
-        # 章名変更で Markdown/CSS/画像が揃ってリネームされることを確認
+        # 章名変更で Markdown と画像ディレクトリが揃ってリネームされることを確認
         def test_rename_updates_markdown_css_and_images
           within_temp_dir do
-            command = build_rename_command(force: true)
+            executor = build_rename_executor(force: true)
             setup_single_chapter_fixture('11-old', css: true, images: true, html: true)
 
-            thor_calls = []
-            Vivlio::Starter::ThorCLI.stub :start, ->(args) { thor_calls << args } do
-              capture_io { command.rename('11-old', '12-new') }
-            end
+            capture_io { executor.call('11-old', '12-new') }
 
             assert File.exist?(File.join(Common::CONTENTS_DIR, '12-new.md'))
             refute File.exist?(File.join(Common::CONTENTS_DIR, '11-old.md'))
@@ -29,21 +43,20 @@ module Vivlio
             refute Dir.exist?('images/11-old')
             refute File.exist?('11-old.html')
 
-            assert_empty thor_calls
           end
         end
 
         # 引数なしで実行した際に章番号が再割り当てされることを確認
         def test_rename_without_arguments_performs_renumber
           within_temp_dir do
-            command = build_rename_command(force: true)
+            executor = build_rename_executor(force: true)
             setup_single_chapter_fixture('11-alpha', css: true, images: true)
             setup_single_chapter_fixture('31-beta', css: true, images: true)
 
-            thor_calls = []
-            Vivlio::Starter::ThorCLI.stub :start, ->(args) { thor_calls << args } do
+            clean_calls = []
+            Vivlio::Starter::CLI::CleanCommands.stub :execute_clean, ->(opts) { clean_calls << opts } do
               error = assert_raises(SystemExit) do
-                capture_io { command.rename }
+                capture_io { executor.call }
               end
               assert_equal 0, error.status
             end
@@ -55,28 +68,15 @@ module Vivlio
             assert Dir.exist?('images/12-beta')
             refute Dir.exist?('images/31-beta')
 
-            assert_equal [['clean']], thor_calls
+            assert_equal [{}], clean_calls
           end
         end
 
         private
 
-        # テスト用 Rename コマンドを生成
-        def build_rename_command(options = {})
-          Class.new do
-            # Thor DSL のスタブを用意
-            def self.desc(*) = nil
-            def self.long_desc(*) = nil
-            def self.method_option(*) = nil
-
-            include RenameCommands
-
-            attr_reader :options
-
-            def initialize(options)
-              @options = options
-            end
-          end.new({ force: false, dry_run: false, verbose: false }.merge(options))
+        def build_rename_executor(options = {})
+          defaults = { force: false, dry_run: false, verbose: false, chapter_step: nil, step: nil }
+          Vivlio::Starter::CLI::RenameCommandExecutor.new(defaults.merge(options))
         end
 
         # 単一章の関連リソースをまとめて準備

@@ -18,33 +18,6 @@ module Vivlio
       module TextMetricsCommands
         module_function
 
-        TEXT_METRICS_DESC = {
-          short: 'Markdown の行数・文字数などを集計します',
-          long: <<~DESC
-            contents/ ディレクトリ以下の Markdown ファイルについて、行数と文字数を集計して一覧表示します。
-            引数にベース名を指定すると、そのファイルのみを対象にします（拡張子省略可／contents/ 接頭辞可）。
-
-            例:
-              vs text_metrics            # 全 Markdown を対象
-              vs text_metrics 11-install 21-customize
-          DESC
-        }.freeze
-
-        # Thor ベースクラスへ text_metrics コマンドを登録する
-        def included(base)
-          base.class_eval do
-            desc 'text_metrics [BASENAME ...]', TEXT_METRICS_DESC[:short]
-            long_desc TEXT_METRICS_DESC[:long]
-            option :json, type: :boolean, desc: '結果を JSON 形式で出力'
-            option :yaml, type: :boolean, desc: '結果を YAML 形式で出力'
-
-            # text_metrics サブコマンドのエントリポイント
-            def text_metrics(*targets)
-              Vivlio::Starter::CLI::TextMetricsCommands.execute_text_metrics(targets, options)
-            end
-          end
-        end
-
         # text_metrics コマンドの処理を実行クラスに委譲する
         def execute_text_metrics(targets, options = {})
           TextMetricsRunner.new(targets, options).call

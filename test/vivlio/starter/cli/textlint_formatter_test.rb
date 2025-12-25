@@ -1,12 +1,26 @@
 # frozen_string_literal: true
 
+# ================================================================
+# Test: textlint_formatter_test.rb
+# ================================================================
+# テスト対象:
+#   TextlintFormatter（lib/vivlio/starter/cli/textlint_formatter.rb）
+#
+# 検証内容:
+#   - 英語エラーメッセージの日本語変換
+#   - 感嘆符・疑問符メッセージの翻訳
+#   - 全角・半角文字の適切な処理
+# ================================================================
+
 require 'test_helper'
 require 'vivlio/starter/cli/textlint_formatter'
 
 module Vivlio
   module Starter
     module CLI
+      # TextlintFormatter のユニットテスト
       class TextlintFormatterTest < Minitest::Test
+        # 英語の感嘆符エラーメッセージが日本語に変換されることを確認
         def test_translate_english_exclamation_messages
           english_output = '  20:25   error  Disallow to use "！"  ja-technical-writing/no-exclamation-question-mark'
           expected_output = '  20:25   error  感嘆符「！」は使用しないでください  ja-technical-writing/no-exclamation-question-mark'

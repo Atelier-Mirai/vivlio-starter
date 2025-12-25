@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------
 # 【役割】
 # - Markdownファイルの前処理パイプラインを統括
-# - 各処理モジュールを読み込み、Thorコマンドとして公開
+# - 各処理モジュールを読み込み、コマンドとして公開
 # - 後方互換性のため、module_functionとして各モジュールのメソッドを再公開
 #
 # 【処理の流れ】
@@ -42,7 +42,7 @@ module Vivlio
       # ================================================================
       # Module: PreProcessCommands
       # ----------------------------------------------------------------
-      # Markdown前処理のThorコマンド群とヘルパーメソッドを提供
+      # Markdown前処理のコマンド群とヘルパーメソッドを提供
       # ================================================================
       module PreProcessCommands
         module_function
@@ -51,70 +51,65 @@ module Vivlio
         FRONTISPIECE_DEFAULT_PATH = ThemeImageResolver::FRONTISPIECE_DEFAULT_PATH
         ORNAMENT_DEFAULT_PATH = ThemeImageResolver::ORNAMENT_DEFAULT_PATH
 
-        PRE_PROCESS_DESC = {
-          short: 'Markdownファイルの前処理を行います',
-          long: <<~DESC
-            指定した Markdown ファイルの前処理を行います。指定が無い場合は contents/ 配下の全 .md を対象にします。
+        def execute_pre_process(command_or_ctx, tokens)
+          ctx = normalized_context(command_or_ctx)
+          enable_verbose(ctx)
 
-            処理内容:
-            - フロントマターの生成/更新
-            - 画像パスの修正
-            - ソースコードインクルード
-            - book-card/table-rotate ブロックの変換
-            - リンクの脚注化
+          files = Common.normalize_tokens(tokens)
 
-            例:
-              vs pre_process 11-install
-              vs pre_process 11-install.md 12-tutorial
-          DESC
-        }.freeze
+          md_files = if files.any?
+                       missing_files = files.reject { |f| File.exist?("#{Common::CONTENTS_DIR}/#{f}.md") }
+                       if missing_files.any?
+                         Common.log_error("エラー: 次のファイルが存在しません: #{missing_files.join(', ')}")
+                         Common.log_warn('前処理を中止します')
+                         exit(1)
+                       end
+                       files.map { |f| "#{Common::CONTENTS_DIR}/#{f}.md" }
+                     else
+                       Dir.glob("#{Common::CONTENTS_DIR}/*.md")
+                     end
 
-        def included(base)
-          base.class_eval do
-            desc 'pre_process [TOKENS...]', PRE_PROCESS_DESC[:short]
-            long_desc PRE_PROCESS_DESC[:long]
-            
-            def pre_process(*tokens)
-              ENV['VERBOSE'] = '1' if options[:verbose]
+          Common.log_action('Markdownファイルの前処理を行っています...')
+          md_files.each do |md_file|
+            process_single_markdown_file(md_file)
+          end
 
-              # 引数を正規化
-              files = Common.normalize_tokens(tokens)
+          Common.log_success('Markdownの前処理が完了しました')
 
-              # 処理対象のファイルを決定
-              md_files = if files.any?
-                           # 存在しないファイルをチェック
-                           missing_files = files.reject { |f| File.exist?("#{Common::CONTENTS_DIR}/#{f}.md") }
-                           if missing_files.any?
-                             Common.log_error("エラー: 次のファイルが存在しません: #{missing_files.join(', ')}")
-                             Common.log_warn('前処理を中止します')
-                             exit(1)
-                           end
-                           files.map { |f| "#{Common::CONTENTS_DIR}/#{f}.md" }
-                         else
-                           # 引数がない場合は全Markdownファイルを処理
-                           Dir.glob("#{Common::CONTENTS_DIR}/*.md")
-                         end
+          output_files = md_files.map { |md_file| File.basename(md_file) }
+          Common.log_action("\nクロスリファレンス処理を開始します...")
+          result = process_cross_references_for_files(output_files)
 
-              # 各Markdownファイルを処理（contents/ → プロジェクトルートの .md を生成）
-              Common.log_action('Markdownファイルの前処理を行っています...')
-              md_files.each do |md_file|
-                process_single_markdown_file(md_file)
-              end
-
-              Common.log_success('Markdownの前処理が完了しました')
-
-              # クロスリファレンス処理を実行（プロジェクトルート直下の .md を対象）
-              output_files = md_files.map { |md_file| File.basename(md_file) }
-              Common.log_action("\nクロスリファレンス処理を開始します...")
-              result = process_cross_references_for_files(output_files)
-
-              unless result
-                Common.log_error('クロスリファレンス処理でエラーが発生しました')
-                exit(1)
-              end
-            end
+          unless result
+            Common.log_error('クロスリファレンス処理でエラーが発生しました')
+            exit(1)
           end
         end
+        module_function :execute_pre_process
+
+        def normalized_context(command_or_ctx)
+          return command_or_ctx if command_or_ctx.is_a?(Hash)
+
+          { options: options_of(command_or_ctx) }
+        end
+        module_function :normalized_context
+
+        def enable_verbose(command_or_ctx)
+          opts = options_of(command_or_ctx)
+          ENV['VERBOSE'] = '1' if opts[:verbose]
+        end
+        module_function :enable_verbose
+
+        def options_of(command_or_ctx)
+          if command_or_ctx.is_a?(Hash)
+            command_or_ctx[:options] || {}
+          elsif command_or_ctx.respond_to?(:options)
+            command_or_ctx.options || {}
+          else
+            {}
+          end
+        end
+        module_function :options_of
 
         # ================================================================
         # 単一Markdownファイルを処理

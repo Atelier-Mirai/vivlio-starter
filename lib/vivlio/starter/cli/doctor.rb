@@ -1,5 +1,33 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/doctor.rb
+# ================================================================
+# 責務:
+#   Vivlio Starter の動作に必要な外部ツールの診断と自動インストールを行う。
+#
+# 診断対象ツール:
+#   - Xcode Command Line Tools (macOS): ビルドツールチェーン
+#   - node: JavaScript ランタイム（Vivliostyle CLI の依存）
+#   - vivliostyle: PDF 生成エンジン
+#   - textlint: 文章校正ツール
+#   - qpdf: PDF 分割・結合・ページ操作
+#   - pdfinfo (poppler): PDF メタデータ取得
+#   - gs (Ghostscript): PDF 圧縮
+#   - imagemagick: 画像変換・リサイズ
+#   - waifu2x-ncnn-vulkan: AI 画像拡大（オプション）
+#
+# 自動インストール:
+#   - macOS + Homebrew 環境でのみ対応
+#   - --fix オプションで不足ツールを自動インストール
+#   - Node.js ツール（vivliostyle, textlint）は npm -g でインストール
+#
+# 依存:
+#   - Common: ログ出力
+#   - Homebrew: macOS でのパッケージ管理
+#   - npm: Node.js パッケージ管理
+# ================================================================
+
 require 'rbconfig'
 require 'fileutils'
 require 'net/http'
@@ -14,12 +42,7 @@ require 'json'
 module Vivlio
   module Starter
     module CLI
-      # ==============================================================================
-      # Module: DoctorCommands
-      # ------------------------------------------------------------------------------
-      # 必要な外部ツール(Xcode Command Line Tools, qpdf, pdfinfo, gs, ImageMagick 他)の存在チェックと、
-      # macOS + Homebrew 環境での自動インストール支援を行うコマンド。
-      # ==============================================================================
+      # 環境診断・ツールインストールコマンド
       module DoctorCommands
         module_function
 
@@ -69,246 +92,280 @@ module Vivlio
           DESC
         }.freeze
 
-        def included(base)
-          base.class_eval do
-            desc 'doctor', DOCTOR_DESC[:short]
-            long_desc DOCTOR_DESC[:long]
-            method_option :fix, type: :boolean, default: false, desc: '不足ツールを自動インストール (macOS Homebrew)'
-            method_option :yes, aliases: '-y', type: :boolean, default: false, desc: '確認を省略して実行'
-            def doctor
-              ENV['VERBOSE'] = '1' if options[:verbose]
+        # 後方互換用の空フック
+        def included(base); end
 
-              missing = []
-              os = RbConfig::CONFIG['host_os']
-              is_macos = os =~ /darwin/i
+        # 環境診断を実行し、不足ツールを報告・インストールする
+        #
+        # @param command [Hash, Object, nil] コマンドコンテキスト
+        #   - Hash: { options: { fix: true, yes: true, verbose: false } }
+        #   - Object: #options で Hash を返すオブジェクト
+        # @return [void]
+        #
+        # オプション:
+        #   - :fix [Boolean] 不足ツールを自動インストール（macOS + Homebrew のみ）
+        #   - :yes [Boolean] 確認プロンプトをスキップ
+        #   - :verbose [Boolean] 詳細ログを出力
+        def execute_doctor(command = nil)
+          options = extract_options(command)
+          ENV['VERBOSE'] = '1' if options[:verbose]
 
-              # まず macOS の場合に Xcode Command Line Tools をチェック
-              if is_macos
-                clt_ok = system('xcode-select -p >/dev/null 2>&1')
-                if clt_ok
-                  Common.echo_always('✅ Xcode Command Line Tools: OK')
-                else
-                  Common.echo_always('❌ Xcode Command Line Tools: 見つかりません')
-                  missing << 'xcode-command-line-tools'
-                end
-              end
+          missing = []
+          os = RbConfig::CONFIG['host_os']
+          is_macos = os =~ /darwin/i
 
-              # コマンド存在チェック定義
-              checks = {
-                'node' => 'node',
-                'textlint' => 'textlint',
-                'vivliostyle' => 'vivliostyle',
-                'qpdf' => 'qpdf',
-                'pdfinfo' => 'pdfinfo',
-                'gs' => 'gs', # Ghostscript
-                'imagemagick' => nil,
-                'waifu2x' => nil
-              }
-
-              Common.echo_always('🔎 環境診断を開始します…')
-              checks.each do |label, cmd|
-                ok = case label
-                     when 'imagemagick'
-                       command_exists?('convert') || command_exists?('magick')
-                     when 'waifu2x'
-                       waifu2x_available?
-                     else
-                       command_exists?(cmd)
-                     end
-
-                if ok
-                  Common.echo_always("✅ #{label}: OK")
-                else
-                  Common.echo_always("❌ #{label}: 見つかりません")
-                  missing << label
-                end
-              end
-
-              if is_macos
-                if ssl_certificate_configured?
-                  Common.echo_always('✅ Google Fonts 用 SSL 証明書: OK')
-                else
-                  Common.echo_always('❌ Google Fonts 用 SSL 証明書: 未設定 (Google Fonts のダウンロードに必要)')
-                  missing << 'ssl-certificates'
-                end
-              end
-
-              os_family = detect_os_family(os)
-              waifu2x_install_root = nil
-              if options[:fix] && missing.include?('waifu2x')
-                if os_family != :macos
-                  Common.echo_always('⚠️ waifu2x の自動インストールは現在 macOS のみ対応しています。Linux / Windows では手動セットアップを行ってください。')
-                elsif install_waifu2x_macos! do |paths|
-                        waifu2x_install_root = paths[:install]
-                      end
-                  missing.delete('waifu2x') if waifu2x_available?
-                else
-                  Common.echo_always('⚠️ waifu2x の自動インストールに失敗しました。手動セットアップを確認してください。')
-                end
-              end
-
-              if missing.empty?
-                copy_textlint_assets_from_scaffold! if options[:fix]
-                Common.echo_always('🎉 すべての必要ツールが見つかりました')
-                return
-              end
-
-              Common.echo_always("不足しているツール: #{describe_missing(missing).join(', ')}")
-
-              unless options[:fix]
-                Common.echo_always('ヒント: macOS の場合は `vs doctor --fix` で自動インストールを試行できます')
-                if missing.include?('xcode-command-line-tools')
-                  Common.echo_always('  Xcode Command Line Tools は手動でも `xcode-select --install` で導入できます')
-                end
-                return
-              end
-
-              # --fix: 自動インストール試行
-              unless is_macos
-                Common.echo_always('自動インストールは macOS(Homebrew) のみ対応です。手動でインストールしてください。')
-                return
-              end
-
-              # 先に CLT を処理（GUI 承認が必要）
-              if missing.include?('xcode-command-line-tools')
-                proceed = options[:yes]
-                if !proceed && $stdin.tty?
-                  $stdout.print('Xcode Command Line Tools をインストールしますか？ [y/N]: ')
-                  ans = $stdin.gets
-                  proceed = ans && ans.strip.downcase == 'y'
-                end
-                if proceed
-                  Common.echo_always('Xcode Command Line Tools のインストーラを起動します…')
-                  system('xcode-select --install >/dev/null 2>&1 || true')
-                  # ポーリングで最大 5 分間待機（5 秒間隔）
-                  waited = 0
-                  until system('xcode-select -p >/dev/null 2>&1') || waited >= 300
-                    sleep 5
-                    waited += 5
-                  end
-                  if system('xcode-select -p >/dev/null 2>&1')
-                    Common.echo_always('✅ Xcode Command Line Tools が確認できました')
-                    missing.delete('xcode-command-line-tools')
-                  else
-                    Common.echo_always('⚠️ インストールの確認ができませんでした。インストーラ完了後に再実行してください。')
-                  end
-                else
-                  Common.echo_always('Xcode Command Line Tools の自動インストールをスキップします。必要に応じて `xcode-select --install` を実行してください。')
-                end
-              end
-
-              unless system('which brew >/dev/null 2>&1')
-                Common.echo_always('Homebrew が見つかりません。自動インストールを試みます。')
-                proceed = options[:yes]
-                if !proceed && $stdin.tty?
-                  $stdout.print('Homebrew をインストールしますか？ [y/N]: ')
-                  ans = $stdin.gets
-                  proceed = ans && ans.strip.downcase == 'y'
-                end
-                if proceed
-                  begin
-                    # 公式インストーラ実行（要ネットワーク）
-                    cmd = '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
-                    system(cmd)
-                  rescue StandardError => e
-                    Common.log_warn("Homebrew のインストールでエラー: #{e}")
-                  end
-                  # PATH 調整（Apple Silicon / Intel を想定）
-                  brew_bins = ['/opt/homebrew/bin', '/usr/local/bin']
-                  brew_bin = brew_bins.find { |p| File.exist?(File.join(p, 'brew')) }
-                  ENV['PATH'] = [brew_bin, ENV.fetch('PATH', nil)].compact.join(':') if brew_bin
-                else
-                  Common.echo_always('Homebrew をインストールしないため、自動インストール処理を中止します。手動で https://brew.sh/ を参照してください。')
-                  return
-                end
-                unless system('which brew >/dev/null 2>&1')
-                  Common.echo_always('Homebrew コマンドが見つかりませんでした。シェルの再起動や PATH 設定を確認してください。')
-                  return
-                end
-              end
-
-              Common.echo_always('🛠 Homebrew による不足ツールのインストールを実行します…')
-              begin
-                # Node.js（node@20 を優先）
-                if missing.include?('node')
-                  Common.echo_always('node をインストールします（node@20 優先）…')
-                  ok = system('brew install node@20')
-                  ok ||= system('brew install node')
-                  Common.echo_always('node の Homebrew インストールに失敗しました。手動インストールをご検討ください。') unless ok
-                end
-
-                # qpdf / pdfinfo(poppler)
-                system('brew install qpdf') if missing.include?('qpdf')
-                system('brew install poppler') if missing.include?('pdfinfo')
-
-                # Ghostscript
-                system('brew install ghostscript') if missing.include?('gs')
-
-                # ImageMagick
-                system('brew install imagemagick') if missing.include?('imagemagick')
-
-                if missing.include?('ssl-certificates')
-                  install_ssl_certificates!
-                end
-              rescue StandardError => e
-                Common.log_warn("brew 実行でエラー: #{e}")
-              end
-
-              # Vivliostyle CLI（npm -g）
-              begin
-                if missing.include?('vivliostyle')
-                  if system('which npm >/dev/null 2>&1')
-                    Common.echo_always('Vivliostyle CLI(@vivliostyle/cli) をグローバルインストールします…')
-                    system('npm install -g @vivliostyle/cli')
-                  else
-                    Common.echo_always('npm が見つかりません。node のインストール後に `npm install -g @vivliostyle/cli` を実行してください。')
-                  end
-                end
-              rescue StandardError => e
-                Common.log_warn("npm 実行でエラー: #{e}")
-              end
-
-              # textlint と推奨ルール
-              begin
-                if missing.include?('textlint')
-                  if system('which npm >/dev/null 2>&1')
-                    Common.echo_always('textlint と推奨 Textlint ルールをグローバルインストールします…')
-                    packages = TEXTLINT_NPM_PACKAGES.map { |pkg| Shellwords.escape(pkg) }.join(' ')
-                    installed = system("npm install -g #{packages}")
-                    copy_textlint_assets_from_scaffold! if installed
-                  else
-                    Common.echo_always('npm が見つかりません。node のインストール後に `npm install -g textlint textlint-rule-preset-ja-technical-writing ...` を実行してください。')
-                  end
-                end
-              rescue StandardError => e
-                Common.log_warn("npm 実行でエラー: #{e}")
-              end
-
-              # 再診断
-              Common.echo_always('🔁 インストール後の再診断…')
-              still_missing = []
-              checks.each do |label, cmd|
-                ok = case label
-                     when 'imagemagick'
-                       command_exists?('convert') || command_exists?('magick')
-                     when 'waifu2x'
-                       waifu2x_available? || (waifu2x_install_root && waifu2x_present_at?(waifu2x_install_root, os_family))
-                     else
-                       command_exists?(cmd)
-                     end
-                still_missing << label unless ok
-              end
-              if is_macos && !ssl_certificate_configured?
-                still_missing << 'ssl-certificates'
-              end
-              if still_missing.empty?
-                Common.echo_always('✅ すべてのツールがインストールされました')
-              else
-                Common.echo_always("❗ まだ見つからないツールがあります: #{describe_missing(still_missing).join(', ')}。手動でのセットアップをご確認ください。")
-              end
+          # macOS では Xcode Command Line Tools が多くのビルドツールの前提条件
+          if is_macos
+            clt_ok = system('xcode-select -p >/dev/null 2>&1')
+            if clt_ok
+              Common.echo_always('✅ Xcode Command Line Tools: OK')
+            else
+              Common.echo_always('❌ Xcode Command Line Tools: 見つかりません')
+              missing << 'xcode-command-line-tools'
             end
           end
+
+          # コマンド存在チェック定義
+          checks = {
+            'node' => 'node',
+            'textlint' => 'textlint',
+            'vivliostyle' => 'vivliostyle',
+            'qpdf' => 'qpdf',
+            'pdfinfo' => 'pdfinfo',
+            'gs' => 'gs', # Ghostscript
+            'imagemagick' => nil,
+            'waifu2x' => nil
+          }
+
+          Common.echo_always('🔎 環境診断を開始します…')
+          checks.each do |label, cmd|
+            ok = case label
+                 when 'imagemagick'
+                   command_exists?('convert') || command_exists?('magick')
+                 when 'waifu2x'
+                   waifu2x_available?
+                 else
+                   command_exists?(cmd)
+                 end
+
+            if ok
+              Common.echo_always("✅ #{label}: OK")
+            else
+              Common.echo_always("❌ #{label}: 見つかりません")
+              missing << label
+            end
+          end
+
+          if is_macos
+            if ssl_certificate_configured?
+              Common.echo_always('✅ Google Fonts 用 SSL 証明書: OK')
+            else
+              Common.echo_always('❌ Google Fonts 用 SSL 証明書: 未設定 (Google Fonts のダウンロードに必要)')
+              missing << 'ssl-certificates'
+            end
+          end
+
+          os_family = detect_os_family(os)
+          waifu2x_install_root = nil
+          if options[:fix] && missing.include?('waifu2x')
+            if os_family != :macos
+              Common.echo_always('⚠️ waifu2x の自動インストールは現在 macOS のみ対応しています。Linux / Windows では手動セットアップを行ってください。')
+            elsif install_waifu2x_macos! do |paths|
+                    waifu2x_install_root = paths[:install]
+                  end
+              missing.delete('waifu2x') if waifu2x_available?
+            else
+              Common.echo_always('⚠️ waifu2x の自動インストールに失敗しました。手動セットアップを確認してください。')
+            end
+          end
+
+          if missing.empty?
+            copy_textlint_assets_from_scaffold! if options[:fix]
+            Common.echo_always('🎉 すべての必要ツールが見つかりました')
+            return
+          end
+
+          Common.echo_always("不足しているツール: #{describe_missing(missing).join(', ')}")
+
+          unless options[:fix]
+            Common.echo_always('ヒント: macOS の場合は `vs doctor --fix` で自動インストールを試行できます')
+            if missing.include?('xcode-command-line-tools')
+              Common.echo_always('  Xcode Command Line Tools は手動でも `xcode-select --install` で導入できます')
+            end
+            return
+          end
+
+          # --fix: 自動インストール試行
+          unless is_macos
+            Common.echo_always('自動インストールは macOS(Homebrew) のみ対応です。手動でインストールしてください。')
+            return
+          end
+
+          # 先に CLT を処理（GUI 承認が必要）
+          if missing.include?('xcode-command-line-tools')
+            proceed = options[:yes]
+            if !proceed && $stdin.tty?
+              $stdout.print('Xcode Command Line Tools をインストールしますか？ [y/N]: ')
+              ans = $stdin.gets
+              proceed = ans && ans.strip.downcase == 'y'
+            end
+            if proceed
+              Common.echo_always('Xcode Command Line Tools のインストーラを起動します…')
+              system('xcode-select --install >/dev/null 2>&1 || true')
+              # ポーリングで最大 5 分間待機（5 秒間隔）
+              waited = 0
+              until system('xcode-select -p >/dev/null 2>&1') || waited >= 300
+                sleep 5
+                waited += 5
+              end
+              if system('xcode-select -p >/dev/null 2>&1')
+                Common.echo_always('✅ Xcode Command Line Tools が確認できました')
+                missing.delete('xcode-command-line-tools')
+              else
+                Common.echo_always('⚠️ インストールの確認ができませんでした。インストーラ完了後に再実行してください。')
+              end
+            else
+              Common.echo_always('Xcode Command Line Tools の自動インストールをスキップします。必要に応じて `xcode-select --install` を実行してください。')
+            end
+          end
+
+          unless system('which brew >/dev/null 2>&1')
+            Common.echo_always('Homebrew が見つかりません。自動インストールを試みます。')
+            proceed = options[:yes]
+            if !proceed && $stdin.tty?
+              $stdout.print('Homebrew をインストールしますか？ [y/N]: ')
+              ans = $stdin.gets
+              proceed = ans && ans.strip.downcase == 'y'
+            end
+            if proceed
+              begin
+                # 公式インストーラ実行（要ネットワーク）
+                cmd = '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
+                system(cmd)
+              rescue StandardError => e
+                Common.log_warn("Homebrew のインストールでエラー: #{e}")
+              end
+              # PATH 調整（Apple Silicon / Intel を想定）
+              brew_bins = ['/opt/homebrew/bin', '/usr/local/bin']
+              brew_bin = brew_bins.find { |p| File.exist?(File.join(p, 'brew')) }
+              ENV['PATH'] = [brew_bin, ENV.fetch('PATH', nil)].compact.join(':') if brew_bin
+            else
+              Common.echo_always('Homebrew をインストールしないため、自動インストール処理を中止します。手動で https://brew.sh/ を参照してください。')
+              return
+            end
+            unless system('which brew >/dev/null 2>&1')
+              Common.echo_always('Homebrew コマンドが見つかりませんでした。シェルの再起動や PATH 設定を確認してください。')
+              return
+            end
+          end
+
+          Common.echo_always('🛠 Homebrew による不足ツールのインストールを実行します…')
+          begin
+            # Node.js（node@20 を優先）
+            if missing.include?('node')
+              Common.echo_always('node をインストールします（node@20 優先）…')
+              ok = system('brew install node@20')
+              ok ||= system('brew install node')
+              Common.echo_always('node の Homebrew インストールに失敗しました。手動インストールをご検討ください。') unless ok
+            end
+
+            # qpdf / pdfinfo(poppler)
+            system('brew install qpdf') if missing.include?('qpdf')
+            system('brew install poppler') if missing.include?('pdfinfo')
+
+            # Ghostscript
+            system('brew install ghostscript') if missing.include?('gs')
+
+            # ImageMagick
+            system('brew install imagemagick') if missing.include?('imagemagick')
+
+            if missing.include?('ssl-certificates')
+              install_ssl_certificates!
+            end
+          rescue StandardError => e
+            Common.log_warn("brew 実行でエラー: #{e}")
+          end
+
+          # Vivliostyle CLI（npm -g）
+          begin
+            if missing.include?('vivliostyle')
+              if system('which npm >/dev/null 2>&1')
+                Common.echo_always('Vivliostyle CLI(@vivliostyle/cli) をグローバルインストールします…')
+                system('npm install -g @vivliostyle/cli')
+              else
+                Common.echo_always('npm が見つかりません。node のインストール後に `npm install -g @vivliostyle/cli` を実行してください。')
+              end
+            end
+          rescue StandardError => e
+            Common.log_warn("npm 実行でエラー: #{e}")
+          end
+
+          # textlint と推奨ルール
+          begin
+            if missing.include?('textlint')
+              if system('which npm >/dev/null 2>&1')
+                Common.echo_always('textlint と推奨 Textlint ルールをグローバルインストールします…')
+                packages = TEXTLINT_NPM_PACKAGES.map { |pkg| Shellwords.escape(pkg) }.join(' ')
+                installed = system("npm install -g #{packages}")
+                copy_textlint_assets_from_scaffold! if installed
+              else
+                Common.echo_always('npm が見つかりません。node のインストール後に `npm install -g textlint textlint-rule-preset-ja-technical-writing ...` を実行してください。')
+              end
+            end
+          rescue StandardError => e
+            Common.log_warn("npm 実行でエラー: #{e}")
+          end
+
+          # 再診断
+          Common.echo_always('🔁 インストール後の再診断…')
+          still_missing = []
+          checks.each do |label, cmd|
+            ok = case label
+                 when 'imagemagick'
+                   command_exists?('convert') || command_exists?('magick')
+                 when 'waifu2x'
+                   waifu2x_available? || (waifu2x_install_root && waifu2x_present_at?(waifu2x_install_root, os_family))
+                 else
+                   command_exists?(cmd)
+                 end
+            still_missing << label unless ok
+          end
+          if is_macos && !ssl_certificate_configured?
+            still_missing << 'ssl-certificates'
+          end
+          if still_missing.empty?
+            Common.echo_always('✅ すべてのツールがインストールされました')
+          else
+            Common.echo_always("❗ まだ見つからないツールがあります: #{describe_missing(still_missing).join(', ')}。手動でのセットアップをご確認ください。")
+          end
         end
+        module_function :execute_doctor
+
+        def extract_options(command_or_ctx)
+          source =
+            if command_or_ctx.nil?
+              {}
+            elsif command_or_ctx.is_a?(Hash)
+              command_or_ctx[:options] || command_or_ctx
+            elsif command_or_ctx.respond_to?(:options)
+              command_or_ctx.options || {}
+            else
+              command_or_ctx
+            end
+
+          symbolize_option_keys(source || {})
+        end
+        module_function :extract_options
+
+        def symbolize_option_keys(hash)
+          return {} unless hash.respond_to?(:each_with_object)
+
+          hash.each_with_object({}) do |(key, value), result|
+            sym_key = key.is_a?(String) ? key.to_sym : key
+            result[sym_key || key] = value
+          end
+        end
+        module_function :symbolize_option_keys
       end
     end
   end

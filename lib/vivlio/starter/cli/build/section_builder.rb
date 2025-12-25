@@ -1,17 +1,36 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/build/section_builder.rb
+# ================================================================
+# 責務:
+#   本文・付録・後書きの HTML を生成する。
+#   並列処理でビルド時間を短縮する。
+#
+# 処理内容:
+#   - contents/*.md → *.html の変換
+#   - 前処理（frontmatter）→ 変換（VFM）→ 後処理（heading等）
+#   - 並列処理（CPU コア数に応じたスレッド数）
+#
+# 章構成:
+#   - PREFACE (00): 前書き
+#   - MAIN (01-89): 本文
+#   - APPENDICES (90-98): 付録
+#   - POSTFACE (99): 後書き
+#
+# 依存:
+#   - PreProcessCommands: Markdown 前処理
+#   - ConvertCommands: VFM 変換
+#   - PostProcessCommands: HTML 後処理
+# ================================================================
+
 require 'etc'
 
 module Vivlio
   module Starter
     module CLI
       module Build
-        # ------------------------------------------------
-        # SectionBuilder: セクションHTML生成モジュール
-        # ------------------------------------------------
-        # 本文、付録、後書きのHTML生成を担当する。
-        # 並列処理、キャッシュ管理、章順序の管理を含む。
-        # ------------------------------------------------
+        # セクション HTML 生成モジュール
         module SectionBuilder
           # 章レンジ（定数）- 新仕様に合わせて更新
           PREFACE_RANGE  = (0..0)
@@ -112,9 +131,9 @@ module Vivlio
             return unless needs_regeneration
 
             Common.log_info("[HTML] 再生成します: #{basename}.html")
-            %w[pre_process convert post_process].each do |task|
-              Vivlio::Starter::ThorCLI.start([task, basename])
-            end
+            PreProcessCommands.execute_pre_process({}, [basename])
+            ConvertCommands.execute_convert({}, [basename])
+            PostProcessCommands.execute_post_process({}, [basename])
           end
 
           # Step 4: セクション（前書き/本文/付録/後書き）をビルド（HTML生成）
@@ -153,7 +172,14 @@ module Vivlio
               chapter_targets.each do |target|
                 %w[pre_process convert post_process].each do |tn|
                   time_step_for_chapter(target, tn) do
-                    Vivlio::Starter::ThorCLI.start([tn, target])
+                    case tn
+                    when 'pre_process'
+                      PreProcessCommands.execute_pre_process({}, [target])
+                    when 'convert'
+                      ConvertCommands.execute_convert({}, [target])
+                    when 'post_process'
+                      PostProcessCommands.execute_post_process({}, [target])
+                    end
                   end
                 end
               end
@@ -164,7 +190,14 @@ module Vivlio
             parallel_each(chapter_targets, concurrency: concurrency) do |target|
               %w[pre_process convert post_process].each do |tn|
                 time_step_for_chapter(target, tn) do
-                  Vivlio::Starter::ThorCLI.start([tn, target])
+                  case tn
+                  when 'pre_process'
+                    PreProcessCommands.execute_pre_process({}, [target])
+                  when 'convert'
+                    ConvertCommands.execute_convert({}, [target])
+                  when 'post_process'
+                    PostProcessCommands.execute_post_process({}, [target])
+                  end
                 end
               end
             end

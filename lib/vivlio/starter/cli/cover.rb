@@ -46,47 +46,11 @@ module Vivlio
         # EPUB用サイズ
         EPUB_SIZE = { width: 1600, height: 2560 }.freeze
 
-        # Thor CLI に cover 系コマンドをまとめて登録する
-        def included(base)
-          base.class_eval do
-            desc 'cover', CoverCommands::DESCRIPTION
-            long_desc CoverCommands::LONG_DESCRIPTION
-            def cover
-              CoverCommands.execute_generate(self)
-            end
-
-            desc 'cover:a4', 'A4サイズのRGB版PDFを生成'
-            def cover_a4
-              CoverCommands.execute_a4(self)
-            end
-
-            desc 'cover:b5', 'B5サイズのCMYK版PDF/X-1aを生成'
-            def cover_b5
-              CoverCommands.execute_b5(self)
-            end
-
-            desc 'cover:a5', 'A5サイズのCMYK版PDF/X-1aを生成'
-            def cover_a5
-              CoverCommands.execute_a5(self)
-            end
-
-            desc 'cover:epub', 'EPUB用JPEG（1600×2560）を生成'
-            def cover_epub
-              CoverCommands.execute_epub(self)
-            end
-
-            map 'cover:a4'   => :cover_a4
-            map 'cover:b5'   => :cover_b5
-            map 'cover:a5'   => :cover_a5
-            map 'cover:epub' => :cover_epub
-          end
-        end
-
         # ================================================================
         # コマンド実装
         # ================================================================
 
-        def execute_generate(thor_instance)
+        def execute_generate(context = nil)
           Common.log_info '📚 カバー画像の一括生成を開始します'
           
           # 設定読み込み
@@ -135,7 +99,7 @@ module Vivlio
         end
         module_function :execute_generate
 
-        def execute_a4(thor_instance)
+        def execute_a4(context = nil)
           Common.log_info '📚 A4サイズのRGB版PDFを生成します'
           config = Common.load_config
           covers_dir = config.dig('directories', 'covers') || 'covers'
@@ -150,7 +114,7 @@ module Vivlio
         end
         module_function :execute_a4
 
-        def execute_b5(thor_instance)
+        def execute_b5(context = nil)
           Common.log_info '📚 B5サイズのCMYK版PDF/X-1aを生成します'
           config = Common.load_config
           covers_dir = config.dig('directories', 'covers') || 'covers'
@@ -165,7 +129,7 @@ module Vivlio
         end
         module_function :execute_b5
 
-        def execute_a5(thor_instance)
+        def execute_a5(context = nil)
           Common.log_info '📚 A5サイズのCMYK版PDF/X-1aを生成します'
           config = Common.load_config
           covers_dir = config.dig('directories', 'covers') || 'covers'
@@ -180,7 +144,7 @@ module Vivlio
         end
         module_function :execute_a5
 
-        def execute_epub(thor_instance)
+        def execute_epub(context = nil)
           Common.log_info '📚 EPUB用JPEGを生成します'
           config = Common.load_config
           covers_dir = config.dig('directories', 'covers') || 'covers'
@@ -220,13 +184,8 @@ module Vivlio
           front_exists = File.exist?(frontcover)
           back_exists = File.exist?(backcover)
           
-          unless front_exists
-            Common.log_warn "⚠️  表紙マスターが見つかりません: #{frontcover}"
-          end
-          
-          unless back_exists
-            Common.log_warn "⚠️  裏表紙マスターが見つかりません: #{backcover}"
-          end
+          Common.log_warn("表紙マスターが見つかりません: #{frontcover}") unless front_exists
+          Common.log_warn("裏表紙マスターが見つかりません: #{backcover}") unless back_exists
           
           front_exists || back_exists
         end
@@ -257,18 +216,24 @@ module Vivlio
         # RGB版PDF生成（単一ファイル）
         def self.generate_rgb_pdf_single(input_png, output_pdf, size)
           return unless File.exist?(input_png)
-          
+
+          convert_cmd = imagemagick_convert_command
+          unless convert_cmd
+            Common.log_error 'ImageMagick（magick/convert）が見つかりません'
+            return
+          end
+
           Common.log_info "  生成中: #{File.basename(output_pdf)}"
-          
+
           # ImageMagickでPNG→PDF変換
-          cmd = [
-            'convert', input_png,
+          cmd = convert_cmd + [
+            input_png,
             '-resize', "#{size[:width]}x#{size[:height]}!",
             '-density', '350',
             '-units', 'PixelsPerInch',
             output_pdf
           ]
-          
+
           unless system(*cmd, out: File::NULL, err: File::NULL)
             Common.log_error "  失敗: #{File.basename(output_pdf)}"
           end
@@ -300,22 +265,28 @@ module Vivlio
         # PDF/X-1a生成（単一ファイル）
         def self.generate_pdfx_single(input_png, output_pdf, size)
           return unless File.exist?(input_png)
-          
+
+          convert_cmd = imagemagick_convert_command
+          unless convert_cmd
+            Common.log_error 'ImageMagick（magick/convert）が見つかりません'
+            return
+          end
+
           Common.log_info "  生成中: #{File.basename(output_pdf)}"
-          
+
           temp_pdf = "#{output_pdf}.temp.pdf"
-          
+
           begin
             # Step 1: ImageMagickでリサイズ + CMYK変換
-            cmd_convert = [
-              'convert', input_png,
+            cmd_convert = convert_cmd + [
+              input_png,
               '-resize', "#{size[:width]}x#{size[:height]}!",
               '-colorspace', 'CMYK',
               '-density', '350',
               '-units', 'PixelsPerInch',
               temp_pdf
             ]
-            
+
             unless system(*cmd_convert, out: File::NULL, err: File::NULL)
               Common.log_error "  失敗（変換）: #{File.basename(output_pdf)}"
               return
@@ -346,14 +317,20 @@ module Vivlio
         def self.generate_epub_cover(covers_dir, config)
           input_png = File.join(covers_dir, FRONTCOVER_MASTER)
           output_jpg = File.join(covers_dir, config.dig('output', 'epub', 'cover'))
-          
+
           return unless File.exist?(input_png)
-          
+
+          convert_cmd = imagemagick_convert_command
+          unless convert_cmd
+            Common.log_error 'ImageMagick（magick/convert）が見つかりません'
+            return
+          end
+
           Common.log_info "  生成中: #{File.basename(output_jpg)}"
-          
+
           # ImageMagickでリサイズ + トリミング
-          cmd = [
-            'convert', input_png,
+          cmd = convert_cmd + [
+            input_png,
             '-resize', "x#{EPUB_SIZE[:height]}",
             '-gravity', 'center',
             '-crop', "#{EPUB_SIZE[:width]}x#{EPUB_SIZE[:height]}+0+0",
@@ -361,10 +338,27 @@ module Vivlio
             '-quality', '90',
             output_jpg
           ]
-          
+
           unless system(*cmd, out: File::NULL, err: File::NULL)
             Common.log_error "  失敗: #{File.basename(output_jpg)}"
           end
+        end
+
+        def self.imagemagick_convert_command
+          return ['magick', 'convert'] if find_executable('magick')
+          return ['convert'] if find_executable('convert')
+          nil
+        end
+
+        def self.find_executable(command)
+          return nil if command.to_s.empty?
+
+          ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).each do |dir|
+            path = File.join(dir, command)
+            return path if File.executable?(path) && !File.directory?(path)
+          end
+
+          nil
         end
       end
     end

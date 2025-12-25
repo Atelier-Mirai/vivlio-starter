@@ -71,32 +71,21 @@ module Vivlio
           }
         }.freeze
 
-        def self.included(base)
-          base.class_eval do
-            desc 'pdf [OUTPUT]', PdfCommands::PDF_DESC[:pdf][:short]
-            long_desc PdfCommands::PDF_DESC[:pdf][:long]
-            # PDF ビルドコマンドのエントリポイント
-            define_method(:pdf) do |target_output = nil|
-              PdfCommands::PdfCommandRunner.new(self, target_output).call
-            end
+        def self.included(base); end
 
-            desc 'pdf:compress INPUT [OUTPUT]', PdfCommands::PDF_DESC[:compress][:short]
-            long_desc PdfCommands::PDF_DESC[:compress][:long]
-            # PDF 圧縮コマンドのエントリポイント
-            define_method(:pdf_compress) do |input = nil, output = nil|
-              PdfCommands::PdfCompressor.new(self, input, output).call
-            end
+        # Samovar/直接呼び出し用: PDF生成
+        def self.execute_pdf(context_or_options, target_output = nil)
+          PdfCommandRunner.new(context_or_options, target_output).call
+        end
 
-            desc 'open:pdf [PATH]', PdfCommands::PDF_DESC[:open][:short]
-            long_desc PdfCommands::PDF_DESC[:open][:long]
-            # PDF を開くコマンドのエントリポイント
-            define_method(:open_pdf) do |path = nil|
-              PdfCommands::PdfOpener.new(self, path).call
-            end
+        # Samovar/直接呼び出し用: PDF圧縮
+        def self.execute_pdf_compress(context_or_options, input = nil, output = nil)
+          PdfCompressor.new(context_or_options, input, output).call
+        end
 
-            # コマンドエイリアス定義（後方互換用）
-            map 'pdf:compress' => :pdf_compress
-          end
+        # Samovar/直接呼び出し用: PDF表示
+        def self.execute_open_pdf(context_or_options, path = nil)
+          PdfOpener.new(context_or_options, path).call
         end
 
         # npx vivliostyle build をラップして PDF を生成する

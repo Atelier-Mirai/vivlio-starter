@@ -1,5 +1,33 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/build.rb
+# ================================================================
+# 責務:
+#   Vivlio Starter の統合ビルドコマンドのエントリーポイント。
+#   書籍全体または指定章の PDF 生成を一括実行する。
+#
+# ビルドパイプライン:
+#   1. 画像最適化（WebP 変換、リサイズ）
+#   2. 前処理（Markdown → frontmatter 付加）
+#   3. 変換（Markdown → HTML）
+#   4. 後処理（見出し番号付け、コードハイライト）
+#   5. 目次生成（_toc.md）
+#   6. PDF 生成（Vivliostyle CLI）
+#   7. PDF 結合（qpdf）
+#   8. アウトライン付与（qpdf）
+#   9. PDF 圧縮（Ghostscript）
+#   10. クリーンアップ
+#
+# 依存モジュール（build/ 以下）:
+#   - pipeline.rb: UnifiedBuildPipeline（メインのビルドフロー）
+#   - token_expander.rb: 章番号・範囲のトークン展開
+#   - catalog_loader.rb: catalog.yml の読み込み
+#   - pdf_builder.rb: PDF 生成
+#   - pdf_merger.rb: PDF 結合
+#   - pdf_finalizer.rb: 最終 PDF の仕上げ
+# ================================================================
+
 require 'rbconfig'
 require 'fileutils'
 require 'time'
@@ -52,138 +80,8 @@ module Vivlio
           }
         }.freeze
 
-        module_function
-
-        def included(base)
-          base.class_eval do
-            desc 'build [TARGETS...]', BUILD_DESC[:build][:short]
-            long_desc BUILD_DESC[:build][:long]
-
-            method_option :resize,   type: :boolean, default: true,  desc: '画像最適化を行う（--no-resize で無効）'
-            method_option :high,     type: :boolean, default: false, desc: '画像最適化プリセット: 高品質'
-            method_option :medium,   type: :boolean, default: false, desc: '画像最適化プリセット: 中品質'
-            method_option :low,      type: :boolean, default: false, desc: '画像最適化プリセット: 低品質'
-            method_option :compress, type: :boolean, default: nil,   desc: 'PDF圧縮を行う（--no-compress で無効）'
-            method_option :clean,    type: :boolean, default: true,  desc: '中間生成物をクリーンアップ（--no-clean で無効）'
-            method_option :dry_run,  type: :boolean, aliases: '-n',  desc: '実行せずにビルド予定のみを表示'
-            method_option :log,      type: :string,  banner: '[level]', desc: 'ログレベルを指定（error/warn/info/debug）'
-            method_option :force,    type: :boolean, default: false, desc: 'タイトル/リーガル/奥付を強制再生成'
-            method_option :'no-cache', type: :boolean, default: false, desc: 'キャッシュを無効化（--force と同義）'
-
-            # build コマンド本体
-            def build(*tokens)
-              files = Common.normalize_tokens(tokens)
-              expanded_basenames = expand_tokens_to_targets(files)
-              expanded_tokens = expanded_basenames.map { |bn| bn.sub(/\.md\z/, '') }
-
-              # Single Mode: 指定章のみビルド
-              if expanded_tokens.any?
-                run_single_mode_build(expanded_tokens)
-                return
-              end
-
-              # Full Mode: 全章ビルド
-              run_full_mode_build
-            end
-
-            no_commands do
-              include TokenExpander
-            end
-
-            private
-
-            include OutputHelpers
-
-            # Single Mode ビルドを実行
-            def run_single_mode_build(expanded_tokens)
-              Common.log_action("単章/選択ビルドを実行します: #{expanded_tokens.join(', ')}")
-
-              if options[:dry_run]
-                print_single_chapter_dry_run(expanded_tokens)
-                return
-              end
-
-              begin
-                PostProcessCommands::HeadingProcessor.chapter_tokens_override = expanded_tokens
-
-                pipeline = UnifiedBuildPipeline.new(self, targets: expanded_tokens, mode: :single)
-                build_timings = pipeline.run
-
-                print_build_timings(build_timings)
-
-                generated_pdf = pipeline.generated_pdf_name
-                if generated_pdf && File.exist?(generated_pdf)
-                  begin
-                    open_pdf(generated_pdf)
-                  rescue StandardError
-                    # 失敗してもビルド完了は維持
-                  end
-                end
-
-                Common.log_success("単章ビルドが完了しました: #{generated_pdf}")
-              ensure
-                PostProcessCommands::HeadingProcessor.chapter_tokens_override = nil
-              end
-            end
-
-            # Full Mode ビルドを実行
-            def run_full_mode_build
-              keep = Build::ChapterConfig.configured_chapters
-              if keep&.any?
-                Common.log_action("[Subset] 退避なしで論理的に対象を限定してビルドします: #{keep.inspect}")
-              else
-                Common.log_action("[Subset] chapters 設定なし/'all'のため、フルビルドします（退避なし）")
-              end
-
-              if options[:dry_run]
-                print_full_build_dry_run(keep)
-                return
-              end
-
-              pipeline = UnifiedBuildPipeline.new(self, keep: keep, mode: :full)
-              build_timings = pipeline.run
-
-              print_build_timings(build_timings)
-              print_outline_debug_info
-              save_timings_to_file(build_timings)
-
-              begin
-                open_pdf
-              rescue StandardError
-                # 失敗してもビルド完了は維持
-              end
-
-              Common.log_success('全ファイルのビルドが完了しました')
-            end
-
-            # Dry Run (Full build) を表示
-            def print_full_build_dry_run(keep)
-              Common.echo_always "\n== Dry Run: フルビルド予定 =="
-              resize_desc = if options[:resize] == false
-                              'スキップ'
-                            else
-                              preset = %i[high low].find { |k| options[k] } || :medium
-                              "実行 (#{preset})"
-                            end
-              begin
-                keep_numbers = Build::Utilities.chapter_numbers_for_book(keep)
-              rescue StandardError
-                keep_numbers = nil
-              end
-              all_md_basenames = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |p| File.basename(p, '.md') }
-              main_targets     = Build::ChapterConfig.filter_basenames_by_range(all_md_basenames, 11..89, keep_numbers)
-              appendix_targets = Build::ChapterConfig.filter_basenames_by_range(all_md_basenames, 91..97, keep_numbers)
-              Common.echo_always "  - 画像最適化: #{resize_desc}"
-              Common.echo_always "  - 本文(11..89): #{main_targets.empty? ? '対象なし' : main_targets.join(', ')}"
-              Common.echo_always "  - 付録(91..97): #{appendix_targets.empty? ? '対象なし' : appendix_targets.join(', ')}"
-              Common.echo_always '  - TOC: _toc.html / _toc.pdf'
-              Common.echo_always '  - 全体PDF: sections.pdf → 章/TOCに分割'
-              Common.echo_always "  - PDF圧縮: #{options[:compress] == false ? 'スキップ' : '実行'}"
-              Common.echo_always "  - クリーン: #{options[:clean] == false ? 'スキップ' : '実行'}"
-              Common.echo_always "\n計画のみを表示しました（dry-run、実処理は行いません）。"
-            end
-          end
-        end
+        # NOTE: 実際のビルドコマンドは lib/vivlio/starter/cli/samovar/build_command.rb で実装されています。
+        # このモジュールは UnifiedBuildPipeline や TokenExpander などのビルドロジックを提供します。
       end
     end
   end

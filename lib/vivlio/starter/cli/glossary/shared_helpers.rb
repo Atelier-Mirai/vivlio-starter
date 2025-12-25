@@ -1,11 +1,31 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/glossary/shared_helpers.rb
+# ================================================================
+# 責務:
+#   glossary 系コマンド（lint, fix, add, canonicalize）の共通処理を提供する。
+#
+# 提供機能:
+#   - glossary.yml の読み込み・検証
+#   - 用語エントリの正規化
+#   - contents/ 以下の Markdown ファイル収集
+#   - コードブロック・コメント領域の判定
+#
+# 用語エントリの構造:
+#   - name: 正式名称（例: "HyperText Markup Language"）
+#   - abbr: 略称（例: "HTML"）
+#   - aliases: 別名リスト（lint で警告される表記）
+#   - style: 表記スタイル（english/katakana）
+#   - first_full_form: 初出時のフルスペル
+# ================================================================
+
 require 'yaml'
 
 module Vivlio
   module Starter
     module CLI
-      # Glossary 関連コマンドで共通利用するユーティリティ群
+      # glossary コマンド共通ヘルパー
       module GlossarySharedHelpers
         GLOSSARY_RELATIVE_PATH = File.join(Common::CONFIG_DIR, 'glossary.yml')
         GLOSSARY_DISPLAY_PATH = begin
@@ -13,7 +33,7 @@ module Vivlio
                                   Common.relative_path_from_root(absolute) || absolute
                                 end
 
-        private
+        module_function
 
         # 指定コマンド名で glossary.yml の存在を検証しパスを返す
         def glossary_path_or_exit(command_label)

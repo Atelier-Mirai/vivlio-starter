@@ -1,14 +1,32 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/build/toc_generator.rb
+# ================================================================
+# 責務:
+#   目次（Table of Contents）の HTML/PDF を生成する。
+#
+# 生成ファイル:
+#   - _toc.md: 目次 Markdown
+#   - _toc.html: 目次 HTML（VFM 変換後）
+#   - _toc.pdf: 目次 PDF（単独ビルド用）
+#
+# 章構成:
+#   - PREFACE (00): 前書き
+#   - MAIN (01-89): 本文
+#   - APPENDICES (90-98): 付録
+#   - POSTFACE (99): 後書き
+#
+# 依存:
+#   - TocCommands: 目次生成の実装
+#   - ChapterConfig: 章ファイルの解決
+# ================================================================
+
 module Vivlio
   module Starter
     module CLI
       module Build
-        # ------------------------------------------------
-        # TocGenerator: 目次生成モジュール
-        # ------------------------------------------------
-        # TOCのHTML/PDF生成を担当する。
-        # ------------------------------------------------
+        # 目次生成モジュール
         module TocGenerator
           # 章レンジ（定数）- 新仕様に合わせて更新
           PREFACE_RANGE  = (0..0)   # 00-preface
@@ -48,18 +66,18 @@ module Vivlio
             end
 
             Common.log_info("[Step 6] 対象: #{targets_for_toc.map { |p| File.basename(p) }.join(', ')}")
-            Vivlio::Starter::ThorCLI.start(['toc', *targets_for_toc])
+            TocCommands.execute_toc({}, targets_for_toc)
             toc_html = File.join(base_dir, '_toc.html')
             unless File.exist?(toc_html)
               Common.log_warn('[Step 6] _toc.html が見つかりません。TOC の PDF 生成をスキップします。')
               return
             end
             # TOC も post_process を適用して見出しメタを付与（PDFアウトライン用）
-            Vivlio::Starter::ThorCLI.start(%w[post_process _toc])
+            PostProcessCommands.execute_post_process({}, ['_toc'])
             Common.log_info('[Step 6] _toc.html に post_process を適用しました（見出しメタ付与）')
-            Vivlio::Starter::ThorCLI.start(%w[entries _toc])
+            EntriesCommands.execute_entries({}, ['_toc'])
             # 改良された pdf コマンドに出力ファイル名を渡してリネームも一括処理
-            Vivlio::Starter::ThorCLI.start(['pdf', '_toc.pdf'])
+            PdfCommands.execute_pdf({}, '_toc.pdf')
             Common.log_success('[Step 6] _toc.pdf を生成しました') if File.exist?('_toc.pdf')
           end
         end

@@ -1,5 +1,28 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/delete.rb
+# ================================================================
+# 責務:
+#   指定された章ファイル（Markdown）と関連リソース（画像ディレクトリ）を
+#   削除するコマンドを提供する。
+#
+# 機能:
+#   - 章番号・範囲・ファイル名による削除対象の指定
+#   - --dry-run による削除予定の事前確認
+#   - --force による確認プロンプトのスキップ
+#   - config/catalog.yml からの章エントリ自動削除
+#
+# 削除対象:
+#   - contents/XX-slug.md（章 Markdown ファイル）
+#   - images/XX-slug/（章に対応する画像ディレクトリ）
+#   - config/catalog.yml 内の該当エントリ
+#
+# 依存:
+#   - Common: ログ出力・パス定数
+#   - Build::CatalogUpdater: catalog.yml からの章削除
+# ================================================================
+
 require 'fileutils'
 require_relative 'build/catalog_loader'
 require_relative 'build/catalog_updater'
@@ -7,74 +30,32 @@ require_relative 'build/catalog_updater'
 module Vivlio
   module Starter
     module CLI
-      # ================================================================
-      # Module: Thor コマンド群: delete（章の削除ユーティリティ）
-      # ------------------------------------------------
-      # - 目的: 指定章の Markdown・画像ディレクトリを削除
-      # - 提供コマンド: delete
-      # - 補足: 確認プロンプト、dry-run対応、force指定に対応
-      # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
-      # ================================================================
+      # 章削除コマンドの実装モジュール
       module DeleteCommands
         module_function
 
-        DELETE_DESC = {
-          short: '指定した章を削除します (Thor)',
-          long: <<~DESC
-            指定した章（単体/複数/範囲）に対して、Markdown と画像ディレクトリを削除します。
-
-            例:
-              vs delete 11-install
-              vs delete 11-install.md 12-tutorial
-              vs delete 11-21
-              vs delete 11 21-31
-
-            オプション:
-              --dry-run, -n   実行せずに削除予定のみを表示します（削除の試行）
-              --force, -f, -y 確認プロンプト無しで削除を実行します
-              --verbose, -v   冗長ログを表示します
-
-            備考:
-              ・ユーザー利便性のため、オプションは引数の前後どちらに置いても構いません
-                例: vs delete --force 31-33 / vs delete 31-33 --force
-              ・--dry-run と --force を同時指定した場合、--dry-run を優先し --force は無視されます
-          DESC
-        }.freeze
-
-        # Thor 基底クラスに delete コマンドを登録する
-        def included(base)
-          # class_option はベース側に定義済み（verbose）
-          base.class_eval do
-            # delete 本体
-            desc 'delete TOKENS...', DELETE_DESC[:short]
-            long_desc DELETE_DESC[:long]
-
-            method_option :dry_run, type: :boolean, aliases: '-n', desc: '変更せずに削除予定を表示'
-            method_option :force,   type: :boolean, aliases: %w[-f -y], desc: '確認なしで削除'
-            # ================================================================
-            # Command: delete（章の削除）
-            # ------------------------------------------------
-            # - 概要: 指定章の文書/画像/CSS を削除
-            # - 入力: TOKENS（単体/複数/範囲指定に対応: 11-install, 11-21, 11 21-31 など）
-            # - オプション: --dry-run (-n), --force (-f, -y), --verbose (-v)
-            # ================================================================
-            # delete コマンドのエントリポイント
-            def delete(*tokens)
-              DeleteCommandExecutor.new(self, tokens).call
-            end
-          end
-        end
-
-        # 実行時のオプション解釈・対象解決・削除処理をまとめる実行クラス
+        # delete コマンドの制御フローを担う実行クラス
+        #
+        # オプション解釈・対象解決・削除処理の各責務を分離し、
+        # テスト容易性と保守性を確保している。
         class DeleteCommandExecutor
-          # コマンドとトークンから削除処理に必要な依存を構築する
-          def initialize(command, tokens)
-            @options = DeleteOptions.new(command)
+          # @param options_source [Hash, Object] オプション情報
+          #   - Hash: { force: true, dry_run: false, verbose: false }
+          #   - Object: #options メソッドで Hash を返すオブジェクト
+          # @param tokens [Array<String>] 削除対象の指定
+          #   - 章番号: "11" → 11-*.md にマッチ
+          #   - 範囲: "11-13" → 11〜13 番の章すべて
+          #   - ファイル名: "11-install" → 11-install.md
+          def initialize(options_source, tokens)
+            @options = DeleteOptions.new(options_source)
             @resolver = TargetResolver.new(tokens)
             @deletion = ChapterDeletion.new(@options)
           end
 
-          # delete コマンドの実際の制御フローを実行する
+          # 削除処理を実行する
+          #
+          # @return [void]
+          # @raise [SystemExit] 対象が見つからない場合 exit(1)、dry-run 時は exit(0)
           def call
             options.apply_verbose!
             options.warn_conflict!
@@ -88,7 +69,8 @@ module Vivlio
 
           attr_reader :options, :resolver, :deletion
 
-          # 削除対象が存在しない場合は警告して終了する
+          # 削除対象が空の場合、警告を出力して終了する
+          # CI/CD での検知を可能にするため exit(1) で異常終了
           def ensure_targets!
             return unless targets.empty?
 
@@ -96,7 +78,8 @@ module Vivlio
             exit 1
           end
 
-          # dry-run 時に削除予定をダンプ表示する
+          # dry-run モード: 削除予定を表示して正常終了
+          # 実ファイルは変更されないことを明示
           def perform_dry_run
             Common.echo_always "\n== Dry Run: 削除予定一覧 =="
             targets.each { |basename| deletion.preview(basename) }
@@ -104,64 +87,90 @@ module Vivlio
             exit 0
           end
 
-          # 解決済みの削除対象リストを返す
+          # @return [Array<String>] 削除対象のファイル名リスト
           def targets
             resolver.targets
           end
         end
 
-        # Thor オプションを CLI 用オプションに正規化
+        # CLI オプションを正規化し、各種フラグへのアクセスを提供する
+        #
+        # 異なる形式のオプション入力（Hash / Samovar コマンド）を
+        # 統一的なインターフェースで扱えるようにする
         class DeleteOptions
-          # Thor のオプションハッシュを保持する
-          def initialize(command)
-            @thor_options = command.respond_to?(:options) ? command.options || {} : {}
+          # @param source [Hash, Object] オプションソース
+          #   - Hash: { force: true, dry_run: false }
+          #   - Object: #options で Hash を返すオブジェクト
+          def initialize(source)
+            @option_values = extract_option_values(source)
           end
 
-          # verbose オプションがある場合に冗長ログを有効にする
+          # verbose オプションが有効な場合、環境変数を設定してログを詳細化する
           def apply_verbose!
             ENV['VERBOSE'] = '1' if verbose?
           end
 
-          # dry-run と force の同時指定時に警告を出力する
+          # dry-run と force の同時指定は矛盾するため警告を出力する
+          # dry-run が優先され、force は無視される
           def warn_conflict!
             return unless dry_run? && force?
 
             Common.log_warn('--dry-run が指定されているため、--force は無視されます。実ファイルは変更されません。')
           end
 
-          # dry-run オプションの有無を返す
+          # @return [Boolean] dry-run モードが有効か
           def dry_run?
-            !!thor_options[:dry_run]
+            !!option_values[:dry_run]
           end
 
-          # force オプションの有無を返す
+          # @return [Boolean] force モードが有効か（--yes も同義）
           def force?
-            !!thor_options[:force]
+            !!(option_values[:force] || option_values[:yes])
           end
 
-          # verbose オプションの有無を返す
+          # @return [Boolean] verbose モードが有効か
           def verbose?
-            !!thor_options[:verbose]
+            !!option_values[:verbose]
           end
 
           private
 
-          attr_reader :thor_options
+          attr_reader :option_values
+
+          # オプションソースから Hash を抽出する
+          # @param source [Hash, Object] オプションソース
+          # @return [Hash] オプション Hash
+          def extract_option_values(source)
+            if source.respond_to?(:options)
+              source.options || {}
+            elsif source.is_a?(Hash)
+              source
+            else
+              {}
+            end
+          end
         end
 
-        # トークンから削除対象章ファイルを決定
+        # ユーザー入力トークンから削除対象の章ファイルを解決する
+        #
+        # トークン形式:
+        #   - 章番号のみ: "11" → 11-*.md にマッチするすべてのファイル
+        #   - 範囲指定: "11-13" → 11〜13 番の章すべて
+        #   - ファイル名: "11-install" → 11-install.md（存在確認あり）
         class TargetResolver
-          # ユーザー入力されたトークン情報を受け取る
+          # @param tokens [Array<String>] ユーザー入力のトークンリスト
           def initialize(tokens)
             @tokens = tokens
           end
 
-          # ログ出力用に正規化済みトークンを結合して返す
+          # ログ出力用にトークンを空白区切りで結合する
+          # @return [String] 表示用トークン文字列
           def tokens_for_message
             normalized_tokens.join(' ')
           end
 
-          # 削除対象となる章ファイル名の一覧を返す
+          # 削除対象として解決された章ファイル名の一覧を返す
+          # @return [Array<String>] ファイル名リスト（例: ["11-install.md", "12-setup.md"]）
           def targets
             @targets ||= expand_tokens_to_targets(normalized_tokens)
           end
@@ -170,56 +179,83 @@ module Vivlio
 
           attr_reader :tokens
 
-          # トークンを正規化（拡張子付与など）する
+          # トークンを正規化（拡張子除去・空白トリムなど）
           def normalized_tokens
             @normalized_tokens ||= Common.normalize_tokens(tokens)
           end
 
           # トークン列から削除対象のファイル名配列を生成する
+          # @param values [Array<String>] 正規化済みトークン
+          # @return [Array<String>] 重複を除いたファイル名リスト
           def expand_tokens_to_targets(values)
             Array(values).compact.flat_map { |token| expand_token_to_basenames(token) }.uniq
           end
 
           # 単一トークンから対応する章ファイル名リストを求める
+          #
+          # @param token [String] トークン
+          # @return [Array<String>] マッチするファイル名リスト
+          #
+          # 解釈順序:
+          #   1. "11-13" 形式 → 範囲指定として展開
+          #   2. "11" 形式 → 章番号として 11-*.md を検索
+          #   3. その他 → ファイル名として存在確認
           def expand_token_to_basenames(token)
             stripped = token.to_s.strip
             return [] if stripped.empty?
 
+            # 範囲指定: "11-13" → 11〜13 番の章を展開
             if stripped =~ /(\A\d+)-(\d+\z)/
               return find_basenames_in_range(::Regexp.last_match(1), ::Regexp.last_match(2))
             end
 
+            # 章番号のみ: "11" → 11-*.md にマッチ
             if stripped =~ /\A\d+\z/
               return list_contents_basenames.select { |basename| basename.start_with?("#{stripped}-") }
             end
 
+            # ファイル名指定: 存在確認して返す
             name = "#{stripped}.md"
             path = File.join(Common::CONTENTS_DIR, name)
             File.exist?(path) ? [name] : []
           end
 
-          # contents ディレクトリ内の章ファイル名一覧を取得する
+          # contents/ 内の全 Markdown ファイル名を列挙する
+          # @return [Array<String>] ファイル名リスト（パスではなくベース名）
           def list_contents_basenames
             Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |path| File.basename(path) }
           end
 
-          # 数値範囲指定トークンから該当する章ファイル名を抽出する
+          # 数値範囲に該当する章ファイル名を抽出する
+          #
+          # @param from_num [String] 開始番号
+          # @param to_num [String] 終了番号
+          # @return [Array<String>] 範囲内のファイル名リスト
           def find_basenames_in_range(from_num, to_num)
             lower, upper = [from_num.to_i, to_num.to_i].minmax
             list_contents_basenames.select do |basename|
+              # ファイル名先頭の数字部分を抽出して範囲チェック
               basename[/^(\d+)-/, 1]&.to_i&.between?(lower, upper)
             end
           end
         end
 
-        # 章ファイルと関連ディレクトリの削除処理
+        # 章ファイルと関連リソースの削除処理を担う
+        #
+        # 削除対象:
+        #   - contents/XX-slug.md（章 Markdown）
+        #   - images/XX-slug/（章画像ディレクトリ）
+        #   - config/catalog.yml 内の該当エントリ
         class ChapterDeletion
-          # 削除時に参照するオプションを受け取る
+          # @param options [DeleteOptions] 削除オプション（force 判定などに使用）
           def initialize(options)
             @options = options
           end
 
-          # dry-run 時に対象ファイル・ディレクトリを表示する
+          # dry-run モード用: 削除予定を表示する（実際の削除は行わない）
+          #
+          # @param basename [String] 章ファイル名（例: "11-install.md"）
+          # @return [void]
           def preview(basename)
             base = basename.sub(/\.md\z/, '')
             md_file = File.join(Common::CONTENTS_DIR, basename)
@@ -229,12 +265,20 @@ module Vivlio
             Common.echo_always "  - 画像Dir:    #{img_dir} #{Dir.exist?(img_dir) ? '(exists)' : '(not found)'}"
           end
 
-          # 指定された章ファイルと画像ディレクトリを削除する
+          # 章ファイルと関連リソースを削除する
+          #
+          # @param basename [String] 章ファイル名（例: "11-install.md"）
+          # @return [void]
+          #
+          # 副作用:
+          #   - contents/XX-slug.md を削除
+          #   - images/XX-slug/ ディレクトリを削除
+          #   - config/catalog.yml から該当エントリを削除
           def remove(basename)
             delete_markdown_file(basename)
             delete_image_directory(basename)
 
-            # catalog.yml から削除
+            # catalog.yml からも削除することで build 時に含まれなくなる
             base = basename.sub(/\.md\z/, '')
             Build::CatalogUpdater.remove_chapter(base)
           end
@@ -243,7 +287,10 @@ module Vivlio
 
           attr_reader :options
 
-          # Markdown ファイル削除とログ出力を行う
+          # Markdown ファイルを削除する（確認プロンプト付き）
+          #
+          # @param filename [String] ファイル名
+          # @return [void]
           def delete_markdown_file(filename)
             md_file = File.join(Common::CONTENTS_DIR, filename)
             unless File.exist?(md_file)
@@ -259,7 +306,10 @@ module Vivlio
             end
           end
 
-          # 対応する画像ディレクトリの削除とログ出力を行う
+          # 画像ディレクトリを削除する（確認プロンプト付き）
+          #
+          # @param filename [String] 章ファイル名（拡張子付き）
+          # @return [void]
           def delete_image_directory(filename)
             base_filename = filename.sub(/\.md\z/, '')
             image_dir = File.join(Common::IMAGES_DIR, base_filename)
@@ -276,7 +326,12 @@ module Vivlio
             end
           end
 
-          # ユーザーに削除確認を求め、許可された場合のみ実行する
+          # ユーザーに削除確認を求める
+          #
+          # @param label [String] 削除対象の説明（表示用）
+          # @return [Boolean] 削除を許可する場合 true
+          #
+          # --force オプションが有効な場合は確認をスキップして true を返す
           def confirm_deletion?(label)
             return true if options.force?
 

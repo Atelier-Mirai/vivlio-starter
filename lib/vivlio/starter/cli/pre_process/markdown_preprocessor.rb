@@ -1,5 +1,28 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/pre_process/markdown_preprocessor.rb
+# ================================================================
+# 責務:
+#   Markdown ファイルの前処理パイプラインを実行する。
+#   contents/ から展開した Markdown を変換可能な状態に整える。
+#
+# パイプライン処理:
+#   1. フロントマター生成・更新
+#   2. 画像パスの正規化（相対パス → 絶対パス）
+#   3. コードインクルード展開
+#   4. book-card / table-rotate 変換
+#   5. リンクの脚注化
+#
+# コンテキスト:
+#   PreProcessContext で処理対象の状態を管理
+#   - source_path: 元ファイルパス
+#   - output_path: 出力先パス
+#   - file_type: chapter/appendix/titlepage 等
+#   - chapter_number: 章番号
+#   - content: 処理中の内容
+# ================================================================
+
 require_relative '../common'
 require_relative 'frontmatter_generator'
 require_relative 'image_path_normalizer'

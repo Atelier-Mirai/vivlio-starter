@@ -1,20 +1,31 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/build/token_expander.rb
+# ================================================================
+# 責務:
+#   build コマンドの引数トークンを実在する Markdown ファイル名に展開する。
+#
+# トークン形式:
+#   - 章番号: "45" → contents/45-*.md にマッチ
+#   - 範囲: "45-47" → 45〜47 の章番号を持つ全ファイル
+#   - ベース名: "45-first-html" → 完全一致
+#   - カンマ区切り: "45,47,49" → 複数指定
+#
+# 使用例:
+#   expand_token_to_basenames('45')       # => ['45-first-html.md']
+#   expand_token_to_basenames('45-47')    # => ['45-first-html.md', ...]
+#   expand_tokens_to_targets(['45', '54-56']) # => 重複なしで展開
+#
+# 依存:
+#   - Common::CONTENTS_DIR: 章ファイルの格納ディレクトリ
+# ================================================================
+
 module Vivlio
   module Starter
     module CLI
       module BuildCommands
-        # ------------------------------------------------
-        # TokenExpander: トークン展開ロジック
-        # ------------------------------------------------
-        # build コマンドの引数（章番号、範囲、ベース名）を
-        # 実在する .md ファイルのベース名に展開する。
-        #
-        # 使用例:
-        #   expand_token_to_basenames('45')       # => ['45-first-html.md']
-        #   expand_token_to_basenames('45-47')    # => ['45-first-html.md', '46-first-css.md', ...]
-        #   expand_tokens_to_targets(['45', '54-56']) # => [...] 重複なし
-        # ------------------------------------------------
+        # build 引数のトークン展開モジュール
         module TokenExpander
           # contents/ 以下の全 .md ファイルのベース名を取得
           def list_contents_basenames

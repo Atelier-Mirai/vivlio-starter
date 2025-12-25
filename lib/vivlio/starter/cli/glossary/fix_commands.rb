@@ -1,54 +1,42 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/glossary/fix_commands.rb
+# ================================================================
+# 責務:
+#   用語集（glossary.yml）に基づいて Markdown ファイルの表記を自動修正する。
+#
+# 修正内容:
+#   - エイリアスを正式名称/略称に置換
+#   - 初出時のフルスペル表記を挿入
+#   - スタイル指定に従った表記への統一
+#
+# 処理フロー:
+#   1. 用語集を読み込み
+#   2. contents/ 以下の Markdown を走査
+#   3. コードブロック外の本文を修正
+#   4. 変更があったファイルを報告
+#
+# 依存:
+#   - GlossarySharedHelpers: 用語集読み込み・ファイル収集
+# ================================================================
+
 module Vivlio
   module Starter
     module CLI
-      # glossary:fix コマンドと自動修正ロジックを提供するモジュール
+      # 用語集に基づく表記の自動修正コマンド
       module GlossaryFixCommands
         include GlossarySharedHelpers
 
         GLOSSARY_PATH_DISPLAY = GlossarySharedHelpers::GLOSSARY_DISPLAY_PATH
 
-        FIX_DESC = {
-          short: "用語集（#{GLOSSARY_PATH_DISPLAY}）に基づいて Markdown を自動修正します",
-          long: <<~DESC
-            用語集に基づいて Markdown を自動修正します。
+        def self.execute_glossary_fix
+          glossary_path = glossary_path_or_exit('glossary:fix')
+          terms = load_glossary_terms(glossary_path)
+          markdown_files = collect_markdown_files
+          changed_files = fix_markdown_files(markdown_files, terms)
 
-            修正内容:
-              - エイリアスを正規表記に置換
-              - first_full_form ルールの適用
-              - スタイル統一（capitalization/lowercase/hyphenation）
-
-            対象:
-              - contents/**/*.md
-
-            例:
-              vs glossary:fix
-          DESC
-        }.freeze
-
-        def self.included(base)
-          base.class_eval do
-            desc 'glossary:fix', GlossaryFixCommands::FIX_DESC[:short]
-            long_desc GlossaryFixCommands::FIX_DESC[:long]
-
-            # ================================================================
-            # Command: glossary:fix（Markdown の自動修正）
-            # ------------------------------------------------
-            # 概要:
-            #   用語集に基づいて Markdown を自動修正する。
-            #   - エイリアス置換 / 初出ルール / スタイル統一
-            #   コード（フェンス/インライン）は修正対象外。
-            # ================================================================
-            def glossary_fix
-              glossary_path = glossary_path_or_exit('glossary:fix')
-              terms = load_glossary_terms(glossary_path)
-              markdown_files = collect_markdown_files
-              changed_files = fix_markdown_files(markdown_files, terms)
-
-              report_fix_results(changed_files)
-            end
-          end
+          report_fix_results(changed_files)
         end
 
         private

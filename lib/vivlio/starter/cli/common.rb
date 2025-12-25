@@ -434,38 +434,64 @@ module Vivlio
         # Config: 設定ロードと派生定数
         # ------------------------------------------------
         # - CONFIG をロードし、各種ディレクトリ/コマンド/ファイルの定数を定義
+        # - reload_configuration! で再初期化可能
         # ================================================================
-        ensure_required_yaml_files!
-        CONFIG = load_config
+        CONFIG_RELOADABLE_CONSTANTS = %i[
+          CONFIG
+          CONFIG_DIR
+          CONTENTS_DIR
+          STYLESHEETS_DIR
+          IMAGES_DIR
+          CODES_DIR
+          CHAPTER_TEMPLATES_DIR
+          VFM_COMMAND
+          POST_REPLACE_FILE
+          CACHE_CFG
+          CACHE_DIR
+        ].freeze
 
-        # ディレクトリ設定
-        CONFIG_DIR            = begin
-                                  dir = CONFIG.dig('directories', 'config')
-                                  dir.nil? || dir.to_s.strip.empty? ? 'config' : dir
-                                end
-        CONTENTS_DIR          = CONFIG['directories']['contents']
-        STYLESHEETS_DIR       = CONFIG['directories']['stylesheets']
-        IMAGES_DIR            = CONFIG['directories']['images']
-        CODES_DIR             = CONFIG['directories']['codes']
-        CHAPTER_TEMPLATES_DIR = CONFIG['directories']['chapter_templates']
+        def initialize_configuration_constants!
+          CONFIG_RELOADABLE_CONSTANTS.each do |const|
+            remove_const(const) if const_defined?(const, false)
+          end
 
-        # コマンド設定
-        VFM_COMMAND       = CONFIG['commands']['vfm']
+          ensure_required_yaml_files!
+          config = load_config
 
-        # ファイル設定
-        POST_REPLACE_FILE = begin
-                              file = CONFIG.dig('files', 'post_replace')
-                              file.nil? || file.to_s.strip.empty? ? 'post_replace_list.yml' : file
-                            end
+          const_set(:CONFIG, config)
 
-        # ================================================================
-        # Cache settings
-        # ------------------------------------------------
-        # - 既定: 有効(enabled=true)、ディレクトリ: .cache/vs
-        # - 用途: front/colophon など再利用可能な生成物の保存先
-        # ================================================================
-        CACHE_CFG  = (CONFIG['cache'].is_a?(Hash) ? CONFIG['cache'] : {})
-        CACHE_DIR  = CACHE_CFG['dir'] || '.cache/vs'
+          config_dir = begin
+            dir = config.dig('directories', 'config')
+            dir.nil? || dir.to_s.strip.empty? ? 'config' : dir
+          end
+          const_set(:CONFIG_DIR, config_dir)
+
+          const_set(:CONTENTS_DIR,          config['directories']['contents'])
+          const_set(:STYLESHEETS_DIR,       config['directories']['stylesheets'])
+          const_set(:IMAGES_DIR,            config['directories']['images'])
+          const_set(:CODES_DIR,             config['directories']['codes'])
+          const_set(:CHAPTER_TEMPLATES_DIR, config['directories']['chapter_templates'])
+
+          const_set(:VFM_COMMAND, config['commands']['vfm'])
+
+          post_replace_file = begin
+            file = config.dig('files', 'post_replace')
+            file.nil? || file.to_s.strip.empty? ? 'post_replace_list.yml' : file
+          end
+          const_set(:POST_REPLACE_FILE, post_replace_file)
+
+          cache_cfg = (config['cache'].is_a?(Hash) ? config['cache'] : {})
+          const_set(:CACHE_CFG, cache_cfg)
+          const_set(:CACHE_DIR, cache_cfg['dir'] || '.cache/vs')
+        end
+        module_function :initialize_configuration_constants!
+
+        def reload_configuration!
+          initialize_configuration_constants!
+        end
+        module_function :reload_configuration!
+
+        initialize_configuration_constants!
 
         def cache_enabled?
           fetch_bool(CACHE_CFG, %w[enabled], default: true)

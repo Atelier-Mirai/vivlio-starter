@@ -1,52 +1,42 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/glossary/lint_commands.rb
+# ================================================================
+# 責務:
+#   用語集（glossary.yml）に基づいて Markdown ファイルの表記揺れを検出する。
+#
+# 検出対象:
+#   - 正式名称の代わりにエイリアスが使用されている箇所
+#   - 初出時にフルスペル表記が省略されている箇所
+#   - スタイル指定（英字/カタカナ）に反する表記
+#
+# 終了コード:
+#   - 0: 違反なし
+#   - 2: 違反あり（CI/CD での検出用）
+#
+# 依存:
+#   - GlossarySharedHelpers: 用語集読み込み・ファイル収集
+# ================================================================
+
 module Vivlio
   module Starter
     module CLI
-      # glossary:lint コマンド群とその判定ロジックを提供するモジュール
+      # 用語集に基づく表記揺れ検出コマンド
       module GlossaryLintCommands
-        include GlossarySharedHelpers
+        extend GlossarySharedHelpers
+        module_function
 
         GLOSSARY_PATH_DISPLAY = GlossarySharedHelpers::GLOSSARY_DISPLAY_PATH
 
-        LINT_DESC = {
-          short: "用語集（#{GLOSSARY_PATH_DISPLAY}）に基づいて Markdown を検査します",
-          long: <<~DESC
-            用語集に基づいて Markdown を検査します。
+        def execute_glossary_lint
+          glossary_path = GlossarySharedHelpers.glossary_path_or_exit('glossary:lint')
+          terms = GlossarySharedHelpers.load_glossary_terms(glossary_path)
+          markdown_files = GlossarySharedHelpers.collect_markdown_files
+          violations = lint_markdown_files(markdown_files, terms)
 
-            対象:
-              - contents/**/*.md
-              - #{GLOSSARY_PATH_DISPLAY}
-
-            例:
-              vs glossary:lint
-          DESC
-        }.freeze
-
-        def self.included(base)
-          base.class_eval do
-            desc 'glossary:lint', GlossaryLintCommands::LINT_DESC[:short]
-            long_desc GlossaryLintCommands::LINT_DESC[:long]
-
-            # ================================================================
-            # Command: glossary:lint（Markdown の検査）
-            # ------------------------------------------------
-            # 概要:
-            #   用語集に基づいて Markdown を検査し、別表記/初出/スタイルの逸脱を検出する。
-            #   コード（フェンス/インライン）は検査対象外。
-            # ================================================================
-            def glossary_lint
-              glossary_path = glossary_path_or_exit('glossary:lint')
-              terms = load_glossary_terms(glossary_path)
-              markdown_files = collect_markdown_files
-              violations = lint_markdown_files(markdown_files, terms)
-
-              report_lint_results(violations)
-            end
-          end
+          report_lint_results(violations)
         end
-
-        private
 
         def lint_markdown_files(files, terms)
           files.flat_map { |path| lint_single_file(path, terms) }

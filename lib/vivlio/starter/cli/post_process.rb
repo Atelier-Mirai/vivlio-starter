@@ -63,136 +63,124 @@ module Vivlio
           DESC
         }.freeze
 
-        def included(base)
-          base.class_eval do
-            desc 'post_process [TOKENS...]', POST_PROCESS_DESC[:short]
-            long_desc POST_PROCESS_DESC[:long]
-            
-            # ================================================================
-            # Command: post_process（HTML 後処理）
-            # ----------------------------------------------------------------
-            # 概要: HTML に各種後処理を適用
-            # 入力: *.html（引数未指定時はカレント直下の *.html）
-            # 出力: 上書き保存
-            # ================================================================
-            def post_process(*tokens)
-              ENV['VERBOSE'] = '1' if options[:verbose]
+        def included(base); end
 
-              files = Common.normalize_tokens(tokens)
-              base_dir = '.'
+        # Samovar/直接呼び出し用エントリポイント
+        def execute_post_process(context_or_options, tokens = [])
+          opts = normalize_options(context_or_options)
+          ENV['VERBOSE'] = '1' if opts[:verbose]
 
-              # HTMLファイルを解決
-              html_files = if files.any?
-                             files.map do |f|
-                               name = f.end_with?('.html') ? f : "#{f}.html"
-                               File.dirname(name) == '.' ? File.join(base_dir, name) : name
-                             end.uniq
-                           else
-                             Dir.glob(File.join(base_dir, '*.html'))
-                           end
+          files = Common.normalize_tokens(tokens)
+          base_dir = '.'
 
-              # Step 1: <body> タグにファイルタイプクラスを付与
-              html_files.each do |html_file|
-                BodyClassInjector.inject_body_class(html_file)
-              end
+          html_files = if files.any?
+                         files.map do |f|
+                           name = f.end_with?('.html') ? f : "#{f}.html"
+                           File.dirname(name) == '.' ? File.join(base_dir, name) : name
+                         end.uniq
+                       else
+                         Dir.glob(File.join(base_dir, '*.html'))
+                       end
 
-              # Step 2: 置換ルールの読み込みと適用
-              replace_rules = load_replace_rules
-              total_replacements = 0
+          html_files.each do |html_file|
+            BodyClassInjector.inject_body_class(html_file)
+          end
 
-              html_files.each do |html_file|
-                Common.log_action("処理中: #{html_file}")
-                
-                # Step 2.1: YAML置換ルールを適用
-                result = HtmlReplacer.process_html_file(html_file, replace_rules)
-                if result[:changed]
-                  total_replacements += result[:replacements]
-                  Common.log_success("#{html_file}: #{result[:replacements]}個の置換を反映")
-                else
-                  Common.log_info("#{html_file}: 変更なし")
-                end
+          replace_rules = load_replace_rules
+          total_replacements = 0
 
-                # Step 2.2: h2をarticle.section-topicでラップ（theme.style=imageの場合）
-                begin
-                  content_before = File.read(html_file, encoding: 'utf-8')
-                  content_after  = SectionWrapper.wrap_h2_with_article_if_image_style!(content_before)
-                  if content_after != content_before
-                    File.write(html_file, content_after, encoding: 'utf-8')
-                    Common.log_success("#{html_file}: h2を<article.section-topic>でラップ（theme.style=image）")
-                    # ラップ後のクリーンアップ
-                    result2 = HtmlReplacer.process_html_file(html_file, replace_rules)
-                    if result2[:changed]
-                      Common.log_success("#{html_file}: ラップ後の不要な空段落をクリーンアップ (#{result2[:replacements]}件)")
-                    end
-                  end
-                rescue StandardError => e
-                  Common.log_error("#{html_file}: section-topicラップ中にエラー: #{e.message}")
-                end
+          html_files.each do |html_file|
+            Common.log_action("処理中: #{html_file}")
 
-                # Step 3: sideimage コンテナ内のテキストノードをラップ
-                begin
-                  wrap_sideimage_blocks!(html_file)
-                rescue StandardError => e
-                  Common.log_error("#{html_file}: sideimage ラップ中にエラー: #{e.message}")
-                end
+            result = HtmlReplacer.process_html_file(html_file, replace_rules)
+            if result[:changed]
+              total_replacements += result[:replacements]
+              Common.log_success("#{html_file}: #{result[:replacements]}個の置換を反映")
+            else
+              Common.log_info("#{html_file}: 変更なし")
+            end
 
-                # Step 3.5: image-group コンテナの列比率を設定
-                begin
-                  process_image_groups!(html_file)
-                rescue StandardError => e
-                  Common.log_error("#{html_file}: image-group 処理中にエラー: #{e.message}")
-                end
-
-                # Step 4: 章末脚注→ページ脚注変換
-                content = File.read(html_file, encoding: 'utf-8')
-                converted = FootnoteConverter.convert_endnotes_to_page_footnotes!(content)
-                if converted != content
-                  File.write(html_file, converted, encoding: 'utf-8')
-                  Common.log_success("#{html_file}: 章末脚注をページ脚注に変換")
-                end
-
-                # Step 4.5: sideimage 内の脚注参照を処理
-                # （Step 4 で page-footnote-print が生成された後に実行）
-                begin
-                  process_sideimage_footnotes!(html_file)
-                rescue StandardError => e
-                  Common.log_error("#{html_file}: sideimage 脚注処理中にエラー: #{e.message}")
-                end
-
-                # Step 4.6: 脚注をドキュメント出現順に再番号付け
-                begin
-                  renumber_footnotes_by_document_order!(html_file)
-                rescue StandardError => e
-                  Common.log_error("#{html_file}: 脚注再番号付け中にエラー: #{e.message}")
-                end
-
-                # Step 5: 行番号を追加(Prism.js対応)
-                Vivlio::Starter::ThorCLI.start(['prism_lines', html_file])
-
-                # Step 5.1: クロスリファレンス用コードブロックをラップ
-                wrap_cross_ref_code_blocks!(html_file)
-
-                # Step 6: 見出しにクラス/data属性を付与
-                begin
-                  HeadingProcessor.inject_heading_markers!([html_file], max_level: 3)
-                  Common.log_info("#{html_file}: 見出しメタを付与 (class=data)")
-                rescue StandardError => e
-                  Common.log_warn("#{html_file}: 見出しメタ付与に失敗: #{e}")
-                end
-
-                # Step 7: 見出し番号スパンを構築
-                begin
-                  HeadingProcessor.inject_heading_number_spans!(html_file)
-                  Common.log_info("#{html_file}: 見出し番号スパンを構築")
-                rescue StandardError => e
-                  Common.log_warn("#{html_file}: 見出し番号スパン構築に失敗: #{e}")
+            begin
+              content_before = File.read(html_file, encoding: 'utf-8')
+              content_after  = SectionWrapper.wrap_h2_with_article_if_image_style!(content_before)
+              if content_after != content_before
+                File.write(html_file, content_after, encoding: 'utf-8')
+                Common.log_success("#{html_file}: h2を<article.section-topic>でラップ（theme.style=image）")
+                result2 = HtmlReplacer.process_html_file(html_file, replace_rules)
+                if result2[:changed]
+                  Common.log_success("#{html_file}: ラップ後の不要な空段落をクリーンアップ (#{result2[:replacements]}件)")
                 end
               end
+            rescue StandardError => e
+              Common.log_error("#{html_file}: section-topicラップ中にエラー: #{e.message}")
+            end
 
-              Common.log_success("ポスト置換処理完了 (合計: #{total_replacements}個の置換)")
+            begin
+              wrap_sideimage_blocks!(html_file)
+            rescue StandardError => e
+              Common.log_error("#{html_file}: sideimage ラップ中にエラー: #{e.message}")
+            end
+
+            begin
+              process_image_groups!(html_file)
+            rescue StandardError => e
+              Common.log_error("#{html_file}: image-group 処理中にエラー: #{e.message}")
+            end
+
+            content = File.read(html_file, encoding: 'utf-8')
+            converted = FootnoteConverter.convert_endnotes_to_page_footnotes!(content)
+            if converted != content
+              File.write(html_file, converted, encoding: 'utf-8')
+              Common.log_success("#{html_file}: 章末脚注をページ脚注に変換")
+            end
+
+            begin
+              process_sideimage_footnotes!(html_file)
+            rescue StandardError => e
+              Common.log_error("#{html_file}: sideimage 脚注処理中にエラー: #{e.message}")
+            end
+
+            begin
+              renumber_footnotes_by_document_order!(html_file)
+            rescue StandardError => e
+              Common.log_error("#{html_file}: 脚注再番号付け中にエラー: #{e.message}")
+            end
+
+            # Prism.js 行番号付与（直接呼び出し）
+            PrismLinesCommands.execute_prism_lines(html_file)
+
+            wrap_cross_ref_code_blocks!(html_file)
+
+            begin
+              HeadingProcessor.inject_heading_markers!([html_file], max_level: 3)
+              Common.log_info("#{html_file}: 見出しメタを付与 (class=data)")
+            rescue StandardError => e
+              Common.log_warn("#{html_file}: 見出しメタ付与に失敗: #{e}")
+            end
+
+            begin
+              HeadingProcessor.inject_heading_number_spans!(html_file)
+              Common.log_info("#{html_file}: 見出し番号スパンを構築")
+            rescue StandardError => e
+              Common.log_warn("#{html_file}: 見出し番号スパン構築に失敗: #{e}")
             end
           end
+
+          Common.log_success("ポスト置換処理完了 (合計: #{total_replacements}個の置換)")
         end
+        module_function :execute_post_process
+
+        # オプションを正規化
+        def normalize_options(context_or_options)
+          if context_or_options.is_a?(Hash)
+            context_or_options[:options] || context_or_options
+          elsif context_or_options.respond_to?(:options)
+            context_or_options.options || {}
+          else
+            {}
+          end
+        end
+        module_function :normalize_options
 
         # ================================================================
         # クロスリファレンス用コードブロックのラップ

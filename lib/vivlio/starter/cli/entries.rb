@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'common'
+
 module Vivlio
   module Starter
     module CLI
@@ -29,95 +31,113 @@ module Vivlio
           DESC
         }.freeze
 
-        def included(base)
-          base.class_eval do
-            desc 'entries [TOKENS...]', ENTRIES_DESC[:short]
-            long_desc ENTRIES_DESC[:long]
-            # ================================================================
-            # Command: entries（entries.js 生成）
-            # ------------------------------------------------
-            # - 概要: 指定 HTML から entries.js（ESM）を作成
-            # - 入力: *.html（引数未指定時はカレント直下の *.html）
-            # - 出力: entries.js
-            # - オプション: --verbose (-v)
-            # ================================================================
-            def entries(*tokens)
-              ENV['VERBOSE'] = '1' if options[:verbose]
+        def included(base); end
 
-              files = Common.normalize_tokens(tokens)
+        def execute_entries(command_or_context, tokens)
+          ctx = normalized_context(command_or_context)
+          enable_verbose(ctx)
 
-              # デバッグ用にオプションを表示
-              Common.log_action('entries.jsを生成しています...')
+          files = Common.normalize_tokens(tokens)
+          Common.log_action('entries.jsを生成しています...')
 
-              # ベースディレクトリ（mybook 設定が有効なら mybook/ 配下）
-              base_dir = '.'
+          base_dir = '.'
+          html_files = resolve_html_files(base_dir, files)
+          Common.log_info("目次作成対象ファイル: #{html_files.join(', ')}")
 
-              # 処理対象のHTMLファイル一覧を取得
-              html_files = if files.any?
-                             # 引数で指定されたファイル群のみを対象
-                             files.flat_map do |f|
-                               # 拡張子が.htmlで終わる場合はそのまま使用
-                               if File.extname(f) == '.html'
-                                 name = File.dirname(f) == '.' ? File.join(base_dir, f) : f
-                                 File.exist?(name) ? [name] : []
-                               else
-                                 # トークン（例: 46）に対してマッチする HTMLファイルを検索
-                                 # パターン: #{token}.html または #{token}-*.html
-                                 pattern1 = File.join(base_dir, "#{f}.html")
-                                 pattern2 = File.join(base_dir, "#{f}-*.html")
-                                 candidates = Dir.glob([pattern1, pattern2])
-                                 candidates.empty? ? [] : candidates
-                               end
-                             end
-                           else
-                             # カレントディレクトリの .html 全てを対象
-                             Dir.glob(File.join(base_dir, '*.html'))
-                           end
+          entries = html_files.map { |html_file| build_entry(html_file) }
 
-              # 処理対象ファイルを表示
-              Common.log_info("目次作成対象ファイル: #{html_files.join(', ')}")
+          write_entries(base_dir, entries)
 
-              # entries.jsの生成
-              entries = html_files.map do |html_file|
-                base_name = File.basename(html_file, '.html')
-                title = base_name
+          Common.log_success("entries.js生成完了: #{entries.length}件のエントリを登録")
+        end
+        module_function :execute_entries
 
-                # HTMLファイルからタイトルを取得（優先）
-                html_title = nil
-                if File.exist?(html_file)
-                  content = File.read(html_file)
-                  if content =~ %r{<title>(.+?)</title>}
-                    html_title = ::Regexp.last_match(1).strip
-                    title = html_title unless html_title.empty?
-                  end
-                end
-
-                # HTMLからタイトルが取得できなかった場合のフォールバック処理
-                if (html_title.nil? || html_title.empty?) && (base_name =~ /^\d+-(.+)$/)
-                  # ファイル名からタイトルを生成
-                  title = ::Regexp.last_match(1)
-                end
-
-                # エントリーを生成
-                { path: html_file, title: title }
-              end
-
-              # entries.jsをES Module形式で書き込み
-              File.open(File.join(base_dir, 'entries.js'), 'w') do |f|
-                f.puts 'export default ['
-                entries.each_with_index do |entry, i|
-                  f.puts '  {'
-                  f.puts "    \"path\": \"#{entry[:path]}\","
-                  f.puts "    \"title\": \"#{entry[:title]}\""
-                  f.puts "  }#{',' if i < entries.length - 1}"
-                end
-                f.puts ']'
-              end
-
-              Common.log_success("entries.js生成完了: #{entries.length}件のエントリを登録")
-            end
+        def resolve_html_files(base_dir, files)
+          if Array(files).any?
+            files.flat_map { |token| resolve_token(base_dir, token) }.uniq
+          else
+            Dir.glob(File.join(base_dir, '*.html')).sort
           end
         end
+        module_function :resolve_html_files
+
+        def resolve_token(base_dir, token)
+          if File.extname(token) == '.html'
+            path = File.dirname(token) == '.' ? File.join(base_dir, token) : token
+            File.exist?(path) ? [path] : []
+          else
+            pattern1 = File.join(base_dir, "#{token}.html")
+            pattern2 = File.join(base_dir, "#{token}-*.html")
+            Dir.glob([pattern1, pattern2]).sort
+          end
+        end
+        module_function :resolve_token
+
+        def build_entry(html_file)
+          base_name = File.basename(html_file, '.html')
+          title = base_name
+          html_title = extract_html_title(html_file)
+
+          if html_title && !html_title.empty?
+            title = html_title
+          elsif html_title.to_s.empty? && (base_name =~ /^\d+-(.+)$/)
+            title = ::Regexp.last_match(1)
+          end
+
+          # パスを相対パス形式に正規化（./を接頭辞として付与）
+          normalized_path = html_file.start_with?('./') ? html_file : "./#{html_file}"
+          { path: normalized_path, title: title }
+        end
+        module_function :build_entry
+
+        def extract_html_title(path)
+          return unless File.exist?(path)
+
+          content = File.read(path)
+          if content =~ %r{<title>(.+?)</title>}
+            ::Regexp.last_match(1).strip
+          end
+        rescue StandardError
+          nil
+        end
+        module_function :extract_html_title
+
+        def write_entries(base_dir, entries)
+          File.open(File.join(base_dir, 'entries.js'), 'w') do |f|
+            f.puts 'export default ['
+            entries.each_with_index do |entry, i|
+              f.puts '  {'
+              f.puts %(    "path": "#{entry[:path]}",)
+              f.puts %(    "title": "#{entry[:title]}")
+              f.puts "  }#{',' if i < entries.length - 1}"
+            end
+            f.puts ']'
+          end
+        end
+        module_function :write_entries
+
+        def normalized_context(command_or_ctx)
+          return command_or_ctx if command_or_ctx.is_a?(Hash)
+
+          { options: options_of(command_or_ctx) }
+        end
+        module_function :normalized_context
+
+        def enable_verbose(context)
+          ENV['VERBOSE'] = '1' if options_of(context)[:verbose]
+        end
+        module_function :enable_verbose
+
+        def options_of(command_or_ctx)
+          if command_or_ctx.is_a?(Hash)
+            command_or_ctx[:options] || {}
+          elsif command_or_ctx.respond_to?(:options)
+            command_or_ctx.options || {}
+          else
+            {}
+          end
+        end
+        module_function :options_of
       end
     end
   end

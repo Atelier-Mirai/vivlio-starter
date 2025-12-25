@@ -1,97 +1,62 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/glossary/canonicalize_commands.rb
+# ================================================================
+# 責務:
+#   glossary.yml を正準形式に整形する。
+#   用語エントリの並び順・インデント・空行を統一する。
+#
+# 提供コマンド:
+#   - glossary:canonicalize:check: 差分があるかチェック（CI 用）
+#   - glossary:canonicalize: 実際に整形を適用
+#
+# 正準形式:
+#   - 用語は abbr でアルファベット順にソート
+#   - 各フィールドは決まった順序（name, abbr, aliases, style...）
+#   - インデントは 2 スペース
+# ================================================================
+
 module Vivlio
   module Starter
     module CLI
-      # glossary:canonicalize 系コマンドをまとめた正準化ロジック群
+      # glossary.yml 正準化コマンド
       module GlossaryCanonicalizeCommands
         include GlossarySharedHelpers
 
         GLOSSARY_PATH_DISPLAY = GlossarySharedHelpers::GLOSSARY_DISPLAY_PATH
 
-        CANONICALIZE_CHECK_DESC = {
-          short: "#{GLOSSARY_PATH_DISPLAY} を正準化（dry-run）し、差分の有無を返します",
-          long: <<~DESC
-            #{GLOSSARY_PATH_DISPLAY} を正準化（dry-run）し、差分の有無を返します。
-            実際のファイル書き込みは行いません。
+        def self.execute_glossary_canonicalize_check
+          glossary_path = glossary_path_or_exit('glossary:canonicalize:check')
 
-            差分が存在する場合は終了ステータス 1 を返します。
+          # YAML としての整合性も検証しておく（壊れていればここで終了）
+          load_glossary(glossary_path)
 
-            例:
-              vs glossary:canonicalize:check
-          DESC
-        }.freeze
+          original = File.read(glossary_path, encoding: 'UTF-8')
+          canonical = canonicalize_glossary_text(original)
 
-        CANONICALIZE_DESC = {
-          short: "#{GLOSSARY_PATH_DISPLAY} を正準化します（description のブロック化、空行整形、key 順ソート）",
-          long: <<~DESC
-            #{GLOSSARY_PATH_DISPLAY} を正準化します。
-            - description を |- ブロックスカラへ統一
-            - 空行の整形
-            - key 順へのソート
+          if canonical == original
+            puts '[glossary:canonicalize:check] OK - 変更はありません'
+          else
+            puts '[glossary:canonicalize:check] 差分があります'
+            exit 1
+          end
+        end
 
-            例:
-              vs glossary:canonicalize
-          DESC
-        }.freeze
+        def self.execute_glossary_canonicalize
+          glossary_path = glossary_path_or_exit('glossary:canonicalize')
 
-        def self.included(base)
-          base.class_eval do
-            desc 'glossary:canonicalize:check', GlossaryCanonicalizeCommands::CANONICALIZE_CHECK_DESC[:short]
-            long_desc GlossaryCanonicalizeCommands::CANONICALIZE_CHECK_DESC[:long]
+          # YAML としての整合性も検証しておく（壊れていればここで終了）
+          load_glossary(glossary_path)
 
-            # ================================================================
-            # Command: glossary:canonicalize:check（正準化の差分確認: dry-run）
-            # ------------------------------------------------
-            # 概要:
-            #   glossary.yml の正準化結果を生成し、現状との差分の有無のみを返す。
-            #   差分がある場合は exit 1。
-            # ================================================================
-            def glossary_canonicalize_check
-              glossary_path = glossary_path_or_exit('glossary:canonicalize:check')
+          original = File.read(glossary_path, encoding: 'UTF-8')
+          canonical = canonicalize_glossary_text(original)
 
-              # YAML としての整合性も検証しておく（壊れていればここで終了）
-              load_glossary(glossary_path)
-
-              original = File.read(glossary_path, encoding: 'UTF-8')
-              canonical = canonicalize_glossary_text(original)
-
-              if canonical == original
-                puts '[glossary:canonicalize:check] OK - 変更はありません'
-              else
-                puts '[glossary:canonicalize:check] 差分があります'
-                exit 1
-              end
-            end
-
-            desc 'glossary:canonicalize', GlossaryCanonicalizeCommands::CANONICALIZE_DESC[:short]
-            long_desc GlossaryCanonicalizeCommands::CANONICALIZE_DESC[:long]
-
-            # ================================================================
-            # Command: glossary:canonicalize（正準化を実行）
-            # ------------------------------------------------
-            # 概要:
-            #   glossary.yml を正準化する。
-            #   - description のブロック化
-            #   - ブロック直前の空行整形
-            #   - key 昇順ソート
-            # ================================================================
-            def glossary_canonicalize
-              glossary_path = glossary_path_or_exit('glossary:canonicalize')
-
-              # YAML としての整合性も検証しておく（壊れていればここで終了）
-              load_glossary(glossary_path)
-
-              original = File.read(glossary_path, encoding: 'UTF-8')
-              canonical = canonicalize_glossary_text(original)
-
-              if canonical == original
-                puts '[glossary:canonicalize] 変更はありません'
-              else
-                File.write(glossary_path, canonical)
-                puts '[glossary:canonicalize] 正準化を完了しました'
-              end
-            end
+          if canonical == original
+            puts '[glossary:canonicalize] 変更はありません'
+          else
+            File.write(glossary_path, canonical)
+            puts '[glossary:canonicalize] 正準化を完了しました'
           end
         end
 

@@ -1,5 +1,17 @@
 # frozen_string_literal: true
 
+# ================================================================
+# Test: theme_image_resolution_test.rb
+# ================================================================
+# テスト対象:
+#   PreProcessCommands の画像解決ロジック
+#
+# 検証内容:
+#   - frontispiece/ornament の既存バリアント使用
+#   - ornament: nothing 指定時のプレースホルダー生成
+#   - bundled ディレクトリからの画像検索
+# ================================================================
+
 require 'test_helper'
 require 'fileutils'
 require 'tmpdir'
@@ -9,8 +21,9 @@ require 'vivlio/starter/cli/pre_process'
 module Vivlio
   module Starter
     module CLI
+      # テーマ画像解決のユニットテスト
       class ThemeImageResolutionTest < Minitest::Test
-        # frontispiece / ornament に同名バリアントが存在する場合は生成せずそのまま採用できるかを検証
+        # 既存のバリアント画像がそのまま使用されることを確認
         def test_frontispiece_and_ornament_use_existing_variants
           with_temp_theme_images do |images_root|
             bundled = File.join(images_root, 'bundled')

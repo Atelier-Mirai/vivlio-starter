@@ -1,12 +1,28 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/post_process/html_replacer.rb
+# ================================================================
+# 責務:
+#   config/post_replace_list.yml の置換ルールを HTML に適用する。
+#
+# 置換ルール形式:
+#   - f: 検索パターン（正規表現）
+#   - r: 置換文字列（$1〜$9 でキャプチャ参照）
+#
+# 用途:
+#   - 特殊文字の変換（例: 〈〉→《》）
+#   - クラス追加（例: <p> に特定クラスを付与）
+#   - カスタム記法の展開
+# ================================================================
+
 require_relative '../common'
 
 module Vivlio
   module Starter
     module CLI
       module PostProcessCommands
-        # HTML置換処理を担当するモジュール
+        # YAML 置換ルール適用モジュール
         module HtmlReplacer
           module_function
 

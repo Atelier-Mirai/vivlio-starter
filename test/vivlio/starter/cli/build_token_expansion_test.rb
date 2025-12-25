@@ -1,21 +1,37 @@
 # frozen_string_literal: true
 
+# ================================================================
+# Test: build_token_expansion_test.rb
+# ================================================================
+# テスト対象:
+#   TokenExpander（lib/vivlio/starter/cli/build/token_expander.rb）
+#
+# 検証内容:
+#   - 単一章番号 "45" → ["45-first-html.md"] への展開
+#   - 範囲 "45-47" → 複数ファイルへの展開
+#   - カンマ区切り "45,47" の解析
+#   - ベース名からファイル解決
+#
+# テスト手法:
+#   - mock_files でファイル一覧をスタブ化
+# ================================================================
+
 require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
 require 'vivlio/starter/cli/common'
 require 'vivlio/starter/cli/build'
+require 'vivlio/starter/cli/pre_process'
+require 'vivlio/starter/cli/convert'
+require 'vivlio/starter/cli/post_process'
+require 'vivlio/starter/cli/entries'
+require 'vivlio/starter/cli/pdf'
 require 'vivlio/starter/cli'
 
 module Vivlio
   module Starter
     module CLI
-      # ================================================================
-      # Token Expansion Tests
-      # ================================================================
-      # build コマンドのトークン展開ロジックをテスト
-      # 注: BuildCommands のメソッドは Thor の build コマンド内で定義されるため、
-      #     テスト用のヘルパークラスで再実装してテストする
+      # TokenExpander のユニットテスト
       class TokenExpansionTest < Minitest::Test
         def setup
           @expander = TokenExpander.new
@@ -127,39 +143,44 @@ module Vivlio
       # ================================================================
       # 単章ビルドのワークフロー全体をテスト
       class SingleModeIntegrationTest < Minitest::Test
-        def test_single_mode_invokes_correct_thor_tasks
+        def test_single_mode_invokes_correct_commands
           within_temp_dir do
             pipeline = build_pipeline(['11-sample'])
-            calls = []
+            pre_calls = []
+            conv_calls = []
+            post_calls = []
 
-            # ThorCLI.start をスタブして呼び出しを記録
-            Vivlio::Starter::ThorCLI.stub :start, ->(args) { calls << args } do
-              # build_target_sections_html を直接呼び出してテスト
-              pipeline.send(:build_target_sections_html)
+            # 直接メソッド呼び出しをスタブして記録
+            PreProcessCommands.stub :execute_pre_process, ->(opts, tokens) { pre_calls << tokens } do
+              ConvertCommands.stub :execute_convert, ->(opts, tokens) { conv_calls << tokens } do
+                PostProcessCommands.stub :execute_post_process, ->(opts, tokens) { post_calls << tokens } do
+                  pipeline.send(:build_target_sections_html)
+                end
+              end
             end
 
-            expected_calls = [
-              ['pre_process', '11-sample'],
-              ['convert', '11-sample'],
-              ['post_process', '11-sample']
-            ]
-            assert_equal expected_calls, calls
+            assert_equal [['11-sample']], pre_calls
+            assert_equal [['11-sample']], conv_calls
+            assert_equal [['11-sample']], post_calls
           end
         end
 
         def test_single_mode_generates_entries_and_pdf
           within_temp_dir do
             pipeline = build_pipeline(['11-sample', '12-tutorial'])
-            calls = []
+            entries_calls = []
+            pdf_calls = []
 
-            Vivlio::Starter::ThorCLI.stub :start, ->(args) { calls << args } do
-              pipeline.send(:generate_entries_and_pdf)
+            EntriesCommands.stub :execute_entries, ->(opts, tokens) { entries_calls << tokens } do
+              PdfCommands.stub :execute_pdf, ->(opts, *args) { pdf_calls << args } do
+                pipeline.send(:generate_entries_and_pdf)
+              end
             end
 
             # entries コマンドにターゲットが渡される
-            assert_equal ['entries', '11-sample', '12-tutorial'], calls[0]
+            assert_equal [['11-sample', '12-tutorial']], entries_calls
             # pdf コマンドが呼ばれる
-            assert_equal ['pdf'], calls[1]
+            assert_equal 1, pdf_calls.size
           end
         end
 

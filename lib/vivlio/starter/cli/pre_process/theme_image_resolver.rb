@@ -1,12 +1,33 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/pre_process/theme_image_resolver.rb
+# ================================================================
+# 責務:
+#   テーマ画像（扉絵・飾り画像）のパスを解決する。
+#   指定された名前から実際のファイルパスまたはプレースホルダーを返す。
+#
+# 探索順序:
+#   1. images/bundled/{name}_portrait.webp（バリアント）
+#   2. images/{name}.webp
+#   3. images/{name}.png/.jpg/.jpeg
+#   4. プレースホルダー SVG（見つからない場合）
+#
+# バリアント:
+#   - portrait: 縦長（扉絵用、ページ比率に合わせてクロップ）
+#   - landscape: 横長（飾り画像用、2.39:1 シネマスコープ）
+#
+# 依存:
+#   - ImageGenerator: バリアント画像の生成
+# ================================================================
+
 require_relative '../common'
 
 module Vivlio
   module Starter
     module CLI
       module PreProcessCommands
-        # テーマ画像の探索・解決ロジックを担当するモジュール
+        # テーマ画像パス解決モジュール
         module ThemeImageResolver
           THEME_IMAGE_EXTENSIONS = %w[.webp .png .jpg .jpeg].freeze
           FRONTISPIECE_DEFAULT_PATH = 'images/door2.webp'

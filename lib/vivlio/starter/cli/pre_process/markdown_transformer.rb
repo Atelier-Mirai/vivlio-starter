@@ -1,5 +1,27 @@
 # frozen_string_literal: true
 
+# ================================================================
+# File: lib/vivlio/starter/cli/pre_process/markdown_transformer.rb
+# ================================================================
+# 責務:
+#   Markdown の特殊記法を変換し、コードブロックの処理を行う。
+#
+# 変換処理:
+#   - コードインクルード: ```ruby:codes/sample.rb → ファイル内容を埋め込み
+#   - book-card: :::book-card → 書籍紹介カード HTML
+#   - table-rotate: :::table-rotate → 90度回転テーブル
+#   - リンク脚注化: [text](url) → text[^n] + 脚注定義
+#
+# コードブロック:
+#   - 言語指定から Prism.js クラスを生成
+#   - 行番号表示用の data-line 属性を付与
+#   - ファイル名表示用のヘッダーを生成
+#
+# 依存:
+#   - Common: 設定読み込み・ログ出力
+#   - HeadingProcessor: 章番号の取得
+# ================================================================
+
 require 'cgi'
 require_relative '../common'
 require_relative '../post_process/heading_processor'
@@ -8,7 +30,7 @@ module Vivlio
   module Starter
     module CLI
       module PreProcessCommands
-        # Markdown変換処理を担当するモジュール
+        # Markdown 特殊記法変換モジュール
         module MarkdownTransformer
           # 拡張子→言語の対応表
           EXT_TO_LANG = {
