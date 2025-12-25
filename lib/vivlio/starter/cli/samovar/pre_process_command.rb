@@ -15,6 +15,8 @@
 #   - PreProcessCommands: 実際の前処理ロジック
 # ================================================================
 
+require_relative '../pre_process'
+
 module Vivlio
   module Starter
     module CLI

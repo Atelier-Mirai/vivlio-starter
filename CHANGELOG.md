@@ -97,15 +97,28 @@
 （次回リリース候補の変更はここに追加してください）
 
 ### Fixed
+- (なし)
+
+### Changed
+- (なし)
+
+## [0.25.0] - 2025-12-25
+
+### Fixed
 - **前書きのHTMLブロック境界の正規化**: `pre_process` で HTML ブロック閉じタグ直後の空行を正規化し、`</small>` 直後の `## 対象読者` などが Markdown 見出しとして正しく解釈されるように修正。
 - **sideimage 内の外部リンク脚注サポート**: `:::{.sideimage-right}` / `:::{.sideimage-left}` コンテナ内の Markdown リンクを後処理で `<a>` タグに変換し、対応する URL 脚注をページ脚注として生成。sideimage 内の脚注参照も本文の出現順に合わせて番号付けし、脚注定義も番号順に並ぶように調整。
 - **catalog.yml 更新時のコメント保持**: `CatalogUpdater` の保存処理を見直し、`vs create` / `vs delete` / `vs rename` / `vs renumber` などで `catalog.yml` を更新する際にも、冒頭の説明コメントと各セクション見出しコメント、および Tips セクションを含むフッターコメントが失われないようにした。
-
+- **Prism.js 行番号付与のロード漏れ修正**: `post_process.rb` から `prism_lines.rb` を明示的に require し、`PrismLinesCommands.execute_prism_lines` を Samovar build パイプラインから直接呼び出しても `NameError` にならないようにした。これにより `vs build` 実行時の `uninitialized constant PrismLinesCommands` / `undefined method add_prism_line_numbers` エラーが解消され、行番号付与ステップまで正常に完走する。
 - **テーブル直前段落のキャプション判定の改善**: `stylesheets/table.css` の `p:has(+ table)` セレクタを `p:has(> strong:only-child):has(+ table)` に変更し、テーブル直前の通常段落はキャプション扱いにせず、`**見出し**` 形式の段落のみを表キャプションとしてスタイリングするように修正。
 - **目次（TOC）のページ番号整合性の修正**: `stylesheets/toc.css` を見直し、章・節・項のタイトル行に対して `leader(dotted)` と `target-counter(attr(data-href url), page)` を `.toc-title::after` で一貫して適用するように変更。Flex レイアウトと `leader()` の組み合わせで一部の節タイトルにページ番号が表示されない／ドットリーダーのみが頁外へ伸びる問題を解消し、目次全体でページ番号が揃って表示されるようにした。
 
 ### Changed
+- **CLI を Samovar ベースへ全面移行**: 旧 Thor DSL を廃止し、`lib/vivlio/starter/cli/samovar/` 配下にコマンドごとの Samovar 実装（build/clean/create/delete/doctor/entries/help/new/pdf/pre_process/post_process/rename/resize/toc など）を追加。`vs --help` では Samovar が生成する usage 表示を採用し、共通オプション（`--verbose` 等）を RootCommand 経由で一元管理するようにした。これに伴い CLI テスト群を Samovar 仕様へ更新し、新コマンド（`entries` など）用のユニットテストも追加して回帰検証を強化。
+- **依存ツールの最新動向を確認**: Vivliostyle CLI v10.x では Puppeteer への移行、ブラウザ切替オプション、Node 20+ 要件、`--executable-browser` など新フラグ体系、`vivliostyle create` のテンプレート拡充が行われた。アップデート時は `package.json` の `@vivliostyle/cli` / `@vivliostyle/core` を v10 系へ上げ、Samovar CLI 側で渡しているフラグの互換性（`--log-level verbose` など）を再確認する。また、VFM 2.5.0 では `figcaption` と画像の順序入れ替えオプション、フェンスコードブロックの属性シンタックス、`figcaption` への ID 付与、ARIA の挙動調整が追加されたため、Markdown から生成される HTML/CSS の仕様差分がないかをビルド後に目視確認する。
+- **Vivliostyle/VFM 依存のバージョンアップ**: `@vivliostyle/cli` を **10.2.0**、`@vivliostyle/core` を **2.39.0**、`@vivliostyle/vfm` を **2.5.0** へ更新し、`npm install` でロックファイルも再生成。Node 20 以降が必須になったため、今後のビルド実行環境は Node 20+ を前提とする。
+- **Ruby 4.0.0 での動作確認**: `rbenv install 4.0.0` → `rbenv global 4.0.0` で最新 Ruby へ切り替え、Bundler 2.7.2 で gem を再インストール。`vs build` を含む全 CLI が Ruby 4.0 系でもエラーなく動作することを確認し、`entries.js` 自動生成ロジックの改善により初回ビルド時の NameError も防止。
 - **設定 YAML の事前検査を強化**: `vs` コマンド起動時に `config/book.yml` 不在/破損で即座にエラー終了するようにし、さらに `config/catalog.yml` / `config/page_presets.yml` / `config/post_replace_list.yml` についても存在確認と YAML パースのプリフライトチェックを追加。`vs glossary:*` 実行時には `config/glossary.yml` の YAML 構造を検証し、`vs text:lint` 実行時には `config/textlint_allowlist.yml` / `config/textlint_prh.yml` の存在・パースエラーを明示的に報告して処理を中止するようにした。
+- **Samovar CLI 起動経路の自動検証を追加**: `test/vivlio/starter/cli/samovar_smoke_test.rb` を新設し、(1) 主要 Samovar コマンドのスモークテスト、(2) `require_relative` / 定数参照の欠落検知テスト、(3) `vs build` / `vs create` / `vs delete` などの最小統合テストを整備。`UnifiedBuildPipeline` や各コマンド実装をスタブ監視することで、Samovar 層の配線抜けが `vs build` などで NameError を起こす前に検出できるようにした。
 
 ### TODO
 - **vs doctor での設定ファイル検査/復旧支援の拡充**: `config/book.yml` / `config/catalog.yml` などコア設定に加え、`config/` 配下の YAML 群の存在確認やテンプレートからの復旧（missing/破損時）の自動支援を追加する。

@@ -24,7 +24,12 @@
 # ================================================================
 
 require_relative '../build'
+require_relative '../build/pipeline'
+require_relative '../build/chapter_config'
+require_relative '../build/token_expander'
+require_relative '../build/output_helpers'
 require_relative '../pdf'
+require_relative '../post_process'
 
 module Vivlio
   module Starter
@@ -143,7 +148,7 @@ module Vivlio
 
             PostProcessCommands::HeadingProcessor.chapter_tokens_override = expanded_tokens
 
-            pipeline = UnifiedBuildPipeline.new(self, targets: expanded_tokens, mode: :single)
+            pipeline = BuildCommands::UnifiedBuildPipeline.new(self, targets: expanded_tokens, mode: :single)
             build_timings = pipeline.run
 
             print_build_timings(build_timings)
@@ -168,7 +173,7 @@ module Vivlio
               return
             end
 
-            pipeline = UnifiedBuildPipeline.new(self, keep: keep, mode: :full)
+            pipeline = BuildCommands::UnifiedBuildPipeline.new(self, keep: keep, mode: :full)
             build_timings = pipeline.run
 
             print_build_timings(build_timings)

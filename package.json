@@ -12,8 +12,8 @@
     "lint:css:fix": "stylelint --fix \"stylesheets/**/*.css\""
   },
   "devDependencies": {
-    "@vivliostyle/cli": "^9.7.2",
-    "@vivliostyle/vfm": "^2.2.1",
+    "@vivliostyle/cli": "^10.2.0",
+    "@vivliostyle/vfm": "^2.5.0",
     "stylelint": "^16.8.0",
     "stylelint-config-standard": "^36.0.0"
   },
@@ -28,6 +28,6 @@
     "trim": "0.0.3"
   },
   "dependencies": {
-    "@vivliostyle/core": "^2.35.0"
+    "@vivliostyle/core": "^2.39.0"
   }
 }

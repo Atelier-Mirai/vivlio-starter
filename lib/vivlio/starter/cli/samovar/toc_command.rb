@@ -15,6 +15,8 @@
 #   - TocCommands: 実際の目次生成処理
 # ================================================================
 
+require_relative '../toc'
+
 module Vivlio
   module Starter
     module CLI

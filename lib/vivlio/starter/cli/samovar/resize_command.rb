@@ -18,6 +18,8 @@
 #   - ImageMagick: 画像変換エンジン
 # ================================================================
 
+require_relative '../resize'
+
 module Vivlio
   module Starter
     module CLI

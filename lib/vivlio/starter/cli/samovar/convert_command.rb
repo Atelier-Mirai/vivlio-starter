@@ -15,6 +15,8 @@
 #   - ConvertCommands: 実際の変換処理
 # ================================================================
 
+require_relative '../convert'
+
 module Vivlio
   module Starter
     module CLI

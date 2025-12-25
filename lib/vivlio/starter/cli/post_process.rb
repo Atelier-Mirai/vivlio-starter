@@ -34,6 +34,7 @@ require_relative 'post_process/html_replacer'
 require_relative 'post_process/section_wrapper'
 require_relative 'post_process/footnote_converter'
 require_relative 'post_process/heading_processor'
+require_relative 'prism_lines'
 
 module Vivlio
   module Starter

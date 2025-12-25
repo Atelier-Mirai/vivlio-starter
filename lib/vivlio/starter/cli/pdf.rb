@@ -5,6 +5,8 @@ require 'English'
 require 'rbconfig'
 require 'fileutils'
 
+require_relative 'entries'
+
 module Vivlio
   module Starter
     module CLI
@@ -121,6 +123,7 @@ module Vivlio
 
           # Vivliostyle CLI を実行して PDF を生成する
           def execute_build
+            ensure_entries_file!
             start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
             @build_success = if quiet_mode?
@@ -132,6 +135,26 @@ module Vivlio
             elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
             Common.log_info(format('[pdf] vivliostyle build 所要時間: %.2fs', elapsed))
             Common.record_vivliostyle_build(elapsed, Common.current_step_label)
+          end
+
+          def ensure_entries_file!
+            return if File.exist?(entries_file_path)
+
+            Common.log_info('[pdf] entries.js が存在しないため全HTMLから再生成します')
+            EntriesCommands.execute_entries({}, [])
+
+            return if File.exist?(entries_file_path)
+
+            raise 'entries.js の再生成に失敗しました'
+          rescue StandardError => e
+            raise unless e.is_a?(RuntimeError) && e.message == 'entries.js の再生成に失敗しました'
+
+            Common.log_error('[pdf] entries.js の自動生成に失敗したためビルドを中止します')
+            raise
+          end
+
+          def entries_file_path
+            File.join(Dir.pwd, 'entries.js')
           end
 
           # quiet モードが有効かどうか返す

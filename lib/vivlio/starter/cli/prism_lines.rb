@@ -20,7 +20,7 @@ module Vivlio
       #   - OUTPUT_FILE を省略した場合、INPUT_FILE を上書きします。
       # ==============================================================================
       module PrismLinesCommands
-        module_function
+        extend self
 
         PRISM_LINES_DESC = {
           short: 'HTMLファイル内のPrism.jsコードブロックに行番号を追加します',
@@ -53,10 +53,6 @@ module Vivlio
 
           add_prism_line_numbers(input_file, output_file)
         end
-        module_function :execute_prism_lines
-
-        private
-
         # コードの行数を返す
         def line_count(pre)
           pre.text.count("\n") + 1
