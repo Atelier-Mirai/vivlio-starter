@@ -644,7 +644,7 @@ module Vivlio
             Common.echo_always("   実行ファイル: #{binary_path}")
             unless path_included?(paths[:bin])
               if ensure_zsh_path(paths[:bin])
-                Common.echo_always("ℹ️ ~/.zshrc に PATH を追記しました。新しいシェルで有効になります")
+                Common.echo_always('ℹ️ ~/.zshrc に PATH を追記しました。新しいシェルで有効になります')
               else
                 Common.echo_always(path_hint_message(paths[:bin], :macos))
               end

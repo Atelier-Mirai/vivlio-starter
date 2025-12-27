@@ -13,14 +13,14 @@ module Vivlio
         # 【役割】
         # - 見出し（h1..h6）にマーカーとメタデータを付与
         # - 章番号・節番号のスパンを構築
-        # 
+        #
         # 【処理内容】
         # 1. 見出しマーカー付与
         #    - class: vs-h-marker
         #    - data-heading: 見出しテキスト
         #    - data-hN: レベル別見出しテキスト
         #    - data-chapter: 章トークン
-        # 
+        #
         # 2. 見出し番号スパン構築
         #    - h1: <span class="chapter-number">第N章</span><span class="chapter-title">タイトル</span>
         #    - h2: <span class="section-number">N-M</span><span class="section-title">タイトル</span>
@@ -65,7 +65,7 @@ module Vivlio
               modified = false
               chapter_token = File.basename(path, File.extname(path)).to_s.strip
               chapter_token = nil if chapter_token.empty?
-              
+
               (1..max_l).each do |lvl|
                 doc.css("h#{lvl}").each do |h|
                   # 見出し要素自体に vs-h-marker クラスを付与
@@ -105,7 +105,7 @@ module Vivlio
                   end
                 end
               end
-              
+
               if modified
                 out = doc.respond_to?(:to_html) ? doc.to_html : doc.to_s
                 File.write(path, out, encoding: 'utf-8')

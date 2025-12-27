@@ -100,15 +100,15 @@ module Vivlio
             return unless old_section
 
             # セクションが変わる場合（例: 11 → 91）
-            if old_section != new_section
+            if old_section == new_section
+              # 同じセクション内でリネーム
+              insert_basename_to_section(catalog, old_section, new_basename)
+              Common.log_info("catalog.yml: #{old_basename} → #{new_basename}")
+            else
               # 新しいセクションに追加
               catalog[new_section] ||= []
               insert_basename_to_section(catalog, new_section, new_basename)
               Common.log_info("catalog.yml: #{old_basename} → #{new_basename}（#{old_section} → #{new_section}）")
-            else
-              # 同じセクション内でリネーム
-              insert_basename_to_section(catalog, old_section, new_basename)
-              Common.log_info("catalog.yml: #{old_basename} → #{new_basename}")
             end
 
             save_catalog(catalog)
@@ -124,9 +124,7 @@ module Vivlio
             CatalogLoader.section_for_chapter_number(num)
           end
 
-          private
 
-          module_function
 
           # catalog.yml を読み込み、存在しない場合は空のカタログを作成
           def load_or_create_catalog

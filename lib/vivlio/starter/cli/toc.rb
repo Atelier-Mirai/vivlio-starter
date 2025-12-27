@@ -259,7 +259,7 @@ module Vivlio
         end
 
         # 前書き／後書きのエントリを生成する
-        # 
+        #
         # 前書き（00-preface）や後書き（99-postface）は、通常の章とは異なる扱いをする。
         # - 章番号を表示しない（CSS: toc-chapter-no-number）
         # - ビルド対象に含まれている場合のみ、目次に追加する

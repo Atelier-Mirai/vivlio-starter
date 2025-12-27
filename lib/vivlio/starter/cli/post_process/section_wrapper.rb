@@ -13,7 +13,7 @@ module Vivlio
         # 【役割】
         # - theme.style: image のとき、section.level2 内の h2 を
         #   <article class="section-topic"> でラップ
-        # 
+        #
         # 【処理内容】
         # - <section class="level2"> の直下にある <h2> を検出
         # - 直後にある .section-lead も一緒にラップ（存在すれば）

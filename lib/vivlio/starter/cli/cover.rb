@@ -52,44 +52,44 @@ module Vivlio
 
         def execute_generate(context = nil)
           Common.log_info '📚 カバー画像の一括生成を開始します'
-          
+
           # 設定読み込み
           config = Common.load_config
           covers_dir = config.dig('directories', 'covers') || 'covers'
           page_use = config.dig('page', 'use') || 'b5_standard'
-          
+
           # ページサイズ判定
           page_size = CoverCommands.detect_page_size(page_use)
           Common.log_info "ページサイズ: #{page_size.upcase} (#{page_use})"
-          
+
           # マスターファイル確認
           unless CoverCommands.check_master_files(covers_dir)
             Common.log_error 'マスターファイルが見つかりません。処理を中断します。'
             return
           end
           generated = []
-          
+
           # PDF用カバー（RGB版）
           if config.dig('output', 'pdf', 'cover', 'front')
             Common.log_info "\n🎨 PDF用カバー（A4、RGB）を生成中..."
             CoverCommands.generate_rgb_pdf(covers_dir, config)
             generated << 'PDF用（RGB）'
           end
-          
+
           # 印刷用PDF（CMYK版PDF/X-1a）
           if config.dig('output', 'print_pdf', 'cover', 'front')
             Common.log_info "\n🖨️  印刷用カバー（#{page_size.upcase}、CMYK、PDF/X-1a）を生成中..."
             CoverCommands.generate_cmyk_pdf(covers_dir, page_size, config)
             generated << "印刷用（#{page_size.upcase}、PDF/X-1a）"
           end
-          
+
           # EPUB用カバー
           if config.dig('output', 'epub', 'cover')
             Common.log_info "\n📱 EPUB用カバー（1600×2560、JPEG）を生成中..."
             CoverCommands.generate_epub_cover(covers_dir, config)
             generated << 'EPUB用（JPEG）'
           end
-          
+
           if generated.empty?
             Common.log_warn 'book.yml に出力設定が見つかりませんでした'
           else
@@ -103,12 +103,12 @@ module Vivlio
           Common.log_info '📚 A4サイズのRGB版PDFを生成します'
           config = Common.load_config
           covers_dir = config.dig('directories', 'covers') || 'covers'
-          
+
           unless CoverCommands.check_master_files(covers_dir)
             Common.log_error 'マスターファイルが見つかりません'
             return
           end
-          
+
           CoverCommands.generate_rgb_pdf(covers_dir, config)
           Common.log_success '✅ A4 RGB版PDFの生成が完了しました'
         end
@@ -118,12 +118,12 @@ module Vivlio
           Common.log_info '📚 B5サイズのCMYK版PDF/X-1aを生成します'
           config = Common.load_config
           covers_dir = config.dig('directories', 'covers') || 'covers'
-          
+
           unless CoverCommands.check_master_files(covers_dir)
             Common.log_error 'マスターファイルが見つかりません'
             return
           end
-          
+
           CoverCommands.generate_cmyk_pdf(covers_dir, :b5, config)
           Common.log_success '✅ B5 CMYK版PDF/X-1aの生成が完了しました'
         end
@@ -133,12 +133,12 @@ module Vivlio
           Common.log_info '📚 A5サイズのCMYK版PDF/X-1aを生成します'
           config = Common.load_config
           covers_dir = config.dig('directories', 'covers') || 'covers'
-          
+
           unless CoverCommands.check_master_files(covers_dir)
             Common.log_error 'マスターファイルが見つかりません'
             return
           end
-          
+
           CoverCommands.generate_cmyk_pdf(covers_dir, :a5, config)
           Common.log_success '✅ A5 CMYK版PDF/X-1aの生成が完了しました'
         end
@@ -148,13 +148,13 @@ module Vivlio
           Common.log_info '📚 EPUB用JPEGを生成します'
           config = Common.load_config
           covers_dir = config.dig('directories', 'covers') || 'covers'
-          
+
           frontcover_master = File.join(covers_dir, FRONTCOVER_MASTER)
           unless File.exist?(frontcover_master)
             Common.log_error "マスターファイルが見つかりません: #{frontcover_master}"
             return
           end
-          
+
           CoverCommands.generate_epub_cover(covers_dir, config)
           Common.log_success '✅ EPUB用JPEGの生成が完了しました'
         end
@@ -180,13 +180,13 @@ module Vivlio
         def self.check_master_files(covers_dir)
           frontcover = File.join(covers_dir, FRONTCOVER_MASTER)
           backcover = File.join(covers_dir, BACKCOVER_MASTER)
-          
+
           front_exists = File.exist?(frontcover)
           back_exists = File.exist?(backcover)
-          
+
           Common.log_warn("表紙マスターが見つかりません: #{frontcover}") unless front_exists
           Common.log_warn("裏表紙マスターが見つかりません: #{backcover}") unless back_exists
-          
+
           front_exists || back_exists
         end
 
@@ -195,7 +195,7 @@ module Vivlio
           size = SIZES[:a4]
           front_output = config.dig('output', 'pdf', 'cover', 'front')
           back_output = config.dig('output', 'pdf', 'cover', 'back')
-          
+
           if front_output
             CoverCommands.generate_rgb_pdf_single(
               File.join(covers_dir, FRONTCOVER_MASTER),
@@ -203,7 +203,7 @@ module Vivlio
               size
             )
           end
-          
+
           if back_output
             CoverCommands.generate_rgb_pdf_single(
               File.join(covers_dir, BACKCOVER_MASTER),
@@ -244,7 +244,7 @@ module Vivlio
           size = SIZES[page_size]
           front_output = config.dig('output', 'print_pdf', 'cover', 'front')
           back_output = config.dig('output', 'print_pdf', 'cover', 'back')
-          
+
           if front_output
             CoverCommands.generate_pdfx_single(
               File.join(covers_dir, FRONTCOVER_MASTER),
@@ -252,7 +252,7 @@ module Vivlio
               size
             )
           end
-          
+
           if back_output
             CoverCommands.generate_pdfx_single(
               File.join(covers_dir, BACKCOVER_MASTER),
@@ -291,7 +291,7 @@ module Vivlio
               Common.log_error "  失敗（変換）: #{File.basename(output_pdf)}"
               return
             end
-            
+
             # Step 2: GhostscriptでPDF/X-1a変換
             cmd_gs = [
               'gs',
@@ -304,7 +304,7 @@ module Vivlio
               "-sOutputFile=#{output_pdf}",
               temp_pdf
             ]
-            
+
             unless system(*cmd_gs, out: File::NULL, err: File::NULL)
               Common.log_error "  失敗（PDF/X-1a変換）: #{File.basename(output_pdf)}"
             end

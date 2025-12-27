@@ -108,7 +108,6 @@ module Vivlio
           YAML.safe_load(presets_text, permitted_classes: [], aliases: true)
         end
 
-
         # ================================================================
         # Utility: normalize_page_units!
         # ------------------------------------------------
@@ -558,10 +557,10 @@ module Vivlio
         # - デフォルトは 'chapter'
         # ================================================================
         # 章番号レンジ定数（catalog_spec.md 準拠）
-        PREFACE_RANGE  = (0..0).freeze
-        MAIN_RANGE     = (1..89).freeze
-        APPX_RANGE     = (90..98).freeze
-        POSTFACE_RANGE = (99..99).freeze
+        PREFACE_RANGE  = (0..0)
+        MAIN_RANGE     = (1..89)
+        APPX_RANGE     = (90..98)
+        POSTFACE_RANGE = (99..99)
 
         def get_file_type(filename)
           name = File.basename(filename.to_s)

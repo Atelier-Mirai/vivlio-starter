@@ -32,8 +32,6 @@ module Vivlio
     module CLI
       # 章削除コマンドの実装モジュール
       module DeleteCommands
-        module_function
-
         # delete コマンドの制御フローを担う実行クラス
         #
         # オプション解釈・対象解決・削除処理の各責務を分離し、

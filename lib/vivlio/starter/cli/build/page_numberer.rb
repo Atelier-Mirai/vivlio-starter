@@ -105,22 +105,22 @@ module Vivlio
               est_char_width = folio_size * 0.45
               text_width = text.length * est_char_width
               if (page_index + 1).odd?
-                text_area_left = media_box.left + margin_inner_mm * mm
-                text_area_right = media_box.right - margin_outer_mm * mm
+                text_area_left = media_box.left + (margin_inner_mm * mm)
+                text_area_right = media_box.right - (margin_outer_mm * mm)
               else
-                text_area_left = media_box.left + margin_outer_mm * mm
-                text_area_right = media_box.right - margin_inner_mm * mm
+                text_area_left = media_box.left + (margin_outer_mm * mm)
+                text_area_right = media_box.right - (margin_inner_mm * mm)
               end
-              text_area_center = text_area_left + (text_area_right - text_area_left) / 2.0
+              text_area_center = text_area_left + ((text_area_right - text_area_left) / 2.0)
               text_area_center - (text_width / 2.0)
             when 'sides'
               if (page_index + 1).odd?
                 est_char_width = folio_size * 0.3
                 text_width = text.length * est_char_width
-                text_area_right = media_box.right - margin_outer_mm * mm
+                text_area_right = media_box.right - (margin_outer_mm * mm)
                 text_area_right - text_width
               else
-                media_box.left + margin_outer_mm * mm
+                media_box.left + (margin_outer_mm * mm)
               end
             end
           end

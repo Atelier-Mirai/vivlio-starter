@@ -17,10 +17,10 @@ module Vivlio
           CATALOG_FILE = 'config/catalog.yml'
 
           # 章番号レンジ定数（新仕様）
-          PREFACE_RANGE  = (0..0).freeze
-          MAIN_RANGE     = (1..89).freeze
-          APPX_RANGE     = (90..98).freeze
-          POSTFACE_RANGE = (99..99).freeze
+          PREFACE_RANGE  = (0..0)
+          MAIN_RANGE     = (1..89)
+          APPX_RANGE     = (90..98)
+          POSTFACE_RANGE = (99..99)
 
           # 特殊ページの内部 basename
           SPECIAL_PAGES = %w[_titlepage _legalpage _colophon].freeze
@@ -97,7 +97,7 @@ module Vivlio
             catalog = YAML.safe_load(content, permitted_classes: [], aliases: true)
 
             unless catalog.is_a?(Hash)
-              raise StandardError, "catalog.yml の形式が不正です（Hash ではありません）"
+              raise StandardError, 'catalog.yml の形式が不正です（Hash ではありません）'
             end
 
             catalog

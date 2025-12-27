@@ -34,8 +34,8 @@ module Vivlio
     module CLI
       # Google Fonts ダウンロード・キャッシュ管理
       module FontManager
-        USER_AGENT = 'VivlioStarter/FontManager (+https://github.com/Atelier-Mirai/vivlio-starter)'.freeze
-        GOOGLE_FONTS_ENDPOINT = 'https://fonts.googleapis.com/css2'.freeze
+        USER_AGENT = 'VivlioStarter/FontManager (+https://github.com/Atelier-Mirai/vivlio-starter)'
+        GOOGLE_FONTS_ENDPOINT = 'https://fonts.googleapis.com/css2'
 
         # 標準搭載フォント（ダウンロード不要）
         STANDARD_FONT_FAMILIES = Set.new([

@@ -44,11 +44,11 @@ module Vivlio
 
               <rect x="0" y="0" width="600" height="400" fill="url(#backgroundGradient)" />
 
-              <text 
-                x="300" 
-                y="140" 
-                font-family="Arial, sans-serif" 
-                font-size="72" 
+              <text#{' '}
+                x="300"#{' '}
+                y="140"#{' '}
+                font-family="Arial, sans-serif"#{' '}
+                font-size="72"#{' '}
                 font-weight="bold"
                 text-anchor="middle"
                 dominant-baseline="middle"
@@ -56,11 +56,11 @@ module Vivlio
                 <tspan fill="url(#vivlioTextGradient)">filename.webp</tspan>
               </text>
 
-              <text 
-                x="300" 
-                y="260" 
-                font-family="Arial, sans-serif" 
-                font-size="72" 
+              <text#{' '}
+                x="300"#{' '}
+                y="260"#{' '}
+                font-family="Arial, sans-serif"#{' '}
+                font-size="72"#{' '}
                 font-weight="bold"
                 text-anchor="middle"
                 dominant-baseline="middle"

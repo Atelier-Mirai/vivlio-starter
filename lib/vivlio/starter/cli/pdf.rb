@@ -19,7 +19,6 @@ module Vivlio
       # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
       # ================================================================
       module PdfCommands
-
         PDF_DESC = {
           pdf: {
             short: 'PDFを生成します（OUTPUT 指定時はそのファイル名で出力）',

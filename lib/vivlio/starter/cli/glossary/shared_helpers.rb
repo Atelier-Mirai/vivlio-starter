@@ -31,7 +31,7 @@ module Vivlio
         GLOSSARY_DISPLAY_PATH = begin
                                   absolute = Common.resolve_path_from_root(GLOSSARY_RELATIVE_PATH)
                                   Common.relative_path_from_root(absolute) || absolute
-                                end
+        end
 
         module_function
 

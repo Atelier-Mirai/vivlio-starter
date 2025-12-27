@@ -82,16 +82,16 @@ module Vivlio
 
             # ornament用に landscape バリアント（2.39:1）を使用
             if requested_variant == :landscape
-              if (direct = find_existing_theme_image(slug, location_order: [:user, :bundled]))
+              if (direct = find_existing_theme_image(slug, location_order: %i[user bundled]))
                 return theme_relative_path(direct)
               end
-            elsif (variant_specific = find_existing_theme_image("#{base_slug}_landscape", location_order: [:user, :bundled]))
+            elsif (variant_specific = find_existing_theme_image("#{base_slug}_landscape", location_order: %i[user bundled]))
               return theme_relative_path(variant_specific)
             end
 
             base_query = ext.empty? ? base_slug : "#{base_slug}#{ext}"
 
-            if (direct = find_existing_theme_image(base_query, location_order: [:user, :bundled]))
+            if (direct = find_existing_theme_image(base_query, location_order: %i[user bundled]))
               if allow_generation
                 require_relative 'image_generator'
                 # ornamentはlandscapeバリアントを生成
@@ -155,7 +155,7 @@ module Vivlio
             base_slug, requested_variant, ext = split_slug_and_variant(slug)
 
             if requested_variant == variant
-              if (direct = find_existing_theme_image(slug, location_order: [:user, :bundled]))
+              if (direct = find_existing_theme_image(slug, location_order: %i[user bundled]))
                 return theme_relative_path(direct)
               end
             end
@@ -192,7 +192,7 @@ module Vivlio
 
           # バリアント画像を探索
           def find_existing_theme_variant(base_slug, variant)
-            find_existing_theme_image("#{base_slug}_#{variant}", location_order: [:user, :bundled], allowed_extensions: ['.webp'])
+            find_existing_theme_image("#{base_slug}_#{variant}", location_order: %i[user bundled], allowed_extensions: ['.webp'])
           end
 
           # テーマ画像スラッグを正規化
@@ -215,7 +215,7 @@ module Vivlio
           end
 
           # 既存テーマ画像を探索
-          def find_existing_theme_image(slug, location_order: [:user, :bundled], allowed_extensions: THEME_IMAGE_EXTENSIONS)
+          def find_existing_theme_image(slug, location_order: %i[user bundled], allowed_extensions: THEME_IMAGE_EXTENSIONS)
             base = normalize_theme_image_slug(slug)
             ext = File.extname(base)
             stem = ext.empty? ? base : base.sub(/\.[^.]+\z/, '')

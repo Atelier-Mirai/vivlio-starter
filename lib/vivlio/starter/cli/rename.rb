@@ -39,7 +39,6 @@ module Vivlio
     module CLI
       # rename コマンドのモジュール（現在は空、実装は RenameCommandExecutor）
       module RenameCommands
-        module_function
       end
 
       # 章のリネーム・連番付け直しを実行するクラス

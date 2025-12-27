@@ -13,7 +13,6 @@ module Vivlio
       # - NOTE: 実際のコマンドは lib/vivlio/starter/cli/samovar/rename_command.rb で実装
       # ================================================================
       module RenumberCommands
-        module_function
       end
     end
   end

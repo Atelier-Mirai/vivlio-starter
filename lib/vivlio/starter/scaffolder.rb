@@ -44,7 +44,7 @@ module Vivlio
         99-postface.md
       ].freeze
       DEFAULT_NEEDED_CHAPTER_CSS = %w[11 12 21 31].freeze
-      DEFAULT_GITIGNORE = <<~GITIGNORE.freeze
+      DEFAULT_GITIGNORE = <<~GITIGNORE
         .DS_Store
         node_modules/
         *.log
@@ -52,7 +52,7 @@ module Vivlio
         *.pdf
         entries.js
       GITIGNORE
-      DEFAULT_BOOK_CONFIG = <<~YML.freeze
+      DEFAULT_BOOK_CONFIG = <<~YML
         # book.yml
         book:
           main_title: ''
@@ -61,15 +61,15 @@ module Vivlio
           author: ''
           language: 'ja'
       YML
-      DEFAULT_DISCLAIMER = <<~TXT.freeze
+      DEFAULT_DISCLAIMER = <<~TXT
         本書は教育目的で作成された入門書であり、情報の提供のみを目的としています。内容の正確性には万全を期しておりますが、技術的な詳細については、専門的な文献もあわせてご参照ください。
         本書の内容を参考にした結果生じた損害や、本書の内容を実行・運用・適用したことによって発生した問題について、著者・発行者および関係者は一切の責任を負いかねます。
       TXT
-      DEFAULT_TRADEMARK = <<~TXT.freeze
+      DEFAULT_TRADEMARK = <<~TXT
         本書に登場するシステム名や製品名は、関係各社の商標または登録商標です。
         本書では ™、®、© などのマークは省略しています。
       TXT
-      MINIMAL_VIV_CONFIG = <<~JS.freeze
+      MINIMAL_VIV_CONFIG = <<~JS
         import { VivliostyleConfig } from '@vivliostyle/cli'
 
         const vivliostyleConfig = {
@@ -289,7 +289,7 @@ module Vivlio
                 YAML.load_file(config_path)
               rescue StandardError
                 {}
-              end
+        end
         cfg = {} unless cfg.is_a?(Hash)
         book_cfg = cfg['book'] || {}
 

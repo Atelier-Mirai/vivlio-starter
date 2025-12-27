@@ -221,7 +221,7 @@ module Vivlio
               'xc:white',
               '-alpha', 'set',
               '+repage',
-              top_path, '-geometry', "+0+0", '-compose', 'Over', '-composite',
+              top_path, '-geometry', '+0+0', '-compose', 'Over', '-composite',
               bottom_path, '-geometry', "+#{bottom_x_offset}+#{bottom_y_offset}", '-compose', 'Over', '-composite',
               '-transparent', 'white',
               "PNG32:#{output_png}"

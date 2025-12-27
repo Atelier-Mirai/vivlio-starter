@@ -43,27 +43,27 @@ module Vivlio
           def update_css_only!(cfg = nil)
             cfg ||= Common::CONFIG
             theme_cfg = (cfg && cfg['theme']) || {}
-            
+
             # テーマカラーを決定
             theme_name, theme_accent_value = parse_theme_color(theme_cfg['color'])
-            
+
             # テーマスタイルを決定（simple または image）
             theme_style = parse_theme_style(theme_cfg['style'])
-            
+
             # frontispiece 設定を解析
             frontispiece_raw = theme_cfg['frontispiece']
             frontispiece_cfg = frontispiece_raw.is_a?(Hash) ? frontispiece_raw : {}
             frontispiece_source = frontispiece_cfg.key?('image') ? frontispiece_cfg['image'] : frontispiece_raw
             frontispiece_path = ThemeImageResolver.resolve_frontispiece_path(frontispiece_source, allow_generation: true)
-            
+
             # CSS長さ値を正規化
             door_padding_value = normalize_css_length(frontispiece_cfg['padding'], label: 'theme.frontispiece.padding', default: '0mm')
             heading_width_value = normalize_css_length(frontispiece_cfg['heading_width'], label: 'theme.frontispiece.heading_width')
             lead_width_value = normalize_css_length(frontispiece_cfg['lead_width'], label: 'theme.frontispiece.lead_width')
-            
+
             # ornament 設定を解析
             ornament_path = ThemeImageResolver.resolve_ornament_path(theme_cfg['ornament'], allow_generation: true)
-            
+
             # 各CSSファイルを更新
             update_all_css_files(
               theme_name: theme_name,
@@ -87,27 +87,27 @@ module Vivlio
             # テーマ設定を取得
             cfg = Common::CONFIG
             theme_cfg = (cfg && cfg['theme']) || {}
-            
+
             # テーマカラーを決定
             theme_name, theme_accent_value = parse_theme_color(theme_cfg['color'])
-            
+
             # テーマスタイルを決定（simple または image）
             theme_style = parse_theme_style(theme_cfg['style'])
-            
+
             # frontispiece 設定を解析
             frontispiece_raw = theme_cfg['frontispiece']
             frontispiece_cfg = frontispiece_raw.is_a?(Hash) ? frontispiece_raw : {}
             frontispiece_source = frontispiece_cfg.key?('image') ? frontispiece_cfg['image'] : frontispiece_raw
             frontispiece_path = ThemeImageResolver.resolve_frontispiece_path(frontispiece_source, allow_generation: true)
-            
+
             # CSS長さ値を正規化
             door_padding_value = normalize_css_length(frontispiece_cfg['padding'], label: 'theme.frontispiece.padding', default: '0mm')
             heading_width_value = normalize_css_length(frontispiece_cfg['heading_width'], label: 'theme.frontispiece.heading_width')
             lead_width_value = normalize_css_length(frontispiece_cfg['lead_width'], label: 'theme.frontispiece.lead_width')
-            
+
             # ornament 設定を解析（cinema バリアント生成を許可）
             ornament_path = ThemeImageResolver.resolve_ornament_path(theme_cfg['ornament'], allow_generation: true)
-            
+
             # 各CSSファイルを更新
             update_all_css_files(
               theme_name: theme_name,
@@ -120,7 +120,7 @@ module Vivlio
               lead_width_value: lead_width_value,
               ornament_path: ornament_path
             )
-            
+
             # フロントマターのCSS linkを構築
             chapter_css = if existing_frontmatter['stylesheet']
                             existing_frontmatter['stylesheet']
@@ -129,7 +129,7 @@ module Vivlio
                           else
                             "#{file_type}.css"
                           end
-            
+
             stylesheets = ['theme.css', chapter_css]
 
             lang = (Common::CONFIG.dig('book', 'language') || 'ja').to_s.strip
@@ -142,7 +142,7 @@ module Vivlio
               end,
               'lang' => lang
             }
-            
+
             # 既存のフロントマターと新しいフロントマターを併合
             merge_frontmatter(existing_frontmatter, new_frontmatter)
           end
@@ -209,11 +209,11 @@ module Vivlio
           def parse_theme_color(raw_color)
             s = raw_color.to_s.strip
             t = s.downcase
-            
+
             hex_ok      = t.match(/^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i)
             hex_bare_ok = t.match(/^(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i)
             hex_0x_ok   = t.match(/^0x(?:[0-9a-f]{6}|[0-9a-f]{8})$/i)
-            
+
             if t.empty?
               ['yellow', 'var(--accent-yellow)']
             elsif hex_ok
@@ -316,7 +316,7 @@ module Vivlio
             merged_frontmatter = existing_frontmatter.dup
             # stylesheet フィールドは link に変換されるので削除
             merged_frontmatter.delete('stylesheet')
-            
+
             if merged_frontmatter['link'].is_a?(Array)
               merged_frontmatter['link'] = merged_frontmatter['link'].reject do |lnk|
                 href = (lnk && lnk['href']).to_s

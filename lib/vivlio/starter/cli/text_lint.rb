@@ -49,7 +49,7 @@ module Vivlio
             contents/ ディレクトリ以下の Markdown ファイルを textlint で検査します。
             引数を指定しない場合は全ての Markdown が対象です。章のベース名（11-install など）を
             指定すると、そのファイルのみを検査します（拡張子や contents/ の省略可）。
-            
+
             章番号のみ、または範囲指定も可能です：
               章番号のみ: vs text:lint 91 93      # 91-*.md と 93-*.md を検査
               範囲指定:   vs text:lint 11-21      # 11-*.md から 21-*.md を検査
@@ -120,7 +120,7 @@ module Vivlio
 
           def extract_fixable_count(output)
             return 0 if output.nil? || output.empty?
-            
+
             # "✓ 325 fixable problems." のような行から数値を抽出
             match = output.match(/✓\s+(\d+)\s+fixable\s+problems?\./)
             match ? match[1].to_i : 0

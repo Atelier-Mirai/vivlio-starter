@@ -58,8 +58,8 @@ module Vivlio
           end
 
           # theme.css を更新
-          def update_theme_css(theme_name:, theme_accent_value:, theme_style:, frontispiece_path:, 
-                              door_padding_value:, ornament_path:, heading_width_value: nil, 
+          def update_theme_css(theme_name:, theme_accent_value:, theme_style:, frontispiece_path:,
+                              door_padding_value:, ornament_path:, heading_width_value: nil,
                               lead_width_value: nil)
             theme_css_path = File.join(Common::STYLESHEETS_DIR, 'theme.css')
 
@@ -393,12 +393,12 @@ module Vivlio
               page_cfg['folio_center'] = 'counter(page)'
               page_cfg['folio_left']   = 'none'
               page_cfg['folio_right']  = 'none'
-              Common.log_info("ノンブル配置: 中央")
+              Common.log_info('ノンブル配置: 中央')
             when 'sides'
               page_cfg['folio_center'] = 'none'
               page_cfg['folio_left']   = 'counter(page)'
               page_cfg['folio_right']  = 'counter(page)'
-              Common.log_info("ノンブル配置: 左右")
+              Common.log_info('ノンブル配置: 左右')
             end
           end
 

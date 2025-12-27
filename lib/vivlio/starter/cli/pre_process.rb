@@ -307,7 +307,7 @@ module Vivlio
           duplicates = map_result[:duplicates]
 
           if duplicates.any?
-            Common.log_error("ラベルIDの重複を検出しました:")
+            Common.log_error('ラベルIDの重複を検出しました:')
             duplicates.each { |dup| Common.log_error(dup) }
             all_errors.concat(duplicates)
             return false

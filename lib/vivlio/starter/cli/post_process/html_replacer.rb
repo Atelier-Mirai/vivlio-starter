@@ -32,7 +32,7 @@ module Vivlio
 
             content = File.read(html_file, encoding: 'utf-8')
             replacements = 0
-            
+
             replace_rules.each do |rule|
               pattern_str = rule['f']
               replacement_str = rule['r']

@@ -69,7 +69,7 @@ module Vivlio
               indent = ' ' * 4
 
               entries.each do |entry|
-                entry_value = format("(%.2fs)", entry[:duration])
+                entry_value = format('(%.2fs)', entry[:duration])
                 extra_spaces = entry[:duration] >= 100 ? 0 : (entry[:duration] >= 10 ? 1 : 2)
                 target_index = value_start_idx + extra_spaces
                 label_segment = format("%-#{label_width}s", sub_label)
@@ -148,7 +148,7 @@ module Vivlio
               prefix_spaces = ' ' * paren_idx
 
               entries.each do |entry|
-                entry_value = format("(%.2fs)", entry[:duration])
+                entry_value = format('(%.2fs)', entry[:duration])
                 label_segment = "#{prefix_spaces}#{sub_label}"
                 digit_column = value_digit_idx
                 target_length = [digit_column - 1, label_segment.length + 1].max

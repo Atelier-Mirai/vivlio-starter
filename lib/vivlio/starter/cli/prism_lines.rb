@@ -53,6 +53,7 @@ module Vivlio
 
           add_prism_line_numbers(input_file, output_file)
         end
+
         # コードの行数を返す
         def line_count(pre)
           pre.text.count("\n") + 1
