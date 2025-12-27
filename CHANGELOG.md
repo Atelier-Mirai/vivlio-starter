@@ -100,7 +100,7 @@
 - (なし)
 
 ### Changed
-- (なし)
+- **RuboCop リファクタリングで違反を 1000→632 件へ削減**: `cover.rb` / `output_helpers.rb` / `glossary/*_commands.rb` / `markdown_preprocessor.rb` / `page_numberer.rb` / `footnote_converter.rb` を中心に軽微な Style・Layout 警告を是正し、Metrics 系以外の違反を一掃。`docs/rubocop_offense_summary.md` を最新化し、`vs build` で回帰を確認済み。
 
 ## [0.25.0] - 2025-12-25
 
