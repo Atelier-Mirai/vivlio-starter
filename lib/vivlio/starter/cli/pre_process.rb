@@ -292,9 +292,9 @@ module Vivlio
           contents_files.each do |md_path|
             filename = File.basename(md_path)
             content = File.read(md_path, encoding: 'utf-8')
-            chapter_number = MarkdownTransformer.display_chapter_number_for_filename(filename)
+            chapter_number = CrossReferenceProcessor.display_chapter_number_for_filename(filename)
 
-            result = MarkdownTransformer.collect_labels(content, filename, chapter_number)
+            result = CrossReferenceProcessor.collect_labels(content, filename, chapter_number)
             all_labels.concat(result[:labels])
             all_errors.concat(result[:errors])
           end
@@ -302,7 +302,7 @@ module Vivlio
           # ------------------------------------------------
           # Phase 2: ラベルマップ構築 & 重複チェック
           # ------------------------------------------------
-          map_result = MarkdownTransformer.build_labels_map_with_duplicates_check(all_labels)
+          map_result = CrossReferenceProcessor.build_labels_map_with_duplicates_check(all_labels)
           labels_map = map_result[:labels_map]
           duplicates = map_result[:duplicates]
 
@@ -325,7 +325,7 @@ module Vivlio
             content = File.read(filename, encoding: 'utf-8')
 
             # キャプション付きブロックをHTML化
-            transformed = MarkdownTransformer.transform_captioned_blocks(content, filename, labels_map)
+            transformed = CrossReferenceProcessor.transform_captioned_blocks(content, filename, labels_map)
 
             # 本文中の @id を番号付きテキストに置換
             # - 実際の置換はプロジェクトルート直下の .md に対して実行
@@ -336,12 +336,12 @@ module Vivlio
             logging_errors = []
             if File.exist?(contents_path)
               source_content = File.read(contents_path, encoding: 'utf-8')
-              logging_result = MarkdownTransformer.replace_references(source_content, labels_map, contents_path)
+              logging_result = CrossReferenceProcessor.replace_references(source_content, labels_map, contents_path)
               logging_errors = logging_result[:errors]
             end
 
             # 2) ルート直下 .md に対して置換を適用（こちらのエラーは行番号がずれるため無視）
-            ref_result = MarkdownTransformer.replace_references(transformed, labels_map, nil)
+            ref_result = CrossReferenceProcessor.replace_references(transformed, labels_map, nil)
             processed_chapters[filename] = ref_result[:content]
 
             # 3) エラー集計とログは contents/ 側の行番号に基づく
@@ -364,7 +364,7 @@ module Vivlio
           # ------------------------------------------------
           # Phase 4: レポート出力
           # ------------------------------------------------
-          report = MarkdownTransformer.generate_cross_reference_report(all_labels)
+          report = CrossReferenceProcessor.generate_cross_reference_report(all_labels)
           report_path = 'cross_reference_report.md'
           File.write(report_path, report, encoding: 'utf-8')
           Common.log_success("レポートを生成: #{report_path}")

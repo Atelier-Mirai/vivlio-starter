@@ -38,7 +38,7 @@ module Vivlio
           # Markdown内のリンク記法を脚注化
           def transform_links_to_footnotes(md_text)
             original = md_text.to_s
-            text, code_spans = extract_code_spans(original)
+            text, code_spans = MarkdownUtils.extract_code_spans(original)
 
             max_n = 0
             text.scan(/\[\^url(\d+)\]:/).each do |m|
@@ -77,7 +77,7 @@ module Vivlio
                        "#{replaced}\n\n#{new_defs.join("\n")}\n"
                      end
 
-            restore_code_spans(result, code_spans)
+            MarkdownUtils.restore_code_spans(result, code_spans)
           end
 
           # book-card 内のMarkdownを事前整形
@@ -102,7 +102,7 @@ module Vivlio
             content.gsub(%r{<div class="book-card">\n(.*?)\n</div>}m) do
               inner = ::Regexp.last_match(1)
               normalized = normalize_book_card_md(inner)
-              html = render_markdown_to_html(normalized)
+              html = MarkdownUtils.render_markdown_to_html(normalized)
               formatted = format_book_card_inner_html(html)
               "<div class=\"book-card\">\n#{formatted}\n</div>"
             end
@@ -115,10 +115,10 @@ module Vivlio
               inner = ::Regexp.last_match(2)
 
               normalized = "\n\n#{inner.to_s.strip}\n\n"
-              html = render_markdown_to_html(normalized).to_s.strip
+              html = MarkdownUtils.render_markdown_to_html(normalized).to_s.strip
 
               if !html.include?('<table') && inner.include?('|')
-                table_html = pipe_table_to_html(inner)
+                table_html = MarkdownUtils.pipe_table_to_html(inner)
                 html = table_html if table_html
               end
 
@@ -213,6 +213,11 @@ module Vivlio
             [converted, opened_count, closed_count]
           end
 
+          # インラインコード内の HTML 予約文字をエスケープする
+          def escape_inline_code_html(line)
+            MarkdownUtils.escape_inline_code_html(line)
+          end
+
           # ```include:path[:start-end]``` を検出し、codes/ または絶対パスから読込
           def process_code_include(content)
             matches_found = 0
@@ -244,7 +249,7 @@ module Vivlio
                                  "#{source_content}\n"
                                end
 
-                language = detect_language(file_path)
+                language = MarkdownUtils.detect_language(file_path)
                 replacement = "```#{language}:#{original_path}\n#{code_content}```"
                 Common.log_success("置換完了: #{original_path} (#{language})")
 
