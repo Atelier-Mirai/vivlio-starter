@@ -21,7 +21,7 @@ module Vivlio
       #   - OUTPUT_FILE を省略した場合、INPUT_FILE を上書きします。
       # ==============================================================================
       module PrismLinesCommands
-        extend self
+        module_function
 
         PRISM_LINES_DESC = {
           short: 'HTMLファイル内のPrism.jsコードブロックに行番号を追加します',

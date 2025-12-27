@@ -30,13 +30,10 @@ module Vivlio
             # - 既存 class 属性が無いテンプレ構成を前提に、文字列置換で高速に処理
             updated = content.gsub('<body>', "<body class=\"#{file_type}\">")
 
-            if updated == content
-              false
-            else
-              File.write(html_file, updated, encoding: 'utf-8')
-              Common.log_info("#{html_file}: <body>→class追加(#{file_type})")
-              true
-            end
+            return if updated == content
+
+            File.write(html_file, updated, encoding: 'utf-8')
+            Common.log_info("#{html_file}: <body>→class追加(#{file_type})")
           end
         end
       end

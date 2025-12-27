@@ -22,6 +22,7 @@ require_relative 'cli/text_metrics'
 
 require_relative 'cli/samovar'
 
+# Vivlio Starter CLI のエントリポイント（Samovar/Thor互換レイヤー）
 module Vivlio
   module Starter
     module CLI

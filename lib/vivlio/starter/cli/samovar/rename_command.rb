@@ -72,17 +72,18 @@ module Vivlio
               force: options[:force],
               chapter_step: options[:chapter_step],
               step: options[:step],
-              verbose: verbose_from_parent
+              verbose: verbose_from_parent?
             }
           end
 
-          def verbose_from_parent
+          def verbose_from_parent?
             return false unless parent.respond_to?(:options)
 
             !!parent.options[:verbose]
           end
         end
 
+        # rename の別名コマンド（連番振り直し専用エントリ）
         class RenumberCommand < RenameCommand
           self.description = '章番号を一括で付け直します（rename の別名）'
         end

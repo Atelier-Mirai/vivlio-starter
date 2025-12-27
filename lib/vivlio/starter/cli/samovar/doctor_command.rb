@@ -55,12 +55,12 @@ module Vivlio
               options: {
                 fix: options[:fix],
                 yes: options[:yes],
-                verbose: verbose_from_parent
+                verbose: verbose_from_parent?
               }
             }
           end
 
-          def verbose_from_parent
+          def verbose_from_parent?
             return false unless parent.respond_to?(:options)
 
             !!parent.options[:verbose]

@@ -54,6 +54,7 @@ module Vivlio
           end
         end
 
+        # resize:high コマンドの Samovar 実装
         class ResizeHighCommand < Samovar::Command
           self.description = '画像を高品質WebPに変換します'
 
@@ -64,6 +65,7 @@ module Vivlio
           end
         end
 
+        # resize:medium コマンドの Samovar 実装
         class ResizeMediumCommand < Samovar::Command
           self.description = '画像を標準品質WebPに変換します'
 
@@ -74,6 +76,7 @@ module Vivlio
           end
         end
 
+        # resize:low コマンドの Samovar 実装
         class ResizeLowCommand < Samovar::Command
           self.description = '画像を軽量品質WebPに変換します'
 

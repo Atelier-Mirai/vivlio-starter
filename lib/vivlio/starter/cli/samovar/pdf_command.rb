@@ -40,6 +40,7 @@ module Vivlio
           end
         end
 
+        # pdf:compress コマンドの Samovar 実装
         class PdfCompressCommand < Samovar::Command
           self.description = '生成済みPDFを圧縮します'
 
