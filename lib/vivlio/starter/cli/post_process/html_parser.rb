@@ -37,7 +37,12 @@ module Vivlio
 
           # Nokogiri ドキュメントを HTML 文字列へ戻す（HTML5/HTML 両対応）
           def render_html_document(doc)
-            doc.respond_to?(:to_html) ? doc.to_html : doc.to_s
+            doc.respond_to?(:to_html) ? doc.to_html(encoding: 'UTF-8') : doc.to_s
+          end
+
+          # HTMLドキュメントをファイルに保存
+          def save_html_document(path, doc)
+            File.write(path, render_html_document(doc), encoding: 'utf-8')
           end
 
           # ゼロ幅スペース等のみで構成されているかを判定する

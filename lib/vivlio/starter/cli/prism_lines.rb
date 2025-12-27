@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'nokogiri'
+require_relative 'post_process/html_parser'
 
 module Vivlio
   module Starter
@@ -66,18 +67,14 @@ module Vivlio
           remove_legacy_meta(document)
 
           target = output_file || input_file
-          File.write(target, document.to_html(encoding: 'UTF-8'))
+          PostProcessCommands::HtmlParser.save_html_document(target, document)
           log_result(input_file, target)
         end
 
-        # HTMLファイルを Nokogiri ドキュメントに変換
+        # HTMLファイルを Nokogiri ドキュメントに変換（HtmlParser に委譲）
         def parse_html(path)
           html = File.read(path, encoding: 'UTF-8')
-          if defined?(Nokogiri::HTML5)
-            Nokogiri::HTML5.parse(html)
-          else
-            Nokogiri::HTML.parse(html, nil, 'UTF-8')
-          end
+          PostProcessCommands::HtmlParser.parse_html_document(html)
         end
 
         # <pre> 要素と内包する <code> に行番号用クラスと要素を付与

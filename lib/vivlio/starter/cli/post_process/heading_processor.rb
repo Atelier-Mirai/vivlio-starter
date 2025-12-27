@@ -2,6 +2,7 @@
 
 require 'nokogiri'
 require_relative '../common'
+require_relative 'html_parser'
 
 module Vivlio
   module Starter
@@ -233,19 +234,14 @@ module Vivlio
             modified
           end
 
-          # HTMLドキュメントをパース
+          # HTMLドキュメントをパース（HtmlParser に委譲）
           def parse_html_document(html)
-            if defined?(Nokogiri::HTML5)
-              Nokogiri::HTML5.parse(html)
-            else
-              Nokogiri::HTML.parse(html, nil, 'UTF-8')
-            end
+            HtmlParser.parse_html_document(html)
           end
 
-          # HTMLドキュメントを保存
+          # HTMLドキュメントを保存（HtmlParser に委譲）
           def save_html_document(path, doc)
-            out = doc.respond_to?(:to_html) ? doc.to_html : doc.to_s
-            File.write(path, out, encoding: 'utf-8')
+            HtmlParser.save_html_document(path, doc)
           end
 
           # 見出しを番号スパンとタイトルスパンで再構築

@@ -29,6 +29,7 @@ require 'json'
 require 'yaml'
 require 'nokogiri'
 require_relative 'common'
+require_relative 'post_process/html_parser'
 require_relative 'post_process/body_class_injector'
 require_relative 'post_process/html_replacer'
 require_relative 'post_process/section_wrapper'
@@ -194,13 +195,7 @@ module Vivlio
         # ================================================================
         def wrap_cross_ref_code_blocks!(html_file)
           content = File.read(html_file, encoding: 'utf-8')
-
-          doc = if defined?(Nokogiri::HTML5)
-                  Nokogiri::HTML5.parse(content)
-                else
-                  Nokogiri::HTML.parse(content, nil, 'UTF-8')
-                end
-
+          doc = HtmlParser.parse_html_document(content)
           changed = false
 
           # パターン1: <!--xref:ID--> コメントを基準にラップ
@@ -278,7 +273,7 @@ module Vivlio
 
           return unless changed
 
-          File.write(html_file, doc.to_html(encoding: 'UTF-8'))
+          HtmlParser.save_html_document(html_file, doc)
           Common.log_success("#{html_file}: cross-ref list code blocks wrapped")
         end
         module_function :wrap_cross_ref_code_blocks!
@@ -302,13 +297,7 @@ module Vivlio
         # ================================================================
         def wrap_sideimage_blocks!(html_file)
           content = File.read(html_file, encoding: 'utf-8')
-
-          doc = if defined?(Nokogiri::HTML5)
-                  Nokogiri::HTML5.parse(content)
-                else
-                  Nokogiri::HTML.parse(content, nil, 'UTF-8')
-                end
-
+          doc = HtmlParser.parse_html_document(content)
           changed = false
 
           doc.css('div.sideimage-right, div.sideimage-left').each do |container|
@@ -431,7 +420,7 @@ module Vivlio
 
           return unless changed
 
-          File.write(html_file, doc.to_html(encoding: 'UTF-8'))
+          HtmlParser.save_html_document(html_file, doc)
           Common.log_success("#{html_file}: sideimage コンテナを正規化しました")
         end
         module_function :wrap_sideimage_blocks!
@@ -450,13 +439,7 @@ module Vivlio
         # ================================================================
         def process_image_groups!(html_file)
           content = File.read(html_file, encoding: 'utf-8')
-
-          doc = if defined?(Nokogiri::HTML5)
-                  Nokogiri::HTML5.parse(content)
-                else
-                  Nokogiri::HTML.parse(content, nil, 'UTF-8')
-                end
-
+          doc = HtmlParser.parse_html_document(content)
           changed = false
 
           doc.css('div.image-group').each do |container|
@@ -496,7 +479,7 @@ module Vivlio
 
           return unless changed
 
-          File.write(html_file, doc.to_html(encoding: 'UTF-8'))
+          HtmlParser.save_html_document(html_file, doc)
           Common.log_success("#{html_file}: image-group コンテナの列比率を設定しました")
         end
         module_function :process_image_groups!
@@ -562,12 +545,7 @@ module Vivlio
         # ================================================================
         def process_sideimage_footnotes!(html_file)
           content = File.read(html_file, encoding: 'utf-8')
-
-          doc = if defined?(Nokogiri::HTML5)
-                  Nokogiri::HTML5.parse(content)
-                else
-                  Nokogiri::HTML.parse(content, nil, 'UTF-8')
-                end
+          doc = HtmlParser.parse_html_document(content)
 
           changed = false
 
@@ -635,7 +613,7 @@ module Vivlio
 
           return unless changed
 
-          File.write(html_file, doc.to_html(encoding: 'UTF-8'))
+          HtmlParser.save_html_document(html_file, doc)
           Common.log_success("#{html_file}: sideimage 脚注参照を変換しました")
         end
         module_function :process_sideimage_footnotes!
@@ -648,12 +626,7 @@ module Vivlio
         # ================================================================
         def renumber_footnotes_by_document_order!(html_file)
           content = File.read(html_file, encoding: 'utf-8')
-
-          doc = if defined?(Nokogiri::HTML5)
-                  Nokogiri::HTML5.parse(content)
-                else
-                  Nokogiri::HTML.parse(content, nil, 'UTF-8')
-                end
+          doc = HtmlParser.parse_html_document(content)
 
           # ドキュメント内のすべての脚注参照を出現順に収集
           # footnote-ref クラスを持つ <a> タグ、または <sup> 内の <a> タグ
@@ -766,7 +739,7 @@ module Vivlio
             marker.remove
           end
 
-          File.write(html_file, doc.to_html(encoding: 'UTF-8'))
+          HtmlParser.save_html_document(html_file, doc)
           Common.log_success("#{html_file}: 脚注を出現順に再番号付けしました")
         end
         module_function :renumber_footnotes_by_document_order!
