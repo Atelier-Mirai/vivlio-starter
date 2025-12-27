@@ -1,0 +1,151 @@
+/* ================================================================
+ * File: stylesheets/index.css
+ * ================================================================
+ * 責務:
+ *   索引ページのスタイルを定義する。
+ *   - ページ番号を CSS target-counter で自動挿入
+ *   - 五十音順の見出しスタイル
+ *   - 索引項目のレイアウト
+ *
+ * Vivliostyle:
+ *   - target-counter(attr(href), page) でリンク先のページ番号を取得
+ * ================================================================ */
+
+/* ----------------------------------------------------------------
+ * 索引ページ全体
+ * ---------------------------------------------------------------- */
+.index-page {
+  font-size: 0.9em;
+  line-height: 1.6;
+}
+
+.index {
+  columns: 2;
+  column-gap: 2em;
+  column-rule: 1px solid #ddd;
+}
+
+.index h1 {
+  column-span: all;
+  text-align: center;
+  font-size: 2em;
+  margin-bottom: 1em;
+  border-bottom: 2px solid var(--theme-color, #333);
+  padding-bottom: 0.5em;
+}
+
+/* ----------------------------------------------------------------
+ * 五十音セクション
+ * ---------------------------------------------------------------- */
+.index-section {
+  break-inside: avoid-column;
+  margin-bottom: 1.5em;
+}
+
+.index-section h2 {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: var(--theme-color, #333);
+  border-bottom: 1px solid var(--theme-color, #333);
+  padding-bottom: 0.25em;
+  margin-bottom: 0.5em;
+  margin-top: 0;
+}
+
+/* ----------------------------------------------------------------
+ * 索引リスト（定義リスト形式）
+ * ---------------------------------------------------------------- */
+.index-list {
+  margin: 0;
+  padding: 0;
+}
+
+.index-list dt {
+  font-weight: bold;
+  margin-top: 0.5em;
+  margin-bottom: 0.1em;
+}
+
+.index-list dt:first-child {
+  margin-top: 0;
+}
+
+.index-list dd {
+  margin-left: 1em;
+  margin-bottom: 0.25em;
+}
+
+/* ----------------------------------------------------------------
+ * ページ番号（target-counter による自動挿入）
+ * ---------------------------------------------------------------- */
+.index-list a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* リンクの後ろにページ番号を表示 */
+.index-list a::after {
+  content: target-counter(attr(href url), page);
+}
+
+/* 複数ページ番号をカンマ区切りで表示 */
+.index-list dd a:not(:last-child)::after {
+  content: target-counter(attr(href url), page) ", ";
+}
+
+/* 最後のリンクはカンマなし */
+.index-list dd a:last-child::after {
+  content: target-counter(attr(href url), page);
+}
+
+/* ----------------------------------------------------------------
+ * 索引語マーク（本文中）
+ * ---------------------------------------------------------------- */
+.index-term {
+  /* 索引語は特にスタイルを変えない（透明なアンカー） */
+  display: inline;
+}
+
+/* 定義箇所（初出）は強調してもよい */
+dfn.index-term {
+  font-style: normal;
+  font-weight: inherit;
+}
+
+/* ----------------------------------------------------------------
+ * 印刷用調整
+ * ---------------------------------------------------------------- */
+@media print {
+  .index {
+    columns: 2;
+  }
+  
+  .index-section {
+    break-inside: avoid;
+  }
+  
+  .index-list dt {
+    break-after: avoid;
+  }
+  
+  .index-list dd {
+    break-before: avoid;
+  }
+}
+
+/* ----------------------------------------------------------------
+ * 階層化索引（Phase 3 で実装予定）
+ * ---------------------------------------------------------------- */
+.index-list .sub-entry {
+  margin-left: 1.5em;
+  font-size: 0.95em;
+}
+
+.index-list .sub-entry dt {
+  font-weight: normal;
+}
+
+.index-list .sub-entry dt::before {
+  content: "— ";
+  color: #999;
+}

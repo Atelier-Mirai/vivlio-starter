@@ -134,7 +134,8 @@ module Vivlio
             'pdfinfo' => 'pdfinfo',
             'gs' => 'gs', # Ghostscript
             'imagemagick' => nil,
-            'waifu2x' => nil
+            'waifu2x' => nil,
+            'mecab' => 'mecab' # 索引機能の読み自動推測用
           }
 
           Common.echo_always('🔎 環境診断を開始します…')
@@ -278,6 +279,12 @@ module Vivlio
 
             # ImageMagick
             system('brew install imagemagick') if missing.include?('imagemagick')
+
+            # MeCab（索引機能の読み自動推測用）
+            if missing.include?('mecab')
+              Common.echo_always('MeCab（索引機能の読み自動推測用）をインストールします…')
+              system('brew install mecab mecab-ipadic')
+            end
 
             install_ssl_certificates! if missing.include?('ssl-certificates')
           rescue StandardError => e
@@ -535,7 +542,8 @@ module Vivlio
             'gs' => 'Ghostscript',
             'imagemagick' => 'ImageMagick',
             'waifu2x' => 'waifu2x-ncnn-vulkan',
-            'ssl-certificates' => 'Google Fonts 用 SSL 証明書'
+            'ssl-certificates' => 'Google Fonts 用 SSL 証明書',
+            'mecab' => 'MeCab (索引機能用)'
           }
           keys.uniq.map { |key| label_map[key] || key }
         end

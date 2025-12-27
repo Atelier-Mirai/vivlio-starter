@@ -19,6 +19,7 @@ require_relative 'cli/rename'
 require_relative 'cli/renumber'
 require_relative 'cli/text_lint'
 require_relative 'cli/text_metrics'
+require_relative 'cli/index'
 
 require_relative 'cli/samovar'
 

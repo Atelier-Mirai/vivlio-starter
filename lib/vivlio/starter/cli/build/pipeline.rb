@@ -56,6 +56,7 @@ module Vivlio
             add_step('Step  2 (optimize images)',             -> { run_step2_optimize_images })
             add_step('Step  3 (prepare theme images)',        -> { Build::ImageOptimizer.prepare_theme_images! })
             add_step('Step  4 (build sections html)',         -> { Build::SectionBuilder.build_sections_html!(keep) })
+            add_step('Step  4a (index scan and build)',       -> { run_step4a_index_processing })
             # Step 5 は single mode 専用のため full mode ではスキップ
             add_step('Step  6 (generate toc and pdf)',        -> { Build::TocGenerator.generate_toc_and_pdf!('.', keep) })
             add_step('Step  7 (build overall pdf and split)', -> {
@@ -293,6 +294,28 @@ module Vivlio
               Common.log_action('[Step 14] 中間生成物をクリーンアップします…')
               CleanCommands.execute_clean({})
             end
+          end
+
+          # 索引処理を実行
+          def run_step4a_index_processing
+            unless IndexCommands.index_enabled?
+              Common.log_action('[Step 4a] 索引機能が無効のためスキップします（book.yml: index.enabled = false）')
+              return
+            end
+
+            Common.log_action('[Step 4a] 索引語のスキャンと索引ページ生成を実行します…')
+
+            # 対象章を取得
+            chapter_targets = if keep&.any?
+                                Array(keep).map { |s| File.basename(s.to_s, '.md') }.sort
+                              else
+                                Dir[File.join(Common::CONTENTS_DIR, '*.md')]
+                                  .map { |p| File.basename(p, '.md') }
+                                  .reject { |bn| bn.start_with?('_') }
+                                  .sort
+                              end
+
+            IndexCommands.process_index_for_build!(chapter_targets)
           end
         end
       end

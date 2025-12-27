@@ -5,6 +5,7 @@ PATH
       hexapdf (~> 1.0)
       kramdown (~> 2.4)
       mini_magick (~> 4.12)
+      natto (~> 1.2)
       nokogiri (~> 1.16)
       samovar (~> 2.1)
 
@@ -17,6 +18,7 @@ GEM
       fiber-annotation
       fiber-local (~> 1.1)
       json
+    ffi (1.17.2)
     fiber-annotation (0.2.0)
     fiber-local (1.1.0)
       fiber-storage
@@ -36,10 +38,10 @@ GEM
     mini_magick (4.13.2)
     mini_portile2 (2.8.9)
     minitest (5.26.2)
+    natto (1.2.0)
+      ffi (>= 1.9.0)
     nokogiri (1.18.10)
       mini_portile2 (~> 2.8.2)
-      racc (~> 1.4)
-    nokogiri (1.18.10-arm64-darwin)
       racc (~> 1.4)
     openssl (3.3.2)
     parallel (1.27.0)
@@ -76,7 +78,7 @@ GEM
     unicode-emoji (4.2.0)
 
 PLATFORMS
-  arm64-darwin
+  arm64-darwin-25
 
 DEPENDENCIES
   bundler (~> 2.5)

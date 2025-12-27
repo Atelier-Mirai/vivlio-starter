@@ -35,7 +35,7 @@
 [Phase 2: 索引生成]
   *.html
     ↓ post_process (新機能: IndexPageBuilder)
-  99-index.html (索引ページ)
+  _indexpage.html (索引ページ)
     ↓ Vivliostyle (再ビルド)
   output.pdf (索引付き)
 ```
@@ -44,14 +44,14 @@
 
 ```
 lib/vivlio/starter/cli/
-├── pre_process/
-│   └── index_term_scanner.rb      # 索引語スキャン・ID付与
-├── post_process/
-│   └── index_page_builder.rb      # 索引ページHTML生成
+├── index.rb                           # 索引機能オーケストレーター
 └── index/
-    ├── term_dictionary.rb         # 辞書管理
-    ├── term_extractor.rb          # 自動抽出（Phase 2以降）
-    └── scoring_engine.rb          # スコアリング（Phase 2以降）
+    ├── index_term_scanner.rb          # 索引語スキャン・ID付与
+    ├── index_page_builder.rb          # 索引ページHTML生成
+    ├── yomi_inferrer.rb               # MeCab による読み推測
+    ├── term_extractor.rb              # 自動抽出（Phase 2）
+    ├── scoring_engine.rb              # スコアリング（Phase 2）
+    └── hierarchical_index.rb          # 階層化索引・重複排除（Phase 3）
 ```
 
 ---

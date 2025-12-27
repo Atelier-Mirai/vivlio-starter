@@ -43,6 +43,12 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'nokogiri', '~> 1.16'
   spec.add_dependency 'samovar', '~> 2.1'
 
+  # Optional: 索引機能の読み自動推測に使用（MeCab が必要）
+  # MeCab をシステムにインストールした上で使用:
+  #   macOS: brew install mecab mecab-ipadic
+  #   Ubuntu: sudo apt-get install mecab libmecab-dev mecab-ipadic-utf8
+  spec.add_dependency 'natto', '~> 1.2'
+
   # Development dependencies
   spec.add_development_dependency 'bundler', '~> 2.5'
   spec.add_development_dependency 'rake', '~> 13.2'

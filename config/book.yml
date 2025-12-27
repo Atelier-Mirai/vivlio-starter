@@ -286,6 +286,21 @@ files:
   post_replace: 'post_replace_list.yml'  # 後処理用置換リストファイル
 
 # ========================================
+# 索引設定
+# ========================================
+index:
+  # 索引機能を有効化（デフォルト: false）
+  enabled: false
+  # 索引ページのタイトル
+  title: '索引'
+  # MeCab による読み自動推測を使用
+  use_mecab: true
+  # 自動抽出を有効化（Phase 2）
+  auto_extract: false
+  # 自動登録のスコア閾値（Phase 2）
+  score_threshold: 80
+
+# ========================================
 # Vivliostyle設定
 # ========================================
 vivliostyle:

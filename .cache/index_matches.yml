@@ -1,0 +1,1085 @@
+---
+generated_at: '2025-12-28T02:31:44+09:00'
+total_matches: 104
+terms:
+  Medium:
+  - :yomi: Medium
+    :link: CHANGELOG.html#idx-kihwgu06ev1o-1
+    :file: CHANGELOG
+    :is_definition: true
+  - :yomi: Medium
+    :link: CHANGELOG.html#idx-kihwgu06ev1o-2
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: Medium
+    :link: CHANGELOG.html#idx-kihwgu06ev1o-3
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: Medium
+    :link: CHANGELOG.html#idx-kihwgu06ev1o-4
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: Medium
+    :link: CHANGELOG.html#idx-kihwgu06ev1o-5
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: Medium
+    :link: CHANGELOG.html#idx-kihwgu06ev1o-6
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: Medium
+    :link: CHANGELOG.html#idx-kihwgu06ev1o-7
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: Medium
+    :link: CHANGELOG.html#idx-kihwgu06ev1o-8
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: Medium
+    :link: CHANGELOG.html#idx-kihwgu06ev1o-9
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: Medium
+    :link: CHANGELOG.html#idx-kihwgu06ev1o-10
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: Medium
+    :link: CHANGELOG.html#idx-kihwgu06ev1o-11
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: Medium
+    :link: CHANGELOG.html#idx-kihwgu06ev1o-12
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: Medium
+    :link: CHANGELOG.html#idx-kihwgu06ev1o-13
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: Medium
+    :link: CHANGELOG.html#idx-kihwgu06ev1o-14
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: Medium
+    :link: CHANGELOG.html#idx-kihwgu06ev1o-15
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: Medium
+    :link: CHANGELOG.html#idx-kihwgu06ev1o-16
+    :file: CHANGELOG
+    :is_definition: false
+  High:
+  - :yomi: High
+    :link: CHANGELOG.html#idx-6gmecrj6z7am-1
+    :file: CHANGELOG
+    :is_definition: true
+  - :yomi: High
+    :link: CHANGELOG.html#idx-6gmecrj6z7am-2
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: High
+    :link: CHANGELOG.html#idx-6gmecrj6z7am-3
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: High
+    :link: CHANGELOG.html#idx-6gmecrj6z7am-4
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: High
+    :link: CHANGELOG.html#idx-6gmecrj6z7am-5
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: High
+    :link: CHANGELOG.html#idx-6gmecrj6z7am-6
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: High
+    :link: CHANGELOG.html#idx-6gmecrj6z7am-7
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: High
+    :link: CHANGELOG.html#idx-6gmecrj6z7am-8
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: High
+    :link: CHANGELOG.html#idx-6gmecrj6z7am-9
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: High
+    :link: CHANGELOG.html#idx-6gmecrj6z7am-10
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: High
+    :link: CHANGELOG.html#idx-6gmecrj6z7am-11
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: High
+    :link: CHANGELOG.html#idx-6gmecrj6z7am-12
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: High
+    :link: CHANGELOG.html#idx-6gmecrj6z7am-13
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: High
+    :link: CHANGELOG.html#idx-6gmecrj6z7am-14
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: High
+    :link: CHANGELOG.html#idx-6gmecrj6z7am-15
+    :file: CHANGELOG
+    :is_definition: false
+  ref:foo:
+  - :yomi: ref:foo
+    :link: CHANGELOG.html#idx-j2sq1v5023vw-1
+    :file: CHANGELOG
+    :is_definition: true
+  Low:
+  - :yomi: Low
+    :link: CHANGELOG.html#idx-4t4wd480zoju-1
+    :file: CHANGELOG
+    :is_definition: true
+  - :yomi: Low
+    :link: CHANGELOG.html#idx-4t4wd480zoju-2
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: Low
+    :link: CHANGELOG.html#idx-4t4wd480zoju-3
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: Low
+    :link: CHANGELOG.html#idx-4t4wd480zoju-4
+    :file: CHANGELOG
+    :is_definition: false
+  - :yomi: Low
+    :link: CHANGELOG.html#idx-4t4wd480zoju-5
+    :file: CHANGELOG
+    :is_definition: false
+  Unreleased:
+  - :yomi: Unreleased
+    :link: CHANGELOG.html#idx-jwp4deen9jrc-1
+    :file: CHANGELOG
+    :is_definition: true
+  - :yomi: Unreleased
+    :link: CHANGELOG.html#idx-jwp4deen9jrc-2
+    :file: CHANGELOG
+    :is_definition: false
+  用語:
+  - :yomi: 読み
+    :link: CHANGELOG.html#idx-c8x7kk0ta3y1-1
+    :file: CHANGELOG
+    :is_definition: true
+  - :yomi: ようご
+    :link: CHANGELOG.html#idx-c8x7kk0ta3y1-2
+    :file: CHANGELOG
+    :is_definition: false
+  引数:
+  - :yomi: ひきすう
+    :link: CHANGELOG.html#idx-nrwoc09fkeid-1
+    :file: CHANGELOG
+    :is_definition: true
+  0.25.0:
+  - :yomi: 0.25.0
+    :link: CHANGELOG.html#idx-ic96e3o9jvur-1
+    :file: CHANGELOG
+    :is_definition: true
+  0.17.0:
+  - :yomi: 0.17.0
+    :link: CHANGELOG.html#idx-trut9zmmb8pt-1
+    :file: CHANGELOG
+    :is_definition: true
+  0.16.0:
+  - :yomi: 0.16.0
+    :link: CHANGELOG.html#idx-rovvxsyti5ae-1
+    :file: CHANGELOG
+    :is_definition: true
+  02, 11, 12, 91:
+  - :yomi: 02,11,12,91
+    :link: CHANGELOG.html#idx-15a03j2u2uez-1
+    :file: CHANGELOG
+    :is_definition: true
+  0.15.0:
+  - :yomi: 0.15.0
+    :link: CHANGELOG.html#idx-b5odlaf5ldpw-1
+    :file: CHANGELOG
+    :is_definition: true
+  0.14.0:
+  - :yomi: 0.14.0
+    :link: CHANGELOG.html#idx-vrt82onetg0o-1
+    :file: CHANGELOG
+    :is_definition: true
+  0.13.0:
+  - :yomi: 0.13.0
+    :link: CHANGELOG.html#idx-e96xnu0uth51-1
+    :file: CHANGELOG
+    :is_definition: true
+  0.12.0:
+  - :yomi: 0.12.0
+    :link: CHANGELOG.html#idx-v4hromfdu5vm-1
+    :file: CHANGELOG
+    :is_definition: true
+  0.11.0:
+  - :yomi: 0.11.0
+    :link: CHANGELOG.html#idx-sb48ruvwnq6f-1
+    :file: CHANGELOG
+    :is_definition: true
+  0.10.0:
+  - :yomi: 0.10.0
+    :link: CHANGELOG.html#idx-gcysmjgtinsn-1
+    :file: CHANGELOG
+    :is_definition: true
+  0.9.1:
+  - :yomi: 0.9.1
+    :link: CHANGELOG.html#idx-duwgsjiu4vwq-1
+    :file: CHANGELOG
+    :is_definition: true
+  OUTPUT:
+  - :yomi: OUTPUT
+    :link: CHANGELOG.html#idx-e6zlxwr15vti-1
+    :file: CHANGELOG
+    :is_definition: true
+  - :yomi: OUTPUT
+    :link: CHANGELOG.html#idx-e6zlxwr15vti-2
+    :file: CHANGELOG
+    :is_definition: false
+  "'pdf', '02-preface.pdf'":
+  - :yomi: "'pdf','02-preface.pdf'"
+    :link: CHANGELOG.html#idx-mb76ie3zq8pa-1
+    :file: CHANGELOG
+    :is_definition: true
+  ":force":
+  - :yomi: ":force"
+    :link: CHANGELOG.html#idx-l40h90cqidow-1
+    :file: CHANGELOG
+    :is_definition: true
+  ":'no-cache'":
+  - :yomi: ":'no-cache'"
+    :link: CHANGELOG.html#idx-jntn57qlr420-1
+    :file: CHANGELOG
+    :is_definition: true
+  0.9.0:
+  - :yomi: 0.9.0
+    :link: CHANGELOG.html#idx-al1ru8k8ee7q-1
+    :file: CHANGELOG
+    :is_definition: true
+  - :yomi: 0.9.0
+    :link: CHANGELOG.html#idx-al1ru8k8ee7q-2
+    :file: CHANGELOG
+    :is_definition: false
+  0.8.2:
+  - :yomi: 0.8.2
+    :link: CHANGELOG.html#idx-r3yips3j319b-1
+    :file: CHANGELOG
+    :is_definition: true
+  - :yomi: 0.8.2
+    :link: CHANGELOG.html#idx-r3yips3j319b-2
+    :file: CHANGELOG
+    :is_definition: false
+  "=level":
+  - :yomi: "=level"
+    :link: CHANGELOG.html#idx-k86z2cx8mop5-1
+    :file: CHANGELOG
+    :is_definition: true
+  - :yomi: "=level"
+    :link: README.html#idx-k86z2cx8mop5-2
+    :file: README
+    :is_definition: false
+  - :yomi: "=level"
+    :link: README.html#idx-k86z2cx8mop5-3
+    :file: README
+    :is_definition: false
+  - :yomi: "=level"
+    :link: README.html#idx-k86z2cx8mop5-4
+    :file: README
+    :is_definition: false
+  - :yomi: "=level"
+    :link: README.html#idx-k86z2cx8mop5-5
+    :file: README
+    :is_definition: false
+  0.8.1:
+  - :yomi: 0.8.1
+    :link: CHANGELOG.html#idx-imfusumrrq2-1
+    :file: CHANGELOG
+    :is_definition: true
+  0.8.0:
+  - :yomi: 0.8.0
+    :link: CHANGELOG.html#idx-15e6vi72qh86-1
+    :file: CHANGELOG
+    :is_definition: true
+  - :yomi: 0.8.0
+    :link: CHANGELOG.html#idx-15e6vi72qh86-2
+    :file: CHANGELOG
+    :is_definition: false
+  PATH:
+  - :yomi: PATH
+    :link: CHANGELOG.html#idx-ehx75nxh714m-1
+    :file: CHANGELOG
+    :is_definition: true
+  0.7.1:
+  - :yomi: 0.7.1
+    :link: CHANGELOG.html#idx-7llcrlhhc7nj-1
+    :file: CHANGELOG
+    :is_definition: true
+  - :yomi: 0.7.1
+    :link: CHANGELOG.html#idx-7llcrlhhc7nj-2
+    :file: CHANGELOG
+    :is_definition: false
+  0.7.0:
+  - :yomi: 0.7.0
+    :link: CHANGELOG.html#idx-nuy88wzduod0-1
+    :file: CHANGELOG
+    :is_definition: true
+  - :yomi: 0.7.0
+    :link: CHANGELOG.html#idx-nuy88wzduod0-2
+    :file: CHANGELOG
+    :is_definition: false
+  "'11-foo.md', ...":
+  - :yomi: "'11-foo.md',..."
+    :link: CHANGELOG.html#idx-ei5plpxkvbfc-1
+    :file: CHANGELOG
+    :is_definition: true
+  0.6.0:
+  - :yomi: 0.6.0
+    :link: CHANGELOG.html#idx-o3oz1joesex3-1
+    :file: CHANGELOG
+    :is_definition: true
+  - :yomi: 0.6.0
+    :link: CHANGELOG.html#idx-o3oz1joesex3-2
+    :file: CHANGELOG
+    :is_definition: false
+  0.5.0:
+  - :yomi: 0.5.0
+    :link: CHANGELOG.html#idx-h2fkshb3a1jq-1
+    :file: CHANGELOG
+    :is_definition: true
+  - :yomi: 0.5.0
+    :link: CHANGELOG.html#idx-h2fkshb3a1jq-2
+    :file: CHANGELOG
+    :is_definition: false
+  0.4.0:
+  - :yomi: 0.4.0
+    :link: CHANGELOG.html#idx-f3s38ugo7qdv-1
+    :file: CHANGELOG
+    :is_definition: true
+  - :yomi: 0.4.0
+    :link: CHANGELOG.html#idx-f3s38ugo7qdv-2
+    :file: CHANGELOG
+    :is_definition: false
+  0.3.0:
+  - :yomi: 0.3.0
+    :link: CHANGELOG.html#idx-fd16p0u3gfe-1
+    :file: CHANGELOG
+    :is_definition: true
+  - :yomi: 0.3.0
+    :link: CHANGELOG.html#idx-fd16p0u3gfe-2
+    :file: CHANGELOG
+    :is_definition: false
+  0.2.0:
+  - :yomi: 0.2.0
+    :link: CHANGELOG.html#idx-7hteif9rifso-1
+    :file: CHANGELOG
+    :is_definition: true
+  - :yomi: 0.2.0
+    :link: CHANGELOG.html#idx-7hteif9rifso-2
+    :file: CHANGELOG
+    :is_definition: false
+  0.1.0:
+  - :yomi: 0.1.0
+    :link: CHANGELOG.html#idx-gb58fh87is9z-1
+    :file: CHANGELOG
+    :is_definition: true
+  - :yomi: 0.1.0
+    :link: CHANGELOG.html#idx-gb58fh87is9z-2
+    :file: CHANGELOG
+    :is_definition: false
+  "'VERBOSE'":
+  - :yomi: "'VERBOSE'"
+    :link: CHANGELOG.html#idx-pzkxfaob7qqk-1
+    :file: CHANGELOG
+    :is_definition: true
+  "<from> <to>":
+  - :yomi: "<from><to>"
+    :link: README.html#idx-9iorns1smb7f-1
+    :file: README
+    :is_definition: true
+  " ":
+  - :yomi: " "
+    :link: ROADMAP.html#idx-wnvbtnhtsoul-1
+    :file: ROADMAP
+    :is_definition: true
+  - :yomi: " "
+    :link: ROADMAP.html#idx-wnvbtnhtsoul-2
+    :file: ROADMAP
+    :is_definition: false
+  - :yomi: " "
+    :link: ROADMAP.html#idx-wnvbtnhtsoul-3
+    :file: ROADMAP
+    :is_definition: false
+  - :yomi: " "
+    :link: ROADMAP.html#idx-wnvbtnhtsoul-4
+    :file: ROADMAP
+    :is_definition: false
+  - :yomi: " "
+    :link: ROADMAP.html#idx-wnvbtnhtsoul-5
+    :file: ROADMAP
+    :is_definition: false
+  - :yomi: " "
+    :link: ROADMAP.html#idx-wnvbtnhtsoul-6
+    :file: ROADMAP
+    :is_definition: false
+  - :yomi: " "
+    :link: ROADMAP.html#idx-wnvbtnhtsoul-7
+    :file: ROADMAP
+    :is_definition: false
+  - :yomi: " "
+    :link: ROADMAP.html#idx-wnvbtnhtsoul-8
+    :file: ROADMAP
+    :is_definition: false
+  - :yomi: " "
+    :link: ROADMAP.html#idx-wnvbtnhtsoul-9
+    :file: ROADMAP
+    :is_definition: false
+  - :yomi: " "
+    :link: ROADMAP.html#idx-wnvbtnhtsoul-10
+    :file: ROADMAP
+    :is_definition: false
+  - :yomi: " "
+    :link: ROADMAP.html#idx-wnvbtnhtsoul-11
+    :file: ROADMAP
+    :is_definition: false
+  - :yomi: " "
+    :link: ROADMAP.html#idx-wnvbtnhtsoul-12
+    :file: ROADMAP
+    :is_definition: false
+  - :yomi: " "
+    :link: ROADMAP.html#idx-wnvbtnhtsoul-13
+    :file: ROADMAP
+    :is_definition: false
+  - :yomi: " "
+    :link: ROADMAP.html#idx-wnvbtnhtsoul-14
+    :file: ROADMAP
+    :is_definition: false
+matches:
+- :id: idx-kihwgu06ev1o-1
+  :term: Medium
+  :yomi: Medium
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-6gmecrj6z7am-1
+  :term: High
+  :yomi: High
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-6gmecrj6z7am-2
+  :term: High
+  :yomi: High
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-6gmecrj6z7am-3
+  :term: High
+  :yomi: High
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-6gmecrj6z7am-4
+  :term: High
+  :yomi: High
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-kihwgu06ev1o-2
+  :term: Medium
+  :yomi: Medium
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-j2sq1v5023vw-1
+  :term: ref:foo
+  :yomi: ref:foo
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-kihwgu06ev1o-3
+  :term: Medium
+  :yomi: Medium
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-kihwgu06ev1o-4
+  :term: Medium
+  :yomi: Medium
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-6gmecrj6z7am-5
+  :term: High
+  :yomi: High
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-kihwgu06ev1o-5
+  :term: Medium
+  :yomi: Medium
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-kihwgu06ev1o-6
+  :term: Medium
+  :yomi: Medium
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-6gmecrj6z7am-6
+  :term: High
+  :yomi: High
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-6gmecrj6z7am-7
+  :term: High
+  :yomi: High
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-6gmecrj6z7am-8
+  :term: High
+  :yomi: High
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-kihwgu06ev1o-7
+  :term: Medium
+  :yomi: Medium
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-kihwgu06ev1o-8
+  :term: Medium
+  :yomi: Medium
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-kihwgu06ev1o-9
+  :term: Medium
+  :yomi: Medium
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-kihwgu06ev1o-10
+  :term: Medium
+  :yomi: Medium
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-kihwgu06ev1o-11
+  :term: Medium
+  :yomi: Medium
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-kihwgu06ev1o-12
+  :term: Medium
+  :yomi: Medium
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-kihwgu06ev1o-13
+  :term: Medium
+  :yomi: Medium
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-kihwgu06ev1o-14
+  :term: Medium
+  :yomi: Medium
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-4t4wd480zoju-1
+  :term: Low
+  :yomi: Low
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-4t4wd480zoju-2
+  :term: Low
+  :yomi: Low
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-4t4wd480zoju-3
+  :term: Low
+  :yomi: Low
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-4t4wd480zoju-4
+  :term: Low
+  :yomi: Low
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-kihwgu06ev1o-15
+  :term: Medium
+  :yomi: Medium
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-kihwgu06ev1o-16
+  :term: Medium
+  :yomi: Medium
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-6gmecrj6z7am-9
+  :term: High
+  :yomi: High
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-4t4wd480zoju-5
+  :term: Low
+  :yomi: Low
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-6gmecrj6z7am-10
+  :term: High
+  :yomi: High
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-6gmecrj6z7am-11
+  :term: High
+  :yomi: High
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-6gmecrj6z7am-12
+  :term: High
+  :yomi: High
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-6gmecrj6z7am-13
+  :term: High
+  :yomi: High
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-6gmecrj6z7am-14
+  :term: High
+  :yomi: High
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-6gmecrj6z7am-15
+  :term: High
+  :yomi: High
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-jwp4deen9jrc-1
+  :term: Unreleased
+  :yomi: Unreleased
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-c8x7kk0ta3y1-1
+  :term: 用語
+  :yomi: 読み
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-nrwoc09fkeid-1
+  :term: 引数
+  :yomi: ひきすう
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-c8x7kk0ta3y1-2
+  :term: 用語
+  :yomi: ようご
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-ic96e3o9jvur-1
+  :term: 0.25.0
+  :yomi: 0.25.0
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-trut9zmmb8pt-1
+  :term: 0.17.0
+  :yomi: 0.17.0
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-rovvxsyti5ae-1
+  :term: 0.16.0
+  :yomi: 0.16.0
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-15a03j2u2uez-1
+  :term: 02, 11, 12, 91
+  :yomi: 02,11,12,91
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-b5odlaf5ldpw-1
+  :term: 0.15.0
+  :yomi: 0.15.0
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-vrt82onetg0o-1
+  :term: 0.14.0
+  :yomi: 0.14.0
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-e96xnu0uth51-1
+  :term: 0.13.0
+  :yomi: 0.13.0
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-v4hromfdu5vm-1
+  :term: 0.12.0
+  :yomi: 0.12.0
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-sb48ruvwnq6f-1
+  :term: 0.11.0
+  :yomi: 0.11.0
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-gcysmjgtinsn-1
+  :term: 0.10.0
+  :yomi: 0.10.0
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-duwgsjiu4vwq-1
+  :term: 0.9.1
+  :yomi: 0.9.1
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-e6zlxwr15vti-1
+  :term: OUTPUT
+  :yomi: OUTPUT
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-mb76ie3zq8pa-1
+  :term: "'pdf', '02-preface.pdf'"
+  :yomi: "'pdf','02-preface.pdf'"
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-l40h90cqidow-1
+  :term: ":force"
+  :yomi: ":force"
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-jntn57qlr420-1
+  :term: ":'no-cache'"
+  :yomi: ":'no-cache'"
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-e6zlxwr15vti-2
+  :term: OUTPUT
+  :yomi: OUTPUT
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-al1ru8k8ee7q-1
+  :term: 0.9.0
+  :yomi: 0.9.0
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-r3yips3j319b-1
+  :term: 0.8.2
+  :yomi: 0.8.2
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-k86z2cx8mop5-1
+  :term: "=level"
+  :yomi: "=level"
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-imfusumrrq2-1
+  :term: 0.8.1
+  :yomi: 0.8.1
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-15e6vi72qh86-1
+  :term: 0.8.0
+  :yomi: 0.8.0
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-ehx75nxh714m-1
+  :term: PATH
+  :yomi: PATH
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-7llcrlhhc7nj-1
+  :term: 0.7.1
+  :yomi: 0.7.1
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-nuy88wzduod0-1
+  :term: 0.7.0
+  :yomi: 0.7.0
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-ei5plpxkvbfc-1
+  :term: "'11-foo.md', ..."
+  :yomi: "'11-foo.md',..."
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-o3oz1joesex3-1
+  :term: 0.6.0
+  :yomi: 0.6.0
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-h2fkshb3a1jq-1
+  :term: 0.5.0
+  :yomi: 0.5.0
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-f3s38ugo7qdv-1
+  :term: 0.4.0
+  :yomi: 0.4.0
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-fd16p0u3gfe-1
+  :term: 0.3.0
+  :yomi: 0.3.0
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-7hteif9rifso-1
+  :term: 0.2.0
+  :yomi: 0.2.0
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-gb58fh87is9z-1
+  :term: 0.1.0
+  :yomi: 0.1.0
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-pzkxfaob7qqk-1
+  :term: "'VERBOSE'"
+  :yomi: "'VERBOSE'"
+  :file: CHANGELOG
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-jwp4deen9jrc-2
+  :term: Unreleased
+  :yomi: Unreleased
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-al1ru8k8ee7q-2
+  :term: 0.9.0
+  :yomi: 0.9.0
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-r3yips3j319b-2
+  :term: 0.8.2
+  :yomi: 0.8.2
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-15e6vi72qh86-2
+  :term: 0.8.0
+  :yomi: 0.8.0
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-7llcrlhhc7nj-2
+  :term: 0.7.1
+  :yomi: 0.7.1
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-nuy88wzduod0-2
+  :term: 0.7.0
+  :yomi: 0.7.0
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-o3oz1joesex3-2
+  :term: 0.6.0
+  :yomi: 0.6.0
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-h2fkshb3a1jq-2
+  :term: 0.5.0
+  :yomi: 0.5.0
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-f3s38ugo7qdv-2
+  :term: 0.4.0
+  :yomi: 0.4.0
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-fd16p0u3gfe-2
+  :term: 0.3.0
+  :yomi: 0.3.0
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-7hteif9rifso-2
+  :term: 0.2.0
+  :yomi: 0.2.0
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-gb58fh87is9z-2
+  :term: 0.1.0
+  :yomi: 0.1.0
+  :file: CHANGELOG
+  :is_definition: false
+  :tag_type: span
+- :id: idx-k86z2cx8mop5-2
+  :term: "=level"
+  :yomi: "=level"
+  :file: README
+  :is_definition: false
+  :tag_type: span
+- :id: idx-9iorns1smb7f-1
+  :term: "<from> <to>"
+  :yomi: "<from><to>"
+  :file: README
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-k86z2cx8mop5-3
+  :term: "=level"
+  :yomi: "=level"
+  :file: README
+  :is_definition: false
+  :tag_type: span
+- :id: idx-k86z2cx8mop5-4
+  :term: "=level"
+  :yomi: "=level"
+  :file: README
+  :is_definition: false
+  :tag_type: span
+- :id: idx-k86z2cx8mop5-5
+  :term: "=level"
+  :yomi: "=level"
+  :file: README
+  :is_definition: false
+  :tag_type: span
+- :id: idx-wnvbtnhtsoul-1
+  :term: " "
+  :yomi: " "
+  :file: ROADMAP
+  :is_definition: true
+  :tag_type: dfn
+- :id: idx-wnvbtnhtsoul-2
+  :term: " "
+  :yomi: " "
+  :file: ROADMAP
+  :is_definition: false
+  :tag_type: span
+- :id: idx-wnvbtnhtsoul-3
+  :term: " "
+  :yomi: " "
+  :file: ROADMAP
+  :is_definition: false
+  :tag_type: span
+- :id: idx-wnvbtnhtsoul-4
+  :term: " "
+  :yomi: " "
+  :file: ROADMAP
+  :is_definition: false
+  :tag_type: span
+- :id: idx-wnvbtnhtsoul-5
+  :term: " "
+  :yomi: " "
+  :file: ROADMAP
+  :is_definition: false
+  :tag_type: span
+- :id: idx-wnvbtnhtsoul-6
+  :term: " "
+  :yomi: " "
+  :file: ROADMAP
+  :is_definition: false
+  :tag_type: span
+- :id: idx-wnvbtnhtsoul-7
+  :term: " "
+  :yomi: " "
+  :file: ROADMAP
+  :is_definition: false
+  :tag_type: span
+- :id: idx-wnvbtnhtsoul-8
+  :term: " "
+  :yomi: " "
+  :file: ROADMAP
+  :is_definition: false
+  :tag_type: span
+- :id: idx-wnvbtnhtsoul-9
+  :term: " "
+  :yomi: " "
+  :file: ROADMAP
+  :is_definition: false
+  :tag_type: span
+- :id: idx-wnvbtnhtsoul-10
+  :term: " "
+  :yomi: " "
+  :file: ROADMAP
+  :is_definition: false
+  :tag_type: span
+- :id: idx-wnvbtnhtsoul-11
+  :term: " "
+  :yomi: " "
+  :file: ROADMAP
+  :is_definition: false
+  :tag_type: span
+- :id: idx-wnvbtnhtsoul-12
+  :term: " "
+  :yomi: " "
+  :file: ROADMAP
+  :is_definition: false
+  :tag_type: span
+- :id: idx-wnvbtnhtsoul-13
+  :term: " "
+  :yomi: " "
+  :file: ROADMAP
+  :is_definition: false
+  :tag_type: span
+- :id: idx-wnvbtnhtsoul-14
+  :term: " "
+  :yomi: " "
+  :file: ROADMAP
+  :is_definition: false
+  :tag_type: span
