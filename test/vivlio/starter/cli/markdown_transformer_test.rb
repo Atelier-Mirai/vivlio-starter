@@ -14,19 +14,15 @@ module Vivlio
           include MarkdownUtils
           include CrossReferenceProcessor
 
-          # CaptionedBlockRenderer の private メソッドをテスト用に公開
+          # CaptionedBlockTransformer の private メソッドをテスト用に公開
           def parse_markdown_image_line(line)
-            CrossReference::CaptionedBlockRenderer.new(
-              content: '', filename: '', labels_map: {},
-              caption_extractor: nil, chapter_number_resolver: nil
-            ).send(:parse_markdown_image_line, line)
+            CrossReferenceProcessor::CaptionedBlockTransformer.new('', '', {})
+              .send(:parse_image, line)
           end
 
           def build_plain_figure_html(img_info, caption_text: nil)
-            CrossReference::CaptionedBlockRenderer.new(
-              content: '', filename: '', labels_map: {},
-              caption_extractor: nil, chapter_number_resolver: nil
-            ).send(:build_plain_figure_html, img_info, caption_text: caption_text)
+            CrossReferenceProcessor::CaptionedBlockTransformer.new('', '', {})
+              .send(:build_figure_html, img_info, caption_text)
           end
 
           # =================================================================
