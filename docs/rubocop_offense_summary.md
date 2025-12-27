@@ -2,26 +2,25 @@
 
 - 対象ディレクトリ: `lib/vivlio/starter/`
 - 実行コマンド: `bundle exec rubocop --parallel --format json lib/vivlio/starter/`
-- 集計日時: 2025-12-27 20:00 (UTC+09:00)
-- 総違反件数: **722件**（前回 805件 → 83件減少）
+- 集計日時: 2025-12-27 21:15 (UTC+09:00)
+- 総違反件数: **685件**（前回 722件 → 37件減少）
 
 ## 残存違反一覧
 
 | ファイル | 件数 | 主な違反内容 |
 | --- | --- | --- |
-| `lib/vivlio/starter/cli/build/outline_extractor.rb` | 55 | Metrics/AbcSize: 11件, Metrics/CyclomaticComplexity: 10件, Metrics/PerceivedComplexity: 9件 |
-| `lib/vivlio/starter/cli/post_process.rb` | 43 | Metrics/AbcSize: 9件, Metrics/CyclomaticComplexity: 8件, Metrics/PerceivedComplexity: 8件 |
+| `lib/vivlio/starter/cli/build/outline_extractor.rb` | 42 | Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity |
+| `lib/vivlio/starter/cli/post_process.rb` | 42 | Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity |
 | `lib/vivlio/starter/cli/doctor.rb` | 27 | Metrics/AbcSize: 6件, Metrics/CyclomaticComplexity: 5件, Metrics/PerceivedComplexity: 4件 |
-| `lib/vivlio/starter/cli/post_process/heading_processor.rb` | 21 | Metrics/CyclomaticComplexity: 6件, Naming/PredicateMethod: 5件, Metrics/PerceivedComplexity: 4件 |
-| `lib/vivlio/starter/cli/pre_process/frontmatter_generator.rb` | 8 | Metrics/AbcSize: 3件, Layout/LineLength: 2件, Metrics/ModuleLength: 1件 |
-| `lib/vivlio/starter/cli/build/pdf_builder.rb` | 31 | Layout/LineLength: 8件, Metrics/AbcSize: 5件, Metrics/CyclomaticComplexity: 4件 |
 | `lib/vivlio/starter/cli/pre_process/image_generator.rb` | 27 | Metrics/AbcSize: 5件, Layout/LineLength: 5件, Metrics/MethodLength: 3件 |
-| `lib/vivlio/starter/cli/pre_process/theme_image_resolver.rb` | 27 | Metrics/AbcSize: 5件, Metrics/CyclomaticComplexity: 5件, Layout/LineLength: 5件 |
 | `lib/vivlio/starter/cli/build/catalog_updater.rb` | 27 | Metrics/CyclomaticComplexity: 5件, Metrics/PerceivedComplexity: 5件, Metrics/AbcSize: 3件 |
 | `lib/vivlio/starter/cli/pre_process/css_updater.rb` | 26 | Metrics/AbcSize: 6件, Metrics/CyclomaticComplexity: 4件, Metrics/PerceivedComplexity: 4件 |
 | `lib/vivlio/starter/cli/cover.rb` | 24 | Lint/UnusedMethodArgument: 5件, Style/GuardClause: 4件, Metrics/AbcSize: 2件 |
+| `lib/vivlio/starter/cli/pre_process/theme_image_resolver.rb` | 21 | Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity |
+| `lib/vivlio/starter/cli/common.rb` | 21 | Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity |
+| `lib/vivlio/starter/cli/post_process/heading_processor.rb` | 21 | Metrics/CyclomaticComplexity: 6件, Naming/PredicateMethod: 5件, Metrics/PerceivedComplexity: 4件 |
+| `lib/vivlio/starter/cli/build/pdf_builder.rb` | 16 | Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity |
 | `lib/vivlio/starter/scaffolder.rb` | 23 | Metrics/AbcSize: 4件, Metrics/CyclomaticComplexity: 3件, Style/IfUnlessModifier: 3件 |
-| `lib/vivlio/starter/cli/common.rb` | 23 | Metrics/AbcSize: 5件, Metrics/CyclomaticComplexity: 5件, Metrics/PerceivedComplexity: 4件 |
 | `lib/vivlio/starter/cli/pre_process/markdown_transformer.rb` | 22 | Metrics/AbcSize: 4件, Metrics/CyclomaticComplexity: 4件, Metrics/PerceivedComplexity: 4件 |
 | `lib/vivlio/starter/cli/build/output_helpers.rb` | 21 | Style/FormatStringToken: 7件, Metrics/AbcSize: 3件, Metrics/CyclomaticComplexity: 3件 |
 | `lib/vivlio/starter/cli/font_manager.rb` | 21 | Metrics/AbcSize: 3件, Layout/FirstArrayElementIndentation: 2件, Metrics/CyclomaticComplexity: 2件 |

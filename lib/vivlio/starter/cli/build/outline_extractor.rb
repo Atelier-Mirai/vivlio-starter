@@ -307,30 +307,40 @@ module Vivlio
           end
 
           def calculate_chapter_ranges(chapter_order, chapter_markers, search_helpers, from_base, total_pages)
-            search_markers = search_helpers[:search_markers]
             preface_pages = (Build::Utilities.page_count('00-preface.pdf') || '0').to_i
             toc_pages = (Build::Utilities.page_count('_toc.pdf') || '0').to_i
 
             chapter_starts = {}
             chapter_ranges = {}
-            prev_bn = nil
             first_chapter_bn = chapter_order.find { |token| Common.get_file_type("#{token}.html") == 'chapter' }
 
-            chapter_order.each do |bn|
-              start_page, end_page = calculate_page_range(bn, chapter_order, chapter_markers, chapter_ranges,
-                                                          chapter_starts, search_markers, from_base, total_pages, preface_pages, toc_pages, first_chapter_bn, prev_bn)
+            ctx = build_page_range_context(
+              chapter_ranges, chapter_starts, chapter_markers,
+              search_helpers[:search_markers], from_base, total_pages, preface_pages, toc_pages
+            )
 
-              if prev_bn && chapter_ranges[prev_bn]
-                prev_end = [start_page - 1, total_pages].min
-                prev_end = chapter_ranges[prev_bn][0] if prev_end < chapter_ranges[prev_bn][0]
-                chapter_ranges[prev_bn][1] = prev_end
-              end
+            prev_bn = nil
+            chapter_order.each do |bn|
+              start_page, end_page = calculate_page_range(bn, ctx, first_chapter_bn, prev_bn)
+              update_previous_chapter_end(chapter_ranges, prev_bn, start_page, total_pages)
 
               chapter_starts[bn] = start_page
               chapter_ranges[bn] = [start_page, end_page]
               prev_bn = bn
             end
 
+            clamp_all_ranges(chapter_ranges, from_base, total_pages)
+          end
+
+          def update_previous_chapter_end(chapter_ranges, prev_bn, start_page, total_pages)
+            return unless prev_bn && chapter_ranges[prev_bn]
+
+            prev_end = [start_page - 1, total_pages].min
+            prev_end = chapter_ranges[prev_bn][0] if prev_end < chapter_ranges[prev_bn][0]
+            chapter_ranges[prev_bn][1] = prev_end
+          end
+
+          def clamp_all_ranges(chapter_ranges, from_base, total_pages)
             chapter_ranges.each_value do |rng|
               next unless rng
 
@@ -341,44 +351,92 @@ module Vivlio
             chapter_ranges
           end
 
-          def calculate_page_range(bn, _chapter_order, chapter_markers, chapter_ranges, chapter_starts, search_markers,
-                                   from_base, total_pages, preface_pages, toc_pages, first_chapter_bn, prev_bn)
-            case bn
-            when '_titlepage'
-              [[from_base, 1].max, 1]
-            when '_legalpage'
-              [[2, from_base].max.clamp(1, total_pages), [2, from_base].max.clamp(1, total_pages)]
-            when '00-preface'
-              start_page = [3, from_base].max.clamp(1, total_pages)
-              end_page = preface_pages.positive? ? (start_page + preface_pages - 1).clamp(1, total_pages) : start_page
-              [start_page, end_page]
-            when '_toc'
-              start_candidate = preface_pages.positive? ? (chapter_ranges['00-preface']&.[](1) || (3 + preface_pages - 1)) + 1 : 3
-              start_page = [start_candidate, from_base].max.clamp(1, total_pages)
-              end_page = toc_pages.positive? ? (start_page + toc_pages - 1).clamp(1, total_pages) : start_page
-              [start_page, end_page]
-            when first_chapter_bn
-              toc_end = chapter_ranges['_toc']&.[](1)
-              start_candidate = toc_end ? toc_end + 1 : (chapter_starts[prev_bn] || from_base)
-              [[start_candidate, from_base].max.clamp(1, total_pages), total_pages]
-            when '99-colophon'
-              [total_pages, total_pages]
-            when '99-postface'
-              search_from = [chapter_starts[prev_bn] || from_base, from_base].max.clamp(1, total_pages)
-              markers = chapter_markers[bn] || ['終わりに']
-              start_page = search_markers.call(markers, search_from, total_pages)
-              start_page ||= search_markers.call(markers, from_base, total_pages) if search_from > from_base
-              start_page ||= search_from
-              end_page = [total_pages - 1, start_page].max
-              [start_page, end_page]
-            else
-              search_from = [chapter_starts[prev_bn] || from_base, from_base].max.clamp(1, total_pages)
-              markers = chapter_markers[bn] || []
-              start_page = search_markers.call(markers, search_from, total_pages)
-              start_page ||= search_markers.call(markers, from_base, total_pages) if search_from > from_base
-              start_page ||= search_from
-              [start_page, total_pages]
+          # ページ範囲計算用のコンテキストハッシュを構築
+          def build_page_range_context(chapter_ranges, chapter_starts, chapter_markers,
+                                       search_markers, from_base, total_pages, preface_pages, toc_pages)
+            {
+              chapter_ranges: chapter_ranges, chapter_starts: chapter_starts,
+              chapter_markers: chapter_markers, search_markers: search_markers,
+              from_base: from_base, total_pages: total_pages,
+              preface_pages: preface_pages, toc_pages: toc_pages
+            }
+          end
+
+          def calculate_page_range(basename, ctx, first_chapter_bn, prev_bn)
+            case basename
+            when '_titlepage' then page_range_titlepage(ctx)
+            when '_legalpage' then page_range_legalpage(ctx)
+            when '00-preface' then page_range_preface(ctx)
+            when '_toc'       then page_range_toc(ctx)
+            when '99-colophon' then [ctx[:total_pages], ctx[:total_pages]]
+            when '99-postface' then page_range_postface(basename, ctx, prev_bn)
+            when first_chapter_bn then page_range_first_chapter(ctx, prev_bn)
+            else page_range_default(basename, ctx, prev_bn)
             end
+          end
+
+          def page_range_titlepage(ctx)
+            [[ctx[:from_base], 1].max, 1]
+          end
+
+          def page_range_legalpage(ctx)
+            page = [2, ctx[:from_base]].max.clamp(1, ctx[:total_pages])
+            [page, page]
+          end
+
+          def page_range_preface(ctx)
+            start_page = [3, ctx[:from_base]].max.clamp(1, ctx[:total_pages])
+            end_page = if ctx[:preface_pages].positive?
+                         (start_page + ctx[:preface_pages] - 1).clamp(1,
+                                                                      ctx[:total_pages])
+                       else
+                         start_page
+                       end
+            [start_page, end_page]
+          end
+
+          def page_range_toc(ctx)
+            preface_end = ctx[:chapter_ranges]['00-preface']&.[](1) || (3 + ctx[:preface_pages] - 1)
+            start_candidate = ctx[:preface_pages].positive? ? preface_end + 1 : 3
+            start_page = [start_candidate, ctx[:from_base]].max.clamp(1, ctx[:total_pages])
+            end_page = if ctx[:toc_pages].positive?
+                         (start_page + ctx[:toc_pages] - 1).clamp(1,
+                                                                  ctx[:total_pages])
+                       else
+                         start_page
+                       end
+            [start_page, end_page]
+          end
+
+          def page_range_first_chapter(ctx, prev_bn)
+            toc_end = ctx[:chapter_ranges]['_toc']&.[](1)
+            start_candidate = toc_end ? toc_end + 1 : (ctx[:chapter_starts][prev_bn] || ctx[:from_base])
+            [[start_candidate, ctx[:from_base]].max.clamp(1, ctx[:total_pages]), ctx[:total_pages]]
+          end
+
+          def page_range_postface(basename, ctx, prev_bn)
+            search_from = [ctx[:chapter_starts][prev_bn] || ctx[:from_base], ctx[:from_base]].max.clamp(1,
+                                                                                                        ctx[:total_pages])
+            markers = ctx[:chapter_markers][basename] || ['終わりに']
+            start_page = search_page_with_fallback(ctx[:search_markers], markers, search_from, ctx[:from_base],
+                                                   ctx[:total_pages])
+            end_page = [ctx[:total_pages] - 1, start_page].max
+            [start_page, end_page]
+          end
+
+          def page_range_default(basename, ctx, prev_bn)
+            search_from = [ctx[:chapter_starts][prev_bn] || ctx[:from_base], ctx[:from_base]].max.clamp(1,
+                                                                                                        ctx[:total_pages])
+            markers = ctx[:chapter_markers][basename] || []
+            start_page = search_page_with_fallback(ctx[:search_markers], markers, search_from, ctx[:from_base],
+                                                   ctx[:total_pages])
+            [start_page, ctx[:total_pages]]
+          end
+
+          def search_page_with_fallback(search_markers, markers, search_from, from_base, total_pages)
+            start_page = search_markers.call(markers, search_from, total_pages)
+            start_page ||= search_markers.call(markers, from_base, total_pages) if search_from > from_base
+            start_page || search_from
           end
 
           def build_outline_items(headings_by_chapter, chapter_ranges, _chapter_order, search_helpers, total_pages)
@@ -416,24 +474,42 @@ module Vivlio
             [items, fallback_items]
           end
 
-          def build_display_text(bn, heading)
-            display_text = heading[:text]
-            if bn == '99-colophon' && heading[:level].to_i == 1
+          def build_display_text(basename, heading)
+            return heading[:text] unless heading[:level].to_i == 1
+
+            case basename
+            when '99-colophon'
               '奥付'
-            elsif heading[:appendix_label] && heading[:level].to_i == 1
-              label = heading[:appendix_label].to_s.strip
-              !label.empty? && !display_text.start_with?(label) ? "#{label} #{display_text}".strip : display_text
-            elsif heading[:level].to_i == 1
-              number_display = heading[:number_display].to_s.strip
-              if number_display.empty?
-                chapter_number = Common.get_chapter_number(bn)
-                number_display = "第#{chapter_number.to_i - 10}章" if chapter_number && chapter_number.to_i.between?(11,
-                                                                                                                     89)
-              end
-              !number_display.to_s.empty? && !display_text.start_with?(number_display) ? "#{number_display} #{display_text}".strip : display_text
             else
-              display_text
+              build_chapter_display_text(basename, heading)
             end
+          end
+
+          def build_chapter_display_text(basename, heading)
+            display_text = heading[:text]
+
+            if heading[:appendix_label]
+              prepend_label_if_needed(display_text, heading[:appendix_label].to_s.strip)
+            else
+              number_display = resolve_chapter_number_display(basename, heading)
+              prepend_label_if_needed(display_text, number_display)
+            end
+          end
+
+          def resolve_chapter_number_display(basename, heading)
+            number_display = heading[:number_display].to_s.strip
+            return number_display unless number_display.empty?
+
+            chapter_number = Common.get_chapter_number(basename)
+            return '' unless chapter_number && chapter_number.to_i.between?(11, 89)
+
+            "第#{chapter_number.to_i - 10}章"
+          end
+
+          def prepend_label_if_needed(text, label)
+            return text if label.to_s.empty? || text.start_with?(label)
+
+            "#{label} #{text}".strip
           end
 
           def add_toc_entry(items, chapter_ranges, chapter_order, search_helpers)
@@ -479,42 +555,65 @@ module Vivlio
 
           def write_outline_to_pdf(pdf_path, items, max_level)
             doc = HexaPDF::Document.open(pdf_path)
+            clear_existing_outline(doc)
+            add_outline_items(doc, items, max_level)
+            doc.write(pdf_path, optimize: true)
+          end
+
+          def clear_existing_outline(doc)
             root = doc.outline
+            return unless root[:First]
 
-            if root[:First]
-              existing_items = []
-              root.each_item { |item, _| existing_items << item }
-              existing_items.each do |item|
-                doc.delete(item)
-              rescue StandardError
-                nil
-              end
-              root.delete(:First)
-              root.delete(:Last)
-              root.delete(:Count)
+            existing_items = []
+            root.each_item { |item, _| existing_items << item }
+            existing_items.each do |item|
+              doc.delete(item)
+            rescue StandardError
+              nil
             end
+            root.delete(:First)
+            root.delete(:Last)
+            root.delete(:Count)
+          end
 
+          def add_outline_items(doc, items, max_level)
+            root = doc.outline
             parents = { 1 => root }
+
             items.each do |item|
               lvl = item[:level].to_i.clamp(1, max_level)
-              parents.keys.select { |k| k > lvl }.each { |k| parents.delete(k) }
-              parent = parents[lvl] || parents[parents.keys.select { |k| k < lvl }.max] || root
+              prune_parent_levels(parents, lvl)
+              parent = find_parent_for_level(parents, lvl, root)
               parents[lvl] = parent
               page_obj = doc.pages[item[:page] - 1]
               parent.add_item(item[:text], destination: [page_obj, :Fit]) do |node|
-                parents.keys.select { |k| k > lvl }.each { |k| parents.delete(k) }
+                prune_parent_levels(parents, lvl)
                 parents[lvl + 1] = node
               end
             end
+          end
 
-            doc.write(pdf_path, optimize: true)
+          def prune_parent_levels(parents, current_level)
+            parents.keys.select { |k| k > current_level }.each { |k| parents.delete(k) }
+          end
+
+          def find_parent_for_level(parents, lvl, root)
+            parents[lvl] || parents[parents.keys.select { |k| k < lvl }.max] || root
           end
 
           module_function :extract_number_text, :extract_title_text, :build_search_terms,
                           :validate_inputs, :build_chapter_paths, :build_chapter_order,
                           :extract_all_headings, :build_search_helpers, :calculate_chapter_ranges,
-                          :calculate_page_range, :build_outline_items, :build_display_text,
-                          :add_toc_entry, :log_fallback_items, :prepend_cover_item, :write_outline_to_pdf
+                          :build_page_range_context, :calculate_page_range,
+                          :page_range_titlepage, :page_range_legalpage, :page_range_preface,
+                          :page_range_toc, :page_range_first_chapter, :page_range_postface,
+                          :page_range_default, :search_page_with_fallback,
+                          :update_previous_chapter_end, :clamp_all_ranges,
+                          :build_outline_items, :build_display_text,
+                          :build_chapter_display_text, :resolve_chapter_number_display, :prepend_label_if_needed,
+                          :add_toc_entry, :log_fallback_items, :prepend_cover_item,
+                          :write_outline_to_pdf, :clear_existing_outline, :add_outline_items,
+                          :prune_parent_levels, :find_parent_for_level
         end
       end
     end

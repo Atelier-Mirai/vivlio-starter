@@ -85,7 +85,8 @@ module Vivlio
               if (direct = find_existing_theme_image(slug, location_order: %i[user bundled]))
                 return theme_relative_path(direct)
               end
-            elsif (variant_specific = find_existing_theme_image("#{base_slug}_landscape", location_order: %i[user bundled]))
+            elsif (variant_specific = find_existing_theme_image("#{base_slug}_landscape",
+                                                                location_order: %i[user bundled]))
               return theme_relative_path(variant_specific)
             end
 
@@ -144,7 +145,8 @@ module Vivlio
           end
 
           # テーマ画像パスの解決
-          def resolve_theme_image_path(raw, variant:, default_path:, placeholder_svg:, allow_generation: false, slug_transform: nil)
+          def resolve_theme_image_path(raw, variant:, default_path:, placeholder_svg:, allow_generation: false,
+                                       slug_transform: nil)
             return default_path if raw.nil? || raw.to_s.strip.empty?
 
             value = raw.to_s.strip
@@ -154,10 +156,9 @@ module Vivlio
             slug = normalize_theme_image_slug(slug_value)
             base_slug, requested_variant, ext = split_slug_and_variant(slug)
 
-            if requested_variant == variant
-              if (direct = find_existing_theme_image(slug, location_order: %i[user bundled]))
-                return theme_relative_path(direct)
-              end
+            if (requested_variant == variant) && (direct = find_existing_theme_image(slug,
+                                                                                     location_order: %i[user bundled]))
+              return theme_relative_path(direct)
             end
 
             if (variant_specific = find_existing_theme_variant(base_slug, variant))
@@ -168,9 +169,7 @@ module Vivlio
 
             if (user_source = find_existing_theme_image(base_query, location_order: [:user]))
               ratio = image_ratio(user_source)
-              if ratio && ratio_accepted_for_frontispiece?(ratio)
-                return theme_relative_path(user_source)
-              end
+              return theme_relative_path(user_source) if ratio && ratio_accepted_for_frontispiece?(ratio)
 
               if allow_generation
                 require_relative 'image_generator'
@@ -180,7 +179,8 @@ module Vivlio
               end
             end
 
-            if allow_generation && (bundled_source = find_existing_theme_image(base_query, location_order: [:bundled], allowed_extensions: ['.webp']))
+            if allow_generation && (bundled_source = find_existing_theme_image(base_query, location_order: [:bundled],
+                                                                                           allowed_extensions: ['.webp']))
               require_relative 'image_generator'
               if (generated = ImageGenerator.ensure_variant_generated(bundled_source, variant))
                 return theme_relative_path(generated)
@@ -192,7 +192,8 @@ module Vivlio
 
           # バリアント画像を探索
           def find_existing_theme_variant(base_slug, variant)
-            find_existing_theme_image("#{base_slug}_#{variant}", location_order: %i[user bundled], allowed_extensions: ['.webp'])
+            find_existing_theme_image("#{base_slug}_#{variant}", location_order: %i[user bundled],
+                                                                 allowed_extensions: ['.webp'])
           end
 
           # テーマ画像スラッグを正規化
@@ -215,7 +216,8 @@ module Vivlio
           end
 
           # 既存テーマ画像を探索
-          def find_existing_theme_image(slug, location_order: %i[user bundled], allowed_extensions: THEME_IMAGE_EXTENSIONS)
+          def find_existing_theme_image(slug, location_order: %i[user bundled],
+                                        allowed_extensions: THEME_IMAGE_EXTENSIONS)
             base = normalize_theme_image_slug(slug)
             ext = File.extname(base)
             stem = ext.empty? ? base : base.sub(/\.[^.]+\z/, '')

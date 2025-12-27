@@ -25,13 +25,12 @@ module Vivlio
           def build_overall_pdf_and_split_from_dir!(base_dir = '.', keep = nil)
             toc_html = [File.join(base_dir, '_toc.html')].select { |f| File.exist?(f) }
             keep_numbers_main = Build::Utilities.chapter_numbers_for_book(keep)
-            keep_numbers_preface = nil
             keep_numbers_appx = nil
             keep_numbers_post = nil
             if keep&.any?
               normalized_keep = Array(keep).map { |s| File.basename(s.to_s, '.md') }
               chapter_numbers = normalized_keep.map { |bn| Common.get_chapter_number(bn) }.compact.map(&:to_i)
-              keep_numbers_preface = chapter_numbers.select { |n| PREFACE_RANGE.include?(n) }
+              chapter_numbers.select { |n| PREFACE_RANGE.include?(n) }
               keep_numbers_appx = chapter_numbers.select { |n| APPX_RANGE.include?(n) }
               keep_numbers_post = chapter_numbers.select { |n| POSTFACE_RANGE.include?(n) }
             end
@@ -88,7 +87,8 @@ module Vivlio
               cache_on = Common.cache_enabled?
               cache_dir = cache_on ? Common.ensure_cache_dir! : nil
               preface_cache = cache_on && cache_dir ? File.join(cache_dir, '00-preface.pdf') : nil
-              Build::SectionBuilder.ensure_chapter_html_up_to_date!('00-preface', extra_sources: File.join('config', 'book.yml'))
+              Build::SectionBuilder.ensure_chapter_html_up_to_date!('00-preface',
+                                                                    extra_sources: File.join('config', 'book.yml'))
 
               preface_sources = [
                 File.join(Common::CONTENTS_DIR, '00-preface.md'),
@@ -101,7 +101,10 @@ module Vivlio
               end
 
               needs_preface = !File.exist?('00-preface.pdf') || preface_outdated
-              needs_preface &&= !Build::Utilities.cache_restore_file(cache_on, preface_cache, '00-preface.pdf', 'Step 8') unless preface_outdated
+              unless preface_outdated
+                needs_preface &&= !Build::Utilities.cache_restore_file(cache_on, preface_cache, '00-preface.pdf',
+                                                                       'Step 8')
+              end
 
               if needs_preface
                 PreProcessCommands.execute_pre_process({}, ['00-preface'])
@@ -118,7 +121,7 @@ module Vivlio
 
             files_to_merge = []
             files_to_merge << '00-preface.pdf' if include_preface
-            files_to_merge << '_toc.pdf'     if include_toc
+            files_to_merge << '_toc.pdf' if include_toc
             existing_files = files_to_merge.select { |f| File.exist?(f) }
             missing_files  = files_to_merge - existing_files
             Common.log_warn("[Step 8] 結合対象が見つかりません: #{missing_files.join(', ')}") if missing_files.any?
@@ -170,9 +173,12 @@ module Vivlio
           # 新仕様: _titlepage, _legalpage, _colophon を使用
           def build_front_pages_and_tail!(force = false)
             front_regenerated = false
-            Build::SectionBuilder.ensure_chapter_html_up_to_date!('_titlepage', extra_sources: File.join('config', 'book.yml'))
-            Build::SectionBuilder.ensure_chapter_html_up_to_date!('_legalpage', extra_sources: File.join('config', 'book.yml'))
-            Build::SectionBuilder.ensure_chapter_html_up_to_date!('_colophon', extra_sources: File.join('config', 'book.yml'))
+            Build::SectionBuilder.ensure_chapter_html_up_to_date!('_titlepage',
+                                                                  extra_sources: File.join('config', 'book.yml'))
+            Build::SectionBuilder.ensure_chapter_html_up_to_date!('_legalpage',
+                                                                  extra_sources: File.join('config', 'book.yml'))
+            Build::SectionBuilder.ensure_chapter_html_up_to_date!('_colophon',
+                                                                  extra_sources: File.join('config', 'book.yml'))
 
             front_srcs = [
               File.join(Common::CONTENTS_DIR, '_titlepage.md'),
@@ -186,6 +192,7 @@ module Vivlio
 
             newer_than_any = lambda do |target, sources|
               return true unless File.exist?(target)
+
               t_mtime = File.exist?(target) ? File.mtime(target) : Time.at(0)
               Array(sources).any? { |s| File.exist?(s) && File.mtime(s) > t_mtime }
             end
@@ -217,11 +224,18 @@ module Vivlio
               end
             else
               Common.log_action("[Step 9] フロント/奥付PDFは最新のため再利用します: #{front_pdf}, #{colophon_pdf}")
-              Build::Utilities.cache_restore_file(cache_on, front_cache, front_pdf, 'Step 9') unless File.exist?(front_pdf)
-              Build::Utilities.cache_restore_file(cache_on, colophon_cache, colophon_pdf, 'Step 9') unless File.exist?(colophon_pdf)
+              unless File.exist?(front_pdf)
+                Build::Utilities.cache_restore_file(cache_on, front_cache, front_pdf,
+                                                    'Step 9')
+              end
+              unless File.exist?(colophon_pdf)
+                Build::Utilities.cache_restore_file(cache_on, colophon_cache, colophon_pdf,
+                                                    'Step 9')
+              end
             end
 
-            need_colophon = force || front_regenerated || colophon_missing || newer_than_any.call(colophon_pdf, colophon_srcs)
+            need_colophon = force || front_regenerated || colophon_missing || newer_than_any.call(colophon_pdf,
+                                                                                                  colophon_srcs)
             if need_colophon
               EntriesCommands.execute_entries({}, ['_colophon.html'])
               PdfCommands.execute_pdf({}, colophon_pdf)

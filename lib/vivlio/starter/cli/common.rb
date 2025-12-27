@@ -211,9 +211,7 @@ module Vivlio
           filename += '_print' if target == 'print_pdf'
 
           # バージョンを含める場合は _v{version} を追加
-          if include_version && !blank?(project_version)
-            filename += "_v#{project_version}"
-          end
+          filename += "_v#{project_version}" if include_version && !blank?(project_version)
 
           # 圧縮接尾辞を追加（pdfターゲットのみ対応、print_pdf/epubは対象外）
           if suffix && !blank?(suffix) && target == 'pdf'
@@ -222,14 +220,14 @@ module Vivlio
           end
 
           # 拡張子を追加
-          case target
-          when 'pdf', 'print_pdf'
-            filename += '.pdf'
-          when 'epub'
-            filename += '.epub'
-          else
-            filename += '.pdf' # デフォルトはPDF
-          end
+          filename += case target
+                      when 'pdf', 'print_pdf'
+                        '.pdf'
+                      when 'epub'
+                        '.epub'
+                      else
+                        '.pdf' # デフォルトはPDF
+                      end
 
           filename
         end
