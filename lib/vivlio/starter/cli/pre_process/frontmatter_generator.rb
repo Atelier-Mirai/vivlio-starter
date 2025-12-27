@@ -35,116 +35,98 @@ module Vivlio
       module PreProcessCommands
         # フロントマター生成・CSS 更新を担当するモジュール
         module FrontmatterGenerator
-          ALLOWED_COLORS = %w[yellow amber orange peach coral red magenta plum purple indigo navy blue cyan teal mint green lime].freeze
+          ALLOWED_COLORS = %w[yellow amber orange peach coral red magenta plum purple indigo navy blue cyan teal mint
+                              green lime].freeze
 
           module_function
 
-          # CSS更新のみを実行（ビルド時にStep 2で呼ばれる）
-          def update_css_only!(cfg = nil)
+          # テーマ設定を解析して構造化データを返す
+          def parse_theme_settings(cfg = nil)
             cfg ||= Common::CONFIG
             theme_cfg = (cfg && cfg['theme']) || {}
 
-            # テーマカラーを決定
             theme_name, theme_accent_value = parse_theme_color(theme_cfg['color'])
-
-            # テーマスタイルを決定（simple または image）
             theme_style = parse_theme_style(theme_cfg['style'])
 
-            # frontispiece 設定を解析
-            frontispiece_raw = theme_cfg['frontispiece']
-            frontispiece_cfg = frontispiece_raw.is_a?(Hash) ? frontispiece_raw : {}
-            frontispiece_source = frontispiece_cfg.key?('image') ? frontispiece_cfg['image'] : frontispiece_raw
-            frontispiece_path = ThemeImageResolver.resolve_frontispiece_path(frontispiece_source, allow_generation: true)
+            frontispiece_cfg = parse_frontispiece_config(theme_cfg['frontispiece'])
+            ornament_path = ThemeImageResolver.resolve_ornament_path(
+              theme_cfg['ornament'], allow_generation: true
+            )
 
-            # CSS長さ値を正規化
-            door_padding_value = normalize_css_length(frontispiece_cfg['padding'], label: 'theme.frontispiece.padding', default: '0mm')
-            heading_width_value = normalize_css_length(frontispiece_cfg['heading_width'], label: 'theme.frontispiece.heading_width')
-            lead_width_value = normalize_css_length(frontispiece_cfg['lead_width'], label: 'theme.frontispiece.lead_width')
-
-            # ornament 設定を解析
-            ornament_path = ThemeImageResolver.resolve_ornament_path(theme_cfg['ornament'], allow_generation: true)
-
-            # 各CSSファイルを更新
-            update_all_css_files(
+            {
               theme_name: theme_name,
               theme_accent_value: theme_accent_value,
               theme_style: theme_style,
               theme_cfg: theme_cfg,
-              frontispiece_path: frontispiece_path,
-              door_padding_value: door_padding_value,
-              heading_width_value: heading_width_value,
-              lead_width_value: lead_width_value,
+              frontispiece_path: frontispiece_cfg[:path],
+              door_padding_value: frontispiece_cfg[:padding],
+              heading_width_value: frontispiece_cfg[:heading_width],
+              lead_width_value: frontispiece_cfg[:lead_width],
               ornament_path: ornament_path
-            )
+            }
+          end
 
+          # frontispiece 設定を解析
+          def parse_frontispiece_config(frontispiece_raw)
+            frontispiece_cfg = frontispiece_raw.is_a?(Hash) ? frontispiece_raw : {}
+            source = frontispiece_cfg.key?('image') ? frontispiece_cfg['image'] : frontispiece_raw
+            path = ThemeImageResolver.resolve_frontispiece_path(source, allow_generation: true)
+
+            {
+              path: path,
+              padding: normalize_css_length(
+                frontispiece_cfg['padding'],
+                label: 'theme.frontispiece.padding',
+                default: '0mm'
+              ),
+              heading_width: normalize_css_length(
+                frontispiece_cfg['heading_width'],
+                label: 'theme.frontispiece.heading_width'
+              ),
+              lead_width: normalize_css_length(
+                frontispiece_cfg['lead_width'],
+                label: 'theme.frontispiece.lead_width'
+              )
+            }
+          end
+
+          # CSS更新のみを実行（ビルド時にStep 2で呼ばれる）
+          def update_css_only!(cfg = nil)
+            settings = parse_theme_settings(cfg)
+            update_all_css_files(**settings)
             Common.log_success('[Step 2] CSS設定を更新しました')
           rescue StandardError => e
             Common.log_warn("[Step 2] CSS更新に失敗: #{e.message}")
           end
 
           # フロントマターを生成
-          def generate_frontmatter(file_type, chapter_num = nil, existing_frontmatter = {})
-            # テーマ設定を取得
-            cfg = Common::CONFIG
-            theme_cfg = (cfg && cfg['theme']) || {}
+          def generate_frontmatter(file_type, _chapter_num = nil, existing_frontmatter = {})
+            settings = parse_theme_settings
+            update_all_css_files(**settings)
 
-            # テーマカラーを決定
-            theme_name, theme_accent_value = parse_theme_color(theme_cfg['color'])
+            chapter_css = resolve_chapter_css(file_type, existing_frontmatter)
+            new_frontmatter = build_base_frontmatter(chapter_css)
+            merge_frontmatter(existing_frontmatter, new_frontmatter)
+          end
 
-            # テーマスタイルを決定（simple または image）
-            theme_style = parse_theme_style(theme_cfg['style'])
+          # ファイルタイプに応じたCSS名を解決
+          def resolve_chapter_css(file_type, existing_frontmatter)
+            return existing_frontmatter['stylesheet'] if existing_frontmatter['stylesheet']
+            return 'chapter.css' if file_type == 'chapter'
 
-            # frontispiece 設定を解析
-            frontispiece_raw = theme_cfg['frontispiece']
-            frontispiece_cfg = frontispiece_raw.is_a?(Hash) ? frontispiece_raw : {}
-            frontispiece_source = frontispiece_cfg.key?('image') ? frontispiece_cfg['image'] : frontispiece_raw
-            frontispiece_path = ThemeImageResolver.resolve_frontispiece_path(frontispiece_source, allow_generation: true)
+            "#{file_type}.css"
+          end
 
-            # CSS長さ値を正規化
-            door_padding_value = normalize_css_length(frontispiece_cfg['padding'], label: 'theme.frontispiece.padding', default: '0mm')
-            heading_width_value = normalize_css_length(frontispiece_cfg['heading_width'], label: 'theme.frontispiece.heading_width')
-            lead_width_value = normalize_css_length(frontispiece_cfg['lead_width'], label: 'theme.frontispiece.lead_width')
-
-            # ornament 設定を解析（cinema バリアント生成を許可）
-            ornament_path = ThemeImageResolver.resolve_ornament_path(theme_cfg['ornament'], allow_generation: true)
-
-            # 各CSSファイルを更新
-            update_all_css_files(
-              theme_name: theme_name,
-              theme_accent_value: theme_accent_value,
-              theme_style: theme_style,
-              theme_cfg: theme_cfg,
-              frontispiece_path: frontispiece_path,
-              door_padding_value: door_padding_value,
-              heading_width_value: heading_width_value,
-              lead_width_value: lead_width_value,
-              ornament_path: ornament_path
-            )
-
-            # フロントマターのCSS linkを構築
-            chapter_css = if existing_frontmatter['stylesheet']
-                            existing_frontmatter['stylesheet']
-                          elsif file_type == 'chapter'
-                            'chapter.css'
-                          else
-                            "#{file_type}.css"
-                          end
-
+          # フロントマターのベース構造を構築
+          def build_base_frontmatter(chapter_css)
             stylesheets = ['theme.css', chapter_css]
-
             lang = (Common::CONFIG.dig('book', 'language') || 'ja').to_s.strip
             lang = 'ja' if lang.empty?
 
-            # 新しいフロントマターのベースを作成
-            new_frontmatter = {
-              'link' => stylesheets.map do |css|
-                { 'rel' => 'stylesheet', 'href' => "stylesheets/#{css}" }
-              end,
+            {
+              'link' => stylesheets.map { |css| { 'rel' => 'stylesheet', 'href' => "stylesheets/#{css}" } },
               'lang' => lang
             }
-
-            # 既存のフロントマターと新しいフロントマターを併合
-            merge_frontmatter(existing_frontmatter, new_frontmatter)
           end
 
           # 既存フロントマターを併合するか新規生成して Markdown に反映する
@@ -161,10 +143,10 @@ module Vivlio
                 new_frontmatter_yaml = YAML.dump(merged_frontmatter)
                 Common.log_success('フロントマター併合')
                 Common.log_success('フロントマター更新')
-                return text.sub(/\A---\n.*?\n---\n/m, "#{new_frontmatter_yaml}---\n")
+                text.sub(/\A---\n.*?\n---\n/m, "#{new_frontmatter_yaml}---\n")
               rescue StandardError => e
                 report_frontmatter_error(e, frontmatter_yaml)
-                return text
+                text
               end
             else
               new_frontmatter = generate_frontmatter(file_type, chapter_num)
@@ -176,33 +158,51 @@ module Vivlio
 
           # フロントマター解析時のエラー内容を詳細ログへ出力する
           def report_frontmatter_error(error, frontmatter_yaml)
+            line, column = extract_error_position(error)
+            log_frontmatter_error_message(line, column)
+            log_frontmatter_snippet(frontmatter_yaml, line, column)
+          end
+
+          # エラーから行・列番号を抽出
+          def extract_error_position(error)
             line = error.respond_to?(:line) && error.line ? error.line.to_i : error.message[/line (\d+)/i, 1]&.to_i
             column = error.respond_to?(:column) && error.column ? error.column.to_i : error.message[/column (\d+)/i, 1]&.to_i
+            [line, column]
+          end
 
+          # エラーメッセージをログ出力
+          def log_frontmatter_error_message(line, column)
             if line&.positive?
-              Common.log_warn("フロントマター（--- ～ ---）の記述に誤りがあります（位置: 行#{line} 列#{column&.positive? ? column : '?'}）。内容を見直してください。")
+              col_str = column&.positive? ? column : '?'
+              Common.log_warn("フロントマター（--- ～ ---）の記述に誤りがあります（位置: 行#{line} 列#{col_str}）。内容を見直してください。")
             else
               Common.log_warn('フロントマター（--- ～ ---）の記述に誤りがあります。内容を見直してください。')
             end
+          end
 
-            begin
-              fm_lines = frontmatter_yaml.to_s.lines
-              if line&.positive? && line <= fm_lines.length
-                idx = line - 1
-                start = [idx - 2, 0].max
-                finish = [idx + 2, fm_lines.length - 1].min
-                snippet = fm_lines[start..finish].each_with_index.map do |l, i2|
-                  "#{start + i2 + 1}: #{l.chomp}"
-                end.join("\n")
-                err_line_text = fm_lines[idx].to_s.chomp
-                caret_line = column&.positive? ? "#{' ' * (column - 1)}^" : ''
-                Common.log_info("問題のフロントマター（抜粋）:\n---\n#{snippet}\n---\n該当行:\n#{err_line_text}\n#{caret_line}")
-              else
-                Common.log_info("問題のフロントマター（抜粋）:\n---\n#{frontmatter_yaml}\n---")
-              end
-            rescue StandardError
+          # フロントマターの該当箇所をログ出力
+          def log_frontmatter_snippet(frontmatter_yaml, line, column)
+            fm_lines = frontmatter_yaml.to_s.lines
+            if line&.positive? && line <= fm_lines.length
+              log_detailed_snippet(fm_lines, line, column)
+            else
               Common.log_info("問題のフロントマター（抜粋）:\n---\n#{frontmatter_yaml}\n---")
             end
+          rescue StandardError
+            Common.log_info("問題のフロントマター（抜粋）:\n---\n#{frontmatter_yaml}\n---")
+          end
+
+          # 詳細なスニペットをログ出力
+          def log_detailed_snippet(fm_lines, line, column)
+            idx = line - 1
+            start_idx = [idx - 2, 0].max
+            finish_idx = [idx + 2, fm_lines.length - 1].min
+            snippet = fm_lines[start_idx..finish_idx].each_with_index.map do |l, i|
+              "#{start_idx + i + 1}: #{l.chomp}"
+            end.join("\n")
+            err_line_text = fm_lines[idx].to_s.chomp
+            caret_line = column&.positive? ? "#{' ' * (column - 1)}^" : ''
+            Common.log_info("問題のフロントマター（抜粋）:\n---\n#{snippet}\n---\n該当行:\n#{err_line_text}\n#{caret_line}")
           end
 
           # テーマカラーをパース
@@ -243,6 +243,7 @@ module Vivlio
           # CSS長さ値を正規化
           def normalize_css_length(value, label:, default: nil, fallback_unit: 'mm')
             return default if value.nil?
+
             v = value.to_s.strip
             return default if v.empty?
 
@@ -252,8 +253,9 @@ module Vivlio
               v
             else
               Common.log_warn("#{label} の形式が想定外です (#{v})。#{fallback_unit}単位として扱います。")
-              numeric = v.gsub(/[^0-9.\-]/, '')
+              numeric = v.gsub(/[^0-9.-]/, '')
               return default if numeric.empty?
+
               "#{numeric}#{fallback_unit}"
             end
           end
@@ -313,33 +315,29 @@ module Vivlio
 
           # フロントマターをマージ
           def merge_frontmatter(existing_frontmatter, new_frontmatter)
-            merged_frontmatter = existing_frontmatter.dup
-            # stylesheet フィールドは link に変換されるので削除
-            merged_frontmatter.delete('stylesheet')
-
-            if merged_frontmatter['link'].is_a?(Array)
-              merged_frontmatter['link'] = merged_frontmatter['link'].reject do |lnk|
-                href = (lnk && lnk['href']).to_s
-                href.match(%r{stylesheets/(theme-(yellow|blue|red|accent)\.css|theme-overrides\.css)})
-              end
-            end
+            merged = existing_frontmatter.dup
+            merged.delete('stylesheet')
+            merged['link'] = filter_legacy_theme_links(merged['link']) if merged['link'].is_a?(Array)
 
             new_frontmatter.each do |key, value|
-              if key == 'link' && merged_frontmatter['link']
-                existing_links = merged_frontmatter['link']
-                new_links = value
-
-                merged_frontmatter['link'] = existing_links + new_links.reject do |new_link|
-                  existing_links.any? do |existing_link|
-                    existing_link['href'] == new_link['href']
-                  end
-                end
-              else
-                merged_frontmatter[key] = value
-              end
+              merged[key] = key == 'link' && merged['link'] ? merge_links(merged['link'], value) : value
             end
+            merged
+          end
 
-            merged_frontmatter
+          # 古いテーマリンクを除外
+          def filter_legacy_theme_links(links)
+            links.reject do |lnk|
+              href = (lnk && lnk['href']).to_s
+              href.match(%r{stylesheets/(theme-(yellow|blue|red|accent)\.css|theme-overrides\.css)})
+            end
+          end
+
+          # リンク配列をマージ（重複を除外）
+          def merge_links(existing_links, new_links)
+            existing_links + new_links.reject do |new_link|
+              existing_links.any? { |existing| existing['href'] == new_link['href'] }
+            end
           end
         end
       end

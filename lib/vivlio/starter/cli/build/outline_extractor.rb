@@ -112,6 +112,7 @@ module Vivlio
             if max_level >= 2
               subtitles.each do |text|
                 next if text.empty?
+
                 headings << { level: 2, text: text }
               end
             end
@@ -126,15 +127,17 @@ module Vivlio
             total_pages = (Build::Utilities.page_count(pdf_path) || '0').to_i
             return [] if total_pages <= 0
 
-            from_base = [[start_page.to_i, 1].max, total_pages].min
-            max_level = [[max_level.to_i, 1].max, 6].min
+            from_base = start_page.to_i.clamp(1, total_pages)
+            max_level = max_level.to_i.clamp(1, 6)
 
             chapter_paths = build_chapter_paths(html_paths)
             chapter_order = build_chapter_order(chapter_paths.keys)
             headings_by_chapter, chapter_markers = extract_all_headings(chapter_order, chapter_paths, max_level)
             search_helpers = build_search_helpers(pdf_path, total_pages)
-            chapter_ranges = calculate_chapter_ranges(chapter_order, chapter_markers, search_helpers, from_base, total_pages)
-            items, fallback_items = build_outline_items(headings_by_chapter, chapter_ranges, chapter_order, search_helpers, total_pages)
+            chapter_ranges = calculate_chapter_ranges(chapter_order, chapter_markers, search_helpers, from_base,
+                                                      total_pages)
+            items, fallback_items = build_outline_items(headings_by_chapter, chapter_ranges, chapter_order,
+                                                        search_helpers, total_pages)
             items = add_toc_entry(items, chapter_ranges, chapter_order, search_helpers)
 
             log_fallback_items(fallback_items) if fallback_items.any?
@@ -244,7 +247,12 @@ module Vivlio
 
             chapter_order.each do |bn|
               path = chapter_paths[bn]
-              headings = path ? extract_headings_from_html_file(path, max_level: max_level, include_appendix_label: true) : []
+              headings = if path
+                           extract_headings_from_html_file(path, max_level: max_level,
+                                                                 include_appendix_label: true)
+                         else
+                           []
+                         end
               headings_by_chapter[bn].concat(headings) if headings.any?
 
               primary = headings.find { |h| h[:level] == 1 } || headings.first
@@ -263,7 +271,7 @@ module Vivlio
             normalize = ->(str) { str.to_s.gsub(/[[:space:]\u00A0\u2000-\u200B\u202F\u205F\u3000]+/, '') }
 
             fetch_page_text = lambda do |page|
-              page = [[page.to_i, 1].max, total_pages].min
+              page = page.to_i.clamp(1, total_pages)
               page_cache[page] ||= `pdftotext -f #{page} -l #{page} "#{pdf_path}" - 2>/dev/null`
             end
 
@@ -272,8 +280,8 @@ module Vivlio
               return nil if term.empty?
 
               normalized_term = normalize.call(term)
-              from_page = [[from_page.to_i, 1].max, total_pages].min
-              to_page = [[to_page.to_i, total_pages].min, from_page].max
+              from_page = from_page.to_i.clamp(1, total_pages)
+              to_page = to_page.to_i.clamp(from_page, total_pages)
               return nil if from_page > to_page
 
               (from_page..to_page).each do |page|
@@ -309,7 +317,8 @@ module Vivlio
             first_chapter_bn = chapter_order.find { |token| Common.get_file_type("#{token}.html") == 'chapter' }
 
             chapter_order.each do |bn|
-              start_page, end_page = calculate_page_range(bn, chapter_order, chapter_markers, chapter_ranges, chapter_starts, search_markers, from_base, total_pages, preface_pages, toc_pages, first_chapter_bn, prev_bn)
+              start_page, end_page = calculate_page_range(bn, chapter_order, chapter_markers, chapter_ranges,
+                                                          chapter_starts, search_markers, from_base, total_pages, preface_pages, toc_pages, first_chapter_bn, prev_bn)
 
               if prev_bn && chapter_ranges[prev_bn]
                 prev_end = [start_page - 1, total_pages].min
@@ -324,37 +333,38 @@ module Vivlio
 
             chapter_ranges.each_value do |rng|
               next unless rng
-              rng[0] = [[rng[0], from_base].max, total_pages].min
-              rng[1] = [[rng[1], rng[0]].max, total_pages].min
+
+              rng[0] = rng[0].clamp(from_base, total_pages)
+              rng[1] = rng[1].clamp(rng[0], total_pages)
             end
 
             chapter_ranges
           end
 
-          def calculate_page_range(bn, chapter_order, chapter_markers, chapter_ranges, chapter_starts, search_markers, from_base, total_pages, preface_pages, toc_pages, first_chapter_bn, prev_bn)
+          def calculate_page_range(bn, _chapter_order, chapter_markers, chapter_ranges, chapter_starts, search_markers,
+                                   from_base, total_pages, preface_pages, toc_pages, first_chapter_bn, prev_bn)
             case bn
             when '_titlepage'
               [[from_base, 1].max, 1]
             when '_legalpage'
-              start_page = [[2, from_base].max, total_pages].min
-              [start_page, start_page]
+              [[2, from_base].max.clamp(1, total_pages), [2, from_base].max.clamp(1, total_pages)]
             when '00-preface'
-              start_page = [[3, from_base].max, total_pages].min
-              end_page = preface_pages.positive? ? [start_page + preface_pages - 1, total_pages].min : start_page
+              start_page = [3, from_base].max.clamp(1, total_pages)
+              end_page = preface_pages.positive? ? (start_page + preface_pages - 1).clamp(1, total_pages) : start_page
               [start_page, end_page]
             when '_toc'
               start_candidate = preface_pages.positive? ? (chapter_ranges['00-preface']&.[](1) || (3 + preface_pages - 1)) + 1 : 3
-              start_page = [[start_candidate, from_base].max, total_pages].min
-              end_page = toc_pages.positive? ? [start_page + toc_pages - 1, total_pages].min : start_page
+              start_page = [start_candidate, from_base].max.clamp(1, total_pages)
+              end_page = toc_pages.positive? ? (start_page + toc_pages - 1).clamp(1, total_pages) : start_page
               [start_page, end_page]
             when first_chapter_bn
               toc_end = chapter_ranges['_toc']&.[](1)
               start_candidate = toc_end ? toc_end + 1 : (chapter_starts[prev_bn] || from_base)
-              [[[start_candidate, from_base].max, total_pages].min, total_pages]
+              [[start_candidate, from_base].max.clamp(1, total_pages), total_pages]
             when '99-colophon'
               [total_pages, total_pages]
             when '99-postface'
-              search_from = [[chapter_starts[prev_bn] || from_base, from_base].max, total_pages].min
+              search_from = [chapter_starts[prev_bn] || from_base, from_base].max.clamp(1, total_pages)
               markers = chapter_markers[bn] || ['終わりに']
               start_page = search_markers.call(markers, search_from, total_pages)
               start_page ||= search_markers.call(markers, from_base, total_pages) if search_from > from_base
@@ -362,7 +372,7 @@ module Vivlio
               end_page = [total_pages - 1, start_page].max
               [start_page, end_page]
             else
-              search_from = [[chapter_starts[prev_bn] || from_base, from_base].max, total_pages].min
+              search_from = [chapter_starts[prev_bn] || from_base, from_base].max.clamp(1, total_pages)
               markers = chapter_markers[bn] || []
               start_page = search_markers.call(markers, search_from, total_pages)
               start_page ||= search_markers.call(markers, from_base, total_pages) if search_from > from_base
@@ -371,7 +381,7 @@ module Vivlio
             end
           end
 
-          def build_outline_items(headings_by_chapter, chapter_ranges, chapter_order, search_helpers, total_pages)
+          def build_outline_items(headings_by_chapter, chapter_ranges, _chapter_order, search_helpers, total_pages)
             search_markers = search_helpers[:search_markers]
             items = []
             fallback_items = []
@@ -384,11 +394,15 @@ module Vivlio
                 page = if bn == '_toc'
                          range[0]
                        else
-                         search_terms = (Array(heading[:search_terms]) + [heading[:text], heading[:appendix_label]]).compact.map { |s| s.to_s.strip }.reject(&:empty?).uniq
+                         search_terms = (Array(heading[:search_terms]) + [heading[:text],
+                                                                          heading[:appendix_label]]).compact.map do |s|
+                           s.to_s.strip
+                         end.reject(&:empty?).uniq
                          found_page = search_markers.call(search_terms, range[0], range[1])
                          found_page ||= search_markers.call(search_terms, range[0], total_pages)
                          unless found_page
-                           fallback_items << { chapter: bn, text: heading[:text], target_page: range[0], search_terms: search_terms }
+                           fallback_items << { chapter: bn, text: heading[:text], target_page: range[0],
+                                               search_terms: search_terms }
                            found_page = range[0]
                          end
                          found_page
@@ -413,7 +427,8 @@ module Vivlio
               number_display = heading[:number_display].to_s.strip
               if number_display.empty?
                 chapter_number = Common.get_chapter_number(bn)
-                number_display = "第#{chapter_number.to_i - 10}章" if chapter_number && chapter_number.to_i.between?(11, 89)
+                number_display = "第#{chapter_number.to_i - 10}章" if chapter_number && chapter_number.to_i.between?(11,
+                                                                                                                     89)
               end
               !number_display.to_s.empty? && !display_text.start_with?(number_display) ? "#{number_display} #{display_text}".strip : display_text
             else
@@ -429,7 +444,9 @@ module Vivlio
 
             return items if items.any? { |it| it[:chapter] == '_toc' }
 
-            insert_index = items.index { |it| chapter_order.index(it[:chapter])&.> chapter_order.index('_toc') } || items.length
+            insert_index = items.index do |it|
+              chapter_order.index(it[:chapter])&.> chapter_order.index('_toc')
+            end || items.length
             items.insert(insert_index, { level: 1, text: '目次', page: toc_page, chapter: '_toc', id: nil })
             items
           end
@@ -444,7 +461,11 @@ module Vivlio
           end
 
           def prepend_cover_item(items)
-            book_cfg = Common::CONFIG.fetch('book', {}) rescue {}
+            book_cfg = begin
+              Common::CONFIG.fetch('book', {})
+            rescue StandardError
+              {}
+            end
             main_title = book_cfg.fetch('main_title', '').to_s.strip
             fallback_title = book_cfg.fetch('title', '').to_s.strip
             cover_title = main_title.empty? ? fallback_title : main_title
@@ -463,20 +484,24 @@ module Vivlio
             if root[:First]
               existing_items = []
               root.each_item { |item, _| existing_items << item }
-              existing_items.each { |item| doc.delete(item) rescue nil }
+              existing_items.each do |item|
+                doc.delete(item)
+              rescue StandardError
+                nil
+              end
               root.delete(:First)
               root.delete(:Last)
               root.delete(:Count)
             end
 
             parents = { 1 => root }
-            items.each do |it|
-              lvl = [[it[:level].to_i, 1].max, max_level].min
+            items.each do |item|
+              lvl = item[:level].to_i.clamp(1, max_level)
               parents.keys.select { |k| k > lvl }.each { |k| parents.delete(k) }
               parent = parents[lvl] || parents[parents.keys.select { |k| k < lvl }.max] || root
               parents[lvl] = parent
-              page_obj = doc.pages[it[:page] - 1]
-              parent.add_item(it[:text], destination: [page_obj, :Fit]) do |node|
+              page_obj = doc.pages[item[:page] - 1]
+              parent.add_item(item[:text], destination: [page_obj, :Fit]) do |node|
                 parents.keys.select { |k| k > lvl }.each { |k| parents.delete(k) }
                 parents[lvl + 1] = node
               end

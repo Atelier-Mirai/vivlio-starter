@@ -279,9 +279,7 @@ module Vivlio
             # ImageMagick
             system('brew install imagemagick') if missing.include?('imagemagick')
 
-            if missing.include?('ssl-certificates')
-              install_ssl_certificates!
-            end
+            install_ssl_certificates! if missing.include?('ssl-certificates')
           rescue StandardError => e
             Common.log_warn("brew 実行でエラー: #{e}")
           end
@@ -330,9 +328,7 @@ module Vivlio
                  end
             still_missing << label unless ok
           end
-          if is_macos && !ssl_certificate_configured?
-            still_missing << 'ssl-certificates'
-          end
+          still_missing << 'ssl-certificates' if is_macos && !ssl_certificate_configured?
           if still_missing.empty?
             Common.echo_always('✅ すべてのツールがインストールされました')
           else
@@ -391,7 +387,10 @@ module Vivlio
           system('brew reinstall ca-certificates')
 
           openssl_prefix = capture_command('brew --prefix openssl@3').strip
-          openssl_prefix = File.join(capture_command('brew --prefix').strip, 'opt', 'openssl@3') if openssl_prefix.empty?
+          if openssl_prefix.empty?
+            openssl_prefix = File.join(capture_command('brew --prefix').strip, 'opt',
+                                       'openssl@3')
+          end
 
           cert_file = File.join(openssl_prefix, 'etc', 'openssl@3', 'cert.pem')
           cert_dir  = File.join(openssl_prefix, 'etc', 'openssl@3', 'certs')
@@ -561,7 +560,7 @@ module Vivlio
           os_family = detect_os_family(RbConfig::CONFIG['host_os'])
           paths = waifu2x_paths(os_family)
 
-          candidates = [ENV['WAIFU2X_BIN'],
+          candidates = [ENV.fetch('WAIFU2X_BIN', nil),
                         'waifu2x-ncnn-vulkan',
                         'waifu2x-ncnn-vulkan.exe']
 
@@ -724,7 +723,10 @@ module Vivlio
         end
 
         def extract_with_powershell(archive_path, destination)
-          ps = %(powershell -NoLogo -NoProfile -Command "Expand-Archive -Force -LiteralPath '#{archive_path.gsub("'", "''")}' -DestinationPath '#{destination.gsub("'", "''")}'")
+          ps = %(powershell -NoLogo -NoProfile -Command "Expand-Archive -Force -LiteralPath '#{archive_path.gsub("'",
+                                                                                                                 "''")}' -DestinationPath '#{destination.gsub(
+                                                                                                                   "'", "''"
+                                                                                                                 )}'")
           system(ps)
         rescue Errno::ENOENT
           Common.log_warn('PowerShell が見つかりません。手動で解凍してください。')
@@ -788,7 +790,7 @@ module Vivlio
         def file_executable?(path)
           return false unless File.exist?(path)
 
-          windows_platform? ? true : File.executable?(path)
+          windows_platform? || File.executable?(path)
         end
 
         def path_included?(dir)

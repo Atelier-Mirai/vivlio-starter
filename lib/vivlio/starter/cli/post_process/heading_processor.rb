@@ -54,65 +54,89 @@ module Vivlio
             paths = Array(html_paths).select { |p| File.exist?(p) }
             return if paths.empty?
 
-            max_l = [[max_level.to_i, 1].max, 6].min
+            max_l = max_level.to_i.clamp(1, 6)
             paths.each do |path|
-              html = File.read(path, encoding: 'utf-8')
-              doc  = if defined?(Nokogiri::HTML5)
-                       Nokogiri::HTML5.parse(html)
-                     else
-                       Nokogiri::HTML.parse(html, nil, 'UTF-8')
-                     end
-              modified = false
-              chapter_token = File.basename(path, File.extname(path)).to_s.strip
-              chapter_token = nil if chapter_token.empty?
-
-              (1..max_l).each do |lvl|
-                doc.css("h#{lvl}").each do |h|
-                  # 見出し要素自体に vs-h-marker クラスを付与
-                  classes = (h['class'] || '').split
-                  unless classes.include?('vs-h-marker')
-                    classes << 'vs-h-marker'
-                    h['class'] = classes.join(' ').strip
-                    modified = true
-                  end
-
-                  # 見出しテキストを data 属性として付与
-                  heading_text = extract_heading_core_text(h)
-                  if heading_text && !heading_text.empty?
-                    # data-heading（汎用）
-                    if h['data-heading'] != heading_text
-                      h['data-heading'] = heading_text
-                      modified = true
-                    end
-                    # data-h{level}（レベル別）
-                    lvl_key = "data-h#{lvl}"
-                    if h[lvl_key] != heading_text
-                      h[lvl_key] = heading_text
-                      modified = true
-                    end
-
-                    # h1の場合、idも設定
-                    if lvl == 1 && h['id'].to_s.strip.empty?
-                      h['id'] = heading_text
-                      modified = true
-                    end
-                  end
-
-                  # 章トークンを付与
-                  if chapter_token && h['data-chapter'] != chapter_token
-                    h['data-chapter'] = chapter_token
-                    modified = true
-                  end
-                end
-              end
-
-              if modified
-                out = doc.respond_to?(:to_html) ? doc.to_html : doc.to_s
-                File.write(path, out, encoding: 'utf-8')
-              end
+              process_heading_markers_for_file(path, max_l)
             rescue StandardError => e
               Common.log_warn("見出しメタ付与に失敗: #{path} (#{e})")
             end
+          end
+
+          # 単一ファイルの見出しマーカー処理
+          def process_heading_markers_for_file(path, max_level)
+            html = File.read(path, encoding: 'utf-8')
+            doc = parse_html_document(html)
+            chapter_token = extract_chapter_token(path)
+
+            modified = false
+            (1..max_level).each do |lvl|
+              doc.css("h#{lvl}").each do |h|
+                modified |= apply_marker_to_heading(h, lvl, chapter_token)
+              end
+            end
+
+            save_html_document(path, doc) if modified
+          end
+
+          # 見出し要素にマーカーを適用
+          def apply_marker_to_heading(heading, level, chapter_token)
+            modified = add_marker_class(heading)
+            modified |= add_heading_data_attributes(heading, level)
+            modified |= add_chapter_token(heading, chapter_token)
+            modified
+          end
+
+          # vs-h-marker クラスを追加
+          def add_marker_class(heading)
+            classes = (heading['class'] || '').split
+            return false if classes.include?('vs-h-marker')
+
+            classes << 'vs-h-marker'
+            heading['class'] = classes.join(' ').strip
+            true
+          end
+
+          # 見出しテキストの data 属性を追加
+          def add_heading_data_attributes(heading, level)
+            text = extract_heading_core_text(heading)
+            return false if text.nil? || text.empty?
+
+            modified = false
+            modified |= set_attr_if_changed(heading, 'data-heading', text)
+            modified |= set_attr_if_changed(heading, "data-h#{level}", text)
+            modified |= set_h1_id(heading, text) if level == 1
+            modified
+          end
+
+          # 属性値が変わった場合のみ設定
+          def set_attr_if_changed(node, attr, value)
+            return false if node[attr] == value
+
+            node[attr] = value
+            true
+          end
+
+          # h1 に id を設定
+          def set_h1_id(heading, text)
+            return false unless heading['id'].to_s.strip.empty?
+
+            heading['id'] = text
+            true
+          end
+
+          # 章トークンを追加
+          def add_chapter_token(heading, chapter_token)
+            return false unless chapter_token
+            return false if heading['data-chapter'] == chapter_token
+
+            heading['data-chapter'] = chapter_token
+            true
+          end
+
+          # ファイルパスから章トークンを抽出
+          def extract_chapter_token(path)
+            token = File.basename(path, File.extname(path)).to_s.strip
+            token.empty? ? nil : token
           end
 
           # 見出し番号スパンを構築
@@ -121,151 +145,177 @@ module Vivlio
             return unless File.exist?(html_path)
 
             html = File.read(html_path, encoding: 'utf-8')
-            doc = if defined?(Nokogiri::HTML5)
-                    Nokogiri::HTML5.parse(html)
-                  else
-                    Nokogiri::HTML.parse(html, nil, 'UTF-8')
-                  end
+            doc = parse_html_document(html)
+            context = build_heading_context(html_path)
+            return unless context[:process_headings]
 
+            modified = process_h1_spans(doc, context)
+            modified |= process_h2_spans(doc, context)
+            modified |= process_h3_spans(doc)
+
+            save_html_document(html_path, doc) if modified
+          end
+
+          # 見出し処理のコンテキストを構築
+          def build_heading_context(html_path)
             file_type = Common.get_file_type(html_path)
             chapter_token = File.basename(html_path, File.extname(html_path))
-            chapter_number = Common.get_chapter_number(chapter_token)
-            chapter_number_i = chapter_number&.to_i
+            chapter_number_i = Common.get_chapter_number(chapter_token)&.to_i
 
-            chapter_display_number = resolve_main_chapter_display_number(chapter_token, chapter_number_i)
-            appendix_letter = nil
+            {
+              file_type: file_type,
+              chapter_display_number: resolve_main_chapter_display_number(chapter_token, chapter_number_i),
+              appendix_letter: chapter_number_i&.between?(91, 97) ? Common.appendix_number_to_letter(chapter_number_i)&.upcase : nil,
+              process_headings: %w[chapter appendix].include?(file_type)
+            }
+          end
 
-            if chapter_number_i&.between?(91, 97)
-              appendix_letter = Common.appendix_number_to_letter(chapter_number_i)&.upcase
-            end
+          # h1 のスパン処理
+          def process_h1_spans(doc, context)
+            h1 = doc.at_css('h1')
+            return false unless h1
 
-            process_h1 = %w[chapter appendix].include?(file_type)
-            process_h2 = %w[chapter appendix].include?(file_type)
-            process_h3 = %w[chapter appendix].include?(file_type)
+            title_text = extract_heading_core_text(h1)
+            number_text = build_h1_number_text(context)
+            modified = rebuild_heading_with_spans(h1, number_text, title_text, :chapter, doc)
+            update_h1_data_attributes(h1, number_text, title_text)
+            modified
+          end
 
+          # h1 の番号テキストを構築
+          def build_h1_number_text(context)
+            return "付録 #{context[:appendix_letter]}" if context[:file_type] == 'appendix' && context[:appendix_letter]
+            return "第#{context[:chapter_display_number]}章" if context[:chapter_display_number]
+
+            nil
+          end
+
+          # h1 の data 属性を更新
+          def update_h1_data_attributes(h1, number_text, title_text)
+            number_text ? h1['data-chapter-number-display'] = number_text : h1.delete('data-chapter-number-display')
+            title_text ? h1['data-chapter-title'] = title_text : h1.delete('data-chapter-title')
+          end
+
+          # h2 のスパン処理
+          def process_h2_spans(doc, context)
             modified = false
-
-            # h1 の処理
-            if process_h1 && (h1 = doc.at_css('h1'))
-              title_text = extract_heading_core_text(h1)
-              number_text = if file_type == 'appendix'
-                              appendix_letter ? "付録 #{appendix_letter}" : nil
-                            elsif chapter_display_number
-                              "第#{chapter_display_number}章"
-                            end
-              modified |= rebuild_heading_with_spans(h1, number_text, title_text, :chapter, doc)
-              if number_text
-                h1['data-chapter-number-display'] = number_text
-              else
-                h1.delete('data-chapter-number-display')
-              end
-              if title_text
-                h1['data-chapter-title'] = title_text
-              else
-                h1.delete('data-chapter-title')
-              end
+            doc.css('h2').each_with_index do |h2, idx|
+              section_index = idx + 1
+              title_text = extract_heading_core_text(h2)
+              number_text = build_h2_number_text(context, section_index)
+              modified |= rebuild_heading_with_spans(h2, number_text, title_text, :section, doc)
+              h2['data-section-number-display'] = number_text if number_text
+              h2['data-section-title'] = title_text if title_text
             end
+            modified
+          end
 
-            # h2 の処理
-            if process_h2
-              section_index = 0
-              doc.css('h2').each do |h2|
-                section_index += 1
-                title_text = extract_heading_core_text(h2)
-                number_text = if file_type == 'appendix'
-                                appendix_letter ? "#{appendix_letter}-#{section_index}" : section_index.to_s
-                              elsif chapter_display_number
-                                "#{chapter_display_number}-#{section_index}"
-                              else
-                                section_index.to_s
-                              end
-                modified |= rebuild_heading_with_spans(h2, number_text, title_text, :section, doc)
-                h2['data-section-number-display'] = number_text if number_text
-                h2['data-section-title'] = title_text if title_text
-              end
+          # h2 の番号テキストを構築
+          def build_h2_number_text(context, section_index)
+            if context[:file_type] == 'appendix'
+              context[:appendix_letter] ? "#{context[:appendix_letter]}-#{section_index}" : section_index.to_s
+            elsif context[:chapter_display_number]
+              "#{context[:chapter_display_number]}-#{section_index}"
+            else
+              section_index.to_s
             end
+          end
 
-            # h3 の処理
-            if process_h3
-              marker = Common::CONFIG.dig('theme', 'markers', 'h3') || '♣'
-              doc.css('h3').each do |h3|
-                title_text = extract_heading_core_text(h3)
-                modified |= rebuild_heading_with_spans(h3, marker, title_text, :subsection, doc)
-                h3['data-subsection-title'] = title_text if title_text
-              end
+          # h3 のスパン処理
+          def process_h3_spans(doc)
+            marker = Common::CONFIG.dig('theme', 'markers', 'h3') || '♣'
+            modified = false
+            doc.css('h3').each do |h3|
+              title_text = extract_heading_core_text(h3)
+              modified |= rebuild_heading_with_spans(h3, marker, title_text, :subsection, doc)
+              h3['data-subsection-title'] = title_text if title_text
             end
+            modified
+          end
 
-            return unless modified
+          # HTMLドキュメントをパース
+          def parse_html_document(html)
+            if defined?(Nokogiri::HTML5)
+              Nokogiri::HTML5.parse(html)
+            else
+              Nokogiri::HTML.parse(html, nil, 'UTF-8')
+            end
+          end
 
+          # HTMLドキュメントを保存
+          def save_html_document(path, doc)
             out = doc.respond_to?(:to_html) ? doc.to_html : doc.to_s
-            File.write(html_path, out, encoding: 'utf-8')
+            File.write(path, out, encoding: 'utf-8')
           end
 
           # 見出しを番号スパンとタイトルスパンで再構築
-          # @param node [Nokogiri::XML::Element] 見出し要素
-          # @param number_text [String] 番号テキスト
-          # @param title_text [String] タイトルテキスト
-          # @param kind [Symbol] 見出しの種類（:chapter, :section, :subsection）
-          # @param doc [Nokogiri::HTML::Document] ドキュメント
-          # @return [Boolean] 変更があったかどうか
           def rebuild_heading_with_spans(node, number_text, title_text, kind, doc)
             number_text = number_text.to_s.strip
             title_text = title_text.to_s.strip
+            number_class, title_class = heading_span_classes(kind)
 
-            number_class, title_class = case kind
-                                        when :chapter then %w[chapter-number chapter-title]
-                                        when :section then %w[section-number section-title]
-                                        when :subsection then %w[subsection-marker subsection-title]
-                                        else [nil, nil]
-                                        end
+            return false unless needs_heading_update?(node, number_text, title_text, number_class, title_class)
 
-            current_number_span = number_class ? node.at_css("span.#{number_class}") : nil
-            current_title_span  = title_class ? node.at_css("span.#{title_class}") : nil
-
-            current_number = current_number_span&.text&.strip
-            current_title  = current_title_span&.text&.strip
-            current_title ||= extract_heading_core_text(current_title_span || node)
-
-            needs_update = false
-            needs_update ||= (number_text.empty? ? !current_number.to_s.empty? : current_number != number_text)
-            needs_update ||= (current_title != title_text)
-
-            return false unless needs_update
-
-            # タイトルの元ノードを保存
-            original_title_nodes = if current_title_span
-                                     current_title_span.children.map(&:dup)
-                                   else
-                                     node.children.reject do |child|
-                                       number_class && child.element? && child['class'].to_s.split.include?(number_class)
-                                     end.map(&:dup)
-                                   end
-
+            original_title_nodes = extract_original_title_nodes(node, number_class, title_class)
             node.children.remove
+            add_number_span(node, number_class, number_text, doc)
+            add_title_span(node, title_class, title_text, original_title_nodes, doc)
+            true
+          end
 
-            # 番号スパンを追加
-            if number_class && !number_text.empty?
-              span = Nokogiri::XML::Node.new('span', doc)
-              span['class'] = number_class
-              span.content = number_text
-              node.add_child(span)
+          # 見出し種別に応じたクラス名を取得
+          def heading_span_classes(kind)
+            case kind
+            when :chapter then %w[chapter-number chapter-title]
+            when :section then %w[section-number section-title]
+            when :subsection then %w[subsection-marker subsection-title]
+            else [nil, nil]
             end
+          end
 
-            # タイトルスパンを追加
+          # 見出しの更新が必要か判定
+          def needs_heading_update?(node, number_text, title_text, number_class, title_class)
+            current_number = number_class ? node.at_css("span.#{number_class}")&.text&.strip : nil
+            current_title_span = title_class ? node.at_css("span.#{title_class}") : nil
+            current_title = current_title_span&.text&.strip || extract_heading_core_text(current_title_span || node)
+
+            number_changed = number_text.empty? ? !current_number.to_s.empty? : current_number != number_text
+            title_changed = current_title != title_text
+            number_changed || title_changed
+          end
+
+          # 元のタイトルノードを抽出
+          def extract_original_title_nodes(node, number_class, title_class)
+            title_span = title_class ? node.at_css("span.#{title_class}") : nil
+            if title_span
+              title_span.children.map(&:dup)
+            else
+              node.children.reject do |child|
+                number_class && child.element? && child['class'].to_s.split.include?(number_class)
+              end.map(&:dup)
+            end
+          end
+
+          # 番号スパンを追加
+          def add_number_span(node, number_class, number_text, doc)
+            return unless number_class && !number_text.empty?
+
+            span = Nokogiri::XML::Node.new('span', doc)
+            span['class'] = number_class
+            span.content = number_text
+            node.add_child(span)
+          end
+
+          # タイトルスパンを追加
+          def add_title_span(node, title_class, title_text, original_nodes, doc)
             if title_class
               span = Nokogiri::XML::Node.new('span', doc)
               span['class'] = title_class
-              if original_title_nodes.empty?
-                span.content = title_text
-              else
-                original_title_nodes.each { |child| span.add_child(child) }
-              end
+              original_nodes.empty? ? span.content = title_text : original_nodes.each { |c| span.add_child(c) }
               node.add_child(span)
-            else
-              node.add_child(Nokogiri::XML::Text.new(title_text, doc)) unless title_text.empty?
+            elsif !title_text.empty?
+              node.add_child(Nokogiri::XML::Text.new(title_text, doc))
             end
-
-            true
           end
 
           # 見出しのコアテキストを抽出
@@ -332,7 +382,7 @@ module Vivlio
 
             case cfg
             when nil
-              return nil
+              nil
             when String
               str = cfg.to_s
               return nil if str.strip.casecmp('all').zero?
@@ -341,6 +391,7 @@ module Vivlio
               if chapter_number_string?(str)
                 numbers = parse_chapter_numbers_from_string(str)
                 return tokens_from_chapter_numbers(numbers) if numbers && !numbers.empty?
+
                 return nil
               end
 
@@ -361,8 +412,6 @@ module Vivlio
 
               # それ以外はトークン配列として扱う
               normalize_and_filter_tokens(arr)
-            else
-              nil
             end
           end
 

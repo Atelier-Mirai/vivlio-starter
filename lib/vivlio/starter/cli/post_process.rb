@@ -256,9 +256,7 @@ module Vivlio
             pre = nil
             while node
               if node.element?
-                if node.name == 'pre'
-                  pre = node
-                end
+                pre = node if node.name == 'pre'
                 break
               end
               node = node.next_sibling
@@ -325,9 +323,9 @@ module Vivlio
               existing_style = container['style'].to_s
               # 既存の sideimage 用変数定義を一度取り除く
               cleaned_style = existing_style
-                               .gsub(/--sideimage-text-fr:[^;]+;?/, '')
-                               .gsub(/--sideimage-img-fr:[^;]+;?/, '')
-                               .strip
+                              .gsub(/--sideimage-text-fr:[^;]+;?/, '')
+                              .gsub(/--sideimage-img-fr:[^;]+;?/, '')
+                              .strip
 
               var_style = "--sideimage-text-fr: #{text_fr}fr; --sideimage-img-fr: #{img_fr}fr"
 
@@ -396,12 +394,10 @@ module Vivlio
               node.remove
               changed = true
             end
-          end
 
-          # sideimage-body 内のマークダウンリンクを <a> タグに変換
-          # [テキスト](URL) → <a href="URL">テキスト</a>
-          # 脚注参照 [^urlN] は一旦そのまま残す（後で process_sideimage_footnotes! で処理）
-          doc.css('div.sideimage-body').each do |body|
+            # sideimage-body 内のマークダウンリンクを <a> タグに変換
+            # [テキスト](URL) → <a href="URL">テキスト</a>
+            # 脚注参照 [^urlN] は一旦そのまま残す（後で process_sideimage_footnotes! で処理）
             body.traverse do |node|
               next unless node.text?
 
@@ -480,9 +476,9 @@ module Vivlio
             existing_style = container['style'].to_s
             # 既存の image-group 用変数定義を一度取り除く
             cleaned_style = existing_style
-                             .gsub(/--image-group-col1:[^;]+;?/, '')
-                             .gsub(/--image-group-col2:[^;]+;?/, '')
-                             .strip
+                            .gsub(/--image-group-col1:[^;]+;?/, '')
+                            .gsub(/--image-group-col2:[^;]+;?/, '')
+                            .strip
 
             var_style = "--image-group-col1: #{col1_fr}fr; --image-group-col2: #{col2_fr}fr"
 
@@ -582,9 +578,7 @@ module Vivlio
             next unless fn_num
 
             link = aside.at_css('a')
-            if link && link['href']
-              url_to_footnote[link['href']] = fn_num
-            end
+            url_to_footnote[link['href']] = fn_num if link && link['href']
           end
 
           return if url_to_footnote.empty?
@@ -626,7 +620,6 @@ module Vivlio
                   next_node.content = modified
                 end
 
-                changed = true
               else
                 # 対応する脚注が見つからない場合は参照を削除
                 cleaned = text.gsub(/\s*\[\^(?:url)?\d+\]/, '')
@@ -635,8 +628,8 @@ module Vivlio
                 else
                   next_node.content = cleaned
                 end
-                changed = true
               end
+              changed = true
             end
           end
 
@@ -700,7 +693,7 @@ module Vivlio
           footnote_refs.each_with_index do |ref, idx|
             new_number = idx + 1
             old_href = ref['href']
-            old_fn_id = old_href.sub('#', '')
+            old_href.sub('#', '')
 
             # href と id を更新
             ref['href'] = "#fn#{new_number}"
@@ -727,16 +720,12 @@ module Vivlio
 
             # span.page-footnote-inline
             inline = doc.at_css("span##{old_fn_id}")
-            if inline
-              inline['id'] = "fn#{new_number}"
-            end
+            inline['id'] = "fn#{new_number}" if inline
 
             # fnref も更新
             old_fnref_id = old_fn_id.sub('fn', 'fnref')
             fnref = doc.at_css("a##{old_fnref_id}")
-            if fnref
-              fnref['id'] = "fnref#{new_number}"
-            end
+            fnref['id'] = "fnref#{new_number}" if fnref
           end
 
           # 不要になった footnote-anchor 要素を削除

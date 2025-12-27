@@ -2,18 +2,18 @@
 
 - 対象ディレクトリ: `lib/vivlio/starter/`
 - 実行コマンド: `bundle exec rubocop --parallel --format json lib/vivlio/starter/`
-- 集計日時: 2025-12-27 18:55 (UTC+09:00)
-- 総違反件数: **805件**（前回 1,008件 → 203件減少）
+- 集計日時: 2025-12-27 20:00 (UTC+09:00)
+- 総違反件数: **722件**（前回 805件 → 83件減少）
 
 ## 残存違反一覧
 
 | ファイル | 件数 | 主な違反内容 |
 | --- | --- | --- |
-| `lib/vivlio/starter/cli/build/outline_extractor.rb` | 83 | Metrics/AbcSize: 14件, Style/ComparableClamp: 14件, Metrics/CyclomaticComplexity: 12件 |
-| `lib/vivlio/starter/cli/post_process.rb` | 56 | Metrics/AbcSize: 9件, Metrics/CyclomaticComplexity: 8件, Metrics/PerceivedComplexity: 8件 |
-| `lib/vivlio/starter/cli/pre_process/frontmatter_generator.rb` | 35 | Layout/LineLength: 12件, Metrics/AbcSize: 6件, Metrics/MethodLength: 3件 |
-| `lib/vivlio/starter/cli/doctor.rb` | 32 | Metrics/AbcSize: 7件, Layout/LineLength: 5件, Metrics/CyclomaticComplexity: 4件 |
-| `lib/vivlio/starter/cli/post_process/heading_processor.rb` | 31 | Metrics/CyclomaticComplexity: 7件, Metrics/AbcSize: 5件, Metrics/PerceivedComplexity: 5件 |
+| `lib/vivlio/starter/cli/build/outline_extractor.rb` | 55 | Metrics/AbcSize: 11件, Metrics/CyclomaticComplexity: 10件, Metrics/PerceivedComplexity: 9件 |
+| `lib/vivlio/starter/cli/post_process.rb` | 43 | Metrics/AbcSize: 9件, Metrics/CyclomaticComplexity: 8件, Metrics/PerceivedComplexity: 8件 |
+| `lib/vivlio/starter/cli/doctor.rb` | 27 | Metrics/AbcSize: 6件, Metrics/CyclomaticComplexity: 5件, Metrics/PerceivedComplexity: 4件 |
+| `lib/vivlio/starter/cli/post_process/heading_processor.rb` | 21 | Metrics/CyclomaticComplexity: 6件, Naming/PredicateMethod: 5件, Metrics/PerceivedComplexity: 4件 |
+| `lib/vivlio/starter/cli/pre_process/frontmatter_generator.rb` | 8 | Metrics/AbcSize: 3件, Layout/LineLength: 2件, Metrics/ModuleLength: 1件 |
 | `lib/vivlio/starter/cli/build/pdf_builder.rb` | 31 | Layout/LineLength: 8件, Metrics/AbcSize: 5件, Metrics/CyclomaticComplexity: 4件 |
 | `lib/vivlio/starter/cli/pre_process/image_generator.rb` | 27 | Metrics/AbcSize: 5件, Layout/LineLength: 5件, Metrics/MethodLength: 3件 |
 | `lib/vivlio/starter/cli/pre_process/theme_image_resolver.rb` | 27 | Metrics/AbcSize: 5件, Metrics/CyclomaticComplexity: 5件, Layout/LineLength: 5件 |
