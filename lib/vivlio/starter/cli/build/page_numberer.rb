@@ -31,7 +31,7 @@ module Vivlio
           module_function
 
           # 指定PDFの全ページ下部にローマ小を描画（紙面上オーバーレイ）
-          def overlay_roman_page_numbers!(pdf_path, options = {})
+          def overlay_roman_page_numbers!(pdf_path, _options = {})
             return false unless File.exist?(pdf_path)
 
             cfg = Common::CONFIG || {}
@@ -86,7 +86,9 @@ module Vivlio
                 canvas.fill_color(*folio_color)
               end
 
-              x = calculate_folio_x_position(placement, i, media_box, folio_size, text, margin_inner_mm, margin_outer_mm, mm)
+              x = calculate_folio_x_position(
+                placement, i, media_box, folio_size, text, margin_inner_mm, margin_outer_mm, mm
+              )
               canvas.text(text, at: [x, y])
             end
 
@@ -99,17 +101,17 @@ module Vivlio
           end
 
           # ノンブルのX座標計算
-          def calculate_folio_x_position(placement, page_index, media_box, folio_size, text, margin_inner_mm, margin_outer_mm, mm)
+          def calculate_folio_x_position(placement, page_index, media_box, folio_size, text, margin_inner_mm, margin_outer_mm, mm_unit) # rubocop:disable Metrics/ParameterLists
             case placement
             when 'center'
               est_char_width = folio_size * 0.45
               text_width = text.length * est_char_width
               if (page_index + 1).odd?
-                text_area_left = media_box.left + (margin_inner_mm * mm)
-                text_area_right = media_box.right - (margin_outer_mm * mm)
+                text_area_left = media_box.left + (margin_inner_mm * mm_unit)
+                text_area_right = media_box.right - (margin_outer_mm * mm_unit)
               else
-                text_area_left = media_box.left + (margin_outer_mm * mm)
-                text_area_right = media_box.right - (margin_inner_mm * mm)
+                text_area_left = media_box.left + (margin_outer_mm * mm_unit)
+                text_area_right = media_box.right - (margin_inner_mm * mm_unit)
               end
               text_area_center = text_area_left + ((text_area_right - text_area_left) / 2.0)
               text_area_center - (text_width / 2.0)
@@ -117,10 +119,10 @@ module Vivlio
               if (page_index + 1).odd?
                 est_char_width = folio_size * 0.3
                 text_width = text.length * est_char_width
-                text_area_right = media_box.right - (margin_outer_mm * mm)
+                text_area_right = media_box.right - (margin_outer_mm * mm_unit)
                 text_area_right - text_width
               else
-                media_box.left + (margin_outer_mm * mm)
+                media_box.left + (margin_outer_mm * mm_unit)
               end
             end
           end

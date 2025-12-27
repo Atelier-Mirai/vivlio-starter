@@ -111,7 +111,8 @@ module Vivlio
           #
           # また、</small> の後に空白のみの行がある場合も真の空行に置換する
           def normalize_html_block_boundaries!
-            html_closing_tags = %w[small div span p blockquote pre table ul ol li dl dt dd figure figcaption aside article section header footer nav main]
+            html_closing_tags = %w[small div span p blockquote pre table ul ol li dl dt dd
+                                   figure figcaption aside article section header footer nav main]
             closing_tag_pattern = %r{</\s*(#{html_closing_tags.join('|')})\s*>}
 
             # コードブロック内では変換しない
@@ -152,9 +153,9 @@ module Vivlio
 
               # HTML 閉じタグの直後に Markdown 見出し(#)や段落が続く場合、空行を挿入
               # 例: </small>## 見出し → </small>\n\n## 見出し
-              if line.match?(%r{#{closing_tag_pattern}\s*(#|\*|-)})
+              if line.match?(/#{closing_tag_pattern}\s*(#|\*|-)/)
                 # 閉じタグ部分と Markdown 部分を分離
-                modified = line.gsub(%r{(#{closing_tag_pattern})\s*(#|\*|-)}) do
+                modified = line.gsub(/(#{closing_tag_pattern})\s*(#|\*|-)/) do
                   "#{::Regexp.last_match(1)}\n\n#{::Regexp.last_match(3)}"
                 end
                 out << modified
@@ -190,11 +191,11 @@ module Vivlio
                 next
               end
 
-              if in_code_block
-                out << line
-              else
-                out << MarkdownTransformer.escape_inline_code_html(line)
-              end
+              out << if in_code_block
+                       line
+                     else
+                       MarkdownTransformer.escape_inline_code_html(line)
+                     end
             end
 
             context.content = out.join
@@ -298,14 +299,14 @@ module Vivlio
 
             # 脚注定義の直前に非表示の参照を追加
             # これにより VFM が脚注定義を認識して <aside> を生成する
-            hidden_refs = container_footnotes.uniq.map { |id| "[^#{id}]" }.join('')
+            hidden_refs = container_footnotes.uniq.map { |id| "[^#{id}]" }.join
             hidden_span = "<span class=\"footnote-anchor\" style=\"display:none\">#{hidden_refs}</span>\n\n"
 
             # 最初の脚注定義の直前に挿入
-            if context.content.match?(/^\[\^url\d+\]:/m)
-              context.content = context.content.sub(/^(\[\^url\d+\]:)/m, "#{hidden_span}\\1")
-              Common.log_success("コンテナ内脚注参照を露出しました（#{container_footnotes.uniq.size}件）")
-            end
+            return unless context.content.match?(/^\[\^url\d+\]:/m)
+
+            context.content = context.content.sub(/^(\[\^url\d+\]:)/m, "#{hidden_span}\\1")
+            Common.log_success("コンテナ内脚注参照を露出しました（#{container_footnotes.uniq.size}件）")
           end
 
           # 加工済みコンテンツを書き戻す

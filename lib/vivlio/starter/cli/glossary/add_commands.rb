@@ -37,7 +37,7 @@ module Vivlio
           term = collect_term_metadata(input)
           ensure_term_presence(term)
 
-          term[:first_full_form] = ask_first_full_form(term)
+          term[:first_full_form] = first_full_form?(term)
           term[:aliases] = ask_aliases(term[:abbr])
           term[:style] = ask_style(term)
           term[:description_lines] = ask_description_lines
@@ -90,7 +90,7 @@ module Vivlio
         end
 
         # 初出表記を「正式名（略称）」にするかユーザーへ確認する
-        def ask_first_full_form(term)
+        def first_full_form?(term)
           print "初出は『#{term[:name]}（#{term[:abbr]}）』にしますか？ [Y/n]: "
           ans = $stdin.gets&.strip
           ans.nil? || ans.empty? || ans.match?(/\A[yY]\z/)
@@ -171,7 +171,7 @@ module Vivlio
         # 既存エントリの有無に応じて更新処理または競合検証を行う
         def handle_existing_entry(glossary_path, glossary, term)
           existing = find_existing_term(glossary, term)
-          return :updated if existing && replace_existing_entry(glossary_path, term, existing)
+          return :updated if existing && replace_existing_entry?(glossary_path, term, existing)
 
           abort_if_conflict(glossary, term)
         end
@@ -184,7 +184,7 @@ module Vivlio
         end
 
         # 既存エントリを更新するか確認し、承認された場合は書き換える
-        def replace_existing_entry(glossary_path, term, target)
+        def replace_existing_entry?(glossary_path, term, target)
           preview_existing_entry(term, target)
           print 'このエントリを更新しますか？ [Y/n]: '
           ans = $stdin.gets&.strip

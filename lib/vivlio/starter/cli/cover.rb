@@ -50,7 +50,7 @@ module Vivlio
         # コマンド実装
         # ================================================================
 
-        def execute_generate(context = nil)
+        def execute_generate(_context = nil)
           Common.log_info '📚 カバー画像の一括生成を開始します'
 
           # 設定読み込み
@@ -99,7 +99,7 @@ module Vivlio
         end
         module_function :execute_generate
 
-        def execute_a4(context = nil)
+        def execute_a4(_context = nil)
           Common.log_info '📚 A4サイズのRGB版PDFを生成します'
           config = Common.load_config
           covers_dir = config.dig('directories', 'covers') || 'covers'
@@ -114,7 +114,7 @@ module Vivlio
         end
         module_function :execute_a4
 
-        def execute_b5(context = nil)
+        def execute_b5(_context = nil)
           Common.log_info '📚 B5サイズのCMYK版PDF/X-1aを生成します'
           config = Common.load_config
           covers_dir = config.dig('directories', 'covers') || 'covers'
@@ -129,7 +129,7 @@ module Vivlio
         end
         module_function :execute_b5
 
-        def execute_a5(context = nil)
+        def execute_a5(_context = nil)
           Common.log_info '📚 A5サイズのCMYK版PDF/X-1aを生成します'
           config = Common.load_config
           covers_dir = config.dig('directories', 'covers') || 'covers'
@@ -144,7 +144,7 @@ module Vivlio
         end
         module_function :execute_a5
 
-        def execute_epub(context = nil)
+        def execute_epub(_context = nil)
           Common.log_info '📚 EPUB用JPEGを生成します'
           config = Common.load_config
           covers_dir = config.dig('directories', 'covers') || 'covers'
@@ -172,7 +172,7 @@ module Vivlio
           when /^a4/i
             :a4
           else
-            :b5  # デフォルト
+            :b5 # デフォルト
           end
         end
 
@@ -204,13 +204,13 @@ module Vivlio
             )
           end
 
-          if back_output
-            CoverCommands.generate_rgb_pdf_single(
-              File.join(covers_dir, BACKCOVER_MASTER),
-              File.join(covers_dir, back_output),
-              size
-            )
-          end
+          return unless back_output
+
+          CoverCommands.generate_rgb_pdf_single(
+            File.join(covers_dir, BACKCOVER_MASTER),
+            File.join(covers_dir, back_output),
+            size
+          )
         end
 
         # RGB版PDF生成（単一ファイル）
@@ -234,9 +234,7 @@ module Vivlio
             output_pdf
           ]
 
-          unless system(*cmd, out: File::NULL, err: File::NULL)
-            Common.log_error "  失敗: #{File.basename(output_pdf)}"
-          end
+          Common.log_error "  失敗: #{File.basename(output_pdf)}" unless system(*cmd, out: File::NULL, err: File::NULL)
         end
 
         # CMYK版PDF/X-1a生成
@@ -253,13 +251,13 @@ module Vivlio
             )
           end
 
-          if back_output
-            CoverCommands.generate_pdfx_single(
-              File.join(covers_dir, BACKCOVER_MASTER),
-              File.join(covers_dir, back_output),
-              size
-            )
-          end
+          return unless back_output
+
+          CoverCommands.generate_pdfx_single(
+            File.join(covers_dir, BACKCOVER_MASTER),
+            File.join(covers_dir, back_output),
+            size
+          )
         end
 
         # PDF/X-1a生成（単一ファイル）
@@ -309,7 +307,7 @@ module Vivlio
               Common.log_error "  失敗（PDF/X-1a変換）: #{File.basename(output_pdf)}"
             end
           ensure
-            File.delete(temp_pdf) if File.exist?(temp_pdf)
+            FileUtils.rm_f(temp_pdf)
           end
         end
 
@@ -339,14 +337,14 @@ module Vivlio
             output_jpg
           ]
 
-          unless system(*cmd, out: File::NULL, err: File::NULL)
-            Common.log_error "  失敗: #{File.basename(output_jpg)}"
-          end
+          Common.log_error "  失敗: #{File.basename(output_jpg)}" unless system(*cmd, out: File::NULL, err: File::NULL)
         end
 
         def self.imagemagick_convert_command
-          return ['magick', 'convert'] if find_executable('magick')
+          return %w[magick convert] if find_executable('magick')
+
           return ['convert'] if find_executable('convert')
+
           nil
         end
 

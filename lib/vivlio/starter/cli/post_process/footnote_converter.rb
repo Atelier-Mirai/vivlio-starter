@@ -113,17 +113,17 @@ module Vivlio
             if para
               insertion_point = find_last_print_footnote_sibling(para)
               insertion_point.add_next_sibling(aside)
-              aside.add_next_sibling("\n")
             else
               anchor.add_next_sibling(aside)
-              aside.add_next_sibling("\n")
             end
+            aside.add_next_sibling("\n")
           end
 
           def find_last_print_footnote_sibling(node)
             current = node
             while (sibling = current.next_sibling)
               break unless print_footnote_related_node?(sibling)
+
               current = sibling
             end
             current

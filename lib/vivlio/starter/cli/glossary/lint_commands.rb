@@ -25,6 +25,7 @@ module Vivlio
       # 用語集に基づく表記揺れ検出コマンド
       module GlossaryLintCommands
         extend GlossarySharedHelpers
+
         module_function
 
         GLOSSARY_PATH_DISPLAY = GlossarySharedHelpers::GLOSSARY_DISPLAY_PATH

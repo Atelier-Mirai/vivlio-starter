@@ -70,7 +70,7 @@ module Vivlio
 
               entries.each do |entry|
                 entry_value = format('(%.2fs)', entry[:duration])
-                extra_spaces = entry[:duration] >= 100 ? 0 : (entry[:duration] >= 10 ? 1 : 2)
+                extra_spaces = calculate_extra_spaces(entry[:duration])
                 target_index = value_start_idx + extra_spaces
                 label_segment = format("%-#{label_width}s", sub_label)
                 base_prefix = "#{indent}#{label_segment} "
@@ -97,7 +97,8 @@ module Vivlio
                           when 3 then 'H3'
                           else "H#{item[:level]}"
                           end
-              Common.echo_always format('  %s / [%s] %s -> page %d', item[:chapter], level_tag, item[:text], item[:page])
+              Common.echo_always format('  %<ch>s / [%<tag>s] %<txt>s -> page %<pg>d',
+                                        ch: item[:chapter], tag: level_tag, txt: item[:text], pg: item[:page])
             end
 
             chapter_ranges = outline_info[:chapter_ranges] || {}
@@ -110,8 +111,16 @@ module Vivlio
               rng = chapter_ranges[bn]
               next unless rng
 
-              Common.echo_always format('  %s %s %s', bn, rng[0] || '-', rng[1] || '-')
+              Common.echo_always format('  %<bn>s %<s>s %<e>s', bn: bn, s: rng[0] || '-', e: rng[1] || '-')
             end
+          end
+
+          # 余白計算ヘルパー
+          def calculate_extra_spaces(duration)
+            return 0 if duration >= 100
+            return 1 if duration >= 10
+
+            2
           end
 
           # timings_summary.md にビルドタイミングを記録する
