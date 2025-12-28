@@ -1,0 +1,3415 @@
+---
+generated_at: '2025-12-28T18:48:11+09:00'
+threshold: 50
+total_candidates: 336
+candidates:
+- term: Step
+  yomi: Step
+  score: 13256.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "（本文PDF/最終PDF）。読者のナビゲーション向上のため、Step 7/10 後段で HexaPDF により後付け。 - <s"
+  - :chapter: CHANGELOG
+    :context: "（本文PDF/最終PDF）。読者のナビゲーション向上のため、Step 7/10 後段で HexaPDF により後付け。 - <s"
+  - :chapter: CHANGELOG
+    :context: "（本文PDF/最終PDF）。読者のナビゲーション向上のため、Step 7/10 後段で HexaPDF により後付け。 - <s"
+  enabled: true
+- term: PDF
+  yomi: PDF
+  score: 2557.8
+  contexts:
+  - :chapter: CHANGELOG
+    :context: data-yomi="High">High</span> PDF に章アウトライン（ブックマーク）を付与（本文PDF/最終P
+  - :chapter: CHANGELOG
+    :context: data-yomi="High">High</span> PDF に章アウトライン（ブックマーク）を付与（本文PDF/最終P
+  - :chapter: CHANGELOG
+    :context: data-yomi="High">High</span> PDF に章アウトライン（ブックマーク）を付与（本文PDF/最終P
+  enabled: true
+- term: Timings
+  yomi: Timings
+  score: 1816.3
+  contexts:
+  - :chapter: timings_summary
+    :context: "## Build Step Timings (2025-12-28T18:45:57+09:00)"
+  - :chapter: timings_summary
+    :context: "## Build Step Timings (2025-12-28T18:45:57+09:00)"
+  - :chapter: timings_summary
+    :context: "## Build Step Timings (2025-12-28T18:45:57+09:00)"
+  enabled: true
+- term: CLI
+  yomi: CLI
+  score: 1677.3
+  contexts:
+  - :chapter: CHANGELOG
+    :context: High</span> RuboCop が全面的に通るよう CLI/ビルド系スクリプトを継続的にリファクタリング。 102 l
+  - :chapter: CHANGELOG
+    :context: High</span> RuboCop が全面的に通るよう CLI/ビルド系スクリプトを継続的にリファクタリング。 102 l
+  - :chapter: CHANGELOG
+    :context: High</span> RuboCop が全面的に通るよう CLI/ビルド系スクリプトを継続的にリファクタリング。 102 l
+  enabled: true
+- term: Build
+  yomi: Build
+  score: 1616.3
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'tps://prismjs.com/ - Download/Build: https://prismjs.com/download'
+  - :chapter: timings_summary
+    :context: "## Build Step Timings (2025-12-28T18:4"
+  - :chapter: timings_summary
+    :context: "## Build Step Timings (2025-12-28T18:4"
+  enabled: true
+- term: TOTAL
+  yomi: TOTAL
+  score: 1403.2
+  contexts:
+  - :chapter: timings_summary
+    :context: 0.28s = TOTAL
+  - :chapter: timings_summary
+    :context: 0.28s = TOTAL
+  - :chapter: timings_summary
+    :context: 0.28s = TOTAL
+  enabled: true
+- term: ビルド
+  yomi: ビルド
+  score: 1080.7
+  contexts:
+  - :chapter: CHANGELOG
+    :context: igh">High</dfn> 任意の複数章を指定して、フルビルドする - <span id="idx-6gmecrj6z7a
+  - :chapter: CHANGELOG
+    :context: igh">High</dfn> 任意の複数章を指定して、フルビルドする - <span id="idx-6gmecrj6z7a
+  - :chapter: CHANGELOG
+    :context: igh">High</dfn> 任意の複数章を指定して、フルビルドする - <span id="idx-6gmecrj6z7a
+  enabled: true
+- term: HTML
+  yomi: HTML
+  score: 1024.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '2025-12-25 ### Fixed - **前書きのHTMLブロック境界の正規化**: `pre_process` で'
+  - :chapter: CHANGELOG
+    :context: '2025-12-25 ### Fixed - **前書きのHTMLブロック境界の正規化**: `pre_process` で'
+  - :chapter: CHANGELOG
+    :context: '2025-12-25 ### Fixed - **前書きのHTMLブロック境界の正規化**: `pre_process` で'
+  enabled: true
+- term: ページ
+  yomi: ぺーじ
+  score: 956.2
+  contexts:
+  - :chapter: CHANGELOG
+    :context: -yomi="High">High</span> 奥付が偶数ページになるように - <span id="idx-kihwgu0
+  - :chapter: CHANGELOG
+    :context: -yomi="High">High</span> 奥付が偶数ページになるように - <span id="idx-kihwgu0
+  - :chapter: CHANGELOG
+    :context: -yomi="High">High</span> 奥付が偶数ページになるように - <span id="idx-kihwgu0
+  enabled: true
+- term: Medium
+  yomi: Medium
+  score: 880.7
+  contexts:
+  - :chapter: CHANGELOG
+    :context: class="index-term" data-yomi="Medium">Medium</dfn> 章・節に対する相互参照の整備（
+  - :chapter: CHANGELOG
+    :context: class="index-term" data-yomi="Medium">Medium</dfn> 章・節に対する相互参照の整備（
+  - :chapter: CHANGELOG
+    :context: class="index-term" data-yomi="Medium">Medium</dfn> 章・節に対する相互参照の整備（
+  enabled: true
+- term: コマンド
+  yomi: こまんど
+  score: 854.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: に自動切り替え - `vs index:scan` コマンドで手動マークアップをスキャン - `vs index
+  - :chapter: CHANGELOG
+    :context: に自動切り替え - `vs index:scan` コマンドで手動マークアップをスキャン - `vs index
+  - :chapter: CHANGELOG
+    :context: に自動切り替え - `vs index:scan` コマンドで手動マークアップをスキャン - `vs index
+  enabled: true
+- term: High
+  yomi: High
+  score: 825.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: class="index-term" data-yomi="High">High</dfn> 任意の複数章を指定して、フルビルド
+  - :chapter: CHANGELOG
+    :context: class="index-term" data-yomi="High">High</dfn> 任意の複数章を指定して、フルビルド
+  - :chapter: CHANGELOG
+    :context: class="index-term" data-yomi="High">High</dfn> 任意の複数章を指定して、フルビルド
+  enabled: true
+- term: CSS
+  yomi: CSS
+  score: 820.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 追加されたため、Markdown から生成される HTML/CSS の仕様差分がないかをビルド後に目視確認する。 - **Vi
+  - :chapter: CHANGELOG
+    :context: 追加されたため、Markdown から生成される HTML/CSS の仕様差分がないかをビルド後に目視確認する。 - **Vi
+  - :chapter: CHANGELOG
+    :context: 追加されたため、Markdown から生成される HTML/CSS の仕様差分がないかをビルド後に目視確認する。 - **Vi
+  enabled: true
+- term: Vivliostyle
+  yomi: Vivliostyle
+  score: 757.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '回帰検証を強化。 - **依存ツールの最新動向を確認**: Vivliostyle CLI v10.x では Puppeteer への移行、ブ'
+  - :chapter: CHANGELOG
+    :context: '回帰検証を強化。 - **依存ツールの最新動向を確認**: Vivliostyle CLI v10.x では Puppeteer への移行、ブ'
+  - :chapter: CHANGELOG
+    :context: '回帰検証を強化。 - **依存ツールの最新動向を確認**: Vivliostyle CLI v10.x では Puppeteer への移行、ブ'
+  enabled: true
+- term: ライセンス
+  yomi: らいせんす
+  score: 688.2
+  contexts:
+  - :chapter: CONTENT-LICENSE
+    :context: 'う必要があります: - 表示 (BY): 適切なクレジット、ライセンスへのリンク、変更があればその旨を表示する。 - 非営利 (N'
+  - :chapter: CONTENT-LICENSE
+    :context: 'う必要があります: - 表示 (BY): 適切なクレジット、ライセンスへのリンク、変更があればその旨を表示する。 - 非営利 (N'
+  - :chapter: CONTENT-LICENSE
+    :context: 'う必要があります: - 表示 (BY): 適切なクレジット、ライセンスへのリンク、変更があればその旨を表示する。 - 非営利 (N'
+  enabled: true
+- term: License
+  yomi: License
+  score: 667.6
+  contexts:
+  - :chapter: CONTENT-LICENSE
+    :context: "-ShareAlike 4.0 International License. - https://creativecommons.or"
+  - :chapter: CONTENT-LICENSE
+    :context: "-ShareAlike 4.0 International License. - https://creativecommons.or"
+  - :chapter: CONTENT-LICENSE
+    :context: "-ShareAlike 4.0 International License. - https://creativecommons.or"
+  enabled: true
+- term: Changed
+  yomi: Changed
+  score: 605.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'インストール ### Fixed - (なし) ### Changed - **RuboCop リファクタリングで違反を 1000'
+  - :chapter: CHANGELOG
+    :context: 'インストール ### Fixed - (なし) ### Changed - **RuboCop リファクタリングで違反を 1000'
+  - :chapter: CHANGELOG
+    :context: 'インストール ### Fixed - (なし) ### Changed - **RuboCop リファクタリングで違反を 1000'
+  enabled: true
+- term: LICENSE
+  yomi: LICENSE
+  score: 583.0
+  contexts:
+  - :chapter: CONTENT-LICENSE
+    :context: ます。ビルド用のソースコードには適用されません（コードは `LICENSE` を参照）。 - 本ライセンスは商用利用を許可しません。商
+  - :chapter: CONTENT-LICENSE
+    :context: ます。ビルド用のソースコードには適用されません（コードは `LICENSE` を参照）。 - 本ライセンスは商用利用を許可しません。商
+  - :chapter: README
+    :context: adge/License-MIT-blue.svg)](./LICENSE) 以下のライセンス文書を参照してください： - コード
+  enabled: true
+- term: プロジェクト
+  yomi: ぷろじぇくと
+  score: 581.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "# 変更履歴（Changelog） このファイルには、本プロジェクトの主な変更内容を記録します。 記法は「Keep a Cha"
+  - :chapter: CHANGELOG
+    :context: "# 変更履歴（Changelog） このファイルには、本プロジェクトの主な変更内容を記録します。 記法は「Keep a Cha"
+  - :chapter: CHANGELOG
+    :context: "# 変更履歴（Changelog） このファイルには、本プロジェクトの主な変更内容を記録します。 記法は「Keep a Cha"
+  enabled: true
+- term: Added
+  yomi: Added
+  score: 550.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '次回リリース候補の変更はここに追加してください） ### Added - **索引機能を実装（Phase 1〜3）**: 書籍の'
+  - :chapter: CHANGELOG
+    :context: '次回リリース候補の変更はここに追加してください） ### Added - **索引機能を実装（Phase 1〜3）**: 書籍の'
+  - :chapter: CHANGELOG
+    :context: '次回リリース候補の変更はここに追加してください） ### Added - **索引機能を実装（Phase 1〜3）**: 書籍の'
+  enabled: true
+- term: セクション
+  yomi: せくしょん
+  score: 532.9
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ">Low</span> text_metrics で見出し/セクション単位の分量バランスを可視化する #### 参照・索引・書誌"
+  - :chapter: CHANGELOG
+    :context: ">Low</span> text_metrics で見出し/セクション単位の分量バランスを可視化する #### 参照・索引・書誌"
+  - :chapter: CHANGELOG
+    :context: ">Low</span> text_metrics で見出し/セクション単位の分量バランスを可視化する #### 参照・索引・書誌"
+  enabled: true
+- term: OFL
+  yomi: OFL
+  score: 510.2
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'e: SIL Open Font License 1.1 (OFL-1.1) - Project: https://githu'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'e: SIL Open Font License 1.1 (OFL-1.1) - Project: https://githu'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'e: SIL Open Font License 1.1 (OFL-1.1) - Project: https://githu'
+  enabled: true
+- term: ファイル
+  yomi: ふぁいる
+  score: 507.3
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "# 変更履歴（Changelog） このファイルには、本プロジェクトの主な変更内容を記録します。 記法は「"
+  - :chapter: CHANGELOG
+    :context: "# 変更履歴（Changelog） このファイルには、本プロジェクトの主な変更内容を記録します。 記法は「"
+  - :chapter: CHANGELOG
+    :context: "# 変更履歴（Changelog） このファイルには、本プロジェクトの主な変更内容を記録します。 記法は「"
+  enabled: true
+- term: Vivlio
+  yomi: Vivlio
+  score: 445.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'igh</span> Re:View Starter -> Vivlio Starter ## <dfn id="idx-jwp4'
+  - :chapter: CHANGELOG
+    :context: 'igh</span> Re:View Starter -> Vivlio Starter ## <dfn id="idx-jwp4'
+  - :chapter: CHANGELOG
+    :context: 'igh</span> Re:View Starter -> Vivlio Starter ## <dfn id="idx-jwp4'
+  enabled: true
+- term: テスト
+  yomi: てすと
+  score: 434.9
+  contexts:
+  - :chapter: CHANGELOG
+    :context: mand 経由で一元管理するようにした。これに伴い CLI テスト群を Samovar 仕様へ更新し、新コマンド（`entri
+  - :chapter: CHANGELOG
+    :context: mand 経由で一元管理するようにした。これに伴い CLI テスト群を Samovar 仕様へ更新し、新コマンド（`entri
+  - :chapter: CHANGELOG
+    :context: mand 経由で一元管理するようにした。これに伴い CLI テスト群を Samovar 仕様へ更新し、新コマンド（`entri
+  enabled: true
+- term: オプション
+  yomi: おぷしょん
+  score: 433.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: Samovar が生成する usage 表示を採用し、共通オプション（`--verbose` 等）を RootCommand 経
+  - :chapter: CHANGELOG
+    :context: Samovar が生成する usage 表示を採用し、共通オプション（`--verbose` 等）を RootCommand 経
+  - :chapter: CHANGELOG
+    :context: Samovar が生成する usage 表示を採用し、共通オプション（`--verbose` 等）を RootCommand 経
+  enabled: true
+- term: Markdown
+  yomi: Markdown
+  score: 408.9
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "、`</small>` 直後の `## 対象読者` などが Markdown 見出しとして正しく解釈されるように修正。 - **side"
+  - :chapter: CHANGELOG
+    :context: "、`</small>` 直後の `## 対象読者` などが Markdown 見出しとして正しく解釈されるように修正。 - **side"
+  - :chapter: CHANGELOG
+    :context: "、`</small>` 直後の `## 対象読者` などが Markdown 見出しとして正しく解釈されるように修正。 - **side"
+  enabled: true
+- term: コード
+  yomi: こーど
+  score: 393.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '照する簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。 ### Pre-rel'
+  - :chapter: CHANGELOG
+    :context: '照する簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。 ### Pre-rel'
+  - :chapter: CHANGELOG
+    :context: '照する簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。 ### Pre-rel'
+  enabled: true
+- term: MIT
+  yomi: MIT
+  score: 390.5
+  contexts:
+  - :chapter: README
+    :context: 'es/by-nc-sa/4.0/) [![License: MIT](https://img.shields.io/badge'
+  - :chapter: README
+    :context: 'es/by-nc-sa/4.0/) [![License: MIT](https://img.shields.io/badge'
+  - :chapter: README
+    :context: 'es/by-nc-sa/4.0/) [![License: MIT](https://img.shields.io/badge'
+  enabled: true
+- term: Notes
+  yomi: Notes
+  score: 382.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '旧（missing/破損時）の自動支援を追加する。 ### Notes - Vivliostyle の PDF レンダリングの仕様'
+  - :chapter: CHANGELOG
+    :context: '旧（missing/破損時）の自動支援を追加する。 ### Notes - Vivliostyle の PDF レンダリングの仕様'
+  - :chapter: CHANGELOG
+    :context: '旧（missing/破損時）の自動支援を追加する。 ### Notes - Vivliostyle の PDF レンダリングの仕様'
+  enabled: true
+- term: README
+  yomi: README
+  score: 379.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'n> - 2025-10-27 ### Added - README 冒頭に Vivlio Starter ロゴとブランド要約を'
+  - :chapter: CHANGELOG
+    :context: 'n> - 2025-10-27 ### Added - README 冒頭に Vivlio Starter ロゴとブランド要約を'
+  - :chapter: CHANGELOG
+    :context: 'n> - 2025-10-27 ### Added - README 冒頭に Vivlio Starter ロゴとブランド要約を'
+  enabled: true
+- term: バージョン
+  yomi: ばーじょん
+  score: 378.9
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '視確認する。 - **Vivliostyle/VFM 依存のバージョンアップ**: `@vivliostyle/cli` を **'
+  - :chapter: CHANGELOG
+    :context: '視確認する。 - **Vivliostyle/VFM 依存のバージョンアップ**: `@vivliostyle/cli` を **'
+  - :chapter: CHANGELOG
+    :context: '視確認する。 - **Vivliostyle/VFM 依存のバージョンアップ**: `@vivliostyle/cli` を **'
+  enabled: true
+- term: ベース
+  yomi: べーす
+  score: 369.9
+  contexts:
+  - :chapter: CHANGELOG
+    :context: edium</dfn> 章・節に対する相互参照の整備（章番号ベースの cross reference）。本文中から「第◯章」「
+  - :chapter: CHANGELOG
+    :context: edium</dfn> 章・節に対する相互参照の整備（章番号ベースの cross reference）。本文中から「第◯章」「
+  - :chapter: CHANGELOG
+    :context: edium</dfn> 章・節に対する相互参照の整備（章番号ベースの cross reference）。本文中から「第◯章」「
+  enabled: true
+- term: book.yml
+  yomi: book.yml
+  score: 363.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: a-yomi="Medium">Medium</span> book.yml の chapters を、contents/と連動するよう
+  enabled: true
+- term: キャッシュ
+  yomi: きゃっしゅ
+  score: 352.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '2 / 2.35.0 へ更新。 - ビルドシステムを整理し、キャッシュ活用などで処理を簡素化・高速化。 ## <dfn id="'
+  - :chapter: CHANGELOG
+    :context: '2 / 2.35.0 へ更新。 - ビルドシステムを整理し、キャッシュ活用などで処理を簡素化・高速化。 ## <dfn id="'
+  - :chapter: CHANGELOG
+    :context: '2 / 2.35.0 へ更新。 - ビルドシステムを整理し、キャッシュ活用などで処理を簡素化・高速化。 ## <dfn id="'
+  enabled: true
+- term: VFM
+  yomi: VFM
+  score: 351.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: g-level verbose` など）を再確認する。また、VFM 2.5.0 では `figcaption` と画像の順序入
+  - :chapter: CHANGELOG
+    :context: g-level verbose` など）を再確認する。また、VFM 2.5.0 では `figcaption` と画像の順序入
+  - :chapter: CHANGELOG
+    :context: g-level verbose` など）を再確認する。また、VFM 2.5.0 では `figcaption` と画像の順序入
+  enabled: true
+- term: レベル
+  yomi: れべる
+  score: 331.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "`--log=debug`(3) - `--log`（レベル省略）は `--log=info` と同義です。 - 既"
+  - :chapter: CHANGELOG
+    :context: "`--log=debug`(3) - `--log`（レベル省略）は `--log=info` と同義です。 - 既"
+  - :chapter: README
+    :context: '# = vs open:pdf ``` ログ出力レベルを指定するには `--log<span id="idx-k8'
+  enabled: true
+- term: Atelier
+  yomi: Atelier
+  score: 330.2
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'ed</span>: https://github.com/Atelier-Mirai/vivlio-starter/compare/'
+  - :chapter: CHANGELOG
+    :context: 'ed</span>: https://github.com/Atelier-Mirai/vivlio-starter/compare/'
+  - :chapter: CHANGELOG
+    :context: 'ed</span>: https://github.com/Atelier-Mirai/vivlio-starter/compare/'
+  enabled: true
+- term: Mirai
+  yomi: Mirai
+  score: 330.2
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ">: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.9.0"
+  - :chapter: CHANGELOG
+    :context: ">: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.9.0"
+  - :chapter: CHANGELOG
+    :context: ">: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.9.0"
+  enabled: true
+- term: コメント
+  yomi: こめんと
+  score: 316.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'に並ぶように調整。 - **catalog.yml 更新時のコメント保持**: `CatalogUpdater` の保存処理を見'
+  - :chapter: CHANGELOG
+    :context: 'に並ぶように調整。 - **catalog.yml 更新時のコメント保持**: `CatalogUpdater` の保存処理を見'
+  - :chapter: CHANGELOG
+    :context: 'に並ぶように調整。 - **catalog.yml 更新時のコメント保持**: `CatalogUpdater` の保存処理を見'
+  enabled: true
+- term: レイアウト
+  yomi: れいあうと
+  score: 315.2
+  contexts:
+  - :chapter: CHANGELOG
+    :context: yomi="High">High</span> 縦に長い表のレイアウト崩れ - <span id="idx-kihwgu06ev1
+  - :chapter: CHANGELOG
+    :context: yomi="High">High</span> 縦に長い表のレイアウト崩れ - <span id="idx-kihwgu06ev1
+  - :chapter: CHANGELOG
+    :context: yomi="High">High</span> 縦に長い表のレイアウト崩れ - <span id="idx-kihwgu06ev1
+  enabled: true
+- term: インストール
+  yomi: いんすとーる
+  score: 312.7
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "`vs doctor --fix` で MeCab を自動インストール ### Fixed - (なし) ### Change"
+  - :chapter: CHANGELOG
+    :context: "`vs doctor --fix` で MeCab を自動インストール ### Fixed - (なし) ### Change"
+  - :chapter: CHANGELOG
+    :context: "`vs doctor --fix` で MeCab を自動インストール ### Fixed - (なし) ### Change"
+  enabled: true
+- term: Noto
+  yomi: Noto
+  score: 300.2
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'や PDF などへの埋め込みは許可されています。 ### Noto Serif JP - License: SIL Open'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'や PDF などへの埋め込みは許可されています。 ### Noto Serif JP - License: SIL Open'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'や PDF などへの埋め込みは許可されています。 ### Noto Serif JP - License: SIL Open'
+  enabled: true
+- term: タスク
+  yomi: たすく
+  score: 297.7
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "`config/glossary.yml` に一括追加するタスク（例: `glossary:suggest` → `glos"
+  - :chapter: CHANGELOG
+    :context: "`config/glossary.yml` に一括追加するタスク（例: `glossary:suggest` → `glos"
+  - :chapter: CHANGELOG
+    :context: "`config/glossary.yml` に一括追加するタスク（例: `glossary:suggest` → `glos"
+  enabled: true
+- term: クラス
+  yomi: くらす
+  score: 282.7
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '行が食い違っていた問題を解消。 - **`.aki` 段落クラスの適用不具合**: `config/post_replace'
+  - :chapter: CHANGELOG
+    :context: '行が食い違っていた問題を解消。 - **`.aki` 段落クラスの適用不具合**: `config/post_replace'
+  - :chapter: ROADMAP
+    :context: の差分適用（再生成対象の最小化） - `<body>` クラス付与ロジックの拡張（appendix/postface/co
+  enabled: true
+- term: リンク
+  yomi: りんく
+  score: 280.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: i="ref:foo">ref:foo</dfn> → 自動リンク）。 - <span id="idx-kihwgu06ev1
+  - :chapter: CHANGELOG
+    :context: i="ref:foo">ref:foo</dfn> → 自動リンク）。 - <span id="idx-kihwgu06ev1
+  - :chapter: CHANGELOG
+    :context: i="ref:foo">ref:foo</dfn> → 自動リンク）。 - <span id="idx-kihwgu06ev1
+  enabled: true
+- term: Fixed
+  yomi: Fixed
+  score: 275.2
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "--fix` で MeCab を自動インストール ### Fixed - (なし) ### Changed - **RuboC"
+  - :chapter: CHANGELOG
+    :context: "--fix` で MeCab を自動インストール ### Fixed - (なし) ### Changed - **RuboC"
+  - :chapter: CHANGELOG
+    :context: "--fix` で MeCab を自動インストール ### Fixed - (なし) ### Changed - **RuboC"
+  enabled: true
+- term: Low
+  yomi: Low
+  score: 275.2
+  contexts:
+  - :chapter: CHANGELOG
+    :context: class="index-term" data-yomi="Low">Low</dfn> text_metrics で日本語向
+  - :chapter: CHANGELOG
+    :context: class="index-term" data-yomi="Low">Low</dfn> text_metrics で日本語向
+  - :chapter: CHANGELOG
+    :context: class="index-term" data-yomi="Low">Low</dfn> text_metrics で日本語向
+  enabled: true
+- term: "`book.yml`"
+  yomi: "`book.yml`"
+  score: 272.8
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'build` パイプラインに Step 4a として統合（`book.yml` の `index.enabled: true` で有効化）'
+  - :chapter: CHANGELOG
+    :context: 'build` パイプラインに Step 4a として統合（`book.yml` の `index.enabled: true` で有効化）'
+  - :chapter: CHANGELOG
+    :context: 'build` パイプラインに Step 4a として統合（`book.yml` の `index.enabled: true` で有効化）'
+  enabled: true
+- term: エラー
+  yomi: えらー
+  score: 267.7
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ethod add_prism_line_numbers` エラーが解消され、行番号付与ステップまで正常に完走する。 - **
+  - :chapter: CHANGELOG
+    :context: ethod add_prism_line_numbers` エラーが解消され、行番号付与ステップまで正常に完走する。 - **
+  - :chapter: CHANGELOG
+    :context: ethod add_prism_line_numbers` エラーが解消され、行番号付与ステップまで正常に完走する。 - **
+  enabled: true
+- term: スタイル
+  yomi: すたいる
+  score: 267.7
+  contexts:
+  - :chapter: CHANGELOG
+    :context: igh">High</span> 日本語表記・組版Lint（スタイルガイド） - <span id="idx-6gmecrj6z
+  - :chapter: CHANGELOG
+    :context: igh">High</span> 日本語表記・組版Lint（スタイルガイド） - <span id="idx-6gmecrj6z
+  - :chapter: CHANGELOG
+    :context: igh">High</span> 日本語表記・組版Lint（スタイルガイド） - <span id="idx-6gmecrj6z
+  enabled: true
+- term: Font
+  yomi: Font
+  score: 266.9
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'MIT ライセンスの注記を含めています。 ## 書体 (Fonts) ### HackGen / HackGen35 -'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'MIT ライセンスの注記を含めています。 ## 書体 (Fonts) ### HackGen / HackGen35 -'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'MIT ライセンスの注記を含めています。 ## 書体 (Fonts) ### HackGen / HackGen35 -'
+  enabled: true
+- term: YAML
+  yomi: YAML
+  score: 255.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '初回ビルド時の NameError も防止。 - **設定 YAML の事前検査を強化**: `vs` コマンド起動時に `co'
+  - :chapter: CHANGELOG
+    :context: '初回ビルド時の NameError も防止。 - **設定 YAML の事前検査を強化**: `vs` コマンド起動時に `co'
+  - :chapter: CHANGELOG
+    :context: '初回ビルド時の NameError も防止。 - **設定 YAML の事前検査を強化**: `vs` コマンド起動時に `co'
+  enabled: true
+- term: Thor
+  yomi: Thor
+  score: 250.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "**CLI を Samovar ベースへ全面移行**: 旧 Thor DSL を廃止し、`lib/vivlio/starter/"
+  - :chapter: CHANGELOG
+    :context: "**CLI を Samovar ベースへ全面移行**: 旧 Thor DSL を廃止し、`lib/vivlio/starter/"
+  - :chapter: CHANGELOG
+    :context: "**CLI を Samovar ベースへ全面移行**: 旧 Thor DSL を廃止し、`lib/vivlio/starter/"
+  enabled: true
+- term: メソッド
+  yomi: めそっど
+  score: 247.7
+  contexts:
+  - :chapter: CHANGELOG
+    :context: s.rb` の `configured_chapters` メソッドを複数の小さなメソッドに分割し、可読性と保守性を向上。全章取
+  - :chapter: CHANGELOG
+    :context: s.rb` の `configured_chapters` メソッドを複数の小さなメソッドに分割し、可読性と保守性を向上。全章取
+  - :chapter: CHANGELOG
+    :context: s.rb` の `configured_chapters` メソッドを複数の小さなメソッドに分割し、可読性と保守性を向上。全章取
+  enabled: true
+- term: Samovar
+  yomi: Samovar
+  score: 247.7
+  contexts:
+  - :chapter: CHANGELOG
+    :context: mmands.execute_prism_lines` を Samovar build パイプラインから直接呼び出しても `NameE
+  - :chapter: CHANGELOG
+    :context: mmands.execute_prism_lines` を Samovar build パイプラインから直接呼び出しても `NameE
+  - :chapter: CHANGELOG
+    :context: mmands.execute_prism_lines` を Samovar build パイプラインから直接呼び出しても `NameE
+  enabled: true
+- term: アウトライン
+  yomi: あうとらいん
+  score: 247.7
+  contexts:
+  - :chapter: CHANGELOG
+    :context: yomi="High">High</span> PDF に章アウトライン（ブックマーク）を付与（本文PDF/最終PDF）。読者のナビ
+  - :chapter: CHANGELOG
+    :context: yomi="High">High</span> PDF に章アウトライン（ブックマーク）を付与（本文PDF/最終PDF）。読者のナビ
+  - :chapter: CHANGELOG
+    :context: yomi="High">High</span> PDF に章アウトライン（ブックマーク）を付与（本文PDF/最終PDF）。読者のナビ
+  enabled: true
+- term: テンプレート
+  yomi: てんぷれーと
+  score: 240.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: e_process.rb` で参照する theme.css テンプレート（`lib/project_scaffold/stylesh
+  - :chapter: CHANGELOG
+    :context: e_process.rb` で参照する theme.css テンプレート（`lib/project_scaffold/stylesh
+  - :chapter: CHANGELOG
+    :context: e_process.rb` で参照する theme.css テンプレート（`lib/project_scaffold/stylesh
+  enabled: true
+- term: リネーム
+  yomi: リネーム
+  score: 240.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "` を `book.yml` の設定に基づく動的ファイル名へリネームし、生成物がプロジェクト名・バージョンを反映した名称で出力さ"
+  - :chapter: CHANGELOG
+    :context: "` を `book.yml` の設定に基づく動的ファイル名へリネームし、生成物がプロジェクト名・バージョンを反映した名称で出力さ"
+  - :chapter: CHANGELOG
+    :context: "` を `book.yml` の設定に基づく動的ファイル名へリネームし、生成物がプロジェクト名・バージョンを反映した名称で出力さ"
+  enabled: true
+- term: フルビルド
+  yomi: フルビルド
+  score: 232.7
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '"High">High</dfn> 任意の複数章を指定して、フルビルドする - <span id="idx-6gmecrj6z7a'
+  - :chapter: CHANGELOG
+    :context: '"High">High</dfn> 任意の複数章を指定して、フルビルドする - <span id="idx-6gmecrj6z7a'
+  - :chapter: CHANGELOG
+    :context: '"High">High</dfn> 任意の複数章を指定して、フルビルドする - <span id="idx-6gmecrj6z7a'
+  enabled: true
+- term: '1.0'
+  yomi: '1.0'
+  score: 230.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '力されるように調整（例: `vivlio_starter_v1.0.0.pdf` / `vivlio_starter_v1.0'
+  enabled: true
+- term: Starter
+  yomi: Starter
+  score: 229.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'mi="High">High</span> Re:View Starter -> Vivlio Starter ## <dfn id'
+  - :chapter: CHANGELOG
+    :context: 'mi="High">High</span> Re:View Starter -> Vivlio Starter ## <dfn id'
+  - :chapter: CHANGELOG
+    :context: 'mi="High">High</span> Re:View Starter -> Vivlio Starter ## <dfn id'
+  enabled: true
+- term: Ghostscript
+  yomi: Ghostscript
+  score: 229.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: er:epub` で個別生成も可能。ImageMagickとGhostscriptを使用してPDF/X-1a準拠の印刷用カバーを生成。
+      - `
+  - :chapter: CHANGELOG
+    :context: er:epub` で個別生成も可能。ImageMagickとGhostscriptを使用してPDF/X-1a準拠の印刷用カバーを生成。
+      - `
+  - :chapter: CHANGELOG
+    :context: er:epub` で個別生成も可能。ImageMagickとGhostscriptを使用してPDF/X-1a準拠の印刷用カバーを生成。
+      - `
+  enabled: true
+- term: サポート
+  yomi: さぽーと
+  score: 229.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: -yomi="Low">Low</span> 脚注・参考文献サポート（簡易BibTeX/CSL） - <span id="idx
+  - :chapter: CHANGELOG
+    :context: -yomi="Low">Low</span> 脚注・参考文献サポート（簡易BibTeX/CSL） - <span id="idx
+  - :chapter: CHANGELOG
+    :context: -yomi="Low">Low</span> 脚注・参考文献サポート（簡易BibTeX/CSL） - <span id="idx
+  enabled: true
+- term: パイプライン
+  yomi: ぱいぷらいん
+  score: 224.9
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。 ### Pre-release Checkl'
+  - :chapter: CHANGELOG
+    :context: 'を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。 ### Pre-release Checkl'
+  - :chapter: CHANGELOG
+    :context: 'を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。 ### Pre-release Checkl'
+  enabled: true
+- term: Project
+  yomi: Project
+  score: 220.2
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'style CLI - License: AGPLv3 - Project: https://github.com/vivliosty'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'style CLI - License: AGPLv3 - Project: https://github.com/vivliosty'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'style CLI - License: AGPLv3 - Project: https://github.com/vivliosty'
+  enabled: true
+- term: SIL
+  yomi: SIL
+  score: 212.6
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'ackGen / HackGen35 - License: SIL Open Font License 1.1 (OFL-1.'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'ackGen / HackGen35 - License: SIL Open Font License 1.1 (OFL-1.'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'ackGen / HackGen35 - License: SIL Open Font License 1.1 (OFL-1.'
+  enabled: true
+- term: Ruby
+  yomi: Ruby
+  score: 209.9
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'ビルド実行環境は Node 20+ を前提とする。 - **Ruby 4.0.0 での動作確認**: `rbenv instal'
+  - :chapter: CHANGELOG
+    :context: 'ビルド実行環境は Node 20+ を前提とする。 - **Ruby 4.0.0 での動作確認**: `rbenv instal'
+  - :chapter: CHANGELOG
+    :context: 'ビルド実行環境は Node 20+ を前提とする。 - **Ruby 4.0.0 での動作確認**: `rbenv instal'
+  enabled: true
+- term: リファクタリング
+  yomi: リファクタリング
+  score: 205.2
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'eb/EPUB（任意）。 #### 校正/Lint・品質 リファクタリング前 519 件 -> 508件 - <span id="id'
+  - :chapter: CHANGELOG
+    :context: 'eb/EPUB（任意）。 #### 校正/Lint・品質 リファクタリング前 519 件 -> 508件 - <span id="id'
+  - :chapter: CHANGELOG
+    :context: 'eb/EPUB（任意）。 #### 校正/Lint・品質 リファクタリング前 519 件 -> 508件 - <span id="id'
+  enabled: true
+- term: サイズ
+  yomi: さいず
+  score: 203.9
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '"Medium">Medium</span> A4 以外の紙サイズを指定する（推奨文字サイズの確認） - <span id="'
+  - :chapter: CHANGELOG
+    :context: '"Medium">Medium</span> A4 以外の紙サイズを指定する（推奨文字サイズの確認） - <span id="'
+  - :chapter: CHANGELOG
+    :context: '"Medium">Medium</span> A4 以外の紙サイズを指定する（推奨文字サイズの確認） - <span id="'
+  enabled: true
+- term: スキップ
+  yomi: すきっぷ
+  score: 203.9
+  contexts:
+  - :chapter: CHANGELOG
+    :context: メソッドを調整。また、目次の見出しについてはテキスト検索をスキップし、計算済みの開始ページを直接使用することで、確実に目次の先
+  - :chapter: CHANGELOG
+    :context: メソッドを調整。また、目次の見出しについてはテキスト検索をスキップし、計算済みの開始ページを直接使用することで、確実に目次の先
+  - :chapter: CHANGELOG
+    :context: メソッドを調整。また、目次の見出しについてはテキスト検索をスキップし、計算済みの開始ページを直接使用することで、確実に目次の先
+  enabled: true
+- term: ヘルプ
+  yomi: へるぷ
+  score: 203.9
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'e` 指定でも削除しない安全仕様に固定。 - これに伴いヘルプ文言（`--purge` の説明）を更新。 ### Not'
+  - :chapter: CHANGELOG
+    :context: 'e` 指定でも削除しない安全仕様に固定。 - これに伴いヘルプ文言（`--purge` の説明）を更新。 ### Not'
+  - :chapter: CHANGELOG
+    :context: 'e` 指定でも削除しない安全仕様に固定。 - これに伴いヘルプ文言（`--purge` の説明）を更新。 ### Not'
+  enabled: true
+- term: VERBOSE
+  yomi: VERBOSE
+  score: 202.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "` / `-vv` や `--verbose`、環境変数 `VERBOSE`/`DEBUG`/`LOG_LEVEL` は廃止しました。"
+  - :chapter: CHANGELOG
+    :context: "` / `-vv` や `--verbose`、環境変数 `VERBOSE`/`DEBUG`/`LOG_LEVEL` は廃止しました。"
+  - :chapter: CHANGELOG
+    :context: "` / `-vv` や `--verbose`、環境変数 `VERBOSE`/`DEBUG`/`LOG_LEVEL` は廃止しました。"
+  enabled: true
+- term: ロジック
+  yomi: ろじっく
+  score: 201.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: なく動作することを確認し、`entries.js` 自動生成ロジックの改善により初回ビルド時の NameError も防止。 -
+  - :chapter: CHANGELOG
+    :context: なく動作することを確認し、`entries.js` 自動生成ロジックの改善により初回ビルド時の NameError も防止。 -
+  - :chapter: CHANGELOG
+    :context: なく動作することを確認し、`entries.js` 自動生成ロジックの改善により初回ビルド時の NameError も防止。 -
+  enabled: true
+- term: Gem
+  yomi: Gem
+  score: 200.9
+  contexts:
+  - :chapter: CHANGELOG
+    :context: scaffold に追加し、新規プロジェクトへコピー - `Gemfile`（最小構成）を scaffold に追加し、新規プ
+  - :chapter: CHANGELOG
+    :context: scaffold に追加し、新規プロジェクトへコピー - `Gemfile`（最小構成）を scaffold に追加し、新規プ
+  - :chapter: README
+    :context: "`vs <cmd> --help` ## インストール（Gem/CLI） 本プロジェクトは Gem としても利用できます"
+  enabled: true
+- term: Rake
+  yomi: Rake
+  score: 199.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ター（`lib/vivlio/starter.rb`）から Rake 時代の残滓（`new` の特別扱い、コメント）を整理し、T
+  - :chapter: CHANGELOG
+    :context: ター（`lib/vivlio/starter.rb`）から Rake 時代の残滓（`new` の特別扱い、コメント）を整理し、T
+  - :chapter: CHANGELOG
+    :context: ター（`lib/vivlio/starter.rb`）から Rake 時代の残滓（`new` の特別扱い、コメント）を整理し、T
+  enabled: true
+- term: PrismJS
+  yomi: PrismJS
+  score: 192.6
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'する場合は、AGPLv3 の要件に従ってください。 ## PrismJS - License: MIT - Project: htt'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'する場合は、AGPLv3 の要件に従ってください。 ## PrismJS - License: MIT - Project: htt'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'する場合は、AGPLv3 の要件に従ってください。 ## PrismJS - License: MIT - Project: htt'
+  enabled: true
+- term: Gothic
+  yomi: Gothic
+  score: 190.2
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'a.md` に記載しています。 ### Zen Maru Gothic - License: SIL Open Font Lice'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'a.md` に記載しています。 ### Zen Maru Gothic - License: SIL Open Font Lice'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'a.md` に記載しています。 ### Zen Maru Gothic - License: SIL Open Font Lice'
+  enabled: true
+- term: Maru
+  yomi: Maru
+  score: 190.2
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'OFL-ja.md` に記載しています。 ### Zen Maru Gothic - License: SIL Open Fo'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'OFL-ja.md` に記載しています。 ### Zen Maru Gothic - License: SIL Open Fo'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'OFL-ja.md` に記載しています。 ### Zen Maru Gothic - License: SIL Open Fo'
+  enabled: true
+- term: Zen
+  yomi: Zen
+  score: 190.2
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: '_JP/OFL-ja.md` に記載しています。 ### Zen Maru Gothic - License: SIL Op'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: '_JP/OFL-ja.md` に記載しています。 ### Zen Maru Gothic - License: SIL Op'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: '_JP/OFL-ja.md` に記載しています。 ### Zen Maru Gothic - License: SIL Op'
+  enabled: true
+- term: Text
+  yomi: Text
+  score: 186.5
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'yle/vivliostyle-cli - License Text: https://www.gnu.org/licenses'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'yle/vivliostyle-cli - License Text: https://www.gnu.org/licenses'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'yle/vivliostyle-cli - License Text: https://www.gnu.org/licenses'
+  enabled: true
+- term: テーマ
+  yomi: てーま
+  score: 173.9
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "。可読性とメンテナンス性を向上。 ### Fixed - テーマカラーの定義不足を修正。amber / orange / p"
+  - :chapter: CHANGELOG
+    :context: "。可読性とメンテナンス性を向上。 ### Fixed - テーマカラーの定義不足を修正。amber / orange / p"
+  - :chapter: CHANGELOG
+    :context: "。可読性とメンテナンス性を向上。 ### Fixed - テーマカラーの定義不足を修正。amber / orange / p"
+  enabled: true
+- term: チェック
+  yomi: ちぇっく
+  score: 173.9
+  contexts:
+  - :chapter: CHANGELOG
+    :context: omi="Medium">Medium</span> スペルチェック（辞書拡張対応） - <span id="idx-kihwg
+  - :chapter: CHANGELOG
+    :context: omi="Medium">Medium</span> スペルチェック（辞書拡張対応） - <span id="idx-kihwg
+  - :chapter: CHANGELOG
+    :context: omi="Medium">Medium</span> スペルチェック（辞書拡張対応） - <span id="idx-kihwg
+  enabled: true
+- term: OUTPUT
+  yomi: OUTPUT
+  score: 170.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'class="index-term" data-yomi="OUTPUT">OUTPUT</dfn>`: 出力ファイル名を引数で指定'
+  - :chapter: CHANGELOG
+    :context: 'class="index-term" data-yomi="OUTPUT">OUTPUT</dfn>`: 出力ファイル名を引数で指定'
+  - :chapter: CHANGELOG
+    :context: 'class="index-term" data-yomi="OUTPUT">OUTPUT</dfn>`: 出力ファイル名を引数で指定'
+  enabled: true
+- term: EPUB
+  yomi: EPUB
+  score: 170.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '出力バリアント PDF（裁ち落とし/ノンブル有無）、Web/EPUB（任意）。 #### 校正/Lint・品質 リファクタリン'
+  - :chapter: CHANGELOG
+    :context: '出力バリアント PDF（裁ち落とし/ノンブル有無）、Web/EPUB（任意）。 #### 校正/Lint・品質 リファクタリン'
+  - :chapter: CHANGELOG
+    :context: '出力バリアント PDF（裁ち落とし/ノンブル有無）、Web/EPUB（任意）。 #### 校正/Lint・品質 リファクタリン'
+  enabled: true
+- term: VERSION
+  yomi: VERSION
+  score: 170.1
+  contexts:
+  - :chapter: README
+    :context: vivlio/starter/version.rb` の `VERSION` を更新 - CHANGELOG（必要に応じて）更新
+  - :chapter: README
+    :context: vivlio/starter/version.rb` の `VERSION` を更新 - CHANGELOG（必要に応じて）更新
+  - :chapter: README
+    :context: vivlio/starter/version.rb` の `VERSION` を更新 - CHANGELOG（必要に応じて）更新
+  enabled: true
+- term: CONTENT
+  yomi: CONTENT
+  score: 170.1
+  contexts:
+  - :chapter: README
+    :context: 'E](./LICENSE) - コンテンツのライセンス: [CONTENT-LICENSE.md](./CONTENT-LICENSE'
+  - :chapter: README
+    :context: 'E](./LICENSE) - コンテンツのライセンス: [CONTENT-LICENSE.md](./CONTENT-LICENSE'
+  - :chapter: README
+    :context: 'E](./LICENSE) - コンテンツのライセンス: [CONTENT-LICENSE.md](./CONTENT-LICENSE'
+  enabled: true
+- term: THIRD
+  yomi: THIRD
+  score: 170.1
+  contexts:
+  - :chapter: README
+    :context: 'NTENT-LICENSE.md) - サードパーティ: [THIRD-PARTY-LICENSES.md](./THIRD-PA'
+  - :chapter: README
+    :context: 'NTENT-LICENSE.md) - サードパーティ: [THIRD-PARTY-LICENSES.md](./THIRD-PA'
+  - :chapter: README
+    :context: 'NTENT-LICENSE.md) - サードパーティ: [THIRD-PARTY-LICENSES.md](./THIRD-PA'
+  enabled: true
+- term: LICENSES
+  yomi: LICENSES
+  score: 170.1
+  contexts:
+  - :chapter: README
+    :context: 'E.md) - サードパーティ: [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LICENSES.md'
+  - :chapter: README
+    :context: 'E.md) - サードパーティ: [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LICENSES.md'
+  - :chapter: README
+    :context: 'E.md) - サードパーティ: [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LICENSES.md'
+  enabled: true
+- term: PARTY
+  yomi: PARTY
+  score: 170.1
+  contexts:
+  - :chapter: README
+    :context: 'LICENSE.md) - サードパーティ: [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LI'
+  - :chapter: README
+    :context: 'LICENSE.md) - サードパーティ: [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LI'
+  - :chapter: README
+    :context: 'LICENSE.md) - サードパーティ: [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LI'
+  enabled: true
+- term: ENV
+  yomi: ENV
+  score: 170.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ressed.pdf`）・エンジン選択（`qpdf/gs`、ENV/設定）を明記 - YAML スニペットの成果物パスを
+  - :chapter: CHANGELOG
+    :context: ressed.pdf`）・エンジン選択（`qpdf/gs`、ENV/設定）を明記 - YAML スニペットの成果物パスを
+  - :chapter: CHANGELOG
+    :context: ressed.pdf`）・エンジン選択（`qpdf/gs`、ENV/設定）を明記 - YAML スニペットの成果物パスを
+  enabled: true
+- term: Copyright
+  yomi: Copyright
+  score: 165.1
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: "://github.com/PrismJS/prism - Copyright: (c) 2012-2023 PrismJS and
+      co"
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: "://github.com/PrismJS/prism - Copyright: (c) 2012-2023 PrismJS and
+      co"
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: "://github.com/PrismJS/prism - Copyright: (c) 2012-2023 PrismJS and
+      co"
+  enabled: true
+- term: カバー
+  yomi: かばー
+  score: 165.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "-------` で囲む形式で視認性を大幅に向上。 - **カバー画像生成コマンド**: `vs cover` コマンドを追加"
+  - :chapter: CHANGELOG
+    :context: "-------` で囲む形式で視認性を大幅に向上。 - **カバー画像生成コマンド**: `vs cover` コマンドを追加"
+  - :chapter: CHANGELOG
+    :context: "-------` で囲む形式で視認性を大幅に向上。 - **カバー画像生成コマンド**: `vs cover` コマンドを追加"
+  enabled: true
+- term: CHANGELOG
+  yomi: CHANGELOG
+  score: 162.0
+  contexts:
+  - :chapter: README
+    :context: sion.rb` の `VERSION` を更新 - CHANGELOG（必要に応じて）更新 2. ビルド ```bash
+  - :chapter: README
+    :context: sion.rb` の `VERSION` を更新 - CHANGELOG（必要に応じて）更新 2. ビルド ```bash
+  - :chapter: README
+    :context: sion.rb` の `VERSION` を更新 - CHANGELOG（必要に応じて）更新 2. ビルド ```bash
+  enabled: true
+- term: コンテンツ
+  yomi: こんてんつ
+  score: 160.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '走査→初出箇所のページ番号抽出→索引章に出力） #### コンテンツ/テンプレート - <span id="idx-6gmecr'
+  - :chapter: CONTENT-LICENSE
+    :context: C-SA 4.0) 本書籍の本文・画像・図版・イラスト等のコンテンツ（通常 `content/` 配下、および生成物のうち本文由
+  - :chapter: CONTENT-LICENSE
+    :context: C-SA 4.0) 本書籍の本文・画像・図版・イラスト等のコンテンツ（通常 `content/` 配下、および生成物のうち本文由
+  enabled: true
+- term: Name
+  yomi: Name
+  score: 158.9
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ": `contents/` を走査し `ABBR(Full Name)`/`Full Name(ABBR)` パターンを検出して"
+  - :chapter: CHANGELOG
+    :context: ": `contents/` を走査し `ABBR(Full Name)`/`Full Name(ABBR)` パターンを検出して"
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: o OTAWARA. with Reserved Font Name "白源", "HackGen" - License Tex
+  enabled: true
+- term: リスト
+  yomi: りすと
+  score: 158.9
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。 ### Pre-releas'
+  - :chapter: CHANGELOG
+    :context: '簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。 ### Pre-releas'
+  - :chapter: CHANGELOG
+    :context: '簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。 ### Pre-releas'
+  enabled: true
+- term: クリーン
+  yomi: くりーん
+  score: 156.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'に `.vivliostyle` ディレクトリも削除するようクリーン処理を拡張。 ## <dfn id="idx-sb48r'
+  - :chapter: CHANGELOG
+    :context: 'に `.vivliostyle` ディレクトリも削除するようクリーン処理を拡張。 ## <dfn id="idx-sb48r'
+  - :chapter: CHANGELOG
+    :context: 'に `.vivliostyle` ディレクトリも削除するようクリーン処理を拡張。 ## <dfn id="idx-sb48r'
+  enabled: true
+- term: config/book.yml
+  yomi: config/book.yml
+  score: 154.9
+  contexts:
+  - :chapter: README
+    :context: コマンドでワンコマンドビルド（`vs build`）や、`config/book.yml` による一元的な設定管理、ファイルタイプに応じたスタイル適
+  enabled: true
+- term: Lint
+  yomi: Lint
+  score: 153.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'ンブル有無）、Web/EPUB（任意）。 #### 校正/Lint・品質 リファクタリング前 519 件 -> 508件 -'
+  - :chapter: CHANGELOG
+    :context: 'ンブル有無）、Web/EPUB（任意）。 #### 校正/Lint・品質 リファクタリング前 519 件 -> 508件 -'
+  - :chapter: ROADMAP
+    :context: 運用 - Docker/Devcontainer、CI（Lint/テスト/ビルド） - リリース手順・CHANGELOG
+  enabled: true
+- term: ドキュメント
+  yomi: どきゅめんと
+  score: 153.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'ows/build.yml` ### Changed - ドキュメント（`contents/11-install.md`）を更新'
+  - :chapter: ROADMAP
+    :context: 向上） - タスク体系の明確化（名前空間・エイリアスの整理とドキュメント同期） - パフォーマンス最適化（不要処理の削減・並列化の検
+  - :chapter: ROADMAP
+    :context: 向上） - タスク体系の明確化（名前空間・エイリアスの整理とドキュメント同期） - パフォーマンス最適化（不要処理の削減・並列化の検
+  enabled: true
+- term: タイトル
+  yomi: たいとる
+  score: 153.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ylesheets/toc.css` を見直し、章・節・項のタイトル行に対して `leader(dotted)` と `targ
+  - :chapter: CHANGELOG
+    :context: ylesheets/toc.css` を見直し、章・節・項のタイトル行に対して `leader(dotted)` と `targ
+  - :chapter: CHANGELOG
+    :context: ylesheets/toc.css` を見直し、章・節・項のタイトル行に対して `leader(dotted)` と `targ
+  enabled: true
+- term: Serif
+  yomi: Serif
+  score: 150.1
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'などへの埋め込みは許可されています。 ### Noto Serif JP - License: SIL Open Font L'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'などへの埋め込みは許可されています。 ### Noto Serif JP - License: SIL Open Font L'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'などへの埋め込みは許可されています。 ### Noto Serif JP - License: SIL Open Font L'
+  enabled: true
+- term: Plan
+  yomi: Plan
+  score: 150.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'マンティックバージョニング）に準拠します。 ### Planned - <dfn id="idx-kihwgu06ev'
+  - :chapter: CHANGELOG
+    :context: 'マンティックバージョニング）に準拠します。 ### Planned - <dfn id="idx-kihwgu06ev'
+  - :chapter: CHANGELOG
+    :context: 'マンティックバージョニング）に準拠します。 ### Planned - <dfn id="idx-kihwgu06ev'
+  enabled: true
+- term: Sans
+  yomi: Sans
+  score: 150.1
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'FL-ja.md` に記載しています。 ### Noto Sans JP - License: SIL Open Font L'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'FL-ja.md` に記載しています。 ### Noto Sans JP - License: SIL Open Font L'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'FL-ja.md` に記載しています。 ### Noto Sans JP - License: SIL Open Font L'
+  enabled: true
+- term: 自動生成
+  yomi: じどうせいせい
+  score: 149.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ="Medium">Medium</span> 用語集・索引自動生成 （それらしい専門用語を抽出して、`config/gloss
+  - :chapter: CHANGELOG
+    :context: ="Medium">Medium</span> 用語集・索引自動生成 （それらしい専門用語を抽出して、`config/gloss
+  - :chapter: CHANGELOG
+    :context: ="Medium">Medium</span> 用語集・索引自動生成 （それらしい専門用語を抽出して、`config/gloss
+  enabled: true
+- term: ページ番号
+  yomi: ぺーじばんごう
+  score: 144.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'an> 初出ページ付き索引の生成（用語の文書走査→初出箇所のページ番号抽出→索引章に出力） #### コンテンツ/テンプレート'
+  - :chapter: CHANGELOG
+    :context: 'an> 初出ページ付き索引の生成（用語の文書走査→初出箇所のページ番号抽出→索引章に出力） #### コンテンツ/テンプレート'
+  - :chapter: CHANGELOG
+    :context: 'an> 初出ページ付き索引の生成（用語の文書走査→初出箇所のページ番号抽出→索引章に出力） #### コンテンツ/テンプレート'
+  enabled: true
+- term: 章番号
+  yomi: あきらばんごう
+  score: 142.7
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "\">Medium</dfn> 章・節に対する相互参照の整備（章番号ベースの cross reference）。本文中から「第◯"
+  - :chapter: CHANGELOG
+    :context: "\">Medium</dfn> 章・節に対する相互参照の整備（章番号ベースの cross reference）。本文中から「第◯"
+  - :chapter: CHANGELOG
+    :context: "\">Medium</dfn> 章・節に対する相互参照の整備（章番号ベースの cross reference）。本文中から「第◯"
+  enabled: true
+- term: Prism
+  yomi: Prism
+  score: 140.3
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'ョンを含むフッターコメントが失われないようにした。 - **Prism.js 行番号付与のロード漏れ修正**: `post_pro'
+  - :chapter: README
+    :context: place_list.yml` に基づく置換処理 - Prism.js を用いたソースコードへの行番号追加 3. 目次/章立
+  - :chapter: ROADMAP
+    :context: postface/colophon の網羅テスト） - Prism.js 行番号・テーマの切替（設定化） - 品質・テスト
+  enabled: true
+- term: フォント
+  yomi: ふぉんと
+  score: 138.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "`book.yml` の `page` セクション直下でのフォント設定（`page.main_text_font` など）を廃"
+  - :chapter: CHANGELOG
+    :context: "`book.yml` の `page` セクション直下でのフォント設定（`page.main_text_font` など）を廃"
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'kgen35/LICENSE` Notes: - 未改変のフォントファイルを本プロジェクトに同梱・再配布することは OFL-1'
+  enabled: true
+- term: Open
+  yomi: Open
+  score: 137.6
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'en / HackGen35 - License: SIL Open Font License 1.1 (OFL-1.1) -'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'en / HackGen35 - License: SIL Open Font License 1.1 (OFL-1.1) -'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'en / HackGen35 - License: SIL Open Font License 1.1 (OFL-1.1) -'
+  enabled: true
+- term: Users
+  yomi: Users
+  score: 137.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: を [create.rb](cci:7://file:///Users/mirai/projects/vivlio-starter
+  - :chapter: CHANGELOG
+    :context: を [create.rb](cci:7://file:///Users/mirai/projects/vivlio-starter
+  - :chapter: CHANGELOG
+    :context: を [create.rb](cci:7://file:///Users/mirai/projects/vivlio-starter
+  enabled: true
+- term: contents/
+  yomi: contents/
+  score: 136.8
+  contexts:
+  - :chapter: CHANGELOG
+    :context: </span> book.yml の chapters を、contents/と連動するように。 - <span id="idx-6gme
+  enabled: true
+- term: '0.5'
+  yomi: '0.5'
+  score: 135.9
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '算出方法: A4 対比での縮尺を幅/高さの最小値で決定し、0.5〜1.0 の安全域へ丸め込んで付与（`page.paper_'
+  enabled: true
+- term: フロー
+  yomi: ふろー
+  score: 135.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ildPipeline` に統合し、モード切り替えのみで共通フローを実行する構成に整理した（CLI オプションやビルド結果など
+  - :chapter: CHANGELOG
+    :context: ildPipeline` に統合し、モード切り替えのみで共通フローを実行する構成に整理した（CLI オプションやビルド結果など
+  - :chapter: CHANGELOG
+    :context: ildPipeline` に統合し、モード切り替えのみで共通フローを実行する構成に整理した（CLI オプションやビルド結果など
+  enabled: true
+- term: ファイル名
+  yomi: ふぁいるめい
+  score: 132.7
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 指定 "02-12, 91" の形式で章を指定可能に。従来のファイル名指定と併用はできず、混在時はエラーで中止。 - **章番号重
+  - :chapter: CHANGELOG
+    :context: 指定 "02-12, 91" の形式で章を指定可能に。従来のファイル名指定と併用はできず、混在時はエラーで中止。 - **章番号重
+  enabled: true
+- term: ソースコード
+  yomi: そーすこーど
+  score: 132.0
+  contexts:
+  - :chapter: CONTENT-LICENSE
+    :context: "- 本ライセンスはコンテンツにのみ適用されます。ビルド用のソースコードには適用されません（コードは `LICENSE` を参照）。"
+  - :chapter: README
+    :context: "- フロントマターの生成（既存があれば併合） - ソースコードの取り込み - プロジェクトルートへ書き出し 2. 変"
+  - :chapter: README
+    :context: "- フロントマターの生成（既存があれば併合） - ソースコードの取り込み - プロジェクトルートへ書き出し 2. 変"
+  enabled: true
+- term: リリース
+  yomi: りりーす
+  score: 129.3
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'e.css`）が gem に同梱されているか確認する。 - リリースノートの作成 #### 実装済み - <dfn id="'
+  - :chapter: CHANGELOG
+    :context: 'e.css`）が gem に同梱されているか確認する。 - リリースノートの作成 #### 実装済み - <dfn id="'
+  - :chapter: CHANGELOG
+    :context: 'e.css`）が gem に同梱されているか確認する。 - リリースノートの作成 #### 実装済み - <dfn id="'
+  enabled: true
+- term: URL
+  yomi: URL
+  score: 127.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: wn リンクを後処理で `<a>` タグに変換し、対応する URL 脚注をページ脚注として生成。sideimage 内の脚注参
+  - :chapter: CHANGELOG
+    :context: wn リンクを後処理で `<a>` タグに変換し、対応する URL 脚注をページ脚注として生成。sideimage 内の脚注参
+  - :chapter: CHANGELOG
+    :context: wn リンクを後処理で `<a>` タグに変換し、対応する URL 脚注をページ脚注として生成。sideimage 内の脚注参
+  enabled: true
+- term: SSL
+  yomi: SSL
+  score: 127.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: r` が macOS 環境で Google Fonts 用 SSL 証明書の診断を行い、`--fix` 指定時に Homebr
+  - :chapter: CHANGELOG
+    :context: r` が macOS 環境で Google Fonts 用 SSL 証明書の診断を行い、`--fix` 指定時に Homebr
+  - :chapter: CHANGELOG
+    :context: r` が macOS 環境で Google Fonts 用 SSL 証明書の診断を行い、`--fix` 指定時に Homebr
+  enabled: true
+- term: AGPLv
+  yomi: AGPLv
+  score: 127.5
+  contexts:
+  - :chapter: README
+    :context: F/HTML 生成のために Vivliostyle CLI（AGPLv3）を利用しています。 - Vivliostyle ライセ
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: "## Vivliostyle CLI - License: AGPLv3 - Project: https://github.co"
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: "## Vivliostyle CLI - License: AGPLv3 - Project: https://github.co"
+  enabled: true
+- term: AGPL
+  yomi: AGPL
+  score: 127.5
+  contexts:
+  - :chapter: README
+    :context: F/HTML 生成のために Vivliostyle CLI（AGPLv3）を利用しています。 - Vivliostyle ライ
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: "## Vivliostyle CLI - License: AGPLv3 - Project: https://github.c"
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: "## Vivliostyle CLI - License: AGPLv3 - Project: https://github.c"
+  enabled: true
+- term: Node
+  yomi: Node
+  score: 127.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: では Puppeteer への移行、ブラウザ切替オプション、Node 20+ 要件、`--executable-browser`
+  - :chapter: CHANGELOG
+    :context: では Puppeteer への移行、ブラウザ切替オプション、Node 20+ 要件、`--executable-browser`
+  - :chapter: CHANGELOG
+    :context: では Puppeteer への移行、ブラウザ切替オプション、Node 20+ 要件、`--executable-browser`
+  enabled: true
+- term: ヘルパ
+  yomi: へるぱ
+  score: 123.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "`post_process.rb` の大型メソッドを段階的ヘルパーへ分解し、前後処理の責務を明確化。 ## <dfn id"
+  - :chapter: CHANGELOG
+    :context: "`post_process.rb` の大型メソッドを段階的ヘルパーへ分解し、前後処理の責務を明確化。 ## <dfn id"
+  - :chapter: CHANGELOG
+    :context: "`post_process.rb` の大型メソッドを段階的ヘルパーへ分解し、前後処理の責務を明確化。 ## <dfn id"
+  enabled: true
+- term: コンテナ
+  yomi: こんてな
+  score: 123.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ht}` / `:::{.sideimage-left}` コンテナ内の Markdown リンクを後処理で `<a>` タグに
+  - :chapter: CHANGELOG
+    :context: ht}` / `:::{.sideimage-left}` コンテナ内の Markdown リンクを後処理で `<a>` タグに
+  - :chapter: CHANGELOG
+    :context: ht}` / `:::{.sideimage-left}` コンテナ内の Markdown リンクを後処理で `<a>` タグに
+  enabled: true
+- term: スクリプト
+  yomi: すくりぷと
+  score: 122.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: an> RuboCop が全面的に通るよう CLI/ビルド系スクリプトを継続的にリファクタリング。 102 lib/vivlio/
+  - :chapter: README
+    :context: による自動導入を利用できます。 - Ruby の導入は同梱スクリプト `bin/install-ruby.zsh` が簡単・安全
+  - :chapter: README
+    :context: による自動導入を利用できます。 - Ruby の導入は同梱スクリプト `bin/install-ruby.zsh` が簡単・安全
+  enabled: true
+- term: キャプション
+  yomi: きゃぷしょん
+  score: 122.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: yomi="Medium">Medium</span> 図表キャプション規約の統一（Figure 1.1/表1.1 自動採番）。
+  - :chapter: CHANGELOG
+    :context: yomi="Medium">Medium</span> 図表キャプション規約の統一（Figure 1.1/表1.1 自動採番）。
+  - :chapter: CHANGELOG
+    :context: yomi="Medium">Medium</span> 図表キャプション規約の統一（Figure 1.1/表1.1 自動採番）。
+  enabled: true
+- term: TODO
+  yomi: TODO
+  score: 121.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'eError を起こす前に検出できるようにした。 ### TODO - **vs doctor での設定ファイル検査/復旧支援'
+  - :chapter: CHANGELOG
+    :context: 'eError を起こす前に検出できるようにした。 ### TODO - **vs doctor での設定ファイル検査/復旧支援'
+  - :chapter: CHANGELOG
+    :context: 'eError を起こす前に検出できるようにした。 ### TODO - **vs doctor での設定ファイル検査/復旧支援'
+  enabled: true
+- term: Command
+  yomi: Command
+  score: 120.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: b` を明示的に require し、`PrismLinesCommands.execute_prism_lines` を Samov
+  - :chapter: CHANGELOG
+    :context: b` を明示的に require し、`PrismLinesCommands.execute_prism_lines` を Samov
+  - :chapter: CHANGELOG
+    :context: b` を明示的に require し、`PrismLinesCommands.execute_prism_lines` を Samov
+  enabled: true
+- term: テンプレ
+  yomi: てんぷれ
+  score: 114.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: e_process.rb` で参照する theme.css テンプレート（`lib/project_scaffold/style
+  enabled: true
+- term: ブックマーク
+  yomi: ぶっくまーく
+  score: 112.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: igh">High</span> PDF に章アウトライン（ブックマーク）を付与（本文PDF/最終PDF）。読者のナビゲーション向上
+  - :chapter: CHANGELOG
+    :context: igh">High</span> PDF に章アウトライン（ブックマーク）を付与（本文PDF/最終PDF）。読者のナビゲーション向上
+  - :chapter: CHANGELOG
+    :context: igh">High</span> PDF に章アウトライン（ブックマーク）を付与（本文PDF/最終PDF）。読者のナビゲーション向上
+  enabled: true
+- term: フラグ
+  yomi: ふらぐ
+  score: 112.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 要件、`--executable-browser` など新フラグ体系、`vivliostyle create` のテンプレー
+  - :chapter: CHANGELOG
+    :context: 要件、`--executable-browser` など新フラグ体系、`vivliostyle create` のテンプレー
+  - :chapter: CHANGELOG
+    :context: 要件、`--executable-browser` など新フラグ体系、`vivliostyle create` のテンプレー
+  enabled: true
+- term: フロント
+  yomi: ふろんと
+  score: 112.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'PUT</span>` に寄せるリファクタリング: TOC/フロント/奥付/後書きの PDF 生成で手動リネームを廃止。 - 付'
+  - :chapter: CHANGELOG
+    :context: 'PUT</span>` に寄せるリファクタリング: TOC/フロント/奥付/後書きの PDF 生成で手動リネームを廃止。 - 付'
+  - :chapter: CHANGELOG
+    :context: 'PUT</span>` に寄せるリファクタリング: TOC/フロント/奥付/後書きの PDF 生成で手動リネームを廃止。 - 付'
+  enabled: true
+- term: "`chapters`"
+  yomi: "`chapters`"
+  score: 110.2
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "*章番号ベースのビルド指定**: `book.yml` の `chapters` 設定で番号ベースの指定をサポート。配列 `<dfn
+      id="
+  enabled: true
+- term: project_scaffold
+  yomi: project_scaffold
+  score: 110.2
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "` で参照する theme.css テンプレート（`lib/project_scaffold/stylesheets/theme.css`）が
+      gem"
+  enabled: true
+- term: バリアント
+  yomi: バリアント
+  score: 110.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: yomi="Medium">Medium</span> 出力バリアント PDF（裁ち落とし/ノンブル有無）、Web/EPUB（任意
+  - :chapter: CHANGELOG
+    :context: yomi="Medium">Medium</span> 出力バリアント PDF（裁ち落とし/ノンブル有無）、Web/EPUB（任意
+  - :chapter: CHANGELOG
+    :context: yomi="Medium">Medium</span> 出力バリアント PDF（裁ち落とし/ノンブル有無）、Web/EPUB（任意
+  enabled: true
+- term: Reserved
+  yomi: Reserved
+  score: 110.1
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: (c) 2019, Yuko OTAWARA. with Reserved Font Name "白源", "HackGen" - L
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: (c) 2019, Yuko OTAWARA. with Reserved Font Name "白源", "HackGen" - L
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: (c) 2019, Yuko OTAWARA. with Reserved Font Name "白源", "HackGen" - L
+  enabled: true
+- term: マーカー
+  yomi: まーかー
+  score: 110.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 使用し、付録のみ異なる色を設定可能に。 - 付録のh3/h4マーカー（♣/♦）が `theme.appendix_color`
+  - :chapter: CHANGELOG
+    :context: 使用し、付録のみ異なる色を設定可能に。 - 付録のh3/h4マーカー（♣/♦）が `theme.appendix_color`
+  - :chapter: CHANGELOG
+    :context: 使用し、付録のみ異なる色を設定可能に。 - 付録のh3/h4マーカー（♣/♦）が `theme.appendix_color`
+  enabled: true
+- term: Removed
+  yomi: Removed
+  score: 110.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'コマンドを追加し、原稿の分量チェックを容易に。 ### Removed - 従来の章別 CSS（例: `stylesheets/1'
+  - :chapter: CHANGELOG
+    :context: 'コマンドを追加し、原稿の分量チェックを容易に。 ### Removed - 従来の章別 CSS（例: `stylesheets/1'
+  - :chapter: CHANGELOG
+    :context: 'コマンドを追加し、原稿の分量チェックを容易に。 ### Removed - 従来の章別 CSS（例: `stylesheets/1'
+  enabled: true
+- term: HackGen
+  yomi: HackGen
+  score: 110.1
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: '記を含めています。 ## 書体 (Fonts) ### HackGen / HackGen35 - License: SIL Op'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: '記を含めています。 ## 書体 (Fonts) ### HackGen / HackGen35 - License: SIL Op'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: '記を含めています。 ## 書体 (Fonts) ### HackGen / HackGen35 - License: SIL Op'
+  enabled: true
+- term: Unreleased
+  yomi: Unreleased
+  score: 110.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: class="index-term" data-yomi="Unreleased">Unreleased</dfn> （次回リリース候補の変
+  - :chapter: CHANGELOG
+    :context: class="index-term" data-yomi="Unreleased">Unreleased</dfn> （次回リリース候補の変
+  - :chapter: CHANGELOG
+    :context: class="index-term" data-yomi="Unreleased">Unreleased</dfn> （次回リリース候補の変
+  enabled: true
+- term: Phase
+  yomi: Phase
+  score: 110.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'てください） ### Added - **索引機能を実装（Phase 1〜3）**: 書籍の索引（インデックス）を自動生成する機'
+  - :chapter: CHANGELOG
+    :context: 'てください） ### Added - **索引機能を実装（Phase 1〜3）**: 書籍の索引（インデックス）を自動生成する機'
+  - :chapter: CHANGELOG
+    :context: 'てください） ### Added - **索引機能を実装（Phase 1〜3）**: 書籍の索引（インデックス）を自動生成する機'
+  enabled: true
+- term: BuildHelpers
+  yomi: BuildHelpers
+  score: 110.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: を自動実行）。 - ビルド対象/存在チェックの汎用ヘルパ `BuildHelpers.buildable?(basename, keep)`
+      を
+  - :chapter: CHANGELOG
+    :context: を自動実行）。 - ビルド対象/存在チェックの汎用ヘルパ `BuildHelpers.buildable?(basename, keep)`
+      を
+  - :chapter: CHANGELOG
+    :context: を自動実行）。 - ビルド対象/存在チェックの汎用ヘルパ `BuildHelpers.buildable?(basename, keep)`
+      を
+  enabled: true
+- term: セット
+  yomi: せっと
+  score: 109.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "`letter_spacing` に変更。既存のカスタムプリセットは新形式への書き換えが必要。 - **設定の役割を明確化**"
+  - :chapter: CHANGELOG
+    :context: "`letter_spacing` に変更。既存のカスタムプリセットは新形式への書き換えが必要。 - **設定の役割を明確化**"
+  enabled: true
+- term: ロード
+  yomi: ろーど
+  score: 108.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'われないようにした。 - **Prism.js 行番号付与のロード漏れ修正**: `post_process.rb` から `'
+  - :chapter: CHANGELOG
+    :context: 'われないようにした。 - **Prism.js 行番号付与のロード漏れ修正**: `post_process.rb` から `'
+  - :chapter: CHANGELOG
+    :context: 'われないようにした。 - **Prism.js 行番号付与のロード漏れ修正**: `post_process.rb` から `'
+  enabled: true
+- term: Line
+  yomi: Line
+  score: 107.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: nes.rb` を明示的に require し、`PrismLinesCommands.execute_prism_lines`
+  - :chapter: CHANGELOG
+    :context: nes.rb` を明示的に require し、`PrismLinesCommands.execute_prism_lines`
+  - :chapter: CHANGELOG
+    :context: nes.rb` を明示的に require し、`PrismLinesCommands.execute_prism_lines`
+  enabled: true
+- term: ブロック
+  yomi: ぶろっく
+  score: 107.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "-12-25 ### Fixed - **前書きのHTMLブロック境界の正規化**: `pre_process` で HTML"
+  - :chapter: CHANGELOG
+    :context: "-12-25 ### Fixed - **前書きのHTMLブロック境界の正規化**: `pre_process` で HTML"
+  - :chapter: CHANGELOG
+    :context: "-12-25 ### Fixed - **前書きのHTMLブロック境界の正規化**: `pre_process` で HTML"
+  enabled: true
+- term: ツール
+  yomi: つーる
+  score: 105.3
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "）用のユニットテストも追加して回帰検証を強化。 - **依存ツールの最新動向を確認**: Vivliostyle CLI v1"
+  - :chapter: CHANGELOG
+    :context: "）用のユニットテストも追加して回帰検証を強化。 - **依存ツールの最新動向を確認**: Vivliostyle CLI v1"
+  - :chapter: CHANGELOG
+    :context: "）用のユニットテストも追加して回帰検証を強化。 - **依存ツールの最新動向を確認**: Vivliostyle CLI v1"
+  enabled: true
+- term: 正規化
+  yomi: せいきか
+  score: 105.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "### Fixed - **前書きのHTMLブロック境界の正規化**: `pre_process` で HTML ブロック閉"
+  - :chapter: CHANGELOG
+    :context: "### Fixed - **前書きのHTMLブロック境界の正規化**: `pre_process` で HTML ブロック閉"
+  - :chapter: CHANGELOG
+    :context: "### Fixed - **前書きのHTMLブロック境界の正規化**: `pre_process` で HTML ブロック閉"
+  enabled: true
+- term: 02-preface
+  yomi: 02-preface
+  score: 104.4
+  contexts:
+  - :chapter: CHANGELOG
+    :context: なった。 - 目次生成で、ビルド対象に含まれていない前書き（02-preface）や後書き（98-postface）が表示されないように修正
+  enabled: true
+- term: 簡素化
+  yomi: かんそか
+  score: 102.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '新。 - ビルドシステムを整理し、キャッシュ活用などで処理を簡素化・高速化。 ## <dfn id="idx-duwgsji'
+  - :chapter: CHANGELOG
+    :context: '新。 - ビルドシステムを整理し、キャッシュ活用などで処理を簡素化・高速化。 ## <dfn id="idx-duwgsji'
+  - :chapter: CHANGELOG
+    :context: '新。 - ビルドシステムを整理し、キャッシュ活用などで処理を簡素化・高速化。 ## <dfn id="idx-duwgsji'
+  enabled: true
+- term: バンドル
+  yomi: ばんどる
+  score: 102.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ァイルを優先利用するよう改良。 - 扉絵・節装飾に利用できるバンドル画像セットを 36 種類（ajisai など）に拡充し、即座
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: rifJP-VariableFont_wght.ttf` をバンドルし、本文用フォントなどに利用しています。 - ライセンスの参
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: rifJP-VariableFont_wght.ttf` をバンドルし、本文用フォントなどに利用しています。 - ライセンスの参
+  enabled: true
+- term: リポジトリ
+  yomi: リポジトリ
+  score: 102.0
+  contexts:
+  - :chapter: README
+    :context: づくり ～Vivlio Starter 実践ガイド～ このリポジトリは、Thor ベースの CLI（`vs`/`vivlio-s
+  - :chapter: README
+    :context: づくり ～Vivlio Starter 実践ガイド～ このリポジトリは、Thor ベースの CLI（`vs`/`vivlio-s
+  - :chapter: README
+    :context: づくり ～Vivlio Starter 実践ガイド～ このリポジトリは、Thor ベースの CLI（`vs`/`vivlio-s
+  enabled: true
+- term: パターン
+  yomi: ぱたーん
+  score: 102.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: Full Name)`/`Full Name(ABBR)` パターンを検出して候補一覧を作成。対話的に選択して `config/
+  - :chapter: CHANGELOG
+    :context: Full Name)`/`Full Name(ABBR)` パターンを検出して候補一覧を作成。対話的に選択して `config/
+  - :chapter: CHANGELOG
+    :context: Full Name)`/`Full Name(ABBR)` パターンを検出して候補一覧を作成。対話的に選択して `config/
+  enabled: true
+- term: 生成物
+  yomi: せいせいぶつ
+  score: 101.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ook.yml` の設定に基づく動的ファイル名へリネームし、生成物がプロジェクト名・バージョンを反映した名称で出力されるように
+  - :chapter: CHANGELOG
+    :context: ook.yml` の設定に基づく動的ファイル名へリネームし、生成物がプロジェクト名・バージョンを反映した名称で出力されるように
+  - :chapter: CONTENT-LICENSE
+    :context: スト等のコンテンツ（通常 `content/` 配下、および生成物のうち本文由来の部分）は、 「表示—非営利—継承 4.0 国
+  enabled: true
+- term: Common
+  yomi: Common
+  score: 97.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: レクトリのみを安全に削除。 - 真偽値の柔軟解釈ヘルパ `Common.truthy?`/`falsey?` と `Common.
+  - :chapter: CHANGELOG
+    :context: レクトリのみを安全に削除。 - 真偽値の柔軟解釈ヘルパ `Common.truthy?`/`falsey?` と `Common.
+  - :chapter: CHANGELOG
+    :context: レクトリのみを安全に削除。 - 真偽値の柔軟解釈ヘルパ `Common.truthy?`/`falsey?` と `Common.
+  enabled: true
+- term: ファイルタイプ
+  yomi: ふぁいるたいぷ
+  score: 97.0
+  contexts:
+  - :chapter: README
+    :context: '`config/book.yml` による一元的な設定管理、ファイルタイプに応じたスタイル適用（`<body class="prefa'
+  - :chapter: README
+    :context: '`config/book.yml` による一元的な設定管理、ファイルタイプに応じたスタイル適用（`<body class="prefa'
+  - :chapter: ROADMAP
+    :context: の併合ロジックにより安定化済み。 - `<body>` のファイルタイプ自動クラス付与は導入済み（スタイル適用の基盤として継続利用）
+  enabled: true
+- term: ステップ
+  yomi: すてっぷ
+  score: 95.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: m_line_numbers` エラーが解消され、行番号付与ステップまで正常に完走する。 - **テーブル直前段落のキャプション
+  - :chapter: CHANGELOG
+    :context: m_line_numbers` エラーが解消され、行番号付与ステップまで正常に完走する。 - **テーブル直前段落のキャプション
+  - :chapter: CHANGELOG
+    :context: m_line_numbers` エラーが解消され、行番号付与ステップまで正常に完走する。 - **テーブル直前段落のキャプション
+  enabled: true
+- term: ビルド時
+  yomi: ビルドじ
+  score: 93.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: data-yomi="High">High</span> ビルド時にcover画像も含むように - <span id="idx
+  - :chapter: README
+    :context: f ghostscript`）で導入可能です。 - どちらもビルド時に外部コマンドとして呼び出すのみで、プロジェクトのライセンス
+  enabled: true
+- term: 参考訳
+  yomi: さんこうやく
+  score: 92.6
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'rements for Vivliostyle. ### 参考訳（日本語・非公式） - ライセンス: AGPLv3（GNU'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'rements for Vivliostyle. ### 参考訳（日本語・非公式） - ライセンス: AGPLv3（GNU'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'rements for Vivliostyle. ### 参考訳（日本語・非公式） - ライセンス: AGPLv3（GNU'
+  enabled: true
+- term: 指定時
+  yomi: していじ
+  score: 92.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "--no-compress` で圧縮をスキップ。オプション未指定時は `book.yml` の `pdf.compress`"
+  - :chapter: CHANGELOG
+    :context: "--no-compress` で圧縮をスキップ。オプション未指定時は `book.yml` の `pdf.compress`"
+  - :chapter: CHANGELOG
+    :context: "--no-compress` で圧縮をスキップ。オプション未指定時は `book.yml` の `pdf.compress`"
+  enabled: true
+- term: コードリスト
+  yomi: こーどりすと
+  score: 92.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '照する簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。 ### Pre-releas'
+  - :chapter: CHANGELOG
+    :context: '照する簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。 ### Pre-releas'
+  - :chapter: CHANGELOG
+    :context: '照する簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。 ### Pre-releas'
+  enabled: true
+- term: 明確化
+  yomi: めいかくか
+  score: 92.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'b`）の重要なロジックに詳細なコメントを追加し、処理の意図を明確化。 - **前付けノンブル描画を改良**: HexaPDF'
+  - :chapter: CHANGELOG
+    :context: 'b`）の重要なロジックに詳細なコメントを追加し、処理の意図を明確化。 - **前付けノンブル描画を改良**: HexaPDF'
+  - :chapter: CHANGELOG
+    :context: 'b`）の重要なロジックに詳細なコメントを追加し、処理の意図を明確化。 - **前付けノンブル描画を改良**: HexaPDF'
+  enabled: true
+- term: パース
+  yomi: ぱーす
+  score: 87.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ace_list.yml` についても存在確認と YAML パースのプリフライトチェックを追加。`vs glossary:*`
+  - :chapter: CHANGELOG
+    :context: ace_list.yml` についても存在確認と YAML パースのプリフライトチェックを追加。`vs glossary:*`
+  - :chapter: ROADMAP
+    :context: ク） - `BookBuild.Options` の引数パース整理（重複排除・単体テスト追加） - `VERBOSE`
+  enabled: true
+- term: ディレクトリ
+  yomi: でぃれくとり
+  score: 87.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "--cache` 実行時に `.vivliostyle` ディレクトリも削除するようクリーン処理を拡張。 ## <dfn id"
+  - :chapter: CHANGELOG
+    :context: "--cache` 実行時に `.vivliostyle` ディレクトリも削除するようクリーン処理を拡張。 ## <dfn id"
+  - :chapter: README
+    :context: '固定しており、CI/他環境でも同一結果を狙います。 ## ディレクトリ構成（抜粋） ``` project/ ├─ config'
+  enabled: true
+- term: OFL-1.1
+  yomi: OFL-1.1
+  score: 85.1
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'e: SIL Open Font License 1.1 (OFL-1.1) - Project: https://github.co'
+  enabled: true
+- term: project_scaffold/
+  yomi: project_scaffold/
+  score: 85.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "` で参照する theme.css テンプレート（`lib/project_scaffold/stylesheets/theme.css`）が
+      gem に"
+  enabled: true
+- term: PREFIX
+  yomi: PREFIX
+  score: 85.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 離し、圧縮時の灰色ボックスを解消。 - **CONFIG_PREFIX の定義修正** - `rakelib/common
+  - :chapter: CHANGELOG
+    :context: 離し、圧縮時の灰色ボックスを解消。 - **CONFIG_PREFIX の定義修正** - `rakelib/common
+  - :chapter: CHANGELOG
+    :context: 離し、圧縮時の灰色ボックスを解消。 - **CONFIG_PREFIX の定義修正** - `rakelib/common
+  enabled: true
+- term: CONFIG
+  yomi: CONFIG
+  score: 85.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ow` 用に分離し、圧縮時の灰色ボックスを解消。 - **CONFIG_PREFIX の定義修正** - `rakelib
+  - :chapter: CHANGELOG
+    :context: ow` 用に分離し、圧縮時の灰色ボックスを解消。 - **CONFIG_PREFIX の定義修正** - `rakelib
+  - :chapter: CHANGELOG
+    :context: ow` 用に分離し、圧縮時の灰色ボックスを解消。 - **CONFIG_PREFIX の定義修正** - `rakelib
+  enabled: true
+- term: PATH
+  yomi: PATH
+  score: 85.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: class="index-term" data-yomi="PATH">PATH</dfn>` 対応（`lib/vivlio/s
+  - :chapter: CHANGELOG
+    :context: class="index-term" data-yomi="PATH">PATH</dfn>` 対応（`lib/vivlio/s
+  - :chapter: CHANGELOG
+    :context: class="index-term" data-yomi="PATH">PATH</dfn>` 対応（`lib/vivlio/s
+  enabled: true
+- term: RANGE
+  yomi: RANGE
+  score: 85.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'Refactored - レンジ定数を導入: `MAIN_RANGE=(11..89)`, `APPX_RANGE=(91..9'
+  - :chapter: CHANGELOG
+    :context: 'Refactored - レンジ定数を導入: `MAIN_RANGE=(11..89)`, `APPX_RANGE=(91..9'
+  - :chapter: CHANGELOG
+    :context: 'Refactored - レンジ定数を導入: `MAIN_RANGE=(11..89)`, `APPX_RANGE=(91..9'
+  enabled: true
+- term: VIVLIO
+  yomi: VIVLIO
+  score: 85.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 経路は以下に整理されています。 - 指定あり（または `VIVLIO_EXPERIMENTAL_PARALLEL_PDF=1`）
+  - :chapter: CHANGELOG
+    :context: 経路は以下に整理されています。 - 指定あり（または `VIVLIO_EXPERIMENTAL_PARALLEL_PDF=1`）
+  - :chapter: CHANGELOG
+    :context: 経路は以下に整理されています。 - 指定あり（または `VIVLIO_EXPERIMENTAL_PARALLEL_PDF=1`）
+  enabled: true
+- term: RGB
+  yomi: RGB
+  score: 85.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: kcover_master.png`）から、PDF用（A4、RGB）、印刷用（B5/A5、CMYK、PDF/X-1a）、EPU
+  - :chapter: CHANGELOG
+    :context: kcover_master.png`）から、PDF用（A4、RGB）、印刷用（B5/A5、CMYK、PDF/X-1a）、EPU
+  - :chapter: CHANGELOG
+    :context: kcover_master.png`）から、PDF用（A4、RGB）、印刷用（B5/A5、CMYK、PDF/X-1a）、EPU
+  enabled: true
+- term: CMYK
+  yomi: CMYK
+  score: 85.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ng`）から、PDF用（A4、RGB）、印刷用（B5/A5、CMYK、PDF/X-1a）、EPUB用（1600×2560、JPE
+  - :chapter: CHANGELOG
+    :context: ng`）から、PDF用（A4、RGB）、印刷用（B5/A5、CMYK、PDF/X-1a）、EPUB用（1600×2560、JPE
+  - :chapter: CHANGELOG
+    :context: ng`）から、PDF用（A4、RGB）、印刷用（B5/A5、CMYK、PDF/X-1a）、EPUB用（1600×2560、JPE
+  enabled: true
+- term: JPEG
+  yomi: JPEG
+  score: 85.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'MYK、PDF/X-1a）、EPUB用（1600×2560、JPEG）のカバー画像を自動生成。サブコマンド `vs cover:'
+  - :chapter: CHANGELOG
+    :context: 'MYK、PDF/X-1a）、EPUB用（1600×2560、JPEG）のカバー画像を自動生成。サブコマンド `vs cover:'
+  - :chapter: CHANGELOG
+    :context: 'MYK、PDF/X-1a）、EPUB用（1600×2560、JPEG）のカバー画像を自動生成。サブコマンド `vs cover:'
+  enabled: true
+- term: CERT
+  yomi: CERT
+  score: 85.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 3 / ca-certificates を整備し `SSL_CERT_FILE` / `SSL_CERT_DIR` を自動設定す
+  - :chapter: CHANGELOG
+    :context: 3 / ca-certificates を整備し `SSL_CERT_FILE` / `SSL_CERT_DIR` を自動設定す
+  - :chapter: CHANGELOG
+    :context: 3 / ca-certificates を整備し `SSL_CERT_FILE` / `SSL_CERT_DIR` を自動設定す
+  enabled: true
+- term: DSL
+  yomi: DSL
+  score: 85.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'を Samovar ベースへ全面移行**: 旧 Thor DSL を廃止し、`lib/vivlio/starter/cli/'
+  - :chapter: CHANGELOG
+    :context: 'を Samovar ベースへ全面移行**: 旧 Thor DSL を廃止し、`lib/vivlio/starter/cli/'
+  - :chapter: CHANGELOG
+    :context: 'を Samovar ベースへ全面移行**: 旧 Thor DSL を廃止し、`lib/vivlio/starter/cli/'
+  enabled: true
+- term: ABBR
+  yomi: ABBR
+  score: 85.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "（glossary）: `contents/` を走査し `ABBR(Full Name)`/`Full Name(ABBR)`"
+  - :chapter: CHANGELOG
+    :context: "（glossary）: `contents/` を走査し `ABBR(Full Name)`/`Full Name(ABBR)`"
+  - :chapter: CHANGELOG
+    :context: "（glossary）: `contents/` を走査し `ABBR(Full Name)`/`Full Name(ABBR)`"
+  enabled: true
+- term: TOC
+  yomi: TOC
+  score: 85.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'ャプションとしてスタイリングするように修正。 - **目次（TOC）のページ番号整合性の修正**: `stylesheets/'
+  - :chapter: CHANGELOG
+    :context: 'ャプションとしてスタイリングするように修正。 - **目次（TOC）のページ番号整合性の修正**: `stylesheets/'
+  - :chapter: CHANGELOG
+    :context: 'ャプションとしてスタイリングするように修正。 - **目次（TOC）のページ番号整合性の修正**: `stylesheets/'
+  enabled: true
+- term: Preview
+  yomi: Preview
+  score: 82.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: を参照するよう更新し、`book.yml` の設定に従って Preview ウィンドウを制御。 - `vs build` コマンドが
+  - :chapter: CHANGELOG
+    :context: を参照するよう更新し、`book.yml` の設定に従って Preview ウィンドウを制御。 - `vs build` コマンドが
+  - :chapter: CHANGELOG
+    :context: を参照するよう更新し、`book.yml` の設定に従って Preview ウィンドウを制御。 - `vs build` コマンドが
+  enabled: true
+- term: UnifiedBuildPipeline
+  yomi: UnifiedBuildPipeline
+  score: 82.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "/ `vs delete` などの最小統合テストを整備。`UnifiedBuildPipeline` や各コマンド実装をスタブ監視することで、Samovar"
+  - :chapter: CHANGELOG
+    :context: "/ `vs delete` などの最小統合テストを整備。`UnifiedBuildPipeline` や各コマンド実装をスタブ監視することで、Samovar"
+  - :chapter: CHANGELOG
+    :context: "/ `vs delete` などの最小統合テストを整備。`UnifiedBuildPipeline` や各コマンド実装をスタブ監視することで、Samovar"
+  enabled: true
+- term: テーブル
+  yomi: てーぶる
+  score: 82.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'が解消され、行番号付与ステップまで正常に完走する。 - **テーブル直前段落のキャプション判定の改善**: `styleshee'
+  - :chapter: CHANGELOG
+    :context: 'が解消され、行番号付与ステップまで正常に完走する。 - **テーブル直前段落のキャプション判定の改善**: `styleshee'
+  - :chapter: CHANGELOG
+    :context: 'が解消され、行番号付与ステップまで正常に完走する。 - **テーブル直前段落のキャプション判定の改善**: `styleshee'
+  enabled: true
+- term: ジャンプ
+  yomi: じゃんぷ
+  score: 82.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ト N-M」として扱い、本文中の `@id` から該当箇所へジャンプできるようにした。画像は `<figure>` タグと統一的
+  - :chapter: CHANGELOG
+    :context: ト N-M」として扱い、本文中の `@id` から該当箇所へジャンプできるようにした。画像は `<figure>` タグと統一的
+  - :chapter: CHANGELOG
+    :context: ト N-M」として扱い、本文中の `@id` から該当箇所へジャンプできるようにした。画像は `<figure>` タグと統一的
+  enabled: true
+- term: Attribution
+  yomi: Attribution
+  score: 82.6
+  contexts:
+  - :chapter: CONTENT-LICENSE
+    :context: Creative Commons Attribution-NonCommercial-ShareAlike 4.0
+  - :chapter: CONTENT-LICENSE
+    :context: Creative Commons Attribution-NonCommercial-ShareAlike 4.0
+  - :chapter: CONTENT-LICENSE
+    :context: Creative Commons Attribution-NonCommercial-ShareAlike 4.0
+  enabled: true
+- term: Tools
+  yomi: Tools
+  score: 82.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: doctor` に Xcode Command Line Tools の診断と `--fix` 時のインストーラ起動・待機を追加
+  - :chapter: CHANGELOG
+    :context: doctor` に Xcode Command Line Tools の診断と `--fix` 時のインストーラ起動・待機を追加
+  - :chapter: CHANGELOG
+    :context: doctor` に Xcode Command Line Tools の診断と `--fix` 時のインストーラ起動・待機を追加
+  enabled: true
+- term: カスタムプロパティ
+  yomi: カスタムプロパティ
+  score: 82.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: その値をページ幅に対する画像の希望比率として解釈し、CSS カスタムプロパティ（`--sideimage-text-fr` / `--si
+  - :chapter: CHANGELOG
+    :context: その値をページ幅に対する画像の希望比率として解釈し、CSS カスタムプロパティ（`--sideimage-text-fr` / `--si
+  - :chapter: CHANGELOG
+    :context: その値をページ幅に対する画像の希望比率として解釈し、CSS カスタムプロパティ（`--sideimage-text-fr` / `--si
+  enabled: true
+- term: NameError
+  yomi: NameError
+  score: 82.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: movar build パイプラインから直接呼び出しても `NameError` にならないようにした。これにより `vs build`
+  - :chapter: CHANGELOG
+    :context: movar build パイプラインから直接呼び出しても `NameError` にならないようにした。これにより `vs build`
+  - :chapter: CHANGELOG
+    :context: movar build パイプラインから直接呼び出しても `NameError` にならないようにした。これにより `vs build`
+  enabled: true
+- term: Xcode
+  yomi: Xcode
+  score: 82.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: eMagick の自動導入 - `vs doctor` に Xcode Command Line Tools の診断と `--fi
+  - :chapter: CHANGELOG
+    :context: eMagick の自動導入 - `vs doctor` に Xcode Command Line Tools の診断と `--fi
+  - :chapter: CHANGELOG
+    :context: eMagick の自動導入 - `vs doctor` に Xcode Command Line Tools の診断と `--fi
+  enabled: true
+- term: ウィンドウ
+  yomi: うぃんどう
+  score: 82.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 新し、`book.yml` の設定に従って Preview ウィンドウを制御。 - `vs build` コマンドが `vivli
+  - :chapter: CHANGELOG
+    :context: 新し、`book.yml` の設定に従って Preview ウィンドウを制御。 - `vs build` コマンドが `vivli
+  - :chapter: CHANGELOG
+    :context: 新し、`book.yml` の設定に従って Preview ウィンドウを制御。 - `vs build` コマンドが `vivli
+  enabled: true
+- term: RubyGems
+  yomi: RubyGems
+  score: 82.6
+  contexts:
+  - :chapter: README
+    :context: 'lio-starter", "~> 0.6" # または RubyGems から直接インストール gem install vivlio'
+  - :chapter: README
+    :context: 'lio-starter", "~> 0.6" # または RubyGems から直接インストール gem install vivlio'
+  - :chapter: README
+    :context: 'lio-starter", "~> 0.6" # または RubyGems から直接インストール gem install vivlio'
+  enabled: true
+- term: サンプル
+  yomi: さんぷる
+  score: 82.6
+  contexts:
+  - :chapter: ROADMAP
+    :context: r`, `process_args`）の単体テスト - サンプル章によるエンドツーエンド（E2E）テスト（最小データセット）
+  - :chapter: ROADMAP
+    :context: r`, `process_args`）の単体テスト - サンプル章によるエンドツーエンド（E2E）テスト（最小データセット）
+  - :chapter: ROADMAP
+    :context: r`, `process_args`）の単体テスト - サンプル章によるエンドツーエンド（E2E）テスト（最小データセット）
+  enabled: true
+- term: デザイン
+  yomi: でざいん
+  score: 82.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: k.yml` の `typography` セクションは視覚デザイン（書体、色）を管理するよう整理。 - `page_prese
+  - :chapter: CHANGELOG
+    :context: k.yml` の `typography` セクションは視覚デザイン（書体、色）を管理するよう整理。 - `page_prese
+  - :chapter: CHANGELOG
+    :context: k.yml` の `typography` セクションは視覚デザイン（書体、色）を管理するよう整理。 - `page_prese
+  enabled: true
+- term: クリーンアップ
+  yomi: くりーんあっぷ
+  score: 82.6
+  contexts:
+  - :chapter: README
+    :context: 理し、HTML 変換・差し替え・目次/章立て生成・PDF化・クリーンアップ・表示までを自動化します。 ![Vivlio Starte
+  - :chapter: README
+    :context: 理し、HTML 変換・差し替え・目次/章立て生成・PDF化・クリーンアップ・表示までを自動化します。 ![Vivlio Starte
+  - :chapter: README
+    :context: 理し、HTML 変換・差し替え・目次/章立て生成・PDF化・クリーンアップ・表示までを自動化します。 ![Vivlio Starte
+  enabled: true
+- term: オープン
+  yomi: おーぷん
+  score: 82.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ビルド処理をパイプライン化し、実行フローと付随処理（マージ・オープン）を専用クラスへ分割。 - `pre_process.rb`
+  - :chapter: CHANGELOG
+    :context: ビルド処理をパイプライン化し、実行フローと付随処理（マージ・オープン）を専用クラスへ分割。 - `pre_process.rb`
+  - :chapter: CHANGELOG
+    :context: ビルド処理をパイプライン化し、実行フローと付随処理（マージ・オープン）を専用クラスへ分割。 - `pre_process.rb`
+  enabled: true
+- term: フィルタ
+  yomi: ふぃるた
+  score: 82.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: Plan A）を正式に廃止しました。将来的な最適化は「論理フィルタ（book.yml chapters）を前提とした通常フロー
+  - :chapter: CHANGELOG
+    :context: Plan A）を正式に廃止しました。将来的な最適化は「論理フィルタ（book.yml chapters）を前提とした通常フロー
+  - :chapter: CHANGELOG
+    :context: Plan A）を正式に廃止しました。将来的な最適化は「論理フィルタ（book.yml chapters）を前提とした通常フロー
+  enabled: true
+- term: エンジン
+  yomi: えんじん
+  score: 82.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'を挿入）。 ### Fixed - CI セクションの圧縮エンジン表記の不整合を修正し、Ghostscript 固定に統一（例'
+  - :chapter: CHANGELOG
+    :context: 'を挿入）。 ### Fixed - CI セクションの圧縮エンジン表記の不整合を修正し、Ghostscript 固定に統一（例'
+  - :chapter: CHANGELOG
+    :context: 'を挿入）。 ### Fixed - CI セクションの圧縮エンジン表記の不整合を修正し、Ghostscript 固定に統一（例'
+  enabled: true
+- term: コピー
+  yomi: こぴー
+  score: 82.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "` に集約し、`vs new` / `rake new` でコピーされるように対応 - `contents/`, `sty"
+  - :chapter: CHANGELOG
+    :context: "` に集約し、`vs new` / `rake new` でコピーされるように対応 - `contents/`, `sty"
+  - :chapter: CHANGELOG
+    :context: "` に集約し、`vs new` / `rake new` でコピーされるように対応 - `contents/`, `sty"
+  enabled: true
+- term: The
+  yomi: The
+  score: 82.6
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: to generate PDF/HTML outputs. The content of this repository (b
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: to generate PDF/HTML outputs. The content of this repository (b
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: to generate PDF/HTML outputs. The content of this repository (b
+  enabled: true
+- term: カラー
+  yomi: からー
+  score: 80.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "- 2025-11-07 ### Added - 付録専用カラー設定（`theme.appendix_color`）を追加。"
+  - :chapter: CHANGELOG
+    :context: "- 2025-11-07 ### Added - 付録専用カラー設定（`theme.appendix_color`）を追加。"
+  enabled: true
+- term: マージ
+  yomi: まーじ
+  score: 80.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'ass="aki"` による 1 行（または 2 行）分の下マージンが付かない問題を解消。 ## <dfn id="idx-'
+  - :chapter: CHANGELOG
+    :context: 'ass="aki"` による 1 行（または 2 行）分の下マージンが付かない問題を解消。 ## <dfn id="idx-'
+  enabled: true
+- term: ImageMagick
+  yomi: ImageMagick
+  score: 76.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: a5`, `vs cover:epub` で個別生成も可能。ImageMagickとGhostscriptを使用してPDF/X-1a準拠の印刷
+  - :chapter: CHANGELOG
+    :context: a5`, `vs cover:epub` で個別生成も可能。ImageMagickとGhostscriptを使用してPDF/X-1a準拠の印刷
+  - :chapter: README
+    :context: 'Ghostscript: PDF 圧縮（サイズ削減） - ImageMagick: 画像変換（WebP 等） インストール（macOS/H'
+  enabled: false
+- term: ノンブル
+  yomi: のんぶる
+  score: 76.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'dium</span> 出力バリアント PDF（裁ち落とし/ノンブル有無）、Web/EPUB（任意）。 #### 校正/Lin'
+  - :chapter: CHANGELOG
+    :context: 'dium</span> 出力バリアント PDF（裁ち落とし/ノンブル有無）、Web/EPUB（任意）。 #### 校正/Lin'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: VariableFont_wght.ttf` をバンドルし、ノンブル等の sans-serif 体に使用しています。 - ライセ
+  enabled: false
+- term: Bundler
+  yomi: Bundler
+  score: 76.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: global 4.0.0` で最新 Ruby へ切り替え、Bundler 2.7.2 で gem を再インストール。`vs buil
+  - :chapter: README
+    :context: 'しても利用できます（CLI 同梱）。 ```bash # Bundler（推奨） gem "vivlio-starter", "~>'
+  - :chapter: README
+    :context: 'しても利用できます（CLI 同梱）。 ```bash # Bundler（推奨） gem "vivlio-starter", "~>'
+  enabled: false
+- term: Google
+  yomi: Google
+  score: 76.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 追加。 - `vs doctor` が macOS 環境で Google Fonts 用 SSL 証明書の診断を行い、`--fix`
+  - :chapter: CHANGELOG
+    :context: 追加。 - `vs doctor` が macOS 環境で Google Fonts 用 SSL 証明書の診断を行い、`--fix`
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'erif+JP - Copyright: (c) 2012 Google Inc. All Rights Reserved. - L'
+  enabled: false
+- term: バックアップ
+  yomi: ばっくあっぷ
+  score: 76.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: SS の仮想連番（Step 2）は引き続き `.orig` バックアップを用いた復元（Step 11）を行いますが、章の選定は `k
+  - :chapter: README
+    :context: "`vivliostyle.config.js` の自動生成（バックアップは最新版のみ保持） - 冗長ログの統一制御（`--log<s"
+  - :chapter: README
+    :context: "`vivliostyle.config.js` の自動生成（バックアップは最新版のみ保持） - 冗長ログの統一制御（`--log<s"
+  enabled: false
+- term: Fonts
+  yomi: Fonts
+  score: 76.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: vs doctor` が macOS 環境で Google Fonts 用 SSL 証明書の診断を行い、`--fix` 指定時に
+  - :chapter: CHANGELOG
+    :context: vs doctor` が macOS 環境で Google Fonts 用 SSL 証明書の診断を行い、`--fix` 指定時に
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'MIT ライセンスの注記を含めています。 ## 書体 (Fonts) ### HackGen / HackGen35 - L'
+  enabled: false
+- term: Windsurf
+  yomi: Windsurf
+  score: 76.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'ン」を先、Ghostscript 例を後に - 付録: Windsurf エディタの紹介・インストール手順・ショートカット（macO'
+  - :chapter: README
+    :context: "（テンプレートの 02-preface.md を編集） # Windsurf の場合 windsurf contents/02-pref"
+  - :chapter: README
+    :context: "（テンプレートの 02-preface.md を編集） # Windsurf の場合 windsurf contents/02-pref"
+  enabled: false
+- term: Changelog
+  yomi: Changelog
+  score: 76.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "# 変更履歴（Changelog） このファイルには、本プロジェクトの主な変更内容を記録し"
+  - :chapter: CHANGELOG
+    :context: "# 変更履歴（Changelog） このファイルには、本プロジェクトの主な変更内容を記録し"
+  - :chapter: README
+    :context: 'le update vivlio-starter` ## Changelog 変更履歴は `CHANGELOG.md` を参照してくだ'
+  enabled: false
+- term: ダウンロード
+  yomi: だうんろーど
+  score: 76.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: vs doctor --fix` で waifu2x を自動ダウンロード・展開し、`$HOME/.local/bin/waifu2x
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'ロジェクト: https://prismjs.com/ - ダウンロード/ビルド: https://prismjs.com/down'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'ロジェクト: https://prismjs.com/ - ダウンロード/ビルド: https://prismjs.com/down'
+  enabled: false
+- term: Homebrew
+  yomi: Homebrew
+  score: 76.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 用 SSL 証明書の診断を行い、`--fix` 指定時に Homebrew で openssl@3 / ca-certificates
+  - :chapter: CHANGELOG
+    :context: 用 SSL 証明書の診断を行い、`--fix` 指定時に Homebrew で openssl@3 / ca-certificates
+  - :chapter: README
+    :context: 'k: 画像変換（WebP 等） インストール（macOS/Homebrew）: ```bash brew install poppl'
+  enabled: false
+- term: ローカル
+  yomi: ろーかる
+  score: 76.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: yml に指定したフォントを Google Fonts からローカルへ自動取得し、可読性の高いファイル名で保存したうえで `go
+  - :chapter: CHANGELOG
+    :context: yml に指定したフォントを Google Fonts からローカルへ自動取得し、可読性の高いファイル名で保存したうえで `go
+  - :chapter: README
+    :context: 'rbose # 追加ログ付き ``` 備考: - ローカルにインストール済みの CLI は `npx vivliost'
+  enabled: false
+- term: CompatibilityLevel
+  yomi: CompatibilityLevel
+  score: 76.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '合を修正し、Ghostscript 固定に統一（例も `-dCompatibilityLevel=1.7` に合わせて更新）。固定理由:
+      qpdf は再圧縮'
+  - :chapter: CHANGELOG
+    :context: '合を修正し、Ghostscript 固定に統一（例も `-dCompatibilityLevel=1.7` に合わせて更新）。固定理由:
+      qpdf は再圧縮'
+  - :chapter: README
+    :context: fwrite -dPDFSETTINGS=/ebook -dCompatibilityLevel=1.7 \ -dNOPAUSE -dQUIET
+      -d
+  enabled: false
+- term: LOG
+  yomi: LOG
+  score: 75.3
+  contexts:
+  - :chapter: CHANGELOG
+    :context: bose`、環境変数 `VERBOSE`/`DEBUG`/`LOG_LEVEL` は廃止しました。 - `vs clean`
+  - :chapter: CHANGELOG
+    :context: bose`、環境変数 `VERBOSE`/`DEBUG`/`LOG_LEVEL` は廃止しました。 - `vs clean`
+  enabled: false
+- term: ユニットテスト
+  yomi: ゆにっとてすと
+  score: 75.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: r 仕様へ更新し、新コマンド（`entries` など）用のユニットテストも追加して回帰検証を強化。 - **依存ツールの最新動向を確
+  - :chapter: CHANGELOG
+    :context: r 仕様へ更新し、新コマンド（`entries` など）用のユニットテストも追加して回帰検証を強化。 - **依存ツールの最新動向を確
+  - :chapter: CHANGELOG
+    :context: r 仕様へ更新し、新コマンド（`entries` など）用のユニットテストも追加して回帰検証を強化。 - **依存ツールの最新動向を確
+  enabled: false
+- term: サブセクション
+  yomi: さぶせくしょん
+  score: 75.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "`pdf`, `print_pdf`, `epub` の各サブセクションで設定を整理。 - **プロジェクト情報セクション**: `"
+  - :chapter: CHANGELOG
+    :context: "`pdf`, `print_pdf`, `epub` の各サブセクションで設定を整理。 - **プロジェクト情報セクション**: `"
+  - :chapter: CHANGELOG
+    :context: "`pdf`, `print_pdf`, `epub` の各サブセクションで設定を整理。 - **プロジェクト情報セクション**: `"
+  enabled: false
+- term: AGPLv3
+  yomi: AGPLv3
+  score: 72.5
+  contexts:
+  - :chapter: README
+    :context: F/HTML 生成のために Vivliostyle CLI（AGPLv3）を利用しています。 - Vivliostyle ライセン
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: "## Vivliostyle CLI - License: AGPLv3 - Project: https://github.com"
+  enabled: false
+- term: ユーティリティ
+  yomi: ゆーてぃりてぃ
+  score: 72.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'rs)` を追加し、Step 6/7 で使用。 - 並列処理ユーティリティ: `BuildHelpers.parallel_each('
+  - :chapter: ROADMAP
+    :context: 'style-type: lower-alpha; }` 用のユーティリティCSSを追加。 - <span id="idx-wnvbtn'
+  enabled: false
+- term: カウンタ
+  yomi: かうんた
+  score: 72.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 正。Vivliostyle の print 脚注と CSS カウンターのずれにより `color 5` などの参照番号と脚注行が
+  - :chapter: ROADMAP
+    :context: "- vivliostyle.config.js にページカウンタ設定オプションがあるか確認し、前書きを負の値（例: -10）"
+  enabled: false
+- term: 目次生成
+  yomi: もくじせいせい
+  score: 70.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'ソッドに詳細なコメントを追加。 - **コメント追加**: 目次生成（`toc.rb`）とPDFアウトライン生成（`build_'
+  - :chapter: CHANGELOG
+    :context: 'ソッドに詳細なコメントを追加。 - **コメント追加**: 目次生成（`toc.rb`）とPDFアウトライン生成（`build_'
+  enabled: false
+- term: PDF圧縮
+  yomi: PDFあっしゅく
+  score: 70.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: olor` を使用し、前書きのみ異なる色を設定可能に。 - PDF圧縮設定（`pdf.compress`）を `config/bo
+  - :chapter: CHANGELOG
+    :context: olor` を使用し、前書きのみ異なる色を設定可能に。 - PDF圧縮設定（`pdf.compress`）を `config/bo
+  enabled: false
+- term: 本文中
+  yomi: ほんぶんちゅう
+  score: 70.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 照の整備（章番号ベースの cross reference）。本文中から「第◯章」「第◯節」を参照する簡潔な記法を設計し、既存の
+  - :chapter: CHANGELOG
+    :context: 照の整備（章番号ベースの cross reference）。本文中から「第◯章」「第◯節」を参照する簡潔な記法を設計し、既存の
+  enabled: false
+- term: "`--force`"
+  yomi: "`--force`"
+  score: 70.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: e`/`create:colophon` を呼び出し、常に `--force` で上書き（スキップ警告を抑止）。 - 00/01 の結合方
+  - :chapter: CHANGELOG
+    :context: e`/`create:colophon` を呼び出し、常に `--force` で上書き（スキップ警告を抑止）。 - 00/01 の結合方
+  enabled: false
+- term: 紙サイズ
+  yomi: かみさいず
+  score: 67.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ="Medium">Medium</span> A4 以外の紙サイズを指定する（推奨文字サイズの確認） - <span id="
+  - :chapter: CHANGELOG
+    :context: ="Medium">Medium</span> A4 以外の紙サイズを指定する（推奨文字サイズの確認） - <span id="
+  - :chapter: CHANGELOG
+    :context: ="Medium">Medium</span> A4 以外の紙サイズを指定する（推奨文字サイズの確認） - <span id="
+  enabled: false
+- term: 設定可能
+  yomi: せっていかのう
+  score: 67.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: じ `theme.color` を使用し、付録のみ異なる色を設定可能に。 - 付録のh3/h4マーカー（♣/♦）が `theme
+  - :chapter: CHANGELOG
+    :context: じ `theme.color` を使用し、付録のみ異なる色を設定可能に。 - 付録のh3/h4マーカー（♣/♦）が `theme
+  - :chapter: CHANGELOG
+    :context: じ `theme.color` を使用し、付録のみ異なる色を設定可能に。 - 付録のh3/h4マーカー（♣/♦）が `theme
+  enabled: false
+- term: プリセット
+  yomi: プリセット
+  score: 67.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ", `letter_spacing` に変更。既存のカスタムプリセットは新形式への書き換えが必要。 - **設定の役割を明確化**"
+  - :chapter: CHANGELOG
+    :context: ", `letter_spacing` に変更。既存のカスタムプリセットは新形式への書き換えが必要。 - **設定の役割を明確化**"
+  enabled: false
+- term: 指定可能
+  yomi: していかのう
+  score: 67.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 2, 91"、範囲指定 "02-12, 91" の形式で章を指定可能に。従来のファイル名指定と併用はできず、混在時はエラーで中止
+  - :chapter: CHANGELOG
+    :context: 2, 91"、範囲指定 "02-12, 91" の形式で章を指定可能に。従来のファイル名指定と併用はできず、混在時はエラーで中止
+  - :chapter: CHANGELOG
+    :context: 2, 91"、範囲指定 "02-12, 91" の形式で章を指定可能に。従来のファイル名指定と併用はできず、混在時はエラーで中止
+  enabled: false
+- term: 利用者
+  yomi: りようしゃ
+  score: 67.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 在する場合、ビルド開始時にエラーメッセージを表示して中止し、利用者にファイル名の修正を促す。 - **横長表のページ内回転機能
+  - :chapter: CHANGELOG
+    :context: 在する場合、ビルド開始時にエラーメッセージを表示して中止し、利用者にファイル名の修正を促す。 - **横長表のページ内回転機能
+  - :chapter: CHANGELOG
+    :context: 在する場合、ビルド開始時にエラーメッセージを表示して中止し、利用者にファイル名の修正を促す。 - **横長表のページ内回転機能
+  enabled: false
+- term: 一括追加
+  yomi: いっかつついか
+  score: 67.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '"Medium">Medium</span> 用語候補抽出と一括追加（glossary）: `contents/` を走査し `'
+  - :chapter: CHANGELOG
+    :context: '"Medium">Medium</span> 用語候補抽出と一括追加（glossary）: `contents/` を走査し `'
+  - :chapter: CHANGELOG
+    :context: '"Medium">Medium</span> 用語候補抽出と一括追加（glossary）: `contents/` を走査し `'
+  enabled: false
+- term: よう修正
+  yomi: ようしゅうせい
+  score: 67.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: s_for_outline` で目次（章番号3）を常に含めるよう修正し、`chapters` 設定に関わらず目次のアウトラインが
+  - :chapter: CHANGELOG
+    :context: s_for_outline` で目次（章番号3）を常に含めるよう修正し、`chapters` 設定に関わらず目次のアウトラインが
+  - :chapter: CHANGELOG
+    :context: s_for_outline` で目次（章番号3）を常に含めるよう修正し、`chapters` 設定に関わらず目次のアウトラインが
+  enabled: false
+- term: マークアップ
+  yomi: まーくあっぷ
+  score: 67.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'を追加。 - **Phase 1 (MVP)**: 手動マークアップベース - `<dfn id="idx-c8x7kk'
+  - :chapter: CHANGELOG
+    :context: 'を追加。 - **Phase 1 (MVP)**: 手動マークアップベース - `<dfn id="idx-c8x7kk'
+  enabled: false
+- term: タイプ
+  yomi: たいぷ
+  score: 67.5
+  contexts:
+  - :chapter: ROADMAP
+    :context: =" "> </span> スタイルガイドの整備 - 章タイプ別（preface/chapter/appendix/pos
+  enabled: false
+- term: ガイド
+  yomi: がいど
+  score: 66.2
+  contexts:
+  - :chapter: README
+    :context: はじめての技術書づくり ～Vivlio Starter 実践ガイド～ このリポジトリは、Thor ベースの CLI（`vs`
+  - :chapter: README
+    :context: はじめての技術書づくり ～Vivlio Starter 実践ガイド～ このリポジトリは、Thor ベースの CLI（`vs`
+  enabled: false
+- term: Pre
+  yomi: Pre
+  score: 65.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'の図表・コードリスト参照パイプラインと統合する。 ### Pre-release Checklist - gem 公開時には'
+  enabled: false
+- term: PDF生成
+  yomi: PDFせいせい
+  score: 65.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 書きが重複して出力される問題を解決。 - Step 7（全体PDF生成）で前書き（02）を除外。前書きは Step 8 で `02
+  - :chapter: CHANGELOG
+    :context: 書きが重複して出力される問題を解決。 - Step 7（全体PDF生成）で前書き（02）を除外。前書きは Step 8 で `02
+  - :chapter: CHANGELOG
+    :context: 書きが重複して出力される問題を解決。 - Step 7（全体PDF生成）で前書き（02）を除外。前書きは Step 8 で `02
+  enabled: false
+- term: バッククォート
+  yomi: ばっくくぉーと
+  score: 65.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '扱い**: `pre_process` でインラインコード（バッククォート囲み）内の `<`/`>` を `&lt;`/`&gt;`'
+  - :chapter: CHANGELOG
+    :context: '扱い**: `pre_process` でインラインコード（バッククォート囲み）内の `<`/`>` を `&lt;`/`&gt;`'
+  - :chapter: CHANGELOG
+    :context: '扱い**: `pre_process` でインラインコード（バッククォート囲み）内の `<`/`>` を `&lt;`/`&gt;`'
+  enabled: false
+- term: インラインコード
+  yomi: いんらいんこーど
+  score: 65.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'を左右にきれいに並べてレイアウトできるようにした。 - **インラインコード内 HTML タグの安全な扱い**: `pre_proces'
+  - :chapter: CHANGELOG
+    :context: 'を左右にきれいに並べてレイアウトできるようにした。 - **インラインコード内 HTML タグの安全な扱い**: `pre_proces'
+  - :chapter: CHANGELOG
+    :context: 'を左右にきれいに並べてレイアウトできるようにした。 - **インラインコード内 HTML タグの安全な扱い**: `pre_proces'
+  enabled: false
+- term: ThorCLI
+  yomi: ThorCLI
+  score: 65.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: rebuild!` は `Vivlio::Starter::ThorCLI.start(<dfn id="idx-mb76ie3zq8
+  - :chapter: CHANGELOG
+    :context: rebuild!` は `Vivlio::Starter::ThorCLI.start(<dfn id="idx-mb76ie3zq8
+  - :chapter: CHANGELOG
+    :context: rebuild!` は `Vivlio::Starter::ThorCLI.start(<dfn id="idx-mb76ie3zq8
+  enabled: false
+- term: 引用符
+  yomi: いんようふ
+  score: 62.0
+  contexts:
+  - :chapter: ROADMAP
+    :context: 確定運用。 - 生成HTMLの回帰チェック（クラス属性の引用符・バックスラッシュ混入の再発防止）。 - <span id=
+  - :chapter: ROADMAP
+    :context: 確定運用。 - 生成HTMLの回帰チェック（クラス属性の引用符・バックスラッシュ混入の再発防止）。 - <span id=
+  enabled: false
+- term: 安定化
+  yomi: あんていか
+  score: 62.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'ット（keep）が Step 6/7/11 に貫通する実装を安定化（退避・復元なしの論理フィルタを前提に整理）。 ### F'
+  - :chapter: ROADMAP
+    :context: 'マイルストーン（案） - M1: 2025-09 ビルドの安定化と開発者 UX 向上 - 失敗時のリカバリ提案・詳細ログ'
+  enabled: false
+- term: 一元管理
+  yomi: いちげんかんり
+  score: 61.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "--verbose` 等）を RootCommand 経由で一元管理するようにした。これに伴い CLI テスト群を Samova"
+  - :chapter: CHANGELOG
+    :context: "--verbose` 等）を RootCommand 経由で一元管理するようにした。これに伴い CLI テスト群を Samova"
+  - :chapter: ROADMAP
+    :context: "# 目標（ゴール） - ビルドの安定性と再現性の向上（設定の一元管理と検証） - ログとエラー報告の改善（原因特定しやすさの向上"
+  enabled: false
+- term: "`package.json`"
+  yomi: "`package.json`"
+  score: 61.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: eate` のテンプレート拡充が行われた。アップデート時は `package.json` の `@vivliostyle/cli` /
+      `@vivl
+  - :chapter: README
+    :context: tyle CLI / VFM の導入 本プロジェクトでは、`package.json` の devDependencies に以下を含めています。
+  - :chapter: README
+    :context: tyle CLI / VFM の導入 本プロジェクトでは、`package.json` の devDependencies に以下を含めています。
+  enabled: false
+- term: Web
+  yomi: Web
+  score: 61.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'an> 出力バリアント PDF（裁ち落とし/ノンブル有無）、Web/EPUB（任意）。 #### 校正/Lint・品質 リフ'
+  - :chapter: CHANGELOG
+    :context: 'an> 出力バリアント PDF（裁ち落とし/ノンブル有無）、Web/EPUB（任意）。 #### 校正/Lint・品質 リフ'
+  enabled: false
+- term: スタイルガイド
+  yomi: すたいるがいど
+  score: 61.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: igh">High</span> 日本語表記・組版Lint（スタイルガイド） - <span id="idx-6gmecrj6z7am
+  - :chapter: ROADMAP
+    :context: -term" data-yomi=" "> </span> スタイルガイドの整備 - 章タイプ別（preface/chapter/
+  - :chapter: CHANGELOG
+    :context: igh">High</span> 日本語表記・組版Lint（スタイルガイド） - <span id="idx-6gmecrj6z7am
+  enabled: false
+- term: ソース
+  yomi: そーす
+  score: 60.3
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: "//prismjs.com/download.html - ソース: https://github.com/PrismJS/p"
+  enabled: false
+- term: 1-1
+  yomi: 1-1
+  score: 60.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '- `<dfn id="idx-c8x7kk0ta3y1-1" class="index-term" data-yomi'
+  enabled: false
+- term: "`build.rb`"
+  yomi: "`build.rb`"
+  score: 60.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'まま）。 - **ビルドパイプラインのモジュール分割**: `build.rb` と巨大な `build_helpers.rb` をリファク'
+  enabled: false
+- term: 生成時
+  yomi: せいせいじ
+  score: 60.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: yomi="High">High</span> プロジェクト生成時に、.cache/vs/ を生成する。 - <span id
+  enabled: false
+- term: "`margin_inner`"
+  yomi: "`margin_inner`"
+  score: 60.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "(...)` を参照するよう整備。 - 扉絵背景の横位置を `margin_inner`/`margin_outer` の差分から自動算出した
+      `-"
+  enabled: false
+- term: "`margin_outer`"
+  yomi: "`margin_outer`"
+  score: 60.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 備。 - 扉絵背景の横位置を `margin_inner`/`margin_outer` の差分から自動算出した `--frontispiece-b
+  enabled: false
+- term: 節見出し
+  yomi: ふしみだし
+  score: 60.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: e テーマ向け header スタイルを刷新し、章タイトル・節見出しをバナー調に再設計。 - image テーマの章扉レイアウト
+  enabled: false
+- term: "`output.pdf`"
+  yomi: "`output.pdf`"
+  score: 60.1
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "## Changed - `vs build` の完了時に、`output.pdf` および `output_compressed.pdf`
+      を"
+  enabled: false
+- term: 章ビルド
+  yomi: あきらビルド
+  score: 57.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 新構造に追従させた。さらに、従来は別実装だったフルビルド/単章ビルドの 2 系統パイプラインを `UnifiedBuildPip
+  - :chapter: CHANGELOG
+    :context: 新構造に追従させた。さらに、従来は別実装だったフルビルド/単章ビルドの 2 系統パイプラインを `UnifiedBuildPip
+  enabled: false
+- term: 削除対象
+  yomi: さくじょたいしょう
+  score: 57.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: LEVEL` は廃止しました。 - `vs clean` の削除対象/挙動を見直し。 - pre_process 展開などで
+  - :chapter: CHANGELOG
+    :context: LEVEL` は廃止しました。 - `vs clean` の削除対象/挙動を見直し。 - pre_process 展開などで
+  enabled: false
+- term: Vivliostyle/VFM
+  yomi: Vivliostyle/VFM
+  score: 57.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'SS の仕様差分がないかをビルド後に目視確認する。 - **Vivliostyle/VFM 依存のバージョンアップ**: `@vivliostyle/'
+  - :chapter: CHANGELOG
+    :context: 'SS の仕様差分がないかをビルド後に目視確認する。 - **Vivliostyle/VFM 依存のバージョンアップ**: `@vivliostyle/'
+  enabled: false
+- term: 統一的
+  yomi: とういつてき
+  score: 57.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ャンプできるようにした。画像は `<figure>` タグと統一的なキャプションスタイルで出力し、参照リンク（図/表/リスト番
+  - :chapter: CHANGELOG
+    :context: ャンプできるようにした。画像は `<figure>` タグと統一的なキャプションスタイルで出力し、参照リンク（図/表/リスト番
+  enabled: false
+- term: "`keep`"
+  yomi: "`keep`"
+  score: 57.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 03-toc`）は Step 6 で常に自動生成されるため、`keep` 設定ではなくファイルの実在で判定するように変更。 - `v
+  - :chapter: CHANGELOG
+    :context: 03-toc`）は Step 6 で常に自動生成されるため、`keep` 設定ではなくファイルの実在で判定するように変更。 - `v
+  enabled: false
+- term: "`@id`"
+  yomi: "`@id`"
+  score: 57.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ら「第◯章」「第◯節」を参照する簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。
+  - :chapter: CHANGELOG
+    :context: ら「第◯章」「第◯節」を参照する簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。
+  enabled: false
+- term: 共通化
+  yomi: きょうつうか
+  score: 57.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ジックを `all_chapter_files` メソッドに共通化し、文字列/配列処理を個別のメソッド（`process_st
+  - :chapter: CHANGELOG
+    :context: ジックを `all_chapter_files` メソッドに共通化し、文字列/配列処理を個別のメソッド（`process_st
+  enabled: false
+- term: カバー画像
+  yomi: かばーがぞう
+  score: 57.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "-------` で囲む形式で視認性を大幅に向上。 - **カバー画像生成コマンド**: `vs cover` コマンドを追加。マ"
+  - :chapter: CHANGELOG
+    :context: "-------` で囲む形式で視認性を大幅に向上。 - **カバー画像生成コマンド**: `vs cover` コマンドを追加。マ"
+  enabled: false
+- term: 手動マークアップ
+  yomi: しゅどうまーくあっぷ
+  score: 57.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '機能を追加。 - **Phase 1 (MVP)**: 手動マークアップベース - `<dfn id="idx-c8x7kk'
+  - :chapter: CHANGELOG
+    :context: '機能を追加。 - **Phase 1 (MVP)**: 手動マークアップベース - `<dfn id="idx-c8x7kk'
+  enabled: false
+- term: リセット
+  yomi: りせっと
+  score: 57.0
+  contexts:
+  - :chapter: ROADMAP
+    :context: '前書きを負の値（例: -10）から開始し、本文開始で 1 にリセットする要件を実装。 - CSSカウンタ（@page cou'
+  enabled: false
+- term: README.md
+  yomi: README.md
+  score: 55.3
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "）を削除対象に追加。 - それ以外の Markdown（README.md などユーザー資産）は、`--purge` 指定でも削除しな"
+  enabled: false
+- term: メンテナンス
+  yomi: めんてなんす
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: dix.css` の重複コードを大幅に削減（約90%削減）。メンテナンス性が向上。 - `chapter.css` から未使用の C
+  - :chapter: CHANGELOG
+    :context: dix.css` の重複コードを大幅に削減（約90%削減）。メンテナンス性が向上。 - `chapter.css` から未使用の C
+  enabled: false
+- term: サブコマンド
+  yomi: さぶこまんど
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: B用（1600×2560、JPEG）のカバー画像を自動生成。サブコマンド `vs cover:a4`, `vs cover:b5`,
+  - :chapter: CHANGELOG
+    :context: B用（1600×2560、JPEG）のカバー画像を自動生成。サブコマンド `vs cover:a4`, `vs cover:b5`,
+  enabled: false
+- term: マスター
+  yomi: ますたー
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '像生成コマンド**: `vs cover` コマンドを追加。マスター画像（`frontcover_master.png`, `b'
+  - :chapter: CHANGELOG
+    :context: '像生成コマンド**: `vs cover` コマンドを追加。マスター画像（`frontcover_master.png`, `b'
+  enabled: false
+- term: デフォルト
+  yomi: でふぉると
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ress`）を `config/book.yml` に追加。デフォルトは `false`（圧縮なし）で、`true` に設定すると
+  - :chapter: CHANGELOG
+    :context: ress`）を `config/book.yml` に追加。デフォルトは `false`（圧縮なし）で、`true` に設定すると
+  enabled: false
+- term: テキスト
+  yomi: てきすと
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ntries` メソッドを調整。また、目次の見出しについてはテキスト検索をスキップし、計算済みの開始ページを直接使用することで、
+  - :chapter: CHANGELOG
+    :context: ntries` メソッドを調整。また、目次の見出しについてはテキスト検索をスキップし、計算済みの開始ページを直接使用することで、
+  enabled: false
+- term: トークン
+  yomi: とーくん
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ".css` と同様の仕組みで、ファイルが存在しない・空・必須トークンが欠けている場合にテンプレート（project_scaffo"
+  - :chapter: CHANGELOG
+    :context: ".css` と同様の仕組みで、ファイルが存在しない・空・必須トークンが欠けている場合にテンプレート（project_scaffo"
+  enabled: false
+- term: マージン
+  yomi: まーじん
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'ass="aki"` による 1 行（または 2 行）分の下マージンが付かない問題を解消。 ## <dfn id="idx-r'
+  - :chapter: CHANGELOG
+    :context: 'ass="aki"` による 1 行（または 2 行）分の下マージンが付かない問題を解消。 ## <dfn id="idx-r'
+  enabled: false
+- term: アスペクト
+  yomi: あすぺくと
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: と `margin_outer` からバインディングセーフなアスペクト比を算出して利用するようにし、ノド側の欠けを防止。 - **
+  - :chapter: CHANGELOG
+    :context: と `margin_outer` からバインディングセーフなアスペクト比を算出して利用するようにし、ノド側の欠けを防止。 - **
+  enabled: false
+- term: モジュール
+  yomi: もじゅーる
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '従来どおり 3:2 のまま）。 - **ビルドパイプラインのモジュール分割**: `build.rb` と巨大な `build_h'
+  - :chapter: CHANGELOG
+    :context: '従来どおり 3:2 のまま）。 - **ビルドパイプラインのモジュール分割**: `build.rb` と巨大な `build_h'
+  enabled: false
+- term: ラベル
+  yomi: らべる
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'スリファレンス機能の完成**: 図・表・コードリストに対するラベル収集・自動採番・本文中からの参照を一貫したパイプラインとして'
+  - :chapter: CHANGELOG
+    :context: 'スリファレンス機能の完成**: 図・表・コードリストに対するラベル収集・自動採番・本文中からの参照を一貫したパイプラインとして'
+  enabled: false
+- term: スコアリング
+  yomi: すこありんぐ
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'ml`）を生成 - **Phase 2**: 自動抽出とスコアリング - `vs index:extract` コマンド'
+  - :chapter: CHANGELOG
+    :context: 'ml`）を生成 - **Phase 2**: 自動抽出とスコアリング - `vs index:extract` コマンド'
+  enabled: false
+- term: スニペット
+  yomi: スニペット
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: a-yomi="Low">Low</span> テンプレ断片スニペット（注意/補足/Tipのコンポーネント化）。 - <span
+  - :chapter: CHANGELOG
+    :context: a-yomi="Low">Low</span> テンプレ断片スニペット（注意/補足/Tipのコンポーネント化）。 - <span
+  enabled: false
+- term: "- テーマカラー"
+  yomi: "-てーまからー"
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '確化。可読性とメンテナンス性を向上。 ### Fixed - テーマカラーの定義不足を修正。amber / orange / peac'
+  enabled: false
+- term: テーマカラー
+  yomi: てーまからー
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "。可読性とメンテナンス性を向上。 ### Fixed - テーマカラーの定義不足を修正。amber / orange / peac"
+  - :chapter: CHANGELOG
+    :context: "。可読性とメンテナンス性を向上。 ### Fixed - テーマカラーの定義不足を修正。amber / orange / peac"
+  enabled: false
+- term: Docker
+  yomi: Docker
+  score: 55.0
+  contexts:
+  - :chapter: ROADMAP
+    :context: '列化）検討 - M3: 2025-11 配布・運用 - Docker/Devcontainer、CI（Lint/テスト/ビルド）'
+  - :chapter: ROADMAP
+    :context: '列化）検討 - M3: 2025-11 配布・運用 - Docker/Devcontainer、CI（Lint/テスト/ビルド）'
+  enabled: false
+- term: バックスラッシュ
+  yomi: ばっくすらっしゅ
+  score: 55.0
+  contexts:
+  - :chapter: ROADMAP
+    :context: 。 - 生成HTMLの回帰チェック（クラス属性の引用符・バックスラッシュ混入の再発防止）。 - <span id="idx-wnvb
+  - :chapter: ROADMAP
+    :context: 。 - 生成HTMLの回帰チェック（クラス属性の引用符・バックスラッシュ混入の再発防止）。 - <span id="idx-wnvb
+  enabled: false
+- term: Full
+  yomi: Full
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'sary）: `contents/` を走査し `ABBR(Full Name)`/`Full Name(ABBR)` パターン'
+  - :chapter: CHANGELOG
+    :context: 'sary）: `contents/` を走査し `ABBR(Full Name)`/`Full Name(ABBR)` パターン'
+  enabled: false
+- term: スキーマ
+  yomi: すきーま
+  score: 55.0
+  contexts:
+  - :chapter: ROADMAP
+    :context: 定/引数処理 - `config/book.yml` のスキーマ検証（必須フィールド・型チェック） - `BookBui
+  - :chapter: ROADMAP
+    :context: 定/引数処理 - `config/book.yml` のスキーマ検証（必須フィールド・型チェック） - `BookBui
+  enabled: false
+- term: パフォーマンス
+  yomi: ぱふぉーまんす
+  score: 55.0
+  contexts:
+  - :chapter: ROADMAP
+    :context: '明確化（名前空間・エイリアスの整理とドキュメント同期） - パフォーマンス最適化（不要処理の削減・並列化の検討） ## マイルストー'
+  - :chapter: ROADMAP
+    :context: '明確化（名前空間・エイリアスの整理とドキュメント同期） - パフォーマンス最適化（不要処理の削減・並列化の検討） ## マイルストー'
+  enabled: false
+- term: View
+  yomi: View
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'ta-yomi="High">High</span> Re:View Starter -> Vivlio Starter ##'
+  - :chapter: CHANGELOG
+    :context: 'ta-yomi="High">High</span> Re:View Starter -> Vivlio Starter ##'
+  enabled: false
+- term: MeCab
+  yomi: MeCab
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: mi="ようご">用語</span>` 記法（読み省略）で MeCab による読み自動推測 - 初出は `<dfn>` タ
+  - :chapter: CHANGELOG
+    :context: mi="ようご">用語</span>` 記法（読み省略）で MeCab による読み自動推測 - 初出は `<dfn>` タ
+  enabled: false
+- term: PrismLinesCommands
+  yomi: PrismLinesCommands
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: sm_lines.rb` を明示的に require し、`PrismLinesCommands.execute_prism_lines`
+      を Samova
+  - :chapter: CHANGELOG
+    :context: sm_lines.rb` を明示的に require し、`PrismLinesCommands.execute_prism_lines`
+      を Samova
+  enabled: false
+- term: Grid
+  yomi: Grid
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ideimage-body">` にまとめることで、CSS Grid により「図＋本文」を左右にきれいに並べてレイアウトできるよ
+  - :chapter: CHANGELOG
+    :context: ideimage-body">` にまとめることで、CSS Grid により「図＋本文」を左右にきれいに並べてレイアウトできるよ
+  enabled: false
+- term: Breaking
+  yomi: Breaking
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'yle CLI の出力抑制を切り替えるよう対応。 ### Breaking Changes - `book.yml` の PDF プレ'
+  - :chapter: CHANGELOG
+    :context: 'yle CLI の出力抑制を切り替えるよう対応。 ### Breaking Changes - `book.yml` の PDF プレ'
+  enabled: false
+- term: Changes
+  yomi: Changes
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '出力抑制を切り替えるよう対応。 ### Breaking Changes - `book.yml` の PDF プレビュー関連設定を'
+  - :chapter: CHANGELOG
+    :context: '出力抑制を切り替えるよう対応。 ### Breaking Changes - `book.yml` の PDF プレビュー関連設定を'
+  enabled: false
+- term: リミックス
+  yomi: リミックス
+  score: 55.0
+  contexts:
+  - :chapter: CONTENT-LICENSE
+    :context: 'うな媒体/形式でも資料を複製および再配布する。 - 翻案: リミックス、変形、二次的著作物の作成。 ただし、以下の条件に従う必要'
+  - :chapter: CONTENT-LICENSE
+    :context: 'うな媒体/形式でも資料を複製および再配布する。 - 翻案: リミックス、変形、二次的著作物の作成。 ただし、以下の条件に従う必要'
+  enabled: false
+- term: ワンコマンドビルド
+  yomi: ワンコマンドビルド
+  score: 55.0
+  contexts:
+  - :chapter: README
+    :context: yle PDF）を生成します。 直感的な CLI コマンドでワンコマンドビルド（`vs build`）や、`config/book.yml
+  - :chapter: README
+    :context: yle PDF）を生成します。 直感的な CLI コマンドでワンコマンドビルド（`vs build`）や、`config/book.yml
+  enabled: false
+- term: International
+  yomi: International
+  score: 55.0
+  contexts:
+  - :chapter: CONTENT-LICENSE
+    :context: "-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0) 本書籍の本文・画像・"
+  - :chapter: CONTENT-LICENSE
+    :context: "-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0) 本書籍の本文・画像・"
+  enabled: false
+- term: ShareAlike
+  yomi: ShareAlike
+  score: 55.0
+  contexts:
+  - :chapter: CONTENT-LICENSE
+    :context: ons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-S
+  - :chapter: CONTENT-LICENSE
+    :context: ons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-S
+  enabled: false
+- term: NonCommercial
+  yomi: NonCommercial
+  score: 55.0
+  contexts:
+  - :chapter: CONTENT-LICENSE
+    :context: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+  - :chapter: CONTENT-LICENSE
+    :context: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+  enabled: false
+- term: Commons
+  yomi: Commons
+  score: 55.0
+  contexts:
+  - :chapter: CONTENT-LICENSE
+    :context: Creative Commons Attribution-NonCommercial-Sha
+  - :chapter: CONTENT-LICENSE
+    :context: Creative Commons Attribution-NonCommercial-Sha
+  enabled: false
+- term: Creative
+  yomi: Creative
+  score: 55.0
+  contexts:
+  - :chapter: CONTENT-LICENSE
+    :context: Creative Commons Attribution-NonCommer
+  - :chapter: CONTENT-LICENSE
+    :context: Creative Commons Attribution-NonCommer
+  enabled: false
+- term: ワークフロー
+  yomi: わーくふろー
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '4 ### Added - Textlint を日本語対応ワークフローとして再構築し、カスタムフォーマッターの導入・VFM 記法向'
+  - :chapter: CHANGELOG
+    :context: '4 ### Added - Textlint を日本語対応ワークフローとして再構築し、カスタムフォーマッターの導入・VFM 記法向'
+  enabled: false
+- term: VariableFont
+  yomi: VariableFont
+  score: 55.0
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: nts/Noto_Serif_JP/NotoSerifJP-VariableFont_wght.ttf` をバンドルし、本文用フォントなどに利用
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: nts/Noto_Serif_JP/NotoSerifJP-VariableFont_wght.ttf` をバンドルし、本文用フォントなどに利用
+  enabled: false
+- term: ZenMaruGothic
+  yomi: ZenMaruGothic
+  score: 55.0
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: esheets/fonts/Zen_Maru_Gothic/ZenMaruGothic-Regular.ttf` および `.../ZenMaru
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: esheets/fonts/Zen_Maru_Gothic/ZenMaruGothic-Regular.ttf` および `.../ZenMaru
+  enabled: false
+- term: ヘルパー
+  yomi: へるぱー
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "`post_process.rb` の大型メソッドを段階的ヘルパーへ分解し、前後処理の責務を明確化。 ## <dfn id="
+  - :chapter: CHANGELOG
+    :context: "`post_process.rb` の大型メソッドを段階的ヘルパーへ分解し、前後処理の責務を明確化。 ## <dfn id="
+  enabled: false
+- term: Gemspec
+  yomi: Gemspec
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'r_templates` にリネームし、参照箇所を更新 - Gemspec: `rake` を runtime 依存に移行（CLI 実'
+  - :chapter: CHANGELOG
+    :context: 'r_templates` にリネームし、参照箇所を更新 - Gemspec: `rake` を runtime 依存に移行（CLI 実'
+  enabled: false
+- term: ユーザー
+  yomi: ゆーざー
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "- それ以外の Markdown（README.md などユーザー資産）は、`--purge` 指定でも削除しない安全仕様に固"
+  - :chapter: CHANGELOG
+    :context: "- それ以外の Markdown（README.md などユーザー資産）は、`--purge` 指定でも削除しない安全仕様に固"
+  enabled: false
+- term: Regular
+  yomi: Regular
+  score: 55.0
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: Zen_Maru_Gothic/ZenMaruGothic-Regular.ttf` および `.../ZenMaruGothic-B
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: Zen_Maru_Gothic/ZenMaruGothic-Regular.ttf` および `.../ZenMaruGothic-B
+  enabled: false
+- term: Keyboard
+  yomi: Keyboard
+  score: 55.0
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'hic/OFL-ja.md` に記載しています。 ### Keyboard JP - License: SIL Open Font L'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: 'hic/OFL-ja.md` に記載しています。 ### Keyboard JP - License: SIL Open Font L'
+  enabled: false
+- term: インストーラ
+  yomi: インストーラ
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: and Line Tools の診断と `--fix` 時のインストーラ起動・待機を追加（macOS） - `vs doctor`
+  - :chapter: CHANGELOG
+    :context: and Line Tools の診断と `--fix` 時のインストーラ起動・待機を追加（macOS） - `vs doctor`
+  enabled: false
+- term: Source
+  yomi: Source
+  score: 55.0
+  contexts:
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: "//prismjs.com/download.html - Source: https://github.com/PrismJS/p"
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: "//prismjs.com/download.html - Source: https://github.com/PrismJS/p"
+  enabled: false
+- term: HexaPDF
+  yomi: HexaPDF
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 読者のナビゲーション向上のため、Step 7/10 後段で HexaPDF により後付け。 - <span id="idx-6gmec
+  - :chapter: CHANGELOG
+    :context: 読者のナビゲーション向上のため、Step 7/10 後段で HexaPDF により後付け。 - <span id="idx-6gmec
+  enabled: false
+- term: RuboCop
+  yomi: RuboCop
+  score: 55.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: data-yomi="High">High</span> RuboCop が全面的に通るよう CLI/ビルド系スクリプトを継続的にリ
+  - :chapter: CHANGELOG
+    :context: data-yomi="High">High</span> RuboCop が全面的に通るよう CLI/ビルド系スクリプトを継続的にリ
+  enabled: false
+- term: ReplaceList
+  yomi: ReplaceList
+  score: 55.0
+  contexts:
+  - :chapter: ROADMAP
+    :context: 与（.aki / .aki2）の安定化 - `_postReplaceList.json` は現在 `{.aki}` と `{.aki2}
+  - :chapter: ROADMAP
+    :context: 与（.aki / .aki2）の安定化 - `_postReplaceList.json` は現在 `{.aki}` と `{.aki2}
+  enabled: false
+- term: Frontmatter
+  yomi: Frontmatter
+  score: 55.0
+  contexts:
+  - :chapter: ROADMAP
+    :context: on.html`）を生成するRakeタスクを追加。 - Frontmatterとビルドへの組み込み。 - <span id="idx-wn
+  - :chapter: ROADMAP
+    :context: on.html`）を生成するRakeタスクを追加。 - Frontmatterとビルドへの組み込み。 - <span id="idx-wn
+  enabled: false
+- term: Devcontainer
+  yomi: Devcontainer
+  score: 55.0
+  contexts:
+  - :chapter: ROADMAP
+    :context: 'M3: 2025-11 配布・運用 - Docker/Devcontainer、CI（Lint/テスト/ビルド） - リリース手順・C'
+  - :chapter: ROADMAP
+    :context: 'M3: 2025-11 配布・運用 - Docker/Devcontainer、CI（Lint/テスト/ビルド） - リリース手順・C'
+  enabled: false
+- term: クォート
+  yomi: くぉーと
+  score: 52.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "*: `pre_process` でインラインコード（バッククォート囲み）内の `<`/`>` を `&lt;`/`&gt;`"
+  enabled: false
+- term: スコア
+  yomi: すこあ
+  score: 52.6
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "</dfn> text_metrics で日本語向け読解難度スコア（Flesch/Kincaid 等を応用）を算出する - <"
+  enabled: false
+- term: 最適化
+  yomi: さいてきか
+  score: 52.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: キャッシュ（旧 Plan A）を正式に廃止しました。将来的な最適化は「論理フィルタ（book.yml chapters）を前提
+  enabled: false
+- term: package.json
+  yomi: package.json
+  score: 52.0
+  contexts:
+  - :chapter: README
+    :context: yle CLI / VFM の導入 本プロジェクトでは、`package.json` の devDependencies に以下を含めています
+  enabled: false
+- term: 自動実行
+  yomi: じどうじっこう
+  score: 51.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 出力ファイル名を引数で指定可能に（指定時は生成後にリネームを自動実行）。 - ビルド対象/存在チェックの汎用ヘルパ `Build
+  - :chapter: ROADMAP
+    :context: '最小サンプルでのビルド、Lint、HTMLポスト処理テストの自動実行。 ## メモ - Frontmatter生成は `gen'
+  enabled: false
+- term: 自動導入
+  yomi: じどうどうにゅう
+  score: 51.5
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "## Added - `vs doctor` が不足ツールの自動導入に対応（macOS） - Homebrew 未導入時の自"
+  - :chapter: README
+    :context: ーバル導入するか、`vs doctor --fix` による自動導入を利用できます。 - Ruby の導入は同梱スクリプト `b
+  enabled: false
+- term: 商用利用
+  yomi: しょうようりよう
+  score: 51.5
+  contexts:
+  - :chapter: CONTENT-LICENSE
+    :context: コードは `LICENSE` を参照）。 - 本ライセンスは商用利用を許可しません。商用利用の相談は著作権者までお問い合わせくだ
+  - :chapter: CONTENT-LICENSE
+    :context: コードは `LICENSE` を参照）。 - 本ライセンスは商用利用を許可しません。商用利用の相談は著作権者までお問い合わせくだ
+  enabled: false
+- term: Actions
+  yomi: Actions
+  score: 51.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: '案内）を追加 - `vs new` 実行時に GitHub Actions ワークフローを自動配置 - 同梱テンプレート: `li'
+  - :chapter: ROADMAP
+    :context: container での再現環境提供 - GitHub Actions/CI でのビルド検証 - ライセンス・著者表記 - 分
+  enabled: false
+- term: コモンズ
+  yomi: コモンズ
+  score: 51.0
+  contexts:
+  - :chapter: CONTENT-LICENSE
+    :context: ution Notice】 - この作品は「クリエイティブ・コモンズ 表示 - 非営利 - 継承 4.0 国際」（CC BY-N
+  - :chapter: README
+    :context: 'CONTENT-LICENSE.md) - クリエイティブ・コモンズ: https://creativecommons.org/'
+  enabled: false
+- term: クリエイティブ
+  yomi: くりえいてぃぶ
+  score: 51.0
+  contexts:
+  - :chapter: CONTENT-LICENSE
+    :context: "/ Attribution Notice】 - この作品は「クリエイティブ・コモンズ 表示 - 非営利 - 継承 4.0 国際」（CC"
+  - :chapter: README
+    :context: 'E.md](./CONTENT-LICENSE.md) - クリエイティブ・コモンズ: https://creativecommons'
+  enabled: false
+- term: イラスト
+  yomi: いらすと
+  score: 51.0
+  contexts:
+  - :chapter: CONTENT-LICENSE
+    :context: C BY-NC-SA 4.0) 本書籍の本文・画像・図版・イラスト等のコンテンツ（通常 `content/` 配下、および生成
+  - :chapter: README
+    :context: "`content/` 配下の Markdown、画像・図版・イラスト等）は CC BY-NC-SA 4.0 です（商用利用不可）"
+  enabled: false
+- term: バランス
+  yomi: ばらんす
+  score: 51.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "> text_metrics で見出し/セクション単位の分量バランスを可視化する #### 参照・索引・書誌 - <span"
+  - :chapter: README
+    :context: 't による簡易圧縮例: ```bash # 画質とサイズのバランス例（/ebook は可読性を保ちつつ縮小） gs -sDEV'
+  enabled: false
+- term: Gemfile
+  yomi: Gemfile
+  score: 51.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: scaffold に追加し、新規プロジェクトへコピー - `Gemfile`（最小構成）を scaffold に追加し、新規プロジェク
+  - :chapter: README
+    :context: '``` 5. 利用側更新（Bundler） - `Gemfile` で `gem "vivlio-starter", "~>'
+  enabled: false
+- term: Rakefile
+  yomi: Rakefile
+  score: 51.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: starter`, `vs` - プロジェクト直下に `Rakefile` がある場合はそれを優先してロード、無い場合は Gem 同
+  - :chapter: ROADMAP
+    :context: '生成物のトレース - `help`/`README`/`Rakefile` コメントの整合性自動チェック - M2: 2025-10'
+  enabled: false
+- term: GitHub
+  yomi: GitHub
+  score: 51.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ストーラ起動（案内）を追加 - `vs new` 実行時に GitHub Actions ワークフローを自動配置 - 同梱テンプ
+  - :chapter: ROADMAP
+    :context: ker/Devcontainer での再現環境提供 - GitHub Actions/CI でのビルド検証 - ライセンス・著者
+  enabled: false
+- term: This
+  yomi: This
+  score: 51.0
+  contexts:
+  - :chapter: CONTENT-LICENSE
+    :context: "（CC BY-NC-SA 4.0）で提供されています。 - This work is licensed under a Crea"
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: "# Third-Party Licenses This project uses the following th"
+  enabled: false
+- term: Code
+  yomi: Code
+  score: 51.0
+  contexts:
+  - :chapter: CONTENT-LICENSE
+    :context: '行うことを妨げてはならない。 完全な法的文書（Legal Code）は以下を参照してください: https://creativ'
+  - :chapter: README
+    :context: "\" contents/02-preface.md # VS Code の場合 code contents/02-preface."
+  enabled: false
+- term: ゴール
+  yomi: ごーる
+  score: 51.0
+  contexts:
+  - :chapter: README
+    :context: "、青は CLI や CSS 組版が支える技術的信頼性と出力のゴールを象徴します。シンプルな操作で確かな技術に裏打ちされた書籍制"
+  - :chapter: ROADMAP
+    :context: 'ata-yomi=" "> </span> ## 目標（ゴール） - ビルドの安定性と再現性の向上（設定の一元管理と検証）'
+  enabled: false
+- term: アトリヱ
+  yomi: アトリヱ
+  score: 51.0
+  contexts:
+  - :chapter: README
+    :context: 'vlio Starter 実践ガイド'' author: アトリヱ未來 language: ja vivliosty'
+  - :chapter: ROADMAP
+    :context: ": CC BY-NC-SA 4.0） - 著者名の統一「アトリヱ未來」の自動検査（pre-commit） ## リスク・検"
+  enabled: false
+- term: Linux
+  yomi: Linux
+  score: 51.0
+  contexts:
+  - :chapter: README
+    :context: poppler qpdf ghostscript`（または Linux なら `apt-get install poppler-u
+  - :chapter: ROADMAP
+    :context: 依存のバージョン固定と更新戦略 - OS 差異（mac / Linux / Windows）における `open` コマンド挙動
+  enabled: false
+- term: Textlint
+  yomi: Textlint
+  score: 51.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: 'fn> - 2025-11-04 ### Added - Textlint を日本語対応ワークフローとして再構築し、カスタムフォーマッ'
+  - :chapter: README
+    :context: tyle CLI は npx 経由で自動取得されます。 - Textlint は npm でグローバル導入するか、`vs doctor
+  enabled: false
+- term: Third
+  yomi: Third
+  score: 51.0
+  contexts:
+  - :chapter: README
+    :context: 's/by-nc-sa/4.0/ ### 第三者ライセンス（Third-Party Licenses） 本プロジェクトでは PD'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: "# Third-Party Licenses This project"
+  enabled: false
+- term: Party
+  yomi: Party
+  score: 51.0
+  contexts:
+  - :chapter: README
+    :context: 'c-sa/4.0/ ### 第三者ライセンス（Third-Party Licenses） 本プロジェクトでは PDF/HTML'
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: "# Third-Party Licenses This project uses t"
+  enabled: false
+- term: Licenses
+  yomi: Licenses
+  score: 51.0
+  contexts:
+  - :chapter: README
+    :context: ".0/ ### 第三者ライセンス（Third-Party Licenses） 本プロジェクトでは PDF/HTML 生成のために V"
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: "# Third-Party Licenses This project uses the follow"
+  enabled: false
+- term: サブセット
+  yomi: さぶせっと
+  score: 51.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: config/book.yml` の `chapters` サブセット（keep）が Step 6/7/11 に貫通する実装を安定
+  - :chapter: THIRD-PARTY-LICENSES
+    :context: とで許可されています（フォント単体販売は不可）。 - 改変（サブセット化・合成など）を行う場合は Reserved Font Na
+  enabled: false
+- term: ビルドシステム
+  yomi: ビルドシステム
+  score: 51.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: "/Core を 9.7.2 / 2.35.0 へ更新。 - ビルドシステムを整理し、キャッシュ活用などで処理を簡素化・高速化。 ##"
+  - :chapter: ROADMAP
+    :context: '本プロジェクト（Rake ベースの Vivliostyle ビルドシステム）の改良計画を記録します。 ## TODO - <dfn'
+  enabled: false
+- term: シンプル
+  yomi: しんぷる
+  score: 51.0
+  contexts:
+  - :chapter: CHANGELOG
+    :context: ead-margin-*` など計10個）を削除し、コードをシンプル化。 - `chapter-common.css` の不要な
+  - :chapter: README
+    :context: CSS 組版が支える技術的信頼性と出力のゴールを象徴します。シンプルな操作で確かな技術に裏打ちされた書籍制作を提供するという V
+  enabled: false
