@@ -27,7 +27,7 @@
 ```
 [Phase 1: 解析・タグ付け]
   contents/*.md
-    ↓ pre_process (新機能: IndexTermScanner)
+    ↓ pre_process (新機能: IndexMatchScanner)
   *.md (ID付きマークアップ)
     ↓ Vivliostyle
   *.html (ID付きHTML)
@@ -137,7 +137,7 @@ config:
   use_mecab: false                      # Phase 3で実装（形態素解析）
 ```
 
-### 3.2 IndexTermScanner（pre_process）
+### 3.2 IndexMatchScanner（pre_process）
 
 #### 3.3.1 責務
 
@@ -151,7 +151,7 @@ config:
 
 ```ruby
 # Ruby 4.0.0 を活用した実装
-class IndexTermScanner
+class IndexMatchScanner
   def initialize
     # Ruby 4.0.0: Set が組み込みになり require "set" 不要
     @seen_terms = Set[]  # Set リテラル構文
@@ -280,7 +280,7 @@ end
 
 #### 3.3.1 責務
 
-1. `.cache/index_matches.yml` を読み込み（または IndexTermScanner の @index_data を直接利用）
+1. `.cache/index_matches.yml` を読み込み（または IndexMatchScanner の @index_data を直接利用）
 2. 用語ごとにマッチ箇所を集約（Ruby 4.0.0 の Set で自動的に重複排除）
 3. 読み順でソート
 4. 五十音の「行」ごとにグループ化
@@ -412,12 +412,12 @@ end
 
 ## 4. Phase 2: 自動抽出とスコアリング
 
-### 4.1 TermExtractor（自動候補抽出）
+### 4.1 IndexCandidateExtractor（自動候補抽出）
 
 #### 4.1.1 抽出ロジック
 
 ```ruby
-class TermExtractor
+class IndexCandidateExtractor
   # レイヤー1: 構造的抽出
   def extract_from_structure(markdown)
     candidates = []
@@ -780,7 +780,7 @@ def execute_step_4a_index_scan
   return unless index_enabled?
   
   Common.log_step('Step 4a', '索引語スキャン')
-  IndexTermScanner.scan_all_chapters!(configured_chapters)
+  IndexMatchScanner.scan_all_chapters!(configured_chapters)
 end
 
 def execute_step_8a_index_page
@@ -858,7 +858,7 @@ end
 
 1. **Week 1**: 基盤整備
    - `config/index_terms.yml` スキーマ定義
-   - `IndexTermScanner` 基本実装
+   - `IndexMatchScanner` 基本実装
    - `.cache/index_matches.yml` 生成確認
 
 2. **Week 2**: 索引ページ生成
@@ -873,7 +873,7 @@ end
 
 ### 7.2 Phase 2: 自動化（2〜3週間）
 
-1. `TermExtractor` 実装
+1. `IndexCandidateExtractor` 実装
 2. `ScoringEngine` 実装
 3. `vs index:match` コマンド追加
 4. 候補YAML生成・マージ機能
@@ -988,7 +988,7 @@ end
 class IndexIntegrationTest < Minitest::Test
   def test_full_index_generation
     # 1. スキャン
-    IndexTermScanner.scan_all_chapters!(['11-basics'])
+    IndexMatchScanner.scan_all_chapters!(['11-basics'])
     
     # 2. マッチ確認
     matches = YAML.load_file('.cache/index_matches.yml')

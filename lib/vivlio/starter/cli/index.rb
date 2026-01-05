@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------
 # 【役割】
 # - 索引機能のエントリポイント
-# - IndexTermScanner と IndexPageBuilder を統括
+# - IndexMatchScanner と IndexPageBuilder を統括
 # - CLI コマンド（vs index:match, vs index:build, vs index:candidate）を提供
 #
 # 【処理の流れ】
@@ -15,16 +15,16 @@
 # 4. vs build: 通常ビルドに索引生成を統合
 #
 # 【依存モジュール】
-# - IndexTermScanner: 索引語スキャン・ID付与
+# - IndexMatchScanner: 索引語スキャン・ID付与
 # - IndexPageBuilder: 索引ページHTML生成
 # - YomiInferrer: MeCab による読み推測
 # ================================================================
 
 require_relative 'common'
-require_relative 'index/index_term_scanner'
+require_relative 'index/index_match_scanner'
 require_relative 'index/index_page_builder'
 require_relative 'index/yomi_inferrer'
-require_relative 'index/term_extractor'
+require_relative 'index/index_candidate_extractor'
 require_relative 'index/scoring_engine'
 require_relative 'index/hierarchical_index'
 
@@ -100,7 +100,7 @@ module Vivlio
 
           Common.log_action('索引語のスキャンを開始します...')
 
-          scanner = IndexTermScanner.new
+          scanner = IndexMatchScanner.new
           scanner.scan_all_chapters!(chapters)
 
           Common.log_success('索引スキャンが完了しました')
@@ -139,7 +139,7 @@ module Vivlio
           # catalog.yml に基づいて対象章を決定（引数がある場合はそちらを優先）
           chapters = resolve_chapters(tokens)
 
-          extractor = TermExtractor.new
+          extractor = IndexCandidateExtractor.new
           extractor.extract_from_chapters!(chapters)
           extractor.export_candidates!('config/index_candidates.yml', threshold)
 
@@ -151,7 +151,7 @@ module Vivlio
         def process_index_for_build!(chapters)
           return unless index_enabled?
 
-          scanner = IndexTermScanner.new
+          scanner = IndexMatchScanner.new
           scanner.scan_all_chapters!(chapters)
 
           builder = IndexPageBuilder.new

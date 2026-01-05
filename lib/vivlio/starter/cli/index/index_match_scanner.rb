@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # ================================================================
-# File: lib/vivlio/starter/cli/index/index_term_scanner.rb
+# File: lib/vivlio/starter/cli/index/index_match_scanner.rb
 # ================================================================
 # 責務:
 #   Markdown ファイルをスキャンし、索引語記法を検出・変換する。
@@ -25,7 +25,7 @@ module Vivlio
     module CLI
       module IndexCommands
         # 索引語スキャン・タグ付けクラス
-        class IndexTermScanner
+        class IndexMatchScanner
           # 索引語マッチの正規表現
           # [用語|読み] または [用語] 形式を検出
           # ただし、[text](url) 形式のリンクは除外（後ろに ( が続く場合はスキップ）

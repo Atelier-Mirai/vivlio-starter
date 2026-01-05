@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # ================================================================
-# File: lib/vivlio/starter/cli/index/term_extractor.rb
+# File: lib/vivlio/starter/cli/index/index_candidate_extractor.rb
 # ================================================================
 # 責務:
 #   テキストから索引候補語を自動抽出する。
@@ -24,7 +24,7 @@ module Vivlio
     module CLI
       module IndexCommands
         # 索引候補語自動抽出クラス
-        class TermExtractor
+        class IndexCandidateExtractor
           BANNER = <<~BANNER.freeze
             # ================================================================
             # 索引候補リスト（config/index_candidates.yml）
