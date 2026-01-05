@@ -571,6 +571,8 @@ module Vivlio
             return 'legalpage'
           when /^_colophon/
             return 'colophon'
+          when /^_indexpage/
+            return 'indexpage'
           end
 
           # 章番号から判定

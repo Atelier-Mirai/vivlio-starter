@@ -34,9 +34,11 @@ module Vivlio
               keep_numbers_appx = chapter_numbers.select { |n| APPX_RANGE.include?(n) }
               keep_numbers_post = chapter_numbers.select { |n| POSTFACE_RANGE.include?(n) }
             end
+            index_html = [File.join(base_dir, '_indexpage.html')].select { |f| File.exist?(f) }
             chapter_htmls_for_pdf = [
               Build::ChapterConfig.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers_main),
               Build::ChapterConfig.htmls_for_range(base_dir, APPX_RANGE, keep_numbers_appx),
+              index_html,
               Build::ChapterConfig.htmls_for_range(base_dir, POSTFACE_RANGE, keep_numbers_post)
             ].flatten
 

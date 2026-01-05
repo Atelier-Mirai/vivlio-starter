@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
   spec.homepage      = 'https://github.com/Atelier-Mirai/vivlio-starter'
   spec.license       = 'MIT'
 
-  spec.required_ruby_version = '>= 3.0'
+  spec.required_ruby_version = '>= 4.0'
 
   # Files (robust to uncommitted deletions): prefer git, filter to paths that exist
   files = nil

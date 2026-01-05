@@ -6,12 +6,13 @@
 # 【役割】
 # - 索引機能のエントリポイント
 # - IndexTermScanner と IndexPageBuilder を統括
-# - CLI コマンド（vs index:scan, vs index:build）を提供
+# - CLI コマンド（vs index:match, vs index:build, vs index:candidate）を提供
 #
 # 【処理の流れ】
-# 1. vs index:scan: 原稿をスキャンして索引候補を抽出
+# 1. vs index:match: 原稿をスキャンして索引候補を抽出
 # 2. vs index:build: 索引ページを生成
-# 3. vs build: 通常ビルドに索引生成を統合
+# 3. vs index:candidate: 自動抽出（Phase 2）
+# 4. vs build: 通常ビルドに索引生成を統合
 #
 # 【依存モジュール】
 # - IndexTermScanner: 索引語スキャン・ID付与
@@ -38,7 +39,7 @@ module Vivlio
       module IndexCommands
         module_function
 
-        INDEX_SCAN_DESC = {
+        INDEX_MATCH_DESC = {
           short: '索引候補を自動抽出し、YAML を生成します',
           long: <<~DESC
             原稿をスキャンして索引候補を自動抽出します。
@@ -49,8 +50,8 @@ module Vivlio
             - 検出結果を config/index_candidates.yml に出力
 
             例:
-              vs index:scan
-              vs index:scan --threshold 80
+              vs index:match
+              vs index:match --threshold 80
           DESC
         }.freeze
 
@@ -70,7 +71,7 @@ module Vivlio
           DESC
         }.freeze
 
-        INDEX_EXTRACT_DESC = {
+        INDEX_CANDIDATE_DESC = {
           short: '索引候補を自動抽出します（Phase 2）',
           long: <<~DESC
             原稿から索引候補を自動抽出し、スコアリングします。
@@ -83,15 +84,15 @@ module Vivlio
             - config/index_candidates.yml に出力
 
             例:
-              vs index:extract
-              vs index:extract --threshold 60
+              vs index:candidate
+              vs index:candidate --threshold 60
           DESC
         }.freeze
 
-        # 索引スキャンを実行
+        # 索引マッチングを実行
         # @param context_or_options [Hash] オプション
         # @param tokens [Array<String>] 対象章（省略時は全章）
-        def execute_index_scan(context_or_options, tokens = [])
+        def execute_index_match(context_or_options, tokens = [])
           opts = normalize_options(context_or_options)
           ENV['VERBOSE'] = '1' if opts[:verbose]
 
@@ -116,28 +117,32 @@ module Vivlio
           Common.log_action('索引ページを生成します...')
 
           builder = IndexPageBuilder.new
-          builder.build!
+          output_path = builder.build!
 
-          Common.log_success('索引ページの生成が完了しました')
+          if output_path
+            Common.log_success("索引ページの生成が完了しました: #{output_path}")
+            Common.log_info('完成した _indexpage.html を確認してください')
+            Common.echo_always('📄 _indexpage.html を生成しました。')
+          else
+            Common.log_warn('索引ページを生成できませんでした')
+          end
         end
 
         # 索引候補を自動抽出（Phase 2）
         # @param context_or_options [Hash] オプション
         # @param tokens [Array<String>] 対象章（省略時は全章）
-        def execute_index_extract(context_or_options, tokens = [])
+        def execute_index_candidate(context_or_options, tokens = [])
           opts = normalize_options(context_or_options)
           ENV['VERBOSE'] = '1' if opts[:verbose]
 
-          threshold = opts[:threshold] || 50
+          threshold = opts[:threshold] || 150
+          # catalog.yml に基づいて対象章を決定（引数がある場合はそちらを優先）
           chapters = resolve_chapters(tokens)
-
-          Common.log_action('索引候補の自動抽出を開始します...')
 
           extractor = TermExtractor.new
           extractor.extract_from_chapters!(chapters)
           extractor.export_candidates!('config/index_candidates.yml', threshold)
 
-          Common.log_success('索引候補の自動抽出が完了しました')
           report_extraction_results(extractor, threshold)
         end
 
@@ -146,11 +151,9 @@ module Vivlio
         def process_index_for_build!(chapters)
           return unless index_enabled?
 
-          Common.log_action('[Index] 索引語のスキャンを開始...')
           scanner = IndexTermScanner.new
           scanner.scan_all_chapters!(chapters)
 
-          Common.log_action('[Index] 索引ページを生成...')
           builder = IndexPageBuilder.new
           builder.build!
         end
@@ -181,10 +184,21 @@ module Vivlio
           files = Common.normalize_tokens(tokens)
 
           if files.any?
+            Common.log_info("引数から対象章を特定しました: #{files.join(', ')}")
             files
           else
-            # 全章を対象
-            Dir.glob('*.md').map { |f| File.basename(f, '.md') }.sort
+            # catalog.yml から対象章を取得
+            begin
+              require_relative 'build/catalog_loader'
+              chapters = Build::CatalogLoader.load_existing_basenames
+              Common.log_info("catalog.yml から対象章を特定しました: #{chapters.size} 章")
+              chapters
+            rescue StandardError => e
+              Common.log_warn("catalog.yml の読み込みに失敗したため、全 Markdown ファイルを対象にします: #{e.message}")
+              chapters = Dir.glob('*.md').map { |f| File.basename(f, '.md') }.sort
+              Common.log_info("カレントディレクトリの全ファイルを対象にします: #{chapters.size} 章")
+              chapters
+            end
           end
         end
         module_function :resolve_chapters
@@ -196,10 +210,8 @@ module Vivlio
           Common.log_info("総マッチ数: #{scanner.matches.size} 件")
 
           # 読み推測が必要な用語を警告
-          yomi_inferrer = YomiInferrer.new
-          if yomi_inferrer.available?
+          if Vivlio::Starter::CLI::IndexCommands::YomiInferrer.new.available?
             Common.log_info("\nMeCab による読み推測が利用可能です")
-            Common.log_warn("読み間違いがないか .cache/index_matches.yml を確認してください")
           else
             Common.log_warn("\nMeCab が利用できないため、読み推測は行われていません")
           end
@@ -208,9 +220,9 @@ module Vivlio
 
         # 自動抽出結果をレポート
         def report_extraction_results(extractor, threshold)
-          Common.log_info("\n=== 自動抽出結果 ===")
-          Common.log_info("候補語数: #{extractor.term_scores.size} 件")
-
+          Common.log_info("抽出完了: #{extractor.all_candidates.size} 件の候補が見つかりました")
+          Common.log_info("出現回数 #{threshold} 回以上の語句を config/index_candidates.yml に出力しました")
+          Common.log_warn('読み間違いがないか config/index_candidates.yml を確認してください')
           above_threshold = extractor.term_scores.count { |_, score| score >= threshold }
           Common.log_info("閾値(#{threshold})以上: #{above_threshold} 件")
 

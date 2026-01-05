@@ -131,76 +131,78 @@ module Vivlio
             return unless needs_regeneration
 
             Common.log_info("[HTML] 再生成します: #{basename}.html")
+            preprocess_single_chapter!(basename)
+            convert_single_chapter!(basename)
+          end
+
+          # 単一章の前処理
+          def preprocess_single_chapter!(basename)
             PreProcessCommands.execute_pre_process({}, [basename])
+          end
+
+          # 単一章の変換（HTML生成）
+          def convert_single_chapter!(basename)
             ConvertCommands.execute_convert({}, [basename])
             PostProcessCommands.execute_post_process({}, [basename])
           end
 
-          # Step 4: セクション（前書き/本文/付録/後書き）をビルド（HTML生成）
-          # catalog.yml で指定された章のみを対象とする
-          def build_sections_html!(keep = nil)
-            Common.log_action('[Step 4] セクション（前書き/本文/付録/後書き）をビルドします…')
+          # セクション（前書き/本文/付録/後書き）の前処理を一括実行
+          def preprocess_sections!(keep = nil)
+            Common.log_action('[Step 4] セクションの前処理（Markdown 修正）を実行します…')
+            chapter_targets = resolve_targets(keep)
+            return if chapter_targets.empty?
 
-            # catalog.yml から対象章を取得（keep パラメータをそのまま使用）
-            chapter_targets = if keep&.any?
-                                Array(keep).map { |s| File.basename(s.to_s, '.md') }.sort
-                              else
-                                # keep が空の場合は contents/ 内の全章をビルド
-                                Dir[File.join(Common::CONTENTS_DIR, '*.md')]
-                                  .map { |p| File.basename(p, '.md') }
-                                  .reject { |bn| bn.start_with?('_') } # 特殊ページは除外
-                                  .sort
-                              end
-
-            if chapter_targets.empty?
-              Common.log_warn('[Step 4] 章が見つかりません。Step 4 をスキップします。')
-              return
+            concurrency = determine_concurrency
+            if concurrency == 1
+              chapter_targets.each { |target| preprocess_single_chapter!(target) }
+            else
+              parallel_each(chapter_targets, concurrency: concurrency) { |target| preprocess_single_chapter!(target) }
             end
+          end
 
-            Common.log_info("[Step 4] 対象: #{chapter_targets.join(', ')}")
+          # セクション（前書き/本文/付録/後書き）の変換を一括実行
+          def convert_sections_html!(keep = nil)
+            Common.log_action('[Step 4b] セクションの変換（HTML 生成）を実行します…')
+            chapter_targets = resolve_targets(keep)
+            return if chapter_targets.empty?
 
-            # 並列度（未設定時は min(4, n_cores) を既定に）
+            concurrency = determine_concurrency
+            if concurrency == 1
+              chapter_targets.each { |target| convert_single_chapter!(target) }
+            else
+              parallel_each(chapter_targets, concurrency: concurrency) { |target| convert_single_chapter!(target) }
+            end
+          end
+
+          # 対象章を解決
+          def resolve_targets(keep = nil)
+            if keep&.any?
+              Array(keep).map { |s| File.basename(s.to_s, '.md') }.sort
+            else
+              Dir[File.join(Common::CONTENTS_DIR, '*.md')]
+                .map { |p| File.basename(p, '.md') }
+                .reject { |bn| bn.start_with?('_') }
+                .sort
+            end
+          end
+
+          # 並列度を決定
+          def determine_concurrency
             concurrency = (ENV['VIVLIO_BUILD_CONCURRENCY'] || '').to_i
             if concurrency <= 0
               n_cores = Etc.respond_to?(:nprocessors) ? Etc.nprocessors : 2
               concurrency = [n_cores, 4].min
               concurrency = 1 if concurrency <= 0
-              Common.log_info("[Step 4] 並列度を自動設定: concurrency=#{concurrency} (cores=#{n_cores})")
             end
+            concurrency
+          end
 
-            if concurrency == 1
-              chapter_targets.each do |target|
-                %w[pre_process convert post_process].each do |tn|
-                  time_step_for_chapter(target, tn) do
-                    case tn
-                    when 'pre_process'
-                      PreProcessCommands.execute_pre_process({}, [target])
-                    when 'convert'
-                      ConvertCommands.execute_convert({}, [target])
-                    when 'post_process'
-                      PostProcessCommands.execute_post_process({}, [target])
-                    end
-                  end
-                end
-              end
-              return
-            end
-
-            Common.log_info("[Step 4] 並列実行を開始します（concurrency=#{concurrency}、対象=#{chapter_targets.size}）")
-            parallel_each(chapter_targets, concurrency: concurrency) do |target|
-              %w[pre_process convert post_process].each do |tn|
-                time_step_for_chapter(target, tn) do
-                  case tn
-                  when 'pre_process'
-                    PreProcessCommands.execute_pre_process({}, [target])
-                  when 'convert'
-                    ConvertCommands.execute_convert({}, [target])
-                  when 'post_process'
-                    PostProcessCommands.execute_post_process({}, [target])
-                  end
-                end
-              end
-            end
+          # Step 4: セクション（前書き/本文/付録/後書き）をビルド（HTML生成）
+          # 注: このメソッドは後方互換性のため維持するが、UnifiedBuildPipeline では
+          #     preprocess_sections! と convert_sections_html! に分割して呼び出すことを推奨
+          def build_sections_html!(keep = nil)
+            preprocess_sections!(keep)
+            convert_sections_html!(keep)
           end
         end
       end

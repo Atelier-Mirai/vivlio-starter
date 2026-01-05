@@ -62,9 +62,9 @@ module Vivlio
                 'resize:medium' => ResizeMediumCommand,
                 'resize:low' => ResizeLowCommand,
                 'index' => IndexCommand,
-                'index:scan' => IndexScanCommand,
+                'index:match' => IndexMatchCommand,
                 'index:build' => IndexBuildCommand,
-                'index:extract' => IndexExtractCommand
+                'index:candidate' => IndexCandidateCommand
               }.freeze
             end
           end

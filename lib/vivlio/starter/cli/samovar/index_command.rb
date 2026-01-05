@@ -8,7 +8,6 @@
 #   索引機能（スキャン、ビルド）のサブコマンドを提供する。
 #
 # サブコマンド:
-#   - index:scan: 索引候補を自動抽出
 #   - index:build: 索引ページを生成
 #
 # 依存:
@@ -33,9 +32,9 @@ module Vivlio
             puts <<~HELP
               索引機能のコマンド:
               
-                vs index:scan     - 手動マークアップ [用語|読み] をスキャン
+                vs index:match    - 手動マークアップ [用語|読み] をスキャン
                 vs index:build    - 索引ページ (_indexpage.html) を生成
-                vs index:extract  - 索引候補を自動抽出（Phase 2）
+                vs index:candidate - 索引候補を自動抽出（Phase 2）
               
               詳細は各コマンドに --help を付けて確認してください。
             HELP
@@ -43,8 +42,8 @@ module Vivlio
           end
         end
 
-        # index:scan コマンド
-        class IndexScanCommand < Samovar::Command
+        # index:match コマンド
+        class IndexMatchCommand < Samovar::Command
           self.description = '索引候補を自動抽出し、YAML を生成します'
 
           options do
@@ -57,12 +56,12 @@ module Vivlio
           def call
             return print_usage if options[:help]
 
-            IndexCommands.execute_index_scan(options, files || [])
+            IndexCommands.execute_index_match(options, files || [])
             0
           rescue SystemExit => e
             raise e
           rescue StandardError => e
-            Common.log_error("index:scan 実行中にエラー: #{e.message}")
+            Common.log_error("index:match 実行中にエラー: #{e.message}")
             Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
             1
           end
@@ -92,13 +91,13 @@ module Vivlio
           end
         end
 
-        # index:extract コマンド（Phase 2）
-        class IndexExtractCommand < Samovar::Command
+        # index:candidate コマンド（Phase 2）
+        class IndexCandidateCommand < Samovar::Command
           self.description = '索引候補を自動抽出します（Phase 2）'
 
           options do
             option '-v/--verbose', '詳細出力', default: false, key: :verbose
-            option '-t/--threshold', 'スコア閾値（デフォルト: 50）', default: 50, key: :threshold
+            option '-t/--threshold', 'スコア閾値（デフォルト: 150）', default: 150, key: :threshold
             option '-h/--help', 'このコマンドの使い方を表示', key: :help
           end
 
@@ -107,12 +106,12 @@ module Vivlio
           def call
             return print_usage if options[:help]
 
-            IndexCommands.execute_index_extract(options, files || [])
+            IndexCommands.execute_index_candidate(options, files || [])
             0
           rescue SystemExit => e
             raise e
           rescue StandardError => e
-            Common.log_error("index:extract 実行中にエラー: #{e.message}")
+            Common.log_error("index:candidate 実行中にエラー: #{e.message}")
             Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
             1
           end

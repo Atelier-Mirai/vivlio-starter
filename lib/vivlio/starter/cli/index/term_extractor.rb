@@ -25,6 +25,20 @@ module Vivlio
       module IndexCommands
         # 索引候補語自動抽出クラス
         class TermExtractor
+          BANNER = <<~BANNER.freeze
+            # ================================================================
+            # 索引候補リスト（config/index_candidates.yml）
+            # ================================================================
+            # vs index:candidate（内部コマンド）によって自動生成される索引用語候補です。
+            #
+            # 使い方:
+            #   1. contexts で示される章・抜粋を参照し、索引に載せたい語を確認する
+            #   2. enabled を true/false に切り替えて採用可否を管理する
+            #   3. 採用する語は原稿に [用語|読み] でマークアップ、または index_terms.yml へ登録する
+            #   4. 読みが誤っている場合は index_terms.yml に正しい yomi を追加してから再生成する
+            # ================================================================
+          BANNER
+
           # 定義パターン（「〜とは」「〜について」など）
           DEFINITION_PATTERNS = [
             /(.{2,20})とは[、,]?[^。]*(?:である|です|を意味|を指|という)/,
@@ -43,6 +57,11 @@ module Vivlio
 
           attr_reader :documents, :term_scores, :term_contexts
 
+          # 全ての候補語を取得
+          def all_candidates
+            @term_scores.keys
+          end
+
           def initialize
             @documents = {}
             @term_scores = Hash.new(0.0)
@@ -55,10 +74,14 @@ module Vivlio
           def extract_from_chapters!(chapters)
             Common.log_action('索引候補の自動抽出を開始します...')
 
-            # ドキュメントを読み込み
+            # ドキュメントを読み込み (contents/ 配下のみ)
             chapters.each do |chapter|
-              md_file = "#{chapter}.md"
-              next unless File.exist?(md_file)
+              md_file = File.join(Common::CONTENTS_DIR, "#{chapter}.md")
+
+              unless File.exist?(md_file)
+                Common.log_warn("索引候補抽出: contents/ に #{chapter}.md が見つからないためスキップします")
+                next
+              end
 
               content = File.read(md_file, encoding: 'utf-8')
               @documents[chapter] = content
@@ -78,7 +101,7 @@ module Vivlio
           # 索引候補を YAML ファイルに出力
           # @param output_file [String] 出力ファイルパス
           # @param threshold [Integer] スコア閾値（この値以上の候補のみ出力）
-          def export_candidates!(output_file = 'config/index_candidates.yml', threshold = 50)
+          def export_candidates!(output_file = 'config/index_candidates.yml', threshold = 150)
             FileUtils.mkdir_p(File.dirname(output_file))
 
             candidates = @term_scores
@@ -86,14 +109,16 @@ module Vivlio
                          .sort_by { |_, score| -score }
                          .map do |term, score|
               yomi = @yomi_inferrer.available? ? @yomi_inferrer.infer(term) : term
-              contexts = @term_contexts[term].first(3)
+              contexts = @term_contexts[term]
+                           .uniq { |ctx| [ctx[:chapter], ctx[:context]] }
+                           .first(3)
 
               {
                 'term' => term,
                 'yomi' => yomi,
                 'score' => score.round(1),
                 'contexts' => contexts,
-                'enabled' => score >= 80 # 高スコアはデフォルト有効
+                'enabled' => true
               }
             end
 
@@ -104,8 +129,15 @@ module Vivlio
               'candidates' => candidates
             }
 
-            File.write(output_file, data.to_yaml, encoding: 'utf-8')
-            Common.log_success("索引候補を出力しました: #{output_file}")
+            yaml = data.to_yaml(line_width: -1)
+            yaml_with_spacing = yaml
+                                   .sub("candidates:\n- term:", "candidates:\n\n- term:")
+                                   .gsub("\n- term:", "\n\n- term:")
+
+            File.write(output_file, "#{BANNER}#{yaml_with_spacing}", encoding: 'utf-8')
+            Common.log_success("索引候補を #{output_file} に出力しました")
+          rescue StandardError => e
+            Common.log_error("索引候補の出力に失敗しました: #{e.message}")
           end
 
           private

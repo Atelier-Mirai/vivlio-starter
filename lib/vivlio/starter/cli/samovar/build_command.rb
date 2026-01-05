@@ -42,12 +42,12 @@ module Vivlio
           many :targets, 'ビルド対象（章番号 / 範囲 / ベース名）', default: []
 
           options do
-            option '--[no]-resize', '画像最適化を行う（--no-resize で無効）', default: true, key: :resize
+            option '--resize/--no-resize', '画像最適化を行う（--no-resize で無効）', default: true, key: :resize
             option '--high', '画像最適化プリセット: 高品質', default: false
             option '--medium', '画像最適化プリセット: 中品質', default: false
             option '--low', '画像最適化プリセット: 低品質', default: false
-            option '--[no]-compress', 'PDF圧縮を行う（--no-compress で無効）', default: nil, key: :compress
-            option '--[no]-clean', '中間生成物をクリーンアップ（--no-clean で無効）', default: true, key: :clean
+            option '--compress/--no-compress', 'PDF圧縮を行う（--no-compress で無効）', default: nil, key: :compress
+            option '--clean/--no-clean', '中間生成物をクリーンアップ（--no-clean で無効）', default: true, key: :clean
             option '-n/--dry-run', '実行せずにビルド予定のみを表示', default: false, key: :dry_run
             option '--log <level>', 'ログレベルを指定（error/warn/info/debug）', key: :log_level
             option '--force', 'タイトル/リーガル/奥付を強制再生成', default: false
@@ -61,9 +61,17 @@ module Vivlio
           def initialize(input = nil, **options)
             input = normalize_log_option_tokens(input) if input
             super
+          rescue Samovar::UnknownOptionError => e
+            @unknown_option_error = e
           end
 
           def call
+            if @unknown_option_error
+              Common.log_error("未知のオプションです: #{@unknown_option_error.message}")
+              print_usage
+              return 1
+            end
+
             if options[:help]
               print_usage
               return 0

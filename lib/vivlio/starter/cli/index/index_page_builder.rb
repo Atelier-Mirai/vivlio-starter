@@ -16,6 +16,7 @@
 
 require 'yaml'
 require 'fileutils'
+require 'cgi'
 require_relative '../common'
 require_relative 'hierarchical_index'
 
@@ -39,13 +40,14 @@ module Vivlio
             'わ' => /^[わ-んゎ]/
           }.freeze
 
-          ALPHA_ROWS = {
-            'A' => /^[a-eA-E]/,
-            'F' => /^[f-jF-J]/,
-            'K' => /^[k-oK-O]/,
-            'P' => /^[p-tP-T]/,
-            'U' => /^[u-zU-Z]/
-          }.freeze
+          SYMBOL_ROW_LABEL = '記号'
+          NUMBER_ROW_LABEL = '数字'
+
+          DIGIT_REGEX = /\A[0-9０-９]\z/
+
+          ALPHA_ROWS = ('A'..'Z').each_with_object({}) do |letter, hash|
+            hash[letter] = /^[#{letter.downcase}#{letter}]/
+          end.freeze
 
           attr_reader :index_data, :hierarchical_index
 
@@ -57,23 +59,24 @@ module Vivlio
           # 索引ページを生成
           # @param cache_file [String] 索引データのキャッシュファイルパス
           # @param output_file [String] 出力 HTML ファイルパス
-          def build!(cache_file = '.cache/index_matches.yml', output_file = '_indexpage.html')
+          def build!(cache_file = 'index_matches.yml', output_file = '_indexpage.html')
             unless File.exist?(cache_file)
               Common.log_warn("索引データが見つかりません: #{cache_file}")
-              Common.log_warn('vs index:scan を先に実行してください')
-              return
+              Common.log_warn('vs index:match を先に実行してください')
+              return nil
             end
 
             load_index_data!(cache_file)
 
             if @index_data.empty?
               Common.log_warn('索引データが空です')
-              return
+              return nil
             end
 
             html = generate_html
             File.write(output_file, html, encoding: 'utf-8')
             Common.log_success("索引ページを生成しました: #{output_file}")
+            output_file
           end
 
           private
@@ -135,31 +138,71 @@ module Vivlio
 
             sorted_terms.each do |term, occurrences|
               first_yomi = occurrences.first['yomi'] || occurrences.first[:yomi] || term
-              row = determine_kana_row(first_yomi.to_s)
+              row = determine_kana_row(first_yomi.to_s, term)
               groups[row] << [term, occurrences]
             end
 
             # 行の順序を維持
-            ordered_rows = %w[あ か さ た な は ま や ら わ A F K P U その他]
+            ordered_rows = [SYMBOL_ROW_LABEL, NUMBER_ROW_LABEL] + ('A'..'Z').to_a + %w[あ か さ た な は ま や ら わ] + ['その他']
             ordered_rows.filter_map do |row|
               [row, groups[row]] if groups.key?(row)
             end.to_h
           end
 
           # 読みの先頭から五十音の行を判定
-          def determine_kana_row(yomi)
+          def determine_kana_row(yomi, term)
+            term_char = term.to_s[0]
+
+            symbol_row = match_symbol_row(term_char)
+            return symbol_row if symbol_row
+
+            number_row = match_number_row(term_char)
+            return number_row if number_row
+
+            row = match_alpha_row(term_char)
+            return row if row
+
             first_char = yomi[0]
-            return 'その他' if first_char.nil?
 
-            KANA_ROWS.each do |row, pattern|
-              return row if first_char.match?(pattern)
-            end
+            row = match_alpha_row(first_char)
+            return row if row
 
-            ALPHA_ROWS.each do |row, pattern|
-              return row if first_char.match?(pattern)
-            end
+            row = match_kana_row(first_char)
+            return row if row
 
             'その他'
+          end
+
+          def match_kana_row(char)
+            return nil unless char
+
+            KANA_ROWS.each do |row, pattern|
+              return row if char.match?(pattern)
+            end
+
+            nil
+          end
+
+          def match_alpha_row(char)
+            return unless char
+
+            ALPHA_ROWS.each do |row, regex|
+              return row if regex.match?(char)
+            end
+
+            nil
+          end
+
+          def match_symbol_row(char)
+            return unless char
+
+            SYMBOL_ROW_LABEL unless char.match?(/[[:alnum:]]/)
+          end
+
+          def match_number_row(char)
+            return unless char
+
+            NUMBER_ROW_LABEL if DIGIT_REGEX.match?(char)
           end
 
           # 索引セクションの HTML を生成
@@ -181,9 +224,10 @@ module Vivlio
           # 用語エントリの HTML を生成
           def generate_term_entries(terms)
             terms.map do |term, _occurrences|
+              escaped_term = CGI.escapeHTML(term.to_s)
               links = generate_page_links(term)
               <<~ENTRY
-                <dt>#{term}</dt>
+                <dt>#{escaped_term}</dt>
                 <dd>#{links}</dd>
               ENTRY
             end.join

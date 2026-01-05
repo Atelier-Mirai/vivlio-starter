@@ -55,12 +55,15 @@ module Vivlio
             add_step('Step  1 (clean)',                       -> { run_step1_clean })
             add_step('Step  2 (optimize images)',             -> { run_step2_optimize_images })
             add_step('Step  3 (prepare theme images)',        -> { Build::ImageOptimizer.prepare_theme_images! })
-            add_step('Step  4 (build sections html)',         -> { Build::SectionBuilder.build_sections_html!(keep) })
+            # Markdown の前処理（frontmatter, 画像パス修正など）
+            add_step('Step  4 (preprocess sections)',         -> { Build::SectionBuilder.preprocess_sections!(keep) })
+            # 索引のスキャンとページ生成（Markdown を書き換えるため変換前に実行）
             add_step('Step  4a (index scan and build)',       -> { run_step4a_index_processing })
-            # Step 5 は single mode 専用のため full mode ではスキップ
+            # Markdown から HTML への最終変換
+            add_step('Step  4b (convert sections html)',      -> { Build::SectionBuilder.convert_sections_html!(keep) })
             add_step('Step  6 (generate toc and pdf)',        -> { Build::TocGenerator.generate_toc_and_pdf!('.', keep) })
             add_step('Step  7 (build overall pdf and split)', -> {
-              Common.log_info('[Step 7] 全体PDF生成 → toc(目次)とsections(本文+付録+後書き)に分割')
+              Common.log_info('[Step 7] 全体PDF生成 → toc(目次)とsections(本文+付録+索引+後書き)に分割')
               Build::PdfBuilder.build_overall_pdf_and_split_from_dir!('.', keep)
             })
             add_step('Step  8 (build _preface_toc.pdf)',       -> { Build::PdfBuilder.build_frontmatter_pdf!(keep) })

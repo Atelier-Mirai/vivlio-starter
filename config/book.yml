@@ -298,7 +298,7 @@ index:
   # 自動抽出を有効化（Phase 2）
   auto_extract: false
   # 自動登録のスコア閾値（Phase 2）
-  score_threshold: 80
+  score_threshold: 150
 
 # ========================================
 # Vivliostyle設定

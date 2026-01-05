@@ -23,7 +23,7 @@ module Vivlio
           POSTFACE_RANGE = (99..99)
 
           # 特殊ページの内部 basename
-          SPECIAL_PAGES = %w[_titlepage _legalpage _colophon].freeze
+          SPECIAL_PAGES = %w[_titlepage _legalpage _colophon _indexpage].freeze
 
           # セクションキー
           SECTION_KEYS = %w[PREFACE CHAPTERS APPENDICES POSTFACE].freeze

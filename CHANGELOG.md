@@ -99,13 +99,13 @@
 ### Added
 - **索引機能を実装（Phase 1〜3）**: 書籍の索引（インデックス）を自動生成する機能を追加。
   - **Phase 1 (MVP)**: 手動マークアップベース
-    - `<dfn id="idx-c8x7kk0ta3y1-1" class="index-term" data-yomi="読み">用語</dfn>` 記法で索引語を手動マークアップ（例: `<dfn id="idx-nrwoc09fkeid-1" class="index-term" data-yomi="ひきすう">引数</dfn>`）
+    - `<dfn id="idx-c8x7kk0ta3y1-1" class="index-term" data-yomi="読み">用語</dfn>` 記法で索引語を手動マークアップ（例: `<dfn id="idx-nrwoc09fkeid-1" class="index-term" data-yomi="ひきすう">引数</dfn>`)
     - `<span id="idx-c8x7kk0ta3y1-2" class="index-term" data-yomi="ようご">用語</span>` 記法（読み省略）で MeCab による読み自動推測
     - 初出は `<dfn>` タグ、2回目以降は `<span>` タグに自動切り替え
-    - `vs index:scan` コマンドで手動マークアップをスキャン
+    - `vs index:match` コマンドで手動マークアップをスキャン
     - `vs index:build` コマンドで索引ページ（`_indexpage.html`）を生成
   - **Phase 2**: 自動抽出とスコアリング
-    - `vs index:extract` コマンドで索引候補を自動抽出
+    - `vs index:candidate` コマンドで索引候補を自動抽出
     - 定義パターン検出（「〜とは」「〜について」など）
     - 専門用語パターン検出（カタカナ語、英字略語）
     - TF-IDF によるスコアリング

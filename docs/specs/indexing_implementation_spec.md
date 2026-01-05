@@ -80,7 +80,7 @@ lib/vivlio/starter/cli/
 
 **読み省略時の動作**:
 - MeCab で読みを自動推測
-- `vs index:scan` で `index-candidates.yml` に出力
+- `vs index:match` で `index-candidates.yml` に出力
 - 著者が読み間違いを確認・修正
 
 #### 3.1.2 設計思想
@@ -89,7 +89,7 @@ lib/vivlio/starter/cli/
 - 脚注 `[^1]` と同様に `[]` で囲む形式で、Markdown に親和的
 - **読みは省略可能**: 日本人なら読める語句（「基本情報技術者」など）は `[用語]` で OK
 - **読み間違いしやすい語句**: 「引数（ひきすう）」などは `[引数|ひきすう]` と明示
-- **MeCab で読み自動推測**: 省略された読みは MeCab で推測し、`vs index:scan` で確認可能
+- **MeCab で読み自動推測**: 省略された読みは MeCab で推測し、`vs index:match` で確認可能
 
 #### 3.1.3 HTML 変換ルール
 
@@ -133,7 +133,7 @@ config:
   chapter_number: 99                    # 索引の章番号
   title: 索引                           # 索引ページタイトル
   auto_extract: false                   # Phase 2で実装
-  score_threshold: 80                   # Phase 2で実装
+  score_threshold: 150                  # Phase 2で実装
   use_mecab: false                      # Phase 3で実装（形態素解析）
 ```
 
@@ -540,7 +540,7 @@ class ScoringEngine
     score
   end
   
-  def should_auto_register?(score, threshold = 80)
+  def should_auto_register?(score, threshold = 150)
     score >= threshold
   end
 end
@@ -659,12 +659,12 @@ class TechnicalDictionary
 end
 ```
 
-### 4.6 候補YAML生成: `vs index:scan`
+### 4.6 候補YAML生成: `vs index:match`
 
 #### 4.6.1 実行例
 
 ```bash
-$ vs index:scan
+$ vs index:match
 索引候補を抽出中...
   ✓ 11-basics.md から 15 件の候補を抽出
   ✓ 12-advanced.md から 23 件の候補を抽出
@@ -743,15 +743,15 @@ candidates:
 
 ## 5. CLI コマンド仕様
 
-### 5.1 `vs index:scan`
+### 5.1 `vs index:match`
 
 索引候補を自動抽出し、YAML を生成する。
 
 ```bash
-vs index:scan [OPTIONS]
+vs index:match [OPTIONS]
 
 OPTIONS:
-  --threshold SCORE    自動登録の閾値（デフォルト: 80）
+  --threshold SCORE    自動登録の閾値（デフォルト: 150）
   --output FILE        出力先（デフォルト: config/index_candidates.yml）
   --merge              既存の index_terms.yml とマージ
   --verbose, -v        詳細ログ表示
@@ -875,7 +875,7 @@ end
 
 1. `TermExtractor` 実装
 2. `ScoringEngine` 実装
-3. `vs index:scan` コマンド追加
+3. `vs index:match` コマンド追加
 4. 候補YAML生成・マージ機能
 
 ### 7.3 Phase 3: 高度化（4〜6週間）
@@ -1031,7 +1031,7 @@ end
 - **Phase 1**: `[用語|読み]` 記法で著者が明示的に指定
 - **Phase 1**: `[用語]` 記法（読み省略）で MeCab が自動推測
   - 日本人なら読める語句（「基本情報技術者」など）は省略 OK
-  - MeCab で推測し、`vs index:scan` で確認・修正
+  - MeCab で推測し、`vs index:match` で確認・修正
 - **Phase 2**: 辞書に手動で `yomi` を記載
 - **Phase 3**: アルファベット語の読み自動判定（辞書ベース）
 

@@ -5,7 +5,7 @@
 #
 # 使い方:
 #   1. 著者が [用語|読み] 記法で手動マークアップ
-#   2. vs index:scan で自動抽出した候補を確認
+#   2. vs index:match で自動抽出した候補を確認
 #   3. 必要に応じてこの辞書に追加・編集
 #
 # パターン:
@@ -13,7 +13,6 @@
 #   - yomi: 五十音順ソート用の読み（ひらがな）
 #   - pattern: 本文中でマッチする正規表現（オプション）
 #   - auto_index_pattern: 自動抽出時のフィルタ（オプション）
-#   - enabled: true/false で有効・無効を切り替え
 # ================================================================
 
 terms:
@@ -22,33 +21,27 @@ terms:
     yomi: えいちてぃーえむえる
     pattern: /HTML/
     auto_index_pattern: /HTML(?=とは|について|の基本)/
-    enabled: true
 
   - term: CSS
     yomi: しーえすえす
     pattern: /CSS/
     auto_index_pattern: /CSS(?=とは|について|の基本)/
-    enabled: true
 
   - term: JavaScript
     yomi: じゃばすくりぷと
     pattern: /JavaScript/
     auto_index_pattern: /JavaScript(?=とは|について|の基本)/
-    enabled: true
 
   # 例: 読み間違いしやすい用語
   - term: 引数
     yomi: ひきすう
     pattern: /引数/
-    enabled: true
 
   - term: 戻り値
     yomi: もどりち
     pattern: /戻り値/
-    enabled: true
 
   # 例: 複合語・専門用語
   - term: レスポンシブデザイン
     yomi: れすぽんしぶでざいん
     pattern: /レスポンシブ[・\s]?デザイン/
-    enabled: true
