@@ -5,7 +5,7 @@
 # ================================================================
 # 責務:
 #   索引ページ (99-index.html) を生成する。
-#   - .cache/index_matches.yml から索引データを読み込み
+#   - _index_matches.yml から索引データを読み込み
 #   - 用語を五十音順でソート
 #   - 「あ行」「か行」などでグループ化
 #   - CSS target-counter 対応の HTML を生成
@@ -59,7 +59,7 @@ module Vivlio
           # 索引ページを生成
           # @param cache_file [String] 索引データのキャッシュファイルパス
           # @param output_file [String] 出力 HTML ファイルパス
-          def build!(cache_file = 'index_matches.yml', output_file = '_indexpage.html')
+          def build!(cache_file = '_index_matches.yml', output_file = '_indexpage.html')
             unless File.exist?(cache_file)
               Common.log_warn("索引データが見つかりません: #{cache_file}")
               Common.log_warn('vs index:match を先に実行してください')

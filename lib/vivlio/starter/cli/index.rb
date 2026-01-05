@@ -58,7 +58,7 @@ module Vivlio
         INDEX_BUILD_DESC = {
           short: '索引ページを生成します',
           long: <<~DESC
-            .cache/index_matches.yml から索引ページを生成します。
+            _index_matches.yml から索引ページを生成します。
 
             処理内容:
             - 索引データを読み込み

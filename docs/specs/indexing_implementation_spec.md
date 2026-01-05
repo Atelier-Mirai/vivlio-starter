@@ -145,7 +145,7 @@ config:
 2. 各 Markdown ファイルをスキャン
 3. **`[用語|読み]` 記法を検出**し、初出は `<dfn>`、2回目以降は `<span>` に変換
 4. 辞書パターンマッチした箇所に ID 付きタグを挿入
-5. マッチ情報を `.cache/index_matches.yml` に保存
+5. マッチ情報を `_index_matches.yml` に保存
 
 #### 3.3.2 処理フロー
 
@@ -226,7 +226,7 @@ class IndexMatchScanner
     end
     
     context.content = content
-    save_matches(matches, '.cache/index_matches.yml')
+    save_matches(matches, '_index_matches.yml')
   end
   
   private
@@ -280,7 +280,7 @@ end
 
 #### 3.3.1 責務
 
-1. `.cache/index_matches.yml` を読み込み（または IndexMatchScanner の @index_data を直接利用）
+1. `_index_matches.yml` を読み込み（または IndexMatchScanner の @index_data を直接利用）
 2. 用語ごとにマッチ箇所を集約（Ruby 4.0.0 の Set で自動的に重複排除）
 3. 読み順でソート
 4. 五十音の「行」ごとにグループ化
@@ -787,7 +787,7 @@ def execute_step_8a_index_page
   return unless index_enabled?
   
   Common.log_step('Step 8a', '索引ページ生成')
-  IndexPageBuilder.build!('.cache/index_matches.yml', '99-index.html')
+  IndexPageBuilder.build!('_index_matches.yml', '99-index.html')
 end
 ```
 
@@ -795,7 +795,7 @@ end
 
 ## 6. データ構造
 
-### 6.1 マッチ情報: `.cache/index_matches.yml`
+### 6.1 マッチ情報: `_index_matches.yml`
 
 ```yaml
 matches:
@@ -859,7 +859,7 @@ end
 1. **Week 1**: 基盤整備
    - `config/index_terms.yml` スキーマ定義
    - `IndexMatchScanner` 基本実装
-   - `.cache/index_matches.yml` 生成確認
+   - _index_matches.yml から索引データを読み込み
 
 2. **Week 2**: 索引ページ生成
    - `IndexPageBuilder` 実装
@@ -991,11 +991,11 @@ class IndexIntegrationTest < Minitest::Test
     IndexMatchScanner.scan_all_chapters!(['11-basics'])
     
     # 2. マッチ確認
-    matches = YAML.load_file('.cache/index_matches.yml')
+    matches = YAML.load_file('_index_matches.yml')
     assert matches['matches'].size > 0
     
     # 3. 索引ページ生成
-    IndexPageBuilder.build!('.cache/index_matches.yml', '99-index.html')
+    IndexPageBuilder.build!('_index_matches.yml', '99-index.html')
     
     # 4. HTML検証
     assert File.exist?('99-index.html')

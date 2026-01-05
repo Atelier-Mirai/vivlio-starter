@@ -8,7 +8,7 @@
 #   - [用語|読み] 記法を検出し、<dfn> または <span> タグに変換
 #   - [用語] 記法（読み省略）を検出し、MeCab で読みを推測
 #   - 初出は <dfn>、2回目以降は <span> タグを使用
-#   - マッチ情報を .cache/index_matches.yml に保存
+#   - マッチ情報を _index_matches.yml に保存
 #
 # Ruby 4.0.0:
 #   - Set が組み込み化され、require "set" が不要
@@ -274,9 +274,9 @@ module Vivlio
             %(<#{tag_name} id="#{anchor_id}" class="index-term" data-yomi="#{yomi}">#{term_text}</#{tag_name}>)
           end
 
-          # 索引データを index_matches.yml に保存
+          # 索引データを _index_matches.yml に保存
           def save_matches!
-            cache_file = 'index_matches.yml'
+            cache_file = '_index_matches.yml'
 
             # 用語名でソートして可読性を向上
             sorted_terms = @index_data.keys.sort.each_with_object({}) do |term, hash|
