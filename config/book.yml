@@ -289,16 +289,20 @@ files:
 # 索引設定
 # ========================================
 index:
-  # 索引機能を有効化（デフォルト: false）
-  enabled: false
+  # 索引機能を有効化
+  enabled: true
+  
   # 索引ページのタイトル
   title: '索引'
+  
   # MeCab による読み自動推測を使用
   use_mecab: true
-  # 自動抽出を有効化（Phase 2）
-  auto_extract: false
-  # 自動登録のスコア閾値（Phase 2）
-  score_threshold: 150
+  
+  # 自動承認スコア閾値（この値以上は自動的に index_terms.yml へ追加）
+  auto_approve_threshold: 200
+  
+  # レビュー対象スコア閾値（この値以上でレビュー待ちキューへ）
+  review_threshold: 150
 
 # ========================================
 # Vivliostyle設定
