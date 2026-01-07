@@ -82,7 +82,7 @@ module Vivlio
           # ルートレベルの用語を取得（親を持たない用語）
           def root_terms
             all_children = @hierarchy.values.flatten.to_set
-            @entries.keys.reject { |term| all_children.include?(term) }
+            @entries.keys.reject { all_children.include?(it) }
           end
 
           # 用語の子用語を取得
@@ -97,7 +97,7 @@ module Vivlio
 
           # リンク総数を取得
           def link_count
-            @entries.values.sum(&:size)
+            @entries.values.sum { it.size }
           end
 
           private

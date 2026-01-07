@@ -94,8 +94,9 @@ module Vivlio
           # 6. 登録済み用語に文脈を付与
           terms_with_context = enrich_terms_with_context(@terms_manager.load_existing_terms, chapters)
 
-          # 7. リジェクト済み用語に文脈を付与
-          rejected_with_context = enrich_rejected_with_context
+          # 7. リジェクト済み用語に文脈とスコアを付与
+          # candidatesからスコアを復元できるように渡す
+          rejected_with_context = enrich_rejected_with_context(candidates)
 
           # 8. _index_review.md を生成
           @markdown_generator.generate!(
@@ -376,18 +377,29 @@ module Vivlio
           end
         end
 
-        # リジェクト済み用語に文脈を付与
+        # リジェクト済み用語に文脈とスコアを付与
+        # @param candidates [Array<Hash>] 現在の候補リスト（スコア復元用）
         # @return [Array<Hash>] 文脈付きリジェクト用語のリスト
-        def enrich_rejected_with_context
+        def enrich_rejected_with_context(candidates = [])
           rejected = @queue_manager.load_rejected_terms_with_metadata
           chapters = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md'))
 
           rejected.map do |item|
-            next item if item['contexts']&.any?
+            enriched = item.dup
+
+            # スコアがない場合は候補リストから復元を試みる
+            unless enriched['score']
+              candidate = candidates.find { it['term'] == item['term'] }
+              enriched['score'] = candidate['score'] if candidate&.dig('score')
+            end
 
             # 文脈がない場合は本文から抽出
-            context = find_context_for_term(item['term'], chapters)
-            item.merge('contexts' => context ? [context] : [])
+            unless enriched['contexts']&.any?
+              context = find_context_for_term(item['term'], chapters)
+              enriched['contexts'] = context ? [context] : []
+            end
+
+            enriched
           end
         end
 

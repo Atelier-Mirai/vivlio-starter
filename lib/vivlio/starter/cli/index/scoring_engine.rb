@@ -70,8 +70,8 @@ module Vivlio
           # @param threshold [Float] 閾値
           # @return [Hash] 用語とスコアのハッシュ
           def filter_by_threshold(threshold)
-            @scores.select { |_, data| data[:total] >= threshold }
-                   .sort_by { |_, data| -data[:total] }
+            @scores.select { _2[:total] >= threshold }
+                   .sort_by { -_2[:total] }
                    .to_h
           end
 
@@ -88,7 +88,7 @@ module Vivlio
             {
               term: term,
               total: data[:total].round(2),
-              components: data[:components].transform_values { |v| v.round(2) }
+              components: data[:components].transform_values { it.round(2) }
             }
           end
         end
