@@ -31,12 +31,7 @@ body.toc { page: front; }
   text-decoration: none;
 }
 
-@page front {
-  /* 左下にローマ数字ノンブルを表示 */
-  @bottom-left { content: counter(page, lower-roman); }
-  /* 中央は不要 */
-  @bottom-center { content: none; }
-}
+/* @page front は page-settings.css で定義済み */
 
 #toc {
   /* 目次コンテナ全体の文字組み設定（自動組版の自動スペース調整を抑制） */
@@ -271,6 +266,10 @@ li.toc-subsection {
  
 /* 項（h3）のページ番号 */
 .toc-subsection::after {
+  content: none;
+}
+
+#toc li.toc-subsection > .toc-title::after {
   margin-inline-start: 0.5em;
   content: leader(dotted) " " target-counter(attr(href url), page);
 }

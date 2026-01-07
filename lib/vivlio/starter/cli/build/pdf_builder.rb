@@ -56,8 +56,9 @@ module Vivlio
             compile_overall_pdf_and_split!(targets_for_pdf, keep)
           end
 
-          # Step 7: 全体PDF生成 → frontmatter(前書き+目次)とsections(本文+付録+後書き+索引)に分割
+          # Step 7: 全体PDF生成（分割なし）
           # 新仕様: 00-preface + _toc を含めて全体をビルドし、target-counter を正しく解決
+          # PDF分割をスキップすることで、索引から00-prefaceへのリンクを維持
           def compile_overall_pdf_and_split!(targets_for_pdf, _keep = nil)
             if targets_for_pdf.empty?
               Common.log_warn('[Step 7] 対象HTMLが見つかりません。Step 7 をスキップします。')
@@ -75,18 +76,12 @@ module Vivlio
               return
             end
 
-            # 前付け（00-preface + _toc）のページ数を計算
-            frontmatter_pages = calculate_frontmatter_pages(targets_for_pdf)
-            if frontmatter_pages <= 0
-              Common.log_warn('[Step 7] frontmatter のページ数が 0 です。分割をスキップします。')
-              return
-            end
-
-            Common.log_info("[Step 7] frontmatter ページ数: #{frontmatter_pages}")
-
-            # 新仕様: _preface_toc.pdf（前書き+目次）と _sections.pdf（本文+付録+後書き+索引）に分割
-            Build::Utilities.split_pdf_into_frontmatter_and_sections(output_pdf, frontmatter_pages,
-                                                                     '_preface_toc.pdf', '_sections.pdf')
+            # PDF分割をスキップ: 全体PDFをそのまま _sections.pdf として使用
+            # これにより内部リンク（索引→00-preface等）が維持される
+            # ローマ数字ノンブルはCSSの @page front で対応済み
+            Common.log_info('[Step 7] PDF分割をスキップ（内部リンク維持のため）')
+            FileUtils.cp(output_pdf, '_sections.pdf')
+            Common.log_success('[Step 7] _sections.pdf を生成しました（全体PDF、分割なし）')
           end
 
           # 前付け（00-preface + _toc）のページ数を計算
@@ -139,17 +134,12 @@ module Vivlio
             pages
           end
 
-          # Step 8: _preface_toc.pdf にローマ小を付与
-          # 新仕様: Step 7 で _preface_toc.pdf は既に生成済み
+          # Step 8: スキップ（ローマ数字ノンブルはCSSで対応済み）
+          # PDF分割をスキップしたため、_preface_toc.pdf は生成されない
+          # ローマ数字ノンブルは stylesheets/toc.css の @page front で対応
           def build_frontmatter_pdf!(_keep = nil)
-            Common.log_action('[Step 8] _preface_toc.pdf にローマ小 i〜 を付与します…')
-
-            unless File.exist?('_preface_toc.pdf')
-              Common.log_warn('[Step 8] _preface_toc.pdf が見つかりません。Step 7 で生成されていない可能性があります。')
-              return
-            end
-
-            finalize_frontmatter_pdf
+            Common.log_action('[Step 8] スキップ（ローマ数字ノンブルはCSSで対応済み）')
+            Common.log_info('[Step 8] PDF分割をスキップしたため、HexaPDFによるノンブル描画は不要')
           end
 
           # frontmatter PDF の仕上げ処理（奇数ページ調整、ラベル、ノンブル）

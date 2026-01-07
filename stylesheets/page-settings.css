@@ -197,6 +197,34 @@
   @bottom-left  { content: none; }
   @bottom-right { content: none; }
 }
+
+/* 前付け（00-preface, _toc）のページ設定 */
+/* ローマ数字ノンブル: 偶数ページ=左下、奇数ページ=右下 */
+@page front:left {
+  @bottom-left {
+    content: counter(page, lower-roman);
+    font-family: var(--font-folio);
+    font-size: var(--folio-font-size);
+    font-weight: 300;
+    color: var(--folio-color);
+  }
+  @bottom-center { content: none; }
+  @bottom-right { content: none; }
+  @top-right { content: none; }
+}
+
+@page front:right {
+  @bottom-right {
+    content: counter(page, lower-roman);
+    font-family: var(--font-folio);
+    font-size: var(--folio-font-size);
+    font-weight: 300;
+    color: var(--folio-color);
+  }
+  @bottom-center { content: none; }
+  @bottom-left { content: none; }
+  @top-right { content: none; }
+}
 /* stylelint-enable */
 
 
