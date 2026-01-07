@@ -41,6 +41,19 @@ module Vivlio
             Common.echo_always "\n合計 #{tokens.size} 章（dry-run、実処理は行いません）。"
           end
 
+          # フルビルド実行前の Dry Run 結果を表示する
+          def print_full_build_dry_run(keep)
+            Common.echo_always "\n== Dry Run: フルビルド予定 =="
+            if keep&.any?
+              Common.echo_always "  - 対象章 (#{keep.size}件):"
+              keep.each { |chapter| Common.echo_always "      • #{chapter}" }
+            else
+              Common.echo_always '  - 対象章: catalog.yml に定義された全章'
+            end
+            Common.echo_always '  - 実際のビルドは実行せず、工程のみを確認しました。'
+            Common.echo_always ''
+          end
+
           # ビルドタイミングをコンソールに出力する
           def print_build_timings(build_timings)
             return if build_timings.empty?

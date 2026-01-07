@@ -9,7 +9,7 @@
 
 ### Planned
 
-- <dfn id="idx-kihwgu06ev1o-1" class="index-term" data-yomi="Medium">Medium</dfn> 章・節に対する相互参照の整備（章番号ベースの cross reference）。本文中から「第◯章」「第◯節」を参照する簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。
+- Medium 章・節に対する相互参照の整備（章番号ベースの cross reference）。本文中から「第◯章」「第◯節」を参照する簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。
 
 ### Pre-release Checklist
 - gem 公開時には `vivlio-starter.gemspec` の summary/description が現行仕様に即しているか再確認する。
@@ -18,23 +18,23 @@
 
 
 #### 実装済み
-- <dfn id="idx-6gmecrj6z7am-1" class="index-term" data-yomi="High">High</dfn> 任意の複数章を指定して、フルビルドする
-- <span id="idx-6gmecrj6z7am-2" class="index-term" data-yomi="High">High</span> 任意章フルビルド（既出の計画を拡張）章IDの指定順で束ね、目次・通し番号も整合。実装目安: rake build --chapters=11,12,21 形式。
-- <span id="idx-6gmecrj6z7am-3" class="index-term" data-yomi="High">High</span> PDF に章アウトライン（ブックマーク）を付与（本文PDF/最終PDF）。読者のナビゲーション向上のため、Step 7/10 後段で HexaPDF により後付け。
-- <span id="idx-6gmecrj6z7am-4" class="index-term" data-yomi="High">High</span> 縦に長い表のレイアウト崩れ
-- <span id="idx-kihwgu06ev1o-2" class="index-term" data-yomi="Medium">Medium</span> 見出しID・相互参照ショートコード（<dfn id="idx-j2sq1v5023vw-1" class="index-term" data-yomi="ref:foo">ref:foo</dfn> → 自動リンク）。
-- <span id="idx-kihwgu06ev1o-3" class="index-term" data-yomi="Medium">Medium</span> 図表キャプション規約の統一（Figure 1.1/表1.1 自動採番）。
+- [High] 任意の複数章を指定して、フルビルドする
+- [High] 任意章フルビルド（既出の計画を拡張）章IDの指定順で束ね、目次・通し番号も整合。実装目安: rake build --chapters=11,12,21 形式。
+- [High] PDF に章アウトライン（ブックマーク）を付与（本文PDF/最終PDF）。読者のナビゲーション向上のため、Step 7/10 後段で HexaPDF により後付け。
+- [High] 縦に長い表のレイアウト崩れ
+- [Medium] 見出しID・相互参照ショートコード（ref:foo → 自動リンク）。
+- [Medium] 図表キャプション規約の統一（Figure 1.1/表1.1 自動採番）。
 
 #### ビルド/出力
 - 00, 01, (blank), 02, (blank), 03, (blank), 11-98(cssにより右頁始まり), (blank), 99 として結合
-- <span id="idx-kihwgu06ev1o-4" class="index-term" data-yomi="Medium">Medium</span> book.yml の chapters を、contents/と連動するように。
-- <span id="idx-6gmecrj6z7am-5" class="index-term" data-yomi="High">High</span> 奥付が偶数ページになるように
-- <span id="idx-kihwgu06ev1o-5" class="index-term" data-yomi="Medium">Medium</span> A4 以外の紙サイズを指定する（推奨文字サイズの確認）
-- <span id="idx-kihwgu06ev1o-6" class="index-term" data-yomi="Medium">Medium</span> 出力バリアント PDF（裁ち落とし/ノンブル有無）、Web/EPUB（任意）。
+- [Medium] book.yml の chapters を、contents/と連動するように。
+- [High] 奥付が偶数ページになるように
+- [Medium] A4 以外の紙サイズを指定する（推奨文字サイズの確認）
+- [Medium] 出力バリアント PDF（裁ち落とし/ノンブル有無）、Web/EPUB（任意）。
 
 #### 校正/Lint・品質
 リファクタリング前 519 件 -> 508件
-- <span id="idx-6gmecrj6z7am-6" class="index-term" data-yomi="High">High</span> RuboCop が全面的に通るよう CLI/ビルド系スクリプトを継続的にリファクタリング。
+- [High] RuboCop が全面的に通るよう CLI/ビルド系スクリプトを継続的にリファクタリング。
 102 lib/vivlio/starter/cli/build_helpers.rb
  42 lib/vivlio/starter/cli/post_process.rb
  44 lib/vivlio/starter/cli/pre_process.rb
@@ -62,54 +62,54 @@
   0 lib/vivlio/starter/cli/renumber.rb
   0 lib/vivlio/starter/version.rb
 
-- <span id="idx-6gmecrj6z7am-7" class="index-term" data-yomi="High">High</span> 日本語表記・組版Lint（スタイルガイド）
-- <span id="idx-6gmecrj6z7am-8" class="index-term" data-yomi="High">High</span> リンク・画像の自動検証
-- <span id="idx-kihwgu06ev1o-7" class="index-term" data-yomi="Medium">Medium</span> スペルチェック（辞書拡張対応）
-- <span id="idx-kihwgu06ev1o-8" class="index-term" data-yomi="Medium">Medium</span> 用語候補抽出と一括追加（glossary）: `contents/` を走査し `ABBR(Full Name)`/`Full Name(ABBR)` パターンを検出して候補一覧を作成。対話的に選択して `config/glossary.yml` に一括追加するタスク（例: `glossary:suggest` → `glossary:import_selected`）。
-- <span id="idx-kihwgu06ev1o-9" class="index-term" data-yomi="Medium">Medium</span> 用語集・索引自動生成 （それらしい専門用語を抽出して、`config/glossary.yml` に一括追加するタスク）
-- <span id="idx-kihwgu06ev1o-10" class="index-term" data-yomi="Medium">Medium</span> 基本的に良く用いる用語をまとめた用語集テンプレートを標準添付し、プロジェクト作成時または後から選択適用できるようにする。
-- <span id="idx-kihwgu06ev1o-11" class="index-term" data-yomi="Medium">Medium</span> glossary `style: spacing` の実装（スペースの有無/種別の検出・自動修正）
-- <span id="idx-kihwgu06ev1o-12" class="index-term" data-yomi="Medium">Medium</span> glossary `style: punctuation` の実装（コロン/ハイフン等の記号種別・位置の検出・自動修正）
-- <span id="idx-kihwgu06ev1o-13" class="index-term" data-yomi="Medium">Medium</span> text_metrics に語の平均長・漢字比率など語彙難度指標を追加する
-- <span id="idx-kihwgu06ev1o-14" class="index-term" data-yomi="Medium">Medium</span> text_metrics に語彙多様度（TTR 等）の集計を追加する
-- <dfn id="idx-4t4wd480zoju-1" class="index-term" data-yomi="Low">Low</dfn> text_metrics で日本語向け読解難度スコア（Flesch/Kincaid 等を応用）を算出する
-- <span id="idx-4t4wd480zoju-2" class="index-term" data-yomi="Low">Low</span> text_metrics で見出し/セクション単位の分量バランスを可視化する
+- [High] 日本語表記・組版Lint（スタイルガイド）
+- [High] リンク・画像の自動検証
+- [Medium] スペルチェック（辞書拡張対応）
+- [Medium] 用語候補抽出と一括追加（glossary）: `contents/` を走査し `ABBR(Full Name)`/`Full Name(ABBR)` パターンを検出して候補一覧を作成。対話的に選択して `config/glossary.yml` に一括追加するタスク（例: `glossary:suggest` → `glossary:import_selected`）。
+- [Medium] 用語集・索引自動生成 （それらしい専門用語を抽出して、`config/glossary.yml` に一括追加するタスク）
+- [Medium] 基本的に良く用いる用語をまとめた用語集テンプレートを標準添付し、プロジェクト作成時または後から選択適用できるようにする。
+- [Medium] glossary `style: spacing` の実装（スペースの有無/種別の検出・自動修正）
+- [Medium] glossary `style: punctuation` の実装（コロン/ハイフン等の記号種別・位置の検出・自動修正）
+- [Medium] text_metrics に語の平均長・漢字比率など語彙難度指標を追加する
+- [Medium] text_metrics に語彙多様度（TTR 等）の集計を追加する
+- [Low] text_metrics で日本語向け読解難度スコア（Flesch/Kincaid 等を応用）を算出する
+- [Low] text_metrics で見出し/セクション単位の分量バランスを可視化する
 
 #### 参照・索引・書誌
-- <span id="idx-4t4wd480zoju-3" class="index-term" data-yomi="Low">Low</span> 用語集・索引自動生成
-- <span id="idx-4t4wd480zoju-4" class="index-term" data-yomi="Low">Low</span> 脚注・参考文献サポート（簡易BibTeX/CSL）
-- <span id="idx-kihwgu06ev1o-15" class="index-term" data-yomi="Medium">Medium</span> 用語集の付録化（`config/glossary.yml` → 付録章に整形出力、名称/略称/説明/スタイルを一覧化）
-- <span id="idx-kihwgu06ev1o-16" class="index-term" data-yomi="Medium">Medium</span> 初出ページ付き索引の生成（用語の文書走査→初出箇所のページ番号抽出→索引章に出力）
+- [Low] 用語集・索引自動生成
+- [Low] 脚注・参考文献サポート（簡易BibTeX/CSL）
+- [Medium] 用語集の付録化（`config/glossary.yml` → 付録章に整形出力、名称/略称/説明/スタイルを一覧化）
+- [Medium] 初出ページ付き索引の生成（用語の文書走査→初出箇所のページ番号抽出→索引章に出力）
 
 #### コンテンツ/テンプレート
-- <span id="idx-6gmecrj6z7am-9" class="index-term" data-yomi="High">High</span> 11-install.mdなどを、書き直す
-- <span id="idx-4t4wd480zoju-5" class="index-term" data-yomi="Low">Low</span> テンプレ断片スニペット（注意/補足/Tipのコンポーネント化）。
-- <span id="idx-6gmecrj6z7am-10" class="index-term" data-yomi="High">High</span> プロジェクト生成時に、.cache/vs/ を生成する。
-- <span id="idx-6gmecrj6z7am-11" class="index-term" data-yomi="High">High</span> プロジェクト生成時に、project_scaffold/ を生成する。
+- [High] 11-install.mdなどを、書き直す
+- [Low] テンプレ断片スニペット（注意/補足/Tipのコンポーネント化）。
+- [High] プロジェクト生成時に、.cache/vs/ を生成する。
+- [High] プロジェクト生成時に、project_scaffold/ を生成する。
 
 ビルドのマニュアルを書く
-- <span id="idx-6gmecrj6z7am-12" class="index-term" data-yomi="High">High</span> ビルド時にcover画像も含むように
-- <span id="idx-6gmecrj6z7am-13" class="index-term" data-yomi="High">High</span> 塗り足しやepub対応
-- <span id="idx-6gmecrj6z7am-14" class="index-term" data-yomi="High">High</span> pdf_reader -> mdに
-- <span id="idx-6gmecrj6z7am-15" class="index-term" data-yomi="High">High</span> Re:View Starter -> Vivlio Starter
+- [High] ビルド時にcover画像も含むように
+- [High] 塗り足しやepub対応
+- [High] pdf_reader -> mdに
+- [High] Re:View Starter -> Vivlio Starter
 
-## <dfn id="idx-jwp4deen9jrc-1" class="index-term" data-yomi="Unreleased">Unreleased</dfn>
+## Unreleased
 （次回リリース候補の変更はここに追加してください）
 
 ### Added
 - **索引機能を実装（Phase 1〜3）**: 書籍の索引（インデックス）を自動生成する機能を追加。
   - **Phase 1 (MVP)**: 手動マークアップベース
-    - `<dfn id="idx-c8x7kk0ta3y1-1" class="index-term" data-yomi="読み">用語</dfn>` 記法で索引語を手動マークアップ（例: `<dfn id="idx-nrwoc09fkeid-1" class="index-term" data-yomi="ひきすう">引数</dfn>`)
-    - `<span id="idx-c8x7kk0ta3y1-2" class="index-term" data-yomi="ようご">用語</span>` 記法（読み省略）で MeCab による読み自動推測
+    - `[読み|用語]` 記法で索引語を手動マークアップ（例: `[引数|ひきすう]`）
+    - `[用語]` 記法（読み省略）で MeCab による読み自動推測
     - 初出は `<dfn>` タグ、2回目以降は `<span>` タグに自動切り替え
-    - `vs index:match` コマンドで手動マークアップをスキャン
-    - `vs index:build` コマンドで索引ページ（`_indexpage.html`）を生成
+    - `vs index:build` コマンドで索引ページ（`_indexpage.html`）を生成 (内部コマンド。vs build時に自動実行される)
   - **Phase 2**: 自動抽出とスコアリング
-    - `vs index:candidate` コマンドで索引候補を自動抽出
+    - `vs index:auto` コマンドで索引候補を自動抽出
     - 定義パターン検出（「〜とは」「〜について」など）
     - 専門用語パターン検出（カタカナ語、英字略語）
     - TF-IDF によるスコアリング
-    - `config/index_candidates.yml` に候補を出力
+    - `config/index_terms.yml` に索引語を出力
+    - `_index_review.md` で索引語を[x][r]による修正可能
   - **Phase 3**: 高度化
     - 同一ページ内の重複リンクを排除
     - 階層化索引（親子関係）のサポート
@@ -123,8 +123,9 @@
 
 ### Changed
 - **RuboCop リファクタリングで違反を 1000→632 件へ削減**: `cover.rb` / `output_helpers.rb` / `glossary/*_commands.rb` / `markdown_preprocessor.rb` / `page_numberer.rb` / `footnote_converter.rb` を中心に軽微な Style・Layout 警告を是正し、Metrics 系以外の違反を一掃。`docs/rubocop_offense_summary.md` を最新化し、`vs build` で回帰を確認済み。
+- **Samovar CLI の未知オプション処理を改善**: CLI エントリポイントを `RootCommand.call` から `parse + call` に変更し、`Samovar::InvalidInputError` を補足して該当サブコマンドの `print_usage` を自動表示する共通ハンドラを追加。`vs build --unknown-option` や `vs clean --unknown-option` などでも各コマンドのヘルプが即座に提示され、利用者が正しいオプションを確認しやすくなった。
 
-## <dfn id="idx-ic96e3o9jvur-1" class="index-term" data-yomi="0.25.0">0.25.0</dfn> - 2025-12-25
+## 0.25.0 - 2025-12-25
 
 ### Fixed
 - **前書きのHTMLブロック境界の正規化**: `pre_process` で HTML ブロック閉じタグ直後の空行を正規化し、`</small>` 直後の `## 対象読者` などが Markdown 見出しとして正しく解釈されるように修正。
@@ -147,7 +148,7 @@
 ### Notes
 - Vivliostyle の PDF レンダリングの仕様/不具合により、`linkurl_footnote: true` 使用時に `https://ja.wikipedia.org` や `https://www.apple.com/jp/` など `ja` / `jp` を含む URL 脚注が PDF 上で 2 つのリンクに分かれて見える場合がある（HTML 出力上は単一リンクであり、本プロジェクト側では既知の軽微な不具合として扱う）。
 
-## <dfn id="idx-trut9zmmb8pt-1" class="index-term" data-yomi="0.17.0">0.17.0</dfn> - 2025-11-26
+## 0.17.0 - 2025-11-26
 
 ### Added
 
@@ -169,7 +170,7 @@
 - **リンク脚注と PDF 脚注番号の整合性**: Markdown 内の外部リンクを自動的に URL 脚注へ変換する処理を見直し、章末脚注からページ脚注への展開時にも本文中の参照順と脚注番号が一致するように修正。Vivliostyle の print 脚注と CSS カウンターのずれにより `color 5` などの参照番号と脚注行が食い違っていた問題を解消。
  - **`.aki` 段落クラスの適用不具合**: `config/post_replace_list.yml` の `{.aki}` / `{.aki2}` 用正規表現を修正し、Vivliostyle/VFM が出力する `<p>...</p>` を段落単位で安全にマッチするように変更。これにより、`contents/46-first-css.md` などで `{.aki}` / `{.aki2}` が別段落まで巻き込まれて消えてしまい、本来 `class="aki"` による 1 行（または 2 行）分の下マージンが付かない問題を解消。
 
-## <dfn id="idx-rovvxsyti5ae-1" class="index-term" data-yomi="0.16.0">0.16.0</dfn> - 2025-11-15
+## 0.16.0 - 2025-11-15
 
 ### Added
 - **章番号ベースのビルド指定**: `book.yml` の `chapters` 設定で番号ベースの指定をサポート。配列 `<dfn id="idx-15a03j2u2uez-1" class="index-term" data-yomi="02,11,12,91">02, 11, 12, 91</dfn>`、カンマ区切り "02, 11, 12, 91"、範囲指定 "02-12, 91" の形式で章を指定可能に。従来のファイル名指定と併用はできず、混在時はエラーで中止。
@@ -201,7 +202,7 @@
 - `vs build` の完了時に、`output.pdf` および `output_compressed.pdf` を `book.yml` の設定に基づく動的ファイル名へリネームし、生成物がプロジェクト名・バージョンを反映した名称で出力されるように調整（例: `vivlio_starter_v1.0.0.pdf` / `vivlio_starter_v1.0.0_compressed.pdf`）。
 - `lib/project_scaffold/stylesheets/titlepage.css` と `stylesheets/titlepage.css` を更新し、タイトル・副題・著者名が紙サイズに応じて重ならず整列するよう CSS Grid ベースのレイアウトに再設計。
 
-## <dfn id="idx-b5odlaf5ldpw-1" class="index-term" data-yomi="0.15.0">0.15.0</dfn> - 2025-11-07
+## 0.15.0 - 2025-11-07
 
 ### Added
 - 付録専用カラー設定（`theme.appendix_color`）を追加。指定がない場合は本文と同じ `theme.color` を使用し、付録のみ異なる色を設定可能に。
@@ -238,14 +239,14 @@
 - テーマカラーの定義不足を修正。amber / orange / peach / coral / magenta / plum / indigo / navy / cyan / teal / mint / lime の色定義を追加し、book.yml で指定した色が正しく反映されるように修正。
 - theme.css のコメントを現在の仕様に合わせて修正。利用者が直接編集すべきでない旨を明記し、古いコメントや不適切な説明を削除。
 
-## <dfn id="idx-vrt82onetg0o-1" class="index-term" data-yomi="0.14.0">0.14.0</dfn> - 2025-11-04
+## 0.14.0 - 2025-11-04
 
 ### Added
 - Textlint を日本語対応ワークフローとして再構築し、カスタムフォーマッターの導入・VFM 記法向け allowlist/filter 対応・scaffold/`vs doctor --fix` による設定一式の自動配備を実装。
 
 ### Changed
 
-## <dfn id="idx-e96xnu0uth51-1" class="index-term" data-yomi="0.13.0">0.13.0</dfn> - 2025-11-03
+## 0.13.0 - 2025-11-03
 
 ### Added
 - テーマカラー候補に coral / navy / mint / plum / peach を追加し、yellow 系の色味を調整。
@@ -258,7 +259,7 @@
 - simple テーマ向け header スタイルを刷新し、章タイトル・節見出しをバナー調に再設計。
 - image テーマの章扉レイアウトと節見出し装飾を再設計し、frontispiece 余白・見出し幅・装飾画像のアスペクト比・折り返し制御を改善。
 
-## <dfn id="idx-v4hromfdu5vm-1" class="index-term" data-yomi="0.12.0">0.12.0</dfn> - 2025-10-28
+## 0.12.0 - 2025-10-28
 
 ### Added
 - minitest を導入し、バージョン定数およびフルビルドパイプラインの基本動作を検証する最初のテストスイートを整備。
@@ -272,7 +273,7 @@
 - `vs clean --cache` 実行時に `.vivliostyle` ディレクトリも削除するようクリーン処理を拡張。
 
 
-## <dfn id="idx-sb48ruvwnq6f-1" class="index-term" data-yomi="0.11.0">0.11.0</dfn> - 2025-10-27
+## 0.11.0 - 2025-10-27
 
 
 ### Added
@@ -284,7 +285,7 @@
 - `build.rb` の単章ビルド処理をパイプライン化し、実行フローと付随処理（マージ・オープン）を専用クラスへ分割。
 - `pre_process.rb` / `post_process.rb` の大型メソッドを段階的ヘルパーへ分解し、前後処理の責務を明確化。
 
-## <dfn id="idx-gcysmjgtinsn-1" class="index-term" data-yomi="0.10.0">0.10.0</dfn> - 2025-10-26
+## 0.10.0 - 2025-10-26
 
 ### Added
 - 目次の構成を見直し、ブックマークが所定の階層で揃うよう調整（「始めに」配下の見出し整理、および奥付・付録の固定ラベル化）。HTML 出力に章番号用の `<span class="chapter-number">…</span>` を導入し、抽出アルゴリズムを改良したことで、フルビルド時にも目次が欠落なく生成されるよう改善。
@@ -297,7 +298,7 @@
 - 開発環境の Vivliostyle CLI/Core を 9.7.2 / 2.35.0 へ更新。
 - ビルドシステムを整理し、キャッシュ活用などで処理を簡素化・高速化。
 
-## <dfn id="idx-duwgsjiu4vwq-1" class="index-term" data-yomi="0.9.1">0.9.1</dfn> - 2025-09-09
+## 0.9.1 - 2025-09-09
 
 ### Added
 - `pdf <dfn id="idx-e6zlxwr15vti-1" class="index-term" data-yomi="OUTPUT">OUTPUT</dfn>`: 出力ファイル名を引数で指定可能に（指定時は生成後にリネームを自動実行）。
@@ -333,7 +334,7 @@
 
 
 
-## <dfn id="idx-al1ru8k8ee7q-1" class="index-term" data-yomi="0.9.0">0.9.0</dfn> - 2025-09-09
+## 0.9.0 - 2025-09-09
 
 ### Added
 - PDF アウトライン（ブックマーク）実装
@@ -367,7 +368,7 @@
 ### Notes
 本リリースでは、章別PDFの分割/キャッシュ（旧 Plan A）を正式に廃止しました。将来的な最適化は「論理フィルタ（book.yml chapters）を前提とした通常フロー」の改善に集約し、必要であれば Experimental な「章別並列生成→結合（`build_chapter_pdfs_in_parallel_and_merge!`）」の強化で対応します。キャッシュ方針は次のとおりです: Plan A（分割ベースの章別キャッシュ）は撤回済み。一方で、Plan B（章別並列生成→結合ベース）の章単位キャッシュ計画は継続検討中です。front/colophon 等の再生成短縮キャッシュは引き続き有効です。
 
-## <dfn id="idx-r3yips3j319b-1" class="index-term" data-yomi="0.8.2">0.8.2</dfn> - 2025-09-07
+## 0.8.2 - 2025-09-07
 
 ### Added
 - `build`: `--force` を追加（Step 9 で 00/01/99 を強制再生成）。
@@ -389,13 +390,13 @@
 
 ### Notes
 
-## <dfn id="idx-imfusumrrq2-1" class="index-term" data-yomi="0.8.1">0.8.1</dfn> - 2025-09-05
+## 0.8.1 - 2025-09-05
 
 ### Changed
 
 - 節見出し（`stylesheets/image-header.css` の `h2` / `h2::before`）の体裁調整を完了。
 
-## <dfn id="idx-15e6vi72qh86-1" class="index-term" data-yomi="0.8.0">0.8.0</dfn> - 2025-09-04
+## 0.8.0 - 2025-09-04
 
 ### Added
 - `stylesheets/simple-header.css`: Simple 版の各色バリアントを用意（テーマ連動）。章扉なしデザインでの配色切替に対応。
@@ -424,7 +425,7 @@
 ### Notes
 - image-header.css の位置調整は一旦保留。後日見直しのため TODO/FIXME コメントを該当箇所に追記（上下位置の微調整、`--section-hero-height`/マージンの検討など）。
 
-## <dfn id="idx-7llcrlhhc7nj-1" class="index-term" data-yomi="0.7.1">0.7.1</dfn> - 2025-09-03
+## 0.7.1 - 2025-09-03
 
 ### Changed
 - `vs build` 内部実装をリファクタリングし、`config/book.yml` の `chapters` サブセット（keep）が Step 6/7/11 に貫通する実装を安定化（退避・復元なしの論理フィルタを前提に整理）。
@@ -434,7 +435,7 @@
 - `build.rb` のクォート不備（シェル式の `\'\''`）により構文エラーとなる箇所を修正。
 - `base.class_eval` ブロックを早期に閉じていた余分な `end` を削除し、構文エラーを解消。
 
-## <dfn id="idx-nuy88wzduod0-1" class="index-term" data-yomi="0.7.0">0.7.0</dfn> - 2025-09-03
+## 0.7.0 - 2025-09-03
 
 ### Added
 - `vs build` の章指定方法を拡充（`11-install`, `11-install.md 12-tutorial`, `11-21`, `11 21-31` に対応）。
@@ -456,7 +457,7 @@
 - `configured_chapters` は `contents/` 接頭辞と拡張子の有無を正規化し、`<dfn id="idx-ei5plpxkvbfc-1" class="index-term" data-yomi="'11-foo.md',...">'11-foo.md', ...</dfn>` の形式で扱います。
 - CSS の仮想連番（Step 2）は引き続き `.orig` バックアップを用いた復元（Step 11）を行いますが、章の選定は `keep` に基づきます。
 
-## <dfn id="idx-o3oz1joesex3-1" class="index-term" data-yomi="0.6.0">0.6.0</dfn> - 2025-08-31
+## 0.6.0 - 2025-08-31
 
 ### Added
 - `vs doctor` が不足ツールの自動導入に対応（macOS）
@@ -487,7 +488,7 @@
 - 既定で PDF 圧縮を実行（`--no-compress` でスキップ可能）。圧縮後の既定ファイル名は `output_compressed.pdf`。
 
 
-## <dfn id="idx-h2fkshb3a1jq-1" class="index-term" data-yomi="0.5.0">0.5.0</dfn> - 2025-08-30
+## 0.5.0 - 2025-08-30
 
 ### Added
 - Thor への移行を完了し、CLI として独立実行可能に
@@ -512,7 +513,7 @@
 - `BuildHelpers` を増強し、ステップごとのログ粒度と失敗時の継続性を改善
 - 互換性: 既存プロジェクトはそのまま動作する想定。Rake 拡張に依存する場合は `vs` 相当のコマンドへ移行を推奨
 
-## <dfn id="idx-f3s38ugo7qdv-1" class="index-term" data-yomi="0.4.0">0.4.0</dfn> - 2025-08-26
+## 0.4.0 - 2025-08-26
 
 ### Added
 
@@ -560,7 +561,7 @@
 - **CONFIG_PREFIX の定義修正**  
   - `rakelib/common.rb` の `CONFIG_PREFIX` を見直し・修正。
 
-## <dfn id="idx-fd16p0u3gfe-1" class="index-term" data-yomi="0.3.0">0.3.0</dfn> - 2025-08-26
+## 0.3.0 - 2025-08-26
 
 ### 追加（Added）
 - Scaffold 資産を `lib/project_scaffold/` に集約し、`vs new` / `rake new` でコピーされるように対応
@@ -577,12 +578,12 @@
 - `_sandbox/sbx-cli2` にて新規作成 → `bundle install` → `bundle exec vivlio-starter build` / `build 11-install` を実行し成功
 - `codes/` の include（`sample1.js` / `sample2.js`）が解決されることを確認
 
-## <dfn id="idx-7hteif9rifso-1" class="index-term" data-yomi="0.2.0">0.2.0</dfn> - 2025-08-25
+## 0.2.0 - 2025-08-25
 
 ### 追加（Added）
 - CLI: `vs new <name>` で書籍プロジェクトの雛形を生成するコマンドを追加
 
-## <dfn id="idx-gb58fh87is9z-1" class="index-term" data-yomi="0.1.0">0.1.0</dfn> - 2025-08-24
+## 0.1.0 - 2025-08-24
 
 ### 追加（Added）
 - Gem の初期スケルトンおよび CLI の追加:

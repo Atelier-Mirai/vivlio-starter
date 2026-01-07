@@ -14,7 +14,7 @@
 
 <p class="copyright">
     <small>
-        &copy; 令和七年 早乙女遙香 All rights reserved.
+        &copy; 令和八年 早乙女遙香 All rights reserved.
     </small>
 </p>
 

@@ -3,843 +3,140 @@ terms:
 - term: "!"
   yomi: "!"
   pattern: "/!/"
-  approved_at: '2026-01-06 21:56:28'
+  approved_at: '2026-01-07 13:40:38'
   auto_approved: false
   source: manual_markup
 - term: "!DOCTYPE"
   yomi: "!DOCTYPE"
   pattern: "/!DOCTYPE/"
-  approved_at: '2026-01-06 21:56:28'
+  approved_at: '2026-01-07 13:40:38'
   auto_approved: false
   source: manual_markup
 - term: "&"
   yomi: "&"
   pattern: "/&/"
-  approved_at: '2026-01-06 21:56:28'
+  approved_at: '2026-01-07 13:40:38'
   auto_approved: false
   source: manual_markup
 - term: "&&"
   yomi: "&&"
   pattern: "/&&/"
-  approved_at: '2026-01-06 21:56:28'
-  auto_approved: false
-  source: manual_markup
-- term: "'#e74c3c', '#3498db', '#2ecc71'"
-  yomi: "'#e74c3c','#3498db','#2ecc71'"
-  pattern: "/'\\#e74c3c',\\ '\\#3498db',\\ '\\#2ecc71'/"
-  approved_at: '2026-01-06 21:56:28'
-  auto_approved: false
-  source: manual_markup
-- term: '0'
-  yomi: '0'
-  pattern: "/\\b0\\b/"
-  approved_at: '2026-01-06 21:56:28'
-  auto_approved: false
-  source: manual_markup
-- term: '1'
-  yomi: '1'
-  pattern: "/\\b1\\b/"
-  approved_at: '2026-01-06 21:56:28'
+  approved_at: '2026-01-07 13:40:38'
   auto_approved: false
   source: manual_markup
 - term: '404'
   yomi: '404'
   pattern: "/\\b404\\b/"
-  approved_at: '2026-01-06 21:56:28'
+  approved_at: '2026-01-07 13:40:38'
   auto_approved: false
   source: manual_markup
 - term: '500'
   yomi: '500'
   pattern: "/\\b500\\b/"
-  approved_at: '2026-01-06 21:56:28'
+  approved_at: '2026-01-07 13:40:38'
   auto_approved: false
   source: manual_markup
 - term: "</h1>"
   yomi: "</h1>"
   pattern: "/</h1>/"
-  approved_at: '2026-01-06 21:56:28'
+  approved_at: '2026-01-07 13:40:38'
   auto_approved: false
   source: manual_markup
 - term: "<h1>"
   yomi: "<h1>"
   pattern: "/<h1>/"
-  approved_at: '2026-01-06 21:56:28'
+  approved_at: '2026-01-07 13:40:38'
   auto_approved: false
   source: manual_markup
-- term: CPU
-  yomi: CPU
-  pattern: "/\\bCPU\\b/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 315.5216057189793
 - term: CSS
   yomi: CSS
   pattern: "/\\bCSS\\b/"
-  approved_at: '2026-01-06 21:56:34'
+  approved_at: '2026-01-07 13:40:40'
   auto_approved: true
   source: auto_extracted
-  score: 6744.5403816045055
-- term: Command
-  yomi: Command
-  pattern: "/\\bCommand\\b/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 514.1775055961988
-- term: Firefox
-  yomi: Firefox
-  pattern: "/\\bFirefox\\b/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 806.7640890735787
-- term: GPT
-  yomi: GPT
-  pattern: "/\\bGPT\\b/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 434.1403512311908
-- term: Git
-  yomi: Git
-  pattern: "/\\bGit\\b/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 337.6461059853932
-- term: Grid
-  yomi: Grid
-  pattern: "/\\bGrid\\b/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 551.8334746401731
+  score: 405.1243794274183
 - term: HTML
   yomi: HTML
   pattern: "/\\bHTML\\b/"
-  approved_at: '2026-01-06 21:56:28'
+  approved_at: '2026-01-07 13:40:38'
   auto_approved: false
   source: manual_markup
-- term: IBM
-  yomi: IBM
-  pattern: "/\\bIBM\\b/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 405.6706359244019
-- term: Java
-  yomi: Java
-  pattern: "/\\bJava\\b/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 737.687493413676
-- term: JavaScript
-  yomi: JavaScript
-  pattern: "/\\bJavaScript\\b/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 1783.7617513611071
-- term: MIT
-  yomi: MIT
-  pattern: "/\\bMIT\\b/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 301.3303269351935
-- term: Phone
-  yomi: Phone
-  pattern: "/\\bPhone\\b/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 305.91673732008655
-- term: Ruby
-  yomi: Ruby
-  pattern: "/\\bRuby\\b/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 665.21947999779
-- term: Step
-  yomi: Step
-  pattern: "/\\bStep\\b/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 673.132549492092
-- term: UNIX
-  yomi: UNIX
-  pattern: "/\\bUNIX\\b/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 405.6706359244019
-- term: URL
-  yomi: URL
-  pattern: "/\\bURL\\b/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 573.3032585499324
-- term: Web
-  yomi: Web
-  pattern: "/\\bWeb\\b/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 1022.1910560005174
-- term: Windsurf
-  yomi: Windsurf
-  pattern: "/\\bWindsurf\\b/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 1132.981961611161
 - term: "|"
   yomi: "|"
   pattern: "/\\|/"
-  approved_at: '2026-01-06 21:56:28'
+  approved_at: '2026-01-07 13:40:38'
   auto_approved: false
   source: manual_markup
 - term: "||"
   yomi: "||"
   pattern: "/\\|\\|/"
-  approved_at: '2026-01-06 21:56:28'
+  approved_at: '2026-01-07 13:40:38'
   auto_approved: false
   source: manual_markup
-- term: アイデア
-  yomi: あいであ
-  pattern: "/アイデア/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 382.3959216501082
-- term: アニメーション
-  yomi: あにめーしょん
-  pattern: "/アニメーション/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 593.7924406756837
-- term: アメリカ
-  yomi: あめりか
-  pattern: "/アメリカ/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 602.038170367751
-- term: アルゴリズム
-  yomi: あるごりずむ
-  pattern: "/アルゴリズム/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 811.2710276302382
-- term: イギリス
-  yomi: いぎりす
-  pattern: "/イギリス/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 420.7078434325575
-- term: イベント
-  yomi: いべんと
-  pattern: "/イベント/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 304.3681674234704
-- term: イメージ
-  yomi: いめーじ
-  pattern: "/イメージ/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 383.63669049542904
-- term: インターネット
-  yomi: いんたーねっと
-  pattern: "/インターネット/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 627.8889070263311
-- term: エディタ
-  yomi: えでぃた
-  pattern: "/エディタ/"
-  approved_at: '2026-01-07 11:08:30'
-  auto_approved: true
-  source: auto_extracted
-- term: エラー
-  yomi: えらー
-  pattern: "/エラー/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 864.1029122310208
-- term: オブジェクト
-  yomi: おぶじぇくと
-  pattern: "/オブジェクト/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 373.755032994728
-- term: 開発者
-  yomi: かいはつしゃ
-  pattern: "/開発者/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 415.0065153989155
-- term: 科学者
-  yomi: かがくしゃ
-  pattern: "/科学者/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 522.7460138003086
-- term: カナダ
-  yomi: かなだ
-  pattern: "/カナダ/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 300.74515102711325
-- term: カラム
-  yomi: からむ
-  pattern: "/カラム/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 678.263375997348
-- term: カーソル
-  yomi: かーそる
-  pattern: "/カーソル/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 342.5229087987624
 - term: 基本情報技術者
   yomi: きほんじょうほうぎじゅつしゃ
   pattern: "/基本情報技術者/"
-  approved_at: '2026-01-06 21:56:28'
+  approved_at: '2026-01-07 13:40:38'
   auto_approved: false
   source: manual_markup
-- term: 基本的
-  yomi: きほんてき
-  pattern: "/基本的/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 381.29907485191893
-- term: クラス
-  yomi: くらす
-  pattern: "/クラス/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 767.4898934661779
-- term: クリック
-  yomi: くりっく
-  pattern: "/クリック/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 639.5027403967082
-- term: 具体的
-  yomi: ぐたいてき
-  pattern: "/具体的/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 441.7191257249087
-- term: グリッド
-  yomi: ぐりっど
-  pattern: "/グリッド/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 320.97120416375174
 - term: 計算機
   yomi: けいさんき
   pattern: "/計算機/"
-  approved_at: '2026-01-06 21:56:34'
+  approved_at: '2026-01-07 13:40:40'
   auto_approved: true
   source: auto_extracted
-  score: 1258.1526814710041
-- term: 計算機科学
-  yomi: けいさんきかがく
-  pattern: "/計算機科学/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 838.3531796220096
-- term: 計算機科学者
-  yomi: けいさんきかがくしゃ
-  pattern: "/計算機科学者/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 717.1609379786285
-- term: ゲーム
-  yomi: げーむ
-  pattern: "/ゲーム/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 345.91412959885076
-- term: コメント
-  yomi: こめんと
-  pattern: "/コメント/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 356.57477934801364
+  score: 424.9323317373479
 - term: コンピュータ
   yomi: こんぴゅーた
   pattern: "/コンピュータ/"
-  approved_at: '2026-01-06 21:56:28'
+  approved_at: '2026-01-07 13:40:38'
   auto_approved: false
   source: manual_markup
-- term: コーディング
-  yomi: こーでぃんぐ
-  pattern: "/コーディング/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 303.3498036432828
 - term: コード
   yomi: こーど
   pattern: "/コード/"
-  approved_at: '2026-01-06 21:56:34'
+  approved_at: '2026-01-07 13:40:40'
   auto_approved: true
   source: auto_extracted
-  score: 3605.2473562952837
-- term: サイズ
-  yomi: さいず
-  pattern: "/サイズ/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 514.2912989133561
+  score: 420.0
 - term: サイト
   yomi: さいと
   pattern: "/サイト/"
-  approved_at: '2026-01-06 21:56:34'
+  approved_at: '2026-01-07 13:40:40'
   auto_approved: true
   source: auto_extracted
-  score: 1205.9102672559707
-- term: サービス
-  yomi: さーびす
-  pattern: "/サービス/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 359.78190442398613
-- term: システム
-  yomi: しすてむ
-  pattern: "/システム/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 875.7468683310558
-- term: 仕様書
-  yomi: しようしょ
-  pattern: "/仕様書/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 415.3931423980552
-- term: シンプル
-  yomi: しんぷる
-  pattern: "/シンプル/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 398.5284342577692
-- term: ジョン
-  yomi: じょん
-  pattern: "/ジョン/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 344.53634148426937
-- term: 人工知能
-  yomi: じんこうちのう
-  pattern: "/人工知能/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 392.32653608351376
-- term: スクロール
-  yomi: すくろーる
-  pattern: "/スクロール/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 553.132549492092
-- term: スタイル
-  yomi: すたいる
-  pattern: "/スタイル/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 599.8744172973063
-- term: ステップ
-  yomi: すてっぷ
-  pattern: "/ステップ/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 478.28070246238167
-- term: スマートフォン
-  yomi: すまーとふぉん
-  pattern: "/スマートフォン/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 440.97120416375174
-- term: 生成AI
-  yomi: せいせいAI
-  pattern: "/生成AI/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 846.5614049247633
-- term: セレクタ
-  yomi: せれくた
-  pattern: "/セレクタ/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 538.3126589701949
-- term: ソフト
-  yomi: そふと
-  pattern: "/ソフト/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 466.23871066961385
-- term: ソフトウェア
-  yomi: そふとうぇあ
-  pattern: "/ソフトウェア/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 771.606517099865
-- term: ソースコード
-  yomi: そーすこーど
-  pattern: "/ソースコード/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 319.43755299006494
-- term: チューリング
-  yomi: ちゅーりんぐ
-  pattern: "/チューリング/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 743.0897135970828
-- term: チューリング賞
-  yomi: ちゅーりんぐしょう
-  pattern: "/チューリング賞/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 381.1922416433812
-- term: ツール
-  yomi: つーる
-  pattern: "/ツール/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 780.0065153989153
-- term: テキスト
-  yomi: てきすと
-  pattern: "/テキスト/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 632.3786617362102
-- term: デザイン
-  yomi: でざいん
-  pattern: "/デザイン/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 504.28622792138844
+  score: 422.89294391427626
 - term: データ
   yomi: でーた
   pattern: "/データ/"
-  approved_at: '2026-01-06 21:56:34'
+  approved_at: '2026-01-07 13:40:40'
   auto_approved: true
   source: auto_extracted
-  score: 1779.842107387145
-- term: ネットワーク
-  yomi: ねっとわーく
-  pattern: "/ネットワーク/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 736.2016420636437
-- term: 博士号
-  yomi: はかせごう
-  pattern: "/博士号/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 401.1922416433812
-- term: バージョン
-  yomi: ばーじょん
-  pattern: "/バージョン/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 311.9028602067677
-- term: パターン
-  yomi: ぱたーん
-  pattern: "/パターン/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 587.8195975268543
-- term: パーセプトロン
-  yomi: ぱーせぷとろん
-  pattern: "/パーセプトロン/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 511.2667567460925
+  score: 329.14035123119083
 - term: 引数
   yomi: ひきすう
   pattern: "/引数/"
-  approved_at: '2026-01-06 21:56:28'
+  approved_at: '2026-01-07 13:40:38'
   auto_approved: false
   source: manual_markup
-- term: ビジネス
-  yomi: びじねす
-  pattern: "/ビジネス/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 486.21052684678625
 - term: ビット
   yomi: びっと
   pattern: "/ビット/"
-  approved_at: '2026-01-06 21:56:34'
+  approved_at: '2026-01-07 13:40:40'
   auto_approved: true
   source: auto_extracted
-  score: 489.84941211906903
-- term: ファイル
-  yomi: ふぁいる
-  pattern: "/ファイル/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 1391.126583961607
-- term: フォント
-  yomi: ふぉんと
-  pattern: "/フォント/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 312.1605039035172
-- term: フォーム
-  yomi: ふぉーむ
-  pattern: "/フォーム/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 403.8354057251587
-- term: 物理学
-  yomi: ぶつりがく
-  pattern: "/物理学/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 501.9373926704944
-- term: プログラマ
-  yomi: ぷろぐらま
-  pattern: "/プログラマ/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 536.8334746401731
-- term: プログラミング
-  yomi: ぷろぐらみんぐ
-  pattern: "/プログラミング/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 2195.521068120655
-- term: プログラミング言語
-  yomi: ぷろぐらみんぐげんご
-  pattern: "/プログラミング言語/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 599.524830396729
+  score: 353.72180489056166
 - term: プログラム
   yomi: ぷろぐらむ
   pattern: "/プログラム/"
-  approved_at: '2026-01-06 21:56:34'
+  approved_at: '2026-01-07 13:40:40'
   auto_approved: true
   source: auto_extracted
-  score: 1124.0726829685389
-- term: プロジェクト
-  yomi: ぷろじぇくと
-  pattern: "/プロジェクト/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 603.0052123191323
-- term: ページ
-  yomi: ぺーじ
-  pattern: "/ページ/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 969.3612615286086
-- term: ボタン
-  yomi: ぼたん
-  pattern: "/ボタン/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 1068.0311746544776
-- term: メニュー
-  yomi: めにゅー
-  pattern: "/メニュー/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 369.32100780703456
-- term: モデル
-  yomi: もでる
-  pattern: "/モデル/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 1109.0726829685386
-- term: リズム
-  yomi: りずむ
-  pattern: "/リズム/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 362.18520936844135
-- term: リセット
-  yomi: りせっと
-  pattern: "/リセット/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 304.30535039893914
-- term: リンク
-  yomi: りんく
-  pattern: "/リンク/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 327.1605039035172
-- term: リング
-  yomi: りんぐ
-  pattern: "/リング/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 430.4770465356475
-- term: レイアウト
-  yomi: れいあうと
-  pattern: "/レイアウト/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 887.4898934661779
-- term: アイコン
-  yomi: アイコン
-  pattern: "/アイコン/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 581.3404131968326
-- term: ウェブ
-  yomi: ウェブ
-  pattern: "/ウェブ/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 810.694183513531
-- term: ウェブサイト
-  yomi: ウェブサイト
-  pattern: "/ウェブサイト/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 418.5191852702756
-- term: ディープラーニング
-  yomi: ディープラーニング
-  pattern: "/ディープラーニング/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 315.91412959885076
-- term: ニューラル
-  yomi: ニューラル
-  pattern: "/ニューラル/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 330.08535992992154
-- term: ニューラルネットワーク
-  yomi: ニューラルネットワーク
-  pattern: "/ニューラルネットワーク/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 588.9909808055805
-- term: ヒントン
-  yomi: ヒントン
-  pattern: "/ヒントン/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 300.6706359244019
-- term: フォルダ
-  yomi: フォルダ
-  pattern: "/フォルダ/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 520.3734341655278
-- term: フォー
-  yomi: フォー
-  pattern: "/フォー/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 340.7217318844748
-- term: ブラウザ
-  yomi: ブラウザ
-  pattern: "/ブラウザ/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 854.0915812891261
-- term: プロパティ
-  yomi: プロパティ
-  pattern: "/プロパティ/"
-  approved_at: '2026-01-06 21:56:34'
-  auto_approved: true
-  source: auto_extracted
-  score: 475.3734341655278
+  score: 319.55889757182007
 - term: プロンプト
   yomi: プロンプト
   pattern: "/プロンプト/"
-  approved_at: '2026-01-06 21:56:34'
+  approved_at: '2026-01-07 13:40:40'
   auto_approved: true
   source: auto_extracted
-  score: 1228.399214573131
+  score: 849.719252872028

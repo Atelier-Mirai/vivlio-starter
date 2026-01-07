@@ -28,6 +28,43 @@ module Vivlio
   module Starter
     module CLI
       # Thor 実装は削除済み。ここでは Samovar コマンド群を読み込むだけ。
+
+      def start(argv)
+        args = Array(argv).dup
+
+        command = Vivlio::Starter::CLI::SamovarCommands::RootCommand.parse(args)
+        result = command.call
+        result.is_a?(Integer) ? result : 0
+      rescue Samovar::InvalidInputError => e
+        print_usage_for_invalid_input(e)
+        0
+      rescue SystemExit => e
+        e.status
+      rescue Exception => e
+        warn "❌ #{e.class}: #{e.message}"
+        warn e.backtrace.join("\n") if ENV['VS_DEBUG']
+        1
+      end
+
+      def print_usage_for_invalid_input(error)
+        command = error.command
+        token = error.respond_to?(:token) ? error.token : nil
+
+        if defined?(Vivlio::Starter::CLI::Common) && token
+          Vivlio::Starter::CLI::Common.log_warn("未知のオプション #{token.inspect} を検出しました。代わりに --help を表示します。")
+        elsif token
+          warn "Unknown option #{token.inspect}. Showing help."
+        end
+
+        if command.respond_to?(:print_usage)
+          command.print_usage
+        else
+          Vivlio::Starter::CLI::SamovarCommands::RootCommand.new(['--help']).print_usage
+        end
+      rescue StandardError => e
+        warn "❌ #{e.class}: #{e.message}"
+        warn e.backtrace.join("\n") if ENV['VS_DEBUG']
+      end
     end
   end
 end
