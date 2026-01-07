@@ -299,10 +299,27 @@ index:
   use_mecab: true
   
   # 自動承認スコア閾値（この値以上は自動的に index_terms.yml へ追加）
-  auto_approve_threshold: 200
+  auto_approve_threshold: 300
   
   # レビュー対象スコア閾値（この値以上でレビュー待ちキューへ）
   review_threshold: 150
+
+  # タイムゾーン (索引レビュー時の新着判定に利用)
+  # 既定値: 'Asia/Tokyo'（省略可能）
+  timezone: 'Asia/Tokyo'
+
+  # 推奨候補の分割比率（上位何%をHighとするか）
+  # 既定値: 0.25（25%）
+  high_candidates_ratio: 0.25
+
+  # 文脈抽出の幅（キーワード前後の文字数）
+  # 小さな画面なら 20、大画面なら 60 など調整可能
+  # 既定値: 40
+  context_width: 40
+
+  # 文脈抽出時に形態素境界で賢く文脈を引用するか
+  # 既定値: true
+  smart_context_cutting: true
 
 # ========================================
 # Vivliostyle設定

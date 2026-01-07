@@ -145,10 +145,12 @@ module Vivlio
           # 定義パターンから候補を抽出
           def extract_definition_patterns!
             @documents.each do |chapter, content|
+              # サニタイズしたコンテンツで検索
+              sanitized = sanitize_content_for_extraction(content)
               DEFINITION_PATTERNS.each do |pattern|
-                content.scan(pattern) do |match|
+                sanitized.scan(pattern) do |match|
                   term = match[0]&.strip
-                  next if term.nil? || term.empty? || term.length < 2
+                  next unless valid_term?(term)
 
                   # スコア加算（定義パターンは高スコア）
                   @term_scores[term] += 30
@@ -164,10 +166,13 @@ module Vivlio
           # 専門用語パターンから候補を抽出
           def extract_technical_terms!
             @documents.each do |chapter, content|
+              # サニタイズしたコンテンツで検索
+              sanitized = sanitize_content_for_extraction(content)
               TECHNICAL_TERM_PATTERNS.each do |pattern|
-                content.scan(pattern) do |match|
+                sanitized.scan(pattern) do |match|
                   term = match.is_a?(Array) ? match[0] : match
-                  next if term.nil? || term.length < 3
+                  next unless valid_term?(term)
+                  next if term.length < 3
 
                   # スコア加算（専門用語は中程度のスコア）
                   @term_scores[term] += 15
@@ -188,8 +193,8 @@ module Vivlio
             mecab = Natto::MeCab.new
 
             @documents.each do |chapter, content|
-              # コードブロックを除外
-              text = content.gsub(/```[\s\S]*?```/, '')
+              # 不要な要素を除外してからMeCab解析
+              text = sanitize_content_for_extraction(content)
 
               current_nouns = []
               mecab.parse(text) do |node|
@@ -220,6 +225,7 @@ module Vivlio
 
             term = nouns.join
             return if term.length < 3 || term.length > 20
+            return unless valid_term?(term)
 
             # スコア加算（名詞連続は低～中程度のスコア）
             @term_scores[term] += 10
@@ -267,6 +273,64 @@ module Vivlio
 
             context = content[start_idx...end_idx]
             context.gsub(/\s+/, ' ').strip
+          end
+
+          # 抽出用にコンテンツをサニタイズ
+          # HTMLタグ、Vivliostyle拡張記法、コードブロックなどを除外
+          def sanitize_content_for_extraction(content)
+            text = content.dup
+
+            # コードブロックを除外
+            text.gsub!(/```[\s\S]*?```/, ' ')
+
+            # HTMLタグを除外（索引用のspanタグなど）
+            text.gsub!(/<[^>]+>/, ' ')
+
+            # Vivliostyle拡張記法を除外
+            # :::フェンス記法（:::{.class}〜:::）
+            text.gsub!(/^:::[^\n]*$/, ' ')
+
+            # 画像の属性指定 {width=20%} など
+            text.gsub!(/\{[^}]*\}/, ' ')
+
+            # Markdownリンク記法の URL 部分を除外
+            text.gsub!(/\]\([^)]+\)/, '] ')
+
+            # インラインコード
+            text.gsub!(/`[^`]+`/, ' ')
+
+            # 連続する空白を1つに
+            text.gsub!(/\s+/, ' ')
+
+            text
+          end
+
+          # 抽出された用語が有効かどうかを判定
+          # @param term [String] 用語
+          # @return [Boolean] 有効ならtrue
+          def valid_term?(term)
+            return false if term.nil? || term.empty?
+            return false if term.length < 2
+
+            # HTMLタグの断片を除外
+            return false if term.include?('<') || term.include?('>')
+            return false if term.include?('</') || term.include?('/>')
+            return false if term.match?(/^(span|div|class|id|data-|href|src)$/i)
+
+            # Vivliostyle/Markdown記法の断片を除外
+            return false if term.start_with?(':::')
+            return false if term.start_with?('{') || term.end_with?('}')
+            return false if term.match?(/^(width|height)=/)
+            return false if term.match?(/^(align)=/)
+            return false if term.match?(/^\d+%$/) # 20%, 25% など
+
+            # 特殊文字のみの用語を除外
+            return false if term.match?(/^[="\-\.\/:;,]+$/)
+
+            # data属性の値（yomi値）を除外
+            return false if term.match?(/^(yomi|index-term|idx-)/)
+
+            true
           end
         end
       end

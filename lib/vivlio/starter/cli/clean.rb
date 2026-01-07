@@ -97,7 +97,7 @@ module Vivlio
               end
 
             # 索引のキャッシュも削除
-            index_cache = 'index_matches.yml'
+            index_cache = '_index_matches.yml'
             if File.exist?(index_cache)
               FileUtils.rm_f(index_cache)
               Common.log_info("#{index_cache} を削除しました")
@@ -144,7 +144,8 @@ module Vivlio
             # 例: 11-install.md など（任意の *.md やドキュメントは削除しない）
             '[0-9][0-9]-*.md',
             # 内部 basename 方式の特殊ページ
-            '_titlepage.md', '_legalpage.md', '_colophon.md', '_indexpage.html'
+            '_titlepage.md', '_legalpage.md', '_colophon.md', '_indexpage.html',
+            '_index_matches.yml', '_index_review.md'
           ]
 
           intermediate_pdfs = [
@@ -153,7 +154,7 @@ module Vivlio
             '_titlepage_legalpage.pdf', '_preface_toc.pdf', '_sections.pdf',
             '00-preface.pdf', '_toc.pdf',
             'blank_page.pdf', 'blank_frontmatter_insert.pdf',
-            'output_tmp*.pdf', 'index_matches.yml'
+            'output_tmp*.pdf'
           ]
           cleanup_patterns.concat(intermediate_pdfs)
 

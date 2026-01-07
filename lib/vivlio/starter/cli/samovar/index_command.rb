@@ -5,16 +5,23 @@
 # ================================================================
 # 責務:
 #   Samovar CLI の index コマンドを実装する。
-#   索引機能（スキャン、ビルド）のサブコマンドを提供する。
+#   索引機能のサブコマンドを提供する。
+#   仕様書 indexing_implementation_spec3.md に準拠
 #
-# サブコマンド:
-#   - index:build: 索引ページを生成
+# 公開コマンド:
+#   - index:auto: 全自動索引候補抽出 → _index_review.md 生成
+#   - index:apply: レビュー結果を適用
+#
+# 内部コマンド（利用者には非公開）:
+#   - index:build: 索引ページを生成（vs build から呼ばれる）
 #
 # 依存:
-#   - IndexCommands: 実際の索引処理
+#   - UnifiedIndexManager: 統合マネージャー
+#   - IndexCommands: 既存の索引処理
 # ================================================================
 
 require_relative '../index'
+require_relative '../index/unified_index_manager'
 
 module Vivlio
   module Starter
@@ -32,9 +39,14 @@ module Vivlio
             puts <<~HELP
               索引機能のコマンド:
               
-                vs index:match    - 手動マークアップ [用語|読み] をスキャン
-                vs index:build    - 索引ページ (_indexpage.html) を生成
-                vs index:candidate - 索引候補を自動抽出（Phase 2）
+                vs index:auto   - 候補抽出・分類・_index_review.md 生成
+                vs index:apply  - レビュー結果を index_terms.yml に適用
+              
+              ワークフロー:
+                1. vs index:auto   → _index_review.md を生成
+                2. _index_review.md を編集（[x]で承認、[r]で棄却）
+                3. vs index:apply  → index_terms.yml を更新
+                4. vs build        → 索引ページを含む PDF を生成
               
               詳細は各コマンドに --help を付けて確認してください。
             HELP
@@ -42,76 +54,86 @@ module Vivlio
           end
         end
 
-        # index:match コマンド
-        class IndexMatchCommand < Samovar::Command
-          self.description = '索引候補を自動抽出し、YAML を生成します'
+        # index:auto コマンド - 全自動索引候補抽出
+        class IndexAutoCommand < Samovar::Command
+          self.description = '候補抽出・分類・_index_review.md 生成'
 
           options do
             option '-v/--verbose', '詳細出力', default: false, key: :verbose
             option '-h/--help', 'このコマンドの使い方を表示', key: :help
           end
 
-          many :files, 'スキャン対象ファイル（省略時は全章）'
+          many :files, '対象ファイル（省略時は全章）'
 
           def call
             return print_usage if options[:help]
 
-            IndexCommands.execute_index_match(options, files || [])
+            ENV['VERBOSE'] = '1' if options[:verbose]
+            chapters = IndexCommands.resolve_chapters(files || [])
+
+            manager = UnifiedIndexManager.new
+            manager.auto_process!(chapters)
             0
           rescue SystemExit => e
             raise e
           rescue StandardError => e
-            Common.log_error("index:match 実行中にエラー: #{e.message}")
+            Common.log_error("index:auto 実行中にエラー: #{e.message}")
             Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
             1
           end
         end
 
-        # index:build コマンド
-        class IndexBuildCommand < Samovar::Command
-          self.description = '索引ページを生成します'
+        # index:apply コマンド - レビュー結果を適用
+        class IndexApplyCommand < Samovar::Command
+          self.description = 'レビュー結果を index_terms.yml に適用'
 
           options do
             option '-v/--verbose', '詳細出力', default: false, key: :verbose
-            option '--preview', 'ブラウザでプレビュー', default: false, key: :preview
             option '-h/--help', 'このコマンドの使い方を表示', key: :help
           end
 
           def call
             return print_usage if options[:help]
 
-            IndexCommands.execute_index_build(options)
+            ENV['VERBOSE'] = '1' if options[:verbose]
+
+            manager = UnifiedIndexManager.new
+            manager.apply_markdown_review!
+            0
+          rescue SystemExit => e
+            raise e
+          rescue StandardError => e
+            Common.log_error("index:apply 実行中にエラー: #{e.message}")
+            Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
+            1
+          end
+        end
+
+        # index:build コマンド - 索引ページを生成（内部用）
+        # 利用者には非公開だが、デバッグ用に残す
+        class IndexBuildCommand < Samovar::Command
+          self.description = '索引ページを生成（内部用）'
+
+          options do
+            option '-v/--verbose', '詳細出力', default: false, key: :verbose
+            option '-h/--help', 'このコマンドの使い方を表示', key: :help
+          end
+
+          many :files, '対象ファイル（省略時は全章）'
+
+          def call
+            return print_usage if options[:help]
+
+            ENV['VERBOSE'] = '1' if options[:verbose]
+            chapters = IndexCommands.resolve_chapters(files || [])
+
+            manager = UnifiedIndexManager.new
+            manager.build_index!(chapters)
             0
           rescue SystemExit => e
             raise e
           rescue StandardError => e
             Common.log_error("index:build 実行中にエラー: #{e.message}")
-            Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
-            1
-          end
-        end
-
-        # index:candidate コマンド（Phase 2）
-        class IndexCandidateCommand < Samovar::Command
-          self.description = '索引候補を自動抽出します（Phase 2）'
-
-          options do
-            option '-v/--verbose', '詳細出力', default: false, key: :verbose
-            option '-t/--threshold', 'スコア閾値（デフォルト: 150）', default: 150, key: :threshold
-            option '-h/--help', 'このコマンドの使い方を表示', key: :help
-          end
-
-          many :files, '抽出対象ファイル（省略時は全章）'
-
-          def call
-            return print_usage if options[:help]
-
-            IndexCommands.execute_index_candidate(options, files || [])
-            0
-          rescue SystemExit => e
-            raise e
-          rescue StandardError => e
-            Common.log_error("index:candidate 実行中にエラー: #{e.message}")
             Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
             1
           end

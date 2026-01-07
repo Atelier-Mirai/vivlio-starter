@@ -75,7 +75,7 @@ puts "Hello, World!"
 
 ## CSS 調整版
 
-:::{.table-rotate scale:60% shift-y:20%}
+:::{.table-rotate scale=60% shift-y=20%}
 | 機能 | 構文 | 例 | 備考 |
 |---|---|---|---|
 | セレクター | 要素/クラス/ID | `h1 {}`, `.btn {}`, `#main {}` | 優先度: ID > クラス > 要素 |
@@ -90,7 +90,7 @@ puts "Hello, World!"
 
 ## CSS 調整版その２
 
-:::{.table-rotate scale:0.50 shift-y:0.10}
+:::{.table-rotate scale=0.50 shift-y=0.10}
 | 機能 | 構文 | 例 | 備考 |
 |---|---|---|---|
 | セレクター | 要素/クラス/ID | `h1 {}`, `.btn {}`, `#main {}` | 優先度: ID > クラス > 要素 |

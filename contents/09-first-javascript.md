@@ -1,8 +1,8 @@
-# はじめての <span id="idx-ufy6mn67o2id-52" class="index-term" data-yomi="じゃばすくりぷと">JavaScript</span>
+# はじめての JavaScript
 
 :::{.chapter-lead}
-<span id="idx-5376xxg0dgl-99" class="index-term" data-yomi="えいちてぃーえむえる">HTML</span>で文書構造を、<span id="idx-3ghtaxxv1hvr-166" class="index-term" data-yomi="しーえすえす">CSS</span>で装飾を学んできました。この章では、ウェブサイトに「動き」や「双方向性」を加えるプログラミング言語 <span id="idx-ufy6mn67o2id-53" class="index-term" data-yomi="じゃばすくりぷと">JavaScript</span> の基礎を学びます。
-アルゴリズムやプログラムの考え方から始め、変数・演算子・条件分岐・繰り返しといった基本文法、そしてDOM操作やイベントリスナまで、<span id="idx-ufy6mn67o2id-54" class="index-term" data-yomi="じゃばすくりぷと">JavaScript</span>の全体像を掴んでいきましょう。
+HTMLで文書構造を、CSSで装飾を学んできました。この章では、ウェブサイトに「動き」や「双方向性」を加えるプログラミング言語 JavaScript の基礎を学びます。
+アルゴリズムやプログラムの考え方から始め、変数・演算子・条件分岐・繰り返しといった基本文法、そしてDOM操作やイベントリスナまで、JavaScriptの全体像を掴んでいきましょう。
 :::
 
 
@@ -31,9 +31,9 @@
 - **機械語・アセンブリ言語**: コンピュータが直接理解できる低水準の言語
 - **C言語**: 機械に近いところまで書ける汎用言語
 - **Ruby**: 楽しくプログラミングできることを重視した言語
-- **<span id="idx-ufy6mn67o2id-55" class="index-term" data-yomi="じゃばすくりぷと">JavaScript</span>**: ウェブブラウザで動作する言語
+- **JavaScript**: ウェブブラウザで動作する言語
 
-<span id="idx-ufy6mn67o2id-56" class="index-term" data-yomi="じゃばすくりぷと">JavaScript</span>は、ウェブサイトに動きを加えるために広く使われています。
+JavaScriptは、ウェブサイトに動きを加えるために広く使われています。
 
 
 ## ウェブ制作の三つの言語
@@ -42,18 +42,18 @@
 
 | 言語 | 役割 |
 |------|------|
-| **<span id="idx-5376xxg0dgl-100" class="index-term" data-yomi="えいちてぃーえむえる">HTML</span>** | 文書構造を記述する（見出し・段落・リストなど） |
-| **<span id="idx-3ghtaxxv1hvr-167" class="index-term" data-yomi="しーえすえす">CSS</span>** | 見た目を装飾する（色・レイアウト・フォントなど） |
-| **<span id="idx-ufy6mn67o2id-57" class="index-term" data-yomi="じゃばすくりぷと">JavaScript</span>** | 動きや制御を担当する（クリック反応・アニメーションなど） |
+| **HTML** | 文書構造を記述する（見出し・段落・リストなど） |
+| **CSS** | 見た目を装飾する（色・レイアウト・フォントなど） |
+| **JavaScript** | 動きや制御を担当する（クリック反応・アニメーションなど） |
 
-<span id="idx-5376xxg0dgl-101" class="index-term" data-yomi="えいちてぃーえむえる">HTML</span>と<span id="idx-3ghtaxxv1hvr-168" class="index-term" data-yomi="しーえすえす">CSS</span>だけでは静的なページですが、<span id="idx-ufy6mn67o2id-58" class="index-term" data-yomi="じゃばすくりぷと">JavaScript</span>を加えることで、利用者の操作に反応するインタラクティブなサイトが作れます。
+HTMLとCSSだけでは静的なページですが、JavaScriptを加えることで、利用者の操作に反応するインタラクティブなサイトが作れます。
 
 
-## <span id="idx-ufy6mn67o2id-59" class="index-term" data-yomi="じゃばすくりぷと">JavaScript</span>の始め方
+## JavaScriptの始め方
 
-### <span id="idx-5376xxg0dgl-102" class="index-term" data-yomi="えいちてぃーえむえる">HTML</span>からの読み込み
+### HTMLからの読み込み
 
-<span id="idx-ufy6mn67o2id-60" class="index-term" data-yomi="じゃばすくりぷと">JavaScript</span>は、<span id="idx-5376xxg0dgl-103" class="index-term" data-yomi="えいちてぃーえむえる">HTML</span>から読み込んで使います。
+JavaScriptは、HTMLから読み込んで使います。
 
 ```html
 <!DOCTYPE html>
@@ -70,7 +70,7 @@
 ```
 
 `<script src="hello.js" defer></script>` で、`hello.js` を読み込みます。  
-`defer` を付けると、<span id="idx-5376xxg0dgl-104" class="index-term" data-yomi="えいちてぃーえむえる">HTML</span>の読み込み完了後に<span id="idx-ufy6mn67o2id-61" class="index-term" data-yomi="じゃばすくりぷと">JavaScript</span>が実行されます。
+`defer` を付けると、HTMLの読み込み完了後にJavaScriptが実行されます。
 
 ### 最初のプログラム
 
@@ -83,7 +83,7 @@ alert("こんにちは。JavaScript")
 
 ### コンソール画面
 
-ブラウザの開発者ツール（右クリック →「調査」）を開くと、**コンソール**タブで<span id="idx-ufy6mn67o2id-62" class="index-term" data-yomi="じゃばすくりぷと">JavaScript</span>を直接入力・実行できます。`console.log()` を使うと、コンソールに値を表示できます。
+ブラウザの開発者ツール（右クリック →「調査」）を開くと、**コンソール**タブでJavaScriptを直接入力・実行できます。`console.log()` を使うと、コンソールに値を表示できます。
 
 ```js
 console.log("Hello, World!")
@@ -321,7 +321,7 @@ console.log(rect.area())  // 200
 
 ### DOMとは
 
-**DOM（Document Object Model）**は、<span id="idx-ufy6mn67o2id-63" class="index-term" data-yomi="じゃばすくりぷと">JavaScript</span>から<span id="idx-5376xxg0dgl-105" class="index-term" data-yomi="えいちてぃーえむえる">HTML</span>を操作するための仕組みです。
+**DOM（Document Object Model）**は、JavaScriptからHTMLを操作するための仕組みです。
 
 ### 要素の取得
 
@@ -380,13 +380,13 @@ button.addEventListener("click", () => {
 
 ## まとめ
 
-この章では、<span id="idx-ufy6mn67o2id-64" class="index-term" data-yomi="じゃばすくりぷと">JavaScript</span>の基礎を学びました。
+この章では、JavaScriptの基礎を学びました。
 
 - **アルゴリズム**は問題を解く手順、**プログラム**はそれをコンピュータ向けに書いたもの
 - **変数**（`let`）と**定数**（`const`）でデータを管理する
 - **条件分岐**（`if`）と**繰り返し**（`for`）で処理の流れを制御する
 - **配列**と**連想配列**で複数のデータをまとめる
 - **関数**で処理を再利用可能にする
-- **DOM**で<span id="idx-5376xxg0dgl-106" class="index-term" data-yomi="えいちてぃーえむえる">HTML</span>を操作し、**イベントリスナ**でユーザー操作に反応する
+- **DOM**でHTMLを操作し、**イベントリスナ**でユーザー操作に反応する
 
 詳細な文法や応用的な使い方は、AIに質問したり、[MDN Web Docs](https://developer.mozilla.org/ja/) を参照してください。実際に手を動かしながら、少しずつ習得していきましょう。

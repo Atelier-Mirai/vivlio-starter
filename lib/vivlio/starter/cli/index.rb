@@ -147,15 +147,14 @@ module Vivlio
         end
 
         # ビルドパイプラインから呼び出される索引処理
+        # 仕様書 indexing_implementation_spec3.md に準拠
         # @param chapters [Array<String>] 対象章のリスト
         def process_index_for_build!(chapters)
           return unless index_enabled?
 
-          scanner = IndexMatchScanner.new
-          scanner.scan_all_chapters!(chapters)
-
-          builder = IndexPageBuilder.new
-          builder.build!
+          require_relative 'index/unified_index_manager'
+          manager = UnifiedIndexManager.new
+          manager.build_index!(chapters)
         end
 
         # 索引機能が有効かどうか

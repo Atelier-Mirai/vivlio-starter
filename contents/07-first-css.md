@@ -1,18 +1,18 @@
-# <span id="idx-3ghtaxxv1hvr-90" class="index-term" data-yomi="しーえすえす">CSS</span>の考え方
+# CSSの考え方
 
 :::{.chapter-lead}
-<span id="idx-5376xxg0dgl-84" class="index-term" data-yomi="えいちてぃーえむえる">HTML</span>で作った骨組みに「見た目」を与える<span id="idx-3ghtaxxv1hvr-91" class="index-term" data-yomi="しーえすえす">CSS</span>を学びます。この章では、<span id="idx-3ghtaxxv1hvr-92" class="index-term" data-yomi="しーえすえす">CSS</span>の詳細なプロパティを暗記するのではなく、「<span id="idx-3ghtaxxv1hvr-93" class="index-term" data-yomi="しーえすえす">CSS</span>がどう働くのか」「どういう考え方で書くのか」という本質を押さえます。
+HTMLで作った骨組みに「見た目」を与えるCSSを学びます。この章では、CSSの詳細なプロパティを暗記するのではなく、「CSSがどう働くのか」「どういう考え方で書くのか」という本質を押さえます。
 
 プロパティの細かな指定方法は、AIに聞けばいつでも教えてもらえます。
 :::
 
 
 
-## <span id="idx-3ghtaxxv1hvr-94" class="index-term" data-yomi="しーえすえす">CSS</span>とは何か
+## CSSとは何か
 
 ### 構造と見た目の分離
 
-<span id="idx-3ghtaxxv1hvr-95" class="index-term" data-yomi="しーえすえす">CSS</span>は「Cascading Style Sheets」の略で、<span id="idx-5376xxg0dgl-85" class="index-term" data-yomi="えいちてぃーえむえる">HTML</span>で作った文書構造に「見た目」を指定するための言語です。
+CSSは「Cascading Style Sheets」の略で、HTMLで作った文書構造に「見た目」を指定するための言語です。
 
 ```
 HTML → 文書の「意味・構造」（これは見出し、これは段落...）
@@ -21,13 +21,13 @@ CSS  → 文書の「見た目」（色、大きさ、配置...）
 
 この分離には大きなメリットがあります：
 
-- <span id="idx-5376xxg0dgl-86" class="index-term" data-yomi="えいちてぃーえむえる">HTML</span>を変えずに、<span id="idx-3ghtaxxv1hvr-96" class="index-term" data-yomi="しーえすえす">CSS</span>だけでデザインを変更できる
-- 同じ<span id="idx-3ghtaxxv1hvr-97" class="index-term" data-yomi="しーえすえす">CSS</span>を複数のページで共有できる
+- HTMLを変えずに、CSSだけでデザインを変更できる
+- 同じCSSを複数のページで共有できる
 - 役割が明確なので、コードが読みやすくなる
 
-### <span id="idx-3ghtaxxv1hvr-98" class="index-term" data-yomi="しーえすえす">CSS</span>の基本構文
+### CSSの基本構文
 
-<span id="idx-3ghtaxxv1hvr-99" class="index-term" data-yomi="しーえすえす">CSS</span>は「どの要素に」「どんな装飾を」という形式で書きます：
+CSSは「どの要素に」「どんな装飾を」という形式で書きます：
 
 ```css
 セレクタ {
@@ -46,9 +46,9 @@ h1 {
 
 この例では、「`h1`要素を選んで、文字色を青に、サイズを24pxにする」という意味になります。
 
-### <span id="idx-3ghtaxxv1hvr-100" class="index-term" data-yomi="しーえすえす">CSS</span>のコメント
+### CSSのコメント
 
-<span id="idx-3ghtaxxv1hvr-101" class="index-term" data-yomi="しーえすえす">CSS</span>では、`/*` と `*/` で囲んだ部分がコメントになります：
+CSSでは、`/*` と `*/` で囲んだ部分がコメントになります：
 
 ```css
 /* ヘッダーのスタイル */
@@ -70,11 +70,11 @@ header {
 | IDセレクタ | `#recent` | `id="recent"`を持つ要素 |
 | 子孫セレクタ | `nav a` | `<nav>`の中にある`<a>` |
 
-クラスセレクタ（`.`で始まる）は最もよく使います。<span id="idx-5376xxg0dgl-87" class="index-term" data-yomi="えいちてぃーえむえる">HTML</span>の`class`属性と組み合わせることで、特定の要素だけを狙って装飾できます。
+クラスセレクタ（`.`で始まる）は最もよく使います。HTMLの`class`属性と組み合わせることで、特定の要素だけを狙って装飾できます。
 
 ## カスケードと詳細度
 
-<span id="idx-3ghtaxxv1hvr-102" class="index-term" data-yomi="しーえすえす">CSS</span>は「Cascading Style Sheets」の略で、「Cascading」は「滞のように流れ落ちる」という意味です。複数のスタイルが同じ要素に適用されるとき、あるルールに従ってどれが優先されるかが決まります。
+CSSは「Cascading Style Sheets」の略で、「Cascading」は「滞のように流れ落ちる」という意味です。複数のスタイルが同じ要素に適用されるとき、あるルールに従ってどれが優先されるかが決まります。
 
 ### 詳細度（Specificity）
 
@@ -93,11 +93,11 @@ p { color: blue; }    /* 弱い */
 .intro { color: red; } /* 中（こちらが適用される） */
 ```
 
-「なぜこの<span id="idx-3ghtaxxv1hvr-103" class="index-term" data-yomi="しーえすえす">CSS</span>が効かないの？」と困ったときは、詳細度の問題かもしれません。開発者ツールで「どのスタイルが適用されているか」を確認できます。
+「なぜこのCSSが効かないの？」と困ったときは、詳細度の問題かもしれません。開発者ツールで「どのスタイルが適用されているか」を確認できます。
 
 ### `@layer`（カスケードレイヤー）にも<br>少し触れておこう
 
-少し高度な話になりますが、最近の<span id="idx-3ghtaxxv1hvr-104" class="index-term" data-yomi="しーえすえす">CSS</span>には **`@layer`（カスケードレイヤー）** という仕組みも追加されました。セレクタの強さや「後から書いたスタイル」が勝つというルールに加えて、**スタイルのかたまり同士にも順番を付ける** ことができます。
+少し高度な話になりますが、最近のCSSには **`@layer`（カスケードレイヤー）** という仕組みも追加されました。セレクタの強さや「後から書いたスタイル」が勝つというルールに加えて、**スタイルのかたまり同士にも順番を付ける** ことができます。
 
 ```css
 @layer reset, base;
@@ -118,11 +118,11 @@ p { color: blue; }    /* 弱い */
 
 最初の `@layer reset, base;` で、レイヤーの順番を **`reset` → `base`** のように宣言しておくと、ファイルのどこに書いたかにかかわらず、「reset より base のほうがあとから効くスタイル」として扱われるイメージになります。
 
-この本では `@layer` を本格的には使いませんが、「スタイルのグループ同士にも優先順位を付けられる仕組みがある」「最近の<span id="idx-3ghtaxxv1hvr-105" class="index-term" data-yomi="しーえすえす">CSS</span>やフレームワークで見かけることがある」くらいを知っておくと、ドキュメントを読むときに役立ちます。
+この本では `@layer` を本格的には使いませんが、「スタイルのグループ同士にも優先順位を付けられる仕組みがある」「最近のCSSやフレームワークで見かけることがある」くらいを知っておくと、ドキュメントを読むときに役立ちます。
 
 ## ボックスモデル
 
-<span id="idx-3ghtaxxv1hvr-106" class="index-term" data-yomi="しーえすえす">CSS</span>を理解する上で最も大切な概念が「ボックスモデル」です。すべての要素は、4つの層でできた「箱」として扱われます：
+CSSを理解する上で最も大切な概念が「ボックスモデル」です。すべての要素は、4つの層でできた「箱」として扱われます：
 
 ![](box-model.svg)
 
@@ -143,7 +143,7 @@ p { color: blue; }    /* 弱い */
 
 ## よく使うプロパティ
 
-<span id="idx-3ghtaxxv1hvr-107" class="index-term" data-yomi="しーえすえす">CSS</span>には数百のプロパティがありますが、よく使うものは限られています：
+CSSには数百のプロパティがありますが、よく使うものは限られています：
 
 ### 色と文字
 
@@ -178,7 +178,7 @@ p { color: blue; }    /* 弱い */
 論理プロパティは、`margin-top` や `margin-left` のように「上・下・左・右」を直接指定する代わりに、**文章の流れに沿った軸（`block` / `inline`）と、開始側・終了側** で余白を指定する書き方です。
 
 - 横書きの日本語の場合、`block` は上下方向、`inline` は左右方向を表します。
-- 縦書きの日本語や右から左に書く言語に変えても、<span id="idx-3ghtaxxv1hvr-108" class="index-term" data-yomi="しーえすえす">CSS</span>を書き直さずにレイアウトを保ちやすい、という利点があります。
+- 縦書きの日本語や右から左に書く言語に変えても、CSSを書き直さずにレイアウトを保ちやすい、という利点があります。
 
 `padding-block` / `padding-inline` や、`border-block` / `border-inline` も同じ考え方で使えます。
 
@@ -192,7 +192,7 @@ p { color: blue; }    /* 弱い */
 
 ### 色の指定方法
 
-<span id="idx-3ghtaxxv1hvr-109" class="index-term" data-yomi="しーえすえす">CSS</span>では、色を指定する方法がいくつかあります：
+CSSでは、色を指定する方法がいくつかあります：
 
 | 形式 | 書き方 | 説明 |
 |------|--------|------|
@@ -217,16 +217,16 @@ p { color: blue; }    /* 弱い */
 
 「この色をもう少し薄くしたい」「余白の指定方法がわからない」といったときは、AIに聞いてみましょう。
 
-> 「<span id="idx-3ghtaxxv1hvr-110" class="index-term" data-yomi="しーえすえす">CSS</span>で要素を中央寄せにする方法を教えて」
+> 「CSSで要素を中央寄せにする方法を教えて」
 > 「marginとpaddingの違いは？」
 > 「グラデーション背景の書き方は？」
 
 のように質問すれば、具体的なコードとともに説明してくれます。
 :::
 
-### <span id="idx-3ghtaxxv1hvr-111" class="index-term" data-yomi="しーえすえす">CSS</span>カスタムプロパティ（デザイントークン）
+### CSSカスタムプロパティ（デザイントークン）
 
- <span id="idx-3ghtaxxv1hvr-112" class="index-term" data-yomi="しーえすえす">CSS</span> では、よく使う色や余白の大きさなどを「カスタムプロパティ（変数）」としてまとめておくことができます。  
+ CSS では、よく使う色や余白の大きさなどを「カスタムプロパティ（変数）」としてまとめておくことができます。  
  `work3/stylesheets/_design_tokens.css` では、サイト全体で使う色やスペース量などを次のように定義しています：
 
 ```css
@@ -240,9 +240,9 @@ p { color: blue; }    /* 弱い */
  `--main-color` や `--space-m` のように、`--` から始まる名前で定義し、実際に使うときは `var(--main-color)` や `var(--space-m)` のように書きます。  
  こうしておくと、`_design_tokens.css` だけを直すことで、サイト全体の色や余白の雰囲気を一括で調整できるようになります。
 
-## <span id="idx-3ghtaxxv1hvr-113" class="index-term" data-yomi="しーえすえす">CSS</span> Gridによるレイアウト
+## CSS Gridによるレイアウト
 
-現代の<span id="idx-3ghtaxxv1hvr-114" class="index-term" data-yomi="しーえすえす">CSS</span>では、**<span id="idx-3ghtaxxv1hvr-115" class="index-term" data-yomi="しーえすえす">CSS</span> Grid**を使ったレイアウトが主流です。ページを「行と列のマス目」として考え、要素を配置していきます。
+現代のCSSでは、**CSS Grid**を使ったレイアウトが主流です。ページを「行と列のマス目」として考え、要素を配置していきます。
 
 ```css
 body {
@@ -263,7 +263,7 @@ body {
 
 ### グリッドの考え方
 
-<span id="idx-3ghtaxxv1hvr-116" class="index-term" data-yomi="しーえすえす">CSS</span> Gridの基本的な考え方：
+CSS Gridの基本的な考え方：
 
 1. **コンテナ**（親要素）に`display: grid;`を指定
 2. **行と列**を`grid-template`で定義
@@ -289,7 +289,7 @@ footer { grid-area: foot; }
 
 ## display プロパティ
 
-`display` プロパティは、要素の表示方法を制御します。<span id="idx-5376xxg0dgl-88" class="index-term" data-yomi="えいちてぃーえむえる">HTML</span>の「ブロック要素・インライン要素」と深く関わります：
+`display` プロパティは、要素の表示方法を制御します。HTMLの「ブロック要素・インライン要素」と深く関わります：
 
 | 値 | 動作 |
 |-----|------|
@@ -309,23 +309,23 @@ a.button {
 }
 ```
 
-`display: none;` は<dfn id="idx-hou1eltkrwpb-1" class="index-term" data-yomi="れすぽんしぶでざいん">レスポンシブデザイン</dfn>で「スマホでは非表示」にするときにも使います。
+`display: none;` はレスポンシブデザインで「スマホでは非表示」にするときにも使います。
 
-## <span id="idx-3ghtaxxv1hvr-117" class="index-term" data-yomi="しーえすえす">CSS</span>ファイルの読み込み
+## CSSファイルの読み込み
 
-<span id="idx-5376xxg0dgl-89" class="index-term" data-yomi="えいちてぃーえむえる">HTML</span>から<span id="idx-3ghtaxxv1hvr-118" class="index-term" data-yomi="しーえすえす">CSS</span>を読み込むには、`<head>`の中に次のように書きます：
+HTMLからCSSを読み込むには、`<head>`の中に次のように書きます：
 
 ```html
 <link rel="stylesheet" href="style.css">
 ```
 
-<span id="idx-3ghtaxxv1hvr-119" class="index-term" data-yomi="しーえすえす">CSS</span>ファイルは通常、<span id="idx-5376xxg0dgl-90" class="index-term" data-yomi="えいちてぃーえむえる">HTML</span>と同じフォルダか、`stylesheets/`のような専用フォルダに置きます。
+CSSファイルは通常、HTMLと同じフォルダか、`stylesheets/`のような専用フォルダに置きます。
 
-## リセット<span id="idx-3ghtaxxv1hvr-120" class="index-term" data-yomi="しーえすえす">CSS</span>という考え方
+## リセットCSSという考え方
 
 ブラウザには、見出しや段落に対してあらかじめ「標準のスタイル」が設定されています。ただ、ブラウザごとに微妙に異なるため、自分でデザインを整えたいときには少し扱いづらくなります。
 
-そこで、まず「リセット<span id="idx-3ghtaxxv1hvr-121" class="index-term" data-yomi="しーえすえす">CSS</span>」で標準スタイルを打ち消してから、自分のスタイルを重ねていくのが一般的です：
+そこで、まず「リセットCSS」で標準スタイルを打ち消してから、自分のスタイルを重ねていくのが一般的です：
 
 ```css
 * {
@@ -337,9 +337,9 @@ a.button {
 
 `*`（ユニバーサルセレクタ）で全要素を選び、余白をゼロにリセットしています。`box-sizing: border-box;`は、幅の計算をしやすくするための指定です。
 
-## <span id="idx-3ghtaxxv1hvr-122" class="index-term" data-yomi="しーえすえす">CSS</span>の単位
+## CSSの単位
 
-<span id="idx-3ghtaxxv1hvr-123" class="index-term" data-yomi="しーえすえす">CSS</span>では、サイズを指定するときに様々な「単位」を使います。
+CSSでは、サイズを指定するときに様々な「単位」を使います。
 
 ### 絶対単位と相対単位
 
@@ -359,7 +359,7 @@ a.button {
 - **`%`**: 親要素に対する相対サイズ。レイアウトの幅指定に
 - **`rem`**: 文字サイズの指定に最適。アクセシビリティにも配慮
 - **`vw`/`vh`**: 画面全体を基準にしたい場面で
-- **`fr`**: <span id="idx-3ghtaxxv1hvr-124" class="index-term" data-yomi="しーえすえす">CSS</span> Gridで列幅・行高さを柔軟に分配
+- **`fr`**: CSS Gridで列幅・行高さを柔軟に分配
 
 ```css
 /* 例：レスポンシブな文字サイズ */
@@ -370,18 +370,18 @@ h1 {
 
 `clamp()` 関数を使うと、最小値と最大値の間で自動調整されるサイズを指定できます。
 
-## <span id="idx-hou1eltkrwpb-2" class="index-term" data-yomi="れすぽんしぶでざいん">レスポンシブデザイン</span>
+## レスポンシブデザイン
 
 ### モバイルファースト
 
-現代のウェブサイトは、スマートフォン・タブレット・PCなど、様々な画面サイズで閲覧されます。どの端末でも快適に見られるデザインを**<span id="idx-hou1eltkrwpb-3" class="index-term" data-yomi="れすぽんしぶでざいん">レスポンシブデザイン</span>**と呼びます。
+現代のウェブサイトは、スマートフォン・タブレット・PCなど、様々な画面サイズで閲覧されます。どの端末でも快適に見られるデザインを**レスポンシブデザイン**と呼びます。
 
 本書では**モバイルファースト**のアプローチを取ります：
 
-1. まずスマートフォン向けの<span id="idx-3ghtaxxv1hvr-125" class="index-term" data-yomi="しーえすえす">CSS</span>を書く
+1. まずスマートフォン向けのCSSを書く
 2. 画面が広くなったら、追加のスタイルを上書き
 
-この順番で書くと、シンプルで保守しやすい<span id="idx-3ghtaxxv1hvr-126" class="index-term" data-yomi="しーえすえす">CSS</span>になります。
+この順番で書くと、シンプルで保守しやすいCSSになります。
 
 ### メディアクエリ
 
@@ -419,11 +419,11 @@ section#recent {
 
 ### 開発者ツールでプレビュー
 
-ブラウザの開発者ツール（`F12`または右クリック→「調査」）には、様々な端末での表示をシミュレートする機能があります。iPhone や iPad を選んで、<span id="idx-hou1eltkrwpb-4" class="index-term" data-yomi="れすぽんしぶでざいん">レスポンシブデザイン</span>の確認ができます。
+ブラウザの開発者ツール（`F12`または右クリック→「調査」）には、様々な端末での表示をシミュレートする機能があります。iPhone や iPad を選んで、レスポンシブデザインの確認ができます。
 
 ## AIへの質問例
 
-<span id="idx-3ghtaxxv1hvr-127" class="index-term" data-yomi="しーえすえす">CSS</span>で困ったときの質問例：
+CSSで困ったときの質問例：
 
 > **基本的な質問**
 > - 「要素を横並びにするには？」
@@ -431,21 +431,21 @@ section#recent {
 > - 「画像を丸く切り抜くには？」
 
 > **レイアウトの質問**
-> - 「<span id="idx-3ghtaxxv1hvr-128" class="index-term" data-yomi="しーえすえす">CSS</span> Gridで2カラムレイアウトを作りたい」
+> - 「CSS Gridで2カラムレイアウトを作りたい」
 > - 「フッターを常に画面下部に固定したい」
 > - 「スマホとPCで配置を変えるには？」
 
 > **デバッグの質問**
 > - 「なぜこの余白が効かないの？」
 > - 「要素が重なってしまう原因は？」
-> - 「この<span id="idx-3ghtaxxv1hvr-129" class="index-term" data-yomi="しーえすえす">CSS</span>が効いているか確認する方法は？」
+> - 「このCSSが効いているか確認する方法は？」
 
 ## この章のまとめ
 
-- <span id="idx-3ghtaxxv1hvr-130" class="index-term" data-yomi="しーえすえす">CSS</span>は文書の「見た目」を指定する言語
+- CSSは文書の「見た目」を指定する言語
 - `セレクタ { プロパティ: 値; }` が基本構文
 - クラスセレクタ（`.hero`など）をよく使う
-- <span id="idx-3ghtaxxv1hvr-131" class="index-term" data-yomi="しーえすえす">CSS</span> Gridで現代的なレイアウトが組める
+- CSS Gridで現代的なレイアウトが組める
 - 細かなプロパティはAIに聞けばいつでも教えてもらえる
 
-次章では、実際に `studio-wave` のトップページを<span id="idx-3ghtaxxv1hvr-132" class="index-term" data-yomi="しーえすえす">CSS</span>で彩りながら、ここで学んだ考え方を実践していきます。
+次章では、実際に `studio-wave` のトップページをCSSで彩りながら、ここで学んだ考え方を実践していきます。

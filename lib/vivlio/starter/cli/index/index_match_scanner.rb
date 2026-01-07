@@ -63,28 +63,53 @@ module Vivlio
 
           # 全章ファイルをスキャンして索引語をタグ付け
           # @param chapters [Array<String>] 対象章のファイル名リスト（例: ['11-basics', '12-advanced']）
-          def scan_all_chapters!(chapters)
+          # @param read_only [Boolean] 読み取り専用モード（ファイルを書き換えない、contents/ を優先）
+          def scan_all_chapters!(chapters, read_only: false)
             Common.log_action("索引語のスキャンを開始します... (対象: #{chapters.size} 章)")
 
             chapters.each do |chapter|
-              # pre_process 済みのルート直下ファイルを優先（contents/ を直接書き換えない）
-              root_md_file = "#{chapter}.md"
+              # ファイルを探す
+              # read_only モードでは contents/ を優先（原稿のマークアップを検出するため）
+              # 通常モードではルート直下を優先（pre_process 後のファイルを更新するため）
+              md_file = find_chapter_file(chapter, prefer_contents: read_only)
 
-              unless File.exist?(root_md_file)
-                Common.log_warn("スキップ (ルートに展開された Markdown が見つかりません): #{root_md_file}")
+              unless md_file
+                Common.log_warn("スキップ (Markdown が見つかりません): #{chapter}")
                 next
               end
 
-              scan_and_tag_file!(root_md_file)
+              scan_and_tag_file!(md_file, read_only: read_only)
             end
 
             save_matches!
             Common.log_success("索引語スキャン完了: #{@matches.size} 件の索引語を検出")
           end
 
+          # 章ファイルを探す
+          # @param chapter [String] 章名
+          # @param prefer_contents [Boolean] contents/ ディレクトリを優先するか
+          # @return [String, nil] ファイルパス
+          def find_chapter_file(chapter, prefer_contents: false)
+            root_file = "#{chapter}.md"
+            contents_file = File.join(Common::CONTENTS_DIR, "#{chapter}.md")
+
+            if prefer_contents
+              # contents/ を優先
+              return contents_file if File.exist?(contents_file)
+              return root_file if File.exist?(root_file)
+            else
+              # ルート直下を優先
+              return root_file if File.exist?(root_file)
+              return contents_file if File.exist?(contents_file)
+            end
+
+            nil
+          end
+
           # 単一ファイルをスキャンしてタグ付け
           # @param md_file [String] Markdown ファイルパス
-          def scan_and_tag_file!(md_file)
+          # @param read_only [Boolean] 読み取り専用モード（ファイルを書き換えない）
+          def scan_and_tag_file!(md_file, read_only: false)
             content = File.read(md_file, encoding: 'utf-8')
             file_basename = File.basename(md_file, '.md')
 
@@ -98,8 +123,13 @@ module Vivlio
             diff = match_count_after - match_count_before
 
             if diff > 0
-              File.write(md_file, new_content, encoding: 'utf-8')
-              Common.log_success("#{md_file}: #{diff} 件の索引語をタグ付けしました")
+              # read_only モードでない場合のみファイルを書き換え
+              unless read_only
+                File.write(md_file, new_content, encoding: 'utf-8')
+                Common.log_success("#{md_file}: #{diff} 件の索引語をタグ付けしました")
+              else
+                Common.log_success("#{md_file}: #{diff} 件の索引語を検出しました（読み取り専用）")
+              end
             else
               Common.log_info("#{md_file}: 索引語は見つかりませんでした")
             end
@@ -140,8 +170,8 @@ module Vivlio
               term_with_optional_yomi = ::Regexp.last_match(1)
               term_text, yomi_raw = extract_term_and_yomi(term_with_optional_yomi)
 
-              # 脚注構文 [^id] は索引対象から除外
-              if term_text&.start_with?('^')
+              # 無効な用語をスキップ（元のテキストをそのまま返す）
+              if skip_term?(term_text)
                 ::Regexp.last_match(0)
               else
                 # 読みの決定順序:
@@ -156,6 +186,20 @@ module Vivlio
 
             # 2. 次に config/index_terms.yml に基づく自動タグ付け
             apply_auto_indexing(processed_line, file_basename)
+          end
+
+          # 索引対象として無効な用語かどうかを判定
+          # @param term_text [String] 用語テキスト
+          # @return [Boolean] スキップすべきならtrue
+          def skip_term?(term_text)
+            return true if term_text.nil? || term_text.empty?
+
+            # 脚注構文 [^id] のみ除外
+            return true if term_text.start_with?('^')
+
+            # 著者が意図的にマークアップした用語は除外しない
+            # 例: [!], [&&], [!DOCTYPE], [<h1>] など
+            false
           end
 
           def extract_term_and_yomi(raw_text)
@@ -292,9 +336,7 @@ module Vivlio
 
             File.write(cache_file, data.to_yaml, encoding: 'utf-8')
             Common.log_info("索引データを保存: #{cache_file} (合計: #{@matches.size} 件)")
-            if @matches.any?
-              Common.log_warn("読み間違いがないか #{cache_file} を確認してください")
-            else
+            if @matches.empty?
               Common.log_warn('索引語が1件も検出されませんでした。config/index_terms.yml や原稿の記法を確認してください。')
             end
           end
