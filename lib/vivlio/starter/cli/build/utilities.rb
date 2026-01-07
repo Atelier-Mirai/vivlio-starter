@@ -147,61 +147,6 @@ module Vivlio
             [w_pt, h_pt]
           end
 
-          # qpdf で PDF を分割（旧仕様: 後方互換用）
-          def split_pdf_into_toc_and_sections(output_pdf, frontmatter_pages, front_pdf, body_pdf)
-            split_pdf_into_frontmatter_and_sections(output_pdf, frontmatter_pages, front_pdf, body_pdf)
-          end
-
-          # qpdf で PDF を frontmatter と sections に分割
-          # 新仕様: frontmatter（前書き+目次）が先頭にある場合の分割
-          def split_pdf_into_frontmatter_and_sections(output_pdf, frontmatter_pages, front_pdf, body_pdf)
-            total_pages = (page_count(output_pdf) || '0').to_i
-            if total_pages <= 0
-              Common.log_warn("[Step 7] 総ページ数の取得に失敗しました: #{output_pdf}")
-              return false
-            end
-
-            unless system('which qpdf >/dev/null 2>&1')
-              Common.log_warn('[Step 7] qpdf が見つかりません。`brew install qpdf` でインストールしてください。')
-              return false
-            end
-
-            FileUtils.rm_f(front_pdf)
-            FileUtils.rm_f(body_pdf)
-
-            ok1 = ok2 = true
-
-            # frontmatter（前書き+目次）を先頭から抽出
-            if frontmatter_pages.positive?
-              Common.log_action("[Step 7] frontmatter を抽出しています (1-#{frontmatter_pages})…")
-              ok1 = system(%(qpdf "#{output_pdf}" --pages "#{output_pdf}" 1-#{frontmatter_pages} -- "#{front_pdf}" > /dev/null))
-            else
-              Common.log_warn('[Step 7] frontmatter のページがありません。')
-            end
-
-            # sections（本文+付録+後書き+索引）を後方から抽出
-            body_start = frontmatter_pages + 1
-            if body_start <= total_pages
-              Common.log_action("[Step 7] sections を抽出しています (#{body_start}-z)…")
-              ok2 = system(%(qpdf "#{output_pdf}" --pages "#{output_pdf}" #{body_start}-z -- "#{body_pdf}" > /dev/null))
-            else
-              Common.log_warn('[Step 7] sections のページがありません。frontmatter が全ページを占めています。')
-            end
-
-            if ok1 && ok2
-              Common.log_success("[Step 7] 分割完了: #{front_pdf}, #{body_pdf}")
-              true
-            else
-              Common.log_warn('[Step 7] PDF の分割に失敗しました (qpdf 実行エラー)')
-              false
-            end
-          end
-
-          # 廃止されたメソッド
-          def update_css_counter(_css_path, _number)
-            Common.log_info('update_css_counter は廃止されました。処理をスキップします。')
-            false
-          end
         end
       end
     end

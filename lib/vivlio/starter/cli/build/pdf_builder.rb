@@ -1,16 +1,21 @@
 # frozen_string_literal: true
 
 require 'fileutils'
-require 'hexapdf'
 
 module Vivlio
   module Starter
     module CLI
       module Build
         # ------------------------------------------------
-        # PdfBuilder: PDF生成・分割モジュール
+        # PdfBuilder: PDF生成モジュール
         # ------------------------------------------------
-        # Step 7, 8, 9 の PDF 生成・分割処理を担当する。
+        # Step 8: 全体PDF生成（前書き+目次+本文+付録+後書き+索引）
+        # Step 9: 表紙・奥付PDF生成
+        #
+        # 設計方針:
+        #   - PDF分割をスキップし、全体を1つのPDFとして生成
+        #   - これにより索引から前書きへのリンクなど内部リンクが維持される
+        #   - ローマ数字ノンブルはCSSの @page front で対応
         # ------------------------------------------------
         module PdfBuilder
           # 章レンジ（定数）- 新仕様に合わせて更新
@@ -21,8 +26,9 @@ module Vivlio
 
           module_function
 
-          # Step 7: 全体PDF生成→分割（ディレクトリスキャン版）
-          def build_overall_pdf_and_split_from_dir!(base_dir = '.', keep = nil)
+          # Step 8: 全体PDF生成（ディレクトリスキャン版）
+          # 前書き+目次+本文+付録+後書き+索引を1つのPDFとして生成
+          def build_overall_pdf_from_dir!(base_dir = '.', keep = nil)
             # 前付け: 00-preface + _toc
             preface_html = [File.join(base_dir, '00-preface.html')].select { |f| File.exist?(f) }
             toc_html = [File.join(base_dir, '_toc.html')].select { |f| File.exist?(f) }
@@ -51,20 +57,19 @@ module Vivlio
             ].flatten
 
             targets_for_pdf = chapter_htmls_for_pdf
-            Common.log_info("[Step 7] targets_for_pdf: #{targets_for_pdf.map { |p| File.basename(p) }.join(', ')}")
+            Common.log_info("[Step 8] targets_for_pdf: #{targets_for_pdf.map { |p| File.basename(p) }.join(', ')}")
 
-            compile_overall_pdf_and_split!(targets_for_pdf, keep)
+            compile_overall_pdf!(targets_for_pdf)
           end
 
-          # Step 7: 全体PDF生成（分割なし）
-          # 新仕様: 00-preface + _toc を含めて全体をビルドし、target-counter を正しく解決
-          # PDF分割をスキップすることで、索引から00-prefaceへのリンクを維持
-          def compile_overall_pdf_and_split!(targets_for_pdf, _keep = nil)
+          # 全体PDF生成（内部メソッド）
+          # entries.jsを生成し、VivliostyleでPDFをビルド
+          def compile_overall_pdf!(targets_for_pdf)
             if targets_for_pdf.empty?
-              Common.log_warn('[Step 7] 対象HTMLが見つかりません。Step 7 をスキップします。')
+              Common.log_warn('[Step 8] 対象HTMLが見つかりません。Step 8 をスキップします。')
               return
             end
-            Common.log_info("[Step 7] 対象: #{targets_for_pdf.map { |p| File.basename(p) }.join(', ')}")
+            Common.log_info("[Step 8] 対象: #{targets_for_pdf.map { |p| File.basename(p) }.join(', ')}")
 
             EntriesCommands.execute_entries({}, targets_for_pdf)
             PdfCommands.execute_pdf({})
@@ -72,93 +77,14 @@ module Vivlio
             pdf_config   = Common::CONFIG['pdf'] || {}
             output_pdf   = pdf_config['output_file'] || 'output.pdf'
             unless File.exist?(output_pdf)
-              Common.log_warn("[Step 7] 出力PDFが見つかりません: #{output_pdf}")
+              Common.log_warn("[Step 8] 出力PDFが見つかりません: #{output_pdf}")
               return
             end
 
-            # PDF分割をスキップ: 全体PDFをそのまま _sections.pdf として使用
+            # 全体PDFをそのまま _sections.pdf として使用
             # これにより内部リンク（索引→00-preface等）が維持される
-            # ローマ数字ノンブルはCSSの @page front で対応済み
-            Common.log_info('[Step 7] PDF分割をスキップ（内部リンク維持のため）')
             FileUtils.cp(output_pdf, '_sections.pdf')
-            Common.log_success('[Step 7] _sections.pdf を生成しました（全体PDF、分割なし）')
-          end
-
-          # 前付け（00-preface + _toc）のページ数を計算
-          # Step 6 で生成された _toc.pdf のページ数から推定
-          # 00-preface のページ数は全体 PDF から逆算
-          def calculate_frontmatter_pages(targets_for_pdf)
-            # entries.js から frontmatter の位置を特定
-            frontmatter_count = 0
-
-            targets_for_pdf.each do |path|
-              basename = File.basename(path)
-              case basename
-              when '00-preface.html', '_toc.html'
-                frontmatter_count += 1
-              else
-                break # frontmatter 以外が出てきたら終了
-              end
-            end
-
-            # frontmatter が含まれていない場合は 0 を返す
-            return 0 if frontmatter_count.zero?
-
-            # _toc.pdf のページ数を取得（Step 6 で生成済み）
-            toc_pages = (Build::Utilities.page_count('_toc.pdf') || '0').to_i
-
-            # 00-preface が含まれている場合、推定ページ数を追加
-            # 通常、前書きは 2-4 ページ程度と仮定
-            preface_pages = 0
-            if targets_for_pdf.any? { |p| File.basename(p) == '00-preface.html' }
-              # 前書きのページ数を推定（偶数に丸める）
-              preface_pages = estimate_preface_pages
-            end
-
-            Common.log_info("[Step 7] preface_pages: #{preface_pages}, toc_pages: #{toc_pages}")
-            preface_pages + toc_pages
-          end
-
-          # 前書きのページ数を推定
-          # contents/00-preface.md の行数からおおよそのページ数を計算
-          def estimate_preface_pages
-            preface_md = File.join(Common::CONTENTS_DIR, '00-preface.md')
-            return 2 unless File.exist?(preface_md) # デフォルト 2 ページ
-
-            lines = File.readlines(preface_md, encoding: 'utf-8').size
-            # 約 50 行で 1 ページと仮定（A4、10.5pt フォント）
-            pages = (lines / 50.0).ceil
-            # 最低 2 ページ、偶数に丸める
-            pages = [pages, 2].max
-            pages += 1 if pages.odd?
-            pages
-          end
-
-          # Step 8: スキップ（ローマ数字ノンブルはCSSで対応済み）
-          # PDF分割をスキップしたため、_preface_toc.pdf は生成されない
-          # ローマ数字ノンブルは stylesheets/toc.css の @page front で対応
-          def build_frontmatter_pdf!(_keep = nil)
-            Common.log_action('[Step 8] スキップ（ローマ数字ノンブルはCSSで対応済み）')
-            Common.log_info('[Step 8] PDF分割をスキップしたため、HexaPDFによるノンブル描画は不要')
-          end
-
-          # frontmatter PDF の仕上げ処理（奇数ページ調整、ラベル、ノンブル）
-          def finalize_frontmatter_pdf
-            pages = (Build::Utilities.page_count('_preface_toc.pdf') || '0').to_i
-            if pages.odd?
-              doc = HexaPDF::Document.open('_preface_toc.pdf')
-              first_box = doc.pages[0].box(:media)
-              doc.pages.add([first_box.left, first_box.bottom, first_box.right, first_box.top])
-              doc.write('_preface_toc.pdf', optimize: true)
-              Common.log_info('[Step 8] _preface_toc.pdf が奇数ページのため、空白1ページを末尾に挿入しました')
-            end
-
-            PageNumberer.apply_page_labels_hexapdf('_preface_toc.pdf', 0)
-            if PageNumberer.overlay_roman_page_numbers!('_preface_toc.pdf')
-              Common.log_success('[Step 8] _preface_toc.pdf にローマ小を描画しました')
-            else
-              Common.log_warn('[Step 8] _preface_toc.pdf へのローマ小描画をスキップ/失敗')
-            end
+            Common.log_success('[Step 8] _sections.pdf を生成しました')
           end
 
           # Step 9: 本扉・扉裏・後書き・奥付の生成

@@ -151,7 +151,7 @@ module Vivlio
           intermediate_pdfs = [
             # 内部名ベースの中間PDF
             '_titlepage.pdf', '_legalpage.pdf', '_colophon.pdf',
-            '_titlepage_legalpage.pdf', '_preface_toc.pdf', '_sections.pdf',
+            '_titlepage_legalpage.pdf', '_sections.pdf',
             '00-preface.pdf', '_toc.pdf',
             'blank_page.pdf', 'blank_frontmatter_insert.pdf',
             'output_tmp*.pdf'
