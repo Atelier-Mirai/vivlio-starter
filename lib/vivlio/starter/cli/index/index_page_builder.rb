@@ -26,18 +26,18 @@ module Vivlio
       module IndexCommands
         # 索引ページ生成クラス
         class IndexPageBuilder
-          # 五十音の行判定用マッピング
+          # 五十音の行判定用マッピング（ひらがな・カタカナ両対応）
           KANA_ROWS = {
-            'あ' => /^[あ-おぁ-ぉ]/,
-            'か' => /^[か-ごゕゖ]/,
-            'さ' => /^[さ-ぞ]/,
-            'た' => /^[た-ど]/,
-            'な' => /^[な-の]/,
-            'は' => /^[は-ぽ]/,
-            'ま' => /^[ま-も]/,
-            'や' => /^[や-よゃゅょ]/,
-            'ら' => /^[ら-ろ]/,
-            'わ' => /^[わ-んゎ]/
+            'あ' => /^[あ-おぁ-ぉア-オァ-ォ]/,
+            'か' => /^[か-ごゕゖカ-ゴヵヶ]/,
+            'さ' => /^[さ-ぞサ-ゾ]/,
+            'た' => /^[た-どタ-ド]/,
+            'な' => /^[な-のナ-ノ]/,
+            'は' => /^[は-ぽハ-ポ]/,
+            'ま' => /^[ま-もマ-モ]/,
+            'や' => /^[や-よゃゅょヤ-ヨャュョ]/,
+            'ら' => /^[ら-ろラ-ロ]/,
+            'わ' => /^[わ-んゎワ-ンヮ]/
           }.freeze
 
           SYMBOL_ROW_LABEL = '記号'
@@ -241,7 +241,9 @@ module Vivlio
             links = @hierarchical_index.entries[term] || []
 
             links.map do |link|
-              %(<a href="#{link}"></a>)
+              # 00-preface への参照には frontmatter クラスを付与（ローマ数字表示用）
+              css_class = link.start_with?('00-preface') ? ' class="frontmatter"' : ''
+              %(<a href="#{link}"#{css_class}></a>)
             end.join
           end
         end

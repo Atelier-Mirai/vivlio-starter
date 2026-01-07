@@ -30,6 +30,9 @@ body {
   /* 数字の視認性と欧文の折返しを改善 */
   font-variant-numeric: lining-nums tabular-nums;
   hyphens: auto;
+
+  /* 前書きはfrontページ（ローマ数字ノンブル）を使用 */
+  page: front;
 }
 
 /* 見出し */

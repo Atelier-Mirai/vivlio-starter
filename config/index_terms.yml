@@ -1,0 +1,155 @@
+---
+terms:
+- term: "!"
+  yomi: "!"
+  pattern: "/!/"
+  approved_at: '2026-01-08 01:10:36'
+  auto_approved: false
+  source: manual_markup
+- term: "!DOCTYPE"
+  yomi: "!DOCTYPE"
+  pattern: "/!DOCTYPE/"
+  approved_at: '2026-01-08 01:10:36'
+  auto_approved: false
+  source: manual_markup
+- term: "&"
+  yomi: "&"
+  pattern: "/&/"
+  approved_at: '2026-01-08 01:10:36'
+  auto_approved: false
+  source: manual_markup
+- term: "&&"
+  yomi: "&&"
+  pattern: "/&&/"
+  approved_at: '2026-01-08 01:10:36'
+  auto_approved: false
+  source: manual_markup
+- term: '404'
+  yomi: '404'
+  pattern: "/\\b404\\b/"
+  approved_at: '2026-01-08 01:10:36'
+  auto_approved: false
+  source: manual_markup
+- term: '500'
+  yomi: '500'
+  pattern: "/\\b500\\b/"
+  approved_at: '2026-01-08 01:10:36'
+  auto_approved: false
+  source: manual_markup
+- term: "</h1>"
+  yomi: "</h1>"
+  pattern: "/</h1>/"
+  approved_at: '2026-01-08 01:10:36'
+  auto_approved: false
+  source: manual_markup
+- term: "<h1>"
+  yomi: "<h1>"
+  pattern: "/<h1>/"
+  approved_at: '2026-01-08 01:10:36'
+  auto_approved: false
+  source: manual_markup
+- term: CPU
+  yomi: CPU
+  pattern: "/\\bCPU\\b/"
+  approved_at: '2026-01-08 01:10:37'
+  auto_approved: true
+  source: auto_extracted
+  score: 313.89191441548815
+- term: CSS
+  yomi: CSS
+  pattern: "/\\bCSS\\b/"
+  approved_at: '2026-01-08 01:10:37'
+  auto_approved: true
+  source: auto_extracted
+  score: 450.548131371282
+- term: HTML
+  yomi: HTML
+  pattern: "/\\bHTML\\b/"
+  approved_at: '2026-01-08 01:10:36'
+  auto_approved: false
+  source: manual_markup
+- term: "|"
+  yomi: "|"
+  pattern: "/\\|/"
+  approved_at: '2026-01-08 01:10:36'
+  auto_approved: false
+  source: manual_markup
+- term: "||"
+  yomi: "||"
+  pattern: "/\\|\\|/"
+  approved_at: '2026-01-08 01:10:36'
+  auto_approved: false
+  source: manual_markup
+- term: 基本情報技術者
+  yomi: きほんじょうほうぎじゅつしゃ
+  pattern: "/基本情報技術者/"
+  approved_at: '2026-01-08 01:10:36'
+  auto_approved: false
+  source: manual_markup
+- term: 計算機
+  yomi: けいさんき
+  pattern: "/計算機/"
+  approved_at: '2026-01-08 01:10:37'
+  auto_approved: true
+  source: auto_extracted
+  score: 429.72123652676163
+- term: コンピュータ
+  yomi: こんぴゅーた
+  pattern: "/コンピュータ/"
+  approved_at: '2026-01-08 01:10:36'
+  auto_approved: false
+  source: manual_markup
+- term: コード
+  yomi: こーど
+  pattern: "/コード/"
+  approved_at: '2026-01-08 01:10:37'
+  auto_approved: true
+  source: auto_extracted
+  score: 485.61208614113656
+- term: サイト
+  yomi: さいと
+  pattern: "/サイト/"
+  approved_at: '2026-01-08 01:10:37'
+  auto_approved: true
+  source: auto_extracted
+  score: 464.9519734919278
+- term: 手動索引
+  yomi: しゅどうさくいん
+  pattern: "/手動索引/"
+  approved_at: '2026-01-08 01:10:36'
+  auto_approved: false
+  source: manual_markup
+- term: データ
+  yomi: でーた
+  pattern: "/データ/"
+  approved_at: '2026-01-08 01:10:37'
+  auto_approved: true
+  source: auto_extracted
+  score: 406.2568074348483
+- term: 引数
+  yomi: ひきすう
+  pattern: "/引数/"
+  approved_at: '2026-01-08 01:10:36'
+  auto_approved: false
+  source: manual_markup
+- term: ビット
+  yomi: びっと
+  pattern: "/ビット/"
+  approved_at: '2026-01-08 01:10:37'
+  auto_approved: true
+  source: auto_extracted
+  score: 372.7838288309763
+- term: プログラム
+  yomi: ぷろぐらむ
+  pattern: "/プログラム/"
+  approved_at: '2026-01-08 01:10:37'
+  auto_approved: true
+  source: auto_extracted
+  score: 387.7838288309763
+- term: プロンプト
+  yomi: プロンプト
+  pattern: "/プロンプト/"
+  approved_at: '2026-01-08 01:10:37'
+  auto_approved: true
+  source: auto_extracted
+  score: 918.6960613793767

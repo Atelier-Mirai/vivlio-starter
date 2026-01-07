@@ -147,8 +147,14 @@ module Vivlio
             [w_pt, h_pt]
           end
 
-          # qpdf で PDF を分割
+          # qpdf で PDF を分割（旧仕様: 後方互換用）
           def split_pdf_into_toc_and_sections(output_pdf, frontmatter_pages, front_pdf, body_pdf)
+            split_pdf_into_frontmatter_and_sections(output_pdf, frontmatter_pages, front_pdf, body_pdf)
+          end
+
+          # qpdf で PDF を frontmatter と sections に分割
+          # 新仕様: frontmatter（前書き+目次）が先頭にある場合の分割
+          def split_pdf_into_frontmatter_and_sections(output_pdf, frontmatter_pages, front_pdf, body_pdf)
             total_pages = (page_count(output_pdf) || '0').to_i
             if total_pages <= 0
               Common.log_warn("[Step 7] 総ページ数の取得に失敗しました: #{output_pdf}")
@@ -163,22 +169,23 @@ module Vivlio
             FileUtils.rm_f(front_pdf)
             FileUtils.rm_f(body_pdf)
 
-            body_end = total_pages - frontmatter_pages
             ok1 = ok2 = true
 
-            if body_end.positive?
-              Common.log_action("[Step 7] 本文・付録を抽出しています (1-#{body_end})…")
-              ok1 = system(%(qpdf "#{output_pdf}" --pages "#{output_pdf}" 1-#{body_end} -- "#{body_pdf}" > /dev/null))
+            # frontmatter（前書き+目次）を先頭から抽出
+            if frontmatter_pages.positive?
+              Common.log_action("[Step 7] frontmatter を抽出しています (1-#{frontmatter_pages})…")
+              ok1 = system(%(qpdf "#{output_pdf}" --pages "#{output_pdf}" 1-#{frontmatter_pages} -- "#{front_pdf}" > /dev/null))
             else
-              Common.log_warn('[Step 7] 本文側のページがありません。frontmatter が全ページを占めています。')
+              Common.log_warn('[Step 7] frontmatter のページがありません。')
             end
 
-            if frontmatter_pages < total_pages
-              start_last = body_end + 1
-              Common.log_action("[Step 7] frontmatter を抽出しています (#{start_last}-z)…")
-              ok2 = system(%(qpdf "#{output_pdf}" --pages "#{output_pdf}" #{start_last}-z -- "#{front_pdf}" > /dev/null))
+            # sections（本文+付録+後書き+索引）を後方から抽出
+            body_start = frontmatter_pages + 1
+            if body_start <= total_pages
+              Common.log_action("[Step 7] sections を抽出しています (#{body_start}-z)…")
+              ok2 = system(%(qpdf "#{output_pdf}" --pages "#{output_pdf}" #{body_start}-z -- "#{body_pdf}" > /dev/null))
             else
-              Common.log_warn('[Step 7] frontmatter が全ページを占めています。frontmatter 側のみ生成します。')
+              Common.log_warn('[Step 7] sections のページがありません。frontmatter が全ページを占めています。')
             end
 
             if ok1 && ok2
