@@ -117,7 +117,7 @@ module Vivlio
           FileUtils.mkdir_p(File.dirname(CONFIG_FILE))
 
           # 読み順でソート
-          sorted_terms = terms.sort_by { |t| t['yomi'] || t['term'] || '' }
+          sorted_terms = terms.sort_by { it['yomi'] || it['term'] || '' }
 
           data = { 'terms' => sorted_terms }
           File.write(CONFIG_FILE, data.to_yaml, encoding: 'utf-8')
@@ -129,7 +129,7 @@ module Vivlio
         # 用語名のリストを取得
         # @return [Array<String>] 用語名のリスト
         def term_names
-          load_existing_terms.map { |t| t['term'] }
+          load_existing_terms.map { it['term'] }
         end
 
         # キャッシュをクリア
