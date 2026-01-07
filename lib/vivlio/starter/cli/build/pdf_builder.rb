@@ -23,7 +23,10 @@ module Vivlio
 
           # Step 7: 全体PDF生成→分割（ディレクトリスキャン版）
           def build_overall_pdf_and_split_from_dir!(base_dir = '.', keep = nil)
+            # 前付け: 00-preface + _toc
+            preface_html = [File.join(base_dir, '00-preface.html')].select { |f| File.exist?(f) }
             toc_html = [File.join(base_dir, '_toc.html')].select { |f| File.exist?(f) }
+
             keep_numbers_main = Build::Utilities.chapter_numbers_for_book(keep)
             keep_numbers_appx = nil
             keep_numbers_post = nil
@@ -35,23 +38,27 @@ module Vivlio
               keep_numbers_post = chapter_numbers.select { |n| POSTFACE_RANGE.include?(n) }
             end
             index_html = [File.join(base_dir, '_indexpage.html')].select { |f| File.exist?(f) }
-            # 書籍構成順序: 本文 → 付録 → 後書き → 索引
+
+            # 書籍構成順序: 前書き → 目次 → 本文 → 付録 → 後書き → 索引
+            # ※ 00-preface, _toc を先頭に含めることで target-counter が正しく解決される
             chapter_htmls_for_pdf = [
+              preface_html,
+              toc_html,
               Build::ChapterConfig.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers_main),
               Build::ChapterConfig.htmls_for_range(base_dir, APPX_RANGE, keep_numbers_appx),
               Build::ChapterConfig.htmls_for_range(base_dir, POSTFACE_RANGE, keep_numbers_post),
               index_html
             ].flatten
 
-            pdf_target_names = chapter_htmls_for_pdf.map { |p| File.basename(p) }
-            toc_target_names = toc_html.map { |p| File.basename(p) }
-            targets_for_pdf = chapter_htmls_for_pdf + toc_html
-            Common.log_info("[Step 7] targets_for_pdf: #{(pdf_target_names + toc_target_names).join(', ')}")
+            targets_for_pdf = chapter_htmls_for_pdf
+            Common.log_info("[Step 7] targets_for_pdf: #{targets_for_pdf.map { |p| File.basename(p) }.join(', ')}")
 
             compile_overall_pdf_and_split!(targets_for_pdf, keep)
           end
 
-          # Step 7: 全体PDF生成 → toc(目次)とsections(本文+付録+後書き)に分割
+          # Step 7: 全体PDF生成（分割なし）
+          # 新仕様: 00-preface + _toc を含めて全体をビルドし、target-counter を正しく解決
+          # PDF分割をスキップすることで、索引から00-prefaceへのリンクを維持
           def compile_overall_pdf_and_split!(targets_for_pdf, _keep = nil)
             if targets_for_pdf.empty?
               Common.log_warn('[Step 7] 対象HTMLが見つかりません。Step 7 をスキップします。')
@@ -69,88 +76,70 @@ module Vivlio
               return
             end
 
-            toc_pages = (Build::Utilities.page_count('_toc.pdf') || '0').to_i
-            if toc_pages <= 0
-              Common.log_warn('[Step 7] toc のページ数が 0 です。分割をスキップします。')
-              return
-            end
-
-            # 新仕様: _sections.pdf（本文+付録+後書き）
-            Build::Utilities.split_pdf_into_toc_and_sections(output_pdf, toc_pages, '_toc.pdf', '_sections.pdf')
+            # PDF分割をスキップ: 全体PDFをそのまま _sections.pdf として使用
+            # これにより内部リンク（索引→00-preface等）が維持される
+            # ローマ数字ノンブルはCSSの @page front で対応済み
+            Common.log_info('[Step 7] PDF分割をスキップ（内部リンク維持のため）')
+            FileUtils.cp(output_pdf, '_sections.pdf')
+            Common.log_success('[Step 7] _sections.pdf を生成しました（全体PDF、分割なし）')
           end
 
-          # Step 8: _preface_toc.pdf 構成 + ローマ小付与
-          # 新仕様: 00-preface を使用
-          def build_frontmatter_pdf!(keep = nil)
-            Common.log_action('[Step 8] _preface_toc.pdf を構成し、ローマ小 i〜 を付与します…')
-            include_preface = keep && Array(keep).map(&:to_s).any? { |s| File.basename(s) == '00-preface.md' }
-            include_toc     = File.exist?('_toc.pdf')
+          # 前付け（00-preface + _toc）のページ数を計算
+          # Step 6 で生成された _toc.pdf のページ数から推定
+          # 00-preface のページ数は全体 PDF から逆算
+          def calculate_frontmatter_pages(targets_for_pdf)
+            # entries.js から frontmatter の位置を特定
+            frontmatter_count = 0
 
-            if include_preface && File.exist?(File.join(Common::CONTENTS_DIR, '00-preface.md'))
-              cache_on = Common.cache_enabled?
-              cache_dir = cache_on ? Common.ensure_cache_dir! : nil
-              preface_cache = cache_on && cache_dir ? File.join(cache_dir, '00-preface.pdf') : nil
-              Build::SectionBuilder.ensure_chapter_html_up_to_date!('00-preface',
-                                                                    extra_sources: File.join('config', 'book.yml'))
-
-              preface_sources = [
-                File.join(Common::CONTENTS_DIR, '00-preface.md'),
-                File.join('config', 'book.yml')
-              ]
-              preface_outdated = false
-              if File.exist?('00-preface.pdf')
-                pdf_mtime = File.mtime('00-preface.pdf')
-                preface_outdated = preface_sources.any? { |s| File.exist?(s) && File.mtime(s) > pdf_mtime }
-              end
-
-              needs_preface = !File.exist?('00-preface.pdf') || preface_outdated
-              unless preface_outdated
-                needs_preface &&= !Build::Utilities.cache_restore_file(cache_on, preface_cache, '00-preface.pdf',
-                                                                       'Step 8')
-              end
-
-              if needs_preface
-                PreProcessCommands.execute_pre_process({}, ['00-preface'])
-                ConvertCommands.execute_convert({}, ['00-preface'])
-                PostProcessCommands.execute_post_process({}, ['00-preface'])
-                EntriesCommands.execute_entries({}, ['00-preface'])
-                PdfCommands.execute_pdf({}, '00-preface.pdf')
-                Common.log_success('[Step 8] 00-preface.pdf を生成しました') if File.exist?('00-preface.pdf')
-                Build::Utilities.cache_store_file(cache_on, '00-preface.pdf', preface_cache, 'Step 8')
+            targets_for_pdf.each do |path|
+              basename = File.basename(path)
+              case basename
+              when '00-preface.html', '_toc.html'
+                frontmatter_count += 1
               else
-                Common.log_action('[Step 8] 前書きPDFは最新のため再利用します: 00-preface.pdf')
+                break # frontmatter 以外が出てきたら終了
               end
             end
 
-            files_to_merge = []
-            files_to_merge << '00-preface.pdf' if include_preface
-            files_to_merge << '_toc.pdf' if include_toc
-            existing_files = files_to_merge.select { |f| File.exist?(f) }
-            missing_files  = files_to_merge - existing_files
-            Common.log_warn("[Step 8] 結合対象が見つかりません: #{missing_files.join(', ')}") if missing_files.any?
+            # frontmatter が含まれていない場合は 0 を返す
+            return 0 if frontmatter_count.zero?
 
-            if existing_files.length == 1
-              src = existing_files.first
-              FileUtils.rm_f('_preface_toc.pdf')
-              FileUtils.cp(src, '_preface_toc.pdf')
-              Common.log_success("[Step 8] _preface_toc.pdf を単一ソースから生成しました: #{src}")
-              finalize_frontmatter_pdf
-              return
-            elsif existing_files.empty?
-              Common.log_warn('[Step 8] frontmatter 構成対象PDFがありません。_preface_toc.pdf の生成をスキップします')
-              return
+            # _toc.pdf のページ数を取得（Step 6 で生成済み）
+            toc_pages = (Build::Utilities.page_count('_toc.pdf') || '0').to_i
+
+            # 00-preface が含まれている場合、推定ページ数を追加
+            # 通常、前書きは 2-4 ページ程度と仮定
+            preface_pages = 0
+            if targets_for_pdf.any? { |p| File.basename(p) == '00-preface.html' }
+              # 前書きのページ数を推定（偶数に丸める）
+              preface_pages = estimate_preface_pages
             end
 
-            Common.log_info("[Step 8] 結合順: #{existing_files.join(' -> ')}")
-            FileUtils.rm_f('_preface_toc.pdf')
-            cmd = ['bundle', 'exec', 'hexapdf', 'merge', *existing_files, '_preface_toc.pdf'].join(' ')
-            merged = system(cmd)
-            if merged && File.exist?('_preface_toc.pdf')
-              Common.log_success('[Step 8] _preface_toc.pdf を生成しました')
-              finalize_frontmatter_pdf
-            else
-              Common.log_error('[Step 8] _preface_toc.pdf の生成に失敗しました')
-            end
+            Common.log_info("[Step 7] preface_pages: #{preface_pages}, toc_pages: #{toc_pages}")
+            preface_pages + toc_pages
+          end
+
+          # 前書きのページ数を推定
+          # contents/00-preface.md の行数からおおよそのページ数を計算
+          def estimate_preface_pages
+            preface_md = File.join(Common::CONTENTS_DIR, '00-preface.md')
+            return 2 unless File.exist?(preface_md) # デフォルト 2 ページ
+
+            lines = File.readlines(preface_md, encoding: 'utf-8').size
+            # 約 50 行で 1 ページと仮定（A4、10.5pt フォント）
+            pages = (lines / 50.0).ceil
+            # 最低 2 ページ、偶数に丸める
+            pages = [pages, 2].max
+            pages += 1 if pages.odd?
+            pages
+          end
+
+          # Step 8: スキップ（ローマ数字ノンブルはCSSで対応済み）
+          # PDF分割をスキップしたため、_preface_toc.pdf は生成されない
+          # ローマ数字ノンブルは stylesheets/toc.css の @page front で対応
+          def build_frontmatter_pdf!(_keep = nil)
+            Common.log_action('[Step 8] スキップ（ローマ数字ノンブルはCSSで対応済み）')
+            Common.log_info('[Step 8] PDF分割をスキップしたため、HexaPDFによるノンブル描画は不要')
           end
 
           # frontmatter PDF の仕上げ処理（奇数ページ調整、ラベル、ノンブル）

@@ -310,17 +310,19 @@ module Vivlio
             return if text.empty? || heading_id.nil? || heading_id.empty?
 
             href = "#{file_name}##{heading_id}"
-            %(<li class="#{CSS_CLASS}" data-href="#{href}"><span class="toc-title" data-href="#{href}"><span class="toc-label">#{text}</span></span></li>\n)
+            %(<li class="#{CSS_CLASS}"><a href="#{href}" class="toc-title"><span class="toc-label">#{text}</span></a></li>\n)
           end
         end
 
         Heading = Struct.new(:level, :css_class, :href, :text, keyword_init: true) do
           # 見出し情報から TOC 用の <li> 文字列を生成する
+          # <a> タグを使用してクリックで該当ページへジャンプ可能にする
           def list_markup
-            href_attribute = href && !href.empty? ? %( data-href="#{href}") : ''
-            title_attrs = ['class="toc-title"']
-            title_attrs << %(data-href="#{href}") if href && !href.empty?
-            %(<li class="#{css_class}"#{href_attribute}><span #{title_attrs.join(' ')}><span class="toc-label">#{text}</span></span>)
+            if href && !href.empty?
+              %(<li class="#{css_class}"><a href="#{href}" class="toc-title"><span class="toc-label">#{text}</span></a>)
+            else
+              %(<li class="#{css_class}"><span class="toc-title"><span class="toc-label">#{text}</span></span>)
+            end
           end
         end
 

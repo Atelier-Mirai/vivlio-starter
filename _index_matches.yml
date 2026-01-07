@@ -1,188 +1,3797 @@
 ---
-generated_at: '2026-01-07T23:56:38+09:00'
-total_matches: 17
+generated_at: '2026-01-08T02:59:38+09:00'
+total_matches: 377
 terms:
   "!":
   - yomi: "!"
-    link: 01-computer-journey.html#idx-e306lryx98bk-1
+    link: 01-computer-journey.html#idx-m2t90f82d90a-1
     file: 01-computer-journey
     is_definition: true
   "!DOCTYPE":
   - yomi: "!DOCTYPE"
-    link: 01-computer-journey.html#idx-jhf27sqxm0vx-1
+    link: 01-computer-journey.html#idx-cg39ujnydfjq-1
     file: 01-computer-journey
     is_definition: true
   "&":
   - yomi: "&"
-    link: 01-computer-journey.html#idx-ivkel8mcu0lt-1
+    link: 01-computer-journey.html#idx-mvo3nwqt5vyv-1
     file: 01-computer-journey
     is_definition: true
   "&&":
   - yomi: "&&"
-    link: 01-computer-journey.html#idx-n1j9m0i21a6b-1
+    link: 01-computer-journey.html#idx-brnjj29h2bqb-1
     file: 01-computer-journey
     is_definition: true
   '404':
   - yomi: '404'
-    link: 01-computer-journey.html#idx-aexe2jfy1ncv-1
+    link: 01-computer-journey.html#idx-tqwhiz8pu9n3-1
     file: 01-computer-journey
     is_definition: true
   '500':
   - yomi: '500'
-    link: 01-computer-journey.html#idx-9nbh3eedsd8g-1
+    link: 01-computer-journey.html#idx-5k8s77pxa5az-1
     file: 01-computer-journey
     is_definition: true
   "</h1>":
   - yomi: "</h1>"
-    link: 01-computer-journey.html#idx-2joloof0r2ci-1
+    link: 01-computer-journey.html#idx-6oo0hpvvc2gs-1
     file: 01-computer-journey
     is_definition: true
   "<h1>":
   - yomi: "<h1>"
-    link: 01-computer-journey.html#idx-7v8ys280buq-1
+    link: 01-computer-journey.html#idx-52nbhl4skrum-1
     file: 01-computer-journey
     is_definition: true
+  CPU:
+  - yomi: CPU
+    link: 01-computer-journey.html#idx-jmh2ou01bs5d-1
+    file: 01-computer-journey
+    is_definition: true
+  - yomi: CPU
+    link: 01-computer-journey.html#idx-jmh2ou01bs5d-2
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: CPU
+    link: 03-computer.html#idx-jmh2ou01bs5d-3
+    file: 03-computer
+    is_definition: false
+  CSS:
+  - yomi: CSS
+    link: 00-preface.html#idx-6vs7ivw6pdmx-1
+    file: 00-preface
+    is_definition: true
+  - yomi: CSS
+    link: 01-computer-journey.html#idx-6vs7ivw6pdmx-2
+    file: 01-computer-journey
+    is_definition: false
   HTML:
   - yomi: HTML
-    link: 01-computer-journey.html#idx-lzcrjvglj4k8-1
-    file: 01-computer-journey
+    link: 00-preface.html#idx-2ts6goacbfh5-1
+    file: 00-preface
     is_definition: true
+  - yomi: HTML
+    link: 00-preface.html#idx-2ts6goacbfh5-2
+    file: 00-preface
+    is_definition: false
+  - yomi: HTML
+    link: 00-preface.html#idx-2ts6goacbfh5-3
+    file: 00-preface
+    is_definition: false
+  - yomi: HTML
+    link: 01-computer-journey.html#idx-2ts6goacbfh5-4
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: HTML
+    link: 01-computer-journey.html#idx-2ts6goacbfh5-5
+    file: 01-computer-journey
+    is_definition: false
   "|":
   - yomi: "|"
-    link: 01-computer-journey.html#idx-7qw2zlq79mb-1
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-1
     file: 01-computer-journey
     is_definition: true
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-2
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-3
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-4
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-5
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-6
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-7
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-8
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-9
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-10
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-11
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-12
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-13
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-14
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-15
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-16
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-17
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-18
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-19
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-20
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-21
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-22
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-23
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-24
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-25
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-26
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-27
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-28
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-29
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-30
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-31
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-32
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-33
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-34
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-35
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-36
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-37
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-38
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-39
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-40
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-41
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-42
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-43
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-44
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-45
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-46
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-47
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-48
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-49
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-50
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-51
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-52
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-53
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-54
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-55
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-56
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-57
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-58
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-59
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-60
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-61
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-62
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-63
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-64
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-65
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-66
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-67
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-68
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-69
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-70
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-71
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-72
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-73
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-74
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-75
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-76
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-77
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-78
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-79
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-80
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-81
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-82
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-83
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-84
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-85
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-86
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-87
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-88
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-89
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-90
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-fpa4xjcgd7ew-91
+    file: 01-computer-journey
+    is_definition: false
   "||":
   - yomi: "||"
-    link: 01-computer-journey.html#idx-s0dncgoeo49w-1
+    link: 01-computer-journey.html#idx-l6kgjmerk6ue-1
     file: 01-computer-journey
     is_definition: true
   コンピュータ:
   - yomi: こんぴゅーた
-    link: 01-computer-journey.html#idx-ur8q9lx9j1iv-1
-    file: 01-computer-journey
+    link: 00-preface.html#idx-vma3sc9fnwku-1
+    file: 00-preface
     is_definition: true
   - yomi: こんぴゅーた
-    link: 02-index-test.html#idx-ur8q9lx9j1iv-2
+    link: 00-preface.html#idx-vma3sc9fnwku-2
+    file: 00-preface
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 00-preface.html#idx-vma3sc9fnwku-3
+    file: 00-preface
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 00-preface.html#idx-vma3sc9fnwku-4
+    file: 00-preface
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-5
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-6
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-7
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-8
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-9
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-10
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-11
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-12
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-13
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-14
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-15
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-16
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-17
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-18
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-19
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-20
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-21
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-22
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-23
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-24
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-25
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-26
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-27
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-28
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-29
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-30
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-31
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-32
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-33
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-34
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-35
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-36
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-37
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-38
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-39
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-40
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-41
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-42
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-43
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-44
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-45
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-46
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-47
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-48
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-49
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-50
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-51
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-52
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-53
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-54
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-55
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-56
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-57
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-58
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-59
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-60
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-61
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-62
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-63
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-64
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-65
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-66
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-67
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-68
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-vma3sc9fnwku-69
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 02-index-test.html#idx-vma3sc9fnwku-70
     file: 02-index-test
     is_definition: false
   - yomi: こんぴゅーた
-    link: 99-postface.html#idx-ur8q9lx9j1iv-3
+    link: 03-computer.html#idx-vma3sc9fnwku-71
+    file: 03-computer
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 03-computer.html#idx-vma3sc9fnwku-72
+    file: 03-computer
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 03-computer.html#idx-vma3sc9fnwku-73
+    file: 03-computer
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 03-computer.html#idx-vma3sc9fnwku-74
+    file: 03-computer
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 03-computer.html#idx-vma3sc9fnwku-75
+    file: 03-computer
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 03-computer.html#idx-vma3sc9fnwku-76
+    file: 03-computer
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 03-computer.html#idx-vma3sc9fnwku-77
+    file: 03-computer
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 03-computer.html#idx-vma3sc9fnwku-78
+    file: 03-computer
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 03-computer.html#idx-vma3sc9fnwku-79
+    file: 03-computer
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 03-computer.html#idx-vma3sc9fnwku-80
+    file: 03-computer
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 03-computer.html#idx-vma3sc9fnwku-81
+    file: 03-computer
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 03-computer.html#idx-vma3sc9fnwku-82
+    file: 03-computer
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 03-computer.html#idx-vma3sc9fnwku-83
+    file: 03-computer
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 03-computer.html#idx-vma3sc9fnwku-84
+    file: 03-computer
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 03-computer.html#idx-vma3sc9fnwku-85
+    file: 03-computer
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 03-computer.html#idx-vma3sc9fnwku-86
+    file: 03-computer
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 03-computer.html#idx-vma3sc9fnwku-87
+    file: 03-computer
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 99-postface.html#idx-vma3sc9fnwku-88
     file: 99-postface
+    is_definition: false
+  コード:
+  - yomi: こーど
+    link: 00-preface.html#idx-mloz685v8117-1
+    file: 00-preface
+    is_definition: true
+  - yomi: こーど
+    link: 00-preface.html#idx-mloz685v8117-2
+    file: 00-preface
+    is_definition: false
+  - yomi: こーど
+    link: 00-preface.html#idx-mloz685v8117-3
+    file: 00-preface
+    is_definition: false
+  - yomi: こーど
+    link: 00-preface.html#idx-mloz685v8117-4
+    file: 00-preface
+    is_definition: false
+  - yomi: こーど
+    link: 01-computer-journey.html#idx-mloz685v8117-5
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こーど
+    link: 01-computer-journey.html#idx-mloz685v8117-6
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こーど
+    link: 01-computer-journey.html#idx-mloz685v8117-7
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こーど
+    link: 01-computer-journey.html#idx-mloz685v8117-8
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: こーど
+    link: 90-practical-prompt-patterns39.html#idx-mloz685v8117-9
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: こーど
+    link: 90-practical-prompt-patterns39.html#idx-mloz685v8117-10
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: こーど
+    link: 90-practical-prompt-patterns39.html#idx-mloz685v8117-11
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: こーど
+    link: 90-practical-prompt-patterns39.html#idx-mloz685v8117-12
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: こーど
+    link: 90-practical-prompt-patterns39.html#idx-mloz685v8117-13
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: こーど
+    link: 90-practical-prompt-patterns39.html#idx-mloz685v8117-14
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: こーど
+    link: 90-practical-prompt-patterns39.html#idx-mloz685v8117-15
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: こーど
+    link: 90-practical-prompt-patterns39.html#idx-mloz685v8117-16
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: こーど
+    link: 90-practical-prompt-patterns39.html#idx-mloz685v8117-17
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: こーど
+    link: 90-practical-prompt-patterns39.html#idx-mloz685v8117-18
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: こーど
+    link: 90-practical-prompt-patterns39.html#idx-mloz685v8117-19
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  サイト:
+  - yomi: さいと
+    link: 00-preface.html#idx-usmk15ncmr9q-1
+    file: 00-preface
+    is_definition: true
+  - yomi: さいと
+    link: 00-preface.html#idx-usmk15ncmr9q-2
+    file: 00-preface
+    is_definition: false
+  - yomi: さいと
+    link: 00-preface.html#idx-usmk15ncmr9q-3
+    file: 00-preface
+    is_definition: false
+  - yomi: さいと
+    link: 00-preface.html#idx-usmk15ncmr9q-4
+    file: 00-preface
+    is_definition: false
+  - yomi: さいと
+    link: 00-preface.html#idx-usmk15ncmr9q-5
+    file: 00-preface
+    is_definition: false
+  - yomi: さいと
+    link: 00-preface.html#idx-usmk15ncmr9q-6
+    file: 00-preface
+    is_definition: false
+  - yomi: さいと
+    link: 00-preface.html#idx-usmk15ncmr9q-7
+    file: 00-preface
+    is_definition: false
+  - yomi: さいと
+    link: 00-preface.html#idx-usmk15ncmr9q-8
+    file: 00-preface
+    is_definition: false
+  - yomi: さいと
+    link: 00-preface.html#idx-usmk15ncmr9q-9
+    file: 00-preface
+    is_definition: false
+  - yomi: さいと
+    link: 00-preface.html#idx-usmk15ncmr9q-10
+    file: 00-preface
+    is_definition: false
+  - yomi: さいと
+    link: 00-preface.html#idx-usmk15ncmr9q-11
+    file: 00-preface
+    is_definition: false
+  - yomi: さいと
+    link: 00-preface.html#idx-usmk15ncmr9q-12
+    file: 00-preface
+    is_definition: false
+  - yomi: さいと
+    link: 00-preface.html#idx-usmk15ncmr9q-13
+    file: 00-preface
+    is_definition: false
+  - yomi: さいと
+    link: 00-preface.html#idx-usmk15ncmr9q-14
+    file: 00-preface
+    is_definition: false
+  - yomi: さいと
+    link: 01-computer-journey.html#idx-usmk15ncmr9q-15
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: さいと
+    link: 01-computer-journey.html#idx-usmk15ncmr9q-16
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: さいと
+    link: 01-computer-journey.html#idx-usmk15ncmr9q-17
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: さいと
+    link: 90-practical-prompt-patterns39.html#idx-usmk15ncmr9q-18
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: さいと
+    link: 90-practical-prompt-patterns39.html#idx-usmk15ncmr9q-19
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: さいと
+    link: 90-practical-prompt-patterns39.html#idx-usmk15ncmr9q-20
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: さいと
+    link: 90-practical-prompt-patterns39.html#idx-usmk15ncmr9q-21
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  データ:
+  - yomi: でーた
+    link: 01-computer-journey.html#idx-mh3o6e9r4sxz-1
+    file: 01-computer-journey
+    is_definition: true
+  - yomi: でーた
+    link: 01-computer-journey.html#idx-mh3o6e9r4sxz-2
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: でーた
+    link: 01-computer-journey.html#idx-mh3o6e9r4sxz-3
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: でーた
+    link: 01-computer-journey.html#idx-mh3o6e9r4sxz-4
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: でーた
+    link: 01-computer-journey.html#idx-mh3o6e9r4sxz-5
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: でーた
+    link: 01-computer-journey.html#idx-mh3o6e9r4sxz-6
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: でーた
+    link: 01-computer-journey.html#idx-mh3o6e9r4sxz-7
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: でーた
+    link: 01-computer-journey.html#idx-mh3o6e9r4sxz-8
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: でーた
+    link: 01-computer-journey.html#idx-mh3o6e9r4sxz-9
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: でーた
+    link: 01-computer-journey.html#idx-mh3o6e9r4sxz-10
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: でーた
+    link: 01-computer-journey.html#idx-mh3o6e9r4sxz-11
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: でーた
+    link: 01-computer-journey.html#idx-mh3o6e9r4sxz-12
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: でーた
+    link: 01-computer-journey.html#idx-mh3o6e9r4sxz-13
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: でーた
+    link: 01-computer-journey.html#idx-mh3o6e9r4sxz-14
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: でーた
+    link: 03-computer.html#idx-mh3o6e9r4sxz-15
+    file: 03-computer
+    is_definition: false
+  - yomi: でーた
+    link: 03-computer.html#idx-mh3o6e9r4sxz-16
+    file: 03-computer
+    is_definition: false
+  - yomi: でーた
+    link: 03-computer.html#idx-mh3o6e9r4sxz-17
+    file: 03-computer
+    is_definition: false
+  - yomi: でーた
+    link: 03-computer.html#idx-mh3o6e9r4sxz-18
+    file: 03-computer
+    is_definition: false
+  ビット:
+  - yomi: びっと
+    link: 01-computer-journey.html#idx-87oqmiw2kgub-1
+    file: 01-computer-journey
+    is_definition: true
+  - yomi: びっと
+    link: 01-computer-journey.html#idx-87oqmiw2kgub-2
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: びっと
+    link: 01-computer-journey.html#idx-87oqmiw2kgub-3
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: びっと
+    link: 01-computer-journey.html#idx-87oqmiw2kgub-4
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: びっと
+    link: 01-computer-journey.html#idx-87oqmiw2kgub-5
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: びっと
+    link: 01-computer-journey.html#idx-87oqmiw2kgub-6
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: びっと
+    link: 01-computer-journey.html#idx-87oqmiw2kgub-7
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: びっと
+    link: 01-computer-journey.html#idx-87oqmiw2kgub-8
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: びっと
+    link: 01-computer-journey.html#idx-87oqmiw2kgub-9
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: びっと
+    link: 01-computer-journey.html#idx-87oqmiw2kgub-10
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: びっと
+    link: 01-computer-journey.html#idx-87oqmiw2kgub-11
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: びっと
+    link: 01-computer-journey.html#idx-87oqmiw2kgub-12
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: びっと
+    link: 01-computer-journey.html#idx-87oqmiw2kgub-13
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: びっと
+    link: 01-computer-journey.html#idx-87oqmiw2kgub-14
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: びっと
+    link: 01-computer-journey.html#idx-87oqmiw2kgub-15
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: びっと
+    link: 03-computer.html#idx-87oqmiw2kgub-16
+    file: 03-computer
+    is_definition: false
+  プログラム:
+  - yomi: ぷろぐらむ
+    link: 01-computer-journey.html#idx-3g79ancfjuc3-1
+    file: 01-computer-journey
+    is_definition: true
+  - yomi: ぷろぐらむ
+    link: 01-computer-journey.html#idx-3g79ancfjuc3-2
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: ぷろぐらむ
+    link: 01-computer-journey.html#idx-3g79ancfjuc3-3
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: ぷろぐらむ
+    link: 01-computer-journey.html#idx-3g79ancfjuc3-4
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: ぷろぐらむ
+    link: 01-computer-journey.html#idx-3g79ancfjuc3-5
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: ぷろぐらむ
+    link: 01-computer-journey.html#idx-3g79ancfjuc3-6
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: ぷろぐらむ
+    link: 01-computer-journey.html#idx-3g79ancfjuc3-7
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: ぷろぐらむ
+    link: 01-computer-journey.html#idx-3g79ancfjuc3-8
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: ぷろぐらむ
+    link: 01-computer-journey.html#idx-3g79ancfjuc3-9
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: ぷろぐらむ
+    link: 01-computer-journey.html#idx-3g79ancfjuc3-10
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: ぷろぐらむ
+    link: 01-computer-journey.html#idx-3g79ancfjuc3-11
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: ぷろぐらむ
+    link: 01-computer-journey.html#idx-3g79ancfjuc3-12
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: ぷろぐらむ
+    link: 01-computer-journey.html#idx-3g79ancfjuc3-13
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: ぷろぐらむ
+    link: 03-computer.html#idx-3g79ancfjuc3-14
+    file: 03-computer
+    is_definition: false
+  - yomi: ぷろぐらむ
+    link: 03-computer.html#idx-3g79ancfjuc3-15
+    file: 03-computer
+    is_definition: false
+  - yomi: ぷろぐらむ
+    link: 03-computer.html#idx-3g79ancfjuc3-16
+    file: 03-computer
+    is_definition: false
+  プロンプト:
+  - yomi: プロンプト
+    link: 00-preface.html#idx-orzu9or6z54b-1
+    file: 00-preface
+    is_definition: true
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-2
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-3
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-4
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-5
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-6
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-7
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-8
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-9
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-10
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-11
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-12
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-13
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-14
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-15
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-16
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-17
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-18
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-19
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-20
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-21
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-22
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-23
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-24
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-25
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-26
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-27
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-28
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-29
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-30
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-31
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-32
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-33
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-34
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-35
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-36
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-37
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-38
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-39
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-40
+    file: 90-practical-prompt-patterns39
+    is_definition: false
+  - yomi: プロンプト
+    link: 90-practical-prompt-patterns39.html#idx-orzu9or6z54b-41
+    file: 90-practical-prompt-patterns39
     is_definition: false
   基本情報技術者:
   - yomi: きほんじょうほうぎじゅつしゃ
-    link: 01-computer-journey.html#idx-9szwaqtnkeje-1
-    file: 01-computer-journey
+    link: 00-preface.html#idx-treptwai1d6c-1
+    file: 00-preface
     is_definition: true
+  - yomi: きほんじょうほうぎじゅつしゃ
+    link: 01-computer-journey.html#idx-treptwai1d6c-2
+    file: 01-computer-journey
+    is_definition: false
   引数:
   - yomi: ひきすう
-    link: 01-computer-journey.html#idx-8sbxmc4jpc4f-1
+    link: 01-computer-journey.html#idx-wdz6tgep9scf-1
     file: 01-computer-journey
     is_definition: true
+  - yomi: ひきすう
+    link: 01-computer-journey.html#idx-wdz6tgep9scf-2
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: ひきすう
+    link: 02-index-test.html#idx-wdz6tgep9scf-3
+    file: 02-index-test
+    is_definition: false
   手動索引:
   - yomi: しゅどうさくいん
-    link: 02-index-test.html#idx-unpe5ou44wo2-1
-    file: 02-index-test
+    link: 00-preface.html#idx-cj36zhmw9wkv-1
+    file: 00-preface
     is_definition: true
+  - yomi: しゅどうさくいん
+    link: 02-index-test.html#idx-cj36zhmw9wkv-2
+    file: 02-index-test
+    is_definition: false
+  計算機:
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-1
+    file: 01-computer-journey
+    is_definition: true
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-2
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-3
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-4
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-5
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-6
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-7
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-8
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-9
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-10
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-11
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-12
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-13
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-14
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-15
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-16
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-17
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-18
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-19
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-20
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-21
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-22
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-23
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-24
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-25
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-26
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-27
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-28
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-29
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-30
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-31
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-32
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-33
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-34
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-35
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 01-computer-journey.html#idx-1x6bioehos0b-36
+    file: 01-computer-journey
+    is_definition: false
+  - yomi: けいさんき
+    link: 02-index-test.html#idx-1x6bioehos0b-37
+    file: 02-index-test
+    is_definition: false
+  - yomi: けいさんき
+    link: 03-computer.html#idx-1x6bioehos0b-38
+    file: 03-computer
+    is_definition: false
+  - yomi: けいさんき
+    link: 03-computer.html#idx-1x6bioehos0b-39
+    file: 03-computer
+    is_definition: false
+  - yomi: けいさんき
+    link: 03-computer.html#idx-1x6bioehos0b-40
+    file: 03-computer
+    is_definition: false
+  - yomi: けいさんき
+    link: 03-computer.html#idx-1x6bioehos0b-41
+    file: 03-computer
+    is_definition: false
 matches:
-- id: idx-lzcrjvglj4k8-1
+- id: idx-usmk15ncmr9q-1
+  term: サイト
+  yomi: さいと
+  file: 00-preface
+  is_definition: true
+  tag_type: dfn
+- id: idx-2ts6goacbfh5-1
   term: HTML
   yomi: HTML
-  file: 01-computer-journey
+  file: 00-preface
   is_definition: true
   tag_type: dfn
-- id: idx-9szwaqtnkeje-1
+- id: idx-usmk15ncmr9q-2
+  term: サイト
+  yomi: さいと
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-3
+  term: サイト
+  yomi: さいと
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-1
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 00-preface
+  is_definition: true
+  tag_type: dfn
+- id: idx-vma3sc9fnwku-2
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-4
+  term: サイト
+  yomi: さいと
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-1
+  term: プロンプト
+  yomi: プロンプト
+  file: 00-preface
+  is_definition: true
+  tag_type: dfn
+- id: idx-mloz685v8117-1
+  term: コード
+  yomi: こーど
+  file: 00-preface
+  is_definition: true
+  tag_type: dfn
+- id: idx-mloz685v8117-2
+  term: コード
+  yomi: こーど
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-5
+  term: サイト
+  yomi: さいと
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-mloz685v8117-3
+  term: コード
+  yomi: こーど
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-6
+  term: サイト
+  yomi: さいと
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-7
+  term: サイト
+  yomi: さいと
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-6vs7ivw6pdmx-1
+  term: CSS
+  yomi: CSS
+  file: 00-preface
+  is_definition: true
+  tag_type: dfn
+- id: idx-2ts6goacbfh5-2
+  term: HTML
+  yomi: HTML
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-8
+  term: サイト
+  yomi: さいと
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-9
+  term: サイト
+  yomi: さいと
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-mloz685v8117-4
+  term: コード
+  yomi: こーど
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-10
+  term: サイト
+  yomi: さいと
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-11
+  term: サイト
+  yomi: さいと
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-12
+  term: サイト
+  yomi: さいと
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-3
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-cj36zhmw9wkv-1
+  term: 手動索引
+  yomi: しゅどうさくいん
+  file: 00-preface
+  is_definition: true
+  tag_type: dfn
+- id: idx-vma3sc9fnwku-4
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-treptwai1d6c-1
   term: 基本情報技術者
   yomi: きほんじょうほうぎじゅつしゃ
-  file: 01-computer-journey
+  file: 00-preface
   is_definition: true
   tag_type: dfn
-- id: idx-ur8q9lx9j1iv-1
+- id: idx-2ts6goacbfh5-3
+  term: HTML
+  yomi: HTML
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-13
+  term: サイト
+  yomi: さいと
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-14
+  term: サイト
+  yomi: さいと
+  file: 00-preface
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-5
   term: コンピュータ
   yomi: こんぴゅーた
   file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-6
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-7
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-8
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-mh3o6e9r4sxz-1
+  term: データ
+  yomi: でーた
+  file: 01-computer-journey
   is_definition: true
   tag_type: dfn
-- id: idx-8sbxmc4jpc4f-1
+- id: idx-vma3sc9fnwku-9
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-2ts6goacbfh5-4
+  term: HTML
+  yomi: HTML
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-treptwai1d6c-2
+  term: 基本情報技術者
+  yomi: きほんじょうほうぎじゅつしゃ
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-10
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-1
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: true
+  tag_type: dfn
+- id: idx-wdz6tgep9scf-1
   term: 引数
   yomi: ひきすう
   file: 01-computer-journey
   is_definition: true
   tag_type: dfn
-- id: idx-aexe2jfy1ncv-1
+- id: idx-tqwhiz8pu9n3-1
   term: '404'
   yomi: '404'
   file: 01-computer-journey
   is_definition: true
   tag_type: dfn
-- id: idx-9nbh3eedsd8g-1
+- id: idx-mloz685v8117-5
+  term: コード
+  yomi: こーど
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-5k8s77pxa5az-1
   term: '500'
   yomi: '500'
   file: 01-computer-journey
   is_definition: true
   tag_type: dfn
-- id: idx-e306lryx98bk-1
+- id: idx-mloz685v8117-6
+  term: コード
+  yomi: こーど
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-m2t90f82d90a-1
   term: "!"
   yomi: "!"
   file: 01-computer-journey
   is_definition: true
   tag_type: dfn
-- id: idx-n1j9m0i21a6b-1
+- id: idx-brnjj29h2bqb-1
   term: "&&"
   yomi: "&&"
   file: 01-computer-journey
   is_definition: true
   tag_type: dfn
-- id: idx-s0dncgoeo49w-1
+- id: idx-l6kgjmerk6ue-1
   term: "||"
   yomi: "||"
   file: 01-computer-journey
   is_definition: true
   tag_type: dfn
-- id: idx-7qw2zlq79mb-1
+- id: idx-fpa4xjcgd7ew-1
   term: "|"
   yomi: "|"
   file: 01-computer-journey
   is_definition: true
   tag_type: dfn
-- id: idx-ivkel8mcu0lt-1
+- id: idx-87oqmiw2kgub-1
+  term: ビット
+  yomi: びっと
+  file: 01-computer-journey
+  is_definition: true
+  tag_type: dfn
+- id: idx-mvo3nwqt5vyv-1
   term: "&"
   yomi: "&"
   file: 01-computer-journey
   is_definition: true
   tag_type: dfn
-- id: idx-jhf27sqxm0vx-1
+- id: idx-87oqmiw2kgub-2
+  term: ビット
+  yomi: びっと
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-cg39ujnydfjq-1
   term: "!DOCTYPE"
   yomi: "!DOCTYPE"
   file: 01-computer-journey
   is_definition: true
   tag_type: dfn
-- id: idx-7v8ys280buq-1
+- id: idx-52nbhl4skrum-1
   term: "<h1>"
   yomi: "<h1>"
   file: 01-computer-journey
   is_definition: true
   tag_type: dfn
-- id: idx-2joloof0r2ci-1
+- id: idx-6oo0hpvvc2gs-1
   term: "</h1>"
   yomi: "</h1>"
   file: 01-computer-journey
   is_definition: true
   tag_type: dfn
-- id: idx-unpe5ou44wo2-1
+- id: idx-vma3sc9fnwku-11
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-12
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-13
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-14
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-15
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-15
+  term: サイト
+  yomi: さいと
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-16
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-17
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-18
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-19
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-20
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-21
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-22
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-23
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-2
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-3
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-24
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-4
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-5
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-25
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-26
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-27
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-wdz6tgep9scf-2
+  term: 引数
+  yomi: ひきすう
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-28
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-29
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-30
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-6
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-7
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-8
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-9
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-10
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-11
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-12
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-13
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-14
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-15
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-31
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-16
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-32
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-33
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-34
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-17
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-mh3o6e9r4sxz-2
+  term: データ
+  yomi: でーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-3g79ancfjuc3-1
+  term: プログラム
+  yomi: ぷろぐらむ
+  file: 01-computer-journey
+  is_definition: true
+  tag_type: dfn
+- id: idx-vma3sc9fnwku-35
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-18
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-3g79ancfjuc3-2
+  term: プログラム
+  yomi: ぷろぐらむ
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-3g79ancfjuc3-3
+  term: プログラム
+  yomi: ぷろぐらむ
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-36
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-19
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-3g79ancfjuc3-4
+  term: プログラム
+  yomi: ぷろぐらむ
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-20
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-21
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-22
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-23
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-24
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-25
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-26
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-27
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-28
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-37
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-87oqmiw2kgub-3
+  term: ビット
+  yomi: びっと
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-38
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-87oqmiw2kgub-4
+  term: ビット
+  yomi: びっと
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-87oqmiw2kgub-5
+  term: ビット
+  yomi: びっと
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-39
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-40
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-29
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-41
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-42
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-43
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-44
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-mh3o6e9r4sxz-3
+  term: データ
+  yomi: でーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-3g79ancfjuc3-5
+  term: プログラム
+  yomi: ぷろぐらむ
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-45
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-46
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-3g79ancfjuc3-6
+  term: プログラム
+  yomi: ぷろぐらむ
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-mh3o6e9r4sxz-4
+  term: データ
+  yomi: でーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-mh3o6e9r4sxz-5
+  term: データ
+  yomi: でーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-jmh2ou01bs5d-1
+  term: CPU
+  yomi: CPU
+  file: 01-computer-journey
+  is_definition: true
+  tag_type: dfn
+- id: idx-jmh2ou01bs5d-2
+  term: CPU
+  yomi: CPU
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-mloz685v8117-7
+  term: コード
+  yomi: こーど
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-87oqmiw2kgub-6
+  term: ビット
+  yomi: びっと
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-87oqmiw2kgub-7
+  term: ビット
+  yomi: びっと
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-87oqmiw2kgub-8
+  term: ビット
+  yomi: びっと
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-3g79ancfjuc3-7
+  term: プログラム
+  yomi: ぷろぐらむ
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-47
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-mh3o6e9r4sxz-6
+  term: データ
+  yomi: でーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-mh3o6e9r4sxz-7
+  term: データ
+  yomi: でーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-3g79ancfjuc3-8
+  term: プログラム
+  yomi: ぷろぐらむ
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-mh3o6e9r4sxz-8
+  term: データ
+  yomi: でーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-3g79ancfjuc3-9
+  term: プログラム
+  yomi: ぷろぐらむ
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-48
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-mh3o6e9r4sxz-9
+  term: データ
+  yomi: でーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-3g79ancfjuc3-10
+  term: プログラム
+  yomi: ぷろぐらむ
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-3g79ancfjuc3-11
+  term: プログラム
+  yomi: ぷろぐらむ
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-49
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-50
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-51
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-mh3o6e9r4sxz-10
+  term: データ
+  yomi: でーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-3g79ancfjuc3-12
+  term: プログラム
+  yomi: ぷろぐらむ
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-52
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-3g79ancfjuc3-13
+  term: プログラム
+  yomi: ぷろぐらむ
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-53
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-2
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-3
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-4
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-5
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-6
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-7
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-8
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-9
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-10
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-11
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-12
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-13
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-14
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-15
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-16
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-17
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-18
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-19
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-20
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-21
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-22
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-23
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-24
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-25
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-26
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-27
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-28
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-29
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-30
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-31
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-32
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-33
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-34
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-35
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-36
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-37
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-38
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-39
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-40
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-41
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-42
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-43
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-44
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-45
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-46
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-47
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-48
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-49
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-50
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-51
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-52
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-53
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-54
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-55
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-56
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-57
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-58
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-59
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-60
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-61
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-62
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-63
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-64
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-65
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-66
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-67
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-68
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-69
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-70
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-71
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-72
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-73
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-74
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-75
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-76
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-77
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-78
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-79
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-80
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-81
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-82
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-83
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-84
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-85
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-86
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-87
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-88
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-89
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-90
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-fpa4xjcgd7ew-91
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-54
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-mh3o6e9r4sxz-11
+  term: データ
+  yomi: でーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-mloz685v8117-8
+  term: コード
+  yomi: こーど
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-mh3o6e9r4sxz-12
+  term: データ
+  yomi: でーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-30
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-55
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-56
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-87oqmiw2kgub-9
+  term: ビット
+  yomi: びっと
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-87oqmiw2kgub-10
+  term: ビット
+  yomi: びっと
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-31
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-87oqmiw2kgub-11
+  term: ビット
+  yomi: びっと
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-32
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-87oqmiw2kgub-12
+  term: ビット
+  yomi: びっと
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-87oqmiw2kgub-13
+  term: ビット
+  yomi: びっと
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-33
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-34
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-57
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-58
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-87oqmiw2kgub-14
+  term: ビット
+  yomi: びっと
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-87oqmiw2kgub-15
+  term: ビット
+  yomi: びっと
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-35
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-59
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-60
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-61
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-62
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-2ts6goacbfh5-5
+  term: HTML
+  yomi: HTML
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-6vs7ivw6pdmx-2
+  term: CSS
+  yomi: CSS
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-16
+  term: サイト
+  yomi: さいと
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-17
+  term: サイト
+  yomi: さいと
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-mh3o6e9r4sxz-13
+  term: データ
+  yomi: でーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-63
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-64
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-mh3o6e9r4sxz-14
+  term: データ
+  yomi: でーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-36
+  term: 計算機
+  yomi: けいさんき
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-65
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-66
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-67
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-68
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-69
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: false
+  tag_type: span
+- id: idx-cj36zhmw9wkv-2
   term: 手動索引
   yomi: しゅどうさくいん
   file: 02-index-test
-  is_definition: true
-  tag_type: dfn
-- id: idx-ur8q9lx9j1iv-2
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-70
   term: コンピュータ
   yomi: こんぴゅーた
   file: 02-index-test
   is_definition: false
   tag_type: span
-- id: idx-ur8q9lx9j1iv-3
+- id: idx-1x6bioehos0b-37
+  term: 計算機
+  yomi: けいさんき
+  file: 02-index-test
+  is_definition: false
+  tag_type: span
+- id: idx-wdz6tgep9scf-3
+  term: 引数
+  yomi: ひきすう
+  file: 02-index-test
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-71
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-72
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-73
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-3g79ancfjuc3-14
+  term: プログラム
+  yomi: ぷろぐらむ
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-74
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-38
+  term: 計算機
+  yomi: けいさんき
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-75
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-76
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-77
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-39
+  term: 計算機
+  yomi: けいさんき
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-jmh2ou01bs5d-3
+  term: CPU
+  yomi: CPU
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-mh3o6e9r4sxz-15
+  term: データ
+  yomi: でーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-78
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-79
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-87oqmiw2kgub-16
+  term: ビット
+  yomi: びっと
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-80
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-3g79ancfjuc3-15
+  term: プログラム
+  yomi: ぷろぐらむ
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-40
+  term: 計算機
+  yomi: けいさんき
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-81
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-82
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-83
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-1x6bioehos0b-41
+  term: 計算機
+  yomi: けいさんき
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-84
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-85
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-mh3o6e9r4sxz-16
+  term: データ
+  yomi: でーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-mh3o6e9r4sxz-17
+  term: データ
+  yomi: でーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-86
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-mh3o6e9r4sxz-18
+  term: データ
+  yomi: でーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-3g79ancfjuc3-16
+  term: プログラム
+  yomi: ぷろぐらむ
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-87
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 03-computer
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-2
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-3
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-4
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-5
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-18
+  term: サイト
+  yomi: さいと
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-6
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-7
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-mloz685v8117-9
+  term: コード
+  yomi: こーど
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-8
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-9
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-10
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-19
+  term: サイト
+  yomi: さいと
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-11
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-12
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-mloz685v8117-10
+  term: コード
+  yomi: こーど
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-13
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-mloz685v8117-11
+  term: コード
+  yomi: こーど
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-14
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-15
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-16
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-17
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-18
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-mloz685v8117-12
+  term: コード
+  yomi: こーど
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-mloz685v8117-13
+  term: コード
+  yomi: こーど
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-19
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-20
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-21
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-22
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-23
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-24
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-mloz685v8117-14
+  term: コード
+  yomi: こーど
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-25
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-mloz685v8117-15
+  term: コード
+  yomi: こーど
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-26
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-27
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-28
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-mloz685v8117-16
+  term: コード
+  yomi: こーど
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-29
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-30
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-31
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-mloz685v8117-17
+  term: コード
+  yomi: こーど
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-32
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-33
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-34
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-35
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-mloz685v8117-18
+  term: コード
+  yomi: こーど
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-mloz685v8117-19
+  term: コード
+  yomi: こーど
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-36
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-37
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-38
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-39
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-20
+  term: サイト
+  yomi: さいと
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-40
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-usmk15ncmr9q-21
+  term: サイト
+  yomi: さいと
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-orzu9or6z54b-41
+  term: プロンプト
+  yomi: プロンプト
+  file: 90-practical-prompt-patterns39
+  is_definition: false
+  tag_type: span
+- id: idx-vma3sc9fnwku-88
   term: コンピュータ
   yomi: こんぴゅーた
   file: 99-postface

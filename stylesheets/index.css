@@ -98,6 +98,15 @@
   content: target-counter(attr(href url), page);
 }
 
+/* 前付け（00-preface等）への参照はローマ数字で表示 */
+.index-list dd a.frontmatter::after {
+  content: target-counter(attr(href url), page, lower-roman);
+}
+
+.index-list dd a.frontmatter:not(:last-child)::after {
+  content: target-counter(attr(href url), page, lower-roman) ", ";
+}
+
 /* ----------------------------------------------------------------
  * 索引語マーク（本文中）
  * ---------------------------------------------------------------- */

@@ -25,9 +25,13 @@
 /* 目次も前付け（front）としてローマ数字ノンブルを共通化 */
 body.toc { page: front; }
 
-@page front {
-  @bottom-center { content: counter(page, lower-roman); }
+/* TOCリンクのスタイル: 本文と同じ色、下線なし */
+#toc a.toc-title {
+  color: inherit;
+  text-decoration: none;
 }
+
+/* @page front は page-settings.css で定義済み */
 
 #toc {
   /* 目次コンテナ全体の文字組み設定（自動組版の自動スペース調整を抑制） */
@@ -100,7 +104,7 @@ body.toc { page: front; }
 #toc li.toc-chapter > .toc-title::after {
   margin-inline-start: 1em;
   font-size: clamp(11.2Q, calc(var(--paper-scale) * 16Q), 16Q);
-  content: leader(dotted) " " target-counter(attr(data-href url), page);
+  content: leader(dotted) " " target-counter(attr(href url), page);
 }
 
 li.toc-chapter {
@@ -188,7 +192,7 @@ li.toc-section {
 
 #toc li.toc-section > .toc-title::after {
   margin-inline-start: 0.5em;
-  content: leader(dotted) " " target-counter(attr(data-href url), page);
+  content: leader(dotted) " " target-counter(attr(href url), page);
 }
 
 /* 付録配下の節見出しは A-1, A-2 ... のように表示 */
@@ -262,8 +266,12 @@ li.toc-subsection {
  
 /* 項（h3）のページ番号 */
 .toc-subsection::after {
+  content: none;
+}
+
+#toc li.toc-subsection > .toc-title::after {
   margin-inline-start: 0.5em;
-  content: leader(dotted) " " target-counter(attr(data-href url), page);
+  content: leader(dotted) " " target-counter(attr(href url), page);
 }
 
 /* 目次セクションの左右ページ背景を無効化 */
