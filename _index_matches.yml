@@ -1,0 +1,190 @@
+---
+generated_at: '2026-01-07T23:56:38+09:00'
+total_matches: 17
+terms:
+  "!":
+  - yomi: "!"
+    link: 01-computer-journey.html#idx-e306lryx98bk-1
+    file: 01-computer-journey
+    is_definition: true
+  "!DOCTYPE":
+  - yomi: "!DOCTYPE"
+    link: 01-computer-journey.html#idx-jhf27sqxm0vx-1
+    file: 01-computer-journey
+    is_definition: true
+  "&":
+  - yomi: "&"
+    link: 01-computer-journey.html#idx-ivkel8mcu0lt-1
+    file: 01-computer-journey
+    is_definition: true
+  "&&":
+  - yomi: "&&"
+    link: 01-computer-journey.html#idx-n1j9m0i21a6b-1
+    file: 01-computer-journey
+    is_definition: true
+  '404':
+  - yomi: '404'
+    link: 01-computer-journey.html#idx-aexe2jfy1ncv-1
+    file: 01-computer-journey
+    is_definition: true
+  '500':
+  - yomi: '500'
+    link: 01-computer-journey.html#idx-9nbh3eedsd8g-1
+    file: 01-computer-journey
+    is_definition: true
+  "</h1>":
+  - yomi: "</h1>"
+    link: 01-computer-journey.html#idx-2joloof0r2ci-1
+    file: 01-computer-journey
+    is_definition: true
+  "<h1>":
+  - yomi: "<h1>"
+    link: 01-computer-journey.html#idx-7v8ys280buq-1
+    file: 01-computer-journey
+    is_definition: true
+  HTML:
+  - yomi: HTML
+    link: 01-computer-journey.html#idx-lzcrjvglj4k8-1
+    file: 01-computer-journey
+    is_definition: true
+  "|":
+  - yomi: "|"
+    link: 01-computer-journey.html#idx-7qw2zlq79mb-1
+    file: 01-computer-journey
+    is_definition: true
+  "||":
+  - yomi: "||"
+    link: 01-computer-journey.html#idx-s0dncgoeo49w-1
+    file: 01-computer-journey
+    is_definition: true
+  コンピュータ:
+  - yomi: こんぴゅーた
+    link: 01-computer-journey.html#idx-ur8q9lx9j1iv-1
+    file: 01-computer-journey
+    is_definition: true
+  - yomi: こんぴゅーた
+    link: 02-index-test.html#idx-ur8q9lx9j1iv-2
+    file: 02-index-test
+    is_definition: false
+  - yomi: こんぴゅーた
+    link: 99-postface.html#idx-ur8q9lx9j1iv-3
+    file: 99-postface
+    is_definition: false
+  基本情報技術者:
+  - yomi: きほんじょうほうぎじゅつしゃ
+    link: 01-computer-journey.html#idx-9szwaqtnkeje-1
+    file: 01-computer-journey
+    is_definition: true
+  引数:
+  - yomi: ひきすう
+    link: 01-computer-journey.html#idx-8sbxmc4jpc4f-1
+    file: 01-computer-journey
+    is_definition: true
+  手動索引:
+  - yomi: しゅどうさくいん
+    link: 02-index-test.html#idx-unpe5ou44wo2-1
+    file: 02-index-test
+    is_definition: true
+matches:
+- id: idx-lzcrjvglj4k8-1
+  term: HTML
+  yomi: HTML
+  file: 01-computer-journey
+  is_definition: true
+  tag_type: dfn
+- id: idx-9szwaqtnkeje-1
+  term: 基本情報技術者
+  yomi: きほんじょうほうぎじゅつしゃ
+  file: 01-computer-journey
+  is_definition: true
+  tag_type: dfn
+- id: idx-ur8q9lx9j1iv-1
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 01-computer-journey
+  is_definition: true
+  tag_type: dfn
+- id: idx-8sbxmc4jpc4f-1
+  term: 引数
+  yomi: ひきすう
+  file: 01-computer-journey
+  is_definition: true
+  tag_type: dfn
+- id: idx-aexe2jfy1ncv-1
+  term: '404'
+  yomi: '404'
+  file: 01-computer-journey
+  is_definition: true
+  tag_type: dfn
+- id: idx-9nbh3eedsd8g-1
+  term: '500'
+  yomi: '500'
+  file: 01-computer-journey
+  is_definition: true
+  tag_type: dfn
+- id: idx-e306lryx98bk-1
+  term: "!"
+  yomi: "!"
+  file: 01-computer-journey
+  is_definition: true
+  tag_type: dfn
+- id: idx-n1j9m0i21a6b-1
+  term: "&&"
+  yomi: "&&"
+  file: 01-computer-journey
+  is_definition: true
+  tag_type: dfn
+- id: idx-s0dncgoeo49w-1
+  term: "||"
+  yomi: "||"
+  file: 01-computer-journey
+  is_definition: true
+  tag_type: dfn
+- id: idx-7qw2zlq79mb-1
+  term: "|"
+  yomi: "|"
+  file: 01-computer-journey
+  is_definition: true
+  tag_type: dfn
+- id: idx-ivkel8mcu0lt-1
+  term: "&"
+  yomi: "&"
+  file: 01-computer-journey
+  is_definition: true
+  tag_type: dfn
+- id: idx-jhf27sqxm0vx-1
+  term: "!DOCTYPE"
+  yomi: "!DOCTYPE"
+  file: 01-computer-journey
+  is_definition: true
+  tag_type: dfn
+- id: idx-7v8ys280buq-1
+  term: "<h1>"
+  yomi: "<h1>"
+  file: 01-computer-journey
+  is_definition: true
+  tag_type: dfn
+- id: idx-2joloof0r2ci-1
+  term: "</h1>"
+  yomi: "</h1>"
+  file: 01-computer-journey
+  is_definition: true
+  tag_type: dfn
+- id: idx-unpe5ou44wo2-1
+  term: 手動索引
+  yomi: しゅどうさくいん
+  file: 02-index-test
+  is_definition: true
+  tag_type: dfn
+- id: idx-ur8q9lx9j1iv-2
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 02-index-test
+  is_definition: false
+  tag_type: span
+- id: idx-ur8q9lx9j1iv-3
+  term: コンピュータ
+  yomi: こんぴゅーた
+  file: 99-postface
+  is_definition: false
+  tag_type: span

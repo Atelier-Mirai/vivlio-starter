@@ -186,7 +186,7 @@ module Vivlio
 
           # 本文スキャン（contents/ のファイルは書き換えない）
           scanner = IndexMatchScanner.new
-          scanner.scan_all_chapters!(chapters, read_only: true)
+          scanner.scan_all_chapters!(chapters, read_only: false)
 
           # 索引ページ生成
           builder = IndexPageBuilder.new

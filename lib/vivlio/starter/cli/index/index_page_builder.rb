@@ -242,7 +242,7 @@ module Vivlio
 
             links.map do |link|
               %(<a href="#{link}"></a>)
-            end.join(', ')
+            end.join
           end
         end
       end

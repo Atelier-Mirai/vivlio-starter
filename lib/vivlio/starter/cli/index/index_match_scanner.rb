@@ -17,6 +17,7 @@
 
 require 'yaml'
 require 'fileutils'
+require 'cgi'
 require_relative '../common'
 require_relative 'yomi_inferrer'
 
@@ -46,7 +47,9 @@ module Vivlio
           def load_config_terms
             config_file = 'config/index_terms.yml'
             unless File.exist?(config_file)
-              Common.log_info("索引語辞書が見つかりません: #{config_file}")
+              Common.log_warn("索引語辞書が見つかりません: #{config_file}")
+              Common.log_warn('  → 手動マークアップ [用語|読み] のみが索引に載ります')
+              Common.log_warn('  → 自動索引機能を有効にするには: vs index:auto → vs index:apply')
               return []
             end
 
@@ -246,6 +249,21 @@ module Vivlio
                 token
               end
 
+              # 振り仮名記法 {漢字|ふりがな} を保護（索引対象から除外）
+              protected_line = protected_line.gsub(/(\{[^{}]*\|[^{}]*\})/) do |match|
+                token = "[[RUBY_TOKEN_#{placeholders.size}]]"
+                placeholders[token] = match
+                token
+              end
+
+              # インラインコード `...` を保護（索引対象から除外）
+              # コードブロック内のタグはHTMLでエスケープされるため、IDとして機能しない
+              protected_line = protected_line.gsub(/(`[^`]+`)/) do |match|
+                token = "[[CODE_TOKEN_#{placeholders.size}]]"
+                placeholders[token] = match
+                token
+              end
+
               # pattern が指定されていればそれを使用、なければ完全一致
               pattern = if config['pattern']
                           begin
@@ -314,8 +332,10 @@ module Vivlio
               'tag_type' => tag_name
             }
 
-            # タグを生成して返す
-            %(<#{tag_name} id="#{anchor_id}" class="index-term" data-yomi="#{yomi}">#{term_text}</#{tag_name}>)
+            # タグを生成して返す（HTMLタグをエスケープ）
+            escaped_term = CGI.escapeHTML(term_text)
+            escaped_yomi = CGI.escapeHTML(yomi.to_s)
+            %(<#{tag_name} id="#{anchor_id}" class="index-term" data-yomi="#{escaped_yomi}">#{escaped_term}</#{tag_name}>)
           end
 
           # 索引データを _index_matches.yml に保存

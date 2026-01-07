@@ -64,7 +64,7 @@ module Vivlio
                 'index' => IndexCommand,
                 'index:auto' => IndexAutoCommand,
                 'index:apply' => IndexApplyCommand,
-                'index:build' => IndexBuildCommand
+                'open' => OpenCommand
               }.freeze
             end
           end

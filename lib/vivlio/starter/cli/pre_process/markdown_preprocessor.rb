@@ -63,6 +63,7 @@ module Vivlio
           def run
             Common.log_info("#{context.source_path} → #{context.output_path}")
             apply_frontmatter!
+            strip_html_comments!
             normalize_image_paths!
             process_code_includes!
             normalize_html_block_boundaries!
@@ -307,6 +308,18 @@ module Vivlio
 
             context.content = context.content.sub(/^(\[\^url\d+\]:)/m, "#{hidden_span}\\1")
             Common.log_success("コンテナ内脚注参照を露出しました（#{container_footnotes.uniq.size}件）")
+          end
+
+          # HTMLコメント <!-- ... --> を削除する
+          # 複数行コメントにも対応
+          def strip_html_comments!
+            original_length = context.content.length
+            # 複数行対応のためマルチラインモードを使用
+            context.content = context.content.gsub(/<!--.*?-->/m, '')
+            removed_length = original_length - context.content.length
+            if removed_length > 0
+              Common.log_success("HTMLコメントを削除しました（#{removed_length} 文字）")
+            end
           end
 
           # 加工済みコンテンツを書き戻す
