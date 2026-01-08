@@ -310,9 +310,23 @@ module Vivlio
             preface_pages = (Build::Utilities.page_count('00-preface.pdf') || '0').to_i
             toc_pages = (Build::Utilities.page_count('_toc.pdf') || '0').to_i
 
+            # 00-preface.pdfが存在しない場合、テキスト検索で目次の位置を特定し、前書きのページ数を推測
+            if preface_pages.zero? && toc_pages.positive?
+              # 前書きは3ページ目から開始（_titlepage_legalpage.pdfの2ページ後）
+              # 目次の位置をテキスト検索で特定
+              toc_start = search_helpers[:search_markers].call(['目次'], 3, total_pages)
+              if toc_start && toc_start > 3
+                preface_pages = toc_start - 3  # 前書きのページ数を推測
+              end
+            end
+
             chapter_starts = {}
             chapter_ranges = {}
-            first_chapter_bn = chapter_order.find { |token| Common.get_file_type("#{token}.html") == 'chapter' }
+            # 本文章（01-89）の最初の章を特定（_titlepage, _legalpage, 00-preface, _toc は除外）
+            first_chapter_bn = chapter_order.find do |token|
+              num = Common.get_chapter_number(token)
+              num && num.to_i.between?(1, 89)
+            end
 
             ctx = build_page_range_context(
               chapter_ranges, chapter_starts, chapter_markers,

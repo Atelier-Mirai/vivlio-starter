@@ -80,6 +80,12 @@ terms:
   approved_at: '2026-01-08 01:10:36'
   auto_approved: false
   source: manual_markup
+- term: インターネット
+  yomi: いんたーねっと
+  pattern: "/インターネット/"
+  approved_at: '2026-01-08 19:42:31'
+  auto_approved: true
+  source: auto_extracted
 - term: 基本情報技術者
   yomi: きほんじょうほうぎじゅつしゃ
   pattern: "/基本情報技術者/"
@@ -119,6 +125,12 @@ terms:
   approved_at: '2026-01-08 01:10:36'
   auto_approved: false
   source: manual_markup
+- term: ソフトウェア
+  yomi: そふとうぇあ
+  pattern: "/ソフトウェア/"
+  approved_at: '2026-01-08 19:42:31'
+  auto_approved: true
+  source: auto_extracted
 - term: データ
   yomi: でーた
   pattern: "/データ/"
@@ -126,6 +138,12 @@ terms:
   auto_approved: true
   source: auto_extracted
   score: 406.2568074348483
+- term: 二進数
+  yomi: にしんすう
+  pattern: "/二進数/"
+  approved_at: '2026-01-08 19:42:31'
+  auto_approved: true
+  source: auto_extracted
 - term: 引数
   yomi: ひきすう
   pattern: "/引数/"
@@ -139,6 +157,12 @@ terms:
   auto_approved: true
   source: auto_extracted
   score: 372.7838288309763
+- term: プログラミング
+  yomi: ぷろぐらみんぐ
+  pattern: "/プログラミング/"
+  approved_at: '2026-01-08 19:42:31'
+  auto_approved: true
+  source: auto_extracted
 - term: プログラム
   yomi: ぷろぐらむ
   pattern: "/プログラム/"
