@@ -272,6 +272,10 @@ vs index:build
 
 ```yaml
 index:
+  # 基本設定
+  enabled: true                  # 索引機能を有効化
+  auto_discovery: true           # 自動抽出を有効化（falseで手動索引用語のみ）
+
   # スコア閾値
   auto_approve_threshold: 300    # この値以上は自動承認
   review_threshold: 150          # この値以上がレビュー対象
@@ -281,6 +285,10 @@ index:
   context_width: 40              # 文脈の表示幅（文字数）
   timezone: 'Asia/Tokyo'         # タイムゾーン（ラベル判定用）
 ```
+
+### 自動抽出機能
+
+
 
 ### 閾値の調整
 

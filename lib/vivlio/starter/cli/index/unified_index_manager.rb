@@ -47,6 +47,7 @@ module Vivlio
           auto_threshold = @config['auto_approve_threshold'] || 300
           review_threshold = @config['review_threshold'] || 150
           high_ratio = @config['high_candidates_ratio'] || 0.25
+          auto_discovery = @config.fetch('auto_discovery', true)
 
           Common.log_action('索引の自動処理を開始します...')
 
@@ -55,6 +56,13 @@ module Vivlio
           if manual_terms.any?
             @terms_manager.merge_terms!(manual_terms, source: 'manual_markup')
             Common.log_info("手動マークアップから #{manual_terms.size} 件の用語を登録しました")
+          end
+
+          # auto_discovery が無効の場合、自動候補抽出をスキップ
+          unless auto_discovery
+            Common.log_info('auto_discovery: false のため、自動候補抽出をスキップします')
+            Common.log_info('手動マークアップ [用語|読み] のみが索引に反映されます')
+            return
           end
 
           # 2. 候補抽出

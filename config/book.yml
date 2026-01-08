@@ -291,6 +291,10 @@ files:
 index:
   # 索引機能を有効化
   enabled: true
+
+  # 手動登録以外の語句を自動的に探索・提案するか
+  # false の場合、手動で指定した語句の抽出と読み推測のみ行います
+  auto_discovery: true
   
   # 索引ページのタイトル
   title: '索引'

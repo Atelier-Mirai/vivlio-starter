@@ -80,8 +80,9 @@ module Vivlio
             chapter_htmls = Dir.glob(File.join('.', '*.html')).select do |path|
               bn = File.basename(path, '.html')
               n = bn[/\A(\d+)-/, 1]&.to_i
-              next false unless n
-              keep_numbers.nil? || keep_numbers.include?(n)
+              allows_numeric = n && (keep_numbers.nil? || keep_numbers.include?(n))
+              special_includes = %w[_toc _indexpage].include?(bn)
+              allows_numeric || special_includes
             end.sort
 
             if chapter_htmls.any?
