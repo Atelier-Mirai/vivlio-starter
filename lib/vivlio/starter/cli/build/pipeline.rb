@@ -51,28 +51,30 @@ module Vivlio
           end
 
           # full mode: 全ステップを実行
+          # ビルドパイプライン概要:
+          #   Step  1-3:  準備（クリーン、画像最適化）
+          #   Step  4:    Markdown前処理（frontmatter付加、画像パス修正）
+          #   Step  5:    索引スキャン・索引ページ生成
+          #   Step  6:    Markdown→HTML変換
+          #   Step  7:    目次生成
+          #   Step  8:    全体PDF生成（前書き+目次+本文+付録+後書き+索引）
+          #   Step  9:    表紙・奥付PDF生成
+          #   Step 10:    PDF結合
+          #   Step 11:    アウトライン付与
+          #   Step 12:    リネーム・クリーンアップ
           def register_full_mode_steps
             add_step('Step  1 (clean)',                       -> { run_step1_clean })
             add_step('Step  2 (optimize images)',             -> { run_step2_optimize_images })
             add_step('Step  3 (prepare theme images)',        -> { Build::ImageOptimizer.prepare_theme_images! })
-            # Markdown の前処理（frontmatter, 画像パス修正など）
             add_step('Step  4 (preprocess sections)',         -> { Build::SectionBuilder.preprocess_sections!(keep) })
-            # 索引のスキャンとページ生成（Markdown を書き換えるため変換前に実行）
-            add_step('Step  4a (index scan and build)',       -> { run_step4a_index_processing })
-            # Markdown から HTML への最終変換
-            add_step('Step  4b (convert sections html)',      -> { Build::SectionBuilder.convert_sections_html!(keep) })
-            add_step('Step  6 (generate toc and pdf)',        -> { Build::TocGenerator.generate_toc_and_pdf!('.', keep) })
-            add_step('Step  7 (build overall pdf and split)', -> {
-              Common.log_info('[Step 7] 全体PDF生成 → toc(目次)とsections(本文+付録+索引+後書き)に分割')
-              Build::PdfBuilder.build_overall_pdf_and_split_from_dir!('.', keep)
-            })
-            add_step('Step  8 (build _preface_toc.pdf)',       -> { Build::PdfBuilder.build_frontmatter_pdf!(keep) })
+            add_step('Step  5 (index scan and build)',        -> { run_step5_index_processing })
+            add_step('Step  6 (convert sections html)',       -> { Build::SectionBuilder.convert_sections_html!(keep) })
+            add_step('Step  7 (generate toc and pdf)',        -> { Build::TocGenerator.generate_toc_and_pdf!('.', keep) })
+            add_step('Step  8 (build overall pdf)',           -> { Build::PdfBuilder.build_overall_pdf_from_dir!('.', keep) })
             add_step('Step  9 (build front pages and tail)',  -> { run_step9_front_pages_and_tail })
-            add_step('Step 10 (merge all pdfs with outline)', -> { Build::PdfMerger.merge_all_pdfs_only!(keep) })
+            add_step('Step 10 (merge all pdfs)',              -> { Build::PdfMerger.merge_all_pdfs!(keep) })
             add_step('Step 11 (apply outline to output pdf)', -> { Build::PdfMerger.add_outline_to_output_pdf!(keep) })
-            add_step('Step 12 (compress pdf)',                -> { run_step12_compress_pdf })
-            add_step('Step 13 (rename output pdfs)',          -> { Build::PdfFinalizer.rename_output_pdfs! })
-            add_step('Step 14 (final clean)',                 -> { run_step14_final_clean })
+            add_step('Step 12 (rename and final clean)',      -> { run_step12_rename_and_clean })
           end
 
           # single mode: 対象章のみビルド + entries.js + pdf
@@ -185,7 +187,7 @@ module Vivlio
             end
           end
 
-          # タイトル・リーガルページなど front/tail PDF を生成する
+          # Step 9: タイトル・リーガルページなど front/tail PDF を生成する
           def run_step9_front_pages_and_tail
             # 新仕様: 内部 basename 方式
             title_md    = File.join(Common::CONTENTS_DIR, '_titlepage.md')
@@ -249,8 +251,15 @@ module Vivlio
             Time.at(0)
           end
 
+          # Step 12: リネームと最終クリーンアップを実行
+          def run_step12_rename_and_clean
+            Build::PdfFinalizer.rename_output_pdfs!
+            run_compress_pdf_if_needed
+            run_final_clean
+          end
+
           # 必要に応じて生成済みPDFを圧縮する
-          def run_step12_compress_pdf
+          def run_compress_pdf_if_needed
             should_compress = determine_compress_setting
 
             if should_compress
@@ -290,23 +299,23 @@ module Vivlio
           end
 
           # 最終的なクリーン処理を担当する
-          def run_step14_final_clean
+          def run_final_clean
             if options[:clean] == false
-              Common.log_action('[Step 14] クリーンアップをスキップします（--no-clean）')
+              Common.log_action('[Step 12] クリーンアップをスキップします（--no-clean）')
             else
-              Common.log_action('[Step 14] 中間生成物をクリーンアップします…')
+              Common.log_action('[Step 12] 中間生成物をクリーンアップします…')
               CleanCommands.execute_clean({})
             end
           end
 
-          # 索引処理を実行
-          def run_step4a_index_processing
+          # Step 5: 索引処理を実行
+          def run_step5_index_processing
             unless IndexCommands.index_enabled?
-              Common.log_action('[Step 4a] 索引機能が無効のためスキップします（book.yml: index.enabled = false）')
+              Common.log_action('[Step 5] 索引機能が無効のためスキップします（book.yml: index.enabled = false）')
               return
             end
 
-            Common.log_action('[Step 4a] 索引語のスキャンと索引ページ生成を実行します…')
+            Common.log_action('[Step 5] 索引語のスキャンと索引ページ生成を実行します…')
 
             # 対象章を取得
             chapter_targets = if keep&.any?

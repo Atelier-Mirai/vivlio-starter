@@ -8,9 +8,12 @@
 #
 # マージ対象（順序）:
 #   1. _titlepage_legalpage.pdf: 表紙・法的ページ
-#   2. _preface_toc.pdf: 前書き・目次
-#   3. _sections.pdf: 本文・付録
-#   4. _colophon.pdf: 奥付
+#   2. _sections.pdf: 前書き・目次・本文・付録・後書き・索引（全体PDF）
+#   3. _colophon.pdf: 奥付
+#
+# 設計方針:
+#   - _sections.pdf は全体を1つのPDFとして生成（分割なし）
+#   - これにより索引から前書きへのリンクなど内部リンクが維持される
 #
 # アウトライン:
 #   - qpdf --add-outline で目次リンクを付与
@@ -32,14 +35,15 @@ module Vivlio
           module_function
 
           # Step 10: すべてのPDFを結合して output.pdf を生成
-          def merge_all_pdfs_only!(_keep = nil)
-            Common.log_action('[Step 10] フロント、前書き、目次、本文、付録、奥付を結合します…')
-            Common.log_info('[Step 10] 存在するPDFのみで結合を実行します')
-            # 新仕様: 内部名ベースの中間PDF
-            files_to_merge = %w[_titlepage_legalpage.pdf _preface_toc.pdf _sections.pdf _colophon.pdf]
+          def merge_all_pdfs!(_keep = nil)
+            Common.log_action('[Step 10] 表紙、本文、奥付を結合します…')
+            # 結合対象: 表紙・扉裏 + 全体PDF + 奥付
+            files_to_merge = %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf]
             existing_files = files_to_merge.select { |f| File.exist?(f) }
             missing_files  = files_to_merge - existing_files
-            Common.log_warn("[Step 10] 結合対象が見つかりません: #{missing_files.join(', ')}") if missing_files.any?
+            Common.log_info("[Step 10] 結合対象: #{existing_files.join(', ')}")
+            Common.log_warn("[Step 10] 見つからないPDF: #{missing_files.join(', ')}") if missing_files.any?
+
             if existing_files.empty?
               Common.log_error('[Step 10] 結合対象PDFがありません。処理を中止します')
               return false
