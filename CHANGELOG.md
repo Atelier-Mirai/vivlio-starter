@@ -67,7 +67,12 @@
 （次回リリース候補の変更はここに追加してください）
 
 ### Added
-- (なし)
+- **Import コマンドを実装**: 
+  - 追従変換ロジックを `Import::MarkdownConverter` / `ImageProcessor` / `YamlProcessor` に分離し、コードブロック言語推定（Rouge）やルビ・表・辞書的変換をモジュール化。
+  - `frontcover_pdffile` を検出して `covers/` にコピーし、`config/book.yml` の `output.cover.front` を自動更新。
+  - `vs doctor --fix` に Rouge を追加し、索引用の MeCab などと同様に不足時の自動セットアップに対応。
+  - `test/vivlio/starter/cli/import/` 配下に Markdown 変換・画像処理・YAML 操作の Minitest スイートを追加して回帰検証を確立。
+  - 著者向けマニュアル `book-vivlio-starter/20-import.md` を整備し、実行手順と確認項目を明文化。
 
 ### Fixed
 - (なし)
