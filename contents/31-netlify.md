@@ -19,7 +19,7 @@ Netlify は、「ウェブサイトを構築する最速の方法です」と紹
 じゃんけんゲームを、例えば「`study`フォルダ」に作成したのであれば、
 この「`study`フォルダ」をドラッグ＆ドロップするだけで、世界中に1時間だけ公開できます。
 
-![](./images/31-netlify/drag_and_drop.png)
+![](drag_and_drop.webp)
 
 
 ## Netlify（ネットリファイ） に会員登録する
@@ -46,7 +46,7 @@ Netlifyは、小規模利用 [^101]なら無料でサイトを公開できるサ
 
 - 1. ブラウザを開いて [Netlify](https://www.netlify.com/) にアクセスします。
 
-![](./images/31-netlify/netlify20.png)
+![](netlify20.webp)
 
 ![](netlify21.webp)
 
@@ -69,7 +69,7 @@ Netlifyは、小規模利用 [^101]なら無料でサイトを公開できるサ
 
 Nice to meet you! Let's get acquainted.(よろしくお願いします！知り合いになりましょう。)とご挨拶が有り、How ar your planning to use Netlify?(Netlifyの利用予定は？) と尋ねられます。「Personal」「Work」「School」「Client」から、今回は「Personal(個人)」を選びます。
 
-![](./images/31-netlify/netlify24.png)
+![](netlify24.webp)
 What kind of site do you want to build first?(まず、どんなサイトを作りたいですか？) との質問には、いくつか選択肢がありますが、「Personal site」にしておきます。
 
 What best describes your role?(あなたの役割は何ですか？) では、「Freelancer」「Hobby Developer」「Other」と選択肢がありますので、「Hobby Developer(趣味の開発者)」にします。
@@ -88,7 +88,7 @@ Netlify（ネットリファイ） にログインするには次のようにし
 
 - 1. ブラウザを開いて [Netlify](https://www.netlify.com/) にアクセスし、右上の青い「`Sign up`ボタン」の左側にある「`Log in`」を押します。
 
-![](./images/31-netlify/netlify25.png)
+![](netlify25.webp)
 
 ![](netlify26.webp)
 
@@ -100,7 +100,7 @@ Netlify（ネットリファイ） にログインするには次のようにし
 
 - 4. ログインすると、「Team overview」の画面が開きます。
 
-![](./images/31-netlify/netlify30b.png)
+![](netlify30b.webp)
 
 
 ### デプロイ（配備・配信）方法
@@ -112,7 +112,7 @@ Weblio 英和辞典によると `deploy` とは「〈部隊・兵力などを〉
 
 - 1. ログインすると、「Team overview」の画面が開いています。
 
-![](./images/31-netlify/netlify30a.png)
+![](netlify30a.webp)
 「`Sites`欄」には今まで公開したサイトが表示されますが、今はまだ何も公開したサイトがないので、代わりに公開方法の案内が表示されています。
 
 GitHub（ギットハブ） 等を使っている場合には「Import an existing project(既存のプロジェクトを取り込む)「Import from Git(Gitから取り込む)」ボタンを押すことで デプロイ（配備・配信）できます。 <br>
@@ -124,36 +124,36 @@ GitHub（ギットハブ） 等を使っている場合には「Import an existi
 
 公開したウェブサイトへの設定を続けるために、「Get Started(行動に移る)」ボタンを押します。
 
-![](./images/31-netlify/netlify31.png)
+![](netlify31.webp)
 
 
 ### デプロイしたサイト名を変更する
 
 - 1. 「Team overview」の画面になります。チームの活動状況が一覧できる画面です。「`Sites`」を押すと、今までにデプロイしたサイトの一覧画面へと遷移します。
 
-![](./images/31-netlify/netlify32.png)
+![](netlify32.webp)
 
 
 - 2. 「`steady-paletas-13bb99`」と付けられたサイト名は、Netlifyが適宜命名したものなので、改名しましょう。「`steady-paletas-13bb99`」をクリックすると、設定画面へ遷移します。
 
-![](./images/31-netlify/netlify33.png)
+![](netlify33.webp)
 
 - 3. 「`Site settings`」を押すと、「`steady-paletas-13bb99`」に関する様々な設定を行えます。もちろん名称を変更できますので、「`Site settings`」ボタンを押しましょう。
 
-![](./images/31-netlify/netlify34.png)
+![](netlify34.webp)
 
 - 4. 様々な設定を行うことが出来ますが、名称変更の為には 下に表示されている「`Change site name`」ボタンをクリックします。
 
-![](./images/31-netlify/netlify35.png)
+![](netlify35.webp)
 
 - 5. `Site name` 欄に新しいサイト名を入力します。アルファベット数字の他 `-(ハイフン)`が使えます。入力し終えたら、`Save` ボタンを押します。
 
-![](./images/31-netlify/netlify37.png)
+![](netlify37.webp)
 
 
 - 6. サイト名を `joyful-janken.netlify.app` に変更することが出来ました。
 
-![](./images/31-netlify/netlify38a.png)
+![](netlify38a.webp)
 
 ![](janken01.webp)
 
@@ -166,19 +166,19 @@ GitHub（ギットハブ） 等を使っている場合には「Import an existi
 
 - 1. 画面左上の Netlify のロゴマークをクリックします。Team overview の画面に遷移します。
 
-![](./images/31-netlify/netlify61.png)
+![](netlify61.webp)
 
 - 2. `Sites` をクリックします。今まで公開しているサイトの一覧が表示されますので、変更したいサイト(ここでは joyful-janken のみですが)を選び、クリックします。
 
-![](./images/31-netlify/netlify62.png)
+![](netlify62.webp)
 
 - 3. `Site overview` の画面が表示されます。このサイトに関する様々な設定を行うことが出来ます。 `Deploys` をクリックします。
 
-![](./images/31-netlify/netlify63.png)
+![](netlify63.webp)
 
 - 4. 画面中央 `Deploys` の欄に「Need to update your site? Drag and drop your site output folder here.サイトの更新が必要ですか？ サイトの出力フォルダをここにドラッグ＆ドロップしてください。」と表示されていますので、 ドラッグ＆ドロップ すると更新完了です。
 
-![](./images/31-netlify/netlify64a.png)
+![](netlify64a.webp)
 
 
 ### 新しいサイトを追加する
@@ -187,13 +187,13 @@ GitHub（ギットハブ） 等を使っている場合には「Import an existi
 
 - 1. 画面左上の Netlify のロゴマークをクリックします。Team overview の画面に遷移します。
 
-![](./images/31-netlify/netlify71a.png)
+![](netlify71a.webp)
 
 - 2. `Sites` をクリックします。今まで公開しているサイトの一覧が表示されます。<br>
 
 画面中央下に 「Want to deploy a new site without connectiong to Git? Drag and drop your site output folder here. Gitに接続することなく、新しいサイトをデプロイしたいですか？ サイトの出力フォルダをここにドラッグ＆ドロップしてください。」と表示されていますので、 ドラッグ＆ドロップ すると更新完了です。
 
-![](./images/31-netlify/netlify72a.png)
+![](netlify72a.webp)
 
 
 ### 公開したサイトを削除する
@@ -202,25 +202,25 @@ GitHub（ギットハブ） 等を使っている場合には「Import an existi
 
 - 1. 画面左上の Netlify のロゴマークをクリックします。Team overview の画面に遷移します。
 
-![](./images/31-netlify/netlify81a.png)
+![](netlify81a.webp)
 
 - 2. `Sites` をクリックします。今まで公開しているサイトの一覧が表示されますので、削除したいサイト(ここでは joyful-janken のみですが)を選び、クリックします。
 
-![](./images/31-netlify/netlify82.png)
+![](netlify82.webp)
 
 
 - 3. `Site overview` の画面が表示されます。このサイトに関する様々な設定を行うことが出来ます。 `Site settings` をクリックします。
 
-![](./images/31-netlify/netlify83.png)
+![](netlify83.webp)
 
 - 4. `Danger one` をクリックします。
 
-![](./images/31-netlify/netlify84.png)
+![](netlify84.webp)
 
 
 - 5. `Delete this site` をクリックします。
 
-![](./images/31-netlify/netlify85.png)
+![](netlify85.webp)
 
 - 6. 注意書きが表示されます。
 
@@ -245,15 +245,15 @@ Remember to remove any DNS records that point to this site's URL.
 
 注意書きを了承した上で、「Type in the name of the site to confirm. 確認のためサイト名を入力します。」と書かれていますので、サイト名を入力します。
 
-![](./images/31-netlify/netlify86.png)
+![](netlify86.webp)
 
 - 7. サイト名を入力すると、「Delete」ボタンが押せるようになりますので、クリックして削除は完了します。復活はできないので注意して使ってください。
 
-![](./images/31-netlify/netlify87.png)
+![](netlify87.webp)
 
 
 ### ログアウトする
 
 - 1. ログアウトするためには、右上の「Ｍ」ボタン（会員登録した名前によって変わります）をクリックします。いろいろなメニューが表示され、様々な設定を行うことができます。一番下の「`Sign out`」をクリックし、終了です。
 
-![](./images/31-netlify/netlify90.png)
+![](netlify90.webp)

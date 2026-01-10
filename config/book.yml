@@ -1,115 +1,341 @@
----
+# =============================================================
+#  📚 Vivlio Starter 書籍プロジェクト設定ガイド 📚
+# -------------------------------------------------------------
+#  このファイルは Vivlio Starter のブック全体の設定を管理します。
+#
+#  【主なセクション】
+#  • book        : 書籍情報（タイトル、著者、出版社など）
+#  • project     : プロジェクト情報（ファイル名、バージョン）
+#  • chapters    : ビルド対象にする章の指定
+#  • theme       : テーマ（色、装飾スタイル、背景画像）
+#  • page        : ページ設定（版面レイアウト）
+#  • typography  : タイポグラフィ設定（書体、色、装飾）
+#  • legal       : リーガル情報（免責、商標）
+#  • output      : 出力設定（PDF、印刷用PDF、EPUB）
+#  • directories : ディレクトリ設定
+#  • cache       : キャッシュ設定
+#  • commands    : コマンド設定
+#  • files       : ファイル設定
+#  • vivliostyle : Vivliostyle設定
+# =============================================================
+
+# ========================================
+# 書籍情報
+# ========================================
 book:
-  main_title: AIと学ぶモダンWebサイト入門
-  subtitle: 1つのWebサイトで学ぶHTML/CSSグリッドと<br>やさしいJavaScriptの基本
-  subtitle_style: none
-  series: 技術書典 19 新刊
-  release: 令和七年十一月三十日 初版発行
-  publisher: アトリヱ未來
-  contact: haruka@example.com
-  author: 早乙女遙香
-  language: ja
-  isbn: ''
+  # ----------------------------
+  # 書籍名
+  # ----------------------------
+  # main_title: 'はじめての技術書づくり'
+  # subtitle: 'Vivlio Starter 実践ガイド'
+  main_title: 'AIと学ぶモダンWebサイト入門'
+  subtitle: '1つのWebサイトで学ぶHTML/CSSグリッドと<br>やさしいJavaScriptの基本'
+  # subtitle_style: wave  # 副題の装飾（wave | bar | none）から選択
+  subtitle_style: none  # 副題の装飾（wave | bar | none）から選択
+
+  # ----------------------------
+  # 付帯情報（任意）
+  # ----------------------------
+  series: '技術書典 19 新刊'            # 連載名
+  release: '令和七年十一月三十日 初版発行' # 発行日
+  publisher: 'アトリヱ未來'                # 日光企画 ねこのしっぽ
+  contact: 'haruka@example.com'       # 連絡先
+  author: '早乙女遙香'                  # 著者名
+  language: 'ja'                       # 言語
+  isbn: ''                   # 任意（独自ISBN取得の場合。Kindle は ASIN 自動割り当て）
+
+# ========================================
+# プロジェクト情報
+# ========================================
 project:
-  name: ai_web_starter
-  version: 0.5.0
+  name: ai_web_starter  # 出力ファイル名のベース
+  version: 0.5.0        # 書籍のバージョン（デフォルト: 1.0.0）
+
+# ========================================
+# テーマ
+# ========================================
 theme:
-  style: image
-  color: blue
-  preface_color: indigo
-  appendix_color: yellow
-  frontispiece:
+  # ----------------------------
+  # 装飾スタイル
+  # ----------------------------
+  style: image     # image: 画像あり / simple: 画像なし
+
+  # ----------------------------
+  # テーマカラー
+  # ----------------------------
+  color: blue     # yellow / amber / orange / peach
+                    # coral / red / magenta / plum
+                    # purple / indigo / navy / blue
+                    # cyan / teal / mint / green / lime から選択
+                    # '#ff0000' のような HEX 記法も指定可
+
+  # 前書き/後書き専用カラー（オプション）
+  # 指定しない場合は上記の color と同じ色が使用されます
+  preface_color: indigo  # 前書き/後書きだけ別の色にしたい場合に指定
+
+  # 付録専用カラー（オプション）
+  # 指定しない場合は上記の color と同じ色が使用されます
+  appendix_color: yellow  # 付録だけ別の色にしたい場合に指定
+
+  # ----------------------------
+  # 章扉の背景画像
+  # ----------------------------
+  frontispiece: 
     image: cosmos
     padding: 10mm
     heading_width: 128mm
     lead_width: 128mm
+
+  # ----------------------------
+  # 節見出しの背景画像
+  # ----------------------------
   ornament: cosmos2
-  markers:
-    h3: "♣"
-    h4: "♦"
+
+  # ----------------------------
+  # 見出し記号
+  # ----------------------------
+  markers: 
+    h3: ♣ # 目見出しの記号。h3見出しの前に表示される。一文字推奨。
+    h4: ♦ # 号見出しの記号。h4見出しの前に表示される。一文字推奨。
+
+# ========================================
+# ページ設定（版面レイアウト）
+# ========================================
 page:
-  use: b5_airy
+  # プリセットを選択（page_presets.yml から）
+  # 紙サイズ、余白、文字サイズ、行送りなど版面の物理的構造を一括指定
+  # use: a5_compact
+  # use: b5_airy
+  # use: a4_standard
+  # 他のプリセット例:
+  # use: b5_airy      # B5 判 - 行間広め
+  # use: a5_paperback # A5 判 - 文庫本風
+  use: a4_standard  # A4 判 - 技術書向け
+
+# ========================================
+# タイポグラフィ設定（書体・色・装飾）
+# ========================================
 typography:
+  # ----------------------------
+  # 標準添付書体
+  # ----------------------------
+  # - 明朝体: Noto Serif JP
+  # - ゴシック体: Noto Sans JP
+  # - 丸ゴシック体: Zen Maru Gothic
+  # - プログラミング用フォント: hackgen35
+  
+  # ----------------------------
+  # 本文
+  # ----------------------------
   body:
     font: Noto Serif JP
+  
+  # ----------------------------
+  # 見出し
+  # ----------------------------
   heading:
     font: Noto Sans JP
+  
+  # ----------------------------
+  # コラム
+  # ----------------------------
   column:
     font: Zen Maru Gothic
-    font_size: 8pt
+    font_size: 8pt      # 本文より小さいため独立設定
+  
+  # ----------------------------
+  # コード
+  # ----------------------------
   code:
     font: hackgen35
+  
+  # ----------------------------
+  # ノンブル（ページ番号）
+  # ----------------------------
   folio:
     font: Noto Sans JP
-    placement: sides
+    placement: sides       # center / sides
+
+# ========================================
+# リーガル（免責・商標など）
+# ========================================
 legal:
+  # ----------------------------
+  # 免責事項
+  # ----------------------------
   disclaimer: |
     本書は教育目的で作成された入門書であり、情報の提供のみを目的としています。内容の正確性には万全を期しておりますが、技術的な詳細については、専門的な文献もあわせてご参照ください。
     本書の内容を参考にした結果生じた損害や、本書の内容を実行・運用・適用したことによって発生した問題について、著者・発行者および関係者は一切の責任を負いかねます。
+
+  # ----------------------------
+  # 商標に関する事項
+  # ----------------------------
   trademark: |
     本書に登場するシステム名や製品名は、関係各社の商標または登録商標です。
     本書では ™、®、© などのマークは省略しています。
+
+# ========================================
+# 出力設定
+# ========================================
 output:
-  targets: pdf
+  # ----------------------------
+  # 出力フォーマット
+  # ----------------------------
+  targets: pdf  # pdf / print_pdf / epub
+  # 文字列、カンマ区切り、配列すべて可
+  # 例:
+  # targets: pdf              # 単一指定
+  # targets: pdf, print_pdf   # カンマ区切り
+  # targets: [pdf, epub]      # 配列形式
+  
+  # ----------------------------
+  # ファイル名規則
+  # ----------------------------
   filename:
-    include_version: true
+    include_version: true  # ファイル名にバージョンを含めるか
+    # true:  vivlio_starter_v1.0.0.pdf
+    # false: vivlio_starter.pdf
+  
+  # ----------------------------
+  # PDF プレビュー設定
+  # ----------------------------
   pdf_preview:
-    close_existing_windows: true
-    window_bounds: "{4096, 0, 5120, 2160}"
+    close_existing_windows: true             # 既存PDFウィンドウを閉じる（macOS のみ）
+    window_bounds: "{4096, 0, 5120, 2160}"  # PDF表示位置とサイズ（macOS のみ）
+    # その他の設定例:
+    # window_bounds: "{0, 0, 1024, 768}"      # 左上角に小さなウィンドウ
+    # window_bounds: "{1920, 0, 1920, 1080}"  # 右側モニター全画面（フルHD）
+  
+  # ----------------------------
+  # PDF設定（閲覧用）
+  # ----------------------------
   pdf:
+    # ..............................
+    # 表表紙と裏表紙（本文と結合して出力）
+    # ..............................
     cover:
-      enabled: true
-      front: frontcover_rgb.pdf
-      back: backcover_rgb.pdf
+      enabled: true        # true で front/back を結合、false で除外
+      front: frontcover_rgb.pdf  # 表表紙（PDF）
+      back: backcover_rgb.pdf    # 裏表紙（PDF）
+    
+    # ..............................
+    # PDF圧縮設定
+    # ..............................
     compress:
-      enabled: false
-      suffix: _compressed
+      enabled: false         # 自動圧縮を有効にするか（処理時間が増加）
+      suffix: '_compressed'  # 圧縮ファイル名のサフィックス
+      # vs build --compress / --no-compress で上書き可能
+  
+  # ----------------------------
+  # 印刷所 入稿用PDF設定
+  # ----------------------------
   print_pdf:
-    bleed: 3mm
-    crop_marks: true
+    bleed: 3mm         # 塗り足し幅（必須）
+    crop_marks: true   # トンボを付ける（任意）
+    # 注: Vivliostyle CLI の --press-ready オプションで以下が自動実行される
+    #     - CMYK変換
+    #     - フォント埋め込み
+    #     - 印刷最適化
+    # 圧縮設定は適用されない（--press-ready で最適化済み）
+
+    # ..............................
+    # 表表紙と裏表紙（本文とは独立して出力）
+    # ..............................
     cover:
-      front: frontcover_cmyk.pdf
-      back: backcover_cmyk.pdf
+      front: frontcover_cmyk.pdf  # 表表紙（PDF/X-1a）
+      back: backcover_cmyk.pdf    # 裏表紙（PDF/X-1a）
+  
+  # ----------------------------
+  # EPUB設定
+  # ----------------------------
   epub:
-    cover: cover.jpg
-    layout: reflowable
+    cover: cover.jpg # EPUBカバー画像（1600x2560推奨）
+    layout: reflowable      # reflowable（リフロー型） / fixed（固定レイアウト型）
+    # 注: メタデータ（title, author, language, isbn, publisher）は
+    #     book セクションから自動的に流用される
+
+# ========================================
+# ディレクトリ設定
+# ========================================
 directories:
-  contents: contents
-  stylesheets: stylesheets
-  images: images
-  codes: codes
-  chapter_templates: chapter_templates
-  covers: covers
-  config: config
+  contents: 'contents'        # Markdownファイル
+  stylesheets: 'stylesheets' # CSSファイル
+  images: 'images'           # 画像ファイル
+  codes: 'codes'             # ソースコードファイル
+  chapter_templates: 'chapter_templates'     # 章テンプレートファイル
+  covers: 'covers'           # カバー画像ファイル
+  config: 'config'           # 各種設定ファイル
+
+# ========================================
+# キャッシュ設定
+# ========================================
 cache:
   enabled: true
-  dir: ".cache/vs/"
+  dir: .cache/vs/
+
+# ========================================
+# コマンド設定
+# ========================================
 commands:
-  vfm: vfm
+  vfm: 'vfm'                 # VFM（Vivliostyle Flavored Markdown）コマンド
+
+# ========================================
+# ファイル設定
+# ========================================
 files:
-  post_replace: post_replace_list.yml
+  post_replace: 'post_replace_list.yml'  # 後処理用置換リストファイル
+
+# ========================================
+# 索引設定
+# ========================================
 index:
+  # 索引機能を有効化
   enabled: true
+
+  # 手動登録以外の語句を自動的に探索・提案するか
+  # false の場合、手動で指定した語句の抽出と読み推測のみ行います
   auto_discovery: true
-  title: 索引
+  
+  # 索引ページのタイトル
+  title: '索引'
+  
+  # MeCab による読み自動推測を使用
   use_mecab: true
+  
+  # 自動承認スコア閾値（この値以上は自動的に index_terms.yml へ追加）
   auto_approve_threshold: 300
+  
+  # レビュー対象スコア閾値（この値以上でレビュー待ちキューへ）
   review_threshold: 150
-  timezone: Asia/Tokyo
+
+  # タイムゾーン (索引レビュー時の新着判定に利用)
+  # 既定値: 'Asia/Tokyo'（省略可能）
+  timezone: 'Asia/Tokyo'
+
+  # 推奨候補の分割比率（上位何%をHighとするか）
+  # 既定値: 0.25（25%）
   high_candidates_ratio: 0.25
+
+  # 文脈抽出の幅（キーワード前後の文字数）
+  # 小さな画面なら 20、大画面なら 60 など調整可能
+  # 既定値: 40
   context_width: 40
+
+  # 文脈抽出時に形態素境界で賢く文脈を引用するか
+  # 既定値: true
   smart_context_cutting: true
+
+# ========================================
+# Vivliostyle設定
+# ========================================
 vivliostyle:
+  # コンソール出力を抑制
   quiet: true
-  reading_progression: ltr
-  entries_file: entries.js
-  config_file: vivliostyle.config.js
-main_title: 初めてのウェブアプリ開発
-subtitle: じゃんけんゲームを創ろう
-language: ja
-project_name: janken
-author: アトリヱ未來
-publisher: 早乙女 遙香
-contact: contact@atelier-mirai.net
-release: 令和六年九月一日
-series: "「技術書典17 新刊」"
+  # 読み進め方向
+  reading_progression: 'ltr'  # 'ltr': 左から右へ（横書き）, 'rtl': 右から左へ（縦書き）
+  # エントリーファイル
+  entries_file: 'entries.js'
+  # 設定ファイル名
+  config_file: 'vivliostyle.config.js'
+
+

@@ -4,6 +4,7 @@ require 'fileutils'
 require 'yaml'
 
 require_relative 'common'
+require_relative 'build/catalog_updater'
 
 module Vivlio
   module Starter
@@ -197,6 +198,8 @@ module Vivlio
             FileUtils.rm_rf(temp_dir)
             Common.log_info('  temp/ を削除しました')
           end
+
+          cleanup_starter_markdown_dir!
         end
 
         # Markdown の追従変換処理
@@ -252,6 +255,80 @@ module Vivlio
             # <br> → .aki
             fixed.gsub!(/^\s*<br>\s*$/, '{.aki}')
 
+            # コードブロックのキャプション変換
+            # <span class="caption">▼janken.css</span>\n```  →  ```css:janken.css
+            fixed.gsub!(/<span class="caption">▼([^<]+)<\/span>\s*\n```/i) do
+              caption = Regexp.last_match(1).strip
+              ext = File.extname(caption).delete('.').downcase
+              ext = 'text' if ext.empty?
+              "```#{ext}:#{caption}"
+            end
+
+            # Markdown 画像パスの正規化
+            # ![alt](./images/chapter/file.png) → ![alt](file.webp)
+            # alt テキストに [] が含まれる場合も対応
+            fixed.gsub!(/!\[((?:[^\[\]]|\[[^\]]*\])*)\]\(\.\/images\/[^)]+\/([^\/]+)\.(?:png|jpg|jpeg|gif)\)/i) do
+              alt = Regexp.last_match(1)
+              filename = Regexp.last_match(2)
+              "![#{alt}](#{filename}.webp)"
+            end
+
+            # dl/dt/dd タグの Markdown 箇条書き変換
+            fixed.gsub!(/<dl>\s*(.*?)\s*<\/dl>/m) do
+              dl_content = Regexp.last_match(1)
+              items = []
+              # dt/dd ペアを抽出
+              dl_content.scan(/<dt>([^<]*)<\/dt>\s*<dd>\s*(.*?)\s*<\/dd>/m) do |dt, dd|
+                term = dt.strip
+                desc = dd.strip.gsub(/\n\s*/, "\n    ") # 継続行をインデント
+                # 複数行の場合、最初の改行の前に半角スペース2つを挿入
+                if desc.include?("\n")
+                  lines = desc.split("\n")
+                  desc = lines.map.with_index { |l, i| i == lines.size - 1 ? l : "#{l}  " }.join("\n")
+                end
+                items << "- **#{term}**\n    #{desc}"
+              end
+              items.join("\n\n") + "\n"
+            end
+
+            # HTML テーブルの Markdown 表への変換
+            fixed.gsub!(/<div class="table[^"]*">\s*(?:<p class="caption">([^<]*)<\/p>)?\s*<table>(.*?)<\/table>\s*<\/div>/m) do
+              caption = Regexp.last_match(1)
+              table_html = Regexp.last_match(2)
+              
+              rows = []
+              table_html.scan(/<tr[^>]*>(.*?)<\/tr>/m) do |row_content|
+                row = row_content[0]
+                cells = row.scan(/<t[hd][^>]*>(.*?)<\/t[hd]>/m).map { |c| c[0].strip }
+                rows << cells
+              end
+              
+              next '' if rows.empty?
+              
+              # Markdown テーブル生成
+              md_table = []
+              md_table << "**#{caption}**\n" if caption && !caption.strip.empty?
+              
+              # ヘッダー行
+              md_table << "| #{rows[0].join(' | ')} |"
+              md_table << "| #{rows[0].map { '---' }.join(' | ')} |"
+              
+              # データ行
+              rows[1..].each do |row|
+                md_table << "| #{row.join(' | ')} |"
+              end
+              
+              md_table.join("\n") + "\n"
+            end
+
+            # ルビ記法の変換: 漢字（よみ）→ {漢字|よみ}
+            # ひらがな・カタカナ両対応、漢字の範囲を直前の連続漢字に限定
+            fixed.gsub!(/([一-龯々]+)（([ぁ-んァ-ヶー]+)）/) do
+              kanji = Regexp.last_match(1)
+              reading = Regexp.last_match(2)
+              "{#{kanji}|#{reading}}"
+            end
+
             # HTML 文字実体参照をデコード
             require 'cgi'
             fixed = CGI.unescapeHTML(fixed)
@@ -291,6 +368,7 @@ module Vivlio
 
           # ResizeCommands で WebP 変換
           ResizeCommands.execute_resize_medium('images')
+          remove_original_image_files!
         end
 
         # source/ → codes/ コピー
@@ -334,10 +412,8 @@ module Vivlio
             new_catalog[new_key] = strip_re_extension(value)
           end
 
-          # config/catalog.yml に書き出し
-          FileUtils.mkdir_p('config')
-          File.write('config/catalog.yml', new_catalog.to_yaml)
-          Common.log_info('  config/catalog.yml を生成しました')
+          Build::CatalogUpdater.save_catalog(new_catalog)
+          Common.log_info('  config/catalog.yml を更新しました（コメント保持）')
         end
 
         # .re 拡張子を再帰的に除去
@@ -374,63 +450,67 @@ module Vivlio
                              {}
                            end
 
-          # book.yml を読み込んで更新
-          book_yml_path = 'config/book.yml'
-          book_yml = if File.exist?(book_yml_path)
-                       YAML.safe_load(File.read(book_yml_path), permitted_classes: [Symbol]) || {}
-                     else
-                       {}
-                     end
+          updates = []
+          main_title = extract_text(config['booktitle']) if config['booktitle']
+          updates << [%w[book main_title], main_title] if main_title && !main_title.empty?
 
-          # キーのマッピング
-          book_yml['main_title'] = extract_text(config['booktitle']) if config['booktitle']
-          book_yml['subtitle'] = extract_text(config['subtitle']) if config['subtitle']
-          book_yml['language'] = config['language'] if config['language']
-          book_yml['project_name'] = config['bookname'] if config['bookname']
+          subtitle = extract_text(config['subtitle']) if config['subtitle']
+          updates << [%w[book subtitle], subtitle] if subtitle && !subtitle.empty?
 
-          # author の処理
-          if config['aut']
-            authors = Array(config['aut'])
-            author_names = authors.map { |a| a.is_a?(Hash) ? a['name'] : a.to_s }
-            book_yml['author'] = author_names.first
+          updates << [%w[book language], config['language']] if config['language']
+
+          if config['bookname']
+            updates << [%w[project name], config['bookname']]
           end
 
-          # additional から publisher, contact を抽出
+          if config['aut']
+            authors = Array(config['aut'])
+            author_names = authors.map { |a| a.is_a?(Hash) ? a['name'] : a.to_s }.reject { |name| name.to_s.strip.empty? }
+            updates << [%w[book author], author_names.first] if author_names.any?
+          end
+
           if config['additional']
             config['additional'].each do |item|
+              next unless item.is_a?(Hash)
+
               case item['key']
               when '発行者'
-                book_yml['publisher'] = item['value']
+                value = extract_text(item['value'])
+                updates << [%w[book publisher], value] if value && !value.empty?
               when '連絡先'
                 contacts = Array(item['value'])
                 email = contacts.find { |c| c.to_s.include?('@') }
-                book_yml['contact'] = email if email
+                updates << [%w[book contact], email] if email
               end
             end
           end
 
-          # history から release を抽出
           if config['history']
             history = Array(config['history']).flatten
-            book_yml['release'] = history.first if history.first
+            release = history.find { |entry| !extract_text(entry).to_s.empty? }
+            release_text = extract_text(release) if release
+            updates << [%w[book release], release_text] if release_text && !release_text.empty?
           end
 
-          # pubevent_name → series
-          book_yml['series'] = config['pubevent_name'] if config['pubevent_name']
+          if config['pubevent_name']
+            updates << [%w[book series], config['pubevent_name']]
+          end
 
-          # config-starter.yml から pagesize を取得
           if config_starter.dig('starter', 'pagesize')
             pagesize = config_starter.dig('starter', 'pagesize')
-            book_yml['page'] ||= {}
-            book_yml['page']['use'] = case pagesize.to_s.upcase
-                                      when 'B5' then 'b5_airy'
-                                      when 'A5' then 'a5_compact'
-                                      else 'a4_standard'
-                                      end
+            page_use = case pagesize.to_s.upcase
+                       when 'B5' then 'b5_airy'
+                       when 'A5' then 'a5_compact'
+                       else 'a4_standard'
+                       end
+            updates << [%w[page use], page_use]
           end
 
-          File.write(book_yml_path, book_yml.to_yaml)
-          Common.log_info('  config/book.yml を更新しました')
+          if update_book_yaml_with_values(updates)
+            Common.log_info('  config/book.yml を更新しました（コメント保持）')
+          else
+            Common.log_info('  config/book.yml に反映すべき値がありませんでした')
+          end
         end
 
         # 複数行テキストやハッシュから文字列を抽出
@@ -442,6 +522,99 @@ module Vivlio
             value.gsub(/\n/, ' ').strip
           else
             value.to_s
+          end
+        end
+
+        def update_book_yaml_with_values(updates)
+          book_yml_path = 'config/book.yml'
+          unless File.exist?(book_yml_path)
+            Common.log_warn("  #{book_yml_path} が見つからなかったため、更新をスキップします")
+            return false
+          end
+
+          lines = File.readlines(book_yml_path, encoding: 'utf-8')
+          updated = false
+
+          updates.each do |path, value|
+            next if value.nil?
+
+            replaced = replace_yaml_value_in_lines!(lines, path, value)
+            unless replaced
+              Common.log_warn("  #{book_yml_path} 内で #{path.join('.')} を更新できませんでした")
+            end
+            updated ||= replaced
+          end
+
+          if updated
+            File.write(book_yml_path, lines.join, encoding: 'utf-8')
+          end
+
+          updated
+        end
+
+        def replace_yaml_value_in_lines!(lines, path, value)
+          stack = []
+
+          lines.each_with_index do |line, idx|
+            next if line.lstrip.start_with?('#')
+            match = line.match(/^(\s*)([A-Za-z0-9_]+):(.*)$/)
+            next unless match
+
+            indent = match[1].length
+            key = match[2]
+
+            while stack.any? && stack.last[:indent] >= indent
+              stack.pop
+            end
+            stack << { key: key, indent: indent }
+
+            next unless stack.map { |item| item[:key] } == path
+
+            comment = match[3]&.match(/(\s+#.*)$/)&.[](1)
+            scalar = format_yaml_scalar(value)
+            new_line = "#{match[1]}#{key}: #{scalar}"
+            new_line += comment.to_s
+            new_line << "\n" unless line.end_with?("\n")
+            lines[idx] = new_line
+            return true
+          end
+
+          false
+        end
+
+        def format_yaml_scalar(value)
+          str = value.to_s
+          return "''" if str.empty?
+
+          str.dump
+        end
+
+        def cleanup_starter_markdown_dir!
+          return unless @starter_dir && @md_output_dir
+
+          md_dir = File.join(@starter_dir, @md_output_dir)
+          return unless Dir.exist?(md_dir)
+
+          FileUtils.rm_rf(md_dir)
+          Common.log_info("  #{@md_output_dir}/ を削除しました（Starter 側）")
+        rescue StandardError => e
+          Common.log_warn("  #{@md_output_dir}/ の削除に失敗しました: #{e.message}")
+        end
+
+        def remove_original_image_files!
+          removed = 0
+          Dir.glob(File.join('images', '**', '*')).each do |path|
+            next unless File.file?(path)
+            next unless path.match?(/\.(png|jpe?g|gif)$/i)
+
+            FileUtils.rm_f(path)
+            removed += 1
+          end
+
+          if removed.positive?
+            Common.log_info("  旧画像 (png/jpg/gif) を #{removed} 個削除しました")
+          else
+            Common.log_info('  削除対象の旧画像はありませんでした')
           end
         end
       end
