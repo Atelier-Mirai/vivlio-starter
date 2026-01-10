@@ -25,7 +25,13 @@ module Vivlio
 
           one :output, '出力ファイル名（省略時は設定に従う）', required: false
 
+          options do
+            option '-h/--help', 'このコマンドの使い方を表示', key: :help
+          end
+
           def call
+            return print_pdf_help if help_requested?
+
             PdfCommands.execute_pdf(context_options, output)
           end
 
@@ -38,6 +44,23 @@ module Vivlio
           def parent_options
             parent&.options || {}
           end
+
+          def help_requested?
+            options[:help] || help_flag_argument?(output)
+          end
+
+          def help_flag_argument?(value)
+            %w[-h --help].include?(value.to_s.strip)
+          end
+
+          def print_pdf_help
+            puts <<~USAGE
+              Usage: vs pdf [OUTPUT]
+
+              #{PdfCommands::PDF_DESC.dig(:pdf, :long).strip}
+            USAGE
+            exit 0
+          end
         end
 
         # pdf:compress コマンドの Samovar 実装
@@ -47,7 +70,13 @@ module Vivlio
           one :input, '入力PDFファイル', required: false
           one :output, '出力PDFファイル', required: false
 
+          options do
+            option '-h/--help', 'このコマンドの使い方を表示', key: :help
+          end
+
           def call
+            return print_pdf_compress_help if help_requested?
+
             PdfCommands.execute_pdf_compress(context_options, input, output)
           end
 
@@ -59,6 +88,23 @@ module Vivlio
 
           def parent_options
             parent&.options || {}
+          end
+
+          def help_requested?
+            options[:help] || help_flag_argument?(input) || help_flag_argument?(output)
+          end
+
+          def help_flag_argument?(value)
+            %w[-h --help].include?(value.to_s.strip)
+          end
+
+          def print_pdf_compress_help
+            puts <<~USAGE
+              Usage: vs pdf:compress [INPUT] [OUTPUT]
+
+              #{PdfCommands::PDF_DESC.dig(:compress, :long).strip}
+            USAGE
+            exit 0
           end
         end
       end
