@@ -46,11 +46,12 @@ vs import ../review_starter_directory
 1. Starter 同梱のスクリプトを使用して Re:VIEW 原稿を Markdown へ変換する。  
    - `review_starter_directory/lib/ruby/review-markdownmaker.rb`  
    - `review_starter_directory/lib/ruby/review-markdownbuilder.rb`
-2. 例: `system("ruby review_starter_directory/lib/ruby/review-markdownmaker.rb")` を実行すると `.md` が生成される。
+2. 例: `system("ruby review_starter_directory/lib/ruby/review-markdownmaker.rb")` を実行すると starter ディレクトリに `.md` が生成される。
 3. 生成された Markdown を vivlio-starter 側の `temp/` に配置し、`scripts/review_to_vivlio_md.rb` で追従変換を実施する。
    - `scripts/review_to_vivlio_md.rb` は、Starter の `lib/ruby/review-markdownmaker.rb` と `lib/ruby/review-markdownbuilder.rb` を用いて生成された Markdown を変換するための雛形となる。
    - ここでいう「変換スクリプト実行」とは、上記 2 つの Starter 付属スクリプトを起動して Markdown を得る処理を指す。該当ファイルが見つからない場合はエラーで終了させる。
 4. 調整後のファイルを `contents/` へ移動する。
+5. 作業終了後、`temp/` を削除する。
 
 ### 画像（`jpg` / `gif` / `png`）→ `webp`
 

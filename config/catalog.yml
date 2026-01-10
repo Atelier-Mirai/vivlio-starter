@@ -1,55 +1,27 @@
-# ========================================
-# ビルド対象にする章の指定
-# ========================================
-# 一部の章のみを対象としたい場合は、以下のように指定します。
-  # - 11-install  # 拡張子(.md)は、省略できます。
-  # - 12-tutorial
-# CHAPTERS: 11-12, 13-15, 25 # 章番号のみでのカンマ区切り, 範囲指定も指定可能です。
-
-## まえがき
+---
 PREFACE:
-  - 00-preface
-  
-## 本文
+- 00-preface
 CHAPTERS:
-  - 01-computer-journey
-  - 02-index-test
-  - 03-computer
-
-## 付録
+- 歴史篇:
+  - 01-life
+  - 02-history
+  - 03-person
+  - 04-computers-work
+  - 05-binary
+  - 06-algorithm
+  - 07-programming
+  - '08-web'
+- 実践篇:
+  - 11-env
+  - 21-html
+  - 22-css
+  - 23-javascript
+  - 24-javascript
+  - 31-netlify
+  - 41-pwa
 APPENDICES:
-  - 90-practical-prompt-patterns39
-
-# ## あとがき
+- 91-books
+- 92-links
+- 93-cheats
 POSTFACE:
-  - 99-postface
-
-## 【Tips】
-##
-## ・付録やまえがきやあとがきがなければ、空にする。
-##   例：
-##
-##     PREFACE:
-##
-##     CHAPTERS:
-##       - 01-install.re
-##
-##     APPENDICES:
-##
-##     POSTFACE:
-##
-##
-## ・第I部、第II部、…のように「部」を使うには、次のようにする。
-##   （部タイトルの最後に半角の「:」をつけることに注意）
-##
-##     CHAPTERS:
-##       - 初級編:
-##           - 01-install.re
-##           - 02-tutorial.re
-##       - 中級編:
-##           - 03-syntax.re
-##           - 04-customize.re
-##       - 上級編:
-##           - 05-faq.re
-##           - 06-bestpractice.re
-##
+- 99-postface
