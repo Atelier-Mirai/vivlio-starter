@@ -4,7 +4,11 @@ require 'fileutils'
 require 'yaml'
 
 require_relative 'common'
+require_relative 'build/catalog_loader'
 require_relative 'build/catalog_updater'
+require_relative 'import/markdown_converter'
+require_relative 'import/image_processor'
+require_relative 'import/yaml_processor'
 
 module Vivlio
   module Starter
@@ -58,10 +62,10 @@ module Vivlio
 
           cleanup_existing_directories!
           convert_re_to_md!
-          convert_images_to_webp!
+          Import::ImageProcessor.convert_to_webp!(@starter_dir)
           copy_source_to_codes!
-          convert_catalog!
-          convert_config!
+          Import::YamlProcessor.convert_catalog!(@starter_dir)
+          convert_config_with_cover!
 
           Common.log_success('インポートが完了しました')
           0
@@ -185,7 +189,7 @@ module Vivlio
             end
 
             # 追従変換を実行
-            post_process_markdown!(temp_dir)
+            Import::MarkdownConverter.process!(temp_dir)
 
             # contents/ に移動
             Dir.glob(File.join(temp_dir, '*.md')).each do |md_file|
@@ -202,175 +206,6 @@ module Vivlio
           cleanup_starter_markdown_dir!
         end
 
-        # Markdown の追従変換処理
-        def post_process_markdown!(temp_dir)
-          Common.log_info('  追従変換を実行中...')
-
-          Dir.glob(File.join(temp_dir, '*.md')).each do |md_path|
-            markdown = File.read(md_path)
-            fixed = markdown.dup
-
-            # <img> タグを Markdown 画像記法に変換
-            # HTML の img タグを検出し、ファイル名部分だけを抽出して webp に書き換える
-            fixed.gsub!(/<img src=".*\/([^\/]+)\.(?:png|jpg|jpeg|gif)">/i) do
-              file_name_no_ext = Regexp.last_match(1)
-              "![](#{file_name_no_ext}.webp)"
-            end
-
-            # フェンス記法
-            {
-              'abstract'   => 'chapter-lead',
-              'tip'        => 'tip',
-              'note'       => 'note',
-              'notice'     => 'notice',
-              'centering'  => 'centering',
-              'flushright' => 'text-right',
-            }.each do |tag, klass|
-              fixed.gsub!(/^\[#{tag}\][ \t]*\n(.*?)\n\[\/#{tag}\][ \t]*$/m) do
-                inner = Regexp.last_match(1).strip # 前後の空白や余計な改行を一括除去
-                ":::{.#{klass}}\n#{inner}\n:::\n"
-              end
-            end
-
-            # [column] ブロックはタイトルを許容する
-            fixed.gsub!(/^\[column\](?:[ \t]+(.+?))?\s*\n(.*?)\n\[\/column\][ \t]*$/m) do
-              title = Regexp.last_match(1)
-              body  = Regexp.last_match(2).strip
-              inner = []
-              inner << title.to_s.strip unless title.to_s.strip.empty?
-              inner << body unless body.empty?
-              "::: {.column}\n#{inner.join("\n")}\n:::\n"
-            end
-
-            # [quote] → 引用ブロック
-            fixed.gsub!(/^\[quote\][^\n]*\n(.*?)^\[\/quote\]\s*$/m) do
-              # strip ではなく、前後の「空行のみ」を削る
-              inner = Regexp.last_match(1).gsub(/\A\n+|\n+\z/, '')
-              
-              # 全ての行（空行含む）の先頭に "> " を付与
-              # 空行でも "> " (スペースあり) にすることで、引用の継続を確実にする
-              inner.lines.map { |l| "> #{l.rstrip}".strip }.join("\n") + "\n\n"
-            end
-
-            # <br> → .aki
-            fixed.gsub!(/^\s*<br>\s*$/, '{.aki}')
-
-            # コードブロックのキャプション変換
-            # <span class="caption">▼janken.css</span>\n```  →  ```css:janken.css
-            fixed.gsub!(/<span class="caption">▼([^<]+)<\/span>\s*\n```/i) do
-              caption = Regexp.last_match(1).strip
-              ext = File.extname(caption).delete('.').downcase
-              ext = 'text' if ext.empty?
-              "```#{ext}:#{caption}"
-            end
-
-            # Markdown 画像パスの正規化
-            # ![alt](./images/chapter/file.png) → ![alt](file.webp)
-            # alt テキストに [] が含まれる場合も対応
-            fixed.gsub!(/!\[((?:[^\[\]]|\[[^\]]*\])*)\]\(\.\/images\/[^)]+\/([^\/]+)\.(?:png|jpg|jpeg|gif)\)/i) do
-              alt = Regexp.last_match(1)
-              filename = Regexp.last_match(2)
-              "![#{alt}](#{filename}.webp)"
-            end
-
-            # dl/dt/dd タグの Markdown 箇条書き変換
-            fixed.gsub!(/<dl>\s*(.*?)\s*<\/dl>/m) do
-              dl_content = Regexp.last_match(1)
-              items = []
-              # dt/dd ペアを抽出
-              dl_content.scan(/<dt>([^<]*)<\/dt>\s*<dd>\s*(.*?)\s*<\/dd>/m) do |dt, dd|
-                term = dt.strip
-                desc = dd.strip.gsub(/\n\s*/, "\n    ") # 継続行をインデント
-                # 複数行の場合、最初の改行の前に半角スペース2つを挿入
-                if desc.include?("\n")
-                  lines = desc.split("\n")
-                  desc = lines.map.with_index { |l, i| i == lines.size - 1 ? l : "#{l}  " }.join("\n")
-                end
-                items << "- **#{term}**\n    #{desc}"
-              end
-              items.join("\n\n") + "\n"
-            end
-
-            # HTML テーブルの Markdown 表への変換
-            fixed.gsub!(/<div class="table[^"]*">\s*(?:<p class="caption">([^<]*)<\/p>)?\s*<table>(.*?)<\/table>\s*<\/div>/m) do
-              caption = Regexp.last_match(1)
-              table_html = Regexp.last_match(2)
-              
-              rows = []
-              table_html.scan(/<tr[^>]*>(.*?)<\/tr>/m) do |row_content|
-                row = row_content[0]
-                cells = row.scan(/<t[hd][^>]*>(.*?)<\/t[hd]>/m).map { |c| c[0].strip }
-                rows << cells
-              end
-              
-              next '' if rows.empty?
-              
-              # Markdown テーブル生成
-              md_table = []
-              md_table << "**#{caption}**\n" if caption && !caption.strip.empty?
-              
-              # ヘッダー行
-              md_table << "| #{rows[0].join(' | ')} |"
-              md_table << "| #{rows[0].map { '---' }.join(' | ')} |"
-              
-              # データ行
-              rows[1..].each do |row|
-                md_table << "| #{row.join(' | ')} |"
-              end
-              
-              md_table.join("\n") + "\n"
-            end
-
-            # ルビ記法の変換: 漢字（よみ）→ {漢字|よみ}
-            # ひらがな・カタカナ両対応、漢字の範囲を直前の連続漢字に限定
-            fixed.gsub!(/([一-龯々]+)（([ぁ-んァ-ヶー]+)）/) do
-              kanji = Regexp.last_match(1)
-              reading = Regexp.last_match(2)
-              "{#{kanji}|#{reading}}"
-            end
-
-            # HTML 文字実体参照をデコード
-            require 'cgi'
-            fixed = CGI.unescapeHTML(fixed)
-
-            File.write(md_path, fixed) if fixed != markdown
-          end
-        end
-
-        # 画像の WebP 変換
-        def convert_images_to_webp!
-          Common.log_action('[Step 3] 画像を WebP に変換します')
-
-          starter_images = File.join(@starter_dir, 'images')
-          unless Dir.exist?(starter_images)
-            Common.log_warn("  images/ ディレクトリが見つかりません: #{starter_images}")
-            return
-          end
-
-          # 画像をコピー
-          patterns = %w[png jpg jpeg gif PNG JPG JPEG GIF]
-          files = patterns.flat_map { |ext| Dir.glob(File.join(starter_images, "**/*.#{ext}")) }
-
-          if files.empty?
-            Common.log_info('  変換対象の画像がありません')
-            return
-          end
-
-          files.each do |src|
-            # ディレクトリ構造を維持してコピー
-            relative = src.sub("#{starter_images}/", '')
-            dest_dir = File.join('images', File.dirname(relative))
-            FileUtils.mkdir_p(dest_dir)
-            FileUtils.cp(src, File.join(dest_dir, File.basename(src)))
-          end
-
-          Common.log_info("  #{files.size} 個の画像をコピーしました")
-
-          # ResizeCommands で WebP 変換
-          ResizeCommands.execute_resize_medium('images')
-          remove_original_image_files!
-        end
-
         # source/ → codes/ コピー
         def copy_source_to_codes!
           Common.log_action('[Step 4] source/ → codes/ をコピーします')
@@ -385,215 +220,35 @@ module Vivlio
           Common.log_info("  source/ の内容を codes/ にコピーしました")
         end
 
-        # catalog.yml の変換
-        def convert_catalog!
-          Common.log_action('[Step 5] catalog.yml を変換します')
-
-          starter_catalog = File.join(@starter_dir, 'catalog.yml')
-          unless File.exist?(starter_catalog)
-            Common.log_warn("  catalog.yml が見つかりません: #{starter_catalog}")
-            return
-          end
-
-          catalog = YAML.safe_load(File.read(starter_catalog), permitted_classes: [Symbol])
-
-          # キー名の変換
-          new_catalog = {}
-          key_map = {
-            'PREDEF' => 'PREFACE',
-            'CHAPS' => 'CHAPTERS',
-            'APPENDIX' => 'APPENDICES',
-            'POSTDEF' => 'POSTFACE'
-          }
-
-          catalog.each do |key, value|
-            new_key = key_map[key] || key
-            # .re 拡張子を除去
-            new_catalog[new_key] = strip_re_extension(value)
-          end
-
-          Build::CatalogUpdater.save_catalog(new_catalog)
-          Common.log_info('  config/catalog.yml を更新しました（コメント保持）')
-        end
-
-        # .re 拡張子を再帰的に除去
-        def strip_re_extension(value)
-          case value
-          when Array
-            value.map { |v| strip_re_extension(v) }
-          when Hash
-            value.transform_keys { |k| k.to_s.sub(/\.re$/, '') }
-                 .transform_values { |v| strip_re_extension(v) }
-          when String
-            value.sub(/\.re$/, '')
-          else
-            value
-          end
-        end
-
-        # config.yml / config-starter.yml の変換
-        def convert_config!
+        # config.yml / config-starter.yml の変換と表紙 PDF のコピー
+        #
+        # config-starter.yml に frontcover_pdffile の指定がある場合、
+        # 表紙 PDF を covers/ にコピーし、book.yml の output.cover.front を更新する
+        def convert_config_with_cover!
           Common.log_action('[Step 6] config.yml を変換します')
 
-          starter_config = File.join(@starter_dir, 'config.yml')
-          starter_config_starter = File.join(@starter_dir, 'config-starter.yml')
+          # 基本的な設定変換
+          Import::YamlProcessor.convert_config!(@starter_dir)
 
-          unless File.exist?(starter_config)
-            Common.log_warn("  config.yml が見つかりません: #{starter_config}")
+          # 表紙 PDF の処理
+          starter_config_starter = File.join(@starter_dir, 'config-starter.yml')
+          return unless File.exist?(starter_config_starter)
+
+          config_starter = YAML.safe_load(File.read(starter_config_starter), permitted_classes: [Symbol])
+          cover_filename = config_starter.dig('starter', 'frontcover_pdffile')
+          return unless cover_filename
+
+          # PDF のみ対応
+          unless cover_filename.downcase.end_with?('.pdf')
+            Common.log_info("  表紙ファイル #{cover_filename} は PDF ではないためスキップします")
             return
           end
 
-          config = YAML.safe_load(File.read(starter_config), permitted_classes: [Symbol])
-          config_starter = if File.exist?(starter_config_starter)
-                             YAML.safe_load(File.read(starter_config_starter), permitted_classes: [Symbol])
-                           else
-                             {}
-                           end
-
-          updates = []
-          main_title = extract_text(config['booktitle']) if config['booktitle']
-          updates << [%w[book main_title], main_title] if main_title && !main_title.empty?
-
-          subtitle = extract_text(config['subtitle']) if config['subtitle']
-          updates << [%w[book subtitle], subtitle] if subtitle && !subtitle.empty?
-
-          updates << [%w[book language], config['language']] if config['language']
-
-          if config['bookname']
-            updates << [%w[project name], config['bookname']]
-            updates << [%w[project version], '0.1.0']
-          end
-
-          if config['aut']
-            authors = Array(config['aut'])
-            author_names = authors.map { |a| a.is_a?(Hash) ? a['name'] : a.to_s }.reject { |name| name.to_s.strip.empty? }
-            updates << [%w[book author], author_names.first] if author_names.any?
-          end
-
-          if config['additional']
-            config['additional'].each do |item|
-              next unless item.is_a?(Hash)
-
-              case item['key']
-              when '発行者'
-                value = extract_text(item['value'])
-                updates << [%w[book publisher], value] if value && !value.empty?
-              when '連絡先'
-                contacts = Array(item['value'])
-                email = contacts.find { |c| c.to_s.include?('@') }
-                updates << [%w[book contact], email] if email
-              end
-            end
-          end
-
-          if config['history']
-            history = Array(config['history']).flatten
-            release = history.find { |entry| !extract_text(entry).to_s.empty? }
-            release_text = extract_text(release) if release
-            updates << [%w[book release], release_text] if release_text && !release_text.empty?
-          end
-
-          if config['pubevent_name']
-            updates << [%w[book series], config['pubevent_name']]
-          end
-
-          if config_starter.dig('starter', 'pagesize')
-            pagesize = config_starter.dig('starter', 'pagesize')
-            page_use = case pagesize.to_s.upcase
-                       when 'B5' then 'b5_airy'
-                       when 'A5' then 'a5_compact'
-                       else 'a4_standard'
-                       end
-            updates << [%w[page use], page_use]
-          end
-
-          if update_book_yaml_with_values(updates)
-            Common.log_info('  config/book.yml を更新しました（コメント保持）')
-          else
-            Common.log_info('  config/book.yml に反映すべき値がありませんでした')
-          end
-        end
-
-        # 複数行テキストやハッシュから文字列を抽出
-        def extract_text(value)
-          case value
-          when Hash
-            value['name'] || value.values.first
-          when String
-            value.gsub(/\n/, ' ').strip
-          else
-            value.to_s
-          end
-        end
-
-        def update_book_yaml_with_values(updates)
-          book_yml_path = 'config/book.yml'
-          unless File.exist?(book_yml_path)
-            Common.log_warn("  #{book_yml_path} が見つからなかったため、更新をスキップします")
-            return false
-          end
-
-          lines = File.readlines(book_yml_path, encoding: 'utf-8')
-          updated = false
-
-          updates.each do |path, value|
-            next if value.nil?
-
-            replaced = replace_yaml_value_in_lines!(lines, path, value)
-            unless replaced
-              Common.log_warn("  #{book_yml_path} 内で #{path.join('.')} を更新できませんでした")
-            end
-            updated ||= replaced
-          end
-
-          if updated
-            File.write(book_yml_path, lines.join, encoding: 'utf-8')
-          end
-
-          updated
-        end
-
-        def replace_yaml_value_in_lines!(lines, path, value)
-          stack = []
-
-          lines.each_with_index do |line, idx|
-            next if line.lstrip.start_with?('#')
-            match = line.match(/^(\s*)([A-Za-z0-9_]+):(.*)$/)
-            next unless match
-
-            indent = match[1].length
-            key = match[2]
-
-            while stack.any? && stack.last[:indent] >= indent
-              stack.pop
-            end
-            stack << { key: key, indent: indent }
-
-            next unless stack.map { |item| item[:key] } == path
-
-            comment = match[3]&.match(/(\s+#.*)$/)&.[](1)
-            scalar = format_yaml_scalar(value)
-            new_line = "#{match[1]}#{key}: #{scalar}"
-            new_line += comment.to_s
-            new_line << "\n"
-            lines[idx] = new_line
-            return true
-          end
-
-          false
-        end
-
-        def format_yaml_scalar(value)
-          case value
-          when Numeric
-            value.to_s
-          when TrueClass, FalseClass
-            value.to_s
-          else
-            str = value.to_s
-            return "''" if str.empty?
-            escaped = str.gsub(/["\\]/) { |m| "\\#{m}" }
-            "\"#{escaped}\""
+          # 表紙 PDF をコピー
+          if Import::ImageProcessor.copy_front_cover!(@starter_dir, cover_filename)
+            # book.yml の output.cover.front を更新
+            Import::YamlProcessor.update_cover_config!(cover_filename)
+            Common.log_info("  config/book.yml の output.cover.front を更新しました")
           end
         end
 
@@ -609,22 +264,6 @@ module Vivlio
           Common.log_warn("  #{@md_output_dir}/ の削除に失敗しました: #{e.message}")
         end
 
-        def remove_original_image_files!
-          removed = 0
-          Dir.glob(File.join('images', '**', '*')).each do |path|
-            next unless File.file?(path)
-            next unless path.match?(/\.(png|jpe?g|gif)$/i)
-
-            FileUtils.rm_f(path)
-            removed += 1
-          end
-
-          if removed.positive?
-            Common.log_info("  旧画像 (png/jpg/gif) を #{removed} 個削除しました")
-          else
-            Common.log_info('  削除対象の旧画像はありませんでした')
-          end
-        end
       end
     end
   end

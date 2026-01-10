@@ -135,7 +135,8 @@ module Vivlio
             'gs' => 'gs', # Ghostscript
             'imagemagick' => nil,
             'waifu2x' => nil,
-            'mecab' => 'mecab' # 索引機能の読み自動推測用
+            'mecab' => 'mecab', # 索引機能の読み自動推測用
+            'rouge' => nil # コードブロック言語推定用
           }
 
           Common.echo_always('🔎 環境診断を開始します…')
@@ -145,6 +146,8 @@ module Vivlio
                    command_exists?('convert') || command_exists?('magick')
                  when 'waifu2x'
                    waifu2x_available?
+                 when 'rouge'
+                   rouge_gem_available?
                  else
                    command_exists?(cmd)
                  end
@@ -286,6 +289,12 @@ module Vivlio
               system('brew install mecab mecab-ipadic')
             end
 
+            # Rouge（コードブロック言語推定用）
+            if missing.include?('rouge')
+              Common.echo_always('Rouge（コードブロック言語推定用）をインストールします…')
+              system('gem install rouge')
+            end
+
             install_ssl_certificates! if missing.include?('ssl-certificates')
           rescue StandardError => e
             Common.log_warn("brew 実行でエラー: #{e}")
@@ -330,6 +339,8 @@ module Vivlio
                    command_exists?('convert') || command_exists?('magick')
                  when 'waifu2x'
                    waifu2x_available? || (waifu2x_install_root && waifu2x_present_at?(waifu2x_install_root, os_family))
+                 when 'rouge'
+                   rouge_gem_available?
                  else
                    command_exists?(cmd)
                  end
@@ -543,7 +554,8 @@ module Vivlio
             'imagemagick' => 'ImageMagick',
             'waifu2x' => 'waifu2x-ncnn-vulkan',
             'ssl-certificates' => 'Google Fonts 用 SSL 証明書',
-            'mecab' => 'MeCab (索引機能用)'
+            'mecab' => 'MeCab (索引機能用)',
+            'rouge' => 'Rouge (コードブロック言語推定用)'
           }
           keys.uniq.map { |key| label_map[key] || key }
         end
@@ -562,6 +574,13 @@ module Vivlio
               file_executable?(resolved)
             end
           end
+        end
+
+        def rouge_gem_available?
+          require 'rouge'
+          true
+        rescue LoadError
+          false
         end
 
         def waifu2x_available?
