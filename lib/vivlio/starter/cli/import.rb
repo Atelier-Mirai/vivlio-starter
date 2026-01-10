@@ -461,6 +461,7 @@ module Vivlio
 
           if config['bookname']
             updates << [%w[project name], config['bookname']]
+            updates << [%w[project version], '0.1.0']
           end
 
           if config['aut']
@@ -574,7 +575,7 @@ module Vivlio
             scalar = format_yaml_scalar(value)
             new_line = "#{match[1]}#{key}: #{scalar}"
             new_line += comment.to_s
-            new_line << "\n" unless line.end_with?("\n")
+            new_line << "\n"
             lines[idx] = new_line
             return true
           end
@@ -583,10 +584,17 @@ module Vivlio
         end
 
         def format_yaml_scalar(value)
-          str = value.to_s
-          return "''" if str.empty?
-
-          str.dump
+          case value
+          when Numeric
+            value.to_s
+          when TrueClass, FalseClass
+            value.to_s
+          else
+            str = value.to_s
+            return "''" if str.empty?
+            escaped = str.gsub(/["\\]/) { |m| "\\#{m}" }
+            "\"#{escaped}\""
+          end
         end
 
         def cleanup_starter_markdown_dir!
