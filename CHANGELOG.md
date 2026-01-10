@@ -4,18 +4,10 @@
 
 記法は「Keep a Changelog」に基づき、Semantic Versioning（セマンティックバージョニング）に準拠します。
 
-
-
-
-### Planned
-
-- [Medium] 章・節に対する相互参照の整備（章番号ベースの cross reference）。本文中から「第◯章」「第◯節」を参照する簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。
-
 ### Pre-release Checklist
 - gem 公開時には `vivlio-starter.gemspec` の summary/description が現行仕様に即しているか再確認する。
 - `pre_process.rb` で参照する theme.css テンプレート（`lib/project_scaffold/stylesheets/theme.css`）が gem に同梱されているか確認する。
 - リリースノートの作成
-
 
 #### 実装済み
 - [High] 任意の複数章を指定して、フルビルドする
@@ -24,6 +16,13 @@
 - [High] 縦に長い表のレイアウト崩れ
 - [Medium] 見出しID・相互参照ショートコード（ref:foo → 自動リンク）。
 - [Medium] 図表キャプション規約の統一（Figure 1.1/表1.1 自動採番）。
+- [High] Re:View Starter -> Vivlio Starter (vs import実装完了)
+
+
+
+### Planned
+
+- [Medium] 章・節に対する相互参照の整備（章番号ベースの cross reference）。本文中から「第◯章」「第◯節」を参照する簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。
 
 #### ビルド/出力
 - 00, 01, (blank), 02, (blank), 03, (blank), 11-98(cssにより右頁始まり), (blank), 99 として結合
@@ -61,13 +60,23 @@
 - [High] ビルド時にcover画像も含むように
 - [High] 塗り足しやepub対応
 - [High] pdf_reader -> mdに
-- [High] Re:View Starter -> Vivlio Starter
 
 ## Unreleased
 （次回リリース候補の変更はここに追加してください）
 
 ### Added
-- **Import コマンドを実装**: 
+- (なし)
+
+### Fixed
+- (なし)
+
+### Changed
+- (なし)
+
+## 0.27.0 - 2026-01-10
+
+### Added
+- **Import コマンドを実装**:
   - 追従変換ロジックを `Import::MarkdownConverter` / `ImageProcessor` / `YamlProcessor` に分離し、コードブロック言語推定（Rouge）やルビ・表・辞書的変換をモジュール化。
   - `frontcover_pdffile` を検出して `covers/` にコピーし、`config/book.yml` の `output.cover.front` を自動更新。
   - `vs doctor --fix` に Rouge を追加し、索引用の MeCab などと同様に不足時の自動セットアップに対応。
