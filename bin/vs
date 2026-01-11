@@ -18,13 +18,9 @@ unless ENV['VS_DEBUG'] == '1' || ENV['VS_WARNINGS'] == '1' || ENV['VS_NO_REEXEC'
   end
 end
 
-# Quiet mode by default (suppress Ruby warnings). Enable with VS_DEBUG=1 or VS_WARNINGS=1
-$VERBOSE = nil unless ENV['VS_DEBUG'] == '1' || ENV['VS_WARNINGS'] == '1'
+APP_ROOT = File.expand_path('..', __dir__)
+$LOAD_PATH.unshift(File.join(APP_ROOT, 'lib')) unless $LOAD_PATH.include?(File.join(APP_ROOT, 'lib'))
 
-# Prefer local library when running from this repository
-libdir = File.expand_path('../lib', __dir__)
-$LOAD_PATH.unshift(libdir) if File.directory?(libdir) && !$LOAD_PATH.include?(libdir)
+require 'vivlio/starter/cli'
 
-require 'vivlio/starter'
-
-exit Vivlio::Starter::CLI.start(ARGV)
+Vivlio::Starter::CLI.start(ARGV)

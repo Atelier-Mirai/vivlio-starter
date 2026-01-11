@@ -32,25 +32,14 @@ module Vivlio
             option '--cache/-C', 'キャッシュのみを削除します', default: false, key: :cache
             option '--cover', '生成されたカバー画像のみを削除します', default: false, key: :cover
             option '--generated-images', '生成された扉絵/装飾などの画像を削除します', default: false, key: :generated_images
+            option '--all', 'すべての削除オプションをまとめて実行します', default: false, key: :all
             option '-h/--help', 'このコマンドの使い方を表示', key: :help
-          end
-
-          # 内部利用の --all オプションをパースするために手動で input をパッチする
-          def initialize(input = nil, **options)
-            @all_mode = false
-            if input.is_a?(Array) && input.include?('--all')
-              input.delete('--all')
-              @all_mode = true
-            end
-            super(input, **options)
           end
 
           def call
             return print_usage if options[:help]
 
-            opts = options.dup
-            opts[:all] = @all_mode
-            CleanCommands.execute_clean(opts)
+            CleanCommands.execute_clean(options.dup)
             0
           rescue SystemExit => e
             raise e

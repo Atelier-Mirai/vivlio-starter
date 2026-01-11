@@ -78,19 +78,17 @@ module Vivlio
           end
         end
 
+        # create:titlepage コマンド（内部コマンド）
         class CreateTitlepageCommand < Samovar::Command
           include CreateCommandHelpers
 
-          self.description = 'config/book.yml からタイトルページを生成します'
+          self.description = 'タイトルページを生成します（内部コマンド）'
 
           options do
             option '--force/-f', '既存ファイルを強制上書き', default: false, key: :force
-            option '-h/--help', 'このコマンドの使い方を表示', key: :help
           end
 
           def call
-            return print_usage if options[:help]
-
             CreateCommands.execute_titlepage(command_context(force: options[:force]))
             0
           rescue SystemExit => e
@@ -101,19 +99,17 @@ module Vivlio
           end
         end
 
+        # create:colophon コマンド（内部コマンド）
         class CreateColophonCommand < Samovar::Command
           include CreateCommandHelpers
 
-          self.description = 'config/book.yml から奥付 (_colophon.md) を生成します'
+          self.description = '奥付を生成します（内部コマンド）'
 
           options do
             option '--force/-f', '既存ファイルを強制上書き', default: false, key: :force
-            option '-h/--help', 'このコマンドの使い方を表示', key: :help
           end
 
           def call
-            return print_usage if options[:help]
-
             CreateCommands.execute_colophon(command_context(force: options[:force]))
             0
           rescue SystemExit => e
@@ -124,19 +120,17 @@ module Vivlio
           end
         end
 
+        # create:legalpage コマンド（内部コマンド）
         class CreateLegalpageCommand < Samovar::Command
           include CreateCommandHelpers
 
-          self.description = 'config/book.yml の legal 設定からリーガルページを生成します'
+          self.description = 'リーガルページを生成します（内部コマンド）'
 
           options do
             option '--force/-f', '既存ファイルを強制上書き', default: false, key: :force
-            option '-h/--help', 'このコマンドの使い方を表示', key: :help
           end
 
           def call
-            return print_usage if options[:help]
-
             CreateCommands.execute_legalpage(command_context(force: options[:force]))
             0
           rescue SystemExit => e

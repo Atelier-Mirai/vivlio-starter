@@ -65,13 +65,16 @@
 （次回リリース候補の変更はここに追加してください）
 
 ### Added
-- (なし)
+- **CLI ヘルプUXを刷新**:
+  - `help_spec.md` に基づき Public/Internal コマンドを明確に分類し、`vs --help` では Public コマンドのみカテゴリ別に表示。
+  - `vs pdf --help` 実行時に `pdf:compress` を案内し、`vs pdf:compress --help` で詳細な使用方法と引数解説を表示。
+  - Samovar の `print_usage` による統一ヘルプとミニテスト `help_spec_test.rb` を追加して、代表的なコマンドのヘルプ出力を自動検証。
 
 ### Fixed
 - (なし)
 
 ### Changed
-- (なし)
+- 内部コマンドから `--help` オプションを撤廃し、利用者には `docs/DEVELOPER_GUIDE.md` を参照するフローへ統一。
 
 ## 0.27.0 - 2026-01-10
 
