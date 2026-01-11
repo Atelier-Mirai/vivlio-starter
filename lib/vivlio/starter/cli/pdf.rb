@@ -11,96 +11,60 @@ module Vivlio
   module Starter
     module CLI
       # ================================================================
-      # Module: Thor コマンド群: pdf 関連
-      # ------------------------------------------------
-      # - 目的: Vivliostyle CLI を用いた PDF 生成と周辺ユーティリティ
-      # - 提供コマンド: pdf, pdf_compress, open:pdf
-      # - 主な処理: PDFビルド、圧縮（Ghostscript）、Previewでの表示
-      # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
+      # Module: PDF 生成・圧縮・表示ロジック
+      # ================================================================
+      # 提供機能:
+      #   - execute_pdf: Vivliostyle CLI による PDF 生成
+      #   - execute_pdf_compress: Ghostscript による PDF 圧縮
+      #   - execute_open_pdf: macOS Preview.app で PDF を開く
+      #
+      # Samovar CLI コマンドから純粋な Hash オプションを受け取る。
       # ================================================================
       module PdfCommands
-        PDF_DESC = {
-          pdf: {
-            short: 'PDFを生成します（OUTPUT 指定時はそのファイル名で出力）',
-            long: <<~DESC
-              PDFファイルを生成します。
+        module_function
 
-              Vivliostyle CLIを使用してHTMLファイルからPDFを生成します。
-              出力ファイル名は vivliostyle.config.js の設定に従います。
-              引数 OUTPUT を指定した場合、生成後に設定上の出力ファイル（例: output.pdf）を
-              OUTPUT へとリネームします（既存ファイルがあれば上書き）。
-            DESC
-          },
-          compress: {
-            short: '生成済みPDFを圧縮します（INPUT [OUTPUT] 形式）',
-            long: <<~DESC
-              生成済みのPDFファイルを Ghostscript(pdfwrite) を用いて圧縮します。
-
-              使い方:
-                vs pdf:compress INPUT [OUTPUT]
-
-              引数:
-                INPUT   圧縮対象とするPDFファイル名（必須）。
-                OUTPUT  圧縮後の出力ファイル名。
-                        省略時は INPUT に "_compressed" サフィックスを付加した名前で出力します。
-
-              例:
-                vs pdf:compress filename.pdf
-                  # filename.pdf -> filename_compressed.pdf
-
-                vs pdf:compress input.pdf output.pdf
-                  # input.pdf -> output.pdf
-
-              既定の品質プリセットは /ebook（中庸）です。
-
-              オプション:
-                -v, --verbose  詳細な処理情報を表示
-            DESC
-          },
-          open: {
-            short: '生成されたPDFを開きます（PATH 指定可）',
-            long: <<~DESC
-              生成されたPDFファイルをPreview.appで開きます。
-
-              設定に応じて：
-              - 圧縮版PDFが存在すれば優先的に開く
-              - 既存のPDFウィンドウを閉じる
-              - 指定されたウィンドウ位置に配置
-
-              PATH を与えた場合はそのファイルを開き、同様にウィンドウ位置を適用します。
-            DESC
-          }
-        }.freeze
-
-        def self.included(base); end
-
-        # Samovar/直接呼び出し用: PDF生成
-        def self.execute_pdf(context_or_options, target_output = nil)
-          PdfCommandRunner.new(context_or_options, target_output).call
+        # PDF 生成を実行する
+        #
+        # @param options [Hash] オプション
+        #   - :verbose [Boolean] 詳細ログ出力
+        # @param target_output [String, nil] 出力ファイル名（リネーム先）
+        # @return [void]
+        def execute_pdf(options, target_output = nil)
+          PdfCommandRunner.new(options, target_output).call
         end
 
-        # Samovar/直接呼び出し用: PDF圧縮
-        def self.execute_pdf_compress(context_or_options, input = nil, output = nil)
-          PdfCompressor.new(context_or_options, input, output).call
+        # PDF 圧縮を実行する
+        #
+        # @param options [Hash] オプション
+        #   - :verbose [Boolean] 詳細ログ出力
+        # @param input [String, nil] 入力PDFパス
+        # @param output [String, nil] 出力PDFパス
+        # @return [void]
+        def execute_pdf_compress(options, input = nil, output = nil)
+          PdfCompressor.new(options, input, output).call
         end
 
-        # Samovar/直接呼び出し用: PDF表示
-        def self.execute_open_pdf(context_or_options, path = nil)
-          PdfOpener.new(context_or_options, path).call
+        # PDF を Preview.app で開く
+        #
+        # @param options [Hash] オプション
+        #   - :verbose [Boolean] 詳細ログ出力
+        # @param path [String, nil] 開くPDFパス
+        # @return [void]
+        def execute_open_pdf(options, path = nil)
+          PdfOpener.new(options, path).call
         end
 
         # npx vivliostyle build をラップして PDF を生成する
         class PdfCommandRunner
-          def initialize(command, target_output)
-            @command = command
+          def initialize(options, target_output)
+            @options = options || {}
             @target_output = target_output
             @config = Common::CONFIG['pdf'] || {}
             @build_success = false
           end
 
-          # PDF 生成処理を実行する
           def call
-            apply_verbose_option
+            apply_verbose
             Common.log_action('PDFを生成しています…')
             execute_build
             handle_build_result
@@ -108,15 +72,9 @@ module Vivlio
 
           private
 
-          attr_reader :command, :target_output, :config
+          attr_reader :options, :target_output, :config
 
-          # Thor の options を取得する
-          def options
-            command.respond_to?(:options) ? command.options || {} : {}
-          end
-
-          # --verbose 指定時に環境変数を設定する
-          def apply_verbose_option
+          def apply_verbose
             ENV['VERBOSE'] = '1' if options[:verbose]
           end
 
@@ -303,8 +261,8 @@ module Vivlio
 
         # Ghostscript を利用して PDF を圧縮する
         class PdfCompressor
-          def initialize(command, cli_input = nil, cli_output = nil)
-            @command = command
+          def initialize(options, cli_input = nil, cli_output = nil)
+            @options = options || {}
             @config = Common::CONFIG['pdf'] || {}
             @cli_input = cli_input
             @cli_output = cli_output
@@ -313,9 +271,8 @@ module Vivlio
             @compression_success = false
           end
 
-          # PDF 圧縮処理を実行する
           def call
-            apply_verbose_option
+            apply_verbose
             determine_paths
             ensure_input_exists
             Common.log_action("PDFを圧縮しています…（入力: #{input_pdf} → 出力: #{output_pdf}）")
@@ -325,15 +282,9 @@ module Vivlio
 
           private
 
-          attr_reader :command, :config, :cli_input, :cli_output, :input_pdf, :output_pdf, :compression_success
+          attr_reader :options, :config, :cli_input, :cli_output, :input_pdf, :output_pdf, :compression_success
 
-          # Thor の options を取得する
-          def options
-            command.respond_to?(:options) ? command.options || {} : {}
-          end
-
-          # --verbose 指定時に環境変数を設定する
-          def apply_verbose_option
+          def apply_verbose
             ENV['VERBOSE'] = '1' if options[:verbose]
           end
 
@@ -423,16 +374,15 @@ module Vivlio
 
         # macOS の Preview.app で PDF を開く
         class PdfOpener
-          def initialize(command, path)
-            @command = command
+          def initialize(options, path)
+            @options = options || {}
             @explicit_path = path
             @pdf_config = Common::CONFIG['pdf'] || {}
             @pdf_preview_config = Common::CONFIG.dig('output', 'pdf_preview') || {}
           end
 
-          # PDF を開く処理を実行する
           def call
-            apply_verbose_option
+            apply_verbose
             pdf_path = resolve_pdf_path
             Common.log_action('PDFを開いています…')
             Common.log_info("ファイルパス: #{File.expand_path(pdf_path)}")
@@ -451,15 +401,9 @@ module Vivlio
 
           private
 
-          attr_reader :command, :explicit_path, :pdf_config, :pdf_preview_config
+          attr_reader :options, :explicit_path, :pdf_config, :pdf_preview_config
 
-          # Thor の options を取得する
-          def options
-            command.respond_to?(:options) ? command.options || {} : {}
-          end
-
-          # --verbose 指定時に環境変数を設定する
-          def apply_verbose_option
+          def apply_verbose
             ENV['VERBOSE'] = '1' if options[:verbose]
           end
 

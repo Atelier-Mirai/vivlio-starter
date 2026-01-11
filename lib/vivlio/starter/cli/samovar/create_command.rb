@@ -23,40 +23,8 @@ module Vivlio
   module Starter
     module CLI
       module SamovarCommands
-        # create 系コマンド共通のヘルパーメソッド
-        module CreateCommandHelpers
-          private
-
-          def command_context(extra_options = {})
-            CreateCommandContext.new(base_options.merge(extra_options))
-          end
-
-          def base_options
-            { verbose: verbose_from_parent }
-          end
-
-          def verbose_from_parent
-            return false unless parent.respond_to?(:options)
-
-            !!parent.options[:verbose]
-          end
-
-          def common
-            Vivlio::Starter::CLI::Common
-          end
-        end
-
-        class CreateCommandContext
-          attr_reader :options
-
-          def initialize(options = {})
-            @options = options || {}
-          end
-        end
-
+        # create コマンド（Publicコマンド）
         class CreateCommand < Samovar::Command
-          include CreateCommandHelpers
-
           self.description = '章ファイルと画像ディレクトリを生成します'
 
           many :names, '作成する章スラッグ（複数可）', default: []
@@ -68,20 +36,28 @@ module Vivlio
           def call
             return print_usage if options[:help]
 
-            CreateCommands.execute_create(command_context, names)
+            CreateCommands.execute_create(build_options, names)
             0
           rescue SystemExit => e
             raise e
           rescue StandardError => e
-            common.log_error("create コマンド実行中にエラー: #{e.message}")
+            Common.log_error("create コマンド実行中にエラー: #{e.message}")
             1
+          end
+
+          private
+
+          def build_options
+            { verbose: parent_verbose? }
+          end
+
+          def parent_verbose?
+            parent&.options&.[](:verbose) || false
           end
         end
 
         # create:titlepage コマンド（内部コマンド）
         class CreateTitlepageCommand < Samovar::Command
-          include CreateCommandHelpers
-
           self.description = 'タイトルページを生成します（内部コマンド）'
 
           options do
@@ -89,20 +65,28 @@ module Vivlio
           end
 
           def call
-            CreateCommands.execute_titlepage(command_context(force: options[:force]))
+            CreateCommands.execute_titlepage(build_options)
             0
           rescue SystemExit => e
             raise e
           rescue StandardError => e
-            common.log_error("create:titlepage 実行中にエラー: #{e.message}")
+            Common.log_error("create:titlepage 実行中にエラー: #{e.message}")
             1
+          end
+
+          private
+
+          def build_options
+            { verbose: parent_verbose?, force: options[:force] }
+          end
+
+          def parent_verbose?
+            parent&.options&.[](:verbose) || false
           end
         end
 
         # create:colophon コマンド（内部コマンド）
         class CreateColophonCommand < Samovar::Command
-          include CreateCommandHelpers
-
           self.description = '奥付を生成します（内部コマンド）'
 
           options do
@@ -110,20 +94,28 @@ module Vivlio
           end
 
           def call
-            CreateCommands.execute_colophon(command_context(force: options[:force]))
+            CreateCommands.execute_colophon(build_options)
             0
           rescue SystemExit => e
             raise e
           rescue StandardError => e
-            common.log_error("create:colophon 実行中にエラー: #{e.message}")
+            Common.log_error("create:colophon 実行中にエラー: #{e.message}")
             1
+          end
+
+          private
+
+          def build_options
+            { verbose: parent_verbose?, force: options[:force] }
+          end
+
+          def parent_verbose?
+            parent&.options&.[](:verbose) || false
           end
         end
 
         # create:legalpage コマンド（内部コマンド）
         class CreateLegalpageCommand < Samovar::Command
-          include CreateCommandHelpers
-
           self.description = 'リーガルページを生成します（内部コマンド）'
 
           options do
@@ -131,13 +123,23 @@ module Vivlio
           end
 
           def call
-            CreateCommands.execute_legalpage(command_context(force: options[:force]))
+            CreateCommands.execute_legalpage(build_options)
             0
           rescue SystemExit => e
             raise e
           rescue StandardError => e
-            common.log_error("create:legalpage 実行中にエラー: #{e.message}")
+            Common.log_error("create:legalpage 実行中にエラー: #{e.message}")
             1
+          end
+
+          private
+
+          def build_options
+            { verbose: parent_verbose?, force: options[:force] }
+          end
+
+          def parent_verbose?
+            parent&.options&.[](:verbose) || false
           end
         end
       end

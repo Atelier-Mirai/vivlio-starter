@@ -6,11 +6,10 @@ module Vivlio
   module Starter
     module CLI
       # ================================================================
-      # Module: Thor コマンド群: entries（entries.js 生成）
-      # ------------------------------------------------
-      # - 目的: HTML から entries.js（ESM）を生成
-      # - 提供コマンド: entries
-      # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
+      # Module: entries.js 生成ロジック
+      # ================================================================
+      # 提供機能:
+      #   - HTML から entries.js（ESM）を生成
       # ================================================================
       module EntriesCommands
         module_function

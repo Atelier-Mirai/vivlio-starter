@@ -21,24 +21,24 @@ module Vivlio
   module Starter
     module CLI
       module SamovarCommands
-        # toc コマンドの Samovar 実装
+        # toc コマンドの Samovar 実装（内部コマンド）
         class TocCommand < Samovar::Command
-          self.description = '目次HTMLを生成します'
+          self.description = '目次HTMLを生成します（内部コマンド）'
 
           many :htmls, '対象HTMLファイル（省略時は自動検出）'
 
           def call
-            TocCommands.execute_toc(context_options, htmls || [])
+            TocCommands.execute_toc(build_options, htmls || [])
           end
 
           private
 
-          def context_options
-            { options: parent_options }
+          def build_options
+            { verbose: parent_verbose? }
           end
 
-          def parent_options
-            parent&.options || {}
+          def parent_verbose?
+            parent&.options&.[](:verbose) || false
           end
         end
       end

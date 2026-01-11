@@ -22,14 +22,14 @@ module Vivlio
           end
 
           def call
-            ENV['VERBOSE'] = '1' if options[:verbose]
+            apply_verbose
 
             if options[:help]
               print_usage
               return 0
             end
 
-            PdfCommands.execute_open_pdf(self)
+            PdfCommands.execute_open_pdf(build_options)
             0
           rescue SystemExit => e
             raise e
@@ -40,6 +40,14 @@ module Vivlio
           end
 
           private
+
+          def apply_verbose
+            ENV['VERBOSE'] = '1' if options[:verbose]
+          end
+
+          def build_options
+            { verbose: options[:verbose] }
+          end
 
           def print_usage
             puts 'vs open - 生成されたPDFを開く（macOS専用）'

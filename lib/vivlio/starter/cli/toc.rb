@@ -6,48 +6,40 @@ module Vivlio
   module Starter
     module CLI
       # ================================================================
-      # Module: Thor コマンド群: toc（目次生成）
-      # ------------------------------------------------
-      # - 目的: 章HTMLから 03-toc.md/.html を生成
-      # - 提供コマンド: toc
-      # - 主な処理: 目次の <ul>/<li> 構築, 前書き/後書きの見出し追加, VFM 変換
-      # - 関連: 共通処理は `lib/vivlio/starter/cli/common.rb`
+      # Module: 目次生成ロジック
+      # ================================================================
+      # 提供機能:
+      #   - execute_toc: 章 HTML から _toc.md/.html を生成
+      #
+      # 主な処理:
+      #   - <ul>/<li> による目次構築
+      #   - 前書き/後書きの見出し追加
+      #   - VFM による HTML 変換
       # ================================================================
       module TocCommands
         module_function
 
-        TOC_DESC = {
-          short: '目次HTMLを生成します（引数でHTMLを列挙した場合はそれらのみ対象）',
-          long: <<~DESC
-            指定した HTML を対象に目次を生成します。引数が無い場合はプロジェクト直下の HTML を自動検出し、
-            以下を除外して処理します: _titlepage.html / _legalpage.html / _toc.html / _colophon.html。
-
-            例:
-              vs toc 11-gift.html 12-tutorial.html
-              vs toc                # 自動検出
-          DESC
-        }.freeze
-
-        def included(base); end
-
-        # Samovar/直接呼び出し用エントリポイント
-        def execute_toc(context_or_options, htmls = [])
-          TocCommandExecutor.new(context_or_options, htmls).call
+        # 目次生成を実行する
+        #
+        # @param options [Hash] オプション
+        #   - :verbose [Boolean] 詳細ログ出力
+        # @param htmls [Array<String>] 対象 HTML ファイルリスト
+        # @return [void]
+        def execute_toc(options, htmls = [])
+          TocCommandExecutor.new(options, htmls).call
         end
-        module_function :execute_toc
 
         # toc コマンドのエントリ処理を統括する
         class TocCommandExecutor
           BASE_DIR = Pathname.new('.').expand_path
 
-          def initialize(command, htmls)
-            @command = command
+          def initialize(options, htmls)
+            @options = options || {}
             @resolver = HtmlTargetResolver.new(htmls, base_dir: BASE_DIR)
           end
 
-          # コマンド全体の処理を実行する
           def call
-            enable_verbose_if_requested
+            apply_verbose
             targets = resolver.resolve
             return warn_no_targets if targets.empty?
 
@@ -58,15 +50,9 @@ module Vivlio
 
           private
 
-          attr_reader :command, :resolver
+          attr_reader :options, :resolver
 
-          # Thor の options を返す（なければ空ハッシュ）
-          def options
-            command.respond_to?(:options) ? command.options || {} : {}
-          end
-
-          # verbose オプション指定時に VERBOSE 環境変数を立てる
-          def enable_verbose_if_requested
+          def apply_verbose
             ENV['VERBOSE'] = '1' if options[:verbose]
           end
 

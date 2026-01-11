@@ -62,8 +62,8 @@ module Vivlio
 
         # PdfOpener をスタブ化して開かれたパスを収集する
         def run_opener_and_capture(explicit_path: nil)
-          command = Struct.new(:options).new({})
-          opener = Vivlio::Starter::CLI::PdfCommands::PdfOpener.new(command, explicit_path)
+          options = { verbose: false }
+          opener = Vivlio::Starter::CLI::PdfCommands::PdfOpener.new(options, explicit_path)
           opened = []
 
           capture_io do
