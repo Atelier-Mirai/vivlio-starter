@@ -29,7 +29,7 @@ module Vivlio
           def call
             return print_pdf_internal_help if help_requested?
 
-            PdfCommands.execute_pdf(context_options, output)
+            PdfCommands.execute_pdf(build_options, output)
           end
 
           private
@@ -55,12 +55,12 @@ module Vivlio
             0
           end
 
-          def context_options
-            { options: parent_options }
+          def build_options
+            { verbose: parent_verbose? }
           end
 
-          def parent_options
-            parent&.options || {}
+          def parent_verbose?
+            parent&.options&.[](:verbose) || false
           end
         end
 
@@ -74,7 +74,7 @@ module Vivlio
           def call
             return print_compress_help if help_requested?
 
-            PdfCommands.execute_pdf_compress(context_options, input, output)
+            PdfCommands.execute_pdf_compress(build_options, input, output)
           end
 
           private
@@ -105,12 +105,12 @@ module Vivlio
             0
           end
 
-          def context_options
-            { options: parent_options }
+          def build_options
+            { verbose: parent_verbose? }
           end
 
-          def parent_options
-            parent&.options || {}
+          def parent_verbose?
+            parent&.options&.[](:verbose) || false
           end
         end
       end

@@ -5,7 +5,7 @@ require 'json'
 require 'yaml'
 require 'pathname'
 
-# 書籍ビルドシステムの共通モジュール（Thor CLI用）
+# 書籍ビルドシステムの共通モジュール
 module Vivlio
   module Starter
     module CLI

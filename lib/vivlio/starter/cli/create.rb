@@ -5,9 +5,12 @@
 # ================================================================
 # 責務:
 #   書籍プロジェクトにおける章ファイル・特殊ページの生成を担当する。
-#   - 章 Markdown ファイル（contents/XX-name.md）の新規作成
-#   - 章に対応する画像ディレクトリ（images/XX-name/）の生成
-#   - タイトルページ・奥付・リーガルページなど特殊ページの生成
+#
+# 提供機能:
+#   - execute_create: 章 Markdown と画像ディレクトリを生成
+#   - execute_titlepage: タイトルページを config/book.yml から生成
+#   - execute_colophon: 奥付を config/book.yml から生成
+#   - execute_legalpage: 免責・商標ページを config/book.yml から生成
 #
 # 生成規約:
 #   - 章ファイル名は「数字-スラッグ.md」形式（例: 11-install.md）
@@ -27,88 +30,32 @@ require_relative 'build/catalog_updater'
 module Vivlio
   module Starter
     module CLI
-      # 章ファイル・特殊ページ生成コマンド群
+      # 章ファイル・特殊ページ生成ロジック
       #
-      # 提供コマンド:
-      #   - create: 章 Markdown と画像ディレクトリを生成
-      #   - create:titlepage: タイトルページを config/book.yml から生成
-      #   - create:colophon: 奥付を config/book.yml から生成
-      #   - create:legalpage: 免責・商標ページを config/book.yml から生成
+      # Samovar CLI コマンドから呼び出される実行メソッド群。
+      # 各メソッドは純粋な Hash オプションを受け取る。
       module CreateCommands
         module_function
 
-        CREATE_DESC = {
-          create: {
-            short: '新しい章を作成します (Thor)',
-            long: <<~DESC
-              新しい章ファイルを作成し、画像ディレクトリを用意します。
-
-              例:
-                vs create 11-install
-                vs create 11-install 12-tutorial
-
-              備考:
-                ・拡張子 .md は省略可能です（自動付与）
-                ・既存ファイルがある場合は作成を中止します
-            DESC
-          },
-          titlepage: {
-            short: 'タイトルページを config/book.yml から生成 (Thor)'
-          },
-          colophon: {
-            short: '奥付を config/book.yml から生成 (Thor)'
-          },
-          legalpage: {
-            short: 'リーガルページを config/book.yml から生成 (Thor)',
-            long: <<~DESC
-              著作権ページや免責事項を含むリーガルページを生成します。
-
-              config/book.yml の legal セクションから設定を読み取り、
-              contents/_legalpage.md を生成します。
-
-              設定項目:
-              - legal.disclaimer: 免責事項
-              - legal.trademark: 商標情報
-
-              未設定の場合はテンプレート文面を使用します。
-
-              オプション:
-                -f, --force    既存ファイルを強制上書き
-                -v, --verbose  詳細な処理情報を表示
-            DESC
-          }
-        }.freeze
-
-        # 後方互換用の空フック（現在は Samovar CLI で登録）
-        def included(base); end
-
-        # ==================== Command Implementations ====================
+        # --- 章ファイル生成 ---
 
         # 章ファイルと画像ディレクトリを一括生成する
         #
-        # @param command [Hash, Object] Samovar コマンドオブジェクトまたはオプション Hash
-        #   - Hash の場合: { options: { verbose: true, force: false } }
-        #   - Object の場合: #options メソッドで Hash を返すオブジェクト
+        # @param options [Hash] オプション
+        #   - :verbose [Boolean] 詳細ログ出力
         # @param names [Array<String>] 生成する章名のリスト
         #   - 形式: "XX-slug" または "XX-slug.md"（XX は並び順を示す数字）
         #   - 例: ['11-install', '12-tutorial']
         # @return [void]
-        # @raise [SystemExit] 1つ以上の章生成に失敗した場合、exit(1) で終了
-        #
-        # 副作用:
-        #   - contents/XX-slug.md を生成
-        #   - images/XX-slug/ ディレクトリを生成
-        #   - config/catalog.yml の CHAPTERS セクションに追記
-        def execute_create(command, names)
-          ctx = normalized_context(command)
-          enable_verbose(ctx)
+        # @raise [SystemExit] 1つ以上の章生成に失敗した場合
+        def execute_create(options, names)
+          apply_verbose(options)
           ensure_names_present!(names)
 
           errors = false
-          # トークンを正規化し、重複を除去して順次処理
           Common.normalize_tokens(names).uniq.each do |name|
-            # ファイル名が規約に沿わない場合はスキップ
-            unless (fname = ensure_filename(name))
+            fname = ensure_filename(name)
+            unless fname
               Common.log_error("エラー: 無効なファイル名です: #{name}")
               errors = true
               next
@@ -120,28 +67,21 @@ module Vivlio
             Common.log_error("作成に失敗しました: #{fname} (#{e.class}: #{e.message})")
           end
 
-          # 1つでもエラーがあれば異常終了（CI/CD での検知用）
           exit 1 if errors
         end
-        module_function :execute_create
+
+        # --- タイトルページ生成 ---
 
         # タイトルページ（扉）を config/book.yml から生成する
         #
-        # @param command [Hash, Object] コマンドコンテキスト（options を含む）
+        # @param options [Hash] オプション
+        #   - :verbose [Boolean] 詳細ログ出力
+        #   - :force [Boolean] 既存ファイルを強制上書き
         # @return [void]
         #
         # 生成ファイル: contents/_titlepage.md
-        # 読み取る設定キー（config/book.yml）:
-        #   - book.main_title / book.title: 書籍タイトル
-        #   - book.subtitle: サブタイトル（任意）
-        #   - book.author: 著者名
-        #   - book.series: シリーズ名（任意）
-        #   - book.release: 発行情報（任意）
-        #
-        # --force 未指定時、既存ファイルがあればスキップする
-        def execute_titlepage(command)
-          ctx = normalized_context(command)
-          enable_verbose(ctx)
+        def execute_titlepage(options)
+          apply_verbose(options)
           title, subtitle = extract_title_and_subtitle
           author  = fetch_config_value('book', 'author')
           series  = fetch_config_value('book', 'series')
@@ -161,31 +101,23 @@ module Vivlio
           MD
 
           path = File.join(Common::CONTENTS_DIR, '_titlepage.md')
-          return skip_existing(path) if File.exist?(path) && !forced?(ctx)
+          return skip_existing(path) if File.exist?(path) && !options[:force]
 
           safe_write(path, content)
         end
-        module_function :execute_titlepage
+
+        # --- 奥付生成 ---
 
         # 奥付ページを config/book.yml から生成する
         #
-        # @param command [Hash, Object] コマンドコンテキスト（options を含む）
+        # @param options [Hash] オプション
+        #   - :verbose [Boolean] 詳細ログ出力
+        #   - :force [Boolean] 既存ファイルを強制上書き
         # @return [void]
         #
         # 生成ファイル: contents/_colophon.md
-        # 読み取る設定キー（config/book.yml）:
-        #   - book.main_title / book.title: 書籍タイトル
-        #   - book.subtitle: サブタイトル（任意）
-        #   - book.author: 著者名
-        #   - book.publisher / book.publisher_name: 発行者名
-        #   - book.contact: 連絡先
-        #   - book.release: 発行情報
-        #
-        # 著作権表示の年は現在の和暦を自動算出する
-        # --force 未指定時、既存ファイルがあればスキップする
-        def execute_colophon(command)
-          ctx = normalized_context(command)
-          enable_verbose(ctx)
+        def execute_colophon(options)
+          apply_verbose(options)
           title, subtitle = extract_title_and_subtitle
           author    = fetch_config_value('book', 'author')
           publisher = fetch_config_value('book', 'publisher')
@@ -222,29 +154,26 @@ module Vivlio
           MD
 
           path = File.join(Common::CONTENTS_DIR, '_colophon.md')
-          return skip_existing(path) if File.exist?(path) && !forced?(ctx)
+          return skip_existing(path) if File.exist?(path) && !options[:force]
 
           safe_write(path, content)
         end
-        module_function :execute_colophon
+
+        # --- リーガルページ生成 ---
 
         # 免責事項・商標情報を含むリーガルページを生成する
         #
-        # @param command [Hash, Object] コマンドコンテキスト（options を含む）
+        # @param options [Hash] オプション
+        #   - :verbose [Boolean] 詳細ログ出力
+        #   - :force [Boolean] 既存ファイルを強制上書き
         # @return [void]
         #
         # 生成ファイル: contents/_legalpage.md
-        # 読み取る設定キー（config/book.yml）:
-        #   - legal.disclaimer: 免責事項（未設定時はテンプレート文面を使用）
-        #   - legal.trademark: 商標情報（未設定時はテンプレート文面を使用）
-        #
-        # --force 未指定時、既存ファイルがあればスキップする
-        def execute_legalpage(command)
-          ctx = normalized_context(command)
-          enable_verbose(ctx)
+        def execute_legalpage(options)
+          apply_verbose(options)
           FileUtils.mkdir_p(Common::CONTENTS_DIR)
           target = File.join(Common::CONTENTS_DIR, '_legalpage.md')
-          return skip_existing(target) if File.exist?(target) && !forced?(ctx)
+          return skip_existing(target) if File.exist?(target) && !options[:force]
 
           disclaimer, trademark = legal_texts
           # 各行を <p> タグで囲んで HTML 化（Vivliostyle での表示用）
@@ -264,29 +193,15 @@ module Vivlio
           safe_write(target, body)
           Common.log_success("生成しました: #{target}")
         end
-        module_function :execute_legalpage
 
-        # =========================== Helpers =============================
-
-        # コマンドオブジェクトを統一的な Hash 形式に正規化する
-        #
-        # @param command [Hash, Object] Samovar コマンドまたはオプション Hash
-        # @return [Hash] { options: { ... } } 形式の Hash
-        #
-        # Samovar CLI と直接 Hash 呼び出しの両方に対応するための変換層
-        def normalized_context(command)
-          return command if command.is_a?(Hash)
-
-          { options: options_of(command) }
-        end
+        # --- ヘルパー ---
 
         # verbose オプションが有効な場合、環境変数を設定してログ出力を詳細化する
         #
-        # @param command_or_ctx [Hash, Object] コマンドまたはコンテキスト
+        # @param options [Hash] オプション Hash
         # @return [void]
-        def enable_verbose(command_or_ctx)
-          opts = options_of(command_or_ctx)
-          ENV['VERBOSE'] = '1' if opts[:verbose]
+        def apply_verbose(options)
+          ENV['VERBOSE'] = '1' if options[:verbose]
         end
 
         # 章名リストが空でないかを判定する
@@ -443,30 +358,6 @@ module Vivlio
         # @return [void]
         def skip_existing(path)
           Common.log_warn("既に存在するためスキップします: #{path} (--force で上書き)")
-        end
-
-        # --force オプションの有無を判定する
-        #
-        # @param command_or_ctx [Hash, Object] コマンドまたはコンテキスト
-        # @return [Boolean] force オプションが有効なら true
-        def forced?(command_or_ctx)
-          options_of(command_or_ctx)[:force]
-        end
-
-        # コマンドオブジェクトからオプション Hash を抽出する
-        #
-        # @param command_or_ctx [Hash, Object] コマンドまたはコンテキスト
-        #   - Hash の場合: { options: { ... } } 形式を期待
-        #   - Object の場合: #options メソッドを呼び出す
-        # @return [Hash] オプション Hash（存在しない場合は空 Hash）
-        def options_of(command_or_ctx)
-          if command_or_ctx.is_a?(Hash)
-            command_or_ctx[:options] || {}
-          elsif command_or_ctx.respond_to?(:options)
-            command_or_ctx.options || {}
-          else
-            {}
-          end
         end
 
         # config/book.yml からタイトルとサブタイトルを取得する

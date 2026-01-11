@@ -24,13 +24,13 @@ require_relative 'cli/import'
 
 require_relative 'cli/samovar'
 
-# Vivlio Starter CLI のエントリポイント（Samovar/Thor互換レイヤー）
+# Vivlio Starter CLI のエントリポイント（Samovar CLI ランチャー）
 module Vivlio
   module Starter
     module CLI
       module_function
 
-      # Thor 実装は削除済み。ここでは Samovar コマンド群を読み込むだけ。
+      # Samovar コマンド群を読み込むだけ。
 
       def start(argv)
         args = Array(argv).dup
