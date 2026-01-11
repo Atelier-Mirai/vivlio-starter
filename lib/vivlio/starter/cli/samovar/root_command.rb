@@ -12,11 +12,16 @@
 #   - --version: バージョン表示
 #   - --verbose: 詳細ログ出力
 #
-# サブコマンド:
-#   - new, build, clean, delete, doctor
-#   - create, create:titlepage, create:colophon, create:legalpage
-#   - rename, renumber, pre_process, convert, post_process
-#   - toc, pdf, pdf:compress, resize, resize:high/medium/low
+# コマンド分類 (help_spec.md 準拠):
+#   Public Commands (vs --help に表示):
+#     - help, new, build, clean, delete, doctor, import
+#     - create, rename, renumber, open
+#     - resize, resize:high/medium/low
+#     - index, index:auto, index:apply
+#     - pdf:compress
+#   Internal Commands (vs --help に非表示、DEVELOPER_GUIDE.md 参照):
+#     - pre_process, convert, post_process, pdf, toc, entries
+#     - create:titlepage, create:colophon, create:legalpage
 # ================================================================
 
 require_relative '../../../starter/version'
@@ -36,27 +41,20 @@ module Vivlio
           end
 
           class << self
-            def command_map
-              @command_map ||= {
+            # 利用者向け Public Commands (vs --help に表示)
+            def public_commands
+              @public_commands ||= {
                 'help' => HelpCommand,
                 'new' => NewCommand,
                 'build' => BuildCommand,
                 'clean' => CleanCommand,
                 'delete' => DeleteCommand,
                 'doctor' => DoctorCommand,
-                'entries' => EntriesCommand,
+                'import' => ImportCommand,
                 'create' => CreateCommand,
-                'create:titlepage' => CreateTitlepageCommand,
-                'create:colophon' => CreateColophonCommand,
-                'create:legalpage' => CreateLegalpageCommand,
                 'rename' => RenameCommand,
                 'renumber' => RenumberCommand,
-                'pre_process' => PreProcessCommand,
-                'convert' => ConvertCommand,
-                'post_process' => PostProcessCommand,
-                'toc' => TocCommand,
-                'pdf' => PdfCommand,
-                'pdf:compress' => PdfCompressCommand,
+                'open' => OpenCommand,
                 'resize' => ResizeCommand,
                 'resize:high' => ResizeHighCommand,
                 'resize:medium' => ResizeMediumCommand,
@@ -64,9 +62,28 @@ module Vivlio
                 'index' => IndexCommand,
                 'index:auto' => IndexAutoCommand,
                 'index:apply' => IndexApplyCommand,
-                'open' => OpenCommand,
-                'import' => ImportCommand
+                'pdf:compress' => PdfCompressCommand
               }.freeze
+            end
+
+            # 内部コマンド (vs --help に非表示、開発者向け)
+            def internal_commands
+              @internal_commands ||= {
+                'pre_process' => PreProcessCommand,
+                'convert' => ConvertCommand,
+                'post_process' => PostProcessCommand,
+                'pdf' => PdfCommand,
+                'toc' => TocCommand,
+                'entries' => EntriesCommand,
+                'create:titlepage' => CreateTitlepageCommand,
+                'create:colophon' => CreateColophonCommand,
+                'create:legalpage' => CreateLegalpageCommand
+              }.freeze
+            end
+
+            # 全コマンドマップ (ルーティング用)
+            def command_map
+              @command_map ||= public_commands.merge(internal_commands).freeze
             end
           end
 

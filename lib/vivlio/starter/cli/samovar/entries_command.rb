@@ -22,18 +22,14 @@ module Vivlio
     module CLI
       module SamovarCommands
         # entries コマンドの Samovar 実装
+        # entries コマンド（内部コマンド）
+        # --help は提供しない（docs/DEVELOPER_GUIDE.md 参照）
         class EntriesCommand < Samovar::Command
-          self.description = 'HTML から entries.js (ES Module) を生成します'
+          self.description = 'HTML から entries.js を生成します（内部コマンド）'
 
           many :tokens, '対象 HTML のスラッグまたはファイルパス（省略時は *.html 全体）', default: []
 
-          options do
-            option '-h/--help', 'このコマンドの使い方を表示', key: :help
-          end
-
           def call
-            return print_usage if options[:help]
-
             EntriesCommands.execute_entries(context_options, tokens)
             0
           rescue SystemExit => e

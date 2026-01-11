@@ -28,6 +28,8 @@ require_relative 'cli/samovar'
 module Vivlio
   module Starter
     module CLI
+      module_function
+
       # Thor 実装は削除済み。ここでは Samovar コマンド群を読み込むだけ。
 
       def start(argv)
@@ -66,6 +68,8 @@ module Vivlio
         warn "❌ #{e.class}: #{e.message}"
         warn e.backtrace.join("\n") if ENV['VS_DEBUG']
       end
+
+      module_function :start, :print_usage_for_invalid_input
     end
   end
 end
