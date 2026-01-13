@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 # ================================================================
-# Test: text_lint_commands_test.rb
+# Test: lint_commands_test.rb
 # ================================================================
 # テスト対象:
-#   TextLintCommands（lib/vivlio/starter/cli/text_lint.rb）
+#   LintCommands（lib/vivlio/starter/cli/lint.rb）
 #
 # 検証内容:
 #   - Markdown ファイル未検出時の警告
@@ -23,8 +23,8 @@ require 'vivlio/starter/cli/text_lint'
 module Vivlio
   module Starter
     module CLI
-      # TextLintCommands のユニットテスト
-      class TextLintCommandsTest < Minitest::Test
+      # LintCommands のユニットテスト
+      class LintCommandsTest < Minitest::Test
         def setup
           @original_pwd = Dir.pwd
           @tmpdir = Dir.mktmpdir('textlint-test')
@@ -46,7 +46,7 @@ module Vivlio
           status = nil
           with_stubbed_textlint_available do
             stdout, stderr = capture_io do
-              status = TextLintCommands.execute_text_lint([], {})
+              status = LintCommands.execute_lint([], {})
             end
             assert_match(/textlint 対象となる Markdown ファイルが見つかりません。/, stdout)
             assert_empty(stderr)
@@ -71,7 +71,7 @@ module Vivlio
               ['STDOUT', 'STDERR', fake_status]
             end) do
               stdout, stderr = capture_io do
-                returned_status = TextLintCommands.execute_text_lint(['11-install'], format: nil)
+                returned_status = LintCommands.execute_lint(['11-install'], format: nil)
               end
               assert_equal 'STDOUT', stdout
               assert_equal 'STDERR', stderr
@@ -99,10 +99,10 @@ module Vivlio
           with_stubbed_textlint_available do
             stdout, stderr = capture_io do
               Open3.stub(:capture3, ->(*_) { ['', '', failure_status] }) do
-                returned_status = TextLintCommands.execute_text_lint([], {})
+                returned_status = LintCommands.execute_lint([], {})
               end
             end
-            assert_match(/textlint: ❌/, stdout)
+            assert_match(/✏️ 文章の品質チェックが完了しました/, stdout)
             assert_empty(stderr)
           end
           assert_equal 3, returned_status
@@ -124,7 +124,7 @@ module Vivlio
               ['STDOUT', 'STDERR', fake_status]
             end) do
               stdout, stderr = capture_io do
-                returned_status = TextLintCommands.execute_text_lint(['11-install'], { fix: true })
+                returned_status = LintCommands.execute_lint(['11-install'], { fix: true })
               end
               assert_equal 'STDOUT', stdout
               assert_equal 'STDERR', stderr
@@ -154,7 +154,7 @@ module Vivlio
               ['STDOUT', 'STDERR', fake_status]
             end) do
               stdout, stderr = capture_io do
-                returned_status = TextLintCommands.execute_text_lint(['91', '93'], {})
+                returned_status = LintCommands.execute_lint(['91', '93'], {})
               end
               assert_equal 'STDOUT', stdout
               assert_equal 'STDERR', stderr
@@ -189,7 +189,7 @@ module Vivlio
               ['STDOUT', 'STDERR', fake_status]
             end) do
               stdout, stderr = capture_io do
-                returned_status = TextLintCommands.execute_text_lint(['11-13'], {})
+                returned_status = LintCommands.execute_lint(['11-13'], {})
               end
               assert_equal 'STDOUT', stdout
               assert_equal 'STDERR', stderr
@@ -224,7 +224,7 @@ module Vivlio
               ['STDOUT', 'STDERR', fake_status]
             end) do
               stdout, stderr = capture_io do
-                returned_status = TextLintCommands.execute_text_lint(['11-install', '91', '12-21'], {})
+                returned_status = LintCommands.execute_lint(['11-install', '91', '12-21'], {})
               end
               assert_equal 'STDOUT', stdout
               assert_equal 'STDERR', stderr
@@ -244,7 +244,7 @@ module Vivlio
           output_without_fixable = "✖ 10 problems (10 errors, 0 warnings, 0 infos)\n"
           empty_output = ""
 
-          runner = TextLintCommands::TextLintRunner.new([], {})
+          runner = LintCommands::LintRunner.new([], {})
           
           assert_equal 4, runner.send(:extract_fixable_count, output_with_fixable)
           assert_equal 0, runner.send(:extract_fixable_count, output_without_fixable)
@@ -252,7 +252,7 @@ module Vivlio
         end
 
         def test_target_resolver_range_pattern
-          resolver = TextLintCommands::TextLintRunner::TargetResolver.new([])
+          resolver = LintCommands::LintRunner::TargetResolver.new([])
           
           assert resolver.send(:range_pattern?, '11-21')
           assert resolver.send(:range_pattern?, '1-9')
@@ -287,7 +287,7 @@ module Vivlio
         end
 
         def with_stubbed_textlint_available
-          runner = TextLintCommands::TextLintRunner
+          runner = LintCommands::LintRunner
           original = runner.instance_method(:ensure_textlint_available!)
           runner.define_method(:ensure_textlint_available!) { nil }
           yield

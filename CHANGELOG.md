@@ -69,6 +69,12 @@
   - `help_spec.md` に基づき Public/Internal コマンドを明確に分類し、`vs --help` では Public コマンドのみカテゴリ別に表示。
   - `vs pdf --help` 実行時に `pdf:compress` を案内し、`vs pdf:compress --help` で詳細な使用方法と引数解説を表示。
   - Samovar の `print_usage` による統一ヘルプとミニテスト `help_spec_test.rb` を追加して、代表的なコマンドのヘルプ出力を自動検証。
+- **lint 設定の book.yml 組み込み**:
+  - `config/book.yml` に `lint.config` / `lint.format` セクションを追加し、`vs lint` の既定値をプロジェクト単位で管理できるようにした。
+  - `LintCommands` は book.yml の値を既定として読み込み、CLI オプション (`--config`, `--format`) で一時的に上書き可能。
+- **metrics 指標仕様ドキュメント**:
+  - `docs/specs/metrics_spec.md` を新設し、語彙難度・語彙多様度・読解難度・章別バランスなど `vs metrics` が出力すべき指標と UI を定義。
+  - 技術書向けの分量ガイドライン（目標/警告ライン）と、今後 book.yml の `metrics` セクションで上書き可能とする方針を明文化。
 - **import コマンドの cover 資産取り込みを改善**:
   - Re:VIEW 側 `frontcover_pdffile` を検出した場合、`images/hyoshi.pdf` を `covers/` にコピーしたうえで ImageMagick で 2894x4092px の `frontcover_master.png` を自動生成。
   - `config/book.yml` の `output.pdf.cover.front` を Vivlio 既定の `frontcover_rgb.pdf` にリライトし、直後に `vs cover` を回すだけで各ターゲットへ再出力できる状態に揃えた。
@@ -84,6 +90,9 @@
 - 内部コマンドから `--help` オプションを撤廃し、利用者には `docs/DEVELOPER_GUIDE.md` を参照するフローへ統一。
 - Thor 互換コードを全面的に整理し、Samovar ネイティブ実装へのリファクタリングを完了（`create.rb` / `pdf.rb` / `toc.rb` / 共通コメントなどの Thor 残滓を削除）。
 - `test/vivlio/starter/cli/cover_test.rb` から疑似Thorスタブを廃し、`SamovarCommands::CoverCommand` を直接インスタンス化するスモーク/生成テストへ刷新した。
+- **Lint/Metrics コマンドの名称整理**:
+  - Samovar 公開コマンドを `text:lint` → `lint`、`text:metrics` → `metrics` に改称し、`vs --help` や `help` カテゴリ表記も合わせて更新。
+  - 互換レイヤーの require 群を `lint.rb` / `metrics.rb` へ切り替え、テスト/ドキュメント全体のコマンド表記揺れを解消。
 
 ## 0.27.0 - 2026-01-10
 

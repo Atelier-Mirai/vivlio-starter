@@ -8,9 +8,10 @@
 #   Public Commands のみをカテゴリ別に表示する。
 #
 # 表示内容 (help_spec.md 準拠):
-#   - プロジェクト管理: help, new, import, doctor, delete, clean
-#   - 執筆・編集支援: create, rename, renumber, open
-#   - アセット・索引: resize, index
+#   - プロジェクト管理: new, import, doctor, clean
+#   - 執筆・編集支援: create, delete, rename, renumber, open
+#   - 文章校正・用語: glossary, lint, metrics
+#   - アセット・索引: cover, resize, index
 #   - ビルド・出力: build, pdf:compress
 # ================================================================
 
@@ -27,16 +28,22 @@ module Vivlio
               'new' => 'プロジェクトを新規作成します',
               'import' => 'Re:VIEW Starter プロジェクトを取り込みます',
               'doctor' => '環境診断と不足ツールの自動セットアップ',
-              'delete' => '指定した章の Markdown と画像を削除します',
               'clean' => '生成物やキャッシュを削除します'
             },
             '執筆・編集支援' => {
               'create' => '章ファイルと画像ディレクトリを生成します',
+              'delete' => '指定した章の Markdown と画像を削除します',
               'rename' => '章のスラッグ/番号を変更します',
               'renumber' => '章番号を一括で付け直します',
               'open' => '生成されたPDFを開きます（macOS専用）'
             },
+            '文章校正・用語' => {
+              'glossary' => '用語集を管理します（add/lint/fix/canonicalize）',
+              'lint' => 'Markdownをtextlintで検査します',
+              'metrics' => 'Markdownの行数・文字数を集計します'
+            },
             'アセット・索引' => {
+              'cover' => 'カバー画像を生成します（A4/B5/A5/EPUB）',
               'resize' => '画像をWebPに変換します（--high/--low で品質変更可）',
               'index' => '索引機能（index:auto / index:apply）'
             },
@@ -61,7 +68,7 @@ module Vivlio
             puts <<~HEADER
               Vivlio Starter - 技術書執筆のためのCLIツール
               
-              Usage: vs <command> [options]
+              使い方: vs <command> [options]
               
             HEADER
 
@@ -74,11 +81,10 @@ module Vivlio
             puts <<~FOOTER
               オプション:
                 -h, --help       ヘルプを表示
-                --version        バージョン情報を表示
                 -v, --verbose    冗長出力を有効化
+                --version        バージョン情報を表示
 
               各コマンドの詳細: vs <command> --help
-              内部コマンドの情報: docs/DEVELOPER_GUIDE.md
             FOOTER
           end
         end

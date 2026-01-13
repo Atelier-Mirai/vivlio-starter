@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # ================================================================
-# File: lib/vivlio/starter/cli/text_lint.rb
+# File: lib/vivlio/starter/cli/lint.rb
 # ================================================================
 # 責務:
 #   textlint を使用した Markdown ファイルの文章校正を実行する。
@@ -34,16 +34,14 @@ module Vivlio
   module Starter
     module CLI
       # textlint による文章校正コマンド
-      module TextLintCommands
-        DEFAULT_CONFIG_RELATIVE = File.join(Common::CONFIG_DIR, '.textlintrc.yml')
-        DEFAULT_CONFIG_PATH = Common.resolve_path_from_root(DEFAULT_CONFIG_RELATIVE)
-        DEFAULT_CONFIG_DISPLAY = Common.relative_path_from_root(DEFAULT_CONFIG_PATH) || DEFAULT_CONFIG_PATH
+      module LintCommands
+        DEFAULT_CONFIG_FALLBACK = File.join(Common::CONFIG_DIR, '.textlintrc.yml')
 
         # textlint 用サポート YAML（allowlist/prh）の既定パス
         TEXTLINT_ALLOWLIST_RELATIVE = File.join(Common::CONFIG_DIR, 'textlint_allowlist.yml')
         TEXTLINT_PRH_RELATIVE       = File.join(Common::CONFIG_DIR, 'textlint_prh.yml')
 
-        TEXT_LINT_DESC = {
+        LINT_DESC = {
           short: 'contents/ 以下の Markdown を textlint で検査します',
           long: <<~DESC
             contents/ ディレクトリ以下の Markdown ファイルを textlint で検査します。
@@ -51,35 +49,52 @@ module Vivlio
             指定すると、そのファイルのみを検査します（拡張子や contents/ の省略可）。
 
             章番号のみ、または範囲指定も可能です：
-              章番号のみ: vs text:lint 91 93      # 91-*.md と 93-*.md を検査
-              範囲指定:   vs text:lint 11-21      # 11-*.md から 21-*.md を検査
+              章番号のみ: vs lint 91 93      # 91-*.md と 93-*.md を検査
+              範囲指定:   vs lint 11-21      # 11-*.md から 21-*.md を検査
 
             例:
-              vs text:lint                 # 全 Markdown を検査
-              vs text:lint 11-install      # 11-install.md のみ検査
-              vs text:lint 11-install 21-customize
-              vs text:lint 91 93           # 91-*.md と 93-*.md を検査
-              vs text:lint 11-21           # 11-*.md から 21-*.md の範囲を検査
-              vs text:check                # text:lint のエイリアス
+              vs lint                 # 全 Markdown を検査
+              vs lint 11-install      # 11-install.md のみ検査
+              vs lint 11-install 21-customize
+              vs lint 91 93           # 91-*.md と 93-*.md を検査
+              vs lint 11-21           # 11-*.md から 21-*.md の範囲を検査
+              vs lint:check           # lint のエイリアス
 
             オプション:
               --config PATH    使用する .textlintrc.yml のパスを切り替えます。
-                               省略時は #{DEFAULT_CONFIG_DISPLAY} を使用します。
+                               省略時は book.yml の lint.config が使われます。
               --format NAME    textlint の出力フォーマットを指定します。
-                               stylish(既定値)/compact/pretty-error が選択可能。
+                               省略時は book.yml の lint.format（既定: stylish）が使われます。
               --fix            自動修正可能なエラーを修正します。
           DESC
         }.freeze
 
-        DEFAULT_FORMAT = 'stylish'
+        DEFAULT_FORMAT_FALLBACK = 'stylish'
         TEXTLINT_ENV_VAR = 'VIVLIO_TEXTLINT_BIN'
 
-        def self.execute_text_lint(targets, options = {})
-          TextLintRunner.new(targets, options).call
+        def self.default_lint_config
+          value = Common::CONFIG.dig('lint', 'config')
+          value = nil if Common.blank?(value)
+          value || DEFAULT_CONFIG_FALLBACK
+        rescue StandardError
+          DEFAULT_CONFIG_FALLBACK
+        end
+
+        def self.default_lint_format
+          value = Common::CONFIG.dig('lint', 'format')
+          value = nil if Common.blank?(value)
+          format = value || DEFAULT_FORMAT_FALLBACK
+          format.to_s.strip.empty? ? DEFAULT_FORMAT_FALLBACK : format
+        rescue StandardError
+          DEFAULT_FORMAT_FALLBACK
+        end
+
+        def self.execute_lint(targets, options = {})
+          LintRunner.new(targets, options).call
         end
 
         # text:lint 実行ロジックをまとめたランナー
-        class TextLintRunner
+        class LintRunner
           attr_reader :targets, :options
 
           def initialize(targets, options)
@@ -102,6 +117,11 @@ module Vivlio
             Common.log_action("textlint 実行: #{Shellwords.join(command)}")
 
             stdout, stderr, status = Open3.capture3(*command)
+            raw_stdout = stdout
+            raw_stderr = stderr
+
+            stdout = filter_textlint_summary(stdout)
+            stderr = filter_textlint_summary(stderr)
 
             # 出力を日本語化
             stdout = TextlintFormatter.translate_output(stdout) unless stdout.nil? || stdout.empty?
@@ -110,7 +130,7 @@ module Vivlio
             $stdout.print(stdout) unless stdout.nil? || stdout.empty?
             $stderr.print(stderr) unless stderr.nil? || stderr.empty?
 
-            return handle_status(status, stdout)
+            return handle_status(status, raw_stdout, raw_stderr)
           rescue TextLintError => e
             Common.log_error(e.message)
             1
@@ -124,6 +144,46 @@ module Vivlio
             # "✓ 325 fixable problems." のような行から数値を抽出
             match = output.match(/✓\s+(\d+)\s+fixable\s+problems?\./)
             match ? match[1].to_i : 0
+          end
+
+          def extract_problem_count(output)
+            return nil if output.nil? || output.empty?
+
+            match = output.match(/✖\s+(\d+)\s+problems?/)
+            match ? match[1].to_i : nil
+          end
+
+          def print_failure_summary(problem_count, fixable_count)
+            $stdout.puts ''
+            $stdout.puts '✏️ 文章の品質チェックが完了しました'
+            if problem_count && problem_count.positive?
+              $stdout.puts "⚠️ #{problem_count}箇所に改善提案があります"
+            else
+              $stdout.puts '⚠️ 文章に改善提案があります'
+            end
+
+            if fixable_count.to_i.positive? && !options[:fix]
+              $stdout.puts "💡 そのうち#{fixable_count}箇所は自動修正可能です。次のコマンドで修正できます:"
+              $stdout.puts '   vs lint --fix'
+            else
+              $stdout.puts '💡 表記揺れや文法上の改善点を修正してからもう一度実行してください。'
+            end
+            $stdout.flush
+          end
+
+          SUMMARY_PATTERNS = [
+            /^\s*✖\s+\d+\s+problems?.*$/i,
+            /^\s*✓\s+\d+\s+fixable\s+problems?.*$/i,
+            /^\s*Try to run:.*$/i
+          ].freeze
+
+          def filter_textlint_summary(output)
+            return output if output.nil? || output.empty?
+
+            filtered_lines = output.lines.reject do |line|
+              SUMMARY_PATTERNS.any? { |pattern| line.match?(pattern) }
+            end
+            filtered_lines.join
           end
 
           def normalize_options(raw)
@@ -142,7 +202,7 @@ module Vivlio
           def ensure_textlint_available!
             return if command_exists?(textlint_command)
 
-            raise TextLintError, <<~MSG.strip
+            raise LintError, <<~MSG.strip
               textlint コマンドが見つかりません。npm などで textlint をインストールしてください。
               例: npm install -g textlint textlint-rule-preset-ja-technical-writing
             MSG
@@ -153,7 +213,7 @@ module Vivlio
             return if File.file?(path)
 
             display_path = Common.relative_path_from_root(path) || path
-            raise TextLintError, "textlint 設定ファイルが見つかりません: #{display_path}"
+            raise LintError, "textlint 設定ファイルが見つかりません: #{display_path}"
           end
 
           # textlint 用サポート YAML (allowlist/prh) の存在・パースを検証する
@@ -163,14 +223,14 @@ module Vivlio
               display = Common.relative_path_from_root(path) || path
 
               unless path && File.file?(path)
-                raise TextLintError, "textlint サポート用設定ファイルが見つかりません: #{display}"
+                raise LintError, "textlint サポート用設定ファイルが見つかりません: #{display}"
               end
 
               begin
                 yaml_text = File.read(path, encoding: 'UTF-8')
                 YAML.safe_load(yaml_text, permitted_classes: [], aliases: true)
               rescue StandardError => e
-                raise TextLintError, "textlint サポート用設定ファイルの読み込みに失敗しました: #{display} (#{e.class}: #{e.message})"
+                raise LintError, "textlint サポート用設定ファイルの読み込みに失敗しました: #{display} (#{e.class}: #{e.message})"
               end
             end
           end
@@ -189,18 +249,17 @@ module Vivlio
           end
 
           def config_path
-            path = options[:config]&.to_s
-            path = DEFAULT_CONFIG_RELATIVE if path.nil? || path.strip.empty?
-
+            path = options[:config]
+            path = LintCommands.default_lint_config if Common.blank?(path)
             resolved = Common.resolve_path_from_root(path)
-            resolved || File.expand_path(path)
+            resolved || File.expand_path(path.to_s)
           end
 
           def format_option
             value = options[:format]
-            value = DEFAULT_FORMAT if value.nil?
+            value = LintCommands.default_lint_format if Common.blank?(value)
             stripped = value.to_s.strip
-            stripped.empty? ? DEFAULT_FORMAT : stripped
+            stripped.empty? ? LintCommands.default_lint_format : stripped
           end
 
           def textlint_command
@@ -239,22 +298,16 @@ module Vivlio
             !!(RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin|bccwin|wince|emx/i)
           end
 
-          def handle_status(status, stdout)
+          def handle_status(status, raw_stdout, raw_stderr)
             if status.success?
               Common.log_success('textlint: ✅ 文章チェックで問題は見つかりませんでした。')
               return 0
             end
 
-            Common.log_error("textlint: ❌ 文章チェックでエラーが発生しました (#{status.exitstatus})")
-
-            # 自動修正可能な問題がある場合は案内メッセージを表示
-            fixable_count = extract_fixable_count(stdout)
-            if fixable_count > 0 && !options[:fix]
-              $stdout.puts ''
-              $stdout.puts "💡 #{fixable_count}個のエラーは自動修正可能です。次のコマンドで修正できます:"
-              $stdout.puts '   vs text:lint --fix'
-              $stdout.flush
-            end
+            combined_summary_output = [raw_stdout, raw_stderr].compact.join("\n")
+            problem_count = extract_problem_count(combined_summary_output)
+            fixable_count = extract_fixable_count(combined_summary_output)
+            print_failure_summary(problem_count, fixable_count)
 
             status.exitstatus || 1
           end
@@ -354,7 +407,7 @@ module Vivlio
           end
         end
 
-        class TextLintError < StandardError; end
+        class LintError < StandardError; end
       end
     end
   end

@@ -254,37 +254,6 @@ output:
     #     book セクションから自動的に流用される
 
 # ========================================
-# ディレクトリ設定
-# ========================================
-directories:
-  contents: 'contents'        # Markdownファイル
-  stylesheets: 'stylesheets' # CSSファイル
-  images: 'images'           # 画像ファイル
-  codes: 'codes'             # ソースコードファイル
-  chapter_templates: 'chapter_templates'     # 章テンプレートファイル
-  covers: 'covers'           # カバー画像ファイル
-  config: 'config'           # 各種設定ファイル
-
-# ========================================
-# キャッシュ設定
-# ========================================
-cache:
-  enabled: true
-  dir: .cache/vs/
-
-# ========================================
-# コマンド設定
-# ========================================
-commands:
-  vfm: 'vfm'                 # VFM（Vivliostyle Flavored Markdown）コマンド
-
-# ========================================
-# ファイル設定
-# ========================================
-files:
-  post_replace: 'post_replace_list.yml'  # 後処理用置換リストファイル
-
-# ========================================
 # 索引設定
 # ========================================
 index:
@@ -323,6 +292,49 @@ index:
   # 文脈抽出時に形態素境界で賢く文脈を引用するか
   # 既定値: true
   smart_context_cutting: true
+
+# ========================================
+# ディレクトリ設定
+# ========================================
+directories:
+  contents: 'contents'        # Markdownファイル
+  stylesheets: 'stylesheets' # CSSファイル
+  images: 'images'           # 画像ファイル
+  codes: 'codes'             # ソースコードファイル
+  chapter_templates: 'chapter_templates'     # 章テンプレートファイル
+  covers: 'covers'           # カバー画像ファイル
+  config: 'config'           # 各種設定ファイル
+
+# ========================================
+# キャッシュ設定
+# ========================================
+cache:
+  enabled: true
+  dir: .cache/vs/
+
+# ========================================
+# Lint 設定（文章校正コマンドの既定値）
+# ========================================
+lint:
+  # vs lint 実行時に既定で使用する textlint 設定ファイル
+  # CLI で --config を指定するとこの値を一時的に上書きできます
+  config: config/.textlintrc.yml
+
+  # vs lint の既定出力フォーマット
+  # CLI で --format を指定するとこの値を一時的に上書きできます
+  format: stylish
+
+# ========================================
+# コマンド設定
+# ========================================
+commands:
+  vfm: 'vfm'                 # VFM（Vivliostyle Flavored Markdown）コマンド
+
+# ========================================
+# ファイル設定
+# ========================================
+files:
+  post_replace: 'post_replace_list.yml'  # 後処理用置換リストファイル
 
 # ========================================
 # Vivliostyle設定

@@ -8,25 +8,25 @@ module Vivlio
   module Starter
     module CLI
       # ================================================================
-      # Module: TextMetricsCommands
+      # Module: MetricsCommands
       # ------------------------------------------------
       # Markdown コンテンツの行数・文字数などの統計を表示するコマンド群
       # 提供コマンド:
       #   - text_metrics [BASENAME ...]
       #     contents/ 以下の Markdown ファイルについて行数・文字数を集計
       # ------------------------------------------------
-      module TextMetricsCommands
+      module MetricsCommands
         module_function
 
-        # text_metrics コマンドの処理を実行クラスに委譲する
-        def execute_text_metrics(targets, options = {})
-          TextMetricsRunner.new(targets, options).call
+        # metrics コマンドの処理を実行クラスに委譲する
+        def execute_metrics(targets, options = {})
+          MetricsRunner.new(targets, options).call
         end
-        module_function :execute_text_metrics
+        module_function :execute_metrics
       end
 
       # text_metrics 全体の制御フローを担う実行クラス
-      class TextMetricsRunner
+      class MetricsRunner
         # 対象トークンとオプションを初期化する
         def initialize(targets, options)
           @targets = Array(targets)

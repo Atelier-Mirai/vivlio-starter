@@ -32,10 +32,10 @@
 
 利用者が用いるコマンド
 	help, new, build, clean, delete, doctor,
-	create, rename, renumber, pdf:compress, resize, resize:high, resize:medium, resize:low, index, index:auto, index:apply, open, import
+	create, rename, renumber, pdf:compress, resize, resize:high, resize:medium, resize:low, index, index:auto, index:apply, open, import, glossary, lint, metrics, cover
 	
 内部コマンド
-	entries,create:titlepage, create:colophon, create:legalpage,  pre_process, convert, post_process, toc, pdf
+	entries,create:titlepage, create:colophon, create:legalpage,  pre_process, convert, post_process, toc, pdf, vivliostyle
 
 ### 内部コマンドの使用法
 
@@ -55,4 +55,6 @@
   目次 HTML（`_toc.html`）を再生成します。手動で章構成を調整した直後に TOC の差分を確認したい場合に便利です。
 * `pdf`  
   Vivliostyle CLI を直接叩いて PDF を生成します。`vs build` の内部ステップですが、サンプル HTML だけで試しに PDF を出力したいときに手動実行できます。
+* `vivliostyle`  
+  `config/book.yml` の設定から `vivliostyle.config.js` を生成します。タイトル・著者・言語・読み進め方向・出力ファイル名などを反映し、既存ファイルがある場合はバックアップを作成します。ビルドパイプラインの初期化時に自動で呼ばれますが、設定変更後に手動で再生成したい場合に単独実行できます。
     
