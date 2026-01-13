@@ -55,6 +55,7 @@ module Vivlio
                 'rename' => RenameCommand,
                 'renumber' => RenumberCommand,
                 'open' => OpenCommand,
+                'cover' => CoverCommand,
                 'resize' => ResizeCommand,
                 'resize:high' => ResizeHighCommand,
                 'resize:medium' => ResizeMediumCommand,

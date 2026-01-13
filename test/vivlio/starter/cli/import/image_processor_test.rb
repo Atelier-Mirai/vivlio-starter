@@ -54,9 +54,56 @@ module Vivlio
             FileUtils.mkdir_p(work_dir)
 
             Dir.chdir(work_dir) do
-              result = ImageProcessor.copy_front_cover!(starter_dir, 'hyoshi.pdf')
+              convert_args = nil
+              stub = ->(covers_dir, filename) {
+                convert_args = [covers_dir, filename]
+                true
+              }
+              result = ImageProcessor.stub(:convert_front_cover_pdf_to_master!, stub) do
+                ImageProcessor.copy_front_cover!(starter_dir, 'hyoshi.pdf')
+              end
               assert result
               assert File.exist?(File.join('covers', 'hyoshi.pdf'))
+            end
+
+            assert_equal ['covers', 'hyoshi.pdf'], convert_args
+          end
+
+          def test_convert_front_cover_pdf_to_master_invokes_imagemagick_command
+            work_dir = File.join(@tmpdir, 'work')
+            covers_dir = File.join(work_dir, 'covers')
+            FileUtils.mkdir_p(covers_dir)
+            pdf_path = File.join(covers_dir, 'hyoshi.pdf')
+            File.write(pdf_path, '%PDF-1.4 dummy')
+
+            Dir.chdir(work_dir) do
+              captured = nil
+              ImageProcessor.stub :find_imagemagick_convert_command, ['magick', 'convert'] do
+                ImageProcessor.stub :run_imagemagick_command, ->(cmd, label:) {
+                  captured = cmd
+                  true
+                } do
+                  result = ImageProcessor.convert_front_cover_pdf_to_master!(covers_dir, 'hyoshi.pdf')
+                  assert result
+                end
+              end
+
+              assert_includes captured, "#{pdf_path}[0]"
+              assert_includes captured, "PNG32:#{File.join(covers_dir, 'frontcover_master.png')}"
+            end
+          end
+
+          def test_convert_front_cover_pdf_to_master_returns_false_without_imagemagick
+            work_dir = File.join(@tmpdir, 'work')
+            covers_dir = File.join(work_dir, 'covers')
+            FileUtils.mkdir_p(covers_dir)
+            pdf_path = File.join(covers_dir, 'hyoshi.pdf')
+            File.write(pdf_path, '%PDF-1.4 dummy')
+
+            Dir.chdir(work_dir) do
+              ImageProcessor.stub :find_imagemagick_convert_command, nil do
+                refute ImageProcessor.convert_front_cover_pdf_to_master!(covers_dir, 'hyoshi.pdf')
+              end
             end
           end
 

@@ -70,17 +70,14 @@
   - `vs pdf --help` 実行時に `pdf:compress` を案内し、`vs pdf:compress --help` で詳細な使用方法と引数解説を表示。
   - Samovar の `print_usage` による統一ヘルプとミニテスト `help_spec_test.rb` を追加して、代表的なコマンドのヘルプ出力を自動検証。
 
-### Planned
-- **cover コマンドの Samovar 実装**:
-  - 現状の `CoverCommands` は共通モジュールとして保持しており、CLI 側に Samovar ラッパーは未提供。
-  - 付随する `cover_test.rb` も Thor 互換スタブでオプション引数を再現しているため、Samovar 版 Hash オプションに合わせたテスト改修を予定。
-
 ### Fixed
 - import: `[flushright]` ブロックの連続出現時に外側だけが変換される問題を修正し、各ブロックが個別に `:::{.text-right}` へ置換されるようにした。
+<+> - `vs cover` の Samovar コマンドを公開コマンドに登録し、`vs cover [a4|b5|a5|epub|auto]` が実行できるようにした。
 
 ### Changed
 - 内部コマンドから `--help` オプションを撤廃し、利用者には `docs/DEVELOPER_GUIDE.md` を参照するフローへ統一。
 - Thor 互換コードを全面的に整理し、Samovar ネイティブ実装へのリファクタリングを完了（`create.rb` / `pdf.rb` / `toc.rb` / 共通コメントなどの Thor 残滓を削除）。
+<+> - `test/vivlio/starter/cli/cover_test.rb` から疑似Thorスタブを廃し、`SamovarCommands::CoverCommand` を直接インスタンス化するスモーク/生成テストへ刷新した。
 
 ## 0.27.0 - 2026-01-10
 

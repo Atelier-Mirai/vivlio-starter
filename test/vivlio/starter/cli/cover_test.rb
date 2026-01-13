@@ -18,6 +18,7 @@ require 'fileutils'
 require 'yaml'
 require 'vivlio/starter/cli/common'
 require 'vivlio/starter/cli/cover'
+require 'vivlio/starter/cli/samovar/cover_command'
 
 module Vivlio
   module Starter
@@ -128,7 +129,7 @@ module Vivlio
           end
         end
 
-        # execute_a4のテスト
+        # Samovar cover コマンド（a4）のテスト
         def test_execute_a4
           skip 'ImageMagickが必要です' unless imagemagick_available?
 
@@ -138,8 +139,8 @@ module Vivlio
             FileUtils.mkdir_p(covers_dir)
             create_dummy_master_files(covers_dir)
 
-            command = build_cover_command
-            CoverCommands.execute_a4(command)
+            command = SamovarCommands::CoverCommand.new(['a4'])
+            command.call
 
             assert File.exist?(File.join(covers_dir, 'frontcover_rgb.pdf')),
                    'A4表紙PDFが生成されるべきです'
@@ -148,7 +149,7 @@ module Vivlio
           end
         end
 
-        # execute_epubのテスト
+        # Samovar cover コマンド（epub）のテスト
         def test_execute_epub
           skip 'ImageMagickが必要です' unless imagemagick_available?
 
@@ -158,8 +159,8 @@ module Vivlio
             FileUtils.mkdir_p(covers_dir)
             create_dummy_master_files(covers_dir)
 
-            command = build_cover_command
-            CoverCommands.execute_epub(command)
+            command = SamovarCommands::CoverCommand.new(['epub'])
+            command.call
 
             assert File.exist?(File.join(covers_dir, 'cover.jpg')),
                    'EPUB用JPEGが生成されるべきです'
@@ -167,26 +168,6 @@ module Vivlio
         end
 
         private
-
-        # テスト用の簡易 Thor コマンドクラスを生成する
-        def build_cover_command(options = {})
-          command_class = Class.new do
-            def self.desc(*) = nil
-            def self.long_desc(*) = nil
-            def self.method_option(*) = nil
-            def self.map(*) = nil
-
-            include Vivlio::Starter::CLI::CoverCommands
-
-            attr_reader :options
-
-            def initialize(options)
-              @options = options
-            end
-          end
-
-          command_class.new(options)
-        end
 
         # 一時ディレクトリ配下でテストを実行する
         def within_temp_dir

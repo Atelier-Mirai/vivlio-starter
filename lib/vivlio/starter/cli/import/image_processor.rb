@@ -19,6 +19,9 @@
 # ================================================================
 
 require 'fileutils'
+require 'shellwords'
+
+require_relative '../cover'
 
 module Vivlio
   module Starter
@@ -27,6 +30,9 @@ module Vivlio
         # 画像処理モジュール
         module ImageProcessor
           module_function
+
+          MASTER_WIDTH = CoverCommands::SIZES[:a4][:width]
+          MASTER_HEIGHT = CoverCommands::SIZES[:a4][:height]
 
           # 画像を WebP に変換してコピーする
           #
@@ -71,11 +77,11 @@ module Vivlio
             end
           end
 
-          # 表紙 PDF をコピーする
+          # 表紙 PDF をコピーし、frontcover_master.png を生成する
           #
           # @param starter_dir [String] Starter プロジェクトのディレクトリ
           # @param cover_filename [String] 表紙ファイル名（例: hyoshi.pdf）
-          # @return [Boolean] コピー成功時 true
+          # @return [Boolean] 成功時 true
           def copy_front_cover!(starter_dir, cover_filename)
             return false unless cover_filename
             return false unless cover_filename.downcase.end_with?('.pdf')
@@ -92,11 +98,43 @@ module Vivlio
             dest = File.join(dest_dir, cover_filename)
             FileUtils.cp(src, dest)
             Common.log_info("  表紙 PDF をコピーしました: #{cover_filename} → covers/")
-            true
+
+            convert_front_cover_pdf_to_master!(dest_dir, cover_filename)
           end
 
-          private
+          # Re:VIEW の PDF を Vivlio マスター PNG へ変換する
+          def convert_front_cover_pdf_to_master!(covers_dir, cover_filename)
+            pdf_path = File.join(covers_dir, cover_filename)
+            unless File.exist?(pdf_path)
+              Common.log_warn("  コピー済みの表紙 PDF が見つかりません: #{pdf_path}")
+              return false
+            end
 
+            convert_cmd = find_imagemagick_convert_command
+            unless convert_cmd
+              Common.log_warn('  ImageMagick（magick/convert）が見つからないため frontcover_master.png を生成できませんでした')
+              return false
+            end
+
+            master_path = File.join(covers_dir, CoverCommands::FRONTCOVER_MASTER)
+            cmd = convert_cmd + [
+              "#{pdf_path}[0]",
+              '-density', '350',
+              '-resize', "#{MASTER_WIDTH}x#{MASTER_HEIGHT}!",
+              '-quality', '100',
+              "PNG32:#{master_path}"
+            ]
+
+            if run_imagemagick_command(cmd, label: 'frontcover_master.png 生成')
+              Common.log_info("  frontcover_master.png を生成しました: #{master_path}")
+              true
+            else
+              FileUtils.rm_f(master_path)
+              false
+            end
+          end
+
+          # ============================== Private ==============================
           module_function
 
           # 画像ファイルをローカルにコピーする
@@ -120,6 +158,29 @@ module Vivlio
             end
 
             files
+          end
+
+          def find_imagemagick_convert_command
+            return %w[magick convert] if command_in_path?('magick')
+            return ['convert'] if command_in_path?('convert')
+
+            nil
+          end
+
+          def command_in_path?(command)
+            return false if command.to_s.empty?
+
+            ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |dir|
+              path = File.join(dir, command)
+              File.executable?(path) && !File.directory?(path)
+            end
+          end
+
+          def run_imagemagick_command(cmd, label:)
+            Common.log_action("  $ #{Shellwords.join(cmd.map(&:to_s))}")
+            success = system(*cmd, out: File::NULL, err: File::NULL)
+            Common.log_error("  #{label} に失敗しました") unless success
+            success
           end
         end
       end

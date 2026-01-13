@@ -246,9 +246,9 @@ module Vivlio
 
           # 表紙 PDF をコピー
           if Import::ImageProcessor.copy_front_cover!(@starter_dir, cover_filename)
-            # book.yml の output.cover.front を更新
-            Import::YamlProcessor.update_cover_config!(cover_filename)
-            Common.log_info("  config/book.yml の output.cover.front を更新しました")
+            # book.yml の output.cover.front を Vivlio 既定の frontcover_rgb.pdf に合わせる
+            Import::YamlProcessor.update_cover_config!('frontcover_rgb.pdf')
+            Common.log_info('  config/book.yml の output.cover.front を frontcover_rgb.pdf に更新しました')
           end
         end
 
