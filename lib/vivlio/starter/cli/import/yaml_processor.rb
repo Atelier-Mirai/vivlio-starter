@@ -97,7 +97,7 @@ module Vivlio
           def update_cover_config!(cover_filename)
             return false unless cover_filename
 
-            updates = [[%w[output cover front], cover_filename]]
+            updates = [[%w[output pdf cover front], cover_filename]]
             update_book_yaml_with_values(updates)
           end
 

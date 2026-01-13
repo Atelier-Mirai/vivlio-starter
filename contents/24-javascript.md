@@ -111,7 +111,7 @@
 
 それでは、プレイヤーの手とコンピュータの手を渡すと、相子が `0`, 負けが `1`, 勝ちが `2` と、結果を返す関数を作りましょう。
 
-```
+```text
 // プレイヤーの手とコンピュータの手が与えられると、
 // 0: あいこ 1: 負け 2: 勝ち を返す関数
 const judge = (player, computer) => {
@@ -121,7 +121,7 @@ const judge = (player, computer) => {
 
 この勝敗判定関数 `judge` を使うと、延々と続いていた `if文` がとっても短くなりそうです。
 
-```
+```text
 // judge関数により、勝敗判定結果を得る。
 const result = judge(player, computer)
 // 判定できているか、確認する。
@@ -192,15 +192,14 @@ const paaButton   = document.querySelector("#paa")
 guuButton.addEventListener("click", jankenHandler)
 chokiButton.addEventListener("click", jankenHandler)
 paaButton.addEventListener("click", jankenHandler)
-```
-
+```text
 とてもすっきり、分かりやすくなりましたね。 [^93]
 
 [^93]: `janken06.js` では、`GUU`、`CHOKI`、`PAA`の定数宣言も行っていましたが、もう使わなくなったので、削除しています。
 
 
-::: {.column}
-グローバル変数
+:::{.column}
+**グローバル変数**
 **グローバル変数**とは、プログラムのどの部分からでも、その値を読み取ったり変更したりできる変数のことです。関数やブロックの外 [^94] で宣言された変数がグローバル変数となります。具体的には次のコードがそうです。
 
 [^94]: 「ブロック」とは、繰り返しや条件分岐の`{}`のことです。
@@ -208,15 +207,13 @@ paaButton.addEventListener("click", jankenHandler)
 ```text:janken07
 // computer の手を 乱数で設定
 let **computer** = rand(0, 2)
-```
-
+```text
 14行目で宣言された `computer`という変数は、32行目でも呼び出されています。
 
 ```text:janken07
 // judge関数により、勝敗判定結果を得る。
 const result = judge(player, **computer**)
-```
-
+```text
 グローバル変数の利点と欠点をまとめてみましょう。
 
 
@@ -291,20 +288,17 @@ const result = judge(player, **computer**)
 
 ```html:index.html
 <img id="hand" src="images/guu.webp" alt="グー">
-```
-
+```text
 ですので、コンピュータの手が `1` なら、
 
 ```html:index.html
 <img id="hand" src="images/choki.webp" alt="チョキ">
-```
-
+```text
 `2` なら、
 
 ```html:index.html
 <img id="hand" src="images/paa.webp" alt="パー">
-```
-
+```text
 と`HTML`を変更したら、表示される絵を変更できます。
 
 
@@ -321,8 +315,7 @@ const result = judge(player, **computer**)
 let img = document.querySelector("#hand")
 // 取得したイメージ要素のsrc属性を変更する
 img.src = "images/choki.webp"
-```
-
+```text
 1行目の `let img = document.querySelector("#hand")` で、`HTML`ファイルに書いた イメージ要素 を取得します。
 `img` 変数には、 `<img id="hand" src="images/guu.webp" alt="グー">` が入っています。
 
@@ -345,8 +338,7 @@ if (computer === 0) {
 } else {
   img.src = "images/paa.webp"
 }
-```
-
+```text
 前に学んだ `if` 文を活用したコードで、もちろんこれでも動作します。
 
 **リファクタリング**の考え方を取り入れて、もう少し良いコードが書けないか、考えてみましょう。
@@ -379,9 +371,7 @@ if (computer === 0) {
 
 ```text:じゃんけん画像配列の宣言と初期値の設定
 const images = ["images/guu.webp", "images/choki.webp", "images/paa.webp"]
-```
-
-
+```text
 ### 添字で配列内の要素を指定する
 
 配列内の各要素を指定するには、配列名の後に `[何番目かを指示する数字]` と書きます。この「何番目かを指示する数字」のことを、**添字(そえじ)**と呼びます。
@@ -391,11 +381,10 @@ const images = ["images/guu.webp", "images/choki.webp", "images/paa.webp"]
 配列はとってもよく使う基礎的な**データ構造**で、少し大きなプログラムでは不可欠です。是非、習得なさってください。
 
 
-[note] <b></a>
-
+:::{.note}
 配列と並ぶ重要な**データ構造**に、 **連想配列** (ハッシュや辞書とも呼ばれます)があります。配列は添字と呼ばれる番号で要素を取得しますが、連想配列は番号の代わりにキーと呼ばれる文字列で要素を取得するデータ構造です。紙幅の関係上、詳細は割愛いたしますが、さまざまな学習資源がありますので、ぜひ学んでみてください。
+:::
 
-[/note]
 
 
 配列から要素の取得するためには添字を使えば良いことを学びました。この添字が無作為に`0, 1, 2`と変わるならば、「グー」「チョキ」「パー」が表示できます。既にじゃんけん用の乱数を自作したので、添字に使いましょう。
@@ -403,20 +392,17 @@ const images = ["images/guu.webp", "images/choki.webp", "images/paa.webp"]
 ```
 // 乱数を利用して、コンピュータの手を無作為に決定する
 computer = rand(0, 2)
-```
-
+```text
 ですので、乱数で選ばれた画像ファイル名は、次のようになります。
 
 ```
 const filename = images[computer]
-```
-
+```text
 よって、以下のように書くことで、画像ファイルを都度都度変更することができます。
 
 ```
 img.src = filename
-```
-
+```text
 まとめると、次のようなコードになります。
 
 ```text:一行ずつ分けて書いたコード
@@ -425,16 +411,14 @@ images         = ["images/guu.webp", "images/choki.webp", "images/paa.webp"]
 const filename = images[computer]
 img            = document.querySelector("#hand")
 img.src        = filename
-```
-
+```text
 これを、それぞれの変数に代入するのではなく、凝縮して書くと次のようになります。
 
 ```text:凝縮して書いたコード
 computer = rand(0, 2)
 document.querySelector("#hand").src =
          ["images/guu.webp", "images/choki.webp", "images/paa.webp"][computer]
-```
-
+```text
 圧縮されているので、最初のうちは分かりにくいかもしれません。最初のうちは一行ずつわけて書かれても構いません。ご自身の分かりやすいと感じる書き方で、少しずつ実践して習得していきましょう。
 
 
@@ -483,8 +467,7 @@ const judge = (player, computer) => {
 (以下同じ)
 **// コンピュータの手を変更する処理を呼び出す**
 **shuffleHand()**
-```
-
+```text
 最後の65行目、`shuffleHand()`はとても大切です。17行目で **computerの手を乱数で設定する関数**として `shuffleHand()` を定義しましたが、関数は呼び出されることで初めて機能します。プログラムの最後に `shuffleHand()` を呼び出すことで、無作為にコンピュータの手が変更され、画像も変わるようになります。
 
 
@@ -512,16 +495,16 @@ const judge = (player, computer) => {
 ```
 setTimeout(タイマーが満了した後に実行したい関数,
            指定した関数を実行する前に待つ時間をミリ秒単位で指定)
-```
-
+```text
 **指定した関数を実行する前に待つ時間をミリ秒単位で指定**と書かれています。1秒間に4枚の画像を切り替えるので、`250`と指定すれば良いのですが、これは**マジックナンバー**と呼ばれる書き方で、お勧めできない書き方です。
 
 
-[note] <b>マジックナンバーとは</a>
+:::{.note}
+**マジックナンバーとは**
 
 マジックナンバー（Magic Number）とは、プログラムの中で特定の意味を持つ数値が、直接コードに埋め込まれているものを指します。コードの可読性や保守性を低下させるため、避けるべきとされています。
+:::
 
-[/note]
 
 
 #### マジックナンバーの問題点
@@ -538,8 +521,7 @@ setTimeout(タイマーが満了した後に実行したい関数,
 
 ```text:定数宣言
 const FPS = 4 // 一秒間あたり、4コマ表示する
-```
-
+```text
 そうすると `250` ではなく `1000 / FPS` と書けば良いですね。
 
 続いて **タイマーが満了した後に実行したい関数**の部分です。
@@ -563,8 +545,7 @@ const shuffleHand = () => {
   // 一定間隔で、shuffleHand 関数を呼び続ける
   **setTimeout(shuffleHand, 1000 / FPS)**
 }
-```
-
+```text
 先に作成した `janken08.js` をもとに、7行目に `FPS` 定数を追加しています。また、29行目で 一定間隔で、shuffleHand 関数を呼び続けるよう、 `setTimeout` 関数を記述しています。
 
 これで、アニメーションできるようになりました。
@@ -600,8 +581,7 @@ const shuffleHand = () => {
   // 一定間隔で、shuffleHand 関数を呼び続ける
   setTimeout(shuffleHand, 1000 / FPS)
 }
-```
-
+```text
 `if(!isPause)` という書き方が見慣れないかもしれませんので、解説します。
 
 今の状態がアニメーション停止中なら `true` という意味で、`let isPause = true` と先頭に書きました。ですので普通に `if文`を書くと、`if (isPause === false)` と書くことで、**停止中でないなら** という条件を表すことができます。 `isPause` が `false` の時（停止中の時）には、`if (false === false)` つまり、 `if (true)` となりますので、 `if文` が実行されます。
@@ -631,14 +611,12 @@ const shuffleHand = () => {
 const pause = () => {
   isPause = true
 }
-```
-
+```text
 ```text:切替アニメ再開
 const resume = () => {
   isPause = false
 }
-```
-
+```text
 `isPause` という状態変数に、`true`, または `false` をセットしているだけの関数ですが、 `pause 停止`、 `resume 再開` と名前を付けることで、コードを読むだけで意図を汲み取ることができ、とても分かりやすくなります。名前はとっても重要です。
 
 
@@ -653,9 +631,7 @@ const resume = () => {
 // じゃんけんの切替アニメが再開(resume)されるようにする
 const playButton = document.querySelector("#play")
 playButton.addEventListener("click", resume)
-```
-
-
+```text
 ### 勝敗判定でアニメーションを止める
 
 コンピュータの手に対し、プレイヤーが自分の手を選ぶと勝敗判定が行われます。
@@ -667,8 +643,7 @@ const jankenHandler = (event) => {
   **// 切替アニメ停止処理実行**
   **pause()**
   (以下同じ)
-```
-
+```text
 以上をまとめたプログラムは次のようになります。
 
 ```js:janken10.js
@@ -764,9 +739,7 @@ paaButton.addEventListener("click", jankenHandler)
 
 // コンピュータの手を変更する処理を呼び出す
 shuffleHand()
-```
-
-
+```text
 ## 必ず違う手を出すようにする
 
 開始ボタンを押すとアニメーションが開始するようになりました。また「グー」「チョキ」「パー」ボタンを押すとアニメーションが停止するようになりました。
@@ -806,8 +779,7 @@ const shuffleHand = () => {
   // 一定間隔で、shuffleHand 関数を呼び続ける
   setTimeout(shuffleHand, 1000 / FPS)
 }
-```
-
+```text
 38行目の`while文`は、繰り返しを実現する基本的な構文です。現在の手を覚えておいて、乱数で選んだ次の手が、現在の手と同じ間、次の手を選ぶことを繰り返します。
 違う手になったら、繰り返しから抜けて、42行目の処理に移ります。
 
@@ -835,8 +807,7 @@ if (result === DRAW) {
   // 勝数を一つ増やす
   updateScore(WIN)
 }
-```
-
+```text
 `updateScore` という関数を作って、その引数として、 `LOSE` 敗北か、 `WIN` 勝利を渡しています。実際の処理は、 `updateScore` 内で行っていますが、こうやって字面を読むだけでも処理の内容が分かり、コードの見通しがよくなります。
 
 それでは `updateScore` 関数を次のように書きましょう。
@@ -856,8 +827,7 @@ const updateScore = (result) => {
     lose.textContent = Number(lose.textContent) + 1
   }
 }
-```
-
+```text
 解説していきます。
 
 勝ち数、負け数は、HTML内で `<span id="win">0</span>` のように書いていました。JavaScriptで扱いやすいよう、ID属性を付与したので、 `document.querySelector("#win")` と書けばこの `win` 要素を取得できます。早速 `win` 変数に格納しましょう。
@@ -866,12 +836,13 @@ const updateScore = (result) => {
 一般にプログラミングでは、文字列としての `"0"` と、数値としての `0` は区別されます。
 
 
-[tip] <b>文字列 "0" と 数値 0 は区別される</a>
+:::{.tip}
+**文字列 "0" と 数値 0 は区別される**
 
 "0" + "1" // =>  "01" と文字列の追加が行われます。
 0  +  1  // =>   1  と、数値演算が行われます。
+:::
 
-[/tip]
 
 
 `Number関数` を使うと、文字列としての `"0"` から、整数値としての `0` に変換できます。整数値としての `0` が得られたら「`+ 1`」と足し算して、勝ち数を一つ増やします。

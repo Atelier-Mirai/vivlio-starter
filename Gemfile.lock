@@ -7,6 +7,7 @@ PATH
       mini_magick (~> 4.12)
       natto (~> 1.2)
       nokogiri (~> 1.16)
+      rouge (~> 4.7)
       samovar (~> 2.1)
 
 GEM
@@ -54,6 +55,7 @@ GEM
     rake (13.3.1)
     regexp_parser (2.11.3)
     rexml (3.4.4)
+    rouge (4.7.0)
     rubocop (1.81.7)
       json (~> 2.3)
       language_server-protocol (~> 3.17.0.2)

@@ -214,7 +214,7 @@ output:
     # ..............................
     cover:
       enabled: true        # true で front/back を結合、false で除外
-      front: frontcover_rgb.pdf  # 表表紙（PDF）
+      front: "hyoshi.pdf"  # 表表紙（PDF）
       back: backcover_rgb.pdf    # 裏表紙（PDF）
     
     # ..............................

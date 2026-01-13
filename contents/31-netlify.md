@@ -224,7 +224,7 @@ GitHub（ギットハブ） 等を使っている場合には「Import an existi
 
 - 6. 注意書きが表示されます。
 
-```
+```text
   Are you absolutely sure you want to delete joyful-janken?
 If you have submitted a support request about this site, it will be difficult
 for Netlify's Support team to help you debug the situation if you delete it.

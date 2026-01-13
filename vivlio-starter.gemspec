@@ -42,6 +42,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'mini_magick', '~> 4.12'
   spec.add_dependency 'nokogiri', '~> 1.16'
   spec.add_dependency 'samovar', '~> 2.1'
+  spec.add_dependency 'rouge', '~> 4.7'
 
   # Optional: 索引機能の読み自動推測に使用（MeCab が必要）
   # MeCab をシステムにインストールした上で使用:

@@ -76,17 +76,43 @@ module Vivlio
           # ================================================================
           def test_convert_column_block_without_title
             input = "[column]\nコラム本文\n[/column]"
-            result = MarkdownConverter.convert_column_blocks(input)
-            assert_includes result, '::: {.column}'
+            result = MarkdownConverter.convert_fence_blocks(input)
+            assert_includes result, ':::{.column}'
             assert_includes result, 'コラム本文'
           end
 
           def test_convert_column_block_with_title
             input = "[column] コラムタイトル\nコラム本文\n[/column]"
-            result = MarkdownConverter.convert_column_blocks(input)
-            assert_includes result, '::: {.column}'
-            assert_includes result, 'コラムタイトル'
+            result = MarkdownConverter.convert_fence_blocks(input)
+            assert_includes result, ':::{.column}'
+            assert_includes result, '**コラムタイトル**'
             assert_includes result, 'コラム本文'
+          end
+
+          def test_convert_flushright_blocks_independently
+            input = <<~MD
+              [flushright]
+              早乙女遙香 さん
+              [/flushright]
+
+              [flushright]
+              穂髙未來 さん
+              [/flushright]
+            MD
+
+            expected = <<~MD
+              :::{.text-right}
+              早乙女遙香 さん
+              :::
+
+
+              :::{.text-right}
+              穂髙未來 さん
+              :::
+
+            MD
+
+            assert_equal expected, MarkdownConverter.convert_fence_blocks(input)
           end
 
           # ================================================================

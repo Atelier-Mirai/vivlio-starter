@@ -207,13 +207,17 @@ module Vivlio
           def open_pdf(path = nil)
             return unless defined?(Vivlio::Starter::CLI::PdfCommands::PdfOpener)
 
-            Vivlio::Starter::CLI::PdfCommands::PdfOpener.new(pdf_command_context, path).call
+            Vivlio::Starter::CLI::PdfCommands::PdfOpener.new(pdf_command_options, path).call
           rescue StandardError
             # macOS 専用機能のため失敗しても握りつぶす
           end
 
-          def pdf_command_context
-            @pdf_command_context ||= Struct.new(:options).new(options)
+          def pdf_command_options
+            { verbose: parent_verbose? }
+          end
+
+          def parent_verbose?
+            parent&.options&.[](:verbose) || false
           end
 
           def common

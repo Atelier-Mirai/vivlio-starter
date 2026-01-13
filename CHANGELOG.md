@@ -76,7 +76,7 @@
   - 付随する `cover_test.rb` も Thor 互換スタブでオプション引数を再現しているため、Samovar 版 Hash オプションに合わせたテスト改修を予定。
 
 ### Fixed
-- (なし)
+- import: `[flushright]` ブロックの連続出現時に外側だけが変換される問題を修正し、各ブロックが個別に `:::{.text-right}` へ置換されるようにした。
 
 ### Changed
 - 内部コマンドから `--help` オプションを撤廃し、利用者には `docs/DEVELOPER_GUIDE.md` を参照するフローへ統一。

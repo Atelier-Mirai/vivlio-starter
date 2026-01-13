@@ -60,8 +60,7 @@ module Vivlio
             # --- phase: フェンス記法の変換 ---
             fixed = convert_fence_blocks(fixed)
 
-            # --- phase: column/quote ブロックの変換 ---
-            fixed = convert_column_blocks(fixed)
+            # --- phase: quote ブロックの変換 ---
             fixed = convert_quote_blocks(fixed)
 
             # --- phase: br タグ → .aki ---
@@ -97,35 +96,59 @@ module Vivlio
             end
           end
 
-          # フェンス記法（[abstract], [tip], [note] 等）を変換
+          FENCE_BLOCK_DEFINITIONS = {
+            'abstract'   => { klass: 'chapter-lead' },
+            'tip'        => { klass: 'tip' },
+            'note'       => { klass: 'note' },
+            'notice'     => { klass: 'notice' },
+            'centering'  => { klass: 'centering' },
+            'flushright' => { klass: 'text-right' },
+            'column'     => { klass: 'column', separator: "\n" }
+          }.freeze
+
+          # フェンス記法（[abstract], [tip], [note], [column] 等）を変換
           def convert_fence_blocks(text)
             result = text.dup
-            {
-              'abstract'   => 'chapter-lead',
-              'tip'        => 'tip',
-              'note'       => 'note',
-              'notice'     => 'notice',
-              'centering'  => 'centering',
-              'flushright' => 'text-right'
-            }.each do |tag, klass|
-              result.gsub!(/^\[#{tag}\][ \t]*\n(.*?)\n\[\/#{tag}\][ \t]*$/m) do
-                inner = Regexp.last_match(1).strip
-                ":::{.#{klass}}\n#{inner}\n:::\n"
+            FENCE_BLOCK_DEFINITIONS.each do |tag, config|
+              loop do
+                updated = convert_block(result, tag, config)
+                break if updated == result
+                result = updated
               end
             end
             result
           end
 
-          # [column] ブロックの変換
-          def convert_column_blocks(text)
-            text.gsub(/^\[column\](?:[ \t]+(.+?))?\s*\n(.*?)\n\[\/column\][ \t]*$/m) do
-              title = Regexp.last_match(1)
-              body  = Regexp.last_match(2).strip
-              inner = []
-              inner << title.to_s.strip unless title.to_s.strip.empty?
-              inner << body unless body.empty?
-              "::: {.column}\n#{inner.join("\n")}\n:::\n"
+          # 与えられたタグ設定に従って単一種類のフェンスブロックを Markdown 化する
+          def convert_block(text, tag, config)
+            klass = config.fetch(:klass)
+            separator = config.fetch(:separator, "\n\n")
+
+            pattern = /
+              ^[ \t]*\[#{tag}\](?:[ \t]+(?<title>[^\r\n]+?))?[ \t]*\r?\n
+              (?<body>.*?)
+              \r?\n[ \t]*\[\/#{tag}\][ \t]*$
+            /mix
+
+            text.gsub(pattern) do
+              match = Regexp.last_match
+              title = emphasize_title(extract_inline_title(match[:title]))
+              body  = match[:body].strip
+              content = [title, body].reject(&:empty?).join(separator)
+              ":::{.#{klass}}\n#{content}\n:::\n"
             end
+          end
+
+          # インラインに付与されたタグを除去してタイトル文字列だけを返す
+          def extract_inline_title(raw)
+            raw.to_s.strip.gsub(/<\/?[^>]+>/, '').strip
+          end
+
+          # 既に強調済みのタイトルはそのまま残し、未強調なら **...** を付与する
+          def emphasize_title(title)
+            normalized = title.to_s.strip
+            return '' if normalized.empty?
+            normalized.match?(/\A\*\*.*\*\*\z/) ? normalized : "**#{normalized}**"
           end
 
           # [quote] ブロックの変換
