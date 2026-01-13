@@ -25,6 +25,7 @@
 # ================================================================
 
 require 'fileutils'
+require_relative '../cover'
 
 module Vivlio
   module Starter
@@ -34,11 +35,78 @@ module Vivlio
         module PdfMerger
           module_function
 
+          def cover_enhanced_files
+            files = %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf]
+
+            begin
+              config = Common::CONFIG || {}
+              pdf_config = config.dig('output', 'pdf') || {}
+              targets = Array(config.dig('output', 'targets'))
+              targets = targets.first.to_s.split(',').map(&:strip) if targets.empty? && pdf_config['targets'].is_a?(String)
+              targets = [pdf_config['targets']] if targets.empty? && pdf_config['targets'].is_a?(Array)
+
+              cover_cfg = pdf_config['cover'] || {}
+              cover_enabled = cover_cfg['enabled'] != false
+              front_cover = cover_cfg['front']
+              back_cover = cover_cfg['back']
+              covers_dir = config.dig('directories', 'covers') || 'covers'
+
+              pdf_target_selected = targets.empty? || targets.any? { |t| t.to_s.include?('pdf') }
+
+              if cover_enabled && pdf_target_selected
+                front_path = front_cover ? File.join(covers_dir, front_cover) : nil
+                back_path  = back_cover ? File.join(covers_dir, back_cover) : nil
+
+                missing_cover_paths = [front_path, back_path].compact.reject { |path| File.exist?(path) }
+                ensure_cover_assets_generated!(missing_cover_paths, config) if missing_cover_paths.any?
+
+                files.unshift(front_path) if front_path && File.exist?(front_path)
+                files << back_path if back_path && File.exist?(back_path)
+              end
+            rescue StandardError => e
+              Common.log_warn("[Step 10] カバー結合設定の読込に失敗しました: #{e.message}")
+            end
+
+            files.compact
+          end
+
+          def ensure_cover_assets_generated!(missing_paths, _config)
+            return if missing_paths.nil? || missing_paths.empty?
+            return if cover_generation_already_attempted?
+
+            @cover_generation_attempted = true
+            log_cover_generation_start(missing_paths)
+            CoverCommands.execute_generate(nil)
+          rescue StandardError => e
+            Common.log_warn("[Step 10] vs cover 実行中にエラー: #{e.message}")
+          ensure
+            log_cover_generation_finish(missing_paths)
+          end
+
+          def cover_generation_already_attempted?
+            defined?(@cover_generation_attempted) && @cover_generation_attempted
+          end
+
+          def log_cover_generation_start(missing_paths)
+            missing_list = missing_paths.map { |p| File.basename(p) }.join(', ')
+            Common.log_action("[Step 10] #{missing_list} が見つからないため `vs cover` を自動実行します…")
+          end
+
+          def log_cover_generation_finish(missing_paths)
+            missing_list = missing_paths.map { |p| File.basename(p) }.join(', ')
+            newly_available = missing_paths.select { |path| File.exist?(path) }
+            if newly_available.any?
+              Common.log_success("[Step 10] `vs cover` 自動実行で #{missing_list} を生成しました")
+            else
+              Common.log_warn("[Step 10] `vs cover` を実行しましたが #{missing_list} は見つかりませんでした。")
+            end
+          end
+
           # Step 10: すべてのPDFを結合して output.pdf を生成
           def merge_all_pdfs!(_keep = nil)
             Common.log_action('[Step 10] 表紙、本文、奥付を結合します…')
             # 結合対象: 表紙・扉裏 + 全体PDF + 奥付
-            files_to_merge = %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf]
+            files_to_merge = cover_enhanced_files
             existing_files = files_to_merge.select { |f| File.exist?(f) }
             missing_files  = files_to_merge - existing_files
             Common.log_info("[Step 10] 結合対象: #{existing_files.join(', ')}")

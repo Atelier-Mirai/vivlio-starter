@@ -69,15 +69,21 @@
   - `help_spec.md` に基づき Public/Internal コマンドを明確に分類し、`vs --help` では Public コマンドのみカテゴリ別に表示。
   - `vs pdf --help` 実行時に `pdf:compress` を案内し、`vs pdf:compress --help` で詳細な使用方法と引数解説を表示。
   - Samovar の `print_usage` による統一ヘルプとミニテスト `help_spec_test.rb` を追加して、代表的なコマンドのヘルプ出力を自動検証。
+- **import コマンドの cover 資産取り込みを改善**:
+  - Re:VIEW 側 `frontcover_pdffile` を検出した場合、`images/hyoshi.pdf` を `covers/` にコピーしたうえで ImageMagick で 2894x4092px の `frontcover_master.png` を自動生成。
+  - `config/book.yml` の `output.pdf.cover.front` を Vivlio 既定の `frontcover_rgb.pdf` にリライトし、直後に `vs cover` を回すだけで各ターゲットへ再出力できる状態に揃えた。
+- **vs build で PDF カバーを自動結合**:
+  - `output.pdf.cover.enabled` が有効な場合、`frontcover_rgb.pdf` / `backcover_rgb.pdf` の存在を確認し、不足していれば `vs cover` を内部実行してカバー資産を生成。
+  - 生成されたカバーを `_titlepage_legalpage.pdf` の前、`_colophon.pdf` の後ろへ結合し、出力 PDF に常に front/back cover が付与されるようにした。
 
 ### Fixed
 - import: `[flushright]` ブロックの連続出現時に外側だけが変換される問題を修正し、各ブロックが個別に `:::{.text-right}` へ置換されるようにした。
-<+> - `vs cover` の Samovar コマンドを公開コマンドに登録し、`vs cover [a4|b5|a5|epub|auto]` が実行できるようにした。
+- `vs cover` の Samovar コマンドを公開コマンドに登録し、`vs cover [a4|b5|a5|epub|auto]` が実行できるようにした。
 
 ### Changed
 - 内部コマンドから `--help` オプションを撤廃し、利用者には `docs/DEVELOPER_GUIDE.md` を参照するフローへ統一。
 - Thor 互換コードを全面的に整理し、Samovar ネイティブ実装へのリファクタリングを完了（`create.rb` / `pdf.rb` / `toc.rb` / 共通コメントなどの Thor 残滓を削除）。
-<+> - `test/vivlio/starter/cli/cover_test.rb` から疑似Thorスタブを廃し、`SamovarCommands::CoverCommand` を直接インスタンス化するスモーク/生成テストへ刷新した。
+- `test/vivlio/starter/cli/cover_test.rb` から疑似Thorスタブを廃し、`SamovarCommands::CoverCommand` を直接インスタンス化するスモーク/生成テストへ刷新した。
 
 ## 0.27.0 - 2026-01-10
 

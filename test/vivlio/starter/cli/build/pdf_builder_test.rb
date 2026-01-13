@@ -57,17 +57,109 @@ module Vivlio
 
         # PDF結合のテスト
         class PdfMergerTest < Minitest::Test
-          # merge_all_pdfs! が正しいファイルを結合対象とすることを確認
-          def test_merge_all_pdfs_targets_correct_files
-            # 結合対象: 表紙・扉裏 + 全体PDF + 奥付
-            expected_files = %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf]
+          def setup
+            @original_config = Common::CONFIG
+          end
 
-            # merge_all_pdfs! の内部実装を確認
-            # files_to_merge 変数の値をチェック
-            assert_equal 3, expected_files.length,
-                         '結合対象は3つのPDFファイルであるべき'
-            refute expected_files.include?('_preface_toc.pdf'),
-                   '_preface_toc.pdf は結合対象から除外されている'
+          def teardown
+            Common.const_set(:CONFIG, @original_config)
+          end
+
+          # merge_all_pdfs! がカバー設定と targets に応じて結合対象を構築することを確認
+          def test_merge_all_pdfs_targets_include_covers_when_pdf_target_enabled
+            fake_config = {
+              'output' => {
+                'targets' => ['pdf'],
+                'pdf' => {
+                  'cover' => {
+                    'enabled' => true,
+                    'front' => 'frontcover_rgb.pdf',
+                    'back' => 'backcover_rgb.pdf'
+                  }
+                }
+              },
+              'directories' => {
+                'covers' => 'covers'
+              }
+            }
+
+            Common.const_set(:CONFIG, fake_config)
+
+            existing_files = [
+              '_titlepage_legalpage.pdf',
+              '_sections.pdf',
+              '_colophon.pdf',
+              'covers/frontcover_rgb.pdf',
+              'covers/backcover_rgb.pdf'
+            ]
+
+            File.stub :exist?, ->(path) { existing_files.include?(path) } do
+              files = Build::PdfMerger.send(:cover_enhanced_files)
+              assert_equal(
+                ['covers/frontcover_rgb.pdf',
+                 '_titlepage_legalpage.pdf',
+                 '_sections.pdf',
+                 '_colophon.pdf',
+                 'covers/backcover_rgb.pdf'],
+                files,
+                'front/back カバーが PDF 対象に含まれているべき'
+              )
+            end
+          end
+
+          def test_merge_all_pdfs_targets_exclude_covers_when_pdf_not_selected
+            fake_config = {
+              'output' => {
+                'targets' => ['epub'],
+                'pdf' => {
+                  'cover' => {
+                    'enabled' => true,
+                    'front' => 'frontcover_rgb.pdf',
+                    'back' => 'backcover_rgb.pdf'
+                  }
+                }
+              },
+              'directories' => {
+                'covers' => 'covers'
+              }
+            }
+
+            Common.const_set(:CONFIG, fake_config)
+
+            File.stub :exist?, true do
+              files = Build::PdfMerger.send(:cover_enhanced_files)
+              assert_equal(
+                %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf],
+                files,
+                'pdf target でない場合はカバーを含めない'
+              )
+            end
+          end
+
+          def test_merge_all_pdfs_targets_respects_cover_disabled_flag
+            fake_config = {
+              'output' => {
+                'targets' => ['pdf'],
+                'pdf' => {
+                  'cover' => {
+                    'enabled' => false,
+                    'front' => 'frontcover_rgb.pdf',
+                    'back' => 'backcover_rgb.pdf'
+                  }
+                }
+              }
+            }
+
+            Common.const_set(:CONFIG, fake_config)
+
+            File.stub :exist?, true do
+              files = Build::PdfMerger.send(:cover_enhanced_files)
+              assert_equal(
+                %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf],
+                files,
+                'cover.enabled=false の場合は front/back を結合しない'
+              )
+            end
           end
 
           # add_outline_to_output_pdf! が output.pdf なしの場合に早期リターンすることを確認
