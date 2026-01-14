@@ -17,7 +17,7 @@ require 'tmpdir'
 require 'fileutils'
 require 'json'
 require 'vivlio/starter/cli'
-require 'vivlio/starter/cli/text_metrics'
+require 'vivlio/starter/cli/metrics'
 
 module Vivlio
   module Starter

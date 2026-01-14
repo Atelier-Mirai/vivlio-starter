@@ -57,12 +57,27 @@ module Vivlio
 
         # PDF結合のテスト
         class PdfMergerTest < Minitest::Test
+          private
+
+          def set_common_config(config)
+            Common.send(:remove_const, :CONFIG) if Common.const_defined?(:CONFIG, false)
+            Common.const_set(:CONFIG, config)
+          end
+
+          def restore_common_config
+            set_common_config(@original_config)
+          end
+
+          def deep_dup(obj)
+            Marshal.load(Marshal.dump(obj))
+          end
+
           def setup
-            @original_config = Common::CONFIG
+            @original_config = deep_dup(Common::CONFIG)
           end
 
           def teardown
-            Common.const_set(:CONFIG, @original_config)
+            restore_common_config
           end
 
           # merge_all_pdfs! がカバー設定と targets に応じて結合対象を構築することを確認
@@ -83,7 +98,7 @@ module Vivlio
               }
             }
 
-            Common.const_set(:CONFIG, fake_config)
+            set_common_config(fake_config)
 
             existing_files = [
               '_titlepage_legalpage.pdf',
@@ -124,7 +139,7 @@ module Vivlio
               }
             }
 
-            Common.const_set(:CONFIG, fake_config)
+            set_common_config(fake_config)
 
             File.stub :exist?, true do
               files = Build::PdfMerger.send(:cover_enhanced_files)
@@ -150,7 +165,7 @@ module Vivlio
               }
             }
 
-            Common.const_set(:CONFIG, fake_config)
+            set_common_config(fake_config)
 
             File.stub :exist?, true do
               files = Build::PdfMerger.send(:cover_enhanced_files)

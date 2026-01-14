@@ -23,7 +23,16 @@ module Vivlio
           MetricsRunner.new(targets, options).call
         end
         module_function :execute_metrics
+
+        # 後方互換: 旧 execute_text_metrics エントリポイントを維持
+        def execute_text_metrics(targets, options = {})
+          execute_metrics(targets, options)
+        end
+        module_function :execute_text_metrics
       end
+
+      # 後方互換: 旧 TextMetricsCommands 定数を維持
+      TextMetricsCommands = MetricsCommands
 
       # text_metrics 全体の制御フローを担う実行クラス
       class MetricsRunner

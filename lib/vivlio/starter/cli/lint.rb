@@ -407,6 +407,9 @@ module Vivlio
           end
         end
 
+        # 後方互換: 旧 TextLintCommands 定数を維持
+        TextLintCommands = LintCommands
+
         class LintError < StandardError; end
       end
     end

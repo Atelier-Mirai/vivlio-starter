@@ -351,10 +351,31 @@ module Vivlio
             n = name.to_s
             n = n.sub(contents_prefix, '')
             n = File.basename(n, '.md')
-            n
+            normalize_chapter_token(n)
           end.reject { |n| n.nil? || n.strip.empty? }.uniq
         rescue StandardError
           Array(files).compact
+        end
+
+        def normalize_chapter_token(token)
+          str = token.to_s.strip
+          return token if str.empty?
+
+          return format('%02d', str.to_i) if digits_only?(str)
+
+          if (range = str.match(/\A(\d+)-(\d+)\z/))
+            return "#{format('%02d', range[1].to_i)}-#{format('%02d', range[2].to_i)}"
+          end
+
+          if (leading = str.match(/\A(\d+)([-_].+)\z/))
+            return "#{format('%02d', leading[1].to_i)}#{leading[2]}"
+          end
+
+          token
+        end
+
+        def digits_only?(value)
+          value.match?(/\A\d+\z/)
         end
 
         VIVLIOSTYLE_TIMINGS_KEY = :vivlio_starter_vivliostyle_timings

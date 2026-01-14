@@ -53,8 +53,9 @@ module Vivlio
             work_dir = File.join(@tmpdir, 'work')
             FileUtils.mkdir_p(work_dir)
 
+            convert_args = nil
+
             Dir.chdir(work_dir) do
-              convert_args = nil
               stub = ->(covers_dir, filename) {
                 convert_args = [covers_dir, filename]
                 true
@@ -79,8 +80,8 @@ module Vivlio
             Dir.chdir(work_dir) do
               captured = nil
               ImageProcessor.stub :find_imagemagick_convert_command, ['magick', 'convert'] do
-                ImageProcessor.stub :run_imagemagick_command, ->(cmd, label:) {
-                  captured = cmd
+                ImageProcessor.stub :run_imagemagick_command, lambda { |cmd, label:|
+                  captured = { cmd:, label: }
                   true
                 } do
                   result = ImageProcessor.convert_front_cover_pdf_to_master!(covers_dir, 'hyoshi.pdf')
@@ -88,8 +89,9 @@ module Vivlio
                 end
               end
 
-              assert_includes captured, "#{pdf_path}[0]"
-              assert_includes captured, "PNG32:#{File.join(covers_dir, 'frontcover_master.png')}"
+              assert_includes captured[:cmd], "#{pdf_path}[0]"
+              assert_includes captured[:cmd], "PNG32:#{File.join(covers_dir, 'frontcover_master.png')}"
+              assert_equal 'frontcover_master.png 生成', captured[:label]
             end
           end
 

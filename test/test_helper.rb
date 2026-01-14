@@ -20,8 +20,8 @@ rescue LoadError
                       ->(*, &) { val_or_callable }
                     end
 
-      singleton.define_method(method_name) do |*args, &block|
-        replacement.call(*args, &block)
+      singleton.define_method(method_name) do |*args, **kwargs, &block|
+        replacement.call(*args, **kwargs, &block)
       end
 
       begin

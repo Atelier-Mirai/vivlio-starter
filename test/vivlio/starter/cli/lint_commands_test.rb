@@ -18,7 +18,7 @@
 require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
-require 'vivlio/starter/cli/text_lint'
+require 'vivlio/starter/cli/lint'
 
 module Vivlio
   module Starter
@@ -262,7 +262,7 @@ module Vivlio
         end
 
         def test_target_resolver_numeric_only
-          resolver = TextLintCommands::TextLintRunner::TargetResolver.new([])
+          resolver = LintCommands::LintRunner::TargetResolver.new([])
           
           assert resolver.send(:numeric_only?, '91')
           assert resolver.send(:numeric_only?, '11')
