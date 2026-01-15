@@ -26,7 +26,7 @@ CHAPTERS:
       - 21-html
       - 22-css
       - 23-javascript
-      - 24-javascript
+      # - 24-javascript
       - 31-netlify
       - 41-pwa
 

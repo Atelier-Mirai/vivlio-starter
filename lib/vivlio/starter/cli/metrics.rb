@@ -3,32 +3,40 @@
 require 'json'
 require 'pathname'
 require 'yaml'
+require_relative 'metrics/runner'
 
 module Vivlio
   module Starter
     module CLI
       # ================================================================
       # Module: MetricsCommands
-      # ------------------------------------------------
-      # Markdown コンテンツの行数・文字数などの統計を表示するコマンド群
-      # 提供コマンド:
-      #   - text_metrics [BASENAME ...]
-      #     contents/ 以下の Markdown ファイルについて行数・文字数を集計
-      # ------------------------------------------------
+      # ----------------------------------------------------------------
+      # Markdown コンテンツの文章品質メトリクスを分析・表示するコマンド群
+      #
+      # 提供機能:
+      #   - 基本統計（文字数、行数、文数、節数）
+      #   - 語彙難度（漢字比率、平均語長）
+      #   - 語彙多様度（TTR）
+      #   - 読解難度スコア
+      #   - 章・節単位の分量可視化
+      #
+      # Ruby 4.0+ 構文:
+      #   - Data.define によるイミュータブルデータ
+      #   - パターンマッチング
+      #   - it パラメータ
+      # ================================================================
       module MetricsCommands
         module_function
 
         # metrics コマンドの処理を実行クラスに委譲する
         def execute_metrics(targets, options = {})
-          MetricsRunner.new(targets, options).call
+          Metrics::Runner.new(targets, options).call
         end
-        module_function :execute_metrics
 
         # 後方互換: 旧 execute_text_metrics エントリポイントを維持
         def execute_text_metrics(targets, options = {})
           execute_metrics(targets, options)
         end
-        module_function :execute_text_metrics
       end
 
       # 後方互換: 旧 TextMetricsCommands 定数を維持

@@ -347,11 +347,13 @@ module Vivlio
         # ================================================================
         def normalize_tokens(files)
           contents_prefix = %r{\A#{Regexp.escape(CONTENTS_DIR)}/}
-          Array(files).compact.map do |name|
-            n = name.to_s
+          tokens = Array(files).compact.flat_map { |name| name.to_s.split(',') }
+          tokens.flat_map do |name|
+            n = name.strip
             n = n.sub(contents_prefix, '')
             n = File.basename(n, '.md')
-            normalize_chapter_token(n)
+            normalized = normalize_chapter_token(n)
+            expand_range_token(normalized)
           end.reject { |n| n.nil? || n.strip.empty? }.uniq
         rescue StandardError
           Array(files).compact
@@ -372,6 +374,16 @@ module Vivlio
           end
 
           token
+        end
+
+        def expand_range_token(token)
+          match = token&.match(/\A(\d{2})-(\d{2})\z/)
+          return [token] unless match
+
+          start_num = match[1].to_i
+          end_num = match[2].to_i
+          range = start_num <= end_num ? (start_num..end_num) : (end_num..start_num)
+          range.map { |num| format('%02d', num) }
         end
 
         def digits_only?(value)

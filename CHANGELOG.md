@@ -14,15 +14,20 @@
 - [High] 任意章フルビルド（既出の計画を拡張）章IDの指定順で束ね、目次・通し番号も整合。実装目安: rake build --chapters=11,12,21 形式。
 - [High] PDF に章アウトライン（ブックマーク）を付与（本文PDF/最終PDF）。読者のナビゲーション向上のため、Step 7/10 後段で HexaPDF により後付け。
 - [High] 縦に長い表のレイアウト崩れ
-- [Medium] 見出しID・相互参照ショートコード（ref:foo → 自動リンク）。
 - [Medium] 図表キャプション規約の統一（Figure 1.1/表1.1 自動採番）。
 - [High] Re:View Starter -> Vivlio Starter (vs import実装完了)
-
+- [Medium] text_metrics に語の平均長・漢字比率など語彙難度指標を追加する
+- [Medium] text_metrics に語彙多様度（TTR 等）の集計を追加する
+- [Low] text_metrics で日本語向け読解難度スコア（Flesch/Kincaid 等を応用）を算出する
+- [Low] text_metrics で見出し/セクション単位の分量バランスを可視化する
+- [High] ビルド時にcover画像も含むように
 
 
 ### Planned
+- [Medium] 見出しID・相互参照ショートコード（ref:foo → 自動リンク）。
 
 - [Medium] 章・節に対する相互参照の整備（章番号ベースの cross reference）。本文中から「第◯章」「第◯節」を参照する簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。
+- [Medium] build / metrics / delete など CLI コマンド間で共通のショートハンド展開ロジックを切り出し、catalog.yml ベースの章解決を一元化する。
 
 #### ビルド/出力
 - 00, 01, (blank), 02, (blank), 03, (blank), 11-98(cssにより右頁始まり), (blank), 99 として結合
@@ -39,10 +44,7 @@
 - [Medium] 基本的に良く用いる用語をまとめた用語集テンプレートを標準添付し、プロジェクト作成時または後から選択適用できるようにする。
 - [Medium] glossary `style: spacing` の実装（スペースの有無/種別の検出・自動修正）
 - [Medium] glossary `style: punctuation` の実装（コロン/ハイフン等の記号種別・位置の検出・自動修正）
-- [Medium] text_metrics に語の平均長・漢字比率など語彙難度指標を追加する
-- [Medium] text_metrics に語彙多様度（TTR 等）の集計を追加する
-- [Low] text_metrics で日本語向け読解難度スコア（Flesch/Kincaid 等を応用）を算出する
-- [Low] text_metrics で見出し/セクション単位の分量バランスを可視化する
+
 
 #### 参照・索引・書誌
 - [Low] 用語集・索引自動生成
@@ -57,7 +59,6 @@
 - [High] プロジェクト生成時に、project_scaffold/ を生成する。
 
 ビルドのマニュアルを書く
-- [High] ビルド時にcover画像も含むように
 - [High] 塗り足しやepub対応
 - [High] pdf_reader -> mdに
 
@@ -65,6 +66,22 @@
 （次回リリース候補の変更はここに追加してください）
 
 ### Added
+- **metrics キャッシュとテストの拡充**:
+  - 章ごとの解析結果を `ChapterAnalysis` 単位でキャッシュし、JSON/YAML 出力やサマリ集計がキャッシュのみで完結するようにした。
+  - `tokens_map`/`kanji_char_count`/`total_word_length` など語彙統計の再計算に必要なデータをキャッシュへ保存し、TTR や平均語長を正確に再合成可能にした。
+  - Runner/Liv eDisplay の Minitest スイートを追加し、集計ロジックとライブ UI の振る舞いを検証。
+- **metrics コマンドを刷新**:
+  - `docs/specs/metrics_spec.md` に基づき、文章品質メトリクスの分析機能を実装。
+  - 基本統計（文字数・行数・文数・節数）、語彙難度（漢字比率・平均語長）、語彙多様度（TTR）、読解難度スコアを算出。
+  - 章・節単位の分量をバーグラフで可視化し、基準から外れた章に警告を表示。
+  - `--all` オプションで全章の節まで表示、`--warn` オプションで警告章のみ表示。
+  - `config/book.yml` の `metrics` セクションでプリセット（compact/standard/commercial）を選択可能に。
+  - 著者向けマニュアル `book-vivlio-starter/21-metrics.md` を整備。
+- **metrics コマンドの高速化**:
+  - `config/catalog.yml` に基づく解析対象の自動絞り込み（PREFACE/CHAPTERS/APPENDICES/POSTFACE セクション連動）。
+  - サマリ即時出力＋ローディング表示＋章別結果の逐次出力で体感速度を向上。
+  - `.cache/metrics/{basename}.yml` へのキャッシュ保存（`VIVLIO_METRICS_CACHE=0` で無効化可能）。
+  - スレッドプールによる並列処理（`Etc.nprocessors` と 4 の小さい方、`VIVLIO_METRICS_CONCURRENCY` で上書き可能）。
 - **CLI ヘルプUXを刷新**:
   - `help_spec.md` に基づき Public/Internal コマンドを明確に分類し、`vs --help` では Public コマンドのみカテゴリ別に表示。
   - `vs pdf --help` 実行時に `pdf:compress` を案内し、`vs pdf:compress --help` で詳細な使用方法と引数解説を表示。
@@ -87,12 +104,19 @@
 - `vs cover` の Samovar コマンドを公開コマンドに登録し、`vs cover [a4|b5|a5|epub|auto]` が実行できるようにした。
 
 ### Changed
+- **metrics コマンドのライブ UI を改良**:
+  - サマリ即時出力 → プレースホルダー表示 → 最終出力の3フェーズに整理し、章解析の進捗を ANSI 制御でリアルタイム更新。
+  - キャッシュ鮮度判定を章ファイルの mtime 比較に変更し、`00-preface.md` へ依存しない差分更新を実現。
+  - 著者向けマニュアル `book-vivlio-starter/21-metrics.md` を更新し、新しいキャッシュ仕様・ライブ表示・構造化出力のワークフローを追記。
 - 内部コマンドから `--help` オプションを撤廃し、利用者には `docs/DEVELOPER_GUIDE.md` を参照するフローへ統一。
 - Thor 互換コードを全面的に整理し、Samovar ネイティブ実装へのリファクタリングを完了（`create.rb` / `pdf.rb` / `toc.rb` / 共通コメントなどの Thor 残滓を削除）。
 - `test/vivlio/starter/cli/cover_test.rb` から疑似Thorスタブを廃し、`SamovarCommands::CoverCommand` を直接インスタンス化するスモーク/生成テストへ刷新した。
 - **Lint/Metrics コマンドの名称整理**:
   - Samovar 公開コマンドを `text:lint` → `lint`、`text:metrics` → `metrics` に改称し、`vs --help` や `help` カテゴリ表記も合わせて更新。
   - 互換レイヤーの require 群を `lint.rb` / `metrics.rb` へ切り替え、テスト/ドキュメント全体のコマンド表記揺れを解消。
+- **章番号入力のゼロ埋め正規化を追加**:
+  - `build`/`create`/`delete`/`rename`/`renumber`/`metrics` など章番号を受け付ける CLI で、`1` と入力しても自動的に `01` と解釈するよう共通トークン正規化処理を拡張。
+  - 章範囲（例: `1-3`）やスラッグ付き指定（例: `1-intro`）にもゼロ埋めを適用し、コマンド入力で桁数を気にせず利用できるようにした。
 
 ## 0.27.0 - 2026-01-10
 
