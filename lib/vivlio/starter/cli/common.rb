@@ -390,6 +390,7 @@ module Vivlio
           value.match?(/\A\d+\z/)
         end
 
+        # Vivliostyle build の各工程時間を Thread ローカルに保持し、build サマリ表示時に集計するためのキー
         VIVLIOSTYLE_TIMINGS_KEY = :vivlio_starter_vivliostyle_timings
 
         def reset_vivliostyle_build_timings
@@ -409,6 +410,7 @@ module Vivlio
           timings
         end
 
+        # LiveDisplay などに「現在処理中の章/工程」を表示するためのキー
         VIVLIOSTYLE_CURRENT_STEP_KEY = :vivlio_starter_current_step_label
 
         def with_current_step_label(label)

@@ -1,3 +1,7 @@
+vivlio-starterはvivliostyleを（かなり厚く）ラップした電子書籍執筆のためのRuby Gemです。
+Ruby 4.0 以降を前提として、開発中です。
+
+
 1. docs/DEVELOPER_GUIDE.md（概要・地図）
 
 ここでは、Vivlio-Starter の「思想」と「構造」の全体像を記述します。
