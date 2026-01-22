@@ -343,51 +343,34 @@ module Vivlio
         # Utility: 引数トークンの正規化 normalize_tokens
         # ------------------------------------------------
         # - contents/ プレフィックスや拡張子 .md を除去
+        # - ゼロ埋め、範囲展開を行う
         # - 空要素を除去し一意化
         # ================================================================
         def normalize_tokens(files)
+          return [] if files.nil? || Array(files).empty?
+
           contents_prefix = %r{\A#{Regexp.escape(CONTENTS_DIR)}/}
-          tokens = Array(files).compact.flat_map { |name| name.to_s.split(',') }
-          tokens.flat_map do |name|
-            n = name.strip
-            n = n.sub(contents_prefix, '')
-            n = File.basename(n, '.md')
-            normalized = normalize_chapter_token(n)
-            expand_range_token(normalized)
-          end.reject { |n| n.nil? || n.strip.empty? }.uniq
+          Array(files).compact.flat_map { it.to_s.split(',') }.map(&:strip).flat_map do |raw|
+            # contents/ プレフィクスと拡張子を除去
+            n = raw.sub(contents_prefix, '').then { File.basename(it, '.*') }
+            case n
+            when /\A(\d+)\z/
+              # 数字のみ: ゼロ埋め
+              format('%02d', $1.to_i)
+            when /\A(\d+)-(\d+)\z/
+              # 範囲指定: 展開（降順にも対応）
+              s, e = $1.to_i, $2.to_i
+              (s <= e ? s..e : e..s).map { format('%02d', it) }
+            when /\A(\d+)([-_].+)\z/
+              # 番号+スラグ: 番号部分をゼロ埋め
+              "#{format('%02d', $1.to_i)}#{$2}"
+            else
+              # その他: そのまま
+              n
+            end
+          end.reject { it.to_s.empty? }.uniq
         rescue StandardError
           Array(files).compact
-        end
-
-        def normalize_chapter_token(token)
-          str = token.to_s.strip
-          return token if str.empty?
-
-          return format('%02d', str.to_i) if digits_only?(str)
-
-          if (range = str.match(/\A(\d+)-(\d+)\z/))
-            return "#{format('%02d', range[1].to_i)}-#{format('%02d', range[2].to_i)}"
-          end
-
-          if (leading = str.match(/\A(\d+)([-_].+)\z/))
-            return "#{format('%02d', leading[1].to_i)}#{leading[2]}"
-          end
-
-          token
-        end
-
-        def expand_range_token(token)
-          match = token&.match(/\A(\d{2})-(\d{2})\z/)
-          return [token] unless match
-
-          start_num = match[1].to_i
-          end_num = match[2].to_i
-          range = start_num <= end_num ? (start_num..end_num) : (end_num..start_num)
-          range.map { |num| format('%02d', num) }
-        end
-
-        def digits_only?(value)
-          value.match?(/\A\d+\z/)
         end
 
         # Vivliostyle build の各工程時間を Thread ローカルに保持し、build サマリ表示時に集計するためのキー
