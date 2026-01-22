@@ -72,8 +72,8 @@ module Vivlio
 
           # PDF用カバー（RGB版）
           if config.dig('output', 'pdf', 'cover', 'front')
-            Common.log_info "\n🎨 PDF用カバー（A4、RGB）を生成中..."
-            CoverCommands.generate_rgb_pdf(covers_dir, config)
+            Common.log_info "\n🎨 PDF用カバー（#{page_size.upcase}、RGB）を生成中..."
+            CoverCommands.generate_rgb_pdf(covers_dir, page_size, config)
             generated << 'PDF用（RGB）'
           end
 
@@ -110,7 +110,7 @@ module Vivlio
             return
           end
 
-          CoverCommands.generate_rgb_pdf(covers_dir, config)
+          CoverCommands.generate_rgb_pdf(covers_dir, :a4, config)
           Common.log_success '✅ A4 RGB版PDFの生成が完了しました'
         end
         module_function :execute_a4
@@ -191,9 +191,9 @@ module Vivlio
           front_exists || back_exists
         end
 
-        # RGB版PDF生成（A4サイズ）
-        def self.generate_rgb_pdf(covers_dir, config)
-          size = SIZES[:a4]
+        # RGB版PDF生成（ページサイズ依存）
+        def self.generate_rgb_pdf(covers_dir, page_size, config)
+          size = SIZES[page_size] || SIZES[:b5]
           front_output = config.dig('output', 'pdf', 'cover', 'front')
           back_output = config.dig('output', 'pdf', 'cover', 'back')
 

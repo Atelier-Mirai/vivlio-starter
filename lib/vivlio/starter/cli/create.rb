@@ -26,6 +26,7 @@
 require 'fileutils'
 require_relative 'build/catalog_loader'
 require_relative 'build/catalog_updater'
+require_relative 'token_resolver'
 
 module Vivlio
   module Starter
@@ -52,11 +53,30 @@ module Vivlio
           apply_verbose(options)
           ensure_names_present!(names)
 
+          resolver = TokenResolver::Resolver.new
+          entries = resolver.resolve(names)
+
+          # 1. 不正な形式をチェック
+          invalid_entries = entries.reject(&:valid?)
+          if invalid_entries.any?
+            Common.log_error("エラー: 不正な形式が含まれています: #{invalid_entries.map(&:slug).join(', ')}")
+            exit 1
+          end
+
+          # 2. カタログとの重複をチェック
+          duplicate_entries = entries.select(&:in_catalog?)
+          if duplicate_entries.any?
+            Common.log_error("エラー: 以下の章は既にカタログに存在します:")
+            duplicate_entries.each { |e| Common.log_error("  - #{e.basename} (#{e.label})") }
+            exit 1
+          end
+
+          # 3. すべてクリアしたら、一括で作成
           errors = false
-          Common.normalize_tokens(names).uniq.each do |name|
-            fname = ensure_filename(name)
+          entries.each do |entry|
+            fname = ensure_filename(entry.basename)
             unless fname
-              Common.log_error("エラー: 無効なファイル名です: #{name}")
+              Common.log_error("エラー: 無効なファイル名です: #{entry.basename}")
               errors = true
               next
             end

@@ -22,11 +22,9 @@ CHAPTERS:
       - 07-programming
       - 08-web
   - 実践篇:
-      - 11-env
       - 21-html
       - 22-css
       - 23-javascript
-      # - 24-javascript
       - 31-netlify
       - 41-pwa
 

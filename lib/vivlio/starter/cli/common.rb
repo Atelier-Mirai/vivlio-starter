@@ -339,40 +339,6 @@ module Vivlio
           page_cfg
         end
 
-        # ================================================================
-        # Utility: 引数トークンの正規化 normalize_tokens
-        # ------------------------------------------------
-        # - contents/ プレフィックスや拡張子 .md を除去
-        # - ゼロ埋め、範囲展開を行う
-        # - 空要素を除去し一意化
-        # ================================================================
-        def normalize_tokens(files)
-          return [] if files.nil? || Array(files).empty?
-
-          contents_prefix = %r{\A#{Regexp.escape(CONTENTS_DIR)}/}
-          Array(files).compact.flat_map { it.to_s.split(',') }.map(&:strip).flat_map do |raw|
-            # contents/ プレフィクスと拡張子を除去
-            n = raw.sub(contents_prefix, '').then { File.basename(it, '.*') }
-            case n
-            when /\A(\d+)\z/
-              # 数字のみ: ゼロ埋め
-              format('%02d', $1.to_i)
-            when /\A(\d+)-(\d+)\z/
-              # 範囲指定: 展開（降順にも対応）
-              s, e = $1.to_i, $2.to_i
-              (s <= e ? s..e : e..s).map { format('%02d', it) }
-            when /\A(\d+)([-_].+)\z/
-              # 番号+スラグ: 番号部分をゼロ埋め
-              "#{format('%02d', $1.to_i)}#{$2}"
-            else
-              # その他: そのまま
-              n
-            end
-          end.reject { it.to_s.empty? }.uniq
-        rescue StandardError
-          Array(files).compact
-        end
-
         # Vivliostyle build の各工程時間を Thread ローカルに保持し、build サマリ表示時に集計するためのキー
         VIVLIOSTYLE_TIMINGS_KEY = :vivlio_starter_vivliostyle_timings
 

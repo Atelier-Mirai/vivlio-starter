@@ -10,12 +10,14 @@
 #   - キャッシュ管理: ファイルの保存・復元
 #   - PDF 操作: ページ数取得、ページサイズ計算
 #   - 章番号計算: keep オプション用の番号抽出
+#   - 判型計算: config からページサイズを算出
 #
 # 依存:
 #   - HexaPDF: PDF メタデータ読み取り
 #   - pdfinfo: ページ数取得（外部コマンド）
 # ================================================================
 
+require 'fileutils'
 require 'hexapdf'
 
 module Vivlio
@@ -24,6 +26,7 @@ module Vivlio
       module Build
         # ビルド共通ユーティリティモジュール
         module Utilities
+
           module_function
 
           # キャッシュにファイルを保存
@@ -57,12 +60,11 @@ module Vivlio
           end
 
           # 1..89 範囲の章番号（整数）の配列を返す（新仕様）
-          def chapter_numbers_for_book(keep = nil)
-            basenames = if keep&.any?
-                          Array(keep).map { |s| File.basename(s.to_s, '.md') }
-                        else
-                          Dir[File.join(Common::CONTENTS_DIR, '*.md')].map { |p| File.basename(p, '.md') }
-                        end
+          # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
+          # @return [Array<Integer>] 1..89 範囲の章番号配列
+          def chapter_numbers_for_book(entries_or_keep = nil)
+            basenames = extract_basenames(entries_or_keep)
+            basenames = Dir[File.join(Common::CONTENTS_DIR, '*.md')].map { |p| File.basename(p, '.md') } if basenames.empty?
             basenames
               .map { |bn| Common.get_chapter_number(bn) }
               .compact
@@ -73,19 +75,17 @@ module Vivlio
           end
 
           # PDF アウトライン生成対象の章番号リストを取得（新仕様）
-          def chapter_numbers_for_outline(keep = nil)
+          # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
+          # @return [Array<Integer>] アウトライン対象の章番号配列
+          def chapter_numbers_for_outline(entries_or_keep = nil)
             # 新仕様: 0=PREFACE, 1-89=CHAPTERS, 90-98=APPENDICES, 99=POSTFACE
             allowed_numbers = [0, 99] + (1..89).to_a + (90..98).to_a
-            basenames = if keep&.any?
-                          Array(keep).map do |entry|
-                            name = File.basename(entry.to_s)
-                            name.sub(/\.[^.]+\z/, '')
-                          end
-                        else
-                          md = Dir[File.join(Common::CONTENTS_DIR, '*.md')].map { |p| File.basename(p, '.md') }
-                          html = Dir[File.join('.', '*.html')].map { |p| File.basename(p, '.html') }
-                          (md + html)
-                        end
+            basenames = extract_basenames(entries_or_keep)
+            if basenames.empty?
+              md = Dir[File.join(Common::CONTENTS_DIR, '*.md')].map { |p| File.basename(p, '.md') }
+              html = Dir[File.join('.', '*.html')].map { |p| File.basename(p, '.html') }
+              basenames = md + html
+            end
 
             numbers = basenames
                       .map { |bn| Common.get_chapter_number(bn) }
@@ -98,6 +98,20 @@ module Vivlio
             numbers.uniq!
             numbers.sort!
             numbers
+          end
+
+          # Entry 配列または basename 配列から basename 配列を抽出
+          # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil]
+          # @return [Array<String>] basename 配列
+          def extract_basenames(entries_or_keep)
+            raw = Array(entries_or_keep).compact
+            return [] if raw.empty?
+
+            if raw.first.respond_to?(:basename)
+              raw.map(&:basename)
+            else
+              raw.map { |s| File.basename(s.to_s, '.md') }
+            end
           end
 
           # 空白1ページPDFを生成

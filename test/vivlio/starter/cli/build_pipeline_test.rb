@@ -39,41 +39,42 @@ module Vivlio
       class UnifiedBuildPipelineFullModeTest < Minitest::Test
         # フルビルドパイプラインが登録順にステップを実行することを確認
         def test_run_executes_each_step_in_order
-          pipeline = build_full_pipeline(keep: nil)
+          pipeline = build_full_pipeline
           order = []
           test_case = self
 
           # 各ステップをスタブ化し、呼び出し順と渡される引数を確認する
+          # entries は空配列（フルビルドモードではカタログから読み込む）
           stubs = [
             [pipeline, :run_step1_clean, -> { order << 'step1' }],
             [pipeline, :run_step2_optimize_images, -> { order << 'step2' }],
             [Build::ImageOptimizer, :prepare_theme_images!, -> { order << 'step3' }],
-            [Build::SectionBuilder, :preprocess_sections!, lambda { |keep|
-              test_case.assert_nil keep
+            [Build::SectionBuilder, :preprocess_sections!, lambda { |entries|
+              test_case.assert_equal [], entries
               order << 'step4'
             }],
             [pipeline, :run_step5_index_processing, -> { order << 'step5' }],
-            [Build::SectionBuilder, :convert_sections_html!, lambda { |keep|
-              test_case.assert_nil keep
+            [Build::SectionBuilder, :convert_sections_html!, lambda { |entries|
+              test_case.assert_equal [], entries
               order << 'step6'
             }],
-            [Build::TocGenerator, :generate_toc_and_pdf!, lambda { |dir, keep|
+            [Build::TocGenerator, :generate_toc_and_pdf!, lambda { |dir, entries|
               test_case.assert_equal '.', dir
-              test_case.assert_nil keep
+              test_case.assert_equal [], entries
               order << 'step7'
             }],
-            [Build::PdfBuilder, :build_overall_pdf_from_dir!, lambda { |dir, keep|
+            [Build::PdfBuilder, :build_overall_pdf_from_dir!, lambda { |dir, entries|
               test_case.assert_equal '.', dir
-              test_case.assert_nil keep
+              test_case.assert_equal [], entries
               order << 'step8'
             }],
             [pipeline, :run_step9_front_pages_and_tail, -> { order << 'step9' }],
-            [Build::PdfMerger, :merge_all_pdfs!, lambda { |keep|
-              test_case.assert_nil keep
+            [Build::PdfMerger, :merge_all_pdfs!, lambda { |entries|
+              test_case.assert_equal [], entries
               order << 'step10'
             }],
-            [Build::PdfMerger, :add_outline_to_output_pdf!, lambda { |keep|
-              test_case.assert_nil keep
+            [Build::PdfMerger, :add_outline_to_output_pdf!, lambda { |entries|
+              test_case.assert_equal [], entries
               order << 'step11'
             }],
             [pipeline, :run_step12_rename_and_clean, -> { order << 'step12' }]
@@ -89,7 +90,7 @@ module Vivlio
         end
 
         def test_full_mode_step_labels
-          pipeline = build_full_pipeline(keep: nil)
+          pipeline = build_full_pipeline
           stub_all_steps(pipeline)
 
           with_build_stubs { pipeline.run }
@@ -113,7 +114,7 @@ module Vivlio
         end
 
         def test_timings_are_numeric
-          pipeline = build_full_pipeline(keep: nil)
+          pipeline = build_full_pipeline
           stub_all_steps(pipeline)
 
           with_build_stubs { pipeline.run }
@@ -124,16 +125,16 @@ module Vivlio
         end
 
         def test_mode_is_full
-          pipeline = build_full_pipeline(keep: nil)
+          pipeline = build_full_pipeline
           assert_equal :full, pipeline.mode
         end
 
         private
 
-        def build_full_pipeline(keep:)
+        def build_full_pipeline
           options = default_options
           command = Struct.new(:options).new(options)
-          BuildCommands::UnifiedBuildPipeline.new(command, keep: keep, mode: :full)
+          BuildCommands::UnifiedBuildPipeline.new(command, entries: [], mode: :full)
         end
 
         def default_options
@@ -237,10 +238,11 @@ module Vivlio
           assert_equal :single, pipeline.mode
         end
 
-        def test_targets_are_stored
+        def test_entries_are_stored
           targets = ['45-first-html', '46-first-css']
           pipeline = build_single_pipeline(targets: targets)
-          assert_equal targets, pipeline.targets
+          # entries の basename が正しく格納されていることを確認
+          assert_equal targets, pipeline.entries.map(&:basename)
         end
 
         private
@@ -248,7 +250,24 @@ module Vivlio
         def build_single_pipeline(targets:)
           options = default_options
           command = Struct.new(:options).new(options)
-          BuildCommands::UnifiedBuildPipeline.new(command, targets: targets, mode: :single)
+          entries = targets.map { |bn| make_entry(bn) }
+          BuildCommands::UnifiedBuildPipeline.new(command, entries: entries, mode: :single)
+        end
+
+        def make_entry(basename)
+          name = basename.sub(/\.md\z/, '')
+          num = name[/\A(\d+)-/, 1]&.to_i
+          slug = name.sub(/\A\d+-/, '')
+          TokenResolver::Entry.new(
+            number: num,
+            slug: slug,
+            kind: :chapter,
+            label: name,
+            path: "contents/#{name}.md",
+            exists: true,
+            in_catalog: true,
+            valid: true
+          )
         end
 
         def default_options
@@ -329,7 +348,25 @@ module Vivlio
         def build_single_pipeline(targets:)
           options = { clean: true, resize: true, compress: true, high: false, low: false }
           command = Struct.new(:options).new(options)
-          BuildCommands::UnifiedBuildPipeline.new(command, targets: targets, mode: :single)
+          # targets を Entry オブジェクトに変換
+          entries = targets.map { |bn| make_entry(bn) }
+          BuildCommands::UnifiedBuildPipeline.new(command, entries: entries, mode: :single)
+        end
+
+        def make_entry(basename)
+          name = basename.sub(/\.md\z/, '')
+          num = name[/\A(\d+)-/, 1]&.to_i
+          slug = name.sub(/\A\d+-/, '')
+          TokenResolver::Entry.new(
+            number: num,
+            slug: slug,
+            kind: :chapter,
+            label: name,
+            path: "contents/#{name}.md",
+            exists: true,
+            in_catalog: true,
+            valid: true
+          )
         end
       end
 
@@ -397,7 +434,7 @@ module Vivlio
 
         def build_pipeline(options, mode:)
           command = Struct.new(:options).new(options)
-          BuildCommands::UnifiedBuildPipeline.new(command, keep: nil, mode: mode)
+          BuildCommands::UnifiedBuildPipeline.new(command, entries: [], mode: mode)
         end
 
         def stub_all_steps(pipeline)
@@ -455,13 +492,30 @@ module Vivlio
         def build_full_pipeline
           options = { clean: true, resize: true, compress: true, high: false, low: false }
           command = Struct.new(:options).new(options)
-          BuildCommands::UnifiedBuildPipeline.new(command, keep: nil, mode: :full)
+          BuildCommands::UnifiedBuildPipeline.new(command, entries: [], mode: :full)
         end
 
         def build_single_pipeline(targets)
           options = { clean: true, resize: true, compress: true, high: false, low: false }
           command = Struct.new(:options).new(options)
-          BuildCommands::UnifiedBuildPipeline.new(command, targets: targets, mode: :single)
+          entries = targets.map { |bn| make_entry(bn) }
+          BuildCommands::UnifiedBuildPipeline.new(command, entries: entries, mode: :single)
+        end
+
+        def make_entry(basename)
+          name = basename.sub(/\.md\z/, '')
+          num = name[/\A(\d+)-/, 1]&.to_i
+          slug = name.sub(/\A\d+-/, '')
+          TokenResolver::Entry.new(
+            number: num,
+            slug: slug,
+            kind: :chapter,
+            label: name,
+            path: "contents/#{name}.md",
+            exists: true,
+            in_catalog: true,
+            valid: true
+          )
         end
 
         def stub_pipeline_steps(pipeline)

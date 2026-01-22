@@ -12,24 +12,12 @@ module Vivlio
       module ConvertCommands
         module_function
 
-        def execute_convert(command_or_context, tokens)
+        def execute_convert(command_or_context, tokens_or_entries)
           ctx = normalized_context(command_or_context)
           enable_verbose(ctx)
 
           base_dir = '.'
-          normalize_md = lambda do |name|
-            n = name.to_s
-            n = "#{n}.md" unless n =~ /\.md\z/
-            File.dirname(n) == '.' ? File.join(base_dir, n) : n
-          end
-
-          files = Common.normalize_tokens(tokens)
-          md_files =
-            if files.any?
-              files.map { |f| normalize_md.call(f) }.uniq
-            else
-              Dir.glob(File.join(base_dir, '*.md')).reject { |f| File.basename(f) =~ /\A(README|ROADMAP)\.md\z/ }
-            end
+          md_files = resolve_md_files_for_convert(tokens_or_entries, base_dir)
 
           md_files.each do |md|
             html = md.sub(/\.md\z/, '.html')
@@ -64,6 +52,30 @@ module Vivlio
           end
         end
         module_function :options_of
+
+        # Entry 配列または basename 配列から Markdown ファイルパス配列を解決する
+        # @param entries_or_basenames [Array<TokenResolver::Entry>, Array<String>]
+        # @param base_dir [String] ベースディレクトリ（プロジェクトルート）
+        # @return [Array<String>] Markdown ファイルパスの配列
+        def resolve_md_files_for_convert(entries_or_basenames, base_dir)
+          raw = Array(entries_or_basenames).compact
+
+          if raw.empty?
+            return Dir.glob(File.join(base_dir, '*.md')).reject { |f| File.basename(f) =~ /\A(README|ROADMAP)\.md\z/ }
+          end
+
+          # Entry オブジェクトかどうかを判定
+          if raw.first.respond_to?(:basename)
+            raw.map { |entry| File.join(base_dir, "#{entry.basename}.md") }.uniq
+          else
+            # basename 配列: パスに変換
+            raw.map do |bn|
+              name = bn.to_s.sub(/\.md\z/, '')
+              File.join(base_dir, "#{name}.md")
+            end.uniq
+          end
+        end
+        module_function :resolve_md_files_for_convert
       end
     end
   end

@@ -103,7 +103,8 @@ module Vivlio
           end
 
           # Step 10: すべてのPDFを結合して output.pdf を生成
-          def merge_all_pdfs!(_keep = nil)
+          # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列（現状未使用）
+          def merge_all_pdfs!(entries_or_keep = nil)
             Common.log_action('[Step 10] 表紙、本文、奥付を結合します…')
             # 結合対象: 表紙・扉裏 + 全体PDF + 奥付
             files_to_merge = cover_enhanced_files
@@ -138,13 +139,14 @@ module Vivlio
           end
 
           # Step 11: アウトライン付与
-          def add_outline_to_output_pdf!(keep = nil)
+          # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
+          def add_outline_to_output_pdf!(entries_or_keep = nil)
             unless File.exist?('output.pdf')
               Common.log_warn('[Step 11] output.pdf がまだ存在しないため、アウトライン付与をスキップします')
               return false
             end
 
-            keep_numbers = Build::Utilities.chapter_numbers_for_outline(keep)
+            keep_numbers = Build::Utilities.chapter_numbers_for_outline(entries_or_keep)
             chapter_htmls = Dir.glob(File.join('.', '*.html')).select do |path|
               bn = File.basename(path, '.html')
               n = bn[/\A(\d+)-/, 1]&.to_i

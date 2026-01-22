@@ -51,23 +51,11 @@ module Vivlio
         FRONTISPIECE_DEFAULT_PATH = ThemeImageResolver::FRONTISPIECE_DEFAULT_PATH
         ORNAMENT_DEFAULT_PATH = ThemeImageResolver::ORNAMENT_DEFAULT_PATH
 
-        def execute_pre_process(command_or_ctx, tokens)
+        def execute_pre_process(command_or_ctx, tokens_or_entries)
           ctx = normalized_context(command_or_ctx)
           enable_verbose(ctx)
 
-          files = Common.normalize_tokens(tokens)
-
-          md_files = if files.any?
-                       missing_files = files.reject { |f| File.exist?("#{Common::CONTENTS_DIR}/#{f}.md") }
-                       if missing_files.any?
-                         Common.log_error("エラー: 次のファイルが存在しません: #{missing_files.join(', ')}")
-                         Common.log_warn('前処理を中止します')
-                         exit(1)
-                       end
-                       files.map { |f| "#{Common::CONTENTS_DIR}/#{f}.md" }
-                     else
-                       Dir.glob("#{Common::CONTENTS_DIR}/*.md")
-                     end
+          md_files = resolve_md_files(tokens_or_entries)
 
           Common.log_action('Markdownファイルの前処理を行っています...')
           md_files.each do |md_file|
@@ -110,6 +98,27 @@ module Vivlio
           end
         end
         module_function :options_of
+
+        # Entry 配列または basename 配列から Markdown ファイルパス配列を解決する
+        # @param entries_or_basenames [Array<TokenResolver::Entry>, Array<String>]
+        # @return [Array<String>] Markdown ファイルパスの配列
+        def resolve_md_files(entries_or_basenames)
+          raw = Array(entries_or_basenames).compact
+          return Dir.glob("#{Common::CONTENTS_DIR}/*.md") if raw.empty?
+
+          # Entry オブジェクトかどうかを判定
+          if raw.first.respond_to?(:path)
+            raw.map(&:path)
+          else
+            # basename 配列: パスに変換
+            raw.map do |bn|
+              name = bn.to_s
+              name = "#{name}.md" unless name.end_with?('.md')
+              File.join(Common::CONTENTS_DIR, name)
+            end
+          end
+        end
+        module_function :resolve_md_files
 
         # ================================================================
         # 単一Markdownファイルを処理

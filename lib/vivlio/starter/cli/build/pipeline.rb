@@ -14,12 +14,14 @@ module Vivlio
         class UnifiedBuildPipeline
           Step = Struct.new(:label, :handler)
 
-          attr_reader :timings, :mode, :targets, :generated_pdf_name
+          attr_reader :timings, :mode, :entries, :generated_pdf_name
 
-          def initialize(command, keep: nil, targets: [], mode: :full)
+          # @param command [Samovar::Command] ビルドコマンドインスタンス
+          # @param entries [Array<TokenResolver::Entry>] ビルド対象の Entry 配列
+          # @param mode [:full, :single] ビルドモード
+          def initialize(command, entries: [], mode: :full)
             @command = command
-            @keep = keep
-            @targets = targets
+            @entries = Array(entries)
             @mode = mode
             @options = command.options
             @timings = []
@@ -39,7 +41,13 @@ module Vivlio
 
           private
 
-          attr_reader :command, :keep, :options
+          attr_reader :command, :options
+
+          # Entry 配列から basename 配列を取得
+          # @return [Array<String>] basename 配列
+          def basenames
+            @basenames ||= entries.map(&:basename)
+          end
 
           # モードに応じたステップを登録する
           def register_steps
@@ -66,14 +74,14 @@ module Vivlio
             add_step('Step  1 (clean)',                       -> { run_step1_clean })
             add_step('Step  2 (optimize images)',             -> { run_step2_optimize_images })
             add_step('Step  3 (prepare theme images)',        -> { Build::ImageOptimizer.prepare_theme_images! })
-            add_step('Step  4 (preprocess sections)',         -> { Build::SectionBuilder.preprocess_sections!(keep) })
+            add_step('Step  4 (preprocess sections)',         -> { Build::SectionBuilder.preprocess_sections!(entries) })
             add_step('Step  5 (index scan and build)',        -> { run_step5_index_processing })
-            add_step('Step  6 (convert sections html)',       -> { Build::SectionBuilder.convert_sections_html!(keep) })
-            add_step('Step  7 (generate toc and pdf)',        -> { Build::TocGenerator.generate_toc_and_pdf!('.', keep) })
-            add_step('Step  8 (build overall pdf)',           -> { Build::PdfBuilder.build_overall_pdf_from_dir!('.', keep) })
+            add_step('Step  6 (convert sections html)',       -> { Build::SectionBuilder.convert_sections_html!(entries) })
+            add_step('Step  7 (generate toc and pdf)',        -> { Build::TocGenerator.generate_toc_and_pdf!('.', entries) })
+            add_step('Step  8 (build overall pdf)',           -> { Build::PdfBuilder.build_overall_pdf_from_dir!('.', entries) })
             add_step('Step  9 (build front pages and tail)',  -> { run_step9_front_pages_and_tail })
-            add_step('Step 10 (merge all pdfs)',              -> { Build::PdfMerger.merge_all_pdfs!(keep) })
-            add_step('Step 11 (apply outline to output pdf)', -> { Build::PdfMerger.add_outline_to_output_pdf!(keep) })
+            add_step('Step 10 (merge all pdfs)',              -> { Build::PdfMerger.merge_all_pdfs!(entries) })
+            add_step('Step 11 (apply outline to output pdf)', -> { Build::PdfMerger.add_outline_to_output_pdf!(entries) })
             add_step('Step 12 (rename and final clean)',      -> { run_step12_rename_and_clean })
           end
 
@@ -132,18 +140,11 @@ module Vivlio
 
           # single mode: 対象章のみ HTML をビルド
           def build_target_sections_html
-            Common.log_action("[Step 4] 対象章をビルドします: #{targets.join(', ')}")
-            targets.each do |target|
-              %w[pre_process convert post_process].each do |task|
-                case task
-                when 'pre_process'
-                  PreProcessCommands.execute_pre_process({}, [target])
-                when 'convert'
-                  ConvertCommands.execute_convert({}, [target])
-                when 'post_process'
-                  PostProcessCommands.execute_post_process({}, [target])
-                end
-              end
+            Common.log_action("[Step 4] 対象章をビルドします: #{basenames.join(', ')}")
+            entries.each do |entry|
+              PreProcessCommands.execute_pre_process({}, [entry])
+              ConvertCommands.execute_convert({}, [entry])
+              PostProcessCommands.execute_post_process({}, [entry])
             end
           end
 
@@ -151,7 +152,7 @@ module Vivlio
           def generate_entries_and_pdf
             Common.log_action('[Step 5] entries.js を生成して PDF をビルドします…')
             # 対象章のみを含む entries.js を生成
-            EntriesCommands.execute_entries({}, targets)
+            EntriesCommands.execute_entries({}, entries)
             # PDF を生成
             PdfCommands.execute_pdf({})
           end
@@ -175,12 +176,12 @@ module Vivlio
 
           # single mode の出力 PDF 名を決定する
           def determine_single_mode_pdf_name
-            if targets.size == 1
+            if basenames.size == 1
               # 単一章: 54.pdf
-              "#{targets.first}.pdf"
+              "#{basenames.first}.pdf"
             else
               # 複数章: 54-56.pdf（最初と最後の章番号）
-              sorted = targets.sort_by { |t| t[/^(\d+)/, 1].to_i }
+              sorted = basenames.sort_by { |bn| bn[/^(\d+)/, 1].to_i }
               first_num = sorted.first[/^(\d+)/, 1]
               last_num = sorted.last[/^(\d+)/, 1]
               "#{first_num}-#{last_num}.pdf"
@@ -317,9 +318,9 @@ module Vivlio
 
             Common.log_action('[Step 5] 索引語のスキャンと索引ページ生成を実行します…')
 
-            # 対象章を取得
-            chapter_targets = if keep&.any?
-                                Array(keep).map { |s| File.basename(s.to_s, '.md') }.sort
+            # 対象章を取得（Entry 配列から basename を抽出）
+            chapter_targets = if entries.any?
+                                basenames.sort
                               else
                                 Dir[File.join(Common::CONTENTS_DIR, '*.md')]
                                   .map { |p| File.basename(p, '.md') }

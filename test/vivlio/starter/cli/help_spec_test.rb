@@ -146,13 +146,16 @@ module Vivlio
           refute_includes public_commands, 'pre_process'
 
           # Internal Commands の確認
+          # 注: pre_process, convert, post_process, toc, entries, vivliostyle は
+          #     build コマンドから内部的に呼び出される純粋な内部処理に移行済み
           internal_commands = root.internal_commands.keys
           assert_includes internal_commands, 'pdf'
-          assert_includes internal_commands, 'pre_process'
-          assert_includes internal_commands, 'convert'
-          assert_includes internal_commands, 'post_process'
-          assert_includes internal_commands, 'toc'
+          assert_includes internal_commands, 'create:titlepage'
+          assert_includes internal_commands, 'create:colophon'
+          assert_includes internal_commands, 'create:legalpage'
           refute_includes internal_commands, 'build'
+          refute_includes internal_commands, 'pre_process'
+          refute_includes internal_commands, 'convert'
         end
       end
     end

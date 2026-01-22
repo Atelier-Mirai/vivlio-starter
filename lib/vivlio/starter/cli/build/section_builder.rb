@@ -147,37 +147,47 @@ module Vivlio
           end
 
           # セクション（前書き/本文/付録/後書き）の前処理を一括実行
-          def preprocess_sections!(keep = nil)
+          # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
+          def preprocess_sections!(entries_or_keep = nil)
             Common.log_action('[Step 4] セクションの前処理（Markdown 修正）を実行します…')
-            chapter_targets = resolve_targets(keep)
-            return if chapter_targets.empty?
+            targets = resolve_targets(entries_or_keep)
+            return if targets.empty?
 
             concurrency = determine_concurrency
             if concurrency == 1
-              chapter_targets.each { |target| preprocess_single_chapter!(target) }
+              targets.each { |target| preprocess_single_chapter!(target) }
             else
-              parallel_each(chapter_targets, concurrency: concurrency) { |target| preprocess_single_chapter!(target) }
+              parallel_each(targets, concurrency: concurrency) { |target| preprocess_single_chapter!(target) }
             end
           end
 
           # セクション（前書き/本文/付録/後書き）の変換を一括実行
-          def convert_sections_html!(keep = nil)
+          # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
+          def convert_sections_html!(entries_or_keep = nil)
             Common.log_action('[Step 4b] セクションの変換（HTML 生成）を実行します…')
-            chapter_targets = resolve_targets(keep)
-            return if chapter_targets.empty?
+            targets = resolve_targets(entries_or_keep)
+            return if targets.empty?
 
             concurrency = determine_concurrency
             if concurrency == 1
-              chapter_targets.each { |target| convert_single_chapter!(target) }
+              targets.each { |target| convert_single_chapter!(target) }
             else
-              parallel_each(chapter_targets, concurrency: concurrency) { |target| convert_single_chapter!(target) }
+              parallel_each(targets, concurrency: concurrency) { |target| convert_single_chapter!(target) }
             end
           end
 
-          # 対象章を解決
-          def resolve_targets(keep = nil)
-            if keep&.any?
-              Array(keep).map { |s| File.basename(s.to_s, '.md') }.sort
+          # 対象章を解決（Entry 配列または basename 配列から basename 配列を返す）
+          # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil]
+          # @return [Array<String>] basename 配列
+          def resolve_targets(entries_or_keep = nil)
+            raw = Array(entries_or_keep).compact
+            if raw.any?
+              # Entry オブジェクトかどうかを判定
+              if raw.first.respond_to?(:basename)
+                raw.map(&:basename).sort
+              else
+                raw.map { |s| File.basename(s.to_s, '.md') }.sort
+              end
             else
               Dir[File.join(Common::CONTENTS_DIR, '*.md')]
                 .map { |p| File.basename(p, '.md') }

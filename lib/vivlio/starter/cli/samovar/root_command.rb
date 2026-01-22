@@ -78,18 +78,14 @@ module Vivlio
             end
 
             # 内部コマンド (vs --help に非表示、開発者向け)
+            # 注: pre_process, convert, post_process, entries, toc, vivliostyle は
+            #     build コマンドから内部的に呼び出される純粋な内部処理に移行済み
             def internal_commands
               @internal_commands ||= {
-                'pre_process' => PreProcessCommand,
-                'convert' => ConvertCommand,
-                'post_process' => PostProcessCommand,
                 'pdf' => PdfCommand,
-                'toc' => TocCommand,
-                'entries' => EntriesCommand,
                 'create:titlepage' => CreateTitlepageCommand,
                 'create:colophon' => CreateColophonCommand,
-                'create:legalpage' => CreateLegalpageCommand,
-                'vivliostyle' => VivliostyleCommand
+                'create:legalpage' => CreateLegalpageCommand
               }.freeze
             end
 

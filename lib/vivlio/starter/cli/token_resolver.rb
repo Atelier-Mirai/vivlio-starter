@@ -119,13 +119,23 @@ module Vivlio
             # 1. 形式チェック: 数字で始まらないものは即座に invalid
             return instantiate_invalid_entry(token) unless token.match?(/\A\d+/)
 
-            # 2. カタログから番号が一致するものを探す
-            token_num = format('%02d', token.to_i)
-            found = catalog.find { it.number == token_num }
-            return found if found
-
-            # 3. カタログにない場合、新規エントリ（create用）として生成
-            instantiate_entry(token, 'NEW', :chapter, in_catalog: false)
+            # 2. トークンの形式を解析（番号のみ or 番号+スラッグ）
+            if token =~ /\A(\d+)[-_](.+)\z/
+              # 番号+スラッグ形式: 完全一致を要求
+              token_num = format('%02d', $1.to_i)
+              token_slug = $2
+              found = catalog.find { it.number == token_num && it.slug == token_slug }
+              return found if found
+              # カタログにない場合、新規エントリとして生成
+              return instantiate_entry(token, 'NEW', :chapter, in_catalog: false)
+            else
+              # 番号のみ形式: 番号でマッチ
+              token_num = format('%02d', token.to_i)
+              found = catalog.find { it.number == token_num }
+              return found if found
+              # カタログにない場合、番号のみの新規エントリとして生成
+              return instantiate_entry(token, 'NEW', :chapter, in_catalog: false)
+            end
           end
 
           # --- Phase 4: Entry オブジェクトの実体化（正常系）---

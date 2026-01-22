@@ -159,9 +159,10 @@ module Vivlio
               end
             end
 
-            assert_equal [['11-sample']], pre_calls
-            assert_equal [['11-sample']], conv_calls
-            assert_equal [['11-sample']], post_calls
+            # Entry オブジェクトが渡されるので、basename を比較
+            assert_equal [['11-sample']], pre_calls.map { |c| c.map(&:basename) }
+            assert_equal [['11-sample']], conv_calls.map { |c| c.map(&:basename) }
+            assert_equal [['11-sample']], post_calls.map { |c| c.map(&:basename) }
           end
         end
 
@@ -177,8 +178,8 @@ module Vivlio
               end
             end
 
-            # entries コマンドにターゲットが渡される
-            assert_equal [['11-sample', '12-tutorial']], entries_calls
+            # entries コマンドに Entry オブジェクトが渡される
+            assert_equal [['11-sample', '12-tutorial']], entries_calls.map { |c| c.map(&:basename) }
             # pdf コマンドが呼ばれる
             assert_equal 1, pdf_calls.size
           end
@@ -222,7 +223,25 @@ module Vivlio
         def build_pipeline(targets)
           options = { clean: true, resize: true, compress: true, high: false, low: false }
           command = Struct.new(:options).new(options)
-          BuildCommands::UnifiedBuildPipeline.new(command, targets: targets, mode: :single)
+          # targets を Entry オブジェクトに変換
+          entries = targets.map { |bn| make_entry(bn) }
+          BuildCommands::UnifiedBuildPipeline.new(command, entries: entries, mode: :single)
+        end
+
+        def make_entry(basename)
+          name = basename.sub(/\.md\z/, '')
+          num = name[/\A(\d+)-/, 1]&.to_i
+          slug = name.sub(/\A\d+-/, '')
+          TokenResolver::Entry.new(
+            number: num,
+            slug: slug,
+            kind: :chapter,
+            label: name,
+            path: "contents/#{name}.md",
+            exists: true,
+            in_catalog: true,
+            valid: true
+          )
         end
 
         def within_temp_dir

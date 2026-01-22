@@ -68,21 +68,12 @@ module Vivlio
         def included(base); end
 
         # Samovar/直接呼び出し用エントリポイント
-        def execute_post_process(context_or_options, tokens = [])
+        def execute_post_process(context_or_options, tokens_or_entries = [])
           opts = normalize_options(context_or_options)
           ENV['VERBOSE'] = '1' if opts[:verbose]
 
-          files = Common.normalize_tokens(tokens)
           base_dir = '.'
-
-          html_files = if files.any?
-                         files.map do |f|
-                           name = f.end_with?('.html') ? f : "#{f}.html"
-                           File.dirname(name) == '.' ? File.join(base_dir, name) : name
-                         end.uniq
-                       else
-                         Dir.glob(File.join(base_dir, '*.html'))
-                       end
+          html_files = resolve_html_files_for_post_process(tokens_or_entries, base_dir)
 
           html_files.each do |html_file|
             BodyClassInjector.inject_body_class(html_file)
@@ -183,6 +174,27 @@ module Vivlio
           end
         end
         module_function :normalize_options
+
+        # Entry 配列または basename 配列から HTML ファイルパス配列を解決する
+        # @param entries_or_basenames [Array<TokenResolver::Entry>, Array<String>]
+        # @param base_dir [String] ベースディレクトリ（プロジェクトルート）
+        # @return [Array<String>] HTML ファイルパスの配列
+        def resolve_html_files_for_post_process(entries_or_basenames, base_dir)
+          raw = Array(entries_or_basenames).compact
+          return Dir.glob(File.join(base_dir, '*.html')) if raw.empty?
+
+          # Entry オブジェクトかどうかを判定
+          if raw.first.respond_to?(:basename)
+            raw.map { |entry| File.join(base_dir, "#{entry.basename}.html") }.uniq
+          else
+            # basename 配列: パスに変換
+            raw.map do |bn|
+              name = bn.to_s.sub(/\.(md|html)\z/, '')
+              File.join(base_dir, "#{name}.html")
+            end.uniq
+          end
+        end
+        module_function :resolve_html_files_for_post_process
 
         # ================================================================
         # クロスリファレンス用コードブロックのラップ

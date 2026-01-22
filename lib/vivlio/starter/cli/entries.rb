@@ -32,15 +32,14 @@ module Vivlio
 
         def included(base); end
 
-        def execute_entries(command_or_context, tokens)
+        def execute_entries(command_or_context, tokens_or_entries)
           ctx = normalized_context(command_or_context)
           enable_verbose(ctx)
 
-          files = Common.normalize_tokens(tokens)
           Common.log_action('entries.jsを生成しています...')
 
           base_dir = '.'
-          html_files = resolve_html_files(base_dir, files)
+          html_files = resolve_html_files_for_entries(base_dir, tokens_or_entries)
           Common.log_info("目次作成対象ファイル: #{html_files.join(', ')}")
 
           entries = html_files.map { |html_file| build_entry(html_file) }
@@ -51,14 +50,23 @@ module Vivlio
         end
         module_function :execute_entries
 
-        def resolve_html_files(base_dir, files)
-          if Array(files).any?
-            files.flat_map { |token| resolve_token(base_dir, token) }.uniq
+        # Entry 配列または basename 配列から HTML ファイルパス配列を解決する
+        # @param base_dir [String] ベースディレクトリ（プロジェクトルート）
+        # @param entries_or_basenames [Array<TokenResolver::Entry>, Array<String>]
+        # @return [Array<String>] HTML ファイルパスの配列
+        def resolve_html_files_for_entries(base_dir, entries_or_basenames)
+          raw = Array(entries_or_basenames).compact
+          return Dir.glob(File.join(base_dir, '*.html')).sort if raw.empty?
+
+          # Entry オブジェクトかどうかを判定
+          if raw.first.respond_to?(:basename)
+            raw.map { |entry| File.join(base_dir, "#{entry.basename}.html") }.uniq
           else
-            Dir.glob(File.join(base_dir, '*.html')).sort
+            # basename 配列: パスに変換
+            raw.flat_map { |bn| resolve_token(base_dir, bn.to_s) }.uniq
           end
         end
-        module_function :resolve_html_files
+        module_function :resolve_html_files_for_entries
 
         def resolve_token(base_dir, token)
           if File.extname(token) == '.html'
