@@ -65,7 +65,14 @@
 ## Unreleased
 （次回リリース候補の変更はここに追加してください）
 
-（現在はありません）
+### Added
+- **TokenResolver を実装し章番号の共通解決を一元化**: CLI 各所でばらついていた章番号/トークン展開ロジックを `TokenResolver` に統合し、`vs build` / `vs metrics` / `vs delete` など章指定を受け付ける全コマンドで共通の正規化・範囲解釈を行うようにした。
+
+### Changed
+- **Common::CONFIG を Ruby 4.0 の Data オブジェクトへ刷新**: `directories` や `vivliostyle` などの既定値をコード側でハードコーディングし、設定アクセスはシンボルキー＋ドット記法で統一。`book.yml` 依存の文字列キー参照や複雑なマージ処理を廃止して、Config の型安全性と可読性を向上させた。
+
+### Fixed
+- **front/back cover の PDF 生成処理のページサイズ不整合を修正**: 本文のページサイズ（B5/A5 など）に応じた RGB/CMYK カバー PDF を動的生成するようにし、`vs cover` → `vs build` の流れで常に適切なカバーが得られるようにした。
 
 ## 0.28.0 - 2026-01-16
 
