@@ -51,20 +51,20 @@ module Vivlio
         FRONTISPIECE_DEFAULT_PATH = ThemeImageResolver::FRONTISPIECE_DEFAULT_PATH
         ORNAMENT_DEFAULT_PATH = ThemeImageResolver::ORNAMENT_DEFAULT_PATH
 
-        def execute_pre_process(command_or_ctx, tokens_or_entries)
+        # @param command_or_ctx [Hash, Object] コマンドコンテキスト
+        # @param entries [Array<TokenResolver::Entry>] Entry オブジェクトの配列
+        def execute_pre_process(command_or_ctx, entries)
           ctx = normalized_context(command_or_ctx)
           enable_verbose(ctx)
 
-          md_files = resolve_md_files(tokens_or_entries)
+          entries = resolve_entries(entries)
 
           Common.log_action('Markdownファイルの前処理を行っています...')
-          md_files.each do |md_file|
-            process_single_markdown_file(md_file)
-          end
+          entries.each { process_single_markdown_file(it.path, it) }
 
           Common.log_success('Markdownの前処理が完了しました')
 
-          output_files = md_files.map { |md_file| File.basename(md_file) }
+          output_files = entries.map { File.basename(it.path) }
           Common.log_action("\nクロスリファレンス処理を開始します...")
           result = process_cross_references_for_files(output_files)
 
@@ -99,42 +99,35 @@ module Vivlio
         end
         module_function :options_of
 
-        # Entry 配列または basename 配列から Markdown ファイルパス配列を解決する
-        # @param entries_or_basenames [Array<TokenResolver::Entry>, Array<String>]
-        # @return [Array<String>] Markdown ファイルパスの配列
-        def resolve_md_files(entries_or_basenames)
-          raw = Array(entries_or_basenames).compact
-          return Dir.glob("#{Common::CONTENTS_DIR}/*.md") if raw.empty?
+        # Entry 配列を解決する。空の場合は全ファイルを TokenResolver で解決。
+        # @param entries [Array<TokenResolver::Entry>]
+        # @return [Array<TokenResolver::Entry>]
+        def resolve_entries(entries)
+          raw = Array(entries).compact
+          return resolve_all_content_entries if raw.empty?
 
-          # Entry オブジェクトかどうかを判定
-          if raw.first.respond_to?(:path)
-            raw.map(&:path)
-          else
-            # basename 配列: パスに変換
-            raw.map do |bn|
-              name = bn.to_s
-              name = "#{name}.md" unless name.end_with?('.md')
-              File.join(Common::CONTENTS_DIR, name)
-            end
-          end
+          # Entry オブジェクトならそのまま返す
+          return raw if raw.first.respond_to?(:kind)
+
+          # basename/パスの場合は TokenResolver で解決
+          resolver = TokenResolver::Resolver.new
+          raw.map { resolver.resolve_file(it) }
         end
-        module_function :resolve_md_files
+        module_function :resolve_entries
 
-        # ================================================================
-        # 単一Markdownファイルを処理
-        # ----------------------------------------------------------------
-        # MarkdownPreprocessorを使って、1つのMarkdownファイルに対して
-        # 前処理パイプラインを実行します。
-        # ================================================================
-        def process_single_markdown_file(md_file)
-          MarkdownPreprocessor.new(md_file).run
+        # contents/ 内の全 Markdown ファイルを Entry として解決
+        def resolve_all_content_entries
+          resolver = TokenResolver::Resolver.new
+          Dir.glob("#{Common::CONTENTS_DIR}/*.md").map { resolver.resolve_file(it) }
         end
+        module_function :resolve_all_content_entries
 
-        # ================================================================
-        # 以下、module_function として公開されたメソッド（後方互換性のため）
-        # ----------------------------------------------------------------
-        # 各モジュールのメソッドを委譲することで、既存コードとの互換性を維持
-        # ================================================================
+        # 単一 Markdown ファイルを処理
+        # @param md_file [String] Markdown ファイルパス
+        # @param entry [TokenResolver::Entry] 章情報を持つ Entry オブジェクト
+        def process_single_markdown_file(md_file, entry)
+          MarkdownPreprocessor.new(md_file, entry).run
+        end
         module_function :process_single_markdown_file
 
         # ================================================================

@@ -14,7 +14,8 @@ module Vivlio
         Entry = Data.define(:number, :slug, :kind, :label, :path, :exists, :in_catalog, :valid) do
           # ファイル名のベース部分を動的に生成する。
           # number と slug から導出されるため、属性間の不整合が発生しない。
-          def basename = slug ? "#{number}-#{slug}" : number
+          # システムファイル（number=nil）の場合は slug のみを返す。
+          def basename = number ? (slug ? "#{number}-#{slug}" : number) : slug
 
           # valid フラグの述語メソッド。
           def valid? = valid
@@ -32,6 +33,16 @@ module Vivlio
           # 章番号の範囲から kind を決定するためのマッピング。
           # 00: preface, 01-89: chapter, 90-98: appendix, 99: postface
           KIND_RANGES = { preface: 0..0, chapter: 1..89, appendix: 90..98, postface: 99..99 }.freeze
+
+          # システム予約ファイルの kind マッピング。
+          # カタログに載らない特殊ファイルを仮想 Entry として解決するために使用。
+          SYSTEM_FILE_KINDS = {
+            '_titlepage' => :titlepage,
+            '_legalpage' => :legalpage,
+            '_colophon'  => :colophon,
+            '_indexpage' => :indexpage,
+            '_toc'       => :toc
+          }.freeze
 
           # @param catalog_path [String] catalog.yml のパス
           # @param contents_dir [String] 章ファイルが格納されるディレクトリ
@@ -53,6 +64,14 @@ module Vivlio
               # 引数あり：入力を正規化してカタログと突き合わせる
               normalize(tokens).map { match_entry(it, catalog) }
             end
+          end
+
+          # ファイルパスから Entry を取得する便利メソッド。
+          # @param file_path [String] Markdown/HTML ファイルのパス
+          # @return [Entry] 解決された Entry オブジェクト
+          def resolve_file(file_path)
+            basename = File.basename(file_path).sub(/\.(md|html)\z/i, '')
+            resolve([basename]).first
           end
 
           private
@@ -116,7 +135,12 @@ module Vivlio
           # --- Phase 3: Matching (照合) ---
           # 正規化されたトークンをカタログと突き合わせ、Entry を生成する。
           def match_entry(token, catalog)
-            # 1. 形式チェック: 数字で始まらないものは即座に invalid
+            # 1. システムファイルのチェック
+            if (system_kind = SYSTEM_FILE_KINDS[token])
+              return instantiate_system_entry(token, system_kind)
+            end
+
+            # 2. 形式チェック: 数字で始まらないものは即座に invalid
             return instantiate_invalid_entry(token) unless token.match?(/\A\d+/)
 
             # 2. トークンの形式を解析（番号のみ or 番号+スラッグ）
@@ -176,6 +200,24 @@ module Vivlio
               exists: false,
               in_catalog: false,
               valid: false
+            )
+          end
+
+          # --- Phase 6: System Entry (システムファイルエントリ生成) ---
+          # _titlepage 等のシステム予約ファイルに対する Entry を生成する。
+          # カタログに載らないが valid として扱う。
+          # number を nil に設定することで、basename がファイル名そのもの（例: _toc）になる。
+          def instantiate_system_entry(token, kind)
+            path = File.join(contents_dir, "#{token}.md")
+            Entry.new(
+              number: nil,
+              slug: token,
+              kind:,
+              label: kind.to_s.upcase,
+              path:,
+              exists: File.exist?(path),
+              in_catalog: false,
+              valid: true
             )
           end
         end

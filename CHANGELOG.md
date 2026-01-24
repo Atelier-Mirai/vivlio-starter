@@ -70,6 +70,8 @@
 
 ### Changed
 - **Common::CONFIG を Ruby 4.0 の Data オブジェクトへ刷新**: `directories` や `vivliostyle` などの既定値をコード側でハードコーディングし、設定アクセスはシンボルキー＋ドット記法で統一。`book.yml` 依存の文字列キー参照や複雑なマージ処理を廃止して、Config の型安全性と可読性を向上させた。
+- **Common.get_file_type を廃止し TokenResolver::Entry#kind へ一本化**: ファイル名ベースの章種別推測ロジックを廃止し、`TokenResolver` が提供する `Entry#kind` を唯一のソースとして使用するようにした。`_titlepage` 等のシステムファイルも `SYSTEM_FILE_KINDS` マッピングで解決可能に。
+- **Common.get_chapter_number を廃止し TokenResolver::Entry#number へ一本化**: ファイル名から章番号を正規表現で抽出するロジックを廃止し、`TokenResolver::Entry#number` を唯一のソースとして使用するようにした。ビルドプロセス全体で Entry オブジェクトを伝播させ、章番号の再抽出を排除。
 
 ### Fixed
 - **front/back cover の PDF 生成処理のページサイズ不整合を修正**: 本文のページサイズ（B5/A5 など）に応じた RGB/CMYK カバー PDF を動的生成するようにし、`vs cover` → `vs build` の流れで常に適切なカバーが得られるようにした。

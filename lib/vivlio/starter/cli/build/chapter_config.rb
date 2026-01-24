@@ -79,13 +79,14 @@ module Vivlio
           def detect_duplicate_chapter_numbers
             files = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md'))
             number_to_files = Hash.new { |h, k| h[k] = [] }
+            resolver = TokenResolver::Resolver.new
 
             files.each do |file|
               basename = File.basename(file, '.md')
-              num = Common.get_chapter_number(basename)
-              next unless num
+              entry = resolver.resolve_file(basename)
+              next unless entry.number
 
-              number_to_files[num.to_i] << basename
+              number_to_files[entry.number.to_i] << basename
             end
 
             # 重複があるもののみ返す
@@ -146,13 +147,14 @@ module Vivlio
 
             files = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md'))
             number_to_file = {}
+            resolver = TokenResolver::Resolver.new
 
             files.each do |file|
               basename = File.basename(file, '.md')
-              num = Common.get_chapter_number(basename)
-              next unless num
+              entry = resolver.resolve_file(basename)
+              next unless entry.number
 
-              number_to_file[num.to_i] = "#{basename}.md"
+              number_to_file[entry.number.to_i] = "#{basename}.md"
             end
 
             result = numbers.map { |n| number_to_file[n] }.compact

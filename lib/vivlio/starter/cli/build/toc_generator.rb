@@ -88,12 +88,12 @@ module Vivlio
             raw = Array(entries_or_keep).compact
             return [] if raw.empty?
 
-            basenames = if raw.first.respond_to?(:basename)
-                          raw.map(&:basename)
-                        else
-                          raw.map { |s| File.basename(s.to_s, '.md') }
-                        end
-            basenames.map { |bn| Common.get_chapter_number(bn) }.compact.map(&:to_i)
+            if raw.first.respond_to?(:number)
+              raw.filter_map { it.number&.to_i }
+            else
+              resolver = TokenResolver::Resolver.new
+              raw.filter_map { resolver.resolve_file(it).number&.to_i }
+            end
           end
         end
       end

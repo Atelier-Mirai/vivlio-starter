@@ -45,9 +45,10 @@ module Vivlio
             basenames = Array(basenames).map { |bn| bn.to_s.strip }.reject(&:empty?).uniq
             return [] if basenames.empty?
 
+            resolver = TokenResolver::Resolver.new
             sort_key = lambda do |bn|
-              number = Common.get_chapter_number(bn)
-              number ? [number.to_i, bn] : [Float::INFINITY, bn]
+              entry = resolver.resolve_file(bn)
+              entry.number ? [entry.number.to_i, bn] : [Float::INFINITY, bn]
             end
 
             html_basenames = Dir.glob(File.join(base_dir, '*.html'))

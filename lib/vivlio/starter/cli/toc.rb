@@ -44,7 +44,8 @@ module Vivlio
             return warn_no_targets if targets.empty?
 
             log_targets(targets)
-            document = TocDocumentBuilder.new(targets, base_dir: BASE_DIR).build
+            entry_map = build_entry_map(targets)
+            document = TocDocumentBuilder.new(entry_map, base_dir: BASE_DIR).build
             TocOutputWriter.new(document, base_dir: BASE_DIR).write
           end
 
@@ -65,6 +66,15 @@ module Vivlio
           def log_targets(targets)
             names = targets.map { |path| File.basename(path) }.join(', ')
             Common.log_action("目次の生成を開始します… 対象: #{names}")
+          end
+
+          # HTML パス => Entry のマップを構築
+          def build_entry_map(targets)
+            resolver = TokenResolver::Resolver.new
+            targets.each_with_object({}) do |target, map|
+              entry = resolver.resolve_file(target)
+              map[target] = entry
+            end
           end
         end
 
@@ -130,8 +140,11 @@ module Vivlio
             <ul>
           MD
 
-          def initialize(targets, base_dir:)
-            @targets = targets
+          # @param entry_map [Hash{String => TokenResolver::Entry}] HTML パス => Entry のマップ
+          # @param base_dir [Pathname] ベースディレクトリ
+          def initialize(entry_map, base_dir:)
+            @entry_map = entry_map
+            @targets = entry_map.keys.sort
             @base_dir = Pathname.new(base_dir)
           end
 
@@ -147,7 +160,7 @@ module Vivlio
 
           private
 
-          attr_reader :targets, :base_dir
+          attr_reader :entry_map, :targets, :base_dir
 
           # 前書きエントリを必要に応じて追加する（新仕様: 00-preface）
           def append_preface(buffer)
@@ -172,7 +185,8 @@ module Vivlio
             end
 
             filtered_targets.each do |target|
-              HeadingExtractor.new(target).headings.each do |heading|
+              entry = entry_map[target]
+              HeadingExtractor.new(target, entry).headings.each do |heading|
                 list_state.transition_to(heading.level)
                 list_state.open_item(heading.list_markup)
               end
@@ -316,8 +330,11 @@ module Vivlio
         class HeadingExtractor
           LEVEL_BY_TAG = { 'h1' => 1, 'h2' => 2, 'h3' => 3 }.freeze
 
-          def initialize(target)
+          # @param target [String] HTML ファイルパス
+          # @param entry [TokenResolver::Entry] 章情報を持つ Entry オブジェクト
+          def initialize(target, entry)
             @target = target
+            @entry = entry
           end
 
           # ターゲット HTML から見出し情報を配列で返す
@@ -327,23 +344,18 @@ module Vivlio
 
           private
 
-          attr_reader :target
+          attr_reader :target, :entry
 
           # ファイル種別に応じて取り出す見出しタグを制御する
           def nodes
-            case file_type
-            when 'chapter'
+            case entry.kind
+            when :chapter
               document.css('h1, h2, h3')
-            when 'appendix'
+            when :appendix
               document.css('h1, h2')
             else
               document.css('h1')
             end
-          end
-
-          # 章/付録などのファイル種別を返す
-          def file_type
-            Common.get_file_type(target)
           end
 
           # Nokogiri ドキュメントを生成する（失敗時は空ドキュメント）
@@ -378,9 +390,9 @@ module Vivlio
           def css_class_for(node)
             case node.name
             when 'h1'
-              case file_type
-              when 'chapter' then 'toc-chapter'
-              when 'appendix' then 'toc-chapter-appendix'
+              case entry.kind
+              when :chapter then 'toc-chapter'
+              when :appendix then 'toc-chapter-appendix'
               else 'toc-chapter-no-number'
               end
             when 'h2' then 'toc-section'

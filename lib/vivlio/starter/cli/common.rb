@@ -252,24 +252,6 @@ module Vivlio
         # Helpers
         # ================================================================
 
-        def get_file_type(filename)
-          case File.basename(filename)
-          in /^_titlepage/ then 'titlepage'
-          in /^_legalpage/ then 'legalpage'
-          in /^_colophon/  then 'colophon'
-          in /^_indexpage/ then 'indexpage'
-          in /^(\d+)-/ => s
-            case s.to_i
-            when 0      then 'preface'
-            when 1..89  then 'chapter'
-            when 90..98 then 'appendix'
-            when 99     then 'postface'
-            else 'chapter'
-            end
-          else 'chapter'
-          end
-        end
-
         def truthy?(val)
           case val&.to_s&.strip&.downcase
           in true | 'true' | 'yes' | 'on' | '1' then true
@@ -308,10 +290,6 @@ module Vivlio
         # ================================================================
         # Chapter Utilities
         # ================================================================
-
-        def get_chapter_number(filename)
-          filename[/^(\d+)-/, 1]
-        end
 
         def to_roman_lower(n)
           return '' if n.to_i <= 0
@@ -512,29 +490,27 @@ module Vivlio
         end
 
         # エンドレスメソッド定義を module_function として明示的に公開
-        module_function :wrap_config, :ensure_required_yaml_files!, :load_config,
-                        :merge_hardcoded_defaults,
-                        :default_directories, :default_cache, :default_commands,
-                        :default_files, :default_vivliostyle,
-                        :apply_page_preset, :load_page_presets,
-                        :normalize_page_units, :normalize_font_sizes, :normalize_line_height,
-                        :q_to_pt, :pt_value, :format_pt,
-                        :current_log_level, :log_info, :log_success, :log_warn, :log_error,
-                        :log_action, :log_debug, :echo_always, :verbose?,
-                        :get_file_type, :truthy?, :blank?,
-                        :resolve_path_from_root, :relative_path_from_root, :ensure_cache_dir!,
-                        :get_chapter_number, :to_roman_lower, :appendix_number_to_letter,
-                        :resolve_page_size, :normalize_page_size!,
+        module_function :abort_with_error, :appendix_number_to_letter, :apply_page_preset,
+                        :blank?, :cache_cfg, :cache_dir, :cache_enabled?,
+                        :chapter_templates_dir, :codes_dir, :config_dir, :config_dir_path,
+                        :consume_vivliostyle_build_timings, :contents_dir, :covers_dir,
+                        :current_log_level, :current_step_label, :default_cache,
+                        :default_commands, :default_directories, :default_files,
+                        :default_vivliostyle, :echo_always, :ensure_cache_dir!,
+                        :ensure_required_yaml_files!, :fetch_bool, :format_pt,
+                        :generate_compressed_pdf_filename, :generate_epub_filename,
                         :generate_output_filename, :generate_print_pdf_filename,
-                        :generate_epub_filename, :generate_compressed_pdf_filename,
-                        :reset_vivliostyle_build_timings, :record_vivliostyle_build,
-                        :consume_vivliostyle_build_timings, :with_current_step_label,
-                        :current_step_label, :fetch_bool, :abort_with_error,
-                        :reload_configuration!,
-                        :config_dir, :config_dir_path, :contents_dir, :stylesheets_dir,
-                        :images_dir, :codes_dir, :chapter_templates_dir, :covers_dir,
-                        :cache_cfg, :cache_dir, :cache_enabled?, :vfm_command,
-                        :post_replace_file, :post_replace_file_path
+                        :images_dir, :load_config, :load_page_presets, :log_action,
+                        :log_debug, :log_error, :log_info, :log_success, :log_warn,
+                        :merge_hardcoded_defaults, :normalize_font_sizes,
+                        :normalize_line_height, :normalize_page_size!,
+                        :normalize_page_units, :post_replace_file, :post_replace_file_path,
+                        :pt_value, :q_to_pt, :record_vivliostyle_build,
+                        :reload_configuration!, :relative_path_from_root,
+                        :resolve_page_size, :resolve_path_from_root,
+                        :reset_vivliostyle_build_timings, :stylesheets_dir, :to_roman_lower,
+                        :truthy?, :vfm_command, :verbose?, :with_current_step_label,
+                        :wrap_config
       end
     end
   end

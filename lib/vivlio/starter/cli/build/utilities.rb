@@ -63,13 +63,10 @@ module Vivlio
           # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
           # @return [Array<Integer>] 1..89 範囲の章番号配列
           def chapter_numbers_for_book(entries_or_keep = nil)
-            basenames = extract_basenames(entries_or_keep)
-            basenames = Dir[File.join(Common::CONTENTS_DIR, '*.md')].map { |p| File.basename(p, '.md') } if basenames.empty?
-            basenames
-              .map { |bn| Common.get_chapter_number(bn) }
-              .compact
-              .map(&:to_i)
-              .select { |n| n.between?(1, 89) }
+            entries = resolve_entries(entries_or_keep)
+            entries
+              .filter_map { it.number&.to_i }
+              .select { it.between?(1, 89) }
               .uniq
               .sort
           end
@@ -80,18 +77,11 @@ module Vivlio
           def chapter_numbers_for_outline(entries_or_keep = nil)
             # 新仕様: 0=PREFACE, 1-89=CHAPTERS, 90-98=APPENDICES, 99=POSTFACE
             allowed_numbers = [0, 99] + (1..89).to_a + (90..98).to_a
-            basenames = extract_basenames(entries_or_keep)
-            if basenames.empty?
-              md = Dir[File.join(Common::CONTENTS_DIR, '*.md')].map { |p| File.basename(p, '.md') }
-              html = Dir[File.join('.', '*.html')].map { |p| File.basename(p, '.html') }
-              basenames = md + html
-            end
+            entries = resolve_entries(entries_or_keep)
 
-            numbers = basenames
-                      .map { |bn| Common.get_chapter_number(bn) }
-                      .compact
-                      .map(&:to_i)
-                      .select { |n| allowed_numbers.include?(n) }
+            numbers = entries
+                      .filter_map { it.number&.to_i }
+                      .select { allowed_numbers.include?(it) }
 
             # TOC (_toc.html) はアウトライン生成時に別途処理されるため、ここでは追加不要
 
@@ -111,6 +101,23 @@ module Vivlio
               raw.map(&:basename)
             else
               raw.map { |s| File.basename(s.to_s, '.md') }
+            end
+          end
+
+          # Entry 配列または basename 配列を Entry 配列に解決
+          # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil]
+          # @return [Array<TokenResolver::Entry>]
+          def resolve_entries(entries_or_keep)
+            raw = Array(entries_or_keep).compact
+            if raw.empty?
+              # 全ファイルを解決
+              resolver = TokenResolver::Resolver.new
+              Dir[File.join(Common::CONTENTS_DIR, '*.md')].map { resolver.resolve_file(it) }
+            elsif raw.first.respond_to?(:kind)
+              raw
+            else
+              resolver = TokenResolver::Resolver.new
+              raw.map { resolver.resolve_file(it) }
             end
           end
 

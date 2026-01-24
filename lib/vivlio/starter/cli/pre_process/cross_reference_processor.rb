@@ -275,6 +275,7 @@ module Vivlio
 
           def detect_main_chapters_from_files
             hp = PostProcessCommands::HeadingProcessor
+            resolver = TokenResolver::Resolver.new
             seen = {}
             tokens = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).filter_map do |path|
               token = hp.normalize_chapter_token(File.basename(path, '.md'))
@@ -283,7 +284,7 @@ module Vivlio
               seen[token] = true
               token
             end
-            tokens.sort_by { |tkn| Common.get_chapter_number(tkn).to_i }
+            tokens.sort_by { |tkn| resolver.resolve_file(tkn).number&.to_i || 0 }
           end
           private_class_method :detect_main_chapters_from_files
 

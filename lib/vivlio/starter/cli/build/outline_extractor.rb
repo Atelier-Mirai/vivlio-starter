@@ -42,10 +42,10 @@ module Vivlio
 
           # 付録ラベル取得
           def appendix_label_for_basename(basename)
-            number = Common.get_chapter_number(basename)
-            return nil unless number && APPX_RANGE.include?(number.to_i)
+            entry = TokenResolver::Resolver.new.resolve_file(basename)
+            return nil unless entry.number && APPX_RANGE.include?(entry.number.to_i)
 
-            letter = Common.appendix_number_to_letter(number)
+            letter = Common.appendix_number_to_letter(entry.number)
             return nil unless letter
 
             "付録#{letter.upcase}"
@@ -323,9 +323,10 @@ module Vivlio
             chapter_starts = {}
             chapter_ranges = {}
             # 本文章（01-89）の最初の章を特定（_titlepage, _legalpage, 00-preface, _toc は除外）
+            resolver = TokenResolver::Resolver.new
             first_chapter_bn = chapter_order.find do |token|
-              num = Common.get_chapter_number(token)
-              num && num.to_i.between?(1, 89)
+              entry = resolver.resolve_file(token)
+              entry.number && entry.number.to_i.between?(1, 89)
             end
 
             ctx = build_page_range_context(
@@ -514,10 +515,10 @@ module Vivlio
             number_display = heading[:number_display].to_s.strip
             return number_display unless number_display.empty?
 
-            chapter_number = Common.get_chapter_number(basename)
-            return '' unless chapter_number && chapter_number.to_i.between?(11, 89)
+            entry = TokenResolver::Resolver.new.resolve_file(basename)
+            return '' unless entry.number && entry.number.to_i.between?(11, 89)
 
-            "第#{chapter_number.to_i - 10}章"
+            "第#{entry.number.to_i - 10}章"
           end
 
           def prepend_label_if_needed(text, label)
