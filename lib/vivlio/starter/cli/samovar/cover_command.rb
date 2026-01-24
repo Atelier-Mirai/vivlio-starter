@@ -31,11 +31,11 @@ module Vivlio
             when 'auto', 'all'
               CoverCommands.execute_generate(self)
             when 'a4'
-              CoverCommands.execute_a4(self)
+              CoverCommands.execute_for_size(:a4, self)
             when 'b5'
-              CoverCommands.execute_b5(self)
+              CoverCommands.execute_for_size(:b5, self)
             when 'a5'
-              CoverCommands.execute_a5(self)
+              CoverCommands.execute_for_size(:a5, self)
             when 'epub'
               CoverCommands.execute_epub(self)
             else

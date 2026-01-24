@@ -251,9 +251,10 @@ module Vivlio
         # 保持対象:
         #   - frontcover_master.png, backcover_master.png（マスター画像）
         #   - 上記以外のファイル
+        # 生成されたカバー画像を削除する（シンボルキー前提）
         def clean_cover_files
           config = Common.load_config
-          covers_dir = config.dig('directories', 'covers') || 'covers'
+          covers_dir = config.dig(:directories, :covers) || Common::COVERS_DIR
 
           unless File.directory?(covers_dir)
             Common.log_info("カバーディレクトリが存在しません: #{covers_dir}")
@@ -266,25 +267,17 @@ module Vivlio
           cover_files = []
 
           # PDF用カバー（RGB版）
-          if (front = config.dig('output', 'pdf', 'cover', 'front'))
-            cover_files << front
-          end
-          if (back = config.dig('output', 'pdf', 'cover', 'back'))
-            cover_files << back
-          end
+          cover_files << config.dig(:output, :pdf, :cover, :front)
+          cover_files << config.dig(:output, :pdf, :cover, :back)
 
           # 印刷用PDF（CMYK版）
-          if (front = config.dig('output', 'print_pdf', 'cover', 'front'))
-            cover_files << front
-          end
-          if (back = config.dig('output', 'print_pdf', 'cover', 'back'))
-            cover_files << back
-          end
+          cover_files << config.dig(:output, :print_pdf, :cover, :front)
+          cover_files << config.dig(:output, :print_pdf, :cover, :back)
 
           # EPUB用カバー
-          if (cover = config.dig('output', 'epub', 'cover'))
-            cover_files << cover
-          end
+          cover_files << config.dig(:output, :epub, :cover)
+
+          cover_files.compact!
 
           cover_files.uniq!
 

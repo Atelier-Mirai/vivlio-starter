@@ -44,10 +44,10 @@ module Vivlio
         # 全自動索引候補抽出 → _index_review.md 生成
         # @param chapters [Array<String>] 対象章のリスト
         def auto_process!(chapters)
-          auto_threshold = @config['auto_approve_threshold'] || 300
-          review_threshold = @config['review_threshold'] || 150
-          high_ratio = @config['high_candidates_ratio'] || 0.25
-          auto_discovery = @config.fetch('auto_discovery', true)
+          auto_threshold = @config[:auto_approve_threshold] || 300
+          review_threshold = @config[:review_threshold] || 150
+          high_ratio = @config[:high_candidates_ratio] || 0.25
+          auto_discovery = @config.fetch(:auto_discovery, true)
 
           Common.log_action('索引の自動処理を開始します...')
 
@@ -241,11 +241,11 @@ module Vivlio
           end
         end
 
-        # 設定を読み込み
+        # 設定を読み込み（シンボルキー前提）
         # @return [Hash] index設定
         def load_index_config
-          config = Common::CONFIG || {}
-          config['index'] || {}
+          idx = Common::CONFIG.index
+          idx.respond_to?(:to_h) ? idx.to_h : (idx || {})
         end
 
         # 手動マークアップ用語を抽出
@@ -452,7 +452,7 @@ module Vivlio
         # @param term [String] 用語
         # @return [String] 文脈
         def extract_surrounding_context(content, term)
-          context_width = @config['context_width'] || 40
+          context_width = @config[:context_width] || 40
           index = content.index(term)
           return '' unless index
 
@@ -472,10 +472,10 @@ module Vivlio
           # 改行を除去
           cleaned = text.to_s.gsub(/[\r\n]+/, ' ').strip
 
-          smart_cutting = @config['smart_context_cutting']
+          smart_cutting = @config[:smart_context_cutting]
           smart_cutting = true if smart_cutting.nil?
 
-          context_width = @config['context_width'] || 40
+          context_width = @config[:context_width] || 40
           max_length = context_width * 2
 
           return cleaned if cleaned.length <= max_length

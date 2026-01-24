@@ -77,22 +77,22 @@
   */
 
   /* 基本体裁（A4 縦） */
-  --page-width:  182mm; /* 幅 */
-  --page-height: 257mm; /* 高さ */
+  --page-width:  210mm; /* 幅 */
+  --page-height: 297mm; /* 高さ */
   /* 用紙スケール（A4=1.0 を基準に B5/A5 などで前処理から上書き） */
-  --paper-scale: 0.8653;
+  --paper-scale: 1.0;
 
   /* タイポグラフィ設定 */
   --base-font-size:   10.5pt;    /* 基準文字サイズ */
-  --base-line-height: 18.9pt;  /* 行送り（10.5pt × 1.7 = 17.85pt） */
+  --base-line-height: 17.85pt;  /* 行送り（10.5pt × 1.7 = 17.85pt） */
   --letter-spacing:   0em;     /* 字間調整 */
 
   /* 版面の余白（見開き対応） */
-  --page-margin-top:    28mm;  /* 天（上余白） */
-  --page-margin-bottom: 28mm;  /* 地（下余白） */
-  --page-margin-inner:  28mm;  /* ノド（綴じ側、左右ページで自動的に位置が変わる） */
-  --page-margin-outer:  23mm;  /* 小口（外側、左右ページで自動的に位置が変わる） */
-  --frontispiece-binding-offset: 2.50mm; /* ノド/小口差分による背景オフセット */
+  --page-margin-top:    26mm;  /* 天（上余白） */
+  --page-margin-bottom: 26mm;  /* 地（下余白） */
+  --page-margin-inner:  26mm;  /* ノド（綴じ側、左右ページで自動的に位置が変わる） */
+  --page-margin-outer:  22mm;  /* 小口（外側、左右ページで自動的に位置が変わる） */
+  --frontispiece-binding-offset: 2.00mm; /* ノド/小口差分による背景オフセット */
 
   --column-font-size:   8pt;  /* コラムのフォントサイズ */
 

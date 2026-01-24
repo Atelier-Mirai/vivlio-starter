@@ -23,7 +23,7 @@ module Vivlio
 
           使用例:
             vs cover              # 自動判定して一括生成
-            vs cover a4           # A4サイズのRGB版PDF生成
+            vs cover a4           # A4サイズのCMYK版PDF/X-1a生成
             vs cover b5           # B5サイズのCMYK版PDF/X-1a生成
             vs cover a5           # A5サイズのCMYK版PDF/X-1a生成
             vs cover epub         # EPUB用JPEG生成
@@ -37,12 +37,14 @@ module Vivlio
         FRONTCOVER_MASTER = 'frontcover_master.png'
         BACKCOVER_MASTER = 'backcover_master.png'
 
-        # サイズ定義（350 dpi基準）
+        # サイズ定義（350 dpi基準、本文サイズ＝塗り足しなし）
         SIZES = {
-          a4: { width: 2894, height: 4092, mm: [210, 297] },
-          b5: { width: 2591, height: 3626, mm: [188, 263] },  # 塗り足し込み
-          a5: { width: 2123, height: 2979, mm: [154, 216] }   # 塗り足し込み
+          a4: { width: 2894, height: 4091, mm: [210, 297] },
+          b5: { width: 2508, height: 3541, mm: [182, 257] },
+          a5: { width: 2039, height: 2894, mm: [148, 210] }
         }.freeze
+
+        DPI = 350
 
         # EPUB用サイズ
         EPUB_SIZE = { width: 1600, height: 2560 }.freeze
@@ -54,10 +56,12 @@ module Vivlio
         def execute_generate(_context = nil)
           Common.log_info '📚 カバー画像の一括生成を開始します'
 
-          # 設定読み込み
+          # 設定読み込み（シンボルキー前提）
           config = Common.load_config
-          covers_dir = config.dig('directories', 'covers') || 'covers'
-          page_use = config.dig('page', 'use') || 'b5_standard'
+          covers_dir = config[:directories][:covers]
+          page_cfg = config[:page] || {}
+          page_use = page_cfg[:use] || page_cfg[:preset] || page_cfg[:preset_name] || page_cfg[:size] || 'b5_standard'
+          targets = target_list(config)
 
           # ページサイズ判定
           page_size = CoverCommands.detect_page_size(page_use)
@@ -70,22 +74,10 @@ module Vivlio
           end
           generated = []
 
-          # PDF用カバー（RGB版）
-          if config.dig('output', 'pdf', 'cover', 'front')
-            Common.log_info "\n🎨 PDF用カバー（#{page_size.upcase}、RGB）を生成中..."
-            CoverCommands.generate_rgb_pdf(covers_dir, page_size, config)
-            generated << 'PDF用（RGB）'
-          end
-
-          # 印刷用PDF（CMYK版PDF/X-1a）
-          if config.dig('output', 'print_pdf', 'cover', 'front')
-            Common.log_info "\n🖨️  印刷用カバー（#{page_size.upcase}、CMYK、PDF/X-1a）を生成中..."
-            CoverCommands.generate_cmyk_pdf(covers_dir, page_size, config)
-            generated << "印刷用（#{page_size.upcase}、PDF/X-1a）"
-          end
+          generated += generate_pdf_targets_for_size(covers_dir, page_size, config, targets)
 
           # EPUB用カバー
-          if config.dig('output', 'epub', 'cover')
+          if targets.include?('epub') && config.dig(:output, :epub, :cover)
             Common.log_info "\n📱 EPUB用カバー（1600×2560、JPEG）を生成中..."
             CoverCommands.generate_epub_cover(covers_dir, config)
             generated << 'EPUB用（JPEG）'
@@ -100,55 +92,32 @@ module Vivlio
         end
         module_function :execute_generate
 
-        def execute_a4(_context = nil)
-          Common.log_info '📚 A4サイズのRGB版PDFを生成します'
+        def execute_for_size(page_size, _context = nil)
+          label = page_size.to_s.upcase
+          Common.log_info "📚 #{label}サイズのカバーPDFを生成します"
           config = Common.load_config
-          covers_dir = config.dig('directories', 'covers') || 'covers'
+          covers_dir = config[:directories][:covers]
+          targets = target_list(config)
 
           unless CoverCommands.check_master_files(covers_dir)
             Common.log_error 'マスターファイルが見つかりません'
             return
           end
 
-          CoverCommands.generate_rgb_pdf(covers_dir, :a4, config)
-          Common.log_success '✅ A4 RGB版PDFの生成が完了しました'
-        end
-        module_function :execute_a4
+          generated = generate_pdf_targets_for_size(covers_dir, page_size, config, targets)
 
-        def execute_b5(_context = nil)
-          Common.log_info '📚 B5サイズのCMYK版PDF/X-1aを生成します'
-          config = Common.load_config
-          covers_dir = config.dig('directories', 'covers') || 'covers'
-
-          unless CoverCommands.check_master_files(covers_dir)
-            Common.log_error 'マスターファイルが見つかりません'
-            return
+          if generated.empty?
+            Common.log_warn('生成対象がありませんでした (pdf/print_pdf ターゲットが無効化されている可能性があります)')
+          else
+            Common.log_success("✅ #{label}カバーPDFの生成が完了しました: #{generated.join(', ')}")
           end
-
-          CoverCommands.generate_cmyk_pdf(covers_dir, :b5, config)
-          Common.log_success '✅ B5 CMYK版PDF/X-1aの生成が完了しました'
         end
-        module_function :execute_b5
-
-        def execute_a5(_context = nil)
-          Common.log_info '📚 A5サイズのCMYK版PDF/X-1aを生成します'
-          config = Common.load_config
-          covers_dir = config.dig('directories', 'covers') || 'covers'
-
-          unless CoverCommands.check_master_files(covers_dir)
-            Common.log_error 'マスターファイルが見つかりません'
-            return
-          end
-
-          CoverCommands.generate_cmyk_pdf(covers_dir, :a5, config)
-          Common.log_success '✅ A5 CMYK版PDF/X-1aの生成が完了しました'
-        end
-        module_function :execute_a5
+        module_function :execute_for_size
 
         def execute_epub(_context = nil)
           Common.log_info '📚 EPUB用JPEGを生成します'
           config = Common.load_config
-          covers_dir = config.dig('directories', 'covers') || 'covers'
+          covers_dir = config[:directories][:covers]
 
           frontcover_master = File.join(covers_dir, FRONTCOVER_MASTER)
           unless File.exist?(frontcover_master)
@@ -163,17 +132,62 @@ module Vivlio
 
         # =========================== Helpers =============================
 
+        # 出力ターゲット一覧を取得（シンボルキー前提）
+        def target_list(config)
+          raw = config.dig(:output, :targets)
+          list = case raw
+                 in String => s
+                   s.split(',').map(&:strip)
+                 in Array => a
+                   a.map { |v| v.to_s.strip }
+                 else
+                   []
+                 end
+
+          list = list.reject(&:empty?).map(&:downcase)
+          list = ['pdf'] if list.empty?
+          list
+        end
+        module_function :target_list
+
+        def generate_pdf_targets_for_size(covers_dir, page_size, config, targets)
+          generated = []
+          label = page_size.to_s.upcase
+          pdf_target_enabled = targets.include?('pdf')
+          print_target_enabled = targets.include?('print_pdf')
+
+          if pdf_target_enabled
+            front_pdf = config.dig(:output, :pdf, :cover, :front)
+            if front_pdf
+              Common.log_info("\n🎨 PDF用カバー（#{label}、RGB）を生成中...")
+              CoverCommands.generate_rgb_pdf(covers_dir, page_size, config)
+              generated << 'PDF用（RGB）'
+            else
+              Common.log_warn('  - PDFカバー出力が設定されていません (output.pdf.cover.front)')
+            end
+          end
+
+          if print_target_enabled
+            front_print = config.dig(:output, :print_pdf, :cover, :front)
+            if front_print
+              Common.log_info("\n🖨️  印刷用カバー（#{label}、CMYK、PDF/X-1a）を生成中...")
+              CoverCommands.generate_cmyk_pdf(covers_dir, page_size, config)
+              generated << "印刷用（#{label}、PDF/X-1a）"
+            else
+              Common.log_warn('  - 印刷用カバー出力が設定されていません (output.print_pdf.cover.front)')
+            end
+          end
+
+          generated
+        end
+        module_function :generate_pdf_targets_for_size
+
         # ページサイズを判定
         def self.detect_page_size(page_use)
-          case page_use
-          when /^b5/i
-            :b5
-          when /^a5/i
-            :a5
-          when /^a4/i
-            :a4
-          else
-            :b5 # デフォルト
+          case page_use.to_s.downcase[0..1]
+          in "a4" then :a4
+          in "a5" then :a5
+          else :b5 # デフォルト
           end
         end
 
@@ -194,8 +208,8 @@ module Vivlio
         # RGB版PDF生成（ページサイズ依存）
         def self.generate_rgb_pdf(covers_dir, page_size, config)
           size = SIZES[page_size] || SIZES[:b5]
-          front_output = config.dig('output', 'pdf', 'cover', 'front')
-          back_output = config.dig('output', 'pdf', 'cover', 'back')
+          front_output = config.dig(:output, :pdf, :cover, :front)
+          back_output = config.dig(:output, :pdf, :cover, :back)
 
           if front_output
             CoverCommands.generate_rgb_pdf_single(
@@ -238,11 +252,16 @@ module Vivlio
           Common.log_error "  失敗: #{File.basename(output_pdf)}" unless system(*cmd, out: File::NULL, err: File::NULL)
         end
 
-        # CMYK版PDF/X-1a生成
+        # CMYK版PDF/X-1a生成（bleed 追加）
         def self.generate_cmyk_pdf(covers_dir, page_size, config)
-          size = SIZES[page_size]
-          front_output = config.dig('output', 'print_pdf', 'cover', 'front')
-          back_output = config.dig('output', 'print_pdf', 'cover', 'back')
+          base_size = SIZES[page_size]
+          bleed_mm = parse_bleed_mm(config)
+          size = add_bleed_to_size(base_size, bleed_mm)
+
+          Common.log_info "  塗り足し: #{bleed_mm}mm（片側）→ #{size[:mm][0]}×#{size[:mm][1]}mm" if bleed_mm > 0
+
+          front_output = config.dig(:output, :print_pdf, :cover, :front)
+          back_output = config.dig(:output, :print_pdf, :cover, :back)
 
           if front_output
             CoverCommands.generate_pdfx_single(
@@ -315,8 +334,15 @@ module Vivlio
         # EPUB用カバー生成
         def self.generate_epub_cover(covers_dir, config)
           input_png = File.join(covers_dir, FRONTCOVER_MASTER)
-          output_jpg = File.join(covers_dir, config.dig('output', 'epub', 'cover'))
+          # Hash と Data オブジェクト両対応
+          epub_cover = if config.respond_to?(:dig)
+                         config.dig(:output, :epub, :cover) || config.dig('output', 'epub', 'cover')
+                       else
+                         config.output&.epub&.cover
+                       end
+          return unless epub_cover
 
+          output_jpg = File.join(covers_dir, epub_cover)
           return unless File.exist?(input_png)
 
           convert_cmd = imagemagick_convert_command
@@ -358,6 +384,28 @@ module Vivlio
           end
 
           nil
+        end
+
+        # bleed 値を mm で取得（"3mm" → 3）
+        def self.parse_bleed_mm(config)
+          bleed_raw = config.dig(:output, :print_pdf, :bleed) || config.dig('output', 'print_pdf', 'bleed')
+          return 0 unless bleed_raw
+
+          bleed_raw.to_s.gsub(/mm\z/i, '').to_f
+        end
+
+        # サイズに bleed を追加（片側なので幅・高さそれぞれ2倍追加）
+        def self.add_bleed_to_size(base_size, bleed_mm)
+          return base_size if bleed_mm <= 0
+
+          bleed_px = (bleed_mm * DPI / 25.4).round
+          total_bleed_px = bleed_px * 2  # 両側分
+
+          {
+            width: base_size[:width] + total_bleed_px,
+            height: base_size[:height] + total_bleed_px,
+            mm: [base_size[:mm][0] + (bleed_mm * 2), base_size[:mm][1] + (bleed_mm * 2)]
+          }
         end
       end
     end

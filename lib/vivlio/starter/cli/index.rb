@@ -158,11 +158,9 @@ module Vivlio
           manager.build_index!(chapters)
         end
 
-        # 索引機能が有効かどうか
+        # 索引機能が有効かどうか（シンボルキー前提）
         def index_enabled?
-          config = Common::CONFIG || {}
-          index_config = config['index'] || {}
-          index_config['enabled'] == true
+          Common::CONFIG.index&.enabled == true
         end
 
         private

@@ -14,25 +14,25 @@ PREFACE:
 CHAPTERS:
   - 歴史篇:
       - 01-life
-      - 02-history
-      - 03-person
-      - 04-computers-work
-      - 05-binary
-      - 06-algorithm
-      - 07-programming
+      # - 02-history
+      # - 03-person
+      # - 04-computers-work
+      # - 05-binary
+      # - 06-algorithm
+      # - 07-programming
       - 08-web
   - 実践篇:
-      - 21-html
-      - 22-css
-      - 23-javascript
-      - 31-netlify
-      - 41-pwa
+      # - 21-html
+      # - 22-css
+      # - 23-javascript
+      # - 31-netlify
+      # - 41-pwa
 
 ## 付録
 APPENDICES:
-  - 91-books
-  - 92-links
-  - 93-cheats
+  # - 91-books
+  # - 92-links
+  # - 93-cheats
 
 # ## あとがき
 POSTFACE:

@@ -72,16 +72,18 @@ module Vivlio
         DEFAULT_FORMAT_FALLBACK = 'stylish'
         TEXTLINT_ENV_VAR = 'VIVLIO_TEXTLINT_BIN'
 
+        # CONFIG.lint セクションから設定ファイルパスを取得（シンボルキー前提）
         def self.default_lint_config
-          value = Common::CONFIG.dig('lint', 'config')
+          value = Common::CONFIG.lint&.config
           value = nil if Common.blank?(value)
           value || DEFAULT_CONFIG_FALLBACK
         rescue StandardError
           DEFAULT_CONFIG_FALLBACK
         end
 
+        # CONFIG.lint セクションから出力フォーマットを取得（シンボルキー前提）
         def self.default_lint_format
-          value = Common::CONFIG.dig('lint', 'format')
+          value = Common::CONFIG.lint&.format
           value = nil if Common.blank?(value)
           format = value || DEFAULT_FORMAT_FALLBACK
           format.to_s.strip.empty? ? DEFAULT_FORMAT_FALLBACK : format

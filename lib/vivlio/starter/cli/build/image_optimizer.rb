@@ -42,8 +42,8 @@ module Vivlio
             Common.log_action('[Step 3] frontispiece / ornament の準備を開始します…')
 
             cfg = Common::CONFIG
-            theme_cfg = cfg.is_a?(Hash) ? cfg['theme'] : nil
-            unless theme_cfg.is_a?(Hash)
+            theme_cfg = cfg.dig(:theme)
+            unless theme_cfg
               Common.log_info('[Step 3] theme 設定が存在しないためスキップします')
               return
             end
@@ -53,14 +53,11 @@ module Vivlio
             require_relative '../pre_process/css_updater'
             Vivlio::Starter::CLI::PreProcessCommands::FrontmatterGenerator.update_css_only!(cfg)
 
-            frontispiece_entry = theme_cfg['frontispiece']
-            ornament_entry = theme_cfg['ornament']
+            frontispiece_entry = theme_cfg.dig(:frontispiece)
+            ornament_entry = theme_cfg.dig(:ornament)
 
-            frontispiece_source = if frontispiece_entry.is_a?(Hash)
-                                    frontispiece_entry['image']
-                                  else
-                                    frontispiece_entry
-                                  end
+            # String の場合はそのまま、Data オブジェクトの場合は :image を取得
+            frontispiece_source = frontispiece_entry.is_a?(String) ? frontispiece_entry : frontispiece_entry&.dig(:image)
             ornament_source = ornament_entry
 
             generated_any = false

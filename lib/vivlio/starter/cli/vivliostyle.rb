@@ -19,35 +19,36 @@ module Vivlio
       module VivliostyleCommands
         module_function
 
+        # vivliostyle.config.js を生成する（シンボルキー前提）
         def execute_vivliostyle_config(options = {})
           ENV['VERBOSE'] = '1' if options[:verbose]
 
           Common.log_action('vivliostyle.config.jsを生成しています...')
 
-          # 設定を取得
+          # 設定を取得（Data オブジェクト、シンボルキー前提）
           config             = Common::CONFIG
-          book_config        = config['book'] || {}
-          vivliostyle_config = config['vivliostyle'] || {}
-          pdf_config         = config['pdf'] || {}
+          book_config        = config.book
+          vivliostyle_config = config.vivliostyle
+          pdf_config         = config.pdf
 
           # JS 文字列に安全に埋め込むための簡易エスケープ
           esc = ->(s) { s.to_s.gsub('\\', '\\\\').gsub("'", "\\'") }
 
           # 設定値を取得（デフォルト値付き）
           # title が未設定の場合は main_title と subtitle を結合して使う
-          combined_title = [book_config['main_title'], book_config['subtitle']].compact.join(' ').strip
-          title_raw = book_config['title']
+          combined_title = [book_config&.main_title, book_config&.subtitle].compact.join(' ').strip
+          title_raw = book_config&.title
           title = if title_raw && !title_raw.to_s.strip.empty?
                     title_raw
                   else
                     (combined_title.empty? ? '書籍タイトル' : combined_title)
                   end
-          author              = book_config['author'] || '著者名'
-          language            = book_config['language'] || 'ja'
-          reading_progression = vivliostyle_config['reading_progression'] || 'ltr'
-          entries_file        = vivliostyle_config['entries_file'] || 'entries.js'
-          output_file         = pdf_config['output_file'] || 'output.pdf'
-          config_file         = vivliostyle_config['config_file'] || 'vivliostyle.config.js'
+          author              = book_config&.author || '著者名'
+          language            = book_config&.language || 'ja'
+          reading_progression = vivliostyle_config&.reading_progression || 'ltr'
+          entries_file        = vivliostyle_config&.entries_file || 'entries.js'
+          output_file         = pdf_config&.output_file || 'output.pdf'
+          config_file         = vivliostyle_config&.config_file || 'vivliostyle.config.js'
 
           # バックアップ処理（最新のみ保持）
           if File.exist?(config_file)

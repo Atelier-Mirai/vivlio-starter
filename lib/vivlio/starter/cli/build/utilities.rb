@@ -161,6 +161,7 @@ module Vivlio
             [w_pt, h_pt]
           end
 
+          # HexaPDF を直接利用する関数は、このモジュールではページ数取得などの用途に限定
         end
       end
     end

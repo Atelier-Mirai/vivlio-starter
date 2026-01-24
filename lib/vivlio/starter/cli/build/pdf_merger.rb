@@ -1,29 +1,5 @@
 # frozen_string_literal: true
 
-# ================================================================
-# File: lib/vivlio/starter/cli/build/pdf_merger.rb
-# ================================================================
-# 責務:
-#   複数の中間 PDF を結合して最終的な output.pdf を生成する。
-#
-# マージ対象（順序）:
-#   1. _titlepage_legalpage.pdf: 表紙・法的ページ
-#   2. _sections.pdf: 前書き・目次・本文・付録・後書き・索引（全体PDF）
-#   3. _colophon.pdf: 奥付
-#
-# 設計方針:
-#   - _sections.pdf は全体を1つのPDFとして生成（分割なし）
-#   - これにより索引から前書きへのリンクなど内部リンクが維持される
-#
-# アウトライン:
-#   - qpdf --add-outline で目次リンクを付与
-#   - pdfinfo でページ数を取得して各章の開始位置を計算
-#
-# 依存:
-#   - qpdf: PDF 結合・アウトライン付与
-#   - pdfinfo: ページ数取得
-# ================================================================
-
 require 'fileutils'
 require_relative '../cover'
 
@@ -31,105 +7,112 @@ module Vivlio
   module Starter
     module CLI
       module Build
-        # PDF 結合・アウトライン付与モジュール
         module PdfMerger
           module_function
 
+          # ================================================================
+          # 1. 結合対象ファイルのリスト作成
+          # ================================================================
           def cover_enhanced_files
             files = %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf]
+            cfg = Common::CONFIG
+
+            # ターゲット判定 (Dataオブジェクトでも [] アクセス可能に実装済み)
+            targets = extract_targets(cfg.output&.targets)
+            targets = extract_targets(cfg.output&.pdf&.targets) if targets.empty?
+            pdf_selected = targets.empty? || targets.any? { _1.include?('pdf') }
+
+            return files.compact unless pdf_selected
+
+            # カバー設定の取得 (Dataオブジェクトなので nil-safe なドットアクセス)
+            cover_cfg = cfg.output&.pdf&.cover
+            return files.compact unless cover_cfg&.enabled != false
 
             begin
-              config = Common::CONFIG || {}
-              pdf_config = config.dig('output', 'pdf') || {}
-              targets = Array(config.dig('output', 'targets'))
-              targets = targets.first.to_s.split(',').map(&:strip) if targets.empty? && pdf_config['targets'].is_a?(String)
-              targets = [pdf_config['targets']] if targets.empty? && pdf_config['targets'].is_a?(Array)
+              page_use   = resolve_page_use(cfg.page)
+              covers_dir = cfg.directories&.covers || 'covers'
+              
+              ensure_cover_assets_for_page_size!(page_use)
 
-              cover_cfg = pdf_config['cover'] || {}
-              cover_enabled = cover_cfg['enabled'] != false
-              front_cover = cover_cfg['front']
-              back_cover = cover_cfg['back']
-              covers_dir = config.dig('directories', 'covers') || 'covers'
+              # パス生成
+              front = cover_cfg.front&.then { File.join(covers_dir, _1) }
+              back  = cover_cfg.back&.then  { File.join(covers_dir, _1) }
 
-              pdf_target_selected = targets.empty? || targets.any? { |t| t.to_s.include?('pdf') }
-
-              if cover_enabled && pdf_target_selected
-                front_path = front_cover ? File.join(covers_dir, front_cover) : nil
-                back_path  = back_cover ? File.join(covers_dir, back_cover) : nil
-
-                missing_cover_paths = [front_path, back_path].compact.reject { |path| File.exist?(path) }
-                ensure_cover_assets_generated!(missing_cover_paths, config) if missing_cover_paths.any?
-
-                files.unshift(front_path) if front_path && File.exist?(front_path)
-                files << back_path if back_path && File.exist?(back_path)
-              end
+              files.unshift(front) if front && File.exist?(front)
+              files.push(back)     if back && File.exist?(back)
             rescue StandardError => e
-              Common.log_warn("[Step 10] カバー結合設定の読込に失敗しました: #{e.message}")
+              Common.log_warn("[Step 10] カバー結合設定の処理中にエラー: #{e.message}")
             end
 
             files.compact
           end
 
-          def ensure_cover_assets_generated!(missing_paths, _config)
-            return if missing_paths.nil? || missing_paths.empty?
-            return if cover_generation_already_attempted?
+          # ================================================================
+          # 2. 補助メソッド (Data / Pattern Matching 活用)
+          # ================================================================
 
-            @cover_generation_attempted = true
-            log_cover_generation_start(missing_paths)
-            CoverCommands.execute_generate(nil)
-          rescue StandardError => e
-            Common.log_warn("[Step 10] vs cover 実行中にエラー: #{e.message}")
-          ensure
-            log_cover_generation_finish(missing_paths)
-          end
-
-          def cover_generation_already_attempted?
-            defined?(@cover_generation_attempted) && @cover_generation_attempted
-          end
-
-          def log_cover_generation_start(missing_paths)
-            missing_list = missing_paths.map { |p| File.basename(p) }.join(', ')
-            Common.log_action("[Step 10] #{missing_list} が見つからないため `vs cover` を自動実行します…")
-          end
-
-          def log_cover_generation_finish(missing_paths)
-            missing_list = missing_paths.map { |p| File.basename(p) }.join(', ')
-            newly_available = missing_paths.select { |path| File.exist?(path) }
-            if newly_available.any?
-              Common.log_success("[Step 10] `vs cover` 自動実行で #{missing_list} を生成しました")
-            else
-              Common.log_warn("[Step 10] `vs cover` を実行しましたが #{missing_list} は見つかりませんでした。")
+          def extract_targets(raw)
+            case raw
+            in String => s then s.split(',').map(&:strip).reject(&:empty?)
+            in Array  => a then a.map(&:to_s).map(&:strip).reject(&:empty?)
+            else []
             end
           end
 
-          # Step 10: すべてのPDFを結合して output.pdf を生成
-          # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列（現状未使用）
+          def resolve_page_use(page_cfg)
+            # Data オブジェクトからプリセット名を優先順位付きで取得
+            %i[use preset preset_name size].each do |key|
+              val = page_cfg&.[](key)
+              return val.to_s if val && !val.to_s.strip.empty?
+            end
+            'b5_standard'
+          end
+
+          # ================================================================
+          # 3. カバー自動生成ロジック
+          # ================================================================
+          def ensure_cover_assets_for_page_size!(page_use)
+            size = CoverCommands.detect_page_size(page_use)
+            return if cover_generation_attempts[size]
+
+            cover_generation_attempts[size] = true
+            Common.log_action("[Step 10] `vs cover #{size}` を自動実行します…")
+            
+            CoverCommands.execute_for_size(size, nil)
+            Common.log_info("[Step 10] `vs cover #{size}` の実行を完了しました")
+          rescue StandardError => e
+            Common.log_warn("[Step 10] vs cover #{size.upcase} 実行中にエラー: #{e.message}")
+          end
+
+          def cover_generation_attempts
+            @cover_generation_attempts ||= {}
+          end
+
+          # ================================================================
+          # 4. PDF 結合実行 (Step 10)
+          # ================================================================
           def merge_all_pdfs!(entries_or_keep = nil)
             Common.log_action('[Step 10] 表紙、本文、奥付を結合します…')
-            # 結合対象: 表紙・扉裏 + 全体PDF + 奥付
-            files_to_merge = cover_enhanced_files
-            existing_files = files_to_merge.select { |f| File.exist?(f) }
-            missing_files  = files_to_merge - existing_files
-            Common.log_info("[Step 10] 結合対象: #{existing_files.join(', ')}")
-            Common.log_warn("[Step 10] 見つからないPDF: #{missing_files.join(', ')}") if missing_files.any?
-
+            
+            files          = cover_enhanced_files
+            existing_files = files.select { File.exist?(_1) }
+            
             if existing_files.empty?
-              Common.log_error('[Step 10] 結合対象PDFがありません。処理を中止します')
+              Common.log_error('[Step 10] 結合対象PDFがありません')
               return false
             end
 
-            unless system('which qpdf >/dev/null 2>&1')
-              Common.log_warn('[Step 10] qpdf が見つかりません。`brew install qpdf` でインストールしてください。')
-              return false
-            end
+            return false unless qpdf_available?
 
+            # _sections.pdf があればそれをベースに、なければ最初のファイルを使用
             base_pdf = existing_files.include?('_sections.pdf') ? '_sections.pdf' : existing_files.first
             FileUtils.rm_f('output.pdf')
-            ranges = existing_files.map { |f| %("#{f}" 1-z) }.join(' ')
-            cmd = %(qpdf "#{base_pdf}" --pages #{ranges} -- "output.pdf" > /dev/null)
-            merged = system(cmd)
+            
+            # 引数構築
+            ranges = existing_files.map { %("#{_1}" 1-z) }.join(' ')
+            success = system(%(qpdf "#{base_pdf}" --pages #{ranges} -- "output.pdf" > /dev/null))
 
-            if merged && File.exist?('output.pdf')
+            if success && File.exist?('output.pdf')
               Common.log_success('[Step 10] output.pdf を生成しました')
               true
             else
@@ -138,34 +121,37 @@ module Vivlio
             end
           end
 
-          # Step 11: アウトライン付与
-          # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
+          def qpdf_available?
+            return true if system('command -v qpdf >/dev/null 2>&1')
+            Common.log_warn('[Step 10] qpdf が見つかりません。')
+            false
+          end
+
+          # ================================================================
+          # 5. アウトライン付与 (Step 11)
+          # ================================================================
           def add_outline_to_output_pdf!(entries_or_keep = nil)
-            unless File.exist?('output.pdf')
-              Common.log_warn('[Step 11] output.pdf がまだ存在しないため、アウトライン付与をスキップします')
+            return false unless File.exist?('output.pdf')
+
+            keep_numbers = Build::Utilities.chapter_numbers_for_outline(entries_or_keep)
+            
+            # 抽出対象HTMLの絞り込み
+            chapter_htmls = Dir.glob('*.html').sort.select do |path|
+              bn = File.basename(path, '.html')
+              num = bn[/\A(\d+)-/, 1]&.to_i
+              
+              (num && (keep_numbers.nil? || keep_numbers.include?(num))) || 
+                %w[_toc _indexpage].include?(bn)
+            end
+
+            if chapter_htmls.empty?
+              Common.log_info('[Step 11] 本文HTMLなし。スキップします')
               return false
             end
 
-            keep_numbers = Build::Utilities.chapter_numbers_for_outline(entries_or_keep)
-            chapter_htmls = Dir.glob(File.join('.', '*.html')).select do |path|
-              bn = File.basename(path, '.html')
-              n = bn[/\A(\d+)-/, 1]&.to_i
-              allows_numeric = n && (keep_numbers.nil? || keep_numbers.include?(n))
-              special_includes = %w[_toc _indexpage].include?(bn)
-              allows_numeric || special_includes
-            end.sort
-
-            if chapter_htmls.any?
-              Common.log_action('[Step 11] 本文HTMLの h1〜h3 から PDF ブックマーク（アウトライン）を付与します…')
-              total_pages = (Build::Utilities.page_count('output.pdf') || '0').to_i
-              start_from  = 1
-              Common.log_info("[Outline] page offset: start_page=#{start_from}, total_pages=#{total_pages}")
-              OutlineExtractor.add_outline_from_headings!('output.pdf', chapter_htmls, max_level: 3, start_page: start_from)
-              true
-            else
-              Common.log_info('[Step 11] 本文HTMLが見つからないため、アウトライン付与をスキップします')
-              false
-            end
+            Common.log_action('[Step 11] PDF ブックマークを付与します…')
+            OutlineExtractor.add_outline_from_headings!('output.pdf', chapter_htmls, max_level: 3, start_page: 1)
+            true
           end
         end
       end
