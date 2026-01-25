@@ -1,0 +1,30 @@
+---
+terms:
+- term: CSS
+  yomi: CSS
+  pattern: "/\\bCSS\\b/"
+  approved_at: '2026-01-25 17:05:26'
+  auto_approved: true
+  source: auto_extracted
+  score: 433.3886130788526
+- term: HTML
+  yomi: HTML
+  pattern: "/\\bHTML\\b/"
+  approved_at: '2026-01-25 17:05:26'
+  auto_approved: true
+  source: auto_extracted
+  score: 650.0829196182788
+- term: コンピュータ
+  yomi: こんぴゅーた
+  pattern: "/コンピュータ/"
+  approved_at: '2026-01-25 17:05:26'
+  auto_approved: true
+  source: auto_extracted
+  score: 497.8929439142762
+- term: ブラウザ
+  yomi: ブラウザ
+  pattern: "/ブラウザ/"
+  approved_at: '2026-01-25 17:05:26'
+  auto_approved: true
+  source: auto_extracted
+  score: 304.55889757182007
