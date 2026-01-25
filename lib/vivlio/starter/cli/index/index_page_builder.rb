@@ -62,14 +62,12 @@ module Vivlio
           def build!(match_file = '_index_matches.yml', output_file = '_indexpage.html')
             unless File.exist?(match_file)
               Common.log_warn("索引データが見つかりません: #{match_file}")
-              Common.log_warn('vs index:match を先に実行してください')
               return nil
             end
 
             load_index_data!(match_file)
 
             if @index_data.empty?
-              Common.log_warn('索引データが空です')
               return nil
             end
 

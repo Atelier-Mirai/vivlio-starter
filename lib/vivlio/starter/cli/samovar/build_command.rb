@@ -175,6 +175,7 @@ module Vivlio
 
             pipeline = BuildCommands::UnifiedBuildPipeline.new(self, entries: entries, mode: :single)
             build_timings = pipeline.run
+            IndexCommands.flush_post_build_messages
 
             print_build_timings(build_timings)
             open_generated_pdf(pipeline.generated_pdf_name)
@@ -202,6 +203,7 @@ module Vivlio
 
             pipeline = BuildCommands::UnifiedBuildPipeline.new(self, entries: entries, mode: :full)
             build_timings = pipeline.run
+            IndexCommands.flush_post_build_messages
 
             print_build_timings(build_timings)
             print_outline_debug_info

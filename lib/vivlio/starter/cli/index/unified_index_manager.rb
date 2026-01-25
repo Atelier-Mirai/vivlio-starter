@@ -193,7 +193,7 @@ module Vivlio
           Common.log_action('索引ページを生成しています...')
 
           # 本文スキャン（contents/ のファイルは書き換えない）
-          scanner = IndexMatchScanner.new
+          scanner = IndexMatchScanner.new(defer_warnings: true)
           scanner.scan_all_chapters!(chapters, read_only: false)
 
           # 索引ページ生成
@@ -201,6 +201,10 @@ module Vivlio
           builder.build!
 
           Common.log_success('索引ページを生成しました')
+
+          if scanner.config_missing || scanner.no_matches?
+            IndexCommands.add_post_build_message(IndexCommands::INDEX_TERMS_MISSING_MESSAGE)
+          end
         end
 
         # リジェクト済み候補の一覧表示
