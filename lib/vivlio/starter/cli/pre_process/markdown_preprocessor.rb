@@ -47,14 +47,16 @@ module Vivlio
         class MarkdownPreprocessor
           attr_reader :context
 
-          def initialize(md_file)
+          # @param md_file [String] Markdown ファイルパス
+          # @param entry [TokenResolver::Entry] 章情報を持つ Entry オブジェクト
+          def initialize(md_file, entry)
             filename = File.basename(md_file)
             @context = PreProcessContext.new(
               source_path: md_file,
               output_path: filename,
               filename: filename,
-              file_type: Common.get_file_type(filename),
-              chapter_number: Common.get_chapter_number(filename),
+              file_type: entry.kind.to_s,
+              chapter_number: entry.number,
               content: File.read(md_file, encoding: 'utf-8')
             )
           end

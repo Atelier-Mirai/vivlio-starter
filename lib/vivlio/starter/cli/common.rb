@@ -5,262 +5,268 @@ require 'json'
 require 'yaml'
 require 'pathname'
 
-# 書籍ビルドシステムの共通モジュール
+# このコードで可能になったこと
+# * ハイブリッドなアクセス:
+#     * Common::CONFIG.page.base_font_size （ドット記法でスマートに）
+#     * Common::CONFIG[:page][:base_font_size] （変数を使った動的なアクセスもOK）
+# * パターンマッチングの継続サポート:
+#     * def deconstruct_keys を実装したため、case Common::CONFIG in { page: { size: } } のようなパターンマッチも引き続き機能します。
+# * 安全な設定変更:
+#     * 著者が book.yml を編集した後に reload_configuration! を呼べば、警告なしで CONFIG の中身が最新の状態に置き換わります。
+# * 不変性の保証:
+#     * .freeze を適用しているため、ビルド実行中に設定が誤って書き換えられる副作用を防ぎます。
+
 module Vivlio
   module Starter
     module CLI
       module Common
         module_function
 
-        # ================================================================
-        # Config: 必須設定ファイルと定数
-        # ================================================================
-        # 必須 YAML ファイル（config/ 配下）
+        # --- 定数定義 ---
         REQUIRED_YAML_FILES = %w[
-          config/book.yml
-          config/catalog.yml
-          config/page_presets.yml
-          config/post_replace_list.yml
+          config/book.yml config/catalog.yml config/page_presets.yml config/post_replace_list.yml
         ].freeze
 
         CONFIG_FILE = 'config/book.yml'
         PAGE_PRESETS_FILE = 'config/page_presets.yml'
-        FONT_SIZE_KEYS = %w[base_font_size column_font_size folio_font_size].freeze
-        PAGE_PRESET_EXCLUDE_KEYS = %w[preset use preset_name].freeze
+        FONT_SIZE_KEYS = %i[base_font_size column_font_size folio_font_size].freeze
+        PAGE_PRESET_EXCLUDE_KEYS = %i[preset use preset_name].freeze
+        LEVELS = { 'error' => 0, 'warn' => 1, 'info' => 2, 'success' => 2, 'action' => 2, 'debug' => 3 }.freeze
+
+        CONFIG_DIR = 'config'
+        CONTENTS_DIR = 'contents'
+        STYLESHEETS_DIR = 'stylesheets'
+        IMAGES_DIR = 'images'
+        CODES_DIR = 'codes'
+        CHAPTER_TEMPLATES_DIR = 'chapter_templates'
+        COVERS_DIR = 'covers'
+        VFM_COMMAND = 'vfm'
+        POST_REPLACE_FILE = 'post_replace_list.yml'
+        CACHE_DIR = '.cache/vs'
+        VIVLIOSTYLE_CONFIG_FILE = 'vivliostyle.config.js'
 
         # ================================================================
-        # Utility: 必須 YAML ファイルの事前検証
-        # ------------------------------------------------
-        # - CONFIG 構築前に呼び出し、必須ファイルの存在・パースを一括検証
-        # - 不足または不正な場合はエラーメッセージを表示して終了
+        # Recursive Data Wrapper (Ruby 4.0 Style)
         # ================================================================
-        def ensure_required_yaml_files!
-          REQUIRED_YAML_FILES.each do |relative_path|
-            unless File.file?(relative_path)
-              puts "❌ 必須設定ファイルが見つかりません: #{relative_path}"
-              puts '❌ コマンドを中止します'
-              raise SystemExit, 1
-            end
-
-            begin
-              yaml_text = File.read(relative_path, encoding: 'utf-8')
-              data = YAML.safe_load(yaml_text, permitted_classes: [], aliases: true)
-
-              # パース結果が nil（空ファイルや全コメント）の場合は不正
-              # Hash または Array であれば有効とする
-              if data.nil?
-                puts "❌ 必須設定ファイルの内容が空です: #{relative_path}"
-                puts '❌ コマンドを中止します'
-                raise SystemExit, 1
+        
+        # Hashを再帰的にDataオブジェクトに変換するヘルパー
+        # ドット記法と [] アクセスの両方を提供します
+        def wrap_config(input)
+          case input
+          in Hash
+            # キーを動的にDataの属性として定義
+            keys = input.keys
+            cls = Data.define(*keys) do
+              # 従来型の [] アクセスも提供
+              def [](key) = respond_to?(key) ? public_send(key) : nil
+              # パターンマッチング(deconstruct_keys)への対応
+              def deconstruct_keys(keys) = to_h.slice(*keys)
+              # dig メソッドの提供（既存コードとの互換性）
+              def dig(*keys)
+                keys.reduce(self) do |obj, key|
+                  return nil unless obj.respond_to?(:[])
+                  obj[key]
+                end
               end
-            rescue SystemExit
-              raise
-            rescue StandardError
-              puts "❌ 必須設定ファイルの形式が不正です: #{relative_path}"
-              puts '❌ コマンドを中止します'
-              raise SystemExit, 1
+              # fetch メソッドの提供
+              def fetch(key, default = nil)
+                val = self[key]
+                val.nil? ? default : val
+              end
+            end
+            cls.new(**input.transform_values { wrap_config(_1) })
+          in Array
+            input.map { wrap_config(_1) }
+          else
+            input
+          end
+        end
+
+        # ================================================================
+        # Validation & Loading
+        # ================================================================
+
+        def ensure_required_yaml_files!
+          REQUIRED_YAML_FILES.each do |path|
+            unless File.file?(path)
+              abort_with_error("必須設定ファイルが見つかりません: #{path}")
+            end
+
+            case YAML.safe_load(File.read(path, encoding: 'utf-8'), aliases: true, symbolize_names: true)
+            in Hash | Array
+              # Valid
+            else
+              abort_with_error("必須設定ファイルの内容が空、または形式が不正です: #{path}")
+            end
+          rescue StandardError => e
+            abort_with_error("必須設定ファイルの解析に失敗しました (#{path}): #{e.message}")
+          end
+        end
+
+        # book.yml を読み込み、ハードコーディングされた既定値をマージして返す
+        def load_config
+          YAML.load_file(CONFIG_FILE, aliases: true, symbolize_names: true) => raw_config
+          cfg = apply_page_preset(raw_config)
+          merge_hardcoded_defaults(cfg)
+        end
+
+        # ハードコーディングされた既定値をマージする
+        # book.yml に記述がなくても、これらの値は常に利用可能
+        def merge_hardcoded_defaults(cfg)
+          cfg.merge(
+            directories: default_directories.merge(cfg[:directories] || {}),
+            cache: default_cache.merge(cfg[:cache] || {}),
+            commands: default_commands.merge(cfg[:commands] || {}),
+            files: default_files.merge(cfg[:files] || {}),
+            vivliostyle: default_vivliostyle.merge(cfg[:vivliostyle] || {})
+          )
+        end
+
+        # --- Hardcoded Defaults (Data objects for immutability) ---
+        def default_directories = {
+          config: CONFIG_DIR,
+          contents: CONTENTS_DIR,
+          stylesheets: STYLESHEETS_DIR,
+          images: IMAGES_DIR,
+          codes: CODES_DIR,
+          chapter_templates: CHAPTER_TEMPLATES_DIR,
+          covers: COVERS_DIR
+        }
+
+        def default_cache = { dir: CACHE_DIR, enabled: true }
+        def default_commands = { vfm: VFM_COMMAND }
+        def default_files = { post_replace: POST_REPLACE_FILE }
+        def default_vivliostyle = {
+          quiet: true,
+          reading_progression: 'ltr',
+          entries_file: 'entries.js',
+          config_file: VIVLIOSTYLE_CONFIG_FILE
+        }
+
+        def apply_page_preset(cfg)
+          case cfg
+          in { page: { **page_cfg } }
+            preset_name = page_cfg.values_at(*PAGE_PRESET_EXCLUDE_KEYS).find { _1 }
+            return cfg if blank?(preset_name)
+
+            presets = load_page_presets
+            case presets[preset_name.to_sym]
+            in Hash => selected
+              overrides = page_cfg.reject { PAGE_PRESET_EXCLUDE_KEYS.include?(_1) }
+              merged = selected.merge(overrides).merge(page_cfg)
+              cfg.merge(page: normalize_page_units(merged))
+            else
+              cfg
+            end
+          else
+            cfg
+          end
+        end
+
+        def load_page_presets
+          YAML.load_file(PAGE_PRESETS_FILE, aliases: true, symbolize_names: true)
+        end
+
+        # ================================================================
+        # Normalization (Unit conversion)
+        # ================================================================
+
+        def normalize_page_units(pcfg)
+          pcfg.merge(
+            **normalize_font_sizes(pcfg),
+            base_line_height: normalize_line_height(pcfg)
+          ).compact
+        end
+
+        def normalize_font_sizes(pcfg)
+          FONT_SIZE_KEYS.each_with_object({}) do |key, memo|
+            case pcfg[key]&.to_s&.strip
+            in /q\z/i => s then memo[key] = q_to_pt(s)
+            else # Skip
             end
           end
         end
 
-        # ================================================================
-        # Utility: 設定読み込み load_config
-        # ------------------------------------------------
-        # - ensure_required_yaml_files! で事前検証済みの前提
-        # - config/book.yml を読み込み、ページプリセットを適用して返す
-        # ================================================================
-        def load_config
-          cfg_text = File.read(CONFIG_FILE, encoding: 'utf-8')
-          config = YAML.safe_load(cfg_text, permitted_classes: [], aliases: true)
-          apply_page_preset!(config)
-          config
-        end
-
-        # page プリセット設定を解決し、単位を正規化する
-        # config/page_presets.yml は ensure_required_yaml_files! で事前検証済み
-        def apply_page_preset!(cfg)
-          page_cfg = cfg['page'].is_a?(Hash) ? cfg['page'] : {}
-          preset_name = extract_page_preset_name(page_cfg)
-          return cfg if blank?(preset_name)
-
-          presets = load_page_presets
-          selected = presets[preset_name.to_s]
-          return cfg unless selected.is_a?(Hash)
-
-          overrides = page_cfg.reject { |k, _| PAGE_PRESET_EXCLUDE_KEYS.include?(k.to_s) }
-          cfg['page'] = selected.merge(overrides)
-          normalize_page_units!(cfg['page'])
-          cfg
-        end
-
-        # page 設定からプリセット名を抽出する
-        def extract_page_preset_name(page_cfg)
-          return nil unless page_cfg.is_a?(Hash)
-
-          page_cfg['preset'] || page_cfg['use'] || page_cfg['preset_name']
-        end
-
-        # ページプリセット定義を読み込む
-        # config/page_presets.yml の存在・YAML パースは ensure_core_yaml_files! で
-        # 事前に検証済みである前提とし、ここでは単純に読み込んで返す。
-        def load_page_presets
-          presets_text = File.read(PAGE_PRESETS_FILE, encoding: 'utf-8')
-          YAML.safe_load(presets_text, permitted_classes: [], aliases: true)
-        end
-
-        # ================================================================
-        # Utility: normalize_page_units!
-        # ------------------------------------------------
-        # - 目的: page 設定内の単位を pt に正規化
-        # - 対象: base_font_size（Q→pt）, base_line_height（倍率/Em/Q→pt）
-        # - 振る舞い: 引数の Hash を破壊的に更新
-        # ================================================================
-        def normalize_page_units!(pcfg)
-          return pcfg unless pcfg.is_a?(Hash)
-
-          normalize_font_sizes!(pcfg)
-          normalize_base_line_height!(pcfg)
-
-          pcfg
-        end
-
-        # base_font_size 等の Q 単位を pt へ揃える
-        def normalize_font_sizes!(pcfg)
-          FONT_SIZE_KEYS.each do |key|
-            value = pcfg[key]
-            next if blank?(value)
-
-            str = normalized_string(value)
-            next unless str =~ /q\z/i
-
-            pcfg[key] = q_to_pt(str)
+        def normalize_line_height(pcfg)
+          case [pcfg[:base_line_height]&.to_s&.strip, pt_value(pcfg[:base_font_size])]
+          in [nil | "", _]         then nil
+          in [_, nil]              then pcfg[:base_line_height]
+          in [/pt\z/i => s, _]     then s
+          in [/q\z/i => s, _]      then q_to_pt(s)
+          in [/em\z/i => s, f_pt]  then format_pt(f_pt * s.to_f)
+          in [/\A[\d.]+\z/ => s, f_pt] then format_pt(f_pt * s.to_f)
+          in [other, _]            then other
           end
         end
 
-        # base_line_height をフォントサイズ基準で pt 化する
-        # base_line_height の値は、フォントサイズの倍率、Em 単位、Q 単位のいずれかを想定
-        # これらの値を pt 単位に正規化する
-        def normalize_base_line_height!(pcfg)
-          line_height = pcfg['base_line_height']
-          return if blank?(line_height)
+        def q_to_pt(value) = format_pt(value.to_f * 0.709)
+        def pt_value(value) = value&.to_s&.match(/\A([\d.]+)pt\z/i)&.[](1)&.to_f
+        def format_pt(value) = "#{value.to_f.round(3)}pt"
 
-          font_size_pt = pt_value(pcfg['base_font_size'])
-          return unless font_size_pt
+        # ================================================================
+        # Log & UI
+        # ================================================================
 
-          pcfg['base_line_height'] = line_height_to_pt(normalized_string(line_height), font_size_pt)
-        end
-
-        # 文字列化された行送り値を pt に変換する
-        # 行送り値は pt 単位、Q 単位、Em 単位、または倍率のいずれかを想定
-        # これらの値を pt 単位に正規化する
-        def line_height_to_pt(str, font_size_pt)
-          case str
-          when /pt\z/i
-            str
-          when /q\z/i
-            q_to_pt(str)
-          when /em\z/i
-            format_pt(font_size_pt * str.sub(/em\z/i, '').to_f)
-          when /\A[0-9]+(?:\.[0-9]+)?\z/
-            format_pt(font_size_pt * str.to_f)
-          else
-            str
+        def current_log_level
+          case ARGV
+          in [*, /^--log=(.+)$/, *] then LEVELS[$1.downcase] || 2
+          in [*, '--log', level, *] if LEVELS.key?(level) then LEVELS[level]
+          in [*, '--log', *] then 2
+          else 1
           end
         end
 
-        # Q 単位の値を pt に変換する
-        def q_to_pt(value)
-          str = normalized_string(value)
-          return str unless str =~ /q\z/i
-
-          num = str.sub(/q\z/i, '').to_f
-          format_pt(num * 0.709)
+        def log_info(msg)
+          puts("ℹ️ #{msg}") if current_log_level >= 2
         end
 
-        # pt 表記の数値部分を Float で返す
-        def pt_value(value)
-          str = normalized_string(value)
-          match = str.match(/\A([0-9]+(?:\.[0-9]+)?)pt\z/i)
-          match ? match[1].to_f : nil
+        def log_success(msg)
+          puts("✅ #{msg}") if current_log_level >= 2
         end
 
-        # pt 値を小数第3位で丸めて文字列化する
-        def format_pt(value)
-          "#{value.round(3)}pt"
+        def log_warn(msg)
+          puts("⚠️ #{msg}") if current_log_level >= 1
         end
 
-        # 値を文字列化し前後空白を除去する
-        def normalized_string(value)
-          value.to_s.strip
+        def log_error(msg)
+          puts("❌ #{msg}")
         end
 
-        # 出力ファイル名を生成する
-        # @param target [String] ターゲットタイプ ('pdf', 'print_pdf', 'epub')
-        # @param suffix [String, nil] 圧縮接尾辞（例: 'compressed'）※省略時は自動判定しない
-        # @return [String] 生成されたファイル名
-        def generate_output_filename(target = 'pdf', suffix: nil)
-          config = CONFIG
-          project_name = config.dig('project', 'name') || 'vivlio_starter'
-          project_version = config.dig('project', 'version')
-          include_version = config.dig('output', 'filename', 'include_version') || false
+        def log_action(msg)
+          puts("🔧 #{msg}") if current_log_level >= 2
+        end
 
-          # ベース名を構築
-          filename = project_name.to_s.dup
+        def log_debug(msg)
+          puts("🧪 #{msg}") if current_log_level >= 3
+        end
 
-          # print_pdf ターゲットの場合は _print 接頭辞を追加
-          filename += '_print' if target == 'print_pdf'
+        def echo_always(msg)
+          puts(msg)
+        end
 
-          # バージョンを含める場合は _v{version} を追加
-          filename += "_v#{project_version}" if include_version && !blank?(project_version)
+        def verbose?
+          current_log_level >= 2
+        end
 
-          # 圧縮接尾辞を追加（pdfターゲットのみ対応、print_pdf/epubは対象外）
-          if suffix && !blank?(suffix) && target == 'pdf'
-            # suffixが既に _ で始まっている場合はそのまま、そうでなければ _ を追加
-            filename += suffix.to_s.start_with?('_') ? suffix : "_#{suffix}"
+        # ================================================================
+        # Helpers
+        # ================================================================
+
+        def truthy?(val)
+          case val&.to_s&.strip&.downcase
+          in true | 'true' | 'yes' | 'on' | '1' then true
+          else false
           end
-
-          # 拡張子を追加
-          filename += case target
-                      when 'pdf', 'print_pdf'
-                        '.pdf'
-                      when 'epub'
-                        '.epub'
-                      else
-                        '.pdf' # デフォルトはPDF
-                      end
-
-          filename
         end
 
-        # print_pdf ターゲット用のファイル名を生成する
-        # @return [String] print_pdf用のファイル名
-        def generate_print_pdf_filename
-          generate_output_filename('print_pdf')
-        end
+        def blank?(v) = v.nil? || v.to_s.strip.empty?
 
-        # epub ターゲット用のファイル名を生成する
-        # @return [String] epub用のファイル名
-        def generate_epub_filename
-          generate_output_filename('epub')
-        end
-
-        # 圧縮PDF用のファイル名を生成する（設定から圧縮接尾辞を自動取得）
-        # @param target [String] ターゲットタイプ（'pdf' のみ対応、print_pdf/epubは圧縮対象外）
-        # @return [String] 圧縮PDF用のファイル名
-        def generate_compressed_pdf_filename(target = 'pdf')
-          config = CONFIG
-          compress_suffix = config.dig('output', 'pdf', 'compress', 'suffix') || 'compressed'
-          generate_output_filename(target, suffix: compress_suffix)
-        end
-
-        # blank? 判定の簡易版
-        def blank?(value)
-          value.nil? || value.to_s.strip.empty?
-        end
+        # ================================================================
+        # Path Utilities
+        # ================================================================
 
         def resolve_path_from_root(path)
           return nil if blank?(path)
-
           pn = Pathname.new(path)
           pn = Pathname.new(Dir.pwd).join(pn) unless pn.absolute?
           pn.cleanpath.to_s
@@ -270,128 +276,112 @@ module Vivlio
 
         def relative_path_from_root(path)
           return path if blank?(path)
-
           Pathname.new(path).relative_path_from(Pathname.new(Dir.pwd)).to_s
         rescue StandardError
           path.to_s
         end
 
-        def config_dir_path
-          resolve_path_from_root(CONFIG_DIR)
+        def ensure_cache_dir!
+          dir = cache_dir
+          FileUtils.mkdir_p(dir)
+          dir
         end
 
-        def post_replace_file_path
-          return nil if blank?(POST_REPLACE_FILE)
+        # ================================================================
+        # Chapter Utilities
+        # ================================================================
 
-          pn = Pathname.new(POST_REPLACE_FILE)
-          base = Pathname.new(config_dir_path)
-          pn = base.join(pn) unless pn.absolute?
-          pn.cleanpath.to_s
+        def to_roman_lower(n)
+          return '' if n.to_i <= 0
+          n = n.to_i
+          mapping = [
+            [1000, 'm'], [900, 'cm'], [500, 'd'], [400, 'cd'],
+            [100, 'c'], [90, 'xc'], [50, 'l'], [40, 'xl'],
+            [10, 'x'], [9, 'ix'], [5, 'v'], [4, 'iv'], [1, 'i']
+          ]
+          mapping.each_with_object(String.new) do |(val, sym), res|
+            count, n = n.divmod(val)
+            res << (sym * count)
+          end
+        end
+
+        def appendix_number_to_letter(num)
+          n = num.to_i
+          return nil unless n.between?(91, 97)
+          ('a'..'g').to_a[n - 91]
         rescue StandardError
-          resolve_path_from_root(POST_REPLACE_FILE)
+          nil
         end
 
         # ================================================================
-        # Utility: ページサイズ解決 resolve_page_size / normalize_page_size!
-        # ------------------------------------------------
-        # - 入力: page 設定 Hash（size/width/height を想定）
-        # - 仕様:
-        #   - size が A4/B5/A5 のいずれかなら、その既定寸法を基準にする
-        #   - width/height が明示されていれば size より優先
-        #   - どれも無ければ B5（182mm x 257mm）
-        # - 出力:
-        #   - resolve_page_size: [width, height] を返す
-        #   - normalize_page_size!: 引数 Hash を破壊的に width/height 付与して返す
+        # Page Size Utilities
         # ================================================================
+
+        PAGE_SIZES = {
+          'A4' => { width: '210mm', height: '297mm' },
+          'A5' => { width: '148mm', height: '210mm' },
+          'B5' => { width: '182mm', height: '257mm' }
+        }.freeze
+
+        # ページサイズを解決する（シンボルキー前提）
         def resolve_page_size(page_cfg)
           pcfg = page_cfg.is_a?(Hash) ? page_cfg : {}
-          size = (pcfg['size'] || '').to_s.strip.upcase
-          case size
-          when 'A4'
-            default_w = '210mm'
-            default_h = '297mm'
-          when 'A5'
-            default_w = '148mm'
-            default_h = '210mm'
-          else
-            # 既定: B5
-            default_w = '182mm'
-            default_h = '257mm'
-          end
+          size = pcfg[:size].to_s.strip.upcase
+          defaults = PAGE_SIZES[size] || PAGE_SIZES['B5']
 
-          width  = pcfg['width']
-          height = pcfg['height']
-          width  = width.to_s.strip unless width.nil?
-          height = height.to_s.strip unless height.nil?
+          width  = pcfg[:width]&.to_s&.strip
+          height = pcfg[:height]&.to_s&.strip
 
-          width  = default_w unless width && !width.empty?
-          height = default_h unless height && !height.empty?
-          [width, height]
+          [
+            width.to_s.empty? ? defaults[:width] : width,
+            height.to_s.empty? ? defaults[:height] : height
+          ]
         end
 
-        # ページ設定に width/height を補完する
         def normalize_page_size!(page_cfg)
           return page_cfg unless page_cfg.is_a?(Hash)
-
           w, h = resolve_page_size(page_cfg)
-          page_cfg['width']  = w
-          page_cfg['height'] = h
+          page_cfg[:width] = w
+          page_cfg[:height] = h
           page_cfg
         end
 
         # ================================================================
-        # Utility: 引数トークンの正規化 normalize_tokens
-        # ------------------------------------------------
-        # - contents/ プレフィックスや拡張子 .md を除去
-        # - 空要素を除去し一意化
+        # Output Filename Generation
         # ================================================================
-        def normalize_tokens(files)
-          contents_prefix = %r{\A#{Regexp.escape(CONTENTS_DIR)}/}
-          tokens = Array(files).compact.flat_map { |name| name.to_s.split(',') }
-          tokens.flat_map do |name|
-            n = name.strip
-            n = n.sub(contents_prefix, '')
-            n = File.basename(n, '.md')
-            normalized = normalize_chapter_token(n)
-            expand_range_token(normalized)
-          end.reject { |n| n.nil? || n.strip.empty? }.uniq
-        rescue StandardError
-          Array(files).compact
+
+        def generate_output_filename(target = 'pdf', suffix: nil)
+          project_name = CONFIG.project&.name || 'vivlio_starter'
+          project_version = CONFIG.project&.version
+          include_version = CONFIG.output&.filename&.include_version || false
+
+          filename = project_name.to_s.dup
+          filename += '_print' if target == 'print_pdf'
+          filename += "_v#{project_version}" if include_version && !blank?(project_version)
+          filename += (suffix.to_s.start_with?('_') ? suffix : "_#{suffix}") if suffix && !blank?(suffix) && target == 'pdf'
+
+          ext = case target
+                when 'pdf', 'print_pdf' then '.pdf'
+                when 'epub' then '.epub'
+                else '.pdf'
+                end
+          filename + ext
         end
 
-        def normalize_chapter_token(token)
-          str = token.to_s.strip
-          return token if str.empty?
+        def generate_print_pdf_filename = generate_output_filename('print_pdf')
+        def generate_epub_filename = generate_output_filename('epub')
 
-          return format('%02d', str.to_i) if digits_only?(str)
-
-          if (range = str.match(/\A(\d+)-(\d+)\z/))
-            return "#{format('%02d', range[1].to_i)}-#{format('%02d', range[2].to_i)}"
-          end
-
-          if (leading = str.match(/\A(\d+)([-_].+)\z/))
-            return "#{format('%02d', leading[1].to_i)}#{leading[2]}"
-          end
-
-          token
+        def generate_compressed_pdf_filename(target = 'pdf')
+          suffix = CONFIG.output&.pdf&.compress&.suffix || 'compressed'
+          generate_output_filename(target, suffix: suffix)
         end
 
-        def expand_range_token(token)
-          match = token&.match(/\A(\d{2})-(\d{2})\z/)
-          return [token] unless match
+        # ================================================================
+        # Build Timing & Step Tracking
+        # ================================================================
 
-          start_num = match[1].to_i
-          end_num = match[2].to_i
-          range = start_num <= end_num ? (start_num..end_num) : (end_num..start_num)
-          range.map { |num| format('%02d', num) }
-        end
-
-        def digits_only?(value)
-          value.match?(/\A\d+\z/)
-        end
-
-        # Vivliostyle build の各工程時間を Thread ローカルに保持し、build サマリ表示時に集計するためのキー
         VIVLIOSTYLE_TIMINGS_KEY = :vivlio_starter_vivliostyle_timings
+        VIVLIOSTYLE_CURRENT_STEP_KEY = :vivlio_starter_current_step_label
 
         def reset_vivliostyle_build_timings
           Thread.current[VIVLIOSTYLE_TIMINGS_KEY] = []
@@ -399,8 +389,7 @@ module Vivlio
 
         def record_vivliostyle_build(duration, label = nil)
           timings = Thread.current[VIVLIOSTYLE_TIMINGS_KEY] ||= []
-          label_text = label.to_s
-          label_text = 'Vivliostyle build' if label_text.empty?
+          label_text = label.to_s.empty? ? 'Vivliostyle build' : label.to_s
           timings << { duration: duration.to_f, label: label_text }
         end
 
@@ -409,9 +398,6 @@ module Vivlio
           Thread.current[VIVLIOSTYLE_TIMINGS_KEY] = []
           timings
         end
-
-        # LiveDisplay などに「現在処理中の章/工程」を表示するためのキー
-        VIVLIOSTYLE_CURRENT_STEP_KEY = :vivlio_starter_current_step_label
 
         def with_current_step_label(label)
           previous = Thread.current[VIVLIOSTYLE_CURRENT_STEP_KEY]
@@ -426,309 +412,105 @@ module Vivlio
         end
 
         # ================================================================
-        # Utility: ローマ数字（小文字）変換 to_roman_lower
-        # ------------------------------------------------
-        # - 範囲: 1..3999 を想定
-        # - 無効値は空文字を返す
+        # Boolean Utilities
         # ================================================================
-        def to_roman_lower(n)
-          return '' if n.to_i <= 0
 
-          n = n.to_i
-          mapping = [
-            [1000, 'm'], [900, 'cm'], [500, 'd'], [400, 'cd'],
-            [100, 'c'], [90, 'xc'], [50, 'l'], [40, 'xl'],
-            [10, 'x'], [9, 'ix'], [5, 'v'], [4, 'iv'], [1, 'i']
-          ]
-          res = String.new
-          mapping.each do |val, sym|
-            count, n = n.divmod(val)
-            res << (sym * count)
-          end
-          res
-        end
-
-        # ================================================================
-        # Utility: 付録番号(91..97)を appendix-[a..g] の letter に変換
-        # ------------------------------------------------
-        # - 無効範囲は nil を返す
-        # ================================================================
-        def appendix_number_to_letter(num)
-          n = num.to_i
-          return nil unless n.between?(91, 97)
-
-          ('a'..'g').to_a[n - 91]
-        rescue StandardError
-          nil
-        end
-
-        # ================================================================
-        # Config: 設定ロードと派生定数
-        # ------------------------------------------------
-        # - CONFIG をロードし、各種ディレクトリ/コマンド/ファイルの定数を定義
-        # - reload_configuration! で再初期化可能
-        # ================================================================
-        CONFIG_RELOADABLE_CONSTANTS = %i[
-          CONFIG
-          CONFIG_DIR
-          CONTENTS_DIR
-          STYLESHEETS_DIR
-          IMAGES_DIR
-          CODES_DIR
-          CHAPTER_TEMPLATES_DIR
-          VFM_COMMAND
-          POST_REPLACE_FILE
-          CACHE_CFG
-          CACHE_DIR
-        ].freeze
-
-        def initialize_configuration_constants!
-          CONFIG_RELOADABLE_CONSTANTS.each do |const|
-            remove_const(const) if const_defined?(const, false)
-          end
-
-          ensure_required_yaml_files!
-          config = load_config
-
-          const_set(:CONFIG, config)
-
-          config_dir = begin
-            dir = config.dig('directories', 'config')
-            dir.nil? || dir.to_s.strip.empty? ? 'config' : dir
-          end
-          const_set(:CONFIG_DIR, config_dir)
-
-          const_set(:CONTENTS_DIR,          config['directories']['contents'])
-          const_set(:STYLESHEETS_DIR,       config['directories']['stylesheets'])
-          const_set(:IMAGES_DIR,            config['directories']['images'])
-          const_set(:CODES_DIR,             config['directories']['codes'])
-          const_set(:CHAPTER_TEMPLATES_DIR, config['directories']['chapter_templates'])
-
-          const_set(:VFM_COMMAND, config['commands']['vfm'])
-
-          post_replace_file = begin
-            file = config.dig('files', 'post_replace')
-            file.nil? || file.to_s.strip.empty? ? 'post_replace_list.yml' : file
-          end
-          const_set(:POST_REPLACE_FILE, post_replace_file)
-
-          cache_cfg = (config['cache'].is_a?(Hash) ? config['cache'] : {})
-          const_set(:CACHE_CFG, cache_cfg)
-          const_set(:CACHE_DIR, cache_cfg['dir'] || '.cache/vs')
-        end
-        module_function :initialize_configuration_constants!
-
-        def reload_configuration!
-          initialize_configuration_constants!
-        end
-        module_function :reload_configuration!
-
-        initialize_configuration_constants!
-
-        def cache_enabled?
-          fetch_bool(CACHE_CFG, %w[enabled], default: true)
-        rescue StandardError
-          true
-        end
-
-        def cache_dir
-          CACHE_DIR
-        end
-
-        def ensure_cache_dir!
-          FileUtils.mkdir_p(CACHE_DIR)
-          CACHE_DIR
-        end
-
-        # ================================================================
-        # Utility: truthy?/falsey?（柔軟な真偽値解釈）
-        # ------------------------------------------------
-        # - true/false に加えて 'true'/'false', 'yes'/'no', 'on'/'off', '1'/'0' を解釈
-        # ================================================================
-        def truthy?(val)
-          case val
-          when true then true
-          when false, nil then false
-          else
-            s = val.to_s.strip.downcase
-            %w[true yes on 1].include?(s)
-          end
-        rescue StandardError
-          false
-        end
-
-        def falsey?(val)
-          !truthy?(val)
-        end
-
-        # ================================================================
-        # Utility: fetch_bool（ネストしたキーから柔軟に真偽値を取得）
-        # ------------------------------------------------
-        # - keys: ['pdf', 'quiet'] のように配列で渡す
-        # - default: 値が未設定/不正な場合の既定
-        # - 例: fetch_bool(CONFIG, %w[pdf quiet], false)
-        # ================================================================
+        # シンボルキーのみを前提としたブール値取得
         def fetch_bool(obj, keys, default: false)
           cur = obj
           Array(keys).each do |k|
-            return default unless cur.is_a?(Hash)
+            return default unless cur.respond_to?(:[])
 
-            cur = cur[k]
+            cur = cur[k.to_sym]
           end
           return default if cur.nil?
-
           truthy?(cur)
         rescue StandardError
           default
         end
 
-        # ================================================================
-        # Utility: ファイルタイプ判定 get_file_type
-        # ------------------------------------------------
-        # - 章番号の接頭辞から種別を返す（titlepage/legalpage/...）
-        # - 特殊ページ（_titlepage 等）も判定可能
-        # - デフォルトは 'chapter'
-        # ================================================================
-        # 章番号レンジ定数（catalog_spec.md 準拠）
-        PREFACE_RANGE  = (0..0)
-        MAIN_RANGE     = (1..89)
-        APPX_RANGE     = (90..98)
-        POSTFACE_RANGE = (99..99)
-
-        def get_file_type(filename)
-          name = File.basename(filename.to_s)
-
-          # 特殊ページ（内部 basename）の判定
-          case name
-          when /^_titlepage/
-            return 'titlepage'
-          when /^_legalpage/
-            return 'legalpage'
-          when /^_colophon/
-            return 'colophon'
-          when /^_indexpage/
-            return 'indexpage'
-          end
-
-          # 章番号から判定
-          num = get_chapter_number(name)&.to_i
-          return 'chapter' unless num
-
-          case num
-          when PREFACE_RANGE
-            'preface'
-          when MAIN_RANGE
-            'chapter'
-          when APPX_RANGE
-            'appendix'
-          when POSTFACE_RANGE
-            'postface'
-          else
-            'chapter' # デフォルト
-          end
+        def abort_with_error(msg)
+          log_error(msg)
+          log_error("コマンドを中止します")
+          exit 1
         end
 
-        # ================================================================
-        # Utility: 章番号抽出 get_chapter_number
-        # ------------------------------------------------
-        # - 例: 21-history.md → 21（String または nil）
-        # ================================================================
-        def get_chapter_number(filename)
-          filename[/^(\d+)-/, 1]
+        # 定数を安全に（警告なしで）再定義する
+        # @param silent [Boolean] 初期ロード時はログ出力を抑制
+        def reload_configuration!(silent: false)
+          ensure_required_yaml_files!
+          
+          # load_configの結果をDataオブジェクトにラップしてフリーズ
+          new_config = wrap_config(load_config).freeze
+          
+          # 定数の再定義（既存なら削除して警告を回避）
+          remove_const(:CONFIG) if const_defined?(:CONFIG)
+          const_set(:CONFIG, new_config)
+          
+          puts("🧪 Configuration reloaded: #{CONFIG_FILE}") if !silent && current_log_level >= 3
         end
 
+        # 初期ロード実行（モジュール定義時は静かに）
+        reload_configuration!(silent: true)
+
         # ================================================================
-        # Logging config: ログレベル/詳細度
-        # ------------------------------------------------
-        # 制御方法: --log[=level]
-        #   --log=error  -> 0
-        #   --log=warn   -> 1
-        #   --log=info   -> 2  （標準）
-        #   --log=success-> 2  （info 同等）
-        #   --log=action -> 2  （info 同等）
-        #   --log=debug  -> 3
-        #   --log        -> 2  （レベル省略時は info 相当）
-        # 既定（--log 未指定時）は warn(1)
+        # 派生定数（CONFIG から動的に取得）
         # ================================================================
-        LEVELS = { 'error' => 0, 'warn' => 1, 'info' => 2, 'success' => 2, 'action' => 2, 'debug' => 3 }.freeze
 
-        def current_log_level
-          argv = defined?(ARGV) ? ARGV : []
-          log_level_token = nil
-          argv.each_with_index do |arg, i|
-            next unless arg.start_with?('--log')
+        # ディレクトリ関連
+        def config_dir         = CONFIG.directories&.config || CONFIG_DIR
+        def config_dir_path    = resolve_path_from_root(config_dir)
+        def contents_dir       = CONFIG.directories&.contents || CONTENTS_DIR
+        def stylesheets_dir    = CONFIG.directories&.stylesheets || STYLESHEETS_DIR
+        def images_dir         = CONFIG.directories&.images || IMAGES_DIR
+        def codes_dir          = CONFIG.directories&.codes || CODES_DIR
+        def chapter_templates_dir = CONFIG.directories&.chapter_templates || CHAPTER_TEMPLATES_DIR
+        def covers_dir         = CONFIG.directories&.covers || COVERS_DIR
 
-            if arg.include?('=')
-              log_level_token = arg.split('=', 2)[1].to_s.strip.downcase
-            else
-              # 次のトークンがレベルなら採用、無ければ省略扱い（=info）
-              nxt = argv[i + 1]
-              log_level_token = if nxt && !nxt.start_with?('-')
-                                  nxt.to_s.strip.downcase
-                                else
-                                  ''
-                                end
-            end
-            break
-          end
+        # キャッシュ関連
+        def cache_cfg          = CONFIG.cache
+        def cache_dir          = CONFIG.cache&.dir || CACHE_DIR
+        def cache_enabled?     = CONFIG.cache&.enabled != false
 
-          if log_level_token.nil?
-            # --log 未指定 → 既定 warn(1)
-            return 1
-          end
+        # コマンド関連
+        def vfm_command        = CONFIG.commands&.vfm || VFM_COMMAND
 
-          # --log 指定時
-          return 2 if log_level_token.empty? # --log のみ → info 相当
+        # ファイル関連
+        def post_replace_file  = CONFIG.files&.post_replace || POST_REPLACE_FILE
 
-          LEVELS.fetch(log_level_token, 2)
+        def post_replace_file_path
+          file = post_replace_file
+          return nil if blank?(file)
+          pn = Pathname.new(file)
+          base = Pathname.new(config_dir)
+          pn = base.join(pn) unless pn.absolute?
+          pn.cleanpath.to_s
         rescue StandardError
-          1
+          resolve_path_from_root(file)
         end
 
-        # 互換: 従来の verbose? は info レベル以上を true とする
-        def verbose?
-          current_log_level >= 2
-        end
-
-        # ================================================================
-        # Logging: 共通ログ出力（日本語 + 絵文字）
-        # ------------------------------------------------
-        # - レベル閾値: error=0, warn=1, info=2, debug=3
-        # - 既定 warn(1): warn 以上のみ表示
-        # ================================================================
-        def log_info(msg)
-          puts "ℹ️ #{msg}" if current_log_level >= 2
-        end
-
-        def log_success(msg)
-          puts "✅ #{msg}" if current_log_level >= 2
-        end
-
-        def log_warn(msg)
-          puts "⚠️ #{msg}" if current_log_level >= 1
-        end
-
-        def log_error(msg)
-          puts "❌ #{msg}"
-        end
-
-        def log_action(msg)
-          puts "🔧 #{msg}" if current_log_level >= 2
-        end
-
-        # 追加: デバッグ専用ログ
-        def log_debug(msg)
-          puts "🧪 #{msg}" if current_log_level >= 3
-        end
-
-        # ================================================================
-        # Logging: 常に表示 echo_always
-        # ------------------------------------------------
-        # - ラッパー等で標準出力が抑制されても見えるよう STDERR に出力
-        # ================================================================
-        def echo_always(msg)
-          puts msg
-        end
+        # エンドレスメソッド定義を module_function として明示的に公開
+        module_function :abort_with_error, :appendix_number_to_letter, :apply_page_preset,
+                        :blank?, :cache_cfg, :cache_dir, :cache_enabled?,
+                        :chapter_templates_dir, :codes_dir, :config_dir, :config_dir_path,
+                        :consume_vivliostyle_build_timings, :contents_dir, :covers_dir,
+                        :current_log_level, :current_step_label, :default_cache,
+                        :default_commands, :default_directories, :default_files,
+                        :default_vivliostyle, :echo_always, :ensure_cache_dir!,
+                        :ensure_required_yaml_files!, :fetch_bool, :format_pt,
+                        :generate_compressed_pdf_filename, :generate_epub_filename,
+                        :generate_output_filename, :generate_print_pdf_filename,
+                        :images_dir, :load_config, :load_page_presets, :log_action,
+                        :log_debug, :log_error, :log_info, :log_success, :log_warn,
+                        :merge_hardcoded_defaults, :normalize_font_sizes,
+                        :normalize_line_height, :normalize_page_size!,
+                        :normalize_page_units, :post_replace_file, :post_replace_file_path,
+                        :pt_value, :q_to_pt, :record_vivliostyle_build,
+                        :reload_configuration!, :relative_path_from_root,
+                        :resolve_page_size, :resolve_path_from_root,
+                        :reset_vivliostyle_build_timings, :stylesheets_dir, :to_roman_lower,
+                        :truthy?, :vfm_command, :verbose?, :with_current_step_label,
+                        :wrap_config
       end
     end
   end

@@ -25,6 +25,40 @@ module Vivlio
   module Starter
     module CLI
       module IndexCommands
+        INDEX_TERMS_MISSING_MESSAGE = <<~MSG.freeze
+          索引語辞書(config/index_terms.yml)が見つかりませんでした
+          ⚠️  原稿に [用語|読み] という書き方で手動登録した語のみが索引に載ります
+          ⚠️  自動索引機能を有効にするには: vs index:auto -> vs index:apply
+        MSG
+
+        def self.add_post_build_message(message)
+          @post_build_messages ||= []
+          @post_build_messages << message unless @post_build_messages.include?(message)
+        end
+
+        def self.flush_post_build_messages
+          return if @post_build_messages.nil? || @post_build_messages.empty?
+
+          @post_build_messages.each do |message|
+            emit_index_message(message, use_log_warn: false)
+          end
+
+          @post_build_messages.clear
+        end
+
+        def self.emit_index_message(message, use_log_warn: true)
+          message.each_line do |line|
+            text = line.rstrip
+            next if text.empty?
+
+            if use_log_warn
+              Common.log_warn(text)
+            else
+              Common.echo_always(text)
+            end
+          end
+        end
+
         # 索引語スキャン・タグ付けクラス
         class IndexMatchScanner
           # 索引語マッチの正規表現
@@ -32,14 +66,17 @@ module Vivlio
           # ただし、[text](url) 形式のリンクは除外（後ろに ( が続く場合はスキップ）
           INDEX_TERM_PATTERN = /\[([^\[\]\n]+)\](?!\()/
 
-          attr_reader :seen_terms, :term_occurrence, :index_data, :matches
+          attr_reader :seen_terms, :term_occurrence, :index_data, :matches, :config_missing
 
-          def initialize
+          def initialize(defer_warnings: false)
             @seen_terms = Set[]
             @term_occurrence = Hash.new(0)
             @index_data = Hash.new { |h, k| h[k] = Set[] }
             @matches = []
             @yomi_inferrer = YomiInferrer.new
+            @config_missing = false
+            @no_matches = false
+            @defer_warnings = defer_warnings
             @config_terms = load_config_terms
           end
 
@@ -47,9 +84,11 @@ module Vivlio
           def load_config_terms
             config_file = 'config/index_terms.yml'
             unless File.exist?(config_file)
-              Common.log_warn("索引語辞書が見つかりません: #{config_file}")
-              Common.log_warn('  → 手動マークアップ [用語|読み] のみが索引に載ります')
-              Common.log_warn('  → 自動索引機能を有効にするには: vs index:auto → vs index:apply')
+              if @defer_warnings
+                @config_missing = true
+              else
+                IndexCommands.emit_index_message(INDEX_TERMS_MISSING_MESSAGE)
+              end
               return []
             end
 
@@ -357,8 +396,16 @@ module Vivlio
             File.write(cache_file, data.to_yaml, encoding: 'utf-8')
             Common.log_info("索引データを保存: #{cache_file} (合計: #{@matches.size} 件)")
             if @matches.empty?
-              Common.log_warn('索引語が1件も検出されませんでした。config/index_terms.yml や原稿の記法を確認してください。')
+              if @defer_warnings
+                @no_matches = true
+              else
+                IndexCommands.emit_index_message(INDEX_TERMS_MISSING_MESSAGE)
+              end
             end
+          end
+
+          def no_matches?
+            @no_matches
           end
         end
       end

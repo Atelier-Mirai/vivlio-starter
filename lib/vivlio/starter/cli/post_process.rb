@@ -68,30 +68,20 @@ module Vivlio
         def included(base); end
 
         # Samovar/直接呼び出し用エントリポイント
-        def execute_post_process(context_or_options, tokens = [])
+        # @param context_or_options [Hash, Object] コマンドコンテキスト
+        # @param entries [Array<TokenResolver::Entry>] Entry オブジェクトの配列
+        def execute_post_process(context_or_options, entries = [])
           opts = normalize_options(context_or_options)
           ENV['VERBOSE'] = '1' if opts[:verbose]
 
-          files = Common.normalize_tokens(tokens)
-          base_dir = '.'
+          entry_map = resolve_entry_map(entries)
 
-          html_files = if files.any?
-                         files.map do |f|
-                           name = f.end_with?('.html') ? f : "#{f}.html"
-                           File.dirname(name) == '.' ? File.join(base_dir, name) : name
-                         end.uniq
-                       else
-                         Dir.glob(File.join(base_dir, '*.html'))
-                       end
-
-          html_files.each do |html_file|
-            BodyClassInjector.inject_body_class(html_file)
-          end
+          entry_map.each { |html_file, entry| BodyClassInjector.inject_body_class(html_file, entry) }
 
           replace_rules = load_replace_rules
           total_replacements = 0
 
-          html_files.each do |html_file|
+          entry_map.each do |html_file, entry|
             Common.log_action("処理中: #{html_file}")
 
             result = HtmlReplacer.process_html_file(html_file, replace_rules)
@@ -161,7 +151,7 @@ module Vivlio
             end
 
             begin
-              HeadingProcessor.inject_heading_number_spans!(html_file)
+              HeadingProcessor.inject_heading_number_spans!(html_file, entry)
               Common.log_info("#{html_file}: 見出し番号スパンを構築")
             rescue StandardError => e
               Common.log_warn("#{html_file}: 見出し番号スパン構築に失敗: #{e}")
@@ -183,6 +173,36 @@ module Vivlio
           end
         end
         module_function :normalize_options
+
+        # Entry 配列を解決し、HTML パス => Entry の Hash を返す
+        # @param entries [Array<TokenResolver::Entry>]
+        # @return [Hash{String => TokenResolver::Entry}] HTML パス => Entry のマップ
+        def resolve_entry_map(entries)
+          raw = Array(entries).compact
+          resolver = TokenResolver::Resolver.new
+
+          if raw.empty?
+            # 全 HTML ファイルを TokenResolver で解決
+            Dir.glob('./*.html').each_with_object({}) do |html_file, map|
+              entry = resolver.resolve_file(html_file)
+              map[html_file] = entry
+            end
+          elsif raw.first.respond_to?(:kind)
+            # Entry 配列: HTML パスと紐付け
+            raw.each_with_object({}) do |entry, map|
+              html_file = "./#{entry.basename}.html"
+              map[html_file] = entry
+            end
+          else
+            # basename/パスの場合は TokenResolver で解決
+            raw.each_with_object({}) do |bn, map|
+              entry = resolver.resolve_file(bn)
+              html_file = "./#{entry.basename}.html"
+              map[html_file] = entry
+            end
+          end
+        end
+        module_function :resolve_entry_map
 
         # ================================================================
         # クロスリファレンス用コードブロックのラップ

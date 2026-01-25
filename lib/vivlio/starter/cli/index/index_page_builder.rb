@@ -57,19 +57,17 @@ module Vivlio
           end
 
           # 索引ページを生成
-          # @param cache_file [String] 索引データのキャッシュファイルパス
+          # @param match_file [String] 索引マッチ結果ファイルのパス
           # @param output_file [String] 出力 HTML ファイルパス
-          def build!(cache_file = '_index_matches.yml', output_file = '_indexpage.html')
-            unless File.exist?(cache_file)
-              Common.log_warn("索引データが見つかりません: #{cache_file}")
-              Common.log_warn('vs index:match を先に実行してください')
+          def build!(match_file = '_index_matches.yml', output_file = '_indexpage.html')
+            unless File.exist?(match_file)
+              Common.log_warn("索引データが見つかりません: #{match_file}")
               return nil
             end
 
-            load_index_data!(cache_file)
+            load_index_data!(match_file)
 
             if @index_data.empty?
-              Common.log_warn('索引データが空です')
               return nil
             end
 
@@ -82,8 +80,8 @@ module Vivlio
           private
 
           # 索引データを読み込み
-          def load_index_data!(cache_file)
-            data = YAML.load_file(cache_file, permitted_classes: [Time, Symbol])
+          def load_index_data!(match_file)
+            data = YAML.load_file(match_file, permitted_classes: [Time, Symbol])
             @index_data = data['terms'] || {}
 
             # HierarchicalIndex にエントリを追加

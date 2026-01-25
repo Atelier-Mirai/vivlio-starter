@@ -33,6 +33,7 @@ require 'fileutils'
 require_relative 'build/catalog_loader'
 require_relative 'build/catalog_updater'
 require_relative 'clean'
+require_relative 'token_resolver'
 
 module Vivlio
   module Starter
@@ -295,31 +296,42 @@ module Vivlio
         #   - "NN-slug" 形式: 番号とスラッグの両方を指定
         #   - "NN" 形式: 番号のみ指定（スラッグは維持、付録の場合は自動調整）
         def rename_single_chapter(old_arg, new_arg)
-          tokens = Common.normalize_tokens([old_arg, new_arg])
-          old_name, new_name = tokens
+          resolver = TokenResolver::Resolver.new
+          from_entry, to_entry = resolver.resolve([old_arg, new_arg])
 
-          if old_name.nil? || new_name.nil? || old_name.empty? || new_name.empty?
+          if from_entry.nil? || to_entry.nil?
             warn '使い方: vs rename <旧名> <新名> または 引数なしで一括連番'
+            exit 1
+          end
+
+          # 変更元がカタログに存在するかチェック
+          unless from_entry.in_catalog?
+            Common.log_error("変更元の章 #{from_entry.basename} はカタログに存在しません")
+            exit 1
+          end
+
+          # 変更先の重複チェック（仕様書 9.4 のルールに従う）
+          # - to が in_catalog かつ from.number != to.number なら拒否
+          if to_entry.in_catalog? && from_entry.number != to_entry.number
+            Common.log_error("変更先の番号 #{to_entry.number} は既に '#{to_entry.label}' で使用されています")
             exit 1
           end
 
           contents_dir = Common::CONTENTS_DIR
           # 両方が2桁数字のみの場合は番号変更モード
-          number_only = old_name =~ /^\d{2}\z/ && new_name =~ /^\d{2}\z/
+          number_only = from_entry.slug.nil? && to_entry.slug.nil?
 
           if number_only
-            old_number = old_name
-            new_number = new_name
+            old_number = from_entry.number
+            new_number = to_entry.number
             old_md, old_slug = find_markdown_by_number(contents_dir, old_number)
             # 付録番号（91-97）に変更する場合、appendix-X のスラッグを自動調整
             new_slug = adjust_slug_for_appendix(new_number, old_slug)
           else
-            unless old_name =~ /^\d{2}-.+/ && new_name =~ /^\d{2}-.+/
-              Common.log_error("引数は 'NN-slug' または 'NN' 形式で指定してください (例: 81-install / 81)")
-              exit 1
-            end
-            old_number, old_slug = old_name.split('-', 2)
-            new_number, new_slug = new_name.split('-', 2)
+            old_number = from_entry.number
+            old_slug = from_entry.slug
+            new_number = to_entry.number
+            new_slug = to_entry.slug || old_slug
             old_md = File.join(contents_dir, "#{old_number}-#{old_slug}.md")
           end
 

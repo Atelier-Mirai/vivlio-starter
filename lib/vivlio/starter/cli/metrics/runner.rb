@@ -24,6 +24,7 @@ require_relative 'chapter_parser'
 require_relative 'catalog_loader'
 require_relative 'cache'
 require_relative 'parallel_runner'
+require_relative '../token_resolver'
 
 module Vivlio
   module Starter
@@ -445,8 +446,9 @@ module Vivlio
 
           # ターゲットからパスを解決する（明示指定時はカタログ外も許可）
           def resolve_target_paths
-            normalized = Common.normalize_tokens(targets)
-            normalized.flat_map { find_chapter_files(it) }
+            resolver = TokenResolver::Resolver.new
+            entries = resolver.resolve(targets)
+            entries.select(&:exists?).map(&:path)
           end
 
           # 章番号からファイルを検索する

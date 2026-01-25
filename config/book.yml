@@ -81,7 +81,7 @@ theme:
   # 章扉の背景画像
   # ----------------------------
   frontispiece: 
-    image: cosmos
+    image: asagao
     padding: 10mm
     heading_width: 128mm
     lead_width: 128mm
@@ -89,7 +89,7 @@ theme:
   # ----------------------------
   # 節見出しの背景画像
   # ----------------------------
-  ornament: cosmos2
+  ornament: sakura
 
   # ----------------------------
   # 見出し記号
@@ -104,13 +104,21 @@ theme:
 page:
   # プリセットを選択（page_presets.yml から）
   # 紙サイズ、余白、文字サイズ、行送りなど版面の物理的構造を一括指定
+  # use: a5_standard
+  # use: a5_airy
   # use: a5_compact
+  # use: a5_custom
+
+  # use: b5_standard
+  # use: b5_compact
   # use: b5_airy
+  # use: b5_custom
+  
   # use: a4_standard
-  # 他のプリセット例:
-  # use: b5_airy      # B5 判 - 行間広め
-  # use: a5_paperback # A5 判 - 文庫本風
-  use: "b5_airy"  # A4 判 - 技術書向け
+  use: a4_airy
+  # use: a4_compact
+  # use: a4_custom
+
 # ========================================
 # タイポグラフィ設定（書体・色・装飾）
 # ========================================
@@ -257,8 +265,8 @@ output:
 # 索引設定
 # ========================================
 index:
-  # 索引機能を有効化
-  enabled: true
+  # 索引機能
+  enabled: true # 有効: true / 無効: false
 
   # 手動登録以外の語句を自動的に探索・提案するか
   # false の場合、手動で指定した語句の抽出と読み推測のみ行います
@@ -430,49 +438,4 @@ lint:
   # vs lint の既定出力フォーマット
   # CLI で --format を指定するとこの値を一時的に上書きできます
   format: stylish
-
-# ========================================
-# ディレクトリ設定
-# ========================================
-directories:
-  contents: 'contents'        # Markdownファイル
-  stylesheets: 'stylesheets' # CSSファイル
-  images: 'images'           # 画像ファイル
-  codes: 'codes'             # ソースコードファイル
-  chapter_templates: 'chapter_templates'     # 章テンプレートファイル
-  covers: 'covers'           # カバー画像ファイル
-  config: 'config'           # 各種設定ファイル
-
-# ========================================
-# キャッシュ設定
-# ========================================
-cache:
-  enabled: true
-  dir: .cache/vs/
-
-# ========================================
-# コマンド設定
-# ========================================
-commands:
-  vfm: 'vfm'                 # VFM（Vivliostyle Flavored Markdown）コマンド
-
-# ========================================
-# ファイル設定
-# ========================================
-files:
-  post_replace: 'post_replace_list.yml'  # 後処理用置換リストファイル
-
-# ========================================
-# Vivliostyle設定
-# ========================================
-vivliostyle:
-  # コンソール出力を抑制
-  quiet: true
-  # 読み進め方向
-  reading_progression: 'ltr'  # 'ltr': 左から右へ（横書き）, 'rtl': 右から左へ（縦書き）
-  # エントリーファイル
-  entries_file: 'entries.js'
-  # 設定ファイル名
-  config_file: 'vivliostyle.config.js'
-
 

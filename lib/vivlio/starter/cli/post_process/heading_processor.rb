@@ -142,12 +142,13 @@ module Vivlio
 
           # 見出し番号スパンを構築
           # @param html_path [String] HTMLファイルパス
-          def inject_heading_number_spans!(html_path)
+          # @param entry [TokenResolver::Entry] 章情報を持つ Entry オブジェクト
+          def inject_heading_number_spans!(html_path, entry)
             return unless File.exist?(html_path)
 
             html = File.read(html_path, encoding: 'utf-8')
             doc = parse_html_document(html)
-            context = build_heading_context(html_path)
+            context = build_heading_context(html_path, entry)
             return unless context[:process_headings]
 
             modified = process_h1_spans(doc, context)
@@ -158,16 +159,17 @@ module Vivlio
           end
 
           # 見出し処理のコンテキストを構築
-          def build_heading_context(html_path)
-            file_type = Common.get_file_type(html_path)
+          # @param html_path [String] HTML ファイルパス
+          # @param entry [TokenResolver::Entry] 章情報を持つ Entry オブジェクト
+          def build_heading_context(html_path, entry)
             chapter_token = File.basename(html_path, File.extname(html_path))
-            chapter_number_i = Common.get_chapter_number(chapter_token)&.to_i
+            chapter_number_i = entry.number&.to_i
 
             {
-              file_type: file_type,
-              chapter_display_number: resolve_main_chapter_display_number(chapter_token, chapter_number_i),
+              file_type: entry.kind.to_s,
+              chapter_display_number: chapter_number_i ? resolve_main_chapter_display_number(chapter_token, chapter_number_i) : nil,
               appendix_letter: chapter_number_i&.between?(91, 97) ? Common.appendix_number_to_letter(chapter_number_i)&.upcase : nil,
-              process_headings: %w[chapter appendix].include?(file_type)
+              process_headings: %i[chapter appendix].include?(entry.kind)
             }
           end
 
@@ -332,7 +334,7 @@ module Vivlio
           def resolve_main_chapter_display_number(chapter_token, chapter_number_i = nil)
             return nil if chapter_token.nil? || chapter_token.empty?
 
-            chapter_number_i ||= Common.get_chapter_number(chapter_token)&.to_i
+            chapter_number_i ||= TokenResolver::Resolver.new.resolve_file(chapter_token).number&.to_i
             return nil unless chapter_number_i && MAIN_CHAPTER_RANGE.include?(chapter_number_i)
 
             order = main_chapter_order
@@ -459,21 +461,23 @@ module Vivlio
             return nil unless numbers&.any?
 
             allowed = numbers.map(&:to_i).uniq
+            resolver = TokenResolver::Resolver.new
 
             md_tokens = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |p| File.basename(p, '.md') }
             candidates = normalize_and_filter_tokens(md_tokens)
 
             candidates.select do |token|
-              num = Common.get_chapter_number(token)
-              num && allowed.include?(num.to_i)
+              entry = resolver.resolve_file(token)
+              entry.number && allowed.include?(entry.number.to_i)
             end
           end
 
           # 発見されたHTMLファイルから章トークンを取得
           # @return [Array<String>] 章トークンの配列
           def discovered_main_chapter_tokens
+            resolver = TokenResolver::Resolver.new
             html_tokens = Dir.glob(File.join('.', '*.html')).map { |path| File.basename(path, '.html') }
-            normalize_and_filter_tokens(html_tokens).sort_by { |token| Common.get_chapter_number(token).to_i }
+            normalize_and_filter_tokens(html_tokens).sort_by { |token| resolver.resolve_file(token).number&.to_i || 0 }
           end
 
           # トークンリストを正規化してフィルタ
@@ -513,8 +517,8 @@ module Vivlio
           # @param token [String] トークン
           # @return [Boolean] メイン章トークンの場合true
           def main_chapter_token?(token)
-            num = Common.get_chapter_number(token)
-            num && MAIN_CHAPTER_RANGE.include?(num.to_i)
+            entry = TokenResolver::Resolver.new.resolve_file(token)
+            entry.number && MAIN_CHAPTER_RANGE.include?(entry.number.to_i)
           end
         end
       end

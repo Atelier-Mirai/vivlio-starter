@@ -22,6 +22,8 @@
 #   - ChapterConfig: 章ファイルの解決
 # ================================================================
 
+require_relative '../toc'
+
 module Vivlio
   module Starter
     module CLI
@@ -37,18 +39,16 @@ module Vivlio
           module_function
 
           # Step 6: TOC 生成（_toc.html, _toc.pdf）
-          def generate_toc_and_pdf!(base_dir = '.', keep = nil)
-            keep_numbers_main = Build::Utilities.chapter_numbers_for_book(keep)
+          # @param base_dir [String] ベースディレクトリ
+          # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
+          def generate_toc_and_pdf!(base_dir = '.', entries_or_keep = nil)
+            keep_numbers_main = Build::Utilities.chapter_numbers_for_book(entries_or_keep)
             # 前書き、付録、後書きの keep を抽出
             keep_numbers_preface = nil
             keep_numbers_appx = nil
             keep_numbers_post = nil
-            if keep&.any?
-              normalized_keep = Array(keep)
-                                .map { |s| File.basename(s.to_s, '.md') }
-              chapter_numbers = normalized_keep
-                                .map { |bn| Common.get_chapter_number(bn) }
-                                .compact.map(&:to_i)
+            if entries_or_keep&.any?
+              chapter_numbers = extract_chapter_numbers(entries_or_keep)
               keep_numbers_preface = chapter_numbers.select { |n| PREFACE_RANGE.include?(n) }
               keep_numbers_appx = chapter_numbers.select { |n| APPX_RANGE.include?(n) }
               keep_numbers_post = chapter_numbers.select { |n| POSTFACE_RANGE.include?(n) }
@@ -79,6 +79,21 @@ module Vivlio
             # 改良された pdf コマンドに出力ファイル名を渡してリネームも一括処理
             PdfCommands.execute_pdf({}, '_toc.pdf')
             Common.log_success('[Step 6] _toc.pdf を生成しました') if File.exist?('_toc.pdf')
+          end
+
+          # Entry 配列または basename 配列から章番号配列を抽出
+          # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>]
+          # @return [Array<Integer>] 章番号配列
+          def extract_chapter_numbers(entries_or_keep)
+            raw = Array(entries_or_keep).compact
+            return [] if raw.empty?
+
+            if raw.first.respond_to?(:number)
+              raw.filter_map { it.number&.to_i }
+            else
+              resolver = TokenResolver::Resolver.new
+              raw.filter_map { resolver.resolve_file(it).number&.to_i }
+            end
           end
         end
       end

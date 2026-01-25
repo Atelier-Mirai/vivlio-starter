@@ -22,14 +22,15 @@ module Vivlio
 
           # HTMLファイルの <body> タグにファイルタイプクラスを付与
           # @param html_file [String] HTMLファイルのパス
+          # @param entry [TokenResolver::Entry] 章情報を持つ Entry オブジェクト
           # @return [Boolean] 変更があったかどうか
-          def inject_body_class(html_file)
+          def inject_body_class(html_file, entry)
             content = File.read(html_file, encoding: 'utf-8')
-            file_type = Common.get_file_type(html_file)
+            file_type = entry.kind.to_s
             classes = [file_type]
 
             # 最初の本文章には chapter-first クラスを追加
-            if file_type == 'chapter' && first_main_chapter?(html_file)
+            if entry.kind == :chapter && first_main_chapter?(html_file)
               classes << 'chapter-first'
             end
 

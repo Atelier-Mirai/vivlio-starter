@@ -1,25 +1,56 @@
 # =============================================================
-#  📐 Vivlio Starter ページ設定プリセットガイド 📐
-# -------------------------------------------------------------
-#  • 使用方法（book.yml の page セクション）
-#      page:
-#        use: b5_standard   # 例: B5 判プリセットを適用
-#
-#  • 版面設計の考え方
-#    1. 紙サイズと余白を指定
-#    2. 文字サイズと行送りを指定
-#    3. 文字数・行数は自動計算されます
-#
-#  • 余白の用語
-#    - margin_top: 天（上余白）
-#    - margin_bottom: 地（下余白）
-#    - margin_inner: ノド（綴じ側の余白、左右ページで自動的に位置が変わる）
-#    - margin_outer: 小口（外側の余白、左右ページで自動的に位置が変わる）
+#  📐 Vivlio Starter ページ設定プリセット 📐
 # =============================================================
 
+# -------------------------------------------------------------
+# A5 判 (148×210mm) - 少し小ぶりで持ち運びやすいサイズ
+# -------------------------------------------------------------
+a5_standard: &a5_std
+  size: A5
+  
+  # タイポグラフィ設定
+  base_font_size: 10pt         # 基準文字サイズ
+  base_line_height: 1.7        # 行送り倍率（10pt × 1.7 = 17pt）
+  letter_spacing: 0em          # 字間調整
+  
+  # 版面の余白（見開き対応）
+  margin_top: 22mm             # 天（上余白）
+  margin_bottom: 22mm          # 地（下余白）
+  margin_inner: 22mm           # ノド（綴じ側、やや広めが推奨）
+  margin_outer: 18mm           # 小口（外側）
 
-# B5 判 (182×257mm) - 技術書向け標準
-b5_standard:
+a5_airy:
+  <<: *a5_std
+  base_line_height: 1.8        # 差分：行間を広く（ゆったり）
+
+a5_compact:
+  <<: *a5_std
+  base_font_size: 9.5pt
+  base_line_height: 1.6        # 差分：行間を詰める（情報量重視）
+  margin_top: 18mm
+  margin_bottom: 18mm
+
+# A5 カスタムテンプレート
+# 既存のプリセットでは満足できない場合、ここを自由に編集して使用してください。
+# book.yml で「use: a5_custom」と指定することで適用されます。
+a5_custom:
+  size: A5
+  
+  # タイポグラフィ設定
+  base_font_size: 10pt         # 基準文字サイズ
+  base_line_height: 1.7        # 行送り倍率（10pt × 1.7 = 17pt）
+  letter_spacing: 0em          # 字間調整
+  
+  # 版面の余白（見開き対応）
+  margin_top: 22mm             # 天（上余白）
+  margin_bottom: 22mm          # 地（下余白）
+  margin_inner: 22mm           # ノド（綴じ側、やや広めが推奨）
+  margin_outer: 18mm           # 小口（外側）
+
+# -------------------------------------------------------------
+# B5 判 (182×257mm) - 日本の技術書の主流サイズ
+# -------------------------------------------------------------
+b5_standard: &b5_std
   size: B5
   
   # タイポグラフィ設定
@@ -28,56 +59,78 @@ b5_standard:
   letter_spacing: 0em          # 字間調整
   
   # 版面の余白（見開き対応）
-  margin_top: 25mm             # 天
-  margin_bottom: 25mm          # 地
+  margin_top: 25mm             # 天（上余白）
+  margin_bottom: 25mm          # 地（下余白）
   margin_inner: 25mm           # ノド（綴じ側、やや広めが推奨）
   margin_outer: 20mm           # 小口（外側）
-  
-  # 参考: 自動計算される値
-  # 版面サイズ: 137mm × 207mm
-  # 1行あたり: 約36文字
-  # 1ページあたり: 約35行
 
-# B5 判 - 行間広め（読みやすさ重視）
 b5_airy:
-  size: B5
-  base_font_size: 10.5pt
-  base_line_height: 1.8        # 1.8倍（10.5pt × 1.8 = 18.9pt）
-  letter_spacing: 0em
-  margin_top: 28mm
-  margin_bottom: 28mm
-  margin_inner: 28mm
-  margin_outer: 23mm
+  <<: *b5_std
+  base_line_height: 1.85       # 差分：行間を広く（ゆったり）
+  margin_outer: 23mm           # 差分：外側の余白を少し広めに
 
-# A5 判 (148×210mm) - 文庫本風
-a5_paperback:
-  size: A5
-  base_font_size: 10pt
-  base_line_height: 1.7        # 1.7倍（10pt × 1.7 = 17pt）
-  letter_spacing: 0em
-  margin_top: 22mm
-  margin_bottom: 22mm
-  margin_inner: 22mm
-  margin_outer: 18mm
-
-# A5 判 - コンパクト（情報量重視）
-a5_compact:
-  size: A5
-  base_font_size: 9.5pt
-  base_line_height: 1.66       # 1.66倍（9.5pt × 1.66 = 15.77pt）
-  letter_spacing: 0em
+b5_compact:
+  <<: *b5_std
+  base_line_height: 1.6        # 差分：行間を詰める（情報量重視）
   margin_top: 20mm
   margin_bottom: 20mm
-  margin_inner: 20mm
-  margin_outer: 16mm
 
-# A4 判 (210×297mm) - 技術書向け標準（ややコンパクト）
-a4_standard:
+# B5 カスタムテンプレート
+# 既存のプリセットでは満足できない場合、ここを自由に編集して使用してください。
+# book.yml で「use: b5_custom」と指定することで適用されます。
+b5_custom:
+  size: B5
+  
+  # タイポグラフィ設定
+  base_font_size: 10.5pt       # 基準文字サイズ
+  base_line_height: 1.7        # 行送り倍率（10pt × 1.7 = 17pt）
+  letter_spacing: 0em          # 字間調整
+  
+  # 版面の余白（見開き対応）
+  margin_top: 25mm             # 天（上余白）
+  margin_bottom: 25mm          # 地（下余白）
+  margin_inner: 25mm           # ノド（綴じ側、やや広めが推奨）
+  margin_outer: 20mm           # 小口（外側）
+
+# -------------------------------------------------------------
+# A4 判 (210×297mm) - 図版の多いマニュアルや薄い本向け
+# -------------------------------------------------------------
+a4_standard: &a4_std
   size: A4
-  base_font_size: 10.5pt
-  base_line_height: 1.5        # 1.6倍（11pt × 1.6 = 17.6pt）
+  
+  # タイポグラフィ設定
+  base_font_size: 10.5pt       # 基準文字サイズ
+  base_line_height: 1.5        # 行送り倍率
   letter_spacing: 0em
-  margin_top: 26mm
-  margin_bottom: 26mm
-  margin_inner: 26mm
-  margin_outer: 22mm
+  
+  # 版面の余白（見開き対応）
+  margin_top: 26mm             # 天（上余白）
+  margin_bottom: 26mm          # 地（下余白）
+  margin_inner: 26mm           # ノド（綴じ側、やや広めが推奨）
+  margin_outer: 22mm           # 小口（外側）
+
+a4_airy:
+  <<: *a4_std
+  base_line_height: 1.7       # 差分：行間を広く（ゆったり）
+
+a4_compact:
+  <<: *a4_std
+  margin_top: 20mm
+  margin_bottom: 20mm
+
+# A4 カスタムテンプレート
+# 既存のプリセットでは満足できない場合、ここを自由に編集して使用してください。
+# book.yml で「use: a4_custom」と指定することで適用されます。
+a4_custom:
+  size: A4
+  
+  # タイポグラフィ設定
+  base_font_size: 10.5pt       # 基準文字サイズ
+  base_line_height: 1.5        # 行送り倍率（例: 1.5 は 1.5倍）
+  letter_spacing: 0em          # 字間調整
+  
+  # 版面の余白（見開き対応）
+  margin_top: 26mm             # 天（上余白）
+  margin_bottom: 26mm          # 地（下余白）
+  margin_inner: 26mm           # ノド（綴じ側、やや広めが推奨）
+  margin_outer: 22mm           # 小口（外側）

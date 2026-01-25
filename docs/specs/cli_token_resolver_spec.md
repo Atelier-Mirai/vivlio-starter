@@ -121,6 +121,8 @@ POSTFACE:
   - 99-postface
 ```
 
+（注）歴史編、実践編ではなく、前編、後編となっている場合や、それぞれの章がそのままCHAPTERS直下に配置されている場合もある。
+
 ## 9. 実装コード例
 
 ```ruby:token_resolver.rb
@@ -400,6 +402,7 @@ end
 1. `TokenResolver`を実装
 2. 既存コマンドを順次移行
 3. 旧実装の削除
+  common.rb内のnormalize_tokens, normalize_chapter_token, expand_range_token, digits_only?メソッドを削除する。
 
 ## 12. テスト戦略
 
@@ -417,6 +420,16 @@ end
 
 ### 12.3 統合テスト
 - 実際のコマンドでの動作確認
+- build
+- build 1-3
+- build 1-3 (catalogには02が存在しない)
+- create 1-foo
+- create 1-foo (catalogには01が存在する)
+- delete 1-3
+- delete 1-3 (catalogには02が存在しない)
+- rename 1-foo 1-bar
+- rename 1-foo 11-bar (catalogには11が存在する)
+など、必要なケースを網羅する
 
 ## 13. コーディング上の注意点
 

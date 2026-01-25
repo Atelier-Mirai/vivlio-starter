@@ -26,6 +26,7 @@
 require 'fileutils'
 require_relative 'build/catalog_loader'
 require_relative 'build/catalog_updater'
+require_relative 'token_resolver'
 
 module Vivlio
   module Starter
@@ -151,90 +152,37 @@ module Vivlio
 
         # ユーザー入力トークンから削除対象の章ファイルを解決する
         #
-        # トークン形式:
-        #   - 章番号のみ: "11" → 11-*.md にマッチするすべてのファイル
-        #   - 範囲指定: "11-13" → 11〜13 番の章すべて
-        #   - ファイル名: "11-install" → 11-install.md（存在確認あり）
+        # TokenResolver を使用してトークンを Entry に変換し、
+        # カタログまたはファイルシステム上に存在する章を対象とする。
         class TargetResolver
           # @param tokens [Array<String>] ユーザー入力のトークンリスト
           def initialize(tokens)
             @tokens = tokens
+            @resolver = TokenResolver::Resolver.new
           end
 
           # ログ出力用にトークンを空白区切りで結合する
           # @return [String] 表示用トークン文字列
           def tokens_for_message
-            normalized_tokens.join(' ')
+            resolved_entries.map(&:basename).join(' ')
           end
 
           # 削除対象として解決された章ファイル名の一覧を返す
           # @return [Array<String>] ファイル名リスト（例: ["11-install.md", "12-setup.md"]）
           def targets
-            @targets ||= expand_tokens_to_targets(normalized_tokens)
+            @targets ||= resolved_entries
+                         .select { |e| e.in_catalog? || e.exists? }
+                         .map { |e| "#{e.basename}.md" }
+                         .uniq
           end
 
           private
 
-          attr_reader :tokens
+          attr_reader :tokens, :resolver
 
-          # トークンを正規化（拡張子除去・空白トリムなど）
-          def normalized_tokens
-            @normalized_tokens ||= Common.normalize_tokens(tokens)
-          end
-
-          # トークン列から削除対象のファイル名配列を生成する
-          # @param values [Array<String>] 正規化済みトークン
-          # @return [Array<String>] 重複を除いたファイル名リスト
-          def expand_tokens_to_targets(values)
-            Array(values).compact.flat_map { |token| expand_token_to_basenames(token) }.uniq
-          end
-
-          # 単一トークンから対応する章ファイル名リストを求める
-          #
-          # @param token [String] トークン
-          # @return [Array<String>] マッチするファイル名リスト
-          #
-          # 解釈順序:
-          #   1. "11-13" 形式 → 範囲指定として展開
-          #   2. "11" 形式 → 章番号として 11-*.md を検索
-          #   3. その他 → ファイル名として存在確認
-          def expand_token_to_basenames(token)
-            stripped = token.to_s.strip
-            return [] if stripped.empty?
-
-            # 範囲指定: "11-13" → 11〜13 番の章を展開
-            if stripped =~ /(\A\d+)-(\d+\z)/
-              return find_basenames_in_range(::Regexp.last_match(1), ::Regexp.last_match(2))
-            end
-
-            # 章番号のみ: "11" → 11-*.md にマッチ
-            if stripped =~ /\A\d+\z/
-              return list_contents_basenames.select { |basename| basename.start_with?("#{stripped}-") }
-            end
-
-            # ファイル名指定: 存在確認して返す
-            name = "#{stripped}.md"
-            path = File.join(Common::CONTENTS_DIR, name)
-            File.exist?(path) ? [name] : []
-          end
-
-          # contents/ 内の全 Markdown ファイル名を列挙する
-          # @return [Array<String>] ファイル名リスト（パスではなくベース名）
-          def list_contents_basenames
-            Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |path| File.basename(path) }
-          end
-
-          # 数値範囲に該当する章ファイル名を抽出する
-          #
-          # @param from_num [String] 開始番号
-          # @param to_num [String] 終了番号
-          # @return [Array<String>] 範囲内のファイル名リスト
-          def find_basenames_in_range(from_num, to_num)
-            lower, upper = [from_num.to_i, to_num.to_i].minmax
-            list_contents_basenames.select do |basename|
-              # ファイル名先頭の数字部分を抽出して範囲チェック
-              basename[/^(\d+)-/, 1]&.to_i&.between?(lower, upper)
-            end
+          # TokenResolver で解決された Entry 配列を返す
+          def resolved_entries
+            @resolved_entries ||= resolver.resolve(tokens)
           end
         end
 

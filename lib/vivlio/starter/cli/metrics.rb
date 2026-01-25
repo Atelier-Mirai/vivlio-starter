@@ -4,6 +4,7 @@ require 'json'
 require 'pathname'
 require 'yaml'
 require_relative 'metrics/runner'
+require_relative 'token_resolver'
 
 module Vivlio
   module Starter
@@ -103,6 +104,7 @@ module Vivlio
         # 指定されたターゲットトークンを受け取る
         def initialize(targets)
           @targets = targets
+          @resolver = TokenResolver::Resolver.new
         end
 
         # 存在するパスのみを抽出し、プロジェクト相対パスに整形する
@@ -114,7 +116,7 @@ module Vivlio
 
         private
 
-        attr_reader :targets
+        attr_reader :targets, :resolver
 
         # 既存パスと存在しないパスを振り分ける
         def existing_paths
@@ -127,8 +129,8 @@ module Vivlio
         def all_paths
           return glob_all if targets.empty?
 
-          basenames = Common.normalize_tokens(targets)
-          basenames.map { |name| File.join(Common::CONTENTS_DIR, "#{name}.md") }
+          entries = resolver.resolve(targets)
+          entries.map(&:path)
         end
 
         # contents 以下の全 Markdown ファイルを列挙する

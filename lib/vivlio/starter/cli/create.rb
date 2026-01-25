@@ -26,6 +26,7 @@
 require 'fileutils'
 require_relative 'build/catalog_loader'
 require_relative 'build/catalog_updater'
+require_relative 'token_resolver'
 
 module Vivlio
   module Starter
@@ -52,11 +53,30 @@ module Vivlio
           apply_verbose(options)
           ensure_names_present!(names)
 
+          resolver = TokenResolver::Resolver.new
+          entries = resolver.resolve(names)
+
+          # 1. 不正な形式をチェック
+          invalid_entries = entries.reject(&:valid?)
+          if invalid_entries.any?
+            Common.log_error("エラー: 不正な形式が含まれています: #{invalid_entries.map(&:slug).join(', ')}")
+            exit 1
+          end
+
+          # 2. カタログとの重複をチェック
+          duplicate_entries = entries.select(&:in_catalog?)
+          if duplicate_entries.any?
+            Common.log_error("エラー: 以下の章は既にカタログに存在します:")
+            duplicate_entries.each { |e| Common.log_error("  - #{e.basename} (#{e.label})") }
+            exit 1
+          end
+
+          # 3. すべてクリアしたら、一括で作成
           errors = false
-          Common.normalize_tokens(names).uniq.each do |name|
-            fname = ensure_filename(name)
+          entries.each do |entry|
+            fname = ensure_filename(entry.basename)
             unless fname
-              Common.log_error("エラー: 無効なファイル名です: #{name}")
+              Common.log_error("エラー: 無効なファイル名です: #{entry.basename}")
               errors = true
               next
             end
@@ -101,7 +121,7 @@ module Vivlio
           MD
 
           path = File.join(Common::CONTENTS_DIR, '_titlepage.md')
-          return skip_existing(path) if File.exist?(path) && !options[:force]
+          return if File.exist?(path) && !options[:force]
 
           safe_write(path, content)
         end
@@ -154,7 +174,7 @@ module Vivlio
           MD
 
           path = File.join(Common::CONTENTS_DIR, '_colophon.md')
-          return skip_existing(path) if File.exist?(path) && !options[:force]
+          return if File.exist?(path) && !options[:force]
 
           safe_write(path, content)
         end
@@ -173,7 +193,7 @@ module Vivlio
           apply_verbose(options)
           FileUtils.mkdir_p(Common::CONTENTS_DIR)
           target = File.join(Common::CONTENTS_DIR, '_legalpage.md')
-          return skip_existing(target) if File.exist?(target) && !options[:force]
+          return if File.exist?(target) && !options[:force]
 
           disclaimer, trademark = legal_texts
           # 各行を <p> タグで囲んで HTML 化（Vivliostyle での表示用）
@@ -350,14 +370,6 @@ module Vivlio
         def safe_write(path, content)
           FileUtils.mkdir_p(File.dirname(path))
           File.write(path, content, encoding: 'utf-8')
-        end
-
-        # 既存ファイルがある場合のスキップログを出力する
-        #
-        # @param path [String] 既存ファイルのパス
-        # @return [void]
-        def skip_existing(path)
-          Common.log_warn("既に存在するためスキップします: #{path} (--force で上書き)")
         end
 
         # config/book.yml からタイトルとサブタイトルを取得する

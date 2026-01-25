@@ -21,7 +21,6 @@
 #
 # 依存モジュール（build/ 以下）:
 #   - pipeline.rb: UnifiedBuildPipeline（メインのビルドフロー）
-#   - token_expander.rb: 章番号・範囲のトークン展開
 #   - catalog_loader.rb: catalog.yml の読み込み
 #   - pdf_builder.rb: PDF 生成
 #   - pdf_merger.rb: PDF 結合
@@ -46,7 +45,6 @@ require_relative 'build/pdf_merger'
 require_relative 'build/pdf_finalizer'
 require_relative 'build/outline_extractor'
 require_relative 'build/pipeline'
-require_relative 'build/token_expander'
 require_relative 'build/output_helpers'
 
 module Vivlio
@@ -60,7 +58,6 @@ module Vivlio
       #
       # 構成:
       #   - build/pipeline.rb       UnifiedBuildPipeline クラス
-      #   - build/token_expander.rb トークン展開ロジック
       #   - build/output_helpers.rb 出力・デバッグヘルパー
       # ==============================================================================
       module BuildCommands

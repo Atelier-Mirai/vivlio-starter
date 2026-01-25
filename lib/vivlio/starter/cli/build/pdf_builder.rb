@@ -28,18 +28,18 @@ module Vivlio
 
           # Step 8: 全体PDF生成（ディレクトリスキャン版）
           # 前書き+目次+本文+付録+後書き+索引を1つのPDFとして生成
-          def build_overall_pdf_from_dir!(base_dir = '.', keep = nil)
+          # @param base_dir [String] ベースディレクトリ
+          # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
+          def build_overall_pdf_from_dir!(base_dir = '.', entries_or_keep = nil)
             # 前付け: 00-preface + _toc
             preface_html = [File.join(base_dir, '00-preface.html')].select { |f| File.exist?(f) }
             toc_html = [File.join(base_dir, '_toc.html')].select { |f| File.exist?(f) }
 
-            keep_numbers_main = Build::Utilities.chapter_numbers_for_book(keep)
+            keep_numbers_main = Build::Utilities.chapter_numbers_for_book(entries_or_keep)
             keep_numbers_appx = nil
             keep_numbers_post = nil
-            if keep&.any?
-              normalized_keep = Array(keep).map { |s| File.basename(s.to_s, '.md') }
-              chapter_numbers = normalized_keep.map { |bn| Common.get_chapter_number(bn) }.compact.map(&:to_i)
-              chapter_numbers.select { |n| PREFACE_RANGE.include?(n) }
+            if entries_or_keep&.any?
+              chapter_numbers = extract_chapter_numbers(entries_or_keep)
               keep_numbers_appx = chapter_numbers.select { |n| APPX_RANGE.include?(n) }
               keep_numbers_post = chapter_numbers.select { |n| POSTFACE_RANGE.include?(n) }
             end
@@ -165,6 +165,21 @@ module Vivlio
               end
             else
               Common.log_info('[Step 9] 奥付は最新のため、再生成をスキップしました（既存/キャッシュを利用）')
+            end
+          end
+
+          # Entry 配列または basename 配列から章番号配列を抽出
+          # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>]
+          # @return [Array<Integer>] 章番号配列
+          def extract_chapter_numbers(entries_or_keep)
+            raw = Array(entries_or_keep).compact
+            return [] if raw.empty?
+
+            if raw.first.respond_to?(:number)
+              raw.filter_map { it.number&.to_i }
+            else
+              resolver = TokenResolver::Resolver.new
+              raw.filter_map { resolver.resolve_file(it).number&.to_i }
             end
           end
         end

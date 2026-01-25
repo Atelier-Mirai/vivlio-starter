@@ -260,25 +260,25 @@ module Vivlio
           # page-settings.css の各種変数を反映
           def update_page_settings_css(page_cfg:, typo_cfg:)
             # typography セクションからフォント設定を読み込み、page_cfg にマージ
-            page_cfg['main_text_font']   = typo_cfg.dig('body', 'font')
-            page_cfg['header_font']      = typo_cfg.dig('heading', 'font')
-            page_cfg['column_font']      = typo_cfg.dig('column', 'font')
-            page_cfg['code_font']        = typo_cfg.dig('code', 'font')
-            page_cfg['folio_font']       = typo_cfg.dig('folio', 'font')
-            page_cfg['column_font_size'] = typo_cfg.dig('column', 'font_size')
-            page_cfg['folio_placement']  = typo_cfg.dig('folio', 'placement')
+            page_cfg[:main_text_font]   = typo_cfg&.dig(:body, :font)
+            page_cfg[:header_font]      = typo_cfg&.dig(:heading, :font)
+            page_cfg[:column_font]      = typo_cfg&.dig(:column, :font)
+            page_cfg[:code_font]        = typo_cfg&.dig(:code, :font)
+            page_cfg[:folio_font]       = typo_cfg&.dig(:folio, :font)
+            page_cfg[:column_font_size] = typo_cfg&.dig(:column, :font_size)
+            page_cfg[:folio_placement]  = typo_cfg&.dig(:folio, :placement)
 
             # 紙サイズを正規化
             Common.normalize_page_size!(page_cfg)
 
             # 用紙スケールを算出（A4=1.0 基準）
-            page_cfg['paper_scale'] = calculate_paper_scale(page_cfg['width'], page_cfg['height'])
+            page_cfg[:paper_scale] = calculate_paper_scale(page_cfg[:width], page_cfg[:height])
 
             # ノンブル配置
             apply_folio_placement!(page_cfg)
 
-            page_cfg['frontispiece_binding_offset'] = calculate_frontispiece_binding_offset(
-              page_cfg['margin_inner'], page_cfg['margin_outer']
+            page_cfg[:frontispiece_binding_offset] = calculate_frontispiece_binding_offset(
+              page_cfg[:margin_inner], page_cfg[:margin_outer]
             )
 
             # CSS変数マッピング
@@ -385,19 +385,19 @@ module Vivlio
 
           # ノンブル配置を適用
           def apply_folio_placement!(page_cfg)
-            placement = page_cfg['folio_placement'].to_s.strip.downcase
+            placement = page_cfg[:folio_placement].to_s.strip.downcase
             placement = 'center' unless %w[center sides].include?(placement)
 
             case placement
             when 'center'
-              page_cfg['folio_center'] = 'counter(page)'
-              page_cfg['folio_left']   = 'none'
-              page_cfg['folio_right']  = 'none'
+              page_cfg[:folio_center] = 'counter(page)'
+              page_cfg[:folio_left]   = 'none'
+              page_cfg[:folio_right]  = 'none'
               Common.log_info('ノンブル配置: 中央')
             when 'sides'
-              page_cfg['folio_center'] = 'none'
-              page_cfg['folio_left']   = 'counter(page)'
-              page_cfg['folio_right']  = 'counter(page)'
+              page_cfg[:folio_center] = 'none'
+              page_cfg[:folio_left]   = 'counter(page)'
+              page_cfg[:folio_right]  = 'counter(page)'
               Common.log_info('ノンブル配置: 左右')
             end
           end
@@ -405,26 +405,26 @@ module Vivlio
           # CSS変数マッピングを構築
           def build_css_variable_mappings(page_cfg)
             [
-              ['--page-width',            page_cfg['width']],
-              ['--page-height',           page_cfg['height']],
-              ['--paper-scale',           page_cfg['paper_scale']],
-              ['--base-font-size',        page_cfg['base_font_size']],
-              ['--base-line-height',      page_cfg['base_line_height']],
-              ['--letter-spacing',        page_cfg['letter_spacing'] || '0em'],
-              ['--page-margin-top',       page_cfg['margin_top']],
-              ['--page-margin-bottom',    page_cfg['margin_bottom']],
-              ['--page-margin-inner',     page_cfg['margin_inner']],
-              ['--page-margin-outer',     page_cfg['margin_outer']],
-              ['--frontispiece-binding-offset', page_cfg['frontispiece_binding_offset']],
-              ['--column-font-size',      page_cfg['column_font_size']],
-              ['--font-main-text',        page_cfg['main_text_font'],  :font],
-              ['--font-header',           page_cfg['header_font'],     :font],
-              ['--font-code',             page_cfg['code_font'],       :font],
-              ['--font-column',           page_cfg['column_font'],     :font],
-              ['--font-folio',            page_cfg['folio_font'],      :font],
-              ['--folio-center-content',  page_cfg['folio_center']],
-              ['--folio-left-content',    page_cfg['folio_left']],
-              ['--folio-right-content',   page_cfg['folio_right']]
+              ['--page-width',            page_cfg[:width]],
+              ['--page-height',           page_cfg[:height]],
+              ['--paper-scale',           page_cfg[:paper_scale]],
+              ['--base-font-size',        page_cfg[:base_font_size]],
+              ['--base-line-height',      page_cfg[:base_line_height]],
+              ['--letter-spacing',        page_cfg[:letter_spacing] || '0em'],
+              ['--page-margin-top',       page_cfg[:margin_top]],
+              ['--page-margin-bottom',    page_cfg[:margin_bottom]],
+              ['--page-margin-inner',     page_cfg[:margin_inner]],
+              ['--page-margin-outer',     page_cfg[:margin_outer]],
+              ['--frontispiece-binding-offset', page_cfg[:frontispiece_binding_offset]],
+              ['--column-font-size',      page_cfg[:column_font_size]],
+              ['--font-main-text',        page_cfg[:main_text_font],  :font],
+              ['--font-header',           page_cfg[:header_font],     :font],
+              ['--font-code',             page_cfg[:code_font],       :font],
+              ['--font-column',           page_cfg[:column_font],     :font],
+              ['--font-folio',            page_cfg[:folio_font],      :font],
+              ['--folio-center-content',  page_cfg[:folio_center]],
+              ['--folio-left-content',    page_cfg[:folio_left]],
+              ['--folio-right-content',   page_cfg[:folio_right]]
             ]
           end
         end

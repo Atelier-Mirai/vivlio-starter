@@ -43,14 +43,19 @@ module Vivlio
           # テーマ設定を解析して構造化データを返す
           def parse_theme_settings(cfg = nil)
             cfg ||= Common::CONFIG
-            theme_cfg = (cfg && cfg['theme']) || {}
+            theme_cfg = cfg.dig(:theme) || {}
 
-            theme_name, theme_accent_value = parse_theme_color(theme_cfg['color'])
-            theme_style = parse_theme_style(theme_cfg['style'])
+            theme_color = theme_cfg.dig(:color)
+            theme_style_raw = theme_cfg.dig(:style)
+            frontispiece_raw = theme_cfg.dig(:frontispiece)
+            ornament_raw = theme_cfg.dig(:ornament)
 
-            frontispiece_cfg = parse_frontispiece_config(theme_cfg['frontispiece'])
+            theme_name, theme_accent_value = parse_theme_color(theme_color)
+            theme_style = parse_theme_style(theme_style_raw)
+
+            frontispiece_cfg = parse_frontispiece_config(frontispiece_raw)
             ornament_path = ThemeImageResolver.resolve_ornament_path(
-              theme_cfg['ornament'], allow_generation: true
+              ornament_raw, allow_generation: true
             )
 
             {
@@ -66,27 +71,22 @@ module Vivlio
             }
           end
 
-          # frontispiece 設定を解析
+          # frontispiece 設定を解析（Data オブジェクト前提）
           def parse_frontispiece_config(frontispiece_raw)
-            frontispiece_cfg = frontispiece_raw.is_a?(Hash) ? frontispiece_raw : {}
-            source = frontispiece_cfg.key?('image') ? frontispiece_cfg['image'] : frontispiece_raw
+            # String の場合はそのまま image 名として使用
+            source = frontispiece_raw.is_a?(String) ? frontispiece_raw : frontispiece_raw&.dig(:image)
             path = ThemeImageResolver.resolve_frontispiece_path(source, allow_generation: true)
+
+            # padding/heading_width/lead_width を取得（String の場合は nil）
+            padding = frontispiece_raw.is_a?(String) ? nil : frontispiece_raw&.dig(:padding)
+            heading_width = frontispiece_raw.is_a?(String) ? nil : frontispiece_raw&.dig(:heading_width)
+            lead_width = frontispiece_raw.is_a?(String) ? nil : frontispiece_raw&.dig(:lead_width)
 
             {
               path: path,
-              padding: normalize_css_length(
-                frontispiece_cfg['padding'],
-                label: 'theme.frontispiece.padding',
-                default: '0mm'
-              ),
-              heading_width: normalize_css_length(
-                frontispiece_cfg['heading_width'],
-                label: 'theme.frontispiece.heading_width'
-              ),
-              lead_width: normalize_css_length(
-                frontispiece_cfg['lead_width'],
-                label: 'theme.frontispiece.lead_width'
-              )
+              padding: normalize_css_length(padding, label: 'theme.frontispiece.padding', default: '0mm'),
+              heading_width: normalize_css_length(heading_width, label: 'theme.frontispiece.heading_width'),
+              lead_width: normalize_css_length(lead_width, label: 'theme.frontispiece.lead_width')
             }
           end
 
@@ -120,7 +120,7 @@ module Vivlio
           # フロントマターのベース構造を構築
           def build_base_frontmatter(chapter_css)
             stylesheets = ['theme.css', chapter_css]
-            lang = (Common::CONFIG.dig('book', 'language') || 'ja').to_s.strip
+            lang = (Common::CONFIG.dig(:book, :language) || 'ja').to_s.strip
             lang = 'ja' if lang.empty?
 
             {
@@ -278,13 +278,13 @@ module Vivlio
 
             # appendix.css を更新
             CssUpdater.update_appendix_css(
-              appendix_color: theme_cfg['appendix_color'],
+              appendix_color: theme_cfg&.dig(:appendix_color),
               theme_accent_value: theme_accent_value
             )
 
             # preface.css を更新
             CssUpdater.update_preface_css(
-              preface_color: theme_cfg['preface_color'],
+              preface_color: theme_cfg&.dig(:preface_color),
               theme_accent_value: theme_accent_value
             )
 
@@ -292,21 +292,21 @@ module Vivlio
             CssUpdater.update_chapter_css(theme_style: theme_style)
 
             # chapter-common.css のマーカーを更新
-            markers = theme_cfg['markers'].is_a?(Hash) ? theme_cfg['markers'] : {}
-            CssUpdater.update_chapter_common_css(markers: markers)
+            markers_cfg = theme_cfg&.dig(:markers)
+            CssUpdater.update_chapter_common_css(markers: safe_config_hash(markers_cfg))
 
             # page-settings.css を更新
             cfg = Common::CONFIG
-            page_cfg = (cfg && cfg['page']).is_a?(Hash) ? cfg['page'] : {}
-            typo_cfg = (cfg && cfg['typography']).is_a?(Hash) ? cfg['typography'] : {}
+            page_cfg = safe_config_hash(cfg&.dig(:page))
+            typo_cfg = safe_config_hash(cfg&.dig(:typography))
 
             # フォント設定をマージ
             font_names = [
-              typo_cfg.dig('body', 'font'),
-              typo_cfg.dig('heading', 'font'),
-              typo_cfg.dig('column', 'font'),
-              typo_cfg.dig('code', 'font'),
-              typo_cfg.dig('folio', 'font')
+              typo_cfg&.dig(:body, :font),
+              typo_cfg&.dig(:heading, :font),
+              typo_cfg&.dig(:column, :font),
+              typo_cfg&.dig(:code, :font),
+              typo_cfg&.dig(:folio, :font)
             ]
             FontManager.ensure_fonts_available(font_names)
 
@@ -323,6 +323,17 @@ module Vivlio
               merged[key] = key == 'link' && merged['link'] ? merge_links(merged['link'], value) : value
             end
             merged
+          end
+
+          def safe_config_hash(obj)
+            case obj
+            when Hash
+              obj.dup
+            when nil
+              {}
+            else
+              obj.respond_to?(:to_h) ? obj.to_h : {}
+            end
           end
 
           # 古いテーマリンクを除外

@@ -94,6 +94,17 @@ module Vivlio
               FileUtils.mkdir_p(Common::CONTENTS_DIR)
               FileUtils.mkdir_p(Common::IMAGES_DIR)
               FileUtils.mkdir_p('stylesheets')
+              FileUtils.mkdir_p('config')
+              # catalog.yml を作成（TokenResolver が必要とする）
+              File.write('config/catalog.yml', <<~YAML)
+                PREFACE:
+                CHAPTERS:
+                  - 11-old
+                  - 11-alpha
+                  - 31-beta
+                APPENDICES:
+                POSTFACE:
+              YAML
               yield dir
             end
           end

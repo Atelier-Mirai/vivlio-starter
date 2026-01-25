@@ -20,16 +20,18 @@
 #
 # 依存:
 #   - Build::UnifiedBuildPipeline: ビルドパイプライン
-#   - TokenExpander: 章番号・範囲の展開
+#   - TokenResolver: 章トークンの解決
 # ================================================================
 
 require_relative '../build'
 require_relative '../build/pipeline'
-require_relative '../build/chapter_config'
-require_relative '../build/token_expander'
 require_relative '../build/output_helpers'
-require_relative '../pdf'
+require_relative '../pre_process'
+require_relative '../convert'
 require_relative '../post_process'
+require_relative '../entries'
+require_relative '../pdf'
+require_relative '../token_resolver'
 
 module Vivlio
   module Starter
@@ -55,7 +57,6 @@ module Vivlio
             option '-h/--help', 'このコマンドの使い方を表示', key: :help
           end
 
-          include Vivlio::Starter::CLI::BuildCommands::TokenExpander
           include Vivlio::Starter::CLI::BuildCommands::OutputHelpers
 
           def initialize(input = nil, **options)
@@ -81,10 +82,15 @@ module Vivlio
               return 0
             end
 
-            expanded_tokens = expanded_target_tokens
+            if targets.any?
+              target_entries = resolve_target_entries
 
-            if expanded_tokens.any?
-              run_single_mode_build(expanded_tokens)
+              if target_entries.empty?
+                common.log_error('指定した章が catalog.yml に存在しません。build を中断します。')
+                return 1
+              end
+
+              run_single_mode_build(target_entries)
             else
               run_full_mode_build
             end
@@ -145,23 +151,31 @@ module Vivlio
             end
           end
 
-          def expanded_target_tokens
-            files = Common.normalize_tokens(targets)
-            expand_tokens_to_targets(files).map { |basename| basename.sub(/\.md\z/, '') }
+          # CLI 引数から Entry 配列を解決する
+          # @return [Array<TokenResolver::Entry>] カタログに存在する章の Entry 配列
+          def resolve_target_entries
+            resolver = TokenResolver::Resolver.new
+            entries = resolver.resolve(targets)
+            # カタログに存在する章のみを対象とする
+            entries.select(&:in_catalog?)
           end
 
-          def run_single_mode_build(expanded_tokens)
-            common.log_action("単章/選択ビルドを実行します: #{expanded_tokens.join(', ')}")
+          # 単章/選択ビルドを実行
+          # @param entries [Array<TokenResolver::Entry>] ビルド対象の Entry 配列
+          def run_single_mode_build(entries)
+            basenames = entries.map(&:basename)
+            common.log_action("単章/選択ビルドを実行します: #{basenames.join(', ')}")
 
             if options[:dry_run]
-              print_single_chapter_dry_run(expanded_tokens)
+              print_single_chapter_dry_run(basenames)
               return
             end
 
-            PostProcessCommands::HeadingProcessor.chapter_tokens_override = expanded_tokens
+            PostProcessCommands::HeadingProcessor.chapter_tokens_override = basenames
 
-            pipeline = BuildCommands::UnifiedBuildPipeline.new(self, targets: expanded_tokens, mode: :single)
+            pipeline = BuildCommands::UnifiedBuildPipeline.new(self, entries: entries, mode: :single)
             build_timings = pipeline.run
+            IndexCommands.flush_post_build_messages
 
             print_build_timings(build_timings)
             open_generated_pdf(pipeline.generated_pdf_name)
@@ -171,22 +185,25 @@ module Vivlio
             PostProcessCommands::HeadingProcessor.chapter_tokens_override = nil
           end
 
+          # フルビルドを実行
           def run_full_mode_build
-            keep = Build::ChapterConfig.configured_chapters
+            resolver = TokenResolver::Resolver.new
+            entries = resolver.resolve  # 引数なし = catalog.yml 全章
 
-            if keep&.any?
-              common.log_action("[Subset] 退避なしで論理的に対象を限定してビルドします: #{keep.inspect}")
+            if entries.any?
+              common.log_action("[Subset] 対象章: #{entries.map(&:basename).inspect}")
             else
-              common.log_action("[Subset] chapters 設定なし/'all'のため、フルビルドします（退避なし）")
+              common.log_action('[Subset] catalog.yml に章が定義されていません')
             end
 
             if options[:dry_run]
-              print_full_build_dry_run(keep)
+              print_full_build_dry_run(entries.map(&:basename))
               return
             end
 
-            pipeline = BuildCommands::UnifiedBuildPipeline.new(self, keep: keep, mode: :full)
+            pipeline = BuildCommands::UnifiedBuildPipeline.new(self, entries: entries, mode: :full)
             build_timings = pipeline.run
+            IndexCommands.flush_post_build_messages
 
             print_build_timings(build_timings)
             print_outline_debug_info

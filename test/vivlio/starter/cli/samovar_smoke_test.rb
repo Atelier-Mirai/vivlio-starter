@@ -27,22 +27,19 @@ module Vivlio
       # ================================================================
       class SamovarCommandsSmokeTest < Minitest::Test
         # テスト対象のコマンドクラス一覧
+        # 注: entries, toc, pre_process, post_process, convert は
+        #     build コマンドから内部的に呼び出される純粋な内部処理に移行済み
         COMMAND_CLASSES = {
           build: SamovarCommands::BuildCommand,
           clean: SamovarCommands::CleanCommand,
           create: SamovarCommands::CreateCommand,
           delete: SamovarCommands::DeleteCommand,
           doctor: SamovarCommands::DoctorCommand,
-          entries: SamovarCommands::EntriesCommand,
           help: SamovarCommands::HelpCommand,
           new: SamovarCommands::NewCommand,
           pdf: SamovarCommands::PdfCommand,
           rename: SamovarCommands::RenameCommand,
-          resize: SamovarCommands::ResizeCommand,
-          toc: SamovarCommands::TocCommand,
-          pre_process: SamovarCommands::PreProcessCommand,
-          post_process: SamovarCommands::PostProcessCommand,
-          convert: SamovarCommands::ConvertCommand
+          resize: SamovarCommands::ResizeCommand
         }.freeze
 
         COMMAND_CLASSES.each do |name, klass|
@@ -70,11 +67,6 @@ module Vivlio
                  'BuildCommand から UnifiedBuildPipeline が参照可能であるべき'
         end
 
-        def test_build_command_resolves_token_expander
-          assert defined?(Vivlio::Starter::CLI::BuildCommands::TokenExpander),
-                 'BuildCommand から TokenExpander が参照可能であるべき'
-        end
-
         def test_build_command_resolves_output_helpers
           assert defined?(Vivlio::Starter::CLI::BuildCommands::OutputHelpers),
                  'BuildCommand から OutputHelpers が参照可能であるべき'
@@ -93,11 +85,6 @@ module Vivlio
         def test_doctor_command_resolves_doctor_commands
           assert defined?(Vivlio::Starter::CLI::DoctorCommands),
                  'DoctorCommand から DoctorCommands が参照可能であるべき'
-        end
-
-        def test_entries_command_resolves_entries_commands
-          assert defined?(Vivlio::Starter::CLI::EntriesCommands),
-                 'EntriesCommand から EntriesCommands が参照可能であるべき'
         end
 
         def test_rename_command_resolves_rename_command_executor
@@ -120,25 +107,6 @@ module Vivlio
                  'ResizeCommand から ResizeCommands が参照可能であるべき'
         end
 
-        def test_toc_command_resolves_toc_commands
-          assert defined?(Vivlio::Starter::CLI::TocCommands),
-                 'TocCommand から TocCommands が参照可能であるべき'
-        end
-
-        def test_pre_process_command_resolves_pre_process_commands
-          assert defined?(Vivlio::Starter::CLI::PreProcessCommands),
-                 'PreProcessCommand から PreProcessCommands が参照可能であるべき'
-        end
-
-        def test_post_process_command_resolves_post_process_commands
-          assert defined?(Vivlio::Starter::CLI::PostProcessCommands),
-                 'PostProcessCommand から PostProcessCommands が参照可能であるべき'
-        end
-
-        def test_convert_command_resolves_convert_commands
-          assert defined?(Vivlio::Starter::CLI::ConvertCommands),
-                 'ConvertCommand から ConvertCommands が参照可能であるべき'
-        end
       end
 
       # ================================================================
@@ -223,17 +191,6 @@ module Vivlio
           end
 
           assert execute_called, 'CleanCommand は CleanCommands.execute_clean を呼び出すべき'
-        end
-
-        def test_entries_command_can_invoke_execute_entries
-          execute_called = false
-
-          EntriesCommands.stub :execute_entries, ->(*_args) { execute_called = true } do
-            cmd = SamovarCommands::EntriesCommand.new([])
-            cmd.call
-          end
-
-          assert execute_called, 'EntriesCommand は EntriesCommands.execute_entries を呼び出すべき'
         end
 
         def test_rename_command_can_invoke_executor

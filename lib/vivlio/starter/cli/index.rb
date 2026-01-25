@@ -27,6 +27,7 @@ require_relative 'index/yomi_inferrer'
 require_relative 'index/index_candidate_extractor'
 require_relative 'index/scoring_engine'
 require_relative 'index/hierarchical_index'
+require_relative 'token_resolver'
 
 module Vivlio
   module Starter
@@ -157,11 +158,9 @@ module Vivlio
           manager.build_index!(chapters)
         end
 
-        # 索引機能が有効かどうか
+        # 索引機能が有効かどうか（シンボルキー前提）
         def index_enabled?
-          config = Common::CONFIG || {}
-          index_config = config['index'] || {}
-          index_config['enabled'] == true
+          Common::CONFIG.index&.enabled == true
         end
 
         private
@@ -180,13 +179,16 @@ module Vivlio
 
         # 対象章を解決
         def resolve_chapters(tokens)
-          files = Common.normalize_tokens(tokens)
+          resolver = TokenResolver::Resolver.new
+          entries = resolver.resolve(tokens)
 
-          if files.any?
-            Common.log_info("引数から対象章を特定しました: #{files.join(', ')}")
-            files
+          if entries.any?
+            # トークン指定あり: Entry から basename を取得
+            basenames = entries.select(&:valid?).map(&:basename)
+            Common.log_info("引数から対象章を特定しました: #{basenames.join(', ')}")
+            basenames
           else
-            # catalog.yml から対象章を取得
+            # トークン指定なし: catalog.yml から全章を取得
             begin
               require_relative 'build/catalog_loader'
               chapters = Build::CatalogLoader.load_existing_basenames
