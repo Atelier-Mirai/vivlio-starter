@@ -25,7 +25,7 @@ module Vivlio
     module CLI
       class ReviewQueueManager
         QUEUE_FILE = 'config/index_review_queue.yml'
-        REJECTED_FILE = 'config/index_rejected.yml'
+        REJECTED_FILE = 'config/index_glossary_rejected.yml'
 
         def initialize
           @queue_cache = nil

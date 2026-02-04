@@ -160,39 +160,47 @@ terms:
 
 ## 6. book.yml の設定項目
 
-索引・用語集の振る舞いは `config/book.yml` の設定で制御する。既存の `index` セクションに加え、`glossary` セクションを新設し、共通キーと固有キーを以下のように扱う。
+索引・用語集の振る舞いは `config/book.yml` の設定で制御する。共通設定は `index_glossary` セクションに、個別設定は `index` / `glossary` セクションに配置する。
 
-### 6.1 共通キー（`index` / `glossary`）
+### 6.1 `index_glossary` セクション（共通設定）
 
-| キー | 説明 |
-| --- | --- |
-| `enabled` | 機能全体の ON/OFF。`false` で該当セクションの処理をスキップ |
-| `auto_discovery` | `vs index:auto` 実行時に MeCab などで自動候補抽出を行うか。`true` にすると、索引用/用語集用の候補抽出を行なう。 `false`なら、自動抽出は行なわず、手動登録 `[用語|読み]` のみを、索引/用語集の対象とする。|
-| `use_mecab` | 読み推測に MeCab を利用するか。`true` にすると、読みの自動推測を行なう。|
-| `timezone` | `_index_review.md` の新着判定に使うタイムゾーン |
-| `context_width` | `_index_review.md` で表示する前後文脈の文字幅 |
-| `smart_context_cutting` | 形態素境界で文脈をトリミングするか |
+索引と用語集で共有する設定項目。個別セクションの同名キーで上書き可能。
 
-### 6.2 `index` セクション固有キー（既存）
+| キー | 説明 | 既定値 |
+| --- | --- | --- |
+| `enabled` | 索引・用語集機能の ON/OFF | `true` |
+| `use_mecab` | 読み推測に MeCab を利用するか | `true` |
+| `timezone` | `_index_glossary_review.md` の新着判定に使うタイムゾーン | `'Asia/Tokyo'` |
+| `context_width` | レビュー UI で表示する前後文脈の文字幅 | `40` |
+| `smart_context_cutting` | 形態素境界で文脈をトリミングするか | `true` |
 
-| キー | 説明 |
-| --- | --- |
-| `title` | 生成ページのタイトル。既定値は「索引」|
-| `auto_approve_threshold` | スコアが閾値以上なら自動で `index_terms.yml` に追加 |
-| `review_threshold` | レビュー対象スコア閾値（この値以上でレビュー待ちキューへ） |
-| `high_candidates_ratio` | 候補を High/Normal に分割する比率 |
+```yaml
+# book.yml 例
+index_glossary:
+  use_mecab: true
+  timezone: 'Asia/Tokyo'
+  context_width: 40
+  smart_context_cutting: true
+```
 
-### 6.3 `glossary` セクション固有キー（新規）
+### 6.2 `index` セクション（索引固有）
 
-| キー | 説明 |
-| --- | --- |
-| `title` | 生成ページのタイトル。既定値は「用語集」|
-| `auto_approve_threshold` | スコアが閾値以上なら自動で `glossary_terms.yml` に追加 |
-| `review_threshold` | レビュー対象スコア閾値（この値以上でレビュー待ちキューへ） |
-| `high_candidates_ratio` | 候補を High/Normal に分割する比率 |
-| `require_definition` | `true` の場合、`g` フラグで説明文未記入なら `vs index:apply` でエラーにする |
-| `max_definition_length` | 説明文の最大文字数（超過した場合は警告） |
-| `link_label` | 本文に挿入するリンクラベル（空文字`""`ならリンクテキスト無し。） |
+| キー | 説明 | 既定値 |
+| --- | --- | --- |
+| `auto_discovery` | MeCab 等で自動候補抽出を行うか | `true` |
+| `title` | 索引ページのタイトル | `'索引'` |
+| `auto_approve_threshold` | スコアが閾値以上なら自動で `index_terms.yml` に追加 | `300` |
+| `review_threshold` | レビュー対象スコア閾値 | `150` |
+| `high_candidates_ratio` | 候補を High/Low に分割する比率 | `0.25` |
+
+### 6.3 `glossary` セクション（用語集固有）
+
+| キー | 説明 | 既定値 |
+| --- | --- | --- |
+| `title` | 用語集ページのタイトル | `'用語集'` |
+| `require_definition` | `g` フラグで説明文未記入ならエラーにするか | `false` |
+| `max_definition_length` | 説明文の最大文字数（超過で警告） | `200` |
+| `link_label` | 本文に挿入するリンクラベル（空文字で非表示） | `'→用語集'` |
 
 ---
 

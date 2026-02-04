@@ -18,7 +18,6 @@
 #     - create, rename, renumber, open, cover
 #     - resize, resize:high/medium/low
 #     - index, index:auto, index:apply
-#     - glossary, glossary:add/lint/fix/canonicalize
 #     - lint, lint:check, metrics
 #     - pdf:compress
 #   Internal Commands (vs --help に非表示、DEVELOPER_GUIDE.md 参照):
@@ -66,11 +65,6 @@ module Vivlio
                 'index:auto' => IndexAutoCommand,
                 'index:apply' => IndexApplyCommand,
                 'pdf:compress' => PdfCompressCommand,
-                'glossary' => GlossaryCommand,
-                'glossary:add' => GlossaryAddCommand,
-                'glossary:lint' => GlossaryLintCommand,
-                'glossary:fix' => GlossaryFixCommand,
-                'glossary:canonicalize' => GlossaryCanonicalizeCommand,
                 'lint' => LintCommand,
                 'lint:check' => LintCheckCommand,
                 'metrics' => MetricsCommand

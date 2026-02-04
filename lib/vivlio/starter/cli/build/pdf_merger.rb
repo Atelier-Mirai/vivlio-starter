@@ -141,7 +141,7 @@ module Vivlio
               num = bn[/\A(\d+)-/, 1]&.to_i
               
               (num && (keep_numbers.nil? || keep_numbers.include?(num))) || 
-                %w[_toc _indexpage].include?(bn)
+                %w[_toc _glossarypage _indexpage].include?(bn)
             end
 
             if chapter_htmls.empty?

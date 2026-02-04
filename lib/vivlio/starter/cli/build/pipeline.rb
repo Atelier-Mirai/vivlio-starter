@@ -312,7 +312,7 @@ module Vivlio
           # Step 5: 索引処理を実行
           def run_step5_index_processing
             unless IndexCommands.index_enabled?
-              Common.log_action('[Step 5] 索引機能が無効のためスキップします（book.yml: index.enabled = false）')
+              Common.log_action('[Step 5] 索引・用語集機能が無効のためスキップします（book.yml: index_glossary.enabled = false）')
               return
             end
 

@@ -4,22 +4,25 @@
 # Class: UnifiedIndexManager
 # ----------------------------------------------------------------
 # 責務:
-#   索引生成プロセス全体を統括するマネージャー
-#   仕様書 indexing_implementation_spec3.md に準拠
+#   索引・用語集生成プロセス全体を統括するマネージャー
+#   仕様書 index_glossary_spec.md に準拠
 #
 # 主要メソッド:
-#   - auto_process!: 全自動索引候補抽出 → _index_review.md 生成
+#   - auto_process!: 全自動候補抽出 → _index_glossary_review.md 生成
 #   - apply_markdown_review!: Markdownから承認・リジェクトを適用
 #   - build_index!: 索引ページを生成（内部用）
+#   - build_glossary!: 用語集ページを生成（内部用）
 # ================================================================
 
 require_relative '../common'
 require_relative 'index_terms_manager'
+require_relative 'glossary_terms_manager'
 require_relative 'review_queue_manager'
 require_relative 'review_markdown_generator'
 require_relative 'index_candidate_extractor'
 require_relative 'index_match_scanner'
 require_relative 'index_page_builder'
+require_relative 'glossary_page_builder'
 require_relative 'yomi_inferrer'
 
 module Vivlio
@@ -32,13 +35,15 @@ module Vivlio
       YomiInferrer = IndexCommands::YomiInferrer
 
       class UnifiedIndexManager
-        attr_reader :terms_manager, :queue_manager, :markdown_generator
+        attr_reader :terms_manager, :glossary_manager, :queue_manager, :markdown_generator
 
         def initialize
           @terms_manager = IndexTermsManager.new
+          @glossary_manager = GlossaryTermsManager.new
           @queue_manager = ReviewQueueManager.new
           @markdown_generator = ReviewMarkdownGenerator.new
           @config = load_index_config
+          @glossary_config = load_glossary_config
         end
 
         # 全自動索引候補抽出 → _index_review.md 生成
@@ -123,43 +128,72 @@ module Vivlio
         # 仕様: vs index:apply は内部で vs index:build を実行しない
         def apply_markdown_review!
           unless @markdown_generator.exists?
-            Common.log_warn('_index_review.md が見つかりません')
+            Common.log_warn('_index_glossary_review.md が見つかりません')
             Common.log_info('先に vs index:auto を実行してください')
             return
           end
 
-          # 1. 承認された候補を取得（High/Lowセクションから）
-          approved = @markdown_generator.parse_approved
+          # --- Phase: 索引処理 ---
+          index_approved = @markdown_generator.parse_index_approved
+          index_rejected = @markdown_generator.parse_index_rejected
 
-          # 2. リジェクトされた候補を取得（High/Lowセクションから）
-          rejected = @markdown_generator.parse_rejected
+          # --- Phase: 用語集処理 ---
+          glossary_approved = @markdown_generator.parse_glossary_approved
+          glossary_rejected = @markdown_generator.parse_glossary_rejected
 
-          # 3. リジェクト解除された候補を取得（Rejectedセクションから）
+          # --- Phase: 共通処理 ---
+          both_rejected = @markdown_generator.parse_rejected
           unreject = @markdown_generator.parse_unreject
-
-          # 4. 読み変更を取得（Termsセクションから）
           yomi_changes = @markdown_generator.parse_yomi_changes
 
-          # 処理内容を集計
           changes_made = false
+          index_count = 0
+          glossary_count = 0
 
-          # 承認処理
-          if approved.any?
-            @terms_manager.merge_terms!(approved, source: 'auto_extracted')
+          # 索引承認処理
+          if index_approved.any?
+            @terms_manager.merge_terms!(index_approved, source: 'auto_extracted')
+            index_count = index_approved.size
             changes_made = true
           end
 
-          # リジェクト処理
-          if rejected.any?
-            @queue_manager.save_rejected_terms(rejected)
+          # 用語集承認処理（説明文付き）
+          if glossary_approved.any?
+            validate_glossary_definitions!(glossary_approved)
+            @glossary_manager.merge_terms!(glossary_approved, source: 'review')
+            glossary_count = glossary_approved.size
+            changes_made = true
+          end
+
+          # 索引のみリジェクト（[-i]）
+          if index_rejected.any?
+            index_rejected.each { @terms_manager.remove_term!(it['term']) }
+            # rejected にも保存（kind: 'index' で区別）
+            @queue_manager.save_rejected_terms(index_rejected)
+            changes_made = true
+          end
+
+          # 用語集のみリジェクト（[-g]）
+          if glossary_rejected.any?
+            glossary_rejected.each { @glossary_manager.remove_term!(it['term']) }
+            # rejected にも保存（kind: 'glossary' で区別）
+            @queue_manager.save_rejected_terms(glossary_rejected)
+            changes_made = true
+          end
+
+          # 両方リジェクト（[r]）
+          if both_rejected.any?
+            both_rejected.each do |term|
+              @terms_manager.remove_term!(term['term']) if @terms_manager.term_names.include?(term['term'])
+              @glossary_manager.remove_term!(term['term']) if @glossary_manager.term_names.include?(term['term'])
+            end
+            @queue_manager.save_rejected_terms(both_rejected)
             changes_made = true
           end
 
           # リジェクト解除処理
           if unreject.any?
-            unreject.each do |term|
-              @queue_manager.unreject_term_by_name!(term['term'])
-            end
+            unreject.each { @queue_manager.unreject_term_by_name!(it['term']) }
             changes_made = true
           end
 
@@ -170,21 +204,60 @@ module Vivlio
           end
 
           if changes_made
-            Common.log_success("承認: #{approved.size}件、リジェクト: #{rejected.size}件、リジェクト解除: #{unreject.size}件")
-
-            if yomi_changes.any?
-              Common.log_info("読み変更: #{yomi_changes.size}件")
-            end
-
-            Common.log_success('index_terms.yml を更新しました')
-            Common.log_info('索引ページの生成は vs build 実行時に行われます')
+            Common.log_success("索引: #{index_count}件、用語集: #{glossary_count}件、リジェクト: #{both_rejected.size}件")
+            Common.log_info("読み変更: #{yomi_changes.size}件") if yomi_changes.any?
+            Common.log_success('index_terms.yml / glossary_terms.yml を更新しました')
+            Common.log_info('ページ生成は vs build 実行時に行われます')
           else
             Common.log_warn('変更がありませんでした')
-            Common.log_info('_index_review.md で [ ] を [x] または [r] に変更してください')
+            Common.log_info('_index_glossary_review.md でフラグを編集してください')
           end
 
-          # 作業ファイルを削除
           @markdown_generator.cleanup!
+        end
+
+        # 用語集の説明文バリデーション
+        # require_definition: true の場合、説明文が空ならエラー
+        # max_definition_length を超過している場合は警告
+        def validate_glossary_definitions!(terms)
+          max_length = @glossary_config[:max_definition_length] || 200
+
+          # 説明文の長さチェック（Markdown装飾を除去した文字数）
+          terms.each do |term|
+            definition = term['definition'].to_s
+            next if definition.strip.empty?
+
+            plain_text = strip_markdown(definition)
+            next unless plain_text.length > max_length
+
+            Common.log_warn(
+              "用語「#{term['term']}」の説明文が #{max_length} 文字を超過しています " \
+              "(#{plain_text.length} 文字)"
+            )
+          end
+
+          return unless @glossary_config[:require_definition]
+
+          missing = terms.select { it['definition'].to_s.strip.empty? }
+          return if missing.empty?
+
+          missing.each do |term|
+            Common.log_error("用語「#{term['term']}」に説明文がありません")
+          end
+          raise "用語集の説明文が必須ですが、#{missing.size}件の用語に説明文がありません"
+        end
+
+        # Markdown装飾を除去してプレーンテキストを取得
+        def strip_markdown(text)
+          text
+            .gsub(/\*\*(.+?)\*\*/, '\1')  # **bold**
+            .gsub(/\*(.+?)\*/, '\1')      # *italic*
+            .gsub(/`(.+?)`/, '\1')        # `code`
+            .gsub(/\[(.+?)\]\(.+?\)/, '\1') # [link](url)
+            .gsub(/^#+\s*/, '')           # # heading
+            .gsub(/^\s*[-*]\s+/, '')      # - list item
+            .gsub(/\n+/, ' ')             # newlines to space
+            .strip
         end
 
         # 索引ページを生成（内部用 - vs build から呼ばれる）
@@ -202,9 +275,26 @@ module Vivlio
 
           Common.log_success('索引ページを生成しました')
 
-          if scanner.config_missing || scanner.no_matches?
+          if scanner.config_missing || scanner.no_matches
             IndexCommands.add_post_build_message(IndexCommands::INDEX_TERMS_MISSING_MESSAGE)
           end
+        end
+
+        # 用語集ページを生成（内部用 - vs build から呼ばれる）
+        def build_glossary!
+          return unless glossary_enabled?
+
+          Common.log_action('用語集ページを生成しています...')
+
+          builder = GlossaryPageBuilder.new
+          result = builder.build!
+
+          Common.log_success('用語集ページを生成しました') if result
+        end
+
+        # 用語集機能が有効か
+        def glossary_enabled?
+          @glossary_config[:enabled] == true
         end
 
         # リジェクト済み候補の一覧表示
@@ -246,10 +336,38 @@ module Vivlio
         end
 
         # 設定を読み込み（シンボルキー前提）
+        # 共通設定（index_glossary）と個別設定（index）をマージ
         # @return [Hash] index設定
         def load_index_config
+          shared = load_shared_config
           idx = Common::CONFIG.index
-          idx.respond_to?(:to_h) ? idx.to_h : (idx || {})
+          idx_hash = idx.respond_to?(:to_h) ? idx.to_h : (idx || {})
+          shared.merge(idx_hash)
+        end
+
+        # glossary設定を読み込み
+        # 共通設定（index_glossary）と個別設定（glossary）をマージ
+        # @return [Hash] glossary設定
+        def load_glossary_config
+          shared = load_shared_config
+          gls = Common::CONFIG.glossary
+          gls_hash = gls.respond_to?(:to_h) ? gls.to_h : (gls || {})
+          shared.merge(gls_hash)
+        rescue StandardError
+          load_shared_config
+        end
+
+        # 共通設定（index_glossary）を読み込み
+        # @return [Hash] 共通設定
+        def load_shared_config
+          return {} unless Common::CONFIG.respond_to?(:index_glossary)
+
+          shared = Common::CONFIG.index_glossary
+          return {} if shared.nil?
+
+          shared.respond_to?(:to_h) ? shared.to_h : {}
+        rescue StandardError
+          {}
         end
 
         # 手動マークアップ用語を抽出
@@ -375,17 +493,35 @@ module Vivlio
           [high, low]
         end
 
-        # 登録済み用語に文脈を付与
+        # 登録済み用語に文脈と用語集登録状態を付与
         # @param terms [Array<Hash>] 用語のリスト
         # @param chapters [Array<String>] 対象章のリスト
         # @return [Array<Hash>] 文脈付き用語のリスト
         def enrich_terms_with_context(terms, chapters)
+          # 用語集に登録されている用語を取得（定義付き）
+          glossary_terms = @glossary_manager.load_existing_terms
+          glossary_by_name = glossary_terms.to_h { |t| [t['term'], t] }
+
           terms.map do |term|
-            next term if term['contexts']&.any?
+            enriched = term.dup
+            glossary_entry = glossary_by_name[term['term']]
+
+            # 用語集への登録状態を反映
+            enriched['in_index'] = true
+            enriched['in_glossary'] = !glossary_entry.nil?
+
+            # 用語集に定義がある場合は取得
+            if glossary_entry && glossary_entry['definition'].to_s.strip.length.positive?
+              enriched['definition'] = glossary_entry['definition']
+            end
 
             # 文脈がない場合は本文から抽出
-            context = find_context_for_term(term['term'], chapters)
-            term.merge('contexts' => context ? [context] : [])
+            unless enriched['contexts']&.any?
+              context = find_context_for_term(term['term'], chapters)
+              enriched['contexts'] = context ? [context] : []
+            end
+
+            enriched
           end
         end
 
@@ -457,13 +593,29 @@ module Vivlio
         # @return [String] 文脈
         def extract_surrounding_context(content, term)
           context_width = @config[:context_width] || 40
+          total_width = context_width * 2
           index = content.index(term)
           return '' unless index
 
-          start_pos = [index - context_width, 0].max
-          end_pos = [index + term.length + context_width, content.length].min
+          # 基本の範囲を計算
+          ideal_start = index - context_width
+          ideal_end = index + term.length + context_width
 
-          raw_context = content[start_pos...end_pos]
+          # 前方が足りない場合は後方を延長
+          if ideal_start < 0
+            shortage = -ideal_start
+            ideal_end += shortage
+            ideal_start = 0
+          end
+
+          # 後方が足りない場合は前方を延長
+          if ideal_end > content.length
+            shortage = ideal_end - content.length
+            ideal_start = [ideal_start - shortage, 0].max
+            ideal_end = content.length
+          end
+
+          raw_context = content[ideal_start...ideal_end]
           smart_context_cut(raw_context)
         end
 
@@ -478,6 +630,11 @@ module Vivlio
 
           smart_cutting = @config[:smart_context_cutting]
           smart_cutting = true if smart_cutting.nil?
+
+          # 先頭が単語の途中（小文字カナなど）で始まっている場合、常に修正
+          # これは長さに関係なく適用
+          start_offset = skip_partial_word_start(cleaned)
+          cleaned = cleaned[start_offset..] if start_offset > 0
 
           context_width = @config[:context_width] || 40
           max_length = context_width * 2
@@ -504,6 +661,10 @@ module Vivlio
         def find_smart_start_position(text, max_length)
           return 0 if text.length <= max_length
 
+          # 先頭が単語の途中（小文字カナなど）で始まっている場合、次の単語境界まで進める
+          start_offset = skip_partial_word_start(text)
+          return start_offset if start_offset > 0
+
           # 先頭20文字以内で区切りを探す
           search_range = text[0..19]
 
@@ -523,6 +684,73 @@ module Vivlio
           end
 
           0
+        end
+
+        # 単語の途中で始まっている場合、次の単語開始位置まで進める
+        # @param text [String] テキスト
+        # @return [Integer] スキップすべき文字数
+        def skip_partial_word_start(text)
+          return 0 if text.nil? || text.empty?
+
+          first_char = text[0]
+
+          # 1. 小文字カナ（単語の途中でしか現れない文字）で始まる場合
+          if first_char.match?(/[ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ]/)
+            return find_next_word_boundary(text)
+          end
+
+          # 2. カタカナで始まり、後続もカタカナが続く場合（単語の途中の可能性）
+          #    例: "ブサイト" は "ウェブサイト" の途中
+          if first_char.match?(/[ァ-ヴー]/) && text.length > 1
+            # 連続するカタカナの終端を探す
+            katakana_end = find_katakana_sequence_end(text)
+            if katakana_end > 0
+              # カタカナ列の後ろに、文字種の境界があればそこから開始
+              return katakana_end
+            end
+          end
+
+          0
+        end
+
+        # 次の単語境界を探す
+        # @param text [String] テキスト
+        # @return [Integer] 境界位置
+        def find_next_word_boundary(text)
+          # 最大15文字まで探索
+          (1..[text.length - 1, 15].min).each do |i|
+            char = text[i]
+            # 文字種の変化点を探す（カタカナ→非カタカナ、ひらがな→漢字など）
+            if word_boundary_char?(char)
+              return i
+            end
+          end
+          0
+        end
+
+        # カタカナ列の終端位置を探す
+        # @param text [String] テキスト
+        # @return [Integer] カタカナ列の終端位置（0なら単語境界なし）
+        def find_katakana_sequence_end(text)
+          # 最大10文字のカタカナ列を探索
+          (1..[text.length - 1, 10].min).each do |i|
+            char = text[i]
+            # カタカナでなくなったら、そこが境界
+            unless char.match?(/[ァ-ヴー]/)
+              return i
+            end
+          end
+          0
+        end
+
+        # 単語境界になりうる文字かどうか
+        # @param char [String] 文字
+        # @return [Boolean]
+        def word_boundary_char?(char)
+          return false if char.nil?
+
+          # 漢字、句読点、スペース、英数字の開始
+          char.match?(/[一-龯。、！？\s「」『』（）a-zA-Z0-9]/)
         end
 
         # スマートな終了位置を探す

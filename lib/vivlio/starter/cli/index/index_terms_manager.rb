@@ -84,6 +84,21 @@ module Vivlio
           end
         end
 
+        # 用語を削除
+        # @param term_name [String] 削除する用語名
+        def remove_term!(term_name)
+          return if term_name.nil? || term_name.empty?
+
+          existing = load_existing_terms
+          original_size = existing.size
+          existing.reject! { it['term'] == term_name }
+
+          if existing.size < original_size
+            save_terms!(existing)
+            Common.log_info("用語「#{term_name}」を索引から削除しました")
+          end
+        end
+
         # 用語の読みを更新
         # @param yomi_changes [Array<Hash>] 読み変更のリスト ({ 'term' => '...', 'yomi' => '...' })
         def update_yomi!(yomi_changes)

@@ -37,11 +37,12 @@ module Vivlio
           # システム予約ファイルの kind マッピング。
           # カタログに載らない特殊ファイルを仮想 Entry として解決するために使用。
           SYSTEM_FILE_KINDS = {
-            '_titlepage' => :titlepage,
-            '_legalpage' => :legalpage,
-            '_colophon'  => :colophon,
-            '_indexpage' => :indexpage,
-            '_toc'       => :toc
+            '_titlepage'    => :titlepage,
+            '_legalpage'    => :legalpage,
+            '_colophon'     => :colophon,
+            '_indexpage'    => :indexpage,
+            '_glossarypage' => :glossarypage,
+            '_toc'          => :toc
           }.freeze
 
           # @param catalog_path [String] catalog.yml のパス

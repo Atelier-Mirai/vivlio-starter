@@ -37,7 +37,7 @@ module Vivlio
 
           @manager.auto_process!(['01-test'])
 
-          assert File.exist?('_index_review.md')
+          assert File.exist?('_index_glossary_review.md')
         end
 
         def test_auto_process_extracts_manual_markups
@@ -50,7 +50,7 @@ module Vivlio
 
           @manager.auto_process!(['02-manual'])
 
-          content = File.read('_index_review.md')
+          content = File.read('_index_glossary_review.md')
           assert_includes content, 'Ruby'
           assert_includes content, '[手動登録]'
         end
@@ -68,7 +68,7 @@ module Vivlio
 
           @manager.auto_process!(['03-code'])
 
-          content = File.read('_index_review.md')
+          content = File.read('_index_glossary_review.md')
           # コードフェンス内の [codeVariable] は手動マークアップとして抽出されない
           # （Termsセクションに **codeVariable** が含まれていない）
           terms_section = content.split('## 2.')[0]
@@ -90,7 +90,7 @@ module Vivlio
 
           @manager.auto_process!(['04-special'])
 
-          content = File.read('_index_review.md')
+          content = File.read('_index_glossary_review.md')
           # 特殊文字を含む手動マークアップが表示される
           assert_includes content, '**!**'
           assert_includes content, '**&&**'
@@ -125,10 +125,10 @@ module Vivlio
           @manager.auto_process!(['06-apply'])
 
           # レビューファイルを編集して候補を承認
-          content = File.read('_index_review.md')
+          content = File.read('_index_glossary_review.md')
           # 候補セクションの [ ] を [x] に変更
           modified = content.gsub(/^- \[ \] `NEW!` \*\*JavaScript\*\*/, '- [x] `NEW!` **JavaScript**')
-          File.write('_index_review.md', modified)
+          File.write('_index_glossary_review.md', modified)
 
           result = @manager.apply_markdown_review!
 
@@ -157,11 +157,11 @@ module Vivlio
               { 'term' => 'RejectedTerm', 'yomi' => 'りじぇくてっどたーむ' }
             ]
           }
-          File.write('config/index_rejected.yml', rejected_data.to_yaml)
+          File.write('config/index_glossary_rejected.yml', rejected_data.to_yaml)
 
           @manager.auto_process!(['07-reject'])
 
-          content = File.read('_index_review.md')
+          content = File.read('_index_glossary_review.md')
           # 候補セクションには表示されない（除外済みセクションに表示される）
           assert_includes content, '除外済みリスト'
         end
@@ -177,7 +177,7 @@ module Vivlio
 
           @manager.auto_process!(['08-context'])
 
-          content = File.read('_index_review.md')
+          content = File.read('_index_glossary_review.md')
           # 文脈情報が含まれる
           assert_match(/08-context/, content)
         end
@@ -191,7 +191,7 @@ module Vivlio
               { 'term' => 'TestTerm', 'yomi' => 'てすとたーむ' }
             ]
           }
-          File.write('config/index_rejected.yml', rejected_data.to_yaml)
+          File.write('config/index_glossary_rejected.yml', rejected_data.to_yaml)
 
           # 例外なく実行できる
           @manager.list_rejected_terms
@@ -204,11 +204,11 @@ module Vivlio
               { 'term' => 'TestTerm', 'yomi' => 'てすとたーむ' }
             ]
           }
-          File.write('config/index_rejected.yml', rejected_data.to_yaml)
+          File.write('config/index_glossary_rejected.yml', rejected_data.to_yaml)
 
           @manager.reset_rejected!
 
-          refute File.exist?('config/index_rejected.yml')
+          refute File.exist?('config/index_glossary_rejected.yml')
         end
       end
     end

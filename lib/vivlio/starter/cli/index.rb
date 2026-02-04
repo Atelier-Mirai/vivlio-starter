@@ -1,32 +1,34 @@
 # frozen_string_literal: true
 
 # ================================================================
-# Module: 索引機能オーケストレーター
+# Module: 索引・用語集機能オーケストレーター
 # ----------------------------------------------------------------
 # 【役割】
-# - 索引機能のエントリポイント
-# - IndexMatchScanner と IndexPageBuilder を統括
-# - CLI コマンド（vs index:match, vs index:build, vs index:candidate）を提供
+# - 索引・用語集機能のエントリポイント
+# - IndexMatchScanner, IndexPageBuilder, GlossaryPageBuilder を統括
+# - CLI コマンド（vs index:auto, vs index:apply, vs index:build）を提供
 #
 # 【処理の流れ】
-# 1. vs index:match: 原稿をスキャンして索引候補を抽出
-# 2. vs index:build: 索引ページを生成
-# 3. vs index:candidate: 自動抽出（Phase 2）
-# 4. vs build: 通常ビルドに索引生成を統合
+# 1. vs index:auto: 原稿をスキャンして候補を抽出 → _index_glossary_review.md 生成
+# 2. vs index:apply: レビュー結果を適用
+# 3. vs build: 索引・用語集ページを生成
 #
 # 【依存モジュール】
 # - IndexMatchScanner: 索引語スキャン・ID付与
 # - IndexPageBuilder: 索引ページHTML生成
+# - GlossaryPageBuilder: 用語集ページHTML生成
 # - YomiInferrer: MeCab による読み推測
 # ================================================================
 
 require_relative 'common'
 require_relative 'index/index_match_scanner'
 require_relative 'index/index_page_builder'
+require_relative 'index/glossary_page_builder'
 require_relative 'index/yomi_inferrer'
 require_relative 'index/index_candidate_extractor'
 require_relative 'index/scoring_engine'
 require_relative 'index/hierarchical_index'
+require_relative 'index/glossary_terms_manager'
 require_relative 'token_resolver'
 
 module Vivlio
@@ -147,8 +149,8 @@ module Vivlio
           report_extraction_results(extractor, threshold)
         end
 
-        # ビルドパイプラインから呼び出される索引処理
-        # 仕様書 indexing_implementation_spec3.md に準拠
+        # ビルドパイプラインから呼び出される索引・用語集処理
+        # 仕様書 index_glossary_spec.md に準拠
         # @param chapters [Array<String>] 対象章のリスト
         def process_index_for_build!(chapters)
           return unless index_enabled?
@@ -156,11 +158,12 @@ module Vivlio
           require_relative 'index/unified_index_manager'
           manager = UnifiedIndexManager.new
           manager.build_index!(chapters)
+          manager.build_glossary!
         end
 
-        # 索引機能が有効かどうか（シンボルキー前提）
+        # 索引・用語集機能が有効かどうか（シンボルキー前提）
         def index_enabled?
-          Common::CONFIG.index&.enabled == true
+          Common::CONFIG.index_glossary&.enabled == true
         end
 
         private
