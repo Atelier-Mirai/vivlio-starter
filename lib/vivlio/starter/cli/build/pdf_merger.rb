@@ -136,12 +136,15 @@ module Vivlio
             keep_numbers = Build::Utilities.chapter_numbers_for_outline(entries_or_keep)
             
             # 抽出対象HTMLの絞り込み
+            special_pages = %w[_toc]
+            special_pages.push('_glossarypage', '_indexpage') if IndexCommands.index_enabled?
+
             chapter_htmls = Dir.glob('*.html').sort.select do |path|
               bn = File.basename(path, '.html')
               num = bn[/\A(\d+)-/, 1]&.to_i
               
               (num && (keep_numbers.nil? || keep_numbers.include?(num))) || 
-                %w[_toc _indexpage].include?(bn)
+                special_pages.include?(bn)
             end
 
             if chapter_htmls.empty?

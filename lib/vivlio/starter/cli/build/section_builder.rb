@@ -150,7 +150,7 @@ module Vivlio
           # セクション（前書き/本文/付録/後書き）の前処理を一括実行
           # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
           def preprocess_sections!(entries_or_keep = nil)
-            Common.log_action('[Step 4] セクションの前処理（Markdown 修正）を実行します…')
+            Common.log_action('[Step 3] セクションの前処理（Markdown 修正）を実行します…')
             targets = resolve_targets(entries_or_keep)
             return if targets.empty?
 

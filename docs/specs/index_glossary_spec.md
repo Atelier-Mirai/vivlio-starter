@@ -120,12 +120,16 @@ _glossarypage.html       # 生成された用語集ページ
 ### 4.4 用語集リンク自動化
 
 1. **本文 → 用語集リンク**
-   * Pre-process で `g` フラグ付き語を検出した際、索引用 `<span>` の前後に `<a class="glossary-link" href="#gls-${slug}">用語集</a>` を挿入する。
-   * 複数回登場する語でも、`gls-src-<chapter>-<index>` 形式のアンカー ID を本文側に埋め込み、一意に識別する。
+   * Pre-process で `g` フラグ付き語を検出した際、索引用 `<span>` の直後に用語集リンクを挿入する。
+   * リンクは上付きの `†`（ダガー）記号で表示し、クリックで用語集ページへジャンプする。
+   * HTML 構造: `<a id="gls-src-{chapter}-{n}" class="glossary-link" href="_glossarypage.html#gls-{slug}"><sup>†</sup></a>`
+   * `†` 記号は `GLOSSARY_INDICATOR = '†'` としてハードコーディングされ、設定による変更は不可。
+   * 複数回登場する語でも、`gls-src-<chapter>-<n>` 形式のアンカー ID を本文側に埋め込み、一意に識別する。
 
-2. **用語集 → 本文リンク**
+2. **用語集 → 本文リンク（バックリンク）**
    * `_glossarypage.html` 生成時に各語へ `id="gls-${slug}"` を付与し、`glossary_terms.yml` に保存された `backlink_sources`（章番号・出現序数）を基に本文アンカーへのリンク一覧を表示する。
-   * 表記例: `本文へ戻る: 第03章 (p.45), 第07章 (p.88)`。ページ番号は `target-counter()` または `_index_matches.yml` の情報で解決する。
+   * 表記例: `→ p.1, 5, 12`（ページ番号のみ、重複排除・昇順ソート）。
+   * ページ番号は CSS `target-counter()` で解決する。
 
 3. **データ連携**
    * `vs index:auto` は候補抽出時に章番号・段落位置を `_index_matches.yml` に記録する。
@@ -160,39 +164,48 @@ terms:
 
 ## 6. book.yml の設定項目
 
-索引・用語集の振る舞いは `config/book.yml` の設定で制御する。既存の `index` セクションに加え、`glossary` セクションを新設し、共通キーと固有キーを以下のように扱う。
+索引・用語集の振る舞いは `config/book.yml` の設定で制御する。共通設定は `index_glossary` セクションに、個別設定は `index` / `glossary` セクションに配置する。
 
-### 6.1 共通キー（`index` / `glossary`）
+### 6.1 `index_glossary` セクション（共通設定）
 
-| キー | 説明 |
-| --- | --- |
-| `enabled` | 機能全体の ON/OFF。`false` で該当セクションの処理をスキップ |
-| `auto_discovery` | `vs index:auto` 実行時に MeCab などで自動候補抽出を行うか。`true` にすると、索引用/用語集用の候補抽出を行なう。 `false`なら、自動抽出は行なわず、手動登録 `[用語|読み]` のみを、索引/用語集の対象とする。|
-| `use_mecab` | 読み推測に MeCab を利用するか。`true` にすると、読みの自動推測を行なう。|
-| `timezone` | `_index_review.md` の新着判定に使うタイムゾーン |
-| `context_width` | `_index_review.md` で表示する前後文脈の文字幅 |
-| `smart_context_cutting` | 形態素境界で文脈をトリミングするか |
+索引と用語集で共有する設定項目。個別セクションの同名キーで上書き可能。
 
-### 6.2 `index` セクション固有キー（既存）
+| キー | 説明 | 既定値 |
+| --- | --- | --- |
+| `enabled` | 索引・用語集機能の ON/OFF | `true` |
+| `use_mecab` | 読み推測に MeCab を利用するか | `true` |
+| `timezone` | `_index_glossary_review.md` の新着判定に使うタイムゾーン | `'Asia/Tokyo'` |
+| `context_width` | レビュー UI で表示する前後文脈の文字幅 | `40` |
+| `smart_context_cutting` | 形態素境界で文脈をトリミングするか | `true` |
 
-| キー | 説明 |
-| --- | --- |
-| `title` | 生成ページのタイトル。既定値は「索引」|
-| `auto_approve_threshold` | スコアが閾値以上なら自動で `index_terms.yml` に追加 |
-| `review_threshold` | レビュー対象スコア閾値（この値以上でレビュー待ちキューへ） |
-| `high_candidates_ratio` | 候補を High/Normal に分割する比率 |
+```yaml
+# book.yml 例
+index_glossary:
+  use_mecab: true
+  timezone: 'Asia/Tokyo'
+  context_width: 40
+  smart_context_cutting: true
+```
 
-### 6.3 `glossary` セクション固有キー（新規）
+### 6.2 `index` セクション（索引固有）
 
-| キー | 説明 |
-| --- | --- |
-| `title` | 生成ページのタイトル。既定値は「用語集」|
-| `auto_approve_threshold` | スコアが閾値以上なら自動で `glossary_terms.yml` に追加 |
-| `review_threshold` | レビュー対象スコア閾値（この値以上でレビュー待ちキューへ） |
-| `high_candidates_ratio` | 候補を High/Normal に分割する比率 |
-| `require_definition` | `true` の場合、`g` フラグで説明文未記入なら `vs index:apply` でエラーにする |
-| `max_definition_length` | 説明文の最大文字数（超過した場合は警告） |
-| `link_label` | 本文に挿入するリンクラベル（空文字`""`ならリンクテキスト無し。） |
+| キー | 説明 | 既定値 |
+| --- | --- | --- |
+| `auto_discovery` | MeCab 等で自動候補抽出を行うか | `true` |
+| `title` | 索引ページのタイトル | `'索引'` |
+| `auto_approve_threshold` | スコアが閾値以上なら自動で `index_terms.yml` に追加 | `300` |
+| `review_threshold` | レビュー対象スコア閾値 | `150` |
+| `high_candidates_ratio` | 候補を High/Low に分割する比率 | `0.25` |
+
+### 6.3 `glossary` セクション（用語集固有）
+
+| キー | 説明 | 既定値 |
+| --- | --- | --- |
+| `title` | 用語集ページのタイトル | `'用語集'` |
+| `require_definition` | `g` フラグで説明文未記入ならエラーにするか | `false` |
+| `max_definition_length` | 説明文の最大文字数（超過で警告） | `200` |
+
+> **注意**: 旧仕様の `link_label` オプションは廃止されました。本文中の用語集リンクは常に上付きの `†` 記号で表示され、アクセント色（`book.yml` の `color` 設定に連動）でスタイリングされます。
 
 ---
 
@@ -254,7 +267,7 @@ terms:
 1. `_index_glossary_review.md` パーサー単体テスト（説明文抽出・フラグ判定）。
 2. `glossary_terms.yml` 更新テスト（`backlink_sources` の保存とリジェクト処理）。
 3. `_glossarypage.html` 生成テスト（アンカー ID / 戻りリンク / ページ番号表記）。
-4. Pre-process で本文リンクを挿入するテスト（`link_label`, `backlink_links` の On/Off）。
+4. Pre-process で本文リンク（`†` 記号）を挿入するテスト。
 5. Vivliostyle ビルドを含む統合テスト（PDF 内でのリンク遷移確認）。
 6. エッジケース: 同一用語が 10 回以上登場する章、説明文に表/リストが含まれる場合、複数読みの用語などをカバーする。
 

@@ -67,6 +67,7 @@ module Vivlio
             @term_scores = Hash.new(0.0)
             @term_contexts = Hash.new { |h, k| h[k] = [] }
             @yomi_inferrer = YomiInferrer.new
+            @context_width = load_context_width
           end
 
           # 全章を解析して索引候補を抽出
@@ -264,15 +265,41 @@ module Vivlio
           end
 
           # 用語の周辺コンテキストを抽出
+          # 前方が不足する場合は後方を延長、後方が不足する場合は前方を延長
           def extract_context(content, term)
             idx = content.index(term)
             return '' if idx.nil?
 
-            start_idx = [idx - 30, 0].max
-            end_idx = [idx + term.length + 30, content.length].min
+            w = @context_width
+            total_width = w * 2
 
-            context = content[start_idx...end_idx]
+            ideal_start = idx - w
+            ideal_end = idx + term.length + w
+
+            # 前方不足分を後方に補償
+            if ideal_start < 0
+              ideal_end += ideal_start.abs
+              ideal_start = 0
+            end
+
+            # 後方不足分を前方に補償
+            if ideal_end > content.length
+              overshoot = ideal_end - content.length
+              ideal_start = [ideal_start - overshoot, 0].max
+              ideal_end = content.length
+            end
+
+            context = content[ideal_start...ideal_end]
             context.gsub(/\s+/, ' ').strip
+          end
+
+          # config から context_width を読み込み（既定値 40）
+          def load_context_width
+            shared = Common::CONFIG.respond_to?(:index_glossary) ? Common::CONFIG.index_glossary : nil
+            shared_hash = shared.respond_to?(:to_h) ? shared.to_h : {}
+            shared_hash[:context_width] || 40
+          rescue StandardError
+            40
           end
 
           # 抽出用にコンテンツをサニタイズ

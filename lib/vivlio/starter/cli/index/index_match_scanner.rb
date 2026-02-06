@@ -66,7 +66,7 @@ module Vivlio
           # ただし、[text](url) 形式のリンクは除外（後ろに ( が続く場合はスキップ）
           INDEX_TERM_PATTERN = /\[([^\[\]\n]+)\](?!\()/
 
-          attr_reader :seen_terms, :term_occurrence, :index_data, :matches, :config_missing
+          attr_reader :seen_terms, :term_occurrence, :index_data, :matches, :config_missing, :no_matches
 
           def initialize(defer_warnings: false)
             @seen_terms = Set[]
@@ -78,6 +78,8 @@ module Vivlio
             @no_matches = false
             @defer_warnings = defer_warnings
             @config_terms = load_config_terms
+            @glossary_terms = load_glossary_terms
+            @glossary_backlinks = Hash.new { |h, k| h[k] = [] }
           end
 
           # config/index_terms.yml を読み込む
@@ -103,6 +105,49 @@ module Vivlio
             end
           end
 
+          # config/glossary_terms.yml を読み込む
+          def load_glossary_terms
+            config_file = 'config/glossary_terms.yml'
+            return {} unless File.exist?(config_file)
+
+            begin
+              data = YAML.load_file(config_file)
+              terms = data['terms'] || []
+              # 用語名をキーとしたハッシュに変換
+              terms.to_h { |t| [t['term'], t] }
+            rescue StandardError => e
+              Common.log_warn("config/glossary_terms.yml の読み込みに失敗しました: #{e.message}")
+              {}
+            end
+          end
+
+          # 用語集のバックリンクを glossary_terms.yml に保存
+          def save_glossary_backlinks!
+            return if @glossary_backlinks.empty?
+
+            config_file = 'config/glossary_terms.yml'
+            return unless File.exist?(config_file)
+
+            begin
+              data = YAML.load_file(config_file)
+              terms = data['terms'] || []
+
+              terms.each do |term|
+                term_name = term['term']
+                next unless @glossary_backlinks.key?(term_name)
+
+                term['backlink_sources'] = @glossary_backlinks[term_name]
+              end
+
+              data['terms'] = terms
+              data['updated_at'] = Time.now.strftime('%Y-%m-%d %H:%M:%S')
+              File.write(config_file, data.to_yaml, encoding: 'utf-8')
+              Common.log_info("用語集のバックリンクを更新しました")
+            rescue StandardError => e
+              Common.log_warn("用語集のバックリンク保存に失敗しました: #{e.message}")
+            end
+          end
+
           # 全章ファイルをスキャンして索引語をタグ付け
           # @param chapters [Array<String>] 対象章のファイル名リスト（例: ['11-basics', '12-advanced']）
           # @param read_only [Boolean] 読み取り専用モード（ファイルを書き換えない、contents/ を優先）
@@ -124,6 +169,7 @@ module Vivlio
             end
 
             save_matches!
+            save_glossary_backlinks!
             Common.log_success("索引語スキャン完了: #{@matches.size} 件の索引語を検出")
           end
 
@@ -374,7 +420,37 @@ module Vivlio
             # タグを生成して返す（HTMLタグをエスケープ）
             escaped_term = CGI.escapeHTML(term_text)
             escaped_yomi = CGI.escapeHTML(yomi.to_s)
-            %(<#{tag_name} id="#{anchor_id}" class="index-term" data-yomi="#{escaped_yomi}">#{escaped_term}</#{tag_name}>)
+            index_tag = %(<#{tag_name} id="#{anchor_id}" class="index-term" data-yomi="#{escaped_yomi}">#{escaped_term}</#{tag_name}>)
+
+            # 用語集に登録されている場合は、用語集リンクを追加
+            glossary_link = build_glossary_link(term_text, file_basename, occurrence_num)
+            glossary_link ? "#{index_tag}#{glossary_link}" : index_tag
+          end
+
+          # 用語集インジケータ記号（固定）
+          GLOSSARY_INDICATOR = '†'
+
+          # 用語集リンクを生成
+          # 常に†記号を上付きで表示し、クリックで用語集ページへジャンプ
+          def build_glossary_link(term_text, file_basename, occurrence_num)
+            return nil unless @glossary_terms.key?(term_text)
+
+            slug = generate_glossary_slug(term_text)
+            # 用語集へのバックリンク情報を記録（章+用語スラッグ+出現番号で一意化）
+            gls_src_id = "gls-src-#{file_basename}-#{slug}-#{occurrence_num}"
+            @glossary_backlinks[term_text] << {
+              'chapter' => file_basename,
+              'occurrence' => occurrence_num,
+              'anchor_id' => gls_src_id
+            }
+
+            # 用語集へのリンクを生成（†記号を上付きで表示）
+            %(<a id="#{gls_src_id}" class="glossary-link" href="_glossarypage.html#gls-#{slug}"><sup>#{GLOSSARY_INDICATOR}</sup></a>)
+          end
+
+          # 用語集スラッグを生成
+          def generate_glossary_slug(term)
+            term.downcase.gsub(/\s+/, '-').gsub(/[^\p{L}\p{N}\-]/, '')
           end
 
           # 索引データを _index_matches.yml に保存
@@ -404,9 +480,6 @@ module Vivlio
             end
           end
 
-          def no_matches?
-            @no_matches
-          end
         end
       end
     end

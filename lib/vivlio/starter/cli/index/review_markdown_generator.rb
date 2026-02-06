@@ -4,14 +4,24 @@
 # Class: ReviewMarkdownGenerator
 # ----------------------------------------------------------------
 # 責務:
-#   _index_review.md の生成・解析を担当
-#   仕様書 indexing_implementation_spec3.md に準拠
+#   _index_glossary_review.md の生成・解析を担当
+#   仕様書 index_glossary_spec.md に準拠
 #
 # 主要メソッド:
 #   - generate!: レビュー用Markdownを生成（4セクション構成）
-#   - parse_approved: 承認済み候補を抽出
+#   - parse_index_approved: 索引として承認された候補を抽出
+#   - parse_glossary_approved: 用語集として承認された候補を抽出
 #   - parse_rejected: リジェクト候補を抽出
-#   - parse_unreject: Rejectedセクションで[r]マークされた候補を抽出
+#   - parse_unreject: Rejectedセクションで解除された候補を抽出
+#
+# フラグ体系:
+#   - [i]: 索引のみ
+#   - [g]: 用語集のみ（説明文必須）
+#   - [ig]/[gi]: 索引と用語集の両方
+#   - [r]: 両方からリジェクト
+#   - [-i]: 索引からのみ削除
+#   - [-g]: 用語集からのみ削除
+#   - [ ]: 保留（次回再表示）
 # ================================================================
 
 require 'fileutils'
@@ -22,7 +32,9 @@ module Vivlio
   module Starter
     module CLI
       class ReviewMarkdownGenerator
-        REVIEW_FILE = '_index_review.md'
+        # 旧ファイル名との互換性のため、両方をチェック
+        REVIEW_FILE = '_index_glossary_review.md'
+        LEGACY_REVIEW_FILE = '_index_review.md'
 
         def initialize
           @content = nil
@@ -46,34 +58,71 @@ module Vivlio
         # レビューファイルが存在するか
         # @return [Boolean]
         def exists?
-          File.exist?(REVIEW_FILE)
+          File.exist?(REVIEW_FILE) || File.exist?(LEGACY_REVIEW_FILE)
         end
 
-        # 承認済み候補を抽出（High/Lowセクションから[x]マークされたもの）
-        # @return [Array<Hash>] 承認済み候補のリスト
-        def parse_approved
-          return [] unless File.exist?(REVIEW_FILE)
+        # 実際のレビューファイルパスを取得
+        # @return [String]
+        def review_file_path
+          return REVIEW_FILE if File.exist?(REVIEW_FILE)
+          return LEGACY_REVIEW_FILE if File.exist?(LEGACY_REVIEW_FILE)
+          REVIEW_FILE
+        end
 
-          content = File.read(REVIEW_FILE, encoding: 'utf-8')
+        # 索引として承認された候補を抽出（[i], [ig], [gi], [x] マーク）
+        # @return [Array<Hash>] 索引候補のリスト
+        def parse_index_approved
+          return [] unless exists?
+
+          content = File.read(review_file_path, encoding: 'utf-8')
           approved = []
 
-          # High Candidates と Low Candidates セクションから [x] を抽出
-          # 形式: - [x] `NEW!` **用語** (読み) - スコア: 123.5
-          # または: - [x] `Today` **用語** (読み)
-          # または: - [x] **用語** (読み) - スコア: 123.5
-          content.scan(/^- \[x\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)/) do |term, yomi|
+          # [i], [ig], [gi], [x] を索引として抽出
+          # 形式: - [i] `NEW!` **用語** (読み) - スコア: 123.5
+          content.scan(/^- \[(?:i|ig|gi|x)\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)/) do |term, yomi|
             approved << { 'term' => term, 'yomi' => yomi }
           end
 
           approved
         end
 
-        # リジェクト候補を抽出（High/Lowセクションから[r]マークされたもの）
+        # 用語集として承認された候補を抽出（[g], [ig], [gi] マーク）
+        # 説明文も抽出する
+        # @return [Array<Hash>] 用語集候補のリスト（definition 付き）
+        def parse_glossary_approved
+          return [] unless exists?
+
+          content = File.read(review_file_path, encoding: 'utf-8')
+          approved = []
+
+          # [g], [ig], [gi] を用語集として抽出
+          parse_terms_with_definitions(content).each do |entry|
+            flag = entry[:flag]
+            next unless flag.match?(/^(?:g|ig|gi)$/)
+
+            approved << {
+              'term' => entry[:term],
+              'yomi' => entry[:yomi],
+              'definition' => entry[:definition],
+              'contexts' => entry[:contexts]
+            }
+          end
+
+          approved
+        end
+
+        # 後方互換性のため parse_approved も維持（索引用）
+        # @return [Array<Hash>] 承認済み候補のリスト
+        def parse_approved
+          parse_index_approved
+        end
+
+        # リジェクト候補を抽出（High/Lowセクションから[r], [-ig]マークされたもの）
         # @return [Array<Hash>] リジェクト候補のリスト
         def parse_rejected
-          return [] unless File.exist?(REVIEW_FILE)
+          return [] unless exists?
 
-          content = File.read(REVIEW_FILE, encoding: 'utf-8')
+          content = File.read(review_file_path, encoding: 'utf-8')
           rejected = []
 
           # Rejectedセクション以外から [r] マークを抽出
@@ -86,8 +135,9 @@ module Vivlio
                              content
                            end
 
-          search_content.scan(/^- \[r\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)(?: - スコア: ([\d.]+))?/) do |term, yomi, score|
-            entry = { 'term' => term, 'yomi' => yomi }
+          # [r], [-ig], [-gi] を両方リジェクトとして抽出
+          search_content.scan(/^- \[(?:r|-ig|-gi)\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)(?: - スコア: ([\d.]+))?/) do |term, yomi, score|
+            entry = { 'term' => term, 'yomi' => yomi, 'kind' => 'both' }
             entry['score'] = score.to_f if score
             rejected << entry
           end
@@ -95,12 +145,48 @@ module Vivlio
           rejected
         end
 
-        # Rejectedセクションで[r]マークされた候補を抽出（リジェクト解除用）
+        # 索引のみリジェクト（[-i]マーク）を抽出
+        # @return [Array<Hash>] 索引リジェクト候補のリスト
+        def parse_index_rejected
+          return [] unless exists?
+
+          content = File.read(review_file_path, encoding: 'utf-8')
+          rejected = []
+
+          rejected_section_start = content.index('## 4. 除外済みリスト')
+          search_content = rejected_section_start ? content[0...rejected_section_start] : content
+
+          search_content.scan(/^- \[-i\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)/) do |term, yomi|
+            rejected << { 'term' => term, 'yomi' => yomi, 'kind' => 'index' }
+          end
+
+          rejected
+        end
+
+        # 用語集のみリジェクト（[-g]マーク）を抽出
+        # @return [Array<Hash>] 用語集リジェクト候補のリスト
+        def parse_glossary_rejected
+          return [] unless exists?
+
+          content = File.read(review_file_path, encoding: 'utf-8')
+          rejected = []
+
+          rejected_section_start = content.index('## 4. 除外済みリスト')
+          search_content = rejected_section_start ? content[0...rejected_section_start] : content
+
+          search_content.scan(/^- \[-g\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)/) do |term, yomi|
+            rejected << { 'term' => term, 'yomi' => yomi, 'kind' => 'glossary' }
+          end
+
+          rejected
+        end
+
+        # Rejectedセクションで解除マークされた候補を抽出（リジェクト解除用）
         # @return [Array<Hash>] リジェクト解除候補のリスト
         def parse_unreject
-          return [] unless File.exist?(REVIEW_FILE)
+          return [] unless exists?
 
-          content = File.read(REVIEW_FILE, encoding: 'utf-8')
+          content = File.read(review_file_path, encoding: 'utf-8')
           unreject = []
 
           # Rejectedセクションを特定
@@ -109,8 +195,8 @@ module Vivlio
 
           rejected_content = content[rejected_section_start..]
 
-          # Rejectedセクション内で [r] マークされたものを抽出
-          rejected_content.scan(/^- \[r\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)(?: - スコア: ([\d.]+))?/) do |term, yomi, score|
+          # Rejectedセクション内で [i], [g], [ig] マークされたものを抽出（解除）
+          rejected_content.scan(/^- \[(?:i|g|ig|gi|x)\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)/) do |term, yomi|
             unreject << { 'term' => term, 'yomi' => yomi }
           end
 
@@ -120,9 +206,9 @@ module Vivlio
         # Termsセクションで読みが変更された用語を抽出
         # @return [Array<Hash>] 読み変更された用語のリスト
         def parse_yomi_changes
-          return [] unless File.exist?(REVIEW_FILE)
+          return [] unless exists?
 
-          content = File.read(REVIEW_FILE, encoding: 'utf-8')
+          content = File.read(review_file_path, encoding: 'utf-8')
           changes = []
 
           # Termsセクションを特定
@@ -134,8 +220,8 @@ module Vivlio
           terms_end = high_section_start || content.length
           terms_content = content[terms_section_start...terms_end]
 
-          # [x] マークされた用語の読みを抽出
-          terms_content.scan(/^- \[x\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)/) do |term, yomi|
+          # [i], [g], [ig], [x] マークされた用語の読みを抽出
+          terms_content.scan(/^- \[(?:i|g|ig|gi|x)\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)/) do |term, yomi|
             changes << { 'term' => term, 'yomi' => yomi }
           end
 
@@ -145,14 +231,97 @@ module Vivlio
         # レビューファイルを削除
         def cleanup!
           FileUtils.rm_f(REVIEW_FILE)
+          FileUtils.rm_f(LEGACY_REVIEW_FILE)
+        end
+
+        # 用語と説明文をパース
+        # 出現箇所リストと説明文を区別して抽出
+        # @param content [String] Markdown内容
+        # @return [Array<Hash>] パース結果
+        def parse_terms_with_definitions(content)
+          results = []
+          lines = content.lines
+          i = 0
+
+          while i < lines.size
+            line = lines[i]
+
+            # 用語行を検出: - [flag] **用語** (読み) - スコア: 123.5
+            if line =~ /^- \[([^\]]+)\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)/
+              flag = Regexp.last_match(1)
+              term = Regexp.last_match(2)
+              yomi = Regexp.last_match(3)
+
+              i += 1
+              contexts = []
+              definition_lines = []
+              in_definition = false
+
+              # 次の用語行まで走査
+              while i < lines.size && lines[i] !~ /^- \[/
+                current_line = lines[i]
+
+                # 出現箇所行: "  - chapter: context"
+                if current_line =~ /^  - ([^:]+): (.+)/
+                  chapter = Regexp.last_match(1)
+                  context_text = Regexp.last_match(2)
+                  contexts << { 'chapter' => chapter, 'context' => context_text }
+                  i += 1
+                  next
+                end
+
+                # 空行で説明文開始を判定
+                if current_line.strip.empty?
+                  in_definition = true
+                  i += 1
+                  next
+                end
+
+                # インデントされた行は説明文
+                if in_definition && current_line =~ /^  (.+)/
+                  definition_lines << Regexp.last_match(1)
+                end
+
+                i += 1
+              end
+
+              results << {
+                flag: flag,
+                term: term,
+                yomi: yomi,
+                contexts: contexts,
+                definition: definition_lines.join("\n").strip
+              }
+            else
+              i += 1
+            end
+          end
+
+          results
         end
 
         private
 
-        # 設定を読み込み
+        # 設定を読み込み（index_glossary 共通設定 + index 個別設定をマージ）
         def load_index_config
-          config = Common::CONFIG || {}
-          config['index'] || {}
+          shared = load_shared_config
+          idx = Common::CONFIG.index
+          idx_hash = idx.respond_to?(:to_h) ? idx.to_h : (idx || {})
+          shared.merge(idx_hash)
+        rescue StandardError
+          {}
+        end
+
+        # 共通設定（index_glossary）を読み込み
+        def load_shared_config
+          return {} unless Common::CONFIG.respond_to?(:index_glossary)
+
+          shared = Common::CONFIG.index_glossary
+          return {} if shared.nil?
+
+          shared.respond_to?(:to_h) ? shared.to_h : {}
+        rescue StandardError
+          {}
         end
 
         # Markdown形式を構築
@@ -165,8 +334,9 @@ module Vivlio
           rejected = data[:rejected] || []
 
           <<~MARKDOWN
-            # 索引レビュー
-            ※ [x]で承認、[r]で棄却。読みの修正は ( ) 内を編集してください。
+            # 索引・用語集レビュー
+            ※ フラグ: [i]=索引のみ、[g]=用語集のみ、[ig]=両方、[r]=棄却、[-i]=索引から除外、[-g]=用語集から除外
+            ※ 読みの修正は ( ) 内を編集。用語集の説明文は空行の後にインデントして記述。
 
             #{build_terms_section(terms)}
 
@@ -267,7 +437,7 @@ module Vivlio
         # 4. 除外済みリストセクション（Candidatesと同様の形式、rejected_atでラベル判定）
         def build_rejected_section(rejected)
           section = "## 4. 除外済みリスト (Rejected: #{rejected.size}語)\n"
-          section += "※ 間違えて除外したものは [r] を入れると、候補(Candidates)に復帰します。\n\n"
+          section += "※ 復帰させたいものは [i], [g], [ig] を入れると候補に戻ります。\n\n"
 
           if rejected.empty?
             section += "除外済みの用語はありません。\n"
@@ -287,7 +457,9 @@ module Vivlio
           label = determine_label(term)
           score = term['score']
           source = term['source']
-          checkbox = checked ? '[x]' : '[ ]'
+          definition = term['definition']
+          # 登録先に基づいてフラグを決定
+          checkbox = determine_registration_flag(term, checked)
 
           line = "- #{checkbox}"
           line += " `#{label}`" if label
@@ -305,10 +477,36 @@ module Vivlio
           contexts.first(2).each do |ctx|
             chapter = ctx['chapter'] || '不明'
             context_text = extract_context(ctx['context'])
-            line += "  - #{chapter} - \"#{context_text}\"\n"
+            line += "  - #{chapter}: #{context_text}\n"
+          end
+
+          # 用語集の定義がある場合は表示
+          if definition.to_s.strip.length.positive?
+            line += "\n"
+            definition.to_s.each_line { |def_line| line += "  #{def_line}" }
+            line += "\n" unless line.end_with?("\n")
           end
 
           line + "\n"
+        end
+
+        # 登録先に基づいてフラグを決定
+        # @param term [Hash] 用語データ
+        # @param checked [Boolean] チェック済みかどうか
+        # @return [String] フラグ文字列
+        def determine_registration_flag(term, checked)
+          return '[ ]' unless checked
+
+          in_index = term['in_index'] != false # 既定はtrue（後方互換性）
+          in_glossary = term['in_glossary'] == true
+
+          if in_index && in_glossary
+            '[ig]'
+          elsif in_glossary
+            '[g]'
+          else
+            '[i]'
+          end
         end
 
         # 除外済み行を構築
@@ -328,7 +526,7 @@ module Vivlio
           contexts.first(2).each do |ctx|
             chapter = ctx['chapter'] || '不明'
             context_text = extract_context(ctx['context'])
-            line += "  - #{chapter} - \"#{context_text}\"\n"
+            line += "  - #{chapter}: #{context_text}\n"
           end
 
           line
@@ -359,7 +557,7 @@ module Vivlio
           contexts.first(2).each do |ctx|
             chapter = ctx['chapter'] || '不明'
             context_text = extract_context(ctx['context'])
-            line += "  - #{chapter} - \"#{context_text}\"\n"
+            line += "  - #{chapter}: #{context_text}\n"
           end
 
           line + "\n"
@@ -466,7 +664,7 @@ module Vivlio
           # 改行を除去
           text = context_text.to_s.gsub(/[\r\n]+/, ' ').strip
 
-          context_width = @config['context_width'] || 40
+          context_width = @config[:context_width] || 40
 
           if text.length <= context_width * 2
             text

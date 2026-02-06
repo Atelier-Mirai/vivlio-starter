@@ -36,7 +36,7 @@ module Vivlio
 
           @generator.generate!(data)
 
-          assert File.exist?('_index_review.md')
+          assert File.exist?('_index_glossary_review.md')
         end
 
         def test_generate_includes_all_sections
@@ -57,7 +57,7 @@ module Vivlio
 
           @generator.generate!(data)
 
-          content = File.read('_index_review.md')
+          content = File.read('_index_glossary_review.md')
           assert_includes content, '## 1. 登録済み用語の確認'
           assert_includes content, '## 2. 推奨候補'
           assert_includes content, '## 3. 一般候補'
@@ -76,7 +76,7 @@ module Vivlio
 
           @generator.generate!(data)
 
-          content = File.read('_index_review.md')
+          content = File.read('_index_glossary_review.md')
           assert_includes content, '[手動登録]'
         end
 
@@ -92,7 +92,7 @@ module Vivlio
 
           @generator.generate!(data)
 
-          content = File.read('_index_review.md')
+          content = File.read('_index_glossary_review.md')
           assert_includes content, 'スコア: 150.5'
         end
 
@@ -108,7 +108,7 @@ module Vivlio
             - [ ] `NEW!` **Python** (ぱいそん) - スコア: 150.0
               - 02-basics - "another context"
           MD
-          File.write('_index_review.md', content)
+          File.write('_index_glossary_review.md', content)
 
           approved = @generator.parse_approved
 
@@ -131,7 +131,7 @@ module Vivlio
 
             ## 4. 除外済みリスト (Rejected: 0語)
           MD
-          File.write('_index_review.md', content)
+          File.write('_index_glossary_review.md', content)
 
           rejected = @generator.parse_rejected
 
@@ -149,7 +149,7 @@ module Vivlio
 
             - [r] `Today` **AlreadyRejected** (おるれでぃりじぇくてっど)
           MD
-          File.write('_index_review.md', content)
+          File.write('_index_glossary_review.md', content)
 
           rejected = @generator.parse_rejected
 
@@ -165,12 +165,12 @@ module Vivlio
 
             ## 4. 除外済みリスト (Rejected: 2語)
 
-            - [r] `Today` **ToUnreject** (とぅあんりじぇくと) - スコア: 50.0
+            - [i] `Today` **ToUnreject** (とぅあんりじぇくと) - スコア: 50.0
               - 01-intro - "context"
 
             - [ ] `Today` **StayRejected** (すていりじぇくてっど)
           MD
-          File.write('_index_review.md', content)
+          File.write('_index_glossary_review.md', content)
 
           unreject = @generator.parse_unreject
 
@@ -189,7 +189,7 @@ module Vivlio
 
             ## 2. 推奨候補 (High Candidates: 0語)
           MD
-          File.write('_index_review.md', content)
+          File.write('_index_glossary_review.md', content)
 
           changes = @generator.parse_yomi_changes
 
@@ -205,17 +205,17 @@ module Vivlio
         end
 
         def test_exists_returns_true_when_file_present
-          File.write('_index_review.md', 'test')
+          File.write('_index_glossary_review.md', 'test')
 
           assert @generator.exists?
         end
 
         def test_cleanup_removes_file
-          File.write('_index_review.md', 'test')
+          File.write('_index_glossary_review.md', 'test')
 
           @generator.cleanup!
 
-          refute File.exist?('_index_review.md')
+          refute File.exist?('_index_glossary_review.md')
         end
       end
     end

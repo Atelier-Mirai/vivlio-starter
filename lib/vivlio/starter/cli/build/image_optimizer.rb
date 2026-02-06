@@ -17,11 +17,11 @@ module Vivlio
             p = preset&.to_sym || :medium
             preset_task = { high: 'resize:high', low: 'resize:low' }[p] || 'resize:medium'
 
-            Common.log_action("[Step 2] 画像の最適化（WebP 変換/リサイズ）を実行します… preset=#{p}")
+            Common.log_action("[Step 1] 画像の最適化（WebP 変換/リサイズ）を実行します… preset=#{p}")
             dirs = [Common::IMAGES_DIR, File.join(Common::STYLESHEETS_DIR, 'images')]
             dirs.each do |d|
               if Dir.exist?(d)
-                Common.log_info("[Step 2] 対象ディレクトリ: #{d}（preset: #{p}）")
+                Common.log_info("[Step 1] 対象ディレクトリ: #{d}（preset: #{p}）")
                 case preset_task
                 when 'resize:high'
                   ResizeCommands.execute_resize_high(d)
@@ -31,20 +31,20 @@ module Vivlio
                   ResizeCommands.execute_resize_medium(d)
                 end
               else
-                Common.log_info("[Step 2] スキップ（存在しません）: #{d}")
+                Common.log_info("[Step 1] スキップ（存在しません）: #{d}")
               end
             end
-            Common.log_success('[Step 2] 画像最適化が完了しました')
+            Common.log_success('[Step 1] 画像最適化が完了しました')
           end
 
           # Step 3: frontispiece / ornament の事前生成
           def prepare_theme_images!
-            Common.log_action('[Step 3] frontispiece / ornament の準備を開始します…')
+            Common.log_action('[Step 2] frontispiece / ornament の準備を開始します…')
 
             cfg = Common::CONFIG
             theme_cfg = cfg.dig(:theme)
             unless theme_cfg
-              Common.log_info('[Step 3] theme 設定が存在しないためスキップします')
+              Common.log_info('[Step 2] theme 設定が存在しないためスキップします')
               return
             end
 
@@ -64,23 +64,23 @@ module Vivlio
 
             if frontispiece_source && !frontispiece_source.to_s.strip.empty?
               path = Vivlio::Starter::CLI::PreProcessCommands.resolve_frontispiece_path(frontispiece_source, allow_generation: true)
-              Common.log_success("[Step 3] frontispiece を準備しました: #{path}")
+              Common.log_success("[Step 2] frontispiece を準備しました: #{path}")
               generated_any = true
             else
-              Common.log_info('[Step 3] frontispiece 設定なし（既定画像を使用）')
+              Common.log_info('[Step 2] frontispiece 設定なし（既定画像を使用）')
             end
 
             if ornament_source && !ornament_source.to_s.strip.empty?
               path = Vivlio::Starter::CLI::PreProcessCommands.resolve_ornament_path(ornament_source, allow_generation: true)
-              Common.log_success("[Step 3] ornament を準備しました: #{path}")
+              Common.log_success("[Step 2] ornament を準備しました: #{path}")
               generated_any = true
             else
-              Common.log_info('[Step 3] ornament 設定なし（既定画像を使用）')
+              Common.log_info('[Step 2] ornament 設定なし（既定画像を使用）')
             end
 
-            Common.log_info('[Step 3] 追加生成は不要でした') unless generated_any
+            Common.log_info('[Step 2] 追加生成は不要でした') unless generated_any
           rescue StandardError => e
-            Common.log_warn("[Step 3] frontispiece / ornament 準備中にエラーが発生しました: #{e.message}")
+            Common.log_warn("[Step 2] frontispiece / ornament 準備中にエラーが発生しました: #{e.message}")
           end
         end
       end

@@ -61,24 +61,24 @@ module Vivlio
             targets_for_toc = (chapter_htmls_preface + chapter_htmls_main + chapter_htmls_appx + chapter_htmls_post).uniq.sort
 
             if targets_for_toc.empty?
-              Common.log_warn('[Step 6] 対象HTMLが見つかりません。Step 6 をスキップします。')
+              Common.log_warn('[Step 5] 対象HTMLが見つかりません。スキップします。')
               return
             end
 
-            Common.log_info("[Step 6] 対象: #{targets_for_toc.map { |p| File.basename(p) }.join(', ')}")
+            Common.log_info("[Step 5] 対象: #{targets_for_toc.map { |p| File.basename(p) }.join(', ')}")
             TocCommands.execute_toc({}, targets_for_toc)
             toc_html = File.join(base_dir, '_toc.html')
             unless File.exist?(toc_html)
-              Common.log_warn('[Step 6] _toc.html が見つかりません。TOC の PDF 生成をスキップします。')
+              Common.log_warn('[Step 5] _toc.html が見つかりません。TOC の PDF 生成をスキップします。')
               return
             end
             # TOC も post_process を適用して見出しメタを付与（PDFアウトライン用）
             PostProcessCommands.execute_post_process({}, ['_toc'])
-            Common.log_info('[Step 6] _toc.html に post_process を適用しました（見出しメタ付与）')
+            Common.log_info('[Step 5] _toc.html に post_process を適用しました（見出しメタ付与）')
             EntriesCommands.execute_entries({}, ['_toc'])
             # 改良された pdf コマンドに出力ファイル名を渡してリネームも一括処理
             PdfCommands.execute_pdf({}, '_toc.pdf')
-            Common.log_success('[Step 6] _toc.pdf を生成しました') if File.exist?('_toc.pdf')
+            Common.log_success('[Step 5] _toc.pdf を生成しました') if File.exist?('_toc.pdf')
           end
 
           # Entry 配列または basename 配列から章番号配列を抽出
