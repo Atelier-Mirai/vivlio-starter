@@ -120,12 +120,16 @@ _glossarypage.html       # 生成された用語集ページ
 ### 4.4 用語集リンク自動化
 
 1. **本文 → 用語集リンク**
-   * Pre-process で `g` フラグ付き語を検出した際、索引用 `<span>` の前後に `<a class="glossary-link" href="#gls-${slug}">用語集</a>` を挿入する。
-   * 複数回登場する語でも、`gls-src-<chapter>-<index>` 形式のアンカー ID を本文側に埋め込み、一意に識別する。
+   * Pre-process で `g` フラグ付き語を検出した際、索引用 `<span>` の直後に用語集リンクを挿入する。
+   * リンクは上付きの `†`（ダガー）記号で表示し、クリックで用語集ページへジャンプする。
+   * HTML 構造: `<a id="gls-src-{chapter}-{n}" class="glossary-link" href="_glossarypage.html#gls-{slug}"><sup>†</sup></a>`
+   * `†` 記号は `GLOSSARY_INDICATOR = '†'` としてハードコーディングされ、設定による変更は不可。
+   * 複数回登場する語でも、`gls-src-<chapter>-<n>` 形式のアンカー ID を本文側に埋め込み、一意に識別する。
 
-2. **用語集 → 本文リンク**
+2. **用語集 → 本文リンク（バックリンク）**
    * `_glossarypage.html` 生成時に各語へ `id="gls-${slug}"` を付与し、`glossary_terms.yml` に保存された `backlink_sources`（章番号・出現序数）を基に本文アンカーへのリンク一覧を表示する。
-   * 表記例: `本文へ戻る: 第03章 (p.45), 第07章 (p.88)`。ページ番号は `target-counter()` または `_index_matches.yml` の情報で解決する。
+   * 表記例: `→ p.1, 5, 12`（ページ番号のみ、重複排除・昇順ソート）。
+   * ページ番号は CSS `target-counter()` で解決する。
 
 3. **データ連携**
    * `vs index:auto` は候補抽出時に章番号・段落位置を `_index_matches.yml` に記録する。
@@ -200,7 +204,8 @@ index_glossary:
 | `title` | 用語集ページのタイトル | `'用語集'` |
 | `require_definition` | `g` フラグで説明文未記入ならエラーにするか | `false` |
 | `max_definition_length` | 説明文の最大文字数（超過で警告） | `200` |
-| `link_label` | 本文に挿入するリンクラベル（空文字で非表示） | `'→用語集'` |
+
+> **注意**: 旧仕様の `link_label` オプションは廃止されました。本文中の用語集リンクは常に上付きの `†` 記号で表示され、アクセント色（`book.yml` の `color` 設定に連動）でスタイリングされます。
 
 ---
 
@@ -262,7 +267,7 @@ index_glossary:
 1. `_index_glossary_review.md` パーサー単体テスト（説明文抽出・フラグ判定）。
 2. `glossary_terms.yml` 更新テスト（`backlink_sources` の保存とリジェクト処理）。
 3. `_glossarypage.html` 生成テスト（アンカー ID / 戻りリンク / ページ番号表記）。
-4. Pre-process で本文リンクを挿入するテスト（`link_label`, `backlink_links` の On/Off）。
+4. Pre-process で本文リンク（`†` 記号）を挿入するテスト。
 5. Vivliostyle ビルドを含む統合テスト（PDF 内でのリンク遷移確認）。
 6. エッジケース: 同一用語が 10 回以上登場する章、説明文に表/リストが含まれる場合、複数読みの用語などをカバーする。
 

@@ -427,34 +427,25 @@ module Vivlio
             glossary_link ? "#{index_tag}#{glossary_link}" : index_tag
           end
 
+          # 用語集インジケータ記号（固定）
+          GLOSSARY_INDICATOR = '†'
+
           # 用語集リンクを生成
+          # 常に†記号を上付きで表示し、クリックで用語集ページへジャンプ
           def build_glossary_link(term_text, file_basename, occurrence_num)
             return nil unless @glossary_terms.key?(term_text)
 
-            # 用語集へのバックリンク情報を記録
-            gls_src_id = "gls-src-#{file_basename}-#{occurrence_num}"
+            slug = generate_glossary_slug(term_text)
+            # 用語集へのバックリンク情報を記録（章+用語スラッグ+出現番号で一意化）
+            gls_src_id = "gls-src-#{file_basename}-#{slug}-#{occurrence_num}"
             @glossary_backlinks[term_text] << {
               'chapter' => file_basename,
               'occurrence' => occurrence_num,
               'anchor_id' => gls_src_id
             }
 
-            # 用語集へのリンクを生成
-            slug = generate_glossary_slug(term_text)
-            link_label = glossary_link_label
-            return nil if link_label.empty?
-
-            %(<a id="#{gls_src_id}" class="glossary-link" href="_glossarypage.html#gls-#{slug}">#{CGI.escapeHTML(link_label)}</a>)
-          end
-
-          # 用語集リンクラベルを取得
-          def glossary_link_label
-            @glossary_link_label ||= begin
-              config = Common::CONFIG.glossary
-              config.respond_to?(:link_label) ? (config.link_label || '') : ''
-            rescue StandardError
-              ''
-            end
+            # 用語集へのリンクを生成（†記号を上付きで表示）
+            %(<a id="#{gls_src_id}" class="glossary-link" href="_glossarypage.html#gls-#{slug}"><sup>#{GLOSSARY_INDICATOR}</sup></a>)
           end
 
           # 用語集スラッグを生成

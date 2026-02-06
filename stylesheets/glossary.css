@@ -92,13 +92,49 @@
   border-left: 2px solid #eee;
 }
 
-.glossary-text {
+/* 説明文本体 */
+.glossary-body {
+  margin: 0.3em 0;
+}
+
+.glossary-text-line {
   margin: 0.3em 0;
   text-align: justify;
 }
 
+/* 説明文内の見出し */
+.glossary-h4 {
+  font-size: 1em;
+  font-weight: bold;
+  margin: 0.8em 0 0.3em;
+  color: var(--theme-color, #333);
+}
+
+.glossary-h5 {
+  font-size: 0.95em;
+  font-weight: bold;
+  margin: 0.6em 0 0.2em;
+}
+
+.glossary-h6 {
+  font-size: 0.9em;
+  font-weight: bold;
+  margin: 0.5em 0 0.2em;
+}
+
+/* 説明文内のリスト */
+.glossary-list-items {
+  margin: 0.3em 0 0.5em 1.5em;
+  padding: 0;
+  list-style-type: disc;
+}
+
+.glossary-list-items li {
+  margin: 0.2em 0;
+}
+
 /* ----------------------------------------------------------------
- * 本文へのバックリンク
+ * 本文へのバックリンク（ページ番号のみ表示）
  * ---------------------------------------------------------------- */
 .glossary-backlinks {
   font-size: 0.85em;
@@ -108,40 +144,53 @@
   border-top: 1px dashed #ddd;
 }
 
+.glossary-backlinks::before {
+  content: "→ p.";
+}
+
 .glossary-backlink {
   text-decoration: none;
   color: var(--link-color, #0066cc);
-  margin-right: 0.5em;
+}
+
+.glossary-backlink.frontmatter::after {
+  content: target-counter(attr(href url), page, lower-roman);
 }
 
 .glossary-backlink:hover {
   text-decoration: underline;
 }
 
-/* PDF用：ページ番号を表示 */
+/* PDF用：ページ番号のみ表示（target-counter） */
 .glossary-backlink::after {
-  content: " (p." target-counter(attr(href url), page) ")";
-  font-size: 0.9em;
+  content: target-counter(attr(href url), page);
+}
+
+/* 複数のバックリンク間の区切り */
+.glossary-backlink + .glossary-backlink::before {
+  content: ", ";
+  color: #666;
 }
 
 /* ----------------------------------------------------------------
- * 本文中の用語集リンク
+ * 本文中の用語集リンク（†記号）
  * ---------------------------------------------------------------- */
 .glossary-link {
-  font-size: 0.8em;
-  color: var(--link-color, #0066cc);
   text-decoration: none;
-  vertical-align: super;
-  margin-left: 0.2em;
+  margin-left: 0.1em;
 }
 
-.glossary-link:hover {
-  text-decoration: underline;
+.glossary-link sup {
+  font-size: 0.7em;
+  color: var(--theme-accent, #0ea5e9);
+  font-weight: normal;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
 }
 
-/* PDF用：用語集へのページ番号を表示 */
-.glossary-link::after {
-  content: " (p." target-counter(attr(href url), page) ")";
+.glossary-link:hover sup {
+  opacity: 1;
+  text-decoration: none;
 }
 
 /* ----------------------------------------------------------------

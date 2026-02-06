@@ -113,14 +113,17 @@ module Vivlio
           end.sort.to_h
         end
 
-        # 先頭文字を正規化（ひらがな→行に変換）
+        # 先頭文字を正規化（ひらがな/カタカナ→行に変換）
+        # カタカナも対応するひらがなの行に分類する
         def normalize_initial(yomi)
           return 'その他' if yomi.nil? || yomi.empty?
 
           first_char = yomi[0]
           
-          # ひらがなの行を判定
-          case first_char
+          # カタカナをひらがなに変換して判定
+          normalized_char = katakana_to_hiragana(first_char)
+          
+          case normalized_char
           when /[あ-おぁ-ぉ]/ then 'あ'
           when /[か-こが-ご]/ then 'か'
           when /[さ-そざ-ぞ]/ then 'さ'
@@ -135,6 +138,16 @@ module Vivlio
           when /[0-9]/ then '0-9'
           else 'その他'
           end
+        end
+
+        # カタカナをひらがなに変換
+        # @param char [String] 単一文字
+        # @return [String] ひらがな（カタカナ以外はそのまま）
+        def katakana_to_hiragana(char)
+          return char unless char.match?(/[\u30A0-\u30FF]/)
+
+          # カタカナ→ひらがな変換（Unicodeコードポイントで96ずらす）
+          (char.ord - 96).chr('UTF-8')
         end
 
         # グループヘッダーを構築
@@ -162,38 +175,97 @@ module Vivlio
         end
 
         # 説明文をレンダリング（Markdown 対応）
+        # ## → h4, ### → h5, #### → h6, * → ul/li に変換
         def render_definition(definition)
           return '' if definition.nil? || definition.empty?
 
-          # 簡易 Markdown 変換
-          text = definition.to_s.strip
-          text = text.gsub(/\*\*(.+?)\*\*/, '<strong>\1</strong>')
-          text = text.gsub(/\*(.+?)\*/, '<em>\1</em>')
-          text = text.gsub(/`(.+?)`/, '<code>\1</code>')
-          text = text.gsub(/\n/, '<br>')
-          
-          %(<p class="glossary-text">#{text}</p>)
+          lines = definition.to_s.strip.split("\n")
+          html_parts = []
+          current_list = []
+
+          lines.each do |line|
+            # リスト項目の処理
+            if line.match?(/^\s*\*\s+/)
+              current_list << line.sub(/^\s*\*\s+/, '').strip
+              next
+            end
+
+            # リストが終了した場合、先にリストを出力
+            unless current_list.empty?
+              html_parts << render_list(current_list)
+              current_list = []
+            end
+
+            # 見出しの処理（## → h4, ### → h5, #### → h6）
+            case line
+            when /^####\s+(.+)$/
+              html_parts << %(<h6 class="glossary-h6">#{render_inline(::Regexp.last_match(1))}</h6>)
+            when /^###\s+(.+)$/
+              html_parts << %(<h5 class="glossary-h5">#{render_inline(::Regexp.last_match(1))}</h5>)
+            when /^##\s+(.+)$/
+              html_parts << %(<h4 class="glossary-h4">#{render_inline(::Regexp.last_match(1))}</h4>)
+            when /^\s*$/
+              # 空行はスキップ
+              next
+            else
+              # 通常のテキスト行
+              html_parts << %(<p class="glossary-text-line">#{render_inline(line)}</p>)
+            end
+          end
+
+          # 残りのリストを出力
+          html_parts << render_list(current_list) unless current_list.empty?
+
+          %(<div class="glossary-body">#{html_parts.join("\n")}</div>)
         end
 
-        # 戻りリンクを構築
+        # リスト項目をul/liに変換
+        def render_list(items)
+          return '' if items.empty?
+
+          li_tags = items.map { %(<li>#{render_inline(it)}</li>) }.join("\n")
+          %(<ul class="glossary-list-items">\n#{li_tags}\n</ul>)
+        end
+
+        # インライン要素の変換（強調、コードなど）
+        def render_inline(text)
+          result = escape_html(text.to_s)
+          result = result.gsub(/\*\*(.+?)\*\*/, '<strong>\1</strong>')
+          result = result.gsub(/\*(.+?)\*/, '<em>\1</em>')
+          result = result.gsub(/`(.+?)`/, '<code>\1</code>')
+          result
+        end
+
+        # 戻りリンクを構築（ページ番号のみ表示、章番号・出現順でソート）
+        # PDF では target-counter で自動的にページ番号が表示される
+        # 注: 同一ページへの複数リンクは CSS target-counter により同じページ番号で表示される
         def build_backlinks(term)
           sources = term['backlink_sources']
           return '' unless sources&.any?
 
-          links = sources.map do |source|
+          # 章番号と出現順で昇順ソート（重複排除はしない）
+          sorted_sources = sources.sort_by do |source|
             chapter = source['chapter'] || source[:chapter]
             occurrence = source['occurrence'] || source[:occurrence] || 1
-            # anchor_id が明示的に指定されていればそれを使用、なければ生成
+            # 章番号を抽出してソート（例: "08-web" → 8）
+            chapter_num = chapter.to_s[/\A(\d+)/, 1]&.to_i || 999
+            [chapter_num, occurrence]
+          end
+
+          links = sorted_sources.map do |source|
+            chapter = source['chapter'] || source[:chapter]
+            occurrence = source['occurrence'] || source[:occurrence] || 1
             anchor_id = source['anchor_id'] || source[:anchor_id] || "gls-src-#{chapter}-#{occurrence}"
-            
-            # target-counter で PDF 時にページ番号を表示
-            %(<a href="#{chapter}.html##{anchor_id}" class="glossary-backlink">#{chapter}</a>)
-          end.uniq
+
+            classes = ['glossary-backlink']
+            classes << 'frontmatter' if chapter.to_s.start_with?('00-')
+
+            # リンクテキストは空にし、CSS で target-counter によるページ番号のみ表示
+            %(<a href="#{chapter}.html##{anchor_id}" class="#{classes.join(' ')}"></a>)
+          end
 
           <<~HTML.chomp
-            <p class="glossary-backlinks">
-              本文へ戻る: #{links.join(', ')}
-            </p>
+            <p class="glossary-backlinks">#{links.join(' ')}</p>
           HTML
         end
 

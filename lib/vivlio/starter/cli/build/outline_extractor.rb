@@ -238,7 +238,13 @@ module Vivlio
             chapter_order = Build::SectionBuilder.chapter_order_from(html_basenames)
             # 新仕様: _titlepage, _legalpage を使用
             frontmatter_sequence = %w[_titlepage _legalpage 00-preface _toc]
-            (frontmatter_sequence + chapter_order).uniq
+            # 巻末の順序: 用語集 → 終わりに → 索引
+            backmatter_sequence = %w[_glossarypage 99-postface _indexpage]
+            
+            # 巻末ページを除外した章順序
+            main_chapters = chapter_order.reject { |bn| backmatter_sequence.include?(bn) }
+            
+            (frontmatter_sequence + main_chapters + backmatter_sequence).uniq
           end
 
           def extract_all_headings(chapter_order, chapter_paths, max_level)
@@ -384,7 +390,9 @@ module Vivlio
             when '00-preface' then page_range_preface(ctx)
             when '_toc'       then page_range_toc(ctx)
             when '99-colophon' then [ctx[:total_pages], ctx[:total_pages]]
-            when '99-postface' then page_range_postface(basename, ctx, prev_bn)
+            when '_glossarypage' then page_range_backmatter(basename, ctx, prev_bn, ['用語集'])
+            when '99-postface' then page_range_backmatter(basename, ctx, prev_bn, ['終わりに'])
+            when '_indexpage' then page_range_backmatter(basename, ctx, prev_bn, ['索引'])
             when first_chapter_bn then page_range_first_chapter(ctx, prev_bn)
             else page_range_default(basename, ctx, prev_bn)
             end
@@ -429,14 +437,14 @@ module Vivlio
             [[start_candidate, ctx[:from_base]].max.clamp(1, ctx[:total_pages]), ctx[:total_pages]]
           end
 
-          def page_range_postface(basename, ctx, prev_bn)
+          # 巻末ページ（用語集、終わりに、索引）のページ範囲を計算
+          def page_range_backmatter(basename, ctx, prev_bn, default_markers)
             search_from = [ctx[:chapter_starts][prev_bn] || ctx[:from_base], ctx[:from_base]].max.clamp(1,
                                                                                                         ctx[:total_pages])
-            markers = ctx[:chapter_markers][basename] || ['終わりに']
+            markers = ctx[:chapter_markers][basename] || default_markers
             start_page = search_page_with_fallback(ctx[:search_markers], markers, search_from, ctx[:from_base],
                                                    ctx[:total_pages])
-            end_page = [ctx[:total_pages] - 1, start_page].max
-            [start_page, end_page]
+            [start_page, ctx[:total_pages]]
           end
 
           def page_range_default(basename, ctx, prev_bn)
@@ -621,7 +629,7 @@ module Vivlio
                           :extract_all_headings, :build_search_helpers, :calculate_chapter_ranges,
                           :build_page_range_context, :calculate_page_range,
                           :page_range_titlepage, :page_range_legalpage, :page_range_preface,
-                          :page_range_toc, :page_range_first_chapter, :page_range_postface,
+                          :page_range_toc, :page_range_first_chapter, :page_range_backmatter,
                           :page_range_default, :search_page_with_fallback,
                           :update_previous_chapter_end, :clamp_all_ranges,
                           :build_outline_items, :build_display_text,

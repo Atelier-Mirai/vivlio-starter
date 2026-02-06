@@ -32,3 +32,27 @@ body.chapter-first {
   counter-reset: page 0;
 }
 
+/* =====================================================================
+   用語集リンク（†記号）
+   ---------------------------------------------------------------------
+   本文中の用語集登録語に付与される上付きの†記号。
+   アクセント色で表示し、クリックで用語集ページへジャンプ。
+   ===================================================================== */
+.glossary-link {
+  text-decoration: none;
+  margin-left: 0.1em;
+}
+
+.glossary-link sup {
+  font-size: 0.7em;
+  color: var(--theme-accent, #0ea5e9);
+  font-weight: normal;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.glossary-link:hover sup {
+  opacity: 1;
+  text-decoration: none;
+}
+
