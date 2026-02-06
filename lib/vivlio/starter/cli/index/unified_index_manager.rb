@@ -165,6 +165,18 @@ module Vivlio
             changes_made = true
           end
 
+          # 索引のみ承認（[i]）の用語が glossary_terms.yml に残っている場合は除去
+          # フラグが [ig] → [i] に変更された場合に対応
+          glossary_approved_names = glossary_approved.map { it['term'] }
+          index_only = index_approved.reject { glossary_approved_names.include?(it['term']) }
+          index_only.each do |term|
+            if @glossary_manager.term_names.include?(term['term'])
+              @glossary_manager.remove_term!(term['term'])
+              Common.log_info("用語集から除外しました（索引のみ）: #{term['term']}")
+              changes_made = true
+            end
+          end
+
           # 索引のみリジェクト（[-i]）
           if index_rejected.any?
             index_rejected.each { @terms_manager.remove_term!(it['term']) }

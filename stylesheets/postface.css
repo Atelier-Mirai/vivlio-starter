@@ -5,3 +5,8 @@
 @charset "utf-8";
 @import url("preface.css");
 
+/* 後書きは本文の続きなので算用数字ノンブルを使用（preface の page: front を上書き） */
+body {
+  page: auto;
+}
+

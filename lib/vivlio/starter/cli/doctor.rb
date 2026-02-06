@@ -604,8 +604,9 @@ module Vivlio
           # npm パッケージとしてインストールされているか確認
           return false unless File.exist?(File.join('node_modules', 'playwright', 'package.json'))
 
-          # Chromium ブラウザがインストールされているか確認
-          system('npx playwright install --dry-run chromium >/dev/null 2>&1')
+          # Chromium ブラウザの実行ファイルが存在するか確認
+          chromium_path = `node -e "const { chromium } = require('playwright'); console.log(chromium.executablePath());" 2>/dev/null`.strip
+          !chromium_path.empty? && File.exist?(chromium_path)
         rescue StandardError
           false
         end

@@ -275,13 +275,4 @@ terms:
   - chapter: 99-postface
     occurrence: 7
     anchor_id: gls-src-99-postface-javascript-7
-- term: ウェブ
-  yomi: ウェブ
-  definition: ''
-  source: review
-  approved_at: '2026-02-06 23:48:18'
-  contexts:
-  - chapter: 00-preface
-    context: "、プログラミングについても簡単にご紹介しています。 実践篇では、「ウェブアプリ入門」として、HTML / CSS / JavaScript
-      の概要を学び"
-updated_at: '2026-02-06 23:49:12'
+updated_at: '2026-02-07 00:09:14'
