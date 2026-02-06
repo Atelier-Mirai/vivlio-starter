@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'backlink_dedup_orchestrator'
+
 module Vivlio
   module Starter
     module CLI
@@ -79,6 +81,7 @@ module Vivlio
             add_step('Step  6 (convert sections html)',       -> { Build::SectionBuilder.convert_sections_html!(entries) })
             add_step('Step  7 (generate toc and pdf)',        -> { Build::TocGenerator.generate_toc_and_pdf!('.', entries) })
             add_step('Step  8 (build overall pdf)',           -> { Build::PdfBuilder.build_overall_pdf_from_dir!('.', entries) })
+            add_step('Step 8b (backlink dedup)',               -> { Build::BacklinkDedupOrchestrator.run!(entries) })
             add_step('Step  9 (build front pages and tail)',  -> { run_step9_front_pages_and_tail })
             add_step('Step 10 (merge all pdfs)',              -> { Build::PdfMerger.merge_all_pdfs!(entries) })
             add_step('Step 11 (apply outline to output pdf)', -> { Build::PdfMerger.add_outline_to_output_pdf!(entries) })

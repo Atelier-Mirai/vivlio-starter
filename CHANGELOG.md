@@ -66,7 +66,12 @@
 （次回リリース候補の変更はここに追加してください）
 
 ### Added
-- (なし)
+- **用語集バックリンク重複排除（Step 8b）**: Playwright ヘッドレスブラウザで Vivliostyle のレンダリング済み DOM からページマッピングを取得し、同一ページ内の重複バックリンクと本文†マークを Nokogiri で削除する2パス方式を実装。`p.4, 4, 5, 5` → `p.4, 5` のように用語集ページが整理される。
+  - `PageMappingExtractor`: vivliostyle preview + Playwright でページ配置データを抽出
+  - `BacklinkDeduplicator`: Nokogiri で `_glossarypage.html` と本文 HTML を浄化
+  - `BacklinkDedupOrchestrator`: ワークフロー全体を統括し、浄化後に PDF を再ビルド
+  - `extract_page_mapping.mjs`: Playwright スクリプト（Node.js）
+  - `package.json` に `playwright` 依存を追加
 
 ### Changed
 - (なし)
