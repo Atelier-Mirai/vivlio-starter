@@ -66,18 +66,32 @@
 （次回リリース候補の変更はここに追加してください）
 
 ### Added
-- **用語集バックリンク重複排除（Step 8b）**: Playwright ヘッドレスブラウザで Vivliostyle のレンダリング済み DOM からページマッピングを取得し、同一ページ内の重複バックリンクと本文†マークを Nokogiri で削除する2パス方式を実装。`p.4, 4, 5, 5` → `p.4, 5` のように用語集ページが整理される。
-  - `PageMappingExtractor`: vivliostyle preview + Playwright でページ配置データを抽出
-  - `BacklinkDeduplicator`: Nokogiri で `_glossarypage.html` と本文 HTML を浄化
-  - `BacklinkDedupOrchestrator`: ワークフロー全体を統括し、浄化後に PDF を再ビルド
-  - `extract_page_mapping.mjs`: Playwright スクリプト（Node.js）
-  - `package.json` に `playwright` 依存を追加
+- (なし)
 
 ### Changed
 - (なし)
 
 ### Fixed
 - (なし)
+
+## 0.30.0 - 2026-02-07
+
+### Added
+- **索引・用語集ビルドパイプラインの実装**: `index_glossary.enabled` に基づいて索引/用語集候補抽出、レビューフロー、`_indexpage.html`/`_glossarypage.html` 出力、PDF への統合まで自動化。
+- **用語集バックリンク重複排除（Step 8）**: Playwright + Vivliostyle preview でページ配置を取得し、`BacklinkDeduplicator` が `_glossarypage.html` と本文の † リンクを Nokogiri で浄化。
+- **Playwright 連携**: `extract_page_mapping.mjs` による Chromium 自動制御と `package.json` の依存追加、`vs doctor --fix` で npm パッケージと Chromium を自動セットアップ。
+- **Glossary 管理モジュール**: `glossary_terms_manager.rb`、`glossary_page_builder.rb`、`_index_glossary_review.md` 生成などレビュー～適用フローを追加。
+- **ドキュメント/テンプレート**: `book-vivlio-starter/20-index-glossary.md`、`docs/specs/glossary_backlink_dedup_spec.md`、`docs/specs/index_glossary_spec.md` を追加し、特集ページ（_titlepage/_legalpage/_colophon）テンプレートを整備。
+
+### Changed
+- **ビルドパイプライン Step を 0-based に再定義**し、Step 8 にバックリンク重複排除を組み込み。ログ・進捗表示を全体的に更新。
+- **Index/Glossary コマンド刷新**: 既存 `glossary:*` Thor 互換コマンドを廃止し、Samovar ベースの `IndexCommands` に統合。`IndexCandidateExtractor` が `context_width` 設定を尊重するよう改善。
+- **PDF/TOC/Outline 連携**: `_glossarypage.html` や `_indexpage.html` を PDF/アウトラインへ含める際の順序とスキップ条件を整理し、`postface.css` を本文ノンブル（算用数字）に合わせた。
+
+### Fixed
+- **`context_width` が反映されず抜粋が短くなる問題**: `index_candidate_extractor.rb` で前後不足分を相互補償し、設定値（既定 40）に応じた抜粋長を確保。
+- **用語フラグ同期不備**: `[i]` のみに変更された語が用語集に残留しないよう `apply_markdown_review!` で `glossary_terms.yml` を同期。
+- **`vs doctor --fix` Playwright 検知**: npm パッケージと Chromium 実行ファイルを別々に検証し、ログに `✅ playwright: OK` / `✅ chromium: OK` を表示。
 
 ## 0.29.0 - 2026-01-25
 
