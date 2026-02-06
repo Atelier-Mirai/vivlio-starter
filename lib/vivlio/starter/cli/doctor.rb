@@ -135,7 +135,8 @@ module Vivlio
             'gs' => 'gs', # Ghostscript
             'imagemagick' => nil,
             'waifu2x' => nil,
-            'playwright' => nil, # バックリンク重複排除用ヘッドレスブラウザ
+            'playwright' => nil, # バックリンク重複排除用（npm パッケージ）
+            'chromium' => nil,   # Playwright 用ヘッドレスブラウザ
             'mecab' => 'mecab', # 索引機能の読み自動推測用
             'rouge' => nil # コードブロック言語推定用
           }
@@ -150,7 +151,9 @@ module Vivlio
                  when 'rouge'
                    rouge_gem_available?
                  when 'playwright'
-                   playwright_available?
+                   playwright_npm_available?
+                 when 'chromium'
+                   chromium_available?
                  else
                    command_exists?(cmd)
                  end
@@ -298,14 +301,23 @@ module Vivlio
               system('gem install rouge')
             end
 
-            # Playwright（バックリンク重複排除用）
+            # Playwright npm パッケージ
             if missing.include?('playwright')
               if system('which npm >/dev/null 2>&1')
                 Common.echo_always('Playwright（バックリンク重複排除用）をインストールします…')
                 system('npm install playwright')
+              else
+                Common.echo_always('npm が見つかりません。node のインストール後に `npm install playwright` を実行してください。')
+              end
+            end
+
+            # Chromium ブラウザ
+            if missing.include?('chromium')
+              if system('which npx >/dev/null 2>&1')
+                Common.echo_always('Chromium（Playwright 用ブラウザ）をインストールします…')
                 system('npx playwright install chromium')
               else
-                Common.echo_always('npm が見つかりません。node のインストール後に `npm install playwright && npx playwright install chromium` を実行してください。')
+                Common.echo_always('npx が見つかりません。Playwright インストール後に `npx playwright install chromium` を実行してください。')
               end
             end
 
@@ -356,7 +368,9 @@ module Vivlio
                  when 'rouge'
                    rouge_gem_available?
                  when 'playwright'
-                   playwright_available?
+                   playwright_npm_available?
+                 when 'chromium'
+                   chromium_available?
                  else
                    command_exists?(cmd)
                  end
@@ -572,6 +586,7 @@ module Vivlio
             'ssl-certificates' => 'Google Fonts 用 SSL 証明書',
             'mecab' => 'MeCab (索引機能用)',
             'playwright' => 'Playwright (バックリンク重複排除用)',
+            'chromium' => 'Chromium (Playwright 用ブラウザ)',
             'rouge' => 'Rouge (コードブロック言語推定用)'
           }
           keys.uniq.map { |key| label_map[key] || key }
@@ -600,11 +615,15 @@ module Vivlio
           false
         end
 
-        def playwright_available?
-          # npm パッケージとしてインストールされているか確認
-          return false unless File.exist?(File.join('node_modules', 'playwright', 'package.json'))
+        def playwright_npm_available?
+          File.exist?(File.join('node_modules', 'playwright', 'package.json'))
+        rescue StandardError
+          false
+        end
 
-          # Chromium ブラウザの実行ファイルが存在するか確認
+        def chromium_available?
+          return false unless playwright_npm_available?
+
           chromium_path = `node -e "const { chromium } = require('playwright'); console.log(chromium.executablePath());" 2>/dev/null`.strip
           !chromium_path.empty? && File.exist?(chromium_path)
         rescue StandardError

@@ -265,15 +265,31 @@ module Vivlio
           end
 
           # 用語の周辺コンテキストを抽出
+          # 前方が不足する場合は後方を延長、後方が不足する場合は前方を延長
           def extract_context(content, term)
             idx = content.index(term)
             return '' if idx.nil?
 
             w = @context_width
-            start_idx = [idx - w, 0].max
-            end_idx = [idx + term.length + w, content.length].min
+            total_width = w * 2
 
-            context = content[start_idx...end_idx]
+            ideal_start = idx - w
+            ideal_end = idx + term.length + w
+
+            # 前方不足分を後方に補償
+            if ideal_start < 0
+              ideal_end += ideal_start.abs
+              ideal_start = 0
+            end
+
+            # 後方不足分を前方に補償
+            if ideal_end > content.length
+              overshoot = ideal_end - content.length
+              ideal_start = [ideal_start - overshoot, 0].max
+              ideal_end = content.length
+            end
+
+            context = content[ideal_start...ideal_end]
             context.gsub(/\s+/, ' ').strip
           end
 
