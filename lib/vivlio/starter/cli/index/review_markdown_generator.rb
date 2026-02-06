@@ -302,10 +302,24 @@ module Vivlio
 
         private
 
-        # 設定を読み込み
+        # 設定を読み込み（index_glossary 共通設定 + index 個別設定をマージ）
         def load_index_config
+          shared = load_shared_config
           idx = Common::CONFIG.index
-          idx.respond_to?(:to_h) ? idx.to_h : (idx || {})
+          idx_hash = idx.respond_to?(:to_h) ? idx.to_h : (idx || {})
+          shared.merge(idx_hash)
+        rescue StandardError
+          {}
+        end
+
+        # 共通設定（index_glossary）を読み込み
+        def load_shared_config
+          return {} unless Common::CONFIG.respond_to?(:index_glossary)
+
+          shared = Common::CONFIG.index_glossary
+          return {} if shared.nil?
+
+          shared.respond_to?(:to_h) ? shared.to_h : {}
         rescue StandardError
           {}
         end
@@ -650,7 +664,7 @@ module Vivlio
           # 改行を除去
           text = context_text.to_s.gsub(/[\r\n]+/, ' ').strip
 
-          context_width = @config['context_width'] || 40
+          context_width = @config[:context_width] || 40
 
           if text.length <= context_width * 2
             text

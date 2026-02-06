@@ -12,8 +12,8 @@
 #   3. 結果のログ出力
 #
 # パイプライン上の位置:
-#   Step 8（全体PDF生成）の後、Step 8b として実行。
-#   浄化後の HTML で再度 PDF をビルドする（Step 8c）。
+#   Step 7（全体PDF生成）の後、Step 8 として実行。
+#   浄化後の HTML で再度 PDF をビルドする。
 # ================================================================
 
 require_relative 'page_mapping_extractor'
@@ -32,17 +32,17 @@ module Vivlio
           # @return [Boolean] 重複排除が実行されたか
           def run!(entries = [])
             unless glossary_dedup_enabled?
-              Common.log_info('[Step 8b] バックリンク重複排除は無効です（book.yml: glossary.backlink_dedup = false）')
+              Common.log_info('[Step 8] バックリンク重複排除は無効です（book.yml: glossary.backlink_dedup = false）')
               return false
             end
 
             unless glossary_page_exists?
-              Common.log_info('[Step 8b] _glossarypage.html が存在しないためスキップします')
+              Common.log_info('[Step 8] _glossarypage.html が存在しないためスキップします')
               return false
             end
 
             # --- Phase 1: ページマッピング抽出 ---
-            Common.log_action('[Step 8b] バックリンク重複排除を開始します…')
+            Common.log_action('[Step 8] バックリンク重複排除を開始します…')
             page_mapping = extract_page_mapping
 
             return false unless page_mapping
@@ -53,16 +53,16 @@ module Vivlio
 
             # --- Phase 3: 浄化された HTML で PDF を再ビルド ---
             if result.files_modified.any?
-              Common.log_action('[Step 8c] 浄化済み HTML で PDF を再ビルドします…')
+              Common.log_action('[Step 8] 浄化済み HTML で PDF を再ビルドします…')
               rebuild_pdf!(entries)
               true
             else
-              Common.log_info('[Step 8b] 重複なし。PDF 再ビルドは不要です')
+              Common.log_info('[Step 8] 重複なし。PDF 再ビルドは不要です')
               false
             end
           rescue StandardError => e
-            Common.log_warn("[Step 8b] バックリンク重複排除でエラーが発生しました: #{e.message}")
-            Common.log_warn('[Step 8b] 重複排除をスキップし、既存の PDF で続行します')
+            Common.log_warn("[Step 8] バックリンク重複排除でエラーが発生しました: #{e.message}")
+            Common.log_warn('[Step 8] 重複排除をスキップし、既存の PDF で続行します')
             false
           end
 
@@ -94,7 +94,7 @@ module Vivlio
             extractor = PageMappingExtractor.new
             extractor.extract!
           rescue StandardError => e
-            Common.log_error("[Step 8b] ページマッピング抽出に失敗: #{e.message}")
+            Common.log_error("[Step 8] ページマッピング抽出に失敗: #{e.message}")
             nil
           end
 
@@ -117,17 +117,17 @@ module Vivlio
 
             if File.exist?(output_pdf)
               FileUtils.cp(output_pdf, '_sections.pdf')
-              Common.log_success('[Step 8c] 重複排除済み _sections.pdf を再生成しました')
+              Common.log_success('[Step 8] 重複排除済み _sections.pdf を再生成しました')
             else
-              Common.log_warn('[Step 8c] PDF 再ビルドの出力が見つかりません')
+              Common.log_warn('[Step 8] PDF 再ビルドの出力が見つかりません')
             end
           end
 
           # 結果をログ出力
           def log_result(result)
-            Common.log_info("[Step 8b] 用語集バックリンク: #{result.glossary_removed} 件の重複を削除")
-            Common.log_info("[Step 8b] 本文 †マーク: #{result.body_removed} 件の重複を削除")
-            Common.log_info("[Step 8b] 更新ファイル: #{result.files_modified.join(', ')}") if result.files_modified.any?
+            Common.log_info("[Step 8] 用語集バックリンク: #{result.glossary_removed} 件の重複を削除")
+            Common.log_info("[Step 8] 本文 †マーク: #{result.body_removed} 件の重複を削除")
+            Common.log_info("[Step 8] 更新ファイル: #{result.files_modified.join(', ')}") if result.files_modified.any?
           end
         end
       end

@@ -43,8 +43,16 @@ module Vivlio
               keep_numbers_appx = chapter_numbers.select { |n| APPX_RANGE.include?(n) }
               keep_numbers_post = chapter_numbers.select { |n| POSTFACE_RANGE.include?(n) }
             end
-            glossary_html = [File.join(base_dir, '_glossarypage.html')].select { |f| File.exist?(f) }
-            index_html = [File.join(base_dir, '_indexpage.html')].select { |f| File.exist?(f) }
+            glossary_html = if IndexCommands.index_enabled?
+                              [File.join(base_dir, '_glossarypage.html')].select { |f| File.exist?(f) }
+                            else
+                              []
+                            end
+            index_html = if IndexCommands.index_enabled?
+                           [File.join(base_dir, '_indexpage.html')].select { |f| File.exist?(f) }
+                         else
+                           []
+                         end
 
             # 書籍構成順序: 前書き → 目次 → 本文 → 付録 → 用語集 → 後書き → 索引
             # ※ 00-preface, _toc を先頭に含めることで target-counter が正しく解決される
@@ -59,7 +67,7 @@ module Vivlio
             ].flatten
 
             targets_for_pdf = chapter_htmls_for_pdf
-            Common.log_info("[Step 8] targets_for_pdf: #{targets_for_pdf.map { |p| File.basename(p) }.join(', ')}")
+            Common.log_info("[Step 7] targets_for_pdf: #{targets_for_pdf.map { |p| File.basename(p) }.join(', ')}")
 
             compile_overall_pdf!(targets_for_pdf)
           end
@@ -68,10 +76,10 @@ module Vivlio
           # entries.jsを生成し、VivliostyleでPDFをビルド
           def compile_overall_pdf!(targets_for_pdf)
             if targets_for_pdf.empty?
-              Common.log_warn('[Step 8] 対象HTMLが見つかりません。Step 8 をスキップします。')
+              Common.log_warn('[Step 7] 対象HTMLが見つかりません。スキップします。')
               return
             end
-            Common.log_info("[Step 8] 対象: #{targets_for_pdf.map { |p| File.basename(p) }.join(', ')}")
+            Common.log_info("[Step 7] 対象: #{targets_for_pdf.map { |p| File.basename(p) }.join(', ')}")
 
             EntriesCommands.execute_entries({}, targets_for_pdf)
             PdfCommands.execute_pdf({})
@@ -79,14 +87,14 @@ module Vivlio
             pdf_config   = Common::CONFIG['pdf'] || {}
             output_pdf   = pdf_config['output_file'] || 'output.pdf'
             unless File.exist?(output_pdf)
-              Common.log_warn("[Step 8] 出力PDFが見つかりません: #{output_pdf}")
+              Common.log_warn("[Step 7] 出力PDFが見つかりません: #{output_pdf}")
               return
             end
 
             # 全体PDFをそのまま _sections.pdf として使用
             # これにより内部リンク（索引→00-preface等）が維持される
             FileUtils.cp(output_pdf, '_sections.pdf')
-            Common.log_success('[Step 8] _sections.pdf を生成しました')
+            Common.log_success('[Step 7] _sections.pdf を生成しました')
           end
 
           # Step 9: 本扉・扉裏・後書き・奥付の生成

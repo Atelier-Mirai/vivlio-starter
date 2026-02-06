@@ -62,26 +62,27 @@ module Vivlio
 
           # full mode: 全ステップを実行
           # ビルドパイプライン概要:
-          #   Step  1-3:  準備（クリーン、画像最適化）
-          #   Step  4:    Markdown前処理（frontmatter付加、画像パス修正）
-          #   Step  5:    索引スキャン・索引ページ生成
-          #   Step  6:    Markdown→HTML変換
-          #   Step  7:    目次生成
-          #   Step  8:    全体PDF生成（前書き+目次+本文+付録+後書き+索引）
+          #   Step  0-2:  準備（クリーン、画像最適化）
+          #   Step  3:    Markdown前処理（frontmatter付加、画像パス修正）
+          #   Step  4:    索引スキャン・索引ページ生成
+          #   Step  5:    Markdown→HTML変換
+          #   Step  6:    目次生成
+          #   Step  7:    全体PDF生成（前書き+目次+本文+付録+後書き+索引）
+          #   Step  8:    バックリンク重複排除
           #   Step  9:    表紙・奥付PDF生成
           #   Step 10:    PDF結合
           #   Step 11:    アウトライン付与
           #   Step 12:    リネーム・クリーンアップ
           def register_full_mode_steps
-            add_step('Step  1 (clean)',                       -> { run_step1_clean })
-            add_step('Step  2 (optimize images)',             -> { run_step2_optimize_images })
-            add_step('Step  3 (prepare theme images)',        -> { Build::ImageOptimizer.prepare_theme_images! })
-            add_step('Step  4 (preprocess sections)',         -> { Build::SectionBuilder.preprocess_sections!(entries) })
-            add_step('Step  5 (index scan and build)',        -> { run_step5_index_processing })
-            add_step('Step  6 (convert sections html)',       -> { Build::SectionBuilder.convert_sections_html!(entries) })
-            add_step('Step  7 (generate toc and pdf)',        -> { Build::TocGenerator.generate_toc_and_pdf!('.', entries) })
-            add_step('Step  8 (build overall pdf)',           -> { Build::PdfBuilder.build_overall_pdf_from_dir!('.', entries) })
-            add_step('Step 8b (backlink dedup)',               -> { Build::BacklinkDedupOrchestrator.run!(entries) })
+            add_step('Step  0 (clean)',                       -> { run_step0_clean })
+            add_step('Step  1 (optimize images)',             -> { run_step1_optimize_images })
+            add_step('Step  2 (prepare theme images)',        -> { Build::ImageOptimizer.prepare_theme_images! })
+            add_step('Step  3 (preprocess sections)',         -> { Build::SectionBuilder.preprocess_sections!(entries) })
+            add_step('Step  4 (index scan and build)',        -> { run_step4_index_processing })
+            add_step('Step  5 (convert sections html)',       -> { Build::SectionBuilder.convert_sections_html!(entries) })
+            add_step('Step  6 (generate toc and pdf)',        -> { Build::TocGenerator.generate_toc_and_pdf!('.', entries) })
+            add_step('Step  7 (build overall pdf)',           -> { Build::PdfBuilder.build_overall_pdf_from_dir!('.', entries) })
+            add_step('Step  8 (backlink dedup)',              -> { Build::BacklinkDedupOrchestrator.run!(entries) })
             add_step('Step  9 (build front pages and tail)',  -> { run_step9_front_pages_and_tail })
             add_step('Step 10 (merge all pdfs)',              -> { Build::PdfMerger.merge_all_pdfs!(entries) })
             add_step('Step 11 (apply outline to output pdf)', -> { Build::PdfMerger.add_outline_to_output_pdf!(entries) })
@@ -90,12 +91,12 @@ module Vivlio
 
           # single mode: 対象章のみビルド + entries.js + pdf
           def register_single_mode_steps
-            add_step('Step  1 (clean)',                -> { run_step1_clean })
-            add_step('Step  2 (optimize images)',      -> { run_step2_optimize_images })
-            add_step('Step  3 (prepare theme images)', -> { Build::ImageOptimizer.prepare_theme_images! })
-            add_step('Step  4 (build sections html)',  -> { build_target_sections_html })
-            add_step('Step  5 (entries.js + pdf)',     -> { generate_entries_and_pdf })
-            add_step('Step 13 (rename output pdfs)',   -> { rename_single_mode_pdf })
+            add_step('Step  0 (clean)',                -> { run_step0_clean })
+            add_step('Step  1 (optimize images)',      -> { run_step1_optimize_images })
+            add_step('Step  2 (prepare theme images)', -> { Build::ImageOptimizer.prepare_theme_images! })
+            add_step('Step  3 (build sections html)',  -> { build_target_sections_html })
+            add_step('Step  4 (entries.js + pdf)',     -> { generate_entries_and_pdf })
+            add_step('Step  5 (rename output pdfs)',   -> { rename_single_mode_pdf })
           end
 
           # ステップを記録して順次処理できるようにする
@@ -118,24 +119,24 @@ module Vivlio
           end
 
           # クリーンオプションに応じて中間生成物を削除する
-          def run_step1_clean
+          def run_step0_clean
             if options[:clean] == false
-              Common.log_action('[Step 1] クリーンアップをスキップします（--no-clean）')
+              Common.log_action('[Step 0] クリーンアップをスキップします（--no-clean）')
             else
-              Common.log_action('[Step 1] クリーンアップを実行します…')
+              Common.log_action('[Step 0] クリーンアップを実行します…')
               CleanCommands.execute_clean({})
             end
           end
 
           # 画像最適化をプリセット付きで実行する
-          def run_step2_optimize_images
+          def run_step1_optimize_images
             if options[:resize] == false
-              Common.log_action('[Step 2] 画像最適化をスキップします（--no-resize）')
+              Common.log_action('[Step 1] 画像最適化をスキップします（--no-resize）')
               return
             end
 
             if options.values_at(:high, :low).count(true) > 1
-              Common.log_warn('[Step 2] --high と --low が同時指定されています。--high を優先します')
+              Common.log_warn('[Step 1] --high と --low が同時指定されています。--high を優先します')
             end
             preset = %i[high low].find { |k| options[k] } || :medium
             Build::ImageOptimizer.optimize_images!(preset)
@@ -143,7 +144,7 @@ module Vivlio
 
           # single mode: 対象章のみ HTML をビルド
           def build_target_sections_html
-            Common.log_action("[Step 4] 対象章をビルドします: #{basenames.join(', ')}")
+            Common.log_action("[Step 3] 対象章をビルドします: #{basenames.join(', ')}")
             entries.each do |entry|
               PreProcessCommands.execute_pre_process({}, [entry])
               ConvertCommands.execute_convert({}, [entry])
@@ -153,7 +154,7 @@ module Vivlio
 
           # single mode: entries.js を生成して PDF をビルド
           def generate_entries_and_pdf
-            Common.log_action('[Step 5] entries.js を生成して PDF をビルドします…')
+            Common.log_action('[Step 4] entries.js を生成して PDF をビルドします…')
             # 対象章のみを含む entries.js を生成
             EntriesCommands.execute_entries({}, entries)
             # PDF を生成
@@ -174,7 +175,7 @@ module Vivlio
             @generated_pdf_name = determine_single_mode_pdf_name
             FileUtils.rm_f(@generated_pdf_name)
             FileUtils.mv(output_pdf, @generated_pdf_name)
-            Common.log_success("[Step 13] PDFをリネームしました: #{@generated_pdf_name}")
+            Common.log_success("[Step 5] PDFをリネームしました: #{@generated_pdf_name}")
           end
 
           # single mode の出力 PDF 名を決定する
@@ -312,14 +313,14 @@ module Vivlio
             end
           end
 
-          # Step 5: 索引処理を実行
-          def run_step5_index_processing
+          # Step 4: 索引処理を実行
+          def run_step4_index_processing
             unless IndexCommands.index_enabled?
-              Common.log_action('[Step 5] 索引・用語集機能が無効のためスキップします（book.yml: index_glossary.enabled = false）')
+              Common.log_action('[Step 4] 索引・用語集機能が無効のためスキップします（book.yml: index_glossary.enabled = false）')
               return
             end
 
-            Common.log_action('[Step 5] 索引語のスキャンと索引ページ生成を実行します…')
+            Common.log_action('[Step 4] 索引語のスキャンと索引ページ生成を実行します…')
 
             # 対象章を取得（Entry 配列から basename を抽出）
             chapter_targets = if entries.any?

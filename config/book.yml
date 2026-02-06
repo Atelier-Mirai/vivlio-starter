@@ -268,7 +268,7 @@ index_glossary:
   # 索引・用語集機能の有効/無効
   # true: 索引と用語集の両方が有効
   # false: 索引と用語集の両方が無効
-  enabled: true
+  enabled: false
 
   # MeCab による読み自動推測を使用
   use_mecab: true

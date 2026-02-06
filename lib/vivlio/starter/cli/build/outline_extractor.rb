@@ -239,7 +239,12 @@ module Vivlio
             # 新仕様: _titlepage, _legalpage を使用
             frontmatter_sequence = %w[_titlepage _legalpage 00-preface _toc]
             # 巻末の順序: 用語集 → 終わりに → 索引
-            backmatter_sequence = %w[_glossarypage 99-postface _indexpage]
+            # 索引・用語集が無効の場合は除外
+            backmatter_sequence = if IndexCommands.index_enabled?
+                                   %w[_glossarypage 99-postface _indexpage]
+                                 else
+                                   %w[99-postface]
+                                 end
             
             # 巻末ページを除外した章順序
             main_chapters = chapter_order.reject { |bn| backmatter_sequence.include?(bn) }

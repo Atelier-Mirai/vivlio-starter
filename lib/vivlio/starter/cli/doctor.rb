@@ -135,6 +135,7 @@ module Vivlio
             'gs' => 'gs', # Ghostscript
             'imagemagick' => nil,
             'waifu2x' => nil,
+            'playwright' => nil, # バックリンク重複排除用ヘッドレスブラウザ
             'mecab' => 'mecab', # 索引機能の読み自動推測用
             'rouge' => nil # コードブロック言語推定用
           }
@@ -148,6 +149,8 @@ module Vivlio
                    waifu2x_available?
                  when 'rouge'
                    rouge_gem_available?
+                 when 'playwright'
+                   playwright_available?
                  else
                    command_exists?(cmd)
                  end
@@ -295,6 +298,17 @@ module Vivlio
               system('gem install rouge')
             end
 
+            # Playwright（バックリンク重複排除用）
+            if missing.include?('playwright')
+              if system('which npm >/dev/null 2>&1')
+                Common.echo_always('Playwright（バックリンク重複排除用）をインストールします…')
+                system('npm install playwright')
+                system('npx playwright install chromium')
+              else
+                Common.echo_always('npm が見つかりません。node のインストール後に `npm install playwright && npx playwright install chromium` を実行してください。')
+              end
+            end
+
             install_ssl_certificates! if missing.include?('ssl-certificates')
           rescue StandardError => e
             Common.log_warn("brew 実行でエラー: #{e}")
@@ -341,6 +355,8 @@ module Vivlio
                    waifu2x_available? || (waifu2x_install_root && waifu2x_present_at?(waifu2x_install_root, os_family))
                  when 'rouge'
                    rouge_gem_available?
+                 when 'playwright'
+                   playwright_available?
                  else
                    command_exists?(cmd)
                  end
@@ -555,6 +571,7 @@ module Vivlio
             'waifu2x' => 'waifu2x-ncnn-vulkan',
             'ssl-certificates' => 'Google Fonts 用 SSL 証明書',
             'mecab' => 'MeCab (索引機能用)',
+            'playwright' => 'Playwright (バックリンク重複排除用)',
             'rouge' => 'Rouge (コードブロック言語推定用)'
           }
           keys.uniq.map { |key| label_map[key] || key }
@@ -580,6 +597,16 @@ module Vivlio
           require 'rouge'
           true
         rescue LoadError
+          false
+        end
+
+        def playwright_available?
+          # npm パッケージとしてインストールされているか確認
+          return false unless File.exist?(File.join('node_modules', 'playwright', 'package.json'))
+
+          # Chromium ブラウザがインストールされているか確認
+          system('npx playwright install --dry-run chromium >/dev/null 2>&1')
+        rescue StandardError
           false
         end
 
