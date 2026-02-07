@@ -198,8 +198,9 @@ module Vivlio
                 - term: Ruby
                   yomi: るびー
                   pattern: "/Ruby/"
+                  flags: i
             YAML
-            File.write('config/index_terms.yml', config_content)
+            File.write('config/glossary_terms.yml', config_content)
 
             # 新しいスキャナを作成（configを読み込むため）
             scanner = IndexMatchScanner.new

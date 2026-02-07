@@ -1,6 +1,51 @@
 ---
-generated_at: '2026-02-07 20:32:57'
+generated_at: '2026-02-07 22:20:32'
 terms:
+- term: CSS
+  yomi: CSS
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-02-07 20:25:24'
+  pattern: "/\\bCSS\\b/"
+  auto_approved: true
+  score: 469.5043308354237
+- term: HTML
+  yomi: HTML
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-02-07 20:25:24'
+  pattern: "/\\bHTML\\b/"
+  auto_approved: true
+  score: 686.1986373748498
+- term: JavaScript
+  yomi: JavaScript
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-02-07 20:25:24'
+  pattern: "/\\bJavaScript\\b/"
+  auto_approved: true
+  score: 316.73576634856573
+- term: コンピュータ
+  yomi: こんぴゅーた
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-02-07 20:25:24'
+  pattern: "/コンピュータ/"
+  auto_approved: true
+  score: 497.8929439142762
+- term: プログラミング
+  yomi: ぷろぐらみんぐ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-02-07 20:25:24'
+  pattern: "/プログラミング/"
+  auto_approved: true
+  score: 340.0
 - term: ウェブサイト
   yomi: ウェブサイト
   definition: ''
@@ -9,3 +54,13 @@ terms:
   contexts:
   - chapter: 00-preface
     context: の基本操作ができる初心者の方を想定しています。中高生から社会人まで、ウェブサイトを作ってみたい方や、プログラミングに興味があって、なにかアプリを作ってみたい人の
+  flags: g
+- term: ブラウザ
+  yomi: ブラウザ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-02-07 20:25:24'
+  pattern: "/ブラウザ/"
+  auto_approved: true
+  score: 304.55889757182007

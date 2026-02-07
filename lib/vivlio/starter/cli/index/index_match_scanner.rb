@@ -26,7 +26,7 @@ module Vivlio
     module CLI
       module IndexCommands
         INDEX_TERMS_MISSING_MESSAGE = <<~MSG.freeze
-          索引語辞書(config/index_terms.yml)が見つかりませんでした
+          索引語辞書(config/glossary_terms.yml)が見つかりませんでした
           ⚠️  原稿に [用語|読み] という書き方で手動登録した語のみが索引に載ります
           ⚠️  自動索引機能を有効にするには: vs index:auto -> vs index:apply
         MSG
@@ -77,14 +77,15 @@ module Vivlio
             @config_missing = false
             @no_matches = false
             @defer_warnings = defer_warnings
-            @config_terms = load_config_terms
-            @glossary_terms = load_glossary_terms
+            @unified_terms = load_unified_terms
+            @config_terms = @unified_terms.select { it['flags'].to_s.include?('i') }
+            @glossary_terms = @unified_terms.select { it['flags'].to_s.include?('g') }.to_h { [it['term'], it] }
             @glossary_backlinks = Hash.new { |h, k| h[k] = [] }
           end
 
-          # config/index_terms.yml を読み込む
-          def load_config_terms
-            config_file = 'config/index_terms.yml'
+          # 統合用語辞書（config/glossary_terms.yml）を読み込む
+          def load_unified_terms
+            config_file = 'config/glossary_terms.yml'
             unless File.exist?(config_file)
               if @defer_warnings
                 @config_missing = true
@@ -97,27 +98,11 @@ module Vivlio
             begin
               data = YAML.load_file(config_file)
               terms = data['terms'] || []
-              Common.log_info("索引語辞書から #{terms.size} 件の語句をロードしました")
+              Common.log_info("統合用語辞書から #{terms.size} 件の語句をロードしました")
               terms
             rescue StandardError => e
-              Common.log_warn("config/index_terms.yml の読み込みに失敗しました: #{e.message}")
-              []
-            end
-          end
-
-          # config/glossary_terms.yml を読み込む
-          def load_glossary_terms
-            config_file = 'config/glossary_terms.yml'
-            return {} unless File.exist?(config_file)
-
-            begin
-              data = YAML.load_file(config_file)
-              terms = data['terms'] || []
-              # 用語名をキーとしたハッシュに変換
-              terms.to_h { |t| [t['term'], t] }
-            rescue StandardError => e
               Common.log_warn("config/glossary_terms.yml の読み込みに失敗しました: #{e.message}")
-              {}
+              []
             end
           end
 
@@ -264,7 +249,7 @@ module Vivlio
               else
                 # 読みの決定順序:
                 # 1. 記法で指定された読み [用語|読み]
-                # 2. config/index_terms.yml に定義された読み
+                # 2. config/glossary_terms.yml に定義された読み
                 # 3. MeCab による推測
                 yomi = yomi_raw || lookup_config_yomi(term_text) || @yomi_inferrer.infer(term_text)
 
@@ -272,7 +257,7 @@ module Vivlio
               end
             end
 
-            # 2. 次に config/index_terms.yml に基づく自動タグ付け
+            # 2. 次に config/glossary_terms.yml に基づく自動タグ付け
             apply_auto_indexing(processed_line, file_basename)
           end
 
@@ -307,13 +292,13 @@ module Vivlio
             end
           end
 
-          # config/index_terms.yml から読みを検索
+          # config/glossary_terms.yml から読みを検索
           def lookup_config_yomi(term_text)
             config = @config_terms.find { |t| t['term'] == term_text }
             config ? config['yomi'] : nil
           end
 
-          # config/index_terms.yml に基づく自動タグ付けを適用
+          # config/glossary_terms.yml に基づく自動タグ付けを適用
           def apply_auto_indexing(line, file_basename)
             return line if @config_terms.empty?
 

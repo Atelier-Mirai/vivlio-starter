@@ -108,8 +108,8 @@ module Vivlio
 
           @manager.auto_process!(['05-save'])
 
-          assert File.exist?('config/index_terms.yml')
-          content = File.read('config/index_terms.yml')
+          assert File.exist?('config/glossary_terms.yml')
+          content = File.read('config/glossary_terms.yml')
           assert_includes content, 'SavedTerm'
         end
 
@@ -117,7 +117,6 @@ module Vivlio
 
         def test_apply_markdown_review_approves_checked_candidates
           # レビューファイルを直接生成して [i] 承認をテスト
-          seed_index_terms([])
           write_review_with_rejected_items(
             terms: [{ term: 'JavaScript', yomi: 'JavaScript', flag: 'i' }],
             rejected: []
@@ -210,8 +209,8 @@ module Vivlio
         # === Section 4 同期テスト ===
 
         def test_apply_section4_blank_flag_removes_from_index_terms
-          # index_terms.yml に登録済みの用語がある
-          seed_index_terms(['CSS', 'HTML', 'JavaScript'])
+          # 統合辞書に索引用語が3語
+          seed_unified_terms([{ name: 'CSS', flags: 'i' }, { name: 'HTML', flags: 'i' }, { name: 'JavaScript', flags: 'i' }])
 
           # レビューファイル: Section 1 は空、Section 4 に [ ] で3語
           write_review_with_rejected_items(
@@ -225,7 +224,7 @@ module Vivlio
 
           @manager.apply_markdown_review!
 
-          # index_terms.yml から全て除去される
+          # 統合辞書から全て除去される
           terms = load_index_terms
           assert_empty terms
 
@@ -237,22 +236,22 @@ module Vivlio
         end
 
         def test_apply_section4_blank_flag_removes_from_glossary_terms
-          # glossary_terms.yml に登録済みの用語がある
-          seed_glossary_terms(['WWW'])
+          # 統合辞書に用語集用語がある
+          seed_unified_terms([{ name: 'WWW', flags: 'g' }])
 
           # レビューファイル: 候補セクションに WWW あるが [g] なし
           write_review_with_rejected_items(terms: [], rejected: [])
 
           @manager.apply_markdown_review!
 
-          # glossary_terms.yml から除去される（レビューで [g] 承認されていない）
+          # 用語集フラグが除去される
           terms = load_glossary_terms
           assert_empty terms
         end
 
         def test_apply_stale_index_data_removed_when_not_approved
-          # index_terms.yml に3語あるが、レビューでは1語のみ [i] 承認
-          seed_index_terms(['CSS', 'HTML', 'JavaScript'])
+          # 統合辞書に3語あるが、レビューでは1語のみ [i] 承認
+          seed_unified_terms([{ name: 'CSS', flags: 'i' }, { name: 'HTML', flags: 'i' }, { name: 'JavaScript', flags: 'i' }])
 
           write_review_with_rejected_items(
             terms: [{ term: 'CSS', yomi: 'CSS', flag: 'i' }],
@@ -267,8 +266,8 @@ module Vivlio
         end
 
         def test_apply_stale_glossary_data_removed_when_not_approved
-          # glossary_terms.yml に2語あるが、レビューでは1語のみ [g] 承認
-          seed_glossary_terms(['Alpha', 'Beta'])
+          # 統合辞書に用語集用語2つあるが、レビューでは1語のみ [g] 承認
+          seed_unified_terms([{ name: 'Alpha', flags: 'g' }, { name: 'Beta', flags: 'g' }])
 
           write_review_with_glossary_approved(
             glossary: [{ term: 'Alpha', yomi: 'あるふぁ', definition: 'テスト定義' }],
@@ -294,7 +293,7 @@ module Vivlio
 
           @manager.apply_markdown_review!
 
-          # index_terms.yml に登録される
+          # 統合辞書に flags: 'i' で登録される
           terms = load_index_terms
           assert_equal 1, terms.size
           assert_equal 'Gamma', terms.first['term']
@@ -330,7 +329,7 @@ module Vivlio
 
           @manager.apply_markdown_review!
 
-          # 両方に登録
+          # 統合辞書に flags: 'ig' で登録 → 索引と用語集の両方に出現
           index_terms = load_index_terms
           glossary_terms = load_glossary_terms
           assert_equal 1, index_terms.size
@@ -341,8 +340,12 @@ module Vivlio
 
         def test_apply_mixed_scenario
           # 複合シナリオ: 索引に3語、用語集に1語が登録済み
-          seed_index_terms(['CSS', 'HTML', 'JavaScript'])
-          seed_glossary_terms(['WWW'])
+          seed_unified_terms([
+            { name: 'CSS', flags: 'i' },
+            { name: 'HTML', flags: 'i' },
+            { name: 'JavaScript', flags: 'i' },
+            { name: 'WWW', flags: 'g' }
+          ])
           seed_rejected_terms(['OldReject'])
 
           # レビュー: CSS のみ [i] 承認、HTML/JavaScript は Section 4 で [ ]
@@ -358,7 +361,7 @@ module Vivlio
 
           @manager.apply_markdown_review!
 
-          # CSS と OldReject が index_terms に残る
+          # CSS と OldReject が索引に残る
           index_terms = load_index_terms
           index_names = index_terms.map { it['term'] }
           assert_includes index_names, 'CSS'
@@ -391,20 +394,21 @@ module Vivlio
 
         # --- テストヘルパー ---
 
-        def seed_index_terms(names)
-          terms = names.map do |name|
-            { 'term' => name, 'yomi' => name, 'pattern' => "/#{name}/", 'source' => 'test' }
+        # 統合辞書をセットアップ
+        # @param entries [Array<Hash>] { name:, flags: } のリスト
+        def seed_unified_terms(entries)
+          terms = entries.map do |e|
+            {
+              'term' => e[:name], 'yomi' => e[:name],
+              'flags' => e[:flags], 'definition' => '',
+              'pattern' => "/#{e[:name]}/", 'source' => 'test',
+              'approved_at' => Time.now.strftime('%Y-%m-%d %H:%M:%S')
+            }
           end
           FileUtils.mkdir_p('config')
-          File.write('config/index_terms.yml', { 'terms' => terms }.to_yaml)
-        end
-
-        def seed_glossary_terms(names)
-          terms = names.map do |name|
-            { 'term' => name, 'yomi' => name, 'definition' => '', 'source' => 'test' }
-          end
-          FileUtils.mkdir_p('config')
-          File.write('config/glossary_terms.yml', { 'generated_at' => Time.now.to_s, 'terms' => terms }.to_yaml)
+          File.write('config/glossary_terms.yml',
+                     { 'generated_at' => Time.now.to_s, 'terms' => terms }.to_yaml)
+          @manager.terms_manager.clear_cache!
         end
 
         def seed_rejected_terms(names)
@@ -417,17 +421,17 @@ module Vivlio
         end
 
         def load_index_terms
-          return [] unless File.exist?('config/index_terms.yml')
+          return [] unless File.exist?('config/glossary_terms.yml')
 
-          data = YAML.load_file('config/index_terms.yml')
-          data['terms'] || []
+          data = YAML.load_file('config/glossary_terms.yml')
+          (data['terms'] || []).select { it['flags'].to_s.include?('i') }
         end
 
         def load_glossary_terms
           return [] unless File.exist?('config/glossary_terms.yml')
 
           data = YAML.load_file('config/glossary_terms.yml')
-          data['terms'] || []
+          (data['terms'] || []).select { it['flags'].to_s.include?('g') }
         end
 
         def load_rejected_terms

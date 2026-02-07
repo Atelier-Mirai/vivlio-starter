@@ -40,12 +40,12 @@ module Vivlio
               索引機能のコマンド:
               
                 vs index:auto   - 候補抽出・分類・_index_review.md 生成
-                vs index:apply  - レビュー結果を index_terms.yml に適用
+                vs index:apply  - レビュー結果を glossary_terms.yml に適用
               
               ワークフロー:
                 1. vs index:auto   → _index_review.md を生成
                 2. _index_review.md を編集（[x]で承認、[r]で棄却）
-                3. vs index:apply  → index_terms.yml を更新
+                3. vs index:apply  → glossary_terms.yml を更新
                 4. vs build        → 索引ページを含む PDF を生成
               
               詳細は各コマンドに --help を付けて確認してください。
@@ -95,7 +95,7 @@ module Vivlio
 
         # index:apply コマンド - レビュー結果を適用
         class IndexApplyCommand < Samovar::Command
-          self.description = 'レビュー結果を index_terms.yml に適用'
+          self.description = 'レビュー結果を glossary_terms.yml に適用'
 
           options do
             option '-v/--verbose', '詳細出力', default: false, key: :verbose

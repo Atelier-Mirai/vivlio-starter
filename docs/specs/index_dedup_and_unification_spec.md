@@ -236,16 +236,50 @@ end
 
 ### 4.3 統合のスコープ
 
-#### Phase A（本仕様の実装範囲）
+#### Phase A（索引重複排除 — 実装済み）
 - `extract_page_mapping.mjs` に `.index-term` の収集を追加
 - `BacklinkDeduplicator` に `_indexpage.html` の重複排除を追加
 - `IndexPageBuilder` から `deduplicate_same_page!` を廃止し、全リンクを出力
 - `PageMappingExtractor` の Ruby 側で `index_mappings` を処理
 
-#### Phase B（将来の統合）
-- `index_terms.yml` と `glossary_terms.yml` を統合
-- `IndexPageBuilder` と `GlossaryPageBuilder` を `UnifiedPageBuilder` に統合
-- `HierarchicalIndex` の章単位重複排除ロジックを完全に廃止
+#### Phase B（索引・用語集統合 — 実装済み）
+- `index_terms.yml` の内容を `glossary_terms.yml` に `flags: i` で移行（自動マイグレーション）
+- `UnifiedTermsManager` で統合用語辞書を一元管理
+- `IndexMatchScanner` が `glossary_terms.yml` から `flags` ベースで用語をロード
+- `UnifiedPageBuilder` が `_indexpage.html` と `_glossarypage.html` の両方を生成
+- `UnifiedIndexManager` が `UnifiedTermsManager` + `UnifiedPageBuilder` を使用
+- `index.rb` の require と呼び出しを統合モジュールに更新
+
+### 4.4 Phase B 統合データモデル
+
+```yaml
+# config/glossary_terms.yml（統合辞書）
+terms:
+  - term: コンピュータ
+    yomi: こんぴゅーた
+    flags: ig              # i=索引, g=用語集, ig=両方
+    definition: '...'      # g フラグ時のみ使用
+    pattern: "/コンピュータ/"
+    source: auto_extracted  # 登録元（auto_extracted / manual_markup / review / unreject）
+    score: 250.5           # 自動抽出時のスコア
+    approved_at: '2026-02-07 22:00:00'
+    backlink_sources:
+      - chapter: 00-preface
+        occurrence: 1
+        anchor_id: gls-src-00-preface-こんぴゅーた-1
+```
+
+### 4.5 Phase B 実装ファイル
+
+| ファイル | 役割 |
+| :--- | :--- |
+| `unified_terms_manager.rb` | 統合用語辞書の CRUD、flags 管理、マイグレーション |
+| `unified_page_builder.rb` | `_indexpage.html` + `_glossarypage.html` 生成 |
+| `unified_index_manager.rb` | オーケストレーター（統合マネージャー経由） |
+| `index_match_scanner.rb` | `glossary_terms.yml` から flags ベースで用語ロード |
+| `index.rb` | エントリポイント（統合モジュールを require） |
+
+旧ファイル（`index_terms_manager.rb`, `glossary_terms_manager.rb`, `index_page_builder.rb`, `glossary_page_builder.rb`）は後方互換のため残置。新規コードパスでは使用されない。
 
 ---
 
@@ -406,10 +440,13 @@ _indexpage.html の <dd> 内:
 5. テスト追加・既存テスト更新
 6. `vs build` で動作確認
 
-### 11.2 Phase B（将来の統合）
+### 11.2 Phase B（索引・用語集統合 — 実装済み）
 
-1. `index_terms.yml` の内容を `glossary_terms.yml` に `flags: i` で移行
-2. `IndexPageBuilder` と `GlossaryPageBuilder` を `UnifiedPageBuilder` に統合
-3. `HierarchicalIndex` を簡素化（章単位重複排除の完全廃止）
-4. `index_terms.yml` を廃止
-5. テスト・ドキュメント更新
+1. ✅ `UnifiedTermsManager` 作成 — `flags` フィールドで索引/用語集を統合管理
+2. ✅ `migrate_from_index_terms!` — `index_terms.yml` → `glossary_terms.yml` 自動移行
+3. ✅ `IndexMatchScanner` — `glossary_terms.yml` から `flags` ベースで用語ロード
+4. ✅ `UnifiedPageBuilder` — `_indexpage.html` + `_glossarypage.html` 統合生成
+5. ✅ `UnifiedIndexManager` — `UnifiedTermsManager` + `UnifiedPageBuilder` に接続
+6. ✅ `index.rb` — require と呼び出しを統合モジュールに更新
+7. ✅ テスト更新 — 全14ファイル 171テスト 430アサーション合格
+8. ✅ 警告メッセージ・コメントを `glossary_terms.yml` 参照に更新

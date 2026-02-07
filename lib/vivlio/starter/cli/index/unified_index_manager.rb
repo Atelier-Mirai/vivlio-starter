@@ -15,14 +15,12 @@
 # ================================================================
 
 require_relative '../common'
-require_relative 'index_terms_manager'
-require_relative 'glossary_terms_manager'
+require_relative 'unified_terms_manager'
 require_relative 'review_queue_manager'
 require_relative 'review_markdown_generator'
 require_relative 'index_candidate_extractor'
 require_relative 'index_match_scanner'
-require_relative 'index_page_builder'
-require_relative 'glossary_page_builder'
+require_relative 'unified_page_builder'
 require_relative 'yomi_inferrer'
 
 module Vivlio
@@ -31,19 +29,20 @@ module Vivlio
       # IndexCommands モジュール内のクラスへのエイリアス
       IndexCandidateExtractor = IndexCommands::IndexCandidateExtractor
       IndexMatchScanner = IndexCommands::IndexMatchScanner
-      IndexPageBuilder = IndexCommands::IndexPageBuilder
+      UnifiedPageBuilder = IndexCommands::UnifiedPageBuilder
       YomiInferrer = IndexCommands::YomiInferrer
 
       class UnifiedIndexManager
-        attr_reader :terms_manager, :glossary_manager, :queue_manager, :markdown_generator
+        attr_reader :terms_manager, :queue_manager, :markdown_generator
 
         def initialize
-          @terms_manager = IndexTermsManager.new
-          @glossary_manager = GlossaryTermsManager.new
+          @terms_manager = UnifiedTermsManager.new
           @queue_manager = ReviewQueueManager.new
           @markdown_generator = ReviewMarkdownGenerator.new
           @config = load_index_config
           @glossary_config = load_glossary_config
+          # Phase B: 旧 index_terms.yml が残っていれば自動移行
+          @terms_manager.migrate_from_index_terms!
         end
 
         # 全自動索引候補抽出 → _index_review.md 生成
@@ -56,10 +55,10 @@ module Vivlio
 
           Common.log_action('索引の自動処理を開始します...')
 
-          # 1. 手動マークアップを検出して index_terms.yml に登録
+          # 1. 手動マークアップを検出して統合辞書に登録
           manual_terms = extract_manual_markup_terms(chapters)
           if manual_terms.any?
-            @terms_manager.merge_terms!(manual_terms, source: 'manual_markup')
+            @terms_manager.merge_terms!(manual_terms, flags: 'i', source: 'manual_markup')
             Common.log_info("手動マークアップから #{manual_terms.size} 件の用語を登録しました")
           end
 
@@ -75,7 +74,7 @@ module Vivlio
           Common.log_info("候補抽出: #{candidates.size}件")
 
           # 3. 既存の承認済み用語とリジェクト済み用語を除外
-          existing_terms = @terms_manager.term_names
+          existing_terms = @terms_manager.index_term_names
           rejected_terms = @queue_manager.load_rejected_terms
           rejected_count_in_candidates = 0
 
@@ -95,7 +94,7 @@ module Vivlio
           auto_approved = filtered_candidates
                           .select { |c| c['score'] >= auto_threshold }
                           .map { |candidate| normalize_candidate(candidate) }
-          @terms_manager.merge_terms!(auto_approved, source: 'auto_extracted') if auto_approved.any?
+          @terms_manager.merge_terms!(auto_approved, flags: 'i', source: 'auto_extracted') if auto_approved.any?
 
           # 5. 中スコア候補をHigh/Lowに分割
           review_candidates = filtered_candidates
@@ -105,7 +104,7 @@ module Vivlio
           high_candidates, low_candidates = split_candidates_by_ratio(review_candidates, high_ratio)
 
           # 6. 登録済み用語に文脈を付与
-          terms_with_context = enrich_terms_with_context(@terms_manager.load_existing_terms, chapters)
+          terms_with_context = enrich_terms_with_context(@terms_manager.index_terms, chapters)
 
           # 7. リジェクト済み用語に文脈とスコアを付与
           # candidatesからスコアを復元できるように渡す
@@ -150,123 +149,105 @@ module Vivlio
           index_count = 0
           glossary_count = 0
 
-          # 索引承認処理
+          # --- Phase: 索引承認 ---
           if index_approved.any?
-            @terms_manager.merge_terms!(index_approved, source: 'auto_extracted')
+            @terms_manager.merge_terms!(index_approved, flags: 'i', source: 'auto_extracted')
             index_count = index_approved.size
             changes_made = true
           end
 
-          # 用語集承認処理（説明文付き）
+          # --- Phase: 用語集承認 ---
           if glossary_approved.any?
             validate_glossary_definitions!(glossary_approved)
-            @glossary_manager.merge_terms!(glossary_approved, source: 'review')
+            @terms_manager.merge_terms!(glossary_approved, flags: 'g', source: 'review')
             glossary_count = glossary_approved.size
             changes_made = true
           end
 
-          # 索引のみ承認（[i]）の用語が glossary_terms.yml に残っている場合は除去
-          # フラグが [ig] → [i] に変更された場合に対応
+          # [ig] → [i] に変更された場合: g フラグを除去
           glossary_approved_names = glossary_approved.map { it['term'] }
           index_only = index_approved.reject { glossary_approved_names.include?(it['term']) }
           index_only.each do |term|
-            if @glossary_manager.term_names.include?(term['term'])
-              @glossary_manager.remove_term!(term['term'])
-              Common.log_info("用語集から除外しました（索引のみ）: #{term['term']}")
+            if @terms_manager.glossary_term_names.include?(term['term'])
+              @terms_manager.remove_flag!(term['term'], 'g')
+              Common.log_info("用語集フラグを除去しました（索引のみ）: #{term['term']}")
               changes_made = true
             end
           end
 
-          # 索引のみリジェクト（[-i]）
+          # --- Phase: 索引のみリジェクト（[-i]） ---
           if index_rejected.any?
-            index_rejected.each { @terms_manager.remove_term!(it['term']) }
-            # rejected にも保存（kind: 'index' で区別）
+            index_rejected.each { @terms_manager.remove_flag!(it['term'], 'i') }
             @queue_manager.save_rejected_terms(index_rejected)
             changes_made = true
           end
 
-          # 用語集のみリジェクト（[-g]）
+          # --- Phase: 用語集のみリジェクト（[-g]） ---
           if glossary_rejected.any?
-            glossary_rejected.each { @glossary_manager.remove_term!(it['term']) }
-            # rejected にも保存（kind: 'glossary' で区別）
+            glossary_rejected.each { @terms_manager.remove_flag!(it['term'], 'g') }
             @queue_manager.save_rejected_terms(glossary_rejected)
             changes_made = true
           end
 
-          # 両方リジェクト（[r]）
+          # --- Phase: 両方リジェクト（[r]） ---
           if both_rejected.any?
-            both_rejected.each do |term|
-              @terms_manager.remove_term!(term['term']) if @terms_manager.term_names.include?(term['term'])
-              @glossary_manager.remove_term!(term['term']) if @glossary_manager.term_names.include?(term['term'])
-            end
+            both_rejected.each { @terms_manager.remove_term!(it['term']) }
             @queue_manager.save_rejected_terms(both_rejected)
             changes_made = true
           end
 
-          # リジェクト解除 + 直接登録処理
-          # フラグに基づいて索引・用語集に登録する
+          # --- Phase: リジェクト解除 + 直接登録 ---
           if unreject.any?
             unreject.each do |entry|
               @queue_manager.unreject_term_by_name!(entry['term'])
               flag = entry['flag'] || 'i'
               term_data = { 'term' => entry['term'], 'yomi' => entry['yomi'] }
-
-              # フラグに基づいて索引・用語集に登録
-              case flag
-              when 'i', 'x'
-                @terms_manager.merge_terms!([term_data], source: 'unreject')
-                index_count += 1
-              when 'g'
-                @glossary_manager.merge_terms!([term_data], source: 'unreject')
-                glossary_count += 1
-              when 'ig', 'gi'
-                @terms_manager.merge_terms!([term_data], source: 'unreject')
-                @glossary_manager.merge_terms!([term_data], source: 'unreject')
-                index_count += 1
-                glossary_count += 1
-              end
+              flags = case flag
+                      when 'i', 'x' then 'i'
+                      when 'g' then 'g'
+                      when 'ig', 'gi' then 'ig'
+                      else 'i'
+                      end
+              @terms_manager.merge_terms!([term_data], flags:, source: 'unreject')
+              index_count += 1 if flags.include?('i')
+              glossary_count += 1 if flags.include?('g')
               Common.log_info("リジェクト解除 → [#{flag}] 登録: #{entry['term']}")
             end
             changes_made = true
           end
 
-          # 読み変更処理
+          # --- Phase: 読み変更 ---
           if yomi_changes.any?
             @terms_manager.update_yomi!(yomi_changes)
             changes_made = true
           end
 
           # --- Phase: 孤立データ除去 ---
-          # レビューで承認されていない用語が index_terms.yml / glossary_terms.yml に残っている場合は除去
-          # （手動作成やキャッシュ残りによる不整合を解消）
           index_approved_names = index_approved.map { it['term'] }
           glossary_approved_names_all = glossary_approved.map { it['term'] }
           unreject_index_names = unreject.select { %w[i x ig gi].include?(it['flag']) }.map { it['term'] }
           unreject_glossary_names = unreject.select { %w[g ig gi].include?(it['flag']) }.map { it['term'] }
 
-          # index_terms.yml の孤立データ除去
-          stale_index = @terms_manager.term_names - index_approved_names - unreject_index_names
+          # 索引フラグの孤立除去
+          stale_index = @terms_manager.index_term_names - index_approved_names - unreject_index_names
           stale_index.each do |term_name|
-            @terms_manager.remove_term!(term_name)
-            Common.log_info("索引から孤立データを除去: #{term_name}")
+            @terms_manager.remove_flag!(term_name, 'i')
+            Common.log_info("索引フラグを除去: #{term_name}")
             changes_made = true
           end
 
-          # glossary_terms.yml の孤立データ除去
-          stale_glossary = @glossary_manager.term_names - glossary_approved_names_all - unreject_glossary_names
+          # 用語集フラグの孤立除去
+          stale_glossary = @terms_manager.glossary_term_names - glossary_approved_names_all - unreject_glossary_names
           stale_glossary.each do |term_name|
-            @glossary_manager.remove_term!(term_name)
-            Common.log_info("用語集から孤立データを除去: #{term_name}")
+            @terms_manager.remove_flag!(term_name, 'g')
+            Common.log_info("用語集フラグを除去: #{term_name}")
             changes_made = true
           end
 
           # --- Phase: Section 4 同期処理 ---
-          # Section 4 の全項目を取得し、[ ] フラグの項目を rejected として確定する
-          # unreject 済み（[i]/[g]/[ig] フラグ）の項目は除外
           rejected_section_all = @markdown_generator.parse_rejected_section_all
           unreject_names = unreject.map { it['term'] }
 
-          # [ ] フラグ = 除外済みとして確定（index_terms / glossary_terms から除去、rejected に追加）
           confirmed_rejected = rejected_section_all.select { it['flag'] == '' || it['flag'] == ' ' }
                                                    .reject { unreject_names.include?(it['term']) }
 
@@ -274,25 +255,13 @@ module Vivlio
             rejected_count = 0
             confirmed_rejected.each do |entry|
               term_name = entry['term']
-              removed = false
-
               if @terms_manager.term_names.include?(term_name)
                 @terms_manager.remove_term!(term_name)
-                removed = true
-              end
-
-              if @glossary_manager.term_names.include?(term_name)
-                @glossary_manager.remove_term!(term_name)
-                removed = true
-              end
-
-              if removed
                 Common.log_info("除外済みリストに基づき登録を解除: #{term_name}")
                 rejected_count += 1
               end
             end
 
-            # rejected.yml に同期
             @queue_manager.save_rejected_terms(confirmed_rejected)
             changes_made = true if rejected_count.positive? || confirmed_rejected.any?
           end
@@ -301,7 +270,7 @@ module Vivlio
             rejected_total = both_rejected.size + (confirmed_rejected&.size || 0)
             Common.log_success("索引: #{index_count}件、用語集: #{glossary_count}件、リジェクト: #{rejected_total}件")
             Common.log_info("読み変更: #{yomi_changes.size}件") if yomi_changes.any?
-            Common.log_success('index_terms.yml / glossary_terms.yml を更新しました')
+            Common.log_success('glossary_terms.yml を更新しました')
             Common.log_info('ページ生成は vs build 実行時に行われます')
           else
             Common.log_warn('変更がありませんでした')
@@ -357,35 +326,43 @@ module Vivlio
             .strip
         end
 
-        # 索引ページを生成（内部用 - vs build から呼ばれる）
+        # 索引・用語集ページを生成（内部用 - vs build から呼ばれる）
         # @param chapters [Array<String>] 対象章のリスト
         def build_index!(chapters)
-          Common.log_action('索引ページを生成しています...')
+          Common.log_action('索引・用語集ページを生成しています...')
 
-          # 本文スキャン（contents/ のファイルは書き換えない）
+          # 本文スキャン（索引タグ付け＋用語集リンク生成）
           scanner = IndexMatchScanner.new(defer_warnings: true)
           scanner.scan_all_chapters!(chapters, read_only: false)
 
-          # 索引ページ生成
-          builder = IndexPageBuilder.new
-          builder.build!
+          # UnifiedPageBuilder で索引＋用語集を生成
+          builder = UnifiedPageBuilder.new(glossary_config: @glossary_config)
 
-          Common.log_success('索引ページを生成しました')
+          # 索引ページ生成
+          builder.build_index!
+
+          # 用語集ページ生成（glossary_enabled かつ g フラグの用語がある場合）
+          if glossary_enabled?
+            @terms_manager.clear_cache! # scan 後に backlink_sources が更新されるためリロード
+            glossary = @terms_manager.glossary_terms
+            builder.build_glossary!(glossary)
+          end
+
+          Common.log_success('索引・用語集ページの生成が完了しました')
 
           if scanner.config_missing || scanner.no_matches
             IndexCommands.add_post_build_message(IndexCommands::INDEX_TERMS_MISSING_MESSAGE)
           end
         end
 
-        # 用語集ページを生成（内部用 - vs build から呼ばれる）
+        # 用語集ページを生成（後方互換 - 単独呼び出し用）
         def build_glossary!
           return unless glossary_enabled?
 
-          Common.log_action('用語集ページを生成しています...')
-
-          builder = GlossaryPageBuilder.new
-          result = builder.build!
-
+          @terms_manager.clear_cache!
+          glossary = @terms_manager.glossary_terms
+          builder = UnifiedPageBuilder.new(glossary_config: @glossary_config)
+          result = builder.build_glossary!(glossary)
           Common.log_success('用語集ページを生成しました') if result
         end
 
@@ -540,7 +517,7 @@ module Vivlio
           yomi_inferrer = YomiInferrer.new
 
           # 既存用語の読みを取得（学習済みの読みを優先するため）
-          existing_yomi = @terms_manager.load_existing_terms.to_h { |t| [t['term'], t['yomi']] }
+          existing_yomi = @terms_manager.load_terms.to_h { |t| [t['term'], t['yomi']] }
 
           extractor.all_candidates.filter_map do |term|
             # ゴミ用語をフィルタリング
@@ -596,7 +573,7 @@ module Vivlio
         # @return [Array<Hash>] 文脈付き用語のリスト
         def enrich_terms_with_context(terms, chapters)
           # 用語集に登録されている用語を取得（定義付き）
-          glossary_terms = @glossary_manager.load_existing_terms
+          glossary_terms = @terms_manager.glossary_terms
           glossary_by_name = glossary_terms.to_h { |t| [t['term'], t] }
 
           terms.map do |term|
