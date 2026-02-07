@@ -154,51 +154,6 @@ module Vivlio
           assert_equal '01-intro', term['backlink_sources'].first['chapter']
         end
 
-        # --- Phase: マイグレーション ---
-
-        def test_migrate_from_index_terms_merges_data
-          # 旧 index_terms.yml を作成
-          index_data = {
-            'terms' => [
-              { 'term' => 'CSS', 'yomi' => 'CSS', 'pattern' => '/CSS/', 'source' => 'auto_extracted', 'score' => 200 },
-              { 'term' => 'HTML', 'yomi' => 'HTML', 'pattern' => '/HTML/', 'source' => 'manual_markup' }
-            ]
-          }
-          File.write('config/index_terms.yml', index_data.to_yaml)
-
-          @manager.clear_cache!
-          @manager.migrate_from_index_terms!
-
-          # index_glossary_terms.yml に移行される
-          assert_equal 2, @manager.load_terms.size
-          css = @manager.find_term('CSS')
-          assert_equal 'i', css['flags']
-          assert_equal 200, css['score']
-
-          # 旧ファイルは削除される
-          refute File.exist?('config/index_terms.yml')
-        end
-
-        def test_migrate_upgrades_existing_glossary_terms_to_ig
-          # 既存の index_glossary_terms.yml
-          seed_terms([{ 'term' => 'CSS', 'flags' => 'g', 'definition' => 'スタイルシート' }])
-
-          # 旧 index_terms.yml にも CSS がある
-          index_data = {
-            'terms' => [
-              { 'term' => 'CSS', 'yomi' => 'CSS', 'pattern' => '/CSS/' }
-            ]
-          }
-          File.write('config/index_terms.yml', index_data.to_yaml)
-
-          @manager.clear_cache!
-          @manager.migrate_from_index_terms!
-
-          # flags が ig に昇格
-          css = @manager.find_term('CSS')
-          assert_equal 'ig', css['flags']
-        end
-
         # --- Phase: 後方互換 ---
 
         def test_legacy_entries_without_flags_default_to_g

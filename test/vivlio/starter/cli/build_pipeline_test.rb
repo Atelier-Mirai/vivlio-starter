@@ -445,9 +445,9 @@ module Vivlio
         end
 
         def stub_all_steps(pipeline)
-          pipeline.define_singleton_method(:run_step1_clean) {}
-          pipeline.define_singleton_method(:run_step2_optimize_images) {}
-          pipeline.define_singleton_method(:run_step5_index_processing) {}
+          pipeline.define_singleton_method(:run_step0_clean) {}
+          pipeline.define_singleton_method(:run_step1_optimize_images) {}
+          pipeline.define_singleton_method(:run_step4_index_processing) {}
           pipeline.define_singleton_method(:run_step9_front_pages_and_tail) {}
           pipeline.define_singleton_method(:run_step12_rename_and_clean) {}
         end

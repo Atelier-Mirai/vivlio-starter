@@ -41,8 +41,6 @@ module Vivlio
           @markdown_generator = ReviewMarkdownGenerator.new
           @config = load_index_config
           @glossary_config = load_glossary_config
-          # Phase B: 旧 index_terms.yml が残っていれば自動移行
-          @terms_manager.migrate_from_index_terms!
         end
 
         # 全自動索引候補抽出 → _index_review.md 生成
