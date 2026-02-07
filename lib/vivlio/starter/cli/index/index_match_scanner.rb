@@ -26,7 +26,7 @@ module Vivlio
     module CLI
       module IndexCommands
         INDEX_TERMS_MISSING_MESSAGE = <<~MSG.freeze
-          索引語辞書(config/index_terms.yml)が見つかりませんでした
+          索引語辞書(config/index_glossary_terms.yml)が見つかりませんでした
           ⚠️  原稿に [用語|読み] という書き方で手動登録した語のみが索引に載ります
           ⚠️  自動索引機能を有効にするには: vs index:auto -> vs index:apply
         MSG
@@ -77,14 +77,20 @@ module Vivlio
             @config_missing = false
             @no_matches = false
             @defer_warnings = defer_warnings
-            @config_terms = load_config_terms
-            @glossary_terms = load_glossary_terms
+            @unified_terms = load_unified_terms
+            @config_terms = @unified_terms.select { it['flags'].to_s.include?('i') }
+            @glossary_terms = @unified_terms.select { it['flags'].to_s.include?('g') }.to_h { [it['term'], it] }
             @glossary_backlinks = Hash.new { |h, k| h[k] = [] }
+            # 用語集のみの用語（索引対象外だがバックリンクは必要）
+            @glossary_only_terms = @unified_terms.select { |t|
+              flags = t['flags'].to_s
+              flags.include?('g') && !flags.include?('i')
+            }
           end
 
-          # config/index_terms.yml を読み込む
-          def load_config_terms
-            config_file = 'config/index_terms.yml'
+          # 統合用語辞書（config/index_glossary_terms.yml）を読み込む
+          def load_unified_terms
+            config_file = 'config/index_glossary_terms.yml'
             unless File.exist?(config_file)
               if @defer_warnings
                 @config_missing = true
@@ -97,35 +103,19 @@ module Vivlio
             begin
               data = YAML.load_file(config_file)
               terms = data['terms'] || []
-              Common.log_info("索引語辞書から #{terms.size} 件の語句をロードしました")
+              Common.log_info("統合用語辞書から #{terms.size} 件の語句をロードしました")
               terms
             rescue StandardError => e
-              Common.log_warn("config/index_terms.yml の読み込みに失敗しました: #{e.message}")
+              Common.log_warn("config/index_glossary_terms.yml の読み込みに失敗: #{e.message}")
               []
             end
           end
 
-          # config/glossary_terms.yml を読み込む
-          def load_glossary_terms
-            config_file = 'config/glossary_terms.yml'
-            return {} unless File.exist?(config_file)
-
-            begin
-              data = YAML.load_file(config_file)
-              terms = data['terms'] || []
-              # 用語名をキーとしたハッシュに変換
-              terms.to_h { |t| [t['term'], t] }
-            rescue StandardError => e
-              Common.log_warn("config/glossary_terms.yml の読み込みに失敗しました: #{e.message}")
-              {}
-            end
-          end
-
-          # 用語集のバックリンクを glossary_terms.yml に保存
+          # 用語集のバックリンクを index_glossary_terms.yml に保存
           def save_glossary_backlinks!
             return if @glossary_backlinks.empty?
 
-            config_file = 'config/glossary_terms.yml'
+            config_file = 'config/index_glossary_terms.yml'
             return unless File.exist?(config_file)
 
             begin
@@ -201,6 +191,9 @@ module Vivlio
             content = File.read(md_file, encoding: 'utf-8')
             file_basename = File.basename(md_file, '.md')
 
+            # contents/ ディレクトリ内のファイルは常に読み取り専用（原稿保護）
+            effective_read_only = read_only || md_file.start_with?(Common::CONTENTS_DIR)
+
             match_count_before = @matches.size
             Common.log_info("スキャン中: #{md_file} ...")
 
@@ -208,15 +201,16 @@ module Vivlio
             new_content = process_content_with_code_block_exclusion(content, file_basename)
 
             match_count_after = @matches.size
-            diff = match_count_after - match_count_before
+            index_diff = match_count_after - match_count_before
+            content_changed = new_content != content
 
-            if diff > 0
+            if content_changed
               # read_only モードでない場合のみファイルを書き換え
-              unless read_only
+              unless effective_read_only
                 File.write(md_file, new_content, encoding: 'utf-8')
-                Common.log_success("#{md_file}: #{diff} 件の索引語をタグ付けしました")
+                Common.log_success("#{md_file}: #{index_diff} 件の索引語をタグ付けしました")
               else
-                Common.log_success("#{md_file}: #{diff} 件の索引語を検出しました（読み取り専用）")
+                Common.log_success("#{md_file}: #{index_diff} 件の索引語を検出しました（読み取り専用）")
               end
             else
               Common.log_info("#{md_file}: 索引語は見つかりませんでした")
@@ -264,7 +258,7 @@ module Vivlio
               else
                 # 読みの決定順序:
                 # 1. 記法で指定された読み [用語|読み]
-                # 2. config/index_terms.yml に定義された読み
+                # 2. config/index_glossary_terms.yml に定義された読み
                 # 3. MeCab による推測
                 yomi = yomi_raw || lookup_config_yomi(term_text) || @yomi_inferrer.infer(term_text)
 
@@ -272,8 +266,11 @@ module Vivlio
               end
             end
 
-            # 2. 次に config/index_terms.yml に基づく自動タグ付け
-            apply_auto_indexing(processed_line, file_basename)
+            # 2. 次に config/index_glossary_terms.yml に基づく自動タグ付け（索引用語）
+            indexed_line = apply_auto_indexing(processed_line, file_basename)
+
+            # 3. 用語集のみの用語にバックリンク・†リンクを付与
+            apply_glossary_only_linking(indexed_line, file_basename)
           end
 
           # 索引対象として無効な用語かどうかを判定
@@ -307,13 +304,13 @@ module Vivlio
             end
           end
 
-          # config/index_terms.yml から読みを検索
+          # config/index_glossary_terms.yml から読みを検索
           def lookup_config_yomi(term_text)
             config = @config_terms.find { |t| t['term'] == term_text }
             config ? config['yomi'] : nil
           end
 
-          # config/index_terms.yml に基づく自動タグ付けを適用
+          # config/index_glossary_terms.yml に基づく自動タグ付けを適用
           def apply_auto_indexing(line, file_basename)
             return line if @config_terms.empty?
 
@@ -325,11 +322,18 @@ module Vivlio
               # すでにタグ付けされた部分を保護（二重タグ付け防止）
               # タグ自体とその中身を一時的に置換する
               placeholders = {}
-              # index-term クラスを持つ span または dfn タグを最短一致でマッチさせる
-              # [修正] multiline オプションを考慮しなくても良いが、念のため /m は使わず、
-              # タグの中身に他のタグが含まれないことを前提とする（現状の仕様）
-              protected_line = result.gsub(/(<(span|dfn)[^>]*class="index-term"[^>]*>.*?<\/\2>)/) do |match|
+              # index-term 要素全体を保護（後続の glossary-link も含む）
+              protected_line = result.gsub(
+                /(<(?:span|dfn)[^>]*class="index-term"[^>]*>.*?<\/(?:span|dfn)>)(\s*<a[^>]*class="glossary-link"[^>]*>.*?<\/a>)?/
+              ) do |match|
                 token = "[[IDX_TOKEN_#{placeholders.size}]]"
+                placeholders[token] = match
+                token
+              end
+
+              # 残りの HTML タグを保護（属性内の用語名が誤マッチしないように）
+              protected_line = protected_line.gsub(/<[^>]+>/) do |match|
+                token = "[[HTML_TOKEN_#{placeholders.size}]]"
                 placeholders[token] = match
                 token
               end
@@ -380,6 +384,65 @@ module Vivlio
                 replaced_line.gsub!(token, original)
               end
 
+              result = replaced_line
+            end
+            result
+          end
+
+          # 用語集のみの用語にバックリンク・†リンクを付与（索引タグは追加しない）
+          def apply_glossary_only_linking(line, file_basename)
+            return line if @glossary_only_terms.empty?
+
+            result = line
+            @glossary_only_terms.each do |config|
+              term = config['term']
+
+              # 既にタグ付けされた部分を保護
+              placeholders = {}
+              # index-term 要素全体を保護（後続の glossary-link も含む）
+              protected_line = result.gsub(
+                /(<(?:span|dfn)[^>]*class="index-term"[^>]*>.*?<\/(?:span|dfn)>)(\s*<a[^>]*class="glossary-link"[^>]*>.*?<\/a>)?/
+              ) do |match|
+                token = "[[GLS_TOKEN_#{placeholders.size}]]"
+                placeholders[token] = match
+                token
+              end
+
+              # 残りの HTML タグを保護（属性内の用語名が誤マッチしないように）
+              protected_line = protected_line.gsub(/<[^>]+>/) do |match|
+                token = "[[GLS_HTML_#{placeholders.size}]]"
+                placeholders[token] = match
+                token
+              end
+
+              # 振り仮名記法 {漢字|ふりがな} を保護
+              protected_line = protected_line.gsub(/(\{[^{}]*\|[^{}]*\})/) do |match|
+                token = "[[GLS_RUBY_#{placeholders.size}]]"
+                placeholders[token] = match
+                token
+              end
+
+              # インラインコード `...` を保護
+              protected_line = protected_line.gsub(/(`[^`]+`)/) do |match|
+                token = "[[GLS_CODE_#{placeholders.size}]]"
+                placeholders[token] = match
+                token
+              end
+
+              pattern = Regexp.new(Regexp.escape(term))
+
+              replaced_line = protected_line.gsub(pattern) do |match|
+                if match.start_with?('[[GLS_')
+                  match
+                else
+                  @term_occurrence[term] += 1
+                  occurrence_num = @term_occurrence[term]
+                  glossary_link = build_glossary_link(term, file_basename, occurrence_num)
+                  glossary_link ? "#{match}#{glossary_link}" : match
+                end
+              end
+
+              placeholders.each { |token, original| replaced_line.gsub!(token, original) }
               result = replaced_line
             end
             result

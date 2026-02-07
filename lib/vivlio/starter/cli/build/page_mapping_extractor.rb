@@ -39,13 +39,16 @@ module Vivlio
           MAPPING_SCRIPT = File.expand_path('extract_page_mapping.mjs', __dir__)
 
           # 抽出結果を保持する Data オブジェクト
-          PageMapping = Data.define(:mappings, :backlink_mappings, :total_pages, :extracted_at)
+          PageMapping = Data.define(:mappings, :backlink_mappings, :index_mappings, :total_pages, :extracted_at)
 
           # 個別マッピングエントリ
           MappingEntry = Data.define(:anchor_id, :href, :page_index, :spine_index)
 
           # バックリンクマッピングエントリ
           BacklinkEntry = Data.define(:href, :page_index, :spine_index)
+
+          # 索引語マッピングエントリ
+          IndexMappingEntry = Data.define(:anchor_id, :page_index, :spine_index)
 
           def initialize(port: DEFAULT_PORT, timeout_ms: DEFAULT_TIMEOUT_MS)
             @port = port
@@ -231,9 +234,18 @@ module Vivlio
               )
             end
 
+            index_mappings = Array(raw[:index_mappings]).map do
+              IndexMappingEntry.new(
+                anchor_id: it[:anchor_id],
+                page_index: it[:page_index],
+                spine_index: it[:spine_index]
+              )
+            end
+
             PageMapping.new(
               mappings:,
               backlink_mappings:,
+              index_mappings:,
               total_pages: raw[:total_pages] || 0,
               extracted_at: raw[:extracted_at]
             )

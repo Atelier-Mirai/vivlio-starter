@@ -108,31 +108,26 @@ module Vivlio
 
           @manager.auto_process!(['05-save'])
 
-          assert File.exist?('config/index_terms.yml')
-          content = File.read('config/index_terms.yml')
+          assert File.exist?('config/index_glossary_terms.yml')
+          content = File.read('config/index_glossary_terms.yml')
           assert_includes content, 'SavedTerm'
         end
 
         # --- phase: apply_review! tests ---
 
         def test_apply_markdown_review_approves_checked_candidates
-          # まず auto_process でレビューファイルを生成
-          File.write('contents/06-apply.md', <<~MD)
-            # Apply Test
-
-            JavaScriptとHTMLについて説明します。
-          MD
-          @manager.auto_process!(['06-apply'])
-
-          # レビューファイルを編集して候補を承認
-          content = File.read('_index_glossary_review.md')
-          # 候補セクションの [ ] を [x] に変更
-          modified = content.gsub(/^- \[ \] `NEW!` \*\*JavaScript\*\*/, '- [x] `NEW!` **JavaScript**')
-          File.write('_index_glossary_review.md', modified)
+          # レビューファイルを直接生成して [i] 承認をテスト
+          write_review_with_rejected_items(
+            terms: [{ term: 'JavaScript', yomi: 'JavaScript', flag: 'i' }],
+            rejected: []
+          )
 
           result = @manager.apply_markdown_review!
 
           assert result
+          terms = load_index_terms
+          assert_equal 1, terms.size
+          assert_equal 'JavaScript', terms.first['term']
         end
 
         def test_apply_markdown_review_returns_false_when_no_file
@@ -209,6 +204,518 @@ module Vivlio
           @manager.reset_rejected!
 
           refute File.exist?('config/index_glossary_rejected.yml')
+        end
+
+        # === Section 4 同期テスト ===
+
+        def test_apply_section4_blank_flag_removes_from_index_terms
+          # 統合辞書に索引用語が3語
+          seed_unified_terms([{ name: 'CSS', flags: 'i' }, { name: 'HTML', flags: 'i' }, { name: 'JavaScript', flags: 'i' }])
+
+          # レビューファイル: Section 1 は空、Section 4 に [ ] で3語
+          write_review_with_rejected_items(
+            terms: [],
+            rejected: [
+              { term: 'CSS', yomi: 'CSS', flag: ' ' },
+              { term: 'HTML', yomi: 'HTML', flag: ' ' },
+              { term: 'JavaScript', yomi: 'JavaScript', flag: ' ' }
+            ]
+          )
+
+          @manager.apply_markdown_review!
+
+          # 統合辞書から全て除去される
+          terms = load_index_terms
+          assert_empty terms
+
+          # rejected.yml に追加される
+          rejected = load_rejected_terms
+          assert_includes rejected, 'CSS'
+          assert_includes rejected, 'HTML'
+          assert_includes rejected, 'JavaScript'
+        end
+
+        def test_apply_section4_blank_flag_removes_from_glossary_terms
+          # 統合辞書に用語集用語がある
+          seed_unified_terms([{ name: 'WWW', flags: 'g' }])
+
+          # レビューファイル: 候補セクションに WWW あるが [g] なし
+          write_review_with_rejected_items(terms: [], rejected: [])
+
+          @manager.apply_markdown_review!
+
+          # 用語集フラグが除去される
+          terms = load_glossary_terms
+          assert_empty terms
+        end
+
+        def test_apply_stale_index_data_removed_when_not_approved
+          # 統合辞書に3語あるが、レビューでは1語のみ [i] 承認
+          seed_unified_terms([{ name: 'CSS', flags: 'i' }, { name: 'HTML', flags: 'i' }, { name: 'JavaScript', flags: 'i' }])
+
+          write_review_with_rejected_items(
+            terms: [{ term: 'CSS', yomi: 'CSS', flag: 'i' }],
+            rejected: []
+          )
+
+          @manager.apply_markdown_review!
+
+          terms = load_index_terms
+          assert_equal 1, terms.size
+          assert_equal 'CSS', terms.first['term']
+        end
+
+        def test_apply_stale_glossary_data_removed_when_not_approved
+          # 統合辞書に用語集用語2つあるが、レビューでは1語のみ [g] 承認
+          seed_unified_terms([{ name: 'Alpha', flags: 'g' }, { name: 'Beta', flags: 'g' }])
+
+          write_review_with_glossary_approved(
+            glossary: [{ term: 'Alpha', yomi: 'あるふぁ', definition: 'テスト定義' }],
+            rejected: []
+          )
+
+          @manager.apply_markdown_review!
+
+          terms = load_glossary_terms
+          assert_equal 1, terms.size
+          assert_equal 'Alpha', terms.first['term']
+        end
+
+        def test_apply_unreject_with_i_flag_registers_to_index
+          # rejected に用語がある
+          seed_rejected_terms(['Gamma'])
+
+          # Section 4 で [i] にフラグ変更
+          write_review_with_rejected_items(
+            terms: [],
+            rejected: [{ term: 'Gamma', yomi: 'がんま', flag: 'i' }]
+          )
+
+          @manager.apply_markdown_review!
+
+          # 統合辞書に flags: 'i' で登録される
+          terms = load_index_terms
+          assert_equal 1, terms.size
+          assert_equal 'Gamma', terms.first['term']
+
+          # rejected.yml から解除される
+          rejected = load_rejected_terms
+          refute_includes rejected, 'Gamma'
+        end
+
+        def test_apply_unreject_with_g_flag_registers_to_glossary
+          seed_rejected_terms(['Delta'])
+
+          write_review_with_rejected_items(
+            terms: [],
+            rejected: [{ term: 'Delta', yomi: 'でるた', flag: 'g' }]
+          )
+
+          @manager.apply_markdown_review!
+
+          # index_glossary_terms.yml に登録される
+          terms = load_glossary_terms
+          assert_equal 1, terms.size
+          assert_equal 'Delta', terms.first['term']
+        end
+
+        def test_apply_unreject_with_ig_flag_registers_to_both
+          seed_rejected_terms(['Epsilon'])
+
+          write_review_with_rejected_items(
+            terms: [],
+            rejected: [{ term: 'Epsilon', yomi: 'いぷしろん', flag: 'ig' }]
+          )
+
+          @manager.apply_markdown_review!
+
+          # 統合辞書に flags: 'ig' で登録 → 索引と用語集の両方に出現
+          index_terms = load_index_terms
+          glossary_terms = load_glossary_terms
+          assert_equal 1, index_terms.size
+          assert_equal 'Epsilon', index_terms.first['term']
+          assert_equal 1, glossary_terms.size
+          assert_equal 'Epsilon', glossary_terms.first['term']
+        end
+
+        def test_apply_mixed_scenario
+          # 複合シナリオ: 索引に3語、用語集に1語が登録済み
+          seed_unified_terms([
+            { name: 'CSS', flags: 'i' },
+            { name: 'HTML', flags: 'i' },
+            { name: 'JavaScript', flags: 'i' },
+            { name: 'WWW', flags: 'g' }
+          ])
+          seed_rejected_terms(['OldReject'])
+
+          # レビュー: CSS のみ [i] 承認、HTML/JavaScript は Section 4 で [ ]
+          # OldReject は [i] で unreject
+          write_review_with_rejected_items(
+            terms: [{ term: 'CSS', yomi: 'CSS', flag: 'i' }],
+            rejected: [
+              { term: 'HTML', yomi: 'HTML', flag: ' ' },
+              { term: 'JavaScript', yomi: 'JavaScript', flag: ' ' },
+              { term: 'OldReject', yomi: 'おーるどりじぇくと', flag: 'i' }
+            ]
+          )
+
+          @manager.apply_markdown_review!
+
+          # CSS と OldReject が索引に残る
+          index_terms = load_index_terms
+          index_names = index_terms.map { it['term'] }
+          assert_includes index_names, 'CSS'
+          assert_includes index_names, 'OldReject'
+          refute_includes index_names, 'HTML'
+          refute_includes index_names, 'JavaScript'
+
+          # glossary は空（WWW は承認されていない）
+          glossary_terms = load_glossary_terms
+          assert_empty glossary_terms
+
+          # rejected に HTML, JavaScript が入っている
+          rejected = load_rejected_terms
+          assert_includes rejected, 'HTML'
+          assert_includes rejected, 'JavaScript'
+          # OldReject は unreject されている
+          refute_includes rejected, 'OldReject'
+        end
+
+        def test_apply_review_file_preserved_after_apply
+          write_review_with_rejected_items(terms: [], rejected: [])
+
+          @manager.apply_markdown_review!
+
+          # レビューファイルが残っている
+          assert File.exist?('_index_glossary_review.md')
+        end
+
+        # === フラグ別 apply→auto ラウンドトリップテスト ===
+
+        def test_apply_g_flag_from_candidate_section
+          # 候補セクションで [g] を選択
+          content = build_review(
+            terms: [],
+            high: [{ term: 'ウェブサイト', yomi: 'ウェブサイト', flag: 'g' }],
+            low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          # flags: 'g' で保存される
+          glossary = load_glossary_terms
+          assert_equal 1, glossary.size
+          assert_equal 'ウェブサイト', glossary.first['term']
+
+          # 索引には含まれない
+          index = load_index_terms
+          assert_empty index
+        end
+
+        def test_apply_ig_flag_from_candidate_section
+          content = build_review(
+            terms: [],
+            high: [{ term: 'CSS', yomi: 'CSS', flag: 'ig' }],
+            low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          # flags: 'ig' で保存 → 索引・用語集の両方
+          index = load_index_terms
+          glossary = load_glossary_terms
+          assert_equal 1, index.size
+          assert_equal 1, glossary.size
+          assert_equal 'CSS', index.first['term']
+        end
+
+        def test_apply_minus_i_removes_index_flag
+          seed_unified_terms([{ name: 'CSS', flags: 'ig' }])
+
+          content = build_review(
+            terms: [{ term: 'CSS', yomi: 'CSS', flag: '-i' }],
+            high: [], low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          # 'i' が除去され 'g' のみ残る
+          index = load_index_terms
+          glossary = load_glossary_terms
+          assert_empty index
+          assert_equal 1, glossary.size
+        end
+
+        def test_apply_minus_g_removes_glossary_flag
+          seed_unified_terms([{ name: 'CSS', flags: 'ig' }])
+
+          content = build_review(
+            terms: [{ term: 'CSS', yomi: 'CSS', flag: '-g' }],
+            high: [], low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          # 'g' が除去され 'i' のみ残る
+          index = load_index_terms
+          glossary = load_glossary_terms
+          assert_equal 1, index.size
+          assert_empty glossary
+        end
+
+        def test_apply_r_flag_removes_term_entirely
+          seed_unified_terms([{ name: 'CSS', flags: 'ig' }])
+
+          content = build_review(
+            terms: [{ term: 'CSS', yomi: 'CSS', flag: 'r' }],
+            high: [], low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          # 完全に除去され rejected に追加
+          assert_empty load_index_terms
+          assert_empty load_glossary_terms
+          assert_includes load_rejected_terms, 'CSS'
+        end
+
+        def test_apply_ig_to_i_transition_removes_g_flag
+          seed_unified_terms([{ name: 'CSS', flags: 'ig' }])
+
+          # [ig] だった用語を [i] に変更
+          content = build_review(
+            terms: [{ term: 'CSS', yomi: 'CSS', flag: 'i' }],
+            high: [], low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          index = load_index_terms
+          glossary = load_glossary_terms
+          assert_equal 1, index.size
+          assert_empty glossary
+        end
+
+        def test_apply_ig_to_g_transition_removes_i_flag
+          seed_unified_terms([{ name: 'CSS', flags: 'ig' }])
+
+          # [ig] だった用語を [g] に変更
+          content = build_review(
+            terms: [{ term: 'CSS', yomi: 'CSS', flag: 'g' }],
+            high: [], low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          index = load_index_terms
+          glossary = load_glossary_terms
+          assert_empty index
+          assert_equal 1, glossary.size
+        end
+
+        def test_glossary_only_term_persists_across_apply
+          # glossary-only 用語が apply 後も消えないことを確認
+          seed_unified_terms([
+            { name: 'CSS', flags: 'i' },
+            { name: 'ウェブサイト', flags: 'g' }
+          ])
+
+          # レビュー: CSS は [i]、ウェブサイト は [g] のまま
+          content = build_review(
+            terms: [
+              { term: 'CSS', yomi: 'CSS', flag: 'i' },
+              { term: 'ウェブサイト', yomi: 'ウェブサイト', flag: 'g' }
+            ],
+            high: [], low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          index = load_index_terms
+          glossary = load_glossary_terms
+          assert_equal 1, index.size
+          assert_equal 'CSS', index.first['term']
+          assert_equal 1, glossary.size
+          assert_equal 'ウェブサイト', glossary.first['term']
+        end
+
+        def test_apply_minus_ig_removes_term_entirely
+          seed_unified_terms([{ name: 'CSS', flags: 'ig' }])
+
+          content = build_review(
+            terms: [{ term: 'CSS', yomi: 'CSS', flag: '-ig' }],
+            high: [], low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          assert_empty load_index_terms
+          assert_empty load_glossary_terms
+          assert_includes load_rejected_terms, 'CSS'
+        end
+
+        def test_unchecked_candidate_not_saved
+          # [ ] のまま放置した候補は保存されない
+          content = build_review(
+            terms: [],
+            high: [{ term: 'NewTerm', yomi: 'にゅーたーむ', flag: ' ' }],
+            low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          assert_empty load_index_terms
+          assert_empty load_glossary_terms
+        end
+
+        private
+
+        # --- テストヘルパー ---
+
+        # 統合辞書をセットアップ
+        # @param entries [Array<Hash>] { name:, flags: } のリスト
+        def seed_unified_terms(entries)
+          terms = entries.map do |e|
+            {
+              'term' => e[:name], 'yomi' => e[:name],
+              'flags' => e[:flags], 'definition' => '',
+              'pattern' => "/#{e[:name]}/", 'source' => 'test',
+              'approved_at' => Time.now.strftime('%Y-%m-%d %H:%M:%S')
+            }
+          end
+          FileUtils.mkdir_p('config')
+          File.write('config/index_glossary_terms.yml',
+                     { 'generated_at' => Time.now.to_s, 'terms' => terms }.to_yaml)
+          @manager.terms_manager.clear_cache!
+        end
+
+        def seed_rejected_terms(names)
+          terms = names.map do |name|
+            { 'term' => name, 'yomi' => name, 'rejected_at' => Time.now.strftime('%Y-%m-%d %H:%M:%S') }
+          end
+          FileUtils.mkdir_p('config')
+          File.write('config/index_glossary_rejected.yml',
+                     { 'rejected_at' => Time.now.to_s, 'rejected_terms' => terms }.to_yaml)
+        end
+
+        def load_index_terms
+          return [] unless File.exist?('config/index_glossary_terms.yml')
+
+          data = YAML.load_file('config/index_glossary_terms.yml')
+          (data['terms'] || []).select { it['flags'].to_s.include?('i') }
+        end
+
+        def load_glossary_terms
+          return [] unless File.exist?('config/index_glossary_terms.yml')
+
+          data = YAML.load_file('config/index_glossary_terms.yml')
+          (data['terms'] || []).select { it['flags'].to_s.include?('g') }
+        end
+
+        def load_rejected_terms
+          return [] unless File.exist?('config/index_glossary_rejected.yml')
+
+          data = YAML.load_file('config/index_glossary_rejected.yml')
+          (data['rejected_terms'] || []).map { it['term'] }
+        end
+
+        def write_review_with_rejected_items(terms:, rejected:)
+          content = "# 索引・用語集レビュー\n"
+          content += "※ フラグ: [i]=索引のみ、[g]=用語集のみ、[ig]=両方、[r]=棄却\n\n"
+
+          # Section 1: Terms
+          content += "## 1. 登録済み用語の確認 (Terms: #{terms.size}語)\n\n"
+          if terms.empty?
+            content += "登録済みの用語はありません。\n"
+          else
+            terms.each do |t|
+              content += "- [#{t[:flag]}] `Today` **#{t[:term]}** (#{t[:yomi]}) - スコア: 100.0\n"
+              content += "  - 01-test: テスト文脈\n\n"
+            end
+          end
+
+          # Section 2 & 3: empty candidates
+          content += "\n\n## 2. 推奨候補 (High Candidates: 0語)\n\n"
+          content += "## 3. 一般候補 (Low Candidates: 0語)\n\n"
+
+          # Section 4: Rejected
+          content += "## 4. 除外済みリスト (Rejected: #{rejected.size}語)\n"
+          content += "※ 復帰させたいものは [i], [g], [ig] を入れると索引・用語集に直接登録されます。\n\n"
+          if rejected.empty?
+            content += "除外済みの用語はありません。\n"
+          else
+            rejected.each do |r|
+              content += "- [#{r[:flag]}] `Today` **#{r[:term]}** (#{r[:yomi]}) - スコア: 100.0\n"
+              content += "  - 01-test: テスト文脈\n\n"
+            end
+          end
+
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+        end
+
+        # 汎用レビューファイルビルダー（全セクション対応）
+        def build_review(terms: [], high: [], low: [], rejected: [])
+          content = "# 索引・用語集レビュー\n"
+          content += "※ フラグ: [i]=索引のみ、[g]=用語集のみ、[ig]=両方、[r]=棄却\n\n"
+
+          content += "## 1. 登録済み用語の確認 (Terms: #{terms.size}語)\n\n"
+          terms.each do |t|
+            content += "- [#{t[:flag]}] **#{t[:term]}** (#{t[:yomi]}) - スコア: 100.0\n"
+            content += "  - 01-test: テスト文脈\n\n"
+          end
+
+          content += "\n\n## 2. 推奨候補 (High Candidates: #{high.size}語)\n\n"
+          high.each do |c|
+            content += "- [#{c[:flag]}] `NEW!` **#{c[:term]}** (#{c[:yomi]}) - スコア: 200.0\n"
+            content += "  - 01-test: テスト文脈\n\n"
+          end
+
+          content += "\n\n## 3. 一般候補 (Low Candidates: #{low.size}語)\n\n"
+          low.each do |c|
+            content += "- [#{c[:flag]}] `NEW!` **#{c[:term]}** (#{c[:yomi]}) - スコア: 100.0\n"
+            content += "  - 01-test: テスト文脈\n\n"
+          end
+
+          content += "\n\n## 4. 除外済みリスト (Rejected: #{rejected.size}語)\n"
+          content += "※ 復帰させたいものは [i], [g], [ig] を入れると索引・用語集に直接登録されます。\n\n"
+          rejected.each do |r|
+            content += "- [#{r[:flag]}] **#{r[:term]}** (#{r[:yomi]}) - スコア: 100.0\n"
+            content += "  - 01-test: テスト文脈\n\n"
+          end
+          content += "除外済みの用語はありません。\n" if rejected.empty?
+
+          content
+        end
+
+        def write_review_with_glossary_approved(glossary:, rejected:)
+          content = "# 索引・用語集レビュー\n"
+          content += "※ フラグ: [i]=索引のみ、[g]=用語集のみ、[ig]=両方、[r]=棄却\n\n"
+
+          # Section 1: Terms with [g] flags
+          content += "## 1. 登録済み用語の確認 (Terms: #{glossary.size}語)\n\n"
+          glossary.each do |t|
+            content += "- [g] `Today` **#{t[:term]}** (#{t[:yomi]}) - スコア: 100.0\n"
+            content += "  - 01-test: テスト文脈\n\n"
+            content += "  #{t[:definition]}\n\n" if t[:definition]
+          end
+
+          content += "\n\n## 2. 推奨候補 (High Candidates: 0語)\n\n"
+          content += "## 3. 一般候補 (Low Candidates: 0語)\n\n"
+          content += "## 4. 除外済みリスト (Rejected: 0語)\n"
+          content += "※ 復帰させたいものは [i], [g], [ig] を入れると索引・用語集に直接登録されます。\n\n"
+          content += "除外済みの用語はありません。\n"
+
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
         end
       end
     end

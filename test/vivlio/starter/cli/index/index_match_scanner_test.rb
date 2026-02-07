@@ -198,8 +198,9 @@ module Vivlio
                 - term: Ruby
                   yomi: るびー
                   pattern: "/Ruby/"
+                  flags: i
             YAML
-            File.write('config/index_terms.yml', config_content)
+            File.write('config/index_glossary_terms.yml', config_content)
 
             # 新しいスキャナを作成（configを読み込むため）
             scanner = IndexMatchScanner.new
@@ -208,6 +209,67 @@ module Vivlio
             scanner.scan_and_tag_file!('13-test.md')
 
             assert scanner.matches.any? { it['term'] == 'Ruby' }
+          end
+
+          # --- phase: manual markup + ig flags (no double tagging) ---
+
+          def test_manual_markup_with_ig_flag_no_double_tagging
+            # 天衣無縫 が flags: ig で登録されている場合
+            config_content = <<~YAML
+              terms:
+                - term: 天衣無縫
+                  yomi: てんいむほう
+                  flags: ig
+            YAML
+            File.write('config/index_glossary_terms.yml', config_content)
+
+            scanner = IndexMatchScanner.new
+            File.write('01-life.md', "「[天衣無縫]」は素晴らしい。\n")
+
+            scanner.scan_and_tag_file!('01-life.md')
+
+            tagged = File.read('01-life.md')
+            # HTML タグが属性内で二重展開されていないこと
+            refute_match(/class="index-term".*class="index-term"/, tagged)
+            # glossary-link のhref属性内にindex-termタグが混入していないこと
+            refute_match(/href="[^"]*class="index-term"/, tagged)
+            # 天衣無縫 の索引タグが1回だけ存在すること
+            assert_equal 1, tagged.scan(/class="index-term"/).size
+          end
+
+          # --- phase: contents/ protection ---
+
+          def test_contents_files_are_never_written_to
+            File.write('contents/01-test.md', "[Ruby]は素晴らしい。\n")
+            original = File.read('contents/01-test.md')
+
+            @scanner.scan_and_tag_file!('contents/01-test.md', read_only: false)
+
+            # read_only: false でも contents/ 内のファイルは書き換えられない
+            assert_equal original, File.read('contents/01-test.md')
+          end
+
+          # --- phase: glossary-only backlink ---
+
+          def test_glossary_only_term_gets_backlink
+            config_content = <<~YAML
+              terms:
+                - term: WWW
+                  yomi: WWW
+                  flags: g
+            YAML
+            File.write('config/index_glossary_terms.yml', config_content)
+
+            scanner = IndexMatchScanner.new
+            File.write('08-web.md', "WWWは世界中に広がっている。\n")
+
+            scanner.scan_and_tag_file!('08-web.md')
+
+            tagged = File.read('08-web.md')
+            # 用語集リンク（†）が追加されていること
+            assert_match(/glossary-link/, tagged)
+            # 索引タグは追加されないこと（flags: g のみ）
+            refute_match(/class="index-term"/, tagged)
           end
 
           # --- phase: find_chapter_file tests ---

@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------
 # 【役割】
 # - 索引・用語集機能のエントリポイント
-# - IndexMatchScanner, IndexPageBuilder, GlossaryPageBuilder を統括
+# - IndexMatchScanner, UnifiedPageBuilder, UnifiedTermsManager を統括
 # - CLI コマンド（vs index:auto, vs index:apply, vs index:build）を提供
 #
 # 【処理の流れ】
@@ -15,20 +15,19 @@
 #
 # 【依存モジュール】
 # - IndexMatchScanner: 索引語スキャン・ID付与
-# - IndexPageBuilder: 索引ページHTML生成
-# - GlossaryPageBuilder: 用語集ページHTML生成
+# - UnifiedPageBuilder: 索引・用語集ページHTML生成
+# - UnifiedTermsManager: 統合用語辞書管理
 # - YomiInferrer: MeCab による読み推測
 # ================================================================
 
 require_relative 'common'
 require_relative 'index/index_match_scanner'
-require_relative 'index/index_page_builder'
-require_relative 'index/glossary_page_builder'
+require_relative 'index/unified_page_builder'
 require_relative 'index/yomi_inferrer'
 require_relative 'index/index_candidate_extractor'
 require_relative 'index/scoring_engine'
 require_relative 'index/hierarchical_index'
-require_relative 'index/glossary_terms_manager'
+require_relative 'index/unified_terms_manager'
 require_relative 'token_resolver'
 
 module Vivlio
@@ -119,8 +118,8 @@ module Vivlio
 
           Common.log_action('索引ページを生成します...')
 
-          builder = IndexPageBuilder.new
-          output_path = builder.build!
+          builder = IndexCommands::UnifiedPageBuilder.new
+          output_path = builder.build_index!
 
           if output_path
             Common.log_success("索引ページの生成が完了しました: #{output_path}")
@@ -158,7 +157,6 @@ module Vivlio
           require_relative 'index/unified_index_manager'
           manager = UnifiedIndexManager.new
           manager.build_index!(chapters)
-          manager.build_glossary!
         end
 
         # 索引・用語集機能が有効かどうか（シンボルキー前提）

@@ -1,0 +1,200 @@
+---
+generated_at: '2026-02-08 02:01:25'
+terms:
+- term: CSS
+  yomi: CSS
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-02-08 01:54:23'
+  pattern: "/\\bCSS\\b/"
+  score: 469.5043308354237
+  contexts:
+  - chapter: 00-preface
+    context: " 実践篇では、「ウェブアプリ入門」として、HTML / CSS / JavaScript の概要を学び、じゃんけんアプリを作っていきます。完成"
+  - chapter: '08-web'
+    context: 'してサーバとブラウザとの関係、ウェブサイト作成に用いる三つの言語 HTML / CSS / JavaScript の概要を紹介します。
+      ::: ## ウェブサイ'
+  - chapter: 99-postface
+    context: 計算機の歴史を学び、HTML / CSS / JavaScript の基礎を習得、iPhone でも遊べるじゃんけんゲームを作り上げ、全世界に
+  updated_at: '2026-02-08 02:01:25'
+- term: HTML
+  yomi: HTML
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-02-08 01:54:23'
+  pattern: "/\\bHTML\\b/"
+  score: 686.1986373748498
+  contexts:
+  - chapter: 00-preface
+    context: " 実践篇では、「ウェブアプリ入門」として、HTML / CSS / JavaScript の概要を学び、じゃんけんアプリを作ってい"
+  - chapter: '08-web'
+    context: " そしてサーバとブラウザとの関係、ウェブサイト作成に用いる三つの言語 HTML / CSS / JavaScript の概要を紹介します。
+      ::: ##"
+  - chapter: 99-postface
+    context: 計算機の歴史を学び、HTML / CSS / JavaScript の基礎を習得、iPhone でも遊べるじゃんけんゲームを作り上げ、全世界に公
+  updated_at: '2026-02-08 02:01:25'
+- term: JavaScript
+  yomi: JavaScript
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-02-08 01:54:23'
+  pattern: "/\\bJavaScript\\b/"
+  score: 316.73576634856573
+  contexts:
+  - chapter: 00-preface
+    context: " 実践篇では、「ウェブアプリ入門」として、HTML / CSS / JavaScript の概要を学び、じゃんけんアプリを作っていきます。完成後はサーバーに公開し、"
+  - chapter: '08-web'
+    context: 'ウェブサイト作成に用いる三つの言語 HTML / CSS / JavaScript の概要を紹介します。 ::: ## ウェブサイトの発祥
+      HTMLでウェ'
+  - chapter: 99-postface
+    context: 計算機の歴史を学び、HTML / CSS / JavaScript の基礎を習得、iPhone でも遊べるじゃんけんゲームを作り上げ、全世界に公開いたしまし
+  updated_at: '2026-02-08 02:01:25'
+- term: WWW
+  yomi: WWW
+  flags: g
+  definition: ''
+  source: review
+  approved_at: '2026-02-08 01:55:59'
+  pattern: "/\\bWWW\\b/"
+  contexts:
+  - chapter: '08-web'
+    context: "「どのようなコンピュータからでも情報を閲覧し、共用できる」ことが目的で、WWW(World Wide Web)と呼ばれます。 WWWは、研究機関や大学を中心"
+  backlink_sources:
+  - chapter: '08-web'
+    occurrence: 1
+    anchor_id: gls-src-08-web-www-1
+  - chapter: '08-web'
+    occurrence: 2
+    anchor_id: gls-src-08-web-www-2
+  - chapter: '08-web'
+    occurrence: 3
+    anchor_id: gls-src-08-web-www-3
+  - chapter: '08-web'
+    occurrence: 4
+    anchor_id: gls-src-08-web-www-4
+  updated_at: '2026-02-08 02:01:25'
+- term: コンピュータ
+  yomi: こんぴゅーた
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-02-08 01:54:23'
+  pattern: "/コンピュータ/"
+  score: 497.8929439142762
+  contexts:
+  - chapter: 01-life
+    context: 暮らしの中のコンピュータ :::{.chapter-lead} コンピュータが歩んできた歴史を巡る旅の始まりは、身の回りで使われているコンピュータを発見すると
+  updated_at: '2026-02-08 02:01:25'
+- term: 天衣無縫
+  yomi: てんいむほう
+  flags: ig
+  definition: ''
+  source: manual_markup
+  approved_at: '2026-02-08 02:00:03'
+  pattern: "/天衣無縫/"
+  contexts:
+  - chapter: 01-life
+    context: 様々な分野でコンピュータは使われています。 - **衣服**     「[天衣無縫]」-「天人や天女の着物には縫い目がないという意から、詩文などが、
+  updated_at: '2026-02-08 02:01:25'
+  backlink_sources:
+  - chapter: 01-life
+    occurrence: 1
+    anchor_id: gls-src-01-life-天衣無縫-1
+  - chapter: 01-life
+    occurrence: 2
+    anchor_id: gls-src-01-life-天衣無縫-2
+- term: プログラミング
+  yomi: ぷろぐらみんぐ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-02-08 01:54:23'
+  pattern: "/プログラミング/"
+  score: 340.0
+  contexts:
+  - chapter: 00-preface
+    context: 始めに 楽しいプログラミングの世界へようこそ。 情報技術「IT」を日々利用して暮らしているわたくしたち。 多くの先人が築いた歴史の上に{今日|こんにち}があります。
+  - chapter: 01-life
+    context: いろいろなウェブサイトを見たり、書類作成などお仕事に活用したり、そして「プログラミング」など。 iPadでお絵描きや読書、iPhoneで連絡を取り合ったり
+  - chapter: '08-web'
+    context: "）とは JavaScript（ジャバスクリプト）は主にブラウザで動くプログラミング言語です。 ### 主な特徴 C言語やJavaに似た記法や文法を採用した手"
+  - chapter: 99-postface
+    context: コードを一行一行追いながら、その動作を確認し、理解を深めていく過程は、プログラミング学習における最も重要な体験の一つです。 いろいろ創意工夫して、
+  updated_at: '2026-02-08 02:01:25'
+- term: ウェブサイト
+  yomi: ウェブサイト
+  flags: g
+  definition: |-
+    ## ウェブサイトとは？
+    ウェブサイトを一言で言えば、インターネット上に公開されている**「情報のまとまり（本のページのようなもの）」**のことです。
+    私たちは普段、ブラウザ（Google ChromeやSafariなど）を通じて、ニュースを読んだり、買い物をしたり、動画を見たりします。これら一つひとつの場所がウェブサイトです。
+    ### ウェブサイトの仕組み
+    ウェブサイトは、主に以下の3つの要素で構成されています。
+    * **HTML:** 文章や見出しなどの「骨組み」を作る言語。
+    * **CSS:** 色やデザインなどの「見た目」を整える言語。
+    * **サーバ:** サイトのデータを保存しておく「保管場所」。
+    世界中のウェブサイトは「URL（住所）」を持っており、これをブラウザに入力することで特定のサイトにたどり着くことができます。
+    かつては閲覧するだけの「静的なページ」が主流でしたが、現在はSNSのようにユーザーが投稿したり、リアルタイムで情報が更新されたりする「動的なサイト」が一般的になっています。いわば、**デジタル空間における「家」や「店舗」**のような存在といえます。
+  source: review
+  approved_at: '2026-02-08 01:57:50'
+  pattern: "/ウェブサイト/"
+  contexts:
+  - chapter: 00-preface
+    context: の基本操作ができる初心者の方を想定しています。中高生から社会人まで、ウェブサイトを作ってみたい方や、プログラミングに興味があって、なにかアプリを作ってみたい人の
+  - chapter: 01-life
+    context: "/ iPhone)** なんといってもコンピュータの代表です。いろいろなウェブサイトを見たり、書類作成などお仕事に活用したり、そして「プログラミング」など。"
+  backlink_sources:
+  - chapter: 00-preface
+    occurrence: 1
+    anchor_id: gls-src-00-preface-ウェブサイト-1
+  - chapter: 00-preface
+    occurrence: 2
+    anchor_id: gls-src-00-preface-ウェブサイト-2
+  - chapter: 01-life
+    occurrence: 3
+    anchor_id: gls-src-01-life-ウェブサイト-3
+  - chapter: '08-web'
+    occurrence: 4
+    anchor_id: gls-src-08-web-ウェブサイト-4
+  - chapter: '08-web'
+    occurrence: 5
+    anchor_id: gls-src-08-web-ウェブサイト-5
+  - chapter: '08-web'
+    occurrence: 6
+    anchor_id: gls-src-08-web-ウェブサイト-6
+  - chapter: '08-web'
+    occurrence: 7
+    anchor_id: gls-src-08-web-ウェブサイト-7
+  - chapter: '08-web'
+    occurrence: 8
+    anchor_id: gls-src-08-web-ウェブサイト-8
+  - chapter: '08-web'
+    occurrence: 9
+    anchor_id: gls-src-08-web-ウェブサイト-9
+  - chapter: '08-web'
+    occurrence: 10
+    anchor_id: gls-src-08-web-ウェブサイト-10
+  - chapter: '08-web'
+    occurrence: 11
+    anchor_id: gls-src-08-web-ウェブサイト-11
+  - chapter: '08-web'
+    occurrence: 12
+    anchor_id: gls-src-08-web-ウェブサイト-12
+  updated_at: '2026-02-08 02:01:25'
+- term: ブラウザ
+  yomi: ブラウザ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-02-08 01:54:23'
+  pattern: "/ブラウザ/"
+  score: 304.55889757182007
+  contexts:
+  - chapter: '08-web'
+    context: '今日では不可欠となったウェブサイト。その歴史をみていきます。 そしてサーバとブラウザとの関係、ウェブサイト作成に用いる三つの言語 HTML
+      / CSS / '
+  updated_at: '2026-02-08 02:01:25'
+updated_at: '2026-02-08 02:18:57'

@@ -1,0 +1,344 @@
+# frozen_string_literal: true
+
+# ================================================================
+# Class: UnifiedTermsManager
+# ----------------------------------------------------------------
+# 責務:
+#   config/glossary_terms.yml を統合用語辞書として管理する。
+#   Phase B で index_terms.yml と glossary_terms.yml を統合。
+#
+#   各用語は flags フィールドで索引/用語集の所属を制御:
+#     i  = 索引のみ
+#     g  = 用語集のみ
+#     ig = 索引＋用語集
+#
+# 主要メソッド:
+#   - load_terms: 全用語を読み込み
+#   - index_terms: flags に i を含む用語のリスト
+#   - glossary_terms: flags に g を含む用語のリスト
+#   - merge_terms!: 用語をマージして保存
+#   - remove_term!: 用語を削除
+#   - update_flags!: flags を更新
+#   - migrate_from_index_terms!: index_terms.yml からの移行
+# ================================================================
+
+require 'yaml'
+require 'fileutils'
+require_relative '../common'
+
+module Vivlio
+  module Starter
+    module CLI
+      class UnifiedTermsManager
+        UNIFIED_FILE = 'config/index_glossary_terms.yml'
+        LEGACY_INDEX_FILE = 'config/index_terms.yml'
+
+        def initialize
+          @cache = nil
+        end
+
+        # --- Phase: 読み込み ---
+
+        # 全用語を読み込み
+        # @return [Array<Hash>] 用語のリスト
+        def load_terms
+          return @cache if @cache
+
+          unless File.exist?(UNIFIED_FILE)
+            @cache = []
+            return @cache
+          end
+
+          begin
+            data = YAML.load_file(UNIFIED_FILE, symbolize_names: false)
+            terms = data['terms'] || []
+            # 後方互換: flags 未設定のエントリは用語集由来とみなし 'g' を付与
+            terms.each { it['flags'] ||= 'g' }
+            @cache = terms
+          rescue StandardError => e
+            Common.log_warn("#{UNIFIED_FILE} の読み込みに失敗: #{e.message}")
+            @cache = []
+          end
+
+          @cache
+        end
+
+        # flags に i を含む用語（索引対象）
+        def index_terms = load_terms.select { index_flag?(it['flags']) }
+
+        # flags に g を含む用語（用語集対象）
+        def glossary_terms = load_terms.select { glossary_flag?(it['flags']) }
+
+        # 全用語名
+        def term_names = load_terms.map { it['term'] }
+
+        # 索引対象の用語名
+        def index_term_names = index_terms.map { it['term'] }
+
+        # 用語集対象の用語名
+        def glossary_term_names = glossary_terms.map { it['term'] }
+
+        # 用語を名前で検索
+        # @param name [String] 用語名
+        # @return [Hash, nil]
+        def find_term(name) = load_terms.find { it['term'] == name }
+
+        # --- Phase: 書き込み ---
+
+        # 用語をマージして保存
+        # 同名の用語が既存の場合は更新、なければ追加
+        # @param new_terms [Array<Hash>] 追加する用語
+        # @param flags [String] デフォルトの flags ('i', 'g', 'ig')
+        # @param source [String] 登録元
+        def merge_terms!(new_terms, flags: 'i', source: 'auto_extracted')
+          return if new_terms.nil? || new_terms.empty?
+
+          existing = load_terms.dup
+          added_count = 0
+
+          new_terms.each do |term|
+            term_name = term['term'] || term[:term]
+            next if term_name.nil? || term_name.empty?
+
+            idx = existing.find_index { it['term'] == term_name }
+            if idx
+              # 既存用語を更新（flags をマージ、データを上書き）
+              existing[idx] = merge_term_data(existing[idx], term, flags)
+            else
+              # 新規追加
+              existing << build_term_entry(term, flags, source)
+              added_count += 1
+            end
+          end
+
+          save_terms!(existing)
+          Common.log_success("#{added_count} 件の用語を追加しました") if added_count.positive?
+        end
+
+        # 用語を削除
+        # @param term_name [String] 削除する用語名
+        def remove_term!(term_name)
+          return if term_name.nil? || term_name.empty?
+
+          existing = load_terms.dup
+          original_size = existing.size
+          existing.reject! { it['term'] == term_name }
+
+          save_terms!(existing) if existing.size < original_size
+        end
+
+        # flags から特定のフラグを除去（用語自体は残す）
+        # 例: flags 'ig' から 'i' を除去 → 'g' に変更
+        # @param term_name [String] 用語名
+        # @param remove_flag [String] 除去するフラグ ('i' or 'g')
+        def remove_flag!(term_name, remove_flag)
+          existing = load_terms.dup
+          term = existing.find { it['term'] == term_name }
+          return unless term
+
+          current = term['flags'] || ''
+          new_flags = case remove_flag
+                      when 'i' then current.delete('i')
+                      when 'g' then current.delete('g')
+                      else current
+                      end
+
+          if new_flags.empty?
+            # フラグがなくなったら用語自体を削除
+            existing.reject! { it['term'] == term_name }
+          else
+            term['flags'] = new_flags
+          end
+
+          save_terms!(existing)
+        end
+
+        # flags を更新
+        # @param term_name [String] 用語名
+        # @param new_flags [String] 新しい flags
+        def update_flags!(term_name, new_flags)
+          existing = load_terms.dup
+          term = existing.find { it['term'] == term_name }
+          return unless term
+
+          term['flags'] = new_flags
+          save_terms!(existing)
+        end
+
+        # 読みを更新
+        # @param yomi_changes [Array<Hash>] 読み変更のリスト
+        def update_yomi!(yomi_changes)
+          return if yomi_changes.nil? || yomi_changes.empty?
+
+          existing = load_terms.dup
+          updated_count = 0
+
+          yomi_changes.each do |change|
+            term = existing.find { it['term'] == change['term'] }
+            next unless term
+            next if term['yomi'] == change['yomi']
+
+            term['yomi'] = change['yomi']
+            updated_count += 1
+          end
+
+          if updated_count.positive?
+            save_terms!(existing)
+            Common.log_info("#{updated_count} 件の読みを更新しました")
+          end
+        end
+
+        # 説明文を更新
+        # @param term_name [String] 用語名
+        # @param definition [String] 説明文
+        def update_definition!(term_name, definition)
+          existing = load_terms.dup
+          term = existing.find { it['term'] == term_name }
+          return false unless term
+
+          term['definition'] = definition
+          term['updated_at'] = Time.now.strftime('%Y-%m-%d %H:%M:%S')
+          save_terms!(existing)
+          true
+        end
+
+        # backlink_sources を更新
+        # @param term_name [String] 用語名
+        # @param sources [Array<Hash>] 出現箇所リスト
+        def update_backlink_sources!(term_name, sources)
+          existing = load_terms.dup
+          term = existing.find { it['term'] == term_name }
+          return false unless term
+
+          term['backlink_sources'] = sources
+          save_terms!(existing)
+          true
+        end
+
+        # キャッシュをクリア
+        def clear_cache!
+          @cache = nil
+        end
+
+        # --- Phase: マイグレーション ---
+
+        # index_terms.yml からの移行
+        # 既存の glossary_terms.yml の用語は flags: g → ig に昇格
+        # index_terms.yml にしかない用語は flags: i で追加
+        def migrate_from_index_terms!
+          return unless File.exist?(LEGACY_INDEX_FILE)
+
+          begin
+            index_data = YAML.load_file(LEGACY_INDEX_FILE, symbolize_names: false)
+            index_terms_list = index_data['terms'] || []
+          rescue StandardError => e
+            Common.log_warn("#{LEGACY_INDEX_FILE} の読み込みに失敗しました: #{e.message}")
+            return
+          end
+
+          return if index_terms_list.empty?
+
+          existing = load_terms.dup
+          migrated_count = 0
+
+          index_terms_list.each do |idx_term|
+            term_name = idx_term['term']
+            next if term_name.nil? || term_name.empty?
+
+            found = existing.find { it['term'] == term_name }
+            if found
+              # glossary_terms.yml に既存 → flags に i を追加
+              current_flags = found['flags'] || 'g'
+              found['flags'] = merge_flags(current_flags, 'i')
+              # index 側のメタデータをマージ
+              found['pattern'] = idx_term['pattern'] if idx_term['pattern']
+              found['score'] = idx_term['score'] if idx_term['score'] && !found['score']
+              found['auto_approved'] = idx_term['auto_approved'] if found['auto_approved'].nil?
+            else
+              # 新規追加（flags: i）
+              existing << build_term_entry(idx_term, 'i', idx_term['source'] || 'auto_extracted')
+              migrated_count += 1
+            end
+          end
+
+          save_terms!(existing)
+          Common.log_success("index_terms.yml から #{migrated_count} 件を移行しました") if migrated_count.positive?
+
+          # 旧ファイルを削除
+          FileUtils.rm_f(LEGACY_INDEX_FILE)
+          Common.log_info("#{LEGACY_INDEX_FILE} を削除しました")
+        end
+
+        private
+
+        # flags に 'i' を含むか
+        def index_flag?(flags) = flags.to_s.include?('i')
+
+        # flags に 'g' を含むか
+        def glossary_flag?(flags) = flags.to_s.include?('g')
+
+        # flags をマージ（例: 'g' + 'i' → 'ig'）
+        def merge_flags(current, add)
+          combined = (current.to_s.chars + add.to_s.chars).uniq.sort.join
+          # 正規化: 'gi' → 'ig'
+          combined.include?('i') && combined.include?('g') ? 'ig' : combined
+        end
+
+        # 用語データをマージ（既存 + 新規データ）
+        def merge_term_data(existing, new_data, flags)
+          merged = existing.dup
+          # flags をマージ
+          merged['flags'] = merge_flags(merged['flags'], flags)
+          # nilでない場合のみ上書き
+          merged['yomi'] = new_data['yomi'] || new_data[:yomi] || merged['yomi']
+          merged['definition'] = new_data['definition'] if new_data['definition']
+          merged['backlink_sources'] = new_data['backlink_sources'] if new_data['backlink_sources']
+          merged['score'] = new_data['score'] || new_data[:score] if new_data['score'] || new_data[:score]
+          merged['contexts'] = new_data['contexts'] if new_data['contexts']
+          merged['updated_at'] = Time.now.strftime('%Y-%m-%d %H:%M:%S')
+          merged
+        end
+
+        # 用語エントリを構築
+        def build_term_entry(term, flags, source)
+          entry = {
+            'term' => term['term'] || term[:term],
+            'yomi' => term['yomi'] || term[:yomi] || term['term'] || term[:term],
+            'flags' => flags,
+            'definition' => term['definition'] || '',
+            'source' => source,
+            'approved_at' => term['approved_at'] || Time.now.strftime('%Y-%m-%d %H:%M:%S')
+          }
+          # オプショナルフィールド
+          entry['pattern'] = term['pattern'] || build_pattern(entry['term'])
+          entry['auto_approved'] = term['auto_approved'] if term.key?('auto_approved')
+          entry['score'] = term['score'] if term['score']
+          entry['backlink_sources'] = term['backlink_sources'] if term['backlink_sources']
+          entry['contexts'] = term['contexts'] if term['contexts']&.any?
+          entry
+        end
+
+        # パターンを生成
+        def build_pattern(term_name)
+          escaped = Regexp.escape(term_name)
+          term_name.match?(/\A[a-zA-Z0-9_]+\z/) ? "/\\b#{escaped}\\b/" : "/#{escaped}/"
+        end
+
+        # 用語を保存（読み順でソート）
+        def save_terms!(terms)
+          FileUtils.mkdir_p(File.dirname(UNIFIED_FILE))
+
+          sorted = terms.sort_by { it['yomi'] || it['term'] || '' }
+
+          data = {
+            'generated_at' => Time.now.strftime('%Y-%m-%d %H:%M:%S'),
+            'terms' => sorted
+          }
+          File.write(UNIFIED_FILE, data.to_yaml, encoding: 'utf-8')
+
+          @cache = sorted
+        end
+      end
+    end
+  end
+end

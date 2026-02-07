@@ -1,17 +1,11 @@
 ---
-rejected_at: '2026-02-06 23:48:18'
+rejected_at: '2026-02-08 02:01:25'
 rejected_terms:
-- term: Java
-  yomi: Java
-  rejected_at: '2026-01-28 11:35:22'
-- term: WWW
-  yomi: WWW
-  rejected_at: '2026-01-28 11:35:22'
-- term: ウェブページ
-  yomi: ウェブページ
-  rejected_at: '2026-01-28 11:35:22'
-  score: 221.2
-- term: ファイル
-  yomi: ふぁいる
-  rejected_at: '2026-01-28 12:15:25'
-  score: 157.1
+- term: ページ
+  yomi: ぺーじ
+  rejected_at: '2026-02-08 01:56:59'
+  score: 209.1
+- term: ウェブ
+  yomi: ウェブ
+  rejected_at: '2026-02-08 01:57:50'
+  score: 231.2
