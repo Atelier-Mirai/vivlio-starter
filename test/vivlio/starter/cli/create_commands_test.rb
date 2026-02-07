@@ -45,7 +45,110 @@ module Vivlio
           end
         end
 
+        # --- システムページ生成テスト ---
+
+        # _titlepage.md が .cache/vs/ に生成されることを確認
+        def test_titlepage_generated_in_cache_dir
+          within_temp_dir do
+            capture_io { CreateCommands.execute_titlepage({}) }
+
+            assert File.exist?(File.join(Common::CACHE_DIR, '_titlepage.md')),
+                   '_titlepage.md は .cache/vs/ に生成されるべき'
+            refute File.exist?(File.join(Common::CONTENTS_DIR, '_titlepage.md')),
+                   '_titlepage.md は contents/ に生成されてはならない'
+          end
+        end
+
+        # _colophon.md が .cache/vs/ に生成されることを確認
+        def test_colophon_generated_in_cache_dir
+          within_temp_dir do
+            capture_io { CreateCommands.execute_colophon({}) }
+
+            assert File.exist?(File.join(Common::CACHE_DIR, '_colophon.md')),
+                   '_colophon.md は .cache/vs/ に生成されるべき'
+            refute File.exist?(File.join(Common::CONTENTS_DIR, '_colophon.md')),
+                   '_colophon.md は contents/ に生成されてはならない'
+          end
+        end
+
+        # _legalpage.md が .cache/vs/ に生成されることを確認
+        def test_legalpage_generated_in_cache_dir
+          within_temp_dir do
+            capture_io { CreateCommands.execute_legalpage({}) }
+
+            assert File.exist?(File.join(Common::CACHE_DIR, '_legalpage.md')),
+                   '_legalpage.md は .cache/vs/ に生成されるべき'
+            refute File.exist?(File.join(Common::CONTENTS_DIR, '_legalpage.md')),
+                   '_legalpage.md は contents/ に生成されてはならない'
+          end
+        end
+
+        # 既に存在する場合はスキップされることを確認
+        def test_titlepage_skipped_when_already_exists
+          within_temp_dir do
+            FileUtils.mkdir_p(Common::CACHE_DIR)
+            original = "# 既存タイトル\n"
+            File.write(File.join(Common::CACHE_DIR, '_titlepage.md'), original)
+
+            capture_io { CreateCommands.execute_titlepage({}) }
+
+            assert_equal original, File.read(File.join(Common::CACHE_DIR, '_titlepage.md')),
+                         'force なしでは既存ファイルを上書きしない'
+          end
+        end
+
+        # force: true で既存ファイルが上書きされることを確認
+        def test_titlepage_regenerated_with_force
+          within_temp_dir do
+            FileUtils.mkdir_p(Common::CACHE_DIR)
+            File.write(File.join(Common::CACHE_DIR, '_titlepage.md'), '# 古い内容')
+
+            capture_io { CreateCommands.execute_titlepage({ force: true }) }
+
+            content = File.read(File.join(Common::CACHE_DIR, '_titlepage.md'))
+            assert_match(/book-title/, content, 'force: true で book.yml の内容に再生成される')
+          end
+        end
+
+        # book.yml のタイトル変更が force: true で反映されることを確認
+        def test_titlepage_reflects_book_yml_title
+          within_temp_dir do
+            capture_io { CreateCommands.execute_titlepage({ force: true }) }
+
+            content = File.read(File.join(Common::CACHE_DIR, '_titlepage.md'))
+            assert_match(/Sample/, content, 'book.yml の title が反映される')
+
+            # book.yml を更新
+            update_book_title('New Title')
+            Common.reload_configuration!
+
+            capture_io { CreateCommands.execute_titlepage({ force: true }) }
+
+            content = File.read(File.join(Common::CACHE_DIR, '_titlepage.md'))
+            assert_match(/New Title/, content, 'book.yml 更新後に再生成すると新タイトルが反映される')
+          end
+        end
+
         private
+
+        def update_book_title(title)
+          File.write('config/book.yml', <<~YAML)
+            directories:
+              config: config
+              contents: contents
+              images: images
+              stylesheets: stylesheets
+              codes: codes
+              chapter_templates: chapter_templates
+            commands:
+              vfm: vfm
+            book:
+              title: #{title}
+            output:
+              filename:
+                include_version: false
+          YAML
+        end
 
         def command_context(options = {})
           { options: options }

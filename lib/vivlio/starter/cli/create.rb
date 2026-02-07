@@ -99,7 +99,7 @@ module Vivlio
         #   - :force [Boolean] 既存ファイルを強制上書き
         # @return [void]
         #
-        # 生成ファイル: contents/_titlepage.md
+        # 生成ファイル: .cache/vs/_titlepage.md
         def execute_titlepage(options)
           apply_verbose(options)
           title, subtitle = extract_title_and_subtitle
@@ -120,7 +120,7 @@ module Vivlio
             #{%(</div>) unless series.empty? && release.empty?}
           MD
 
-          path = File.join(Common::CONTENTS_DIR, '_titlepage.md')
+          path = File.join(Common::CACHE_DIR, '_titlepage.md')
           return if File.exist?(path) && !options[:force]
 
           safe_write(path, content)
@@ -135,7 +135,7 @@ module Vivlio
         #   - :force [Boolean] 既存ファイルを強制上書き
         # @return [void]
         #
-        # 生成ファイル: contents/_colophon.md
+        # 生成ファイル: .cache/vs/_colophon.md
         def execute_colophon(options)
           apply_verbose(options)
           title, subtitle = extract_title_and_subtitle
@@ -173,7 +173,7 @@ module Vivlio
             </p>
           MD
 
-          path = File.join(Common::CONTENTS_DIR, '_colophon.md')
+          path = File.join(Common::CACHE_DIR, '_colophon.md')
           return if File.exist?(path) && !options[:force]
 
           safe_write(path, content)
@@ -188,11 +188,11 @@ module Vivlio
         #   - :force [Boolean] 既存ファイルを強制上書き
         # @return [void]
         #
-        # 生成ファイル: contents/_legalpage.md
+        # 生成ファイル: .cache/vs/_legalpage.md
         def execute_legalpage(options)
           apply_verbose(options)
-          FileUtils.mkdir_p(Common::CONTENTS_DIR)
-          target = File.join(Common::CONTENTS_DIR, '_legalpage.md')
+          FileUtils.mkdir_p(Common::CACHE_DIR)
+          target = File.join(Common::CACHE_DIR, '_legalpage.md')
           return if File.exist?(target) && !options[:force]
 
           disclaimer, trademark = legal_texts

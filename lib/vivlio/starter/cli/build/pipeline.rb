@@ -194,10 +194,10 @@ module Vivlio
 
           # Step 9: タイトル・リーガルページなど front/tail PDF を生成する
           def run_step9_front_pages_and_tail
-            # 新仕様: 内部 basename 方式
-            title_md    = File.join(Common::CONTENTS_DIR, '_titlepage.md')
-            legal_md    = File.join(Common::CONTENTS_DIR, '_legalpage.md')
-            colophon_md = File.join(Common::CONTENTS_DIR, '_colophon.md')
+            # システムページは .cache/vs/ に配置される
+            title_md    = File.join(Common::CACHE_DIR, '_titlepage.md')
+            legal_md    = File.join(Common::CACHE_DIR, '_legalpage.md')
+            colophon_md = File.join(Common::CACHE_DIR, '_colophon.md')
             book_yml    = File.join('config', 'book.yml')
             front_pdf   = '_titlepage_legalpage.pdf'
             col_pdf     = '_colophon.pdf'

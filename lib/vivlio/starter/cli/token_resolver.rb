@@ -45,6 +45,9 @@ module Vivlio
             '_toc'          => :toc
           }.freeze
 
+          # .cache/vs/ に生成されるシステムページ（contents/ ではなくキャッシュに配置）
+          CACHED_SYSTEM_FILES = %w[_titlepage _legalpage _colophon].freeze
+
           # @param catalog_path [String] catalog.yml のパス
           # @param contents_dir [String] 章ファイルが格納されるディレクトリ
           def initialize(catalog_path: 'config/catalog.yml', contents_dir: 'contents')
@@ -208,8 +211,10 @@ module Vivlio
           # _titlepage 等のシステム予約ファイルに対する Entry を生成する。
           # カタログに載らないが valid として扱う。
           # number を nil に設定することで、basename がファイル名そのもの（例: _toc）になる。
+          # _titlepage/_legalpage/_colophon は .cache/vs/ に配置される
           def instantiate_system_entry(token, kind)
-            path = File.join(contents_dir, "#{token}.md")
+            dir = CACHED_SYSTEM_FILES.include?(token) ? Common::CACHE_DIR : contents_dir
+            path = File.join(dir, "#{token}.md")
             Entry.new(
               number: nil,
               slug: token,

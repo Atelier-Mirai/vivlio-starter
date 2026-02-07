@@ -249,6 +249,44 @@ module Vivlio
             end
           end
 
+          # --- System Page Path Tests ---
+
+          def test_titlepage_resolves_to_cache_dir
+            resolver = build_resolver_with_catalog([])
+            entry = resolver.resolve(['_titlepage']).first
+
+            assert entry.valid?
+            assert_equal :titlepage, entry.kind
+            assert_equal '.cache/vs/_titlepage.md', entry.path
+          end
+
+          def test_legalpage_resolves_to_cache_dir
+            resolver = build_resolver_with_catalog([])
+            entry = resolver.resolve(['_legalpage']).first
+
+            assert entry.valid?
+            assert_equal :legalpage, entry.kind
+            assert_equal '.cache/vs/_legalpage.md', entry.path
+          end
+
+          def test_colophon_resolves_to_cache_dir
+            resolver = build_resolver_with_catalog([])
+            entry = resolver.resolve(['_colophon']).first
+
+            assert entry.valid?
+            assert_equal :colophon, entry.kind
+            assert_equal '.cache/vs/_colophon.md', entry.path
+          end
+
+          def test_toc_still_resolves_to_contents_dir
+            resolver = build_resolver_with_catalog([])
+            entry = resolver.resolve(['_toc']).first
+
+            assert entry.valid?
+            assert_equal :toc, entry.kind
+            assert_match %r{contents/_toc\.md\z}, entry.path
+          end
+
           private
 
           # テスト用のカタログを作成してResolverを返す
