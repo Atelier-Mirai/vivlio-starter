@@ -109,12 +109,12 @@ module Vivlio
                                                                   extra_sources: File.join('config', 'book.yml'))
 
             front_srcs = [
-              File.join(Common::CONTENTS_DIR, '_titlepage.md'),
-              File.join(Common::CONTENTS_DIR, '_legalpage.md'),
+              File.join(Common::CACHE_DIR, '_titlepage.md'),
+              File.join(Common::CACHE_DIR, '_legalpage.md'),
               File.join('config', 'book.yml')
             ]
             colophon_srcs = [
-              File.join(Common::CONTENTS_DIR, '_colophon.md'),
+              File.join(Common::CACHE_DIR, '_colophon.md'),
               File.join('config', 'book.yml')
             ]
 

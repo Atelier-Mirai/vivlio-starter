@@ -70,6 +70,7 @@
 
 ### Changed
 - **索引モジュールのデッドコード整理**: Samovar 経由では到達しない `vs index:match` 系の CLI エントリと `execute_index_*` ヘルパー、旧 `index_terms.yml` マイグレーション処理、および対応するテストケースを削除し、現行の `index_glossary_terms.yml` ベース実装にコードを集約しました。
+- **システムページのキャッシュ分離**: `system_pages_cache_spec.md` に従い `_titlepage.md` / `_legalpage.md` / `_colophon.md` を `contents/` から `.cache/vs/` へ移動し、生成・参照パスとテスト群を整理しました。
 
 ### Fixed
 - **[ig] 手動マークアップ時に HTML タグが壊れる問題**: `apply_auto_indexing` / `apply_glossary_only_linking` で `<a class="glossary-link">` を含む索引タグ全体と残りの HTML を保護し、属性内マッチによる二重タグ付けを防止しました。
