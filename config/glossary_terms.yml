@@ -1,5 +1,5 @@
 ---
-generated_at: '2026-02-07 00:40:10'
+generated_at: '2026-02-07 13:53:27'
 terms:
 - term: コンピュータ
   yomi: こんぴゅーた
@@ -9,7 +9,7 @@ terms:
   contexts:
   - chapter: 00-preface
     context: そして今日の情報社会を拓いた数学者・科学者・技術者24人の略伝や、コンピュータの仕組みとして、二進数やデジタルデータの表現法、ハードウェア、アルゴリズム、プロ
-  updated_at: '2026-02-07 00:40:10'
+  updated_at: '2026-02-07 13:53:27'
   backlink_sources:
   - chapter: 00-preface
     occurrence: 1
@@ -106,7 +106,7 @@ terms:
     context: 作ができる初心者の方を想定しています。中高生から社会人まで、ウェブサイトを作ってみたい方や、プログラミングに興味があって、なにかアプ
   - chapter: 01-life
     context: "* なんといってもコンピュータの代表です。いろいろなウェブサイトを見たり、書類作成などお仕事に活用したり、そして「プログラミ"
-  updated_at: '2026-02-07 00:40:10'
+  updated_at: '2026-02-07 13:53:27'
   backlink_sources:
   - chapter: 00-preface
     occurrence: 1
@@ -154,7 +154,7 @@ terms:
     context: "# 始めに 楽しいプログラミングの世界へようこそ。 情報技術「IT」を日々利用して暮らしてい"
   - chapter: 01-life
     context: 見たり、書類作成などお仕事に活用したり、そして「プログラミング」など。 iPadでお絵描きや読書、iPhone
-  updated_at: '2026-02-07 00:40:10'
+  updated_at: '2026-02-07 13:53:27'
   backlink_sources:
   - chapter: 00-preface
     occurrence: 1
@@ -216,7 +216,7 @@ terms:
   - chapter: '08-web'
     context: 今日では不可欠となったウェブサイト。その歴史をみていきます。 そしてサーバとブラウザとの関係、ウェブサイト作成に用いる三つの言語 HTML
       / CSS /
-  updated_at: '2026-02-07 00:40:10'
+  updated_at: '2026-02-07 13:53:27'
   backlink_sources:
   - chapter: '08-web'
     occurrence: 1
@@ -267,7 +267,7 @@ terms:
   contexts:
   - chapter: 00-preface
     context: 実践篇では、「ウェブアプリ入門」として、HTML / CSS / JavaScript の概要を学び、じゃんけんアプリを作っていきます。完成後はサーバーに公開し、
-  updated_at: '2026-02-07 00:40:10'
+  updated_at: '2026-02-07 13:53:27'
   backlink_sources:
   - chapter: 00-preface
     occurrence: 1
@@ -293,4 +293,4 @@ terms:
   - chapter: 99-postface
     occurrence: 8
     anchor_id: gls-src-99-postface-javascript-8
-updated_at: '2026-02-07 00:40:13'
+updated_at: '2026-02-07 13:53:59'
