@@ -4,7 +4,7 @@
 # Class: UnifiedPageBuilder
 # ----------------------------------------------------------------
 # 責務:
-#   統合用語辞書（glossary_terms.yml）から索引ページと用語集ページを生成。
+#   統合用語辞書（index_glossary_terms.yml）から索引ページと用語集ページを生成。
 #   Phase B で IndexPageBuilder と GlossaryPageBuilder を統合。
 #
 #   flags に基づく出力制御:

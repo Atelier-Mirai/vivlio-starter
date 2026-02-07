@@ -31,7 +31,7 @@ module Vivlio
         def test_merge_terms_creates_file
           @manager.merge_terms!([{ 'term' => 'CSS', 'yomi' => 'CSS' }], flags: 'i')
 
-          assert File.exist?('config/glossary_terms.yml')
+          assert File.exist?('config/index_glossary_terms.yml')
           terms = @manager.load_terms
           assert_equal 1, terms.size
           assert_equal 'CSS', terms.first['term']
@@ -169,7 +169,7 @@ module Vivlio
           @manager.clear_cache!
           @manager.migrate_from_index_terms!
 
-          # glossary_terms.yml に移行される
+          # index_glossary_terms.yml に移行される
           assert_equal 2, @manager.load_terms.size
           css = @manager.find_term('CSS')
           assert_equal 'i', css['flags']
@@ -180,7 +180,7 @@ module Vivlio
         end
 
         def test_migrate_upgrades_existing_glossary_terms_to_ig
-          # 既存の glossary_terms.yml
+          # 既存の index_glossary_terms.yml
           seed_terms([{ 'term' => 'CSS', 'flags' => 'g', 'definition' => 'スタイルシート' }])
 
           # 旧 index_terms.yml にも CSS がある
@@ -202,14 +202,14 @@ module Vivlio
         # --- Phase: 後方互換 ---
 
         def test_legacy_entries_without_flags_default_to_g
-          # Phase B 以前の glossary_terms.yml は flags フィールドがない
+          # Phase B 以前の index_glossary_terms.yml は flags フィールドがない
           legacy_data = {
             'generated_at' => Time.now.to_s,
             'terms' => [
               { 'term' => 'ウェブサイト', 'yomi' => 'ウェブサイト', 'definition' => '', 'source' => 'review' }
             ]
           }
-          File.write('config/glossary_terms.yml', legacy_data.to_yaml)
+          File.write('config/index_glossary_terms.yml', legacy_data.to_yaml)
           @manager.clear_cache!
 
           terms = @manager.load_terms
@@ -244,7 +244,7 @@ module Vivlio
               'approved_at' => Time.now.strftime('%Y-%m-%d %H:%M:%S')
             }
           end
-          File.write('config/glossary_terms.yml',
+          File.write('config/index_glossary_terms.yml',
                      { 'generated_at' => Time.now.to_s, 'terms' => terms }.to_yaml)
           @manager.clear_cache!
         end

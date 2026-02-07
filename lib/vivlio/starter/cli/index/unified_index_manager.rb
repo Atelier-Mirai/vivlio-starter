@@ -73,8 +73,8 @@ module Vivlio
           candidates = extract_candidates(chapters)
           Common.log_info("候補抽出: #{candidates.size}件")
 
-          # 3. 既存の承認済み用語とリジェクト済み用語を除外
-          existing_terms = @terms_manager.index_term_names
+          # 3. 既存の承認済み用語（索引＋用語集）とリジェクト済み用語を除外
+          existing_terms = @terms_manager.term_names
           rejected_terms = @queue_manager.load_rejected_terms
           rejected_count_in_candidates = 0
 
@@ -103,8 +103,8 @@ module Vivlio
 
           high_candidates, low_candidates = split_candidates_by_ratio(review_candidates, high_ratio)
 
-          # 6. 登録済み用語に文脈を付与
-          terms_with_context = enrich_terms_with_context(@terms_manager.index_terms, chapters)
+          # 6. 登録済み用語（索引＋用語集すべて）に文脈を付与
+          terms_with_context = enrich_terms_with_context(@terms_manager.load_terms, chapters)
 
           # 7. リジェクト済み用語に文脈とスコアを付与
           # candidatesからスコアを復元できるように渡す
@@ -228,8 +228,12 @@ module Vivlio
           unreject_index_names = unreject.select { %w[i x ig gi].include?(it['flag']) }.map { it['term'] }
           unreject_glossary_names = unreject.select { %w[g ig gi].include?(it['flag']) }.map { it['term'] }
 
+          # 明示的にリジェクトされた用語は孤立除去の対象外
+          # （[-i] で i を除去した後に残る g を誤って除去しないため）
+          explicitly_rejected = (index_rejected + glossary_rejected + both_rejected).map { it['term'] }.uniq
+
           # 索引フラグの孤立除去
-          stale_index = @terms_manager.index_term_names - index_approved_names - unreject_index_names
+          stale_index = @terms_manager.index_term_names - index_approved_names - unreject_index_names - explicitly_rejected
           stale_index.each do |term_name|
             @terms_manager.remove_flag!(term_name, 'i')
             Common.log_info("索引フラグを除去: #{term_name}")
@@ -237,7 +241,7 @@ module Vivlio
           end
 
           # 用語集フラグの孤立除去
-          stale_glossary = @terms_manager.glossary_term_names - glossary_approved_names_all - unreject_glossary_names
+          stale_glossary = @terms_manager.glossary_term_names - glossary_approved_names_all - unreject_glossary_names - explicitly_rejected
           stale_glossary.each do |term_name|
             @terms_manager.remove_flag!(term_name, 'g')
             Common.log_info("用語集フラグを除去: #{term_name}")
@@ -270,7 +274,7 @@ module Vivlio
             rejected_total = both_rejected.size + (confirmed_rejected&.size || 0)
             Common.log_success("索引: #{index_count}件、用語集: #{glossary_count}件、リジェクト: #{rejected_total}件")
             Common.log_info("読み変更: #{yomi_changes.size}件") if yomi_changes.any?
-            Common.log_success('glossary_terms.yml を更新しました')
+            Common.log_success('index_glossary_terms.yml を更新しました')
             Common.log_info('ページ生成は vs build 実行時に行われます')
           else
             Common.log_warn('変更がありませんでした')
@@ -572,22 +576,13 @@ module Vivlio
         # @param chapters [Array<String>] 対象章のリスト
         # @return [Array<Hash>] 文脈付き用語のリスト
         def enrich_terms_with_context(terms, chapters)
-          # 用語集に登録されている用語を取得（定義付き）
-          glossary_terms = @terms_manager.glossary_terms
-          glossary_by_name = glossary_terms.to_h { |t| [t['term'], t] }
-
           terms.map do |term|
             enriched = term.dup
-            glossary_entry = glossary_by_name[term['term']]
+            flags = term['flags'].to_s
 
-            # 用語集への登録状態を反映
-            enriched['in_index'] = true
-            enriched['in_glossary'] = !glossary_entry.nil?
-
-            # 用語集に定義がある場合は取得
-            if glossary_entry && glossary_entry['definition'].to_s.strip.length.positive?
-              enriched['definition'] = glossary_entry['definition']
-            end
+            # flags に基づいて索引・用語集の登録状態を反映
+            enriched['in_index'] = flags.include?('i')
+            enriched['in_glossary'] = flags.include?('g')
 
             # 文脈がない場合は本文から抽出
             unless enriched['contexts']&.any?

@@ -108,8 +108,8 @@ module Vivlio
 
           @manager.auto_process!(['05-save'])
 
-          assert File.exist?('config/glossary_terms.yml')
-          content = File.read('config/glossary_terms.yml')
+          assert File.exist?('config/index_glossary_terms.yml')
+          content = File.read('config/index_glossary_terms.yml')
           assert_includes content, 'SavedTerm'
         end
 
@@ -313,7 +313,7 @@ module Vivlio
 
           @manager.apply_markdown_review!
 
-          # glossary_terms.yml に登録される
+          # index_glossary_terms.yml に登録される
           terms = load_glossary_terms
           assert_equal 1, terms.size
           assert_equal 'Delta', terms.first['term']
@@ -390,6 +390,194 @@ module Vivlio
           assert File.exist?('_index_glossary_review.md')
         end
 
+        # === フラグ別 apply→auto ラウンドトリップテスト ===
+
+        def test_apply_g_flag_from_candidate_section
+          # 候補セクションで [g] を選択
+          content = build_review(
+            terms: [],
+            high: [{ term: 'ウェブサイト', yomi: 'ウェブサイト', flag: 'g' }],
+            low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          # flags: 'g' で保存される
+          glossary = load_glossary_terms
+          assert_equal 1, glossary.size
+          assert_equal 'ウェブサイト', glossary.first['term']
+
+          # 索引には含まれない
+          index = load_index_terms
+          assert_empty index
+        end
+
+        def test_apply_ig_flag_from_candidate_section
+          content = build_review(
+            terms: [],
+            high: [{ term: 'CSS', yomi: 'CSS', flag: 'ig' }],
+            low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          # flags: 'ig' で保存 → 索引・用語集の両方
+          index = load_index_terms
+          glossary = load_glossary_terms
+          assert_equal 1, index.size
+          assert_equal 1, glossary.size
+          assert_equal 'CSS', index.first['term']
+        end
+
+        def test_apply_minus_i_removes_index_flag
+          seed_unified_terms([{ name: 'CSS', flags: 'ig' }])
+
+          content = build_review(
+            terms: [{ term: 'CSS', yomi: 'CSS', flag: '-i' }],
+            high: [], low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          # 'i' が除去され 'g' のみ残る
+          index = load_index_terms
+          glossary = load_glossary_terms
+          assert_empty index
+          assert_equal 1, glossary.size
+        end
+
+        def test_apply_minus_g_removes_glossary_flag
+          seed_unified_terms([{ name: 'CSS', flags: 'ig' }])
+
+          content = build_review(
+            terms: [{ term: 'CSS', yomi: 'CSS', flag: '-g' }],
+            high: [], low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          # 'g' が除去され 'i' のみ残る
+          index = load_index_terms
+          glossary = load_glossary_terms
+          assert_equal 1, index.size
+          assert_empty glossary
+        end
+
+        def test_apply_r_flag_removes_term_entirely
+          seed_unified_terms([{ name: 'CSS', flags: 'ig' }])
+
+          content = build_review(
+            terms: [{ term: 'CSS', yomi: 'CSS', flag: 'r' }],
+            high: [], low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          # 完全に除去され rejected に追加
+          assert_empty load_index_terms
+          assert_empty load_glossary_terms
+          assert_includes load_rejected_terms, 'CSS'
+        end
+
+        def test_apply_ig_to_i_transition_removes_g_flag
+          seed_unified_terms([{ name: 'CSS', flags: 'ig' }])
+
+          # [ig] だった用語を [i] に変更
+          content = build_review(
+            terms: [{ term: 'CSS', yomi: 'CSS', flag: 'i' }],
+            high: [], low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          index = load_index_terms
+          glossary = load_glossary_terms
+          assert_equal 1, index.size
+          assert_empty glossary
+        end
+
+        def test_apply_ig_to_g_transition_removes_i_flag
+          seed_unified_terms([{ name: 'CSS', flags: 'ig' }])
+
+          # [ig] だった用語を [g] に変更
+          content = build_review(
+            terms: [{ term: 'CSS', yomi: 'CSS', flag: 'g' }],
+            high: [], low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          index = load_index_terms
+          glossary = load_glossary_terms
+          assert_empty index
+          assert_equal 1, glossary.size
+        end
+
+        def test_glossary_only_term_persists_across_apply
+          # glossary-only 用語が apply 後も消えないことを確認
+          seed_unified_terms([
+            { name: 'CSS', flags: 'i' },
+            { name: 'ウェブサイト', flags: 'g' }
+          ])
+
+          # レビュー: CSS は [i]、ウェブサイト は [g] のまま
+          content = build_review(
+            terms: [
+              { term: 'CSS', yomi: 'CSS', flag: 'i' },
+              { term: 'ウェブサイト', yomi: 'ウェブサイト', flag: 'g' }
+            ],
+            high: [], low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          index = load_index_terms
+          glossary = load_glossary_terms
+          assert_equal 1, index.size
+          assert_equal 'CSS', index.first['term']
+          assert_equal 1, glossary.size
+          assert_equal 'ウェブサイト', glossary.first['term']
+        end
+
+        def test_apply_minus_ig_removes_term_entirely
+          seed_unified_terms([{ name: 'CSS', flags: 'ig' }])
+
+          content = build_review(
+            terms: [{ term: 'CSS', yomi: 'CSS', flag: '-ig' }],
+            high: [], low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          assert_empty load_index_terms
+          assert_empty load_glossary_terms
+          assert_includes load_rejected_terms, 'CSS'
+        end
+
+        def test_unchecked_candidate_not_saved
+          # [ ] のまま放置した候補は保存されない
+          content = build_review(
+            terms: [],
+            high: [{ term: 'NewTerm', yomi: 'にゅーたーむ', flag: ' ' }],
+            low: []
+          )
+          File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+
+          @manager.apply_markdown_review!
+
+          assert_empty load_index_terms
+          assert_empty load_glossary_terms
+        end
+
         private
 
         # --- テストヘルパー ---
@@ -406,7 +594,7 @@ module Vivlio
             }
           end
           FileUtils.mkdir_p('config')
-          File.write('config/glossary_terms.yml',
+          File.write('config/index_glossary_terms.yml',
                      { 'generated_at' => Time.now.to_s, 'terms' => terms }.to_yaml)
           @manager.terms_manager.clear_cache!
         end
@@ -421,16 +609,16 @@ module Vivlio
         end
 
         def load_index_terms
-          return [] unless File.exist?('config/glossary_terms.yml')
+          return [] unless File.exist?('config/index_glossary_terms.yml')
 
-          data = YAML.load_file('config/glossary_terms.yml')
+          data = YAML.load_file('config/index_glossary_terms.yml')
           (data['terms'] || []).select { it['flags'].to_s.include?('i') }
         end
 
         def load_glossary_terms
-          return [] unless File.exist?('config/glossary_terms.yml')
+          return [] unless File.exist?('config/index_glossary_terms.yml')
 
-          data = YAML.load_file('config/glossary_terms.yml')
+          data = YAML.load_file('config/index_glossary_terms.yml')
           (data['terms'] || []).select { it['flags'].to_s.include?('g') }
         end
 
@@ -473,6 +661,40 @@ module Vivlio
           end
 
           File.write('_index_glossary_review.md', content, encoding: 'utf-8')
+        end
+
+        # 汎用レビューファイルビルダー（全セクション対応）
+        def build_review(terms: [], high: [], low: [], rejected: [])
+          content = "# 索引・用語集レビュー\n"
+          content += "※ フラグ: [i]=索引のみ、[g]=用語集のみ、[ig]=両方、[r]=棄却\n\n"
+
+          content += "## 1. 登録済み用語の確認 (Terms: #{terms.size}語)\n\n"
+          terms.each do |t|
+            content += "- [#{t[:flag]}] **#{t[:term]}** (#{t[:yomi]}) - スコア: 100.0\n"
+            content += "  - 01-test: テスト文脈\n\n"
+          end
+
+          content += "\n\n## 2. 推奨候補 (High Candidates: #{high.size}語)\n\n"
+          high.each do |c|
+            content += "- [#{c[:flag]}] `NEW!` **#{c[:term]}** (#{c[:yomi]}) - スコア: 200.0\n"
+            content += "  - 01-test: テスト文脈\n\n"
+          end
+
+          content += "\n\n## 3. 一般候補 (Low Candidates: #{low.size}語)\n\n"
+          low.each do |c|
+            content += "- [#{c[:flag]}] `NEW!` **#{c[:term]}** (#{c[:yomi]}) - スコア: 100.0\n"
+            content += "  - 01-test: テスト文脈\n\n"
+          end
+
+          content += "\n\n## 4. 除外済みリスト (Rejected: #{rejected.size}語)\n"
+          content += "※ 復帰させたいものは [i], [g], [ig] を入れると索引・用語集に直接登録されます。\n\n"
+          rejected.each do |r|
+            content += "- [#{r[:flag]}] **#{r[:term]}** (#{r[:yomi]}) - スコア: 100.0\n"
+            content += "  - 01-test: テスト文脈\n\n"
+          end
+          content += "除外済みの用語はありません。\n" if rejected.empty?
+
+          content
         end
 
         def write_review_with_glossary_approved(glossary:, rejected:)

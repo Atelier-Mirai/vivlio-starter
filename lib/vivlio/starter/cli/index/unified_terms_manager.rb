@@ -30,7 +30,7 @@ module Vivlio
   module Starter
     module CLI
       class UnifiedTermsManager
-        UNIFIED_FILE = 'config/glossary_terms.yml'
+        UNIFIED_FILE = 'config/index_glossary_terms.yml'
         LEGACY_INDEX_FILE = 'config/index_terms.yml'
 
         def initialize
@@ -56,7 +56,7 @@ module Vivlio
             terms.each { it['flags'] ||= 'g' }
             @cache = terms
           rescue StandardError => e
-            Common.log_warn("#{UNIFIED_FILE} の読み込みに失敗しました: #{e.message}")
+            Common.log_warn("#{UNIFIED_FILE} の読み込みに失敗: #{e.message}")
             @cache = []
           end
 

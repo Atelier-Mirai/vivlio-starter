@@ -46,25 +46,29 @@ module Vivlio
           # 各ステップをスタブ化し、呼び出し順と渡される引数を確認する
           # entries は空配列（フルビルドモードではカタログから読み込む）
           stubs = [
-            [pipeline, :run_step1_clean, -> { order << 'step1' }],
-            [pipeline, :run_step2_optimize_images, -> { order << 'step2' }],
-            [Build::ImageOptimizer, :prepare_theme_images!, -> { order << 'step3' }],
+            [pipeline, :run_step0_clean, -> { order << 'step0' }],
+            [pipeline, :run_step1_optimize_images, -> { order << 'step1' }],
+            [Build::ImageOptimizer, :prepare_theme_images!, -> { order << 'step2' }],
             [Build::SectionBuilder, :preprocess_sections!, lambda { |entries|
               test_case.assert_equal [], entries
-              order << 'step4'
+              order << 'step3'
             }],
-            [pipeline, :run_step5_index_processing, -> { order << 'step5' }],
+            [pipeline, :run_step4_index_processing, -> { order << 'step4' }],
             [Build::SectionBuilder, :convert_sections_html!, lambda { |entries|
               test_case.assert_equal [], entries
-              order << 'step6'
+              order << 'step5'
             }],
             [Build::TocGenerator, :generate_toc_and_pdf!, lambda { |dir, entries|
               test_case.assert_equal '.', dir
               test_case.assert_equal [], entries
-              order << 'step7'
+              order << 'step6'
             }],
             [Build::PdfBuilder, :build_overall_pdf_from_dir!, lambda { |dir, entries|
               test_case.assert_equal '.', dir
+              test_case.assert_equal [], entries
+              order << 'step7'
+            }],
+            [Build::BacklinkDedupOrchestrator, :run!, lambda { |entries|
               test_case.assert_equal [], entries
               order << 'step8'
             }],
@@ -84,8 +88,8 @@ module Vivlio
             pipeline.run
           end
 
-          # 期待する実行順を明示（Step 1-12）
-          expected_order = %w[step1 step2 step3 step4 step5 step6 step7 step8 step9 step10 step11 step12]
+          # 期待する実行順を明示（Step 0-12）
+          expected_order = %w[step0 step1 step2 step3 step4 step5 step6 step7 step8 step9 step10 step11 step12]
           assert_equal expected_order, order
         end
 
@@ -96,14 +100,15 @@ module Vivlio
           with_build_stubs { pipeline.run }
 
           expected_labels = [
-            'Step  1 (clean)',
-            'Step  2 (optimize images)',
-            'Step  3 (prepare theme images)',
-            'Step  4 (preprocess sections)',
-            'Step  5 (index scan and build)',
-            'Step  6 (convert sections html)',
-            'Step  7 (generate toc and pdf)',
-            'Step  8 (build overall pdf)',
+            'Step  0 (clean)',
+            'Step  1 (optimize images)',
+            'Step  2 (prepare theme images)',
+            'Step  3 (preprocess sections)',
+            'Step  4 (index scan and build)',
+            'Step  5 (convert sections html)',
+            'Step  6 (generate toc and pdf)',
+            'Step  7 (build overall pdf)',
+            'Step  8 (backlink dedup)',
             'Step  9 (build front pages and tail)',
             'Step 10 (merge all pdfs)',
             'Step 11 (apply outline to output pdf)',
@@ -151,9 +156,9 @@ module Vivlio
 
         def stub_all_steps(pipeline)
           # インスタンスメソッドのスタブ
-          pipeline.define_singleton_method(:run_step1_clean) {}
-          pipeline.define_singleton_method(:run_step2_optimize_images) {}
-          pipeline.define_singleton_method(:run_step5_index_processing) {}
+          pipeline.define_singleton_method(:run_step0_clean) {}
+          pipeline.define_singleton_method(:run_step1_optimize_images) {}
+          pipeline.define_singleton_method(:run_step4_index_processing) {}
           pipeline.define_singleton_method(:run_step9_front_pages_and_tail) {}
           pipeline.define_singleton_method(:run_step12_rename_and_clean) {}
         end
@@ -164,9 +169,11 @@ module Vivlio
               Build::SectionBuilder.stub :convert_sections_html!, ->(_) {} do
                 Build::TocGenerator.stub :generate_toc_and_pdf!, ->(_, _) {} do
                   Build::PdfBuilder.stub :build_overall_pdf_from_dir!, ->(_, _) {} do
-                    Build::PdfMerger.stub :merge_all_pdfs!, ->(_) {} do
-                      Build::PdfMerger.stub :add_outline_to_output_pdf!, ->(_) {} do
-                        yield
+                    Build::BacklinkDedupOrchestrator.stub :run!, ->(_) {} do
+                      Build::PdfMerger.stub :merge_all_pdfs!, ->(_) {} do
+                        Build::PdfMerger.stub :add_outline_to_output_pdf!, ->(_) {} do
+                          yield
+                        end
                       end
                     end
                   end
@@ -197,19 +204,19 @@ module Vivlio
           order = []
 
           stubs = [
-            [pipeline, :run_step1_clean, -> { order << 'step1' }],
-            [pipeline, :run_step2_optimize_images, -> { order << 'step2' }],
-            [Build::ImageOptimizer, :prepare_theme_images!, -> { order << 'step3' }],
-            [pipeline, :build_target_sections_html, -> { order << 'step4' }],
-            [pipeline, :generate_entries_and_pdf, -> { order << 'step5' }],
-            [pipeline, :rename_single_mode_pdf, -> { order << 'step13' }]
+            [pipeline, :run_step0_clean, -> { order << 'step0' }],
+            [pipeline, :run_step1_optimize_images, -> { order << 'step1' }],
+            [Build::ImageOptimizer, :prepare_theme_images!, -> { order << 'step2' }],
+            [pipeline, :build_target_sections_html, -> { order << 'step3' }],
+            [pipeline, :generate_entries_and_pdf, -> { order << 'step4' }],
+            [pipeline, :rename_single_mode_pdf, -> { order << 'step5' }]
           ]
 
           with_stubs(stubs) do
             pipeline.run
           end
 
-          expected_order = %w[step1 step2 step3 step4 step5 step13]
+          expected_order = %w[step0 step1 step2 step3 step4 step5]
           assert_equal expected_order, order
         end
 
@@ -222,12 +229,12 @@ module Vivlio
           end
 
           expected_labels = [
-            'Step  1 (clean)',
-            'Step  2 (optimize images)',
-            'Step  3 (prepare theme images)',
-            'Step  4 (build sections html)',
-            'Step  5 (entries.js + pdf)',
-            'Step 13 (rename output pdfs)'
+            'Step  0 (clean)',
+            'Step  1 (optimize images)',
+            'Step  2 (prepare theme images)',
+            'Step  3 (build sections html)',
+            'Step  4 (entries.js + pdf)',
+            'Step  5 (rename output pdfs)'
           ]
           labels = pipeline.timings.map(&:first)
           assert_equal expected_labels, labels
@@ -283,8 +290,8 @@ module Vivlio
         end
 
         def stub_all_single_mode_steps(pipeline)
-          pipeline.define_singleton_method(:run_step1_clean) {}
-          pipeline.define_singleton_method(:run_step2_optimize_images) {}
+          pipeline.define_singleton_method(:run_step0_clean) {}
+          pipeline.define_singleton_method(:run_step1_optimize_images) {}
           pipeline.define_singleton_method(:build_target_sections_html) {}
           pipeline.define_singleton_method(:generate_entries_and_pdf) {}
           pipeline.define_singleton_method(:rename_single_mode_pdf) {}
@@ -483,8 +490,8 @@ module Vivlio
 
           with_build_stubs { pipeline.run }
 
-          # full mode は 12 ステップ（Step 1-12）
-          assert_equal 12, pipeline.timings.length, 'full mode は 12 ステップを記録するべき'
+          # full mode は 13 ステップ（Step 0-12）
+          assert_equal 13, pipeline.timings.length, 'full mode は 13 ステップを記録するべき'
         end
 
         private
@@ -519,16 +526,16 @@ module Vivlio
         end
 
         def stub_pipeline_steps(pipeline)
-          pipeline.define_singleton_method(:run_step1_clean) {}
-          pipeline.define_singleton_method(:run_step2_optimize_images) {}
-          pipeline.define_singleton_method(:run_step5_index_processing) {}
+          pipeline.define_singleton_method(:run_step0_clean) {}
+          pipeline.define_singleton_method(:run_step1_optimize_images) {}
+          pipeline.define_singleton_method(:run_step4_index_processing) {}
           pipeline.define_singleton_method(:run_step9_front_pages_and_tail) {}
           pipeline.define_singleton_method(:run_step12_rename_and_clean) {}
         end
 
         def stub_single_pipeline_steps(pipeline)
-          pipeline.define_singleton_method(:run_step1_clean) {}
-          pipeline.define_singleton_method(:run_step2_optimize_images) {}
+          pipeline.define_singleton_method(:run_step0_clean) {}
+          pipeline.define_singleton_method(:run_step1_optimize_images) {}
           pipeline.define_singleton_method(:build_target_sections_html) {}
           pipeline.define_singleton_method(:generate_entries_and_pdf) {}
           pipeline.define_singleton_method(:rename_single_mode_pdf) {}
@@ -540,9 +547,11 @@ module Vivlio
               Build::SectionBuilder.stub :convert_sections_html!, ->(_) {} do
                 Build::TocGenerator.stub :generate_toc_and_pdf!, ->(_, _) {} do
                   Build::PdfBuilder.stub :build_overall_pdf_from_dir!, ->(_, _) {} do
-                    Build::PdfMerger.stub :merge_all_pdfs!, ->(_) {} do
-                      Build::PdfMerger.stub :add_outline_to_output_pdf!, ->(_) {} do
-                        yield
+                    Build::BacklinkDedupOrchestrator.stub :run!, ->(_) {} do
+                      Build::PdfMerger.stub :merge_all_pdfs!, ->(_) {} do
+                        Build::PdfMerger.stub :add_outline_to_output_pdf!, ->(_) {} do
+                          yield
+                        end
                       end
                     end
                   end
