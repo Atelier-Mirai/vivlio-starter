@@ -125,7 +125,7 @@ module Vivlio
 
           # --- phase: integration with HierarchicalIndex ---
 
-          def test_build_deduplicates_same_page_links
+          def test_build_preserves_all_links_for_deduplicator
             cache_data = {
               'generated_at' => Time.now.iso8601,
               'total_matches' => 3,
@@ -141,8 +141,39 @@ module Vivlio
 
             @builder.build!
 
-            # HierarchicalIndex により同一ページは1リンクに集約される
-            assert_equal 2, @builder.hierarchical_index.entries['Ruby'].size
+            # 全リンクを保持（重複排除は BacklinkDeduplicator が担当）
+            assert_equal 3, @builder.hierarchical_index.link_count
+          end
+
+          def test_build_returns_nil_when_terms_empty
+            cache_data = {
+              'generated_at' => Time.now.iso8601,
+              'total_matches' => 0,
+              'terms' => {}
+            }
+            File.write('_index_matches.yml', cache_data.to_yaml)
+
+            result = @builder.build!
+
+            assert_nil result
+            refute File.exist?('_indexpage.html')
+          end
+
+          def test_build_removes_stale_index_page_when_terms_empty
+            # 以前のビルドで生成された _indexpage.html が存在する
+            File.write('_indexpage.html', '<html>stale index</html>')
+
+            cache_data = {
+              'generated_at' => Time.now.iso8601,
+              'total_matches' => 0,
+              'terms' => {}
+            }
+            File.write('_index_matches.yml', cache_data.to_yaml)
+
+            @builder.build!
+
+            # 空の索引データで _indexpage.html が削除される
+            refute File.exist?('_indexpage.html')
           end
 
           private

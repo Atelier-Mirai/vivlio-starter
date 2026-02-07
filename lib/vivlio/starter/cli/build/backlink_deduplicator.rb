@@ -199,6 +199,7 @@ module Vivlio
 
           # 1つの <dd> 内の重複を排除
           # 同一 (spine_index, page_index) を指す <a> の2件目以降を削除
+          # Playwright マッピングに存在しないリンクも削除（target-counter で ?? になるため）
           def deduplicate_links_in_dd!(dd, index_anchor_to_page)
             seen_pages = Set.new
             links_to_remove = []
@@ -207,8 +208,11 @@ module Vivlio
               anchor_id = extract_anchor_id_from_href(link['href'].to_s)
               page_key = index_anchor_to_page[anchor_id]
 
-              # マッピングが見つからない場合はそのまま残す
-              next unless page_key
+              # マッピングが見つからないリンクは削除（target-counter で ?? 表示になる）
+              unless page_key
+                links_to_remove << link
+                next
+              end
 
               if seen_pages.include?(page_key)
                 links_to_remove << link

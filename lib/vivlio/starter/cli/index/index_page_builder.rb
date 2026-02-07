@@ -69,6 +69,8 @@ module Vivlio
             load_index_data!(match_file)
 
             if @index_data.empty?
+              Common.log_info('索引に登録された用語がありません')
+              cleanup_stale_index_page!(output_file)
               return nil
             end
 
@@ -76,6 +78,14 @@ module Vivlio
             File.write(output_file, html, encoding: 'utf-8')
             Common.log_success("索引ページを生成しました: #{output_file}")
             output_file
+          end
+
+          # 以前のビルドで残った _indexpage.html を削除
+          def cleanup_stale_index_page!(output_file)
+            return unless File.exist?(output_file)
+
+            FileUtils.rm_f(output_file)
+            Common.log_info("索引が空のため #{output_file} を削除しました")
           end
 
           private

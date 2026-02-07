@@ -585,6 +585,52 @@ class TestBacklinkDeduplicator < Minitest::Test
     end
   end
 
+  def test_should_remove_index_links_without_playwright_mapping
+    Dir.mktmpdir do |dir|
+      Dir.chdir(dir) do
+        # Arrange: 3つのリンクのうち、idx-missing-2 はマッピングに存在しない
+        index_html = <<~HTML
+          <!DOCTYPE html>
+          <html lang="ja">
+          <head><meta charset="UTF-8"><title>索引</title></head>
+          <body class="index-page">
+            <section class="index">
+              <dl class="index-list">
+                <dt>コンピュータ</dt>
+                <dd><a href="01-life.html#idx-ok-1"></a><a href="01-life.html#idx-missing-2"></a><a href="08-web.html#idx-ok-3"></a></dd>
+              </dl>
+            </section>
+          </body>
+          </html>
+        HTML
+        File.write('_indexpage.html', index_html, encoding: 'utf-8')
+
+        # idx-missing-2 はマッピングに含めない（Playwright が見つけられなかったアンカー）
+        page_mapping = build_page_mapping(
+          index_mappings: [
+            { anchor_id: 'idx-ok-1', page_index: 1, spine_index: 1 },
+            { anchor_id: 'idx-ok-3', page_index: 5, spine_index: 2 }
+          ]
+        )
+
+        # Act
+        result = Deduplicator.new(page_mapping).deduplicate!
+
+        # Assert: マッピングのないリンク（idx-missing-2）が削除される
+        assert_equal 1, result.index_removed
+
+        doc = Nokogiri::HTML5(File.read('_indexpage.html'))
+        remaining = doc.css('.index-list dd a')
+        assert_equal 2, remaining.size
+
+        hrefs = remaining.map { it['href'] }
+        assert_includes hrefs, '01-life.html#idx-ok-1'
+        assert_includes hrefs, '08-web.html#idx-ok-3'
+        refute_includes hrefs, '01-life.html#idx-missing-2'
+      end
+    end
+  end
+
   def test_should_skip_index_dedup_when_no_index_page
     Dir.mktmpdir do |dir|
       Dir.chdir(dir) do

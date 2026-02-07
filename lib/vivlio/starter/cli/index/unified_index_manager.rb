@@ -203,9 +203,30 @@ module Vivlio
             changes_made = true
           end
 
-          # リジェクト解除処理
+          # リジェクト解除 + 直接登録処理
+          # フラグに基づいて索引・用語集に登録する
           if unreject.any?
-            unreject.each { @queue_manager.unreject_term_by_name!(it['term']) }
+            unreject.each do |entry|
+              @queue_manager.unreject_term_by_name!(entry['term'])
+              flag = entry['flag'] || 'i'
+              term_data = { 'term' => entry['term'], 'yomi' => entry['yomi'] }
+
+              # フラグに基づいて索引・用語集に登録
+              case flag
+              when 'i', 'x'
+                @terms_manager.merge_terms!([term_data], source: 'unreject')
+                index_count += 1
+              when 'g'
+                @glossary_manager.merge_terms!([term_data], source: 'unreject')
+                glossary_count += 1
+              when 'ig', 'gi'
+                @terms_manager.merge_terms!([term_data], source: 'unreject')
+                @glossary_manager.merge_terms!([term_data], source: 'unreject')
+                index_count += 1
+                glossary_count += 1
+              end
+              Common.log_info("リジェクト解除 → [#{flag}] 登録: #{entry['term']}")
+            end
             changes_made = true
           end
 
@@ -215,8 +236,70 @@ module Vivlio
             changes_made = true
           end
 
+          # --- Phase: 孤立データ除去 ---
+          # レビューで承認されていない用語が index_terms.yml / glossary_terms.yml に残っている場合は除去
+          # （手動作成やキャッシュ残りによる不整合を解消）
+          index_approved_names = index_approved.map { it['term'] }
+          glossary_approved_names_all = glossary_approved.map { it['term'] }
+          unreject_index_names = unreject.select { %w[i x ig gi].include?(it['flag']) }.map { it['term'] }
+          unreject_glossary_names = unreject.select { %w[g ig gi].include?(it['flag']) }.map { it['term'] }
+
+          # index_terms.yml の孤立データ除去
+          stale_index = @terms_manager.term_names - index_approved_names - unreject_index_names
+          stale_index.each do |term_name|
+            @terms_manager.remove_term!(term_name)
+            Common.log_info("索引から孤立データを除去: #{term_name}")
+            changes_made = true
+          end
+
+          # glossary_terms.yml の孤立データ除去
+          stale_glossary = @glossary_manager.term_names - glossary_approved_names_all - unreject_glossary_names
+          stale_glossary.each do |term_name|
+            @glossary_manager.remove_term!(term_name)
+            Common.log_info("用語集から孤立データを除去: #{term_name}")
+            changes_made = true
+          end
+
+          # --- Phase: Section 4 同期処理 ---
+          # Section 4 の全項目を取得し、[ ] フラグの項目を rejected として確定する
+          # unreject 済み（[i]/[g]/[ig] フラグ）の項目は除外
+          rejected_section_all = @markdown_generator.parse_rejected_section_all
+          unreject_names = unreject.map { it['term'] }
+
+          # [ ] フラグ = 除外済みとして確定（index_terms / glossary_terms から除去、rejected に追加）
+          confirmed_rejected = rejected_section_all.select { it['flag'] == '' || it['flag'] == ' ' }
+                                                   .reject { unreject_names.include?(it['term']) }
+
+          if confirmed_rejected.any?
+            rejected_count = 0
+            confirmed_rejected.each do |entry|
+              term_name = entry['term']
+              removed = false
+
+              if @terms_manager.term_names.include?(term_name)
+                @terms_manager.remove_term!(term_name)
+                removed = true
+              end
+
+              if @glossary_manager.term_names.include?(term_name)
+                @glossary_manager.remove_term!(term_name)
+                removed = true
+              end
+
+              if removed
+                Common.log_info("除外済みリストに基づき登録を解除: #{term_name}")
+                rejected_count += 1
+              end
+            end
+
+            # rejected.yml に同期
+            @queue_manager.save_rejected_terms(confirmed_rejected)
+            changes_made = true if rejected_count.positive? || confirmed_rejected.any?
+          end
+
           if changes_made
-            Common.log_success("索引: #{index_count}件、用語集: #{glossary_count}件、リジェクト: #{both_rejected.size}件")
+            rejected_total = both_rejected.size + (confirmed_rejected&.size || 0)
+            Common.log_success("索引: #{index_count}件、用語集: #{glossary_count}件、リジェクト: #{rejected_total}件")
             Common.log_info("読み変更: #{yomi_changes.size}件") if yomi_changes.any?
             Common.log_success('index_terms.yml / glossary_terms.yml を更新しました')
             Common.log_info('ページ生成は vs build 実行時に行われます')
@@ -225,7 +308,9 @@ module Vivlio
             Common.log_info('_index_glossary_review.md でフラグを編集してください')
           end
 
-          @markdown_generator.cleanup!
+          # _index_glossary_review.md は残す（再編集の可能性があるため）
+          # vs build の clean 処理で削除される
+          changes_made
         end
 
         # 用語集の説明文バリデーション

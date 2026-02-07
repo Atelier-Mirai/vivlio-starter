@@ -181,8 +181,9 @@ module Vivlio
           rejected
         end
 
-        # Rejectedセクションで解除マークされた候補を抽出（リジェクト解除用）
-        # @return [Array<Hash>] リジェクト解除候補のリスト
+        # Rejectedセクションで解除マークされた候補を抽出（リジェクト解除 + 直接登録）
+        # フラグに基づいて索引・用語集に直接登録する
+        # @return [Array<Hash>] リジェクト解除候補のリスト（flag 付き）
         def parse_unreject
           return [] unless exists?
 
@@ -195,12 +196,37 @@ module Vivlio
 
           rejected_content = content[rejected_section_start..]
 
-          # Rejectedセクション内で [i], [g], [ig] マークされたものを抽出（解除）
-          rejected_content.scan(/^- \[(?:i|g|ig|gi|x)\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)/) do |term, yomi|
-            unreject << { 'term' => term, 'yomi' => yomi }
+          # Rejectedセクション内で [i], [g], [ig] マークされたものを抽出
+          # フラグも保持し、索引・用語集への直接登録に使用する
+          rejected_content.scan(/^- \[(i|g|ig|gi|x)\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)/) do |flag, term, yomi|
+            unreject << { 'term' => term, 'yomi' => yomi, 'flag' => flag }
           end
 
           unreject
+        end
+
+        # Rejectedセクションの全項目を抽出（フラグ不問）
+        # Section 4 に存在する全用語を返す（[ ], [i], [g], [ig] 等すべて）
+        # apply 時に index_terms/glossary_terms からの除去と rejected への同期に使用
+        # @return [Array<Hash>] 全項目のリスト（flag 付き）
+        def parse_rejected_section_all
+          return [] unless exists?
+
+          content = File.read(review_file_path, encoding: 'utf-8')
+          items = []
+
+          rejected_section_start = content.index('## 4. 除外済みリスト')
+          return [] unless rejected_section_start
+
+          rejected_content = content[rejected_section_start..]
+
+          # フラグ部分を含めて全項目を抽出
+          # [ ], [i], [g], [ig], [gi], [x], [r] 等すべてのフラグを対象
+          rejected_content.scan(/^- \[([^\]]*)\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)/) do |flag, term, yomi|
+            items << { 'term' => term, 'yomi' => yomi, 'flag' => flag.strip }
+          end
+
+          items
         end
 
         # Termsセクションで読みが変更された用語を抽出
@@ -437,7 +463,7 @@ module Vivlio
         # 4. 除外済みリストセクション（Candidatesと同様の形式、rejected_atでラベル判定）
         def build_rejected_section(rejected)
           section = "## 4. 除外済みリスト (Rejected: #{rejected.size}語)\n"
-          section += "※ 復帰させたいものは [i], [g], [ig] を入れると候補に戻ります。\n\n"
+          section += "※ 復帰させたいものは [i], [g], [ig] を入れると索引・用語集に直接登録されます。\n\n"
 
           if rejected.empty?
             section += "除外済みの用語はありません。\n"

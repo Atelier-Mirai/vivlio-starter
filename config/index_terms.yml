@@ -3,67 +3,42 @@ terms:
 - term: CSS
   yomi: CSS
   pattern: "/\\bCSS\\b/"
-  approved_at: '2026-01-28 11:34:25'
+  approved_at: '2026-02-07 20:25:24'
   auto_approved: true
   source: auto_extracted
-  score: 433.3886130788526
+  score: 469.5043308354237
 - term: HTML
   yomi: HTML
   pattern: "/\\bHTML\\b/"
-  approved_at: '2026-01-28 11:34:25'
+  approved_at: '2026-02-07 20:25:24'
   auto_approved: true
   source: auto_extracted
-  score: 650.0829196182788
+  score: 686.1986373748498
 - term: JavaScript
   yomi: JavaScript
   pattern: "/\\bJavaScript\\b/"
-  approved_at: '2026-01-28 11:35:22'
+  approved_at: '2026-02-07 20:25:24'
   auto_approved: true
   source: auto_extracted
+  score: 316.73576634856573
 - term: コンピュータ
   yomi: こんぴゅーた
   pattern: "/コンピュータ/"
-  approved_at: '2026-01-28 11:34:25'
+  approved_at: '2026-02-07 20:25:24'
   auto_approved: true
   source: auto_extracted
   score: 497.8929439142762
-- term: サイト
-  yomi: さいと
-  pattern: "/サイト/"
-  approved_at: '2026-02-07 15:45:40'
-  auto_approved: true
-  source: auto_extracted
-  score: 12658.529629412144
 - term: プログラミング
   yomi: ぷろぐらみんぐ
   pattern: "/プログラミング/"
-  approved_at: '2026-01-28 11:35:22'
+  approved_at: '2026-02-07 20:25:24'
   auto_approved: true
   source: auto_extracted
-- term: ページ
-  yomi: ぺーじ
-  pattern: "/ページ/"
-  approved_at: '2026-02-07 15:45:40'
-  auto_approved: true
-  source: auto_extracted
-  score: 344.14035123119083
-- term: ウェブ
-  yomi: ウェブ
-  pattern: "/ウェブ/"
-  approved_at: '2026-02-07 15:33:56'
-  auto_approved: true
-  source: auto_extracted
-  score: 7071.38111351728
-- term: ウェブサイト
-  yomi: ウェブサイト
-  pattern: "/ウェブサイト/"
-  approved_at: '2026-01-28 12:12:51'
-  auto_approved: true
-  source: auto_extracted
+  score: 340.0
 - term: ブラウザ
   yomi: ブラウザ
   pattern: "/ブラウザ/"
-  approved_at: '2026-01-28 11:34:25'
+  approved_at: '2026-02-07 20:25:24'
   auto_approved: true
   source: auto_extracted
   score: 304.55889757182007

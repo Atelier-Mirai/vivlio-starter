@@ -37,6 +37,8 @@ module Vivlio
           
           if terms.empty?
             Common.log_info('用語集に登録された用語がありません')
+            # 以前のビルドで生成された _glossarypage.html が残っている場合は削除
+            cleanup_stale_glossary_page!
             return nil
           end
 
@@ -58,6 +60,14 @@ module Vivlio
         end
 
         private
+
+        # 以前のビルドで残った _glossarypage.html を削除
+        def cleanup_stale_glossary_page!
+          return unless File.exist?(OUTPUT_FILE)
+
+          FileUtils.rm_f(OUTPUT_FILE)
+          Common.log_info("用語集が空のため #{OUTPUT_FILE} を削除しました")
+        end
 
         # 設定を読み込み
         def load_glossary_config
