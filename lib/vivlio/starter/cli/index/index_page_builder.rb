@@ -9,6 +9,7 @@
 #   - 用語を五十音順でソート
 #   - 「あ行」「か行」などでグループ化
 #   - CSS target-counter 対応の HTML を生成
+#   - 全出現箇所のリンクを出力（重複排除は BacklinkDeduplicator が担当）
 #
 # Ruby 4.0.0:
 #   - Set が組み込み化され、require "set" が不要
@@ -80,11 +81,12 @@ module Vivlio
           private
 
           # 索引データを読み込み
+          # 全出現箇所のリンクを保持し、重複排除は Playwright ベースの BacklinkDeduplicator に委任
           def load_index_data!(match_file)
             data = YAML.load_file(match_file, permitted_classes: [Time, Symbol])
             @index_data = data['terms'] || {}
 
-            # HierarchicalIndex にエントリを追加
+            # HierarchicalIndex にエントリを追加（全リンクを保持、重複排除なし）
             @index_data.each do |term, occurrences|
               occurrences.each do |occ|
                 link = occ['link'] || occ[:link]
@@ -92,11 +94,7 @@ module Vivlio
               end
             end
 
-            # 同一ページの重複を排除（Phase 3）
-            @hierarchical_index.deduplicate_same_page!
-
-            Common.log_info("索引データを読み込み: #{@index_data.size} 件の用語")
-            Common.log_info("重複排除後リンク数: #{@hierarchical_index.link_count} 件")
+            Common.log_info("索引データを読み込み: #{@index_data.size} 件の用語、#{@hierarchical_index.link_count} 件のリンク")
           end
 
           # HTML を生成
@@ -233,12 +231,10 @@ module Vivlio
 
           # ページリンクの HTML を生成
           # CSS target-counter でページ番号を自動挿入
-          # Phase 3: 同一ページ重複排除済みリンクを使用
+          # 全出現箇所のリンクを出力し、重複排除は BacklinkDeduplicator が担当
           def generate_page_links(term)
-            # HierarchicalIndex から重複排除済みリンクを取得
-            links = @hierarchical_index.entries[term] || []
-
-            links.map do |link|
+            @index_data[term].map do |occ|
+              link = occ['link'] || occ[:link]
               # 00-preface への参照には frontmatter クラスを付与（ローマ数字表示用）
               css_class = link.start_with?('00-preface') ? ' class="frontmatter"' : ''
               %(<a href="#{link}"#{css_class}></a>)

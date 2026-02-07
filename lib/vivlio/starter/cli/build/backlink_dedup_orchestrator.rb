@@ -4,11 +4,15 @@
 # Module: BacklinkDedupOrchestrator
 # ================================================================
 # 責務:
-#   バックリンク重複排除のワークフロー全体を統括する。
+#   用語集バックリンクおよび索引ページ番号の重複排除ワークフローを統括する。
 #
 # 処理フロー:
 #   1. PageMappingExtractor でヘッドレスブラウザからページマッピングを取得
+#      （glossary-link, glossary-backlink, index-term を一括収集）
 #   2. BacklinkDeduplicator で HTML を浄化
+#      - _glossarypage.html: バックリンク重複排除
+#      - 本文 HTML: †リンク重複排除
+#      - _indexpage.html: ページ番号リンク重複排除
 #   3. 結果のログ出力
 #
 # パイプライン上の位置:
@@ -31,23 +35,23 @@ module Vivlio
           # @param entries [Array] ビルド対象エントリ（PDF再ビルド時に使用）
           # @return [Boolean] 重複排除が実行されたか
           def run!(entries = [])
-            unless glossary_dedup_enabled?
-              Common.log_info('[Step 8] バックリンク重複排除は無効です（book.yml: glossary.backlink_dedup = false）')
+            unless dedup_enabled?
+              Common.log_info('[Step 8] 重複排除は無効です')
               return false
             end
 
-            unless glossary_page_exists?
-              Common.log_info('[Step 8] _glossarypage.html が存在しないためスキップします')
+            unless dedup_target_exists?
+              Common.log_info('[Step 8] _glossarypage.html / _indexpage.html がいずれも存在しないためスキップします')
               return false
             end
 
             # --- Phase 1: ページマッピング抽出 ---
-            Common.log_action('[Step 8] バックリンク重複排除を開始します…')
+            Common.log_action('[Step 8] 重複排除を開始します…')
             page_mapping = extract_page_mapping
 
             return false unless page_mapping
 
-            # --- Phase 2: HTML 浄化 ---
+            # --- Phase 2: HTML 浄化（用語集 + 索引を一括処理） ---
             result = deduplicate_backlinks(page_mapping)
             log_result(result)
 
@@ -61,7 +65,7 @@ module Vivlio
               false
             end
           rescue StandardError => e
-            Common.log_warn("[Step 8] バックリンク重複排除でエラーが発生しました: #{e.message}")
+            Common.log_warn("[Step 8] 重複排除でエラーが発生しました: #{e.message}")
             Common.log_warn('[Step 8] 重複排除をスキップし、既存の PDF で続行します')
             false
           end
@@ -69,22 +73,31 @@ module Vivlio
           # --- 設定チェック ---
 
           # 重複排除機能が有効か
-          # book.yml の glossary.backlink_dedup 設定を参照
-          # デフォルト: 索引・用語集機能が有効なら true
-          def glossary_dedup_enabled?
+          # 索引・用語集機能が有効で、かつ用語集または索引の重複排除が有効な場合に true
+          def dedup_enabled?
             # 索引・用語集自体が無効なら dedup も無効
             return false unless IndexCommands.index_enabled?
 
-            # glossary.backlink_dedup が明示的に false なら無効
-            dedup_setting = Common::CONFIG.dig('glossary', 'backlink_dedup')
-            return dedup_setting != false if dedup_setting != nil
-
-            # デフォルト: 有効
-            true
+            # 用語集または索引のいずれかの dedup が有効なら実行
+            glossary_dedup_enabled? || index_dedup_enabled?
           end
 
-          # 用語集ページが存在するか
-          def glossary_page_exists? = File.exist?('_glossarypage.html')
+          # 用語集の重複排除が有効か
+          def glossary_dedup_enabled?
+            dedup_setting = Common::CONFIG.dig('glossary', 'backlink_dedup')
+            dedup_setting != false
+          end
+
+          # 索引の重複排除が有効か
+          def index_dedup_enabled?
+            dedup_setting = Common::CONFIG.dig('index', 'backlink_dedup')
+            dedup_setting != false
+          end
+
+          # 重複排除対象の HTML が存在するか
+          def dedup_target_exists?
+            File.exist?('_glossarypage.html') || File.exist?('_indexpage.html')
+          end
 
           # --- 各フェーズの実行 ---
 
@@ -127,6 +140,7 @@ module Vivlio
           def log_result(result)
             Common.log_info("[Step 8] 用語集バックリンク: #{result.glossary_removed} 件の重複を削除")
             Common.log_info("[Step 8] 本文 †マーク: #{result.body_removed} 件の重複を削除")
+            Common.log_info("[Step 8] 索引ページ番号: #{result.index_removed} 件の重複を削除")
             Common.log_info("[Step 8] 更新ファイル: #{result.files_modified.join(', ')}") if result.files_modified.any?
           end
         end

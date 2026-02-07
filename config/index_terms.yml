@@ -27,12 +27,33 @@ terms:
   auto_approved: true
   source: auto_extracted
   score: 497.8929439142762
+- term: サイト
+  yomi: さいと
+  pattern: "/サイト/"
+  approved_at: '2026-02-07 15:45:40'
+  auto_approved: true
+  source: auto_extracted
+  score: 12658.529629412144
 - term: プログラミング
   yomi: ぷろぐらみんぐ
   pattern: "/プログラミング/"
   approved_at: '2026-01-28 11:35:22'
   auto_approved: true
   source: auto_extracted
+- term: ページ
+  yomi: ぺーじ
+  pattern: "/ページ/"
+  approved_at: '2026-02-07 15:45:40'
+  auto_approved: true
+  source: auto_extracted
+  score: 344.14035123119083
+- term: ウェブ
+  yomi: ウェブ
+  pattern: "/ウェブ/"
+  approved_at: '2026-02-07 15:33:56'
+  auto_approved: true
+  source: auto_extracted
+  score: 7071.38111351728
 - term: ウェブサイト
   yomi: ウェブサイト
   pattern: "/ウェブサイト/"
