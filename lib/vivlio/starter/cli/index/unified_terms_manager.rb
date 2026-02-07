@@ -4,8 +4,7 @@
 # Class: UnifiedTermsManager
 # ----------------------------------------------------------------
 # 責務:
-#   config/glossary_terms.yml を統合用語辞書として管理する。
-#   Phase B で index_terms.yml と glossary_terms.yml を統合。
+#   config/index_glossary_terms.yml を統合用語辞書として管理する。
 #
 #   各用語は flags フィールドで索引/用語集の所属を制御:
 #     i  = 索引のみ
@@ -19,7 +18,6 @@
 #   - merge_terms!: 用語をマージして保存
 #   - remove_term!: 用語を削除
 #   - update_flags!: flags を更新
-#   - migrate_from_index_terms!: index_terms.yml からの移行
 # ================================================================
 
 require 'yaml'
@@ -31,7 +29,6 @@ module Vivlio
     module CLI
       class UnifiedTermsManager
         UNIFIED_FILE = 'config/index_glossary_terms.yml'
-        LEGACY_INDEX_FILE = 'config/index_terms.yml'
 
         def initialize
           @cache = nil
@@ -218,55 +215,6 @@ module Vivlio
         # キャッシュをクリア
         def clear_cache!
           @cache = nil
-        end
-
-        # --- Phase: マイグレーション ---
-
-        # index_terms.yml からの移行
-        # 既存の glossary_terms.yml の用語は flags: g → ig に昇格
-        # index_terms.yml にしかない用語は flags: i で追加
-        def migrate_from_index_terms!
-          return unless File.exist?(LEGACY_INDEX_FILE)
-
-          begin
-            index_data = YAML.load_file(LEGACY_INDEX_FILE, symbolize_names: false)
-            index_terms_list = index_data['terms'] || []
-          rescue StandardError => e
-            Common.log_warn("#{LEGACY_INDEX_FILE} の読み込みに失敗しました: #{e.message}")
-            return
-          end
-
-          return if index_terms_list.empty?
-
-          existing = load_terms.dup
-          migrated_count = 0
-
-          index_terms_list.each do |idx_term|
-            term_name = idx_term['term']
-            next if term_name.nil? || term_name.empty?
-
-            found = existing.find { it['term'] == term_name }
-            if found
-              # glossary_terms.yml に既存 → flags に i を追加
-              current_flags = found['flags'] || 'g'
-              found['flags'] = merge_flags(current_flags, 'i')
-              # index 側のメタデータをマージ
-              found['pattern'] = idx_term['pattern'] if idx_term['pattern']
-              found['score'] = idx_term['score'] if idx_term['score'] && !found['score']
-              found['auto_approved'] = idx_term['auto_approved'] if found['auto_approved'].nil?
-            else
-              # 新規追加（flags: i）
-              existing << build_term_entry(idx_term, 'i', idx_term['source'] || 'auto_extracted')
-              migrated_count += 1
-            end
-          end
-
-          save_terms!(existing)
-          Common.log_success("index_terms.yml から #{migrated_count} 件を移行しました") if migrated_count.positive?
-
-          # 旧ファイルを削除
-          FileUtils.rm_f(LEGACY_INDEX_FILE)
-          Common.log_info("#{LEGACY_INDEX_FILE} を削除しました")
         end
 
         private

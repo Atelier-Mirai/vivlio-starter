@@ -69,10 +69,11 @@
 - (なし)
 
 ### Changed
-- (なし)
+- **索引モジュールのデッドコード整理**: Samovar 経由では到達しない `vs index:match` 系の CLI エントリと `execute_index_*` ヘルパー、旧 `index_terms.yml` マイグレーション処理、および対応するテストケースを削除し、現行の `index_glossary_terms.yml` ベース実装にコードを集約しました。
 
 ### Fixed
-- (なし)
+- **[ig] 手動マークアップ時に HTML タグが壊れる問題**: `apply_auto_indexing` / `apply_glossary_only_linking` で `<a class="glossary-link">` を含む索引タグ全体と残りの HTML を保護し、属性内マッチによる二重タグ付けを防止しました。
+- **原稿 (`contents/*.md`) への誤書き込み**: `scan_and_tag_file!` で contents ディレクトリ配下を常に読み取り専用として扱い、`read_only: false` で呼び出されても原稿ファイルが上書きされないようにしました。
 
 ## 0.30.0 - 2026-02-07
 
