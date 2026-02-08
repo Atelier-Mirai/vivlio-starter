@@ -1,6 +1,6 @@
 # はじめての技術書づくり ～Vivlio Starter 実践ガイド～
 
-このリポジトリは、Thor ベースの CLI（`vs`/`vivlio-starter`）で電子書籍（Vivliostyle PDF）を生成するプロジェクトです。Markdown を前処理し、HTML 変換・差し替え・目次/章立て生成・PDF化・クリーンアップ・表示までを自動化します。
+このリポジトリは、Samovar ベースの CLI（`vs`/`vivlio-starter`）で電子書籍（Vivliostyle PDF）を生成するプロジェクトです。Markdown を前処理し、HTML 変換・差し替え・目次/章立て生成・PDF化・クリーンアップ・表示までを自動化します。
 
 ![Vivlio Starter ロゴ](dev-notes/vivlio_starter_logo.webp)
 

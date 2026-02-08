@@ -28,7 +28,7 @@ module Vivlio
         #    - h3: <span class="subsection-marker">♣</span><span class="subsection-title">タイトル</span>
         # ================================================================
         module HeadingProcessor
-          MAIN_CHAPTER_RANGE = (11..89)
+          MAIN_CHAPTER_RANGE = (1..89)
 
           module_function
 
@@ -342,7 +342,7 @@ module Vivlio
               return idx + 1
             end
 
-            chapter_number_i - 10
+            chapter_number_i
           end
 
           # メイン章の順序を取得

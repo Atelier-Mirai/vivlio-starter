@@ -44,14 +44,15 @@ module Vivlio
           FileUtils.rm_rf('contents')
 
           status = nil
+          logged_warnings = []
           with_stubbed_textlint_available do
-            stdout, stderr = capture_io do
-              status = LintCommands.execute_lint([], {})
+            Common.stub :log_warn, ->(msg) { logged_warnings << msg } do
+              capture_io { status = LintCommands.execute_lint([], {}) }
             end
-            assert_match(/textlint 対象となる Markdown ファイルが見つかりません。/, stdout)
-            assert_empty(stderr)
           end
-          assert_equal 0, status
+          assert status.zero?, "ステータスは 0 であること"
+          assert logged_warnings.any? { it.include?('textlint 対象となる Markdown ファイルが見つかりません。') },
+                 "Markdown 未検出の警告が出力されること: #{logged_warnings.inspect}"
         end
 
         def test_runner_invokes_textlint_with_resolved_targets
@@ -299,10 +300,14 @@ module Vivlio
           setup_catalog(%w[01-life])
           # ファイルを作成しない → missing 警告
 
+          logged_warnings = []
           resolver = LintCommands::LintRunner::TargetResolver.new(['1'])
-          output, = capture_io { resolver.resolve }
+          Common.stub :log_warn, ->(msg) { logged_warnings << msg } do
+            capture_io { resolver.resolve }
+          end
 
-          assert_match(/見つかりません/, output)
+          assert logged_warnings.any? { it.include?('見つかりません') },
+                 "missing 警告が出力されること: #{logged_warnings.inspect}"
         end
 
         def test_target_resolver_excludes_system_files
@@ -319,11 +324,15 @@ module Vivlio
         def test_target_resolver_rejects_invalid_token
           resolver = LintCommands::LintRunner::TargetResolver.new(['foo'])
 
-          output, = capture_io do
-            error = assert_raises(SystemExit) { resolver.resolve }
-            assert_equal 1, error.status
+          logged_errors = []
+          Common.stub :log_error, ->(msg) { logged_errors << msg } do
+            capture_io do
+              error = assert_raises(SystemExit) { resolver.resolve }
+              assert_equal 1, error.status
+            end
           end
-          assert_match(/不正な章指定/, output)
+          assert logged_errors.any? { it.include?('不正な章指定') },
+                 "不正な章指定エラーが出力されること: #{logged_errors.inspect}"
         end
 
         private

@@ -11,6 +11,12 @@
     box-sizing: border-box;
 }
 
+/* 画像がページ幅を超過しないようにする */
+img {
+    max-inline-size: 100%;
+    block-size: auto;
+}
+
 /* 見出しが区切りの良いところで折り返すようにする */
 h1,
 h2,

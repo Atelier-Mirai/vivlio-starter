@@ -47,16 +47,27 @@ module Vivlio
             true
           end
 
-          # PDF のページ数を取得（pdfinfo が必要）
+          # PDF のページ数を取得（pdfinfo → HexaPDF フォールバック）
           def page_count(file)
             return nil unless File.exist?(file)
 
+            # pdfinfo を優先
             if system('which pdfinfo >/dev/null 2>&1')
               info = `pdfinfo "#{file}" 2>/dev/null`
               pages = info[/^Pages:\s+(\d+)/i, 1]
-              return pages if pages
+              return pages.to_i if pages
             end
+
+            # HexaPDF フォールバック
+            doc = HexaPDF::Document.open(file)
+            doc.pages.count
+          rescue StandardError
             nil
+          end
+
+          # 複数 PDF の合計ページ数を返す
+          def total_page_count(files)
+            files.sum { |f| page_count(f).to_i }
           end
 
           # 1..89 範囲の章番号（整数）の配列を返す（新仕様）

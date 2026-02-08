@@ -60,6 +60,6 @@
   --frontispiece-padding: 10mm;
   --frontispiece-background-size: auto calc(100% - 2 * var(--frontispiece-padding));
   --frontispiece-image:    url("images/bundled/asagao_portrait.webp");
-  --frontispiece-heading-width: 128mm;
-  --frontispiece-lead-width: 128mm;
+  --frontispiece-heading-width: 108mm;
+  --frontispiece-lead-width: 88mm;
 }

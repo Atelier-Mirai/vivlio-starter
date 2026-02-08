@@ -308,14 +308,61 @@ module Vivlio
                 updated
               end
 
-              if changed
+              # @page { size } をリテラル値で更新（var() は @page size で使用不可）
+              changed2 = safe_css_update(css_path) do |css|
+                w = page_cfg[:width].to_s.strip
+                h = page_cfg[:height].to_s.strip
+                next css if w.empty? || h.empty?
+
+                css.sub(/(@page\s*\{[^}]*?\bsize:\s*)[^;]+(;)/) do
+                  "#{::Regexp.last_match(1)}#{w} #{h}#{::Regexp.last_match(2)}"
+                end
+              end
+
+              if changed || changed2
                 Common.log_success("#{File.basename(css_path)} を更新: #{css_path}")
               else
                 Common.log_info("#{File.basename(css_path)} に適用すべき差分はありません")
               end
             end
+            # vivliostyle.config.js の size プロパティも同期
+            sync_vivliostyle_config_size!(page_cfg[:width], page_cfg[:height], page_cfg[:size])
           rescue StandardError => e
             Common.log_warn("page-settings.css の更新に失敗: #{e.message}")
+          end
+
+          # vivliostyle.config.js の size プロパティを book.yml のページ設定に同期する
+          def sync_vivliostyle_config_size!(width, height, size_name = nil)
+            config_path = Common::VIVLIOSTYLE_CONFIG_FILE
+            return unless File.exist?(config_path)
+
+            # サイズ文字列を決定（'A5', 'B5', 'A4' またはカスタム寸法）
+            new_size = if size_name && !size_name.to_s.strip.empty?
+                         size_name.to_s.strip.upcase
+                       else
+                         "#{width} #{height}"
+                       end
+
+            content = File.read(config_path, encoding: 'utf-8')
+
+            if content.match?(/^\s*size:\s/)
+              # 既存の size プロパティを更新
+              updated = content.sub(/^(\s*size:\s*)'[^']*'/, "\\1'#{new_size}'")
+              updated = updated.sub(/^(\s*size:\s*)"[^"]*"/, "\\1'#{new_size}'") if updated == content
+            else
+              # size プロパティが存在しない場合、language の後に挿入
+              updated = content.sub(
+                /^(\s*language:\s*'[^']*',\s*\/\/[^\n]*\n)/,
+                "\\1  size: '#{new_size}', // ページサイズ（book.yml のプリセットから自動設定）\n"
+              )
+            end
+
+            return if updated == content
+
+            File.write(config_path, updated)
+            Common.log_success("vivliostyle.config.js の size を '#{new_size}' に同期しました")
+          rescue StandardError => e
+            Common.log_warn("vivliostyle.config.js の size 同期に失敗: #{e.message}")
           end
 
           # 色値を正規化（色名 or HEX）

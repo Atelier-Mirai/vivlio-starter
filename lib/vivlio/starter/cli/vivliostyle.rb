@@ -50,6 +50,9 @@ module Vivlio
           output_file         = pdf_config&.output_file || 'output.pdf'
           config_file         = vivliostyle_config&.config_file || 'vivliostyle.config.js'
 
+          # ページサイズを解決（book.yml のプリセットから）
+          page_size = resolve_vivliostyle_size(config)
+
           # バックアップ処理（最新のみ保持）
           if File.exist?(config_file)
             Dir.glob("#{config_file}.backup_*").each { |f| FileUtils.rm_f(f) }
@@ -69,6 +72,7 @@ module Vivlio
               title: '#{esc.call(title)}', // 書籍のタイトル
               author: '#{esc.call(author)}', // 著者名
               language: '#{esc.call(language)}', // 言語設定
+              size: '#{esc.call(page_size)}', // ページサイズ（book.yml のプリセットから自動設定）
               readingProgression: '#{esc.call(reading_progression)}', // 読み進め方向（ltr: 横書き, rtl: 縦書き）
               entry: entries, // 章立て構成（#{entries_file}から読み込み）
               output: [ // 出力ファイル設定
@@ -86,8 +90,25 @@ module Vivlio
           Common.log_info("タイトル: #{title}")
           Common.log_info("著者: #{author}")
           Common.log_info("言語: #{language}")
+          Common.log_info("ページサイズ: #{page_size}")
           Common.log_info("読み進め方向: #{reading_progression}")
           Common.log_info("出力ファイル: #{output_file}")
+        end
+
+        # book.yml のページ設定から Vivliostyle CLI 用サイズ文字列を解決する
+        # @return [String] 'A5', 'B5', 'A4', または '148mm 210mm' 形式
+        def resolve_vivliostyle_size(config)
+          page_cfg = config.respond_to?(:page) ? config.page : config[:page]
+          return 'A5' unless page_cfg
+
+          # プリセットから解決された size キーがあればそのまま使う
+          size_name = page_cfg[:size].to_s.strip.upcase
+          return size_name unless size_name.empty?
+
+          # size キーがない場合は width × height から組み立てる
+          raw = page_cfg.respond_to?(:to_h) ? page_cfg.to_h : page_cfg
+          w, h = Common.resolve_page_size(raw)
+          "#{w} #{h}"
         end
       end
     end

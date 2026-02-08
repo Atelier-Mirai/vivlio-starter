@@ -128,7 +128,7 @@
 }
 
 @page {
-  size: var(--page-width) var(--page-height);
+  size: 148mm 210mm;  /* css_updater が book.yml のプリセットに合わせて自動更新 */
   margin-top: var(--page-margin-top);
   margin-bottom: var(--page-margin-bottom);
 

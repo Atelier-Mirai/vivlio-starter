@@ -22,55 +22,71 @@
 h1 {
   display: grid;
   grid-template-columns: auto;
-  grid-template-rows: minmax(30mm, auto) auto;
+  grid-template-rows: auto auto;
   gap: clamp(4mm, calc(var(--paper-scale) * 6mm), 8mm);
   align-items: center;
   justify-items: center;
   margin: 0 auto;
   text-align: center;
-  inline-size: var(--frontispiece-heading-width);
+  inline-size: clamp(70mm, calc(var(--paper-scale) * 110mm), var(--frontispiece-heading-width));
   max-inline-size: 100%;
-  padding-block: clamp(6mm, calc(var(--paper-scale) * 8mm), 8mm);
+  padding-block: clamp(3mm, calc(var(--paper-scale) * 6mm), 8mm);
 }
 
 .chapter-lead {
   inline-size: var(--frontispiece-lead-width);
+  margin-block: clamp(-8mm, calc(var(--paper-scale) * -10mm), -6mm)
+    clamp(8mm, calc(var(--paper-scale) * 10mm), 12mm);
 }
 
 h1 .chapter-number {
   display: block;
-  font-size: clamp(30Q, calc(var(--paper-scale) * 40Q), 40Q);
-  font-weight: 700;
-  letter-spacing: 0.3em;
-  color: black;
-  margin-block-end: -10mm;
+  font-family: var(--font-header);
+  font-size: clamp(24Q, calc(var(--paper-scale) * 30Q), 32Q);
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  color: #333;
+  text-transform: none;
+  margin-block-start: clamp(8mm, calc(var(--paper-scale) * 10mm), 12mm);
+  padding-block-end: clamp(2mm, calc(var(--paper-scale) * 3mm), 4mm);
+  /* margin-block-end: clamp(5mm, calc(var(--paper-scale) * 7mm), 8mm); */
+  width: 100%;
+  position: relative;
+}
+
+h1 .chapter-number::after {
+  content: "";
+  position: absolute;
+  inset-inline: 15%;
+  bottom: 0;
+  height: 0.6mm;
+  background: rgb(0 0 0 / 35%);
+  border-radius: 0.6mm;
 }
 
 h1 .chapter-title {
   display: block;
   margin: 0 auto;
-  padding-block: clamp(5mm, calc(var(--paper-scale) * 7mm), 7mm);
-  padding-inline: clamp(6mm, calc(var(--paper-scale) * 9mm), 9mm);
+  padding: 0;
   text-align: center;
-  font-size: clamp(38Q, calc(var(--paper-scale) * 52Q), 52Q);
+  font-family: var(--font-header);
+  font-size: clamp(34Q, calc(var(--paper-scale) * 48Q), 50Q);
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
+  line-height: 1.45;
   color: #111;
-  line-height: 1.35;
-  inline-size: 100%;
-  max-inline-size: var(--frontispiece-heading-width);
+  inline-size: clamp(60mm, calc(var(--paper-scale) * 96mm), var(--frontispiece-heading-width));
+  max-inline-size: 100%;
   box-sizing: border-box;
   overflow-wrap: anywhere;
-  border-block: 0.6mm solid rgb(0 0 0 / 28%);
-  border-radius: 1.2mm;
+  white-space: normal;
+  text-shadow: 0 0 1mm rgb(255 255 255 / 70%);
+  margin-block-start: clamp(4mm, calc(var(--paper-scale) * 6mm), 8mm);
+  margin-block-end: clamp(2mm, calc(var(--paper-scale) * 4mm), 5mm);
 }
 
 h1::after {
-  content: "";
-  inline-size: clamp(32mm, calc(var(--paper-scale) * 48mm), 48mm);
-  block-size: 1.6mm;
-  margin-block-start: clamp(6mm, calc(var(--paper-scale) * 8mm), 8mm);
-  border-radius: 2mm;
+  content: none;
 }
 
 
