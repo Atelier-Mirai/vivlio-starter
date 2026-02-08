@@ -161,7 +161,14 @@ module Vivlio
               token_num = format('%02d', token.to_i)
               found = catalog.find { it.number == token_num }
               return found if found
-              # カタログにない場合、番号のみの新規エントリとして生成
+              # カタログにない場合、ファイルシステムからスラッグを補完する。
+              # 例: "2" → contents/02-history.md が存在すれば "02-history" として解決。
+              fs_matches = Dir.glob(File.join(contents_dir, "#{token_num}-*.md"))
+              if fs_matches.any?
+                fs_basename = File.basename(fs_matches.first, '.md')
+                return instantiate_entry(fs_basename, 'UNCATALOGED', :chapter, in_catalog: false)
+              end
+              # ファイルも見つからない場合、番号のみの新規エントリとして生成
               return instantiate_entry(token, 'NEW', :chapter, in_catalog: false)
             end
           end

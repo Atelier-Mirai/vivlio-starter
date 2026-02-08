@@ -136,8 +136,8 @@ module Vivlio
         end
 
         def test_chapter_number_only_resolution
+          setup_catalog(%w[91-appendix-a 93-appendix-d])
           FileUtils.touch('contents/91-appendix-a.md')
-          FileUtils.touch('contents/91-appendix-b.md')
           FileUtils.touch('contents/92-appendix-c.md')
           FileUtils.touch('contents/93-appendix-d.md')
 
@@ -164,13 +164,13 @@ module Vivlio
 
           # 91 と 93 で始まるファイルが含まれていることを確認
           assert_includes expected_command, File.join('contents', '91-appendix-a.md')
-          assert_includes expected_command, File.join('contents', '91-appendix-b.md')
           assert_includes expected_command, File.join('contents', '93-appendix-d.md')
           # 92 は含まれていないことを確認
           refute_includes expected_command, File.join('contents', '92-appendix-c.md')
         end
 
         def test_range_specification_resolution
+          setup_catalog(%w[11-install 12-setup 13-build 21-customize])
           FileUtils.touch('contents/11-install.md')
           FileUtils.touch('contents/12-setup.md')
           FileUtils.touch('contents/13-build.md')
@@ -206,6 +206,7 @@ module Vivlio
         end
 
         def test_mixed_target_resolution
+          setup_catalog(%w[11-install 12-setup 21-customize 91-appendix-a])
           FileUtils.touch('contents/11-install.md')
           FileUtils.touch('contents/12-setup.md')
           FileUtils.touch('contents/21-customize.md')
@@ -224,7 +225,7 @@ module Vivlio
               ['STDOUT', 'STDERR', fake_status]
             end) do
               stdout, stderr = capture_io do
-                returned_status = LintCommands.execute_lint(['11-install', '91', '12-21'], {})
+                returned_status = LintCommands.execute_lint(['11-install', '91', '11-12'], {})
               end
               assert_equal 'STDOUT', stdout
               assert_equal 'STDERR', stderr
@@ -232,11 +233,12 @@ module Vivlio
           end
           assert_equal 0, returned_status
 
-          # すべての指定されたファイルが含まれていることを確認
+          # スラッグ指定・章番号指定・レンジ指定が混在しても正しく解決される
           assert_includes expected_command, File.join('contents', '11-install.md')
           assert_includes expected_command, File.join('contents', '91-appendix-a.md')
           assert_includes expected_command, File.join('contents', '12-setup.md')
-          assert_includes expected_command, File.join('contents', '21-customize.md')
+          # 21 はレンジ外なので含まれていないことを確認
+          refute_includes expected_command, File.join('contents', '21-customize.md')
         end
 
         def test_fixable_count_extraction
@@ -251,24 +253,77 @@ module Vivlio
           assert_equal 0, runner.send(:extract_fixable_count, empty_output)
         end
 
-        def test_target_resolver_range_pattern
-          resolver = LintCommands::LintRunner::TargetResolver.new([])
-          
-          assert resolver.send(:range_pattern?, '11-21')
-          assert resolver.send(:range_pattern?, '1-9')
-          refute resolver.send(:range_pattern?, '11-install')
-          refute resolver.send(:range_pattern?, '91')
-          refute resolver.send(:range_pattern?, 'install-11')
+        def test_target_resolver_zero_pads_single_digit
+          setup_catalog(%w[01-life])
+          FileUtils.touch('contents/01-life.md')
+
+          resolver = LintCommands::LintRunner::TargetResolver.new(['1'])
+          result = resolver.resolve
+
+          assert_equal [File.join('contents', '01-life.md')], result
         end
 
-        def test_target_resolver_numeric_only
-          resolver = LintCommands::LintRunner::TargetResolver.new([])
-          
-          assert resolver.send(:numeric_only?, '91')
-          assert resolver.send(:numeric_only?, '11')
-          refute resolver.send(:numeric_only?, '11-install')
-          refute resolver.send(:numeric_only?, '11-21')
-          refute resolver.send(:numeric_only?, 'install')
+        def test_target_resolver_handles_descending_range
+          setup_catalog(%w[03-c 04-d 05-e])
+          FileUtils.touch('contents/03-c.md')
+          FileUtils.touch('contents/04-d.md')
+          FileUtils.touch('contents/05-e.md')
+
+          resolver = LintCommands::LintRunner::TargetResolver.new(['5-3'])
+          result = resolver.resolve
+
+          assert_equal [
+            File.join('contents', '03-c.md'),
+            File.join('contents', '04-d.md'),
+            File.join('contents', '05-e.md')
+          ], result
+        end
+
+        def test_target_resolver_handles_comma_separated
+          setup_catalog(%w[01-a 03-c 05-e])
+          FileUtils.touch('contents/01-a.md')
+          FileUtils.touch('contents/03-c.md')
+          FileUtils.touch('contents/05-e.md')
+
+          resolver = LintCommands::LintRunner::TargetResolver.new(['1,3,5'])
+          result = resolver.resolve
+
+          assert_equal [
+            File.join('contents', '01-a.md'),
+            File.join('contents', '03-c.md'),
+            File.join('contents', '05-e.md')
+          ], result
+        end
+
+        def test_target_resolver_warns_missing_file
+          setup_catalog(%w[01-life])
+          # ファイルを作成しない → missing 警告
+
+          resolver = LintCommands::LintRunner::TargetResolver.new(['1'])
+          output, = capture_io { resolver.resolve }
+
+          assert_match(/見つかりません/, output)
+        end
+
+        def test_target_resolver_excludes_system_files
+          setup_catalog(%w[01-life])
+          FileUtils.touch('contents/01-life.md')
+
+          # _toc はシステムファイルなので lint 対象外
+          resolver = LintCommands::LintRunner::TargetResolver.new(['01-life', '_toc'])
+          result = resolver.resolve
+
+          assert_equal [File.join('contents', '01-life.md')], result
+        end
+
+        def test_target_resolver_rejects_invalid_token
+          resolver = LintCommands::LintRunner::TargetResolver.new(['foo'])
+
+          output, = capture_io do
+            error = assert_raises(SystemExit) { resolver.resolve }
+            assert_equal 1, error.status
+          end
+          assert_match(/不正な章指定/, output)
         end
 
         private
@@ -280,10 +335,17 @@ module Vivlio
           File.write('config/.textlintrc.yml', "rules: {}\n")
           File.write('config/textlint_allowlist.yml', "allow: []\n")
           File.write('config/textlint_prh.yml', "rules: []\n")
+          File.write('config/catalog.yml', "CHAPTERS:\n  - 11-install\n")
 
           File.write('config/textlint_dictionaries/prh.yml', "version: 1\nrules: []\n")
           File.write('config/textlint_dictionaries/icsmedia.yml', "version: 1\nrules: []\n")
           File.write('config/textlint_dictionaries/js_primer.yml', "version: 1\nrules: []\n")
+        end
+
+        # テスト用 catalog.yml を指定された章リストで生成する
+        def setup_catalog(chapters)
+          yaml = "CHAPTERS:\n" + chapters.map { "  - #{it}" }.join("\n") + "\n"
+          File.write('config/catalog.yml', yaml)
         end
 
         def with_stubbed_textlint_available
