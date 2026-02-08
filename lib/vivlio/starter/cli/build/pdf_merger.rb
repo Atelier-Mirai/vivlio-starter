@@ -124,9 +124,10 @@ module Vivlio
             end
           end
 
-          # 奥付（_colophon.pdf）が偶数ページ（左ページ）始まりになるよう空白ページを挿入
+          # 奥付が偶数ページ（左ページ）始まりになるよう空白ページを挿入
+          # _colophon.pdf（閲覧用）と _colophon_print.pdf（入稿用）の両方に対応
           def insert_blank_page_before_colophon(files)
-            colophon_idx = files.index('_colophon.pdf')
+            colophon_idx = files.index { it.include?('_colophon') }
             return files unless colophon_idx
 
             preceding = files[0...colophon_idx]

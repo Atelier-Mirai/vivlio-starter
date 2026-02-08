@@ -154,7 +154,11 @@ module Vivlio
             '_titlepage_legalpage.pdf', '_sections.pdf',
             '00-preface.pdf', '_toc.pdf',
             'blank_page.pdf', 'blank_frontmatter_insert.pdf',
-            'output_tmp*.pdf'
+            'output_tmp*.pdf',
+            # 入稿用 PDF の中間ファイル（Step 13）
+            '_titlepage_legalpage_print.pdf', '_sections_print.pdf',
+            '_colophon_print.pdf', '_blank_before_colophon.pdf',
+            'output_print.pdf'
           ]
           cleanup_patterns.concat(intermediate_pdfs)
 

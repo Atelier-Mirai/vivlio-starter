@@ -63,6 +63,7 @@
 （次回リリース候補の変更はここに追加してください）
 
 ### Added
+- **印刷入稿用 PDF（print_pdf）生成**: `output.targets` に `print_pdf` を含めると、Step 13 でトンボ・塗り足し付き PDF を自動生成。`--crop-marks --bleed 3mm` で Vivliostyle build → PDF 結合 → HexaPDF による隠しノンブル書き込み → アウトライン付与 → リネームの一連を実行。PDF/X-4 準拠で主要同人印刷所（ねこのしっぽ、日光企画）に対応
 - **lint 出力の再整形フォーマッター** 列番号除去・ルール名括弧化・冗長部除去・英語メッセージ日本語化・ファイルパス相対化、サマリ行ノイズ除去、末尾ルール名の付与、unmatched-pair 日本語化、ファイル見出しの余白整理
 - **lint コマンドの章指定解釈を TokenResolver に統一** 独自 TargetResolver を廃止し、ゼロ埋め・降順レンジ・カンマ区切り等を他コマンドと同一ロジックで処理
 - **各章・目次・付録・用語集・索引・後書きの右ページ（奇数ページ）始まり**: CSS `break-before: recto` により、見開きレイアウトで各セクションが常に右ページから開始
@@ -75,6 +76,7 @@
 - **Step 8 Playwright レンダリング待機の最適化（提案E）**: `extract_page_mapping.mjs` のポーリング間隔を `2000ms×3回 → 500ms×5回` に変更し、最小待機時間を `6s → 2.5s` に短縮。Step 8 を **16.8s → 13.2s（-21%）**、ビルド全体を **31.3s → 28.0s（-10.5%）** に改善しました。
 - **help 出力から廃止済み glossary コマンドを削除**: `vs --help` の「文章校正・用語」セクションから `glossary` を除去し、実装済みの `lint`/`metrics` のみに整理しました。
 - **章扉レイアウトの調整**: `image-header.css` の章番号・タイトル余白を再調整し、`.chapter-lead` をマイナスマージンで引き上げたうえ `chapter-common.css` の `margin-block` を `0.5rlh` に変更して章扉リードが同ページに収まるようにしました。
+- **print_pdf 単独ビルドモード**: `output.targets: print_pdf` の場合は閲覧用 PDF ビルド（_toc.pdf、_sections.pdf、front/tail PDF、Step 10-12）をスキップし、entries.js 再利用から Step 13 直通で入稿用 PDF を生成。ビルド時間が約 45s まで短縮され、閲覧用 PDF を作らずに入稿用のみを出力可能にしました。
 
 ### Fixed
 - **システムページ（titlepage/legalpage/colophon）が A4 で出力される問題**: `vivliostyle.config.js` に `size` プロパティを追加し、`book.yml` のページプリセット（A5/B5/A4）に従った正しいサイズで出力。プリセット変更時は `page-settings.css` 更新と同時に自動同期

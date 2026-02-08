@@ -54,6 +54,15 @@ module Vivlio
           PdfOpener.new(options, path).call
         end
 
+        # 入稿用 PDF を生成する（--crop-marks --bleed 付き）
+        #
+        # @param options [Hash] オプション
+        # @param target_output [String, nil] 出力ファイル名
+        # @return [void]
+        def execute_print_pdf(options, target_output = nil)
+          PrintPdfCommandRunner.new(options, target_output).call
+        end
+
         # npx vivliostyle build をラップして PDF を生成する
         class PdfCommandRunner
           def initialize(options, target_output)
@@ -531,6 +540,31 @@ module Vivlio
             bounds = pdf_config['window_bounds'] if bounds.nil? || bounds.to_s.strip.empty?
             bounds = '{3072, 0, 4096, 2160}' if bounds.to_s.strip.empty?
             bounds
+          end
+        end
+
+        # 入稿用 PDF（トンボ・塗り足し付き）を生成する
+        # PdfCommandRunner を継承し、build_command のみ差し替える
+        class PrintPdfCommandRunner < PdfCommandRunner
+          private
+
+          # トンボ・塗り足しオプションを付加したビルドコマンドを組み立てる
+          # book.yml の output.print_pdf.bleed / crop_marks を参照
+          def build_command
+            cmd = 'npx vivliostyle build'
+            cmd += ' -d' if SingleDocDecider.new(config).call
+
+            print_cfg = Common::CONFIG.output&.print_pdf
+            return cmd unless print_cfg
+
+            bleed = print_cfg.bleed&.to_s || '3mm'
+
+            if print_cfg.crop_marks != false
+              cmd += ' --crop-marks'
+              cmd += " --bleed #{bleed}"
+            end
+
+            cmd
           end
         end
       end
