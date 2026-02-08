@@ -124,12 +124,11 @@ module Vivlio
             raw_stdout = stdout
             raw_stderr = stderr
 
+            # stylish 出力の構造的再整形（列番号除去・ルール名括弧化・冗長部除去・日本語化）
+            stdout = TextlintFormatter.reformat_output(stdout) unless stdout.nil? || stdout.empty?
+
             stdout = filter_textlint_summary(stdout)
             stderr = filter_textlint_summary(stderr)
-
-            # 出力を日本語化
-            stdout = TextlintFormatter.translate_output(stdout) unless stdout.nil? || stdout.empty?
-            stderr = TextlintFormatter.translate_output(stderr) unless stderr.nil? || stderr.empty?
 
             $stdout.print(stdout) unless stdout.nil? || stdout.empty?
             $stderr.print(stderr) unless stderr.nil? || stderr.empty?
