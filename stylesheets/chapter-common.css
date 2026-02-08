@@ -4,6 +4,11 @@
    Chapter Common (章・付録共通スタイル)
    ===================================================================== */
 
+/* 各章・付録は必ず右ページ（奇数ページ）始まり */
+body {
+  break-before: recto;
+}
+
 /* マーカー変数（book.ymlのtheme.markersで自動更新） */
 :root {
   --h3-marker: "♣";
@@ -94,7 +99,7 @@ section:has(hr:last-child)+section>h3:first-child {
 
 /* 章リード */
 .chapter-lead {
-  margin-block: 2rlh;
+  margin-block: 0.5rlh;
   margin-inline: auto;
   font-weight: 500;
   font-size: larger;

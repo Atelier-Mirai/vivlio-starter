@@ -23,7 +23,10 @@
   color: #333;
 }
 /* 目次も前付け（front）としてローマ数字ノンブルを共通化 */
-body.toc { page: front; }
+body.toc {
+  page: front;
+  break-before: recto; /* 目次は必ず右ページ（奇数ページ）始まり */
+}
 
 /* TOCリンクのスタイル: 本文と同じ色、下線なし */
 #toc a.toc-title {

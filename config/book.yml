@@ -83,8 +83,8 @@ theme:
   frontispiece: 
     image: asagao
     padding: 10mm
-    heading_width: 128mm
-    lead_width: 128mm
+    heading_width: 108mm
+    lead_width: 88mm
 
   # ----------------------------
   # 節見出しの背景画像

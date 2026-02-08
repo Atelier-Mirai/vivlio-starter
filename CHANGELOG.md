@@ -27,34 +27,27 @@
 - [Low] 用語集・索引自動生成
 - [Medium] 用語集・索引自動生成 （それらしい専門用語を抽出して、`config/glossary.yml` に一括追加するタスク）
 - [Medium] build / metrics / delete など CLI コマンド間で共通のショートハンド展開ロジックを切り出し、catalog.yml ベースの章解決を一元化する。
-
-
+- [Medium] A4 以外の紙サイズを指定する（推奨文字サイズの確認）
+- [Medium] book.yml の chapters を、contents/と連動するように。
+- [Medium] 用語候補抽出と一括追加（glossary）: `contents/` を走査し `ABBR(Full Name)`/`Full Name(ABBR)` パターンを検出して候補一覧を作成。対話的に選択して `config/glossary.yml` に一括追加するタスク（例: `glossary:suggest` → `glossary:import_selected`）。※ 用語抽出のみ索引機能に包含して実装済み。
+- [Medium] 用語集の付録化（`config/glossary.yml` → 付録章に整形出力、名称/略称/説明/スタイルを一覧化）
+- [Medium] 初出ページ付き索引の生成（用語の文書走査→初出箇所のページ番号抽出→索引章に出力）
+- 00, 01, (blank), 02, (blank), 03, (blank), 11-98(cssにより右頁始まり), (blank), 99 として結合
+- [High] 奥付が偶数ページになるように
 
 ### Planned
 - [Medium] 見出しID・相互参照ショートコード（ref:foo → 自動リンク）。
-
 - [Medium] 章・節に対する相互参照の整備（章番号ベースの cross reference）。本文中から「第◯章」「第◯節」を参照する簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。
 
 #### ビルド/出力
-- 00, 01, (blank), 02, (blank), 03, (blank), 11-98(cssにより右頁始まり), (blank), 99 として結合
-- [Medium] book.yml の chapters を、contents/と連動するように。
-- [High] 奥付が偶数ページになるように
-- [Medium] A4 以外の紙サイズを指定する（推奨文字サイズの確認）
 - [Medium] 出力バリアント PDF（裁ち落とし/ノンブル有無）、Web/EPUB（任意）。
-
 - [High] 日本語表記・組版Lint（スタイルガイド）
 - [High] リンク・画像の自動検証
 - [Medium] スペルチェック（辞書拡張対応）
-- [Medium] 用語候補抽出と一括追加（glossary）: `contents/` を走査し `ABBR(Full Name)`/`Full Name(ABBR)` パターンを検出して候補一覧を作成。対話的に選択して `config/glossary.yml` に一括追加するタスク（例: `glossary:suggest` → `glossary:import_selected`）。
 - [Medium] 基本的に良く用いる用語をまとめた用語集テンプレートを標準添付し、プロジェクト作成時または後から選択適用できるようにする。
-- [Medium] glossary `style: spacing` の実装（スペースの有無/種別の検出・自動修正）
-- [Medium] glossary `style: punctuation` の実装（コロン/ハイフン等の記号種別・位置の検出・自動修正）
-
 
 #### 参照・索引・書誌
 - [Low] 脚注・参考文献サポート（簡易BibTeX/CSL）
-- [Medium] 用語集の付録化（`config/glossary.yml` → 付録章に整形出力、名称/略称/説明/スタイルを一覧化）
-- [Medium] 初出ページ付き索引の生成（用語の文書走査→初出箇所のページ番号抽出→索引章に出力）
 
 #### コンテンツ/テンプレート
 - [High] 11-install.mdなどを、書き直す
@@ -72,6 +65,8 @@
 ### Added
 - **lint 出力の再整形フォーマッター** 列番号除去・ルール名括弧化・冗長部除去・英語メッセージ日本語化・ファイルパス相対化、サマリ行ノイズ除去、末尾ルール名の付与、unmatched-pair 日本語化、ファイル見出しの余白整理
 - **lint コマンドの章指定解釈を TokenResolver に統一** 独自 TargetResolver を廃止し、ゼロ埋め・降順レンジ・カンマ区切り等を他コマンドと同一ロジックで処理
+- **各章・目次・付録・用語集・索引・後書きの右ページ（奇数ページ）始まり**: CSS `break-before: recto` により、見開きレイアウトで各セクションが常に右ページから開始
+- **奥付の偶数ページ（左ページ）配置**: PDF 結合時に前方ページ数を計算し、必要に応じて空白ページを自動挿入
 
 ### Changed
 - **索引モジュールのデッドコード整理**: Samovar 経由では到達しない `vs index:match` 系の CLI エントリと `execute_index_*` ヘルパー、旧 `index_terms.yml` マイグレーション処理、および対応するテストケースを削除し、現行の `index_glossary_terms.yml` ベース実装にコードを集約しました。
@@ -79,8 +74,11 @@
 - **Step 8 既存 preview サーバー再利用（方策D）**: `PageMappingExtractor` が起動時にポート応答を確認し、既に `vivliostyle preview` が動いていれば起動・停止をスキップするようにしました。計測の結果、preview 起動は Step 8 のボトルネックではなく有意な高速化は見られませんでしたが、プロセス重複回避の衛生的改善として維持。
 - **Step 8 Playwright レンダリング待機の最適化（提案E）**: `extract_page_mapping.mjs` のポーリング間隔を `2000ms×3回 → 500ms×5回` に変更し、最小待機時間を `6s → 2.5s` に短縮。Step 8 を **16.8s → 13.2s（-21%）**、ビルド全体を **31.3s → 28.0s（-10.5%）** に改善しました。
 - **help 出力から廃止済み glossary コマンドを削除**: `vs --help` の「文章校正・用語」セクションから `glossary` を除去し、実装済みの `lint`/`metrics` のみに整理しました。
+- **章扉レイアウトの調整**: `image-header.css` の章番号・タイトル余白を再調整し、`.chapter-lead` をマイナスマージンで引き上げたうえ `chapter-common.css` の `margin-block` を `0.5rlh` に変更して章扉リードが同ページに収まるようにしました。
 
 ### Fixed
+- **システムページ（titlepage/legalpage/colophon）が A4 で出力される問題**: `vivliostyle.config.js` に `size` プロパティを追加し、`book.yml` のページプリセット（A5/B5/A4）に従った正しいサイズで出力。プリセット変更時は `page-settings.css` 更新と同時に自動同期
+- **画像がページ幅を超過する問題**: `base.css` に `img { max-inline-size: 100% }` を追加し、すべてのページで画像が版面内に収まるよう制限
 - **[ig] 手動マークアップ時に HTML タグが壊れる問題**: `apply_auto_indexing` / `apply_glossary_only_linking` で `<a class="glossary-link">` を含む索引タグ全体と残りの HTML を保護し、属性内マッチによる二重タグ付けを防止しました。
 - **原稿 (`contents/*.md`) への誤書き込み**: `scan_and_tag_file!` で contents ディレクトリ配下を常に読み取り専用として扱い、`read_only: false` で呼び出されても原稿ファイルが上書きされないようにしました。
 

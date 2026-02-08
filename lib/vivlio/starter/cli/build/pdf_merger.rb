@@ -104,6 +104,9 @@ module Vivlio
 
             return false unless qpdf_available?
 
+            # 奥付を偶数ページ（左ページ）に配置するため、必要なら空白ページを挿入
+            existing_files = insert_blank_page_before_colophon(existing_files)
+
             # _sections.pdf があればそれをベースに、なければ最初のファイルを使用
             base_pdf = existing_files.include?('_sections.pdf') ? '_sections.pdf' : existing_files.first
             FileUtils.rm_f('output.pdf')
@@ -118,6 +121,39 @@ module Vivlio
             else
               Common.log_error('[Step 10] PDF結合に失敗しました')
               false
+            end
+          end
+
+          # 奥付（_colophon.pdf）が偶数ページ（左ページ）始まりになるよう空白ページを挿入
+          def insert_blank_page_before_colophon(files)
+            colophon_idx = files.index('_colophon.pdf')
+            return files unless colophon_idx
+
+            preceding = files[0...colophon_idx]
+
+            # カバーPDFはページ番号体系に含まれないため parity 計算から除外
+            body_files = preceding.reject { |f| f.match?(%r{covers/}) }
+
+            # 各PDFのページ数を個別に取得してログ出力（デバッグ時のみ）
+            page_counts = body_files.map { |f| [f, Build::Utilities.page_count(f).to_i] }
+            page_counts.each { |f, c| Common.log_debug("[Step 10] ページ数: #{f} = #{c}p") }
+            total = page_counts.sum(&:last)
+            Common.log_debug("[Step 10] 奥付前の合計ページ数（カバー除外）: #{total}")
+
+            if total.zero?
+              Common.log_debug('[Step 10] 奥付より前のPDFページ数を取得できませんでした')
+              return files
+            end
+
+            # total が偶数 → 次ページは奇数（右） → 空白ページを挿入して偶数に
+            # total が奇数 → 次ページは偶数（左） → そのままでOK
+            if total.even?
+              blank = Build::Utilities.ensure_blank_page_pdf('_blank_before_colophon.pdf')
+              Common.log_debug("[Step 10] 奥付を偶数ページに配置するため空白ページを挿入します（前方 #{total} ページ）")
+              files.dup.insert(colophon_idx, blank)
+            else
+              Common.log_debug("[Step 10] 奥付は偶数ページに配置されます（前方 #{total} ページ、空白挿入なし）")
+              files
             end
           end
 

@@ -118,8 +118,10 @@ module Vivlio
             ]
 
             # サーバー出力をログファイルに書き出し、Preview URL を抽出する
+            # NO_COLOR=1 でANSIエスケープコードを抑制（URL抽出時の文字化け防止）
+            env = { 'NO_COLOR' => '1' }
             @log_file = Tempfile.new(['vivliostyle-preview', '.log'])
-            @preview_pid = spawn(*cmd, out: @log_file.path, err: @log_file.path, pgroup: true)
+            @preview_pid = spawn(env, *cmd, out: @log_file.path, err: @log_file.path, pgroup: true)
             Common.log_info("[backlink-dedup] preview サーバーを起動しました (PID: #{@preview_pid}, port: #{port})")
 
             wait_for_server_ready!
@@ -154,7 +156,7 @@ module Vivlio
               loop do
                 log_content = File.read(@log_file.path, encoding: 'utf-8') rescue ''
                 if (match = log_content.match(/Preview URL:\s*(\S+)/))
-                  @preview_url = match[1]
+                  @preview_url = match[1].gsub(/\e\[[0-9;]*m/, '')
                   Common.log_info("[backlink-dedup] Preview URL: #{@preview_url}")
                   return
                 end

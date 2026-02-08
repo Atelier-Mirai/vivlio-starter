@@ -27,9 +27,13 @@ module Vivlio
         # 対象 Markdown が見つからない場合に警告を出力することを確認
         def test_text_metrics_warns_when_no_targets
           within_temp_dir do
-            output = capture_io { TextMetricsCommands.execute_text_metrics(['missing']) }.first
+            logged_warnings = []
+            Common.stub :log_warn, ->(msg) { logged_warnings << msg } do
+              capture_io { TextMetricsCommands.execute_text_metrics(['missing']) }
+            end
 
-            assert_includes output, '見つかりません'
+            assert logged_warnings.any? { it.include?('見つかりません') },
+                   "missing 警告が出力されること: #{logged_warnings.inspect}"
           end
         end
 
