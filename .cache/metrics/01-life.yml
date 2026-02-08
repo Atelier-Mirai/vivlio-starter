@@ -2,27 +2,27 @@
 path: contents/01-life.md
 title: 暮らしの中のコンピュータ
 chapter_num: 1
-chars: 1982
+chars: 1986
 warning: 加筆検討
 sections: []
 basic_stats:
-  chars: 2026
-  chars_without_newline: 1982
+  chars: 2030
+  chars_without_newline: 1986
   lines: 44
   sentences: 44
-  avg_sentence_chars: 43.5
+  avg_sentence_chars: 43.59090909090909
   clauses: 56
-  avg_clause_chars: 34.410714285714285
+  avg_clause_chars: 34.482142857142854
   commas: 55
 vocabulary_stats:
-  kanji_ratio: 32.99492385786802
-  avg_word_length: 1.7466539196940727
-  ttr: 0.35850860420650094
-  total_tokens: 1046
-  unique_tokens: 375
+  kanji_ratio: 32.920652785593695
+  avg_word_length: 1.7488061127029608
+  ttr: 0.3600764087870105
+  total_tokens: 1047
+  unique_tokens: 377
   kanji_char_count: 585
-  total_char_count: 1773
-  total_word_length: 1827
+  total_char_count: 1777
+  total_word_length: 1831
   tokens_map:
     暮らし: 2
     の: 43
@@ -84,6 +84,8 @@ vocabulary_stats:
     多い: 2
     "!": 1
     生きる: 2
+    "[": 1
+    "]": 2
     "(": 2
     Mac: 1
     "/": 2
@@ -100,9 +102,9 @@ vocabulary_stats:
     仕事: 1
     活用: 2
     そして: 1
-    "「": 7
+    "「": 6
     プログラミング: 1
-    "」": 7
+    "」": 6
     絵描き: 1
     や: 13
     読書: 1
@@ -137,8 +139,9 @@ vocabulary_stats:
     至る: 1
     まで: 1
     衣服: 4
+    "「[": 1
     天衣無縫: 2
-    "-「": 1
+    "]」-「": 1
     天人: 1
     天女: 1
     着物: 1
@@ -381,7 +384,6 @@ vocabulary_stats:
     運転: 2
     "[^": 2
     '2': 2
-    "]": 1
     地域: 1
     足: 1
     活躍: 1
@@ -400,5 +402,5 @@ vocabulary_stats:
     探す: 1
     みる: 1
 readability:
-  score: 38.24746192893401
+  score: 38.25578093825139
   label: Standard

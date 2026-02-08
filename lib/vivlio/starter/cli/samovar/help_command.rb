@@ -10,7 +10,7 @@
 # 表示内容 (help_spec.md 準拠):
 #   - プロジェクト管理: new, import, doctor, clean
 #   - 執筆・編集支援: create, delete, rename, renumber, open
-#   - 文章校正・用語: glossary, lint, metrics
+#   - 文章校正・用語: lint, metrics
 #   - アセット・索引: cover, resize, index
 #   - ビルド・出力: build, pdf:compress
 # ================================================================
@@ -38,7 +38,6 @@ module Vivlio
               'open' => '生成されたPDFを開きます（macOS専用）'
             },
             '文章校正・用語' => {
-              'glossary' => '用語集を管理します（add/lint/fix/canonicalize）',
               'lint' => 'Markdownをtextlintで検査します',
               'metrics' => 'Markdownの行数・文字数を集計します'
             },
