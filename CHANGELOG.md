@@ -10,6 +10,7 @@
 - リリースノートの作成
 
 #### 実装済み
+- [Medium] lint コマンドの章指定解釈を TokenResolver に統一（独自 TargetResolver を廃止し、ゼロ埋め・降順レンジ・カンマ区切り等を他コマンドと同一ロジックで処理）
 - [High] 任意の複数章を指定して、フルビルドする
 - [High] 任意章フルビルド（既出の計画を拡張）章IDの指定順で束ね、目次・通し番号も整合。実装目安: rake build --chapters=11,12,21 形式。
 - [High] PDF に章アウトライン（ブックマーク）を付与（本文PDF/最終PDF）。読者のナビゲーション向上のため、Step 7/10 後段で HexaPDF により後付け。
@@ -21,13 +22,16 @@
 - [Low] text_metrics で日本語向け読解難度スコア（Flesch/Kincaid 等を応用）を算出する
 - [Low] text_metrics で見出し/セクション単位の分量バランスを可視化する
 - [High] ビルド時にcover画像も含むように
+- [Low] 用語集・索引自動生成
+- [Medium] 用語集・索引自動生成 （それらしい専門用語を抽出して、`config/glossary.yml` に一括追加するタスク）
+- [Medium] build / metrics / delete など CLI コマンド間で共通のショートハンド展開ロジックを切り出し、catalog.yml ベースの章解決を一元化する。
+
 
 
 ### Planned
 - [Medium] 見出しID・相互参照ショートコード（ref:foo → 自動リンク）。
 
 - [Medium] 章・節に対する相互参照の整備（章番号ベースの cross reference）。本文中から「第◯章」「第◯節」を参照する簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。
-- [Medium] build / metrics / delete など CLI コマンド間で共通のショートハンド展開ロジックを切り出し、catalog.yml ベースの章解決を一元化する。
 
 #### ビルド/出力
 - 00, 01, (blank), 02, (blank), 03, (blank), 11-98(cssにより右頁始まり), (blank), 99 として結合
@@ -40,14 +44,12 @@
 - [High] リンク・画像の自動検証
 - [Medium] スペルチェック（辞書拡張対応）
 - [Medium] 用語候補抽出と一括追加（glossary）: `contents/` を走査し `ABBR(Full Name)`/`Full Name(ABBR)` パターンを検出して候補一覧を作成。対話的に選択して `config/glossary.yml` に一括追加するタスク（例: `glossary:suggest` → `glossary:import_selected`）。
-- [Medium] 用語集・索引自動生成 （それらしい専門用語を抽出して、`config/glossary.yml` に一括追加するタスク）
 - [Medium] 基本的に良く用いる用語をまとめた用語集テンプレートを標準添付し、プロジェクト作成時または後から選択適用できるようにする。
 - [Medium] glossary `style: spacing` の実装（スペースの有無/種別の検出・自動修正）
 - [Medium] glossary `style: punctuation` の実装（コロン/ハイフン等の記号種別・位置の検出・自動修正）
 
 
 #### 参照・索引・書誌
-- [Low] 用語集・索引自動生成
 - [Low] 脚注・参考文献サポート（簡易BibTeX/CSL）
 - [Medium] 用語集の付録化（`config/glossary.yml` → 付録章に整形出力、名称/略称/説明/スタイルを一覧化）
 - [Medium] 初出ページ付き索引の生成（用語の文書走査→初出箇所のページ番号抽出→索引章に出力）

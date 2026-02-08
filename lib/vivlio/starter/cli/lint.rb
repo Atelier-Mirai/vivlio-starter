@@ -24,11 +24,13 @@
 # ================================================================
 
 require 'open3'
+require 'pathname'
 require 'shellwords'
 require 'rbconfig'
 
 require_relative 'common'
 require_relative 'textlint_formatter'
+require_relative 'token_resolver'
 
 module Vivlio
   module Starter
@@ -314,97 +316,50 @@ module Vivlio
             status.exitstatus || 1
           end
 
-          # Markdown 対象ファイルの解決
+          # TokenResolver を用いた Markdown 対象ファイルの解決
+          #
+          # ゼロ埋め・レンジ展開・カンマ区切りなどの正規化を TokenResolver に委譲し、
+          # lint 対象は contents/ 配下の利用者原稿（*.md）に限定する。
           class TargetResolver
             def initialize(raw_targets)
               @raw_targets = Array(raw_targets)
+              @resolver = TokenResolver::Resolver.new
             end
 
+            # プロジェクトルートからの相対 Markdown パスの配列を返す
             def resolve
-              return glob_all if raw_targets.empty?
+              entries = resolve_entries
 
-              resolved_files = []
-              raw_targets.each do |target|
-                files = resolve_target(target.to_s)
-                resolved_files.concat(files)
-              end
+              # --- Phase: Validation ---
+              reject_invalid_entries!(entries)
 
-              resolved_files.uniq.sort
+              # --- Phase: contents/ 配下のみに限定 ---
+              content_entries = entries.select { it.path.start_with?(Common::CONTENTS_DIR) }
+              existing, missing = content_entries.partition(&:exists?)
+              missing.each { Common.log_warn("見つかりません: #{it.path}") }
+
+              # --- Phase: 相対パス化 ---
+              root = Pathname.new('.')
+              existing.map { Pathname.new(it.path).cleanpath.relative_path_from(root).to_s }.sort
             end
 
             private
 
-            attr_reader :raw_targets
+            attr_reader :raw_targets, :resolver
 
-            def resolve_target(target)
-              # 範囲指定（例: 11-21）
-              if range_pattern?(target)
-                return resolve_range(target)
-              end
-
-              # 章番号のみ（例: 91, 93）
-              if numeric_only?(target)
-                return resolve_by_chapter_number(target)
-              end
-
-              # 通常のファイル名指定（例: 11-install）
-              resolve_by_name(target)
+            # TokenResolver で Entry 配列を取得する
+            # 引数なし → catalog.yml 全章、引数あり → トークン解決
+            def resolve_entries
+              raw_targets.empty? ? resolver.resolve([]) : resolver.resolve(raw_targets)
             end
 
-            def range_pattern?(target)
-              target =~ /^\d+-\d+$/
-            end
+            # invalid な Entry が含まれていれば即座にエラー終了する
+            def reject_invalid_entries!(entries)
+              invalid = entries.reject(&:valid?)
+              return if invalid.empty?
 
-            def numeric_only?(target)
-              target =~ /^\d+$/
-            end
-
-            def resolve_range(range_str)
-              parts = range_str.split('-')
-              return [] if parts.size != 2
-
-              start_num = parts[0].to_i
-              end_num = parts[1].to_i
-              return [] if start_num > end_num
-
-              all_files = glob_all
-              all_files.select do |path|
-                basename = File.basename(path, '.md')
-                chapter_num = extract_chapter_number(basename)
-                chapter_num && chapter_num >= start_num && chapter_num <= end_num
-              end
-            end
-
-            def resolve_by_chapter_number(num_str)
-              all_files = glob_all
-              prefix = num_str
-              all_files.select do |path|
-                basename = File.basename(path, '.md')
-                basename.start_with?(prefix + '-')
-              end
-            end
-
-            def resolve_by_name(name)
-              # contents/ プレフィックスを削除し、.md 拡張子を削除
-              normalized = name.sub(%r{^#{Regexp.escape(Common::CONTENTS_DIR)}/}, '')
-              normalized = normalized.sub(/\.md$/, '')
-
-              path = File.join(Common::CONTENTS_DIR, "#{normalized}.md")
-              if File.exist?(path)
-                [path]
-              else
-                Common.log_warn("見つかりません: #{path}")
-                []
-              end
-            end
-
-            def extract_chapter_number(basename)
-              match = basename.match(/^(\d+)-/)
-              match ? match[1].to_i : nil
-            end
-
-            def glob_all
-              Dir.glob(File.join(Common::CONTENTS_DIR, '**', '*.md')).sort
+              Common.log_error("不正な章指定が含まれています: #{invalid.map(&:slug).join(', ')}")
+              exit 1
             end
           end
         end

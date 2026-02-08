@@ -178,6 +178,73 @@ module Vivlio
             assert result.find { it.number == '03' }.in_catalog?
           end
 
+          # --- Filesystem Slug Completion Tests ---
+
+          def test_completes_slug_from_filesystem_when_not_in_catalog
+            Dir.mktmpdir do |dir|
+              catalog_path = File.join(dir, 'catalog.yml')
+              contents_dir = File.join(dir, 'contents')
+              FileUtils.mkdir_p(contents_dir)
+
+              # カタログには 01-life のみ登録、02-history はファイルのみ存在
+              File.write(catalog_path, { 'CHAPTERS' => ['01-life'] }.to_yaml)
+              File.write(File.join(contents_dir, '01-life.md'), '# life')
+              File.write(File.join(contents_dir, '02-history.md'), '# history')
+
+              resolver = Resolver.new(catalog_path:, contents_dir:)
+              result = resolver.resolve(['2'])
+              entry = result.first
+
+              assert_equal '02', entry.number
+              assert_equal 'history', entry.slug
+              assert_equal '02-history', entry.basename
+              assert entry.exists?
+              refute entry.in_catalog?
+              assert entry.valid?
+            end
+          end
+
+          def test_completes_slug_from_filesystem_for_range
+            Dir.mktmpdir do |dir|
+              catalog_path = File.join(dir, 'catalog.yml')
+              contents_dir = File.join(dir, 'contents')
+              FileUtils.mkdir_p(contents_dir)
+
+              # カタログには 01-life のみ、02-history と 03-person はファイルのみ
+              File.write(catalog_path, { 'CHAPTERS' => ['01-life'] }.to_yaml)
+              File.write(File.join(contents_dir, '01-life.md'), '# life')
+              File.write(File.join(contents_dir, '02-history.md'), '# history')
+              File.write(File.join(contents_dir, '03-person.md'), '# person')
+
+              resolver = Resolver.new(catalog_path:, contents_dir:)
+              result = resolver.resolve(['2-3'])
+
+              assert_equal %w[02 03], result.map(&:number)
+              assert_equal 'history', result.find { it.number == '02' }.slug
+              assert_equal 'person', result.find { it.number == '03' }.slug
+            end
+          end
+
+          def test_falls_back_to_number_only_when_no_file_on_disk
+            Dir.mktmpdir do |dir|
+              catalog_path = File.join(dir, 'catalog.yml')
+              contents_dir = File.join(dir, 'contents')
+              FileUtils.mkdir_p(contents_dir)
+
+              # カタログにもファイルシステムにも 02 は存在しない
+              File.write(catalog_path, { 'CHAPTERS' => ['01-life'] }.to_yaml)
+              File.write(File.join(contents_dir, '01-life.md'), '# life')
+
+              resolver = Resolver.new(catalog_path:, contents_dir:)
+              result = resolver.resolve(['2'])
+              entry = result.first
+
+              assert_equal '02', entry.number
+              assert_nil entry.slug
+              refute entry.exists?
+            end
+          end
+
           # --- Kind Detection Tests ---
 
           def test_assigns_preface_kind_for_00
