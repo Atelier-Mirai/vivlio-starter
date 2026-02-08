@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'backlink_dedup_orchestrator'
+require_relative 'nombre_stamper'
 
 module Vivlio
   module Starter
@@ -73,20 +74,57 @@ module Vivlio
           #   Step 10:    PDF結合
           #   Step 11:    アウトライン付与
           #   Step 12:    リネーム・クリーンアップ
+          #   Step 13:    入稿用PDF生成（print_pdf ターゲット時のみ）
           def register_full_mode_steps
+            # 共通ステップ（HTML 生成まで）
+            register_common_prep_steps
+
+            if pdf_target? && print_pdf_target?
+              # --- 閲覧用 + 入稿用の両方 ---
+              register_pdf_build_steps
+              # Step 12 ではリネーム・圧縮のみ。クリーンアップは Step 13 後に延期
+              add_step('Step 12 (rename)',                      -> { run_step12_rename_only })
+              add_step('Step 13 (print pdf)',                   -> { run_step13_print_pdf })
+              add_step('Step 14 (final clean)',                 -> { run_final_clean })
+            elsif print_pdf_target?
+              # --- 入稿用のみ（閲覧用 PDF をスキップ） ---
+              register_print_pdf_only_steps
+            else
+              # --- 閲覧用のみ（従来どおり） ---
+              register_pdf_build_steps
+              add_step('Step 12 (rename and final clean)',      -> { run_step12_rename_and_clean })
+            end
+          end
+
+          # Steps 0-5: HTML 生成までの共通ステップ
+          def register_common_prep_steps
             add_step('Step  0 (clean)',                       -> { run_step0_clean })
             add_step('Step  1 (optimize images)',             -> { run_step1_optimize_images })
             add_step('Step  2 (prepare theme images)',        -> { Build::ImageOptimizer.prepare_theme_images! })
             add_step('Step  3 (preprocess sections)',         -> { Build::SectionBuilder.preprocess_sections!(entries) })
             add_step('Step  4 (index scan and build)',        -> { run_step4_index_processing })
             add_step('Step  5 (convert sections html)',       -> { Build::SectionBuilder.convert_sections_html!(entries) })
+          end
+
+          # Steps 6-11: 閲覧用 PDF のビルド・結合・アウトライン
+          def register_pdf_build_steps
             add_step('Step  6 (generate toc and pdf)',        -> { Build::TocGenerator.generate_toc_and_pdf!('.', entries) })
             add_step('Step  7 (build overall pdf)',           -> { Build::PdfBuilder.build_overall_pdf_from_dir!('.', entries) })
             add_step('Step  8 (backlink dedup)',              -> { Build::BacklinkDedupOrchestrator.run!(entries) })
             add_step('Step  9 (build front pages and tail)',  -> { run_step9_front_pages_and_tail })
             add_step('Step 10 (merge all pdfs)',              -> { Build::PdfMerger.merge_all_pdfs!(entries) })
             add_step('Step 11 (apply outline to output pdf)', -> { Build::PdfMerger.add_outline_to_output_pdf!(entries) })
-            add_step('Step 12 (rename and final clean)',      -> { run_step12_rename_and_clean })
+          end
+
+          # print_pdf only: 閲覧用 PDF ビルドをスキップし、
+          # entries.js / HTML 生成のみ行ってから入稿用 PDF を生成
+          def register_print_pdf_only_steps
+            add_step('Step  6 (generate toc html)',          -> { Build::TocGenerator.generate_toc_html!('.', entries) })
+            add_step('Step  7 (generate entries.js)',        -> { Build::PdfBuilder.generate_entries_for_sections!('.', entries) })
+            add_step('Step  8 (backlink dedup)',             -> { Build::BacklinkDedupOrchestrator.run!(entries) })
+            add_step('Step  9 (build front pages html)',     -> { run_step9_front_pages_html_only })
+            add_step('Step 10 (print pdf)',                  -> { run_step13_print_pdf })
+            add_step('Step 11 (final clean)',                -> { run_final_clean })
           end
 
           # single mode: 対象章のみビルド + entries.js + pdf
@@ -234,6 +272,32 @@ module Vivlio
             Build::PdfBuilder.build_front_pages_and_tail!(force)
           end
 
+          # Step 9 (print_pdf only): 前付・奥付の HTML 生成のみ（PDF ビルドをスキップ）
+          # 入稿用 PDF は Step 13（print_pdf only 時は Step 10）で個別にビルドする
+          def run_step9_front_pages_html_only
+            title_md    = File.join(Common::CACHE_DIR, '_titlepage.md')
+            legal_md    = File.join(Common::CACHE_DIR, '_legalpage.md')
+            colophon_md = File.join(Common::CACHE_DIR, '_colophon.md')
+
+            ensure_special_page_exists!('titlepage', title_md)
+            ensure_special_page_exists!('legalpage', legal_md)
+            ensure_special_page_exists!('colophon', colophon_md)
+
+            CreateCommands.execute_titlepage({ options: { force: true } })
+            CreateCommands.execute_legalpage({ options: { force: true } })
+            CreateCommands.execute_colophon({ options: { force: true } })
+
+            # HTML が生成されたことを確認
+            Build::SectionBuilder.ensure_chapter_html_up_to_date!('_titlepage',
+                                                                  extra_sources: File.join('config', 'book.yml'))
+            Build::SectionBuilder.ensure_chapter_html_up_to_date!('_legalpage',
+                                                                  extra_sources: File.join('config', 'book.yml'))
+            Build::SectionBuilder.ensure_chapter_html_up_to_date!('_colophon',
+                                                                  extra_sources: File.join('config', 'book.yml'))
+
+            Common.log_success('[Step 9] 前付・奥付 HTML を生成しました（PDF ビルドはスキップ）')
+          end
+
           # 特殊ページが存在しない場合は自動生成
           def ensure_special_page_exists!(type, path)
             return if File.exist?(path)
@@ -261,6 +325,12 @@ module Vivlio
             Build::PdfFinalizer.rename_output_pdfs!
             run_compress_pdf_if_needed
             run_final_clean
+          end
+
+          # Step 12 (print_pdf ターゲット時): リネーム・圧縮のみ。クリーンアップは Step 14 へ延期
+          def run_step12_rename_only
+            Build::PdfFinalizer.rename_output_pdfs!
+            run_compress_pdf_if_needed
           end
 
           # 必要に応じて生成済みPDFを圧縮する
@@ -311,6 +381,141 @@ module Vivlio
               Common.log_action('[Step 12] 中間生成物をクリーンアップします…')
               CleanCommands.execute_clean({})
             end
+          end
+
+          # ================================================================
+          # Step 13: 入稿用 PDF 生成
+          # ================================================================
+          # output.targets に print_pdf が含まれる場合に実行。
+          # 閲覧用ビルドで生成済みの HTML を再利用し、
+          # --crop-marks --bleed 付きで vivliostyle build → PDF 結合 →
+          # 隠しノンブル書き込み → アウトライン付与 → リネーム の一連を行う。
+          # ================================================================
+
+          # output.targets に pdf が含まれるかを判定する
+          def pdf_target?
+            cfg = Common::CONFIG
+            targets = Build::PdfMerger.extract_targets(cfg.output&.targets)
+            targets = Build::PdfMerger.extract_targets(cfg.output&.pdf&.targets) if targets.empty?
+            # targets 未指定時はデフォルトで pdf を生成
+            return true if targets.empty?
+
+            targets.include?('pdf')
+          end
+
+          # output.targets に print_pdf が含まれるかを判定する
+          def print_pdf_target?
+            cfg = Common::CONFIG
+            targets = Build::PdfMerger.extract_targets(cfg.output&.targets)
+            targets = Build::PdfMerger.extract_targets(cfg.output&.pdf&.targets) if targets.empty?
+            targets.include?('print_pdf')
+          end
+
+          # Step 13 のメインフロー
+          def run_step13_print_pdf
+            Common.log_action('[Step 13] 入稿用 PDF を生成します…')
+
+            # --- Phase: Vivliostyle build（トンボ・塗り足し付き） ---
+            print_pdf_build_sections!
+            print_pdf_build_front_and_tail!
+
+            # --- Phase: PDF 結合 ---
+            print_pdf_merge!
+
+            # --- Phase: 隠しノンブル書き込み ---
+            print_pdf_stamp_nombre!
+
+            # --- Phase: アウトライン付与 ---
+            print_pdf_add_outline!
+
+            # --- Phase: リネーム ---
+            print_pdf_rename!
+          end
+
+          # 本文セクションの入稿用 PDF を生成（既存 entries.js を再利用）
+          def print_pdf_build_sections!
+            Common.log_action('[Step 13] 本文 PDF をトンボ・塗り足し付きでビルドします…')
+            PdfCommands.execute_print_pdf({}, '_sections_print.pdf')
+          end
+
+          # 前付・奥付の入稿用 PDF を生成
+          def print_pdf_build_front_and_tail!
+            # タイトルページ + リーガルページ
+            EntriesCommands.execute_entries({}, ['_titlepage.html', '_legalpage.html'])
+            PdfCommands.execute_print_pdf({}, '_titlepage_legalpage_print.pdf')
+
+            # 奥付
+            EntriesCommands.execute_entries({}, ['_colophon.html'])
+            PdfCommands.execute_print_pdf({}, '_colophon_print.pdf')
+          end
+
+          # 入稿用 PDF を結合する
+          def print_pdf_merge!
+            files = %w[_titlepage_legalpage_print.pdf _sections_print.pdf _colophon_print.pdf]
+            existing = files.select { File.exist?(it) }
+
+            if existing.empty?
+              Common.log_error('[Step 13] 結合対象の入稿用 PDF がありません')
+              return
+            end
+
+            # 奥付が偶数ページ（左ページ）に来るよう空白ページ挿入判定
+            existing = Build::PdfMerger.insert_blank_page_before_colophon(existing)
+
+            base_pdf = existing.first
+            output = 'output_print.pdf'
+            FileUtils.rm_f(output)
+
+            ranges = existing.map { %("%s" 1-z) % it }.join(' ')
+            success = system(%(qpdf "#{base_pdf}" --pages #{ranges} -- "#{output}" > /dev/null))
+
+            if success && File.exist?(output)
+              Common.log_success('[Step 13] output_print.pdf を生成しました')
+            else
+              Common.log_error('[Step 13] 入稿用 PDF 結合に失敗しました')
+            end
+          end
+
+          # 隠しノンブルを書き込む
+          def print_pdf_stamp_nombre!
+            return unless File.exist?('output_print.pdf')
+
+            bleed_mm = Build::NombreStamper.bleed_mm_from_config
+            Build::NombreStamper.stamp!('output_print.pdf', bleed_mm:)
+          end
+
+          # 入稿用 PDF にアウトラインを付与する
+          def print_pdf_add_outline!
+            return unless File.exist?('output_print.pdf')
+
+            keep_numbers = Build::Utilities.chapter_numbers_for_outline(entries)
+            special_pages = %w[_toc]
+            special_pages.push('_glossarypage', '_indexpage') if IndexCommands.index_enabled?
+
+            chapter_htmls = Dir.glob('*.html').sort.select do |path|
+              bn = File.basename(path, '.html')
+              num = bn[/\A(\d+)-/, 1]&.to_i
+              (num && (keep_numbers.nil? || keep_numbers.include?(num))) ||
+                special_pages.include?(bn)
+            end
+
+            return if chapter_htmls.empty?
+
+            Build::OutlineExtractor.add_outline_from_headings!(
+              'output_print.pdf', chapter_htmls, max_level: 3, start_page: 1
+            )
+          end
+
+          # 入稿用 PDF を最終ファイル名にリネームする
+          def print_pdf_rename!
+            return unless File.exist?('output_print.pdf')
+
+            target_name = Common.generate_print_pdf_filename
+            return if target_name == 'output_print.pdf'
+
+            FileUtils.rm_f(target_name)
+            FileUtils.mv('output_print.pdf', target_name)
+            Common.log_success("入稿用 PDF をリネームしました: output_print.pdf → #{target_name}")
           end
 
           # Step 4: 索引処理を実行

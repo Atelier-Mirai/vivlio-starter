@@ -209,7 +209,7 @@ module Vivlio
             print_outline_debug_info
             save_timings_to_file(build_timings)
 
-            open_pdf
+            open_pdf(print_pdf_only? ? Common.generate_print_pdf_filename : nil)
             common.log_success('全ファイルのビルドが完了しました')
           end
 
@@ -227,6 +227,14 @@ module Vivlio
             Vivlio::Starter::CLI::PdfCommands::PdfOpener.new(pdf_command_options, path).call
           rescue StandardError
             # macOS 専用機能のため失敗しても握りつぶす
+          end
+
+          # targets に print_pdf のみ（pdf なし）が指定されているかを判定する
+          def print_pdf_only?
+            cfg = Common::CONFIG
+            targets = Build::PdfMerger.extract_targets(cfg.output&.targets)
+            targets = Build::PdfMerger.extract_targets(cfg.output&.pdf&.targets) if targets.empty?
+            targets.include?('print_pdf') && !targets.include?('pdf')
           end
 
           def pdf_command_options

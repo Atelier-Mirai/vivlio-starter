@@ -81,6 +81,41 @@ module Vivlio
             Common.log_success('[Step 5] _toc.pdf を生成しました') if File.exist?('_toc.pdf')
           end
 
+          # Step 6 (print_pdf only): TOC HTML のみ生成（_toc.pdf ビルドをスキップ）
+          # @param base_dir [String] ベースディレクトリ
+          # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil]
+          def generate_toc_html!(base_dir = '.', entries_or_keep = nil)
+            keep_numbers_main = Build::Utilities.chapter_numbers_for_book(entries_or_keep)
+            keep_numbers_preface = nil
+            keep_numbers_appx = nil
+            keep_numbers_post = nil
+            if entries_or_keep&.any?
+              chapter_numbers = extract_chapter_numbers(entries_or_keep)
+              keep_numbers_preface = chapter_numbers.select { |n| PREFACE_RANGE.include?(n) }
+              keep_numbers_appx = chapter_numbers.select { |n| APPX_RANGE.include?(n) }
+              keep_numbers_post = chapter_numbers.select { |n| POSTFACE_RANGE.include?(n) }
+            end
+            chapter_htmls_preface = Build::ChapterConfig.htmls_for_range(base_dir, PREFACE_RANGE, keep_numbers_preface)
+            chapter_htmls_main = Build::ChapterConfig.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers_main)
+            chapter_htmls_appx = Build::ChapterConfig.htmls_for_range(base_dir, APPX_RANGE, keep_numbers_appx)
+            chapter_htmls_post = Build::ChapterConfig.htmls_for_range(base_dir, POSTFACE_RANGE, keep_numbers_post)
+            targets_for_toc = (chapter_htmls_preface + chapter_htmls_main + chapter_htmls_appx + chapter_htmls_post).uniq.sort
+
+            if targets_for_toc.empty?
+              Common.log_warn('[Step 6] 対象HTMLが見つかりません。スキップします。')
+              return
+            end
+
+            TocCommands.execute_toc({}, targets_for_toc)
+            toc_html = File.join(base_dir, '_toc.html')
+            unless File.exist?(toc_html)
+              Common.log_warn('[Step 6] _toc.html が見つかりません。')
+              return
+            end
+            PostProcessCommands.execute_post_process({}, ['_toc'])
+            Common.log_success('[Step 6] _toc.html を生成しました（PDF ビルドはスキップ）')
+          end
+
           # Entry 配列または basename 配列から章番号配列を抽出
           # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>]
           # @return [Array<Integer>] 章番号配列

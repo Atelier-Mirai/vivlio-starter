@@ -188,7 +188,8 @@ output:
   # ----------------------------
   # 出力フォーマット
   # ----------------------------
-  targets: pdf  # pdf / print_pdf / epub
+  # targets: pdf  # pdf / print_pdf / epub
+  targets: print_pdf  # pdf / print_pdf / epub
   # 文字列、カンマ区切り、配列すべて可
   # 例:
   # targets: pdf              # 単一指定
@@ -237,13 +238,11 @@ output:
   # 印刷所 入稿用PDF設定
   # ----------------------------
   print_pdf:
-    bleed: 3mm         # 塗り足し幅（必須）
-    crop_marks: true   # トンボを付ける（任意）
-    # 注: Vivliostyle CLI の --press-ready オプションで以下が自動実行される
-    #     - CMYK変換
-    #     - フォント埋め込み
-    #     - 印刷最適化
-    # 圧縮設定は適用されない（--press-ready で最適化済み）
+    bleed: 3mm         # 塗り足し幅（既定: 3mm）
+    crop_marks: true   # トンボを付ける（既定: true）
+    # Vivliostyle CLI で --crop-marks --bleed 3mm を付加してビルド
+    # 出力は PDF/X-4 準拠（ねこのしっぽ、日光企画で対応済み）
+    # 隠しノンブルは HexaPDF で PDF 結合後に自動書き込み
 
     # ..............................
     # 表表紙と裏表紙（本文とは独立して出力）

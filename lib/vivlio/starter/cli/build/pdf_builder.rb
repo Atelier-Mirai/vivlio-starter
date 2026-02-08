@@ -72,6 +72,45 @@ module Vivlio
             compile_overall_pdf!(targets_for_pdf)
           end
 
+          # Step 7 (print_pdf only): entries.js のみ生成（PDF ビルドをスキップ）
+          # print_pdf ターゲットのみの場合、entries.js は Step 13 で再利用される
+          # @param base_dir [String] ベースディレクトリ
+          # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil]
+          def generate_entries_for_sections!(base_dir = '.', entries_or_keep = nil)
+            preface_html = [File.join(base_dir, '00-preface.html')].select { |f| File.exist?(f) }
+            toc_html = [File.join(base_dir, '_toc.html')].select { |f| File.exist?(f) }
+
+            keep_numbers_main = Build::Utilities.chapter_numbers_for_book(entries_or_keep)
+            keep_numbers_appx = nil
+            keep_numbers_post = nil
+            if entries_or_keep&.any?
+              chapter_numbers = extract_chapter_numbers(entries_or_keep)
+              keep_numbers_appx = chapter_numbers.select { |n| APPX_RANGE.include?(n) }
+              keep_numbers_post = chapter_numbers.select { |n| POSTFACE_RANGE.include?(n) }
+            end
+            glossary_html = IndexCommands.index_enabled? ? [File.join(base_dir, '_glossarypage.html')].select { |f| File.exist?(f) } : []
+            index_html = IndexCommands.index_enabled? ? [File.join(base_dir, '_indexpage.html')].select { |f| File.exist?(f) } : []
+
+            chapter_htmls_for_pdf = [
+              preface_html,
+              toc_html,
+              Build::ChapterConfig.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers_main),
+              Build::ChapterConfig.htmls_for_range(base_dir, APPX_RANGE, keep_numbers_appx),
+              glossary_html,
+              Build::ChapterConfig.htmls_for_range(base_dir, POSTFACE_RANGE, keep_numbers_post),
+              index_html
+            ].flatten
+
+            if chapter_htmls_for_pdf.empty?
+              Common.log_warn('[Step 7] 対象HTMLが見つかりません。スキップします。')
+              return
+            end
+
+            Common.log_info("[Step 7] entries.js を生成します（PDF ビルドはスキップ）")
+            EntriesCommands.execute_entries({}, chapter_htmls_for_pdf)
+            Common.log_success('[Step 7] entries.js を生成しました')
+          end
+
           # 全体PDF生成（内部メソッド）
           # entries.jsを生成し、VivliostyleでPDFをビルド
           def compile_overall_pdf!(targets_for_pdf)
