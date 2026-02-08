@@ -169,50 +169,107 @@ vs build:
 - ユーザーのプレビュー内容が意図せず変わる可能性
 - **実装複雑度: 低**（既存 `PageMappingExtractor` にポート確認ロジックを追加するだけ）
 
-## 4. 実現可能性の評価
+## 4. 計測結果
+
+`bench/bench_build_overhead.rb` と `bench/bench_preview_reload.mjs` で実測した。
+
+### 4.1 計測1: `npx vivliostyle build` 起動オーバーヘッド
+
+最小構成（1ページ HTML）で `vivliostyle build` を 3 回実行。
+
+| Run | 所要時間 | 備考 |
+|-----|---------|------|
+| 1 | 11.314s | 初回（npx キャッシュなし） |
+| 2 | 3.003s | 2回目以降（安定値） |
+| 3 | 3.038s | 2回目以降（安定値） |
+
+**結論**: 1ページの組版でも約 **3.0s** かかる。
+Node.js bootstrap + Chromium 起動が大部分を占める。
+ビルド中に最大 6 回呼び出されるため、起動コストだけで **~18s** 消費している。
+
+### 4.2 計測2: `vivliostyle preview` リロード所要時間
+
+preview 起動済みの状態で `entries.js` を書き換え、`page.reload()` 後のレンダリング安定までを計測。
+
+| Run | 内容 | 所要時間 | リロード後ページ数 |
+|-----|------|---------|------------------|
+| 1 | A→A+B (2ページ) | 2.058s | 1 |
+| 2 | A+B→A (1ページ) | 2.050s | 1 |
+| 3 | A→A+B+C (3ページ) | 2.047s | 1 |
+
+**結論**: リロード自体は **~2.0s** で安定するが、
+**`entries.js` の変更が反映されない**（ページ数が常に 1）。
+`vivliostyle preview` は `vivliostyle.config.js` → `entries.js` を
+Node.js の ESM キャッシュ経由で読み込んでおり、
+ファイル変更 + ブラウザリロードだけではエントリ一覧が更新されない。
+
+### 4.3 計測結果から得られた知見
+
+- **方策 A（Preview 常駐 + entries.js 切り替え）は実現困難**:
+  ESM キャッシュにより entries.js の動的切り替えが効かない。
+  preview サーバー自体を再起動しない限り、エントリ変更を反映できない。
+- **方策 C（Step 9 並列化）は不要**:
+  キャッシュ機構により Step 9 は 0.00s で完了するため、並列化の意味がない。
+- **方策 D（既存 preview サーバーの再利用）は有効**:
+  Step 8 では entries.js の切り替えは不要（Step 7 と同じ内容を読む）。
+  既に起動済みの preview があれば、起動コスト ~3s をスキップできる。
+
+## 5. 実現可能性の評価（計測結果反映済み）
 
 | 方策 | 削減効果 | 実装複雑度 | リスク | 推奨度 |
 |------|---------|-----------|--------|--------|
-| A: Preview 常駐 + Playwright PDF | ~10s | 高 | PDF 出力差異 | △ |
+| A: Preview 常駐 + Playwright PDF | — | 高 | ESM キャッシュで entries.js 切替不可 | × |
 | B: Playwright 事前起動 | ~1s | 低 | 小 | × (効果不足) |
-| C: Step 9 並列ビルド | ~3.5s | 中 | entries.js 競合 | ○ |
-| D: Preview 常駐デーモン | ~3s | 低 | preview 干渉 | ○ |
+| C: Step 9 並列ビルド | — | 中 | — | × (キャッシュで解決済み) |
+| D: Preview 常駐デーモン | ~3s | 低 | 小 | **○** |
 
-## 5. 推奨アプローチ
+## 6. 実装済み: 方策 D（既存 preview サーバー再利用）
 
-### 第 1 段階: 方策 C + D の組み合わせ（低〜中リスク、計 ~6.5s 短縮）
+### 概要
 
-1. **Step 9 並列化 (C)**: front と colophon のビルドを並列実行
-   - `vivliostyle.config.js` のテンポラリコピーを作成し、出力先を分離
-   - 各スレッドで独立した `entries.js` + config を使用
-2. **Preview 再利用 (D)**: 既存 preview サーバーがあればスキップ
-   - `PageMappingExtractor#start_preview_server!` にポート確認を追加
+Step 8 の `PageMappingExtractor` に「既存 preview サーバーの検知」を追加した。
 
-### 第 2 段階（将来検討）: 方策 A のプロトタイプ
+### 実装内容（`page_mapping_extractor.rb`）
 
-- Playwright `page.pdf()` と `vivliostyle build` の出力を比較検証
-- 差異が許容範囲なら段階的に移行
-- vivliostyle CLI のソースコード（`@vivliostyle/cli`）から `Page.printToPDF` のパラメータを調査
+1. `start_preview_server!` の冒頭で `port_open?(DEFAULT_HOST, port)` を確認
+2. 既にポートが応答する場合:
+   - preview 起動をスキップ（`@preview_pid` を設定しない）
+   - Preview URL を `build_fallback_url` で構築
+   - `@externally_managed = true` フラグを立てる
+3. ポートが閉じている場合は `launch_preview_process!` で従来通り一時起動
+4. `stop_preview_server!` で `@externally_managed` なら kill をスキップ
 
-## 6. 主要な技術的課題
+### テスト（`page_mapping_extractor_test.rb`）
 
-### 6.1 entries.js の排他制御
+- 既存サーバー検出時に `externally_managed` が true、`preview_pid` が nil
+- 外部管理サーバーが `stop_preview_server!` 後も生存していること
+- ポート閉鎖時に `launch_preview_process!` が呼ばれること
+- `build_fallback_url` のフォーマット検証
 
-現行では全ステップが同一の `entries.js` を上書きしながら使用している。
-並列化や常駐化を行う場合、以下のいずれかの対策が必要：
+### 想定効果
 
-- **一時ファイル方式**: `entries_step9_front.js` のような一時ファイルを生成し、
-  対応する `vivliostyle_step9_front.config.js` から参照する
-- **ディレクトリ分離**: Step ごとの作業ディレクトリを作成（ファイルコピーのコストあり）
+- ビルド全体: **32.84s → ~29.8s**（約 9% 短縮）
+- ユーザーが `vivliostyle preview` を別ターミナルで実行中の場合に自然に恩恵を受ける
+- preview を使っていない場合は従来動作と同一（リスクなし）
 
-### 6.2 vivliostyle preview のリロード信頼性
+### 課題
 
-`vivliostyle preview` は内部でファイル監視（chokidar）を使用しているが、
-プログラム的なリロードトリガーの API は公開されていない。
-`page.reload()` で強制リロードは可能だが、レンダリング完了の検知に
-現行と同じポーリング（`waitForRenderComplete`）が必要となる。
+- ユーザーの preview が異なるプロジェクトのものである可能性
+  → publication.json の存在確認で軽減可能
+- ユーザーの preview が古い entries.js を参照している可能性
+  → Step 7 完了後であれば entries.js は最新のはずなので問題なし
 
-### 6.3 PDF 出力の一貫性
+## 7. 主要な技術的制約
+
+### 7.1 ESM キャッシュ問題
+
+`vivliostyle preview` の Node.js サーバーは `vivliostyle.config.js` と
+`entries.js` を ESM `import` で読み込む。ESM は一度 import されると
+モジュールキャッシュに入り、ファイルを書き換えてもサーバー再起動なしには
+新しい内容が反映されない。このため、**1 つの preview セッションで
+entries.js を切り替えて異なる PDF を生成する方式は不可能**。
+
+### 7.2 PDF 出力の一貫性（方策 A 向け）
 
 `vivliostyle build` の内部 Chromium 設定と Playwright `page.pdf()` の設定を
 完全に一致させるのは困難。特に以下の点で差異が生じる可能性がある：
@@ -221,11 +278,425 @@ vs build:
 - フォントレンダリング（同一 Chromium バージョンでも設定差がありうる）
 - `@page` マージンの解釈
 
-## 7. 計測ポイント（実装前に確認すべき事項）
+ただし方策 D では PDF 出力に Playwright を使わないため、この問題は無関係。
 
-1. `npx vivliostyle build` 1 回あたりの起動オーバーヘッド（組版処理を除く純粋な起動時間）
-   - 空の `entries.js`（1 ページのみ）でビルドし、所要時間を計測
-2. `vivliostyle preview` のリロード所要時間
-   - `entries.js` 変更後、レンダリング安定までの時間
-3. Playwright `page.pdf()` と `vivliostyle build` の出力比較
-   - ピクセル単位の差分検証（ImageMagick `compare` 等）
+## 8. まとめ
+
+### 8.1 期待
+
+方策 D は既存の機能を最小限に変更する一方で、ビルド全体の所要時間の約 9% 短縮を達成することができ、リスクも最小限に抑えられる。そのため、推奨度は「○」。
+
+### 8.2 実装前
+
+vs build --no-clean
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.05s
+  - Step  2 (prepare theme images)           0.01s
+  - Step  3 (preprocess sections)            0.13s
+  - Step  4 (index scan and build)           0.03s
+  - Step  5 (convert sections html)          1.77s
+  - Step  6 (generate toc and pdf)          14.61s
+    (vivliostyle build)                    (14.32s)
+  - Step  7 (build overall pdf)              7.04s
+    (vivliostyle build)                     (7.01s)
+  - Step  8 (backlink dedup)                17.69s
+    (vivliostyle build)                     (6.24s)
+  - Step  9 (build front pages and tail)     0.00s
+  - Step 10 (merge all pdfs)                 2.80s
+  - Step 11 (apply outline to output pdf)    2.28s
+  - Step 12 (rename and final clean)         0.04s
+  = TOTAL                                   46.45s
+==========================
+vs build --no-clean
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.03s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  3 (preprocess sections)            0.12s
+  - Step  4 (index scan and build)           0.03s
+  - Step  5 (convert sections html)          0.98s
+  - Step  6 (generate toc and pdf)           3.63s
+    (vivliostyle build)                     (3.33s)
+  - Step  7 (build overall pdf)              6.05s
+    (vivliostyle build)                     (6.01s)
+  - Step  8 (backlink dedup)                16.84s
+    (vivliostyle build)                     (5.83s)
+  - Step  9 (build front pages and tail)     0.00s
+  - Step 10 (merge all pdfs)                 2.26s
+  - Step 11 (apply outline to output pdf)    1.54s
+  - Step 12 (rename and final clean)         0.04s
+  = TOTAL                                   31.53s
+==========================
+vs build --no-clean
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  3 (preprocess sections)            0.12s
+  - Step  4 (index scan and build)           0.03s
+  - Step  5 (convert sections html)          0.68s
+  - Step  6 (generate toc and pdf)           3.47s
+    (vivliostyle build)                     (3.17s)
+  - Step  7 (build overall pdf)              6.14s
+    (vivliostyle build)                     (6.10s)
+  - Step  8 (backlink dedup)                16.81s
+    (vivliostyle build)                     (5.90s)
+  - Step  9 (build front pages and tail)     0.00s
+  - Step 10 (merge all pdfs)                 2.26s
+  - Step 11 (apply outline to output pdf)    1.51s
+  - Step 12 (rename and final clean)         0.04s
+  = TOTAL                                   31.10s
+==========================
+vs build --no-clean
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  3 (preprocess sections)            0.12s
+  - Step  4 (index scan and build)           0.03s
+  - Step  5 (convert sections html)          0.84s
+  - Step  6 (generate toc and pdf)           3.46s
+    (vivliostyle build)                     (3.15s)
+  - Step  7 (build overall pdf)              6.13s
+    (vivliostyle build)                     (6.09s)
+  - Step  8 (backlink dedup)                16.87s
+    (vivliostyle build)                     (5.86s)
+  - Step  9 (build front pages and tail)     0.00s
+  - Step 10 (merge all pdfs)                 2.27s
+  - Step 11 (apply outline to output pdf)    1.56s
+  - Step 12 (rename and final clean)         0.04s
+  = TOTAL                                   31.34s
+==========================
+
+### 8.3 実装後
+
+vs build --no-clean
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.03s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  3 (preprocess sections)            0.13s
+  - Step  4 (index scan and build)           0.03s
+  - Step  5 (convert sections html)          1.01s
+  - Step  6 (generate toc and pdf)           6.44s
+    (vivliostyle build)                     (6.15s)
+  - Step  7 (build overall pdf)              6.46s
+    (vivliostyle build)                     (6.43s)
+  - Step  8 (backlink dedup)                18.16s
+    (vivliostyle build)                     (6.00s)
+  - Step  9 (build front pages and tail)     0.00s
+  - Step 10 (merge all pdfs)                 2.29s
+  - Step 11 (apply outline to output pdf)    1.54s
+  - Step 12 (rename and final clean)         0.05s
+  = TOTAL                                   36.14s
+==========================
+vs build --no-clean                                                                  
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  3 (preprocess sections)            0.11s
+  - Step  4 (index scan and build)           0.03s
+  - Step  5 (convert sections html)          0.96s
+  - Step  6 (generate toc and pdf)           3.67s
+    (vivliostyle build)                     (3.31s)
+  - Step  7 (build overall pdf)              6.18s
+    (vivliostyle build)                     (6.15s)
+  - Step  8 (backlink dedup)                16.70s
+    (vivliostyle build)                     (5.90s)
+  - Step  9 (build front pages and tail)     0.00s
+  - Step 10 (merge all pdfs)                 2.27s
+  - Step 11 (apply outline to output pdf)    1.54s
+  - Step 12 (rename and final clean)         0.04s
+  = TOTAL                                   31.53s
+==========================
+vs build --no-clean
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  3 (preprocess sections)            0.11s
+  - Step  4 (index scan and build)           0.03s
+  - Step  5 (convert sections html)          0.91s
+  - Step  6 (generate toc and pdf)           3.50s
+    (vivliostyle build)                     (3.19s)
+  - Step  7 (build overall pdf)              6.02s
+    (vivliostyle build)                     (5.99s)
+  - Step  8 (backlink dedup)                16.92s
+    (vivliostyle build)                     (6.00s)
+  - Step  9 (build front pages and tail)     0.00s
+  - Step 10 (merge all pdfs)                 2.31s
+  - Step 11 (apply outline to output pdf)    1.53s
+  - Step 12 (rename and final clean)         0.04s
+  = TOTAL                                   31.40s
+==========================
+vs build --no-clean
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.02s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  3 (preprocess sections)            0.12s
+  - Step  4 (index scan and build)           0.03s
+  - Step  5 (convert sections html)          0.76s
+  - Step  6 (generate toc and pdf)           3.64s
+    (vivliostyle build)                     (3.32s)
+  - Step  7 (build overall pdf)              6.10s
+    (vivliostyle build)                     (6.06s)
+  - Step  8 (backlink dedup)                16.80s
+    (vivliostyle build)                     (5.89s)
+  - Step  9 (build front pages and tail)     0.00s
+  - Step 10 (merge all pdfs)                 2.33s
+  - Step 11 (apply outline to output pdf)    1.62s
+  - Step 12 (rename and final clean)         0.04s
+  = TOTAL                                   31.47s
+==========================
+
+### 8.4 考察
+
+初回起動（npx キャッシュ/JIT 未ヒット）を除外した安定値で比較する。
+
+#### Step 8 の平均値比較
+
+| 項目 | 実装前 (Run 2〜4) | 実装後 (Run 2〜4) | 差分 |
+|------|-------------------|-------------------|------|
+| Step 8 全体 | 16.84s | 16.81s | **-0.03s** |
+| うち vivliostyle build | 5.86s | 5.93s | +0.07s |
+| うち残り（preview + Playwright） | 10.98s | 10.88s | -0.10s |
+| **TOTAL** | **31.32s** | **31.47s** | **+0.15s** |
+
+#### 方策 D の効果が見えない理由
+
+方策 D では preview サーバーの起動コスト（~3s）を削減することを期待していた。
+しかし計測結果はほぼ同一であり、有意な差は確認できなかった。
+
+**原因**: Step 8 の所要時間の支配的要因は preview 起動ではなく、
+**Playwright のレンダリング完了待機**にある。
+
+`extract_page_mapping.mjs` の `waitForRenderComplete` は以下のポーリングを行う:
+
+```
+POLL_INTERVAL = 2000ms (2秒)
+STABLE_THRESHOLD = 3回
+→ 最低でも 2s × 3 = 6s の待機が発生
+```
+
+加えて Chromium 起動（~1s）+ ページ読み込み（~1s）+ DOM 走査（~0.5s）で、
+Playwright スクリプト単体で **~9s** 程度消費している。
+
+preview サーバーの起動コスト（~3s）はこの ~9s に比べて小さく、
+かつ実装前も `wait_for_server_ready!` がポート応答した瞬間に次へ進むため、
+起動待ちが Step 8 全体のボトルネックにはなっていなかった。
+
+#### 結論
+
+方策 D は**技術的には正しく動作する**が、**ビルド高速化への寄与は計測不能なレベル**である。
+preview 起動コストが Step 8 のボトルネックではなかったため、
+preview の再利用だけでは有意な改善は得られない。
+
+実装自体はリスクがなく、既存 preview サーバーがある場合にプロセス重複を避ける
+衛生的な改善としては有用であるため、**コードは残す判断をしてもよい**。
+
+## 9. 今後の高速化に関する提案
+
+計測データから、ビルド時間の内訳は以下の通りである（安定値平均）:
+
+| カテゴリ | 所要時間 | 割合 |
+|---------|---------|------|
+| vivliostyle build × 3回（Step 6/7/8） | ~15.1s | 48% |
+| Playwright レンダリング待機（Step 8） | ~9.0s | 29% |
+| PDF merge + outline（Step 10/11） | ~3.8s | 12% |
+| その他（Step 0〜5, 9, 12） | ~3.4s | 11% |
+| **合計** | **~31.3s** | 100% |
+
+### 9.1 提案 E: Playwright レンダリング待機の最適化（効果見込み: ~4s）
+
+**現行の問題**: `POLL_INTERVAL = 2000ms` × `STABLE_THRESHOLD = 3` = 最低 6s の固定待機。
+レンダリングが早期に完了していても、この下限を下回ることがない。
+
+**改善案**:
+1. **ポーリング間隔の短縮**: `POLL_INTERVAL` を `500ms` に変更し、
+   `STABLE_THRESHOLD` を `5` に設定（計 2.5s の最小待機）
+2. **Vivliostyle のレンダリング完了イベントの利用**:
+   Vivliostyle Viewer は `readystatechange` や
+   内部の `window.__vivliostyle_render_complete__` のようなシグナルを持つ可能性がある。
+   イベント駆動で待機すれば、ポーリング自体を廃止できる
+3. **MutationObserver による完了検知**:
+   `data-vivliostyle-page-container` の追加を `MutationObserver` で監視し、
+   一定時間新規追加がなければ完了と判定する
+
+**想定効果**: 6s → 2〜3s（**約 3〜4s 短縮**）
+
+### 9.2 提案 F: Playwright Chromium の事前起動（効果見込み: ~1s）
+
+Step 8 の Playwright スクリプトは毎回 `chromium.launch()` で Chromium を新規起動する。
+preview サーバーが既に起動済みの場合、Chromium 起動を先行して行うことで
+待ち時間を並列化できる。
+
+ただし効果は ~1s 程度と小さく、実装複雑度に見合わない可能性がある。
+
+### 9.3 提案 G: vivliostyle build の呼び出し回数削減（効果見込み: ~3s）
+
+**現行**: Step 6（TOC PDF）、Step 7（全体 PDF）、Step 8（再ビルド PDF）で
+各 ~3s の起動コスト × 3回 = ~9s。
+
+**改善案**:
+- Step 8 の重複排除後、HTML が変更された場合のみ PDF を再ビルドする
+  （現行は `files_modified.any?` で判定済みだが、変更がない場合でも
+  Step 7 と同じ PDF を使い回すことで 1 回分を省略できる可能性がある）
+- Step 6 の TOC PDF と Step 7 の全体 PDF を 1 回の vivliostyle build で
+  まとめて生成する方式を検討する（vivliostyle.config.js の `output` 配列で
+  複数出力を指定できるか要調査）
+
+### 9.4 提案 H: Step 8 全体のアーキテクチャ見直し（効果見込み: ~10s）
+
+**最も大きなボトルネック**は Step 8 の ~17s（ビルド全体の 54%）である。
+Step 8 が必要な理由は「用語集バックリンクと索引ページ番号の重複排除」であり、
+これには **組版後のページ配置情報** が必要。
+
+**根本的な改善案**:
+- **静的解析によるページ推定**: CSS の `@page` サイズと各章の文字量から
+  ページ番号を推定し、Playwright なしで重複排除を行う（精度トレードオフ）
+- **Step 7 の vivliostyle build 内でページ情報を取得**:
+  vivliostyle build 自体が Chromium を起動しているので、
+  ビルド中にページマッピングを抽出する Chromium DevTools Protocol の
+  コールバックを注入できれば、preview + Playwright の別途起動が不要になる
+- **重複排除の事前実行**: 用語集/索引のリンク生成時に、
+  重複が発生しないようリンクを設計する（根本対策）
+
+### 9.5 優先度マトリクス
+
+| 提案 | 効果見込み | 実装複雑度 | 推奨優先度 |
+|------|-----------|-----------|-----------|
+| E: ポーリング間隔最適化 | ~4s | **低** | **★★★（最優先）** |
+| F: Chromium 事前起動 | ~1s | 中 | ★ |
+| G: build 呼び出し削減 | ~3s | 中 | ★★ |
+| H: Step 8 アーキテクチャ見直し | ~10s | 高 | ★★（長期） |
+
+**次のアクション**: 提案 E（ポーリング間隔の短縮）は
+`extract_page_mapping.mjs` の定数変更のみで実装できるため、
+最小コストで最大効果が見込める。まずこれを試行することを推奨する。
+
+## 提案 E: ポーリング間隔最適化
+
+実装後、以下の結果を得た。
+
+vs build --no-clean
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.03s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  3 (preprocess sections)            0.13s
+  - Step  4 (index scan and build)           0.03s
+  - Step  5 (convert sections html)          1.00s
+  - Step  6 (generate toc and pdf)           5.61s
+    (vivliostyle build)                     (5.32s)
+  - Step  7 (build overall pdf)              6.23s
+    (vivliostyle build)                     (6.19s)
+  - Step  8 (backlink dedup)                13.38s
+    (vivliostyle build)                     (5.98s)
+  - Step  9 (build front pages and tail)     0.00s
+  - Step 10 (merge all pdfs)                 2.29s
+  - Step 11 (apply outline to output pdf)    1.55s
+  - Step 12 (rename and final clean)         0.04s
+  = TOTAL                                   30.28s
+==========================
+vs build --no-clean
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.03s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  3 (preprocess sections)            0.12s
+  - Step  4 (index scan and build)           0.03s
+  - Step  5 (convert sections html)          0.78s
+  - Step  6 (generate toc and pdf)           3.54s
+    (vivliostyle build)                     (3.25s)
+  - Step  7 (build overall pdf)              6.16s
+    (vivliostyle build)                     (6.12s)
+  - Step  8 (backlink dedup)                13.35s
+    (vivliostyle build)                     (5.85s)
+  - Step  9 (build front pages and tail)     0.00s
+  - Step 10 (merge all pdfs)                 2.25s
+  - Step 11 (apply outline to output pdf)    1.51s
+  - Step 12 (rename and final clean)         0.04s
+  = TOTAL                                   27.80s
+==========================
+vs build --no-clean
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.03s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  3 (preprocess sections)            0.11s
+  - Step  4 (index scan and build)           0.03s
+  - Step  5 (convert sections html)          1.14s
+  - Step  6 (generate toc and pdf)           4.19s
+    (vivliostyle build)                     (3.90s)
+  - Step  7 (build overall pdf)              6.23s
+    (vivliostyle build)                     (6.20s)
+  - Step  8 (backlink dedup)                13.10s
+    (vivliostyle build)                     (5.86s)
+  - Step  9 (build front pages and tail)     0.00s
+  - Step 10 (merge all pdfs)                 2.23s
+  - Step 11 (apply outline to output pdf)    1.53s
+  - Step 12 (rename and final clean)         0.04s
+  = TOTAL                                   28.62s
+==========================
+vs build --no-clean
+
+== Build Step Timings ==
+  - Step  0 (clean)                          0.00s
+  - Step  1 (optimize images)                0.03s
+  - Step  2 (prepare theme images)           0.00s
+  - Step  3 (preprocess sections)            0.11s
+  - Step  4 (index scan and build)           0.03s
+  - Step  5 (convert sections html)          0.84s
+  - Step  6 (generate toc and pdf)           3.48s
+    (vivliostyle build)                     (3.18s)
+  - Step  7 (build overall pdf)              6.13s
+    (vivliostyle build)                     (6.09s)
+  - Step  8 (backlink dedup)                13.24s
+    (vivliostyle build)                     (5.85s)
+  - Step  9 (build front pages and tail)     0.00s
+  - Step 10 (merge all pdfs)                 2.26s
+  - Step 11 (apply outline to output pdf)    1.52s
+  - Step 12 (rename and final clean)         0.04s
+  = TOTAL                                   27.68s
+==========================
+
+### 考察
+
+初回起動を除外した安定値（Run 2〜4）で、方策 D 実装時（提案 E 適用前）と比較する。
+
+#### Step 8 の平均値比較
+
+| 項目 | 提案E前 (Run 2〜4) | 提案E後 (Run 2〜4) | 差分 |
+|------|-------------------|-------------------|------|
+| Step 8 全体 | 16.84s | 13.23s | **-3.61s (-21.4%)** |
+| うち vivliostyle build | 5.86s | 5.85s | -0.01s |
+| うち残り（preview + Playwright） | 10.98s | 7.38s | **-3.60s** |
+| **TOTAL** | **31.32s** | **28.03s** | **-3.29s (-10.5%)** |
+
+#### 分析
+
+- vivliostyle build 部分は 5.86s → 5.85s と変化なし。改善は純粋に Playwright のポーリング待機から生じている
+- ポーリング最小待機時間が `2000ms × 3 = 6s` → `500ms × 5 = 2.5s` に短縮されたことで、レンダリング完了後の無駄な待ちが **~3.5s 削減**された
+- TOTAL の改善幅が Step 8 の改善幅より若干小さいのは、Run 間の揺らぎ（Step 5/6 等）による誤差
+
+#### 結論
+
+提案 E は**定数変更 2 行のみで Step 8 を 21% 短縮**し、ビルド全体を **31.3s → 28.0s（10.5% 短縮）** に改善した。
+方策 D（効果なし）とは対照的に、**ボトルネックの正確な特定に基づく最小限の変更が最大の効果をもたらした**好例である。
+
+安定性については、`STABLE_THRESHOLD = 5`（5 回連続同数で完了判定）により、
+従来の 3 回判定よりも誤検知リスクはむしろ低下している。

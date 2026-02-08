@@ -1,780 +1,780 @@
 ---
-generated_at: '2026-02-08T03:42:14+09:00'
+generated_at: '2026-02-08T15:20:49+09:00'
 total_matches: 77
 terms:
   CSS:
   - yomi: CSS
-    link: 00-preface.html#idx-m7196tzjts18-1
+    link: 00-preface.html#idx-x5rw9ope0eh0-1
     file: 00-preface
     is_definition: true
   - yomi: CSS
-    link: 00-preface.html#idx-m7196tzjts18-2
+    link: 00-preface.html#idx-x5rw9ope0eh0-2
     file: 00-preface
     is_definition: false
   - yomi: CSS
-    link: '08-web.html#idx-m7196tzjts18-3'
+    link: '08-web.html#idx-x5rw9ope0eh0-3'
     file: '08-web'
     is_definition: false
   - yomi: CSS
-    link: '08-web.html#idx-m7196tzjts18-4'
+    link: '08-web.html#idx-x5rw9ope0eh0-4'
     file: '08-web'
     is_definition: false
   - yomi: CSS
-    link: '08-web.html#idx-m7196tzjts18-5'
+    link: '08-web.html#idx-x5rw9ope0eh0-5'
     file: '08-web'
     is_definition: false
   - yomi: CSS
-    link: 99-postface.html#idx-m7196tzjts18-6
+    link: 99-postface.html#idx-x5rw9ope0eh0-6
     file: 99-postface
     is_definition: false
   - yomi: CSS
-    link: 99-postface.html#idx-m7196tzjts18-7
+    link: 99-postface.html#idx-x5rw9ope0eh0-7
     file: 99-postface
     is_definition: false
   HTML:
   - yomi: HTML
-    link: 00-preface.html#idx-ydqkowoj1jex-1
+    link: 00-preface.html#idx-f4m3z2ozdbne-1
     file: 00-preface
     is_definition: true
   - yomi: HTML
-    link: 00-preface.html#idx-ydqkowoj1jex-2
+    link: 00-preface.html#idx-f4m3z2ozdbne-2
     file: 00-preface
     is_definition: false
   - yomi: HTML
-    link: '08-web.html#idx-ydqkowoj1jex-3'
+    link: '08-web.html#idx-f4m3z2ozdbne-3'
     file: '08-web'
     is_definition: false
   - yomi: HTML
-    link: '08-web.html#idx-ydqkowoj1jex-4'
+    link: '08-web.html#idx-f4m3z2ozdbne-4'
     file: '08-web'
     is_definition: false
   - yomi: HTML
-    link: 99-postface.html#idx-ydqkowoj1jex-5
+    link: 99-postface.html#idx-f4m3z2ozdbne-5
     file: 99-postface
     is_definition: false
   - yomi: HTML
-    link: 99-postface.html#idx-ydqkowoj1jex-6
+    link: 99-postface.html#idx-f4m3z2ozdbne-6
     file: 99-postface
     is_definition: false
   JavaScript:
   - yomi: JavaScript
-    link: 00-preface.html#idx-8kx7x5ukggw8-1
+    link: 00-preface.html#idx-y2st3d7roxr7-1
     file: 00-preface
     is_definition: true
   - yomi: JavaScript
-    link: 00-preface.html#idx-8kx7x5ukggw8-2
+    link: 00-preface.html#idx-y2st3d7roxr7-2
     file: 00-preface
     is_definition: false
   - yomi: JavaScript
-    link: '08-web.html#idx-8kx7x5ukggw8-3'
+    link: '08-web.html#idx-y2st3d7roxr7-3'
     file: '08-web'
     is_definition: false
   - yomi: JavaScript
-    link: '08-web.html#idx-8kx7x5ukggw8-4'
+    link: '08-web.html#idx-y2st3d7roxr7-4'
     file: '08-web'
     is_definition: false
   - yomi: JavaScript
-    link: '08-web.html#idx-8kx7x5ukggw8-5'
+    link: '08-web.html#idx-y2st3d7roxr7-5'
     file: '08-web'
     is_definition: false
   - yomi: JavaScript
-    link: '08-web.html#idx-8kx7x5ukggw8-6'
+    link: '08-web.html#idx-y2st3d7roxr7-6'
     file: '08-web'
     is_definition: false
   - yomi: JavaScript
-    link: 99-postface.html#idx-8kx7x5ukggw8-7
+    link: 99-postface.html#idx-y2st3d7roxr7-7
     file: 99-postface
     is_definition: false
   - yomi: JavaScript
-    link: 99-postface.html#idx-8kx7x5ukggw8-8
+    link: 99-postface.html#idx-y2st3d7roxr7-8
     file: 99-postface
     is_definition: false
   コンピュータ:
   - yomi: こんぴゅーた
-    link: 00-preface.html#idx-pezslwyuyf1g-1
+    link: 00-preface.html#idx-vyz5j6r94vye-1
     file: 00-preface
     is_definition: true
   - yomi: こんぴゅーた
-    link: 00-preface.html#idx-pezslwyuyf1g-2
+    link: 00-preface.html#idx-vyz5j6r94vye-2
     file: 00-preface
     is_definition: false
   - yomi: こんぴゅーた
-    link: 00-preface.html#idx-pezslwyuyf1g-3
+    link: 00-preface.html#idx-vyz5j6r94vye-3
     file: 00-preface
     is_definition: false
   - yomi: こんぴゅーた
-    link: 00-preface.html#idx-pezslwyuyf1g-4
+    link: 00-preface.html#idx-vyz5j6r94vye-4
     file: 00-preface
     is_definition: false
   - yomi: こんぴゅーた
-    link: 01-life.html#idx-pezslwyuyf1g-5
+    link: 01-life.html#idx-vyz5j6r94vye-5
     file: 01-life
     is_definition: false
   - yomi: こんぴゅーた
-    link: 01-life.html#idx-pezslwyuyf1g-6
+    link: 01-life.html#idx-vyz5j6r94vye-6
     file: 01-life
     is_definition: false
   - yomi: こんぴゅーた
-    link: 01-life.html#idx-pezslwyuyf1g-7
+    link: 01-life.html#idx-vyz5j6r94vye-7
     file: 01-life
     is_definition: false
   - yomi: こんぴゅーた
-    link: 01-life.html#idx-pezslwyuyf1g-8
+    link: 01-life.html#idx-vyz5j6r94vye-8
     file: 01-life
     is_definition: false
   - yomi: こんぴゅーた
-    link: 01-life.html#idx-pezslwyuyf1g-9
+    link: 01-life.html#idx-vyz5j6r94vye-9
     file: 01-life
     is_definition: false
   - yomi: こんぴゅーた
-    link: 01-life.html#idx-pezslwyuyf1g-10
+    link: 01-life.html#idx-vyz5j6r94vye-10
     file: 01-life
     is_definition: false
   - yomi: こんぴゅーた
-    link: 01-life.html#idx-pezslwyuyf1g-11
+    link: 01-life.html#idx-vyz5j6r94vye-11
     file: 01-life
     is_definition: false
   - yomi: こんぴゅーた
-    link: 01-life.html#idx-pezslwyuyf1g-12
+    link: 01-life.html#idx-vyz5j6r94vye-12
     file: 01-life
     is_definition: false
   - yomi: こんぴゅーた
-    link: 01-life.html#idx-pezslwyuyf1g-13
+    link: 01-life.html#idx-vyz5j6r94vye-13
     file: 01-life
     is_definition: false
   - yomi: こんぴゅーた
-    link: 01-life.html#idx-pezslwyuyf1g-14
+    link: 01-life.html#idx-vyz5j6r94vye-14
     file: 01-life
     is_definition: false
   - yomi: こんぴゅーた
-    link: 01-life.html#idx-pezslwyuyf1g-15
+    link: 01-life.html#idx-vyz5j6r94vye-15
     file: 01-life
     is_definition: false
   - yomi: こんぴゅーた
-    link: 01-life.html#idx-pezslwyuyf1g-16
+    link: 01-life.html#idx-vyz5j6r94vye-16
     file: 01-life
     is_definition: false
   - yomi: こんぴゅーた
-    link: 01-life.html#idx-pezslwyuyf1g-17
+    link: 01-life.html#idx-vyz5j6r94vye-17
     file: 01-life
     is_definition: false
   - yomi: こんぴゅーた
-    link: '08-web.html#idx-pezslwyuyf1g-18'
+    link: '08-web.html#idx-vyz5j6r94vye-18'
     file: '08-web'
     is_definition: false
   - yomi: こんぴゅーた
-    link: '08-web.html#idx-pezslwyuyf1g-19'
+    link: '08-web.html#idx-vyz5j6r94vye-19'
     file: '08-web'
     is_definition: false
   - yomi: こんぴゅーた
-    link: '08-web.html#idx-pezslwyuyf1g-20'
+    link: '08-web.html#idx-vyz5j6r94vye-20'
     file: '08-web'
     is_definition: false
   - yomi: こんぴゅーた
-    link: '08-web.html#idx-pezslwyuyf1g-21'
+    link: '08-web.html#idx-vyz5j6r94vye-21'
     file: '08-web'
     is_definition: false
   - yomi: こんぴゅーた
-    link: '08-web.html#idx-pezslwyuyf1g-22'
+    link: '08-web.html#idx-vyz5j6r94vye-22'
     file: '08-web'
     is_definition: false
   - yomi: こんぴゅーた
-    link: '08-web.html#idx-pezslwyuyf1g-23'
+    link: '08-web.html#idx-vyz5j6r94vye-23'
     file: '08-web'
     is_definition: false
   - yomi: こんぴゅーた
-    link: '08-web.html#idx-pezslwyuyf1g-24'
+    link: '08-web.html#idx-vyz5j6r94vye-24'
     file: '08-web'
     is_definition: false
   ブラウザ:
   - yomi: ブラウザ
-    link: '08-web.html#idx-fnl26t7ukh26-1'
+    link: '08-web.html#idx-czc3xp4d4ist-1'
     file: '08-web'
     is_definition: true
   - yomi: ブラウザ
-    link: '08-web.html#idx-fnl26t7ukh26-2'
+    link: '08-web.html#idx-czc3xp4d4ist-2'
     file: '08-web'
     is_definition: false
   - yomi: ブラウザ
-    link: '08-web.html#idx-fnl26t7ukh26-3'
+    link: '08-web.html#idx-czc3xp4d4ist-3'
     file: '08-web'
     is_definition: false
   - yomi: ブラウザ
-    link: '08-web.html#idx-fnl26t7ukh26-4'
+    link: '08-web.html#idx-czc3xp4d4ist-4'
     file: '08-web'
     is_definition: false
   - yomi: ブラウザ
-    link: '08-web.html#idx-fnl26t7ukh26-5'
+    link: '08-web.html#idx-czc3xp4d4ist-5'
     file: '08-web'
     is_definition: false
   - yomi: ブラウザ
-    link: '08-web.html#idx-fnl26t7ukh26-6'
+    link: '08-web.html#idx-czc3xp4d4ist-6'
     file: '08-web'
     is_definition: false
   - yomi: ブラウザ
-    link: '08-web.html#idx-fnl26t7ukh26-7'
+    link: '08-web.html#idx-czc3xp4d4ist-7'
     file: '08-web'
     is_definition: false
   - yomi: ブラウザ
-    link: '08-web.html#idx-fnl26t7ukh26-8'
+    link: '08-web.html#idx-czc3xp4d4ist-8'
     file: '08-web'
     is_definition: false
   - yomi: ブラウザ
-    link: '08-web.html#idx-fnl26t7ukh26-9'
+    link: '08-web.html#idx-czc3xp4d4ist-9'
     file: '08-web'
     is_definition: false
   - yomi: ブラウザ
-    link: '08-web.html#idx-fnl26t7ukh26-10'
+    link: '08-web.html#idx-czc3xp4d4ist-10'
     file: '08-web'
     is_definition: false
   - yomi: ブラウザ
-    link: '08-web.html#idx-fnl26t7ukh26-11'
+    link: '08-web.html#idx-czc3xp4d4ist-11'
     file: '08-web'
     is_definition: false
   - yomi: ブラウザ
-    link: '08-web.html#idx-fnl26t7ukh26-12'
+    link: '08-web.html#idx-czc3xp4d4ist-12'
     file: '08-web'
     is_definition: false
   - yomi: ブラウザ
-    link: '08-web.html#idx-fnl26t7ukh26-13'
+    link: '08-web.html#idx-czc3xp4d4ist-13'
     file: '08-web'
     is_definition: false
   プログラミング:
   - yomi: ぷろぐらみんぐ
-    link: 00-preface.html#idx-t35jp0hgl010-1
+    link: 00-preface.html#idx-p5e0g3ey0z5b-1
     file: 00-preface
     is_definition: true
   - yomi: ぷろぐらみんぐ
-    link: 00-preface.html#idx-t35jp0hgl010-2
+    link: 00-preface.html#idx-p5e0g3ey0z5b-2
     file: 00-preface
     is_definition: false
   - yomi: ぷろぐらみんぐ
-    link: 00-preface.html#idx-t35jp0hgl010-3
+    link: 00-preface.html#idx-p5e0g3ey0z5b-3
     file: 00-preface
     is_definition: false
   - yomi: ぷろぐらみんぐ
-    link: 00-preface.html#idx-t35jp0hgl010-4
+    link: 00-preface.html#idx-p5e0g3ey0z5b-4
     file: 00-preface
     is_definition: false
   - yomi: ぷろぐらみんぐ
-    link: 00-preface.html#idx-t35jp0hgl010-5
+    link: 00-preface.html#idx-p5e0g3ey0z5b-5
     file: 00-preface
     is_definition: false
   - yomi: ぷろぐらみんぐ
-    link: 01-life.html#idx-t35jp0hgl010-6
+    link: 01-life.html#idx-p5e0g3ey0z5b-6
     file: 01-life
     is_definition: false
   - yomi: ぷろぐらみんぐ
-    link: '08-web.html#idx-t35jp0hgl010-7'
+    link: '08-web.html#idx-p5e0g3ey0z5b-7'
     file: '08-web'
     is_definition: false
   - yomi: ぷろぐらみんぐ
-    link: '08-web.html#idx-t35jp0hgl010-8'
+    link: '08-web.html#idx-p5e0g3ey0z5b-8'
     file: '08-web'
     is_definition: false
   - yomi: ぷろぐらみんぐ
-    link: '08-web.html#idx-t35jp0hgl010-9'
+    link: '08-web.html#idx-p5e0g3ey0z5b-9'
     file: '08-web'
     is_definition: false
   - yomi: ぷろぐらみんぐ
-    link: '08-web.html#idx-t35jp0hgl010-10'
+    link: '08-web.html#idx-p5e0g3ey0z5b-10'
     file: '08-web'
     is_definition: false
   - yomi: ぷろぐらみんぐ
-    link: '08-web.html#idx-t35jp0hgl010-11'
+    link: '08-web.html#idx-p5e0g3ey0z5b-11'
     file: '08-web'
     is_definition: false
   - yomi: ぷろぐらみんぐ
-    link: '08-web.html#idx-t35jp0hgl010-12'
+    link: '08-web.html#idx-p5e0g3ey0z5b-12'
     file: '08-web'
     is_definition: false
   - yomi: ぷろぐらみんぐ
-    link: 99-postface.html#idx-t35jp0hgl010-13
+    link: 99-postface.html#idx-p5e0g3ey0z5b-13
     file: 99-postface
     is_definition: false
   - yomi: ぷろぐらみんぐ
-    link: 99-postface.html#idx-t35jp0hgl010-14
+    link: 99-postface.html#idx-p5e0g3ey0z5b-14
     file: 99-postface
     is_definition: false
   - yomi: ぷろぐらみんぐ
-    link: 99-postface.html#idx-t35jp0hgl010-15
+    link: 99-postface.html#idx-p5e0g3ey0z5b-15
     file: 99-postface
     is_definition: false
   - yomi: ぷろぐらみんぐ
-    link: 99-postface.html#idx-t35jp0hgl010-16
+    link: 99-postface.html#idx-p5e0g3ey0z5b-16
     file: 99-postface
     is_definition: false
   - yomi: ぷろぐらみんぐ
-    link: 99-postface.html#idx-t35jp0hgl010-17
+    link: 99-postface.html#idx-p5e0g3ey0z5b-17
     file: 99-postface
     is_definition: false
   天衣無縫:
   - yomi: てんいむほう
-    link: 01-life.html#idx-10hznc7gbfn2-1
+    link: 01-life.html#idx-nri3av9ubire-1
     file: 01-life
     is_definition: true
   - yomi: てんいむほう
-    link: 01-life.html#idx-10hznc7gbfn2-2
+    link: 01-life.html#idx-nri3av9ubire-2
     file: 01-life
     is_definition: false
 matches:
-- id: idx-t35jp0hgl010-1
+- id: idx-p5e0g3ey0z5b-1
   term: プログラミング
   yomi: ぷろぐらみんぐ
   file: 00-preface
   is_definition: true
   tag_type: dfn
-- id: idx-pezslwyuyf1g-1
+- id: idx-vyz5j6r94vye-1
   term: コンピュータ
   yomi: こんぴゅーた
   file: 00-preface
   is_definition: true
   tag_type: dfn
-- id: idx-t35jp0hgl010-2
+- id: idx-p5e0g3ey0z5b-2
   term: プログラミング
   yomi: ぷろぐらみんぐ
   file: 00-preface
   is_definition: false
   tag_type: span
-- id: idx-m7196tzjts18-1
+- id: idx-x5rw9ope0eh0-1
   term: CSS
   yomi: CSS
   file: 00-preface
   is_definition: true
   tag_type: dfn
-- id: idx-ydqkowoj1jex-1
+- id: idx-f4m3z2ozdbne-1
   term: HTML
   yomi: HTML
   file: 00-preface
   is_definition: true
   tag_type: dfn
-- id: idx-8kx7x5ukggw8-1
+- id: idx-y2st3d7roxr7-1
   term: JavaScript
   yomi: JavaScript
   file: 00-preface
   is_definition: true
   tag_type: dfn
-- id: idx-m7196tzjts18-2
+- id: idx-x5rw9ope0eh0-2
   term: CSS
   yomi: CSS
   file: 00-preface
   is_definition: false
   tag_type: span
-- id: idx-ydqkowoj1jex-2
+- id: idx-f4m3z2ozdbne-2
   term: HTML
   yomi: HTML
   file: 00-preface
   is_definition: false
   tag_type: span
-- id: idx-8kx7x5ukggw8-2
+- id: idx-y2st3d7roxr7-2
   term: JavaScript
   yomi: JavaScript
   file: 00-preface
   is_definition: false
   tag_type: span
-- id: idx-t35jp0hgl010-3
+- id: idx-p5e0g3ey0z5b-3
   term: プログラミング
   yomi: ぷろぐらみんぐ
   file: 00-preface
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-2
+- id: idx-vyz5j6r94vye-2
   term: コンピュータ
   yomi: こんぴゅーた
   file: 00-preface
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-3
+- id: idx-vyz5j6r94vye-3
   term: コンピュータ
   yomi: こんぴゅーた
   file: 00-preface
   is_definition: false
   tag_type: span
-- id: idx-t35jp0hgl010-4
+- id: idx-p5e0g3ey0z5b-4
   term: プログラミング
   yomi: ぷろぐらみんぐ
   file: 00-preface
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-4
+- id: idx-vyz5j6r94vye-4
   term: コンピュータ
   yomi: こんぴゅーた
   file: 00-preface
   is_definition: false
   tag_type: span
-- id: idx-t35jp0hgl010-5
+- id: idx-p5e0g3ey0z5b-5
   term: プログラミング
   yomi: ぷろぐらみんぐ
   file: 00-preface
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-5
+- id: idx-vyz5j6r94vye-5
   term: コンピュータ
   yomi: こんぴゅーた
   file: 01-life
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-6
+- id: idx-vyz5j6r94vye-6
   term: コンピュータ
   yomi: こんぴゅーた
   file: 01-life
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-7
+- id: idx-vyz5j6r94vye-7
   term: コンピュータ
   yomi: こんぴゅーた
   file: 01-life
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-8
+- id: idx-vyz5j6r94vye-8
   term: コンピュータ
   yomi: こんぴゅーた
   file: 01-life
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-9
+- id: idx-vyz5j6r94vye-9
   term: コンピュータ
   yomi: こんぴゅーた
   file: 01-life
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-10
+- id: idx-vyz5j6r94vye-10
   term: コンピュータ
   yomi: こんぴゅーた
   file: 01-life
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-11
+- id: idx-vyz5j6r94vye-11
   term: コンピュータ
   yomi: こんぴゅーた
   file: 01-life
   is_definition: false
   tag_type: span
-- id: idx-t35jp0hgl010-6
+- id: idx-p5e0g3ey0z5b-6
   term: プログラミング
   yomi: ぷろぐらみんぐ
   file: 01-life
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-12
+- id: idx-vyz5j6r94vye-12
   term: コンピュータ
   yomi: こんぴゅーた
   file: 01-life
   is_definition: false
   tag_type: span
-- id: idx-10hznc7gbfn2-1
+- id: idx-nri3av9ubire-1
   term: 天衣無縫
   yomi: てんいむほう
   file: 01-life
   is_definition: true
   tag_type: dfn
-- id: idx-pezslwyuyf1g-13
+- id: idx-vyz5j6r94vye-13
   term: コンピュータ
   yomi: こんぴゅーた
   file: 01-life
   is_definition: false
   tag_type: span
-- id: idx-10hznc7gbfn2-2
+- id: idx-nri3av9ubire-2
   term: 天衣無縫
   yomi: てんいむほう
   file: 01-life
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-14
+- id: idx-vyz5j6r94vye-14
   term: コンピュータ
   yomi: こんぴゅーた
   file: 01-life
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-15
+- id: idx-vyz5j6r94vye-15
   term: コンピュータ
   yomi: こんぴゅーた
   file: 01-life
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-16
+- id: idx-vyz5j6r94vye-16
   term: コンピュータ
   yomi: こんぴゅーた
   file: 01-life
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-17
+- id: idx-vyz5j6r94vye-17
   term: コンピュータ
   yomi: こんぴゅーた
   file: 01-life
   is_definition: false
   tag_type: span
-- id: idx-m7196tzjts18-3
+- id: idx-x5rw9ope0eh0-3
   term: CSS
   yomi: CSS
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-ydqkowoj1jex-3
+- id: idx-f4m3z2ozdbne-3
   term: HTML
   yomi: HTML
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-8kx7x5ukggw8-3
+- id: idx-y2st3d7roxr7-3
   term: JavaScript
   yomi: JavaScript
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-fnl26t7ukh26-1
+- id: idx-czc3xp4d4ist-1
   term: ブラウザ
   yomi: ブラウザ
   file: '08-web'
   is_definition: true
   tag_type: dfn
-- id: idx-pezslwyuyf1g-18
+- id: idx-vyz5j6r94vye-18
   term: コンピュータ
   yomi: こんぴゅーた
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-19
+- id: idx-vyz5j6r94vye-19
   term: コンピュータ
   yomi: こんぴゅーた
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-fnl26t7ukh26-2
+- id: idx-czc3xp4d4ist-2
   term: ブラウザ
   yomi: ブラウザ
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-fnl26t7ukh26-3
+- id: idx-czc3xp4d4ist-3
   term: ブラウザ
   yomi: ブラウザ
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-fnl26t7ukh26-4
+- id: idx-czc3xp4d4ist-4
   term: ブラウザ
   yomi: ブラウザ
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-20
+- id: idx-vyz5j6r94vye-20
   term: コンピュータ
   yomi: こんぴゅーた
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-21
+- id: idx-vyz5j6r94vye-21
   term: コンピュータ
   yomi: こんぴゅーた
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-fnl26t7ukh26-5
+- id: idx-czc3xp4d4ist-5
   term: ブラウザ
   yomi: ブラウザ
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-fnl26t7ukh26-6
+- id: idx-czc3xp4d4ist-6
   term: ブラウザ
   yomi: ブラウザ
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-ydqkowoj1jex-4
+- id: idx-f4m3z2ozdbne-4
   term: HTML
   yomi: HTML
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-22
+- id: idx-vyz5j6r94vye-22
   term: コンピュータ
   yomi: こんぴゅーた
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-fnl26t7ukh26-7
+- id: idx-czc3xp4d4ist-7
   term: ブラウザ
   yomi: ブラウザ
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-23
+- id: idx-vyz5j6r94vye-23
   term: コンピュータ
   yomi: こんぴゅーた
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-m7196tzjts18-4
+- id: idx-x5rw9ope0eh0-4
   term: CSS
   yomi: CSS
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-m7196tzjts18-5
+- id: idx-x5rw9ope0eh0-5
   term: CSS
   yomi: CSS
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-8kx7x5ukggw8-4
+- id: idx-y2st3d7roxr7-4
   term: JavaScript
   yomi: JavaScript
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-8kx7x5ukggw8-5
+- id: idx-y2st3d7roxr7-5
   term: JavaScript
   yomi: JavaScript
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-t35jp0hgl010-7
+- id: idx-p5e0g3ey0z5b-7
   term: プログラミング
   yomi: ぷろぐらみんぐ
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-fnl26t7ukh26-8
+- id: idx-czc3xp4d4ist-8
   term: ブラウザ
   yomi: ブラウザ
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-t35jp0hgl010-8
+- id: idx-p5e0g3ey0z5b-8
   term: プログラミング
   yomi: ぷろぐらみんぐ
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-fnl26t7ukh26-9
+- id: idx-czc3xp4d4ist-9
   term: ブラウザ
   yomi: ブラウザ
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-fnl26t7ukh26-10
+- id: idx-czc3xp4d4ist-10
   term: ブラウザ
   yomi: ブラウザ
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-t35jp0hgl010-9
+- id: idx-p5e0g3ey0z5b-9
   term: プログラミング
   yomi: ぷろぐらみんぐ
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-t35jp0hgl010-10
+- id: idx-p5e0g3ey0z5b-10
   term: プログラミング
   yomi: ぷろぐらみんぐ
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-t35jp0hgl010-11
+- id: idx-p5e0g3ey0z5b-11
   term: プログラミング
   yomi: ぷろぐらみんぐ
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-fnl26t7ukh26-11
+- id: idx-czc3xp4d4ist-11
   term: ブラウザ
   yomi: ブラウザ
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-fnl26t7ukh26-12
+- id: idx-czc3xp4d4ist-12
   term: ブラウザ
   yomi: ブラウザ
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-fnl26t7ukh26-13
+- id: idx-czc3xp4d4ist-13
   term: ブラウザ
   yomi: ブラウザ
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-8kx7x5ukggw8-6
+- id: idx-y2st3d7roxr7-6
   term: JavaScript
   yomi: JavaScript
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-pezslwyuyf1g-24
+- id: idx-vyz5j6r94vye-24
   term: コンピュータ
   yomi: こんぴゅーた
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-t35jp0hgl010-12
+- id: idx-p5e0g3ey0z5b-12
   term: プログラミング
   yomi: ぷろぐらみんぐ
   file: '08-web'
   is_definition: false
   tag_type: span
-- id: idx-m7196tzjts18-6
+- id: idx-x5rw9ope0eh0-6
   term: CSS
   yomi: CSS
   file: 99-postface
   is_definition: false
   tag_type: span
-- id: idx-ydqkowoj1jex-5
+- id: idx-f4m3z2ozdbne-5
   term: HTML
   yomi: HTML
   file: 99-postface
   is_definition: false
   tag_type: span
-- id: idx-8kx7x5ukggw8-7
+- id: idx-y2st3d7roxr7-7
   term: JavaScript
   yomi: JavaScript
   file: 99-postface
   is_definition: false
   tag_type: span
-- id: idx-t35jp0hgl010-13
+- id: idx-p5e0g3ey0z5b-13
   term: プログラミング
   yomi: ぷろぐらみんぐ
   file: 99-postface
   is_definition: false
   tag_type: span
-- id: idx-t35jp0hgl010-14
+- id: idx-p5e0g3ey0z5b-14
   term: プログラミング
   yomi: ぷろぐらみんぐ
   file: 99-postface
   is_definition: false
   tag_type: span
-- id: idx-t35jp0hgl010-15
+- id: idx-p5e0g3ey0z5b-15
   term: プログラミング
   yomi: ぷろぐらみんぐ
   file: 99-postface
   is_definition: false
   tag_type: span
-- id: idx-t35jp0hgl010-16
+- id: idx-p5e0g3ey0z5b-16
   term: プログラミング
   yomi: ぷろぐらみんぐ
   file: 99-postface
   is_definition: false
   tag_type: span
-- id: idx-m7196tzjts18-7
+- id: idx-x5rw9ope0eh0-7
   term: CSS
   yomi: CSS
   file: 99-postface
   is_definition: false
   tag_type: span
-- id: idx-ydqkowoj1jex-6
+- id: idx-f4m3z2ozdbne-6
   term: HTML
   yomi: HTML
   file: 99-postface
   is_definition: false
   tag_type: span
-- id: idx-8kx7x5ukggw8-8
+- id: idx-y2st3d7roxr7-8
   term: JavaScript
   yomi: JavaScript
   file: 99-postface
   is_definition: false
   tag_type: span
-- id: idx-t35jp0hgl010-17
+- id: idx-p5e0g3ey0z5b-17
   term: プログラミング
   yomi: ぷろぐらみんぐ
   file: 99-postface
