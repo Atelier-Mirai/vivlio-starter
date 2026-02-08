@@ -27,8 +27,11 @@
 - [Low] 用語集・索引自動生成
 - [Medium] 用語集・索引自動生成 （それらしい専門用語を抽出して、`config/glossary.yml` に一括追加するタスク）
 - [Medium] build / metrics / delete など CLI コマンド間で共通のショートハンド展開ロジックを切り出し、catalog.yml ベースの章解決を一元化する。
-
-
+- [Medium] A4 以外の紙サイズを指定する（推奨文字サイズの確認）
+- [Medium] book.yml の chapters を、contents/と連動するように。
+- [Medium] 用語候補抽出と一括追加（glossary）: `contents/` を走査し `ABBR(Full Name)`/`Full Name(ABBR)` パターンを検出して候補一覧を作成。対話的に選択して `config/glossary.yml` に一括追加するタスク（例: `glossary:suggest` → `glossary:import_selected`）。※ 用語抽出のみ索引機能に包含して実装済み。
+- [Medium] 用語集の付録化（`config/glossary.yml` → 付録章に整形出力、名称/略称/説明/スタイルを一覧化）
+- [Medium] 初出ページ付き索引の生成（用語の文書走査→初出箇所のページ番号抽出→索引章に出力）
 
 ### Planned
 - [Medium] 見出しID・相互参照ショートコード（ref:foo → 自動リンク）。
@@ -37,15 +40,11 @@
 
 #### ビルド/出力
 - 00, 01, (blank), 02, (blank), 03, (blank), 11-98(cssにより右頁始まり), (blank), 99 として結合
-- [Medium] book.yml の chapters を、contents/と連動するように。
 - [High] 奥付が偶数ページになるように
-- [Medium] A4 以外の紙サイズを指定する（推奨文字サイズの確認）
 - [Medium] 出力バリアント PDF（裁ち落とし/ノンブル有無）、Web/EPUB（任意）。
-
 - [High] 日本語表記・組版Lint（スタイルガイド）
 - [High] リンク・画像の自動検証
 - [Medium] スペルチェック（辞書拡張対応）
-- [Medium] 用語候補抽出と一括追加（glossary）: `contents/` を走査し `ABBR(Full Name)`/`Full Name(ABBR)` パターンを検出して候補一覧を作成。対話的に選択して `config/glossary.yml` に一括追加するタスク（例: `glossary:suggest` → `glossary:import_selected`）。
 - [Medium] 基本的に良く用いる用語をまとめた用語集テンプレートを標準添付し、プロジェクト作成時または後から選択適用できるようにする。
 - [Medium] glossary `style: spacing` の実装（スペースの有無/種別の検出・自動修正）
 - [Medium] glossary `style: punctuation` の実装（コロン/ハイフン等の記号種別・位置の検出・自動修正）
@@ -53,8 +52,6 @@
 
 #### 参照・索引・書誌
 - [Low] 脚注・参考文献サポート（簡易BibTeX/CSL）
-- [Medium] 用語集の付録化（`config/glossary.yml` → 付録章に整形出力、名称/略称/説明/スタイルを一覧化）
-- [Medium] 初出ページ付き索引の生成（用語の文書走査→初出箇所のページ番号抽出→索引章に出力）
 
 #### コンテンツ/テンプレート
 - [High] 11-install.mdなどを、書き直す
