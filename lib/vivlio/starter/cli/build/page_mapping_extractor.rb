@@ -56,6 +56,7 @@ module Vivlio
             @preview_pid = nil
             @preview_url = nil
             @log_file = nil
+            @externally_managed = false
           end
 
           # ページマッピングを抽出するメインメソッド
@@ -77,7 +78,7 @@ module Vivlio
 
           private
 
-          attr_reader :port, :timeout_ms, :preview_pid
+          attr_reader :port, :timeout_ms, :preview_pid, :externally_managed
 
           # 必要な依存ツールの存在を確認
           def validate_dependencies!
@@ -95,7 +96,20 @@ module Vivlio
           # --- vivliostyle preview サーバーの管理 ---
 
           # preview サーバーをバックグラウンドで起動
+          # ポートが既に応答する場合は外部管理と見なし、起動をスキップする
           def start_preview_server!
+            if port_open?(DEFAULT_HOST, port)
+              @externally_managed = true
+              @preview_url = build_fallback_url
+              Common.log_info("[backlink-dedup] 既存の preview サーバーを検出しました (port: #{port})。起動をスキップします")
+              return
+            end
+
+            launch_preview_process!
+          end
+
+          # preview プロセスを新規起動する内部メソッド
+          def launch_preview_process!
             cmd = [
               'npx', 'vivliostyle', 'preview',
               '-c', 'vivliostyle.config.js',
@@ -149,9 +163,7 @@ module Vivlio
             end
           rescue Timeout::Error
             # フォールバック: 既知の URL パターンを使用
-            @preview_url = "http://#{DEFAULT_HOST}:#{port}/__vivliostyle-viewer/index.html" \
-                           "#src=http://#{DEFAULT_HOST}:#{port}/vivliostyle/publication.json" \
-                           '&bookMode=true&renderAllPages=true'
+            @preview_url = build_fallback_url
             Common.log_warn("[backlink-dedup] Preview URL をログから取得できませんでした。フォールバック URL を使用: #{@preview_url}")
           end
 
@@ -164,7 +176,12 @@ module Vivlio
           end
 
           # preview サーバーを停止
+          # 外部管理のサーバーは停止しない
           def stop_preview_server!
+            if externally_managed
+              Common.log_info('[backlink-dedup] 外部管理の preview サーバーのため停止をスキップします')
+              return
+            end
             return unless @preview_pid
 
             Common.log_info("[backlink-dedup] preview サーバーを停止します (PID: #{@preview_pid})")
@@ -177,6 +194,13 @@ module Vivlio
             end
             @preview_pid = nil
             cleanup_log_file!
+          end
+
+          # フォールバック用の Preview URL を組み立てる
+          def build_fallback_url
+            "http://#{DEFAULT_HOST}:#{port}/__vivliostyle-viewer/index.html" \
+              "#src=http://#{DEFAULT_HOST}:#{port}/vivliostyle/publication.json" \
+              '&bookMode=true&renderAllPages=true'
           end
 
           # テンポラリログファイルを削除
