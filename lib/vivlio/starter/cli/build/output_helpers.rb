@@ -23,6 +23,10 @@ module Vivlio
       module BuildCommands
         # ビルド結果出力ヘルパーモジュール
         module OutputHelpers
+          STEP5_LABEL        = 'Step  5 (convert sections html)'.freeze
+          STEP5B_LABEL       = 'Step 5b (generate part title pages)'.freeze
+          STEP5_AGG_LABEL    = 'Step  5 (generate sections / part pages)'.freeze
+
           # 単章ビルド実行前の Dry Run 結果を整形して表示する
           def print_single_chapter_dry_run(tokens)
             Common.echo_always "\n== Dry Run: ビルド予定一覧 =="
@@ -56,10 +60,11 @@ module Vivlio
 
           # ビルドタイミングをコンソールに出力する
           def print_build_timings(build_timings)
-            return if build_timings.empty?
+            aggregated, label_groups = aggregate_step_timings(build_timings)
+            return if aggregated.empty?
 
-            total = build_timings.map { |(_, dt)| dt }.inject(0.0, :+)
-            label_width = build_timings.map { |(label, _)| label.to_s.length }.max || 0
+            total = aggregated.map { |(_, dt)| dt }.inject(0.0, :+)
+            label_width = aggregated.map { |(label, _)| label.to_s.length }.max || 0
             label_width = [label_width, 'TOTAL'.length, 34].max
             value_width = 7
 
@@ -68,14 +73,15 @@ module Vivlio
             vs_map = vs_timings.group_by { |entry| entry[:label].to_s }
             sub_label = '(vivliostyle build)'
 
-            build_timings.each do |label, dt|
+            aggregated.each do |label, dt|
               raw_label = label.to_s
               value_text = format("%#{value_width}.2fs", dt)
               label_text = format("%-#{label_width}s", raw_label)
               line = "  - #{label_text} #{value_text}"
               Common.echo_always line
 
-              entries = vs_map[raw_label]
+              original_labels = label_groups[raw_label] || [raw_label]
+              entries = original_labels.flat_map { |original| vs_map[original] }.compact.flatten
               next unless entries&.any?
 
               value_start_idx = line.length - value_text.length
@@ -138,10 +144,11 @@ module Vivlio
 
           # timings_summary.md にビルドタイミングを記録する
           def save_timings_to_file(build_timings)
-            return if build_timings.empty?
+            aggregated, label_groups = aggregate_step_timings(build_timings)
+            return if aggregated.empty?
 
-            total = build_timings.map { |(_, dt)| dt }.inject(0.0, :+)
-            label_width = build_timings.map { |(label, _)| label.to_s.length }.max || 0
+            total = aggregated.map { |(_, dt)| dt }.inject(0.0, :+)
+            label_width = aggregated.map { |(label, _)| label.to_s.length }.max || 0
             label_width = [label_width, 'TOTAL'.length, 34].max
             value_width = 7
 
@@ -155,14 +162,15 @@ module Vivlio
             new_block << "````\n"
             new_block << '== Build Step Timings =='
 
-            build_timings.each do |label, dt|
+            aggregated.each do |label, dt|
               raw_label = label.to_s
               value_text = format("%#{value_width}.2fs", dt)
               label_text = format("%-#{label_width}s", raw_label)
               line = "  - #{label_text} #{value_text}"
               new_block << line
 
-              entries = vs_map[raw_label]
+              original_labels = label_groups[raw_label] || [raw_label]
+              entries = original_labels.flat_map { |original| vs_map[original] }.compact.flatten
               next unless entries&.any?
 
               paren_idx = line.index('(') || line.index(raw_label.strip) || 4
@@ -188,6 +196,31 @@ module Vivlio
               f.write("\n")
               f.write(previous.to_s)
             end
+          end
+
+          def aggregate_step_timings(build_timings)
+            label_groups = {}
+            aggregated = []
+            needs_merge = build_timings.any? { |label, _| label == STEP5_LABEL } &&
+                          build_timings.any? { |label, _| label == STEP5B_LABEL }
+
+            build_timings.each do |label, duration|
+              if needs_merge && (label == STEP5_LABEL || label == STEP5B_LABEL)
+                entry = aggregated.find { |(lbl, _)| lbl == STEP5_AGG_LABEL }
+                if entry
+                  entry[1] += duration
+                else
+                  aggregated << [STEP5_AGG_LABEL, duration]
+                end
+                label_groups[STEP5_AGG_LABEL] ||= []
+                label_groups[STEP5_AGG_LABEL] << label
+              else
+                aggregated << [label, duration]
+                label_groups[label] = [label]
+              end
+            end
+
+            [aggregated, label_groups]
           end
         end
       end
