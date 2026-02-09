@@ -34,13 +34,15 @@
 - [Medium] 初出ページ付き索引の生成（用語の文書走査→初出箇所のページ番号抽出→索引章に出力）
 - 00, 01, (blank), 02, (blank), 03, (blank), 11-98(cssにより右頁始まり), (blank), 99 として結合
 - [High] 奥付が偶数ページになるように
+- [High] 塗り足しやepub対応
+- [Medium] 出力バリアント PDF（裁ち落とし/ノンブル有無）、Web/EPUB（任意）。
+ビルドのマニュアルを書く
 
 ### Planned
 - [Medium] 見出しID・相互参照ショートコード（ref:foo → 自動リンク）。
 - [Medium] 章・節に対する相互参照の整備（章番号ベースの cross reference）。本文中から「第◯章」「第◯節」を参照する簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。
 
 #### ビルド/出力
-- [Medium] 出力バリアント PDF（裁ち落とし/ノンブル有無）、Web/EPUB（任意）。
 - [High] 日本語表記・組版Lint（スタイルガイド）
 - [High] リンク・画像の自動検証
 - [Medium] スペルチェック（辞書拡張対応）
@@ -55,8 +57,6 @@
 - [High] プロジェクト生成時に、.cache/vs/ を生成する。
 - [High] プロジェクト生成時に、project_scaffold/ を生成する。
 
-ビルドのマニュアルを書く
-- [High] 塗り足しやepub対応
 - [High] pdf_reader -> mdに
 
 ## Unreleased
@@ -69,6 +69,7 @@
 - **各章・目次・付録・用語集・索引・後書きの右ページ（奇数ページ）始まり**: CSS `break-before: recto` により、見開きレイアウトで各セクションが常に右ページから開始
 - **奥付の偶数ページ（左ページ）配置**: PDF 結合時に前方ページ数を計算し、必要に応じて空白ページを自動挿入
 - **中扉（Part Title Page）**: `catalog.yml` の部タイトル（Hash キー）から中扉ページを自動生成。`Build::PartTitleGenerator` が `.cache/vs/_part{N}.md` → `_part{N}.html` を生成し、Step 5b としてビルドパイプラインに統合。`stylesheets/part-title.css` で右ページ開始＋裏面白紙、ノンブル非表示の専用レイアウトを適用。
+- **EPUB 出力**: `output.targets` に `epub` を含めると、Step E で EPUB を自動生成。`Build::EpubBuilder` が EPUB 専用の `entries.epub.js`（目次・裏表紙を除外）と `vivliostyle.config.epub.js`（cover 埋め込み制御）を生成し、`vivliostyle build --config vivliostyle.config.epub.js` で EPUB を出力。`book.yml` の `output.epub.cover.embed` で表紙の埋め込み有無を制御（楽天/Apple 向け: true、Kindle 向け: false）。`layout: reflowable / fixed` でレイアウト方式を選択可能。フォントは埋め込まず汎用ファミリ指定。EPUB のみビルド（`targets: epub`）にも対応し、PDF 専用の Step 8（バックリンク重複排除）を自動スキップ。索引・用語集ページのリンクテキストには連番の章番号（0, 1, 2, …）を挿入し、EPUB リーダーでもクリック可能な索引を実現。カバー画像（`cover.jpg`）は `frontcover_master.png` から自動生成。`dc:identifier` は `project.name` をハッシュ化した決定的 UUID（URN）に置換し、バージョンを跨いでも同一作品であれば恒久的に同じ ID を維持。
 
 ### Changed
 - **索引モジュールのデッドコード整理**: Samovar 経由では到達しない `vs index:match` 系の CLI エントリと `execute_index_*` ヘルパー、旧 `index_terms.yml` マイグレーション処理、および対応するテストケースを削除し、現行の `index_glossary_terms.yml` ベース実装にコードを集約しました。

@@ -30,6 +30,7 @@ require_relative '../pre_process'
 require_relative '../convert'
 require_relative '../post_process'
 require_relative '../entries'
+require_relative '../epub'
 require_relative '../pdf'
 require_relative '../token_resolver'
 
@@ -214,6 +215,7 @@ module Vivlio
           end
 
           def open_generated_pdf(path)
+            return unless pdf_outputs_requested?
             return unless path && File.exist?(path)
 
             open_pdf(path)
@@ -222,6 +224,10 @@ module Vivlio
           end
 
           def open_pdf(path = nil)
+            unless pdf_outputs_requested?
+              Common.log_info('[open] output.targets に pdf/print_pdf が含まれないためスキップします')
+              return
+            end
             return unless defined?(Vivlio::Starter::CLI::PdfCommands::PdfOpener)
 
             Vivlio::Starter::CLI::PdfCommands::PdfOpener.new(pdf_command_options, path).call
@@ -235,6 +241,17 @@ module Vivlio
             targets = Build::PdfMerger.extract_targets(cfg.output&.targets)
             targets = Build::PdfMerger.extract_targets(cfg.output&.pdf&.targets) if targets.empty?
             targets.include?('print_pdf') && !targets.include?('pdf')
+          end
+
+          # pdf または print_pdf の出力が要求されているかを判定する
+          def pdf_outputs_requested?
+            cfg = Common::CONFIG
+            targets = Build::PdfMerger.extract_targets(cfg.output&.targets)
+            targets = Build::PdfMerger.extract_targets(cfg.output&.pdf&.targets) if targets.empty?
+
+            return true if targets.empty?
+
+            targets.any? { |target| target.include?('pdf') }
           end
 
           def pdf_command_options
