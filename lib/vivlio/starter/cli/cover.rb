@@ -342,7 +342,15 @@ module Vivlio
                        end
           return unless epub_cover
 
-          output_jpg = File.join(covers_dir, epub_cover)
+          # cover がネスト構造（embed + image）の場合は image を取得
+          image_name = case epub_cover
+                       when Hash then epub_cover[:image] || epub_cover['image'] || 'cover.jpg'
+                       when String then epub_cover
+                       else
+                         epub_cover.respond_to?(:image) ? (epub_cover.image || 'cover.jpg') : 'cover.jpg'
+                       end
+
+          output_jpg = File.join(covers_dir, image_name)
           return unless File.exist?(input_png)
 
           convert_cmd = imagemagick_convert_command

@@ -147,7 +147,10 @@ module Vivlio
             '_titlepage.md', '_legalpage.md', '_colophon.md', '_indexpage.html',
             '_index_matches.yml', '_index_review.md', '_index_glossary_review.md',
             # 中扉（Part Title Page）
-            '_part*.md'
+            '_part*.md',
+            # EPUB 中間ファイル
+            'vivliostyle.config.epub.js',
+            'entries.epub.js'
           ]
 
           intermediate_pdfs = [
@@ -175,7 +178,7 @@ module Vivlio
             # 単章PDF（例: 11-install.pdf, 81-install.pdf など）も削除
             # 既に個別に列挙している中間PDFと重複しても問題ない
             cleanup_patterns << '[0-9][0-9]-*.pdf'
-            # 動的ファイル名のPDFも削除対象に追加
+            # 動的ファイル名のPDFおよびEPUBも削除対象に追加
             add_dynamic_filename_patterns(cleanup_patterns)
           end
 
@@ -207,6 +210,8 @@ module Vivlio
           patterns << "#{project_name}*.pdf"
           patterns << "#{project_name}_v*.pdf"
           patterns << "#{project_name}_print*.pdf"
+          patterns << "#{project_name}*.epub"
+          patterns << "#{project_name}_v*.epub"
         end
 
         # bundled テーマ用に生成されたバリアント画像を削除する
@@ -280,8 +285,8 @@ module Vivlio
           cover_files << config.dig(:output, :print_pdf, :cover, :front)
           cover_files << config.dig(:output, :print_pdf, :cover, :back)
 
-          # EPUB用カバー
-          cover_files << config.dig(:output, :epub, :cover)
+          # EPUB用カバー（ネスト構造: output.epub.cover.image）
+          cover_files << config.dig(:output, :epub, :cover, :image)
 
           cover_files.compact!
 

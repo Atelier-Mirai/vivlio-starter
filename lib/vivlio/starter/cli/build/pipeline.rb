@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
+require 'digest'
+require 'tmpdir'
+
 require_relative 'backlink_dedup_orchestrator'
+require_relative 'epub_builder'
+require_relative '../cover'
 require_relative 'nombre_stamper'
 require_relative 'part_title_generator'
 
@@ -76,6 +81,7 @@ module Vivlio
           #   Step 11:    アウトライン付与
           #   Step 12:    リネーム・クリーンアップ
           #   Step 13:    入稿用PDF生成（print_pdf ターゲット時のみ）
+          #   Step E:     EPUB生成（epub ターゲット時のみ）
           def register_full_mode_steps
             # 共通ステップ（HTML 生成まで）
             register_common_prep_steps
@@ -83,13 +89,27 @@ module Vivlio
             if pdf_target? && print_pdf_target?
               # --- 閲覧用 + 入稿用の両方 ---
               register_pdf_build_steps
-              # Step 12 ではリネーム・圧縮のみ。クリーンアップは Step 13 後に延期
+              # Step 12 ではリネーム・圧縮のみ。クリーンアップは最後に延期
               add_step('Step 12 (rename)',                      -> { run_step12_rename_only })
               add_step('Step 13 (print pdf)',                   -> { run_step13_print_pdf })
+              # EPUB ターゲット時は EPUB → final clean の順
+              if epub_target?
+                add_step('Step E (generate epub)',              -> { run_step_epub })
+              end
               add_step('Step 14 (final clean)',                 -> { run_final_clean })
             elsif print_pdf_target?
               # --- 入稿用のみ（閲覧用 PDF をスキップ） ---
-              register_print_pdf_only_steps
+              register_print_pdf_only_steps_with_epub
+            elsif epub_target? && !pdf_target?
+              # --- EPUB のみ（PDF ビルドをスキップ） ---
+              register_epub_only_steps
+            elsif epub_target?
+              # --- 閲覧用 + EPUB ---
+              # クリーンアップは EPUB ビルド後に延期（HTML を保持するため）
+              register_pdf_build_steps
+              add_step('Step 12 (rename)',                      -> { run_step12_rename_only })
+              add_step('Step E (generate epub)',                -> { run_step_epub })
+              add_step('Step F (final clean)',                  -> { run_final_clean })
             else
               # --- 閲覧用のみ（従来どおり） ---
               register_pdf_build_steps
@@ -126,6 +146,20 @@ module Vivlio
             add_step('Step  8 (backlink dedup)',             -> { Build::BacklinkDedupOrchestrator.run!(entries) })
             add_step('Step  9 (build front pages html)',     -> { run_step9_front_pages_html_only })
             add_step('Step 10 (print pdf)',                  -> { run_step13_print_pdf })
+            add_step('Step 11 (final clean)',                -> { run_final_clean })
+          end
+
+          # print_pdf + epub: 入稿用 PDF 後に EPUB を生成し、最後にクリーンアップ
+          # epub ターゲットがない場合は register_print_pdf_only_steps にフォールバック
+          def register_print_pdf_only_steps_with_epub
+            add_step('Step  6 (generate toc html)',          -> { Build::TocGenerator.generate_toc_html!('.', entries) })
+            add_step('Step  7 (generate entries.js)',        -> { Build::PdfBuilder.generate_entries_for_sections!('.', entries) })
+            add_step('Step  8 (backlink dedup)',             -> { Build::BacklinkDedupOrchestrator.run!(entries) })
+            add_step('Step  9 (build front pages html)',     -> { run_step9_front_pages_html_only })
+            add_step('Step 10 (print pdf)',                  -> { run_step13_print_pdf })
+            if epub_target?
+              add_step('Step E (generate epub)',              -> { run_step_epub })
+            end
             add_step('Step 11 (final clean)',                -> { run_final_clean })
           end
 
@@ -518,6 +552,145 @@ module Vivlio
             FileUtils.rm_f(target_name)
             FileUtils.mv('output_print.pdf', target_name)
             Common.log_success("入稿用 PDF をリネームしました: output_print.pdf → #{target_name}")
+          end
+
+          # ================================================================
+          # EPUB ビルド
+          # ================================================================
+          # output.targets に epub が含まれる場合に実行。
+          # PDF ビルドで生成済みの HTML を再利用し、
+          # EPUB 専用 entries / config を生成して vivliostyle build --format epub を実行する。
+          # ================================================================
+
+          # output.targets に epub が含まれるかを判定する
+          def epub_target?
+            cfg = Common::CONFIG
+            targets = Build::PdfMerger.extract_targets(cfg.output&.targets)
+            targets.include?('epub')
+          end
+
+          # EPUB のみビルド（PDF ビルドをスキップ）
+          # 前付・奥付の HTML 生成は行うが、PDF 結合等はスキップ
+          # Step 8 (backlink dedup) は vivliostyle preview が必要なため除外
+          def register_epub_only_steps
+            add_step('Step  6 (generate toc html)',          -> { Build::TocGenerator.generate_toc_html!('.', entries) })
+            add_step('Step  9 (build front pages html)',     -> { run_step9_front_pages_html_only })
+            add_step('Step E (generate epub)',               -> { run_step_epub })
+            add_step('Step F (final clean)',                 -> { run_final_clean })
+          end
+
+          # EPUB ビルドのメインフロー
+          def run_step_epub
+            Common.log_action('[Step E] EPUB を生成します…')
+
+            # --- Phase: EPUB 用カバー画像生成 ---
+            generate_epub_cover_if_needed
+
+            # --- Phase: EPUB 用 entries.js 生成 ---
+            epub_htmls = Build::EpubBuilder.generate_epub_entries!('.', entries)
+            if epub_htmls.empty?
+              Common.log_warn('[Step E] EPUB 対象 HTML がありません。スキップします。')
+              return
+            end
+
+            # --- Phase: EPUB 用 vivliostyle.config.js 生成 ---
+            Build::EpubBuilder.generate_epub_config!
+
+            # --- Phase: Vivliostyle build ---
+            target_name = Common.generate_epub_filename
+            EpubCommands.execute_epub({}, target_name)
+
+            # --- Phase: EPUB identifier 安定化 ---
+            stabilize_epub_identifier!(target_name) if File.exist?(target_name)
+
+            # --- Phase: 中間ファイルクリーンアップ ---
+            Build::EpubBuilder.cleanup!
+          end
+
+          # EPUB の dc:identifier を書籍固有の決定的な UUID に置換する。
+          # プロジェクト名（config.project.name）が同一である限り、バージョンが変わっても
+          # UUID が変化しないため、電子書籍ストアでの差し替えが容易になる。
+          def stabilize_epub_identifier!(epub_path)
+            stable_id = stable_project_uuid
+            return unless stable_id
+
+            abs_epub = File.expand_path(epub_path)
+
+            Dir.mktmpdir('vs-epub-id') do |tmpdir|
+              system('unzip', '-o', abs_epub, 'EPUB/content.opf', '-d', tmpdir,
+                     out: File::NULL, err: File::NULL)
+              opf_path = File.join(tmpdir, 'EPUB', 'content.opf')
+              return unless File.exist?(opf_path)
+
+              content = File.read(opf_path, encoding: 'UTF-8')
+              replaced = content.sub(
+                %r{(<dc:identifier\s+id="bookid">)urn:uuid:[0-9a-f-]+(</dc:identifier>)},
+                "\\1#{stable_id}\\2"
+              )
+
+              if replaced == content
+                Common.log_info('[EPUB] identifier は既に安定化済みです')
+                return
+              end
+
+              File.write(opf_path, replaced)
+
+              Dir.chdir(tmpdir) do
+                system('zip', '-q', abs_epub, 'EPUB/content.opf',
+                       out: File::NULL, err: File::NULL)
+              end
+
+              Common.log_info("[EPUB] identifier を安定化しました: #{stable_id}")
+            end
+          rescue StandardError => e
+            Common.log_warn("[EPUB] identifier 安定化に失敗: #{e.message}")
+          end
+
+          # プロジェクト名から決定的に算出した UUID を urn:uuid: に載せて返す。
+          # プロジェクト名が未設定の場合は book.main_title を fallback とし、
+          # それでも空なら nil を返す。
+          def stable_project_uuid
+            project = Common::CONFIG.project
+            book    = Common::CONFIG.book
+            raw     = project&.name.to_s.strip
+            fallback = [book&.main_title, book&.subtitle].compact.join(' ').strip
+            base = raw.empty? ? fallback : raw
+            base = base.to_s.strip
+            return if base.empty?
+
+            normalized = base.downcase
+            hex = Digest::SHA1.hexdigest(normalized)
+            uuid = [
+              hex[0, 8],
+              hex[8, 4],
+              hex[12, 4],
+              hex[16, 4],
+              hex[20, 12]
+            ].join('-')
+            "urn:uuid:#{uuid}"
+          end
+
+          # EPUB 用カバー画像を生成（cover.jpg が未生成の場合のみ）
+          def generate_epub_cover_if_needed
+            config = Common::CONFIG
+            cover_path = Build::EpubBuilder.resolve_cover_image_path(config)
+
+            if cover_path && File.exist?(cover_path)
+              Common.log_info("[EPUB] カバー画像は既に存在します: #{cover_path}")
+              return
+            end
+
+            covers_dir = config.directories&.covers || 'covers'
+            master = File.join(covers_dir, CoverCommands::FRONTCOVER_MASTER)
+            unless File.exist?(master)
+              Common.log_warn("[EPUB] マスター画像が見つかりません: #{master}（カバー画像なしで続行）")
+              return
+            end
+
+            Common.log_action('[EPUB] カバー画像を生成しています…')
+            # CoverCommands は Hash（シンボルキー）を期待するので変換
+            config_hash = Common.load_config
+            CoverCommands.generate_epub_cover(covers_dir, config_hash)
           end
 
           # Step 4: 索引処理を実行
