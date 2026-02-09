@@ -113,6 +113,7 @@ module Vivlio
           def resolve_chapter_css(file_type, existing_frontmatter)
             return existing_frontmatter['stylesheet'] if existing_frontmatter['stylesheet']
             return 'chapter.css' if file_type == 'chapter'
+            return 'part-title.css' if file_type == 'part_title'
 
             "#{file_type}.css"
           end

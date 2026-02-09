@@ -1,0 +1,55 @@
+@charset "utf-8";
+
+@import url("base.css");
+@import url("theme.css");
+@import url("page-settings.css");
+
+/*
+  プロパティ並び順ガイドライン
+  --------------------------------------------------
+  各ルール内のプロパティは下記の順で記述する。
+  1) layout        : display / position / float / break-* / z-index / inset-*
+  2) box-size      : width / height / inline-size / block-size / box-sizing
+  3) spacing       : margin-* → padding-*（論理プロパティ優先）
+  4) typography    : font-* / line-height / text-* / letter-spacing
+  5) alignment     : text-align / align-* / justify-*
+  6) visual        : color / background / border / outline / shadow / opacity
+  7) counters/meta : counter-* / string-set / content などのメタ情報
+*/
+
+/* =====================================================================
+   Part Title Page (中扉)
+   =====================================================================
+   各部の先頭に挿入される見開き右ページ。
+   部タイトルのみを印刷し、裏面（偶数ページ）は白紙とする。
+   ===================================================================== */
+
+/* --- layout --- */
+.part-title {
+  break-before: recto;
+  break-after: left;
+  page: part-title;
+}
+
+/* --- @page: ノンブル・柱を非表示 --- */
+@page part-title {
+  margin: 0;
+  padding: 0;
+  @top-left { content: none; }
+  @top-right { content: none; }
+  @bottom-center { content: none; }
+}
+
+/* --- typography --- */
+.part-title h1 {
+  /* spacing */
+  margin-block-start: 30%;
+
+  /* typography */
+  font-size: 1.8rem;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+
+  /* alignment */
+  text-align: center;
+}

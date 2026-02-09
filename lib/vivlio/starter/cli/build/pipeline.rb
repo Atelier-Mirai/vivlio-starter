@@ -2,6 +2,7 @@
 
 require_relative 'backlink_dedup_orchestrator'
 require_relative 'nombre_stamper'
+require_relative 'part_title_generator'
 
 module Vivlio
   module Starter
@@ -104,6 +105,7 @@ module Vivlio
             add_step('Step  3 (preprocess sections)',         -> { Build::SectionBuilder.preprocess_sections!(entries) })
             add_step('Step  4 (index scan and build)',        -> { run_step4_index_processing })
             add_step('Step  5 (convert sections html)',       -> { Build::SectionBuilder.convert_sections_html!(entries) })
+            add_step('Step 5b (generate part title pages)',  -> { Build::PartTitleGenerator.generate_all! })
           end
 
           # Steps 6-11: 閲覧用 PDF のビルド・結合・アウトライン
