@@ -54,12 +54,16 @@ module Vivlio
                            []
                          end
 
-            # 書籍構成順序: 前書き → 目次 → 本文 → 付録 → 用語集 → 後書き → 索引
+            # 本文章 HTML に中扉を挿入（部タイトルが定義されている場合）
+            main_htmls = Build::ChapterConfig.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers_main)
+            main_htmls_with_parts = Build::PartTitleGenerator.insert_part_titles_into(main_htmls, base_dir)
+
+            # 書籍構成順序: 前書き → 目次 → [中扉+本文] → 付録 → 用語集 → 後書き → 索引
             # ※ 00-preface, _toc を先頭に含めることで target-counter が正しく解決される
             chapter_htmls_for_pdf = [
               preface_html,
               toc_html,
-              Build::ChapterConfig.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers_main),
+              main_htmls_with_parts,
               Build::ChapterConfig.htmls_for_range(base_dir, APPX_RANGE, keep_numbers_appx),
               glossary_html,
               Build::ChapterConfig.htmls_for_range(base_dir, POSTFACE_RANGE, keep_numbers_post),
@@ -91,10 +95,14 @@ module Vivlio
             glossary_html = IndexCommands.index_enabled? ? [File.join(base_dir, '_glossarypage.html')].select { |f| File.exist?(f) } : []
             index_html = IndexCommands.index_enabled? ? [File.join(base_dir, '_indexpage.html')].select { |f| File.exist?(f) } : []
 
+            # 本文章 HTML に中扉を挿入（部タイトルが定義されている場合）
+            main_htmls = Build::ChapterConfig.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers_main)
+            main_htmls_with_parts = Build::PartTitleGenerator.insert_part_titles_into(main_htmls, base_dir)
+
             chapter_htmls_for_pdf = [
               preface_html,
               toc_html,
-              Build::ChapterConfig.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers_main),
+              main_htmls_with_parts,
               Build::ChapterConfig.htmls_for_range(base_dir, APPX_RANGE, keep_numbers_appx),
               glossary_html,
               Build::ChapterConfig.htmls_for_range(base_dir, POSTFACE_RANGE, keep_numbers_post),

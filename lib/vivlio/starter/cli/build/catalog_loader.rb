@@ -223,6 +223,41 @@ module Vivlio
             files.map { |f| File.basename(f, '.md') }
           end
 
+          # catalog.yml から部タイトル情報を抽出する
+          # CHAPTERS 配列内の Hash キーを部タイトルとして認識し、出現順に番号を付与する
+          # @return [Array<Hash>] 部情報の配列
+          #   各要素: { number:, title:, first_chapter:, chapters: }
+          def load_part_titles
+            catalog = load_catalog
+            items = catalog['CHAPTERS']
+            return [] unless items.is_a?(Array)
+
+            part_number = 0
+            items.filter_map do |item|
+              next unless item.is_a?(Hash)
+
+              item.filter_map do |title, sub_items|
+                chapter_basenames = flatten_section(sub_items)
+                # 章が0件の部（全コメントアウト等）はスキップ
+                next if chapter_basenames.empty?
+
+                part_number += 1
+                first_chapter_num = chapter_basenames.first&.then { extract_chapter_number(it) }
+
+                { number: part_number, title: title.to_s,
+                  first_chapter: first_chapter_num, chapters: chapter_basenames }
+              end
+            end.flatten
+          end
+
+          # 特殊ページ（システム生成）かどうかを判定する
+          # _titlepage, _colophon 等の固定ページに加え、_part{N} も対象
+          # @param basename [String]
+          # @return [Boolean]
+          def special_page?(basename)
+            SPECIAL_PAGES.include?(basename) || basename.match?(/\A_part\d+\z/)
+          end
+
           # basename から章番号を抽出
           # @param basename [String]
           # @return [Integer, nil]

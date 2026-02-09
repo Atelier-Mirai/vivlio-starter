@@ -188,8 +188,8 @@ output:
   # ----------------------------
   # 出力フォーマット
   # ----------------------------
-  # targets: pdf  # pdf / print_pdf / epub
-  targets: print_pdf  # pdf / print_pdf / epub
+  targets: pdf  # pdf / print_pdf / epub
+  # targets: print_pdf  # pdf / print_pdf / epub
   # 文字列、カンマ区切り、配列すべて可
   # 例:
   # targets: pdf              # 単一指定

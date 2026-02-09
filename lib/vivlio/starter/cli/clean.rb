@@ -145,7 +145,9 @@ module Vivlio
             '[0-9][0-9]-*.md',
             # 内部 basename 方式の特殊ページ
             '_titlepage.md', '_legalpage.md', '_colophon.md', '_indexpage.html',
-            '_index_matches.yml', '_index_review.md', '_index_glossary_review.md'
+            '_index_matches.yml', '_index_review.md', '_index_glossary_review.md',
+            # 中扉（Part Title Page）
+            '_part*.md'
           ]
 
           intermediate_pdfs = [

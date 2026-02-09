@@ -107,10 +107,11 @@ module Vivlio
           end
 
           # 章HTMLの最新性をチェックし、必要なら再生成
-          # _titlepage/_legalpage/_colophon は .cache/vs/ から参照する
+          # _titlepage/_legalpage/_colophon/_part{N} は .cache/vs/ から参照する
           def ensure_chapter_html_up_to_date!(basename, extra_sources: [])
             html_path = File.join('.', "#{basename}.html")
-            dir = TokenResolver::Resolver::CACHED_SYSTEM_FILES.include?(basename) ? Common::CACHE_DIR : Common::CONTENTS_DIR
+            cached = TokenResolver::Resolver::CACHED_SYSTEM_FILES.include?(basename) || basename.match?(/\A_part\d+\z/)
+            dir = cached ? Common::CACHE_DIR : Common::CONTENTS_DIR
             md_path = File.join(dir, "#{basename}.md")
             sources = [md_path, *Array(extra_sources)].compact
 

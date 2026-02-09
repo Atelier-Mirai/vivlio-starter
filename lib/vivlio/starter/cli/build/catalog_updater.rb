@@ -28,27 +28,34 @@ module Vivlio
     module CLI
       module Build
         # catalog.yml の自動更新モジュール
+        # テキストベースで行単位に編集し、コメント行（# - 02-history 等）を完全に保持する
         module CatalogUpdater
           module_function
 
           CATALOG_FILE = CatalogLoader::CATALOG_FILE
 
+          # ================================================================
+          # Public API
+          # ================================================================
+
           # 章を catalog.yml に追加
           # @param basename [String] 追加する章の basename（拡張子なし）
           def add_chapter(basename)
-            catalog = load_or_create_catalog
+            unless File.exist?(CATALOG_FILE)
+              create_initial_catalog_with(basename)
+              Common.log_info("catalog.yml を作成し #{basename} を追加しました")
+              return
+            end
+
+            lines = read_catalog_lines
             section = section_for_basename(basename)
 
-            # セクションが存在しない場合は作成
-            catalog[section] ||= []
+            # 既にアクティブ（非コメント）として存在する場合はスキップ
+            return if active_entry_exists?(lines, basename)
 
-            # 既に存在する場合は何もしない
-            return if catalog[section].include?(basename)
-
-            # 適切な位置に挿入
-            insert_basename_to_section(catalog, section, basename)
-
-            save_catalog(catalog)
+            insert_idx, indent = find_text_insertion_point(lines, section, basename)
+            lines.insert(insert_idx, "#{indent}- #{basename}")
+            write_catalog_lines(lines)
             Common.log_info("catalog.yml に #{basename} を追加しました（#{section}）")
           end
 
@@ -57,23 +64,13 @@ module Vivlio
           def remove_chapter(basename)
             return unless File.exist?(CATALOG_FILE)
 
-            catalog = CatalogLoader.load_catalog
-            removed = false
+            lines = read_catalog_lines
+            idx = find_active_entry_line(lines, basename)
+            return unless idx
 
-            CatalogLoader::SECTION_KEYS.each do |section|
-              items = catalog[section]
-              next unless items.is_a?(Array)
-
-              # フラット化して検索・削除
-              if remove_from_items(items, basename)
-                removed = true
-              end
-            end
-
-            if removed
-              save_catalog(catalog)
-              Common.log_info("catalog.yml から #{basename} を削除しました")
-            end
+            lines.delete_at(idx)
+            write_catalog_lines(lines)
+            Common.log_info("catalog.yml から #{basename} を削除しました")
           end
 
           # 章の basename を変更
@@ -82,36 +79,24 @@ module Vivlio
           def rename_chapter(old_basename, new_basename)
             return unless File.exist?(CATALOG_FILE)
 
-            catalog = CatalogLoader.load_catalog
-            old_section = nil
+            old_section = section_for_basename(old_basename)
             new_section = section_for_basename(new_basename)
 
-            # 旧 basename を探して削除
-            CatalogLoader::SECTION_KEYS.each do |section|
-              items = catalog[section]
-              next unless items.is_a?(Array)
-
-              if remove_from_items(items, old_basename)
-                old_section = section
-                break
-              end
-            end
-
-            return unless old_section
-
-            # セクションが変わる場合（例: 11 → 91）
             if old_section == new_section
-              # 同じセクション内でリネーム
-              insert_basename_to_section(catalog, old_section, new_basename)
-              Common.log_info("catalog.yml: #{old_basename} → #{new_basename}")
+              # 同一セクション内: 行内の basename を置換
+              lines = read_catalog_lines
+              idx = find_active_entry_line(lines, old_basename)
+              if idx
+                lines[idx] = lines[idx].sub(old_basename, new_basename)
+                write_catalog_lines(lines)
+                Common.log_info("catalog.yml: #{old_basename} → #{new_basename}")
+              end
             else
-              # 新しいセクションに追加
-              catalog[new_section] ||= []
-              insert_basename_to_section(catalog, new_section, new_basename)
+              # セクション変更: 削除 → 追加
+              remove_chapter(old_basename)
+              add_chapter(new_basename)
               Common.log_info("catalog.yml: #{old_basename} → #{new_basename}（#{old_section} → #{new_section}）")
             end
-
-            save_catalog(catalog)
           end
 
           # basename から適切なセクションを決定
@@ -124,272 +109,213 @@ module Vivlio
             CatalogLoader.section_for_chapter_number(num)
           end
 
+          # ================================================================
+          # Private: ファイル I/O
+          # ================================================================
 
+          # catalog.yml を行配列として読み込む
+          def read_catalog_lines
+            File.readlines(CATALOG_FILE, encoding: 'utf-8', chomp: true)
+          end
 
-          # catalog.yml を読み込み、存在しない場合は空のカタログを作成
-          def load_or_create_catalog
-            if File.exist?(CATALOG_FILE)
-              CatalogLoader.load_catalog
-            else
-              {
-                'PREFACE' => [],
-                'CHAPTERS' => [],
-                'APPENDICES' => [],
-                'POSTFACE' => []
+          # 行配列を catalog.yml に書き戻す
+          def write_catalog_lines(lines)
+            FileUtils.mkdir_p(File.dirname(CATALOG_FILE))
+            File.write(CATALOG_FILE, lines.join("\n") + "\n", encoding: 'utf-8')
+          end
+
+          # ================================================================
+          # Private: 行検索
+          # ================================================================
+
+          # アクティブ（非コメント）エントリ行のインデックスを返す
+          # @return [Integer, nil]
+          def find_active_entry_line(lines, basename)
+            lines.index do |l|
+              stripped = l.strip
+              stripped == "- #{basename}" || stripped == "- #{basename}.md"
+            end
+          end
+
+          # アクティブエントリとして存在するかチェック
+          def active_entry_exists?(lines, basename)
+            !!find_active_entry_line(lines, basename)
+          end
+
+          # 行から basename を抽出（アクティブ/コメント両方対応）
+          # 例: "      - 21-html" → "21-html"
+          #     "      # - 22-css" → "22-css"
+          # @return [String, nil]
+          def extract_basename_from_line(line)
+            return unless line.match?(/^\s+#?\s*-\s+\S/)
+
+            line.strip
+                .sub(/^#\s*/, '')
+                .sub(/^-\s+/, '')
+                .sub(/\.md\s*$/, '')
+                .strip
+          end
+
+          # ================================================================
+          # Private: セクション・部タイトル構造の解析
+          # ================================================================
+
+          # セクションの行範囲を特定
+          # @return [Array(Integer, Integer)] [開始行, 終了行]
+          def find_section_boundaries(lines, section)
+            start_idx = lines.index { |l| l.strip == "#{section}:" }
+            return [nil, nil] unless start_idx
+
+            # 次のセクションヘッダーを探す
+            next_section_idx = nil
+            (start_idx + 1...lines.length).each do |idx|
+              if CatalogLoader::SECTION_KEYS.any? { lines[idx].strip == "#{it}:" }
+                next_section_idx = idx
+                break
+              end
+            end
+
+            end_idx = (next_section_idx || lines.length) - 1
+
+            # 末尾の空行・セクションコメント行を除外
+            while end_idx > start_idx &&
+                  (lines[end_idx].strip.empty? || lines[end_idx].match?(/^#/))
+              end_idx -= 1
+            end
+
+            [start_idx, end_idx]
+          end
+
+          # セクション内の部タイトル範囲を検出
+          # @return [Array<Hash>] { title:, header:, content_start:, end: }
+          def detect_part_ranges(lines, section_start, section_end)
+            parts = []
+
+            (section_start + 1..section_end).each do |idx|
+              line = lines[idx]
+              next if line.match?(/^\s+#/)  # コメント行はスキップ
+
+              # 部タイトル: インデントされたリスト項目で末尾が ":"
+              next unless line.match?(/^\s+-\s+.+:\s*$/)
+
+              parts << {
+                title: line.strip.sub(/^-\s+/, '').sub(/:\s*$/, ''),
+                header: idx,
+                content_start: idx + 1
               }
             end
+
+            # 各部の終了行を設定
+            parts.each_with_index do |part, idx|
+              part[:end] = if idx + 1 < parts.length
+                             parts[idx + 1][:header] - 1
+                           else
+                             section_end
+                           end
+            end
+
+            parts
           end
 
-          # セクションの適切な位置に basename を挿入
-          def insert_basename_to_section(catalog, section, basename)
-            items = catalog[section] ||= []
+          # 章番号から所属する部を特定（コメント行も含めて判定）
+          # @return [Hash, nil] 対象の部情報
+          def determine_target_part(lines, parts, chapter_num)
+            part_infos = parts.map do |part|
+              nums = (part[:content_start]..part[:end]).filter_map do |idx|
+                bn = extract_basename_from_line(lines[idx])
+                bn && CatalogLoader.extract_chapter_number(bn)
+              end
+              part.merge(min_num: nums.min, max_num: nums.max)
+            end
 
-            # ショートハンドが含まれている場合はフラット化
-            flatten_if_needed!(items)
+            part_infos.each_with_index do |part, idx|
+              next_min = part_infos[idx + 1]&.dig(:min_num)
+              if (part[:min_num].nil? || chapter_num >= part[:min_num]) &&
+                 (next_min.nil? || chapter_num < next_min)
+                return part
+              end
+            end
 
-            # 章番号でソートして挿入
+            part_infos.last
+          end
+
+          # ================================================================
+          # Private: 挿入位置の計算
+          # ================================================================
+
+          # テキスト内の挿入位置とインデントを計算
+          # @return [Array(Integer, String)] [挿入行インデックス, インデント文字列]
+          def find_text_insertion_point(lines, section, basename)
             num = CatalogLoader.extract_chapter_number(basename) || 0
-            insert_index = items.find_index do |item|
-              item_num = CatalogLoader.extract_chapter_number(item.to_s) || 0
-              item_num > num
-            end
+            section_start, section_end = find_section_boundaries(lines, section)
 
-            if insert_index
-              items.insert(insert_index, basename)
-            else
-              items << basename
-            end
-          end
-
-          # 配列内にショートハンド（数字範囲）があればフラット化
-          def flatten_if_needed!(items)
-            return if items.empty?
-
-            expanded = []
-            items.each do |item|
-              if item.is_a?(String) && CatalogLoader.shorthand?(item)
-                # ショートハンドを展開
-                expanded.concat(CatalogLoader.expand_shorthand(item))
-              elsif item.is_a?(Hash)
-                # 部タイトル付きの場合、配下を再帰的に処理
-                item.each do |_title, sub_items|
-                  flatten_if_needed!(sub_items) if sub_items.is_a?(Array)
-                end
-                expanded << item
-              else
-                expanded << item
-              end
-            end
-
-            items.replace(expanded)
-          end
-
-          # 配列から basename を削除（部タイトル配下も再帰的に検索）
-          def remove_from_items(items, basename)
-            removed = false
-
-            items.reject! do |item|
-              if item.is_a?(String)
-                if item == basename || item == "#{basename}.md"
-                  removed = true
-                  true
-                else
-                  false
-                end
-              elsif item.is_a?(Hash)
-                # 部タイトル配下を検索
-                item.each_value do |sub_items|
-                  if sub_items.is_a?(Array) && remove_from_items(sub_items, basename)
-                    removed = true
-                  end
-                end
-                false
-              else
-                false
-              end
-            end
-
-            removed
-          end
-
-          # catalog.yml を保存（コメントを保持）
-          def save_catalog(catalog)
-            FileUtils.mkdir_p(File.dirname(CATALOG_FILE))
-
-            # 元のファイルからコメント構造を抽出
-            comment_structure = extract_comment_structure
-
-            # コメント付きで YAML を生成
-            output = generate_yaml_preserving_comments(catalog, comment_structure)
-
-            File.write(CATALOG_FILE, output, encoding: 'utf-8')
-          end
-
-          # 元のファイルからコメント構造を抽出
-          # @return [Hash] :header, :section_comments, :footer を含むハッシュ
-          def extract_comment_structure
-            default_structure = {
-              header: default_header_comments,
-              section_comments: default_section_comments,
-              footer: default_footer_comments
-            }
-
-            return default_structure unless File.exist?(CATALOG_FILE)
-
-            lines = File.readlines(CATALOG_FILE, encoding: 'utf-8', chomp: true)
-            return default_structure if lines.empty?
-
-            yaml_section_pattern = /^(PREFACE|CHAPTERS|APPENDICES|POSTFACE):/
-
-            # 各セクションの開始位置を特定
-            section_positions = {}
-            lines.each_with_index do |line, idx|
-              next unless (m = line.match(yaml_section_pattern))
-
-              section_positions[m[1]] = idx
-            end
-
-            return default_structure if section_positions.empty?
-
-            # 最初のセクションより前がヘッダー
-            first_section_idx = section_positions.values.min
-            header_lines = lines[0...first_section_idx]
-
-            # 最後のセクションより後のコメント行がフッター
-            last_section_key = section_positions.max_by { |_k, v| v }[0]
-            last_section_idx = section_positions[last_section_key]
-
-            # 最後のセクションの終了位置を探す（次のコメントブロックまで）
-            footer_start_idx = nil
-            (last_section_idx + 1...lines.length).each do |idx|
-              line = lines[idx]
-              # YAML の配列項目または空行はスキップ
-              next if line.match?(/^\s*-\s/) || line.strip.empty?
-
-              # コメント行に到達したらフッター開始
-              if line.start_with?('#')
-                footer_start_idx = idx
-                break
-              end
-            end
-
-            footer_lines = footer_start_idx ? lines[footer_start_idx..] : []
-
-            # ヘッダーから各セクションの直前コメントを抽出
-            section_comments = {}
-            pending_comments = []
-
-            header_lines.each do |line|
-              if line.start_with?('#') || line.strip.empty?
-                pending_comments << line
-              else
-                pending_comments.clear
-              end
-            end
-
-            # 各セクション直前のコメントを抽出（空行で区切られるまで）
-            sorted_sections = section_positions.sort_by { |_k, v| v }
-
-            sorted_sections.each_with_index do |(section_key, section_idx), i|
-              if i == 0
-                # 最初のセクション: ヘッダーの末尾から空行までを抽出
-                comments = extract_comments_before_index(header_lines, header_lines.length)
-                section_comments[section_key] = comments
-              else
-                # 2番目以降のセクション: 前のセクションの終わりから現在のセクションまで
-                prev_section_idx = sorted_sections[i - 1][1]
-                between_lines = lines[(prev_section_idx + 1)...section_idx]
-                comments = extract_comments_before_index(between_lines, between_lines.length)
-                section_comments[section_key] = comments
-              end
-            end
-
-            # ヘッダーからセクションコメントを除去
-            first_section_key = sorted_sections.first[0]
-            first_section_comments = section_comments[first_section_key] || []
-            header_without_section_comments = header_lines.dup
-            first_section_comments.each do |comment|
-              # 末尾から削除
-              idx = header_without_section_comments.rindex(comment)
-              header_without_section_comments.delete_at(idx) if idx
-            end
-            # 末尾の空行を除去
-            header_without_section_comments.pop while header_without_section_comments.last&.strip&.empty?
-
-            {
-              header: header_without_section_comments.join("\n"),
-              section_comments: section_comments,
-              footer: footer_lines.join("\n")
-            }
-          end
-
-          # 配列の末尾から、空行で区切られた直前のコメント行のみを抽出（非破壊的）
-          # 空行があった場合、その前のコメントは含めない
-          def extract_comments_before_index(lines, _end_idx)
-            return [] if lines.empty?
-
-            comments = []
-            found_empty = false
-
-            lines.reverse_each do |line|
-              if line.strip.empty?
-                # 空行に到達 → これより前は含めない
-                found_empty = true
-                break
-              elsif line.start_with?('#')
-                comments.unshift(line)
-              else
-                # コメントでも空行でもない → 終了
-                break
-              end
-            end
-
-            # 空行が見つからず全てがコメントだった場合、最後のコメントブロックのみ返す
-            comments
-          end
-
-          # コメントを保持しながら YAML を生成
-          def generate_yaml_preserving_comments(catalog, comment_structure)
-            lines = []
-
-            # ヘッダーコメント
-            header = comment_structure[:header]
-            unless header.empty?
-              lines << header
-              lines << '' # ヘッダー後に空行
-            end
-
-            section_comments = comment_structure[:section_comments]
-
-            CatalogLoader::SECTION_KEYS.each do |section|
-              # セクションコメント
-              comments = section_comments[section] || default_section_comments[section] || []
-              comments.each { |c| lines << c }
-
-              # セクションキーと値
-              items = catalog[section] || []
+            # セクションが見つからない場合、末尾にセクションヘッダーを追加
+            unless section_start
+              lines << ''
               lines << "#{section}:"
-
-              items.each do |item|
-                if item.is_a?(String)
-                  lines << "  - #{item}"
-                elsif item.is_a?(Hash)
-                  # 部タイトル付きの場合
-                  item.each do |title, sub_items|
-                    lines << "  - #{title}:"
-                    sub_items.each { |sub| lines << "      - #{sub}" } if sub_items.is_a?(Array)
-                  end
-                end
-              end
-
-              lines << '' # セクション間に空行
+              return [lines.length, '  ']
             end
 
-            # フッターコメント
-            footer = comment_structure[:footer]
-            lines << footer unless footer.empty?
+            # 部タイトル構造を検出
+            parts = detect_part_ranges(lines, section_start, section_end)
 
-            lines.join("\n")
+            if parts.any?
+              target = determine_target_part(lines, parts, num)
+              if target
+                return find_sorted_insert_in_range(
+                  lines, target[:content_start], target[:end], num, '      '
+                )
+              end
+            end
+
+            # フラットなセクション
+            find_sorted_insert_in_range(lines, section_start + 1, section_end, num, '  ')
+          end
+
+          # 範囲内で章番号順の挿入位置を検索（コメント行も含めてソート位置を計算）
+          # @return [Array(Integer, String)] [挿入行インデックス, インデント文字列]
+          def find_sorted_insert_in_range(lines, range_start, range_end, num, indent)
+            last_entry_idx = range_start - 1
+
+            (range_start..range_end).each do |idx|
+              bn = extract_basename_from_line(lines[idx])
+              next unless bn
+
+              entry_num = CatalogLoader.extract_chapter_number(bn)
+              next unless entry_num
+
+              return [idx, indent] if entry_num > num
+
+              last_entry_idx = idx
+            end
+
+            [last_entry_idx + 1, indent]
+          end
+
+          # ================================================================
+          # Private: 初期ファイル作成
+          # ================================================================
+
+          # catalog.yml が存在しない場合に初期作成
+          def create_initial_catalog_with(basename)
+            section = section_for_basename(basename)
+            output = []
+
+            output << default_header_comments
+            output << ''
+
+            CatalogLoader::SECTION_KEYS.each do |key|
+              comments = default_section_comments[key] || []
+              comments.each { output << it }
+              output << "#{key}:"
+              output << "  - #{basename}" if key == section
+              output << ''
+            end
+
+            output << default_footer_comments
+
+            FileUtils.mkdir_p(File.dirname(CATALOG_FILE))
+            File.write(CATALOG_FILE, output.join("\n") + "\n", encoding: 'utf-8')
           end
 
           # デフォルトのヘッダーコメント
@@ -410,7 +336,7 @@ module Vivlio
             {
               'PREFACE' => ['## まえがき'],
               'CHAPTERS' => ['## 本文'],
-              'APPENDICES' => ['# ## 付録'],
+              'APPENDICES' => ['## 付録'],
               'POSTFACE' => ['# ## あとがき']
             }
           end

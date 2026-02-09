@@ -144,6 +144,10 @@ module Vivlio
               return instantiate_system_entry(token, system_kind)
             end
 
+            # 1b. 中扉（_part{N}）の動的パターンマッチ
+            # catalog.yml の部タイトルから自動生成されるシステムページ
+            return instantiate_system_entry(token, :part_title) if token.match?(/\A_part\d+\z/)
+
             # 2. 形式チェック: 数字で始まらないものは即座に invalid
             return instantiate_invalid_entry(token) unless token.match?(/\A\d+/)
 
@@ -220,7 +224,8 @@ module Vivlio
           # number を nil に設定することで、basename がファイル名そのもの（例: _toc）になる。
           # _titlepage/_legalpage/_colophon は .cache/vs/ に配置される
           def instantiate_system_entry(token, kind)
-            dir = CACHED_SYSTEM_FILES.include?(token) ? Common::CACHE_DIR : contents_dir
+            cached = CACHED_SYSTEM_FILES.include?(token) || token.match?(/\A_part\d+\z/)
+            dir = cached ? Common::CACHE_DIR : contents_dir
             path = File.join(dir, "#{token}.md")
             Entry.new(
               number: nil,
