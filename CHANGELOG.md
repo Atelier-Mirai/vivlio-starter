@@ -63,6 +63,14 @@
 （次回リリース候補の変更はここに追加してください）
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## 0.31.0 - 2026-02-12
+
+### Added
 - **印刷入稿用 PDF（print_pdf）生成**: `output.targets` に `print_pdf` を含めると、Step 13 でトンボ・塗り足し付き PDF を自動生成。`--crop-marks --bleed 3mm` で Vivliostyle build → PDF 結合 → HexaPDF による隠しノンブル書き込み → アウトライン付与 → リネームの一連を実行。PDF/X-4 準拠で主要同人印刷所（ねこのしっぽ、日光企画）に対応
 - **lint 出力の再整形フォーマッター** 列番号除去・ルール名括弧化・冗長部除去・英語メッセージ日本語化・ファイルパス相対化、サマリ行ノイズ除去、末尾ルール名の付与、unmatched-pair 日本語化、ファイル見出しの余白整理
 - **lint コマンドの章指定解釈を TokenResolver に統一** 独自 TargetResolver を廃止し、ゼロ埋め・降順レンジ・カンマ区切り等を他コマンドと同一ロジックで処理
@@ -695,16 +703,32 @@
 - バージョンファイル追加: `lib/vivlio/starter/version.rb`（0.1.0）
 - README にインストール方法・CLI の使い方・リリース手順を追記
 
-<span id="idx-jwp4deen9jrc-2" class="index-term" data-yomi="Unreleased">Unreleased</span>: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.9.0...HEAD
-<span id="idx-al1ru8k8ee7q-2" class="index-term" data-yomi="0.9.0">0.9.0</span>: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.8.2...v0.9.0
-<span id="idx-r3yips3j319b-2" class="index-term" data-yomi="0.8.2">0.8.2</span>: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.8.1...v0.8.2
-<span id="idx-15e6vi72qh86-2" class="index-term" data-yomi="0.8.0">0.8.0</span>: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.7.1...v0.8.0
-<span id="idx-7llcrlhhc7nj-2" class="index-term" data-yomi="0.7.1">0.7.1</span>: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.7.0...v0.7.1
-<span id="idx-nuy88wzduod0-2" class="index-term" data-yomi="0.7.0">0.7.0</span>: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.6.0...v0.7.0
-<span id="idx-o3oz1joesex3-2" class="index-term" data-yomi="0.6.0">0.6.0</span>: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.5.0...v0.6.0
-<span id="idx-h2fkshb3a1jq-2" class="index-term" data-yomi="0.5.0">0.5.0</span>: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.4.0...v0.5.0
-<span id="idx-f3s38ugo7qdv-2" class="index-term" data-yomi="0.4.0">0.4.0</span>: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.3.0...v0.4.0
-<span id="idx-fd16p0u3gfe-2" class="index-term" data-yomi="0.3.0">0.3.0</span>: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.2.0...v0.3.0
-<span id="idx-7hteif9rifso-2" class="index-term" data-yomi="0.2.0">0.2.0</span>: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.1.0...v0.2.0
-<span id="idx-gb58fh87is9z-2" class="index-term" data-yomi="0.1.0">0.1.0</span>: https://github.com/Atelier-Mirai/vivlio-starter/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.31.0...HEAD
+[0.31.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.30.0...v0.31.0
+[0.30.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.29.0...v0.30.0
+[0.29.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.28.0...v0.29.0
+[0.28.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.27.0...v0.28.0
+[0.27.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.26.0...v0.27.0
+[0.26.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.25.0...v0.26.0
+[0.25.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.17.0...v0.25.0
+[0.17.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.16.0...v0.17.0
+[0.16.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.15.0...v0.16.0
+[0.15.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.14.0...v0.15.0
+[0.14.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.13.0...v0.14.0
+[0.13.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.12.0...v0.13.0
+[0.12.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.11.0...v0.12.0
+[0.11.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.9.1...v0.10.0
+[0.9.1]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.8.2...v0.9.0
+[0.8.2]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.8.0...v0.8.2
+[0.8.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.7.1...v0.8.0
+[0.7.1]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/Atelier-Mirai/vivlio-starter/releases/tag/v0.1.0
 
