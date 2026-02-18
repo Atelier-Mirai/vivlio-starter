@@ -9,6 +9,7 @@ _sandbox/
 .DS_Store
 Thumbs.db
 *.pdf
+*.epub
 
 # RubyGem artifacts
 *.gem
