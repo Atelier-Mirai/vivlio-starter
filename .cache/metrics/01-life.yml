@@ -1,32 +1,35 @@
 ---
 path: contents/01-life.md
-title: 暮らしの中のコンピュータ
+title: 暮らしの中の<br>コンピュータ
 chapter_num: 1
-chars: 1986
+chars: 1990
 warning: 加筆検討
 sections: []
 basic_stats:
-  chars: 2030
-  chars_without_newline: 1986
+  chars: 2034
+  chars_without_newline: 1990
   lines: 44
   sentences: 44
-  avg_sentence_chars: 43.59090909090909
+  avg_sentence_chars: 43.68181818181818
   clauses: 56
-  avg_clause_chars: 34.482142857142854
+  avg_clause_chars: 34.55357142857143
   commas: 55
 vocabulary_stats:
-  kanji_ratio: 32.920652785593695
-  avg_word_length: 1.7488061127029608
-  ttr: 0.3600764087870105
-  total_tokens: 1047
-  unique_tokens: 377
+  kanji_ratio: 32.846715328467155
+  avg_word_length: 1.7476190476190476
+  ttr: 0.3619047619047619
+  total_tokens: 1050
+  unique_tokens: 380
   kanji_char_count: 585
-  total_char_count: 1777
-  total_word_length: 1831
+  total_char_count: 1781
+  total_word_length: 1835
   tokens_map:
     暮らし: 2
     の: 43
     中: 4
+    "<": 1
+    br: 1
+    ">": 1
     コンピュータ: 14
     が: 22
     歩む: 1
@@ -402,5 +405,5 @@ vocabulary_stats:
     探す: 1
     みる: 1
 readability:
-  score: 38.25578093825139
+  score: 38.26426675514267
   label: Standard
