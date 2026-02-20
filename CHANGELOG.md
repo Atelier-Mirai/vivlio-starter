@@ -65,7 +65,11 @@
 （次回リリース候補の変更はここに追加してください）
 
 ### Added
-- **スペルチェック機能の正式実装**: `vs lint` に英語スペルチェックを統合。英単語トークナイザ（Vivliostyle拡張記法・コードブロック除外対応）、辞書マネージャ（52ファイル・約46,000語の技術辞書群＋索引用語＋追加単語）を搭載し、textlint結果との統合サマリ表示・DidYouMeanベースの候補提示・`spellcheck:ignore` コメント／`book.yml` 設定による制御が可能になった。
+
+## 0.32.0 - 2026-02-21
+
+### Added
+- **スペルチェック機能の正式実装**: `vs lint` に英語スペルチェックを統合。英単語トークナイザ（Vivliostyle拡張記法・コードブロック除外対応）、辞書マネージャ（52ファイル・約46,000語の技術辞書群＋索引用語＋追加単語）、DidYouMeanベースの候補提示、`spellcheck:ignore` コメントや `book.yml` 設定による制御、textlint サマリとの統合表示を提供。
 
 ### Changed
 
@@ -706,7 +710,8 @@
 - バージョンファイル追加: `lib/vivlio/starter/version.rb`（0.1.0）
 - README にインストール方法・CLI の使い方・リリース手順を追記
 
-[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.31.0...HEAD
+[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.32.0...HEAD
+[0.32.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.28.0...v0.29.0
