@@ -463,3 +463,16 @@ lint:
   # CLI で --format を指定するとこの値を一時的に上書きできます
   format: stylish
 
+# ========================================
+# spellcheck 設定
+# ========================================
+spellcheck:
+  extra_dictionaries:      # オンデマンドダウンロード辞書
+    # - ada                # 標準搭載以外の言語の綴り誤りも確認したい場合に指定
+  extra_words:             # プロジェクト固有語
+    - vivliostyle
+    - vivlio-starter
+  ignore_words:            # 誤検知を抑制したい単語
+    - htmx
+  check_code_blocks: false # コードブロック内を校正対象にするか
+                           # 既定値: false (校正対象にしない)

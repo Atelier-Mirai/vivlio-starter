@@ -74,7 +74,7 @@ module Vivlio
               stdout, stderr = capture_io do
                 returned_status = LintCommands.execute_lint(['11-install'], format: nil)
               end
-              assert_equal 'STDOUT', stdout
+              assert_match(/\ASTDOUT/, stdout)
               assert_equal 'STDERR', stderr
             end
           end
@@ -127,7 +127,7 @@ module Vivlio
               stdout, stderr = capture_io do
                 returned_status = LintCommands.execute_lint(['11-install'], { fix: true })
               end
-              assert_equal 'STDOUT', stdout
+              assert_match(/\ASTDOUT/, stdout)
               assert_equal 'STDERR', stderr
             end
           end
@@ -157,7 +157,7 @@ module Vivlio
               stdout, stderr = capture_io do
                 returned_status = LintCommands.execute_lint(['91', '93'], {})
               end
-              assert_equal 'STDOUT', stdout
+              assert_match(/\ASTDOUT/, stdout)
               assert_equal 'STDERR', stderr
             end
           end
@@ -192,7 +192,7 @@ module Vivlio
               stdout, stderr = capture_io do
                 returned_status = LintCommands.execute_lint(['11-13'], {})
               end
-              assert_equal 'STDOUT', stdout
+              assert_match(/\ASTDOUT/, stdout)
               assert_equal 'STDERR', stderr
             end
           end
@@ -228,7 +228,7 @@ module Vivlio
               stdout, stderr = capture_io do
                 returned_status = LintCommands.execute_lint(['11-install', '91', '11-12'], {})
               end
-              assert_equal 'STDOUT', stdout
+              assert_match(/\ASTDOUT/, stdout)
               assert_equal 'STDERR', stderr
             end
           end

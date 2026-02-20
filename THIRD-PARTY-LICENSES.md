@@ -95,3 +95,77 @@ Notes:
 
 Notes:
 - `stylesheets/fonts/Keyboard-JP-Regular.otf` をキーボード表記向けフォントとして同梱しています。
+
+## スペルチェック辞書 (Spellcheck Dictionaries)
+
+### cspell-dicts（技術用語辞書）
+- License: MIT
+- Project: https://github.com/streetsidesoftware/cspell-dicts
+- Copyright: (c) Street Side Software
+- License Text: https://opensource.org/licenses/MIT
+
+以下の辞書ファイルを `config/spellcheck_dictionaries/` に同梱しています:
+
+```
+aws, bash-words, basic, cobol, coding-compound-terms, computing-acronyms,
+cpp, csharp, css, django, docker, dotnet, fonts, fortran, git, go,
+html, java-additional-terms, java-terms, javascript, kotlin, latex,
+networkingTerms, node, npm, objective-c, php, placeholder-words,
+python-common, ruby, rust, scala, smalltalk, software-tools,
+softwareTerms, sql-common-terms, sql, swift, tsql, webServices
+```
+
+### 参考訳（日本語・非公式）
+- ライセンス: MIT
+- プロジェクト: https://github.com/streetsidesoftware/cspell-dicts
+- 著作権表示: (c) Street Side Software
+- ライセンス本文: https://opensource.org/licenses/MIT
+
+補足:
+- 上記辞書ファイルは cspell-dicts リポジトリから取得し、スペルチェック機能に使用しています。
+- 各辞書ファイルのライセンスは MIT です。
+
+---
+
+### SCOWL（英単語辞書）
+- License: MIT (SCOWL and Friends)
+- Project: http://wordlist.aspell.net/
+- Source: https://github.com/en-wl/wordlist
+- Copyright: (c) 2000-2018 Kevin Atkinson
+
+以下のファイルを `config/spellcheck_dictionaries/` に同梱しています:
+
+```
+english-words-10.txt, english-words-20.txt
+```
+
+### 参考訳（日本語・非公式）
+- ライセンス: MIT（SCOWL and Friends）
+- プロジェクト: http://wordlist.aspell.net/
+- ソース: https://github.com/en-wl/wordlist
+- 著作権表示: (c) 2000-2018 Kevin Atkinson
+
+補足:
+- `english-words-10.txt` および `english-words-20.txt` は SCOWL（Spell Checker Oriented Word Lists）から生成された一般英単語リストです。
+- ライセンスは MIT です。
+
+---
+
+### 自作辞書（Vivlio Starter 独自）
+- License: MIT
+- Copyright: (c) Atelier Mirai
+
+以下のファイルを `config/spellcheck_dictionaries/` に同梱しています:
+
+```
+abbreviations.txt, brand-names.txt, companies-dict.txt, css-properties.txt,
+error-messages.txt, famous-people.txt, math-terms.txt, network-terms.txt,
+products.txt, tech-terms.txt
+```
+
+### 参考訳（日本語・非公式）
+- ライセンス: MIT
+- 著作権表示: (c) Atelier Mirai
+
+補足:
+- 上記ファイルは本プロジェクト向けに独自に作成した辞書です。略語・ブランド名・著名人名・CSS プロパティ・技術用語・数学用語・ネットワーク用語・エラーメッセージ・製品名を収録しています。
