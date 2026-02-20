@@ -63,18 +63,27 @@ terms:
   - chapter: '08-web'
     context: "「どのようなコンピュータからでも情報を閲覧し、共用できる」ことが目的で、WWW(World Wide Web)と呼ばれます。 WWWは、研究機関や大学を中心"
   backlink_sources:
-  - chapter: '08-web'
+  - chapter: 03-person
     occurrence: 1
-    anchor_id: gls-src-08-web-www-1
-  - chapter: '08-web'
+    anchor_id: gls-src-03-person-www-1
+  - chapter: 03-person
     occurrence: 2
-    anchor_id: gls-src-08-web-www-2
-  - chapter: '08-web'
+    anchor_id: gls-src-03-person-www-2
+  - chapter: 03-person
     occurrence: 3
-    anchor_id: gls-src-08-web-www-3
+    anchor_id: gls-src-03-person-www-3
   - chapter: '08-web'
     occurrence: 4
     anchor_id: gls-src-08-web-www-4
+  - chapter: '08-web'
+    occurrence: 5
+    anchor_id: gls-src-08-web-www-5
+  - chapter: '08-web'
+    occurrence: 6
+    anchor_id: gls-src-08-web-www-6
+  - chapter: '08-web'
+    occurrence: 7
+    anchor_id: gls-src-08-web-www-7
   updated_at: '2026-02-08 02:44:26'
 - term: コンピュータ
   yomi: こんぴゅーた
@@ -156,12 +165,12 @@ terms:
   - chapter: 01-life
     occurrence: 3
     anchor_id: gls-src-01-life-ウェブサイト-3
-  - chapter: '08-web'
+  - chapter: 03-person
     occurrence: 4
-    anchor_id: gls-src-08-web-ウェブサイト-4
-  - chapter: '08-web'
+    anchor_id: gls-src-03-person-ウェブサイト-4
+  - chapter: 03-person
     occurrence: 5
-    anchor_id: gls-src-08-web-ウェブサイト-5
+    anchor_id: gls-src-03-person-ウェブサイト-5
   - chapter: '08-web'
     occurrence: 6
     anchor_id: gls-src-08-web-ウェブサイト-6
@@ -183,9 +192,156 @@ terms:
   - chapter: '08-web'
     occurrence: 12
     anchor_id: gls-src-08-web-ウェブサイト-12
-  - chapter: 91-books
+  - chapter: '08-web'
     occurrence: 13
-    anchor_id: gls-src-91-books-ウェブサイト-13
+    anchor_id: gls-src-08-web-ウェブサイト-13
+  - chapter: '08-web'
+    occurrence: 14
+    anchor_id: gls-src-08-web-ウェブサイト-14
+  - chapter: 21-html
+    occurrence: 15
+    anchor_id: gls-src-21-html-ウェブサイト-15
+  - chapter: 21-html
+    occurrence: 16
+    anchor_id: gls-src-21-html-ウェブサイト-16
+  - chapter: 21-html
+    occurrence: 17
+    anchor_id: gls-src-21-html-ウェブサイト-17
+  - chapter: 21-html
+    occurrence: 18
+    anchor_id: gls-src-21-html-ウェブサイト-18
+  - chapter: 21-html
+    occurrence: 19
+    anchor_id: gls-src-21-html-ウェブサイト-19
+  - chapter: 21-html
+    occurrence: 20
+    anchor_id: gls-src-21-html-ウェブサイト-20
+  - chapter: 21-html
+    occurrence: 21
+    anchor_id: gls-src-21-html-ウェブサイト-21
+  - chapter: 21-html
+    occurrence: 22
+    anchor_id: gls-src-21-html-ウェブサイト-22
+  - chapter: 21-html
+    occurrence: 23
+    anchor_id: gls-src-21-html-ウェブサイト-23
+  - chapter: 21-html
+    occurrence: 24
+    anchor_id: gls-src-21-html-ウェブサイト-24
+  - chapter: 21-html
+    occurrence: 25
+    anchor_id: gls-src-21-html-ウェブサイト-25
+  - chapter: 21-html
+    occurrence: 26
+    anchor_id: gls-src-21-html-ウェブサイト-26
+  - chapter: 21-html
+    occurrence: 27
+    anchor_id: gls-src-21-html-ウェブサイト-27
+  - chapter: 21-html
+    occurrence: 28
+    anchor_id: gls-src-21-html-ウェブサイト-28
+  - chapter: 21-html
+    occurrence: 29
+    anchor_id: gls-src-21-html-ウェブサイト-29
+  - chapter: 21-html
+    occurrence: 30
+    anchor_id: gls-src-21-html-ウェブサイト-30
+  - chapter: 21-html
+    occurrence: 31
+    anchor_id: gls-src-21-html-ウェブサイト-31
+  - chapter: 21-html
+    occurrence: 32
+    anchor_id: gls-src-21-html-ウェブサイト-32
+  - chapter: 21-html
+    occurrence: 33
+    anchor_id: gls-src-21-html-ウェブサイト-33
+  - chapter: 21-html
+    occurrence: 34
+    anchor_id: gls-src-21-html-ウェブサイト-34
+  - chapter: 21-html
+    occurrence: 35
+    anchor_id: gls-src-21-html-ウェブサイト-35
+  - chapter: 21-html
+    occurrence: 36
+    anchor_id: gls-src-21-html-ウェブサイト-36
+  - chapter: 21-html
+    occurrence: 37
+    anchor_id: gls-src-21-html-ウェブサイト-37
+  - chapter: 22-css
+    occurrence: 38
+    anchor_id: gls-src-22-css-ウェブサイト-38
+  - chapter: 22-css
+    occurrence: 39
+    anchor_id: gls-src-22-css-ウェブサイト-39
+  - chapter: 22-css
+    occurrence: 40
+    anchor_id: gls-src-22-css-ウェブサイト-40
+  - chapter: 31-netlify
+    occurrence: 41
+    anchor_id: gls-src-31-netlify-ウェブサイト-41
+  - chapter: 31-netlify
+    occurrence: 42
+    anchor_id: gls-src-31-netlify-ウェブサイト-42
+  - chapter: 31-netlify
+    occurrence: 43
+    anchor_id: gls-src-31-netlify-ウェブサイト-43
+  - chapter: 31-netlify
+    occurrence: 44
+    anchor_id: gls-src-31-netlify-ウェブサイト-44
+  - chapter: 31-netlify
+    occurrence: 45
+    anchor_id: gls-src-31-netlify-ウェブサイト-45
+  - chapter: 31-netlify
+    occurrence: 46
+    anchor_id: gls-src-31-netlify-ウェブサイト-46
+  - chapter: 31-netlify
+    occurrence: 47
+    anchor_id: gls-src-31-netlify-ウェブサイト-47
+  - chapter: 31-netlify
+    occurrence: 48
+    anchor_id: gls-src-31-netlify-ウェブサイト-48
+  - chapter: 31-netlify
+    occurrence: 49
+    anchor_id: gls-src-31-netlify-ウェブサイト-49
+  - chapter: 31-netlify
+    occurrence: 50
+    anchor_id: gls-src-31-netlify-ウェブサイト-50
+  - chapter: 31-netlify
+    occurrence: 51
+    anchor_id: gls-src-31-netlify-ウェブサイト-51
+  - chapter: 31-netlify
+    occurrence: 52
+    anchor_id: gls-src-31-netlify-ウェブサイト-52
+  - chapter: 41-pwa
+    occurrence: 53
+    anchor_id: gls-src-41-pwa-ウェブサイト-53
+  - chapter: 41-pwa
+    occurrence: 54
+    anchor_id: gls-src-41-pwa-ウェブサイト-54
+  - chapter: 41-pwa
+    occurrence: 55
+    anchor_id: gls-src-41-pwa-ウェブサイト-55
+  - chapter: 91-books
+    occurrence: 56
+    anchor_id: gls-src-91-books-ウェブサイト-56
+  - chapter: 92-links
+    occurrence: 57
+    anchor_id: gls-src-92-links-ウェブサイト-57
+  - chapter: 92-links
+    occurrence: 58
+    anchor_id: gls-src-92-links-ウェブサイト-58
+  - chapter: 92-links
+    occurrence: 59
+    anchor_id: gls-src-92-links-ウェブサイト-59
+  - chapter: 93-cheats
+    occurrence: 60
+    anchor_id: gls-src-93-cheats-ウェブサイト-60
+  - chapter: 93-cheats
+    occurrence: 61
+    anchor_id: gls-src-93-cheats-ウェブサイト-61
+  - chapter: 93-cheats
+    occurrence: 62
+    anchor_id: gls-src-93-cheats-ウェブサイト-62
   updated_at: '2026-02-08 02:44:26'
 - term: ブラウザ
   yomi: ブラウザ
@@ -200,4 +356,4 @@ terms:
     context: '今日では不可欠となったウェブサイト。その歴史をみていきます。 そしてサーバとブラウザとの関係、ウェブサイト作成に用いる三つの言語 HTML
       / CSS / '
   updated_at: '2026-02-08 02:44:26'
-updated_at: '2026-02-10 05:44:10'
+updated_at: '2026-02-21 03:59:54'
