@@ -64,6 +64,8 @@ JSON
 XML
 HTML
 CSS
+MathML
+SVG
 
 # Standards / Organizations
 IEEE
@@ -226,6 +228,27 @@ UHD
 CGA
 EGA
 HDR
+
+# 長さ・面積・体積
+cm
+mm
+km
+nm
+pm
+m2
+m3
+cc
+
+# 重さ
+kg
+mg
+ug
+
+# 時間
+ms
+us
+ns
+ps
 
 # Misc
 NAND

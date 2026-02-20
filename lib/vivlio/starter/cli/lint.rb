@@ -135,10 +135,12 @@ module Vivlio
 
             $stdout.print(stdout) unless stdout.nil? || stdout.empty?
             $stderr.print(stderr) unless stderr.nil? || stderr.empty?
+            $stdout.puts '' unless stdout.nil? || stdout.empty?
 
-            textlint_result   = handle_status(status, raw_stdout, raw_stderr)
-            spellcheck_result = run_spellcheck(files)
-            [textlint_result, spellcheck_result].max
+            lint_info   = collect_textlint_info(status, raw_stdout, raw_stderr)
+            spell_info  = run_spellcheck(files)
+            print_combined_summary(lint_info, spell_info)
+            [lint_info[:exit], spell_info[:exit]].max
           rescue TextLintError => e
             Common.log_error(e.message)
             1
@@ -149,32 +151,45 @@ module Vivlio
           def extract_fixable_count(output)
             return 0 if output.nil? || output.empty?
 
-            # "✓ 325 fixable problems." のような行から数値を抽出
             match = output.match(/✓\s+(\d+)\s+fixable\s+problems?\./)
             match ? match[1].to_i : 0
           end
 
           def extract_problem_count(output)
-            return nil if output.nil? || output.empty?
+            return 0 if output.nil? || output.empty?
 
             match = output.match(/✖\s+(\d+)\s+problems?/)
-            match ? match[1].to_i : nil
+            match ? match[1].to_i : 0
           end
 
-          def print_failure_summary(problem_count, fixable_count)
+          def collect_textlint_info(status, raw_stdout, raw_stderr)
+            combined      = [raw_stdout, raw_stderr].compact.join("\n")
+            lint_count    = extract_problem_count(combined)
+            fixable_count = extract_fixable_count(combined)
+            exit_code     = status.success? ? 0 : (status.exitstatus || 1)
+            { exit: exit_code, lint_count: lint_count, fixable_count: fixable_count }
+          end
+
+          def print_combined_summary(lint_info, spell_info)
+            lint_count  = lint_info[:lint_count].to_i
+            spell_count = spell_info[:spell_count].to_i
+            fixable     = lint_info[:fixable_count].to_i
+            total       = lint_count + spell_count
+
             $stdout.puts ''
             $stdout.puts '✏️ 文章の品質チェックが完了しました'
-            if problem_count && problem_count.positive?
-              $stdout.puts "⚠️ #{problem_count}箇所に改善提案があります"
+            if total.positive?
+              $stdout.puts "⚠️ #{total}箇所に改善提案があります"
+              $stdout.puts "   - 日本語校正: #{lint_count}箇所" if lint_count.positive?
+              $stdout.puts "   - スペルチェック: #{spell_count}箇所" if spell_count.positive?
+              if fixable.positive? && !options[:fix]
+                $stdout.puts "💡 そのうち#{fixable}箇所は自動修正可能です。"
+                $stdout.puts '   vs lint --fix'
+              else
+                $stdout.puts '💡 表記揺れや文法上の改善点を修正してからもう一度実行してください。'
+              end
             else
-              $stdout.puts '⚠️ 文章に改善提案があります'
-            end
-
-            if fixable_count.to_i.positive? && !options[:fix]
-              $stdout.puts "💡 そのうち#{fixable_count}箇所は自動修正可能です。次のコマンドで修正できます:"
-              $stdout.puts '   vs lint --fix'
-            else
-              $stdout.puts '💡 表記揺れや文法上の改善点を修正してからもう一度実行してください。'
+              $stdout.puts '✅ 文章チェックで問題は見つかりませんでした。'
             end
             $stdout.flush
           end
@@ -257,18 +272,12 @@ module Vivlio
               all_errors[path] = errors unless errors.empty?
             end
 
-            has_errors = Lint::SpellChecker.print_errors(all_errors)
-            if has_errors
-              total = all_errors.values.sum(&:length)
-              $stdout.puts "⚠️ スペルチェックで#{total}箇所の問題が見つかりました"
-            else
-              Common.log_success('spellcheck: ✅ スペルチェックで問題は見つかりませんでした。')
-            end
-
-            has_errors ? 1 : 0
+            Lint::SpellChecker.print_errors(all_errors)
+            spell_count = all_errors.values.sum(&:length)
+            { exit: spell_count.positive? ? 1 : 0, spell_count: spell_count }
           rescue StandardError => e
             Common.log_warn("[spellcheck] スペルチェック中にエラーが発生しました: #{e.message}")
-            0
+            { exit: 0, spell_count: 0 }
           end
 
           def resolve_targets
@@ -332,20 +341,6 @@ module Vivlio
 
           def windows_platform?
             !!(RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin|bccwin|wince|emx/i)
-          end
-
-          def handle_status(status, raw_stdout, raw_stderr)
-            if status.success?
-              Common.log_success('textlint: ✅ 文章チェックで問題は見つかりませんでした。')
-              return 0
-            end
-
-            combined_summary_output = [raw_stdout, raw_stderr].compact.join("\n")
-            problem_count = extract_problem_count(combined_summary_output)
-            fixable_count = extract_fixable_count(combined_summary_output)
-            print_failure_summary(problem_count, fixable_count)
-
-            status.exitstatus || 1
           end
 
           # TokenResolver を用いた Markdown 対象ファイルの解決

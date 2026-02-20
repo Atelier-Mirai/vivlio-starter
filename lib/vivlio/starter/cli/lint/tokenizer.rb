@@ -60,6 +60,7 @@ module Vivlio
             cleaned = line.dup
             cleaned.gsub!(/`[^`]*`/, ' ')                          # インラインコードを除去
             cleaned.gsub!(/<[^>]+>/, ' ')                          # HTMLタグを除去
+            cleaned.gsub!(/\{[^}]*\}/, ' ')                        # Vivliostyle拡張記法 {.aki} 等
             cleaned.gsub!(/!?\[([^\]]*)\]\([^\)]*\)/, '\1')        # Markdownリンク・画像
             cleaned.gsub!(/!?\[([^\]]*)\]\[[^\]]*\]/, '\1')        # 参照リンク
             cleaned.gsub!(%r{https?://\S+}, ' ')                   # URLを除去

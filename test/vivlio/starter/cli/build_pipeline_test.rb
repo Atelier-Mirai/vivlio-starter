@@ -58,6 +58,7 @@ module Vivlio
               test_case.assert_equal [], entries
               order << 'step5'
             }],
+            [Build::PartTitleGenerator, :generate_all!, -> { order << 'step5b' }],
             [Build::TocGenerator, :generate_toc_and_pdf!, lambda { |dir, entries|
               test_case.assert_equal '.', dir
               test_case.assert_equal [], entries
@@ -88,8 +89,8 @@ module Vivlio
             pipeline.run
           end
 
-          # 期待する実行順を明示（Step 0-12）
-          expected_order = %w[step0 step1 step2 step3 step4 step5 step6 step7 step8 step9 step10 step11 step12]
+          # 期待する実行順を明示（Step 0, 1, 2, 3, 4, 5, 5b, 6, 7, 8, 9, 10, 11, 12）
+          expected_order = %w[step0 step1 step2 step3 step4 step5 step5b step6 step7 step8 step9 step10 step11 step12]
           assert_equal expected_order, order
         end
 
@@ -106,6 +107,7 @@ module Vivlio
             'Step  3 (preprocess sections)',
             'Step  4 (index scan and build)',
             'Step  5 (convert sections html)',
+            'Step 5b (generate part title pages)',
             'Step  6 (generate toc and pdf)',
             'Step  7 (build overall pdf)',
             'Step  8 (backlink dedup)',
@@ -139,7 +141,13 @@ module Vivlio
         def build_full_pipeline
           options = default_options
           command = Struct.new(:options).new(options)
-          BuildCommands::UnifiedBuildPipeline.new(command, entries: [], mode: :full)
+          # book.yml の targets 設定に依存しないよう pdf 専用モードを強制する
+          klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
+            define_method(:pdf_target?)       { true }
+            define_method(:epub_target?)      { false }
+            define_method(:print_pdf_target?) { false }
+          end
+          klass.new(command, entries: [], mode: :full)
         end
 
         def default_options
@@ -167,12 +175,14 @@ module Vivlio
           Build::ImageOptimizer.stub :prepare_theme_images!, -> {} do
             Build::SectionBuilder.stub :preprocess_sections!, ->(_) {} do
               Build::SectionBuilder.stub :convert_sections_html!, ->(_) {} do
-                Build::TocGenerator.stub :generate_toc_and_pdf!, ->(_, _) {} do
-                  Build::PdfBuilder.stub :build_overall_pdf_from_dir!, ->(_, _) {} do
-                    Build::BacklinkDedupOrchestrator.stub :run!, ->(_) {} do
-                      Build::PdfMerger.stub :merge_all_pdfs!, ->(_) {} do
-                        Build::PdfMerger.stub :add_outline_to_output_pdf!, ->(_) {} do
-                          yield
+                Build::PartTitleGenerator.stub :generate_all!, -> {} do
+                  Build::TocGenerator.stub :generate_toc_and_pdf!, ->(_, _) {} do
+                    Build::PdfBuilder.stub :build_overall_pdf_from_dir!, ->(_, _) {} do
+                      Build::BacklinkDedupOrchestrator.stub :run!, ->(_) {} do
+                        Build::PdfMerger.stub :merge_all_pdfs!, ->(_) {} do
+                          Build::PdfMerger.stub :add_outline_to_output_pdf!, ->(_) {} do
+                            yield
+                          end
                         end
                       end
                     end
@@ -490,8 +500,8 @@ module Vivlio
 
           with_build_stubs { pipeline.run }
 
-          # full mode は 13 ステップ（Step 0-12）
-          assert_equal 13, pipeline.timings.length, 'full mode は 13 ステップを記録するべき'
+          # full mode（pdf専用）は 14 ステップ（Step 0, 1, 2, 3, 4, 5, 5b, 6, 7, 8, 9, 10, 11, 12）
+          assert_equal 14, pipeline.timings.length, 'full mode は 14 ステップを記録するべき'
         end
 
         private
@@ -499,7 +509,13 @@ module Vivlio
         def build_full_pipeline
           options = { clean: true, resize: true, compress: true, high: false, low: false }
           command = Struct.new(:options).new(options)
-          BuildCommands::UnifiedBuildPipeline.new(command, entries: [], mode: :full)
+          # book.yml の targets 設定に依存しないよう pdf 専用モードを強制する
+          klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
+            define_method(:pdf_target?)       { true }
+            define_method(:epub_target?)      { false }
+            define_method(:print_pdf_target?) { false }
+          end
+          klass.new(command, entries: [], mode: :full)
         end
 
         def build_single_pipeline(targets)
@@ -545,12 +561,14 @@ module Vivlio
           Build::ImageOptimizer.stub :prepare_theme_images!, -> {} do
             Build::SectionBuilder.stub :preprocess_sections!, ->(_) {} do
               Build::SectionBuilder.stub :convert_sections_html!, ->(_) {} do
-                Build::TocGenerator.stub :generate_toc_and_pdf!, ->(_, _) {} do
-                  Build::PdfBuilder.stub :build_overall_pdf_from_dir!, ->(_, _) {} do
-                    Build::BacklinkDedupOrchestrator.stub :run!, ->(_) {} do
-                      Build::PdfMerger.stub :merge_all_pdfs!, ->(_) {} do
-                        Build::PdfMerger.stub :add_outline_to_output_pdf!, ->(_) {} do
-                          yield
+                Build::PartTitleGenerator.stub :generate_all!, -> {} do
+                  Build::TocGenerator.stub :generate_toc_and_pdf!, ->(_, _) {} do
+                    Build::PdfBuilder.stub :build_overall_pdf_from_dir!, ->(_, _) {} do
+                      Build::BacklinkDedupOrchestrator.stub :run!, ->(_) {} do
+                        Build::PdfMerger.stub :merge_all_pdfs!, ->(_) {} do
+                          Build::PdfMerger.stub :add_outline_to_output_pdf!, ->(_) {} do
+                            yield
+                          end
                         end
                       end
                     end

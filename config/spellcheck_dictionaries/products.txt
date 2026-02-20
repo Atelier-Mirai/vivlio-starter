@@ -390,6 +390,7 @@ PDF
 EPUB
 Markdown
 LaTeX
+TeX
 JSON
 XML
 YAML

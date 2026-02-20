@@ -285,8 +285,9 @@ module Vivlio
           cover_files << config.dig(:output, :print_pdf, :cover, :front)
           cover_files << config.dig(:output, :print_pdf, :cover, :back)
 
-          # EPUB用カバー（ネスト構造: output.epub.cover.image）
-          cover_files << config.dig(:output, :epub, :cover, :image)
+          # EPUB用カバー（ネスト構造: output.epub.cover.image または文字列）
+          epub_cover = config.dig(:output, :epub, :cover)
+          cover_files << (epub_cover.is_a?(Hash) ? epub_cover[:image] : epub_cover)
 
           cover_files.compact!
 
