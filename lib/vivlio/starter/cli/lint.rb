@@ -31,6 +31,9 @@ require 'rbconfig'
 require_relative 'common'
 require_relative 'textlint_formatter'
 require_relative 'token_resolver'
+require_relative 'lint/tokenizer'
+require_relative 'lint/dict_manager'
+require_relative 'lint/spell_checker'
 
 module Vivlio
   module Starter
@@ -133,7 +136,9 @@ module Vivlio
             $stdout.print(stdout) unless stdout.nil? || stdout.empty?
             $stderr.print(stderr) unless stderr.nil? || stderr.empty?
 
-            return handle_status(status, raw_stdout, raw_stderr)
+            textlint_result   = handle_status(status, raw_stdout, raw_stderr)
+            spellcheck_result = run_spellcheck(files)
+            [textlint_result, spellcheck_result].max
           rescue TextLintError => e
             Common.log_error(e.message)
             1
@@ -236,6 +241,34 @@ module Vivlio
                 raise LintError, "textlint サポート用設定ファイルの読み込みに失敗しました: #{display} (#{e.class}: #{e.message})"
               end
             end
+          end
+
+          def run_spellcheck(files)
+            config       = Common::CONFIG.spellcheck
+            word_map     = Lint::DictManager.new.build_word_map(config)
+            ignore_words = Array(config&.ignore_words).map { _1.to_s.downcase }
+            check_code   = Common.truthy?(config&.check_code_blocks)
+
+            all_errors = {}
+            files.each do |path|
+              errors = Lint::SpellChecker.check(path, word_map,
+                                                ignore_words: ignore_words,
+                                                check_code_blocks: check_code)
+              all_errors[path] = errors unless errors.empty?
+            end
+
+            has_errors = Lint::SpellChecker.print_errors(all_errors)
+            if has_errors
+              total = all_errors.values.sum(&:length)
+              $stdout.puts "⚠️ スペルチェックで#{total}箇所の問題が見つかりました"
+            else
+              Common.log_success('spellcheck: ✅ スペルチェックで問題は見つかりませんでした。')
+            end
+
+            has_errors ? 1 : 0
+          rescue StandardError => e
+            Common.log_warn("[spellcheck] スペルチェック中にエラーが発生しました: #{e.message}")
+            0
           end
 
           def resolve_targets
