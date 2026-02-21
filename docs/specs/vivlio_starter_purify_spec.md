@@ -72,3 +72,94 @@ vivlio-starter 本体のライセンスを MIT とし、商用利用や SaaS へ
 - **ユーザー層の拡大**: SaaS 開発者が vivlio-starter をエンジンとして組み込みやすくなる。
 - **保守性の向上**: PDF 生成の基本処理と、HexaPDF を駆使した後処理が分離され、コードの見通しが良くなる。
 - **ライセンスの透明性**: ユーザーが「自由（MIT）」か「多機能（AGPL）」かを明確に選択できる。
+
+## 6. 本体MIT化に向けた実装設計とサンプルコード
+
+本体を純粋なMITライセンスで実装・稼働させるため、以下の設計パターンおよびMIT互換ライブラリ（`pdf-reader`, `prawn`, `combine_pdf`）の活用を基本とする。
+
+### 6.1 プラグイン動的ローダー (Adapter Pattern)
+
+本体側（MIT）では、実行時に `vivlio-starter-pdf` プラグインの存在を確認し、プロバイダを切り替える設計とする。
+
+```ruby
+# lib/vivlio/starter/pdf/provider.rb
+module Vivlio
+  module Starter
+    module Pdf
+      def self.provider
+        @provider ||= load_provider
+      end
+
+      def self.load_provider
+        begin
+          # AGPLプラグインのロードを試行
+          require 'vivlio/starter/pdf/enhanced_provider'
+          Vivlio::Starter::Pdf::EnhancedProvider.new
+        rescue LoadError
+          # 見つからない場合はMIT版の標準プロバイダを使用
+          require 'vivlio/starter/pdf/standard_provider'
+          Vivlio::Starter::Pdf::StandardProvider.new
+        end
+      end
+    end
+  end
+end
+```
+
+### 6.2 MIT代替ライブラリによる基本機能の実装案
+
+HexaPDFに依存していた基本機能（メタ情報取得、空白ページ、簡易ノンブル）をMITライブラリで代替するアプローチ。
+
+#### 1. ページ数の取得 (`pdf-reader`)
+```ruby
+require 'pdf/reader'
+
+def get_page_count(pdf_path)
+  reader = PDF::Reader.new(pdf_path)
+  reader.page_count
+end
+```
+
+#### 2. 空白ページの生成 (`prawn`)
+HexaPDFの `ensure_blank_page_pdf` などの代替として、Prawnを用いて指定サイズの空PDFを生成する。
+```ruby
+require 'prawn'
+
+def create_blank_page(output_path, width, height)
+  # mm単位などをptに変換して指定
+  Prawn::Document.generate(output_path, page_size: [width, height]) do
+    # 何も描画せずに保存することで空白ページを作成
+  end
+end
+```
+
+#### 3. 簡易ノンブルの付与 (`prawn` + `combine_pdf`)
+MITライブラリには「既存PDFに直接テキストを描画する」単純な機能がないため、①Prawnで透過背景の「ノンブルのみを描画したPDF」を生成し、②CombinePDFで元PDFと合成（オーバーレイ）する。
+```ruby
+require 'prawn'
+require 'combine_pdf'
+
+def stamp_nombre(original_pdf_path, output_pdf_path, page_count)
+  # 1. ノンブルだけを描画した透明PDFをPrawnで作る
+  nombre_pdf_path = "tmp_nombre.pdf"
+  Prawn::Document.generate(nombre_pdf_path, skip_page_creation: true) do |pdf|
+    (1..page_count).each do |i|
+      pdf.start_new_page
+      # フッター位置にページ番号を描画
+      pdf.draw_text "#{i}", at: [pdf.bounds.width / 2, 10]
+    end
+  end
+
+  # 2. CombinePDFで元PDFの各ページに重ね合わせる
+  original = CombinePDF.load(original_pdf_path)
+  nombre   = CombinePDF.load(nombre_pdf_path)
+
+  original.pages.each_with_index do |page, index|
+    page << nombre.pages[index] if nombre.pages[index]
+  end
+
+  original.save(output_pdf_path)
+end
+```
+
+※ **制限事項**: CombinePDFを使った合成では、目次（アウトライン）や一部の複雑なメタデータが欠落する可能性がある。アウトライン保持や高度な編集が必須のユーザーにはAGPLプラグインへの誘導（警告メッセージ等）を行う。
