@@ -85,13 +85,13 @@ module Vivlio
         def create_nombre_pdf(output_path, original_pdf_path, bleed_pt)
           reader = PDF::Reader.new(original_pdf_path)
 
-          Prawn::Document.generate(output_path, skip_page_creation: true) do |pdf|
+          Prawn::Document.generate(output_path, skip_page_creation: true, margin: 0) do |pdf|
             reader.pages.each_with_index do |page, idx|
               bbox = page.attributes[:MediaBox] || [0, 0, 595.28, 841.89]
               width = bbox[2] - bbox[0]
               height = bbox[3] - bbox[1]
 
-              pdf.start_new_page(size: [width, height])
+              pdf.start_new_page(size: [width, height], margin: 0)
               pdf.font('Helvetica', size: 6)
               pdf.fill_color('000000')
 
@@ -109,14 +109,25 @@ module Vivlio
         def draw_page_number(pdf, page_number, width, height, bleed_pt)
           x_offset = bleed_pt / 2.0
           y_center = height / 2.0
+          text = page_number.to_s
+
+          if page_number.odd?
+            # 右ページ: ノド = 左端、時計回り 90°
+            draw_rotated_text(pdf, text, x: x_offset, y: y_center, angle: 90)
+          else
+            # 左ページ: ノド = 右端、反時計回り -90°
+            draw_rotated_text(pdf, text, x: width - x_offset, y: y_center, angle: -90)
+          end
+        end
+
+        def draw_rotated_text(pdf, text, x:, y:, angle:)
+          text_width = pdf.width_of(text)
+          text_height = pdf.font.height
 
           pdf.save_graphics_state do
-            if page_number.odd?
-              # 右ページ: 左端に配置し時計回り(Prawnでは-90)
-              pdf.draw_text page_number.to_s, at: [x_offset, y_center], rotate: -90
-            else
-              # 左ページ: 右端に配置し反時計回り(Prawnでは90)
-              pdf.draw_text page_number.to_s, at: [width - x_offset, y_center], rotate: 90
+            pdf.translate(x, y)
+            pdf.rotate(angle) do
+              pdf.draw_text(text, at: [-text_width / 2.0, -text_height / 2.0])
             end
           end
         end
