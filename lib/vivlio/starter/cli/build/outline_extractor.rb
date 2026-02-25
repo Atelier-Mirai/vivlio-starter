@@ -155,7 +155,7 @@ module Vivlio
           # PDFにアウトラインを付与
           def add_outline_from_headings!(pdf_path, html_files, max_level: 3, start_page: 1)
             # 新実装 (MIT版 Provider への委譲)
-            require 'vivlio/starter/pdf/provider'
+            require 'vivlio/starter/cli/pdf/provider'
             
             # --- 旧実装（MIT化動作確認後に削除予定） ---
             # validate_inputs(pdf_path, html_files)

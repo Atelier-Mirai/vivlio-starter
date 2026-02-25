@@ -44,7 +44,7 @@ module Vivlio
             bleed_pt = bleed_mm.to_f * MM_TO_PT
 
             # 新実装 (MIT版 Provider への委譲)
-            require 'vivlio/starter/pdf/provider'
+            require 'vivlio/starter/cli/pdf/provider'
             Vivlio::Starter::Pdf.provider.stamp_nombre!(pdf_path, bleed_pt:)
 
             # --- 旧実装（MIT化動作確認後に削除予定） ---

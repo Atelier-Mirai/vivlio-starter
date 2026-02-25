@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require 'test_helper'
-require 'vivlio/starter/pdf/provider'
-require 'vivlio/starter/pdf/standard_provider'
+require 'vivlio/starter/cli/pdf/provider'
+require 'vivlio/starter/cli/pdf/standard_provider'
 
 module Vivlio
   module Starter

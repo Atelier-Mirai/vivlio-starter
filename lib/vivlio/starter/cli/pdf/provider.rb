@@ -17,7 +17,7 @@ module Vivlio
 
         # --- Phase: Enhanced mode attempt ---
         begin
-          require 'vivlio/starter/pdf/enhanced_provider'
+          require 'vivlio/starter/cli/pdf/enhanced_provider'
           Vivlio::Starter::Pdf::EnhancedProvider.new
         rescue LoadError
           # --- Phase: Standard mode fallback ---

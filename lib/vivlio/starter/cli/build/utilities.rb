@@ -59,7 +59,7 @@ module Vivlio
             end
 
             # 新実装 (MIT版 Provider への委譲)
-            require 'vivlio/starter/pdf/provider'
+            require 'vivlio/starter/cli/pdf/provider'
             Vivlio::Starter::Pdf.provider.page_count(file)
 
             # --- 旧実装（MIT化動作確認後に削除予定） ---
@@ -141,7 +141,7 @@ module Vivlio
             return path if File.exist?(path)
 
             w_pt, h_pt = Build::Utilities.page_size_points_from_config
-            require 'vivlio/starter/pdf/provider'
+            require 'vivlio/starter/cli/pdf/provider'
             Vivlio::Starter::Pdf.provider.ensure_blank_page_pdf(path, w_pt, h_pt)
 
             # --- 旧実装（MIT化動作確認後に削除予定） ---
