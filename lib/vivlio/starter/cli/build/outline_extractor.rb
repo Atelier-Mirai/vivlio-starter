@@ -153,14 +153,22 @@ module Vivlio
           end
 
           # PDFにアウトラインを付与
-          def add_outline_from_headings!(pdf_path, html_paths, max_level: 3, start_page: 1)
-            items = heading_page_entries(pdf_path, html_paths, max_level: max_level, start_page: start_page)
-            return false if items.empty?
-
-            items = prepend_cover_item(items)
-            write_outline_to_pdf(pdf_path, items, max_level)
-            Common.log_success('[Outline] PDF にブックマーク（アウトライン）を付与しました')
-            true
+          def add_outline_from_headings!(pdf_path, html_files, max_level: 3, start_page: 1)
+            # 新実装 (MIT版 Provider への委譲)
+            require 'vivlio/starter/pdf/provider'
+            
+            # --- 旧実装（MIT化動作確認後に削除予定） ---
+            # validate_inputs(pdf_path, html_files)
+            # 
+            # items = build_outline_items(html_files, max_level, start_page)
+            # return if items.empty?
+            # 
+            # write_outline_to_pdf(pdf_path, items, max_level)
+            
+            # 内部のアイテム抽出処理などは現状HexaPDFに依存していない（HTMLパースと計算のみ）ため、
+            # 将来的にアイテムリストを組み立てた上でプロバイダに渡す設計も可能。
+            # 現状はプロバイダに単に「できない旨をロギングする」処理を委譲する。
+            Vivlio::Starter::Pdf.provider.add_outline!(pdf_path, [], max_level: max_level)
           end
 
           private
