@@ -82,6 +82,18 @@ module Vivlio
 
           assert_equal("吾輩は猫である。名前はまだ無い。", cleaned)
         end
+
+        def test_clean_merges_midword_breaks_for_pure_japanese_text
+          text = "プログラミングを学ぶ\nということ"
+
+          assert_equal("プログラミングを学ぶということ", @cleaner.clean(text))
+        end
+
+        def test_clean_normalizes_pdf_extraction_heading_and_quote_spacing
+          text = "第1章プログラミング技術習得の三要素\n小説など文学作品を創り上げることを想像していただくと分かりやすいかと思います。  「主題」とは何を執筆するかということです。"
+
+          assert_equal("第1章 プログラミング技術習得の三要素\n小説など文学作品を創り上げることを想像していただくと分かりやすいかと思います。「主題」とは何を執筆するかということです。", @cleaner.clean(text))
+        end
       end
     end
   end

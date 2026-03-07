@@ -30,7 +30,7 @@ module Vivlio
         end
 
         def clean(text)
-          str = text.to_s
+          str = normalize_pdf_extracted_text(text)
           return str if str.empty?
 
           segments = str.split(/(\n{2,})/, -1)
@@ -93,6 +93,7 @@ module Vivlio
           return true if curr.empty? || nxt.empty?
           return true if heading_line?(curr) || heading_line?(nxt)
           return true if list_line?(curr) || list_line?(nxt)
+          return false if punctuation_only_line?(nxt)
 
           return false if midword_break?(curr, nxt)
           return false if small_kana_start?(nxt)
@@ -142,6 +143,10 @@ module Vivlio
 
         def punctuation_end?(line)
           !!(line =~ PUNCTUATION_REGEX)
+        end
+
+        def punctuation_only_line?(line)
+          line.to_s.strip.match?(/\A[、。，．：；！？!?]+\z/)
         end
 
         def heading_line?(line)
@@ -201,6 +206,16 @@ module Vivlio
 
         def list_line?(line)
           line.match?(LIST_MARKER_REGEX)
+        end
+
+        def normalize_pdf_extracted_text(text)
+          text.to_s
+              .gsub(/[ \t\u00A0]{2,}/, ' ')
+              .gsub(/(^|\n)(第[一二三四五六七八九十百千0-9]+章)(?=[一-龯ぁ-ゖァ-ヶー々〆ヵヶ])/u, "\\1\\2 ")
+              .gsub(/(?<=[一-龯ぁ-ゖァ-ヶー々〆ヵヶA-Za-z0-9])\n(?=[、。，．：；！？!?])/u, '')
+              .gsub(/(?<=[。．！？!?]) +(?=[「『（【])/u, '')
+              .gsub(/(?<=[「『（【]) +(?=[一-龯ぁ-ゖァ-ヶー々〆ヵヶA-Za-z0-9])/u, '')
+              .gsub(/(?<=[一-龯ぁ-ゖァ-ヶー々〆ヵヶA-Za-z0-9]) +(?=[」』）】])/u, '')
         end
 
         def small_kana_start?(line)

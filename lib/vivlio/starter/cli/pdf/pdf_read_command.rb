@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require "json"
+require "open3"
 require "pdf/reader"
 
 require_relative "mecab_newline_cleaner"
@@ -38,19 +40,19 @@ module Vivlio
 
           entry, pdf_path = resolve_entry_and_pdf
           entry = ensure_unique_output_entry(entry)
+          mode = resolved_mode
 
           ensure_entry_has_slug!(entry)
           add_catalog_entry_if_needed(entry)
 
-          CLI::Common.log_action("[pdf:read] PDF からテキストを抽出します (#{entry.basename})")
+          CLI::Common.log_action("[pdf:read] PDF からテキストを抽出します (#{entry.basename}, mode=#{mode})")
 
-          result = convert_standard(pdf_path, entry)
+          result = mode == :enhanced ? convert_enhanced(pdf_path, entry) : convert_standard(pdf_path, entry)
 
           CLI::Common.log_success("[pdf:read] 変換が完了しました -> #{result[:markdown_path]}")
-          log_enhanced_hint if plugin_available?
 
           {
-            mode: :standard,
+            mode:,
             entry:,
             markdown_path: result[:markdown_path],
             source_pdf_path: pdf_path,
@@ -262,12 +264,44 @@ module Vivlio
           raise MissingPdfError, "PDF の読み込みに失敗しました: #{e.message}"
         end
 
+        def convert_enhanced(pdf_path, entry)
+          markdown_path = File.join(contents_dir, "#{entry.basename}.md")
+          FileUtils.mkdir_p(File.dirname(markdown_path))
+
+          result = enhanced_result(pdf_path, entry)
+          page_texts = enhanced_page_texts(result)
+          pages_text = if enhanced_page_chunks(result).length == page_texts.length && !page_texts.empty?
+                         enhanced_page_chunks(result).each_with_index.map do |chunk, index|
+                           process_extracted_page_text(chunk, index)
+                         end
+                       else
+                         image_references = enhanced_image_reference_map(result)
+                         page_texts.each_with_index.map do |text, index|
+                           cleaned = process_extracted_page_text(text, index)
+                           append_image_references(cleaned, image_references[index + 1])
+                         end
+                       end
+          pages = enhanced_page_count(result, page_texts)
+          markdown = build_markdown(pages_text)
+
+          File.write(markdown_path, markdown, mode: "w", encoding: "UTF-8")
+
+          CLI::Common.log_info("[pdf:read] ページ数: #{pages}")
+
+          { markdown_path:, pages: }
+        rescue LoadError
+          raise InvalidInputError, missing_enhanced_plugin_message
+        rescue StandardError => e
+          raise Error, "Enhanced mode の解析に失敗しました: #{e.message}"
+        end
+
         def build_markdown(chunks)
           body = if pdf_read_page_separator?
                    chunks.join("\n\n---\n\n")
                  else
                    newline_cleaner.clean(chunks.reject(&:empty?).join("\n"))
                  end
+          body = normalize_image_reference_blocks(body)
           body = "" if body.nil?
           body = body.strip
           body += "\n" unless body.empty? || body.end_with?("\n")
@@ -282,6 +316,15 @@ module Vivlio
             .gsub(/[ \t]+$/, "")
             .gsub(/\n{3,}/, "\n\n")
             .strip
+        end
+
+        def process_extracted_page_text(text, index)
+          lines = text.to_s.split("\n", -1)
+          trimmed = drop_header_footer_candidates(lines, index:)
+          page_text = trimmed.join("\n")
+          capture_first_page_headings(page_text) if index.zero?
+          cleaned = newline_cleaner.clean(page_text)
+          sanitize(cleaned)
         end
 
         def extract_text_from_page(page, index)
@@ -509,6 +552,116 @@ module Vivlio
           nil
         end
 
+        def resolved_mode = plugin_available? ? :enhanced : :standard
+
+        def enhanced_result(pdf_path, entry)
+          ensure_enhanced_plugin_loaded!
+
+          stdout, status = capture_enhanced_command(*enhanced_command(pdf_path, entry))
+          raise Error, stdout.strip unless status.success?
+
+          JSON.parse(stdout)
+        rescue Errno::ENOENT
+          raise LoadError, missing_enhanced_plugin_message
+        rescue JSON::ParserError => e
+          raise Error, "Enhanced mode の応答解析に失敗しました: #{e.message}"
+        end
+
+        def enhanced_page_texts(result)
+          page_texts = result[:page_texts] || result["page_texts"]
+          Array(page_texts)
+        end
+
+        def enhanced_page_chunks(result)
+          page_chunks = result[:page_chunks] || result["page_chunks"]
+          Array(page_chunks)
+        end
+
+        def enhanced_image_reference_map(result)
+          enhanced_images(result).each_with_object({}) do |asset, refs|
+            page = (asset[:page] || asset["page"]).to_i
+            reference_path = asset[:reference_path] || asset["reference_path"]
+            next if page <= 0 || reference_path.to_s.empty?
+
+            refs[page] ||= []
+            refs[page] << reference_path
+          end
+        end
+
+        def enhanced_images(result)
+          images = result[:images] || result["images"]
+          Array(images)
+        end
+
+        def append_image_references(text, references)
+          refs = Array(references).reject { it.to_s.empty? }
+          return text if refs.empty?
+
+          parts = []
+          parts << text unless text.to_s.empty?
+          parts.concat(refs.map { "![](#{it})" })
+          parts.join("\n\n")
+        end
+
+        def normalize_image_reference_blocks(markdown)
+          isolated = markdown.to_s
+                             .gsub(/(?<=\S)[ \t]*(!\[[^\]]*\]\([^\)]+\))/, "\n\\1")
+                             .gsub(/(!\[[^\]]*\]\([^\)]+\))[ \t]*(?=\S)/, "\\1\n")
+
+          rebuilt = []
+
+          isolated.split("\n", -1).each do |line|
+            stripped = line.strip
+
+            if markdown_image_reference_line?(stripped)
+              rebuilt << "" unless rebuilt.empty? || rebuilt.last.empty?
+              rebuilt << stripped
+              rebuilt << ""
+            else
+              rebuilt << line
+            end
+          end
+
+          rebuilt.join("\n").gsub(/\n{3,}/, "\n\n")
+        end
+
+        def markdown_image_reference_line?(line)
+          line.to_s.match?(/\A!\[[^\]]*\]\([^\)]+\)\z/)
+        end
+
+        def enhanced_page_count(result, page_texts)
+          reported = result[:pages] || result["pages"]
+          count = reported.to_i
+          count.positive? ? count : page_texts.length
+        end
+
+        def enhanced_command(pdf_path, entry)
+          [
+            enhanced_plugin_executable,
+            "read",
+            pdf_path,
+            "page_separator=#{pdf_read_page_separator?}",
+            "text_area=#{JSON.generate(text_area_margin_points)}",
+            "line_merge_tolerance=#{line_merge_tolerance}",
+            "images_dir=#{enhanced_images_output_dir(entry)}",
+            "image_reference_dir=#{enhanced_images_reference_dir(entry)}"
+          ]
+        end
+
+        def enhanced_images_output_dir(entry)
+          File.join(CLI::Common.images_dir, entry.basename)
+        end
+
+        def enhanced_images_reference_dir(entry)
+          File.join("images", entry.basename)
+        end
+
+        def enhanced_plugin_executable = "vivlio-starter-pdf"
+
+        def missing_enhanced_plugin_message
+          "Enhanced mode を利用するには vivlio-starter-pdf をインストールしてください"
+        end
+
         def newline_cleaner
           @newline_cleaner ||= Vivlio::Starter::PDF::MecabNewlineCleaner.new
         end
@@ -526,12 +679,26 @@ module Vivlio
         def plugin_available?
           return @plugin_available if @plugin_checked
 
-          require "vivlio/starter/pdf"
-          @plugin_available = true
-        rescue LoadError
+          _stdout, status = capture_enhanced_command(enhanced_plugin_executable, "--version")
+          @plugin_available = status.success?
+        rescue Errno::ENOENT
           @plugin_available = false
         ensure
           @plugin_checked = true
+        end
+
+        def capture_enhanced_command(*command)
+          return Open3.capture2e(*command) unless defined?(Bundler)
+
+          Bundler.with_unbundled_env do
+            Open3.capture2e(*command)
+          end
+        end
+
+        def ensure_enhanced_plugin_loaded!
+          return if plugin_available?
+
+          raise LoadError, missing_enhanced_plugin_message
         end
 
         def log_enhanced_hint

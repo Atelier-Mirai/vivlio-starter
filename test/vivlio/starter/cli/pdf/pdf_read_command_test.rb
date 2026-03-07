@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "tmpdir"
+
 require "test_helper"
 require "vivlio/starter/cli/pdf/pdf_read_command"
 
@@ -48,6 +50,128 @@ module Vivlio
 
               assert_equal("基本的な理解が必要です。\n", markdown)
             end
+          end
+        end
+
+        def test_resolved_mode_uses_enhanced_when_plugin_is_available_in_auto_mode
+          command = PdfReadCommand.new("dummy.pdf", mode: "auto")
+
+          command.stub :plugin_available?, true do
+            assert_equal(:enhanced, command.send(:resolved_mode))
+          end
+        end
+
+        def test_resolved_mode_falls_back_to_standard_when_plugin_is_unavailable_in_auto_mode
+          command = PdfReadCommand.new("dummy.pdf", mode: "auto")
+
+          command.stub :plugin_available?, false do
+            assert_equal(:standard, command.send(:resolved_mode))
+          end
+        end
+
+        def test_convert_enhanced_writes_markdown_from_plugin_page_texts
+          identity_cleaner = Object.new
+          identity_cleaner.define_singleton_method(:clean) { |text| text }
+          entry = Data.define(:basename).new("10-sample")
+          result_payload = {
+            page_texts: ["第1章 プログラミング技術習得の三要素\n本文です。", "- ii -\n続きです。"],
+            page_chunks: [
+              "第1章 プログラミング技術習得の三要素\n本文です。",
+              "![](images/10-sample/page-002-image-01.webp)\n続きです。"
+            ],
+            pages: 2,
+            images: [
+              { page: 2, reference_path: "images/10-sample/page-002-image-01.webp" }
+            ]
+          }
+
+          Dir.mktmpdir do |dir|
+            @command.stub :contents_dir, dir do
+              @command.stub :enhanced_result, result_payload do
+                @command.stub :newline_cleaner, identity_cleaner do
+                  @command.stub :pdf_read_page_separator?, true do
+                    result = @command.send(:convert_enhanced, "dummy.pdf", entry)
+                    markdown = File.read(result[:markdown_path], encoding: "UTF-8")
+
+                    assert_equal(File.join(dir, "10-sample.md"), result[:markdown_path])
+                    assert_equal(2, result[:pages])
+                    assert_equal("第1章 プログラミング技術習得の三要素\n本文です。\n\n---\n\n![](images/10-sample/page-002-image-01.webp)\n\n続きです。\n", markdown)
+                  end
+                end
+              end
+            end
+          end
+        end
+
+        def test_build_markdown_normalizes_image_reference_as_standalone_block_when_separator_disabled
+          identity_cleaner = Object.new
+          identity_cleaner.define_singleton_method(:clean) { |text| text }
+
+          @command.stub :pdf_read_page_separator?, false do
+            @command.stub :newline_cleaner, identity_cleaner do
+              markdown = @command.send(:build_markdown, ["前文", "![](images/10-sample/page-001-image-01.webp)本文"])
+
+              assert_equal("前文\n\n![](images/10-sample/page-001-image-01.webp)\n\n本文\n", markdown)
+            end
+          end
+        end
+
+        def test_normalize_image_reference_blocks_does_not_duplicate_existing_blank_lines
+          markdown = "前文\n\n![](images/10-sample/page-001-image-01.webp)\n\n本文"
+
+          assert_equal(markdown, @command.send(:normalize_image_reference_blocks, markdown))
+        end
+
+        def test_ensure_unique_output_entry_allocates_new_basename_for_existing_catalog_entry
+          entry = Vivlio::Starter::CLI::TokenResolver::Entry.new(
+            number: "10",
+            slug: "three-elements-pages",
+            kind: :chapter,
+            label: "歴史篇",
+            path: "contents/10-three-elements-pages.md",
+            exists: true,
+            in_catalog: true,
+            valid: true
+          )
+
+          @command.stub :next_available_basename, "11-three-elements-pages" do
+            resolved = @command.send(:ensure_unique_output_entry, entry)
+
+            assert_equal("11-three-elements-pages", resolved.basename)
+            refute(resolved.exists?)
+            refute(resolved.in_catalog?)
+          end
+        end
+
+        def test_ensure_unique_output_entry_allocates_new_basename_for_existing_uncatalogued_entry
+          entry = Vivlio::Starter::CLI::TokenResolver::Entry.new(
+            number: "10",
+            slug: "three-elements-pages",
+            kind: :chapter,
+            label: "UNCATALOGED",
+            path: "contents/10-three-elements-pages.md",
+            exists: true,
+            in_catalog: false,
+            valid: true
+          )
+
+          @command.stub :next_available_basename, "11-three-elements-pages" do
+            resolved = @command.send(:ensure_unique_output_entry, entry)
+
+            assert_equal("11-three-elements-pages", resolved.basename)
+            refute(resolved.exists?)
+            refute(resolved.in_catalog?)
+          end
+        end
+
+        def test_plugin_available_checks_vivlio_starter_pdf_version_command
+          status = Data.define(:success?).new(true)
+
+          Open3.stub :capture2e, ["0.1.0\n", status] do
+            @command.instance_variable_set(:@plugin_checked, false)
+            @command.instance_variable_set(:@plugin_available, false)
+
+            assert_equal(true, @command.send(:plugin_available?))
           end
         end
 
