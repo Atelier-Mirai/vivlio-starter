@@ -16,7 +16,7 @@ module Vivlio
         def page_count(pdf_path)
           return nil unless File.exist?(pdf_path)
 
-          PDF::Reader.new(pdf_path).page_count
+          ::PDF::Reader.new(pdf_path).page_count
         rescue StandardError
           nil
         end
@@ -83,7 +83,7 @@ module Vivlio
         # @param original_pdf_path [String] 元となるPDFファイルパス
         # @param bleed_pt [Float] 塗り足し幅 (pt)
         def create_nombre_pdf(output_path, original_pdf_path, bleed_pt)
-          reader = PDF::Reader.new(original_pdf_path)
+          reader = ::PDF::Reader.new(original_pdf_path)
 
           Prawn::Document.generate(output_path, skip_page_creation: true, margin: 0) do |pdf|
             reader.pages.each_with_index do |page, idx|

@@ -39,6 +39,18 @@ module Vivlio
           end
         end
 
+        def test_delete_accepts_slug_only_target
+          within_temp_dir do
+            setup_chapter_fixture('11-sample')
+            options = { force: true }
+
+            capture_io { DeleteCommands::DeleteCommandExecutor.new(options, ['sample']).call }
+
+            refute File.exist?(File.join(Common::CONTENTS_DIR, '11-sample.md'))
+            refute Dir.exist?(File.join(Common::IMAGES_DIR, '11-sample'))
+          end
+        end
+
         # 対象が見つからない場合に終了コード 1 で終了することを確認
         def test_delete_exits_when_targets_missing
           within_temp_dir do

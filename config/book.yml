@@ -58,7 +58,7 @@ theme:
   # ----------------------------
   # 装飾スタイル
   # ----------------------------
-  style: image     # image: 画像あり / simple: 画像なし
+  style: simple     # image: 画像あり / simple: 画像なし
 
   # ----------------------------
   # テーマカラー
@@ -105,7 +105,7 @@ page:
   # プリセットを選択（page_presets.yml から）
   # 紙サイズ、余白、文字サイズ、行送りなど版面の物理的構造を一括指定
   # use: a5_standard
-  use: a5_airy
+  # use: a5_airy
   # use: a5_compact
   # use: a5_custom
 
@@ -114,7 +114,7 @@ page:
   # use: b5_airy
   # use: b5_custom
   
-  # use: a4_standard
+  use: a4_standard
   # use: a4_airy
   # use: a4_compact
   # use: a4_custom
@@ -188,8 +188,8 @@ output:
   # ----------------------------
   # 出力フォーマット
   # ----------------------------
-  # targets: pdf  # pdf / print_pdf / epub
-  targets: print_pdf  # pdf / print_pdf / epub
+  targets: pdf  # pdf / print_pdf / epub
+  # targets: print_pdf  # pdf / print_pdf / epub
   # 文字列、カンマ区切り、配列すべて可
   # 例:
   # targets: pdf              # 単一指定
@@ -474,3 +474,15 @@ spellcheck:
     - htmx
   check_code_blocks: false # コードブロック内を校正対象にするか
                            # 既定値: false (校正対象にしない)
+
+# ========================================
+# pdf_read 設定
+# ========================================
+pdf_read:
+  text_area:
+    top_margin: 18        # 上端からの除外幅(mm)
+    bottom_margin: 20     # 下端からの除外幅(mm)
+    inner_margin: 15      # 綴じ側（奇数ページは左、偶数ページは右）除外幅(mm)
+    outer_margin: 12      # 小口側の除外幅(mm)
+  page_separator: false    # true:  "---" でページ区切りを行なう
+                          # false: "---" でページ区切りを行なわない

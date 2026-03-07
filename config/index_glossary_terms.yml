@@ -198,33 +198,33 @@ terms:
   - chapter: '08-web'
     occurrence: 14
     anchor_id: gls-src-08-web-ウェブサイト-14
-  - chapter: 21-html
+  - chapter: '09-three-elements-org'
     occurrence: 15
-    anchor_id: gls-src-21-html-ウェブサイト-15
-  - chapter: 21-html
+    anchor_id: gls-src-09-three-elements-org-ウェブサイト-15
+  - chapter: '09-three-elements-org'
     occurrence: 16
-    anchor_id: gls-src-21-html-ウェブサイト-16
-  - chapter: 21-html
+    anchor_id: gls-src-09-three-elements-org-ウェブサイト-16
+  - chapter: '09-three-elements-org'
     occurrence: 17
-    anchor_id: gls-src-21-html-ウェブサイト-17
-  - chapter: 21-html
+    anchor_id: gls-src-09-three-elements-org-ウェブサイト-17
+  - chapter: '09-three-elements-org'
     occurrence: 18
-    anchor_id: gls-src-21-html-ウェブサイト-18
-  - chapter: 21-html
+    anchor_id: gls-src-09-three-elements-org-ウェブサイト-18
+  - chapter: '09-three-elements-org'
     occurrence: 19
-    anchor_id: gls-src-21-html-ウェブサイト-19
-  - chapter: 21-html
+    anchor_id: gls-src-09-three-elements-org-ウェブサイト-19
+  - chapter: '09-three-elements-org'
     occurrence: 20
-    anchor_id: gls-src-21-html-ウェブサイト-20
-  - chapter: 21-html
+    anchor_id: gls-src-09-three-elements-org-ウェブサイト-20
+  - chapter: '09-three-elements-org'
     occurrence: 21
-    anchor_id: gls-src-21-html-ウェブサイト-21
-  - chapter: 21-html
+    anchor_id: gls-src-09-three-elements-org-ウェブサイト-21
+  - chapter: '09-three-elements-org'
     occurrence: 22
-    anchor_id: gls-src-21-html-ウェブサイト-22
-  - chapter: 21-html
+    anchor_id: gls-src-09-three-elements-org-ウェブサイト-22
+  - chapter: '09-three-elements-org'
     occurrence: 23
-    anchor_id: gls-src-21-html-ウェブサイト-23
+    anchor_id: gls-src-09-three-elements-org-ウェブサイト-23
   - chapter: 21-html
     occurrence: 24
     anchor_id: gls-src-21-html-ウェブサイト-24
@@ -267,42 +267,42 @@ terms:
   - chapter: 21-html
     occurrence: 37
     anchor_id: gls-src-21-html-ウェブサイト-37
-  - chapter: 22-css
+  - chapter: 21-html
     occurrence: 38
-    anchor_id: gls-src-22-css-ウェブサイト-38
-  - chapter: 22-css
+    anchor_id: gls-src-21-html-ウェブサイト-38
+  - chapter: 21-html
     occurrence: 39
-    anchor_id: gls-src-22-css-ウェブサイト-39
-  - chapter: 22-css
+    anchor_id: gls-src-21-html-ウェブサイト-39
+  - chapter: 21-html
     occurrence: 40
-    anchor_id: gls-src-22-css-ウェブサイト-40
-  - chapter: 31-netlify
+    anchor_id: gls-src-21-html-ウェブサイト-40
+  - chapter: 21-html
     occurrence: 41
-    anchor_id: gls-src-31-netlify-ウェブサイト-41
-  - chapter: 31-netlify
+    anchor_id: gls-src-21-html-ウェブサイト-41
+  - chapter: 21-html
     occurrence: 42
-    anchor_id: gls-src-31-netlify-ウェブサイト-42
-  - chapter: 31-netlify
+    anchor_id: gls-src-21-html-ウェブサイト-42
+  - chapter: 21-html
     occurrence: 43
-    anchor_id: gls-src-31-netlify-ウェブサイト-43
-  - chapter: 31-netlify
+    anchor_id: gls-src-21-html-ウェブサイト-43
+  - chapter: 21-html
     occurrence: 44
-    anchor_id: gls-src-31-netlify-ウェブサイト-44
-  - chapter: 31-netlify
+    anchor_id: gls-src-21-html-ウェブサイト-44
+  - chapter: 21-html
     occurrence: 45
-    anchor_id: gls-src-31-netlify-ウェブサイト-45
-  - chapter: 31-netlify
+    anchor_id: gls-src-21-html-ウェブサイト-45
+  - chapter: 21-html
     occurrence: 46
-    anchor_id: gls-src-31-netlify-ウェブサイト-46
-  - chapter: 31-netlify
+    anchor_id: gls-src-21-html-ウェブサイト-46
+  - chapter: 22-css
     occurrence: 47
-    anchor_id: gls-src-31-netlify-ウェブサイト-47
-  - chapter: 31-netlify
+    anchor_id: gls-src-22-css-ウェブサイト-47
+  - chapter: 22-css
     occurrence: 48
-    anchor_id: gls-src-31-netlify-ウェブサイト-48
-  - chapter: 31-netlify
+    anchor_id: gls-src-22-css-ウェブサイト-48
+  - chapter: 22-css
     occurrence: 49
-    anchor_id: gls-src-31-netlify-ウェブサイト-49
+    anchor_id: gls-src-22-css-ウェブサイト-49
   - chapter: 31-netlify
     occurrence: 50
     anchor_id: gls-src-31-netlify-ウェブサイト-50
@@ -312,36 +312,63 @@ terms:
   - chapter: 31-netlify
     occurrence: 52
     anchor_id: gls-src-31-netlify-ウェブサイト-52
-  - chapter: 41-pwa
+  - chapter: 31-netlify
     occurrence: 53
-    anchor_id: gls-src-41-pwa-ウェブサイト-53
-  - chapter: 41-pwa
+    anchor_id: gls-src-31-netlify-ウェブサイト-53
+  - chapter: 31-netlify
     occurrence: 54
-    anchor_id: gls-src-41-pwa-ウェブサイト-54
-  - chapter: 41-pwa
+    anchor_id: gls-src-31-netlify-ウェブサイト-54
+  - chapter: 31-netlify
     occurrence: 55
-    anchor_id: gls-src-41-pwa-ウェブサイト-55
-  - chapter: 91-books
+    anchor_id: gls-src-31-netlify-ウェブサイト-55
+  - chapter: 31-netlify
     occurrence: 56
-    anchor_id: gls-src-91-books-ウェブサイト-56
-  - chapter: 92-links
+    anchor_id: gls-src-31-netlify-ウェブサイト-56
+  - chapter: 31-netlify
     occurrence: 57
-    anchor_id: gls-src-92-links-ウェブサイト-57
-  - chapter: 92-links
+    anchor_id: gls-src-31-netlify-ウェブサイト-57
+  - chapter: 31-netlify
     occurrence: 58
-    anchor_id: gls-src-92-links-ウェブサイト-58
-  - chapter: 92-links
+    anchor_id: gls-src-31-netlify-ウェブサイト-58
+  - chapter: 31-netlify
     occurrence: 59
-    anchor_id: gls-src-92-links-ウェブサイト-59
-  - chapter: 93-cheats
+    anchor_id: gls-src-31-netlify-ウェブサイト-59
+  - chapter: 31-netlify
     occurrence: 60
-    anchor_id: gls-src-93-cheats-ウェブサイト-60
-  - chapter: 93-cheats
+    anchor_id: gls-src-31-netlify-ウェブサイト-60
+  - chapter: 31-netlify
     occurrence: 61
-    anchor_id: gls-src-93-cheats-ウェブサイト-61
-  - chapter: 93-cheats
+    anchor_id: gls-src-31-netlify-ウェブサイト-61
+  - chapter: 41-pwa
     occurrence: 62
-    anchor_id: gls-src-93-cheats-ウェブサイト-62
+    anchor_id: gls-src-41-pwa-ウェブサイト-62
+  - chapter: 41-pwa
+    occurrence: 63
+    anchor_id: gls-src-41-pwa-ウェブサイト-63
+  - chapter: 41-pwa
+    occurrence: 64
+    anchor_id: gls-src-41-pwa-ウェブサイト-64
+  - chapter: 91-books
+    occurrence: 65
+    anchor_id: gls-src-91-books-ウェブサイト-65
+  - chapter: 92-links
+    occurrence: 66
+    anchor_id: gls-src-92-links-ウェブサイト-66
+  - chapter: 92-links
+    occurrence: 67
+    anchor_id: gls-src-92-links-ウェブサイト-67
+  - chapter: 92-links
+    occurrence: 68
+    anchor_id: gls-src-92-links-ウェブサイト-68
+  - chapter: 93-cheats
+    occurrence: 69
+    anchor_id: gls-src-93-cheats-ウェブサイト-69
+  - chapter: 93-cheats
+    occurrence: 70
+    anchor_id: gls-src-93-cheats-ウェブサイト-70
+  - chapter: 93-cheats
+    occurrence: 71
+    anchor_id: gls-src-93-cheats-ウェブサイト-71
   updated_at: '2026-02-08 02:44:26'
 - term: ブラウザ
   yomi: ブラウザ
@@ -356,4 +383,4 @@ terms:
     context: '今日では不可欠となったウェブサイト。その歴史をみていきます。 そしてサーバとブラウザとの関係、ウェブサイト作成に用いる三つの言語 HTML
       / CSS / '
   updated_at: '2026-02-08 02:44:26'
-updated_at: '2026-02-26 08:17:55'
+updated_at: '2026-02-28 22:46:15'

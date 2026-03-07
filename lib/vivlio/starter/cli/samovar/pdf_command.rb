@@ -10,10 +10,14 @@
 # コマンド分類 (help_spec.md 準拠):
 #   - pdf: 内部コマンド（ビルドパイプラインから呼び出し）
 #   - pdf:compress: Public コマンド（利用者向け）
+#   - pdf:read: Public コマンド（PDF→Markdown 変換）
 #
 # 依存:
 #   - PdfCommands: 実際の PDF 生成・圧縮処理
+#   - Commands::PdfReadCommand: PDF 読み取り処理
 # ================================================================
+
+require_relative '../pdf/pdf_read_command'
 
 module Vivlio
   module Starter
@@ -111,6 +115,63 @@ module Vivlio
 
           def parent_verbose?
             parent&.options&.[](:verbose) || false
+          end
+        end
+
+        # pdf:read コマンドの Samovar 実装（Public コマンド）
+        class PdfReadCommand < Samovar::Command
+          self.description = 'PDF を Markdown へ変換します'
+
+          one :target, '章トークンまたは PDF パス', required: false
+
+          options do
+            option '-h/--help', 'このコマンドの使い方を表示', key: :help
+          end
+
+          def call
+            if options[:help] || target.to_s.strip.empty?
+              print_usage
+              return 0
+            end
+
+            pdf_reader.call
+            0
+          rescue Commands::PdfReadCommand::InvalidInputError => e
+            Common.log_error("[pdf:read] #{e.message}")
+            1
+          rescue Commands::PdfReadCommand::MissingPdfError => e
+            Common.log_error("[pdf:read] #{e.message}")
+            1
+          rescue StandardError => e
+            Common.log_error("[pdf:read] 実行中にエラー: #{e.message}")
+            Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
+            1
+          end
+
+          private
+
+          def pdf_reader
+            @pdf_reader ||= Commands::PdfReadCommand.new(target, build_options)
+          end
+
+          def build_options
+            { verbose: parent_verbose? }
+          end
+
+          def parent_verbose?
+            parent&.options&.[](:verbose) || false
+          end
+
+          def print_usage
+            puts <<~USAGE
+              vs pdf:read - PDF を Markdown へ変換します
+
+              Usage:
+                vs pdf:read FILE
+
+              引数:
+                FILE 章トークン (01-foo) または PDF ファイルパス
+            USAGE
           end
         end
       end

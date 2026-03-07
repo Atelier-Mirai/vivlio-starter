@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'pdf/reader'
+
 module Vivlio
   module Starter
     module Pdf

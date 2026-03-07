@@ -296,13 +296,20 @@ module Vivlio
         #   - "NN-slug" 形式: 番号とスラッグの両方を指定
         #   - "NN" 形式: 番号のみ指定（スラッグは維持、付録の場合は自動調整）
         def rename_single_chapter(old_arg, new_arg)
-          resolver = TokenResolver::Resolver.new
-          from_entry, to_entry = resolver.resolve([old_arg, new_arg])
-
-          if from_entry.nil? || to_entry.nil?
+          if old_arg.nil? || new_arg.nil?
             warn '使い方: vs rename <旧名> <新名> または 引数なしで一括連番'
             exit 1
           end
+
+          resolver = TokenResolver::Resolver.new
+          from_entry = resolver.resolve([old_arg]).first
+
+          unless from_entry&.valid?
+            Common.log_error("変更元の指定が不正です: #{old_arg}")
+            exit 1
+          end
+
+          to_entry = resolve_target_entry(resolver, new_arg, from_entry)
 
           # 変更元がカタログに存在するかチェック
           unless from_entry.in_catalog?
@@ -349,6 +356,37 @@ module Vivlio
           end
 
           execute_single_rename(old_md, new_md, old_number, old_slug, new_number, new_slug)
+        end
+
+        def resolve_target_entry(resolver, new_arg, from_entry)
+          return build_virtual_entry_with_slug(from_entry, new_arg) if slug_only_token?(new_arg)
+
+          entry = resolver.resolve([new_arg]).first
+          return entry if entry&.valid?
+
+          Common.log_error("変更先の指定が不正です: #{new_arg}")
+          exit 1
+        end
+
+        def build_virtual_entry_with_slug(from_entry, new_arg)
+          slug = normalize_new_slug(new_arg)
+          if slug.nil? || slug.empty?
+            Common.log_error('変更先スラッグの形式が不正です')
+            exit 1
+          end
+
+          number = from_entry.number
+          path = File.join(Common::CONTENTS_DIR, "#{number}-#{slug}.md")
+          TokenResolver::Entry.new(
+            number:,
+            slug: slug,
+            kind: from_entry.kind,
+            label: 'RENAME_TARGET',
+            path:,
+            exists: File.exist?(path),
+            in_catalog: false,
+            valid: true
+          )
         end
 
         def find_markdown_by_number(contents_dir, chapter_number)
@@ -423,6 +461,25 @@ module Vivlio
             File.delete(file)
             Common.log_info("#{File.basename(file)} を削除")
           end
+        end
+
+        def slug_only_token?(token)
+          base = File.basename(token.to_s.strip)
+          base = base.sub(/\.(md|markdown)\z/i, '')
+          return false if base.empty?
+
+          !base.match?(/\A\d/)
+        end
+
+        def normalize_new_slug(token)
+          base = File.basename(token.to_s.strip)
+          base = base.sub(/\.(md|markdown)\z/i, '')
+          slug = base.downcase.tr(' ', '-')
+          slug = slug.gsub(/[^a-z0-9._-]+/, '-')
+          slug = slug.gsub(/-+/, '-')
+          slug.gsub(/\A-+|-+\z/, '')
+        rescue StandardError
+          ''
         end
       end
     end

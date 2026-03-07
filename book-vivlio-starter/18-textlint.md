@@ -380,7 +380,7 @@ htmx はサーバーとの通信を HTML 属性で記述できるライブラリ
 spellcheck:
   extra_dictionaries:      # オンデマンドダウンロード辞書（初回実行時に取得）
     - ada                  # Ada 言語の用語を追加したい場合
-    - elixir               # Elixir の用語を追加したい場合
+    - elixir               # Elixir 言語の用語を追加したい場合
   extra_words:             # プロジェクト固有語（辞書にない固有名詞など）
     - vivliostyle
     - vivlio-starter

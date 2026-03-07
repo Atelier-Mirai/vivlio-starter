@@ -65,6 +65,7 @@ module Vivlio
                 'index:auto' => IndexAutoCommand,
                 'index:apply' => IndexApplyCommand,
                 'pdf:compress' => PdfCompressCommand,
+                'pdf:read' => PdfReadCommand,
                 'lint' => LintCommand,
                 'lint:check' => LintCheckCommand,
                 'metrics' => MetricsCommand

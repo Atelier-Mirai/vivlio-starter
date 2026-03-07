@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'catalog_loader'
+
 # ================================================================
 # File: lib/vivlio/starter/cli/build/catalog_updater.rb
 # ================================================================

@@ -52,7 +52,7 @@ module Vivlio
           assert_equal pdf_path, result_path
           assert File.exist?(pdf_path)
 
-          reader = PDF::Reader.new(pdf_path)
+          reader = ::PDF::Reader.new(pdf_path)
           assert_equal 1, reader.page_count
           
           # Prawn generates slightly different bbox depending on settings, but should be close

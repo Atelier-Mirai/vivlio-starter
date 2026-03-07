@@ -46,6 +46,20 @@ module Vivlio
           end
         end
 
+        def test_rename_accepts_slug_only_target
+          within_temp_dir do
+            executor = build_rename_executor(force: true)
+            setup_single_chapter_fixture('11-old', images: true)
+
+            capture_io { executor.call('11-old', 'new-slug') }
+
+            assert File.exist?(File.join(Common::CONTENTS_DIR, '11-new-slug.md'))
+            refute File.exist?(File.join(Common::CONTENTS_DIR, '11-old.md'))
+            assert Dir.exist?('images/11-new-slug')
+            refute Dir.exist?('images/11-old')
+          end
+        end
+
         # 引数なしで実行した際に章番号が再割り当てされることを確認
         def test_rename_without_arguments_performs_renumber
           within_temp_dir do

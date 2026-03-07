@@ -359,6 +359,7 @@ module Vivlio
 
               # --- Phase: Validation ---
               reject_invalid_entries!(entries)
+              reject_unknown_entries!(entries)
 
               # --- Phase: contents/ 配下のみに限定 ---
               content_entries = entries.select { it.path.start_with?(Common::CONTENTS_DIR) }
@@ -387,6 +388,19 @@ module Vivlio
 
               Common.log_error("不正な章指定が含まれています: #{invalid.map(&:slug).join(', ')}")
               exit 1
+            end
+
+            def reject_unknown_entries!(entries)
+              unknown = entries.reject { system_entry?(it) }.select { !it.in_catalog? && !it.exists? }
+              return if unknown.empty?
+
+              labels = unknown.map { it.slug || it.basename }.uniq
+              Common.log_error("不正な章指定が含まれています: #{labels.join(', ')}")
+              exit 1
+            end
+
+            def system_entry?(entry)
+              entry.respond_to?(:number) && entry.number.nil?
             end
           end
         end

@@ -166,47 +166,70 @@
   gap: 1.5rem;
 }
 
-/* 回り込み配置（画像などを右端＝行内終端へ） */
-.float-end,
-.float-right {
-  /* layout */
-  float: inline-end;
-
-  /* spacing */
-  margin-inline-start: 1em;
-  margin-block-end: 0.5em;
+/* ブロックの位置揃えユーティリティ */
+.align-left,
+.align-center,
+.align-right {
+  display: block;
+  margin-block: 0.5em;
+  text-align: inherit;
 }
 
-/* inline-end 未対応ブラウザ向けフォールバック */
-@supports not (float: inline-end) {
-
-  .float-end,
-  .float-right {
-    float: right;
-  }
+.align-left {
+  text-align: left;
 }
 
-/* 左側回り込み（対称ユーティリティ） */
-.float-start {
-  /* layout */
+.align-center {
+  text-align: center;
+}
+
+.align-right {
+  text-align: right;
+}
+
+/* 図版・画像以外のブロックは余白で位置合わせする */
+.align-left:not(:is(.figure, figure, img, svg)) {
+  margin-inline-start: 0;
+  margin-inline-end: auto;
+  inline-size: min(26em, max-content);
+}
+
+.align-center:not(:is(.figure, figure, img, svg)) {
+  margin-inline: auto;
+  inline-size: min(26em, max-content);
+}
+
+.align-right:not(:is(.figure, figure, img, svg)) {
+  margin-inline-start: auto;
+  margin-inline-end: 0;
+  inline-size: min(26em, max-content);
+}
+
+/* 画像単体 (.align-*) を回り込ませる場合 */
+:is(img, svg).align-left {
   float: inline-start;
-
-  /* spacing */
   margin-inline-end: 1em;
   margin-block-end: 0.5em;
+  max-inline-size: 45%;
 }
 
 @supports not (float: inline-start) {
-  .float-start {
+  :is(img, svg).align-left {
     float: left;
   }
 }
 
-/* 回り込み画像の最大幅（安全策） */
-.float-end,
-.float-right,
-.float-start {
+:is(img, svg).align-right {
+  float: inline-end;
+  margin-inline-start: 1em;
+  margin-block-end: 0.5em;
   max-inline-size: 45%;
+}
+
+@supports not (float: inline-end) {
+  :is(img, svg).align-right {
+    float: right;
+  }
 }
 
 /* 回り込み解除ユーティリティ */
@@ -242,27 +265,24 @@ figcaption {
   text-align: center;
 }
 
-figure.float-end,
-figure.float-right {
+figure.align-right {
   float: inline-end;
   margin-inline-start: 1em;
 }
 
 @supports not (float: inline-end) {
-
-  figure.float-end,
-  figure.float-right {
+  figure.align-right {
     float: right;
   }
 }
 
-figure.float-start {
+figure.align-left {
   float: inline-start;
   margin-inline-end: 1em;
 }
 
 @supports not (float: inline-start) {
-  figure.float-start {
+  figure.align-left {
     float: left;
   }
 }

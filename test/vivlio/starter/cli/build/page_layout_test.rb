@@ -31,40 +31,41 @@ module Vivlio
       # ================================================================
       class VivliostyleConfigSizeTest < Minitest::Test
         def test_resolve_vivliostyle_size_returns_a5_for_a5_preset
-          config = Common::CONFIG
+          config = { page: { size: 'A5' } }
           size = VivliostyleCommands.resolve_vivliostyle_size(config)
           assert_equal 'A5', size
         end
 
         def test_resolve_vivliostyle_size_returns_a5_when_page_nil
-          # page が nil の場合はデフォルト A5
-          mock_config = { page: nil }
-          size = VivliostyleCommands.resolve_vivliostyle_size(mock_config)
+          size = VivliostyleCommands.resolve_vivliostyle_size({ page: nil })
           assert_equal 'A5', size
         end
 
         def test_resolve_vivliostyle_size_returns_dimensions_when_no_size_key
-          mock_config = { page: { width: '182mm', height: '257mm' } }
-          size = VivliostyleCommands.resolve_vivliostyle_size(mock_config)
+          config = { page: { width: '182mm', height: '257mm' } }
+          size = VivliostyleCommands.resolve_vivliostyle_size(config)
           assert_equal '182mm 257mm', size
         end
 
         def test_resolve_vivliostyle_size_returns_b5_for_b5_preset
-          mock_config = { page: { size: 'B5' } }
-          size = VivliostyleCommands.resolve_vivliostyle_size(mock_config)
+          config = { page: { size: 'B5' } }
+          size = VivliostyleCommands.resolve_vivliostyle_size(config)
           assert_equal 'B5', size
         end
 
         def test_resolve_vivliostyle_size_normalizes_case
-          mock_config = { page: { size: 'a4' } }
-          size = VivliostyleCommands.resolve_vivliostyle_size(mock_config)
+          config = { page: { size: 'a4' } }
+          size = VivliostyleCommands.resolve_vivliostyle_size(config)
           assert_equal 'A4', size
         end
 
         def test_vivliostyle_config_js_contains_size_property
+          expected_size = VivliostyleCommands.resolve_vivliostyle_size(Common::CONFIG)
+          pattern = /size:\s*'#{Regexp.escape(expected_size)}'/
+
           content = File.read('vivliostyle.config.js', encoding: 'utf-8')
-          assert_match(/size:\s*'A5'/, content,
-                       'vivliostyle.config.js に size: A5 が含まれていること')
+          assert_match(pattern, content,
+                       "vivliostyle.config.js に size: #{expected_size} が含まれていること")
         end
       end
 
