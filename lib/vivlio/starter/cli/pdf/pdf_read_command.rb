@@ -525,6 +525,8 @@ module Vivlio
 
         def pdf_read_text_area = fetch_pdf_read_section(:text_area)
 
+        def pdf_read_ocr = fetch_pdf_read_section(:ocr)
+
         def pdf_read_page_separator
           fetch_pdf_read_section(:page_separator)
         end
@@ -644,8 +646,27 @@ module Vivlio
             "text_area=#{JSON.generate(text_area_margin_points)}",
             "line_merge_tolerance=#{line_merge_tolerance}",
             "images_dir=#{enhanced_images_output_dir(entry)}",
-            "image_reference_dir=#{enhanced_images_reference_dir(entry)}"
+            "image_reference_dir=#{enhanced_images_reference_dir(entry)}",
+            "ocr=#{JSON.generate(enhanced_ocr_settings)}"
           ]
+        end
+
+        def enhanced_ocr_settings
+          cfg = pdf_read_ocr
+          {
+            mode: value_from_config(cfg, :mode),
+            languages: normalize_ocr_languages(value_from_config(cfg, :languages)),
+            dpi: value_from_config(cfg, :dpi),
+            psm: value_from_config(cfg, :psm)
+          }.compact
+        end
+
+        def normalize_ocr_languages(value)
+          case value
+          in Array then value.map { it.to_s.strip }.reject(&:empty?)
+          else
+            value.to_s.split(/[+,]/).map { it.strip }.reject(&:empty?)
+          end
         end
 
         def enhanced_images_output_dir(entry)

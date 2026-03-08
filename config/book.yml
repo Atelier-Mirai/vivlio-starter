@@ -485,4 +485,10 @@ pdf_read:
     inner_margin: 15      # 綴じ側（奇数ページは左、偶数ページは右）除外幅(mm)
     outer_margin: 12      # 小口側の除外幅(mm)
   page_separator: false    # true:  "---" でページ区切りを行なう
-                          # false: "---" でページ区切りを行なわない
+                           # false: "---" でページ区切りを行なわない
+  ocr:
+    mode: auto
+    languages:
+      - jpn
+    dpi: 300
+    psm: 3

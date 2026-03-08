@@ -30,10 +30,12 @@ module Vivlio
         def test_doctor_reports_success_when_environment_complete
           with_host_os('linux') do
             stub_logging do
-              DoctorCommands.stub :command_exists?, ->(_) { true } do
-                DoctorCommands.stub :waifu2x_available?, true do
-                  DoctorCommands.stub :install_waifu2x_macos!, ->(*) { flunk('install_waifu2x_macos! should not be called when waifu2x is available') } do
-                    capture_io { DoctorCommands.execute_doctor(options_context) }
+              DoctorCommands.stub :tesseract_language_available?, true do
+                DoctorCommands.stub :command_exists?, ->(_) { true } do
+                  DoctorCommands.stub :waifu2x_available?, true do
+                    DoctorCommands.stub :install_waifu2x_macos!, ->(*) { flunk('install_waifu2x_macos! should not be called when waifu2x is available') } do
+                      capture_io { DoctorCommands.execute_doctor(options_context) }
+                    end
                   end
                 end
               end
@@ -47,10 +49,12 @@ module Vivlio
 
             stub_logging do
               DoctorCommands.stub :ssl_certificate_configured?, true do
-                DoctorCommands.stub :waifu2x_available?, true do
-                  DoctorCommands.stub :command_exists?, ->(_) { true } do
-                    DoctorCommands.stub :copy_textlint_assets_from_scaffold!, -> { copy_called = true } do
-                      capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
+                DoctorCommands.stub :tesseract_language_available?, true do
+                  DoctorCommands.stub :waifu2x_available?, true do
+                    DoctorCommands.stub :command_exists?, ->(_) { true } do
+                      DoctorCommands.stub :copy_textlint_assets_from_scaffold!, -> { copy_called = true } do
+                        capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
+                      end
                     end
                   end
                 end
@@ -67,9 +71,11 @@ module Vivlio
 
             Common.stub :echo_always, ->(message) { outputs << message } do
               stub_logging_without_echo do
-                DoctorCommands.stub :waifu2x_available?, true do
-                  DoctorCommands.stub :command_exists?, ->(cmd) { cmd != 'textlint' } do
-                    DoctorCommands.execute_doctor(options_context)
+                DoctorCommands.stub :tesseract_language_available?, true do
+                  DoctorCommands.stub :waifu2x_available?, true do
+                    DoctorCommands.stub :command_exists?, ->(cmd) { cmd != 'textlint' } do
+                      DoctorCommands.execute_doctor(options_context)
+                    end
                   end
                 end
               end
@@ -87,30 +93,32 @@ module Vivlio
 
             stub_logging do
               DoctorCommands.stub :ssl_certificate_configured?, true do
-                DoctorCommands.stub :waifu2x_available?, true do
-                  DoctorCommands.stub :command_exists?, lambda { |cmd|
-                    case cmd
-                    when 'textlint' then textlint_installed
-                    else true
-                    end
-                  } do
-                    DoctorCommands.stub :copy_textlint_assets_from_scaffold!, -> { copy_called = true } do
-                      DoctorCommands.stub :system, lambda { |cmd|
-                        system_calls << cmd
+                DoctorCommands.stub :tesseract_language_available?, true do
+                  DoctorCommands.stub :waifu2x_available?, true do
+                    DoctorCommands.stub :command_exists?, lambda { |cmd|
+                      case cmd
+                      when 'textlint' then textlint_installed
+                      else true
+                      end
+                    } do
+                      DoctorCommands.stub :copy_textlint_assets_from_scaffold!, -> { copy_called = true } do
+                        DoctorCommands.stub :system, lambda { |cmd|
+                          system_calls << cmd
 
-                        case cmd
-                        when /xcode-select -p/ then true
-                        when /which brew/ then true
-                        when /brew install/ then true
-                        when /which npm/ then true
-                        when /npm install -g /
-                          textlint_installed = true
-                          true
-                        else
-                          true
+                          case cmd
+                          when /xcode-select -p/ then true
+                          when /which brew/ then true
+                          when /brew install/ then true
+                          when /which npm/ then true
+                          when /npm install -g /
+                            textlint_installed = true
+                            true
+                          else
+                            true
+                          end
+                        } do
+                          capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
                         end
-                      } do
-                        capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
                       end
                     end
                   end
@@ -127,6 +135,69 @@ module Vivlio
             end
 
             assert copy_called, 'textlint assets should be copied after installation'
+          end
+        end
+
+        def test_tesseract_language_available_detects_japanese_data
+          DoctorCommands.stub :command_exists?, true do
+            DoctorCommands.stub :capture_command, "List of available languages in /opt/homebrew/share/tessdata/ (3):\neng\njpn\nosd\n" do
+              assert_equal(true, DoctorCommands.send(:tesseract_language_available?, 'jpn'))
+            end
+          end
+        end
+
+        def test_doctor_fix_installs_tesseract_language_data_when_missing
+          with_host_os('darwin') do
+            system_calls = []
+            tesseract_installed = false
+            tesseract_lang_installed = false
+
+            stub_logging do
+              DoctorCommands.stub :ssl_certificate_configured?, true do
+                DoctorCommands.stub :waifu2x_available?, true do
+                  DoctorCommands.stub :playwright_npm_available?, true do
+                    DoctorCommands.stub :chromium_available?, true do
+                      DoctorCommands.stub :rouge_gem_available?, true do
+                        DoctorCommands.stub :copy_textlint_assets_from_scaffold!, nil do
+                          DoctorCommands.stub :tesseract_language_available?, lambda { |language|
+                            language == 'jpn' && tesseract_lang_installed
+                          } do
+                            DoctorCommands.stub :command_exists?, lambda { |cmd|
+                              case cmd
+                              when 'tesseract' then tesseract_installed
+                              else true
+                              end
+                            } do
+                              DoctorCommands.stub :system, lambda { |cmd|
+                                system_calls << cmd
+
+                                case cmd
+                                when /xcode-select -p/ then true
+                                when /which brew/ then true
+                                when 'brew install tesseract'
+                                  tesseract_installed = true
+                                  true
+                                when 'brew install tesseract-lang'
+                                  tesseract_lang_installed = true
+                                  true
+                                else
+                                  true
+                                end
+                              } do
+                                capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
+                              end
+                            end
+                          end
+                        end
+                      end
+                    end
+                  end
+                end
+              end
+            end
+
+            assert_includes(system_calls, 'brew install tesseract')
+            assert_includes(system_calls, 'brew install tesseract-lang')
           end
         end
 

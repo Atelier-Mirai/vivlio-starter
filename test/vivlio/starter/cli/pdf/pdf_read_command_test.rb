@@ -103,6 +103,31 @@ module Vivlio
           end
         end
 
+        def test_enhanced_command_includes_ocr_settings
+          entry = Data.define(:basename).new("10-sample")
+
+          @command.stub :pdf_read_page_separator?, false do
+            @command.stub :text_area_margin_points, { top: 1.0, bottom: 2.0, inner: 3.0, outer: 4.0 } do
+              @command.stub :line_merge_tolerance, 2.5 do
+                @command.stub :enhanced_images_output_dir, "/tmp/images-out" do
+                  @command.stub :enhanced_images_reference_dir, "images/10-sample" do
+                    @command.stub :pdf_read_ocr, { mode: "always", languages: %w[jpn eng], dpi: 220, psm: 6 } do
+                      command = @command.send(:enhanced_command, "dummy.pdf", entry)
+                      ocr_token = command.find { it.start_with?("ocr=") }
+
+                      refute_nil(ocr_token)
+                      assert_equal(
+                        { "mode" => "always", "languages" => ["jpn", "eng"], "dpi" => 220, "psm" => 6 },
+                        JSON.parse(ocr_token.delete_prefix("ocr="))
+                      )
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+
         def test_build_markdown_normalizes_image_reference_as_standalone_block_when_separator_disabled
           identity_cleaner = Object.new
           identity_cleaner.define_singleton_method(:clean) { |text| text }
