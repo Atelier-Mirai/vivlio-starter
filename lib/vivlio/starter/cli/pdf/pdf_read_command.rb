@@ -639,9 +639,9 @@ module Vivlio
 
         def enhanced_command(pdf_path, entry)
           [
-            enhanced_plugin_executable,
+            *enhanced_plugin_command,
             "read",
-            pdf_path,
+            File.expand_path(pdf_path, Dir.pwd),
             "page_separator=#{pdf_read_page_separator?}",
             "text_area=#{JSON.generate(text_area_margin_points)}",
             "line_merge_tolerance=#{line_merge_tolerance}",
@@ -657,27 +657,61 @@ module Vivlio
             mode: value_from_config(cfg, :mode),
             languages: normalize_ocr_languages(value_from_config(cfg, :languages)),
             dpi: value_from_config(cfg, :dpi),
-            psm: value_from_config(cfg, :psm)
+            psm: value_from_config(cfg, :psm),
+            inline_image_text: normalize_inline_image_text(value_from_config(cfg, :inline_image_text))
           }.compact
         end
 
         def normalize_ocr_languages(value)
-          case value
-          in Array then value.map { it.to_s.strip }.reject(&:empty?)
-          else
-            value.to_s.split(/[+,]/).map { it.strip }.reject(&:empty?)
+          raw = case value
+                in Array then value
+                else value.to_s.split(/[+,]/)
+                end
+
+          raw.map { normalize_ocr_language_alias(it) }.reject(&:empty?).uniq
+        end
+
+        def normalize_ocr_language_alias(value)
+          case value.to_s.strip.downcase.tr("-", "_")
+          in "" then ""
+          in "japanese" then "jpn"
+          in "japanese_vertical" then "jpn_vert"
+          else value.to_s.strip
+          end
+        end
+
+        def normalize_inline_image_text(value)
+          case value.to_s.strip.downcase
+          in "" | "include" then "include"
+          in "exclude" | "remove" then "exclude"
+          in "captionize" | "caption_only" | "caption" then "captionize"
+          else "include"
           end
         end
 
         def enhanced_images_output_dir(entry)
-          File.join(CLI::Common.images_dir, entry.basename)
+          File.expand_path(File.join(CLI::Common.images_dir, entry.basename), Dir.pwd)
         end
 
-        def enhanced_images_reference_dir(entry)
-          File.join("images", entry.basename)
+        def enhanced_images_reference_dir(_entry)
+          ""
+        end
+
+        def enhanced_plugin_command
+          return [enhanced_plugin_executable] unless local_enhanced_plugin_root
+
+          ["bundle", "exec", "ruby", "-Ilib", "exe/vivlio-starter-pdf"]
         end
 
         def enhanced_plugin_executable = "vivlio-starter-pdf"
+
+        def local_enhanced_plugin_root
+          candidate = File.expand_path("../../../../../../vivlio-starter-pdf", __dir__)
+          return nil unless File.exist?(File.join(candidate, "Gemfile"))
+          return nil unless File.exist?(File.join(candidate, "exe", "vivlio-starter-pdf"))
+
+          candidate
+        end
 
         def missing_enhanced_plugin_message
           "Enhanced mode を利用するには vivlio-starter-pdf をインストールしてください"
@@ -700,7 +734,7 @@ module Vivlio
         def plugin_available?
           return @plugin_available if @plugin_checked
 
-          _stdout, status = capture_enhanced_command(enhanced_plugin_executable, "--version")
+          _stdout, status = capture_enhanced_command(*enhanced_plugin_command, "--version")
           @plugin_available = status.success?
         rescue Errno::ENOENT
           @plugin_available = false
@@ -709,11 +743,16 @@ module Vivlio
         end
 
         def capture_enhanced_command(*command)
-          return Open3.capture2e(*command) unless defined?(Bundler)
+          options = local_enhanced_plugin_command?(command) ? { chdir: local_enhanced_plugin_root } : {}
+          return Open3.capture2e(*command, **options) unless defined?(Bundler)
 
           Bundler.with_unbundled_env do
-            Open3.capture2e(*command)
+            Open3.capture2e(*command, **options)
           end
+        end
+
+        def local_enhanced_plugin_command?(command)
+          command.first(5) == ["bundle", "exec", "ruby", "-Ilib", "exe/vivlio-starter-pdf"]
         end
 
         def ensure_enhanced_plugin_loaded!

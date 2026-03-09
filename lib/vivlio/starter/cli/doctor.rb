@@ -134,6 +134,7 @@ module Vivlio
             'pdfinfo' => 'pdfinfo',
             'gs' => 'gs', # Ghostscript
             'imagemagick' => nil,
+            'vips' => 'vips',
             'tesseract' => 'tesseract',
             'tesseract-lang' => nil,
             'waifu2x' => nil,
@@ -292,6 +293,8 @@ module Vivlio
 
             # ImageMagick
             system('brew install imagemagick') if missing.include?('imagemagick')
+
+            system('brew install vips') if missing.include?('vips')
 
             system('brew install tesseract') if missing.include?('tesseract')
             system('brew install tesseract-lang') if missing.include?('tesseract-lang')
@@ -591,6 +594,7 @@ module Vivlio
             'pdfinfo' => 'pdfinfo (poppler)',
             'gs' => 'Ghostscript',
             'imagemagick' => 'ImageMagick',
+            'vips' => 'vips (libvips)',
             'tesseract' => 'Tesseract OCR',
             'tesseract-lang' => 'Tesseract 日本語学習データ',
             'waifu2x' => 'waifu2x-ncnn-vulkan',

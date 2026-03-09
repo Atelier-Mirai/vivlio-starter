@@ -485,10 +485,22 @@ pdf_read:
     inner_margin: 15      # 綴じ側（奇数ページは左、偶数ページは右）除外幅(mm)
     outer_margin: 12      # 小口側の除外幅(mm)
   page_separator: false    # true:  "---" でページ区切りを行なう
-                           # false: "---" でページ区切りを行なわない
+                            # false: "---" でページ区切りを行なわない
   ocr:
+    # OCR の実行モード:
+    #   auto    : スキャンページを自動検出して必要な箇所のみ OCR
+    #   force   : 全ページを必ず OCR（埋め込みテキストを無視）
+    #   disable : OCR を無効化（埋め込みテキストのみ使用）
     mode: auto
+    # Tesseract に渡す言語。`japanese_vertical` なども指定可。複数指定で自動的に jpn+jpn_vert を付与。
     languages:
-      - jpn
+      - japanese
+    # OCR 前に生成する画像の解像度。数値を上げると精度は向上するが処理時間も増加。
     dpi: 300
+    # Tesseract の PSM (Page Segmentation Mode)。章扉などの大見出しには 6、縦書き主体なら 5/7 が目安。
     psm: 3
+    # イラスト内テキストの扱い:
+    #   include    : 本文にそのまま含める
+    #   exclude    : 画像キャプションのみ残し本文から除外
+    #   captionize : キャプション化して本文のノイズを減らす
+    inline_image_text: include

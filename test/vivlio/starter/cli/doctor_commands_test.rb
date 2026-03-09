@@ -146,6 +146,54 @@ module Vivlio
           end
         end
 
+        def test_doctor_fix_installs_vips_when_missing
+          with_host_os('darwin') do
+            system_calls = []
+            vips_installed = false
+
+            stub_logging do
+              DoctorCommands.stub :ssl_certificate_configured?, true do
+                DoctorCommands.stub :tesseract_language_available?, true do
+                  DoctorCommands.stub :waifu2x_available?, true do
+                    DoctorCommands.stub :playwright_npm_available?, true do
+                      DoctorCommands.stub :chromium_available?, true do
+                        DoctorCommands.stub :rouge_gem_available?, true do
+                          DoctorCommands.stub :copy_textlint_assets_from_scaffold!, nil do
+                            DoctorCommands.stub :command_exists?, lambda { |cmd|
+                              case cmd
+                              when 'vips' then vips_installed
+                              else true
+                              end
+                            } do
+                              DoctorCommands.stub :system, lambda { |cmd|
+                                system_calls << cmd
+
+                                case cmd
+                                when /xcode-select -p/ then true
+                                when /which brew/ then true
+                                when 'brew install vips'
+                                  vips_installed = true
+                                  true
+                                else
+                                  true
+                                end
+                              } do
+                                capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
+                              end
+                            end
+                          end
+                        end
+                      end
+                    end
+                  end
+                end
+              end
+            end
+
+            assert_includes(system_calls, 'brew install vips')
+          end
+        end
+
         def test_doctor_fix_installs_tesseract_language_data_when_missing
           with_host_os('darwin') do
             system_calls = []

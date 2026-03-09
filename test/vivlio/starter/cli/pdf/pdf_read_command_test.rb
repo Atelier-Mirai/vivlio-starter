@@ -111,13 +111,13 @@ module Vivlio
               @command.stub :line_merge_tolerance, 2.5 do
                 @command.stub :enhanced_images_output_dir, "/tmp/images-out" do
                   @command.stub :enhanced_images_reference_dir, "images/10-sample" do
-                    @command.stub :pdf_read_ocr, { mode: "always", languages: %w[jpn eng], dpi: 220, psm: 6 } do
+                    @command.stub :pdf_read_ocr, { mode: "always", languages: %w[japanese japanese_vertical eng], dpi: 220, psm: 6, inline_image_text: "captionize" } do
                       command = @command.send(:enhanced_command, "dummy.pdf", entry)
                       ocr_token = command.find { it.start_with?("ocr=") }
 
                       refute_nil(ocr_token)
                       assert_equal(
-                        { "mode" => "always", "languages" => ["jpn", "eng"], "dpi" => 220, "psm" => 6 },
+                        { "mode" => "always", "languages" => ["jpn", "jpn_vert", "eng"], "dpi" => 220, "psm" => 6, "inline_image_text" => "captionize" },
                         JSON.parse(ocr_token.delete_prefix("ocr="))
                       )
                     end
@@ -126,6 +126,20 @@ module Vivlio
               end
             end
           end
+        end
+
+        def test_normalize_inline_image_text_falls_back_to_include
+          assert_equal("include", @command.send(:normalize_inline_image_text, nil))
+          assert_equal("captionize", @command.send(:normalize_inline_image_text, "caption"))
+          assert_equal("captionize", @command.send(:normalize_inline_image_text, "caption_only"))
+          assert_equal("exclude", @command.send(:normalize_inline_image_text, "remove"))
+        end
+
+        def test_normalize_ocr_languages_accepts_user_friendly_aliases
+          assert_equal(
+            %w[jpn jpn_vert eng],
+            @command.send(:normalize_ocr_languages, %w[japanese japanese_vertical eng])
+          )
         end
 
         def test_build_markdown_normalizes_image_reference_as_standalone_block_when_separator_disabled
@@ -159,12 +173,14 @@ module Vivlio
             valid: true
           )
 
-          @command.stub :next_available_basename, "11-three-elements-pages" do
-            resolved = @command.send(:ensure_unique_output_entry, entry)
+          @command.stub :markdown_exists?, true do
+            @command.stub :next_available_basename, "11-three-elements-pages" do
+              resolved = @command.send(:ensure_unique_output_entry, entry)
 
-            assert_equal("11-three-elements-pages", resolved.basename)
-            refute(resolved.exists?)
-            refute(resolved.in_catalog?)
+              assert_equal("11-three-elements-pages", resolved.basename)
+              refute(resolved.exists?)
+              refute(resolved.in_catalog?)
+            end
           end
         end
 
@@ -180,12 +196,51 @@ module Vivlio
             valid: true
           )
 
-          @command.stub :next_available_basename, "11-three-elements-pages" do
-            resolved = @command.send(:ensure_unique_output_entry, entry)
+          @command.stub :markdown_exists?, true do
+            @command.stub :next_available_basename, "11-three-elements-pages" do
+              resolved = @command.send(:ensure_unique_output_entry, entry)
 
-            assert_equal("11-three-elements-pages", resolved.basename)
-            refute(resolved.exists?)
-            refute(resolved.in_catalog?)
+              assert_equal("11-three-elements-pages", resolved.basename)
+              refute(resolved.exists?)
+              refute(resolved.in_catalog?)
+            end
+          end
+        end
+
+        def test_call_auto_numbers_for_chapter_token_input_when_markdown_exists
+          entry = Vivlio::Starter::CLI::TokenResolver::Entry.new(
+            number: "10",
+            slug: "three-elements-ocr",
+            kind: :chapter,
+            label: "歴史篇",
+            path: "contents/10-three-elements-ocr.md",
+            exists: true,
+            in_catalog: true,
+            valid: true
+          )
+          new_entry = Vivlio::Starter::CLI::TokenResolver::Entry.new(
+            number: "11",
+            slug: "three-elements-ocr",
+            kind: :chapter,
+            label: nil,
+            path: "contents/11-three-elements-ocr.md",
+            exists: false,
+            in_catalog: false,
+            valid: true
+          )
+          result = { markdown_path: "contents/11-three-elements-ocr.md", pages: 7 }
+
+          @command.stub :resolve_entry_and_pdf, [entry, "sources/three-elements-ocr.pdf"] do
+            @command.stub :ensure_unique_output_entry, new_entry do
+              @command.stub :resolved_mode, :enhanced do
+                @command.stub :convert_enhanced, result do
+                  resolved = @command.call
+
+                  assert_equal("contents/11-three-elements-ocr.md", resolved[:markdown_path])
+                  assert_equal("11-three-elements-ocr", resolved[:entry].basename)
+                end
+              end
+            end
           end
         end
 
@@ -197,6 +252,35 @@ module Vivlio
             @command.instance_variable_set(:@plugin_available, false)
 
             assert_equal(true, @command.send(:plugin_available?))
+          end
+        end
+
+        def test_enhanced_plugin_command_prefers_local_workspace_when_available
+          @command.stub :local_enhanced_plugin_root, "/tmp/vivlio-starter-pdf" do
+            assert_equal(
+              ["bundle", "exec", "ruby", "-Ilib", "exe/vivlio-starter-pdf"],
+              @command.send(:enhanced_plugin_command)
+            )
+          end
+        end
+
+        def test_capture_enhanced_command_runs_local_workspace_command_from_plugin_root
+          status = Data.define(:success?).new(true)
+          command = ["bundle", "exec", "ruby", "-Ilib", "exe/vivlio-starter-pdf", "--version"]
+
+          @command.stub :local_enhanced_plugin_root, "/tmp/vivlio-starter-pdf" do
+            Bundler.stub :with_unbundled_env, proc { |&block| block.call } do
+              Open3.stub :capture2e, ->(*args, **options) {
+                assert_equal(command, args)
+                assert_equal("/tmp/vivlio-starter-pdf", options[:chdir])
+                ["0.1.0\n", status]
+              } do
+                stdout, captured_status = @command.send(:capture_enhanced_command, *command)
+
+                assert_equal("0.1.0\n", stdout)
+                assert_equal(status, captured_status)
+              end
+            end
           end
         end
 

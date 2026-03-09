@@ -208,14 +208,30 @@ module Vivlio
           line.match?(LIST_MARKER_REGEX)
         end
 
+        CJK_PAT = '[一-龯ぁ-ゖァ-ヶー々〆ヵヶ]'
+        JP_PUNCT_PAT = '[、。，．：；！？!?…]'
+        JP_OPEN_PAT  = '[「『（【《〈]'
+        JP_CLOSE_PAT = '[」』）】》〉]'
+
         def normalize_pdf_extracted_text(text)
-          text.to_s
-              .gsub(/[ \t\u00A0]{2,}/, ' ')
-              .gsub(/(^|\n)(第[一二三四五六七八九十百千0-9]+章)(?=[一-龯ぁ-ゖァ-ヶー々〆ヵヶ])/u, "\\1\\2 ")
-              .gsub(/(?<=[一-龯ぁ-ゖァ-ヶー々〆ヵヶA-Za-z0-9])\n(?=[、。，．：；！？!?])/u, '')
-              .gsub(/(?<=[。．！？!?]) +(?=[「『（【])/u, '')
-              .gsub(/(?<=[「『（【]) +(?=[一-龯ぁ-ゖァ-ヶー々〆ヵヶA-Za-z0-9])/u, '')
-              .gsub(/(?<=[一-龯ぁ-ゖァ-ヶー々〆ヵヶA-Za-z0-9]) +(?=[」』）】])/u, '')
+          result = text.to_s
+                       .gsub(/[ \t\u00A0]{2,}/, ' ')
+                       .gsub(/(?<=#{CJK_PAT})\n(?=#{JP_PUNCT_PAT})/u, '')
+          result = collapse_japanese_ocr_spaces(result)
+          result.gsub(/(^|\n)(第[一二三四五六七八九十百千0-9]+章)(?=#{CJK_PAT})/u, "\\1\\2 ")
+        end
+
+        def collapse_japanese_ocr_spaces(text)
+          result = text.to_s
+          result = result.gsub(/(?<=#{CJK_PAT}) +(?=#{CJK_PAT})/, "")
+          result = result.gsub(/(?<=#{CJK_PAT}) +(?=#{JP_PUNCT_PAT})/, "")
+          result = result.gsub(/(?<=#{JP_PUNCT_PAT}) +(?=#{CJK_PAT})/, "")
+          result = result.gsub(/(?<=#{JP_PUNCT_PAT}) +(?=#{JP_OPEN_PAT})/, "")
+          result = result.gsub(/(?<=#{JP_OPEN_PAT}) +/, "")
+          result = result.gsub(/ +(?=#{JP_CLOSE_PAT})/, "")
+          result = result.gsub(/(?<=#{JP_CLOSE_PAT}) +(?=#{CJK_PAT})/, "")
+          result = result.gsub(/(?<=#{CJK_PAT}) +(?=#{JP_OPEN_PAT})/, "")
+          result
         end
 
         def small_kana_start?(line)
