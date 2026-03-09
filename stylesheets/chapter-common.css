@@ -46,6 +46,7 @@ h3 {
   padding-inline-start: 0;
   font-size: 18Q;
   line-height: 22Q;
+  clear: both;
 }
 
 h3::before {
@@ -280,7 +281,8 @@ figcaption {
   border: solid 0.5mm var(--color-figure-border);
 }
 
-:is(.figure, figure).float-right {
+/* 旧 .float-right 図版: align-right へ移行 */
+:is(.figure, figure).align-right {
   float: inline-end;
   inline-size: 17em;
   margin-block: 2mm;

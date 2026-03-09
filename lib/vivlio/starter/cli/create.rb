@@ -38,6 +38,8 @@ module Vivlio
       module CreateCommands
         module_function
 
+        MAX_AUTO_CHAPTER = 98
+
         # --- 章ファイル生成 ---
 
         # 章ファイルと画像ディレクトリを一括生成する
@@ -54,7 +56,8 @@ module Vivlio
           ensure_names_present!(names)
 
           resolver = TokenResolver::Resolver.new
-          entries = resolver.resolve(names)
+          normalized_names = normalize_name_inputs(names, resolver)
+          entries = resolver.resolve(normalized_names)
 
           # 1. 不正な形式をチェック
           invalid_entries = entries.reject(&:valid?)
@@ -232,6 +235,52 @@ module Vivlio
           !names.nil? && !names.empty?
         end
 
+        # 入力トークンを正規化し、slug のみ指定された場合は空き番号を自動割り当てする
+        #
+        # @param names [Array<String>] 元の入力トークン
+        # @param resolver [TokenResolver::Resolver] カタログ情報を参照する Resolver
+        # @return [Array<String>] Resolver へ渡す正規化済みトークン
+        def normalize_name_inputs(names, resolver)
+          used_numbers = used_numbers_pool(resolver)
+
+          Array(names).map do |raw|
+            token = raw.to_s.strip
+            basename = strip_token_basename(token)
+
+            if numbered_basename?(basename)
+              number = extract_number(basename)
+              used_numbers << number if number && !used_numbers.include?(number)
+              token
+            else
+              slug = normalize_slug(basename)
+              number = next_available_number!(used_numbers)
+              generated = "#{number}-#{slug}"
+              Common.log_info("[create] #{basename} -> #{generated}")
+              generated
+            end
+          end
+        end
+
+        # トークンからベース名（ディレクトリ・拡張子を除いたもの）を取得する
+        def strip_token_basename(token)
+          base = File.basename(token.to_s.strip)
+          base.sub(/\.(md|markdown)\z/i, '')
+        rescue StandardError
+          token.to_s
+        end
+
+        # ベース名が番号で始まるか判定する
+        def numbered_basename?(basename)
+          basename.match?(/\A\d+/)
+        end
+
+        # ベース名から章番号を抽出する（2桁ゼロ埋め）
+        def extract_number(basename)
+          return unless basename =~ /\A(\d+)/
+
+          format('%02d', Regexp.last_match(1).to_i)
+        end
+
         # 章名リストが空の場合、使い方を表示して終了する
         #
         # @param names [Array, nil] 章名リスト
@@ -242,6 +291,29 @@ module Vivlio
 
           warn '使い方: vs create NAME [NAME ...]'
           exit 1
+        end
+
+        # カタログおよび既存ファイルから使用済み番号のプールを構築する
+        def used_numbers_pool(resolver)
+          catalog_numbers = resolver.resolve([]).map(&:number).compact
+          markdown_numbers = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).filter_map do |path|
+            File.basename(path, '.md')[/\A(\d{2})/, 1]
+          end
+
+          (catalog_numbers + markdown_numbers).uniq
+        end
+
+        # 未使用の章番号を払い出す
+        def next_available_number!(used_numbers)
+          (1..MAX_AUTO_CHAPTER).each do |candidate|
+            number = format('%02d', candidate)
+            next if used_numbers.include?(number)
+
+            used_numbers << number
+            return number
+          end
+
+          raise '01-98 までの章番号がすべて使用済みです'
         end
 
         # 単一の章ファイルと関連リソースを生成する
@@ -301,6 +373,17 @@ module Vivlio
         def generate_title(fname)
           basename = File.basename(fname.to_s, '.md')
           basename.sub(/\A\d+-/, '')
+        end
+
+        # slug を chapter 名として利用できる形式へ正規化する
+        def normalize_slug(value)
+          slug = value.to_s.downcase
+                        .tr(' ', '-')
+                        .gsub(/[^a-z0-9\-]+/, '-')
+                        .gsub(/-+/, '-')
+                        .gsub(/\A-+|-+\z/, '')
+          slug = 'chapter' if slug.empty?
+          slug
         end
 
         # テンプレートから章コンテンツを生成する

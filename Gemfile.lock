@@ -2,19 +2,28 @@ PATH
   remote: .
   specs:
     vivlio-starter (0.32.0)
+      combine_pdf (~> 1.0)
       hexapdf (~> 1.0)
       kramdown (~> 2.4)
       mini_magick (~> 4.12)
       natto (~> 1.2)
       nokogiri (~> 1.16)
+      pdf-reader (~> 2.12)
+      prawn (~> 2.5)
       rouge (~> 4.7)
       samovar (~> 2.1)
 
 GEM
   remote: https://rubygems.org/
   specs:
+    Ascii85 (2.0.1)
+    afm (1.0.0)
     ast (2.4.3)
+    bigdecimal (3.3.1)
     cmdparse (3.0.7)
+    combine_pdf (1.0.31)
+      matrix
+      ruby-rc4 (>= 0.1.5)
     console (1.34.2)
       fiber-annotation
       fiber-local (~> 1.1)
@@ -25,6 +34,7 @@ GEM
       fiber-storage
     fiber-storage (1.0.1)
     geom2d (0.4.1)
+    hashery (2.1.2)
     hexapdf (1.4.1)
       cmdparse (~> 3.0, >= 3.0.3)
       geom2d (~> 0.4, >= 0.4.1)
@@ -36,6 +46,7 @@ GEM
     language_server-protocol (3.17.0.5)
     lint_roller (1.1.0)
     mapping (1.1.3)
+    matrix (0.4.3)
     mini_magick (4.13.2)
     mini_portile2 (2.8.9)
     minitest (5.26.2)
@@ -49,6 +60,17 @@ GEM
     parser (3.3.10.0)
       ast (~> 2.4.1)
       racc
+    pdf-core (0.10.0)
+    pdf-reader (2.15.1)
+      Ascii85 (>= 1.0, < 3.0, != 2.0.0)
+      afm (>= 0.2.1, < 2)
+      hashery (~> 2.0)
+      ruby-rc4
+      ttfunk
+    prawn (2.5.0)
+      matrix (~> 0.4)
+      pdf-core (~> 0.10.0)
+      ttfunk (~> 1.8)
     prism (1.6.0)
     racc (1.8.1)
     rainbow (3.1.1)
@@ -71,10 +93,13 @@ GEM
       parser (>= 3.3.7.2)
       prism (~> 1.4)
     ruby-progressbar (1.13.0)
+    ruby-rc4 (0.1.5)
     samovar (2.4.1)
       console (~> 1.0)
       mapping (~> 1.0)
     strscan (3.1.5)
+    ttfunk (1.8.0)
+      bigdecimal (~> 3.1)
     unicode-display_width (3.2.0)
       unicode-emoji (~> 4.1)
     unicode-emoji (4.2.0)

@@ -40,6 +40,7 @@
 - [Medium] 見出しID・相互参照ショートコード（ref:foo → 自動リンク）。
 - [Medium] 章・節に対する相互参照の整備（章番号ベースの cross reference）。本文中から「第◯章」「第◯節」を参照する簡潔な記法を設計し、既存の `@id` ベースの図表・コードリスト参照パイプラインと統合する。
 - [High] vs lint に スペルチェックを盛り込む
+- [High] pdf_reader.rbを改修、pdf -> mdにするコマンドを実装する
 
 ### Planned
 
@@ -47,24 +48,31 @@
 - [High] 日本語表記・組版Lint（スタイルガイド）
 - [High] リンク・画像の自動検証
 - [Medium] 基本的に良く用いる用語をまとめた用語集テンプレートを標準添付し、プロジェクト作成時または後から選択適用できるようにする。
+- [Low] 画像の width 属性自動補完: Markdown が `![](foo.png)` のように幅指定なしの場合でも、実寸やクラス指定に応じて `width=100%` 等を自動補う仕組みを検討する（大判図をページ送りにせず収めるため）。
 
 #### 参照・索引・書誌
 - [Low] 脚注・参考文献サポート（簡易BibTeX/CSL）
 
 #### コンテンツ/テンプレート
 - [Low] テンプレ断片スニペット（注意/補足/Tipのコンポーネント化）。
-
 - [High] 11-install.mdなどを、著者の使い方や、書き方の例として、書き直す
 - [High] プロジェクト生成時に、.cache/vs/ を生成する。
 - [High] プロジェクト生成時に、project_scaffold/ を生成する。
 - [High] vs new で、プロジェクト生成時に、scaffold以下の資産が新プロジェクトに展開され、著者が執筆の参考となるよう、書き方の例として、vivio-starterのマニュアルを展開する。
-- [High] pdf_reader.rbを改修、pdf -> mdにするコマンドを実装する
 - [High] data/ディレクトリから、yml形式で書籍(タイトル、著者、ISBNなど)などを展開できるようにする。
 
 ## Unreleased
 （次回リリース候補の変更はここに追加してください）
 
 ### Added
+- **align-left/center/right ブロックユーティリティ**: `:::{.align-left}` / `.align-center` / `.align-right` で任意コンテナを左・中央・右寄せできるよう `layout-utils.css` を更新。図版や画像の回り込みと干渉しないようブロック専用の余白レイアウトとし、本文中で簡潔に配置調整できるようにした。
+- **章操作コマンドのスラッグ単体指定**: `vs build / create / delete / rename` で `three-elements` のような slug 単独指定を正式サポート。TokenResolver ベースで章解決を統一し、章番号を覚えていなくてもコマンド実行できるようにした。
+- **pdf:read 設定サポート**: `config/book.yml` に `pdf_read.text_area` / `pdf_read.line_reflow` を追加し、ページ抽出領域と改行整理しきい値を著者が調整できるようにした。設定値は `PdfReadCommand` の本文抽出・改行再整形に即反映され、ユニットテストで回帰を担保。
+
+## 0.33.0 - 2026-03-09
+
+### Added
+- **vs pdf:read 強化（Enhanced Mode 完成）**: prh 辞書によるOCR誤読補正・括弧正規化・日本語スペース除去を実装し、`vivlio-starter-pdf` gem を README/Licence 付きで独立配布。`book-vivlio-starter/22-pdf-read.md` に利用者向けマニュアルを追加し、OCRモードや画像抽出設定を含めたドキュメントを整備。
 
 ## 0.32.0 - 2026-02-21
 
@@ -710,7 +718,8 @@
 - バージョンファイル追加: `lib/vivlio/starter/version.rb`（0.1.0）
 - README にインストール方法・CLI の使い方・リリース手順を追記
 
-[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.32.0...HEAD
+[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.33.0...HEAD
+[0.33.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.29.0...v0.30.0

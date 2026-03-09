@@ -134,6 +134,9 @@ module Vivlio
             'pdfinfo' => 'pdfinfo',
             'gs' => 'gs', # Ghostscript
             'imagemagick' => nil,
+            'vips' => 'vips',
+            'tesseract' => 'tesseract',
+            'tesseract-lang' => nil,
             'waifu2x' => nil,
             'playwright' => nil, # バックリンク重複排除用（npm パッケージ）
             'chromium' => nil,   # Playwright 用ヘッドレスブラウザ
@@ -146,6 +149,8 @@ module Vivlio
             ok = case label
                  when 'imagemagick'
                    command_exists?('convert') || command_exists?('magick')
+                 when 'tesseract-lang'
+                   tesseract_language_available?('jpn')
                  when 'waifu2x'
                    waifu2x_available?
                  when 'rouge'
@@ -289,6 +294,11 @@ module Vivlio
             # ImageMagick
             system('brew install imagemagick') if missing.include?('imagemagick')
 
+            system('brew install vips') if missing.include?('vips')
+
+            system('brew install tesseract') if missing.include?('tesseract')
+            system('brew install tesseract-lang') if missing.include?('tesseract-lang')
+
             # MeCab（索引機能の読み自動推測用）
             if missing.include?('mecab')
               Common.echo_always('MeCab（索引機能の読み自動推測用）をインストールします…')
@@ -363,6 +373,8 @@ module Vivlio
             ok = case label
                  when 'imagemagick'
                    command_exists?('convert') || command_exists?('magick')
+                 when 'tesseract-lang'
+                   tesseract_language_available?('jpn')
                  when 'waifu2x'
                    waifu2x_available? || (waifu2x_install_root && waifu2x_present_at?(waifu2x_install_root, os_family))
                  when 'rouge'
@@ -582,6 +594,9 @@ module Vivlio
             'pdfinfo' => 'pdfinfo (poppler)',
             'gs' => 'Ghostscript',
             'imagemagick' => 'ImageMagick',
+            'vips' => 'vips (libvips)',
+            'tesseract' => 'Tesseract OCR',
+            'tesseract-lang' => 'Tesseract 日本語学習データ',
             'waifu2x' => 'waifu2x-ncnn-vulkan',
             'ssl-certificates' => 'Google Fonts 用 SSL 証明書',
             'mecab' => 'MeCab (索引機能用)',
@@ -612,6 +627,15 @@ module Vivlio
           require 'rouge'
           true
         rescue LoadError
+          false
+        end
+
+        def tesseract_language_available?(language)
+          return false unless command_exists?('tesseract')
+
+          output = capture_command('tesseract --list-langs 2>/dev/null')
+          output.lines.map(&:strip).include?(language.to_s)
+        rescue StandardError
           false
         end
 

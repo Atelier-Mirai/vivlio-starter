@@ -37,10 +37,13 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   # Runtime dependencies
+  spec.add_dependency 'combine_pdf', '~> 1.0'
   spec.add_dependency 'hexapdf', '~> 1.0'
   spec.add_dependency 'kramdown', '~> 2.4'
   spec.add_dependency 'mini_magick', '~> 4.12'
   spec.add_dependency 'nokogiri', '~> 1.16'
+  spec.add_dependency 'pdf-reader', '~> 2.12'
+  spec.add_dependency 'prawn', '~> 2.5'
   spec.add_dependency 'samovar', '~> 2.1'
   spec.add_dependency 'rouge', '~> 4.7'
 

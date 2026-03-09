@@ -39,7 +39,8 @@ module Vivlio
           new: SamovarCommands::NewCommand,
           pdf: SamovarCommands::PdfCommand,
           rename: SamovarCommands::RenameCommand,
-          resize: SamovarCommands::ResizeCommand
+          resize: SamovarCommands::ResizeCommand,
+          "pdf:read": SamovarCommands::PdfReadCommand
         }.freeze
 
         COMMAND_CLASSES.each do |name, klass|
@@ -100,6 +101,11 @@ module Vivlio
         def test_pdf_command_resolves_pdf_commands
           assert defined?(Vivlio::Starter::CLI::PdfCommands),
                  'PdfCommand から PdfCommands が参照可能であるべき'
+        end
+
+        def test_pdf_read_command_resolves_pdf_read_command
+          assert defined?(Vivlio::Starter::Commands::PdfReadCommand),
+                 'PdfReadCommand から Commands::PdfReadCommand が参照可能であるべき'
         end
 
         def test_resize_command_resolves_resize_commands
@@ -205,6 +211,20 @@ module Vivlio
           end
 
           assert executor_call_invoked, 'RenameCommand は RenameCommandExecutor を呼び出すべき'
+        end
+
+        def test_pdf_read_command_can_invoke_reader
+          reader_call_invoked = false
+
+          fake_reader = Object.new
+          fake_reader.define_singleton_method(:call) { reader_call_invoked = true }
+
+          Commands::PdfReadCommand.stub :new, ->(*_args) { fake_reader } do
+            cmd = SamovarCommands::PdfReadCommand.new(['samples/sample.pdf'])
+            cmd.call
+          end
+
+          assert reader_call_invoked, 'PdfReadCommand は Commands::PdfReadCommand を呼び出すべき'
         end
       end
     end

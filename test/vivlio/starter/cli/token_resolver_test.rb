@@ -153,14 +153,14 @@ module Vivlio
             assert_equal 'NEW', entry.label
           end
 
-          def test_returns_invalid_entry_for_non_numeric_token
+          def test_returns_invalid_entry_when_slug_cannot_be_normalized
             resolver = build_resolver_with_catalog([])
 
-            result = resolver.resolve(['foobar'])
+            result = resolver.resolve(['!!!'])
             entry = result.first
 
             assert_equal '??', entry.number
-            assert_equal 'foobar', entry.slug
+            assert_equal '!!!', entry.slug
             refute entry.valid?
             refute entry.in_catalog?
           end
@@ -242,6 +242,26 @@ module Vivlio
               assert_equal '02', entry.number
               assert_nil entry.slug
               refute entry.exists?
+            end
+          end
+
+          def test_allocates_number_when_slug_only_input
+            Dir.mktmpdir do |dir|
+              catalog_path = File.join(dir, 'catalog.yml')
+              contents_dir = File.join(dir, 'contents')
+              FileUtils.mkdir_p(contents_dir)
+
+              File.write(catalog_path, { 'CHAPTERS' => ['01-life'] }.to_yaml)
+              File.write(File.join(contents_dir, '01-life.md'), '# life')
+
+              resolver = Resolver.new(catalog_path:, contents_dir:)
+              entry = resolver.resolve(['new-topic']).first
+
+              assert_equal '02', entry.number
+              assert_equal 'new-topic', entry.slug
+              assert_equal '02-new-topic', entry.basename
+              refute entry.in_catalog?
+              assert entry.valid?
             end
           end
 

@@ -18,4 +18,4 @@
 :::
 
 <!-- 画像は以下のように記述します -->
-![](Einstein.png){width=40% .float-right}
+![](Einstein.png){width=40% .align-right}

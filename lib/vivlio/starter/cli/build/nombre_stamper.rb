@@ -41,27 +41,33 @@ module Vivlio
           # @param bleed_mm [Numeric] 塗り足し幅（mm）。ノンブルの X 座標に使う
           # @return [Boolean] 書き込み成功なら true
           def stamp!(pdf_path, bleed_mm: 3)
-            unless File.exist?(pdf_path)
-              Common.log_warn("[NombreStamper] PDF が見つかりません: #{pdf_path}")
-              return false
-            end
-
             bleed_pt = bleed_mm.to_f * MM_TO_PT
-            doc = HexaPDF::Document.open(pdf_path)
-            total = doc.pages.count
 
-            Common.log_action("[NombreStamper] 隠しノンブルを書き込みます（#{total} ページ）…")
+            # 新実装 (MIT版 Provider への委譲)
+            require 'vivlio/starter/cli/pdf/provider'
+            Vivlio::Starter::Pdf.provider.stamp_nombre!(pdf_path, bleed_pt:)
 
-            doc.pages.each_with_index do |page, idx|
-              stamp_page!(page, idx + 1, bleed_pt:)
-            end
-
-            doc.write(pdf_path, optimize: true)
-            Common.log_success("[NombreStamper] 隠しノンブル書き込み完了（#{total} ページ）")
-            true
-          rescue StandardError => e
-            Common.log_error("[NombreStamper] 隠しノンブル書き込みに失敗: #{e.message}")
-            false
+            # --- 旧実装（MIT化動作確認後に削除予定） ---
+            # unless File.exist?(pdf_path)
+            #   Common.log_warn("[NombreStamper] PDF が見つかりません: #{pdf_path}")
+            #   return false
+            # end
+            #
+            # doc = HexaPDF::Document.open(pdf_path)
+            # total = doc.pages.count
+            #
+            # Common.log_action("[NombreStamper] 隠しノンブルを書き込みます（#{total} ページ）…")
+            #
+            # doc.pages.each_with_index do |page, idx|
+            #   stamp_page!(page, idx + 1, bleed_pt:)
+            # end
+            #
+            # doc.write(pdf_path, optimize: true)
+            # Common.log_success("[NombreStamper] 隠しノンブル書き込み完了（#{total} ページ）")
+            # true
+          # rescue StandardError => e
+          #   Common.log_error("[NombreStamper] 隠しノンブル書き込みに失敗: #{e.message}")
+          #   false
           end
 
           # 個別ページにノンブルを描画する

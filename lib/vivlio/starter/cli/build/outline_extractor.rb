@@ -22,7 +22,6 @@
 # ================================================================
 
 require 'nokogiri'
-require 'hexapdf'
 
 module Vivlio
   module Starter
@@ -153,14 +152,13 @@ module Vivlio
           end
 
           # PDFにアウトラインを付与
-          def add_outline_from_headings!(pdf_path, html_paths, max_level: 3, start_page: 1)
-            items = heading_page_entries(pdf_path, html_paths, max_level: max_level, start_page: start_page)
-            return false if items.empty?
+          def add_outline_from_headings!(pdf_path, html_files, max_level: 3, start_page: 1)
+            require 'vivlio/starter/cli/pdf/provider'
 
-            items = prepend_cover_item(items)
-            write_outline_to_pdf(pdf_path, items, max_level)
-            Common.log_success('[Outline] PDF にブックマーク（アウトライン）を付与しました')
-            true
+            entries = heading_page_entries(pdf_path, html_files, max_level: max_level, start_page: start_page)
+            return if entries.empty?
+
+            Vivlio::Starter::Pdf.provider.add_outline!(pdf_path, entries, max_level: max_level)
           end
 
           private
@@ -581,54 +579,6 @@ module Vivlio
             items
           end
 
-          def write_outline_to_pdf(pdf_path, items, max_level)
-            doc = HexaPDF::Document.open(pdf_path)
-            clear_existing_outline(doc)
-            add_outline_items(doc, items, max_level)
-            doc.write(pdf_path, optimize: true)
-          end
-
-          def clear_existing_outline(doc)
-            root = doc.outline
-            return unless root[:First]
-
-            existing_items = []
-            root.each_item { |item, _| existing_items << item }
-            existing_items.each do |item|
-              doc.delete(item)
-            rescue StandardError
-              nil
-            end
-            root.delete(:First)
-            root.delete(:Last)
-            root.delete(:Count)
-          end
-
-          def add_outline_items(doc, items, max_level)
-            root = doc.outline
-            parents = { 1 => root }
-
-            items.each do |item|
-              lvl = item[:level].to_i.clamp(1, max_level)
-              prune_parent_levels(parents, lvl)
-              parent = find_parent_for_level(parents, lvl, root)
-              parents[lvl] = parent
-              page_obj = doc.pages[item[:page] - 1]
-              parent.add_item(item[:text], destination: [page_obj, :Fit]) do |node|
-                prune_parent_levels(parents, lvl)
-                parents[lvl + 1] = node
-              end
-            end
-          end
-
-          def prune_parent_levels(parents, current_level)
-            parents.keys.select { |k| k > current_level }.each { |k| parents.delete(k) }
-          end
-
-          def find_parent_for_level(parents, lvl, root)
-            parents[lvl] || parents[parents.keys.select { |k| k < lvl }.max] || root
-          end
-
           module_function :extract_number_text, :extract_title_text, :build_search_terms,
                           :validate_inputs, :build_chapter_paths, :build_chapter_order,
                           :extract_all_headings, :build_search_helpers, :calculate_chapter_ranges,
@@ -639,9 +589,7 @@ module Vivlio
                           :update_previous_chapter_end, :clamp_all_ranges,
                           :build_outline_items, :build_display_text,
                           :build_chapter_display_text, :resolve_chapter_number_display, :prepend_label_if_needed,
-                          :add_toc_entry, :log_fallback_items, :prepend_cover_item,
-                          :write_outline_to_pdf, :clear_existing_outline, :add_outline_items,
-                          :prune_parent_levels, :find_parent_for_level
+                          :add_toc_entry, :log_fallback_items, :prepend_cover_item
         end
       end
     end

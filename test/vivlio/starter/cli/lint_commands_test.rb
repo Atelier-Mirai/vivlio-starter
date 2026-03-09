@@ -316,8 +316,13 @@ module Vivlio
 
           # _toc はシステムファイルなので lint 対象外
           resolver = LintCommands::LintRunner::TargetResolver.new(['01-life', '_toc'])
-          result = resolver.resolve
 
+          logged_errors = []
+          result = Common.stub(:log_error, ->(_msg) { logged_errors << _msg }) do
+            resolver.resolve
+          end
+
+          assert_empty logged_errors
           assert_equal [File.join('contents', '01-life.md')], result
         end
 

@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
+require 'set'
 require 'yaml'
+
+require_relative 'common'
 
 module Vivlio
   module Starter
@@ -30,6 +33,8 @@ module Vivlio
         # 入力の正規化、カタログの読み込み、両者の照合を一括管理する。
         # CLIコマンド側は Resolver を呼ぶだけで、複雑なトークン解析から解放される。
         class Resolver
+          AUTO_NUMBER_MAX = 98
+
           # 章番号の範囲から kind を決定するためのマッピング。
           # 00: preface, 01-89: chapter, 90-98: appendix, 99: postface
           KIND_RANGES = { preface: 0..0, chapter: 1..89, appendix: 90..98, postface: 99..99 }.freeze
@@ -60,6 +65,7 @@ module Vivlio
           # @return [Array<Entry>] 解決された Entry オブジェクトの配列
           def resolve(tokens = [])
             catalog = load_catalog_entries
+            reset_number_tracking(catalog)
 
             if tokens.empty?
               # 引数なし：catalog.yml にある全章を対象とする (build 等)
@@ -148,8 +154,10 @@ module Vivlio
             # catalog.yml の部タイトルから自動生成されるシステムページ
             return instantiate_system_entry(token, :part_title) if token.match?(/\A_part\d+\z/)
 
-            # 2. 形式チェック: 数字で始まらないものは即座に invalid
-            return instantiate_invalid_entry(token) unless token.match?(/\A\d+/)
+            # 2. slug のみ指定された場合は catalog / contents から探索
+            unless token.match?(/\A\d+/)
+              return match_slug_entry(token, catalog)
+            end
 
             # 2. トークンの形式を解析（番号のみ or 番号+スラッグ）
             if token =~ /\A(\d+)[-_](.+)\z/
@@ -174,6 +182,33 @@ module Vivlio
               end
               # ファイルも見つからない場合、番号のみの新規エントリとして生成
               return instantiate_entry(token, 'NEW', :chapter, in_catalog: false)
+            end
+          end
+
+          def match_slug_entry(token, catalog)
+            slug = normalize_slug_token(token)
+            return instantiate_invalid_entry(token) unless slug
+
+            if (found = catalog.find { |entry| entry.slug&.downcase == slug })
+              return found
+            end
+
+            matches = Dir.glob(File.join(contents_dir, '*.md')).filter_map do |path|
+              base = File.basename(path, '.md')
+              number, entry_slug = base.split('-', 2)
+              next unless number && entry_slug
+              next unless entry_slug.downcase == slug
+
+              base
+            end
+
+            case matches.uniq.size
+            when 0
+              instantiate_new_entry_from_slug(slug)
+            when 1
+              instantiate_entry(matches.first, 'UNCATALOGED', :chapter, in_catalog: false)
+            else
+              instantiate_invalid_entry(token)
             end
           end
 
@@ -237,6 +272,57 @@ module Vivlio
               in_catalog: false,
               valid: true
             )
+          end
+
+          def normalize_slug_token(token)
+            slug = token.to_s.strip
+            slug = File.basename(slug)
+            slug = slug.sub(/\.(md|markdown)\z/i, '')
+            slug = slug.downcase.tr(' ', '-')
+            slug = slug.gsub(/[^a-z0-9._-]+/, '-')
+            slug = slug.gsub(/-+/, '-')
+            slug = slug.gsub(/\A-+|-+\z/, '')
+            slug.empty? ? nil : slug
+          rescue StandardError
+            nil
+          end
+
+          def instantiate_new_entry_from_slug(slug)
+            number = allocate_number
+            basename = "#{number}-#{slug}"
+            instantiate_entry(basename, 'NEW', :chapter, in_catalog: false)
+          end
+
+          def reset_number_tracking(catalog)
+            @catalog_numbers = catalog.filter_map(&:number)
+            @used_number_set = nil
+            @allocated_numbers = []
+          end
+
+          def used_number_set
+            return @used_number_set if @used_number_set
+
+            numbers = Set.new(@catalog_numbers)
+            Dir.glob(File.join(contents_dir, '*.md')).each do |path|
+              if (num = File.basename(path, '.md')[/\A(\d{2})/, 1])
+                numbers << num
+              end
+            end
+
+            @used_number_set = numbers
+          end
+
+          def allocate_number
+            (1..AUTO_NUMBER_MAX).each do |candidate|
+              number = format('%02d', candidate)
+              next if used_number_set.include?(number)
+
+              used_number_set << number
+              @allocated_numbers << number
+              return number
+            end
+
+            raise StandardError, format('01-%02d までの章番号がすべて使用済みです', AUTO_NUMBER_MAX)
           end
         end
       end

@@ -36,6 +36,20 @@ module Vivlio
           end
         end
 
+        def test_create_assigns_number_for_slug_only_input
+          within_temp_dir do
+            capture_io { CreateCommands.execute_create(command_context, ['three-elements']) }
+
+            assert File.exist?(File.join(Common::CONTENTS_DIR, '02-three-elements.md')),
+                   '次の若番 (02) を払い出してファイルを生成するべき'
+            assert Dir.exist?(File.join(Common::IMAGES_DIR, '02-three-elements')),
+                   '画像ディレクトリも自動作成されるべき'
+
+            catalog = File.read('config/catalog.yml')
+            assert_includes catalog, '02-three-elements', 'catalog.yml にも追加されるべき'
+          end
+        end
+
         # vs create 引数省略時はエラー終了することを確認
         def test_create_without_arguments_exits_with_usage
           within_temp_dir do
