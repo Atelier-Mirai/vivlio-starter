@@ -68,6 +68,10 @@
 - **align-left/center/right ブロックユーティリティ**: `:::{.align-left}` / `.align-center` / `.align-right` で任意コンテナを左・中央・右寄せできるよう `layout-utils.css` を更新。図版や画像の回り込みと干渉しないようブロック専用の余白レイアウトとし、本文中で簡潔に配置調整できるようにした。
 - **章操作コマンドのスラッグ単体指定**: `vs build / create / delete / rename` で `three-elements` のような slug 単独指定を正式サポート。TokenResolver ベースで章解決を統一し、章番号を覚えていなくてもコマンド実行できるようにした。
 - **pdf:read 設定サポート**: `config/book.yml` に `pdf_read.text_area` / `pdf_read.line_reflow` を追加し、ページ抽出領域と改行整理しきい値を著者が調整できるようにした。設定値は `PdfReadCommand` の本文抽出・改行再整形に即反映され、ユニットテストで回帰を担保。
+
+## 0.33.0 - 2026-03-09
+
+### Added
 - **vs pdf:read 強化（Enhanced Mode 完成）**: prh 辞書によるOCR誤読補正・括弧正規化・日本語スペース除去を実装し、`vivlio-starter-pdf` gem を README/Licence 付きで独立配布。`book-vivlio-starter/22-pdf-read.md` に利用者向けマニュアルを追加し、OCRモードや画像抽出設定を含めたドキュメントを整備。
 
 ## 0.32.0 - 2026-02-21
@@ -714,7 +718,8 @@
 - バージョンファイル追加: `lib/vivlio/starter/version.rb`（0.1.0）
 - README にインストール方法・CLI の使い方・リリース手順を追記
 
-[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.32.0...HEAD
+[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.33.0...HEAD
+[0.33.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.30.0...v0.31.0
 [0.30.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.29.0...v0.30.0

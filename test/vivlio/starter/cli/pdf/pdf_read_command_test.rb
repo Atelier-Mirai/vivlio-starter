@@ -8,11 +8,14 @@ require "vivlio/starter/cli/pdf/pdf_read_command"
 module Vivlio
   module Starter
     module Commands
+      # PdfReadCommand のテストスイート
       class PdfReadCommandTest < Minitest::Test
+        # テスト用のコマンドインスタンスを初期化する
         def setup
           @command = PdfReadCommand.new("dummy.pdf")
         end
 
+        # text_area_margin_points が mm を pt に正しく変換することを検証する
         def test_text_area_margin_points_converts_mm_to_points
           margins_cfg = {
             top_margin: 10,
@@ -32,6 +35,7 @@ module Vivlio
           end
         end
 
+        # page_separator が有効な場合、ページ間に "---" が挿入されることを検証する
         def test_build_markdown_inserts_page_separator_when_enabled
           @command.stub :pdf_read_page_separator?, true do
             markdown = @command.send(:build_markdown, ["一頁目", "二頁目"])
@@ -40,6 +44,7 @@ module Vivlio
           end
         end
 
+        # page_separator が無効な場合、ページチャンクが改行除去で結合されることを検証する
         def test_build_markdown_merges_page_chunks_when_separator_disabled
           cleaner = Object.new
           cleaner.define_singleton_method(:clean) { |text| text.gsub("\n", "") }
@@ -53,6 +58,7 @@ module Vivlio
           end
         end
 
+        # auto モードでプラグインが利用可能な場合、enhanced モードが選択されることを検証する
         def test_resolved_mode_uses_enhanced_when_plugin_is_available_in_auto_mode
           command = PdfReadCommand.new("dummy.pdf", mode: "auto")
 
@@ -61,6 +67,7 @@ module Vivlio
           end
         end
 
+        # auto モードでプラグインが利用不可な場合、standard モードにフォールバックすることを検証する
         def test_resolved_mode_falls_back_to_standard_when_plugin_is_unavailable_in_auto_mode
           command = PdfReadCommand.new("dummy.pdf", mode: "auto")
 
@@ -69,6 +76,7 @@ module Vivlio
           end
         end
 
+        # convert_enhanced がプラグインの page_texts から Markdown を生成することを検証する
         def test_convert_enhanced_writes_markdown_from_plugin_page_texts
           identity_cleaner = Object.new
           identity_cleaner.define_singleton_method(:clean) { |text| text }
@@ -103,6 +111,7 @@ module Vivlio
           end
         end
 
+        # enhanced_command が OCR 設定を正しく JSON 形式で含むことを検証する
         def test_enhanced_command_includes_ocr_settings
           entry = Data.define(:basename).new("10-sample")
 
@@ -128,6 +137,7 @@ module Vivlio
           end
         end
 
+        # normalize_inline_image_text がエイリアスを正規化し、既定値 include にフォールバックすることを検証する
         def test_normalize_inline_image_text_falls_back_to_include
           assert_equal("include", @command.send(:normalize_inline_image_text, nil))
           assert_equal("captionize", @command.send(:normalize_inline_image_text, "caption"))
@@ -135,6 +145,7 @@ module Vivlio
           assert_equal("exclude", @command.send(:normalize_inline_image_text, "remove"))
         end
 
+        # normalize_ocr_languages がユーザーフレンドリーなエイリアス（japanese 等）を受け入れることを検証する
         def test_normalize_ocr_languages_accepts_user_friendly_aliases
           assert_equal(
             %w[jpn jpn_vert eng],
@@ -142,6 +153,7 @@ module Vivlio
           )
         end
 
+        # page_separator 無効時に画像参照が独立ブロックとして正規化されることを検証する
         def test_build_markdown_normalizes_image_reference_as_standalone_block_when_separator_disabled
           identity_cleaner = Object.new
           identity_cleaner.define_singleton_method(:clean) { |text| text }
@@ -155,12 +167,14 @@ module Vivlio
           end
         end
 
+        # normalize_image_reference_blocks が既存の空行を重複させないことを検証する
         def test_normalize_image_reference_blocks_does_not_duplicate_existing_blank_lines
           markdown = "前文\n\n![](images/10-sample/page-001-image-01.webp)\n\n本文"
 
           assert_equal(markdown, @command.send(:normalize_image_reference_blocks, markdown))
         end
 
+        # ensure_unique_output_entry が既存カタログエントリに対して新しい basename を割り当てることを検証する
         def test_ensure_unique_output_entry_allocates_new_basename_for_existing_catalog_entry
           entry = Vivlio::Starter::CLI::TokenResolver::Entry.new(
             number: "10",
@@ -184,6 +198,7 @@ module Vivlio
           end
         end
 
+        # ensure_unique_output_entry が既存の未カタログエントリに対して新しい basename を割り当てることを検証する
         def test_ensure_unique_output_entry_allocates_new_basename_for_existing_uncatalogued_entry
           entry = Vivlio::Starter::CLI::TokenResolver::Entry.new(
             number: "10",
@@ -207,6 +222,7 @@ module Vivlio
           end
         end
 
+        # call が既存 Markdown に対して自動採番を行うことを検証する
         def test_call_auto_numbers_for_chapter_token_input_when_markdown_exists
           entry = Vivlio::Starter::CLI::TokenResolver::Entry.new(
             number: "10",
@@ -244,6 +260,7 @@ module Vivlio
           end
         end
 
+        # plugin_available? が vivlio-starter-pdf の --version コマンドで可用性を確認することを検証する
         def test_plugin_available_checks_vivlio_starter_pdf_version_command
           status = Data.define(:success?).new(true)
 
@@ -255,6 +272,7 @@ module Vivlio
           end
         end
 
+        # enhanced_plugin_command がローカルワークスペースが利用可能な場合それを優先することを検証する
         def test_enhanced_plugin_command_prefers_local_workspace_when_available
           @command.stub :local_enhanced_plugin_root, "/tmp/vivlio-starter-pdf" do
             assert_equal(
@@ -264,6 +282,7 @@ module Vivlio
           end
         end
 
+        # capture_enhanced_command がプラグインルートからローカルワークスペースコマンドを実行することを検証する
         def test_capture_enhanced_command_runs_local_workspace_command_from_plugin_root
           status = Data.define(:success?).new(true)
           command = ["bundle", "exec", "ruby", "-Ilib", "exe/vivlio-starter-pdf", "--version"]
@@ -285,6 +304,7 @@ module Vivlio
         end
 
 
+        # strip_fallback_borders がヘッダー・フッターフィルタリング前に bottom マージンを適用することを検証する
         def test_strip_fallback_borders_applies_bottom_margin_before_header_footer_filtering
           page = Data.define(:mediabox).new([0, 0, 100, 100])
           lines = ["第1章 サンプル", "本文1", "本文2", "脚注テキスト"]
@@ -297,6 +317,7 @@ module Vivlio
           end
         end
 
+        # strip_fallback_borders が最初のページでは下部の行を保持することを検証する
         def test_strip_fallback_borders_keeps_bottom_lines_on_first_page
           page = Data.define(:mediabox).new([0, 0, 100, 100])
           lines = ["第1章", "プログラミング技術習得の三要素", "比較しながら考えてみましょう。"]
@@ -309,6 +330,7 @@ module Vivlio
           end
         end
 
+        # strip_fallback_borders が2ページ目以降で繰り返される章タイトルヘッダーを除去することを検証する
         def test_strip_fallback_borders_removes_repeated_chapter_title_header_on_later_pages
           page = Data.define(:mediabox).new([0, 0, 100, 100])
           lines = ["第1章 プログラミング技術習得の三要素", "♣ 2. ⽂法：表現のルール", "本文です。"]
@@ -321,6 +343,7 @@ module Vivlio
           end
         end
 
+        # strip_fallback_borders が最初のページの見出しと一致する数値柱を除去することを検証する
         def test_strip_fallback_borders_removes_numeric_pillar_when_heading_matches_first_page
           page = Data.define(:mediabox).new([0, 0, 100, 100])
           lines = ["1-1 プログラミング技術習得の三要素", "本文です。"]
@@ -335,6 +358,7 @@ module Vivlio
           end
         end
 
+        # strip_fallback_borders が最初のページと一致しない数値見出しを保持することを検証する
         def test_strip_fallback_borders_keeps_numeric_heading_when_not_matching_first_page
           page = Data.define(:mediabox).new([0, 0, 100, 100])
           lines = ["1-1 別の章タイトル", "本文です。"]
@@ -350,6 +374,7 @@ module Vivlio
         end
 
 
+        # newline_cleaner が設定なしで MecabNewlineCleaner を使用することを検証する
         def test_newline_cleaner_uses_mecab_cleaner_without_config
           fake_cleaner_class = Class.new do
             class << self
