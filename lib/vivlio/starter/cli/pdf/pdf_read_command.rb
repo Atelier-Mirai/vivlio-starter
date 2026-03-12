@@ -53,6 +53,7 @@ module Vivlio
           entry, pdf_path = resolve_entry_and_pdf
           entry = ensure_unique_output_entry(entry)
           mode = resolved_mode
+          log_enhanced_install_hint if mode == :standard
 
           ensure_entry_has_slug!(entry)
           add_catalog_entry_if_needed(entry)
@@ -824,6 +825,11 @@ module Vivlio
         # Enhanced Mode が利用不可時のエラーメッセージ
         def missing_enhanced_plugin_message
           "Enhanced mode を利用するには vivlio-starter-pdf をインストールしてください"
+        end
+
+        # Standard Mode での実行時に Enhanced Mode への切り替え方法を案内する
+        def log_enhanced_install_hint
+          CLI::Common.log_info("[pdf:read] Enhanced Mode を利用するには `gem install vivlio-starter-pdf` を実行してください。")
         end
 
         # MeCab を使った日本語改行補正器（メモ化）
