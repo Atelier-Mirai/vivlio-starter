@@ -1,0 +1,41 @@
+- symbol: H
+  name: 水素
+  atomic_number: 1
+  atomic_mass: 1.008
+  category: nonmetal
+  phase_at_stp: gas
+
+- symbol: He
+  name: ヘリウム
+  atomic_number: 2
+  atomic_mass: 4.0026
+  category: noble_gas
+  phase_at_stp: gas
+
+- symbol: Li
+  name: リチウム
+  atomic_number: 3
+  atomic_mass: 6.941
+  category: alkali_metal
+  phase_at_stp: solid
+
+- symbol: C
+  name: 炭素
+  atomic_number: 6
+  atomic_mass: 12.011
+  category: nonmetal
+  phase_at_stp: solid
+
+- symbol: N
+  name: 窒素
+  atomic_number: 7
+  atomic_mass: 14.007
+  category: nonmetal
+  phase_at_stp: gas
+
+- symbol: O
+  name: 酸素
+  atomic_number: 8
+  atomic_mass: 15.999
+  category: nonmetal
+  phase_at_stp: gas

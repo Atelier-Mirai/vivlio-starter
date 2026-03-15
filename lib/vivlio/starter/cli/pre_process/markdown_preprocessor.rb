@@ -25,6 +25,7 @@
 
 require_relative '../common'
 require_relative 'frontmatter_generator'
+require_relative 'data_render'
 require_relative 'image_path_normalizer'
 require_relative 'markdown_transformer'
 
@@ -66,6 +67,7 @@ module Vivlio
             Common.log_info("#{context.source_path} → #{context.output_path}")
             apply_frontmatter!
             strip_html_comments!
+            process_data_streams!
             normalize_image_paths!
             process_code_includes!
             normalize_html_block_boundaries!
@@ -87,6 +89,24 @@ module Vivlio
               context.file_type,
               context.chapter_number
             )
+          end
+
+          # QueryStream 記法（= books | tags=ruby 等）をデータ展開する
+          def process_data_streams!
+            Common.log_action('QueryStream 記法をスキャンしています…')
+            before = context.content.dup
+            context.content = DataRender.process(
+              context.content,
+              source_filename: context.filename
+            )
+            if context.content == before
+              Common.log_info('QueryStream 記法はありません')
+            else
+              Common.log_success('QueryStream 記法を展開しました')
+            end
+          rescue DataRender::DataRenderError => e
+            Common.log_error("QueryStream 展開エラー: #{e.message}")
+            raise
           end
 
           # 画像パスを生成規約に従って正規化する
