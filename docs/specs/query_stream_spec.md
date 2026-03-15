@@ -1,8 +1,8 @@
-# query_stream gem 仕様書
+# query-stream gem 仕様書
 
 ## 1. 概要
 
-`query_stream` は、YAMLまたはJSONのデータファイルとテンプレートファイルを組み合わせて、テキストコンテンツ内のQueryStream記法を展開する汎用Rubyライブラリである。
+`query-stream` は、YAMLまたはJSONのデータファイルとテンプレートファイルを組み合わせて、テキストコンテンツ内のQueryStream記法を展開する汎用Rubyライブラリである。
 
 もともと [vivlio-starter](https://github.com/mirai/vivlio-starter)（電子書籍執筆支援gem）の `data_render` 機能として設計されたが、静的サイトジェネレーター・ドキュメント生成・コンテンツ管理など幅広い用途に応用できる汎用DSLとして独立させた。
 
@@ -20,11 +20,34 @@
 
 ```ruby
 # Gemfile
-gem 'query_stream'
+gem 'query-stream'
 ```
 
 ```bash
 bundle install
+```
+
+### 命名規約
+
+| 種別 | 名前 |
+|---|---|
+| gem名 | `query-stream` |
+| ディレクトリ名 | `query-stream/` |
+| モジュール名 | `QueryStream` |
+| メインファイル | `lib/query_stream.rb` |
+
+Rubyのgem命名規約ではハイフンが「名前空間の区切り」を意味することがある（例: `rack-attack` → `Rack::Attack`）。`query-stream` も `Query::Stream` と解釈される可能性があるが、モジュール名は `QueryStream` として定義すること。
+
+```ruby
+# ✅ 正しい
+module QueryStream
+end
+
+# ❌ 使わない
+module Query
+  module Stream
+  end
+end
 ```
 
 ---
@@ -515,19 +538,19 @@ File.write('05-references.md', result)
 
 将来的に以下のようなプラグイン・アダプターの提供を検討する：
 
-- `query_stream-bridgetown` — Bridgetown プラグイン
-- `query_stream-jekyll` — Jekyll プラグイン
-- `query_stream-middleman` — Middleman 拡張
+- `query-stream-bridgetown` — Bridgetown プラグイン
+- `query-stream-jekyll` — Jekyll プラグイン
+- `query-stream-middleman` — Middleman 拡張
 
 ---
 
 ## 8. CLI
 
-query_stream は他のツールに組み込んで使うライブラリであるため、CLIは最小限とする。`--version` オプションのみ提供する。
+query-stream は他のツールに組み込んで使うライブラリであるため、CLIは最小限とする。`--version` オプションのみ提供する。
 
 ```bash
-$ bundle exec query_stream --version
-query_stream 0.1.0
+$ bundle exec query-stream --version
+query-stream 0.1.0
 ```
 
 ### 8.1 実装（samovar を使用）
@@ -554,7 +577,7 @@ module QueryStream
 
       def call
         if @options[:version]
-          puts "query_stream #{QueryStream::VERSION}"
+          puts "query-stream #{QueryStream::VERSION}"
         else
           puts self.usage
         end
