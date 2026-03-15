@@ -36,6 +36,18 @@ module Vivlio
           end
         end
 
+        def test_create_supports_numeric_only_name
+          within_temp_dir do
+            capture_io { CreateCommands.execute_create(command_context, ['15']) }
+
+            assert File.exist?(File.join(Common::CONTENTS_DIR, '15.md')), '数字のみ指定でも Markdown を生成すべき'
+            assert Dir.exist?(File.join(Common::IMAGES_DIR, '15')), '画像ディレクトリは数字のみで作成されるべき'
+
+            catalog = File.read('config/catalog.yml')
+            assert_includes catalog, '15', 'catalog.yml にも数字章が追記されるべき'
+          end
+        end
+
         def test_create_assigns_number_for_slug_only_input
           within_temp_dir do
             capture_io { CreateCommands.execute_create(command_context, ['three-elements']) }

@@ -51,6 +51,18 @@ module Vivlio
           end
         end
 
+        def test_delete_handles_numeric_only_chapter
+          within_temp_dir do
+            setup_chapter_fixture('15')
+            options = { force: true }
+
+            capture_io { DeleteCommands::DeleteCommandExecutor.new(options, ['15']).call }
+
+            refute File.exist?(File.join(Common::CONTENTS_DIR, '15.md'))
+            refute Dir.exist?(File.join(Common::IMAGES_DIR, '15'))
+          end
+        end
+
         # 対象が見つからない場合に終了コード 1 で終了することを確認
         def test_delete_exits_when_targets_missing
           within_temp_dir do
@@ -85,6 +97,7 @@ module Vivlio
                 PREFACE:
                 CHAPTERS:
                   - 11-sample
+                  - 15
                 APPENDICES:
                 POSTFACE:
               YAML

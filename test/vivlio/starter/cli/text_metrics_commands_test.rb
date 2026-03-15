@@ -50,12 +50,25 @@ module Vivlio
           end
         end
 
+        def test_text_metrics_handles_numeric_only_target
+          within_temp_dir do
+            write_markdown('contents/15.md', "数字だけの章です。\n")
+            write_catalog(%w[15])
+
+            output = capture_io { TextMetricsCommands.execute_text_metrics(['15'], { json: true }) }.first
+            parsed = JSON.parse(output)
+
+            assert_equal ['contents/15.md'], parsed['stats'].map { it['path'] }
+          end
+        end
+
         private
 
         def within_temp_dir
           Dir.mktmpdir do |dir|
             Dir.chdir(dir) do
               FileUtils.mkdir_p('contents')
+              FileUtils.mkdir_p('config')
               yield dir
             end
           end
@@ -64,6 +77,11 @@ module Vivlio
         def write_markdown(path, content)
           FileUtils.mkdir_p(File.dirname(path))
           File.write(path, content)
+        end
+
+        def write_catalog(entries)
+          body = "CHAPTERS:\n" + entries.map { "  - #{it}" }.join("\n") + "\n"
+          File.write('config/catalog.yml', body)
         end
       end
     end

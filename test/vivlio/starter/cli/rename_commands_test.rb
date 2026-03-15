@@ -60,12 +60,28 @@ module Vivlio
           end
         end
 
+        def test_rename_handles_numeric_only_chapter
+          within_temp_dir do
+            executor = build_rename_executor(force: true)
+            setup_single_chapter_fixture('15', images: true, html: true)
+
+            capture_io { executor.call('15', '16') }
+
+            assert File.exist?(File.join(Common::CONTENTS_DIR, '16.md'))
+            refute File.exist?(File.join(Common::CONTENTS_DIR, '15.md'))
+            assert Dir.exist?('images/16')
+            refute Dir.exist?('images/15')
+            refute File.exist?('15.html')
+          end
+        end
+
         # 引数なしで実行した際に章番号が再割り当てされることを確認
         def test_rename_without_arguments_performs_renumber
           within_temp_dir do
             executor = build_rename_executor(force: true)
             setup_single_chapter_fixture('11-alpha', css: true, images: true)
             setup_single_chapter_fixture('31-beta', css: true, images: true)
+            setup_single_chapter_fixture('15', images: true)
 
             clean_calls = []
             Vivlio::Starter::CLI::CleanCommands.stub :execute_clean, ->(opts) { clean_calls << opts } do
@@ -76,11 +92,15 @@ module Vivlio
             end
 
             assert File.exist?(File.join(Common::CONTENTS_DIR, '11-alpha.md'))
-            assert File.exist?(File.join(Common::CONTENTS_DIR, '12-beta.md'))
+            assert File.exist?(File.join(Common::CONTENTS_DIR, '12.md'))
+            assert File.exist?(File.join(Common::CONTENTS_DIR, '13-beta.md'))
             refute File.exist?(File.join(Common::CONTENTS_DIR, '31-beta.md'))
+            refute File.exist?(File.join(Common::CONTENTS_DIR, '15.md'))
             assert Dir.exist?('images/11-alpha')
-            assert Dir.exist?('images/12-beta')
+            assert Dir.exist?('images/12')
+            assert Dir.exist?('images/13-beta')
             refute Dir.exist?('images/31-beta')
+            refute Dir.exist?('images/15')
 
             assert_equal [{}], clean_calls
           end
@@ -116,6 +136,8 @@ module Vivlio
                   - 11-old
                   - 11-alpha
                   - 31-beta
+                  - 15
+                  - 20
                 APPENDICES:
                 POSTFACE:
               YAML

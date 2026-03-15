@@ -38,7 +38,7 @@ module Vivlio
         STYLESHEETS_DIR = 'stylesheets'
         IMAGES_DIR = 'images'
         CODES_DIR = 'codes'
-        CHAPTER_TEMPLATES_DIR = 'chapter_templates'
+        TEMPLATES_DIR = 'templates'
         COVERS_DIR = 'covers'
         VFM_COMMAND = 'vfm'
         POST_REPLACE_FILE = 'post_replace_list.yml'
@@ -129,7 +129,7 @@ module Vivlio
           stylesheets: STYLESHEETS_DIR,
           images: IMAGES_DIR,
           codes: CODES_DIR,
-          chapter_templates: CHAPTER_TEMPLATES_DIR,
+          templates: TEMPLATES_DIR,
           covers: COVERS_DIR
         }
 
@@ -464,8 +464,17 @@ module Vivlio
         def stylesheets_dir    = CONFIG.directories&.stylesheets || STYLESHEETS_DIR
         def images_dir         = CONFIG.directories&.images || IMAGES_DIR
         def codes_dir          = CONFIG.directories&.codes || CODES_DIR
-        def chapter_templates_dir = CONFIG.directories&.chapter_templates || CHAPTER_TEMPLATES_DIR
+        def templates_dir      = CONFIG.directories&.templates || TEMPLATES_DIR
         def covers_dir         = CONFIG.directories&.covers || COVERS_DIR
+
+        def template_path(name)
+          File.join(templates_dir, "#{name}.md")
+        end
+
+        def chapter_template_path = template_path('chapter')
+        def preface_template_path = template_path('preface')
+        def appendix_template_path = template_path('appendix')
+        def postface_template_path = template_path('postface')
 
         # キャッシュ関連
         def cache_cfg          = CONFIG.cache
@@ -492,7 +501,10 @@ module Vivlio
         # エンドレスメソッド定義を module_function として明示的に公開
         module_function :abort_with_error, :appendix_number_to_letter, :apply_page_preset,
                         :blank?, :cache_cfg, :cache_dir, :cache_enabled?,
-                        :chapter_templates_dir, :codes_dir, :config_dir, :config_dir_path,
+                        :stylesheets_dir, :templates_dir, :to_roman_lower,
+                        :template_path, :chapter_template_path, :preface_template_path,
+                        :appendix_template_path, :postface_template_path,
+                        :config_dir_path,
                         :consume_vivliostyle_build_timings, :contents_dir, :covers_dir,
                         :current_log_level, :current_step_label, :default_cache,
                         :default_commands, :default_directories, :default_files,

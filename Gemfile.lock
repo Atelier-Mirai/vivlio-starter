@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    vivlio-starter (0.32.0)
+    vivlio-starter (0.33.0)
       combine_pdf (~> 1.0)
       hexapdf (~> 1.0)
       kramdown (~> 2.4)

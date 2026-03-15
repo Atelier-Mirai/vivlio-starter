@@ -143,11 +143,9 @@ module Vivlio
 
             Array(items).each do |item|
               case item
-              when String
-                # 文字列: basename またはショートハンド
+              when String, Integer
                 result.concat(expand_item(item))
               when Hash
-                # ハッシュ: 部タイトル + 配下の章リスト
                 item.each_value do |sub_items|
                   result.concat(flatten_section(sub_items))
                 end
@@ -161,16 +159,16 @@ module Vivlio
           # @param item [String] basename またはショートハンド
           # @return [Array<String>] basename 配列
           def expand_item(item)
-            item = item.to_s.strip
+            normalized = item.to_s.strip
 
             # .md 拡張子を除去
-            item = item.sub(/\.md\z/, '')
+            normalized = normalized.sub(/\.md\z/, '')
 
             # ショートハンド判定
-            if shorthand?(item)
-              expand_shorthand(item)
+            if shorthand?(normalized)
+              expand_shorthand(normalized)
             else
-              [item]
+              [normalized]
             end
           end
 
@@ -262,7 +260,7 @@ module Vivlio
           # @param basename [String]
           # @return [Integer, nil]
           def extract_chapter_number(basename)
-            match = basename.to_s.match(/\A(\d+)-/)
+            match = basename.to_s.match(/\A(\d{2})/)
             match ? match[1].to_i : nil
           end
 

@@ -132,11 +132,15 @@ module Vivlio
           # Hash のキー（「歴史篇」等）を label として伝播させる。
           def extract_from_yaml(items, context:)
             case items
-            in String then [[items.sub(/\.md\z/i, ''), context]]
-            in Array  then items.flat_map { extract_from_yaml(it, context:) }
-            in Hash   then items.flat_map { |k, v| extract_from_yaml(v, context: k.to_s) }
+            in String | Integer then [[normalize_catalog_basename(items), context]]
+            in Array            then items.flat_map { extract_from_yaml(it, context:) }
+            in Hash             then items.flat_map { |k, v| extract_from_yaml(v, context: k.to_s) }
             else []
             end
+          end
+
+          def normalize_catalog_basename(item)
+            item.to_s.strip.sub(/\.md\z/i, '')
           end
 
           # セクション名を kind シンボルに変換する。
@@ -173,14 +177,24 @@ module Vivlio
               token_num = format('%02d', token.to_i)
               found = catalog.find { it.number == token_num }
               return found if found
+
               # カタログにない場合、ファイルシステムからスラッグを補完する。
+              # 優先順位: スラッグ付き (NN-slug.md) > 数字のみ (NN.md)
               # 例: "2" → contents/02-history.md が存在すれば "02-history" として解決。
               fs_matches = Dir.glob(File.join(contents_dir, "#{token_num}-*.md"))
               if fs_matches.any?
                 fs_basename = File.basename(fs_matches.first, '.md')
                 return instantiate_entry(fs_basename, 'UNCATALOGED', :chapter, in_catalog: false)
               end
-              # ファイルも見つからない場合、番号のみの新規エントリとして生成
+
+              # スラッグ付きファイルが無い場合、数字のみファイル (NN.md) を探索
+              # 例: "2" → contents/02.md が存在すれば slug=nil の Entry として解決。
+              numeric_file = File.join(contents_dir, "#{token_num}.md")
+              if File.exist?(numeric_file)
+                return instantiate_entry(token_num, 'UNCATALOGED', :chapter, in_catalog: false)
+              end
+
+              # どちらも見つからない場合、番号のみの新規エントリとして生成
               return instantiate_entry(token, 'NEW', :chapter, in_catalog: false)
             end
           end
@@ -214,6 +228,12 @@ module Vivlio
 
           # --- Phase 4: Entry オブジェクトの実体化（正常系）---
           # basename から Entry を生成する。形式が不正なら invalid_entry を返す。
+          # 数字のみファイル（NN）にも対応し、slug=nil の Entry を生成する。
+          # @param basename [String] 章ファイルのベース名（例: "01-life" または "02"）
+          # @param label [String] カタログのセクション名（例: "CHAPTERS"）
+          # @param fallback_kind [Symbol] kind 判定に失敗した際のフォールバック値
+          # @param in_catalog [Boolean] カタログに登録済みかどうか
+          # @return [Entry] 生成された Entry オブジェクト
           def instantiate_entry(basename, label, fallback_kind, in_catalog:)
             # 形式チェック: 数字で始まり、オプションで -slug または _slug が続く
             return instantiate_invalid_entry(basename) unless basename =~ /\A(\d+)(?:[-_](.+))?\z/

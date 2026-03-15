@@ -204,6 +204,26 @@ module Vivlio
             end
           end
 
+          def test_in_catalog_true_for_integer_entries
+            Dir.mktmpdir do |dir|
+              catalog_path = File.join(dir, 'catalog.yml')
+              contents_dir = File.join(dir, 'contents')
+              FileUtils.mkdir_p(contents_dir)
+
+              File.write(catalog_path, <<~YAML)
+                CHAPTERS:
+                  - 15
+              YAML
+              File.write(File.join(contents_dir, '15.md'), '# Chapter 15')
+
+              resolver = Resolver.new(catalog_path:, contents_dir:)
+              entry = resolver.resolve(['15']).first
+
+              assert entry.in_catalog?, 'catalog.yml の整数エントリは in_catalog? が true になるべき'
+              assert_equal '15', entry.number
+            end
+          end
+
           def test_completes_slug_from_filesystem_for_range
             Dir.mktmpdir do |dir|
               catalog_path = File.join(dir, 'catalog.yml')
@@ -242,6 +262,120 @@ module Vivlio
               assert_equal '02', entry.number
               assert_nil entry.slug
               refute entry.exists?
+            end
+          end
+
+          # --- Numeric-only File Support Tests ---
+
+          def test_resolves_numeric_only_file_from_filesystem
+            Dir.mktmpdir do |dir|
+              catalog_path = File.join(dir, 'catalog.yml')
+              contents_dir = File.join(dir, 'contents')
+              FileUtils.mkdir_p(contents_dir)
+
+              # カタログには 01-life のみ、02.md はファイルのみ存在
+              File.write(catalog_path, { 'CHAPTERS' => ['01-life'] }.to_yaml)
+              File.write(File.join(contents_dir, '01-life.md'), '# life')
+              File.write(File.join(contents_dir, '02.md'), '# Chapter 2')
+
+              resolver = Resolver.new(catalog_path:, contents_dir:)
+              result = resolver.resolve(['2'])
+              entry = result.first
+
+              assert_equal '02', entry.number
+              assert_nil entry.slug
+              assert_equal '02', entry.basename
+              assert entry.exists?
+              refute entry.in_catalog?
+              assert entry.valid?
+            end
+          end
+
+          def test_resolves_numeric_only_catalog_entry
+            Dir.mktmpdir do |dir|
+              catalog_path = File.join(dir, 'catalog.yml')
+              contents_dir = File.join(dir, 'contents')
+              FileUtils.mkdir_p(contents_dir)
+
+              # catalog.yml に番号のみエントリを記述
+              File.write(catalog_path, { 'CHAPTERS' => ['03'] }.to_yaml)
+              File.write(File.join(contents_dir, '03.md'), '# Chapter 3')
+
+              resolver = Resolver.new(catalog_path:, contents_dir:)
+              result = resolver.resolve([])
+              entry = result.find { it.number == '03' }
+
+              assert_equal '03', entry.number
+              assert_nil entry.slug
+              assert_equal '03', entry.basename
+              assert entry.exists?
+              assert entry.in_catalog?
+              assert entry.valid?
+            end
+          end
+
+          def test_expands_range_with_numeric_only_files
+            Dir.mktmpdir do |dir|
+              catalog_path = File.join(dir, 'catalog.yml')
+              contents_dir = File.join(dir, 'contents')
+              FileUtils.mkdir_p(contents_dir)
+
+              File.write(catalog_path, { 'CHAPTERS' => [] }.to_yaml)
+              File.write(File.join(contents_dir, '02.md'), '# Chapter 2')
+              File.write(File.join(contents_dir, '03.md'), '# Chapter 3')
+
+              resolver = Resolver.new(catalog_path:, contents_dir:)
+              result = resolver.resolve(['2-3'])
+
+              assert_equal 2, result.size
+              assert_equal %w[02 03], result.map(&:number)
+              assert result.all? { it.slug.nil? }
+              assert result.all?(&:exists?)
+            end
+          end
+
+          def test_prioritizes_slug_file_over_numeric_file
+            Dir.mktmpdir do |dir|
+              catalog_path = File.join(dir, 'catalog.yml')
+              contents_dir = File.join(dir, 'contents')
+              FileUtils.mkdir_p(contents_dir)
+
+              # 同一番号で 02.md と 02-history.md が共存
+              File.write(catalog_path, { 'CHAPTERS' => [] }.to_yaml)
+              File.write(File.join(contents_dir, '02.md'), '# Numeric')
+              File.write(File.join(contents_dir, '02-history.md'), '# History')
+
+              resolver = Resolver.new(catalog_path:, contents_dir:)
+              result = resolver.resolve(['2'])
+              entry = result.first
+
+              # スラッグ付きファイルを優先
+              assert_equal '02', entry.number
+              assert_equal 'history', entry.slug
+              assert_equal '02-history', entry.basename
+              assert entry.exists?
+            end
+          end
+
+          def test_kind_detection_for_numeric_only_files
+            Dir.mktmpdir do |dir|
+              catalog_path = File.join(dir, 'catalog.yml')
+              contents_dir = File.join(dir, 'contents')
+              FileUtils.mkdir_p(contents_dir)
+
+              File.write(catalog_path, { 'CHAPTERS' => [] }.to_yaml)
+              File.write(File.join(contents_dir, '00.md'), '# Preface')
+              File.write(File.join(contents_dir, '01.md'), '# Chapter 1')
+              File.write(File.join(contents_dir, '90.md'), '# Appendix')
+              File.write(File.join(contents_dir, '99.md'), '# Postface')
+
+              resolver = Resolver.new(catalog_path:, contents_dir:)
+              entries = resolver.resolve(['0', '1', '90', '99'])
+
+              assert_equal :preface, entries.find { it.number == '00' }.kind
+              assert_equal :chapter, entries.find { it.number == '01' }.kind
+              assert_equal :appendix, entries.find { it.number == '90' }.kind
+              assert_equal :postface, entries.find { it.number == '99' }.kind
             end
           end
 

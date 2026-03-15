@@ -84,7 +84,7 @@ module Vivlio
               next
             end
 
-            create_single_chapter(fname)
+            create_single_chapter(fname, entry)
           rescue StandardError => e
             errors = true
             Common.log_error("作成に失敗しました: #{fname} (#{e.class}: #{e.message})")
@@ -326,9 +326,9 @@ module Vivlio
         #   2. contents/ に Markdown ファイルを作成
         #   3. images/ に章専用の画像ディレクトリを作成
         #   4. config/catalog.yml の CHAPTERS に章を追記
-        def create_single_chapter(fname)
+        def create_single_chapter(fname, entry)
           title   = generate_title(fname)
-          content = generate_content_from_template(title)
+          content = generate_content_from_template(entry, title)
           path    = create_markdown_file(fname, content)
           # Vivliostyle は章ごとに画像を images/XX-slug/ に配置する規約
           create_image_directory(fname, {})
@@ -346,18 +346,19 @@ module Vivlio
         # @return [String, nil] 正規化されたファイル名、無効な場合は nil
         #
         # ファイル名規約:
-        #   - 先頭は1桁以上の数字（並び順を示す。例: 11, 21, A1）
-        #   - ハイフンで区切る
+        #   - 先頭は1桁以上の数字（並び順を示す。例: 11, 21）
+        #   - オプションでハイフン区切りの slug を続けられる（"11-install"）
+        #   - slug を省略した数字のみ（"02"）も許可し、numeric-only ファイルを生成できる
         #   - 英数字・ハイフン・ドット・アンダースコアのみ許可
-        #   - 例: "11-install" → "11-install.md"
+        #   - 例: "11-install" → "11-install.md"、"02" → "02.md"
         def ensure_filename(name)
           return nil if name.nil?
 
           n = name.to_s.strip
           n = File.basename(n)
           n = File.basename(n, '.md')
-          # 規約: 数字-スラッグ 形式のみ許可（目次や並べ替えで数字を使用するため）
-          return nil unless n =~ /\A\d+-[\w.-]+\z/
+          # 規約: 数字で始まり、オプションで -slug を続ける形式のみ許可
+          return nil unless n =~ /\A\d+(?:-[\w.-]+)?\z/
 
           "#{n}.md"
         rescue StandardError
@@ -388,15 +389,16 @@ module Vivlio
 
         # テンプレートから章コンテンツを生成する
         #
+        # @param entry [TokenResolver::Entry, nil] 章エントリ（kind 判定に利用）
         # @param title [String] 章タイトル
         # @return [String] Markdown コンテンツ
         #
-        # templates/chapter_template.md が存在すればそれを使用し、
+        # templates/*.md に存在するテンプレートを kind ごとに使い分け、
         # {{TITLE}} プレースホルダをタイトルで置換する。
         # テンプレートが無い場合はデフォルトの骨子を生成する。
-        def generate_content_from_template(title)
-          tpl = File.join(Common::CHAPTER_TEMPLATES_DIR, 'chapter_template.md')
-          if File.exist?(tpl)
+        def generate_content_from_template(entry, title)
+          tpl = template_path_for(entry)
+          if tpl && File.exist?(tpl)
             File.read(tpl, encoding: 'utf-8').gsub('{{TITLE}}', title.to_s)
           else
             <<~MD
@@ -406,6 +408,15 @@ module Vivlio
 
               ここに#{title}の内容を記述してください。
             MD
+          end
+        end
+
+        def template_path_for(entry)
+          case entry&.kind
+          when :preface then Common.preface_template_path
+          when :appendix then Common.appendix_template_path
+          when :postface then Common.postface_template_path
+          else Common.chapter_template_path
           end
         end
 

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'test_helper'
+require 'tmpdir'
+require 'fileutils'
 require 'vivlio/starter/cli/samovar'
 require 'vivlio/starter/cli/samovar/build_command'
 require 'vivlio/starter/cli/token_resolver'
@@ -64,6 +66,31 @@ module Vivlio
               assert pipeline.run_called, 'pipeline#run が呼ばれるべきです'
               assert_equal :single, pipeline.mode
               assert_equal entries, pipeline.entries_param
+            end
+          end
+
+          def test_call_accepts_numeric_only_chapter_targets
+            Dir.mktmpdir do |dir|
+              Dir.chdir(dir) do
+                FileUtils.mkdir_p('contents')
+                FileUtils.mkdir_p('config')
+                File.write('config/catalog.yml', <<~YAML)
+                  CHAPTERS:
+                    - 15
+                YAML
+                File.write('contents/15.md', "# Chapter 15\n")
+
+                pipelines = []
+                with_pipeline_stub(pipelines) do
+                  command = BuildCommand.new(['15'])
+                  suppress_build_outputs(command) do
+                    assert_equal 0, command.call
+                  end
+                end
+
+                pipeline = pipelines.last
+                assert_equal ['15'], pipeline.entries_param.map(&:basename)
+              end
             end
           end
 

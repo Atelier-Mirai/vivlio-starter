@@ -170,6 +170,34 @@ module Vivlio
           refute_includes expected_command, File.join('contents', '92-appendix-c.md')
         end
 
+        def test_numeric_only_chapter_resolution
+          setup_catalog(%w[15])
+          FileUtils.touch('contents/15.md')
+
+          expected_command = nil
+          fake_status = Struct.new(:success?).new(true)
+          def fake_status.exitstatus
+            0
+          end
+
+          returned_status = nil
+          with_stubbed_textlint_available do
+            Open3.stub(:capture3, ->(*args) do
+              expected_command = args
+              ['STDOUT', 'STDERR', fake_status]
+            end) do
+              stdout, stderr = capture_io do
+                returned_status = LintCommands.execute_lint(['15'], {})
+              end
+              assert_match(/STDOUT/, stdout)
+              assert_equal 'STDERR', stderr
+            end
+          end
+
+          assert_equal 0, returned_status
+          assert_includes expected_command, File.join('contents', '15.md')
+        end
+
         def test_range_specification_resolution
           setup_catalog(%w[11-install 12-setup 13-build 21-customize])
           FileUtils.touch('contents/11-install.md')

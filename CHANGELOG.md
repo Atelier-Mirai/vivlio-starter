@@ -55,7 +55,8 @@
 
 #### コンテンツ/テンプレート
 - [Low] テンプレ断片スニペット（注意/補足/Tipのコンポーネント化）。
-- [High] 11-install.mdなどを、著者の使い方や、書き方の例として、書き直す
+- [High] 11-install.mdなどを、著者の使い方や、書き方の例として、書き直す。
+- [High] tamplates/chapter.mdなどを、書き方の例として書き直す
 - [High] プロジェクト生成時に、.cache/vs/ を生成する。
 - [High] プロジェクト生成時に、project_scaffold/ を生成する。
 - [High] vs new で、プロジェクト生成時に、scaffold以下の資産が新プロジェクトに展開され、著者が執筆の参考となるよう、書き方の例として、vivio-starterのマニュアルを展開する。
@@ -68,6 +69,7 @@
 - **align-left/center/right ブロックユーティリティ**: `:::{.align-left}` / `.align-center` / `.align-right` で任意コンテナを左・中央・右寄せできるよう `layout-utils.css` を更新。図版や画像の回り込みと干渉しないようブロック専用の余白レイアウトとし、本文中で簡潔に配置調整できるようにした。
 - **章操作コマンドのスラッグ単体指定**: `vs build / create / delete / rename` で `three-elements` のような slug 単独指定を正式サポート。TokenResolver ベースで章解決を統一し、章番号を覚えていなくてもコマンド実行できるようにした。
 - **pdf:read 設定サポート**: `config/book.yml` に `pdf_read.text_area` / `pdf_read.line_reflow` を追加し、ページ抽出領域と改行整理しきい値を著者が調整できるようにした。設定値は `PdfReadCommand` の本文抽出・改行再整形に即反映され、ユニットテストで回帰を担保。
+- **数値のみ章トークン対応**: `catalog.yml` の整数エントリや `contents/15.md` のような純数字ファイルを `TokenResolver` と各 CLI（build/delete/rename/renumber/lint/metrics）で統一的に解決。`vs rename 15-foo 15` のような数字指定リネームや `vs build 15` がエラーなく動作するようになり、章番号だけで一連の操作が完結する。
 
 ## 0.33.0 - 2026-03-09
 

@@ -131,14 +131,14 @@ module Vivlio
         #   - appendix: 付録（90-97）
         def chapter_file_groups
           chapter_files = Dir.glob("#{Common::CONTENTS_DIR}/*.md")
-                             .select { |f| File.basename(f) =~ /^\d+-/ }
-                             .reject { |f| File.basename(f) =~ /^(0\d|98|99)-/ }
+                             .select { |f| File.basename(f) =~ /^\d+/ }
+                             .reject { |f| File.basename(f) =~ /^(0\d|98|99)(?:-|$)/ }
                              .sort
 
           {
             all: chapter_files,
-            regular: chapter_files.select { |f| File.basename(f) =~ /^[1-8]\d-/ },
-            appendix: chapter_files.select { |f| File.basename(f) =~ /^9[0-7]-/ }
+            regular: chapter_files.select { |f| File.basename(f) =~ /^[1-8]\d(?:-|$)/ },
+            appendix: chapter_files.select { |f| File.basename(f) =~ /^9[0-7](?:-|$)/ }
           }
         end
 
@@ -171,34 +171,39 @@ module Vivlio
           end
         end
 
+        # 連番後の通常章の新旧対応をログ出力する
         def display_regular_chapters(chapters, effective_step)
           return if chapters.empty?
 
           Common.log_info('通常の章:')
           chapters.each_with_index do |file, index|
-            old_name   = File.basename(file, '.md')
+            old_name = File.basename(file, '.md')
+            old_number, old_slug = extract_number_and_slug(old_name)
             new_number = format('%02d', 11 + (index * effective_step))
-            Common.log_info("#{old_name} → #{new_number}-#{old_name.split('-', 2)[1]}")
+            new_basename = build_basename(new_number, old_slug)
+            Common.log_info("#{old_name} → #{new_basename}")
           end
         end
 
+        # 付録章の新旧対応をログ出力する
         def display_appendix_files(appendix_files)
           return if appendix_files.empty?
 
           Common.log_info('付録:')
           appendix_files.each_with_index do |file, index|
-            old_name   = File.basename(file, '.md')
+            old_name = File.basename(file, '.md')
+            old_number, old_slug = extract_number_and_slug(old_name)
             new_number = format('%02d', index + 91)
-            new_letter = Common.appendix_number_to_letter(new_number) ||
-                         Common.appendix_number_to_letter(old_name[/^\d+/]) || 'a'
-            name_tail = old_name.split('-', 2)[1] || old_name
-            new_name_part = name_tail.sub(/appendix-[a-z]/, "appendix-#{new_letter}")
-            Common.log_info("#{old_name} → #{new_number}-#{new_name_part}")
+            adjusted_slug = adjust_slug_for_appendix(new_number, old_slug)
+            new_slug = adjusted_slug || old_slug
+            new_basename = build_basename(new_number, new_slug)
+            Common.log_info("#{old_name} → #{new_basename}")
           end
         rescue StandardError => e
           Common.log_warn("付録の一覧表示でエラーが発生しました: #{e}")
         end
 
+        # 操作実行前に y/N でユーザー確認を行う
         def confirm_or_exit(action_label)
           print "  ❓ #{action_label}を実行しますか？ (y/N): "
           response = $stdin.gets&.chomp&.downcase
@@ -208,29 +213,28 @@ module Vivlio
           exit 0
         end
 
+        # 正しい連番へ付け替えるための rename マップを構築する
         def build_rename_map(regular_chapters, appendix_files, effective_step)
           map = {}
 
           regular_chapters.each_with_index do |file, index|
             old_basename = File.basename(file, '.md')
-            old_number   = old_basename.split('-')[0]
-            new_number   = format('%02d', 11 + (index * effective_step))
+            old_number, old_slug = extract_number_and_slug(old_basename)
+            new_number = format('%02d', 11 + (index * effective_step))
             next if old_number == new_number
 
-            new_basename = old_basename.sub(/^\d+/, new_number)
+            new_basename = build_basename(new_number, old_slug)
             map[old_basename] = build_mapping(old_basename, new_basename, file)
           end
 
           appendix_files.each_with_index do |file, index|
             old_basename = File.basename(file, '.md')
-            old_number   = old_basename.split('-')[0]
-            new_number   = format('%02d', index + 91)
+            old_number, old_slug = extract_number_and_slug(old_basename)
+            new_number = format('%02d', index + 91)
             next if old_number == new_number
 
-            new_letter = Common.appendix_number_to_letter(new_number) ||
-                         Common.appendix_number_to_letter(old_number) || 'a'
-            new_basename = old_basename.sub(/^\d+/, new_number)
-                                       .sub(/appendix-[a-z]/, "appendix-#{new_letter}")
+            new_slug = adjust_slug_for_appendix(new_number, old_slug) || old_slug
+            new_basename = build_basename(new_number, new_slug)
             map[old_basename] = build_mapping(old_basename, new_basename, file)
           rescue StandardError => e
             Common.log_warn("付録のリネームマッピングでエラーが発生しました: #{e} (#{old_basename})")
@@ -239,16 +243,23 @@ module Vivlio
           map
         end
 
+        # 単一ファイルに対するリネーム情報ハッシュを返す
         def build_mapping(old_basename, new_basename, file)
+          old_number, old_slug = extract_number_and_slug(old_basename)
+          new_number, new_slug = extract_number_and_slug(new_basename)
           {
-            old_number: old_basename.split('-')[0],
-            new_number: new_basename.split('-')[0],
-            new_basename: new_basename,
+            old_basename:,
+            old_number:,
+            old_slug:,
+            new_number:,
+            new_slug:,
+            new_basename:,
             old_file: file,
             new_file: File.join(Common::CONTENTS_DIR, "#{new_basename}.md")
           }
         end
 
+        # 連番付け直し計画を実ファイルと catalog へ反映する
         def apply_renumber(rename_map)
           Common.log_action('ファイル名変更を実行中...')
           rename_map.each do |old_basename, info|
@@ -258,28 +269,22 @@ module Vivlio
           end
 
           Common.log_action('画像ディレクトリの更新中...')
-          rename_map.each_value do |info|
-            old_img_glob = "images/#{info[:old_number]}-*"
-            Dir.glob(old_img_glob).each do |old_dir|
-              next unless File.directory?(old_dir)
+          rename_map.each do |old_basename, info|
+            old_dir = File.join('images', old_basename)
+            next unless File.directory?(old_dir)
 
-              new_dir = new_directory_for(old_dir, info)
-              Common.log_info("#{old_dir} → #{new_dir}")
-              FileUtils.mv(old_dir, new_dir)
+            new_dir = File.join('images', info[:new_basename])
+            if File.exist?(new_dir)
+              Common.log_warn("#{new_dir} が既に存在するため、画像ディレクトリは手動で統合してください")
+              next
             end
+
+            Common.log_info("#{old_dir} → #{new_dir}")
+            FileUtils.mv(old_dir, new_dir)
           end
         end
 
-        def new_directory_for(old_dir, info)
-          if info[:new_number].to_i.between?(91, 97)
-            new_letter = Common.appendix_number_to_letter(info[:new_number])
-            old_dir.sub(%r{/#{info[:old_number]}-}, "/#{info[:new_number]}-")
-                   .sub(/appendix-[a-z]/, "appendix-#{new_letter}")
-          else
-            old_dir.sub(%r{/#{info[:old_number]}-}, "/#{info[:new_number]}-")
-          end
-        end
-
+        # 連番付け直し後の生成物クリーニングを行う
         def cleanup_after_renumber
           Common.log_action('既存の生成ファイルをクリーンアップ中...')
           CleanCommands.execute_clean({})
@@ -325,27 +330,31 @@ module Vivlio
           end
 
           contents_dir = Common::CONTENTS_DIR
-          # 両方が2桁数字のみの場合は番号変更モード
-          number_only = from_entry.slug.nil? && to_entry.slug.nil?
+          number_only_from = from_entry.slug.nil?
+          base_token = File.basename(new_arg.to_s.strip).sub(/\.(md|markdown)\z/i, '')
+          number_only_to = !base_token.empty? && base_token.match?(/\A\d+\z/)
 
-          if number_only
+          if number_only_from && number_only_to
             old_number = from_entry.number
             new_number = to_entry.number
             old_md, old_slug = find_markdown_by_number(contents_dir, old_number)
-            # 付録番号（91-97）に変更する場合、appendix-X のスラッグを自動調整
             new_slug = adjust_slug_for_appendix(new_number, old_slug)
           else
             old_number = from_entry.number
             old_slug = from_entry.slug
             new_number = to_entry.number
-            new_slug = to_entry.slug || old_slug
-            old_md = File.join(contents_dir, "#{old_number}-#{old_slug}.md")
+            new_slug = if number_only_to
+                         new_number.to_i.between?(91, 97) ? adjust_slug_for_appendix(new_number, old_slug) : nil
+                       else
+                         to_entry.slug || old_slug
+                       end
+            old_md = markdown_path_for(old_number, old_slug)
           end
 
-          new_md = File.join(contents_dir, "#{new_number}-#{new_slug}.md")
+          new_md = markdown_path_for(new_number, new_slug)
           validate_markdown_paths(old_md, new_md)
 
-          Common.log_action("章名・番号変更: #{old_number}-#{old_slug} → #{new_number}-#{new_slug}")
+          Common.log_action("章名・番号変更: #{chapter_label(old_number, old_slug)} → #{chapter_label(new_number, new_slug)}")
           Common.log_info("Markdown: #{File.basename(old_md)} → #{File.basename(new_md)}")
 
           confirm_or_exit('章名・番号変更') unless options[:force] || options[:dry_run]
@@ -358,6 +367,7 @@ module Vivlio
           execute_single_rename(old_md, new_md, old_number, old_slug, new_number, new_slug)
         end
 
+        # 新しい章指定を Entry 化し、必要なら仮想 Entry を生成する
         def resolve_target_entry(resolver, new_arg, from_entry)
           return build_virtual_entry_with_slug(from_entry, new_arg) if slug_only_token?(new_arg)
 
@@ -368,6 +378,7 @@ module Vivlio
           exit 1
         end
 
+        # スラッグのみの指定から仮想 Entry を作成して将来のファイル名を確定させる
         def build_virtual_entry_with_slug(from_entry, new_arg)
           slug = normalize_new_slug(new_arg)
           if slug.nil? || slug.empty?
@@ -389,24 +400,35 @@ module Vivlio
           )
         end
 
+        # 章番号から既存 Markdown を 1 件だけ特定し、スラッグも返す
         def find_markdown_by_number(contents_dir, chapter_number)
-          candidates = Dir.glob(File.join(contents_dir, "#{chapter_number}-*.md"))
+          pattern = File.join(contents_dir, "#{chapter_number}-*.md")
+          candidates = Dir.glob(pattern)
+
           if candidates.empty?
-            Common.log_error("#{chapter_number}章のファイルが見つかりません")
-            exit 1
+            numeric_file = File.join(contents_dir, "#{chapter_number}.md")
+            if File.exist?(numeric_file)
+              [numeric_file, nil]
+            else
+              Common.log_error("#{chapter_number}章のファイルが見つかりません")
+              exit 1
+            end
           elsif candidates.length > 1
             Common.log_error("#{chapter_number}章のファイルが複数見つかりました:")
             candidates.each { |f| Common.log_info("- #{File.basename(f)}") }
             exit 1
+          else
+            old_md = candidates.first
+            old_basename = File.basename(old_md, '.md')
+            _, old_slug = old_basename.split('-', 2)
+            [old_md, old_slug]
           end
-
-          old_md = candidates.first
-          old_basename = File.basename(old_md, '.md')
-          _, old_slug = old_basename.split('-', 2)
-          [old_md, old_slug]
         end
 
+        # 付録番号が変化する際に appendix-a 等のスラッグを付け替える
         def adjust_slug_for_appendix(new_number, old_slug)
+          return nil if old_slug.nil? || old_slug.empty?
+
           if new_number.to_i.between?(91, 97) && old_slug =~ /appendix-[a-z]/
             new_letter = Common.appendix_number_to_letter(new_number)
             old_slug.sub(/appendix-[a-z]/, "appendix-#{new_letter}")
@@ -415,6 +437,7 @@ module Vivlio
           end
         end
 
+        # リネーム対象と変更先の Markdown 存在状態を検証する
         def validate_markdown_paths(old_md, new_md)
           unless File.exist?(old_md)
             Common.log_error("対象のMarkdownが見つかりません: #{File.basename(old_md)}")
@@ -426,12 +449,13 @@ module Vivlio
           end
         end
 
+        # 単一章の Markdown/画像/catalog を新しいベース名へ切り替える
         def execute_single_rename(old_md, new_md, old_number, old_slug, new_number, new_slug)
           FileUtils.mv(old_md, new_md)
           Common.log_success('Markdownの変更が完了しました')
 
-          old_basename = "#{old_number}-#{old_slug}"
-          new_basename = "#{new_number}-#{new_slug}"
+          old_basename = build_basename(old_number, old_slug)
+          new_basename = build_basename(new_number, new_slug)
           Build::CatalogUpdater.rename_chapter(old_basename, new_basename)
 
           old_img_dir = File.join('images', old_basename)
@@ -451,9 +475,10 @@ module Vivlio
           Common.log_success('章名・番号変更が完了しました')
         end
 
+        # 章リネーム後に残る生成物 (HTML) を削除する
         def cleanup_generated_files(old_number, old_slug)
           targets = [
-            File.join('.', "#{old_number}-#{old_slug}.html")
+            File.join('.', "#{build_basename(old_number, old_slug)}.html")
           ]
           targets.each do |file|
             next unless File.exist?(file)
@@ -463,23 +488,50 @@ module Vivlio
           end
         end
 
+        # トークンがスラッグのみか（冒頭が数字で始まらないか）を判定する
         def slug_only_token?(token)
-          base = File.basename(token.to_s.strip)
-          base = base.sub(/\.(md|markdown)\z/i, '')
+          base = normalized_token_base(token)
           return false if base.empty?
 
           !base.match?(/\A\d/)
         end
 
-        def normalize_new_slug(token)
+        # ファイル名トークンから拡張子を落とした基底文字列を取得する
+        def normalized_token_base(token)
           base = File.basename(token.to_s.strip)
-          base = base.sub(/\.(md|markdown)\z/i, '')
+          base.sub(/\.(md|markdown)\z/i, '')
+        end
+
+        # 指定トークンから CLI 用のスラッグ文字列を生成する
+        def normalize_new_slug(token)
+          base = normalized_token_base(token)
           slug = base.downcase.tr(' ', '-')
           slug = slug.gsub(/[^a-z0-9._-]+/, '-')
           slug = slug.gsub(/-+/, '-')
-          slug.gsub(/\A-+|-+\z/, '')
-        rescue StandardError
-          ''
+          slug = slug.gsub(/\A-|-(md|markdown)\z/i, '')
+          slug
+        end
+
+        # ベース名から章番号とスラッグ（任意）を取り出す
+        def extract_number_and_slug(basename)
+          number, slug = basename.split('-', 2)
+          slug = nil if slug.nil? || slug.empty?
+          [number, slug]
+        end
+
+        # 章番号とスラッグから標準的な basename を構築する
+        def build_basename(number, slug)
+          slug && !slug.to_s.empty? ? "#{number}-#{slug}" : number.to_s
+        end
+
+        # basename をもとに contents 配下の Markdown パスを返す
+        def markdown_path_for(number, slug)
+          File.join(Common::CONTENTS_DIR, "#{build_basename(number, slug)}.md")
+        end
+
+        # ログ表示用の章ラベルを生成する
+        def chapter_label(number, slug)
+          slug && !slug.to_s.empty? ? "#{number}-#{slug}" : number
         end
       end
     end
