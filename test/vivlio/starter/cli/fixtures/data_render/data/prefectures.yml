@@ -1,0 +1,39 @@
+- name: 北海道
+  capital: 札幌市
+  region: 北海道
+  code: 1
+  population: 5224614
+  area_sq_km: 83424.31
+  density_per_sq_km: 62.6
+
+- name: 青森県
+  capital: 青森市
+  region: 東北
+  code: 2
+  population: 1237984
+  area_sq_km: 9645.64
+  density_per_sq_km: 128.3
+
+- name: 東京都
+  capital: 新宿区
+  region: 関東
+  code: 13
+  population: 14047594
+  area_sq_km: 2194.07
+  density_per_sq_km: 6402.5
+
+- name: 神奈川県
+  capital: 横浜市
+  region: 関東
+  code: 14
+  population: 9237337
+  area_sq_km: 2416.17
+  density_per_sq_km: 3823.7
+
+- name: 大阪府
+  capital: 大阪市
+  region: 関西
+  code: 27
+  population: 8837685
+  area_sq_km: 1905.14
+  density_per_sq_km: 4638.4

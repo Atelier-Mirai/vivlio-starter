@@ -74,7 +74,7 @@ module Vivlio
               stdout, stderr = capture_io do
                 returned_status = LintCommands.execute_lint(['11-install'], format: nil)
               end
-              assert_match(/\ASTDOUT/, stdout)
+              assert_match(/\ASTDOUT\n\n✏️ 文章の品質チェックが完了しました/, stdout)
               assert_equal 'STDERR', stderr
             end
           end
@@ -127,7 +127,7 @@ module Vivlio
               stdout, stderr = capture_io do
                 returned_status = LintCommands.execute_lint(['11-install'], { fix: true })
               end
-              assert_match(/\ASTDOUT/, stdout)
+              assert_match(/\ASTDOUT\n\n✏️ 文章の品質チェックが完了しました/, stdout)
               assert_equal 'STDERR', stderr
             end
           end
@@ -189,7 +189,7 @@ module Vivlio
               stdout, stderr = capture_io do
                 returned_status = LintCommands.execute_lint(['15'], {})
               end
-              assert_match(/STDOUT/, stdout)
+              assert_match(/STDOUT/, stdout)
               assert_equal 'STDERR', stderr
             end
           end

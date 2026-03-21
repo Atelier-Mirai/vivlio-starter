@@ -132,13 +132,13 @@ module Vivlio
         def chapter_file_groups
           chapter_files = Dir.glob("#{Common::CONTENTS_DIR}/*.md")
                              .select { |f| File.basename(f) =~ /^\d+/ }
-                             .reject { |f| File.basename(f) =~ /^(0\d|98|99)(?:-|$)/ }
+                             .reject { |f| File.basename(f) =~ /^(0\d|98|99)(?:-|\.)/ }
                              .sort
 
           {
             all: chapter_files,
-            regular: chapter_files.select { |f| File.basename(f) =~ /^[1-8]\d(?:-|$)/ },
-            appendix: chapter_files.select { |f| File.basename(f) =~ /^9[0-7](?:-|$)/ }
+            regular: chapter_files.select { |f| File.basename(f) =~ /^[1-8]\d(?:-|\.)/ },
+            appendix: chapter_files.select { |f| File.basename(f) =~ /^9[0-7](?:-|\.)/ }
           }
         end
 

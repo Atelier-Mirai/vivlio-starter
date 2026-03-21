@@ -1,0 +1,39 @@
+- location: 東京
+  date: "2024-01-01"
+  condition: 晴
+  temp_max_c: 12.2
+  temp_min_c: 1.5
+  precipitation_mm: 0.0
+  humidity_avg_pct: 45
+
+- location: 東京
+  date: "2024-06-15"
+  condition: 雨
+  temp_max_c: 25.8
+  temp_min_c: 18.2
+  precipitation_mm: 15.5
+  humidity_avg_pct: 82
+
+- location: 東京
+  date: "2024-07-20"
+  condition: 晴
+  temp_max_c: 35.1
+  temp_min_c: 26.3
+  precipitation_mm: 0.0
+  humidity_avg_pct: 55
+
+- location: 大阪
+  date: "2024-07-21"
+  condition: 曇
+  temp_max_c: 33.0
+  temp_min_c: 25.0
+  precipitation_mm: 0.0
+  humidity_avg_pct: 65
+
+- location: 大阪
+  date: "2024-08-10"
+  condition: 晴
+  temp_max_c: 36.5
+  temp_min_c: 27.8
+  precipitation_mm: 0.0
+  humidity_avg_pct: 50

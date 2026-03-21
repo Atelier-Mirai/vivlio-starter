@@ -1,0 +1,23 @@
+- title: 楽しいRuby
+  author: 高橋征義
+  desc: Rubyを楽しく学べる入門書。
+  tags: [ruby, beginner]
+  cover: ruby-enjoyer.webp
+
+- title: はじめてのC
+  author: 柴田望洋
+  desc: C言語の定番入門書。
+  tags: [c, beginner]
+  cover:
+
+- title: JavaScript入門
+  author: 山田太郎
+  desc: JSの基礎を学ぶ。
+  tags: ruby, javascript
+  cover: js-intro.webp
+
+- title: Rubyレシピブック
+  author: 青木峰郎
+  desc: 実践的なRubyのレシピ集。
+  tags: [ruby, advanced]
+  cover: ruby-recipe.webp

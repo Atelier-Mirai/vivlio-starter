@@ -22,6 +22,7 @@ CHAPTERS:
       - 07-programming
       - 08-web
       - 09-three-elements-org
+      - 11-three-elements-ocr
       - 20
   - 実践篇:
       - 21-html
@@ -35,6 +36,8 @@ APPENDICES:
   - 91-books
   - 92-links
   - 93-cheats
+  - 94-appendix-a
+  - 95-appendix-b
 
 # ## あとがき
 POSTFACE:
