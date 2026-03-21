@@ -802,26 +802,14 @@ module Vivlio
         end
 
         # vivlio-starter-pdf の実行コマンドを決定する
-        # ローカル開発環境では bundle exec 経由、それ以外はインストール済み実行ファイルを使用
         def enhanced_plugin_command
-          return [enhanced_plugin_executable] unless local_enhanced_plugin_root
-
-          ["bundle", "exec", "ruby", "-Ilib", "exe/vivlio-starter-pdf"]
+          [enhanced_plugin_executable]
         end
 
         # インストール済み vivlio-starter-pdf の実行ファイル名
         def enhanced_plugin_executable = "vivlio-starter-pdf"
 
-        # ローカル開発用の vivlio-starter-pdf リポジトリが隣接ディレクトリにあるか検出する
-        # Gemfile と exe/vivlio-starter-pdf の両方が存在すれば開発モードとして扱う
-        def local_enhanced_plugin_root
-          candidate = File.expand_path("../../../../../../vivlio-starter-pdf", __dir__)
-          return nil unless File.exist?(File.join(candidate, "Gemfile"))
-          return nil unless File.exist?(File.join(candidate, "exe", "vivlio-starter-pdf"))
-
-          candidate
-        end
-
+        
         # Enhanced Mode が利用不可時のエラーメッセージ
         def missing_enhanced_plugin_message
           "Enhanced mode を利用するには vivlio-starter-pdf をインストールしてください"
@@ -861,21 +849,16 @@ module Vivlio
         end
 
         # vivlio-starter-pdf を外部プロセスとして実行し、stdout と status を返す
-        # Bundler 環境下では with_unbundled_env でプラグイン側の Gemfile を使わせる
+        # Bundler 環境下では with_unbundled_env で実行する
         def capture_enhanced_command(*command)
-          options = local_enhanced_plugin_command?(command) ? { chdir: local_enhanced_plugin_root } : {}
-          return Open3.capture2e(*command, **options) unless defined?(Bundler)
+          return Open3.capture2e(*command) unless defined?(Bundler)
 
           Bundler.with_unbundled_env do
-            Open3.capture2e(*command, **options)
+            Open3.capture2e(*command)
           end
         end
 
-        # コマンド配列がローカル開発用の bundle exec 形式かどうかを判定する
-        def local_enhanced_plugin_command?(command)
-          command.first(5) == ["bundle", "exec", "ruby", "-Ilib", "exe/vivlio-starter-pdf"]
-        end
-
+        
         # Enhanced Mode のプラグインが利用可能でなければ LoadError を送出する
         def ensure_enhanced_plugin_loaded!
           return if plugin_available?

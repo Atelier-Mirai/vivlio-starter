@@ -272,33 +272,29 @@ module Vivlio
           end
         end
 
-        # enhanced_plugin_command がローカルワークスペースが利用可能な場合それを優先することを検証する
-        def test_enhanced_plugin_command_prefers_local_workspace_when_available
-          @command.stub :local_enhanced_plugin_root, "/tmp/vivlio-starter-pdf" do
-            assert_equal(
-              ["bundle", "exec", "ruby", "-Ilib", "exe/vivlio-starter-pdf"],
-              @command.send(:enhanced_plugin_command)
-            )
-          end
+        # enhanced_plugin_command がインストール済みの実行ファイルを返すことを検証する
+        def test_enhanced_plugin_command_returns_installed_executable
+          assert_equal(
+            ["vivlio-starter-pdf"],
+            @command.send(:enhanced_plugin_command)
+          )
         end
 
-        # capture_enhanced_command がプラグインルートからローカルワークスペースコマンドを実行することを検証する
-        def test_capture_enhanced_command_runs_local_workspace_command_from_plugin_root
+        # capture_enhanced_command が Bundler 環境下で with_unbundled_env を使用することを検証する
+        def test_capture_enhanced_command_uses_unbundled_env_under_bundler
           status = Data.define(:success?).new(true)
-          command = ["bundle", "exec", "ruby", "-Ilib", "exe/vivlio-starter-pdf", "--version"]
+          command = ["vivlio-starter-pdf", "--version"]
 
-          @command.stub :local_enhanced_plugin_root, "/tmp/vivlio-starter-pdf" do
-            Bundler.stub :with_unbundled_env, proc { |&block| block.call } do
-              Open3.stub :capture2e, ->(*args, **options) {
-                assert_equal(command, args)
-                assert_equal("/tmp/vivlio-starter-pdf", options[:chdir])
-                ["0.1.0\n", status]
-              } do
-                stdout, captured_status = @command.send(:capture_enhanced_command, *command)
+          Bundler.stub :with_unbundled_env, proc { |&block| block.call } do
+            Open3.stub :capture2e, ->(*args, **options) {
+              assert_equal(command, args)
+              assert_empty(options) # chdir オプションなし
+              ["1.0.1\n", status]
+            } do
+              stdout, captured_status = @command.send(:capture_enhanced_command, *command)
 
-                assert_equal("0.1.0\n", stdout)
-                assert_equal(status, captured_status)
-              end
+              assert_equal("1.0.1\n", stdout)
+              assert_equal(status, captured_status)
             end
           end
         end
