@@ -248,6 +248,15 @@ templates/
 - データ名の**単数形**を使います（`books` → `_book`）
 - スタイルはドットで区切ります（`_book.full.md`）
 
+QueryStream は英語の複数形を単数形へ自動変換してテンプレート名を決めます。`books` → `_book.md` のようなシンプルなケースに加え、末尾に数字やアンダースコアが付いていても `books2` → `_book2.md`、`books_nested` → `_book_nested.md` のように単数形化されるようになりました。以下の対応表を目安にしてください。
+
+| データファイル | 探索されるテンプレート | 備考 |
+| --- | --- | --- |
+| `data/books.yml` | `templates/_book.md` | `books` → `book` に自動変換 |
+| `data/books2.yml` | `templates/_book2.md` | 末尾の `s` までを単数化し、接尾辞を維持 |
+| `data/books_nested.yml` | `templates/_book_nested.md` | `_book_nested.*` 系を用意する |
+| `data/books_nested.yml` + `:table` | `templates/_book_nested.table.md` | スタイルを付ける場合 |
+
 ---
 
 ## 5. データファイルの書き方
@@ -283,12 +292,36 @@ tags: [ruby, beginner]
 tags: ruby, beginner
 ```
 
-### 日付フィールド
+### ネスト構造のフィールド
 
-日付は文字列として記述してください。YAML の自動型変換を避けるため、クォートで囲むことを推奨します。
+QueryStream では、ネストされたハッシュもサポートしています。`author.name` のようにドット記法で子要素へアクセスできるため、人物情報などをきれいに整理できます。
 
 ```yaml
-date: "2024-01-01"
+# data/nesteds.yml
+- title: 楽しいRuby
+  author:
+    name: 高橋征義
+    bio: Rubyist。
+  desc: Rubyを楽しく学べる入門書。
+  cover: ruby.webp
+
+- title: はじめてのC
+  author:
+    name: 柴田望洋
+    bio: C プログラマ
+  desc: C言語の定番入門書。
+  cover: c.webp
+```
+
+テンプレート側では `= author.name` / `= author.bio` のように書くだけで、各階層の値を展開できます。画像記法も同じ仕組みで、`![](author.avatar)` のようにドット記法へ対応しています。
+
+### 日付フィールド
+
+日付は `2024-01-01` のようにクォートなしで書いても、`"2024-01-01"` のようにクォート付きで書いても問題ありません。内部ではどちらも日付型に正規化され、等値性や大小比較に利用されます。ドキュメントの可読性を優先して、必要に応じてクォートを付けてください。
+
+```yaml
+date: 2024-01-01
+date: "2024-01-01"  # どちらでも可
 ```
 
 ---

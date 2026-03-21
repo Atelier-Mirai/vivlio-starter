@@ -1,4 +1,11 @@
 PATH
+  remote: ../query-stream
+  specs:
+    query-stream (0.2.0)
+      logger
+      samovar (~> 2.1)
+
+PATH
   remote: .
   specs:
     vivlio-starter (0.33.0)
@@ -10,6 +17,7 @@ PATH
       nokogiri (~> 1.16)
       pdf-reader (~> 2.12)
       prawn (~> 2.5)
+      query-stream (~> 0.1)
       rouge (~> 4.7)
       samovar (~> 2.1)
 
@@ -45,6 +53,7 @@ GEM
       rexml (>= 3.3.9)
     language_server-protocol (3.17.0.5)
     lint_roller (1.1.0)
+    logger (1.7.0)
     mapping (1.1.3)
     matrix (0.4.3)
     mini_magick (4.13.2)
@@ -110,6 +119,7 @@ PLATFORMS
 DEPENDENCIES
   bundler (~> 2.5)
   minitest (~> 5.22)
+  query-stream!
   rake (~> 13.2)
   rubocop (~> 1.65)
   vivlio-starter!

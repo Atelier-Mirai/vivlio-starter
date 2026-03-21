@@ -31,34 +31,34 @@ module Vivlio
         class SingularizeTest < Minitest::Test
           # 通常の複数形（末尾 s）を単数形に変換できる
           def test_should_singularize_regular_plurals
-            assert_equal 'book',           DataRender::Singularize.call('books')
-            assert_equal 'element',        DataRender::Singularize.call('elements')
-            assert_equal 'weather_report', DataRender::Singularize.call('weather_reports')
-            assert_equal 'prefecture',     DataRender::Singularize.call('prefectures')
+            assert_equal 'book',           QueryStream::Singularize.call('books')
+            assert_equal 'element',        QueryStream::Singularize.call('elements')
+            assert_equal 'weather_report', QueryStream::Singularize.call('weather_reports')
+            assert_equal 'prefecture',     QueryStream::Singularize.call('prefectures')
           end
 
           # -ies で終わる複数形を -y に変換できる
           def test_should_singularize_ies_to_y
-            assert_equal 'category', DataRender::Singularize.call('categories')
-            assert_equal 'entry',    DataRender::Singularize.call('entries')
+            assert_equal 'category', QueryStream::Singularize.call('categories')
+            assert_equal 'entry',    QueryStream::Singularize.call('entries')
           end
 
           # -ches/-shes/-ses/-xes/-zes で終わる複数形を変換できる
           def test_should_singularize_es_variants
-            assert_equal 'branch', DataRender::Singularize.call('branches')
-            assert_equal 'brush',  DataRender::Singularize.call('brushes')
-            assert_equal 'box',    DataRender::Singularize.call('boxes')
+            assert_equal 'branch', QueryStream::Singularize.call('branches')
+            assert_equal 'brush',  QueryStream::Singularize.call('brushes')
+            assert_equal 'box',    QueryStream::Singularize.call('boxes')
           end
 
           # -ves で終わる複数形を -f に変換できる
           def test_should_singularize_ves_to_f
-            assert_equal 'shelf', DataRender::Singularize.call('shelves')
+            assert_equal 'shelf', QueryStream::Singularize.call('shelves')
           end
 
           # 不変の語はそのまま返す
           def test_should_keep_invariant_words
-            assert_equal 'data',  DataRender::Singularize.call('data')
-            assert_equal 'sheep', DataRender::Singularize.call('sheep')
+            assert_equal 'data',  QueryStream::Singularize.call('data')
+            assert_equal 'sheep', QueryStream::Singularize.call('sheep')
           end
         end
 
@@ -66,7 +66,7 @@ module Vivlio
         # 2. QueryStreamParser テスト
         # ================================================================
         class QueryStreamParserTest < Minitest::Test
-          Parser = DataRender::QueryStreamParser
+          Parser = QueryStream::QueryStreamParser
 
           # 源泉のみの最小記法をパースできる
           def test_should_parse_source_only
@@ -265,7 +265,7 @@ module Vivlio
         # 3. TemplateCompiler テスト
         # ================================================================
         class TemplateCompilerTest < Minitest::Test
-          Compiler = DataRender::TemplateCompiler
+          Compiler = QueryStream::TemplateCompiler
 
           # 単一レコードの変数展開が正しく動作する
           def test_should_expand_single_record
@@ -364,7 +364,7 @@ module Vivlio
             template = "### = unknown_field\n"
             records = [{ title: 'テスト' }]
 
-            assert_raises(DataRender::DataRenderError) do
+            assert_raises(QueryStream::UnknownKeyError) do
               Compiler.render(template, records)
             end
           end

@@ -189,7 +189,7 @@ module Vivlio
               stdout, stderr = capture_io do
                 returned_status = LintCommands.execute_lint(['15'], {})
               end
-              assert_match(/STDOUT/, stdout)
+              assert_match(/STDOUT/, stdout)
               assert_equal 'STDERR', stderr
             end
           end

@@ -37,6 +37,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   # Runtime dependencies
+  spec.add_dependency 'query-stream', '~> 0.1'
   spec.add_dependency 'combine_pdf', '~> 1.0'
   spec.add_dependency 'hexapdf', '~> 1.0'
   spec.add_dependency 'kramdown', '~> 2.4'
