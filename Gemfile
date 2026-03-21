@@ -5,5 +5,5 @@ source 'https://rubygems.org'
 # Dependencies are defined in the gemspec to keep a single source of truth.
 gemspec
 
-# 開発時はローカルの query-stream gem を参照
-gem 'query-stream', path: '../query-stream'
+# query-stream は公開済みバージョンを使用
+gem 'query-stream', '~> 1.0.0'

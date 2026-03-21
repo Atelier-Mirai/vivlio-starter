@@ -741,6 +741,42 @@ module Vivlio
             assert_includes result, '---'
           end
 
+          # ----------------------------------------------------------------
+          # VFM フェンス記法統合テスト
+          # ----------------------------------------------------------------
+
+          # :card スタイルでフェンス付きテンプレートが正しく展開される
+          def test_should_expand_books_with_card_style
+            content = "## Books\n\n= books | tags=ruby && tags=beginner | :card\n\n次へ\n"
+            result = render(content)
+
+            # タグ絞り込みで1件のみ → フェンスも1回
+            assert_equal 1, result.scan(':::{.book-card}').size
+            assert_includes result, '**楽しいRuby**'
+            assert_includes result, '## Books'
+            assert_includes result, '次へ'
+          end
+
+          # :card スタイルで全件展開した場合、各レコードが個別フェンスを持つ
+          def test_should_expand_all_books_with_card_style
+            content = "= books | :card\n"
+            result = render(content)
+
+            # 4件の書籍データがあり、各自フェンスを持つ
+            fence_count = result.scan(':::{.book-card}').size
+            assert_operator fence_count, :>, 1, '複数レコードが個別フェンスを持つべき'
+          end
+
+          # フェンス付きテンプレートで nil cover の行がスキップされる
+          def test_should_skip_nil_cover_inside_fence
+            content = "= book | はじめてのC | :card\n"
+            result = render(content)
+
+            assert_includes result, ':::{.book-card}'
+            assert_includes result, '**はじめてのC**'
+            refute_includes result, '![]()'
+          end
+
           private
 
           # テスト用のrender ヘルパー
