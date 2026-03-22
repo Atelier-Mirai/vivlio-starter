@@ -27,8 +27,11 @@ module Vivlio
           STEP5B_LABEL       = 'Step 5b (generate part title pages)'.freeze
           STEP5_AGG_LABEL    = 'Step  5 (generate sections / part pages)'.freeze
 
-          # ビルドタイミングをコンソールに出力する
+          # ビルドタイミングをコンソールに出力する（debugモード時のみ）
           def print_build_timings(build_timings)
+            # debugモード時のみ表示
+            return unless Common.current_log_level >= 3
+            
             aggregated, label_groups = aggregate_step_timings(build_timings)
             return if aggregated.empty?
 
@@ -111,62 +114,7 @@ module Vivlio
             2
           end
 
-          # timings_summary.md にビルドタイミングを記録する
-          def save_timings_to_file(build_timings)
-            aggregated, label_groups = aggregate_step_timings(build_timings)
-            return if aggregated.empty?
-
-            total = aggregated.map { |(_, dt)| dt }.inject(0.0, :+)
-            label_width = aggregated.map { |(label, _)| label.to_s.length }.max || 0
-            label_width = [label_width, 'TOTAL'.length, 34].max
-            value_width = 7
-
-            vs_timings = Common.consume_vivliostyle_build_timings
-            vs_map = vs_timings.group_by { |entry| entry[:label].to_s }
-            sub_label = '(vivliostyle build)'
-
-            ts = Time.now.iso8601
-            new_block = []
-            new_block << "\n## Build Step Timings (#{ts})\n"
-            new_block << "````\n"
-            new_block << '== Build Step Timings =='
-
-            aggregated.each do |label, dt|
-              raw_label = label.to_s
-              value_text = format("%#{value_width}.2fs", dt)
-              label_text = format("%-#{label_width}s", raw_label)
-              line = "  - #{label_text} #{value_text}"
-              new_block << line
-
-              original_labels = label_groups[raw_label] || [raw_label]
-              entries = original_labels.flat_map { |original| vs_map[original] }.compact.flatten
-              next unless entries&.any?
-
-              paren_idx = line.index('(') || line.index(raw_label.strip) || 4
-              value_digit_idx = line.length - value_text.lstrip.length
-              prefix_spaces = ' ' * paren_idx
-
-              entries.each do |entry|
-                entry_value = format('(%.2fs)', entry[:duration])
-                label_segment = "#{prefix_spaces}#{sub_label}"
-                digit_column = value_digit_idx
-                target_length = [digit_column - 1, label_segment.length + 1].max
-                line_segment = label_segment.ljust(target_length)
-                new_block << "#{line_segment}#{entry_value}"
-              end
-            end
-            new_block << format("  = %-#{label_width}s %#{value_width}.2fs", 'TOTAL', total)
-            new_block << '```'
-
-            path = File.join(Dir.pwd, 'timings_summary.md')
-            previous = File.exist?(path) ? File.read(path, encoding: 'utf-8') : ''
-            File.open(path, 'w', encoding: 'utf-8') do |f|
-              f.write(new_block.join("\n"))
-              f.write("\n")
-              f.write(previous.to_s)
-            end
-          end
-
+          
           def aggregate_step_timings(build_timings)
             label_groups = {}
             aggregated = []

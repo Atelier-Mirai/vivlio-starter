@@ -169,10 +169,12 @@ module Vivlio
             build_timings = pipeline.run
             IndexCommands.flush_post_build_messages
 
-            print_build_timings(build_timings)
             open_generated_pdf(pipeline.generated_pdf_name)
 
             common.log_success("単章ビルドが完了しました: #{pipeline.generated_pdf_name}")
+            print_created_files_message([pipeline.generated_pdf_name])
+            
+            print_build_timings(build_timings)
           ensure
             PostProcessCommands::HeadingProcessor.chapter_tokens_override = nil
           end
@@ -193,12 +195,14 @@ module Vivlio
             build_timings = pipeline.run
             IndexCommands.flush_post_build_messages
 
-            print_build_timings(build_timings)
-            print_outline_debug_info
-            save_timings_to_file(build_timings)
-
             open_pdf(print_pdf_only? ? Common.generate_print_pdf_filename : nil)
             common.log_success('全ファイルのビルドが完了しました')
+            
+            created_files = get_created_files_list
+            print_created_files_message(created_files)
+            
+            print_outline_debug_info
+            print_build_timings(build_timings)
           end
 
           def open_generated_pdf(path)
@@ -247,6 +251,35 @@ module Vivlio
 
           def parent_verbose?
             parent&.options&.[](:verbose) || false
+          end
+
+          # 生成されたPDFファイルのリストを取得
+          def get_created_files_list
+            files = []
+            
+            # 通常PDF
+            normal_pdf = Common.generate_output_filename('pdf')
+            files << normal_pdf if File.exist?(normal_pdf)
+            
+            # 圧縮PDF（存在する場合）
+            if options[:compress]
+              compressed_pdf = Common.generate_compressed_pdf_filename('pdf')
+              files << compressed_pdf if File.exist?(compressed_pdf)
+            end
+            
+            # 入稿用PDF（存在する場合）
+            print_pdf = Common.generate_print_pdf_filename
+            files << print_pdf if File.exist?(print_pdf)
+            
+            files
+          end
+
+          # 作成されたファイルメッセージを表示
+          def print_created_files_message(files)
+            return if files.empty?
+            
+            file_list = files.map { |f| File.basename(f) }.join(', ')
+            Common.echo_always "📚 #{file_list} を作成しました。"
           end
 
           def common
