@@ -43,7 +43,6 @@
 - [High] pdf_reader.rbを改修、pdf -> mdにするコマンドを実装する
 - [High] data/ディレクトリから、yml形式で書籍(タイトル、著者、ISBNなど)などを展開できるようにする。
 
-
 ### Planned
 
 #### ビルド/出力
@@ -54,6 +53,9 @@
 
 #### 参照・索引・書誌
 - [Low] 脚注・参考文献サポート（簡易BibTeX/CSL）
+
+#### テーマ/スタイル
+- [High] テーマシステムの実装: vivliostyle 公式が提供する bunko.css などの既存テーマ CSS を活用できるようにする。config/book.yml からのテーマ選択、CSS ファイルの動的切り替え、小説用縦書き・技術書用横書きなどのプリセットテーマを提供。
 
 #### コンテンツ/テンプレート
 - [Low] テンプレ断片スニペット（注意/補足/Tipのコンポーネント化）。
@@ -66,12 +68,22 @@
 ## Unreleased
 （次回リリース候補の変更はここに追加してください）
 
+## [0.34.0] - 2026-03-21
+
 ### Added
 - **データ展開機能（QueryStream 記法）**: 原稿内に `= books | tags=ruby | -title | 5 | :full` のような QueryStream 記法を書くと、`data/*.yml` のデータを `templates/_*.md` のテンプレートで自動展開する機能を実装。等値・比較・範囲フィルタ、AND/OR 条件、ソート、件数制限、スタイル選択、主キー一件検索、nil 安全行スキップに対応。`book-vivlio-starter/23-data.md` に著者向けマニュアルを追加。
-- **align-left/center/right ブロックユーティリティ**: `:::{.align-left}` / `.align-center` / `.align-right` で任意コンテナを左・中央・右寄せできるよう `layout-utils.css` を更新。図版や画像の回り込みと干渉しないようブロック専用の余白レイアウトとし、本文中で簡潔に配置調整できるようにした。
+- **VFM フェンス記法対応**: QueryStream 1.0.0 の VFM フェンス記法（`:::{.class-name}`）に完全対応。各レコードが個別のフェンスで囲まれて展開され、vivlio-starter の Markdown 変換パイプラインと統合。
+- **align-left/center/right ブロックユーティリティ**: `:::{.align-left}` / `.align-center}` / `.align-right` で任意コンテナを左・中央・右寄せできるよう `layout-utils.css` を更新。図版や画像の回り込みと干渉しないようブロック専用の余白レイアウトとし、本文中で簡潔に配置調整できるようにした。
 - **章操作コマンドのスラッグ単体指定**: `vs build / create / delete / rename` で `three-elements` のような slug 単独指定を正式サポート。TokenResolver ベースで章解決を統一し、章番号を覚えていなくてもコマンド実行できるようにした。
 - **pdf:read 設定サポート**: `config/book.yml` に `pdf_read.text_area` / `pdf_read.line_reflow` を追加し、ページ抽出領域と改行整理しきい値を著者が調整できるようにした。設定値は `PdfReadCommand` の本文抽出・改行再整形に即反映され、ユニットテストで回帰を担保。
 - **数値のみ章トークン対応**: `catalog.yml` の整数エントリや `contents/15.md` のような純数字ファイルを `TokenResolver` と各 CLI（build/delete/rename/renumber/lint/metrics）で統一的に解決。`vs rename 15-foo 15` のような数字指定リネームや `vs build 15` がエラーなく動作するようになり、章番号だけで一連の操作が完結する。
+
+### Changed
+- **依存関係更新**: query-stream を 0.1.0 から 1.0.0 にアップグレードし、ローカルパス参照を削除して公開済みバージョンを使用するよう変更。
+- **vivlio-starter-pdf 連携**: Enhanced Mode のローカル開発用コードを削除し、クリーンなインストール済み版参照に統一。
+
+### Fixed
+- **ローカルパス参照問題**: 開発環境でのローカル gem 参照を排除し、本番環境と同一の依存関係を確保。
 
 ## 0.33.0 - 2026-03-09
 
@@ -722,7 +734,8 @@
 - バージョンファイル追加: `lib/vivlio/starter/version.rb`（0.1.0）
 - README にインストール方法・CLI の使い方・リリース手順を追記
 
-[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.33.0...HEAD
+[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.34.0...HEAD
+[0.34.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.33.0...v0.34.0
 [0.33.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.31.0...v0.32.0
 [0.31.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.30.0...v0.31.0

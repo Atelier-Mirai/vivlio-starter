@@ -166,7 +166,7 @@ vs open
 備考:
 
 - CLI は Thor ベースで、`vs`（または `vivlio-starter`）として利用できます。
-- ログ出力は `--log<span id="idx-k86z2cx8mop5-3" class="index-term" data-yomi="=level">=level</span>` で制御できます（後述）。
+- ログ出力は `--log=level` で制御できます（後述）。
 
 ## クイックスタート（プロジェクト生成）
 
@@ -190,7 +190,7 @@ vs build
 vs open          # = vs open:pdf
 ```
 
-ログ出力レベルを指定するには `--log<span id="idx-k86z2cx8mop5-4" class="index-term" data-yomi="=level">=level</span>` を使います。
+ログ出力レベルを指定するには `--log=level` を使います。
 
 ```bash
 # 既定（指定なし）: warn レベル（警告・エラーのみ）
@@ -249,37 +249,6 @@ pdf:
 
 `vs vivliostyle:config` 実行時、既存の `vivliostyle.config.js` がある場合はバックアップを最新版 1 件のみ保持します。
 
-## ビルドの流れ（開発者用）
-
-`vs build` は概ね次の順で実行されます（内部処理の概要）。
-
-1. 前処理
-   - 画像パスの付与（例: `![](shogiban.png)` → `![](images/02-preface/shogiban.png)`）
-   - フロントマターの生成（既存があれば併合）
-   - ソースコードの取り込み
-   - プロジェクトルートへ書き出し
-2. 変換
-   - vfm による Markdown → HTML 変換
-   - `<body>` にファイルタイプクラスを付与
-   - `_post_replace_list.yml` に基づく置換処理
-   - Prism.js を用いたソースコードへの行番号追加
-3. 目次/章立て
-   - `toc.html` / `entries.js` を生成
-4. PDF 生成
-   - `vivliostyle build` により PDF 生成（圧縮を既定で実施、スキップ可）
-5. クリーン/表示
-   - 生成物のクリーンアップ
-   - `vs open` で PDF を開く
-
-### ログの冗長度（Logging）
-
-- ログは `--log<span id="idx-k86z2cx8mop5-5" class="index-term" data-yomi="=level">=level</span>` で制御します。`level` は次のいずれかです。
-  - `error` → レベル0（`log_error` のみ）
-  - `warn` → レベル1（`log_warn` 以上）
-  - `info` / `success` / `action` → レベル2（標準。`log_info`/`log_success`/`log_action` 以上）
-  - `debug` → レベル3（`log_debug` を含む全ログ）
-- `--log`（レベル省略）は `--log=info` と同義です。
-- 既定（`--log` 未指定）は `warn` レベルです。
 
 ## ライセンス
 
@@ -311,35 +280,11 @@ pdf:
 - Vivliostyle ライセンス: https://www.gnu.org/licenses/agpl-3.0.html
 - 第三者ライセンス一覧: [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LICENSES.md)
 
-## リリース手順（RubyGems）
+## 開発者向け情報
 
-Gem を公開・更新する手順です。
+開発・コントリビューションに関しては [CONTRIBUTING.md](./CONTRIBUTING.md) を参照してください。
 
-1. バージョン更新
-   - `lib/vivlio/starter/version.rb` の `VERSION` を更新
-   - CHANGELOG（必要に応じて）更新
-
-2. ビルド
-   ```bash
-   gem build vivlio-starter.gemspec
-   ls *.gem  # 生成物を確認
-   ```
-
-3. 公開（RubyGems）
-   ```bash
-   gem push vivlio-starter-<VERSION>.gem
-   ```
-
-4. Git タグ（任意）
-   ```bash
-   git commit -am "release: v<VERSION>"
-   git tag v<VERSION>
-   git push --tags
-   ```
-
-5. 利用側更新（Bundler）
-   - `Gemfile` で `gem "vivlio-starter", "~> <MAJOR>.<MINOR>"` を指定
-   - `bundle update vivlio-starter`
+リリース手順やローカル開発環境のセットアップ方法が記載されています。
 
 ## Changelog
 
