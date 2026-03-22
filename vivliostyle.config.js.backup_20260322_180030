@@ -8,14 +8,16 @@ const vivliostyleConfig = {
   language: 'ja', // 言語設定
   size: 'A4', // ページサイズ（book.yml のプリセットから自動設定）
   readingProgression: 'ltr', // 読み進め方向（ltr: 横書き, rtl: 縦書き）
-  entry: entries, // 章立て構成（entries.jsから読み込み）
+  entry: entries.map(entry => {
+    const result = { ...entry };
+    if (true) {
+      result.vfm = { hardLineBreaks: true };
+    }
+    return result;
+  }), // 章立て構成（entries.jsから読み込み）にVFM設定を追加
   output: [ // 出力ファイル設定
     './output.pdf' // PDFファイル
   ]
-,
-vfm: {
-  hardLineBreaks: true // VFMハード改行設定
-}
 };
 
 export default vivliostyleConfig;

@@ -4,6 +4,18 @@
 
 記法は「Keep a Changelog」に基づき、Semantic Versioning（セマンティックバージョニング）に準拠します。
 
+## [Unreleased]
+
+### Added
+- [Medium] VFMのハード改行機能をデフォルトで有効化
+  - `hardLineBreaks: true` を既定値に設定
+  - 日本語文章の直感的な執筆体験を向上
+  - フロントマターで個別無効化（`hardLineBreaks: false`）も可能
+  - コードブロックと空行は影響を受けない（VFM標準準拠）
+
+### Changed
+- [Medium] チュートリアルドキュメントを更新：ハード改行セクションを書き直し
+
 ### Pre-release Checklist
 - gem 公開時には `vivlio-starter.gemspec` の summary/description が現行仕様に即しているか再確認する。
 - `pre_process.rb` で参照する theme.css テンプレート（`lib/project_scaffold/stylesheets/theme.css`）が gem に同梱されているか確認する。
@@ -49,6 +61,8 @@
 - [High] 日本語表記・組版Lint（スタイルガイド）
 - [High] リンク・画像の自動検証
 - [Medium] 基本的に良く用いる用語をまとめた用語集テンプレートを標準添付し、プロジェクト作成時または後から選択適用できるようにする。
+- [Medium] VFM設定のエントリーレベル適用: vivliostyle.config.js生成時に、ルートレベルではなく各エントリー個別にVFM設定を適用するよう改善。現在のフロントマターにvfm: hardLineBreaks: true設定でも動作するが、エントリーレベル設定によりきめ細やかな制御とVivliostyle CLI公式推奨方式への準拠が可能になる。
+- [Low] Dataオブジェクト拡張の検討: Ruby 4.0のDataオブジェクトにempty?メソッドを拡張し、book.ymlの各種設定値をより直感的に扱えるようにする。現在はvfm_config&.hardLineBreaksのような安全呼び出しで対応しているが、Data.empty?メソッドがあればより自然なコード記述が可能になる。
 - [Low] 画像の width 属性自動補完: Markdown が `![](foo.png)` のように幅指定なしの場合でも、実寸やクラス指定に応じて `width=100%` 等を自動補う仕組みを検討する（大判図をページ送りにせず収めるため）。
 
 #### 参照・索引・書誌
