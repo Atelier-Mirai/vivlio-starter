@@ -13,6 +13,12 @@
   - フロントマターで個別無効化（`hardLineBreaks: false`）も可能
   - コードブロックと空行は影響を受けない（VFM標準準拠）
 
+### Fixed
+- [Medium] vs build --compress オプションの不具合修正
+  - Step 12の呼び出し順序を修正（圧縮→リネームの順に変更）
+  - `output_compressed.pdf`が正しく生成されるようになった
+  - 動的ファイル名（例: `janken_v0.1.0_compressed.pdf`）に対応
+
 ### Changed
 - [Medium] チュートリアルドキュメントを更新：ハード改行セクションを書き直し
 

@@ -358,15 +358,15 @@ module Vivlio
 
           # Step 12: リネームと最終クリーンアップを実行
           def run_step12_rename_and_clean
-            Build::PdfFinalizer.rename_output_pdfs!
             run_compress_pdf_if_needed
+            Build::PdfFinalizer.rename_output_pdfs!
             run_final_clean
           end
 
           # Step 12 (print_pdf ターゲット時): リネーム・圧縮のみ。クリーンアップは Step 14 へ延期
           def run_step12_rename_only
-            Build::PdfFinalizer.rename_output_pdfs!
             run_compress_pdf_if_needed
+            Build::PdfFinalizer.rename_output_pdfs!
           end
 
           # 必要に応じて生成済みPDFを圧縮する
