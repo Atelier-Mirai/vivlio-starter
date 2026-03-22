@@ -187,6 +187,55 @@ title: "詩の表現"
 5. コードブロックがhardLineBreaks設定の影響を受けないテスト
 6. 空行の段落分けが正常に動作するテスト
 
+## 参考実装
+
+### エントリーレベルVFM設定（推奨方式）
+
+```javascript
+// vivliostyle.config.js
+import entries from './entries.js';
+
+// @ts-check
+/** @type {import('@vivliostyle/cli').VivliostyleConfigSchema} */
+const vivliostyleConfig = {
+  title: '書籍タイトル',
+  author: '著者名',
+  language: 'ja',
+  size: 'A4',
+  readingProgression: 'ltr',
+  entry: entries.map(entry => {
+    const result = { ...entry };
+    if (true) { // 条件でVFM設定を制御
+      result.vfm = { hardLineBreaks: true };
+    }
+    return result;
+  }), // 各エントリーに個別VFM設定を適用
+  output: ['./output.pdf']
+};
+
+export default vivliostyleConfig;
+```
+
+**特徴**:
+- Vivliostyle CLIの公式推奨方式
+- エントリーごとに異なるVFM設定が可能
+- きめ細やかな制御が実現できる
+
+## 実装状況
+
+### 現在の実装方式
+- **フロントマター動的生成**: `frontmatter_generator.rb`でbook.ymlのVFM設定を読み取り、個別ファイルのフロントマターに動的に追加
+- **優先順位制御**: 個別フロントマター > book.yml設定 > デフォルト値
+- **ルートレベルVFM設定**: vivliostyle.config.jsにはルートレベルでVFM設定を生成
+
+### 技術的課題
+- **Dataオブジェクトの扱い**: Ruby 4.0のDataオブジェクトに`empty?`メソッドがなく、実装時にエラーが発生
+- **実装ごまかし**: 本来はvivliostyle.config.jsのエントリーレベルでVFM設定を適用すべきだが、実装能力の限界からフロントマター動的生成で対応
+
+### 将来改善予定
+- **エントリーレベル実装**: CHANGELOGのPlannedセクションに記載済み
+- **技術的負債解消**: よりクリーンな実装方式への移行を検討
+
 ### Phase 4: ドキュメント更新
 1. `book-vivlio-starter/12-markdown-tutorial.md` の修正
 2. ハード改行セクションの書き直し

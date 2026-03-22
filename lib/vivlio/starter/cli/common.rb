@@ -118,7 +118,8 @@ module Vivlio
             cache: default_cache.merge(cfg[:cache] || {}),
             commands: default_commands.merge(cfg[:commands] || {}),
             files: default_files.merge(cfg[:files] || {}),
-            vivliostyle: default_vivliostyle.merge(cfg[:vivliostyle] || {})
+            vivliostyle: default_vivliostyle.merge(cfg[:vivliostyle] || {}),
+            vfm: default_vfm.merge(cfg[:vfm] || {})
           )
         end
 
@@ -141,6 +142,12 @@ module Vivlio
           reading_progression: 'ltr',
           entries_file: 'entries.js',
           config_file: VIVLIOSTYLE_CONFIG_FILE
+        }
+
+        # VFM (Vivliostyle Flavored Markdown) の既定値設定
+        # 日本語文章の直感的な執筆体験を提供するため、hardLineBreaks をデフォルト有効化
+        def default_vfm = {
+          hardLineBreaks: true
         }
 
         def apply_page_preset(cfg)
@@ -508,7 +515,7 @@ module Vivlio
                         :consume_vivliostyle_build_timings, :contents_dir, :covers_dir,
                         :current_log_level, :current_step_label, :default_cache,
                         :default_commands, :default_directories, :default_files,
-                        :default_vivliostyle, :echo_always, :ensure_cache_dir!,
+                        :default_vfm, :default_vivliostyle, :echo_always, :ensure_cache_dir!,
                         :ensure_required_yaml_files!, :fetch_bool, :format_pt,
                         :generate_compressed_pdf_filename, :generate_epub_filename,
                         :generate_output_filename, :generate_print_pdf_filename,
