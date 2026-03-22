@@ -4,23 +4,7 @@
 
 記法は「Keep a Changelog」に基づき、Semantic Versioning（セマンティックバージョニング）に準拠します。
 
-## [Unreleased]
 
-### Added
-- [Medium] VFMのハード改行機能をデフォルトで有効化
-  - `hardLineBreaks: true` を既定値に設定
-  - 日本語文章の直感的な執筆体験を向上
-  - フロントマターで個別無効化（`hardLineBreaks: false`）も可能
-  - コードブロックと空行は影響を受けない（VFM標準準拠）
-
-### Fixed
-- [Medium] vs build --compress オプションの不具合修正
-  - Step 12の呼び出し順序を修正（圧縮→リネームの順に変更）
-  - `output_compressed.pdf`が正しく生成されるようになった
-  - 動的ファイル名（例: `janken_v0.1.0_compressed.pdf`）に対応
-
-### Changed
-- [Medium] チュートリアルドキュメントを更新：ハード改行セクションを書き直し
 
 ### Pre-release Checklist
 - gem 公開時には `vivlio-starter.gemspec` の summary/description が現行仕様に即しているか再確認する。
@@ -85,8 +69,25 @@
 - [High] プロジェクト生成時に、project_scaffold/ を生成する。
 - [High] vs new で、プロジェクト生成時に、scaffold以下の資産が新プロジェクトに展開され、著者が執筆の参考となるよう、書き方の例として、vivio-starterのマニュアルを展開する。
 
+
+
+
+
+
 ## Unreleased
 （次回リリース候補の変更はここに追加してください）
+
+### Added
+- **VFMのハード改行機能をデフォルトで有効化**: `hardLineBreaks: true` を既定値に設定し、日本語文章の直感的な執筆体験を向上。フロントマターで個別無効化（`hardLineBreaks: false`）も可能。コードブロックと空行は影響を受けない（VFM標準準拠）。
+
+### Fixed
+- **vs build --compress オプションの不具合修正**: Step 12の呼び出し順序を修正（圧縮→リネームの順に変更）。`output_compressed.pdf`が正しく生成されるようになり、動的ファイル名（例: `janken_v0.1.0_compressed.pdf`）に対応。
+- **Enhanced Modeへの切り替え処理を修正**: Gemfileに`vivlio-starter-pdf`を追加しBundler環境下でのプラグインロードを改善。`vs build --compress`時にアウトライン付与がEnhanced Modeで実行されるようになった。Standard Mode時の警告メッセージを改善（Step番号を削除し表現を調整）。
+
+### Changed
+- **ビルドステップの表示名を改善**: Step 12の表示名を`(compress, rename and final clean)`に変更し、圧縮処理の時間が含まれることが明示的にわかるように修正。
+- **チュートリアルドキュメントを更新**: ハード改行セクションを書き直し。
+- **buildコマンドのオプションを整理**: 使用頻度の低いオプションを削除：`-n/--dry-run`、`--force`、`--no-cache`。関連するデッドコードを完全に削除し、ビルドシステムをクリーンアップ。よく使う実用的なオプションに焦点を当てたシンプルなインターフェースに。
 
 ## [0.34.0] - 2026-03-21
 

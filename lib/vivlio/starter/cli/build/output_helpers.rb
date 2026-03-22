@@ -27,37 +27,6 @@ module Vivlio
           STEP5B_LABEL       = 'Step 5b (generate part title pages)'.freeze
           STEP5_AGG_LABEL    = 'Step  5 (generate sections / part pages)'.freeze
 
-          # 単章ビルド実行前の Dry Run 結果を整形して表示する
-          def print_single_chapter_dry_run(tokens)
-            Common.echo_always "\n== Dry Run: ビルド予定一覧 =="
-            output_name = if tokens.size == 1
-                            "#{tokens.first}.pdf"
-                          else
-                            sorted = tokens.sort_by { |t| t[/^(\d+)/, 1].to_i }
-                            first_num = sorted.first[/^(\d+)/, 1]
-                            last_num = sorted.last[/^(\d+)/, 1]
-                            "#{first_num}-#{last_num}.pdf"
-                          end
-            tokens.each do |t|
-              Common.echo_always "  - 章: #{t}"
-            end
-            Common.echo_always "  - 出力: #{output_name}"
-            Common.echo_always "\n合計 #{tokens.size} 章（dry-run、実処理は行いません）。"
-          end
-
-          # フルビルド実行前の Dry Run 結果を表示する
-          def print_full_build_dry_run(keep)
-            Common.echo_always "\n== Dry Run: フルビルド予定 =="
-            if keep&.any?
-              Common.echo_always "  - 対象章 (#{keep.size}件):"
-              keep.each { |chapter| Common.echo_always "      • #{chapter}" }
-            else
-              Common.echo_always '  - 対象章: catalog.yml に定義された全章'
-            end
-            Common.echo_always '  - 実際のビルドは実行せず、工程のみを確認しました。'
-            Common.echo_always ''
-          end
-
           # ビルドタイミングをコンソールに出力する
           def print_build_timings(build_timings)
             aggregated, label_groups = aggregate_step_timings(build_timings)

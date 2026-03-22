@@ -15,8 +15,6 @@
 #   - --[no]-resize: 画像最適化の有効/無効
 #   - --high/--medium/--low: 画像品質プリセット
 #   - --[no]-compress: PDF 圧縮の有効/無効
-#   - --dry-run: 実行せずにビルド予定を表示
-#   - --force: 特殊ページを強制再生成
 #
 # 依存:
 #   - Build::UnifiedBuildPipeline: ビルドパイプライン
@@ -51,10 +49,7 @@ module Vivlio
             option '--low', '画像最適化プリセット: 低品質', default: false
             option '--[no]-compress', 'PDF圧縮を行う（--no-compress でスキップ）', key: :compress
             option '--[no]-clean', '中間生成物をクリーンアップ（--no-clean でスキップ）', default: true, key: :clean
-            option '-n/--dry-run', '実行せずにビルド予定のみを表示', default: false, key: :dry_run
             option '--log <level>', 'ログレベルを指定（error/warn/info/debug）', key: :log_level
-            option '--force', 'タイトル/リーガル/奥付を強制再生成', default: false
-            option '--no-cache', 'キャッシュを無効化（--force と同義）', default: false, value: true, key: :'no-cache'
             option '-h/--help', 'このコマンドの使い方を表示', key: :help
           end
 
@@ -167,11 +162,7 @@ module Vivlio
             basenames = entries.map(&:basename)
             common.log_action("単章/選択ビルドを実行します: #{basenames.join(', ')}")
 
-            if options[:dry_run]
-              print_single_chapter_dry_run(basenames)
-              return
-            end
-
+            
             PostProcessCommands::HeadingProcessor.chapter_tokens_override = basenames
 
             pipeline = BuildCommands::UnifiedBuildPipeline.new(self, entries: entries, mode: :single)
@@ -197,11 +188,7 @@ module Vivlio
               common.log_action('[Subset] catalog.yml に章が定義されていません')
             end
 
-            if options[:dry_run]
-              print_full_build_dry_run(entries.map(&:basename))
-              return
-            end
-
+            
             pipeline = BuildCommands::UnifiedBuildPipeline.new(self, entries: entries, mode: :full)
             build_timings = pipeline.run
             IndexCommands.flush_post_build_messages

@@ -71,7 +71,7 @@ module Vivlio
         # @param max_level [Integer] 最大階層
         # @return [Boolean]
         def add_outline!(original_pdf_path, items, max_level:)
-          CLI::Common.log_warn('[Step 11] PDF アウトライン（しおり）の付与は Standard モード(MIT) ではサポートされていません。')
+          CLI::Common.log_warn('PDF しおり（アウトライン）の付与は Standard モード(MIT) ではサポートされていません。')
           CLI::Common.log_info('  => 拡張機能が必要な場合は `gem install vivlio-starter-pdf` を検討してください。')
           false
         end

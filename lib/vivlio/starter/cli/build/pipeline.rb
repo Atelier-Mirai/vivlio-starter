@@ -113,7 +113,7 @@ module Vivlio
             else
               # --- 閲覧用のみ（従来どおり） ---
               register_pdf_build_steps
-              add_step('Step 12 (rename and final clean)',      -> { run_step12_rename_and_clean })
+              add_step('Step 12 (compress, rename and final clean)', -> { run_step12_rename_and_clean })
             end
           end
 
@@ -283,29 +283,27 @@ module Vivlio
               Array(sources).any? { |s| File.exist?(s) && File.mtime(s) > target_mtime }
             end
 
-            force = options[:force]
-
             # 特殊ページが存在しない場合は自動生成
             ensure_special_page_exists!('titlepage', title_md)
             ensure_special_page_exists!('legalpage', legal_md)
             ensure_special_page_exists!('colophon', colophon_md)
 
-            if force || newer_than_any.call(front_pdf, [title_md, legal_md, book_yml])
+            if newer_than_any.call(front_pdf, [title_md, legal_md, book_yml])
               [['create:titlepage', title_md], ['create:legalpage', legal_md]].each do |cmd, _path|
                 case cmd
                 when 'create:titlepage'
-                  CreateCommands.execute_titlepage({ options: { force: true } })
+                  CreateCommands.execute_titlepage({})
                 when 'create:legalpage'
-                  CreateCommands.execute_legalpage({ options: { force: true } })
+                  CreateCommands.execute_legalpage({})
                 end
               end
             end
 
-            if force || newer_than_any.call(col_pdf, [colophon_md, book_yml])
-              CreateCommands.execute_colophon({ options: { force: true } })
+            if newer_than_any.call(col_pdf, [colophon_md, book_yml])
+              CreateCommands.execute_colophon({})
             end
 
-            Build::PdfBuilder.build_front_pages_and_tail!(force)
+            Build::PdfBuilder.build_front_pages_and_tail!
           end
 
           # Step 9 (print_pdf only): 前付・奥付の HTML 生成のみ（PDF ビルドをスキップ）
@@ -319,9 +317,9 @@ module Vivlio
             ensure_special_page_exists!('legalpage', legal_md)
             ensure_special_page_exists!('colophon', colophon_md)
 
-            CreateCommands.execute_titlepage({ options: { force: true } })
-            CreateCommands.execute_legalpage({ options: { force: true } })
-            CreateCommands.execute_colophon({ options: { force: true } })
+            CreateCommands.execute_titlepage({})
+            CreateCommands.execute_legalpage({})
+            CreateCommands.execute_colophon({})
 
             # HTML が生成されたことを確認
             Build::SectionBuilder.ensure_chapter_html_up_to_date!('_titlepage',

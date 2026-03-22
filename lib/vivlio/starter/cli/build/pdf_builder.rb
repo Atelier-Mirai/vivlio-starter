@@ -146,7 +146,7 @@ module Vivlio
 
           # Step 9: 本扉・扉裏・後書き・奥付の生成
           # 新仕様: _titlepage, _legalpage, _colophon を使用
-          def build_front_pages_and_tail!(force = false)
+          def build_front_pages_and_tail!
             front_regenerated = false
             Build::SectionBuilder.ensure_chapter_html_up_to_date!('_titlepage',
                                                                   extra_sources: File.join('config', 'book.yml'))
@@ -174,7 +174,7 @@ module Vivlio
 
             front_pdf = '_titlepage_legalpage.pdf'
             colophon_pdf = '_colophon.pdf'
-            cache_on = Common.cache_enabled? && !force
+            cache_on = Common.cache_enabled?
             cache_dir = cache_on ? Common.ensure_cache_dir! : nil
             front_cache = cache_on && cache_dir ? File.join(cache_dir, front_pdf) : nil
             colophon_cache = cache_on && cache_dir ? File.join(cache_dir, colophon_pdf) : nil
@@ -185,7 +185,7 @@ module Vivlio
             colophon_missing = !File.exist?(colophon_pdf)
             colophon_missing &&= !Build::Utilities.cache_restore_file(cache_on, colophon_cache, colophon_pdf, 'Step 9')
 
-            need_front = force || front_missing || newer_than_any.call(front_pdf, front_srcs)
+            need_front = front_missing || newer_than_any.call(front_pdf, front_srcs)
 
             if need_front
               EntriesCommands.execute_entries({}, ['_titlepage.html', '_legalpage.html'])
@@ -209,7 +209,7 @@ module Vivlio
               end
             end
 
-            need_colophon = force || front_regenerated || colophon_missing || newer_than_any.call(colophon_pdf,
+            need_colophon = front_regenerated || colophon_missing || newer_than_any.call(colophon_pdf,
                                                                                                   colophon_srcs)
             if need_colophon
               EntriesCommands.execute_entries({}, ['_colophon.html'])

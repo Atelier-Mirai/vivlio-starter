@@ -60,7 +60,7 @@ vs [-h/--help] [--version] [-v/--verbose] <command>
 		[--manual-install]     doctor の自動実行を無効化               
 		[-h/--help]            このコマンドの使い方を表示                  
 
-	build <targets...> [--[no]-resize] [--high] [--medium] [--low] [--[no]-compress] [--[no]-clean] [-n/--dry-run] [--log <level>] [--force] [--no-cache] [-h/--help]
+	build <targets...> [--[no]-resize] [--high] [--medium] [--low] [--[no]-compress] [--[no]-clean] [--log <level>] [-h/--help]
 		書籍全体または指定章をビルドします
 
 		<targets...>       ビルド対象（章番号 / 範囲 / ベース名）           (default: [])  
@@ -70,10 +70,7 @@ vs [-h/--help] [--version] [-v/--verbose] <command>
 		[--low]            画像最適化プリセット: 低品質                
 		[--[no]-compress]  PDF圧縮を行う（--no-compress でスキップ）  
 		[--[no]-clean]     中間生成物をクリーンアップ（--no-clean でスキップ）  (default: true)
-		[-n/--dry-run]     実行せずにビルド予定のみを表示                
 		[--log <level>]    ログレベルを指定（error/warn/info/debug）
-		[--force]          タイトル/リーガル/奥付を強制再生成             
-		[--no-cache]       キャッシュを無効化（--force と同義）         
 		[-h/--help]        このコマンドの使い方を表示                  
 
 	clean [--purge/-P] [--cache/-C] [--cover] [--generated-images] [-h/--help]
