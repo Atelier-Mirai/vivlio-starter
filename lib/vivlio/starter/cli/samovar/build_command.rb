@@ -171,9 +171,7 @@ module Vivlio
 
             open_generated_pdf(pipeline.generated_pdf_name)
 
-            # targetsに応じてファイル名を調整
-            generated_name = adjust_filename_for_targets(pipeline.generated_pdf_name, basenames)
-            common.log_success("単章ビルドが完了しました: #{generated_name}")
+            common.log_success("単章ビルドが完了しました: #{pipeline.generated_pdf_name}")
             created_files = get_created_files_list_for_single_mode(basenames)
             print_created_files_message(created_files)
             
@@ -322,11 +320,17 @@ module Vivlio
             if targets.include?('pdf')
               pdf_file = "#{base_name}.pdf"
               files << pdf_file if File.exist?(pdf_file)
+              
+              if options[:compress]
+                compressed_file = "#{base_name}_compressed.pdf"
+                files << compressed_file if File.exist?(compressed_file)
+              end
             end
             
-            if targets.include?('pdf') && options[:compress]
-              compressed_file = "#{base_name}_compressed.pdf"
-              files << compressed_file if File.exist?(compressed_file)
+            # 入稿用PDF
+            if targets.include?('print_pdf')
+              print_pdf_file = "#{base_name}_print.pdf"
+              files << print_pdf_file if File.exist?(print_pdf_file)
             end
             
             # EPUB
