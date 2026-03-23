@@ -178,6 +178,8 @@ module Vivlio
             # 単章PDF（例: 11-install.pdf, 81-install.pdf など）も削除
             # 既に個別に列挙している中間PDFと重複しても問題ない
             cleanup_patterns << '[0-9][0-9]-*.pdf'
+            # 単章EPUB（例: 01-life.epub, 02-history.epub など）も削除
+            cleanup_patterns << '[0-9][0-9]-*.epub'
             # 動的ファイル名のPDFおよびEPUBも削除対象に追加
             add_dynamic_filename_patterns(cleanup_patterns)
           end

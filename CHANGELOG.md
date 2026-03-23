@@ -104,6 +104,9 @@
 ### Removed
 - **cross_reference_report.mdの生成機能**: ビルド実行時に生成されていたクロスリファレンスレポートを出力するコードを削除。デバッグ用レポートは不要と判断し、`pre_process.rb`と`cross_reference_processor.rb`から関連コードを完全に削除。ビルドプロセスがさらにクリーンになり、不要なファイル生成がなくなった。
 
+### Fixed
+- **vs clean --allで単章EPUBが削除されない問題**: `--purge`時の削除パターンに`[0-9][0-9]-*.epub`を追加し、単章ビルドで生成されたEPUBファイル（例: `01-life.epub`）も`vs clean --all`で完全に削除されるように修正。これによりPDF、print_pdf、EPUBのすべての単章生成物がクリーンアップ対象になる。
+
 ## [0.34.0] - 2026-03-21
 
 ### Added
