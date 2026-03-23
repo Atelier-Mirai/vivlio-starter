@@ -171,8 +171,11 @@ module Vivlio
 
             open_generated_pdf(pipeline.generated_pdf_name)
 
-            common.log_success("単章ビルドが完了しました: #{pipeline.generated_pdf_name}")
-            print_created_files_message([pipeline.generated_pdf_name])
+            # targetsに応じてファイル名を調整
+            generated_name = adjust_filename_for_targets(pipeline.generated_pdf_name, basenames)
+            common.log_success("単章ビルドが完了しました: #{generated_name}")
+            created_files = get_created_files_list_for_single_mode(basenames)
+            print_created_files_message(created_files)
             
             print_build_timings(build_timings)
           ensure
@@ -253,23 +256,84 @@ module Vivlio
             parent&.options&.[](:verbose) || false
           end
 
-          # 生成されたPDFファイルのリストを取得
+          # 生成されたファイルのリストを取得
           def get_created_files_list
             files = []
+            targets = Common::CONFIG.output.targets
             
-            # 通常PDF
-            normal_pdf = Common.generate_output_filename('pdf')
-            files << normal_pdf if File.exist?(normal_pdf)
+            # PDF系
+            if targets.include?('pdf')
+              normal_pdf = Common.generate_output_filename('pdf')
+              files << normal_pdf if File.exist?(normal_pdf)
+            end
             
-            # 圧縮PDF（存在する場合）
-            if options[:compress]
+            if targets.include?('pdf') && options[:compress]
               compressed_pdf = Common.generate_compressed_pdf_filename('pdf')
               files << compressed_pdf if File.exist?(compressed_pdf)
             end
             
-            # 入稿用PDF（存在する場合）
-            print_pdf = Common.generate_print_pdf_filename
-            files << print_pdf if File.exist?(print_pdf)
+            if targets.include?('print_pdf')
+              print_pdf = Common.generate_print_pdf_filename
+              files << print_pdf if File.exist?(print_pdf)
+            end
+            
+            # EPUB
+            if targets.include?('epub')
+              epub_file = Common.generate_epub_filename
+              files << epub_file if File.exist?(epub_file)
+            end
+            
+            files
+          end
+
+          # targetsに応じてファイル名を調整
+          def adjust_filename_for_targets(original_name, basenames)
+            targets = Common::CONFIG.output.targets
+            
+            # PDFがtargetsに含まれていない場合
+            unless targets.include?('pdf')
+              base_name = original_name.sub(/\.pdf$/, '')
+              
+              # EPUBがtargetsに含まれている場合
+              if targets.include?('epub')
+                return "#{base_name}.epub"
+              end
+            end
+            
+            original_name
+          end
+
+          # 単章ビルド用の生成ファイルリストを取得
+          def get_created_files_list_for_single_mode(basenames)
+            files = []
+            targets = Common::CONFIG.output.targets
+            
+            # 単章ビルドのファイル名ベースを決定
+            if basenames.size == 1
+              base_name = basenames.first
+            else
+              sorted = basenames.sort_by { |bn| bn[/^(\d+)/, 1].to_i }
+              first_num = sorted.first[/^(\d+)/, 1]
+              last_num = sorted.last[/^(\d+)/, 1]
+              base_name = "#{first_num}-#{last_num}"
+            end
+            
+            # PDF系
+            if targets.include?('pdf')
+              pdf_file = "#{base_name}.pdf"
+              files << pdf_file if File.exist?(pdf_file)
+            end
+            
+            if targets.include?('pdf') && options[:compress]
+              compressed_file = "#{base_name}_compressed.pdf"
+              files << compressed_file if File.exist?(compressed_file)
+            end
+            
+            # EPUB
+            if targets.include?('epub')
+              epub_file = "#{base_name}.epub"
+              files << epub_file if File.exist?(epub_file)
+            end
             
             files
           end
