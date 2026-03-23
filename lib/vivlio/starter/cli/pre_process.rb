@@ -363,14 +363,6 @@ module Vivlio
             Common.log_success("更新: #{filename}")
           end
 
-          # ------------------------------------------------
-          # Phase 4: レポート出力
-          # ------------------------------------------------
-          report = CrossReferenceProcessor.generate_cross_reference_report(all_labels)
-          report_path = 'cross_reference_report.md'
-          File.write(report_path, report, encoding: 'utf-8')
-          Common.log_success("レポートを生成: #{report_path}")
-
           Common.log_success("\n=== クロスリファレンス処理が完了しました ===")
           Common.log_info("検出ラベル数: #{all_labels.size}個")
           Common.log_info("エラー数: #{all_errors.size}個")

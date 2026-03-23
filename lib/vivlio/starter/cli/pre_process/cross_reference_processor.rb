@@ -184,15 +184,6 @@ module Vivlio
           end
           private_class_method :format_duplicate_message
 
-          def generate_cross_reference_report(all_labels)
-            lines = ["# Cross Reference Map\n"]
-            all_labels.group_by(&:source_file).each do |file, labels|
-              lines << "\n- #{file}"
-              labels.each { |lbl| lines << format_label_line(lbl) }
-            end
-            lines.join("\n")
-          end
-
           # === Private Helpers ===
 
           def collect_all_labels(chapters)
