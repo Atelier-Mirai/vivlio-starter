@@ -21,3 +21,4 @@ pkg/*.gem
 /entries.js
 
 /covers/
+!/covers/*.svg
