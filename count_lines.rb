@@ -97,12 +97,12 @@ format_line = lambda do |label, total_lines, code_lines, comment_lines|
 end
 
 puts 'Ruby files (lib/vivlio/**/*.rb)'
-puts 'path                                                          total   code comment'
+puts format('%-60s %6s %6s %6s', 'path', 'total', 'code', 'comment')
 ruby_results.each { |row| puts format_line.call(*row) }
 
 puts
 puts 'CSS files (stylesheets/**/*.css)'
-puts 'path                                                          total   code comment'
+puts format('%-60s %6s %6s %6s', 'path', 'total', 'code', 'comment')
 css_results.each { |row| puts format_line.call(*row) }
 
 ruby_totals = ruby_results.transpose[1..3].map { |arr| arr.reduce(0, :+) }
@@ -110,5 +110,5 @@ css_totals = css_results.transpose[1..3].map { |arr| arr.reduce(0, :+) }
 
 puts
 puts 'Totals'
-puts format('%-60s %6d %6d %6d', 'Ruby total', *ruby_totals)
-puts format('%-60s %6d %6d %6d', 'CSS total', *css_totals)
+puts format('%-60s %6d %6d %6d', "Ruby files (#{ruby_results.size} files)", *ruby_totals)
+puts format('%-60s %6d %6d %6d', "CSS files (#{css_results.size} files)", *css_totals)
