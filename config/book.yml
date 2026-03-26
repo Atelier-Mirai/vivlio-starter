@@ -28,16 +28,16 @@ book:
   # ----------------------------
   # main_title: 'はじめての技術書づくり'
   # subtitle: 'Vivlio Starter 実践ガイド'
-  main_title: "初めてのウェブアプリ開発"
-  subtitle: "じゃんけんゲームを創ろう"
+  main_title: "初めてのアプリ開発"
+  subtitle: "ゲームを創ろう"
   # subtitle_style: wave  # 副題の装飾（wave | bar | none）から選択
   subtitle_style: none  # 副題の装飾（wave | bar | none）から選択
 
   # ----------------------------
   # 付帯情報（任意）
   # ----------------------------
-  series: "「技術書典17 新刊」"            # 連載名
-  release: "令和六年九月一日"     # 発行日
+  series: "「技術書典20 新刊」"            # 連載名
+  release: "令和八年四月一日"     # 発行日
   publisher: "早乙女 遙香"                # 日光企画 ねこのしっぽ
   contact: "contact@atelier-mirai.net"       # 連絡先
   author: "アトリヱ未來"                  # 著者名
@@ -213,6 +213,11 @@ output:
     # window_bounds: "{0, 0, 1024, 768}"      # 左上角に小さなウィンドウ
     # window_bounds: "{1920, 0, 1920, 1080}"  # 右側モニター全画面（フルHD）
   
+  # ----------------------------
+  # 表紙・裏表紙設定
+  # ----------------------------
+  cover: light # light, dark, o
+
   # ----------------------------
   # PDF設定（閲覧用）
   # ----------------------------

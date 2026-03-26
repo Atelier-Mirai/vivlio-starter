@@ -100,6 +100,665 @@ module Vivlio
         # @param options [Hash] オプション
         #   - :verbose [Boolean] 詳細ログ出力
         #   - :force [Boolean] 既存ファイルを強制上書き
+        # --- カバー生成 ---
+
+        # カバーSVGをconfig/book.ymlから生成する
+        #
+        # @param options [Hash] オプション
+        #   - :verbose [Boolean] 詳細ログ出力
+        #   - :type [String] 'front' または 'back'
+        # @return [void]
+        #
+        # 生成ファイル: 
+        # - front: covers/frontcover_dark.svg, covers/frontcover_light.svg
+        # - back:  covers/backcover_dark.svg, covers/backcover_light.svg
+        def execute_cover(options)
+          apply_verbose(options)
+          
+          title, subtitle = extract_title_and_subtitle
+          author = fetch_config_value('book', 'author')
+          series = fetch_config_value('book', 'series')
+          release = fetch_config_value('book', 'release')
+          cover_type = options[:type] || 'front'
+          
+          covers_dir = File.join(Dir.pwd, 'covers')
+          FileUtils.mkdir_p(covers_dir) unless Dir.exist?(covers_dir)
+          
+          # book.yml のパスを取得
+          book_config_path = File.join(Dir.pwd, 'config', 'book.yml')
+          
+          %w[dark light].each do |theme|
+            if cover_type == 'front'
+              content = generate_frontcover_svg_content(title, subtitle, author, series, release, theme)
+              filename = "frontcover_#{theme}.svg"
+            else
+              content = generate_backcover_svg_content(title, subtitle, author, series, release, theme)
+              filename = "backcover_#{theme}.svg"
+            end
+            
+            path = File.join(covers_dir, filename)
+            log_message = cover_type == 'front' ? "表紙を生成しました: #{path}" : "裏表紙を生成しました: #{path}"
+            
+            # book.yml が既存の cover より新しい場合のみ生成
+            next if File.exist?(path) && File.mtime(path) >= File.mtime(book_config_path)
+            
+            safe_write(path, content)
+            Common.log_info(log_message)
+          end
+        end
+
+        # 表紙SVGコンテンツを生成する
+        #
+        # @param title [String] タイトル
+        # @param subtitle [String] サブタイトル
+        # @param author [String] 著者名
+        # @param series [String] シリーズ名
+        # @param release [String] 発行日
+        # @param theme [String] テーマ ('dark' または 'light')
+        # @return [String] SVGコンテンツ
+        def generate_frontcover_svg_content(title, subtitle, author, series, release, theme)
+          if theme == 'dark'
+            generate_dark_frontcover_svg(title, subtitle, author, series, release)
+          else
+            generate_light_frontcover_svg(title, subtitle, author, series, release)
+          end
+        end
+
+        # 裏表紙SVGコンテンツを生成する
+        #
+        # @param title [String] タイトル
+        # @param subtitle [String] サブタイトル
+        # @param author [String] 著者名
+        # @param series [String] シリーズ名
+        # @param release [String] 発行日
+        # @param theme [String] テーマ ('dark' または 'light')
+        # @return [String] SVGコンテンツ
+        def generate_backcover_svg_content(title, subtitle, author, series, release, theme)
+          if theme == 'dark'
+            generate_dark_backcover_svg(title, subtitle, author, series, release)
+          else
+            generate_light_backcover_svg(title, subtitle, author, series, release)
+          end
+        end
+
+        # ダークテーマの表紙SVGを生成
+        def generate_dark_frontcover_svg(title, subtitle, author, series, release)
+          <<~SVG
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 595 842" width="595" height="842">
+              <defs>
+                <!-- Background gradient: deep navy to dark midnight -->
+                <linearGradient id="bg-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#0e1a2e"/>
+                  <stop offset="100%" stop-color="#060d1a"/>
+                </linearGradient>
+
+                <!-- Gold shimmer gradient for accent lines -->
+                <linearGradient id="gold-line" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%"   stop-color="#b8902a" stop-opacity="0"/>
+                  <stop offset="40%"  stop-color="#e8c85a"/>
+                  <stop offset="60%"  stop-color="#f5d96e"/>
+                  <stop offset="100%" stop-color="#b8902a" stop-opacity="0"/>
+                </linearGradient>
+
+                <!-- Thin gold line for decorative rules -->
+                <linearGradient id="gold-thin" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%"   stop-color="#c9a43a" stop-opacity="0"/>
+                  <stop offset="30%"  stop-color="#e0c058"/>
+                  <stop offset="70%"  stop-color="#e0c058"/>
+                  <stop offset="100%" stop-color="#c9a43a" stop-opacity="0"/>
+                </linearGradient>
+
+                <!-- Glow for the central circuit node -->
+                <radialGradient id="node-glow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%"   stop-color="#5b9ef5" stop-opacity="0.35"/>
+                  <stop offset="100%" stop-color="#5b9ef5" stop-opacity="0"/>
+                </radialGradient>
+
+                <!-- Subtle grid texture overlay -->
+                <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e3358" stroke-width="0.4"/>
+                </pattern>
+
+                <!-- Clip path for grid area -->
+                <clipPath id="top-clip">
+                  <rect x="0" y="0" width="595" height="560"/>
+                </clipPath>
+              </defs>
+
+              <!-- === Background === -->
+              <rect width="595" height="842" fill="url(#bg-grad)"/>
+
+              <!-- === Grid overlay (top area only) === -->
+              <rect width="595" height="560" fill="url(#grid)" opacity="0.3" clip-path="url(#top-clip)"/>
+
+              <!-- === Gold frame accents === -->
+              <!-- Top thick gold bar -->
+              <rect x="0" y="0" width="595" height="4" fill="#c9a43a"/>
+              <!-- Bottom thick gold bar -->
+              <rect x="0" y="838" width="595" height="4" fill="#c9a43a"/>
+              <!-- Left thin vertical gold accent -->
+              <rect x="28" y="0" width="2" height="842" fill="#c9a43a" opacity="0.5"/>
+              <!-- Right thin vertical gold accent -->
+              <rect x="565" y="0" width="2" height="842" fill="#c9a43a" opacity="0.5"/>
+
+              <!-- === Diagonal geometric accent lines (tech circuit feel) === -->
+              <line x1="-20" y1="380" x2="595" y2="60"  stroke="#1e3a60" stroke-width="0.8"/>
+              <line x1="-20" y1="500" x2="595" y2="160" stroke="#1e3a60" stroke-width="0.6"/>
+              <line x1="0"   y1="620" x2="595" y2="280" stroke="#1e3a60" stroke-width="0.5"/>
+              <line x1="0"   y1="740" x2="595" y2="420" stroke="#1e3a60" stroke-width="0.4"/>
+
+              <!-- === Title block (upper 1/3 ≒ y:60〜300) === -->
+              <!-- Top thin gold rule above title -->
+              <rect x="50" y="68" width="495" height="1" fill="url(#gold-thin)"/>
+
+              <!-- Main title -->
+              <text x="297" y="138"
+                    text-anchor="middle"
+                    font-family="'Hiragino Mincho ProN', 'Yu Mincho', 'MS Mincho', 'Noto Serif CJK JP', serif"
+                    font-size="38"
+                    font-weight="700"
+                    fill="#f0e8d0"
+                    letter-spacing="2">#{title}</text>
+
+              <!-- Gold underline beneath title -->
+              <rect x="80" y="150" width="435" height="1.5" fill="url(#gold-line)"/>
+
+              <!-- Subtitle -->
+              <text x="297" y="190"
+                    text-anchor="middle"
+                    font-family="'Hiragino Mincho ProN', 'Yu Mincho', 'MS Mincho', 'Noto Serif CJK JP', serif"
+                    font-size="24"
+                    font-weight="400"
+                    fill="#a8b8d0"
+                    letter-spacing="4">#{subtitle}</text>
+
+              <!-- Author line -->
+              <text x="297" y="247"
+                    text-anchor="middle"
+                    font-family="'Hiragino Mincho ProN', 'Yu Mincho', 'MS Mincho', 'Noto Serif CJK JP', serif"
+                    font-size="22"
+                    font-weight="600"
+                    fill="#d0c0a0"
+                    letter-spacing="4">
+                <tspan font-family="'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+                        font-size="14"
+                        fill="#8090a8"
+                        letter-spacing="2"
+                        baseline-shift="4px">[著]</tspan><tspan>#{author}</tspan>
+              </text>
+
+              <!-- Thin gold rule below author, separating title zone from graphic zone -->
+              <rect x="50" y="288" width="495" height="1" fill="url(#gold-thin)"/>
+
+              <!-- === Central graphic: abstract circuit / web network (center cy=530) === -->
+              <!-- Outer ring (faint) -->
+              <circle cx="297" cy="530" r="195" fill="none" stroke="#1a3560" stroke-width="0.8"/>
+              <!-- Mid ring -->
+              <circle cx="297" cy="530" r="140" fill="none" stroke="#1e4070" stroke-width="0.6"/>
+              <!-- Inner ring -->
+              <circle cx="297" cy="530" r="86"  fill="none" stroke="#2a5590" stroke-width="0.8"/>
+              <!-- Glow behind center node -->
+              <circle cx="297" cy="530" r="96"  fill="url(#node-glow)"/>
+              <!-- Center node -->
+              <circle cx="297" cy="530" r="30"  fill="#0e2040" stroke="#4a80c8" stroke-width="1.2"/>
+              <!-- Bracket icon in center -->
+              <text x="297" y="538" text-anchor="middle" font-family="'Courier New', monospace"
+                    font-size="21" fill="#5b9ef5" font-weight="700">&lt;/&gt;</text>
+
+              <!-- Radial spokes (inner ring r=86 → mid ring r=140) -->
+              <!-- 0° right -->
+              <line x1="383" y1="530" x2="435" y2="530" stroke="#2a5590" stroke-width="0.8"/>
+              <!-- 45° -->
+              <line x1="358" y1="469" x2="396" y2="431" stroke="#2a5590" stroke-width="0.8"/>
+              <!-- 90° up -->
+              <line x1="297" y1="444" x2="297" y2="390" stroke="#2a5590" stroke-width="0.8"/>
+              <!-- 135° -->
+              <line x1="236" y1="469" x2="198" y2="431" stroke="#2a5590" stroke-width="0.8"/>
+              <!-- 180° left -->
+              <line x1="211" y1="530" x2="157" y2="530" stroke="#2a5590" stroke-width="0.8"/>
+              <!-- 225° -->
+              <line x1="236" y1="591" x2="198" y2="629" stroke="#2a5590" stroke-width="0.8"/>
+              <!-- 270° down -->
+              <line x1="297" y1="616" x2="297" y2="670" stroke="#2a5590" stroke-width="0.8"/>
+              <!-- 315° -->
+              <line x1="358" y1="591" x2="396" y2="629" stroke="#2a5590" stroke-width="0.8"/>
+
+              <!-- Satellite nodes (mid ring r=140) -->
+              <circle cx="437" cy="530" r="8"  fill="#0e2040" stroke="#4a80c8" stroke-width="1"/>
+              <circle cx="396" cy="431" r="6"  fill="#0e2040" stroke="#3a70b8" stroke-width="0.8"/>
+              <circle cx="297" cy="390" r="8"  fill="#0e2040" stroke="#4a80c8" stroke-width="1"/>
+              <circle cx="198" cy="431" r="6"  fill="#0e2040" stroke="#3a70b8" stroke-width="0.8"/>
+              <circle cx="157" cy="530" r="8"  fill="#0e2040" stroke="#4a80c8" stroke-width="1"/>
+              <circle cx="198" cy="629" r="6"  fill="#0e2040" stroke="#3a70b8" stroke-width="0.8"/>
+              <circle cx="297" cy="670" r="8"  fill="#0e2040" stroke="#4a80c8" stroke-width="1"/>
+              <circle cx="396" cy="629" r="6"  fill="#0e2040" stroke="#3a70b8" stroke-width="0.8"/>
+
+              <!-- Extend to outer ring (r=195) -->
+              <line x1="437" y1="530" x2="491" y2="530" stroke="#2a5a90" stroke-width="0.5"/>
+              <line x1="396" y1="431" x2="435" y2="393" stroke="#2a5a90" stroke-width="0.5"/>
+              <line x1="297" y1="390" x2="297" y2="335" stroke="#2a5a90" stroke-width="0.5"/>
+              <line x1="198" y1="431" x2="159" y2="393" stroke="#2a5a90" stroke-width="0.5"/>
+              <line x1="157" y1="530" x2="103" y2="530" stroke="#2a5a90" stroke-width="0.5"/>
+              <line x1="198" y1="629" x2="159" y2="667" stroke="#2a5a90" stroke-width="0.5"/>
+              <line x1="297" y1="670" x2="297" y2="725" stroke="#2a5a90" stroke-width="0.5"/>
+              <line x1="396" y1="629" x2="435" y2="667" stroke="#2a5a90" stroke-width="0.5"/>
+
+              <!-- Outer edge nodes -->
+              <circle cx="492" cy="530" r="4" fill="none" stroke="#2a5080" stroke-width="0.8"/>
+              <circle cx="435" cy="393" r="4" fill="none" stroke="#2a5080" stroke-width="0.8"/>
+              <circle cx="297" cy="335" r="4" fill="none" stroke="#2a5080" stroke-width="0.8"/>
+              <circle cx="159" cy="393" r="4" fill="none" stroke="#2a5080" stroke-width="0.8"/>
+              <circle cx="102" cy="530" r="4" fill="none" stroke="#2a5080" stroke-width="0.8"/>
+              <circle cx="159" cy="667" r="4" fill="none" stroke="#2a5080" stroke-width="0.8"/>
+              <circle cx="297" cy="725" r="4" fill="none" stroke="#2a5080" stroke-width="0.8"/>
+              <circle cx="435" cy="667" r="4" fill="none" stroke="#2a5080" stroke-width="0.8"/>
+
+              <!-- === Publication info block === -->
+              <!-- Thin gold rule above publication info -->
+              <rect x="50" y="752" width="495" height="1" fill="url(#gold-thin)"/>
+
+              <!-- Series label -->
+              <text x="297" y="784"
+                    text-anchor="middle"
+                    font-family="'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+                    font-size="13"
+                    fill="#7080a0"
+                    letter-spacing="2">#{series}</text>
+
+              <!-- Release date -->
+              <text x="297" y="806"
+                    text-anchor="middle"
+                    font-family="'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+                    font-size="12"
+                    fill="#5a6a80"
+                    letter-spacing="1">#{release}</text>
+            </svg>
+          SVG
+        end
+
+        # ライトテーマの表紙SVGを生成
+        def generate_light_frontcover_svg(title, subtitle, author, series, release)
+          <<~SVG
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 595 842" width="595" height="842">
+              <defs>
+                <!-- Background gradient: light cream to off-white -->
+                <linearGradient id="bg-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#f8f6f2"/>
+                  <stop offset="100%" stop-color="#f0ece4"/>
+                </linearGradient>
+
+                <!-- Gold shimmer gradient for accent lines -->
+                <linearGradient id="gold-line" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%"   stop-color="#b8902a" stop-opacity="0"/>
+                  <stop offset="40%"  stop-color="#e8c85a"/>
+                  <stop offset="60%"  stop-color="#f5d96e"/>
+                  <stop offset="100%" stop-color="#b8902a" stop-opacity="0"/>
+                </linearGradient>
+
+                <!-- Flat metallic gradient for center node -->
+                <linearGradient id="metallic-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%"   stop-color="#e8c85a"/>
+                  <stop offset="20%"  stop-color="#f5d96e"/>
+                  <stop offset="40%"  stop-color="#e8c85a"/>
+                  <stop offset="60%"  stop-color="#c9a43a"/>
+                  <stop offset="80%"  stop-color="#b8902a"/>
+                  <stop offset="100%" stop-color="#e8c85a"/>
+                </linearGradient>
+
+                <!-- Thin gold line for decorative rules -->
+                <linearGradient id="gold-thin" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%"   stop-color="#c9a43a" stop-opacity="0"/>
+                  <stop offset="30%"  stop-color="#e0c058"/>
+                  <stop offset="70%"  stop-color="#e0c058"/>
+                  <stop offset="100%" stop-color="#c9a43a" stop-opacity="0"/>
+                </linearGradient>
+
+                <!-- Subtle glow for the central circuit node -->
+                <radialGradient id="node-glow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%"   stop-color="#f5d96e" stop-opacity="0.25"/>
+                  <stop offset="30%"  stop-color="#e8c85a" stop-opacity="0.18"/>
+                  <stop offset="60%"  stop-color="#c9a43a" stop-opacity="0.12"/>
+                  <stop offset="100%" stop-color="#b8902a" stop-opacity="0"/>
+                </radialGradient>
+
+                <!-- Subtle grid texture overlay -->
+                <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#d0d0d0" stroke-width="0.4"/>
+                </pattern>
+
+                <!-- Clip path for grid area -->
+                <clipPath id="top-clip">
+                  <rect x="0" y="0" width="595" height="560"/>
+                </clipPath>
+              </defs>
+
+              <!-- === Background === -->
+              <rect width="595" height="842" fill="url(#bg-grad)"/>
+
+              <!-- === Grid overlay (top area only) === -->
+              <rect width="595" height="560" fill="url(#grid)" opacity="0.3" clip-path="url(#top-clip)"/>
+
+              <!-- === Gold frame accents === -->
+              <!-- Top thick gold bar -->
+              <rect x="0" y="0" width="595" height="4" fill="#c9a43a"/>
+              <!-- Bottom thick gold bar -->
+              <rect x="0" y="838" width="595" height="4" fill="#c9a43a"/>
+              <!-- Left thin vertical gold accent -->
+              <rect x="28" y="0" width="2" height="842" fill="#c9a43a" opacity="0.5"/>
+              <!-- Right thin vertical gold accent -->
+              <rect x="565" y="0" width="2" height="842" fill="#c9a43a" opacity="0.5"/>
+
+              <!-- === Diagonal geometric accent lines (tech circuit feel) === -->
+              <line x1="-20" y1="380" x2="595" y2="60"  stroke="#e0e0e0" stroke-width="0.8"/>
+              <line x1="-20" y1="500" x2="595" y2="160" stroke="#e0e0e0" stroke-width="0.6"/>
+              <line x1="0"   y1="620" x2="595" y2="280" stroke="#e0e0e0" stroke-width="0.5"/>
+              <line x1="0"   y1="740" x2="595" y2="420" stroke="#e0e0e0" stroke-width="0.4"/>
+
+              <!-- === Title block (upper 1/3 ≒ y:60〜300) === -->
+              <!-- Top thin gold rule above title -->
+              <rect x="50" y="68" width="495" height="1" fill="url(#gold-thin)"/>
+
+              <!-- Main title -->
+              <text x="297" y="138"
+                    text-anchor="middle"
+                    font-family="'Hiragino Mincho ProN', 'Yu Mincho', 'MS Mincho', 'Noto Serif CJK JP', serif"
+                    font-size="38"
+                    font-weight="700"
+                    fill="#1e3a60"
+                    letter-spacing="2">#{title}</text>
+
+              <!-- Gold underline beneath title -->
+              <rect x="80" y="150" width="435" height="1.5" fill="url(#gold-line)"/>
+
+              <!-- Subtitle -->
+              <text x="297" y="190"
+                    text-anchor="middle"
+                    font-family="'Hiragino Mincho ProN', 'Yu Mincho', 'MS Mincho', 'Noto Serif CJK JP', serif"
+                    font-size="24"
+                    font-weight="400"
+                    fill="#8090a8"
+                    letter-spacing="4">#{subtitle}</text>
+
+              <!-- Author line -->
+              <text x="297" y="247"
+                    text-anchor="middle"
+                    font-family="'Hiragino Mincho ProN', 'Yu Mincho', 'MS Mincho', 'Noto Serif CJK JP', serif"
+                    font-size="22"
+                    font-weight="600"
+                    fill="#d0c0a0"
+                    letter-spacing="4">
+                <tspan font-family="'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+                        font-size="14"
+                        fill="#a8b8d0"
+                        letter-spacing="2"
+                        baseline-shift="4px">[著]</tspan><tspan>#{author}</tspan>
+              </text>
+
+              <!-- Thin gold rule below author, separating title zone from graphic zone -->
+              <rect x="50" y="288" width="495" height="1" fill="url(#gold-thin)"/>
+
+              <!-- === Central graphic: abstract circuit / web network (center cy=530) === -->
+              <!-- Outer ring (faint) -->
+              <circle cx="297" cy="530" r="195" fill="none" stroke="#e0e0e0" stroke-width="0.8"/>
+              <!-- Mid ring -->
+              <circle cx="297" cy="530" r="140" fill="none" stroke="#e8e8e8" stroke-width="0.6"/>
+              <!-- Inner ring -->
+              <circle cx="297" cy="530" r="86"  fill="none" stroke="#d0d0d0" stroke-width="0.8"/>
+              <!-- Glow behind center node -->
+              <circle cx="297" cy="530" r="96"  fill="url(#node-glow)"/>
+              <!-- Center node -->
+              <circle cx="297" cy="530" r="30"  fill="url(#metallic-gold)" stroke="#f0f0f0" stroke-width="1.2"/>
+              <!-- Bracket icon in center -->
+              <text x="297" y="538" text-anchor="middle" font-family="'Courier New', monospace"
+                    font-size="21" fill="#f0f0f0" font-weight="700">&lt;/&gt;</text>
+
+              <!-- Radial spokes (inner ring r=86 → mid ring r=140) -->
+              <!-- 0° right -->
+              <line x1="383" y1="530" x2="435" y2="530" stroke="#f0f0f0" stroke-width="0.8"/>
+              <!-- 45° -->
+              <line x1="358" y1="469" x2="396" y2="431" stroke="#f0f0f0" stroke-width="0.8"/>
+              <!-- 90° up -->
+              <line x1="297" y1="444" x2="297" y2="390" stroke="#f0f0f0" stroke-width="0.8"/>
+              <!-- 135° -->
+              <line x1="236" y1="469" x2="198" y2="431" stroke="#f0f0f0" stroke-width="0.8"/>
+              <!-- 180° left -->
+              <line x1="211" y1="530" x2="157" y2="530" stroke="#f0f0f0" stroke-width="0.8"/>
+              <!-- 225° -->
+              <line x1="236" y1="591" x2="198" y2="629" stroke="#f0f0f0" stroke-width="0.8"/>
+              <!-- 270° down -->
+              <line x1="297" y1="616" x2="297" y2="670" stroke="#f0f0f0" stroke-width="0.8"/>
+              <!-- 315° -->
+              <line x1="358" y1="591" x2="396" y2="629" stroke="#f0f0f0" stroke-width="0.8"/>
+
+              <!-- Satellite nodes (mid ring r=140) -->
+              <circle cx="437" cy="530" r="8"  fill="#f0f0f0" stroke="#1e3a60" stroke-width="1"/>
+              <circle cx="396" cy="431" r="6"  fill="#f0f0f0" stroke="#1e3a60" stroke-width="0.8"/>
+              <circle cx="297" cy="390" r="8"  fill="#f0f0f0" stroke="#1e3a60" stroke-width="1"/>
+              <circle cx="198" cy="431" r="6"  fill="#f0f0f0" stroke="#1e3a60" stroke-width="0.8"/>
+              <circle cx="157" cy="530" r="8"  fill="#f0f0f0" stroke="#1e3a60" stroke-width="1"/>
+              <circle cx="198" cy="629" r="6"  fill="#f0f0f0" stroke="#1e3a60" stroke-width="0.8"/>
+              <circle cx="297" cy="670" r="8"  fill="#f0f0f0" stroke="#1e3a60" stroke-width="1"/>
+              <circle cx="396" cy="629" r="6"  fill="#f0f0f0" stroke="#1e3a60" stroke-width="0.8"/>
+
+              <!-- Extend to outer ring (r=195) -->
+              <line x1="437" y1="530" x2="491" y2="530" stroke="#f0f0f0" stroke-width="0.5"/>
+              <line x1="396" y1="431" x2="435" y2="393" stroke="#f0f0f0" stroke-width="0.5"/>
+              <line x1="297" y1="390" x2="297" y2="335" stroke="#f0f0f0" stroke-width="0.5"/>
+              <line x1="198" y1="431" x2="159" y2="393" stroke="#f0f0f0" stroke-width="0.5"/>
+              <line x1="157" y1="530" x2="103" y2="530" stroke="#f0f0f0" stroke-width="0.5"/>
+              <line x1="198" y1="629" x2="159" y2="667" stroke="#f0f0f0" stroke-width="0.5"/>
+              <line x1="297" y1="670" x2="297" y2="725" stroke="#f0f0f0" stroke-width="0.5"/>
+              <line x1="396" y1="629" x2="435" y2="667" stroke="#f0f0f0" stroke-width="0.5"/>
+
+              <!-- Outer edge nodes -->
+              <circle cx="492" cy="530" r="4" fill="none" stroke="#f0f0f0" stroke-width="0.8"/>
+              <circle cx="435" cy="393" r="4" fill="none" stroke="#f0f0f0" stroke-width="0.8"/>
+              <circle cx="297" cy="335" r="4" fill="none" stroke="#f0f0f0" stroke-width="0.8"/>
+              <circle cx="159" cy="393" r="4" fill="none" stroke="#f0f0f0" stroke-width="0.8"/>
+              <circle cx="102" cy="530" r="4" fill="none" stroke="#f0f0f0" stroke-width="0.8"/>
+              <circle cx="159" cy="667" r="4" fill="none" stroke="#f0f0f0" stroke-width="0.8"/>
+              <circle cx="297" cy="725" r="4" fill="none" stroke="#f0f0f0" stroke-width="0.8"/>
+              <circle cx="435" cy="667" r="4" fill="none" stroke="#f0f0f0" stroke-width="0.8"/>
+
+              <!-- === Publication info block === -->
+              <!-- Thin gold rule above publication info -->
+              <rect x="50" y="752" width="495" height="1" fill="url(#gold-thin)"/>
+
+              <!-- Series label -->
+              <text x="297" y="784"
+                    text-anchor="middle"
+                    font-family="'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+                    font-size="13"
+                    fill="#7080a0"
+                    letter-spacing="2">#{series}</text>
+
+              <!-- Release date -->
+              <text x="297" y="806"
+                    text-anchor="middle"
+                    font-family="'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+                    font-size="12"
+                    fill="#5a6a80"
+                    letter-spacing="1">#{release}</text>
+            </svg>
+          SVG
+        end
+
+        # ダークテーマの裏表紙SVGを生成
+        def generate_dark_backcover_svg(title, subtitle, author, series, release)
+          <<~SVG
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 595 842" width="595" height="842">
+              <defs>
+                <!-- Background gradient: deep navy to dark midnight -->
+                <linearGradient id="bg-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#0e1a2e"/>
+                  <stop offset="100%" stop-color="#060d1a"/>
+                </linearGradient>
+
+                <!-- Gold shimmer gradient for accent lines -->
+                <linearGradient id="gold-line" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%"   stop-color="#b8902a" stop-opacity="0"/>
+                  <stop offset="40%"  stop-color="#e8c85a"/>
+                  <stop offset="60%"  stop-color="#f5d96e"/>
+                  <stop offset="100%" stop-color="#b8902a" stop-opacity="0"/>
+                </linearGradient>
+
+                <!-- Thin gold line for decorative rules -->
+                <linearGradient id="gold-thin" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%"   stop-color="#c9a43a" stop-opacity="0"/>
+                  <stop offset="30%"  stop-color="#e0c058"/>
+                  <stop offset="70%"  stop-color="#e0c058"/>
+                  <stop offset="100%" stop-color="#c9a43a" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+
+              <!-- Background -->
+              <rect width="595" height="842" fill="url(#bg-grad)"/>
+
+              <!-- === Central graphic: abstract circuit / web network (center cy=421) === -->
+              <!-- Mid ring -->
+              <circle cx="297" cy="421" r="140" fill="none" stroke="#1e4070" stroke-width="0.6"/>
+              <!-- Inner ring -->
+              <circle cx="297" cy="421" r="86" fill="none" stroke="#254580" stroke-width="0.5"/>
+
+              <!-- Radial spokes (inner ring r=86 → mid ring r=140) -->
+              <!-- 0° right -->
+              <line x1="383" y1="421" x2="437" y2="421" stroke="#3a5f9f" stroke-width="0.6"/>
+              <!-- 45° up-right -->
+              <line x1="358" y1="346" x2="396" y2="308" stroke="#3a5f9f" stroke-width="0.6"/>
+              <!-- 90° up -->
+              <line x1="297" y1="335" x2="297" y2="281" stroke="#3a5f9f" stroke-width="0.6"/>
+              <!-- 135° up-left -->
+              <line x1="236" y1="346" x2="198" y2="308" stroke="#3a5f9f" stroke-width="0.6"/>
+              <!-- 180° left -->
+              <line x1="211" y1="421" x2="157" y2="421" stroke="#3a5f9f" stroke-width="0.6"/>
+              <!-- 225° down-left -->
+              <line x1="236" y1="496" x2="198" y2="534" stroke="#3a5f9f" stroke-width="0.6"/>
+              <!-- 270° down -->
+              <line x1="297" y1="507" x2="297" y2="561" stroke="#3a5f9f" stroke-width="0.6"/>
+              <!-- 315° down-right -->
+              <line x1="358" y1="496" x2="396" y2="534" stroke="#3a5f9f" stroke-width="0.6"/>
+
+              
+              <!-- Inner nodes (at inner ring intersections) -->
+              <circle cx="383" cy="421" r="4" fill="#4a80c8" stroke="#5b9ef5" stroke-width="0.8"/>
+              <circle cx="358" cy="346" r="3" fill="#4a80c8" stroke="#5b9ef5" stroke-width="0.6"/>
+              <circle cx="236" cy="346" r="3" fill="#4a80c8" stroke="#5b9ef5" stroke-width="0.6"/>
+              <circle cx="211" cy="421" r="4" fill="#4a80c8" stroke="#5b9ef5" stroke-width="0.8"/>
+              <circle cx="236" cy="496" r="3" fill="#4a80c8" stroke="#5b9ef5" stroke-width="0.6"/>
+              <circle cx="358" cy="496" r="3" fill="#4a80c8" stroke="#5b9ef5" stroke-width="0.6"/>
+
+              <!-- Mid ring nodes -->
+              <circle cx="437" cy="421" r="5" fill="#3a5f9f" stroke="#4a80c8" stroke-width="0.8"/>
+              <circle cx="396" cy="308" r="4" fill="#3a5f9f" stroke="#4a80c8" stroke-width="0.6"/>
+              <circle cx="297" cy="281" r="4" fill="#3a5f9f" stroke="#4a80c8" stroke-width="0.6"/>
+              <circle cx="198" cy="308" r="4" fill="#3a5f9f" stroke="#4a80c8" stroke-width="0.6"/>
+              <circle cx="157" cy="421" r="5" fill="#3a5f9f" stroke="#4a80c8" stroke-width="0.8"/>
+              <circle cx="198" cy="534" r="4" fill="#3a5f9f" stroke="#4a80c8" stroke-width="0.6"/>
+              <circle cx="297" cy="561" r="4" fill="#3a5f9f" stroke="#4a80c8" stroke-width="0.6"/>
+              <circle cx="396" cy="534" r="4" fill="#3a5f9f" stroke="#4a80c8" stroke-width="0.6"/>
+
+              
+              <!-- Center icon -->
+              <circle cx="297" cy="421" r="30"  fill="#0e2040" stroke="#4a80c8" stroke-width="1.2"/>
+              <!-- Bracket icon in center -->
+              <text x="297" y="429" text-anchor="middle" font-family="'Courier New', monospace"
+                    font-size="21" fill="#5b9ef5" font-weight="700">&lt;/&gt;</text>
+
+              <!-- Gold accent lines at top and bottom -->
+              <rect x="50" y="50" width="495" height="1" fill="url(#gold-thin)"/>
+              <rect x="50" y="792" width="495" height="1" fill="url(#gold-thin)"/>
+            </svg>
+          SVG
+        end
+
+        # ライトテーマの裏表紙SVGを生成
+        def generate_light_backcover_svg(title, subtitle, author, series, release)
+          <<~SVG
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 595 842" width="595" height="842">
+              <defs>
+                <!-- Background gradient: light cream to off-white -->
+                <linearGradient id="bg-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#f8f6f2"/>
+                  <stop offset="100%" stop-color="#f0ece4"/>
+                </linearGradient>
+
+                <!-- Gold shimmer gradient for accent lines -->
+                <linearGradient id="gold-line" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%"   stop-color="#b8902a" stop-opacity="0"/>
+                  <stop offset="40%"  stop-color="#e8c85a"/>
+                  <stop offset="60%"  stop-color="#f5d96e"/>
+                  <stop offset="100%" stop-color="#b8902a" stop-opacity="0"/>
+                </linearGradient>
+
+                <!-- Thin gold line for decorative rules -->
+                <linearGradient id="gold-thin" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%"   stop-color="#c9a43a" stop-opacity="0"/>
+                  <stop offset="30%"  stop-color="#e0c058"/>
+                  <stop offset="70%"  stop-color="#e0c058"/>
+                  <stop offset="100%" stop-color="#c9a43a" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+
+              <!-- Background -->
+              <rect width="595" height="842" fill="url(#bg-grad)"/>
+
+              <!-- === Central graphic: abstract circuit / web network (center cy=421) === -->
+              <!-- Mid ring -->
+              <circle cx="297" cy="421" r="140" fill="none" stroke="#e8e8e8" stroke-width="0.6"/>
+              <!-- Inner ring -->
+              <circle cx="297" cy="421" r="86" fill="none" stroke="#f0f0f0" stroke-width="0.5"/>
+
+              <!-- Radial spokes (inner ring r=86 → mid ring r=140) -->
+              <!-- 0° right -->
+              <line x1="383" y1="421" x2="437" y2="421" stroke="#f0f0f0" stroke-width="0.6"/>
+              <!-- 45° up-right -->
+              <line x1="358" y1="346" x2="396" y2="308" stroke="#f0f0f0" stroke-width="0.6"/>
+              <!-- 90° up -->
+              <line x1="297" y1="335" x2="297" y2="281" stroke="#f0f0f0" stroke-width="0.6"/>
+              <!-- 135° up-left -->
+              <line x1="236" y1="346" x2="198" y2="308" stroke="#f0f0f0" stroke-width="0.6"/>
+              <!-- 180° left -->
+              <line x1="211" y1="421" x2="157" y2="421" stroke="#f0f0f0" stroke-width="0.6"/>
+              <!-- 225° down-left -->
+              <line x1="236" y1="496" x2="198" y2="534" stroke="#f0f0f0" stroke-width="0.6"/>
+              <!-- 270° down -->
+              <line x1="297" y1="507" x2="297" y2="561" stroke="#f0f0f0" stroke-width="0.6"/>
+              <!-- 315° down-right -->
+              <line x1="358" y1="496" x2="396" y2="534" stroke="#f0f0f0" stroke-width="0.6"/>
+
+              
+              <!-- Inner nodes (at inner ring intersections) -->
+              <circle cx="383" cy="421" r="4" fill="#f0f0f0" stroke="#1e3a60" stroke-width="0.8"/>
+              <circle cx="358" cy="346" r="3" fill="#f0f0f0" stroke="#1e3a60" stroke-width="0.6"/>
+              <circle cx="236" cy="346" r="3" fill="#f0f0f0" stroke="#1e3a60" stroke-width="0.6"/>
+              <circle cx="211" cy="421" r="4" fill="#f0f0f0" stroke="#1e3a60" stroke-width="0.8"/>
+              <circle cx="236" cy="496" r="3" fill="#f0f0f0" stroke="#1e3a60" stroke-width="0.6"/>
+              <circle cx="358" cy="496" r="3" fill="#f0f0f0" stroke="#1e3a60" stroke-width="0.6"/>
+
+              <!-- Mid ring nodes -->
+              <circle cx="437" cy="421" r="5" fill="#f0f0f0" stroke="#1e3a60" stroke-width="0.8"/>
+              <circle cx="396" cy="308" r="4" fill="#f0f0f0" stroke="#1e3a60" stroke-width="0.6"/>
+              <circle cx="297" cy="281" r="4" fill="#f0f0f0" stroke="#1e3a60" stroke-width="0.6"/>
+              <circle cx="198" cy="308" r="4" fill="#f0f0f0" stroke="#1e3a60" stroke-width="0.6"/>
+              <circle cx="157" cy="421" r="5" fill="#f0f0f0" stroke="#1e3a60" stroke-width="0.8"/>
+              <circle cx="198" cy="534" r="4" fill="#f0f0f0" stroke="#1e3a60" stroke-width="0.6"/>
+              <circle cx="297" cy="561" r="4" fill="#f0f0f0" stroke="#1e3a60" stroke-width="0.6"/>
+              <circle cx="396" cy="534" r="4" fill="#f0f0f0" stroke="#1e3a60" stroke-width="0.6"/>
+
+              
+              <!-- Center icon -->
+              <circle cx="297" cy="421" r="30"  fill="#ffffff" stroke="#1e3a60" stroke-width="1.2"/>
+              <!-- Bracket icon in center -->
+              <text x="297" y="429" text-anchor="middle" font-family="'Courier New', monospace"
+                    font-size="21" fill="#1e3a60" font-weight="700">&lt;/&gt;</text>
+
+              <!-- Gold accent lines at top and bottom -->
+              <rect x="50" y="50" width="495" height="1" fill="url(#gold-thin)"/>
+              <rect x="50" y="792" width="495" height="1" fill="url(#gold-thin)"/>
+            </svg>
+          SVG
+        end
+
         # @return [void]
         #
         # 生成ファイル: .cache/vs/_titlepage.md
