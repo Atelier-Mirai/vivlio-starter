@@ -79,7 +79,6 @@ module Vivlio
               @internal_commands ||= {
                 'pdf' => PdfCommand,
                 'create:cover' => CreateCoverCommand,
-                'create:backcover' => CreateBackcoverCommand,
                 'create:titlepage' => CreateTitlepageCommand,
                 'create:colophon' => CreateColophonCommand,
                 'create:legalpage' => CreateLegalpageCommand

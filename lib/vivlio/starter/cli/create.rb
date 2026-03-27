@@ -106,12 +106,11 @@ module Vivlio
         #
         # @param options [Hash] オプション
         #   - :verbose [Boolean] 詳細ログ出力
-        #   - :type [String] 'front' または 'back'
         # @return [void]
         #
         # 生成ファイル: 
-        # - front: covers/frontcover_dark.svg, covers/frontcover_light.svg
-        # - back:  covers/backcover_dark.svg, covers/backcover_light.svg
+        # - 表紙: covers/frontcover_dark.svg, covers/frontcover_light.svg
+        # - 裏表紙: covers/backcover_dark.svg, covers/backcover_light.svg
         def execute_cover(options)
           apply_verbose(options)
           
@@ -119,7 +118,6 @@ module Vivlio
           author = fetch_config_value('book', 'author')
           series = fetch_config_value('book', 'series')
           release = fetch_config_value('book', 'release')
-          cover_type = options[:type] || 'front'
           
           covers_dir = File.join(Dir.pwd, 'covers')
           FileUtils.mkdir_p(covers_dir) unless Dir.exist?(covers_dir)
@@ -127,23 +125,26 @@ module Vivlio
           # book.yml のパスを取得
           book_config_path = File.join(Dir.pwd, 'config', 'book.yml')
           
-          %w[dark light].each do |theme|
-            if cover_type == 'front'
-              content = generate_frontcover_svg_content(title, subtitle, author, series, release, theme)
-              filename = "frontcover_#{theme}.svg"
-            else
-              content = generate_backcover_svg_content(title, subtitle, author, series, release, theme)
-              filename = "backcover_#{theme}.svg"
+          # 表紙と裏表紙の両方を生成
+          %w[front back].each do |cover_type|
+            %w[dark light].each do |theme|
+              if cover_type == 'front'
+                content = generate_frontcover_svg_content(title, subtitle, author, series, release, theme)
+                filename = "frontcover_#{theme}.svg"
+              else
+                content = generate_backcover_svg_content(title, subtitle, author, series, release, theme)
+                filename = "backcover_#{theme}.svg"
+              end
+              
+              path = File.join(covers_dir, filename)
+              log_message = cover_type == 'front' ? "表紙を生成しました: #{path}" : "裏表紙を生成しました: #{path}"
+              
+              # book.yml が既存の cover より新しい場合のみ生成
+              next if File.exist?(path) && File.mtime(path) >= File.mtime(book_config_path)
+              
+              safe_write(path, content)
+              Common.log_info(log_message)
             end
-            
-            path = File.join(covers_dir, filename)
-            log_message = cover_type == 'front' ? "表紙を生成しました: #{path}" : "裏表紙を生成しました: #{path}"
-            
-            # book.yml が既存の cover より新しい場合のみ生成
-            next if File.exist?(path) && File.mtime(path) >= File.mtime(book_config_path)
-            
-            safe_write(path, content)
-            Common.log_info(log_message)
           end
         end
 

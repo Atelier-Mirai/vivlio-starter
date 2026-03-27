@@ -216,27 +216,15 @@ output:
   # ----------------------------
   # 表紙・裏表紙設定
   # ----------------------------
-  cover: light # light, dark, o
+  cover: light # light, dark, myawesome
 
   # ----------------------------
   # PDF設定（閲覧用）
   # ----------------------------
   pdf:
-    # ..............................
-    # 表表紙と裏表紙（本文と結合して出力）
-    # ..............................
-    cover:
-      enabled: true        # true で front/back を結合、false で除外
-      front: "frontcover_rgb.pdf"  # 表表紙（PDF）
-      back: backcover_rgb.pdf    # 裏表紙（PDF）
-    
-    # ..............................
-    # PDF圧縮設定
-    # ..............................
-    compress:
-      enabled: false         # 自動圧縮を有効にするか（処理時間が増加）
-      suffix: '_compressed'  # 圧縮ファイル名のサフィックス
-      # vs build --compress / --no-compress で上書き可能
+    combined: true        # true で front/backcover を結合、false で除外
+    compress: false       # 自動圧縮を有効にするか（処理時間が増加）
+                          # vs build --compress / --no-compress で上書き可能
   
   # ----------------------------
   # 印刷所 入稿用PDF設定
@@ -248,24 +236,14 @@ output:
     # 出力は PDF/X-4 準拠（ねこのしっぽ、日光企画で対応済み）
     # 隠しノンブルは HexaPDF で PDF 結合後に自動書き込み
 
-    # ..............................
-    # 表表紙と裏表紙（本文とは独立して出力）
-    # ..............................
-    cover:
-      front: frontcover_cmyk.pdf  # 表表紙（PDF/X-1a）
-      back: backcover_cmyk.pdf    # 裏表紙（PDF/X-1a）
-  
   # ----------------------------
   # EPUB設定
   # ----------------------------
   epub:
-    cover:
-      embed: true              # 表紙画像を EPUB に埋め込むか（true: 楽天/Apple向け、false: Kindle向け）
-      image: cover.jpg         # EPUBカバー画像（1600x2560推奨、covers/ ディレクトリ配下）
+    embed: true              # 表紙画像を EPUB に埋め込むか（true: 楽天/Apple向け、false: Kindle向け）
     layout: reflowable         # reflowable（リフロー型） / fixed（固定レイアウト型）
     # 注: メタデータ（title, author, language, isbn, publisher）は
     #     book セクションから自動的に流用される
-
 
 # ========================================
 # VFM マークダウン記法に関する設定
@@ -279,24 +257,19 @@ vfm:
 # ========================================
 index_glossary:
   # 索引・用語集機能の有効/無効
-  # true: 索引と用語集の両方が有効
-  # false: 索引と用語集の両方が無効
-  enabled: true
+  enabled: true   # true: 索引と用語集の両方が有効
+                  # false: 索引と用語集の両方が無効
 
   # MeCab による読み自動推測を使用
   use_mecab: true
 
   # タイムゾーン (レビュー時の新着判定に利用)
-  # 既定値: 'Asia/Tokyo'（省略可能）
   timezone: 'Asia/Tokyo'
 
   # 文脈抽出の幅（キーワード前後の文字数）
-  # 小さな画面なら 20、大画面なら 60 など調整可能
-  # 既定値: 40
-  context_width: 40
+  context_width: 40 # 小さな画面なら 20文字、大画面なら 60文字 など調整可能
 
   # 文脈抽出時に形態素境界で賢く文脈を引用するか
-  # 既定値: true
   smart_context_cutting: true
 
 # ========================================
