@@ -379,7 +379,8 @@ module Vivlio
         def generate_epub_filename = generate_output_filename('epub')
 
         def generate_compressed_pdf_filename(target = 'pdf')
-          suffix = CONFIG.output&.pdf&.compress&.suffix || 'compressed'
+          # 新しい設定構造ではsuffixは"_compressed"に固定
+          suffix = 'compressed'
           generate_output_filename(target, suffix: suffix)
         end
 
@@ -505,6 +506,53 @@ module Vivlio
           resolve_path_from_root(file)
         end
 
+        # カバー設定関連
+        def cover_theme        = CONFIG.dig('output', 'cover')
+        def pdf_combined?      = CONFIG.dig('output', 'pdf', 'combined') == true
+        def pdf_compress?      = CONFIG.dig('output', 'pdf', 'compress') == true
+        def epub_embed?        = CONFIG.dig('output', 'epub', 'embed') == true
+
+        # カバー設定のバリデーション
+        def validate_cover_settings
+          theme = cover_theme
+          unless theme
+            log_error("output.cover 設定が見つかりません")
+            return false
+          end
+
+          # 標準テーマの場合は有効
+          return true if %w[light dark].include?(theme)
+          
+          # masterテーマは特別扱い（既存のmaster.pngファイルを使用）
+          if theme == 'master'
+            front_path = File.join(covers_dir, "frontcover_#{theme}.png")
+            back_path  = File.join(covers_dir, "backcover_#{theme}.png")
+            
+            unless File.exist?(front_path) && File.exist?(back_path)
+              log_error("マスター画像 '#{theme}' のPNGファイルが見つかりません")
+              return false
+            end
+            return true
+          end
+          
+          # カスタムテーマの場合は命名規則をチェック
+          unless theme.match?(/\A[a-z0-9_]+\z/)
+            log_error("テーマ名 '#{theme}' は無効な形式です")
+            return false
+          end
+          
+          # カスタムテーマの場合はPNGファイルの存在を確認
+          front_path = File.join(covers_dir, "frontcover_#{theme}.png")
+          back_path  = File.join(covers_dir, "backcover_#{theme}.png")
+          
+          unless File.exist?(front_path) && File.exist?(back_path)
+            log_error("カスタム画像 '#{theme}' のPNGファイルが見つかりません")
+            return false
+          end
+
+          true
+        end
+
         # エンドレスメソッド定義を module_function として明示的に公開
         module_function :abort_with_error, :appendix_number_to_letter, :apply_page_preset,
                         :blank?, :cache_cfg, :cache_dir, :cache_enabled?,
@@ -513,6 +561,7 @@ module Vivlio
                         :appendix_template_path, :postface_template_path,
                         :config_dir_path,
                         :consume_vivliostyle_build_timings, :contents_dir, :covers_dir,
+                        :cover_theme, :pdf_combined?, :pdf_compress?, :epub_embed?,
                         :current_log_level, :current_step_label, :default_cache,
                         :default_commands, :default_directories, :default_files,
                         :default_vfm, :default_vivliostyle, :echo_always, :ensure_cache_dir!,
@@ -528,7 +577,7 @@ module Vivlio
                         :reload_configuration!, :relative_path_from_root,
                         :resolve_page_size, :resolve_path_from_root,
                         :reset_vivliostyle_build_timings, :stylesheets_dir, :to_roman_lower,
-                        :truthy?, :vfm_command, :verbose?, :with_current_step_label,
+                        :truthy?, :vfm_command, :validate_cover_settings, :verbose?, :with_current_step_label,
                         :wrap_config
       end
     end

@@ -24,9 +24,8 @@ module Vivlio
 
             return files.compact unless pdf_selected
 
-            # カバー設定の取得 (Dataオブジェクトなので nil-safe なドットアクセス)
-            cover_cfg = cfg.output&.pdf&.cover
-            return files.compact unless cover_cfg&.enabled != false
+            # 新しいカバー設定の取得
+            return files.compact unless Common.pdf_combined?
 
             begin
               page_use   = resolve_page_use(cfg.page)
@@ -34,12 +33,16 @@ module Vivlio
               
               ensure_cover_assets_for_page_size!(page_use)
 
+              # テーマに応じたカバーを生成
+              theme = Common.cover_theme
+              size = extract_size_from_preset(page_use)
+              
               # パス生成
-              front = cover_cfg.front&.then { File.join(covers_dir, _1) }
-              back  = cover_cfg.back&.then  { File.join(covers_dir, _1) }
+              front = File.join(covers_dir, "frontcover_#{theme}_#{size}_rgb.pdf")
+              back  = File.join(covers_dir, "backcover_#{theme}_#{size}_rgb.pdf")
 
-              files.unshift(front) if front && File.exist?(front)
-              files.push(back)     if back && File.exist?(back)
+              files.unshift(front) if File.exist?(front)
+              files.push(back)     if File.exist?(back)
             rescue StandardError => e
               Common.log_warn("[Step 10] カバー結合設定の処理中にエラー: #{e.message}")
             end
@@ -68,10 +71,25 @@ module Vivlio
             'b5_standard'
           end
 
+          def extract_size_from_preset(preset_name)
+            case preset_name.to_s
+            when /a4/ then 'a4'
+            when /a5/ then 'a5'
+            when /b5/ then 'b5'
+            else 'a4'  # デフォルト
+            end
+          end
+
           # ================================================================
           # 3. カバー自動生成ロジック
           # ================================================================
           def ensure_cover_assets_for_page_size!(page_use)
+            # 新しい設定構造に対応
+            unless Common.validate_cover_settings
+              Common.log_warn("[Step 10] カバー設定が無効なためカバー生成をスキップします")
+              return
+            end
+
             size = CoverCommands.detect_page_size(page_use)
             return if cover_generation_attempts[size]
 

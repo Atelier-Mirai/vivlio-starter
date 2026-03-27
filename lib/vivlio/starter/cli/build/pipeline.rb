@@ -801,6 +801,17 @@ module Vivlio
 
           # EPUB 用カバー画像を生成（cover.jpg が未生成の場合のみ）
           def generate_epub_cover_if_needed
+            # 新しい設定構造に対応
+            unless Common.validate_cover_settings
+              Common.log_warn("[EPUB] カバー設定が無効なためカバー生成をスキップします")
+              return
+            end
+
+            unless Common.epub_embed?
+              Common.log_info("[EPUB] カバー埋め込みが無効なためスキップします")
+              return
+            end
+
             config = Common::CONFIG
             cover_path = Build::EpubBuilder.resolve_cover_image_path(config)
 
@@ -809,19 +820,14 @@ module Vivlio
               return
             end
 
-            covers_dir = config.directories&.covers || 'covers'
-            master = File.join(covers_dir, CoverCommands::FRONTCOVER_MASTER)
-            unless File.exist?(master)
-              Common.log_warn("[EPUB] マスター画像が見つかりません: #{master}（カバー画像なしで続行）")
-              return
-            end
-
             Common.log_action('[EPUB] カバー画像を生成しています…')
             # CoverCommands は Hash（シンボルキー）を期待するので変換
             config_hash = Common.load_config
+            covers_dir = config.directories&.covers || 'covers'
             CoverCommands.generate_epub_cover(covers_dir, config_hash)
           end
 
+          
           # Step 4: 索引処理を実行
           def run_step4_index_processing
             unless IndexCommands.index_enabled?

@@ -230,17 +230,19 @@ module Vivlio
           # targets に print_pdf のみ（pdf なし）が指定されているかを判定する
           def print_pdf_only?
             cfg = Common::CONFIG
-            targets = Build::PdfMerger.extract_targets(cfg.output&.targets)
-            targets = Build::PdfMerger.extract_targets(cfg.output&.pdf&.targets) if targets.empty?
+            targets = cfg.output&.targets
+            targets = Build::PdfMerger.extract_targets(targets) if targets
             targets.include?('print_pdf') && !targets.include?('pdf')
           end
 
           # pdf または print_pdf の出力が要求されているかを判定する
           def pdf_outputs_requested?
             cfg = Common::CONFIG
-            targets = Build::PdfMerger.extract_targets(cfg.output&.targets)
-            targets = Build::PdfMerger.extract_targets(cfg.output&.pdf&.targets) if targets.empty?
+            # Dataオブジェクトの適切なアクセス方法
+            targets = cfg.output&.targets
+            targets = Build::PdfMerger.extract_targets(targets) if targets
 
+            # targets未指定時はデフォルトでpdfを開く
             return true if targets.empty?
 
             targets.any? { |target| target.include?('pdf') }

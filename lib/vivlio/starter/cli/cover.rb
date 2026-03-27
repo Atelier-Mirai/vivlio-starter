@@ -156,26 +156,17 @@ module Vivlio
           pdf_target_enabled = targets.include?('pdf')
           print_target_enabled = targets.include?('print_pdf')
 
+          # 新しい設定構造に対応
           if pdf_target_enabled
-            front_pdf = config.dig(:output, :pdf, :cover, :front)
-            if front_pdf
-              Common.log_info("\n🎨 PDF用カバー（#{label}、RGB）を生成中...")
-              CoverCommands.generate_rgb_pdf(covers_dir, page_size, config)
-              generated << 'PDF用（RGB）'
-            else
-              Common.log_warn('  - PDFカバー出力が設定されていません (output.pdf.cover.front)')
-            end
+            Common.log_info("\n🎨 PDF用カバー（#{label}、RGB）を生成中...")
+            CoverCommands.generate_rgb_pdf(covers_dir, page_size, config)
+            generated << 'PDF用（RGB）'
           end
 
           if print_target_enabled
-            front_print = config.dig(:output, :print_pdf, :cover, :front)
-            if front_print
-              Common.log_info("\n🖨️  印刷用カバー（#{label}、CMYK、PDF/X-1a）を生成中...")
-              CoverCommands.generate_cmyk_pdf(covers_dir, page_size, config)
-              generated << "印刷用（#{label}、PDF/X-1a）"
-            else
-              Common.log_warn('  - 印刷用カバー出力が設定されていません (output.print_pdf.cover.front)')
-            end
+            Common.log_info("\n🖨️  印刷用カバー（#{label}、CMYK、PDF/X-1a）を生成中...")
+            CoverCommands.generate_cmyk_pdf(covers_dir, page_size, config)
+            generated << "印刷用（#{label}、PDF/X-1a）"
           end
 
           generated
@@ -208,21 +199,24 @@ module Vivlio
         # RGB版PDF生成（ページサイズ依存）
         def self.generate_rgb_pdf(covers_dir, page_size, config)
           size = SIZES[page_size] || SIZES[:b5]
-          front_output = config.dig(:output, :pdf, :cover, :front)
-          back_output = config.dig(:output, :pdf, :cover, :back)
+          theme = config.dig(:output, :cover) || 'master'
+          
+          # 新しい命名規則で出力ファイル名を生成
+          front_output = "frontcover_#{theme}_#{page_size}_rgb.pdf"
+          back_output = "backcover_#{theme}_#{page_size}_rgb.pdf"
 
-          if front_output
-            CoverCommands.generate_rgb_pdf_single(
-              File.join(covers_dir, FRONTCOVER_MASTER),
-              File.join(covers_dir, front_output),
-              size
-            )
-          end
-
-          return unless back_output
+          # masterテーマの場合はmaster.pngを、それ以外はテーマ名のPNGを使用
+          front_input = theme == 'master' ? FRONTCOVER_MASTER : "frontcover_#{theme}.png"
+          back_input = theme == 'master' ? BACKCOVER_MASTER : "backcover_#{theme}.png"
 
           CoverCommands.generate_rgb_pdf_single(
-            File.join(covers_dir, BACKCOVER_MASTER),
+            File.join(covers_dir, front_input),
+            File.join(covers_dir, front_output),
+            size
+          )
+
+          CoverCommands.generate_rgb_pdf_single(
+            File.join(covers_dir, back_input),
             File.join(covers_dir, back_output),
             size
           )
@@ -260,21 +254,24 @@ module Vivlio
 
           Common.log_info "  塗り足し: #{bleed_mm}mm（片側）→ #{size[:mm][0]}×#{size[:mm][1]}mm" if bleed_mm > 0
 
-          front_output = config.dig(:output, :print_pdf, :cover, :front)
-          back_output = config.dig(:output, :print_pdf, :cover, :back)
+          theme = config.dig(:output, :cover) || 'master'
+          
+          # 新しい命名規則で出力ファイル名を生成
+          front_output = "frontcover_#{theme}_#{page_size}_cmyk.pdf"
+          back_output = "backcover_#{theme}_#{page_size}_cmyk.pdf"
 
-          if front_output
-            CoverCommands.generate_pdfx_single(
-              File.join(covers_dir, FRONTCOVER_MASTER),
-              File.join(covers_dir, front_output),
-              size
-            )
-          end
-
-          return unless back_output
+          # masterテーマの場合はmaster.pngを、それ以外はテーマ名のPNGを使用
+          front_input = theme == 'master' ? FRONTCOVER_MASTER : "frontcover_#{theme}.png"
+          back_input = theme == 'master' ? BACKCOVER_MASTER : "backcover_#{theme}.png"
 
           CoverCommands.generate_pdfx_single(
-            File.join(covers_dir, BACKCOVER_MASTER),
+            File.join(covers_dir, front_input),
+            File.join(covers_dir, front_output),
+            size
+          )
+
+          CoverCommands.generate_pdfx_single(
+            File.join(covers_dir, back_input),
             File.join(covers_dir, back_output),
             size
           )

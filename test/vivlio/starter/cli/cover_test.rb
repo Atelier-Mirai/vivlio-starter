@@ -16,9 +16,10 @@ require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
 require 'yaml'
+require 'samovar'
 require 'vivlio/starter/cli/common'
 require 'vivlio/starter/cli/cover'
-require 'vivlio/starter/cli/samovar/cover_command'
+# require 'vivlio/starter/cli/samovar/cover_command'  # Phase 1では不要
 
 module Vivlio
   module Starter
@@ -170,6 +171,7 @@ module Vivlio
         private
 
         # 一時ディレクトリ配下でテストを実行する
+        # テスト実行後に自動的にクリーンアップされる安全な環境を提供
         def within_temp_dir
           Dir.mktmpdir do |dir|
             Dir.chdir(dir) { yield dir }
@@ -177,6 +179,7 @@ module Vivlio
         end
 
         # テスト用の設定ファイルを生成
+        # カバー設定、ページプリセット、置換リストなどの必要な設定を作成
         def setup_config
           FileUtils.mkdir_p('config')
           config = {
@@ -215,6 +218,8 @@ module Vivlio
         end
 
         # ダミーのPNG画像を生成（ImageMagickが必要）
+        # ImageMagickが利用可能な場合は指定サイズで白いPNGを生成
+        # 利用不可な場合は空ファイルを作成してテストを継続
         def create_dummy_png(path, width: 100, height: 100)
           if (convert_cmd = imagemagick_convert_command)
             system(*convert_cmd, '-size', "#{width}x#{height}", 'xc:white', path, out: File::NULL, err: File::NULL)
@@ -229,12 +234,16 @@ module Vivlio
           !imagemagick_convert_command.nil?
         end
 
+        # ImageMagickのconvertコマンドを取得
+        # magick（ImageMagick 7+）またはconvert（従来版）を優先
         def imagemagick_convert_command
           return ['magick', 'convert'] if command_in_path?('magick')
           return ['convert'] if command_in_path?('convert')
           nil
         end
 
+        # 指定されたコマンドがPATHに存在するかチェック
+        # システムコマンド実行時のハングを防止するためにPATHを直接探索
         def command_in_path?(command)
           return false if command.to_s.empty?
 
@@ -244,6 +253,8 @@ module Vivlio
           end
         end
 
+        # フィクスチャのマスター画像をコピーまたはスタブを作成
+        # 実際のフィクスチャが存在しない場合はダミーPNGを生成
         def copy_fixture_master_files(covers_dir, front: true, back: true)
           FileUtils.mkdir_p(covers_dir)
 
@@ -256,6 +267,8 @@ module Vivlio
           end
         end
 
+        # フィクスチャファイルをコピーまたはスタブを作成
+        # ソースファイルが存在する場合はコピー、存在しない場合はダミーを生成
         def copy_or_stub_fixture(source, destination)
           if File.exist?(source)
             FileUtils.cp(source, destination)
@@ -280,6 +293,184 @@ module Vivlio
         FIXTURE_COVERS_DIR = File.join(PROJECT_ROOT, 'covers')
         FRONT_MASTER_FIXTURE = File.join(FIXTURE_COVERS_DIR, 'frontcover_master.png')
         BACK_MASTER_FIXTURE = File.join(FIXTURE_COVERS_DIR, 'backcover_master.png')
+      end
+
+      # Common::Config カバー設定機能のテスト
+      class CoverConfigTest < Minitest::Test
+        def setup
+          @temp_dir = Dir.mktmpdir
+          @original_dir = Dir.pwd
+          Dir.chdir(@temp_dir)
+          setup_test_environment
+        end
+
+        def teardown
+          Dir.chdir(@original_dir)
+          FileUtils.rm_rf(@temp_dir)
+        end
+
+        # lightテーマ設定が正しく読み込めることを確認
+        def test_should_read_light_theme_setting
+          config_content = {
+            'output' => {
+              'cover' => 'light',
+              'pdf' => { 'combined' => true },
+              'epub' => { 'embed' => true }
+            }
+          }
+          setup_config_file(config_content)
+          
+          # 設定を再読み込み
+          Common.reload_configuration!
+          
+          assert_equal 'light', Common.cover_theme
+          assert Common.pdf_combined?
+          assert Common.epub_embed?
+        end
+
+        # darkテーマ設定が正しく読み込めることを確認
+        def test_should_read_dark_theme_setting
+          config_content = {
+            'output' => {
+              'cover' => 'dark',
+              'pdf' => { 'combined' => false },
+              'epub' => { 'embed' => false }
+            }
+          }
+          setup_config_file(config_content)
+          
+          Common.reload_configuration!
+          
+          assert_equal 'dark', Common.cover_theme
+          refute Common.pdf_combined?
+          refute Common.epub_embed?
+        end
+
+        # カスタムテーマ設定が正しく読み込めることを確認
+        def test_should_read_custom_theme_setting
+          config_content = {
+            'output' => {
+              'cover' => 'my_custom_theme',
+              'pdf' => { 'combined' => true },
+              'epub' => { 'embed' => true }
+            }
+          }
+          setup_config_file(config_content)
+          
+          Common.reload_configuration!
+          
+          assert_equal 'my_custom_theme', Common.cover_theme
+          assert Common.pdf_combined?
+          assert Common.epub_embed?
+        end
+
+        # カバー設定バリデーション：lightテーマが有効であることを確認
+        def test_should_validate_light_theme_successfully
+          setup_basic_config('light')
+          Common.reload_configuration!
+          
+          result = Common.validate_cover_settings
+          assert result, 'lightテーマは有効であるべきです'
+        end
+
+        # カバー設定バリデーション：darkテーマが有効であることを確認
+        def test_should_validate_dark_theme_successfully
+          setup_basic_config('dark')
+          Common.reload_configuration!
+          
+          result = Common.validate_cover_settings
+          assert result, 'darkテーマは有効であるべきです'
+        end
+
+        # カバー設定バリデーション：カスタムテーマ（PNGファイルあり）が有効であることを確認
+        def test_should_validate_custom_theme_with_png_files
+          setup_basic_config('my_custom')
+          create_custom_theme_files('my_custom')
+          Common.reload_configuration!
+          
+          result = Common.validate_cover_settings
+          assert result, 'PNGファイルが存在するカスタムテーマは有効であるべきです'
+        end
+
+        # カバー設定バリデーション：カスタムテーマ（PNGファイルなし）が無効であることを確認
+        def test_should_fail_validation_for_custom_theme_without_png_files
+          setup_basic_config('my_custom')
+          Common.reload_configuration!
+          
+          result = Common.validate_cover_settings
+          refute result, 'PNGファイルが存在しないカスタムテーマは無効であるべきです'
+        end
+
+        # カバー設定バリデーション：不正なテーマ名が無効であることを確認
+        def test_should_fail_validation_for_invalid_theme_names
+          invalid_names = ['My-Theme', 'my theme', 'MyTheme', '123_theme']
+          
+          invalid_names.each do |invalid_name|
+            setup_basic_config(invalid_name)
+            Common.reload_configuration!
+            
+            result = Common.validate_cover_settings
+            refute result, "不正なテーマ名 '#{invalid_name}' は無効であるべきです"
+          end
+        end
+
+        # カバー設定バリデーション：設定未指定が無効であることを確認
+        def test_should_fail_validation_when_cover_setting_missing
+          config_content = {
+            'output' => {
+              'pdf' => { 'combined' => true }
+            }
+          }
+          setup_config_file(config_content)
+          Common.reload_configuration!
+          
+          # cover_themeがnilを返すことを確認
+          assert_nil Common.cover_theme
+          
+          result = Common.validate_cover_settings
+          refute result, 'cover設定が未指定の場合は無効であるべきです'
+        end
+
+        private
+
+        # テスト実行前に必要なディレクトリと設定ファイルを作成
+        def setup_test_environment
+          FileUtils.mkdir_p('config')
+          %w[book catalog page_presets post_replace_list].each do |file|
+            File.write("config/#{file}.yml", '{}')
+          end
+          FileUtils.mkdir_p('covers')
+        end
+
+        # 指定された内容でbook.ymlを設定
+        def setup_config_file(content)
+          File.write('config/book.yml', content.to_yaml)
+        end
+
+        # 基本的なカバー設定を作成（テーマ名を指定）
+        def setup_basic_config(theme)
+          config_content = {
+            'output' => {
+              'cover' => theme,
+              'pdf' => { 'combined' => true },
+              'epub' => { 'embed' => true }
+            }
+          }
+          setup_config_file(config_content)
+        end
+
+        # カスタムテーマ用のPNGファイルを作成
+        # 表紙と裏表紙のPNGファイルを指定されたテーマ名で生成
+        def create_custom_theme_files(theme)
+          create_dummy_png("covers/frontcover_#{theme}.png", width: 2894, height: 4092)
+          create_dummy_png("covers/backcover_#{theme}.png", width: 2894, height: 4092)
+        end
+
+        # 簡易的なPNGファイル作成（テスト用）
+        # 実際のPNGバイナリヘッダを書き込んで有効なPNGファイルとして扱われるようにする
+        def create_dummy_png(path, width:, height:)
+          File.write(path, "\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\tpHYs\x00\x00\x0b\x13\x00\x00\x0b\x13\x01\x00\x9a\x9c\x18\x00\x00\x00\nIDATx\x9cc\xf8\x00\x00\x00\x01\x00\x01\x00\x00\x00\x00IEND\xaeB`\x82")
+        end
       end
     end
   end

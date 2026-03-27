@@ -216,7 +216,8 @@ output:
   # ----------------------------
   # 表紙・裏表紙設定
   # ----------------------------
-  cover: light # light, dark, myawesome
+  # cover: light # light, dark, myawesome
+  cover: master
 
   # ----------------------------
   # PDF設定（閲覧用）

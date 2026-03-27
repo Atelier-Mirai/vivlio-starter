@@ -207,14 +207,13 @@ module Vivlio
           end
 
           # cover 設定行を生成する
-          # cover.embed: true の場合のみ cover プロパティを出力
+          # 新しい設定構造に対応
           #
           # @param config [Object] Common::CONFIG
           # @param esc [Proc] JS エスケープ用 Proc
           # @return [String] cover 設定行（末尾改行付き）
           def build_cover_config_line(config, esc)
-            epub_config = config.output&.epub
-            return "  // cover: 表紙埋め込みなし（cover.embed: false）\n" unless embed_cover?(epub_config)
+            return "  // cover: 表紙埋め込みなし（epub.embed: false）\n" unless Common.epub_embed?
 
             cover_image = resolve_cover_image_path(config)
             return "  // cover: 表紙画像が見つかりません\n" unless cover_image && File.exist?(cover_image)
@@ -222,24 +221,17 @@ module Vivlio
             "  cover: './#{esc.call(cover_image)}',\n"
           end
 
-          # 表紙を EPUB に埋め込むかどうかを判定する
-          # book.yml の output.epub.cover.embed を参照（既定: true）
-          #
-          # @param epub_config [Object, nil] output.epub 設定
-          # @return [Boolean]
-          def embed_cover?(epub_config)
-            embed_val = epub_config&.cover&.embed
-            # 未設定（nil）の場合は true をデフォルトとする
-            embed_val != false
-          end
-
           # 表紙画像のパスを解決する
+          # 新しい設定構造に対応
           #
           # @param config [Object] Common::CONFIG
           # @return [String, nil] 表紙画像の相対パス
           def resolve_cover_image_path(config)
             covers_dir = config.directories&.covers || 'covers'
-            image_name = config.output&.epub&.cover&.image || 'cover.jpg'
+            theme = Common.cover_theme
+            return nil unless theme
+            
+            image_name = "cover_#{theme}.jpg"
             File.join(covers_dir, image_name)
           end
 
