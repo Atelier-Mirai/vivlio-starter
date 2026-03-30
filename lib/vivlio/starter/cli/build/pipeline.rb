@@ -560,8 +560,8 @@ module Vivlio
           # output.targets に pdf が含まれるかを判定する
           def pdf_target?
             cfg = Common::CONFIG
-            targets = Build::PdfMerger.extract_targets(cfg.output&.targets)
-            targets = Build::PdfMerger.extract_targets(cfg.output&.pdf&.targets) if targets.empty?
+            targets = Build::PdfMerger.extract_targets(cfg.dig(:output, :targets))
+            targets = Build::PdfMerger.extract_targets(cfg.dig(:output, :pdf, :targets)) if targets.empty?
             # targets 未指定時はデフォルトで pdf を生成
             return true if targets.empty?
 
@@ -571,14 +571,17 @@ module Vivlio
           # output.targets に print_pdf が含まれるかを判定する
           def print_pdf_target?
             cfg = Common::CONFIG
-            targets = Build::PdfMerger.extract_targets(cfg.output&.targets)
-            targets = Build::PdfMerger.extract_targets(cfg.output&.pdf&.targets) if targets.empty?
+            targets = Build::PdfMerger.extract_targets(cfg.dig(:output, :targets))
+            targets = Build::PdfMerger.extract_targets(cfg.dig(:output, :pdf, :targets)) if targets.empty?
             targets.include?('print_pdf')
           end
 
           # Step 13 のメインフロー
           def run_step13_print_pdf
             Common.log_action('[Step 13] 入稿用 PDF を生成します…')
+
+            # --- Phase: カバー画像の生成 ---
+            CoverCommands.ensure_cover_files_for_build!
 
             # --- Phase: Vivliostyle build（トンボ・塗り足し付き） ---
             print_pdf_build_sections!
@@ -615,6 +618,9 @@ module Vivlio
           end
 
           # 入稿用 PDF を結合する
+          # ※ print_pdf のカバーは本文と別ファイルで入稿するため結合しない
+          #   （本文はトンボ・塗り足し付きでサイズが異なる）
+          #   カバーPDF（CMYK）は covers/ に生成済み
           def print_pdf_merge!
             files = %w[_titlepage_legalpage_print.pdf _sections_print.pdf _colophon_print.pdf]
             existing = files.select { File.exist?(it) }
@@ -694,7 +700,7 @@ module Vivlio
           # output.targets に epub が含まれるかを判定する
           def epub_target?
             cfg = Common::CONFIG
-            targets = Build::PdfMerger.extract_targets(cfg.output&.targets)
+            targets = Build::PdfMerger.extract_targets(cfg.dig(:output, :targets))
             targets.include?('epub')
           end
 
@@ -799,9 +805,8 @@ module Vivlio
             "urn:uuid:#{uuid}"
           end
 
-          # EPUB 用カバー画像を生成（cover.jpg が未生成の場合のみ）
+          # EPUB 用カバー画像を生成（cover_{theme}.jpg が未生成の場合のみ）
           def generate_epub_cover_if_needed
-            # 新しい設定構造に対応
             unless Common.validate_cover_settings
               Common.log_warn("[EPUB] カバー設定が無効なためカバー生成をスキップします")
               return
@@ -821,10 +826,7 @@ module Vivlio
             end
 
             Common.log_action('[EPUB] カバー画像を生成しています…')
-            # CoverCommands は Hash（シンボルキー）を期待するので変換
-            config_hash = Common.load_config
-            covers_dir = config.directories&.covers || 'covers'
-            CoverCommands.generate_epub_cover(covers_dir, config_hash)
+            CoverCommands.ensure_cover_files_for_build!
           end
 
           

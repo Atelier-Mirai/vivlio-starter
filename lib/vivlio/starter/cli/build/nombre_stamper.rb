@@ -18,10 +18,8 @@
 #   - 領域: 塗り足し領域内（仕上がり線の外側）
 #
 # 依存:
-#   - HexaPDF: PDF overlay canvas によるテキスト描画
+#   - Provider (Prawn + CombinePDF): PDF overlay によるテキスト描画（MIT互換）
 # ================================================================
-
-require 'hexapdf'
 
 module Vivlio
   module Starter
@@ -118,7 +116,7 @@ module Vivlio
           #
           # @return [Float] 塗り足し幅（mm）
           def bleed_mm_from_config
-            raw = Common::CONFIG.output&.print_pdf&.bleed
+            raw = Common::CONFIG.dig(:output, :print_pdf, :bleed)
             parse_bleed_mm(raw)
           end
 

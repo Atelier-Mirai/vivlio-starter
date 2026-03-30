@@ -17,9 +17,9 @@ module Vivlio
             files = %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf]
             cfg = Common::CONFIG
 
-            # ターゲット判定 (Dataオブジェクトでも [] アクセス可能に実装済み)
-            targets = extract_targets(cfg.output&.targets)
-            targets = extract_targets(cfg.output&.pdf&.targets) if targets.empty?
+            # ターゲット判定（dig で安全アクセス）
+            targets = extract_targets(cfg.dig(:output, :targets))
+            targets = extract_targets(cfg.dig(:output, :pdf, :targets)) if targets.empty?
             pdf_selected = targets.empty? || targets.any? { _1.include?('pdf') }
 
             return files.compact unless pdf_selected
@@ -84,22 +84,16 @@ module Vivlio
           # 3. カバー自動生成ロジック
           # ================================================================
           def ensure_cover_assets_for_page_size!(page_use)
-            # 新しい設定構造に対応
-            unless Common.validate_cover_settings
-              Common.log_warn("[Step 10] カバー設定が無効なためカバー生成をスキップします")
-              return
-            end
-
             size = CoverCommands.detect_page_size(page_use)
             return if cover_generation_attempts[size]
 
             cover_generation_attempts[size] = true
-            Common.log_action("[Step 10] `vs cover #{size}` を自動実行します…")
-            
-            CoverCommands.execute_for_size(size, nil)
-            Common.log_info("[Step 10] `vs cover #{size}` の実行を完了しました")
+            Common.log_action("[Step 10] カバー画像を自動生成します…")
+
+            CoverCommands.ensure_cover_files_for_build!
+            Common.log_info("[Step 10] カバー画像の生成を完了しました")
           rescue StandardError => e
-            Common.log_warn("[Step 10] vs cover #{size.upcase} 実行中にエラー: #{e.message}")
+            Common.log_warn("[Step 10] カバー生成中にエラー: #{e.message}")
           end
 
           def cover_generation_attempts

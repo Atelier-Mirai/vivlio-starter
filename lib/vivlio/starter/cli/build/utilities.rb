@@ -13,12 +13,11 @@
 #   - 判型計算: config からページサイズを算出
 #
 # 依存:
-#   - HexaPDF: PDF メタデータ読み取り
 #   - pdfinfo: ページ数取得（外部コマンド）
+#   - Provider (Prawn + CombinePDF): PDF 操作（MIT互換）
 # ================================================================
 
 require 'fileutils'
-require 'hexapdf'
 
 module Vivlio
   module Starter
@@ -188,7 +187,7 @@ module Vivlio
             [w_pt, h_pt]
           end
 
-          # HexaPDF を直接利用する関数は、このモジュールではページ数取得などの用途に限定
+          # PDF 操作は Provider 経由で MIT 互換ライブラリ（Prawn + CombinePDF）に委譲
         end
       end
     end

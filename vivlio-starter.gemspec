@@ -39,7 +39,6 @@ Gem::Specification.new do |spec|
   # Runtime dependencies
   spec.add_dependency 'query-stream', '~> 1.0.0'
   spec.add_dependency 'combine_pdf', '~> 1.0'
-  spec.add_dependency 'hexapdf', '~> 1.0'
   spec.add_dependency 'kramdown', '~> 2.4'
   spec.add_dependency 'mini_magick', '~> 4.12'
   spec.add_dependency 'nokogiri', '~> 1.16'

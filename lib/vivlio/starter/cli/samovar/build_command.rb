@@ -230,17 +230,14 @@ module Vivlio
           # targets に print_pdf のみ（pdf なし）が指定されているかを判定する
           def print_pdf_only?
             cfg = Common::CONFIG
-            targets = cfg.output&.targets
-            targets = Build::PdfMerger.extract_targets(targets) if targets
+            targets = Build::PdfMerger.extract_targets(cfg.dig(:output, :targets))
             targets.include?('print_pdf') && !targets.include?('pdf')
           end
 
           # pdf または print_pdf の出力が要求されているかを判定する
           def pdf_outputs_requested?
             cfg = Common::CONFIG
-            # Dataオブジェクトの適切なアクセス方法
-            targets = cfg.output&.targets
-            targets = Build::PdfMerger.extract_targets(targets) if targets
+            targets = Build::PdfMerger.extract_targets(cfg.dig(:output, :targets))
 
             # targets未指定時はデフォルトでpdfを開く
             return true if targets.empty?
@@ -259,7 +256,7 @@ module Vivlio
           # 生成されたファイルのリストを取得
           def get_created_files_list
             files = []
-            targets = Common::CONFIG.output.targets
+            targets = Build::PdfMerger.extract_targets(Common::CONFIG.dig(:output, :targets))
             
             # PDF系
             if targets.include?('pdf')
@@ -288,7 +285,7 @@ module Vivlio
 
           # targetsに応じてファイル名を調整
           def adjust_filename_for_targets(original_name, basenames)
-            targets = Common::CONFIG.output.targets
+            targets = Build::PdfMerger.extract_targets(Common::CONFIG.dig(:output, :targets))
             
             # PDFがtargetsに含まれていない場合
             unless targets.include?('pdf')
@@ -306,7 +303,7 @@ module Vivlio
           # 単章ビルド用の生成ファイルリストを取得
           def get_created_files_list_for_single_mode(basenames)
             files = []
-            targets = Common::CONFIG.output.targets
+            targets = Build::PdfMerger.extract_targets(Common::CONFIG.dig(:output, :targets))
             
             # 単章ビルドのファイル名ベースを決定
             if basenames.size == 1

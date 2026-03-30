@@ -134,13 +134,11 @@ module Vivlio
             # 内部メソッドをスタブ化して副作用を排除
             cmd.stub(:print_build_timings, nil) do
               cmd.stub(:print_outline_debug_info, nil) do
-                cmd.stub(:save_timings_to_file, nil) do
-                  cmd.stub(:open_pdf, nil) do
-                    Build::ChapterConfig.stub(:configured_chapters, nil) do
-                      Common.stub(:log_action, nil) do
-                        Common.stub(:log_success, nil) do
-                          cmd.call
-                        end
+                cmd.stub(:open_pdf, nil) do
+                  Build::ChapterConfig.stub(:configured_chapters, nil) do
+                    Common.stub(:log_action, nil) do
+                      Common.stub(:log_success, nil) do
+                        cmd.call
                       end
                     end
                   end

@@ -89,13 +89,17 @@ module Vivlio
           # カバー画像ファイルを生成
           covers_dir = 'covers'
           FileUtils.mkdir_p(covers_dir)
-          File.write(File.join(covers_dir, 'cover.jpg'), 'dummy')
+          File.write(File.join(covers_dir, 'cover_light.jpg'), 'dummy')
 
           config = build_config_with_epub(epub_cfg, covers_dir:)
-          line = Build::EpubBuilder.build_cover_config_line(config, esc)
+          Common.stub(:epub_embed?, true) do
+            Common.stub(:cover_theme, 'light') do
+              line = Build::EpubBuilder.build_cover_config_line(config, esc)
 
-          assert_match(/cover:/, line, 'cover.embed: true の場合 cover 行が出力されるべき')
-          assert_match(%r{covers/cover\.jpg}, line)
+              assert_match(/cover:/, line, 'cover.embed: true の場合 cover 行が出力されるべき')
+              assert_match(%r{covers/cover_light\.jpg}, line)
+            end
+          end
         end
 
         # cover.embed: false の場合に cover 行がコメントアウトされることを確認
@@ -104,9 +108,11 @@ module Vivlio
           esc = ->(s) { s.to_s }
 
           config = build_config_with_epub(epub_cfg)
-          line = Build::EpubBuilder.build_cover_config_line(config, esc)
+          Common.stub(:epub_embed?, false) do
+            line = Build::EpubBuilder.build_cover_config_line(config, esc)
 
-          assert_match(/cover\.embed: false/, line, 'cover.embed: false の場合コメントになるべき')
+            assert_match(/epub\.embed: false/, line, 'cover.embed: false の場合コメントになるべき')
+          end
         end
 
         # embed_cover? が nil（未設定）の場合 true を返すことを確認（デフォルト動作）

@@ -24,9 +24,8 @@
 # ================================================================
 
 require 'fileutils'
-require_relative 'build/catalog_loader'
-require_relative 'build/catalog_updater'
-require_relative 'token_resolver'
+require_relative 'build/pdf_merger'
+require_relative 'cover'
 
 module Vivlio
   module Starter
@@ -102,18 +101,54 @@ module Vivlio
         #   - :force [Boolean] 既存ファイルを強制上書き
         # --- カバー生成 ---
 
-        # カバーSVGをconfig/book.ymlから生成する
+        # 表紙・裏表紙SVG/PNGを生成する
         #
-        # @param options [Hash] オプション
-        #   - :verbose [Boolean] 詳細ログ出力
-        # @return [void]
-        #
-        # 生成ファイル: 
-        # - 表紙: covers/frontcover_dark.svg, covers/frontcover_light.svg
-        # - 裏表紙: covers/backcover_dark.svg, covers/backcover_light.svg
+        # 新しい設定構造に対応:
+        # - 標準テーマ（light/dark）: SVGを生成
+        # - カスタムテーマ: PNGファイルの検出と検証
+        # - targets設定に応じて生成対象を制御
         def execute_cover(options)
           apply_verbose(options)
           
+          # 新しい設定構造からテーマとtargetsを取得
+          theme = resolve_cover_theme
+          unless theme
+            Common.log_error("output.cover 設定が見つかりません")
+            return false
+          end
+          
+          targets = resolve_cover_targets
+          
+          Common.log_action("カバーを生成しています（テーマ: #{theme}, targets: #{targets.join(', ')}）…")
+          
+          case theme
+          when 'light', 'dark'
+            generate_standard_theme_covers(theme, targets)
+          else
+            generate_custom_theme_covers(theme, targets)
+          end
+        end
+
+        # カバーテーマを解決する
+        def resolve_cover_theme
+          theme = Common.cover_theme
+          return nil unless theme
+          return nil if theme.strip.empty?
+          theme
+        end
+
+        # カバーtargetsを解決する
+        def resolve_cover_targets
+          raw_targets = Common::CONFIG.dig(:output, :targets)
+          targets = Build::PdfMerger.extract_targets(raw_targets) if raw_targets
+          targets = ['pdf'] if targets.nil? || targets.empty?
+          targets
+        rescue StandardError => e
+          ['pdf'] # エラー時はデフォルト
+        end
+
+        # 標準テーマ（light/dark）のカバーを生成
+        def generate_standard_theme_covers(theme, targets)
           title, subtitle = extract_title_and_subtitle
           author = fetch_config_value('book', 'author')
           series = fetch_config_value('book', 'series')
@@ -122,30 +157,421 @@ module Vivlio
           covers_dir = File.join(Dir.pwd, 'covers')
           FileUtils.mkdir_p(covers_dir) unless Dir.exist?(covers_dir)
           
-          # book.yml のパスを取得
           book_config_path = File.join(Dir.pwd, 'config', 'book.yml')
           
           # 表紙と裏表紙の両方を生成
           %w[front back].each do |cover_type|
-            %w[dark light].each do |theme|
-              if cover_type == 'front'
-                content = generate_frontcover_svg_content(title, subtitle, author, series, release, theme)
-                filename = "frontcover_#{theme}.svg"
-              else
-                content = generate_backcover_svg_content(title, subtitle, author, series, release, theme)
-                filename = "backcover_#{theme}.svg"
-              end
-              
-              path = File.join(covers_dir, filename)
-              log_message = cover_type == 'front' ? "表紙を生成しました: #{path}" : "裏表紙を生成しました: #{path}"
-              
-              # book.yml が既存の cover より新しい場合のみ生成
-              next if File.exist?(path) && File.mtime(path) >= File.mtime(book_config_path)
-              
-              safe_write(path, content)
-              Common.log_info(log_message)
+            if cover_type == 'front'
+              content = generate_frontcover_svg_content(title, subtitle, author, series, release, theme)
+              svg_filename = "frontcover_#{theme}.svg"
+            else
+              content = generate_backcover_svg_content(title, subtitle, author, series, release, theme)
+              svg_filename = "backcover_#{theme}.svg"
             end
+            
+            svg_path = File.join(covers_dir, svg_filename)
+            
+            # SVG生成（book.yml が既存の cover より新しい場合のみ）
+            if !File.exist?(svg_path) || File.mtime(svg_path) < File.mtime(book_config_path)
+              safe_write(svg_path, content)
+              Common.log_info("#{cover_type}表紙SVGを生成しました: #{svg_path}")
+            end
+            
+            # targetsに応じてPDF/JPGを生成
+            generate_cover_files_from_svg(svg_path, theme, cover_type, targets)
           end
+        end
+
+        # SVGからPDF/JPGファイルを生成
+        def generate_cover_files_from_svg(svg_path, theme, cover_type, targets)
+          covers_dir = File.dirname(svg_path)
+          page_use = Common::CONFIG.dig(:page, :use) || 'b5_standard'
+          page_size = CoverCommands.detect_page_size(page_use)
+          
+          # PDF用RGBカバー（targetsにpdfが含まれる場合）
+          if targets.include?('pdf')
+            pdf_filename = "#{cover_type}cover_#{theme}_#{page_size}_rgb.pdf"
+            pdf_path = File.join(covers_dir, pdf_filename)
+            convert_svg(svg_path, pdf_path, page_size: page_size)
+          end
+          
+          # PDF用CMYKカバー（targetsにprint_pdfが含まれる場合）
+          if targets.include?('print_pdf')
+            pdf_filename = "#{cover_type}cover_#{theme}_#{page_size}_cmyk.pdf"
+            pdf_path = File.join(covers_dir, pdf_filename)
+            convert_svg(svg_path, pdf_path, page_size: page_size, crop_marks: true)
+          end
+          
+          # EPUB用JPEG（targetsにepubが含まれる場合）
+          if targets.include?('epub') && cover_type == 'front'
+            jpg_filename = "cover_#{theme}.jpg"
+            jpg_path = File.join(covers_dir, jpg_filename)
+            convert_svg(svg_path, jpg_path, page_size: page_size)
+          end
+        end
+
+        # SVGを変換
+        # PDF出力: rsvg-convert でページサイズを正確に一致させる
+        # JPG/PNG出力: ImageMagick でラスター変換
+        # page_size: :a4 / :b5 / :a5
+        # crop_marks: true で入稿用トンボ・塗り足し付きPDFを生成
+        def convert_svg(input, output, page_size: :b5, crop_marks: false)
+          return if File.exist?(output) && File.mtime(output) >= File.mtime(input)
+
+          ext = File.extname(output).delete('.')
+          size = COVER_SIZES.fetch(page_size, COVER_SIZES[:b5])
+          w_mm = size[:width_mm]
+          h_mm = size[:height_mm]
+
+          if ext == 'pdf'
+            if crop_marks
+              convert_svg_to_pdf_with_crop_marks(input, output, w_mm, h_mm)
+            else
+              convert_svg_to_pdf(input, output, w_mm, h_mm)
+            end
+          else
+            convert_svg_to_raster(input, output, w_mm, h_mm)
+          end
+
+          Common.log_info("カバーを生成しました: #{File.basename(output)}")
+        end
+
+        # SVG → PDF（rsvg-convert 優先、フォールバック: ImageMagick）
+        def convert_svg_to_pdf(input, output, w_mm, h_mm)
+          if CoverCommands.find_executable('rsvg-convert')
+            system('rsvg-convert',
+                   '-f', 'pdf',
+                   '--page-width', "#{w_mm}mm",
+                   '--page-height', "#{h_mm}mm",
+                   '-w', "#{w_mm}mm",
+                   '-h', "#{h_mm}mm",
+                   '-o', output,
+                   input)
+          else
+            convert_cmd = CoverCommands.imagemagick_convert_command
+            unless convert_cmd
+              Common.log_error('rsvg-convert も ImageMagick も見つかりません')
+              return
+            end
+            w_px = (w_mm / MM_PER_INCH * DPI).round
+            h_px = (h_mm / MM_PER_INCH * DPI).round
+            system(*convert_cmd, '-density', DPI.to_s, input,
+                   '-resize', "#{w_px}x#{h_px}!", output)
+          end
+        end
+
+        # SVG → PDF（トンボ・塗り足し付き入稿用）
+        # 1. rsvg-convert で大ページ（trim + bleed×2 + crop_offset×2）にSVGを配置
+        # 2. Prawn でトンボ線のみのオーバーレイPDFを生成
+        # 3. CombinePDF で合成
+        def convert_svg_to_pdf_with_crop_marks(input, output, trim_w_mm, trim_h_mm)
+          bleed_mm = Build::NombreStamper.bleed_mm_from_config
+          crop_offset_mm = CROP_MARK_OFFSET_MM
+          margin_mm = bleed_mm + crop_offset_mm
+
+          page_w_mm = trim_w_mm + 2 * margin_mm
+          page_h_mm = trim_h_mm + 2 * margin_mm
+
+          # SVGをbleedサイズで描画（背景色が塗り足し領域まで伸びる）
+          svg_w_mm = trim_w_mm + 2 * bleed_mm
+          svg_h_mm = trim_h_mm + 2 * bleed_mm
+
+          unless CoverCommands.find_executable('rsvg-convert')
+            Common.log_warn('rsvg-convert が見つかりません。トンボなしで生成します')
+            convert_svg_to_pdf(input, output, trim_w_mm, trim_h_mm)
+            return
+          end
+
+          system('rsvg-convert',
+                 '-f', 'pdf',
+                 '--page-width', "#{page_w_mm}mm",
+                 '--page-height', "#{page_h_mm}mm",
+                 '-w', "#{svg_w_mm}mm",
+                 '-h', "#{svg_h_mm}mm",
+                 '--left', "#{crop_offset_mm}mm",
+                 '--top', "#{crop_offset_mm}mm",
+                 '-o', output,
+                 input)
+
+          add_crop_marks_overlay(output, trim_w_mm, trim_h_mm, bleed_mm, crop_offset_mm)
+        end
+
+        # トンボ線オーバーレイを生成し、カバーPDFに合成する
+        # crop offset 領域（bleed 外側）のみに描画し、カバー内部に食い込まない:
+        #   - 角トンボ: trim境界位置の直線を bleed 外側に配置
+        #   - センタートンボ: 丸十字 ⊕ を crop offset 帯の中央に配置
+        def add_crop_marks_overlay(pdf_path, trim_w_mm, trim_h_mm, bleed_mm, crop_offset_mm)
+          require 'prawn'
+          require 'combine_pdf'
+
+          mm2pt = 72.0 / 25.4
+          margin_mm    = bleed_mm + crop_offset_mm
+          page_w_pt    = (trim_w_mm + 2 * margin_mm) * mm2pt
+          page_h_pt    = (trim_h_mm + 2 * margin_mm) * mm2pt
+          margin_pt    = margin_mm * mm2pt
+          bleed_pt     = bleed_mm * mm2pt
+          crop_off_pt  = crop_offset_mm * mm2pt
+
+          # 仕上がり線（trim）の座標（PDF座標: 左下原点）
+          tx1 = margin_pt                       # 左
+          ty1 = margin_pt                       # 下
+          tx2 = margin_pt + trim_w_mm * mm2pt   # 右
+          ty2 = margin_pt + trim_h_mm * mm2pt   # 上
+
+          # bleed 境界の座標（trim の外側 bleed_mm 分）
+          bx1 = tx1 - bleed_pt   # = crop_off_pt
+          by1 = ty1 - bleed_pt
+          bx2 = tx2 + bleed_pt
+          by2 = ty2 + bleed_pt
+
+          # センタートンボ寸法（Vivliostyle 準拠の比率）
+          circle_r_pt = margin_pt / 4.0  # 円半径 = margin/4
+
+          overlay_path = "#{pdf_path}.crop_marks.pdf"
+
+          Prawn::Document.generate(overlay_path,
+                                   page_size: [page_w_pt, page_h_pt],
+                                   margin: 0) do |pdf|
+            pdf.stroke_color '000000'
+            pdf.line_width 0.5
+
+            # ──────────────────────────────────
+            # 角トンボ（crop offset 帯のみ）
+            # trim境界位置の直線をページ端〜bleed境界に配置
+            # ──────────────────────────────────
+
+            # 左上
+            pdf.stroke_line [0, ty2], [bx1, ty2]          # 水平: trim-y 位置
+            pdf.stroke_line [tx1, page_h_pt], [tx1, by2]  # 垂直: trim-x 位置
+
+            # 右上
+            pdf.stroke_line [bx2, ty2], [page_w_pt, ty2]
+            pdf.stroke_line [tx2, page_h_pt], [tx2, by2]
+
+            # 左下
+            pdf.stroke_line [0, ty1], [bx1, ty1]
+            pdf.stroke_line [tx1, 0], [tx1, by1]
+
+            # 右下
+            pdf.stroke_line [bx2, ty1], [page_w_pt, ty1]
+            pdf.stroke_line [tx2, 0], [tx2, by1]
+
+            # ──────────────────────────────────
+            # センタートンボ（⊕）crop offset 帯の中央
+            # 垂直腕: ページ端〜bleed境界（crop offset 幅）
+            # 水平腕: ±margin（Vivliostyle 準拠）
+            # ──────────────────────────────────
+            cx = page_w_pt / 2.0
+            cy = page_h_pt / 2.0
+            mid_crop = crop_off_pt / 2.0  # crop offset 帯の中央
+
+            # 上辺中央
+            draw_cross_mark(pdf, cx, page_h_pt - mid_crop,
+                            margin_pt, crop_off_pt / 2.0, circle_r_pt)
+            # 下辺中央
+            draw_cross_mark(pdf, cx, mid_crop,
+                            margin_pt, crop_off_pt / 2.0, circle_r_pt)
+            # 左辺中央
+            draw_cross_mark(pdf, mid_crop, cy,
+                            crop_off_pt / 2.0, margin_pt, circle_r_pt)
+            # 右辺中央
+            draw_cross_mark(pdf, page_w_pt - mid_crop, cy,
+                            crop_off_pt / 2.0, margin_pt, circle_r_pt)
+          end
+
+          # オーバーレイを合成
+          base = CombinePDF.load(pdf_path)
+          overlay = CombinePDF.load(overlay_path)
+          base.pages.first << overlay.pages.first
+          base.save(pdf_path)
+
+          FileUtils.rm_f(overlay_path)
+        rescue StandardError => e
+          Common.log_warn("トンボ描画中にエラー: #{e.message}")
+          FileUtils.rm_f(overlay_path) if overlay_path && File.exist?(overlay_path)
+        end
+
+        # センタートンボ: ⊕（円＋十字線）
+        def draw_cross_mark(pdf, cx, cy, half_h, half_v, radius)
+          pdf.stroke_line [cx - half_h, cy], [cx + half_h, cy]   # 水平線
+          pdf.stroke_line [cx, cy - half_v], [cx, cy + half_v]   # 垂直線
+          pdf.stroke_circle [cx, cy], radius                      # 円
+        end
+
+        # SVG → JPG/PNG（ImageMagick）
+        def convert_svg_to_raster(input, output, w_mm, h_mm)
+          convert_cmd = CoverCommands.imagemagick_convert_command
+          unless convert_cmd
+            Common.log_error('ImageMagick（magick/convert）が見つかりません')
+            return
+          end
+          raster_dpi = 150
+          w_px = (w_mm / MM_PER_INCH * raster_dpi).round
+          h_px = (h_mm / MM_PER_INCH * raster_dpi).round
+          system(*convert_cmd, '-density', raster_dpi.to_s,
+                 input,
+                 '-resize', "#{w_px}x#{h_px}!",
+                 '-quality', '90',
+                 output)
+        end
+
+        # 定数定義
+        COVER_SIZES = {
+          a4: { width_mm: 210, height_mm: 297 },
+          b5: { width_mm: 182, height_mm: 257 },
+          a5: { width_mm: 148, height_mm: 210 }
+        }.freeze
+
+        DPI = 350  # 印刷推奨
+        MM_PER_INCH = 25.4
+        CROP_MARK_OFFSET_MM = 13.0  # Vivliostyle と同じトンボマージン
+
+        # SVGを変換
+        def convert_svg_cover(input_svg, output_path, paper_size: :a4)
+          return if File.exist?(output_path) && File.mtime(output_path) >= File.mtime(input_svg)
+          
+          size = COVER_SIZES.fetch(paper_size) { raise ArgumentError, "未対応サイズ: #{paper_size}" }
+          ext  = File.extname(output_path).delete('.').downcase
+
+          case ext
+          in 'pdf'
+            convert_to_pdf(input_svg, output_path, size)
+          in 'jpg' | 'jpeg' | 'png'
+            convert_to_raster(input_svg, output_path, size, ext)
+          else
+            raise ArgumentError, "未対応フォーマット: #{ext}"
+          end
+          
+          Common.log_info("カバーを生成しました: #{File.basename(output_path)}")
+        end
+
+        # PDFに変換
+        def convert_to_pdf(input, output, size)
+          run_inkscape(input, output,
+            "--export-area-page",
+            "--export-margin=0"
+          )
+        end
+
+        # ラスター画像に変換
+        def convert_to_raster(input, output, size, format)
+          width_px  = (size[:width_mm]  / MM_PER_INCH * DPI).round
+          height_px = (size[:height_mm] / MM_PER_INCH * DPI).round
+
+          run_inkscape(input, output,
+            "--export-width=#{width_px}",
+            "--export-height=#{height_px}"
+          )
+        end
+
+        # Inkscapeを実行
+        def run_inkscape(input, output, *options)
+          cmd = ["inkscape", *options, "--export-filename=#{output}", input].join(' ')
+          unless system(cmd)
+            raise RuntimeError, "Inkscape変換失敗: #{File.basename(input)} -> #{File.basename(output)}"
+          end
+        end
+
+        # Inkscapeが利用可能かチェック
+        def inkscape_available?
+          system('inkscape --version > /dev/null 2>&1')
+        end
+
+        # カスタムテーマのカバーを検証・変換
+        def generate_custom_theme_covers(theme, targets)
+          covers_dir = File.join(Dir.pwd, 'covers')
+          png_files = %w[frontcover backcover].map { |side| File.join(covers_dir, "#{side}_#{theme}.png") }
+
+          missing = png_files.reject { File.exist?(_1) }
+          if missing.any?
+            Common.log_error(<<~ERROR)
+              カスタム画像 '#{theme}' のPNGファイルが見つかりません
+                欠落ファイル: #{missing.map { File.basename(_1) }.join(', ')}
+                covers/ ディレクトリに配置してください
+                対応形式: PNGのみ
+            ERROR
+            return false
+          end
+
+          png_files.each { check_image_resolution(_1, theme) }
+          
+          # PNGからPDF/JPGを生成
+          png_files.each_with_index do |png_path, index|
+            cover_type = index == 0 ? 'front' : 'back'
+            generate_cover_files_from_png(png_path, theme, cover_type, targets)
+          end
+          
+          Common.log_success("カスタムテーマ '#{theme}' のPNGファイルを検証・変換しました")
+          true
+        end
+
+        # PNGからPDF/JPGファイルを生成
+        def generate_cover_files_from_png(png_path, theme, cover_type, targets)
+          return unless CoverCommands.imagemagick_convert_command
+          
+          covers_dir = File.dirname(png_path)
+          page_use = Common::CONFIG.page&.use || 'b5_standard'
+          page_size = CoverCommands.detect_page_size(page_use)
+          
+          # PDF用RGBカバー（targetsにpdfが含まれる場合）
+          if targets.include?('pdf')
+            pdf_filename = "#{cover_type}cover_#{theme}_#{page_size}_rgb.pdf"
+            pdf_path = File.join(covers_dir, pdf_filename)
+            convert_png(png_path, pdf_path)
+          end
+          
+          # PDF用CMYKカバー（targetsにprint_pdfが含まれる場合）
+          if targets.include?('print_pdf')
+            pdf_filename = "#{cover_type}cover_#{theme}_#{page_size}_cmyk.pdf"
+            pdf_path = File.join(covers_dir, pdf_filename)
+            convert_png(png_path, pdf_path)
+          end
+          
+          # EPUB用JPEG（targetsにepubが含まれる場合）
+          if targets.include?('epub') && cover_type == 'front'
+            jpg_filename = "cover_#{theme}.jpg"
+            jpg_path = File.join(covers_dir, jpg_filename)
+            convert_png(png_path, jpg_path)
+          end
+        end
+
+        # PNGを変換（ImageMagick 7 対応）
+        def convert_png(input, output)
+          return if File.exist?(output) && File.mtime(output) >= File.mtime(input)
+
+          convert_cmd = CoverCommands.imagemagick_convert_command
+          unless convert_cmd
+            Common.log_error('ImageMagick（magick/convert）が見つかりません')
+            return
+          end
+
+          ext = File.extname(output).delete('.')
+          density = ext == 'pdf' ? '350' : '150'
+          system(*convert_cmd, '-density', density, input, output)
+
+          Common.log_info("カバーを生成しました: #{File.basename(output)}")
+        end
+
+        def check_image_resolution(image_path, theme)
+          return unless File.exist?(image_path) && system('identify -version > /dev/null 2>&1')
+
+          dpi_output = `identify -format '%x' #{image_path}`.strip
+          unless dpi_output.match?(/\A\d+/)
+            Common.log_warn("解像度情報を解析できません: #{dpi_output}")
+            return
+          end
+
+          avg_dpi = dpi_output.scan(/\d+/).map(&:to_i).then { _1.sum / _1.size }
+          case avg_dpi
+          when ...300
+            Common.log_warn("カスタム画像 '#{theme}' の解像度が不足しています")
+            Common.log_warn("  現在: #{avg_dpi}dpi（推奨: 350dpi以上、最小: 300dpi以上）")
+            Common.log_warn("  ビルドは続行しますが、印刷品質が低下する可能性があります")
+          when 300...350
+            Common.log_info("カスタム画像 '#{theme}' の解像度: #{avg_dpi}dpi（推奨: 350dpi以上）")
+          end
+        rescue StandardError => e
+          Common.log_warn("解像度チェック中にエラーが発生しました: #{e.message}")
         end
 
         # 表紙SVGコンテンツを生成する

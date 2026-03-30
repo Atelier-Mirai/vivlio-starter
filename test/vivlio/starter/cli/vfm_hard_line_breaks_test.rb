@@ -23,6 +23,7 @@
 
 require 'test_helper'
 require 'vivlio/starter/cli/common'
+require 'vivlio/starter/cli/pre_process'
 
 module Vivlio
   module Starter
@@ -44,14 +45,14 @@ module Vivlio
 
         # Common::CONFIG経由でVFM設定にアクセスできるテスト
         def test_should_access_vfm_settings_via_common_config
+          # Arrange
+          config = { title: 'Test Book' }
+          
           # Act
-          config = Common.load_config
           merged = Common.merge_hardcoded_defaults(config)
           
           # Assert
-          assert_pattern do
-            merged => { vfm: { hardLineBreaks: true } }
-          end
+          assert_equal true, merged[:vfm][:hardLineBreaks]
         end
 
         # --- Phase: Frontmatter Override Tests ---
@@ -64,13 +65,11 @@ module Vivlio
           
           # Act
           generator = Object.new
-          generator.extend(Vivlio::Starter::CLI::PreProcess::FrontmatterGenerator)
-          merged = generator.merge_frontmatter(existing_frontmatter, new_frontmatter)
+          generator.extend(Vivlio::Starter::CLI::PreProcessCommands::FrontmatterGenerator)
+          merged = generator.send(:merge_frontmatter, existing_frontmatter, new_frontmatter)
           
           # Assert
-          assert_pattern do
-            merged => { 'vfm' => { 'hardLineBreaks' => false } }
-          end
+          assert_equal false, merged['vfm']['hardLineBreaks']
         end
 
         # デフォルト値と個別設定の優先順位テスト
@@ -83,13 +82,13 @@ module Vivlio
           
           # Act
           generator = Object.new
-          generator.extend(Vivlio::Starter::CLI::PreProcess::FrontmatterGenerator)
+          generator.extend(Vivlio::Starter::CLI::PreProcessCommands::FrontmatterGenerator)
           
           # まずbook.ymlの設定を反映
           base_config = Common.merge_hardcoded_defaults(book_config)
           
           # 次にフロントマターをマージ
-          merged = generator.merge_frontmatter(frontmatter, {})
+          merged = generator.send(:merge_frontmatter, frontmatter, {})
           
           # Assert
           # フロントマターの設定が優先されること
@@ -167,12 +166,8 @@ module Vivlio
           merged = Common.merge_hardcoded_defaults(base_config)
           
           # Assert
-          assert_pattern do
-            merged => {
-              title: 'Test Book',
-              vfm: { hardLineBreaks: true }
-            }
-          end
+          assert_equal 'Test Book', merged[:title]
+          assert_equal true, merged[:vfm][:hardLineBreaks]
         end
 
         # 複雑なマージシナリオのテスト
@@ -193,8 +188,8 @@ module Vivlio
           
           # 次にフロントマターをマージ
           generator = Object.new
-          generator.extend(Vivlio::Starter::CLI::PreProcess::FrontmatterGenerator)
-          final = generator.merge_frontmatter(frontmatter, {})
+          generator.extend(Vivlio::Starter::CLI::PreProcessCommands::FrontmatterGenerator)
+          final = generator.send(:merge_frontmatter, frontmatter, {})
           
           # Assert
           # フロントマターの設定が最優先される

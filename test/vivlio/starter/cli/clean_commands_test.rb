@@ -271,11 +271,13 @@ module Vivlio
           covers_dir = 'covers'
           FileUtils.mkdir_p(covers_dir)
           
-          # 生成されたカバー画像
+          # 生成されたカバー画像（PDF/SVG/JPG）
           write_file(File.join(covers_dir, 'frontcover_rgb.pdf'))
           write_file(File.join(covers_dir, 'backcover_rgb.pdf'))
           write_file(File.join(covers_dir, 'frontcover_cmyk.pdf'))
           write_file(File.join(covers_dir, 'backcover_cmyk.pdf'))
+          write_file(File.join(covers_dir, 'frontcover_light.svg'))
+          write_file(File.join(covers_dir, 'backcover_light.svg'))
           write_file(File.join(covers_dir, 'cover.jpg'))
           
           # マスター画像
@@ -291,49 +293,23 @@ module Vivlio
               'covers' => 'covers'
             },
             'output' => {
-              'pdf' => {
-                'cover' => {
-                  'front' => 'frontcover_rgb.pdf',
-                  'back' => 'backcover_rgb.pdf'
-                }
-              },
-              'print_pdf' => {
-                'cover' => {
-                  'front' => 'frontcover_cmyk.pdf',
-                  'back' => 'backcover_cmyk.pdf'
-                }
-              },
-              'epub' => {
-                'cover' => 'cover.jpg'
-              }
+              'cover' => 'master',
+              'targets' => 'pdf'
             }
           }
           File.write('config/book.yml', config.to_yaml)
         end
 
         # カスタムファイル名の設定ファイルを生成
-        def setup_custom_config_for_cover(front_pdf, back_pdf, epub_cover)
+        def setup_custom_config_for_cover(_front_pdf, _back_pdf, _epub_cover)
           FileUtils.mkdir_p('config')
           config = {
             'directories' => {
               'covers' => 'covers'
             },
             'output' => {
-              'pdf' => {
-                'cover' => {
-                  'front' => front_pdf,
-                  'back' => back_pdf
-                }
-              },
-              'print_pdf' => {
-                'cover' => {
-                  'front' => front_pdf,
-                  'back' => back_pdf
-                }
-              },
-              'epub' => {
-                'cover' => epub_cover
-              }
+              'cover' => 'master',
+              'targets' => 'pdf'
             }
           }
           File.write('config/book.yml', config.to_yaml)
@@ -350,6 +326,10 @@ module Vivlio
                  '表紙CMYK PDFは削除されるべきです'
           refute File.exist?(File.join(covers_dir, 'backcover_cmyk.pdf')),
                  '裏表紙CMYK PDFは削除されるべきです'
+          refute File.exist?(File.join(covers_dir, 'frontcover_light.svg')),
+                 '表紙SVGは削除されるべきです'
+          refute File.exist?(File.join(covers_dir, 'backcover_light.svg')),
+                 '裏表紙SVGは削除されるべきです'
           refute File.exist?(File.join(covers_dir, 'cover.jpg')),
                  'EPUB用JPEGは削除されるべきです'
         end

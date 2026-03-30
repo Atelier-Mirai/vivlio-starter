@@ -49,6 +49,39 @@ module Vivlio
         # EPUB用サイズ
         EPUB_SIZE = { width: 1600, height: 2560 }.freeze
 
+        # 標準テーマかどうかを判定
+        STANDARD_THEMES = %w[light dark].freeze
+
+        # ================================================================
+        # ビルドパイプライン用統合エントリポイント
+        # ================================================================
+
+        # テーマに応じたカバーファイルを確実に生成する
+        #
+        # - light/dark: SVGテンプレートから生成し PDF/JPG に変換
+        # - master/カスタム: 既存PNGから PDF/JPG に変換
+        #
+        # @return [void]
+        def self.ensure_cover_files_for_build!
+          theme = Common.cover_theme
+          return unless theme
+          return unless Common.validate_cover_settings
+
+          if STANDARD_THEMES.include?(theme)
+            require_relative 'create' unless defined?(CreateCommands)
+            CreateCommands.execute_cover({})
+          else
+            config = Common.load_config
+            page_cfg = config[:page] || {}
+            page_use = page_cfg[:use] || 'b5_standard'
+            size = detect_page_size(page_use)
+            # master/カスタム: PNGベースの生成
+            execute_for_size(size, nil)
+            # EPUB用JPGも生成
+            generate_epub_cover(config[:directories][:covers], config)
+          end
+        end
+
         # ================================================================
         # コマンド実装
         # ================================================================
@@ -56,18 +89,29 @@ module Vivlio
         def execute_generate(_context = nil)
           Common.log_info '📚 カバー画像の一括生成を開始します'
 
-          # 設定読み込み（シンボルキー前提）
           config = Common.load_config
+          theme = config.dig(:output, :cover)
+
+          unless theme
+            Common.log_error 'output.cover 設定が見つかりません'
+            return
+          end
+
+          # light/dark テーマ: SVGテンプレートから一括生成
+          if STANDARD_THEMES.include?(theme)
+            require_relative 'create' unless defined?(CreateCommands)
+            CreateCommands.execute_cover({})
+            return
+          end
+
+          # master/カスタム テーマ: PNGから生成
           covers_dir = config[:directories][:covers]
           page_cfg = config[:page] || {}
           page_use = page_cfg[:use] || page_cfg[:preset] || page_cfg[:preset_name] || page_cfg[:size] || 'b5_standard'
           targets = target_list(config)
-
-          # ページサイズ判定
           page_size = CoverCommands.detect_page_size(page_use)
           Common.log_info "ページサイズ: #{page_size.upcase} (#{page_use})"
 
-          # マスターファイル確認
           unless CoverCommands.check_master_files(covers_dir)
             Common.log_error 'マスターファイルが見つかりません。処理を中断します。'
             return
@@ -77,7 +121,7 @@ module Vivlio
           generated += generate_pdf_targets_for_size(covers_dir, page_size, config, targets)
 
           # EPUB用カバー
-          if targets.include?('epub') && config.dig(:output, :epub, :cover)
+          if targets.include?('epub')
             Common.log_info "\n📱 EPUB用カバー（1600×2560、JPEG）を生成中..."
             CoverCommands.generate_epub_cover(covers_dir, config)
             generated << 'EPUB用（JPEG）'
@@ -96,6 +140,16 @@ module Vivlio
           label = page_size.to_s.upcase
           Common.log_info "📚 #{label}サイズのカバーPDFを生成します"
           config = Common.load_config
+          theme = config.dig(:output, :cover) || 'master'
+
+          # light/dark テーマ: SVGテンプレートから生成
+          if STANDARD_THEMES.include?(theme)
+            require_relative 'create' unless defined?(CreateCommands)
+            CreateCommands.execute_cover({})
+            return
+          end
+
+          # master/カスタム テーマ: PNGから生成
           covers_dir = config[:directories][:covers]
           targets = target_list(config)
 
@@ -117,11 +171,26 @@ module Vivlio
         def execute_epub(_context = nil)
           Common.log_info '📚 EPUB用JPEGを生成します'
           config = Common.load_config
-          covers_dir = config[:directories][:covers]
+          theme = config.dig(:output, :cover)
 
-          frontcover_master = File.join(covers_dir, FRONTCOVER_MASTER)
-          unless File.exist?(frontcover_master)
-            Common.log_error "マスターファイルが見つかりません: #{frontcover_master}"
+          unless theme
+            Common.log_error 'output.cover 設定が見つかりません'
+            return
+          end
+
+          # light/dark テーマ: SVGテンプレートから生成（SVG→JPG変換含む）
+          if STANDARD_THEMES.include?(theme)
+            require_relative 'create' unless defined?(CreateCommands)
+            CreateCommands.execute_cover({})
+            Common.log_success '✅ EPUB用JPEGの生成が完了しました'
+            return
+          end
+
+          # master/カスタム テーマ: PNGから生成
+          covers_dir = config[:directories][:covers]
+          input_file = CoverCommands.resolve_epub_cover_input(covers_dir, theme)
+          unless input_file
+            Common.log_error "カバー入力画像が見つかりません（テーマ: #{theme}）"
             return
           end
 
@@ -328,27 +397,27 @@ module Vivlio
           end
         end
 
-        # EPUB用カバー生成
+        # EPUB用カバー生成（テーマベース）
+        #
+        # output.cover テーマに応じて入力画像を選択し cover_{theme}.jpg を生成する
+        #   - light/dark: SVGから変換済みの frontcover_{theme}.png、なければSVG直接
+        #   - master:     frontcover_master.png
+        #   - カスタム:   frontcover_{theme}.png
+        #
+        # @param covers_dir [String] カバーディレクトリ
+        # @param config [Hash] シンボルキーの設定ハッシュ
         def self.generate_epub_cover(covers_dir, config)
-          input_png = File.join(covers_dir, FRONTCOVER_MASTER)
-          # Hash と Data オブジェクト両対応
-          epub_cover = if config.respond_to?(:dig)
-                         config.dig(:output, :epub, :cover) || config.dig('output', 'epub', 'cover')
-                       else
-                         config.output&.epub&.cover
-                       end
-          return unless epub_cover
+          theme = config.dig(:output, :cover) || config.dig('output', 'cover')
+          return unless theme
 
-          # cover がネスト構造（embed + image）の場合は image を取得
-          image_name = case epub_cover
-                       when Hash then epub_cover[:image] || epub_cover['image'] || 'cover.jpg'
-                       when String then epub_cover
-                       else
-                         epub_cover.respond_to?(:image) ? (epub_cover.image || 'cover.jpg') : 'cover.jpg'
-                       end
+          output_jpg = File.join(covers_dir, "cover_#{theme}.jpg")
 
-          output_jpg = File.join(covers_dir, image_name)
-          return unless File.exist?(input_png)
+          # 入力画像を解決（PNG優先、SVGフォールバック）
+          input_file = resolve_epub_cover_input(covers_dir, theme)
+          unless input_file
+            Common.log_warn("EPUB用カバーの入力画像が見つかりません（テーマ: #{theme}）")
+            return
+          end
 
           convert_cmd = imagemagick_convert_command
           unless convert_cmd
@@ -358,9 +427,8 @@ module Vivlio
 
           Common.log_info "  生成中: #{File.basename(output_jpg)}"
 
-          # ImageMagickでリサイズ + トリミング
           cmd = convert_cmd + [
-            input_png,
+            input_file,
             '-resize', "x#{EPUB_SIZE[:height]}",
             '-gravity', 'center',
             '-crop', "#{EPUB_SIZE[:width]}x#{EPUB_SIZE[:height]}+0+0",
@@ -372,8 +440,32 @@ module Vivlio
           Common.log_error "  失敗: #{File.basename(output_jpg)}" unless system(*cmd, out: File::NULL, err: File::NULL)
         end
 
+        # EPUB カバー用の入力画像パスを解決する
+        #
+        # @param covers_dir [String] カバーディレクトリ
+        # @param theme [String] テーマ名
+        # @return [String, nil] 入力画像の絶対パス
+        def self.resolve_epub_cover_input(covers_dir, theme)
+          # master テーマ → frontcover_master.png
+          if theme == 'master'
+            path = File.join(covers_dir, FRONTCOVER_MASTER)
+            return path if File.exist?(path)
+            return nil
+          end
+
+          # light/dark/カスタム → frontcover_{theme}.png 優先
+          png_path = File.join(covers_dir, "frontcover_#{theme}.png")
+          return png_path if File.exist?(png_path)
+
+          # light/dark のSVGフォールバック
+          svg_path = File.join(covers_dir, "frontcover_#{theme}.svg")
+          return svg_path if File.exist?(svg_path)
+
+          nil
+        end
+
         def self.imagemagick_convert_command
-          return %w[magick convert] if find_executable('magick')
+          return ['magick'] if find_executable('magick')
 
           return ['convert'] if find_executable('convert')
 

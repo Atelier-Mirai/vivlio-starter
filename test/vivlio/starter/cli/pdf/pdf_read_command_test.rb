@@ -248,12 +248,14 @@ module Vivlio
 
           @command.stub :resolve_entry_and_pdf, [entry, "sources/three-elements-ocr.pdf"] do
             @command.stub :ensure_unique_output_entry, new_entry do
-              @command.stub :resolved_mode, :enhanced do
-                @command.stub :convert_enhanced, result do
-                  resolved = @command.call
+              @command.stub :add_catalog_entry_if_needed, nil do
+                @command.stub :resolved_mode, :enhanced do
+                  @command.stub :convert_enhanced, result do
+                    resolved = @command.call
 
-                  assert_equal("contents/11-three-elements-ocr.md", resolved[:markdown_path])
-                  assert_equal("11-three-elements-ocr", resolved[:entry].basename)
+                    assert_equal("contents/11-three-elements-ocr.md", resolved[:markdown_path])
+                    assert_equal("11-three-elements-ocr", resolved[:entry].basename)
+                  end
                 end
               end
             end

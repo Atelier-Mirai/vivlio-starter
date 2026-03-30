@@ -19,7 +19,7 @@ require 'yaml'
 require 'samovar'
 require 'vivlio/starter/cli/common'
 require 'vivlio/starter/cli/cover'
-# require 'vivlio/starter/cli/samovar/cover_command'  # Phase 1では不要
+require 'vivlio/starter/cli/samovar/cover_command'
 
 module Vivlio
   module Starter
@@ -124,7 +124,7 @@ module Vivlio
             config = YAML.load_file('config/book.yml')
             CoverCommands.generate_epub_cover(covers_dir, config)
 
-            output_jpg = File.join(covers_dir, 'cover.jpg')
+            output_jpg = File.join(covers_dir, 'cover_master.jpg')
             assert File.exist?(output_jpg), 'EPUB用JPEGが生成されるべきです'
             assert File.size(output_jpg).positive?, 'JPEGにデータが書き込まれているべきです'
           end
@@ -143,9 +143,9 @@ module Vivlio
             command = SamovarCommands::CoverCommand.new(['a4'])
             command.call
 
-            assert File.exist?(File.join(covers_dir, 'frontcover_rgb.pdf')),
+            assert File.exist?(File.join(covers_dir, 'frontcover_master_a4_rgb.pdf')),
                    'A4表紙PDFが生成されるべきです'
-            assert File.exist?(File.join(covers_dir, 'backcover_rgb.pdf')),
+            assert File.exist?(File.join(covers_dir, 'backcover_master_a4_rgb.pdf')),
                    'A4裏表紙PDFが生成されるべきです'
           end
         end
@@ -163,7 +163,7 @@ module Vivlio
             command = SamovarCommands::CoverCommand.new(['epub'])
             command.call
 
-            assert File.exist?(File.join(covers_dir, 'cover.jpg')),
+            assert File.exist?(File.join(covers_dir, 'cover_master.jpg')),
                    'EPUB用JPEGが生成されるべきです'
           end
         end
@@ -187,21 +187,8 @@ module Vivlio
               'covers' => 'covers'
             },
             'output' => {
-              'pdf' => {
-                'cover' => {
-                  'front' => 'frontcover_rgb.pdf',
-                  'back' => 'backcover_rgb.pdf'
-                }
-              },
-              'print_pdf' => {
-                'cover' => {
-                  'front' => 'frontcover_cmyk.pdf',
-                  'back' => 'backcover_cmyk.pdf'
-                }
-              },
-              'epub' => {
-                'cover' => 'cover.jpg'
-              }
+              'cover' => 'master',
+              'targets' => 'pdf'
             },
             'page' => {
               'use' => 'b5_standard'

@@ -416,7 +416,7 @@ module Vivlio
         # @return [Hash] index設定
         def load_index_config
           shared = load_shared_config
-          idx = Common::CONFIG.index
+          idx = Common::CONFIG[:index]
           idx_hash = idx.respond_to?(:to_h) ? idx.to_h : (idx || {})
           shared.merge(idx_hash)
         end
@@ -426,7 +426,7 @@ module Vivlio
         # @return [Hash] glossary設定
         def load_glossary_config
           shared = load_shared_config
-          gls = Common::CONFIG.glossary
+          gls = Common::CONFIG[:glossary]
           gls_hash = gls.respond_to?(:to_h) ? gls.to_h : (gls || {})
           shared.merge(gls_hash)
         rescue StandardError

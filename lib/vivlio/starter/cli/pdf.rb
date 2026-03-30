@@ -554,12 +554,12 @@ module Vivlio
             cmd = 'npx vivliostyle build'
             cmd += ' -d' if SingleDocDecider.new(config).call
 
-            print_cfg = Common::CONFIG.output&.print_pdf
+            print_cfg = Common::CONFIG.dig(:output, :print_pdf)
             return cmd unless print_cfg
 
-            bleed = print_cfg.bleed&.to_s || '3mm'
+            bleed = print_cfg[:bleed]&.to_s || '3mm'
 
-            if print_cfg.crop_marks != false
+            if print_cfg[:crop_marks] != false
               cmd += ' --crop-marks'
               cmd += " --bleed #{bleed}"
             end

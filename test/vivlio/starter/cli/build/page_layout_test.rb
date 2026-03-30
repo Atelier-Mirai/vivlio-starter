@@ -60,7 +60,8 @@ module Vivlio
         end
 
         def test_vivliostyle_config_js_contains_size_property
-          expected_size = VivliostyleCommands.resolve_vivliostyle_size(Common::CONFIG)
+          fresh_config = Common.load_config
+          expected_size = VivliostyleCommands.resolve_vivliostyle_size(fresh_config)
           pattern = /size:\s*'#{Regexp.escape(expected_size)}'/
 
           content = File.read('vivliostyle.config.js', encoding: 'utf-8')

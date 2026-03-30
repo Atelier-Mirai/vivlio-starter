@@ -111,10 +111,10 @@ page:
 
   # use: b5_standard
   # use: b5_compact
-  # use: b5_airy
+  use: b5_airy
   # use: b5_custom
   
-  use: a4_standard
+  # use: a4_standard
   # use: a4_airy
   # use: a4_compact
   # use: a4_custom
@@ -188,7 +188,10 @@ output:
   # ----------------------------
   # 出力フォーマット
   # ----------------------------
-  targets: pdf # pdf / print_pdf / epub
+  # targets: pdf # pdf / print_pdf / epub
+  # targets: pdf, print_pdf, epub
+  targets: print_pdf
+  # targets: pdf
   # 文字列、カンマ区切り、配列すべて可
   # 例:
   # targets: pdf              # 単一指定
@@ -217,7 +220,9 @@ output:
   # 表紙・裏表紙設定
   # ----------------------------
   # cover: light # light, dark, myawesome
-  cover: master
+  # cover: master
+  cover: light
+  # cover: dark
 
   # ----------------------------
   # PDF設定（閲覧用）

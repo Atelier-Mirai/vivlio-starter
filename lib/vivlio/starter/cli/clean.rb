@@ -256,15 +256,13 @@ module Vivlio
         #
         # @return [void]
         #
-        # 削除対象（config/book.yml から取得）:
-        #   - output.pdf.cover.front/back: PDF 用カバー（RGB）
-        #   - output.print_pdf.cover.front/back: 印刷用カバー（CMYK）
-        #   - output.epub.cover: EPUB 用カバー
+        # 削除対象:
+        #   - covers/ 内の *.pdf, *.svg, *.jpg（coverコマンドで生成されたファイル）
         #
         # 保持対象:
-        #   - frontcover_master.png, backcover_master.png（マスター画像）
-        #   - 上記以外のファイル
-        # 生成されたカバー画像を削除する（シンボルキー前提）
+        #   - *.png（frontcover_master.png, backcover_master.png 等、利用者が用意した画像）
+        #   - *.key（Keynote ソースファイル）
+        #   - その他の非生成ファイル
         def clean_cover_files
           config = Common.load_config
           covers_dir = config.dig(:directories, :covers) || Common::COVERS_DIR
@@ -276,36 +274,14 @@ module Vivlio
 
           Common.log_action('生成されたカバー画像を削除中...')
 
-          # book.yml の設定から削除対象ファイルを収集
-          cover_files = []
-
-          # PDF用カバー（RGB版）
-          cover_files << config.dig(:output, :pdf, :cover, :front)
-          cover_files << config.dig(:output, :pdf, :cover, :back)
-
-          # 印刷用PDF（CMYK版）
-          cover_files << config.dig(:output, :print_pdf, :cover, :front)
-          cover_files << config.dig(:output, :print_pdf, :cover, :back)
-
-          # EPUB用カバー（ネスト構造: output.epub.cover.image または文字列）
-          epub_cover = config.dig(:output, :epub, :cover)
-          cover_files << (epub_cover.is_a?(Hash) ? epub_cover[:image] : epub_cover)
-
-          cover_files.compact!
-
-          cover_files.uniq!
-
-          if cover_files.empty?
-            Common.log_info('book.yml にカバー画像の設定が見つかりませんでした')
-            return
-          end
+          # 生成物の拡張子パターン（PDF/SVG/JPG）
+          generated_extensions = %w[*.pdf *.svg *.jpg]
 
           deleted_count = 0
-          cover_files.each do |filename|
-            basename = File.basename(filename)
-            file_path = File.join(covers_dir, basename)
+          generated_extensions.each do |pattern|
+            Dir.glob(File.join(covers_dir, pattern)).each do |file_path|
+              next unless File.file?(file_path)
 
-            if File.exist?(file_path)
               FileUtils.rm_f(file_path)
               Common.log_info("#{file_path} を削除しました")
               deleted_count += 1

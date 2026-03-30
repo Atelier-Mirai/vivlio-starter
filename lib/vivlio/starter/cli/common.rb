@@ -358,9 +358,10 @@ module Vivlio
         # ================================================================
 
         def generate_output_filename(target = 'pdf', suffix: nil)
-          project_name = CONFIG.project&.name || 'vivlio_starter'
-          project_version = CONFIG.project&.version
-          include_version = CONFIG.output&.filename&.include_version || false
+          project = CONFIG[:project]
+          project_name = project&.name || 'vivlio_starter'
+          project_version = project&.version
+          include_version = CONFIG.dig(:output, :filename, :include_version) || false
 
           filename = project_name.to_s.dup
           filename += '_print' if target == 'print_pdf'

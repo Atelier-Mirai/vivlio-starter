@@ -3,7 +3,6 @@ PATH
   specs:
     vivlio-starter (0.34.0)
       combine_pdf (~> 1.0)
-      hexapdf (~> 1.0)
       kramdown (~> 2.4)
       mini_magick (~> 4.12)
       natto (~> 1.2)

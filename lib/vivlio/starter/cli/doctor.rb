@@ -15,6 +15,7 @@
 #   - pdfinfo (poppler): PDF メタデータ取得
 #   - gs (Ghostscript): PDF 圧縮
 #   - imagemagick: 画像変換・リサイズ
+#   - inkscape: SVG編集・変換（カバー生成用）
 #   - waifu2x-ncnn-vulkan: AI 画像拡大（オプション）
 #
 # 自動インストール:
@@ -67,7 +68,7 @@ module Vivlio
         ].freeze
 
         DOCTOR_DESC = {
-          short: '必要ツール(Xcode Command Line Tools, qpdf, pdfinfo, gs, ImageMagick)の診断とセットアップを行います',
+          short: '必要ツール(Xcode Command Line Tools, qpdf, pdfinfo, gs, ImageMagick, Inkscape)の診断とセットアップを行います',
           long: <<~DESC
             環境診断を行い、以下の外部コマンドの存在をチェックします:
               - Xcode Command Line Tools (macOS)
@@ -77,6 +78,7 @@ module Vivlio
               - vivliostyle
               - gs
               - imagemagick
+              - inkscape
               - waifu2x
 
             役割の補足:
@@ -134,6 +136,7 @@ module Vivlio
             'pdfinfo' => 'pdfinfo',
             'gs' => 'gs', # Ghostscript
             'imagemagick' => nil,
+            'inkscape' => 'inkscape',
             'vips' => 'vips',
             'tesseract' => 'tesseract',
             'tesseract-lang' => nil,
@@ -149,6 +152,8 @@ module Vivlio
             ok = case label
                  when 'imagemagick'
                    command_exists?('convert') || command_exists?('magick')
+                 when 'inkscape'
+                   command_exists?('inkscape')
                  when 'tesseract-lang'
                    tesseract_language_available?('jpn')
                  when 'waifu2x'
@@ -294,6 +299,9 @@ module Vivlio
             # ImageMagick
             system('brew install imagemagick') if missing.include?('imagemagick')
 
+            # Inkscape
+            system('brew install inkscape') if missing.include?('inkscape')
+
             system('brew install vips') if missing.include?('vips')
 
             system('brew install tesseract') if missing.include?('tesseract')
@@ -373,6 +381,8 @@ module Vivlio
             ok = case label
                  when 'imagemagick'
                    command_exists?('convert') || command_exists?('magick')
+                 when 'inkscape'
+                   command_exists?('inkscape')
                  when 'tesseract-lang'
                    tesseract_language_available?('jpn')
                  when 'waifu2x'
@@ -594,6 +604,7 @@ module Vivlio
             'pdfinfo' => 'pdfinfo (poppler)',
             'gs' => 'Ghostscript',
             'imagemagick' => 'ImageMagick',
+            'inkscape' => 'Inkscape',
             'vips' => 'vips (libvips)',
             'tesseract' => 'Tesseract OCR',
             'tesseract-lang' => 'Tesseract 日本語学習データ',

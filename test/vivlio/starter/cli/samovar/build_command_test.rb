@@ -116,11 +116,9 @@ module Vivlio
           def suppress_build_outputs(command)
             command.stub :print_build_timings, nil do
               command.stub :print_outline_debug_info, nil do
-                command.stub :save_timings_to_file, nil do
-                  command.stub :open_pdf, nil do
-                    command.stub :open_generated_pdf, nil do
-                      yield
-                    end
+                command.stub :open_pdf, nil do
+                  command.stub :open_generated_pdf, nil do
+                    yield
                   end
                 end
               end

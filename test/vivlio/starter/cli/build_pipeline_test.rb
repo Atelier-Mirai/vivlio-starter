@@ -31,6 +31,7 @@
 require 'test_helper'
 require 'vivlio/starter/cli/common'
 require 'vivlio/starter/cli/build'
+require 'vivlio/starter/cli/token_resolver'
 
 module Vivlio
   module Starter
@@ -114,7 +115,7 @@ module Vivlio
             'Step  9 (build front pages and tail)',
             'Step 10 (merge all pdfs)',
             'Step 11 (apply outline to output pdf)',
-            'Step 12 (rename and final clean)'
+            'Step 12 (compress, rename and final clean)'
           ]
           labels = pipeline.timings.map(&:first)
           assert_equal expected_labels, labels
@@ -244,7 +245,8 @@ module Vivlio
             'Step  2 (prepare theme images)',
             'Step  3 (build sections html)',
             'Step  4 (entries.js + pdf)',
-            'Step  5 (rename output pdfs)'
+            'Step  5 (rename output pdfs)',
+            'Step F (final clean)'
           ]
           labels = pipeline.timings.map(&:first)
           assert_equal expected_labels, labels
@@ -268,7 +270,12 @@ module Vivlio
           options = default_options
           command = Struct.new(:options).new(options)
           entries = targets.map { |bn| make_entry(bn) }
-          BuildCommands::UnifiedBuildPipeline.new(command, entries: entries, mode: :single)
+          klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
+            define_method(:pdf_target?)       { true }
+            define_method(:epub_target?)      { false }
+            define_method(:print_pdf_target?) { false }
+          end
+          klass.new(command, entries: entries, mode: :single)
         end
 
         def make_entry(basename)
@@ -365,9 +372,13 @@ module Vivlio
         def build_single_pipeline(targets:)
           options = { clean: true, resize: true, compress: true, high: false, low: false }
           command = Struct.new(:options).new(options)
-          # targets を Entry オブジェクトに変換
           entries = targets.map { |bn| make_entry(bn) }
-          BuildCommands::UnifiedBuildPipeline.new(command, entries: entries, mode: :single)
+          klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
+            define_method(:pdf_target?)       { true }
+            define_method(:epub_target?)      { false }
+            define_method(:print_pdf_target?) { false }
+          end
+          klass.new(command, entries: entries, mode: :single)
         end
 
         def make_entry(basename)
@@ -451,7 +462,13 @@ module Vivlio
 
         def build_pipeline(options, mode:)
           command = Struct.new(:options).new(options)
-          BuildCommands::UnifiedBuildPipeline.new(command, entries: [], mode: mode)
+          # book.yml の targets 設定に依存しないよう pdf 専用モードを強制する
+          klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
+            define_method(:pdf_target?)       { true }
+            define_method(:epub_target?)      { false }
+            define_method(:print_pdf_target?) { false }
+          end
+          klass.new(command, entries: [], mode: mode)
         end
 
         def stub_all_steps(pipeline)
@@ -490,8 +507,8 @@ module Vivlio
             pipeline.run
           end
 
-          # single mode は 6 ステップ
-          assert_equal 6, pipeline.timings.length, 'single mode は 6 ステップを記録するべき'
+          # single mode は 7 ステップ（Step 0-5 + Step F）
+          assert_equal 7, pipeline.timings.length, 'single mode は 7 ステップを記録するべき'
         end
 
         def test_full_mode_timings_has_12_entries
@@ -522,7 +539,12 @@ module Vivlio
           options = { clean: true, resize: true, compress: true, high: false, low: false }
           command = Struct.new(:options).new(options)
           entries = targets.map { |bn| make_entry(bn) }
-          BuildCommands::UnifiedBuildPipeline.new(command, entries: entries, mode: :single)
+          klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
+            define_method(:pdf_target?)       { true }
+            define_method(:epub_target?)      { false }
+            define_method(:print_pdf_target?) { false }
+          end
+          klass.new(command, entries: entries, mode: :single)
         end
 
         def make_entry(basename)

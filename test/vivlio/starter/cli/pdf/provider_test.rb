@@ -73,7 +73,7 @@ module Vivlio
             refute result
           end
 
-          assert logged_warnings.any? { |msg| msg.include?('PDF アウトライン（しおり）の付与は Standard モード(MIT) ではサポートされていません') },
+          assert logged_warnings.any? { |msg| msg.include?('PDF しおり（アウトライン）の付与は Standard モード(MIT) ではサポートされていません') },
                  'Standard モードではアウトライン付与スキップの警告を出すこと'
         end
 

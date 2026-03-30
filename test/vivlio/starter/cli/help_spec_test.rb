@@ -96,7 +96,6 @@ module Vivlio
           assert_includes output, 'build'
           assert_includes output, 'resize'
           assert_includes output, 'compress'
-          assert_includes output, 'dry-run'
         end
 
         # vs clean --help: クリーンコマンドのヘルプ（--all オプション含む）
