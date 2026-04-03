@@ -88,6 +88,7 @@
 （次回リリース候補の変更はここに追加してください）
 
 ### Added
+- **カバー自動生成機能の実装中**: `docs/specs/cover_auto_generation_spec.md` に基づき、表紙・裏表紙の自動生成機能を開発中。SVG→PDF変換、トンボ描画、RGB/CMYK出力、ビルドパイプライン統合までを含む完全自動化を目指す。現在トンボ描画ロジックをVivliostyleコアと完全一致させ、crop offset領域のみに描画する仕様を確定済み。
 - **単章ビルドの完全なtargets対応**: `vs build 1`で`config/book.yml`の`output.targets`に応じてPDF・print_pdf・EPUBを柔軟に生成可能に。複合ターゲット（`pdf, print_pdf, epub`など）にも完全対応し、組み合わせ爆発を回避するシンプルな条件分岐ロジックを実現。これによりサンプル配布用の単章EPUB生成や入稿用単章PDF生成が本格的に実用可能に。
 - **VFMのハード改行機能をデフォルトで有効化**: `hardLineBreaks: true` を既定値に設定し、日本語文章の直感的な執筆体験を向上。フロントマターで個別無効化（`hardLineBreaks: false`）も可能。コードブロックと空行は影響を受けない（VFM標準準拠）。
 
