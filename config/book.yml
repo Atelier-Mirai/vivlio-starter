@@ -221,7 +221,7 @@ output:
   # ----------------------------
   # cover: master
   # cover: light
-  cover: dark
+  cover: light
 
   # ----------------------------
   # PDF設定（閲覧用）

@@ -334,6 +334,8 @@ module Vivlio
         # ユーザー用意のSVGにテキストプレースホルダーのみ適用して出力SVGを生成する
         #
         # パレットは適用しない（ユーザーが色を自由に設定しているため）。
+        # ただし CSS カスタムプロパティ（var(--xxx)）は rsvg-convert が解釈できないため
+        # インライン展開してから保存する。
         # 生成したSVGは covers/<side>cover_<theme>_rendered.svg に保存する。
         #
         # @param user_svg_path [String] ユーザー用意のSVGのパス
@@ -348,11 +350,62 @@ module Vivlio
           if needs_regeneration?(output_svg, book_config_path, user_svg_path)
             svg = File.read(user_svg_path, encoding: 'utf-8')
             svg = apply_text_replacements(svg)
+            svg = expand_css_custom_properties(svg)
             safe_write(output_svg, svg)
             Common.log_info("#{side}表紙SVGを適用しました: #{output_svg}")
           end
 
           output_svg
+        end
+
+        # CSS カスタムプロパティをインライン展開する
+        #
+        # rsvg-convert は CSS var() を完全サポートしていないため、
+        # :root ブロックで定義された変数を実際の値に展開してから渡す。
+        #
+        # @param svg_content [String] SVG ファイルの内容
+        # @return [String] カスタムプロパティを展開した SVG の内容
+        def expand_css_custom_properties(svg_content)
+          variables = extract_css_variables(svg_content)
+          return svg_content if variables.empty?
+
+          resolve_css_variables(svg_content, variables)
+        end
+
+        # <style> 内の :root { ... } からカスタムプロパティを抽出する
+        #
+        # @param svg_content [String]
+        # @return [Hash{String => String}] { "--vs-text-main" => "#f0e8d0", ... }
+        def extract_css_variables(svg_content)
+          variables = {}
+          style_blocks = svg_content.scan(/<style[^>]*>(.*?)<\/style>/m).flatten
+          style_blocks.each do |block|
+            root_blocks = block.scan(/:root\s*\{([^}]*)\}/m).flatten
+            root_blocks.each do |root_block|
+              root_block.scan(/(--[\w-]+)\s*:\s*([^;]+);/) do |name, value|
+                variables[name.strip] = value.strip
+              end
+            end
+          end
+          variables
+        end
+
+        # var(--xxx) / var(--xxx, fallback) を再帰的に解決する
+        #
+        # @param svg_content [String]
+        # @param variables [Hash{String => String}]
+        # @param depth [Integer] 再帰深度の上限（循環参照対策）
+        # @return [String]
+        def resolve_css_variables(svg_content, variables, depth: 10)
+          return svg_content if depth.zero?
+
+          resolved = svg_content.gsub(/var\((--[\w-]+)(?:\s*,\s*([^)]*))?\)/) do
+            var_name = ::Regexp.last_match(1)
+            fallback  = ::Regexp.last_match(2)&.strip
+            variables.fetch(var_name, fallback || 'unset')
+          end
+
+          resolved.include?('var(') ? resolve_css_variables(resolved, variables, depth: depth - 1) : resolved
         end
 
         # SVGにパレット（CSS変数値 + stop-colorプレースホルダー）を適用する
@@ -562,6 +615,17 @@ module Vivlio
             return
           end
 
+          # rsvg-convert は CSS var() を完全サポートしないため、変換前にインライン展開する
+          svg_content = File.read(input, encoding: 'utf-8')
+          expanded    = expand_css_custom_properties(svg_content)
+          input_to_use = if expanded == svg_content
+                           input
+                         else
+                           tmp = "#{input}.expanded.svg"
+                           File.write(tmp, expanded, encoding: 'utf-8')
+                           tmp
+                         end
+
           system('rsvg-convert',
                  '-f', 'pdf',
                  '--page-width', "#{page_w_mm}mm",
@@ -571,7 +635,9 @@ module Vivlio
                  '--left', "#{crop_offset_mm}mm",
                  '--top', "#{crop_offset_mm}mm",
                  '-o', output,
-                 input)
+                 input_to_use)
+
+          FileUtils.rm_f(input_to_use) if input_to_use != input
 
           add_crop_marks_overlay(output, trim_w_mm, trim_h_mm, bleed_mm, crop_offset_mm)
         end
