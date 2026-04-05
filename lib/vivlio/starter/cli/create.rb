@@ -216,7 +216,11 @@ module Vivlio
         # page_size: :a4 / :b5 / :a5
         # crop_marks: true で入稿用トンボ・塗り足し付きPDFを生成
         def convert_svg(input, output, page_size: :b5, crop_marks: false)
-          return if File.exist?(output) && File.mtime(output) >= File.mtime(input)
+          # crop_marks: true の場合は常に再生成（トンボ設定変更を確実に反映）
+          # crop_marks: false の場合はキャッシュを使用
+          unless crop_marks
+            return if File.exist?(output) && File.mtime(output) >= File.mtime(input)
+          end
 
           ext = File.extname(output).delete('.')
           size = COVER_SIZES.fetch(page_size, COVER_SIZES[:b5])
@@ -324,8 +328,17 @@ module Vivlio
           bx2 = tx2 + bleed_pt
           by2 = ty2 + bleed_pt
 
-          # センタートンボ寸法（Vivliostyle 準拠の比率）
-          circle_r_pt = margin_pt / 4.0  # 円半径 = margin/4
+          # センタートンボ寸法（Vivliostyle準拠の正確な値）
+          # 線幅: 0.24pt (0.0847mm)
+          # コーナートンボ長さ: 10mm
+          # センタートンボ円の半径: 2.5mm
+          # センタートンボ横線: 合計20mm（片側10mm）
+          # センタートンボ縦線: 合計10mm（片側5mm）
+          line_w_pt      = 0.24                 # 線幅 0.24pt
+          circle_r_pt    = 2.5 * mm2pt          # 円の半径 2.5mm
+          cross_arm_h_pt = 10.0 * mm2pt         # 水平腕（長い方）片側 10mm
+          cross_arm_v_pt = 5.0 * mm2pt          # 垂直腕（短い方）片側 5mm
+          corner_len_pt  = 10.0 * mm2pt         # コーナートンボの長さ 10mm
 
           overlay_path = "#{pdf_path}.crop_marks.pdf"
 
@@ -333,56 +346,69 @@ module Vivlio
                                    page_size: [page_w_pt, page_h_pt],
                                    margin: 0) do |pdf|
             pdf.stroke_color '000000'
-            pdf.line_width 0.5
+            pdf.line_width line_w_pt
 
             # ──────────────────────────────────
-            # 角トンボ（crop offset 帯のみ）
-            # trim境界位置の直線をページ端〜bleed境界に配置
+            # 角トンボ（「「が二つ重なる形）
             # ──────────────────────────────────
+            s  = corner_len_pt   # トンボの長さ（10mm）
+            bl = bleed_pt        # 塗り足し幅（3mm）
 
-            # 左上
-            pdf.stroke_line [0, ty2], [bx1, ty2]          # 水平: trim-y 位置
-            pdf.stroke_line [tx1, page_h_pt], [tx1, by2]  # 垂直: trim-x 位置
-
-            # 右上
-            pdf.stroke_line [bx2, ty2], [page_w_pt, ty2]
-            pdf.stroke_line [tx2, page_h_pt], [tx2, by2]
-
-            # 左下
-            pdf.stroke_line [0, ty1], [bx1, ty1]
-            pdf.stroke_line [tx1, 0], [tx1, by1]
-
-            # 右下
-            pdf.stroke_line [bx2, ty1], [page_w_pt, ty1]
-            pdf.stroke_line [tx2, 0], [tx2, by1]
+            # 左上 (xは左方向へ、yは上方向へ伸ばす)
+            draw_corner_crop_mark(pdf, tx1, ty2, -1,  1, s, bl)
+            # 右上 (xは右方向へ、yは上方向へ伸ばす)
+            draw_corner_crop_mark(pdf, tx2, ty2,  1,  1, s, bl)
+            # 左下 (xは左方向へ、yは下方向へ伸ばす)
+            draw_corner_crop_mark(pdf, tx1, ty1, -1, -1, s, bl)
+            # 右下 (xは右方向へ、yは下方向へ伸ばす)
+            draw_corner_crop_mark(pdf, tx2, ty1,  1, -1, s, bl)
 
             # ──────────────────────────────────
-            # センタートンボ（⊕）crop offset 帯の中央
-            # 垂直腕: ページ端〜bleed境界（crop offset 幅）
-            # 水平腕: ±margin（Vivliostyle 準拠）
+            # センタートンボ（⊕）Vivliostyle準拠
+            # 配置: crop offset 帯の中央
+            # 上下: 水平腕 合計20mm（片側10mm）、垂直腕 合計10mm（片側5mm）
+            # 左右: 水平腕 合計10mm（片側5mm）、垂直腕 合計20mm（片側10mm）
+            # 円の半径: 2.5mm
             # ──────────────────────────────────
             cx = page_w_pt / 2.0
             cy = page_h_pt / 2.0
             mid_crop = crop_off_pt / 2.0  # crop offset 帯の中央
 
-            # 上辺中央
-            draw_cross_mark(pdf, cx, page_h_pt - mid_crop,
-                            margin_pt, crop_off_pt / 2.0, circle_r_pt)
-            # 下辺中央
-            draw_cross_mark(pdf, cx, mid_crop,
-                            margin_pt, crop_off_pt / 2.0, circle_r_pt)
-            # 左辺中央
-            draw_cross_mark(pdf, mid_crop, cy,
-                            crop_off_pt / 2.0, margin_pt, circle_r_pt)
-            # 右辺中央
-            draw_cross_mark(pdf, page_w_pt - mid_crop, cy,
-                            crop_off_pt / 2.0, margin_pt, circle_r_pt)
+            # 上辺中央（水平腕が長い）
+            draw_center_crop_mark(pdf, cx, page_h_pt - mid_crop,
+                                  cross_arm_h_pt, cross_arm_v_pt, circle_r_pt)
+            # 下辺中央（水平腕が長い）
+            draw_center_crop_mark(pdf, cx, mid_crop,
+                                  cross_arm_h_pt, cross_arm_v_pt, circle_r_pt)
+            # 左辺中央（垂直腕が長い）
+            draw_center_crop_mark(pdf, mid_crop, cy,
+                                  cross_arm_v_pt, cross_arm_h_pt, circle_r_pt)
+            # 右辺中央（垂直腕が長い）
+            draw_center_crop_mark(pdf, page_w_pt - mid_crop, cy,
+                                  cross_arm_v_pt, cross_arm_h_pt, circle_r_pt)
           end
 
-          # オーバーレイを合成
+          # オーバーレイを合成し、TrimBox/BleedBoxを設定
           base = CombinePDF.load(pdf_path)
           overlay = CombinePDF.load(overlay_path)
           base.pages.first << overlay.pages.first
+
+          # TrimBox: 仕上がりサイズ（trim境界）を設定
+          # BleedBox: 塗り足し込みサイズを設定
+          # PDF座標系: 左下原点
+          trim_x1_pt = margin_pt
+          trim_y1_pt = margin_pt
+          trim_x2_pt = margin_pt + trim_w_mm * mm2pt
+          trim_y2_pt = margin_pt + trim_h_mm * mm2pt
+          bleed_x1_pt = trim_x1_pt - bleed_pt
+          bleed_y1_pt = trim_y1_pt - bleed_pt
+          bleed_x2_pt = trim_x2_pt + bleed_pt
+          bleed_y2_pt = trim_y2_pt + bleed_pt
+
+          page_dict = base.pages.first
+          page_dict[:TrimBox]  = [trim_x1_pt,  trim_y1_pt,  trim_x2_pt,  trim_y2_pt]
+          page_dict[:BleedBox] = [bleed_x1_pt, bleed_y1_pt, bleed_x2_pt, bleed_y2_pt]
+
           base.save(pdf_path)
 
           FileUtils.rm_f(overlay_path)
@@ -392,10 +418,37 @@ module Vivlio
         end
 
         # センタートンボ: ⊕（円＋十字線）
-        def draw_cross_mark(pdf, cx, cy, half_h, half_v, radius)
+        def draw_center_crop_mark(pdf, cx, cy, half_h, half_v, radius)
           pdf.stroke_line [cx - half_h, cy], [cx + half_h, cy]   # 水平線
           pdf.stroke_line [cx, cy - half_v], [cx, cy + half_v]   # 垂直線
           pdf.stroke_circle [cx, cy], radius                      # 円
+        end
+
+        # 角トンボ: 二重L字交差型
+        # x, y: 仕上がり角 (Trim corner)
+        # dx, dy: 方向 (左上なら -1, 1)
+        # s: 線分の長さ (10.0mm 固定)
+        # bl: 塗り足し幅 (3.0mm 固定)
+        def draw_corner_crop_mark(pdf, x, y, dx, dy, s, bl)
+          # --- 1. 内側L字 ---
+          # 水平線: 垂直塗り足し線(x + bl*dx)から開始し、外側へ s 伸ばす
+          pdf.move_to(x + bl * dx, y)
+          pdf.line_to(x + (s + bl) * dx, y)
+
+          # 垂直線: 水平塗り足し線(y + bl*dy)から開始し、外側へ s 伸ばす
+          pdf.move_to(x, y + bl * dy)
+          pdf.line_to(x, y + (s + bl) * dy)
+
+          # --- 2. 外側L字 ---
+          # 水平線: 垂直仕上がり線(x)から開始し、外側へ s 伸ばす
+          pdf.move_to(x, y + bl * dy)
+          pdf.line_to(x + s * dx, y + bl * dy)
+
+          # 垂直線: 水平仕上がり線(y)から開始し、外側へ s 伸ばす
+          pdf.move_to(x + bl * dx, y)
+          pdf.line_to(x + bl * dx, y + s * dy)
+
+          pdf.stroke
         end
 
         # SVG → JPG/PNG（ImageMagick）

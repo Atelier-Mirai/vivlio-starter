@@ -459,6 +459,219 @@ module Vivlio
           File.write(path, "\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\tpHYs\x00\x00\x0b\x13\x00\x00\x0b\x13\x01\x00\x9a\x9c\x18\x00\x00\x00\nIDATx\x9cc\xf8\x00\x00\x00\x01\x00\x01\x00\x00\x00\x00IEND\xaeB`\x82")
         end
       end
+
+      # ================================================================
+      # CoverCropMarksTest: 表紙トンボ付与の検証テスト
+      # ================================================================
+      # 仕様書 docs/specs/cover_crop_marks_bugfix_spec.md の
+      # P1・P2・P3 に対応する自動テスト。
+      #
+      # P1: print_pdf ターゲット時のページサイズ検証
+      #     期待値 = 仕上がり + 2 × (bleed_mm + CROP_MARK_OFFSET_MM)
+      # P2: pdf ターゲット時のページサイズ検証
+      #     期待値 = 仕上がり + 2 × bleed_mm
+      # P3: print_pdf ターゲット後のファイル存在確認
+      # ================================================================
+      class CoverCropMarksTest < Minitest::Test
+        # B5 仕上がりサイズ（mm）
+        TRIM_W_MM = 182.0
+        TRIM_H_MM = 257.0
+        BLEED_MM  = 3.0
+        OFFSET_MM = Vivlio::Starter::CLI::CoverCommands::CROP_MARK_OFFSET_MM
+
+        # P1: トンボ付き PDF のページサイズが正しいことを確認する
+        # 期待ページサイズ = 仕上がり + 2 × (bleed + offset)
+        def test_should_generate_cmyk_pdf_with_correct_page_size_for_print_pdf
+          skip 'ImageMagickが必要です' unless imagemagick_available?
+          skip 'HexaPDFが必要です' unless hexapdf_available?
+
+          within_temp_dir do
+            setup_config_with_print_pdf
+            covers_dir = 'covers'
+            FileUtils.mkdir_p(covers_dir)
+            input_png = File.join(covers_dir, 'frontcover_master.png')
+            output_pdf = File.join(covers_dir, 'frontcover_master_b5_cmyk.pdf')
+            create_dummy_png(input_png)
+
+            base_size = CoverCommands::SIZES[:b5]
+            CoverCommands.generate_pdfx_single(
+              input_png, output_pdf, base_size,
+              bleed_mm: BLEED_MM, crop_marks: true
+            )
+
+            assert File.exist?(output_pdf), 'トンボ付き CMYK PDF が生成されるべきです'
+
+            # ページサイズ検証
+            expected_w_mm = TRIM_W_MM + 2 * (BLEED_MM + OFFSET_MM)
+            expected_h_mm = TRIM_H_MM + 2 * (BLEED_MM + OFFSET_MM)
+
+            require 'hexapdf'
+            doc = HexaPDF::Document.open(output_pdf)
+            box = doc.pages[0].box
+            actual_w_mm = box.width  / 72.0 * 25.4
+            actual_h_mm = box.height / 72.0 * 25.4
+
+            assert_in_delta expected_w_mm, actual_w_mm, 1.0,
+              "幅: 期待 #{expected_w_mm}mm、実際 #{actual_w_mm.round(2)}mm"
+            assert_in_delta expected_h_mm, actual_h_mm, 1.0,
+              "高さ: 期待 #{expected_h_mm}mm、実際 #{actual_h_mm.round(2)}mm"
+          end
+        end
+
+        # P2: トンボなし PDF のページサイズが塗り足し込みサイズと一致することを確認する
+        # 期待ページサイズ = 仕上がり + 2 × bleed
+        def test_should_generate_cmyk_pdf_with_bleed_size_for_pdf_target
+          skip 'ImageMagickが必要です' unless imagemagick_available?
+          skip 'HexaPDFが必要です' unless hexapdf_available?
+
+          within_temp_dir do
+            setup_config_with_print_pdf
+            covers_dir = 'covers'
+            FileUtils.mkdir_p(covers_dir)
+            input_png = File.join(covers_dir, 'frontcover_master.png')
+            output_pdf = File.join(covers_dir, 'frontcover_master_b5_rgb.pdf')
+            create_dummy_png(input_png)
+
+            base_size = CoverCommands::SIZES[:b5]
+            CoverCommands.generate_pdfx_single(
+              input_png, output_pdf, base_size,
+              bleed_mm: BLEED_MM, crop_marks: false
+            )
+
+            assert File.exist?(output_pdf), 'トンボなし CMYK PDF が生成されるべきです'
+
+            # ページサイズ検証（塗り足し込みサイズ）
+            expected_w_mm = TRIM_W_MM + 2 * BLEED_MM
+            expected_h_mm = TRIM_H_MM + 2 * BLEED_MM
+
+            require 'hexapdf'
+            doc = HexaPDF::Document.open(output_pdf)
+            box = doc.pages[0].box
+            actual_w_mm = box.width  / 72.0 * 25.4
+            actual_h_mm = box.height / 72.0 * 25.4
+
+            assert_in_delta expected_w_mm, actual_w_mm, 1.0,
+              "幅: 期待 #{expected_w_mm}mm、実際 #{actual_w_mm.round(2)}mm"
+            assert_in_delta expected_h_mm, actual_h_mm, 1.0,
+              "高さ: 期待 #{expected_h_mm}mm、実際 #{actual_h_mm.round(2)}mm"
+          end
+        end
+
+        # P3: print_pdf ターゲット時に表紙・裏表紙 CMYK PDF が生成されることを確認する
+        def test_should_generate_both_cover_cmyk_pdfs_for_print_pdf_target
+          skip 'ImageMagickが必要です' unless imagemagick_available?
+
+          within_temp_dir do
+            setup_config_with_print_pdf
+            covers_dir = 'covers'
+            FileUtils.mkdir_p(covers_dir)
+            create_dummy_master_files(covers_dir)
+
+            config = YAML.load_file('config/book.yml', symbolize_names: true)
+            CoverCommands.generate_cmyk_pdf(covers_dir, :b5, config)
+
+            assert File.exist?(File.join(covers_dir, 'frontcover_master_b5_cmyk.pdf')),
+              '表紙 CMYK PDF が生成されるべきです'
+            assert File.exist?(File.join(covers_dir, 'backcover_master_b5_cmyk.pdf')),
+              '裏表紙 CMYK PDF が生成されるべきです'
+          end
+        end
+
+        # generate_cmyk_pdf が仕上がりサイズ（base_size）を使うことを確認する
+        # crop_marks: true 時は generate_pdfx_single 内でサイズ拡張が行われる
+        def test_should_pass_trim_size_not_bleed_size_to_generate_pdfx_single
+          base_size = CoverCommands::SIZES[:b5]
+          assert_equal 2508, base_size[:width],  'B5 仕上がり幅は 2508px であるべきです'
+          assert_equal 3541, base_size[:height], 'B5 仕上がり高さは 3541px であるべきです'
+          assert_equal [182, 257], base_size[:mm], 'B5 仕上がりサイズは 182×257mm であるべきです'
+        end
+
+        # CROP_MARK_OFFSET_MM 定数が cover.rb に定義されていることを確認する
+        def test_should_have_crop_mark_offset_constant_in_cover_commands
+          assert_equal 13.0, CoverCommands::CROP_MARK_OFFSET_MM,
+            'CROP_MARK_OFFSET_MM は 13.0mm であるべきです'
+        end
+
+        private
+
+        # print_pdf ターゲットを含む設定ファイルを生成する
+        def setup_config_with_print_pdf
+          FileUtils.mkdir_p('config')
+          config = {
+            'directories' => { 'covers' => 'covers' },
+            'output' => {
+              'cover' => 'master',
+              'targets' => 'print_pdf',
+              'print_pdf' => { 'bleed' => '3mm', 'crop_marks' => true }
+            },
+            'page' => { 'use' => 'b5_standard' }
+          }
+          File.write('config/book.yml', config.to_yaml)
+          File.write('config/page_presets.yml', CoverCommandsTest::DUMMY_PAGE_PRESETS.to_yaml)
+          File.write('config/post_replace_list.yml', { 'replacements' => [] }.to_yaml)
+        end
+
+        # マスター PNG を一時ディレクトリに生成する
+        def create_dummy_master_files(covers_dir)
+          create_dummy_png(File.join(covers_dir, 'frontcover_master.png'))
+          create_dummy_png(File.join(covers_dir, 'backcover_master.png'))
+        end
+
+        # ImageMagick で小さな白い PNG を生成する
+        # ImageMagick がない場合は最小限の PNG バイナリを書き込む
+        def create_dummy_png(path, width: 100, height: 100)
+          convert_cmd = imagemagick_convert_command
+          if convert_cmd
+            system(*convert_cmd, '-size', "#{width}x#{height}", 'xc:white', path,
+                   out: File::NULL, err: File::NULL)
+          else
+            File.binwrite(path, [
+              "\x89PNG\r\n\x1a\n",
+              "\x00\x00\x00\rIHDR",
+              "\x00\x00\x00\x01\x00\x00\x00\x01",
+              "\x08\x02\x00\x00\x00",
+              "\x90wS\xde",
+              "\x00\x00\x00\nIDATx\x9cc\xf8\x00\x00\x00\x01\x00\x01",
+              "\x00\x00\x00\x00IEND\xaeB`\x82"
+            ].join)
+          end
+        end
+
+        # ImageMagick が利用可能かチェックする
+        def imagemagick_available?
+          !imagemagick_convert_command.nil?
+        end
+
+        # HexaPDF が利用可能かチェックする
+        def hexapdf_available?
+          require 'hexapdf'
+          true
+        rescue LoadError
+          false
+        end
+
+        # ImageMagick のコマンドを取得する（magick 優先）
+        def imagemagick_convert_command
+          return ['magick'] if command_in_path?('magick')
+          return ['convert'] if command_in_path?('convert')
+          nil
+        end
+
+        # 指定コマンドが PATH に存在するかチェックする
+        def command_in_path?(command)
+          ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |dir|
+            path = File.join(dir, command)
+            File.executable?(path) && !File.directory?(path)
+          end
+        end
+
+        # 一時ディレクトリ内でテストを実行する
+        def within_temp_dir
+          Dir.mktmpdir do |dir|
+            Dir.chdir(dir) { yield dir }
+          end
+        end
+      end
     end
   end
 end

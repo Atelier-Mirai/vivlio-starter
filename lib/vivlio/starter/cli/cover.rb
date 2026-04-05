@@ -46,6 +46,9 @@ module Vivlio
 
         DPI = 350
 
+        # トンボオフセット（Vivliostyle 準拠）
+        CROP_MARK_OFFSET_MM = 13.0
+
         # EPUB用サイズ
         EPUB_SIZE = { width: 1600, height: 2560 }.freeze
 
@@ -315,39 +318,61 @@ module Vivlio
           Common.log_error "  失敗: #{File.basename(output_pdf)}" unless system(*cmd, out: File::NULL, err: File::NULL)
         end
 
-        # CMYK版PDF/X-1a生成（bleed 追加）
+        # 印刷用 CMYK PDF 生成（print_pdf ターゲット用）
+        #
+        # - size は常に仕上がりサイズ（base_size）を渡す
+        # - 塗り足し・トンボオフセットの加算は generate_pdfx_single 内で行う
+        # - crop_marks: true を渡すことでトンボ付き PDF を生成する
         def self.generate_cmyk_pdf(covers_dir, page_size, config)
-          base_size = SIZES[page_size]
-          bleed_mm = parse_bleed_mm(config)
-          size = add_bleed_to_size(base_size, bleed_mm)
+          base_size = SIZES[page_size]  # 仕上がりサイズ（塗り足しなし）
+          bleed_mm  = parse_bleed_mm(config)
 
-          Common.log_info "  塗り足し: #{bleed_mm}mm（片側）→ #{size[:mm][0]}×#{size[:mm][1]}mm" if bleed_mm > 0
+          Common.log_info "  塗り足し: #{bleed_mm}mm（片側）" if bleed_mm > 0
 
           theme = config.dig(:output, :cover) || 'master'
-          
-          # 新しい命名規則で出力ファイル名を生成
+
           front_output = "frontcover_#{theme}_#{page_size}_cmyk.pdf"
-          back_output = "backcover_#{theme}_#{page_size}_cmyk.pdf"
+          back_output  = "backcover_#{theme}_#{page_size}_cmyk.pdf"
 
-          # masterテーマの場合はmaster.pngを、それ以外はテーマ名のPNGを使用
           front_input = theme == 'master' ? FRONTCOVER_MASTER : "frontcover_#{theme}.png"
-          back_input = theme == 'master' ? BACKCOVER_MASTER : "backcover_#{theme}.png"
+          back_input  = theme == 'master' ? BACKCOVER_MASTER  : "backcover_#{theme}.png"
 
+          # print_pdf ターゲットは常にトンボ付きで生成する
           CoverCommands.generate_pdfx_single(
             File.join(covers_dir, front_input),
             File.join(covers_dir, front_output),
-            size
+            base_size,
+            bleed_mm: bleed_mm,
+            crop_marks: true
           )
 
           CoverCommands.generate_pdfx_single(
             File.join(covers_dir, back_input),
             File.join(covers_dir, back_output),
-            size
+            base_size,
+            bleed_mm: bleed_mm,
+            crop_marks: true
           )
         end
 
-        # PDF/X-1a生成（単一ファイル）
-        def self.generate_pdfx_single(input_png, output_pdf, size)
+        # CMYK PDF 生成（単一ファイル）
+        #
+        # crop_marks: false 時（pdf ターゲット）:
+        #   PNG → 塗り足し込みサイズでリサイズ + CMYK変換 → PDF
+        #
+        # crop_marks: true 時（print_pdf ターゲット）:
+        #   PNG → 塗り足し込みサイズでリサイズ + CMYK変換 → 中間 PDF
+        #       → add_crop_marks_overlay でトンボを追加 → 最終 PDF
+        #
+        # Ghostscript による PDF/X-1a 変換は省略し、ImageMagick のみで処理する。
+        # PDF/X-1a 対応が必要な場合は将来のオプション機能として追加する。
+        #
+        # @param input_png  [String]  入力 PNG パス
+        # @param output_pdf [String]  出力 PDF パス
+        # @param size       [Hash]    仕上がりサイズ { width: px, height: px, mm: [w, h] }
+        # @param bleed_mm   [Float]   塗り足し幅（mm）
+        # @param crop_marks [Boolean] トンボを付与するか
+        def self.generate_pdfx_single(input_png, output_pdf, size, bleed_mm:, crop_marks: false)
           return unless File.exist?(input_png)
 
           convert_cmd = imagemagick_convert_command
@@ -358,42 +383,72 @@ module Vivlio
 
           Common.log_info "  生成中: #{File.basename(output_pdf)}"
 
-          temp_pdf = "#{output_pdf}.temp.pdf"
+          trim_w_px = size[:width]
+          trim_h_px = size[:height]
+          trim_w_mm = size[:mm][0]
+          trim_h_mm = size[:mm][1]
+          px_per_mm = DPI / 25.4
 
-          begin
-            # Step 1: ImageMagickでリサイズ + CMYK変換
+          if crop_marks
+            # --- Phase: トンボ付き PDF 生成 ---
+            # CreateCommands モジュールの add_crop_marks_overlay を使用
+            require_relative 'create' unless defined?(CreateCommands)
+
+            # ページサイズ = 仕上がり + 塗り足し×2 + オフセット×2
+            offset_mm  = CROP_MARK_OFFSET_MM
+            margin_mm  = bleed_mm + offset_mm
+            bleed_px   = (bleed_mm  * px_per_mm).round
+            margin_px  = (margin_mm * px_per_mm).round
+            total_w_px = trim_w_px + 2 * margin_px
+            total_h_px = trim_h_px + 2 * margin_px
+
+            temp_pdf = "#{output_pdf}.temp.pdf"
+
+            begin
+              # Step 1: 塗り足し込みサイズでPDFを生成（トンボなし、背景色のみ）
+              # ページサイズは仕上がり + 2 × (bleed + crop_offset) に設定
+              cmd_convert = convert_cmd + [
+                input_png,
+                '-resize', "#{total_w_px}x#{total_h_px}!",
+                '-colorspace', 'CMYK',
+                '-density', DPI.to_s,
+                '-units', 'PixelsPerInch',
+                temp_pdf
+              ]
+              unless system(*cmd_convert, out: File::NULL, err: File::NULL)
+                Common.log_error "  失敗（PDF生成）: #{File.basename(output_pdf)}"
+                return
+              end
+
+              # Step 2: add_crop_marks_overlay でトンボを追加
+              CreateCommands.add_crop_marks_overlay(temp_pdf, trim_w_mm, trim_h_mm, bleed_mm, offset_mm)
+
+              # Step 3: 中間PDFを最終PDFにリネーム
+              FileUtils.mv(temp_pdf, output_pdf)
+            rescue StandardError => e
+              Common.log_error "  失敗（トンボ付きPDF生成）: #{File.basename(output_pdf)} - #{e.message}"
+              FileUtils.rm_f(temp_pdf) if temp_pdf && File.exist?(temp_pdf)
+            end
+
+          else
+            # --- Phase: トンボなし PDF 生成（pdf ターゲット）---
+            # 塗り足し込みサイズでリサイズして PDF 変換（既存動作を維持）
+            bleed_px   = (bleed_mm * px_per_mm).round
+            bleed_w_px = trim_w_px + 2 * bleed_px
+            bleed_h_px = trim_h_px + 2 * bleed_px
+
             cmd_convert = convert_cmd + [
               input_png,
-              '-resize', "#{size[:width]}x#{size[:height]}!",
+              '-resize', "#{bleed_w_px}x#{bleed_h_px}!",
               '-colorspace', 'CMYK',
-              '-density', '350',
+              '-density', DPI.to_s,
               '-units', 'PixelsPerInch',
-              temp_pdf
+              output_pdf
             ]
 
             unless system(*cmd_convert, out: File::NULL, err: File::NULL)
               Common.log_error "  失敗（変換）: #{File.basename(output_pdf)}"
-              return
             end
-
-            # Step 2: GhostscriptでPDF/X-1a変換
-            cmd_gs = [
-              'gs',
-              '-dPDFX',
-              '-dBATCH',
-              '-dNOPAUSE',
-              '-dQUIET',
-              '-sDEVICE=pdfwrite',
-              '-dCompatibilityLevel=1.4',
-              "-sOutputFile=#{output_pdf}",
-              temp_pdf
-            ]
-
-            unless system(*cmd_gs, out: File::NULL, err: File::NULL)
-              Common.log_error "  失敗（PDF/X-1a変換）: #{File.basename(output_pdf)}"
-            end
-          ensure
-            FileUtils.rm_f(temp_pdf)
           end
         end
 
