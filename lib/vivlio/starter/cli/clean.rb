@@ -252,17 +252,20 @@ module Vivlio
           Common.log_warn("bundled テーマバリアント削除中にエラー: #{e.message}")
         end
 
-        # 生成されたカバー画像を削除する（マスター画像は保持）
+        # 生成されたカバー画像を削除する（マスター画像・ユーザーSVGは保持）
         #
         # @return [void]
         #
         # 削除対象:
-        #   - covers/ 内の *.pdf, *.svg, *.jpg（coverコマンドで生成されたファイル）
+        #   - covers/ 内の *.pdf, *.jpg（coverコマンドで生成されたファイル）
+        #   - covers/ 内の *_light.svg, *_dark.svg（bundledテンプレートから生成されたSVG）
+        #   - covers/ 内の *_rendered.svg（ユーザーSVGにプレースホルダー適用した中間ファイル）
         #
         # 保持対象:
-        #   - *.png（frontcover_master.png, backcover_master.png 等、利用者が用意した画像）
+        #   - *.png（frontcover_master.png 等、利用者が用意した画像）
         #   - *.key（Keynote ソースファイル）
-        #   - その他の非生成ファイル
+        #   - covers/bundled/ 内のファイル（テンプレート本体）
+        #   - light/dark 以外の *.svg（frontcover_floral.svg 等、利用者が用意したSVG）
         def clean_cover_files
           config = Common.load_config
           covers_dir = config.dig(:directories, :covers) || Common::COVERS_DIR
@@ -274,18 +277,37 @@ module Vivlio
 
           Common.log_action('生成されたカバー画像を削除中...')
 
-          # 生成物の拡張子パターン（PDF/SVG/JPG）
-          generated_extensions = %w[*.pdf *.svg *.jpg]
-
           deleted_count = 0
-          generated_extensions.each do |pattern|
+
+          # PDF / JPG はすべて生成物として削除
+          %w[*.pdf *.jpg].each do |pattern|
             Dir.glob(File.join(covers_dir, pattern)).each do |file_path|
               next unless File.file?(file_path)
 
               FileUtils.rm_f(file_path)
-              Common.log_info("#{file_path} を削除しました")
+              Common.log_info("  削除: #{File.basename(file_path)}")
               deleted_count += 1
             end
+          end
+
+          # SVG は bundled テンプレートから生成されたもの（light/dark）と
+          # プレースホルダー適用済み中間ファイル（*_rendered.svg）のみ削除
+          # 利用者が用意した SVG（floral.svg 等）は保持する
+          bundled_themes = %w[light dark]
+          Dir.glob(File.join(covers_dir, '*.svg')).each do |file_path|
+            next unless File.file?(file_path)
+
+            basename = File.basename(file_path, '.svg')  # 例: frontcover_dark
+            # *_light.svg / *_dark.svg → bundled テンプレートからの生成物
+            is_bundled_generated = bundled_themes.any? { |t| basename.end_with?("_#{t}") }
+            # *_rendered.svg → apply_text_placeholders_to_svg の中間ファイル
+            is_rendered = basename.end_with?('_rendered')
+
+            next unless is_bundled_generated || is_rendered
+
+            FileUtils.rm_f(file_path)
+            Common.log_info("  削除: #{File.basename(file_path)}")
+            deleted_count += 1
           end
 
           if deleted_count.zero?

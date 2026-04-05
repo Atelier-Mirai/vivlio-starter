@@ -1,55 +1,84 @@
 # カバー画像の生成
 
 :::{.chapter-lead}
-Vivlio Starter では、`vs cover` コマンドを使用して、マスター画像から PDF 用、印刷用、EPUB 用のカバー画像を自動生成できます。本章では、カバー画像の準備から生成、管理までの一連のワークフローを解説します。
+Vivlio Starter では、`vs cover` コマンドを使用して、カバー画像から PDF 用、印刷用、EPUB 用のカバー画像を自動生成できます。開発者が用意した `light` / `dark` テーマの SVG デザインをそのまま使うことも、著者が独自に用意した SVG や PNG を使うこともできます。本章では、カバー画像の準備から生成、管理までの一連のワークフローを解説します。
 :::
 
-`vs cover` コマンドは、1つのマスター画像から、用途に応じた複数のフォーマットのカバー画像を自動生成します。これにより、PDF閲覧用、商業印刷用、電子書籍用のカバーを一括で作成できます。
+`vs cover` コマンドは、カバーのソース画像から、用途に応じた複数のフォーマットのカバー画像を自動生成します。これにより、PDF閲覧用、商業印刷用、電子書籍用のカバーを一括で作成できます。
 
-## マスター画像の準備
+## カバーテーマの選択
 
 :::{.section-lead}
-カバー画像を生成する前に、まずマスター画像を準備します。マスター画像は、すべての出力フォーマットに対応できる高品質な PNG ファイルです。
+`book.yml` の `output.cover` でカバーのテーマを指定します。用途に応じて3種類の方法から選べます。
 :::
 
-### マスター画像の仕様
+```yaml
+output:
+  # 開発者提供のデザインを使う場合
+  cover: light   # 明るいテーマ（デフォルト）
+  # cover: dark  # 暗いテーマ
 
-`covers/` ディレクトリ（`book.yml` の `directories.covers` で変更可能）に、以下のマスター画像を配置します：
+  # 著者が用意した独自デザインを使う場合
+  # cover: floral    # covers/frontcover_floral.png または frontcover_floral.svg を使用
+  # cover: mandala   # covers/frontcover_mandala.png または frontcover_mandala.svg を使用
+  # cover: master    # covers/frontcover_master.png を使用（従来の方法）
+```
 
-| ファイル名 | 用途 | 推奨解像度 |
-|:---|:---|:---|
-| `frontcover_master.png` | 表紙のマスター画像 | 2,894 × 4,092 px（A4、350 dpi 相当） |
-| `backcover_master.png` | 裏表紙のマスター画像 | 2,894 × 4,092 px（A4、350 dpi 相当） |
+### テーマ別のソースファイル探索順
+
+`cover: <テーマ名>` を指定すると、以下の順でソースファイルを探索します：
+
+| 優先順位 | 探索先 | 説明 |
+|:---:|:---|:---|
+| 1 | `covers/frontcover_<テーマ名>.png` | 著者が用意した PNG |
+| 2 | `covers/frontcover_<テーマ名>.svg` | 著者が用意した SVG |
+| 3 | `covers/bundled/frontcover.svg` | 開発者提供のテンプレート SVG |
+
+例えば `cover: dark` の場合：
+1. `covers/frontcover_dark.png` があればそれを使用
+2. なければ `covers/frontcover_dark.svg` を使用
+3. どちらもなければ `covers/bundled/frontcover.svg` に dark パレットを適用して使用
+
+### light / dark テーマ
+
+`light` または `dark` を指定すると、開発者が用意した `covers/bundled/frontcover.svg` テンプレートに、テーマに応じたカラーパレットとタイトル・著者名などの書籍情報を自動適用して PDF を生成します。
+
+```yaml
+output:
+  cover: dark  # 暗いテーマのデザインを使用
+```
+
+### 著者独自の SVG デザイン
+
+著者が独自にデザインした SVG ファイルを使うこともできます。`covers/` ディレクトリに `frontcover_<テーマ名>.svg` を配置し、`book.yml` でテーマ名を指定するだけです。
+
+```bash
+covers/
+├── frontcover_floral.svg    # 著者が用意した花柄デザイン
+└── backcover_floral.svg
+```
+
+```yaml
+output:
+  cover: floral  # frontcover_floral.svg を使用
+```
+
+SVG 内に `{{title}}`、`{{author}}` などのプレースホルダーを記述しておくと、ビルド時に `book.yml` の値で自動置換されます。また SVG 内の CSS カスタムプロパティ（`var(--xxx)`）は、`rsvg-convert` が解釈できないため、ビルド時に自動でインライン展開されます。
 
 :::{.note}
-**推奨解像度について**
+**複数デザインの管理**
 
-マスター画像は **A4サイズ・350 dpi** を基準としています。この解像度であれば、商業印刷にも対応できる品質を確保できます。
+`floral`、`mandala` など複数のデザインを `covers/` に用意しておき、`book.yml` の `cover:` を切り替えるだけで異なるデザインを試せます。
 :::
 
-### マスター画像の作成方法
+### 著者独自の PNG デザイン（従来の方法）
 
-マスター画像は、以下のいずれかの方法で作成できます：
+PNG ファイルを直接使う場合は、`covers/frontcover_<テーマ名>.png` を配置します。`cover: master` は `frontcover_master.png` を使う従来の方法です。
 
-1. **Keynote / PowerPoint**
-   - A4サイズでデザインを作成
-   - PNG形式で書き出し（推奨解像度: 2,894 × 4,092 px）
-
-2. **画像編集ソフト（Photoshop / GIMP など）**
-   - キャンバスサイズ: 2,894 × 4,092 px
-   - 解像度: 350 dpi
-   - カラーモード: RGB
-   - ファイル形式: PNG
-
-3. **デザインツール（Canva / Figma など）**
-   - A4サイズ（210 × 297 mm）でデザイン
-   - PNG形式で書き出し
-
-:::{.caution}
-**カラーモードについて**
-
-マスター画像は **RGB モード** で作成してください。印刷用の CMYK 変換は `vs cover` コマンドが自動的に行います。
-:::
+```yaml
+output:
+  cover: master  # covers/frontcover_master.png を使用
+```
 
 ## カバー画像の生成
 
