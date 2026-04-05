@@ -219,7 +219,6 @@ output:
   # ----------------------------
   # 表紙・裏表紙設定
   # ----------------------------
-  # cover: light # light, dark, myawesome
   # cover: master
   # cover: light
   cover: dark
