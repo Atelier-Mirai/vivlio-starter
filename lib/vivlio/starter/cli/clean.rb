@@ -14,6 +14,7 @@
 #   - _toc.md, _titlepage.md 等: ビルド時に生成される特殊ページ
 #   - 中間 PDF: _titlepage.pdf, _sections.pdf 等の作業用ファイル
 #   - .cache/vs/: ビルドキャッシュ（--cache オプション）
+#   - .cache/metrics/: metrics キャッシュ（--cache オプション）
 #   - covers/: 生成されたカバー画像（--cover オプション、マスターは保持）
 #
 # 保持対象（--purge 未指定時）:
@@ -65,17 +66,20 @@ module Vivlio
         def execute_clean(option_hash)
           opts = option_hash || {}
 
-          # --all は他のすべてのオプションを暗黙的に有効化する
+          # --all は他のすべてのオプションを暗黙的に有効化する（--index-dictionaries は除く）
           all_mode = opts[:all]
           cover_requested = opts[:cover] || all_mode
           cache_requested = opts[:cache] || all_mode
           purge_requested = opts[:purge] || all_mode
           variant_cleanup_requested = opts[:generated_images] || all_mode
+          index_dictionaries_requested = opts[:index_dictionaries]  # --all には含めない
 
           # カバー画像の削除（マスター画像は保持）
           clean_cover_files if cover_requested
           # テーマ用の生成済みバリアント画像を削除
           clean_bundled_variant_images if variant_cleanup_requested
+          # 索引・用語集辞書データの削除（確認あり）
+          clean_index_dictionaries if index_dictionaries_requested
 
           if cache_requested
             begin
@@ -95,6 +99,14 @@ module Vivlio
               else
                 Common.log_info("キャッシュディレクトリは存在しません: #{dir}")
               end
+
+            # metrics キャッシュも削除
+            metrics_cache = File.join('.cache', 'metrics')
+            if File.directory?(metrics_cache)
+              Common.log_action("metrics キャッシュを削除中: #{metrics_cache}")
+              FileUtils.rm_rf(metrics_cache)
+              Common.log_info("#{metrics_cache} を削除しました")
+            end
 
             # 索引のキャッシュも削除
             index_cache = '_index_matches.yml'
@@ -250,6 +262,40 @@ module Vivlio
           end
         rescue StandardError => e
           Common.log_warn("bundled テーマバリアント削除中にエラー: #{e.message}")
+        end
+
+        # 索引・用語集辞書データを削除する（確認プロンプトあり）
+        #
+        # @return [void]
+        #
+        # 削除対象:
+        #   - config/index_glossary_terms.yml（登録済み用語）
+        #   - config/index_glossary_rejected.yml（除外用語）
+        def clean_index_dictionaries
+          targets = [
+            File.join('config', 'index_glossary_terms.yml'),
+            File.join('config', 'index_glossary_rejected.yml')
+          ].select { |f| File.exist?(f) }
+
+          if targets.empty?
+            Common.log_info('削除対象の索引辞書ファイルはありませんでした')
+            return
+          end
+
+          Common.echo_always('⚠️  以下の索引・用語集辞書データを削除しようとしています:')
+          targets.each { |f| Common.echo_always("  - #{f}") }
+          Common.echo_always('これらのファイルには著者が登録した用語データが含まれています。')
+          $stdout.print('本当に削除しますか？ [y/N]: ')
+          ans = $stdin.gets
+          unless ans && ans.strip.downcase == 'y'
+            Common.log_info('索引辞書データの削除をキャンセルしました')
+            return
+          end
+
+          targets.each do |f|
+            FileUtils.rm_f(f)
+            Common.log_success("削除しました: #{f}")
+          end
         end
 
         # 生成されたカバー画像を削除する（マスター画像・ユーザーSVGは保持）

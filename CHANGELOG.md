@@ -76,6 +76,7 @@
 #### 開発者体験・保守性
 - [Medium] ビルドログ整備: ビルド各ステップに要約出力とエラーヒントを追加し、失敗時の原因特定とリカバリーを容易にする。
 - [Low] スタイルガイド整備: 章タイプ別（preface/chapter/appendix/postface）スタイルの設計指針、ユーティリティクラス（`.aki`, `.aki2`, ほか）一覧、使用例をドキュメント化し、保守性を向上させる。
+- [Medium] CLI ロード構造のリファクタリング: 現状、`cli.rb` は `bin/vs` のエントリポイント（`CLI.start`）・全モジュールの一括 require・テスト用集約点の3役を兼ねており、責務が混在している。また `help.rb` は `cli.rb` から require されているため削除不可だが、内部の `HelpCommands::HELP_MESSAGE` および `print_help` メソッドは実際には使われておらず、実際のヘルプ出力は `samovar/help_command.rb` の `HelpCommand` が担っている。将来的に `cli.rb` の責務分離と `help.rb` のデッドコード整理を行い、構造をシンプルにすることを検討する。
 
 
 
@@ -90,6 +91,13 @@
 - **`vs delete` の `--dry-run` オプションを削除**: 使用頻度が低いため廃止。
 - **`vs rename` / `vs renumber` のオプションを整理**: `--dry-run` を廃止。`--chapter-step` / `-S` を `--step` / `-s` に統一。
 - **`vs renumber` の章番号範囲を `create` コマンドの仕様に統一**: 通常章の連番開始を `11` → `01` に、付録の連番開始を `91` → `90` に変更。対象外は `00`（前書き）と `99`（後書き）のみとし、`01-89` が通常章、`90-98` が付録の範囲に統一。
+- **`vs --help` の表示を全面改訂**: カテゴリ構成を「プロジェクト管理 / 執筆・編集支援 / 文章校正・統計 / 索引・用語集 / 画像・カバー / ビルド・出力・プレビュー」に整理。`pdf:read`、`index:auto`、`index:apply` など漏れていたコマンドを追加。`open` を「ビルド・出力・プレビュー」に移動。実際の出力元が `help_command.rb` であることも確認済み。
+- **`vs open` にファイル名引数を追加**: `vs open 01-quickstart` や `vs open quickstart.pdf` のようにファイル名を指定して任意の PDF を開けるように改良。拡張子 `.pdf` は省略可能。プロジェクトルート直下 → `sources/` ディレクトリの順で探索する。
+- **`vs pdf:compress` の引数で拡張子 `.pdf` を省略可能に**: `vs pdf:compress 01-intro` のように拡張子なしで指定できるように改良。
+- **`vs clean` に `--index-dictionaries` オプションを追加**: `config/index_glossary_terms.yml` と `config/index_glossary_rejected.yml` を削除するオプション。著者が登録した用語データを含むため、削除前に確認プロンプトを表示する。`--all` には含めない仕様。
+- **`vs clean --cache` の削除対象に `.cache/metrics/` を追加**: metrics キャッシュも `--cache` および `--all` で削除されるように対応。
+- **`vs resize` のディレクトリ指定を簡略化**: `vs resize 01-intro` のように `images/` プレフィックスを省略して指定できるように改良。`images/` で始まらない場合は自動的に `images/` を前置して解決する。
+- **`vs resize` に `--delete-originals` オプションを追加**: WebP 変換後に元の PNG/JPG ファイルを削除するオプション。変換成功したファイルのみを対象とし、削除前に確認プロンプトを表示する。
 
 ## [0.35.0] - 2026-04-06
 

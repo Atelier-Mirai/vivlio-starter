@@ -16,6 +16,8 @@ module Vivlio
         class OpenCommand < Samovar::Command
           self.description = '生成されたPDFを開く（macOS専用）'
 
+          one :target, 'PDFファイル名（省略時はビルド生成物を自動選択）', required: false
+
           options do
             option '-v/--verbose', '冗長出力', default: false, key: :verbose
             option '-h/--help', 'このコマンドの使い方を表示', key: :help
@@ -29,7 +31,7 @@ module Vivlio
               return 0
             end
 
-            PdfCommands.execute_open_pdf(build_options)
+            PdfCommands.execute_open_pdf(build_options, target)
             0
           rescue SystemExit => e
             raise e
@@ -50,9 +52,22 @@ module Vivlio
           end
 
           def print_usage
-            puts 'vs open - 生成されたPDFを開く（macOS専用）'
-            puts ''
-            puts 'Usage: vs open [-v/--verbose] [-h/--help]'
+            puts <<~USAGE
+              vs open - 生成されたPDFを開く（macOS専用）
+
+              Usage: vs open [TARGET] [-v/--verbose] [-h/--help]
+
+              引数:
+                TARGET  PDFファイル名（拡張子 .pdf は省略可）
+                        省略時はビルド生成物を自動選択
+                        プロジェクトルート → sources/ の順で探索
+
+              例:
+                vs open                    # ビルド生成物を自動選択
+                vs open 01-quickstart      # 01-quickstart.pdf を開く
+                vs open 01-quickstart.pdf  # 同上
+                vs open quickstart         # sources/quickstart.pdf を開く
+            USAGE
           end
         end
       end

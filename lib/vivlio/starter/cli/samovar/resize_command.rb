@@ -32,6 +32,7 @@ module Vivlio
             option '-f/--force', '既存ファイルも強制再生成', key: :force
             option '--high', '高品質プリセットを使用', key: :high
             option '--low', '軽量品質プリセットを使用', key: :low
+            option '--delete-originals', '変換後に元の PNG/JPG ファイルを削除（確認あり）', default: false, key: :delete_originals
           end
 
           one :dir, '対象ディレクトリ', default: 'images', required: false
@@ -44,48 +45,25 @@ module Vivlio
                      else
                        '標準'
                      end
-            ResizeCommands.execute_resize_with_preset(preset, dir || 'images', merged_options)
+            ResizeCommands.execute_resize_with_preset(preset, resolve_dir, merged_options)
           end
 
           private
+
+          def resolve_dir
+            d = dir || 'images'
+            # "01-intro" のように images/ プレフィックスなしで指定された場合に補完する
+            return d if d == 'images' || d.start_with?('images/') || File.directory?(d)
+
+            with_prefix = File.join('images', d)
+            File.directory?(with_prefix) ? with_prefix : d
+          end
 
           def merged_options
             (parent&.options || {}).merge(options || {})
           end
         end
 
-        # resize:high コマンドの Samovar 実装
-        class ResizeHighCommand < Samovar::Command
-          self.description = '画像を高品質WebPに変換します'
-
-          one :dir, '対象ディレクトリ', default: 'images', required: false
-
-          def call
-            ResizeCommands.execute_resize_high(dir || 'images', parent&.options || {})
-          end
-        end
-
-        # resize:medium コマンドの Samovar 実装
-        class ResizeMediumCommand < Samovar::Command
-          self.description = '画像を標準品質WebPに変換します'
-
-          one :dir, '対象ディレクトリ', default: 'images', required: false
-
-          def call
-            ResizeCommands.execute_resize_medium(dir || 'images', parent&.options || {})
-          end
-        end
-
-        # resize:low コマンドの Samovar 実装
-        class ResizeLowCommand < Samovar::Command
-          self.description = '画像を軽量品質WebPに変換します'
-
-          one :dir, '対象ディレクトリ', default: 'images', required: false
-
-          def call
-            ResizeCommands.execute_resize_low(dir || 'images', parent&.options || {})
-          end
-        end
       end
     end
   end

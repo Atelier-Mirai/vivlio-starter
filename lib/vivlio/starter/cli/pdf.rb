@@ -299,27 +299,30 @@ module Vivlio
 
           # 入出力ファイルのパスを決定する
           def determine_paths
-            if cli_input_present? && cli_output_present?
+            input = normalize_pdf_extension(cli_input)
+            output = normalize_pdf_extension(cli_output)
+
+            if input && output
               # vs pdf:compress input.pdf output.pdf
-              @input_pdf  = cli_input
-              @output_pdf = cli_output
-            elsif cli_input_present?
-              # vs pdf:compress filename.pdf
-              @input_pdf  = cli_input
-              @output_pdf = default_compressed_name(cli_input)
+              @input_pdf  = input
+              @output_pdf = output
+            elsif input
+              # vs pdf:compress filename（出力は _compressed を付与）
+              @input_pdf  = input
+              @output_pdf = default_compressed_name(input)
             else
-              # vs pdf:compress
+              # vs pdf:compress（引数なし）
               @input_pdf  = config['output_file'] || 'output.pdf'
               @output_pdf = config['output_file_compressed'] || default_compressed_name(@input_pdf)
             end
           end
 
-          def cli_input_present?
-            !cli_input.nil? && !cli_input.to_s.strip.empty?
-          end
+          # 拡張子 .pdf が省略されていれば補完する
+          def normalize_pdf_extension(path)
+            return nil if path.nil? || path.to_s.strip.empty?
 
-          def cli_output_present?
-            !cli_output.nil? && !cli_output.to_s.strip.empty?
+            p = path.to_s.strip
+            p.end_with?('.pdf') ? p : "#{p}.pdf"
           end
 
           # 入力ファイル名からデフォルトの圧縮後ファイル名を生成する
@@ -418,9 +421,33 @@ module Vivlio
 
           # 開くべき PDF ファイルのパスを決定する
           def resolve_pdf_path
-            return explicit_path.to_s unless explicit_path.nil? || explicit_path.to_s.strip.empty?
+            return select_preferred_pdf if explicit_path.nil? || explicit_path.to_s.strip.empty?
 
-            select_preferred_pdf
+            resolve_explicit_path(explicit_path.to_s.strip)
+          end
+
+          # 明示指定されたファイル名からパスを解決する
+          #
+          # 探索順:
+          #   1. プロジェクトルート直下（拡張子あり/なし）
+          #   2. sources/ ディレクトリ配下（拡張子あり/なし）
+          def resolve_explicit_path(name)
+            # 拡張子を正規化（.pdf がなければ付与）
+            with_ext = name.end_with?('.pdf') ? name : "#{name}.pdf"
+            without_ext = name.end_with?('.pdf') ? name[0...-4] : name
+
+            candidates = [
+              with_ext,
+              File.join('sources', with_ext),
+              File.join('sources', "#{without_ext}.pdf")
+            ].uniq
+
+            found = candidates.find { |p| File.exist?(p) }
+            return found if found
+
+            # 見つからなければそのまま渡す（ensure_pdf_exists でエラーになる）
+            Common.log_warn("open: 指定されたPDFが見つかりません: #{with_ext}")
+            with_ext
           end
 
           # 既定の PDF を選択する

@@ -84,11 +84,6 @@ module Vivlio
             }
           end
         end
-
-        # lint:check は lint のエイリアス
-        class LintCheckCommand < LintCommand
-          self.description = 'lint のエイリアス'
-        end
       end
     end
   end

@@ -16,9 +16,9 @@
 #   Public Commands (vs --help に表示):
 #     - help, new, build, clean, delete, doctor, import
 #     - create, rename, renumber, open, cover
-#     - resize, resize:high/medium/low
+#     - resize
 #     - index, index:auto, index:apply
-#     - lint, lint:check, metrics
+#     - lint, metrics
 #     - pdf:compress
 #   Internal Commands (vs --help に非表示、DEVELOPER_GUIDE.md 参照):
 #     - pre_process, convert, post_process, pdf, toc, entries, vivliostyle
@@ -58,16 +58,12 @@ module Vivlio
                 'open' => OpenCommand,
                 'cover' => CoverCommand,
                 'resize' => ResizeCommand,
-                'resize:high' => ResizeHighCommand,
-                'resize:medium' => ResizeMediumCommand,
-                'resize:low' => ResizeLowCommand,
                 'index' => IndexCommand,
                 'index:auto' => IndexAutoCommand,
                 'index:apply' => IndexApplyCommand,
                 'pdf:compress' => PdfCompressCommand,
                 'pdf:read' => PdfReadCommand,
                 'lint' => LintCommand,
-                'lint:check' => LintCheckCommand,
                 'metrics' => MetricsCommand
               }.freeze
             end

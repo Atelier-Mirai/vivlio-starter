@@ -190,8 +190,8 @@ output:
   # ----------------------------
   # targets: pdf # pdf / print_pdf / epub
   # targets: pdf, print_pdf, epub
-  targets: print_pdf
-  # targets: pdf
+  # targets: print_pdf
+  targets: pdf
   # 文字列、カンマ区切り、配列すべて可
   # 例:
   # targets: pdf              # 単一指定
@@ -202,16 +202,16 @@ output:
   # ファイル名規則
   # ----------------------------
   filename:
-    include_version: true  # ファイル名にバージョンを含めるか
-    # true:  vivlio_starter_v1.0.0.pdf
-    # false: vivlio_starter.pdf
+    # ファイル名にバージョンを含めるか
+    include_version: true   # true:  vivlio_starter_v1.0.0.pdf
+                            # false: vivlio_starter.pdf
   
   # ----------------------------
-  # PDF プレビュー設定
+  # PDF プレビュー設定（macOS のみ）
   # ----------------------------
   pdf_preview:
-    close_existing_windows: true             # 既存PDFウィンドウを閉じる（macOS のみ）
-    window_bounds: "{4096, 0, 5120, 2160}"  # PDF表示位置とサイズ（macOS のみ）
+    close_existing_windows: true             # 既存PDFウィンドウを閉じる
+    window_bounds: "{4096, 0, 5120, 2160}"   # PDF表示位置とサイズ（5Kモニターの右側1/5）
     # その他の設定例:
     # window_bounds: "{0, 0, 1024, 768}"      # 左上角に小さなウィンドウ
     # window_bounds: "{1920, 0, 1920, 1080}"  # 右側モニター全画面（フルHD）
@@ -221,7 +221,7 @@ output:
   # ----------------------------
   cover: master
   # cover: light
-  # cover: light
+  # cover: dark
 
   # ----------------------------
   # PDF設定（閲覧用）

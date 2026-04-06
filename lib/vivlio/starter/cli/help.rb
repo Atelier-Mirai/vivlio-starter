@@ -8,6 +8,14 @@ module Vivlio
       # ------------------------------------------------------------------------------
       # Vivlio Starter の主要コマンドとオプションを一覧表示するヘルプ出力コマンド群。
       # 実際の処理は標準出力へ固定のチートシートを表示するのみ。
+      #
+      # ⚠️  注意: このファイルは cli.rb から require されているため削除不可。
+      #   ただし、HELP_MESSAGE および print_help メソッドは現在使われていない。
+      #   実際のヘルプ出力は lib/vivlio/starter/cli/samovar/help_command.rb の
+      #   HelpCommand#print_public_commands_help が担っている。
+      #
+      #   将来的には cli.rb の責務分離と合わせて、このファイルのデッドコードを
+      #   整理することを検討する（CHANGELOG Planned 参照）。
       # ==============================================================================
       module HelpCommands
         module_function
@@ -18,45 +26,45 @@ module Vivlio
         }.freeze
 
         HELP_MESSAGE = <<~HELP
-          📚 Vivlio Starter - Build System
+          📚 Vivlio Starter - 技術書執筆のためのCLIツール 🛠️
+          使い方: vs <command> [options]
 
-          主なコマンド:
-            vs build                       - 全ファイルをビルド
-            vs build <chapter_name>        - 指定した章のみをビルド
-            vs open                        - 生成されたPDFを開く(macOS専用)
-            vs pdf:compress                - 生成されたPDFを圧縮
-            vs doctor                      - 必要ツールの診断とセットアップ(macOS)
-              （Xcode Command Line Tools / Homebrew / Node.js / qpdf / pdfinfo / gs / ImageMagick 等）
-              --fix                        # 不足ツールを自動インストール (一部確認あり)
-                                           # macOS では CLT 未導入時にインストーラを起動し、完了を待機
-              -y, --yes                    # 確認プロンプトをスキップ (--fix 指定時のみ有効)
+          プロジェクト管理:
+            new              プロジェクトを新規作成します
+            import           Re:VIEW Starter プロジェクトを取り込みます
+            pdf:read         PDFを解析して Markdown 形式へ変換・抽出します
+            doctor           環境診断と不足ツールの自動セットアップ
+            clean            生成物やキャッシュを削除します
 
-          # ビルドオプション:
-          --high                # 高画質でビルド（画像の品質優先）
-          --medium              # 標準画質でビルド（デフォルト）
-          --low                 # 低画質でビルド（ファイルサイズ優先）
-          --no-resize           # 画像のリサイズ/最適化をスキップ
-          --no-compress         # PDFの圧縮をスキップ
-          --no-clean            # 中間ファイルのクリーンアップをスキップ
-          --log[=level]         # ログレベルを指定（error/warn/info/debug、既定は info）
+          執筆・編集支援:
+            create           章ファイルと画像ディレクトリを生成します
+            delete           指定した章の Markdown と画像を削除します
+            rename           章の番号やファイル名（スラッグ）を変更します
+            renumber         章番号を一括で付け直します
 
-          章の管理:
-            vs create <chapter_name>       - 新しい章を作成
-            vs delete <chapter_name>       - 指定した章を削除
-            vs rename <old> <new>          - 章名・付録名/番号を変更
-                                          （例: 11-install → 12-setup, 21 → 32）
-            vs renumber                    - 章番号・付録番号を整列
-            vs clean                       - ビルド生成物をクリーンアップ
+          文章校正・統計:
+            lint             Markdownをtextlintで検査します
+            metrics          Markdownの行数・文字数を集計します
 
-          プロジェクト作成:
-            vs new <name>                  - 新規書籍プロジェクトを作成
-              (既定) 依存ツールの自動インストールを実行し、確認を省略します
-              --interactive                # 対話的に確認しながら実行
-              --manual-install             # doctor の自動実行を無効化
+          索引・用語集:
+            index:auto       索引・用語集の候補を抽出し、確認用ファイルを作成します
+            index:apply      確認済みの候補を、プロジェクトの索引辞書に登録・保存します
 
-          ヘルプ:
-            vs help                        - このヘルプを表示
-            vs --version                   - バージョン情報を表示
+          画像・カバー:
+            cover            表紙・裏表紙の画像を生成します（A4/B5/A5/EPUB対応）
+            resize           images/画像をWebP形式に変換・最適化します（--high/--lowで品質変更可）
+
+          ビルド・出力・プレビュー:
+            build            書籍全体または指定章をビルドします
+            open             生成されたPDFを開きます
+            pdf:compress     生成済みPDFを圧縮します
+
+          オプション:
+            -h, --help       ヘルプを表示
+            -v, --verbose    冗長出力を有効化
+            --version        バージョン情報を表示
+
+          各コマンドの詳細: vs <command> --help
         HELP
 
         def print_help

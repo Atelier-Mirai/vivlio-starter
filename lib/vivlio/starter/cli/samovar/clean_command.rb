@@ -32,7 +32,8 @@ module Vivlio
             option '--cache/-C', 'キャッシュのみを削除します', default: false, key: :cache
             option '--cover', '生成されたカバー画像のみを削除します', default: false, key: :cover
             option '--generated-images', '生成された扉絵/装飾などの画像を削除します', default: false, key: :generated_images
-            option '--all', 'すべての削除オプションをまとめて実行します', default: false, key: :all
+            option '--index-dictionaries', '索引・用語集辞書データを削除します（確認あり）', default: false, key: :index_dictionaries
+            option '--all', 'index-dictionaries を除くすべての削除オプションをまとめて実行します', default: false, key: :all
             option '-h/--help', 'このコマンドの使い方を表示', key: :help
           end
 
