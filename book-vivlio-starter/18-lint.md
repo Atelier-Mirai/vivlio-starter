@@ -81,7 +81,7 @@ vs lint --config path/to/custom/.textlintrc.yml
 
 ### --format オプション
 
-lint の出力フォーマットを指定します。以下の形式が選択可能です。
+textlint の出力フォーマットを指定します。以下の形式が選択可能です。
 
 - `stylish`（既定値）: 見やすい標準形式
 - `compact`: コンパクトな形式

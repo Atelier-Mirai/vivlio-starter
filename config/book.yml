@@ -219,9 +219,9 @@ output:
   # ----------------------------
   # 表紙・裏表紙設定
   # ----------------------------
-  # cover: master
+  cover: master
   # cover: light
-  cover: light
+  # cover: light
 
   # ----------------------------
   # PDF設定（閲覧用）
