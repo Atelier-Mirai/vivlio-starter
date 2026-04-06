@@ -27,6 +27,7 @@ require 'open3'
 require 'pathname'
 require 'shellwords'
 require 'rbconfig'
+require 'tempfile'
 
 require_relative 'common'
 require_relative 'textlint_formatter'
@@ -120,27 +121,35 @@ module Vivlio
               return 0
             end
 
-            command = build_command(files)
-            Common.log_action("textlint 実行: #{Shellwords.join(command)}")
+            # vs-lint コメントを textlint ネイティブ記法に変換
+            converted_files = convert_vs_lint_comments(files)
 
-            stdout, stderr, status = Open3.capture3(*command)
-            raw_stdout = stdout
-            raw_stderr = stderr
+            begin
+              command = build_command(converted_files)
+              Common.log_action("textlint 実行: #{Shellwords.join(command)}")
 
-            # stylish 出力の構造的再整形（列番号除去・ルール名括弧化・冗長部除去・日本語化）
-            stdout = TextlintFormatter.reformat_output(stdout) unless stdout.nil? || stdout.empty?
+              stdout, stderr, status = Open3.capture3(*command)
+              raw_stdout = stdout
+              raw_stderr = stderr
 
-            stdout = filter_textlint_summary(stdout)
-            stderr = filter_textlint_summary(stderr)
+              # stylish 出力の構造的再整形（列番号除去・ルール名括弧化・冗長部除去・日本語化）
+              stdout = TextlintFormatter.reformat_output(stdout) unless stdout.nil? || stdout.empty?
 
-            $stdout.print(stdout) unless stdout.nil? || stdout.empty?
-            $stderr.print(stderr) unless stderr.nil? || stderr.empty?
-            $stdout.puts '' unless stdout.nil? || stdout.empty?
+              stdout = filter_textlint_summary(stdout)
+              stderr = filter_textlint_summary(stderr)
 
-            lint_info   = collect_textlint_info(status, raw_stdout, raw_stderr)
-            spell_info  = run_spellcheck(files)
-            print_combined_summary(lint_info, spell_info)
-            [lint_info[:exit], spell_info[:exit]].max
+              $stdout.print(stdout) unless stdout.nil? || stdout.empty?
+              $stderr.print(stderr) unless stderr.nil? || stderr.empty?
+              $stdout.puts '' unless stdout.nil? || stdout.empty?
+
+              lint_info   = collect_textlint_info(status, raw_stdout, raw_stderr)
+              spell_info  = run_spellcheck(files)
+              print_combined_summary(lint_info, spell_info)
+              [lint_info[:exit], spell_info[:exit]].max
+            ensure
+              # 一時ファイルのクリーンアップ
+              cleanup_temp_files(converted_files)
+            end
           rescue TextLintError => e
             Common.log_error(e.message)
             1
@@ -341,6 +350,42 @@ module Vivlio
 
           def windows_platform?
             !!(RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin|bccwin|wince|emx/i)
+          end
+
+          # vs-lint コメントを textlint ネイティブ記法に変換する
+          # @param files [Array<String>] 対象ファイルパスの配列
+          # @return [Array<String>] 変換後のファイルパスの配列（一時ファイル）
+          def convert_vs_lint_comments(files)
+            files.map do |path|
+              content = File.read(path, encoding: 'UTF-8')
+              converted = rewrite_vs_lint_to_textlint(content)
+
+              # 一時ファイルに書き出す
+              tmpfile = Tempfile.new(['textlint_', '.md'], encoding: 'UTF-8')
+              tmpfile.write(converted)
+              tmpfile.close
+              tmpfile.path
+            end
+          end
+
+          # vs-lint コメントを textlint コメントに置換する
+          # @param source [String] 元のMarkdown内容
+          # @return [String] 変換後のMarkdown内容
+          def rewrite_vs_lint_to_textlint(source)
+            source
+              .gsub(/<!--\s*vs-lint-disable-next-line\s*-->/, '<!-- textlint-disable-next-line -->')
+              .gsub(/<!--\s*vs-lint-disable\s*-->/, '<!-- textlint-disable -->')
+              .gsub(/<!--\s*vs-lint-enable\s*-->/, '<!-- textlint-enable -->')
+          end
+
+          # 一時ファイルをクリーンアップする
+          # @param temp_files [Array<String>] 一時ファイルパスの配列
+          def cleanup_temp_files(temp_files)
+            temp_files.each do |path|
+              File.unlink(path) if File.exist?(path)
+            rescue StandardError => e
+              Common.log_warn("[lint] 一時ファイルの削除に失敗しました: #{path} (#{e.message})")
+            end
           end
 
           # TokenResolver を用いた Markdown 対象ファイルの解決

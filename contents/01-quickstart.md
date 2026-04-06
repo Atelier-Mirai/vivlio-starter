@@ -84,17 +84,16 @@ mybook/
   contents/          ← 原稿（Markdownファイル）
   images/            ← 画像ファイル
   covers/            ← 表紙画像
-  data/              ← QueryStream用データ（YAML）
-  templates/         ← QueryStreamテンプレート
-  sources/           ← vs pdf:read 用の元PDFファイル
-  codes/             ← コードサンプル
+  data/              ← 書籍内で展開したいQueryStream用データ（YAML）
+  templates/         ← 各種雛形ファイル置き場
+  sources/           ← 執筆資料やPDFファイル置き場
+  codes/             ← 書籍内で掲載するサンプルコード
   stylesheets/       ← CSSスタイルシート
   config/
     book.yml         ← 書籍の設定ファイル
     catalog.yml      ← 章構成
     page_presets.yml ← ページレイアウト設定
-    glossary.yml     ← 用語集
-  .github/workflows/ ← GitHub Actions CI設定
+    index_glossary_terms.yml     ← 用語集
   vivliostyle.config.js
   entries.js
   package.json
@@ -145,7 +144,7 @@ Vivlio Starter - 技術書執筆のためのCLIツール
     open             生成されたPDFを開きます（macOS専用）
 
   文章校正・用語:
-    lint             Markdownをtextlintで検査します
+    lint             Markdownをtextlintで検査、スペルチェックも行ないます
     metrics          Markdownの行数・文字数を集計します
 
   アセット・索引:

@@ -4,8 +4,6 @@
 
 記法は「Keep a Changelog」に基づき、Semantic Versioning（セマンティックバージョニング）に準拠します。
 
-
-
 ### Pre-release Checklist
 - gem 公開時には `vivlio-starter.gemspec` の summary/description が現行仕様に即しているか再確認する。
 - `pre_process.rb` で参照する theme.css テンプレート（`lib/project_scaffold/stylesheets/theme.css`）が gem に同梱されているか確認する。
@@ -104,6 +102,8 @@
 - **buildコマンドのオプションを整理**: 使用頻度の低いオプションを削除：`-n/--dry-run`、`--force`、`--no-cache`。関連するデッドコードを完全に削除し、ビルドシステムをクリーンアップ。よく使う実用的なオプションに焦点を当てたシンプルなインターフェースに。
 - **ビルド完了メッセージを改善**: ビルド完了時に生成されたPDFファイル名を自動表示。圧縮PDFや複数章ビルドにも対応し、📚絵文字付きで分かりやすい表示に。`vs build --log=debug`時のBuild Step Timings表示順序を最適化（Outline Debug Info→Build Step Timings）。
 - **`vs clean --all` のSVG削除ルールを改善**: `covers/frontcover_dark.svg` など `*_light.svg` / `*_dark.svg`（bundledテンプレートからの生成物）および `*_rendered.svg`（プレースホルダー適用済み中間ファイル）のみを削除対象とし、`covers/frontcover_floral.svg` など利用者が用意したカスタムSVGは保持するよう変更。
+### Changed
+- **`vs lint`コメント記法を統一**: textlint・spellcheck の両方で `vs-lint-disable`/`vs-lint-enable`/`vs-lint-disable-next-line` が機能するように変更。旧記法（`textlint-disable`/`spellcheck:ignore`）は非対応とした。
 
 ### Removed
 - **cross_reference_report.mdの生成機能**: ビルド実行時に生成されていたクロスリファレンスレポートを出力するコードを削除。デバッグ用レポートは不要と判断し、`pre_process.rb`と`cross_reference_processor.rb`から関連コードを完全に削除。ビルドプロセスがさらにクリーンになり、不要なファイル生成がなくなった。

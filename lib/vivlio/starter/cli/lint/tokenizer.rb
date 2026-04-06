@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'set'
+
 module Vivlio
   module Starter
     module CLI
@@ -8,10 +10,13 @@ module Vivlio
         module Tokenizer
           module_function
 
-          INLINE_IGNORE_MD = /<!--\s*spellcheck:ignore\s*-->/
-          INLINE_IGNORE_RE = /#@#\s*spellcheck:ignore/
           FENCE_PATTERN    = /^```/
           FRONTMATTER_SEP  = /^---\s*$/
+
+          # vs-lint コメント記法の定義
+          VS_LINT_DISABLE           = /^\s*<!--\s*vs-lint-disable\s*-->\s*$/
+          VS_LINT_ENABLE            = /^\s*<!--\s*vs-lint-enable\s*-->\s*$/
+          VS_LINT_DISABLE_NEXT_LINE = /^\s*<!--\s*vs-lint-disable-next-line\s*-->\s*$/
 
           # @param content [String] Markdownファイル全体の内容
           # @param check_code_blocks [Boolean] コードブロック内もチェックするか
@@ -21,6 +26,9 @@ module Vivlio
             in_code_fence    = false
             in_frontmatter   = false
             line_no          = 0
+
+            # vs-lint コメントによる除外行番号セットを構築
+            excluded_lines = build_excluded_lines(content)
 
             content.each_line do |line|
               line_no += 1
@@ -45,13 +53,52 @@ module Vivlio
               # コードブロック内のスキップ
               next if in_code_fence && !check_code_blocks
 
-              # spellcheck:ignore 行のスキップ
-              next if line.match?(INLINE_IGNORE_MD) || line.match?(INLINE_IGNORE_RE)
+              # vs-lint コメントによる除外
+              next if excluded_lines.include?(line_no)
 
               extract_words(line).each { |word| tokens << [word, line_no] }
             end
 
             tokens
+          end
+
+          # vs-lint コメントに基づいて除外すべき行番号のセットを構築する
+          # @param content [String] Markdownファイル全体の内容
+          # @return [Set<Integer>] 除外する行番号のセット
+          def build_excluded_lines(content)
+            excluded_lines = Set.new
+            in_disable_block = false
+            line_no = 0
+
+            content.each_line do |line|
+              line_no += 1
+
+              # vs-lint-disable コメント行自体を除外
+              if line.match?(VS_LINT_DISABLE)
+                in_disable_block = true
+                excluded_lines.add(line_no)
+                next
+              end
+
+              # vs-lint-enable コメント行自体を除外
+              if line.match?(VS_LINT_ENABLE)
+                in_disable_block = false
+                excluded_lines.add(line_no)
+                next
+              end
+
+              # vs-lint-disable-next-line コメント行自体を除外し、次の行も除外
+              if line.match?(VS_LINT_DISABLE_NEXT_LINE)
+                excluded_lines.add(line_no)
+                excluded_lines.add(line_no + 1)
+                next
+              end
+
+              # disable ブロック内の行を除外
+              excluded_lines.add(line_no) if in_disable_block
+            end
+
+            excluded_lines
           end
 
           # @param line [String] 1行のMarkdownテキスト

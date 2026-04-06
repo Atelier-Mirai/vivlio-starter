@@ -97,13 +97,39 @@ class TestSpellChecker < Minitest::Test
     end
   end
 
-  # <!-- spellcheck:ignore --> が付いた行がスキップされることを確認する
-  def test_check_skips_spellcheck_ignore_line
+  # <!-- vs-lint-disable-next-line --> が付いた行の次の行がスキップされることを確認する
+  def test_check_skips_vs_lint_disable_next_line
+    word_map = {}
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, 'test.md')
+      File.write(path, "<!-- vs-lint-disable-next-line -->\nbadword\n")
+      assert_empty SC.check(path, word_map)
+    end
+  end
+
+  # <!-- vs-lint-disable --> 〜 <!-- vs-lint-enable --> の範囲がスキップされることを確認する
+  def test_check_skips_vs_lint_disable_enable_block
+    word_map = {}
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, 'test.md')
+      File.write(path, "before\n<!-- vs-lint-disable -->\nbadword1\nbadword2\n<!-- vs-lint-enable -->\nafter\n")
+      errors = SC.check(path, word_map)
+      words = errors.map { _1[:word] }
+      refute_includes words, 'badword1'
+      refute_includes words, 'badword2'
+    end
+  end
+
+  # 旧記法 <!-- spellcheck:ignore --> が機能しないことを確認する
+  def test_check_old_spellcheck_ignore_not_supported
     word_map = {}
     Dir.mktmpdir do |dir|
       path = File.join(dir, 'test.md')
       File.write(path, "badword <!-- spellcheck:ignore -->\n")
-      assert_empty SC.check(path, word_map)
+      errors = SC.check(path, word_map)
+      # 旧記法は無視されるため、badword が検出される
+      assert_equal 1, errors.length
+      assert_equal 'badword', errors[0][:word]
     end
   end
 

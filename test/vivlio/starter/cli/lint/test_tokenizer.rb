@@ -79,13 +79,39 @@ class TestTokenizer < Minitest::Test
     assert_includes words, 'paragraph'
   end
 
-  # <!-- spellcheck:ignore --> コメントがある行がスキップされることを確認する
-  def test_spellcheck_ignore_html_comment_skipped
-    content = "good word\nbadword <!-- spellcheck:ignore -->\nmore words\n"
+  # <!-- vs-lint-disable-next-line --> コメントの次の行がスキップされることを確認する
+  def test_vs_lint_disable_next_line_skips_next_line
+    content = "good word\n<!-- vs-lint-disable-next-line -->\nbadword\nmore words\n"
     words = T.tokenize(content).map { _1[0] }
     refute_includes words, 'badword'
     assert_includes words, 'good'
     assert_includes words, 'more'
+  end
+
+  # <!-- vs-lint-disable --> 〜 <!-- vs-lint-enable --> の範囲がスキップされることを確認する
+  def test_vs_lint_disable_enable_block_skipped
+    content = "before\n<!-- vs-lint-disable -->\nbadword1\nbadword2\n<!-- vs-lint-enable -->\nafter\n"
+    words = T.tokenize(content).map { _1[0] }
+    refute_includes words, 'badword1'
+    refute_includes words, 'badword2'
+    assert_includes words, 'before'
+    assert_includes words, 'after'
+  end
+
+  # <!-- vs-lint-enable --> がない場合にファイル末尾まで除外されることを確認する
+  def test_vs_lint_disable_without_enable_skips_to_end
+    content = "before\n<!-- vs-lint-disable -->\nbadword1\nbadword2\n"
+    words = T.tokenize(content).map { _1[0] }
+    refute_includes words, 'badword1'
+    refute_includes words, 'badword2'
+    assert_includes words, 'before'
+  end
+
+  # vs-lint コメント行自体がスキップされることを確認する
+  def test_vs_lint_comment_lines_themselves_skipped
+    content = "<!-- vs-lint-disable -->\n<!-- vs-lint-enable -->\n<!-- vs-lint-disable-next-line -->\n"
+    words = T.tokenize(content).map { _1[0] }
+    assert_empty words
   end
 
   # URLが除去されてURL内の単語が誤検出されないことを確認する
