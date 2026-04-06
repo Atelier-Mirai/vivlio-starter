@@ -85,6 +85,8 @@
 ## Unreleased
 （次回リリース候補の変更はここに追加してください）
 
+## [0.35.0] - 2026-04-06
+
 ### Added
 - **カバー自動生成機能を実装**: `docs/specs/cover_auto_generation_spec.md` に基づき、表紙・裏表紙の自動生成機能を開発した。SVG→PDF変換、トンボ描画、RGB/CMYK出力、ビルドパイプライン統合までを含む完全自動化を達成。現在トンボ描画ロジックをVivliostyleコアと完全一致させ、crop offset領域のみに描画する仕様を確定済み。
 - SVG カバー → PDF カバー変換完成: light/dark テーマの SVG カバーを rsvg-convert で PDF に変換する処理を完成。CSS カスタムプロパティ（`var(--xxx)`）を rsvg-convert に渡す前にインライン展開する処理（`expand_css_custom_properties`）を実装し、文字色・線色が正しく反映されるようになった。また表紙 PDF に TrimBox/BleedBox を設定し、印刷所入稿時に正しく B5（182mm × 257mm）で裁断されるよう対応。コーナートンボ・センタートンボの形状・寸法を本文（Vivliostyle 生成）と統一。
@@ -777,7 +779,8 @@
 - バージョンファイル追加: `lib/vivlio/starter/version.rb`（0.1.0）
 - README にインストール方法・CLI の使い方・リリース手順を追記
 
-[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.34.0...HEAD
+[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.35.0...HEAD
+[0.35.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.34.0...v0.35.0
 [0.34.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.33.0...v0.34.0
 [0.33.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.32.0...v0.33.0
 [0.32.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.31.0...v0.32.0
