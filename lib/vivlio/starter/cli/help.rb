@@ -27,9 +27,9 @@ module Vivlio
             vs pdf:compress                - 生成されたPDFを圧縮
             vs doctor                      - 必要ツールの診断とセットアップ(macOS)
               （Xcode Command Line Tools / Homebrew / Node.js / qpdf / pdfinfo / gs / ImageMagick 等）
-              --fix                        # 不足ツールを自動インストール(Homebrew)。Homebrew が無ければ自動導入を案内
+              --fix                        # 不足ツールを自動インストール (一部確認あり)
                                            # macOS では CLT 未導入時にインストーラを起動し、完了を待機
-              -y, --yes                    # 確認を省略（Homebrew 導入や npm -g 実行時の確認をスキップ）
+              -y, --yes                    # 確認プロンプトをスキップ (--fix 指定時のみ有効)
 
           # ビルドオプション:
           --high                # 高画質でビルド（画像の品質優先）

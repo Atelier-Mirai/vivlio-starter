@@ -13,8 +13,8 @@
 #   - Xcode Command Line Tools (macOS)
 #
 # 主要オプション:
-#   - --fix: 不足ツールを自動インストール（macOS + Homebrew）
-#   - --yes: 確認プロンプトをスキップ
+#   - --fix: 不足ツールを自動インストール（macOS + Homebrew、一部確認あり）
+#   - --yes: 確認プロンプトをスキップ（--fix 指定時のみ有効）
 #
 # 依存:
 #   - DoctorCommands: 実際の診断・インストール処理
@@ -31,8 +31,8 @@ module Vivlio
           self.description = '環境診断と不足ツールの自動セットアップを行います'
 
           options do
-            option '--fix', '不足ツールを自動インストール (macOS Homebrew)', default: false, key: :fix
-            option '--yes/-y', '確認プロンプトをスキップ', default: false, key: :yes
+            option '--fix', '不足ツールを自動インストール (一部確認あり)', default: false, key: :fix
+            option '--yes/-y', '確認プロンプトをスキップ (--fix 指定時のみ有効)', default: false, key: :yes
             option '-h/--help', 'このコマンドの使い方を表示', key: :help
           end
 

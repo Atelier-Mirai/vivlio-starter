@@ -126,26 +126,26 @@ module Vivlio
         # contents/ 内の章ファイルを種別ごとにグループ化する
         #
         # @return [Hash] { all: [...], regular: [...], appendix: [...] }
-        #   - all: 全章ファイル（00-09, 98-99 を除く）
-        #   - regular: 通常章（10-89）
-        #   - appendix: 付録（90-97）
+        #   - all: 全章ファイル（00, 99 を除く）
+        #   - regular: 通常章（01-89）
+        #   - appendix: 付録（90-98）
         def chapter_file_groups
           chapter_files = Dir.glob("#{Common::CONTENTS_DIR}/*.md")
                              .select { |f| File.basename(f) =~ /^\d+/ }
-                             .reject { |f| File.basename(f) =~ /^(0\d|98|99)(?:-|\.)/ }
+                             .reject { |f| File.basename(f) =~ /^(00|99)(?:-|\.)/ }
                              .sort
 
           {
             all: chapter_files,
-            regular: chapter_files.select { |f| File.basename(f) =~ /^[1-8]\d(?:-|\.)/ },
-            appendix: chapter_files.select { |f| File.basename(f) =~ /^9[0-7](?:-|\.)/ }
+            regular: chapter_files.select { |f| File.basename(f) =~ /^[0-8]\d(?:-|\.)/ },
+            appendix: chapter_files.select { |f| File.basename(f) =~ /^9[0-8](?:-|\.)/ }
           }
         end
 
         # オプションから刻み幅を取得し、正の整数に正規化する
         # @return [Integer] 刻み幅（最小 1）
         def normalized_step
-          step = (options[:chapter_step] || options[:step] || 1).to_i
+          step = (options[:step] || 1).to_i
           step <= 0 ? 1 : step
         end
 
@@ -157,8 +157,8 @@ module Vivlio
         def effective_step_for(requested_step, chapter_count)
           return requested_step if chapter_count <= 1
 
-          # 11 から 89 までの範囲に収めるための最大刻み幅を計算
-          max_step = ((89 - 11) / (chapter_count - 1)).floor
+          # 01 から 89 までの範囲に収めるための最大刻み幅を計算
+          max_step = ((89 - 1) / (chapter_count - 1)).floor
           max_step = 1 if max_step < 1
           [requested_step, max_step].min
         end
@@ -167,7 +167,7 @@ module Vivlio
           if requested_step == effective_step
             Common.log_info("章の刻み幅: #{effective_step}")
           else
-            Common.log_warn("章の刻み幅 #{requested_step} は 11..89 の範囲に収まらないため、#{effective_step} に調整しました")
+            Common.log_warn("章の刻み幅 #{requested_step} は 01..89 の範囲に収まらないため、#{effective_step} に調整しました")
           end
         end
 
@@ -179,7 +179,7 @@ module Vivlio
           chapters.each_with_index do |file, index|
             old_name = File.basename(file, '.md')
             old_number, old_slug = extract_number_and_slug(old_name)
-            new_number = format('%02d', 11 + (index * effective_step))
+            new_number = format('%02d', 1 + (index * effective_step))
             new_basename = build_basename(new_number, old_slug)
             Common.log_info("#{old_name} → #{new_basename}")
           end
@@ -193,7 +193,7 @@ module Vivlio
           appendix_files.each_with_index do |file, index|
             old_name = File.basename(file, '.md')
             old_number, old_slug = extract_number_and_slug(old_name)
-            new_number = format('%02d', index + 91)
+            new_number = format('%02d', index + 90)
             adjusted_slug = adjust_slug_for_appendix(new_number, old_slug)
             new_slug = adjusted_slug || old_slug
             new_basename = build_basename(new_number, new_slug)
@@ -220,7 +220,7 @@ module Vivlio
           regular_chapters.each_with_index do |file, index|
             old_basename = File.basename(file, '.md')
             old_number, old_slug = extract_number_and_slug(old_basename)
-            new_number = format('%02d', 11 + (index * effective_step))
+            new_number = format('%02d', 1 + (index * effective_step))
             next if old_number == new_number
 
             new_basename = build_basename(new_number, old_slug)
@@ -230,7 +230,7 @@ module Vivlio
           appendix_files.each_with_index do |file, index|
             old_basename = File.basename(file, '.md')
             old_number, old_slug = extract_number_and_slug(old_basename)
-            new_number = format('%02d', index + 91)
+            new_number = format('%02d', index + 90)
             next if old_number == new_number
 
             new_slug = adjust_slug_for_appendix(new_number, old_slug) || old_slug
@@ -344,7 +344,7 @@ module Vivlio
             old_slug = from_entry.slug
             new_number = to_entry.number
             new_slug = if number_only_to
-                         new_number.to_i.between?(91, 97) ? adjust_slug_for_appendix(new_number, old_slug) : nil
+                         new_number.to_i.between?(90, 98) ? adjust_slug_for_appendix(new_number, old_slug) : nil
                        else
                          to_entry.slug || old_slug
                        end
@@ -429,7 +429,7 @@ module Vivlio
         def adjust_slug_for_appendix(new_number, old_slug)
           return nil if old_slug.nil? || old_slug.empty?
 
-          if new_number.to_i.between?(91, 97) && old_slug =~ /appendix-[a-z]/
+          if new_number.to_i.between?(90, 98) && old_slug =~ /appendix-[a-z]/
             new_letter = Common.appendix_number_to_letter(new_number)
             old_slug.sub(/appendix-[a-z]/, "appendix-#{new_letter}")
           else

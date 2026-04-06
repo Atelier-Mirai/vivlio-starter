@@ -13,7 +13,6 @@
 #   - ファイル名: "11-install" → 11-install.md
 #
 # 主要オプション:
-#   - --dry-run: 削除予定のみ表示
 #   - --force: 確認なしで削除
 #
 # 依存:
@@ -33,7 +32,6 @@ module Vivlio
           many :targets, '削除対象（章番号/レンジ/ファイル名）', default: []
 
           options do
-            option '--dry-run/-n', '変更せずに削除予定のみを表示', default: false, key: :dry_run
             option '--force/-f', '確認なしで削除を実行', default: false, key: :force
             option '--yes/-y', '[互換] --force と同じ意味', default: false, key: :yes
             option '--verbose/-v', '冗長ログを表示', default: false, key: :verbose

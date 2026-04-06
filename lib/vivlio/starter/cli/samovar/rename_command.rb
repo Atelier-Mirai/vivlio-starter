@@ -13,9 +13,8 @@
 #   - 全章連番付け直し: vs rename（引数なし）
 #
 # 主要オプション:
-#   - --dry-run: 変更予定のみ表示
 #   - --force: 確認なしで実行
-#   - --chapter-step: 連番の刻み幅（デフォルト: 1）
+#   - --step/-s: 連番の刻み幅（デフォルト: 1）
 #
 # 依存:
 #   - RenameCommandExecutor: 実際のリネーム処理
@@ -34,10 +33,8 @@ module Vivlio
           many :arguments, 'OLD と NEW を指定。省略すると一括連番モード', default: []
 
           options do
-            option '-n/--dry-run', '変更予定のみ表示（実行しない）', default: false, key: :dry_run
             option '--force/-f/-y', '確認なしで変更を実行', default: false, key: :force
-            option '--chapter-step/-S <step>', '章番号の刻み幅を指定（既定: 1）', type: Integer, key: :chapter_step
-            option '--step <step>', '[互換] 章番号の刻み幅（--chapter-step と同義）', type: Integer, key: :step
+            option '--step/-s <step>', '章番号の刻み幅を指定（既定: 1）', type: Integer, key: :step
             option '-h/--help', 'このコマンドの使い方を表示', key: :help
           end
 
@@ -68,9 +65,7 @@ module Vivlio
 
           def executor_options
             {
-              dry_run: options[:dry_run],
               force: options[:force],
-              chapter_step: options[:chapter_step],
               step: options[:step],
               verbose: verbose_from_parent?
             }
