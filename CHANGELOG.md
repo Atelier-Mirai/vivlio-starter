@@ -88,6 +88,8 @@
 ## Unreleased
 （次回リリース候補の変更はここに追加してください）
 
+## [0.36.0] - 2026-04-07
+
 ### Changed
 - **`vs doctor` ヘルプ表示を改善**: `--fix` の説明を `不足ツールを自動インストール (一部確認あり)` に、`--yes/-y` の説明を `確認プロンプトをスキップ (--fix 指定時のみ有効)` に変更。usage行も `doctor [--fix [--yes/-y]] [-h/--help]` 形式に更新し、`--yes` が `--fix` の従属オプションであることを明示。
 - **`vs delete` の `--dry-run` オプションを削除**: 使用頻度が低いため廃止。
@@ -100,6 +102,12 @@
 - **`vs clean --cache` の削除対象に `.cache/metrics/` を追加**: metrics キャッシュも `--cache` および `--all` で削除されるように対応。
 - **`vs resize` のディレクトリ指定を簡略化**: `vs resize 01-intro` のように `images/` プレフィックスを省略して指定できるように改良。`images/` で始まらない場合は自動的に `images/` を前置して解決する。
 - **`vs resize` に `--delete-originals` オプションを追加**: WebP 変換後に元の PNG/JPG ファイルを削除するオプション。変換成功したファイルのみを対象とし、削除前に確認プロンプトを表示する。
+- **`vs lint:check` を廃止**: `vs lint` のエイリアスとして残っていた `vs lint:check` コマンドを削除。
+- **`vs resize:high` / `vs resize:medium` / `vs resize:low` サブコマンドを廃止**: `vs resize --high` / `vs resize --low` オプション形式に統一。
+
+### Added
+- **各ディレクトリに `_README.md` を追加**: `contents/`、`images/`、`covers/`、`data/`、`templates/`、`sources/`、`codes/`、`stylesheets/`、`config/` の各ディレクトリに、役割・配置するファイル・関連コマンドを説明する `_README.md` を配置。`vs build` / `vs lint` / `vs metrics` の対象外。
+- **マニュアルを拡充**: `32-doctor.md`（環境診断）、`13-chapter-management.md`（章の管理）、`33-utility.md`（ユーティリティコマンド集）、`34-book-yml.md`（book.yml リファレンス）、`80-developer.md`（開発者向けガイド）を新規作成。
 
 ## [0.35.0] - 2026-04-06
 
@@ -795,7 +803,8 @@
 - バージョンファイル追加: `lib/vivlio/starter/version.rb`（0.1.0）
 - README にインストール方法・CLI の使い方・リリース手順を追記
 
-[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.35.0...HEAD
+[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.36.0...HEAD
+[0.35.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.35.0...v0.36.0
 [0.35.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.34.0...v0.35.0
 [0.34.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.33.0...v0.34.0
 [0.33.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.32.0...v0.33.0
