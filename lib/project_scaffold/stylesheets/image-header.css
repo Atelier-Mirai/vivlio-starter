@@ -1,0 +1,162 @@
+/* =============================================================
+   image-header.css
+   -------------------------------------------------------------
+   画像あり版の章ヘッダー用スタイル。
+   chapter.css から @import される想定。
+   ============================================================= */
+
+/* -------------------------------------------------------------
+   章タイトル
+   ------------------------------------------------------------- */
+/* stylelint-disable */
+@page :nth(1) {
+  background-image: var(--frontispiece-image);
+  background-repeat: no-repeat;
+  background-position: calc(50% + var(--frontispiece-binding-offset));
+  background-attachment: fixed;
+  background-size: var(--frontispiece-background-size);
+}
+
+/* stylelint-enable */
+
+h1 {
+  display: grid;
+  grid-template-columns: auto;
+  grid-template-rows: auto auto;
+  gap: clamp(4mm, calc(var(--paper-scale) * 6mm), 8mm);
+  align-items: center;
+  justify-items: center;
+  margin: 0 auto;
+  text-align: center;
+  inline-size: clamp(70mm, calc(var(--paper-scale) * 110mm), var(--frontispiece-heading-width));
+  max-inline-size: 100%;
+  padding-block: clamp(3mm, calc(var(--paper-scale) * 6mm), 8mm);
+}
+
+.chapter-lead {
+  inline-size: var(--frontispiece-lead-width);
+  margin-block: clamp(-8mm, calc(var(--paper-scale) * -10mm), -6mm)
+    clamp(8mm, calc(var(--paper-scale) * 10mm), 12mm);
+}
+
+h1 .chapter-number {
+  display: block;
+  font-family: var(--font-header);
+  font-size: clamp(24Q, calc(var(--paper-scale) * 30Q), 32Q);
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  color: #333;
+  text-transform: none;
+  margin-block-start: clamp(8mm, calc(var(--paper-scale) * 10mm), 12mm);
+  padding-block-end: clamp(2mm, calc(var(--paper-scale) * 3mm), 4mm);
+  /* margin-block-end: clamp(5mm, calc(var(--paper-scale) * 7mm), 8mm); */
+  width: 100%;
+  position: relative;
+}
+
+h1 .chapter-number::after {
+  content: "";
+  position: absolute;
+  inset-inline: 15%;
+  bottom: 0;
+  height: 0.6mm;
+  background: rgb(0 0 0 / 35%);
+  border-radius: 0.6mm;
+}
+
+h1 .chapter-title {
+  display: block;
+  margin: 0 auto;
+  padding: 0;
+  text-align: center;
+  font-family: var(--font-header);
+  font-size: clamp(34Q, calc(var(--paper-scale) * 48Q), 50Q);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.45;
+  color: #111;
+  inline-size: clamp(60mm, calc(var(--paper-scale) * 96mm), var(--frontispiece-heading-width));
+  max-inline-size: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  text-shadow: 0 0 1mm rgb(255 255 255 / 70%);
+  margin-block-start: clamp(4mm, calc(var(--paper-scale) * 6mm), 8mm);
+  margin-block-end: clamp(2mm, calc(var(--paper-scale) * 4mm), 5mm);
+}
+
+h1::after {
+  content: none;
+}
+
+
+/* -------------------------------------------------------------
+   節見出し
+   ------------------------------------------------------------- */
+.section-topic {
+  display: grid;
+  grid-template:
+    "section-title" 150px
+    "section-lead" auto
+    / 100%;
+  gap: clamp(5mm, calc(var(--paper-scale) * 8mm), 8mm);
+  margin-block-end: 1em;
+}
+
+.section-topic h2 {
+  font-family: var(--font-header);
+  font-weight: 900;
+  break-before: page;
+  margin: 0;
+  font-size: clamp(25.2Q, calc(var(--paper-scale) * 36Q), 36Q);
+  line-height: clamp(33.6Q, calc(var(--paper-scale) * 48Q), 48Q);
+  align-self: center;
+  white-space: nowrap;
+
+  display: flex;
+  align-items: center;
+  gap: clamp(4mm, calc(var(--paper-scale) * 6mm), 6mm);
+  position: relative;
+  padding-inline: clamp(6mm, calc(var(--paper-scale) * 10mm), 10mm);
+  padding-block: clamp(6mm, calc(var(--paper-scale) * 9mm), 9mm);
+  aspect-ratio: 239 / 100;
+  min-block-size: 120px;
+  text-align: left;
+}
+
+.section-topic h2::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: var(--section-bg-image);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  z-index: -1;
+}
+
+.section-topic h2>* {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(2mm, calc(var(--paper-scale) * 3mm), 3mm);
+  white-space: normal;
+}
+
+.section-topic h2 .section-number {
+  font-size: calc(1em * 1.10);
+  font-weight: 900;
+  color: var(--section-number-color);
+  -webkit-text-stroke: 0.3mm rgba(0, 0, 0, .30);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-inline-start: clamp(6mm, calc(var(--paper-scale) * 8mm), 10mm);
+}
+
+.section-topic .section-lead {
+  grid-area: section-lead;
+  text-indent: 1em;
+  margin-block-start: clamp(10mm, calc(var(--paper-scale) * 16mm), 16mm) !important;
+  margin-block-end: 0 !important;
+}

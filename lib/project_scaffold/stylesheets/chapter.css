@@ -1,0 +1,58 @@
+/* =====================================================================
+   Chapter (章)
+   ===================================================================== */
+
+@charset "utf-8";
+
+@import url("base.css");
+@import url("theme.css");
+@import url("page-settings.css");
+@import url("simple-header.css");
+@import url("prism.css");
+@import url("code.css");
+@import url("table.css");
+@import url("spacing.css");
+@import url("layout-utils.css");
+@import url("components.css");
+@import url("chapter-common.css");
+
+/* =====================================================================
+   本文開始時のページカウンタリセット
+   ---------------------------------------------------------------------
+   最初の本文章（chapter-first クラス）の最初のページで page カウンタを
+   0 にリセットし、そのページを「1」として表示する。
+   これにより、前書き（00-preface）と目次（_toc）の後、本文が 1 ページ
+   から始まるようになる。
+   ===================================================================== */
+body.chapter-first {
+  page: body-start;
+}
+
+@page body-start:nth(1) {
+  counter-reset: page 0;
+}
+
+/* =====================================================================
+   用語集リンク（†記号）
+   ---------------------------------------------------------------------
+   本文中の用語集登録語に付与される上付きの†記号。
+   アクセント色で表示し、クリックで用語集ページへジャンプ。
+   ===================================================================== */
+.glossary-link {
+  text-decoration: none;
+  margin-left: 0.1em;
+}
+
+.glossary-link sup {
+  font-size: 0.7em;
+  color: var(--theme-accent, #0ea5e9);
+  font-weight: normal;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.glossary-link:hover sup {
+  opacity: 1;
+  text-decoration: none;
+}
+

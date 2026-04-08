@@ -1,0 +1,13 @@
+- title: 楽しいRuby
+  author:
+    name: 高橋征義です
+    bio: Rubyist。
+  desc: Rubyを楽しく学べる入門書。
+  cover: ruby.webp
+
+- title: はじめてのC
+  author: 
+    name: 柴田望洋です
+    bio: C プログラマ
+  desc: C言語の定番入門書。
+  cover: c.webp

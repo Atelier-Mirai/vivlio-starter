@@ -1,0 +1,240 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 595 842" width="595" height="842">
+  <!--
+    Vivlio Starter bundled cover template: frontcover.svg
+    =====================================================
+    配置場所: lib/vivlio/starter/templates/covers/bundled/frontcover.svg
+
+    ■ デザイナーの方へ
+      このファイルは Inkscape / Illustrator で直接編集できます。
+      テーマカラーは <style> ブロック内の CSS 変数（- -vs-xxx）を変更してください。
+      グラデーションの stop-color は {{bg-from}} / {{bg-to}} プレースホルダーです
+      （rsvg-convert の制限により CSS 変数が使えないため直接値で記載してください）。
+      書籍情報（タイトル等）は {{title}} 形式のプレースホルダーです。
+      Vivlio Starter がビルド時に book.yml の値で自動置換します。
+
+    ■ テーマカラーのカスタマイズ
+      light / dark 切り替えは Ruby 側のパレット定数（LIGHT_PALETTE / DARK_PALETTE）
+      が担います。独自テーマを追加する場合は対応するパレット定数を追加してください。
+
+    ■ プレースホルダー一覧
+      CSS 変数（<style>内）:
+        - -vs-text-main    メインタイトル色
+        - -vs-text-sub     サブタイトル色
+        - -vs-text-author  著者名色
+        - -vs-text-label   シリーズ・発行日色
+        - -vs-grid-stroke  グリッド線色
+        - -vs-stroke-outer 外環線色
+        - -vs-stroke-mid   中環線色
+        - -vs-stroke-inner 内環線色
+        - -vs-node-fill    ノード塗り色
+        - -vs-node-stroke  ノード枠色
+        - -vs-icon-color   中央アイコン色
+      グラデーション stop-color:
+        {{bg-from}}  背景グラデーション開始色
+        {{bg-to}}    背景グラデーション終了色
+      テキスト:
+        {{title}}    書名
+        {{subtitle}} サブタイトル
+        {{author}}   著者名
+        {{series}}   シリーズ名
+        {{release}}  発行日
+  -->
+  <defs>
+    <style>
+      :root {
+        /* ── テーマカラー（ここを変更してテーマを調整） ── */
+        --vs-text-main:    #1e3a60;
+        --vs-text-sub:     #8090a8;
+        --vs-text-author:  #2a4070;
+        --vs-text-label:   #7080a0;
+        --vs-grid-stroke:  #d0d0d0;
+        --vs-stroke-outer: #e0e0e0;
+        --vs-stroke-mid:   #e8e8e8;
+        --vs-stroke-inner: #d0d0d0;
+        --vs-node-fill:    #ffffff;
+        --vs-node-stroke:  #1e3a60;
+        --vs-icon-color:   #1e3a60;
+      }
+    </style>
+
+    <!-- 背景グラデーション: stop-color は rsvg-convert 制限のため直接値 -->
+    <linearGradient id="bg-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="{{bg-from}}"/>
+      <stop offset="100%" stop-color="{{bg-to}}"/>
+    </linearGradient>
+
+    <!-- ゴールドシマーグラデーション（アクセントライン用） -->
+    <linearGradient id="gold-line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#b8902a" stop-opacity="0"/>
+      <stop offset="40%"  stop-color="#e8c85a"/>
+      <stop offset="60%"  stop-color="#f5d96e"/>
+      <stop offset="100%" stop-color="#b8902a" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- 細ゴールドライン（装飾罫線用） -->
+    <linearGradient id="gold-thin" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#c9a43a" stop-opacity="0"/>
+      <stop offset="30%"  stop-color="#e0c058"/>
+      <stop offset="70%"  stop-color="#e0c058"/>
+      <stop offset="100%" stop-color="#c9a43a" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- 中央ノードのグロー -->
+    <radialGradient id="node-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#f5d96e" stop-opacity="0.25"/>
+      <stop offset="30%"  stop-color="#e8c85a" stop-opacity="0.18"/>
+      <stop offset="60%"  stop-color="#c9a43a" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#b8902a" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- グリッドテクスチャパターン -->
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="var(--vs-grid-stroke)" stroke-width="0.4"/>
+    </pattern>
+
+    <!-- グリッド表示エリアのクリップパス -->
+    <clipPath id="top-clip">
+      <rect x="0" y="0" width="595" height="560"/>
+    </clipPath>
+  </defs>
+
+  <!-- === 背景 === -->
+  <rect width="595" height="842" fill="url(#bg-grad)"/>
+
+  <!-- === グリッドオーバーレイ（上部エリアのみ） === -->
+  <rect width="595" height="560" fill="url(#grid)" opacity="0.3" clip-path="url(#top-clip)"/>
+
+  <!-- === ゴールドフレームアクセント === -->
+  <!-- 上部太ゴールドバー -->
+  <rect x="0" y="0" width="595" height="4" fill="#c9a43a"/>
+  <!-- 下部太ゴールドバー -->
+  <rect x="0" y="838" width="595" height="4" fill="#c9a43a"/>
+  <!-- 左縦細ゴールドアクセント -->
+  <rect x="28" y="0" width="2" height="842" fill="#c9a43a" opacity="0.5"/>
+  <!-- 右縦細ゴールドアクセント -->
+  <rect x="565" y="0" width="2" height="842" fill="#c9a43a" opacity="0.5"/>
+
+  <!-- === 斜め幾何学アクセントライン（テック回路感） === -->
+  <line x1="-20" y1="380" x2="595" y2="60"  stroke="var(--vs-grid-stroke)" stroke-width="0.8"/>
+  <line x1="-20" y1="500" x2="595" y2="160" stroke="var(--vs-grid-stroke)" stroke-width="0.6"/>
+  <line x1="0"   y1="620" x2="595" y2="280" stroke="var(--vs-grid-stroke)" stroke-width="0.5"/>
+  <line x1="0"   y1="740" x2="595" y2="420" stroke="var(--vs-grid-stroke)" stroke-width="0.4"/>
+
+  <!-- === タイトルブロック（上1/3 ≒ y:60〜300） === -->
+  <!-- タイトル上部の細ゴールド罫線 -->
+  <rect x="50" y="68" width="495" height="1" fill="url(#gold-thin)"/>
+
+  <!-- メインタイトル -->
+  <text x="297" y="138"
+        text-anchor="middle"
+        font-family="'Hiragino Mincho ProN', 'Yu Mincho', 'MS Mincho', 'Noto Serif CJK JP', serif"
+        font-size="38"
+        font-weight="700"
+        fill="var(--vs-text-main)"
+        letter-spacing="2">{{title}}</text>
+
+  <!-- タイトル下のゴールドアンダーライン -->
+  <rect x="80" y="150" width="435" height="1.5" fill="url(#gold-line)"/>
+
+  <!-- サブタイトル -->
+  <text x="297" y="190"
+        text-anchor="middle"
+        font-family="'Hiragino Mincho ProN', 'Yu Mincho', 'MS Mincho', 'Noto Serif CJK JP', serif"
+        font-size="24"
+        font-weight="400"
+        fill="var(--vs-text-sub)"
+        letter-spacing="4">{{subtitle}}</text>
+
+  <!-- 著者行 -->
+  <text x="297" y="247"
+        text-anchor="middle"
+        font-family="'Hiragino Mincho ProN', 'Yu Mincho', 'MS Mincho', 'Noto Serif CJK JP', serif"
+        font-size="22"
+        font-weight="600"
+        fill="var(--vs-text-author)"
+        letter-spacing="4">
+    <tspan font-family="'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+           font-size="14"
+           fill="var(--vs-text-sub)"
+           letter-spacing="2"
+           baseline-shift="4px">[著]</tspan><tspan>{{author}}</tspan>
+  </text>
+
+  <!-- 著者とグラフィックゾーンを分ける細ゴールド罫線 -->
+  <rect x="50" y="288" width="495" height="1" fill="url(#gold-thin)"/>
+
+  <!-- === 中央グラフィック: 抽象回路 / ウェブネットワーク（中心 cy=530） === -->
+  <!-- 外環（淡い） -->
+  <circle cx="297" cy="530" r="195" fill="none" stroke="var(--vs-stroke-outer)" stroke-width="0.8"/>
+  <!-- 中環 -->
+  <circle cx="297" cy="530" r="140" fill="none" stroke="var(--vs-stroke-mid)" stroke-width="0.6"/>
+  <!-- 内環 -->
+  <circle cx="297" cy="530" r="86"  fill="none" stroke="var(--vs-stroke-inner)" stroke-width="0.8"/>
+  <!-- 中央ノード背後のグロー -->
+  <circle cx="297" cy="530" r="96"  fill="url(#node-glow)"/>
+  <!-- 中央ノード -->
+  <circle cx="297" cy="530" r="30"  fill="var(--vs-node-fill)" stroke="var(--vs-node-stroke)" stroke-width="1.2"/>
+  <!-- 中央ブラケットアイコン -->
+  <text x="297" y="538" text-anchor="middle" font-family="'Courier New', monospace"
+        font-size="21" fill="var(--vs-icon-color)" font-weight="700">&lt;/&gt;</text>
+
+  <!-- 放射スポーク（内環 r=86 → 中環 r=140） -->
+  <line x1="383" y1="530" x2="435" y2="530" stroke="var(--vs-stroke-inner)" stroke-width="0.8"/><!-- 0° -->
+  <line x1="358" y1="469" x2="396" y2="431" stroke="var(--vs-stroke-inner)" stroke-width="0.8"/><!-- 45° -->
+  <line x1="297" y1="444" x2="297" y2="390" stroke="var(--vs-stroke-inner)" stroke-width="0.8"/><!-- 90° -->
+  <line x1="236" y1="469" x2="198" y2="431" stroke="var(--vs-stroke-inner)" stroke-width="0.8"/><!-- 135° -->
+  <line x1="211" y1="530" x2="157" y2="530" stroke="var(--vs-stroke-inner)" stroke-width="0.8"/><!-- 180° -->
+  <line x1="236" y1="591" x2="198" y2="629" stroke="var(--vs-stroke-inner)" stroke-width="0.8"/><!-- 225° -->
+  <line x1="297" y1="616" x2="297" y2="670" stroke="var(--vs-stroke-inner)" stroke-width="0.8"/><!-- 270° -->
+  <line x1="358" y1="591" x2="396" y2="629" stroke="var(--vs-stroke-inner)" stroke-width="0.8"/><!-- 315° -->
+
+  <!-- サテライトノード（中環 r=140） -->
+  <circle cx="437" cy="530" r="8"  fill="var(--vs-node-fill)" stroke="var(--vs-node-stroke)" stroke-width="1"/>
+  <circle cx="396" cy="431" r="6"  fill="var(--vs-node-fill)" stroke="var(--vs-node-stroke)" stroke-width="0.8"/>
+  <circle cx="297" cy="390" r="8"  fill="var(--vs-node-fill)" stroke="var(--vs-node-stroke)" stroke-width="1"/>
+  <circle cx="198" cy="431" r="6"  fill="var(--vs-node-fill)" stroke="var(--vs-node-stroke)" stroke-width="0.8"/>
+  <circle cx="157" cy="530" r="8"  fill="var(--vs-node-fill)" stroke="var(--vs-node-stroke)" stroke-width="1"/>
+  <circle cx="198" cy="629" r="6"  fill="var(--vs-node-fill)" stroke="var(--vs-node-stroke)" stroke-width="0.8"/>
+  <circle cx="297" cy="670" r="8"  fill="var(--vs-node-fill)" stroke="var(--vs-node-stroke)" stroke-width="1"/>
+  <circle cx="396" cy="629" r="6"  fill="var(--vs-node-fill)" stroke="var(--vs-node-stroke)" stroke-width="0.8"/>
+
+  <!-- 外環（r=195）へ延長 -->
+  <line x1="437" y1="530" x2="491" y2="530" stroke="var(--vs-stroke-outer)" stroke-width="0.5"/>
+  <line x1="396" y1="431" x2="435" y2="393" stroke="var(--vs-stroke-outer)" stroke-width="0.5"/>
+  <line x1="297" y1="390" x2="297" y2="335" stroke="var(--vs-stroke-outer)" stroke-width="0.5"/>
+  <line x1="198" y1="431" x2="159" y2="393" stroke="var(--vs-stroke-outer)" stroke-width="0.5"/>
+  <line x1="157" y1="530" x2="103" y2="530" stroke="var(--vs-stroke-outer)" stroke-width="0.5"/>
+  <line x1="198" y1="629" x2="159" y2="667" stroke="var(--vs-stroke-outer)" stroke-width="0.5"/>
+  <line x1="297" y1="670" x2="297" y2="725" stroke="var(--vs-stroke-outer)" stroke-width="0.5"/>
+  <line x1="396" y1="629" x2="435" y2="667" stroke="var(--vs-stroke-outer)" stroke-width="0.5"/>
+
+  <!-- 外端ノード -->
+  <circle cx="492" cy="530" r="4" fill="none" stroke="var(--vs-stroke-outer)" stroke-width="0.8"/>
+  <circle cx="435" cy="393" r="4" fill="none" stroke="var(--vs-stroke-outer)" stroke-width="0.8"/>
+  <circle cx="297" cy="335" r="4" fill="none" stroke="var(--vs-stroke-outer)" stroke-width="0.8"/>
+  <circle cx="159" cy="393" r="4" fill="none" stroke="var(--vs-stroke-outer)" stroke-width="0.8"/>
+  <circle cx="102" cy="530" r="4" fill="none" stroke="var(--vs-stroke-outer)" stroke-width="0.8"/>
+  <circle cx="159" cy="667" r="4" fill="none" stroke="var(--vs-stroke-outer)" stroke-width="0.8"/>
+  <circle cx="297" cy="725" r="4" fill="none" stroke="var(--vs-stroke-outer)" stroke-width="0.8"/>
+  <circle cx="435" cy="667" r="4" fill="none" stroke="var(--vs-stroke-outer)" stroke-width="0.8"/>
+
+  <!-- === 出版情報ブロック === -->
+  <!-- 出版情報上部の細ゴールド罫線 -->
+  <rect x="50" y="752" width="495" height="1" fill="url(#gold-thin)"/>
+
+  <!-- シリーズ名 -->
+  <text x="297" y="784"
+        text-anchor="middle"
+        font-family="'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+        font-size="13"
+        fill="var(--vs-text-label)"
+        letter-spacing="2">{{series}}</text>
+
+  <!-- 発行日 -->
+  <text x="297" y="806"
+        text-anchor="middle"
+        font-family="'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+        font-size="12"
+        fill="var(--vs-text-label)"
+        letter-spacing="1">{{release}}</text>
+</svg>

@@ -1,0 +1,65 @@
+/* =============================================================
+   theme.css - テーマ変数定義ファイル
+   =============================================================
+   
+   ⚠️ 注意: このファイルは自動生成されます ⚠️
+   
+   このファイルは config/book.yml の設定に基づいて、
+   pre_process.rb によって自動的に生成・更新されます。
+   
+   テーマカラーや扉絵の設定を変更したい場合は、
+   このファイルを直接編集せず、config/book.yml の
+   theme セクションを編集してください。
+   
+   手動でこのファイルを編集しても、次回のビルド時に
+   設定内容が上書きされます。
+   
+   ============================================================= */
+
+:root {
+  /* テーマ・アクセント（各色で切替可能） */
+  --accent-yellow:        #f0a000;
+  --accent-amber:         #f59e0b;
+  --accent-orange:        #ea580c;
+  --accent-peach:         #fb7185;
+  --accent-coral:         #f97316;
+  --accent-red:           #dc2626;
+  --accent-magenta:       #e11d48;
+  --accent-plum:          #a21caf;
+  --accent-purple:        #7c3aed;
+  --accent-indigo:        #4f46e5;
+  --accent-navy:          #1e40af;
+  --accent-blue:          #0ea5e9;
+  --accent-cyan:          #06b6d4;
+  --accent-teal:          #0d9488;
+  --accent-mint:          #10b981;
+  --accent-green:         #16a34a;
+  --accent-lime:          #65a30d;
+  --theme-accent:         var(--accent-blue); /* config/book.yml の theme.color 設定により自動更新 */
+
+  /* カラートークン（共通） */
+  --color-text:            #000;
+  --color-link:            #000;           /* 必要に応じ変更 */
+  --color-strong:          var(--theme-accent);           /* 強調（重要） */
+  --color-em-underline:    var(--theme-accent);           /* 強意の下線色 */
+  --color-border:          #ccc;           /* 画像など汎用枠 */
+  --color-border-weak:     #ddd;           /* 引用枠など */
+  --color-column-bg:       #eef;           /* コラム背景 */
+  --color-column-border:   #8df;           /* コラム枠 */
+  --color-figure-border:   #ccc;           /* 図枠 */
+  --color-overlay:         rgb(255 255 255 / 70%);
+  --color-shadow:          rgb(0 0 0 / 15%);
+  --color-danger:          #f00;
+  --color-mark:            var(--theme-accent); /* h3マーク等 */
+
+  /* 節番号テーマ */
+  --section-number-color:  var(--theme-accent);
+  --section-bg-image:      none;
+
+  /* 扉絵設定（config/book.yml の theme.frontispiece により自動更新） */
+  --frontispiece-padding: 10mm;
+  --frontispiece-background-size: auto calc(100% - 2 * var(--frontispiece-padding));
+  --frontispiece-image:    none;
+  --frontispiece-heading-width: 108mm;
+  --frontispiece-lead-width: 88mm;
+}

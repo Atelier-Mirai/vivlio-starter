@@ -2,5 +2,11 @@
 
 source 'https://rubygems.org'
 
-# このプロジェクトのビルド/CLIに必要な gem を定義します。
-gem 'vivlio-starter'
+# Dependencies are defined in the gemspec to keep a single source of truth.
+gemspec
+
+# query-stream は公開済みバージョンを使用
+gem 'query-stream', '~> 1.0.0'
+
+# gem install vivlio-starter-pdf を実行したら、以下をコメントアウトしてください
+gem 'vivlio-starter-pdf'
