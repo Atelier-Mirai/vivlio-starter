@@ -314,8 +314,8 @@ module Vivlio
 
         def appendix_number_to_letter(num)
           n = num.to_i
-          return nil unless n.between?(91, 97)
-          ('a'..'g').to_a[n - 91]
+          return nil unless n.between?(90, 98)
+          ('a'..'i').to_a[n - 90]
         rescue StandardError
           nil
         end
@@ -460,21 +460,37 @@ module Vivlio
         end
 
         # 初期ロード実行（モジュール定義時は静かに）
-        reload_configuration!(silent: true)
+        # プロジェクト外（book.yml なし）でも --version, --help, new, doctor が
+        # 動作するよう、設定ファイルが見つからない場合は CONFIG を nil にとどめる。
+        if REQUIRED_YAML_FILES.all? { |f| File.file?(f) }
+          reload_configuration!(silent: true)
+        else
+          remove_const(:CONFIG) if const_defined?(:CONFIG)
+          const_set(:CONFIG, nil)
+        end
+
+        # CONFIG が未ロード（プロジェクト外）の場合に呼び出し元で検査するためのヘルパー
+        def configured? = !CONFIG.nil?
+
+        def ensure_configured!
+          return if configured?
+
+          abort_with_error('必須設定ファイルが見つかりません: config/book.yml')
+        end
 
         # ================================================================
         # 派生定数（CONFIG から動的に取得）
         # ================================================================
 
         # ディレクトリ関連
-        def config_dir         = CONFIG.directories&.config || CONFIG_DIR
+        def config_dir         = CONFIG&.directories&.config || CONFIG_DIR
         def config_dir_path    = resolve_path_from_root(config_dir)
-        def contents_dir       = CONFIG.directories&.contents || CONTENTS_DIR
-        def stylesheets_dir    = CONFIG.directories&.stylesheets || STYLESHEETS_DIR
-        def images_dir         = CONFIG.directories&.images || IMAGES_DIR
-        def codes_dir          = CONFIG.directories&.codes || CODES_DIR
-        def templates_dir      = CONFIG.directories&.templates || TEMPLATES_DIR
-        def covers_dir         = CONFIG.directories&.covers || COVERS_DIR
+        def contents_dir       = CONFIG&.directories&.contents || CONTENTS_DIR
+        def stylesheets_dir    = CONFIG&.directories&.stylesheets || STYLESHEETS_DIR
+        def images_dir         = CONFIG&.directories&.images || IMAGES_DIR
+        def codes_dir          = CONFIG&.directories&.codes || CODES_DIR
+        def templates_dir      = CONFIG&.directories&.templates || TEMPLATES_DIR
+        def covers_dir         = CONFIG&.directories&.covers || COVERS_DIR
 
         def template_path(name)
           File.join(templates_dir, "#{name}.md")
@@ -486,15 +502,15 @@ module Vivlio
         def postface_template_path = template_path('postface')
 
         # キャッシュ関連
-        def cache_cfg          = CONFIG.cache
-        def cache_dir          = CONFIG.cache&.dir || CACHE_DIR
-        def cache_enabled?     = CONFIG.cache&.enabled != false
+        def cache_cfg          = CONFIG&.cache
+        def cache_dir          = CONFIG&.cache&.dir || CACHE_DIR
+        def cache_enabled?     = CONFIG&.cache&.enabled != false
 
         # コマンド関連
-        def vfm_command        = CONFIG.commands&.vfm || VFM_COMMAND
+        def vfm_command        = CONFIG&.commands&.vfm || VFM_COMMAND
 
         # ファイル関連
-        def post_replace_file  = CONFIG.files&.post_replace || POST_REPLACE_FILE
+        def post_replace_file  = CONFIG&.files&.post_replace || POST_REPLACE_FILE
 
         def post_replace_file_path
           file = post_replace_file
@@ -555,7 +571,7 @@ module Vivlio
         end
 
         # エンドレスメソッド定義を module_function として明示的に公開
-        module_function :abort_with_error, :appendix_number_to_letter, :apply_page_preset,
+        module_function :abort_with_error, :appendix_number_to_letter, :apply_page_preset, :configured?, :ensure_configured!,
                         :blank?, :cache_cfg, :cache_dir, :cache_enabled?,
                         :stylesheets_dir, :templates_dir, :to_roman_lower,
                         :template_path, :chapter_template_path, :preface_template_path,

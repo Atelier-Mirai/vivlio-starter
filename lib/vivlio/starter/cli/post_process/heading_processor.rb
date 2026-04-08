@@ -168,7 +168,7 @@ module Vivlio
             {
               file_type: entry.kind.to_s,
               chapter_display_number: chapter_number_i ? resolve_main_chapter_display_number(chapter_token, chapter_number_i) : nil,
-              appendix_letter: chapter_number_i&.between?(91, 97) ? Common.appendix_number_to_letter(chapter_number_i)&.upcase : nil,
+              appendix_letter: chapter_number_i&.between?(90, 98) ? Common.appendix_number_to_letter(chapter_number_i)&.upcase : nil,
               process_headings: %i[chapter appendix].include?(entry.kind)
             }
           end

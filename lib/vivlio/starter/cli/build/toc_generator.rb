@@ -53,7 +53,7 @@ module Vivlio
               keep_numbers_appx = chapter_numbers.select { |n| APPX_RANGE.include?(n) }
               keep_numbers_post = chapter_numbers.select { |n| POSTFACE_RANGE.include?(n) }
             end
-            # base_dir 内の HTML から前書き(02) + 本文(11..89) + 付録(91..97) + 後書き(98) を抽出
+            # base_dir 内の HTML から前書き(00) + 本文(01..89) + 付録(90..98) + 後書き(99) を抽出
             chapter_htmls_preface = Build::ChapterConfig.htmls_for_range(base_dir, PREFACE_RANGE, keep_numbers_preface)
             chapter_htmls_main = Build::ChapterConfig.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers_main)
             chapter_htmls_appx = Build::ChapterConfig.htmls_for_range(base_dir, APPX_RANGE, keep_numbers_appx)

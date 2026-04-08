@@ -30,7 +30,7 @@ module Vivlio
         # HTML 見出し抽出・PDF アウトライン生成モジュール
         module OutlineExtractor
           # 章レンジ（定数）
-          APPX_RANGE = (91..97)
+          APPX_RANGE = (90..98)
 
           class << self
             attr_accessor :last_outline_debug_info

@@ -13,9 +13,10 @@
 #   - 全章の連番付け直し: vs rename（引数なし）
 #
 # 章番号の規約:
-#   - 11-89: 通常の章（11から開始、刻み幅は --step で指定可能）
-#   - 91-97: 付録（A-G に対応、appendix-a 形式のスラッグを自動調整）
-#   - 00-09, 98-99: 特殊ページ（リネーム対象外）
+#   - 00: 前書き（リネーム対象外）
+#   - 01-89: 通常の章（先頭章番号を起点、刻み幅は --step で指定可能）
+#   - 90-98: 付録（A-I に対応、appendix-a 形式のスラッグを自動調整）
+#   - 99: 後書き（リネーム対象外）
 #
 # 副作用:
 #   - contents/XX-slug.md をリネーム
@@ -84,9 +85,9 @@ module Vivlio
 
         # 全章の連番を付け直す
         #
-        # 通常章は 11 から開始し、付録は 91 から開始する。
+        # 通常章は 01-89、付録は 90-98 の範囲で連番を振り直す。
+        # 先頭章の番号を起点として順に詰める。
         # 刻み幅は --step オプションで指定可能（デフォルト: 1）。
-        # 11-89 の範囲に収まるよう、刻み幅は自動調整される。
         def renumber_all_chapters
           files = chapter_file_groups
 
@@ -95,12 +96,13 @@ module Vivlio
             exit 0
           end
 
+          start_num = regular_start_number(files[:regular])
           requested_step = normalized_step
-          effective_step = effective_step_for(requested_step, files[:regular].size)
+          effective_step = effective_step_for(requested_step, files[:regular].size, start_num)
           report_step_adjustment(requested_step, effective_step)
 
           Common.log_info('対象ファイル:')
-          display_regular_chapters(files[:regular], effective_step)
+          display_regular_chapters(files[:regular], effective_step, start_num)
           display_appendix_files(files[:appendix])
 
           confirm_or_exit('連番付け直し') unless options[:force] || options[:dry_run]
@@ -110,7 +112,7 @@ module Vivlio
             exit 0
           end
 
-          rename_map = build_rename_map(files[:regular], files[:appendix], effective_step)
+          rename_map = build_rename_map(files[:regular], files[:appendix], effective_step, start_num)
 
           if rename_map.empty?
             Common.log_success('すでに正しい連番になっています')
@@ -149,16 +151,27 @@ module Vivlio
           step <= 0 ? 1 : step
         end
 
-        # 章数に応じて刻み幅を調整する（11-89 の範囲に収めるため）
+        # 通常章の先頭章番号を取得する
+        #
+        # @param regular_chapters [Array<String>] ソート済みの通常章ファイルパス
+        # @return [Integer] 先頭章の番号（空の場合は 1）
+        def regular_start_number(regular_chapters)
+          return 1 if regular_chapters.empty?
+
+          extract_number_and_slug(File.basename(regular_chapters.first, '.md')).first.to_i
+        end
+
+        # 章数に応じて刻み幅を調整する（start_number-89 の範囲に収めるため）
         #
         # @param requested_step [Integer] 要求された刻み幅
         # @param chapter_count [Integer] 章数
+        # @param start_number [Integer] 先頭章の番号
         # @return [Integer] 実際に使用する刻み幅
-        def effective_step_for(requested_step, chapter_count)
+        def effective_step_for(requested_step, chapter_count, start_number = 1)
           return requested_step if chapter_count <= 1
 
-          # 01 から 89 までの範囲に収めるための最大刻み幅を計算
-          max_step = ((89 - 1) / (chapter_count - 1)).floor
+          # start_number から 89 までの範囲に収めるための最大刻み幅を計算
+          max_step = ((89 - start_number) / (chapter_count - 1)).floor
           max_step = 1 if max_step < 1
           [requested_step, max_step].min
         end
@@ -172,14 +185,14 @@ module Vivlio
         end
 
         # 連番後の通常章の新旧対応をログ出力する
-        def display_regular_chapters(chapters, effective_step)
+        def display_regular_chapters(chapters, effective_step, start_number = 1)
           return if chapters.empty?
 
           Common.log_info('通常の章:')
           chapters.each_with_index do |file, index|
             old_name = File.basename(file, '.md')
             old_number, old_slug = extract_number_and_slug(old_name)
-            new_number = format('%02d', 1 + (index * effective_step))
+            new_number = format('%02d', start_number + (index * effective_step))
             new_basename = build_basename(new_number, old_slug)
             Common.log_info("#{old_name} → #{new_basename}")
           end
@@ -214,13 +227,13 @@ module Vivlio
         end
 
         # 正しい連番へ付け替えるための rename マップを構築する
-        def build_rename_map(regular_chapters, appendix_files, effective_step)
+        def build_rename_map(regular_chapters, appendix_files, effective_step, start_number = 1)
           map = {}
 
           regular_chapters.each_with_index do |file, index|
             old_basename = File.basename(file, '.md')
             old_number, old_slug = extract_number_and_slug(old_basename)
-            new_number = format('%02d', 1 + (index * effective_step))
+            new_number = format('%02d', start_number + (index * effective_step))
             next if old_number == new_number
 
             new_basename = build_basename(new_number, old_slug)

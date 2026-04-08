@@ -86,7 +86,17 @@
 
 
 ## Unreleased
-（次回リリース候補の変更はここに追加してください）
+
+### Added
+- **`vs new` コマンドを実装**: 新規書籍プロジェクトを対話的に作成するコマンド。プロジェクト名を指定すると `project_scaffold/` からファイルを展開し、`config/book.yml` の書籍名・著者名等を置換する。`--yes` で対話スキップ、`--force` で既存ディレクトリへの追加展開、`--log debug` でデバッグ出力に対応。展開後に `vs doctor --fix` を自動実行して環境をセットアップする。
+- **著者マニュアル `contents/40-new.md` を追加**: `vs new` コマンドの使い方・オプション・プロジェクト構成を解説するマニュアル。
+
+### Changed
+- **章番号の範囲定義を全コマンドで統一**: 00（前書き）、01-89（本文）、90-98（付録）、99（後書き）の仕様に統一。旧仕様（11-89 / 91-97）が残っていた `Common.appendix_number_to_letter`、`OutlineExtractor::APPX_RANGE`、`HeadingProcessor` のロジックとコメントを修正。付録のレター対応を A-G（7章分）から A-I（9章分）に拡張。
+- **`vs renumber` の連番開始番号を先頭章に合わせるよう改善**: 引数なし実行時、先頭章の番号を起点として順に詰める（例: 11, 15, 31 → 11, 12, 13）。
+- **`vs --version` / `vs --help` をプロジェクト外でも実行可能に**: `config/book.yml` が存在しないディレクトリでも `--version`、`--help`、`new`、`doctor` コマンドが動作するよう、設定ロードを遅延化。
+- **`vs doctor --fix` の npm 警告を抑制**: `npm install` に `--loglevel=error` を付与し、初回セットアップ時の非推奨パッケージ警告を非表示に。
+- **scaffold の `Gemfile` を修正**: `gemspec` 参照を `gem 'vivlio-starter'` に変更。gem をローカルインストールすれば任意の場所でプロジェクトを作成可能に。
 
 ## [0.36.0] - 2026-04-07
 

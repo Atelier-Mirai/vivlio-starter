@@ -126,7 +126,7 @@ module Vivlio
               end
             end
 
-            npm_install_cmd = system_calls.find { |cmd| cmd.start_with?('npm install -g ') }
+            npm_install_cmd = system_calls.find { |cmd| cmd.include?('npm install') && cmd.include?('-g') }
             refute_nil npm_install_cmd, 'npm install -g should be invoked'
 
             expected_packages = Vivlio::Starter::CLI::DoctorCommands::TEXTLINT_NPM_PACKAGES

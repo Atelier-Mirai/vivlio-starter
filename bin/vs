@@ -9,10 +9,16 @@ unless ENV['VS_DEBUG'] == '1' || ENV['VS_WARNINGS'] == '1' || ENV['VS_NO_REEXEC'
     ENV['RUBYOPT'] = (['-W0'] + rubopt.split).join(' ')
     ENV['VS_NO_REEXEC'] = '1'
     # Prefer re-exec via bundler so dependency resolution stays intact
-    begin
-      exec('bundle', 'exec', RbConfig.ruby, __FILE__, *ARGV)
-    rescue
-      # Fallback: run without bundler
+    # Skip if no Gemfile exists (e.g. running as installed gem)
+    gemfile_found = ENV['BUNDLE_GEMFILE'] ||
+                    File.exist?(File.join(Dir.pwd, 'Gemfile'))
+    if gemfile_found
+      begin
+        exec('bundle', 'exec', RbConfig.ruby, __FILE__, *ARGV)
+      rescue
+        exec(RbConfig.ruby, __FILE__, *ARGV)
+      end
+    else
       exec(RbConfig.ruby, __FILE__, *ARGV)
     end
   end

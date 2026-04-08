@@ -323,7 +323,7 @@ module Vivlio
             if missing.include?('playwright')
               if system('which npm >/dev/null 2>&1')
                 Common.echo_always('Playwright（バックリンク重複排除用）をインストールします…')
-                system('npm install playwright')
+                system('npm install --loglevel=error playwright')
               else
                 Common.echo_always('npm が見つかりません。node のインストール後に `npm install playwright` を実行してください。')
               end
@@ -349,7 +349,7 @@ module Vivlio
             if missing.include?('vivliostyle')
               if system('which npm >/dev/null 2>&1')
                 Common.echo_always('Vivliostyle CLI(@vivliostyle/cli) をグローバルインストールします…')
-                system('npm install -g @vivliostyle/cli')
+                system('npm install --loglevel=error -g @vivliostyle/cli')
               else
                 Common.echo_always('npm が見つかりません。node のインストール後に `npm install -g @vivliostyle/cli` を実行してください。')
               end
@@ -364,7 +364,7 @@ module Vivlio
               if system('which npm >/dev/null 2>&1')
                 Common.echo_always('textlint と推奨 Textlint ルールをグローバルインストールします…')
                 packages = TEXTLINT_NPM_PACKAGES.map { |pkg| Shellwords.escape(pkg) }.join(' ')
-                installed = system("npm install -g #{packages}")
+                installed = system("npm install --loglevel=error -g #{packages}")
                 copy_textlint_assets_from_scaffold! if installed
               else
                 Common.echo_always('npm が見つかりません。node のインストール後に `npm install -g textlint textlint-rule-preset-ja-technical-writing ...` を実行してください。')

@@ -32,8 +32,8 @@ module Vivlio
           # カテゴリ見出しの確認
           assert_includes output, 'プロジェクト管理:'
           assert_includes output, '執筆・編集支援:'
-          assert_includes output, 'アセット・索引:'
-          assert_includes output, 'ビルド・出力:'
+          assert_includes output, '索引・用語集:'
+          assert_includes output, 'ビルド・出力・プレビュー:'
 
           # Public Commands の確認
           assert_includes output, 'new'

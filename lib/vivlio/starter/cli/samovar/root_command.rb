@@ -99,6 +99,7 @@ module Vivlio
             return help_command.call if options[:help]
 
             target = command || help_command
+            ensure_project_context!(target)
             target.call || 0
           rescue SystemExit => e
             e.status
@@ -121,6 +122,15 @@ module Vivlio
           def print_version
             puts "vivlio-starter #{Vivlio::Starter::VERSION}"
             0
+          end
+
+          # プロジェクト外でも実行可能なコマンド
+          PROJECTLESS_COMMANDS = [NewCommand, DoctorCommand, HelpCommand].freeze
+
+          def ensure_project_context!(target)
+            return if PROJECTLESS_COMMANDS.any? { |klass| target.is_a?(klass) }
+
+            Common.ensure_configured!
           end
         end
       end
