@@ -35,6 +35,7 @@ require_relative 'pre_process/theme_image_resolver'
 require_relative 'pre_process/image_generator'
 require_relative 'pre_process/markdown_transformer'
 require_relative 'pre_process/image_path_normalizer'
+require_relative 'pre_process/link_image_validator'
 
 module Vivlio
   module Starter

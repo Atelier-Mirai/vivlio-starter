@@ -49,6 +49,8 @@ module Vivlio
             option '--low', '画像最適化プリセット: 低品質', default: false
             option '--[no]-compress', 'PDF圧縮を行う（--no-compress でスキップ）', key: :compress
             option '--[no]-clean', '中間生成物をクリーンアップ（--no-clean でスキップ）', default: true, key: :clean
+            option '--[no]-verify', 'リンク・画像の基本検証を実行する（--no-verify でスキップ）', default: true, key: :verify
+            option '--verify-links', '外部 URL の HTTP 到達性チェックを実行する', default: false, key: :verify_links
             option '--log <level>', 'ログレベルを指定（error/warn/info/debug）', key: :log_level
             option '-h/--help', 'このコマンドの使い方を表示', key: :help
           end
@@ -78,6 +80,10 @@ module Vivlio
               return 0
             end
 
+            # 検証オプションをスレッドローカルに設定（LinkImageValidator が参照）
+            setup_verify_options!
+            PreProcessCommands::LinkImageValidator.reset!
+
             if targets.any?
               target_entries = resolve_target_entries
 
@@ -91,6 +97,11 @@ module Vivlio
               run_full_mode_build
             end
 
+            # 外部 URL の到達性チェック（--verify-links 有効時のみ）
+            PreProcessCommands::LinkImageValidator.check_external_urls!
+            # 検証サマリーを表示
+            PreProcessCommands::LinkImageValidator.print_summary
+
             0
           rescue SystemExit => e
             raise e
@@ -98,6 +109,7 @@ module Vivlio
             common.log_error("Error: #{e.message}")
             1
           ensure
+            Thread.current[:vs_verify_options] = nil
             PostProcessCommands::HeadingProcessor.chapter_tokens_override = nil
           end
 
@@ -347,6 +359,20 @@ module Vivlio
             
             file_list = files.map { |f| File.basename(f) }.join(', ')
             Common.echo_always "📚 #{file_list} を作成しました。"
+          end
+
+          # CLI の --verify / --verify-links オプションをスレッドローカルに設定する
+          # LinkImageValidator が resolve_config で参照する
+          def setup_verify_options!
+            opts = {}
+            if options[:verify] == false
+              opts[:no_verify] = true
+            else
+              opts[:verify_images] = true
+              opts[:verify_bare_urls] = true
+              opts[:verify_external_links] = options[:verify_links] || false
+            end
+            Thread.current[:vs_verify_options] = opts
           end
 
           def common

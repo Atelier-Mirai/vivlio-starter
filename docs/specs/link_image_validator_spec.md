@@ -350,6 +350,28 @@ build:
 
 CLI オプションが `book.yml` の設定より優先される。
 
+### 7.3 CLI オプションと `book.yml` の対応関係
+
+| CLI オプション | `book.yml` 相当 | 画像存在チェック | 裸 URL 検出 | 外部 URL 到達性 |
+|---|---|---|---|---|
+| （なし＝デフォルト） | `images: true`, `bare_urls: true`, `external_links: false` | ✅ ON | ✅ ON | ❌ OFF |
+| `--verify-links` | `external_links: true` | ✅ ON | ✅ ON | ✅ ON |
+| `--no-verify` | `images: false`, `bare_urls: false`, `external_links: false` | ❌ OFF | ❌ OFF | ❌ OFF |
+
+**設計意図:**
+
+- **CLI**: 大まかに ON/OFF する（`--verify-links` で全有効化 / `--no-verify` で全無効化）
+- **`book.yml`**: プロジェクト固有の恒久設定を細かく個別制御する（例: 画像チェックだけ OFF にしたい）
+
+**優先順位**: CLI オプション > `book.yml` 設定
+
+| 状況 | 結果 |
+|---|---|
+| `book.yml: external_links: true` + CLI オプションなし | HTTP チェック実行 |
+| `book.yml: external_links: true` + `--no-verify` | 全チェックスキップ |
+| `book.yml: external_links: false` + `--verify-links` | HTTP チェック実行 |
+| `book.yml: images: false` + CLI オプションなし | 画像チェックのみスキップ |
+
 ---
 
 ## 8. エッジケース

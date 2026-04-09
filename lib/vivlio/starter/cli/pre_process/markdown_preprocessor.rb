@@ -28,6 +28,7 @@ require_relative 'frontmatter_generator'
 require_relative 'data_render'
 require_relative 'image_path_normalizer'
 require_relative 'markdown_transformer'
+require_relative 'link_image_validator'
 
 module Vivlio
   module Starter
@@ -69,6 +70,7 @@ module Vivlio
             strip_html_comments!
             process_data_streams!
             normalize_image_paths!
+            validate_links_and_images!
             process_code_includes!
             normalize_html_block_boundaries!
             escape_inline_code_html!
@@ -113,6 +115,11 @@ module Vivlio
           def normalize_image_paths!
             context.content = ImagePathNormalizer.fix_image_paths(context.content, context.filename)
             Common.log_success("画像パスを修正しました: #{context.filename}")
+          end
+
+          # リンク・画像の自動検証を実行する
+          def validate_links_and_images!
+            LinkImageValidator.validate(context.content, context.filename)
           end
 
           # include 記法によるソースコード取り込みを実行する
