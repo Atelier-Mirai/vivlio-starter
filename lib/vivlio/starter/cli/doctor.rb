@@ -116,6 +116,8 @@ module Vivlio
           os = RbConfig::CONFIG['host_os']
           is_macos = os =~ /darwin/i
 
+          Common.echo_always('🔎 環境診断を開始します…')
+
           # macOS では Xcode Command Line Tools が多くのビルドツールの前提条件
           if is_macos
             clt_ok = system('xcode-select -p >/dev/null 2>&1')
@@ -147,7 +149,6 @@ module Vivlio
             'rouge' => nil # コードブロック言語推定用
           }
 
-          Common.echo_always('🔎 環境診断を開始します…')
           checks.each do |label, cmd|
             ok = case label
                  when 'imagemagick'
@@ -319,13 +320,13 @@ module Vivlio
               system('gem install rouge')
             end
 
-            # Playwright npm パッケージ
+            # Playwright npm パッケージ（グローバルインストール）
             if missing.include?('playwright')
               if system('which npm >/dev/null 2>&1')
                 Common.echo_always('Playwright（バックリンク重複排除用）をインストールします…')
-                system('npm install --loglevel=error playwright')
+                system('npm install --loglevel=error -g playwright')
               else
-                Common.echo_always('npm が見つかりません。node のインストール後に `npm install playwright` を実行してください。')
+                Common.echo_always('npm が見つかりません。node のインストール後に `npm install -g playwright` を実行してください。')
               end
             end
 
@@ -651,7 +652,14 @@ module Vivlio
         end
 
         def playwright_npm_available?
-          File.exist?(File.join('node_modules', 'playwright', 'package.json'))
+          # ローカル node_modules を優先確認
+          return true if File.exist?(File.join('node_modules', 'playwright', 'package.json'))
+
+          # グローバルインストールを確認
+          global_root = `npm root -g 2>/dev/null`.strip
+          return false if global_root.empty?
+
+          File.exist?(File.join(global_root, 'playwright', 'package.json'))
         rescue StandardError
           false
         end
@@ -659,7 +667,14 @@ module Vivlio
         def chromium_available?
           return false unless playwright_npm_available?
 
-          chromium_path = `node -e "const { chromium } = require('playwright'); console.log(chromium.executablePath());" 2>/dev/null`.strip
+          chromium_path = `node -e "try { const { chromium } = require('playwright'); console.log(chromium.executablePath()); } catch(e) {}" 2>/dev/null`.strip
+          return true if !chromium_path.empty? && File.exist?(chromium_path)
+
+          # グローバルの playwright から検出
+          global_root = `npm root -g 2>/dev/null`.strip
+          return false if global_root.empty?
+
+          chromium_path = `NODE_PATH=#{global_root} node -e "try { const { chromium } = require('playwright'); console.log(chromium.executablePath()); } catch(e) {}" 2>/dev/null`.strip
           !chromium_path.empty? && File.exist?(chromium_path)
         rescue StandardError
           false

@@ -224,7 +224,15 @@ module Vivlio
           def run_extraction_script!
             cmd = ['node', MAPPING_SCRIPT, @preview_url, timeout_ms.to_s]
 
-            stdout, stderr, status = Open3.capture3(*cmd)
+            # グローバル npm パッケージを node が解決できるよう NODE_PATH を設定
+            env = {}
+            global_root = `npm root -g 2>/dev/null`.strip
+            unless global_root.empty?
+              existing = ENV.fetch('NODE_PATH', '')
+              env['NODE_PATH'] = [global_root, existing].reject(&:empty?).join(File::PATH_SEPARATOR)
+            end
+
+            stdout, stderr, status = Open3.capture3(env, *cmd)
 
             unless status.success?
               Common.log_error("[backlink-dedup] Playwright スクリプトがエラーで終了しました")
