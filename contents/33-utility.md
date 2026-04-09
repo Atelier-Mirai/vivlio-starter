@@ -214,3 +214,107 @@ WebP への変換が成功した元の PNG/JPG ファイルを削除します。
 | 高精細 | `--high` | 90 | 2000px | 印刷・高解像度表示 |
 | 標準 | （なし） | 85 | 1600px | 通常の技術書 |
 | 軽量 | `--low` | 75 | 1200px | Web配布・ファイルサイズ優先 |
+
+## カスタム CSS — スタイルを自由に調整する
+
+:::{.section-lead}
+Vivlio Starter は `config/book.yml` のテーマ設定で色やフォントを簡単に切り替えられますが、「リンクの色だけ変えたい」「コードブロックの角を丸くしたい」といった細かな調整をしたい場合もあるでしょう。そのようなときに使えるのが `stylesheets/custom.css` です。
+:::
+
+### 仕組み
+
+ビルド時、各章の Markdown には次の順番でスタイルシートが適用されます。
+
+1. **`theme.css`** — テーマカラーや扉絵などの基本設定（`book.yml` から自動生成）
+2. **`chapter.css`** 等 — 章タイプごとのレイアウト（自動生成）
+3. **`custom.css`** — 著者が自由に編集できるファイル（**上書きされない**）
+
+CSS のカスケード（後から読み込まれたスタイルが優先される仕組み）により、`custom.css` に書いた内容が最優先で反映されます。
+
+::: {.note}
+`theme.css` や `page-settings.css` はビルドのたびに `book.yml` の設定で上書きされます。これらのファイルを直接編集しても、次の `vs build` で元に戻ってしまいます。恒久的なカスタマイズには必ず `custom.css` を使ってください。
+:::
+
+### 使い方
+
+`stylesheets/custom.css` を開き、変更したい CSS 変数やルールを記述します。
+
+```css
+/* stylesheets/custom.css */
+:root {
+  --color-link: #1a73e8;        /* リンク色を青に変更 */
+  --color-column-bg: #f5f5dc;   /* コラム背景をベージュに */
+}
+```
+
+`vs build` を実行すると、変更が即座に PDF に反映されます。
+
+### カスタマイズ可能な CSS 変数
+
+`theme.css` と `page-settings.css` で定義されている主な CSS カスタムプロパティの一覧です。`custom.css` でこれらの値を上書きできます。
+
+#### 配色（theme.css）
+
+| 変数名 | 既定値 | 説明 |
+| :--- | :--- | :--- |
+| `--theme-accent` | `var(--accent-blue)` | テーマのアクセントカラー |
+| `--color-text` | `#000` | 本文テキスト色 |
+| `--color-link` | `#000` | リンク色 |
+| `--color-strong` | `var(--theme-accent)` | 太字（`**強調**`）の色 |
+| `--color-em-underline` | `var(--theme-accent)` | 強意（`*イタリック*`）の下線色 |
+| `--color-border` | `#ccc` | 画像など汎用枠線色 |
+| `--color-column-bg` | `#eef` | コラム背景色 |
+| `--color-column-border` | `#8df` | コラム枠線色 |
+| `--color-figure-border` | `#ccc` | 図の枠線色 |
+| `--color-danger` | `#f00` | 警告色 |
+
+#### 版面・フォント（page-settings.css）
+
+| 変数名 | 既定値（例） | 説明 |
+| :--- | :--- | :--- |
+| `--base-font-size` | `10.5pt` | 基準文字サイズ |
+| `--base-line-height` | `19.425pt` | 行送り |
+| `--letter-spacing` | `0em` | 字間 |
+| `--page-margin-top` | `25mm` | 天（上余白） |
+| `--page-margin-bottom` | `25mm` | 地（下余白） |
+| `--page-margin-inner` | `25mm` | ノド（綴じ側余白） |
+| `--page-margin-outer` | `23mm` | 小口（外側余白） |
+| `--font-main-text` | `"Noto Serif JP"` | 本文フォント |
+| `--font-header` | `"Noto Sans JP"` | 見出しフォント |
+| `--font-code` | `"hackgen35"` | コードフォント |
+| `--column-font-size` | `8pt` | コラムの文字サイズ |
+
+:::{.column}
+**ヒント**: `book.yml` の `theme.color` や `page.use` で設定できる項目は、まず `book.yml` で設定するのがおすすめです。`custom.css` は `book.yml` では設定できない細かな調整に使ってください。
+:::
+
+### 実践例
+
+#### コードブロックの見た目を変える
+
+```css
+/* コードブロックに背景色と角丸を追加 */
+pre {
+  background: #f8f8f8;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+```
+
+#### 引用ブロックの装飾を変える
+
+```css
+blockquote {
+  border-left: 4px solid var(--theme-accent);
+  padding-left: 1em;
+  font-style: italic;
+}
+```
+
+#### 章扉の余白を微調整する
+
+```css
+:root {
+  --frontispiece-padding: 15mm;
+}
+```

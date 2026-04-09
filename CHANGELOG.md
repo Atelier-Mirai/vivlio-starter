@@ -42,8 +42,20 @@
 - [High] vs lint に スペルチェックを盛り込む
 - [High] pdf_reader.rbを改修、pdf -> mdにするコマンドを実装する
 - [High] data/ディレクトリから、yml形式で書籍(タイトル、著者、ISBNなど)などを展開できるようにする。
+- [High] プロジェクト生成時に、project_scaffold/ を生成する。
+- [High] vs new で、プロジェクト生成時に、scaffold以下の資産が新プロジェクトに展開され、著者が執筆の参考となるよう、書き方の例として、vivio-starterのマニュアルを展開する。
+
 
 ### Planned
+
+**あると良いが、リリース後でも可**
+用語集テンプレートの標準添付 [Medium] — 便利ですがリリースブロッカーではありません
+VFM 設定のエントリーレベル適用 [Medium] — 現状でも動作しているため、後方互換で後から対応可能
+テーマシステムの実装 [High] — 小説用縦書きなどは大きな機能追加。v1.0 後のメジャーアップデートとして取り組むのが現実的
+Post-processing 単体テスト整備 [Medium] — リリース品質の信頼性向上に有効ですが、現在のテスト（740件）で基本的なカバーはできています
+
+**リリース後で十分**
+単章ビルドのリファクタリング、リスト体裁改善、Data オブジェクト拡張、画像 width 自動補完、脚注サポート、Web アプリ連携、CI パイプラインなど
 
 #### ビルド/出力
 - [High] 単章ビルドシステムのリファクタリング: 現在実装済みの単章ビルドtargets対応は機能的に完備しているが、コード構造の整理と保守性向上のためのリファクタリングを実施。ステップ登録ロジックの最適化、メソッド責務の明確化、テストカバレッジの拡充を含む。
@@ -67,9 +79,6 @@
 - [Low] Web アプリ連携機能: `codes/` ディレクトリに配置した HTML/JS/CSS のサンプルコードを、書籍内で QR コードや URL として紹介する仕組みの検討。PDF 生成がメインの用途から外れるため優先度は低いが、インタラクティブなサンプルを書籍と連携させる将来的な拡張として記録しておく。
 - [High] 11-install.mdなどを、著者の使い方や、書き方の例として、書き直す。
 - [High] tamplates/chapter.mdなどを、書き方の例として書き直す
-- [High] プロジェクト生成時に、.cache/vs/ を生成する。
-- [High] プロジェクト生成時に、project_scaffold/ を生成する。
-- [High] vs new で、プロジェクト生成時に、scaffold以下の資産が新プロジェクトに展開され、著者が執筆の参考となるよう、書き方の例として、vivio-starterのマニュアルを展開する。
 
 #### 品質・テスト
 - [Medium] Post-processing単体テスト整備: `_postReplaceList.json`の主要ルール（段落クラス付与、見出し・bodyクラス、各種クレンジング）のスナップショットテストを追加。想定外パターン（複数ブレース、引用符・バックスラッシュ混入等）の回帰防止。
@@ -86,6 +95,9 @@
 
 
 ## Unreleased
+(Next release changes will be added here)
+
+## [0.37.0] - 2026-04-09
 
 ### Added
 - **`vs new` コマンドを実装**: 新規書籍プロジェクトを対話的に作成するコマンド。プロジェクト名を指定すると `project_scaffold/` からファイルを展開し、`config/book.yml` の書籍名・著者名等を置換する。`--yes` で対話スキップ、`--force` で既存ディレクトリへの追加展開、`--log debug` でデバッグ出力に対応。展開後に `vs doctor --fix` を自動実行して環境をセットアップする。
@@ -96,7 +108,9 @@
 - **`vs renumber` の連番開始番号を先頭章に合わせるよう改善**: 引数なし実行時、先頭章の番号を起点として順に詰める（例: 11, 15, 31 → 11, 12, 13）。
 - **`vs --version` / `vs --help` をプロジェクト外でも実行可能に**: `config/book.yml` が存在しないディレクトリでも `--version`、`--help`、`new`、`doctor` コマンドが動作するよう、設定ロードを遅延化。
 - **`vs doctor --fix` の npm 警告を抑制**: `npm install` に `--loglevel=error` を付与し、初回セットアップ時の非推奨パッケージ警告を非表示に。
-- **scaffold の `Gemfile` を修正**: `gemspec` 参照を `gem 'vivlio-starter'` に変更。gem をローカルインストールすれば任意の場所でプロジェクトを作成可能に。
+- **`scaffold Gemfile` のバンドラーエラーを修正: `gemspec` 参照から `gem 'vivlio-starter'` への変更。ローカル gem インストール後、任意の場所でプロジェクト作成が可能に。
+- **`vs doctor` のグローバル npm インストール時の Playwright 検出を修正**: `vs doctor --fix` で Playwright をグローバルインストール（`npm install -g playwright`）し、ローカル・グローバル両方の環境を検出するよう変更。複数プロジェクト間での再インストールプロンプトを防止。
+- **`extract_page_mapping.mjs` の Playwright インポートを修正**: ESM インポートが gem ディレクトリ内から失敗する場合に `createRequire` を使ったフォールバックを追加。`vs build` 実行時の `ERR_MODULE_NOT_FOUND` を解消。
 
 ## [0.36.0] - 2026-04-07
 
@@ -813,7 +827,8 @@
 - バージョンファイル追加: `lib/vivlio/starter/version.rb`（0.1.0）
 - README にインストール方法・CLI の使い方・リリース手順を追記
 
-[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.36.0...HEAD
+[Unreleased]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.37.0...HEAD
+[0.35.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.36.0...v0.37.0
 [0.35.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.35.0...v0.36.0
 [0.35.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.34.0...v0.35.0
 [0.34.0]: https://github.com/Atelier-Mirai/vivlio-starter/compare/v0.33.0...v0.34.0

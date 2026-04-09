@@ -120,7 +120,7 @@ module Vivlio
 
           # フロントマターのベース構造を構築
           def build_base_frontmatter(chapter_css)
-            stylesheets = ['theme.css', chapter_css]
+            stylesheets = ['theme.css', chapter_css, 'custom.css']
             lang = (Common::CONFIG.dig(:book, :language) || 'ja').to_s.strip
             lang = 'ja' if lang.empty?
 
