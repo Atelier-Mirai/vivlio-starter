@@ -1,7 +1,8 @@
 ---
-name: ruby-modern-development-standard
 description: Ruby 4.0.0+ 専業プロジェクト汎用。最新構文を活かしたコーディング・テスト・リファクタリングの統合開発標準。
-license: Complete terms in LICENSE.txt
+# alwaysApply: false のとき、globs に一致する文脈でルールが載る（Git / マニュアル中心の会話では載りにくくトークン節約）
+globs: "**/*.rb"
+alwaysApply: false
 ---
 
 # Ruby 4.0.0+ Modern Development Standard
