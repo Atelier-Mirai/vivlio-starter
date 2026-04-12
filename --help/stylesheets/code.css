@@ -1,0 +1,211 @@
+@charset "utf-8";
+
+/* コード */
+code {
+  font-family: var(--code-font);
+}
+
+pre,
+pre[class*="language-"] {
+  /* box-size */
+  inline-size: 100%;
+
+  /* spacing */
+  padding-block: 0;
+  padding-inline: 0.8mm;
+  margin-block: 3mm;
+  margin-inline: 0;
+
+  /* typography */
+  font-family: var(--code-font);
+  white-space: pre-wrap;
+  line-break: anywhere;
+  font-size: 13Q;
+  line-height: 1.46;
+
+  /* visual */
+  background: #fff;
+  border: solid 0.35mm #888;
+  border-radius: 1mm;
+}
+
+/* Prism inline code override */
+:not(pre)>code[class*="language-"] {
+  /* visual */
+  background: transparent;
+}
+
+/* 内側の code 要素の行送り・サイズを pre に揃える（Prism の token が崩さないように） */
+figure[class^="language-"] > pre[class*="language-"] > code[class*="language-"],
+figure[class*=" language-"] > pre[class*="language-"] > code[class*="language-"] {
+  /* typography */
+  font-size: inherit;
+  line-height: inherit;
+
+  /* layout */
+  display: block;
+}
+
+/* Prism のトークン断片もメトリクスを継承させる */
+figure[class^="language-"] > pre[class*="language-"] > code[class*="language-"] *,
+figure[class*=" language-"] > pre[class*="language-"] > code[class*="language-"] * {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.codenum-elem {
+  /* layout */
+  display: inline-block;
+
+  /* box-size */
+  width: 2em;
+
+  /* visual */
+  color: #888;
+}
+
+h6 + pre {
+  margin-block-start: 0;
+  border-start-start-radius: 0;
+}
+
+h6:has(+ pre) {
+  /* box-size */
+  inline-size: fit-content;
+
+  /* spacing */
+  padding-inline: 2mm;
+  margin-block-end: 0;
+
+  /* alignment */
+  text-align: start;
+
+  /* visual */
+  background: #888;
+  color: #fff;
+  border-radius: 1mm 1mm 0 0;
+}
+
+/* コード＋キャプション（スタイルだけキャプション風）
+   - 旧構造: <p><strong>..</strong></p><pre>...</pre>
+   - 新構造: <p><strong>..</strong></p><figure><pre>...</pre></figure>
+ */
+p:has(+ pre),
+p:has(+ figure > pre) {
+  margin-block: 0;
+  text-indent: 0;
+  font-family: var(--font-header);
+  text-spacing: no-autospace;
+  font-size: var(--base-font-size);
+  font-weight: normal;
+}
+
+p:has(+ pre) strong,
+p:has(+ figure > pre) strong {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+body:not(.appendix) p:has(+ pre),
+body:not(.appendix) p:has(+ figure > pre) {
+  text-align: left;
+  margin-block-end: 0.25lh;
+}
+
+/* figure (Prism/Markdown) の figcaption をコード見出し帯にする */
+figure[class^="language-"],
+figure[class*=" language-"] {
+  /* layout */
+  display: block;
+
+  /* spacing */
+  margin: 0 0 3mm;
+
+  /* size: コンテナ幅いっぱい */
+  inline-size: 100%;
+  max-inline-size: none;
+}
+
+/* ネストした figure が横幅を押し広げないよう、下に回す */
+figure[class^="language-"] > figure,
+figure[class*=" language-"] > figure {
+  /* layout */
+  display: block;
+
+  /* spacing */
+  margin: 2mm 0 0;
+}
+
+figure[class^="language-"] > figcaption,
+figure[class*=" language-"] > figcaption {
+  /* layout */
+  display: block;
+
+  /* box-size */
+  inline-size: 100%;
+  box-sizing: border-box;
+
+  /* spacing */
+  padding-inline: 0.8mm;
+  padding-block: 0.4mm;
+  margin-block-end: 0;
+
+  /* alignment */
+  text-align: start;
+
+  /* visual */
+  background: transparent;
+  color: #888;
+  border: none;
+  border-radius: 0;
+}
+
+figure[class^="language-"] > figcaption + pre,
+figure[class*=" language-"] > figcaption + pre {
+  /* spacing */
+  margin-block-start: 0;
+
+  /* visual: コードのみを囲むため、上辺ボーダーと角丸を有効化 */
+  border-top: solid 0.35mm #888;
+  border-start-start-radius: 1mm;
+  border-start-end-radius: 1mm;
+}
+
+.token.comment {
+  color: #888;
+}
+
+/* コード内引き出し線 */
+.codered.token.comment {
+  /* layout */
+  position: relative;
+
+  /* spacing */
+  padding-block: 0;
+  padding-inline: 0;
+
+  /* typography */
+  font-size: 10Q;
+  line-height: 12Q;
+  font-weight: bold;
+
+  /* visual */
+  color: #f00;
+}
+
+.codered::before {
+  /* layout */
+  display: block;
+  position: absolute;
+  inset-block-start: 1.2mm;
+  inset-inline-start: -3em;
+
+  /* box-size */
+  inline-size: 3em;
+
+  /* visual */
+  border-bottom: dashed 0.25mm #f88;
+
+  /* counters/meta */
+  content: "";
+}

@@ -1,0 +1,396 @@
+@charset "utf-8";
+
+/* =====================================================================
+   Chapter Common (章・付録共通スタイル)
+   ===================================================================== */
+
+/* 各章・付録は必ず右ページ（奇数ページ）始まり */
+body {
+  break-before: recto;
+}
+
+/* マーカー変数（book.ymlのtheme.markersで自動更新） */
+:root {
+  --h3-marker: "♣";
+  --h4-marker: "♦";
+}
+
+/* -------------------------------------------------------------
+   見出し
+   ------------------------------------------------------------- */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-header);
+  text-spacing: no-autospace;
+}
+
+/* 章タイトルをページ柱用の named string にセット */
+h1 .chapter-number {
+  string-set: chapter-number content(text);
+}
+
+h1 .chapter-title {
+  string-set: chapter-title content(text);
+}
+
+/* 項見出し（h3） */
+h3 {
+  margin-break: auto;
+  block-size: 10mm;
+  margin-block: 1rlh 0.5rlh;
+  padding-block: 2mm;
+  padding-inline-start: 0;
+  font-size: 18Q;
+  line-height: 22Q;
+  clear: both;
+}
+
+h3::before {
+  content: none;
+}
+
+.subsection-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: auto;
+  margin-inline-end: 1.5mm;
+  font-size: 5mm;
+  color: var(--color-mark);
+}
+
+/* 目見出し（h4） */
+h4 {
+  font-size: var(--base-font-size);
+}
+
+h4::before {
+  content: var(--h4-marker, "◆");
+  color: var(--color-mark);
+  font-size: 4mm;
+  margin-inline-end: 1mm;
+}
+
+/* 号見出し（h5） */
+h5 {
+  margin-block-end: 2mm;
+  font-size: var(--base-font-size);
+}
+
+/* 補助見出し（h6） */
+h6 {
+  margin-block-end: 2mm;
+  font-size: var(--base-font-size);
+}
+
+/* 改ページ直後の h3 マージン抑制 */
+hr+h3,
+hr+section>h3:first-child,
+section:has(hr:last-child)+section>h3:first-child {
+  margin-break: discard;
+}
+
+/* -------------------------------------------------------------
+   リード文
+   ------------------------------------------------------------- */
+
+/* 章リード */
+.chapter-lead {
+  margin-block: 0.5rlh;
+  margin-inline: auto;
+  font-weight: 500;
+  font-size: larger;
+  line-height: 1.7;
+  text-align: justify;
+  text-indent: 1em;
+}
+
+.chapter-lead p {
+  text-indent: 1em;
+}
+
+/* 節リード */
+.section-lead {
+  display: block;
+  inline-size: 32em;
+  margin-block: -15mm 1.5rlh; /* 上へずらして配置 */
+  margin-inline: auto;
+  font-weight: 700;
+  text-indent: 1em;
+}
+
+.section-lead p {
+  text-indent: 1em;
+}
+
+/* -------------------------------------------------------------
+   段落・テキスト
+   ------------------------------------------------------------- */
+p {
+  margin-block: 0;
+  text-indent: 1em;
+  text-align: justify;
+}
+
+/* 右寄せユーティリティ */
+.text-right {
+  text-align: right;
+}
+
+.text-right p {
+  text-indent: 0;
+}
+
+blockquote p {
+  text-indent: 0;
+  font-style: italic;
+}
+
+blockquote {
+  margin-block: 4mm;
+  margin-inline: 0;
+  padding: 0;
+  padding-inline: 2em;
+  border-inline-start: solid 2mm var(--color-border-weak);
+}
+
+/* 強意（下線） */
+em {
+  font-style: normal;
+  text-decoration: underline;
+  text-decoration-thickness: 0.10em;
+  text-decoration-color: var(--color-em-underline);
+  text-underline-offset: 0.08em;
+  text-decoration-skip-ink: auto;
+}
+
+/* 強調（太字・色） */
+strong {
+  font-weight: 900;
+  color: var(--color-strong);
+}
+
+/* キーボードフォント */
+kbd {
+  font-family: keyfont, monospace;
+}
+
+/* リンク */
+a {
+  text-decoration: none;
+  color: var(--color-link);
+}
+
+/* クロスリファレンス用リンク（図/表/リスト参照）は太字で表示 */
+a.cross-ref-link {
+  font-weight: 700;
+}
+
+/* -------------------------------------------------------------
+   リスト
+   ------------------------------------------------------------- */
+ul,
+ol {
+  margin-block: 0.5lh;
+  margin-inline: 0 2em;
+  padding-inline-start: 2em;
+  font-weight: 700;
+}
+
+li :is(ul, ol) {
+  margin-block: 0; /* 入れ子時は上下余白なし */
+}
+
+/* -------------------------------------------------------------
+   改ページ
+   ------------------------------------------------------------- */
+hr.pagebreak {
+  break-after: page;
+  visibility: hidden;
+}
+
+hr.blankline {
+  height: var(--base-line-height);
+  visibility: hidden;
+}
+
+/* -------------------------------------------------------------
+   図版
+   ------------------------------------------------------------- */
+/* 図版全般（旧来の .figure と素の figure をまとめて扱う） */
+:is(.figure, figure) {
+  display: block;
+  position: relative;
+  margin-block: 4mm;
+}
+
+/* デフォルト（および align-left）: 左寄せ。幅は style="width: .." で制御 */
+:is(.figure, figure):not(.align-center):not(.align-right) {
+  margin-inline-start: 0;
+  margin-inline-end: auto;
+}
+
+/* 中央寄せ: figure 自体を中央に配置 */
+:is(.figure, figure).align-center {
+  margin-inline: auto;
+}
+
+/* 右寄せ: figure 自体を右端に配置 */
+:is(.figure, figure).align-right {
+  margin-inline-start: auto;
+  margin-inline-end: 0;
+}
+
+/* width スタイルを持たない align-center / align-right 図版は
+     コンテンツ幅に縮むようにし、auto マージンで正しく配置できるようにする */
+:is(.figure, figure).align-center:not([style*="width"]),
+:is(.figure, figure).align-right:not([style*="width"]) {
+  inline-size: fit-content;
+}
+
+/* width 指定のない align-right 図版内の画像だけを右寄せする */
+:is(.figure, figure).align-right:not([style*="width"]) > img {
+  display: block;
+  margin-inline-start: auto;
+  margin-inline-end: 0;
+}
+
+/* 図版で width スタイルを持つ場合は画像を枠いっぱいに広げる */
+:is(.figure, figure)[style*="width"] > img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* figcaption 全般のスタイル（ゴシック体＋太字） */
+figcaption {
+  font-family: var(--font-header);
+  text-spacing: no-autospace;
+  font-size: var(--base-font-size);
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: center;
+  margin-block-start: 0.25lh;
+}
+
+:is(.figure, figure) :is(img, svg) {
+  border: solid 0.5mm var(--color-figure-border);
+}
+
+/* 旧 .float-right 図版: align-right へ移行 */
+:is(.figure, figure).align-right {
+  float: inline-end;
+  inline-size: 17em;
+  margin-block: 2mm;
+  margin-inline: 2em 0;
+}
+
+:is(.figure, figure) p {
+  text-indent: 0;
+}
+
+.figure.right {
+  float: inline-end;
+  margin-left: 1em;
+}
+
+/* 図中文字（図内注釈リスト） */
+:is(.figure, figure) ul {
+  position: absolute;
+  font-size: 11Q;
+  max-inline-size: 14em;
+  inline-size: fit-content;
+  inset-inline-end: 0;
+  list-style: none;
+  margin: 0;
+}
+
+:is(.figure, figure) li {
+  font-size: 11Q;
+  line-height: 16Q;
+  border: solid 0.25mm var(--color-danger);
+  background: var(--color-overlay);
+  margin-bottom: 2mm;
+  padding: 0 0.5mm;
+}
+
+/* -------------------------------------------------------------
+   画像
+   ------------------------------------------------------------- */
+img {
+  max-inline-size: 100%;
+  border: solid 0.5mm var(--color-border);
+}
+
+img[src$=".svg"] {
+  border: none;
+}
+
+p>img {
+  vertical-align: text-bottom;
+}
+
+/* -------------------------------------------------------------
+   コラム
+   ------------------------------------------------------------- */
+.column {
+  width: 114mm;
+  margin-block-start: 6mm;
+  margin-inline: auto;
+  padding: 4mm;
+  padding-inline: 6mm;
+  border: solid 0.2mm var(--color-column-border);
+  border-radius: 10px;
+  background: var(--color-column-bg);
+}
+
+.column h5 {
+  margin-top: 0;
+  font-size: 14Q;
+  color: var(--color-mark);
+}
+
+.tip {
+  margin-block: 3mm;
+  margin-inline: auto;
+  padding: 3mm 4mm;
+  border-radius: 6px;
+  border: solid 0.2mm var(--color-border-weak);
+  background: var(--color-overlay);
+}
+
+.tip p {
+  text-indent: 0;
+}
+
+.note {
+  margin-block: 3mm;
+  margin-inline: auto;
+  padding-block: 3mm;
+  padding-inline: 0;
+  border-block-start: solid 0.2mm var(--color-border-weak);
+  border-block-end: solid 0.2mm var(--color-border-weak);
+}
+
+.note p {
+  text-indent: 0;
+}
+
+.notice {
+  margin-block: 3mm;
+  margin-inline: auto;
+  padding: 3mm 4mm;
+  border-radius: 4px;
+  border: solid 0.2mm var(--color-border-weak);
+  border-inline-start-width: 1mm;
+  border-inline-start-color: var(--color-mark);
+  background: var(--color-overlay);
+}
+
+.notice p {
+  text-indent: 0;
+}

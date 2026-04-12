@@ -12,7 +12,7 @@ module Vivlio
         class NewCommand < Samovar::Command
           self.description = '新しい書籍プロジェクトを作成します'
 
-          one :name, 'プロジェクト名', required: false
+          many :names, 'プロジェクト名', default: []
 
           options do
             option '--yes/-y', '対話をスキップしデフォルト設定で作成する', default: false, key: :yes
@@ -22,6 +22,8 @@ module Vivlio
           end
 
           def call
+            return print_usage if options[:help]
+
             NewCommands.run_from_command(self)
           rescue SystemExit => e
             raise e

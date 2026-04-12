@@ -206,7 +206,7 @@ module Vivlio
         private
 
         def validated_project_name!(cmd)
-          raw = cmd.name.to_s.strip
+          raw = cmd.names.first.to_s.strip
           if raw.empty?
             Common.log_error('エラー: プロジェクト名を指定してください。')
             Common.log_error('  vs new <project_name>')

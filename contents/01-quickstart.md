@@ -83,8 +83,8 @@ cd mybook
 mybook/
   contents/          ← 原稿（Markdownファイル）
   images/            ← 画像ファイル
-  covers/            ← 表紙画像
-  data/              ← 書籍内で展開したいQueryStream用データ（YAML）
+  covers/            ← 表紙・裏表紙用の画像ファイル
+  data/              ← 書籍内で展開したいQueryStream用データ（YAML形式）
   templates/         ← 各種雛形ファイル置き場
   sources/           ← 執筆資料やPDFファイル置き場
   codes/             ← 書籍内で掲載するサンプルコード
@@ -102,6 +102,9 @@ mybook/
 
 まずは `contents/` フォルダに注目してください。ここに原稿となる Markdown ファイルが収まっています。`00-preface.md` や `11-install.md` などのサンプルファイルが最初から入っており、これらが執筆の参考になります。
 
+
+各ディレクトリの役割やオプションの詳細は、次の「新規プロジェクトの作成（vs new）」で説明しています。
+
 ## はじめてのビルド
 
 さっそく PDF を生成してみましょう。
@@ -110,7 +113,7 @@ mybook/
 vs build
 ```
 
-しばらく待つと、`output.pdf` が生成されて自動的に開きます。これがあなたの最初の技術書です！
+しばらく待つと、`mybook_v0.1.0.pdf` が生成されて自動的に開きます。これがあなたの最初の技術書です！
 
 :::{.column}
 **💡 ヒント**
@@ -120,40 +123,44 @@ vs build
 
 ## コマンド一覧
 
-Vivlio Starter にはさまざまなコマンドが用意されています。`vs help` で一覧を確認できます。
+Vivlio Starter にはさまざまなコマンドが用意されています。`vs --help` で一覧を確認できます。
 
 ```bash
-vs help
+vs --help
 ```
 
 ```
-Vivlio Starter - 技術書執筆のためのCLIツール
+📚 Vivlio Starter - 技術書執筆のためのCLIツール 🛠️
 使い方: vs <command> [options]
 
   プロジェクト管理:
     new              プロジェクトを新規作成します
     import           Re:VIEW Starter プロジェクトを取り込みます
+    pdf:read         PDFを解析して Markdown 形式へ変換・抽出します
     doctor           環境診断と不足ツールの自動セットアップ
     clean            生成物やキャッシュを削除します
 
   執筆・編集支援:
     create           章ファイルと画像ディレクトリを生成します
     delete           指定した章の Markdown と画像を削除します
-    rename           章のスラッグ/番号を変更します
+    rename           章の番号やファイル名（スラッグ）を変更します
     renumber         章番号を一括で付け直します
-    open             生成されたPDFを開きます（macOS専用）
 
-  文章校正・用語:
-    lint             Markdownをtextlintで検査、スペルチェックも行ないます
+  文章校正・統計:
+    lint             Markdownをtextlintで検査します
     metrics          Markdownの行数・文字数を集計します
 
-  アセット・索引:
-    cover            カバー画像を生成します（A4/B5/A5/EPUB）
-    resize           画像をWebPに変換します
-    index            索引機能（index:auto / index:apply）
+  索引・用語集:
+    index:auto       索引・用語集の候補を抽出し、確認用ファイルを作成します
+    index:apply      確認済みの候補を、プロジェクトの索引辞書に登録・保存します
 
-  ビルド・出力:
+  画像・カバー:
+    cover            表紙・裏表紙の画像を生成します（A4/B5/A5/EPUB対応）
+    resize           images/画像をWebP形式に変換・最適化します（--high/--lowで品質変更可）
+
+  ビルド・出力・プレビュー:
     build            書籍全体または指定章をビルドします
+    open             生成されたPDFを開きます
     pdf:compress     生成済みPDFを圧縮します
 ```
 
@@ -196,8 +203,7 @@ vs build 10-awesome
 vs build
 ```
 
----
-
 :::{.text-right}
 **さあ、あなたの技術書を書き始めましょう！**
 :::
+
