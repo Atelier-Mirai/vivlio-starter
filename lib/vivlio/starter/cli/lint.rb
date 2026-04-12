@@ -24,7 +24,6 @@
 # ================================================================
 
 require 'open3'
-require 'pathname'
 require 'shellwords'
 require 'rbconfig'
 require 'tempfile'

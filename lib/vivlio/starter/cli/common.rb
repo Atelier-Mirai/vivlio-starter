@@ -3,7 +3,6 @@
 require 'fileutils'
 require 'json'
 require 'yaml'
-require 'pathname'
 
 # このコードで可能になったこと
 # * ハイブリッドなアクセス:

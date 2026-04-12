@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'nokogiri'
-require 'pathname'
 module Vivlio
   module Starter
     module CLI
@@ -113,8 +112,8 @@ module Vivlio
           # デフォルトで base_dir 配下の対象 HTML を列挙する
           def default_targets
             Dir.glob(base_dir.join('*.html')).map { |path| normalize_path(path) }
-               .reject { |path| EXCLUDE_FILES.include?(File.basename(path)) }
-               .sort
+                                             .reject { |path| EXCLUDE_FILES.include?(File.basename(path)) }
+                                             .sort
           end
 
           # 渡されたパスを絶対パスに正規化する

@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'json'
-require 'pathname'
 require 'yaml'
 require_relative 'metrics/runner'
 require_relative 'token_resolver'

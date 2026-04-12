@@ -24,9 +24,14 @@ module Vivlio
         NUMERIC_PILLAR_PREFIX_REGEX = /\A[0-9０-９]+(?:[.-][0-9０-９]+)*\.?\s+.+\z/
         # 「— 42 —」形式のダッシュ付きページ番号を検出する正規表現
         DASHED_PAGE_NUMBER_REGEX = /\A[-–—]\s*[0-9０-９ivxlcdmIVXLCDM]+\s*[-–—]\z/
-        Error = Class.new(StandardError)
-        InvalidInputError = Class.new(Error)
-        MissingPdfError = Class.new(Error)
+        class Error < StandardError
+        end
+
+        class InvalidInputError < Error
+        end
+
+        class MissingPdfError < Error
+        end
 
         # PDF 格納ディレクトリの既定名
         SOURCES_DIR = 'sources'
