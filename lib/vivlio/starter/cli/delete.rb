@@ -9,7 +9,6 @@
 #
 # 機能:
 #   - 章番号・範囲・ファイル名による削除対象の指定
-#   - --dry-run による削除予定の事前確認
 #   - --force による確認プロンプトのスキップ
 #   - config/catalog.yml からの章エントリ自動削除
 #
@@ -39,7 +38,7 @@ module Vivlio
         # テスト容易性と保守性を確保している。
         class DeleteCommandExecutor
           # @param options_source [Hash, Object] オプション情報
-          #   - Hash: { force: true, dry_run: false, verbose: false }
+          #   - Hash: { force: true, verbose: false }
           #   - Object: #options メソッドで Hash を返すオブジェクト
           # @param tokens [Array<String>] 削除対象の指定
           #   - 章番号: "11" → 11-*.md にマッチ
@@ -54,12 +53,10 @@ module Vivlio
           # 削除処理を実行する
           #
           # @return [void]
-          # @raise [SystemExit] 対象が見つからない場合 exit(1)、dry-run 時は exit(0)
+          # @raise [SystemExit] 対象が見つからない場合 exit(1)
           def call
             options.apply_verbose!
-            options.warn_conflict!
             ensure_targets!
-            return perform_dry_run if options.dry_run?
 
             targets.each { |basename| deletion.remove(basename) }
           end

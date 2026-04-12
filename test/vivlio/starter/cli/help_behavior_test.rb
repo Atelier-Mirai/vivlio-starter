@@ -4,7 +4,7 @@
 # Test: help_behavior_test.rb
 # ================================================================
 # テスト対象:
-#   Vivlio::Starter::CLI.start（lib/vivlio/starter/cli.rb）
+#   Vivlio::Starter::CLI.start（lib/vivlio/starter/cli/startup.rb）
 #
 # 検証内容:
 #   - vs --help: グローバルヘルプの表示

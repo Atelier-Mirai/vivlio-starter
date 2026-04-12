@@ -9,6 +9,6 @@ rescue LoadError
   $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 end
 
-require 'vivlio/starter'
+require 'vivlio/starter/cli/startup'
 
 exit Vivlio::Starter::CLI.start(ARGV)

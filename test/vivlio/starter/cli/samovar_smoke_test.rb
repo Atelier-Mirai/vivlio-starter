@@ -103,6 +103,11 @@ module Vivlio
                  'PdfCommand から PdfCommands が参照可能であるべき'
         end
 
+        def test_new_command_resolves_new_commands
+          assert defined?(Vivlio::Starter::CLI::NewCommands),
+                 'NewCommand から NewCommands が参照可能であるべき'
+        end
+
         def test_pdf_read_command_resolves_pdf_read_command
           assert defined?(Vivlio::Starter::Commands::PdfReadCommand),
                  'PdfReadCommand から Commands::PdfReadCommand が参照可能であるべき'

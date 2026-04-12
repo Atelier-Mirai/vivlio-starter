@@ -3,7 +3,6 @@
 require 'samovar'
 
 require_relative 'common'
-require_relative 'help'
 require_relative '../scaffolder'
 
 module Vivlio

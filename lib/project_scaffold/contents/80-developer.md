@@ -9,19 +9,23 @@
 Vivlio Starter は Vivliostyle CLI を厚くラップした Ruby gem です。Samovar ベースの CLI フレームワークを採用しています。
 
 ```
-bin/vs
-  └─ lib/vivlio/starter/cli.rb        # エントリポイント・全モジュール一括 require
-       └─ CLI.start(ARGV)
+bin/vs / bin/vivlio-starter
+  └─ lib/vivlio/starter/cli/startup.rb   # CLI.start・無効入力時のヘルプ
+       └─ cli/loader.rb                  # ドメイン + Samovar の一括 require
             └─ SamovarCommands::RootCommand
                  └─ 各コマンド（build / lint / metrics / ...）
+
+lib/vivlio/starter/cli.rb                # ライブラリからフル CLI を読む場合（startup を経由）
 ```
 
 ## ディレクトリ構造
 
 ```
 lib/vivlio/starter/
-  cli.rb                    # エントリポイント（全モジュールの一括 require）
+  cli.rb                    # フル CLI 読み込み（内部で startup + loader）
   cli/
+    startup.rb              # CLI.start 単一定義
+    loader.rb               # ドメイン〜 Samovar の require 順
     samovar/                # Samovar CLI コマンド定義（利用者向け）
       root_command.rb       # コマンドルーティング
       build_command.rb
