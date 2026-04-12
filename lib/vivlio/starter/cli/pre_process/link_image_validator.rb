@@ -108,7 +108,7 @@ module Vivlio
               total_link = reports.sum { it.link_issues.size }
 
               if total_image.zero? && total_link.zero?
-                Common.echo_always('✅ リンク・画像の検証が完了しました（問題なし）')
+                Common.log_info('リンク・画像の検証が完了しました（問題なし）')
                 return
               end
 

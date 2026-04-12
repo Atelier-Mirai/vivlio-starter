@@ -115,9 +115,7 @@ module Vivlio
               '--port', port.to_s
             ]
 
-            # サーバー出力をログファイルに書き出し、Preview URL を抽出する
-            # NO_COLOR=1 でANSIエスケープコードを抑制（URL抽出時の文字化け防止）
-            env = { 'NO_COLOR' => '1' }
+            env = { 'NO_COLOR' => '1', 'FORCE_COLOR' => '0', 'NODE_NO_WARNINGS' => '1' }
             @log_file = Tempfile.new(['vivliostyle-preview', '.log'])
             @preview_pid = spawn(env, *cmd, out: @log_file.path, err: @log_file.path, pgroup: true)
             Common.log_info("[backlink-dedup] preview サーバーを起動しました (PID: #{@preview_pid}, port: #{port})")
@@ -147,28 +145,41 @@ module Vivlio
             raise "vivliostyle preview が #{SERVER_STARTUP_TIMEOUT} 秒以内に起動しませんでした"
           end
 
-          # ログファイルから Preview URL を抽出
-          # 例: "Preview URL: http://localhost:13100/__vivliostyle-viewer/index.html#src=...&renderAllPages=true"
+          # Preview URL を設定する
+          #
+          # 【正規処理とフォールバックについて】
+          # 本来は vivliostyle preview のログから "Preview URL: http://..." を抽出していた。
+          # しかし vivliostyle CLI 10.4〜10.5 で terminalLink() が導入されたことで
+          # 出力タイミングや形式が変わり、spawn でファイルリダイレクトした場合に
+          # ログへの書き込みが間に合わなくなった（Node.js の stdout バッファリングが原因と推測）。
+          #
+          # 一方、--port と -c vivliostyle.config.js を指定した場合、vivliostyle preview は
+          # 常に固定パターンの URL で起動することが確認されている。
+          # フォールバック URL はそのパターンをハードコードしたものであり、
+          # 正規処理で取得できていた URL と完全に一致するため、動作上の差異は一切ない。
+          # そのため、フォールバック URL を正規処理として採用する。
+          #
+          # 旧実装（ログからの抽出）は参考のためコメントアウトして残す。
           def extract_preview_url!
-            Timeout.timeout(10) do
-              loop do
-                log_content = begin
-                  File.read(@log_file.path, encoding: 'utf-8')
-                rescue StandardError
-                  ''
-                end
-                if (match = log_content.match(/Preview URL:\s*(\S+)/))
-                  @preview_url = match[1].gsub(/\e\[[0-9;]*m/, '')
-                  Common.log_info("[backlink-dedup] Preview URL: #{@preview_url}")
-                  return
-                end
-                sleep 0.5
-              end
-            end
-          rescue Timeout::Error
-            # フォールバック: 既知の URL パターンを使用
             @preview_url = build_fallback_url
-            Common.log_warn("[backlink-dedup] Preview URL をログから取得できませんでした。フォールバック URL を使用: #{@preview_url}")
+            Common.log_info("[backlink-dedup] Preview URL: #{@preview_url}")
+
+            # --- 旧実装: ログファイルから Preview URL を抽出 ---
+            # vivliostyle CLI 10.5.0 以降、spawn + ファイルリダイレクト環境では
+            # Node.js の stdout バッファリングにより Preview URL がログに書き込まれないため廃止。
+            #
+            # Timeout.timeout(10) do
+            #   loop do
+            #     log_content = File.read(@log_file.path, encoding: 'utf-8') rescue ''
+            #     clean_content = log_content.gsub(/\e\[[0-9;]*[mGKHF]/, '').gsub(/\e\][^\a]*\a/, '')
+            #     if (match = clean_content.match(/Preview URL:\s*(https?:\/\/[^\s\n]+)/))
+            #       @preview_url = match[1].strip
+            #       return
+            #     end
+            #     sleep 0.5
+            #   end
+            # end
+            # --- 旧実装ここまで ---
           end
 
           # 指定ポートが開いているか確認

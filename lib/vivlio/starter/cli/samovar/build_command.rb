@@ -97,11 +97,6 @@ module Vivlio
               run_full_mode_build
             end
 
-            # 外部 URL の到達性チェック（--verify-links 有効時のみ）
-            PreProcessCommands::LinkImageValidator.check_external_urls!
-            # 検証サマリーを表示
-            PreProcessCommands::LinkImageValidator.print_summary
-
             0
           rescue SystemExit => e
             raise e
@@ -182,6 +177,11 @@ module Vivlio
 
             open_generated_pdf(pipeline.generated_pdf_name)
 
+            # 外部 URL の到達性チェック（--verify-links 有効時のみ）
+            PreProcessCommands::LinkImageValidator.check_external_urls!
+            # 検証サマリーを表示
+            PreProcessCommands::LinkImageValidator.print_summary
+
             common.log_success("単章ビルドが完了しました: #{pipeline.generated_pdf_name}")
             created_files = get_created_files_list_for_single_mode(basenames)
             print_created_files_message(created_files)
@@ -207,6 +207,12 @@ module Vivlio
             IndexCommands.flush_post_build_messages
 
             open_pdf(print_pdf_only? ? Common.generate_print_pdf_filename : nil)
+
+            # 外部 URL の到達性チェック（--verify-links 有効時のみ）
+            PreProcessCommands::LinkImageValidator.check_external_urls!
+            # 検証サマリーを表示
+            PreProcessCommands::LinkImageValidator.print_summary
+
             common.log_success('全ファイルのビルドが完了しました')
 
             created_files = get_created_files_list
