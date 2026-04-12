@@ -69,10 +69,10 @@ module Vivlio
           Common.log_action("\nクロスリファレンス処理を開始します...")
           result = process_cross_references_for_files(output_files)
 
-          unless result
-            Common.log_error('クロスリファレンス処理でエラーが発生しました')
-            exit(1)
-          end
+          return if result
+
+          Common.log_error('クロスリファレンス処理でエラーが発生しました')
+          exit(1)
         end
         module_function :execute_pre_process
 
@@ -256,8 +256,8 @@ module Vivlio
         # ================================================================
         # 画像生成関連メソッド (ImageGenerator への委譲)
         # ================================================================
-        def generate_frontispiece_and_ornament_from(image_spec, **options)
-          ImageGenerator.generate_frontispiece_and_ornament_from(image_spec, **options)
+        def generate_frontispiece_and_ornament_from(image_spec, **)
+          ImageGenerator.generate_frontispiece_and_ornament_from(image_spec, **)
         end
         module_function :generate_frontispiece_and_ornament_from
 
@@ -289,7 +289,7 @@ module Vivlio
           all_errors = []
 
           # 全体の整合性を保つため、contents/ 配下の全Markdownをラベル収集対象とする
-          contents_files = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).sort
+          contents_files = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md'))
           Common.log_info("ラベル収集対象ファイル: #{contents_files.size}件")
 
           contents_files.each do |md_path|
@@ -350,11 +350,11 @@ module Vivlio
             # 3) エラー集計とログは contents/ 側の行番号に基づく
             all_errors.concat(logging_errors)
 
-            if logging_errors.any?
-              Common.log_warn(" #{filename}: #{logging_errors.size}個の未定義参照を検出")
-              logging_errors.each do |msg|
-                Common.log_warn("    - #{msg}")
-              end
+            next unless logging_errors.any?
+
+            Common.log_warn(" #{filename}: #{logging_errors.size}個の未定義参照を検出")
+            logging_errors.each do |msg|
+              Common.log_warn("    - #{msg}")
             end
           end
 

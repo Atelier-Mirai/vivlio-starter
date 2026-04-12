@@ -32,7 +32,7 @@ module Vivlio
         # Vivliostyle preview + Playwright でページマッピングを抽出する
         class PageMappingExtractor
           # デフォルト設定
-          DEFAULT_PORT = 13100
+          DEFAULT_PORT = 13_100
           DEFAULT_HOST = 'localhost'
           DEFAULT_TIMEOUT_MS = 120_000
           SERVER_STARTUP_TIMEOUT = 30 # 秒
@@ -82,9 +82,7 @@ module Vivlio
 
           # 必要な依存ツールの存在を確認
           def validate_dependencies!
-            unless File.exist?(MAPPING_SCRIPT)
-              raise "extract_page_mapping.mjs が見つかりません: #{MAPPING_SCRIPT}"
-            end
+            raise "extract_page_mapping.mjs が見つかりません: #{MAPPING_SCRIPT}" unless File.exist?(MAPPING_SCRIPT)
 
             # Playwright のインストール確認
             _out, _err, status = Open3.capture3('npx', 'playwright', '--version')
@@ -138,7 +136,7 @@ module Vivlio
                 begin
                   Process.waitpid(@preview_pid, Process::WNOHANG)
                 rescue Errno::ECHILD
-                  raise "vivliostyle preview プロセスが起動に失敗しました"
+                  raise 'vivliostyle preview プロセスが起動に失敗しました'
                 end
 
                 sleep 0.5
@@ -154,7 +152,11 @@ module Vivlio
           def extract_preview_url!
             Timeout.timeout(10) do
               loop do
-                log_content = File.read(@log_file.path, encoding: 'utf-8') rescue ''
+                log_content = begin
+                  File.read(@log_file.path, encoding: 'utf-8')
+                rescue StandardError
+                  ''
+                end
                 if (match = log_content.match(/Preview URL:\s*(\S+)/))
                   @preview_url = match[1].gsub(/\e\[[0-9;]*m/, '')
                   Common.log_info("[backlink-dedup] Preview URL: #{@preview_url}")
@@ -235,7 +237,7 @@ module Vivlio
             stdout, stderr, status = Open3.capture3(env, *cmd)
 
             unless status.success?
-              Common.log_error("[backlink-dedup] Playwright スクリプトがエラーで終了しました")
+              Common.log_error('[backlink-dedup] Playwright スクリプトがエラーで終了しました')
               Common.log_error("[backlink-dedup] stderr: #{stderr}") unless stderr.empty?
               raise "ページマッピング抽出に失敗しました: #{stderr}"
             end

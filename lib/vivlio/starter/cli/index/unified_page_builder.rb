@@ -457,7 +457,7 @@ module Vivlio
           # ================================================================
 
           def generate_slug(term)
-            term.downcase.gsub(/\s+/, '-').gsub(/[^\p{L}\p{N}\-]/, '')
+            term.downcase.gsub(/\s+/, '-').gsub(/[^\p{L}\p{N}-]/, '')
           end
 
           def escape_html(text)

@@ -68,7 +68,6 @@ module Vivlio
           def time_step_for_chapter(chapter, step)
             label = "#{chapter} / #{step}"
             start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-            elapsed = nil
             begin
               Common.with_current_step_label(label) do
                 yield if block_given?

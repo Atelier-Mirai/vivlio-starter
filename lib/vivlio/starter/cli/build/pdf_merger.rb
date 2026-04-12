@@ -20,7 +20,7 @@ module Vivlio
             # ターゲット判定（dig で安全アクセス）
             targets = extract_targets(cfg.dig(:output, :targets))
             targets = extract_targets(cfg.dig(:output, :pdf, :targets)) if targets.empty?
-            pdf_selected = targets.empty? || targets.any? { _1.include?('pdf') }
+            pdf_selected = targets.empty? || targets.any? { it.include?('pdf') }
 
             return files.compact unless pdf_selected
 
@@ -30,13 +30,13 @@ module Vivlio
             begin
               page_use   = resolve_page_use(cfg.page)
               covers_dir = cfg.directories&.covers || 'covers'
-              
+
               ensure_cover_assets_for_page_size!(page_use)
 
               # テーマに応じたカバーを生成
               theme = Common.cover_theme
               size = extract_size_from_preset(page_use)
-              
+
               # パス生成
               front = File.join(covers_dir, "frontcover_#{theme}_#{size}_rgb.pdf")
               back  = File.join(covers_dir, "backcover_#{theme}_#{size}_rgb.pdf")
@@ -76,7 +76,7 @@ module Vivlio
             when /a4/ then 'a4'
             when /a5/ then 'a5'
             when /b5/ then 'b5'
-            else 'a4'  # デフォルト
+            else 'a4' # デフォルト
             end
           end
 
@@ -88,10 +88,10 @@ module Vivlio
             return if cover_generation_attempts[size]
 
             cover_generation_attempts[size] = true
-            Common.log_action("[Step 10] カバー画像を自動生成します…")
+            Common.log_action('[Step 10] カバー画像を自動生成します…')
 
             CoverCommands.ensure_cover_files_for_build!
-            Common.log_info("[Step 10] カバー画像の生成を完了しました")
+            Common.log_info('[Step 10] カバー画像の生成を完了しました')
           rescue StandardError => e
             Common.log_warn("[Step 10] カバー生成中にエラー: #{e.message}")
           end
@@ -103,12 +103,12 @@ module Vivlio
           # ================================================================
           # 4. PDF 結合実行 (Step 10)
           # ================================================================
-          def merge_all_pdfs!(entries_or_keep = nil)
+          def merge_all_pdfs!(_entries_or_keep = nil)
             Common.log_action('[Step 10] 表紙、本文、奥付を結合します…')
-            
+
             files          = cover_enhanced_files
-            existing_files = files.select { File.exist?(_1) }
-            
+            existing_files = files.select { File.exist?(it) }
+
             if existing_files.empty?
               Common.log_error('[Step 10] 結合対象PDFがありません')
               return false
@@ -122,9 +122,9 @@ module Vivlio
             # _sections.pdf があればそれをベースに、なければ最初のファイルを使用
             base_pdf = existing_files.include?('_sections.pdf') ? '_sections.pdf' : existing_files.first
             FileUtils.rm_f('output.pdf')
-            
+
             # 引数構築
-            ranges = existing_files.map { %("#{_1}" 1-z) }.join(' ')
+            ranges = existing_files.map { %("#{it}" 1-z) }.join(' ')
             success = system(%(qpdf "#{base_pdf}" --pages #{ranges} -- "output.pdf" > /dev/null))
 
             if success && File.exist?('output.pdf')
@@ -145,7 +145,7 @@ module Vivlio
             preceding = files[0...colophon_idx]
 
             # カバーPDFはページ番号体系に含まれないため parity 計算から除外
-            body_files = preceding.reject { |f| f.match?(%r{covers/}) }
+            body_files = preceding.grep_v(%r{covers/})
 
             # 各PDFのページ数を個別に取得してログ出力（デバッグ時のみ）
             page_counts = body_files.map { |f| [f, Build::Utilities.page_count(f).to_i] }
@@ -172,6 +172,7 @@ module Vivlio
 
           def qpdf_available?
             return true if system('command -v qpdf >/dev/null 2>&1')
+
             Common.log_warn('[Step 10] qpdf が見つかりません。')
             false
           end
@@ -183,16 +184,16 @@ module Vivlio
             return false unless File.exist?('output.pdf')
 
             keep_numbers = Build::Utilities.chapter_numbers_for_outline(entries_or_keep)
-            
+
             # 抽出対象HTMLの絞り込み
             special_pages = %w[_toc]
             special_pages.push('_glossarypage', '_indexpage') if IndexCommands.index_enabled?
 
-            chapter_htmls = Dir.glob('*.html').sort.select do |path|
+            chapter_htmls = Dir.glob('*.html').select do |path|
               bn = File.basename(path, '.html')
               num = bn[/\A(\d+)-/, 1]&.to_i
-              
-              (num && (keep_numbers.nil? || keep_numbers.include?(num))) || 
+
+              (num && (keep_numbers.nil? || keep_numbers.include?(num))) ||
                 special_pages.include?(bn)
             end
 

@@ -25,7 +25,6 @@ module Vivlio
       module Build
         # ビルド共通ユーティリティモジュール
         module Utilities
-
           module_function
 
           # キャッシュにファイルを保存

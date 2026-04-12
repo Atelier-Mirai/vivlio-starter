@@ -179,10 +179,10 @@ module Vivlio
             updated_count += 1
           end
 
-          if updated_count.positive?
-            save_terms!(existing)
-            Common.log_info("#{updated_count} 件の読みを更新しました")
-          end
+          return unless updated_count.positive?
+
+          save_terms!(existing)
+          Common.log_info("#{updated_count} 件の読みを更新しました")
         end
 
         # 説明文を更新

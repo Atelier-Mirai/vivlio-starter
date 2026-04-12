@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "open3"
+require 'open3'
 
 module Vivlio
   module Starter
@@ -8,15 +8,15 @@ module Vivlio
       # MeCab を利用して PDF から抽出したテキストの不要改行を除去するクリーナー
       class MecabNewlineCleaner
         CONNECTIVE_PREFIXES = %w[が て と ので のに けど けれど けれども ものの し すると そして しかし でも].freeze
-        LIST_MARKER_REGEX = /\A(?:[-*・]|\d+\.)/.freeze
-        HEADING_REGEX = /\A#+/.freeze
-        SECTION_HEADING_PREFIX_REGEX = /\A(?:第[一二三四五六七八九十百千0-9]+章|[♣♠♥♦]?\s*\d+(?:-\d+)*(?:\.)?)\z/.freeze
-        SECTION_HEADING_REGEX = /\A(?:第[一二三四五六七八九十百千0-9]+章\s*.+|[♣♠♥♦]?\s*\d+(?:-\d+)*(?:\.)?\s*.+)\z/.freeze
-        CHAPTER_HEADING_ONLY_REGEX = /\A第[一二三四五六七八九十百千0-9]+章\z/.freeze
-        PUNCTUATION_REGEX = /[。．！？!?…]+[\)）］】】」』》]*\z/.freeze
-        SMALL_KANA_START_REGEX = /\A[ゃゅょぁぃぅぇぉゎっァィゥェォヵヶッャュョヮ]/.freeze
-        MIDWORD_END_REGEX = /[A-Za-z0-9ａ-ｚＡ-Ｚ０-９ァ-ヶぁ-ゖ一-龯ー々〆ヵヶ]\z/.freeze
-        MIDWORD_START_REGEX = /\A[A-Za-z0-9ａ-ｚＡ-Ｚ０-９ァ-ヶぁ-ゖ一-龯ー々〆ヵヶ]/.freeze
+        LIST_MARKER_REGEX = /\A(?:[-*・]|\d+\.)/
+        HEADING_REGEX = /\A#+/
+        SECTION_HEADING_PREFIX_REGEX = /\A(?:第[一二三四五六七八九十百千0-9]+章|[♣♠♥♦]?\s*\d+(?:-\d+)*(?:\.)?)\z/
+        SECTION_HEADING_REGEX = /\A(?:第[一二三四五六七八九十百千0-9]+章\s*.+|[♣♠♥♦]?\s*\d+(?:-\d+)*(?:\.)?\s*.+)\z/
+        CHAPTER_HEADING_ONLY_REGEX = /\A第[一二三四五六七八九十百千0-9]+章\z/
+        PUNCTUATION_REGEX = /[。．！？!?…]+[)）］】」』》]*\z/
+        SMALL_KANA_START_REGEX = /\A[ゃゅょぁぃぅぇぉゎっァィゥェォヵヶッャュョヮ]/
+        MIDWORD_END_REGEX = /[A-Za-z0-9ａ-ｚＡ-Ｚ０-９ァ-ヶぁ-ゖ一-龯ー々〆ヵヶ]\z/
+        MIDWORD_START_REGEX = /\A[A-Za-z0-9ａ-ｚＡ-Ｚ０-９ァ-ヶぁ-ゖ一-龯ー々〆ヵヶ]/
 
         ENDING_AUXILIARIES = %w[です ます だ だった でした でしょう だろう である ません でしたら].freeze
         ENDING_PARTICLES = %w[ね よ よね ぞ さ わ かな かしら].freeze
@@ -25,7 +25,7 @@ module Vivlio
 
         def initialize(config = nil)
           cfg = config || {}
-          @mecab_command = cfg[:mecab_command] || "mecab"
+          @mecab_command = cfg[:mecab_command] || 'mecab'
           @mecab_cache = {}
         end
 
@@ -64,7 +64,7 @@ module Vivlio
 
         def clean_paragraph(paragraph)
           body = paragraph.to_s
-          lines = body.split("\n", -1).map { _1.strip }.reject(&:empty?)
+          lines = body.split("\n", -1).map(&:strip).reject(&:empty?)
           return body.strip if lines.length <= 1
 
           rebuilt = [lines.first.dup]
@@ -73,7 +73,7 @@ module Vivlio
             if split_heading?(previous, line)
               rebuilt[-1] = previous + line
             elsif heading_start_line?(line)
-              rebuilt << "" unless rebuilt.last.empty?
+              rebuilt << '' unless rebuilt.last.empty?
               rebuilt << line.dup
             elsif keep_line_break?(previous, line)
               rebuilt << line.dup
@@ -88,6 +88,7 @@ module Vivlio
         def keep_line_break?(current_line, next_line)
           return true if next_line.nil?
           return true if current_line.nil?
+
           curr = current_line.strip
           nxt = next_line.strip
           return true if curr.empty? || nxt.empty?
@@ -119,7 +120,7 @@ module Vivlio
 
         def should_merge_gap?(previous_block, next_block)
           prev_line = previous_block.to_s.split("\n").last&.strip
-          next_line = next_block.to_s.split("\n").find { !_1.strip.empty? }&.strip
+          next_line = next_block.to_s.split("\n").find { !it.strip.empty? }&.strip
 
           return false if prev_line.to_s.empty?
           return false if next_line.to_s.empty?
@@ -137,7 +138,7 @@ module Vivlio
           return false unless title_line?(previous_line)
           return false unless prose_line?(next_line)
 
-          earlier_line = rebuilt[...-1]&.reverse_each&.lazy&.map { single_non_empty_line(it) }&.find { !_1.to_s.empty? }
+          earlier_line = rebuilt[...-1]&.reverse_each&.lazy&.map { single_non_empty_line(it) }&.find { !it.to_s.empty? }
           chapter_heading_only_line?(earlier_line)
         end
 
@@ -194,14 +195,14 @@ module Vivlio
         end
 
         def single_non_empty_line(block)
-          lines = block.to_s.split("\n").map { it.strip }.reject(&:empty?)
+          lines = block.to_s.split("\n").map(&:strip).reject(&:empty?)
           return nil unless lines.length == 1
 
           lines.first
         end
 
         def first_non_empty_line(block)
-          block.to_s.split("\n").map { it.strip }.find { !_1.empty? }
+          block.to_s.split("\n").map(&:strip).find { !it.empty? }
         end
 
         def list_line?(line)
@@ -218,20 +219,19 @@ module Vivlio
                        .gsub(/[ \t\u00A0]{2,}/, ' ')
                        .gsub(/(?<=#{CJK_PAT})\n(?=#{JP_PUNCT_PAT})/u, '')
           result = collapse_japanese_ocr_spaces(result)
-          result.gsub(/(^|\n)(第[一二三四五六七八九十百千0-9]+章)(?=#{CJK_PAT})/u, "\\1\\2 ")
+          result.gsub(/(^|\n)(第[一二三四五六七八九十百千0-9]+章)(?=#{CJK_PAT})/u, '\\1\\2 ')
         end
 
         def collapse_japanese_ocr_spaces(text)
           result = text.to_s
-          result = result.gsub(/(?<=#{CJK_PAT}) +(?=#{CJK_PAT})/, "")
-          result = result.gsub(/(?<=#{CJK_PAT}) +(?=#{JP_PUNCT_PAT})/, "")
-          result = result.gsub(/(?<=#{JP_PUNCT_PAT}) +(?=#{CJK_PAT})/, "")
-          result = result.gsub(/(?<=#{JP_PUNCT_PAT}) +(?=#{JP_OPEN_PAT})/, "")
-          result = result.gsub(/(?<=#{JP_OPEN_PAT}) +/, "")
-          result = result.gsub(/ +(?=#{JP_CLOSE_PAT})/, "")
-          result = result.gsub(/(?<=#{JP_CLOSE_PAT}) +(?=#{CJK_PAT})/, "")
-          result = result.gsub(/(?<=#{CJK_PAT}) +(?=#{JP_OPEN_PAT})/, "")
-          result
+          result = result.gsub(/(?<=#{CJK_PAT}) +(?=#{CJK_PAT})/, '')
+          result = result.gsub(/(?<=#{CJK_PAT}) +(?=#{JP_PUNCT_PAT})/, '')
+          result = result.gsub(/(?<=#{JP_PUNCT_PAT}) +(?=#{CJK_PAT})/, '')
+          result = result.gsub(/(?<=#{JP_PUNCT_PAT}) +(?=#{JP_OPEN_PAT})/, '')
+          result = result.gsub(/(?<=#{JP_OPEN_PAT}) +/, '')
+          result = result.gsub(/ +(?=#{JP_CLOSE_PAT})/, '')
+          result = result.gsub(/(?<=#{JP_CLOSE_PAT}) +(?=#{CJK_PAT})/, '')
+          result.gsub(/(?<=#{CJK_PAT}) +(?=#{JP_OPEN_PAT})/, '')
         end
 
         def small_kana_start?(line)
@@ -246,16 +246,16 @@ module Vivlio
           trimmed = line.strip
           return false if trimmed.empty?
 
-          prefix = CONNECTIVE_PREFIXES.find { trimmed.start_with?(_1) }
+          prefix = CONNECTIVE_PREFIXES.find { trimmed.start_with?(it) }
           return true if prefix
 
           tokens = mecab_tokens(trimmed)
-          tokens.first&.pos == "助詞" && tokens.first&.pos_detail1 == "接続"
+          tokens.first&.pos == '助詞' && tokens.first&.pos_detail1 == '接続'
         end
 
         def sentence_ending_particle?(token)
-          return false unless token&.pos == "助詞"
-          return false unless token.pos_detail1.to_s.include?("終助詞")
+          return false unless token&.pos == '助詞'
+          return false unless token.pos_detail1.to_s.include?('終助詞')
 
           base = token.base.to_s.empty? ? token.surface : token.base
           ENDING_PARTICLES.include?(base)
@@ -264,7 +264,7 @@ module Vivlio
         ENDING_CONJUGATION_FORMS = %w[終止形 基本形 命令形 仮定形 体言接続].freeze
 
         def sentence_ending_auxiliary?(token)
-          return false unless token&.pos == "助動詞"
+          return false unless token&.pos == '助動詞'
 
           form = token.conj_form.to_s
           return false unless form.empty? || ENDING_CONJUGATION_FORMS.include?(form)
@@ -274,7 +274,7 @@ module Vivlio
         end
 
         def mid_sentence_particle?(token)
-          return false unless token&.pos == "助詞"
+          return false unless token&.pos == '助詞'
 
           detail = token.pos_detail1
           %w[格助詞 並立助詞 係助詞 副助詞 接続助詞].include?(detail)
@@ -286,8 +286,8 @@ module Vivlio
           pos = token.pos
           detail = token.pos_detail3
 
-          return true if pos == "動詞" && detail != "基本形" && detail != "終止形"
-          return true if pos == "形容詞" && detail != "基本形" && detail != "終止形"
+          return true if pos == '動詞' && detail != '基本形' && detail != '終止形'
+          return true if pos == '形容詞' && detail != '基本形' && detail != '終止形'
 
           false
         end
@@ -295,8 +295,8 @@ module Vivlio
         def particle_or_auxiliary_start?(token)
           return false unless token
 
-          return true if token.pos == "助詞"
-          return true if token.pos == "助動詞"
+          return true if token.pos == '助詞'
+          return true if token.pos == '助動詞'
 
           false
         end
@@ -307,16 +307,14 @@ module Vivlio
           return @mecab_cache[key] if @mecab_cache.key?(key)
 
           stdout, status = Open3.capture2(mecab_command, stdin_data: key)
-          unless status.success?
-            return @mecab_cache[key] = []
-          end
+          return @mecab_cache[key] = [] unless status.success?
 
           tokens = stdout.lines.filter_map do |raw|
             stripped = raw.strip
-            next if stripped.empty? || stripped == "EOS"
+            next if stripped.empty? || stripped == 'EOS'
 
             surface, features = stripped.split("\t", 2)
-            parts = (features || "").split(",")
+            parts = (features || '').split(',')
             Token.new(
               surface: surface,
               base: extract_base_form(surface, parts[6]),

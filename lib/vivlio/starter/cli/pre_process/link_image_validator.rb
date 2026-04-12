@@ -115,16 +115,14 @@ module Vivlio
               Common.echo_always ''
               Common.echo_always '🔍 リンク・画像検証の結果:'
 
-              if total_image > 0
-                Common.echo_always "   画像: #{total_image} 件の問題（存在しない画像: #{total_image}）"
-              end
+              Common.echo_always "   画像: #{total_image} 件の問題（存在しない画像: #{total_image}）" if total_image.positive?
 
-              if total_link > 0
+              if total_link.positive?
                 bare = reports.sum { it.link_issues.count { |i| i.issue_type == :bare_url } }
                 unreachable = reports.sum { it.link_issues.count { |i| i.issue_type == :unreachable } }
                 parts = []
-                parts << "リンク切れ: #{unreachable}" if unreachable > 0
-                parts << "裸 URL: #{bare}" if bare > 0
+                parts << "リンク切れ: #{unreachable}" if unreachable.positive?
+                parts << "裸 URL: #{bare}" if bare.positive?
                 Common.echo_always "   リンク: #{total_link} 件の問題（#{parts.join(', ')}）"
 
                 # リンク切れの詳細を表示
@@ -137,9 +135,7 @@ module Vivlio
               end
 
               config = resolve_config
-              unless config[:verify_external_links]
-                Common.echo_always '   外部URL到達性チェック: スキップ（--verify-links で有効化）'
-              end
+              Common.echo_always '   外部URL到達性チェック: スキップ（--verify-links で有効化）' unless config[:verify_external_links]
 
               Common.echo_always ''
             end
@@ -190,7 +186,7 @@ module Vivlio
                 next if in_code_block
 
                 # data: URI に置換された画像を検出
-                line.scan(/!\[([^\]]*)\]\((data:image\/svg\+xml[^)]+)\)/) do
+                line.scan(%r{!\[([^\]]*)\]\((data:image/svg\+xml[^)]+)\)}) do
                   # プレースホルダー SVG 内にファイル名が埋め込まれている
                   data_uri = ::Regexp.last_match(2)
                   image_name = extract_image_name_from_placeholder(data_uri)
@@ -211,7 +207,7 @@ module Vivlio
             def extract_image_name_from_placeholder(data_uri)
               # URL デコードして SVG テキスト内のファイル名を取得
               decoded = URI.decode_www_form_component(data_uri.sub(%r{\Adata:image/svg\+xml;charset=utf-8,}, ''))
-              match = decoded.match(/<tspan[^>]*>([^<]+)<\/tspan>/)
+              match = decoded.match(%r{<tspan[^>]*>([^<]+)</tspan>})
               match ? match[1] : nil
             rescue StandardError
               nil

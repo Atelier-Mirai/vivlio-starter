@@ -123,7 +123,7 @@ module Vivlio
           # 行配列を catalog.yml に書き戻す
           def write_catalog_lines(lines)
             FileUtils.mkdir_p(File.dirname(CATALOG_FILE))
-            File.write(CATALOG_FILE, lines.join("\n") + "\n", encoding: 'utf-8')
+            File.write(CATALOG_FILE, "#{lines.join("\n")}\n", encoding: 'utf-8')
           end
 
           # ================================================================
@@ -135,7 +135,7 @@ module Vivlio
           def find_active_entry_line(lines, basename)
             lines.index do |l|
               stripped = l.strip
-              stripped == "- #{basename}" || stripped == "- #{basename}.md"
+              ["- #{basename}", "- #{basename}.md"].include?(stripped)
             end
           end
 
@@ -170,7 +170,7 @@ module Vivlio
 
             # 次のセクションヘッダーを探す
             next_section_idx = nil
-            (start_idx + 1...lines.length).each do |idx|
+            ((start_idx + 1)...lines.length).each do |idx|
               if CatalogLoader::SECTION_KEYS.any? { lines[idx].strip == "#{it}:" }
                 next_section_idx = idx
                 break
@@ -193,9 +193,9 @@ module Vivlio
           def detect_part_ranges(lines, section_start, section_end)
             parts = []
 
-            (section_start + 1..section_end).each do |idx|
+            ((section_start + 1)..section_end).each do |idx|
               line = lines[idx]
-              next if line.match?(/^\s+#/)  # コメント行はスキップ
+              next if line.match?(/^\s+#/) # コメント行はスキップ
 
               # 部タイトル: インデントされたリスト項目で末尾が ":"
               next unless line.match?(/^\s+-\s+.+:\s*$/)
@@ -317,7 +317,7 @@ module Vivlio
             output << default_footer_comments
 
             FileUtils.mkdir_p(File.dirname(CATALOG_FILE))
-            File.write(CATALOG_FILE, output.join("\n") + "\n", encoding: 'utf-8')
+            File.write(CATALOG_FILE, "#{output.join("\n")}\n", encoding: 'utf-8')
           end
 
           # デフォルトのヘッダーコメント

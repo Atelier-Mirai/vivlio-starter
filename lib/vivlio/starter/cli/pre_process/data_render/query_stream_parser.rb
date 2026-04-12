@@ -46,7 +46,7 @@ module Vivlio
             def parse(line)
               # "= books | tags=ruby | :full" → ["books", "tags=ruby", ":full"]
               raw = line.sub(/\A=\s+/, '').strip
-              segments = raw.split('|').map { it.strip }
+              segments = raw.split('|').map(&:strip)
 
               source = segments.shift
               return build_result(source:) if segments.empty?
@@ -64,7 +64,7 @@ module Vivlio
               segments.each_with_index do |segment, idx|
                 next if segment.empty?
 
-                classified = classify_tokens(segment, primary_context: singular_source && idx == 0)
+                classified = classify_tokens(segment, primary_context: singular_source && idx.zero?)
                 classified.each do |token|
                   case token
                   in { type: :style, value: }
@@ -135,9 +135,9 @@ module Vivlio
             def parse_sort(token)
               case token
               in /\A-(.+)\z/
-                { field: $1.to_sym, direction: :desc }
+                { field: ::Regexp.last_match(1).to_sym, direction: :desc }
               in /\A\+?(.+)\z/
-                { field: $1.to_sym, direction: :asc }
+                { field: ::Regexp.last_match(1).to_sym, direction: :asc }
               end
             end
 
@@ -189,17 +189,17 @@ module Vivlio
               # 比較演算子の検出（!=, >=, <=, >, <, ==, = の順で試行）
               case condition.strip
               in /\A([a-zA-Z_]+)\s*!=\s*(.+)\z/
-                [{ field: $1.to_sym, op: :neq, value: parse_values($2) }]
+                [{ field: ::Regexp.last_match(1).to_sym, op: :neq, value: parse_values(::Regexp.last_match(2)) }]
               in /\A([a-zA-Z_]+)\s*>=\s*(.+)\z/
-                [{ field: $1.to_sym, op: :gte, value: parse_numeric($2.strip) }]
+                [{ field: ::Regexp.last_match(1).to_sym, op: :gte, value: parse_numeric(::Regexp.last_match(2).strip) }]
               in /\A([a-zA-Z_]+)\s*<=\s*(.+)\z/
-                [{ field: $1.to_sym, op: :lte, value: parse_numeric($2.strip) }]
+                [{ field: ::Regexp.last_match(1).to_sym, op: :lte, value: parse_numeric(::Regexp.last_match(2).strip) }]
               in /\A([a-zA-Z_]+)\s*>\s*(.+)\z/
-                [{ field: $1.to_sym, op: :gt, value: parse_numeric($2.strip) }]
+                [{ field: ::Regexp.last_match(1).to_sym, op: :gt, value: parse_numeric(::Regexp.last_match(2).strip) }]
               in /\A([a-zA-Z_]+)\s*<\s*(.+)\z/
-                [{ field: $1.to_sym, op: :lt, value: parse_numeric($2.strip) }]
+                [{ field: ::Regexp.last_match(1).to_sym, op: :lt, value: parse_numeric(::Regexp.last_match(2).strip) }]
               in /\A([a-zA-Z_]+)\s*={1,2}\s*(.+)\z/
-                parse_eq_condition($1.strip, $2.strip)
+                parse_eq_condition(::Regexp.last_match(1).strip, ::Regexp.last_match(2).strip)
               else
                 # パースできない場合は空で返す
                 []
@@ -240,7 +240,7 @@ module Vivlio
             # @param str [String] "ruby, javascript"
             # @return [Array<String>] ["ruby", "javascript"]
             def parse_values(str)
-              str.split(',').map { it.strip }
+              str.split(',').map(&:strip)
             end
 
             # 数値文字列を適切な型に変換する
@@ -249,7 +249,7 @@ module Vivlio
             def parse_numeric(str)
               s = str.strip
               case s
-              when /\A-?\d+\z/    then s.to_i
+              when /\A-?\d+\z/ then s.to_i
               when /\A-?\d+\.\d+\z/ then s.to_f
               else s
               end

@@ -120,7 +120,7 @@ module Vivlio
           end
 
           # 浄化済み HTML で PDF を再ビルド
-          def rebuild_pdf!(entries)
+          def rebuild_pdf!(_entries)
             # entries.js を再生成して PDF をビルド
             # 既存の entries.js がそのまま使えるため、PDF 生成のみ
             PdfCommands.execute_pdf({})

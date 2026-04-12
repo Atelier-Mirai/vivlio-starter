@@ -93,7 +93,7 @@ module Vivlio
           # @param base_dir [String] ベースディレクトリ
           # @return [Array<String>] 中扉 HTML のパス配列（存在するもののみ）
           def existing_part_htmls(base_dir = '.')
-            Dir.glob(File.join(base_dir, '_part*.html')).sort
+            Dir.glob(File.join(base_dir, '_part*.html'))
           end
 
           # 部タイトル情報と章 HTML リストから、中扉を適切な位置に挿入した HTML リストを返す

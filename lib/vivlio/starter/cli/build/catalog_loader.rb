@@ -89,16 +89,12 @@ module Vivlio
           # catalog.yml を読み込み、YAML として返す
           # @return [Hash] catalog データ
           def load_catalog
-            unless File.exist?(CATALOG_FILE)
-              raise StandardError, "catalog.yml が見つかりません: #{CATALOG_FILE}"
-            end
+            raise StandardError, "catalog.yml が見つかりません: #{CATALOG_FILE}" unless File.exist?(CATALOG_FILE)
 
             content = File.read(CATALOG_FILE, encoding: 'utf-8')
             catalog = YAML.safe_load(content, permitted_classes: [], aliases: true)
 
-            unless catalog.is_a?(Hash)
-              raise StandardError, 'catalog.yml の形式が不正です（Hash ではありません）'
-            end
+            raise StandardError, 'catalog.yml の形式が不正です（Hash ではありません）' unless catalog.is_a?(Hash)
 
             catalog
           rescue Psych::SyntaxError => e
@@ -109,9 +105,9 @@ module Vivlio
           def validate_catalog!(catalog)
             # 全セクションが空の場合はエラー
             total = SECTION_KEYS.sum { |key| Array(catalog[key]).size }
-            if total.zero?
-              raise StandardError, 'catalog.yml にビルド対象の章がありません'
-            end
+            return unless total.zero?
+
+            raise StandardError, 'catalog.yml にビルド対象の章がありません'
           end
 
           # 章番号の重複チェック
@@ -177,7 +173,7 @@ module Vivlio
           # @return [Boolean]
           def shorthand?(str)
             # "21" や "21-25" や "21-25, 38" の形式
-            str.match?(/\A[\d\s,\-]+\z/) && !str.match?(/\A\d+-[a-zA-Z]/)
+            str.match?(/\A[\d\s,-]+\z/) && !str.match?(/\A\d+-[a-zA-Z]/)
           end
 
           # ショートハンドを展開して basename 配列を返す

@@ -38,16 +38,16 @@ module Vivlio
           def call
             puts <<~HELP
               索引機能のコマンド:
-              
+
                 vs index:auto   - 候補抽出・分類・_index_review.md 生成
                 vs index:apply  - レビュー結果を index_glossary_terms.yml に適用
-              
+
               ワークフロー:
                 1. vs index:auto   → _index_review.md を生成
                 2. _index_review.md を編集（[x]で承認、[r]で棄却）
                 3. vs index:apply  → index_glossary_terms.yml を更新
                 4. vs build        → 索引ページを含む PDF を生成
-              
+
               詳細は各コマンドに --help を付けて確認してください。
             HELP
             0
@@ -71,7 +71,7 @@ module Vivlio
             ENV['VERBOSE'] = '1' if options[:verbose]
 
             # auto_discovery 設定を確認
-            config = Common::CONFIG.dig('index') || {}
+            config = Common::CONFIG['index'] || {}
             unless config.fetch('auto_discovery', true)
               Common.log_info('index.auto_discovery: false のため、自動候補抽出は無効です')
               Common.log_info('手動マークアップ [用語|読み] のみが索引に反映されます')

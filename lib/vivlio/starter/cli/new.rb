@@ -15,11 +15,11 @@ module Vivlio
         extend self
 
         # `lib/project_scaffold/` への絶対パス（`cli/new.rb` 基準）
-        SCAFFOLD_SOURCE = File.expand_path('../../../../project_scaffold', __FILE__).freeze
+        SCAFFOLD_SOURCE = File.expand_path('../../../project_scaffold', __dir__).freeze
 
         GEM_ROOT = File.expand_path('../../../..', __dir__).freeze
 
-        VALID_NAME_PATTERN = /\A[a-zA-Z0-9_\-]+\z/
+        VALID_NAME_PATTERN = /\A[a-zA-Z0-9_-]+\z/
 
         DEFAULT_ANSWERS = {
           main_title: '新しい本',
@@ -240,9 +240,9 @@ module Vivlio
 
           answers = {
             main_title: prompt('書籍名を入力してください（例: はじめての Ruby）', DEFAULT_ANSWERS[:main_title]),
-            subtitle:   prompt('副題を入力してください（任意。Enter でスキップ）', DEFAULT_ANSWERS[:subtitle]),
-            author:     prompt('著者名を入力してください（例: 山田 太郎）', DEFAULT_ANSWERS[:author]),
-            publisher:  prompt('発行者・サークル名を入力してください（例: アトリヱ未來）', DEFAULT_ANSWERS[:publisher])
+            subtitle: prompt('副題を入力してください（任意。Enter でスキップ）', DEFAULT_ANSWERS[:subtitle]),
+            author: prompt('著者名を入力してください（例: 山田 太郎）', DEFAULT_ANSWERS[:author]),
+            publisher: prompt('発行者・サークル名を入力してください（例: アトリヱ未來）', DEFAULT_ANSWERS[:publisher])
           }
 
           confirm_answers!(project_name, answers)
@@ -316,11 +316,11 @@ module Vivlio
 
         def rewrite_book_yml(cmd, src_path, dest_path, answers, project_name)
           content = File.read(src_path, encoding: 'utf-8')
-            .gsub('{{MAIN_TITLE}}',   answers[:main_title])
-            .gsub('{{SUBTITLE}}',     answers[:subtitle])
-            .gsub('{{AUTHOR}}',       answers[:author])
-            .gsub('{{PUBLISHER}}',    answers[:publisher])
-            .gsub('{{PROJECT_NAME}}', project_name)
+                        .gsub('{{MAIN_TITLE}}',   answers[:main_title])
+                        .gsub('{{SUBTITLE}}',     answers[:subtitle])
+                        .gsub('{{AUTHOR}}',       answers[:author])
+                        .gsub('{{PUBLISHER}}',    answers[:publisher])
+                        .gsub('{{PROJECT_NAME}}', project_name)
           File.write(dest_path, content, encoding: 'utf-8')
           log_debug(cmd, "book.yml を置換して書き込みました: #{dest_path}")
         end

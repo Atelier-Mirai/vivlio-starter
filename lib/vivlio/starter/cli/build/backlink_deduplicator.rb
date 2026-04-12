@@ -18,7 +18,6 @@
 # ================================================================
 
 require 'nokogiri'
-require 'set'
 
 module Vivlio
   module Starter
@@ -152,7 +151,7 @@ module Vivlio
               anchor_id = link['id'].to_s
               next unless anchor_id.start_with?('gls-src-')
 
-              glossary_href = link['href'].to_s  # "_glossarypage.html#gls-ウェブサイト"
+              glossary_href = link['href'].to_s # "_glossarypage.html#gls-ウェブサイト"
               page_key = anchor_to_page[anchor_id]
 
               # マッピングが見つからない場合はそのまま残す

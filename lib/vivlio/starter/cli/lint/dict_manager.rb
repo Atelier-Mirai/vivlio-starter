@@ -42,7 +42,7 @@ module Vivlio
           # BUNDLED_DIR 内の .txt ファイルを動的に列挙して辞書名の配列を返す
           # @return [Array<String>] ファイル名（.txt 拡張子なし）のソート済み配列
           def bundled_dict_names
-            Dir.glob(File.join(BUNDLED_DIR, '*.txt')).map { File.basename(_1, '.txt') }.sort
+            Dir.glob(File.join(BUNDLED_DIR, '*.txt')).map { File.basename(it, '.txt') }.sort
           end
 
           # book.yml の extra_dictionaries から辞書名の配列を取り出す
@@ -101,7 +101,7 @@ module Vivlio
 
             line = line.split('#').first.strip
             line = line.split('/').first.strip
-            line = line.gsub(/[^a-zA-Z0-9\-]/, '').strip
+            line = line.gsub(/[^a-zA-Z0-9-]/, '').strip
             line.empty? ? nil : line
           end
 
@@ -110,7 +110,7 @@ module Vivlio
           def load_glossary_terms(words)
             return unless File.exist?(GLOSSARY_PATH)
 
-            data  = YAML.safe_load(File.read(GLOSSARY_PATH, encoding: 'UTF-8'), symbolize_names: true) || {}
+            data = YAML.safe_load(File.read(GLOSSARY_PATH, encoding: 'UTF-8'), symbolize_names: true) || {}
             Array(data[:terms]).each do |entry|
               term = entry[:term].to_s.strip
               next if term.empty? || !term.match?(/[a-zA-Z]/)

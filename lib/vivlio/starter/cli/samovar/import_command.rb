@@ -60,9 +60,9 @@ module Vivlio
           end
 
           def ensure_starter_dir!(starter_dir)
-            if starter_dir.to_s.strip.empty?
-              raise ArgumentError, 'Error: Starter ディレクトリを指定してください。例: vs import ../review_starter_project'
-            end
+            return unless starter_dir.to_s.strip.empty?
+
+            raise ArgumentError, 'Error: Starter ディレクトリを指定してください。例: vs import ../review_starter_project'
           end
         end
       end

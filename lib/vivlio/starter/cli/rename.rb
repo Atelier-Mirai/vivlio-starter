@@ -191,7 +191,7 @@ module Vivlio
           Common.log_info('通常の章:')
           chapters.each_with_index do |file, index|
             old_name = File.basename(file, '.md')
-            old_number, old_slug = extract_number_and_slug(old_name)
+            _, old_slug = extract_number_and_slug(old_name)
             new_number = format('%02d', start_number + (index * effective_step))
             new_basename = build_basename(new_number, old_slug)
             Common.log_info("#{old_name} → #{new_basename}")
@@ -205,7 +205,7 @@ module Vivlio
           Common.log_info('付録:')
           appendix_files.each_with_index do |file, index|
             old_name = File.basename(file, '.md')
-            old_number, old_slug = extract_number_and_slug(old_name)
+            _, old_slug = extract_number_and_slug(old_name)
             new_number = format('%02d', index + 90)
             adjusted_slug = adjust_slug_for_appendix(new_number, old_slug)
             new_slug = adjusted_slug || old_slug
@@ -347,17 +347,19 @@ module Vivlio
           base_token = File.basename(new_arg.to_s.strip).sub(/\.(md|markdown)\z/i, '')
           number_only_to = !base_token.empty? && base_token.match?(/\A\d+\z/)
 
+          old_number = from_entry.number
           if number_only_from && number_only_to
-            old_number = from_entry.number
             new_number = to_entry.number
             old_md, old_slug = find_markdown_by_number(contents_dir, old_number)
             new_slug = adjust_slug_for_appendix(new_number, old_slug)
           else
-            old_number = from_entry.number
             old_slug = from_entry.slug
             new_number = to_entry.number
             new_slug = if number_only_to
-                         new_number.to_i.between?(90, 98) ? adjust_slug_for_appendix(new_number, old_slug) : nil
+                         if new_number.to_i.between?(90,
+                                                     98)
+                           adjust_slug_for_appendix(new_number, old_slug)
+                         end
                        else
                          to_entry.slug || old_slug
                        end
@@ -456,10 +458,10 @@ module Vivlio
             Common.log_error("対象のMarkdownが見つかりません: #{File.basename(old_md)}")
             exit 1
           end
-          if File.exist?(new_md)
-            Common.log_error("変更先のMarkdownが既に存在します: #{File.basename(new_md)}")
-            exit 1
-          end
+          return unless File.exist?(new_md)
+
+          Common.log_error("変更先のMarkdownが既に存在します: #{File.basename(new_md)}")
+          exit 1
         end
 
         # 単一章の Markdown/画像/catalog を新しいベース名へ切り替える
@@ -521,8 +523,7 @@ module Vivlio
           slug = base.downcase.tr(' ', '-')
           slug = slug.gsub(/[^a-z0-9._-]+/, '-')
           slug = slug.gsub(/-+/, '-')
-          slug = slug.gsub(/\A-|-(md|markdown)\z/i, '')
-          slug
+          slug.gsub(/\A-|-(md|markdown)\z/i, '')
         end
 
         # ベース名から章番号とスラッグ（任意）を取り出す
@@ -550,4 +551,3 @@ module Vivlio
     end
   end
 end
-

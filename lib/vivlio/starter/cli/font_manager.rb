@@ -25,7 +25,6 @@
 
 require 'fileutils'
 require 'net/http'
-require 'set'
 require 'uri'
 require 'openssl'
 
@@ -39,11 +38,11 @@ module Vivlio
 
         # 標準搭載フォント（ダウンロード不要）
         STANDARD_FONT_FAMILIES = Set.new([
-          'Noto Serif JP',
-          'Noto Sans JP',
-          'Zen Maru Gothic',
-          'hackgen35'
-        ]).freeze
+                                           'Noto Serif JP',
+                                           'Noto Sans JP',
+                                           'Zen Maru Gothic',
+                                           'hackgen35'
+                                         ]).freeze
 
         module_function
 
@@ -104,9 +103,7 @@ module Vivlio
             processed_block = block.gsub(/url\(([^)]+)\)/) do
               raw = Regexp.last_match(1).strip
               url = raw.gsub(/\A['"]|['"]\z/, '')
-              unless url.start_with?('https://fonts.gstatic.com/')
-                "url(#{raw})"
-              else
+              if url.start_with?('https://fonts.gstatic.com/')
                 begin
                   filename = readable_filename_from(block, url, slug)
                   dest = File.join(family_dir, filename)
@@ -117,6 +114,8 @@ module Vivlio
                   Common.log_warn("フォントファイルの取得に失敗しました: #{url} (#{e.class}: #{e.message})")
                   "url(#{raw})"
                 end
+              else
+                "url(#{raw})"
               end
             end
             processed_blocks << processed_block.strip
@@ -136,14 +135,11 @@ module Vivlio
           return if File.exist?(dest_path)
 
           uri = URI.parse(url)
-          response = nil
           response = perform_get(uri)
 
-          unless response.is_a?(Net::HTTPSuccess)
-            raise "HTTP #{response.code}"
-          end
+          raise "HTTP #{response.code}" unless response.is_a?(Net::HTTPSuccess)
 
-          File.open(dest_path, 'wb') { |file| file.write(response.body) }
+          File.binwrite(dest_path, response.body)
         end
 
         def readable_filename_from(block, url, slug)
@@ -233,7 +229,7 @@ module Vivlio
           entries = {}
           return entries if content.nil? || content.strip.empty?
 
-          content.scan(/\/*\s*Generated from Google Fonts:\s*(.+?)\s*\*\/\s*((?:@font-face\s*\{[^}]+\}\s*)+)/m) do |family, block|
+          content.scan(%r|/\*\s*Generated from Google Fonts:\s*(.+?)\s*\*/\s*((?:@font-face\s*\{[^}]+\}\s*)+)|m) do |family, block|
             entries[family.strip] = build_block_entry(family.strip, block)
           end
 
@@ -267,10 +263,10 @@ module Vivlio
           store = OpenSSL::X509::Store.new
           store.set_default_paths
 
-          cert_file = ENV['SSL_CERT_FILE']
+          cert_file = ENV.fetch('SSL_CERT_FILE', nil)
           store.add_file(cert_file) if cert_file && File.file?(cert_file)
 
-          cert_dir = ENV['SSL_CERT_DIR']
+          cert_dir = ENV.fetch('SSL_CERT_DIR', nil)
           store.add_path(cert_dir) if cert_dir && Dir.exist?(cert_dir)
 
           @cert_store = store

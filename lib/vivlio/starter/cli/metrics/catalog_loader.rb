@@ -48,7 +48,7 @@ module Vivlio
 
           # YAML ファイルを読み込む
           def load_catalog
-            YAML.safe_load(File.read(catalog_path), permitted_classes: [Symbol]) || {}
+            YAML.safe_load_file(catalog_path, permitted_classes: [Symbol]) || {}
           rescue Psych::SyntaxError => e
             Common.log_warn("catalog.yml の構文エラー: #{e.message}")
             {}

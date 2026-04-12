@@ -25,7 +25,7 @@ module Vivlio
   module Starter
     module CLI
       module IndexCommands
-        INDEX_TERMS_MISSING_MESSAGE = <<~MSG.freeze
+        INDEX_TERMS_MISSING_MESSAGE = <<~MSG
           索引語辞書(config/index_glossary_terms.yml)が見つかりませんでした
           ⚠️  原稿に [用語|読み] という書き方で手動登録した語のみが索引に載ります
           ⚠️  自動索引機能を有効にするには: vs index:auto -> vs index:apply
@@ -82,10 +82,10 @@ module Vivlio
             @glossary_terms = @unified_terms.select { it['flags'].to_s.include?('g') }.to_h { [it['term'], it] }
             @glossary_backlinks = Hash.new { |h, k| h[k] = [] }
             # 用語集のみの用語（索引対象外だがバックリンクは必要）
-            @glossary_only_terms = @unified_terms.select { |t|
+            @glossary_only_terms = @unified_terms.select do |t|
               flags = t['flags'].to_s
               flags.include?('g') && !flags.include?('i')
-            }
+            end
           end
 
           # 統合用語辞書（config/index_glossary_terms.yml）を読み込む
@@ -132,7 +132,7 @@ module Vivlio
               data['terms'] = terms
               data['updated_at'] = Time.now.strftime('%Y-%m-%d %H:%M:%S')
               File.write(config_file, data.to_yaml, encoding: 'utf-8')
-              Common.log_info("用語集のバックリンクを更新しました")
+              Common.log_info('用語集のバックリンクを更新しました')
             rescue StandardError => e
               Common.log_warn("用語集のバックリンク保存に失敗しました: #{e.message}")
             end
@@ -206,11 +206,11 @@ module Vivlio
 
             if content_changed
               # read_only モードでない場合のみファイルを書き換え
-              unless effective_read_only
+              if effective_read_only
+                Common.log_success("#{md_file}: #{index_diff} 件の索引語を検出しました（読み取り専用）")
+              else
                 File.write(md_file, new_content, encoding: 'utf-8')
                 Common.log_success("#{md_file}: #{index_diff} 件の索引語をタグ付けしました")
-              else
-                Common.log_success("#{md_file}: #{index_diff} 件の索引語を検出しました（読み取り専用）")
               end
             else
               Common.log_info("#{md_file}: 索引語は見つかりませんでした")
@@ -235,11 +235,11 @@ module Vivlio
                 next
               end
 
-              if in_code_block
-                result << line
-              else
-                result << process_line(line, file_basename)
-              end
+              result << if in_code_block
+                          line
+                        else
+                          process_line(line, file_basename)
+                        end
             end
 
             result.join
@@ -324,7 +324,7 @@ module Vivlio
               placeholders = {}
               # index-term 要素全体を保護（後続の glossary-link も含む）
               protected_line = result.gsub(
-                /(<(?:span|dfn)[^>]*class="index-term"[^>]*>.*?<\/(?:span|dfn)>)(\s*<a[^>]*class="glossary-link"[^>]*>.*?<\/a>)?/
+                %r{(<(?:span|dfn)[^>]*class="index-term"[^>]*>.*?</(?:span|dfn)>)(\s*<a[^>]*class="glossary-link"[^>]*>.*?</a>)?}
               ) do |match|
                 token = "[[IDX_TOKEN_#{placeholders.size}]]"
                 placeholders[token] = match
@@ -401,7 +401,7 @@ module Vivlio
               placeholders = {}
               # index-term 要素全体を保護（後続の glossary-link も含む）
               protected_line = result.gsub(
-                /(<(?:span|dfn)[^>]*class="index-term"[^>]*>.*?<\/(?:span|dfn)>)(\s*<a[^>]*class="glossary-link"[^>]*>.*?<\/a>)?/
+                %r{(<(?:span|dfn)[^>]*class="index-term"[^>]*>.*?</(?:span|dfn)>)(\s*<a[^>]*class="glossary-link"[^>]*>.*?</a>)?}
               ) do |match|
                 token = "[[GLS_TOKEN_#{placeholders.size}]]"
                 placeholders[token] = match
@@ -513,7 +513,7 @@ module Vivlio
 
           # 用語集スラッグを生成
           def generate_glossary_slug(term)
-            term.downcase.gsub(/\s+/, '-').gsub(/[^\p{L}\p{N}\-]/, '')
+            term.downcase.gsub(/\s+/, '-').gsub(/[^\p{L}\p{N}-]/, '')
           end
 
           # 索引データを _index_matches.yml に保存
@@ -534,15 +534,14 @@ module Vivlio
 
             File.write(cache_file, data.to_yaml, encoding: 'utf-8')
             Common.log_info("索引データを保存: #{cache_file} (合計: #{@matches.size} 件)")
-            if @matches.empty?
-              if @defer_warnings
-                @no_matches = true
-              else
-                IndexCommands.emit_index_message(INDEX_TERMS_MISSING_MESSAGE)
-              end
+            return unless @matches.empty?
+
+            if @defer_warnings
+              @no_matches = true
+            else
+              IndexCommands.emit_index_message(INDEX_TERMS_MISSING_MESSAGE)
             end
           end
-
         end
       end
     end

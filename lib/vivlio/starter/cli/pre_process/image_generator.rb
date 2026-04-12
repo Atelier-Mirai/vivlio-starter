@@ -37,7 +37,7 @@ module Vivlio
           DEFAULT_WAIFU2X_BIN = File.expand_path('~/.local/bin/waifu2x/waifu2x-ncnn-vulkan')
           FRONTISPIECE_WAIFU2X_NOISE = 1
           FRONTISPIECE_SCALE = 2
-          FRONTISPIECE_TARGET_WIDTH = 2880  # frontispiece推奨横幅
+          FRONTISPIECE_TARGET_WIDTH = 2880 # frontispiece推奨横幅
           FRONTISPIECE_WEBP_QUALITY = 90
 
           module_function
@@ -80,9 +80,7 @@ module Vivlio
             Common.log_action("frontispiece/ornament 生成: #{image_spec} → #{basename}_portrait/landscape.webp")
 
             waifu2x_available = waifu2x && !waifu2x.strip.empty? && command_available?(waifu2x)
-            unless waifu2x_available
-              Common.log_warn("waifu2x (#{waifu2x}) が見つかりません。ImageMagick のみで生成します。")
-            end
+            Common.log_warn("waifu2x (#{waifu2x}) が見つかりません。ImageMagick のみで生成します。") unless waifu2x_available
 
             Dir.mktmpdir('frontispiece-one') do |tmpdir|
               trimmed_path = File.join(tmpdir, "#{basename}_trimmed.png")
@@ -237,7 +235,7 @@ module Vivlio
 
           # バリアント出力を生成
           def generate_variant_output(input_png, target_path, variant:, waifu2x_available:, waifu2x:, waifu2x_args:,
-                                       waifu2x_noise:, scale:, target_width:, webp_quality:, keep_intermediate:)
+                                      waifu2x_noise:, scale:, target_width:, webp_quality:, keep_intermediate:)
             FileUtils.mkdir_p(File.dirname(target_path))
 
             variant_label = File.basename(target_path)
@@ -253,7 +251,8 @@ module Vivlio
                 label: "アルファ抽出 (#{variant_label})"
               )
 
-              waifu_cmd = [waifu2x, '-i', input_png, '-o', color_path, '-n', waifu2x_noise.to_s, '-s', scale.to_s] + waifu2x_args
+              waifu_cmd = [waifu2x, '-i', input_png, '-o', color_path, '-n', waifu2x_noise.to_s, '-s',
+                           scale.to_s] + waifu2x_args
               run_command!(
                 waifu_cmd,
                 label: "waifu2x (#{variant_label})",
@@ -267,7 +266,8 @@ module Vivlio
               )
 
               run_command!(
-                ['magick', color_path, alpha_scaled_path, '-compose', 'CopyAlpha', '-composite', "PNG32:#{merged_path}"],
+                ['magick', color_path, alpha_scaled_path, '-compose', 'CopyAlpha', '-composite',
+                 "PNG32:#{merged_path}"],
                 label: "アルファ再適用 (#{variant_label})"
               )
 
@@ -288,9 +288,9 @@ module Vivlio
             ]
             run_command!(convert_cmd, label: "WebP 変換 (#{variant_label})")
 
-            unless keep_intermediate
-              [alpha_path, alpha_scaled_path, color_path, merged_path].compact.each { |path| FileUtils.rm_f(path) }
-            end
+            return if keep_intermediate
+
+            [alpha_path, alpha_scaled_path, color_path, merged_path].compact.each { |path| FileUtils.rm_f(path) }
           end
 
           # コマンドを実行
@@ -300,6 +300,7 @@ module Vivlio
             if stream_output
               success = system(*cmd)
               raise "#{label} に失敗しました" unless success
+
               return
             end
 
@@ -309,6 +310,7 @@ module Vivlio
               if Common.current_log_level >= 3
                 [stdout_str, stderr_str].each do |chunk|
                   next if chunk.nil? || chunk.strip.empty?
+
                   chunk.each_line { |line| Common.log_debug("#{label}: #{line.rstrip}") }
                 end
               end

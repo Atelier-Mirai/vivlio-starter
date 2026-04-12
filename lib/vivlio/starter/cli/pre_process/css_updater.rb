@@ -28,7 +28,8 @@ module Vivlio
       module PreProcessCommands
         # CSS ファイル更新モジュール
         module CssUpdater
-          ALLOWED_COLORS = %w[yellow amber orange peach coral red magenta plum purple indigo navy blue cyan teal mint green lime].freeze
+          ALLOWED_COLORS = %w[yellow amber orange peach coral red magenta plum purple indigo navy blue cyan teal mint
+                              green lime].freeze
 
           module_function
 
@@ -46,9 +47,7 @@ module Vivlio
               return false
             end
 
-            if updated_content == original_content
-              return false
-            end
+            return false if updated_content == original_content
 
             File.write(path, updated_content, encoding: 'utf-8')
             true
@@ -59,8 +58,8 @@ module Vivlio
 
           # theme.css を更新
           def update_theme_css(theme_name:, theme_accent_value:, theme_style:, frontispiece_path:,
-                              door_padding_value:, ornament_path:, heading_width_value: nil,
-                              lead_width_value: nil)
+                               door_padding_value:, ornament_path:, heading_width_value: nil,
+                               lead_width_value: nil)
             theme_css_path = File.join(Common::STYLESHEETS_DIR, 'theme.css')
 
             unless File.exist?(theme_css_path)
@@ -156,9 +155,7 @@ module Vivlio
               end
             end
 
-            if changed
-              Common.log_success("appendix.css を更新: appendix_color=#{appendix_color}")
-            end
+            Common.log_success("appendix.css を更新: appendix_color=#{appendix_color}") if changed
           rescue StandardError => e
             Common.log_warn("appendix.css の更新に失敗: #{e.message}")
           end
@@ -214,7 +211,11 @@ module Vivlio
               end
             else
               # importが存在しない場合は追加
-              insert_point = ccss.index(';', ccss.index('@import')).to_i + 1 rescue 0
+              insert_point = begin
+                ccss.index(';', ccss.index('@import')).to_i + 1
+              rescue StandardError
+                0
+              end
               insert_point = ccss.index("\n", insert_point).to_i + 1
               insert_point = 0 if insert_point.negative?
               header_import = "@import url(\"#{desired}\");\n"
@@ -352,7 +353,7 @@ module Vivlio
             else
               # size プロパティが存在しない場合、language の後に挿入
               updated = content.sub(
-                /^(\s*language:\s*'[^']*',\s*\/\/[^\n]*\n)/,
+                %r{^(\s*language:\s*'[^']*',\s*//[^\n]*\n)},
                 "\\1  size: '#{new_size}', // ページサイズ（book.yml のプリセットから自動設定）\n"
               )
             end

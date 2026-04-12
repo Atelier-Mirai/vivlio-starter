@@ -40,13 +40,13 @@ module Vivlio
               return
             end
 
-            catalog = YAML.safe_load(File.read(starter_catalog), permitted_classes: [Symbol])
+            catalog = YAML.safe_load_file(starter_catalog, permitted_classes: [Symbol])
 
             key_map = {
-              'PREDEF'   => 'PREFACE',
-              'CHAPS'    => 'CHAPTERS',
+              'PREDEF' => 'PREFACE',
+              'CHAPS' => 'CHAPTERS',
               'APPENDIX' => 'APPENDICES',
-              'POSTDEF'  => 'POSTFACE'
+              'POSTDEF' => 'POSTFACE'
             }
 
             new_catalog = {}
@@ -74,9 +74,9 @@ module Vivlio
               return
             end
 
-            config = YAML.safe_load(File.read(starter_config), permitted_classes: [Symbol])
+            config = YAML.safe_load_file(starter_config, permitted_classes: [Symbol])
             config_starter = if File.exist?(starter_config_starter)
-                               YAML.safe_load(File.read(starter_config_starter), permitted_classes: [Symbol])
+                               YAML.safe_load_file(starter_config_starter, permitted_classes: [Symbol])
                              else
                                {}
                              end
@@ -118,10 +118,6 @@ module Vivlio
               value
             end
           end
-
-          private
-
-          module_function
 
           # config.yml / config-starter.yml から更新リストを構築する
           #
@@ -209,7 +205,7 @@ module Vivlio
             when Hash
               value['name'] || value.values.first
             when String
-              value.gsub(/\n/, ' ').strip
+              value.gsub("\n", ' ').strip
             else
               value.to_s
             end
@@ -233,9 +229,7 @@ module Vivlio
               next if value.nil?
 
               replaced = replace_yaml_value_in_lines!(lines, path, value)
-              unless replaced
-                Common.log_warn("  #{book_yml_path} 内で #{path.join('.')} を更新できませんでした")
-              end
+              Common.log_warn("  #{book_yml_path} 内で #{path.join('.')} を更新できませんでした") unless replaced
               updated ||= replaced
             end
 

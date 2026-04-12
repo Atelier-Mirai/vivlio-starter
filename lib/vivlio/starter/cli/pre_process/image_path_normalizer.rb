@@ -114,7 +114,8 @@ module Vivlio
           end
 
           # 既存画像なら元のパスを、無い場合はプレースホルダーを返す
-          def resolved_placeholder_or_path(alt_text, normalized_path, source_filename = nil, line_number = nil, original_image_name = nil)
+          def resolved_placeholder_or_path(alt_text, normalized_path, source_filename = nil, line_number = nil,
+                                           original_image_name = nil)
             return "![#{alt_text}](#{normalized_path})" if image_exists_for?(normalized_path)
 
             image_name = original_image_name || File.basename(normalized_path)
@@ -144,9 +145,7 @@ module Vivlio
             base_path = File.expand_path(relative_path, Common::IMAGES_DIR)
 
             # SVGの場合は直接チェック
-            if base_path.end_with?('.svg')
-              return File.exist?(base_path)
-            end
+            return File.exist?(base_path) if base_path.end_with?('.svg')
 
             # その他の画像形式は拡張子違いをチェック
             base_without_ext = base_path.sub(/\.webp\z/i, '')
@@ -157,7 +156,9 @@ module Vivlio
 
           # プレースホルダーSVGを使用してデータURIを生成する
           def placeholder_image_path(missing_image_path = nil)
-            return 'data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%2F%3E' unless missing_image_path
+            unless missing_image_path
+              return 'data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%2F%3E'
+            end
 
             begin
               filename = File.basename(missing_image_path)

@@ -92,8 +92,20 @@ module Vivlio
               keep_numbers_appx = chapter_numbers.select { |n| APPX_RANGE.include?(n) }
               keep_numbers_post = chapter_numbers.select { |n| POSTFACE_RANGE.include?(n) }
             end
-            glossary_html = IndexCommands.index_enabled? ? [File.join(base_dir, '_glossarypage.html')].select { |f| File.exist?(f) } : []
-            index_html = IndexCommands.index_enabled? ? [File.join(base_dir, '_indexpage.html')].select { |f| File.exist?(f) } : []
+            glossary_html = if IndexCommands.index_enabled?
+                              [File.join(base_dir, '_glossarypage.html')].select do |f|
+                                File.exist?(f)
+                              end
+                            else
+                              []
+                            end
+            index_html = if IndexCommands.index_enabled?
+                           [File.join(base_dir, '_indexpage.html')].select do |f|
+                             File.exist?(f)
+                           end
+                         else
+                           []
+                         end
 
             # 本文章 HTML に中扉を挿入（部タイトルが定義されている場合）
             main_htmls = Build::ChapterConfig.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers_main)
@@ -114,7 +126,7 @@ module Vivlio
               return
             end
 
-            Common.log_info("[Step 7] entries.js を生成します（PDF ビルドはスキップ）")
+            Common.log_info('[Step 7] entries.js を生成します（PDF ビルドはスキップ）')
             EntriesCommands.execute_entries({}, chapter_htmls_for_pdf)
             Common.log_success('[Step 7] entries.js を生成しました')
           end
@@ -210,7 +222,7 @@ module Vivlio
             end
 
             need_colophon = front_regenerated || colophon_missing || newer_than_any.call(colophon_pdf,
-                                                                                                  colophon_srcs)
+                                                                                         colophon_srcs)
             if need_colophon
               EntriesCommands.execute_entries({}, ['_colophon.html'])
               PdfCommands.execute_pdf({}, colophon_pdf)

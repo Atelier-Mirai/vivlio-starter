@@ -78,7 +78,7 @@ module Vivlio
             # メタデータを book セクションから取得
             # book.title は存在しない場合がある（main_title + subtitle から合成）
             combined_title = [book_config&.main_title, book_config&.subtitle].compact.join(' ').strip
-            title_raw = book_config&.respond_to?(:title) ? book_config.title : nil
+            title_raw = book_config.respond_to?(:title) ? book_config.title : nil
             title = if title_raw && !title_raw.to_s.strip.empty?
                       title_raw
                     else
@@ -237,7 +237,7 @@ module Vivlio
             covers_dir = config.directories&.covers || 'covers'
             theme = Common.cover_theme
             return nil unless theme
-            
+
             image_name = "cover_#{theme}.jpg"
             File.join(covers_dir, image_name)
           end

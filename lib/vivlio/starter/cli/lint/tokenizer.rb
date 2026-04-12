@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'set'
-
 module Vivlio
   module Starter
     module CLI
@@ -108,12 +106,12 @@ module Vivlio
             cleaned.gsub!(/`[^`]*`/, ' ')                          # インラインコードを除去
             cleaned.gsub!(/<[^>]+>/, ' ')                          # HTMLタグを除去
             cleaned.gsub!(/\{[^}]*\}/, ' ')                        # Vivliostyle拡張記法 {.aki} 等
-            cleaned.gsub!(/!?\[([^\]]*)\]\([^\)]*\)/, '\1')        # Markdownリンク・画像
+            cleaned.gsub!(/!?\[([^\]]*)\]\([^)]*\)/, '\1') # Markdownリンク・画像
             cleaned.gsub!(/!?\[([^\]]*)\]\[[^\]]*\]/, '\1')        # 参照リンク
             cleaned.gsub!(%r{https?://\S+}, ' ')                   # URLを除去
             cleaned.gsub!(/^#+\s*/, '')                            # 見出し記号を除去
 
-            cleaned.scan(/[a-zA-Z]+(?:-[a-zA-Z]+)*/).select { _1.length >= 2 }
+            cleaned.scan(/[a-zA-Z]+(?:-[a-zA-Z]+)*/).select { it.length >= 2 }
           end
         end
       end

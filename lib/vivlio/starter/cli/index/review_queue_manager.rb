@@ -91,21 +91,21 @@ module Vivlio
             term_name = term['term'] || term[:term]
             next if term_name.nil? || term_name.empty?
 
-            unless existing.any? { |t| t['term'] == term_name }
-              entry = {
-                'term' => term_name,
-                'yomi' => term['yomi'] || term[:yomi] || term_name,
-                'rejected_at' => Time.now.strftime('%Y-%m-%d %H:%M:%S')
-              }
-              # スコアがあれば保存
-              score = term['score'] || term[:score]
-              entry['score'] = score if score
-              # 文脈があれば保存
-              contexts = term['contexts'] || term[:contexts]
-              entry['contexts'] = contexts if contexts&.any?
+            next if existing.any? { |t| t['term'] == term_name }
 
-              existing << entry
-            end
+            entry = {
+              'term' => term_name,
+              'yomi' => term['yomi'] || term[:yomi] || term_name,
+              'rejected_at' => Time.now.strftime('%Y-%m-%d %H:%M:%S')
+            }
+            # スコアがあれば保存
+            score = term['score'] || term[:score]
+            entry['score'] = score if score
+            # 文脈があれば保存
+            contexts = term['contexts'] || term[:contexts]
+            entry['contexts'] = contexts if contexts&.any?
+
+            existing << entry
           end
 
           # 保存
@@ -174,7 +174,7 @@ module Vivlio
           # 番号または用語名で検索
           target = if term_or_number.match?(/^\d+$/)
                      idx = term_or_number.to_i - 1
-                     (idx >= 0 && idx < rejected.size) ? rejected[idx] : nil
+                     idx >= 0 && idx < rejected.size ? rejected[idx] : nil
                    else
                      rejected.find { |t| t['term'] == term_or_number }
                    end

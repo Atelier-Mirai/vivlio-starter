@@ -174,24 +174,24 @@ module Vivlio
           Common.log_success('画像変換が完了しました')
 
           # --delete-originals: 変換成功した元ファイルを確認後に削除
-          if options[:delete_originals]
-            converted_originals = files.select { |src| File.exist?(src.sub(/\.[^.]+\z/, '.webp')) }
-            if converted_originals.empty?
-              Common.log_info('削除対象の元ファイルはありませんでした')
-            else
-              Common.echo_always('⚠️  以下の元画像ファイルを削除しようとしています:')
-              converted_originals.each { |f| Common.echo_always("  - #{f}") }
-              $stdout.print('本当に削除しますか？ [y/N]: ')
-              ans = $stdin.gets
-              if ans && ans.strip.downcase == 'y'
-                converted_originals.each do |f|
-                  FileUtils.rm_f(f)
-                  Common.log_info("削除しました: #{f}")
-                end
-                Common.log_success("元ファイルを削除しました（#{converted_originals.size}件）")
-              else
-                Common.log_info('元ファイルの削除をキャンセルしました')
+          return unless options[:delete_originals]
+
+          converted_originals = files.select { |src| File.exist?(src.sub(/\.[^.]+\z/, '.webp')) }
+          if converted_originals.empty?
+            Common.log_info('削除対象の元ファイルはありませんでした')
+          else
+            Common.echo_always('⚠️  以下の元画像ファイルを削除しようとしています:')
+            converted_originals.each { |f| Common.echo_always("  - #{f}") }
+            $stdout.print('本当に削除しますか？ [y/N]: ')
+            ans = $stdin.gets
+            if ans && ans.strip.downcase == 'y'
+              converted_originals.each do |f|
+                FileUtils.rm_f(f)
+                Common.log_info("削除しました: #{f}")
               end
+              Common.log_success("元ファイルを削除しました（#{converted_originals.size}件）")
+            else
+              Common.log_info('元ファイルの削除をキャンセルしました')
             end
           end
         end

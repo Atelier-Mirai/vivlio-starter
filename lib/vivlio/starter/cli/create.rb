@@ -74,37 +74,37 @@ module Vivlio
         LIGHT_PALETTE = {
           # グラデーション（stop-color プレースホルダー）
           '{{bg-from}}' => '#f8f6f2',
-          '{{bg-to}}'   => '#f0ece4',
+          '{{bg-to}}' => '#f0ece4',
           # CSS 変数
-          '--vs-text-main'    => '#1e3a60',
-          '--vs-text-sub'     => '#8090a8',
-          '--vs-text-author'  => '#2a4070',
-          '--vs-text-label'   => '#7080a0',
-          '--vs-grid-stroke'  => '#d0d0d0',
+          '--vs-text-main' => '#1e3a60',
+          '--vs-text-sub' => '#8090a8',
+          '--vs-text-author' => '#2a4070',
+          '--vs-text-label' => '#7080a0',
+          '--vs-grid-stroke' => '#d0d0d0',
           '--vs-stroke-outer' => '#e0e0e0',
-          '--vs-stroke-mid'   => '#e8e8e8',
+          '--vs-stroke-mid' => '#e8e8e8',
           '--vs-stroke-inner' => '#d0d0d0',
-          '--vs-node-fill'    => '#ffffff',
-          '--vs-node-stroke'  => '#1e3a60',
-          '--vs-icon-color'   => '#1e3a60'
+          '--vs-node-fill' => '#ffffff',
+          '--vs-node-stroke' => '#1e3a60',
+          '--vs-icon-color' => '#1e3a60'
         }.freeze
 
         DARK_PALETTE = {
           # グラデーション（stop-color プレースホルダー）
           '{{bg-from}}' => '#0e1a2e',
-          '{{bg-to}}'   => '#060d1a',
+          '{{bg-to}}' => '#060d1a',
           # CSS 変数
-          '--vs-text-main'    => '#f0e8d0',
-          '--vs-text-sub'     => '#a8b8d0',
-          '--vs-text-author'  => '#d0c0a0',
-          '--vs-text-label'   => '#7080a0',
-          '--vs-grid-stroke'  => '#1e3358',
+          '--vs-text-main' => '#f0e8d0',
+          '--vs-text-sub' => '#a8b8d0',
+          '--vs-text-author' => '#d0c0a0',
+          '--vs-text-label' => '#7080a0',
+          '--vs-grid-stroke' => '#1e3358',
           '--vs-stroke-outer' => '#1a3560',
-          '--vs-stroke-mid'   => '#1e4070',
+          '--vs-stroke-mid' => '#1e4070',
           '--vs-stroke-inner' => '#2a5590',
-          '--vs-node-fill'    => '#0e2040',
-          '--vs-node-stroke'  => '#4a80c8',
-          '--vs-icon-color'   => '#5b9ef5'
+          '--vs-node-fill' => '#0e2040',
+          '--vs-node-stroke' => '#4a80c8',
+          '--vs-icon-color' => '#5b9ef5'
         }.freeze
 
         # ================================================================
@@ -138,7 +138,7 @@ module Vivlio
           # 2. カタログとの重複をチェック
           duplicate_entries = entries.select(&:in_catalog?)
           if duplicate_entries.any?
-            Common.log_error("エラー: 以下の章は既にカタログに存在します:")
+            Common.log_error('エラー: 以下の章は既にカタログに存在します:')
             duplicate_entries.each { |e| Common.log_error("  - #{e.basename} (#{e.label})") }
             exit 1
           end
@@ -181,7 +181,7 @@ module Vivlio
 
           theme = resolve_cover_theme
           unless theme
-            Common.log_error("output.cover 設定が見つかりません")
+            Common.log_error('output.cover 設定が見つかりません')
             return false
           end
 
@@ -189,7 +189,7 @@ module Vivlio
 
           Common.log_action("カバーを生成しています（テーマ: #{theme}, targets: #{targets.join(', ')}）…")
 
-          covers_dir      = File.join(Dir.pwd, 'covers')
+          covers_dir = File.join(Dir.pwd, 'covers')
           book_config_path = File.join(Dir.pwd, 'config', 'book.yml')
           FileUtils.mkdir_p(covers_dir)
 
@@ -242,7 +242,7 @@ module Vivlio
           when :user_svg
             # ユーザー用意のSVG: テキスト置換のみ行い、そのまま変換
             svg_path = apply_text_placeholders_to_svg(source[:path], side, theme, covers_dir,
-                                                       book_config_path)
+                                                      book_config_path)
             generate_cover_outputs_from_svg(svg_path, side, theme, targets, covers_dir)
 
           when :bundled_svg
@@ -378,7 +378,7 @@ module Vivlio
         # @return [Hash{String => String}] { "--vs-text-main" => "#f0e8d0", ... }
         def extract_css_variables(svg_content)
           variables = {}
-          style_blocks = svg_content.scan(/<style[^>]*>(.*?)<\/style>/m).flatten
+          style_blocks = svg_content.scan(%r{<style[^>]*>(.*?)</style>}m).flatten
           style_blocks.each do |block|
             root_blocks = block.scan(/:root\s*\{([^}]*)\}/m).flatten
             root_blocks.each do |root_block|
@@ -401,7 +401,7 @@ module Vivlio
 
           resolved = svg_content.gsub(/var\((--[\w-]+)(?:\s*,\s*([^)]*))?\)/) do
             var_name = ::Regexp.last_match(1)
-            fallback  = ::Regexp.last_match(2)&.strip
+            fallback = ::Regexp.last_match(2)&.strip
             variables.fetch(var_name, fallback || 'unset')
           end
 
@@ -425,12 +425,12 @@ module Vivlio
         def apply_palette(svg, palette)
           palette.each do |key, value|
             svg = if key.start_with?('--')
-              # CSS変数: "--vs-text-main: #1e3a60;" の値部分を差し替える
-              svg.gsub(/#{Regexp.escape(key)}\s*:\s*[^;]+;/, "#{key}: #{value};")
-            else
-              # {{}} プレースホルダー: stop-color などの直接置換
-              svg.gsub(key, value)
-            end
+                    # CSS変数: "--vs-text-main: #1e3a60;" の値部分を差し替える
+                    svg.gsub(/#{Regexp.escape(key)}\s*:\s*[^;]+;/, "#{key}: #{value};")
+                  else
+                    # {{}} プレースホルダー: stop-color などの直接置換
+                    svg.gsub(key, value)
+                  end
           end
           svg
         end
@@ -445,11 +445,11 @@ module Vivlio
         def apply_text_replacements(svg)
           title, subtitle = extract_title_and_subtitle
           placeholders = {
-            '{{title}}'    => title,
+            '{{title}}' => title,
             '{{subtitle}}' => subtitle,
-            '{{author}}'   => fetch_config_value('book', 'author'),
-            '{{series}}'   => fetch_config_value('book', 'series'),
-            '{{release}}'  => fetch_config_value('book', 'release')
+            '{{author}}' => fetch_config_value('book', 'author'),
+            '{{series}}' => fetch_config_value('book', 'series'),
+            '{{release}}' => fetch_config_value('book', 'release')
           }
           placeholders.each { |ph, val| svg = svg.gsub(ph, val.to_s) }
           svg
@@ -480,10 +480,10 @@ module Vivlio
             convert_svg(svg_path, pdf_path, page_size: page_size, crop_marks: true)
           end
 
-          if targets.include?('epub') && side == 'front'
-            jpg_path = File.join(covers_dir, "cover_#{theme}.jpg")
-            convert_svg(svg_path, jpg_path, page_size: page_size)
-          end
+          return unless targets.include?('epub') && side == 'front'
+
+          jpg_path = File.join(covers_dir, "cover_#{theme}.jpg")
+          convert_svg(svg_path, jpg_path, page_size: page_size)
         end
 
         # PNGから最終成果物（PDF / JPG）を生成する
@@ -506,10 +506,10 @@ module Vivlio
             convert_png(png_path, pdf_path)
           end
 
-          if targets.include?('epub') && side == 'front'
-            jpg_path = File.join(covers_dir, "cover_#{theme}.jpg")
-            convert_png(png_path, jpg_path)
-          end
+          return unless targets.include?('epub') && side == 'front'
+
+          jpg_path = File.join(covers_dir, "cover_#{theme}.jpg")
+          convert_png(png_path, jpg_path)
         end
 
         # ================================================================
@@ -547,9 +547,7 @@ module Vivlio
         def convert_svg(input, output, page_size: :b5, crop_marks: false)
           # crop_marks: true の場合は常に再生成（トンボ設定変更を確実に反映）
           # crop_marks: false の場合はキャッシュを使用
-          unless crop_marks
-            return if File.exist?(output) && File.mtime(output) >= File.mtime(input)
-          end
+          return if !crop_marks && File.exist?(output) && File.mtime(output) >= File.mtime(input)
 
           ext = File.extname(output).delete('.')
           size = COVER_SIZES.fetch(page_size, COVER_SIZES[:b5])
@@ -602,12 +600,12 @@ module Vivlio
           crop_offset_mm = CROP_MARK_OFFSET_MM
           margin_mm = bleed_mm + crop_offset_mm
 
-          page_w_mm = trim_w_mm + 2 * margin_mm
-          page_h_mm = trim_h_mm + 2 * margin_mm
+          page_w_mm = trim_w_mm + (2 * margin_mm)
+          page_h_mm = trim_h_mm + (2 * margin_mm)
 
           # SVGをbleedサイズで描画（背景色が塗り足し領域まで伸びる）
-          svg_w_mm = trim_w_mm + 2 * bleed_mm
-          svg_h_mm = trim_h_mm + 2 * bleed_mm
+          svg_w_mm = trim_w_mm + (2 * bleed_mm)
+          svg_h_mm = trim_h_mm + (2 * bleed_mm)
 
           unless CoverCommands.find_executable('rsvg-convert')
             Common.log_warn('rsvg-convert が見つかりません。トンボなしで生成します')
@@ -652,8 +650,8 @@ module Vivlio
 
           mm2pt = 72.0 / 25.4
           margin_mm    = bleed_mm + crop_offset_mm
-          page_w_pt    = (trim_w_mm + 2 * margin_mm) * mm2pt
-          page_h_pt    = (trim_h_mm + 2 * margin_mm) * mm2pt
+          page_w_pt    = (trim_w_mm + (2 * margin_mm)) * mm2pt
+          page_h_pt    = (trim_h_mm + (2 * margin_mm)) * mm2pt
           margin_pt    = margin_mm * mm2pt
           bleed_pt     = bleed_mm * mm2pt
           crop_off_pt  = crop_offset_mm * mm2pt
@@ -661,14 +659,10 @@ module Vivlio
           # 仕上がり線（trim）の座標（PDF座標: 左下原点）
           tx1 = margin_pt
           ty1 = margin_pt
-          tx2 = margin_pt + trim_w_mm * mm2pt
-          ty2 = margin_pt + trim_h_mm * mm2pt
+          tx2 = margin_pt + (trim_w_mm * mm2pt)
+          ty2 = margin_pt + (trim_h_mm * mm2pt)
 
           # bleed 境界の座標
-          bx1 = tx1 - bleed_pt
-          by1 = ty1 - bleed_pt
-          bx2 = tx2 + bleed_pt
-          by2 = ty2 + bleed_pt
 
           line_w_pt      = 0.24
           circle_r_pt    = 2.5 * mm2pt
@@ -713,8 +707,8 @@ module Vivlio
           mm2pt_local = 72.0 / 25.4
           trim_x1_pt  = margin_pt
           trim_y1_pt  = margin_pt
-          trim_x2_pt  = margin_pt + trim_w_mm * mm2pt_local
-          trim_y2_pt  = margin_pt + trim_h_mm * mm2pt_local
+          trim_x2_pt  = margin_pt + (trim_w_mm * mm2pt_local)
+          trim_y2_pt  = margin_pt + (trim_h_mm * mm2pt_local)
           bleed_x1_pt = trim_x1_pt - bleed_pt
           bleed_y1_pt = trim_y1_pt - bleed_pt
           bleed_x2_pt = trim_x2_pt + bleed_pt
@@ -740,14 +734,14 @@ module Vivlio
 
         # 角トンボ: 二重L字交差型
         def draw_corner_crop_mark(pdf, x, y, dx, dy, s, bl)
-          pdf.move_to(x + bl * dx, y)
-          pdf.line_to(x + (s + bl) * dx, y)
-          pdf.move_to(x, y + bl * dy)
-          pdf.line_to(x, y + (s + bl) * dy)
-          pdf.move_to(x, y + bl * dy)
-          pdf.line_to(x + s * dx, y + bl * dy)
-          pdf.move_to(x + bl * dx, y)
-          pdf.line_to(x + bl * dx, y + s * dy)
+          pdf.move_to(x + (bl * dx), y)
+          pdf.line_to(x + ((s + bl) * dx), y)
+          pdf.move_to(x, y + (bl * dy))
+          pdf.line_to(x, y + ((s + bl) * dy))
+          pdf.move_to(x, y + (bl * dy))
+          pdf.line_to(x + (s * dx), y + (bl * dy))
+          pdf.move_to(x + (bl * dx), y)
+          pdf.line_to(x + (bl * dx), y + (s * dy))
           pdf.stroke
         end
 
@@ -798,12 +792,12 @@ module Vivlio
             return
           end
 
-          avg_dpi = dpi_output.scan(/\d+/).map(&:to_i).then { _1.sum / _1.size }
+          avg_dpi = dpi_output.scan(/\d+/).map(&:to_i).then { it.sum / it.size }
           case avg_dpi
           when ...300
             Common.log_warn("カスタム画像 '#{theme}' の解像度が不足しています")
             Common.log_warn("  現在: #{avg_dpi}dpi（推奨: 350dpi以上、最小: 300dpi以上）")
-            Common.log_warn("  ビルドは続行しますが、印刷品質が低下する可能性があります")
+            Common.log_warn('  ビルドは続行しますが、印刷品質が低下する可能性があります')
           when 300...350
             Common.log_info("カスタム画像 '#{theme}' の解像度: #{avg_dpi}dpi（推奨: 350dpi以上）")
           end
@@ -1012,10 +1006,10 @@ module Vivlio
         # slug を chapter 名として利用できる形式へ正規化する
         def normalize_slug(value)
           slug = value.to_s.downcase
-                        .tr(' ', '-')
-                        .gsub(/[^a-z0-9\-]+/, '-')
-                        .gsub(/-+/, '-')
-                        .gsub(/\A-+|-+\z/, '')
+                      .tr(' ', '-')
+                      .gsub(/[^a-z0-9-]+/, '-')
+                      .gsub(/-+/, '-')
+                      .gsub(/\A-+|-+\z/, '')
           slug = 'chapter' if slug.empty?
           slug
         end

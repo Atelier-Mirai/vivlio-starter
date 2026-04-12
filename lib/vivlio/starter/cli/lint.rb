@@ -254,9 +254,7 @@ module Vivlio
               path = Common.resolve_path_from_root(rel)
               display = Common.relative_path_from_root(path) || path
 
-              unless path && File.file?(path)
-                raise LintError, "textlint サポート用設定ファイルが見つかりません: #{display}"
-              end
+              raise LintError, "textlint サポート用設定ファイルが見つかりません: #{display}" unless path && File.file?(path)
 
               begin
                 yaml_text = File.read(path, encoding: 'UTF-8')
@@ -270,7 +268,7 @@ module Vivlio
           def run_spellcheck(files)
             config       = Common::CONFIG.spellcheck
             word_map     = Lint::DictManager.new.build_word_map(config)
-            ignore_words = Array(config&.ignore_words).map { _1.to_s.downcase }
+            ignore_words = Array(config&.ignore_words).map { it.to_s.downcase }
             check_code   = Common.truthy?(config&.check_code_blocks)
 
             all_errors = {}
@@ -382,7 +380,7 @@ module Vivlio
           # @param temp_files [Array<String>] 一時ファイルパスの配列
           def cleanup_temp_files(temp_files)
             temp_files.each do |path|
-              File.unlink(path) if File.exist?(path)
+              FileUtils.rm_f(path)
             rescue StandardError => e
               Common.log_warn("[lint] 一時ファイルの削除に失敗しました: #{path} (#{e.message})")
             end

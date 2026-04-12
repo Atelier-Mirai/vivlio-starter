@@ -167,8 +167,14 @@ module Vivlio
 
             {
               file_type: entry.kind.to_s,
-              chapter_display_number: chapter_number_i ? resolve_main_chapter_display_number(chapter_token, chapter_number_i) : nil,
-              appendix_letter: chapter_number_i&.between?(90, 98) ? Common.appendix_number_to_letter(chapter_number_i)&.upcase : nil,
+              chapter_display_number: if chapter_number_i
+                                        resolve_main_chapter_display_number(chapter_token,
+                                                                            chapter_number_i)
+                                      end,
+              appendix_letter: if chapter_number_i&.between?(90,
+                                                             98)
+                                 Common.appendix_number_to_letter(chapter_number_i)&.upcase
+                               end,
               process_headings: %i[chapter appendix].include?(entry.kind)
             }
           end
@@ -477,7 +483,7 @@ module Vivlio
           def discovered_main_chapter_tokens
             resolver = TokenResolver::Resolver.new
             html_tokens = Dir.glob(File.join('.', '*.html')).map { |path| File.basename(path, '.html') }
-            normalize_and_filter_tokens(html_tokens).sort_by { |token| resolver.resolve_file(token).number&.to_i || 0 }
+            normalize_and_filter_tokens(html_tokens).sort_by { |token| resolver.resolve_file(token).number.to_i }
           end
 
           # トークンリストを正規化してフィルタ

@@ -165,7 +165,7 @@ module Vivlio
             opened_count = 0
             closed_count = 0
 
-            pattern = %r!:::\s*\{\.([^}]+)\}\s*\n(.*?)\n:::\s*(?:\n|$)!m
+            pattern = /:::\s*\{\.([^}]+)\}\s*\n(.*?)\n:::\s*(?:\n|$)/m
 
             converted = content.gsub(pattern) do
               raw_token_str = ::Regexp.last_match(1)
@@ -177,9 +177,7 @@ module Vivlio
               additional_classes = additional_tokens.select { |t| t.start_with?('.') }.map { |c| c.delete_prefix('.') }
               param_tokens = additional_tokens.reject { |t| t.start_with?('.') }
 
-              unless first_class == class_name || additional_classes.include?(class_name)
-                next ::Regexp.last_match(0)
-              end
+              next ::Regexp.last_match(0) unless first_class == class_name || additional_classes.include?(class_name)
 
               opened_count += 1
               closed_count += 1
@@ -196,13 +194,13 @@ module Vivlio
                   style_parts << "--table-rotate-scale:#{scale_int}%;"
                 end
 
-                if (m_shift = token.match(/^shift-y=(.+)$/))
-                  raw = m_shift[1].strip
-                  shift_percent = raw.end_with?('%') ? raw.to_f : raw.to_f * 100.0
-                  shift_int = shift_percent.round
-                  sign = shift_int.negative? ? '' : '+'
-                  style_parts << "--table-rotate-shift-y:#{sign}#{shift_int}%;"
-                end
+                next unless (m_shift = token.match(/^shift-y=(.+)$/))
+
+                raw = m_shift[1].strip
+                shift_percent = raw.end_with?('%') ? raw.to_f : raw.to_f * 100.0
+                shift_int = shift_percent.round
+                sign = shift_int.negative? ? '' : '+'
+                style_parts << "--table-rotate-shift-y:#{sign}#{shift_int}%;"
               end
 
               style_attr = style_parts.empty? ? '' : " style=\"#{style_parts.join(' ')}\""

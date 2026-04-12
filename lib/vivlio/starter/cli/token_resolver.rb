@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'set'
 require 'yaml'
 
 require_relative 'common'
@@ -18,7 +17,13 @@ module Vivlio
           # ファイル名のベース部分を動的に生成する。
           # number と slug から導出されるため、属性間の不整合が発生しない。
           # システムファイル（number=nil）の場合は slug のみを返す。
-          def basename = number ? (slug ? "#{number}-#{slug}" : number) : slug
+          def basename
+            if number
+              slug ? "#{number}-#{slug}" : number
+            else
+              slug
+            end
+          end
 
           # valid フラグの述語メソッド。
           def valid? = valid
@@ -42,12 +47,12 @@ module Vivlio
           # システム予約ファイルの kind マッピング。
           # カタログに載らない特殊ファイルを仮想 Entry として解決するために使用。
           SYSTEM_FILE_KINDS = {
-            '_titlepage'    => :titlepage,
-            '_legalpage'    => :legalpage,
-            '_colophon'     => :colophon,
-            '_indexpage'    => :indexpage,
+            '_titlepage' => :titlepage,
+            '_legalpage' => :legalpage,
+            '_colophon' => :colophon,
+            '_indexpage' => :indexpage,
             '_glossarypage' => :glossarypage,
-            '_toc'          => :toc
+            '_toc' => :toc
           }.freeze
 
           # .cache/vs/ に生成されるシステムページ（contents/ ではなくキャッシュに配置）
@@ -99,19 +104,20 @@ module Vivlio
               case n
               in /\A(\d+)\z/
                 # 数字のみ: ゼロ埋め
-                format('%02d', $1.to_i)
+                format('%02d', ::Regexp.last_match(1).to_i)
               in /\A(\d+)-(\d+)\z/
                 # 範囲指定: 展開（降順にも対応）
-                s, e = $1.to_i, $2.to_i
+                s = ::Regexp.last_match(1).to_i
+                e = ::Regexp.last_match(2).to_i
                 (s <= e ? s..e : e..s).map { format('%02d', it) }
               in /\A(\d+)([-_].+)\z/
                 # 番号+スラグ: 番号部分をゼロ埋め
-                "#{format('%02d', $1.to_i)}#{$2}"
+                "#{format('%02d', ::Regexp.last_match(1).to_i)}#{::Regexp.last_match(2)}"
               else
                 # その他: そのまま（invalid として後で処理される可能性あり）
                 n
               end
-            end.reject { it.empty? }.uniq
+            end.reject(&:empty?).uniq
           end
 
           # --- Phase 2: Catalog Loading (カタログ読み込み) ---
@@ -159,19 +165,17 @@ module Vivlio
             return instantiate_system_entry(token, :part_title) if token.match?(/\A_part\d+\z/)
 
             # 2. slug のみ指定された場合は catalog / contents から探索
-            unless token.match?(/\A\d+/)
-              return match_slug_entry(token, catalog)
-            end
+            return match_slug_entry(token, catalog) unless token.match?(/\A\d+/)
 
             # 2. トークンの形式を解析（番号のみ or 番号+スラッグ）
             if token =~ /\A(\d+)[-_](.+)\z/
               # 番号+スラッグ形式: 完全一致を要求
-              token_num = format('%02d', $1.to_i)
-              token_slug = $2
+              token_num = format('%02d', ::Regexp.last_match(1).to_i)
+              token_slug = ::Regexp.last_match(2)
               found = catalog.find { it.number == token_num && it.slug == token_slug }
               return found if found
+
               # カタログにない場合、新規エントリとして生成
-              return instantiate_entry(token, 'NEW', :chapter, in_catalog: false)
             else
               # 番号のみ形式: 番号でマッチ
               token_num = format('%02d', token.to_i)
@@ -195,8 +199,8 @@ module Vivlio
               end
 
               # どちらも見つからない場合、番号のみの新規エントリとして生成
-              return instantiate_entry(token, 'NEW', :chapter, in_catalog: false)
             end
+            instantiate_entry(token, 'NEW', :chapter, in_catalog: false)
           end
 
           def match_slug_entry(token, catalog)
@@ -238,7 +242,8 @@ module Vivlio
             # 形式チェック: 数字で始まり、オプションで -slug または _slug が続く
             return instantiate_invalid_entry(basename) unless basename =~ /\A(\d+)(?:[-_](.+))?\z/
 
-            num, slug = $1, $2
+            num = ::Regexp.last_match(1)
+            slug = ::Regexp.last_match(2)
             number = format('%02d', num.to_i)
             # slug がある場合は number-slug、ない場合は number のみ
             actual_basename = slug ? "#{number}-#{slug}" : number

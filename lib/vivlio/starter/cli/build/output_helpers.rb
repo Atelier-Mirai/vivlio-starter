@@ -23,15 +23,15 @@ module Vivlio
       module BuildCommands
         # ビルド結果出力ヘルパーモジュール
         module OutputHelpers
-          STEP5_LABEL        = 'Step  5 (convert sections html)'.freeze
-          STEP5B_LABEL       = 'Step 5b (generate part title pages)'.freeze
-          STEP5_AGG_LABEL    = 'Step  5 (generate sections / part pages)'.freeze
+          STEP5_LABEL        = 'Step  5 (convert sections html)'
+          STEP5B_LABEL       = 'Step 5b (generate part title pages)'
+          STEP5_AGG_LABEL    = 'Step  5 (generate sections / part pages)'
 
           # ビルドタイミングをコンソールに出力する（debugモード時のみ）
           def print_build_timings(build_timings)
             # debugモード時のみ表示
             return unless Common.current_log_level >= 3
-            
+
             aggregated, label_groups = aggregate_step_timings(build_timings)
             return if aggregated.empty?
 
@@ -114,7 +114,6 @@ module Vivlio
             2
           end
 
-          
           def aggregate_step_timings(build_timings)
             label_groups = {}
             aggregated = []
@@ -122,7 +121,7 @@ module Vivlio
                           build_timings.any? { |label, _| label == STEP5B_LABEL }
 
             build_timings.each do |label, duration|
-              if needs_merge && (label == STEP5_LABEL || label == STEP5B_LABEL)
+              if needs_merge && [STEP5_LABEL, STEP5B_LABEL].include?(label)
                 entry = aggregated.find { |(lbl, _)| lbl == STEP5_AGG_LABEL }
                 if entry
                   entry[1] += duration

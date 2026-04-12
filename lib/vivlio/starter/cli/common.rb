@@ -48,7 +48,7 @@ module Vivlio
         # ================================================================
         # Recursive Data Wrapper (Ruby 4.0 Style)
         # ================================================================
-        
+
         # Hashを再帰的にDataオブジェクトに変換するヘルパー
         # ドット記法と [] アクセスの両方を提供します
         def wrap_config(input)
@@ -61,22 +61,25 @@ module Vivlio
               def [](key) = respond_to?(key) ? public_send(key) : nil
               # パターンマッチング(deconstruct_keys)への対応
               def deconstruct_keys(keys) = to_h.slice(*keys)
+
               # dig メソッドの提供（既存コードとの互換性）
               def dig(*keys)
                 keys.reduce(self) do |obj, key|
                   return nil unless obj.respond_to?(:[])
+
                   obj[key]
                 end
               end
+
               # fetch メソッドの提供
               def fetch(key, default = nil)
                 val = self[key]
                 val.nil? ? default : val
               end
             end
-            cls.new(**input.transform_values { wrap_config(_1) })
+            cls.new(**input.transform_values { wrap_config(it) })
           in Array
-            input.map { wrap_config(_1) }
+            input.map { wrap_config(it) }
           else
             input
           end
@@ -88,9 +91,7 @@ module Vivlio
 
         def ensure_required_yaml_files!
           REQUIRED_YAML_FILES.each do |path|
-            unless File.file?(path)
-              abort_with_error("必須設定ファイルが見つかりません: #{path}")
-            end
+            abort_with_error("必須設定ファイルが見つかりません: #{path}") unless File.file?(path)
 
             case YAML.safe_load(File.read(path, encoding: 'utf-8'), aliases: true, symbolize_names: true)
             in Hash | Array
@@ -124,31 +125,38 @@ module Vivlio
         end
 
         # --- Hardcoded Defaults (Data objects for immutability) ---
-        def default_directories = {
-          config: CONFIG_DIR,
-          contents: CONTENTS_DIR,
-          stylesheets: STYLESHEETS_DIR,
-          images: IMAGES_DIR,
-          codes: CODES_DIR,
-          templates: TEMPLATES_DIR,
-          covers: COVERS_DIR
-        }
+        def default_directories
+          {
+            config: CONFIG_DIR,
+            contents: CONTENTS_DIR,
+            stylesheets: STYLESHEETS_DIR,
+            images: IMAGES_DIR,
+            codes: CODES_DIR,
+            templates: TEMPLATES_DIR,
+            covers: COVERS_DIR
+          }
+        end
 
         def default_cache = { dir: CACHE_DIR, enabled: true }
         def default_commands = { vfm: VFM_COMMAND }
         def default_files = { post_replace: POST_REPLACE_FILE }
-        def default_vivliostyle = {
-          quiet: true,
-          reading_progression: 'ltr',
-          entries_file: 'entries.js',
-          config_file: VIVLIOSTYLE_CONFIG_FILE
-        }
+
+        def default_vivliostyle
+          {
+            quiet: true,
+            reading_progression: 'ltr',
+            entries_file: 'entries.js',
+            config_file: VIVLIOSTYLE_CONFIG_FILE
+          }
+        end
 
         # VFM (Vivliostyle Flavored Markdown) の既定値設定
         # 日本語文章の直感的な執筆体験を提供するため、hardLineBreaks をデフォルト有効化
-        def default_vfm = {
-          hardLineBreaks: true
-        }
+        def default_vfm
+          {
+            hardLineBreaks: true
+          }
+        end
 
         def apply_page_preset(cfg)
           case cfg
@@ -159,7 +167,7 @@ module Vivlio
             presets = load_page_presets
             case presets[preset_name.to_sym]
             in Hash => selected
-              overrides = page_cfg.reject { PAGE_PRESET_EXCLUDE_KEYS.include?(_1) }
+              overrides = page_cfg.reject { PAGE_PRESET_EXCLUDE_KEYS.include?(it) }
               merged = selected.merge(overrides).merge(page_cfg)
               cfg.merge(page: normalize_page_units(merged))
             else
@@ -196,13 +204,13 @@ module Vivlio
 
         def normalize_line_height(pcfg)
           case [pcfg[:base_line_height]&.to_s&.strip, pt_value(pcfg[:base_font_size])]
-          in [nil | "", _]         then nil
+          in [nil | '', _]         then nil
           in [_, nil]              then pcfg[:base_line_height]
           in [/pt\z/i => s, _]     then s
           in [/q\z/i => s, _]      then q_to_pt(s)
           in [/em\z/i => s, f_pt]  then format_pt(f_pt * s.to_f)
           in [/\A[\d.]+\z/ => s, f_pt] then format_pt(f_pt * s.to_f)
-          in [other, _]            then other
+          in [other, _] then other
           end
         end
 
@@ -216,7 +224,7 @@ module Vivlio
 
         def current_log_level
           case ARGV
-          in [*, /^--log=(.+)$/, *] then LEVELS[$1.downcase] || 2
+          in [*, /^--log=(.+)$/, *] then LEVELS[::Regexp.last_match(1).downcase] || 2
           in [*, '--log', level, *] if LEVELS.key?(level) then LEVELS[level]
           in [*, '--log', *] then 2
           else 1
@@ -274,6 +282,7 @@ module Vivlio
 
         def resolve_path_from_root(path)
           return nil if blank?(path)
+
           pn = Pathname.new(path)
           pn = Pathname.new(Dir.pwd).join(pn) unless pn.absolute?
           pn.cleanpath.to_s
@@ -283,6 +292,7 @@ module Vivlio
 
         def relative_path_from_root(path)
           return path if blank?(path)
+
           Pathname.new(path).relative_path_from(Pathname.new(Dir.pwd)).to_s
         rescue StandardError
           path.to_s
@@ -300,6 +310,7 @@ module Vivlio
 
         def to_roman_lower(n)
           return '' if n.to_i <= 0
+
           n = n.to_i
           mapping = [
             [1000, 'm'], [900, 'cm'], [500, 'd'], [400, 'cd'],
@@ -315,6 +326,7 @@ module Vivlio
         def appendix_number_to_letter(num)
           n = num.to_i
           return nil unless n.between?(90, 98)
+
           ('a'..'i').to_a[n - 90]
         rescue StandardError
           nil
@@ -347,6 +359,7 @@ module Vivlio
 
         def normalize_page_size!(page_cfg)
           return page_cfg unless page_cfg.is_a?(Hash)
+
           w, h = resolve_page_size(page_cfg)
           page_cfg[:width] = w
           page_cfg[:height] = h
@@ -366,7 +379,9 @@ module Vivlio
           filename = project_name.to_s.dup
           filename += '_print' if target == 'print_pdf'
           filename += "_v#{project_version}" if include_version && !blank?(project_version)
-          filename += (suffix.to_s.start_with?('_') ? suffix : "_#{suffix}") if suffix && !blank?(suffix) && target == 'pdf'
+          if suffix && !blank?(suffix) && target == 'pdf'
+            filename += (suffix.to_s.start_with?('_') ? suffix : "_#{suffix}")
+          end
 
           ext = case target
                 when 'pdf', 'print_pdf' then '.pdf'
@@ -433,6 +448,7 @@ module Vivlio
             cur = cur[k.to_sym]
           end
           return default if cur.nil?
+
           truthy?(cur)
         rescue StandardError
           default
@@ -440,7 +456,7 @@ module Vivlio
 
         def abort_with_error(msg)
           log_error(msg)
-          log_error("コマンドを中止します")
+          log_error('コマンドを中止します')
           exit 1
         end
 
@@ -448,14 +464,14 @@ module Vivlio
         # @param silent [Boolean] 初期ロード時はログ出力を抑制
         def reload_configuration!(silent: false)
           ensure_required_yaml_files!
-          
+
           # load_configの結果をDataオブジェクトにラップしてフリーズ
           new_config = wrap_config(load_config).freeze
-          
+
           # 定数の再定義（既存なら削除して警告を回避）
           remove_const(:CONFIG) if const_defined?(:CONFIG)
           const_set(:CONFIG, new_config)
-          
+
           puts("🧪 Configuration reloaded: #{CONFIG_FILE}") if !silent && current_log_level >= 3
         end
 
@@ -515,6 +531,7 @@ module Vivlio
         def post_replace_file_path
           file = post_replace_file
           return nil if blank?(file)
+
           pn = Pathname.new(file)
           base = Pathname.new(config_dir)
           pn = base.join(pn) unless pn.absolute?
@@ -533,35 +550,35 @@ module Vivlio
         def validate_cover_settings
           theme = cover_theme
           unless theme
-            log_error("output.cover 設定が見つかりません")
+            log_error('output.cover 設定が見つかりません')
             return false
           end
 
           # 標準テーマの場合は有効
           return true if %w[light dark].include?(theme)
-          
+
           # masterテーマは特別扱い（既存のmaster.pngファイルを使用）
           if theme == 'master'
             front_path = File.join(covers_dir, "frontcover_#{theme}.png")
             back_path  = File.join(covers_dir, "backcover_#{theme}.png")
-            
+
             unless File.exist?(front_path) && File.exist?(back_path)
               log_error("マスター画像 '#{theme}' のPNGファイルが見つかりません")
               return false
             end
             return true
           end
-          
+
           # カスタムテーマの場合は命名規則をチェック
           unless theme.match?(/\A[a-z0-9_]+\z/)
             log_error("テーマ名 '#{theme}' は無効な形式です")
             return false
           end
-          
+
           # カスタムテーマの場合はPNGファイルの存在を確認
           front_path = File.join(covers_dir, "frontcover_#{theme}.png")
           back_path  = File.join(covers_dir, "backcover_#{theme}.png")
-          
+
           unless File.exist?(front_path) && File.exist?(back_path)
             log_error("カスタム画像 '#{theme}' のPNGファイルが見つかりません")
             return false

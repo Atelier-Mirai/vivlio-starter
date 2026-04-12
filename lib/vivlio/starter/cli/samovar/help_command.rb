@@ -72,7 +72,7 @@ module Vivlio
             puts <<~HEADER
               📚 Vivlio Starter - 技術書執筆のためのCLIツール 🛠️
               使い方: vs <command> [options]
-              
+
             HEADER
 
             COMMAND_CATEGORIES.each do |category, commands|

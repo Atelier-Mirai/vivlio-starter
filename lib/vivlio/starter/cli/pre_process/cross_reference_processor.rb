@@ -275,7 +275,7 @@ module Vivlio
               seen[token] = true
               token
             end
-            tokens.sort_by { |tkn| resolver.resolve_file(tkn).number&.to_i || 0 }
+            tokens.sort_by { |tkn| resolver.resolve_file(tkn).number.to_i }
           end
           private_class_method :detect_main_chapters_from_files
 

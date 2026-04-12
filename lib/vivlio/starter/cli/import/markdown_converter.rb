@@ -90,20 +90,20 @@ module Vivlio
 
           # <img> タグを Markdown 画像記法に変換
           def convert_img_tags(text)
-            text.gsub(/<img src=".*\/([^\/]+)\.(?:png|jpg|jpeg|gif)">/i) do
+            text.gsub(%r{<img src=".*/([^/]+)\.(?:png|jpg|jpeg|gif)">}i) do
               file_name_no_ext = Regexp.last_match(1)
               "![](#{file_name_no_ext}.webp)"
             end
           end
 
           FENCE_BLOCK_DEFINITIONS = {
-            'abstract'   => { klass: 'chapter-lead' },
-            'tip'        => { klass: 'tip' },
-            'note'       => { klass: 'note' },
-            'notice'     => { klass: 'notice' },
-            'centering'  => { klass: 'centering' },
+            'abstract' => { klass: 'chapter-lead' },
+            'tip' => { klass: 'tip' },
+            'note' => { klass: 'note' },
+            'notice' => { klass: 'notice' },
+            'centering' => { klass: 'centering' },
             'flushright' => { klass: 'text-right' },
-            'column'     => { klass: 'column', separator: "\n" }
+            'column' => { klass: 'column', separator: "\n" }
           }.freeze
 
           # フェンス記法（[abstract], [tip], [note], [column] 等）を変換
@@ -113,6 +113,7 @@ module Vivlio
               loop do
                 updated = convert_block(result, tag, config)
                 break if updated == result
+
                 result = updated
               end
             end
@@ -124,11 +125,11 @@ module Vivlio
             klass = config.fetch(:klass)
             separator = config.fetch(:separator, "\n\n")
 
-            pattern = /
+            pattern = %r{
               ^[ \t]*\[#{tag}\](?:[ \t]+(?<title>[^\r\n]+?))?[ \t]*\r?\n
               (?<body>.*?)
-              \r?\n[ \t]*\[\/#{tag}\][ \t]*$
-            /mix
+              \r?\n[ \t]*\[/#{tag}\][ \t]*$
+            }mix
 
             text.gsub(pattern) do
               match = Regexp.last_match
@@ -141,19 +142,20 @@ module Vivlio
 
           # インラインに付与されたタグを除去してタイトル文字列だけを返す
           def extract_inline_title(raw)
-            raw.to_s.strip.gsub(/<\/?[^>]+>/, '').strip
+            raw.to_s.strip.gsub(%r{</?[^>]+>}, '').strip
           end
 
           # 既に強調済みのタイトルはそのまま残し、未強調なら **...** を付与する
           def emphasize_title(title)
             normalized = title.to_s.strip
             return '' if normalized.empty?
+
             normalized.match?(/\A\*\*.*\*\*\z/) ? normalized : "**#{normalized}**"
           end
 
           # [quote] ブロックの変換
           def convert_quote_blocks(text)
-            text.gsub(/^\[quote\][^\n]*\n(.*?)^\[\/quote\]\s*$/m) do
+            text.gsub(%r{^\[quote\][^\n]*\n(.*?)^\[/quote\]\s*$}m) do
               inner = Regexp.last_match(1).gsub(/\A\n+|\n+\z/, '')
               inner.lines.map { |l| "> #{l.rstrip}".strip }.join("\n") + "\n\n"
             end
@@ -161,7 +163,7 @@ module Vivlio
 
           # コードブロックキャプションの変換
           def convert_code_captions(text)
-            text.gsub(/<span class="caption">▼([^<]+)<\/span>\s*\n```/i) do
+            text.gsub(%r{<span class="caption">▼([^<]+)</span>\s*\n```}i) do
               caption = Regexp.last_match(1).strip
               ext = File.extname(caption).delete('.').downcase
               ext = 'text' if ext.empty?
@@ -171,7 +173,7 @@ module Vivlio
 
           # Markdown 画像パスの正規化
           def normalize_image_paths(text)
-            text.gsub(/!\[((?:[^\[\]]|\[[^\]]*\])*)\]\(\.\/images\/[^)]+\/([^\/]+)\.(?:png|jpg|jpeg|gif)\)/i) do
+            text.gsub(%r{!\[((?:[^\[\]]|\[[^\]]*\])*)\]\(\./images/[^)]+/([^/]+)\.(?:png|jpg|jpeg|gif)\)}i) do
               alt = Regexp.last_match(1)
               filename = Regexp.last_match(2)
               "![#{alt}](#{filename}.webp)"
@@ -180,10 +182,10 @@ module Vivlio
 
           # dl/dt/dd タグを Markdown 箇条書きに変換
           def convert_definition_lists(text)
-            text.gsub(/<dl>\s*(.*?)\s*<\/dl>/m) do
+            text.gsub(%r{<dl>\s*(.*?)\s*</dl>}m) do
               dl_content = Regexp.last_match(1)
               items = []
-              dl_content.scan(/<dt>([^<]*)<\/dt>\s*<dd>\s*(.*?)\s*<\/dd>/m) do |dt, dd|
+              dl_content.scan(%r{<dt>([^<]*)</dt>\s*<dd>\s*(.*?)\s*</dd>}m) do |dt, dd|
                 term = dt.strip
                 desc = dd.strip.gsub(/\n\s*/, "\n    ")
                 if desc.include?("\n")
@@ -192,20 +194,20 @@ module Vivlio
                 end
                 items << "- **#{term}**\n    #{desc}"
               end
-              items.join("\n\n") + "\n"
+              "#{items.join("\n\n")}\n"
             end
           end
 
           # HTML テーブルを Markdown テーブルに変換
           def convert_html_tables(text)
-            text.gsub(/<div class="table[^"]*">\s*(?:<p class="caption">([^<]*)<\/p>)?\s*<table>(.*?)<\/table>\s*<\/div>/m) do
+            text.gsub(%r{<div class="table[^"]*">\s*(?:<p class="caption">([^<]*)</p>)?\s*<table>(.*?)</table>\s*</div>}m) do
               caption = Regexp.last_match(1)
               table_html = Regexp.last_match(2)
 
               rows = []
-              table_html.scan(/<tr[^>]*>(.*?)<\/tr>/m) do |row_content|
+              table_html.scan(%r{<tr[^>]*>(.*?)</tr>}m) do |row_content|
                 row = row_content[0]
-                cells = row.scan(/<t[hd][^>]*>(.*?)<\/t[hd]>/m).map { |c| c[0].strip }
+                cells = row.scan(%r{<t[hd][^>]*>(.*?)</t[hd]>}m).map { |c| c[0].strip }
                 rows << cells
               end
 
@@ -217,7 +219,7 @@ module Vivlio
               md_table << "| #{rows[0].map { '---' }.join(' | ')} |"
               rows[1..].each { |row| md_table << "| #{row.join(' | ')} |" }
 
-              md_table.join("\n") + "\n"
+              "#{md_table.join("\n")}\n"
             end
           end
 
@@ -247,7 +249,7 @@ module Vivlio
           # @return [String] 推定された言語タグ
           def detect_lang(code)
             # シェルコマンドの判定（$ や % で始まる行があれば zsh）
-            return 'zsh' if code.match?(/^[ \t]*[\$%][ \t]+/)
+            return 'zsh' if code.match?(/^[ \t]*[$%][ \t]+/)
 
             begin
               require 'rouge'
@@ -258,10 +260,10 @@ module Vivlio
               mapping = {
                 'javascript' => 'js',
                 'typescript' => 'ts',
-                'markdown'   => 'md',
-                'plaintext'  => 'text',
-                'bash'       => 'zsh',
-                'shell'      => 'zsh'
+                'markdown' => 'md',
+                'plaintext' => 'text',
+                'bash' => 'zsh',
+                'shell' => 'zsh'
               }
 
               mapping.fetch(tag, tag)

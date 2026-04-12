@@ -63,7 +63,6 @@ module Vivlio
             (parent&.options || {}).merge(options || {})
           end
         end
-
       end
     end
   end

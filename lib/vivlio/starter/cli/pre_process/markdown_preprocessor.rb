@@ -346,9 +346,9 @@ module Vivlio
             # 複数行対応のためマルチラインモードを使用
             context.content = context.content.gsub(/<!--.*?-->/m, '')
             removed_length = original_length - context.content.length
-            if removed_length > 0
-              Common.log_success("HTMLコメントを削除しました（#{removed_length} 文字）")
-            end
+            return unless removed_length.positive?
+
+            Common.log_success("HTMLコメントを削除しました（#{removed_length} 文字）")
           end
 
           # 加工済みコンテンツを書き戻す

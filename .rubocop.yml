@@ -1,5 +1,5 @@
 AllCops:
-  TargetRubyVersion: 3.4
+  TargetRubyVersion: 3.5
   NewCops: enable
   Exclude:
     - 'bin/**/*'
@@ -12,3 +12,7 @@ Layout/LineLength:
 
 Metrics/MethodLength:
   Max: 25
+
+# nil になりうる変数に .zero? を適用するとNoMethodErrorになるため無効化
+Style/NumericPredicate:
+  Enabled: false

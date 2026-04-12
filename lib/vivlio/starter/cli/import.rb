@@ -77,21 +77,15 @@ module Vivlio
 
         # Starter ディレクトリの検証
         def validate_starter_directory!
-          unless Dir.exist?(@starter_dir)
-            raise "Starter ディレクトリが見つかりません: #{@starter_dir}"
-          end
+          raise "Starter ディレクトリが見つかりません: #{@starter_dir}" unless Dir.exist?(@starter_dir)
 
           # 必須スクリプトの存在確認
           markdownmaker = File.join(@starter_dir, 'lib/ruby/review-markdownmaker.rb')
           markdownbuilder = File.join(@starter_dir, 'lib/ruby/review-markdownbuilder.rb')
 
-          unless File.exist?(markdownmaker)
-            raise "変換スクリプトが見つかりません: #{markdownmaker}"
-          end
+          raise "変換スクリプトが見つかりません: #{markdownmaker}" unless File.exist?(markdownmaker)
 
-          unless File.exist?(markdownbuilder)
-            raise "変換スクリプトが見つかりません: #{markdownbuilder}"
-          end
+          raise "変換スクリプトが見つかりません: #{markdownbuilder}" unless File.exist?(markdownbuilder)
 
           Common.log_info("Starter ディレクトリ: #{@starter_dir}")
         end
@@ -109,7 +103,7 @@ module Vivlio
             return true
           end
 
-          Common.log_warn("以下のディレクトリを削除してインポートを行います:")
+          Common.log_warn('以下のディレクトリを削除してインポートを行います:')
           dirs_to_delete.each { |d| Common.log_warn("  - #{d}/") }
 
           print '続行しますか？ [y/N]: '
@@ -130,10 +124,8 @@ module Vivlio
 
             FileUtils.rm_rf(dir)
             Common.log_info("  削除: #{dir}/")
-          end
 
-          # ディレクトリを再作成
-          %w[contents images codes].each do |dir|
+            # ディレクトリを再作成
             FileUtils.mkdir_p(dir)
           end
         end
@@ -149,12 +141,10 @@ module Vivlio
           # Starter ディレクトリで rake markdown を実行
           Dir.chdir(@starter_dir) do
             config_file = File.join(@starter_dir, 'config.yml')
-            unless File.exist?(config_file)
-              raise "config.yml が見つかりません: #{config_file}"
-            end
+            raise "config.yml が見つかりません: #{config_file}" unless File.exist?(config_file)
 
             # bookname を取得して出力ディレクトリを特定
-            config = YAML.safe_load(File.read(config_file), permitted_classes: [Symbol])
+            config = YAML.safe_load_file(config_file, permitted_classes: [Symbol])
             bookname = config['bookname'] || 'book'
             md_output_dir = "#{bookname}-md"
 
@@ -166,8 +156,8 @@ module Vivlio
               Common.log_info('  rake markdown を実行中...')
               # RUBYOPT をクリアして環境の競合を回避
               env = { 'RUBYOPT' => nil, 'BUNDLE_GEMFILE' => nil }
-              result = system(env, 'rake', 'markdown')
-              
+              system(env, 'rake', 'markdown')
+
               # 生成された md ファイルを確認
               unless Dir.exist?(md_output_dir) && !Dir.glob(File.join(md_output_dir, '*.md')).empty?
                 raise "Markdown 出力ディレクトリが見つからないか空です: #{md_output_dir}\n" \
@@ -212,12 +202,12 @@ module Vivlio
 
           starter_source = File.join(@starter_dir, 'source')
           unless Dir.exist?(starter_source)
-            Common.log_info("  source/ ディレクトリが見つかりません（スキップ）")
+            Common.log_info('  source/ ディレクトリが見つかりません（スキップ）')
             return
           end
 
           FileUtils.cp_r(Dir.glob(File.join(starter_source, '*')), 'codes/')
-          Common.log_info("  source/ の内容を codes/ にコピーしました")
+          Common.log_info('  source/ の内容を codes/ にコピーしました')
         end
 
         # config.yml / config-starter.yml の変換と表紙 PDF のコピー
@@ -234,7 +224,7 @@ module Vivlio
           starter_config_starter = File.join(@starter_dir, 'config-starter.yml')
           return unless File.exist?(starter_config_starter)
 
-          config_starter = YAML.safe_load(File.read(starter_config_starter), permitted_classes: [Symbol])
+          config_starter = YAML.safe_load_file(starter_config_starter, permitted_classes: [Symbol])
           cover_filename = config_starter.dig('starter', 'frontcover_pdffile')
           return unless cover_filename
 
@@ -245,11 +235,11 @@ module Vivlio
           end
 
           # 表紙 PDF をコピー
-          if Import::ImageProcessor.copy_front_cover!(@starter_dir, cover_filename)
-            # book.yml の output.cover.front を Vivlio 既定の frontcover_rgb.pdf に合わせる
-            Import::YamlProcessor.update_cover_config!('frontcover_rgb.pdf')
-            Common.log_info('  config/book.yml の output.cover.front を frontcover_rgb.pdf に更新しました')
-          end
+          return unless Import::ImageProcessor.copy_front_cover!(@starter_dir, cover_filename)
+
+          # book.yml の output.cover.front を Vivlio 既定の frontcover_rgb.pdf に合わせる
+          Import::YamlProcessor.update_cover_config!('frontcover_rgb.pdf')
+          Common.log_info('  config/book.yml の output.cover.front を frontcover_rgb.pdf に更新しました')
         end
 
         def cleanup_starter_markdown_dir!
@@ -263,7 +253,6 @@ module Vivlio
         rescue StandardError => e
           Common.log_warn("  #{@md_output_dir}/ の削除に失敗しました: #{e.message}")
         end
-
       end
     end
   end

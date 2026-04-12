@@ -42,12 +42,12 @@ module Vivlio
               features = node.feature.split(',')
               reading = features[7] if features.size > 7
 
-              if reading && reading != '*' && !reading.empty?
-                yomi_parts << katakana_to_hiragana(reading)
-              else
-                # 読みが取得できない場合は表層形をそのまま使用
-                yomi_parts << node.surface
-              end
+              yomi_parts << if reading && reading != '*' && !reading.empty?
+                              katakana_to_hiragana(reading)
+                            else
+                              # 読みが取得できない場合は表層形をそのまま使用
+                              node.surface
+                            end
             end
 
             result = yomi_parts.join

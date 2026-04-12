@@ -72,7 +72,7 @@ module Vivlio
           cache_requested = opts[:cache] || all_mode
           purge_requested = opts[:purge] || all_mode
           variant_cleanup_requested = opts[:generated_images] || all_mode
-          index_dictionaries_requested = opts[:index_dictionaries]  # --all には含めない
+          index_dictionaries_requested = opts[:index_dictionaries] # --all には含めない
 
           # カバー画像の削除（マスター画像は保持）
           clean_cover_files if cover_requested
@@ -100,27 +100,27 @@ module Vivlio
                 Common.log_info("キャッシュディレクトリは存在しません: #{dir}")
               end
 
-            # metrics キャッシュも削除
-            metrics_cache = File.join('.cache', 'metrics')
-            if File.directory?(metrics_cache)
-              Common.log_action("metrics キャッシュを削除中: #{metrics_cache}")
-              FileUtils.rm_rf(metrics_cache)
-              Common.log_info("#{metrics_cache} を削除しました")
-            end
+              # metrics キャッシュも削除
+              metrics_cache = File.join('.cache', 'metrics')
+              if File.directory?(metrics_cache)
+                Common.log_action("metrics キャッシュを削除中: #{metrics_cache}")
+                FileUtils.rm_rf(metrics_cache)
+                Common.log_info("#{metrics_cache} を削除しました")
+              end
 
-            # 索引のキャッシュも削除
-            index_cache = '_index_matches.yml'
-            if File.exist?(index_cache)
-              FileUtils.rm_f(index_cache)
-              Common.log_info("#{index_cache} を削除しました")
-            end
+              # 索引のキャッシュも削除
+              index_cache = '_index_matches.yml'
+              if File.exist?(index_cache)
+                FileUtils.rm_f(index_cache)
+                Common.log_info("#{index_cache} を削除しました")
+              end
 
-            # 索引ページもキャッシュ削除時に削除対象とする
-            index_page = '_indexpage.html'
-            if File.exist?(index_page)
-              FileUtils.rm_f(index_page)
-              Common.log_info("#{index_page} を削除しました")
-            end
+              # 索引ページもキャッシュ削除時に削除対象とする
+              index_page = '_indexpage.html'
+              if File.exist?(index_page)
+                FileUtils.rm_f(index_page)
+                Common.log_info("#{index_page} を削除しました")
+              end
 
               if File.directory?('.vivliostyle')
                 Common.log_action('.vivliostyle ディレクトリを削除中...')
@@ -343,7 +343,7 @@ module Vivlio
           Dir.glob(File.join(covers_dir, '*.svg')).each do |file_path|
             next unless File.file?(file_path)
 
-            basename = File.basename(file_path, '.svg')  # 例: frontcover_dark
+            basename = File.basename(file_path, '.svg') # 例: frontcover_dark
             # *_light.svg / *_dark.svg → bundled テンプレートからの生成物
             is_bundled_generated = bundled_themes.any? { |t| basename.end_with?("_#{t}") }
             # *_rendered.svg → apply_text_placeholders_to_svg の中間ファイル

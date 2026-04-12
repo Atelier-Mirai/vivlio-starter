@@ -30,9 +30,7 @@ module Vivlio
             classes = [file_type]
 
             # 最初の本文章には chapter-first クラスを追加
-            if entry.kind == :chapter && first_main_chapter?(html_file)
-              classes << 'chapter-first'
-            end
+            classes << 'chapter-first' if entry.kind == :chapter && first_main_chapter?(html_file)
 
             class_attr = classes.join(' ')
 
@@ -60,7 +58,7 @@ module Vivlio
           # catalog.yml から最初の本文章を検出
           # @return [String, nil] 最初の本文章の basename、または nil
           def detect_first_main_chapter
-            @first_main_chapter ||= begin
+            @detect_first_main_chapter ||= begin
               require_relative '../build/catalog_loader'
               catalog = Build::CatalogLoader.load_catalog
               chapters = catalog['CHAPTERS']

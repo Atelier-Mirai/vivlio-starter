@@ -239,14 +239,14 @@ module Vivlio
             # 巻末の順序: 用語集 → 終わりに → 索引
             # 索引・用語集が無効の場合は除外
             backmatter_sequence = if IndexCommands.index_enabled?
-                                   %w[_glossarypage 99-postface _indexpage]
-                                 else
-                                   %w[99-postface]
-                                 end
-            
+                                    %w[_glossarypage 99-postface _indexpage]
+                                  else
+                                    %w[99-postface]
+                                  end
+
             # 巻末ページを除外した章順序
             main_chapters = chapter_order.reject { |bn| backmatter_sequence.include?(bn) }
-            
+
             (frontmatter_sequence + main_chapters + backmatter_sequence).uniq
           end
 
@@ -325,7 +325,7 @@ module Vivlio
               # 目次の位置をテキスト検索で特定
               toc_start = search_helpers[:search_markers].call(['目次'], 3, total_pages)
               if toc_start && toc_start > 3
-                preface_pages = toc_start - 3  # 前書きのページ数を推測
+                preface_pages = toc_start - 3 # 前書きのページ数を推測
               end
             end
 
@@ -335,7 +335,7 @@ module Vivlio
             resolver = TokenResolver::Resolver.new
             first_chapter_bn = chapter_order.find do |token|
               entry = resolver.resolve_file(token)
-              entry.number && entry.number.to_i.between?(1, 89)
+              entry.number&.to_i&.between?(1, 89)
             end
 
             ctx = build_page_range_context(
@@ -527,7 +527,7 @@ module Vivlio
             return number_display unless number_display.empty?
 
             entry = TokenResolver::Resolver.new.resolve_file(basename)
-            return '' unless entry.number && entry.number.to_i.between?(11, 89)
+            return '' unless entry.number&.to_i&.between?(11, 89)
 
             "第#{entry.number.to_i - 10}章"
           end

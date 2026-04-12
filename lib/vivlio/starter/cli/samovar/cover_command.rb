@@ -27,7 +27,7 @@ module Vivlio
           def call
             return print_usage if options[:help]
 
-            case (target || 'auto')
+            case target || 'auto'
             when 'auto', 'all'
               CoverCommands.execute_generate(self)
             when 'a4'

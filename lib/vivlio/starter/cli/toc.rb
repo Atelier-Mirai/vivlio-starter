@@ -181,7 +181,7 @@ module Vivlio
             # （append_preface/append_postface で専用のエントリとして追加される）
             filtered_targets = targets.reject do |target|
               basename = File.basename(target)
-              basename == '00-preface.html' || basename == '99-postface.html'
+              ['00-preface.html', '99-postface.html'].include?(basename)
             end
 
             filtered_targets.each do |target|

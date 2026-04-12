@@ -33,9 +33,7 @@ module Vivlio
 
         warn error.message
 
-        if defined?(Vivlio::Starter::CLI::Common)
-          Vivlio::Starter::CLI::Common.log_warn('代わりに --help を表示します。')
-        end
+        Vivlio::Starter::CLI::Common.log_warn('代わりに --help を表示します。') if defined?(Vivlio::Starter::CLI::Common)
 
         if command.respond_to?(:print_usage)
           command.print_usage

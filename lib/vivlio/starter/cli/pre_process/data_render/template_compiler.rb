@@ -55,13 +55,13 @@ module Vivlio
               output = []
               records.each_with_index do |record, idx|
                 # レコード間に空行を挿入（最初のレコード以外）
-                output << "\n" if idx > 0
+                output << "\n" if idx.positive?
 
                 parts.each do |part|
                   case part
                   in { type: :static, content: }
                     # 静的行は最初のレコードでのみ出力
-                    output << content if idx == 0
+                    output << content if idx.zero?
                   in { type: :dynamic, content: }
                     # 動的行はレコードごとに展開
                     expanded = expand_line(content, record)
@@ -178,11 +178,12 @@ module Vivlio
               result = line.dup
 
               result.gsub!(VARIABLE_PATTERN) do |_match|
-                key = $1.to_sym
+                key = ::Regexp.last_match(1).to_sym
                 value = record[key]
                 if value.nil? || value.to_s.strip.empty?
                   return nil # 行ごとスキップ
                 end
+
                 value.to_s
               end
 
@@ -204,12 +205,12 @@ module Vivlio
                 # = key パターン
                 line.scan(VARIABLE_PATTERN).each do |(key)|
                   key_sym = key.to_sym
-                  unless available_keys.include?(key_sym)
-                    Common.log_error("テンプレートに存在しないキーが記述されています(#{location})")
-                    Common.log_error("  キー: #{key}")
-                    Common.log_error("  利用可能なキー: #{available_keys.join(', ')}")
-                    raise DataRenderError, "テンプレートに存在しないキーが記述されています: #{key}"
-                  end
+                  next if available_keys.include?(key_sym)
+
+                  Common.log_error("テンプレートに存在しないキーが記述されています(#{location})")
+                  Common.log_error("  キー: #{key}")
+                  Common.log_error("  利用可能なキー: #{available_keys.join(', ')}")
+                  raise DataRenderError, "テンプレートに存在しないキーが記述されています: #{key}"
                 end
 
                 # 画像記法内の変数
@@ -218,12 +219,12 @@ module Vivlio
                   next if literal_image?(src)
 
                   key_sym = src.to_sym
-                  unless available_keys.include?(key_sym)
-                    Common.log_error("テンプレートに存在しないキーが記述されています(#{location})")
-                    Common.log_error("  キー: #{src}")
-                    Common.log_error("  利用可能なキー: #{available_keys.join(', ')}")
-                    raise DataRenderError, "テンプレートに存在しないキーが記述されています: #{src}"
-                  end
+                  next if available_keys.include?(key_sym)
+
+                  Common.log_error("テンプレートに存在しないキーが記述されています(#{location})")
+                  Common.log_error("  キー: #{src}")
+                  Common.log_error("  利用可能なキー: #{available_keys.join(', ')}")
+                  raise DataRenderError, "テンプレートに存在しないキーが記述されています: #{src}"
                 end
               end
             end

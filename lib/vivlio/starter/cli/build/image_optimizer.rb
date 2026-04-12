@@ -42,7 +42,7 @@ module Vivlio
             Common.log_action('[Step 2] frontispiece / ornament の準備を開始します…')
 
             cfg = Common::CONFIG
-            theme_cfg = cfg.dig(:theme)
+            theme_cfg = cfg[:theme]
             unless theme_cfg
               Common.log_info('[Step 2] theme 設定が存在しないためスキップします')
               return
@@ -53,8 +53,8 @@ module Vivlio
             require_relative '../pre_process/css_updater'
             Vivlio::Starter::CLI::PreProcessCommands::FrontmatterGenerator.update_css_only!(cfg)
 
-            frontispiece_entry = theme_cfg.dig(:frontispiece)
-            ornament_entry = theme_cfg.dig(:ornament)
+            frontispiece_entry = theme_cfg[:frontispiece]
+            ornament_entry = theme_cfg[:ornament]
 
             # String の場合はそのまま、Data オブジェクトの場合は :image を取得
             frontispiece_source = frontispiece_entry.is_a?(String) ? frontispiece_entry : frontispiece_entry&.dig(:image)
@@ -63,7 +63,8 @@ module Vivlio
             generated_any = false
 
             if frontispiece_source && !frontispiece_source.to_s.strip.empty?
-              path = Vivlio::Starter::CLI::PreProcessCommands.resolve_frontispiece_path(frontispiece_source, allow_generation: true)
+              path = Vivlio::Starter::CLI::PreProcessCommands.resolve_frontispiece_path(frontispiece_source,
+                                                                                        allow_generation: true)
               Common.log_success("[Step 2] frontispiece を準備しました: #{path}")
               generated_any = true
             else
@@ -71,7 +72,8 @@ module Vivlio
             end
 
             if ornament_source && !ornament_source.to_s.strip.empty?
-              path = Vivlio::Starter::CLI::PreProcessCommands.resolve_ornament_path(ornament_source, allow_generation: true)
+              path = Vivlio::Starter::CLI::PreProcessCommands.resolve_ornament_path(ornament_source,
+                                                                                    allow_generation: true)
               Common.log_success("[Step 2] ornament を準備しました: #{path}")
               generated_any = true
             else

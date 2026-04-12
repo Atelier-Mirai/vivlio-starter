@@ -149,12 +149,16 @@ module Vivlio
         source_codes_dir    = File.join(scaffold_root, 'codes')
         source_chapter_tpl  = File.join(scaffold_root, 'chapter_templates')
         readme_template   ||= File.join(scaffold_root, 'README.md') if include_readme && readme_template.nil?
-        post_replace_source ||= File.join(gem_root, '_post_replace_list.yml') if include_post_replace && post_replace_source.nil?
-        gemfile_source    ||= File.join(scaffold_root, 'Gemfile') if include_gemfile && gemfile_source.nil?
-        viv_config_template ||= File.join(scaffold_root, 'vivliostyle.config.js') if copy_viv_config && viv_config_template.nil?
-        ci_workflow_source = if include_ci_workflow
-                               File.join(scaffold_root, '.github', 'workflows', 'build.yml')
-                             end
+        if include_post_replace && post_replace_source.nil?
+          post_replace_source ||= File.join(gem_root,
+                                            '_post_replace_list.yml')
+        end
+        gemfile_source ||= File.join(scaffold_root, 'Gemfile') if include_gemfile && gemfile_source.nil?
+        if copy_viv_config && viv_config_template.nil?
+          viv_config_template ||= File.join(scaffold_root,
+                                            'vivliostyle.config.js')
+        end
+        ci_workflow_source = (File.join(scaffold_root, '.github', 'workflows', 'build.yml') if include_ci_workflow)
 
         FileUtils.mkdir_p(dest)
         Array(directories).each do |dir|
@@ -286,9 +290,9 @@ module Vivlio
         end
 
         cfg = begin
-                YAML.load_file(config_path)
-              rescue StandardError
-                {}
+          YAML.load_file(config_path)
+        rescue StandardError
+          {}
         end
         cfg = {} unless cfg.is_a?(Hash)
         book_cfg = cfg['book'] || {}
@@ -419,7 +423,7 @@ module Vivlio
         js.gsub!(/(^\s*language:\s*)['"][^'"]*['"]/, "\\1'#{language}'")
         js.gsub!(/(^\s*readingProgression:\s*)['"][^'"]*['"]/, "\\1'#{reading_progression}'")
         js.gsub!(%r{(^\s*['"]\./output\.pdf['"])|(^\s*['"][^'"]*\.pdf['"])}, "'./#{output_file}'")
-        js.gsub!((/(^\s*output:\s*\[\s*)['"][^'"]*\.pdf['"](\s*\])/m), "\\1'./#{output_file}'\\2")
+        js.gsub!(/(^\s*output:\s*\[\s*)['"][^'"]*\.pdf['"](\s*\])/m, "\\1'./#{output_file}'\\2")
 
         File.write(viv_config_path, js, encoding: 'utf-8')
       end

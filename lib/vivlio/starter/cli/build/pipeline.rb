@@ -93,10 +93,8 @@ module Vivlio
               add_step('Step 12 (rename)',                      -> { run_step12_rename_only })
               add_step('Step 13 (print pdf)',                   -> { run_step13_print_pdf })
               # EPUB ターゲット時は EPUB → final clean の順
-              if epub_target?
-                add_step('Step E (generate epub)',              -> { run_step_epub })
-              end
-              add_step('Step 14 (final clean)',                 -> { run_final_clean })
+              add_step('Step E (generate epub)', -> { run_step_epub }) if epub_target?
+              add_step('Step 14 (final clean)', -> { run_final_clean })
             elsif print_pdf_target?
               # --- 入稿用のみ（閲覧用 PDF をスキップ） ---
               register_print_pdf_only_steps_with_epub
@@ -122,27 +120,41 @@ module Vivlio
             add_step('Step  0 (clean)',                       -> { run_step0_clean })
             add_step('Step  1 (optimize images)',             -> { run_step1_optimize_images })
             add_step('Step  2 (prepare theme images)',        -> { Build::ImageOptimizer.prepare_theme_images! })
-            add_step('Step  3 (preprocess sections)',         -> { Build::SectionBuilder.preprocess_sections!(entries) })
+            add_step('Step  3 (preprocess sections)',         lambda {
+              Build::SectionBuilder.preprocess_sections!(entries)
+            })
             add_step('Step  4 (index scan and build)',        -> { run_step4_index_processing })
-            add_step('Step  5 (convert sections html)',       -> { Build::SectionBuilder.convert_sections_html!(entries) })
-            add_step('Step 5b (generate part title pages)',  -> { Build::PartTitleGenerator.generate_all! })
+            add_step('Step  5 (convert sections html)',       lambda {
+              Build::SectionBuilder.convert_sections_html!(entries)
+            })
+            add_step('Step 5b (generate part title pages)', -> { Build::PartTitleGenerator.generate_all! })
           end
 
           # Steps 6-11: 閲覧用 PDF のビルド・結合・アウトライン
           def register_pdf_build_steps
-            add_step('Step  6 (generate toc and pdf)',        -> { Build::TocGenerator.generate_toc_and_pdf!('.', entries) })
-            add_step('Step  7 (build overall pdf)',           -> { Build::PdfBuilder.build_overall_pdf_from_dir!('.', entries) })
+            add_step('Step  6 (generate toc and pdf)', lambda {
+              Build::TocGenerator.generate_toc_and_pdf!('.', entries)
+            })
+            add_step('Step  7 (build overall pdf)', lambda {
+              Build::PdfBuilder.build_overall_pdf_from_dir!('.', entries)
+            })
             add_step('Step  8 (backlink dedup)',              -> { Build::BacklinkDedupOrchestrator.run!(entries) })
             add_step('Step  9 (build front pages and tail)',  -> { run_step9_front_pages_and_tail })
             add_step('Step 10 (merge all pdfs)',              -> { Build::PdfMerger.merge_all_pdfs!(entries) })
-            add_step('Step 11 (apply outline to output pdf)', -> { Build::PdfMerger.add_outline_to_output_pdf!(entries) })
+            add_step('Step 11 (apply outline to output pdf)', lambda {
+              Build::PdfMerger.add_outline_to_output_pdf!(entries)
+            })
           end
 
           # print_pdf only: 閲覧用 PDF ビルドをスキップし、
           # entries.js / HTML 生成のみ行ってから入稿用 PDF を生成
           def register_print_pdf_only_steps
-            add_step('Step  6 (generate toc html)',          -> { Build::TocGenerator.generate_toc_html!('.', entries) })
-            add_step('Step  7 (generate entries.js)',        -> { Build::PdfBuilder.generate_entries_for_sections!('.', entries) })
+            add_step('Step  6 (generate toc html)', lambda {
+              Build::TocGenerator.generate_toc_html!('.', entries)
+            })
+            add_step('Step  7 (generate entries.js)', lambda {
+              Build::PdfBuilder.generate_entries_for_sections!('.', entries)
+            })
             add_step('Step  8 (backlink dedup)',             -> { Build::BacklinkDedupOrchestrator.run!(entries) })
             add_step('Step  9 (build front pages html)',     -> { run_step9_front_pages_html_only })
             add_step('Step 10 (print pdf)',                  -> { run_step13_print_pdf })
@@ -152,15 +164,17 @@ module Vivlio
           # print_pdf + epub: 入稿用 PDF 後に EPUB を生成し、最後にクリーンアップ
           # epub ターゲットがない場合は register_print_pdf_only_steps にフォールバック
           def register_print_pdf_only_steps_with_epub
-            add_step('Step  6 (generate toc html)',          -> { Build::TocGenerator.generate_toc_html!('.', entries) })
-            add_step('Step  7 (generate entries.js)',        -> { Build::PdfBuilder.generate_entries_for_sections!('.', entries) })
+            add_step('Step  6 (generate toc html)',          lambda {
+              Build::TocGenerator.generate_toc_html!('.', entries)
+            })
+            add_step('Step  7 (generate entries.js)', lambda {
+              Build::PdfBuilder.generate_entries_for_sections!('.', entries)
+            })
             add_step('Step  8 (backlink dedup)',             -> { Build::BacklinkDedupOrchestrator.run!(entries) })
             add_step('Step  9 (build front pages html)',     -> { run_step9_front_pages_html_only })
             add_step('Step 10 (print pdf)',                  -> { run_step13_print_pdf })
-            if epub_target?
-              add_step('Step E (generate epub)',              -> { run_step_epub })
-            end
-            add_step('Step 11 (final clean)',                -> { run_final_clean })
+            add_step('Step E (generate epub)', -> { run_step_epub }) if epub_target?
+            add_step('Step 11 (final clean)', -> { run_final_clean })
           end
 
           # single mode: targetsに応じてビルド方法を切り替え
@@ -176,15 +190,15 @@ module Vivlio
             end
 
             if print_pdf_target?
-              add_step('Step  6 (generate entries js)', -> { Build::PdfBuilder.generate_entries_for_sections!('.', entries) })
-              add_step('Step  7 (print pdf)',           -> { generate_single_mode_print_pdf })
+              add_step('Step  6 (generate entries js)', lambda {
+                Build::PdfBuilder.generate_entries_for_sections!('.', entries)
+              })
+              add_step('Step  7 (print pdf)', -> { generate_single_mode_print_pdf })
             end
 
-            if epub_target?
-              add_step('Step E (generate epub)',        -> { generate_single_mode_epub })
-            end
+            add_step('Step E (generate epub)', -> { generate_single_mode_epub }) if epub_target?
 
-            add_step('Step F (final clean)',            -> { run_final_clean })
+            add_step('Step F (final clean)', -> { run_final_clean })
           end
 
           # ステップを記録して順次処理できるようにする
@@ -430,9 +444,7 @@ module Vivlio
               end
             end
 
-            if newer_than_any.call(col_pdf, [colophon_md, book_yml])
-              CreateCommands.execute_colophon({})
-            end
+            CreateCommands.execute_colophon({}) if newer_than_any.call(col_pdf, [colophon_md, book_yml])
 
             Build::PdfBuilder.build_front_pages_and_tail!
           end
@@ -663,7 +675,7 @@ module Vivlio
             special_pages = %w[_toc]
             special_pages.push('_glossarypage', '_indexpage') if IndexCommands.index_enabled?
 
-            chapter_htmls = Dir.glob('*.html').sort.select do |path|
+            chapter_htmls = Dir.glob('*.html').select do |path|
               bn = File.basename(path, '.html')
               num = bn[/\A(\d+)-/, 1]&.to_i
               (num && (keep_numbers.nil? || keep_numbers.include?(num))) ||
@@ -708,7 +720,9 @@ module Vivlio
           # 前付・奥付の HTML 生成は行うが、PDF 結合等はスキップ
           # Step 8 (backlink dedup) は vivliostyle preview が必要なため除外
           def register_epub_only_steps
-            add_step('Step  6 (generate toc html)',          -> { Build::TocGenerator.generate_toc_html!('.', entries) })
+            add_step('Step  6 (generate toc html)', lambda {
+              Build::TocGenerator.generate_toc_html!('.', entries)
+            })
             add_step('Step  9 (build front pages html)',     -> { run_step9_front_pages_html_only })
             add_step('Step E (generate epub)',               -> { run_step_epub })
             add_step('Step F (final clean)',                 -> { run_final_clean })
@@ -808,12 +822,12 @@ module Vivlio
           # EPUB 用カバー画像を生成（cover_{theme}.jpg が未生成の場合のみ）
           def generate_epub_cover_if_needed
             unless Common.validate_cover_settings
-              Common.log_warn("[EPUB] カバー設定が無効なためカバー生成をスキップします")
+              Common.log_warn('[EPUB] カバー設定が無効なためカバー生成をスキップします')
               return
             end
 
             unless Common.epub_embed?
-              Common.log_info("[EPUB] カバー埋め込みが無効なためスキップします")
+              Common.log_info('[EPUB] カバー埋め込みが無効なためスキップします')
               return
             end
 
@@ -829,7 +843,6 @@ module Vivlio
             CoverCommands.ensure_cover_files_for_build!
           end
 
-          
           # Step 4: 索引処理を実行
           def run_step4_index_processing
             unless IndexCommands.index_enabled?

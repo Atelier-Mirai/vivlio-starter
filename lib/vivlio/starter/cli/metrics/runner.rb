@@ -179,7 +179,7 @@ module Vivlio
             results = []
             mutex = Mutex.new
 
-            parallel_runner.parallel_each_with_progress(files, on_complete: ->(file, chapter) {
+            parallel_runner.parallel_each_with_progress(files, on_complete: lambda { |_file, chapter|
               mutex.synchronize do
                 results << chapter
                 yield chapter if block_given?
@@ -464,6 +464,7 @@ module Vivlio
           # オプションに応じてフィルタリングする
           def analysis_visible?(analysis)
             return true if options[:all]
+
             if options[:warn]
               chapter_num = analysis.chapter.chapter_num
               return false if warning_checker.excluded_chapter?(chapter_num)

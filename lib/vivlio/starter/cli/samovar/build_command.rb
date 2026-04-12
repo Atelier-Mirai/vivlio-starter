@@ -57,7 +57,7 @@ module Vivlio
 
           include Vivlio::Starter::CLI::BuildCommands::OutputHelpers
 
-          def initialize(input = nil, **options)
+          def initialize(input = nil, **)
             processed_input = if input
                                 normalized = normalize_log_option_tokens(input)
 
@@ -71,7 +71,7 @@ module Vivlio
                                 input
                               end
 
-            super(processed_input, **options)
+            super(processed_input, **)
           end
 
           def call
@@ -174,7 +174,6 @@ module Vivlio
             basenames = entries.map(&:basename)
             common.log_action("単章/選択ビルドを実行します: #{basenames.join(', ')}")
 
-            
             PostProcessCommands::HeadingProcessor.chapter_tokens_override = basenames
 
             pipeline = BuildCommands::UnifiedBuildPipeline.new(self, entries: entries, mode: :single)
@@ -186,7 +185,7 @@ module Vivlio
             common.log_success("単章ビルドが完了しました: #{pipeline.generated_pdf_name}")
             created_files = get_created_files_list_for_single_mode(basenames)
             print_created_files_message(created_files)
-            
+
             print_build_timings(build_timings)
           ensure
             PostProcessCommands::HeadingProcessor.chapter_tokens_override = nil
@@ -195,7 +194,7 @@ module Vivlio
           # フルビルドを実行
           def run_full_mode_build
             resolver = TokenResolver::Resolver.new
-            entries = resolver.resolve  # 引数なし = catalog.yml 全章
+            entries = resolver.resolve # 引数なし = catalog.yml 全章
 
             if entries.any?
               common.log_action("[Subset] 対象章: #{entries.map(&:basename).inspect}")
@@ -203,17 +202,16 @@ module Vivlio
               common.log_action('[Subset] catalog.yml に章が定義されていません')
             end
 
-            
             pipeline = BuildCommands::UnifiedBuildPipeline.new(self, entries: entries, mode: :full)
             build_timings = pipeline.run
             IndexCommands.flush_post_build_messages
 
             open_pdf(print_pdf_only? ? Common.generate_print_pdf_filename : nil)
             common.log_success('全ファイルのビルドが完了しました')
-            
+
             created_files = get_created_files_list
             print_created_files_message(created_files)
-            
+
             print_outline_debug_info
             print_build_timings(build_timings)
           end
@@ -269,46 +267,44 @@ module Vivlio
           def get_created_files_list
             files = []
             targets = Build::PdfMerger.extract_targets(Common::CONFIG.dig(:output, :targets))
-            
+
             # PDF系
             if targets.include?('pdf')
               normal_pdf = Common.generate_output_filename('pdf')
               files << normal_pdf if File.exist?(normal_pdf)
             end
-            
+
             if targets.include?('pdf') && options[:compress]
               compressed_pdf = Common.generate_compressed_pdf_filename('pdf')
               files << compressed_pdf if File.exist?(compressed_pdf)
             end
-            
+
             if targets.include?('print_pdf')
               print_pdf = Common.generate_print_pdf_filename
               files << print_pdf if File.exist?(print_pdf)
             end
-            
+
             # EPUB
             if targets.include?('epub')
               epub_file = Common.generate_epub_filename
               files << epub_file if File.exist?(epub_file)
             end
-            
+
             files
           end
 
           # targetsに応じてファイル名を調整
-          def adjust_filename_for_targets(original_name, basenames)
+          def adjust_filename_for_targets(original_name, _basenames)
             targets = Build::PdfMerger.extract_targets(Common::CONFIG.dig(:output, :targets))
-            
+
             # PDFがtargetsに含まれていない場合
             unless targets.include?('pdf')
               base_name = original_name.sub(/\.pdf$/, '')
-              
+
               # EPUBがtargetsに含まれている場合
-              if targets.include?('epub')
-                return "#{base_name}.epub"
-              end
+              return "#{base_name}.epub" if targets.include?('epub')
             end
-            
+
             original_name
           end
 
@@ -316,7 +312,7 @@ module Vivlio
           def get_created_files_list_for_single_mode(basenames)
             files = []
             targets = Build::PdfMerger.extract_targets(Common::CONFIG.dig(:output, :targets))
-            
+
             # 単章ビルドのファイル名ベースを決定
             if basenames.size == 1
               base_name = basenames.first
@@ -326,37 +322,37 @@ module Vivlio
               last_num = sorted.last[/^(\d+)/, 1]
               base_name = "#{first_num}-#{last_num}"
             end
-            
+
             # PDF系
             if targets.include?('pdf')
               pdf_file = "#{base_name}.pdf"
               files << pdf_file if File.exist?(pdf_file)
-              
+
               if options[:compress]
                 compressed_file = "#{base_name}_compressed.pdf"
                 files << compressed_file if File.exist?(compressed_file)
               end
             end
-            
+
             # 入稿用PDF
             if targets.include?('print_pdf')
               print_pdf_file = "#{base_name}_print.pdf"
               files << print_pdf_file if File.exist?(print_pdf_file)
             end
-            
+
             # EPUB
             if targets.include?('epub')
               epub_file = "#{base_name}.epub"
               files << epub_file if File.exist?(epub_file)
             end
-            
+
             files
           end
 
           # 作成されたファイルメッセージを表示
           def print_created_files_message(files)
             return if files.empty?
-            
+
             file_list = files.map { |f| File.basename(f) }.join(', ')
             Common.echo_always "📚 #{file_list} を作成しました。"
           end

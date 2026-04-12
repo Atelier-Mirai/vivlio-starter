@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
-require "fileutils"
-require "json"
-require "open3"
-require "pdf/reader"
+require 'fileutils'
+require 'json'
+require 'open3'
+require 'pdf/reader'
 
-require_relative "mecab_newline_cleaner"
+require_relative 'mecab_newline_cleaner'
 
-require_relative "../common"
-require_relative "../token_resolver"
-require_relative "../build/catalog_updater"
+require_relative '../common'
+require_relative '../token_resolver'
+require_relative '../build/catalog_updater'
 
 module Vivlio
   module Starter
@@ -21,15 +21,15 @@ module Vivlio
       # 自動的に Enhanced Mode へ切り替わる。
       class PdfReadCommand
         # 「1.2 見出しテキスト」形式の柱（ランニングヘッド）を検出する正規表現
-        NUMERIC_PILLAR_PREFIX_REGEX = /\A[0-9０-９]+(?:[.\-][0-9０-９]+)*\.?\s+.+\z/.freeze
+        NUMERIC_PILLAR_PREFIX_REGEX = /\A[0-9０-９]+(?:[.-][0-9０-９]+)*\.?\s+.+\z/
         # 「— 42 —」形式のダッシュ付きページ番号を検出する正規表現
-        DASHED_PAGE_NUMBER_REGEX = /\A[\-–—]\s*[0-9０-９ivxlcdmIVXLCDM]+\s*[\-–—]\z/.freeze
+        DASHED_PAGE_NUMBER_REGEX = /\A[-–—]\s*[0-9０-９ivxlcdmIVXLCDM]+\s*[-–—]\z/
         Error = Class.new(StandardError)
         InvalidInputError = Class.new(Error)
         MissingPdfError = Class.new(Error)
 
         # PDF 格納ディレクトリの既定名
-        SOURCES_DIR = "sources"
+        SOURCES_DIR = 'sources'
         # 自動割り当て章番号の上限（01〜98）
         MAX_AUTO_CHAPTER = 98
 
@@ -48,7 +48,7 @@ module Vivlio
         # 入力を解決し、モードに応じて Standard / Enhanced の変換パイプラインを呼び出す
         # @return [Hash] :mode, :entry, :markdown_path, :source_pdf_path, :pages を含む結果
         def call
-          raise InvalidInputError, "PDF を指定してください" if input.empty?
+          raise InvalidInputError, 'PDF を指定してください' if input.empty?
 
           entry, pdf_path = resolve_entry_and_pdf
           entry = ensure_unique_output_entry(entry)
@@ -108,7 +108,7 @@ module Vivlio
           raise InvalidInputError, "章トークンを解決できません: #{input.inspect}" unless entry&.valid?
 
           if !entry.in_catalog? && entry.slug.to_s.empty?
-            raise InvalidInputError, "新規 PDF 登録時は slug を含む章トークンを指定してください (例: 10-foo)"
+            raise InvalidInputError, '新規 PDF 登録時は slug を含む章トークンを指定してください (例: 10-foo)'
           end
 
           entry
@@ -160,7 +160,7 @@ module Vivlio
         def ensure_entry_has_slug!(entry)
           return unless entry.slug.to_s.empty?
 
-          raise InvalidInputError, "slug を含む章トークンを指定してください (例: 10-foo)"
+          raise InvalidInputError, 'slug を含む章トークンを指定してください (例: 10-foo)'
         end
 
         # 出力先 Markdown が既存なら、上書きを避けて新しい章番号を割り当てる
@@ -210,7 +210,7 @@ module Vivlio
         # 「NN-slug」形式の basename を [number, slug] に分解する
         def parse_basename(basename)
           if basename =~ /(\A\d{2})(?:[-_](.+))?\z/
-            [$1, $2]
+            [::Regexp.last_match(1), ::Regexp.last_match(2)]
           else
             [basename, nil]
           end
@@ -252,7 +252,7 @@ module Vivlio
 
           return candidates.find { File.exist?(it) } if candidates.any? { File.exist?(it) }
 
-          details = candidates.map { "- 探索パス: #{_1}" }.join("\n")
+          details = candidates.map { "- 探索パス: #{it}" }.join("\n")
 
           raise MissingPdfError, <<~MSG.strip
             PDF ファイルが見つかりませんでした。
@@ -298,7 +298,7 @@ module Vivlio
           pages = reader.page_count
           markdown = build_markdown(pages_text)
 
-          File.write(markdown_path, markdown, mode: "w", encoding: "UTF-8")
+          File.write(markdown_path, markdown, mode: 'w', encoding: 'UTF-8')
 
           CLI::Common.log_info("[pdf:read] ページ数: #{pages}")
 
@@ -334,7 +334,7 @@ module Vivlio
           pages = enhanced_page_count(result, page_texts)
           markdown = build_markdown(pages_text)
 
-          File.write(markdown_path, markdown, mode: "w", encoding: "UTF-8")
+          File.write(markdown_path, markdown, mode: 'w', encoding: 'UTF-8')
 
           CLI::Common.log_info("[pdf:read] ページ数: #{pages}")
 
@@ -354,7 +354,7 @@ module Vivlio
                    newline_cleaner.clean(chunks.reject(&:empty?).join("\n"))
                  end
           body = normalize_image_reference_blocks(body)
-          body = "" if body.nil?
+          body = '' if body.nil?
           body = body.strip
           body += "\n" unless body.empty? || body.end_with?("\n")
           body
@@ -364,9 +364,9 @@ module Vivlio
         def sanitize(text)
           text
             .to_s
-            .gsub("\u00A0", " ")
+            .gsub("\u00A0", ' ')
             .gsub(/\r\n?/, "\n")
-            .gsub(/[ \t]+$/, "")
+            .gsub(/[ \t]+$/, '')
             .gsub(/\n{3,}/, "\n\n")
             .strip
         end
@@ -397,16 +397,14 @@ module Vivlio
           sorted.each do |run|
             next unless within_text_area?(run, bounds)
 
-            if current_y && (current_y - run.y).abs <= line_merge_tolerance
-              line_buffer << run.text
-            else
+            unless current_y && (current_y - run.y).abs <= line_merge_tolerance
               unless line_buffer.empty?
                 lines << line_buffer.dup
                 line_buffer.clear
               end
               current_y = run.y
-              line_buffer << run.text
             end
+            line_buffer << run.text
           end
 
           lines << line_buffer unless line_buffer.empty?
@@ -553,23 +551,25 @@ module Vivlio
         def capture_first_page_headings(text)
           return if @first_page_heading_tokens
 
-          tokens = text.to_s.split("\n").map { normalize_heading_token(_1) }.map { strip_chapter_prefix(_1) }.map { strip_numeric_prefix(_1) }.map(&:strip).reject(&:empty?)
+          tokens = text.to_s.split("\n").map do
+            normalize_heading_token(it)
+          end.map { strip_chapter_prefix(it) }.map { strip_numeric_prefix(it) }.map(&:strip).reject(&:empty?)
           @first_page_heading_tokens = tokens.first(3)
         end
 
         # 見出しトークンの正規化: 全角スペース→半角、連続空白を圧縮
         def normalize_heading_token(line)
-          line.to_s.tr("　", " ").gsub(/\s+/, " ").strip
+          line.to_s.tr('　', ' ').gsub(/\s+/, ' ').strip
         end
 
         # 「第N章」形式の接頭辞を除去する
         def strip_chapter_prefix(line)
-          line.sub(/\A第[一二三四五六七八九十百千0-9０-９]+章\s*/, "")
+          line.sub(/\A第[一二三四五六七八九十百千0-9０-９]+章\s*/, '')
         end
 
         # 「1.2」「3-1」形式の数字接頭辞を除去する
         def strip_numeric_prefix(line)
-          line.sub(/\A[0-9０-９]+(?:[.\-][0-9０-９]+)*\.?\s*/, "")
+          line.sub(/\A[0-9０-９]+(?:[.-][0-9０-９]+)*\.?\s*/, '')
         end
 
         # 1 ページ目の見出しと一致する数字付き柱（ランニングヘッド）行かどうか
@@ -581,18 +581,20 @@ module Vivlio
           stripped = strip_numeric_prefix(strip_chapter_prefix(normalize_heading_token(line)))
           return false if stripped.empty?
 
-          tokens.any? { stripped.start_with?(_1) }
+          tokens.any? { stripped.start_with?(it) }
         end
 
         # ミリメートルを PDF ポイント（1pt = 1/72 inch）に変換する
         def mm_to_pt(value)
           return 0.0 unless value
+
           value.to_f * (72.0 / 25.4)
         end
 
         # 設定オブジェクトから安全にキー値を取得する（メソッド呼び出し or Hash アクセス）
         def value_from_config(cfg, key)
           return nil unless cfg
+
           if cfg.respond_to?(key)
             cfg.public_send(key)
           else
@@ -658,21 +660,21 @@ module Vivlio
 
         # Enhanced Mode の結果からページごとのテキスト配列を取り出す
         def enhanced_page_texts(result)
-          page_texts = result[:page_texts] || result["page_texts"]
+          page_texts = result[:page_texts] || result['page_texts']
           Array(page_texts)
         end
 
         # Enhanced Mode の結果からページごとの処理済みチャンク配列を取り出す
         def enhanced_page_chunks(result)
-          page_chunks = result[:page_chunks] || result["page_chunks"]
+          page_chunks = result[:page_chunks] || result['page_chunks']
           Array(page_chunks)
         end
 
         # Enhanced Mode の結果から { ページ番号 => [画像参照パス, ...] } マップを構築する
         def enhanced_image_reference_map(result)
           enhanced_images(result).each_with_object({}) do |asset, refs|
-            page = (asset[:page] || asset["page"]).to_i
-            reference_path = asset[:reference_path] || asset["reference_path"]
+            page = (asset[:page] || asset['page']).to_i
+            reference_path = asset[:reference_path] || asset['reference_path']
             next if page <= 0 || reference_path.to_s.empty?
 
             refs[page] ||= []
@@ -682,7 +684,7 @@ module Vivlio
 
         # Enhanced Mode の結果から画像情報の配列を取り出す
         def enhanced_images(result)
-          images = result[:images] || result["images"]
+          images = result[:images] || result['images']
           Array(images)
         end
 
@@ -701,8 +703,8 @@ module Vivlio
         # 本文に埋もれた ![](…) を前後に空行を入れて分離する
         def normalize_image_reference_blocks(markdown)
           isolated = markdown.to_s
-                             .gsub(/(?<=\S)[ \t]*(!\[[^\]]*\]\([^\)]+\))/, "\n\\1")
-                             .gsub(/(!\[[^\]]*\]\([^\)]+\))[ \t]*(?=\S)/, "\\1\n")
+                             .gsub(/(?<=\S)[ \t]*(!\[[^\]]*\]\([^)]+\))/, "\n\\1")
+                             .gsub(/(!\[[^\]]*\]\([^)]+\))[ \t]*(?=\S)/, "\\1\n")
 
           rebuilt = []
 
@@ -710,9 +712,9 @@ module Vivlio
             stripped = line.strip
 
             if markdown_image_reference_line?(stripped)
-              rebuilt << "" unless rebuilt.empty? || rebuilt.last.empty?
+              rebuilt << '' unless rebuilt.empty? || rebuilt.last.empty?
               rebuilt << stripped
-              rebuilt << ""
+              rebuilt << ''
             else
               rebuilt << line
             end
@@ -723,12 +725,12 @@ module Vivlio
 
         # 行が Markdown 画像参照のみで構成されているか
         def markdown_image_reference_line?(line)
-          line.to_s.match?(/\A!\[[^\]]*\]\([^\)]+\)\z/)
+          line.to_s.match?(/\A!\[[^\]]*\]\([^)]+\)\z/)
         end
 
         # Enhanced Mode の結果からページ数を取得する（報告値がなければテキスト配列長で代替）
         def enhanced_page_count(result, page_texts)
-          reported = result[:pages] || result["pages"]
+          reported = result[:pages] || result['pages']
           count = reported.to_i
           count.positive? ? count : page_texts.length
         end
@@ -738,7 +740,7 @@ module Vivlio
         def enhanced_command(pdf_path, entry)
           [
             *enhanced_plugin_command,
-            "read",
+            'read',
             File.expand_path(pdf_path, Dir.pwd),
             "page_separator=#{pdf_read_page_separator?}",
             "text_area=#{JSON.generate(text_area_margin_points)}",
@@ -773,10 +775,10 @@ module Vivlio
 
         # "japanese" → "jpn" など、人間が読みやすいエイリアスを Tesseract 言語コードに変換する
         def normalize_ocr_language_alias(value)
-          case value.to_s.strip.downcase.tr("-", "_")
-          in "" then ""
-          in "japanese" then "jpn"
-          in "japanese_vertical" then "jpn_vert"
+          case value.to_s.strip.downcase.tr('-', '_')
+          in '' then ''
+          in 'japanese' then 'jpn'
+          in 'japanese_vertical' then 'jpn_vert'
           else value.to_s.strip
           end
         end
@@ -784,10 +786,10 @@ module Vivlio
         # inline_image_text の設定値を include / exclude / captionize のいずれかに正規化する
         def normalize_inline_image_text(value)
           case value.to_s.strip.downcase
-          in "" | "include" then "include"
-          in "exclude" | "remove" then "exclude"
-          in "captionize" | "caption_only" | "caption" then "captionize"
-          else "include"
+          in '' | 'include' then 'include'
+          in 'exclude' | 'remove' then 'exclude'
+          in 'captionize' | 'caption_only' | 'caption' then 'captionize'
+          else 'include'
           end
         end
 
@@ -798,7 +800,7 @@ module Vivlio
 
         # Markdown 内の画像参照パスの基底ディレクトリ（空文字で相対パス出力）
         def enhanced_images_reference_dir(_entry)
-          ""
+          ''
         end
 
         # vivlio-starter-pdf の実行コマンドを決定する
@@ -807,17 +809,16 @@ module Vivlio
         end
 
         # インストール済み vivlio-starter-pdf の実行ファイル名
-        def enhanced_plugin_executable = "vivlio-starter-pdf"
+        def enhanced_plugin_executable = 'vivlio-starter-pdf'
 
-        
         # Enhanced Mode が利用不可時のエラーメッセージ
         def missing_enhanced_plugin_message
-          "Enhanced mode を利用するには vivlio-starter-pdf をインストールしてください"
+          'Enhanced mode を利用するには vivlio-starter-pdf をインストールしてください'
         end
 
         # Standard Mode での実行時に Enhanced Mode への切り替え方法を案内する
         def log_enhanced_install_hint
-          CLI::Common.log_info("[pdf:read] Enhanced Mode を利用するには `gem install vivlio-starter-pdf` を実行してください。")
+          CLI::Common.log_info('[pdf:read] Enhanced Mode を利用するには `gem install vivlio-starter-pdf` を実行してください。')
         end
 
         # MeCab を使った日本語改行補正器（メモ化）
@@ -828,11 +829,11 @@ module Vivlio
         # 任意文字列を URL 安全な slug に正規化する（小文字化・記号除去・ハイフン化）
         def normalize_slug(value)
           slug = value.to_s.downcase
-                        .tr(" ", "-")
-                        .gsub(/[^a-z0-9\-]+/, "-")
-                        .gsub(/-+/, "-")
-                        .gsub(/\A-+|-+\z/, "")
-          slug = "imported" if slug.empty?
+                      .tr(' ', '-')
+                      .gsub(/[^a-z0-9-]+/, '-')
+                      .gsub(/-+/, '-')
+                      .gsub(/\A-+|-+\z/, '')
+          slug = 'imported' if slug.empty?
           slug
         end
 
@@ -840,7 +841,7 @@ module Vivlio
         def plugin_available?
           return @plugin_available if @plugin_checked
 
-          _stdout, status = capture_enhanced_command(*enhanced_plugin_command, "--version")
+          _stdout, status = capture_enhanced_command(*enhanced_plugin_command, '--version')
           @plugin_available = status.success?
         rescue Errno::ENOENT
           @plugin_available = false
@@ -858,7 +859,6 @@ module Vivlio
           end
         end
 
-        
         # Enhanced Mode のプラグインが利用可能でなければ LoadError を送出する
         def ensure_enhanced_plugin_loaded!
           return if plugin_available?
@@ -868,7 +868,7 @@ module Vivlio
 
         # Enhanced Mode が利用可能な旨をログに出力する（情報提供用）
         def log_enhanced_hint
-          CLI::Common.log_info("[pdf:read] vivlio-starter-pdf (Enhanced Mode) が利用可能です。連携は近日追加予定です。")
+          CLI::Common.log_info('[pdf:read] vivlio-starter-pdf (Enhanced Mode) が利用可能です。連携は近日追加予定です。')
         end
       end
     end

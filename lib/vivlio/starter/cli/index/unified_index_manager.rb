@@ -166,11 +166,11 @@ module Vivlio
           glossary_approved_names = glossary_approved.map { it['term'] }
           index_only = index_approved.reject { glossary_approved_names.include?(it['term']) }
           index_only.each do |term|
-            if @terms_manager.glossary_term_names.include?(term['term'])
-              @terms_manager.remove_flag!(term['term'], 'g')
-              Common.log_info("用語集フラグを除去しました（索引のみ）: #{term['term']}")
-              changes_made = true
-            end
+            next unless @terms_manager.glossary_term_names.include?(term['term'])
+
+            @terms_manager.remove_flag!(term['term'], 'g')
+            Common.log_info("用語集フラグを除去しました（索引のみ）: #{term['term']}")
+            changes_made = true
           end
 
           # --- Phase: 索引のみリジェクト（[-i]） ---
@@ -250,18 +250,18 @@ module Vivlio
           rejected_section_all = @markdown_generator.parse_rejected_section_all
           unreject_names = unreject.map { it['term'] }
 
-          confirmed_rejected = rejected_section_all.select { it['flag'] == '' || it['flag'] == ' ' }
+          confirmed_rejected = rejected_section_all.select { ['', ' '].include?(it['flag']) }
                                                    .reject { unreject_names.include?(it['term']) }
 
           if confirmed_rejected.any?
             rejected_count = 0
             confirmed_rejected.each do |entry|
               term_name = entry['term']
-              if @terms_manager.term_names.include?(term_name)
-                @terms_manager.remove_term!(term_name)
-                Common.log_info("除外済みリストに基づき登録を解除: #{term_name}")
-                rejected_count += 1
-              end
+              next unless @terms_manager.term_names.include?(term_name)
+
+              @terms_manager.remove_term!(term_name)
+              Common.log_info("除外済みリストに基づき登録を解除: #{term_name}")
+              rejected_count += 1
             end
 
             @queue_manager.save_rejected_terms(confirmed_rejected)
@@ -352,9 +352,9 @@ module Vivlio
 
           Common.log_success('索引・用語集ページの生成が完了しました')
 
-          if scanner.config_missing || scanner.no_matches
-            IndexCommands.add_post_build_message(IndexCommands::INDEX_TERMS_MISSING_MESSAGE)
-          end
+          return unless scanner.config_missing || scanner.no_matches
+
+          IndexCommands.add_post_build_message(IndexCommands::INDEX_TERMS_MISSING_MESSAGE)
         end
 
         # 用語集ページを生成（後方互換 - 単独呼び出し用）
@@ -660,7 +660,6 @@ module Vivlio
         # @return [String] 文脈
         def extract_surrounding_context(content, term)
           context_width = @config[:context_width] || 40
-          total_width = context_width * 2
           index = content.index(term)
           return '' unless index
 
@@ -669,7 +668,7 @@ module Vivlio
           ideal_end = index + term.length + context_width
 
           # 前方が足りない場合は後方を延長
-          if ideal_start < 0
+          if ideal_start.negative?
             shortage = -ideal_start
             ideal_end += shortage
             ideal_start = 0
@@ -701,7 +700,7 @@ module Vivlio
           # 先頭が単語の途中（小文字カナなど）で始まっている場合、常に修正
           # これは長さに関係なく適用
           start_offset = skip_partial_word_start(cleaned)
-          cleaned = cleaned[start_offset..] if start_offset > 0
+          cleaned = cleaned[start_offset..] if start_offset.positive?
 
           context_width = @config[:context_width] || 40
           max_length = context_width * 2
@@ -730,21 +729,21 @@ module Vivlio
 
           # 先頭が単語の途中（小文字カナなど）で始まっている場合、次の単語境界まで進める
           start_offset = skip_partial_word_start(text)
-          return start_offset if start_offset > 0
+          return start_offset if start_offset.positive?
 
           # 先頭20文字以内で区切りを探す
           search_range = text[0..19]
 
           # 優先度順: 句読点 > スペース > 助詞
           boundary_patterns = [
-            /[。、！？]/,           # 句読点
-            /\s+/,                    # スペース
-            /[をはがのにでとへやもをって]/ # 助詞・助動詞
+            /[。、！？]/, # 句読点
+            /\s+/, # スペース
+            /[をはがのにでとへやもって]/ # 助詞・助動詞
           ]
 
           boundary_patterns.each do |pattern|
             match = search_range.index(pattern)
-            next unless match && match > 0 && match < 18
+            next unless match&.positive? && match < 18
 
             # マッチの次の位置から開始
             return match + 1
@@ -762,16 +761,14 @@ module Vivlio
           first_char = text[0]
 
           # 1. 小文字カナ（単語の途中でしか現れない文字）で始まる場合
-          if first_char.match?(/[ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ]/)
-            return find_next_word_boundary(text)
-          end
+          return find_next_word_boundary(text) if first_char.match?(/[ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ]/)
 
           # 2. カタカナで始まり、後続もカタカナが続く場合（単語の途中の可能性）
           #    例: "ブサイト" は "ウェブサイト" の途中
           if first_char.match?(/[ァ-ヴー]/) && text.length > 1
             # 連続するカタカナの終端を探す
             katakana_end = find_katakana_sequence_end(text)
-            if katakana_end > 0
+            if katakana_end.positive?
               # カタカナ列の後ろに、文字種の境界があればそこから開始
               return katakana_end
             end
@@ -788,9 +785,7 @@ module Vivlio
           (1..[text.length - 1, 15].min).each do |i|
             char = text[i]
             # 文字種の変化点を探す（カタカナ→非カタカナ、ひらがな→漢字など）
-            if word_boundary_char?(char)
-              return i
-            end
+            return i if word_boundary_char?(char)
           end
           0
         end
@@ -803,9 +798,7 @@ module Vivlio
           (1..[text.length - 1, 10].min).each do |i|
             char = text[i]
             # カタカナでなくなったら、そこが境界
-            unless char.match?(/[ァ-ヴー]/)
-              return i
-            end
+            return i unless char.match?(/[ァ-ヴー]/)
           end
           0
         end
@@ -826,12 +819,12 @@ module Vivlio
         # @return [String] カット後のテキスト
         def find_smart_end_position(text, max_length)
           # 末尾付近で区切りを探す
-          truncated = text[0..max_length + 10]
+          truncated = text[0..(max_length + 10)]
 
           boundary_patterns = [
             /[。、！？]/,
             /\s+/,
-            /[をはがのにでとへやもをって]/
+            /[をはがのにでとへやもって]/
           ]
 
           boundary_patterns.each do |pattern|
@@ -871,9 +864,7 @@ module Vivlio
           Common.log_info("推奨候補: #{high_candidates.size}件")
           Common.log_info("一般候補: #{low_candidates.size}件 (#{review_threshold}≤スコア<#{auto_threshold})")
 
-          if rejected_count.positive?
-            Common.log_info("リジェクト設定により #{rejected_count} 件の候補を除外しました")
-          end
+          Common.log_info("リジェクト設定により #{rejected_count} 件の候補を除外しました") if rejected_count.positive?
 
           Common.log_success('_index_review.md を生成しました')
           Common.log_info('ファイルを編集後、vs index:apply を実行してください')

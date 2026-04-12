@@ -63,9 +63,9 @@ module Vivlio
             # doc.write(pdf_path, optimize: true)
             # Common.log_success("[NombreStamper] 隠しノンブル書き込み完了（#{total} ページ）")
             # true
-          # rescue StandardError => e
-          #   Common.log_error("[NombreStamper] 隠しノンブル書き込みに失敗: #{e.message}")
-          #   false
+            # rescue StandardError => e
+            #   Common.log_error("[NombreStamper] 隠しノンブル書き込みに失敗: #{e.message}")
+            #   false
           end
 
           # 個別ページにノンブルを描画する

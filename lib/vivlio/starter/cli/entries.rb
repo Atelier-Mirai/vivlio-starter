@@ -56,7 +56,7 @@ module Vivlio
         # @return [Array<String>] HTML ファイルパスの配列
         def resolve_html_files_for_entries(base_dir, entries_or_basenames)
           raw = Array(entries_or_basenames).compact
-          return Dir.glob(File.join(base_dir, '*.html')).sort if raw.empty?
+          return Dir.glob(File.join(base_dir, '*.html')) if raw.empty?
 
           # Entry オブジェクトかどうかを判定
           if raw.first.respond_to?(:basename)
@@ -75,7 +75,7 @@ module Vivlio
           else
             pattern1 = File.join(base_dir, "#{token}.html")
             pattern2 = File.join(base_dir, "#{token}-*.html")
-            Dir.glob([pattern1, pattern2]).sort
+            Dir.glob([pattern1, pattern2])
           end
         end
         module_function :resolve_token
@@ -101,9 +101,7 @@ module Vivlio
           return unless File.exist?(path)
 
           content = File.read(path)
-          if content =~ %r{<title>(.+?)</title>}
-            ::Regexp.last_match(1).strip
-          end
+          ::Regexp.last_match(1).strip if content =~ %r{<title>(.+?)</title>}
         rescue StandardError
           nil
         end

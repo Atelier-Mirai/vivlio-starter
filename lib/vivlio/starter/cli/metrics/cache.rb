@@ -44,7 +44,7 @@ module Vivlio
 
           # キャッシュディレクトリを初期化する
           def ensure_cache_dir!
-            FileUtils.mkdir_p(cache_dir) unless Dir.exist?(cache_dir)
+            FileUtils.mkdir_p(cache_dir)
           end
 
           # キャッシュが有効（新鮮）か判定する
@@ -69,7 +69,7 @@ module Vivlio
             return nil unless fresh?(basename, source_path)
 
             cache_path = cache_file_path(basename)
-            data = YAML.safe_load(File.read(cache_path), permitted_classes: [Symbol])
+            data = YAML.safe_load_file(cache_path, permitted_classes: [Symbol])
 
             CacheEntry.new(basename:, mtime: File.mtime(cache_path), data:)
           rescue Psych::SyntaxError, Errno::ENOENT
@@ -89,7 +89,7 @@ module Vivlio
 
           # 全キャッシュをクリアする
           def clear!
-            FileUtils.rm_rf(cache_dir) if Dir.exist?(cache_dir)
+            FileUtils.rm_rf(cache_dir)
           end
 
           # キャッシュファイルのパスを取得する

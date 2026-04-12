@@ -66,6 +66,7 @@ module Vivlio
         def review_file_path
           return REVIEW_FILE if File.exist?(REVIEW_FILE)
           return LEGACY_REVIEW_FILE if File.exist?(LEGACY_REVIEW_FILE)
+
           REVIEW_FILE
         end
 
@@ -304,9 +305,7 @@ module Vivlio
                 end
 
                 # インデントされた行は説明文
-                if in_definition && current_line =~ /^  (.+)/
-                  definition_lines << Regexp.last_match(1)
-                end
+                definition_lines << Regexp.last_match(1) if in_definition && current_line =~ /^  (.+)/
 
                 i += 1
               end
@@ -420,10 +419,10 @@ module Vivlio
           return true if term_text.match?(/^\d+$/)
 
           # 演算子・記号のみ (&&, ||, !, &, | など)
-          return true if term_text.match?(/^[&|!<>=+\-*\/%^~]+$/)
+          return true if term_text.match?(%r{^[&|!<>=+\-*/%^~]+$})
 
           # HTMLタグ風 (<h1>, </h1>, <!DOCTYPE> など)
-          return true if term_text.match?(/^<\/?[a-zA-Z!]/)
+          return true if term_text.match?(%r{^</?[a-zA-Z!]})
 
           false
         end
@@ -470,7 +469,7 @@ module Vivlio
           else
             # ラベルと出現順でソート
             sorted = sort_rejected_by_label(rejected)
-            sorted.each { |item| section += build_rejected_line(item) + "\n" }
+            sorted.each { |item| section += "#{build_rejected_line(item)}\n" }
           end
 
           section
@@ -513,7 +512,7 @@ module Vivlio
             line += "\n" unless line.end_with?("\n")
           end
 
-          line + "\n"
+          "#{line}\n"
         end
 
         # 登録先に基づいてフラグを決定
@@ -586,7 +585,7 @@ module Vivlio
             line += "  - #{chapter}: #{context_text}\n"
           end
 
-          line + "\n"
+          "#{line}\n"
         end
 
         # ラベルを決定（NEW! または Today）

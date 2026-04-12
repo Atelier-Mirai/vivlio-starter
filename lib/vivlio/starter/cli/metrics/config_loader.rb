@@ -68,7 +68,7 @@ module Vivlio
 
           # 除外する章番号のリストを取得する
           def exclude_chapters
-            raw = metrics_config['exclude_chapters'] || ['00', '90-98', '99']
+            raw = metrics_config['exclude_chapters'] || %w[00 90-98 99]
             expand_chapter_ranges(raw)
           end
 
@@ -106,7 +106,7 @@ module Vivlio
             config_path = File.join('config', 'book.yml')
             return {} unless File.exist?(config_path)
 
-            YAML.safe_load(File.read(config_path), permitted_classes: [Symbol]) || {}
+            YAML.safe_load_file(config_path, permitted_classes: [Symbol]) || {}
           rescue Psych::SyntaxError
             {}
           end

@@ -114,7 +114,7 @@ module Vivlio
           attr_reader :config, :thresholds, :labels
 
           # 節付きで章をフォーマットする
-          def format_chapter_with_sections(chapter, bar, warning, max_chars)
+          def format_chapter_with_sections(chapter, _bar, warning, max_chars)
             header = truncate_label(chapter_label(chapter))
             lines = ["#{header} (#{number_with_comma(chapter.chars)} 文字)#{warning}"]
 
@@ -172,7 +172,7 @@ module Vivlio
             pad = width - display_width(text)
             return text if pad <= 0
 
-            text + ' ' * pad
+            text + (' ' * pad)
           end
 
           def display_width(text)
@@ -189,7 +189,7 @@ module Vivlio
 
           # バーグラフを描画する
           def render_bar(value, max_value)
-            return '[' + BAR_EMPTY_CHAR * BAR_WIDTH + ']' if max_value.zero?
+            return "[#{BAR_EMPTY_CHAR * BAR_WIDTH}]" if max_value.zero?
 
             filled = [(value.to_f / max_value * BAR_WIDTH).round, BAR_WIDTH].min
             empty = BAR_WIDTH - filled

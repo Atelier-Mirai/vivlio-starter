@@ -58,7 +58,7 @@ module Vivlio
           # --- Phase: Cleanup ---
           FileUtils.rm_f(nombre_pdf_path)
           CLI::Common.log_success("[NombreStamper] 隠しノンブル書き込み完了（#{total_pages} ページ）")
-          
+
           true
         rescue StandardError => e
           CLI::Common.log_error("[NombreStamper] 隠しノンブル書き込みに失敗: #{e.message}")
@@ -70,7 +70,7 @@ module Vivlio
         # @param items [Array<Hash>] アウトラインの項目配列
         # @param max_level [Integer] 最大階層
         # @return [Boolean]
-        def add_outline!(original_pdf_path, items, max_level:)
+        def add_outline!(_original_pdf_path, _items, max_level:)
           CLI::Common.log_warn('PDF しおり（アウトライン）の付与は Standard モード(MIT) ではサポートされていません。')
           CLI::Common.log_info('  => 拡張機能が必要な場合は `gem install vivlio-starter-pdf` を検討してください。')
           false

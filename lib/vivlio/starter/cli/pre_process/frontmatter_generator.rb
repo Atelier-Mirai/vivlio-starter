@@ -43,12 +43,12 @@ module Vivlio
           # テーマ設定を解析して構造化データを返す
           def parse_theme_settings(cfg = nil)
             cfg ||= Common::CONFIG
-            theme_cfg = cfg.dig(:theme) || {}
+            theme_cfg = cfg[:theme] || {}
 
-            theme_color = theme_cfg.dig(:color)
-            theme_style_raw = theme_cfg.dig(:style)
-            frontispiece_raw = theme_cfg.dig(:frontispiece)
-            ornament_raw = theme_cfg.dig(:ornament)
+            theme_color = theme_cfg[:color]
+            theme_style_raw = theme_cfg[:style]
+            frontispiece_raw = theme_cfg[:frontispiece]
+            ornament_raw = theme_cfg[:ornament]
 
             theme_name, theme_accent_value = parse_theme_color(theme_color)
             theme_style = parse_theme_style(theme_style_raw)
@@ -167,7 +167,12 @@ module Vivlio
           # エラーから行・列番号を抽出
           def extract_error_position(error)
             line = error.respond_to?(:line) && error.line ? error.line.to_i : error.message[/line (\d+)/i, 1]&.to_i
-            column = error.respond_to?(:column) && error.column ? error.column.to_i : error.message[/column (\d+)/i, 1]&.to_i
+            column = if error.respond_to?(:column) && error.column
+                       error.column.to_i
+                     else
+                       error.message[/column (\d+)/i,
+                                     1]&.to_i
+                     end
             [line, column]
           end
 

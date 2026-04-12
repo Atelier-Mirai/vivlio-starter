@@ -49,7 +49,7 @@ module Vivlio
           /\AOver\s+\d+\s+characters/,
           /\ATotal:\s*\z/,
           /\A(である|ですます)\s*:\s*\d+\s*\z/,
-          /\A解説:\s*https?:\/\//,
+          %r{\A解説:\s*https?://},
           /\A\s*Try to run:/i,
           /\A\s*=>\s*/,
           /\AThis pair of marks is called/,
@@ -114,11 +114,12 @@ module Vivlio
                 flush_entry(result, current_entry, continuation_lines) if current_entry
                 current_entry = nil
                 continuation_lines = []
-                result << { type: :header, path: $1 }
+                result << { type: :header, path: ::Regexp.last_match(1) }
               in ERROR_LINE_PATTERN
                 # 新しいエラー行: 前のエントリを確定
                 flush_entry(result, current_entry, continuation_lines) if current_entry
-                current_entry = { line: $1.to_i, fixable: !$3.nil?, raw_message: $4.strip }
+                current_entry = { line: ::Regexp.last_match(1).to_i, fixable: !::Regexp.last_match(3).nil?,
+                                  raw_message: ::Regexp.last_match(4).strip }
                 continuation_lines = []
               in /\A\s*\z/
                 # 空行: 無視（ただしエントリ間の区切りとして認識）
@@ -165,15 +166,15 @@ module Vivlio
               line = continuation_lines[idx].strip
 
               # ルール名のみの行（例: "prh", "ja-spacing/ja-space-between-half-and-full-width"）
-              if line =~ /\A([\w\-]+(?:\/[\w\-]+)*)\s*\z/ && rule_like?($1)
+              if line =~ %r{\A([\w-]+(?:/[\w-]+)*)\s*\z} && rule_like?(::Regexp.last_match(1))
                 continuation_lines.delete_at(idx)
-                return [message, $1]
+                return [message, ::Regexp.last_match(1)]
               end
 
               # 行末に空白区切りでルール名が付いている場合
-              if line =~ /^(.+?)\s{2,}([\w\-]+(?:\/[\w\-]+)*)$/
-                continuation_lines[idx] = $1.strip
-                return [message, $2]
+              if line =~ %r{^(.+?)\s{2,}([\w-]+(?:/[\w-]+)*)$}
+                continuation_lines[idx] = ::Regexp.last_match(1).strip
+                return [message, ::Regexp.last_match(2)]
               end
 
               # ノイズ行はスキップして前の行を探索し続ける
@@ -184,15 +185,16 @@ module Vivlio
             end
 
             # メッセージ行末にルール名が空白区切りで付いている場合
-            if message =~ /^(.+?)\s{2,}([\w\-]+(?:\/[\w\-]+)*)$/
-              return [$1.strip, $2]
+            if message =~ %r{^(.+?)\s{2,}([\w-]+(?:/[\w-]+)*)$}
+              return [::Regexp.last_match(1).strip,
+                      ::Regexp.last_match(2)]
             end
 
             [message, nil]
           end
 
           # ルール名らしい文字列かどうか判定（日本語を含まないこと）
-          def rule_like?(str) = str.match?(/\A[a-zA-Z][\w\-]*(\/[\w\-]+)*\z/) && !str.match?(/[ぁ-んァ-ヶ一-龥]/)
+          def rule_like?(str) = str.match?(%r{\A[a-zA-Z][\w-]*(/[\w-]+)*\z}) && !str.match?(/[ぁ-んァ-ヶ一-龥]/)
 
           # 継続行から冗長な行を除去する
           def clean_details(lines, rule)
@@ -212,13 +214,17 @@ module Vivlio
             msg = msg.sub(/\A【dict\d+】\s*/, '')
 
             # sentence-length
-            msg = msg.gsub(SENTENCE_LENGTH_PATTERN) { "文の長さ (#{$1}) が最大文長の #{$2} を超えています。" }
+            msg = msg.gsub(SENTENCE_LENGTH_PATTERN) do
+              "文の長さ (#{::Regexp.last_match(1)}) が最大文長の #{::Regexp.last_match(2)} を超えています。"
+            end
 
             # unmatched-pair: Cannot find a pairing character for X.
-            msg = msg.gsub(/Cannot find a pairing character for (.+)\./) { "#{$1} のペアとなる文字が見つかりません。" }
+            msg = msg.gsub(/Cannot find a pairing character for (.+)\./) do
+              "#{::Regexp.last_match(1)} のペアとなる文字が見つかりません。"
+            end
 
             # unmatched-pair: You should close this sentence with X.
-            msg = msg.gsub(/You should close this sentence with (.+)\./) { "#{$1} で閉じてください。" }
+            msg = msg.gsub(/You should close this sentence with (.+)\./) { "#{::Regexp.last_match(1)} で閉じてください。" }
 
             # Disallow to use 系
             MESSAGE_TRANSLATIONS.each { msg = msg.gsub(it.first, it.last) }
@@ -242,7 +248,7 @@ module Vivlio
               end
             end
 
-            lines.join("\n") + "\n"
+            "#{lines.join("\n")}\n"
           end
 
           # 単一エントリを整形済み行の配列に変換
@@ -260,7 +266,7 @@ module Vivlio
               # 詳細あり: 主メッセージ + インデント付き補足行
               result = ["#{line_prefix}  #{message}"]
               details.each_with_index do |detail, idx|
-                suffix = (idx == details.size - 1) ? rule_suffix : ''
+                suffix = idx == details.size - 1 ? rule_suffix : ''
                 result << "#{DETAIL_INDENT}#{detail}#{suffix}"
               end
               result

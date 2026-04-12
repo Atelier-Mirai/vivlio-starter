@@ -25,7 +25,7 @@ module Vivlio
       module IndexCommands
         # 索引候補語自動抽出クラス
         class IndexCandidateExtractor
-          BANNER = <<~BANNER.freeze
+          BANNER = <<~BANNER
             # ================================================================
             # 索引候補リスト（config/index_candidates.yml）
             # ================================================================
@@ -111,8 +111,8 @@ module Vivlio
                          .map do |term, score|
               yomi = @yomi_inferrer.available? ? @yomi_inferrer.infer(term) : term
               contexts = @term_contexts[term]
-                           .uniq { |ctx| [ctx[:chapter], ctx[:context]] }
-                           .first(3)
+                         .uniq { |ctx| [ctx[:chapter], ctx[:context]] }
+                         .first(3)
 
               {
                 'term' => term,
@@ -132,8 +132,8 @@ module Vivlio
 
             yaml = data.to_yaml(line_width: -1)
             yaml_with_spacing = yaml
-                                   .sub("candidates:\n- term:", "candidates:\n\n- term:")
-                                   .gsub("\n- term:", "\n\n- term:")
+                                .sub("candidates:\n- term:", "candidates:\n\n- term:")
+                                .gsub("\n- term:", "\n\n- term:")
 
             File.write(output_file, "#{BANNER}#{yaml_with_spacing}", encoding: 'utf-8')
             Common.log_success("索引候補を #{output_file} に出力しました")
@@ -248,10 +248,8 @@ module Vivlio
               @documents.each_value do |content|
                 df[term] += 1 if content.include?(term)
               end
-            end
 
-            # TF-IDF を計算してスコアに加算
-            @term_scores.each_key do |term|
+              # TF-IDF を計算してスコアに加算
               idf = Math.log((doc_count + 1.0) / (df[term] + 1.0)) + 1.0
 
               @documents.each_value do |content|
@@ -271,13 +269,12 @@ module Vivlio
             return '' if idx.nil?
 
             w = @context_width
-            total_width = w * 2
 
             ideal_start = idx - w
             ideal_end = idx + term.length + w
 
             # 前方不足分を後方に補償
-            if ideal_start < 0
+            if ideal_start.negative?
               ideal_end += ideal_start.abs
               ideal_start = 0
             end
@@ -352,7 +349,7 @@ module Vivlio
             return false if term.match?(/^\d+%$/) # 20%, 25% など
 
             # 特殊文字のみの用語を除外
-            return false if term.match?(/^[="\-\.\/:;,]+$/)
+            return false if term.match?(%r{^[="\-./:;,]+$})
 
             # data属性の値（yomi値）を除外
             return false if term.match?(/^(yomi|index-term|idx-)/)

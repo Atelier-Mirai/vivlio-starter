@@ -97,7 +97,7 @@ module Vivlio
 
           # リンク総数を取得
           def link_count
-            @entries.values.sum { it.size }
+            @entries.values.sum(&:size)
           end
 
           private

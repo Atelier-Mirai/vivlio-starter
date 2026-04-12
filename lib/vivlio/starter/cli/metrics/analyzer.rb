@@ -103,7 +103,7 @@ module Vivlio
             stripped = text.gsub(/\s/, '')
             total_chars = stripped.length
             kanji_count = stripped.scan(KANJI_PATTERN).size
-            total_word_length = tokens.sum { |token| token.length }
+            total_word_length = tokens.sum(&:length)
 
             VocabularyStats.new(
               kanji_ratio: calculate_kanji_ratio(kanji_count, total_chars),
@@ -198,7 +198,7 @@ module Vivlio
                 .gsub(/^-\s*/, '')
                 .gsub(/^\d+\.\s*/, '')
                 .gsub(/:::\{[^}]*\}/, '')
-                .gsub(/:::/, '')
+                .gsub(':::', '')
           end
 
           # 読解難度ラベルを判定する

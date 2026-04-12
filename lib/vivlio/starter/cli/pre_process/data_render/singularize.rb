@@ -30,11 +30,11 @@ module Vivlio
             # @return [String] 単数形の単語
             def call(word)
               case word.to_s
-              in /\A(.+)ies\z/              then "#{$1}y"       # categories → category
-              in /\A(.+)([sxz]|ch|sh)es\z/  then "#{$1}#{$2}"  # branches → branch
-              in /\A(.+)ves\z/              then "#{$1}f"       # shelves → shelf
-              in /\A(.+)s\z/                then $1             # elements → element
-              else word.to_s                                    # data, sheep（不変）
+              in /\A(.+)ies\z/              then "#{::Regexp.last_match(1)}y" # categories → category
+              in /\A(.+)([sxz]|ch|sh)es\z/  then "#{::Regexp.last_match(1)}#{::Regexp.last_match(2)}" # branches → branch
+              in /\A(.+)ves\z/              then "#{::Regexp.last_match(1)}f"       # shelves → shelf
+              in /\A(.+)s\z/                then ::Regexp.last_match(1)             # elements → element
+              else word.to_s # data, sheep（不変）
               end
             end
           end

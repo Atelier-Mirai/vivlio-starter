@@ -248,8 +248,8 @@ module Vivlio
         # ページサイズを判定
         def self.detect_page_size(page_use)
           case page_use.to_s.downcase[0..1]
-          in "a4" then :a4
-          in "a5" then :a5
+          in 'a4' then :a4
+          in 'a5' then :a5
           else :b5 # デフォルト
           end
         end
@@ -272,7 +272,7 @@ module Vivlio
         def self.generate_rgb_pdf(covers_dir, page_size, config)
           size = SIZES[page_size] || SIZES[:b5]
           theme = config.dig(:output, :cover) || 'master'
-          
+
           # 新しい命名規則で出力ファイル名を生成
           front_output = "frontcover_#{theme}_#{page_size}_rgb.pdf"
           back_output = "backcover_#{theme}_#{page_size}_rgb.pdf"
@@ -324,10 +324,10 @@ module Vivlio
         # - 塗り足し・トンボオフセットの加算は generate_pdfx_single 内で行う
         # - crop_marks: true を渡すことでトンボ付き PDF を生成する
         def self.generate_cmyk_pdf(covers_dir, page_size, config)
-          base_size = SIZES[page_size]  # 仕上がりサイズ（塗り足しなし）
+          base_size = SIZES[page_size] # 仕上がりサイズ（塗り足しなし）
           bleed_mm  = parse_bleed_mm(config)
 
-          Common.log_info "  塗り足し: #{bleed_mm}mm（片側）" if bleed_mm > 0
+          Common.log_info "  塗り足し: #{bleed_mm}mm（片側）" if bleed_mm.positive?
 
           theme = config.dig(:output, :cover) || 'master'
 
@@ -397,10 +397,10 @@ module Vivlio
             # ページサイズ = 仕上がり + 塗り足し×2 + オフセット×2
             offset_mm  = CROP_MARK_OFFSET_MM
             margin_mm  = bleed_mm + offset_mm
-            bleed_px   = (bleed_mm  * px_per_mm).round
+            (bleed_mm * px_per_mm).round
             margin_px  = (margin_mm * px_per_mm).round
-            total_w_px = trim_w_px + 2 * margin_px
-            total_h_px = trim_h_px + 2 * margin_px
+            total_w_px = trim_w_px + (2 * margin_px)
+            total_h_px = trim_h_px + (2 * margin_px)
 
             temp_pdf = "#{output_pdf}.temp.pdf"
 
@@ -434,8 +434,8 @@ module Vivlio
             # --- Phase: トンボなし PDF 生成（pdf ターゲット）---
             # 塗り足し込みサイズでリサイズして PDF 変換（既存動作を維持）
             bleed_px   = (bleed_mm * px_per_mm).round
-            bleed_w_px = trim_w_px + 2 * bleed_px
-            bleed_h_px = trim_h_px + 2 * bleed_px
+            bleed_w_px = trim_w_px + (2 * bleed_px)
+            bleed_h_px = trim_h_px + (2 * bleed_px)
 
             cmd_convert = convert_cmd + [
               input_png,
@@ -505,6 +505,7 @@ module Vivlio
           if theme == 'master'
             path = File.join(covers_dir, FRONTCOVER_MASTER)
             return path if File.exist?(path)
+
             return nil
           end
 
@@ -551,7 +552,7 @@ module Vivlio
           return base_size if bleed_mm <= 0
 
           bleed_px = (bleed_mm * DPI / 25.4).round
-          total_bleed_px = bleed_px * 2  # 両側分
+          total_bleed_px = bleed_px * 2 # 両側分
 
           {
             width: base_size[:width] + total_bleed_px,

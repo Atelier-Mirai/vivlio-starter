@@ -28,7 +28,7 @@ module Vivlio
 
             @current_lines = build_lines
             @line_count = @current_lines.size
-            @current_lines.each { puts _1 }
+            @current_lines.each { puts it }
             @rendered = true
           end
 
@@ -59,15 +59,13 @@ module Vivlio
             else
               @current_lines = build_lines
               @line_count = @current_lines.size
-              @current_lines.each { puts _1 }
+              @current_lines.each { puts it }
               @rendered = true
             end
           end
 
           def render_empty
-            if @rendered
-              clear_block
-            end
+            clear_block if @rendered
 
             puts '（対象章がありません）'
             @line_count = 1
@@ -117,11 +115,7 @@ module Vivlio
             max_lines.times do |idx|
               clear_current_line
               text = lines[idx]
-              if text
-                puts text
-              else
-                puts ''
-              end
+              puts text || ''
             end
 
             @line_count = lines.size
@@ -166,7 +160,7 @@ module Vivlio
             width = Formatter::CHAPTER_LABEL_WIDTH
             return text if text.length <= width
 
-            text.each_char.take(width - 1).join + '…'
+            "#{text.each_char.take(width - 1).join}…"
           end
 
           def number_with_comma(num)
