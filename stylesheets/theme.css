@@ -35,7 +35,7 @@
   --accent-mint:          #10b981;
   --accent-green:         #16a34a;
   --accent-lime:          #65a30d;
-  --theme-accent:         var(--accent-blue); /* config/book.yml の theme.color 設定により自動更新 */
+  --theme-accent:         var(--accent-yellow); /* config/book.yml の theme.color 設定により自動更新 */
 
   /* カラートークン（共通） */
   --color-text:            #000;

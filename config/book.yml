@@ -67,7 +67,7 @@ theme:
   # ----------------------------
   # テーマカラー
   # ----------------------------
-  color: blue     # yellow / amber / orange / peach
+  color: yellow     # yellow / amber / orange / peach
                     # coral / red / magenta / plum
                     # purple / indigo / navy / blue
                     # cyan / teal / mint / green / lime から選択
@@ -115,12 +115,12 @@ page:
 
   # use: b5_standard
   # use: b5_compact
-  use: b5_airy
+  # use: b5_airy
   # use: b5_custom
   
   # use: a4_standard
   # use: a4_airy
-  # use: a4_compact
+  use: a4_compact
   # use: a4_custom
 
 # ========================================
