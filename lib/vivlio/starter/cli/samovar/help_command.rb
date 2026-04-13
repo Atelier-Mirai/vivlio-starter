@@ -51,6 +51,7 @@ module Vivlio
               'resize' => 'images/画像をWebP形式に変換・最適化します（--high/--lowで品質変更可）'
             },
             'ビルド・出力・プレビュー' => {
+              'preflight' => 'ビルド前の原稿エラーチェックを高速実行します',
               'build' => '書籍全体または指定章をビルドします',
               'open' => '生成されたPDFを開きます',
               'pdf:compress' => '生成済みPDFを圧縮します'

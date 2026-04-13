@@ -1,8 +1,0 @@
-# smalltalk.txt
-
-self
-super
-nil
-true
-false
-thisContext

@@ -60,10 +60,10 @@ module Vivlio
 
           # モードに応じたステップを登録する
           def register_steps
-            if mode == :single
-              register_single_mode_steps
-            else
-              register_full_mode_steps
+            case mode
+            in :single    then register_single_mode_steps
+            in :preflight then register_preflight_steps
+            in _          then register_full_mode_steps
             end
           end
 
@@ -113,6 +113,17 @@ module Vivlio
               register_pdf_build_steps
               add_step('Step 12 (compress, rename and final clean)', -> { run_step12_rename_and_clean })
             end
+          end
+
+          # preflight mode: Step 1〜4 のみ実行（HTML変換・PDF生成なし）
+          # build 側の Step 1〜4 変更が自動追従するよう、既存メソッドを直接呼ぶ
+          def register_preflight_steps
+            [
+              ['Step  1 (optimize images)',      -> { run_step1_optimize_images }],
+              ['Step  2 (prepare theme images)', -> { Build::ImageOptimizer.prepare_theme_images! }],
+              ['Step  3 (preprocess sections)',  -> { Build::SectionBuilder.preprocess_sections!(entries) }],
+              ['Step  4 (index scan and build)', -> { run_step4_index_processing }],
+            ].each { |label, handler| add_step(label, handler) }
           end
 
           # Steps 0-5: HTML 生成までの共通ステップ

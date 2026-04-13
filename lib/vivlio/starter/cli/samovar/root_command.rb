@@ -64,7 +64,8 @@ module Vivlio
                 'pdf:compress' => PdfCompressCommand,
                 'pdf:read' => PdfReadCommand,
                 'lint' => LintCommand,
-                'metrics' => MetricsCommand
+                'metrics' => MetricsCommand,
+                'preflight' => PreflightCommand
               }.freeze
             end
 

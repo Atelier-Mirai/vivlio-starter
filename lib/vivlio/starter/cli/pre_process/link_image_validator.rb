@@ -145,6 +145,13 @@ module Vivlio
               config[:verify_images] || config[:verify_bare_urls] || config[:verify_external_links]
             end
 
+            # 蓄積されたレポートにエラー（issue）が1件以上あるか判定する
+            def any_issues?
+              @monitor.synchronize do
+                @reports.any? { |r| r.image_issues.any? || r.link_issues.any? }
+              end
+            end
+
             private
 
             # book.yml + CLI オプションから検証設定を解決する
