@@ -12,33 +12,36 @@ PREFACE:
 
 ## 本文
 CHAPTERS:
-  - 歴史篇:
-      - 01-quickstart
-#       - 02-history
-#       - 03-person
-#       - 04-computers-work
-#       - 05-binary
-#       - 06-algorithm
-#       - 07-programming
-#       - 08-web
-#       - 09-three-elements-org
-#       - 11
-#       - 12
-#       - 20
-#   - 実践篇:
-#       - 21-html
-#       - 22-css
-#       - 23-javascript
-#       - 31-netlify
-#       - 41-pwa
+  - 【第一部：はじめる】:
+      - 11-workflow
+      - 12-quickstart
+      - 13-new
+  - 【第二部：書く】:
+      - 21-markdown-tutorial
+      - 22-chapter-management
+      - 23-cross-reference
+      - 24-querystream
+  - 【第三部：整える】:
+      - 31-lint
+      - 32-metrics
+      - 33-index-glossary
+  - 【第四部：仕上げる】:
+      - 41-book-yml
+      - 42-frontispiece
+      - 43-cover
+      - 44-build
+      - 45-utility
+  - 【第五部：トラブルシューティング】:
+      - 51-doctor
+  - 【第六部：開発者のために】:
+      - 61-developer
 
-# ## 付録
-# APPENDICES:
-#   - 91-books
-#   - 92-links
-#   - 93-cheats
-#   - 94-appendix-a
-#   - 95-appendix-b
+## 付録
+APPENDICES:
+  - 91-install
+  - 92-pdf-read
+  - 93-import
+  - 94-sample
 
 # ## あとがき
 POSTFACE:
