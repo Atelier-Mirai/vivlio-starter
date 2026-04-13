@@ -22,6 +22,7 @@ require_relative '../build'
 require_relative '../build/pipeline'
 require_relative '../pre_process'
 require_relative '../token_resolver'
+require_relative '../clean'
 
 module Vivlio
   module Starter
@@ -93,6 +94,8 @@ module Vivlio
             Common.log_error("Error: #{e.message}")
             1
           ensure
+            # 前処理で生成した中間 .md ファイルを後始末する
+            CleanCommands.execute_clean({})
             Thread.current[:vs_verify_options] = nil
           end
 
