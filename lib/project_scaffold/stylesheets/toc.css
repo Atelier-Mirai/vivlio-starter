@@ -14,7 +14,7 @@
 #toc li.toc-section > .toc-title::after,
 .toc-subsection::after,
 #toc li.toc-chapter > .toc-title::after {
-  font-family: var(--folio-font);
+  font-family: var(--font-folio); /* --folio-font は誤り。page-settings.css の変数名に合わせる */
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: "tnum" 1, "lnum" 1;
@@ -112,6 +112,7 @@ body.toc {
 
 li.toc-chapter {
   /* layout */
+  break-before: auto;          /* 章ブロックが大きすぎる場合でも前でページ分割を許容 */
   break-inside: auto;          /* ページ内分割を許容して空白を減らす */
   page-break-inside: auto;
   widows: 1;                   /* さらに詰めるため最小1行に緩和 */

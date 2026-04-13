@@ -21,6 +21,7 @@ CHAPTERS:
       - 22-chapter-management
       - 23-cross-reference
       - 24-querystream
+      - 25-extensions
   - 【第三部：整える】:
       - 31-lint
       - 32-metrics
