@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    vivlio-starter (0.39.0)
+    vivlio-starter (0.39.1)
       combine_pdf (~> 1.0)
       kramdown (~> 2.4)
       mini_magick (~> 4.12)
@@ -73,7 +73,7 @@ GEM
       pdf-core (~> 0.10.0)
       ttfunk (~> 1.8)
     prism (1.9.0)
-    query-stream (1.0.0)
+    query-stream (1.0.1)
       logger
       samovar (~> 2.1)
     racc (1.8.1)
@@ -120,7 +120,7 @@ PLATFORMS
 DEPENDENCIES
   bundler (~> 2.5)
   minitest (~> 5.22)
-  query-stream (~> 1.0.0)
+  query-stream (= 1.0.1)
   rake (~> 13.2)
   rubocop (~> 1.65)
   vivlio-starter!

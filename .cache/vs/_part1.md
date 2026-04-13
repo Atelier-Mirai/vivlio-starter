@@ -1,6 +1,6 @@
 ---
 class: part-title
-title: 歴史篇
+title: 【第一部：はじめる】
 ---
 
-# 歴史篇
+# 【第一部：はじめる】

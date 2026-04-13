@@ -34,7 +34,7 @@ module Vivlio
           # デフォルト設定
           DEFAULT_PORT = 13_100
           DEFAULT_HOST = 'localhost'
-          DEFAULT_TIMEOUT_MS = 120_000
+          DEFAULT_TIMEOUT_MS = 300_000  # 416ページ規模のビルドに対応するため5分に延長
           SERVER_STARTUP_TIMEOUT = 30 # 秒
           MAPPING_SCRIPT = File.expand_path('extract_page_mapping.mjs', __dir__)
 

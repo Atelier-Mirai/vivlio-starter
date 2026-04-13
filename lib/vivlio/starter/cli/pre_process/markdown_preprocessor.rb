@@ -106,9 +106,6 @@ module Vivlio
             else
               Common.log_success('QueryStream 記法を展開しました')
             end
-          rescue DataRender::DataRenderError => e
-            Common.log_error("QueryStream 展開エラー: #{e.message}")
-            raise
           end
 
           # 画像パスを生成規約に従って正規化する

@@ -675,20 +675,38 @@ module Vivlio
           # エラーハンドリング
           # ----------------------------------------------------------------
 
-          # 存在しないデータファイルでエラーになる
-          def test_should_raise_error_for_missing_data_file
-            content = "= nonexistent\n"
-            assert_raises(DataRender::DataRenderError) do
-              render(content)
-            end
+          # 存在しないデータファイルは元の行を残して処理を継続する
+          def test_should_keep_line_and_continue_for_missing_data_file
+            content = "前の行\n= nonexistent\n後の行\n"
+            result = render(content)
+
+            assert_includes result, '前の行'
+            assert_includes result, '= nonexistent'  # 元の行が残る
+            assert_includes result, '後の行'
           end
 
-          # 存在しないテンプレートでエラーになる
-          def test_should_raise_error_for_missing_template
-            content = "= books | :nonexistent_style\n"
-            assert_raises(DataRender::DataRenderError) do
-              render(content)
-            end
+          # 存在しないテンプレートは元の行を残して処理を継続する
+          def test_should_keep_line_and_continue_for_missing_template
+            content = "前の行\n= books | :nonexistent_style\n後の行\n"
+            result = render(content)
+
+            assert_includes result, '前の行'
+            assert_includes result, '= books | :nonexistent_style'  # 元の行が残る
+            assert_includes result, '後の行'
+          end
+
+          # 複数のQueryStream記法があるとき、1つが失敗しても残りは展開される
+          def test_should_continue_expanding_after_error
+            content = <<~MD
+              = books | tags=ruby && tags=beginner
+              = books | :shart
+              = books | tags=c
+            MD
+            result = render(content)
+
+            assert_includes result, '楽しいRuby'          # 1行目は展開される
+            assert_includes result, '= books | :shart'   # 2行目は元の行が残る
+            assert_includes result, 'はじめてのC'          # 3行目は展開される
           end
 
           # 一件検索で0件の場合は空文字列になる

@@ -31,18 +31,29 @@ module Vivlio
           # @param templates_dir [String] テンプレートディレクトリのパス
           # @return [String] 展開後の Markdown コンテンツ
           def process(content, source_filename: nil, data_dir: 'data', templates_dir: Common::TEMPLATES_DIR)
+            # gem 側はログを出力しないため、on_error コールバックでメッセージを構成する
+            on_error = lambda do |error|
+              case error
+              in QueryStream::TemplateNotFoundError => e
+                Common.log_error("❌ QueryStream 展開エラー: テンプレートファイルが見つかりません: #{e.template_path}")
+                Common.log_error("   記法: #{e.query} (#{e.location})")
+                Common.log_error("   ヒント: #{e.hint}") if e.hint
+              in QueryStream::DataNotFoundError => e
+                Common.log_error("❌ QueryStream 展開エラー: データファイルが見つかりません: #{e.expected_path}")
+                Common.log_error("   記法: #{e.query} (#{e.location})")
+              else
+                Common.log_error("❌ QueryStream 展開エラー: #{error.message}")
+              end
+            end
+
             QueryStream.render(
               content,
               source_filename:,
               data_dir:,
-              templates_dir:
+              templates_dir:,
+              on_error:
             )
-          rescue QueryStream::Error => e
-            raise DataRenderError, e.message
           end
-
-          # DataRender 固有のエラークラス（後方互換性のため維持）
-          class DataRenderError < StandardError; end
         end
       end
     end
