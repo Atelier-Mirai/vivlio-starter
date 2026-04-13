@@ -44,8 +44,9 @@
   --color-em-underline:    var(--theme-accent);           /* 強意の下線色 */
   --color-border:          #ccc;           /* 画像など汎用枠 */
   --color-border-weak:     #ddd;           /* 引用枠など */
-  --color-column-bg:       #eef;           /* コラム背景 */
-  --color-column-border:   #8df;           /* コラム枠 */
+  --color-column-bg:       color-mix(in srgb, var(--theme-accent) 15%, white); /* コラム背景 */
+  /* コラム背景 theme-accent を白と混ぜて薄くする */
+  --color-column-border:   var(--theme-accent);           /* コラム枠 */
   --color-figure-border:   #ccc;           /* 図枠 */
   --color-overlay:         rgb(255 255 255 / 70%);
   --color-shadow:          rgb(0 0 0 / 15%);
