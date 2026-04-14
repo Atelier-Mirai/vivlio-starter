@@ -134,17 +134,21 @@ module Vivlio
           def apply_frontmatter(content, file_type, chapter_num)
             text = content.dup
             if text.start_with?('---')
-              frontmatter_match = text.match(/\A---\n(.*?)\n---\n/m)
-              return text unless frontmatter_match
+              # フロントマター終了の `---` を正確に検出する。
+              # `/\A---\n(.*?)\n---\n/m` の最短マッチはコードブロック内の `---` で
+              # 誤って止まるため、行単位で走査して最初の `---` 単独行を終端とする。
+              frontmatter_end = find_frontmatter_end(text)
+              return text unless frontmatter_end
 
-              frontmatter_yaml = frontmatter_match[1]
+              frontmatter_yaml = text[4...frontmatter_end].chomp
+              body_after = text[(frontmatter_end + 4)..]
               begin
                 existing_frontmatter = YAML.safe_load(frontmatter_yaml, permitted_classes: [], aliases: true) || {}
                 merged_frontmatter = generate_frontmatter(file_type, chapter_num, existing_frontmatter)
                 new_frontmatter_yaml = YAML.dump(merged_frontmatter)
                 Common.log_success('フロントマター併合')
                 Common.log_success('フロントマター更新')
-                text.sub(/\A---\n.*?\n---\n/m, "#{new_frontmatter_yaml}---\n")
+                "#{new_frontmatter_yaml}---\n#{body_after}"
               rescue StandardError => e
                 report_frontmatter_error(e, frontmatter_yaml)
                 text
@@ -155,6 +159,30 @@ module Vivlio
               Common.log_success('フロントマター追加')
               "#{new_frontmatter_yaml}---\n\n#{text}"
             end
+          end
+
+          # フロントマター終了位置を行単位で検出する。
+          # ファイル先頭の `---\n` の直後から走査し、
+          # コードフェンス（```）に入る前に `---` 単独行が現れた位置を返す。
+          # @param text [String] ファイル全体のテキスト
+          # @return [Integer, nil] 終了 `---\n` の開始インデックス、見つからなければ nil
+          def find_frontmatter_end(text)
+            # 先頭の `---\n` をスキップ
+            pos = 4
+            in_code_fence = false
+            while pos < text.length
+              line_end = text.index("\n", pos)
+              break unless line_end
+
+              line = text[pos...line_end]
+              if line.start_with?('```') || line.start_with?('~~~')
+                in_code_fence = !in_code_fence
+              elsif !in_code_fence && line == '---'
+                return pos
+              end
+              pos = line_end + 1
+            end
+            nil
           end
 
           # フロントマター解析時のエラー内容を詳細ログへ出力する

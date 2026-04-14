@@ -53,6 +53,13 @@ module Vivlio
             require_relative '../pre_process/css_updater'
             Vivlio::Starter::CLI::PreProcessCommands::FrontmatterGenerator.update_css_only!(cfg)
 
+            # style: simple のときは画像を使わないため生成をスキップ
+            theme_style = theme_cfg[:style].to_s.strip.downcase
+            if theme_style == 'simple'
+              Common.log_info('[Step 2] style: simple のため frontispiece / ornament の生成をスキップします')
+              return
+            end
+
             frontispiece_entry = theme_cfg[:frontispiece]
             ornament_entry = theme_cfg[:ornament]
 

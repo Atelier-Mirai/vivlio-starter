@@ -14,7 +14,7 @@
 #toc li.toc-section > .toc-title::after,
 .toc-subsection::after,
 #toc li.toc-chapter > .toc-title::after {
-  font-family: var(--font-folio); /* --folio-font は誤り。page-settings.css の変数名に合わせる */
+  font-family: "hackgen35", var(--font-folio); /* 等幅フォントを優先指定 */
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: "tnum" 1, "lnum" 1;
@@ -127,6 +127,7 @@ li.toc-chapter-no-number,
 li.toc-chapter-appendix {
   /* layout */
   break-inside: auto;
+  break-after: avoid;  /* 「はじめに」等の直後で改ページされないようにする */
   page-break-inside: auto;
   widows: 2;
   orphans: 2;
@@ -161,28 +162,26 @@ li.toc-chapter-appendix {
 /* ========================================================= */
 /* 節目次（before＋リーダー） */
 li.toc-section {
-  display: flex;          /* 項目行は Flex のまま（番号／タイトル／リーダー／頁） */
-  align-items: baseline;
-  flex-wrap: wrap;        /* タイトル行 + 子UL を行分け（タイトル行を1段、子ULを次段） */
-  break-inside: auto;     /* セクションが大きすぎる場合は分割を許容 */
+  /* display: block で leader() を正しく機能させる（Flex だと leader() が不揃いになる） */
+  display: block;
+  break-inside: auto;
   page-break-inside: auto;
   widows: 2;
   orphans: 2;
 
   margin-inline-start: 0;
   margin-block-end: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
+  padding-inline-start: clamp(9.1mm, calc(var(--paper-scale) * 13mm), 13mm);
 
   font-size: clamp(11.2Q, calc(var(--paper-scale) * 16Q), 16Q);
   line-height: 1.2;
   font-weight: 700;
-  /* タイトルは必要なら折返し可（子ULは別行に送るため行全体は崩れない） */
 }
 
 .toc-section::before {
-  display: inline-block;  /* Flexアイテムとして振る舞う */
-  flex: 0 0 clamp(9.1mm, calc(var(--paper-scale) * 13mm), 13mm); /* 固定幅の番号欄 */
-
-  inline-size: clamp(9.1mm, calc(var(--paper-scale) * 13mm), 13mm);
+  display: inline-block;
+  min-inline-size: clamp(9.1mm, calc(var(--paper-scale) * 13mm), 13mm);
+  margin-inline-start: calc(-1 * clamp(9.1mm, calc(var(--paper-scale) * 13mm), 13mm));
   text-align: end;
   content: counters(toc-list-counter, "-");
   counter-increment: toc-list-counter;
@@ -222,11 +221,8 @@ li.toc-chapter-appendix > ul > li {
 
 /* セクション項目直下の子UL（小節リスト）の余白 */
 #toc li.toc-section > ul {
-  order: 2;                 /* 節行の次の行に配置（Flex の改行） */
-  flex-basis: 100%;         /* 次の行に回す */
-
   margin-block-start: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
-  padding-inline-start: 0; /* インデントは各小節LI側で与える */
+  padding-inline-start: 0;
 }
 
 /* 章タイトルの下に3mm（配下の小節リストを下げる） */
@@ -234,6 +230,7 @@ li.toc-chapter-appendix > ul > li {
 li.toc-chapter > ul {
   order: 2;                 /* タイトル行の次に配置（Flex の改行） */
   flex-basis: 100%;
+  break-before: auto;       /* 章タイトルと節リストの間でもページ分割を許容 */
   margin-block-start: clamp(2.1mm, calc(var(--paper-scale) * 3mm), 3mm);
 }
 /* stylelint-enable no-descending-specificity */

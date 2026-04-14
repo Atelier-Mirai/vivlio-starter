@@ -171,6 +171,12 @@ module Vivlio
             targets = resolve_targets(entries_or_keep)
             return if targets.empty?
 
+            # 並列処理前に章の表示順を確定させる。
+            # HeadingProcessor の @main_chapter_order はモジュールレベルのキャッシュなので、
+            # 並列スレッドが不完全な HTML リストでキャッシュを作る前に正しい順序を注入する。
+            main_tokens = targets.select { |t| t.match?(/\A\d{2}-/) && t[/\A(\d{2})/, 1].to_i.between?(1, 89) }
+            PostProcessCommands::HeadingProcessor.chapter_tokens_override = main_tokens unless main_tokens.empty?
+
             concurrency = determine_concurrency
             if concurrency == 1
               targets.each { |target| convert_single_chapter!(target) }

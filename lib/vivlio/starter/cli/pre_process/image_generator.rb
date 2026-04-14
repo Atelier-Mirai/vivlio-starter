@@ -298,25 +298,25 @@ module Vivlio
             Common.log_action("  $ #{Shellwords.join(cmd.map(&:to_s))}")
 
             if stream_output
-              success = system(*cmd)
+              # stderr は常に /dev/null へ捨てる（waifu2x-ncnn-vulkan 等のデバイス情報ログを抑制）
+              success = system(*cmd, err: File::NULL)
               raise "#{label} に失敗しました" unless success
 
               return
             end
 
-            stdout_str, stderr_str, status = Open3.capture3(*cmd)
+            # stderr は /dev/null へ捨てる。エラー時のみ再取得して報告する
+            stdout_str, status = Open3.capture2(*cmd, err: File::NULL)
 
             if status.success?
-              if Common.current_log_level >= 3
-                [stdout_str, stderr_str].each do |chunk|
-                  next if chunk.nil? || chunk.strip.empty?
-
-                  chunk.each_line { |line| Common.log_debug("#{label}: #{line.rstrip}") }
-                end
+              if Common.current_log_level >= 3 && stdout_str && !stdout_str.strip.empty?
+                stdout_str.each_line { |line| Common.log_debug("#{label}: #{line.rstrip}") }
               end
               return
             end
 
+            # 失敗時は stderr も取得してエラーメッセージに含める
+            _out, stderr_str, = Open3.capture3(*cmd)
             combined = [stdout_str, stderr_str].map(&:to_s).reject(&:empty?).join("\n")
             message = combined.empty? ? "#{label} に失敗しました" : "#{label} に失敗しました:\n#{combined}"
             raise message

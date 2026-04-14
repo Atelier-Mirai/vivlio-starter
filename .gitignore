@@ -3,7 +3,6 @@
 log/
 tmp/
 node_modules/
-_sandbox/
 *.log
 *.tmp
 .DS_Store
@@ -15,10 +14,12 @@ Thumbs.db
 *.gem
 pkg/*.gem
 
+# Vivlio Starter artifacts
+/.cache/
+/covers/
+!/covers/*.svg
+/entries.js
+
 # Vivliostyle build artifacts
 /.vivliostyle/
 
-/entries.js
-
-/covers/
-!/covers/*.svg
