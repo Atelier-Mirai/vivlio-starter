@@ -18,6 +18,7 @@
 
 require 'cgi'
 require_relative '../common'
+require_relative 'markdown_utils'
 
 module Vivlio
   module Starter
@@ -73,44 +74,41 @@ module Vivlio
           module_function
 
           # Markdown 内の画像リンクを生成規約に合わせて正規化する
+          # コードブロック・インラインコード内は MarkdownUtils.extract_code_spans で退避し、
+          # 変換対象から除外する。
           def fix_image_paths(content, filename)
             chapter_dir = filename.sub(/\.md$/, '')
 
-            lines = content.lines
-            in_code_block = false
+            # コードブロック・インラインコードを退避して変換対象から除外する
+            protected_text, spans = MarkdownUtils.extract_code_spans(content)
 
+            # 行番号を保持しながら画像記法を正規化する
+            # プレースホルダーは改行を含まないため、行番号は元のコンテンツと一致する
+            lines = protected_text.lines
             transformed_lines = lines.each_with_index.map do |line, idx|
               line_number = idx + 1
-              stripped = line.lstrip
 
-              # フェンス付きコードブロック (``` ～ ``` ) 内はそのまま残す
-              if stripped.start_with?('```')
-                in_code_block = !in_code_block
-                line
-              elsif in_code_block
-                line
-              else
-                line.gsub(%r{!\[(.*?)\]\((?!https?://)([^)]+)\)}) do
-                  alt_text = ::Regexp.last_match(1)
-                  image_path = ::Regexp.last_match(2)
+              line.gsub(%r{!\[(.*?)\]\((?!https?://)([^)]+)\)}) do
+                alt_text = ::Regexp.last_match(1)
+                image_path = ::Regexp.last_match(2)
 
-                  # すでに images/ から始まる場合はそのまま。相対パスは images/<章ディレクトリ>/ に正規化
-                  normalized = if image_path.start_with?('images/')
-                                 image_path
-                               else
-                                 "images/#{chapter_dir}/#{image_path}"
-                               end
+                # すでに images/ から始まる場合はそのまま。相対パスは images/<章ディレクトリ>/ に正規化
+                normalized = if image_path.start_with?('images/')
+                               image_path
+                             else
+                               "images/#{chapter_dir}/#{image_path}"
+                             end
 
-                  # 生成物ポリシーに合わせて拡張子を .webp に寄せる（png/jpg のみ対象）
-                  normalized = normalized.sub(/\.(png|jpe?g)\z/i, '.webp')
+                # 生成物ポリシーに合わせて拡張子を .webp に寄せる（png/jpg のみ対象）
+                normalized = normalized.sub(/\.(png|jpe?g)\z/i, '.webp')
 
-                  original_image_name = File.basename(image_path)
-                  resolved_placeholder_or_path(alt_text, normalized, filename, line_number, original_image_name)
-                end
+                original_image_name = File.basename(image_path)
+                resolved_placeholder_or_path(alt_text, normalized, filename, line_number, original_image_name)
               end
             end
 
-            transformed_lines.join
+            # 退避したコードブロック・インラインコードを復元する
+            MarkdownUtils.restore_code_spans(transformed_lines.join, spans)
           end
 
           # 既存画像なら元のパスを、無い場合はプレースホルダーを返す
