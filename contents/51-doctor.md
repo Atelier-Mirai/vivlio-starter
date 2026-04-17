@@ -55,8 +55,8 @@ vs doctor
 🔎 環境診断を開始します…
 ✅ Xcode Command Line Tools: OK
 ✅ node: OK
-✅ vivliostyle: OK
 ✅ textlint: OK
+✅ vivliostyle: OK
 ✅ qpdf: OK
 ❌ pdfinfo: 見つかりません
 ✅ gs: OK

@@ -9,9 +9,10 @@
 Vivlio Starter は Ruby で動作します。Ruby がまだインストールされていない場合は、同梱のスクリプトを使うのが最も簡単です。
 
 ```bash
-bin/install-ruby.zsh          # 対話的に最新安定版を導入
-bin/install-ruby.zsh -y       # 確認をスキップして自動導入
-bin/install-ruby.zsh -v 4.0.2 # バージョンを明示して導入
+bin/install-ruby.zsh              # 対話的に最新安定版を導入
+bin/install-ruby.zsh -y           # 確認をスキップして自動導入
+bin/install-ruby.zsh -v 4.0.2     # バージョンを明示して導入
+bin/install-ruby.zsh --no-bundler # bundler の導入をスキップ
 ```
 
 このスクリプトは次の作業を自動で行います。Xcode Command Line Tools の確認とインストール案内、Homebrew の導入、rbenv / ruby-build の導入、Ruby 本体のインストールと `rbenv global` 設定、bundler の導入。
@@ -56,8 +57,8 @@ gem install query-stream        # データ展開機能
 | ImageMagick | `brew install imagemagick` | 画像変換・WebP 変換 |
 | Inkscape | `brew install inkscape` | SVG → PDF 変換（カバー生成用） |
 | libvips | `brew install vips` | 高速画像処理 |
-| Tesseract + 日本語データ | `brew install tesseract` | OCR エンジン |
-| MeCab | `brew install mecab` | 索引機能の読み自動推測 |
+| Tesseract + 日本語データ | `brew install tesseract tesseract-lang` | OCR エンジン |
+| MeCab | `brew install mecab mecab-ipadic` | 索引機能の読み自動推測 |
 | Playwright / Chromium | npm 経由 | バックリンク重複排除用 |
 | rouge | `gem install rouge` | コードブロック言語推定 |
 | waifu2x-ncnn-vulkan | GitHub Releases から自動取得 | AI 画像拡大（オプション） |
@@ -124,7 +125,7 @@ vivliostyle --version
 
 ```bash
 brew install qpdf poppler ghostscript imagemagick inkscape vips
-brew install tesseract tesseract-lang mecab
+brew install tesseract tesseract-lang mecab mecab-ipadic
 ```
 
 7) Vivlio Starter gem
