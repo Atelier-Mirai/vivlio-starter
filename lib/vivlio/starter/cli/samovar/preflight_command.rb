@@ -164,6 +164,29 @@ module Vivlio
             normalized
           end
 
+          def print_usage
+            puts <<~USAGE
+              vs preflight - ビルド前の原稿エラーチェックを高速実行します
+
+              Usage:
+                vs preflight [targets...] [options]
+
+              引数:
+                targets...          チェック対象（章番号 / 範囲 / スラッグ）。省略時は全章
+
+              オプション:
+                --[no]-resize       画像最適化を行う（--no-resize で無効）         （既定: 有効）
+                --[no]-verify       リンク・画像の基本検証を実行する（--no-verify でスキップ）（既定: 有効）
+                --verify-links      外部 URL の HTTP 到達性チェックを実行する
+                --log <level>       ログレベルを指定（error/warn/info/debug）
+                -h, --help          このコマンドの使い方を表示
+
+              終了コード:
+                0: エラーなし（警告のみ、または問題なし）
+                1: エラー1件以上、または実行時例外
+            USAGE
+          end
+
           def array_from_input(input)
             if input.is_a?(Array)
               input.dup

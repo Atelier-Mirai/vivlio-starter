@@ -162,7 +162,7 @@ module Vivlio
             # 外部 URL が蓄積されていることを確認（print_summary で集約される）
             # 直接アクセスできないため、サマリー出力が正常に動くことで間接確認
             assert_output(/リンク・画像の検証が完了しました/) do
-              LinkImageValidator.print_summary
+              Common.stub(:log_info, ->(msg) { puts "ℹ️  #{msg}" }) { LinkImageValidator.print_summary }
             end
           end
 
@@ -180,7 +180,9 @@ module Vivlio
 
             LinkImageValidator.validate(content, 'test.md')
 
-            assert_output(/問題なし/) { LinkImageValidator.print_summary }
+            assert_output(/問題なし/) do
+              Common.stub(:log_info, ->(msg) { puts "ℹ️  #{msg}" }) { LinkImageValidator.print_summary }
+            end
           end
 
           # 画像問題があるときのサマリー出力

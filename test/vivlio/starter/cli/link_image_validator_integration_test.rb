@@ -138,7 +138,7 @@ module Vivlio
 
             # Assert: 「問題なし」メッセージが出力される
             assert_output(/リンク・画像の検証が完了しました（問題なし）/) do
-              LinkImageValidator.print_summary
+              Common.stub(:log_info, ->(msg) { puts "ℹ️  #{msg}" }) { LinkImageValidator.print_summary }
             end
           end
 
@@ -238,7 +238,7 @@ module Vivlio
             # Assert: reset! 後と同様に何も出力されない
             # （レポートは蓄積されるが issue が空のため「問題なし」が出る）
             assert_output(/問題なし/) do
-              LinkImageValidator.print_summary
+              Common.stub(:log_info, ->(msg) { puts "ℹ️  #{msg}" }) { LinkImageValidator.print_summary }
             end
           end
         end
@@ -277,7 +277,7 @@ module Vivlio
 
             # Assert: link_issues に unreachable が含まれないこと
             assert_output(/問題なし/) do
-              LinkImageValidator.print_summary
+              Common.stub(:log_info, ->(msg) { puts "ℹ️  #{msg}" }) { LinkImageValidator.print_summary }
             end
           end
 
@@ -352,7 +352,7 @@ module Vivlio
             end
 
             assert_output(/問題なし/) do
-              LinkImageValidator.print_summary
+              Common.stub(:log_info, ->(msg) { puts "ℹ️  #{msg}" }) { LinkImageValidator.print_summary }
             end
           end
 
