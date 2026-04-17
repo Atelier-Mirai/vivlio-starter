@@ -63,6 +63,44 @@ module Vivlio
             assert_empty spans
           end
 
+          # マルチバッククォートのインラインコード（内部にバッククォートを含む）を保護する
+          def test_extract_code_spans_multi_backtick_inline
+            text = 'See ``foo `bar` baz`` here'
+            protected_text, spans = extract_code_spans(text)
+
+            assert_equal 1, spans.size
+            assert_includes spans.values, '``foo `bar` baz``'
+            assert_equal text, restore_code_spans(protected_text, spans)
+          end
+
+          # フェンスの開閉がインデント（0-3 スペース）されていても保護する
+          def test_extract_code_spans_indented_fence
+            text = "before\n   ```ruby\n   p 1\n   ```\nafter\n"
+            protected_text, spans = extract_code_spans(text)
+
+            assert_equal 1, spans.size
+            assert_includes spans.values.first, 'p 1'
+            assert_equal text, restore_code_spans(protected_text, spans)
+          end
+
+          # コードフェンス内の `![](...)` 画像記法が後続の変換から保護される（回帰テスト）
+          def test_extract_code_spans_protects_image_inside_fence
+            text = "text\n```markdown\n![](cover){width=40%}\n```\nafter\n"
+            protected_text, spans = extract_code_spans(text)
+
+            refute_includes protected_text, '![](cover)'
+            assert_equal text, restore_code_spans(protected_text, spans)
+          end
+
+          # インラインコード内の `![](key)` が保護される（回帰テスト）
+          def test_extract_code_spans_protects_image_inside_inline_code
+            text = '`![](key)` と書くと展開されます'
+            protected_text, spans = extract_code_spans(text)
+
+            refute_includes protected_text, '![](key)'
+            assert_equal text, restore_code_spans(protected_text, spans)
+          end
+
           # =================================================================
           # detect_language
           # =================================================================

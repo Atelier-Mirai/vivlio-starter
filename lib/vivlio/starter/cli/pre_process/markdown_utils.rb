@@ -56,25 +56,31 @@ module Vivlio
           # コードスパン（バッククォートで囲まれた部分）を一時的に退避し、
           # その中身を後続のテキスト変形処理から除外するためのユーティリティ。
           # コードフェンス（```...```）も退避対象とする。
+          #
+          # 対応するケース:
+          #   - 3 個以上のバッククォートまたはチルダによるフェンス（先頭 0-3 スペースまで許容）
+          #   - 単一バッククォートのインラインコード `foo`
+          #   - マルチバッククォートのインラインコード ``foo`bar`` （N 個の開き=N 個の閉じ）
           def extract_code_spans(text)
             spans = {}
             counter = 0
 
-            # まずコードフェンスブロック全体を退避（インラインコードより先に処理）
-            protected_text = text.to_s.gsub(/^(`{3,}|~{3,}).*?^\1\s*$/m) do |match|
+            alloc = lambda do |match|
               key = "#{CODE_SPAN_PLACEHOLDER_PREFIX}#{counter}__"
               spans[key] = match
               counter += 1
               key
             end
 
+            # まずコードフェンスブロック全体を退避（インラインコードより先に処理）
+            # CommonMark に合わせて先頭 0-3 スペースのインデントも許容する。
+            protected_text = text.to_s.gsub(/^ {0,3}(`{3,}|~{3,}).*?^ {0,3}\1\s*$/m, &alloc)
+
             # 次にインラインコードスパンを退避
-            protected_text = protected_text.gsub(/`([^`]*?)`/) do |match|
-              key = "#{CODE_SPAN_PLACEHOLDER_PREFIX}#{counter}__"
-              spans[key] = match
-              counter += 1
-              key
-            end
+            # N 個の連続バッククォート同士の対を 1 組として扱い、
+            # ``foo`bar`` のように内部にバッククォートを含むケースも保護する。
+            # (?<!`) / (?!`) で開き・閉じの両端が「ちょうど N 個のラン」であることを担保する。
+            protected_text = protected_text.gsub(/(?<!`)(`+)(?!`).+?(?<!`)\1(?!`)/m, &alloc)
 
             [protected_text, spans]
           end

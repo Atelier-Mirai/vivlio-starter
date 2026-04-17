@@ -28,6 +28,7 @@ require_relative 'frontmatter_generator'
 require_relative 'data_render'
 require_relative 'image_path_normalizer'
 require_relative 'markdown_transformer'
+require_relative 'markdown_utils'
 require_relative 'link_image_validator'
 
 module Vivlio
@@ -137,33 +138,19 @@ module Vivlio
           #   ## 見出し
           #
           # また、</small> の後に空白のみの行がある場合も真の空行に置換する
+          # コードブロック・インラインコードは extract_code_spans で退避して除外する
           def normalize_html_block_boundaries!
             html_closing_tags = %w[small div span p blockquote pre table ul ol li dl dt dd
                                    figure figcaption aside article section header footer nav main]
             closing_tag_pattern = %r{</\s*(#{html_closing_tags.join('|')})\s*>}
 
-            # コードブロック内では変換しない
-            lines = context.content.lines
+            protected_text, spans = MarkdownUtils.extract_code_spans(context.content)
+
+            lines = protected_text.lines
             out = []
-            in_code_block = false
             prev_was_html_closing = false
 
             lines.each do |line|
-              stripped = line.lstrip
-
-              if stripped.start_with?('```') && !stripped.start_with?('```include:')
-                in_code_block = !in_code_block
-                out << line
-                prev_was_html_closing = false
-                next
-              end
-
-              if in_code_block
-                out << line
-                prev_was_html_closing = false
-                next
-              end
-
               # 前の行が HTML 閉じタグで、現在行が空白のみまたは Markdown 記法で始まる場合
               # 真の空行を挿入して Markdown として解釈されるようにする
               if prev_was_html_closing
@@ -181,7 +168,6 @@ module Vivlio
               # HTML 閉じタグの直後に Markdown 見出し(#)や段落が続く場合、空行を挿入
               # 例: </small>## 見出し → </small>\n\n## 見出し
               if line.match?(/#{closing_tag_pattern}\s*(#|\*|-)/)
-                # 閉じタグ部分と Markdown 部分を分離
                 modified = line.gsub(/(#{closing_tag_pattern})\s*(#|\*|-)/) do
                   "#{::Regexp.last_match(1)}\n\n#{::Regexp.last_match(3)}"
                 end
@@ -189,43 +175,24 @@ module Vivlio
                 prev_was_html_closing = false
               else
                 out << line
-                # 現在行が HTML 閉じタグで終わっているかチェック
                 prev_was_html_closing = line.strip.match?(closing_tag_pattern)
               end
             end
 
-            context.content = out.join
+            context.content = MarkdownUtils.restore_code_spans(out.join, spans)
           end
 
           # インラインコード内の HTML 予約文字をエスケープする
           # - 著者は `` `<h1>` `` のように素直に書ける
           # - 前処理後の Markdown では `&lt;h1&gt;` のようにエスケープされた形になる
           # - フェンス付きコードブロック内部はそのまま残す
+          #
+          # コードブロック・インラインコードは extract_code_spans で退避してから処理し、
+          # 最後に復元する。退避後の本文（コード外）に対してのみ変換を適用する。
           def escape_inline_code_html!
-            lines = context.content.lines
-            out = []
-            in_code_block = false
-
-            lines.each do |line|
-              stripped = line.lstrip
-
-              # ``` / ```lang で始まる行でコードブロックの開始・終了をトグル
-              # ただし、```include:...``` のような 1 行完結の include 記法は
-              # 実際のコードブロックとはみなさず、フラグを変更しない
-              if stripped.start_with?('```') && !stripped.start_with?('```include:')
-                in_code_block = !in_code_block
-                out << line
-                next
-              end
-
-              out << if in_code_block
-                       line
-                     else
-                       MarkdownTransformer.escape_inline_code_html(line)
-                     end
-            end
-
-            context.content = out.join
+            protected_text, spans = MarkdownUtils.extract_code_spans(context.content)
+            transformed = protected_text.lines.map { MarkdownTransformer.escape_inline_code_html(it) }.join
+            context.content = MarkdownUtils.restore_code_spans(transformed, spans)
           end
 
           # 行末の `{.right}` / `{.text-right}` を VFM コンテナ `:::{.text-right}` に変換する
@@ -235,32 +202,21 @@ module Vivlio
           #   ::: {.text-right}
           #   **著者: Matz**
           #   :::
+          # コードブロック・インラインコードは extract_code_spans で退避して除外する。
           def transform_text_right_inlines!
-            lines = context.content.lines
-            out = []
-            in_code_block = false
+            protected_text, spans = MarkdownUtils.extract_code_spans(context.content)
 
-            lines.each do |line|
-              stripped = line.lstrip
-
-              if stripped.start_with?('```')
-                in_code_block = !in_code_block
-                out << line
-                next
-              end
-
-              if !in_code_block && (m = line.match(/^(\s*)(.+)\{\.(right|text-right)\}\s*$/))
+            transformed = protected_text.lines.map do |line|
+              if (m = line.match(/^(\s*)(.+)\{\.(right|text-right)\}\s*$/))
                 indent = m[1]
                 inner  = m[2].rstrip
-                out << "#{indent}::: {.text-right}\n"
-                out << "#{indent}#{inner}\n"
-                out << "#{indent}:::\n"
+                "#{indent}::: {.text-right}\n#{indent}#{inner}\n#{indent}:::\n"
               else
-                out << line
+                line
               end
-            end
+            end.join
 
-            context.content = out.join
+            context.content = MarkdownUtils.restore_code_spans(transformed, spans)
           end
 
           # book-card 記法をHTMLに変換し、内部Markdownを整形する
