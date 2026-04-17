@@ -356,9 +356,10 @@ module Vivlio
             old_slug = from_entry.slug
             new_number = to_entry.number
             new_slug = if number_only_to
-                         if new_number.to_i.between?(90,
-                                                     98)
+                         if new_number.to_i.between?(90, 98)
                            adjust_slug_for_appendix(new_number, old_slug)
+                         else
+                           old_slug
                          end
                        else
                          to_entry.slug || old_slug

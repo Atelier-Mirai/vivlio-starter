@@ -60,6 +60,24 @@ module Vivlio
           end
         end
 
+        # スラッグ付き章を番号のみで指定してリネームするとスラッグが維持されること
+        # 例: `vs renumber 25 26` で 25-querystream.md → 26-querystream.md
+        def test_rename_preserves_slug_when_new_arg_is_number_only
+          within_temp_dir do
+            executor = build_rename_executor(force: true)
+            setup_single_chapter_fixture('31-beta', images: true, html: true)
+
+            capture_io { executor.call('31', '32') }
+
+            assert File.exist?(File.join(Common::CONTENTS_DIR, '32-beta.md'))
+            refute File.exist?(File.join(Common::CONTENTS_DIR, '31-beta.md'))
+            refute File.exist?(File.join(Common::CONTENTS_DIR, '32.md'))
+            assert Dir.exist?('images/32-beta')
+            refute Dir.exist?('images/31-beta')
+            refute File.exist?('31-beta.html')
+          end
+        end
+
         def test_rename_handles_numeric_only_chapter
           within_temp_dir do
             executor = build_rename_executor(force: true)
