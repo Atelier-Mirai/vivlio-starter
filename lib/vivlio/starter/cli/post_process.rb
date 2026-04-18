@@ -156,6 +156,14 @@ module Vivlio
             rescue StandardError => e
               Common.log_warn("#{html_file}: 見出し番号スパン構築に失敗: #{e}")
             end
+
+            # 最終クリーンアップ: Nokogiri 系のステップが <p><div>...</div></p> の
+            # ねじれを正すときに残してしまう空の <p></p> などを除去する。
+            final_result = HtmlReplacer.process_html_file(html_file, replace_rules)
+            if final_result[:changed]
+              total_replacements += final_result[:replacements]
+              Common.log_info("#{html_file}: 最終クリーンアップで #{final_result[:replacements]} 件を整理")
+            end
           end
 
           Common.log_success("ポスト置換処理完了 (合計: #{total_replacements}個の置換)")

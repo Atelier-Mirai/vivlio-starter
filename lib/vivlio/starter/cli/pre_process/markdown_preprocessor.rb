@@ -293,11 +293,35 @@ module Vivlio
           end
 
           # HTMLコメント <!-- ... --> を削除する
-          # 複数行コメントにも対応
+          # 複数行コメントにも対応。ただしフェンス付きコードブロック（``` ... ```）と
+          # インラインコード（`...`）の中身はそのまま残す。
           def strip_html_comments!
             original_length = context.content.length
-            # 複数行対応のためマルチラインモードを使用
-            context.content = context.content.gsub(/<!--.*?-->/m, '')
+
+            # 1) フェンス付きコードブロックを退避
+            fences = []
+            content = context.content.gsub(/^([ \t]*)(`{3,}|~{3,})[^\n]*\n.*?\n\1\2[^\n]*$/m) do |block|
+              fences << block
+              "\u0000FENCE#{fences.size - 1}\u0000"
+            end
+
+            # 2) インラインコード `...` を退避
+            inlines = []
+            content = content.gsub(/`[^`\n]+`/) do |code|
+              inlines << code
+              "\u0000INLINE#{inlines.size - 1}\u0000"
+            end
+
+            # 3) 残りからHTMLコメントを除去
+            content = content.gsub(/<!--.*?-->/m, '')
+
+            # 4) インラインコード復元
+            content = content.gsub(/\u0000INLINE(\d+)\u0000/) { inlines[Regexp.last_match(1).to_i] }
+
+            # 5) フェンス付きコードブロック復元
+            content = content.gsub(/\u0000FENCE(\d+)\u0000/) { fences[Regexp.last_match(1).to_i] }
+
+            context.content = content
             removed_length = original_length - context.content.length
             return unless removed_length.positive?
 

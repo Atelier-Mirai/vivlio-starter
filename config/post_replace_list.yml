@@ -29,13 +29,21 @@
 #   r: '<div class="\\k<cls>">'
 ---
 # :::{.class} 記法（Pandoc拡張風）を <div class="..."> に変換（開始）
-- f: ":{3,}\\{\\.?([a-z|0-9|\\-|_|\\s]+)\\}"
+# 複数クラス {.a .b .c} にも対応（先頭の . は任意、以降の . は後段ルールで除去）
+- f: ":{3,}\\{\\.?([a-z0-9.\\-_\\s]+)\\}"
   r: <div class="$1">
+# 複数クラス指定で残った " ." を " " に整理（最大4クラスまで対応するため3回繰り返す）
+- f: '(<div class="[^"]*?) \.'
+  r: '$1 '
+- f: '(<div class="[^"]*?) \.'
+  r: '$1 '
+- f: '(<div class="[^"]*?) \.'
+  r: '$1 '
 # ::: ブロック終端を </div> に変換（終了）
 - f: ":{3,}"
   r: "</div>"
 # 簡易マクロ @div:CLASS → <div class="CLASS">
-- f: "@div:([a-z|0-9|_ ]+)"
+- f: "@div:([a-z0-9_\\- ]+)"
   r: <div class="$1">
 # 簡易マクロ @divend → </div>
 - f: "@divend"
@@ -109,15 +117,15 @@
 # Prism コメントで //← を赤強調
 - f: <span class="token comment"([^>]*)>//←
   r: <span class="token comment codered"$1>
-# Prism コメントで /*←← ... */ を右寄せ＋赤強調
-- f: <span class="token comment"([^>]*)>/\*←←(.*)\*/
+# Prism コメントで /*←← ... */ を右寄せ＋赤強調（非貪欲: 同一コメントspan内のみに限定）
+- f: <span class="token comment"([^>]*)>/\*←←(.*?)\*/
   r: <span class="token comment codered codered-right"$1>$2
-# Prism コメントで /*← ... */ を赤強調
-- f: <span class="token comment"([^>]*)>/\*←(.*)\*/
+# Prism コメントで /*← ... */ を赤強調（非貪欲: 同一コメントspan内のみに限定）
+- f: <span class="token comment"([^>]*)>/\*←(.*?)\*/
   r: <span class="token comment codered"$1>$2
-# HTML コメント ← を赤強調
-- f: "<span class=&quot;token comment&quot;([^>]*)>&lt;!--←(.*)--&gt;"
-  r: <span class="token comment codered"$1>$2
+# HTML コメント ← を赤強調（Prism出力は &#x3C; / --> を使う。非貪欲で同一span内に限定）
+- f: "<span class=\"token comment\"([^>]*)>&#x3C;!--←(.*?)-->"
+  r: <span class="token comment codered"$1>&#x3C;!--$2--&gt;
 # 〘〙 を <kbd>...</kbd> に
 - f: "〘"
   r: "<kbd>"
@@ -144,8 +152,8 @@
 # div の直後に余分な </p> が来た場合の修正
 - f: (<div class="[^"]+">)</p>
   r: "$1"
-# <p>(<div ...>) の余分な p を除去
-- f: <p>(<div class="[^"]+">)
+# <p>(<div ...>) の余分な p を除去（前後の空白・改行を許容）
+- f: <p>\s*(<div class="[^"]+">)
   r: "$1"
 # hr の直後の </p> を除去（前後関係の崩れ修正）
 - f: (<hr class="[^"]+">)</p>
@@ -174,8 +182,8 @@
 # 空段落を除去（改行・空白を含むあらゆる空段落）
 - f: "<p>\\s*</p>"
   r: ''
-# 空段落を除去（&nbsp;/&#160;/&#xA0; や各種ゼロ幅文字・双方向制御記号のみ、または空白との組み合わせ）
-- f: "<p>(?:\\s|\u200B|\u200C|\u200D|\u2060|\uFEFF|\u180E|\u200E|\u200F|&nbsp;|&#160;|&#xA0;)*</p>"
+# 空段落を除去（&nbsp;/&#160;/&#xA0;/U+00A0 や各種ゼロ幅文字・双方向制御記号のみ、または空白との組み合わせ）
+- f: "<p>(?:\\s| |​|‌|‍|⁠|﻿|᠎|‎|‏|&nbsp;|&#160;|&#xA0;)*</p>"
   r: ''
 # 段落末の {.aki} をクラス化
 - f: "<p>((?:(?!</p>).)*?)\\{\\.aki\\}\\s*</p>"

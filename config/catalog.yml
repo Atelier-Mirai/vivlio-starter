@@ -19,6 +19,7 @@ CHAPTERS:
   - 【第二部：書く】:
       - 21-markdown-tutorial
       - 22-extentions
+      - 23-replace-list
       - 24-chapter-management
       - 25-cross-reference
       - 26-querystream
@@ -36,6 +37,7 @@ CHAPTERS:
       - 51-doctor
   - 【第六部：開発者のために】:
       - 61-developer
+      - 81-replace-list-sample
 
 ## 付録
 APPENDICES:

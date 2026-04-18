@@ -22,3 +22,78 @@
    利用可能な CSS 変数の一覧は theme.css を参照してください。
 
    ============================================================= */
+
+/* =============================================================
+   post_replace_list.yml が付与するクラスのスタイル（動作確認用）
+   81-replace-list-sample.md の検証に使用。
+   ============================================================= */
+
+/* コード内引き出し線: 右寄せ＋赤（二重矢印コメント用） */
+.codered-right.token.comment {
+  float: right;
+  text-align: right;
+}
+
+/* 編集者コメント（@comment:...@commend） */
+.hen-comment {
+  background: #fff59d;
+  color: #6d4c00;
+  padding: 0 0.2em;
+  border-radius: 0.2em;
+  font-size: 0.9em;
+}
+
+/* 会話文（【先生X】【生徒X】） */
+.kaiwa {
+  margin-block: 0.4lh;
+  padding-inline-start: 3em;
+  position: relative;
+  text-indent: 0;
+}
+.kaiwa::before {
+  position: absolute;
+  inset-inline-start: 0;
+  display: inline-block;
+  inline-size: 2.5em;
+  font-weight: bold;
+  font-family: var(--font-header);
+}
+.kaiwa.sense::before { content: "先生: "; color: #1565c0; }
+.kaiwa.deshi::before { content: "生徒: "; color: #c62828; }
+
+/* リスト装飾: 青コメ（▶ で始まる項目） */
+li.aokome {
+  list-style: none;
+  padding-inline-start: 1.5em;
+  position: relative;
+}
+li.aokome::before {
+  content: "▶";
+  color: #1565c0;
+  position: absolute;
+  inset-inline-start: 0;
+}
+
+/* リスト装飾: 赤コメ（❶❷❸ で始まる項目） */
+li.akakome {
+  list-style: none;
+  padding-inline-start: 0;
+}
+li.akakome > span:first-child {
+  color: #c62828;
+  font-weight: bold;
+  margin-inline-end: 0.3em;
+}
+
+/* 絶対配置ガイド線の親コンテナ（図解ページ用） */
+.figure-guides {
+  position: relative;
+  margin-block: 2rem;
+  min-block-size: 60mm;
+}
+.figure-guides ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
