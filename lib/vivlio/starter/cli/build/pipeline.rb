@@ -423,40 +423,16 @@ module Vivlio
           end
 
           # Step 9: タイトル・リーガルページなど front/tail PDF を生成する
+          #
+          # 設計方針: mtime 比較・キャッシュ判定は行わず、常に .md / HTML / PDF を再生成する。
+          # 詳細は docs/specs/book_yml_regeneration_spec.md を参照。
           def run_step9_front_pages_and_tail
-            # システムページは .cache/vs/ に配置される
-            title_md    = File.join(Common::CACHE_DIR, '_titlepage.md')
-            legal_md    = File.join(Common::CACHE_DIR, '_legalpage.md')
-            colophon_md = File.join(Common::CACHE_DIR, '_colophon.md')
-            book_yml    = File.join('config', 'book.yml')
-            front_pdf   = '_titlepage_legalpage.pdf'
-            col_pdf     = '_colophon.pdf'
+            # --- Phase: 特殊ページ .md を常に（強制）再生成 ---
+            CreateCommands.execute_titlepage(force: true)
+            CreateCommands.execute_legalpage(force: true)
+            CreateCommands.execute_colophon(force: true)
 
-            newer_than_any = lambda do |target, sources|
-              return true unless File.exist?(target)
-
-              target_mtime = safe_mtime(target)
-              Array(sources).any? { |s| File.exist?(s) && File.mtime(s) > target_mtime }
-            end
-
-            # 特殊ページが存在しない場合は自動生成
-            ensure_special_page_exists!('titlepage', title_md)
-            ensure_special_page_exists!('legalpage', legal_md)
-            ensure_special_page_exists!('colophon', colophon_md)
-
-            if newer_than_any.call(front_pdf, [title_md, legal_md, book_yml])
-              [['create:titlepage', title_md], ['create:legalpage', legal_md]].each do |cmd, _path|
-                case cmd
-                when 'create:titlepage'
-                  CreateCommands.execute_titlepage({})
-                when 'create:legalpage'
-                  CreateCommands.execute_legalpage({})
-                end
-              end
-            end
-
-            CreateCommands.execute_colophon({}) if newer_than_any.call(col_pdf, [colophon_md, book_yml])
-
+            # --- Phase: HTML と PDF の再生成（PdfBuilder 内部で常時再生成） ---
             Build::PdfBuilder.build_front_pages_and_tail!
           end
 
@@ -499,13 +475,6 @@ module Vivlio
             when 'colophon'
               CreateCommands.execute_colophon({})
             end
-          end
-
-          # MTime 取得時の例外を吸収して 0 時刻にフォールバックする
-          def safe_mtime(path)
-            File.mtime(path)
-          rescue StandardError
-            Time.at(0)
           end
 
           # Step 12: リネームと最終クリーンアップを実行

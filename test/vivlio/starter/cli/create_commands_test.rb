@@ -109,8 +109,10 @@ module Vivlio
           end
         end
 
-        # 既に存在する場合はスキップされることを確認
-        def test_titlepage_skipped_when_already_exists
+        # 既存ファイルがあっても常に上書き再生成されることを確認
+        # 旧仕様（force なしでスキップ）は book.yml 変更が反映されない不具合を招いたため廃止。
+        # 詳細: docs/specs/book_yml_regeneration_spec.md
+        def test_titlepage_always_regenerated_even_when_exists
           within_temp_dir do
             FileUtils.mkdir_p(Common::CACHE_DIR)
             original = "# 既存タイトル\n"
@@ -118,8 +120,10 @@ module Vivlio
 
             capture_io { CreateCommands.execute_titlepage({}) }
 
-            assert_equal original, File.read(File.join(Common::CACHE_DIR, '_titlepage.md')),
-                         'force なしでは既存ファイルを上書きしない'
+            content = File.read(File.join(Common::CACHE_DIR, '_titlepage.md'))
+            refute_equal original, content,
+                         'force の有無に関わらず book.yml の内容から常に再生成される'
+            assert_match(/book-title/, content, 'book.yml から再生成された内容を含む')
           end
         end
 

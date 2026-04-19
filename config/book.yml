@@ -109,7 +109,7 @@ page:
   # プリセットを選択（page_presets.yml から）
   # 紙サイズ、余白、文字サイズ、行送りなど版面の物理的構造を一括指定
   # use: a5_standard
-  use: a5_airy
+  # use: a5_airy
   # use: a5_compact
   # use: a5_custom
 
@@ -120,7 +120,7 @@ page:
   
   # use: a4_standard
   # use: a4_airy
-  # use: a4_compact
+  use: a4_compact
   # use: a4_custom
 
 # ========================================

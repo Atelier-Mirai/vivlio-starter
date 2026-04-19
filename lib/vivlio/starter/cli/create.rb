@@ -316,18 +316,15 @@ module Vivlio
         # @param covers_dir [String] covers/ ディレクトリのフルパス
         # @param book_config_path [String] config/book.yml のフルパス
         # @return [String] 生成されたSVGのパス
-        def render_bundled_svg(template_path, side, theme, covers_dir, book_config_path)
+        def render_bundled_svg(template_path, side, theme, covers_dir, _book_config_path)
+          # 常に再生成する（book.yml / テンプレート変更を確実に反映するため）
           output_svg = File.join(covers_dir, "#{side}cover_#{theme}.svg")
-
-          if needs_regeneration?(output_svg, book_config_path, template_path)
-            palette = theme == 'dark' ? DARK_PALETTE : LIGHT_PALETTE
-            svg = File.read(template_path, encoding: 'utf-8')
-            svg = apply_palette(svg, palette)
-            svg = apply_text_replacements(svg)
-            safe_write(output_svg, svg)
-            Common.log_info("#{side}表紙SVGを生成しました: #{output_svg}")
-          end
-
+          palette = theme == 'dark' ? DARK_PALETTE : LIGHT_PALETTE
+          svg = File.read(template_path, encoding: 'utf-8')
+          svg = apply_palette(svg, palette)
+          svg = apply_text_replacements(svg)
+          safe_write(output_svg, svg)
+          Common.log_info("#{side}表紙SVGを生成しました: #{output_svg}")
           output_svg
         end
 
@@ -344,17 +341,14 @@ module Vivlio
         # @param covers_dir [String] covers/ ディレクトリのフルパス
         # @param book_config_path [String] config/book.yml のフルパス
         # @return [String] 生成されたSVGのパス
-        def apply_text_placeholders_to_svg(user_svg_path, side, theme, covers_dir, book_config_path)
+        def apply_text_placeholders_to_svg(user_svg_path, side, theme, covers_dir, _book_config_path)
+          # 常に再生成する（book.yml / ユーザ SVG 変更を確実に反映するため）
           output_svg = File.join(covers_dir, "#{side}cover_#{theme}_rendered.svg")
-
-          if needs_regeneration?(output_svg, book_config_path, user_svg_path)
-            svg = File.read(user_svg_path, encoding: 'utf-8')
-            svg = apply_text_replacements(svg)
-            svg = expand_css_custom_properties(svg)
-            safe_write(output_svg, svg)
-            Common.log_info("#{side}表紙SVGを適用しました: #{output_svg}")
-          end
-
+          svg = File.read(user_svg_path, encoding: 'utf-8')
+          svg = apply_text_replacements(svg)
+          svg = expand_css_custom_properties(svg)
+          safe_write(output_svg, svg)
+          Common.log_info("#{side}表紙SVGを適用しました: #{output_svg}")
           output_svg
         end
 
@@ -513,25 +507,6 @@ module Vivlio
         end
 
         # ================================================================
-        # 再生成判定
-        # ================================================================
-
-        # 出力ファイルの再生成が必要か判定する
-        #
-        # 出力が存在しない場合、またはソースファイル（book.yml / テンプレート）
-        # のいずれかより古い場合に再生成が必要と判断する。
-        #
-        # @param output_path [String] 生成対象ファイルのパス
-        # @param *source_paths [Array<String>] 参照するソースファイルのパス群
-        # @return [Boolean]
-        def needs_regeneration?(output_path, *source_paths)
-          return true unless File.exist?(output_path)
-
-          output_mtime = File.mtime(output_path)
-          source_paths.any? { |sp| File.exist?(sp) && File.mtime(sp) > output_mtime }
-        end
-
-        # ================================================================
         # SVG 変換（PDF / ラスター）
         # ================================================================
 
@@ -545,10 +520,7 @@ module Vivlio
         # @param page_size [Symbol] :a4 / :b5 / :a5
         # @param crop_marks [Boolean] true で入稿用トンボ・塗り足し付きPDFを生成
         def convert_svg(input, output, page_size: :b5, crop_marks: false)
-          # crop_marks: true の場合は常に再生成（トンボ設定変更を確実に反映）
-          # crop_marks: false の場合はキャッシュを使用
-          return if !crop_marks && File.exist?(output) && File.mtime(output) >= File.mtime(input)
-
+          # 常に再生成する（book.yml / テンプレート変更を確実に反映するため）
           ext = File.extname(output).delete('.')
           size = COVER_SIZES.fetch(page_size, COVER_SIZES[:b5])
           w_mm = size[:width_mm]
@@ -763,9 +735,8 @@ module Vivlio
         end
 
         # PNGを変換（ImageMagick）
+        # 常に再生成する（book.yml / PNG 変更を確実に反映するため）
         def convert_png(input, output)
-          return if File.exist?(output) && File.mtime(output) >= File.mtime(input)
-
           convert_cmd = CoverCommands.imagemagick_convert_command
           unless convert_cmd
             Common.log_error('ImageMagick（magick/convert）が見つかりません')
@@ -863,9 +834,8 @@ module Vivlio
             #{%(</div>) unless series.empty? && release.empty?}
           MD
 
+          # 常に上書き再生成する（book.yml 変更を確実に反映するため）
           path = File.join(Common::CACHE_DIR, '_titlepage.md')
-          return if File.exist?(path) && !options[:force]
-
           safe_write(path, content)
         end
 
@@ -917,9 +887,8 @@ module Vivlio
             </p>
           MD
 
+          # 常に上書き再生成する（book.yml 変更を確実に反映するため）
           path = File.join(Common::CACHE_DIR, '_colophon.md')
-          return if File.exist?(path) && !options[:force]
-
           safe_write(path, content)
         end
 
@@ -938,8 +907,8 @@ module Vivlio
         def execute_legalpage(options)
           apply_verbose(options)
           FileUtils.mkdir_p(Common::CACHE_DIR)
+          # 常に上書き再生成する（book.yml 変更を確実に反映するため）
           target = File.join(Common::CACHE_DIR, '_legalpage.md')
-          return if File.exist?(target) && !options[:force]
 
           disclaimer, trademark = legal_texts
           body = <<~MD

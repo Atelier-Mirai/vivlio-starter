@@ -158,82 +158,37 @@ module Vivlio
 
           # Step 9: 本扉・扉裏・後書き・奥付の生成
           # 新仕様: _titlepage, _legalpage, _colophon を使用
+          #
+          # 設計方針: mtime 比較・キャッシュ判定は行わず、常に HTML と PDF を再生成する。
+          # 計測上これらの生成はビルド全体への影響が軽微なため、判定ロジックの脆さ
+          # （`FileUtils.cp` による mtime 破壊、book.yml 無関係変更での誤判定等）を
+          # 排除する方を優先する。詳細は docs/specs/book_yml_regeneration_spec.md 参照。
           def build_front_pages_and_tail!
-            front_regenerated = false
-            Build::SectionBuilder.ensure_chapter_html_up_to_date!('_titlepage',
-                                                                  extra_sources: File.join('config', 'book.yml'))
-            Build::SectionBuilder.ensure_chapter_html_up_to_date!('_legalpage',
-                                                                  extra_sources: File.join('config', 'book.yml'))
-            Build::SectionBuilder.ensure_chapter_html_up_to_date!('_colophon',
-                                                                  extra_sources: File.join('config', 'book.yml'))
-
-            front_srcs = [
-              File.join(Common::CACHE_DIR, '_titlepage.md'),
-              File.join(Common::CACHE_DIR, '_legalpage.md'),
-              File.join('config', 'book.yml')
-            ]
-            colophon_srcs = [
-              File.join(Common::CACHE_DIR, '_colophon.md'),
-              File.join('config', 'book.yml')
-            ]
-
-            newer_than_any = lambda do |target, sources|
-              return true unless File.exist?(target)
-
-              t_mtime = File.exist?(target) ? File.mtime(target) : Time.at(0)
-              Array(sources).any? { |s| File.exist?(s) && File.mtime(s) > t_mtime }
+            # --- Phase: 特殊ページ HTML を常に再生成 ---
+            %w[_titlepage _legalpage _colophon].each do |basename|
+              Common.log_info("[HTML] 再生成します: #{basename}.html")
+              Build::SectionBuilder.preprocess_single_chapter!(basename)
+              Build::SectionBuilder.convert_single_chapter!(basename)
             end
 
+            # --- Phase: 表紙＋扉裏 PDF を常に再生成 ---
             front_pdf = '_titlepage_legalpage.pdf'
-            colophon_pdf = '_colophon.pdf'
-            cache_on = Common.cache_enabled?
-            cache_dir = cache_on ? Common.ensure_cache_dir! : nil
-            front_cache = cache_on && cache_dir ? File.join(cache_dir, front_pdf) : nil
-            colophon_cache = cache_on && cache_dir ? File.join(cache_dir, colophon_pdf) : nil
-
-            front_missing = !File.exist?(front_pdf)
-            front_missing &&= !Build::Utilities.cache_restore_file(cache_on, front_cache, front_pdf, 'Step 9')
-
-            colophon_missing = !File.exist?(colophon_pdf)
-            colophon_missing &&= !Build::Utilities.cache_restore_file(cache_on, colophon_cache, colophon_pdf, 'Step 9')
-
-            need_front = front_missing || newer_than_any.call(front_pdf, front_srcs)
-
-            if need_front
-              EntriesCommands.execute_entries({}, ['_titlepage.html', '_legalpage.html'])
-              PdfCommands.execute_pdf({}, front_pdf)
-              if File.exist?(front_pdf)
-                Common.log_success("[Step 9] #{front_pdf} を生成しました")
-                Build::Utilities.cache_store_file(cache_on, front_pdf, front_cache, 'Step 9')
-                front_regenerated = true
-              else
-                Common.log_warn("[Step 9] #{front_pdf} の生成に失敗しました")
-              end
+            EntriesCommands.execute_entries({}, ['_titlepage.html', '_legalpage.html'])
+            PdfCommands.execute_pdf({}, front_pdf)
+            if File.exist?(front_pdf)
+              Common.log_success("[Step 9] #{front_pdf} を生成しました")
             else
-              Common.log_action("[Step 9] フロント/奥付PDFは最新のため再利用します: #{front_pdf}, #{colophon_pdf}")
-              unless File.exist?(front_pdf)
-                Build::Utilities.cache_restore_file(cache_on, front_cache, front_pdf,
-                                                    'Step 9')
-              end
-              unless File.exist?(colophon_pdf)
-                Build::Utilities.cache_restore_file(cache_on, colophon_cache, colophon_pdf,
-                                                    'Step 9')
-              end
+              Common.log_warn("[Step 9] #{front_pdf} の生成に失敗しました")
             end
 
-            need_colophon = front_regenerated || colophon_missing || newer_than_any.call(colophon_pdf,
-                                                                                         colophon_srcs)
-            if need_colophon
-              EntriesCommands.execute_entries({}, ['_colophon.html'])
-              PdfCommands.execute_pdf({}, colophon_pdf)
-              if File.exist?(colophon_pdf)
-                Common.log_success('[Step 9] _colophon.pdf を生成しました')
-                Build::Utilities.cache_store_file(cache_on, colophon_pdf, colophon_cache, 'Step 9')
-              else
-                Common.log_warn('[Step 9] _colophon.pdf の生成に失敗しました')
-              end
+            # --- Phase: 奥付 PDF を常に再生成 ---
+            colophon_pdf = '_colophon.pdf'
+            EntriesCommands.execute_entries({}, ['_colophon.html'])
+            PdfCommands.execute_pdf({}, colophon_pdf)
+            if File.exist?(colophon_pdf)
+              Common.log_success('[Step 9] _colophon.pdf を生成しました')
             else
-              Common.log_info('[Step 9] 奥付は最新のため、再生成をスキップしました（既存/キャッシュを利用）')
+              Common.log_warn('[Step 9] _colophon.pdf の生成に失敗しました')
             end
           end
 
