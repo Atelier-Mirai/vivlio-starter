@@ -145,7 +145,7 @@ module Vivlio
           include Generators
 
           ITERATIONS = 100
-          FORMAT_PATTERN = /❌ ❌ QueryStream 展開エラー: .+/
+          FORMAT_PATTERN = /❌ QueryStream 展開エラー: .+/
 
           def test_querystream_error_message_matches_expected_format
             # Generator: ランダムな詳細メッセージ
@@ -154,7 +154,8 @@ module Vivlio
               detail = "テンプレートファイルが見つかりません: templates/_#{gen_string}.md"
 
               # DataRender が出力するエラーメッセージを模倣
-              message = "❌ ❌ QueryStream 展開エラー: #{detail}"
+              # Common.log_error が ❌ プレフィックスを 1 回だけ付与する。
+              message = "❌ QueryStream 展開エラー: #{detail}"
 
               assert_match FORMAT_PATTERN, message,
                            "Iteration #{i}: QueryStream エラーフォーマットが一致しません: #{message}"

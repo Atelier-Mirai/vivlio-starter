@@ -9,7 +9,7 @@ PATH
       nokogiri (~> 1.16)
       pdf-reader (~> 2.12)
       prawn (~> 2.5)
-      query-stream (~> 1.0.0)
+      query-stream (~> 1.2.0)
       rouge (~> 4.7)
       samovar (~> 2.1)
 
@@ -40,7 +40,7 @@ GEM
       geom2d (~> 0.4, >= 0.4.1)
       openssl (>= 2.2.1)
       strscan (>= 3.1.2)
-    json (2.19.3)
+    json (2.19.4)
     kramdown (2.5.1)
       rexml (>= 3.3.9)
     language_server-protocol (3.17.0.5)
@@ -73,7 +73,7 @@ GEM
       pdf-core (~> 0.10.0)
       ttfunk (~> 1.8)
     prism (1.9.0)
-    query-stream (1.0.1)
+    query-stream (1.2.0)
       logger
       samovar (~> 2.1)
     racc (1.8.1)
@@ -120,7 +120,7 @@ PLATFORMS
 DEPENDENCIES
   bundler (~> 2.5)
   minitest (~> 5.22)
-  query-stream (= 1.0.1)
+  query-stream (~> 1.2.0)
   rake (~> 13.2)
   rubocop (~> 1.65)
   vivlio-starter!
