@@ -1,0 +1,95 @@
+@charset "utf-8";
+
+/* =====================================================================
+   replace-list.css
+   ---------------------------------------------------------------------
+   `config/post_replace_list.yml` の置換ルールが生成・付与するクラスに
+   対応するスタイルを定義する。VFM→HTML 変換後のポストプロセスで
+   追加されるため、Markdown 原稿からは直接見えない「隠れクラス」が多い。
+
+   定義クラス:
+     - .codered-right  : 二重矢印コメント（C 言語型 /←← ... ）を右寄せで赤表示
+     - .hen-comment    : 編集者コメント（@comment: ... @commend）
+     - .kaiwa          : 会話文（【先生X】【生徒X】）
+     - .kaiwa.sense    : 先生ラベル
+     - .kaiwa.deshi    : 生徒ラベル
+     - li.aokome       : 青コメ（▶ で始まる項目）
+     - li.akakome      : 赤コメ（❶❷❸ で始まる項目）
+     - .figure-guides  : `@lu/@ru/@ld/@rd` など絶対配置ガイド線の親コンテナ
+   ===================================================================== */
+
+/* コード内コメント: 右寄せ＋赤（二重矢印コメント系） */
+.codered-right.token.comment {
+  float: right;
+  text-align: right;
+}
+
+/* 編集者コメント（@comment:... @commend） */
+.hen-comment {
+  margin-inline: 0.2em;
+  padding-inline: 0.2em;
+  font-size: 0.9em;
+  color: #6d4c00;
+  background: #fff59d;
+  border-radius: 0.2em;
+}
+
+/* 会話文（【先生X】【生徒X】→ <p class="kaiwa sense|deshi X">） */
+.kaiwa {
+  position: relative;
+  margin-block: 0.4lh;
+  padding-inline-start: 3em;
+  text-indent: 0;
+}
+.kaiwa::before {
+  position: absolute;
+  inset-inline-start: 0;
+  display: inline-block;
+  inline-size: 2.5em;
+  font-family: var(--font-header);
+  font-weight: bold;
+}
+.kaiwa.sense::before {
+  color: #1565c0;
+  content: "先生: ";
+}
+.kaiwa.deshi::before {
+  color: #c62828;
+  content: "生徒: ";
+}
+
+/* リスト装飾: 青コメ（▶ で始まる項目） */
+li.aokome {
+  position: relative;
+  padding-inline-start: 1.5em;
+  list-style: none;
+}
+li.aokome::before {
+  position: absolute;
+  inset-inline-start: 0;
+  color: #1565c0;
+  content: "▶";
+}
+
+/* リスト装飾: 赤コメ（❶❷❸ で始まる項目） */
+li.akakome {
+  padding-inline-start: 0;
+  list-style: none;
+}
+li.akakome > span:first-child {
+  margin-inline-end: 0.3em;
+  font-weight: bold;
+  color: #c62828;
+}
+
+/* 絶対配置ガイド線の親コンテナ（@lu / @ru / @ld / @rd などの図解用） */
+/* .figure-guides {
+  position: relative;
+  margin-block: 2rem;
+  min-block-size: 60mm;
+}
+.figure-guides ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+} */

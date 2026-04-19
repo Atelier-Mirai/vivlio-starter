@@ -63,45 +63,60 @@
 # コメント囲み @comment:...@commend → <span class="hen-comment">...</span>
 - f: "@comment:([^@]*)@commend"
   r: <span class="hen-comment">$1</span>
+# ------------------------------------------------------------------
+# 【Planned / 今回リリースでは対応外】
+#   リスト項目の絶対配置＋SVG ガイド線記法
+#   @lu / @ld / @ru / @rd / @ur / @ls / @rs / @us / @ds
+#
+#   親要素の自動 position: relative 化、座標系・単位の整理、
+#   図解ページ向けプリセット（.figure-guides）の正式化、
+#   印刷プレビューでの視覚検証が未完了のため、
+#   次期リリース以降で正式サポート予定。
+#   詳細は CHANGELOG.md の "Planned > 記法・置換ルール" を参照。
+#
+#   下記ルールは全て `#` でコメントアウトし、ビルド時に適用されない
+#   状態にしてある。復活させる際は各行の先頭 `# ` を外すこと。
+# ------------------------------------------------------------------
 # 例（@lu）
 # 置換前: <li class="item">内容@lu30,20@15,40</li>
 # 置換後: <li class="item" style="position:absolute;left:15mm;top:40mm;" class="movitem-lu"><svg viewbox="0 0 30 20" width="30mm" height="20mm" style="position:absolute;left:-30mm;top:-20mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="20"/><line fill="none" stroke="#888" x1="0" y1="20" x2="30" y2="20" /></svg>内容</li>
 # 位置指定（left-up系）@luW,H@X,Y → 絶対配置＋ガイド
-- f: "<li([^>]*)>(.*)@lu([0-9]+),([0-9]+)@([0-9]+),([0-9]+)</li>"
-  r: <li$1 style="position:absolute;left:$5mm;top:$6mm;" class="movitem-lu"><svg viewbox="0 0 $3 $4" width="$3mm" height="$4mm" style="position:absolute;left:-$3mm;top:-$4mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="$4"/><line fill="none" stroke="#888" x1="0" y1="$4" x2="$3" y2="$4" /></svg>$2</li>
+# - f: "<li([^>]*)>(.*)@lu([0-9]+),([0-9]+)@([0-9]+),([0-9]+)</li>"
+#   r: <li$1 style="position:absolute;left:$5mm;top:$6mm;" class="movitem-lu"><svg viewbox="0 0 $3 $4" width="$3mm" height="$4mm" style="position:absolute;left:-$3mm;top:-$4mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="$4"/><line fill="none" stroke="#888" x1="0" y1="$4" x2="$3" y2="$4" /></svg>$2</li>
 # 例（@ld）
 # 置換前: <li class="item">内容@ld30,20@15,40</li>
 # 置換後: <li class="item" style="position:absolute;left:15mm;top:40mm;" class="movitem-ld"><svg viewbox="0 0 30 20" width="30mm" height="20mm" style="position:absolute;left:-30mm;top:2mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="30" y2="0"/><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="20" /></svg>内容</li>
 # 位置指定（left-down系）@ldW,H@X,Y → 絶対配置＋ガイド
-- f: "<li([^>]*)>(.*)@ld([0-9]+),([0-9]+)@([0-9]+),([0-9]+)</li>"
-  r: <li$1 style="position:absolute;left:$5mm;top:$6mm;" class="movitem-ld"><svg viewbox="0 0 $3 $4" width="$3mm" height="$4mm" style="position:absolute;left:-$3mm;top:2mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="$3" y2="0"/><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="$4" /></svg>$2</li>
+# - f: "<li([^>]*)>(.*)@ld([0-9]+),([0-9]+)@([0-9]+),([0-9]+)</li>"
+#   r: <li$1 style="position:absolute;left:$5mm;top:$6mm;" class="movitem-ld"><svg viewbox="0 0 $3 $4" width="$3mm" height="$4mm" style="position:absolute;left:-$3mm;top:2mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="$3" y2="0"/><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="$4" /></svg>$2</li>
 # 例（@ru）
 # 置換前: <li class="item">内容@ru30,20@15,40</li>
 # 置換後: <li class="item" style="position:absolute;left:15mm;top:40mm;" class="movitem-ru"><svg viewbox="0 0 30 20" width="30mm" height="20mm" style="position:absolute;right:-30mm;top:-20mm"><line fill="none" stroke="#888" x1="30" y1="0" x2="30" y2="20"/><line fill="none" stroke="#888" x1="0" y1="20" x2="30" y2="20" /></svg>内容</li>
 # 位置指定（right-up系）@ruW,H@X,Y → 絶対配置＋ガイド
-- f: "<li([^>]*)>(.*)@ru([0-9]+),([0-9]+)@([0-9]+),([0-9]+)</li>"
-  r: <li$1 style="position:absolute;left:$5mm;top:$6mm;" class="movitem-ru"><svg viewbox="0 0 $3 $4" width="$3mm" height="$4mm" style="position:absolute;right:-$3mm;top:-$4mm"><line fill="none" stroke="#888" x1="$3" y1="0" x2="$3" y2="$4"/><line fill="none" stroke="#888" x1="0" y1="$4" x2="$3" y2="$4" /></svg>$2</li>
+# - f: "<li([^>]*)>(.*)@ru([0-9]+),([0-9]+)@([0-9]+),([0-9]+)</li>"
+#   r: <li$1 style="position:absolute;left:$5mm;top:$6mm;" class="movitem-ru"><svg viewbox="0 0 $3 $4" width="$3mm" height="$4mm" style="position:absolute;right:-$3mm;top:-$4mm"><line fill="none" stroke="#888" x1="$3" y1="0" x2="$3" y2="$4"/><line fill="none" stroke="#888" x1="0" y1="$4" x2="$3" y2="$4" /></svg>$2</li>
 # 例（@rd）
 # 置換前: <li class="item">内容@rd30,20@15,40</li>
 # 置換後: <li class="item" style="position:absolute;left:15mm;top:40mm;" class="movitem-rd"><svg viewbox="0 0 30 20" width="30mm" height="20mm" style="position:absolute;right:-30mm;top:2mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="30" y2="0"/><line fill="none" stroke="#888" x1="30" y1="0" x2="30" y2="20" /></svg>内容</li>
 # 位置指定（right-down系）@rdW,H@X,Y → 絶対配置＋ガイド
-- f: "<li([^>]*)>(.*)@rd([0-9]+),([0-9]+)@([0-9]+),([0-9]+)</li>"
-  r: <li$1 style="position:absolute;left:$5mm;top:$6mm;" class="movitem-rd"><svg viewbox="0 0 $3 $4" width="$3mm" height="$4mm" style="position:absolute;right:-$3mm;top:2mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="$3" y2="0"/><line fill="none" stroke="#888" x1="$3" y1="0" x2="$3" y2="$4" /></svg>$2</li>
+# - f: "<li([^>]*)>(.*)@rd([0-9]+),([0-9]+)@([0-9]+),([0-9]+)</li>"
+#   r: <li$1 style="position:absolute;left:$5mm;top:$6mm;" class="movitem-rd"><svg viewbox="0 0 $3 $4" width="$3mm" height="$4mm" style="position:absolute;right:-$3mm;top:2mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="$3" y2="0"/><line fill="none" stroke="#888" x1="$3" y1="0" x2="$3" y2="$4" /></svg>$2</li>
 # 位置指定（up-right系）@urW,H@X,Y → 絶対配置＋ガイド
-- f: "<li([^>]*)>(.*)@ur(\\d+),(\\d+)@(\\d+),(\\d+)</li>"
-  r: <li$1 style="position:absolute;left:$5mm;top:$6mm;" class="movitem-ur"><svg viewbox="0 0 $3 $4" width="$3mm" height="$4mm" style="position:absolute;left:2mm;top:-$4mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="$4"/><line fill="none" stroke="#888" x1="0" y1="0" x2="$3" y2="0" /></svg>$2</li>
+# - f: "<li([^>]*)>(.*)@ur(\\d+),(\\d+)@(\\d+),(\\d+)</li>"
+#   r: <li$1 style="position:absolute;left:$5mm;top:$6mm;" class="movitem-ur"><svg viewbox="0 0 $3 $4" width="$3mm" height="$4mm" style="position:absolute;left:2mm;top:-$4mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="$4"/><line fill="none" stroke="#888" x1="0" y1="0" x2="$3" y2="0" /></svg>$2</li>
 # 水平ガイド線（左方向）@lsW@X,Y
-- f: "<li([^>]*)>(.*)@ls([0-9]+)@([0-9]+),([0-9]+)</li>"
-  r: <li$1 style="position:absolute;left:$4mm;top:$5mm;" class="movitem-ls"><svg viewbox="0 0 $3 1" width="$3mm" height="1mm" style="position:absolute;left:-$3mm;top:0"><line fill="none" stroke="#888" x1="0" y1="0" x2="$3" y2="0"/></svg>$2</li>
+# - f: "<li([^>]*)>(.*)@ls([0-9]+)@([0-9]+),([0-9]+)</li>"
+#   r: <li$1 style="position:absolute;left:$4mm;top:$5mm;" class="movitem-ls"><svg viewbox="0 0 $3 1" width="$3mm" height="1mm" style="position:absolute;left:-$3mm;top:0"><line fill="none" stroke="#888" x1="0" y1="0" x2="$3" y2="0"/></svg>$2</li>
 # 垂直ガイド線（上方向）@usH@X,Y
-- f: "<li([^>]*)>(.*)@us([0-9]+)@([0-9]+),([0-9]+)</li>"
-  r: <li$1 style="position:absolute;left:$4mm;top:$5mm;" class="movitem-us"><svg viewbox="0 0 1 $3" width="1mm" height="$3mm" style="position:absolute;left:2mm;top:-$3mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="$3"/></svg>$2</li>
+# - f: "<li([^>]*)>(.*)@us([0-9]+)@([0-9]+),([0-9]+)</li>"
+#   r: <li$1 style="position:absolute;left:$4mm;top:$5mm;" class="movitem-us"><svg viewbox="0 0 1 $3" width="1mm" height="$3mm" style="position:absolute;left:2mm;top:-$3mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="$3"/></svg>$2</li>
 # 垂直ガイド線（下方向）@dsH@X,Y
-- f: "<li([^>]*)>(.*)@ds([0-9]+)@([0-9]+),([0-9]+)</li>"
-  r: <li$1 style="position:absolute;left:$4mm;top:$5mm;" class="movitem-ds"><svg viewbox="0 0 1 $3" width="1mm" height="$3mm" style="position:absolute;left:2mm;bottom:-$3mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="$3"/></svg>$2</li>
+# - f: "<li([^>]*)>(.*)@ds([0-9]+)@([0-9]+),([0-9]+)</li>"
+#   r: <li$1 style="position:absolute;left:$4mm;top:$5mm;" class="movitem-ds"><svg viewbox="0 0 1 $3" width="1mm" height="$3mm" style="position:absolute;left:2mm;bottom:-$3mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="0" y2="$3"/></svg>$2</li>
 # 水平ガイド線（右方向）@rsW@X,Y
-- f: "<li([^>]*)>(.*)@rs([0-9]+)@([0-9]+),([0-9]+)</li>"
-  r: <li$1 style="position:absolute;left:$4mm;top:$5mm;" class="movitem-rs"><svg viewbox="0 0 $3 1" width="$3mm" height="1mm" style="position:absolute;right:-$3mm;top:3mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="$3" y2="0"/></svg>$2</li>
+# - f: "<li([^>]*)>(.*)@rs([0-9]+)@([0-9]+),([0-9]+)</li>"
+#   r: <li$1 style="position:absolute;left:$4mm;top:$5mm;" class="movitem-rs"><svg viewbox="0 0 $3 1" width="$3mm" height="1mm" style="position:absolute;right:-$3mm;top:3mm"><line fill="none" stroke="#888" x1="0" y1="0" x2="$3" y2="0"/></svg>$2</li>
+# ------------------------------------------------------------------
 # リストの先頭記号 ▶ を「青コメ」用クラスに
 - f: "<li[^>]*>▶"
   r: <li class="aokome">

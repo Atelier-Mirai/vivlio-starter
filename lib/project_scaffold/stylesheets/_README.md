@@ -13,6 +13,7 @@
 | `code.css` | コードブロックのスタイル |
 | `table.css` | 表のスタイル |
 | `components.css` | コラム・注意書きなどのコンポーネント |
+| `replace-list.css` | `config/post_replace_list.yml` の置換ルールで付与される隠れクラス（`.kaiwa` `.aokome` `.akakome` `.codered-right` `.hen-comment` `.figure-guides` 等）のスタイル |
 | `page-settings.css` | 用紙サイズ・マージン設定 |
 | `toc.css` | 目次のスタイル |
 | `preface.css` | 前書きページのスタイル |
