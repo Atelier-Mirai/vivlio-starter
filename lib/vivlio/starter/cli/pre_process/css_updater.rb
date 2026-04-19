@@ -275,6 +275,9 @@ module Vivlio
             # 用紙スケールを算出（A4=1.0 基準）
             page_cfg[:paper_scale] = calculate_paper_scale(page_cfg[:width], page_cfg[:height])
 
+            # .align-* ブロックの最大行長を算出（A5=26em, B5=36em, A4=40em）
+            page_cfg[:align_max_width] = calculate_align_max_width(page_cfg[:width])
+
             # ノンブル配置
             apply_folio_placement!(page_cfg)
 
@@ -390,6 +393,20 @@ module Vivlio
             end
           end
 
+          # .align-left / .align-center / .align-right ブロックの最大行長を算出する。
+          # Vivliostyle は `min(26em, max-content)` のような比較関数を未対応のため、
+          # CSS カスタムプロパティ `--align-max-width` として判型別に上書きする。
+          # 詳細は docs/specs/vivliostyle_warnings_spec.md 参照。
+          # 用紙幅 mm から判型を推定し、A5=26em / B5=36em / A4=40em を返す。
+          def calculate_align_max_width(width)
+            w_mm = parse_to_mm(width)
+            return '40em' unless w_mm.positive?
+            return '26em' if w_mm <= 155 # A5 相当（148mm）
+            return '36em' if w_mm <= 190 # B5 相当（JIS 182mm / ISO 176mm）
+
+            '40em'                       # A4 以上
+          end
+
           # 用紙スケールを算出（A4基準）
           def calculate_paper_scale(width, height)
             a4_w_mm = 210.0
@@ -456,6 +473,7 @@ module Vivlio
               ['--page-width',            page_cfg[:width]],
               ['--page-height',           page_cfg[:height]],
               ['--paper-scale',           page_cfg[:paper_scale]],
+              ['--align-max-width',       page_cfg[:align_max_width]],
               ['--base-font-size',        page_cfg[:base_font_size]],
               ['--base-line-height',      page_cfg[:base_line_height]],
               ['--letter-spacing',        page_cfg[:letter_spacing] || '0em'],

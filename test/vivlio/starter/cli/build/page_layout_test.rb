@@ -261,6 +261,50 @@ module Vivlio
           assert_nil Vivlio::Starter::CLI::PreProcessCommands::CssUpdater.sync_vivliostyle_config_size!('148mm', '210mm', 'A5')
         end
       end
+
+      # ================================================================
+      # calculate_align_max_width のテスト
+      #
+      # Vivliostyle が `min(26em, max-content)` を未対応なため、
+      # CSS カスタムプロパティ `--align-max-width` として判型別に値を供給する。
+      # 詳細は docs/specs/vivliostyle_warnings_spec.md 参照。
+      # ================================================================
+      class CalculateAlignMaxWidthTest < Minitest::Test
+        CssUpdater = Vivlio::Starter::CLI::PreProcessCommands::CssUpdater
+
+        def test_a5_returns_26em
+          assert_equal '26em', CssUpdater.calculate_align_max_width('148mm')
+        end
+
+        def test_b5_jis_returns_36em
+          assert_equal '36em', CssUpdater.calculate_align_max_width('182mm')
+        end
+
+        def test_b5_iso_returns_36em
+          assert_equal '36em', CssUpdater.calculate_align_max_width('176mm')
+        end
+
+        def test_a4_returns_40em
+          assert_equal '40em', CssUpdater.calculate_align_max_width('210mm')
+        end
+
+        def test_larger_than_a4_returns_40em
+          assert_equal '40em', CssUpdater.calculate_align_max_width('257mm')
+        end
+
+        def test_invalid_value_falls_back_to_40em
+          assert_equal '40em', CssUpdater.calculate_align_max_width('')
+          assert_equal '40em', CssUpdater.calculate_align_max_width(nil)
+        end
+
+        def test_a5_boundary_155mm_returns_26em
+          assert_equal '26em', CssUpdater.calculate_align_max_width('155mm')
+        end
+
+        def test_just_over_a5_boundary_returns_36em
+          assert_equal '36em', CssUpdater.calculate_align_max_width('160mm')
+        end
+      end
     end
   end
 end

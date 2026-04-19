@@ -81,6 +81,8 @@
   --page-height: 297mm; /* 高さ */
   /* 用紙スケール（A4=1.0 を基準に B5/A5 などで前処理から上書き） */
   --paper-scale: 1.0;
+  /* .align-* 配置時の最大行長（A4=40em, B5=36em, A5=26em。前処理から上書き） */
+  --align-max-width: 40em;
 
   /* タイポグラフィ設定 */
   --base-font-size:   10.5pt;    /* 基準文字サイズ */

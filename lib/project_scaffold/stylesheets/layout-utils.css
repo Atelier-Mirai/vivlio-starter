@@ -191,18 +191,21 @@
 .align-left:not(:is(.figure, figure, img, svg)) {
   margin-inline-start: 0;
   margin-inline-end: auto;
-  inline-size: min(26em, max-content);
+  max-inline-size: var(--align-max-width);
+  inline-size: fit-content;
 }
 
 .align-center:not(:is(.figure, figure, img, svg)) {
   margin-inline: auto;
-  inline-size: min(26em, max-content);
+  max-inline-size: var(--align-max-width);
+  inline-size: fit-content;
 }
 
 .align-right:not(:is(.figure, figure, img, svg)) {
   margin-inline-start: auto;
   margin-inline-end: 0;
-  inline-size: min(26em, max-content);
+  max-inline-size: var(--align-max-width);
+  inline-size: fit-content;
 }
 
 /* 画像単体 (.align-*) を回り込ませる場合 */
