@@ -18,9 +18,13 @@ task :reinstall do
   require_relative 'lib/vivlio/starter/version'
   version = Vivlio::Starter::VERSION
   gem_name = 'vivlio-starter'
-  gem_file = "#{gem_name}-#{version}.gem"
 
   sh "gem uninstall #{gem_name} --version #{version} --executables --ignore-dependencies 2>/dev/null || true"
   sh "gem build #{gemspec}"
+
+  # RubyGems がバージョンを変換する可能性があるため、実際にビルドされたファイルを検出
+  gem_file = Dir["#{gem_name}-*.gem"].max_by { |f| File.mtime(f) }
+  raise "ビルドされた gem ファイルが見つかりません" unless gem_file
+
   sh "gem install #{gem_file}"
 end
