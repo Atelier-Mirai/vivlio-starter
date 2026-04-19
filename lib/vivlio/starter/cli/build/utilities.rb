@@ -7,7 +7,6 @@
 #   ビルドパイプラインで使用する共通ユーティリティを提供する。
 #
 # 提供機能:
-#   - キャッシュ管理: ファイルの保存・復元
 #   - PDF 操作: ページ数取得、ページサイズ計算
 #   - 章番号計算: keep オプション用の番号抽出
 #   - 判型計算: config からページサイズを算出
@@ -17,8 +16,6 @@
 #   - Provider (Prawn + CombinePDF): PDF 操作（MIT互換）
 # ================================================================
 
-require 'fileutils'
-
 module Vivlio
   module Starter
     module CLI
@@ -26,24 +23,6 @@ module Vivlio
         # ビルド共通ユーティリティモジュール
         module Utilities
           module_function
-
-          # キャッシュにファイルを保存
-          def cache_store_file(cache_on, source, dest, step_label)
-            return false unless cache_on && source && dest && File.exist?(source)
-
-            FileUtils.cp(source, dest)
-            Common.log_info("[#{step_label}] キャッシュへ保存しました: #{dest}")
-            true
-          end
-
-          # キャッシュからファイルを復元
-          def cache_restore_file(cache_on, source, dest, step_label)
-            return false unless cache_on && source && File.exist?(source) && dest && !File.exist?(dest)
-
-            FileUtils.cp(source, dest)
-            Common.log_info("[#{step_label}] キャッシュから復元しました: #{dest}")
-            true
-          end
 
           # PDF のページ数を取得（pdfinfo → HexaPDF フォールバック → MIT版へ変更）
           def page_count(file)
