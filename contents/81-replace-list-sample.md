@@ -134,11 +134,11 @@
 
 ## 7. コード内コメントの赤強調
 
-### [ok] 7-1. Ruby の `#←` コメント
+### [ok] 7-1. Ruby の `# [!]` コメント
 
 ```ruby
 def greet(name)
-  puts "Hello, #{name}!"   #← この行が赤色で強調される
+  puts "Hello, #{name}!"   # [!] この行が赤色で強調される
 end
 ```
 
@@ -148,71 +148,62 @@ def greet(name)
 end
 ```
 
-### [ok] 7-2. JavaScript の `//←` コメント
+### [ok] 7-2. JavaScript の `// [!]` コメント
 
 ```javascript
 function greet(name) {
-  console.log(`Hello, ${name}!`); //← この行が赤色で強調される
+  console.log(`Hello, ${name}!`); // [!] この行が赤色で強調される
 }
 ```
 
-### [ok] 7-3. C 言語の `/*← ... */` コメント
+### [ok] 7-3. C 言語の `/* [!] ... */` ブロックコメント
 
 ```c
 int main(void) {
-  printf("hello\n");   /*← この行が赤色で強調される */
+  printf("hello\n");   /* [!] この行が赤色で強調される */
   return 0;
 }
 ```
 
-### [ok] 7-3. C 言語の `/*← ... */` コメント
+### [ok] 7-4. C 言語の `// [!]` 一行コメント
 
 ```c
 int main(void) {
-  printf("hello\n");   //← 一行コメントこの行が赤色で強調される
+  printf("hello\n");   // [!] 一行コメントこの行が赤色で強調される
   return 0;
 }
 ```
 
-### [ok] 7-4. C 言語の `/*←← ... */`（右寄せ＋赤）
-
-```c
-int main(void) {
-  printf("hello\n");   /*←← このコメントは右寄せ＋赤 */
-  return 0;
-}
-```
-
-### 7-4. CSS 言語の `/*← ... */`（右寄せ＋赤）
+### 7-5. CSS の `/* [!] ... */` コメント
 
 ```css
 .example {
-  color: red;   /*← このコメントは赤
-  color: yellow; */
+  color: red;   /* [!] このコメントは赤 */
   color: green;
 }
 ```
 
-### 7-5. HTML コメント `<!--← ... -->`
+### 7-6. HTML コメント `<!-- [!] ... -->`
 
 ```html
 <!DOCTYPE html>
 <html>
   <body>
-    <!--← この HTML コメントが赤色で強調される 
+    <!-- [!] この HTML コメントが赤色で強調される -->
     <p>hello</p>
-    -->
   </body>
 </html>
 ```
 
+### 7-7. SQL の `-- [!]` コメント
+
 ```sql
-SELECT * FROM users WHERE id = 1; --← この行が強調される
-SELECT * FROM users WHERE id = 2; --←← この行が強調される
-SELECT * FROM users WHERE id = 3; /*←← この行が強調される*/
+SELECT * FROM users WHERE id = 1; -- [!] この行が強調される
+SELECT * FROM users WHERE id = 2; -- 通常のコメント
+SELECT * FROM users WHERE id = 3; /* [!] ブロックコメントも赤色 */
 ```
 
-**期待結果**: いずれのコードブロックでも、矢印付きコメント部分のみが赤色で表示されていること。二重矢印版のみ右寄せ。
+**期待結果**: いずれのコードブロックでも、`[!]` マーカー付きコメントの行だけが赤色で表示され、コメント記号（`#` / `//` / `--` / `/*` / `<!--`）は保持され、`[!]` マーカーとその前後の空白は取り除かれていること。
 
 ---
 

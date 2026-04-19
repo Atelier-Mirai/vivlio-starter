@@ -8,7 +8,6 @@
    追加されるため、Markdown 原稿からは直接見えない「隠れクラス」が多い。
 
    定義クラス:
-     - .codered-right  : 二重矢印コメント（C 言語型 /←← ... ）を右寄せで赤表示
      - .hen-comment    : 編集者コメント（@comment: ... @commend）
      - .kaiwa          : 会話文（【先生X】【生徒X】）
      - .kaiwa.sense    : 先生ラベル
@@ -17,12 +16,6 @@
      - li.akakome      : 赤コメ（❶❷❸ で始まる項目）
      - .figure-guides  : `@lu/@ru/@ld/@rd` など絶対配置ガイド線の親コンテナ
    ===================================================================== */
-
-/* コード内コメント: 右寄せ＋赤（二重矢印コメント系） */
-.codered-right.token.comment {
-  float: right;
-  text-align: right;
-}
 
 /* 編集者コメント（@comment:... @commend） */
 .hen-comment {

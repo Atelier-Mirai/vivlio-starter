@@ -103,21 +103,13 @@
 # コード見出し（h6）を装飾クラス付きに
 - f: "<h6([^>]*)>"
   r: <h6$1 class="codetitle"><span>
-# Prism コメントで #← を赤強調
-- f: <span class="token comment"([^>]*)>#←
-  r: <span class="token comment codered"$1>
-# Prism コメントで //← を赤強調
-- f: <span class="token comment"([^>]*)>//←
-  r: <span class="token comment codered"$1>
-# Prism コメントで /*←← ... */ を右寄せ＋赤強調
-- f: <span class="token comment"([^>]*)>/\*←←(.*)\*/
-  r: <span class="token comment codered codered-right"$1>$2
-# Prism コメントで /*← ... */ を赤強調
-- f: <span class="token comment"([^>]*)>/\*←(.*)\*/
-  r: <span class="token comment codered"$1>$2
-# HTML コメント ← を赤強調
-- f: "<span class=&quot;token comment&quot;([^>]*)>&lt;!--←(.*)--&gt;"
-  r: <span class="token comment codered"$1>$2
+# Prism コメントで [!] マーカー付きを赤強調（コメント記号は保持、[!] とその前後の空白1つを除去）
+# 対応: # / // / -- / /* の各種行・ブロックコメント
+- f: "<span class=\"token comment\"([^>]*)>(#|//|--|/\\*)\\s*\\[!\\]\\s?"
+  r: "<span class=\"token comment codered\"$1>$2 "
+# HTML コメント [!] を赤強調（Prism出力は &#x3C; を使う）
+- f: "<span class=\"token comment\"([^>]*)>&#x3C;!--\\s*\\[!\\]\\s?"
+  r: "<span class=\"token comment codered\"$1>&#x3C;!-- "
 # 〘〙 を <kbd>...</kbd> に
 - f: "〘"
   r: "<kbd>"
