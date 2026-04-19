@@ -234,8 +234,10 @@ module Vivlio
           end
 
           # バリアント出力を生成
+          # rubocop:disable Lint/UnusedMethodArgument
           def generate_variant_output(input_png, target_path, variant:, waifu2x_available:, waifu2x:, waifu2x_args:,
                                       waifu2x_noise:, scale:, target_width:, webp_quality:, keep_intermediate:)
+            # rubocop:enable Lint/UnusedMethodArgument
             FileUtils.mkdir_p(File.dirname(target_path))
 
             variant_label = File.basename(target_path)

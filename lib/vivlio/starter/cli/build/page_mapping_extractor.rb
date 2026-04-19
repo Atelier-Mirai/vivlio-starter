@@ -34,7 +34,7 @@ module Vivlio
           # デフォルト設定
           DEFAULT_PORT = 13_100
           DEFAULT_HOST = 'localhost'
-          DEFAULT_TIMEOUT_MS = 300_000  # 416ページ規模のビルドに対応するため5分に延長
+          DEFAULT_TIMEOUT_MS = 300_000 # 416ページ規模のビルドに対応するため5分に延長
           SERVER_STARTUP_TIMEOUT = 30 # 秒
           MAPPING_SCRIPT = File.expand_path('extract_page_mapping.mjs', __dir__)
 
@@ -264,28 +264,28 @@ module Vivlio
           # @param raw [Hash] パース済み JSON
           # @return [PageMapping]
           def parse_result(raw)
-            mappings = Array(raw[:mappings]).map do
+            mappings = Array(raw[:mappings]).map do |entry|
               MappingEntry.new(
-                anchor_id: it[:anchor_id],
-                href: it[:href],
-                page_index: it[:page_index],
-                spine_index: it[:spine_index]
+                anchor_id: entry[:anchor_id],
+                href: entry[:href],
+                page_index: entry[:page_index],
+                spine_index: entry[:spine_index]
               )
             end
 
-            backlink_mappings = Array(raw[:backlink_mappings]).map do
+            backlink_mappings = Array(raw[:backlink_mappings]).map do |entry|
               BacklinkEntry.new(
-                href: it[:href],
-                page_index: it[:page_index],
-                spine_index: it[:spine_index]
+                href: entry[:href],
+                page_index: entry[:page_index],
+                spine_index: entry[:spine_index]
               )
             end
 
-            index_mappings = Array(raw[:index_mappings]).map do
+            index_mappings = Array(raw[:index_mappings]).map do |entry|
               IndexMappingEntry.new(
-                anchor_id: it[:anchor_id],
-                page_index: it[:page_index],
-                spine_index: it[:spine_index]
+                anchor_id: entry[:anchor_id],
+                page_index: entry[:page_index],
+                spine_index: entry[:spine_index]
               )
             end
 

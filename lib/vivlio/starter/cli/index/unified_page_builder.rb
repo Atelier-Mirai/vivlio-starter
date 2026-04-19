@@ -46,8 +46,8 @@ module Vivlio
           NUMBER_ROW_LABEL = '数字'
           DIGIT_REGEX = /\A[0-9０-９]\z/
 
-          ALPHA_ROWS = ('A'..'Z').each_with_object({}) do |letter, hash|
-            hash[letter] = /^[#{letter.downcase}#{letter}]/
+          ALPHA_ROWS = ('A'..'Z').to_h do |letter|
+            [letter, /^[#{letter.downcase}#{letter}]/]
           end.freeze
 
           INDEX_MATCH_FILE = '_index_matches.yml'

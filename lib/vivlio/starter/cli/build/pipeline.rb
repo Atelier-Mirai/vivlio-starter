@@ -122,7 +122,7 @@ module Vivlio
               ['Step  1 (optimize images)',      -> { run_step1_optimize_images }],
               ['Step  2 (prepare theme images)', -> { Build::ImageOptimizer.prepare_theme_images! }],
               ['Step  3 (preprocess sections)',  -> { Build::SectionBuilder.preprocess_sections!(entries) }],
-              ['Step  4 (index scan and build)', -> { run_step4_index_processing }],
+              ['Step  4 (index scan and build)', -> { run_step4_index_processing }]
             ].each { |label, handler| add_step(label, handler) }
           end
 
@@ -372,7 +372,7 @@ module Vivlio
             output = 'output_print.pdf'
             FileUtils.rm_f(output)
 
-            ranges = existing.map { %("%s" 1-z) % it }.join(' ')
+            ranges = existing.map { format(%("%s" 1-z), it) }.join(' ')
             success = system(%(qpdf "#{base_pdf}" --pages #{ranges} -- "#{output}" > /dev/null))
 
             if success && File.exist?(output)
@@ -629,7 +629,7 @@ module Vivlio
             output = 'output_print.pdf'
             FileUtils.rm_f(output)
 
-            ranges = existing.map { %("%s" 1-z) % it }.join(' ')
+            ranges = existing.map { format(%("%s" 1-z), it) }.join(' ')
             success = system(%(qpdf "#{base_pdf}" --pages #{ranges} -- "#{output}" > /dev/null))
 
             if success && File.exist?(output)

@@ -77,7 +77,7 @@ module Vivlio
           end
 
           # キャッシュにデータを書き込む
-          def write(basename, data, source_path: nil)
+          def write(basename, data, source_path: nil) # rubocop:disable Lint/UnusedMethodArgument
             return unless enabled?
 
             ensure_cache_dir!

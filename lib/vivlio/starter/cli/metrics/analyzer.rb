@@ -155,7 +155,7 @@ module Vivlio
           end
 
           def build_token_frequencies(tokens)
-            tokens.each_with_object(Hash.new(0)) { |token, hash| hash[token] += 1 }
+            tokens.tally
           end
 
           # MeCab でトークン化する（利用不可の場合は簡易分割）

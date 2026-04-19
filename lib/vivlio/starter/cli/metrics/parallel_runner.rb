@@ -39,7 +39,7 @@ module Vivlio
             return env_value if env_value.positive?
 
             n_cores = Etc.respond_to?(:nprocessors) ? Etc.nprocessors : 2
-            [[n_cores, MAX_CONCURRENCY].min, 1].max
+            n_cores.clamp(1, MAX_CONCURRENCY)
           end
 
           # アイテムを並列処理する

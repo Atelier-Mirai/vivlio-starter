@@ -556,8 +556,8 @@ module Vivlio
         def capture_first_page_headings(text)
           return if @first_page_heading_tokens
 
-          tokens = text.to_s.split("\n").map do
-            normalize_heading_token(it)
+          tokens = text.to_s.split("\n").map do |line|
+            normalize_heading_token(line)
           end.map { strip_chapter_prefix(it) }.map { strip_numeric_prefix(it) }.map(&:strip).reject(&:empty?)
           @first_page_heading_tokens = tokens.first(3)
         end

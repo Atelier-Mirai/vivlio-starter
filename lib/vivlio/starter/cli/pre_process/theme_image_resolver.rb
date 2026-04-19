@@ -288,7 +288,7 @@ module Vivlio
             effective_width = width_mm * 0.4 if effective_width <= width_mm * 0.4
             ratio = height_mm / [effective_width, 1.0].max
 
-            [[ratio, MIN_BINDING_RATIO].max, MAX_BINDING_RATIO].min
+            ratio.clamp(MIN_BINDING_RATIO, MAX_BINDING_RATIO)
           rescue StandardError
             1.414
           end

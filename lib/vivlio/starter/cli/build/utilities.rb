@@ -58,7 +58,7 @@ module Vivlio
             entries = resolve_entries(entries_or_keep)
             entries
               .filter_map { it.number&.to_i }
-              .select { it.between?(1, 89) }
+              .grep(1..89)
               .uniq
               .sort
           end

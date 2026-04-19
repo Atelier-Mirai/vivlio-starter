@@ -542,7 +542,7 @@ module Vivlio
           return nil unless raw.positive?
 
           # 極端な比率を避けるため、5%〜95% にクランプ
-          [[raw, 0.05].max, 0.95].min
+          raw.clamp(0.05, 0.95)
         end
         module_function :sanitize_image_group_fraction
 
@@ -821,7 +821,7 @@ module Vivlio
           return nil unless raw.positive?
 
           # 極端な比率を避けるため、5%〜95% にクランプ
-          [[raw, 0.05].max, 0.95].min
+          raw.clamp(0.05, 0.95)
         end
 
         # 列幅でレイアウトを制御するため、figure/img 側の width 指定は取り除く

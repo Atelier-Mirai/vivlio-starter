@@ -421,7 +421,7 @@ module Vivlio
             paper_scale = [scale_w, scale_h].min
 
             # 0.5〜1.0 の安全域に丸める
-            [[paper_scale, 0.5].max, 1.0].min.round(4)
+            paper_scale.clamp(0.5, 1.0).round(4)
           end
 
           # CSS長さ文字列をmm単位に変換

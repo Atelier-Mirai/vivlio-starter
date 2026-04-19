@@ -71,8 +71,8 @@ module Vivlio
           # anchor_id → (spine_index, page_index) のルックアップを構築
           # @return [Hash{String => Array(Integer, Integer)}]
           def build_anchor_to_page_lookup
-            page_mapping.mappings.each_with_object({}) do |entry, lookup|
-              lookup[entry.anchor_id] = [entry.spine_index, entry.page_index]
+            page_mapping.mappings.to_h do |entry|
+              [entry.anchor_id, [entry.spine_index, entry.page_index]]
             end
           end
 
@@ -235,8 +235,8 @@ module Vivlio
           # index_anchor_id → (spine_index, page_index) のルックアップを構築
           # @return [Hash{String => Array(Integer, Integer)}]
           def build_index_anchor_to_page_lookup
-            page_mapping.index_mappings.each_with_object({}) do |entry, lookup|
-              lookup[entry.anchor_id] = [entry.spine_index, entry.page_index]
+            page_mapping.index_mappings.to_h do |entry|
+              [entry.anchor_id, [entry.spine_index, entry.page_index]]
             end
           end
 

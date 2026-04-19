@@ -33,10 +33,10 @@ module Vivlio
 
           # 退避プレースホルダのマーカー。Unicode 制御文字 (U+0000) を両端に置くので
           # 原稿内やルールパターンに出現することはない。
-          PRE_PLACEHOLDER_PREFIX  = "\u0000__VS_PRE__".freeze
-          CODE_PLACEHOLDER_PREFIX = "\u0000__VS_CODE__".freeze
-          TAG_PLACEHOLDER_PREFIX  = "\u0000__VS_TAG__".freeze
-          PLACEHOLDER_SUFFIX      = "__\u0000".freeze
+          PRE_PLACEHOLDER_PREFIX  = "\u0000__VS_PRE__"
+          CODE_PLACEHOLDER_PREFIX = "\u0000__VS_CODE__"
+          TAG_PLACEHOLDER_PREFIX  = "\u0000__VS_TAG__"
+          PLACEHOLDER_SUFFIX      = "__\u0000"
 
           # YAML置換ルールを適用してHTMLファイルを更新
           def process_html_file(html_file, replace_rules)

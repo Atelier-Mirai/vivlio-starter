@@ -70,7 +70,7 @@ module Vivlio
         # @param items [Array<Hash>] アウトラインの項目配列
         # @param max_level [Integer] 最大階層
         # @return [Boolean]
-        def add_outline!(_original_pdf_path, _items, max_level:)
+        def add_outline!(_original_pdf_path, _items, max_level:) # rubocop:disable Lint/UnusedMethodArgument
           CLI::Common.log_warn('PDF しおり（アウトライン）の付与は Standard モード(MIT) ではサポートされていません。')
           CLI::Common.log_info('  => 拡張機能が必要な場合は `gem install vivlio-starter-pdf` を検討してください。')
           false

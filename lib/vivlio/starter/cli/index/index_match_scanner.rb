@@ -521,8 +521,8 @@ module Vivlio
             cache_file = '_index_matches.yml'
 
             # 用語名でソートして可読性を向上
-            sorted_terms = @index_data.keys.sort.each_with_object({}) do |term, hash|
-              hash[term] = @index_data[term].to_a
+            sorted_terms = @index_data.keys.sort.to_h do |term|
+              [term, @index_data[term].to_a]
             end
 
             data = {

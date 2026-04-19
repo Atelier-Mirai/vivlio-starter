@@ -51,7 +51,7 @@ module Vivlio
             on_warning = lambda do |warning|
               case warning
               in QueryStream::NoResultWarning => w
-                Common.log_warn("QueryStream 一件検索: 該当レコードが見つかりません")
+                Common.log_warn('QueryStream 一件検索: 該当レコードが見つかりません')
                 Common.log_warn("   記法: #{w.query} (#{w.location})")
               in QueryStream::AmbiguousQueryWarning => w
                 Common.log_warn("QueryStream 一件検索: 複数件ヒット（#{w.count} 件）。条件を明示してください")
