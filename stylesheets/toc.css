@@ -61,11 +61,9 @@ body.toc {
 /* ========================================================= */
 /*  章レベル（Chapter TOC）                                  */
 /* ========================================================= */
-/* 章目次 */
+/* 章目次（block レイアウト: ページ境界で章ブロックが分割できるよう flex を使わない） */
 .toc-chapter {
-  display: flex;            /* 章タイトル行は Flex でリーダーと頁を整列 */
-  align-items: baseline;
-  flex-wrap: wrap;          /* 配下の UL は次の行へ */
+  display: block;
   margin-block-end: clamp(1.4mm, calc(var(--paper-scale) * 2mm), 2mm);
 
   font-size: clamp(15.4Q, calc(var(--paper-scale) * 22Q), 22Q);
@@ -75,7 +73,6 @@ body.toc {
 
 .toc-chapter::before {
   display: block;
-  flex-basis: 100%;        /* 見出しの直前に全幅ラインを出す */
   inline-size: 100%;
   font-size: clamp(13.3Q, calc(var(--paper-scale) * 19Q), 19Q);
   line-height: 1.5;
@@ -84,6 +81,9 @@ body.toc {
   border-block-end: solid clamp(0.35mm, calc(var(--paper-scale) * 0.5mm), 0.5mm) #000;
   content: "第 " counters(toc-list-counter, "-") " 章";
   counter-increment: toc-list-counter;
+  /* 「第 N 章」見出しと本文タイトルの間で改ページされないようにする */
+  break-after: avoid;
+  page-break-after: avoid;
 }
 
 .toc-chapter-appendix::before {
@@ -91,16 +91,14 @@ body.toc {
   font-size: inherit;
   line-height: inherit;
   border-block-end: none;
+  break-after: auto;
+  page-break-after: auto;
   /* 章のような別行・下線は付けず、行頭にラベルを付与 */
   content: "付録" counter(toc-list-appendix-counter, upper-alpha) ": ";
   counter-increment: toc-list-appendix-counter;
 }
 
 .toc-chapter::after {
-  display: inline;          /* 見出し行の末尾でリーダーを引く */
-  order: 1;                 /* タイトルの直後に配置（子ULより先） */
-  flex: 1 1 auto;           /* 右側を満たしてリーダーを引く */
-  margin-inline-start: 1em;
   content: none;
 }
 
@@ -226,8 +224,6 @@ li.toc-chapter-appendix > ul > li {
 /* 章タイトルの下に3mm（配下の小節リストを下げる） */
 /* stylelint-disable no-descending-specificity */
 li.toc-chapter > ul {
-  order: 2;                 /* タイトル行の次に配置（Flex の改行） */
-  flex-basis: 100%;
   margin-block-start: clamp(2.1mm, calc(var(--paper-scale) * 3mm), 3mm);
 }
 /* stylelint-enable no-descending-specificity */
