@@ -19,7 +19,7 @@ module Vivlio
           # @return [Array<Hash>] { line:, word:, suggestion: } の配列
           def check(path, word_map, ignore_words: [], check_code_blocks: false)
             content = File.read(path, encoding: 'UTF-8')
-            tokens  = Tokenizer.tokenize(content, check_code_blocks: check_code_blocks)
+            tokens  = Tokenizer.tokenize(content, check_code_blocks: check_code_blocks, path: path)
 
             tokens.filter_map do |word, line_no|
               next if word_map.key?(word.downcase)

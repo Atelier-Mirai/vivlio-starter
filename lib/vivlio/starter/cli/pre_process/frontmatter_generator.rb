@@ -131,14 +131,18 @@ module Vivlio
           end
 
           # 既存フロントマターを併合するか新規生成して Markdown に反映する
-          def apply_frontmatter(content, file_type, chapter_num)
+          # @param path [String, nil] 警告メッセージに含めるファイルパス（省略可）
+          def apply_frontmatter(content, file_type, chapter_num, path: nil)
             text = content.dup
             if text.start_with?('---')
               # フロントマター終了の `---` を正確に検出する。
               # `/\A---\n(.*?)\n---\n/m` の最短マッチはコードブロック内の `---` で
               # 誤って止まるため、行単位で走査して最初の `---` 単独行を終端とする。
               frontmatter_end = find_frontmatter_end(text)
-              return text unless frontmatter_end
+              unless frontmatter_end
+                warn_unclosed_frontmatter(path)
+                return text
+              end
 
               frontmatter_yaml = text[4...frontmatter_end].chomp
               body_after = text[(frontmatter_end + 4)..]
@@ -183,6 +187,16 @@ module Vivlio
               pos = line_end + 1
             end
             nil
+          end
+
+          # フロントマター開始の `---` に対応する閉じ `---` が見つからない場合に警告を出す。
+          # 著者が誤って `---` を書き忘れた/閉じ忘れたケースを検知し、
+          # ビルド結果が意図せず本文扱いになる前に気付かせる。
+          # @param path [String, nil] ファイルパス（警告メッセージ用）
+          def warn_unclosed_frontmatter(path)
+            location = path || '(unknown file)'
+            warn "[frontmatter] 警告: #{location} のフロントマター開始 `---` に対応する閉じ `---` が" \
+                 'コードフェンス外に見つかりません。フロントマターは適用されず、本文として扱われます。'
           end
 
           # フロントマター解析時のエラー内容を詳細ログへ出力する

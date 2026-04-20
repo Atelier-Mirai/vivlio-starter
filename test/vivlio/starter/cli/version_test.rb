@@ -19,8 +19,9 @@ module Vivlio
       # VERSION 定数のユニットテスト
       class VersionTest < Minitest::Test
         # バージョン定数がセマンティックバージョン形式であることを確認
+        # pre-release 識別子（-alpha, -beta.1, -rc.2 等）にも対応
         def test_semver_format
-          assert_match(/\A\d+\.\d+\.\d+\z/, Vivlio::Starter::VERSION)
+          assert_match(/\A\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\z/, Vivlio::Starter::VERSION)
         end
       end
     end

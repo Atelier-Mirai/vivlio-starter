@@ -90,7 +90,8 @@ module Vivlio
             context.content = FrontmatterGenerator.apply_frontmatter(
               context.content,
               context.file_type,
-              context.chapter_number
+              context.chapter_number,
+              path: context.source_path
             )
           end
 

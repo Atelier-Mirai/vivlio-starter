@@ -465,13 +465,32 @@ module Vivlio
           ensure_required_yaml_files!
 
           # load_configの結果をDataオブジェクトにラップしてフリーズ
-          new_config = wrap_config(load_config).freeze
+          raw_config = load_config
+          validate_book_config!(raw_config) unless silent
+          new_config = wrap_config(raw_config).freeze
 
           # 定数の再定義（既存なら削除して警告を回避）
           remove_const(:CONFIG) if const_defined?(:CONFIG)
           const_set(:CONFIG, new_config)
 
           puts("🧪 Configuration reloaded: #{CONFIG_FILE}") if !silent && current_log_level >= 3
+        end
+
+        # book.yml の主要キー（book.main_title, book.author, project.name）が
+        # 欠落していないかを検査し、欠落があれば警告を出す。
+        # 既存の最小構成プロジェクトとの互換性を保つため abort はせず、
+        # PDF 生成時にタイトルが空になる等の問題にユーザーが早期に気付けるようにする。
+        # @param cfg [Hash] シンボルキー化された book.yml の内容
+        def validate_book_config!(cfg)
+          missing = []
+          missing << 'book.main_title' if blank?(cfg.dig(:book, :main_title))
+          missing << 'book.author'     if blank?(cfg.dig(:book, :author))
+          missing << 'project.name'    if blank?(cfg.dig(:project, :name))
+          return if missing.empty?
+
+          warn "[book.yml] 警告: 以下の推奨キーが未設定です: #{missing.join(', ')}"
+          warn "  config/book.yml を編集して値を設定してください。未設定のままでも動作しますが、"
+          warn '  PDF のタイトル・著者・出力ファイル名が空欄になります。'
         end
 
         # 初期ロード実行（モジュール定義時は静かに）
@@ -607,7 +626,7 @@ module Vivlio
                         :normalize_line_height, :normalize_page_size!,
                         :normalize_page_units, :post_replace_file, :post_replace_file_path,
                         :pt_value, :q_to_pt, :record_vivliostyle_build,
-                        :reload_configuration!, :relative_path_from_root,
+                        :reload_configuration!, :relative_path_from_root, :validate_book_config!,
                         :resolve_page_size, :resolve_path_from_root,
                         :reset_vivliostyle_build_timings, :stylesheets_dir, :to_roman_lower,
                         :truthy?, :vfm_command, :validate_cover_settings, :verbose?, :with_current_step_label,

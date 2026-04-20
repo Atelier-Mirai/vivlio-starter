@@ -22,6 +22,7 @@
 # ================================================================
 
 require_relative '../build'
+require_relative '../build/build_lock'
 require_relative '../build/pipeline'
 require_relative '../build/output_helpers'
 require_relative '../pre_process'
@@ -84,20 +85,27 @@ module Vivlio
             setup_verify_options!
             PreProcessCommands::LinkImageValidator.reset!
 
-            if targets.any?
-              target_entries = resolve_target_entries
+            # 同一プロジェクトでの多重 build を防ぐため、.cache/vs/.build.lock を
+            # File::LOCK_EX | LOCK_NB で取得する。取得失敗時は即座にエラー終了。
+            BuildCommands::BuildLock.with_lock do
+              if targets.any?
+                target_entries = resolve_target_entries
 
-              if target_entries.empty?
-                common.log_error('指定した章が catalog.yml に存在しません。build を中断します。')
-                return 1
+                if target_entries.empty?
+                  common.log_error('指定した章が catalog.yml に存在しません。build を中断します。')
+                  return 1
+                end
+
+                run_single_mode_build(target_entries)
+              else
+                run_full_mode_build
               end
-
-              run_single_mode_build(target_entries)
-            else
-              run_full_mode_build
             end
 
             0
+          rescue BuildCommands::BuildLock::AlreadyLockedError => e
+            common.log_error(e.message)
+            1
           rescue SystemExit => e
             raise e
           rescue StandardError => e

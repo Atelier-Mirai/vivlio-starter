@@ -316,13 +316,30 @@ module Vivlio
 
         def rewrite_book_yml(cmd, src_path, dest_path, answers, project_name)
           content = File.read(src_path, encoding: 'utf-8')
-                        .gsub('{{MAIN_TITLE}}',   answers[:main_title])
-                        .gsub('{{SUBTITLE}}',     answers[:subtitle])
-                        .gsub('{{AUTHOR}}',       answers[:author])
-                        .gsub('{{PUBLISHER}}',    answers[:publisher])
-                        .gsub('{{PROJECT_NAME}}', project_name)
+                        .gsub('{{MAIN_TITLE}}',   yaml_escape_double_quoted(answers[:main_title]))
+                        .gsub('{{SUBTITLE}}',     yaml_escape_double_quoted(answers[:subtitle]))
+                        .gsub('{{AUTHOR}}',       yaml_escape_double_quoted(answers[:author]))
+                        .gsub('{{PUBLISHER}}',    yaml_escape_double_quoted(answers[:publisher]))
+                        .gsub('{{PROJECT_NAME}}', yaml_escape_double_quoted(project_name))
           File.write(dest_path, content, encoding: 'utf-8')
           log_debug(cmd, "book.yml を置換して書き込みました: #{dest_path}")
+        end
+
+        # YAML の double-quoted string リテラル内で安全になるよう値をエスケープする。
+        # scaffold の book.yml は `"{{PLACEHOLDER}}"` 形式のため、ユーザー入力に
+        # `\` `"` `\n` `\r` `\t` が混じっても book.yml を壊さないよう置換する。
+        # @param value [String, nil] ユーザー入力
+        # @return [String] YAML double-quoted string で安全に埋め込める文字列
+        def yaml_escape_double_quoted(value)
+          value.to_s.gsub(/[\\"\n\r\t]/) do |c|
+            case c
+            in "\\" then '\\\\'
+            in '"'  then '\\"'
+            in "\n" then '\\n'
+            in "\r" then '\\r'
+            in "\t" then '\\t'
+            end
+          end
         end
 
         def run_doctor(cmd, project_name)

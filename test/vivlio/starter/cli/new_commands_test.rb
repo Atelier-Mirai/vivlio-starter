@@ -152,6 +152,38 @@ module Vivlio
           end
         end
 
+        # 特殊文字を含む著者名が book.yml を破壊せず、YAML としてパース可能であることを確認
+        # （3-2-1, 3-2-2 の回帰テスト）
+        def test_should_escape_special_chars_in_interactive_answers_safely
+          within_temp_dir do
+            # 書籍名(")、副題(\\)、著者名(改行混入ペースト事故想定)、発行者(タブ)
+            input = StringIO.new(%(my"book\n\\\\series\n山田\t太郎\nmy\rpublisher\ny\n))
+
+            stub_system_call do
+              $stdin = input
+              capture_io { run_new_command(['escbook']) }
+            ensure
+              $stdin = STDIN
+            end
+
+            book_yml_path = 'escbook/config/book.yml'
+            assert File.exist?(book_yml_path), 'book.yml が生成されるべき'
+
+            # YAML としてパース可能であること（最重要）
+            parsed = nil
+            assert_silent do
+              parsed = YAML.safe_load_file(book_yml_path, aliases: true)
+            rescue StandardError => e
+              flunk "book.yml が YAML としてパースできない: #{e.message}"
+            end
+
+            # エスケープされた値が正しく読み出せること
+            assert_equal 'my"book', parsed.dig('book', 'main_title')
+            assert_equal '\\series', parsed.dig('book', 'subtitle')
+            assert_equal "山田\t太郎", parsed.dig('book', 'author')
+          end
+        end
+
         # --log=debug でコピー中のファイルパスが出力されることを確認
         def test_should_output_debug_logs_when_log_debug_is_set
           within_temp_dir do

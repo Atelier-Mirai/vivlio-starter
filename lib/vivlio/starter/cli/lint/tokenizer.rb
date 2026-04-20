@@ -18,15 +18,17 @@ module Vivlio
 
           # @param content [String] Markdownファイル全体の内容
           # @param check_code_blocks [Boolean] コードブロック内もチェックするか
+          # @param path [String, nil] 警告メッセージに含めるファイルパス（省略可）
           # @return [Array<[String, Integer]>] [word, line_no] のペア配列
-          def tokenize(content, check_code_blocks: false)
+          def tokenize(content, check_code_blocks: false, path: nil)
             tokens           = []
             in_code_fence    = false
             in_frontmatter   = false
             line_no          = 0
 
             # vs-lint コメントによる除外行番号セットを構築
-            excluded_lines = build_excluded_lines(content)
+            excluded_lines, unclosed_disable_at = build_excluded_lines(content)
+            warn_unclosed_disable(path, unclosed_disable_at) if unclosed_disable_at
 
             content.each_line do |line|
               line_no += 1
@@ -62,10 +64,11 @@ module Vivlio
 
           # vs-lint コメントに基づいて除外すべき行番号のセットを構築する
           # @param content [String] Markdownファイル全体の内容
-          # @return [Set<Integer>] 除外する行番号のセット
+          # @return [Array(Set<Integer>, Integer?)] 除外行番号セットと、
+          #   未クローズ disable ブロックの開始行番号（クローズ済みなら nil）
           def build_excluded_lines(content)
             excluded_lines = Set.new
-            in_disable_block = false
+            disable_opened_at = nil
             line_no = 0
 
             content.each_line do |line|
@@ -73,14 +76,14 @@ module Vivlio
 
               # vs-lint-disable コメント行自体を除外
               if line.match?(VS_LINT_DISABLE)
-                in_disable_block = true
+                disable_opened_at ||= line_no
                 excluded_lines.add(line_no)
                 next
               end
 
               # vs-lint-enable コメント行自体を除外
               if line.match?(VS_LINT_ENABLE)
-                in_disable_block = false
+                disable_opened_at = nil
                 excluded_lines.add(line_no)
                 next
               end
@@ -93,10 +96,20 @@ module Vivlio
               end
 
               # disable ブロック内の行を除外
-              excluded_lines.add(line_no) if in_disable_block
+              excluded_lines.add(line_no) if disable_opened_at
             end
 
-            excluded_lines
+            [excluded_lines, disable_opened_at]
+          end
+
+          # vs-lint-disable が閉じられないままファイル末尾に達した場合に警告を出す。
+          # 著者が誤って enable を書き忘れたケースを検知するためのガード。
+          # @param path [String, nil] ファイルパス（警告メッセージ用）
+          # @param opened_at [Integer] disable が開始された行番号
+          def warn_unclosed_disable(path, opened_at)
+            location = path ? "#{path}:#{opened_at}" : "line #{opened_at}"
+            warn "[vs-lint] 警告: #{location} の <!-- vs-lint-disable --> が " \
+                 '<!-- vs-lint-enable --> で閉じられていません。ファイル末尾まで lint が無効化されます。'
           end
 
           # @param line [String] 1行のMarkdownテキスト

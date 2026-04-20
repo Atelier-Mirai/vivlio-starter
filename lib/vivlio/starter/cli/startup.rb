@@ -22,9 +22,34 @@ module Vivlio
         0
       rescue SystemExit => e
         e.status
+      rescue Interrupt
+        handle_interrupt
+      rescue SignalException => e
+        handle_signal(e)
       rescue Exception => e
-        warn "❌ #{e.class}: #{e.message}"
-        warn e.backtrace.join("\n") if ENV['VS_DEBUG']
+        handle_unexpected_error(e)
+      end
+
+      # Ctrl+C（SIGINT）受信時のハンドラ。
+      # 既存の ensure ブロックでの一時ファイルクリーンアップが走った後、
+      # UNIX 規約（128 + SIGINT=2）で終了する。
+      def handle_interrupt
+        warn "\n⚠️  処理が中断されました（Ctrl+C）"
+        130
+      end
+
+      # SIGTERM 等のシグナル受信時のハンドラ。
+      # ensure による後片付けが走った後、128 + signo で終了する。
+      def handle_signal(error)
+        warn "\n⚠️  処理が中断されました（#{error.message}）"
+        128 + (Signal.list[error.signm.sub(/\ASIG/, '')] || 15)
+      end
+
+      # 想定外の Exception 受信時のハンドラ。
+      # デバッグ用にはスタックトレースを出すが、通常はメッセージのみ表示。
+      def handle_unexpected_error(error)
+        warn "❌ #{error.class}: #{error.message}"
+        warn error.backtrace.join("\n") if ENV['VS_DEBUG']
         1
       end
 
@@ -45,7 +70,8 @@ module Vivlio
         warn e.backtrace.join("\n") if ENV['VS_DEBUG']
       end
 
-      module_function :start, :print_usage_for_invalid_input
+      module_function :start, :print_usage_for_invalid_input,
+                      :handle_interrupt, :handle_signal, :handle_unexpected_error
     end
   end
 end

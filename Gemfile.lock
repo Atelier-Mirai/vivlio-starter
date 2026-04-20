@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    vivlio-starter (0.39.2)
+    vivlio-starter (1.0.0.pre.alpha)
       combine_pdf (~> 1.0)
       kramdown (~> 2.4)
       mini_magick (~> 4.12)

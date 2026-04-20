@@ -139,8 +139,8 @@ module Vivlio
         end
         module_function :generate_frontmatter
 
-        def apply_frontmatter(content, file_type, chapter_num)
-          FrontmatterGenerator.apply_frontmatter(content, file_type, chapter_num)
+        def apply_frontmatter(content, file_type, chapter_num, path: nil)
+          FrontmatterGenerator.apply_frontmatter(content, file_type, chapter_num, path: path)
         end
         module_function :apply_frontmatter
 
