@@ -41,9 +41,9 @@ theme:
   style: simple        # image: 扉絵あり / simple: 扉絵なし
 
   color: blue          # アクセントカラー（下記から選択）
-                       # yellow / amber / orange / peach / coral / red
-                       # magenta / plum / purple / indigo / navy / blue
-                       # cyan / teal / mint / green / lime
+                       # yellow / orange / red / magenta
+                       # purple / indigo / navy / blue
+                       # cyan / teal / green / lime
                        # '#ff0000' のような HEX 記法も可
 
   preface_color: indigo   # 前書き・後書き専用カラー（省略時は color と同じ）

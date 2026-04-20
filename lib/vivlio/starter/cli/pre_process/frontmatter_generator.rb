@@ -35,8 +35,7 @@ module Vivlio
       module PreProcessCommands
         # フロントマター生成・CSS 更新を担当するモジュール
         module FrontmatterGenerator
-          ALLOWED_COLORS = %w[yellow amber orange peach coral red magenta plum purple indigo navy blue cyan teal mint
-                              green lime].freeze
+          ALLOWED_COLORS = %w[yellow orange red magenta purple indigo navy blue cyan teal green lime].freeze
 
           module_function
 

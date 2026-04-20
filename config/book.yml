@@ -64,10 +64,9 @@ theme:
   # ----------------------------
   # テーマカラー
   # ----------------------------
-  color: yellow     # yellow / amber / orange / peach
-                    # coral / red / magenta / plum
+  color: yellow     # yellow / orange / red / magenta
                     # purple / indigo / navy / blue
-                    # cyan / teal / mint / green / lime から選択
+                    # cyan / teal / green / lime から選択
                     # '#ff0000' のような HEX 記法も指定可
 
   # 前書き/後書き専用カラー（オプション）

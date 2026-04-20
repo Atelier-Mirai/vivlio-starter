@@ -81,9 +81,9 @@ theme:
 
 | 系統 | 選択肢 |
 | :--- | :--- |
-| 暖色 | `yellow` `amber` `orange` `peach` `coral` `red` |
-| ピンク・紫 | `magenta` `plum` `purple` `indigo` |
-| 青・緑 | `navy` `blue` `cyan` `teal` `mint` `green` `lime` |
+| 暖色 | `yellow` `orange` `red` |
+| ピンク・紫 | `magenta` `purple` `indigo` |
+| 青・緑 | `navy` `blue` `cyan` `teal` `green` `lime` |
 | カスタム | `'#ff0000'` のような HEX 記法も指定可 |
 
 `style: simple` のときは `frontispiece` と `ornament` の設定は無視されます。扉絵なしのシンプルなデザインで十分な場合は `simple` を指定してください。
