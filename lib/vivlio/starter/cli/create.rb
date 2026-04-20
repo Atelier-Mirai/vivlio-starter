@@ -542,24 +542,30 @@ module Vivlio
         # SVG → PDF（rsvg-convert 優先、フォールバック: ImageMagick）
         def convert_svg_to_pdf(input, output, w_mm, h_mm)
           if CoverCommands.find_executable('rsvg-convert')
-            system('rsvg-convert',
-                   '-f', 'pdf',
-                   '--page-width', "#{w_mm}mm",
-                   '--page-height', "#{h_mm}mm",
-                   '-w', "#{w_mm}mm",
-                   '-h', "#{h_mm}mm",
-                   '-o', output,
-                   input)
+            Common.run_svg_converter!(
+              ['rsvg-convert',
+               '-f', 'pdf',
+               '--page-width', "#{w_mm}mm",
+               '--page-height', "#{h_mm}mm",
+               '-w', "#{w_mm}mm",
+               '-h', "#{h_mm}mm",
+               '-o', output,
+               input],
+              input_path: input, output_path: output, purpose: 'カバー PDF 変換'
+            )
           else
             convert_cmd = CoverCommands.imagemagick_convert_command
             unless convert_cmd
               Common.log_error('rsvg-convert も ImageMagick も見つかりません')
-              return
+              return false
             end
             w_px = (w_mm / MM_PER_INCH * DPI).round
             h_px = (h_mm / MM_PER_INCH * DPI).round
-            system(*convert_cmd, '-density', DPI.to_s, input,
-                   '-resize', "#{w_px}x#{h_px}!", output)
+            Common.run_svg_converter!(
+              [*convert_cmd, '-density', DPI.to_s, input,
+               '-resize', "#{w_px}x#{h_px}!", output],
+              input_path: input, output_path: output, purpose: 'カバー PDF 変換 (ImageMagick)'
+            )
           end
         end
 
@@ -596,18 +602,22 @@ module Vivlio
                            tmp
                          end
 
-          system('rsvg-convert',
-                 '-f', 'pdf',
-                 '--page-width', "#{page_w_mm}mm",
-                 '--page-height', "#{page_h_mm}mm",
-                 '-w', "#{svg_w_mm}mm",
-                 '-h', "#{svg_h_mm}mm",
-                 '--left', "#{crop_offset_mm}mm",
-                 '--top', "#{crop_offset_mm}mm",
-                 '-o', output,
-                 input_to_use)
+          success = Common.run_svg_converter!(
+            ['rsvg-convert',
+             '-f', 'pdf',
+             '--page-width', "#{page_w_mm}mm",
+             '--page-height', "#{page_h_mm}mm",
+             '-w', "#{svg_w_mm}mm",
+             '-h', "#{svg_h_mm}mm",
+             '--left', "#{crop_offset_mm}mm",
+             '--top', "#{crop_offset_mm}mm",
+             '-o', output,
+             input_to_use],
+            input_path: input, output_path: output, purpose: 'カバー PDF（トンボ付き）変換'
+          )
 
           FileUtils.rm_f(input_to_use) if input_to_use != input
+          return unless success
 
           add_crop_marks_overlay(output, trim_w_mm, trim_h_mm, bleed_mm, crop_offset_mm)
         end
@@ -722,16 +732,19 @@ module Vivlio
           convert_cmd = CoverCommands.imagemagick_convert_command
           unless convert_cmd
             Common.log_error('ImageMagick（magick/convert）が見つかりません')
-            return
+            return false
           end
           raster_dpi = 150
           w_px = (w_mm / MM_PER_INCH * raster_dpi).round
           h_px = (h_mm / MM_PER_INCH * raster_dpi).round
-          system(*convert_cmd, '-density', raster_dpi.to_s,
-                 input,
-                 '-resize', "#{w_px}x#{h_px}!",
-                 '-quality', '90',
-                 output)
+          Common.run_svg_converter!(
+            [*convert_cmd, '-density', raster_dpi.to_s,
+             input,
+             '-resize', "#{w_px}x#{h_px}!",
+             '-quality', '90',
+             output],
+            input_path: input, output_path: output, purpose: 'カバー画像 (JPG/PNG) 変換'
+          )
         end
 
         # PNGを変換（ImageMagick）

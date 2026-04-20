@@ -30,12 +30,9 @@ book:
   # ----------------------------
   # 書籍名
   # ----------------------------
-  # main_title: 'はじめての技術書づくり'
-  # subtitle: 'Vivlio Starter 実践ガイド'
-  main_title: "初めてのアプリ開発"
-  subtitle: "ゲームを創ろう"
-  # subtitle_style: wave  # 副題の装飾（wave | bar | none）から選択
-  subtitle_style: none  # 副題の装飾（wave | bar | none）から選択
+  main_title: 'はじめての技術書づくり'
+  subtitle: 'Vivlio Starter 実践ガイド'
+  subtitle_style: wave  # 副題の装飾（wave | bar | none）から選択
 
   # ----------------------------
   # 付帯情報（任意）
@@ -52,8 +49,8 @@ book:
 # プロジェクト情報
 # ========================================
 project:
-  name: "janken"  # 出力ファイル名のベース
-  version: "0.1.0"        # 書籍のバージョン（デフォルト: 1.0.0）
+  name: "vivlio_starter"  # 出力ファイル名のベース
+  version: "1.0.0"        # 書籍のバージョン（デフォルト: 1.0.0）
 
 # ========================================
 # テーマ

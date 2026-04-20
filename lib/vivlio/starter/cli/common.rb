@@ -258,6 +258,116 @@ module Vivlio
           puts(msg)
         end
 
+        # ------------------------------------------------------------
+        # 外部コマンド可用性チェック
+        # ------------------------------------------------------------
+        # PATH を走査してコマンドが実行可能か判定する。
+        # @param cmd [String] 実行形式コマンド名（絶対パスも可）
+        # @return [Boolean]
+        def external_command_available?(cmd)
+          candidate = cmd.to_s.strip
+          return false if candidate.empty?
+
+          if candidate.include?(File::SEPARATOR)
+            return File.executable?(candidate) && !File.directory?(candidate)
+          end
+
+          ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |dir|
+            path = File.join(dir, candidate)
+            File.executable?(path) && !File.directory?(path)
+          end
+        end
+
+        # 外部コマンドが見つからない際の案内メッセージを生成する。
+        # `vs doctor` / `vs doctor --fix` への誘導を含む。
+        # @param cmd [String] 不足しているコマンド名
+        # @param purpose [String, nil] 用途の人間向け説明（例: 'カバー画像生成'）
+        # @return [String]
+        def missing_external_command_message(cmd, purpose: nil)
+          header = if purpose && !purpose.to_s.strip.empty?
+                     "#{purpose}に必要な外部コマンドが見つかりません: #{cmd}"
+                   else
+                     "必要な外部コマンドが見つかりません: #{cmd}"
+                   end
+          <<~MSG.strip
+            #{header}
+            環境診断と自動セットアップを試すには:
+                vs doctor         # 不足しているツールの一覧を表示
+                vs doctor --fix   # macOS なら Homebrew で自動インストールを試行
+          MSG
+        end
+
+        # コマンドが見つからない場合は vs doctor 案内付きで例外を送出する。
+        # @param cmd [String] 実行形式コマンド名
+        # @param purpose [String, nil] 用途説明
+        # @raise [StandardError] コマンドが見つからない場合
+        def ensure_external_command!(cmd, purpose: nil)
+          return if external_command_available?(cmd)
+
+          raise missing_external_command_message(cmd, purpose: purpose)
+        end
+
+        # 外部 SVG 変換コマンド（rsvg-convert / ImageMagick 等）を実行し、
+        # 失敗した場合はユーザー向けの整形済みエラーメッセージを出力する。
+        #
+        # 堅牢性仕様 7-1: 不正な SVG XML 等で外部コマンドが失敗した際に、
+        # 従来はサイレントに下流で `No such file` となっていた問題を解消する。
+        #
+        # @param argv [Array<String>] Kernel#system 相当のコマンド配列
+        # @param input_path [String] 入力 SVG パス（エラーメッセージ表示用）
+        # @param output_path [String, nil] 期待する出力ファイルのパス
+        #   （nil 以外の場合、exit 成功でもファイル未生成なら失敗扱い）
+        # @param purpose [String, nil] 用途の人間向け説明（例: 'カバー PDF 変換'）
+        # @return [Boolean] 成功なら true、失敗なら false
+        def run_svg_converter!(argv, input_path:, output_path: nil, purpose: nil)
+          require 'open3'
+
+          _stdout, stderr, status = Open3.capture3(*argv)
+          exit_ok   = status.success?
+          file_ok   = output_path.nil? || File.exist?(output_path)
+          return true if exit_ok && file_ok
+
+          command_name = argv.first
+          purpose_hint = purpose && !purpose.to_s.strip.empty? ? "（#{purpose}）" : ''
+          reason       = if !exit_ok
+                           "終了コード: #{status.exitstatus || 'unknown'}"
+                         else
+                           '出力ファイルが生成されませんでした'
+                         end
+          stderr_digest = format_converter_stderr(stderr)
+          log_error(<<~MSG.strip)
+            SVG 変換に失敗しました#{purpose_hint}: #{input_path}
+              実行コマンド: #{command_name}
+              #{reason}
+              #{stderr_digest}
+          MSG
+          false
+        rescue Errno::ENOENT => e
+          log_error("SVG 変換コマンドが見つかりません: #{argv.first} (#{e.message})")
+          false
+        rescue StandardError => e
+          log_error("SVG 変換中に予期せぬ例外が発生しました: #{e.class}: #{e.message} (input=#{input_path})")
+          false
+        end
+
+        # run_svg_converter! 用に stderr テキストをユーザー向けに整形する。
+        # 空のとき / 長すぎるときを吸収する。
+        def format_converter_stderr(text)
+          trimmed = text.to_s.strip
+          return 'stderr: （出力なし）' if trimmed.empty?
+
+          lines = trimmed.lines.map(&:chomp)
+          shown = if lines.size > 12
+                    head = lines.first(8)
+                    tail = lines.last(3)
+                    [*head, '  ... (中略) ...', *tail]
+                  else
+                    lines
+                  end
+          indented = shown.map { |l| "  #{l}" }.join("\n")
+          "stderr:\n#{indented}"
+        end
+
         def verbose?
           current_log_level >= 2
         end
@@ -607,6 +717,8 @@ module Vivlio
 
         # エンドレスメソッド定義を module_function として明示的に公開
         module_function :abort_with_error, :appendix_number_to_letter, :apply_page_preset, :configured?, :ensure_configured!,
+                        :ensure_external_command!, :external_command_available?,
+                        :missing_external_command_message, :run_svg_converter!, :format_converter_stderr,
                         :blank?, :cache_cfg, :cache_dir, :cache_enabled?,
                         :stylesheets_dir, :templates_dir, :to_roman_lower,
                         :template_path, :chapter_template_path, :preface_template_path,

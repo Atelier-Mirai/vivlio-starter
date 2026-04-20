@@ -3,27 +3,32 @@
 require_relative '../../../../test_helper'
 require 'socket'
 
-# PageMappingExtractor のテストに必要な最小限のスタブ
-module Vivlio
-  module Starter
-    module CLI
-      module Common
-        module_function
-
-        def log_info(msg) = nil
-        def log_action(msg) = nil
-        def log_success(msg) = nil
-        def log_warn(msg) = nil
-        def log_error(msg) = nil
-      end
-    end
-  end
-end
-
+require 'vivlio/starter/cli/common'
 require 'vivlio/starter/cli/build/page_mapping_extractor'
 
 class PageMappingExtractorTest < Minitest::Test
   Extractor = Vivlio::Starter::CLI::Build::PageMappingExtractor
+
+  # テスト実行中のみ Common のログメソッドを無効化し、
+  # teardown で必ず復旧する（他のテストファイルへの汚染防止）。
+  LOG_METHODS_TO_SILENCE = %i[log_info log_action log_success log_warn log_error].freeze
+
+  def setup
+    common = Vivlio::Starter::CLI::Common
+    @saved_log_methods = LOG_METHODS_TO_SILENCE.to_h do |name|
+      [name, common.method(name)]
+    end
+    LOG_METHODS_TO_SILENCE.each do |name|
+      common.define_singleton_method(name) { |_| }
+    end
+  end
+
+  def teardown
+    common = Vivlio::Starter::CLI::Common
+    @saved_log_methods.each do |name, m|
+      common.define_singleton_method(name, m)
+    end
+  end
 
   # --- 既存 preview サーバー検知（方策 D）---
 

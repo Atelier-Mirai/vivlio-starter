@@ -178,8 +178,11 @@ module Vivlio
             end
 
             # エスケープされた値が正しく読み出せること
+            # subtitle: 入力の `\\series`（バックスラッシュ2つ）が round-trip で完全保持されるべき
+            #   YAML 二重引用符内では `\` を `\\` に倍化する必要があるため、ファイル上は 4 つ。
+            #   YAML パース後は元の 2 つに戻る（= 入力の完全保持）。
             assert_equal 'my"book', parsed.dig('book', 'main_title')
-            assert_equal '\\series', parsed.dig('book', 'subtitle')
+            assert_equal '\\\\series', parsed.dig('book', 'subtitle')
             assert_equal "山田\t太郎", parsed.dig('book', 'author')
           end
         end

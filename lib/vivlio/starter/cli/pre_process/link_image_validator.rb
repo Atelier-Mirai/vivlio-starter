@@ -10,11 +10,18 @@
 #   - ローカル画像パスの存在チェック（プレースホルダー置換済みの data: URI を検出）
 #   - 裸 URL（Markdown リンク記法でない直書き URL）の検出
 #   - 外部 URL の HTTP 到達性チェック（オプション）
+#   - 危険スキーム（file:// / javascript:）の検出 — セキュリティ保護、常時有効
 #
 # 設計方針:
 #   - ビルドを止めない（警告のみ）
 #   - ImagePathNormalizer が置換済みの data: URI を検出する方式（方式 A）
 #   - 外部 URL チェックはオプション（--verify-links / book.yml）
+#   - 危険スキームの検出はセキュリティ保護であり、--no-verify でも無効化できない
+#
+# セキュリティ観点（堅牢性仕様 11-1）:
+#   原稿内の `<img src="file:///etc/passwd">` 等によるローカルファイル漏洩を
+#   ビルド前の静的解析で検出し、警告する。Vivliostyle/Chromium のポリシーに
+#   一切頼らず、Ruby 側で明示的にブロックする第一の防衛線。
 # ================================================================
 
 require 'net/http'
@@ -57,6 +64,10 @@ module Vivlio
             def validate(content, filename, config: resolve_config)
               image_issues = config[:verify_images] ? scan_missing_images(content, filename) : []
               link_issues = config[:verify_bare_urls] ? scan_bare_urls(content, filename) : []
+
+              # セキュリティ検証（11-1）: 危険スキームの検出は常時有効
+              # file:// / javascript: 等は --no-verify でも無効化しない
+              link_issues += scan_dangerous_schemes(content, filename)
 
               # 外部 URL チェック用に URL を蓄積（後でバッチ実行）
               if config[:verify_external_links]
@@ -120,10 +131,21 @@ module Vivlio
               if total_link.positive?
                 bare = reports.sum { it.link_issues.count { |i| i.issue_type == :bare_url } }
                 unreachable = reports.sum { it.link_issues.count { |i| i.issue_type == :unreachable } }
+                dangerous = reports.sum { it.link_issues.count { |i| i.issue_type == :dangerous_scheme } }
                 parts = []
+                parts << "危険スキーム: #{dangerous}" if dangerous.positive?
                 parts << "リンク切れ: #{unreachable}" if unreachable.positive?
                 parts << "裸 URL: #{bare}" if bare.positive?
                 Common.echo_always "   リンク: #{total_link} 件の問題（#{parts.join(', ')}）"
+
+                # 危険スキームの詳細を表示（セキュリティ上の重要度が高いため先頭）
+                reports.each do |report|
+                  report.link_issues.select { it.issue_type == :dangerous_scheme }.each do |issue|
+                    Common.echo_always "     ⚠️  #{issue.url}"
+                    Common.echo_always "        #{issue.message}"
+                    Common.echo_always "        参照元: #{issue.filename}:#{issue.line_number}"
+                  end
+                end
 
                 # リンク切れの詳細を表示
                 reports.each do |report|
@@ -218,6 +240,78 @@ module Vivlio
               match ? match[1] : nil
             rescue StandardError
               nil
+            end
+
+            # --- Phase: 危険スキーム検出（セキュリティ／堅牢性 11-1）---
+
+            # Markdown 原稿内の危険スキーム（file:// / javascript:）を検出する
+            #
+            # 検出対象:
+            #   - HTML タグ: <img src="file:///..."> / <a href="javascript:...">
+            #   - Markdown 画像: ![](file:///...)
+            #   - Markdown リンク: [text](javascript:alert(1))
+            #
+            # ImagePathNormalizer が生成する `data:image/svg+xml;...` プレースホルダーは
+            # 安全なスキームとして除外する（scan_missing_images で別途検出される）。
+            #
+            # @param content [String] Markdown テキスト
+            # @param filename [String] 対象ファイル名
+            # @return [Array<LinkIssue>] 検出された issue の配列
+            def scan_dangerous_schemes(content, filename)
+              issues = []
+              in_code_block = false
+
+              content.each_line.with_index(1) do |line, line_number|
+                stripped = line.lstrip
+
+                if stripped.start_with?('```')
+                  in_code_block = !in_code_block
+                  next
+                end
+                next if in_code_block
+
+                # インラインコード内はスキップ（説明文中の例示を無視）
+                scannable = line.gsub(/`[^`]+`/, '')
+
+                # (1) HTML タグの src / href 属性
+                #     <img src="file:///..."> / <a href="javascript:...">
+                scannable.scan(/\b(?:src|href)\s*=\s*["'](file:[^"']*|javascript:[^"']*)["']/i) do
+                  url = ::Regexp.last_match(1)
+                  issues << build_dangerous_issue(filename, line_number, url)
+                end
+
+                # (2) Markdown 画像記法: ![](file:///...)
+                scannable.scan(/!\[[^\]]*\]\((file:[^)]*|javascript:[^)]*)\)/i) do
+                  url = ::Regexp.last_match(1)
+                  issues << build_dangerous_issue(filename, line_number, url)
+                end
+
+                # (3) Markdown リンク記法: [text](javascript:...) / [text](file:///...)
+                #     ただし画像記法 ![](...)（上の (2)）と被らないよう、直前 ! を除外
+                scannable.scan(/(?<!\!)\[[^\]]*\]\((file:[^)]*|javascript:[^)]*)\)/i) do
+                  url = ::Regexp.last_match(1)
+                  issues << build_dangerous_issue(filename, line_number, url)
+                end
+              end
+
+              issues
+            end
+
+            # 危険スキーム検出 issue を生成しつつ警告ログを出力する
+            def build_dangerous_issue(filename, line_number, url)
+              scheme_label = url.match?(/\Afile:/i) ? 'file://' : 'javascript:'
+              Common.log_warn("#{filename}:#{line_number} - 危険なスキームを検出しました（#{scheme_label}）")
+              Common.log_warn("  URL: #{url}")
+              Common.log_warn('  → ローカルファイル漏洩 / スクリプト注入のリスクがあります。')
+
+              LinkIssue.new(
+                filename:,
+                line_number:,
+                url:,
+                issue_type: :dangerous_scheme,
+                status_code: nil,
+                message: "危険なスキーム（#{scheme_label}）: ローカルファイル漏洩 / スクリプト注入のリスク"
+              )
             end
 
             # --- Phase: 裸 URL 検出 ---

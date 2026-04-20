@@ -5,26 +5,31 @@ require 'tmpdir'
 require 'fileutils'
 require 'nokogiri'
 
-# BacklinkDeduplicator のテストに必要な最小限のスタブ
-module Vivlio
-  module Starter
-    module CLI
-      module Common
-        module_function
-
-        def log_info(msg) = nil
-        def log_success(msg) = nil
-        def log_warn(msg) = nil
-        def log_error(msg) = nil
-      end
-    end
-  end
-end
-
+require_relative '../lib/vivlio/starter/cli/common'
 require_relative '../lib/vivlio/starter/cli/build/page_mapping_extractor'
 require_relative '../lib/vivlio/starter/cli/build/backlink_deduplicator'
 
 class TestBacklinkDeduplicator < Minitest::Test
+  # テスト実行中のみ Common のログメソッドを無効化し、
+  # teardown で必ず復旧する（他のテストファイルへの汚染防止）。
+  LOG_METHODS_TO_SILENCE = %i[log_info log_success log_warn log_error].freeze
+
+  def setup
+    common = Vivlio::Starter::CLI::Common
+    @saved_log_methods = LOG_METHODS_TO_SILENCE.to_h do |name|
+      [name, common.method(name)]
+    end
+    LOG_METHODS_TO_SILENCE.each do |name|
+      common.define_singleton_method(name) { |_| }
+    end
+  end
+
+  def teardown
+    common = Vivlio::Starter::CLI::Common
+    @saved_log_methods.each do |name, m|
+      common.define_singleton_method(name, m)
+    end
+  end
   # テスト用の PageMapping Data オブジェクトを構築するヘルパー
   MappingEntry = Vivlio::Starter::CLI::Build::PageMappingExtractor::MappingEntry
   BacklinkEntry = Vivlio::Starter::CLI::Build::PageMappingExtractor::BacklinkEntry

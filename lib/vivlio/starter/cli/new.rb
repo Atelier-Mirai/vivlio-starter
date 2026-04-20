@@ -281,46 +281,83 @@ module Vivlio
         end
 
         def expand_scaffold(cmd, project_name, answers)
+          # クリーンアップ対象にするのは「今回作成した」ディレクトリのみ。
+          # `--force` で既存ディレクトリに重ねる場合は、部分破壊を避けるため保持する。
+          created_root = !File.exist?(project_name)
           FileUtils.mkdir_p(project_name)
 
-          Dir.glob('**/*', File::FNM_DOTMATCH, base: SCAFFOLD_SOURCE).each do |relative|
-            src = File.join(SCAFFOLD_SOURCE, relative)
-            dst = File.join(project_name, relative)
+          begin
+            Dir.glob('**/*', File::FNM_DOTMATCH, base: SCAFFOLD_SOURCE).each do |relative|
+              src = File.join(SCAFFOLD_SOURCE, relative)
+              dst = File.join(project_name, relative)
 
-            next if File.basename(relative) == '.DS_Store'
+              next if File.basename(relative) == '.DS_Store'
 
-            if File.directory?(src)
-              FileUtils.mkdir_p(dst)
-              log_debug(cmd, "ディレクトリ作成: #{dst}")
-              next
+              if File.directory?(src)
+                FileUtils.mkdir_p(dst)
+                log_debug(cmd, "ディレクトリ作成: #{dst}")
+                next
+              end
+
+              if File.exist?(dst)
+                Common.log_info("スキップ: #{dst}（既存ファイルを保持）")
+                next
+              end
+
+              FileUtils.mkdir_p(File.dirname(dst))
+
+              if relative == File.join('config', 'book.yml')
+                rewrite_book_yml(cmd, src, dst, answers, project_name)
+              else
+                FileUtils.cp(src, dst)
+              end
+
+              log_debug(cmd, "コピー: #{relative}")
             end
-
-            if File.exist?(dst)
-              Common.log_info("スキップ: #{dst}（既存ファイルを保持）")
-              next
-            end
-
-            FileUtils.mkdir_p(File.dirname(dst))
-
-            if relative == File.join('config', 'book.yml')
-              rewrite_book_yml(cmd, src, dst, answers, project_name)
-            else
-              FileUtils.cp(src, dst)
-            end
-
-            log_debug(cmd, "コピー: #{relative}")
+          rescue Interrupt, SignalException
+            # Ctrl+C / SIGTERM: 中途半端なディレクトリを残さない
+            cleanup_partial_scaffold(project_name, created_root)
+            raise
+          rescue StandardError
+            # 展開中のその他例外も同様にロールバック
+            cleanup_partial_scaffold(project_name, created_root)
+            raise
           end
 
           Common.log_action("プロジェクトファイルを展開しました: #{project_name}/")
         end
 
+        # expand_scaffold の中断時に、今回新規作成した project ディレクトリを削除する
+        # @param project_name [String]
+        # @param created_root [Boolean] 今回 mkdir_p で新規作成したか
+        def cleanup_partial_scaffold(project_name, created_root)
+          return unless created_root
+          return unless File.directory?(project_name)
+
+          FileUtils.rm_rf(project_name)
+          Common.log_warn("中断されたため、部分展開されたディレクトリを削除しました: #{project_name}/")
+        rescue StandardError => e
+          # クリーンアップ自体が失敗しても元例外は握り潰さない
+          warn "⚠️ クリーンアップ中にエラー: #{e.class}: #{e.message}"
+        end
+
         def rewrite_book_yml(cmd, src_path, dest_path, answers, project_name)
-          content = File.read(src_path, encoding: 'utf-8')
-                        .gsub('{{MAIN_TITLE}}',   yaml_escape_double_quoted(answers[:main_title]))
-                        .gsub('{{SUBTITLE}}',     yaml_escape_double_quoted(answers[:subtitle]))
-                        .gsub('{{AUTHOR}}',       yaml_escape_double_quoted(answers[:author]))
-                        .gsub('{{PUBLISHER}}',    yaml_escape_double_quoted(answers[:publisher]))
-                        .gsub('{{PROJECT_NAME}}', yaml_escape_double_quoted(project_name))
+          # `{{KEY}}` → 値 の一覧。ブロック形式の gsub を使うことで、
+          # 置換値に含まれる `\\` が後方参照（例: `\1`）として解釈されて
+          # バックスラッシュが潰れる Ruby gsub の落とし穴を回避する。
+          substitutions = {
+            '{{MAIN_TITLE}}'   => yaml_escape_double_quoted(answers[:main_title]),
+            '{{SUBTITLE}}'     => yaml_escape_double_quoted(answers[:subtitle]),
+            '{{AUTHOR}}'       => yaml_escape_double_quoted(answers[:author]),
+            '{{PUBLISHER}}'    => yaml_escape_double_quoted(answers[:publisher]),
+            '{{PROJECT_NAME}}' => yaml_escape_double_quoted(project_name)
+          }
+          # 単一パスで全プレースホルダを置換することで、値に別のプレースホルダ文字列が
+          # 含まれていても二重展開が起きないようにする（例: author に `{{MAIN_TITLE}}`
+          # をペーストしても、書籍名には展開されない）。
+          pattern = Regexp.union(substitutions.keys)
+          content = File.read(src_path, encoding: 'utf-8').gsub(pattern) { substitutions[it] }
+
           File.write(dest_path, content, encoding: 'utf-8')
           log_debug(cmd, "book.yml を置換して書き込みました: #{dest_path}")
         end

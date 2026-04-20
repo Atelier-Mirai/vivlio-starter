@@ -294,6 +294,11 @@ module Vivlio
         def teardown
           Dir.chdir(@original_dir)
           FileUtils.rm_rf(@temp_dir)
+          # 本テストは Common.reload_configuration! を最小 book.yml で呼ぶため
+          # CONFIG 定数が汚染される。プロジェクトルート配下の canonical な
+          # book.yml で復旧しないと、後続の他テスト（LintCommandsTest 等）に
+          # spellcheck / metadata キー欠落が波及する。
+          Common.reload_configuration!(silent: true) if File.file?('config/book.yml')
         end
 
         # lightテーマ設定が正しく読み込めることを確認

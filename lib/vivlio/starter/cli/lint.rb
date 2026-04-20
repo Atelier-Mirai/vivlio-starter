@@ -149,7 +149,7 @@ module Vivlio
               # 一時ファイルのクリーンアップ
               cleanup_temp_files(converted_files)
             end
-          rescue TextLintError => e
+          rescue LintError => e
             Common.log_error(e.message)
             1
           end

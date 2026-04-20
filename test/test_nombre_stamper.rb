@@ -4,29 +4,32 @@ require_relative 'test_helper'
 require 'hexapdf'
 require 'tmpdir'
 
-# NombreStamper のテストに必要な最小限のモジュールをロード
-# Common モジュールのログメソッドをスタブとして定義（単体テスト用）
-module Vivlio
-  module Starter
-    module CLI
-      module Common
-        module_function
-
-        def log_action(_msg) = nil
-        def log_success(_msg) = nil
-        def log_warn(_msg) = nil
-        def log_error(_msg) = nil
-        def log_info(_msg) = nil
-        def log_debug(_msg) = nil
-      end
-    end
-  end
-end
-
+require_relative '../lib/vivlio/starter/cli/common'
 require_relative '../lib/vivlio/starter/cli/build/nombre_stamper'
 
 class TestNombreStamper < Minitest::Test
   NombreStamper = Vivlio::Starter::CLI::Build::NombreStamper
+
+  # テスト実行中のみ Common のログメソッドを無効化し、
+  # teardown で必ず復旧する（他のテストファイルへの汚染防止）。
+  LOG_METHODS_TO_SILENCE = %i[log_action log_success log_warn log_error log_info log_debug].freeze
+
+  def setup
+    common = Vivlio::Starter::CLI::Common
+    @saved_log_methods = LOG_METHODS_TO_SILENCE.to_h do |name|
+      [name, common.method(name)]
+    end
+    LOG_METHODS_TO_SILENCE.each do |name|
+      common.define_singleton_method(name) { |_| }
+    end
+  end
+
+  def teardown
+    common = Vivlio::Starter::CLI::Common
+    @saved_log_methods.each do |name, m|
+      common.define_singleton_method(name, m)
+    end
+  end
 
   # ================================================================
   # parse_bleed_mm: 塗り足し文字列のパース

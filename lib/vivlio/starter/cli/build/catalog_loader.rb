@@ -87,6 +87,16 @@ module Vivlio
           end
 
           # catalog.yml を読み込み、YAML として返す
+          #
+          # セキュリティ設計（堅牢性仕様 9-7 対応）:
+          #   - `safe_load` + `permitted_classes: []` により、
+          #     Hash / Array / String / 数値 / Boolean / nil のみを許可する。
+          #     Symbol / Time / Date も含まない最も厳しい制限。
+          #   - `aliases: true` は DRY な catalog 記述のため許可するが、
+          #     Psych 5.x の Billion Laughs 対策により DoS 耐性がある。
+          #   - `!ruby/object` など許可されないクラスタグは `Psych::DisallowedClass` を
+          #     発生させ、ユーザー向けの明示的なメッセージに変換する。
+          #
           # @return [Hash] catalog データ
           def load_catalog
             raise StandardError, "catalog.yml が見つかりません: #{CATALOG_FILE}" unless File.exist?(CATALOG_FILE)
@@ -99,6 +109,12 @@ module Vivlio
             catalog
           rescue Psych::SyntaxError => e
             raise StandardError, "catalog.yml のパースに失敗しました: #{e.message}"
+          rescue Psych::DisallowedClass => e
+            raise StandardError, <<~MSG.strip
+              catalog.yml に許可されていないクラス/タグが含まれています: #{e.message}
+              安全性のため、!ruby/object などの Ruby オブジェクト記法や !ruby/symbol は catalog.yml では使用できません。
+              標準的な YAML（文字列・数値・配列・ハッシュ・真偽値）のみを記述してください。
+            MSG
           end
 
           # catalog のバリデーション
