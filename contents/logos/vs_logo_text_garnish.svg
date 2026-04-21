@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1048.82 930" shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1060" shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
   <title>VS Logo with Vivlio Starter Garnish</title>
   <defs>
     <linearGradient id="vsGradGreen" x1="124" y1="234.75" x2="124" y2="10.35" gradientUnits="userSpaceOnUse">
@@ -19,6 +19,7 @@
     </linearGradient>
   </defs>
 
+  <g transform="translate(2.24, 0) scale(1.13978)">
   <!-- VS logo (outlined), scaled to ~1000px and centered horizontally above text -->
   <g transform="translate(24.66, -16.02) scale(2.82)">
     <path fill="url(#vsGradGreen)" d="M151.71,224.77l-3.87,9.98h-48.81L13.18,10.36h55.41l83.12,214.41ZM159.77,203.99L234.83,10.35h-56.55l-46.48,121.49,27.97,72.14Z"/>
@@ -31,5 +32,6 @@
       <tspan fill="url(#gradBlue)">Vivlio</tspan>
       <tspan fill="url(#gradGreen)"> Starter</tspan>
     </text>
+  </g>
   </g>
 </svg>
