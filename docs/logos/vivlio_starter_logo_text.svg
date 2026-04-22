@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 180" shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
-  <title>Vivlio Starter Logo</title>
+  <title>Vivlio Starter Logo (Direct Numbers)</title>
   <defs>
     <linearGradient id="gradBlue" x1="0%" y1="100%" x2="0%" y2="0%">
       <stop offset="0" style="stop-color:#105998"/>
@@ -11,10 +11,10 @@
     </linearGradient>
   </defs>
 
-  <g transform="translate(0, 0.82) scale(1.14402)">
-  <text x="23.33" y="143.19" font-family="'D-DIN-PRO Bold', 'D-DIN-PRO', sans-serif" font-weight="bold" font-size="184">
-    <tspan fill="url(#gradBlue)">Vivlio</tspan>
-    <tspan fill="url(#gradGreen)"> Starter</tspan>
-  </text>
+  <g font-family="'D-DIN-PRO Bold', 'D-DIN-PRO', sans-serif" font-weight="bold" font-size="210.50">
+    <text x="26.69" y="164.63">
+      <tspan fill="url(#gradBlue)">Vivlio</tspan>
+      <tspan fill="url(#gradGreen)"> Starter</tspan>
+    </text>
   </g>
 </svg>

@@ -16,25 +16,25 @@ CHAPTERS:
       - 11-workflow
       - 12-quickstart
       - 13-new
-  # - 【第二部：書く】:
-  #     - 21-markdown-tutorial
-  #     # - 22-extentions
-  #     - 23-replace-list
-  #     - 24-chapter-management
-  #     # - 25-cross-reference
-  #     - 26-querystream
-  # - 【第三部：整える】:
-  #     - 31-lint
-  #     - 32-metrics
-  #     - 33-index-glossary
-  # - 【第四部：仕上げる】:
-  #     - 41-book-yml
-  #     # - 42-frontispiece
-  #     - 43-cover
-  #     - 44-build
-  #     - 45-utility
-  # - 【第五部：トラブルシューティング】:
-  #     - 51-doctor
+  - 【第二部：書く】:
+      - 21-markdown-tutorial
+      - 22-extentions
+      - 23-replace-list
+      - 24-chapter-management
+      - 25-cross-reference
+      - 26-querystream
+  - 【第三部：整える】:
+      - 31-lint
+      - 32-metrics
+      - 33-index-glossary
+  - 【第四部：仕上げる】:
+      - 41-book-yml
+      - 42-frontispiece
+      - 43-cover
+      - 44-build
+      - 45-utility
+  - 【第五部：トラブルシューティング】:
+      - 51-doctor
   # - 【第六部：開発者のために】:
   #     - 61-developer
   #     - 81-replace-list-sample

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 280" shape-rendering="geometricPrecision">
+  <title>VS Logo Outline (Direct Numbers)</title>
+  <defs>
+    <linearGradient id="gradGreen" x1="125.99" y1="241.71" x2="125.99" y2="13.72" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2c893a"/>
+      <stop offset="1" stop-color="#7fbf34"/>
+    </linearGradient>
+    <linearGradient id="gradBlue" x1="155.72" y1="146.54" x2="346.61" y2="146.54" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#105998"/>
+      <stop offset="1" stop-color="#35a7d2"/>
+    </linearGradient>
+  </defs>
+
+  <g>
+    <path fill="url(#gradGreen)" d="M154.14,231.57l-3.93,10.14h-49.59L13.39,13.73h56.3l84.45,217.84ZM162.33,210.46L238.59,13.72h-57.46l-47.22,123.43l28.42,73.3Z"/>
+    <path fill="url(#gradBlue)" d="M276.35,214.74h-100.81l-19.82,51.54h123.4c41.68,0,67.48-30.33,67.48-68.59s-21.19-51.94-37.85-59.08c-16.65-7.13-62.02-23.88-62.02-23.88c-10.54-4.67-17.37-9.43-17.37-19.24s6.15-16.14,21.51-16.14h75.62l17.44-52.55h-94.96l-47.51,124.3c4.39,4.07,11.55,6.97,21.19,10.72c20.37,7.91,48.51,17.83,58.43,21.6c9.92,3.77,10.99,11.02,10.99,15.79c0,7.01-5.28,15.53-15.75,15.53Z"/>
+  </g>
+</svg>
