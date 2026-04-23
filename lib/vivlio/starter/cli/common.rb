@@ -239,7 +239,7 @@ module Vivlio
         end
 
         def log_warn(msg)
-          puts("⚠️ #{msg}") if current_log_level >= 1
+          puts("⚠\uFE0F #{msg}") if current_log_level >= 1
         end
 
         def log_error(msg)

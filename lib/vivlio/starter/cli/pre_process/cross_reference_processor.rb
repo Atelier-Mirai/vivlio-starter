@@ -146,6 +146,7 @@ module Vivlio
               @errors = []
               @counters = Hash.new(0)
               @in_code = false
+              @fence_marker = nil
             end
 
             def collect(content)
@@ -157,7 +158,18 @@ module Vivlio
             private
 
             def process_line(line, idx, lines)
-              @in_code = !@in_code if line.lstrip.start_with?('```') && !line.include?('```include:')
+              # バッククォートの数を考慮してコードブロックの開閉を追跡する。
+              # ````markdown のような4バッククォートブロックは ``` では閉じない。
+              stripped = line.lstrip
+              if (m = stripped.match(/\A(`{3,})/)) && !line.include?('```include:')
+                fence = m[1]
+                if @in_code
+                  @in_code = false if fence == @fence_marker
+                else
+                  @in_code = true
+                  @fence_marker = fence
+                end
+              end
               return if @in_code
 
               info = CrossReferenceProcessor.extract_caption_label(line)
@@ -325,10 +337,21 @@ module Vivlio
               output = []
               idx = 0
               in_code = false
+              fence_marker = nil
               while idx < @lines.size
                 line = @lines[idx]
-                if line.lstrip.start_with?('```')
-                  in_code = !in_code
+                stripped = line.lstrip
+                if (m = stripped.match(/\A(`{3,})/))
+                  fence = m[1]
+                  if in_code
+                    if fence == fence_marker
+                      in_code = false
+                      fence_marker = nil
+                    end
+                  else
+                    in_code = true
+                    fence_marker = fence
+                  end
                   output << line
                   idx += 1
                   next
@@ -568,8 +591,21 @@ module Vivlio
 
             def replace
               in_code = false
+              fence_marker = nil
               result = @content.lines.map.with_index(1) do |line, num|
-                in_code = !in_code if line.lstrip.start_with?('```')
+                stripped = line.lstrip
+                if (m = stripped.match(/\A(`{3,})/))
+                  fence = m[1]
+                  if in_code
+                    if fence == fence_marker
+                      in_code = false
+                      fence_marker = nil
+                    end
+                  else
+                    in_code = true
+                    fence_marker = fence
+                  end
+                end
                 in_code ? line : replace_in_line(line, num)
               end
               { content: result.join, errors: @errors }
