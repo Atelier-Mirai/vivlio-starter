@@ -120,16 +120,18 @@ module Vivlio
           include Generators
 
           ITERATIONS = 100
-          FORMAT_PATTERN = /❌ ファイルが見つかりません: .+/
+          FORMAT_PATTERN = /❌  .+:\d+ - ソースコード '.+' が見つかりません/
 
           def test_code_include_error_message_matches_expected_format
-            # Generator: ランダムなファイルパス
+            # Generator: ランダムなファイル名・行番号・コードファイル名
             # Assert: メッセージが期待フォーマットにマッチ
             ITERATIONS.times do |i|
-              file_path = gen_file_path
+              filename    = gen_filename
+              line_number = gen_line_number
+              code_name   = gen_image_name
 
               # MarkdownTransformer が出力するエラーメッセージを模倣
-              message = "❌ ファイルが見つかりません: #{file_path}"
+              message = "❌  #{filename}:#{line_number} - ソースコード '#{code_name}' が見つかりません"
 
               assert_match FORMAT_PATTERN, message,
                            "Iteration #{i}: コードインクルードエラーフォーマットが一致しません: #{message}"
@@ -199,32 +201,27 @@ module Vivlio
 
           ITERATIONS = 100
 
-          def test_summary_contains_elapsed_time
-            # Generator: ランダムな経過時間
-            # Assert: サマリー文字列が経過時間を含む
+          def test_summary_contains_ok_indicator_when_no_issues
+            # Assert: 問題なし時のサマリーに ✅ と「問題なし」が含まれる
             ITERATIONS.times do |i|
-              elapsed = gen_elapsed
+              summary = '✅ Preflight 完了: 問題なし'
 
-              # PreflightCommand#print_preflight_summary の出力を模倣
-              summary = "✅ Preflight 完了: 問題なし (#{format('%.1f', elapsed)}s)"
-
-              assert_match(/\d+\.\d+s/, summary,
-                           "Iteration #{i}: サマリーに経過時間が含まれるべきです: #{summary}")
+              assert_match(/✅/, summary,
+                           "Iteration #{i}: 問題なしサマリーに ✅ が含まれるべきです: #{summary}")
+              assert_match(/問題なし/, summary,
+                           "Iteration #{i}: サマリーに「問題なし」が含まれるべきです: #{summary}")
             end
           end
 
           def test_summary_contains_issue_indicator_when_issues_exist
-            # Generator: ランダムな経過時間（問題あり）
             # Assert: サマリーに問題ありの表示が含まれる
             ITERATIONS.times do |i|
-              elapsed = gen_elapsed
-
-              summary = "❌ Preflight 完了: 問題あり (#{format('%.1f', elapsed)}s) — 詳細は上記を確認してください"
+              summary = '❌ Preflight 完了: 問題あり — 詳細は上記を確認してください'
 
               assert_match(/❌/, summary,
                            "Iteration #{i}: 問題ありサマリーに ❌ が含まれるべきです")
-              assert_match(/\d+\.\d+s/, summary,
-                           "Iteration #{i}: 問題ありサマリーに経過時間が含まれるべきです")
+              assert_match(/問題あり/, summary,
+                           "Iteration #{i}: 問題ありサマリーに「問題あり」が含まれるべきです")
             end
           end
         end

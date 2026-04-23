@@ -26,6 +26,7 @@
 require_relative '../common'
 require_relative 'markdown_utils'
 require_relative 'cross_reference_processor'
+require_relative 'link_image_validator'
 
 module Vivlio
   module Starter
@@ -217,8 +218,12 @@ module Vivlio
           end
 
           # ```include:path[:start-end]``` を検出し、codes/ または絶対パスから読込
-          def process_code_include(content)
+          # @param content [String] 処理対象の Markdown テキスト
+          # @param source_filename [String, nil] エラーメッセージに表示するソースファイル名
+          def process_code_include(content, source_filename: nil)
             matches_found = 0
+            # include 記法が何行目にあるかを特定するため、行ごとに処理する
+            line_number_map = build_line_number_map(content)
 
             content.gsub!(/```include:([^:`\s]+)(?::(\d+)-(\d+))?\s*```/) do |match|
               matches_found += 1
@@ -253,7 +258,16 @@ module Vivlio
 
                 replacement
               else
-                Common.log_error("ファイルが見つかりません: #{file_path}")
+                # 画像警告と同じ形式で、ソースファイル名・行番号・コードファイル名を表示する
+                code_name = File.basename(original_path)
+                if source_filename && (ln = line_number_map[match])
+                  Common.log_error(" #{source_filename}:#{ln} - ソースコード '#{code_name}' が見つかりません")
+                  # preflight の終了コード判定に反映させるため LinkImageValidator にも記録する
+                  LinkImageValidator.record_code_include_error(source_filename, ln, code_name)
+                else
+                  Common.log_error("ソースコード '#{code_name}' が見つかりません: #{file_path}")
+                  LinkImageValidator.record_code_include_error(source_filename || '(不明)', 0, code_name)
+                end
                 match
               end
             end
@@ -261,6 +275,18 @@ module Vivlio
             Common.log_info("#{matches_found}個のinclude記法を処理") if matches_found.positive?
             content
           end
+
+          # content 内の各 include 記法マッチ文字列 → 行番号のマップを構築する
+          def build_line_number_map(content)
+            map = {}
+            content.lines.each_with_index do |line, idx|
+              line.scan(/```include:[^`\s]+(?::\d+-\d+)?\s*```/) do |match|
+                map[match] ||= idx + 1
+              end
+            end
+            map
+          end
+          private_class_method :build_line_number_map
         end
       end
     end

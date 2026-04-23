@@ -192,7 +192,7 @@ module Vivlio
 
             common.log_success("単章ビルドが完了しました: #{pipeline.generated_pdf_name}")
             created_files = get_created_files_list_for_single_mode(basenames)
-            print_created_files_message(created_files)
+            print_created_files_message(created_files, build_timings: build_timings)
 
             print_build_timings(build_timings)
           ensure
@@ -224,7 +224,7 @@ module Vivlio
             common.log_success('全ファイルのビルドが完了しました')
 
             created_files = get_created_files_list
-            print_created_files_message(created_files)
+            print_created_files_message(created_files, build_timings: build_timings)
 
             print_outline_debug_info
             print_build_timings(build_timings)
@@ -364,11 +364,19 @@ module Vivlio
           end
 
           # 作成されたファイルメッセージを表示
-          def print_created_files_message(files)
+          # build_timings が渡された場合は合計所要時間を末尾に付加する（通常時のみ）
+          def print_created_files_message(files, build_timings: nil)
             return if files.empty?
 
             file_list = files.map { |f| File.basename(f) }.join(', ')
-            Common.echo_always "📚 #{file_list} を作成しました。"
+
+            if build_timings && Common.current_log_level < 3
+              aggregated, = aggregate_step_timings(build_timings)
+              total = aggregated.map { |(_, dt)| dt }.inject(0.0, :+)
+              Common.echo_always "📚 #{file_list} を作成しました (#{format('%.1f', total)}s)"
+            else
+              Common.echo_always "📚 #{file_list} を作成しました。"
+            end
           end
 
           # CLI の --verify / --verify-links オプションをスレッドローカルに設定する

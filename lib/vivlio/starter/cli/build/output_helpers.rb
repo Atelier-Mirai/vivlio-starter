@@ -27,14 +27,17 @@ module Vivlio
           STEP5B_LABEL       = 'Step 5b (generate part title pages)'
           STEP5_AGG_LABEL    = 'Step  5 (generate sections / part pages)'
 
-          # ビルドタイミングをコンソールに出力する（debugモード時のみ）
+          # ビルドタイミングをコンソールに出力する
+          # - 通常時: print_created_files_message に合計時間を渡す形で表示するため何もしない
+          # - debugモード時: ステップ別の詳細テーブルを表示
           def print_build_timings(build_timings)
-            # debugモード時のみ表示
-            return unless Common.current_log_level >= 3
-
             aggregated, label_groups = aggregate_step_timings(build_timings)
             return if aggregated.empty?
 
+            # 通常時は print_created_files_message(files, build_timings:) で表示済みのため何もしない
+            return unless Common.current_log_level >= 3
+
+            # --- debug モード: ステップ別詳細テーブル ---
             total = aggregated.map { |(_, dt)| dt }.inject(0.0, :+)
             label_width = aggregated.map { |(label, _)| label.to_s.length }.max || 0
             label_width = [label_width, 'TOTAL'.length, 34].max

@@ -248,8 +248,8 @@ module Vivlio
         end
         module_function :convert_container_blocks
 
-        def process_code_include(content)
-          MarkdownTransformer.process_code_include(content)
+        def process_code_include(content, source_filename: nil)
+          MarkdownTransformer.process_code_include(content, source_filename: source_filename)
         end
         module_function :process_code_include
 

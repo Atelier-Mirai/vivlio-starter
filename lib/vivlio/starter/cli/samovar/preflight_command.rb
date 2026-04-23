@@ -74,18 +74,14 @@ module Vivlio
               return 1
             end
 
-            start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-
             pipeline = BuildCommands::UnifiedBuildPipeline.new(self, entries: entries, mode: :preflight)
             pipeline.run
-
-            elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time
 
             # --verify-links 有効時のみ外部 URL チェックを実行
             PreProcessCommands::LinkImageValidator.check_external_urls!
             PreProcessCommands::LinkImageValidator.print_summary
 
-            print_preflight_summary(elapsed)
+            print_preflight_summary
 
             PreProcessCommands::LinkImageValidator.any_issues? ? 1 : 0
           rescue SystemExit => e
@@ -122,11 +118,11 @@ module Vivlio
           end
 
           # preflight 完了サマリーを表示する
-          def print_preflight_summary(elapsed)
+          def print_preflight_summary
             if PreProcessCommands::LinkImageValidator.any_issues?
-              Common.echo_always "❌ Preflight 完了: 問題あり (#{format('%.1f', elapsed)}s) — 詳細は上記を確認してください"
+              Common.echo_always '❌ Preflight 完了: 問題あり — 詳細は上記を確認してください'
             else
-              Common.echo_always "✅ Preflight 完了: 問題なし (#{format('%.1f', elapsed)}s)"
+              Common.echo_always '✅ Preflight 完了: 問題なし'
             end
           end
 

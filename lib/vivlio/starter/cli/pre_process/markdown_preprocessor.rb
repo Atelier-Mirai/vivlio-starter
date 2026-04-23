@@ -124,7 +124,7 @@ module Vivlio
           # include 記法によるソースコード取り込みを実行する
           def process_code_includes!
             Common.log_action('ソースコード読み込み記法をスキャンしています…')
-            context.content = MarkdownTransformer.process_code_include(context.content)
+            context.content = MarkdownTransformer.process_code_include(context.content, source_filename: context.filename)
             Common.log_success('ソースコード読み込み処理が完了しました')
           end
 

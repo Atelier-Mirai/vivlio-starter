@@ -115,10 +115,11 @@ module Vivlio
               reports = @monitor.synchronize { @reports.dup }
               return if reports.empty?
 
-              total_image = reports.sum { it.image_issues.size }
+              total_missing_image = reports.sum { it.image_issues.count { |i| i.issue_type == :missing } }
+              total_missing_code  = reports.sum { it.image_issues.count { |i| i.issue_type == :missing_code } }
               total_link = reports.sum { it.link_issues.size }
 
-              if total_image.zero? && total_link.zero?
+              if total_missing_image.zero? && total_missing_code.zero? && total_link.zero?
                 Common.log_info('リンク・画像の検証が完了しました（問題なし）')
                 return
               end
@@ -126,7 +127,8 @@ module Vivlio
               Common.echo_always ''
               Common.echo_always '🔍 リンク・画像検証の結果:'
 
-              Common.echo_always "   画像: #{total_image} 件の問題（存在しない画像: #{total_image}）" if total_image.positive?
+              Common.echo_always "   画像: #{total_missing_image} 件の問題（存在しない画像: #{total_missing_image}）" if total_missing_image.positive?
+              Common.echo_always "   ソースコード: #{total_missing_code} 件の問題（存在しないファイル: #{total_missing_code}）" if total_missing_code.positive?
 
               if total_link.positive?
                 bare = reports.sum { it.link_issues.count { |i| i.issue_type == :bare_url } }
@@ -171,6 +173,35 @@ module Vivlio
             def any_issues?
               @monitor.synchronize do
                 @reports.any? { |r| r.image_issues.any? || r.link_issues.any? }
+              end
+            end
+
+            # コードインクルードエラーをレポートに記録する
+            # MarkdownTransformer から呼ばれ、preflight の終了コード判定に反映させる
+            # @param filename [String] ソースファイル名
+            # @param line_number [Integer] 行番号
+            # @param code_name [String] 見つからなかったコードファイル名
+            def record_code_include_error(filename, line_number, code_name)
+              issue = ImageIssue.new(
+                filename:,
+                line_number:,
+                image_path: code_name,
+                issue_type: :missing_code
+              )
+              @monitor.synchronize do
+                report = @reports.find { it.filename == filename }
+                if report
+                  idx = @reports.index(report)
+                  @reports[idx] = ValidationReport.new(
+                    filename: report.filename,
+                    image_issues: report.image_issues + [issue],
+                    link_issues: report.link_issues
+                  )
+                else
+                  # process_code_includes! は validate の後に実行されるため、
+                  # レポートが存在しない場合は新規作成する
+                  @reports << ValidationReport.new(filename:, image_issues: [issue], link_issues: [])
+                end
               end
             end
 
