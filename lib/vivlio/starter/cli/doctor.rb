@@ -116,15 +116,15 @@ module Vivlio
           os = RbConfig::CONFIG['host_os']
           is_macos = os =~ /darwin/i
 
-          Common.echo_always('🔎 環境診断を開始します…')
+          Common.log_always('🔎 環境診断を開始します…')
 
           # macOS では Xcode Command Line Tools が多くのビルドツールの前提条件
           if is_macos
             clt_ok = system('xcode-select -p >/dev/null 2>&1')
             if clt_ok
-              Common.echo_always('✅ Xcode Command Line Tools: OK')
+              Common.log_always('✅ Xcode Command Line Tools: OK')
             else
-              Common.echo_always('❌ Xcode Command Line Tools: 見つかりません')
+              Common.log_always('❌ Xcode Command Line Tools: 見つかりません')
               missing << 'xcode-command-line-tools'
             end
           end
@@ -170,18 +170,18 @@ module Vivlio
                  end
 
             if ok
-              Common.echo_always("✅ #{label}: OK")
+              Common.log_always("✅ #{label}: OK")
             else
-              Common.echo_always("❌ #{label}: 見つかりません")
+              Common.log_always("❌ #{label}: 見つかりません")
               missing << label
             end
           end
 
           if is_macos
             if ssl_certificate_configured?
-              Common.echo_always('✅ Google Fonts 用 SSL 証明書: OK')
+              Common.log_always('✅ Google Fonts 用 SSL 証明書: OK')
             else
-              Common.echo_always('❌ Google Fonts 用 SSL 証明書: 未設定 (Google Fonts のダウンロードに必要)')
+              Common.log_always('❌ Google Fonts 用 SSL 証明書: 未設定 (Google Fonts のダウンロードに必要)')
               missing << 'ssl-certificates'
             end
           end
@@ -190,35 +190,35 @@ module Vivlio
           waifu2x_install_root = nil
           if options[:fix] && missing.include?('waifu2x')
             if os_family != :macos
-              Common.echo_always('⚠️ waifu2x の自動インストールは現在 macOS のみ対応しています。Linux / Windows では手動セットアップを行ってください。')
+              Common.log_always('⚠️ waifu2x の自動インストールは現在 macOS のみ対応しています。Linux / Windows では手動セットアップを行ってください。')
             elsif install_waifu2x_macos! do |paths|
                     waifu2x_install_root = paths[:install]
                   end
               missing.delete('waifu2x') if waifu2x_available?
             else
-              Common.echo_always('⚠️ waifu2x の自動インストールに失敗しました。手動セットアップを確認してください。')
+              Common.log_always('⚠️ waifu2x の自動インストールに失敗しました。手動セットアップを確認してください。')
             end
           end
 
           if missing.empty?
             copy_textlint_assets_from_scaffold! if options[:fix]
-            Common.echo_always('🎉 すべての必要ツールが見つかりました')
+            Common.log_always('🎉 すべての必要ツールが見つかりました')
             return
           end
 
-          Common.echo_always("不足しているツール: #{describe_missing(missing).join(', ')}")
+          Common.log_always("不足しているツール: #{describe_missing(missing).join(', ')}")
 
           unless options[:fix]
-            Common.echo_always('ヒント: macOS の場合は `vs doctor --fix` で自動インストールを試行できます')
+            Common.log_always('ヒント: macOS の場合は `vs doctor --fix` で自動インストールを試行できます')
             if missing.include?('xcode-command-line-tools')
-              Common.echo_always('  Xcode Command Line Tools は手動でも `xcode-select --install` で導入できます')
+              Common.log_always('  Xcode Command Line Tools は手動でも `xcode-select --install` で導入できます')
             end
             return
           end
 
           # --fix: 自動インストール試行
           unless is_macos
-            Common.echo_always('自動インストールは macOS(Homebrew) のみ対応です。手動でインストールしてください。')
+            Common.log_always('自動インストールは macOS(Homebrew) のみ対応です。手動でインストールしてください。')
             return
           end
 
@@ -231,7 +231,7 @@ module Vivlio
               proceed = ans && ans.strip.downcase == 'y'
             end
             if proceed
-              Common.echo_always('Xcode Command Line Tools のインストーラを起動します…')
+              Common.log_always('Xcode Command Line Tools のインストーラを起動します…')
               system('xcode-select --install >/dev/null 2>&1 || true')
               # ポーリングで最大 5 分間待機（5 秒間隔）
               waited = 0
@@ -240,18 +240,18 @@ module Vivlio
                 waited += 5
               end
               if system('xcode-select -p >/dev/null 2>&1')
-                Common.echo_always('✅ Xcode Command Line Tools が確認できました')
+                Common.log_always('✅ Xcode Command Line Tools が確認できました')
                 missing.delete('xcode-command-line-tools')
               else
-                Common.echo_always('⚠️ インストールの確認ができませんでした。インストーラ完了後に再実行してください。')
+                Common.log_always('⚠️ インストールの確認ができませんでした。インストーラ完了後に再実行してください。')
               end
             else
-              Common.echo_always('Xcode Command Line Tools の自動インストールをスキップします。必要に応じて `xcode-select --install` を実行してください。')
+              Common.log_always('Xcode Command Line Tools の自動インストールをスキップします。必要に応じて `xcode-select --install` を実行してください。')
             end
           end
 
           unless system('which brew >/dev/null 2>&1')
-            Common.echo_always('Homebrew が見つかりません。自動インストールを試みます。')
+            Common.log_always('Homebrew が見つかりません。自動インストールを試みます。')
             proceed = options[:yes]
             if !proceed && $stdin.tty?
               $stdout.print('Homebrew をインストールしますか？ [y/N]: ')
@@ -271,23 +271,23 @@ module Vivlio
               brew_bin = brew_bins.find { |p| File.exist?(File.join(p, 'brew')) }
               ENV['PATH'] = [brew_bin, ENV.fetch('PATH', nil)].compact.join(':') if brew_bin
             else
-              Common.echo_always('Homebrew をインストールしないため、自動インストール処理を中止します。手動で https://brew.sh/ を参照してください。')
+              Common.log_always('Homebrew をインストールしないため、自動インストール処理を中止します。手動で https://brew.sh/ を参照してください。')
               return
             end
             unless system('which brew >/dev/null 2>&1')
-              Common.echo_always('Homebrew コマンドが見つかりませんでした。シェルの再起動や PATH 設定を確認してください。')
+              Common.log_always('Homebrew コマンドが見つかりませんでした。シェルの再起動や PATH 設定を確認してください。')
               return
             end
           end
 
-          Common.echo_always('🛠 Homebrew による不足ツールのインストールを実行します…')
+          Common.log_always('🛠 Homebrew による不足ツールのインストールを実行します…')
           begin
             # Node.js（node@20 を優先）
             if missing.include?('node')
-              Common.echo_always('node をインストールします（node@20 優先）…')
+              Common.log_always('node をインストールします（node@20 優先）…')
               ok = system('brew install node@20')
               ok ||= system('brew install node')
-              Common.echo_always('node の Homebrew インストールに失敗しました。手動インストールをご検討ください。') unless ok
+              Common.log_always('node の Homebrew インストールに失敗しました。手動インストールをご検討ください。') unless ok
             end
 
             # qpdf / pdfinfo(poppler)
@@ -310,33 +310,33 @@ module Vivlio
 
             # MeCab（索引機能の読み自動推測用）
             if missing.include?('mecab')
-              Common.echo_always('MeCab（索引機能の読み自動推測用）をインストールします…')
+              Common.log_always('MeCab（索引機能の読み自動推測用）をインストールします…')
               system('brew install mecab mecab-ipadic')
             end
 
             # Rouge（コードブロック言語推定用）
             if missing.include?('rouge')
-              Common.echo_always('Rouge（コードブロック言語推定用）をインストールします…')
+              Common.log_always('Rouge（コードブロック言語推定用）をインストールします…')
               system('gem install rouge')
             end
 
             # Playwright npm パッケージ（グローバルインストール）
             if missing.include?('playwright')
               if system('which npm >/dev/null 2>&1')
-                Common.echo_always('Playwright（バックリンク重複排除用）をインストールします…')
+                Common.log_always('Playwright（バックリンク重複排除用）をインストールします…')
                 system('npm install --loglevel=error -g playwright')
               else
-                Common.echo_always('npm が見つかりません。node のインストール後に `npm install -g playwright` を実行してください。')
+                Common.log_always('npm が見つかりません。node のインストール後に `npm install -g playwright` を実行してください。')
               end
             end
 
             # Chromium ブラウザ
             if missing.include?('chromium')
               if system('which npx >/dev/null 2>&1')
-                Common.echo_always('Chromium（Playwright 用ブラウザ）をインストールします…')
+                Common.log_always('Chromium（Playwright 用ブラウザ）をインストールします…')
                 system('npx playwright install chromium')
               else
-                Common.echo_always('npx が見つかりません。Playwright インストール後に `npx playwright install chromium` を実行してください。')
+                Common.log_always('npx が見つかりません。Playwright インストール後に `npx playwright install chromium` を実行してください。')
               end
             end
 
@@ -349,10 +349,10 @@ module Vivlio
           begin
             if missing.include?('vivliostyle')
               if system('which npm >/dev/null 2>&1')
-                Common.echo_always('Vivliostyle CLI(@vivliostyle/cli) をグローバルインストールします…')
+                Common.log_always('Vivliostyle CLI(@vivliostyle/cli) をグローバルインストールします…')
                 system('npm install --loglevel=error -g @vivliostyle/cli')
               else
-                Common.echo_always('npm が見つかりません。node のインストール後に `npm install -g @vivliostyle/cli` を実行してください。')
+                Common.log_always('npm が見つかりません。node のインストール後に `npm install -g @vivliostyle/cli` を実行してください。')
               end
             end
           rescue StandardError => e
@@ -363,12 +363,12 @@ module Vivlio
           begin
             if missing.include?('textlint')
               if system('which npm >/dev/null 2>&1')
-                Common.echo_always('textlint と推奨 Textlint ルールをグローバルインストールします…')
+                Common.log_always('textlint と推奨 Textlint ルールをグローバルインストールします…')
                 packages = TEXTLINT_NPM_PACKAGES.map { |pkg| Shellwords.escape(pkg) }.join(' ')
                 installed = system("npm install --loglevel=error -g #{packages}")
                 copy_textlint_assets_from_scaffold! if installed
               else
-                Common.echo_always('npm が見つかりません。node のインストール後に `npm install -g textlint textlint-rule-preset-ja-technical-writing ...` を実行してください。')
+                Common.log_always('npm が見つかりません。node のインストール後に `npm install -g textlint textlint-rule-preset-ja-technical-writing ...` を実行してください。')
               end
             end
           rescue StandardError => e
@@ -376,7 +376,7 @@ module Vivlio
           end
 
           # 再診断
-          Common.echo_always('🔁 インストール後の再診断…')
+          Common.log_always('🔁 インストール後の再診断…')
           still_missing = []
           checks.each do |label, cmd|
             ok = case label
@@ -401,9 +401,9 @@ module Vivlio
           end
           still_missing << 'ssl-certificates' if is_macos && !ssl_certificate_configured?
           if still_missing.empty?
-            Common.echo_always('✅ すべてのツールがインストールされました')
+            Common.log_always('✅ すべてのツールがインストールされました')
           else
-            Common.echo_always("❗ まだ見つからないツールがあります: #{describe_missing(still_missing).join(', ')}。手動でのセットアップをご確認ください。")
+            Common.log_always("❗ まだ見つからないツールがあります: #{describe_missing(still_missing).join(', ')}。手動でのセットアップをご確認ください。")
           end
         end
         module_function :execute_doctor
@@ -452,7 +452,7 @@ module Vivlio
         end
 
         def install_ssl_certificates!
-          Common.echo_always('Google Fonts 用に ca-certificates / openssl@3 を設定します…')
+          Common.log_always('Google Fonts 用に ca-certificates / openssl@3 を設定します…')
           system('brew update >/dev/null 2>&1')
           system('brew install openssl@3') unless system('brew list --versions openssl@3 >/dev/null 2>&1')
           system('brew reinstall ca-certificates')
@@ -473,10 +473,10 @@ module Vivlio
             persist_env('SSL_CERT_FILE', cert_file)
             persist_env('SSL_CERT_DIR', cert_dir) if Dir.exist?(cert_dir)
 
-            Common.echo_always("✅ SSL_CERT_FILE を #{cert_file} に設定しました")
-            Common.echo_always("✅ SSL_CERT_DIR を #{cert_dir} に設定しました") if Dir.exist?(cert_dir)
+            Common.log_always("✅ SSL_CERT_FILE を #{cert_file} に設定しました")
+            Common.log_always("✅ SSL_CERT_DIR を #{cert_dir} に設定しました") if Dir.exist?(cert_dir)
           else
-            Common.echo_always("⚠️ 証明書ファイルが見つかりませんでした。#{openssl_prefix} に openssl@3 が存在するか確認してください。")
+            Common.log_always("⚠️ 証明書ファイルが見つかりませんでした。#{openssl_prefix} に openssl@3 が存在するか確認してください。")
           end
         end
 
@@ -532,10 +532,10 @@ module Vivlio
 
           dest_config = File.join(target_config_dir, '.textlintrc.yml')
           if File.exist?(dest_config)
-            Common.echo_always('ℹ️ config/.textlintrc.yml は既に存在するためコピーをスキップしました。')
+            Common.log_always('ℹ️ config/.textlintrc.yml は既に存在するためコピーをスキップしました。')
           else
             FileUtils.cp(source_config, dest_config)
-            Common.echo_always('✅ config/.textlintrc.yml を配置しました。')
+            Common.log_always('✅ config/.textlintrc.yml を配置しました。')
           end
         end
 
@@ -545,10 +545,10 @@ module Vivlio
 
           dest_allowlist = File.join(target_config_dir, 'textlint_allowlist.yml')
           if File.exist?(dest_allowlist)
-            Common.echo_always('ℹ️ config/textlint_allowlist.yml は既に存在するためコピーをスキップしました。')
+            Common.log_always('ℹ️ config/textlint_allowlist.yml は既に存在するためコピーをスキップしました。')
           else
             FileUtils.cp(source_allowlist, dest_allowlist)
-            Common.echo_always('✅ config/textlint_allowlist.yml を配置しました。')
+            Common.log_always('✅ config/textlint_allowlist.yml を配置しました。')
           end
         end
 
@@ -558,10 +558,10 @@ module Vivlio
 
           dest_prh = File.join(target_config_dir, 'textlint_prh.yml')
           if File.exist?(dest_prh)
-            Common.echo_always('ℹ️ config/textlint_prh.yml は既に存在するためコピーをスキップしました。')
+            Common.log_always('ℹ️ config/textlint_prh.yml は既に存在するためコピーをスキップしました。')
           else
             FileUtils.cp(source_prh, dest_prh)
-            Common.echo_always('✅ config/textlint_prh.yml を配置しました。')
+            Common.log_always('✅ config/textlint_prh.yml を配置しました。')
           end
         end
 
@@ -587,9 +587,9 @@ module Vivlio
           end
 
           if copied
-            Common.echo_always('✅ config/textlint_dictionaries/ を更新しました。')
+            Common.log_always('✅ config/textlint_dictionaries/ を更新しました。')
           else
-            Common.echo_always('ℹ️ config/textlint_dictionaries/ は既に最新です。')
+            Common.log_always('ℹ️ config/textlint_dictionaries/ は既に最新です。')
           end
         end
 
@@ -763,13 +763,13 @@ module Vivlio
 
             FileUtils.chmod(0o755, binary_path)
 
-            Common.echo_always("✅ waifu2x を #{paths[:bundle]} に配置しました")
-            Common.echo_always("   実行ファイル: #{binary_path}")
+            Common.log_always("✅ waifu2x を #{paths[:bundle]} に配置しました")
+            Common.log_always("   実行ファイル: #{binary_path}")
             unless path_included?(paths[:bin])
               if ensure_zsh_path(paths[:bin])
-                Common.echo_always('ℹ️ ~/.zshrc に PATH を追記しました。新しいシェルで有効になります')
+                Common.log_always('ℹ️ ~/.zshrc に PATH を追記しました。新しいシェルで有効になります')
               else
-                Common.echo_always(path_hint_message(paths[:bin], :macos))
+                Common.log_always(path_hint_message(paths[:bin], :macos))
               end
             end
             yield(paths) if block_given?

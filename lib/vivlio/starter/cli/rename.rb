@@ -315,7 +315,7 @@ module Vivlio
         #   - "NN" 形式: 番号のみ指定（スラッグは維持、付録の場合は自動調整）
         def rename_single_chapter(old_arg, new_arg)
           if old_arg.nil? || new_arg.nil?
-            warn '使い方: vs rename <旧名> <新名> または 引数なしで一括連番'
+            Common.log_error('使い方: vs rename <旧名> <新名> または 引数なしで一括連番')
             exit 1
           end
 

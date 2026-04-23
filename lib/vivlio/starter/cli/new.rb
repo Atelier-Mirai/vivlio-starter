@@ -75,9 +75,9 @@ module Vivlio
           begin
             Dir.chdir(result.dest) do
               if options[:manual_install]
-                Common.echo_always('doctor の自動実行をスキップします (--manual-install)')
+                Common.log_always('doctor の自動実行をスキップします (--manual-install)')
               elsif options[:auto_install]
-                Common.echo_always('必要ツールの自動インストールを有効にして doctor を実行します (--auto-install)')
+                Common.log_always('必要ツールの自動インストールを有効にして doctor を実行します (--auto-install)')
                 opts = { fix: true }
                 opts[:yes] = true unless options[:interactive]
                 DoctorCommands.execute_doctor({ options: opts })
@@ -91,7 +91,7 @@ module Vivlio
                 if proceed
                   DoctorCommands.execute_doctor({})
                 else
-                  Common.echo_always('後で実行する場合: vs doctor もしくは vs doctor --fix (macOS)')
+                  Common.log_always('後で実行する場合: vs doctor もしくは vs doctor --fix (macOS)')
                 end
               end
             end
@@ -125,8 +125,8 @@ module Vivlio
           run_vs_config(result.dest)
           synchronize_viv_config(result.vivliostyle_config_path, result.config_path)
 
-          puts "[vivlio-starter] 完了しました。cd #{name} で移動し、執筆を開始できます。"
-          puts '例: vivlio-starter build で執筆した書籍をPDFで作成できます。'
+          Common.log_always "[vivlio-starter] 完了しました。cd #{name} で移動し、執筆を開始できます。"
+          Common.log_always '例: vivlio-starter build で執筆した書籍をPDFで作成できます。'
           0
         end
 
@@ -188,7 +188,7 @@ module Vivlio
             end
 
             File.write(config_path, lines.join, encoding: 'utf-8')
-            puts "[vivlio-starter] book.yml を更新しました。\n"
+            Common.log_success("[vivlio-starter] book.yml を更新しました。")
           else
             File.open(config_path, 'a:utf-8') do |f|
               f.puts
@@ -197,10 +197,10 @@ module Vivlio
               f.puts "  subtitle: '#{new_sub}'"
               f.puts "  author: '#{new_auth}'"
             end
-            puts "[vivlio-starter] book.yml に book セクションを追記しました。\n"
+            Common.log_success("[vivlio-starter] book.yml に book セクションを追記しました。")
           end
         rescue StandardError => e
-          warn "[vivlio-starter] book.yml の対話入力に失敗しました: #{e}"
+          Common.log_warn("[vivlio-starter] book.yml の対話入力に失敗しました: #{e}")
         end
 
         private
@@ -235,8 +235,8 @@ module Vivlio
             return DEFAULT_ANSWERS.dup
           end
 
-          puts 'Vivlio Starter へようこそ！新しい書籍プロジェクトを作成します。'
-          puts
+          Common.log_always 'Vivlio Starter へようこそ！新しい書籍プロジェクトを作成します。'
+          Common.log_always ''
 
           answers = {
             main_title: prompt('書籍名を入力してください（例: はじめての Ruby）', DEFAULT_ANSWERS[:main_title]),
@@ -261,22 +261,22 @@ module Vivlio
           author_display   = answers[:author].empty? ? '（なし）' : answers[:author]
           publisher_display = answers[:publisher].empty? ? '（なし）' : answers[:publisher]
 
-          puts
-          puts '以下の設定でプロジェクトを作成します。'
-          puts
-          puts "  プロジェクト名: #{project_name}"
-          puts "  書籍名:         #{answers[:main_title]}"
-          puts "  副題:           #{subtitle_display}"
-          puts "  著者:           #{author_display}"
-          puts "  発行者:         #{publisher_display}"
-          puts
+          Common.log_always ''
+          Common.log_always '以下の設定でプロジェクトを作成します。'
+          Common.log_always ''
+          Common.log_always "  プロジェクト名: #{project_name}"
+          Common.log_always "  書籍名:         #{answers[:main_title]}"
+          Common.log_always "  副題:           #{subtitle_display}"
+          Common.log_always "  著者:           #{author_display}"
+          Common.log_always "  発行者:         #{publisher_display}"
+          Common.log_always ''
           $stdout.print('よろしいですか？ [Y/n]: ')
           $stdout.flush
           input = $stdin.gets&.strip || ''
 
           return unless input.downcase == 'n'
 
-          puts "中断しました。もう一度 vs new #{project_name} を実行してください。"
+          Common.log_always "中断しました。もう一度 vs new #{project_name} を実行してください。"
           exit 0
         end
 
@@ -338,7 +338,7 @@ module Vivlio
           Common.log_warn("中断されたため、部分展開されたディレクトリを削除しました: #{project_name}/")
         rescue StandardError => e
           # クリーンアップ自体が失敗しても元例外は握り潰さない
-          warn "⚠️ クリーンアップ中にエラー: #{e.class}: #{e.message}"
+          Common.log_warn("クリーンアップ中にエラー: #{e.class}: #{e.message}")
         end
 
         def rewrite_book_yml(cmd, src_path, dest_path, answers, project_name)
@@ -386,24 +386,25 @@ module Vivlio
           # system の呼び出しを cmd 経由にすることでテスト時のスタブが有効になる
           return if cmd.system(shell_cmd)
 
-          warn '⚠️ 警告: vs doctor --fix が失敗しました。'
-          warn '  手動で以下を実行してください:'
-          warn "  cd #{project_name} && vs doctor --fix"
+          Common.log_warn('vs doctor --fix が失敗しました。')
+          Common.log_warn('  手動で以下を実行してください:')
+          Common.log_warn("  cd #{project_name} && vs doctor --fix")
         end
 
         def print_success(project_name)
-          puts
           Common.log_success("プロジェクト \"#{project_name}\" を作成しました。")
-          puts
-          puts 'book.yml で書籍の設定を変更できます。'
-          puts '書き方の参考は contents/ 内のサンプルファイルをご覧ください。'
-          puts
-          puts '次のコマンドで執筆を始めましょう！'
-          puts
-          puts "  cd #{project_name}"
-          puts '  vs build'
-        end
+          Common.log_always <<~MSG
 
+            book.yml で書籍の設定を変更できます。
+            書き方の参考は contents/ 内のサンプルファイルをご覧ください。
+
+            次のコマンドで執筆を始めましょう！
+
+              cd #{project_name}
+              vs build
+          MSG
+        end
+        
         def log_debug(cmd, msg)
           puts "[debug] #{msg}" if cmd&.options&.[](:log) == 'debug'
         end

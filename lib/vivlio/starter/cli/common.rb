@@ -221,6 +221,8 @@ module Vivlio
         # Log & UI
         # ================================================================
 
+        # --log オプションから現在のログレベルを解決する。
+        # error: 0 / warn: 1 / info,success,action: 2 / debug: 3
         def current_log_level
           case ARGV
           in [*, /^--log=(.+)$/, *] then LEVELS[::Regexp.last_match(1).downcase] || 2
@@ -230,31 +232,59 @@ module Vivlio
           end
         end
 
+        # 補足情報・処理の詳細（🔵）。--log=info 以上で表示。
         def log_info(msg)
-          puts("ℹ️ #{msg}") if current_log_level >= 2
+          puts("🔵 #{msg}") if current_log_level >= 2
         end
 
+        # 処理の成功（✅）。--log=info 以上で表示。
         def log_success(msg)
           puts("✅ #{msg}") if current_log_level >= 2
         end
 
+        # 注意・警告（🟡）。--log=warn 以上（既定）で表示。
         def log_warn(msg)
-          puts("⚠\uFE0F #{msg}") if current_log_level >= 1
+          puts("🟡 #{msg}") if current_log_level >= 1
         end
 
+        # エラー（🔴）。ログレベルに関わらず常に表示。
         def log_error(msg)
-          puts("❌ #{msg}")
+          puts("🔴 #{msg}")
         end
 
+        # 処理ステップの開始・進行（🔧）。--log=info 以上で表示。
         def log_action(msg)
           puts("🔧 #{msg}") if current_log_level >= 2
         end
 
+        # デバッグ情報（🧪）。--log=debug のみ表示。
         def log_debug(msg)
           puts("🧪 #{msg}") if current_log_level >= 3
         end
 
-        def echo_always(msg)
+        # 検証結果の集計サマリー（🔍）。ログレベルに関わらず常に表示。
+        def log_summary(msg)
+          puts "🔍 #{msg}"
+        end
+
+        # 詳細診断情報（🔍）。--log=info 以上で表示。
+        def log_inspection(msg)
+          puts "🔍 #{msg}" if current_log_level >= 2
+        end
+
+        # 処理の最終結果を報告する（✅/❌/📚）。ログレベルに関わらず常に表示。
+        # @param status [:success, :failure, :artifact] アイコンの種別
+        def log_result(msg, status:)
+          icon = case status
+                when :success  then "✅"
+                when :failure  then "❌"
+                when :artifact then "📚"
+                end
+          puts "#{icon} #{msg}"
+        end
+
+        # アイコンなしで常に表示する汎用出力。
+        def log_always(msg)
           puts(msg)
         end
 
@@ -728,7 +758,7 @@ module Vivlio
                         :cover_theme, :pdf_combined?, :pdf_compress?, :epub_embed?,
                         :current_log_level, :current_step_label, :default_cache,
                         :default_commands, :default_directories, :default_files,
-                        :default_vfm, :default_vivliostyle, :echo_always, :ensure_cache_dir!,
+                        :default_vfm, :default_vivliostyle, :log_always, :ensure_cache_dir!,
                         :ensure_required_yaml_files!, :fetch_bool, :format_pt,
                         :generate_compressed_pdf_filename, :generate_epub_filename,
                         :generate_output_filename, :generate_print_pdf_filename,

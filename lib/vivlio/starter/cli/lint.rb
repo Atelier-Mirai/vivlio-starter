@@ -139,7 +139,7 @@ module Vivlio
 
               $stdout.print(stdout) unless stdout.nil? || stdout.empty?
               $stderr.print(stderr) unless stderr.nil? || stderr.empty?
-              $stdout.puts '' unless stdout.nil? || stdout.empty?
+              Common.log_always '' unless stdout.nil? || stdout.empty?
 
               lint_info   = collect_textlint_info(status, raw_stdout, raw_stderr)
               spell_info  = run_spellcheck(files)
@@ -184,22 +184,21 @@ module Vivlio
             fixable     = lint_info[:fixable_count].to_i
             total       = lint_count + spell_count
 
-            $stdout.puts ''
-            $stdout.puts '✏️ 文章の品質チェックが完了しました'
+            Common.log_always ''
+            Common.log_always '✏️ 文章の品質チェックが完了しました'
             if total.positive?
-              $stdout.puts "⚠️ #{total}箇所に改善提案があります"
-              $stdout.puts "   - 日本語校正: #{lint_count}箇所" if lint_count.positive?
-              $stdout.puts "   - スペルチェック: #{spell_count}箇所" if spell_count.positive?
+              Common.log_warn("#{total}箇所に改善提案があります")
+              Common.log_always "   - 日本語校正: #{lint_count}箇所" if lint_count.positive?
+              Common.log_always "   - スペルチェック: #{spell_count}箇所" if spell_count.positive?
               if fixable.positive? && !options[:fix]
-                $stdout.puts "💡 そのうち#{fixable}箇所は自動修正可能です。"
-                $stdout.puts '   vs lint --fix'
+                Common.log_always "💡 そのうち#{fixable}箇所は自動修正可能です。"
+                Common.log_always '   vs lint --fix'
               else
-                $stdout.puts '💡 表記揺れや文法上の改善点を修正してからもう一度実行してください。'
+                Common.log_always '💡 表記揺れや文法上の改善点を修正してからもう一度実行してください。'
               end
             else
-              $stdout.puts '✅ 文章チェックで問題は見つかりませんでした。'
+              Common.log_result('文章チェックで問題は見つかりませんでした。', status: :success)
             end
-            $stdout.flush
           end
 
           SUMMARY_PATTERNS = [

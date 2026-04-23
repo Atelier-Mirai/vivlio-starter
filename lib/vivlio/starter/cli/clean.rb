@@ -282,9 +282,9 @@ module Vivlio
             return
           end
 
-          Common.echo_always('⚠️  以下の索引・用語集辞書データを削除しようとしています:')
-          targets.each { |f| Common.echo_always("  - #{f}") }
-          Common.echo_always('これらのファイルには著者が登録した用語データが含まれています。')
+          Common.log_always('⚠️  以下の索引・用語集辞書データを削除しようとしています:')
+          targets.each { |f| Common.log_always("  - #{f}") }
+          Common.log_always('これらのファイルには著者が登録した用語データが含まれています。')
           $stdout.print('本当に削除しますか？ [y/N]: ')
           ans = $stdin.gets
           unless ans && ans.strip.downcase == 'y'

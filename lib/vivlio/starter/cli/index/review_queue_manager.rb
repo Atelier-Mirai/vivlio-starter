@@ -154,9 +154,9 @@ module Vivlio
             return
           end
 
-          puts "\nリジェクト済み候補:"
+          Common.log_always "\nリジェクト済み候補:"
           rejected.each_with_index do |term, idx|
-            puts "#{idx + 1}. #{term['term']} (#{term['yomi']})"
+            Common.log_always "#{idx + 1}. #{term['term']} (#{term['yomi']})"
           end
         end
 

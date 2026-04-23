@@ -1,6 +1,7 @@
 {
-    "terminal.integrated.fontFamily": "HackGen",
+    "terminal.integrated.fontFamily": "HackGen Console NF",
     "terminal.integrated.unicodeVersion": "11",
+    "terminal.integrated.customGlyphs": false,
     "kiroAgent.configureMCP": "Disabled",
     "terminal.integrated.enableBell": false,
     "accessibility.signals.terminalBell": {

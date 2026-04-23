@@ -21,7 +21,7 @@ def time_dilation(proper_time, velocity_ratio)
 end
 
 # 光速の90%で飛ぶ宇宙船では、時間がどれだけ遅れるか？
-velocities = [0.1, 0.2, 0.5, 0.8, 0.9, 0.99, 0.999]
+velocities = [0.01, 0.1, 0.2, 0.5, 0.8, 0.9, 0.99, 0.999]
 
 puts "速度別・時間の遅れ（宇宙船内で1年経過したとき、地球では何年？）"
 velocities.each do |v|

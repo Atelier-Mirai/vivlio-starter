@@ -124,11 +124,10 @@ module Vivlio
                 return
               end
 
-              Common.echo_always ''
-              Common.echo_always '🔍 リンク・画像検証の結果:'
+              Common.log_summary('リンク・画像検証の結果:')
 
-              Common.echo_always "   画像: #{total_missing_image} 件の問題（存在しない画像: #{total_missing_image}）" if total_missing_image.positive?
-              Common.echo_always "   ソースコード: #{total_missing_code} 件の問題（存在しないファイル: #{total_missing_code}）" if total_missing_code.positive?
+              Common.log_summary("   画像: #{total_missing_image} 件の問題（存在しない画像: #{total_missing_image}）") if total_missing_image.positive?
+              Common.log_summary("   ソースコード: #{total_missing_code} 件の問題（存在しないファイル: #{total_missing_code}）") if total_missing_code.positive?
 
               if total_link.positive?
                 bare = reports.sum { it.link_issues.count { |i| i.issue_type == :bare_url } }
@@ -138,30 +137,28 @@ module Vivlio
                 parts << "危険スキーム: #{dangerous}" if dangerous.positive?
                 parts << "リンク切れ: #{unreachable}" if unreachable.positive?
                 parts << "裸 URL: #{bare}" if bare.positive?
-                Common.echo_always "   リンク: #{total_link} 件の問題（#{parts.join(', ')}）"
+                Common.log_summary("   リンク: #{total_link} 件の問題（#{parts.join(', ')}）")
 
                 # 危険スキームの詳細を表示（セキュリティ上の重要度が高いため先頭）
                 reports.each do |report|
                   report.link_issues.select { it.issue_type == :dangerous_scheme }.each do |issue|
-                    Common.echo_always "     ⚠️  #{issue.url}"
-                    Common.echo_always "        #{issue.message}"
-                    Common.echo_always "        参照元: #{issue.filename}:#{issue.line_number}"
+                    Common.log_warn("     #{issue.url}")
+                    Common.log_warn("        #{issue.message}")
+                    Common.log_warn("        参照元: #{issue.filename}:#{issue.line_number}")
                   end
                 end
 
                 # リンク切れの詳細を表示
                 reports.each do |report|
                   report.link_issues.select { it.issue_type == :unreachable }.each do |issue|
-                    Common.echo_always "     ❌ #{issue.url} → #{issue.message}"
-                    Common.echo_always "        参照元: #{issue.filename}:#{issue.line_number}"
+                    Common.log_error("     #{issue.url} → #{issue.message}")
+                    Common.log_error("        参照元: #{issue.filename}:#{issue.line_number}")
                   end
                 end
               end
 
               config = resolve_config
-              Common.echo_always '   外部URL到達性チェック: スキップ（--verify-links で有効化）' unless config[:verify_external_links]
-
-              Common.echo_always ''
+              Common.log_summary('   外部URL到達性チェック: スキップ（--verify-links で有効化）') unless config[:verify_external_links]
             end
 
             # 検証が有効か判定する

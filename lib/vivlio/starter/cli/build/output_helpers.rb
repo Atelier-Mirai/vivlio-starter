@@ -43,7 +43,7 @@ module Vivlio
             label_width = [label_width, 'TOTAL'.length, 34].max
             value_width = 7
 
-            Common.echo_always "\n== Build Step Timings =="
+            Common.log_always "\n== Build Step Timings =="
             vs_timings = Common.consume_vivliostyle_build_timings
             vs_map = vs_timings.group_by { |entry| entry[:label].to_s }
             sub_label = '(vivliostyle build)'
@@ -53,7 +53,7 @@ module Vivlio
               value_text = format("%#{value_width}.2fs", dt)
               label_text = format("%-#{label_width}s", raw_label)
               line = "  - #{label_text} #{value_text}"
-              Common.echo_always line
+              Common.log_always line
 
               original_labels = label_groups[raw_label] || [raw_label]
               entries = original_labels.flat_map { |original| vs_map[original] }.compact.flatten
@@ -69,11 +69,11 @@ module Vivlio
                 label_segment = format("%-#{label_width}s", sub_label)
                 base_prefix = "#{indent}#{label_segment} "
                 base_prefix += ' ' * (target_index - base_prefix.length) if base_prefix.length < target_index
-                Common.echo_always("#{base_prefix}#{entry_value}")
+                Common.log_always("#{base_prefix}#{entry_value}")
               end
             end
-            Common.echo_always format("  = %-#{label_width}s %#{value_width}.2fs", 'TOTAL', total)
-            Common.echo_always "==========================\n"
+            Common.log_always format("  = %-#{label_width}s %#{value_width}.2fs", 'TOTAL', total)
+            Common.log_always "==========================\n"
           end
 
           # アウトラインデバッグ情報を出力する
@@ -81,7 +81,7 @@ module Vivlio
             outline_info = Build::OutlineExtractor.last_outline_debug_info
             return unless outline_info && Common.current_log_level >= 3
 
-            Common.echo_always '-- Outline Debug Info --'
+            Common.log_always '-- Outline Debug Info --'
             outline_info[:items].each do |item|
               next unless item[:chapter] && item[:text]
 
@@ -91,7 +91,7 @@ module Vivlio
                           when 3 then 'H3'
                           else "H#{item[:level]}"
                           end
-              Common.echo_always format('  %<ch>s / [%<tag>s] %<txt>s -> page %<pg>d',
+              Common.log_always format('  %<ch>s / [%<tag>s] %<txt>s -> page %<pg>d',
                                         ch: item[:chapter], tag: level_tag, txt: item[:text], pg: item[:page])
             end
 
@@ -99,13 +99,13 @@ module Vivlio
             chapter_order  = outline_info[:chapter_order] || []
             return unless chapter_ranges.any?
 
-            Common.echo_always '-- Chapter Ranges --'
+            Common.log_always '-- Chapter Ranges --'
             order = chapter_order.is_a?(Array) && !chapter_order.empty? ? chapter_order : chapter_ranges.keys.sort
             order.each do |bn|
               rng = chapter_ranges[bn]
               next unless rng
 
-              Common.echo_always format('  %<bn>s %<s>s %<e>s', bn: bn, s: rng[0] || '-', e: rng[1] || '-')
+              Common.log_always format('  %<bn>s %<s>s %<e>s', bn: bn, s: rng[0] || '-', e: rng[1] || '-')
             end
           end
 

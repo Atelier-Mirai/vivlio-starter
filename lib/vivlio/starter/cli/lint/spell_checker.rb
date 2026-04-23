@@ -39,16 +39,16 @@ module Vivlio
             return false if errors_by_file.empty?
 
             errors_by_file.each do |path, errors|
-              puts "📄 #{path}"
+              Common.log_always "📄 #{path}"
               errors.each do |err|
                 if err[:suggestion]
-                  puts format('  %4d  %s => %s', err[:line], err[:word], err[:suggestion])
+                  Common.log_always format('  %4d  %s => %s', err[:line], err[:word], err[:suggestion])
                 else
-                  puts format('  %4d  %s', err[:line], err[:word])
+                  Common.log_always format('  %4d  %s', err[:line], err[:word])
                 end
-                puts '        綴りが誤っている可能性があります (spellcheck)'
+                Common.log_always '        綴りが誤っている可能性があります (spellcheck)'
               end
-              puts ''
+              Common.log_always ''
             end
 
             true

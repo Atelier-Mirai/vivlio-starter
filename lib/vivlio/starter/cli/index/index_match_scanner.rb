@@ -54,7 +54,7 @@ module Vivlio
             if use_log_warn
               Common.log_warn(text)
             else
-              Common.echo_always(text)
+              Common.log_always(text)
             end
           end
         end

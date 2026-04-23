@@ -180,8 +180,8 @@ module Vivlio
           if converted_originals.empty?
             Common.log_info('削除対象の元ファイルはありませんでした')
           else
-            Common.echo_always('⚠️  以下の元画像ファイルを削除しようとしています:')
-            converted_originals.each { |f| Common.echo_always("  - #{f}") }
+            Common.log_always('⚠️  以下の元画像ファイルを削除しようとしています:')
+            converted_originals.each { |f| Common.log_always("  - #{f}") }
             $stdout.print('本当に削除しますか？ [y/N]: ')
             ans = $stdin.gets
             if ans && ans.strip.downcase == 'y'

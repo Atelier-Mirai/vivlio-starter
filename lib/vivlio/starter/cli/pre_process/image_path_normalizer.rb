@@ -120,8 +120,7 @@ module Vivlio
 
             if source_filename && line_number
               # 1行目: ファイル名と行番号、元の画像名、代替画像使用の案内
-              # 先頭にスペースを入れて、⚠️ の後ろが常に2スペースになるように調整
-              message = " #{source_filename}:#{line_number} - 画像 '#{image_name}' が見つかりません（代替画像を使用します）"
+              message = "#{source_filename}:#{line_number} - 画像 '#{image_name}' が見つかりません（代替画像を使用します）"
               Common.log_warn(message)
 
               # 2行目: 1行目の「画像」と同じ位置にそろえて、実際に参照した画像パスを表示

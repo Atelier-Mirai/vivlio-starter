@@ -1168,7 +1168,7 @@ module Vivlio
         def ensure_names_present!(names)
           return if ensure_names_present?(names)
 
-          warn '使い方: vs create NAME [NAME ...]'
+          Common.log_error('使い方: vs create NAME [NAME ...]')
           exit 1
         end
 

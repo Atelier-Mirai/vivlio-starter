@@ -373,9 +373,9 @@ module Vivlio
             if build_timings && Common.current_log_level < 3
               aggregated, = aggregate_step_timings(build_timings)
               total = aggregated.map { |(_, dt)| dt }.inject(0.0, :+)
-              Common.echo_always "📚 #{file_list} を作成しました (#{format('%.1f', total)}s)"
+              Common.log_result("#{file_list} を作成しました (#{format('%.1f', total)}s)", status: :artifact)
             else
-              Common.echo_always "📚 #{file_list} を作成しました。"
+              Common.log_result("#{file_list} を作成しました。", status: :artifact)
             end
           end
 

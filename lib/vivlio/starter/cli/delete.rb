@@ -77,9 +77,9 @@ module Vivlio
           # dry-run モード: 削除予定を表示して正常終了
           # 実ファイルは変更されないことを明示
           def perform_dry_run
-            Common.echo_always "\n== Dry Run: 削除予定一覧 =="
+            Common.log_always "\n== Dry Run: 削除予定一覧 =="
             targets.each { |basename| deletion.preview(basename) }
-            Common.echo_always "\n合計 #{targets.size} 章が対象（dry-run、実ファイルは変更されません）。"
+            Common.log_always "\n合計 #{targets.size} 章が対象（dry-run、実ファイルは変更されません）。"
             exit 0
           end
 
@@ -203,9 +203,9 @@ module Vivlio
             base = basename.sub(/\.md\z/, '')
             md_file = File.join(Common::CONTENTS_DIR, basename)
             img_dir = File.join(Common::IMAGES_DIR, base)
-            Common.echo_always "[DRY-RUN] #{base} の削除予定:"
-            Common.echo_always "  - 文書:       #{md_file} #{File.exist?(md_file) ? '(exists)' : '(not found)'}"
-            Common.echo_always "  - 画像Dir:    #{img_dir} #{Dir.exist?(img_dir) ? '(exists)' : '(not found)'}"
+            Common.log_always "[DRY-RUN] #{base} の削除予定:"
+            Common.log_always "  - 文書:       #{md_file} #{File.exist?(md_file) ? '(exists)' : '(not found)'}"
+            Common.log_always "  - 画像Dir:    #{img_dir} #{Dir.exist?(img_dir) ? '(exists)' : '(not found)'}"
           end
 
           # 章ファイルと関連リソースを削除する
