@@ -1,0 +1,31 @@
+- title: 相対性理論
+  author:
+    name: アルベルト・アインシュタイン
+  desc: 特殊相対性理論と一般相対性理論を平易な言葉で解説した、アインシュタイン自身による入門書。
+  cover: relativity.webp
+  tags: [physics, relativity, classic]
+  year: 1916
+
+- title: 物理学はいかに創られたか
+  author:
+    name: アルベルト・アインシュタイン
+  desc: アインシュタインとインフェルトによる物理学の歴史的発展を語る名著。数式を使わずに物理の本質を伝える。
+  cover: evolution_of_physics.webp
+  tags: [physics, history, popular]
+  year: 1938
+
+- title: 量子力学
+  author:
+    name: ポール・ディラック
+  desc: 量子力学の数学的定式化を確立した歴史的名著。アインシュタインが生涯対話し続けた量子の世界を扱う。
+  cover: quantum.webp
+  tags: [physics, quantum]
+  year: 1930
+
+- title: ご冗談でしょう、ファインマンさん
+  author:
+    name: リチャード・ファインマン
+  desc: ノーベル賞物理学者ファインマンの痛快な自伝。好奇心と遊び心で科学に向き合う姿がアインシュタインに通じる。
+  cover: feynman.webp
+  tags: [physics, biography, popular]
+  year: 1985
