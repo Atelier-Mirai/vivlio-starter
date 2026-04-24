@@ -172,7 +172,7 @@ module Vivlio
             PreProcessCommands::LinkImageValidator.stub :reset!, nil do
               PreProcessCommands::LinkImageValidator.stub :print_summary, nil do
                 PreProcessCommands::LinkImageValidator.stub :any_issues?, false do
-                  Common.stub :echo_always, nil do
+                  Common.stub :log_always, nil do
                     yield
                   end
                 end

@@ -124,11 +124,11 @@ module Vivlio
           within_temp_dir do
             # system() が false を返す（doctor 失敗）
             stub_system_call(success: false) do
-              _out, err = capture_io { run_new_command(['doctorfail', '--yes']) }
+              out, _err = capture_io { run_new_command(['doctorfail', '--yes']) }
 
               assert Dir.exist?('doctorfail'), 'プロジェクトディレクトリは残るべき'
               assert File.exist?('doctorfail/config/book.yml'), 'ファイル展開は成功しているべき'
-              assert_match(/doctor --fix/, err, '手動実行の案内が stderr に出力されるべき')
+              assert_match(/doctor --fix/, out, '手動実行の案内が出力されるべき')
             end
           end
         end

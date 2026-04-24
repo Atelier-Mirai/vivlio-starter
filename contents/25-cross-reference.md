@@ -301,6 +301,9 @@ end
 | 花子 | 30   | デザイナー | UXデザイン部 | 5年       | ★★★★☆         | 一部可       |
 | 次郎 | 35   | マネージャー | プロダクト部 | 8年       | ★★★★☆         | 不可         |
 
+
+@complex-table は、複雑な表の一例です。
+
 ### 7.3 コード（リスト）の定義と参照
 
 **Rubyサンプルコード @ruby-sample**
@@ -356,15 +359,50 @@ greet('World');
 ### 8.2 画像の配置
 
 **画像(左寄せ) @img-left**
-![](sample.png){width=30% align=left}
+![](sample.png){width=25% align=left}
+左に行きます
+左に行きます
+左に行きます
+左に行きます
+左に行きます
+左に行きます
+左に行きます
 
 **画像(中央) @img-center**
-![](sample.png){width=30% align=center}
+![](sample.png){width=25% align=center}
+真ん中です
 
 **画像(右寄せ) @img-right**
-![](sample.png){width=30% align=right}
+![](sample.png){width=25% align=right}
+右端です。
 
 ---
+
+**画像(左寄せ) @img-left**
+![](sample.png){width=25% align=left}
+
+左に行きます
+
+**画像(中央) @img-center**
+![](sample.png){width=25% align=center}
+
+真ん中です
+
+**画像(右寄せ) @img-right**
+![](sample.png){width=25% align=right}
+
+右端です。
+
+**画像(右寄せ) @img-right**
+![](sample.png){width=25% align=right}
+
+もう一度右端です。
+
+**画像(右寄せ) @img-hogehoge**
+![](sample.png){width=25% align=right}
+
+ほげほげです。
+
 
 ## 9. トラブルシューティング
 

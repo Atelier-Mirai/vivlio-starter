@@ -93,7 +93,7 @@ module Vivlio
           include Generators
 
           ITERATIONS = 100
-          FORMAT_PATTERN = /🟡 .+:\d+ - 画像 '.+' が見つかりません/
+          FORMAT_PATTERN = /🔴 .+:\d+ - 画像 '.+' が見つかりません/
 
           def test_image_warning_message_matches_expected_format
             # Generator: ランダムなファイル名・行番号・画像名
@@ -103,11 +103,11 @@ module Vivlio
               line_number = gen_line_number
               image_name  = gen_image_name
 
-              # ImagePathNormalizer が出力する警告メッセージを模倣
-              message = "🟡 #{filename}:#{line_number} - 画像 '#{image_name}' が見つかりません（代替画像を使用します）"
+              # ImagePathNormalizer が出力するエラーメッセージを模倣
+              message = "🔴 #{filename}:#{line_number} - 画像 '#{image_name}' が見つかりません（代替画像を使用します）"
 
               assert_match FORMAT_PATTERN, message,
-                           "Iteration #{i}: 画像警告フォーマットが一致しません: #{message}"
+                           "Iteration #{i}: 画像エラーフォーマットが一致しません: #{message}"
             end
           end
         end

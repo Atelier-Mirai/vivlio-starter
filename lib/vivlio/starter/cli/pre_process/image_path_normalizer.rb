@@ -119,14 +119,13 @@ module Vivlio
             image_name = original_image_name || File.basename(normalized_path)
 
             if source_filename && line_number
-              # 1行目: ファイル名と行番号、元の画像名、代替画像使用の案内
-              Common.log_warn(
+              Common.log_error(
                 "#{source_filename}:#{line_number} - 画像 '#{image_name}' が見つかりません（代替画像を使用します）",
                 detail: "画像の場所: #{normalized_path}"
               )
             else
               # 位置情報が取れない場合のフォールバック
-              Common.log_warn(
+              Common.log_error(
                 "画像 '#{image_name}' が見つかりません（代替画像を使用します）",
                 detail: "画像の場所: #{normalized_path}"
               )

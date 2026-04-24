@@ -28,6 +28,8 @@
 # ================================================================
 
 require_relative 'common'
+require 'set'
+require_relative 'token_resolver'
 require_relative 'pre_process/markdown_preprocessor'
 require_relative 'pre_process/frontmatter_generator'
 require_relative 'pre_process/css_updater'
@@ -64,17 +66,19 @@ module Vivlio
           entries.each { process_single_markdown_file(it.path, it) }
 
           Common.log_success('Markdownの前処理が完了しました')
+        end
+        module_function :execute_pre_process
 
+        # クロスリファレンス処理を実行する。
+        # preprocess_sections! で全章の前処理が完了した後に1回だけ呼ぶこと。
+        def execute_cross_references(entries)
+          entries = resolve_entries(entries)
           output_files = entries.map { File.basename(it.path) }
           Common.log_action("\nクロスリファレンス処理を開始します...")
           result = process_cross_references_for_files(output_files)
-
-          return if result
-
-          Common.log_error('クロスリファレンス処理でエラーが発生しました')
-          exit(1)
+          Common.log_error('クロスリファレンス処理でエラーが発生しました') unless result
         end
-        module_function :execute_pre_process
+        module_function :execute_cross_references
 
         def normalized_context(command_or_ctx)
           return command_or_ctx if command_or_ctx.is_a?(Hash)
@@ -283,13 +287,14 @@ module Vivlio
           Common.log_info('=== クロスリファレンス処理を開始 ===')
 
           # ------------------------------------------------
-          # Phase 1: contents/ 配下の全Markdownからラベル定義を収集
+          # Phase 1: catalog.yml 登録済みの全章からラベル定義を収集
           # ------------------------------------------------
           all_labels = []
           all_errors = []
 
-          # 全体の整合性を保つため、contents/ 配下の全Markdownをラベル収集対象とする
-          contents_files = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md'))
+          # catalog.yml 登録済みの全章を対象とする（未登録草稿は除外）
+          catalog_entries = TokenResolver::Resolver.new.resolve.select(&:in_catalog?)
+          contents_files = catalog_entries.map(&:path).select { |p| File.exist?(p) }
           Common.log_info("ラベル収集対象ファイル: #{contents_files.size}件")
 
           contents_files.each do |md_path|
@@ -307,13 +312,22 @@ module Vivlio
           # ------------------------------------------------
           map_result = CrossReferenceProcessor.build_labels_map_with_duplicates_check(all_labels)
           labels_map = map_result[:labels_map]
-          duplicates = map_result[:duplicates]
+          duplicates_by_id = map_result[:duplicates_by_id]
 
-          if duplicates.any?
-            Common.log_error('ラベルIDの重複を検出しました:')
-            duplicates.each { |dup| Common.log_error(dup) }
-            all_errors.concat(duplicates)
-            return false
+          if duplicates_by_id.any?
+            duplicates_by_id.each do |_id, labels|
+              first = labels.first
+              by_file = labels.group_by(&:source_file)
+              detail_lines = by_file.map do |file, file_labels|
+                "#{file}: #{file_labels.map(&:line).join(', ')}"
+              end
+              Common.log_error(
+                "#{first.source_file}:#{first.line} - ラベルID '#{first.title} @#{first.id}' は重複しています",
+                detail: "重複箇所: #{detail_lines.join("\n          ")}"
+              )
+              all_errors << "ラベルID '@#{first.id}' 重複"
+            end
+            # 重複があっても先勝ちのラベルマップで処理を続行する
           end
 
           # ------------------------------------------------
@@ -356,6 +370,24 @@ module Vivlio
             logging_errors.each do |msg|
               Common.log_warn("    - #{msg}")
             end
+          end
+
+          # ------------------------------------------------
+          # Phase 4: 孤立ID検出（定義されているが一度も参照されていないID）
+          # contents/ 全ファイルを対象に使用済みIDを収集し、未参照ラベルを警告する
+          # ------------------------------------------------
+          all_used_ids = Set.new
+          contents_files.each do |md_path|
+            source_content = File.read(md_path, encoding: 'utf-8')
+            result = CrossReferenceProcessor.replace_references(source_content, labels_map, nil)
+            all_used_ids.merge(result[:used_ids])
+          end
+
+          orphan_labels = labels_map.values.reject { |label| all_used_ids.include?(label.id) || label.auto }
+          orphan_labels.each do |label|
+            Common.log_warn(
+              "#{label.source_file}:#{label.line} - 孤立ラベル '#{label.title} @#{label.id}' は未参照です"
+            )
           end
 
           # 処理済みのファイルを書き戻す（プロジェクトルート直下の .md）

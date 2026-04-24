@@ -260,6 +260,10 @@ module Vivlio
             Common.log_action("[Step 3] 対象章をビルドします: #{basenames.join(', ')}")
             entries.each do |entry|
               PreProcessCommands.execute_pre_process({}, [entry])
+            end
+            # 全章の前処理完了後に1回だけクロスリファレンス処理を実行する
+            PreProcessCommands.execute_cross_references(entries)
+            entries.each do |entry|
               ConvertCommands.execute_convert({}, [entry])
               PostProcessCommands.execute_post_process({}, [entry])
             end

@@ -120,9 +120,9 @@ module Vivlio
           # preflight 完了サマリーを表示する
           def print_preflight_summary
             if PreProcessCommands::LinkImageValidator.any_issues?
-              Common.log_result('Preflight 完了: 問題あり — 詳細は上記を確認してください', status: :failure)
+              Common.log_result('Preflight 完了: 課題あり — 詳細は上記を確認してください', status: :failure)
             else
-              Common.log_result('Preflight 完了: 問題なし', status: :success)
+              Common.log_result('Preflight 完了: 良好な状態です', status: :success)
             end
           end
 

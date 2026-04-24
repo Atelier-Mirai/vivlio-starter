@@ -11,6 +11,7 @@
 # ================================================================
 
 require 'cgi'
+require 'set'
 require_relative '../common'
 require_relative '../post_process/heading_processor'
 require_relative 'markdown_utils'
@@ -186,14 +187,14 @@ module Vivlio
               end
 
               @counters[type] += 1
-              @labels << create_label(info, type)
+              @labels << create_label(info, type, idx + 1)
             end
 
-            def create_label(info, type)
+            def create_label(info, type, line_number)
               count = @counters[type]
               label_id = info[:auto] ? "#{type}-#{@chapter_number}-#{count}" : info[:id]
               Label.new(label_id, type, @chapter_number, "#{@chapter_number}-#{count}",
-                        info[:title], @source_file, @labels.size + 1, info[:auto])
+                        info[:title], @source_file, line_number, info[:auto])
             end
           end
 
@@ -208,25 +209,21 @@ module Vivlio
           end
 
           # レポート生成
+          # @return [Hash] labels_map と duplicates_by_id を含む
+          #   duplicates_by_id: { id => { first_label: Label, all_labels: [Label, ...] } }
           def build_labels_map_with_duplicates_check(all_labels)
             map = {}
-            dups = []
-            all_labels.each do |label|
-              if map.key?(label.id)
-                existing = map[label.id]
-                dups << format_duplicate_message(label, existing)
-              else
-                map[label.id] = label
-              end
-            end
-            { labels_map: map, duplicates: dups }
-          end
+            # IDごとに全ラベルを蓄積する（先勝ちで map に登録）
+            all_occurrences = Hash.new { |h, k| h[k] = [] }
 
-          def format_duplicate_message(label, existing)
-            "ラベルID '@#{label.id}' 重複: " \
-              "#{existing.source_file}:#{existing.line}, #{label.source_file}:#{label.line}"
+            all_labels.each do |label|
+              all_occurrences[label.id] << label
+              map[label.id] ||= label
+            end
+
+            duplicates_by_id = all_occurrences.select { |_, labels| labels.size > 1 }
+            { labels_map: map, duplicates_by_id: }
           end
-          private_class_method :format_duplicate_message
 
           # === Private Helpers ===
 
@@ -247,16 +244,26 @@ module Vivlio
           def build_labels_map(all_labels)
             Common.log_info('Phase 2: ラベルマップ構築...')
             result = build_labels_map_with_duplicates_check(all_labels)
-            [result[:labels_map], result[:duplicates]]
+            [result[:labels_map], result[:duplicates_by_id]]
           end
           private_class_method :build_labels_map
 
-          def log_duplicates(duplicates, all_errors)
-            return if duplicates.empty?
+          def log_duplicates(duplicates_by_id, all_errors)
+            return if duplicates_by_id.empty?
 
-            Common.log_error('ラベルIDの重複を検出:')
-            duplicates.each { |dup| Common.log_error(dup) }
-            all_errors.concat(duplicates)
+            duplicates_by_id.each do |_id, labels|
+              first = labels.first
+              # ファイルごとに行番号をグループ化して detail を構築する
+              by_file = labels.group_by(&:source_file)
+              detail_lines = by_file.map do |file, file_labels|
+                "#{file}: #{file_labels.map(&:line).join(', ')}"
+              end
+              Common.log_error(
+                "#{first.source_file}:#{first.line} - ラベルID '#{first.title} @#{first.id}' は重複しています",
+                detail: "重複箇所: #{detail_lines.join("\n          ")}"
+              )
+              all_errors << "ラベルID '@#{first.id}' 重複"
+            end
           end
           private_class_method :log_duplicates
 
@@ -587,6 +594,7 @@ module Vivlio
               @labels_map = labels_map
               @filename = filename
               @errors = []
+              @used_ids = Set.new
             end
 
             def replace
@@ -606,9 +614,12 @@ module Vivlio
                     fence_marker = fence
                   end
                 end
+                # キャプション定義行（** タイトル @id **）は参照としてカウントしない
+                next line if !in_code && CrossReferenceProcessor.extract_caption_label(line)
+
                 in_code ? line : replace_in_line(line, num)
               end
-              { content: result.join, errors: @errors }
+              { content: result.join, errors: @errors, used_ids: @used_ids }
             end
 
             private
@@ -636,7 +647,10 @@ module Vivlio
               return "@#{label_id}" if CrossReferenceProcessor.reserved_id?(label_id)
 
               label = @labels_map[label_id]
-              return render_link(label) if label
+              if label
+                @used_ids << label_id
+                return render_link(label)
+              end
 
               @errors << "#{@filename}:#{line_num} - 未定義のラベルID: @#{label_id}"
               "@#{label_id}"

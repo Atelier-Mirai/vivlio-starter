@@ -191,11 +191,24 @@ module Vivlio
             LinkImageValidator.validate(md, 'ch.md', config: all_disabled_config)
           end
 
-          stub_common_echo_always do
-            LinkImageValidator.print_summary
+          combined = ''
+          Common.stub(:log_summary, ->(msg, detail: nil) {
+            combined += msg.to_s + "\n"
+            combined += detail.to_s + "\n" if detail
+          }) do
+            Common.stub(:log_warn, ->(msg, detail: nil) {
+              combined += msg.to_s + "\n"
+              combined += detail.to_s + "\n" if detail
+            }) do
+              Common.stub(:log_error, ->(msg, detail: nil) {
+                combined += msg.to_s + "\n"
+                combined += detail.to_s + "\n" if detail
+              }) do
+                LinkImageValidator.print_summary
+              end
+            end
           end
 
-          combined = @echo_messages.join("\n")
           assert_match(/危険スキーム: 1/, combined, 'サマリに危険スキーム件数が表示されること')
           assert_match(/file:\/\/\/etc\/passwd/, combined, 'サマリに検出 URL が表示されること')
           assert_match(/ch\.md:1/, combined, 'サマリに参照元ファイル名:行番号が表示されること')
@@ -229,15 +242,15 @@ module Vivlio
         end
 
         def stub_common_log_warn
-          Common.stub(:log_warn, ->(msg) { @warn_messages << msg }) do
+          Common.stub(:log_warn, ->(msg, detail: nil) { @warn_messages << msg }) do
             Common.stub(:log_info, ->(*) {}) do
               yield
             end
           end
         end
 
-        def stub_common_echo_always
-          Common.stub(:echo_always, ->(msg) { @echo_messages << msg.to_s }) do
+        def stub_common_log_always
+          Common.stub(:log_always, ->(msg) { @echo_messages << msg.to_s }) do
             Common.stub(:log_info, ->(*) {}) do
               yield
             end

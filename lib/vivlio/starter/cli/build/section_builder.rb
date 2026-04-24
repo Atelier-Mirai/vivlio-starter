@@ -162,6 +162,9 @@ module Vivlio
             else
               parallel_each(targets, concurrency: concurrency) { |target| preprocess_single_chapter!(target) }
             end
+
+            # 全章の前処理完了後に1回だけクロスリファレンス処理を実行する
+            PreProcessCommands.execute_cross_references(targets)
           end
 
           # セクション（前書き/本文/付録/後書き）の変換を一括実行

@@ -180,7 +180,7 @@ module Vivlio
 
             LinkImageValidator.validate(content, 'test.md')
 
-            assert_output(/問題なし/) do
+            assert_output(/良好な状態です/) do
               Common.stub(:log_info, ->(msg) { puts "ℹ️  #{msg}" }) { LinkImageValidator.print_summary }
             end
           end
@@ -193,7 +193,7 @@ module Vivlio
 
             LinkImageValidator.validate(content, 'test.md')
 
-            assert_output(/画像: 1 件の問題/) { LinkImageValidator.print_summary }
+            assert_output(/画像: 1 件の課題/) { LinkImageValidator.print_summary }
           end
 
           # 裸 URL があるときのサマリー出力

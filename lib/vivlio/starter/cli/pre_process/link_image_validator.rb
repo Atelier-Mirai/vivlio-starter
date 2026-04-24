@@ -120,14 +120,14 @@ module Vivlio
               total_link = reports.sum { it.link_issues.size }
 
               if total_missing_image.zero? && total_missing_code.zero? && total_link.zero?
-                Common.log_info('リンク・画像の検証が完了しました（問題なし）')
+                Common.log_info('リンク・画像の検証が完了しました（良好な状態です）')
                 return
               end
 
               # --- サマリー集計 ---
               detail_lines = []
-              detail_lines << "画像: #{total_missing_image} 件の問題（存在しない画像: #{total_missing_image}）" if total_missing_image.positive?
-              detail_lines << "ソースコード: #{total_missing_code} 件の問題（存在しないファイル: #{total_missing_code}）" if total_missing_code.positive?
+              detail_lines << "画像: #{total_missing_image} 件の課題（存在しない画像: #{total_missing_image}）" if total_missing_image.positive?
+              detail_lines << "ソースコード: #{total_missing_code} 件の課題（存在しないファイル: #{total_missing_code}）" if total_missing_code.positive?
 
               if total_link.positive?
                 bare = reports.sum { it.link_issues.count { |i| i.issue_type == :bare_url } }

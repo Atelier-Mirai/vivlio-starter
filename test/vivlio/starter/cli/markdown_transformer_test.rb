@@ -637,7 +637,7 @@ module Vivlio
             result = build_labels_map_with_duplicates_check([label1, label2])
 
             assert_equal 2, result[:labels_map].size
-            assert_empty result[:duplicates]
+            assert_empty result[:duplicates_by_id]
           end
 
           def test_build_labels_map_with_duplicates
@@ -647,8 +647,8 @@ module Vivlio
             result = build_labels_map_with_duplicates_check([label1, label2])
 
             assert_equal 1, result[:labels_map].size
-            assert_equal 1, result[:duplicates].size
-            assert_match(/same-id.*重複/, result[:duplicates].first)
+            assert_equal 1, result[:duplicates_by_id].size
+            assert result[:duplicates_by_id].key?('same-id')
           end
         end
       end

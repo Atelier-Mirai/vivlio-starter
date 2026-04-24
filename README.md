@@ -167,12 +167,11 @@ project/
 ### 主要コマンド（抜粋）
 
 - ビルド: `vs build` / `vs build <chapter_id>`
-- 文章校正: `vs text:lint` / `vs text:check`
-- 表示: `vs open` / `vs open:pdf`
-- 生成物削除: `vs clean`
 - 章の作成/削除/変更: `vs create <id>` / `vs delete <id>` / `vs rename <old> <new>` / `vs renumber <from> <to>`
-- Vivliostyle 設定生成: `vs vivliostyle:config`
-- ヘルプ: `vs help` / `vs <cmd> --help`
+- 文章校正・統計: `vs lint` / `vs metrics`
+- PDF表示: `vs open`
+- 生成物削除: `vs clean`
+- ヘルプ: `vs --help` / `vs <cmd> --help`
 
 ## インストール（Gem/CLI）
 
@@ -180,7 +179,7 @@ project/
 
 ```bash
 # Bundler（推奨）
-gem "vivlio-starter", "~> 0.6"
+gem "vivlio-starter", "~> 1.0.0"
 
 # または RubyGems から直接インストール
 gem install vivlio-starter
@@ -264,10 +263,8 @@ vs build --log=error
   - リネーム: `vs rename 31-history 21-history`
   - 番号変更: `vs renumber 31 21`
   - 番号整列: `vs renumber`
-- Vivliostyle 設定
-  - 生成: `vs vivliostyle:config`
 - タスク一覧/ヘルプ
-  - `vs help` / `vs <cmd> --help`
+  - `vs --help` / `vs <cmd> --help`
 
 ## 設定（config/book.yml）
 

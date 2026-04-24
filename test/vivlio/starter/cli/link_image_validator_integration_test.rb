@@ -137,7 +137,7 @@ module Vivlio
             LinkImageValidator.validate(content, '01-quickstart.md')
 
             # Assert: 「問題なし」メッセージが出力される
-            assert_output(/リンク・画像の検証が完了しました（問題なし）/) do
+            assert_output(/リンク・画像の検証が完了しました（良好な状態です）/) do
               Common.stub(:log_info, ->(msg) { puts "ℹ️  #{msg}" }) { LinkImageValidator.print_summary }
             end
           end
@@ -153,7 +153,7 @@ module Vivlio
             LinkImageValidator.validate(content, '01-quickstart.md')
 
             # Assert: 画像の問題件数がサマリーに含まれる
-            assert_output(/画像: 1 件の問題/) do
+            assert_output(/画像: 1 件の課題/) do
               LinkImageValidator.print_summary
             end
           end
@@ -237,7 +237,7 @@ module Vivlio
 
             # Assert: reset! 後と同様に何も出力されない
             # （レポートは蓄積されるが issue が空のため「問題なし」が出る）
-            assert_output(/問題なし/) do
+            assert_output(/良好な状態です/) do
               Common.stub(:log_info, ->(msg) { puts "ℹ️  #{msg}" }) { LinkImageValidator.print_summary }
             end
           end
@@ -276,7 +276,7 @@ module Vivlio
             LinkImageValidator.check_external_urls!
 
             # Assert: link_issues に unreachable が含まれないこと
-            assert_output(/問題なし/) do
+            assert_output(/良好な状態です/) do
               Common.stub(:log_info, ->(msg) { puts "ℹ️  #{msg}" }) { LinkImageValidator.print_summary }
             end
           end
@@ -351,7 +351,7 @@ module Vivlio
               LinkImageValidator.check_external_urls!
             end
 
-            assert_output(/問題なし/) do
+            assert_output(/良好な状態です/) do
               Common.stub(:log_info, ->(msg) { puts "ℹ️  #{msg}" }) { LinkImageValidator.print_summary }
             end
           end

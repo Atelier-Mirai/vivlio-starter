@@ -69,7 +69,7 @@ module Vivlio
           with_host_os('linux') do
             outputs = []
 
-            Common.stub :echo_always, ->(message) { outputs << message } do
+            Common.stub :log_always, ->(message) { outputs << message } do
               stub_logging_without_echo do
                 DoctorCommands.stub :tesseract_language_available?, true do
                   DoctorCommands.stub :waifu2x_available?, true do
@@ -287,7 +287,7 @@ module Vivlio
 
         # ログ出力を抑制
         def stub_logging
-          Common.stub :echo_always, nil do
+          Common.stub :log_always, nil do
             Common.stub :log_info, nil do
               Common.stub :log_warn, nil do
                 Common.stub :log_error, nil do
