@@ -37,12 +37,18 @@ module Vivlio
             on_error = lambda do |error|
               case error
               in QueryStream::TemplateNotFoundError => e
-                Common.log_error("QueryStream 展開エラー: テンプレートファイルが見つかりません: #{e.template_path}")
-                Common.log_error("   記法: #{e.query} (#{e.location})")
-                Common.log_error("   ヒント: #{e.hint}") if e.hint
+                # location は "filename:line" 形式
+                detail_lines = ["雛形の場所: #{e.template_path}"]
+                detail_lines << "ヒント: #{e.hint}" if e.hint
+                Common.log_error(
+                  "#{e.location} - 雛形ファイル '#{File.basename(e.template_path)}' が見つかりません（記法: #{e.query}）",
+                  detail: detail_lines.join("\n")
+                )
               in QueryStream::DataNotFoundError => e
-                Common.log_error("QueryStream 展開エラー: データファイルが見つかりません: #{e.expected_path}")
-                Common.log_error("   記法: #{e.query} (#{e.location})")
+                Common.log_error(
+                  "#{e.location} - データファイルが見つかりません（記法: #{e.query}）",
+                  detail: "データの場所: #{e.expected_path}"
+                )
               else
                 Common.log_error("QueryStream 展開エラー: #{error.message}")
               end
@@ -51,11 +57,13 @@ module Vivlio
             on_warning = lambda do |warning|
               case warning
               in QueryStream::NoResultWarning => w
-                Common.log_warn('QueryStream 一件検索: 該当レコードが見つかりません')
-                Common.log_warn("   記法: #{w.query} (#{w.location})")
+                Common.log_warn(
+                  "#{w.location} - 一件検索で該当レコードが見つかりません（記法: #{w.query}）"
+                )
               in QueryStream::AmbiguousQueryWarning => w
-                Common.log_warn("QueryStream 一件検索: 複数件ヒット（#{w.count} 件）。条件を明示してください")
-                Common.log_warn("   記法: #{w.query} (#{w.location})")
+                Common.log_warn(
+                  "#{w.location} - 一件検索で複数件ヒット（#{w.count} 件）。条件を明示してください（記法: #{w.query}）"
+                )
               else
                 Common.log_warn("QueryStream 警告: #{warning.message}")
               end

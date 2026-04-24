@@ -120,16 +120,16 @@ module Vivlio
 
             if source_filename && line_number
               # 1行目: ファイル名と行番号、元の画像名、代替画像使用の案内
-              message = "#{source_filename}:#{line_number} - 画像 '#{image_name}' が見つかりません（代替画像を使用します）"
-              Common.log_warn(message)
-
-              # 2行目: 1行目の「画像」と同じ位置にそろえて、実際に参照した画像パスを表示
-              indent_width = message.index('画像') || 0
-              Common.log_warn("#{' ' * indent_width}画像の場所: #{normalized_path}")
+              Common.log_warn(
+                "#{source_filename}:#{line_number} - 画像 '#{image_name}' が見つかりません（代替画像を使用します）",
+                detail: "画像の場所: #{normalized_path}"
+              )
             else
               # 位置情報が取れない場合のフォールバック
-              Common.log_warn("画像 '#{image_name}' が見つかりません（代替画像を使用します）")
-              Common.log_warn("画像の場所: #{normalized_path}")
+              Common.log_warn(
+                "画像 '#{image_name}' が見つかりません（代替画像を使用します）",
+                detail: "画像の場所: #{normalized_path}"
+              )
             end
 
             placeholder_path = placeholder_image_path(normalized_path)

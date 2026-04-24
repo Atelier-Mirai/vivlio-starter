@@ -237,3 +237,37 @@ log_result "12-quickstart.pdf を作成しました (15.4s)", status: :artifact
         雛形の場所: templates/_book.full.md
         ヒント: '_book.md' は存在します。スタイル名を確認してください。
 ```
+
+### 裸 URL の検出
+
+**現状**
+```
+🟡 94-sample.md:461 - 裸 URL を検出しました
+🟡   URL: https://onlinelibrary.wiley.com/journal/15213889
+```
+
+**改善後**
+```
+🟡 94-sample.md:461 - 裸 URL を検出しました
+        URL: https://onlinelibrary.wiley.com/journal/15213889
+```
+
+### リンク・画像検証
+
+**現状**
+```
+🔍 リンク・画像検証の結果:
+🔍    画像: 8 件の問題（存在しない画像: 8）
+🔍    ソースコード: 6 件の問題（存在しないファイル: 6）
+🔍    リンク: 3 件の問題（裸 URL: 3）
+🔍    外部URL到達性チェック: スキップ（--verify-links で有効化）
+```
+
+**改善後**
+```
+🔍 リンク・画像検証の結果:
+        画像: 8 件の問題（存在しない画像: 8）
+        ソースコード: 6 件の問題（存在しないファイル: 6）
+        リンク: 3 件の問題（裸 URL: 3）
+        外部URL到達性チェック: スキップ（--verify-links で有効化）
+```

@@ -261,11 +261,16 @@ module Vivlio
                 # 画像警告と同じ形式で、ソースファイル名・行番号・コードファイル名を表示する
                 code_name = File.basename(original_path)
                 if source_filename && (ln = line_number_map[match])
-                  Common.log_error("#{source_filename}:#{ln} - ソースコード '#{code_name}' が見つかりません")
-                  # preflight の終了コード判定に反映させるため LinkImageValidator にも記録する
+                  Common.log_error(
+                    "#{source_filename}:#{ln} - ソースコード '#{code_name}' が見つかりません",
+                    detail: "コードの場所: #{file_path}"
+                  )
                   LinkImageValidator.record_code_include_error(source_filename, ln, code_name)
                 else
-                  Common.log_error("ソースコード '#{code_name}' が見つかりません: #{file_path}")
+                  Common.log_error(
+                    "ソースコード '#{code_name}' が見つかりません",
+                    detail: "コードの場所: #{file_path}"
+                  )
                   LinkImageValidator.record_code_include_error(source_filename || '(不明)', 0, code_name)
                 end
                 match

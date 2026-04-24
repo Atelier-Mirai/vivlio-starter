@@ -221,6 +221,9 @@ module Vivlio
         # Log & UI
         # ================================================================
 
+        # detail 行のインデント幅（半角スペース 8 文字）
+        DETAIL_INDENT = '        '
+
         # --log オプションから現在のログレベルを解決する。
         # error: 0 / warn: 1 / info,success,action: 2 / debug: 3
         def current_log_level
@@ -243,13 +246,17 @@ module Vivlio
         end
 
         # 注意・警告（🟡）。--log=warn 以上（既定）で表示。
-        def log_warn(msg)
-          puts("🟡 #{msg}") if current_log_level >= 1
+        def log_warn(msg, detail: nil)
+          return unless current_log_level >= 1
+
+          puts("🟡 #{msg}")
+          format_detail(detail).each { |line| puts("#{DETAIL_INDENT}#{line}") }
         end
 
         # エラー（🔴）。ログレベルに関わらず常に表示。
-        def log_error(msg)
+        def log_error(msg, detail: nil)
           puts("🔴 #{msg}")
+          format_detail(detail).each { |line| puts("#{DETAIL_INDENT}#{line}") }
         end
 
         # 処理ステップの開始・進行（🔧）。--log=info 以上で表示。
@@ -263,8 +270,9 @@ module Vivlio
         end
 
         # 検証結果の集計サマリー（🔍）。ログレベルに関わらず常に表示。
-        def log_summary(msg)
+        def log_summary(msg, detail: nil)
           puts "🔍 #{msg}"
+          format_detail(detail).each { |line| puts("#{DETAIL_INDENT}#{line}") }
         end
 
         # 詳細診断情報（🔍）。--log=info 以上で表示。
@@ -287,6 +295,15 @@ module Vivlio
         def log_always(msg)
           puts(msg)
         end
+
+        # detail 文字列を行配列に変換する。nil の場合は空配列を返す。
+        # log_* からのみ呼ばれる内部ヘルパー。
+        def format_detail(detail)
+          return [] if detail.nil?
+
+          detail.lines.map(&:chomp)
+        end
+        private :format_detail
 
         # ------------------------------------------------------------
         # 外部コマンド可用性チェック

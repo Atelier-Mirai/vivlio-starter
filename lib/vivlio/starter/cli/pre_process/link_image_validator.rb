@@ -124,10 +124,10 @@ module Vivlio
                 return
               end
 
-              Common.log_summary('リンク・画像検証の結果:')
-
-              Common.log_summary("   画像: #{total_missing_image} 件の問題（存在しない画像: #{total_missing_image}）") if total_missing_image.positive?
-              Common.log_summary("   ソースコード: #{total_missing_code} 件の問題（存在しないファイル: #{total_missing_code}）") if total_missing_code.positive?
+              # --- サマリー集計 ---
+              detail_lines = []
+              detail_lines << "画像: #{total_missing_image} 件の問題（存在しない画像: #{total_missing_image}）" if total_missing_image.positive?
+              detail_lines << "ソースコード: #{total_missing_code} 件の問題（存在しないファイル: #{total_missing_code}）" if total_missing_code.positive?
 
               if total_link.positive?
                 bare = reports.sum { it.link_issues.count { |i| i.issue_type == :bare_url } }
@@ -137,28 +137,33 @@ module Vivlio
                 parts << "危険スキーム: #{dangerous}" if dangerous.positive?
                 parts << "リンク切れ: #{unreachable}" if unreachable.positive?
                 parts << "裸 URL: #{bare}" if bare.positive?
-                Common.log_summary("   リンク: #{total_link} 件の問題（#{parts.join(', ')}）")
-
-                # 危険スキームの詳細を表示（セキュリティ上の重要度が高いため先頭）
-                reports.each do |report|
-                  report.link_issues.select { it.issue_type == :dangerous_scheme }.each do |issue|
-                    Common.log_warn("     #{issue.url}")
-                    Common.log_warn("        #{issue.message}")
-                    Common.log_warn("        参照元: #{issue.filename}:#{issue.line_number}")
-                  end
-                end
-
-                # リンク切れの詳細を表示
-                reports.each do |report|
-                  report.link_issues.select { it.issue_type == :unreachable }.each do |issue|
-                    Common.log_error("     #{issue.url} → #{issue.message}")
-                    Common.log_error("        参照元: #{issue.filename}:#{issue.line_number}")
-                  end
-                end
+                detail_lines << "リンク: #{total_link} 件の問題（#{parts.join(', ')}）"
               end
 
               config = resolve_config
-              Common.log_summary('   外部URL到達性チェック: スキップ（--verify-links で有効化）') unless config[:verify_external_links]
+              detail_lines << '外部URL到達性チェック: スキップ（--verify-links で有効化）' unless config[:verify_external_links]
+
+              Common.log_summary('リンク・画像検証の結果:', detail: detail_lines.join("\n"))
+
+              # --- 危険スキームの詳細（セキュリティ上の重要度が高いため先頭）---
+              reports.each do |report|
+                report.link_issues.select { it.issue_type == :dangerous_scheme }.each do |issue|
+                  Common.log_warn(
+                    "#{issue.filename}:#{issue.line_number} - 危険なスキームを検出しました",
+                    detail: "URL: #{issue.url}\n#{issue.message}"
+                  )
+                end
+              end
+
+              # --- リンク切れの詳細 ---
+              reports.each do |report|
+                report.link_issues.select { it.issue_type == :unreachable }.each do |issue|
+                  Common.log_error(
+                    "#{issue.filename}:#{issue.line_number} - リンク切れを検出しました",
+                    detail: "URL: #{issue.url} → #{issue.message}"
+                  )
+                end
+              end
             end
 
             # 検証が有効か判定する
@@ -328,9 +333,10 @@ module Vivlio
             # 危険スキーム検出 issue を生成しつつ警告ログを出力する
             def build_dangerous_issue(filename, line_number, url)
               scheme_label = url.match?(/\Afile:/i) ? 'file://' : 'javascript:'
-              Common.log_warn("#{filename}:#{line_number} - 危険なスキームを検出しました（#{scheme_label}）")
-              Common.log_warn("  URL: #{url}")
-              Common.log_warn('  → ローカルファイル漏洩 / スクリプト注入のリスクがあります。')
+              Common.log_warn(
+                "#{filename}:#{line_number} - 危険なスキームを検出しました（#{scheme_label}）",
+                detail: "URL: #{url}\n→ ローカルファイル漏洩 / スクリプト注入のリスクがあります。"
+              )
 
               LinkIssue.new(
                 filename:,
@@ -380,8 +386,10 @@ module Vivlio
                     message: '裸 URL です（リンク記法 [テキスト](URL) の使用を推奨します）'
                   )
 
-                  Common.log_warn("#{filename}:#{line_number} - 裸 URL を検出しました")
-                  Common.log_warn("  URL: #{url}")
+                  Common.log_warn(
+                    "#{filename}:#{line_number} - 裸 URL を検出しました",
+                    detail: "URL: #{url}"
+                  )
                 end
               end
 

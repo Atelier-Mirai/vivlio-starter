@@ -93,7 +93,7 @@ module Vivlio
           include Generators
 
           ITERATIONS = 100
-          FORMAT_PATTERN = /⚠️.+:\d+ - 画像 '.+' が見つかりません/
+          FORMAT_PATTERN = /🟡 .+:\d+ - 画像 '.+' が見つかりません/
 
           def test_image_warning_message_matches_expected_format
             # Generator: ランダムなファイル名・行番号・画像名
@@ -104,7 +104,7 @@ module Vivlio
               image_name  = gen_image_name
 
               # ImagePathNormalizer が出力する警告メッセージを模倣
-              message = "⚠️  #{filename}:#{line_number} - 画像 '#{image_name}' が見つかりません（代替画像を使用します）"
+              message = "🟡 #{filename}:#{line_number} - 画像 '#{image_name}' が見つかりません（代替画像を使用します）"
 
               assert_match FORMAT_PATTERN, message,
                            "Iteration #{i}: 画像警告フォーマットが一致しません: #{message}"
@@ -120,7 +120,7 @@ module Vivlio
           include Generators
 
           ITERATIONS = 100
-          FORMAT_PATTERN = /❌  .+:\d+ - ソースコード '.+' が見つかりません/
+          FORMAT_PATTERN = /🔴 .+:\d+ - ソースコード '.+' が見つかりません/
 
           def test_code_include_error_message_matches_expected_format
             # Generator: ランダムなファイル名・行番号・コードファイル名
@@ -131,7 +131,7 @@ module Vivlio
               code_name   = gen_image_name
 
               # MarkdownTransformer が出力するエラーメッセージを模倣
-              message = "❌  #{filename}:#{line_number} - ソースコード '#{code_name}' が見つかりません"
+              message = "🔴 #{filename}:#{line_number} - ソースコード '#{code_name}' が見つかりません"
 
               assert_match FORMAT_PATTERN, message,
                            "Iteration #{i}: コードインクルードエラーフォーマットが一致しません: #{message}"
@@ -147,17 +147,19 @@ module Vivlio
           include Generators
 
           ITERATIONS = 100
-          FORMAT_PATTERN = /❌ QueryStream 展開エラー: .+/
+          # 新形式: 🔴 {location} - 雛形ファイル '{name}' が見つかりません（記法: ...）
+          FORMAT_PATTERN = /🔴 .+:\d+ - .+が見つかりません/
 
           def test_querystream_error_message_matches_expected_format
-            # Generator: ランダムな詳細メッセージ
+            # Generator: ランダムなファイル名・行番号・テンプレート名
             # Assert: メッセージが期待フォーマットにマッチ
             ITERATIONS.times do |i|
-              detail = "テンプレートファイルが見つかりません: templates/_#{gen_string}.md"
+              filename    = gen_filename
+              line_number = gen_line_number
+              tmpl_name   = "_#{gen_string}.md"
 
               # DataRender が出力するエラーメッセージを模倣
-              # Common.log_error が ❌ プレフィックスを 1 回だけ付与する。
-              message = "❌ QueryStream 展開エラー: #{detail}"
+              message = "🔴 #{filename}:#{line_number} - 雛形ファイル '#{tmpl_name}' が見つかりません（記法: = books | :full）"
 
               assert_match FORMAT_PATTERN, message,
                            "Iteration #{i}: QueryStream エラーフォーマットが一致しません: #{message}"
@@ -173,7 +175,7 @@ module Vivlio
           include Generators
 
           ITERATIONS = 100
-          FORMAT_PATTERN = /⚠️.+:\d+ - 未定義のラベルID: .+/
+          FORMAT_PATTERN = /🟡.+:\d+ - 未定義のラベルID: .+/
 
           def test_cross_reference_warning_message_matches_expected_format
             # Generator: ランダムなファイル名・行番号・ラベルID
@@ -184,7 +186,7 @@ module Vivlio
               label_id    = "@#{gen_string}"
 
               # CrossReferenceProcessor が出力する警告メッセージを模倣
-              message = "⚠️     - contents/#{filename}:#{line_number} - 未定義のラベルID: #{label_id}"
+              message = "🟡 contents/#{filename}:#{line_number} - 未定義のラベルID: #{label_id}"
 
               assert_match FORMAT_PATTERN, message,
                            "Iteration #{i}: クロスリファレンス警告フォーマットが一致しません: #{message}"
