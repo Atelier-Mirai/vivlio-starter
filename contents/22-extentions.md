@@ -1,7 +1,7 @@
 # 拡張記法リファレンス
 
 :::{.chapter-lead}
-Vivlio Starter では、標準 Markdown に加えて、技術書制作に特化した独自の拡張記法を利用できます。本章では、コラム・注記・レイアウト・表など、よく使う拡張コンテナを一覧で解説します。いずれも `:::` で囲むだけで使えます。
+Vivlio Starter では、標準 Markdown に加えて、技術書制作に特化した独自の拡張記法を利用できます。本章では、コラム・注記・レイアウト・表・会話文・装飾など、よく使う拡張記法を一覧で解説します。
 :::
 
 ## 拡張記法の基本
@@ -15,6 +15,14 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 ```
 
 `:::` の開始行にクラス名を指定するだけで、対応するスタイルが自動的に適用されます。
+
+`@div:CLASS` … `@divend` の短縮形でも同じ結果になります。
+
+```markdown
+@div:note
+注釈をここに書きます。
+@divend
+```
 
 ## リード文
 
@@ -116,6 +124,16 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 `--force` オプションは既存ファイルを上書きします。実行前にバックアップを取ってください。
 :::
 
+### 編集者コメント `@comment ... @commend`
+
+推敲中のメモを本文に残したいときに使います。`<span class="hen-comment">` に変換されるので、CSS で色を付けることができます。
+
+```markdown
+本機能は @comment:要確認：仕様書 §3 @commend 次回リリース予定です。
+```
+
+本機能は @comment:要確認：仕様書 §3 @commend 次回リリース予定です。
+
 ## 書籍紹介カード
 
 ### `.book-card` — 参考書籍カード
@@ -124,12 +142,19 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 
 ```markdown
 :::{.book-card}
-![](images/ruby.webp)
-**Ruby入門**
-初心者でも楽しみながらプログラミングを学べる一冊。
+![](vivlio_starter_guidebook.webp)
+**はじめての技術書づくり**
+はじめて技術書を書く方にお勧め。電子書籍執筆システム Vivlio Starter の実践ガイドです。
 :::
 ```
 
+実行結果は次のようになります。{.aki}
+
+:::{.book-card}
+![](vivlio_starter_guidebook.webp)
+**はじめての技術書づくり**
+はじめて技術書を書く方にお勧め。電子書籍執筆システム Vivlio Starter の実践ガイドです。
+:::
 
 
 ## 画像レイアウト
@@ -159,9 +184,9 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 
 ```markdown
 :::{.pictures}
-![alt](images/a.webp)
-![alt](images/b.webp)
-![alt](images/c.webp)
+![alt](a.webp)
+![alt](b.webp)
+![alt](c.webp)
 :::
 ```
 
@@ -171,8 +196,8 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 
 ```markdown
 :::{.image-group}
-![before](images/before.webp){width=40%}
-![after](images/after.webp)
+![before](before.webp){width=40%}
+![after](after.webp)
 :::
 ```
 
@@ -208,6 +233,14 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 ![](vs_logo_outline.svg){width=20%}
 :::
 ```
+
+実行例は次のようになります。
+
+:::{.sideimage-right}
+説明文がここに入ります。画像の左側に表示されます。
+
+![](vs_logo_outline.svg){width=20%}
+:::
 
 ### 余白の調整（`.gap-s` / `.gap-m` / `.gap-l`）
 
@@ -352,13 +385,159 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 `.text-right` は `text-align: right` のみを適用します。ブロックの幅は変わらないため、段落テキストや表のセルなど、幅を維持したまま文字だけ右寄せにしたい場面に適しています。
 :::
 
-## 参照・インクルード
+## インライン装飾
 
-### 相互参照（クロスリファレンス）
+### 会話文 【先生】【生徒】
+
+対話形式のページを書くときは、行頭に **【先生ラベル】** または **【生徒ラベル】** を置きます。`ラベル` 部分はクラス名としてそのまま CSS に渡るので、キャラクターごとにスタイルを切り替えられます。
+
+```markdown
+【先生A】Vivlio Starter の拡張記法は便利だよ。
+
+【生徒B】自分でカスタマイズもできるんですね！
+```
+
+【先生A】Vivlio Starter の拡張記法は便利だよ。
+
+【生徒B】自分でカスタマイズもできるんですね！
+
+### キーボード入力 `〘 〙`
+
+半角の `<kbd>` を毎回書くのは手間なので、全角括弧で囲むだけで `<kbd>` タグに変換されます。
+
+```markdown
+保存は 〘Ctrl〙 + 〘S〙 で行います。
+```
+
+保存は 〘Ctrl〙 + 〘S〙 で行います。
+
+## リスト装飾
+
+### ▶ で始まる「青コメ」
+
+箇条書きの行頭を `▶` にすると、その `<li>` に `aokome` クラスが付きます。補足説明のリストを視覚的に区別したいときに便利です。
+
+```markdown
+- ▶ ここはポイント解説
+- ▶ ここは補足
+```
+
+- ▶ ここはポイント解説
+- ▶ ここは補足
+
+### ❶❷❸ で始まる「赤コメ」
+
+囲み数字（`❶`〜`❿`、`⓫`〜`⓴`）で始まる項目は `akakome` クラスになり、番号部分が `<span>` で囲まれるのでフォントや色を個別に装飾できます。
+
+```markdown
+- ❶ 最初に設定ファイルを開く
+- ❷ `post_replace_list.yml` を編集する
+- ❸ `vs build` で反映を確認する
+```
+
+- ❶ 最初に設定ファイルを開く
+- ❷ `post_replace_list.yml` を編集する
+- ❸ `vs build` で反映を確認する
+
+## ソースコード
+
+Vivlio Starter では、コードブロックに対して自動的にシンタックスハイライトと行番号が付与されます。外部ファイルからのコード取り込みや、コメントの強調表示も可能です。
+
+### シンタックスハイライト
+
+コードブロックに言語名を指定すると、Prism.js によるシンタックスハイライトが自動的に適用されます（言語名がない場合には自動推測されます）。
+
+````markdown
+```ruby
+def hello(name)
+  puts "Hello, #{name}!"
+end
+```
+````
+
+対応する主な言語は次の通りです。
+
+| 言語指定 | 言語 |
+|---|---|
+| `ruby` | Ruby |
+| `javascript`, `js` | JavaScript |
+| `typescript`, `ts` | TypeScript |
+| `python` | Python |
+| `html` | HTML |
+| `css` | CSS |
+| `sql` | SQL |
+| `yaml` | YAML |
+| `bash`, `sh` | シェルスクリプト |
+| `json` | JSON |
+| `c`, `cpp` | C / C++ |
+| `java` | Java |
+| `go` | Go |
+| `rust` | Rust |
+| `markdown` | Markdown |
+
+### 行番号
+
+すべてのコードブロックに行番号が自動で付与されます。ビルド時に Prism.js の `line-numbers` プラグインが適用されるため、原稿側での設定は不要です。
+
+### コードインクルード
+
+`codes/` ディレクトリに配置した外部ファイルからコードを読み込めます。ファイルの拡張子から言語が自動判定されます。
+
+````markdown
+ファイル全体を取り込む:
+```include:sample.rb```
+
+範囲を指定して取り込む（10〜20行目）:
+```include:sample.rb:10-20```
+````
+
+### コメントの強調 `[!]`
+
+コードブロック内のコメントに `[!]` マーカーを書くと、そのコメント行が赤色で強調されます。元のコメント記号は保持され、`[!]` マーカーだけが取り除かれます。読者に注目してほしい行を示すのに便利です。
+
+| 書き方 | 効果 |
+| :--- | :--- |
+| `# [!] コメント` | `# コメント`（赤色） |
+| `// [!] コメント` | `// コメント`（赤色） |
+| `-- [!] コメント` | `-- コメント`（赤色） |
+| `/* [!] コメント */` | `/* コメント */`（赤色） |
+
+`[!]`を使った例を次に示します。
+````markdown
+```ruby
+def greet(name)
+  puts "Hello, #{name}!"   # [!] この行が強調される
+  puts "Hello, #{name}!"   # 通常のコメント
+end
+```
+````
+
+````markdown
+```sql
+SELECT * FROM users WHERE id = 1; -- [!] この行が強調される
+SELECT * FROM users WHERE id = 2; -- 通常のコメント
+```
+````
+
+実行結果は次のようになります。
+
+```ruby
+def greet(name)
+  puts "Hello, #{name}!"   # [!] この行が強調される
+  puts "Hello, #{name}!"   # 通常のコメント
+end
+```
+
+```sql
+SELECT * FROM users WHERE id = 1; -- [!] この行が強調される
+SELECT * FROM users WHERE id = 2; -- 通常のコメント
+```
+
+## 相互参照（クロスリファレンス）
 
 図・表・コードブロックにラベルを付け、本文中から参照できます。
 
-#### 定義側
+### 定義側
 
 ````markdown
 **サンプルコード @sample-code**
@@ -375,27 +554,12 @@ end
 | B | 200 |
 ````
 
-#### 参照側
+### 参照側
 
 ```markdown
 @sample-code のコードを参照してください。
 @data-table にデータをまとめました。
 ```
-
-### コードインクルード
-
-外部ファイルからコードを読み込みます。
-
-````markdown
-ファイル全体:
-```include:sample.rb```
-
-範囲指定:
-```include:sample.rb:10-20```
-
-言語指定:
-```include:sample.rb:ruby```
-````
 
 ## 索引・用語集
 
@@ -435,7 +599,9 @@ vs index:apply
 vs build
 ```
 
-## ルビ（振り仮名）
+## テキスト記法
+
+### ルビ（振り仮名）
 
 日本語の読み仮名をルビとして指定できます。
 
@@ -444,7 +610,7 @@ vs build
 {光電効果|こうでんこうか}の研究でノーベル賞を受賞しています。
 ```
 
-## 定義リスト
+### 定義リスト
 
 用語とその説明を箇条書き形式で記述します。
 
@@ -498,8 +664,6 @@ vs build
 
 ## 余白・改ページ
 
-拡張コンテナではありませんが、よく使うユーティリティです。
-
 ### `.aki` / `.aki2` — 段落後の余白
 
 段落の末尾にクラスを付けると、その段落の下に余白を追加します。図や表の前後など、少し間を空けたいときに使います。
@@ -514,6 +678,43 @@ vs build
 |---|---|
 | `.aki` | 本文1行分 |
 | `.aki2` | 本文2行分 |
+
+### 余白の微調整 `@nega` / `@posi`
+
+段落の上下に mm 単位で余白を差し込みます。図版とキャプションの間隔を詰めたり、節の直後に少し空けたりするのに便利です。
+
+```markdown
+本文の流れ。
+
+@posi:10
+
+次の段落を 10mm 下げて始めたい。
+```
+
+本文の流れ。
+
+@posi:10
+
+次の段落を 10mm 下げて始めたい。
+
+| 記法 | 用途 |
+| :--- | :--- |
+| `@nega:N` | 上方向に N mm 詰める |
+| `@posi:N` | 下方向に N mm 空ける |
+
+### 回り込みの解除 `@clear`
+
+サイドイメージの直後で本文の回り込みを止めたいときに使います。
+
+```markdown
+:::{.sideimage-right}
+説明文と画像。
+:::
+
+@clear
+
+次の節はここから新しい行で始まる。
+```
 
 ### 改ページ・空行
 
@@ -536,3 +737,16 @@ vs build
 内容がここに入ります。
 :::
 ```
+
+:::{.column}
+**独自の拡張記法を追加する**
+
+本章で紹介した記法の一部は `config/post_replace_list.yml` という置換ルールで実現されています。このファイルに正規表現ベースのルールを 1 行追加するだけで、自分だけの記法を作ることもできます。
+
+```yaml
+- f: "@mark:([^@]+)@markend"
+  r: <span class="marker-yellow">$1</span>
+```
+
+あとは `stylesheets/` 側で `.marker-yellow { background: #ffeb3b; }` のように定義すれば、原稿中で `@mark:重要@markend` と書くだけで蛍光ペン風の装飾が反映されます。ルールは上から順に適用されるため、既存ルールとの干渉に注意してください。
+:::

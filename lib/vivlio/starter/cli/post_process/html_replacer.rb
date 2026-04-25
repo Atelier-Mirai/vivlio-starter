@@ -88,7 +88,20 @@ module Vivlio
           def apply_rule(content, regex, replacement_str, pattern_str)
             case rule_mode(pattern_str)
             when :code_aware
-              replace_with_captures(content, regex, replacement_str)
+              # language-markdown 内のネストされたコードブロックは退避して
+              # [!] 等の強調ルールが記法説明用コードに適用されるのを防ぐ
+              md_blocks = []
+              protected = content.gsub(%r{<pre\b[^>]*\bclass="[^"]*\blanguage-markdown\b[^"]*"[^>]*>.*?</pre>}m) do |block|
+                md_blocks << block
+                "#{PRE_PLACEHOLDER_PREFIX}MD#{md_blocks.size - 1}#{PLACEHOLDER_SUFFIX}"
+              end
+
+              result, applied = replace_with_captures(protected, regex, replacement_str)
+
+              result = result.gsub(/#{Regexp.escape(PRE_PLACEHOLDER_PREFIX)}MD(\d+)#{Regexp.escape(PLACEHOLDER_SUFFIX)}/) do
+                md_blocks[Regexp.last_match(1).to_i]
+              end
+              [result, applied]
             when :text_only
               with_text_scope_protected(content) do |stashed|
                 replace_with_captures(stashed, regex, replacement_str)
