@@ -660,12 +660,18 @@ module Vivlio
           return if footnote_refs.empty?
 
           renumber_map = build_renumber_map(footnote_refs)
-          return unless needs_renumbering?(renumber_map)
 
-          update_footnote_refs(footnote_refs)
-          update_footnote_definitions(doc, renumber_map)
+          if needs_renumbering?(renumber_map)
+            update_footnote_refs(footnote_refs)
+            update_footnote_definitions(doc, renumber_map)
+            sort_footnotes_in_sections(doc)
+          end
+
+          # footnote-anchor span は再番号付けの有無に関わらず常に削除する
           remove_footnote_anchors(doc)
-          sort_footnotes_in_sections(doc)
+
+          # body 直下の aside.page-footnote-print を最後の section 末尾に移動する
+          move_body_asides_to_last_section!(doc)
 
           HtmlParser.save_html_document(html_file, doc)
           Common.log_success("#{html_file}: 脚注を出現順に再番号付けしました")
@@ -724,10 +730,19 @@ module Vivlio
         module_function :update_footnote_ref_text
 
         def update_footnote_definitions(doc, renumber_map)
+          # IDの衝突を避けるため、2段階で更新する
+          # Phase 1: 全定義を一時ID（tmp_fnN）に変更
+          # ※ update_footnote_refs が先に fnref ID を更新済みのため fnref は対象外
+          renumber_map.each_key do |old_fn_id|
+            tmp_id = "tmp_#{old_fn_id}"
+            doc.at_css("aside##{old_fn_id}")&.tap { |n| n['id'] = tmp_id }
+            doc.at_css("span##{old_fn_id}")&.tap { |n| n['id'] = tmp_id }
+          end
+          # Phase 2: 一時IDから最終IDへ変更
           renumber_map.each do |old_fn_id, new_number|
-            update_aside_footnote(doc, old_fn_id, new_number)
-            update_inline_footnote(doc, old_fn_id, new_number)
-            update_fnref_link(doc, old_fn_id, new_number)
+            tmp_id = "tmp_#{old_fn_id}"
+            update_aside_footnote(doc, tmp_id, new_number)
+            update_inline_footnote(doc, tmp_id, new_number)
           end
         end
         module_function :update_footnote_definitions
@@ -755,11 +770,14 @@ module Vivlio
         module_function :update_fnref_link
 
         def remove_footnote_anchors(doc)
+          # 旧形式: <span class="footnote-anchor"> を削除
           doc.css('span.footnote-anchor').each do |anchor|
             parent = anchor.parent
             anchor.remove
             parent.remove if parent&.name == 'p' && parent.content.strip.empty?
           end
+          # 新形式: <p class="footnote-anchor"> を削除（VFM が {.footnote-anchor} から生成）
+          doc.css('p.footnote-anchor').each(&:remove)
         end
         module_function :remove_footnote_anchors
 
@@ -789,6 +807,35 @@ module Vivlio
           marker.remove
         end
         module_function :reorder_asides
+
+        # body 直下の aside.page-footnote-print を対応する参照の section 末尾に移動する
+        # append_unused_footnotes_to_body! が body 末尾に追加した aside を
+        # 適切な位置に配置し直す
+        def move_body_asides_to_last_section!(doc)
+          body = doc.at_css('body')
+          return unless body
+
+          body_asides = body.css('> aside.page-footnote-print').to_a
+          return if body_asides.empty?
+
+          body_asides.each do |aside|
+            fn_id = aside['id']
+            next unless fn_id
+
+            # この aside を参照している <a class="footnote-ref"> を探す
+            ref = doc.at_css("a.footnote-ref[href='##{fn_id}']")
+            target_section = ref&.ancestors('section')&.first
+
+            # 参照が見つからない場合は最後の section に移動
+            target_section ||= body.css('section').to_a.last
+            next unless target_section
+
+            aside.remove
+            target_section.add_child("\n")
+            target_section.add_child(aside)
+          end
+        end
+        module_function :move_body_asides_to_last_section!
 
         # sideimage コンテナ内の figure/img から width 指定（%）を取り出し、
         # 0.0〜1.0 の範囲の比率として返す

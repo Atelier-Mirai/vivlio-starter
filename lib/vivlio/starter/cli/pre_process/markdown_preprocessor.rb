@@ -292,9 +292,10 @@ module Vivlio
 
           # sideimage などのコンテナ内の脚注参照を VFM が認識できるように露出する
           # VFM は :::{.class} コンテナ内の [^id] を認識しないため、
-          # コンテナ外に非表示の参照を追加して脚注定義を生成させる
+          # コンテナ外に非表示の <span> を追加して脚注定義を生成させる。
+          # 脚注定義の直前に一括挿入し、番号の整合は後処理の
+          # renumber_footnotes_by_document_order! に委ねる。
           def expose_container_footnotes!
-            # コンテナ内の脚注参照を収集
             container_footnotes = []
             in_container = false
 
@@ -304,7 +305,6 @@ module Vivlio
               elsif line.strip == ':::'
                 in_container = false
               elsif in_container
-                # [^urlN] または [^N] パターンを検出
                 line.scan(/\[\^(url\d+|\d+)\]/).each do |match|
                   container_footnotes << match[0]
                 end
@@ -313,12 +313,9 @@ module Vivlio
 
             return if container_footnotes.empty?
 
-            # 脚注定義の直前に非表示の参照を追加
-            # これにより VFM が脚注定義を認識して <aside> を生成する
             hidden_refs = container_footnotes.uniq.map { |id| "[^#{id}]" }.join
             hidden_span = "<span class=\"footnote-anchor\" style=\"display:none\">#{hidden_refs}</span>\n\n"
 
-            # 最初の脚注定義の直前に挿入
             return unless context.content.match?(/^\[\^url\d+\]:/m)
 
             context.content = context.content.sub(/^(\[\^url\d+\]:)/m, "#{hidden_span}\\1")

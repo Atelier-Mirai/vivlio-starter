@@ -217,15 +217,22 @@ module Vivlio
             MarkdownUtils.escape_inline_code_html(line)
           end
 
-          # ```include:path[:start-end]``` を検出し、codes/ または絶対パスから読込
+          # ```include:path[:start-end]``` を検出し、codes/ または絶対パスから読込。
+          # マークダウンのコードブロック内に記述された include 記法は
+          # 記法の説明例であるためスキップする。
           # @param content [String] 処理対象の Markdown テキスト
           # @param source_filename [String, nil] エラーメッセージに表示するソースファイル名
           def process_code_include(content, source_filename: nil)
             matches_found = 0
-            # include 記法が何行目にあるかを特定するため、行ごとに処理する
             line_number_map = build_line_number_map(content)
+            skippable_lines = lines_inside_code_blocks(content)
 
             content.gsub!(/```include:([^:`\s]+)(?::(\d+)-(\d+))?\s*```/) do |match|
+              # コードブロック内の include 記法はスキップ（記法説明用の例文）
+              if (ln = line_number_map[match]) && skippable_lines.include?(ln)
+                next match
+              end
+
               matches_found += 1
               original_path = ::Regexp.last_match(1)
               start_line = ::Regexp.last_match(2)&.to_i
@@ -258,7 +265,6 @@ module Vivlio
 
                 replacement
               else
-                # 画像警告と同じ形式で、ソースファイル名・行番号・コードファイル名を表示する
                 code_name = File.basename(original_path)
                 if source_filename && (ln = line_number_map[match])
                   Common.log_error(
@@ -292,6 +298,37 @@ module Vivlio
             map
           end
           private_class_method :build_line_number_map
+
+          # マークダウンのコードブロック内にある行番号の Set を返す。
+          # ```include: で始まる行はコードブロックの開閉トグルとみなさない
+          # （実際の include 記法であるため）。
+          def lines_inside_code_blocks(content)
+            inside = Set.new
+            in_code = false
+            fence_marker = nil
+
+            content.lines.each_with_index do |line, idx|
+              stripped = line.lstrip
+              if (m = stripped.match(/\A(`{3,})/)) && !stripped.start_with?('```include:')
+                fence = m[1]
+                if in_code
+                  if fence.length >= fence_marker.length
+                    in_code = false
+                    fence_marker = nil
+                  end
+                else
+                  in_code = true
+                  fence_marker = fence
+                end
+                next
+              end
+
+              inside << (idx + 1) if in_code
+            end
+
+            inside
+          end
+          private_class_method :lines_inside_code_blocks
         end
       end
     end

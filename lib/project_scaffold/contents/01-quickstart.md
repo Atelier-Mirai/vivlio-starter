@@ -196,8 +196,6 @@ vs build 10-awesome
 vs build
 ```
 
----
-
 :::{.text-right}
 **さあ、あなたの技術書を書き始めましょう！**
 :::
