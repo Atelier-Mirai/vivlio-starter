@@ -8,7 +8,7 @@ Vivlio Starter の `vs import` コマンドを使うと、Re:VIEW Starter プロ
 
 ---
 
-## 1. 事前チェック
+## 事前チェック
 
 ### 必要ツール
 
@@ -34,7 +34,7 @@ Vivlio Starter の `vs import` コマンドを使うと、Re:VIEW Starter プロ
 
 ---
 
-## 2. 実行コマンド
+## 実行コマンド
 
 ```zsh
 vs new mybook
@@ -47,7 +47,7 @@ vs import --force ../starter_project    # 確認を省略したい場合
 
 ---
 
-## 3. 何が起こるか（処理フロー）
+## 何が起こるか（処理フロー）
 
 1. **クリーンアップ**  
    - Vivlio 側の `contents/`, `images/`, `codes/` を削除して作り直します。
@@ -74,7 +74,7 @@ vs import --force ../starter_project    # 確認を省略したい場合
 
 ---
 
-## 4. 実行中のログ例
+## 実行中のログ例
 
 ```
 [Step 1] 既存ディレクトリを削除します
@@ -96,7 +96,7 @@ vs import --force ../starter_project    # 確認を省略したい場合
 
 ---
 
-## 5. オプションと注意点
+## オプションと注意点
 
 | オプション | 説明 |
 | --- | --- |
@@ -111,7 +111,7 @@ vs import --force ../starter_project    # 確認を省略したい場合
 
 ---
 
-## 6. インポート後の確認リスト
+## インポート後の確認リスト
 
 1. `contents/` に Markdown が揃っているか。
 2. `.webp` 以外の画像が残っていないか。
@@ -121,7 +121,7 @@ vs import --force ../starter_project    # 確認を省略したい場合
 
 ---
 
-## 7. トラブルシューティング
+## トラブルシューティング
 
 | 症状 | 原因 | 解決策 |
 | --- | --- | --- |
