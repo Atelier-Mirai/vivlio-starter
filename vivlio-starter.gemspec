@@ -8,8 +8,8 @@ Gem::Specification.new do |spec|
   spec.authors       = ['Atelier Mirai']
   spec.email         = ['contact@atelier-mirai.net']
 
-  spec.summary       = 'Vivlio Starter: Build pipeline and CLI for Vivliostyle-based books'
-  spec.description   = 'Provides Rake tasks and a CLI to preprocess, convert, and build books using Vivliostyle.'
+  spec.summary       = 'Markdown で書いた原稿から高品質な PDF・EPUB を生成する書籍制作 CLI'
+  spec.description   = 'CSS 組版エンジン Vivliostyle をコアに据え、前処理（QueryStream 展開・画像最適化・クロスリファレンス）からビルド、後処理（PDF しおり・表紙結合・圧縮）まで、執筆から入稿に至る工程を自動化する CLI ツールです。'
   spec.homepage      = 'https://github.com/Atelier-Mirai/vivlio-starter'
   spec.license       = 'MIT'
 
