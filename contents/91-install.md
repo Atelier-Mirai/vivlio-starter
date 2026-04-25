@@ -68,8 +68,6 @@ Xcode Command Line Tools と Homebrew のインストール時のみ確認プロ
 
 **自動インストールは macOS + Homebrew 環境でのみ対応しています。** Linux や Windows では以降の手動インストール手順を参照してください。
 
----
-
 ## 手動インストール
 
 ### macOS
@@ -145,8 +143,6 @@ vs build
 
 `mybook_v0.1.0.pdf` が生成されれば成功です。
 
----
-
 ### Linux / WSL（Ubuntu / Debian の例）
 
 1) 必要パッケージ
@@ -194,8 +190,6 @@ vs build
 
 ヘッドレス環境では PDF ビューアーの自動起動は行われません。`mybook_v0.1.0.pdf` を任意のビューアーで確認してください。
 
----
-
 ### Windows
 
 WSL2 + Ubuntu の利用を推奨します（上記 Linux / WSL の手順を参照）。どうしてもネイティブ環境で行う場合の最小手順です。
@@ -213,18 +207,11 @@ Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 iwr -useb get.scoop.sh | iex
 scoop bucket add main
 scoop install git ruby nodejs-lts qpdf ghostscript imagemagick poppler
-```
-
-共通の続き：
-
-```powershell
 npm install -g @vivliostyle/cli
 gem install vivlio-starter
 vivliostyle --version
 vs --version
 ```
-
----
 
 ## トラブルシューティング
 
@@ -245,8 +232,6 @@ vs --version
 
 ビルドや lint が突然失敗したときは、`vs doctor` で環境を診断するのが近道です。不足ツールが一覧表示されます。`vs doctor --fix` で自動修復も試みられます。詳細は「環境診断（vs doctor）」の章を参照してください。
 :::
-
----
 
 ## CI（GitHub Actions）でのビルド例
 

@@ -479,20 +479,27 @@ module Vivlio
           end
         end
 
-        # 付録の章番号を catalog.yml 内の順番に基づいてレター（a〜i）に変換する。
-        # 例: catalog に 91, 92, 93 が登録されている場合、91→a, 92→b, 93→c
-        def appendix_number_to_letter(num)
+        # 付録の章番号をビルド対象の付録の順番に基づいてレター（a〜i）に変換する。
+        # entries が渡された場合はその中の付録の順番を使い、
+        # 渡されない場合は catalog.yml の付録一覧から順番を取得する。
+        # @param num [Integer, String] 付録の章番号（90〜98）
+        # @param entries [Array, nil] ビルド対象の Entry 配列（単章ビルド時に渡す）
+        def appendix_number_to_letter(num, entries: nil)
           n = num.to_i
           return nil unless n.between?(90, 98)
 
-          # catalog.yml の付録一覧から順番を取得
-          resolver = TokenResolver::Resolver.new
-          appendix_entries = resolver.resolve.select { it.kind == :appendix }.sort_by { it.number.to_i }
+          # ビルド対象のエントリが渡された場合はその中の付録の順番を使う
+          appendix_entries = if entries
+                               entries.select { it.kind == :appendix }.sort_by { it.number.to_i }
+                             else
+                               resolver = TokenResolver::Resolver.new
+                               resolver.resolve.select { it.kind == :appendix }.sort_by { it.number.to_i }
+                             end
 
           index = appendix_entries.index { it.number.to_i == n }
           return ('a'..'i').to_a[index] if index
 
-          # catalog に未登録の場合は章番号から直接計算（フォールバック）
+          # 見つからない場合は章番号から直接計算（フォールバック）
           ('a'..'i').to_a[n - 90]
         rescue StandardError
           nil

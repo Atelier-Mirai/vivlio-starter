@@ -171,9 +171,8 @@ module Vivlio
                                         resolve_main_chapter_display_number(chapter_token,
                                                                             chapter_number_i)
                                       end,
-              appendix_letter: if chapter_number_i&.between?(90,
-                                                             98)
-                                 Common.appendix_number_to_letter(chapter_number_i)&.upcase
+              appendix_letter: if chapter_number_i&.between?(90, 98)
+                                 resolve_appendix_letter(chapter_token, chapter_number_i)
                                end,
               process_headings: %i[chapter appendix].include?(entry.kind)
             }
@@ -349,6 +348,23 @@ module Vivlio
             end
 
             chapter_number_i
+          end
+
+          # 付録のレター（A/B/C...）をビルド対象の付録の順番に基づいて解決する
+          def resolve_appendix_letter(chapter_token, chapter_number_i)
+            override = chapter_tokens_override
+            if override && !override.empty?
+              # 単章/選択ビルド: ビルド対象の付録トークンから Entry を構築
+              resolver = TokenResolver::Resolver.new
+              entries = override.filter_map do |token|
+                entry = resolver.resolve_file(token)
+                entry if entry&.kind == :appendix
+              end
+              Common.appendix_number_to_letter(chapter_number_i, entries: entries)&.upcase
+            else
+              # フルビルド: catalog.yml の全付録から順番を取得
+              Common.appendix_number_to_letter(chapter_number_i)&.upcase
+            end
           end
 
           # メイン章の順序を取得
