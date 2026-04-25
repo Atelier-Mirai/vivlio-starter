@@ -74,7 +74,16 @@ module Vivlio
 
             # まずコードフェンスブロック全体を退避（インラインコードより先に処理）
             # CommonMark に合わせて先頭 0-3 スペースのインデントも許容する。
-            protected_text = text.to_s.gsub(/^ {0,3}(`{3,}|~{3,}).*?^ {0,3}\1\s*$/m, &alloc)
+            # ```include: で始まる行はインクルード記法であり、フェンスブロックの
+            # 開始ではないため除外する。
+            protected_text = text.to_s.gsub(/^ {0,3}(`{3,}|~{3,}).*?^ {0,3}\1\s*$/m) do |block|
+              # ```include: で始まる行はフェンスブロックではなくインクルード記法
+              if block.match?(/\A\s*`{3,}include:/)
+                block
+              else
+                alloc.call(block)
+              end
+            end
 
             # 次にインラインコードスパンを退避
             # N 個の連続バッククォート同士の対を 1 組として扱い、
