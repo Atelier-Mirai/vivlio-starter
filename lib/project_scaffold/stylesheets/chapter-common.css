@@ -137,11 +137,23 @@ p {
 }
 
 /* 右寄せユーティリティ */
-.text-right {
+.text-right,
+.text-right p {
   text-align: right;
+  text-indent: 0;
 }
 
-.text-right p {
+/* 中央寄せユーティリティ */
+.text-center,
+.text-center p {
+  text-align: center;
+  text-indent: 0;
+}
+
+/* 左寄せユーティリティ */
+.text-left,
+.text-left p {
+  text-align: left;
   text-indent: 0;
 }
 
@@ -338,14 +350,28 @@ p>img {
    コラム
    ------------------------------------------------------------- */
 .column {
-  width: 114mm;
-  margin-block-start: 8mm;
-  margin-inline: auto;
+  margin-block: 8mm 6mm;
   padding: 4mm;
   padding-inline: 6mm;
+  padding-block-start: 6mm;
   border: solid 0.2mm var(--color-column-border);
-  border-radius: 10px;
+  border-radius: 6px;
   background: var(--color-column-bg);
+  position: relative;
+}
+.column::before {
+  position: absolute;
+  top: -6mm;
+  left: -1px;
+  margin-top: 3mm;
+  padding: 1mm 3mm;
+  background: var(--color-column-border);
+  color: white;
+  font-size: 0.75em;
+  font-weight: bold;
+  font-family: sans-serif;
+  border-radius: 4px 0 4px 0;
+  content: "COLUMN";
 }
 
 .column h5 {
@@ -355,16 +381,59 @@ p>img {
 }
 
 .tip {
-  margin-block: 8mm 3mm;
-  margin-inline: auto;
-  padding: 3mm 4mm;
+  margin-block: 8mm 6mm;
+  padding: 4mm;
+  padding-inline: 6mm;
+  padding-block-start: 6mm;
   border-radius: 6px;
-  border: solid 0.2mm var(--color-border-weak);
-  background: var(--color-overlay);
+  border: solid 0.2mm var(--theme-accent);
+  background: white;
+  position: relative;
+}
+.tip::before {
+  position: absolute;
+  top: -6mm;
+  left: -1px;
+  margin-top: 3mm;
+  padding: 1mm 3mm;
+  background: white;
+  color: var(--theme-accent);
+  border: solid 0.2mm var(--theme-accent);
+  font-size: 0.75em;
+  font-weight: bold;
+  font-family: sans-serif;
+  border-radius: 4px 0 4px 0;
+  content: "TIP";
 }
 
 .tip p {
   text-indent: 0;
+}
+
+/* メモブロック（@div:memo ... @divend） */
+.memo {
+  margin-block: 8mm 6mm;
+  padding: 4mm;
+  padding-inline: 6mm;
+  padding-block-start: 6mm;
+  border: solid 0.2mm var(--color-column-border);
+  background: white;
+  border-radius: 6px;
+  position: relative;
+}
+.memo::before {
+  position: absolute;
+  top: -6mm;
+  left: -1px;
+  margin-top: 3mm;
+  padding: 1mm 3mm;
+  background: var(--color-column-border);
+  color: white;
+  font-size: 0.75em;
+  font-weight: bold;
+  font-family: sans-serif;
+  border-radius: 4px 0 4px 0;
+  content: "MEMO";
 }
 
 .note {

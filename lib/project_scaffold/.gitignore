@@ -1,0 +1,25 @@
+# 一般的な無視ファイル（例: node_modules/, build/ など）
+.env
+log/
+tmp/
+node_modules/
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+*.pdf
+*.epub
+
+# RubyGem artifacts
+*.gem
+pkg/*.gem
+
+# Vivlio Starter artifacts
+/.cache/
+/covers/
+!/covers/*.svg
+/entries.js
+
+# Vivliostyle build artifacts
+/.vivliostyle/
+

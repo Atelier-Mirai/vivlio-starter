@@ -19,6 +19,22 @@
 :root {
   /* テーマ・アクセント（各色で切替可能） */
   --accent-yellow:        #f0a000;
+  --accent-orange:        #ea580c;
+  --accent-red:           #dc2626;
+
+  --accent-magenta:       #e11d48;
+  --accent-purple:        #7c3aed;
+  --accent-indigo:        #4f46e5;
+
+  --accent-navy:          #1e40af;
+  --accent-blue:          #0ea5e9;
+  --accent-cyan:          #06b6d4;
+
+  --accent-teal:          #0d9488;
+  --accent-green:         #16a34a;
+  --accent-lime:          #65a30d;
+
+  /* --accent-yellow:        #f0a000;
   --accent-amber:         #f59e0b;
   --accent-orange:        #ea580c;
   --accent-peach:         #fb7185;
@@ -34,8 +50,8 @@
   --accent-teal:          #0d9488;
   --accent-mint:          #10b981;
   --accent-green:         #16a34a;
-  --accent-lime:          #65a30d;
-  --theme-accent:         var(--accent-blue); /* config/book.yml の theme.color 設定により自動更新 */
+  --accent-lime:          #65a30d; */
+  --theme-accent:         var(--accent-yellow); /* config/book.yml の theme.color 設定により自動更新 */
 
   /* カラートークン（共通） */
   --color-text:            #000;
@@ -44,8 +60,9 @@
   --color-em-underline:    var(--theme-accent);           /* 強意の下線色 */
   --color-border:          #ccc;           /* 画像など汎用枠 */
   --color-border-weak:     #ddd;           /* 引用枠など */
-  --color-column-bg:       #eef;           /* コラム背景 */
-  --color-column-border:   #8df;           /* コラム枠 */
+  --color-column-bg:       color-mix(in srgb, var(--theme-accent) 15%, white); /* コラム背景 */
+  /* コラム背景 theme-accent を白と混ぜて薄くする */
+  --color-column-border:   var(--theme-accent);           /* コラム枠 */
   --color-figure-border:   #ccc;           /* 図枠 */
   --color-overlay:         rgb(255 255 255 / 70%);
   --color-shadow:          rgb(0 0 0 / 15%);

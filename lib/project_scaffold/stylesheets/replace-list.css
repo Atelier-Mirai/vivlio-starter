@@ -76,7 +76,7 @@ li.akakome > span:first-child {
 }
 
 /* 絶対配置ガイド線の親コンテナ（@lu / @ru / @ld / @rd などの図解用） */
-.figure-guides {
+/* .figure-guides {
   position: relative;
   margin-block: 2rem;
   min-block-size: 60mm;
@@ -85,4 +85,4 @@ li.akakome > span:first-child {
   margin: 0;
   padding: 0;
   list-style: none;
-}
+} */

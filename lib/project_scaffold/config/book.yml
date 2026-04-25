@@ -30,30 +30,27 @@ book:
   # ----------------------------
   # 書籍名
   # ----------------------------
-  # main_title: 'はじめての技術書づくり'
-  # subtitle: 'Vivlio Starter 実践ガイド'
-  main_title: "{{MAIN_TITLE}}"
-  subtitle: "{{SUBTITLE}}"
-  # subtitle_style: wave  # 副題の装飾（wave | bar | none）から選択
-  subtitle_style: none  # 副題の装飾（wave | bar | none）から選択
+  main_title: 'はじめての技術書づくり'
+  subtitle: 'Vivlio Starter 実践ガイド'
+  subtitle_style: wave  # 副題の装飾（wave | bar | none）から選択
 
   # ----------------------------
   # 付帯情報（任意）
   # ----------------------------
-  series: "「技術書典20 新刊」"            # 連載名
-  release: "令和八年四月一日"     # 発行日
-  publisher: "{{PUBLISHER}}"                # 日光企画 ねこのしっぽ
-  contact: "contact@atelier-mirai.net"       # 連絡先
-  author: "{{AUTHOR}}"                  # 著者名
+  series: "「技術書典20 新刊」"        # 連載名
+  release: "令和八年四月二十六日"    # 発行日
+  publisher: "早乙女 遙香"          # 日光企画 ねこのしっぽ
+  contact: "contact@atelier-mirai.net" # 連絡先
+  author: "アトリヱ未來"            # 著者名
   language: "ja"                       # 言語
-  isbn: ''                   # 任意（独自ISBN取得の場合。Kindle は ASIN 自動割り当て）
+  isbn: ''                             # 任意（独自ISBN取得の場合。Kindle は ASIN 自動割り当て）
 
 # ========================================
 # プロジェクト情報
 # ========================================
 project:
-  name: "{{PROJECT_NAME}}"  # 出力ファイル名のベース
-  version: "0.1.0"        # 書籍のバージョン（デフォルト: 1.0.0）
+  name: "vivlio_starter"  # 出力ファイル名のベース
+  version: "1.0.0"        # 書籍のバージョン（デフォルト: 1.0.0）
 
 # ========================================
 # テーマ
@@ -62,12 +59,12 @@ theme:
   # ----------------------------
   # 装飾スタイル
   # ----------------------------
-  style: simple     # image: 画像あり / simple: 画像なし
+  style: image      # image: 画像あり / simple: 画像なし
 
   # ----------------------------
   # テーマカラー
   # ----------------------------
-  color: blue     # yellow / orange / red / magenta
+  color: yellow     # yellow / orange / red / magenta
                     # purple / indigo / navy / blue
                     # cyan / teal / green / lime から選択
                     # '#ff0000' のような HEX 記法も指定可
@@ -84,10 +81,13 @@ theme:
   # 章扉の背景画像
   # ----------------------------
   frontispiece: 
-    image: asagao
-    padding: 10mm
-    heading_width: 108mm
-    lead_width: 88mm
+    image: sakura   # suisen / ume / nanohana / sakura
+                    # suzuran / ajisai / asagao / himawari
+                    # kikyo / kosumosu / kiku / tsubaki から選択
+                    # images/内の独自画像も指定可
+    padding: 10mm         # 余白の調整
+    heading_width: 108mm  # 幅の調整
+    lead_width: 88mm      # 章リード文の幅の調整
 
   # ----------------------------
   # 節見出しの背景画像
@@ -107,19 +107,19 @@ theme:
 page:
   # プリセットを選択（page_presets.yml から）
   # 紙サイズ、余白、文字サイズ、行送りなど版面の物理的構造を一括指定
-  # use: a5_standard
-  # use: a5_airy
-  # use: a5_compact
-  # use: a5_custom
+  # use: a5_standard  # 標準
+  # use: a5_airy      # 広め
+  # use: a5_compact   # 狭め
+  # use: a5_custom    # 著者独自
 
   # use: b5_standard
   # use: b5_compact
-  use: b5_airy
+  # use: b5_airy
   # use: b5_custom
   
   # use: a4_standard
   # use: a4_airy
-  # use: a4_compact
+  use: a4_compact
   # use: a4_custom
 
 # ========================================
@@ -191,15 +191,11 @@ output:
   # ----------------------------
   # 出力フォーマット
   # ----------------------------
-  # targets: pdf # pdf / print_pdf / epub
-  # targets: pdf, print_pdf, epub
-  # targets: print_pdf
-  targets: pdf
-  # 文字列、カンマ区切り、配列すべて可
+  targets: pdf # pdf / print_pdf / epub から選択可
   # 例:
-  # targets: pdf              # 単一指定
-  # targets: pdf, print_pdf   # カンマ区切り
-  # targets: [pdf, epub]      # 配列形式
+  # targets: pdf              # 閲覧用PDFを指定
+  # targets: pdf, print_pdf   # 閲覧用PDF, 印刷所入稿用PDFを指定
+  # targets: [pdf, epub]      # 閲覧用PDF, 電子書籍EPUBを指定
   
   # ----------------------------
   # ファイル名規則
@@ -222,9 +218,9 @@ output:
   # ----------------------------
   # 表紙・裏表紙設定
   # ----------------------------
-  cover: master
-  # cover: light
-  # cover: dark
+  cover: master   # covers/内の著者用意画像(frontcover_master.png, backcover_master.png)を指定
+  # cover: light  # 標準添付 light 表紙・裏表紙を指定
+  # cover: dark   # 標準添付 light 表紙・裏表紙を指定
 
   # ----------------------------
   # PDF設定（閲覧用）
@@ -242,7 +238,8 @@ output:
     crop_marks: true   # トンボを付ける（既定: true）
     # Vivliostyle CLI で --crop-marks --bleed 3mm を付加してビルド
     # 出力は PDF/X-4 準拠（ねこのしっぽ、日光企画で対応済み）
-    # 隠しノンブルは HexaPDF で PDF 結合後に自動書き込み
+    # 隠しノンブルも PDF 結合後に自動書き込み
+    # (専用gem vivlio-starter-pdf の導入を推奨)
 
   # ----------------------------
   # EPUB設定
@@ -259,6 +256,17 @@ output:
 vfm:
   hardLineBreaks: true # true:  文章中の改行(エンター)を改行として処理
                        # false: 文章中の改行をスペースとして処理(改行したい場合には空行または<br>)
+
+# ========================================
+# ビルドに関する設定
+# ========================================
+build:
+  verify:
+    images: true          # 画像パスの存在チェック（デフォルト: true）
+    bare_urls: true       # 裸 URL の検出と警告（デフォルト: true）
+    external_links: false  # 外部 URL の HTTP 到達性チェック（デフォルト: false）
+    timeout: 10           # HTTP チェックのタイムアウト秒数
+    max_concurrency: 5    # HTTP チェックの最大同時接続数
 
 # ========================================
 # 索引・用語集共通設定
@@ -327,10 +335,9 @@ metrics:
 
   # プリセットを選択
   # use: compact
-  # use: standard
+  use: standard
   # use: commercial
   # use: author_custom
-  use: standard
 
   # コンパクトな薄い本（20〜50ページ想定）
   compact:
@@ -477,8 +484,8 @@ pdf_read:
     bottom_margin: 20     # 下端からの除外幅(mm)
     inner_margin: 15      # 綴じ側（奇数ページは左、偶数ページは右）除外幅(mm)
     outer_margin: 12      # 小口側の除外幅(mm)
-  page_separator: false    # true:  "---" でページ区切りを行なう
-                            # false: "---" でページ区切りを行なわない
+  page_separator: false   # true:  "---" でページ区切りを行なう
+                          # false: "---" でページ区切りを行なわない
   ocr:
     # OCR の実行モード:
     #   auto    : スキャンページを自動検出して必要な箇所のみ OCR

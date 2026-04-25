@@ -146,6 +146,15 @@ hr {
   margin-block: clamp(17.5pt, calc(var(--paper-scale) * 25pt), 25pt);
 }
 
+/* 改ページ（--- 記法） */
+hr.pagebreak {
+  break-after: page;
+  visibility: hidden;
+  height: 0;
+  margin: 0;
+  background: none;
+}
+
 /* セクション */
 section {
   margin-block-end: clamp(14pt, calc(var(--paper-scale) * 20pt), 20pt);
@@ -166,4 +175,22 @@ blockquote p {
   text-indent: 0;
   margin: 0;
   color: var(--color-text);
+}
+/* テキスト整列ユーティリティ（chapter-common.css から継承） */
+.text-right,
+.text-right p {
+  text-align: right !important;
+  text-indent: 0 !important;
+}
+
+.text-center,
+.text-center p {
+  text-align: center !important;
+  text-indent: 0 !important;
+}
+
+.text-left,
+.text-left p {
+  text-align: left !important;
+  text-indent: 0 !important;
 }

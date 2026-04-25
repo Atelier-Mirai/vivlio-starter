@@ -77,24 +77,24 @@
   */
 
   /* 基本体裁（A4 縦） */
-  --page-width:  182mm; /* 幅 */
-  --page-height: 257mm; /* 高さ */
+  --page-width:  210mm; /* 幅 */
+  --page-height: 297mm; /* 高さ */
   /* 用紙スケール（A4=1.0 を基準に B5/A5 などで前処理から上書き） */
-  --paper-scale: 0.8653;
+  --paper-scale: 1.0;
   /* .align-* 配置時の最大行長（A4=40em, B5=36em, A5=26em。前処理から上書き） */
-  --align-max-width: 36em;
+  --align-max-width: 40em;
 
   /* タイポグラフィ設定 */
   --base-font-size:   10.5pt;    /* 基準文字サイズ */
-  --base-line-height: 19.425pt;  /* 行送り（10.5pt × 1.7 = 17.85pt） */
+  --base-line-height: 15.75pt;  /* 行送り（10.5pt × 1.7 = 17.85pt） */
   --letter-spacing:   0em;     /* 字間調整 */
 
   /* 版面の余白（見開き対応） */
-  --page-margin-top:    25mm;  /* 天（上余白） */
-  --page-margin-bottom: 25mm;  /* 地（下余白） */
-  --page-margin-inner:  25mm;  /* ノド（綴じ側、左右ページで自動的に位置が変わる） */
-  --page-margin-outer:  23mm;  /* 小口（外側、左右ページで自動的に位置が変わる） */
-  --frontispiece-binding-offset: 1.00mm; /* ノド/小口差分による背景オフセット */
+  --page-margin-top:    20mm;  /* 天（上余白） */
+  --page-margin-bottom: 20mm;  /* 地（下余白） */
+  --page-margin-inner:  26mm;  /* ノド（綴じ側、左右ページで自動的に位置が変わる） */
+  --page-margin-outer:  22mm;  /* 小口（外側、左右ページで自動的に位置が変わる） */
+  --frontispiece-binding-offset: 2.00mm; /* ノド/小口差分による背景オフセット */
 
   --column-font-size:   8pt;  /* コラムのフォントサイズ */
 
@@ -130,7 +130,7 @@
 }
 
 @page {
-  size: 182mm 257mm;  /* css_updater が book.yml のプリセットに合わせて自動更新 */
+  size: 210mm 297mm;  /* css_updater が book.yml のプリセットに合わせて自動更新 */
   margin-top: var(--page-margin-top);
   margin-bottom: var(--page-margin-bottom);
 
@@ -142,6 +142,13 @@
     font-size:   var(--folio-font-size);
     font-weight: 300;
     color:       var(--folio-color);
+  }
+
+  /* 脚注エリア: Vivliostyle が float:footnote 要素を収める ol の番号を非表示 */
+  @footnote {
+    list-style: none;
+    padding-inline-start: 0;
+    margin: 0;
   }
 }
 
@@ -249,6 +256,7 @@ section.footnotes hr.pagebreak {
 section.footnotes ol {
   margin: 0;                  /* 余白を詰める */
   padding-inline-start: 1.4em;/* 番号と本文の間隔 */
+  list-style: none;           /* 番号は aside.page-footnote::before で表示するため非表示 */
   list-style-position: outside;
 }
 

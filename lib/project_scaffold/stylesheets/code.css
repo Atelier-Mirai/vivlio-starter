@@ -175,37 +175,8 @@ figure[class*=" language-"] > figcaption + pre {
   color: #888;
 }
 
-/* コード内引き出し線 */
+/* コード内コメント強調（[!] マーカー付き） */
 .codered.token.comment {
-  /* layout */
-  position: relative;
-
-  /* spacing */
-  padding-block: 0;
-  padding-inline: 0;
-
-  /* typography */
-  font-size: 10Q;
-  line-height: 12Q;
   font-weight: bold;
-
-  /* visual */
   color: #f00;
-}
-
-.codered::before {
-  /* layout */
-  display: block;
-  position: absolute;
-  inset-block-start: 1.2mm;
-  inset-inline-start: -3em;
-
-  /* box-size */
-  inline-size: 3em;
-
-  /* visual */
-  border-bottom: dashed 0.25mm #f88;
-
-  /* counters/meta */
-  content: "";
 }

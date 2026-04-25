@@ -13,11 +13,25 @@
   display: grid;
   gap: 0.75rem;
   grid-template-columns: repeat(auto-fit, minmax(12em, 1fr));
+  align-items: stretch;
 }
 
 .pictures img {
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pictures figure {
+  margin: 0;
+  padding: 0;
+}
+
+.pictures figure img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   display: block;
 }
 
@@ -71,66 +85,68 @@
 /* 並び順ルール */
 
 /* 左:画像 右:本文 */
-.img-text>img {
+.img-text > img,
+.img-text > figure {
   grid-column: 1;
 }
 
-.img-text> :not(img) {
+.img-text > :not(img):not(figure) {
   grid-column: 2;
 }
 
 /* 左:画像 右:本文（本文広め 2） */
-.img-text2>img {
+.img-text2 > img,
+.img-text2 > figure {
   grid-column: 1;
 }
 
-.img-text2> :not(img) {
+.img-text2 > :not(img):not(figure) {
   grid-column: 2;
 }
 
 /* 左:画像 右:本文（本文広め 3） */
-.img-text3>img {
+.img-text3 > img,
+.img-text3 > figure {
   grid-column: 1;
   grid-row: 1 / -1;
-  /* 左列を縦に占有して、後続ノードを右列へ */
 
-  /* box-size */
   inline-size: 100%;
   block-size: auto;
-
-  /* visual */
   object-fit: contain;
 }
 
-.img-text3> :not(img) {
+.img-text3 > :not(img):not(figure) {
   grid-column: 2;
   grid-row: 1 / -1;
 }
 
 /* 左:本文 右:画像 */
-.text-img>img {
+.text-img > img,
+.text-img > figure {
   grid-column: 2;
 }
 
-.text-img> :not(img) {
+.text-img > :not(img):not(figure) {
   grid-column: 1;
 }
 
 /* 左:本文 右:画像（本文広め 2） */
-.text2-img> :not(img) {
+.text2-img > :not(img):not(figure) {
   grid-column: 1;
 }
 
-.text2-img>img {
+.text2-img > img,
+.text2-img > figure {
   grid-column: 2;
 }
 
 /* 左:本文 右:画像（本文広め 3） */
-.text3-img> :not(img) {
+.text3-img > :not(img):not(figure) {
   grid-column: 1;
 }
 
-.text3-img>img {
+.text3-img > img,
+.text3-img > figure {
   grid-column: 2;
 }
 
@@ -139,6 +155,28 @@
 .text-2dan {
   column-count: 2;
   column-gap: 1.2em;
+}
+
+/* img-text / text-img 系コンテナ内の figure を正規化 */
+.img-text figure,
+.img-text2 figure,
+.img-text3 figure,
+.text-img figure,
+.text2-img figure,
+.text3-img figure {
+  margin: 0;
+  padding: 0;
+}
+
+.img-text figure img,
+.img-text2 figure img,
+.img-text3 figure img,
+.text-img figure img,
+.text2-img figure img,
+.text3-img figure img {
+  inline-size: 100%;
+  block-size: auto;
+  object-fit: contain;
 }
 
 /* ユーティリティ（任意） */
@@ -184,6 +222,13 @@
 }
 
 .align-right {
+  text-align: right;
+}
+
+/* テキスト右寄せ（幅を変えずに text-align のみ適用）
+   ブロック記法: :::{.text-right} ... :::
+   インライン記法: 段落末尾に {.text-right} を付与 */
+.text-right {
   text-align: right;
 }
 
@@ -292,20 +337,34 @@ figure.align-left {
 
 /* 文章横に画像を並べるサイドイメージ用コンテナ（CSS Grid 版） */
 .sideimage-right,
-.sideimage-left {
+.sideimage-left,
+.sideimage {
   display: grid;
-  grid-template-columns:
-    minmax(0, var(--sideimage-text-fr, 3fr))
-    minmax(0, var(--sideimage-img-fr,  2fr));
   grid-template-rows: auto;
   gap: 1rem;
   align-items: start;
   margin-block: 0.5lh;
 }
 
+/* sideimage-right: 列1=テキスト(3fr)、列2=画像(2fr) */
+.sideimage-right {
+  grid-template-columns:
+    minmax(0, var(--sideimage-text-fr, 3fr))
+    minmax(0, var(--sideimage-img-fr,  2fr));
+}
+
+/* sideimage-left / sideimage: 列1=画像(2fr)、列2=テキスト(3fr) */
+.sideimage-left,
+.sideimage {
+  grid-template-columns:
+    minmax(0, var(--sideimage-img-fr,  2fr))
+    minmax(0, var(--sideimage-text-fr, 3fr));
+}
+
 /* sideimage-* コンテナ直下の要素は常に 1 行目に配置する */
 .sideimage-right>*,
-.sideimage-left>* {
+.sideimage-left>*,
+.sideimage>* {
   grid-row: 1;
 }
 
@@ -318,12 +377,14 @@ figure.align-left {
   grid-column: 1;
 }
 
-/* sideimage-left: 画像左・テキスト右 */
-.sideimage-left>figure {
+/* sideimage-left / sideimage: 画像左・テキスト右 */
+.sideimage-left>figure,
+.sideimage>figure {
   grid-column: 1;
 }
 
-.sideimage-left> :not(figure) {
+.sideimage-left> :not(figure),
+.sideimage> :not(figure) {
   grid-column: 2;
 }
 
