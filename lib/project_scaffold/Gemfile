@@ -2,11 +2,13 @@
 
 source 'https://rubygems.org'
 
-# gem install vivlio-starter でローカルインストール済みであること
+# 電子書籍執筆システム
 gem 'vivlio-starter'
 
-# query-stream は公開済みバージョンを使用
-gem 'query-stream', '~> 1.2.0'
+# query-stream （データ展開）
+gem 'query-stream'
 
-# gem install vivlio-starter-pdf を実行したら、以下をコメントアウトしてください
-gem 'vivlio-starter-pdf'
+# vivlio-starter-pdf をインストールしたい場合には、
+# 以下をコメントアウトしてから、
+# bundle install を実行してください。
+# gem 'vivlio-starter-pdf'

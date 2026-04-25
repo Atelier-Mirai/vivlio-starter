@@ -11,7 +11,7 @@ require 'fileutils'
 
 SCAFFOLD = File.join(__dir__, 'lib/project_scaffold')
 
-DIRS = %w[contents stylesheets config codes data templates].freeze
+DIRS = %w[contents stylesheets images config codes data templates].freeze
 
 DIRS.each do |dir|
   src = File.join(__dir__, dir)
