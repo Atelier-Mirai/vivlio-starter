@@ -79,6 +79,7 @@ module Vivlio
             transform_text_align_containers!
             transform_book_cards!
             transform_table_rotations!
+            transform_table_containers!
             transform_links!
             expose_container_footnotes!
             write_output!
@@ -276,6 +277,20 @@ module Vivlio
             Common.log_action('table-rotate内のMarkdownをHTMLへ変換しています…')
             context.content = MarkdownTransformer.convert_table_rotate_inner_markdown(context.content)
             Common.log_success('table-rotate内のMarkdownをHTMLへ変換しました')
+          end
+
+          # long-table / table-scroll 記法をHTMLに変換し、内部Markdownを整形する
+          def transform_table_containers!
+            %w[long-table table-scroll].each do |klass|
+              context.content, opened, closed = MarkdownTransformer.convert_container_blocks(
+                context.content,
+                class_name: klass
+              )
+              next unless opened.positive?
+
+              Common.log_success("#{klass}ブロックの事前変換が完了しました（開始:#{opened}件 終了:#{closed}件）")
+              context.content = MarkdownTransformer.convert_table_container_inner_markdown(context.content, klass)
+            end
           end
 
           # 外部リンクを脚注化して本文を整える

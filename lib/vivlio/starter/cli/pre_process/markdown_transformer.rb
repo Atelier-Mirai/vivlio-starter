@@ -111,7 +111,12 @@ module Vivlio
 
           # <div ... class="... table-rotate ..." ...> ... </div> の内側MarkdownをHTMLへ
           def convert_table_rotate_inner_markdown(content)
-            content.gsub(%r{<div\s+([^>]*\bclass="[^"]*\btable-rotate\b[^"]*"[^>]*)>\s*(.*?)\s*</div>}m) do
+            convert_table_container_inner_markdown(content, 'table-rotate')
+          end
+
+          # <div ... class="... CLASS ..." ...> ... </div> の内側パイプテーブルをHTMLへ変換する汎用メソッド
+          def convert_table_container_inner_markdown(content, class_name)
+            content.gsub(%r{<div\s+([^>]*\bclass="[^"]*\b#{Regexp.escape(class_name)}\b[^"]*"[^>]*)>\s*(.*?)\s*</div>}m) do
               attrs = ::Regexp.last_match(1)
               inner = ::Regexp.last_match(2)
 

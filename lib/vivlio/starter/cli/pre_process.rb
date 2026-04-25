@@ -252,6 +252,11 @@ module Vivlio
         end
         module_function :convert_container_blocks
 
+        def convert_table_container_inner_markdown(content, class_name)
+          MarkdownTransformer.convert_table_container_inner_markdown(content, class_name)
+        end
+        module_function :convert_table_container_inner_markdown
+
         def process_code_include(content, source_filename: nil)
           MarkdownTransformer.process_code_include(content, source_filename: source_filename)
         end
