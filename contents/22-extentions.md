@@ -157,7 +157,7 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 
 ```markdown
 :::{.img-text2}
-![](images/screenshot.webp)
+![](vs_logo_outline.svg)
 
 ここに説明文を書きます。画像の右側に表示されます。
 :::
@@ -171,7 +171,7 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 :::{.sideimage-right}
 説明文がここに入ります。画像の左側に表示されます。
 
-![](images/sample.webp)
+![](vs_logo_outline.svg){width=20%}
 :::
 ```
 
@@ -181,19 +181,19 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 
 ```markdown
 :::{.img-text .gap-s}
-![画像説明](image.png)
+![画像説明](vs_logo_outline.svg)
 
 小さな余白（0.5rem）で配置
 :::
 
 :::{.img-text .gap-m}
-![画像説明](image.png)
+![画像説明](vs_logo_outline.svg)
 
 標準の余白（1rem）で配置
 :::
 
 :::{.img-text .gap-l}
-![画像説明](image.png)
+![画像説明](vs_logo_outline.svg)
 
 大きな余白（1.5rem）で配置
 :::
@@ -283,6 +283,40 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 右寄せで表示されるテキストブロックです。
 :::
 ```
+
+### `.text-right` — 右寄せ（インライン・ブロック共用）
+
+`.align-right` がブロック全体を右寄せにするのに対し、`.text-right` は **テキストの揃え方向だけ** を右寄せにします。段落・見出し・表のセルなど、要素の幅を変えずに文字を右端に揃えたいときに使います。
+
+#### ブロック記法（複数行）
+
+```markdown
+:::{.text-right}
+この段落全体が右寄せで表示されます。
+複数行あっても、すべて右端に揃います。
+:::
+```
+
+#### インライン記法（段落・見出し単位）
+
+段落や見出しの末尾に `{.text-right}` を付けると、その要素だけ右寄せになります。
+
+```markdown
+右寄せにしたい段落です。{.text-right}
+
+### 右寄せの見出し {.text-right}
+```
+
+#### `.align-right` との違い
+
+| クラス | `text-align` | 要素幅 | 主な用途 |
+|---|---|---|---|
+| `.align-right` | right | `fit-content`（内容幅に縮む） | 画像・短いブロックを右端に寄せる |
+| `.text-right` | right | 変更なし（親要素の幅を維持） | 段落・見出しのテキストを右端に揃える |
+
+:::{.note}
+`.text-right` は `text-align: right` のみを適用します。ブロックの幅は変わらないため、段落テキストや表のセルなど、幅を維持したまま文字だけ右寄せにしたい場面に適しています。
+:::
 
 ## 参照・インクルード
 

@@ -328,7 +328,7 @@ module Vivlio
           doc = HtmlParser.parse_html_document(content)
           changed = false
 
-          doc.css('div.sideimage-right, div.sideimage-left').each do |container|
+          doc.css('div.sideimage-right, div.sideimage-left, div.sideimage').each do |container|
             figure = container.at_css('> figure')
             next unless figure
 

@@ -76,6 +76,7 @@ module Vivlio
             normalize_html_block_boundaries!
             escape_inline_code_html!
             transform_text_right_inlines!
+            transform_text_align_containers!
             transform_book_cards!
             transform_table_rotations!
             transform_links!
@@ -204,20 +205,51 @@ module Vivlio
           #   **著者: Matz**
           #   :::
           # コードブロック・インラインコードは extract_code_spans で退避して除外する。
+          # 行末の `{.right}` / `{.text-right}` / `{.text-center}` / `{.text-left}` を
+          # VFM コンテナ `:::{.text-*}` に変換する
+          # 例:
+          #   **著者: Matz**{.right}
+          #   ->
+          #   ::: {.text-right}
+          #   **著者: Matz**
+          #   :::
+          # コードブロック・インラインコードは extract_code_spans で退避して除外する。
           def transform_text_right_inlines!
             protected_text, spans = MarkdownUtils.extract_code_spans(context.content)
 
             transformed = protected_text.lines.map do |line|
-              if (m = line.match(/^(\s*)(.+)\{\.(right|text-right)\}\s*$/))
+              if (m = line.match(/^(\s*)(.+)\{\.(right|text-right|text-center|text-left)\}\s*$/)) &&
+                 !line.lstrip.start_with?(':::')
                 indent = m[1]
                 inner  = m[2].rstrip
-                "#{indent}::: {.text-right}\n#{indent}#{inner}\n#{indent}:::\n"
+                klass  = m[3] == 'right' ? 'text-right' : m[3]
+                "#{indent}:::{.#{klass}}\n#{indent}#{inner}\n#{indent}:::\n"
               else
                 line
               end
             end.join
 
             context.content = MarkdownUtils.restore_code_spans(transformed, spans)
+          end
+
+          # :::{.text-right} / :::{.text-center} / :::{.text-left} コンテナを div に変換し、
+          # 内側の Markdown を HTML に変換する
+          def transform_text_align_containers!
+            %w[text-right text-center text-left].each do |klass|
+              context.content, = MarkdownTransformer.convert_container_blocks(
+                context.content,
+                class_name: klass
+              )
+            end
+
+            # 変換後の <div class="text-*"> 内の Markdown を HTML に変換する
+            context.content = context.content.gsub(%r{(<div class="text-(?:right|center|left)"[^>]*>)\n(.*?)\n(</div>)}m) do
+              open_tag = ::Regexp.last_match(1)
+              inner    = ::Regexp.last_match(2)
+              close_tag = ::Regexp.last_match(3)
+              html = MarkdownUtils.render_markdown_to_html(inner).strip
+              "#{open_tag}\n#{html}\n#{close_tag}"
+            end
           end
 
           # book-card 記法をHTMLに変換し、内部Markdownを整形する

@@ -137,11 +137,23 @@ p {
 }
 
 /* 右寄せユーティリティ */
-.text-right {
+.text-right,
+.text-right p {
   text-align: right;
+  text-indent: 0;
 }
 
-.text-right p {
+/* 中央寄せユーティリティ */
+.text-center,
+.text-center p {
+  text-align: center;
+  text-indent: 0;
+}
+
+/* 左寄せユーティリティ */
+.text-left,
+.text-left p {
+  text-align: left;
   text-indent: 0;
 }
 

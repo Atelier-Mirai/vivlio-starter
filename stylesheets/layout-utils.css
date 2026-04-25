@@ -187,6 +187,13 @@
   text-align: right;
 }
 
+/* テキスト右寄せ（幅を変えずに text-align のみ適用）
+   ブロック記法: :::{.text-right} ... :::
+   インライン記法: 段落末尾に {.text-right} を付与 */
+.text-right {
+  text-align: right;
+}
+
 /* 図版・画像以外のブロックは余白で位置合わせする */
 .align-left:not(:is(.figure, figure, img, svg)) {
   margin-inline-start: 0;
@@ -292,20 +299,34 @@ figure.align-left {
 
 /* 文章横に画像を並べるサイドイメージ用コンテナ（CSS Grid 版） */
 .sideimage-right,
-.sideimage-left {
+.sideimage-left,
+.sideimage {
   display: grid;
-  grid-template-columns:
-    minmax(0, var(--sideimage-text-fr, 3fr))
-    minmax(0, var(--sideimage-img-fr,  2fr));
   grid-template-rows: auto;
   gap: 1rem;
   align-items: start;
   margin-block: 0.5lh;
 }
 
+/* sideimage-right: 列1=テキスト(3fr)、列2=画像(2fr) */
+.sideimage-right {
+  grid-template-columns:
+    minmax(0, var(--sideimage-text-fr, 3fr))
+    minmax(0, var(--sideimage-img-fr,  2fr));
+}
+
+/* sideimage-left / sideimage: 列1=画像(2fr)、列2=テキスト(3fr) */
+.sideimage-left,
+.sideimage {
+  grid-template-columns:
+    minmax(0, var(--sideimage-img-fr,  2fr))
+    minmax(0, var(--sideimage-text-fr, 3fr));
+}
+
 /* sideimage-* コンテナ直下の要素は常に 1 行目に配置する */
 .sideimage-right>*,
-.sideimage-left>* {
+.sideimage-left>*,
+.sideimage>* {
   grid-row: 1;
 }
 
@@ -318,12 +339,14 @@ figure.align-left {
   grid-column: 1;
 }
 
-/* sideimage-left: 画像左・テキスト右 */
-.sideimage-left>figure {
+/* sideimage-left / sideimage: 画像左・テキスト右 */
+.sideimage-left>figure,
+.sideimage>figure {
   grid-column: 1;
 }
 
-.sideimage-left> :not(figure) {
+.sideimage-left> :not(figure),
+.sideimage> :not(figure) {
   grid-column: 2;
 }
 

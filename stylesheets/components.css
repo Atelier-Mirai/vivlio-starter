@@ -146,4 +146,9 @@
     content: attr(data-footnote-number) ". ";
     font-weight: 700;
   }
+
+  /* Vivliostyle が float:footnote に自動付与する ::footnote-marker を非表示にする */
+  aside.page-footnote::footnote-marker {
+    content: none;
+  }
 }
