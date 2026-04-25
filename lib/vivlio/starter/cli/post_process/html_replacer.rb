@@ -107,7 +107,20 @@ module Vivlio
                 replace_with_captures(stashed, regex, replacement_str)
               end
             else # :tag_aware
-              replace_with_captures(content, regex, replacement_str)
+              # <pre> ブロック内のテキストは置換対象外とする
+              # コードブロック内の ::: 等が <div> に変換されるのを防ぐ
+              pre_blocks = []
+              protected = content.gsub(%r{<pre\b[^>]*>.*?</pre>}m) do |block|
+                pre_blocks << block
+                "#{PRE_PLACEHOLDER_PREFIX}TA#{pre_blocks.size - 1}#{PLACEHOLDER_SUFFIX}"
+              end
+
+              result, applied = replace_with_captures(protected, regex, replacement_str)
+
+              result = result.gsub(/#{Regexp.escape(PRE_PLACEHOLDER_PREFIX)}TA(\d+)#{Regexp.escape(PLACEHOLDER_SUFFIX)}/) do
+                pre_blocks[Regexp.last_match(1).to_i]
+              end
+              [result, applied]
             end
           end
 
