@@ -82,6 +82,7 @@ module Vivlio
             transform_table_containers!
             transform_links!
             expose_container_footnotes!
+            strip_index_markup!
             write_output!
           end
 
@@ -339,6 +340,32 @@ module Vivlio
 
             context.content = context.content.sub(/^(\[\^url\d+\]:)/m, "#{hidden_span}\\1")
             Common.log_success("コンテナ内脚注参照を露出しました（#{container_footnotes.uniq.size}件）")
+          end
+
+          # 索引記法 [用語|読み] を用語テキストのみに展開する。
+          # IndexMatchScanner（Step 4）がフルビルド時に <dfn> タグを付与するが、
+          # 単章ビルドでは Step 4 がスキップされるため、ここで記法を除去して
+          # VFM に渡す前にプレーンテキストにしておく。
+          # コードブロック・インラインコード内はスキップする。
+          def strip_index_markup!
+            protected_text, spans = MarkdownUtils.extract_code_spans(context.content)
+
+            # [用語|読み] → 用語、[用語] → 用語（ただしリンク記法 [text](url) は除外）
+            stripped = protected_text.gsub(/\[([^\[\]\n]+)\](?!\()/) do
+              inner = ::Regexp.last_match(1)
+              # 脚注参照 [^id] はそのまま残す
+              if inner.start_with?('^')
+                ::Regexp.last_match(0)
+              elsif inner.include?('|')
+                # [用語|読み] → 用語
+                inner.split('|', 2).first
+              else
+                # [用語] → 用語（索引記法として扱う）
+                inner
+              end
+            end
+
+            context.content = MarkdownUtils.restore_code_spans(stripped, spans)
           end
 
           # HTMLコメント <!-- ... --> を削除する

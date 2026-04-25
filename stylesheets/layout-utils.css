@@ -95,13 +95,9 @@
 .img-text3 > figure {
   grid-column: 1;
   grid-row: 1 / -1;
-  /* 左列を縦に占有して、後続ノードを右列へ */
 
-  /* box-size */
   inline-size: 100%;
   block-size: auto;
-
-  /* visual */
   object-fit: contain;
 }
 

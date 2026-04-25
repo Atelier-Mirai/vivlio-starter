@@ -119,6 +119,12 @@ module Vivlio
               Common.log_error("#{html_file}: image-group 処理中にエラー: #{e.message}")
             end
 
+            begin
+              wrap_img_text_blocks!(html_file)
+            rescue StandardError => e
+              Common.log_error("#{html_file}: img-text ラップ中にエラー: #{e.message}")
+            end
+
             content = File.read(html_file, encoding: 'utf-8')
             converted = FootnoteConverter.convert_endnotes_to_page_footnotes!(content)
             if converted != content
@@ -511,6 +517,65 @@ module Vivlio
           Common.log_success("#{html_file}: image-group コンテナの列比率を設定しました")
         end
         module_function :process_image_groups!
+
+        # ================================================================
+        # img-text / text-img 系コンテナの正規化
+        # ----------------------------------------------------------------
+        # VFM が出力する
+        #   <div class="text2-img">
+        #     テキスト…<span class="math inline">…</span>…
+        #     <figure><img …></figure>
+        #   </div>
+        # のような構造では、テキストノードや <span> が独立したグリッドセルに
+        # なり、レイアウトが崩れる。figure 以外の子ノードを
+        # <div class="img-text-body"> でまとめて包み、常に
+        #   <div class="text2-img">
+        #     <div class="img-text-body">テキスト…</div>
+        #     <figure>…</figure>
+        #   </div>
+        # という 2 要素構造に正規化する。
+        # ================================================================
+        def wrap_img_text_blocks!(html_file)
+          content = File.read(html_file, encoding: 'utf-8')
+          doc = HtmlParser.parse_html_document(content)
+          changed = false
+
+          selectors = %w[img-text img-text2 img-text3 text-img text2-img text3-img]
+          css_selector = selectors.map { "div.#{it}" }.join(', ')
+
+          doc.css(css_selector).each do |container|
+            figure = container.at_css('> figure')
+            next unless figure
+
+            children = container.children
+            body_nodes = children.reject do |node|
+              node == figure || (node.text? && node.text.strip.empty?)
+            end
+
+            # 既に img-text-body でラップ済みならスキップ
+            if body_nodes.size == 1 && body_nodes.first.element? &&
+               body_nodes.first['class'].to_s.include?('img-text-body')
+              next
+            end
+
+            next if body_nodes.empty?
+
+            body_wrapper = Nokogiri::XML::Node.new('div', doc)
+            body_wrapper['class'] = 'img-text-body'
+
+            first_body = body_nodes.first
+            first_body.add_previous_sibling(body_wrapper)
+            body_nodes.each { body_wrapper.add_child(it) }
+
+            changed = true
+          end
+
+          return unless changed
+
+          HtmlParser.save_html_document(html_file, doc)
+          Common.log_success("#{html_file}: img-text コンテナを正規化しました")
+        end
+        module_function :wrap_img_text_blocks!
 
         # image-group 内の先頭画像から width 指定（%）を取り出し、
         # 0.0〜1.0 の範囲の比率として返す
