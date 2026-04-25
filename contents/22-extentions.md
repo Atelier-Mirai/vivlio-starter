@@ -48,21 +48,45 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 
 ```markdown
 :::{.column}
-##### コラムタイトル
+**コラムタイトル**
 
 ここにコラムの内容を書きます。
 :::
 ```
 
+:::{.column}
+**コラムの実行例**
+
+このように枠で囲まれて表示されます。
+:::
+
+### `.memo` — メモ
+
+覚書きや注釈など、本文の補足メモを表示します。
+
+```markdown
+:::{.memo}
+覚書きや注釈など、本文の補足メモをここに書きます。
+:::
+```
+
+:::{.memo}
+覚書きや注釈など、本文の補足メモをここに書きます。
+:::
+
 ### `.tip` — Tip
 
-読者へのヒントや便利な情報を表示します。薄い背景色で囲まれます。
+読者へのヒントや便利な情報を表示します。
 
 ```markdown
 :::{.tip}
 `vs preflight` を使うと、ビルド前にエラーを素早く確認できます。
 :::
 ```
+
+:::{.tip}
+効率化やトラブル回避のためのヒントやコツをここに書きます。
+:::
 
 ### `.note` — Note
 
@@ -74,6 +98,10 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 :::
 ```
 
+:::{.note}
+この設定は `book.yml` の `theme` セクションで変更できます。
+:::
+
 ### `.notice` — Notice
 
 重要な注意事項を左側のアクセントラインで強調して表示します。
@@ -83,6 +111,10 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 `--force` オプションは既存ファイルを上書きします。実行前にバックアップを取ってください。
 :::
 ```
+
+:::{.notice}
+`--force` オプションは既存ファイルを上書きします。実行前にバックアップを取ってください。
+:::
 
 ## 書籍紹介カード
 
@@ -97,6 +129,8 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 初心者でも楽しみながらプログラミングを学べる一冊。
 :::
 ```
+
+
 
 ## 画像レイアウト
 
@@ -502,75 +536,3 @@ vs build
 内容がここに入ります。
 :::
 ```
-
-## 実践的な記述例
-
-### 技術的な章の構成
-
-````markdown
-# API リファレンス
-
-:::{.chapter-lead}
-本章では、システムの主要な API について解説します。基本的な使い方から応用的な活用方法までを網羅します。
-:::
-
-## 基本的な使い方
-
-まず、最もシンプルな例から見ていきましょう。
-
-**基本的なリクエスト @basic-request**
-```javascript
-const response = await fetch('/api/data');
-const data = await response.json();
-console.log(data);
-```
-
-@basic-request のコードは、API からデータを取得する基本的なパターンです。
-
-## 応用的な使い方
-
-### エラーハンドリング
-
-**エラーハンドリング例 @error-handling**
-```javascript
-try {
-  const response = await fetch('/api/data');
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-  const data = await response.json();
-} catch (error) {
-  console.error('API request failed:', error);
-}
-```
-
-@error-handling では、ネットワークエラーや HTTP エラーに対応しています。
-
-### パラメータ指定
-
-**パラメータ指定の例 @with-params**
-```javascript
-const params = new URLSearchParams({
-  page: 1,
-  limit: 20,
-  sort: 'date'
-});
-
-const response = await fetch(`/api/data?${params}`);
-```
-
-@with-params のように、URL パラメータを指定できます。
-
-## API 一覧
-
-**主要なエンドポイント @api-endpoints**
-| エンドポイント | メソッド | 説明 |
-|-------------|----------|------|
-| /api/data | GET | データ一覧取得 |
-| /api/data/:id | GET | 個別データ取得 |
-| /api/data | POST | データ作成 |
-| /api/data/:id | PUT | データ更新 |
-| /api/data/:id | DELETE | データ削除 |
-
-@api-endpoints のように、RESTful な設計になっています。
-````

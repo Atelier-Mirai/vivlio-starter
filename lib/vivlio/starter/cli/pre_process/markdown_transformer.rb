@@ -161,14 +161,18 @@ module Vivlio
             parts.join("\n")
           end
 
-          # ::: {.class ...} 記法で囲まれたコンテナを div に変換
+          # ::: {.class ...} 記法で囲まれたコンテナを div に変換。
+          # コードブロック内の ::: 記法は変換対象外とする。
           def convert_container_blocks(content, class_name:)
             opened_count = 0
             closed_count = 0
 
+            # --- Phase: コードブロック退避 ---
+            protected_text, spans = MarkdownUtils.extract_code_spans(content)
+
             pattern = /:::\s*\{\.([^}]+)\}\s*\n(.*?)\n:::\s*(?:\n|$)/m
 
-            converted = content.gsub(pattern) do
+            converted = protected_text.gsub(pattern) do
               raw_token_str = ::Regexp.last_match(1)
               inner         = ::Regexp.last_match(2)
 
@@ -208,6 +212,9 @@ module Vivlio
 
               "<div class=\"#{class_attr}\"#{style_attr}>\n#{inner}\n</div>\n\n"
             end
+
+            # --- Phase: コードブロック復元 ---
+            converted = MarkdownUtils.restore_code_spans(converted, spans)
 
             [converted, opened_count, closed_count]
           end
