@@ -443,16 +443,9 @@ $$
 
 ### リンクの各種形式
 
-#### 参照リンク
+#### リンク
 
-アインシュタインの論文は[Annalen der Physik][annalen]に掲載されました。ノーベル賞の詳細は[ノーベル賞公式サイト][nobel]をご覧ください。
-
-[annalen]: https://onlinelibrary.wiley.com/journal/15213889
-[nobel]: https://www.nobelprize.org/prizes/physics/1921/einstein/facts/
-
-#### 自動リンク
-
-<https://www.nobelprize.org>
+アインシュタインの論文は[Annalen der Physik](https://onlinelibrary.wiley.com/journal/15213889)に掲載されました。ノーベル賞の詳細は[ノーベル賞公式サイト](https://www.nobelprize.org/prizes/physics/1921/einstein/facts/)をご覧ください。[ノーベル賞公式サイト](https://www.nobelprize.org)も参照してください。
 
 ---
 

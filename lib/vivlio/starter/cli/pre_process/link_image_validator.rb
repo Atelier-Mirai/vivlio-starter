@@ -74,6 +74,14 @@ module Vivlio
                 link_issues = link_issues.map { correct_link_line_number(it, source_content) }
               end
 
+              # 補正後の行番号でログを出力
+              link_issues.select { it.issue_type == :bare_url }.each do |issue|
+                Common.log_warn(
+                  "#{issue.filename}:#{issue.line_number} - 裸 URL を検出しました",
+                  detail: "URL: #{issue.url}"
+                )
+              end
+
               # セキュリティ検証（11-1）: 危険スキームの検出は常時有効
               # file:// / javascript: 等は --no-verify でも無効化しない
               link_issues += scan_dangerous_schemes(content, filename)
@@ -434,11 +442,6 @@ module Vivlio
                     issue_type: :bare_url,
                     status_code: nil,
                     message: '裸 URL です（リンク記法 [テキスト](URL) の使用を推奨します）'
-                  )
-
-                  Common.log_warn(
-                    "#{filename}:#{line_number} - 裸 URL を検出しました",
-                    detail: "URL: #{url}"
                   )
                 end
               end

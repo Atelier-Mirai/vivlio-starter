@@ -4,11 +4,7 @@
 Vivlio Starter の `vs import` コマンドを使うと、Re:VIEW Starter プロジェクトを丸ごと Vivlio プロジェクトに移行できます。本章では前提条件から実行手順、トラブルシューティングまで、著者が自力で移行を完了できるよう手順をまとめました。
 :::
 
-<!-- 本章の内容は `docs/specs/import_spec.md` と同期しています。仕様の詳細を確認したい場合は必ず最新の spec を参照してください。 -->
-
----
-
-## 事前チェック
+## 事前準備と実行
 
 ### 必要ツール
 
@@ -32,9 +28,9 @@ Vivlio Starter の `vs import` コマンドを使うと、Re:VIEW Starter プロ
 | `contents/*.re` | 原稿 |
 | `images/` | 画像（png/jpg/gif） |
 
----
+### 実行コマンド
 
-## 実行コマンド
+まず `vs new` で空のプロジェクトを作成し、そこに Starter プロジェクトをインポートします。
 
 ```zsh
 vs new mybook
@@ -45,36 +41,29 @@ vs import --force ../starter_project    # 確認を省略したい場合
 
 インポート対象ディレクトリは Starter プロジェクトのルートを指定します。
 
----
+| オプション | 説明 |
+| --- | --- |
+| `--force` | 既存ディレクトリの削除確認をスキップ |
+| `VS_DEBUG=1` | 例外発生時にフルスタックトレースを表示 |
 
-## 何が起こるか（処理フロー）
+## 処理フローとログ
 
-1. **クリーンアップ**  
-   - Vivlio 側の `contents/`, `images/`, `codes/` を削除して作り直します。
-2. **Markdown 生成**  
-   - Starter 側で `rake markdown` を自動実行し、`bookname-md/` を生成（既存があれば再利用）。
-3. **Markdown 追従変換**  
-   - 生 Markdown を `temp/` にコピーし、以下の変換を適用してから `contents/` へ移動します。  
-     - フェンスブロック（`[abstract]` など）→ `:::{.class}`  
-     - `<dl>` / `<table>` / `<img>` 変換、ルビ `{漢字|よみ}`  
-     - 画像パスを `![](foo.webp)` に統一  
-     - コードブロックキャプション → ```` ```lang:filename ````  
-     - 言語未指定フェンスは Rouge で自動推定（`$`/`%` で始まる行があれば強制 `zsh`）  
-4. **画像処理**  
-   - Starter `images/` をコピー → `ResizeCommands` で WebP 化 → 元画像（png/jpg/gif）は削除。  
-   - `config-starter.yml` に `frontcover_pdffile` があれば `/images/<file>.pdf` を `covers/` へコピーし、`book.yml` の `output.cover.front` を更新。
-5. **codes/ へのコピー**  
-   - Starter `source/` 配下をそのまま `codes/` へコピー。
-6. **YAML 変換**  
-   - `catalog.yml`: `PREDEF→PREFACE` などにキーを変換し、`.re` 拡張子を除去。コメントは保持。  
-   - `config.yml`: `book.main_title`, `project.name`, `book.release` などを抽出し `config/book.yml` に反映（コメント保持）。`project.version` は `0.1.0` に固定。  
-   - `config-starter.yml`: `starter.pagesize` を `page.use` にマッピング。
-7. **片付け**  
-   - Vivlio 側 `temp/` と Starter 側 `bookname-md/` を削除。
+`vs import` を実行すると、以下の処理が順に実行されます。
 
----
+1. **クリーンアップ** — Vivlio 側の `contents/`, `images/`, `codes/` を削除して作り直します。
+2. **Markdown 生成** — Starter 側で `rake markdown` を自動実行し、`bookname-md/` を生成（既存があれば再利用）。
+3. **Markdown 追従変換** — 生 Markdown を `temp/` にコピーし、以下の変換を適用してから `contents/` へ移動します。
+   - フェンスブロック（`[abstract]` など）→ `:::{.class}`
+   - `<dl>` / `<table>` / `<img>` 変換、ルビ `{漢字|よみ}`
+   - 画像パスを `![](foo.webp)` に統一
+   - コードブロックキャプション → `` ```lang:filename ``
+   - 言語未指定フェンスは Rouge で自動推定（`$`/`%` で始まる行があれば強制 `zsh`）
+4. **画像処理** — Starter `images/` をコピー → WebP 化 → 元画像（png/jpg/gif）は削除。`config-starter.yml` に `frontcover_pdffile` があれば `covers/` へコピーし、`book.yml` の `output.cover.front` を更新。
+5. **codes/ へのコピー** — Starter `source/` 配下をそのまま `codes/` へコピー。
+6. **YAML 変換** — `catalog.yml`（`PREDEF→PREFACE` 等のキー変換、`.re` 拡張子除去）、`config.yml`（`book.main_title` 等を `book.yml` に反映）、`config-starter.yml`（`starter.pagesize` を `page.use` にマッピング）を変換。コメントは保持されます。
+7. **片付け** — Vivlio 側 `temp/` と Starter 側 `bookname-md/` を削除。
 
-## 実行中のログ例
+### 実行中のログ例
 
 ```
 [Step 1] 既存ディレクトリを削除します
@@ -94,32 +83,21 @@ vs import --force ../starter_project    # 確認を省略したい場合
 インポートが完了しました
 ```
 
----
+## インポート後の確認
 
-## オプションと注意点
+インポートが完了したら、以下の点を確認してください。
 
-| オプション | 説明 |
-| --- | --- |
-| `--force` | 既存ディレクトリの削除確認をスキップ |
-| `VS_DEBUG=1` | 例外発生時にフルスタックトレースを表示 |
+1. `contents/` に Markdown が揃っているか
+2. `.webp` 以外の画像が残っていないか
+3. `covers/` に表紙 PDF がコピーされ、`config/book.yml` の `output.cover.front` が更新されているか
+4. `config/book.yml` の `book.main_title` などが期待どおりか（コメントが消えていないか）
+5. `config/catalog.yml` の章名が `.re` を含んでいないか
 
-### 注意事項
+確認が済んだら `vs build` を実行して、章構成・画像・表紙が意図どおりになっているか PDF で確認してください。
 
-- 画像は WebP のみ残るため、元画像が必要なら事前バックアップを推奨。
-<!-- - `temp_manual` など過去の手動操作ディレクトリはもう使われません。 -->
-<!-- - 追従変換に依存するため、`docs/specs/import_spec.md` を最新版に保つこと。 -->
-
----
-
-## インポート後の確認リスト
-
-1. `contents/` に Markdown が揃っているか。
-2. `.webp` 以外の画像が残っていないか。
-3. `covers/` に表紙 PDF がコピーされ、`config/book.yml` の `output.cover.front` が更新されているか。
-4. `config/book.yml` の `book.main_title` などが期待どおりか（コメントが消えていないか）。
-5. `config/catalog.yml` の章名が `.re` を含んでいないか。
-
----
+:::{.notice}
+画像は WebP のみ残るため、元画像が必要な場合は事前にバックアップを取ってください。
+:::
 
 ## トラブルシューティング
 
@@ -129,11 +107,9 @@ vs import --force ../starter_project    # 確認を省略したい場合
 | `rake markdown` が失敗する | Starter 側 gem が未インストール | Starter ディレクトリで `bundle install`、または依存 gem を整える |
 | Rouge が見つからない | gem が未インストール | `vs doctor --fix` or `gem install rouge` |
 | 表紙 PDF がコピーされない | `frontcover_pdffile` が PNG など PDF 以外 | 仕様通り PDF のみに対応。Starter 側設定を修正 |
-| `config/book.yml` の値が更新されない | 対応パスが見つからない | コメントやインデントが崩れていないか確認。必要なら `docs/specs/import_spec.md` の該当項目を参照 |
-
----
+| `config/book.yml` の値が更新されない | 対応パスが見つからない | コメントやインデントが崩れていないか確認 |
 
 :::{.column}
 **ヒント**  
-インポート後に `vs build` を一度実行し、Vivliostyle プレビューで章構成・画像・表紙が意図どおりになっているか確認してください。問題があれば `VS_DEBUG=1 vs import ...` で再実行し、ログから原因を特定するのが近道です。
+問題があれば `VS_DEBUG=1 vs import ...` で再実行し、ログから原因を特定するのが近道です。
 :::
