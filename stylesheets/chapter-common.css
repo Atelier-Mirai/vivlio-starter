@@ -350,7 +350,7 @@ p>img {
    コラム
    ------------------------------------------------------------- */
 .column {
-  margin-block: 4mm 6mm;
+  margin-block: 8mm 6mm;
   padding: 4mm;
   padding-inline: 6mm;
   padding-block-start: 6mm;
@@ -381,7 +381,7 @@ p>img {
 }
 
 .tip {
-  margin-block: 4mm 6mm;
+  margin-block: 8mm 6mm;
   padding: 4mm;
   padding-inline: 6mm;
   padding-block-start: 6mm;
@@ -412,7 +412,7 @@ p>img {
 
 /* メモブロック（@div:memo ... @divend） */
 .memo {
-  margin-block: 4mm 6mm;
+  margin-block: 8mm 6mm;
   padding: 4mm;
   padding-inline: 6mm;
   padding-block-start: 6mm;

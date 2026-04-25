@@ -250,9 +250,6 @@ vs build --help     # ヘルプを表示
 | `--no-clean` | 中間生成物を残す（デバッグ用） |
 | `--[no]-verify` | リンク・画像の基本検証を有効/無効にする（既定: 有効） |
 | `--verify-links` | 外部 URL の HTTP 到達性チェックを有効にする |
-| `--dry-run` | 実行せずにビルド予定のみを表示 |
-| `--force` | タイトルページ・奥付を強制再生成 |
-| `--no-cache` | キャッシュを無効化（`--force` と同義） |
 | `--log <level>` | ログレベルを指定（error / warn / info / debug） |
 
 ### 使用例
@@ -263,12 +260,6 @@ vs build --no-resize
 
 # デバッグ用に中間ファイルを残す
 vs build --no-clean
-
-# ビルド予定だけ確認する
-vs build --dry-run
-
-# タイトルページと奥付を強制再生成
-vs build --force
 
 # 詳細なログを表示
 vs build --log debug
@@ -303,22 +294,33 @@ vs build --log debug
 
 ### タイミング表示
 
-ビルド完了時に各ステップの所要時間が表示されます。
+`--log=debug`オプションを付けた場合には、ビルド完了時に各ステップの所要時間が表示されます。
 
 ```
 == Build Step Timings ==
-  - Step  0 (clean)                             0.00s
-  - Step  1 (optimize images)                   0.03s
-  - Step  3 (preprocess sections)               0.31s
-  - Step  5 (generate sections / part pages)    1.52s
-  - Step  7 (build overall pdf)                 8.20s
-    (vivliostyle build)                        (8.13s)
-  = TOTAL                                      11.56s
+  - Step  0 (clean)                               0.00s
+  - Step  1 (optimize images)                     0.02s
+  - Step  2 (prepare theme images)                0.00s
+  - Step  3 (preprocess sections)                 0.24s
+  - Step  4 (index scan and build)                0.09s
+  - Step  5 (generate sections / part pages)      1.26s
+  - Step  6 (generate toc and pdf)                3.40s
+    (vivliostyle build)                          (3.08s)
+  - Step  7 (build overall pdf)                  10.00s
+    (vivliostyle build)                          (9.93s)
+  - Step  8 (backlink dedup)                     17.33s
+    (vivliostyle build)                          (9.82s)
+  - Step  9 (build front pages and tail)          7.05s
+    (vivliostyle build)                          (3.01s)
+    (vivliostyle build)                          (2.91s)
+  - Step 10 (merge all pdfs)                      2.91s
+  - Step 11 (apply outline to output pdf)         4.49s
+  - Step 12 (compress, rename and final clean)    0.11s
+  = TOTAL                                        46.89s
 ==========================
 ```
 
-この表示を参考に、ボトルネックとなっているステップを確認できます。たとえば、画像の最適化に時間がかかっている場合は `--no-resize` で省略し、内容の確認に集中することもできるでしょう。
-
+一般的に、フルビルドはとても時間がかかります。`vs preflight`コマンドでのエラー確認や、`vs build 00` のように個別の章を一つ一つビルドして誤りがないか確認しながら執筆し、最後の仕上げとしてフルビルドするのがお勧めです。
 
 ## book.yml の出力関連設定
 
@@ -638,7 +640,6 @@ vs preflight
 - **印刷入稿用 PDF**（`targets: print_pdf`）— 同人印刷所への入稿に
 - **EPUB**（`targets: epub`）— 電子書籍ストアへの配信に
 - **単章ビルド**（`vs build 1`）— 執筆中のすばやい確認に
-- **dry-run**（`vs build --dry-run`）— ビルド予定の事前確認に
 - **リンク・画像検証**（`--verify-links` / `--no-verify`）— リンク切れ・欠落画像の早期発見に
 - **ビルド前チェック**（`vs preflight`）— 約6秒で原稿エラーを早期発見に
 

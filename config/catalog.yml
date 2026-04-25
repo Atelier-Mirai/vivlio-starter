@@ -14,29 +14,28 @@ PREFACE:
 CHAPTERS:
   - 【第一部：はじめる】:
       - 11-workflow
-      - 12-quickstart
-      - 13-new
-  - 【第二部：書く】:
-      - 21-markdown-tutorial
-      - 22-extentions
-      - 23-chapter-management
-      - 24-cross-reference
-      - 25-querystream
-  - 【第三部：整える】:
-      - 31-lint
-      - 32-metrics
-      - 33-index-glossary
-  - 【第四部：仕上げる】:
-      - 41-book-yml
-      - 42-frontispiece
-      - 43-cover
-      - 44-build
-      - 45-utility
-  - 【第五部：トラブルシューティング】:
-      - 51-doctor
+  #     - 12-quickstart
+  #     - 13-new
+  # - 【第二部：書く】:
+  #     - 21-markdown-tutorial
+  #     - 22-extentions
+  #     - 23-chapter-management
+  #     - 24-cross-reference
+  #     - 25-querystream
+  # - 【第三部：整える】:
+  #     - 31-lint
+  #     - 32-metrics
+  #     - 33-index-glossary
+  # - 【第四部：仕上げる】:
+  #     - 41-book-yml
+  #     - 42-frontispiece
+  #     - 43-cover
+  #     - 44-build
+  #     - 45-utility
+  # - 【第五部：トラブルシューティング】:
+  #     - 51-doctor
   # - 【第六部：開発者のために】:
   #     - 61-developer
-  #     - 81-replace-list-sample
 
 ## 付録
 APPENDICES:
@@ -57,7 +56,7 @@ POSTFACE:
 ##     PREFACE:
 ##
 ##     CHAPTERS:
-##       - 01-install.re
+##       - 01-install
 ##
 ##     APPENDICES:
 ##
@@ -69,12 +68,12 @@ POSTFACE:
 ##
 ##     CHAPTERS:
 ##       - 初級編:
-##           - 01-install.re
-##           - 02-tutorial.re
+##           - 01-install
+##           - 02-tutorial
 ##       - 中級編:
-##           - 03-syntax.re
-##           - 04-customize.re
+##           - 03-syntax
+##           - 04-customize
 ##       - 上級編:
-##           - 05-faq.re
-##           - 06-bestpractice.re
-##
+##           - 05-faq
+##           - 06-bestpractice
+

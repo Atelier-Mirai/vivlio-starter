@@ -230,18 +230,27 @@ module Vivlio
           end
 
           # ```include:path[:start-end]``` を検出し、codes/ または絶対パスから読込。
-          # マークダウンのコードブロック内に記述された include 記法は
-          # 記法の説明例であるためスキップする。
+          # マークダウンのコードブロックおよびインラインコード内に記述された
+          # include 記法は記法の説明例であるためスキップする。
           # @param content [String] 処理対象の Markdown テキスト
           # @param source_filename [String, nil] エラーメッセージに表示するソースファイル名
-          def process_code_include(content, source_filename: nil)
+          # @param source_path [String, nil] 元ファイルのパス（行番号補正用）
+          def process_code_include(content, source_filename: nil, source_path: nil)
             matches_found = 0
             line_number_map = build_line_number_map(content)
             skippable_lines = lines_inside_code_blocks(content)
+            inline_code_lines = lines_with_inline_code_include(content)
+            source_line_map = build_source_include_line_map(source_path)
 
             content.gsub!(/```include:([^:`\s]+)(?::(\d+)-(\d+))?\s*```/) do |match|
               # コードブロック内の include 記法はスキップ（記法説明用の例文）
               if (ln = line_number_map[match]) && skippable_lines.include?(ln)
+                next match
+              end
+
+              # インラインコード内の include 記法はスキップ
+              # `` ```include:file.rb``` `` のようにバッククォートで囲まれた場合
+              if (ln = line_number_map[match]) && inline_code_lines.include?(ln)
                 next match
               end
 
@@ -278,12 +287,14 @@ module Vivlio
                 replacement
               else
                 code_name = File.basename(original_path)
-                if source_filename && (ln = line_number_map[match])
+                # 元ファイルの行番号があればそちらを使う
+                source_ln = source_line_map[original_path] || line_number_map[match]
+                if source_filename && source_ln
                   Common.log_error(
-                    "#{source_filename}:#{ln} - ソースコード '#{code_name}' が見つかりません",
+                    "#{source_filename}:#{source_ln} - ソースコード '#{code_name}' が見つかりません",
                     detail: "コードの場所: #{file_path}"
                   )
-                  LinkImageValidator.record_code_include_error(source_filename, ln, code_name)
+                  LinkImageValidator.record_code_include_error(source_filename, source_ln, code_name)
                 else
                   Common.log_error(
                     "ソースコード '#{code_name}' が見つかりません",
@@ -310,6 +321,49 @@ module Vivlio
             map
           end
           private_class_method :build_line_number_map
+
+          # インラインコード内に include 記法を含む行番号の Set を返す。
+          # `` ```include:file.rb``` `` のようにバッククォートで囲まれた場合を検出する。
+          def lines_with_inline_code_include(content)
+            result = Set.new
+            content.lines.each_with_index do |line, idx|
+              # 行がフェンス開始/終了でない場合のみチェック
+              stripped = line.lstrip
+              next if stripped.match?(/\A`{3,}/)
+
+              # インラインコード内に include 記法があるか
+              # `` `...```include:file.rb```...` `` のパターンを検出
+              if line.match?(/`[^`]*```include:[^`\s]+(?::\d+-\d+)?\s*```[^`]*`/)
+                result << (idx + 1)
+              end
+            end
+            result
+          end
+          private_class_method :lines_with_inline_code_include
+
+          # 元ファイルから include 記法のパス → 行番号のマップを構築する。
+          # pre_process で行数が変わる前の正しい行番号を取得するため。
+          def build_source_include_line_map(source_path)
+            return {} unless source_path && File.exist?(source_path)
+
+            map = {}
+            in_code_block = false
+            File.readlines(source_path, encoding: 'utf-8').each_with_index do |line, idx|
+              stripped = line.lstrip
+              if stripped.match?(/\A`{3,}/) && !stripped.start_with?('```include:')
+                in_code_block = !in_code_block
+                next
+              end
+              next if in_code_block
+
+              line.scan(/```include:([^:`\s]+)(?::\d+-\d+)?\s*```/) do
+                path = ::Regexp.last_match(1)
+                map[path] ||= idx + 1
+              end
+            end
+            map
+          end
+          private_class_method :build_source_include_line_map
 
           # マークダウンのコードブロック内にある行番号の Set を返す。
           # ```include: で始まる行はコードブロックの開閉トグルとみなさない

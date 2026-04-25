@@ -479,10 +479,20 @@ module Vivlio
           end
         end
 
+        # 付録の章番号を catalog.yml 内の順番に基づいてレター（a〜i）に変換する。
+        # 例: catalog に 91, 92, 93 が登録されている場合、91→a, 92→b, 93→c
         def appendix_number_to_letter(num)
           n = num.to_i
           return nil unless n.between?(90, 98)
 
+          # catalog.yml の付録一覧から順番を取得
+          resolver = TokenResolver::Resolver.new
+          appendix_entries = resolver.resolve.select { it.kind == :appendix }.sort_by { it.number.to_i }
+
+          index = appendix_entries.index { it.number.to_i == n }
+          return ('a'..'i').to_a[index] if index
+
+          # catalog に未登録の場合は章番号から直接計算（フォールバック）
           ('a'..'i').to_a[n - 90]
         rescue StandardError
           nil

@@ -114,19 +114,23 @@ module Vivlio
 
           # 画像パスを生成規約に従って正規化する
           def normalize_image_paths!
-            context.content = ImagePathNormalizer.fix_image_paths(context.content, context.filename)
+            context.content = ImagePathNormalizer.fix_image_paths(
+              context.content, context.filename, source_path: context.source_path
+            )
             Common.log_success("画像パスを修正しました: #{context.filename}")
           end
 
           # リンク・画像の自動検証を実行する
           def validate_links_and_images!
-            LinkImageValidator.validate(context.content, context.filename)
+            LinkImageValidator.validate(context.content, context.filename, source_path: context.source_path)
           end
 
           # include 記法によるソースコード取り込みを実行する
           def process_code_includes!
             Common.log_action('ソースコード読み込み記法をスキャンしています…')
-            context.content = MarkdownTransformer.process_code_include(context.content, source_filename: context.filename)
+            context.content = MarkdownTransformer.process_code_include(
+              context.content, source_filename: context.filename, source_path: context.source_path
+            )
             Common.log_success('ソースコード読み込み処理が完了しました')
           end
 

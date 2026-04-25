@@ -339,7 +339,7 @@ p>img {
    ------------------------------------------------------------- */
 .column {
   width: 114mm;
-  margin-block-start: 6mm;
+  margin-block-start: 8mm;
   margin-inline: auto;
   padding: 4mm;
   padding-inline: 6mm;
@@ -355,7 +355,7 @@ p>img {
 }
 
 .tip {
-  margin-block: 3mm;
+  margin-block: 8mm 3mm;
   margin-inline: auto;
   padding: 3mm 4mm;
   border-radius: 6px;

@@ -60,10 +60,19 @@ module Vivlio
             # ファイル単位の検証を実行し、レポートを蓄積する
             # @param content [String] Markdown テキスト（画像パス正規化済み）
             # @param filename [String] 対象ファイル名
+            # @param source_path [String, nil] 元ファイルのパス（行番号補正用）
             # @param config [Hash] 検証設定（verify_images, verify_bare_urls, verify_external_links）
-            def validate(content, filename, config: resolve_config)
+            def validate(content, filename, source_path: nil, config: resolve_config)
+              source_content = source_path && File.exist?(source_path) ? File.read(source_path, encoding: 'utf-8') : nil
+
               image_issues = config[:verify_images] ? scan_missing_images(content, filename) : []
               link_issues = config[:verify_bare_urls] ? scan_bare_urls(content, filename) : []
+
+              # 行番号を元ファイルの行番号に補正する
+              if source_content
+                image_issues = image_issues.map { correct_line_number(it, source_content) }
+                link_issues = link_issues.map { correct_link_line_number(it, source_content) }
+              end
 
               # セキュリティ検証（11-1）: 危険スキームの検出は常時有効
               # file:// / javascript: 等は --no-verify でも無効化しない
@@ -208,6 +217,47 @@ module Vivlio
             end
 
             private
+
+            # 画像 issue の行番号を元ファイルの行番号に補正する。
+            # プレースホルダー SVG から抽出した画像名を元ファイルで検索し、
+            # 元ファイルでの行番号を返す。
+            def correct_line_number(issue, source_content)
+              image_name = issue.image_path
+              return issue if image_name == '(不明)'
+
+              # 元ファイルで画像名を含む行を探す
+              source_content.each_line.with_index(1) do |line, idx|
+                if line.include?(image_name) && line.match?(/!\[/)
+                  return ImageIssue.new(
+                    filename: issue.filename,
+                    line_number: idx,
+                    image_path: issue.image_path,
+                    issue_type: issue.issue_type
+                  )
+                end
+              end
+
+              issue
+            end
+
+            # リンク issue の行番号を元ファイルの行番号に補正する。
+            def correct_link_line_number(issue, source_content)
+              url = issue.url
+              source_content.each_line.with_index(1) do |line, idx|
+                if line.include?(url)
+                  return LinkIssue.new(
+                    filename: issue.filename,
+                    line_number: idx,
+                    url: issue.url,
+                    issue_type: issue.issue_type,
+                    status_code: issue.status_code,
+                    message: issue.message
+                  )
+                end
+              end
+
+              issue
+            end
 
             # book.yml + CLI オプションから検証設定を解決する
             def resolve_config

@@ -331,16 +331,20 @@ greet('World');
 **Prime2範囲指定 @prime2-range**
 ```include:prime2.rb:22-25```
 
-### 章間参照のテスト
+### 章間参照
 
 他の章で定義されたラベルを参照することも可能です。
+
+```
+- 前章で定義した@einsteinや@basic-tableを参照
+- @ruby-sampleや@js-sampleも章をまたいで参照
+- コードインクルードで取り込んだ@primeや、範囲指定の@prime2-rangeも参照できる
+```
 
 - 前章で定義した@einsteinや@basic-tableを参照
 - @ruby-sampleや@js-sampleも章をまたいで参照
 - コードインクルードで取り込んだ@primeや、範囲指定の@prime2-rangeも参照できる
-- このように、章をまたいだ相互参照が可能です
 
----
 
 ## トラブルシューティング
 

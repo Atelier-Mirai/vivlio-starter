@@ -76,8 +76,12 @@ module Vivlio
           # Markdown 内の画像リンクを生成規約に合わせて正規化する
           # コードブロック・インラインコード内は MarkdownUtils.extract_code_spans で退避し、
           # 変換対象から除外する。
-          def fix_image_paths(content, filename)
+          # @param source_path [String, nil] 元ファイルのパス（行番号補正用）
+          def fix_image_paths(content, filename, source_path: nil)
             chapter_dir = filename.sub(/\.md$/, '')
+
+            # 元ファイルの行番号マップを構築（画像名 → 元ファイルでの行番号）
+            source_line_map = build_source_image_line_map(source_path)
 
             # コードブロック・インラインコードを退避して変換対象から除外する
             protected_text, spans = MarkdownUtils.extract_code_spans(content)
@@ -103,7 +107,9 @@ module Vivlio
                 normalized = normalized.sub(/\.(png|jpe?g)\z/i, '.webp')
 
                 original_image_name = File.basename(image_path)
-                resolved_placeholder_or_path(alt_text, normalized, filename, line_number, original_image_name)
+                # 元ファイルの行番号があればそちらを使う
+                source_ln = source_line_map[original_image_name] || line_number
+                resolved_placeholder_or_path(alt_text, normalized, filename, source_ln, original_image_name)
               end
             end
 
@@ -133,6 +139,29 @@ module Vivlio
 
             placeholder_path = placeholder_image_path(normalized_path)
             "![#{alt_text}](#{placeholder_path})"
+          end
+
+          # 元ファイルから画像名 → 行番号のマップを構築する。
+          # pre_process で行数が変わる前の正しい行番号を取得するため。
+          def build_source_image_line_map(source_path)
+            return {} unless source_path && File.exist?(source_path)
+
+            map = {}
+            in_code_block = false
+            File.readlines(source_path, encoding: 'utf-8').each_with_index do |line, idx|
+              stripped = line.lstrip
+              if stripped.start_with?('```')
+                in_code_block = !in_code_block
+                next
+              end
+              next if in_code_block
+
+              line.scan(/!\[[^\]]*\]\(([^)]+)\)/) do
+                image_name = File.basename(::Regexp.last_match(1))
+                map[image_name] ||= idx + 1
+              end
+            end
+            map
           end
 
           # 画像ディレクトリ内の拡張子違いを含めて存在を確認する
