@@ -1,21 +1,172 @@
 # はじめての技術書づくり ～Vivlio Starter 実践ガイド～
 
-このリポジトリは、Samovar ベースの CLI（`vs`/`vivlio-starter`）で電子書籍（Vivliostyle PDF）を生成するプロジェクトです。Markdown を前処理し、HTML 変換・差し替え・目次/章立て生成・PDF化・クリーンアップ・表示までを自動化します。
+「自分の本を作ってみたい」——そう思ったことはありませんか。日々の仕事で培った技術的な知見、趣味で深めた専門知識、あるいは誰かに伝えたい物語。Vivlio Starter は、Markdown で書いた原稿から高品質な PDF・EPUB を生成する書籍制作システムです。CSS 組版エンジン Vivliostyle をコアに据え、執筆から入稿に至るすべての工程を自動化します。
 
 ![Vivlio Starter ロゴ](docs/logos/vs_vivlio_starter_logo_outline.svg)
 
-> **ブランドアイデンティティ**  
+> **ブランドアイデンティティ**
 > ロゴの緑は Markdown から始まる執筆の第一歩と継続的な成長を表し、青は CLI や CSS 組版が支える技術的信頼性と出力のゴールを象徴します。シンプルな操作で確かな技術に裏打ちされた書籍制作を提供するという Vivlio Starter のメッセージを表現しています。
 
-## Vivlio Starter とは
+## Vivlio Starter でできること
+
+- **Markdown で執筆** — 使い慣れた記法でさくさく書ける。特別なフォーマットを覚える必要はありません
+- **コマンド一発でビルド** — `vs build` ひとつで、原稿が美しい PDF に変わります
+- **印刷入稿に対応** — トンボ・塗り足し付きの PDF を生成。印刷所にそのまま入稿できます
+- **電子書籍も出力** — EPUB 形式での出力にも対応。電子出版の道も開かれています
+- **テーマで簡単デザイン** — `book.yml` でアクセントカラーや扉絵を選ぶだけで、統一感あるデザインに
+- **環境構築も自動** — `vs new` でプロジェクトを作成し、`vs doctor` で必要なツールを自動セットアップ
+
+## 執筆ワークフロー
+
+Vivlio Starter を使った書籍制作は、5つのステップで完結します。
+
+| ステップ | 主なコマンド | 内容 |
+| :--- | :--- | :--- |
+| ① プロジェクト作成 | `vs new mybook` | 雛形生成＋必要ツール自動セットアップ |
+| ② 執筆 | `vs create 10-intro` | 章ファイルを追加して Markdown で執筆 |
+| | `vs build 10-intro` | 章単位で素早く確認 |
+| ③ 整える | `vs lint` | 文章を校正（textlint） |
+| | `vs metrics` | 原稿の統計を確認 |
+| ④ ビルド | `vs build` | 書籍全体をビルド（カバー未生成時は自動生成） |
+| ⑤ 入稿・配布 | — | 生成済みファイルを提出・アップロード |
+
+②と③は何度でも繰り返せます。書いては整え、また書く——この往復が、読みやすい技術書を仕上げる近道です。
+
+## クイックスタート
+
+### 前提条件
+
+- **Ruby**（CLI 実行に必要）
+- **Node.js / npm**（Vivliostyle CLI や textlint に必要）
+
+Ruby が未導入の場合は、同梱スクリプトで自動セットアップできます。
+
+```bash
+bin/install-ruby.zsh        # 対話モード
+bin/install-ruby.zsh -y     # 無人モード
+```
+
+### インストール
+
+```bash
+gem install vivlio-starter
+```
+
+### プロジェクト作成からビルドまで
+
+```bash
+# 新しい書籍プロジェクトを作成
+vs new mybook
+cd mybook
+
+# さっそく PDF を生成
+vs build
+
+# 生成された PDF を開く
+vs open
+```
+
+`vs new` が内部で `vs doctor --fix` を自動的に呼び出し、Vivliostyle や ImageMagick など必要な外部ツールを一括でセットアップします。
+
+### 新しい章を作る
+
+```bash
+vs create 10-awesome        # 章ファイルと画像ディレクトリを生成
+vs build  10-awesome        # その章だけ素早くビルドして確認
+```
+
+すべての章を書き終わったら `vs build` で全体をビルドすれば、表紙・目次・索引・奥付まで揃った本が完成します。
+
+## ディレクトリ構成
+
+```
+mybook/
+  contents/          ← 原稿（Markdown ファイル）
+  images/            ← 画像ファイル
+  covers/            ← 表紙・裏表紙用の画像ファイル
+  data/              ← QueryStream 用データ（YAML 形式）
+  templates/         ← 各種雛形ファイル
+  sources/           ← 執筆資料や PDF ファイル
+  codes/             ← 書籍内で掲載するサンプルコード
+  stylesheets/       ← CSS スタイルシート
+  config/
+    book.yml         ← 書籍の設定ファイル
+    catalog.yml      ← 章構成
+    page_presets.yml ← ページレイアウト設定
+  Gemfile
+  package.json
+```
+
+## コマンド一覧
+
+```bash
+vs --help
+```
+
+```
+📚 Vivlio Starter - 技術書執筆のためのCLIツール 🛠️
+使い方: vs <command> [options]
+
+  プロジェクト管理:
+    new              プロジェクトを新規作成します
+    import           Re:VIEW Starter プロジェクトを取り込みます
+    pdf:read         PDFを解析して Markdown 形式へ変換・抽出します
+    doctor           環境診断と不足ツールの自動セットアップ
+    clean            生成物やキャッシュを削除します
+
+  執筆・編集支援:
+    create           章ファイルと画像ディレクトリを生成します
+    delete           指定した章の Markdown と画像を削除します
+    rename           章の番号やファイル名（スラッグ）を変更します
+    renumber         章番号を一括で付け直します
+
+  文章校正・統計:
+    lint             Markdownをtextlintで検査します
+    metrics          Markdownの行数・文字数を集計します
+
+  索引・用語集:
+    index:auto       索引・用語集の候補を抽出し、確認用ファイルを作成します
+    index:apply      確認済みの候補を、プロジェクトの索引辞書に登録・保存します
+
+  画像・カバー:
+    cover            表紙・裏表紙の画像を生成します（A4/B5/A5/EPUB対応）
+    resize           images/画像をWebP形式に変換・最適化します
+
+  ビルド・出力・プレビュー:
+    build            書籍全体または指定章をビルドします
+    open             生成されたPDFを開きます
+    pdf:compress     生成済みPDFを圧縮します
+```
+
+まずはこの3つだけで十分です。
+
+| コマンド | 用途 |
+|---|---|
+| `vs build` | PDF を生成する |
+| `vs create` | 新しい章を作る |
+| `vs delete` | 章を削除する |
+
+各コマンドの詳細は `--help` オプションで確認できます。
+
+```bash
+vs build --help
+vs create --help
+```
+
+### ログ出力レベル
+
+```bash
+vs build              # warn（既定: 警告・エラーのみ）
+vs build --log        # info（おすすめ: 情報/成功/操作ログを含む）
+vs build --log=debug  # debug（すべてのログを出力）
+vs build --log=error  # error（エラーのみ）
+```
+
+## Vivlio Starter のしくみ
 
 Vivlio Starter は、Vivliostyle をコアエンジンとして活用する独自ビルドシステムです。単なるラッパーではなく、執筆から入稿まで必要な処理の約半分を独自に担っています。
 
-Re:VIEW Starter の思想に影響を受け、「Markdown で書いて、コマンド一発で本になる」という体験を実現するために、少しずつ機能を積み上げて育ててきました。
-
-### vivliostyle 呼び出し前の処理（前処理）
-
-vivliostyle を呼び出す前に、以下の処理を自動で行います。
+### 前処理（vivliostyle 呼び出し前）
 
 - **QueryStream 展開**: `data/*.yml` のデータを `templates/` のテンプレートで自動展開
 - **画像最適化**: WebP 変換・リサイズ（high/medium/low プリセット）
@@ -23,22 +174,17 @@ vivliostyle を呼び出す前に、以下の処理を自動で行います。
 - **フロントマター生成**: book.yml の設定を各章に自動反映
 - **ソースコード読み込み**: `codes/` からコードを埋め込み、行番号を付与
 - **脚注変換**: 外部リンクをページ脚注に自動変換
-- **CSS自動更新**: テーマカラー・スタイル・マーカー・ページ設定を動的生成
+- **CSS 自動更新**: テーマカラー・スタイル・マーカー・ページ設定を動的生成
+- **目次の自動生成**: `catalog.yml` に記載された各章の見出しを自動抽出
 
-### 目次の自動生成
-
-`catalog.yml` に記載された各章の見出し（H1・H2・H3）を自動抽出し、目次ページを自動生成します。著者は特に設定不要です。`vs build` を実行するだけで、章構成に合った目次が常に最新の状態で出力されます。
-
-### vivliostyle 呼び出し後の処理（後処理）
-
-vivliostyle が PDF を生成した後、さらに以下の処理を加えます。
+### 後処理（vivliostyle 呼び出し後）
 
 - **重複バックリンク排除**: Playwright でページマッピングを取得し、索引・用語集の重複リンクを浄化
 - **PDF アウトライン付与**: HexaPDF により PDF にしおり（ブックマーク）を付与
 - **表紙 PDF 結合**: frontcover/backcover を本文 PDF と結合
 - **奥付の偶数ページ調整**: 奥付が必ず左ページ（偶数）に来るよう空白ページを自動挿入
 - **PDF 圧縮**: Ghostscript による高品質圧縮
-- **ファイルリネーム**: `janken_v0.1.0.pdf` のようにプロジェクト名・バージョンを反映
+- **ファイルリネーム**: `mybook_v0.1.0.pdf` のようにプロジェクト名・バージョンを反映
 
 ### ビルド時間の内訳
 
@@ -47,235 +193,15 @@ vivliostyle 本体:      約 52%（PDF レンダリング）
 vivlio-starter の処理: 約 48%（前処理・後処理）
 ```
 
-ビルド時間の約半分を vivlio-starter が担うことで、著者は原稿を書くことだけに集中できます。
-
----
-
-## 特長
-
-Vivlio Starter は Markdown から HTML に変換、CSS 組版技術を用いて、電子書籍（Vivliostyle PDF）を生成します。直感的な CLI コマンドでワンコマンドビルド（`vs build`）や、`config/book.yml` による一元的な設定管理、ファイルタイプに応じたスタイル適用など、便利な機能を提供します。
-
-- 直感的な CLI コマンドでワンコマンドビルド（`vs build`）
-- `config/book.yml` による一元的な設定管理
-- ファイルタイプに応じたスタイル適用（`<body class="preface|chapter|appendix|postface|colophon">`）
-- `vivliostyle.config.js` の自動生成（バックアップは最新版のみ保持）
-- 冗長ログの統一制御（`--log=level`）
-
-## 前提条件（依存関係）
-
-- Node.js / npm（`npx vivliostyle` や textlint を使用）
-- Ruby（CLI 実行）
-
-必要に応じて以下をインストールしてください。
-- Vivliostyle CLI は npx 経由で自動取得されます。
-- Textlint は npm でグローバル導入するか、`vs doctor --fix` による自動導入を利用できます。
-- Ruby の導入は同梱スクリプト `bin/install-ruby.zsh` が簡単・安全です（対話/無人どちらも可）。
-  - 例: `bin/install-ruby.zsh`（対話）/ `bin/install-ruby.zsh -y`（無人）
-  - 依存の自動診断/導入: `vs doctor --fix`
-
-### 追加ツールのインストール（PDF 操作）
-
-一括ビルドで PDF のページ数取得・分割/結合を行うため、以下の CLI を利用します。
-
-- pdfinfo（poppler）: PDF のページ数などのメタ情報取得
-- qpdf: PDF の分割・結合・ページ抽出（非破壊）
-- Ghostscript: PDF 圧縮（サイズ削減）
-- ImageMagick: 画像変換（WebP 等）
-
-インストール（macOS/Homebrew）:
-
-```bash
-brew install poppler qpdf ghostscript imagemagick
-```
-
-動作確認:
-
-```bash
-pdfinfo -v      # バージョン表示
-qpdf --version  # バージョン表示
-gs --version    # Ghostscript のバージョン表示
-```
-
-補足:
-
-- CI でも `brew install poppler qpdf ghostscript`（または Linux なら `apt-get install poppler-utils qpdf ghostscript`）で導入可能です。
-- どちらもビルド時に外部コマンドとして呼び出すのみで、プロジェクトのライセンスには影響しません。
-
-Ghostscript による簡易圧縮例:
-
-```bash
-# 画質とサイズのバランス例（/ebook は可読性を保ちつつ縮小）
-gs -sDEVICE=pdfwrite -dPDFSETTINGS=/ebook -dCompatibilityLevel=1.7 \
-   -dNOPAUSE -dQUIET -dBATCH -sOutputFile=output.compressed.pdf output.pdf
-# より高画質にしたい場合は /prepress、もっと小さくしたい場合は /screen を検討
-# /default, /screen, /ebook, /printer, /prepress
-```
-
-### Vivliostyle CLI / VFM の導入
-
-本プロジェクトでは、`package.json` の devDependencies に以下を含めています。
-
-- `@vivliostyle/cli`（Vivliostyle CLI）
-- `vfm`（Vivliostyle Flavored Markdown）
-
-クリーン環境から始める場合の導入例（任意のパッケージマネージャで可）:
-
-```bash
-# npm
-npm install --save-dev @vivliostyle/cli vfm
-
-# yarn
-yarn add -D @vivliostyle/cli vfm
-
-# pnpm
-pnpm add -D @vivliostyle/cli vfm
-```
-
-バージョン確認（package.json の scripts を利用）:
-
-```bash
-npm run viv:version  # Vivliostyle CLI のバージョン
-npm run vfm:version  # VFM のバージョン
-```
-
-PDF ビルド（scripts 経由）:
-
-```bash
-npm run build:pdf            # vivliostyle build -c vivliostyle.config.js
-npm run build:pdf:verbose    # 追加ログ付き
-```
-
-備考:
-
-- ローカルにインストール済みの CLI は `npx vivliostyle` / `npx vfm` でも呼び出せます。
-- Vivliostyle CLI のバージョンは `package.json` に固定しており、CI/他環境でも同一結果を狙います。
-
-## ディレクトリ構成（抜粋）
-
-```
-project/
-├─ config/
-│  └─ book.yml              # 書籍の設定（タイトル、著者、vivliostyle、pdf など）
-├─ contents/                # 章の Markdown 原稿（編集元）
-├─ stylesheets/             # PDF 用 CSS
-├─ bin/
-│  └─ install-ruby.zsh      # Ruby の自動セットアップスクリプト（macOS）
-├─ lib/                     # CLI/ロジック（Thor ベースの `vs`）
-└─ README.md                # このファイル
-```
-
-### 主要コマンド（抜粋）
-
-- ビルド: `vs build` / `vs build <chapter_id>`
-- 章の作成/削除/変更: `vs create <id>` / `vs delete <id>` / `vs rename <old> <new>` / `vs renumber <from> <to>`
-- 文章校正・統計: `vs lint` / `vs metrics`
-- PDF表示: `vs open`
-- 生成物削除: `vs clean`
-- ヘルプ: `vs --help` / `vs <cmd> --help`
-
-## インストール（Gem/CLI）
-
-本プロジェクトは Gem としても利用できます（CLI 同梱）。
-
-```bash
-# Bundler（推奨）
-gem "vivlio-starter", "~> 1.0.0"
-
-# または RubyGems から直接インストール
-gem install vivlio-starter
-```
-
-CLI は以下の 2 つのコマンド名で呼び出せます（同等）。
-
-- `vivlio-starter ...`
-- `vs ...`（省略形）
-
-主な使い方:
-
-```bash
-# タスク一覧（ヘルプ）
-vs help
-
-# 一括ビルド（PDF まで）
-vs build
-
-# 生成物クリーンアップ
-vs clean
-
-# PDF を開く
-vs open
-```
-
-備考:
-
-- CLI は Samovar ベースで、`vs`（または `vivlio-starter`）として利用できます。
-- ログ出力は `--log=level` で制御できます（後述）。
-
-## クイックスタート（プロジェクト生成）
-
-```bash
-# 新しい書籍プロジェクトを作成
-vs new mybook
-
-cd mybook
-
-# 執筆開始（テンプレートの 02-preface.md を編集）
-# Windsurf の場合
-windsurf contents/02-preface.md
-# VS Code の場合
-code contents/02-preface.md
-
-# 全ファイルビルド（PDF 生成まで一括）
-vs build
-
-# 生成された PDF を開く
-vs open          # = vs open:pdf
-```
-
-ログ出力レベルを指定するには `--log=level` を使います。
-
-```bash
-# 既定（指定なし）: warn レベル（警告・エラーのみ）
-vs build
-
-# 標準（おすすめ）: info レベル（情報/成功/操作ログを含む）
-vs build --log          # = --log=info と同義
-
-# デバッグ: debug レベル（すべてのログを出力）
-vs build --log=debug
-
-# 最小: error レベル（エラーのみ）
-vs build --log=error
-```
-
-## 主なコマンド
-
-- ビルド
-  - `vs build`
-  - `vs build 02-preface`（特定章のみの関連処理）
-- 表示
-  - `vs open` / `vs open:pdf`
-- 生成物削除
-  - `vs clean`
-- 章の管理
-  - 新規作成: `vs create 21-history`
-  - 削除: `vs delete 21-history`
-  - リネーム: `vs rename 31-history 21-history`
-  - 番号変更: `vs renumber 31 21`
-  - 番号整列: `vs renumber`
-- タスク一覧/ヘルプ
-  - `vs --help` / `vs <cmd> --help`
-
 ## 設定（config/book.yml）
 
-`config/book.yml` は、書籍情報・Vivliostyle・PDF の設定を保持します（抜粋）。
+`config/book.yml` は、書籍情報・Vivliostyle・PDF の設定を一元管理します。
 
 ```yaml
 book:
   main_title: 'はじめての技術書づくり'
   subtitle: 'Vivlio Starter 実践ガイド'
   author: アトリヱ未來
-  
   language: ja
 vivliostyle:
   reading_progression: ltr
@@ -287,43 +213,54 @@ pdf:
   window_bounds: '{3072, 0, 4096, 2160}'
 ```
 
-`vs vivliostyle:config` 実行時、既存の `vivliostyle.config.js` がある場合はバックアップを最新版 1 件のみ保持します。
+## 追加ツールのインストール（PDF 操作）
+
+一括ビルドで PDF のページ数取得・分割/結合を行うため、以下の CLI を利用します。`vs doctor --fix` で自動導入されますが、手動でインストールする場合は以下の通りです。
+
+```bash
+brew install poppler qpdf ghostscript imagemagick
+```
+
+| ツール | 用途 |
+|---|---|
+| pdfinfo（poppler） | PDF のメタ情報取得 |
+| qpdf | PDF の分割・結合・ページ抽出 |
+| Ghostscript | PDF 圧縮 |
+| ImageMagick | 画像変換（WebP 等） |
+
+### Vivliostyle CLI / VFM
+
+`package.json` の devDependencies に `@vivliostyle/cli` と `vfm` を含めています。クリーン環境から始める場合:
+
+```bash
+npm install --save-dev @vivliostyle/cli vfm
+```
+
+## 出力形式
+
+| 頒布先 | 使用するファイル | 設定 |
+| :--- | :--- | :--- |
+| 技術書典・コミケ（印刷所入稿） | `print_pdf`（トンボ付き） | `output.targets` |
+| ダウンロード販売・PDF 配布 | `pdf`（閲覧用） | `output.targets` |
+| BOOTH・Kindle 等（電子書籍） | `epub` | `output.targets` |
 
 ## ライセンス
 
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC_BY--NC--SA_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
-以下のライセンス文書を参照してください：
-
-- コードのライセンス: [LICENSE](./LICENSE)
-- コンテンツのライセンス: [CONTENT-LICENSE.md](./CONTENT-LICENSE.md)
-- サードパーティ: [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LICENSES.md)
-
 本リポジトリは「コード」と「書籍本文（コンテンツ）」でライセンスを分けています。
 
-### ライセンス（コード）
-
-このリポジトリのビルド用スクリプトなどのソースコードは MIT ライセンスです。企業・商用利用も自由にお使いいただけます。
-
-- ライセンス本文: [LICENSE](./LICENSE)
-
-### ライセンス（コンテンツ）
-
-本文（`content/` 配下の Markdown、画像・図版・イラスト等）は CC BY-NC-SA 4.0 です（商用利用不可）。
-
-- ライセンス本文: [CONTENT-LICENSE.md](./CONTENT-LICENSE.md)
-- クリエイティブ・コモンズ: https://creativecommons.org/licenses/by-nc-sa/4.0/
+| 対象 | ライセンス | 詳細 |
+|---|---|---|
+| ソースコード | MIT | [LICENSE](./LICENSE) |
+| 書籍本文（`contents/` 配下） | CC BY-NC-SA 4.0 | [CONTENT-LICENSE.md](./CONTENT-LICENSE.md) |
+| サードパーティ | 各ライセンス | [THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LICENSES.md) |
 
 ### vivlio-starter-pdf について
 
 PDF しおり（アウトライン）付与など一部の高度な機能は、`vivlio-starter-pdf`（AGPL ライセンス）として分離されています。一般の著者の方はセットでのご利用をお勧めします。企業での自社製品への組み込みをお考えの場合は、本体（MIT）のみをご利用ください。
 
-```ruby
-# Gemfile に追加することで pdf:read 機能などが利用可能になります
-# gem 'vivlio-starter-pdf'
-```
-
-### 第三者ライセンス（Third-Party Licenses）
+### 第三者ライセンス
 
 本プロジェクトでは PDF/HTML 生成のために Vivliostyle CLI（AGPLv3）を利用しています。
 
@@ -334,8 +271,6 @@ PDF しおり（アウトライン）付与など一部の高度な機能は、`
 
 開発・コントリビューションに関しては [CONTRIBUTING.md](./CONTRIBUTING.md) を参照してください。
 
-リリース手順やローカル開発環境のセットアップ方法が記載されています。
-
 ## Changelog
 
-変更履歴は `CHANGELOG.md` を参照してください。
+変更履歴は [CHANGELOG.md](./CHANGELOG.md) を参照してください。

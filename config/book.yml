@@ -37,13 +37,13 @@ book:
   # ----------------------------
   # 付帯情報（任意）
   # ----------------------------
-  series: "「技術書典20 新刊」"            # 連載名
-  release: "令和八年四月二十五日"     # 発行日
-  publisher: "早乙女 遙香"                # 日光企画 ねこのしっぽ
-  contact: "contact@atelier-mirai.net"       # 連絡先
-  author: "アトリヱ未來"                  # 著者名
+  series: "「技術書典20 新刊」"        # 連載名
+  release: "令和八年四月二十六日"    # 発行日
+  publisher: "早乙女 遙香"          # 日光企画 ねこのしっぽ
+  contact: "contact@atelier-mirai.net" # 連絡先
+  author: "アトリヱ未來"            # 著者名
   language: "ja"                       # 言語
-  isbn: ''                   # 任意（独自ISBN取得の場合。Kindle は ASIN 自動割り当て）
+  isbn: ''                             # 任意（独自ISBN取得の場合。Kindle は ASIN 自動割り当て）
 
 # ========================================
 # プロジェクト情報
@@ -59,7 +59,7 @@ theme:
   # ----------------------------
   # 装飾スタイル
   # ----------------------------
-  style: simple     # image: 画像あり / simple: 画像なし
+  style: image      # image: 画像あり / simple: 画像なし
 
   # ----------------------------
   # テーマカラー
@@ -81,7 +81,7 @@ theme:
   # 章扉の背景画像
   # ----------------------------
   frontispiece: 
-    image: suisen   # suisen / ume / nanohana / sakura
+    image: sakura   # suisen / ume / nanohana / sakura
                     # suzuran / ajisai / asagao / himawari
                     # kikyo / kosumosu / kiku / tsubaki から選択
                     # images/内の独自画像も指定可
@@ -92,7 +92,7 @@ theme:
   # ----------------------------
   # 節見出しの背景画像
   # ----------------------------
-  ornament: suisen
+  ornament: sakura
 
   # ----------------------------
   # 見出し記号
