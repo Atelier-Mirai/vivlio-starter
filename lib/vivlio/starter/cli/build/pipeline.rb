@@ -540,7 +540,13 @@ module Vivlio
               Common.log_action('[Step 12] クリーンアップをスキップします（--no-clean）')
             else
               Common.log_action('[Step 12] 中間生成物をクリーンアップします…')
+              # 単章ビルドで生成した最終 PDF がクリーン対象パターンに含まれる場合があるため、
+              # 一時退避してからクリーンし、復元する
+              pdf_to_protect = @generated_pdf_name
+              tmp_path = pdf_to_protect && File.exist?(pdf_to_protect) ? "#{pdf_to_protect}.keep" : nil
+              FileUtils.mv(pdf_to_protect, tmp_path) if tmp_path
               CleanCommands.execute_clean({})
+              FileUtils.mv(tmp_path, pdf_to_protect) if tmp_path
             end
           end
 

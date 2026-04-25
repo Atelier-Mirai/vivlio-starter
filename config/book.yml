@@ -38,7 +38,7 @@ book:
   # 付帯情報（任意）
   # ----------------------------
   series: "「技術書典20 新刊」"            # 連載名
-  release: "令和八年四月一日"     # 発行日
+  release: "令和八年四月二十五日"     # 発行日
   publisher: "早乙女 遙香"                # 日光企画 ねこのしっぽ
   contact: "contact@atelier-mirai.net"       # 連絡先
   author: "アトリヱ未來"                  # 著者名
@@ -81,15 +81,18 @@ theme:
   # 章扉の背景画像
   # ----------------------------
   frontispiece: 
-    image: asagao
-    padding: 10mm
-    heading_width: 108mm
-    lead_width: 88mm
+    image: suisen   # suisen / ume / nanohana / sakura
+                    # suzuran / ajisai / asagao / himawari
+                    # kikyo / kosumosu / kiku / tsubaki から選択
+                    # images/内の独自画像も指定可
+    padding: 10mm         # 余白の調整
+    heading_width: 108mm  # 幅の調整
+    lead_width: 88mm      # 章リード文の幅の調整
 
   # ----------------------------
   # 節見出しの背景画像
   # ----------------------------
-  ornament: sakura
+  ornament: suisen
 
   # ----------------------------
   # 見出し記号
@@ -104,10 +107,10 @@ theme:
 page:
   # プリセットを選択（page_presets.yml から）
   # 紙サイズ、余白、文字サイズ、行送りなど版面の物理的構造を一括指定
-  # use: a5_standard
-  # use: a5_airy
-  # use: a5_compact
-  # use: a5_custom
+  # use: a5_standard  # 標準
+  # use: a5_airy      # 広め
+  # use: a5_compact   # 狭め
+  # use: a5_custom    # 著者独自
 
   # use: b5_standard
   # use: b5_compact
@@ -188,15 +191,11 @@ output:
   # ----------------------------
   # 出力フォーマット
   # ----------------------------
-  # targets: pdf # pdf / print_pdf / epub
-  # targets: pdf, print_pdf, epub
-  # targets: print_pdf
-  targets: pdf
-  # 文字列、カンマ区切り、配列すべて可
+  targets: pdf # pdf / print_pdf / epub から選択可
   # 例:
-  # targets: pdf              # 単一指定
-  # targets: pdf, print_pdf   # カンマ区切り
-  # targets: [pdf, epub]      # 配列形式
+  # targets: pdf              # 閲覧用PDFを指定
+  # targets: pdf, print_pdf   # 閲覧用PDF, 印刷所入稿用PDFを指定
+  # targets: [pdf, epub]      # 閲覧用PDF, 電子書籍EPUBを指定
   
   # ----------------------------
   # ファイル名規則
@@ -219,9 +218,9 @@ output:
   # ----------------------------
   # 表紙・裏表紙設定
   # ----------------------------
-  cover: master
-  # cover: light
-  # cover: dark
+  cover: master   # covers/内の著者用意画像(frontcover_master.png, backcover_master.png)を指定
+  # cover: light  # 標準添付 light 表紙・裏表紙を指定
+  # cover: dark   # 標準添付 light 表紙・裏表紙を指定
 
   # ----------------------------
   # PDF設定（閲覧用）
@@ -239,7 +238,8 @@ output:
     crop_marks: true   # トンボを付ける（既定: true）
     # Vivliostyle CLI で --crop-marks --bleed 3mm を付加してビルド
     # 出力は PDF/X-4 準拠（ねこのしっぽ、日光企画で対応済み）
-    # 隠しノンブルは HexaPDF で PDF 結合後に自動書き込み
+    # 隠しノンブルも PDF 結合後に自動書き込み
+    # (専用gem vivlio-starter-pdf の導入を推奨)
 
   # ----------------------------
   # EPUB設定
@@ -335,10 +335,9 @@ metrics:
 
   # プリセットを選択
   # use: compact
-  # use: standard
+  use: standard
   # use: commercial
   # use: author_custom
-  use: standard
 
   # コンパクトな薄い本（20〜50ページ想定）
   compact:

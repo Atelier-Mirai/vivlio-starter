@@ -2,7 +2,7 @@
 
 このリポジトリは、Samovar ベースの CLI（`vs`/`vivlio-starter`）で電子書籍（Vivliostyle PDF）を生成するプロジェクトです。Markdown を前処理し、HTML 変換・差し替え・目次/章立て生成・PDF化・クリーンアップ・表示までを自動化します。
 
-![Vivlio Starter ロゴ](dev-notes/vivlio_starter_logo.webp)
+![Vivlio Starter ロゴ](docs/logos/vs_vivlio_starter_logo_outline.svg)
 
 > **ブランドアイデンティティ**  
 > ロゴの緑は Markdown から始まる執筆の第一歩と継続的な成長を表し、青は CLI や CSS 組版が支える技術的信頼性と出力のゴールを象徴します。シンプルな操作で確かな技術に裏打ちされた書籍制作を提供するという Vivlio Starter のメッセージを表現しています。
