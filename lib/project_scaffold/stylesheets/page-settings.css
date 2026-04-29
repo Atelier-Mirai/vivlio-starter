@@ -8,21 +8,40 @@
 @import url("fonts/google-fonts.css"); 
 
 /* バンドル済みフォント定義 */
-/* 本文（明朝体）: Noto Serif JP Variable Font */
+/* 本文（明朝体）: Zen Old Mincho 静的 TTF
+   Chromium が CFF ベースの OTF や可変フォント（Variable Font）を
+   Type 3 として埋め込む問題を回避するため、TrueType アウトラインの
+   静的 TTF を使用する。 */
 @font-face {
   font-family: "Noto Serif JP";
   font-style: normal;
-  font-weight: 100 900;
-  src: url("fonts/Noto_Serif_JP/NotoSerifJP-VariableFont_wght.ttf") format("truetype");
+  font-weight: 400;
+  src: url("fonts/Zen_Old_Mincho/ZenOldMincho-Regular.ttf") format("truetype");
   font-display: swap;
 }
 
-/* 見出し・UI（ゴシック体）: Noto Sans JP Variable Font */
+@font-face {
+  font-family: "Noto Serif JP";
+  font-style: normal;
+  font-weight: 700;
+  src: url("fonts/Zen_Old_Mincho/ZenOldMincho-Bold.ttf") format("truetype");
+  font-display: swap;
+}
+
+/* 見出し・UI（ゴシック体）: Zen Kaku Gothic New 静的 TTF */
 @font-face {
   font-family: "Noto Sans JP";
   font-style: normal;
-  font-weight: 100 900;
-  src: url("fonts/Noto_Sans_JP/NotoSansJP-VariableFont_wght.ttf") format("truetype");
+  font-weight: 400;
+  src: url("fonts/Zen_Kaku_Gothic_New/ZenKakuGothicNew-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noto Sans JP";
+  font-style: normal;
+  font-weight: 700;
+  src: url("fonts/Zen_Kaku_Gothic_New/ZenKakuGothicNew-Bold.ttf") format("truetype");
   font-display: swap;
 }
 

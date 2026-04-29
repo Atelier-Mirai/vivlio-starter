@@ -330,6 +330,8 @@ module Vivlio
             end
             # vivliostyle.config.js の size プロパティも同期
             sync_vivliostyle_config_size!(page_cfg[:width], page_cfg[:height], page_cfg[:size])
+            # vivliostyle.config.js の title プロパティも同期
+            sync_vivliostyle_config_title!
           rescue StandardError => e
             Common.log_warn("page-settings.css の更新に失敗: #{e.message}")
           end
@@ -366,6 +368,41 @@ module Vivlio
             Common.log_success("vivliostyle.config.js の size を '#{new_size}' に同期しました")
           rescue StandardError => e
             Common.log_warn("vivliostyle.config.js の size 同期に失敗: #{e.message}")
+          end
+
+          # vivliostyle.config.js の title を book.yml の main_title + subtitle に同期する
+          #
+          # PDF の文書タイトル（メタデータ）は vivliostyle.config.js の title から設定される。
+          # book.yml に title キーがあればそれを優先し、なければ main_title と subtitle を結合する。
+          def sync_vivliostyle_config_title!
+            config_path = Common::VIVLIOSTYLE_CONFIG_FILE
+            return unless File.exist?(config_path)
+
+            cfg = Common::CONFIG
+            book = cfg[:book] || cfg['book'] || {}
+            title_raw = book[:title] || book['title']
+            main_title = (book[:main_title] || book['main_title']).to_s.strip
+            subtitle = (book[:subtitle] || book['subtitle']).to_s.strip
+
+            new_title = if title_raw && !title_raw.to_s.strip.empty?
+                          title_raw.to_s.strip
+                        elsif !main_title.empty?
+                          [main_title, subtitle].reject(&:empty?).join(' ')
+                        else
+                          return
+                        end
+
+            esc_title = new_title.gsub('\\', '\\\\').gsub("'", "\\'")
+            content = File.read(config_path, encoding: 'utf-8')
+            updated = content.sub(/^(\s*title:\s*)'[^']*'/, "\\1'#{esc_title}'")
+            updated = updated.sub(/^(\s*title:\s*)"[^"]*"/, "\\1'#{esc_title}'") if updated == content
+
+            return if updated == content
+
+            File.write(config_path, updated)
+            Common.log_success("vivliostyle.config.js の title を '#{new_title}' に同期しました")
+          rescue StandardError => e
+            Common.log_warn("vivliostyle.config.js の title 同期に失敗: #{e.message}")
           end
 
           # 色値を正規化（色名 or HEX）

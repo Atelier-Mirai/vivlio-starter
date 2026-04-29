@@ -35,11 +35,11 @@ CHAPTERS:
   - 【第五部：トラブルシューティング】:
       - 51-doctor
   - 【第六部：開発者のために】:
-      # - 61-developer
+      - 61-developer
 
 ## 付録
 APPENDICES:
-  # - 91-install
+  - 91-install
   - 92-pdf-read
   - 93-import
   - 94-sample

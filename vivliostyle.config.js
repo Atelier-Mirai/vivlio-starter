@@ -3,7 +3,7 @@ import entries from './entries.js';
 // @ts-check
 /** @type {import('@vivliostyle/cli').VivliostyleConfigSchema} */
 const vivliostyleConfig = {
-  title: '初めてのウェブアプリ開発 じゃんけんゲームを創ろう', // 書籍のタイトル
+  title: 'はじめての技術書づくり Vivlio Starter 実践ガイド', // 書籍のタイトル
   author: 'アトリヱ未來', // 著者名
   language: 'ja', // 言語設定
   size: 'A4', // ページサイズ（book.yml のプリセットから自動設定）

@@ -365,11 +365,13 @@ module Vivlio
         # @param output_path [String, nil] 期待する出力ファイルのパス
         #   （nil 以外の場合、exit 成功でもファイル未生成なら失敗扱い）
         # @param purpose [String, nil] 用途の人間向け説明（例: 'カバー PDF 変換'）
+        # @param env [Hash, nil] 追加の環境変数（例: FONTCONFIG_FILE）
         # @return [Boolean] 成功なら true、失敗なら false
-        def run_svg_converter!(argv, input_path:, output_path: nil, purpose: nil)
+        def run_svg_converter!(argv, input_path:, output_path: nil, purpose: nil, env: nil)
           require 'open3'
 
-          _stdout, stderr, status = Open3.capture3(*argv)
+          capture_args = env&.any? ? [env, *argv] : argv
+          _stdout, stderr, status = Open3.capture3(*capture_args)
           exit_ok   = status.success?
           file_ok   = output_path.nil? || File.exist?(output_path)
           return true if exit_ok && file_ok

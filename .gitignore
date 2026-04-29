@@ -23,3 +23,4 @@ pkg/*.gem
 # Vivliostyle build artifacts
 /.vivliostyle/
 
+vivlio_starter_v1.0.0_images/
