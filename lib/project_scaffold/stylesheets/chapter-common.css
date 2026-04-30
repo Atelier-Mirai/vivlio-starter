@@ -188,7 +188,7 @@ strong {
 
 /* キーボードフォント */
 kbd {
-  font-family: keyfont, monospace;
+  font-family: keyfont, var(--font-code);
 }
 
 /* リンク */
@@ -369,7 +369,7 @@ p>img {
   color: white;
   font-size: 0.75em;
   font-weight: bold;
-  font-family: sans-serif;
+  font-family: var(--font-header);
   border-radius: 4px 0 4px 0;
   content: "COLUMN";
 }
@@ -401,7 +401,7 @@ p>img {
   border: solid 0.2mm var(--theme-accent);
   font-size: 0.75em;
   font-weight: bold;
-  font-family: sans-serif;
+  font-family: var(--font-header);
   border-radius: 4px 0 4px 0;
   content: "TIP";
 }
@@ -431,7 +431,7 @@ p>img {
   color: white;
   font-size: 0.75em;
   font-weight: bold;
-  font-family: sans-serif;
+  font-family: var(--font-header);
   border-radius: 4px 0 4px 0;
   content: "MEMO";
 }

@@ -42,4 +42,28 @@ FILES.each do |file|
   puts "COPY  #{file} -> lib/project_scaffold/#{file}"
 end
 
+# ================================================================
+# book.yml のテンプレート化
+# ================================================================
+# config/book.yml をそのままコピーした後、vs new で置換されるべき値を
+# {{PLACEHOLDER}} 記法に差し替える。キーやコメントはすべて維持する。
+book_yml = File.join(SCAFFOLD, 'config', 'book.yml')
+if File.exist?(book_yml)
+  content = File.read(book_yml, encoding: 'utf-8')
+
+  # main_title: '...' or main_title: "..."
+  content.gsub!(/^(\s+main_title:\s*)(['"].+?['"])/, '\1"{{MAIN_TITLE}}"')
+  # subtitle: '...' or subtitle: "..." （subtitle_style は除外）
+  content.gsub!(/^(\s+subtitle:\s*)(['"].+?['"])(\s*$)/, '\1"{{SUBTITLE}}"\3')
+  # author: "..." （コメント付き行にも対応）
+  content.gsub!(/^(\s+author:\s*)(['"].+?['"])(\s*#.*)?$/, '\1"{{AUTHOR}}"\3')
+  # publisher: "..." （コメント付き行にも対応）
+  content.gsub!(/^(\s+publisher:\s*)(['"].+?['"])(\s*#.*)?$/, '\1"{{PUBLISHER}}"\3')
+  # project.name: "..."（コメント付き行にも対応）
+  content.gsub!(/^(\s+name:\s*)(['"].+?['"])(\s*#.*)?$/, '\1"{{PROJECT_NAME}}"\3')
+
+  File.write(book_yml, content, encoding: 'utf-8')
+  puts "TMPL  config/book.yml -> テンプレート記法に置換しました"
+end
+
 puts "\nDone."

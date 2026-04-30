@@ -119,6 +119,8 @@
 
   /* フォント指定 */
   --font-main-text: "Noto Serif JP";     /* メイン本文フォント */
+  --font-body:      "Noto Serif JP";     /* 本文フォント（--font-main-text の別名） */
+  --font-title:     "Noto Sans JP";      /* タイトルフォント */
   --font-header:    "Noto Sans JP";      /* 見出しフォント */
   --font-column:    "Zen Maru Gothic";   /* コラムフォント */
   --font-code:      "hackgen35";         /* コードフォント */
