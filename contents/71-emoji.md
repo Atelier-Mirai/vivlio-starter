@@ -94,3 +94,69 @@ puts "❌ テスト失敗"
 ```
 
 > **注意**: 現在の実装では、コードブロック内の絵文字も差し替え対象になります。将来的にコードブロック内を除外する場合は、HTML パーサーとの連携が必要です。
+
+## SVG ロゴ画像の Type 3 検証
+
+:::{.section-lead}
+著者が `![](logo.svg)` のように SVG 画像を参照した場合、Chromium が SVG 内のパスデータを Type 3 フォントとして PDF に埋め込むかどうかを検証します。`docs/logos/` 配下の全 SVG ロゴを表示します。
+:::
+
+### awesome_book
+
+![awesome_book](awesome_book.svg)
+
+### bookyml
+
+![bookyml](bookyml.svg)
+
+### chaptercss
+
+![chaptercss](chaptercss.svg)
+
+### vsbuild
+
+![vsbuild](vsbuild.svg)
+
+### vivlio_starter_logo_outline
+
+![vivlio_starter_logo_outline](vivlio_starter_logo_outline.svg)
+
+### vivlio_starter_logo_outline_stacked
+
+![vivlio_starter_logo_outline_stacked](vivlio_starter_logo_outline_stacked.svg)
+
+### vivlio_starter_logo_text
+
+![vivlio_starter_logo_text](vivlio_starter_logo_text.svg)
+
+### vivlio_starter_logo_text_stacked
+
+![vivlio_starter_logo_text_stacked](vivlio_starter_logo_text_stacked.svg)
+
+### vs_logo_outline
+
+![vs_logo_outline](vs_logo_outline.svg)
+
+### vs_logo_outline_garnish
+
+![vs_logo_outline_garnish](vs_logo_outline_garnish.svg)
+
+### vs_logo_text_garnish
+
+![vs_logo_text_garnish](vs_logo_text_garnish.svg)
+
+### vs_vivlio_starter_logo_outline
+
+![vs_vivlio_starter_logo_outline](vs_vivlio_starter_logo_outline.svg)
+
+### vs_vivlio_starter_logo_outline_stacked
+
+![vs_vivlio_starter_logo_outline_stacked](vs_vivlio_starter_logo_outline_stacked.svg)
+
+### vs_vivlio_starter_logo_text
+
+![vs_vivlio_starter_logo_text](vs_vivlio_starter_logo_text.svg)
+
+### vs_vivlio_starter_logo_text_stacked
+
+![vs_vivlio_starter_logo_text_stacked](vs_vivlio_starter_logo_text_stacked.svg)

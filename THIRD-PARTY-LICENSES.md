@@ -169,3 +169,39 @@ products.txt, tech-terms.txt
 
 補足:
 - 上記ファイルは本プロジェクト向けに独自に作成した辞書です。略語・ブランド名・著名人名・CSS プロパティ・技術用語・数学用語・ネットワーク用語・エラーメッセージ・製品名を収録しています。
+
+## Twemoji（絵文字 SVG 画像）
+
+### コード
+- License: MIT
+- Project: https://github.com/twitter/twemoji
+- Copyright: (c) 2021 Twitter
+- License Text: https://opensource.org/licenses/MIT
+
+### グラフィックス（SVG ファイル）
+- License: CC BY 4.0 (Creative Commons Attribution 4.0 International)
+- Copyright: (c) Twitter, Inc and other contributors
+- License Text: https://creativecommons.org/licenses/by/4.0/
+
+Notes:
+- `stylesheets/twemoji/` 配下の SVG ファイルは、公式リポジトリ twitter/twemoji v14.0.2 の `assets/svg/` から取得しています。
+- Techbook モード（`output.pdf.techbook: true`）で、カラー絵文字を SVG 画像に差し替える際に使用します。
+- CC BY 4.0 に基づき、書籍のリーガルページ（`legal.twemoji`）にクレジット表記を行います。
+
+### 参考訳（日本語・非公式）
+
+#### コード
+- ライセンス: MIT
+- プロジェクト: https://github.com/twitter/twemoji
+- 著作権表示: (c) 2021 Twitter
+- ライセンス本文: https://opensource.org/licenses/MIT
+
+#### グラフィックス（SVG ファイル）
+- ライセンス: CC BY 4.0（クリエイティブ・コモンズ 表示 4.0 国際）
+- 著作権表示: (c) Twitter, Inc and other contributors
+- ライセンス本文: https://creativecommons.org/licenses/by/4.0/
+
+補足:
+- `stylesheets/twemoji/` 配下の SVG ファイルは、公式リポジトリ twitter/twemoji v14.0.2 から取得した絵文字画像です。
+- Techbook モードでカラー絵文字を印刷品質の SVG に差し替える目的で同梱しています。
+- CC BY 4.0 の帰属表示義務を満たすため、書籍のリーガルページにクレジットを記載してください（`book.yml` の `legal.twemoji` で設定）。

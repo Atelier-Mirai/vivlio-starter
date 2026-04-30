@@ -27,8 +27,13 @@ module Vivlio
 
           private
 
+          # 利用者のプロジェクトルート（カレントディレクトリ）の stylesheets/twemoji/ を参照する。
+          # vs new で展開された scaffold に Twemoji SVG が同梱されているため、
+          # gem インストール先ではなくプロジェクト側のパスで解決する。
+          # Vivliostyle は HTML ファイルからの相対パスで画像を解決するため、
+          # 絶対パスではなく相対パスを返す。
           def default_emoji_dir
-            File.expand_path('../../../../../stylesheets/twemoji', __dir__)
+            File.join('stylesheets', 'twemoji')
           end
 
           # 絵文字文字列を img タグに変換する（SVG が存在する場合のみ）

@@ -81,7 +81,7 @@ module Vivlio
             assert_equal "2705", codepoint_with_vs16
           end
 
-          def test_should_resolve_emoji_dir_from_gem_path
+          def test_should_resolve_emoji_dir_from_project_root
             replacer = EmojiReplacer.new
 
             default_dir = replacer.send(:default_emoji_dir)

@@ -16,12 +16,19 @@ module Vivlio
 
           def enabled? = @techbook
 
-          # HTML 中の絵文字を Twemoji SVG に差し替える
+          # HTML 中の絵文字を Twemoji SVG に差し替え、Type 3 フォント化する文字を置換する
           # @param html [String] 変換対象の HTML
           # @return [String] 処理済み HTML（無効時はそのまま返す）
           def process(html)
             return html unless enabled?
 
+            # --- Phase: 波ダッシュ → 全角チルダ置換 ---
+            # U+301C（波ダッシュ）は多くのフォントに収録されておらず、
+            # Chromium が Type 3 フォントとして埋め込む。
+            # 字形が同一の U+FF5E（全角チルダ）に置換することで回避する。
+            html = html.gsub("\u301C", "\uFF5E")
+
+            # --- Phase: 絵文字 SVG 差し替え ---
             EmojiReplacer.new.process(html)
           end
 

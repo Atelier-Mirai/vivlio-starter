@@ -111,6 +111,28 @@ module Vivlio
             assert result.start_with?("<p>")
             assert result.end_with?("</p>")
           end
+
+          def test_should_replace_wave_dash_with_fullwidth_tilde
+            config = Common.wrap_config({ output: { pdf: { techbook: true } } })
+            processor = Processor.new(config)
+            html = "<p>10〜20ページ</p>"
+
+            result = processor.process(html)
+
+            refute_includes result, "\u301C"
+            assert_includes result, "\uFF5E"
+            assert_includes result, "10～20ページ"
+          end
+
+          def test_should_not_replace_wave_dash_when_disabled
+            config = Common.wrap_config({ output: { pdf: { techbook: false } } })
+            processor = Processor.new(config)
+            html = "<p>10〜20ページ</p>"
+
+            result = processor.process(html)
+
+            assert_includes result, "\u301C"
+          end
         end
       end
     end

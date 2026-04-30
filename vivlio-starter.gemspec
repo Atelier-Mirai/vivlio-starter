@@ -26,7 +26,7 @@ Gem::Specification.new do |spec|
   end
 
   if files.nil? || files.empty?
-    files = Dir.glob('{bin,lib,config,rakelib}/**/*', File::FNM_DOTMATCH)
+    files = Dir.glob('{bin,lib,config,stylesheets,rakelib}/**/*', File::FNM_DOTMATCH)
     files += %w[README.md LICENSE Rakefile Gemfile]
   end
 
