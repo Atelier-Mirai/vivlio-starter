@@ -118,6 +118,10 @@ module Vivlio
             'Step 12 (compress, rename and final clean)'
           ]
           labels = pipeline.timings.map(&:first)
+          # Step 5c (techbook post-process) が追加されている場合も許容する
+          if labels.include?('Step 5c (techbook post-process)')
+            expected_labels.insert(expected_labels.index('Step  6 (generate toc and pdf)'), 'Step 5c (techbook post-process)')
+          end
           assert_equal expected_labels, labels
         end
 
@@ -517,8 +521,8 @@ module Vivlio
 
           with_build_stubs { pipeline.run }
 
-          # full mode（pdf専用）は 14 ステップ（Step 0, 1, 2, 3, 4, 5, 5b, 6, 7, 8, 9, 10, 11, 12）
-          assert_equal 14, pipeline.timings.length, 'full mode は 14 ステップを記録するべき'
+          # full mode（pdf専用）は 15 ステップ（Step 0, 1, 2, 3, 4, 5, 5b, 5c, 6, 7, 8, 9, 10, 11, 12）
+          assert_equal 15, pipeline.timings.length, 'full mode は 15 ステップを記録するべき'
         end
 
         private

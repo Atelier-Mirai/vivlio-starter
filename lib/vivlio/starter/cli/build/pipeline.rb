@@ -8,6 +8,7 @@ require_relative 'epub_builder'
 require_relative '../cover'
 require_relative 'nombre_stamper'
 require_relative 'part_title_generator'
+require_relative '../techbook/processor'
 
 module Vivlio
   module Starter
@@ -139,6 +140,7 @@ module Vivlio
               Build::SectionBuilder.convert_sections_html!(entries)
             })
             add_step('Step 5b (generate part title pages)', -> { Build::PartTitleGenerator.generate_all! })
+            add_step('Step 5c (techbook post-process)', -> { run_techbook_post_process })
           end
 
           # Steps 6-11: 閲覧用 PDF のビルド・結合・アウトライン
@@ -831,6 +833,38 @@ module Vivlio
 
             Common.log_action('[EPUB] カバー画像を生成しています…')
             CoverCommands.ensure_cover_files_for_build!
+          end
+
+          # Techbook モード: 絵文字 SVG 差し替え + CSS 注入
+          # techbook: true でない場合は何もしない（Processor 内部で判定）
+          def run_techbook_post_process
+            processor = Techbook::Processor.new(Common::CONFIG)
+            return unless processor.enabled?
+
+            Common.log_info("[Techbook] 絵文字 SVG 差し替えを実行します")
+
+            # --- Phase: HTML ファイルの絵文字差し替え ---
+            Dir.glob('*.html').each do |html_file|
+              content = File.read(html_file)
+              processed = processor.process(content)
+              if content != processed
+                File.write(html_file, processed)
+                Common.log_info("[Techbook] 絵文字を差し替えました: #{html_file}")
+              end
+            end
+
+            # --- Phase: CSS 注入 ---
+            css = processor.inject_css
+            unless css.empty?
+              Dir.glob('*.html').each do |html_file|
+                content = File.read(html_file)
+                if content.include?('</head>')
+                  styled = content.sub('</head>', "<style>\n#{css}\n</style>\n</head>")
+                  File.write(html_file, styled)
+                end
+              end
+              Common.log_info("[Techbook] CSS を注入しました")
+            end
           end
 
           # Step 4: 索引処理を実行

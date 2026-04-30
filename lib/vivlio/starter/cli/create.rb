@@ -937,6 +937,19 @@ module Vivlio
             </div>
           MD
 
+          # Twemoji クレジット（legal.twemoji が設定されている場合のみ）
+          # Common::CONFIG に legal キーが存在しない場合は nil を返す
+          twemoji_credit = Common::CONFIG.respond_to?(:legal) ? Common::CONFIG.legal&.twemoji : nil
+          if twemoji_credit && !twemoji_credit.to_s.strip.empty?
+            body += <<~MD
+
+              <div class="twemoji-credit">
+                <h2>■絵文字クレジット</h2>
+                #{twemoji_credit.to_s.split(/\r?\n/).map { |line| "  <p>#{line}</p>" }.join("\n")}
+              </div>
+            MD
+          end
+
           safe_write(target, body)
           Common.log_success("生成しました: #{target}")
         end

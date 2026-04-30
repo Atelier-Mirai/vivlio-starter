@@ -30,8 +30,8 @@ book:
   # ----------------------------
   # 書籍名
   # ----------------------------
-  main_title: 'はじめての技術書づくり'
-  subtitle: 'Vivlio Starter 実践ガイド'
+  main_title: "{{MAIN_TITLE}}"
+  subtitle: "{{SUBTITLE}}"
   subtitle_style: wave  # 副題の装飾（wave | bar | none）から選択
 
   # ----------------------------
@@ -39,9 +39,9 @@ book:
   # ----------------------------
   series: "「技術書典20 新刊」"        # 連載名
   release: "令和八年四月二十六日"    # 発行日
-  publisher: "早乙女 遙香"          # 日光企画 ねこのしっぽ
+  publisher: "{{PUBLISHER}}"          # 日光企画 ねこのしっぽ
   contact: "contact@atelier-mirai.net" # 連絡先
-  author: "アトリヱ未來"            # 著者名
+  author: "{{AUTHOR}}"            # 著者名
   language: "ja"                       # 言語
   isbn: ''                             # 任意（独自ISBN取得の場合。Kindle は ASIN 自動割り当て）
 
@@ -49,7 +49,7 @@ book:
 # プロジェクト情報
 # ========================================
 project:
-  name: "vivlio_starter"  # 出力ファイル名のベース
+  name: "{{PROJECT_NAME}}"  # 出力ファイル名のベース
   version: "1.0.0"        # 書籍のバージョン（デフォルト: 1.0.0）
 
 # ========================================
