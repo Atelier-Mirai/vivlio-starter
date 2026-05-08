@@ -81,6 +81,28 @@ module Vivlio
             assert_equal "2705", codepoint_with_vs16
           end
 
+          def test_should_not_replace_emoji_inside_img_attributes_when_reprocessed
+            replacer = EmojiReplacer.new(FIXTURES_DIR)
+            first = replacer.process("Task ✅ done")
+
+            second = replacer.process(first)
+
+            assert_equal first, second
+            assert_equal 1, second.scan('<img').count
+            assert_includes second, 'alt="✅"'
+          end
+
+          def test_should_skip_style_and_script_contents
+            replacer = EmojiReplacer.new(FIXTURES_DIR)
+            html = '<style>.x::before{content:"✅"}</style><script>const x="✅";</script><p>✅</p>'
+
+            result = replacer.process(html)
+
+            assert_includes result, '<style>.x::before{content:"✅"}</style>'
+            assert_includes result, '<script>const x="✅";</script>'
+            assert_equal 1, result.scan('<img').count
+          end
+
           def test_should_resolve_emoji_dir_from_project_root
             replacer = EmojiReplacer.new
 

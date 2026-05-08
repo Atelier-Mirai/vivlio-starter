@@ -20,12 +20,38 @@ module Vivlio
           # @param html [String]
           # @return [String]
           def process(html)
-            html.gsub(EMOJI_REGEX) do |match|
+            in_ignored_element = nil
+
+            html.split(/(<[^>]+>)/).map do |part|
+              if part.start_with?('<')
+                in_ignored_element = update_ignored_element_state(part, in_ignored_element)
+                part
+              elsif in_ignored_element
+                part
+              else
+                replace_emoji_in_text(part)
+              end
+            end.join
+          end
+
+          def replace_emoji_in_text(text)
+            text.gsub(EMOJI_REGEX) do |match|
               replace_emoji(match)
             end
           end
 
           private
+
+          # HTML タグ属性、style/script/svg の内容は置換対象外にする。
+          # 特に既に生成済みの <img alt="✅"> を再処理して壊さないために必要。
+          def update_ignored_element_state(tag, current)
+            normalized = tag.downcase
+            return nil if current && normalized.match?(%r{\A</\s*#{Regexp.escape(current)}\s*>})
+            return current if current
+
+            matched = normalized.match(%r{\A<\s*(script|style|svg)\b})
+            matched ? matched[1] : nil
+          end
 
           # 利用者のプロジェクトルート（カレントディレクトリ）の stylesheets/twemoji/ を参照する。
           # vs new で展開された scaffold に Twemoji SVG が同梱されているため、
@@ -36,11 +62,21 @@ module Vivlio
             File.join('stylesheets', 'twemoji')
           end
 
-          # 絵文字文字列を img タグに変換する（SVG が存在する場合のみ）
+          # 絵文字文字列を img タグに変換する
+          # Techbook モードでは SVG → WebP 変換済みのため、WebP を優先参照する。
+          # WebP が存在しない場合は SVG にフォールバックする。
           def replace_emoji(char)
             codepoint = emoji_codepoint(char)
+            webp_path = @emoji_dir.join("#{codepoint}.webp")
             svg_path = @emoji_dir.join("#{codepoint}.svg")
-            svg_path.exist? ? build_img_tag(char, svg_path) : char
+
+            if webp_path.exist?
+              build_img_tag(char, webp_path)
+            elsif svg_path.exist?
+              build_img_tag(char, svg_path)
+            else
+              char
+            end
           end
 
           # 絵文字の Unicode コードポイントを Twemoji ファイル名形式に変換する

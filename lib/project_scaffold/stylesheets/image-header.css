@@ -28,7 +28,11 @@ h1 {
   justify-items: center;
   margin: 0 auto;
   text-align: center;
-  inline-size: clamp(70mm, calc(var(--paper-scale) * 110mm), var(--frontispiece-heading-width));
+  inline-size: clamp(
+    70mm,
+    calc(var(--paper-scale) * 110mm),
+    var(--frontispiece-heading-width)
+  );
   max-inline-size: 100%;
   padding-block: clamp(3mm, calc(var(--paper-scale) * 6mm), 8mm);
 }
@@ -75,7 +79,11 @@ h1 .chapter-title {
   letter-spacing: 0.08em;
   line-height: 1.45;
   color: #111;
-  inline-size: clamp(60mm, calc(var(--paper-scale) * 96mm), var(--frontispiece-heading-width));
+  inline-size: clamp(
+    60mm,
+    calc(var(--paper-scale) * 96mm),
+    var(--frontispiece-heading-width)
+  );
   max-inline-size: 100%;
   box-sizing: border-box;
   overflow-wrap: anywhere;
@@ -88,7 +96,6 @@ h1 .chapter-title {
 h1::after {
   content: none;
 }
-
 
 /* -------------------------------------------------------------
    節見出し
@@ -135,7 +142,7 @@ h1::after {
   z-index: -1;
 }
 
-.section-topic h2>* {
+.section-topic h2 > * {
   position: relative;
   z-index: 1;
   display: inline-flex;
@@ -145,10 +152,12 @@ h1::after {
 }
 
 .section-topic h2 .section-number {
-  font-size: calc(1em * 1.10);
+  font-size: calc(1em * 1.1);
   font-weight: 900;
   color: var(--section-number-color);
-  -webkit-text-stroke: 0.3mm rgba(0, 0, 0, .30);
+  /* Type 3 font avoidance: Chromium PDF can emit stroked text as Type 3.
+     Keep the former visual treatment here for future reference.
+     -webkit-text-stroke: 0.3mm rgba(0, 0, 0, .30); */
   white-space: nowrap;
   flex-shrink: 0;
   margin-inline-start: clamp(6mm, calc(var(--paper-scale) * 8mm), 10mm);
@@ -157,6 +166,10 @@ h1::after {
 .section-topic .section-lead {
   grid-area: section-lead;
   text-indent: 1em;
-  margin-block-start: clamp(10mm, calc(var(--paper-scale) * 16mm), 16mm) !important;
+  margin-block-start: clamp(
+    10mm,
+    calc(var(--paper-scale) * 16mm),
+    16mm
+  ) !important;
   margin-block-end: 0 !important;
 }

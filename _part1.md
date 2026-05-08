@@ -1,6 +1,6 @@
 ---
 class: part-title
-title: "【第六部：開発者のために】"
+title: "【第一部：はじめる】"
 link:
 - rel: stylesheet
   href: stylesheets/theme.css
@@ -11,4 +11,4 @@ link:
 lang: ja
 ---
 
-# 【第六部：開発者のために】
+# 【第一部：はじめる】

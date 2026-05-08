@@ -2,6 +2,8 @@
 
 require 'fileutils'
 
+require_relative '../techbook/processor'
+
 module Vivlio
   module Starter
     module CLI
@@ -165,11 +167,16 @@ module Vivlio
           # 排除する方を優先する。詳細は docs/specs/book_yml_regeneration_spec.md 参照。
           def build_front_pages_and_tail!
             # --- Phase: 特殊ページ HTML を常に再生成 ---
+            special_html_files = %w[_titlepage _legalpage _colophon].map { "#{it}.html" }
             %w[_titlepage _legalpage _colophon].each do |basename|
               Common.log_info("[HTML] 再生成します: #{basename}.html")
               Build::SectionBuilder.preprocess_single_chapter!(basename)
               Build::SectionBuilder.convert_single_chapter!(basename)
             end
+
+            # Step 9 で生成されたタイトル・奥付 HTML は Step 5c より後に作られるため、
+            # 波ダッシュ置換 / 絵文字画像化 / SVG→WebP 参照整合 / CSS 注入をここで再適用する。
+            Techbook::Processor.new(Common::CONFIG).post_process_html_files!(special_html_files)
 
             # --- Phase: 表紙＋扉裏 PDF を常に再生成 ---
             front_pdf = '_titlepage_legalpage.pdf'

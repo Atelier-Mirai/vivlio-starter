@@ -465,6 +465,9 @@ module Vivlio
             Build::SectionBuilder.ensure_chapter_html_up_to_date!('_colophon',
                                                                   extra_sources: File.join('config', 'book.yml'))
 
+            special_html_files = %w[_titlepage _legalpage _colophon].map { "#{it}.html" }
+            Techbook::Processor.new(Common::CONFIG).post_process_html_files!(special_html_files)
+
             Common.log_success('[Step 9] 前付・奥付 HTML を生成しました（PDF ビルドはスキップ）')
           end
 
@@ -835,36 +838,10 @@ module Vivlio
             CoverCommands.ensure_cover_files_for_build!
           end
 
-          # Techbook モード: 絵文字 SVG 差し替え + CSS 注入
+          # Techbook モード: SVG→WebP 参照書き換え + 絵文字差し替え + CSS 注入
           # techbook: true でない場合は何もしない（Processor 内部で判定）
           def run_techbook_post_process
-            processor = Techbook::Processor.new(Common::CONFIG)
-            return unless processor.enabled?
-
-            Common.log_info("[Techbook] 絵文字 SVG 差し替えを実行します")
-
-            # --- Phase: HTML ファイルの絵文字差し替え ---
-            Dir.glob('*.html').each do |html_file|
-              content = File.read(html_file)
-              processed = processor.process(content)
-              if content != processed
-                File.write(html_file, processed)
-                Common.log_info("[Techbook] 絵文字を差し替えました: #{html_file}")
-              end
-            end
-
-            # --- Phase: CSS 注入 ---
-            css = processor.inject_css
-            unless css.empty?
-              Dir.glob('*.html').each do |html_file|
-                content = File.read(html_file)
-                if content.include?('</head>')
-                  styled = content.sub('</head>', "<style>\n#{css}\n</style>\n</head>")
-                  File.write(html_file, styled)
-                end
-              end
-              Common.log_info("[Techbook] CSS を注入しました")
-            end
+            Techbook::Processor.new(Common::CONFIG).post_process_html_files!
           end
 
           # Step 4: 索引処理を実行

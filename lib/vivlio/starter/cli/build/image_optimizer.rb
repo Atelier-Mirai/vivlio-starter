@@ -35,6 +35,14 @@ module Vivlio
               end
             end
             Common.log_success('[Step 1] 画像最適化が完了しました')
+
+            # Techbook モード: 全 SVG を rsvg-convert → lossless WebP に変換
+            # Chromium PDF エンジンが SVG 内のパスを Type 3 フォントとして埋め込む問題を回避する
+            if Common::CONFIG.dig(:output, :pdf, :techbook) == true
+              svg_dirs = dirs + [File.join(Common::STYLESHEETS_DIR, 'twemoji')]
+              Common.log_action('[Step 1] Techbook: SVG → lossless WebP 変換を実行します')
+              ResizeCommands.convert_svg_to_webp(svg_dirs)
+            end
           end
 
           # Step 3: frontispiece / ornament の事前生成

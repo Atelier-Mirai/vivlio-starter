@@ -10,6 +10,7 @@ module Vivlio
       # ================================================================
       # 提供機能:
       #   - 画像を WebP に変換（高精細/標準/軽量のプリセット）
+      #   - SVG を rsvg-convert → lossless WebP に変換（Techbook モード用）
       # ================================================================
       module ResizeCommands
         module_function
@@ -196,6 +197,75 @@ module Vivlio
           end
         end
         module_function :execute_resize_with_preset
+
+        # SVG → PNG（rsvg-convert）→ lossless WebP（magick）変換
+        # Chromium PDF エンジンが SVG 内の <path>/<text> を Type 3 フォントとして
+        # 埋め込む問題を回避するため、ビルド前に全 SVG をラスタライズする。
+        # @param dirs [Array<String>] 対象ディレクトリの配列
+        # @param dpi [Integer] rsvg-convert の DPI（既定: 350）
+        def convert_svg_to_webp(dirs, dpi: 350)
+          # --- Phase: ツール存在チェック ---
+          unless system('which rsvg-convert >/dev/null 2>&1')
+            Common.log_error('Error: rsvg-convert が見つかりません。brew install librsvg 等で導入してください。')
+            return
+          end
+
+          unless system('which magick >/dev/null 2>&1')
+            Common.log_error('Error: ImageMagick (magick) が見つかりません。brew install imagemagick 等で導入してください。')
+            return
+          end
+
+          # --- Phase: SVG ファイル収集 ---
+          svg_files = dirs
+            .select { Dir.exist?(it) }
+            .flat_map { Dir.glob(File.join(it, '**/*.svg')) }
+            .uniq.sort
+
+          if svg_files.empty?
+            Common.log_info('[SVG→WebP] 対象 SVG ファイルが見つかりませんでした')
+            return
+          end
+
+          Common.log_action("[SVG→WebP] #{svg_files.size} 件の SVG を変換します（DPI=#{dpi}）")
+
+          # --- Phase: 変換実行 ---
+          converted = 0
+          svg_files.each do |svg_path|
+            webp_path = svg_path.sub(/\.svg\z/i, '.webp')
+
+            # mtime 比較でスキップ（--force 時は強制再生成）
+            if ENV['FORCE'].nil? && File.exist?(webp_path) && File.mtime(webp_path) >= File.mtime(svg_path)
+              Common.log_info("[SVG→WebP] skip: up-to-date #{webp_path}")
+              next
+            end
+
+            # Step 1: SVG → PNG（rsvg-convert で高品質ラスタライズ）
+            png_tmp = svg_path.sub(/\.svg\z/i, '.svg.tmp.png')
+            rsvg_cmd = ['rsvg-convert', '--dpi-x', dpi.to_s, '--dpi-y', dpi.to_s, '-f', 'png', svg_path, '-o', png_tmp]
+            Common.log_info("[SVG→WebP] rsvg-convert: #{svg_path}")
+            unless system(*rsvg_cmd)
+              Common.log_warn("[SVG→WebP] rsvg-convert に失敗しました: #{svg_path}")
+              FileUtils.rm_f(png_tmp)
+              next
+            end
+
+            # Step 2: PNG → lossless WebP（magick で可逆圧縮）
+            magick_cmd = ['magick', png_tmp, '-define', 'webp:lossless=true', '-define', 'webp:method=6', '-strip', webp_path]
+            Common.log_info("[SVG→WebP] magick lossless: #{webp_path}")
+            unless system(*magick_cmd)
+              Common.log_warn("[SVG→WebP] magick 変換に失敗しました: #{png_tmp}")
+              FileUtils.rm_f(png_tmp)
+              next
+            end
+
+            # 中間 PNG を削除
+            FileUtils.rm_f(png_tmp)
+            converted += 1
+          end
+
+          Common.log_success("[SVG→WebP] #{converted} 件の SVG を lossless WebP に変換しました")
+        end
+        module_function :convert_svg_to_webp
       end
     end
   end

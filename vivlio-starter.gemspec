@@ -37,7 +37,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   # Runtime dependencies
-  spec.add_dependency 'query-stream', '~> 1.2.0'
+  spec.add_dependency 'query-stream', '~> 1.2.2'
   spec.add_dependency 'combine_pdf', '~> 1.0'
   spec.add_dependency 'kramdown', '~> 2.4'
   spec.add_dependency 'mini_magick', '~> 4.12'
@@ -54,7 +54,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'natto', '~> 1.2'
 
   # Development dependencies
-  spec.add_development_dependency 'bundler', '~> 2.5'
   spec.add_development_dependency 'rake', '~> 13.2'
   spec.add_development_dependency 'rubocop', '~> 1.65'
   spec.add_development_dependency 'minitest', '~> 5.22'
