@@ -1,18 +1,21 @@
+# AllCops:
+#   TargetRubyVersion: 4.0
+#   NewCops: enable
+#   Exclude:
+#     - 'bin/**/*'
+#     - 'vendor/**/*'
+#     - 'node_modules/**/*'
+#     - 'tmp/**/*'
+
+# Layout/LineLength:
+#   Max: 120
+
+# Metrics/MethodLength:
+#   Max: 25
+
+# # nil になりうる変数に .zero? を適用するとNoMethodErrorになるため無効化
+# Style/NumericPredicate:
+#   Enabled: false
+
 AllCops:
-  TargetRubyVersion: 4.0
-  NewCops: enable
-  Exclude:
-    - 'bin/**/*'
-    - 'vendor/**/*'
-    - 'node_modules/**/*'
-    - 'tmp/**/*'
-
-Layout/LineLength:
-  Max: 120
-
-Metrics/MethodLength:
-  Max: 25
-
-# nil になりうる変数に .zero? を適用するとNoMethodErrorになるため無効化
-Style/NumericPredicate:
-  Enabled: false
+  DisabledByDefault: true

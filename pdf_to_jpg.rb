@@ -12,7 +12,7 @@ def process_pdf(pdf_path)
     "pdftoppm" => "poppler-utils",
     "magick"   => "ImageMagick"
   }
-  
+
   commands.each do |cmd, pkg|
     unless system("which #{cmd} > /dev/null 2>&1")
       puts "エラー: '#{cmd}' が見見つかりません。#{pkg} をインストールしてください。"
@@ -24,7 +24,7 @@ def process_pdf(pdf_path)
   base_name   = File.basename(pdf_path, ".*")
   output_dir  = "#{base_name}_images"
   final_pdf   = "#{base_name}_rasterized.pdf"
-  
+
   FileUtils.mkdir_p(output_dir)
 
   puts "--- STEP 1: PDFを画像に分解中 (pdftoppm) ---"
@@ -35,7 +35,7 @@ def process_pdf(pdf_path)
   # extract_cmd = "pdftoppm -jpeg -r 300 -sep _ \"#{pdf_path}\" \"#{output_dir}/page\""
   # PNG版のコマンド例（もし試すなら）
   # extract_cmd = "pdftoppm -png -r 600 -sep _ \"#{pdf_path}\" \"#{output_dir}/page\""
-  
+
   if system(extract_cmd)
     puts "画像の抽出に成功しました。"
   else
@@ -48,11 +48,11 @@ def process_pdf(pdf_path)
   # output_dir 内の jpg を名前順に結合
   combine_cmd = "magick \"#{output_dir}/page_*.jpg\" -quality 95 \"#{final_pdf}\""
   # combine_cmd = "magick \"#{output_dir}/page_*.png\" -quality 95 -strip \"#{final_pdf}\""
-  
+
   if system(combine_cmd)
     puts "--- すべての工程が完了しました！ ---"
     puts "生成されたPDF: #{final_pdf}"
-    
+
     # オプション: 生成した画像フォルダを削除したい場合は以下を有効にしてください
     # FileUtils.rm_rf(output_dir)
   else
