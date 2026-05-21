@@ -15,8 +15,8 @@ task :reinstall do
   gemspec = Dir['*.gemspec'].first
   raise 'gemspec が見つかりません' unless gemspec
 
-  require_relative 'lib/vivlio/starter/version'
-  version = Vivlio::Starter::VERSION
+  require_relative 'lib/vivlio_starter/version'
+  version = VivlioStarter::VERSION
   gem_name = 'vivlio-starter'
 
   sh "gem uninstall #{gem_name} --version #{version} --executables --ignore-dependencies 2>/dev/null || true"

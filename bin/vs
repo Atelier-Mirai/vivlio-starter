@@ -27,6 +27,6 @@ end
 APP_ROOT = File.expand_path('..', __dir__)
 $LOAD_PATH.unshift(File.join(APP_ROOT, 'lib')) unless $LOAD_PATH.include?(File.join(APP_ROOT, 'lib'))
 
-require 'vivlio/starter/cli/startup'
+require 'vivlio_starter/cli/startup'
 
-exit Vivlio::Starter::CLI.start(ARGV)
+exit VivlioStarter::CLI.start(ARGV)
