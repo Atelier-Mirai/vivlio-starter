@@ -10,10 +10,12 @@
 # コマンド分類 (help_spec.md 準拠):
 #   - pdf: 内部コマンド（ビルドパイプラインから呼び出し）
 #   - pdf:compress: Public コマンド（利用者向け）
+#   - pdf:pages: Public コマンド（PDFページ画像化）
+#   - pdf:rasterize: Public コマンド（Type3フォント対策）
 #   - pdf:read: Public コマンド（PDF→Markdown 変換）
 #
 # 依存:
-#   - PdfCommands: 実際の PDF 生成・圧縮処理
+#   - PdfCommands: 実際の PDF 生成・圧縮・ページ画像化処理
 #   - Commands::PdfReadCommand: PDF 読み取り処理
 # ================================================================
 
@@ -50,10 +52,12 @@ module Vivlio
             puts <<~HELP
               vs pdf は内部コマンドです（ビルドパイプラインから自動呼び出し）。
 
-              PDF圧縮機能をお探しの場合:
+              利用者向けのPDF関連コマンド:
                 vs pdf:compress [INPUT] [OUTPUT]
+                vs pdf:pages [PDF_FILE] [--dpi 350] [--pages 1,3,5-8]
+                vs pdf:rasterize [PDF_FILE] [--clean]
 
-              詳細は vs pdf:compress --help を参照してください。
+              詳細は vs <command> --help を参照してください。
               内部コマンドの情報: docs/DEVELOPER_GUIDE.md
             HELP
             0
@@ -111,6 +115,104 @@ module Vivlio
 
           def build_options
             { verbose: parent_verbose? }
+          end
+
+          def parent_verbose?
+            parent&.options&.[](:verbose) || false
+          end
+        end
+
+        # pdf:pages コマンドの Samovar 実装（Public コマンド）
+        class PdfPagesCommand < Samovar::Command
+          self.description = 'PDFをページ単位でJPEG画像に切り出します'
+
+          one :input, '入力PDFファイル（省略時はビルド生成物）', required: false
+
+          options do
+            option '--dpi <value>', '解像度（dpi、既定: 350）', type: Integer, default: 350, key: :dpi
+            option '--quality <value>', 'JPEG品質 1〜100（既定: 95）', type: Integer, default: 95, key: :quality
+            option '--pages <spec>', 'ページ指定（例: 1,3,5-8）', key: :pages
+            option '--output <dir>', '出力ディレクトリ（既定: <basename>_images）', key: :output
+            option '-h/--help', 'このコマンドの使い方を表示', key: :help
+          end
+
+          def call
+            return print_usage if help_requested?
+
+            PdfCommands.execute_pdf_pages(build_options, input)
+            0
+          rescue StandardError => e
+            Common.log_error("[pdf:pages] #{e.message}")
+            Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
+            1
+          end
+
+          private
+
+          def help_requested?
+            options[:help] || help_flag_argument?(input)
+          end
+
+          def help_flag_argument?(value)
+            %w[-h --help].include?(value.to_s.strip)
+          end
+
+          def build_options
+            {
+              dpi: options[:dpi],
+              quality: options[:quality],
+              pages: options[:pages],
+              output: options[:output],
+              verbose: parent_verbose?
+            }
+          end
+
+          def parent_verbose?
+            parent&.options&.[](:verbose) || false
+          end
+        end
+
+        # pdf:rasterize コマンドの Samovar 実装（Public コマンド）
+        class PdfRasterizeCommand < Samovar::Command
+          self.description = 'PDFをラスタライズして再結合します（Type3フォント対策）'
+
+          one :input, '入力PDFファイル（省略時はビルド生成物）', required: false
+
+          options do
+            option '--dpi <value>', '解像度（dpi、既定: 350）', type: Integer, default: 350, key: :dpi
+            option '--quality <value>', 'JPEG品質 1〜100（既定: 95）', type: Integer, default: 95, key: :quality
+            option '--clean', '中間JPEGを処理後に削除する', default: false, key: :clean
+            option '-h/--help', 'このコマンドの使い方を表示', key: :help
+          end
+
+          def call
+            return print_usage if help_requested?
+
+            PdfCommands.execute_pdf_rasterize(build_options, input)
+            0
+          rescue StandardError => e
+            Common.log_error("[pdf:rasterize] #{e.message}")
+            Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
+            1
+          end
+
+          private
+
+          def help_requested?
+            options[:help] || help_flag_argument?(input)
+          end
+
+          def help_flag_argument?(value)
+            %w[-h --help].include?(value.to_s.strip)
+          end
+
+          def build_options
+            {
+              dpi: options[:dpi],
+              quality: options[:quality],
+              clean: options[:clean],
+              verbose: parent_verbose?
+            }
           end
 
           def parent_verbose?

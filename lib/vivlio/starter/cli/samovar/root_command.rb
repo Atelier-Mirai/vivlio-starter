@@ -19,7 +19,7 @@
 #     - resize
 #     - index, index:auto, index:apply
 #     - lint, metrics
-#     - pdf:compress
+#     - pdf:compress, pdf:pages, pdf:rasterize
 #   Internal Commands (vs --help に非表示、DEVELOPER_GUIDE.md 参照):
 #     - pre_process, convert, post_process, pdf, toc, entries, vivliostyle
 #     - create:titlepage, create:colophon, create:legalpage
@@ -62,6 +62,8 @@ module Vivlio
                 'index:auto' => IndexAutoCommand,
                 'index:apply' => IndexApplyCommand,
                 'pdf:compress' => PdfCompressCommand,
+                'pdf:pages' => PdfPagesCommand,
+                'pdf:rasterize' => PdfRasterizeCommand,
                 'pdf:read' => PdfReadCommand,
                 'lint' => LintCommand,
                 'metrics' => MetricsCommand,

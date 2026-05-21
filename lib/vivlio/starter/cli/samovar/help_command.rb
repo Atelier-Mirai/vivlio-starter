@@ -13,7 +13,7 @@
 #   - 文章校正・統計: lint, metrics
 #   - 索引・用語集: index:auto, index:apply
 #   - 画像・カバー: cover, resize
-#   - ビルド・出力・プレビュー: build, open, pdf:compress
+#   - ビルド・出力・プレビュー: build, open, pdf:compress, pdf:pages, pdf:rasterize
 # ================================================================
 
 module Vivlio
@@ -54,7 +54,9 @@ module Vivlio
               'preflight' => 'ビルド前の原稿エラーチェックを高速実行します',
               'build' => '書籍全体または指定章をビルドします',
               'open' => '生成されたPDFを開きます',
-              'pdf:compress' => '生成済みPDFを圧縮します'
+              'pdf:compress' => '生成済みPDFを圧縮します',
+              'pdf:pages' => 'PDFをページ単位でJPEG画像に切り出します',
+              'pdf:rasterize' => 'PDFをラスタライズして再結合します（Type3フォント対策）'
             }
           }.freeze
 

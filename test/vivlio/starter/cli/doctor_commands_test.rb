@@ -43,6 +43,9 @@ module Vivlio
           end
         end
 
+        # 環境がすべて揃っている場合に --fix が textlint 設定ファイルをコピーすることを確認するテスト。
+        # ※ 開発環境のNode.jsやPlaywrightの有無に依存せずテストをパスさせるため、
+        #    playwright_npm_available?, chromium_available?, rouge_gem_available? も true にスタブ化しています。
         def test_doctor_fix_copies_textlint_assets_when_environment_complete
           with_host_os('darwin') do
             copy_called = false
@@ -51,9 +54,15 @@ module Vivlio
               DoctorCommands.stub :ssl_certificate_configured?, true do
                 DoctorCommands.stub :tesseract_language_available?, true do
                   DoctorCommands.stub :waifu2x_available?, true do
-                    DoctorCommands.stub :command_exists?, ->(_) { true } do
-                      DoctorCommands.stub :copy_textlint_assets_from_scaffold!, -> { copy_called = true } do
-                        capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
+                    DoctorCommands.stub :playwright_npm_available?, true do
+                      DoctorCommands.stub :chromium_available?, true do
+                        DoctorCommands.stub :rouge_gem_available?, true do
+                          DoctorCommands.stub :command_exists?, ->(_) { true } do
+                            DoctorCommands.stub :copy_textlint_assets_from_scaffold!, -> { copy_called = true } do
+                              capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
+                            end
+                          end
+                        end
                       end
                     end
                   end
@@ -248,6 +257,7 @@ module Vivlio
             assert_includes(system_calls, 'brew install tesseract-lang')
           end
         end
+
 
         # --fix 指定が非 macOS 環境ではインストールを試みず終了することを確認
         def test_doctor_fix_on_non_macos_aborts_install

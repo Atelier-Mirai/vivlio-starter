@@ -12,8 +12,9 @@
 #   - vivliostyle: PDF 生成エンジン
 #   - textlint: 文章校正ツール
 #   - qpdf: PDF 分割・結合・ページ操作
-#   - pdfinfo (poppler): PDF メタデータ取得
+#   - pdfinfo / pdftoppm (poppler): PDF メタデータ取得・ページ画像化
 #   - gs (Ghostscript): PDF 圧縮
+#   - img2pdf: JPEG から PDF への再結合
 #   - imagemagick: 画像変換・リサイズ
 #   - inkscape: SVG編集・変換（カバー生成用）
 #   - waifu2x-ncnn-vulkan: AI 画像拡大（オプション）
@@ -67,13 +68,14 @@ module Vivlio
           textlint-rule-ng-word
         ].freeze
 
+        # img2pdfの依存排除に伴い、診断対象および説明からimg2pdfを削除しています。
         DOCTOR_DESC = {
-          short: '必要ツール(Xcode Command Line Tools, qpdf, pdfinfo, gs, ImageMagick, Inkscape)の診断とセットアップを行います',
+          short: '必要ツール(Xcode Command Line Tools, qpdf, pdfinfo, pdftoppm, gs, ImageMagick, Inkscape)の診断とセットアップを行います',
           long: <<~DESC
             環境診断を行い、以下の外部コマンドの存在をチェックします:
               - Xcode Command Line Tools (macOS)
               - qpdf
-              - pdfinfo (poppler)
+              - pdfinfo / pdftoppm (poppler)
               - node
               - vivliostyle
               - gs
@@ -130,12 +132,14 @@ module Vivlio
           end
 
           # コマンド存在チェック定義
+          # ※ img2pdfはJPEGからPDFへの結合に独自実装 JpegToPdf を使用するため依存排除されました。
           checks = {
             'node' => 'node',
             'textlint' => 'textlint',
             'vivliostyle' => 'vivliostyle',
             'qpdf' => 'qpdf',
             'pdfinfo' => 'pdfinfo',
+            'pdftoppm' => 'pdftoppm',
             'gs' => 'gs', # Ghostscript
             'imagemagick' => nil,
             'inkscape' => 'inkscape',
@@ -290,9 +294,9 @@ module Vivlio
               Common.log_always('node の Homebrew インストールに失敗しました。手動インストールをご検討ください。') unless ok
             end
 
-            # qpdf / pdfinfo(poppler)
+            # qpdf / poppler(pdfinfo, pdftoppm)
             system('brew install qpdf') if missing.include?('qpdf')
-            system('brew install poppler') if missing.include?('pdfinfo')
+            system('brew install poppler') if missing.any? { %w[pdfinfo pdftoppm].include?(it) }
 
             # Ghostscript
             system('brew install ghostscript') if missing.include?('gs')
@@ -593,6 +597,8 @@ module Vivlio
           end
         end
 
+        # 不足しているツールの表示名マッピングを返します。
+        # ※ img2pdfは依存排除されたため削除されています。
         def describe_missing(keys)
           return [] unless keys
 
@@ -603,6 +609,7 @@ module Vivlio
             'textlint' => 'textlint',
             'qpdf' => 'qpdf',
             'pdfinfo' => 'pdfinfo (poppler)',
+            'pdftoppm' => 'pdftoppm (poppler)',
             'gs' => 'Ghostscript',
             'imagemagick' => 'ImageMagick',
             'inkscape' => 'Inkscape',

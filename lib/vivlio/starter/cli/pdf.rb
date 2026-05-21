@@ -6,6 +6,8 @@ require 'rbconfig'
 require 'fileutils'
 
 require_relative 'entries'
+require_relative '../pdf/pdf_to_jpeg'
+require_relative '../pdf/jpeg_to_pdf'
 
 module Vivlio
   module Starter
@@ -42,6 +44,24 @@ module Vivlio
         # @return [void]
         def execute_pdf_compress(options, input = nil, output = nil)
           PdfCompressor.new(options, input, output).call
+        end
+
+        # PDF をページ単位の JPEG に切り出す
+        #
+        # @param options [Hash] :dpi, :quality, :pages, :output, :verbose
+        # @param input [String, nil] 入力 PDF パス
+        # @return [Hash] 生成結果
+        def execute_pdf_pages(options, input = nil)
+          PdfPagesExporter.new(options, input).call
+        end
+
+        # PDF を JPEG 化して再結合し、Type3 フォントを含まないラスタライズ PDF を生成する
+        #
+        # @param options [Hash] :dpi, :quality, :clean, :verbose
+        # @param input [String, nil] 入力 PDF パス
+        # @return [Hash] 生成結果
+        def execute_pdf_rasterize(options, input = nil)
+          PdfRasterizer.new(options, input).call
         end
 
         # PDF を Preview.app で開く
@@ -380,6 +400,175 @@ module Vivlio
             else
               Common.log_error('PDFの圧縮に失敗しました')
               exit(1)
+            end
+          end
+        end
+
+        # PDF をページごとの JPEG に切り出す
+        class PdfPagesExporter
+          def initialize(options, cli_input = nil, pdf_to_jpeg: ::Vivlio::Starter::Pdf::PdfToJpeg)
+            @options = options || {}
+            @cli_input = cli_input
+            @pdf_to_jpeg = pdf_to_jpeg
+          end
+
+          def call
+            apply_verbose
+            pdf_path = resolve_pdf_path
+            ensure_input_exists!(pdf_path)
+            ensure_pdf_pages_tools!
+
+            output_dir = output_dir_for(pdf_path)
+            Common.log_action("PDFをJPEG画像に切り出しています…（入力: #{pdf_path} → 出力: #{output_dir}/）")
+
+            images = pdf_to_jpeg.convert(
+              pdf_path,
+              output_dir:,
+              dpi: normalized_dpi,
+              quality: normalized_quality,
+              pages: options[:pages]
+            )
+
+            Common.log_success("完了: #{images.size} ページ → #{output_dir}/")
+            { pdf_path:, output_dir:, images: }
+          end
+
+          private
+
+          attr_reader :options, :cli_input, :pdf_to_jpeg
+
+          def apply_verbose
+            ENV['VERBOSE'] = '1' if options[:verbose]
+          end
+
+          def resolve_pdf_path
+            explicit = normalize_pdf_extension(cli_input)
+            return explicit if explicit
+
+            Common.generate_output_filename('pdf')
+          end
+
+          def normalize_pdf_extension(path)
+            return nil if path.nil? || path.to_s.strip.empty?
+
+            p = path.to_s.strip
+            p.downcase.end_with?('.pdf') ? p : "#{p}.pdf"
+          end
+
+          def ensure_input_exists!(pdf_path)
+            return if File.exist?(pdf_path)
+
+            raise "入力PDFが見つかりません: #{pdf_path}"
+          end
+
+          def ensure_pdf_pages_tools!
+            Common.ensure_external_command!('pdftoppm', purpose: 'PDFページ画像化')
+          end
+
+          def output_dir_for(pdf_path)
+            explicit = options[:output].to_s.strip
+            return explicit unless explicit.empty?
+
+            "#{File.basename(pdf_path, '.*')}_images"
+          end
+
+          def normalized_dpi
+            (options[:dpi] || 350).to_i
+          end
+
+          def normalized_quality
+            (options[:quality] || 95).to_i
+          end
+        end
+
+        # PDF 全ページを JPEG 経由でラスタライズして再結合する
+        class PdfRasterizer
+          def initialize(options, cli_input = nil,
+                         pdf_to_jpeg: ::Vivlio::Starter::Pdf::PdfToJpeg,
+                         jpeg_to_pdf: ::Vivlio::Starter::Pdf::JpegToPdf)
+            @options = options || {}
+            @cli_input = cli_input
+            @pdf_to_jpeg = pdf_to_jpeg
+            @jpeg_to_pdf = jpeg_to_pdf
+          end
+
+          def call
+            apply_verbose
+            pdf_path = resolve_pdf_path
+            ensure_input_exists!(pdf_path)
+            ensure_pdf_rasterize_tools!
+
+            base = File.basename(pdf_path, '.*')
+            work_dir = "#{base}_images"
+            output_pdf = "#{base}_rasterized.pdf"
+
+            Common.log_action("--- Phase 1: PDF → JPEG (#{normalized_dpi}dpi / quality #{normalized_quality}) ---")
+            images = pdf_to_jpeg.convert(pdf_path, output_dir: work_dir, dpi: normalized_dpi, quality: normalized_quality)
+            Common.log_info("#{images.size} ページを生成しました")
+
+            Common.log_action('--- Phase 2: JPEG → PDF ---')
+            jpeg_to_pdf.convert(images, output_pdf)
+
+            Common.log_success("完了: #{output_pdf} (#{output_size_mb(output_pdf)} MB)")
+            cleanup_work_dir_if_needed(work_dir)
+
+            { pdf_path:, work_dir:, output_pdf:, images: }
+          end
+
+          private
+
+          attr_reader :options, :cli_input, :pdf_to_jpeg, :jpeg_to_pdf
+
+          def apply_verbose
+            ENV['VERBOSE'] = '1' if options[:verbose]
+          end
+
+          def resolve_pdf_path
+            explicit = normalize_pdf_extension(cli_input)
+            return explicit if explicit
+
+            Common.generate_output_filename('pdf')
+          end
+
+          def normalize_pdf_extension(path)
+            return nil if path.nil? || path.to_s.strip.empty?
+
+            p = path.to_s.strip
+            p.downcase.end_with?('.pdf') ? p : "#{p}.pdf"
+          end
+
+          def ensure_input_exists!(pdf_path)
+            return if File.exist?(pdf_path)
+
+            raise "入力PDFが見つかりません: #{pdf_path}"
+          end
+
+          # PDFラスタライズ用の外部ツール存在チェック
+          # ※ JPEGからPDFへの再結合に独自実装 JpegToPdf を使用するため、img2pdfのチェックを削除しました。
+          def ensure_pdf_rasterize_tools!
+            Common.ensure_external_command!('pdftoppm', purpose: 'PDFラスタライズ')
+          end
+
+          def normalized_dpi
+            (options[:dpi] || 350).to_i
+          end
+
+          def normalized_quality
+            (options[:quality] || 95).to_i
+          end
+
+          def output_size_mb(output_pdf)
+            return 0.0 unless File.exist?(output_pdf)
+
+            (File.size(output_pdf) / 1024.0 / 1024.0).round(1)
+          end
+
+          def cleanup_work_dir_if_needed(work_dir)
+            if options[:clean]
+              FileUtils.rm_rf(work_dir)
+              Common.log_info("中間ファイルを削除しました: #{work_dir}")
+            else
+              Common.log_info("中間ファイルを保存しました: #{work_dir}/")
             end
           end
         end

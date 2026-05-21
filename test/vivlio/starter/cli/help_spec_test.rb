@@ -9,7 +9,7 @@
 # 検証内容:
 #   - vs --help: Public Commands のみ表示
 #   - vs pdf --help: pdf:compress への案内表示
-#   - vs pdf:compress --help: 圧縮コマンドのヘルプ表示
+#   - vs pdf:compress / pdf:pages / pdf:rasterize --help: PDF系コマンドのヘルプ表示
 #   - vs build --help: ビルドコマンドのヘルプ表示
 #   - Internal Commands: --help 非対応
 # ================================================================
@@ -41,6 +41,8 @@ module Vivlio
           assert_includes output, 'clean'
           assert_includes output, 'import'
           assert_includes output, 'pdf:compress'
+          assert_includes output, 'pdf:pages'
+          assert_includes output, 'pdf:rasterize'
 
           # Internal Commands が含まれないことの確認
           refute_includes output, 'pre_process'
@@ -59,6 +61,8 @@ module Vivlio
           assert_includes output, 'Vivlio Starter'
           assert_includes output, 'build'
           assert_includes output, 'pdf:compress'
+          assert_includes output, 'pdf:pages'
+          assert_includes output, 'pdf:rasterize'
         end
 
         # vs pdf --help: 内部コマンドであることと pdf:compress への案内
@@ -84,6 +88,32 @@ module Vivlio
           assert_includes output, 'Usage:'
           assert_includes output, 'INPUT'
           assert_includes output, 'OUTPUT'
+        end
+
+        # vs pdf:pages --help: ページ画像化コマンドの詳細ヘルプ
+        def test_pdf_pages_help_shows_usage
+          output, = capture_io do
+            status = ::Vivlio::Starter::CLI.start(['pdf:pages', '--help'])
+            assert_equal 0, status
+          end
+
+          assert_includes output, 'pdf:pages'
+          assert_includes output, '--dpi'
+          assert_includes output, '--pages'
+          assert_includes output, '--output'
+        end
+
+        # vs pdf:rasterize --help: ラスタライズコマンドの詳細ヘルプ
+        def test_pdf_rasterize_help_shows_usage
+          output, = capture_io do
+            status = ::Vivlio::Starter::CLI.start(['pdf:rasterize', '--help'])
+            assert_equal 0, status
+          end
+
+          assert_includes output, 'pdf:rasterize'
+          assert_includes output, '--dpi'
+          assert_includes output, '--quality'
+          assert_includes output, '--clean'
         end
 
         # vs build --help: ビルドコマンドのヘルプ（print_usage）
@@ -140,6 +170,8 @@ module Vivlio
           assert_includes public_commands, 'build'
           assert_includes public_commands, 'clean'
           assert_includes public_commands, 'pdf:compress'
+          assert_includes public_commands, 'pdf:pages'
+          assert_includes public_commands, 'pdf:rasterize'
           assert_includes public_commands, 'index'
           refute_includes public_commands, 'pdf'
           refute_includes public_commands, 'pre_process'
