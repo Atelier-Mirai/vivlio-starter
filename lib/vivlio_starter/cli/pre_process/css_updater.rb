@@ -230,8 +230,8 @@ module VivlioStarter
           chapter_common_css_path = File.join(Common::STYLESHEETS_DIR, 'chapter-common.css')
           return unless File.exist?(chapter_common_css_path)
 
-          mark_h3 = markers['h3'].to_s
-          mark_h4 = markers['h4'].to_s
+          mark_h3 = (markers[:h3] || markers['h3']).to_s
+          mark_h4 = (markers[:h4] || markers['h4']).to_s
 
           mark_h3 = '♣' if mark_h3.strip.empty?
           mark_h4 = '♦' if mark_h4.strip.empty?

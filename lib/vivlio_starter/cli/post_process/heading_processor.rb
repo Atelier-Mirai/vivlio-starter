@@ -230,7 +230,7 @@ module VivlioStarter
 
         # h3 のスパン処理
         def process_h3_spans(doc)
-          marker = Common::CONFIG.dig('theme', 'markers', 'h3') || '♣'
+          marker = Common::CONFIG.dig(:theme, :markers, :h3) || Common::CONFIG.dig('theme', 'markers', 'h3') || '♣'
           modified = false
           doc.css('h3').each do |h3|
             title_text = extract_heading_core_text(h3)

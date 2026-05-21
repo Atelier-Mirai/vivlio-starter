@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 300" shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
+  <title>VS Vivlio Starter Logo (Stacked)</title>
+  <defs>
+    <linearGradient id="vsGradGreen" x1="132.07" y1="257.01" x2="132.07" y2="18.01" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2c893a"/>
+      <stop offset="1" stop-color="#7fbf34"/>
+    </linearGradient>
+    <linearGradient id="vsGradBlue" x1="163.25" y1="157.25" x2="363.36" y2="157.25" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#105998"/>
+      <stop offset="1" stop-color="#35a7d2"/>
+    </linearGradient>
+    <linearGradient id="gradBlue" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0" style="stop-color:#105998"/>
+      <stop offset="1" style="stop-color:#35A7D2"/>
+    </linearGradient>
+    <linearGradient id="gradGreen" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0" style="stop-color:#2C893A"/>
+      <stop offset="1" style="stop-color:#7FBF34"/>
+    </linearGradient>
+  </defs>
+
+  <!-- VS mark -->
+  <path fill="url(#vsGradGreen)" d="M 161.58,246.38 l -4.12,10.63 h -51.99 L 14.04,18.02 h 59.02 l 88.53,228.37 Z M 170.17,224.25 L 250.12,18.01 h -60.23 l -49.51,129.4 29.79,76.84 Z"/>
+  <path fill="url(#vsGradBlue)" d="M 289.7,228.75 h -105.68 l -20.78,54.03 h 129.37 c 43.69,0 70.74,-31.79 70.74,-71.9 s -22.22,-54.45 -39.67,-61.93 c -17.46,-7.48 -65.01,-25.03 -65.01,-25.03 c -11.04,-4.9 -18.21,-9.88 -18.21,-20.17 s 6.44,-16.92 22.55,-16.92 h 79.27 l 18.29,-55.09 h -99.54 l -49.8,130.3 c 4.6,4.27 12.11,7.31 22.22,11.24 21.36,8.3 50.86,18.69 61.25,22.64 10.4,3.95 11.52,11.56 11.52,16.55 0,7.35 -5.54,16.29 -16.51,16.29 Z"/>
+
+  <!-- Vivlio Starter text (stacked) -->
+  <text x="415.39" y="133.03" font-family="'D-DIN-PRO Bold', 'D-DIN-PRO', sans-serif" font-weight="bold" font-size="161.89" fill="url(#gradBlue)">Vivlio</text>
+  <text x="415.39" y="270.43" font-family="'D-DIN-PRO Bold', 'D-DIN-PRO', sans-serif" font-weight="bold" font-size="161.89" fill="url(#gradGreen)">Starter</text>
+</svg>

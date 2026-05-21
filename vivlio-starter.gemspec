@@ -19,7 +19,9 @@ Gem::Specification.new do |spec|
   files = nil
   if File.directory?('.git') && system('git --version > /dev/null 2>&1')
     begin
-      files = `git ls-files -z`.split("\x0")
+      tracked = `git ls-files -z`.split("\x0")
+      untracked = `git ls-files -z --others --exclude-standard`.split("\x0")
+      files = tracked + untracked
     rescue StandardError
       files = nil
     end

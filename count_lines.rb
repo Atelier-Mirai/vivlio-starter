@@ -4,7 +4,7 @@
 require 'pathname'
 
 root = Pathname.new(__dir__)
-rb_files = root.glob('lib/vivlio/**/*.rb').sort
+rb_files = root.glob('lib/vivlio_starter/**/*.rb').sort
 css_files = root.glob('stylesheets/**/*.css').sort
 
 ruby_results = []
@@ -96,7 +96,7 @@ format_line = lambda do |label, total_lines, code_lines, comment_lines|
   format('%-60s %6d %6d %6d', label, total_lines, code_lines, comment_lines)
 end
 
-puts 'Ruby files (lib/vivlio/**/*.rb)'
+puts 'Ruby files (lib/vivlio_starter/**/*.rb)'
 puts format('%-60s %6s %6s %6s', 'path', 'total', 'code', 'comment')
 ruby_results.each { |row| puts format_line.call(*row) }
 

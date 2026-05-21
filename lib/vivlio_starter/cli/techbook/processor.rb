@@ -129,8 +129,16 @@ module VivlioStarter
           FileUtils.mkdir_p(GENERATED_ASSET_DIR)
           accent = theme_color_hex
 
-          write_file_if_changed(File.join(GENERATED_ASSET_DIR, 'marker-h3.svg'), recolored_twemoji_svg('2663', accent))
-          write_file_if_changed(File.join(GENERATED_ASSET_DIR, 'marker-h4.svg'), recolored_twemoji_svg('2666', accent))
+          h3_char = @config.dig(:theme, :markers, :h3).to_s.strip
+          h3_char = '♣' if h3_char.empty?
+          h3_codepoint = marker_codepoint(h3_char)
+
+          h4_char = @config.dig(:theme, :markers, :h4).to_s.strip
+          h4_char = '♦' if h4_char.empty?
+          h4_codepoint = marker_codepoint(h4_char)
+
+          write_file_if_changed(File.join(GENERATED_ASSET_DIR, 'marker-h3.svg'), recolored_twemoji_svg(h3_codepoint, h3_char, accent))
+          write_file_if_changed(File.join(GENERATED_ASSET_DIR, 'marker-h4.svg'), recolored_twemoji_svg(h4_codepoint, h4_char, accent))
           write_file_if_changed(File.join(GENERATED_ASSET_DIR, 'wave.svg'), wave_svg)
 
           CIRCLED_NUMBER_TEXT.values.uniq.each do |number|
@@ -152,14 +160,34 @@ module VivlioStarter
           THEME_COLOR_HEX.fetch(raw, '#f0a000')
         end
 
-        def recolored_twemoji_svg(codepoint, color)
+        def marker_codepoint(char)
+          char.codepoints
+              .reject { it == 0xFE0F }
+              .map { it.to_s(16).downcase }
+              .join("-")
+        end
+
+        def recolored_twemoji_svg(codepoint, char, color)
           svg_path = File.join('stylesheets', 'twemoji', "#{codepoint}.svg")
-          svg = File.exist?(svg_path) ? File.read(svg_path, encoding: 'utf-8') : fallback_marker_svg(color)
+          svg = File.exist?(svg_path) ? File.read(svg_path, encoding: 'utf-8') : fallback_marker_svg(char, color)
           svg.gsub(/fill="#[0-9a-fA-F]{3,8}"/, %(fill="#{color}"))
         end
 
-        def fallback_marker_svg(color)
-          %(<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="#{color}"/></svg>)
+        def fallback_marker_svg(char, color)
+          case char.to_s.strip
+          when "■", "◼", "square", "rectangle"
+            %(<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><rect x="2" y="2" width="32" height="32" rx="2" ry="2" fill="#{color}"/></svg>)
+          when "◆", "◇", "diamond"
+            %(<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><path d="M18 2 L34 18 L18 34 L2 18 Z" fill="#{color}"/></svg>)
+          when "▲", "triangle"
+            %(<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><path d="M18 2 L34 32 L2 32 Z" fill="#{color}"/></svg>)
+          when "▼"
+            %(<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><path d="M18 34 L2 4 L34 4 Z" fill="#{color}"/></svg>)
+          when "★", "star"
+            %(<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><path d="M18 2 L22 13 L34 13 L24 20 L28 32 L18 24 L8 32 L12 20 L2 13 L14 13 Z" fill="#{color}"/></svg>)
+          else
+            %(<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="#{color}"/></svg>)
+          end
         end
 
         def wave_svg

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1060" shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
+  <title>VS Logo with Vivlio Starter Garnish (Direct Numbers)</title>
+  <defs>
+    <linearGradient id="vsGradGreen" x1="428.91" y1="736.31" x2="428.91" y2="15.01" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2c893a"/>
+      <stop offset="1" stop-color="#7fbf34"/>
+    </linearGradient>
+    <linearGradient id="vsGradBlue" x1="522.71" y1="435.15" x2="1126.75" y2="435.15" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#105998"/>
+      <stop offset="1" stop-color="#35a7d2"/>
+    </linearGradient>
+    <linearGradient id="gradBlue" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0" style="stop-color:#105998"/>
+      <stop offset="1" style="stop-color:#35A7D2"/>
+    </linearGradient>
+    <linearGradient id="gradGreen" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0" style="stop-color:#2C893A"/>
+      <stop offset="1" style="stop-color:#7FBF34"/>
+    </linearGradient>
+  </defs>
+
+  <path fill="url(#vsGradGreen)" d="M517.96,704.16l-12.44,32.08h-156.88L72.71,15.05h178.09l267.16,689.15ZM543.88,637.37L785.14,15.01h-181.76l-149.4,390.49l89.89,231.91Z"/>
+  <path fill="url(#vsGradBlue)" d="M904.55,651.02h-318.91l-62.71,163.06h390.41c131.84,0,213.49-96.04,213.49-217s-67.05-164.31-119.73-186.92c-52.68-22.56-196.2-75.54-196.2-75.54-33.33-14.78-54.96-29.83-54.96-60.88s19.45-51.07,68.04-51.07h239.23l55.19-166.24h-300.41l-150.31,393.22c13.88,12.89,36.54,22.05,67.05,33.91c64.44,25.04,153.48,56.41,184.85,68.33c31.37,11.92,34.78,34.88,34.78,50c0,22.18-16.71,49.14-49.82,49.14Z"/>
+
+  <text x="28.83" y="1011.20" font-family="'D-DIN-PRO Bold', 'D-DIN-PRO', sans-serif" font-weight="bold" font-size="209.72">
+    <tspan fill="url(#gradBlue)">Vivlio</tspan>
+    <tspan fill="url(#gradGreen)"> Starter</tspan>
+  </text>
+</svg>

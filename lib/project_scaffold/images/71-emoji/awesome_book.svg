@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 60">
+  <defs>
+    <linearGradient id="grad-green" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#4A9D36;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#85C441;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="grad-blue" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1E6DB4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3DA6D1;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <text x="0" y="50" font-family="sans-serif" font-size="50" font-weight="bold" fill="url(#grad-green)">Awesome</text>
+  
+  <text x="265" y="50" font-family="sans-serif" font-size="50" font-weight="bold" fill="url(#grad-blue)">Book</text>
+</svg>
