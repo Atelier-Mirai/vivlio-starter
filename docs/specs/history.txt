@@ -1,0 +1,122 @@
+【わたくし】
+[@pdf_pages_rasterize_spec.md](file:///Users/mirai/projects/vivlio-starter/docs/specs/pdf_pages_rasterize_spec.md) に従ってvs pdf:pages, vs pdf:rasterizeコマンドの実装とテストスイーツのコーディングを行ってください。
+（注） 仕様書には、ファイル構成やコード例が記載されていますが、これは一例です。他のコードの実装例も参考にして、Samovarの流儀にしたがった適切な名前空間としてください。
+実装やテストに当たっては、
+[@ruby-development-standard.md](file:///Users/mirai/projects/vivlio-starter/docs/specs/ruby-development-standard.md) に従って下さい。
+git commit 済みですので、いつでも元に戻せます。安心して実装してください。
+
+【GPT】
+変更に入ります。既存の Samovar 構成に合わせて、主に以下を触ります。
+- `lib/vivlio/starter/pdf/pdf_to_jpeg.rb` / `jpeg_to_pdf.rb`: PDF↔JPEG 共通処理
+- `lib/vivlio/starter/cli/pdf.rb`: `pdf:pages` / `pdf:rasterize` の実処理
+- `lib/vivlio/starter/cli/samovar/pdf_command.rb`: Samovar コマンド追加
+- `lib/vivlio/starter/cli/samovar/root_command.rb` / `help_command.rb`: ルーティングとヘルプ追記
+- `lib/vivlio/starter/cli/samovar.rb`: require 追加
+- `lib/vivlio/starter/cli/doctor.rb`: `pdftoppm` / `img2pdf` の診断追加
+- `test/...`: 新規テスト追加、ヘルプ/doctor 既存テストを仕様に合わせて補強
+- `CHANGELOG.md`: 変更履歴追記します。
+
+変更内容
+- `lib/vivlio/starter/pdf/pdf_to_jpeg.rb`
+  - `Vivlio::Starter::Pdf::PdfToJpeg` を新設しました。
+  - `pdftoppm` による PDF→JPEG 変換を共通化しました。
+  - `--pages "1,3,5-8"` 形式のページ指定パーサを実装しました。
+  - `page-001.jpg` 形式へファイル名を正規化し、ページ指定時は未指定ページの画像を削除して「指定ページのみ出力」にしています。
+  - 変換前に既存の `page-*.jpg` を削除し、古い生成物が混ざらないようにしています。
+
+- `lib/vivlio/starter/pdf/jpeg_to_pdf.rb`
+  - `Vivlio::Starter::Pdf::JpegToPdf` を新設しました。
+  - `img2pdf` による JPEG 群→PDF 再結合を実装しました。
+
+- `lib/vivlio/starter/cli/pdf.rb`
+  - `PdfCommands.execute_pdf_pages` / `execute_pdf_rasterize` を追加しました。
+  - `PdfPagesExporter` を追加し、`vs pdf:pages` の実処理を実装しました。
+  - `PdfRasterizer` を追加し、`vs pdf:rasterize` の実処理を実装しました。
+  - PDF 省略時は既存の流儀に合わせて `Common.generate_output_filename('pdf')` を使うようにしました。
+  - 外部コマンドチェックは既存の `Common.ensure_external_command!` を使い、`vs doctor` への案内が出るようにしました。
+
+- `lib/vivlio/starter/cli/samovar/pdf_command.rb`
+  - Samovar の Public Command として `PdfPagesCommand` / `PdfRasterizeCommand` を追加しました。
+  - `vs pdf:pages [PDF_FILE] --dpi --quality --pages --output` に対応しました。
+  - `vs pdf:rasterize [PDF_FILE] --dpi --quality --clean` に対応しました。
+  - `vs pdf --help` の案内にも `pdf:pages` / `pdf:rasterize` を追加しました。
+
+- `lib/vivlio/starter/cli/samovar/root_command.rb`
+  - `pdf:pages` / `pdf:rasterize` を Public Commands に登録しました。
+
+- `lib/vivlio/starter/cli/samovar/help_command.rb`
+  - `vs --help` の「ビルド・出力・プレビュー」に `pdf:pages` / `pdf:rasterize` を追加しました。
+
+- `lib/vivlio/starter/cli/doctor.rb`
+  - `vs doctor` の診断対象に `pdftoppm` / `img2pdf` を追加しました。
+  - macOS `--fix` 時に `pdftoppm` 不足は `poppler`、`img2pdf` 不足は `img2pdf` の Homebrew インストール対象にしました。
+  - 不足ツール表示にも `pdftoppm (poppler)` / `img2pdf` を追加しました。
+
+- `test/vivlio/starter/pdf/pdf_to_jpeg_test.rb`
+  - PDF→JPEG 共通処理のテストを追加しました。
+  - コマンド組み立て、ファイル名正規化、ページ指定フィルタ、ページ指定不正値を検証しています。
+
+- `test/vivlio/starter/pdf/jpeg_to_pdf_test.rb`
+  - JPEG→PDF 共通処理のテストを追加しました。
+  - `img2pdf` コマンド組み立てと空配列エラーを検証しています。
+
+- `test/vivlio/starter/cli/pdf_pages_rasterize_test.rb`
+  - `PdfPagesExporter` / `PdfRasterizer` のコマンドロジックテストを追加しました。
+  - DI で外部依存を差し替え、実際の `pdftoppm` / `img2pdf` に依存しないテストにしています。
+  - `--clean` 指定時に中間画像ディレクトリが削除されることも検証しています。
+
+- `test/vivlio/starter/cli/help_spec_test.rb`
+  - `pdf:pages` / `pdf:rasterize` のヘルプ表示と Public Command 登録の検証を追加しました。
+
+- `test/vivlio/starter/cli/doctor_commands_test.rb`
+  - `img2pdf` 不足時に `doctor --fix` がインストール処理を試みるテストを追加しました。
+
+- `CHANGELOG.md`
+  - `Unreleased > Added` に `vs pdf:pages` / `vs pdf:rasterize` の追加を記録しました。
+
+## 動作確認
+
+動作確認
+
+以下を実行して通過しています。
+
+- 対象テスト
+  - `29 runs, 197 assertions, 0 failures, 0 errors, 0 skips`
+
+- 全テスト
+  - `1007 runs, 5426 assertions, 0 failures, 0 errors, 0 skips`
+
+- RuboCop（変更対象ファイル）
+  - `12 files inspected, no offenses detected`
+
+- diagnostics
+  - `No errors or warnings found in the project.`
+
+補足: 全テスト実行時に既存テストの副作用で `_toc.md` などの生成済みファイルが削除状態になりましたが、実装スコープ外なので Git から復元済みです。
+
+## スコープ外の気づき（変更なし）
+
+- `pdf_to_jpg.rb` / `jpg_to_pdf.rb` がプロジェクトルートに既存スクリプトとして残っています。今回の実装は正式 CLI 側へ移したため触っていません。将来的には不要スクリプトとして整理対象にできそうです。
+
+## 確認事項
+
+- 追加実装とテストは完了しています。追加で確認したい点はありません。
+
+【わたくし】
+### Added
+- **`vs pdf:pages` / `vs pdf:rasterize` コマンドを追加** (`lib/vivlio/starter/pdf/pdf_to_jpeg.rb`, `lib/vivlio/starter/pdf/jpeg_to_pdf.rb`, `lib/vivlio/starter/cli/pdf.rb`, `lib/vivlio/starter/cli/samovar/pdf_command.rb`): `pdftoppm` による PDF ページの JPEG 切り出しと、`img2pdf` による全ページラスタライズ PDF 再結合に対応。`pdf:pages` は `--dpi` / `--quality` / `--pages` / `--output` を、`pdf:rasterize` は `--dpi` / `--quality` / `--clean` を受け付ける。`vs --help` と `vs doctor` にも関連コマンド・外部依存 (`pdftoppm`, `img2pdf`) を追加し、単体テストとコマンドロジックテストを整備。
+とchangelog.mdに書かれているが、img2pdfを使用したのか？
+
+仕様書には、
+### 3.3 `JpegToPdf` モジュール（独自実装）
+外部コマンド・gem への依存なし。PDFフォーマットを直接生成する。
+AGPLライセンスのHexaPDF、およびPython依存のimg2pdfをいずれも使用しない。
+と書かれており、img2pdfの使用は禁止している。
+実装を確認せよ。
+
+【GPT】
+確認します。前回実装では、こちらが参照した仕様書内の `JpegToPdf` 例に `img2pdf` が含まれていたため、そのまま `img2pdf` 依存で実装していました。いまのご指摘どおり「独自実装・外部コマンド/gem 依存なし」が正であれば、現実装は仕様違反です。実装箇所と仕様書の現在内容を確認し、`img2pdf` を使わない実装へ修正します。
+
+確認しました。現状の実装は **`img2pdf` を使用しています**。具体的には `lib/vivlio/starter/pdf/jpeg_to_pdf.rb` が `['img2pdf', *images, '-o', output_pdf]` を実行しており、`vs doctor` / `CHANGELOG.md` / テストにも `img2pdf` 依存を入れていました。
+
+これは、現在の `docs/specs/pdf_pages_rasterize_spec.md` の **「JpegToPdf モジュール（独自実装）」「img2pdfを使用しない」** という仕様に反しています。これから `img2pdf` 依存を除去し、JPEG を `/Filter /DCTDecode` で PDF に直接埋め込む独自実装へ修正します。
