@@ -169,8 +169,18 @@ module VivlioStarter
 
         def recolored_twemoji_svg(codepoint, char, color)
           svg_path = File.join('stylesheets', 'twemoji', "#{codepoint}.svg")
-          svg = File.exist?(svg_path) ? File.read(svg_path, encoding: 'utf-8') : fallback_marker_svg(char, color)
-          svg.gsub(/fill="#[0-9a-fA-F]{3,8}"/, %(fill="#{color}"))
+          if File.exist?(svg_path)
+            svg = File.read(svg_path, encoding: 'utf-8')
+            # Suit symbols (♣, ♦, ♥, ♠) are recolored with the theme accent color.
+            # Other natively colored emojis (like 🌸) retain their original colors.
+            if ["♣", "♦", "♥", "♠"].include?(char.to_s.strip)
+              svg.gsub(/fill="#[0-9a-fA-F]{3,8}"/, %(fill="#{color}"))
+            else
+              svg
+            end
+          else
+            fallback_marker_svg(char, color)
+          end
         end
 
         def fallback_marker_svg(char, color)
@@ -183,8 +193,10 @@ module VivlioStarter
             %(<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><path d="M18 2 L34 32 L2 32 Z" fill="#{color}"/></svg>)
           when "▼"
             %(<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><path d="M18 34 L2 4 L34 4 Z" fill="#{color}"/></svg>)
-          when "★", "star"
+          when "★", "☆", "star"
             %(<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><path d="M18 2 L22 13 L34 13 L24 20 L28 32 L18 24 L8 32 L12 20 L2 13 L14 13 Z" fill="#{color}"/></svg>)
+          when "●", "○", "circle"
+            %(<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="#{color}"/></svg>)
           else
             %(<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="#{color}"/></svg>)
           end

@@ -294,6 +294,60 @@ module VivlioStarter
             end
           end
         end
+
+        def test_should_keep_original_colors_for_natively_colored_emojis
+          config = Common.wrap_config({
+            theme: {
+              color: "blue",
+              markers: {
+                h3: "🌸",
+                h4: "♠"
+              }
+            },
+            output: { pdf: { techbook: true } }
+          })
+          processor = Processor.new(config)
+
+          Dir.mktmpdir do |dir|
+            Dir.chdir(dir) do
+              # Create dummy HTML file to avoid early return
+              File.write('sample.html', "<html><head></head><body><p>Test</p></body></html>")
+              
+              # Create dummy stylesheets/twemoji directory
+              FileUtils.mkdir_p("stylesheets/twemoji")
+              
+              # 🌸 codepoint is 1f338
+              File.write("stylesheets/twemoji/1f338.svg", %(<svg viewBox="0 0 36 36"><path fill="#FFC0CB" d="M18 2 L22 13"/></svg>))
+              # ♠ codepoint is 2660
+              File.write("stylesheets/twemoji/2660.svg", %(<svg viewBox="0 0 36 36"><path fill="#000000" d="M18 2 C18 2"/></svg>))
+
+              # Mock ResizeCommands.convert_svg_to_webp to do nothing
+              mock_resize = Minitest::Mock.new
+              mock_resize.expect :call, nil, [Array]
+              ResizeCommands.stub :convert_svg_to_webp, mock_resize do
+                processor.post_process_html_files!(['sample.html'], inject_css: false)
+              end
+
+              h3_svg_path = "stylesheets/twemoji/vs-techbook/marker-h3.svg"
+              h4_svg_path = "stylesheets/twemoji/vs-techbook/marker-h4.svg"
+              assert File.exist?(h3_svg_path)
+              assert File.exist?(h4_svg_path)
+
+              h3_svg = File.read(h3_svg_path)
+              h4_svg = File.read(h4_svg_path)
+
+              # 🌸 (h3) should NOT be recolored to blue (#0ea5e9); it must retain #FFC0CB
+              assert_includes h3_svg, 'fill="#FFC0CB"'
+              refute_includes h3_svg, 'fill="#0ea5e9"'
+
+              # ♠ (h4) SHOULD be recolored to blue (#0ea5e9)
+              assert_includes h4_svg, 'fill="#0ea5e9"'
+              refute_includes h4_svg, 'fill="#000000"'
+
+              mock_resize.verify
+            end
+          end
+        end
       end
     end
   end
