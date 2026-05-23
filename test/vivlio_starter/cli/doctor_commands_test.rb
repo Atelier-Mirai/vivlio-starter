@@ -258,6 +258,48 @@ module VivlioStarter
       end
 
 
+      def test_doctor_fix_installs_chromium_when_missing
+        with_host_os('darwin') do
+          system_calls = []
+
+          stub_logging do
+            DoctorCommands.stub :ssl_certificate_configured?, true do
+              DoctorCommands.stub :tesseract_language_available?, true do
+                DoctorCommands.stub :waifu2x_available?, true do
+                  DoctorCommands.stub :playwright_npm_available?, true do
+                    DoctorCommands.stub :chromium_available?, false do
+                      DoctorCommands.stub :rouge_gem_available?, true do
+                        DoctorCommands.stub :copy_textlint_assets_from_scaffold!, nil do
+                          DoctorCommands.stub :command_exists?, ->(_) { true } do
+                            DoctorCommands.stub :system, lambda { |cmd|
+                              system_calls << cmd
+                              true
+                            } do
+                              original_exist = File.method(:exist?)
+                              File.stub :exist?, lambda { |path|
+                                if path == 'node_modules/playwright/cli.js'
+                                  true
+                                else
+                                  original_exist.call(path)
+                                end
+                              } do
+                                capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
+                              end
+                            end
+                          end
+                        end
+                      end
+                    end
+                  end
+                end
+              end
+            end
+          end
+
+          assert_includes system_calls, 'node node_modules/playwright/cli.js install chromium'
+        end
+      end
+
       # --fix 指定が非 macOS 環境ではインストールを試みず終了することを確認
       def test_doctor_fix_on_non_macos_aborts_install
         with_host_os('linux') do

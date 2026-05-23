@@ -335,10 +335,27 @@ module VivlioStarter
 
           # Chromium ブラウザ
           if missing.include?('chromium')
-            if system('which npx >/dev/null 2>&1')
-              Common.log_always('Chromium（Playwright 用ブラウザ）をインストールします…')
+            Common.log_always('Chromium（Playwright 用ブラウザ）をインストールします…')
+            installed_any = false
+
+            if File.exist?('node_modules/playwright/cli.js')
+              system('node node_modules/playwright/cli.js install chromium')
+              installed_any = true
+            end
+
+            global_root = begin
+              `npm root -g 2>/dev/null`.strip
+            rescue StandardError
+              ''
+            end
+            has_global_playwright = !global_root.empty? && File.exist?(File.join(global_root, 'playwright', 'package.json'))
+
+            if has_global_playwright || (!installed_any && system('which npx >/dev/null 2>&1'))
               system('npx playwright install chromium')
-            else
+              installed_any = true
+            end
+
+            unless installed_any
               Common.log_always('npx が見つかりません。Playwright インストール後に `npx playwright install chromium` を実行してください。')
             end
           end
