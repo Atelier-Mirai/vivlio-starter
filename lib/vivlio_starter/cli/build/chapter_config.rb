@@ -130,7 +130,7 @@ module VivlioStarter
           duplicates = detect_duplicate_chapter_numbers
           return unless duplicates.any?
 
-          error_msg = "❌ 同一章番号で複数のファイルが存在します。ファイル名を見直してください:\n"
+          error_msg = "同一章番号で複数のファイルが存在します。ファイル名を見直してください:\n"
           duplicates.each do |num, files|
             error_msg += "  章番号 #{num}: #{files.join(', ')}\n"
           end

@@ -97,7 +97,7 @@ module VivlioStarter
         # 章行をフォーマットする（公開メソッド）
         def format_chapter_line(chapter, max_chars, show_sections)
           bar = render_bar(chapter.chars, max_chars)
-          warning = chapter.warning ? " ⚠️ #{chapter.warning}" : ''
+          warning = chapter.warning ? " 🟡 #{chapter.warning}" : ''
 
           if show_sections && chapter.sections.any?
             format_chapter_with_sections(chapter, bar, warning, max_chars)
@@ -120,7 +120,7 @@ module VivlioStarter
           chapter.sections.each_with_index do |sec, idx|
             prefix = idx == chapter.sections.size - 1 ? '  └' : '  ├'
             sec_bar = render_bar(sec.chars, max_chars)
-            sec_warning = sec.warning ? " ⚠️ #{sec.warning}" : ''
+            sec_warning = sec.warning ? " 🟡 #{sec.warning}" : ''
             sec_title = padded_section_title(sec.title)
             char_count = format_char_count(sec.chars)
             lines << "#{prefix} #{sec_title} #{sec_bar} #{char_count}#{sec_warning}"

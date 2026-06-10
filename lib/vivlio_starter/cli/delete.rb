@@ -277,7 +277,7 @@ module VivlioStarter
         def confirm_deletion?(label)
           return true if options.force?
 
-          print "⚠️ 本当に #{label} を削除しますか？ (y/N): "
+          print "🟡 本当に #{label} を削除しますか？ (y/N): "
           response = $stdin.gets&.chomp&.downcase
           %w[y yes].include?(response)
         end

@@ -180,7 +180,7 @@ module VivlioStarter
         if converted_originals.empty?
           Common.log_info('削除対象の元ファイルはありませんでした')
         else
-          Common.log_always('⚠️  以下の元画像ファイルを削除しようとしています:')
+          Common.log_warn('以下の元画像ファイルを削除しようとしています:')
           converted_originals.each { |f| Common.log_always("  - #{f}") }
           $stdout.print('本当に削除しますか？ [y/N]: ')
           ans = $stdin.gets

@@ -125,7 +125,7 @@ module VivlioStarter
           if clt_ok
             Common.log_always('✅ Xcode Command Line Tools: OK')
           else
-            Common.log_always('❌ Xcode Command Line Tools: 見つかりません')
+            Common.log_error('Xcode Command Line Tools: 見つかりません')
             missing << 'xcode-command-line-tools'
           end
         end
@@ -175,7 +175,7 @@ module VivlioStarter
           if ok
             Common.log_always("✅ #{label}: OK")
           else
-            Common.log_always("❌ #{label}: 見つかりません")
+            Common.log_error("#{label}: 見つかりません")
             missing << label
           end
         end
@@ -184,7 +184,7 @@ module VivlioStarter
           if ssl_certificate_configured?
             Common.log_always('✅ Google Fonts 用 SSL 証明書: OK')
           else
-            Common.log_always('❌ Google Fonts 用 SSL 証明書: 未設定 (Google Fonts のダウンロードに必要)')
+            Common.log_error('Google Fonts 用 SSL 証明書: 未設定 (Google Fonts のダウンロードに必要)')
             missing << 'ssl-certificates'
           end
         end
@@ -193,13 +193,13 @@ module VivlioStarter
         waifu2x_install_root = nil
         if options[:fix] && missing.include?('waifu2x')
           if os_family != :macos
-            Common.log_always('⚠️ waifu2x の自動インストールは現在 macOS のみ対応しています。Linux / Windows では手動セットアップを行ってください。')
+            Common.log_warn('waifu2x の自動インストールは現在 macOS のみ対応しています。Linux / Windows では手動セットアップを行ってください。')
           elsif install_waifu2x_macos! do |paths|
                   waifu2x_install_root = paths[:install]
                 end
             missing.delete('waifu2x') if waifu2x_available?
           else
-            Common.log_always('⚠️ waifu2x の自動インストールに失敗しました。手動セットアップを確認してください。')
+            Common.log_warn('waifu2x の自動インストールに失敗しました。手動セットアップを確認してください。')
           end
         end
 
@@ -246,7 +246,7 @@ module VivlioStarter
               Common.log_always('✅ Xcode Command Line Tools が確認できました')
               missing.delete('xcode-command-line-tools')
             else
-              Common.log_always('⚠️ インストールの確認ができませんでした。インストーラ完了後に再実行してください。')
+              Common.log_warn('インストールの確認ができませんでした。インストーラ完了後に再実行してください。')
             end
           else
             Common.log_always('Xcode Command Line Tools の自動インストールをスキップします。必要に応じて `xcode-select --install` を実行してください。')
@@ -494,7 +494,7 @@ module VivlioStarter
           Common.log_always("✅ SSL_CERT_FILE を #{cert_file} に設定しました")
           Common.log_always("✅ SSL_CERT_DIR を #{cert_dir} に設定しました") if Dir.exist?(cert_dir)
         else
-          Common.log_always("⚠️ 証明書ファイルが見つかりませんでした。#{openssl_prefix} に openssl@3 が存在するか確認してください。")
+          Common.log_warn("証明書ファイルが見つかりませんでした。#{openssl_prefix} に openssl@3 が存在するか確認してください。")
         end
       end
 

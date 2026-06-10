@@ -26,8 +26,8 @@ module VivlioStarter
     module IndexCommands
       INDEX_TERMS_MISSING_MESSAGE = <<~MSG
         索引語辞書(config/index_glossary_terms.yml)が見つかりませんでした
-        ⚠️  原稿に [用語|読み] という書き方で手動登録した語のみが索引に載ります
-        ⚠️  自動索引機能を有効にするには: vs index:auto -> vs index:apply
+        🟡  原稿に [用語|読み] という書き方で手動登録した語のみが索引に載ります
+        🟡  自動索引機能を有効にするには: vs index:auto -> vs index:apply
       MSG
 
       def self.add_post_build_message(message)
@@ -51,7 +51,7 @@ module VivlioStarter
           next if text.empty?
 
           if use_log_warn
-            Common.log_warn(text)
+            Common.log_warn(text.sub(/\A🟡\s*/, ''))
           else
             Common.log_always(text)
           end
