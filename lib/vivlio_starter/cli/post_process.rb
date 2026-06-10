@@ -641,14 +641,13 @@ module VivlioStarter
 
         changed = false
 
-        # URLと脚注番号のマッピングを構築
+        # URLと脚注 aside のマッピングを構築
         url_to_footnote = {}
         doc.css('aside.page-footnote-print').each do |aside|
-          fn_num = aside['data-footnote-number']
-          next unless fn_num
+          next unless aside['data-footnote-number']
 
           link = aside.at_css('a')
-          url_to_footnote[link['href']] = fn_num if link && link['href']
+          url_to_footnote[link['href']] = aside if link && link['href']
         end
 
         return if url_to_footnote.empty?
@@ -663,11 +662,12 @@ module VivlioStarter
             # [^urlN] または [^N] パターンを検出
             next unless text.match?(/^\s*\[\^(?:url)?\d+\]/)
 
-            # リンクのURLから脚注番号を取得
+            # リンクのURLから対応する脚注 aside を取得
             target_url = link_elem['href']
-            fn_num = url_to_footnote[target_url]
+            footnote_aside = url_to_footnote[target_url]
 
-            if fn_num
+            if footnote_aside
+              fn_num = footnote_aside['data-footnote-number']
               # 脚注参照をスーパースクリプトリンクに置換
               modified = text.sub(/^\s*\[\^(?:url)?\d+\]/, '')
 
@@ -682,6 +682,13 @@ module VivlioStarter
 
               # <a>タグの直後にスーパースクリプトを挿入
               link_elem.add_next_sibling(sup)
+
+              # 参照リンクの解決先となる隠しインライン脚注を直後に挿入する
+              # （解決先が aside 自体だと Vivliostyle が脚注を重複描画するため）
+              inline_span = FootnoteConverter.build_inline_footnote_node(
+                doc, "fn#{fn_num}", footnote_aside.inner_html
+              )
+              sup.add_next_sibling(inline_span)
 
               # 残りのテキストを更新
               if modified.strip.empty?
@@ -734,8 +741,8 @@ module VivlioStarter
         # footnote-anchor span は再番号付けの有無に関わらず常に削除する
         remove_footnote_anchors(doc)
 
-        # body 直下の aside.page-footnote-print を最後の section 末尾に移動する
-        move_body_asides_to_last_section!(doc)
+        # body 直下の aside.page-footnote-print を参照の近くに移動する
+        move_body_asides_near_references!(doc)
 
         HtmlParser.save_html_document(html_file, doc)
         Common.log_success("#{html_file}: 脚注を出現順に再番号付けしました")
@@ -872,10 +879,10 @@ module VivlioStarter
       end
       module_function :reorder_asides
 
-      # body 直下の aside.page-footnote-print を対応する参照の section 末尾に移動する
+      # body 直下の aside.page-footnote-print を対応する参照の近くに移動する
       # append_unused_footnotes_to_body! が body 末尾に追加した aside を
-      # 適切な位置に配置し直す
-      def move_body_asides_to_last_section!(doc)
+      # 参照と同じページに float:footnote で表示されるよう配置し直す
+      def move_body_asides_near_references!(doc)
         body = doc.at_css('body')
         return unless body
 
@@ -888,9 +895,18 @@ module VivlioStarter
 
           # この aside を参照している <a class="footnote-ref"> を探す
           ref = doc.at_css("a.footnote-ref[href='##{fn_id}']")
-          target_section = ref&.ancestors('section')&.first
 
-          # 参照が見つからない場合は最後の section に移動
+          # sideimage 内の参照は、コンテナの直後に配置する
+          # （sideimage 内に aside を置くと CSS Grid レイアウトが壊れるため）
+          sideimage = ref && FootnoteConverter.find_sideimage_container(ref)
+          if sideimage
+            aside.remove
+            sideimage.add_next_sibling(aside)
+            next
+          end
+
+          # 参照が見つからない場合は最後の section 末尾に移動
+          target_section = ref&.ancestors('section')&.first
           target_section ||= body.css('section').to_a.last
           next unless target_section
 
@@ -899,7 +915,7 @@ module VivlioStarter
           target_section.add_child(aside)
         end
       end
-      module_function :move_body_asides_to_last_section!
+      module_function :move_body_asides_near_references!
 
       # sideimage コンテナ内の figure/img から width 指定（%）を取り出し、
       # 0.0〜1.0 の範囲の比率として返す

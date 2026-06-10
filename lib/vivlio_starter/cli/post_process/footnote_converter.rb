@@ -40,6 +40,10 @@ module VivlioStarter
           # definitions のキーを正規化する（例: fn-url3 → fn4）
           normalize_definition_ids!(doc, definitions)
 
+          # VFM 2.x はテーブルセル内の脚注について定義本文を逆順に入れ替えるため、
+          # 参照直前のリンクURLと照合して修復する
+          repair_table_footnote_definitions!(doc, definitions)
+
           insert_footnotes_for_references!(doc, definitions)
           append_unused_footnotes_to_body!(doc, definitions)
           fill_missing_footnote_references!(doc)
@@ -110,26 +114,19 @@ module VivlioStarter
         end
 
         # 段落内参照の場合、段落直後に印刷用脚注 aside を差し込む
-        # sideimage コンテナ内の場合はコンテナの外に配置する
-        # （Vivliostyle の float:footnote が sideimage 内で正しく動作しないため）
+        # sideimage コンテナ内の場合はコンテナの直後に配置する
+        # （aside を sideimage 内に置くと CSS Grid レイアウトが壊れるため。
+        #   参照リンクの解決先は insert_inline_footnote! が挿入する span#fnN に
+        #   なるので、float:footnote でも重複描画は起きない）
         # @param doc [Nokogiri::HTML::Document] Nokogiriドキュメント
         # @param anchor [Nokogiri::XML::Element] 脚注参照アンカー
         # @param fid [String] 脚注ID
         # @param body [String] 脚注本文HTML
         def insert_print_footnote_after_paragraph!(doc, anchor, fid, body)
           sideimage = find_sideimage_container(anchor)
-          aside = build_print_footnote_node(doc, fid, body, endnote: !!sideimage)
+          aside = build_print_footnote_node(doc, fid, body)
           if sideimage
-            # sideimage 内の脚注は所属する section の末尾に配置する
-            # （Vivliostyle の float:footnote がページ境界で重複表示されるのを防ぐ）
-            section = anchor.ancestors('section').first
-            if section
-              section.add_child("\n")
-              section.add_child(aside)
-            else
-              sideimage.add_next_sibling("\n")
-              sideimage.add_next_sibling(aside)
-            end
+            sideimage.add_next_sibling(aside)
           else
             para = anchor.ancestors('p').first
             if para
@@ -159,28 +156,27 @@ module VivlioStarter
             (node.element? && node['class'].to_s.split.any? { |c| c == 'page-footnote' })
         end
 
-        # 段落外参照の場合、アンカーの直後に印刷用脚注を配置する
-        # sideimage コンテナ内の場合は section 末尾に配置する
+        # 段落外参照（テーブルセル内など）の場合、参照直後に隠しインライン脚注と
+        # 印刷用脚注を配置する。
+        # 参照リンク（href="#fnN"）の解決先が aside 自体になると Vivliostyle が
+        # 同じ脚注を複数回描画するため、必ず手前に span#fnN を置いて解決先にする。
+        # sideimage コンテナ内の場合、aside はコンテナの直後に配置する。
         # @param doc [Nokogiri::HTML::Document] Nokogiriドキュメント
         # @param anchor [Nokogiri::XML::Element] 脚注参照アンカー
         # @param fid [String] 脚注ID
         # @param body [String] 脚注本文HTML
         def insert_print_footnote_after_anchor!(doc, anchor, fid, body)
+          span = build_inline_footnote_node(doc, fid, body)
+          anchor.add_next_sibling(span)
+
+          aside = build_print_footnote_node(doc, fid, body)
           sideimage = find_sideimage_container(anchor)
-          aside = build_print_footnote_node(doc, fid, body, endnote: !!sideimage)
           if sideimage
-            section = anchor.ancestors('section').first
-            if section
-              section.add_child("\n")
-              section.add_child(aside)
-            else
-              sideimage.add_next_sibling("\n")
-              sideimage.add_next_sibling(aside)
-            end
+            sideimage.add_next_sibling(aside)
           else
-            anchor.add_next_sibling("\n")
-            anchor.add_next_sibling(aside)
+            span.add_next_sibling(aside)
           end
+          aside.add_next_sibling("\n")
         end
 
         # sideimage のトップレベルコンテナ（div.sideimage-right 等）を探す
@@ -195,8 +191,9 @@ module VivlioStarter
         end
 
         # 残った脚注定義を本文末尾の aside として追加する
-        # 未使用の定義は sideimage 内の脚注（footnote-anchor 経由）であるため
-        # endnote クラスを付与して float:footnote を無効化する
+        # 未使用の定義は sideimage 内の脚注（footnote-anchor 経由）であり、
+        # 後段の process_sideimage_footnotes! が参照を生成した後、
+        # move_body_asides_near_references! が参照の近くへ移動する
         # @param doc [Nokogiri::HTML::Document] Nokogiriドキュメント
         # @param definitions [Hash<String, String>] 未使用の脚注定義
         def append_unused_footnotes_to_body!(doc, definitions)
@@ -204,7 +201,7 @@ module VivlioStarter
 
           body_el = doc.at_css('body') || doc
           definitions.each do |fid, body|
-            aside = build_print_footnote_node(doc, fid, body, endnote: true)
+            aside = build_print_footnote_node(doc, fid, body)
             body_el.add_child("\n")
             body_el.add_child(aside)
           end
@@ -236,9 +233,57 @@ module VivlioStarter
           end
         end
 
-        # footnote-anchor 内の参照と未使用定義を対応付けるマップを構築する（廃止予定）
-        def build_anchor_ref_map(doc, definitions)
-          {}
+        # VFM 2.x（remark-footnotes）は、テーブルセル内から参照される脚注について
+        # 参照ID（fnref→fn の対応）は正しいまま、定義の「本文」だけを参照と
+        # 逆順に並べ替えてしまう（例: fn1 の本文に fn3 の URL が入る）。
+        # 自動生成されたURL脚注は「参照直前の外部リンク」が本来の本文なので、
+        # テーブル内の各参照について定義本文を照合し、入れ替わっていれば修復する。
+        # 誤爆を防ぐため、(1) 定義本文が「URLそのものへのリンク」だけで構成され、
+        # (2) 期待されるURLが他の定義に実在する（＝入れ替わりの証拠がある）
+        # 場合のみ書き換える。
+        # @param doc [Nokogiri::HTML::Document] Nokogiriドキュメント
+        # @param definitions [Hash<String, String>] 脚注定義（破壊的に変更）
+        def repair_table_footnote_definitions!(doc, definitions)
+          known_urls = definitions.values.filter_map { bare_definition_url(it) }
+          repaired = {}
+
+          doc.css('table a.footnote-ref[href^="#fn"]').each do |anchor|
+            next if anchor.ancestors('span.footnote-anchor').any?
+
+            fid = anchor['href']&.delete_prefix('#')
+            next unless fid && definitions.key?(fid)
+            next if repaired.key?(fid)
+
+            expected = inferred_body_from_previous_link(anchor)
+            next unless expected
+
+            expected_url = bare_definition_url(expected)
+            current_url  = bare_definition_url(definitions[fid])
+            next unless expected_url && current_url
+            next if current_url == expected_url
+            next unless known_urls.include?(expected_url)
+
+            repaired[fid] = expected
+          end
+
+          definitions.merge!(repaired)
+        end
+
+        # 「<a href="URL">URL</a>」だけで構成された定義から URL を取り出す。
+        # 自動生成されたURL脚注の判定に使い、それ以外（手書きの脚注本文）は
+        # nil を返して修復対象から除外する。VFM の設定によっては定義が
+        # <p> で包まれることがあるため、単一の <p> ラッパーは許容する。
+        # @param body [String] 脚注定義のHTML
+        # @return [String, nil] URL
+        def bare_definition_url(body)
+          html = body.to_s.strip
+          if (wrapped = html.match(%r{\A<p>(.*)</p>\z}m))
+            html = wrapped[1].strip
+          end
+          m = html.match(%r{\A<a href="(https?://[^"]+)"[^>]*>([^<]+)</a>\z})
+          return nil unless m && m[1] == m[2]
+
+          m[1]
         end
 
         # 定義が存在しない脚注参照を前方リンクから推測して補完する
@@ -296,14 +341,11 @@ module VivlioStarter
         # @param doc [Nokogiri::HTML::Document] Nokogiriドキュメント
         # @param fid [String] 脚注ID
         # @param body [String] 脚注本文HTML
-        # @param endnote [Boolean] true の場合 page-footnote-endnote クラスを追加
         # @return [Nokogiri::XML::Element] aside要素
-        def build_print_footnote_node(doc, fid, body, endnote: false)
+        def build_print_footnote_node(doc, fid, body)
           aside = Nokogiri::XML::Node.new('aside', doc)
           aside['role'] = 'doc-footnote'
-          classes = 'page-footnote page-footnote-print'
-          classes += ' page-footnote-endnote' if endnote
-          aside['class'] = classes
+          aside['class'] = 'page-footnote page-footnote-print'
           aside['id'] = fid
           # IDから脚注番号を抽出（例: fn5 -> 5, fnurl1 -> url1）
           footnote_number = fid.sub(/^fn/, '')

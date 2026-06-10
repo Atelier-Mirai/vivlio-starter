@@ -1,5 +1,27 @@
 # sideimage 内脚注の不具合と課題
 
+> **【解決済み 2026-06】** 本ドキュメントが扱う重複表示問題は解決した。
+>
+> **真の根本原因**: Vivliostyle は、脚注参照リンク（`<a href="#fnN">`）の解決先要素が
+> `float: footnote` の `aside` 自体である場合、参照のあるページと `aside` のあるページの
+> **両方**に同じ脚注を描画する。通常の段落脚注が無事だったのは、参照直後に挿入される
+> 不可視のインライン脚注 `span#fnN`（`page-footnote-inline`、`display: none`）が
+> 文書順で `aside` より先にあり、リンクの解決先になっていたため。
+>
+> **修正内容**:
+> 1. `process_sideimage_footnotes!`（`post_process.rb`）が生成する `<sup><a>` 参照の直後に、
+>    通常脚注と同じ不可視 `span#fnN` を挿入し、リンクの解決先にする。
+> 2. 段落外参照（テーブルセル内など）を処理する `insert_print_footnote_after_anchor!`
+>    （`footnote_converter.rb`）でも同様に不可視 span を挿入する
+>    （テーブル内リンクの脚注が3回重複表示される不具合も同根で、これで解消）。
+> 3. これにより `float: footnote` が安全になったため、`page-footnote-endnote`
+>    （セクション末尾へのブロック表示）を廃止し、sideimage 内の脚注も他の脚注と同様に
+>    **ページ下部**に表示されるようになった。`aside` は sideimage コンテナの直後に
+>    配置される（`move_body_asides_near_references!`）ため、参照と同じページに収まり、
+>    脚注番号もドキュメント出現順に並ぶ。
+>
+> 以下は調査当時の記録として残す。
+
 ## 概要
 
 sideimage コンテナ（`:::{.sideimage-right}` 等）内にリンクを含む場合、脚注URLが重複表示される・番号が順不同になる不具合がある。2026年4月時点で部分的な改善は達成したが、完全な解消には至っていない。

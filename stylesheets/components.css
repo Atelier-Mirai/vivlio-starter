@@ -151,14 +151,4 @@
   aside.page-footnote::footnote-marker {
     content: none;
   }
-
-  /* sideimage 内の脚注は float:footnote ではなくセクション末尾に
-     脚注リストとして表示する（Vivliostyle がページ境界で重複表示するのを防ぐ） */
-  aside.page-footnote.page-footnote-endnote {
-    float: none;
-    display: block;
-    margin-block: 0.15rlh 0;
-    padding-inline-start: 1.8em;
-    text-indent: -1.8em;
-  }
 }

@@ -256,6 +256,7 @@
 /* 画像単体 (.align-*) を回り込ませる場合 */
 :is(img, svg).align-left {
   float: inline-start;
+  clear: both;
   margin-inline-end: 1em;
   margin-block-end: 0.5em;
   max-inline-size: 45%;
@@ -269,6 +270,7 @@
 
 :is(img, svg).align-right {
   float: inline-end;
+  clear: both;
   margin-inline-start: 1em;
   margin-block-end: 0.5em;
   max-inline-size: 45%;
@@ -313,8 +315,13 @@ figcaption {
   text-align: center;
 }
 
+/* 配置指定付き図版は直前の float を解除してから配置する。
+   align=left → align=center → align=right と連続しても
+   互いの float に巻き込まれず、各図版が意図した位置に収まる。
+   図版の後に続くテキストの回り込み（左右 float）は従来どおり */
 figure.align-right {
   float: inline-end;
+  clear: both;
   margin-inline-start: 1em;
 }
 
@@ -326,6 +333,7 @@ figure.align-right {
 
 figure.align-left {
   float: inline-start;
+  clear: both;
   margin-inline-end: 1em;
 }
 
@@ -333,6 +341,12 @@ figure.align-left {
   figure.align-left {
     float: left;
   }
+}
+
+/* 中央配置はフロートと共存できないため、必ず float を解除して
+   本文幅の中央に置く */
+figure.align-center {
+  clear: both;
 }
 
 /* 文章横に画像を並べるサイドイメージ用コンテナ（CSS Grid 版） */
