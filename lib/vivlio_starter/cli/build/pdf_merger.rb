@@ -118,6 +118,10 @@ module VivlioStarter
           # 奥付を偶数ページ（左ページ）に配置するため、必要なら空白ページを挿入
           existing_files = insert_blank_page_before_colophon(existing_files)
 
+          # アウトライン付与の基点補正用に、本文（_titlepage_legalpage.pdf）より前に
+          # 結合される表紙 PDF のページ数を記録しておく（Step 11 で参照）。
+          @front_matter_offset = compute_front_matter_offset(existing_files)
+
           # _sections.pdf があればそれをベースに、なければ最初のファイルを使用
           base_pdf = existing_files.include?('_sections.pdf') ? '_sections.pdf' : existing_files.first
           FileUtils.rm_f('output.pdf')
@@ -176,6 +180,21 @@ module VivlioStarter
           false
         end
 
+        # output.pdf 先頭に結合される表紙 PDF など、_titlepage_legalpage.pdf より
+        # 前に並ぶページ数を返す。アウトラインのページ位置計算の基点
+        # （タイトルページの実ページ番号 = offset + 1）を補正するために用いる。
+        # merge_all_pdfs! 実行時に算出される。未算出時は 0（表紙なし相当）。
+        def front_matter_offset = @front_matter_offset || 0
+
+        # 結合ファイル列のうち、_titlepage_legalpage.pdf より前のページ数を合算する。
+        # タイトルページが見つからない場合は 0 を返す（従来挙動と互換）。
+        def compute_front_matter_offset(ordered_files)
+          idx = ordered_files.index { |f| File.basename(f) == '_titlepage_legalpage.pdf' }
+          return 0 unless idx
+
+          ordered_files[0...idx].sum { |f| (Build::Utilities.page_count(f) || 0).to_i }
+        end
+
         # ================================================================
         # 5. アウトライン付与 (Step 11)
         # ================================================================
@@ -202,7 +221,9 @@ module VivlioStarter
           end
 
           Common.log_action('[Step 11] PDF ブックマークを付与します…')
-          OutlineExtractor.add_outline_from_headings!('output.pdf', chapter_htmls, max_level: 3, start_page: 1)
+          # 表紙 PDF のページ数を基点に加味して、前付・本文・巻末のページ範囲を正しく算出する。
+          OutlineExtractor.add_outline_from_headings!('output.pdf', chapter_htmls, max_level: 3,
+                                                                                   start_page: front_matter_offset + 1)
           true
         end
       end

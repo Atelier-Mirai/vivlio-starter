@@ -2,7 +2,7 @@
 
 require 'test_helper'
 require 'tmpdir'
-require 'vivlio_starter/pdf/jpeg_to_pdf'
+require 'vivlio_starter/cli/pdf/jpeg_to_pdf'
 
 module VivlioStarter
   module Pdf

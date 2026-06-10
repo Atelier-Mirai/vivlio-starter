@@ -1,4 +1,11 @@
 PATH
+  remote: ../vivlio-starter-pdf
+  specs:
+    vivlio-starter-pdf (1.1.0)
+      hexapdf (~> 1.0)
+      ruby-vips (~> 2.2)
+
+PATH
   remote: .
   specs:
     vivlio-starter (1.0.0.pre.beta)
@@ -129,9 +136,6 @@ GEM
     unicode-display_width (3.2.0)
       unicode-emoji (~> 4.1)
     unicode-emoji (4.2.0)
-    vivlio-starter-pdf (1.0.1)
-      hexapdf (~> 1.0)
-      ruby-vips (~> 2.2)
 
 PLATFORMS
   aarch64-linux-gnu
@@ -149,7 +153,7 @@ DEPENDENCIES
   rake (~> 13.2)
   rubocop (~> 1.65)
   vivlio-starter!
-  vivlio-starter-pdf
+  vivlio-starter-pdf!
 
 CHECKSUMS
   Ascii85 (2.0.1) sha256=15cb5d941808543cbb9e7e6aea3c8ec3877f154c3461e8b3673e97f7ecedbe5a
@@ -217,7 +221,7 @@ CHECKSUMS
   unicode-display_width (3.2.0) sha256=0cdd96b5681a5949cdbc2c55e7b420facae74c4aaf9a9815eee1087cb1853c42
   unicode-emoji (4.2.0) sha256=519e69150f75652e40bf736106cfbc8f0f73aa3fb6a65afe62fefa7f80b0f80f
   vivlio-starter (1.0.0.pre.beta)
-  vivlio-starter-pdf (1.0.1) sha256=b8638a5da1a2ad041b9ad699c40723a58535beb52418375fb4dd21285c9b3ef7
+  vivlio-starter-pdf (1.1.0)
 
 BUNDLED WITH
   4.0.11

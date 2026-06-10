@@ -311,21 +311,53 @@ module VivlioStarter
             nil
           end
 
-          { search_markers: search_markers }
+          # ページ「先頭付近の見出し」として term が現れる最初のページを返す。
+          # 本文中の偶発的な語（例: 前書き本文に出てくる「目次」）に誤マッチせず、
+          # そのセクションが実際に始まるページを特定するために用いる。
+          # 直前に柱（ランニングヘッダ）が入る可能性を考慮し、先頭の有意行 2 行を見る。
+          find_page_by_first_line = lambda do |term, from_page, to_page|
+            normalized_term = normalize.call(term)
+            return nil if normalized_term.empty?
+
+            from_page = from_page.to_i.clamp(1, total_pages)
+            to_page = to_page.to_i.clamp(from_page, total_pages)
+            return nil if from_page > to_page
+
+            (from_page..to_page).each do |page|
+              lead = fetch_page_text.call(page).to_s.lines.map(&:strip).reject(&:empty?).first(2)
+              return page if lead.any? { |line| normalize.call(line) == normalized_term }
+            end
+            nil
+          end
+
+          { search_markers: search_markers, find_page_by_first_line: find_page_by_first_line }
+        end
+
+        # _toc.pdf の先頭行から目次見出し（例: 「目次」）を取得する。
+        # 取得できない場合は既定値「目次」を返す。
+        def toc_heading_title
+          return '目次' unless File.exist?('_toc.pdf')
+
+          text = `pdftotext -f 1 -l 1 "_toc.pdf" - 2>/dev/null`
+          line = text.to_s.lines.map(&:strip).find { |l| !l.empty? }
+          line.to_s.empty? ? '目次' : line
+        rescue StandardError
+          '目次'
         end
 
         def calculate_chapter_ranges(chapter_order, chapter_markers, search_helpers, from_base, total_pages)
           preface_pages = (Build::Utilities.page_count('00-preface.pdf') || '0').to_i
           toc_pages = (Build::Utilities.page_count('_toc.pdf') || '0').to_i
 
-          # 00-preface.pdfが存在しない場合、テキスト検索で目次の位置を特定し、前書きのページ数を推測
+          # 00-preface.pdfが存在しない場合、目次ページを直接特定して前書きのページ数を確定する。
           if preface_pages.zero? && toc_pages.positive?
-            # 前書きは3ページ目から開始（_titlepage_legalpage.pdfの2ページ後）
-            # 目次の位置をテキスト検索で特定
-            toc_start = search_helpers[:search_markers].call(['目次'], 3, total_pages)
-            if toc_start && toc_start > 3
-              preface_pages = toc_start - 3 # 前書きのページ数を推測
-            end
+            # 前書きの開始ページ = タイトルページ(from_base) の 2 ページ後。
+            # output.pdf 先頭に表紙 PDF が結合される場合、from_base にその分のオフセットが入る。
+            preface_start = from_base + 2
+            # 目次は「先頭行が目次見出し」のページとして特定する。
+            # （前書き本文中に出てくる「目次」の語へ誤マッチしないようにするため）
+            toc_start = search_helpers[:find_page_by_first_line].call(toc_heading_title, preface_start, total_pages)
+            preface_pages = toc_start - preface_start if toc_start && toc_start > preface_start
           end
 
           chapter_starts = {}
@@ -339,7 +371,7 @@ module VivlioStarter
 
           ctx = build_page_range_context(
             chapter_ranges, chapter_starts, chapter_markers,
-            search_helpers[:search_markers], from_base, total_pages, preface_pages, toc_pages
+            search_helpers, from_base, total_pages, preface_pages, toc_pages
           )
 
           prev_bn = nil
@@ -376,10 +408,12 @@ module VivlioStarter
 
         # ページ範囲計算用のコンテキストハッシュを構築
         def build_page_range_context(chapter_ranges, chapter_starts, chapter_markers,
-                                     search_markers, from_base, total_pages, preface_pages, toc_pages)
+                                     search_helpers, from_base, total_pages, preface_pages, toc_pages)
           {
             chapter_ranges: chapter_ranges, chapter_starts: chapter_starts,
-            chapter_markers: chapter_markers, search_markers: search_markers,
+            chapter_markers: chapter_markers,
+            search_markers: search_helpers[:search_markers],
+            find_page_by_first_line: search_helpers[:find_page_by_first_line],
             from_base: from_base, total_pages: total_pages,
             preface_pages: preface_pages, toc_pages: toc_pages
           }
@@ -400,17 +434,22 @@ module VivlioStarter
           end
         end
 
+        # タイトルページ = 基点ページ（from_base）。
+        # from_base には output.pdf 先頭に結合される表紙 PDF のページ数オフセットが含まれる。
         def page_range_titlepage(ctx)
-          [[ctx[:from_base], 1].max, 1]
-        end
-
-        def page_range_legalpage(ctx)
-          page = [2, ctx[:from_base]].max.clamp(1, ctx[:total_pages])
+          page = ctx[:from_base].clamp(1, ctx[:total_pages])
           [page, page]
         end
 
+        # 権利表記ページ = タイトルページの次（from_base + 1）。
+        def page_range_legalpage(ctx)
+          page = (ctx[:from_base] + 1).clamp(1, ctx[:total_pages])
+          [page, page]
+        end
+
+        # 前書き = タイトル・権利の 2 ページ後（from_base + 2）から開始。
         def page_range_preface(ctx)
-          start_page = [3, ctx[:from_base]].max.clamp(1, ctx[:total_pages])
+          start_page = (ctx[:from_base] + 2).clamp(1, ctx[:total_pages])
           end_page = if ctx[:preface_pages].positive?
                        (start_page + ctx[:preface_pages] - 1).clamp(1,
                                                                     ctx[:total_pages])
@@ -421,8 +460,9 @@ module VivlioStarter
         end
 
         def page_range_toc(ctx)
-          preface_end = ctx[:chapter_ranges]['00-preface']&.[](1) || (3 + ctx[:preface_pages] - 1)
-          start_candidate = ctx[:preface_pages].positive? ? preface_end + 1 : 3
+          preface_start = ctx[:from_base] + 2
+          preface_end = ctx[:chapter_ranges]['00-preface']&.[](1) || (preface_start + ctx[:preface_pages] - 1)
+          start_candidate = ctx[:preface_pages].positive? ? preface_end + 1 : preface_start
           start_page = [start_candidate, ctx[:from_base]].max.clamp(1, ctx[:total_pages])
           end_page = if ctx[:toc_pages].positive?
                        (start_page + ctx[:toc_pages] - 1).clamp(1,
@@ -440,13 +480,30 @@ module VivlioStarter
         end
 
         # 巻末ページ（用語集、終わりに、索引）のページ範囲を計算
+        # これらのタイトル（用語集/終わりに/索引）は前書き本文や目次の一覧にも
+        # 文字列として現れるため、単純な全文検索では誤マッチする。
+        # 「ページ先頭の見出し」として現れるページを優先的に特定し、
+        # 見つからない場合のみ従来の全文検索へフォールバックする。
         def page_range_backmatter(basename, ctx, prev_bn, default_markers)
           search_from = [ctx[:chapter_starts][prev_bn] || ctx[:from_base], ctx[:from_base]].max.clamp(1,
                                                                                                       ctx[:total_pages])
           markers = ctx[:chapter_markers][basename] || default_markers
-          start_page = search_page_with_fallback(ctx[:search_markers], markers, search_from, ctx[:from_base],
-                                                 ctx[:total_pages])
+          start_page = find_section_start_by_first_line(ctx, markers, search_from)
+          start_page ||= search_page_with_fallback(ctx[:search_markers], markers, search_from, ctx[:from_base],
+                                                   ctx[:total_pages])
           [start_page, ctx[:total_pages]]
+        end
+
+        # markers のいずれかが「ページ先頭付近の見出し」として現れる最初のページを返す。
+        def find_section_start_by_first_line(ctx, markers, search_from)
+          finder = ctx[:find_page_by_first_line]
+          return nil unless finder
+
+          Array(markers).each do |term|
+            page = finder.call(term, search_from, ctx[:total_pages])
+            return page if page
+          end
+          nil
         end
 
         def page_range_default(basename, ctx, prev_bn)
@@ -580,10 +637,12 @@ module VivlioStarter
 
         module_function :extract_number_text, :extract_title_text, :build_search_terms,
                         :validate_inputs, :build_chapter_paths, :build_chapter_order,
-                        :extract_all_headings, :build_search_helpers, :calculate_chapter_ranges,
+                        :extract_all_headings, :build_search_helpers, :toc_heading_title,
+                        :calculate_chapter_ranges,
                         :build_page_range_context, :calculate_page_range,
                         :page_range_titlepage, :page_range_legalpage, :page_range_preface,
                         :page_range_toc, :page_range_first_chapter, :page_range_backmatter,
+                        :find_section_start_by_first_line,
                         :page_range_default, :search_page_with_fallback,
                         :update_previous_chapter_end, :clamp_all_ranges,
                         :build_outline_items, :build_display_text,

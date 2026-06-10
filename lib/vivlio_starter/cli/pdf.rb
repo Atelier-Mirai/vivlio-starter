@@ -6,8 +6,8 @@ require 'rbconfig'
 require 'fileutils'
 
 require_relative 'entries'
-require_relative '../pdf/pdf_to_jpeg'
-require_relative '../pdf/jpeg_to_pdf'
+require_relative 'pdf/pdf_to_jpeg'
+require_relative 'pdf/jpeg_to_pdf'
 
 module VivlioStarter
   module CLI

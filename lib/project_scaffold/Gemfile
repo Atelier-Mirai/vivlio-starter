@@ -8,7 +8,11 @@ gem 'vivlio-starter'
 # query-stream （データ展開）
 gem 'query-stream'
 
-# vivlio-starter-pdf をインストールしたい場合には、
-# 以下をコメントアウトしてから、
+# 拡張機能（PDF しおり付与・高精度ノンブル・OCR など）を使うには
+#   gem install vivlio-starter-pdf
+# を実行するだけで、ビルド時に自動的に Enhanced モードへ切り替わります。
+# （この Gemfile を編集する必要はありません）
+#
+# バンドルにバージョンを固定したい場合のみ、以下のコメントを外して
 # bundle install を実行してください。
 # gem 'vivlio-starter-pdf'

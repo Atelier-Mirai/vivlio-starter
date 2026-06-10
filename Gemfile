@@ -9,4 +9,4 @@ gemspec
 gem 'query-stream', '~> 1.2.2'
 
 # gem install vivlio-starter-pdf を実行したら、以下をコメントアウトしてください
-gem 'vivlio-starter-pdf'
+gem 'vivlio-starter-pdf', path: '../vivlio-starter-pdf'
