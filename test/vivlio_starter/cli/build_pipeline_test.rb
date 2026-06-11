@@ -223,14 +223,15 @@ module VivlioStarter
           [Build::ImageOptimizer, :prepare_theme_images!, -> { order << 'step2' }],
           [pipeline, :build_target_sections_html, -> { order << 'step3' }],
           [pipeline, :generate_entries_and_pdf, -> { order << 'step4' }],
-          [pipeline, :rename_single_mode_pdf, -> { order << 'step5' }]
+          [pipeline, :rename_single_mode_pdf, -> { order << 'step5' }],
+          [pipeline, :run_final_clean, -> { order << 'stepF' }]
         ]
 
         with_stubs(stubs) do
           pipeline.run
         end
 
-        expected_order = %w[step0 step1 step2 step3 step4 step5]
+        expected_order = %w[step0 step1 step2 step3 step4 step5 stepF]
         assert_equal expected_order, order
       end
 
@@ -315,6 +316,8 @@ module VivlioStarter
         pipeline.define_singleton_method(:build_target_sections_html) {}
         pipeline.define_singleton_method(:generate_entries_and_pdf) {}
         pipeline.define_singleton_method(:rename_single_mode_pdf) {}
+        # Step F もスタブしないと実際の CleanCommands.execute_clean が走ってしまう
+        pipeline.define_singleton_method(:run_final_clean) {}
       end
 
       def with_stubs(stubs, &block)
@@ -580,6 +583,8 @@ module VivlioStarter
         pipeline.define_singleton_method(:build_target_sections_html) {}
         pipeline.define_singleton_method(:generate_entries_and_pdf) {}
         pipeline.define_singleton_method(:rename_single_mode_pdf) {}
+        # Step F もスタブしないと実際の CleanCommands.execute_clean が走ってしまう
+        pipeline.define_singleton_method(:run_final_clean) {}
       end
 
       def with_build_stubs
@@ -602,6 +607,59 @@ module VivlioStarter
             end
           end
         end
+      end
+    end
+
+    # catalog.yml に記載があるのに contents/ に原稿が存在しない場合の
+    # フェイルファスト（ensure_entry_files_exist!）を検証する
+    class UnifiedBuildPipelineMissingFileTest < Minitest::Test
+      def test_should_abort_with_guidance_when_catalog_entry_file_is_missing
+        existing = make_entry('11-install', exists: true)
+        missing  = make_entry('89-bugfix-check', exists: false)
+        pipeline = build_pipeline(entries: [existing, missing])
+
+        out, = capture_io do
+          error = assert_raises(SystemExit) { pipeline.run }
+          assert_equal 1, error.status, '欠落検出時は exit 1 で終了するべき'
+        end
+
+        assert_includes out, 'contents/89-bugfix-check.md'
+        assert_includes out, 'catalog.yml'
+        assert_includes out, 'vs delete'
+        refute_includes out, 'contents/11-install.md', '存在する章はエラー一覧に含めない'
+      end
+
+      def test_should_run_steps_when_all_entry_files_exist
+        pipeline = build_pipeline(entries: [make_entry('11-install', exists: true)])
+
+        capture_io { pipeline.run }
+
+        assert_equal 1, pipeline.timings.length, '検証通過後はステップが実行されるべき'
+      end
+
+      private
+
+      # 検証ロジックのみを対象にするため、ステップは1つのダミーに差し替える
+      def build_pipeline(entries:)
+        command = Struct.new(:options).new({ clean: false, resize: false })
+        klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
+          define_method(:register_steps) { add_step('Step dummy', -> {}) }
+        end
+        klass.new(command, entries: entries, mode: :full)
+      end
+
+      def make_entry(basename, exists:)
+        num = basename[/\A(\d+)-/, 1]
+        TokenResolver::Entry.new(
+          number: num,
+          slug: basename.sub(/\A\d+-/, ''),
+          kind: :chapter,
+          label: basename,
+          path: "contents/#{basename}.md",
+          exists: exists,
+          in_catalog: true,
+          valid: true
+        )
       end
     end
   end

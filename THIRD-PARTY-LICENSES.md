@@ -57,25 +57,26 @@ Notes:
 - 改変（サブセット化・合成など）を行う場合は Reserved Font Name を使用できません。別名にリネームして配布してください。
 - 電子出版物や PDF などへの埋め込みは許可されています。
 
-### Noto Serif JP
+### Zen Old Mincho
 - License: SIL Open Font License 1.1 (OFL-1.1)
-- Project: https://fonts.google.com/noto/specimen/Noto+Serif+JP
-- Copyright: (c) 2012 Google Inc. All Rights Reserved.
-- License Text: included at `stylesheets/fonts/Noto_Serif_JP/OFL.txt`
+- Project: https://fonts.google.com/specimen/Zen+Old+Mincho
+- Source: https://github.com/googlefonts/zen-oldmincho
+- Copyright: 2021 The Zen Old Mincho Project Authors
+- License Text: https://openfontlicense.org/open-font-license-official-text/
 
 Notes:
-- `stylesheets/fonts/Noto_Serif_JP/NotoSerifJP-VariableFont_wght.ttf` をバンドルし、本文用フォントなどに利用しています。
-- ライセンスの参考訳は `stylesheets/fonts/Noto_Serif_JP/OFL-ja.md` に記載しています。
+- `stylesheets/fonts/Zen_Old_Mincho/ZenOldMincho-Regular.ttf` および `.../ZenOldMincho-Bold.ttf` をバンドルし、本文用の明朝体（CSS ファミリ名 "Noto Serif JP" の実体）として使用しています。
+- Chromium が CFF ベース OTF / 可変フォントを Type 3 として PDF に埋め込む問題を避けるため、TrueType アウトラインの静的 TTF を採用しています。
 
-### Noto Sans JP
+### Zen Kaku Gothic New
 - License: SIL Open Font License 1.1 (OFL-1.1)
-- Project: https://fonts.google.com/noto/specimen/Noto+Sans+JP
-- Copyright: (c) 2014-2021 Adobe (http://www.adobe.com/) with Reserved Font Name "Source"
-- License Text: included at `stylesheets/fonts/Noto_Sans_JP/OFL.txt`
+- Project: https://fonts.google.com/specimen/Zen+Kaku+Gothic+New
+- Source: https://github.com/googlefonts/zen-kakugothic
+- Copyright: 2021 The Zen Kaku Gothic Project Authors
+- License Text: https://openfontlicense.org/open-font-license-official-text/
 
 Notes:
-- `stylesheets/fonts/Noto_Sans_JP/NotoSansJP-VariableFont_wght.ttf` をバンドルし、ノンブル等の sans-serif 体に使用しています。
-- ライセンスの参考訳は `stylesheets/fonts/Noto_Sans_JP/OFL-ja.md` に記載しています。
+- `stylesheets/fonts/Zen_Kaku_Gothic_New/ZenKakuGothicNew-Regular.ttf` および `.../ZenKakuGothicNew-Bold.ttf` をバンドルし、見出し・ノンブル等のゴシック体（CSS ファミリ名 "Noto Sans JP" の実体）として使用しています。
 
 ### Zen Maru Gothic
 - License: SIL Open Font License 1.1 (OFL-1.1)

@@ -15,25 +15,15 @@ Gem::Specification.new do |spec|
 
   spec.required_ruby_version = '>= 4.0'
 
-  # Files (robust to uncommitted deletions): prefer git, filter to paths that exist
-  files = nil
-  if File.directory?('.git') && system('git --version > /dev/null 2>&1')
-    begin
-      tracked = `git ls-files -z`.split("\x0")
-      untracked = `git ls-files -z --others --exclude-standard`.split("\x0")
-      files = tracked + untracked
-    rescue StandardError
-      files = nil
-    end
-  end
-
-  if files.nil? || files.empty?
-    files = Dir.glob('{bin,lib,config,stylesheets,rakelib}/**/*', File::FNM_DOTMATCH)
-    files += %w[README.md LICENSE Rakefile Gemfile]
-  end
-
-  # Keep only real files, exclude directories, missing paths, and test/
-  spec.files = files.select { |f| File.file?(f) && !f.start_with?('test/') }
+  # 同梱物はホワイトリスト方式で最小限に絞る。
+  # 実行コードは bin/ と lib/ のみ。新規プロジェクトの雛形（フォント・CSS・原稿サンプル）は
+  # lib/project_scaffold/ に集約されているため、リポジトリ直下の config/ や stylesheets/
+  # （このリポジトリ自身の書籍ビルド用）は配布物に含めない。
+  # FNM_DOTMATCH は scaffold 内の .gitignore / .textlintrc.yml を拾うために必要。
+  spec.files = Dir.glob('{bin,lib}/**/*', File::FNM_DOTMATCH)
+                  .select { |f| File.file?(f) }
+                  .reject { |f| File.basename(f) == '.DS_Store' }
+  spec.files += %w[README.md LICENSE THIRD-PARTY-LICENSES.md]
   spec.bindir        = 'bin'
   spec.executables   = %w[vivlio-starter vs]
   spec.require_paths = ['lib']

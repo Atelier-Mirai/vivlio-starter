@@ -78,6 +78,9 @@ module VivlioStarter
                   - 15
               YAML
               File.write('contents/15.md', "# Chapter 15\n")
+              # Guard（前提条件検証）を通過させるための最小プロジェクト構成
+              File.write('config/book.yml', "book:\n  main_title: 'test'\n")
+              File.write('vivliostyle.config.js', '// test config')
 
               pipelines = []
               with_pipeline_stub(pipelines) do

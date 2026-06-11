@@ -13,7 +13,7 @@
    Type 3 として埋め込む問題を回避するため、TrueType アウトラインの
    静的 TTF を使用する。 */
 @font-face {
-  font-family: "Noto Serif JP";
+  font-family: "Zen Old Mincho";
   font-style: normal;
   font-weight: 400;
   src: url("fonts/Zen_Old_Mincho/ZenOldMincho-Regular.ttf") format("truetype");
@@ -21,7 +21,7 @@
 }
 
 @font-face {
-  font-family: "Noto Serif JP";
+  font-family: "Zen Old Mincho";
   font-style: normal;
   font-weight: 700;
   src: url("fonts/Zen_Old_Mincho/ZenOldMincho-Bold.ttf") format("truetype");
@@ -30,7 +30,7 @@
 
 /* 見出し・UI（ゴシック体）: Zen Kaku Gothic New 静的 TTF */
 @font-face {
-  font-family: "Noto Sans JP";
+  font-family: "Zen Kaku Gothic New";
   font-style: normal;
   font-weight: 400;
   src: url("fonts/Zen_Kaku_Gothic_New/ZenKakuGothicNew-Regular.ttf") format("truetype");
@@ -38,7 +38,7 @@
 }
 
 @font-face {
-  font-family: "Noto Sans JP";
+  font-family: "Zen Kaku Gothic New";
   font-style: normal;
   font-weight: 700;
   src: url("fonts/Zen_Kaku_Gothic_New/ZenKakuGothicNew-Bold.ttf") format("truetype");
@@ -118,13 +118,13 @@
   --column-font-size:   8pt;  /* コラムのフォントサイズ */
 
   /* フォント指定 */
-  --font-main-text: "Noto Serif JP";     /* メイン本文フォント */
-  --font-body:      "Noto Serif JP";     /* 本文フォント（--font-main-text の別名） */
-  --font-title:     "Noto Sans JP";      /* タイトルフォント */
-  --font-header:    "Noto Sans JP";      /* 見出しフォント */
+  --font-main-text: "Zen Old Mincho";     /* メイン本文フォント */
+  --font-body:      "Zen Old Mincho";     /* 本文フォント（--font-main-text の別名） */
+  --font-title:     "Zen Kaku Gothic New";      /* タイトルフォント */
+  --font-header:    "Zen Kaku Gothic New";      /* 見出しフォント */
   --font-column:    "Zen Maru Gothic";   /* コラムフォント */
   --font-code:      "hackgen35";         /* コードフォント */
-  --font-folio:     "Noto Sans JP";   /* ノンブル(ページ番号)フォント */
+  --font-folio:     "Zen Kaku Gothic New";   /* ノンブル(ページ番号)フォント */
 
   /* ノンブル（ページ番号）設定 */
   --folio-font-size: calc(var(--base-font-size) * 0.75);

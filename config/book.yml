@@ -129,24 +129,27 @@ page:
 # ========================================
 typography:
   # ----------------------------
-  # 標準添付書体
+  # 標準添付書体（page-settings.css の @font-face で定義）
   # ----------------------------
-  # - 明朝体: Noto Serif JP
-  # - ゴシック体: Noto Sans JP
+  # - 明朝体:     Zen Old Mincho
+  # - ゴシック体: Zen Kaku Gothic New
   # - 丸ゴシック体: Zen Maru Gothic
   # - プログラミング用フォント: hackgen35
+  # ※ Chromium が CFF ベース OTF / 可変フォントを Type 3 として PDF に
+  #   埋め込む問題を避けるため、いずれも TrueType アウトラインの静的 TTF。
+  # ※ 上記以外のフォント名を指定すると Google Fonts から自動取得を試みます。
 
   # ----------------------------
   # 本文
   # ----------------------------
   body:
-    font: Noto Serif JP
+    font: Zen Old Mincho
 
   # ----------------------------
   # 見出し
   # ----------------------------
   heading:
-    font: Noto Sans JP
+    font: Zen Kaku Gothic New
 
   # ----------------------------
   # コラム
@@ -165,7 +168,7 @@ typography:
   # ノンブル（ページ番号）
   # ----------------------------
   folio:
-    font: Noto Sans JP
+    font: Zen Kaku Gothic New
     placement: sides # center / sides
 
 # ========================================

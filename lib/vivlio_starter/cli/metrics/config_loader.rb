@@ -39,11 +39,6 @@ module VivlioStarter
           'ttr' => { 'min' => 0.3, 'ideal' => [0.5, 0.7], 'max' => 1.0 }
         }.freeze
 
-        DEFAULT_STRUCTURE = {
-          'sentence_length' => { 'min' => 20, 'ideal' => [40, 60], 'max' => 80 },
-          'clause_length' => { 'min' => 15, 'ideal' => [30, 40], 'max' => 50 }
-        }.freeze
-
         DEFAULT_READABILITY = { 'easy' => 30, 'standard' => 60 }.freeze
 
         DEFAULT_LABELS = {
@@ -74,11 +69,6 @@ module VivlioStarter
         # 語彙難度のしきい値を取得する
         def vocabulary_thresholds
           merge_with_defaults(metrics_config, DEFAULT_VOCABULARY, %w[kanji_ratio word_length ttr])
-        end
-
-        # 文構造のしきい値を取得する
-        def structure_thresholds
-          merge_with_defaults(metrics_config, DEFAULT_STRUCTURE, %w[sentence_length clause_length])
         end
 
         # 読解難度のしきい値を取得する

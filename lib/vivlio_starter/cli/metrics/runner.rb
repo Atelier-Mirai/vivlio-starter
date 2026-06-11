@@ -450,12 +450,6 @@ module VivlioStarter
           entries.select(&:exists?).map(&:path)
         end
 
-        # 章番号からファイルを検索する
-        def find_chapter_files(token)
-          pattern = File.join(Common::CONTENTS_DIR, "#{token}*.md")
-          Dir.glob(pattern)
-        end
-
         # ================================================================
         # フィルタリング
         # ================================================================

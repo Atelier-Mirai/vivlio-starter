@@ -4,6 +4,7 @@
 # `cli/startup.rb` から読み込まれ、`cli.rb` は `startup` のみを参照する。
 
 require_relative 'common'
+require_relative 'guards'
 require_relative 'create'
 require_relative 'delete'
 require_relative 'doctor'

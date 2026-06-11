@@ -12,6 +12,15 @@ module VivlioStarter
 
       module_function
 
+      # PDF を JPEG 群へ変換し、生成した画像パスの配列を返す
+      #
+      # pages 指定時も全ページを一度変換してから不要分を削除する。
+      # pdftoppm の -f/-l による部分変換では出力ファイル名の連番が
+      # 1 起点に振り直され、元 PDF のページ番号と一致しなくなるため。
+      #
+      # @param pages [String, nil] ページ指定（例: "3", "1-5", "1,3,7-9"）
+      # @param command_runner [#system] テストで外部コマンドを差し替えるための DI
+      # @return [Array<String>] ページ番号順の JPEG パス
       def convert(pdf_path, output_dir:, dpi: 350, quality: 95, pages: nil, command_runner: Kernel)
         validate_options!(dpi:, quality:)
 
@@ -27,6 +36,7 @@ module VivlioStarter
         filter_pages!(images, pages)
       end
 
+      # ページ指定文字列をページ番号配列に展開する（例: "1,3-5" → [1, 3, 4, 5]）
       def parse_page_spec(spec)
         text = spec.to_s.strip
         raise Error, 'ページ指定が空です' if text.empty?
@@ -36,6 +46,7 @@ module VivlioStarter
         end.uniq.sort
       end
 
+      # pdftoppm のコマンドライン配列を組み立てる（shell を介さず配列で実行する）
       def build_command(pdf_path, prefix, dpi, quality)
         [
           'pdftoppm',
@@ -47,12 +58,14 @@ module VivlioStarter
         ]
       end
 
+      # コマンドを実行し、失敗時は Error を送出する
       def execute!(command, command_runner: Kernel)
         return if command_runner.system(*command)
 
         raise Error, "pdftoppm の実行に失敗しました: #{command.join(' ')}"
       end
 
+      # 指定ページのみを残し、対象外の JPEG はディスクからも削除する
       def filter_pages!(images, pages)
         return images if pages.nil? || pages.to_s.strip.empty?
 
@@ -62,6 +75,8 @@ module VivlioStarter
         selected
       end
 
+      # 出力ファイル名を page-001.jpg 形式（3桁ゼロ埋め）に統一する
+      # pdftoppm は総ページ数によって連番の桁数を変える（page-1.jpg / page-01.jpg）ため
       def normalize_output_names(output_dir)
         Dir.glob(File.join(output_dir, 'page-*.jpg')).each do |path|
           page_number = page_number_from_path(path)
@@ -72,6 +87,7 @@ module VivlioStarter
         end
       end
 
+      # ページ指定の1要素（"3" または "3-5"）をページ番号配列へ展開する
       def parse_page_part(part)
         raise Error, "ページ指定が不正です: #{part.inspect}" if part.empty?
 
@@ -96,6 +112,7 @@ module VivlioStarter
         raise Error, "ページ範囲が逆順です: #{start_page}-#{end_page}" if start_page > end_page
       end
 
+      # dpi / quality の値域を検証する（pdftoppm に渡す前に日本語で失敗理由を示す）
       def validate_options!(dpi:, quality:)
         raise Error, 'dpi は 1 以上の整数で指定してください' unless dpi.to_i.positive?
 
@@ -105,6 +122,7 @@ module VivlioStarter
         raise Error, 'quality は 1〜100 の整数で指定してください'
       end
 
+      # JPEG パスからページ番号を取り出す（例: "page-012.jpg" → 12）
       def page_number_from_path(path)
         File.basename(path)[/page-(\d+)\.jpg\z/, 1].to_i
       end

@@ -30,18 +30,6 @@ module VivlioStarter
           @labels = config_loader.labels
         end
 
-        # 全体の出力を生成する
-        def format_full(basic, vocab, readability, chapters, show_sections: false)
-          lines = []
-          lines << format_basic_info(basic)
-          lines << format_sentence_structure(basic)
-          lines << '---'
-          lines << format_detailed_analysis(vocab, readability)
-          lines << '---'
-          lines << format_chapters(chapters, show_sections:)
-          lines.join("\n\n")
-        end
-
         # 基本情報セクションを生成する
         def format_basic_info(basic)
           <<~OUTPUT.chomp

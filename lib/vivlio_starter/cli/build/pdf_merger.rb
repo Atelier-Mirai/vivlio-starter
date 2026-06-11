@@ -123,20 +123,36 @@ module VivlioStarter
           @front_matter_offset = compute_front_matter_offset(existing_files)
 
           # _sections.pdf があればそれをベースに、なければ最初のファイルを使用
+          # （ベース PDF のメタデータ・しおりが出力に引き継がれるため、本文を優先する）
           base_pdf = existing_files.include?('_sections.pdf') ? '_sections.pdf' : existing_files.first
-          FileUtils.rm_f('output.pdf')
 
-          # 引数構築
-          ranges = existing_files.map { %("#{it}" 1-z) }.join(' ')
-          success = system(%(qpdf "#{base_pdf}" --pages #{ranges} -- "output.pdf" > /dev/null))
-
-          if success && File.exist?('output.pdf')
+          if merge_pdfs_with_qpdf!(existing_files, output: 'output.pdf', base_pdf:)
             Common.log_success('[Step 10] output.pdf を生成しました')
             true
           else
             Common.log_error('[Step 10] PDF結合に失敗しました')
             false
           end
+        end
+
+        # 複数 PDF を qpdf で1つに結合する（閲覧用・入稿用ビルドの共通基盤）
+        #
+        # base_pdf を「結合のベース」として qpdf に渡すと、その PDF の
+        # メタデータが出力へ引き継がれる。指定がなければ先頭ファイルを使う。
+        #
+        # @param files [Array<String>] 結合順の PDF パス（存在確認済みであること）
+        # @param output [String] 出力 PDF パス（既存ファイルは上書き）
+        # @param base_pdf [String, nil] メタデータ引き継ぎ元の PDF
+        # @return [Boolean] 結合に成功し出力ファイルが存在すれば true
+        def merge_pdfs_with_qpdf!(files, output:, base_pdf: nil)
+          return false if files.empty?
+
+          base_pdf ||= files.first
+          FileUtils.rm_f(output)
+
+          ranges = files.map { %("#{it}" 1-z) }.join(' ')
+          success = system(%(qpdf "#{base_pdf}" --pages #{ranges} -- "#{output}" > /dev/null))
+          success && File.exist?(output)
         end
 
         # 奥付が偶数ページ（左ページ）始まりになるよう空白ページを挿入

@@ -34,8 +34,6 @@ CHAPTERS:
   #     - 45-utility
   - 【第五部：トラブルシューティング】:
       - 51-doctor
-  - 【検証用（確認後に削除）】:
-      - 89-bugfix-check
   # - 【第六部：開発者のために】:
   # - 61-developer
 

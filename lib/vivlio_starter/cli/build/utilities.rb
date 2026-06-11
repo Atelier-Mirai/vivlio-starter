@@ -45,11 +45,6 @@ module VivlioStarter
           nil
         end
 
-        # 複数 PDF の合計ページ数を返す
-        def total_page_count(files)
-          files.sum { |f| page_count(f).to_i }
-        end
-
         # 1..89 範囲の章番号（整数）の配列を返す（新仕様）
         # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
         # @return [Array<Integer>] 1..89 範囲の章番号配列
@@ -79,20 +74,6 @@ module VivlioStarter
           numbers.uniq!
           numbers.sort!
           numbers
-        end
-
-        # Entry 配列または basename 配列から basename 配列を抽出
-        # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil]
-        # @return [Array<String>] basename 配列
-        def extract_basenames(entries_or_keep)
-          raw = Array(entries_or_keep).compact
-          return [] if raw.empty?
-
-          if raw.first.respond_to?(:basename)
-            raw.map(&:basename)
-          else
-            raw.map { |s| File.basename(s.to_s, '.md') }
-          end
         end
 
         # Entry 配列または basename 配列を Entry 配列に解決

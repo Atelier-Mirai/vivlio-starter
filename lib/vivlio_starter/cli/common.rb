@@ -274,11 +274,6 @@ module VivlioStarter
         format_detail(detail).each { |line| puts("#{DETAIL_INDENT}#{line}") }
       end
 
-      # 詳細診断情報（🔍）。--log=info 以上で表示。
-      def log_inspection(msg)
-        puts "🔍 #{msg}" if current_log_level >= 2
-      end
-
       # 処理の最終結果を報告する（✅/❌/📚）。ログレベルに関わらず常に表示。
       # @param status [:success, :failure, :artifact] アイコンの種別
       def log_result(msg, status:)
@@ -697,7 +692,6 @@ module VivlioStarter
       def contents_dir       = CONFIG&.directories&.contents || CONTENTS_DIR
       def stylesheets_dir    = CONFIG&.directories&.stylesheets || STYLESHEETS_DIR
       def images_dir         = CONFIG&.directories&.images || IMAGES_DIR
-      def codes_dir          = CONFIG&.directories&.codes || CODES_DIR
       def templates_dir      = CONFIG&.directories&.templates || TEMPLATES_DIR
       def covers_dir         = CONFIG&.directories&.covers || COVERS_DIR
 

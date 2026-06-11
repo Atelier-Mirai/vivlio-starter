@@ -820,16 +820,6 @@ module VivlioStarter
         nil
       end
 
-      def select_waifu2x_asset(release, os_family)
-        name_fragment = case os_family
-                        when :windows then 'windows'
-                        when :macos then 'macos'
-                        when :linux then 'linux'
-                        else return nil
-                        end
-        Array(release['assets']).find { |asset| asset['name'].to_s.include?(name_fragment) }
-      end
-
       def download_asset(url, destination)
         URI.parse(url).open('User-Agent' => 'vivlio-starter') do |data|
           File.open(destination, 'wb') { |f| IO.copy_stream(data, f) }

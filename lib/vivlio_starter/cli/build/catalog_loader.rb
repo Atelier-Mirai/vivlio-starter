@@ -259,14 +259,6 @@ module VivlioStarter
           end.flatten
         end
 
-        # 特殊ページ（システム生成）かどうかを判定する
-        # _titlepage, _colophon 等の固定ページに加え、_part{N} も対象
-        # @param basename [String]
-        # @return [Boolean]
-        def special_page?(basename)
-          SPECIAL_PAGES.include?(basename) || basename.match?(/\A_part\d+\z/)
-        end
-
         # basename から章番号を抽出
         # @param basename [String]
         # @return [Integer, nil]
@@ -275,23 +267,6 @@ module VivlioStarter
           match ? match[1].to_i : nil
         end
 
-        # ショートハンドと basename の重複をチェック
-        # @param basenames [Array<String>]
-        # @return [Array<String>] 重複している basename
-        def check_shorthand_overlap(basenames)
-          seen = {}
-          duplicates = []
-
-          basenames.each do |bn|
-            if seen[bn]
-              duplicates << bn
-            else
-              seen[bn] = true
-            end
-          end
-
-          duplicates
-        end
       end
     end
   end

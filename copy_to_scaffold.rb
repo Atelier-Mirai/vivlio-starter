@@ -1,11 +1,11 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# sync_scaffold.rb
+# copy_to_scaffold.rb
 # contents/, stylesheets/, config/, codes/, data/, templates/ を
 # lib/project_scaffold/ 以下に上書きコピーする。
 #
-# 使い方: ruby sync_scaffold.rb
+# 使い方: ruby copy_to_scaffold.rb
 
 require 'fileutils'
 

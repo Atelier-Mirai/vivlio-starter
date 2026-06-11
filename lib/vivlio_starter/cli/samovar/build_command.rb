@@ -32,6 +32,7 @@ require_relative '../entries'
 require_relative '../epub'
 require_relative '../pdf'
 require_relative '../token_resolver'
+require_relative '../guards'
 
 module VivlioStarter
   module CLI
@@ -80,6 +81,17 @@ module VivlioStarter
             return 0
           end
 
+          # 前提条件の検証（docs/specs/precondition-guard-spec.md）
+          # 違反があれば 🔴 メッセージを表示して本処理に入らず終了する
+          Guards::Guard.run!(
+            Guards::ProjectRootCheck.new,
+            Guards::CatalogFileCheck.new,
+            Guards::CatalogEntriesCheck.new,
+            Guards::ContentsDirCheck.new,
+            Guards::VivliostyleConfigCheck.new,
+            Guards::NodeCheck.new
+          )
+
           # 検証オプションをスレッドローカルに設定（LinkImageValidator が参照）
           setup_verify_options!
           PreProcessCommands::LinkImageValidator.reset!
@@ -102,6 +114,9 @@ module VivlioStarter
           end
 
           0
+        rescue Guards::GuardError => e
+          common.log_error(e.message)
+          1
         rescue BuildCommands::BuildLock::AlreadyLockedError => e
           common.log_error(e.message)
           1
@@ -304,21 +319,6 @@ module VivlioStarter
           end
 
           files
-        end
-
-        # targetsに応じてファイル名を調整
-        def adjust_filename_for_targets(original_name, _basenames)
-          targets = Build::PdfMerger.extract_targets(Common::CONFIG.dig(:output, :targets))
-
-          # PDFがtargetsに含まれていない場合
-          unless targets.include?('pdf')
-            base_name = original_name.sub(/\.pdf$/, '')
-
-            # EPUBがtargetsに含まれている場合
-            return "#{base_name}.epub" if targets.include?('epub')
-          end
-
-          original_name
         end
 
         # 単章ビルド用の生成ファイルリストを取得

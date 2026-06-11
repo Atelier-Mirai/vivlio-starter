@@ -90,33 +90,6 @@ module VivlioStarter
           headings
         end
 
-        # Markdownファイルから見出しを抽出
-        def extract_headings_from_markdown_file(path, max_level: 2)
-          headings = []
-          return headings unless File.exist?(path)
-
-          title = nil
-          subtitles = []
-          File.foreach(path, encoding: 'utf-8') do |line|
-            stripped = line.strip
-            if max_level >= 1 && title.nil? && stripped.start_with?('# ')
-              title = stripped.sub('\A#\\s+', '').strip
-              next
-            end
-            subtitles << stripped.sub('\A##\\s+', '').strip if max_level >= 2 && stripped.start_with?('## ')
-            break if max_level <= 2 && !title.nil? && !subtitles.empty?
-          end
-          headings << { level: 1, text: title } if title && !title.empty?
-          if max_level >= 2
-            subtitles.each do |text|
-              next if text.empty?
-
-              headings << { level: 2, text: text }
-            end
-          end
-          headings
-        end
-
         # 見出しとページの対応を取得
         def heading_page_entries(pdf_path, html_paths, max_level: 3, start_page: 1)
           @last_outline_debug_info = nil

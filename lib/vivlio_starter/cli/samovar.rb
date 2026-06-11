@@ -3,7 +3,6 @@
 require 'samovar'
 
 require_relative 'common'
-require_relative '../scaffolder'
 
 module VivlioStarter
   module CLI

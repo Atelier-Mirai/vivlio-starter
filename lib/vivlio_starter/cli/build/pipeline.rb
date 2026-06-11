@@ -21,7 +21,7 @@ module VivlioStarter
       # - single mode では Step 6〜12, 14 をスキップし、Step 5 で entries.js + pdf を生成
       # ------------------------------------------------
       class UnifiedBuildPipeline
-        Step = Struct.new(:label, :handler)
+        Step = Data.define(:label, :handler)
 
         attr_reader :timings, :mode, :entries, :generated_pdf_name
 
@@ -41,6 +41,7 @@ module VivlioStarter
 
         # 登録済みステップを順に実行し、経過時間を収集する
         def run
+          ensure_entry_files_exist!
           Common.reset_vivliostyle_build_timings
           @steps.each do |step|
             execute(step)
@@ -51,6 +52,21 @@ module VivlioStarter
         private
 
         attr_reader :command, :options
+
+        # catalog.yml に記載があるのに contents/ に原稿が存在しない場合、
+        # 並列前処理のスレッド内で Errno::ENOENT が発生し、著者には
+        # 長いスタックトレースしか見えない。ビルド開始前に検証し、
+        # 原因と対処を示した上で速やかに終了する。
+        def ensure_entry_files_exist!
+          missing = entries.reject(&:exists?)
+          return if missing.empty?
+
+          Common.log_error('config/catalog.yml に記載されている章ファイルが contents/ に見つかりません:')
+          missing.each { Common.log_error("  - contents/#{it.basename}.md") }
+          Common.log_error('原稿を削除した場合は、config/catalog.yml から該当する行も削除してください。')
+          Common.log_error('（vs delete <章番号> を使うと、原稿・画像・catalog.yml をまとめて削除できます）')
+          exit 1
+        end
 
         # Entry 配列から basename 配列を取得
         # @return [Array<String>] basename 配列
@@ -158,23 +174,9 @@ module VivlioStarter
           })
         end
 
-        # print_pdf only: 閲覧用 PDF ビルドをスキップし、
-        # entries.js / HTML 生成のみ行ってから入稿用 PDF を生成
-        def register_print_pdf_only_steps
-          add_step('Step  6 (generate toc html)', lambda {
-            Build::TocGenerator.generate_toc_html!('.', entries)
-          })
-          add_step('Step  7 (generate entries.js)', lambda {
-            Build::PdfBuilder.generate_entries_for_sections!('.', entries)
-          })
-          add_step('Step  8 (backlink dedup)',             -> { Build::BacklinkDedupOrchestrator.run!(entries) })
-          add_step('Step  9 (build front pages html)',     -> { run_step9_front_pages_html_only })
-          add_step('Step 10 (print pdf)',                  -> { run_step13_print_pdf })
-          add_step('Step 11 (final clean)',                -> { run_final_clean })
-        end
-
-        # print_pdf + epub: 入稿用 PDF 後に EPUB を生成し、最後にクリーンアップ
-        # epub ターゲットがない場合は register_print_pdf_only_steps にフォールバック
+        # print_pdf のみ（+ 任意で epub）: 閲覧用 PDF ビルドをスキップし、
+        # entries.js / HTML 生成のみ行ってから入稿用 PDF を生成する。
+        # epub ターゲットがある場合は入稿用 PDF の後に EPUB を生成し、最後にクリーンアップする。
         def register_print_pdf_only_steps_with_epub
           add_step('Step  6 (generate toc html)',          lambda {
             Build::TocGenerator.generate_toc_html!('.', entries)
@@ -373,14 +375,7 @@ module VivlioStarter
             return
           end
 
-          base_pdf = existing.first
-          output = 'output_print.pdf'
-          FileUtils.rm_f(output)
-
-          ranges = existing.map { format(%("%s" 1-z), it) }.join(' ')
-          success = system(%(qpdf "#{base_pdf}" --pages #{ranges} -- "#{output}" > /dev/null))
-
-          if success && File.exist?(output)
+          if Build::PdfMerger.merge_pdfs_with_qpdf!(existing, output: 'output_print.pdf')
             Common.log_success('[Step 5] 入稿用 PDF を結合しました')
           else
             Common.log_error('[Step 5] 入稿用 PDF の結合に失敗しました')
@@ -639,14 +634,7 @@ module VivlioStarter
           # 奥付が偶数ページ（左ページ）に来るよう空白ページ挿入判定
           existing = Build::PdfMerger.insert_blank_page_before_colophon(existing)
 
-          base_pdf = existing.first
-          output = 'output_print.pdf'
-          FileUtils.rm_f(output)
-
-          ranges = existing.map { format(%("%s" 1-z), it) }.join(' ')
-          success = system(%(qpdf "#{base_pdf}" --pages #{ranges} -- "#{output}" > /dev/null))
-
-          if success && File.exist?(output)
+          if Build::PdfMerger.merge_pdfs_with_qpdf!(existing, output: 'output_print.pdf')
             Common.log_success('[Step 13] output_print.pdf を生成しました')
           else
             Common.log_error('[Step 13] 入稿用 PDF 結合に失敗しました')

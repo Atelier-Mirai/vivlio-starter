@@ -23,6 +23,7 @@ require_relative '../build/pipeline'
 require_relative '../pre_process'
 require_relative '../token_resolver'
 require_relative '../clean'
+require_relative '../guards'
 
 module VivlioStarter
   module CLI
@@ -62,6 +63,17 @@ module VivlioStarter
             return 0
           end
 
+          # 前提条件の検証（docs/specs/precondition-guard-spec.md）
+          # preflight は診断コマンドのため、catalog 未登録原稿の一覧も 🟡 で知らせる
+          Guards::Guard.run!(
+            Guards::ProjectRootCheck.new,
+            Guards::OrphanFileCheck.new
+          )
+
+          # ensure 節の execute_clean は本処理開始後のみ実行する
+          # （Guard 違反＝プロジェクト外の可能性があるディレクトリでクリーンを走らせない）
+          @preflight_started = true
+
           PreProcessCommands::LinkImageValidator.reset!
 
           # 検証オプションをスレッドローカルに設定（LinkImageValidator が参照）
@@ -83,14 +95,18 @@ module VivlioStarter
           print_preflight_summary
 
           PreProcessCommands::LinkImageValidator.any_issues? ? 1 : 0
+        rescue Guards::GuardError => e
+          Common.log_error(e.message)
+          1
         rescue SystemExit => e
           raise e
         rescue StandardError => e
           Common.log_error("Error: #{e.message}")
           1
         ensure
-          # 前処理で生成した中間 .md ファイルを後始末する
-          CleanCommands.execute_clean({})
+          # 前処理で生成した中間 .md ファイルを後始末する（本処理開始後のみ。
+          # --help や Guard 違反時はプロジェクト外で実行された可能性があるため触らない）
+          CleanCommands.execute_clean({}) if @preflight_started
           Thread.current[:vs_verify_options] = nil
         end
 

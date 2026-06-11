@@ -279,7 +279,9 @@ module VivlioStarter
           return unless File.exist?(html_path)
 
           build_entry(html_path)
-        rescue StandardError
+        rescue StandardError => e
+          # 失敗した補助ページは TOC から黙って欠落するため、デバッグ時に原因を追えるよう記録する
+          Common.log_debug("[TOC] #{file_name} の TOC 項目生成に失敗: #{e.class}: #{e.message}")
           nil
         end
 

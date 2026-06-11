@@ -5,7 +5,16 @@ require 'open3'
 module VivlioStarter
   module PDF
     # MeCab を利用して PDF から抽出したテキストの不要改行を除去するクリーナー
+    #
+    # PDF からのテキスト抽出は組版上の行末で機械的に改行が入るため、
+    # そのままでは文の途中で切れた読みにくいテキストになる。
+    # 改行を「残す（段落・見出し・箇条書きの区切り）」か「除去する（行送りに
+    # よる折り返し）」かを判定する必要があるが、日本語は英語と違い行末に
+    # ハイフン等の手掛かりがないため、表層的な正規表現の判定に加えて
+    # MeCab の形態素解析で行末・行頭の品詞を調べ、文が継続しているか
+    # （行末が格助詞・活用途中の動詞、行頭が助詞など）を判断する。
     class MecabNewlineCleaner
+      # 行頭にあれば前行から文が継続しているとみなす接続表現
       CONNECTIVE_PREFIXES = %w[が て と ので のに けど けれど けれども ものの し すると そして しかし でも].freeze
       LIST_MARKER_REGEX = /\A(?:[-*・]|\d+\.)/
       HEADING_REGEX = /\A#+/
@@ -20,6 +29,7 @@ module VivlioStarter
       ENDING_AUXILIARIES = %w[です ます だ だった でした でしょう だろう である ません でしたら].freeze
       ENDING_PARTICLES = %w[ね よ よね ぞ さ わ かな かしら].freeze
 
+      # MeCab の出力1行（表層形 + 素性）を保持する形態素トークン
       Token = Data.define(:surface, :base, :pos, :pos_detail1, :pos_detail2, :pos_detail3, :conj_type, :conj_form)
 
       def initialize(config = nil)
@@ -28,6 +38,11 @@ module VivlioStarter
         @mecab_cache = {}
       end
 
+      # 抽出テキスト全体を整形して返すエントリポイント
+      #
+      # 空行（2連続以上の改行）で区切った「段落」と「ギャップ」を交互に処理する。
+      # 段落内の改行は clean_paragraph で判定し、段落間のギャップも
+      # 「実は文の途中（ページ跨ぎ等）」であれば結合する。
       def clean(text)
         str = normalize_pdf_extracted_text(text)
         return str if str.empty?
@@ -61,6 +76,7 @@ module VivlioStarter
 
       attr_reader :mecab_command
 
+      # 段落内の各行を「前行と結合」「見出しとして分離」「改行維持」に振り分ける
       def clean_paragraph(paragraph)
         body = paragraph.to_s
         lines = body.split("\n", -1).map(&:strip).reject(&:empty?)
@@ -84,6 +100,14 @@ module VivlioStarter
         rebuilt.join("\n")
       end
 
+      # 2行の間の改行を残すべきか判定する（このクラスの中核ロジック）
+      #
+      # 判定順序が重要:
+      #   1. 見出し・箇条書きなど構造上の区切り → 残す
+      #   2. 単語の途中・小書き仮名・接続表現で始まる行 → 結合
+      #   3. 句点で終わる行 → 残す
+      #   4. ここまでで判定できない場合のみ MeCab で行末・行頭の品詞を調べる
+      #      （外部プロセス呼び出しが高コストなため最後に回す）
       def keep_line_break?(current_line, next_line)
         return true if next_line.nil?
         return true if current_line.nil?
@@ -117,6 +141,8 @@ module VivlioStarter
         false
       end
 
+      # 空行ギャップを挟んだ前後が実は連続した文かを判定する
+      # （ページ跨ぎや図版を避けた組版で段落内に空行が入ることがあるため）
       def should_merge_gap?(previous_block, next_block)
         prev_line = previous_block.to_s.split("\n").last&.strip
         next_line = next_block.to_s.split("\n").find { !it.strip.empty? }&.strip
@@ -127,10 +153,14 @@ module VivlioStarter
         !keep_line_break?(prev_line, next_line)
       end
 
+      # 「第N章」単独行とタイトル行の間のギャップか
+      # （章扉では空行を1つの改行に縮めて「第N章\nタイトル」の形に整える）
       def chapter_heading_gap?(previous_block, next_block)
         chapter_heading_only_line?(single_non_empty_line(previous_block)) && title_line?(first_non_empty_line(next_block))
       end
 
+      # 章タイトル行と本文の間のギャップか
+      # （直前に「第N章」行がある場合のみ。タイトル直後の空行も1改行に縮める）
       def chapter_title_gap?(rebuilt, previous_block, next_block)
         previous_line = single_non_empty_line(previous_block)
         next_line = first_non_empty_line(next_block)
@@ -161,6 +191,7 @@ module VivlioStarter
         line.to_s.strip.match?(CHAPTER_HEADING_ONLY_REGEX)
       end
 
+      # 「1-2」のような見出し番号とタイトル本体が別行に割れているか
       def split_heading?(current_line, next_line)
         return false if chapter_heading_only_line?(current_line)
 
@@ -213,6 +244,8 @@ module VivlioStarter
       JP_OPEN_PAT  = '[「『（【《〈]'
       JP_CLOSE_PAT = '[」』）】》〉]'
 
+      # 改行判定の前に、PDF 抽出特有のノイズを正規化する
+      # （連続空白の縮約、句読点直前の改行除去、「第N章」と本文の間の空白挿入）
       def normalize_pdf_extracted_text(text)
         result = text.to_s
                      .gsub(/[ \t\u00A0]{2,}/, ' ')
@@ -221,6 +254,8 @@ module VivlioStarter
         result.gsub(/(^|\n)(第[一二三四五六七八九十百千0-9]+章)(?=#{CJK_PAT})/u, '\\1\\2 ')
       end
 
+      # 日本語文字間に紛れ込んだ半角スペースを除去する
+      # （PDF のグリフ配置由来で和文の文字間に空白が挿入されることがあるため）
       def collapse_japanese_ocr_spaces(text)
         result = text.to_s
         result = result.gsub(/(?<=#{CJK_PAT}) +(?=#{CJK_PAT})/, '')
@@ -252,6 +287,7 @@ module VivlioStarter
         tokens.first&.pos == '助詞' && tokens.first&.pos_detail1 == '接続'
       end
 
+      # 行末が終助詞（ね・よ等）なら文末とみなす
       def sentence_ending_particle?(token)
         return false unless token&.pos == '助詞'
         return false unless token.pos_detail1.to_s.include?('終助詞')
@@ -262,6 +298,7 @@ module VivlioStarter
 
       ENDING_CONJUGATION_FORMS = %w[終止形 基本形 命令形 仮定形 体言接続].freeze
 
+      # 行末が終止形の助動詞（です・ます等）なら文末とみなす
       def sentence_ending_auxiliary?(token)
         return false unless token&.pos == '助動詞'
 
@@ -272,6 +309,7 @@ module VivlioStarter
         ENDING_AUXILIARIES.include?(base)
       end
 
+      # 行末が格助詞・係助詞等なら文の途中とみなす（次行と結合する）
       def mid_sentence_particle?(token)
         return false unless token&.pos == '助詞'
 
@@ -279,6 +317,7 @@ module VivlioStarter
         %w[格助詞 並立助詞 係助詞 副助詞 接続助詞].include?(detail)
       end
 
+      # 行末が活用途中（連用形等）の動詞・形容詞なら文の途中とみなす
       def conjugated_verb_or_adjective?(token)
         return false unless token
 
@@ -300,6 +339,8 @@ module VivlioStarter
         false
       end
 
+      # 行を MeCab で形態素解析して Token 配列を返す
+      # 同じ行を繰り返し判定するため、外部プロセス呼び出しの結果はキャッシュする
       def mecab_tokens(line)
         key = line.strip
         return [] if key.empty?

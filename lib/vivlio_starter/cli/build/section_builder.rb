@@ -63,21 +63,6 @@ module VivlioStarter
           ordered + remaining_sorted
         end
 
-        # 章ごとの処理に計時を付与して実行
-        def time_step_for_chapter(chapter, step)
-          label = "#{chapter} / #{step}"
-          start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          begin
-            Common.with_current_step_label(label) do
-              yield if block_given?
-            end
-          ensure
-            finish = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-            elapsed = finish - start
-            Common.log_action("[Timer] #{label} : #{format('%.2f', elapsed)}s")
-          end
-          elapsed
-        end
 
         # 簡易スレッドプールで並列実行
         def parallel_each(items, concurrency: 1, &)
@@ -218,13 +203,6 @@ module VivlioStarter
           concurrency
         end
 
-        # Step 4: セクション（前書き/本文/付録/後書き）をビルド（HTML生成）
-        # 注: このメソッドは後方互換性のため維持するが、UnifiedBuildPipeline では
-        #     preprocess_sections! と convert_sections_html! に分割して呼び出すことを推奨
-        def build_sections_html!(keep = nil)
-          preprocess_sections!(keep)
-          convert_sections_html!(keep)
-        end
       end
     end
   end

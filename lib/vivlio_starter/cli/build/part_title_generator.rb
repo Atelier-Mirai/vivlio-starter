@@ -87,14 +87,6 @@ module VivlioStarter
           PostProcessCommands.execute_post_process({}, [basename])
         end
 
-        # 生成済みの中扉 HTML ファイルパスを返す
-        # entries.js 構築時に、各部の先頭章の直前に挿入するために使用する
-        # @param base_dir [String] ベースディレクトリ
-        # @return [Array<String>] 中扉 HTML のパス配列（存在するもののみ）
-        def existing_part_htmls(base_dir = '.')
-          Dir.glob(File.join(base_dir, '_part*.html'))
-        end
-
         # 部タイトル情報と章 HTML リストから、中扉を適切な位置に挿入した HTML リストを返す
         # 各部の先頭章の直前に _part{N}.html を挿入する
         # @param chapter_htmls [Array<String>] 章 HTML のパス配列（ソート済み）

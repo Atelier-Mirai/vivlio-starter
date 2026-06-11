@@ -870,10 +870,6 @@ module VivlioStarter
         raise LoadError, missing_enhanced_plugin_message
       end
 
-      # Enhanced Mode が利用可能な旨をログに出力する（情報提供用）
-      def log_enhanced_hint
-        CLI::Common.log_info('[pdf:read] vivlio-starter-pdf (Enhanced Mode) が利用可能です。連携は近日追加予定です。')
-      end
     end
   end
 end

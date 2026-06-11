@@ -12,6 +12,9 @@ module VivlioStarter
 
       module_function
 
+      # JPEG 群を1ページ1画像の PDF にまとめて出力する
+      # @param images [Array<String>] ページ順の JPEG パス
+      # @param output_pdf [String] 出力 PDF パス
       def convert(images, output_pdf)
         raise Error, '結合対象の画像がありません' if images.empty?
 
@@ -19,6 +22,11 @@ module VivlioStarter
       end
 
       # JPEG 群から最小構成の PDF 1 ファイルを生成する内部ビルダー。
+      #
+      # PDF はオブジェクト（画像・コンテンツ・ページ・カタログ）の集合と、
+      # 各オブジェクトのバイトオフセットを記録した xref テーブルで構成される。
+      # 画像は JPEG のまま /DCTDecode ストリームに包むため再エンコードが発生せず、
+      # 画質劣化なし・高速に変換できる。
       class PdfBuilder
         def initialize(image_paths)
           @image_paths = image_paths
@@ -26,6 +34,7 @@ module VivlioStarter
           @next_id = 0
         end
 
+        # ページ木 → カタログの順にオブジェクトを組み立て、PDF を書き出す
         def write(output_pdf)
           catalog_id = next_id
           pages_id = next_id
@@ -43,6 +52,7 @@ module VivlioStarter
 
         attr_reader :image_paths, :objects
 
+        # 画像1枚につき「画像 XObject + 描画コンテンツ + ページ」の3オブジェクトを生成する
         def build_page_objects(pages_id)
           image_paths.each_with_index.map do |path, index|
             jpeg_data = File.binread(path)
@@ -51,6 +61,8 @@ module VivlioStarter
           end
         end
 
+        # 1ページ分のオブジェクト群を登録し、ページオブジェクト ID を返す
+        # MediaBox を画像の実寸（px = pt 扱い）に合わせるため、余白なしで全面に描画される
         def emit_page_with_image(pages_id, jpeg_info, jpeg_data, image_name:)
           image_id = next_id
           content_id = next_id
@@ -63,6 +75,7 @@ module VivlioStarter
           page_id
         end
 
+        # JPEG バイト列をそのまま /DCTDecode ストリームとして包んだ画像 XObject を生成する
         def image_object(jpeg_info, jpeg_data)
           dictionary = "<< /Type /XObject /Subtype /Image\n" \
                        "   /Width #{jpeg_info.width} /Height #{jpeg_info.height}\n" \
@@ -71,6 +84,7 @@ module VivlioStarter
           stream_object_with_dictionary(dictionary, jpeg_data)
         end
 
+        # ページ辞書を生成する（コンテンツと画像リソースを参照で紐付ける）
         def page_object(pages_id, content_id, image_id, jpeg_info, image_name:)
           "<< /Type /Page /Parent #{pages_id} 0 R\n" \
             "   /MediaBox [0 0 #{jpeg_info.width} #{jpeg_info.height}]\n" \
@@ -82,10 +96,12 @@ module VivlioStarter
           stream_object_with_dictionary("<< /Length #{content.b.bytesize} >>\n", content)
         end
 
+        # バイナリを混ぜても安全なよう、全パーツを ASCII-8BIT に揃えて連結する
         def stream_object_with_dictionary(dictionary, content)
           dictionary.b + "stream\n".b + content.b + "\nendstream\n".b
         end
 
+        # PDF オブジェクト番号を採番する（1 起点の連番）
         def next_id
           @next_id += 1
         end
@@ -94,8 +110,9 @@ module VivlioStarter
           objects[id] = content.b
         end
 
+        # 全オブジェクトをシリアライズし、xref / trailer を付けて PDF バイト列を完成させる
         def build_pdf(catalog_id)
-          pdf = +'%PDF-1.4\n'.b
+          pdf = +"%PDF-1.4\n".b
           offsets = {}
 
           objects.sort.each do |id, content|
@@ -110,6 +127,7 @@ module VivlioStarter
           pdf
         end
 
+        # xref テーブルを生成する（各オブジェクトの開始バイト位置を 10 桁固定幅で記録）
         def build_xref(offsets)
           xref = +"xref\n0 #{@next_id + 1}\n0000000000 65535 f \n".b
           (1..@next_id).each do |id|

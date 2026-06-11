@@ -14,9 +14,10 @@
 #   - @font-face を定義した CSS バンドルを生成
 #
 # 標準フォント（ダウンロード不要）:
-#   - Noto Serif JP, Noto Sans JP: 和文本文用
-#   - Zen Maru Gothic: 見出し・装飾用
-#   - hackgen35: コードブロック用
+#   - Zen Old Mincho: 本文用（明朝体）
+#   - Zen Kaku Gothic New: 見出し・ノンブル用（ゴシック体）
+#   - Zen Maru Gothic: コラム用（丸ゴシック体）
+#   - hackgen35: コードブロック用（等幅）
 #
 # 依存:
 #   - Common: ログ出力・設定読み込み
@@ -36,9 +37,10 @@ module VivlioStarter
       GOOGLE_FONTS_ENDPOINT = 'https://fonts.googleapis.com/css2'
 
       # 標準搭載フォント（ダウンロード不要）
+      # page-settings.css の @font-face で静的 TTF が定義されているファミリ名
       STANDARD_FONT_FAMILIES = Set.new([
-                                         'Noto Serif JP',
-                                         'Noto Sans JP',
+                                         'Zen Old Mincho',
+                                         'Zen Kaku Gothic New',
                                          'Zen Maru Gothic',
                                          'hackgen35'
                                        ]).freeze

@@ -182,11 +182,6 @@ module VivlioStarter
             end
           end
 
-          # 検証が有効か判定する
-          def any_verification_enabled?(config: resolve_config)
-            config[:verify_images] || config[:verify_bare_urls] || config[:verify_external_links]
-          end
-
           # 蓄積されたレポートにエラー（issue）が1件以上あるか判定する
           def any_issues?
             @monitor.synchronize do

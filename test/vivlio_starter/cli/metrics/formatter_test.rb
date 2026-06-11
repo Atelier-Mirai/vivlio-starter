@@ -113,7 +113,7 @@ module VivlioStarter
 
           output = @formatter.format_chapters(chapters, show_sections: false)
 
-          assert_includes output, '⚠️ 加筆検討'
+          assert_includes output, '🟡 加筆検討'
         end
 
         private

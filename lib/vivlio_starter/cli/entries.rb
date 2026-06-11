@@ -101,7 +101,9 @@ module VivlioStarter
 
         content = File.read(path)
         ::Regexp.last_match(1).strip if content =~ %r{<title>(.+?)</title>}
-      rescue StandardError
+      rescue StandardError => e
+        # タイトル抽出失敗時はフォールバック名が使われるため、原因をデバッグログに残す
+        Common.log_debug("[entries] #{path} のタイトル抽出に失敗: #{e.class}: #{e.message}")
         nil
       end
       module_function :extract_html_title

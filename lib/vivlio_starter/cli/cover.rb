@@ -546,19 +546,6 @@ module VivlioStarter
         bleed_raw.to_s.gsub(/mm\z/i, '').to_f
       end
 
-      # サイズに bleed を追加（片側なので幅・高さそれぞれ2倍追加）
-      def self.add_bleed_to_size(base_size, bleed_mm)
-        return base_size if bleed_mm <= 0
-
-        bleed_px = (bleed_mm * DPI / 25.4).round
-        total_bleed_px = bleed_px * 2 # 両側分
-
-        {
-          width: base_size[:width] + total_bleed_px,
-          height: base_size[:height] + total_bleed_px,
-          mm: [base_size[:mm][0] + (bleed_mm * 2), base_size[:mm][1] + (bleed_mm * 2)]
-        }
-      end
     end
   end
 end
