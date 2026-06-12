@@ -8,6 +8,8 @@
 #   vs pdf:open のショートハンド
 # ================================================================
 
+require_relative '../guards'
+
 module VivlioStarter
   module CLI
     module SamovarCommands
@@ -29,6 +31,12 @@ module VivlioStarter
             print_usage
             return 0
           end
+
+          # 前提条件の検証（ProjectRoot ○）
+          # target は拡張子省略・sources/ 探索などの自動解決があるため
+          # PdfArtifactCheck は適用せず、解決失敗はドメイン層のメッセージに委ねる
+          guard_failure = Guards.precheck(Guards::RelaxedCheck.new(Guards::ProjectRootCheck.new))
+          return guard_failure if guard_failure
 
           PdfCommands.execute_open_pdf(build_options, target)
           0

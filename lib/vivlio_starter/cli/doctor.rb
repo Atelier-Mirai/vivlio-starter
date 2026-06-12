@@ -5,6 +5,8 @@
 # ================================================================
 # 責務:
 #   Vivlio Starter の動作に必要な外部ツールの診断と自動インストールを行う。
+#   あわせて config/ 配下の設定ファイルを診断し、--fix 時は scaffold から
+#   復元する（docs/specs/doctor-restore-and-plugin-tools-spec.md Phase 5）。
 #
 # 診断対象ツール:
 #   - Xcode Command Line Tools (macOS): ビルドツールチェーン
@@ -41,11 +43,33 @@ require 'open-uri'
 require 'tmpdir'
 require 'json'
 
+require_relative 'guards'
+require_relative 'doctor/config_salvager'
+
 module VivlioStarter
   module CLI
     # 環境診断・ツールインストールコマンド
     module DoctorCommands
       module_function
+
+      # scaffold 側 config/ への絶対パス（設定ファイル復元の供給元）
+      SCAFFOLD_CONFIG_DIR = File.expand_path('../../project_scaffold/config', __dir__).freeze
+
+      # 必須 YAML（Common::REQUIRED_YAML_FILES）以外で scaffold から復元する設定ファイル。
+      # 破損判定はせず「欠落時のみ」復元する（spec §3.1）
+      OPTIONAL_CONFIG_FILES = %w[textlint_allowlist.yml textlint_prh.yml .textlintrc.yml _README.md].freeze
+
+      # 欠落時のみ scaffold から再帰コピーで復元する辞書ディレクトリ（中身の個別検証はしない）
+      CONFIG_DIR_ENTRIES = %w[spellcheck_dictionaries textlint_dictionaries].freeze
+
+      # Enhanced Mode（vivlio-starter-pdf）専用の OCR 系ツール。
+      # プラグイン未導入時は不足してもエラー扱いせず 🟡 注記に回す（spec §5.1）。
+      # poppler（pdfinfo / pdftoppm）は本体のビルドでも使うため含めない
+      OCR_OPTIONAL_TOOLS = %w[tesseract tesseract-lang vips].freeze
+
+      # Enhanced Mode プラグインの gem 名（Pdf::PLUGIN_GEM_NAME と同値。
+      # provider.rb は pdf/reader 等の重い require を伴うため doctor からは参照しない）
+      PDF_PLUGIN_GEM_NAME = 'vivlio-starter-pdf'
 
       TEXTLINT_NPM_PACKAGES = %w[
         textlint
@@ -119,6 +143,10 @@ module VivlioStarter
 
         Common.log_always('🔎 環境診断を開始します…')
 
+        # --- Phase: 設定ファイル診断・復元（書籍プロジェクト内のみ）---
+        diagnose_config_files!(options)
+
+        # --- Phase: 外部ツール診断 ---
         # macOS では Xcode Command Line Tools が多くのビルドツールの前提条件
         if is_macos
           clt_ok = system('xcode-select -p >/dev/null 2>&1')
@@ -152,6 +180,9 @@ module VivlioStarter
           'rouge' => nil # コードブロック言語推定用
         }
 
+        plugin_installed = pdf_plugin_installed?
+        ocr_optional_missing = []
+
         checks.each do |label, cmd|
           ok = case label
                when 'imagemagick'
@@ -174,6 +205,10 @@ module VivlioStarter
 
           if ok
             Common.log_always("✅ #{label}: OK")
+          elsif OCR_OPTIONAL_TOOLS.include?(label) && !plugin_installed
+            # Enhanced Mode 専用ツールはプラグイン未導入の利用者にとってノイズのため
+            # エラーにせず、後段でまとめて 🟡 注記を出す（spec §5.1）
+            ocr_optional_missing << label
           else
             Common.log_error("#{label}: 見つかりません")
             missing << label
@@ -188,6 +223,10 @@ module VivlioStarter
             missing << 'ssl-certificates'
           end
         end
+
+        report_ocr_optional_tools(ocr_optional_missing)
+        # --fix 時は OCR ツールも従来どおり先回りインストールする（spec §5.1）
+        missing.concat(ocr_optional_missing) if options[:fix]
 
         os_family = detect_os_family(os)
         waifu2x_install_root = nil
@@ -204,7 +243,6 @@ module VivlioStarter
         end
 
         if missing.empty?
-          copy_textlint_assets_from_scaffold! if options[:fix]
           Common.log_always('🎉 すべての必要ツールが見つかりました')
           return
         end
@@ -385,8 +423,7 @@ module VivlioStarter
             if system('which npm >/dev/null 2>&1')
               Common.log_always('textlint と推奨 Textlint ルールをグローバルインストールします…')
               packages = TEXTLINT_NPM_PACKAGES.map { |pkg| Shellwords.escape(pkg) }.join(' ')
-              installed = system("npm install --loglevel=error -g #{packages}")
-              copy_textlint_assets_from_scaffold! if installed
+              system("npm install --loglevel=error -g #{packages}")
             else
               Common.log_always('npm が見つかりません。node のインストール後に `npm install -g textlint textlint-rule-preset-ja-technical-writing ...` を実行してください。')
             end
@@ -420,6 +457,8 @@ module VivlioStarter
           still_missing << label unless ok
         end
         still_missing << 'ssl-certificates' if is_macos && !ssl_certificate_configured?
+        # プラグイン未導入の利用者には OCR ツールの不足を ❗ として残さない（spec §5.1）
+        still_missing.reject! { OCR_OPTIONAL_TOOLS.include?(it) } unless plugin_installed
         if still_missing.empty?
           Common.log_always('✅ すべてのツールがインストールされました')
         else
@@ -529,86 +568,164 @@ module VivlioStarter
         end
       end
 
-      def copy_textlint_assets_from_scaffold!
-        gem_root = File.expand_path('../../..', __dir__)
-        scaffold_root = File.join(gem_root, 'lib', 'project_scaffold')
-        target_config_dir = File.join(Dir.pwd, 'config')
+      # ============================================================
+      # 設定ファイルの診断・復元（spec §3 機能 A / §3D 機能 D）
+      # ============================================================
+      # 旧 copy_textlint_* 群はここへ統合した（scaffold ルート直下を参照して
+      # いたため実際には何もコピーされない不具合も同時に解消）。
 
-        FileUtils.mkdir_p(target_config_dir)
+      # config/ 配下を診断し、--fix 時は scaffold から復元する。
+      # 無関係なディレクトリに config/ を生成しないため、書籍プロジェクトの
+      # 痕跡（config/ または vivliostyle.config.js）が無い場所では何もしない。
+      def diagnose_config_files!(options)
+        return unless book_project_dir?
 
-        copy_textlint_config(scaffold_root, target_config_dir)
-        copy_textlint_allowlist(scaffold_root, target_config_dir)
-        copy_textlint_prh(scaffold_root, target_config_dir)
-        copy_textlint_dictionaries(scaffold_root, target_config_dir)
-      rescue StandardError => e
-        Common.log_warn("textlint 設定ファイルのコピーに失敗しました: #{e.class}: #{e.message}")
-      end
-
-      def copy_textlint_config(scaffold_root, target_config_dir)
-        source_config = File.join(scaffold_root, '.textlintrc.yml')
-        return unless File.file?(source_config)
-
-        dest_config = File.join(target_config_dir, '.textlintrc.yml')
-        if File.exist?(dest_config)
-          Common.log_always('ℹ️ config/.textlintrc.yml は既に存在するためコピーをスキップしました。')
-        else
-          FileUtils.cp(source_config, dest_config)
-          Common.log_always('✅ config/.textlintrc.yml を配置しました。')
-        end
-      end
-
-      def copy_textlint_allowlist(scaffold_root, target_config_dir)
-        source_allowlist = File.join(scaffold_root, 'textlint_allowlist.yml')
-        return unless File.file?(source_allowlist)
-
-        dest_allowlist = File.join(target_config_dir, 'textlint_allowlist.yml')
-        if File.exist?(dest_allowlist)
-          Common.log_always('ℹ️ config/textlint_allowlist.yml は既に存在するためコピーをスキップしました。')
-        else
-          FileUtils.cp(source_allowlist, dest_allowlist)
-          Common.log_always('✅ config/textlint_allowlist.yml を配置しました。')
-        end
-      end
-
-      def copy_textlint_prh(scaffold_root, target_config_dir)
-        source_prh = File.join(scaffold_root, 'textlint_prh.yml')
-        return unless File.file?(source_prh)
-
-        dest_prh = File.join(target_config_dir, 'textlint_prh.yml')
-        if File.exist?(dest_prh)
-          Common.log_always('ℹ️ config/textlint_prh.yml は既に存在するためコピーをスキップしました。')
-        else
-          FileUtils.cp(source_prh, dest_prh)
-          Common.log_always('✅ config/textlint_prh.yml を配置しました。')
-        end
-      end
-
-      def copy_textlint_dictionaries(scaffold_root, target_config_dir)
-        source_dir = File.join(scaffold_root, 'textlint_dictionaries')
-        return unless Dir.exist?(source_dir)
-
-        dest_dir = File.join(target_config_dir, 'textlint_dictionaries')
-        FileUtils.mkdir_p(dest_dir)
-
-        copied = false
-        Dir.children(source_dir).each do |entry|
-          src = File.join(source_dir, entry)
-          dst = File.join(dest_dir, entry)
-          next if File.exist?(dst)
-
-          if File.directory?(src)
-            FileUtils.cp_r(src, dst)
-          else
-            FileUtils.cp(src, dst)
+        # --- Phase: 検出 ---
+        # 必須 YAML は破損（YAML 解析不能）まで判定し、その他は欠落のみを見る
+        broken = {}
+        Common::REQUIRED_YAML_FILES.each do |path|
+          case Guards::ConfigValidityCheck.diagnose(path)
+          in [:ok, _] then next
+          in [:missing, _]
+            broken[path] = :missing
+            Common.log_error("設定ファイルが見つかりません: #{path}")
+          in [:corrupt, detail]
+            broken[path] = :corrupt
+            Common.log_error("設定ファイルが不正です: #{path}（YAML 解析に失敗）", detail:)
           end
-          copied = true
         end
 
-        if copied
-          Common.log_always('✅ config/textlint_dictionaries/ を更新しました。')
-        else
-          Common.log_always('ℹ️ config/textlint_dictionaries/ は既に最新です。')
+        missing_files = missing_optional_config_files
+        missing_dirs = missing_config_dirs
+        missing_files.each { Common.log_warn("設定ファイルが見つかりません: config/#{it}") }
+        missing_dirs.each  { Common.log_warn("設定ディレクトリが見つかりません: config/#{it}/") }
+
+        if broken.empty? && missing_files.empty? && missing_dirs.empty?
+          Common.log_always('✅ config/ 設定ファイル: OK')
+          return
         end
+
+        unless options[:fix]
+          Common.log_always('        修復するには vs doctor --fix を実行してください（破損ファイルはバックアップを取得します）')
+          return
+        end
+
+        return unless confirm_config_restore?(options)
+
+        # --- Phase: 復元 ---
+        FileUtils.mkdir_p(Common::CONFIG_DIR)
+        broken.each { |path, status| restore_required_yaml!(path, corrupt: status == :corrupt) }
+        missing_files.each { restore_scaffold_file!(it) }
+        missing_dirs.each  { restore_scaffold_dir!(it) }
+      rescue StandardError => e
+        Common.log_warn("設定ファイルの診断・復元に失敗しました: #{e.class}: #{e.message}")
+      end
+
+      # 書籍プロジェクトの中かどうか（復元対象の config/ か、プロジェクトの
+      # 目印である vivliostyle.config.js があれば対象とみなす）
+      def book_project_dir? = Dir.exist?(Common::CONFIG_DIR) || File.file?(Common::VIVLIOSTYLE_CONFIG_FILE)
+
+      def missing_optional_config_files
+        OPTIONAL_CONFIG_FILES.reject { File.file?(File.join(Common::CONFIG_DIR, it)) }
+                             .select { File.file?(File.join(SCAFFOLD_CONFIG_DIR, it)) }
+      end
+
+      def missing_config_dirs
+        CONFIG_DIR_ENTRIES.reject { Dir.exist?(File.join(Common::CONFIG_DIR, it)) }
+                          .select { Dir.exist?(File.join(SCAFFOLD_CONFIG_DIR, it)) }
+      end
+
+      # 復元の最終確認。--yes または非対話（パイプ実行・CI）では自動で進める。
+      # 破損ファイルは必ず .bak へ退避するため、非対話でも非破壊（spec §3.2）
+      def confirm_config_restore?(options)
+        return true if options[:yes] || !$stdin.tty?
+
+        $stdout.print('設定ファイルを初期状態から復元しますか？（破損ファイルはバックアップを取得します） [y/N]: ')
+        ans = $stdin.gets
+        return true if ans && ans.strip.downcase == 'y'
+
+        Common.log_always('設定ファイルの復元をスキップしました。')
+        false
+      end
+
+      # 必須 YAML 1 件を復元する。破損時は必ず .bak へ退避した上で（spec §3.2）、
+      # サルベージ（機能 D）→ 失敗なら素の scaffold 復元の順で試みる。
+      def restore_required_yaml!(path, corrupt:)
+        scaffold_path = File.join(SCAFFOLD_CONFIG_DIR, File.basename(path))
+        return Common.log_warn("scaffold に同名ファイルが無いため復元できません: #{path}") unless File.file?(scaffold_path)
+
+        backup_path = nil
+        salvaged = nil
+        if corrupt
+          corrupt_content = File.read(path, encoding: 'utf-8')
+          backup_path = backup_corrupt_file!(path)
+          # サルベージは best-effort。失敗は握りつぶして素の scaffold 復元へ進む（spec §3D.1）
+          salvaged = begin
+            ConfigSalvager.salvage(path, corrupt_content, scaffold_path)
+          rescue StandardError => e
+            Common.log_debug("サルベージに失敗したため初期状態から復元します: #{e.class}: #{e.message}")
+            nil
+          end
+        end
+
+        if salvaged
+          File.write(path, salvaged.content, encoding: 'utf-8')
+          Common.log_always("✅ #{salvaged.summary}")
+          salvaged.notes.each { Common.log_always("        #{it}") }
+        else
+          # book.yml はテンプレートのため、素の復元でもプレースホルダを既定値へ展開する
+          content = if File.basename(path) == 'book.yml'
+                      ConfigSalvager.render_book_yml(scaffold_path)
+                    else
+                      File.read(scaffold_path, encoding: 'utf-8')
+                    end
+          File.write(path, content, encoding: 'utf-8')
+          Common.log_always("✅ #{path} を初期状態から復元しました")
+        end
+        Common.log_always("        以前の設定は #{backup_path} から書き戻せます") if backup_path
+      end
+
+      # 破損ファイルを <path>.bak.<timestamp> へ退避する（機能 A の安全規約）
+      def backup_corrupt_file!(path)
+        backup_path = "#{path}.bak.#{Time.now.strftime('%Y%m%d_%H%M%S')}"
+        FileUtils.mv(path, backup_path)
+        Common.log_always("        破損したファイルを #{backup_path} へ退避しました")
+        backup_path
+      end
+
+      def restore_scaffold_file!(basename)
+        FileUtils.cp(File.join(SCAFFOLD_CONFIG_DIR, basename), File.join(Common::CONFIG_DIR, basename))
+        Common.log_always("✅ config/#{basename} を初期状態から復元しました")
+      end
+
+      def restore_scaffold_dir!(basename)
+        FileUtils.cp_r(File.join(SCAFFOLD_CONFIG_DIR, basename), File.join(Common::CONFIG_DIR, basename))
+        Common.log_always("✅ config/#{basename}/ を初期状態から復元しました")
+      end
+
+      # ============================================================
+      # プラグイン外部ツールの診断統合（spec §5 機能 C）
+      # ============================================================
+
+      # Enhanced Mode プラグインの導入有無（OCR ツールの診断ラベル出し分け用）。
+      # provider.rb と異なり require はせず、インストール済み gemspec の有無のみを見る
+      # （doctor は判定だけが目的で、プラグイン本体や HexaPDF のロードは不要なため）
+      def pdf_plugin_installed?
+        Gem.path.any? { Dir.glob(File.join(it, 'specifications', "#{PDF_PLUGIN_GEM_NAME}-*.gemspec")).any? }
+      rescue StandardError
+        false
+      end
+
+      # プラグイン未導入時の OCR ツール案内（不足でもエラー扱いにしない / spec §5.2）
+      def report_ocr_optional_tools(labels)
+        return if labels.empty?
+
+        lines = []
+        lines << '- tesseract / tesseract-lang（OCR エンジン）' if labels.intersect?(%w[tesseract tesseract-lang])
+        lines << '- vips（画像処理）' if labels.include?('vips')
+        lines << "gem install #{PDF_PLUGIN_GEM_NAME} 後、vs doctor --fix でまとめて導入できます"
+        Common.log_warn('任意ツール（pdf:read Enhanced Mode 用・vivlio-starter-pdf 利用時に必要）:',
+                        detail: lines.join("\n"))
       end
 
       # 不足しているツールの表示名マッピングを返します。

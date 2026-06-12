@@ -63,10 +63,16 @@ module VivlioStarter
             return 0
           end
 
-          # 前提条件の検証（docs/specs/precondition-guard-spec.md）
-          # preflight は診断コマンドのため、catalog 未登録原稿の一覧も 🟡 で知らせる
+          # 前提条件の網羅的診断（docs/specs/precondition-guard-spec.md Phase 4）
+          # preflight は診断コマンドのため build より広く全 Check を実行する。
+          # Guard.run! は全違反をログしてから停止判定するため、複数の問題を一度に報告できる
           Guards::Guard.run!(
             Guards::ProjectRootCheck.new,
+            Guards::CatalogFileCheck.new,
+            Guards::CatalogEntriesCheck.new,
+            Guards::ContentsDirCheck.new,
+            Guards::VivliostyleConfigCheck.new,
+            Guards::NodeCheck.new,
             Guards::OrphanFileCheck.new
           )
 

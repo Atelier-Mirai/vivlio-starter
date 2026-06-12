@@ -132,6 +132,74 @@ module VivlioStarter
         end
       end
 
+      # ImagesDirCheck: images/ の存在チェック
+      def test_should_detect_missing_images_dir
+        Dir.mktmpdir('vs-guards') do |dir|
+          Dir.chdir(dir) do
+            violations = Guards::ImagesDirCheck.new.validate
+            assert_equal 1, violations.size
+            assert_predicate violations.first, :error?
+
+            FileUtils.mkdir_p('images')
+            assert_empty Guards::ImagesDirCheck.new.validate
+          end
+        end
+      end
+
+      # PdfArtifactCheck: パス未指定は検証スキップ（ドメイン層の自動解決に委ねる）
+      def test_should_skip_pdf_artifact_check_when_path_is_blank
+        assert_empty Guards::PdfArtifactCheck.new(nil).validate
+        assert_empty Guards::PdfArtifactCheck.new('').validate
+        assert_empty Guards::PdfArtifactCheck.new('   ').validate
+      end
+
+      # PdfArtifactCheck: 明示パスは実在を検証する
+      def test_should_verify_pdf_artifact_when_path_is_given
+        Dir.mktmpdir('vs-guards') do |dir|
+          Dir.chdir(dir) do
+            violations = Guards::PdfArtifactCheck.new('missing.pdf').validate
+            assert_equal 1, violations.size
+            assert_includes violations.first.message, 'missing.pdf'
+
+            File.write('exists.pdf', '%PDF-1.4')
+            assert_empty Guards::PdfArtifactCheck.new('exists.pdf').validate
+          end
+        end
+      end
+
+      # RelaxedCheck: :error を :warn に格下げする（○=推奨 の表現）
+      def test_should_downgrade_error_to_warn_with_relaxed_check
+        failing = Class.new(Guards::BaseCheck) do
+          define_method(:validate) do
+            [Guards::Violation.new(severity: :error, message: '違反', detail: nil)]
+          end
+        end.new
+
+        violations = Guards::RelaxedCheck.new(failing).validate
+
+        assert_equal 1, violations.size
+        assert_predicate violations.first, :warn?
+        assert_equal '違反', violations.first.message
+      end
+
+      # Guards.precheck: 合格なら nil、エラー違反なら 1 を返す（コマンド call 冒頭用）
+      def test_should_precheck_return_nil_on_pass_and_one_on_error
+        passing = Class.new(Guards::BaseCheck) { define_method(:validate) { [] } }.new
+        failing = Class.new(Guards::BaseCheck) do
+          define_method(:validate) do
+            [Guards::Violation.new(severity: :error, message: '違反', detail: nil)]
+          end
+        end.new
+
+        assert_nil Guards.precheck(passing)
+
+        out, = capture_io do
+          assert_equal 1, Guards.precheck(failing)
+        end
+        assert_includes out, '🔴 違反'
+        assert_includes out, '前提条件を満たしていません'
+      end
+
       private
 
       # config/ contents/ を備えた一時プロジェクトへ chdir して検証する

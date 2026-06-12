@@ -17,6 +17,7 @@
 # ================================================================
 
 require_relative '../metrics'
+require_relative '../guards'
 
 module VivlioStarter
   module CLI
@@ -37,6 +38,14 @@ module VivlioStarter
 
         def call
           return print_help if options[:help]
+
+          # 前提条件の検証（ProjectRoot ◎ / CatalogFile ○ / ContentsDir ◎）
+          guard_failure = Guards.precheck(
+            Guards::ProjectRootCheck.new,
+            Guards::RelaxedCheck.new(Guards::CatalogFileCheck.new),
+            Guards::ContentsDirCheck.new
+          )
+          return guard_failure if guard_failure
 
           targets = files || []
           MetricsCommands.execute_metrics(targets, build_options)

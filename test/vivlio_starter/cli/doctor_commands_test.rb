@@ -8,12 +8,15 @@
 #
 # 検証内容:
 #   - 全ツール揃っている場合の正常終了
-#   - --fix オプションでの textlint 設定コピー
+#   - --fix オプションでの設定ファイル診断・復元の起動
 #   - macOS 環境での Homebrew インストール処理
+#   - OCR ツールのプラグイン連動診断（PT-01 / PT-02）
 #
 # テスト環境:
 #   - ホスト OS をスタブ化（darwin/linux）
 #   - command_exists? をスタブ化
+#   - diagnose_config_files! をスタブ化（テスト実行ディレクトリの config/ に
+#     復元処理が走らないよう隔離する）
 # ================================================================
 
 require 'test_helper'
@@ -29,11 +32,13 @@ module VivlioStarter
       def test_doctor_reports_success_when_environment_complete
         with_host_os('linux') do
           stub_logging do
-            DoctorCommands.stub :tesseract_language_available?, true do
-              DoctorCommands.stub :command_exists?, ->(_) { true } do
-                DoctorCommands.stub :waifu2x_available?, true do
-                  DoctorCommands.stub :install_waifu2x_macos!, ->(*) { flunk('install_waifu2x_macos! should not be called when waifu2x is available') } do
-                    capture_io { DoctorCommands.execute_doctor(options_context) }
+            DoctorCommands.stub :diagnose_config_files!, nil do
+              DoctorCommands.stub :tesseract_language_available?, true do
+                DoctorCommands.stub :command_exists?, ->(_) { true } do
+                  DoctorCommands.stub :waifu2x_available?, true do
+                    DoctorCommands.stub :install_waifu2x_macos!, ->(*) { flunk('install_waifu2x_macos! should not be called when waifu2x is available') } do
+                      capture_io { DoctorCommands.execute_doctor(options_context) }
+                    end
                   end
                 end
               end
@@ -42,12 +47,12 @@ module VivlioStarter
         end
       end
 
-      # 環境がすべて揃っている場合に --fix が textlint 設定ファイルをコピーすることを確認するテスト。
+      # --fix 実行時に設定ファイルの診断・復元（diagnose_config_files!）が起動することを確認するテスト。
       # ※ 開発環境のNode.jsやPlaywrightの有無に依存せずテストをパスさせるため、
       #    playwright_npm_available?, chromium_available?, rouge_gem_available? も true にスタブ化しています。
-      def test_doctor_fix_copies_textlint_assets_when_environment_complete
+      def test_doctor_fix_diagnoses_config_files_when_environment_complete
         with_host_os('darwin') do
-          copy_called = false
+          diagnose_called = false
 
           stub_logging do
             DoctorCommands.stub :ssl_certificate_configured?, true do
@@ -57,7 +62,7 @@ module VivlioStarter
                     DoctorCommands.stub :chromium_available?, true do
                       DoctorCommands.stub :rouge_gem_available?, true do
                         DoctorCommands.stub :command_exists?, ->(_) { true } do
-                          DoctorCommands.stub :copy_textlint_assets_from_scaffold!, -> { copy_called = true } do
+                          DoctorCommands.stub :diagnose_config_files!, ->(_opts) { diagnose_called = true } do
                             capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
                           end
                         end
@@ -69,7 +74,7 @@ module VivlioStarter
             end
           end
 
-          assert copy_called, 'textlint assets should be copied when --fix succeeds without reinstall'
+          assert diagnose_called, 'config files should be diagnosed when --fix succeeds without reinstall'
         end
       end
 
@@ -79,10 +84,12 @@ module VivlioStarter
 
           Common.stub :log_always, ->(message) { outputs << message } do
             stub_logging_without_echo do
-              DoctorCommands.stub :tesseract_language_available?, true do
-                DoctorCommands.stub :waifu2x_available?, true do
-                  DoctorCommands.stub :command_exists?, ->(cmd) { cmd != 'textlint' } do
-                    DoctorCommands.execute_doctor(options_context)
+              DoctorCommands.stub :diagnose_config_files!, nil do
+                DoctorCommands.stub :tesseract_language_available?, true do
+                  DoctorCommands.stub :waifu2x_available?, true do
+                    DoctorCommands.stub :command_exists?, ->(cmd) { cmd != 'textlint' } do
+                      DoctorCommands.execute_doctor(options_context)
+                    end
                   end
                 end
               end
@@ -97,7 +104,7 @@ module VivlioStarter
         with_host_os('darwin') do
           system_calls = []
           textlint_installed = false
-          copy_called = false
+          diagnose_called = false
 
           stub_logging do
             DoctorCommands.stub :ssl_certificate_configured?, true do
@@ -109,7 +116,7 @@ module VivlioStarter
                     else true
                     end
                   } do
-                    DoctorCommands.stub :copy_textlint_assets_from_scaffold!, -> { copy_called = true } do
+                    DoctorCommands.stub :diagnose_config_files!, ->(_opts) { diagnose_called = true } do
                       DoctorCommands.stub :system, lambda { |cmd|
                         system_calls << cmd
 
@@ -142,7 +149,7 @@ module VivlioStarter
             assert_includes npm_install_cmd, pkg, "npm install -g command should include #{pkg}"
           end
 
-          assert copy_called, 'textlint assets should be copied after installation'
+          assert diagnose_called, 'config files should be diagnosed before tool installation'
         end
       end
 
@@ -166,7 +173,7 @@ module VivlioStarter
                   DoctorCommands.stub :playwright_npm_available?, true do
                     DoctorCommands.stub :chromium_available?, true do
                       DoctorCommands.stub :rouge_gem_available?, true do
-                        DoctorCommands.stub :copy_textlint_assets_from_scaffold!, nil do
+                        DoctorCommands.stub :diagnose_config_files!, nil do
                           DoctorCommands.stub :command_exists?, lambda { |cmd|
                             case cmd
                             when 'vips' then vips_installed
@@ -214,7 +221,7 @@ module VivlioStarter
                 DoctorCommands.stub :playwright_npm_available?, true do
                   DoctorCommands.stub :chromium_available?, true do
                     DoctorCommands.stub :rouge_gem_available?, true do
-                      DoctorCommands.stub :copy_textlint_assets_from_scaffold!, nil do
+                      DoctorCommands.stub :diagnose_config_files!, nil do
                         DoctorCommands.stub :tesseract_language_available?, lambda { |language|
                           language == 'jpn' && tesseract_lang_installed
                         } do
@@ -269,7 +276,7 @@ module VivlioStarter
                   DoctorCommands.stub :playwright_npm_available?, true do
                     DoctorCommands.stub :chromium_available?, false do
                       DoctorCommands.stub :rouge_gem_available?, true do
-                        DoctorCommands.stub :copy_textlint_assets_from_scaffold!, nil do
+                        DoctorCommands.stub :diagnose_config_files!, nil do
                           DoctorCommands.stub :command_exists?, ->(_) { true } do
                             DoctorCommands.stub :system, lambda { |cmd|
                               system_calls << cmd
@@ -306,11 +313,13 @@ module VivlioStarter
           system_calls = []
 
           stub_logging do
-            DoctorCommands.stub :command_exists?, ->(_) { false } do
-              DoctorCommands.stub :waifu2x_available?, false do
-                DoctorCommands.stub :install_waifu2x_macos!, ->(*) { flunk('install_waifu2x_macos! should not be called on non-macOS') } do
-                  DoctorCommands.stub :system, ->(cmd) { system_calls << cmd; false } do
-                    capture_io { DoctorCommands.execute_doctor(options_context(fix: true)) }
+            DoctorCommands.stub :diagnose_config_files!, nil do
+              DoctorCommands.stub :command_exists?, ->(_) { false } do
+                DoctorCommands.stub :waifu2x_available?, false do
+                  DoctorCommands.stub :install_waifu2x_macos!, ->(*) { flunk('install_waifu2x_macos! should not be called on non-macOS') } do
+                    DoctorCommands.stub :system, ->(cmd) { system_calls << cmd; false } do
+                      capture_io { DoctorCommands.execute_doctor(options_context(fix: true)) }
+                    end
                   end
                 end
               end
@@ -318,6 +327,83 @@ module VivlioStarter
           end
 
           refute system_calls.any? { |cmd| cmd.include?('brew install') }
+        end
+      end
+
+      # PT-01: プラグイン未導入なら OCR ツールの不足は :error にせず 🟡 注記で案内する
+      def test_should_report_ocr_tools_as_optional_note_when_plugin_absent
+        with_host_os('linux') do
+          errors = []
+          warns = []
+
+          Common.stub :log_error, ->(msg, **) { errors << msg } do
+            Common.stub :log_warn, ->(msg, **) { warns << msg } do
+              Common.stub :log_always, nil do
+                Common.stub :log_info, nil do
+                  DoctorCommands.stub :diagnose_config_files!, nil do
+                    DoctorCommands.stub :pdf_plugin_installed?, false do
+                      DoctorCommands.stub :tesseract_language_available?, false do
+                        DoctorCommands.stub :waifu2x_available?, true do
+                          DoctorCommands.stub :playwright_npm_available?, true do
+                            DoctorCommands.stub :chromium_available?, true do
+                              DoctorCommands.stub :rouge_gem_available?, true do
+                                DoctorCommands.stub :command_exists?, ->(cmd) { !%w[tesseract vips].include?(cmd) } do
+                                  DoctorCommands.execute_doctor(options_context)
+                                end
+                              end
+                            end
+                          end
+                        end
+                      end
+                    end
+                  end
+                end
+              end
+            end
+          end
+
+          refute errors.any? { it.include?('tesseract') || it.include?('vips') },
+                 'プラグイン未導入時は OCR ツールの不足を 🔴 にしない'
+          assert warns.any? { it.include?('任意ツール') },
+                 'プラグイン未導入時は OCR ツールを 🟡 任意ツールとして案内する'
+        end
+      end
+
+      # PT-02: プラグイン導入済みなら OCR ツールの不足は通常どおり :error として報告する
+      def test_should_report_ocr_tools_as_missing_when_plugin_installed
+        with_host_os('linux') do
+          errors = []
+          warns = []
+
+          Common.stub :log_error, ->(msg, **) { errors << msg } do
+            Common.stub :log_warn, ->(msg, **) { warns << msg } do
+              Common.stub :log_always, nil do
+                Common.stub :log_info, nil do
+                  DoctorCommands.stub :diagnose_config_files!, nil do
+                    DoctorCommands.stub :pdf_plugin_installed?, true do
+                      DoctorCommands.stub :tesseract_language_available?, false do
+                        DoctorCommands.stub :waifu2x_available?, true do
+                          DoctorCommands.stub :playwright_npm_available?, true do
+                            DoctorCommands.stub :chromium_available?, true do
+                              DoctorCommands.stub :rouge_gem_available?, true do
+                                DoctorCommands.stub :command_exists?, ->(cmd) { !%w[tesseract vips].include?(cmd) } do
+                                  DoctorCommands.execute_doctor(options_context)
+                                end
+                              end
+                            end
+                          end
+                        end
+                      end
+                    end
+                  end
+                end
+              end
+            end
+          end
+
+          assert errors.any? { it.include?('tesseract') }, 'プラグイン導入時は tesseract の不足を 🔴 で報告する'
+          assert errors.any? { it.include?('vips') }, 'プラグイン導入時は vips の不足を 🔴 で報告する'
+          refute warns.any? { it.include?('任意ツール') }, 'プラグイン導入時は 🟡 任意ツール注記を出さない'
         end
       end
 

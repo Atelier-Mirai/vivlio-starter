@@ -18,6 +18,7 @@
 # ================================================================
 
 require_relative '../create'
+require_relative '../guards'
 
 module VivlioStarter
   module CLI
@@ -34,6 +35,14 @@ module VivlioStarter
 
         def call
           return print_usage if options[:help]
+
+          # 前提条件の検証（ProjectRoot ◎ / CatalogFile ○ / ContentsDir ◎）
+          guard_failure = Guards.precheck(
+            Guards::ProjectRootCheck.new,
+            Guards::RelaxedCheck.new(Guards::CatalogFileCheck.new),
+            Guards::ContentsDirCheck.new
+          )
+          return guard_failure if guard_failure
 
           CreateCommands.execute_create(build_options, names)
           0

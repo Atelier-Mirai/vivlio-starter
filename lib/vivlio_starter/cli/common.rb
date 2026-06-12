@@ -95,10 +95,22 @@ module VivlioStarter
           in Hash | Array
             # Valid
           else
-            abort_with_error("必須設定ファイルの内容が空、または形式が不正です: #{path}")
+            abort_with_error("必須設定ファイルの内容が空、または形式が不正です: #{path}\n        修復するには vs doctor --fix を実行してください（破損ファイルはバックアップを取得します）")
           end
         rescue StandardError => e
-          abort_with_error("必須設定ファイルの解析に失敗しました (#{path}): #{e.message}")
+          abort_with_error("必須設定ファイルの解析に失敗しました (#{path}): #{e.message}\n        修復するには vs doctor --fix を実行してください（破損ファイルはバックアップを取得します）")
+        end
+      end
+
+      # 必須 YAML がすべて存在し、かつ解析可能かを abort せずに判定する。
+      # モジュール初期ロードで使用（破損時に起動ごと止めてしまうと、修復手段で
+      # ある vs doctor --fix 自体が実行できなくなるため）
+      def required_yaml_files_loadable?
+        REQUIRED_YAML_FILES.all? do |path|
+          File.file?(path) &&
+            (YAML.safe_load(File.read(path, encoding: 'utf-8'), aliases: true, symbolize_names: true) in Hash | Array)
+        rescue StandardError
+          false
         end
       end
 
@@ -666,7 +678,10 @@ module VivlioStarter
       # 初期ロード実行（モジュール定義時は静かに）
       # プロジェクト外（book.yml なし）でも --version, --help, new, doctor が
       # 動作するよう、設定ファイルが見つからない場合は CONFIG を nil にとどめる。
-      if REQUIRED_YAML_FILES.all? { |f| File.file?(f) }
+      # 破損（YAML 解析不能）の場合も同様に nil とする。ロード時に abort すると
+      # 修復手段である vs doctor --fix 自体が起動できなくなるため、検出・報告は
+      # 各コマンドの ensure_configured! と doctor の診断に委ねる（Phase 5）。
+      if required_yaml_files_loadable?
         reload_configuration!(silent: true)
       else
         remove_const(:CONFIG) if const_defined?(:CONFIG)
@@ -679,7 +694,10 @@ module VivlioStarter
       def ensure_configured!
         return if configured?
 
-        abort_with_error('必須設定ファイルが見つかりません: config/book.yml')
+        # 欠落と破損で正確な理由を出し分けるため、ファイル単位の検証に委ねて abort する
+        # （破損時は vs doctor --fix による修復導線も案内される）
+        ensure_required_yaml_files!
+        abort_with_error('設定ファイルの読み込みに失敗しました: config/book.yml')
       end
 
       # ================================================================
@@ -788,7 +806,7 @@ module VivlioStarter
                       :current_log_level, :current_step_label, :default_cache,
                       :default_commands, :default_directories, :default_files,
                       :default_vfm, :default_vivliostyle, :log_always, :ensure_cache_dir!,
-                      :ensure_required_yaml_files!, :fetch_bool, :format_pt,
+                      :ensure_required_yaml_files!, :required_yaml_files_loadable?, :fetch_bool, :format_pt,
                       :generate_compressed_pdf_filename, :generate_epub_filename,
                       :generate_output_filename, :generate_print_pdf_filename,
                       :images_dir, :load_config, :load_page_presets, :log_action,

@@ -112,9 +112,12 @@
 
 - **new / import / doctor** は前提条件が薄い（むしろ「無い状態」から始める）ため Guard 対象外。
 - **build** が最重要。catalog 参照整合性（今回のエラー）を ◎ として必ず検証する。
-- **pdf 系・open** は build の成果物（PDF）に依存するため `PdfArtifactCheck` を ◎ とする。
+- **○（推奨）** は `RelaxedCheck` デコレータで :error を :warn に格下げして実行する（警告は出すが停止しない）。
+- **PdfArtifactCheck は明示パス指定時のみ検証**する。`vs open` / `vs pdf:read` および pdf 系の引数省略時は「ビルド生成物の自動選択」「sources/ 探索」「章トークン解決」がドメイン層に実装済みのため、解決ロジックを Check に複製せず、失敗時のメッセージもドメイン層（`MissingPdfError` 等）に委ねる。
+- **resize** は `vs resize <dir>` で任意ディレクトリを対象にできるため、ImagesDir ◎ は既定の `images/` を対象とする場合のみ適用する。
 - **OrphanFileCheck** は **preflight 専用の警告**とし、build では実行しない。catalog.yml で章をコメントアウトして除外するのはマニュアル記載の正規ワークフローであり、build のたびに未登録章の警告を出すと意図的な除外に対するノイズになるため。
-- **preflight** 自体は Guard としては ProjectRoot ◎ + OrphanFile △。内部で各 Check を網羅的に呼ぶ統合は Phase 4 で行う。
+- **preflight** は Phase 4 で全 Check（ProjectRoot / CatalogFile / CatalogEntries / ContentsDir / VivliostyleConfig / Node / OrphanFile）を網羅実行する。`Guard.run!` は全違反をログしてから停止判定するため、複数の問題を一度に報告できる。
+- **既存の二重防御**: `root_command#ensure_project_context!` が new/doctor/help 以外の全コマンドで `Common.ensure_configured!`（config 4ファイルの存在・妥当性検証）を実行している。コマンド単位の Guard はこれと重複する部分があるが、`Command#call` を直接呼ぶ経路（テスト等）でも前提が保証される自己完結性を優先して併存させる。
 
 ---
 
@@ -334,13 +337,13 @@ end
 
 ## 9. 段階的導入計画
 
-| フェーズ | 内容 | 優先度 |
-|---|---|---|
-| Phase 1 | `CatalogFileCheck` / `CatalogEntriesCheck` を build に導入（今回の再発防止） | 最高 |
-| Phase 2 | Guard / Check 基盤の整備、build へ全 Check 適用 | 高 |
-| Phase 3 | lint / metrics / index 系・pdf 系・open へ展開 | 中 |
-| Phase 4 | `vs preflight` を Check 層の上に再構成（網羅的診断へ統合） | 中 |
-| Phase 5 | `vs doctor` の環境チェックも NodeCheck 等を共有 | 低 |
+| フェーズ | 内容 | 優先度 | 状況 |
+|---|---|---|---|
+| Phase 1 | `CatalogFileCheck` / `CatalogEntriesCheck` を build に導入（今回の再発防止） | 最高 | ✅ 実装済み（2026-06-11） |
+| Phase 2 | Guard / Check 基盤の整備、build へ全 Check 適用 | 高 | ✅ 実装済み（2026-06-11） |
+| Phase 3 | lint / metrics / index 系・create / delete / rename / renumber / cover / resize / clean / pdf 系 / open へ展開（`RelaxedCheck` / `ImagesDirCheck` / `PdfArtifactCheck` / `Guards.precheck` を追加） | 中 | ✅ 実装済み（2026-06-11） |
+| Phase 4 | `vs preflight` を Check 層の上に再構成（全 Check の網羅的診断） | 中 | ✅ 実装済み（2026-06-11） |
+| Phase 5 | `vs doctor` で設定ファイル復元・プラグイン外部ツール診断統合（`ConfigValidityCheck` を共有）。詳細は別仕様書 `doctor-restore-and-plugin-tools-spec.md` | 低 | ✅ 実装済み（2026-06-11） |
 
 ---
 

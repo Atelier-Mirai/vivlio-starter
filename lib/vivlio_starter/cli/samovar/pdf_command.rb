@@ -20,6 +20,7 @@
 # ================================================================
 
 require_relative '../pdf/pdf_read_command'
+require_relative '../guards'
 
 module VivlioStarter
   module CLI
@@ -81,6 +82,13 @@ module VivlioStarter
         def call
           return print_compress_help if help_requested?
 
+          # 前提条件の検証（ProjectRoot ○ / PdfArtifact ◎: 明示パス指定時のみ）
+          guard_failure = Guards.precheck(
+            Guards::RelaxedCheck.new(Guards::ProjectRootCheck.new),
+            Guards::PdfArtifactCheck.new(input)
+          )
+          return guard_failure if guard_failure
+
           PdfCommands.execute_pdf_compress(build_options, input, output)
         end
 
@@ -138,6 +146,13 @@ module VivlioStarter
         def call
           return print_usage if help_requested?
 
+          # 前提条件の検証（ProjectRoot ○ / PdfArtifact ◎: 明示パス指定時のみ）
+          guard_failure = Guards.precheck(
+            Guards::RelaxedCheck.new(Guards::ProjectRootCheck.new),
+            Guards::PdfArtifactCheck.new(input)
+          )
+          return guard_failure if guard_failure
+
           PdfCommands.execute_pdf_pages(build_options, input)
           0
         rescue StandardError => e
@@ -187,6 +202,13 @@ module VivlioStarter
         def call
           return print_usage if help_requested?
 
+          # 前提条件の検証（ProjectRoot ○ / PdfArtifact ◎: 明示パス指定時のみ）
+          guard_failure = Guards.precheck(
+            Guards::RelaxedCheck.new(Guards::ProjectRootCheck.new),
+            Guards::PdfArtifactCheck.new(input)
+          )
+          return guard_failure if guard_failure
+
           PdfCommands.execute_pdf_rasterize(build_options, input)
           0
         rescue StandardError => e
@@ -234,6 +256,12 @@ module VivlioStarter
             print_usage
             return 0
           end
+
+          # 前提条件の検証（ProjectRoot ○）
+          # target は章トークンの場合があるため PdfArtifactCheck は適用せず、
+          # PDF パス解決の失敗はドメイン層（MissingPdfError）に委ねる
+          guard_failure = Guards.precheck(Guards::RelaxedCheck.new(Guards::ProjectRootCheck.new))
+          return guard_failure if guard_failure
 
           pdf_reader.call
           0

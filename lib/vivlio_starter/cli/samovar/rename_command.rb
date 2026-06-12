@@ -21,6 +21,7 @@
 # ================================================================
 
 require_relative '../rename'
+require_relative '../guards'
 
 module VivlioStarter
   module CLI
@@ -39,6 +40,15 @@ module VivlioStarter
 
         def call
           return print_usage if options[:help]
+
+          # 前提条件の検証（ProjectRoot ◎ / CatalogFile ◎ / ContentsDir ◎）
+          # RenumberCommand も本クラスを継承するため同じ Guard が適用される
+          guard_failure = Guards.precheck(
+            Guards::ProjectRootCheck.new,
+            Guards::CatalogFileCheck.new,
+            Guards::ContentsDirCheck.new
+          )
+          return guard_failure if guard_failure
 
           ensure_argument_count!
           executor.call(*arguments.first(2))

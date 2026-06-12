@@ -9,6 +9,7 @@
 # ================================================================
 
 require_relative '../cover'
+require_relative '../guards'
 
 module VivlioStarter
   module CLI
@@ -25,6 +26,13 @@ module VivlioStarter
 
         def call
           return print_usage if options[:help]
+
+          # 前提条件の検証（ProjectRoot ◎ / ImagesDir ○）
+          guard_failure = Guards.precheck(
+            Guards::ProjectRootCheck.new,
+            Guards::RelaxedCheck.new(Guards::ImagesDirCheck.new)
+          )
+          return guard_failure if guard_failure
 
           case target || 'auto'
           when 'auto', 'all'

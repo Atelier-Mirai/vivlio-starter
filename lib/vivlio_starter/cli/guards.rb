@@ -19,6 +19,7 @@
 require_relative 'token_resolver'
 require_relative 'build/catalog_loader'
 require_relative 'guards/base_check'
+require_relative 'guards/relaxed_check'
 require_relative 'guards/project_root_check'
 require_relative 'guards/catalog_file_check'
 require_relative 'guards/catalog_entries_check'
@@ -26,6 +27,9 @@ require_relative 'guards/orphan_file_check'
 require_relative 'guards/contents_dir_check'
 require_relative 'guards/vivliostyle_config_check'
 require_relative 'guards/node_check'
+require_relative 'guards/images_dir_check'
+require_relative 'guards/pdf_artifact_check'
+require_relative 'guards/config_validity_check'
 
 module VivlioStarter
   module CLI
@@ -57,6 +61,22 @@ module VivlioStarter
         # Common.format_detail は改行区切りの String を期待するため、
         # Check が行の配列で detail を返した場合はここで連結する
         def join_detail(detail) = detail.is_a?(Array) ? detail.join("\n") : detail
+      end
+
+      module_function
+
+      # コマンドの call 冒頭用ヘルパー。Guard を実行し、
+      # 違反時は要約を 🔴 で表示して終了コード 1 を返す（合格時は nil）。
+      #
+      # 使用例:
+      #   guard_failure = Guards.precheck(Guards::ProjectRootCheck.new)
+      #   return guard_failure if guard_failure
+      def precheck(*checks)
+        Guard.run!(*checks)
+        nil
+      rescue GuardError => e
+        Common.log_error(e.message)
+        1
       end
     end
   end

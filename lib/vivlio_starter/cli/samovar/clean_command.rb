@@ -18,6 +18,7 @@
 # ================================================================
 
 require_relative '../clean'
+require_relative '../guards'
 
 module VivlioStarter
   module CLI
@@ -38,6 +39,10 @@ module VivlioStarter
 
         def call
           return print_usage if options[:help]
+
+          # 前提条件の検証（docs/specs/precondition-guard-spec.md: clean は ProjectRoot ○）
+          guard_failure = Guards.precheck(Guards::RelaxedCheck.new(Guards::ProjectRootCheck.new))
+          return guard_failure if guard_failure
 
           CleanCommands.execute_clean(options.dup)
           0

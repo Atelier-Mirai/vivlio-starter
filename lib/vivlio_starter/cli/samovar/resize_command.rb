@@ -19,6 +19,7 @@
 # ================================================================
 
 require_relative '../resize'
+require_relative '../guards'
 
 module VivlioStarter
   module CLI
@@ -37,6 +38,13 @@ module VivlioStarter
         one :dir, '対象ディレクトリ', default: 'images', required: false
 
         def call
+          # 前提条件の検証（ProjectRoot ◎ / ImagesDir ◎）
+          # 既定の images/ 以外を対象にする場合（vs resize <dir>）は ImagesDir を検証しない
+          checks = [Guards::ProjectRootCheck.new]
+          checks << Guards::ImagesDirCheck.new if resolve_dir == Common::IMAGES_DIR
+          guard_failure = Guards.precheck(*checks)
+          return guard_failure if guard_failure
+
           preset = if options[:high]
                      '高精細'
                    elsif options[:low]

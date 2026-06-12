@@ -17,6 +17,7 @@
 # ================================================================
 
 require_relative '../lint'
+require_relative '../guards'
 
 module VivlioStarter
   module CLI
@@ -36,6 +37,15 @@ module VivlioStarter
 
         def call
           return print_help if options[:help]
+
+          # 前提条件の検証（ProjectRoot ◎ / CatalogFile ◎ / CatalogEntries ○ / ContentsDir ◎）
+          guard_failure = Guards.precheck(
+            Guards::ProjectRootCheck.new,
+            Guards::CatalogFileCheck.new,
+            Guards::RelaxedCheck.new(Guards::CatalogEntriesCheck.new),
+            Guards::ContentsDirCheck.new
+          )
+          return guard_failure if guard_failure
 
           targets = files || []
           LintCommands.execute_lint(targets, build_options)

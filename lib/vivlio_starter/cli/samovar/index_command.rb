@@ -22,6 +22,7 @@
 
 require_relative '../index'
 require_relative '../index/unified_index_manager'
+require_relative '../guards'
 
 module VivlioStarter
   module CLI
@@ -67,6 +68,15 @@ module VivlioStarter
         def call
           return print_usage if options[:help]
 
+          # 前提条件の検証（ProjectRoot ◎ / CatalogFile ◎ / CatalogEntries ○ / ContentsDir ◎）
+          guard_failure = Guards.precheck(
+            Guards::ProjectRootCheck.new,
+            Guards::CatalogFileCheck.new,
+            Guards::RelaxedCheck.new(Guards::CatalogEntriesCheck.new),
+            Guards::ContentsDirCheck.new
+          )
+          return guard_failure if guard_failure
+
           ENV['VERBOSE'] = '1' if options[:verbose]
 
           # auto_discovery 設定を確認
@@ -103,6 +113,14 @@ module VivlioStarter
 
         def call
           return print_usage if options[:help]
+
+          # 前提条件の検証（ProjectRoot ◎ / CatalogFile ◎ / ContentsDir ◎）
+          guard_failure = Guards.precheck(
+            Guards::ProjectRootCheck.new,
+            Guards::CatalogFileCheck.new,
+            Guards::ContentsDirCheck.new
+          )
+          return guard_failure if guard_failure
 
           ENV['VERBOSE'] = '1' if options[:verbose]
 
