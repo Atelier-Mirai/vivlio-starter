@@ -33,11 +33,18 @@ module VivlioStarter
           option '--high', '高品質プリセットを使用', key: :high
           option '--low', '軽量品質プリセットを使用', key: :low
           option '--delete-originals', '変換後に元の PNG/JPG ファイルを削除（確認あり）', default: false, key: :delete_originals
+          option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
         one :dir, '対象ディレクトリ', default: 'images', required: false
 
         def call
+          # --help が未定義だと位置引数 dir に「--help」が落ちてしまう（契約テスト CL-01 で検出）
+          if options[:help]
+            print_usage
+            return 0
+          end
+
           # 前提条件の検証（ProjectRoot ◎ / ImagesDir ◎）
           # 既定の images/ 以外を対象にする場合（vs resize <dir>）は ImagesDir を検証しない
           checks = [Guards::ProjectRootCheck.new]
@@ -68,6 +75,29 @@ module VivlioStarter
 
         def merged_options
           (parent&.options || {}).merge(options || {})
+        end
+
+        def print_usage
+          puts <<~USAGE
+            vs resize - 画像をWebPに変換します
+
+            Usage: vs resize [DIR] [options]
+
+            引数:
+              DIR                 対象ディレクトリ（省略時: images/。images/ プレフィックスは省略可）
+
+            オプション:
+              -f, --force         既存ファイルも強制再生成
+              --high              高品質プリセットを使用
+              --low               軽量品質プリセットを使用
+              --delete-originals  変換後に元の PNG/JPG ファイルを削除（確認あり）
+              -h, --help          このコマンドの使い方を表示
+
+            例:
+              vs resize                  # images/ 配下を標準品質で変換
+              vs resize 01-intro         # images/01-intro/ のみ変換
+              vs resize --high --force   # 高品質で全ファイル再生成
+          USAGE
         end
       end
     end

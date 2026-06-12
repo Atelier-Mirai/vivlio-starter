@@ -16,7 +16,7 @@ class << Rake.application
     end
 
     # 【重要】出力させたい理想の順番を明示的に指定
-    custom_order = ['test', 'test:layout', 'reinstall']
+    custom_order = ['test', 'test:layout', 'test:manual', 'test:package', 'test:release', 'test:canary', 'reinstall']
     displayable_tasks = displayable_tasks.sort_by { |t| custom_order.index(t.name) || 999 }
 
     # 表示幅を計算して綺麗にフォーマット出力
@@ -33,7 +33,8 @@ end
 Rake::TestTask.new(:test) do |t|
   t.libs << "test"
   t.test_files = FileList["test/**/*_test.rb"].exclude(
-    "test/**/page_layout/**/*_test.rb"
+    "test/**/page_layout/**/*_test.rb",
+    "test/**/release/**/*_test.rb"
   )
   t.warning = false
 end
@@ -56,6 +57,47 @@ end
 # 既存の "Run tests for layout" を完全にクリアしてから上書き
 Rake::Task["test:layout"].clear_comments
 Rake::Task["test:layout"].comment = "判型テスト（vs build を実際に実行する統合テスト）"
+
+# ------------------------------------------------------------------
+# RC 品質保証テスト群（docs/specs/test-suite-expansion-spec.md §3）
+# 実ビルドを伴うため通常テストからは除外されている
+# ------------------------------------------------------------------
+namespace :test do
+  # マニュアル実体の実ビルドと成果物検査（MB / FT / EP / ID）
+  Rake::TestTask.new(:manual) do |t|
+    t.libs << "test"
+    t.test_files = FileList["test/vivlio_starter/release/**/*_test.rb"].exclude(
+      "test/**/packaging_test.rb",
+      "test/**/canary_test.rb"
+    )
+    t.warning = false
+  end
+
+  # gem ビルド → 隔離インストール → 動作確認（PK）
+  Rake::TestTask.new(:package) do |t|
+    t.libs << "test"
+    t.pattern = "test/vivlio_starter/release/packaging_test.rb"
+    t.warning = false
+  end
+
+  # 上流（@vivliostyle/cli 最新版）での破壊検知（CN）。リリース判定には含めない
+  Rake::TestTask.new(:canary) do |t|
+    t.libs << "test"
+    t.pattern = "test/vivlio_starter/release/canary_test.rb"
+    t.warning = false
+  end
+
+  # RC 前総点検（canary は上流要因のため含めない）
+  task release: ['test', 'test:layout', 'test:manual', 'test:package']
+end
+
+Rake::Task["test:manual"].clear_comments
+Rake::Task["test:manual"].comment = "マニュアル実ビルド + 成果物検査（警告ゼロ / フォント / EPUB / 冪等性）"
+Rake::Task["test:package"].clear_comments
+Rake::Task["test:package"].comment = "パッケージング E2E（gem build → 隔離インストール → ビルド確認）"
+Rake::Task["test:canary"].clear_comments
+Rake::Task["test:canary"].comment = "依存カナリア（@vivliostyle/cli 最新版での破壊検知）"
+Rake::Task["test:release"].comment = "RC 前総点検（test → layout → manual → package を一括実行）"
 
 # デフォルトタスク（rake -T には出さない）
 task default: :test

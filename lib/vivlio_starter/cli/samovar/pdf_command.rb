@@ -245,11 +245,13 @@ module VivlioStarter
       class PdfReadCommand < Samovar::Command
         self.description = 'PDF を Markdown へ変換します'
 
-        one :target, '章トークンまたは PDF パス', required: false
-
+        # options を位置引数より先に宣言する。逆順だと Samovar が `--help` を
+        # 章トークン（target）として消費してしまう（契約テスト CL-01 で検出）
         options do
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
+
+        one :target, '章トークンまたは PDF パス', required: false
 
         def call
           if options[:help] || target.to_s.strip.empty?

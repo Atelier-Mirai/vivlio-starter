@@ -71,6 +71,12 @@ module VivlioStarter
           catalog = load_catalog_entries
           reset_number_tracking(catalog)
 
+          # 非 UTF-8 端末からの引数は不正バイト列を含み得る（ファズテスト FZ-03 で検出）。
+          # 後段の正規表現が ArgumentError で落ちないよう不正バイトを除去する。
+          # NUL は妥当な UTF-8 だが File 系 API が ArgumentError を出すため併せて除去する
+          # （該当トークンは単に invalid Entry / 不一致として扱われる）
+          tokens = tokens.map { it.to_s.dup.force_encoding(Encoding::UTF_8).scrub('').delete("\0") }
+
           if tokens.empty?
             # 引数なし：catalog.yml にある全章を対象とする (build 等)
             catalog

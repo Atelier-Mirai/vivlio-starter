@@ -62,9 +62,14 @@ module VivlioStarter
         # @param scaffold_path [String] scaffold 側の同名ファイル
         # @return [Result, nil]
         def salvage(path, corrupt_content, scaffold_path)
+          # 破損ファイルは不正な UTF-8 バイト列を含み得る（ファズテスト FZ-01 で検出）。
+          # 行スキャンの正規表現が ArgumentError で落ちないよう不正バイトを除去する。
+          # 拾えない行が増えるだけで best-effort の範囲（§3D.1）
+          content = corrupt_content.to_s.dup.force_encoding(Encoding::UTF_8).scrub('')
+
           case File.basename(path)
           when 'catalog.yml' then salvage_catalog
-          when 'book.yml' then salvage_book(corrupt_content, scaffold_path)
+          when 'book.yml' then salvage_book(content, scaffold_path)
           end
         end
 

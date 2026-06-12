@@ -11,8 +11,11 @@ module VivlioStarter
         def validate
           return [] unless File.file?(Build::CatalogLoader::CATALOG_FILE)
 
-          catalog_basenames = TokenResolver::Resolver.new.resolve.map(&:basename)
-          orphans = contents_basenames - catalog_basenames
+          # macOS は濁点付きファイル名を NFD で保持することがあり、catalog の
+          # NFC 表記と文字列比較で不一致になる（NF-02 で検出）。両辺を NFC へ
+          # 揃えて正規化差だけのファイルを孤立扱いしない
+          catalog_basenames = TokenResolver::Resolver.new.resolve.map { it.basename.unicode_normalize(:nfc) }
+          orphans = contents_basenames.map { it.unicode_normalize(:nfc) } - catalog_basenames
           return [] if orphans.empty?
 
           [warning(

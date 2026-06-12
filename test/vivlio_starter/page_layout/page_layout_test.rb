@@ -23,15 +23,12 @@
 require "minitest/autorun"
 require "fileutils"
 require "yaml"
+require_relative "../support/build_helper"
 
-begin
-  require "pdf/reader"
-rescue LoadError
-  abort <<~MSG
-    pdf-reader gem が見つかりません。インストールしてください：
-      gem install pdf-reader
-  MSG
-end
+# BookYmlPatcher / VsBuilder は support/build_helper.rb へ移設した
+# （docs/specs/test-suite-expansion-spec.md §15。検証ロジックは不変更）
+BookYmlPatcher = VsTestSupport::BookYmlPatcher
+VsBuilder = VsTestSupport::VsBuilder
 
 # =============================================================================
 # 定数
@@ -76,60 +73,6 @@ TARGET_PRESETS = %w[
 TOLERANCE_PT = 2.0
 
 BOOK_YML_PATH = "config/book.yml"
-
-# =============================================================================
-# BookYmlPatcher — config/book.yml のプリセット行を安全に書き換える
-# =============================================================================
-module BookYmlPatcher
-  # 指定プリセットだけ有効化し、残りをコメントアウト。
-  # ブロックを渡すと実行後に元の内容へ自動復元する。
-  def self.apply(preset_name, &)
-    raise "#{BOOK_YML_PATH} が見つかりません" unless File.exist?(BOOK_YML_PATH)
-
-    original = File.read(BOOK_YML_PATH)
-
-    patched = original.lines.map do |line|
-      next line unless line.match?(/^\s*#?\s*use:\s*[a-z0-9_]+/)
-
-      if line.match?(/use:\s*#{Regexp.escape(preset_name)}(\s|$)/)
-        # 先頭の「# 」を除去して有効化（インデント保持）
-        line.sub(/^(\s*)#\s*/, '\1').rstrip + "\n"
-      else
-        # コメントアウト（既にコメントならそのまま）
-        line.match?(/^\s*#/) ? line : line.sub(/^(\s*)/, '\1# ')
-      end
-    end.join
-
-    File.write(BOOK_YML_PATH, patched)
-
-    if block_given?
-      yield
-    end
-  ensure
-    File.write(BOOK_YML_PATH, original) if block_given? && original
-  end
-end
-
-# =============================================================================
-# VsBuilder — vs build の実行と PDF 探索
-# =============================================================================
-module VsBuilder
-  OUTPUT_DIRS = %w[dist output _dist _output].freeze
-
-  def self.build!
-    output = `vs build 2>&1`
-    [$?.success?, output]
-  end
-
-  # 直近に更新されたPDFを返す
-  def self.find_latest_pdf
-    candidates = OUTPUT_DIRS
-      .filter_map { |dir| Dir.glob("#{dir}/**/*.pdf") if Dir.exist?(dir) }
-      .flatten
-    candidates += Dir.glob("*.pdf")
-    candidates.max_by { |f| File.mtime(f) }
-  end
-end
 
 # =============================================================================
 # PdfBoxVerifier — PDF の各ページボックスを期待値と照合する

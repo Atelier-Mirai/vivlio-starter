@@ -17,12 +17,14 @@ module VivlioStarter
       class OpenCommand < Samovar::Command
         self.description = '生成されたPDFを開く（macOS専用）'
 
-        one :target, 'PDFファイル名（省略時はビルド生成物を自動選択）', required: false
-
+        # options を位置引数より先に宣言する。逆順だと Samovar が `--help` を
+        # PDF ファイル名（target）として消費してしまう（契約テスト CL-01 で検出）
         options do
           option '-v/--verbose', '冗長出力', default: false, key: :verbose
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
+
+        one :target, 'PDFファイル名（省略時はビルド生成物を自動選択）', required: false
 
         def call
           apply_verbose

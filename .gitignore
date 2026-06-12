@@ -20,6 +20,14 @@ pkg/*.gem
 !/covers/*.svg
 /entries.js
 
+# Vivlio Starter 中間生成ファイル（vs build が一時展開し、通常は最終 clean で削除される。
+# --no-clean 実行時やビルド中断時に残ることがあるためコミット対象から除外する）
+_toc.md
+_toc.html
+_part[0-9]*.md
+_part[0-9]*.html
+_index_matches.yml
+
 # Vivliostyle build artifacts
 /.vivliostyle/
 
