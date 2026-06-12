@@ -11,9 +11,10 @@
 
 #### 既知の不具合（未修正）
 
-（現在なし）
+- [EPUB] **生成 EPUB に epubcheck の構造 ERROR 35 件**（EP-02 で検出。FATAL 0 / ERROR 35 / WARNING 0）。内訳は CSS-008（26件：PDF 用 `@page` マージンボックス CSS を EPUB に流用＋gem 雛形スタイルシートの二重同梱）/ RSC-005（7件：脚注 ID `fn1` の重複・絵文字 `<img>` の `width="1em"` 非整数）/ RSC-007（2件：雛形 CSS が参照する未同梱画像）。閲覧用・入稿用 PDF には影響しない EPUB 専用の問題。調査記録は `docs/specs/epub-validation-findings.md`。修正は別仕様書で対応予定のため、当面 EPUB は RC ゲート外とする。
 
 #### 実装済み
+- [Low] **EP-02（epubcheck）有効化と CN（カナリア）実機確認**: `epubcheck` を導入して EP-02 を初回実行し、EPUB 生成側の構造 ERROR 35 件を検出（上記「既知の不具合」に記録、テストは緩めない）。あわせて `rake test:canary` を実機実行し、`@vivliostyle/cli` **11.0.1**（ピン留め 10.5.0 からのメジャー更新）でマニュアルが正常ビルド・Type 3 再発なし・新規警告なしを確認。`rake test:layout` がプリセット切替後に `stylesheets/page-settings.css` / `vivliostyle.config.js` を最終プリセット値で残していた既存挙動を、`BookYmlPatcher.apply` のブロック復元に含めて解消（テスト後の `git status` が汚れない）。
 - [Medium] **テスト群が検出した残課題 3 件を解消**: (1) gs 不在時のビルド破壊を実行文脈の分離（pipeline はスキップ続行 / 単体 `vs pdf:compress` は 🔴 exit 1）で修正、(2) 無効入力（未知コマンド・オプション）の終了コードを POSIX 慣習の exit 1 へ変更、(3) マニュアルの旧コマンド表記（`vs cover:a4` 系・`vs index:build`）を現行 CLI へ追従（scaffold 同期）。あわせて DG-04（waifu2x → ImageMagick フォールバック）を実画像テストで有効化し、今回導入したテスト群の skip をゼロにした。
 - [High] **RC 品質保証テスト群を導入（テストスイート拡充）**: `docs/specs/test-suite-expansion-spec.md` に基づき 11 グループ（マニュアルフルビルド警告ゼロ / PDF フォント検査 / パッケージング E2E / ファズ / 機能縮退 / NFD / CLI 契約 / ドキュメント整合 / 冪等性 / EPUB / 依存カナリア）を新設。`rake test:manual` / `test:package` / `test:release` / `test:canary` タスクを追加。導入過程でファズ・契約テストが実不具合 5 件を検出（4 件修正・1 件課題化）。詳細は `Unreleased > Added` / `Fixed` に記載。
 - [Medium] **doctor の設定ファイル復元・サルベージ・プラグイン連動診断（Phase 5）**: `vs doctor --fix` で config/ 配下の欠落・破損ファイルを scaffold から復元（破損時は必ず .bak へ退避する非破壊設計）。破損 catalog.yml は contents/ から再構築、破損 book.yml は書名・著者などを行スキャンで best-effort 救出。OCR ツールはプラグイン未導入時に🟡任意ツール扱いへ。破損 YAML で CLI 起動自体が abort して修復不能だった問題も修正。詳細は `Unreleased > Added` に記載。

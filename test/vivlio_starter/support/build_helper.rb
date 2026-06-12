@@ -33,12 +33,24 @@ module VsTestSupport
   # BookYmlPatcher — config/book.yml のプリセット行などを安全に書き換える
   # ===========================================================================
   module BookYmlPatcher
+    # vs build が book.yml のページ設定から再生成する派生ファイル。
+    # プリセットを切り替えてビルドすると最終プリセットの値で上書きされ、
+    # book.yml だけ復元しても作業ツリーに差分が残る。apply のブロック終了時に
+    # book.yml と一緒に元の内容へ復元する（docs/specs/test-suite-expansion-spec.md §15）。
+    BUILD_GENERATED_FILES = [
+      File.join("stylesheets", "page-settings.css"),
+      "vivliostyle.config.js"
+    ].freeze
+
     # 指定プリセットだけ有効化し、残りをコメントアウト。
     # ブロックを渡すと実行後に元の内容へ自動復元する。
+    # ブロック内で vs build を実行すると派生ファイルも書き換わるため、
+    # それらも退避し、book.yml と一緒に復元する。
     def self.apply(preset_name, &)
       raise "#{BOOK_YML_PATH} が見つかりません" unless File.exist?(BOOK_YML_PATH)
 
       original = File.read(BOOK_YML_PATH)
+      generated_snapshot = snapshot_generated_files
 
       patched = original.lines.map do |line|
         next line unless line.match?(/^\s*#?\s*use:\s*[a-z0-9_]+/)
@@ -58,8 +70,29 @@ module VsTestSupport
         yield
       end
     ensure
-      File.write(BOOK_YML_PATH, original) if block_given? && original
+      if block_given?
+        File.write(BOOK_YML_PATH, original) if original
+        restore_generated_files(generated_snapshot) if generated_snapshot
+      end
     end
+
+    # BUILD_GENERATED_FILES の現在の内容を退避する（存在しなければ nil を記録）
+    def self.snapshot_generated_files
+      BUILD_GENERATED_FILES.to_h { |path| [path, (File.read(path) if File.exist?(path))] }
+    end
+    private_class_method :snapshot_generated_files
+
+    # 退避した派生ファイルを復元する。退避時に存在しなかったものは削除して元に戻す。
+    def self.restore_generated_files(snapshot)
+      snapshot.each do |path, content|
+        if content
+          File.write(path, content)
+        elsif File.exist?(path)
+          File.delete(path)
+        end
+      end
+    end
+    private_class_method :restore_generated_files
 
     # `key: value` 形式のトップレベル設定行を書き換える汎用版（EPUB 切替等に使用）。
     # 例: rewrite_line(/^(\s*)targets:.*$/, '\1targets: epub') { ... }
