@@ -45,15 +45,13 @@ module VivlioStarter
         assert_match(/help|使い方|Usage|コマンド/i, combined, 'help への誘導を表示するべき')
       end
 
-      # CL-02 補遺: 未知コマンドの終了コード規約
+      # CL-02 補遺: 未知のコマンド・オプションは POSIX 慣習に従い非 0 で終了する
+      # （シェルスクリプト・CI からタイプミスを検知できるようにする）
       def test_should_exit_nonzero_for_unknown_command
-        skip <<~REASON
-          【課題切り出し済み・spec §8.3 準拠の扱い】現状、未知のコマンド
-          （vs nosuchcommand）は help を表示して exit 0 を返す（startup.rb の
-          Samovar::InvalidInputError rescue が 0 を返却）。シェルスクリプトからの
-          利用では非 0 終了が POSIX 慣習であり、終了コード規約の変更は
-          help_spec / 既存テストへの影響を含めて別タスクで判断する。
-        REASON
+        capture_io do
+          assert_equal 1, CLI.start(['nosuchcommand']), '未知コマンドは exit 1 であるべき'
+          assert_equal 1, CLI.start(['build', '--nosuchoption']), '未知オプションは exit 1 であるべき'
+        end
       end
 
       # CL-03: --version / --help のグローバルオプション契約

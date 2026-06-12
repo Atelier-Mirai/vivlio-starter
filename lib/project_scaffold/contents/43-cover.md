@@ -113,20 +113,20 @@ covers/
 
 ### フォーマット別の生成
 
-特定のフォーマットのみを生成したい場合は、サブコマンドを使用します：
+特定のフォーマットのみを生成したい場合は、生成対象を引数で指定します：
 
 ```bash
 # A4サイズのRGB版PDFのみ生成
-vs cover:a4
+vs cover a4
 
 # B5サイズのCMYK版PDF/X-1aのみ生成
-vs cover:b5
+vs cover b5
 
 # A5サイズのCMYK版PDF/X-1aのみ生成
-vs cover:a5
+vs cover a5
 
 # EPUB用JPEGのみ生成
-vs cover:epub
+vs cover epub
 ```
 
 ## 設定のカスタマイズ
@@ -352,7 +352,7 @@ vs build
 
 ```bash
 # 1. 印刷用PDFのみを再生成
-vs cover:b5  # またはvs cover:a5
+vs cover b5  # または vs cover a5
 
 # 2. 生成されたCMYK版PDFを確認
 open covers/frontcover_cmyk.pdf

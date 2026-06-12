@@ -288,6 +288,12 @@ module VivlioStarter
       end
 
       # Ghostscript を利用して PDF を圧縮する
+      #
+      # 動作モード（options[:pipeline]）:
+      #   - false（既定）: vs pdf:compress の単体実行。利用者の明示要求のため、
+      #     gs 不在・圧縮失敗は 🔴 エラー + exit 1 で報告する
+      #   - true: vs build の Step 12 から呼ばれる。PDF は生成済みのため、
+      #     gs 不在・圧縮失敗でもビルドを止めず 🟡 でスキップを案内して続行する
       class PdfCompressor
         def initialize(options, cli_input = nil, cli_output = nil)
           @options = options || {}
@@ -297,6 +303,7 @@ module VivlioStarter
           @input_pdf = nil
           @output_pdf = nil
           @compression_success = false
+          @skipped = false
         end
 
         def call
@@ -311,6 +318,9 @@ module VivlioStarter
         private
 
         attr_reader :options, :config, :cli_input, :cli_output, :input_pdf, :output_pdf, :compression_success
+
+        # ビルドパイプライン（Step 12）から呼ばれているか
+        def pipeline_mode? = !!options[:pipeline]
 
         def apply_verbose
           ENV['VERBOSE'] = '1' if options[:verbose]
@@ -366,12 +376,19 @@ module VivlioStarter
           exit(1)
         end
 
-        # Ghostscript を実行して PDF を圧縮する
+        # Ghostscript を実行して PDF を圧縮する。
+        # gs 不在時の挙動はモードで分ける（クラスコメント参照。DG-03 で検出された
+        # 「スキップしますと警告しつつ exit(1) でビルドごと落ちる」矛盾の解消）
         def compress_pdf
           if ghostscript_available?
             @compression_success = run_ghostscript
+          elsif pipeline_mode?
+            Common.log_warn('Ghostscript(gs) が見つかりません。圧縮をスキップし、未圧縮のPDFで続行します。',
+                            detail: '圧縮を有効にするには vs doctor --fix で Ghostscript を導入してください')
+            @skipped = true
           else
-            Common.log_warn('Ghostscript(gs) が見つかりません。圧縮をスキップします。')
+            Common.log_error('Ghostscript(gs) が見つかりません。',
+                             detail: 'vs doctor --fix で導入できます')
             exit(1)
           end
         end
@@ -392,10 +409,15 @@ module VivlioStarter
           system(*cmd, out: File::NULL, err: File::NULL)
         end
 
-        # 圧縮結果に応じてログを出す
+        # 圧縮結果に応じてログを出す（スキップ時は compress_pdf 側で案内済み）
         def report_result
+          return if @skipped
+
           if compression_success && File.exist?(output_pdf)
             Common.log_success("圧縮したPDFを出力しました: #{File.expand_path(output_pdf)}")
+          elsif pipeline_mode?
+            # ビルド経路では PDF 生成済みのため、圧縮失敗でビルドを失敗させない
+            Common.log_warn('PDFの圧縮に失敗しました。未圧縮のPDFで続行します。')
           else
             Common.log_error('PDFの圧縮に失敗しました')
             exit(1)

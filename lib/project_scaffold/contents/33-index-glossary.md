@@ -232,10 +232,10 @@ vs index:apply
 ### マッチングの実行
 
 ```bash
-vs index:build
+vs build
 ```
 
-このコマンドは以下の処理を行います：
+ビルド時、内部では以下の処理が行われます：
 
 1. `config/index_glossary_terms.yml` の用語（`flags` に `i` を含むもの）を原稿から検索
 2. マッチした箇所に HTML タグを付与
@@ -259,13 +259,13 @@ vs index:build
 ## 索引ページの生成
 
 :::{.section-lead}
-`vs index:build` コマンドは、索引データから索引ページを生成します。
+`vs build` コマンドは、索引データから索引ページを生成します。
 :::
 
 ### 索引ページの生成
 
 ```bash
-vs index:build
+vs build
 ```
 
 生成される `_indexpage.html` は以下の特徴を持ちます：

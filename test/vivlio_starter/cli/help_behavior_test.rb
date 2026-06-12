@@ -7,9 +7,9 @@
 #   VivlioStarter::CLI.start（lib/vivlio_starter/cli/startup.rb）
 #
 # 検証内容:
-#   - vs --help: グローバルヘルプの表示
-#   - vs build --help: コマンドヘルプの表示
-#   - 終了コード 0 での正常終了
+#   - vs --help: グローバルヘルプの表示（終了コード 0）
+#   - vs build --help: コマンドヘルプの表示（終了コード 0）
+#   - 未知オプション: ヘルプ表示 + 終了コード 1（POSIX 慣習。CL-02 と同じ契約）
 # ================================================================
 
 require 'test_helper'
@@ -32,11 +32,12 @@ module VivlioStarter
         assert_equal 0, status
       end
 
-      # `vs build --unknown-option` 実行時に build コマンドのヘルプが表示されることを確認
+      # `vs build --unknown-option` 実行時に build コマンドのヘルプが表示され、
+      # 無効入力として終了コード 1 を返すことを確認
       def test_build_unknown_option_displays_command_help
         output, error = capture_io do
           status = ::VivlioStarter::CLI.start(['build', '--unknown-option'])
-          assert_equal 0, status
+          assert_equal 1, status
         end
 
         combined = "#{output}#{error}"
@@ -45,11 +46,12 @@ module VivlioStarter
         assert_includes combined, '書籍全体または指定章をビルドします'
       end
 
-      # `vs clean --unknown-option` 実行時に clean コマンドのヘルプが表示されることを確認
+      # `vs clean --unknown-option` 実行時に clean コマンドのヘルプが表示され、
+      # 無効入力として終了コード 1 を返すことを確認
       def test_clean_unknown_option_displays_command_help
         output, error = capture_io do
           status = ::VivlioStarter::CLI.start(['clean', '--unknown-option'])
-          assert_equal 0, status
+          assert_equal 1, status
         end
 
         combined = "#{output}#{error}"

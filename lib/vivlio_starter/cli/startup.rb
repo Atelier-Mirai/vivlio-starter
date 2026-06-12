@@ -18,7 +18,9 @@ module VivlioStarter
       result.is_a?(Integer) ? result : 0
     rescue Samovar::InvalidInputError => e
       print_usage_for_invalid_input(e)
-      0
+      # 無効入力（未知のコマンド・オプション）は POSIX 慣習に従い非 0 で終了する。
+      # シェルスクリプトや CI からタイプミスを検知できるようにする（契約テスト CL-02）
+      1
     rescue SystemExit => e
       e.status
     rescue Interrupt

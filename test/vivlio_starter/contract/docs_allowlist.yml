@@ -12,19 +12,6 @@ non_commands:
   # 構想段階の機能名。意図的な予告のため許容する（2026-06-12）
   - "xref:list"
 
-  # 【要修正・暫定許容】33-index-glossary.md が案内する索引ページ生成コマンド。
-  # 現行 CLI には存在しない（実際は vs index:auto → vs index:apply ＋ build 時自動生成）。
-  # マニュアル修正タスクで記述を現行コマンドへ更新後、この行を削除する（2026-06-12 検出）
-  - "index:build"
-
-  # 【要修正・暫定許容】43-cover.md がサブコマンド形式（vs cover:a4 等）で案内しているが、
-  # 現行 CLI は位置引数形式（vs cover a4 / b5 / a5 / epub）。
-  # マニュアル修正タスクで表記を更新後、以下 4 行を削除する（2026-06-12 検出）
-  - "cover:a4"
-  - "cover:b5"
-  - "cover:a5"
-  - "cover:epub"
-
 # DC-02: マニュアルに「vs <コマンド>」表記が無くても許容する Public コマンド
 undocumented_commands:
   # help はメタコマンドで、マニュアルでは `vs --help` の形で案内している。

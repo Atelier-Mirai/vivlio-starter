@@ -19,9 +19,11 @@
 # ================================================================
 
 require 'test_helper'
+require 'tmpdir'
 require 'vivlio_starter/cli'
 require 'vivlio_starter/cli/metrics/analyzer'
 require 'vivlio_starter/cli/build/backlink_dedup_orchestrator'
+require 'vivlio_starter/cli/pdf'
 
 module VivlioStarter
   module CLI
@@ -87,25 +89,85 @@ module VivlioStarter
         assert warns.any? { it.include?('重複排除') }, '🟡 で重複排除のスキップを案内するべき'
       end
 
-      # DG-03: gs 不在時の圧縮スキップ
-      def test_should_skip_compression_without_ghostscript
-        skip <<~REASON
-          【課題切り出し済み・spec §8.3】現状の PdfCompressor#compress_pdf は gs 不在時に
-          「圧縮をスキップします」と警告しつつ exit(1) で停止する（pdf.rb:374-376）。
-          ビルド Step 12 経由では PDF 生成後にビルド全体が落ちるため、
-          「単体コマンドは exit 1 / パイプライン内はスキップ続行」の文脈分離を
-          別タスクで設計・修正した後に本テストを有効化する。
-        REASON
+      # DG-03a: パイプライン（Step 12）経由では gs 不在でも exit せず、
+      # 🟡 でスキップを案内して続行する（PDF 生成後にビルドを落とさない）
+      def test_should_skip_compression_and_continue_in_pipeline_without_ghostscript
+        in_project_with_pdf do
+          warns = []
+          compressor = PdfCommands::PdfCompressor.new({ pipeline: true }, 'output.pdf', nil)
+
+          Common.stub :log_warn, ->(msg, **) { warns << msg } do
+            compressor.stub :ghostscript_available?, false do
+              capture_io { compressor.call }
+            end
+          end
+
+          assert warns.any? { it.include?('スキップ') }, '🟡 で圧縮スキップを案内するべき'
+          refute_path_exists 'output_compressed.pdf', '圧縮ファイルは生成されない'
+        end
       end
 
-      # DG-04: waifu2x 不在時の ImageMagick フォールバック
+      # DG-03b: 単体コマンド（vs pdf:compress）では利用者の明示要求のため
+      # 🔴 + doctor 案内 + exit 1 で報告する
+      def test_should_exit_with_error_for_standalone_compress_without_ghostscript
+        in_project_with_pdf do
+          errors = []
+          compressor = PdfCommands::PdfCompressor.new({}, 'output.pdf', nil)
+
+          Common.stub :log_error, ->(msg, **) { errors << msg } do
+            compressor.stub :ghostscript_available?, false do
+              e = assert_raises(SystemExit) { capture_io { compressor.call } }
+              assert_equal 1, e.status
+            end
+          end
+
+          assert errors.any? { it.include?('Ghostscript') }, '🔴 で gs 不在を報告するべき'
+        end
+      end
+
+      # DG-04: waifu2x 不在でも 🟡 案内の上 ImageMagick のみで
+      # frontispiece / ornament 生成が完走する
+      # （waifu2x の不在は存在しないパスを渡して再現。画像は magick で生成した
+      # 小さな実画像を使い、AI 拡大なしの実処理パスを通す）
       def test_should_fall_back_to_imagemagick_without_waifu2x
-        skip <<~REASON
-          【対象外の理由・spec §8.3】ImageGenerator の waifu2x フォールバック判定は
-          実画像の生成処理（ImageMagick 実行）と不可分なため、スタブのみでは
-          「完走」を検証できない。実画像を伴う検証は rake test:manual 階層の
-          ビルド（waifu2x 有無の差は 🟡 案内のみ）で間接的にカバーされる。
-        REASON
+        skip 'ImageMagick (magick) が見つかりません' unless system('which magick >/dev/null 2>&1')
+
+        Dir.mktmpdir('vs-degradation') do |dir|
+          Dir.chdir(dir) do
+            FileUtils.mkdir_p('stylesheets/images')
+            created = system('magick -size 200x150 gradient:navy-pink stylesheets/images/dg04.png',
+                             out: File::NULL, err: File::NULL)
+            skip 'テスト画像の生成に失敗しました' unless created
+
+            warns = []
+            result = nil
+            Common.stub :log_warn, ->(msg, **) { warns << msg } do
+              capture_io do
+                result = PreProcessCommands::ImageGenerator.generate_frontispiece_and_ornament_from(
+                  'dg04.png', waifu2x: '/nonexistent/waifu2x-ncnn-vulkan'
+                )
+              end
+            end
+
+            assert result, 'waifu2x 不在でも生成は成功（true）するべき'
+            assert warns.any? { it.include?('waifu2x') && it.include?('ImageMagick のみで生成します') },
+                   '🟡 で ImageMagick フォールバックを案内するべき'
+            assert_path_exists 'stylesheets/images/dg04_portrait.webp'
+            assert_path_exists 'stylesheets/images/dg04_landscape.webp'
+          end
+        end
+      end
+
+      private
+
+      # ダミーの output.pdf を持つ一時プロジェクトへ chdir する（DG-03 用）
+      def in_project_with_pdf(&)
+        Dir.mktmpdir('vs-degradation') do |dir|
+          Dir.chdir(dir) do
+            File.write('output.pdf', '%PDF-1.4')
+            yield
+          end
+        end
       end
     end
   end

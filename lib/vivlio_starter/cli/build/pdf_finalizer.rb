@@ -29,9 +29,11 @@ module VivlioStarter
         module_function
 
         # Step 12: 生成PDFを圧縮
+        # pipeline: true — PDF は生成済みのため、gs 不在や圧縮失敗で
+        # ビルド全体を止めず、スキップして未圧縮 PDF のまま続行する
         def compress_pdf!
           Common.log_action('[Step 12] 生成PDFを圧縮します…')
-          PdfCommands.execute_pdf_compress({})
+          PdfCommands.execute_pdf_compress({ pipeline: true })
         end
 
         # Step 13: 出力PDFを最終ファイル名にリネーム
