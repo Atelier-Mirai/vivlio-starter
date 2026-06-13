@@ -27,6 +27,15 @@ _toc.html
 _part[0-9]*.md
 _part[0-9]*.html
 _index_matches.yml
+_colophon.md
+_colophon.html
+_titlepage.md
+_titlepage.html
+_legalpage.md
+_legalpage.html
+_indexpage.html
+_glossarypage.html
+_index_glossary_review.md
 
 # Vivliostyle build artifacts
 /.vivliostyle/

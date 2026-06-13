@@ -13,6 +13,7 @@
 #  • legal        : リーガル情報（免責、商標）
 #  • output       : 出力設定（PDF、印刷用PDF、EPUB、表紙）
 #  • vfm          : Markdown 記法設定（改行の扱いなど）
+#  • build        : ビルド設定（画像パス、裸URL、外部URLなどの検証）
 #  ── 機能ごとの詳細設定 ────────────────────────────────
 #  • index_glossary : 索引・用語集の共通設定
 #  • index          : 索引の詳細設定
@@ -50,7 +51,7 @@ book:
 # ========================================
 project:
   name: "vivlio_starter" # 出力ファイル名のベース
-  version: "1.0.0" # 書籍のバージョン（デフォルト: 1.0.0）
+  version: "1.0.0" # 書籍のバージョン（デフォルト: 0.1.0）
 
 # ========================================
 # テーマ
@@ -201,11 +202,12 @@ output:
   # ----------------------------
   # 出力フォーマット
   # ----------------------------
-  targets: pdf # pdf / print_pdf / epub から選択可
+  # targets: pdf # pdf / print_pdf / epub から選択可
+  targets: pdf, print_pdf, epub
   # 例:
-  # targets: pdf              # 閲覧用PDFを指定
-  # targets: pdf, print_pdf   # 閲覧用PDF, 印刷所入稿用PDFを指定
-  # targets: [pdf, epub]      # 閲覧用PDF, 電子書籍EPUBを指定
+  # targets: pdf                      # 閲覧用PDFを指定
+  # targets: pdf, print_pdf           # 閲覧用PDF, 印刷所入稿用PDFを指定
+  # targets: pdf, print_pdf, epub     # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUBを指定
 
   # ----------------------------
   # ファイル名規則

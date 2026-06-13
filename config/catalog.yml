@@ -6,74 +6,74 @@
 # - 12-tutorial
 # CHAPTERS: 11-12, 13-15, 25 # 章番号のみでのカンマ区切り, 範囲指定も指定可能です。
 
-## まえがき
+# まえがき
 PREFACE:
   - 00-preface
 
-## 本文
+# 本文
 CHAPTERS:
   - 【第一部：はじめる】:
       - 11-workflow
-  #     - 12-quickstart
-  #     - 13-new
-  # - 【第二部：書く】:
-  #     - 21-markdown-tutorial
-  #     - 22-extentions
-  #     - 23-chapter-management
-  #     - 24-cross-reference
-  #     - 25-querystream
-  # - 【第三部：整える】:
-  #     - 31-lint
-  #     - 32-metrics
-  #     - 33-index-glossary
-  # - 【第四部：仕上げる】:
-  #     - 41-book-yml
-  #     - 42-frontispiece
-  #     - 43-cover
-  #     - 44-build
-  #     - 45-utility
+      - 12-quickstart
+      - 13-new
+  - 【第二部：書く】:
+      - 21-markdown-tutorial
+      - 22-extentions
+      - 23-chapter-management
+      - 24-cross-reference
+      - 25-querystream
+  - 【第三部：整える】:
+      - 31-lint
+      - 32-metrics
+      - 33-index-glossary
+  - 【第四部：仕上げる】:
+      - 41-book-yml
+      - 42-frontispiece
+      - 43-cover
+      - 44-build
+      - 45-utility
   - 【第五部：トラブルシューティング】:
       - 51-doctor
-  # - 【第六部：開発者のために】:
-  # - 61-developer
+  - 【第六部：開発者のために】:
+      - 61-developer
 
-## 付録
+# 付録
 APPENDICES:
-  # - 91-install
-  # - 92-pdf-read
-  # - 93-import
-  # - 94-sample
+  - 91-install
+  - 92-pdf-read
+  - 93-import
+  - 94-sample
   - 95-further-inspiration
 
-# ## あとがき
+# あとがき
 POSTFACE:
   - 99-postface
 
-## 【Tips】
-##
-## ・付録やまえがきやあとがきがなければ、空にする。
-##   例：
-##
-##     PREFACE:
-##
-##     CHAPTERS:
-##       - 01-install
-##
-##     APPENDICES:
-##
-##     POSTFACE:
-##
-##
-## ・第I部、第II部、…のように「部」を使うには、次のようにする。
-##   （部タイトルの最後に半角の「:」をつけることに注意）
-##
-##     CHAPTERS:
-##       - 初級編:
-##           - 01-install
-##           - 02-tutorial
-##       - 中級編:
-##           - 03-syntax
-##           - 04-customize
-##       - 上級編:
-##           - 05-faq
-##           - 06-bestpractice
+# 【Tips】
+#
+# ・付録やまえがきやあとがきがなければ、空にする。
+#   例：
+#
+#     PREFACE:
+#
+#     CHAPTERS:
+#       - 01-install
+#
+#     APPENDICES:
+#
+#     POSTFACE:
+#
+#
+# ・第I部、第II部、…のように「部」を使うには、次のようにする。
+#   （部タイトルの最後に半角の「:」をつけることに注意）
+#
+#     CHAPTERS:
+#       - 初級編:
+#           - 01-install
+#           - 02-tutorial
+#       - 中級編:
+#           - 03-syntax
+#           - 04-customize
+#       - 上級編:
+#           - 05-faq
+#           - 06-bestpractice

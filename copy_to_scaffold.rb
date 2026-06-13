@@ -27,6 +27,16 @@ DIRS.each do |dir|
   puts "COPY  #{dir}/ -> lib/project_scaffold/#{dir}/"
 end
 
+# ================================================================
+# 生成画像の除去
+# ================================================================
+# *_landscape.webp / *_portrait.webp は元画像 (sakura.webp など) から
+# ビルド時に生成される派生ファイル。scaffold に同梱する必要がないため、
+# コピー後に削除しておく。
+generated = Dir.glob(%w[**/*_landscape.webp **/*_portrait.webp].map { File.join(SCAFFOLD, it) })
+generated.each { FileUtils.rm_f(it) }
+puts "PRUNE 生成画像 #{generated.size} 件を除去 (*_landscape.webp / *_portrait.webp)"
+
 FILES = %w[README.md .gitignore].freeze
 
 FILES.each do |file|
