@@ -123,8 +123,14 @@ ruby_totals = ruby_results.transpose[1..3].map { |arr| arr.reduce(0, :+) }
 test_totals = test_results.transpose[1..3].map { |arr| arr.reduce(0, :+) }
 css_totals = css_results.transpose[1..3].map { |arr| arr.reduce(0, :+) }
 
+# 総合計（Grand Total）の計算
+grand_totals = [ruby_totals, test_totals, css_totals].transpose.map { |arr| arr.reduce(0, :+) }
+total_files = ruby_results.size + test_results.size + css_results.size
+
 puts
 puts 'Totals'
 puts format('%-60s %6d %6d %6d', "Ruby files (#{ruby_results.size} files)", *ruby_totals)
 puts format('%-60s %6d %6d %6d', "Test files (#{test_results.size} files)", *test_totals)
 puts format('%-60s %6d %6d %6d', "CSS files (#{css_results.size} files)", *css_totals)
+puts '-' * 81
+puts format('%-60s %6d %6d %6d', "Grand Total (#{total_files} files)", *grand_totals)
