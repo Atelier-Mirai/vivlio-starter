@@ -214,7 +214,22 @@
 
 ---
 
-## 8. 検証ログ（Phase 0 実施後に追記する）
+## 8. 検証ログ（Phase 0 実施結果）
 
-> 実ビルドで V-H1 / V-H2 を測定したら、ここに「再発有無・PDF 所感・撤去可否の判定」を記録する。
-> 本セクションが空のうちは Phase 1 以降に着手しない。
+### V-H1（不可視 span 撤廃）: ❌ FAIL — 撤去不可
+
+- **環境**: `@vivliostyle/cli` 11.0.2 / core 2.43.2、再現原稿 `00-preface.md`（謝辞・著者紹介の sideimage URL 脚注 + 通常脚注）。
+- **手順**: §0.1 の鉄則に従い、`insert_inline_footnote!` / `insert_print_footnote_after_anchor!`（`footnote_converter.rb`）および `process_sideimage_footnotes!`（`post_process.rb`）の不可視 span 挿入を一時的に無効化し、`href="#fnN"` が `aside#fnN`（`float:footnote`）自体に解決する状態でローカルビルド（`ruby -Ilib bin/vs build 00 --no-clean`）。実験後 `git checkout` で復元済み。
+- **HTML 構造**: 不可視 span 0 個、`id="fnN"` は各 1 回（aside のみ）に減少 → 実験条件は正しく成立。
+- **PDF 結果**: **二重描画バグが再発**。`00-preface.pdf` ページ 2 下部で脚注 1 の本文が **3 回重複描画**され、ページ 3 にあるべき脚注 3〜5 が脱落。総ページ数も 3 → 6 に膨張。基準ビルド（ハック有り）は脚注 1〜5 が各 1 回・連番で正常だった。
+- **判定**: レポート #2「fragmentation／領域制御の修正」では、`docs/footnote.md` が記録した **「リンク解決先が `float:footnote` の aside 自体だと参照ページと aside ページの両方（実測では複数回）に描画される」バグは core 2.43.2 でも未解消**。不可視 span 二重ノードハック（H1）は **CLI 11 でも必須**。撤去しない。
+
+### V-H2（ネイティブ `::footnote-marker` 回帰）: 保留
+
+- H1 が撤去不可で `float:footnote` + aside 機構を維持するため、H2 単独の簡素化メリットは限定的（自前採番 CSS の削減のみ）。H1 の DOM 構造が前提のまま native marker を測る必要があり、費用対効果が下がった。**本フェーズでは未実施**。実施するなら独立の小実験として別途判断する。
+
+### 結論
+
+- **Phase 1（R-H1）は中止**。本コードベースの実使用パターン（sideimage URL 脚注・テーブルセル脚注）では、レポートの改善が「撤去可能なハック」に転化しなかった。
+- H1 の各メソッド・CSS（`.page-footnote-inline` 等）は **現状維持**。EPUB 経路の `strip_inline_footnote_ids_for_epub!`（不可視 span の id 重複対策）も引き続き必要。
+- H2/H3 は撤去可否未確定のまま保留。将来 Vivliostyle が float:footnote の解決先重複を直した時点で本仕様 V-H1 を再測定する。
