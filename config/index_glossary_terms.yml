@@ -1,0 +1,139 @@
+---
+generated_at: '2026-06-13 14:48:51'
+terms:
+- term: PDF
+  yomi: PDF
+  flags: g
+  definition: PDFはPortable Document Formatの略で、Adobe AcrobatなどのPDFビューアで閲覧できる形式です。
+  source: auto_extracted
+  approved_at: '2026-06-13 14:40:28'
+  pattern: "/\\bPDF\\b/"
+  score: 592.4372086486533
+  contexts:
+  - chapter: 00-preface
+    context: ページレイアウト、目次の生成、画像の配置、表紙の作成、入稿用 PDF の調整……。Vivlio Starter は、そうした煩雑な作業をすべて引き受
+  - chapter: 11-workflow
+    context: 執筆が完了したら、`vs build` で書籍全体を組版します。閲覧用 PDF・印刷入稿用 PDF・EPUB の三形式を、一度のコマンドで生成できます。
+      `
+  updated_at: '2026-06-13 14:48:51'
+  backlink_sources:
+  - chapter: 00-preface
+    occurrence: 1
+    anchor_id: gls-src-00-preface-pdf-1
+  - chapter: 00-preface
+    occurrence: 2
+    anchor_id: gls-src-00-preface-pdf-2
+  - chapter: 00-preface
+    occurrence: 3
+    anchor_id: gls-src-00-preface-pdf-3
+  - chapter: 00-preface
+    occurrence: 4
+    anchor_id: gls-src-00-preface-pdf-4
+  - chapter: 00-preface
+    occurrence: 5
+    anchor_id: gls-src-00-preface-pdf-5
+  - chapter: 00-preface
+    occurrence: 6
+    anchor_id: gls-src-00-preface-pdf-6
+  - chapter: 00-preface
+    occurrence: 7
+    anchor_id: gls-src-00-preface-pdf-7
+  - chapter: 00-preface
+    occurrence: 8
+    anchor_id: gls-src-00-preface-pdf-8
+  - chapter: 11-workflow
+    occurrence: 9
+    anchor_id: gls-src-11-workflow-pdf-9
+  - chapter: 11-workflow
+    occurrence: 10
+    anchor_id: gls-src-11-workflow-pdf-10
+  - chapter: 11-workflow
+    occurrence: 11
+    anchor_id: gls-src-11-workflow-pdf-11
+  - chapter: 11-workflow
+    occurrence: 12
+    anchor_id: gls-src-11-workflow-pdf-12
+  - chapter: 51-doctor
+    occurrence: 13
+    anchor_id: gls-src-51-doctor-pdf-13
+  - chapter: 51-doctor
+    occurrence: 14
+    anchor_id: gls-src-51-doctor-pdf-14
+  - chapter: 51-doctor
+    occurrence: 15
+    anchor_id: gls-src-51-doctor-pdf-15
+  - chapter: 51-doctor
+    occurrence: 16
+    anchor_id: gls-src-51-doctor-pdf-16
+- term: Starter
+  yomi: Starter
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-06-13 14:40:28'
+  pattern: "/\\bStarter\\b/"
+  score: 507.79019459924433
+  contexts:
+  - chapter: 00-preface
+    context: Vivlio Starter の世界へ！ 「自分の本を作ってみたい」——そう思ったことはありませんか。日々の仕事で培った技術的な知見、趣味で深めた
+  - chapter: 11-workflow
+    context: '執筆ワークフロー概観 :::{.chapter-lead} Vivlio Starter を使った書籍制作は、「プロジェクト作成 → 執筆
+      → 整える → ビルド '
+  - chapter: 51-doctor
+    context: 'doctor） :::{.chapter-lead} Vivlio Starter の動作には、いくつかの外部ツールが必要です。`vs
+      doctor` '
+  - chapter: 99-postface
+    context: 技術書、解説書、同人誌、社内マニュアル——Vivlio Starter の世界は、あなたが書きたいものの数だけ広がっています。いろいろと創意工夫しなが
+  updated_at: '2026-06-13 14:48:51'
+- term: Vivlio
+  yomi: Vivlio
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-06-13 14:40:28'
+  pattern: "/\\bVivlio\\b/"
+  score: 490.0
+  contexts:
+  - chapter: 00-preface
+    context: Vivlio Starter の世界へ！ 「自分の本を作ってみたい」——そう思ったことはありませんか。日々の仕事で培った技術的な知見、趣味で深め
+  - chapter: 11-workflow
+    context: '執筆ワークフロー概観 :::{.chapter-lead} Vivlio Starter を使った書籍制作は、「プロジェクト作成 → 執筆
+      → 整える → ビルド '
+  - chapter: 51-doctor
+    context: 環境診断（vs doctor） :::{.chapter-lead} Vivlio Starter の動作には、いくつかの外部ツールが必要です。
+  - chapter: 99-postface
+    context: 体験していただけたなら幸いです。技術書、解説書、同人誌、社内マニュアル——Vivlio Starter の世界は、あなたが書きたいものの数だけ広がっています。
+  updated_at: '2026-06-13 14:48:51'
+- term: インストール
+  yomi: いんすとーる
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-06-13 14:40:28'
+  pattern: "/インストール/"
+  score: 825.1637002091893
+  contexts:
+  - chapter: 11-workflow
+    context: cd mybook ``` **参照:** 「インストール」「新規プロジェクトの作成（vs new）」「環境診断（vs doctor）」
+  - chapter: 51-doctor
+    context: '不足しているツールがあれば、`--fix` オプションで自動インストールも可能です。 ::: ## vs doctor とは :::{.sectio'
+  updated_at: '2026-06-13 14:48:51'
+- term: ツール
+  yomi: つーる
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-06-13 14:40:28'
+  pattern: "/ツール/"
+  score: 482.71046405406133
+  contexts:
+  - chapter: 00-preface
+    context: "— `vs new` でプロジェクトを作成し、`vs doctor` で必要なツールを自動セットアップ ## この本で学べること - **Markdown
+      で執"
+  - chapter: 11-workflow
+    context: "、Vivliostyle や ImageMagick など、書籍制作に必要な外部ツールが一括でセットアップされます。 ```bash vs
+      new mybook"
+  - chapter: 51-doctor
+    context: Vivlio Starter の動作には、いくつかの外部ツールが必要です。`vs doctor` コマンドを使うと、必要なツールがすべて揃って
+  updated_at: '2026-06-13 14:48:51'
+updated_at: '2026-06-13 14:48:58'
