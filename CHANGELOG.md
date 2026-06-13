@@ -68,7 +68,7 @@
 
 
 ### Planned
-
+**最新版へのアップデート機能** `vs doctor` に各種ツールのバージョンアップ機能を付与する。
 **記法・置換ルール（次期リリース候補）**
 - [Medium] 編集者コメント `@comment:...@commend` の一括除去オプション: 現状は `post_replace_list.yml` により `<span class="hen-comment">...</span>` へ変換され、CSS（`stylesheets/replace-list.css` の `.hen-comment`）で色付け表示されるだけで、本文から除外する手段がない。本番ビルド向けに `vs build --strip-comments`（仮）や `book.yml` の `build.strip_editor_comments: true` 設定などで、PDF 出力時に `.hen-comment` 要素をまとめて除去（または `display: none` 注入）する仕組みを検討する。`contents/23-replace-list.md` §編集者コメントの記述（「ビルド時にまとめて消したりできます」）は現状では先取りの表現なので、実装時に本節の表現と整合を取ること。
 - [Medium] リスト項目の絶対配置＋SVG ガイド線記法（`post_replace_list.yml`）: `@lu/@ld/@ru/@rd/@ur/@ls/@rs/@us/@ds` で `<li>` を絶対配置しつつ L 字・水平・垂直の SVG ガイド線を自動生成する機能。ルール自体は実装済みだが、(1) 親要素を自動で `position: relative` 化する標準クラスの提供、(2) 座標系・単位（mm/%）の整理、(3) 図解ページ向けプリセット（例: `.figure-guides` コンテナ）の正式化、(4) 印刷プレビューでの視覚検証、が未完了のため今回は対応外とする。サンプル（`81-replace-list-sample.md` §9）と `stylesheets/replace-list.css` のコンテナ定義は次期リリースで正式サポート予定。
