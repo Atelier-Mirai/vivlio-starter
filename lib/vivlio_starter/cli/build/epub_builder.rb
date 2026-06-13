@@ -17,6 +17,7 @@
 # ================================================================
 
 require 'fileutils'
+require 'tmpdir'
 require_relative '../entries'
 
 module VivlioStarter
@@ -34,6 +35,13 @@ module VivlioStarter
         # EPUB で除外する特殊ページ
         # 目次は EPUB リーダーが自動生成するため不要
         EXCLUDED_BASENAMES = %w[_toc].freeze
+
+        # @page マージンボックス（@bottom-center 等）と @footnote at-rule を検出する正規表現。
+        # epubcheck はこれらの構文そのものを CSS-008 ERROR として拒否する
+        # （@footnote は Vivliostyle が float: footnote 要素を収めるマージン at-rule）。
+        # いずれも 1 段ネスト（`@bottom-center { content: ...; }`）を前提に非貪欲で本体を捕捉する。
+        # `margin-bottom` 等のプロパティ名（先頭 @ 無し）には誤マッチしない。
+        MARGIN_BOX_PATTERN = /@(?:(?:top|bottom|left|right)-[a-z-]+|footnote)\s*\{[^{}]*\}/
 
         module_function
 
@@ -55,6 +63,12 @@ module VivlioStarter
 
           # 索引・用語集を EPUB 用に書き換え（空リンクに連番テキストを挿入）
           post_process_index_glossary_for_epub!(chapter_htmls)
+
+          # 段落内脚注 span の重複 id を除去（XHTML の id 重複 ERROR を回避）
+          strip_inline_footnote_ids_for_epub!(chapter_htmls)
+
+          # テーブルの align 属性を style へ変換（XHTML5 で廃止された属性の ERROR を回避）
+          rewrite_table_align_for_epub!(chapter_htmls)
 
           write_epub_entries(base_dir, chapter_htmls)
           Common.log_success("[EPUB] entries.epub.js を生成しました（#{chapter_htmls.size} エントリ）")
@@ -92,6 +106,9 @@ module VivlioStarter
           # 表紙画像の埋め込み設定を取得
           cover_line = build_cover_config_line(config, esc)
 
+          # 原稿外ファイルの EPUB 混入を防ぐ copyAsset.excludes
+          copy_asset_lines = build_copy_asset_excludes_config
+
           # 横書き固定（将来の縦書き対応に備えてハードコーディング）
           reading_progression = 'ltr'
 
@@ -107,7 +124,7 @@ module VivlioStarter
               language: '#{esc.call(language)}',
               size: '#{esc.call(page_size)}',
               readingProgression: '#{esc.call(reading_progression)}',
-            #{cover_line}  entry: entries,
+            #{cover_line}#{copy_asset_lines}  entry: entries,
               output: [
                 './#{EPUB_OUTPUT_FILE}'
               ]
@@ -225,6 +242,36 @@ module VivlioStarter
           return "  // cover: 表紙画像が見つかりません\n" unless cover_image && File.exist?(cover_image)
 
           "  cover: './#{esc.call(cover_image)}',\n"
+        end
+
+        # Vivliostyle CLI は EPUB 生成時に CWD 以下のアセット
+        # （css/png/jpg 等の DEFAULT_ASSET_EXTENSIONS）を node_modules を除き
+        # 丸ごと webpub→EPUB へコピーする。原稿外ファイル（gem 雛形・仕様書・
+        # ページ画像など）が混入し肥大化・CSS-008/RSC-007 を生むため、
+        # copyAsset.excludes で明示的に除外する。
+        #
+        # @return [String] config に差し込む copyAsset ブロック（末尾改行付き）
+        def build_copy_asset_excludes_config
+          patterns = %w[
+            lib/**
+            docs/**
+            test/**
+            sources/**
+            codes/**
+            templates/**
+            data/**
+            .cache/**
+            *_images/**
+            covers/bundled/**
+          ]
+          excludes = patterns.map { "      '#{it}'," }.join("\n")
+          <<~JS
+              copyAsset: {
+                excludes: [
+            #{excludes}
+                ],
+              },
+          JS
         end
 
         # 表紙画像のパスを解決する
@@ -352,6 +399,126 @@ module VivlioStarter
 
           File.write(path, html, encoding: 'utf-8')
           Common.log_info("[EPUB] #{File.basename(path)} を書き換えました（連番バックリンク挿入）")
+        end
+
+        # ================================================================
+        # EPUB 用 脚注 id 重複の解消
+        # ================================================================
+        # footnote_converter は段落内脚注に対し span（画面用）と aside（印刷用）へ
+        # 同一 id を意図的に付与する（PDF の脚注二重描画回避。PDF 経路では変更禁止）。
+        # XHTML では同一文書内の id 重複が ERROR になるため、EPUB 経路でのみ
+        # span 側の id を除去して aside 側に一意化する。
+        # 画面メディアでは span は display:none のため表示への影響はない。
+        # ================================================================
+
+        # 段落内脚注 span（page-footnote-inline）の id 属性のみを除去する
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def strip_inline_footnote_ids_for_epub!(html_files)
+          html_files.each do |path|
+            html = File.read(path, encoding: 'utf-8')
+            stripped = html.gsub(
+              %r{(<span\b[^>]*\bpage-footnote-inline\b[^>]*?)\s+id="[^"]*"},
+              '\1'
+            )
+            next if stripped == html
+
+            File.write(path, stripped, encoding: 'utf-8')
+            Common.log_info("[EPUB] #{File.basename(path)} の脚注 span id を除去しました")
+          end
+          html_files
+        end
+
+        # ================================================================
+        # EPUB 用 テーブル align 属性の変換
+        # ================================================================
+        # VFM はテーブル列の整列（|:--| 等）を <th align="left"> という
+        # 廃止済みプレゼンテーション属性で出力する。XHTML5 では align 属性は
+        # 不許可で epubcheck の RSC-005 ERROR になるため、EPUB 経路でのみ
+        # style="text-align:..." へ変換する。PDF（Vivliostyle）は align を
+        # 許容するため PDF 経路は従来どおり（共有 HTML の書き換えは Step E =
+        # PDF 完成後のため安全）。
+        # ================================================================
+
+        # th/td の align 属性を style の text-align へ変換する
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def rewrite_table_align_for_epub!(html_files)
+          html_files.each do |path|
+            html = File.read(path, encoding: 'utf-8')
+            rewritten = html.gsub(/<t[hd]\b[^>]*\salign="(?:left|center|right|justify)"[^>]*>/) do
+              convert_cell_align_to_style(it)
+            end
+            next if rewritten == html
+
+            File.write(path, rewritten, encoding: 'utf-8')
+            Common.log_info("[EPUB] #{File.basename(path)} のテーブル align 属性を style へ変換しました")
+          end
+          html_files
+        end
+
+        # 1 つの th/td 開始タグ内で align 属性を除去し、text-align を style に統合する。
+        # align と style の属性順序に依存しないようタグ全体を受け取って組み立て直す
+        # （部分捕捉だと捕捉範囲外に style が残り、style 属性が二重になるため）。
+        #
+        # @param tag [String] '<th align="left">' のような開始タグ全体
+        # @return [String] 変換後のタグ
+        def convert_cell_align_to_style(tag)
+          value = tag[/\salign="(left|center|right|justify)"/, 1]
+          stripped = tag.sub(/\salign="(?:left|center|right|justify)"/, '')
+
+          if stripped.match?(/\sstyle="/)
+            stripped.sub(/\sstyle="/, %( style="text-align:#{value};))
+          else
+            stripped.sub(/\A(<t[hd]\b)/, %(\\1 style="text-align:#{value}"))
+          end
+        end
+
+        # ================================================================
+        # EPUB 用 CSS サニタイズ
+        # ================================================================
+        # PDF 用 CSS（ノンブル・柱の @page マージンボックス）をソースから消すと
+        # PDF が壊れるため、生成後の EPUB パッケージ内 CSS でのみマージンボックスを
+        # 物理的に除去して epubcheck の CSS-008 ERROR を解消する。
+        # stabilize_epub_identifier! と同型の unzip → 修正 → zip 差し替え方式
+        # （mimetype 無圧縮制約に触れず、追加依存も不要）。
+        # ================================================================
+
+        # 生成後 EPUB 内の CSS から @page マージンボックスを除去する
+        #
+        # @param epub_path [String] 対象 EPUB ファイルパス
+        # @return [void]
+        def sanitize_epub_css!(epub_path)
+          abs_epub = File.expand_path(epub_path)
+
+          Dir.mktmpdir('vs-epub-css') do |tmpdir|
+            # unzip のグロブは '*' がパス区切りも跨ぐため EPUB/*.css で全 CSS を取り出す
+            system('unzip', '-o', abs_epub, 'EPUB/*.css', '-d', tmpdir,
+                   out: File::NULL, err: File::NULL)
+
+            changed = Dir.glob(File.join(tmpdir, 'EPUB/**/*.css')).filter_map do |path|
+              css = File.read(path, encoding: 'UTF-8')
+              sanitized = css.gsub(MARGIN_BOX_PATTERN, '')
+              next if sanitized == css
+
+              File.write(path, sanitized)
+              path.delete_prefix("#{tmpdir}/")
+            end
+
+            if changed.empty?
+              Common.log_info('[EPUB] CSS にマージンボックスはありませんでした')
+              return
+            end
+
+            Dir.chdir(tmpdir) do
+              system('zip', '-q', abs_epub, *changed, out: File::NULL, err: File::NULL)
+            end
+            Common.log_info("[EPUB] CSS のマージンボックスを除去しました（#{changed.size} ファイル）")
+          end
+        rescue StandardError => e
+          Common.log_warn("[EPUB] CSS サニタイズに失敗: #{e.message}")
         end
 
         # EPUB 中間ファイルをクリーンアップする

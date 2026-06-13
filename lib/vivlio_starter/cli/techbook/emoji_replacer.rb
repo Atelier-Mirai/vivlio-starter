@@ -87,11 +87,14 @@ module VivlioStarter
               .join("-")
         end
 
+        # 絵文字 <img> を生成する。
+        # 寸法は CSS（img.vs-emoji）と同値を style に統合する。
+        # HTML の width/height 属性は整数 px のみ許容され "1em" は EPUB で
+        # RSC-005 ERROR になるため、属性ではなくインライン style で寸法を与える。
         def build_img_tag(char, svg_path)
           %(<img src="#{svg_path}" alt="#{char}" ) +
             %(class="emoji vs-emoji" ) +
-            %(width="1em" height="1em" ) +
-            %(style="vertical-align: -0.15em;">)
+            %(style="width: 1em; height: 1em; vertical-align: -0.15em;">)
         end
       end
     end

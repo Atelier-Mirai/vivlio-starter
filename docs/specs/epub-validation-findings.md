@@ -192,3 +192,74 @@ ERROR(RSC-007): .../lib/project_scaffold/stylesheets/theme.css(74,3):
    影響しないか。
 5. 322MB という EPUB の肥大（本検証で生成された `.epub`）— 画像最適化が EPUB 経路で
    効いているか。本記録の主題（構造 ERROR）とは別だが、EPUB 品質の課題として併記。
+
+---
+
+## 7. 2026-06-13 追記：Fix-1〜4 実装後の再検証で判明した追加エラー（findings の取りこぼし）
+
+仕様書 `epub-pipeline-fix-spec.md` の Fix-1〜4 を実装し、実ビルド（単章 `vs build 11` /
+全章フルビルド）+ `epubcheck v5.3.0` で再検証した結果、**Fix-1〜4 は設計どおり機能**して
+いることを確認した（lib/** 混入・RSC-007・脚注 id 重複・絵文字 width 属性・
+`@bottom-*`/`@top-*` マージンボックスはすべて解消）。
+
+しかし epubcheck の ERROR は **0 件にならず、全章で 47 件**（単章で 39 件）残った。
+内訳を精査したところ、**本 findings の §2 総括（35 件）が当時取りこぼしていた
+別カテゴリ**であり、Fix-1〜4 が新たに生んだものではない（数字始まりファイル名・
+テーブル整列・`@footnote` はいずれも以前から存在した構造）。
+
+### 7.1 残存エラーの実測内訳（全章フルビルド）
+
+| コード | 件数 | 発生源 | 性質 |
+|---|---:|---|---|
+| `CSS-008` | 2 | `EPUB/stylesheets/page-settings.css` の `@footnote { … }` at-rule | Fix-2 の `MARGIN_BOX_PATTERN` が `@footnote` を未対応（取りこぼし） |
+| `RSC-005`（align） | 35 | `11-workflow.xhtml` 等のテーブル `<th align="left">` / `<td align="…">` | Markdown テーブルの整列指定が XHTML5 で不許可の `align` 属性に変換されている |
+| `RSC-005`（NCName） | 10 | `EPUB/content.opf` の `<item id="00-prefacexhtml">` ほか | vivliostyle CLI が**数字始まりのファイル名から id を生成**。NCName は数字で始まれない |
+| **合計** | **47** | | |
+
+### 7.2 各カテゴリの根本原因と修正方針
+
+**(A) CSS-008 `@footnote`（2 件）**
+`@footnote` は Vivliostyle が `float: footnote` 要素を収めるためのマージン at-rule で、
+`@bottom-center` 等と同じく epubcheck の CSS パーサが拒否する。Fix-2 の
+`MARGIN_BOX_PATTERN`（`@(top|bottom|left|right)-…`）が `@footnote` を含んでいないため
+残存した。→ **Fix-2 の自然な完成**として、サニタイズ対象の at-rule に `@footnote` を加える。
+
+**(B) RSC-005 `align` 属性（35 件）**
+VFM（Markdown → HTML）がテーブルの列整列（`|:--|`）を `<th align="left">` /
+`<td align="right">` という**プレゼンテーション属性**として出力する。HTML/XHTML5 では
+`align` 属性は廃止されており epubcheck が ERROR とする。PDF（Vivliostyle）はこの属性を
+許容するため顕在化していなかった。→ **EPUB 経路でのみ** xhtml の `align="x"` を
+`style="text-align:x"` へ変換する（Fix-3 と同型の EPUB 専用 HTML 後処理。PDF に無影響）。
+
+**(C) RSC-005 content.opf NCName（10 件）**
+vivliostyle CLI が manifest item の id を href から機械生成する際、ファイル名が
+`00-preface` のように**数字で始まる**ため、生成 id `00-prefacexhtml` が NCName 規則
+（先頭は英字または `_`）に違反する。spine の `idref` も同じ値を参照するため idref 側も
+ERROR になる。→ 生成後の `content.opf` に対し、**数字始まりの id とそれを参照する
+idref に接頭辞を付与**する後処理（`stabilize_epub_identifier!` と同型の
+unzip → 修正 → zip 差し替え。id と idref の整合を保つ）。
+
+### 7.3 再検証コマンド（参考）
+
+```bash
+# 全章
+ruby -Ilib -Itest test/vivlio_starter/release/epub_validation_test.rb
+# 単章（targets を一時的に epub へ）
+vs build 11 --no-clean && epubcheck 11-workflow.epub 2>&1 | grep -cE '^(FATAL|ERROR)'
+```
+
+→ 上記 (A)(B)(C) を仕様書 `epub-pipeline-fix-spec.md` の **Fix-5〜7** として追記し、
+実装する（本追記を受けて仕様書を更新済み）。
+
+### 7.4 解消確認（2026-06-13）
+
+Fix-5〜7 を実装し、最終検証で **DoD を達成**した:
+
+- 全章フルビルド（EP-01/EP-02）: green。`epubcheck` = **FATAL 0 / ERROR 0 / WARNING 0**
+- 単章（`vs build 11` → `11-workflow.epub`）: FATAL/ERROR **0 件**（39 → 0）
+- EPUB サイズ: 322MB → **59MB**（7,625 ファイル。残量は fonts/twemoji = P2 スコープ）
+- `rake test`: 1,088 件 green（EPF-01〜08 含む）
+
+これにより本 findings が追跡してきた EPUB 構造 ERROR（当初 35 件 + 取りこぼし 47 件）は
+**すべて解消**。EP-02 の `rake test:release` への復帰判断はユーザーに委ねる
+（仕様書 §6 のとおり）。

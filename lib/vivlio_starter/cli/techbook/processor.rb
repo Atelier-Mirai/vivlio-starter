@@ -96,7 +96,7 @@ module VivlioStarter
             text.gsub(CIRCLED_NUMBER_REGEX) do |char|
               number = CIRCLED_NUMBER_TEXT.fetch(char)
               src = File.join(GENERATED_ASSET_DIR, "circled-#{number}.webp")
-              %(<img src="#{src}" alt="#{number}" aria-label="#{number}" class="emoji vs-emoji vs-circled-number" width="1em" height="1em" style="vertical-align: -0.12em;">)
+              %(<img src="#{src}" alt="#{number}" aria-label="#{number}" class="emoji vs-emoji vs-circled-number" style="width: 1em; height: 1em; vertical-align: -0.12em;">)
             end
           end
         end
@@ -235,7 +235,7 @@ module VivlioStarter
             normalized = content.gsub(%r{<span\b[^>]*\bclass="[^"]*\bvs-circled-number\b[^"]*"[^>]*\baria-label="(\d{1,2})"[^>]*>\s*\d{1,2}\s*</span>}i) do
               number = Regexp.last_match(1)
               src = File.join(GENERATED_ASSET_DIR, "circled-#{number}.webp")
-              %(<img src="#{src}" alt="#{number}" aria-label="#{number}" class="emoji vs-emoji vs-circled-number" width="1em" height="1em" style="vertical-align: -0.12em;">)
+              %(<img src="#{src}" alt="#{number}" aria-label="#{number}" class="emoji vs-emoji vs-circled-number" style="width: 1em; height: 1em; vertical-align: -0.12em;">)
             end
             next if content == normalized
 

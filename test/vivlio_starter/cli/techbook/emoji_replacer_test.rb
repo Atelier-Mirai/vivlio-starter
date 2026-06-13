@@ -16,7 +16,7 @@ module VivlioStarter
           result = replacer.process(html)
 
           svg_path = File.join(FIXTURES_DIR, "2705.svg")
-          expected_img = %(<img src="#{svg_path}" alt="✅" class="emoji vs-emoji" width="1em" height="1em" style="vertical-align: -0.15em;">)
+          expected_img = %(<img src="#{svg_path}" alt="✅" class="emoji vs-emoji" style="width: 1em; height: 1em; vertical-align: -0.15em;">)
           assert_includes result, expected_img
           assert_equal "Task #{expected_img} done", result
         end
@@ -61,7 +61,7 @@ module VivlioStarter
           result = replacer.process(html)
 
           svg_path = File.join(FIXTURES_DIR, "2705.svg")
-          expected_img = %(<img src="#{svg_path}" alt="✅" class="emoji vs-emoji" width="1em" height="1em" style="vertical-align: -0.15em;">)
+          expected_img = %(<img src="#{svg_path}" alt="✅" class="emoji vs-emoji" style="width: 1em; height: 1em; vertical-align: -0.15em;">)
           assert_equal "<p>#{expected_img} OK</p>", result
         end
 

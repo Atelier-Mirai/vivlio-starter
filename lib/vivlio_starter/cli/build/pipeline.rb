@@ -319,6 +319,12 @@ module VivlioStarter
           target_name = determine_single_mode_epub_name
           EpubCommands.execute_epub({}, target_name)
 
+          # --- Phase: EPUB 内 CSS サニタイズ（@page マージンボックス除去） ---
+          Build::EpubBuilder.sanitize_epub_css!(target_name) if File.exist?(target_name)
+
+          # --- Phase: content.opf の数字始まり id を NCName 準拠へ修正 ---
+          sanitize_epub_opf_ids!(target_name) if File.exist?(target_name)
+
           # --- Phase: EPUB identifier 安定化 ---
           stabilize_epub_identifier!(target_name) if File.exist?(target_name)
 
@@ -731,6 +737,12 @@ module VivlioStarter
           target_name = Common.generate_epub_filename
           EpubCommands.execute_epub({}, target_name)
 
+          # --- Phase: EPUB 内 CSS サニタイズ（@page マージンボックス除去） ---
+          Build::EpubBuilder.sanitize_epub_css!(target_name) if File.exist?(target_name)
+
+          # --- Phase: content.opf の数字始まり id を NCName 準拠へ修正 ---
+          sanitize_epub_opf_ids!(target_name) if File.exist?(target_name)
+
           # --- Phase: EPUB identifier 安定化 ---
           stabilize_epub_identifier!(target_name) if File.exist?(target_name)
 
@@ -775,6 +787,41 @@ module VivlioStarter
           end
         rescue StandardError => e
           Common.log_warn("[EPUB] identifier 安定化に失敗: #{e.message}")
+        end
+
+        # content.opf の数字始まり id / idref に接頭辞を付与して NCName 違反を解消する。
+        # vivliostyle CLI はファイル名（例: 00-preface）から manifest item の id を
+        # 機械生成するため、数字始まりの id が XML の NCName 規則（先頭は英字または _）に
+        # 違反し epubcheck の RSC-005 ERROR になる。spine の idref も同値を参照するため、
+        # id と idref を同一規則（固定接頭辞 id-）で書き換えて整合を保つ。
+        # stabilize_epub_identifier! と同型の unzip → 修正 → zip 差し替え方式。
+        def sanitize_epub_opf_ids!(epub_path)
+          abs_epub = File.expand_path(epub_path)
+
+          Dir.mktmpdir('vs-epub-opf') do |tmpdir|
+            system('unzip', '-o', abs_epub, 'EPUB/content.opf', '-d', tmpdir,
+                   out: File::NULL, err: File::NULL)
+            opf_path = File.join(tmpdir, 'EPUB', 'content.opf')
+            return unless File.exist?(opf_path)
+
+            content = File.read(opf_path, encoding: 'UTF-8')
+            replaced = content.gsub(/\b(id|idref)="(\d[^"]*)"/) do
+              %(#{::Regexp.last_match(1)}="id-#{::Regexp.last_match(2)}")
+            end
+
+            return if replaced == content
+
+            File.write(opf_path, replaced)
+
+            Dir.chdir(tmpdir) do
+              system('zip', '-q', abs_epub, 'EPUB/content.opf',
+                     out: File::NULL, err: File::NULL)
+            end
+
+            Common.log_info('[EPUB] content.opf の数字始まり id を NCName 準拠に修正しました')
+          end
+        rescue StandardError => e
+          Common.log_warn("[EPUB] content.opf id 修正に失敗: #{e.message}")
         end
 
         # プロジェクト名から決定的に算出した UUID を urn:uuid: に載せて返す。
