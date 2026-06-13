@@ -216,7 +216,7 @@ end
 - `build_print_footnote_node`（:345）→ `<aside class="page-footnote page-footnote-print" id="fnN">`
 
 と**同一 id を意図的に**付与している（PDF で Vivliostyle が脚注を二重描画しないための
-解決先制御。コミット 06760b8 の設計。**PDF 経路では変更禁止**）。
+解決先制御。コミット 61387fc の設計。**PDF 経路では変更禁止**）。
 XHTML では同一文書内 id 重複は ERROR になる。
 
 **修正（EPUB 経路のみ）**: `EpubBuilder` に HTML 後処理を新設し、
