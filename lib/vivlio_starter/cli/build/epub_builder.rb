@@ -43,6 +43,24 @@ module VivlioStarter
         # `margin-bottom` 等のプロパティ名（先頭 @ 無し）には誤マッチしない。
         MARGIN_BOX_PATTERN = /@(?:(?:top|bottom|left|right)-[a-z-]+|footnote)\s*\{[^{}]*\}/
 
+        # @font-face ブロックを検出する正規表現（1 段ネスト前提）。
+        # フォント非埋め込み時、EPUB から fonts/ を除外すると src の参照が切れて
+        # RSC-007 になるため、EPUB パッケージ内 CSS から @font-face ごと除去する。
+        FONT_FACE_PATTERN = /@font-face\s*\{[^{}]*\}/
+
+        # fonts/ 配下を参照する @import を検出する正規表現。
+        # page-settings.css は FontManager 生成の `@import url("fonts/google-fonts.css")`
+        # を持つ。非埋め込みで fonts/ を除外すると参照切れ（RSC-007）になるため、
+        # @font-face とあわせて EPUB 内 CSS から除去する。
+        FONT_IMPORT_PATTERN = /@import\s+url\(\s*["']?fonts\/[^"')]+["']?\s*\)\s*;?/
+
+        # techbook の絵文字画像 <img class="... vs-emoji ...">  を検出する正規表現。
+        # 絵文字画像化（twemoji SVG 差し替え）は Chromium が PDF で絵文字を Type 3 化する
+        # 障害への対策で、PDF 専用。EPUB はリフロー型で Type 3 が存在せず、リーダーの
+        # カラー絵文字で描画されるため、EPUB 経路では alt の元絵文字へ戻す（Fix-8）。
+        # 囲み数字（vs-circled-number）は alt が数字でアクセント色付き画像のため除外する。
+        EMOJI_IMG_PATTERN = /<img\b[^>]*\bclass="[^"]*\bvs-emoji\b[^"]*"[^>]*>/
+
         module_function
 
         # EPUB 用 entries.js を生成する
@@ -69,6 +87,9 @@ module VivlioStarter
 
           # テーブルの align 属性を style へ変換（XHTML5 で廃止された属性の ERROR を回避）
           rewrite_table_align_for_epub!(chapter_htmls)
+
+          # 絵文字画像をプレーン絵文字へ復元（EPUB は Type 3 非該当。twemoji 非同梱で軽量化）
+          restore_plain_emoji_for_epub!(chapter_htmls)
 
           write_epub_entries(base_dir, chapter_htmls)
           Common.log_success("[EPUB] entries.epub.js を生成しました（#{chapter_htmls.size} エントリ）")
@@ -263,7 +284,17 @@ module VivlioStarter
             .cache/**
             *_images/**
             covers/bundled/**
+            stylesheets/twemoji/*.svg
+            stylesheets/twemoji/*.webp
           ]
+          # twemoji 直下（絵文字マスター 7,000+ 個）は restore_plain_emoji_for_epub! で
+          # 参照されなくなるため除外する。'*' はパス区切りを跨がないため
+          # stylesheets/twemoji/vs-techbook/（囲み数字・見出しマーカー）は同梱を維持する。
+
+          # フォント非埋め込み時は実体（51MB の TTF/OTF）も同梱しない。
+          # @font-face は sanitize_epub_css! が EPUB 内 CSS から除去する。
+          patterns << 'stylesheets/fonts/**' unless embed_fonts?
+
           excludes = patterns.map { "      '#{it}'," }.join("\n")
           <<~JS
               copyAsset: {
@@ -272,6 +303,21 @@ module VivlioStarter
                 ],
               },
           JS
+        end
+
+        # EPUB にフォント実体を埋め込むかどうか。
+        # 既定は false（非埋め込み = リーダーのフォントに委ねる）。技術書では
+        # 明朝/ゴシック/等幅の generic フォールバック（page-settings.css の --font-*）で
+        # 十分なため、サイズ最適化を優先する。
+        #
+        # NOTE: v2.0 で小説等の執筆に対応する際、book.yml の設定
+        # （例: output.epub.embed_fonts）でこの判定を切り替える拡張点。
+        # true を返せば fonts/ の同梱と @font-face の保持が復活し、埋め込み EPUB を
+        # 生成できる（コード経路は両対応のまま維持してある）。
+        #
+        # @return [Boolean]
+        def embed_fonts?
+          false
         end
 
         # 表紙画像のパスを解決する
@@ -477,6 +523,38 @@ module VivlioStarter
         end
 
         # ================================================================
+        # EPUB 用 絵文字プレーン復元
+        # ================================================================
+        # techbook の絵文字画像化（EmojiReplacer）は PDF の Type 3 障害対策で、
+        # EPUB には不要（EPUB に Type 3 は存在せずリーダーのカラー絵文字で描画される）。
+        # EPUB 経路でのみ <img class="... vs-emoji ...">  を alt の元絵文字へ戻し、
+        # twemoji 画像の同梱を不要にして軽量化する（build_copy_asset_excludes_config で
+        # stylesheets/twemoji 直下を除外）。囲み数字（vs-circled-number）は alt が数字で
+        # 字形・アクセント色を保てないため画像のまま残す。
+        # ================================================================
+
+        # 絵文字 <img> を alt の絵文字テキストへ復元する（vs-circled-number は除く）
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def restore_plain_emoji_for_epub!(html_files)
+          html_files.each do |path|
+            html = File.read(path, encoding: 'utf-8')
+            restored = html.gsub(EMOJI_IMG_PATTERN) do |tag|
+              # 囲み数字は数字 alt・アクセント色付き画像のため画像のまま維持する
+              next tag if tag.include?('vs-circled-number')
+
+              tag[/\salt="([^"]*)"/, 1] || tag
+            end
+            next if restored == html
+
+            File.write(path, restored, encoding: 'utf-8')
+            Common.log_info("[EPUB] #{File.basename(path)} の絵文字をプレーン文字へ復元しました")
+          end
+          html_files
+        end
+
+        # ================================================================
         # EPUB 用 CSS サニタイズ
         # ================================================================
         # PDF 用 CSS（ノンブル・柱の @page マージンボックス）をソースから消すと
@@ -486,12 +564,16 @@ module VivlioStarter
         # （mimetype 無圧縮制約に触れず、追加依存も不要）。
         # ================================================================
 
-        # 生成後 EPUB 内の CSS から @page マージンボックスを除去する
+        # 生成後 EPUB 内の CSS をサニタイズする。
+        # - @page マージンボックス / @footnote（CSS-008）は常に除去する。
+        # - フォント非埋め込み時は @font-face も除去する（fonts/ 不同梱による RSC-007 回避）。
         #
         # @param epub_path [String] 対象 EPUB ファイルパス
         # @return [void]
         def sanitize_epub_css!(epub_path)
           abs_epub = File.expand_path(epub_path)
+          patterns = [MARGIN_BOX_PATTERN]
+          patterns.push(FONT_FACE_PATTERN, FONT_IMPORT_PATTERN) unless embed_fonts?
 
           Dir.mktmpdir('vs-epub-css') do |tmpdir|
             # unzip のグロブは '*' がパス区切りも跨ぐため EPUB/*.css で全 CSS を取り出す
@@ -500,7 +582,7 @@ module VivlioStarter
 
             changed = Dir.glob(File.join(tmpdir, 'EPUB/**/*.css')).filter_map do |path|
               css = File.read(path, encoding: 'UTF-8')
-              sanitized = css.gsub(MARGIN_BOX_PATTERN, '')
+              sanitized = patterns.inject(css) { |acc, pat| acc.gsub(pat, '') }
               next if sanitized == css
 
               File.write(path, sanitized)
@@ -508,14 +590,14 @@ module VivlioStarter
             end
 
             if changed.empty?
-              Common.log_info('[EPUB] CSS にマージンボックスはありませんでした')
+              Common.log_info('[EPUB] CSS に除去対象（マージンボックス/@font-face）はありませんでした')
               return
             end
 
             Dir.chdir(tmpdir) do
               system('zip', '-q', abs_epub, *changed, out: File::NULL, err: File::NULL)
             end
-            Common.log_info("[EPUB] CSS のマージンボックスを除去しました（#{changed.size} ファイル）")
+            Common.log_info("[EPUB] CSS をサニタイズしました（#{changed.size} ファイル）")
           end
         rescue StandardError => e
           Common.log_warn("[EPUB] CSS サニタイズに失敗: #{e.message}")

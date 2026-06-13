@@ -16,6 +16,9 @@
 #   - EPF-06: @footnote at-rule もサニタイズで除去される（Fix-5）
 #   - EPF-07: テーブルの align 属性が style の text-align へ変換される（Fix-6）
 #   - EPF-08: content.opf の数字始まり id/idref に接頭辞が付く（Fix-7）
+#   - EPF-09: フォント非埋め込み時に @font-face 除去・fonts/ 除外（P2 サイズ最適化）
+#   - EPF-10: 埋め込み経路（embed_fonts? = true）では fonts/@font-face を保持
+#   - EPF-11: 絵文字 img のプレーン復元・囲み数字維持・twemoji 直下除外（Fix-8）
 # ================================================================
 
 require 'test_helper'
@@ -174,6 +177,76 @@ module VivlioStarter
         assert_includes result, 'id="bookid"', '英字始まりの id は不変であるべき'
         assert_includes result, 'idref="toc"', '英字始まりの idref は不変であるべき'
         assert_includes result, 'href="00-preface.xhtml"', 'href は変更しないべき'
+      end
+
+      # --- EPF-09: フォント非埋め込み時に @font-face と fonts/ への @import を除去（既定） ---
+      def test_should_strip_font_face_when_not_embedding_fonts
+        css = <<~CSS
+          @import url("fonts/google-fonts.css");
+          @font-face { font-family: "Zen Old Mincho"; src: url("fonts/ZenOldMincho-Regular.ttf"); }
+          body { font-family: var(--font-main-text); }
+        CSS
+        epub = build_epub_with_css('EPUB/stylesheets/page-settings.css' => css)
+
+        Build::EpubBuilder.sanitize_epub_css!(epub)
+
+        result = read_css_from_epub(epub, 'EPUB/stylesheets/page-settings.css')
+        refute_includes result, '@font-face', '非埋め込み時 @font-face は除去されるべき'
+        refute_includes result, 'fonts/google-fonts.css', 'fonts/ への @import も除去されるべき（RSC-007 回避）'
+        assert_includes result, 'font-family: var(--font-main-text)', '通常の font-family 宣言は残すべき'
+      end
+
+      # --- EPF-09b: 非埋め込み時は copyAsset.excludes に fonts/ が含まれる ---
+      def test_should_exclude_fonts_dir_when_not_embedding
+        path = Build::EpubBuilder.generate_epub_config!
+        content = File.read(path)
+
+        assert_includes content, "'stylesheets/fonts/**'", '非埋め込み時 fonts/ を除外すべき'
+      end
+
+      # --- EPF-10: 埋め込み経路（embed_fonts? = true）では fonts/@font-face を保持 ---
+      def test_should_keep_fonts_when_embedding_enabled
+        css = %(@font-face { font-family: "X"; src: url("fonts/x.ttf"); }\n)
+        epub = build_epub_with_css('EPUB/stylesheets/page-settings.css' => css)
+
+        Build::EpubBuilder.stub(:embed_fonts?, true) do
+          Build::EpubBuilder.sanitize_epub_css!(epub)
+          config = Build::EpubBuilder.generate_epub_config!
+
+          refute_includes File.read(config), "'stylesheets/fonts/**'",
+                          '埋め込み時は fonts/ を除外しないべき'
+        end
+
+        result = read_css_from_epub(epub, 'EPUB/stylesheets/page-settings.css')
+        assert_includes result, '@font-face', '埋め込み時 @font-face は保持されるべき'
+      end
+
+      # --- EPF-11: 絵文字 img をプレーン絵文字へ復元・囲み数字は維持（Fix-8） ---
+      def test_should_restore_plain_emoji_but_keep_circled_numbers
+        html = <<~HTML
+          <p>OK <img src="stylesheets/twemoji/2705.svg" alt="✅" class="emoji vs-emoji" style="width: 1em; height: 1em;"> done</p>
+          <p>No.<img src="stylesheets/twemoji/vs-techbook/circled-1.webp" alt="1" aria-label="1" class="emoji vs-emoji vs-circled-number" style="width: 1em; height: 1em;"></p>
+        HTML
+        path = File.join(@test_dir, '11-workflow.html')
+        File.write(path, html)
+
+        Build::EpubBuilder.restore_plain_emoji_for_epub!([path])
+
+        result = File.read(path)
+        assert_includes result, 'OK ✅ done', '絵文字は alt の元文字へ復元されるべき'
+        refute_includes result, '2705.svg', '絵文字 img は除去されるべき'
+        assert_includes result, 'circled-1.webp', '囲み数字は画像のまま維持されるべき'
+        assert_includes result, 'vs-circled-number', '囲み数字の class は残るべき'
+      end
+
+      # --- EPF-11b: 非埋め込み config は twemoji 直下を除外し vs-techbook は残す ---
+      def test_should_exclude_twemoji_masters_but_keep_vs_techbook
+        path = Build::EpubBuilder.generate_epub_config!
+        content = File.read(path)
+
+        assert_includes content, "'stylesheets/twemoji/*.svg'", 'twemoji 直下 svg を除外すべき'
+        assert_includes content, "'stylesheets/twemoji/*.webp'", 'twemoji 直下 webp を除外すべき'
+        refute_includes content, "'stylesheets/twemoji/**'", 'vs-techbook を巻き込む全除外はしないべき'
       end
 
       private

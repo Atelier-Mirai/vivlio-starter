@@ -300,8 +300,7 @@ module VivlioStarter
               mappings.each do |name, val, kind|
                 next if val.nil? || val.to_s.strip.empty?
 
-                v = val.to_s.strip
-                v = "\"#{v}\"" if (kind == :font) && !v.include?(',') && v !~ /^\s*".*"\s*$/
+                v = format_font_value(name, val.to_s.strip, kind)
 
                 updated = updated.sub(/(#{Regexp.escape(name)}:\s*)[^;]+(\s*;)/) do
                   "#{::Regexp.last_match(1)}#{v}#{::Regexp.last_match(2)}"
@@ -500,6 +499,35 @@ module VivlioStarter
             page_cfg[:folio_right]  = 'counter(page)'
             Common.log_info('ノンブル配置: 左右')
           end
+        end
+
+        # フォント変数ごとの generic フォールバック。
+        # フォント非埋め込みの EPUB でも 明朝=serif / ゴシック=sans-serif /
+        # コード=monospace の category がリーダー側で保たれるようにする。
+        # PDF では実体フォントが常に在るため不発（無害）。
+        FONT_GENERIC_FALLBACKS = {
+          '--font-main-text' => 'serif',
+          '--font-header'    => 'sans-serif',
+          '--font-code'      => 'monospace',
+          '--font-column'    => 'sans-serif',
+          '--font-folio'     => 'sans-serif'
+        }.freeze
+
+        # :font 型の CSS 変数値を整形する。
+        # 単一ファミリ名はクォートし、変数に対応する generic フォールバックを付与する。
+        # book.yml 側で既にカンマ区切り（独自フォールバック）が指定されている場合は尊重する。
+        #
+        # @param name [String] CSS 変数名（例: '--font-code'）
+        # @param value [String] book.yml 由来のフォント値
+        # @param kind [Symbol, nil] :font のときのみ整形する
+        # @return [String]
+        def format_font_value(name, value, kind)
+          return value unless kind == :font
+          return value if value.include?(',') # 既に独自フォールバック指定あり
+
+          quoted = value =~ /\A".*"\z/ ? value : "\"#{value}\""
+          fallback = FONT_GENERIC_FALLBACKS[name]
+          fallback ? "#{quoted}, #{fallback}" : quoted
         end
 
         # CSS変数マッピングを構築

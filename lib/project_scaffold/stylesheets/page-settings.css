@@ -117,14 +117,17 @@
 
   --column-font-size:   8pt;  /* コラムのフォントサイズ */
 
-  /* フォント指定 */
-  --font-main-text: "Zen Old Mincho";     /* メイン本文フォント */
-  --font-body:      "Zen Old Mincho";     /* 本文フォント（--font-main-text の別名） */
-  --font-title:     "Zen Kaku Gothic New";      /* タイトルフォント */
-  --font-header:    "Zen Kaku Gothic New";      /* 見出しフォント */
-  --font-column:    "Zen Maru Gothic";   /* コラムフォント */
-  --font-code:      "hackgen35";         /* コードフォント */
-  --font-folio:     "Zen Kaku Gothic New";   /* ノンブル(ページ番号)フォント */
+  /* フォント指定
+     末尾の generic family（serif/sans-serif/monospace）は EPUB をフォント非埋め込みで
+     配布する際のフォールバック。指定書体が無いリーダーでも 明朝=serif / ゴシック=sans-serif /
+     コード=monospace の category が保たれる。PDF では実体フォントが常に在るため不発（無害）。 */
+  --font-main-text: "Zen Old Mincho", serif;          /* メイン本文フォント */
+  --font-body:      "Zen Old Mincho", serif;          /* 本文フォント（--font-main-text の別名） */
+  --font-title:     "Zen Kaku Gothic New", sans-serif;   /* タイトルフォント */
+  --font-header:    "Zen Kaku Gothic New", sans-serif;   /* 見出しフォント */
+  --font-column:    "Zen Maru Gothic", sans-serif;    /* コラムフォント */
+  --font-code:      "hackgen35", monospace;           /* コードフォント */
+  --font-folio:     "Zen Kaku Gothic New", sans-serif;   /* ノンブル(ページ番号)フォント */
 
   /* ノンブル（ページ番号）設定 */
   --folio-font-size: calc(var(--base-font-size) * 0.75);

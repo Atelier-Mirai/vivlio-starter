@@ -174,11 +174,13 @@ ERROR(RSC-007): .../lib/project_scaffold/stylesheets/theme.css(74,3):
 
 ## 5. EP-02 / RC への影響
 
-- 当面 **EPUB は RC ゲートから外す**（`rake test:release` には EP-02 が `test:manual` 経由で
-  含まれるため、扱いは別途調整が必要）。
-- EP-02 のアサーション自体は妥当（実不具合を検出）。**テストは緩めない**。
-- 上記修正を別仕様書（例: `epub-pipeline-fix-spec.md`）として起こし、クラス単位で
-  着手 → 各クラス解消ごとに EP-02 の ERROR 件数が単調減少することを進捗指標にする。
+- ~~当面 **EPUB は RC ゲートから外す**~~ → **2026-06-13 解消・復帰**（§7.4）。
+  Fix-1〜7 で ERROR 0 件を達成したため、EP-02（`test:manual`→`test:release` に内包）を
+  **RC 品質ゲートへ正式復帰**させた。別途の除外機構は存在せず、ドキュメント記述のみの
+  扱いだった。
+- EP-02 のアサーション自体は妥当（実不具合を検出）。**テストは緩めなかった**（生成側を直した）。
+- 修正は別仕様書 `epub-pipeline-fix-spec.md`（Fix-1〜7）として起こし、クラス単位で
+  着手 → 各クラス解消ごとに EP-02 の ERROR 件数が単調減少することを進捗指標にした。
 
 ---
 
@@ -261,5 +263,24 @@ Fix-5〜7 を実装し、最終検証で **DoD を達成**した:
 - `rake test`: 1,088 件 green（EPF-01〜08 含む）
 
 これにより本 findings が追跡してきた EPUB 構造 ERROR（当初 35 件 + 取りこぼし 47 件）は
-**すべて解消**。EP-02 の `rake test:release` への復帰判断はユーザーに委ねる
-（仕様書 §6 のとおり）。
+**すべて解消**。EP-02 は **RC 品質ゲートへ正式復帰**（`test:manual`→`test:release` に内包。
+§5）。CHANGELOG「既知の不具合」からも削除済み。
+
+### 7.5 サイズ最適化（P2。2026-06-13 ユーザー判断のうえ実装）
+
+ERROR 0 達成後、ユーザー判断（技術書は 明朝/ゴシック/等幅 の一般フォントで十分・
+フォント非埋め込みを既定）を受けて P2 を実装（仕様書 §3）:
+
+- **P2-1 フォント非埋め込み（既定）**: `embed_fonts?`（既定 false）で `stylesheets/fonts/**`
+  を除外し、EPUB 内 CSS から `@font-face` と `@import url("fonts/…")` を除去（RSC-007 回避）。
+  css_updater が `--font-*` に generic フォールバック（明朝=serif/ゴシック=sans-serif/
+  コード=monospace）を付与し category を保つ。v2.0 で book.yml オプション化予定（埋め込み
+  経路はコード維持）。**−51MB**。
+- **P2-2 twemoji 非同梱（Fix-8）**: 絵文字画像化は **PDF 専用の Type 3 対策**で EPUB には
+  不要（EPUB に Type 3 は無くリーダーのカラー絵文字で描画）。EPUB 経路で `<img>` を
+  プレーン絵文字へ復元し twemoji マスターを除外。囲み数字は画像維持。
+
+結果: EPUB サイズ **59MB → 25MB**（ERROR 0 維持）。`rake test` 1,098 件 green
+（EPF-01〜11・CU-01〜05 含む）。
+
+> §7.4 の「残量は fonts/twemoji = P2 スコープ」は本節で解消済み。
