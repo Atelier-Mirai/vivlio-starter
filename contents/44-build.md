@@ -174,9 +174,7 @@ output:
 output:
   targets: epub
   epub:
-    cover:
-      embed: true              # 表紙画像を EPUB に埋め込む
-      image: cover.jpg         # カバー画像（covers/ ディレクトリ配下）
+    embed: true                # 表紙画像を EPUB に埋め込む
     layout: reflowable         # reflowable（リフロー型）/ fixed（固定レイアウト型）
 ```
 
@@ -212,6 +210,20 @@ book:
   language: "ja"
   isbn: ''
 ```
+
+### ファイルサイズの自動最適化
+
+EPUB は、各電子書籍ストアの配信基準に収まるよう、ビルド時に自動で軽量化されます。著者が設定する項目はありません。
+
+- **フォントを埋め込みません**: 本文（明朝体）・見出し（ゴシック体）・コード（等幅）は、リーダー側の標準フォントで表示されます。`font-family` には `serif` / `sans-serif` / `monospace` の総称ファミリが指定されるため、書体の系統（明朝／ゴシック／等幅）はどの端末でも保たれます。これにより、数十 MB に及ぶフォント実体を同梱せずに済みます。
+- **絵文字はそのまま表示されます**: PDF とは異なり、EPUB ではリーダー側のカラー絵文字フォントで表示されるため、画像化（Twemoji 化）は行いません。原稿に書いた絵文字がそのまま使われます。
+- **epubcheck 準拠**: 生成された EPUB は、構造検証ツール epubcheck でエラーが出ないよう自動調整されます。楽天 Kobo や Apple Books などストアの審査を通過しやすくなります。
+
+:::{.note}
+**フォント埋め込みについて**
+
+現在のバージョンでは、ファイルサイズを優先してフォントを埋め込まない設定が既定です。小説など特定の書体を厳密に保ちたい用途に向けたフォント埋め込みオプションは、将来のバージョンで `config/book.yml` に追加される予定です。
+:::
 
 ### EPUB の確認
 
@@ -288,16 +300,19 @@ vs build --log debug
 | Step 2 | テーマ画像の準備 |
 | Step 3 | Markdown の前処理（frontmatter 付加、画像パス修正） |
 | Step 4 | 索引語のスキャンと索引ページ生成 |
-| Step 5 | Markdown → HTML 変換、中扉ページ生成 |
+| Step 5 | Markdown → HTML 変換 |
+| Step 5b | 中扉（パートタイトル）ページの生成 |
+| Step 5c | Techbook モードの後処理（絵文字の画像化。`techbook: true` 時のみ） |
 | Step 6 | 目次 HTML と PDF の生成 |
 | Step 7 | 本文 PDF の生成（Vivliostyle による組版） |
 | Step 8 | 用語集バックリンクの重複排除 |
 | Step 9 | 表紙・奥付 PDF の生成 |
 | Step 10 | 全 PDF の結合 |
 | Step 11 | PDF アウトライン（しおり）の付与 |
-| Step 12 | リネーム・クリーンアップ |
+| Step 12 | 圧縮・リネーム |
 | Step 13 | 印刷入稿用 PDF の生成（`print_pdf` 時のみ） |
 | Step E | EPUB の生成（`epub` 時のみ） |
+| Step 14 | 最終クリーンアップ |
 
 ### タイミング表示
 
@@ -365,10 +380,8 @@ output:
 
   # EPUB
   epub:
-    cover:
-      embed: true
-      image: cover.jpg
-    layout: reflowable
+    embed: true                        # 表紙画像を EPUB に埋め込むか
+    layout: reflowable                 # reflowable（リフロー型）/ fixed（固定レイアウト型）
 ```
 
 :::{.column}
@@ -537,8 +550,8 @@ Vivlio Starterでは、表紙や本文、奥付にいたるまで、すべての
 **症状**: 目次のページ番号と実際のページが一致しない
 
 **解決方法**:
-- `vs build --force` でタイトルページ・奥付を再生成する
-- キャッシュが古い場合があるため `vs clean` を実行してからビルドし直す
+- 中間生成物が古い場合があるため `vs clean` を実行してからビルドし直す（タイトルページ・奥付・目次が再生成されます）
+- それでも直らない場合は `vs clean --all` でキャッシュも含めて削除してからビルドする
 
 ### EPUB で索引リンクが機能しない
 
