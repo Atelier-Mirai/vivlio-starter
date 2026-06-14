@@ -241,7 +241,14 @@ module VivlioStarter
         end
 
         Common.log_action('bundled テーマバリアント画像を削除中...')
-        patterns = ['*_portrait.webp', '*_landscape.webp']
+        # 最終バリアント（*_portrait/*_landscape）に加え、生成途中の中間ファイル
+        # （*_alpha* / *_color* / *_merged*、png/webp 双方）も保険として掃除対象に含める。
+        # 元画像（sakura.webp 等）には一致しないパターンに限定する。
+        patterns = %w[
+          *_portrait.webp *_landscape.webp
+          *_alpha*.webp *_color*.webp *_merged*.webp
+          *_alpha*.png *_color*.png *_merged*.png
+        ]
         deleted = 0
 
         patterns.each do |pattern|

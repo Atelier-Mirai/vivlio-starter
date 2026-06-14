@@ -203,7 +203,11 @@ module VivlioStarter
                          []
                        end
 
-          # 書籍構成順序: 前書き → [中扉+本文] → 付録 → 用語集 → 後書き → 索引
+          # 奥付（書籍の最後尾に置く）。PDF と異なり EPUB ではカバーのみ埋め込むため、
+          # 奥付は本文 HTML として明示的に収録しないと EPUB に含まれない。
+          colophon_html = [File.join(base_dir, '_colophon.html')].select { File.exist?(it) }
+
+          # 書籍構成順序: 前書き → [中扉+本文] → 付録 → 用語集 → 後書き → 索引 → 奥付
           # ※ 目次（_toc）と裏表紙は除外
           [
             preface_html,
@@ -211,7 +215,8 @@ module VivlioStarter
             appx_htmls,
             glossary_html,
             post_htmls,
-            index_html
+            index_html,
+            colophon_html
           ].flatten.reject { excluded_basename?(it) }
         end
 
@@ -419,11 +424,14 @@ module VivlioStarter
             "#{tag_open}>#{chapter_num}</a>"
           end
 
-          # Step 2: 連続する </a><a を </a>, <a に変換（カンマ区切り）
+          # Step 2: 同一番号（同一章＝EPUB 上の同一ページ）を指す連続リンクを併合
+          html = dedup_sequential_number_links(html)
+
+          # Step 3: 連続する </a><a を </a>, <a に変換（カンマ区切り）
           html = html.gsub(%r{</a>\s*(<a\s+href=")}, '</a>, \1')
 
           File.write(path, html, encoding: 'utf-8')
-          Common.log_info("[EPUB] #{File.basename(path)} を書き換えました（連番リンク＋区切り挿入）")
+          Common.log_info("[EPUB] #{File.basename(path)} を書き換えました（連番リンク＋併合＋区切り挿入）")
         end
 
         # 用語集 HTML を EPUB 用に書き換える
@@ -443,8 +451,27 @@ module VivlioStarter
             "#{tag_open}>#{chapter_num}</a>"
           end
 
+          # 同一番号（同一章＝EPUB 上の同一ページ）を指す連続バックリンクを併合
+          html = dedup_sequential_number_links(html)
+
           File.write(path, html, encoding: 'utf-8')
-          Common.log_info("[EPUB] #{File.basename(path)} を書き換えました（連番バックリンク挿入）")
+          Common.log_info("[EPUB] #{File.basename(path)} を書き換えました（連番バックリンク＋併合）")
+        end
+
+        # 索引・用語集の連番リンクのうち、同一番号（= 同一章 = EPUB 上の同一ページ扱い）を
+        # 指す連続リンクを最初の 1 つに併合する。PDF のページ番号併合（Step 8 の backlink
+        # dedup）に相当する処理を、EPUB の章連番に対して文字列処理で行う。
+        # 番号挿入後・カンマ区切り挿入前に適用する想定。空白区切りで隣接する
+        # <a ...>N</a> の連なりを対象とし、各連なり内で番号が初出のリンクだけを残す。
+        #
+        # @param html [String] 番号挿入済みの索引/用語集 HTML
+        # @return [String] 同番号リンクを併合した HTML
+        def dedup_sequential_number_links(html)
+          html.gsub(%r{(?:<a\s[^>]*>\d+</a>\s*){2,}}) do |run|
+            links = run.scan(%r{<a\s[^>]*>\d+</a>})
+            # 番号（章連番）が初出のリンクだけを順序保持で残す
+            links.uniq { |link| link[%r{>(\d+)</a>\z}, 1] }.join(' ')
+          end
         end
 
         # ================================================================

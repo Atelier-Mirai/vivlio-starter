@@ -241,11 +241,20 @@ module VivlioStarter
 
           variant_label = File.basename(target_path)
 
-          if waifu2x_available
-            alpha_path = target_path.sub(/\.webp\z/, '_alpha.png')
-            alpha_scaled_path = target_path.sub(/\.webp\z/, "_alpha_x#{scale}.png")
-            color_path = target_path.sub(/\.webp\z/, "_color_x#{scale}.png")
-            merged_path = target_path.sub(/\.webp\z/, "_merged_x#{scale}.png")
+          unless waifu2x_available
+            convert_to_webp(input_png, target_path, target_width:, webp_quality:, label: variant_label)
+            return
+          end
+
+          # waifu2x 経路: アルファ抽出 → waifu2x 拡大 → アルファ拡大 → 再合成 の中間 PNG は
+          # tmpdir に隔離する。base_dir（bundled/）へ書かないため、途中で例外が起きても
+          # ブロック離脱で自動削除され、bundled/ に中間生成物が残らない。
+          Dir.mktmpdir('frontispiece-variant') do |tmpdir|
+            stem              = File.join(tmpdir, File.basename(target_path, '.webp'))
+            alpha_path        = "#{stem}_alpha.png"
+            alpha_scaled_path = "#{stem}_alpha_x#{scale}.png"
+            color_path        = "#{stem}_color_x#{scale}.png"
+            merged_path       = "#{stem}_merged_x#{scale}.png"
 
             run_command!(
               ['magick', input_png, '-alpha', 'extract', "PNG32:#{alpha_path}"],
@@ -272,14 +281,14 @@ module VivlioStarter
               label: "アルファ再適用 (#{variant_label})"
             )
 
-            source_for_webp = merged_path
-          else
-            source_for_webp = input_png
-            alpha_path = alpha_scaled_path = color_path = merged_path = nil
+            convert_to_webp(merged_path, target_path, target_width:, webp_quality:, label: variant_label)
           end
+        end
 
+        # 画像（PNG 等）を最終的な WebP（透過・指定幅・品質）へ変換して target_path に書き出す
+        def convert_to_webp(source_path, target_path, target_width:, webp_quality:, label:)
           convert_cmd = [
-            'magick', source_for_webp,
+            'magick', source_path,
             '-alpha', 'set',
             '-background', 'none',
             '-transparent', 'white',
@@ -287,11 +296,7 @@ module VivlioStarter
             '-quality', webp_quality.to_s,
             target_path
           ]
-          run_command!(convert_cmd, label: "WebP 変換 (#{variant_label})")
-
-          return if keep_intermediate
-
-          [alpha_path, alpha_scaled_path, color_path, merged_path].compact.each { |path| FileUtils.rm_f(path) }
+          run_command!(convert_cmd, label: "WebP 変換 (#{label})")
         end
 
         # コマンドを実行

@@ -131,6 +131,17 @@ module VivlioStarter
           idx ? (idx + 1).to_s : (num - 10).to_s
         end
 
+        # 付録ファイル（90〜98）の図表番号プレフィックスに使う付録レター（"A".."I"）を返す。
+        # 付録の見出し（付録 D）・節番号（D-1）と図表番号（表 D-1）を一致させるため、
+        # 付録では章番号ではなくレターを用いる。本文章・前後付では nil を返し、
+        # 各呼び出し元の既存挙動（章番号 / 表示番号）を維持する。
+        def appendix_letter_for(filename)
+          num = extract_chapter_number(filename).to_i
+          return nil unless (90..98).cover?(num)
+
+          Common.appendix_number_to_letter(num)&.upcase
+        end
+
         # ラベル収集
         def collect_labels(content, source_file, chapter_number)
           collector = LabelCollectorContext.new(source_file, chapter_number)
@@ -191,8 +202,11 @@ module VivlioStarter
 
           def create_label(info, type, line_number)
             count = @counters[type]
-            label_id = info[:auto] ? "#{type}-#{@chapter_number}-#{count}" : info[:id]
-            Label.new(label_id, type, @chapter_number, "#{@chapter_number}-#{count}",
+            # 付録は章番号ではなく付録レター（A..I）を番号プレフィックスに使う。
+            # 本文章・前後付では nil となり従来どおり章番号を用いる。
+            chapter_label = CrossReferenceProcessor.appendix_letter_for(@source_file) || @chapter_number
+            label_id = info[:auto] ? "#{type}-#{chapter_label}-#{count}" : info[:id]
+            Label.new(label_id, type, @chapter_number, "#{chapter_label}-#{count}",
                       info[:title], @source_file, line_number, info[:auto])
           end
         end
@@ -440,7 +454,9 @@ module VivlioStarter
 
           def resolve_label(info, type)
             if info[:auto]
-              chapter = CrossReferenceProcessor.display_chapter_number_for_filename(@filename)
+              # 付録はレター、本文章は表示番号で照合（create_label の採番規則と一致させる）
+              chapter = CrossReferenceProcessor.appendix_letter_for(@filename) ||
+                        CrossReferenceProcessor.display_chapter_number_for_filename(@filename)
               @labels_map["#{type}-#{chapter}-#{@counters[type]}"]
             else
               @labels_map[info[:id]]

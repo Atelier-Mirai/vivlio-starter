@@ -31,11 +31,17 @@ end
 # 生成画像の除去
 # ================================================================
 # *_landscape.webp / *_portrait.webp は元画像 (sakura.webp など) から
-# ビルド時に生成される派生ファイル。scaffold に同梱する必要がないため、
-# コピー後に削除しておく。
-generated = Dir.glob(%w[**/*_landscape.webp **/*_portrait.webp].map { File.join(SCAFFOLD, it) })
+# ビルド時に生成される派生ファイル。中間生成物 (*_alpha* / *_color* / *_merged*) は
+# 通常 tmpdir に隔離され残らないが、過去の残骸が混入しても scaffold に運ばない。
+# いずれも scaffold に同梱する必要がないため、コピー後に削除しておく。
+prune_globs = %w[
+  **/*_landscape.webp **/*_portrait.webp
+  **/*_alpha*.webp **/*_color*.webp **/*_merged*.webp
+  **/*_alpha*.png **/*_color*.png **/*_merged*.png
+]
+generated = Dir.glob(prune_globs.map { File.join(SCAFFOLD, it) })
 generated.each { FileUtils.rm_f(it) }
-puts "PRUNE 生成画像 #{generated.size} 件を除去 (*_landscape.webp / *_portrait.webp)"
+puts "PRUNE 生成画像 #{generated.size} 件を除去 (派生バリアント＋中間生成物)"
 
 FILES = %w[README.md .gitignore].freeze
 

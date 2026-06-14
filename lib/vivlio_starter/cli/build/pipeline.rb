@@ -607,9 +607,13 @@ module VivlioStarter
           print_pdf_rename!
         end
 
-        # 本文セクションの入稿用 PDF を生成（既存 entries.js を再利用）
+        # 本文セクションの入稿用 PDF を生成
+        # pdf + print_pdf 併用フローでは、直前の Step 9（前付・奥付ビルド）で entries.js が
+        # 奥付のみに上書きされている。周囲の entries.js 状態に依存せず本文を確実にビルドするため、
+        # ここで本文用 entries.js を再生成してから入稿用 PDF を生成する。
         def print_pdf_build_sections!
           Common.log_action('[Step 13] 本文 PDF をトンボ・塗り足し付きでビルドします…')
+          Build::PdfBuilder.generate_entries_for_sections!('.', entries)
           PdfCommands.execute_print_pdf({}, '_sections_print.pdf')
         end
 

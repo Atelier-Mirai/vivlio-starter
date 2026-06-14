@@ -496,8 +496,11 @@ module VivlioStarter
         n = num.to_i
         return nil unless n.between?(90, 98)
 
-        # ビルド対象のエントリが渡された場合はその中の付録の順番を使う
-        appendix_entries = if entries
+        # ビルド対象のエントリ（付録を含む非空配列）が渡された場合のみ、その並びを使う。
+        # 空配列は「指定なし」として扱い catalog 全体から付録順を取り直す。
+        # （フルビルドでは本文章のみの override が渡され、付録抽出後に空配列となるため、
+        #   ここで全体 resolve に委ねないと末尾フォールバックに落ちて採番がずれる）
+        appendix_entries = if entries && !entries.empty?
                              entries.select { it.kind == :appendix }.sort_by { it.number.to_i }
                            else
                              resolver = TokenResolver::Resolver.new
