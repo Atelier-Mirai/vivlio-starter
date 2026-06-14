@@ -20,6 +20,7 @@ CHANGELOG.md の「既知の不具合（Known Issues）」に記録した次の 
 | ④-B | テーブルセル内数式が PDF・EPUB とも生 LaTeX 露出 | 中 | ✅ 回避（原稿を Unicode 表記化）／VFM 制約は許容 |
 | ⑤ | 付録ラベルが誤り（91-install が「付録B」、本来「付録A」） | 中（PDF・EPUB 共通の表示誤り） | ✅ 修正済 |
 | ⑥ | 付録内の図表番号が章番号（表 94-1）→ 付録レター（表 D-1） | 低〜中（PDF・EPUB 共通） | ✅ 修正済 |
+| ⑦ | EPUB の本文 † マーク数が同時ビルドする target に依存 | 低（† は実体テキストでなくナビ記号） | ⏸ 保留（共有 HTML の dedup 影響切り離しが必要） |
 
 ---
 
@@ -490,6 +491,43 @@ Label.new(label_id, type, @chapter_number, "#{@chapter_number}-#{count}", ...)
 - 変更は `cross_reference_processor.rb` の採番／照合の付録分岐に限定。本文章の番号は不変。
 - テスト: 付録ファイルの自動キャプションが `表 D-1`／参照リンクも同値になること。
   明示 id・auto id の双方で番号とキーが整合すること。
+
+---
+
+## ⑦ EPUB の本文 † マーク数が同時ビルドの target に依存する（保留）
+
+### 症状（ターゲット整合性テスト `rake test:targets` で発見）
+
+`targets: epub` 単体でビルドした EPUB と、`targets: pdf, epub`（PDF を併せてビルド）の
+EPUB とで、本文中の用語集オートリンク脚注記号「†」の数が異なる。本文の実体テキスト自体は同一。
+
+### 原因
+
+`build/backlink_deduplicator.rb#deduplicate_body_glossary_links!` は
+「**同一 PDF ページ内の 2 回目以降の glossary-link（†）を削除**」する PDF ページ依存処理で、
+Step 8（`BacklinkDedupOrchestrator`）として **PDF ビルド経路でのみ**実行される
+（`register_pdf_build_steps` に含まれ、`register_epub_only_steps` には無い）。
+この dedup は**共有されている本文章 HTML を直接書き換える**ため、後段の EPUB 生成
+（Step E）はその書き換え後 HTML を再利用する。結果:
+
+- `epub` 単体: Step 8 を実行しない → † が全て残る。
+- `pdf + epub`: Step 8 が PDF のページ単位で † を間引いた HTML を EPUB が継承する。
+
+リフロー型 EPUB にページ概念は無く、ページ依存 dedup の影響を受けるべきではない。
+
+### 修正方針（未実装）
+
+EPUB を「PDF のページ依存 dedup の影響」から切り離す。候補:
+
+- (A) Step 8 が本文章 HTML を書き換える前にスナップショットを取り、EPUB 生成直前
+  （PDF 完成後）に未 dedup 版へ復元してから EPUB をビルドする。
+- (B) EPUB 生成直前に本文章 HTML を未 dedup 状態へ再生成する（Step 5 相当をやり直す）。
+- いずれも pipeline への変更を伴い規模・リスクがあるため、RC スコープ外として別途実施。
+
+### 暫定対応
+
+`rake test:targets` の EPUB 一致比較は、実体テキストの同一性を担保するため
+† を除いて比較する（spine は厳密一致）。† dedup 差は本書 ⑦ / CHANGELOG「既知の不具合」で追跡。
 
 ---
 

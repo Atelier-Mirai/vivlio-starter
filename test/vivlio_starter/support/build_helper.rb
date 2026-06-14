@@ -16,6 +16,7 @@
 # =============================================================================
 
 require "fileutils"
+require "tmpdir"
 
 begin
   require "pdf/reader"
@@ -226,5 +227,52 @@ module VsTestSupport
       str.to_s
     end
     private_class_method :decode_pdf_string
+  end
+
+  # ===========================================================================
+  # EpubInspector — EPUB の spine 構成・本文テキスト検査（ターゲット整合性テスト用）
+  # ===========================================================================
+  module EpubInspector
+    # spine（読み順）に並ぶドキュメントの basename 配列（拡張子なし）を返す。
+    # 例: ["cover", "00-preface", "_part1", "11-workflow", ..., "_indexpage", "_colophon"]
+    # @return [Array<String>]
+    def self.spine_documents(epub_path)
+      with_unzipped(epub_path) do |dir|
+        opf = Dir.glob(File.join(dir, "**", "content.opf")).first
+        next [] unless opf
+
+        content = File.read(opf, encoding: "UTF-8")
+        manifest = content.scan(/<item\b[^>]*\bid="([^"]+)"[^>]*\bhref="([^"]+)"/).to_h
+        content.scan(/<itemref\b[^>]*\bidref="([^"]+)"/).flatten.filter_map do |idref|
+          href = manifest[idref]
+          File.basename(href, ".*") if href
+        end
+      end
+    end
+
+    # 全 xhtml の本文テキスト（タグ・実体参照・空白を除去）をファイル名順で連結して返す。
+    # フォーマット間/単体・複合間の「本文がほぼ同じ」を量・内容で比較するための指紋。
+    # @return [String]
+    def self.body_text(epub_path)
+      with_unzipped(epub_path) do |dir|
+        Dir.glob(File.join(dir, "**", "*.xhtml")).sort.map do |path|
+          strip_markup(File.read(path, encoding: "UTF-8"))
+        end.join
+      end
+    end
+
+    def self.with_unzipped(epub_path)
+      Dir.mktmpdir("vs-epub-inspect") do |dir|
+        system("unzip", "-o", "-q", File.expand_path(epub_path), "-d", dir,
+               out: File::NULL, err: File::NULL)
+        yield(dir)
+      end
+    end
+    private_class_method :with_unzipped
+
+    def self.strip_markup(html)
+      html.gsub(/<[^>]+>/, " ").gsub(/&[a-zA-Z#0-9]+;/, " ").gsub(/\s+/, "")
+    end
+    private_class_method :strip_markup
   end
 end

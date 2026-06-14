@@ -16,7 +16,7 @@ class << Rake.application
     end
 
     # 【重要】出力させたい理想の順番を明示的に指定
-    custom_order = ['test', 'test:layout', 'test:manual', 'test:package', 'test:release', 'test:canary', 'reinstall']
+    custom_order = ['test', 'test:layout', 'test:targets', 'test:manual', 'test:package', 'test:release', 'test:canary', 'reinstall']
     displayable_tasks = displayable_tasks.sort_by { |t| custom_order.index(t.name) || 999 }
 
     # 表示幅を計算して綺麗にフォーマット出力
@@ -34,7 +34,8 @@ Rake::TestTask.new(:test) do |t|
   t.libs << "test"
   t.test_files = FileList["test/**/*_test.rb"].exclude(
     "test/**/page_layout/**/*_test.rb",
-    "test/**/release/**/*_test.rb"
+    "test/**/release/**/*_test.rb",
+    "test/**/targets/**/*_test.rb"
   )
   t.warning = false
 end
@@ -57,6 +58,21 @@ end
 # 既存の "Run tests for layout" を完全にクリアしてから上書き
 Rake::Task["test:layout"].clear_comments
 Rake::Task["test:layout"].comment = "判型テスト（vs build を実際に実行する統合テスト）"
+
+# ------------------------------------------------------------------
+# ターゲット整合性テスト（単体/複合 targets の実ビルド突き合わせ）
+# 実ビルドを 7 通り回すため最も遅い。通常テストからは除外
+# ------------------------------------------------------------------
+namespace :test do
+  Rake::TestTask.new(:targets) do |t|
+    t.libs << "test"
+    t.pattern = "test/vivlio_starter/targets/**/*_test.rb"
+    t.warning = false
+  end
+end
+
+Rake::Task["test:targets"].clear_comments
+Rake::Task["test:targets"].comment = "ターゲット整合性テスト（pdf/print_pdf/epub を単体・複合でビルドし突き合わせ）"
 
 # ------------------------------------------------------------------
 # RC 品質保証テスト群（docs/specs/test-suite-expansion-spec.md §3）
@@ -88,7 +104,7 @@ namespace :test do
   end
 
   # RC 前総点検（canary は上流要因のため含めない）
-  task release: ['test', 'test:layout', 'test:manual', 'test:package']
+  task release: ['test', 'test:layout', 'test:targets', 'test:manual', 'test:package']
 end
 
 Rake::Task["test:manual"].clear_comments
@@ -97,7 +113,7 @@ Rake::Task["test:package"].clear_comments
 Rake::Task["test:package"].comment = "パッケージング E2E（gem build → 隔離インストール → ビルド確認）"
 Rake::Task["test:canary"].clear_comments
 Rake::Task["test:canary"].comment = "依存カナリア（@vivliostyle/cli 最新版での破壊検知）"
-Rake::Task["test:release"].comment = "RC 前総点検（test → layout → manual → package を一括実行）"
+Rake::Task["test:release"].comment = "RC 前総点検（test → layout → targets → manual → package を一括実行）"
 
 # デフォルトタスク（rake -T には出さない）
 task default: :test
