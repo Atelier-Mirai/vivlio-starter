@@ -45,6 +45,11 @@ Gem::Specification.new do |spec|
   #   Ubuntu: sudo apt-get install mecab libmecab-dev mecab-ipadic-utf8
   spec.add_dependency 'natto', '~> 1.2'
 
+  # 数式 SVG 化は Node 上の MathJax（npm パッケージ mathjax-full）を「SVG 生成器」として
+  # 前処理で呼び出す（lib/.../pre_process/mathjax_to_svg.mjs）。ネイティブ拡張の gem 依存は無く、
+  # `vs doctor --fix`（`vs new` 初回に自動実行）が `npm install -g mathjax-full` で導入する。
+  # 未導入時は数式が SVG 化されず PDF のみ Vivliostyle の MathJax で組版される（グレースフル縮退）。
+
   # Development dependencies
   spec.add_development_dependency 'rake', '~> 13.2'
   spec.add_development_dependency 'rubocop', '~> 1.65'

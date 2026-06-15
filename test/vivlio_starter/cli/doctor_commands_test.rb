@@ -61,11 +61,13 @@ module VivlioStarter
                   DoctorCommands.stub :playwright_npm_available?, true do
                     DoctorCommands.stub :chromium_available?, true do
                       DoctorCommands.stub :rouge_gem_available?, true do
+                        DoctorCommands.stub :mathjax_full_available?, true do
                         DoctorCommands.stub :command_exists?, ->(_) { true } do
                           DoctorCommands.stub :diagnose_config_files!, ->(_opts) { diagnose_called = true } do
                             capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
                           end
                         end
+                      end
                       end
                     end
                   end
@@ -173,6 +175,7 @@ module VivlioStarter
                   DoctorCommands.stub :playwright_npm_available?, true do
                     DoctorCommands.stub :chromium_available?, true do
                       DoctorCommands.stub :rouge_gem_available?, true do
+                        DoctorCommands.stub :mathjax_full_available?, true do
                         DoctorCommands.stub :diagnose_config_files!, nil do
                           DoctorCommands.stub :command_exists?, lambda { |cmd|
                             case cmd
@@ -198,6 +201,7 @@ module VivlioStarter
                           end
                         end
                       end
+                      end
                     end
                   end
                 end
@@ -221,6 +225,7 @@ module VivlioStarter
                 DoctorCommands.stub :playwright_npm_available?, true do
                   DoctorCommands.stub :chromium_available?, true do
                     DoctorCommands.stub :rouge_gem_available?, true do
+                      DoctorCommands.stub :mathjax_full_available?, true do
                       DoctorCommands.stub :diagnose_config_files!, nil do
                         DoctorCommands.stub :tesseract_language_available?, lambda { |language|
                           language == 'jpn' && tesseract_lang_installed
@@ -253,6 +258,7 @@ module VivlioStarter
                         end
                       end
                     end
+                    end
                   end
                 end
               end
@@ -276,6 +282,7 @@ module VivlioStarter
                   DoctorCommands.stub :playwright_npm_available?, true do
                     DoctorCommands.stub :chromium_available?, false do
                       DoctorCommands.stub :rouge_gem_available?, true do
+                        DoctorCommands.stub :mathjax_full_available?, true do
                         DoctorCommands.stub :diagnose_config_files!, nil do
                           DoctorCommands.stub :command_exists?, ->(_) { true } do
                             DoctorCommands.stub :system, lambda { |cmd|
@@ -295,6 +302,7 @@ module VivlioStarter
                             end
                           end
                         end
+                      end
                       end
                     end
                   end
@@ -347,9 +355,11 @@ module VivlioStarter
                           DoctorCommands.stub :playwright_npm_available?, true do
                             DoctorCommands.stub :chromium_available?, true do
                               DoctorCommands.stub :rouge_gem_available?, true do
+                                DoctorCommands.stub :mathjax_full_available?, true do
                                 DoctorCommands.stub :command_exists?, ->(cmd) { !%w[tesseract vips].include?(cmd) } do
                                   DoctorCommands.execute_doctor(options_context)
                                 end
+                              end
                               end
                             end
                           end
@@ -386,9 +396,11 @@ module VivlioStarter
                           DoctorCommands.stub :playwright_npm_available?, true do
                             DoctorCommands.stub :chromium_available?, true do
                               DoctorCommands.stub :rouge_gem_available?, true do
+                                DoctorCommands.stub :mathjax_full_available?, true do
                                 DoctorCommands.stub :command_exists?, ->(cmd) { !%w[tesseract vips].include?(cmd) } do
                                   DoctorCommands.execute_doctor(options_context)
                                 end
+                              end
                               end
                             end
                           end
@@ -404,6 +416,48 @@ module VivlioStarter
           assert errors.any? { it.include?('tesseract') }, 'プラグイン導入時は tesseract の不足を 🔴 で報告する'
           assert errors.any? { it.include?('vips') }, 'プラグイン導入時は vips の不足を 🔴 で報告する'
           refute warns.any? { it.include?('任意ツール') }, 'プラグイン導入時は 🟡 任意ツール注記を出さない'
+        end
+      end
+
+      # 中断ビルド等で壊れた Vivliostyle Chrome（残骸 zip・Framework 欠落）を
+      # --fix で掃除し、健全な版は保持することを検証する。
+      def test_doctor_repairs_broken_vivliostyle_chrome_on_fix
+        Dir.mktmpdir do |home|
+          chrome = File.join(home, 'browsers', 'chrome')
+          healthy_fw = File.join(chrome, 'mac_arm-149', 'app', 'Frameworks',
+                                 'Chrome Framework.framework', 'Versions', '149')
+          FileUtils.mkdir_p(healthy_fw)
+          FileUtils.touch(File.join(healthy_fw, 'Chrome Framework'))
+          FileUtils.mkdir_p(File.join(chrome, 'mac_arm-146', 'app', 'MacOS')) # Framework 欠落
+          FileUtils.touch(File.join(chrome, '146-chrome-mac-arm64.zip')) # 展開途中の残骸
+
+          DoctorCommands.stub :vivliostyle_browsers_cache_dir, File.join(home, 'browsers') do
+            broken = DoctorCommands.send(:broken_vivliostyle_chrome_entries)
+            assert_includes broken, File.join(chrome, '146-chrome-mac-arm64.zip')
+            assert_includes broken, File.join(chrome, 'mac_arm-146')
+            refute_includes broken, File.join(chrome, 'mac_arm-149')
+
+            stub_logging { DoctorCommands.send(:handle_vivliostyle_chrome, { fix: true }) }
+
+            refute Dir.exist?(File.join(chrome, 'mac_arm-146')), '壊れた版は削除される'
+            refute File.exist?(File.join(chrome, '146-chrome-mac-arm64.zip')), '残骸 zip は削除される'
+            assert Dir.exist?(File.join(chrome, 'mac_arm-149')), '健全な版は保持される'
+          end
+        end
+      end
+
+      # --fix なしでは Chrome キャッシュを削除しない（診断のみ）。
+      def test_doctor_does_not_delete_chrome_without_fix
+        Dir.mktmpdir do |home|
+          chrome = File.join(home, 'browsers', 'chrome')
+          FileUtils.mkdir_p(chrome)
+          zip = File.join(chrome, '146.zip')
+          FileUtils.touch(zip)
+
+          DoctorCommands.stub :vivliostyle_browsers_cache_dir, File.join(home, 'browsers') do
+            stub_logging { DoctorCommands.send(:handle_vivliostyle_chrome, { fix: false }) }
+            assert File.exist?(zip), '--fix なしでは削除しない'
+          end
         end
       end
 

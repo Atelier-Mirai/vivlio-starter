@@ -177,7 +177,8 @@ module VivlioStarter
           'playwright' => nil, # バックリンク重複排除用（npm パッケージ）
           'chromium' => nil,   # Playwright 用ヘッドレスブラウザ
           'mecab' => 'mecab', # 索引機能の読み自動推測用
-          'rouge' => nil # コードブロック言語推定用
+          'rouge' => nil, # コードブロック言語推定用
+          'mathjax' => nil # 数式の SVG 化用（mathjax-full・npm パッケージ）
         }
 
         plugin_installed = pdf_plugin_installed?
@@ -195,6 +196,8 @@ module VivlioStarter
                  waifu2x_available?
                when 'rouge'
                  rouge_gem_available?
+               when 'mathjax'
+                 mathjax_full_available?
                when 'playwright'
                  playwright_npm_available?
                when 'chromium'
@@ -223,6 +226,10 @@ module VivlioStarter
             missing << 'ssl-certificates'
           end
         end
+
+        # Vivliostyle の headless Chrome キャッシュの健全性（中断ビルド等で壊れた残骸を掃除）
+        # ※ missing.empty? の早期 return より前に実行し、他ツールが揃っていても修復できるようにする
+        handle_vivliostyle_chrome(options)
 
         report_ocr_optional_tools(ocr_optional_missing)
         # --fix 時は OCR ツールも従来どおり先回りインストールする（spec §5.1）
@@ -361,6 +368,16 @@ module VivlioStarter
             system('gem install rouge')
           end
 
+          # mathjax-full（数式の SVG 化用・npm パッケージ）
+          if missing.include?('mathjax')
+            if system('which npm >/dev/null 2>&1')
+              Common.log_always('数式の SVG 化用 mathjax-full をインストールします…')
+              system('npm install --loglevel=error -g mathjax-full')
+            else
+              Common.log_always('npm が見つかりません。node のインストール後に `npm install -g mathjax-full` を実行してください。')
+            end
+          end
+
           # Playwright npm パッケージ（グローバルインストール）
           if missing.include?('playwright')
             if system('which npm >/dev/null 2>&1')
@@ -447,6 +464,8 @@ module VivlioStarter
                  waifu2x_available? || (waifu2x_install_root && waifu2x_present_at?(waifu2x_install_root, os_family))
                when 'rouge'
                  rouge_gem_available?
+               when 'mathjax'
+                 mathjax_full_available?
                when 'playwright'
                  playwright_npm_available?
                when 'chromium'
@@ -752,7 +771,8 @@ module VivlioStarter
           'mecab' => 'MeCab (索引機能用)',
           'playwright' => 'Playwright (バックリンク重複排除用)',
           'chromium' => 'Chromium (Playwright 用ブラウザ)',
-          'rouge' => 'Rouge (コードブロック言語推定用)'
+          'rouge' => 'Rouge (コードブロック言語推定用)',
+          'mathjax' => '数式SVG化 (mathjax-full)'
         }
         keys.uniq.map { |key| label_map[key] || key }
       end
@@ -777,6 +797,73 @@ module VivlioStarter
         require 'rouge'
         true
       rescue LoadError
+        false
+      end
+
+      # Vivliostyle が PDF レンダリングに使う headless Chrome のキャッシュを点検し、
+      # 中断したダウンロード/展開で壊れた残骸があれば（--fix 時に）掃除する。
+      # ビルドを Ctrl+C で中断すると不完全な Chrome が残り、起動失敗 →「PDFの生成に失敗」
+      # （本文欠落）になるため、著者がキャッシュを手で消さずに済むよう doctor が面倒を見る。
+      # 掃除後は次回ビルドで自動的に正しい Chrome が再取得される。
+      def handle_vivliostyle_chrome(options)
+        broken = broken_vivliostyle_chrome_entries
+        if broken.empty?
+          Common.log_info('Vivliostyle の Chrome キャッシュは正常です')
+          return
+        end
+
+        if options[:fix]
+          broken.each { |path| FileUtils.rm_rf(path) }
+          Common.log_success(
+            "不完全な Vivliostyle Chrome を削除しました（次回ビルド時に自動再取得されます・#{broken.size}件）"
+          )
+        else
+          Common.log_warn(
+            'Vivliostyle の Chrome が不完全です（ビルド中断などで破損）。`vs doctor --fix` で修復できます。'
+          )
+        end
+      end
+
+      # vivliostyle のブラウザキャッシュ内で「不完全な Chrome」のパス一覧を返す。
+      # 中断時は (1) 展開途中の .zip が残り（成功時は削除される）、(2) バージョン
+      # ディレクトリの Framework 本体が欠落する。健全な版は対象に含めない。
+      def broken_vivliostyle_chrome_entries
+        base = vivliostyle_browsers_cache_dir
+        return [] unless Dir.exist?(base)
+
+        entries = Dir.glob(File.join(base, '**', '*.zip'))
+        Dir.glob(File.join(base, 'chrome', '*')).each do |version_dir|
+          next unless File.directory?(version_dir)
+
+          entries << version_dir unless chrome_framework_present?(version_dir)
+        end
+        entries.uniq
+      end
+
+      # vivliostyle が Chrome を保存するキャッシュディレクトリ（macOS）。
+      def vivliostyle_browsers_cache_dir
+        File.join(Dir.home, 'Library', 'Caches', 'vivliostyle', 'browsers')
+      end
+
+      # バージョンディレクトリ配下に Chrome の Framework 本体があるか（= 展開が完了しているか）。
+      def chrome_framework_present?(version_dir)
+        pattern = File.join(version_dir, '**', 'Frameworks', '*Framework.framework', 'Versions', '*', '*Framework')
+        !Dir.glob(pattern).empty?
+      end
+
+      # mathjax-full（数式 SVG 化用の npm パッケージ）が解決できるか。
+      # 数式は前処理で Node 上の MathJax を「SVG 生成器」として呼び出すため、
+      # node の存在に加え mathjax-full がローカル/グローバルの node_modules にあるかを見る。
+      # 未導入時は数式が SVG 化されず、Vivliostyle の MathJax 経路（PDF のみ）へ縮退する。
+      def mathjax_full_available?
+        return false unless command_exists?('node')
+
+        local = File.join(Dir.pwd, 'node_modules', 'mathjax-full')
+        return true if File.directory?(local)
+
+        global = capture_command('npm root -g 2>/dev/null').to_s.strip
+        !global.empty? && File.directory?(File.join(global, 'mathjax-full'))
+      rescue StandardError
         false
       end
 

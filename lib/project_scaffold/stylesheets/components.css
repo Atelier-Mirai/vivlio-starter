@@ -152,3 +152,35 @@
     content: none;
   }
 }
+
+/* ------------------------------------------------------------------
+   数式（前処理で LaTeX→SVG 化した <img>）
+   高さ・vertical-align は前処理が式ごとに inline style で付与する。
+   ここでは PDF・EPUB 共通の体裁（インラインの最大幅、ディスプレイの中央寄せ）を整える。
+   ------------------------------------------------------------------ */
+.vs-math-inline {
+  max-width: 100%;
+}
+
+figure.vs-math-display {
+  display: block;
+  margin-block: 1rem;
+  margin-inline: 0;
+  text-align: center;
+}
+
+figure.vs-math-display img {
+  max-width: 100%;
+}
+
+/* 数式画像には図版の枠線・余白・背景を付けない（twemoji のラスター埋め込みと同様）。
+   chapter-common.css は SVG の枠を img[src$=".svg"] で外しているが、一部の EPUB
+   リーダーは属性部分一致セレクタを解さず img の既定枠が残るため、クラスで明示的に外す。
+   セレクタ特異度を図版枠ルール（:is(.figure, figure) :is(img, svg)）より高く保つ。 */
+img.vs-math-inline,
+figure.vs-math-display,
+figure.vs-math-display > img {
+  border: none;
+  padding: 0;
+  background: none;
+}

@@ -28,6 +28,7 @@ require_relative 'frontmatter_generator'
 require_relative 'data_render'
 require_relative 'image_path_normalizer'
 require_relative 'markdown_transformer'
+require_relative 'math_transformer'
 require_relative 'markdown_utils'
 require_relative 'link_image_validator'
 
@@ -72,6 +73,7 @@ module VivlioStarter
           normalize_image_paths!
           validate_links_and_images!
           process_code_includes!
+          transform_math!
           normalize_html_block_boundaries!
           escape_inline_code_html!
           transform_text_right_inlines!
@@ -132,6 +134,27 @@ module VivlioStarter
             context.content, source_filename: context.filename, source_path: context.source_path
           )
           Common.log_success('ソースコード読み込み処理が完了しました')
+        end
+
+        # LaTeX 数式（$…$ / $$…$$ / \(…\) / \[…\]）を SVG 画像へ変換し <img> 化する。
+        # 前処理段階で SVG 化することで PDF・EPUB・表セルの数式を同一画像で解決する
+        # （math-frontispiece-svg-spec.md §A）。mathematical gem 未導入時は本文を変えず、
+        # 生 LaTeX を VFM→MathJax 経路（PDF のみ）へ委ねる。
+        def transform_math!
+          unless MathTransformer.available?
+            Common.log_warn('mathematical gem が無いため数式の SVG 化をスキップします（PDF は MathJax で組版）')
+            return
+          end
+
+          Common.log_action('数式を SVG 化しています…')
+          before = context.content.dup
+          chapter_slug = File.basename(context.output_path, '.md')
+          context.content = MathTransformer.transform(context.content, chapter_slug:)
+          if context.content == before
+            Common.log_info('SVG 化対象の数式はありません')
+          else
+            Common.log_success('数式の SVG 化を適用しました')
+          end
         end
 
         # HTML ブロック終了タグの直後に Markdown 記法が続く場合、空行を挿入する

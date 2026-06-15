@@ -203,6 +203,14 @@ module VivlioStarter
             Common.log_info("#{file} を削除しました")
           end
         end
+
+        # 数式 SVG（前処理が images/math/ へ生成する中間成果物）を削除する
+        math_dir = File.join(Common.images_dir, 'math')
+        if File.directory?(math_dir)
+          FileUtils.rm_rf(math_dir)
+          Common.log_info("#{math_dir} を削除しました")
+        end
+
         Common.log_success('不要ファイルの削除が完了しました')
       end
 

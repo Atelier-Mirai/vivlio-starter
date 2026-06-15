@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'digest'
 require 'nokogiri'
 require_relative '../common'
 require_relative 'html_parser'
@@ -83,7 +84,20 @@ module VivlioStarter
           modified = add_marker_class(heading)
           modified |= add_heading_data_attributes(heading, level)
           modified |= add_chapter_token(heading, chapter_token)
+          modified |= ensure_heading_id(heading, chapter_token)
           modified
+        end
+
+        # 見出しに非空の id を保証する。
+        # `### $E = mc^2$` のように見出しが数式（→ SVG 画像）のみだと VFM が生成する
+        # slug が空になり、id="" が EPUB で epubcheck RSC-005（id 値が不正）を招くため、
+        # 内容のハッシュから一意な id を補う（テキスト見出しの既存 id はそのまま残す）。
+        def ensure_heading_id(heading, chapter_token)
+          return false unless heading['id'].to_s.strip.empty?
+
+          digest = Digest::SHA1.hexdigest(heading.inner_html.to_s)[0, 10]
+          heading['id'] = "vsmath-#{chapter_token || 'h'}-#{digest}"
+          true
         end
 
         # vs-h-marker クラスを追加

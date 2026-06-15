@@ -205,7 +205,7 @@ output:
   # targets: pdf # pdf / print_pdf / epub から選択可
   # targets: pdf, print_pdf, epub
   # targets: print_pdf
-  targets: epub
+  targets: pdf, epub
   # 例:
   # targets: pdf                      # 閲覧用PDFを指定
   # targets: pdf, print_pdf           # 閲覧用PDF, 印刷所入稿用PDFを指定
