@@ -109,6 +109,32 @@ module VivlioStarter
         end
 
         # ================================================================
+        # copy_images_to_local テスト（取り込み時のファイル名サニタイズ）
+        # ================================================================
+        # 危険文字を含む元画像名はコピー時に正規化され、安全名で配置される
+        # （markdown 参照側 normalize_image_paths と同一基準。W14010 恒久防御）
+        def test_copy_images_to_local_sanitizes_dangerous_filename
+          starter_images = File.join(@tmpdir, 'starter', 'images', '94-sample')
+          FileUtils.mkdir_p(starter_images)
+          File.write(File.join(starter_images, "Einstein's_later_years.png"), 'dummy')
+          File.write(File.join(starter_images, 'sakura(1).jpg'), 'dummy')
+
+          work_dir = File.join(@tmpdir, 'work')
+          FileUtils.mkdir_p(work_dir)
+
+          Dir.chdir(work_dir) do
+            ImageProcessor.copy_images_to_local(File.join(@tmpdir, 'starter', 'images'))
+
+            assert File.exist?('images/94-sample/Einsteins_later_years.png'),
+                   'アポストロフィを除去した安全名でコピーされるべき'
+            assert File.exist?('images/94-sample/sakura1.png') || File.exist?('images/94-sample/sakura1.jpg'),
+                   '括弧を除去した安全名でコピーされるべき'
+            refute File.exist?("images/94-sample/Einstein's_later_years.png"),
+                   '危険文字を含む名前のままでは配置されないべき'
+          end
+        end
+
+        # ================================================================
         # remove_original_files! テスト
         # ================================================================
         def test_remove_original_files_removes_png_jpg_gif

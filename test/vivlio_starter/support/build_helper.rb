@@ -261,6 +261,36 @@ module VsTestSupport
       end
     end
 
+    # EPUB パッケージ内に同梱された .webp ファイルの相対パス配列を返す。
+    # Kindle は WebP 非対応のため、トランスコード後は 0 件であるべき
+    # （docs/specs/epub-kindle-webp-transcode-spec.md §6-1）。
+    # @return [Array<String>]
+    def self.webp_files(epub_path)
+      with_unzipped(epub_path) do |dir|
+        Dir.glob(File.join(dir, "**", "*.webp")).map { it.delete_prefix("#{dir}/") }.sort
+      end
+    end
+
+    # 全 xhtml の <img src> のうち、EPUB 内の実体に解決できない参照の配列を返す
+    # （data: / 外部 URL は対象外）。空配列ならリンク切れなし。
+    # @return [Array<String>]
+    def self.unresolved_image_refs(epub_path)
+      with_unzipped(epub_path) do |dir|
+        Dir.glob(File.join(dir, "**", "*.xhtml")).sort.flat_map do |xhtml|
+          html = File.read(xhtml, encoding: "UTF-8")
+          html.scan(/<img\b[^>]*\bsrc="([^"]*)"/i).flatten.reject do |src|
+            src.start_with?("data:", "http://", "https://") ||
+              File.exist?(File.expand_path(decode_entities(src), File.dirname(xhtml)))
+          end
+        end.uniq.sort
+      end
+    end
+
+    def self.decode_entities(str)
+      str.gsub("&apos;", "'").gsub("&quot;", '"').gsub("&lt;", "<").gsub("&gt;", ">").gsub("&amp;", "&")
+    end
+    private_class_method :decode_entities
+
     def self.with_unzipped(epub_path)
       Dir.mktmpdir("vs-epub-inspect") do |dir|
         system("unzip", "-o", "-q", File.expand_path(epub_path), "-d", dir,

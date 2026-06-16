@@ -25,6 +25,8 @@
 
 require 'cgi'
 
+require_relative '../image_filename_sanitizer'
+
 module VivlioStarter
   module CLI
     module Import
@@ -88,9 +90,10 @@ module VivlioStarter
         end
 
         # <img> タグを Markdown 画像記法に変換
+        # ファイル名は取り込み実体（image_processor）と同一基準でサニタイズし、参照と一致させる。
         def convert_img_tags(text)
           text.gsub(%r{<img src=".*/([^/]+)\.(?:png|jpg|jpeg|gif)">}i) do
-            file_name_no_ext = Regexp.last_match(1)
+            file_name_no_ext = ImageFilenameSanitizer.sanitize(Regexp.last_match(1))
             "![](#{file_name_no_ext}.webp)"
           end
         end
@@ -171,10 +174,11 @@ module VivlioStarter
         end
 
         # Markdown 画像パスの正規化
+        # ファイル名は取り込み実体（image_processor）と同一基準でサニタイズし、参照と一致させる。
         def normalize_image_paths(text)
           text.gsub(%r{!\[((?:[^\[\]]|\[[^\]]*\])*)\]\(\./images/[^)]+/([^/]+)\.(?:png|jpg|jpeg|gif)\)}i) do
             alt = Regexp.last_match(1)
-            filename = Regexp.last_match(2)
+            filename = ImageFilenameSanitizer.sanitize(Regexp.last_match(2))
             "![#{alt}](#{filename}.webp)"
           end
         end

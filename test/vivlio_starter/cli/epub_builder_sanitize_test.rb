@@ -239,13 +239,15 @@ module VivlioStarter
         assert_includes result, 'vs-circled-number', '囲み数字の class は残るべき'
       end
 
-      # --- EPF-11b: 非埋め込み config は twemoji 直下を除外し vs-techbook は残す ---
-      def test_should_exclude_twemoji_masters_but_keep_vs_techbook
+      # --- EPF-11b: WebP は全除外（Kindle 非対応）・twemoji 直下 svg も除外・
+      #   vs-techbook サブツリーは丸ごとの全除外をしない（webp は transcode 経由で除外） ---
+      def test_should_exclude_all_webp_and_twemoji_svg
         path = Build::EpubBuilder.generate_epub_config!
         content = File.read(path)
 
         assert_includes content, "'stylesheets/twemoji/*.svg'", 'twemoji 直下 svg を除外すべき'
-        assert_includes content, "'stylesheets/twemoji/*.webp'", 'twemoji 直下 webp を除外すべき'
+        assert_includes content, "'images/**/*.webp'", '本文画像の WebP を全除外すべき（Kindle 非対応）'
+        assert_includes content, "'stylesheets/**/*.webp'", 'スタイルシート配下の WebP を全除外すべき（twemoji/vs-techbook 含む）'
         refute_includes content, "'stylesheets/twemoji/**'", 'vs-techbook を巻き込む全除外はしないべき'
       end
 

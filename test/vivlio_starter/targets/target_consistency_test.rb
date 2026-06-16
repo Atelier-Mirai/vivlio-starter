@@ -51,7 +51,7 @@ class TargetConsistencyTest < Minitest::Test
   GENERATED_FILES = ["vivliostyle.config.js", File.join("stylesheets", "page-settings.css")].freeze
 
   PdfSnap  = Data.define(:page_count, :texts, :outline, :size, :body)
-  EpubSnap = Data.define(:spine, :body, :size)
+  EpubSnap = Data.define(:spine, :body, :size, :webp_files, :unresolved_images)
 
   def setup
     skip "config/book.yml が見つかりません（リポジトリルートで実行してください）" \
@@ -154,6 +154,19 @@ class TargetConsistencyTest < Minitest::Test
                  "pdf と print_pdf のアウトラインが一致しません"
   end
 
+  # 【WebP トランスコードの回帰ガード】EPUB に WebP が 1 つも残らず、<img> 参照が
+  # すべて EPUB 内の実体に解決する（Kindle 変換不能 = WebP 非対応 の直接検知。
+  # epubcheck では検出できないため必須。docs/specs/epub-kindle-webp-transcode-spec.md §6-1）
+  def test_epub_contains_no_webp_and_images_resolve
+    %w[epub pdf+epub print_pdf+epub pdf+print_pdf+epub].each do |key|
+      snap = fetch!(key, :epub)
+      assert_empty snap.webp_files,
+                   "epub「#{key}」に WebP が残っています（Kindle 変換不能）: #{snap.webp_files.first(5).join(', ')}"
+      assert_empty snap.unresolved_images,
+                   "epub「#{key}」に解決できない <img src> があります: #{snap.unresolved_images.first(5).join(', ')}"
+    end
+  end
+
   # epub の本文に代表的なマーカーが含まれる（実本文が EPUB へ届いているかの煙検査）
   def test_epub_contains_body_markers
     body = fetch!("epub", :epub).body
@@ -221,7 +234,9 @@ class TargetConsistencyTest < Minitest::Test
       EpubSnap.new(
         spine: VsTestSupport::EpubInspector.spine_documents(path),
         body: VsTestSupport::EpubInspector.body_text(path),
-        size: File.size(path)
+        size: File.size(path),
+        webp_files: VsTestSupport::EpubInspector.webp_files(path),
+        unresolved_images: VsTestSupport::EpubInspector.unresolved_image_refs(path)
       )
     end
 

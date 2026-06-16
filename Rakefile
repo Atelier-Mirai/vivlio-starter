@@ -16,7 +16,7 @@ class << Rake.application
     end
 
     # 【重要】出力させたい理想の順番を明示的に指定
-    custom_order = ['test', 'test:layout', 'test:targets', 'test:manual', 'test:package', 'test:release', 'test:canary', 'reinstall']
+    custom_order = ['test', 'test:layout', 'test:targets', 'test:kindle', 'test:manual', 'test:package', 'test:release', 'test:canary', 'reinstall']
     displayable_tasks = displayable_tasks.sort_by { |t| custom_order.index(t.name) || 999 }
 
     # 表示幅を計算して綺麗にフォーマット出力
@@ -35,7 +35,8 @@ Rake::TestTask.new(:test) do |t|
   t.test_files = FileList["test/**/*_test.rb"].exclude(
     "test/**/page_layout/**/*_test.rb",
     "test/**/release/**/*_test.rb",
-    "test/**/targets/**/*_test.rb"
+    "test/**/targets/**/*_test.rb",
+    "test/**/kindle/**/*_test.rb"
   )
   t.warning = false
 end
@@ -73,6 +74,24 @@ end
 
 Rake::Task["test:targets"].clear_comments
 Rake::Task["test:targets"].comment = "ターゲット整合性テスト（pdf/print_pdf/epub を単体・複合でビルドし突き合わせ）"
+
+# ------------------------------------------------------------------
+# Kindle 変換検証テスト（opt-in・Mac/Win ローカル専用）
+# Kindle Previewer 3 CLI（kindlepreviewer）で EPUB を実変換し、
+# conversionLog の画像系警告（W14015/W14012/W14010）ゼロを検証する。
+# CLI 未導入環境では skip するため、Linux CI でも安全。実ビルドを伴い遅いので
+# 通常 test からは除外する。
+# ------------------------------------------------------------------
+namespace :test do
+  Rake::TestTask.new(:kindle) do |t|
+    t.libs << "test"
+    t.pattern = "test/vivlio_starter/kindle/**/*_test.rb"
+    t.warning = false
+  end
+end
+
+Rake::Task["test:kindle"].clear_comments
+Rake::Task["test:kindle"].comment = "Kindle 変換検証（kindlepreviewer で実変換し画像系警告ゼロを確認・要 Kindle Previewer 3）"
 
 # ------------------------------------------------------------------
 # RC 品質保証テスト群（docs/specs/test-suite-expansion-spec.md §3）

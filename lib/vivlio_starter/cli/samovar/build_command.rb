@@ -89,7 +89,8 @@ module VivlioStarter
             Guards::CatalogEntriesCheck.new,
             Guards::ContentsDirCheck.new,
             Guards::VivliostyleConfigCheck.new,
-            Guards::NodeCheck.new
+            Guards::NodeCheck.new,
+            Guards::ImageFilenameCheck.new
           )
 
           # 検証オプションをスレッドローカルに設定（LinkImageValidator が参照）

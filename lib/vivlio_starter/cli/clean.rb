@@ -218,6 +218,13 @@ module VivlioStarter
           Common.log_info("#{headings_dir} を削除しました")
         end
 
+        # EPUB 用 WebP→JPEG/PNG 変換物（EpubBuilder が images/_epub_assets/ へ生成）を削除する
+        epub_assets_dir = File.join(Common.images_dir, '_epub_assets')
+        if File.directory?(epub_assets_dir)
+          FileUtils.rm_rf(epub_assets_dir)
+          Common.log_info("#{epub_assets_dir} を削除しました")
+        end
+
         Common.log_success('不要ファイルの削除が完了しました')
       end
 

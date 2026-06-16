@@ -18,6 +18,7 @@
 
 require 'digest'
 require 'fileutils'
+require 'open3'
 require 'tmpdir'
 require_relative '../entries'
 require_relative 'heading_image_composer'
@@ -56,6 +57,14 @@ module VivlioStarter
         # を持つ。非埋め込みで fonts/ を除外すると参照切れ（RSC-007）になるため、
         # @font-face とあわせて EPUB 内 CSS から除去する。
         FONT_IMPORT_PATTERN = /@import\s+url\(\s*["']?fonts\/[^"')]+["']?\s*\)\s*;?/
+
+        # `url(....webp)` を含む CSS 宣言を 1 つ検出する正規表現（1 宣言＝1 マッチ）。
+        # WebP は EPUB から全除外する（build_copy_asset_excludes_config）ため、CSS の
+        # `background-image: url(...webp)` や `--frontispiece-image: url(...webp)` が参照切れ
+        # （RSC-007 / Kindle W14010）になる。これらの背景はリフロー EPUB で元々描画されない
+        # （扉絵/節絵は合成画像へ置換済み）ので、宣言ごと EPUB 内 CSS から除去する。
+        # `[^;{}]*` で宣言境界を跨がず、`url(...)` 内は `[^)]*` で 1 つの url に限定する。
+        WEBP_URL_PATTERN = /[a-zA-Z-]+\s*:\s*[^;{}]*url\([^)]*\.webp[^)]*\)[^;}]*;?/i
 
         # techbook の絵文字画像 <img class="... vs-emoji ...">  を検出する正規表現。
         # 絵文字画像化（twemoji SVG 差し替え）は Chromium が PDF で絵文字を Type 3 化する
@@ -96,6 +105,10 @@ module VivlioStarter
 
           # 扉絵（h1）・節絵（h2）を合成画像として焼き込む（theme.style=image 時のみ）
           inject_heading_images_for_epub!(chapter_htmls)
+
+          # 残った <img> 参照 WebP を Kindle 対応の JPEG/PNG へ変換して src を差し替える。
+          # 直前までで <img> の出入りが確定するため最後に置く（絵文字復元・扉絵注入後）。
+          transcode_webp_images_for_epub!(chapter_htmls)
 
           write_epub_entries(base_dir, chapter_htmls)
           Common.log_success("[EPUB] entries.epub.js を生成しました（#{chapter_htmls.size} エントリ）")
@@ -296,11 +309,14 @@ module VivlioStarter
             *_images/**
             covers/bundled/**
             stylesheets/twemoji/*.svg
-            stylesheets/twemoji/*.webp
+            images/**/*.webp
+            stylesheets/**/*.webp
           ]
-          # twemoji 直下（絵文字マスター 7,000+ 個）は restore_plain_emoji_for_epub! で
-          # 参照されなくなるため除外する。'*' はパス区切りを跨がないため
-          # stylesheets/twemoji/vs-techbook/（囲み数字・見出しマーカー）は同梱を維持する。
+          # WebP は Kindle 非対応のため EPUB へ一切同梱しない。<img> 参照分は
+          # transcode_webp_images_for_epub! が images/_epub_assets/ の JPEG/PNG へ移すため、
+          # 残る WebP（CSS 背景・絵文字マスター・扉絵/節絵の背景）はすべて除外してよい。
+          # twemoji 直下（絵文字マスター 7,000+ 個）の SVG も restore_plain_emoji_for_epub! で
+          # 参照されなくなるため除外する。
 
           # フォント非埋め込み時は実体（51MB の TTF/OTF）も同梱しない。
           # @font-face は sanitize_epub_css! が EPUB 内 CSS から除去する。
@@ -810,6 +826,136 @@ module VivlioStarter
         end
 
         # ================================================================
+        # EPUB 用 WebP → JPEG/PNG トランスコード（§5-1）
+        # ================================================================
+        # Kindle は WebP 非対応のため、EPUB の <img> 参照 WebP を JPEG/PNG へ変換し
+        # src を差し替える（docs/specs/epub-kindle-webp-transcode-spec.md）。PDF 経路は
+        # WebP のまま（無影響）。出力は images/_epub_assets/<hash>.{jpg,png} に集約し、
+        # 元の png/jpg ソースの上書き・問題のあるファイル名（アポストロフィ等）の同梱を
+        # 同時に避ける。CSS 背景の WebP は EPUB で描画されないため対象外（除外する）。
+        # 劣化方針: 元画像が残っていれば WebP を経由せず元から変換（二重劣化回避）。
+        # 出力形式: 透過/可逆は PNG（無劣化）、不透過写真は JPEG(q90)。
+        # ================================================================
+
+        # EPUB 用トランスコード出力の集約サブディレクトリ（images/ 配下）。クリーン対象（clean.rb）。
+        EPUB_ASSETS_REL_SUBDIR = '_epub_assets'
+
+        # EPUB 用画像の長辺上限（px）。WebP は既に最適化済みだが、元画像から変換する場合の
+        # 肥大化を防ぐためここでも上限を掛ける（medium プリセット既定相当）。
+        EPUB_IMAGE_MAX_EDGE = 1600
+
+        # 各 HTML の <img src="*.webp"> を JPEG/PNG へ変換し src を差し替える。
+        # 変換結果はソース src 文字列でメモ化し、同一画像の重複変換を避ける。
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def transcode_webp_images_for_epub!(html_files)
+          cache = {}
+          html_files.each { |path| transcode_webp_in_file!(path, cache) }
+          html_files
+        end
+
+        # 1 ファイル分の <img> WebP 参照を変換・差し替える。
+        def transcode_webp_in_file!(path, cache)
+          html = File.read(path, encoding: 'utf-8')
+          changed = false
+
+          updated = html.gsub(/<img\b[^>]*>/i) do |tag|
+            src = tag[/\ssrc="([^"]*)"/i, 1]
+            next tag unless src&.match?(/\.webp\z/i)
+
+            staged = cache.fetch(src) { cache[src] = stage_webp_replacement(src) }
+            next tag unless staged
+
+            changed = true
+            tag.sub(/(\ssrc=")[^"]*(")/i, "\\1#{staged}\\2")
+          end
+          return unless changed
+
+          File.write(path, updated, encoding: 'utf-8')
+          Common.log_info("[EPUB] #{File.basename(path)} の WebP 画像を JPEG/PNG へ差し替えました")
+        end
+
+        # src の WebP を変換し、staging の相対パスを返す。変換不能なら nil（src 据え置き）。
+        def stage_webp_replacement(src_attr)
+          webp_path = decode_html_entities(src_attr)
+          return nil unless File.exist?(webp_path)
+
+          source = transcode_source_for(webp_path)
+          ext = epub_image_extension_for(source)
+          key = Digest::SHA256.hexdigest(
+            [File.expand_path(source), File.mtime(source).to_i, ext].join('|')
+          )[0, 16]
+
+          dir = File.join(Common.images_dir, EPUB_ASSETS_REL_SUBDIR)
+          abs = File.join(dir, "#{key}.#{ext}")
+          rel = "#{Common.images_dir}/#{EPUB_ASSETS_REL_SUBDIR}/#{key}.#{ext}"
+          return rel if File.exist?(abs)
+
+          FileUtils.mkdir_p(dir)
+          convert_image_for_epub(source, abs, ext) ? rel : nil
+        rescue StandardError => e
+          Common.log_warn("[EPUB] WebP 変換に失敗（#{src_attr}）: #{e.message}")
+          nil
+        end
+
+        # 変換元を決める。同名の元画像（png/jpg）が残っていれば二重劣化回避のため優先する。
+        def transcode_source_for(webp_path)
+          base = webp_path.sub(/\.webp\z/i, '')
+          %w[.png .jpg .jpeg].each do |ext|
+            candidate = "#{base}#{ext}"
+            return candidate if File.exist?(candidate)
+          end
+          webp_path
+        end
+
+        # EPUB 用の出力拡張子を決める。透過/PNG/可逆 WebP は PNG（無劣化）、それ以外は JPEG。
+        def epub_image_extension_for(source)
+          return 'png' if File.extname(source).casecmp?('.png')
+          return 'png' if image_has_alpha?(source)
+          return 'png' if webp_lossless?(source)
+
+          'jpg'
+        end
+
+        # 画像がアルファチャンネルを持つか（magick identify %A）。判定不能時は false。
+        def image_has_alpha?(path)
+          out, status = Open3.capture2('magick', 'identify', '-format', '%A', path)
+          status.success? && %w[true blend].include?(out.strip.downcase)
+        rescue StandardError
+          false
+        end
+
+        # WebP が可逆圧縮か（magick identify -verbose の Compression 行）。webp 以外は false。
+        def webp_lossless?(path)
+          return false unless File.extname(path).casecmp?('.webp')
+
+          out, status = Open3.capture2('magick', 'identify', '-verbose', path)
+          status.success? && out.match?(/Compression:\s*Lossless/i)
+        rescue StandardError
+          false
+        end
+
+        # 変換元 → 出力（JPEG は白フラット化、PNG は透過保持）。成否を返す。
+        def convert_image_for_epub(source, dest, ext)
+          cmd = if ext == 'png'
+                  ['magick', source, '-resize', "#{EPUB_IMAGE_MAX_EDGE}x#{EPUB_IMAGE_MAX_EDGE}>", '-strip', dest]
+                else
+                  ['magick', source, '-background', 'white', '-flatten',
+                   '-resize', "#{EPUB_IMAGE_MAX_EDGE}x#{EPUB_IMAGE_MAX_EDGE}>", '-strip', '-quality', '90', dest]
+                end
+          system(*cmd, out: File::NULL, err: File::NULL)
+        rescue StandardError
+          false
+        end
+
+        # HTML 実体参照をデコードしてディスク上のパスへ戻す（&apos; を含む src の解決・§5-4）。
+        # &amp; は最後に展開し二重デコードを避ける。
+        def decode_html_entities(str)
+          str.gsub('&apos;', "'").gsub('&quot;', '"').gsub('&lt;', '<').gsub('&gt;', '>').gsub('&amp;', '&')
+        end
+
+        # ================================================================
         # EPUB 用 CSS サニタイズ
         # ================================================================
         # PDF 用 CSS（ノンブル・柱の @page マージンボックス）をソースから消すと
@@ -821,13 +967,14 @@ module VivlioStarter
 
         # 生成後 EPUB 内の CSS をサニタイズする。
         # - @page マージンボックス / @footnote（CSS-008）は常に除去する。
+        # - `url(...webp)` を含む宣言は常に除去する（WebP 全除外による参照切れ回避。WEBP_URL_PATTERN）。
         # - フォント非埋め込み時は @font-face も除去する（fonts/ 不同梱による RSC-007 回避）。
         #
         # @param epub_path [String] 対象 EPUB ファイルパス
         # @return [void]
         def sanitize_epub_css!(epub_path)
           abs_epub = File.expand_path(epub_path)
-          patterns = [MARGIN_BOX_PATTERN]
+          patterns = [MARGIN_BOX_PATTERN, WEBP_URL_PATTERN]
           patterns.push(FONT_FACE_PATTERN, FONT_IMPORT_PATTERN) unless embed_fonts?
 
           Dir.mktmpdir('vs-epub-css') do |tmpdir|

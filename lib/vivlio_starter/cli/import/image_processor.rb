@@ -22,6 +22,7 @@ require 'fileutils'
 require 'shellwords'
 
 require_relative '../cover'
+require_relative '../image_filename_sanitizer'
 
 module VivlioStarter
   module CLI
@@ -152,10 +153,19 @@ module VivlioStarter
             relative = src.sub("#{starter_images}/", '')
             dest_dir = File.join('images', File.dirname(relative))
             FileUtils.mkdir_p(dest_dir)
-            FileUtils.cp(src, File.join(dest_dir, File.basename(src)))
+            # 取り込み時にファイル名の危険文字を除去する（markdown 参照側の
+            # normalize_image_paths / convert_img_tags と同一基準で正規化し、
+            # 実体と参照の食い違いを防ぐ）。W14010（アポストロフィ等）の恒久防御。
+            FileUtils.cp(src, File.join(dest_dir, sanitized_image_filename(File.basename(src))))
           end
 
           files
+        end
+
+        # 画像ファイル名の拡張子は保ったまま、stem の危険文字だけを除去する。
+        def sanitized_image_filename(name)
+          ext = File.extname(name)
+          "#{ImageFilenameSanitizer.sanitize(File.basename(name, ext))}#{ext}"
         end
 
         def find_imagemagick_convert_command

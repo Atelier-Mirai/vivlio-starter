@@ -29,6 +29,13 @@ module VivlioStarter
           assert_equal expected, MarkdownConverter.convert_img_tags(input)
         end
 
+        # ファイル名の危険文字（アポストロフィ等）は取り込み実体と同一基準で除去する
+        def test_convert_img_tags_sanitizes_dangerous_filename
+          input = %(<img src="./images/94-sample/Einstein's_later_years.png">)
+          expected = '![](Einsteins_later_years.webp)'
+          assert_equal expected, MarkdownConverter.convert_img_tags(input)
+        end
+
         # ================================================================
         # フェンス記法変換テスト
         # ================================================================
@@ -163,6 +170,13 @@ module VivlioStarter
         def test_normalize_image_paths_with_brackets_in_alt
           input = '![図[1]の説明](./images/chapter/figure.jpg)'
           expected = '![図[1]の説明](figure.webp)'
+          assert_equal expected, MarkdownConverter.normalize_image_paths(input)
+        end
+
+        # ファイル名の危険文字（() 等）は取り込み実体と同一基準で除去する
+        def test_normalize_image_paths_sanitizes_dangerous_filename
+          input = '![説明](./images/chapter/sakura(1).png)'
+          expected = '![説明](sakura1.webp)'
           assert_equal expected, MarkdownConverter.normalize_image_paths(input)
         end
 
