@@ -211,6 +211,13 @@ module VivlioStarter
           Common.log_info("#{math_dir} を削除しました")
         end
 
+        # 扉絵・節絵の合成 SVG（EpubBuilder が images/headings/ へ生成する中間成果物）を削除する
+        headings_dir = File.join(Common.images_dir, 'headings')
+        if File.directory?(headings_dir)
+          FileUtils.rm_rf(headings_dir)
+          Common.log_info("#{headings_dir} を削除しました")
+        end
+
         Common.log_success('不要ファイルの削除が完了しました')
       end
 

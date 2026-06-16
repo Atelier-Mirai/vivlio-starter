@@ -64,6 +64,87 @@ module VivlioStarter
                '奥付は EPUB に含めるべき'
       end
 
+      # 本文章（番号 1..89）の h1（扉絵）・h2（節絵）が合成画像 <img> へ置換され、
+      # 見出しテキストが alt に格納されることを確認。render は librsvg/ImageMagick と実画像に
+      # 依存するため、ここではスタブして EpubBuilder の注入ロジックを検証する。
+      def test_inject_heading_images_rewrites_chapter_and_section_headings
+        File.write('10-spring.html', <<~HTML)
+          <!DOCTYPE html><html><head><title>春</title></head><body>
+          <h1 data-chapter-number-display="第1章" data-chapter-title="春のお花見">
+            <span class="chapter-number">第1章</span><span class="chapter-title">春のお花見</span>
+          </h1>
+          <article class="section-topic">
+            <h2 data-section-number-display="1-1" data-section-title="導入">
+              <span class="section-number">1-1</span><span class="section-title">導入</span>
+            </h2>
+          </article>
+          </body></html>
+        HTML
+
+        context = {
+          frontispiece: 'dummy_portrait.webp',
+          ornament: 'dummy_landscape.webp',
+          font_family: "'Zen Kaku Gothic New', sans-serif",
+          number_color: '#f0a000'
+        }
+
+        Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
+          Build::EpubBuilder.inject_heading_images_into_file!('10-spring.html', context)
+        end
+
+        html = File.read('10-spring.html')
+        # h1 に EPUB クラスと合成画像 <img>（JPEG）が入る
+        assert_match(%r{<h1[^>]*class="[^"]*vs-image-heading-epub}, html)
+        assert_includes html, 'class="vs-image-heading-img"'
+        # 見出しテキストは alt に格納（目次は <title> 由来・clip による隠し span は廃止）
+        assert_includes html, 'alt="第1章 春のお花見"'
+        refute_includes html, 'vs-visually-hidden', '隠し span（clip）は使わない'
+        # 節絵: 親 article に EPUB 用クラス、h2 に画像（alt に節番号＋タイトル）
+        assert_includes html, 'vs-section-topic-epub'
+        assert_includes html, 'alt="1-1 導入"'
+        # 合成画像が images/headings/ に JPEG として書き出される
+        assert Dir.glob('images/headings/frontispiece-*.jpg').any?, '扉絵 JPEG が書き出されるべき'
+        assert Dir.glob('images/headings/ornament-*.jpg').any?, '節絵 JPEG が書き出されるべき'
+      end
+
+      # 付録（番号 90..98）には扉絵/節絵を注入せず simple 版にすることを確認（PDF と整合）
+      def test_inject_heading_images_skips_appendix_chapters
+        File.write('94-sample.html', <<~HTML)
+          <!DOCTYPE html><html><head><title>付録</title></head><body>
+          <h1 data-chapter-number-display="付録 A" data-chapter-title="サンプル">
+            <span class="chapter-title">サンプル</span>
+          </h1>
+          </body></html>
+        HTML
+
+        context = { frontispiece: 'x.webp', ornament: nil, font_family: 'sans-serif', number_color: '#333' }
+
+        Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
+          Build::EpubBuilder.inject_heading_images_into_file!('94-sample.html', context)
+        end
+
+        html = File.read('94-sample.html')
+        refute_includes html, 'vs-image-heading-epub', '付録は simple 版（画像注入しない）'
+      end
+
+      # 番号を持たない見出し（前付など）には扉絵を注入しないことを確認
+      def test_inject_heading_images_skips_headings_without_number
+        File.write('00-preface.html', <<~HTML)
+          <!DOCTYPE html><html><head><title>前書き</title></head><body>
+          <h1><span class="chapter-title">前書き</span></h1>
+          </body></html>
+        HTML
+
+        context = { frontispiece: 'x.webp', ornament: nil, font_family: 'sans-serif', number_color: '#333' }
+
+        Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
+          Build::EpubBuilder.inject_heading_images_into_file!('00-preface.html', context)
+        end
+
+        html = File.read('00-preface.html')
+        refute_includes html, 'vs-image-heading-epub', '番号なし見出し（前付）には注入しない'
+      end
+
       # EPUB entries.js が正しく書き出されることを確認
       def test_write_epub_entries_creates_file
         html_files = ['./01-intro.html', './02-basics.html']

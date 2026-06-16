@@ -184,3 +184,40 @@ figure.vs-math-display > img {
   padding: 0;
   background: none;
 }
+
+/* =============================================================
+   扉絵（h1）・節絵（h2）の合成 SVG（EPUB 専用・math-frontispiece-svg-spec §B）
+   -------------------------------------------------------------
+   EpubBuilder が PDF 完成後に <h1 class="vs-image-heading-epub"> 等を注入する。
+   PDF 経路にはこのマークアップが存在しないため、これらのルールは PDF では不発で無害。
+   image-header.css の固定寸法グリッド（h1 grid / .section-topic 150px 行）を
+   EPUB のリフローに合わせて解除し、合成 SVG を段幅いっぱいに表示する。
+   ============================================================= */
+h1.vs-image-heading-epub,
+h2.vs-image-heading-epub {
+  display: block;
+  inline-size: auto;
+  max-inline-size: 100%;
+  margin-block: 0.5rem;
+  text-align: center;
+  white-space: normal;
+  border: none;
+  padding: 0;
+}
+
+.vs-image-heading-epub > img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+  border: none;
+  padding: 0;
+  background: none;
+}
+
+/* 節絵を含む article は PDF 用グリッドを解除し、通常フローで積む */
+article.vs-section-topic-epub {
+  display: block;
+  margin-block-end: 1em;
+}

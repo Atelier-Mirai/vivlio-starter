@@ -16,9 +16,12 @@
 #   - これにより PDF ビルドへの副作用を完全に排除する。
 # ================================================================
 
+require 'digest'
 require 'fileutils'
 require 'tmpdir'
 require_relative '../entries'
+require_relative 'heading_image_composer'
+require_relative '../post_process/html_parser'
 
 module VivlioStarter
   module CLI
@@ -90,6 +93,9 @@ module VivlioStarter
 
           # 絵文字画像をプレーン絵文字へ復元（EPUB は Type 3 非該当。twemoji 非同梱で軽量化）
           restore_plain_emoji_for_epub!(chapter_htmls)
+
+          # 扉絵（h1）・節絵（h2）を合成画像として焼き込む（theme.style=image 時のみ）
+          inject_heading_images_for_epub!(chapter_htmls)
 
           write_epub_entries(base_dir, chapter_htmls)
           Common.log_success("[EPUB] entries.epub.js を生成しました（#{chapter_htmls.size} エントリ）")
@@ -579,6 +585,228 @@ module VivlioStarter
             Common.log_info("[EPUB] #{File.basename(path)} の絵文字をプレーン文字へ復元しました")
           end
           html_files
+        end
+
+        # ================================================================
+        # EPUB 用 扉絵（h1）・節絵（h2）の合成画像注入（③-a）
+        # ================================================================
+        # PDF は @page 背景＋固定寸法で扉絵を全面描画するが、リフロー型 EPUB は
+        # 背景・固定寸法・重ね合わせが（特に Kindle で）描画されない。そこで EPUB
+        # 経路でのみ、飾り画像＋見出しを 1 枚に焼き込んだ合成画像（HeadingImageComposer
+        # が SVG を組み JPEG にラスタライズ）を <img> として見出しに差し込む。
+        # Kindle は SVG 内 base64 を非対応のため SVG ではなくフラット JPEG を配る。
+        # 目次（nav）は各章の <title> から生成され h1 テキストに依存しないため、見出しを
+        # 画像へ置換しても目次は壊れない（見出しテキストは <img alt> に保持）。
+        # PDF 完成後に共有 HTML を書き換えるため PDF 経路へ副作用はない（Step E）。
+        # ================================================================
+
+        # 合成画像の出力先（images/headings/）。クリーン対象（clean.rb）。
+        HEADINGS_REL_SUBDIR = 'headings'
+
+        # 扉絵・節絵を合成画像として見出しに焼き込む（theme.style=image のときのみ）。
+        # 画像解決や合成に失敗したファイルは注入をスキップし simple 相当へ縮退する（§B-5）。
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def inject_heading_images_for_epub!(html_files)
+          return html_files unless Common::CONFIG.dig('theme', 'style') == 'image'
+
+          theme = read_theme_heading_assets
+          return html_files unless theme
+
+          context = {
+            frontispiece: theme[:frontispiece],
+            ornament: theme[:ornament],
+            font_family: epub_heading_font_family,
+            number_color: theme[:number_color]
+          }
+
+          html_files.each { |path| inject_heading_images_into_file!(path, context) }
+          html_files
+        end
+
+        # theme.css から扉絵・節絵の実画像パストと節番号色を読み取る。
+        # PDF と同一画像を単一の参照元から使う（二重解決を避ける・§B-4）。
+        #
+        # @return [Hash, nil] { frontispiece:, ornament:, number_color: }。theme.css 不読時は nil
+        def read_theme_heading_assets
+          theme_css_path = File.join(Common::STYLESHEETS_DIR, 'theme.css')
+          return nil unless File.exist?(theme_css_path)
+
+          css = File.read(theme_css_path, encoding: 'utf-8')
+          {
+            frontispiece: resolve_theme_image_file(css[/--frontispiece-image:\s*url\(["']?([^"')]+)["']?\)/, 1]),
+            ornament: resolve_theme_image_file(css[/--section-bg-image:\s*url\(["']?([^"')]+)["']?\)/, 1]),
+            number_color: resolve_css_color(css, css[/--section-number-color:\s*([^;]+);/, 1])
+          }
+        rescue StandardError => e
+          Common.log_warn("[EPUB] theme.css の読み取りに失敗（扉絵の画像化をスキップ）: #{e.message}")
+          nil
+        end
+
+        # theme.css の url(...) 値（stylesheets からの相対）を実ファイルパスへ解決する。
+        #
+        # @param rel [String, nil] 例: "images/bundled/sakura_portrait.webp"
+        # @return [String, nil] 存在する実ファイルパス、無ければ nil
+        def resolve_theme_image_file(rel)
+          return nil if rel.nil? || rel.strip.empty?
+          return nil if rel.start_with?('data:', 'http://', 'https://')
+
+          path = File.join(Common::STYLESHEETS_DIR, rel)
+          File.exist?(path) ? path : nil
+        end
+
+        # CSS 色値を具体色へ解決する。var(--theme-accent) → var(--accent-yellow) → #f0a000 の
+        # 連鎖を theme.css 内の定義から辿る。解決できなければ既定のダークを返す。
+        #
+        # @param css [String] theme.css 全文
+        # @param value [String, nil] --section-number-color の値
+        # @return [String] 具体的な CSS 色
+        def resolve_css_color(css, value, depth = 0)
+          v = value.to_s.strip
+          return '#333333' if v.empty? || depth > 5
+
+          if (m = v.match(/\Avar\(\s*(--[a-z0-9-]+)\s*\)\z/i))
+            referenced = css[/#{Regexp.escape(m[1])}:\s*([^;]+);/, 1]
+            return resolve_css_color(css, referenced, depth + 1)
+          end
+
+          v
+        end
+
+        # EPUB の見出し <text> 用フォントスタック（フォント非埋め込み・§B-3）。
+        # book の見出しフォントを先頭に、リーダー標準の和文 sans フォールバックを併記する。
+        # SVG 属性内に直接入れるため各名は単一引用符で囲む（属性は二重引用符）。
+        #
+        # @return [String]
+        def epub_heading_font_family
+          book_font = Common::CONFIG.dig('typography', 'heading', 'font').to_s.strip
+          stack = []
+          stack << "'#{book_font}'" unless book_font.empty?
+          stack.concat(["'Hiragino Sans'", "'Hiragino Kaku Gothic ProN'", "'Noto Sans JP'",
+                        "'Noto Sans CJK JP'", 'sans-serif'])
+          stack.join(', ')
+        end
+
+        # 1 ファイルの h1（扉絵）・h2（節絵）へ合成画像を注入する。
+        # 本文章（番号 1..89）のみが対象。付録・前付・後付は simple 版とする（§B-4・PDF と整合）。
+        def inject_heading_images_into_file!(path, context)
+          return unless main_chapter_file?(path)
+
+          html = File.read(path, encoding: 'utf-8')
+          doc = PostProcessCommands::HtmlParser.parse_html_document(html)
+
+          changed = false
+          changed |= inject_frontispiece_headings!(doc, context)
+          changed |= inject_ornament_headings!(doc, context)
+          return unless changed
+
+          PostProcessCommands::HtmlParser.save_html_document(path, doc)
+          Common.log_info("[EPUB] #{File.basename(path)} に扉絵/節絵の合成画像を注入しました")
+        rescue StandardError => e
+          Common.log_warn("[EPUB] #{File.basename(path)} の扉絵注入に失敗（simple 縮退）: #{e.message}")
+        end
+
+        # 本文章（ファイル名の番号が 1..89）か。付録(90-98)・前付(00)・後付(99)・
+        # 特殊ページ（_toc 等）は対象外として simple 版にする。
+        def main_chapter_file?(path)
+          base = File.basename(path)
+          (m = base.match(/\A(\d{2})-/)) ? PdfBuilder::MAIN_RANGE.include?(m[1].to_i) : false
+        end
+
+        # 章扉（data-chapter-number-display を持つ h1）に扉絵画像を注入する。
+        def inject_frontispiece_headings!(doc, context)
+          return false unless context[:frontispiece]
+
+          changed = false
+          doc.css('h1').each do |h1|
+            number = h1['data-chapter-number-display'].to_s.strip
+            next if number.empty?
+
+            title = h1['data-chapter-title'].to_s.strip
+            src = heading_image_src(
+              image_path: context[:frontispiece], number:, title:, kind: :frontispiece, font_family: context[:font_family]
+            )
+            next unless src
+
+            apply_image_heading!(h1, src, [number, title], doc)
+            changed = true
+          end
+          changed
+        end
+
+        # 節扉（article.section-topic 直下の h2）に節絵画像を注入する。
+        def inject_ornament_headings!(doc, context)
+          return false unless context[:ornament]
+
+          changed = false
+          doc.css('article.section-topic > h2').each do |h2|
+            number = h2['data-section-number-display'].to_s.strip
+            title  = h2['data-section-title'].to_s.strip
+            next if number.empty? && title.empty?
+
+            src = heading_image_src(
+              image_path: context[:ornament], number:, title:, kind: :ornament,
+              font_family: context[:font_family], number_color: context[:number_color]
+            )
+            next unless src
+
+            apply_image_heading!(h2, src, [number, title], doc)
+            mark_section_topic_for_epub!(h2)
+            changed = true
+          end
+          changed
+        end
+
+        # 見出し要素の中身を合成画像 <img> へ置換する。
+        # 目次（nav）は各章 HTML の <title> から生成され h1 テキストに依存しないため、
+        # 見出しテキストは <img alt> に格納する（読み上げ・検索・画像非表示時のフォールバック）。
+        def apply_image_heading!(heading, src, segments, doc)
+          label = segments.reject(&:empty?).join(' ')
+
+          heading.children.remove
+          add_class(heading, 'vs-image-heading-epub')
+
+          img = Nokogiri::XML::Node.new('img', doc)
+          img['class'] = 'vs-image-heading-img'
+          img['src'] = src
+          img['alt'] = label
+          heading.add_child(img)
+        end
+
+        # 節絵を入れた h2 の親 article.section-topic に EPUB 用クラスを付け、
+        # PDF 用の固定寸法グリッド（150px 行など）を components.css で解除できるようにする。
+        def mark_section_topic_for_epub!(h2)
+          article = h2.parent
+          add_class(article, 'vs-section-topic-epub') if article && article['class'].to_s.split.include?('section-topic')
+        end
+
+        # 合成画像（JPEG）を生成・キャッシュし、HTML から参照する相対パスを返す。
+        # 見出し入力（種別・画像・番号・タイトル・フォント・色）のハッシュをファイル名にして
+        # 同一見出しを使い回す。ツール不在・合成失敗時は nil（→ simple 縮退）。
+        def heading_image_src(image_path:, number:, title:, kind:, font_family:, number_color: '#333333')
+          key = Digest::SHA256.hexdigest([kind, image_path, number, title, font_family, number_color].join('|'))[0, 16]
+          dir = File.join(Common.images_dir, HEADINGS_REL_SUBDIR)
+          filename = "#{kind}-#{key}.jpg"
+          abs = File.join(dir, filename)
+
+          unless File.exist?(abs)
+            jpg = HeadingImageComposer.render(image_path:, number:, title:, kind:, font_family:, number_color:)
+            return nil unless jpg
+
+            FileUtils.mkdir_p(dir)
+            File.binwrite(abs, jpg)
+          end
+
+          "#{Common.images_dir}/#{HEADINGS_REL_SUBDIR}/#{filename}"
+        end
+
+        # 要素へ CSS クラスを追加（重複は付けない）。
+        def add_class(node, klass)
+          classes = node['class'].to_s.split
+          return if classes.include?(klass)
+
+          node['class'] = (classes << klass).join(' ')
         end
 
         # ================================================================

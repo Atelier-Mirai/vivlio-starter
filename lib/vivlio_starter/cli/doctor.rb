@@ -178,7 +178,8 @@ module VivlioStarter
           'chromium' => nil,   # Playwright 用ヘッドレスブラウザ
           'mecab' => 'mecab', # 索引機能の読み自動推測用
           'rouge' => nil, # コードブロック言語推定用
-          'mathjax' => nil # 数式の SVG 化用（mathjax-full・npm パッケージ）
+          'mathjax' => nil, # 数式の SVG 化用（mathjax-full・npm パッケージ）
+          'rsvg-convert' => 'rsvg-convert' # EPUB 扉絵/節絵の合成画像ラスタライズ用（librsvg）
         }
 
         plugin_installed = pdf_plugin_installed?
@@ -350,6 +351,9 @@ module VivlioStarter
 
           # Inkscape
           system('brew install inkscape') if missing.include?('inkscape')
+
+          # librsvg（rsvg-convert）: EPUB 扉絵/節絵の合成画像ラスタライズ用
+          system('brew install librsvg') if missing.include?('rsvg-convert')
 
           system('brew install vips') if missing.include?('vips')
 
