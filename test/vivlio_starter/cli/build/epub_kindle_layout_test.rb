@@ -5,7 +5,7 @@
 # ================================================================
 # テスト対象:
 #   Build::EpubBuilder の Kindle レイアウト是正（epub-kindle-layout-spec.md §6-1）
-#   - mark_body_for_epub!        : body へ vs-epub クラス付与
+#   - mark_body_for_kindle!        : body へ vs-kindle クラス付与
 #   - convert_math_units_for_epub! : inline/display 数式の ex→em 変換
 #   - convert_code_blocks_for_epub! : Prism 行番号 → 2 列テーブル化
 # ================================================================
@@ -32,12 +32,12 @@ module VivlioStarter
         @saved_logs&.each { |name, m| Common.define_singleton_method(name, m) }
       end
 
-      # body に vs-epub クラスが付与される
+      # body に vs-kindle クラスが付与される
       def test_should_mark_body_with_vs_epub
         doc = process('<html><body class="chapter"><p>本文</p></body></html>') do |files|
-          Builder.mark_body_for_epub!(files)
+          Builder.mark_body_for_kindle!(files)
         end
-        assert_includes doc.at_css('body')['class'].split, 'vs-epub'
+        assert_includes doc.at_css('body')['class'].split, 'vs-kindle'
         assert_includes doc.at_css('body')['class'].split, 'chapter', '既存クラスは保持される'
       end
 
@@ -128,7 +128,7 @@ module VivlioStarter
 
       # tip / memo / column にラベル要素が先頭注入される（Kindle で ::before ラベルが消える対策）
       def test_should_inject_admonition_label
-        html = '<html><body class="vs-epub">' \
+        html = '<html><body class="vs-kindle">' \
                '<div class="tip"><p>ヒント本文</p></div>' \
                '<div class="memo"><p>メモ本文</p></div>' \
                '<div class="column"><h5>コラム見出し</h5><p>本文</p></div></body></html>'
@@ -143,7 +143,7 @@ module VivlioStarter
 
       # 既に注入済みのラベルは二重に追加されない
       def test_should_not_double_inject_admonition_label
-        html = '<html><body class="vs-epub">' \
+        html = '<html><body class="vs-kindle">' \
                '<div class="tip"><p class="vs-adm-label">【TIP】</p><p>本文</p></div></body></html>'
         doc = process(html) { |files| Builder.decorate_admonitions_for_epub!(files) }
         assert_equal 1, doc.css('.tip .vs-adm-label').size

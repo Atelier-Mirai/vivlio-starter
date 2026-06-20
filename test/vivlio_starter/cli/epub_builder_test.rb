@@ -81,11 +81,14 @@ module VivlioStarter
           </body></html>
         HTML
 
+        # flavor: :kindle は合成画像を JPEG（render）で焼き込む経路。クリーン EPUB（:epub）は
+        # 合成 SVG（compose）を配るため別経路（Step ④ のテストで検証）。
         context = {
           frontispiece: 'dummy_portrait.webp',
           ornament: 'dummy_landscape.webp',
           font_family: "'Zen Kaku Gothic New', sans-serif",
-          number_color: '#f0a000'
+          number_color: '#f0a000',
+          flavor: :kindle
         }
 
         Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do

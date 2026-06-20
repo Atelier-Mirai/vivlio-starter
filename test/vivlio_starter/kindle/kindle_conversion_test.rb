@@ -41,12 +41,17 @@ class KindleConversionTest < Minitest::Test
   end
 
   # epub を実変換し、画像系警告（W14015/W14012/W14010）が 1 件も出ないことを確認する
-  def test_should_convert_epub_without_image_warnings
-    epub = build_epub!
-    refute_nil epub, "epub 成果物が生成されませんでした"
+  # targets: kindle のパイプラインが KPF を自動生成し（Step ③）、Kindle 中間 EPUB を
+  # 実変換しても画像系警告（W14015/W14012/W14010）が 1 件も出ないことを確認する。
+  def test_should_build_kindle_target_and_convert_without_image_warnings
+    kindle_epub = build_kindle_target!
+    refute_nil kindle_epub, "Kindle 中間 EPUB（…-kindle.epub）が生成されませんでした"
+
+    # パイプラインが最終成果物 .kpf をルート直下へ出力していること（Step ③ の自動変換）
+    assert Dir.glob("*.kpf").any?, "targets: kindle で .kpf が生成されるべき"
 
     Dir.mktmpdir("vs-kindle-out") do |outdir|
-      run_kindle_previewer!(epub, outdir)
+      run_kindle_previewer!(kindle_epub, outdir)
 
       # Kindle Previewer 3 は Summary_Log.csv と Logs/<book>_log.csv を出力する。
       # 版差でファイル名が変わっても拾えるよう、出力配下の全 CSV を走査対象にする。
@@ -68,14 +73,15 @@ class KindleConversionTest < Minitest::Test
 
   private
 
-  # targets: epub に切り替えてビルドし、生成された epub の絶対パスを返す
-  def build_epub!
+  # targets: kindle でビルド（--no-clean で中間 …-kindle.epub を残す）し、その絶対パスを返す。
+  def build_kindle_target!
     cleanup_artifacts!
-    VsTestSupport::BookYmlPatcher.rewrite_line(/^(\s*)targets:\s*[^\n]*$/, "\\1targets: epub") do
-      ok, output = VsTestSupport::VsBuilder.build!(vs_command: VsTestSupport::VsBuilder.repo_vs_command)
-      raise "vs build（targets: epub）が失敗しました:\n#{output.lines.last(20).join}" unless ok
+    VsTestSupport::BookYmlPatcher.rewrite_line(/^(\s*)targets:\s*[^\n]*$/, "\\1targets: kindle") do
+      ok, output = VsTestSupport::VsBuilder.build!(vs_command: VsTestSupport::VsBuilder.repo_vs_command,
+                                                   extra_args: "--no-clean")
+      raise "vs build（targets: kindle）が失敗しました:\n#{output.lines.last(20).join}" unless ok
     end
-    latest = Dir.glob("*.epub").max_by { File.mtime(it) }
+    latest = Dir.glob("*-kindle.epub").max_by { File.mtime(it) }
     latest && File.expand_path(latest)
   end
 
@@ -86,6 +92,6 @@ class KindleConversionTest < Minitest::Test
   end
 
   def cleanup_artifacts!
-    Dir.glob("*.epub").each { FileUtils.rm_f(it) }
+    (Dir.glob("*.epub") + Dir.glob("*.kpf")).each { FileUtils.rm_f(it) }
   end
 end

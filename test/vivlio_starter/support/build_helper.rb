@@ -123,9 +123,10 @@ module VsTestSupport
     end
 
     # @param vs_command [String] 実行する vs コマンド（既定: PATH 上の `vs`）
+    # @param extra_args [String] build へ付与する追加引数（例: "--no-clean"）
     # @return [Array(Boolean, String)] [成功?, 出力全文]
-    def self.build!(vs_command: "vs")
-      output = `#{vs_command} build 2>&1`
+    def self.build!(vs_command: "vs", extra_args: "")
+      output = `#{vs_command} build #{extra_args} 2>&1`
       [$?.success?, output]
     end
 

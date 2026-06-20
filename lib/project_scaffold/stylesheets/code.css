@@ -187,7 +187,7 @@ figure[class*=" language-"] > figcaption + pre {
    EpubBuilder が pre.line-numbers を 2 列テーブル（番号｜コード）へ変換する。
    折り返しても番号は上端に留まり、論理行との対応が崩れない。
    ============================================================= */
-body.vs-epub table.vs-code-epub {
+body.vs-kindle table.vs-code-epub {
   width: 100%;
   border-collapse: collapse;
   font-family: var(--code-font, monospace);
@@ -202,14 +202,14 @@ body.vs-epub table.vs-code-epub {
 
 /* table.css の td,th{border} と tr:nth-child(even){background} はコード表では邪魔になる。
    行ごとの横罫線・ゼブラを打ち消し、番号とコードの間の縦仕切りだけ残す（§4）。 */
-body.vs-epub table.vs-code-epub td {
+body.vs-kindle table.vs-code-epub td {
   border: none;
 }
-body.vs-epub table.vs-code-epub tr:nth-child(even) {
+body.vs-kindle table.vs-code-epub tr:nth-child(even) {
   background: transparent;
 }
 
-body.vs-epub td.vs-code-num {
+body.vs-kindle td.vs-code-num {
   width: 2.5em;
   text-align: right;
   vertical-align: middle;   /* 番号・コードを上下中央で揃える */
@@ -220,11 +220,11 @@ body.vs-epub td.vs-code-num {
   white-space: nowrap;
   user-select: none;
 }
-body.vs-epub .vs-code-line {
+body.vs-kindle .vs-code-line {
   vertical-align: middle;
   padding: 0 0 0 0.6em;
 }
-body.vs-epub .vs-code-line code {
+body.vs-kindle .vs-code-line code {
   white-space: pre-wrap;
   word-break: break-word;
 }

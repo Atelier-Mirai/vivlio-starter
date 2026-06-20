@@ -19,7 +19,10 @@
 #
 # 保持対象（--purge 未指定時）:
 #   - 最終 PDF: output.pdf, output_compressed.pdf（config で名称変更可）
+#   - 最終 EPUB / Kindle: <project>*.epub, <project>*.kpf
 #   - ドキュメント: README.md, CHANGELOG.md 等
+#
+# --purge 指定時は上記の最終 PDF / EPUB / KPF も含めてすべて削除する。
 #
 # 依存:
 #   - Common: 設定読み込み・ログ出力・パス定数
@@ -33,8 +36,8 @@ module VivlioStarter
     # ビルド生成物のクリーンアップコマンド
     #
     # オプション:
-    #   - (なし): 中間生成物を削除、最終 PDF は保持
-    #   - --purge: 最終 PDF も含めてすべて削除
+    #   - (なし): 中間生成物を削除、最終 PDF / EPUB / KPF は保持
+    #   - --purge: 最終 PDF / EPUB / KPF も含めてすべて削除
     #   - --cache: キャッシュディレクトリのみ削除
     #   - --cover: 生成されたカバー画像のみ削除（マスターは保持）
     #   - --all: 上記すべてを実行（開発者向け）
@@ -237,6 +240,8 @@ module VivlioStarter
       #   - vivlio_starter*.pdf
       #   - vivlio_starter_v*.pdf（バージョン付き）
       #   - vivlio_starter_print*.pdf（印刷用）
+      #   - vivlio_starter*.epub（Kindle 中間 …-kindle.epub もここで拾う）
+      #   - vivlio_starter*.kpf（Kindle 最終成果物）
       def add_dynamic_filename_patterns(patterns)
         config = Common::CONFIG
         project_name = config.dig('project', 'name')
@@ -247,6 +252,8 @@ module VivlioStarter
         patterns << "#{project_name}_print*.pdf"
         patterns << "#{project_name}*.epub"
         patterns << "#{project_name}_v*.epub"
+        patterns << "#{project_name}*.kpf"
+        patterns << "#{project_name}_v*.kpf"
       end
 
       # bundled テーマ用に生成されたバリアント画像を削除する

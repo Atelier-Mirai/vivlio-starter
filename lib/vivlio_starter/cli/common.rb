@@ -570,6 +570,7 @@ module VivlioStarter
         ext = case target
               when 'pdf', 'print_pdf' then '.pdf'
               when 'epub' then '.epub'
+              when 'kindle' then '.kpf'
               else '.pdf'
               end
         filename + ext
@@ -577,6 +578,11 @@ module VivlioStarter
 
       def generate_print_pdf_filename = generate_output_filename('print_pdf')
       def generate_epub_filename = generate_output_filename('epub')
+      # Kindle の最終成果物（KPF・ルート直下）。例: vivlio_starter_v1.0.0.kpf
+      def generate_kpf_filename = generate_output_filename('kindle')
+      # Kindle 用の中間 EPUB（kindlepreviewer の入力）。KPF 生成後は削除される（§1-4）。
+      # 例: vivlio_starter_v1.0.0-kindle.epub
+      def generate_kindle_epub_filename = generate_kpf_filename.sub(/\.kpf\z/, '-kindle.epub')
 
       def generate_compressed_pdf_filename(target = 'pdf')
         # 新しい設定構造ではsuffixは"_compressed"に固定
@@ -811,6 +817,7 @@ module VivlioStarter
                       :default_vfm, :default_vivliostyle, :log_always, :ensure_cache_dir!,
                       :ensure_required_yaml_files!, :required_yaml_files_loadable?, :fetch_bool, :format_pt,
                       :generate_compressed_pdf_filename, :generate_epub_filename,
+                      :generate_kpf_filename, :generate_kindle_epub_filename,
                       :generate_output_filename, :generate_print_pdf_filename,
                       :images_dir, :load_config, :load_page_presets, :log_action,
                       :log_debug, :log_error, :log_info, :log_success, :log_warn,

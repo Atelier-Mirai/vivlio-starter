@@ -72,15 +72,20 @@ class TargetConsistencyTest < Minitest::Test
 
   COMBOS    = build_combos(active_formats).freeze
   FULL_KEY  = active_formats.join("+").freeze
-  # epub を含む全 combo キー（WebP/レイアウト回帰ガードの走査対象）。
+  # クリーン EPUB を含む全 combo キー（クリーン回帰ガードの走査対象）。
   EPUB_COMBO_KEYS = COMBOS.select { |_key, targets| targets.include?("epub") }.keys.freeze
+  # Kindle を含む全 combo キー（Kindle 劣化の走査対象・…-kindle.epub を検査）。
+  KINDLE_COMBO_KEYS = COMBOS.select { |_key, targets| targets.include?("kindle") }.keys.freeze
 
   # build.yml が再生成する派生ファイル（ビルド後に元へ戻す）
   GENERATED_FILES = ["vivliostyle.config.js", File.join("stylesheets", "page-settings.css")].freeze
 
   PdfSnap  = Data.define(:page_count, :texts, :outline, :size, :body)
+  # vs_kindle / vs_code_epub / math_px は Kindle 専用 rewrite の痕跡（§5-3）。
+  # クリーン EPUB（:epub）では 0/false、Kindle EPUB（…-kindle.epub）では検出されるべき。
   EpubSnap = Data.define(:spine, :body, :size, :webp_files, :unresolved_images,
-                         :legacy_code_gutters, :math_ex_units)
+                         :legacy_code_gutters, :math_ex_units,
+                         :vs_kindle, :vs_code_epub, :math_px)
 
   def setup
     skip "config/book.yml が見つかりません（リポジトリルートで実行してください）" \
@@ -183,28 +188,47 @@ class TargetConsistencyTest < Minitest::Test
                  "pdf と print_pdf のアウトラインが一致しません"
   end
 
-  # 【WebP トランスコードの回帰ガード】EPUB に WebP が 1 つも残らず、<img> 参照が
-  # すべて EPUB 内の実体に解決する（Kindle 変換不能 = WebP 非対応 の直接検知。
-  # epubcheck では検出できないため必須。docs/specs/epub-kindle-webp-transcode-spec.md §6-1）
-  def test_epub_contains_no_webp_and_images_resolve
+  # 【クリーン EPUB の回帰ガード】<img> 参照がすべて EPUB 内の実体に解決する。
+  # クリーン EPUB（Kobo/Apple Books）は WebP を高画質維持するため、WebP が残ること自体は正常
+  # （EPUB 3.3 で image/webp はコアメディアタイプ）。WebP ゼロは Kindle 側で検査する（§4・§5-3）。
+  def test_clean_epub_images_resolve
     EPUB_COMBO_KEYS.each do |key|
       snap = fetch!(key, :epub)
-      assert_empty snap.webp_files,
-                   "epub「#{key}」に WebP が残っています（Kindle 変換不能）: #{snap.webp_files.first(5).join(', ')}"
       assert_empty snap.unresolved_images,
-                   "epub「#{key}」に解決できない <img src> があります: #{snap.unresolved_images.first(5).join(', ')}"
+                   "クリーン epub「#{key}」に解決できない <img src> があります: #{snap.unresolved_images.first(5).join(', ')}"
     end
   end
 
-  # 【Kindle レイアウト是正の回帰ガード】コードの絶対配置ガターが残らず（テーブル化済み）、
-  # 数式の寸法が ex で残らない（em 化済み）。epub-kindle-layout-spec.md §6-2
-  def test_epub_kindle_layout_is_fixed
+  # 【クリーン EPUB 非汚染ガード・§5-3】Kindle 専用 rewrite（vs-kindle マーカー・コードテーブル化・
+  # 数式 px 属性）がクリーン EPUB には一切現れない（::before 角タブ・var()・SVG・WebP を維持）。
+  def test_clean_epub_has_no_kindle_degradation
     EPUB_COMBO_KEYS.each do |key|
       snap = fetch!(key, :epub)
+      refute snap.vs_kindle, "クリーン epub「#{key}」に vs-kindle マーカーが付いてはいけない"
+      assert_equal 0, snap.vs_code_epub,
+                   "クリーン epub「#{key}」にコードテーブル化（vs-code-epub）が現れてはいけない"
+      assert_equal 0, snap.math_px,
+                   "クリーン epub「#{key}」に数式 px 属性が現れてはいけない"
+    end
+  end
+
+  # 【Kindle EPUB の回帰ガード・§5-2/§5-3】Kindle 中間 EPUB は WebP が 1 つも残らず（Kindle 非対応）、
+  # <img> 参照が解決し、コードの絶対配置ガターが残らず（テーブル化済み）、数式 ex が残らない（em 化済み）。
+  # さらに Kindle 専用 rewrite の痕跡（vs-kindle・コードテーブル・数式 px）が確かに現れる。
+  def test_kindle_epub_is_degraded_for_amazon
+    KINDLE_COMBO_KEYS.each do |key|
+      snap = fetch!(key, :kindle)
+      assert_empty snap.webp_files,
+                   "kindle epub「#{key}」に WebP が残っています（Kindle 変換不能）: #{snap.webp_files.first(5).join(', ')}"
+      assert_empty snap.unresolved_images,
+                   "kindle epub「#{key}」に解決できない <img src> があります: #{snap.unresolved_images.first(5).join(', ')}"
       assert_equal 0, snap.legacy_code_gutters,
-                   "epub「#{key}」に Prism の絶対配置ガター（line-numbers-rows）が残っています（テーブル化されていない）"
+                   "kindle epub「#{key}」に Prism の絶対配置ガターが残っています（テーブル化されていない）"
       assert_equal 0, snap.math_ex_units,
-                   "epub「#{key}」の数式寸法に ex 単位が残っています（em へ変換されていない）"
+                   "kindle epub「#{key}」の数式寸法に ex 単位が残っています（em へ変換されていない）"
+      assert snap.vs_kindle, "kindle epub「#{key}」に vs-kindle マーカーが必要"
+      assert_operator snap.vs_code_epub, :>, 0, "kindle epub「#{key}」にコードテーブル（vs-code-epub）が必要"
+      assert_operator snap.math_px, :>, 0, "kindle epub「#{key}」に数式 px 属性が必要"
     end
   end
 
@@ -233,13 +257,16 @@ class TargetConsistencyTest < Minitest::Test
       cleanup_artifacts!
     end
 
-    # 1 つの targets 構成でビルドし、生成された成果物のスナップショットを返す
+    # 1 つの targets 構成でビルドし、生成された成果物のスナップショットを返す。
+    # Kindle を含む構成は中間 EPUB（…-kindle.epub）を検査するため --no-clean で残す。
     def build_one!(targets)
       cleanup_artifacts!
       value = targets.join(", ")
+      extra_args = targets.include?("kindle") ? "--no-clean" : ""
       captured = nil
       VsTestSupport::BookYmlPatcher.rewrite_line(/^(\s*)targets:\s*[^\n]*$/, "\\1targets: #{value}") do
-        ok, output = VsTestSupport::VsBuilder.build!(vs_command: VsTestSupport::VsBuilder.repo_vs_command)
+        ok, output = VsTestSupport::VsBuilder.build!(vs_command: VsTestSupport::VsBuilder.repo_vs_command,
+                                                     extra_args: extra_args)
         raise "vs build（targets: #{value}）が失敗しました:\n#{output.lines.last(20).join}" unless ok
 
         captured = capture(targets)
@@ -247,12 +274,14 @@ class TargetConsistencyTest < Minitest::Test
       captured
     end
 
-    # targets に含まれるフォーマットだけ成果物を取得する
+    # targets に含まれるフォーマットだけ成果物を取得する。
+    # epub=クリーン EPUB（…-kindle.epub を除く）、kindle=Kindle 中間 EPUB（…-kindle.epub）。
     def capture(targets)
       {
         pdf:       targets.include?("pdf")       ? pdf_snapshot(find_viewing_pdf) : nil,
         print_pdf: targets.include?("print_pdf") ? pdf_snapshot(find_print_pdf)   : nil,
-        epub:      targets.include?("epub")      ? epub_snapshot(find_epub)       : nil
+        epub:      targets.include?("epub")      ? epub_snapshot(find_clean_epub)  : nil,
+        kindle:    targets.include?("kindle")    ? epub_snapshot(find_kindle_epub) : nil
       }
     end
 
@@ -280,7 +309,11 @@ class TargetConsistencyTest < Minitest::Test
         webp_files: VsTestSupport::EpubInspector.webp_files(path),
         unresolved_images: VsTestSupport::EpubInspector.unresolved_image_refs(path),
         legacy_code_gutters: raw.scan("line-numbers-rows").size,
-        math_ex_units: raw.scan(/vs-math[^>]*style="[^"]*\dex/).size
+        math_ex_units: raw.scan(/vs-math[^>]*style="[^"]*\dex/).size,
+        # Kindle 専用 rewrite の痕跡（§5-3）
+        vs_kindle: raw.include?("vs-kindle"),
+        vs_code_epub: raw.scan("vs-code-epub").size,
+        math_px: raw.scan(/vs-math[^>]*\s(?:width|height)="\d+"/).size
       )
     end
 
@@ -294,8 +327,14 @@ class TargetConsistencyTest < Minitest::Test
       Dir.glob("*_print*.pdf").max_by { File.mtime(it) }
     end
 
-    def find_epub
-      Dir.glob("*.epub").max_by { File.mtime(it) }
+    # クリーン EPUB（Kindle 中間 …-kindle.epub を除く）
+    def find_clean_epub
+      Dir.glob("*.epub").reject { it.end_with?("-kindle.epub") }.max_by { File.mtime(it) }
+    end
+
+    # Kindle 中間 EPUB（--no-clean で残した …-kindle.epub）
+    def find_kindle_epub
+      Dir.glob("*-kindle.epub").max_by { File.mtime(it) }
     end
 
     def normalize(text)
@@ -317,7 +356,7 @@ class TargetConsistencyTest < Minitest::Test
     end
 
     def cleanup_artifacts!
-      (Dir.glob("*.pdf") + Dir.glob("*.epub")).each { FileUtils.rm_f(it) }
+      (Dir.glob("*.pdf") + Dir.glob("*.epub") + Dir.glob("*.kpf")).each { FileUtils.rm_f(it) }
     end
   end
 

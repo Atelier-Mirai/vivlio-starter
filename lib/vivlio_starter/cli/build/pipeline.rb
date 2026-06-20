@@ -108,17 +108,17 @@ module VivlioStarter
             # Step 12 ではリネーム・圧縮のみ。クリーンアップは最後に延期
             add_step('Step 12 (rename)',                      -> { run_step12_rename_only })
             add_step('Step 13 (print pdf)',                   -> { run_step13_print_pdf })
-            # EPUB ターゲット時は EPUB → final clean の順
-            add_step('Step E (generate epub)', -> { run_step_epub }) if epub_target?
+            # EPUB / Kindle ターゲット時は EPUB → final clean の順
+            add_step('Step E (generate epub)', -> { run_step_epub }) if epub_or_kindle_target?
             add_step('Step 14 (final clean)', -> { run_final_clean })
           elsif print_pdf_target?
             # --- 入稿用のみ（閲覧用 PDF をスキップ） ---
             register_print_pdf_only_steps_with_epub
-          elsif epub_target? && !pdf_target?
-            # --- EPUB のみ（PDF ビルドをスキップ） ---
+          elsif epub_or_kindle_target? && !pdf_target?
+            # --- EPUB / Kindle のみ（PDF ビルドをスキップ） ---
             register_epub_only_steps
-          elsif epub_target?
-            # --- 閲覧用 + EPUB ---
+          elsif epub_or_kindle_target?
+            # --- 閲覧用 + EPUB / Kindle ---
             # クリーンアップは EPUB ビルド後に延期（HTML を保持するため）
             register_pdf_build_steps
             add_step('Step 12 (rename)',                      -> { run_step12_rename_only })
@@ -187,7 +187,7 @@ module VivlioStarter
           add_step('Step  8 (backlink dedup)',             -> { Build::BacklinkDedupOrchestrator.run!(entries) })
           add_step('Step  9 (build front pages html)',     -> { run_step9_front_pages_html_only })
           add_step('Step 10 (print pdf)',                  -> { run_step13_print_pdf })
-          add_step('Step E (generate epub)', -> { run_step_epub }) if epub_target?
+          add_step('Step E (generate epub)', -> { run_step_epub }) if epub_or_kindle_target?
           add_step('Step 11 (final clean)', -> { run_final_clean })
         end
 
@@ -210,7 +210,7 @@ module VivlioStarter
             add_step('Step  7 (print pdf)', -> { generate_single_mode_print_pdf })
           end
 
-          add_step('Step E (generate epub)', -> { generate_single_mode_epub }) if epub_target?
+          add_step('Step E (generate epub)', -> { generate_single_mode_epub }) if epub_or_kindle_target?
 
           add_step('Step F (final clean)', -> { run_final_clean })
         end
@@ -708,6 +708,17 @@ module VivlioStarter
           targets.include?('epub')
         end
 
+        # output.targets に kindle が含まれるかを判定する（§2）。
+        # 本メソッドの存在自体が target_consistency_test の combo を 4→6 ビルドへ拡張する目印になる。
+        def kindle_target?
+          cfg = Common::CONFIG
+          targets = Build::PdfMerger.extract_targets(cfg.dig(:output, :targets))
+          targets.include?('kindle')
+        end
+
+        # クリーン EPUB / Kindle のいずれかが対象か（EPUB ビルド経路を起動するか）。
+        def epub_or_kindle_target? = epub_target? || kindle_target?
+
         # EPUB のみビルド（PDF ビルドをスキップ）
         # 前付・奥付の HTML 生成は行うが、PDF 結合等はスキップ
         # Step 8 (backlink dedup) は vivliostyle preview が必要なため除外
@@ -720,29 +731,46 @@ module VivlioStarter
           add_step('Step F (final clean)',                 -> { run_final_clean })
         end
 
-        # EPUB ビルドのメインフロー
+        # EPUB / Kindle ビルドのメインフロー（§1-3 方式B）。
+        # クリーン EPUB（:epub）と Kindle（:kindle）の両方が対象の場合、クリーンを先に確定し、
+        # その章 HTML を Kindle の rewrite が破壊しないよう、クリーン処理前の章 HTML を
+        # スナップショットしておき、Kindle ビルド前に復元してフレーバ間の相互汚染を防ぐ。
         def run_step_epub
           Common.log_action('[Step E] EPUB を生成します…')
 
           # --- Phase: EPUB 用カバー画像生成 ---
           generate_epub_cover_if_needed
 
+          # 両フレーバ同時のときだけ、クリーン処理が書き換える前の章 HTML を退避する。
+          snapshot = (epub_target? && kindle_target?) ? snapshot_chapter_htmls : nil
+
+          build_epub_flavor(:epub) if epub_target?
+
+          if kindle_target?
+            restore_chapter_htmls(snapshot) if snapshot
+            build_epub_flavor(:kindle)
+          end
+        end
+
+        # 1 フレーバ分の EPUB を生成する（クリーンは .epub、Kindle は中間 .epub→.kpf）。
+        def build_epub_flavor(flavor)
           # --- Phase: EPUB 用 entries.js 生成 ---
-          epub_htmls = Build::EpubBuilder.generate_epub_entries!('.', entries)
+          epub_htmls = Build::EpubBuilder.generate_epub_entries!('.', entries, flavor:)
           if epub_htmls.empty?
-            Common.log_warn('[Step E] EPUB 対象 HTML がありません。スキップします。')
+            Common.log_warn("[Step E] EPUB 対象 HTML がありません。スキップします。（flavor: #{flavor}）")
             return
           end
 
           # --- Phase: EPUB 用 vivliostyle.config.js 生成 ---
-          Build::EpubBuilder.generate_epub_config!
+          Build::EpubBuilder.generate_epub_config!(flavor:)
 
           # --- Phase: Vivliostyle build ---
-          target_name = Common.generate_epub_filename
+          # Kindle は KPF 変換の入力にすぎないため中間 EPUB（…-kindle.epub）として作る（§1-4）。
+          target_name = flavor == :kindle ? Common.generate_kindle_epub_filename : Common.generate_epub_filename
           EpubCommands.execute_epub({}, target_name)
 
-          # --- Phase: EPUB 内 CSS サニタイズ（@page マージンボックス除去） ---
-          Build::EpubBuilder.sanitize_epub_css!(target_name) if File.exist?(target_name)
+          # --- Phase: EPUB 内 CSS サニタイズ（@page マージンボックス除去・webp url() は kindle のみ） ---
+          Build::EpubBuilder.sanitize_epub_css!(target_name, flavor:) if File.exist?(target_name)
 
           # --- Phase: content.opf の数字始まり id を NCName 準拠へ修正 ---
           sanitize_epub_opf_ids!(target_name) if File.exist?(target_name)
@@ -750,8 +778,31 @@ module VivlioStarter
           # --- Phase: EPUB identifier 安定化 ---
           stabilize_epub_identifier!(target_name) if File.exist?(target_name)
 
-          # --- Phase: 中間ファイルクリーンアップ ---
+          # --- Phase: 中間ファイルクリーンアップ（entries/config/output.epub） ---
           Build::EpubBuilder.cleanup!
+
+          # --- Phase: Kindle は KPF へ変換（§1-7） ---
+          run_step_kpf(target_name) if flavor == :kindle
+        end
+
+        # クリーン処理前の章 HTML（パス→内容）を退避する。
+        def snapshot_chapter_htmls
+          Build::EpubBuilder.collect_epub_htmls('.', entries)
+                            .each_with_object({}) { |path, acc| acc[path] = File.read(path, encoding: 'utf-8') }
+        end
+
+        # 退避した章 HTML を書き戻し、Kindle ビルドをクリーンな状態から始める。
+        def restore_chapter_htmls(snapshot)
+          snapshot.each { |path, content| File.write(path, content) }
+        end
+
+        # Kindle 中間 EPUB を KPF へ変換し、成功時は中間 EPUB を削除する（§1-7）。
+        # kindlepreviewer 未導入時は EpubBuilder 側が警告して中間 EPUB を残す（ビルドは継続）。
+        def run_step_kpf(kindle_epub)
+          kpf_name = Common.generate_kpf_filename
+          converted = Build::EpubBuilder.convert_epub_to_kpf!(kindle_epub, kpf_name)
+          # 成功時のみ中間 EPUB を片付ける。--no-clean では検証用に残す（§1-4）。
+          FileUtils.rm_f(kindle_epub) if converted && options[:clean] != false && File.exist?(kindle_epub)
         end
 
         # EPUB の dc:identifier を書籍固有の決定的な UUID に置換する。

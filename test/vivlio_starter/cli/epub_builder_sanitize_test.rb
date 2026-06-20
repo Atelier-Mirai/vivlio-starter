@@ -239,16 +239,23 @@ module VivlioStarter
         assert_includes result, 'vs-circled-number', '囲み数字の class は残るべき'
       end
 
-      # --- EPF-11b: WebP は全除外（Kindle 非対応）・twemoji 直下 svg も除外・
-      #   vs-techbook サブツリーは丸ごとの全除外をしない（webp は transcode 経由で除外） ---
-      def test_should_exclude_all_webp_and_twemoji_svg
-        path = Build::EpubBuilder.generate_epub_config!
-        content = File.read(path)
+      # --- EPF-11b: WebP 除外は Kindle フレーバのみ（Kindle 非対応）。
+      #   クリーン EPUB（:epub・Kobo/Apple Books）は WebP を高画質維持するため除外しない（§4）。
+      #   twemoji 直下 svg は両フレーバで除外、vs-techbook サブツリーは丸ごと全除外しない。 ---
+      def test_should_exclude_webp_only_for_kindle_flavor
+        kindle = File.read(Build::EpubBuilder.generate_epub_config!(flavor: :kindle))
+        assert_includes kindle, "'images/**/*.webp'", 'kindle は本文画像の WebP を全除外すべき（Kindle 非対応）'
+        assert_includes kindle, "'stylesheets/**/*.webp'", 'kindle はスタイルシート配下の WebP も全除外すべき'
 
-        assert_includes content, "'stylesheets/twemoji/*.svg'", 'twemoji 直下 svg を除外すべき'
-        assert_includes content, "'images/**/*.webp'", '本文画像の WebP を全除外すべき（Kindle 非対応）'
-        assert_includes content, "'stylesheets/**/*.webp'", 'スタイルシート配下の WebP を全除外すべき（twemoji/vs-techbook 含む）'
-        refute_includes content, "'stylesheets/twemoji/**'", 'vs-techbook を巻き込む全除外はしないべき'
+        clean = File.read(Build::EpubBuilder.generate_epub_config!(flavor: :epub))
+        refute_includes clean, "'images/**/*.webp'", 'クリーン EPUB は WebP を維持する（除外しない・§4）'
+        refute_includes clean, "'stylesheets/**/*.webp'", 'クリーン EPUB はスタイルシート配下の WebP も維持する'
+
+        # twemoji 直下 svg は両フレーバで除外、vs-techbook を巻き込む全除外はしない
+        [kindle, clean].each do |content|
+          assert_includes content, "'stylesheets/twemoji/*.svg'", 'twemoji 直下 svg を除外すべき'
+          refute_includes content, "'stylesheets/twemoji/**'", 'vs-techbook を巻き込む全除外はしないべき'
+        end
       end
 
       private

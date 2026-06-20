@@ -149,6 +149,7 @@ module VivlioStarter
         klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
           define_method(:pdf_target?)       { true }
           define_method(:epub_target?)      { false }
+          define_method(:kindle_target?)    { false }
           define_method(:print_pdf_target?) { false }
         end
         klass.new(command, entries: [], mode: :full)
@@ -277,6 +278,7 @@ module VivlioStarter
         klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
           define_method(:pdf_target?)       { true }
           define_method(:epub_target?)      { false }
+          define_method(:kindle_target?)    { false }
           define_method(:print_pdf_target?) { false }
         end
         klass.new(command, entries: entries, mode: :single)
@@ -382,6 +384,7 @@ module VivlioStarter
         klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
           define_method(:pdf_target?)       { true }
           define_method(:epub_target?)      { false }
+          define_method(:kindle_target?)    { false }
           define_method(:print_pdf_target?) { false }
         end
         klass.new(command, entries: entries, mode: :single)
@@ -472,6 +475,7 @@ module VivlioStarter
         klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
           define_method(:pdf_target?)       { true }
           define_method(:epub_target?)      { false }
+          define_method(:kindle_target?)    { false }
           define_method(:print_pdf_target?) { false }
         end
         klass.new(command, entries: [], mode: mode)
@@ -536,6 +540,7 @@ module VivlioStarter
         klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
           define_method(:pdf_target?)       { true }
           define_method(:epub_target?)      { false }
+          define_method(:kindle_target?)    { false }
           define_method(:print_pdf_target?) { false }
         end
         klass.new(command, entries: [], mode: :full)
@@ -548,6 +553,7 @@ module VivlioStarter
         klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
           define_method(:pdf_target?)       { true }
           define_method(:epub_target?)      { false }
+          define_method(:kindle_target?)    { false }
           define_method(:print_pdf_target?) { false }
         end
         klass.new(command, entries: entries, mode: :single)

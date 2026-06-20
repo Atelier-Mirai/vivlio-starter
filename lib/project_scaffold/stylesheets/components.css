@@ -224,22 +224,22 @@ article.vs-section-topic-epub {
 
 /* =============================================================
    EPUB(Kindle) 専用レイアウト是正（epub-kindle-layout-spec.md §2・§3）
-   body.vs-epub は EpubBuilder が EPUB 章 HTML にのみ付与する（PDF では不発で無害）。
+   body.vs-kindle は EpubBuilder が EPUB 章 HTML にのみ付与する（PDF では不発で無害）。
    Kindle は CSS Grid を解さず、grid 前提の book-card 画像が全幅化するため、
    単列フロー前提で画像に上限を課し、本文を回り込ませる。
    ============================================================= */
-body.vs-epub .book-card { display: block; }
-body.vs-epub .book-info { display: block; }
-body.vs-epub .book-card img {
+body.vs-kindle .book-card { display: block; }
+body.vs-kindle .book-info { display: block; }
+body.vs-kindle .book-card img {
   max-width: 38%;
   max-height: 13em;
   width: auto;
   float: left;
   margin: 0 1em 0.5em 0;
 }
-body.vs-epub .book-card::after { content: ""; display: block; clear: both; }
+body.vs-kindle .book-card::after { content: ""; display: block; clear: both; }
 
 /* 数式: ex→em は EpubBuilder が inline style を変換する。ここは万一 inline style が
    無視された端末向けのセーフティネット（巨大化を防ぐ上限）。 */
-body.vs-epub img.vs-math-inline { max-height: 1.8em; width: auto; }
-body.vs-epub figure.vs-math-display img { max-width: 100%; height: auto; }
+body.vs-kindle img.vs-math-inline { max-height: 1.8em; width: auto; }
+body.vs-kindle figure.vs-math-display img { max-width: 100%; height: auto; }

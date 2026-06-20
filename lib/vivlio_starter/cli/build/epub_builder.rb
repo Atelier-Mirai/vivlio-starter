@@ -80,9 +80,10 @@ module VivlioStarter
         #
         # @param base_dir [String] ベースディレクトリ
         # @param entries [Array<TokenResolver::Entry>] ビルド対象の Entry 配列
+        # @param flavor [Symbol] :epub（Kobo/Apple Books 向けクリーン）/ :kindle（Amazon 向け劣化）
         # @return [Array<String>] EPUB に含める HTML ファイルパスの配列
-        def generate_epub_entries!(base_dir, entries)
-          Common.log_action('[EPUB] entries.epub.js を生成しています…')
+        def generate_epub_entries!(base_dir, entries, flavor: :epub)
+          Common.log_action("[EPUB] entries.epub.js を生成しています…（flavor: #{flavor}）")
 
           chapter_htmls = collect_epub_htmls(base_dir, entries)
 
@@ -91,45 +92,45 @@ module VivlioStarter
             return []
           end
 
+          # --- Phase: 両フレーバ共通（XHTML 妥当性に必要な最小処理・§1-2）---
           # 索引・用語集を EPUB 用に書き換え（空リンクに連番テキストを挿入）
           post_process_index_glossary_for_epub!(chapter_htmls)
-
           # 段落内脚注 span の重複 id を除去（XHTML の id 重複 ERROR を回避）
           strip_inline_footnote_ids_for_epub!(chapter_htmls)
-
           # テーブルの align 属性を style へ変換（XHTML5 で廃止された属性の ERROR を回避）
           rewrite_table_align_for_epub!(chapter_htmls)
-
           # 絵文字画像をプレーン絵文字へ復元（EPUB は Type 3 非該当。twemoji 非同梱で軽量化）
           restore_plain_emoji_for_epub!(chapter_htmls)
+          # 扉絵（h1）・節絵（h2）の合成画像を注入。クリーンは高画質 SVG、Kindle は JPEG（§1-2）。
+          inject_heading_images_for_epub!(chapter_htmls, flavor:)
 
-          # 扉絵（h1）・節絵（h2）を合成画像として焼き込む（theme.style=image 時のみ）
-          inject_heading_images_for_epub!(chapter_htmls)
-
-          # 残った <img> 参照 WebP を Kindle 対応の JPEG/PNG へ変換して src を差し替える。
-          # 直前までで <img> の出入りが確定するため最後に置く（絵文字復元・扉絵注入後）。
-          transcode_webp_images_for_epub!(chapter_htmls)
-
-          # Kindle のリフローで崩れる箇所を EPUB 専用に是正する（epub-kindle-layout-spec.md）。
-          # body.vs-epub マーカー → 画像の幅制約（inline）→ 数式 ex→em → コード行番号のテーブル化。
-          # Kindle は外部 CSS の画像サイズ指定を無視するため、画像は inline style で制約する。
-          mark_body_for_epub!(chapter_htmls)
-          constrain_layout_images_for_epub!(chapter_htmls)
-          convert_math_units_for_epub!(chapter_htmls)
-          convert_code_blocks_for_epub!(chapter_htmls)
-          decorate_admonitions_for_epub!(chapter_htmls)
+          # --- Phase: Kindle 専用 rewrite（クリーン EPUB は無改変のまま・§1-2）---
+          # Kindle(KFX) は WebP・CSS Grid・position:absolute・var()・外部 CSS の画像サイズを解さない。
+          # そこで body.vs-kindle マーカー配下で WebP→JPEG・画像 inline 制約・数式 px 化・
+          # コードのテーブル化・admonition ラベル注入を行う。クリーン EPUB（:epub）はこれを一切適用せず、
+          # ::before 角タブ・var() テーマ色・WebP を維持した高品質 EPUB のままにする。
+          if flavor == :kindle
+            # 残った <img> 参照 WebP を JPEG/PNG へ変換（<img> の出入り確定後＝扉絵/絵文字処理の後）。
+            transcode_webp_images_for_epub!(chapter_htmls)
+            mark_body_for_kindle!(chapter_htmls)
+            constrain_layout_images_for_epub!(chapter_htmls)
+            convert_math_units_for_epub!(chapter_htmls)
+            convert_code_blocks_for_epub!(chapter_htmls)
+            decorate_admonitions_for_epub!(chapter_htmls)
+          end
 
           write_epub_entries(base_dir, chapter_htmls)
-          Common.log_success("[EPUB] entries.epub.js を生成しました（#{chapter_htmls.size} エントリ）")
+          Common.log_success("[EPUB] entries.epub.js を生成しました（#{chapter_htmls.size} エントリ・flavor: #{flavor}）")
           chapter_htmls
         end
 
         # EPUB 専用 vivliostyle.config.js を生成する
         # cover.embed 設定に応じて表紙画像の埋め込みを制御
         #
+        # @param flavor [Symbol] :epub（表紙は book.yml の embed 設定に従う）/ :kindle（embed:false 固定・§1-6）
         # @return [String] 生成されたファイルパス
-        def generate_epub_config!
-          Common.log_action('[EPUB] vivliostyle.config.epub.js を生成しています…')
+        def generate_epub_config!(flavor: :epub)
+          Common.log_action("[EPUB] vivliostyle.config.epub.js を生成しています…（flavor: #{flavor}）")
 
           config = Common::CONFIG
           book_config = config.book
@@ -152,11 +153,11 @@ module VivlioStarter
           # ページサイズを解決（vivliostyle.rb から移植）
           page_size = resolve_page_size(config)
 
-          # 表紙画像の埋め込み設定を取得
-          cover_line = build_cover_config_line(config, esc)
+          # 表紙画像の埋め込み設定を取得（kindle は二重表紙回避のため embed:false 固定・§1-6）
+          cover_line = build_cover_config_line(config, esc, flavor:)
 
-          # 原稿外ファイルの EPUB 混入を防ぐ copyAsset.excludes
-          copy_asset_lines = build_copy_asset_excludes_config
+          # 原稿外ファイルの EPUB 混入を防ぐ copyAsset.excludes（WebP 除外は kindle のみ・§4）
+          copy_asset_lines = build_copy_asset_excludes_config(flavor:)
 
           # 横書き固定（将来の縦書き対応に備えてハードコーディング）
           reading_progression = 'ltr'
@@ -289,7 +290,9 @@ module VivlioStarter
           epub_cfg&.cover&.embed != false
         end
 
-        def build_cover_config_line(config, esc)
+        def build_cover_config_line(config, esc, flavor: :epub)
+          # Kindle は embed:true だと表紙が二重になるため、本フェーズでは非埋め込み固定（§1-6・表紙は別途調査）。
+          return "  // cover: Kindle は表紙非埋め込み（§1-6 で保留）\n" if flavor == :kindle
           return "  // cover: 表紙埋め込みなし（epub.embed: false）\n" unless Common.epub_embed?
 
           cover_image = resolve_cover_image_path(config)
@@ -305,7 +308,7 @@ module VivlioStarter
         # copyAsset.excludes で明示的に除外する。
         #
         # @return [String] config に差し込む copyAsset ブロック（末尾改行付き）
-        def build_copy_asset_excludes_config
+        def build_copy_asset_excludes_config(flavor: :epub)
           patterns = %w[
             lib/**
             docs/**
@@ -318,14 +321,17 @@ module VivlioStarter
             *_images/**
             covers/bundled/**
             stylesheets/twemoji/*.svg
-            images/**/*.webp
-            stylesheets/**/*.webp
           ]
-          # WebP は Kindle 非対応のため EPUB へ一切同梱しない。<img> 参照分は
-          # transcode_webp_images_for_epub! が images/_epub_assets/ の JPEG/PNG へ移すため、
-          # 残る WebP（CSS 背景・絵文字マスター・扉絵/節絵の背景）はすべて除外してよい。
-          # twemoji 直下（絵文字マスター 7,000+ 個）の SVG も restore_plain_emoji_for_epub! で
-          # 参照されなくなるため除外する。
+          # twemoji 直下（絵文字マスター 7,000+ 個）の SVG は restore_plain_emoji_for_epub! で
+          # 参照されなくなるため両フレーバで除外する。
+
+          # WebP は Kindle のみ非対応。Kindle は transcode_webp_images_for_epub! が <img> 参照分を
+          # images/_epub_assets/ の JPEG/PNG へ移すため、残る WebP をすべて除外してよい。
+          # クリーン EPUB（:epub・Kobo/Apple Books）は WebP を高画質のまま同梱維持する（§4）
+          # ── EPUB 3.3 では image/webp がコアメディアタイプのため妥当。
+          if flavor == :kindle
+            patterns.push('images/**/*.webp', 'stylesheets/**/*.webp')
+          end
 
           # フォント非埋め込み時は実体（51MB の TTF/OTF）も同梱しない。
           # @font-face は sanitize_epub_css! が EPUB 内 CSS から除去する。
@@ -633,7 +639,7 @@ module VivlioStarter
         #
         # @param html_files [Array<String>] HTML ファイルパスの配列
         # @return [Array<String>] そのままの配列（パス変更なし）
-        def inject_heading_images_for_epub!(html_files)
+        def inject_heading_images_for_epub!(html_files, flavor: :epub)
           return html_files unless Common::CONFIG.dig('theme', 'style') == 'image'
 
           theme = read_theme_heading_assets
@@ -643,7 +649,8 @@ module VivlioStarter
             frontispiece: theme[:frontispiece],
             ornament: theme[:ornament],
             font_family: epub_heading_font_family,
-            number_color: theme[:number_color]
+            number_color: theme[:number_color],
+            flavor:
           }
 
           html_files.each { |path| inject_heading_images_into_file!(path, context) }
@@ -750,7 +757,8 @@ module VivlioStarter
 
             title = h1['data-chapter-title'].to_s.strip
             src = heading_image_src(
-              image_path: context[:frontispiece], number:, title:, kind: :frontispiece, font_family: context[:font_family]
+              image_path: context[:frontispiece], number:, title:, kind: :frontispiece,
+              font_family: context[:font_family], flavor: context[:flavor]
             )
             next unless src
 
@@ -772,7 +780,7 @@ module VivlioStarter
 
             src = heading_image_src(
               image_path: context[:ornament], number:, title:, kind: :ornament,
-              font_family: context[:font_family], number_color: context[:number_color]
+              font_family: context[:font_family], number_color: context[:number_color], flavor: context[:flavor]
             )
             next unless src
 
@@ -806,21 +814,28 @@ module VivlioStarter
           add_class(article, 'vs-section-topic-epub') if article && article['class'].to_s.split.include?('section-topic')
         end
 
-        # 合成画像（JPEG）を生成・キャッシュし、HTML から参照する相対パスを返す。
-        # 見出し入力（種別・画像・番号・タイトル・フォント・色）のハッシュをファイル名にして
-        # 同一見出しを使い回す。ツール不在・合成失敗時は nil（→ simple 縮退）。
-        def heading_image_src(image_path:, number:, title:, kind:, font_family:, number_color: '#333333')
-          key = Digest::SHA256.hexdigest([kind, image_path, number, title, font_family, number_color].join('|'))[0, 16]
+        # 合成画像を生成・キャッシュし、HTML から参照する相対パスを返す。
+        # クリーン EPUB（:epub）は高画質の合成 SVG（base64 画像を内包）をそのまま配り、
+        # Kindle（:kindle）は SVG 内 base64 を非対応のため平坦 JPEG へラスタライズして配る（§1-2）。
+        # 入力（フレーバ・種別・画像・番号・タイトル・フォント・色）のハッシュをファイル名にして
+        # 同一見出しを使い回す。フレーバを鍵に含め SVG/JPEG のキャッシュ衝突を避ける。
+        # ツール不在・合成失敗時は nil（→ simple 縮退）。
+        def heading_image_src(image_path:, number:, title:, kind:, font_family:, number_color: '#333333', flavor: :epub)
+          key = Digest::SHA256.hexdigest([flavor, kind, image_path, number, title, font_family, number_color].join('|'))[0, 16]
           dir = File.join(Common.images_dir, HEADINGS_REL_SUBDIR)
-          filename = "#{kind}-#{key}.jpg"
+          filename = "#{kind}-#{key}.#{flavor == :kindle ? 'jpg' : 'svg'}"
           abs = File.join(dir, filename)
 
           unless File.exist?(abs)
-            jpg = HeadingImageComposer.render(image_path:, number:, title:, kind:, font_family:, number_color:)
-            return nil unless jpg
+            data = if flavor == :kindle
+                     HeadingImageComposer.render(image_path:, number:, title:, kind:, font_family:, number_color:)
+                   else
+                     HeadingImageComposer.compose(image_path:, number:, title:, kind:, font_family:, number_color:)
+                   end
+            return nil unless data
 
             FileUtils.mkdir_p(dir)
-            File.binwrite(abs, jpg)
+            File.binwrite(abs, data)
           end
 
           "#{Common.images_dir}/#{HEADINGS_REL_SUBDIR}/#{filename}"
@@ -969,7 +984,7 @@ module VivlioStarter
         # ================================================================
         # Kindle のリフローは CSS Grid / position:absolute / ex 単位を解さないため、
         # PDF 向け CSS のままだと画像・数式・コード行番号が崩れる。EPUB 経路でのみ
-        # 是正する。CSS で済むもの（book-card / img-text の画像上限）は body.vs-epub
+        # 是正する。CSS で済むもの（book-card / img-text の画像上限）は body.vs-kindle
         # ガードの CSS（components.css / layout-utils.css / code.css）に置き、ここでは
         # マークアップ変更が要る 3 件（body マーカー付与・数式 ex→em・コードのテーブル化）を
         # 行う。PDF 完成後の共有 HTML を書き換えるため PDF へ副作用はない。
@@ -988,20 +1003,20 @@ module VivlioStarter
         # em 値 × この係数を width/height の HTML 属性（px）として与え、Kindle でも本文相当に固定する。
         EPUB_BASE_FONT_PX = 16
 
-        # 各 EPUB 章 HTML の <body> に vs-epub クラスを付与する。
-        # body.vs-epub ガードの CSS（画像上限・コードテーブル体裁等）を効かせるための目印。
+        # 各 EPUB 章 HTML の <body> に vs-kindle クラスを付与する。
+        # body.vs-kindle ガードの CSS（画像上限・コードテーブル体裁等）を効かせるための目印。
         # PDF 用 HTML には付かないため PDF では当該 CSS が不発で無害。
         #
         # @param html_files [Array<String>] HTML ファイルパスの配列
         # @return [Array<String>] そのままの配列（パス変更なし）
-        def mark_body_for_epub!(html_files)
+        def mark_body_for_kindle!(html_files)
           html_files.each do |path|
             html = File.read(path, encoding: 'utf-8')
             doc = PostProcessCommands::HtmlParser.parse_html_document(html)
             body = doc.at_css('body')
             next unless body
 
-            add_class(body, 'vs-epub')
+            add_class(body, 'vs-kindle')
             PostProcessCommands::HtmlParser.save_html_document(path, doc)
           end
           html_files
@@ -1134,7 +1149,7 @@ module VivlioStarter
         # tip / memo（コラム枠）に見出しラベル要素を実体注入する。
         # PDF では ::before（position:absolute）でラベル帯を描くが、Kindle は absolute を無視して
         # ラベルが消える。実体の <p class="vs-adm-label"> を先頭に挿し、枠線は code/chapter CSS の
-        # body.vs-epub ルール（px 枠線）に委ねることで、Kindle でもラベル付きの囲み枠を保証する（§5）。
+        # body.vs-kindle ルール（px 枠線）に委ねることで、Kindle でもラベル付きの囲み枠を保証する（§5）。
         ADMONITION_LABELS = { 'tip' => '【TIP】', 'memo' => '【MEMO】', 'column' => '【COLUMN】' }.freeze
 
         # @param html_files [Array<String>] HTML ファイルパスの配列
@@ -1313,14 +1328,17 @@ module VivlioStarter
 
         # 生成後 EPUB 内の CSS をサニタイズする。
         # - @page マージンボックス / @footnote（CSS-008）は常に除去する。
-        # - `url(...webp)` を含む宣言は常に除去する（WebP 全除外による参照切れ回避。WEBP_URL_PATTERN）。
+        # - `url(...webp)` を含む宣言は **kindle のみ**除去する（kindle は WebP 全除外による参照切れ回避。
+        #   クリーン EPUB は WebP を同梱維持するため CSS の webp url() も残す・§4。WEBP_URL_PATTERN）。
         # - フォント非埋め込み時は @font-face も除去する（fonts/ 不同梱による RSC-007 回避）。
         #
         # @param epub_path [String] 対象 EPUB ファイルパス
+        # @param flavor [Symbol] :epub（WebP 維持）/ :kindle（webp url() 除去）
         # @return [void]
-        def sanitize_epub_css!(epub_path)
+        def sanitize_epub_css!(epub_path, flavor: :epub)
           abs_epub = File.expand_path(epub_path)
-          patterns = [MARGIN_BOX_PATTERN, WEBP_URL_PATTERN]
+          patterns = [MARGIN_BOX_PATTERN]
+          patterns << WEBP_URL_PATTERN if flavor == :kindle
           patterns.push(FONT_FACE_PATTERN, FONT_IMPORT_PATTERN) unless embed_fonts?
 
           Dir.mktmpdir('vs-epub-css') do |tmpdir|
@@ -1361,6 +1379,80 @@ module VivlioStarter
             FileUtils.rm_f(file)
             Common.log_info("[EPUB] #{file} を削除しました")
           end
+        end
+
+        # ================================================================
+        # Kindle KPF 変換（§1-7）
+        # ================================================================
+
+        # Kindle Previewer 3 CLI（kindlepreviewer）コマンド名と既定ロケール。
+        KINDLEPREVIEWER_COMMAND = 'kindlepreviewer'
+        # -locale は当面 en 固定（言語設定との連動は残 TODO・§4）。
+        KPF_LOCALE = 'en'
+
+        # kindlepreviewer が PATH 上に存在するかを返す。テストでは本メソッドをスタブして
+        # 「未導入時はスキップして継続」する経路を検証する（DI・§5-1）。
+        #
+        # @param command [String] チェックするコマンド名
+        # @return [Boolean]
+        def kindlepreviewer_available?(command = KINDLEPREVIEWER_COMMAND)
+          system('which', command, out: File::NULL, err: File::NULL) || false
+        end
+
+        # Kindle 用中間 EPUB を kindlepreviewer で KPF へ変換し、kpf_path へ回収する（§1-7）。
+        # 変換ログ（Summary_Log.csv / Logs/*_log.csv）の Error/Quality 件数を log_summary で要約する。
+        # 未導入・変換失敗時は false を返し（中間 EPUB は残す）、ビルド全体は止めない。
+        #
+        # @param epub_path [String] 入力 Kindle EPUB（…-kindle.epub）
+        # @param kpf_path [String] 出力 KPF（ルート直下）
+        # @param locale [String] kindlepreviewer の -locale
+        # @param command [String] kindlepreviewer コマンド名（DI 用）
+        # @return [Boolean] KPF を生成できたか
+        def convert_epub_to_kpf!(epub_path, kpf_path, locale: KPF_LOCALE, command: KINDLEPREVIEWER_COMMAND)
+          return false unless File.exist?(epub_path)
+
+          unless kindlepreviewer_available?(command)
+            Common.log_warn("[KPF] #{command} が見つかりません。KPF 変換をスキップし、中間 EPUB を残します: #{epub_path}")
+            Common.log_warn('  → Kindle Previewer 3 を導入するか、中間 EPUB を手動で変換してください。')
+            return false
+          end
+
+          Common.log_action("[KPF] #{File.basename(epub_path)} を KPF へ変換しています…")
+          Dir.mktmpdir('vs-kpf') do |outdir|
+            ok = system(command, File.expand_path(epub_path), '-convert', '-output', outdir, '-locale', locale,
+                        out: File::NULL, err: File::NULL)
+            summarize_kpf_logs(outdir)
+
+            kpf = Dir.glob(File.join(outdir, '**', '*.kpf')).max_by { File.mtime(it) }
+            unless ok && kpf
+              Common.log_error("[KPF] Kindle 変換に失敗しました。中間 EPUB を残します: #{epub_path}")
+              return false
+            end
+
+            FileUtils.rm_f(kpf_path)
+            FileUtils.mv(kpf, kpf_path)
+            Common.log_success("[KPF] KPF を生成しました: #{kpf_path}")
+            true
+          end
+        end
+
+        # kindlepreviewer のログ CSV から Kindle のエラー/警告コード件数を集計して要約表示する。
+        # ヘッダ列名（"Error" 等の語）を誤カウントしないよう、実データである E#####/W##### 形式の
+        # コード出現数で数える。版差でファイル名が変わっても拾えるよう出力配下の全 CSV を走査する。
+        def summarize_kpf_logs(outdir)
+          csvs = Dir.glob(File.join(outdir, '**', '*.csv'))
+          return if csvs.empty?
+
+          codes = csvs.flat_map do |csv|
+            File.read(csv, encoding: 'UTF-8').scan(/\b[EW]\d{5}\b/)
+          rescue StandardError
+            []
+          end
+          errors   = codes.count { it.start_with?('E') }
+          warnings = codes.count { it.start_with?('W') }
+          Common.log_summary("[KPF] 変換ログ: Error=#{errors} / Warning=#{warnings}（#{csvs.size} CSV）")
+        rescue StandardError => e
+          Common.log_warn("[KPF] 変換ログの解析に失敗: #{e.message}")
         end
       end
     end
