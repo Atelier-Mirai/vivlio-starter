@@ -291,6 +291,17 @@ module VsTestSupport
     end
     private_class_method :decode_entities
 
+    # 全 xhtml の生マークアップをファイル名順で連結して返す（タグ・属性を保持）。
+    # Kindle レイアウト是正の回帰検査（行番号ガター不在・数式 ex 不在）に使う。
+    # @return [String]
+    def self.raw_xhtml(epub_path)
+      with_unzipped(epub_path) do |dir|
+        Dir.glob(File.join(dir, "**", "*.xhtml")).sort.map do |path|
+          File.read(path, encoding: "UTF-8")
+        end.join("\n")
+      end
+    end
+
     def self.with_unzipped(epub_path)
       Dir.mktmpdir("vs-epub-inspect") do |dir|
         system("unzip", "-o", "-q", File.expand_path(epub_path), "-d", dir,

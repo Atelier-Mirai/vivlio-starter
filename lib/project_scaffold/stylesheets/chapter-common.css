@@ -346,7 +346,10 @@ p>img {
   padding: 4mm;
   padding-inline: 6mm;
   padding-block-start: 6mm;
-  border: solid 0.2mm var(--color-column-border);
+  /* 枠線フォールバック（Kindle 用）。詳細は .tip 参照 */
+  border: solid 1px #888;
+  border-width: var(--adm-border-width, 0.2mm);
+  border-color: var(--color-column-border);
   border-radius: 6px;
   background: var(--color-column-bg);
   position: relative;
@@ -378,7 +381,11 @@ p>img {
   padding-inline: 6mm;
   padding-block-start: 6mm;
   border-radius: 6px;
-  border: solid 0.2mm var(--theme-accent);
+  /* 枠線フォールバック: Kindle は var() を解さず border 宣言ごと破棄して枠が消える。
+     具体値(1px #888)を先に置き、var() 対応の閲覧器(PDF/Apple Books)だけ従来の 0.2mm・themed へ戻す。 */
+  border: solid 1px #888;
+  border-width: var(--adm-border-width, 0.2mm);
+  border-color: var(--theme-accent);
   background: white;
   position: relative;
 }
@@ -408,7 +415,10 @@ p>img {
   padding: 4mm;
   padding-inline: 6mm;
   padding-block-start: 6mm;
-  border: solid 0.2mm var(--color-column-border);
+  /* 枠線フォールバック（Kindle 用）。詳細は .tip 参照 */
+  border: solid 1px #888;
+  border-width: var(--adm-border-width, 0.2mm);
+  border-color: var(--color-column-border);
   background: white;
   border-radius: 6px;
   position: relative;
@@ -454,4 +464,23 @@ p>img {
 
 .notice p {
   text-indent: 0;
+}
+
+/* =============================================================
+   EPUB(Kindle) 専用 コラム枠ラベル（tip / memo / column）（epub-kindle-layout-spec.md §5）
+   Kindle は ::before(position:absolute) のラベル帯を描けないため、EpubBuilder が実体の
+   <p class="vs-adm-label"> を先頭注入する。一方 Apple Books 等は ::before のラベル帯を正しく
+   描くので、注入ラベルは隠したい。そこで position:absolute で画面外へ退避する:
+   - Apple Books（absolute 対応）→ 画面外へ飛び不可視（従来の ::before ラベルのみ見える）
+   - Kindle（absolute 非対応）→ 通常フローに残り、見出しとして表示される
+   枠線自体は .tip/.memo/.column 本体の border フォールバック（var 非対応時に効く）で確保する。
+   ============================================================= */
+body.vs-epub .vs-adm-label {
+  position: absolute;
+  left: -9999px;
+  margin: 0 0 0.4em;
+  font-family: var(--font-header);
+  font-weight: bold;
+  font-size: 0.9em;
+  color: #444;
 }

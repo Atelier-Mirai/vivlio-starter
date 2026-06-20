@@ -23,8 +23,10 @@
 #   - pdf と print_pdf のアウトライン（しおり）が一致する
 #
 # 【実行方法】
-#   rake test:targets   （実マニュアルを 7 通りの targets でビルドするため最も遅い。
-#                          20〜30 分程度。通常 test からは除外）
+#   rake test:targets   （実マニュアルを最小セットの targets でビルドするため最も遅い。
+#                          単体＋全部入りに絞って軽量化。通常 test からは除外）
+#                          combo セット: 各フォーマット単体＋（epub+kindle）＋全部入り
+#                          （pdf/print_pdf/epub の現状は 4 ビルド。kindle 実装後 6 ビルド）
 #   ※ リポジトリルートで実行すること。ビルドのたびにルート直下の *.pdf / *.epub を
 #     クリーンするため、既存の成果物は再生成される。
 # =============================================================================
@@ -36,22 +38,49 @@ require_relative "../support/build_helper"
 class TargetConsistencyTest < Minitest::Test
   REQUIRED_TOOLS = %w[node vivliostyle qpdf gs unzip].freeze
 
-  # 検証する targets の組み合わせ（単体 3 + 複合 4）
-  COMBOS = {
-    "pdf"                => %w[pdf],
-    "print_pdf"          => %w[print_pdf],
-    "epub"               => %w[epub],
-    "pdf+print_pdf"      => %w[pdf print_pdf],
-    "pdf+epub"           => %w[pdf epub],
-    "print_pdf+epub"     => %w[print_pdf epub],
-    "pdf+print_pdf+epub" => %w[pdf print_pdf epub]
-  }.freeze
+  # 検証する targets の組み合わせ（最小セット）
+  # --------------------------------------------------------------------------
+  # 旧版は全部分集合（2^n−1）を実ビルドしていたが、本テストが捕まえたいのは
+  # 「他ターゲットの同居による共有状態の汚染（例: print_pdf 本文欠落 ②）」であり、
+  # それは "全部入り（最大干渉）" で顕在化する。よって
+  #   各フォーマット単体（baseline）＋ epub↔kindle ペア（共有 HTML 汚染の直接検証）
+  #   ＋ 全部入り（最大干渉）
+  # に絞れば検出力を保ったまま大幅に軽量化できる（pdf/print_pdf/epub/kindle で
+  # 2^4−1=15 → 6 ビルド）。docs/specs/epub-kindle-target-split-spec.md §5-2。
+  #
+  # kindle はターゲット実装後（pipeline に kindle_target? が入った時点）に自動で
+  # 有効化される。未実装の間は kindle を除いた 3 フォーマット（4 ビルド）で回す。
+  FORMATS = %w[pdf print_pdf epub kindle].freeze
+
+  # repo ソースに kindle ターゲットが実装されているか（実ビルドを伴わない軽量判定）。
+  def self.kindle_available?
+    src = File.expand_path("../../../../lib/vivlio_starter/cli/build/pipeline.rb", __dir__)
+    File.exist?(src) && File.read(src).include?("def kindle_target?")
+  end
+
+  def self.active_formats
+    kindle_available? ? FORMATS : (FORMATS - %w[kindle])
+  end
+
+  # 単体 ＋ epub+kindle ペア（両方 active のとき）＋ 全部入り を生成する。
+  def self.build_combos(formats)
+    combos = formats.to_h { |fmt| [fmt, [fmt]] }
+    combos["epub+kindle"] = %w[epub kindle] if (%w[epub kindle] - formats).empty?
+    combos[formats.join("+")] = formats
+    combos
+  end
+
+  COMBOS    = build_combos(active_formats).freeze
+  FULL_KEY  = active_formats.join("+").freeze
+  # epub を含む全 combo キー（WebP/レイアウト回帰ガードの走査対象）。
+  EPUB_COMBO_KEYS = COMBOS.select { |_key, targets| targets.include?("epub") }.keys.freeze
 
   # build.yml が再生成する派生ファイル（ビルド後に元へ戻す）
   GENERATED_FILES = ["vivliostyle.config.js", File.join("stylesheets", "page-settings.css")].freeze
 
   PdfSnap  = Data.define(:page_count, :texts, :outline, :size, :body)
-  EpubSnap = Data.define(:spine, :body, :size, :webp_files, :unresolved_images)
+  EpubSnap = Data.define(:spine, :body, :size, :webp_files, :unresolved_images,
+                         :legacy_code_gutters, :math_ex_units)
 
   def setup
     skip "config/book.yml が見つかりません（リポジトリルートで実行してください）" \
@@ -127,7 +156,7 @@ class TargetConsistencyTest < Minitest::Test
 
   # print_pdf のページ数が pdf に近い（② では 4 ページ vs 数百ページで大きく乖離した）
   def test_print_pdf_page_count_is_close_to_pdf
-    snap = self.class.snapshots.fetch("pdf+print_pdf+epub")
+    snap = self.class.snapshots.fetch(FULL_KEY)
     pdf = snap[:pdf]
     ppdf = snap[:print_pdf]
     refute_nil pdf
@@ -149,7 +178,7 @@ class TargetConsistencyTest < Minitest::Test
 
   # pdf と print_pdf のアウトライン（しおり）が一致する
   def test_pdf_and_print_pdf_share_outline
-    snap = self.class.snapshots.fetch("pdf+print_pdf+epub")
+    snap = self.class.snapshots.fetch(FULL_KEY)
     assert_equal snap[:pdf].outline, snap[:print_pdf].outline,
                  "pdf と print_pdf のアウトラインが一致しません"
   end
@@ -158,12 +187,24 @@ class TargetConsistencyTest < Minitest::Test
   # すべて EPUB 内の実体に解決する（Kindle 変換不能 = WebP 非対応 の直接検知。
   # epubcheck では検出できないため必須。docs/specs/epub-kindle-webp-transcode-spec.md §6-1）
   def test_epub_contains_no_webp_and_images_resolve
-    %w[epub pdf+epub print_pdf+epub pdf+print_pdf+epub].each do |key|
+    EPUB_COMBO_KEYS.each do |key|
       snap = fetch!(key, :epub)
       assert_empty snap.webp_files,
                    "epub「#{key}」に WebP が残っています（Kindle 変換不能）: #{snap.webp_files.first(5).join(', ')}"
       assert_empty snap.unresolved_images,
                    "epub「#{key}」に解決できない <img src> があります: #{snap.unresolved_images.first(5).join(', ')}"
+    end
+  end
+
+  # 【Kindle レイアウト是正の回帰ガード】コードの絶対配置ガターが残らず（テーブル化済み）、
+  # 数式の寸法が ex で残らない（em 化済み）。epub-kindle-layout-spec.md §6-2
+  def test_epub_kindle_layout_is_fixed
+    EPUB_COMBO_KEYS.each do |key|
+      snap = fetch!(key, :epub)
+      assert_equal 0, snap.legacy_code_gutters,
+                   "epub「#{key}」に Prism の絶対配置ガター（line-numbers-rows）が残っています（テーブル化されていない）"
+      assert_equal 0, snap.math_ex_units,
+                   "epub「#{key}」の数式寸法に ex 単位が残っています（em へ変換されていない）"
     end
   end
 
@@ -231,12 +272,15 @@ class TargetConsistencyTest < Minitest::Test
     def epub_snapshot(path)
       return nil unless path
 
+      raw = VsTestSupport::EpubInspector.raw_xhtml(path)
       EpubSnap.new(
         spine: VsTestSupport::EpubInspector.spine_documents(path),
         body: VsTestSupport::EpubInspector.body_text(path),
         size: File.size(path),
         webp_files: VsTestSupport::EpubInspector.webp_files(path),
-        unresolved_images: VsTestSupport::EpubInspector.unresolved_image_refs(path)
+        unresolved_images: VsTestSupport::EpubInspector.unresolved_image_refs(path),
+        legacy_code_gutters: raw.scan("line-numbers-rows").size,
+        math_ex_units: raw.scan(/vs-math[^>]*style="[^"]*\dex/).size
       )
     end
 

@@ -453,3 +453,42 @@ figure.align-center {
 .align-bottom {
   align-items: end;
 }
+
+/* =============================================================
+   EPUB(Kindle) 専用レイアウト是正（epub-kindle-layout-spec.md §2）
+   Kindle は CSS Grid を解さず、img-text 系の横画像が全幅化する。
+   body.vs-epub のときだけ grid を解除し、画像に上限＋float で本文を回り込ませる。
+   ============================================================= */
+body.vs-epub :is(.img-text, .text-img, .img-text2, .text2-img, .img-text3, .text3-img) {
+  display: block;
+}
+body.vs-epub :is(.img-text, .text-img, .img-text2, .text2-img, .img-text3, .text3-img) > :is(img, figure) {
+  max-width: 45%;
+  max-height: 16em;
+  width: auto;
+  inline-size: auto;
+  block-size: auto;
+}
+body.vs-epub :is(.img-text, .img-text2, .img-text3) > :is(img, figure) {
+  float: left;
+  margin: 0 1em 0.5em 0;
+}
+body.vs-epub :is(.text-img, .text2-img, .text3-img) > :is(img, figure) {
+  float: right;
+  margin: 0 0 0.5em 1em;
+}
+body.vs-epub :is(.img-text, .text-img, .img-text2, .text2-img, .img-text3, .text3-img)::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+
+/* sideimage 系も Grid 解除（画像の幅・float は EpubBuilder が inline で付与する） */
+body.vs-epub :is(.sideimage, .sideimage-left, .sideimage-right) {
+  display: block;
+}
+body.vs-epub :is(.sideimage, .sideimage-left, .sideimage-right)::after {
+  content: "";
+  display: block;
+  clear: both;
+}

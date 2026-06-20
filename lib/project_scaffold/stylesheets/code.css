@@ -180,3 +180,51 @@ figure[class*=" language-"] > figcaption + pre {
   font-weight: bold;
   color: #f00;
 }
+
+/* =============================================================
+   EPUB(Kindle) 専用 コード行番号テーブル（epub-kindle-layout-spec.md §4）
+   Kindle は Prism の .line-numbers-rows（position:absolute）を描けないため、
+   EpubBuilder が pre.line-numbers を 2 列テーブル（番号｜コード）へ変換する。
+   折り返しても番号は上端に留まり、論理行との対応が崩れない。
+   ============================================================= */
+body.vs-epub table.vs-code-epub {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--code-font, monospace);
+  font-size: 0.85em;
+  line-height: 1.4;
+  margin: 0.4em 0;
+
+  /* 全体は囲み枠で括る（外枠のみ・行ごとの横罫線は出さない） */
+  border: 1px solid #ccc;
+  border-radius: 2px;
+}
+
+/* table.css の td,th{border} と tr:nth-child(even){background} はコード表では邪魔になる。
+   行ごとの横罫線・ゼブラを打ち消し、番号とコードの間の縦仕切りだけ残す（§4）。 */
+body.vs-epub table.vs-code-epub td {
+  border: none;
+}
+body.vs-epub table.vs-code-epub tr:nth-child(even) {
+  background: transparent;
+}
+
+body.vs-epub td.vs-code-num {
+  width: 2.5em;
+  text-align: right;
+  vertical-align: middle;   /* 番号・コードを上下中央で揃える */
+  padding: 0 0.6em 0 0;
+  color: #999;
+  border: none;
+  border-right: 1px solid #eee;   /* 番号｜コードの縦仕切りのみ残す */
+  white-space: nowrap;
+  user-select: none;
+}
+body.vs-epub .vs-code-line {
+  vertical-align: middle;
+  padding: 0 0 0 0.6em;
+}
+body.vs-epub .vs-code-line code {
+  white-space: pre-wrap;
+  word-break: break-word;
+}

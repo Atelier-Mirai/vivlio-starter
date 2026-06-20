@@ -110,6 +110,15 @@ module VivlioStarter
           # 直前までで <img> の出入りが確定するため最後に置く（絵文字復元・扉絵注入後）。
           transcode_webp_images_for_epub!(chapter_htmls)
 
+          # Kindle のリフローで崩れる箇所を EPUB 専用に是正する（epub-kindle-layout-spec.md）。
+          # body.vs-epub マーカー → 画像の幅制約（inline）→ 数式 ex→em → コード行番号のテーブル化。
+          # Kindle は外部 CSS の画像サイズ指定を無視するため、画像は inline style で制約する。
+          mark_body_for_epub!(chapter_htmls)
+          constrain_layout_images_for_epub!(chapter_htmls)
+          convert_math_units_for_epub!(chapter_htmls)
+          convert_code_blocks_for_epub!(chapter_htmls)
+          decorate_admonitions_for_epub!(chapter_htmls)
+
           write_epub_entries(base_dir, chapter_htmls)
           Common.log_success("[EPUB] entries.epub.js を生成しました（#{chapter_htmls.size} エントリ）")
           chapter_htmls
@@ -954,6 +963,343 @@ module VivlioStarter
         def decode_html_entities(str)
           str.gsub('&apos;', "'").gsub('&quot;', '"').gsub('&lt;', '<').gsub('&gt;', '>').gsub('&amp;', '&')
         end
+
+        # ================================================================
+        # EPUB 用 Kindle レイアウト是正（epub-kindle-layout-spec.md）
+        # ================================================================
+        # Kindle のリフローは CSS Grid / position:absolute / ex 単位を解さないため、
+        # PDF 向け CSS のままだと画像・数式・コード行番号が崩れる。EPUB 経路でのみ
+        # 是正する。CSS で済むもの（book-card / img-text の画像上限）は body.vs-epub
+        # ガードの CSS（components.css / layout-utils.css / code.css）に置き、ここでは
+        # マークアップ変更が要る 3 件（body マーカー付与・数式 ex→em・コードのテーブル化）を
+        # 行う。PDF 完成後の共有 HTML を書き換えるため PDF へ副作用はない。
+        # ================================================================
+
+        # ex→em の換算係数。CSS 慣用の 1ex ≈ 0.5em（MathJax SVG の ex/em 比の近似）。
+        # 端末フォント非依存の近似で、EPUB の本文サイズに収めるには十分（§3-2）。
+        EX_TO_EM = 0.5
+
+        # 表セル内の数式（単位記号など）の最低高さ（em）。Kindle は多列の表を縮小しがちで、
+        # ×0.5 だと単位記号が読めなくなるため、表内に限り最低この高さを確保し等比拡大する。
+        MIN_TABLE_MATH_EM = 1.0
+
+        # EPUB の基準フォント px（1em の近似）。数式 SVG は固有寸法を持たないため、Kindle が
+        # inline の em/ex を無視すると img 既定の 300×150px で巨大表示される。これを防ぐため
+        # em 値 × この係数を width/height の HTML 属性（px）として与え、Kindle でも本文相当に固定する。
+        EPUB_BASE_FONT_PX = 16
+
+        # 各 EPUB 章 HTML の <body> に vs-epub クラスを付与する。
+        # body.vs-epub ガードの CSS（画像上限・コードテーブル体裁等）を効かせるための目印。
+        # PDF 用 HTML には付かないため PDF では当該 CSS が不発で無害。
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def mark_body_for_epub!(html_files)
+          html_files.each do |path|
+            html = File.read(path, encoding: 'utf-8')
+            doc = PostProcessCommands::HtmlParser.parse_html_document(html)
+            body = doc.at_css('body')
+            next unless body
+
+            add_class(body, 'vs-epub')
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+          end
+          html_files
+        end
+
+        # 横並びレイアウト（book-card / sideimage / img-text 系）のコンテナ画像に、幅と回り込みを
+        # inline style で課す。Kindle は外部 CSS の画像サイズ指定を無視するが inline は尊重するため、
+        # grid 崩壊時の全幅化を inline で確実に防ぐ。container クラス → 幅(%)・float 側の対応表で制御。
+        LAYOUT_IMAGE_RULES = {
+          'book-card' => { width: 40, float: 'left' },
+          # sideimage 系は text 3 : image 1（画像 1/4 ＝ 25%）。本文を主役にし画像は脇に小さく添える。
+          'sideimage' => { width: 25, float: 'left' },
+          'sideimage-left' => { width: 25, float: 'left' },
+          'sideimage-right' => { width: 25, float: 'right' },
+          'img-text' => { width: 45, float: 'left' },
+          'img-text2' => { width: 45, float: 'left' },
+          'img-text3' => { width: 45, float: 'left' },
+          'text-img' => { width: 45, float: 'right' },
+          'text2-img' => { width: 45, float: 'right' },
+          'text3-img' => { width: 45, float: 'right' }
+        }.freeze
+
+        # 横並びコンテナ内の画像に inline で幅・float を付与する。
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def constrain_layout_images_for_epub!(html_files)
+          html_files.each do |path|
+            html = File.read(path, encoding: 'utf-8')
+            doc = PostProcessCommands::HtmlParser.parse_html_document(html)
+
+            changed = false
+            LAYOUT_IMAGE_RULES.each do |klass, rule|
+              doc.css(".#{klass}").each do |container|
+                target = layout_image_target(container)
+                next unless target
+
+                apply_inline_image_constraint!(target, rule)
+                changed = true
+              end
+            end
+            next unless changed
+
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+            Common.log_info("[EPUB] #{File.basename(path)} の横並び画像を inline で制約しました")
+          end
+          html_files
+        end
+
+        # コンテナ直下の画像要素（figure 優先・無ければ img、無ければ子孫 img）を返す。
+        def layout_image_target(container)
+          direct = container.element_children.find { %w[figure img].include?(it.name) }
+          direct || container.at_css('img')
+        end
+
+        # 画像要素（img/figure）へ幅・float を inline で付与する。figure の場合は内側 img も 100% に。
+        def apply_inline_image_constraint!(node, rule)
+          add_inline_style(node, "max-width: #{rule[:width]}%; width: #{rule[:width]}%; height: auto; float: #{rule[:float]};")
+          return unless node.name == 'figure'
+
+          inner = node.at_css('img')
+          add_inline_style(inner, 'width: 100%; height: auto;') if inner
+        end
+
+        # 既存 style を保ったまま CSS 宣言を追記する。
+        def add_inline_style(node, css)
+          existing = node['style'].to_s.strip
+          existing += ';' unless existing.empty? || existing.end_with?(';')
+          node['style'] = "#{existing}#{css}"
+        end
+
+        # inline 数式（img.vs-math-inline）・display 数式画像の inline style の ex 値を em へ変換し、
+        # さらに px の width/height 属性をフォールバックとして付与する。
+        # CSS を解す閲覧アプリは em（style）で本文連動、Kindle は em を無視して px 属性で本文相当に固定する。
+        # 固有寸法のない数式 SVG は px 属性が無いと 300px 既定で巨大表示されるため（§3）。
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def convert_math_units_for_epub!(html_files)
+          html_files.each do |path|
+            html = File.read(path, encoding: 'utf-8')
+            doc = PostProcessCommands::HtmlParser.parse_html_document(html)
+
+            nodes = doc.css('img.vs-math-inline, figure.vs-math-display img')
+            next if nodes.empty?
+
+            nodes.each do |img|
+              style = img['style']
+              next if style.nil? || style.empty?
+
+              converted = convert_math_style(style, in_table: math_in_table?(img))
+              img['style'] = converted unless converted == style
+              apply_math_px_fallback!(img, converted)
+            end
+
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+            Common.log_info("[EPUB] #{File.basename(path)} の数式寸法を em＋px 属性へ整えました")
+          end
+          html_files
+        end
+
+        # style の em 値から px を算出し、width/height の HTML 属性へ反映する（Kindle 用フォールバック）。
+        def apply_math_px_fallback!(img, style)
+          w = style[/width:\s*(-?\d*\.?\d+)em/, 1]&.to_f
+          h = style[/height:\s*(-?\d*\.?\d+)em/, 1]&.to_f
+          img['width'] = (w * EPUB_BASE_FONT_PX).round.to_s if w&.positive?
+          img['height'] = (h * EPUB_BASE_FONT_PX).round.to_s if h&.positive?
+        end
+
+        # 数式画像が表セル（td/th）内にあるか。
+        def math_in_table?(img) = img.ancestors('td, th').any?
+
+        # style 文字列の `<数値>ex` を em へ換算する。基本は ×0.5。表セル内で換算後の
+        # height が MIN_TABLE_MATH_EM 未満になる場合は、height がその値になるよう全寸法を
+        # 等比拡大する（縦横比・ベースラインを保ったまま単位記号を読める大きさにする）。
+        def convert_math_style(style, in_table:)
+          factor = EX_TO_EM
+          if in_table
+            height_ex = style[/height:\s*(-?\d*\.?\d+)ex/, 1]&.to_f
+            if height_ex&.positive? && height_ex * EX_TO_EM < MIN_TABLE_MATH_EM
+              factor = MIN_TABLE_MATH_EM / height_ex
+            end
+          end
+
+          style.gsub(/(-?\d*\.?\d+)ex\b/) do
+            "#{(::Regexp.last_match(1).to_f * factor).round(4)}em"
+          end
+        end
+
+        # tip / memo（コラム枠）に見出しラベル要素を実体注入する。
+        # PDF では ::before（position:absolute）でラベル帯を描くが、Kindle は absolute を無視して
+        # ラベルが消える。実体の <p class="vs-adm-label"> を先頭に挿し、枠線は code/chapter CSS の
+        # body.vs-epub ルール（px 枠線）に委ねることで、Kindle でもラベル付きの囲み枠を保証する（§5）。
+        ADMONITION_LABELS = { 'tip' => '【TIP】', 'memo' => '【MEMO】', 'column' => '【COLUMN】' }.freeze
+
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def decorate_admonitions_for_epub!(html_files)
+          html_files.each do |path|
+            html = File.read(path, encoding: 'utf-8')
+            doc = PostProcessCommands::HtmlParser.parse_html_document(html)
+
+            changed = false
+            ADMONITION_LABELS.each do |klass, label|
+              doc.css("div.#{klass}").each do |box|
+                next if box.at_css('.vs-adm-label') # 二重注入を防ぐ
+
+                node = Nokogiri::XML::Node.new('p', doc)
+                node['class'] = 'vs-adm-label'
+                node.content = label
+                box.prepend_child(node)
+                changed = true
+              end
+            end
+            next unless changed
+
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+            Common.log_info("[EPUB] #{File.basename(path)} のコラム枠にラベルを注入しました")
+          end
+          html_files
+        end
+
+        # Prism の行番号付きコードブロックを、Kindle が解す 2 列テーブル（番号｜コード）へ変換する。
+        # Kindle は .line-numbers-rows の position:absolute ガターを描けないため（§4）。
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def convert_code_blocks_for_epub!(html_files)
+          html_files.each do |path|
+            html = File.read(path, encoding: 'utf-8')
+            doc = PostProcessCommands::HtmlParser.parse_html_document(html)
+
+            targets = doc.css('pre.line-numbers')
+            next if targets.empty?
+
+            changed = false
+            targets.each { |pre| changed |= convert_code_pre_to_table!(pre, doc) }
+            next unless changed
+
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+            Common.log_info("[EPUB] #{File.basename(path)} のコード行番号をテーブル化しました")
+          end
+          html_files
+        end
+
+        # 1 つの pre.line-numbers を table.vs-code-epub へ置換する。失敗時は変更せず false。
+        def convert_code_pre_to_table!(pre, doc)
+          code = pre.at_css('code')
+          return false unless code
+
+          # 絶対配置ガター（.line-numbers-rows）は不要なので取り除く
+          code.css('.line-numbers-rows').each(&:remove)
+
+          lines = split_code_into_lines(code)
+          return false if lines.empty?
+
+          language_class = code['class'].to_s.split.find { it.start_with?('language-') }
+
+          table = build_code_table(doc, lines, language_class)
+          pre.replace(table)
+          true
+        rescue StandardError => e
+          Common.log_warn("[EPUB] コードのテーブル化に失敗（元のまま維持）: #{e.message}")
+          false
+        end
+
+        # <code> の中身を論理行（\n 区切り）へ分割する。各行は Prism のトークン span を
+        # 保持した HTML 断片。複数行に跨るトークンは行ごとに閉じ／開き直す（行スプリットの定石）。
+        #
+        # @return [Array<String>] 各論理行の内部 HTML（末尾の空行は捨てる）
+        def split_code_into_lines(code)
+          lines = [+'']
+          collect_code_line_fragments(code, lines, [])
+          lines.pop if lines.size > 1 && lines.last.empty? # 末尾改行由来の空行を除く
+          lines
+        end
+
+        # ノードを再帰走査し、テキストの改行で行を分割しながら、祖先のトークン span を
+        # 各行で開き直して HTML 断片を組み立てる。
+        #
+        # @param node [Nokogiri::XML::Node] 走査中のノード
+        # @param lines [Array<String>] 構築中の行配列（破壊的に追記）
+        # @param open_tags [Array<String>] 現在開いている span 開始タグ（行跨ぎ復元用）
+        def collect_code_line_fragments(node, lines, open_tags)
+          node.children.each do |child|
+            if child.text?
+              append_text_with_newlines(child.content, lines, open_tags)
+            elsif child.element? && child.name == 'span'
+              open_tag = span_open_tag(child)
+              lines[-1] << open_tag
+              open_tags.push(open_tag)
+              collect_code_line_fragments(child, lines, open_tags)
+              open_tags.pop
+              lines[-1] << '</span>'
+            else
+              lines[-1] << child.to_html
+            end
+          end
+        end
+
+        # テキストを改行で分割して各行へ積む。改行ごとに、開いている span を閉じてから
+        # 改行し、次行の冒頭で同じ span を開き直す（トークンの行跨ぎを保つ）。
+        def append_text_with_newlines(text, lines, open_tags)
+          segments = text.split("\n", -1)
+          segments.each_with_index do |segment, idx|
+            lines[-1] << escape_html_text(segment)
+            next if idx == segments.length - 1
+
+            open_tags.reverse_each { lines[-1] << '</span>' }
+            lines.push(+open_tags.join)
+          end
+        end
+
+        # span 要素の開始タグ（属性つき）を組み立てる。
+        def span_open_tag(span)
+          attrs = span.attribute_nodes.map { %( #{it.name}="#{escape_attr(it.value)}") }.join
+          "<span#{attrs}>"
+        end
+
+        # 行配列から table.vs-code-epub を構築する。
+        def build_code_table(doc, lines, language_class)
+          table = Nokogiri::XML::Node.new('table', doc)
+          table['class'] = 'vs-code-epub'
+          tbody = Nokogiri::XML::Node.new('tbody', doc)
+          table.add_child(tbody)
+
+          lines.each_with_index do |line_html, idx|
+            tbody.add_child(build_code_row(doc, idx + 1, line_html, language_class))
+          end
+          table
+        end
+
+        # 1 行ぶんの <tr><td 番号><td コード> を組み立てる。
+        def build_code_row(doc, number, line_html, language_class)
+          tr = Nokogiri::XML::Node.new('tr', doc)
+
+          num_td = Nokogiri::XML::Node.new('td', doc)
+          num_td['class'] = 'vs-code-num'
+          num_td.content = number.to_s
+          tr.add_child(num_td)
+
+          line_td = Nokogiri::XML::Node.new('td', doc)
+          line_td['class'] = 'vs-code-line'
+          code = Nokogiri::XML::Node.new('code', doc)
+          code['class'] = language_class if language_class
+          # 空行は &nbsp; で 1 行ぶんの高さを保ち、行高を揃える（空セルの潰れ防止）。
+          code.inner_html = line_html.strip.empty? ? "\u00A0" : line_html
+          line_td.add_child(code)
+          tr.add_child(line_td)
+
+          tr
+        end
+
+        # コード行テキストの HTML エスケープ（行スプリットでテキスト断片を再構成するため）。
+        def escape_html_text(str) = str.to_s.gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;')
+
+        # span 属性値の HTML エスケープ（開始タグ再構成用）。
+        def escape_attr(str) = escape_html_text(str).gsub('"', '&quot;')
 
         # ================================================================
         # EPUB 用 CSS サニタイズ
