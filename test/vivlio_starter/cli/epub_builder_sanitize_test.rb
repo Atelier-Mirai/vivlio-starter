@@ -258,6 +258,52 @@ module VivlioStarter
         end
       end
 
+      # --- EPF-12: 用語集 <dl> 直下のグループ見出し div を dl の外へ出し頭文字ごとに分割（RSC-005・§1-8） ---
+      def test_should_split_glossary_groups_outside_dl
+        html = <<~HTML
+          <dl class="glossary-list">
+            <div class="glossary-group-header" role="heading" aria-level="2">A-Z</div>
+          <dt id="gls-x" class="glossary-term">X</dt><dd class="glossary-definition">定義</dd>
+            <div class="glossary-group-header" role="heading" aria-level="2">あ行</div>
+          <dt id="gls-a" class="glossary-term">あ</dt><dd class="glossary-definition">定義2</dd>
+          </dl>
+        HTML
+
+        result = Build::EpubBuilder.split_glossary_groups_for_epub(html)
+
+        refute_match(%r{<dl[^>]*>\s*<div class="glossary-group-header"}, result,
+                     '<dl> 直下に見出し div が残ってはいけない（RSC-005）')
+        assert_match(%r{<p class="glossary-group-header" role="heading" aria-level="2">A-Z</p>}, result,
+                     '見出しは dl の外へ <p role=heading> として出る')
+        assert_match(%r{<p class="glossary-group-header" role="heading" aria-level="2">あ行</p>}, result)
+        assert_equal 2, result.scan('<dl class="glossary-list">').size, '頭文字ごとに dl が分割される'
+        refute_match(%r{<dl class="glossary-list">\s*</dl>}, result, '空の dl は残らない')
+        assert_includes result, '<dt id="gls-x" class="glossary-term">X</dt>', 'dt/dd は dl 内に保持'
+      end
+
+      # --- EPF-13: Kindle のインライン <style> から webp url() を除去（RSC-007・参照切れ回避） ---
+      def test_should_strip_webp_url_from_inline_style_for_kindle
+        html = <<~HTML
+          <html><head><style>
+          :root {
+            --h3-marker: url("stylesheets/twemoji/vs-techbook/marker-h3.webp") !important;
+            --code-font: var(--font-code);
+          }
+          </style></head><body><p>本文</p></body></html>
+        HTML
+        path = File.join(@test_dir, '00-preface.html')
+        File.write(path, html)
+
+        Build::EpubBuilder.strip_webp_inline_styles_for_kindle!([path])
+
+        result = File.read(path)
+        refute_includes result, '.webp', 'インライン style から webp 参照が除去される'
+        refute_includes result, '--h3-marker', 'webp を含む宣言ごと除去される'
+        # 数字入りカスタムプロパティ名が途中切れして断片（--h3 等）が残ると CSS-008 になる
+        refute_match(/--h3|--h4|--subtitle/, result, '宣言の断片が残ってはいけない（CSS-008 回避）')
+        assert_includes result, '--code-font: var(--font-code)', 'webp を含まない宣言は残る'
+      end
+
       private
 
       # EPUB 構造を模した zip を作成して .epub パスを返す。

@@ -9,6 +9,7 @@ node_modules/
 Thumbs.db
 *.pdf
 *.epub
+*.kpf
 
 # RubyGem artifacts
 *.gem
@@ -42,4 +43,5 @@ _index_glossary_review.md
 
 vivlio_starter_v1.0.0_images/
 
-.antigravitycli/
+# Kindle artifacts
+/output/

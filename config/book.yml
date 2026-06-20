@@ -203,7 +203,7 @@ output:
   # 出力フォーマット
   # ----------------------------
   # targets: pdf # pdf / print_pdf / epub / kindleから選択可
-  targets: kindle
+  targets: epub, kindle
   # 例:
   # targets: pdf                          # 閲覧用PDFを指定
   # targets: pdf, print_pdf               # 閲覧用PDF, 印刷所入稿用PDFを指定
@@ -263,13 +263,21 @@ output:
     # (専用gem vivlio-starter-pdf の導入を推奨)
 
   # ----------------------------
-  # EPUB設定
+  # EPUB設定（楽天Kobo / Apple Books 向けクリーン EPUB）
   # ----------------------------
   epub:
-    embed: true # 表紙画像を EPUB に埋め込むか（true: 楽天/Apple向け、false: Kindle向け）
+    embed: true # 表紙画像を EPUB に埋め込むか（楽天/Apple向けは true 推奨）
     layout: reflowable # reflowable（リフロー型） / fixed（固定レイアウト型）
     # 注: メタデータ（title, author, language, isbn, publisher）は
     #     book セクションから自動的に流用される
+
+  # ----------------------------
+  # Kindle設定（Amazon Kindle 向け・KPF へ自動変換）
+  # ----------------------------
+  kindle:
+    embed: false # 表紙画像を EPUB に埋め込むか（Kindle は二重表紙を避けるため false 推奨）
+    layout: reflowable # reflowable（リフロー型） / fixed（固定レイアウト型）
+    # 注: メタデータは book セクションから自動流用。KPF 変換は kindlepreviewer を使用。
 
 # ========================================
 # VFM マークダウン記法に関する設定

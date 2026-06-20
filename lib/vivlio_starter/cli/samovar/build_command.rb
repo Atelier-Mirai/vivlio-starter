@@ -319,6 +319,12 @@ module VivlioStarter
             files << epub_file if File.exist?(epub_file)
           end
 
+          # Kindle（KPF・最終成果物）
+          if targets.include?('kindle')
+            kpf_file = Common.generate_kpf_filename
+            files << kpf_file if File.exist?(kpf_file)
+          end
+
           files
         end
 

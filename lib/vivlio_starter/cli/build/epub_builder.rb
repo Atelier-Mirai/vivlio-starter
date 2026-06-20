@@ -58,6 +58,12 @@ module VivlioStarter
         # @font-face とあわせて EPUB 内 CSS から除去する。
         FONT_IMPORT_PATTERN = /@import\s+url\(\s*["']?fonts\/[^"')]+["']?\s*\)\s*;?/
 
+        # インライン <style> 内の `--xxx: url(...webp)...;` 宣言を 1 つ検出する正規表現。
+        # WEBP_URL_PATTERN の `[a-zA-Z-]+` はカスタムプロパティ名の数字（例 --h3-marker）で
+        # 途中切れし `--h3` 断片を残して CSS-008 を生むため、プロパティ名を `[\w-]+`（数字込み）で
+        # 丸ごと拾う専用パターンを用いる（strip_webp_inline_styles_for_kindle! で使用）。
+        INLINE_WEBP_DECL_PATTERN = /[\w-]+\s*:\s*[^;{}]*url\([^)]*\.webp[^)]*\)[^;}]*;?/i
+
         # `url(....webp)` を含む CSS 宣言を 1 つ検出する正規表現（1 宣言＝1 マッチ）。
         # WebP は EPUB から全除外する（build_copy_asset_excludes_config）ため、CSS の
         # `background-image: url(...webp)` や `--frontispiece-image: url(...webp)` が参照切れ
@@ -93,6 +99,9 @@ module VivlioStarter
           end
 
           # --- Phase: 両フレーバ共通（XHTML 妥当性に必要な最小処理・§1-2）---
+          # EPUB リフロー文脈の目印 vs-epub を全 body に付与（クリーン・Kindle 共通）。
+          # クリーン EPUB のコード折返し等、PDF を壊さず EPUB だけに効かせる体裁の足場（§6 A 案）。
+          mark_body_for_epub!(chapter_htmls)
           # 索引・用語集を EPUB 用に書き換え（空リンクに連番テキストを挿入）
           post_process_index_glossary_for_epub!(chapter_htmls)
           # 段落内脚注 span の重複 id を除去（XHTML の id 重複 ERROR を回避）
@@ -112,6 +121,8 @@ module VivlioStarter
           if flavor == :kindle
             # 残った <img> 参照 WebP を JPEG/PNG へ変換（<img> の出入り確定後＝扉絵/絵文字処理の後）。
             transcode_webp_images_for_epub!(chapter_htmls)
+            # インライン <style> 内の webp url()（Techbook の Type3 対策マーカー）を除去（RSC-007 回避）。
+            strip_webp_inline_styles_for_kindle!(chapter_htmls)
             mark_body_for_kindle!(chapter_htmls)
             constrain_layout_images_for_epub!(chapter_htmls)
             convert_math_units_for_epub!(chapter_htmls)
@@ -291,9 +302,13 @@ module VivlioStarter
         end
 
         def build_cover_config_line(config, esc, flavor: :epub)
-          # Kindle は embed:true だと表紙が二重になるため、本フェーズでは非埋め込み固定（§1-6・表紙は別途調査）。
-          return "  // cover: Kindle は表紙非埋め込み（§1-6 で保留）\n" if flavor == :kindle
-          return "  // cover: 表紙埋め込みなし（epub.embed: false）\n" unless Common.epub_embed?
+          # 表紙埋め込みはフレーバごとの設定（book.yml: output.epub.embed / output.kindle.embed）に従う。
+          # kindle は二重表紙回避のため既定 false（§1-6）。
+          embed = flavor == :kindle ? Common.kindle_embed? : Common.epub_embed?
+          unless embed
+            key = flavor == :kindle ? 'kindle.embed: false' : 'epub.embed: false'
+            return "  // cover: 表紙埋め込みなし（#{key}）\n"
+          end
 
           cover_image = resolve_cover_image_path(config)
           return "  // cover: 表紙画像が見つかりません\n" unless cover_image && File.exist?(cover_image)
@@ -480,6 +495,11 @@ module VivlioStarter
         def rewrite_glossary_for_epub!(path, chapter_map)
           html = File.read(path, encoding: 'utf-8')
 
+          # RSC-005 是正（§1-8）: <dl class="glossary-list"> 直下のグループ見出し <div> は
+          # XHTML5 の dl 内容モデル違反。見出しを <dl> の外（兄弟 <p role=heading>）へ出し、
+          # 頭文字ごとに <dl> を分割する。PDF は生成元 HTML をそのまま使うため無影響（EPUB 専用後処理）。
+          html = split_glossary_groups_for_epub(html)
+
           # 空の <a> タグに連番の章番号を挿入
           html = html.gsub(%r{(<a\s+href="(\d{2})[^"]*"[^>]*)>\s*</a>}) do
             tag_open = ::Regexp.last_match(1)
@@ -493,6 +513,24 @@ module VivlioStarter
 
           File.write(path, html, encoding: 'utf-8')
           Common.log_info("[EPUB] #{File.basename(path)} を書き換えました（連番バックリンク＋併合）")
+        end
+
+        # 用語集の <dl> 直下のグループ見出し <div> を <dl> の外へ出し、頭文字ごとに <dl> を分割する。
+        # 例: <dl><div class="glossary-group-header">A-Z</div><dt>..</dt><dd>..</dd>..</dl>
+        #  → <p class="glossary-group-header">A-Z</p><dl><dt>..</dt><dd>..</dd>..</dl>
+        # 各見出しで「dl を閉じ → p 見出し → dl を開く」に置換し、先頭に生じる空の <dl> を除去する。
+        # 見出しの role/aria-level 属性はそのまま <p> へ引き継ぐ（見た目はクラスセレクタで不変）。
+        #
+        # @param html [String] 用語集 HTML
+        # @return [String] dl を分割した HTML（RSC-005 解消）
+        def split_glossary_groups_for_epub(html)
+          split = html.gsub(%r{<div class="glossary-group-header"([^>]*)>([^<]*)</div>}) do
+            attrs = ::Regexp.last_match(1)
+            label = ::Regexp.last_match(2)
+            %(</dl>\n<p class="glossary-group-header"#{attrs}>#{label}</p>\n<dl class="glossary-list">)
+          end
+          # 先頭の見出し置換で生じる空の <dl></dl> を取り除く
+          split.gsub(%r{<dl class="glossary-list">\s*</dl>\s*}, '')
         end
 
         # 索引・用語集の連番リンクのうち、同一番号（= 同一章 = EPUB 上の同一ページ扱い）を
@@ -1022,6 +1060,47 @@ module VivlioStarter
           html_files
         end
 
+        # Kindle 専用: 章 HTML のインライン <style> 内の webp url() 宣言を除去する（RSC-007 回避）。
+        # Techbook が PDF の Type3 対策で head に注入する :root{ --h3-marker: url(...webp) } 等は、
+        # Kindle では WebP を同梱しない（build_copy_asset_excludes_config が除外）ため参照切れになる。
+        # Kindle は var() も解さずこのマーカーを描画しないので、宣言ごと除去して無害化する。
+        # sanitize_epub_css! は EPUB 内の .css ファイルが対象でインライン <style> は拾わないため、
+        # ここで章 HTML の <style> ブロックを処理する。
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def strip_webp_inline_styles_for_kindle!(html_files)
+          html_files.each do |path|
+            html = File.read(path, encoding: 'utf-8')
+            updated = html.gsub(%r{<style\b[^>]*>.*?</style>}m) { it.gsub(INLINE_WEBP_DECL_PATTERN, '') }
+            next if updated == html
+
+            File.write(path, updated, encoding: 'utf-8')
+            Common.log_info("[EPUB] #{File.basename(path)} のインライン style から webp 参照を除去しました")
+          end
+          html_files
+        end
+
+        # 各 EPUB 章 HTML の <body> に vs-epub クラスを付与する（クリーン・Kindle 両フレーバ共通）。
+        # body.vs-epub は「EPUB リフロー文脈」の目印で、PDF を壊さず EPUB だけに効かせたい
+        # 体裁調整（例: コードブロックの折返し・改ページ許容）の足場にする。劣化用途ではない
+        # （Kindle 専用の劣化は別途 vs-kindle で行う）。PDF 用 HTML には付かないため PDF では無害。
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def mark_body_for_epub!(html_files)
+          html_files.each do |path|
+            html = File.read(path, encoding: 'utf-8')
+            doc = PostProcessCommands::HtmlParser.parse_html_document(html)
+            body = doc.at_css('body')
+            next unless body
+
+            add_class(body, 'vs-epub')
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+          end
+          html_files
+        end
+
         # 横並びレイアウト（book-card / sideimage / img-text 系）のコンテナ画像に、幅と回り込みを
         # inline style で課す。Kindle は外部 CSS の画像サイズ指定を無視するが inline は尊重するため、
         # grid 崩壊時の全幅化を inline で確実に防ぐ。container クラス → 幅(%)・float 側の対応表で制御。
@@ -1439,18 +1518,21 @@ module VivlioStarter
         # kindlepreviewer のログ CSV から Kindle のエラー/警告コード件数を集計して要約表示する。
         # ヘッダ列名（"Error" 等の語）を誤カウントしないよう、実データである E#####/W##### 形式の
         # コード出現数で数える。版差でファイル名が変わっても拾えるよう出力配下の全 CSV を走査する。
+        # 内訳（どのコードが何件か）も併記して、著者が原因を追えるようにする。
         def summarize_kpf_logs(outdir)
           csvs = Dir.glob(File.join(outdir, '**', '*.csv'))
           return if csvs.empty?
 
           codes = csvs.flat_map do |csv|
-            File.read(csv, encoding: 'UTF-8').scan(/\b[EW]\d{5}\b/)
+            File.read(csv, encoding: 'UTF-8').scan(/\b[EW]\d{4,5}\b/)
           rescue StandardError
             []
           end
           errors   = codes.count { it.start_with?('E') }
           warnings = codes.count { it.start_with?('W') }
-          Common.log_summary("[KPF] 変換ログ: Error=#{errors} / Warning=#{warnings}（#{csvs.size} CSV）")
+          breakdown = codes.tally.sort.map { |code, n| "#{code}×#{n}" }.join(', ')
+          detail = breakdown.empty? ? nil : "内訳: #{breakdown}"
+          Common.log_summary("[KPF] 変換ログ: Error=#{errors} / Warning=#{warnings}（#{csvs.size} CSV）", detail:)
         rescue StandardError => e
           Common.log_warn("[KPF] 変換ログの解析に失敗: #{e.message}")
         end

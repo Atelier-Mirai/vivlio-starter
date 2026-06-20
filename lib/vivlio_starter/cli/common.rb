@@ -759,6 +759,8 @@ module VivlioStarter
       def pdf_combined?      = CONFIG.dig('output', 'pdf', 'combined') == true
       def pdf_compress?      = CONFIG.dig('output', 'pdf', 'compress') == true
       def epub_embed?        = CONFIG.dig('output', 'epub', 'embed') == true
+      # Kindle 表紙の埋め込み。未設定時は false（二重表紙回避・§1-6）。
+      def kindle_embed?      = CONFIG.dig('output', 'kindle', 'embed') == true
 
       # カバー設定のバリデーション
       def validate_cover_settings
@@ -811,7 +813,7 @@ module VivlioStarter
                       :appendix_template_path, :postface_template_path,
                       :config_dir_path,
                       :consume_vivliostyle_build_timings, :contents_dir, :covers_dir,
-                      :cover_theme, :pdf_combined?, :pdf_compress?, :epub_embed?,
+                      :cover_theme, :pdf_combined?, :pdf_compress?, :epub_embed?, :kindle_embed?,
                       :current_log_level, :current_step_label, :default_cache,
                       :default_commands, :default_directories, :default_files,
                       :default_vfm, :default_vivliostyle, :log_always, :ensure_cache_dir!,

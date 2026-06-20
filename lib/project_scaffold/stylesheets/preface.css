@@ -50,6 +50,15 @@ h1 {
   page-break-after: avoid;
 }
 
+/* Kindle は var()/clamp() を解さず、h1 の下線（border-block-end）と余白が消える。
+   前書き/後書き（preface.css を import）の見出し下線をクリーン EPUB に合わせて具体色で再現する。
+   色は既定の preface_color=indigo（--accent-indigo: #4f46e5）。クリーン EPUB / PDF は上の var() 版のまま（§11）。 */
+body.vs-kindle h1 {
+  border-bottom: 3px solid #4f46e5;
+  padding-bottom: 0.4em;
+  margin-bottom: 1em;
+}
+
 h2 {
   font-family: var(--font-header);
   font-size: clamp(14Q, calc(var(--paper-scale) * 20Q), 20Q);

@@ -216,10 +216,14 @@ h2.vs-image-heading-epub {
   background: none;
 }
 
-/* 節絵を含む article は PDF 用グリッドを解除し、通常フローで積む */
+/* 節絵を含む article は PDF 用グリッドを解除し、通常フローで積む。
+   節は新ページの先頭から始める（PDF の .section-topic h2 break-before: page と同じ意図）。
+   Kindle KFX は modern な break-before を解さないため legacy page-break-before も併記する。 */
 article.vs-section-topic-epub {
   display: block;
   margin-block-end: 1em;
+  page-break-before: always;
+  break-before: page;
 }
 
 /* =============================================================

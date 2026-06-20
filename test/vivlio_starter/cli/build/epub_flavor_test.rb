@@ -71,12 +71,26 @@ module VivlioStarter
         assert_equal '【TIP】', doc.at_css('.tip > .vs-adm-label')&.text, 'admonition ラベルが注入される'
       end
 
+      # 両フレーバとも body に vs-epub マーカーが付く（§6 A案・EPUB リフロー文脈の足場）。
+      # Kindle のみ vs-kindle も追加される。
+      def test_both_flavors_get_vs_epub_marker
+        clean = build_entries_and_parse(:epub)
+        assert_includes clean.at_css('body')['class'].to_s.split, 'vs-epub',
+                        'クリーン EPUB にも vs-epub マーカーが付く'
+        refute_includes clean.at_css('body')['class'].to_s.split, 'vs-kindle'
+
+        kindle = build_entries_and_parse(:kindle)
+        kindle_classes = kindle.at_css('body')['class'].to_s.split
+        assert_includes kindle_classes, 'vs-epub', 'Kindle EPUB にも vs-epub が付く（基底マーカー）'
+        assert_includes kindle_classes, 'vs-kindle', 'Kindle EPUB には vs-kindle も付く'
+      end
+
       # Kindle config は表紙を埋め込まない（§1-6・二重表紙回避）
       def test_kindle_config_disables_cover_embed
         Dir.mktmpdir('vs-epub-config') do |dir|
           Dir.chdir(dir) do
             content = File.read(Builder.generate_epub_config!(flavor: :kindle))
-            assert_includes content, 'Kindle は表紙非埋め込み', 'kindle は cover 非埋め込みのコメントを出す'
+            assert_includes content, 'kindle.embed: false', 'kindle は cover 非埋め込みのコメントを出す'
             refute_match(/^\s*cover: '/, content, 'kindle は cover: 行を出力しない')
           end
         end

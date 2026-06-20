@@ -9,6 +9,7 @@ node_modules/
 Thumbs.db
 *.pdf
 *.epub
+*.kpf
 
 # RubyGem artifacts
 *.gem

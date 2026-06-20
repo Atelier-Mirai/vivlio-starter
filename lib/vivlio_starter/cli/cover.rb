@@ -77,9 +77,12 @@ module VivlioStarter
           page_cfg = config[:page] || {}
           page_use = page_cfg[:use] || 'b5_standard'
           size = detect_page_size(page_use)
-          # master/カスタム: PNGベースの生成
-          execute_for_size(size, nil)
-          # EPUB用JPGも生成
+          # PDF カバー（RGB/CMYK）は pdf/print_pdf ターゲットがある場合のみ生成する。
+          # epub/kindle のみのビルドでは不要で、無条件に呼ぶと execute_for_size が
+          # 「生成対象がありません」と誤警告するため、ターゲットで分岐する。
+          targets = target_list(config)
+          execute_for_size(size, nil) if targets.intersect?(%w[pdf print_pdf])
+          # EPUB/Kindle 表紙の元になる JPG は常に生成する。
           generate_epub_cover(config[:directories][:covers], config)
         end
       end

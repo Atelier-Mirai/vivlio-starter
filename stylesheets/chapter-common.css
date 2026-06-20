@@ -463,13 +463,23 @@ p>img {
    ラベル <p class="vs-adm-label"> を枠上に通常表示する。枠線は var() 不可のため具体色で描く。
    クリーン EPUB（Kobo/Apple Books・vs-kindle 無し）は上の ::before 角タブ・themed 枠のまま。
    ============================================================= */
-body.vs-kindle :is(.tip, .memo, .column)::before {
+/* Kindle KFX は :is() を解さずルールごと破棄するため、明示セレクタへ展開する。 */
+body.vs-kindle .tip::before,
+body.vs-kindle .memo::before,
+body.vs-kindle .column::before {
   content: none;
 }
-body.vs-kindle :is(.tip, .memo, .column) {
+body.vs-kindle .tip,
+body.vs-kindle .memo,
+body.vs-kindle .column {
   /* ::before 角タブ用に空けていた上余白（6mm）を詰め、注入ラベル上の空行を解消する */
   padding-block-start: 4mm;
+  /* Kindle は var() 不可。base .tip の var() 枠線は Kindle で無効化され消えるため、具体色で描く。 */
   border: 1px solid #888;
+  /* 枠どうしが一体化して見えないよう、上下に明確な余白を確保する。Kindle は mm 余白が
+     詰まりがちなので em で指定（隣接枠の margin 相殺後も視認できる間隔を残す）。 */
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
 }
 body.vs-kindle .vs-adm-label {
   margin: 0 0 0.4em;

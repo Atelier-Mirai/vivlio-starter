@@ -228,3 +228,21 @@ body.vs-kindle .vs-code-line code {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* =============================================================
+   クリーン EPUB（body.vs-epub）のコードブロック リフロー安全化（§6 A 案）
+   -------------------------------------------------------------
+   Apple Books 等のリフロー閲覧では Prism の pre{overflow:auto} が改ページできず、
+   特定のウィンドウ幅でコードが途中から消える（クリップ）。長行を折り返し、ブロックを
+   通常フローで流して全文を表示する。body.vs-epub は EpubBuilder が EPUB 章 HTML にのみ
+   付与するため PDF には無影響。Kindle はコードをテーブル化（vs-code-epub）するため
+   pre は残らず、この規則は不発。
+   ============================================================= */
+body.vs-epub pre[class*="language-"] {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow: visible;
+}
+body.vs-epub pre[class*="language-"] > code {
+  white-space: inherit;
+}
