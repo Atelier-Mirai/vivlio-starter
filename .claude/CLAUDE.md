@@ -78,3 +78,5 @@ Selection: `VIVLIO_PDF_PLUGIN=disable` forces standard; otherwise, if `vivlio-st
 ### Testing
 
 Minitest. Test files live in `test/` mirroring `lib/`. Fixtures in `test/vivlio_starter/fixtures/`. Robustness tests (security, interrupt, YAML safety) in `test/vivlio_starter/robustness/`. Page layout tests in `test/vivlio_starter/page_layout/` run actual `vs build` and are excluded from `rake test`.
+
+When the `vivlio-starter-pdf` plugin is installed (the usual dev setup), `rake test` exercises only the `EnhancedProvider` path. Run **`rake test:standard`** (sets `VIVLIO_PDF_PLUGIN=disable` in a subprocess) to force the MIT `StandardProvider` path without uninstalling the plugin — so standard-mode regressions are caught. `test:release` runs both. Main-repo tests must not depend on AGPL HexaPDF: create PDFs with Prawn and inspect them with pdf-reader (both MIT runtime deps); HexaPDF-using tests guard with a skip.

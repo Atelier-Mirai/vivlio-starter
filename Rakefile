@@ -16,7 +16,7 @@ class << Rake.application
     end
 
     # 【重要】出力させたい理想の順番を明示的に指定
-    custom_order = ['test', 'test:layout', 'test:targets', 'test:kindle', 'test:manual', 'test:package', 'test:release', 'test:canary', 'reinstall']
+    custom_order = ['test', 'test:standard', 'test:layout', 'test:targets', 'test:kindle', 'test:manual', 'test:package', 'test:release', 'test:canary', 'reinstall']
     displayable_tasks = displayable_tasks.sort_by { |t| custom_order.index(t.name) || 999 }
 
     # 表示幅を計算して綺麗にフォーマット出力
@@ -44,6 +44,24 @@ end
 # 既存の "Run tests" を完全にクリアしてから上書き
 Rake::Task["test"].clear_comments
 Rake::Task["test"].comment = "通常テストスイーツを実行"
+
+# ------------------------------------------------------------------
+# Standard モード強制テスト（VIVLIO_PDF_PLUGIN=disable）
+# ------------------------------------------------------------------
+# 開発機には拡張プラグイン（vivlio-starter-pdf）が入っているため、通常の `rake test` は
+# 常に EnhancedProvider 経路を通り、MIT 本体の StandardProvider 経路は exercise されない
+# （プロバイダ選択テストやノンブル等は enhanced 側だけが走る）。プラグインを uninstall
+# せずとも、本体が備える `VIVLIO_PDF_PLUGIN=disable` で StandardProvider を強制し、
+# 同じスイートを standard 経路で実行して「standard 版の破損」を検知する。
+# 環境変数を汚さないよう独立プロセスで実行する。
+namespace :test do
+  task :standard do
+    sh({ 'VIVLIO_PDF_PLUGIN' => 'disable' }, 'bundle exec rake test')
+  end
+end
+
+Rake::Task["test:standard"].comment =
+  "Standard モード強制テスト（VIVLIO_PDF_PLUGIN=disable で MIT 本体経路を検証・プラグイン uninstall 不要）"
 
 # ------------------------------------------------------------------
 # 判型確認用専用テスト
@@ -123,7 +141,8 @@ namespace :test do
   end
 
   # RC 前総点検（canary は上流要因のため含めない）
-  task release: ['test', 'test:layout', 'test:targets', 'test:manual', 'test:package']
+  # test（Enhanced）に加え test:standard（Standard 強制）も回し、両プロバイダ経路を保証する。
+  task release: ['test', 'test:standard', 'test:layout', 'test:targets', 'test:manual', 'test:package']
 end
 
 Rake::Task["test:manual"].clear_comments
@@ -132,7 +151,7 @@ Rake::Task["test:package"].clear_comments
 Rake::Task["test:package"].comment = "パッケージング E2E（gem build → 隔離インストール → ビルド確認）"
 Rake::Task["test:canary"].clear_comments
 Rake::Task["test:canary"].comment = "依存カナリア（@vivliostyle/cli 最新版での破壊検知）"
-Rake::Task["test:release"].comment = "RC 前総点検（test → layout → targets → manual → package を一括実行）"
+Rake::Task["test:release"].comment = "RC 前総点検（test → standard → layout → targets → manual → package を一括実行）"
 
 # デフォルトタスク（rake -T には出さない）
 task default: :test
