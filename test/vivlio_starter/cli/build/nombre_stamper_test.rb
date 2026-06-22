@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../../test_helper'
-require 'hexapdf'
+# MIT 本体のテストは AGPL の HexaPDF に依存しない。PDF 生成は Prawn、検査は
+# pdf-reader（いずれも gemspec のランタイム依存）で行う。
+require 'prawn'
+require 'pdf/reader'
 require 'tmpdir'
 
 require_relative '../../../../lib/vivlio_starter/cli/common'
@@ -85,8 +88,7 @@ class TestNombreStamper < Minitest::Test
       assert File.exist?(pdf_path), 'PDF が存在すること'
 
       # 書き込み後もページ数が変わらないことを確認
-      doc = HexaPDF::Document.open(pdf_path)
-      assert_equal 4, doc.pages.count
+      assert_equal 4, PDF::Reader.new(pdf_path).page_count
     end
   end
 
@@ -103,8 +105,7 @@ class TestNombreStamper < Minitest::Test
       result = NombreStamper.stamp!(pdf_path, bleed_mm: 3)
 
       assert result
-      doc = HexaPDF::Document.open(pdf_path)
-      assert_equal 1, doc.pages.count
+      assert_equal 1, PDF::Reader.new(pdf_path).page_count
     end
   end
 
@@ -119,22 +120,63 @@ class TestNombreStamper < Minitest::Test
     end
   end
 
+  # FT-02: ノンブルが埋め込み可能フォント（同梱 HackGen35ConsoleNF）で描画され、
+  # 非埋め込みの標準 14 フォント（Helvetica）が PDF に残らない（入稿事故防止）。
+  # 本リポジトリの StandardProvider（MIT）を直接検証する。実運用で拡張プラグイン
+  # （vivlio-starter-pdf / EnhancedProvider）が入っていても、その埋め込みは
+  # 当該 gem 側のテストで担保するため、ここではプロバイダ選択に依存させない。
+  def test_should_embed_nombre_font_instead_of_helvetica
+    require "vivlio_starter/cli/pdf/standard_provider"
+
+    Dir.mktmpdir do |dir|
+      pdf_path = create_test_pdf(dir, page_count: 2)
+
+      VivlioStarter::Pdf::StandardProvider.new.stamp_nombre!(pdf_path, bleed_pt: 8.5)
+
+      summary = nombre_font_summary(pdf_path)
+      assert summary[:embedded_truetype],
+             "ノンブルフォントが TrueType としてサブセット埋め込みされていること（FontFile2）"
+      assert(summary[:base_fonts].any? { it.include?("HackGen") },
+             "ノンブルが HackGen35ConsoleNF で描画されていること: #{summary[:base_fonts]}")
+      refute(summary[:base_fonts].any? { it.include?("Helvetica") },
+             "非埋め込み Helvetica が使われていないこと（FT-02 回帰）: #{summary[:base_fonts]}")
+    end
+  end
+
   private
 
-  # テスト用の空白 PDF を生成する
+  # PDF 内の全オブジェクトを走査し、BaseFont 名の一覧と TrueType 埋め込み
+  # （FontFile2）の有無を集計する。object stream / Flate 圧縮に左右されないよう
+  # pdf-reader のオブジェクトグラフ（object stream 解決済み）を直接読む。
+  def nombre_font_summary(pdf_path)
+    objects = PDF::Reader.new(pdf_path).objects
+    base_fonts = []
+    embedded_truetype = false
+
+    objects.each do |_ref, value|
+      next unless value.is_a?(Hash)
+
+      base_fonts << value[:BaseFont].to_s if value[:BaseFont]
+      embedded_truetype = true if value.key?(:FontFile2)
+    end
+
+    { base_fonts: base_fonts.uniq, embedded_truetype: }
+  end
+
+  # テスト用の空白 PDF を生成する（Prawn・MIT）
   # @param dir [String] 出力ディレクトリ
   # @param page_count [Integer] ページ数
   # @return [String] 生成した PDF のパス
   def create_test_pdf(dir, page_count: 4)
     path = File.join(dir, 'test.pdf')
-    doc = HexaPDF::Document.new
 
     # B5 サイズ + 塗り足し 3mm（188mm x 263mm）
     w_pt = 188.0 * 72.0 / 25.4
     h_pt = 263.0 * 72.0 / 25.4
 
-    page_count.times { doc.pages.add([0, 0, w_pt, h_pt]) }
-    doc.write(path, optimize: true)
+    Prawn::Document.generate(path, page_size: [w_pt, h_pt], margin: 0) do |pdf|
+      (page_count - 1).times { pdf.start_new_page }
+    end
     path
   end
 end

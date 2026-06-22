@@ -135,7 +135,7 @@ typography:
   # - 明朝体:     Zen Old Mincho
   # - ゴシック体: Zen Kaku Gothic New
   # - 丸ゴシック体: Zen Maru Gothic
-  # - プログラミング用フォント: hackgen35
+  # - プログラミング用フォント: HackGen35 Console NF
   # ※ Chromium が CFF ベース OTF / 可変フォントを Type 3 として PDF に
   #   埋め込む問題を避けるため、いずれも TrueType アウトラインの静的 TTF。
   # ※ 上記以外のフォント名を指定すると Google Fonts から自動取得を試みます。
@@ -163,7 +163,7 @@ typography:
   # コード
   # ----------------------------
   code:
-    font: hackgen35
+    font: HackGen35 Console NF
 
   # ----------------------------
   # ノンブル（ページ番号）

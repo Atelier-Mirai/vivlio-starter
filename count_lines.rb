@@ -88,6 +88,23 @@ def count_css(path)
   FileStat.new(path.relative_path_from(ROOT).to_s, total, code, comment)
 end
 
+# Markdown の行数を数える。
+def count_markdown(path)
+  total = code = comment = 0
+  in_block = false
+
+  path.each_line do |line|
+    total += 1
+    stripped = line.strip
+
+    next if stripped.empty?
+  end
+
+  code    = total
+  comment = 0
+  FileStat.new(path.relative_path_from(ROOT).to_s, total, code, comment)
+end
+
 HEADER = format('%-60s %6s %6s %6s', 'path', 'total', 'code', 'comment')
 
 def format_row(stat) = format('%-60s %6d %6d %6d', stat.path, stat.total, stat.code, stat.comment)
@@ -99,9 +116,10 @@ def print_section(title, stats)
 end
 
 # --- Phase: Collect ---
-ruby_stats = ROOT.glob('lib/vivlio_starter/**/*.rb').sort.map { count_ruby(it) }
-test_stats = ROOT.glob('test/vivlio_starter/**/*.rb').sort.map { count_ruby(it) }
-css_stats  = ROOT.glob('stylesheets/**/*.css').sort.map { count_css(it) }
+ruby_stats      = ROOT.glob('lib/vivlio_starter/**/*.rb').sort.map { count_ruby(it) }
+test_stats      = ROOT.glob('test/vivlio_starter/**/*.rb').sort.map { count_ruby(it) }
+css_stats       = ROOT.glob('stylesheets/**/*.css').sort.map { count_css(it) }
+markdown_stats  = ROOT.glob('docs/**/*.md').sort.map { count_markdown(it) }
 
 # --- Phase: Per-file output ---
 print_section('Ruby files (lib/vivlio_starter/**/*.rb)', ruby_stats)
@@ -109,18 +127,23 @@ puts
 print_section('Test files (test/vivlio_starter/**/*.rb)', test_stats)
 puts
 print_section('CSS files (stylesheets/**/*.css)', css_stats)
+puts
+print_section('Markdown files (docs/**/*.md)', markdown_stats)
 
 # --- Phase: Totals ---
 ruby_total = FileStat.aggregate("Ruby files (#{ruby_stats.size} files)", ruby_stats)
-test_total = FileStat.aggregate("Test files (#{test_stats.size} files)", test_stats)
-css_total  = FileStat.aggregate("CSS files (#{css_stats.size} files)", css_stats)
-grand_size = ruby_stats.size + test_stats.size + css_stats.size
-grand_total = FileStat.aggregate("Grand Total (#{grand_size} files)", [ruby_total, test_total, css_total])
+test_total      = FileStat.aggregate("Test files (#{test_stats.size} files)", test_stats)
+css_total       = FileStat.aggregate("CSS files (#{css_stats.size} files)", css_stats)
+markdown_total  = FileStat.aggregate("Markdown files (#{markdown_stats.size} files)", markdown_stats)
+
+grand_size      = ruby_stats.size + test_stats.size + css_stats.size + markdown_stats.size
+grand_total     = FileStat.aggregate("Grand Total (#{grand_size} files)", [ruby_total, test_total, css_total, markdown_total])
 
 puts
 puts 'Totals'
 puts format_row(ruby_total)
 puts format_row(test_total)
 puts format_row(css_total)
+puts format_row(markdown_total)
 puts '-' * 81
 puts format_row(grand_total)

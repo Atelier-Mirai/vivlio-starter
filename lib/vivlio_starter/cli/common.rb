@@ -528,7 +528,14 @@ module VivlioStarter
 
       # ページサイズを解決する（シンボルキー前提）
       def resolve_page_size(page_cfg)
-        pcfg = page_cfg.is_a?(Hash) ? page_cfg : {}
+        # page_cfg は Hash（load_config 由来）のほか、CONFIG['page'] のように
+        # Data オブジェクト（wrap_config でラップ済み）で渡ることがある。
+        # Data を Hash 扱いしないと size 等が読めず B5 へ誤フォールバックするため、
+        # to_h でシンボルキーの Hash へ正規化してから参照する。
+        pcfg = case page_cfg
+               when Hash then page_cfg
+               else page_cfg.respond_to?(:to_h) ? page_cfg.to_h : {}
+               end
         size = pcfg[:size].to_s.strip.upcase
         defaults = PAGE_SIZES[size] || PAGE_SIZES['B5']
 

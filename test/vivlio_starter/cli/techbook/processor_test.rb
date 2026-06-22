@@ -130,16 +130,16 @@ module VivlioStarter
           assert result.end_with?("</p>")
         end
 
-        def test_should_replace_wave_dash_with_fullwidth_tilde
+        def test_should_replace_fullwidth_tilde_with_wave_dash
           config = Common.wrap_config({ output: { pdf: { techbook: true } } })
           processor = Processor.new(config)
-          html = "<p>10〜20ページ</p>"
+          html = "<p>10～20ページ</p>"
 
           result = processor.process(html)
 
-          refute_includes result, "\u301C"
-          assert_includes result, "\uFF5E"
-          assert_includes result, "10～20ページ"
+          refute_includes result, "\uFF5E"
+          assert_includes result, "\u301C"
+          assert_includes result, "10〜20ページ"
         end
 
         def test_should_post_process_html_files_idempotently
@@ -148,7 +148,7 @@ module VivlioStarter
 
           Dir.mktmpdir do |dir|
             Dir.chdir(dir) do
-              File.write('sample.html', "<html><head></head><body><p>10〜20</p></body></html>")
+              File.write('sample.html', "<html><head></head><body><p>10～20</p></body></html>")
 
               processor.post_process_html_files!(['sample.html'])
               first = File.read('sample.html')
@@ -157,8 +157,8 @@ module VivlioStarter
 
               assert_equal first, second
               assert_equal 1, second.scan('Vivlio Starter Techbook CSS BEGIN').count
-              refute_includes second, "\u301C"
-              assert_includes second, "10～20"
+              refute_includes second, "\uFF5E"
+              assert_includes second, "10〜20"
             end
           end
         end
@@ -193,14 +193,14 @@ module VivlioStarter
           assert_includes result, '<img src="stylesheets/twemoji/vs-techbook/circled-10.webp" alt="10" aria-label="10" class="emoji vs-emoji vs-circled-number"'
         end
 
-        def test_should_not_replace_wave_dash_when_disabled
+        def test_should_not_replace_fullwidth_tilde_when_disabled
           config = Common.wrap_config({ output: { pdf: { techbook: false } } })
           processor = Processor.new(config)
-          html = "<p>10〜20ページ</p>"
+          html = "<p>10～20ページ</p>"
 
           result = processor.process(html)
 
-          assert_includes result, "\u301C"
+          assert_includes result, "\uFF5E"
         end
 
         def test_should_generate_custom_marker_assets_when_provided_in_config

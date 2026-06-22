@@ -133,8 +133,8 @@ typography:
 
 ```yaml
 output:
-  targets: pdf          # 出力形式: pdf / print_pdf / epub
-                        # 複数指定: pdf, print_pdf  または  [pdf, epub]
+  targets: pdf          # 出力形式: pdf / print_pdf / epub / kindle
+                        # 複数指定: pdf, print_pdf  または  [pdf, epub, kindle]
 
   filename:
     include_version: true   # true: mybook_v1.0.0.pdf / false: mybook.pdf
@@ -149,8 +149,12 @@ output:
     bleed: 3mm              # 塗り足し幅（既定: 3mm）
     crop_marks: true        # トンボを付けるか（既定: true）
 
-  epub:
-    embed: true             # true: 楽天/Apple Books 向け / false: Kindle 向け
+  epub:                     # 楽天 Kobo / Apple Books 向けクリーン EPUB
+    embed: true             # true: 表紙を埋め込む（楽天/Apple Books 推奨）
+    layout: reflowable      # reflowable: リフロー型 / fixed: 固定レイアウト型
+
+  kindle:                   # Amazon Kindle 向け（KPF へ自動変換）
+    embed: false            # false: KDP で別途アップロードするため埋め込まない（既定・推奨）
     layout: reflowable      # reflowable: リフロー型 / fixed: 固定レイアウト型
 ```
 
@@ -160,7 +164,19 @@ output:
 | :--- | :--- |
 | `pdf` | 閲覧用 PDF（表紙結合） |
 | `print_pdf` | 入稿用 PDF（トンボ・塗り足し付き） |
-| `epub` | 電子書籍（EPUB 形式） |
+| `epub` | 電子書籍（クリーン EPUB。楽天 Kobo / Apple Books 向け） |
+| `kindle` | Amazon Kindle 用ファイル（KPF。中間 EPUB から自動変換） |
+
+:::{.column}
+**`epub` と `kindle` の違い**
+
+同じ電子書籍でも、配信先によって最適な作り方が異なります。Vivlio Starter は両者を別ターゲットとして分離しています。
+
+- **`epub`（クリーン EPUB）**: 楽天 Kobo・Apple Books 向け。WebP 画像・SVG 化した扉絵や数式をそのまま活かした、高品質な EPUB を生成します。
+- **`kindle`（KPF）**: Amazon Kindle 向け。Kindle の表示エンジン（KFX）の制約に合わせて画像形式やレイアウトを調整した中間 EPUB を作り、`kindlepreviewer` で `.kpf` に変換します。KDP（Kindle Direct Publishing）にはこの `.kpf` をアップロードします。
+
+両方を同時に出力したい場合は `targets: epub, kindle` のように指定します。
+:::
 
 `cover` に指定するスラッグは `vs cover` コマンドで生成したカバーのテーマ名と対応します。詳細は「カバー画像の生成」の章を参照してください。
 

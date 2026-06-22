@@ -15,23 +15,23 @@ require 'vivlio_starter/cli/pre_process/css_updater'
 class CssUpdaterFontValueTest < Minitest::Test
   CU = VivlioStarter::CLI::PreProcessCommands::CssUpdater
 
-  # 本文（明朝）は serif フォールバックが付く
+  # 本文（明朝）は Type3 回避フォールバック（HackGen35 Console NF）＋ serif が付く
   def test_should_append_serif_for_main_text
-    assert_equal '"Zen Old Mincho", serif',
+    assert_equal '"Zen Old Mincho", "HackGen35 Console NF", serif',
                  CU.format_font_value('--font-main-text', 'Zen Old Mincho', :font)
   end
 
-  # コードは monospace フォールバックが付く
+  # コードは Type3 回避フォールバックの本体（HackGen35 Console NF）のため挿入せず、monospace のみ付く
   def test_should_append_monospace_for_code
-    assert_equal '"hackgen35", monospace',
-                 CU.format_font_value('--font-code', 'hackgen35', :font)
+    assert_equal '"HackGen35 Console NF", monospace',
+                 CU.format_font_value('--font-code', 'HackGen35 Console NF', :font)
   end
 
-  # 見出し・コラム・ノンブル（ゴシック系）は sans-serif フォールバックが付く
+  # 見出し・コラム・ノンブル（ゴシック系）は Type3 回避フォールバック＋ sans-serif が付く
   def test_should_append_sans_serif_for_gothic_variables
-    assert_equal '"Zen Kaku Gothic New", sans-serif',
+    assert_equal '"Zen Kaku Gothic New", "HackGen35 Console NF", sans-serif',
                  CU.format_font_value('--font-header', 'Zen Kaku Gothic New', :font)
-    assert_equal '"Zen Maru Gothic", sans-serif',
+    assert_equal '"Zen Maru Gothic", "HackGen35 Console NF", sans-serif',
                  CU.format_font_value('--font-column', 'Zen Maru Gothic', :font)
   end
 

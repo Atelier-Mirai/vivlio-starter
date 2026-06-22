@@ -61,7 +61,7 @@
 <!-- Step 4: ビルド -->
 <rect x="180" y="354" width="320" height="72" rx="10" class="box-amber" stroke-width="0.5"/>
 <text class="th th-amber" x="340" y="382" text-anchor="middle" dominant-baseline="central">④ ビルド</text>
-<text class="ts ts-amber" x="340" y="406" text-anchor="middle" dominant-baseline="central">PDF / EPUB を生成する</text>
+<text class="ts ts-amber" x="340" y="406" text-anchor="middle" dominant-baseline="central">PDF / EPUB / Kindle を生成する</text>
 <text class="sub" x="522" y="376" dominant-baseline="central">vs build</text>
 <text class="sub" x="522" y="392" dominant-baseline="central">vs cover *</text>
 
@@ -72,17 +72,19 @@
 <rect x="180" y="462" width="320" height="72" rx="10" class="box-coral" stroke-width="0.5"/>
 <text class="th th-coral" x="340" y="490" text-anchor="middle" dominant-baseline="central">⑤ 入稿・配布</text>
 <text class="ts ts-coral" x="340" y="514" text-anchor="middle" dominant-baseline="central">印刷所入稿 / 電子書籍配信</text>
-<text class="sub" x="522" y="484" dominant-baseline="central">print_pdf</text>
-<text class="sub" x="522" y="500" dominant-baseline="central">epub</text>
+<text class="sub" x="522" y="482" dominant-baseline="central">print_pdf</text>
+<text class="sub" x="522" y="498" dominant-baseline="central">epub</text>
+<text class="sub" x="522" y="514" dominant-baseline="central">kindle</text>
 
 <!-- 凡例 -->
-<rect x="40" y="246" width="120" height="148" rx="8" fill="none" stroke="#ccc" stroke-width="0.5" stroke-dasharray="4 3"/>
-<text class="sub" x="100" y="266" text-anchor="middle" dominant-baseline="central">成果物</text>
-<line x1="56" y1="280" x2="148" y2="280" stroke="#ddd" stroke-width="0.5"/>
-<text class="sub" x="56" y="302" dominant-baseline="central">閲覧用 PDF</text>
-<text class="sub" x="56" y="322" dominant-baseline="central">印刷用 PDF</text>
-<text class="sub" x="56" y="342" dominant-baseline="central">EPUB</text>
-<text class="sub" x="56" y="362" dominant-baseline="central">カバー画像</text>
+<rect x="40" y="240" width="120" height="166" rx="8" fill="none" stroke="#ccc" stroke-width="0.5" stroke-dasharray="4 3"/>
+<text class="sub" x="100" y="260" text-anchor="middle" dominant-baseline="central">成果物</text>
+<line x1="56" y1="274" x2="148" y2="274" stroke="#ddd" stroke-width="0.5"/>
+<text class="sub" x="56" y="296" dominant-baseline="central">閲覧用 PDF</text>
+<text class="sub" x="56" y="316" dominant-baseline="central">印刷用 PDF</text>
+<text class="sub" x="56" y="336" dominant-baseline="central">EPUB</text>
+<text class="sub" x="56" y="356" dominant-baseline="central">Kindle (KPF)</text>
+<text class="sub" x="56" y="376" dominant-baseline="central">カバー画像</text>
 <line x1="160" y1="390" x2="178" y2="390" stroke="#aaa" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
 
 <!-- 下部ノート -->

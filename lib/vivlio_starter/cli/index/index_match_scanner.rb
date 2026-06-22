@@ -18,6 +18,7 @@
 require 'yaml'
 require 'fileutils'
 require 'cgi'
+require 'digest'
 require_relative '../common'
 require_relative 'yomi_inferrer'
 
@@ -452,8 +453,11 @@ module VivlioStarter
           @term_occurrence[term_text] += 1
           occurrence_num = @term_occurrence[term_text]
 
-          # ID の生成（ハッシュベースで一意性を保証）
-          anchor_id = "idx-#{term_text.hash.abs.to_s(36)}-#{occurrence_num}"
+          # ID の生成（決定的ダイジェストで一意性を保証）
+          # String#hash はプロセス毎にシードがランダム化されるため、ビルドの度に
+          # ID が変わり、単体/結合ビルドの不一致や冪等性崩れを招いていた。
+          # 同一語が常に同一 ID になるよう SHA1 ベースの安定ダイジェストを用いる。
+          anchor_id = "idx-#{Digest::SHA1.hexdigest(term_text)[0, 12]}-#{occurrence_num}"
 
           # 初出判定（O(1) の高速検索）
           is_first = !@seen_terms.include?(term_text)

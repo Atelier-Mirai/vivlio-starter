@@ -62,6 +62,15 @@ Pipeline run by `MarkdownPreprocessor` per chapter: frontmatter generation, imag
 
 Applied to HTML after Vivliostyle: footnote conversion, heading processor, body class injection, section wrapping, HTML replacement.
 
+### PDF low-level operations (providers)
+
+Low-level PDF operations (hidden nombre stamping, PDF outline/bookmarks) go through `VivlioStarter::Pdf.provider` (`lib/vivlio_starter/cli/pdf/provider.rb`), which selects one of **two implementations**:
+
+- **`StandardProvider`** (`standard_provider.rb`, in this repo, **MIT**, Prawn + CombinePDF) — nombre only; outline is a no-op warning.
+- **`EnhancedProvider`** (in a **separate gem `vivlio-starter-pdf`**, HexaPDF) — full nombre + outline.
+
+Selection: `VIVLIO_PDF_PLUGIN=disable` forces standard; otherwise, if `vivlio-starter-pdf` is **gem-installed** (even when absent from the Gemfile — `provider.rb` injects its load paths and picks the newest installed version), the enhanced provider is used. **A developer machine with the plugin installed runs builds through `EnhancedProvider`**, so a fix to `StandardProvider` alone won't change real builds — change both, and `gem build` + bump version + `gem install` the plugin to apply it. Unit-test `StandardProvider` directly (not via `NombreStamper.stamp!`, which routes to whichever provider is active); the plugin has its own test suite.
+
 ### Logging
 
 `Common` provides `log_info`, `log_success`, `log_warn`, `log_error`, `log_action`, `log_debug`, `log_summary`, `log_result`. Default level is `warn` (🟡+🔴 always). Pass `--log` to raise to `info`; `--log=debug` for everything.

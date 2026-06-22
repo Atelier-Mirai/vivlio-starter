@@ -513,8 +513,18 @@ module VivlioStarter
           '--font-folio'     => 'sans-serif'
         }.freeze
 
+        # Zen フォント非収録の記号（▶ ⁵ 等）は Chromium が OS フォントへフォールバックし、
+        # Chrome 149 がそれを Type 3 フォントで埋め込む。これを防ぐため、記号被覆の広い
+        # 同梱 HackGen35 Console NF（Regular/Bold 両字面）を generic の前に挟む。
+        # --font-code は既にこのフォントのため対象外。
+        FONT_TYPE3_FALLBACK = '"HackGen35 Console NF"'
+        FONT_TYPE3_FALLBACK_TARGETS = %w[
+          --font-main-text --font-header --font-column --font-folio
+        ].freeze
+
         # :font 型の CSS 変数値を整形する。
-        # 単一ファミリ名はクォートし、変数に対応する generic フォールバックを付与する。
+        # 単一ファミリ名はクォートし、Type 3 回避フォールバック（HackGen35 Console NF）と
+        # 変数に対応する generic フォールバックを付与する。
         # book.yml 側で既にカンマ区切り（独自フォールバック）が指定されている場合は尊重する。
         #
         # @param name [String] CSS 変数名（例: '--font-code'）
@@ -526,8 +536,10 @@ module VivlioStarter
           return value if value.include?(',') # 既に独自フォールバック指定あり
 
           quoted = value =~ /\A".*"\z/ ? value : "\"#{value}\""
-          fallback = FONT_GENERIC_FALLBACKS[name]
-          fallback ? "#{quoted}, #{fallback}" : quoted
+          stack = [quoted]
+          stack << FONT_TYPE3_FALLBACK if FONT_TYPE3_FALLBACK_TARGETS.include?(name)
+          stack << FONT_GENERIC_FALLBACKS[name] if FONT_GENERIC_FALLBACKS[name]
+          stack.join(', ')
         end
 
         # CSS変数マッピングを構築

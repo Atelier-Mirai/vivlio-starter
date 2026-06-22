@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Type 3 検証ハーネス</title>
+<style>
+/* 実バンドルフォントを参照（リポジトリ root からの相対）。
+   本番の page-settings.css と同じ字面構成（Regular/Bold 両方）にすること。 */
+@font-face { font-family: "Zen Old Mincho"; src: url("../../../../stylesheets/fonts/Zen_Old_Mincho/ZenOldMincho-Regular.ttf"); }
+@font-face { font-family: "Zen Old Mincho"; font-weight: 700; src: url("../../../../stylesheets/fonts/Zen_Old_Mincho/ZenOldMincho-Bold.ttf"); }
+@font-face { font-family: "Zen Kaku Gothic New"; src: url("../../../../stylesheets/fonts/Zen_Kaku_Gothic_New/ZenKakuGothicNew-Regular.ttf"); }
+@font-face { font-family: "Zen Kaku Gothic New"; font-weight: 700; src: url("../../../../stylesheets/fonts/Zen_Kaku_Gothic_New/ZenKakuGothicNew-Bold.ttf"); }
+@font-face { font-family: "HackGen35 Console NF"; src: url("../../../../stylesheets/fonts/hackgen35/HackGen35ConsoleNF-Regular.ttf"); }
+@font-face { font-family: "HackGen35 Console NF"; font-weight: 700; src: url("../../../../stylesheets/fonts/hackgen35/HackGen35ConsoleNF-Bold.ttf"); }
+@font-face { font-family: keyfont; src: url("../../../../stylesheets/fonts/Keyboard_font/Keyboard-JP-Regular.ttf"); }
+
+/* 本番のフォントスタック（css_updater が生成する形）を再現 */
+body { font-family: "Zen Old Mincho", "HackGen35 Console NF", serif; font-size: 11pt; line-height: 1.8; }
+h2   { font-family: "Zen Kaku Gothic New", "HackGen35 Console NF", sans-serif; font-weight: 700; }
+/* 用語集記号 †: 明朝固定 + faux-bold 回避のため font-weight:normal */
+.glossary-link sup { font-family: "Zen Old Mincho"; font-size: 0.7em; color: #0ea5e9; font-weight: normal; opacity: 0.7; }
+.key { font-family: keyfont, "HackGen35 Console NF", monospace; }
+</style>
+</head>
+<body>
+<h2>見出しのダガー<a class="glossary-link"><sup>†</sup></a>と記号 ▶ 範囲 1〜9</h2>
+<p>波ダッシュ: 範囲は 1〜50 です（U+301C）。本文のダガー<a class="glossary-link"><sup>†</sup></a>。</p>
+<p>Zen 非収録の記号: ▶（U+25B6）、上付き ⁵（U+2075）、矢印 →（U+2192）。</p>
+<p>キー入力: <span class="key">〘Ctrl〙</span> + <span class="key">〘S〙</span> で保存。</p>
+<!-- 全角チルダ ～(U+FF5E) は techbook 前処理で 〜(U+301C) に正規化される。
+     このハーネスはフォント埋め込み層の検証用のため、正規化後の 〜 を直書きしている。 -->
+</body>
+</html>

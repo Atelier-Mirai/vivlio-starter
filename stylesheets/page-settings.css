@@ -63,28 +63,33 @@
   font-display: swap;
 }
 
-/* コード用（等幅）: HackGen35 Regular */
+/* コード用（等幅）＋記号フォールバック: HackGen35 Console NF Regular
+   Nerd Fonts 版を採用し、Zen フォント非収録の記号（▶ ⁵ 等）の同梱フォールバックも兼ねる。
+   フォールバック先が Regular/Bold の両字面を持たないと bold 文脈で faux-bold 合成が
+   起き Chromium が Type 3 化するため、Regular/Bold を必ず両方宣言する。 */
 @font-face {
-  font-family: "hackgen35";
+  font-family: "HackGen35 Console NF";
   font-style: normal;
   font-weight: 400;
-  src: url("fonts/hackgen35/HackGen35-Regular.ttf") format("truetype");
+  src: url("fonts/hackgen35/HackGen35ConsoleNF-Regular.ttf") format("truetype");
   font-display: swap;
 }
 
-/* コード用（等幅太字）: HackGen35 Bold */
+/* コード用（等幅太字）＋記号フォールバック: HackGen35 Console NF Bold */
 @font-face {
-  font-family: "hackgen35";
+  font-family: "HackGen35 Console NF";
   font-style: normal;
   font-weight: 700;
-  src: url("fonts/hackgen35/HackGen35-Bold.ttf") format("truetype");
+  src: url("fonts/hackgen35/HackGen35ConsoleNF-Bold.ttf") format("truetype");
   font-display: swap;
 }
 
-/* キーボードアイコン用フォント */
+/* キーボードアイコン用フォント
+   原本は OTF(CFF)。Chrome 149 は CFF アウトラインを Type 3 で埋め込むため、
+   OTF→TTF(glyf) へ変換した同梱 TTF を使う（変換の旨は LICENSE 参照）。 */
 @font-face {
   font-family: keyfont;
-  src:         url("fonts/Keyboard_font/Keyboard-JP-Regular.otf");
+  src:         url("fonts/Keyboard_font/Keyboard-JP-Regular.ttf") format("truetype");
 }
 
 :root {
@@ -121,13 +126,13 @@
      末尾の generic family（serif/sans-serif/monospace）は EPUB をフォント非埋め込みで
      配布する際のフォールバック。指定書体が無いリーダーでも 明朝=serif / ゴシック=sans-serif /
      コード=monospace の category が保たれる。PDF では実体フォントが常に在るため不発（無害）。 */
-  --font-main-text: "Zen Old Mincho", serif;          /* メイン本文フォント */
-  --font-body:      "Zen Old Mincho", serif;          /* 本文フォント（--font-main-text の別名） */
+  --font-main-text: "Zen Old Mincho", "HackGen35 Console NF", serif;          /* メイン本文フォント */
+  --font-body:      "Zen Old Mincho", "HackGen35 Console NF", serif;          /* 本文フォント（--font-main-text の別名） */
   --font-title:     "Zen Kaku Gothic New", sans-serif;   /* タイトルフォント */
-  --font-header:    "Zen Kaku Gothic New", sans-serif;   /* 見出しフォント */
-  --font-column:    "Zen Maru Gothic", sans-serif;    /* コラムフォント */
-  --font-code:      "hackgen35", monospace;           /* コードフォント */
-  --font-folio:     "Zen Kaku Gothic New", sans-serif;   /* ノンブル(ページ番号)フォント */
+  --font-header:    "Zen Kaku Gothic New", "HackGen35 Console NF", sans-serif;   /* 見出しフォント */
+  --font-column:    "Zen Maru Gothic", "HackGen35 Console NF", sans-serif;    /* コラムフォント */
+  --font-code:      "HackGen35 Console NF", monospace;           /* コードフォント */
+  --font-folio:     "Zen Kaku Gothic New", "HackGen35 Console NF", sans-serif;   /* ノンブル(ページ番号)フォント */
 
   /* ノンブル（ページ番号）設定 */
   --folio-font-size: calc(var(--base-font-size) * 0.75);

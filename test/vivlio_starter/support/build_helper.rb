@@ -65,6 +65,13 @@ module VsTestSupport
         end
       end.join
 
+      # 判型検証は「閲覧用 PDF の仕上がり寸法」を対象とする。root の book.yml は
+      # targets に print_pdf/epub/kindle を含むため、そのままビルドすると
+      # find_latest_pdf がトンボ＋ドブ付き（媒体サイズが仕上がり＋約32mm）の
+      # 入稿用 PDF を拾ってしまい、判型ミスマッチになる。ここで targets を pdf 単体へ
+      # 固定し、検証対象を閲覧用 PDF に確定させる（ブロック終了時に book.yml ごと復元）。
+      patched = patched.sub(/^(\s*)targets:.*$/, '\1targets: pdf')
+
       File.write(BOOK_YML_PATH, patched)
 
       if block_given?

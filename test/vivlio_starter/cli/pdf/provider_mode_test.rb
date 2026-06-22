@@ -22,7 +22,7 @@ module VivlioStarter
       end
 
       # プラグインがロード可能な環境では Enhanced モードへ自動的に切り替わることを検証する。
-      # （本体のテスト環境では Gemfile が path 指定でプラグインを参照しているため成立する）
+      # （`gem install vivlio-starter-pdf` 済みなら provider.rb が system gem を注入して有効化する）
       def test_enhanced_mode_when_plugin_loadable
         skip 'vivlio-starter-pdf が利用できない環境のためスキップ' unless plugin_loadable?
 
@@ -62,12 +62,17 @@ module VivlioStarter
         end
       end
 
-      # 拡張プロバイダ（プラグイン）がこの環境でロード可能かを確認する。
+      # 拡張プロバイダ（プラグイン）がこの環境で利用可能かを確認する。
+      # production の detect_mode は Gemfile 未記載でも system インストール済み gem を
+      # 注入してロードするため、素の require だけでなく「インストール済みか」も確認して
+      # 判定を production と一致させる（bundle サンドボックス下での偽陰性を防ぐ）。
       def plugin_loadable?
         require 'vivlio_starter/cli/pdf/enhanced_provider'
         true
       rescue LoadError
-        false
+        Gem.path.any? do |home|
+          Dir.glob(File.join(home, 'specifications', "#{VivlioStarter::Pdf::PLUGIN_GEM_NAME}-*.gemspec")).any?
+        end
       end
     end
   end

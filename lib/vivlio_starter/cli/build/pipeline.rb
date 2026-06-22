@@ -166,6 +166,8 @@ module VivlioStarter
           add_step('Step  7 (build overall pdf)', lambda {
             Build::PdfBuilder.build_overall_pdf_from_dir!('.', entries)
           })
+          # EPUB/Kindle 対象時は dedup 前の章 HTML を退避（⑦: run_step_epub で復元し EPUB を dedup から隔離）
+          add_step('Step  7b (snapshot pre-dedup html for epub)', -> { snapshot_pre_dedup_htmls }) if epub_or_kindle_target?
           add_step('Step  8 (backlink dedup)',              -> { Build::BacklinkDedupOrchestrator.run!(entries) })
           add_step('Step  9 (build front pages and tail)',  -> { run_step9_front_pages_and_tail })
           add_step('Step 10 (merge all pdfs)',              -> { Build::PdfMerger.merge_all_pdfs!(entries) })
@@ -184,6 +186,8 @@ module VivlioStarter
           add_step('Step  7 (generate entries.js)', lambda {
             Build::PdfBuilder.generate_entries_for_sections!('.', entries)
           })
+          # EPUB/Kindle 対象時は dedup 前の章 HTML を退避（⑦: run_step_epub で復元し EPUB を dedup から隔離）
+          add_step('Step  7b (snapshot pre-dedup html for epub)', -> { snapshot_pre_dedup_htmls }) if epub_or_kindle_target?
           add_step('Step  8 (backlink dedup)',             -> { Build::BacklinkDedupOrchestrator.run!(entries) })
           add_step('Step  9 (build front pages html)',     -> { run_step9_front_pages_html_only })
           add_step('Step 10 (print pdf)',                  -> { run_step13_print_pdf })
@@ -741,7 +745,13 @@ module VivlioStarter
           # --- Phase: EPUB 用カバー画像生成 ---
           generate_epub_cover_if_needed
 
+          # dedup 前の章 HTML を復元して EPUB を Step 8 から隔離する（⑦）。
+          # PDF（閲覧用・入稿用）は dedup 済み HTML で既に生成済み。リフロー型 EPUB は
+          # 「全 † / 全出現リンク」を持つべきなので、dedup 前の状態へ戻してからビルドする。
+          restore_chapter_htmls(@pre_dedup_snapshot) if @pre_dedup_snapshot
+
           # 両フレーバ同時のときだけ、クリーン処理が書き換える前の章 HTML を退避する。
+          # 上で pre-dedup 状態へ戻した後に退避するため、Kindle も dedup 前から始まる。
           snapshot = (epub_target? && kindle_target?) ? snapshot_chapter_htmls : nil
 
           build_epub_flavor(:epub) if epub_target?
@@ -783,6 +793,15 @@ module VivlioStarter
 
           # --- Phase: Kindle は KPF へ変換（§1-7） ---
           run_step_kpf(target_name) if flavor == :kindle
+        end
+
+        # Step 8（backlink dedup）直前の章 HTML を退避する（⑦）。
+        # dedup は共有の章 HTML を「PDF ページ依存」で破壊的に書き換える（同一ページ内の
+        # 2 回目以降の † / index-term を削除）。EPUB はこの dedup 済み HTML を再利用すると
+        # †・索引リンクが間引かれてしまうため、dedup 前の状態を保持し run_step_epub で復元する。
+        # docs/specs/epub-backlink-dedup-isolation-spec.md ⑦ を参照。
+        def snapshot_pre_dedup_htmls
+          @pre_dedup_snapshot = snapshot_chapter_htmls
         end
 
         # クリーン処理前の章 HTML（パス→内容）を退避する。

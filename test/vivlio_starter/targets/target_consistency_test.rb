@@ -129,20 +129,20 @@ class TargetConsistencyTest < Minitest::Test
 
   # epub が単体ターゲットと複合ターゲットで一致する（spine 構成・本文の実体）
   #
-  # NOTE: 用語集オートリンクの脚注記号「†」は、PDF を併せてビルドすると Step 8
-  #   （backlink dedup）が「同一 PDF ページ内の 2 回目以降の † を削除」するため、
-  #   `epub` 単体（dedup なし＝† 全残）と `pdf+epub`（PDF のページ依存 dedup が共有
-  #   HTML に反映＝† 一部削除）とで † の数が変わる。リフロー EPUB にページ概念は無く
-  #   本来この差は生じるべきでない既知の不整合（docs/specs/build-output-bugfix-spec.md
-  #   ⑦ / CHANGELOG「既知の不具合」参照）。本テストでは実体テキストの同一性を担保する
-  #   ため † を除いて比較し、† dedup 差そのものは別途追跡する。
+  # ⑦（docs/specs/epub-backlink-dedup-isolation-spec.md）実装により、PDF を併せて
+  # ビルドしても EPUB は Step 8（backlink dedup）前の章 HTML から生成される
+  # （run_step_epub 冒頭で pre-dedup スナップショットを復元）。このためリフロー EPUB は
+  # 「全 † / 全出現リンク」を保ち、epub 単体（dedup 非実行）と pdf+epub（PDF 側のみ dedup）
+  # とで本文が完全一致する。† を除かずに比較してこの隔離を保証する（dedup が EPUB へ
+  # 漏れると † 数差として即座に検知される）。
   def test_epub_consistent_across_single_and_combined
     base = fetch!("epub", :epub)
     combined_keys_including("epub").each do |key|
       other = fetch!(key, :epub)
       assert_equal base.spine, other.spine, "epub spine: 単体と「#{key}」で不一致"
-      assert_equal strip_daggers(base.body), strip_daggers(other.body),
-                   "epub 本文（†除く）: 単体と「#{key}」で不一致"
+      assert_equal base.body.count("†"), other.body.count("†"),
+                   "epub の † 数: 単体と「#{key}」で不一致（⑦ dedup 隔離の回帰）"
+      assert_equal base.body, other.body, "epub 本文: 単体と「#{key}」で不一致"
     end
   end
 
@@ -310,9 +310,13 @@ class TargetConsistencyTest < Minitest::Test
         unresolved_images: VsTestSupport::EpubInspector.unresolved_image_refs(path),
         legacy_code_gutters: raw.scan("line-numbers-rows").size,
         math_ex_units: raw.scan(/vs-math[^>]*style="[^"]*\dex/).size,
-        # Kindle 専用 rewrite の痕跡（§5-3）
-        vs_kindle: raw.include?("vs-kindle"),
-        vs_code_epub: raw.scan("vs-code-epub").size,
+        # Kindle 専用 rewrite の痕跡（§5-3）。
+        # 文字列の素朴な include? だと、開発者ガイド（61-developer.md）が
+        # vs-kindle / vs-code-epub という仕組みを解説する地の文・コード例に誤反応する。
+        # クリーン EPUB はそれらの「実マーカー」（body の class・テーブルの class）を
+        # 持たないことが要件なので、マーカーそのものを検出する。
+        vs_kindle: raw.match?(/<body[^>]*\bvs-kindle\b/),
+        vs_code_epub: raw.scan(/<table[^>]*\bvs-code-epub\b/).size,
         math_px: raw.scan(/vs-math[^>]*\s(?:width|height)="\d+"/).size
       )
     end
@@ -361,12 +365,6 @@ class TargetConsistencyTest < Minitest::Test
   end
 
   private
-
-  # 用語集オートリンクの脚注記号（†/‡）を除去する。
-  # PDF のページ依存 dedup による † 差を吸収し、本文の実体テキストで比較するため。
-  def strip_daggers(body)
-    body.delete("†‡")
-  end
 
   # 複合ターゲット（単体を除く）のうち、指定フォーマットを含むキー
   def combined_keys_including(target)

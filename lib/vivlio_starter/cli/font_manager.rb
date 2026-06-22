@@ -17,7 +17,7 @@
 #   - Zen Old Mincho: 本文用（明朝体）
 #   - Zen Kaku Gothic New: 見出し・ノンブル用（ゴシック体）
 #   - Zen Maru Gothic: コラム用（丸ゴシック体）
-#   - hackgen35: コードブロック用（等幅）
+#   - HackGen35 Console NF: コードブロック用（等幅）＋記号フォールバック（Nerd Fonts）
 #
 # 依存:
 #   - Common: ログ出力・設定読み込み
@@ -42,7 +42,7 @@ module VivlioStarter
                                          'Zen Old Mincho',
                                          'Zen Kaku Gothic New',
                                          'Zen Maru Gothic',
-                                         'hackgen35'
+                                         'HackGen35 Console NF'
                                        ]).freeze
 
       module_function

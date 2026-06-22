@@ -9,6 +9,11 @@ module VivlioStarter
   module Pdf
     # MITライセンス互換の標準プロバイダ
     class StandardProvider
+      # 隠しノンブルに使う埋め込み可能フォント（TTF）。
+      # Prawn の標準 14 フォント 'Helvetica' は PDF に埋め込まれず、印刷所入稿で
+      # 「非埋め込みフォント」事故になる（FT-02）。同梱の HackGen35ConsoleNF（TTF）を
+      # 使えば Prawn が使用グリフ（数字のみ）をサブセット埋め込みするため極小で済む。
+      NOMBRE_FONT_RELATIVE = File.join('stylesheets', 'fonts', 'hackgen35', 'HackGen35ConsoleNF-Regular.ttf')
       # PDF のページ数を取得する
       # @param pdf_path [String] 対象PDFファイルのパス
       # @return [Integer, nil] ページ数、取得失敗時は nil
@@ -83,6 +88,7 @@ module VivlioStarter
       # @param bleed_pt [Float] 塗り足し幅 (pt)
       def create_nombre_pdf(output_path, original_pdf_path, bleed_pt)
         reader = ::PDF::Reader.new(original_pdf_path)
+        font = nombre_font
 
         Prawn::Document.generate(output_path, skip_page_creation: true, margin: 0) do |pdf|
           reader.pages.each_with_index do |page, idx|
@@ -91,12 +97,23 @@ module VivlioStarter
             height = bbox[3] - bbox[1]
 
             pdf.start_new_page(size: [width, height], margin: 0)
-            pdf.font('Helvetica', size: 6)
+            # フォントはページ作成後に設定する（skip_page_creation のため最初のページ前は不可）。
+            # 数字のみのため TTF はサブセット埋め込みされ極小で済む。
+            pdf.font(font, size: 6)
             pdf.fill_color('000000')
 
             draw_page_number(pdf, idx + 1, width, height, bleed_pt)
           end
         end
+      end
+
+      # 隠しノンブルのフォントを解決する。
+      # プロジェクト（cwd）→ gem 同梱 の順に同梱 TTF を探し、いずれも無ければ
+      # 'Helvetica'（非埋め込み）へフォールバックして従来どおりビルドは継続する。
+      # @return [String] Prawn に渡すフォント（TTF パス or 'Helvetica'）
+      def nombre_font
+        gem_bundled = File.expand_path(File.join('../../../..', NOMBRE_FONT_RELATIVE), __dir__)
+        [NOMBRE_FONT_RELATIVE, gem_bundled].find { File.exist?(it) } || 'Helvetica'
       end
 
       # ノンブルを指定位置に回転して描画する

@@ -25,11 +25,13 @@ module VivlioStarter
         def process(html)
           return html unless enabled?
 
-          # --- Phase: 波ダッシュ → 全角チルダ置換 ---
-          # U+301C（波ダッシュ）は多くのフォントに収録されておらず、
-          # Chromium が Type 3 フォントとして埋め込む。
-          # 字形が同一の U+FF5E（全角チルダ）に置換することで回避する。
-          html = html.gsub("\u301C", "\uFF5E")
+          # --- Phase: 全角チルダ → 波ダッシュ正規化 ---
+          # 同梱 Zen フォント（Old Mincho / Kaku Gothic New）は U+301C（波ダッシュ）を
+          # 収録するが U+FF5E（全角チルダ）を収録しない。全角チルダはキーボードから
+          # 入力しやすく原稿に混入するため、Zen が描画できる U+301C へ正規化する。
+          # （さもないと Chromium が OS フォントへフォールバックし、Chrome 149 が
+          #   それを Type 3 フォントとして埋め込む。字形は同一。）
+          html = html.gsub("\uFF5E", "\u301C")
 
           # --- Phase: 囲み数字 → ラスタ画像化 ---
           # ①〜⑳ は環境によって Chromium が Type 3 フォント化しやすいため、
