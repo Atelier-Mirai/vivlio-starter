@@ -4,6 +4,8 @@ require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
 require 'yaml'
+# PDF 検査は MIT の pdf-reader を使う（AGPL の HexaPDF には依存しない）。
+require 'pdf/reader'
 require 'vivlio_starter/cli/common'
 require 'vivlio_starter/cli/cover'
 require 'vivlio_starter/cli/create'
@@ -44,7 +46,6 @@ module VivlioStarter
       # **Validates: Requirements 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 2.4**
       def test_property_bug_condition_png_theme_cover_crop_marks_format_matches_main_body
         skip 'ImageMagickが必要です' unless imagemagick_available?
-        skip 'HexaPDFが必要です' unless hexapdf_available?
 
         within_temp_dir do
           setup_config_with_print_pdf
@@ -79,11 +80,7 @@ module VivlioStarter
           [front_output, back_output].each do |pdf_path|
             assert File.exist?(pdf_path), "PDFが生成されるべきです: #{pdf_path}"
 
-            require 'hexapdf'
-            doc = HexaPDF::Document.open(pdf_path)
-            box = doc.pages[0].box
-            actual_w_mm = box.width  / 72.0 * 25.4
-            actual_h_mm = box.height / 72.0 * 25.4
+            actual_w_mm, actual_h_mm = pdf_page_size_mm(pdf_path)
 
             assert_in_delta expected_w_mm, actual_w_mm, 1.0,
               "#{File.basename(pdf_path)}: 幅が期待値と一致すべきです（期待: #{expected_w_mm}mm、実際: #{actual_w_mm.round(2)}mm）"
@@ -120,7 +117,6 @@ module VivlioStarter
       # **Validates: Requirements 3.1, 3.2**
       def test_property_preservation_pdf_target_no_crop_marks
         skip 'ImageMagickが必要です' unless imagemagick_available?
-        skip 'HexaPDFが必要です' unless hexapdf_available?
 
         within_temp_dir do
           setup_config_with_pdf_target_only
@@ -158,11 +154,7 @@ module VivlioStarter
           expected_h_mm = TRIM_H_MM + 2 * BLEED_MM
 
           [front_output, back_output].each do |pdf_path|
-            require 'hexapdf'
-            doc = HexaPDF::Document.open(pdf_path)
-            box = doc.pages[0].box
-            actual_w_mm = box.width  / 72.0 * 25.4
-            actual_h_mm = box.height / 72.0 * 25.4
+            actual_w_mm, actual_h_mm = pdf_page_size_mm(pdf_path)
 
             assert_in_delta expected_w_mm, actual_w_mm, 1.0,
               "#{File.basename(pdf_path)}: 幅が期待値と一致すべきです（期待: #{expected_w_mm}mm、実際: #{actual_w_mm.round(2)}mm）"
@@ -241,7 +233,6 @@ module VivlioStarter
       # **Validates: Requirements 3.1, 3.2**
       def test_property_preservation_multiple_page_sizes_and_bleed_values
         skip 'ImageMagickが必要です' unless imagemagick_available?
-        skip 'HexaPDFが必要です' unless hexapdf_available?
 
         # プロパティベーステスト: 複数のテストケースを生成
         page_sizes = [:a4, :b5, :a5]
@@ -278,11 +269,7 @@ module VivlioStarter
               expected_w_mm = trim_w_mm + 2 * bleed_mm
               expected_h_mm = trim_h_mm + 2 * bleed_mm
 
-              require 'hexapdf'
-              doc = HexaPDF::Document.open(front_output)
-              box = doc.pages[0].box
-              actual_w_mm = box.width  / 72.0 * 25.4
-              actual_h_mm = box.height / 72.0 * 25.4
+              actual_w_mm, actual_h_mm = pdf_page_size_mm(front_output)
 
               assert_in_delta expected_w_mm, actual_w_mm, 1.0,
                 "#{page_size.upcase}, bleed=#{bleed_mm}mm: 幅が期待値と一致すべきです（期待: #{expected_w_mm}mm、実際: #{actual_w_mm.round(2)}mm）"
@@ -304,7 +291,6 @@ module VivlioStarter
       # **Validates: Requirements 1.2, 2.2**
       def test_property_bug_condition_svg_theme_cover_crop_marks_format_matches_main_body
         skip 'rsvg-convertが必要です' unless rsvg_convert_available?
-        skip 'HexaPDFが必要です' unless hexapdf_available?
         skip 'Prawnが必要です' unless prawn_available?
         skip 'CombinePDFが必要です' unless combine_pdf_available?
 
@@ -338,11 +324,7 @@ module VivlioStarter
           [front_output, back_output].each do |pdf_path|
             assert File.exist?(pdf_path), "PDFが生成されるべきです: #{pdf_path}"
 
-            require 'hexapdf'
-            doc = HexaPDF::Document.open(pdf_path)
-            box = doc.pages[0].box
-            actual_w_mm = box.width  / 72.0 * 25.4
-            actual_h_mm = box.height / 72.0 * 25.4
+            actual_w_mm, actual_h_mm = pdf_page_size_mm(pdf_path)
 
             assert_in_delta expected_w_mm, actual_w_mm, 1.0,
               "#{File.basename(pdf_path)}: 幅が期待値と一致すべきです（期待: #{expected_w_mm}mm、実際: #{actual_w_mm.round(2)}mm）"
@@ -365,13 +347,8 @@ module VivlioStarter
       #
       # @param pdf_path [String] 検証対象のPDFファイルパス
       def verify_no_crop_marks(pdf_path)
-        require 'hexapdf'
-        doc = HexaPDF::Document.open(pdf_path)
-        page = doc.pages[0]
-
-        # PDFの内容ストリームを取得
-        content = page.contents
-        content_str = content.to_s
+        # PDFの内容ストリーム（描画コマンド列）を取得（pdf-reader・MIT）
+        content_str = pdf_page_content(pdf_path)
 
         # トンボ描画コマンドが存在しないことを確認
         # 注: この検証は簡易的なもので、完全な保証を提供するものではない
@@ -401,12 +378,8 @@ module VivlioStarter
       #
       # @param pdf_path [String] 検証対象のPDFファイルパス
       def verify_crop_marks_format(pdf_path)
-        require 'hexapdf'
-        doc = HexaPDF::Document.open(pdf_path)
-        page = doc.pages[0]
-
-        # PDFの内容ストリームを取得
-        content = page.contents
+        # PDFの内容ストリーム（描画コマンド列）を取得（pdf-reader・MIT）
+        content_str = pdf_page_content(pdf_path)
 
         # トンボ要素の存在を確認
         # 注: この検証は簡易的なもので、実際のトンボ形式を完全に検証するわけではない
@@ -418,9 +391,6 @@ module VivlioStarter
         #
         # **期待される結果**: 未修正コードでは、ImageMagickの-drawコマンドで描画されたトンボが
         # 存在するが、Prawn + CombinePDFで描画されたトンボとは形式が異なる可能性がある
-
-        # PDFの内容を文字列として取得
-        content_str = content.to_s
 
         # 直線描画コマンドの存在を確認（簡易チェック）
         # 注: この検証は完全ではなく、実際のトンボ形式を保証するものではない
@@ -581,12 +551,17 @@ module VivlioStarter
         command_in_path?('rsvg-convert')
       end
 
-      # HexaPDF が利用可能かチェックする
-      def hexapdf_available?
-        require 'hexapdf'
-        true
-      rescue LoadError
-        false
+      # PDF 先頭ページの仕上がり寸法（mm）を返す（pdf-reader・MIT）
+      def pdf_page_size_mm(pdf_path)
+        box = ::PDF::Reader.new(pdf_path).pages.first.attributes[:MediaBox]
+        w_pt = box[2].to_f - box[0].to_f
+        h_pt = box[3].to_f - box[1].to_f
+        [w_pt / 72.0 * 25.4, h_pt / 72.0 * 25.4]
+      end
+
+      # PDF 先頭ページのコンテンツストリーム（描画コマンド列）を文字列で返す（pdf-reader・MIT）
+      def pdf_page_content(pdf_path)
+        ::PDF::Reader.new(pdf_path).pages.first.raw_content
       end
 
       # Prawn が利用可能かチェックする

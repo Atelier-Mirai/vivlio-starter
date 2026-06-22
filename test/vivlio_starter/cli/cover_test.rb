@@ -17,6 +17,8 @@ require 'tmpdir'
 require 'fileutils'
 require 'yaml'
 require 'samovar'
+# PDF 検査は MIT の pdf-reader を使う（AGPL の HexaPDF には依存しない）。
+require 'pdf/reader'
 require 'vivlio_starter/cli/common'
 require 'vivlio_starter/cli/cover'
 require 'vivlio_starter/cli/samovar/cover_command'
@@ -487,7 +489,6 @@ module VivlioStarter
       # 期待ページサイズ = 仕上がり + 2 × (bleed + offset)
       def test_should_generate_cmyk_pdf_with_correct_page_size_for_print_pdf
         skip 'ImageMagickが必要です' unless imagemagick_available?
-        skip 'HexaPDFが必要です' unless hexapdf_available?
 
         within_temp_dir do
           setup_config_with_print_pdf
@@ -509,11 +510,7 @@ module VivlioStarter
           expected_w_mm = TRIM_W_MM + 2 * (BLEED_MM + OFFSET_MM)
           expected_h_mm = TRIM_H_MM + 2 * (BLEED_MM + OFFSET_MM)
 
-          require 'hexapdf'
-          doc = HexaPDF::Document.open(output_pdf)
-          box = doc.pages[0].box
-          actual_w_mm = box.width  / 72.0 * 25.4
-          actual_h_mm = box.height / 72.0 * 25.4
+          actual_w_mm, actual_h_mm = pdf_page_size_mm(output_pdf)
 
           assert_in_delta expected_w_mm, actual_w_mm, 1.0,
             "幅: 期待 #{expected_w_mm}mm、実際 #{actual_w_mm.round(2)}mm"
@@ -526,7 +523,6 @@ module VivlioStarter
       # 期待ページサイズ = 仕上がり + 2 × bleed
       def test_should_generate_cmyk_pdf_with_bleed_size_for_pdf_target
         skip 'ImageMagickが必要です' unless imagemagick_available?
-        skip 'HexaPDFが必要です' unless hexapdf_available?
 
         within_temp_dir do
           setup_config_with_print_pdf
@@ -548,11 +544,7 @@ module VivlioStarter
           expected_w_mm = TRIM_W_MM + 2 * BLEED_MM
           expected_h_mm = TRIM_H_MM + 2 * BLEED_MM
 
-          require 'hexapdf'
-          doc = HexaPDF::Document.open(output_pdf)
-          box = doc.pages[0].box
-          actual_w_mm = box.width  / 72.0 * 25.4
-          actual_h_mm = box.height / 72.0 * 25.4
+          actual_w_mm, actual_h_mm = pdf_page_size_mm(output_pdf)
 
           assert_in_delta expected_w_mm, actual_w_mm, 1.0,
             "幅: 期待 #{expected_w_mm}mm、実際 #{actual_w_mm.round(2)}mm"
@@ -646,12 +638,12 @@ module VivlioStarter
         !imagemagick_convert_command.nil?
       end
 
-      # HexaPDF が利用可能かチェックする
-      def hexapdf_available?
-        require 'hexapdf'
-        true
-      rescue LoadError
-        false
+      # PDF 先頭ページの仕上がり寸法（mm）を返す（pdf-reader・MIT）
+      def pdf_page_size_mm(pdf_path)
+        box = ::PDF::Reader.new(pdf_path).pages.first.attributes[:MediaBox]
+        w_pt = box[2].to_f - box[0].to_f
+        h_pt = box[3].to_f - box[1].to_f
+        [w_pt / 72.0 * 25.4, h_pt / 72.0 * 25.4]
       end
 
       # ImageMagick のコマンドを取得する（magick 優先）

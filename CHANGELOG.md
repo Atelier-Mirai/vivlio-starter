@@ -10,6 +10,7 @@
 - [Medium] **`rake test:standard`（Standard モード強制テスト）を追加**: 開発機には拡張プラグイン `vivlio-starter-pdf` が入っているため通常の `rake test` は常に `EnhancedProvider` 経路を通り、MIT 本体の `StandardProvider` 経路が exercise されず、改修で standard 版が壊れても気付けない懸念があった。プラグインを uninstall せずとも、本体が備える `VIVLIO_PDF_PLUGIN=disable` を独立プロセスで与えて同じスイートを standard 経路で実行する `test:standard` を追加。`test:release` の前段に組み込み、リリース前に両プロバイダ経路（enhanced / standard）を必ず検証する。
 
 ### Changed
+- [Low] **PDF 検査テストを AGPL HexaPDF 非依存化し、`rake test` の skip をゼロに**: `cover_test` / `cover_crop_marks_bugfix_test` の PDF 寸法・トンボ検査を HexaPDF から MIT の pdf-reader（`attributes[:MediaBox]` / `raw_content`）へ移行し、プラグイン未バンドル時に skip していたテストを常時実行へ。`nombre_stamper_test` も同様（生成は Prawn）。`provider_mode_test` のプロバイダ選択テストは「プラグイン有無で期待値を切り替える常時実行型」に統合し、環境依存 skip を解消。結果、`rake test` / `rake test:standard` とも skip ゼロ・全件実行（`module VivlioStarter::CLI` 配下では `VivlioStarter::PDF`（`mecab_newline_cleaner`）と衝突するため `::PDF::Reader` と完全修飾する点に注意）。
 - [Medium] **拡張プラグイン `vivlio-starter-pdf` を rubygems 公開版へ切り替え（ローカルパス依存の撤去）**: 本体 `Gemfile` の `gem 'vivlio-starter-pdf', path: '../vivlio-starter-pdf'`（ローカル開発用）をコメントアウトし、`bundle install` で `Gemfile.lock` から plugin 依存を除去。AGPL の plugin を MIT 本体の bundle へ取り込まず、`gem install vivlio-starter-pdf`（rubygems 公開版 **1.1.1**）済みなら `provider.rb` が自動検出して Enhanced モードへ切り替える設計どおりに統一した（`bundle exec` 下でも公開版 1.1.1 の `EnhancedProvider` を解決することを確認）。FT-02 を含む不具合版 1.1.0 は rubygems から yank 済み。
 - [Low] **`@vivliostyle/cli` を 11.0.2 に厳密固定**: `package.json` のバージョン指定を `^11.0.2` → `11.0.2` に変更し、ビルド再現性のためマイナー自動更新を抑止（`lib/project_scaffold/package.json` も追従）。
 

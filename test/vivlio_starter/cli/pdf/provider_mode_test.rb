@@ -21,24 +21,20 @@ module VivlioStarter
         end
       end
 
-      # プラグインがロード可能な環境では Enhanced モードへ自動的に切り替わることを検証する。
-      # （`gem install vivlio-starter-pdf` 済みなら provider.rb が system gem を注入して有効化する）
-      def test_enhanced_mode_when_plugin_loadable
-        skip 'vivlio-starter-pdf が利用できない環境のためスキップ' unless plugin_loadable?
-
+      # プラグイン（vivlio-starter-pdf）の有無に応じて detect_mode が
+      # enhanced / standard を正しく選ぶことを検証する。どちらの環境でも必ず実行できるよう、
+      # 実際の利用可否を判定して期待値を切り替える（skip を作らない）。
+      # - 導入機（`gem install vivlio-starter-pdf` 済み）: provider.rb が system gem を注入し enhanced
+      # - 未導入機（CI 等）: standard へフォールバック
+      def test_auto_detects_provider_by_plugin_availability
         with_plugin_env(nil) do
-          assert_equal(:enhanced, VivlioStarter::Pdf.detect_mode)
-          assert_instance_of(VivlioStarter::Pdf::EnhancedProvider, VivlioStarter::Pdf.build_provider)
-        end
-      end
-
-      # プラグインがロードできない環境では Standard モードへフォールバックすることを検証する。
-      def test_standard_mode_when_plugin_unavailable
-        skip 'この環境では vivlio-starter-pdf がロード可能なためスキップ' if plugin_loadable?
-
-        with_plugin_env(nil) do
-          assert_equal(:standard, VivlioStarter::Pdf.detect_mode)
-          assert_instance_of(VivlioStarter::Pdf::StandardProvider, VivlioStarter::Pdf.build_provider)
+          if plugin_loadable?
+            assert_equal(:enhanced, VivlioStarter::Pdf.detect_mode)
+            assert_instance_of(VivlioStarter::Pdf::EnhancedProvider, VivlioStarter::Pdf.build_provider)
+          else
+            assert_equal(:standard, VivlioStarter::Pdf.detect_mode)
+            assert_instance_of(VivlioStarter::Pdf::StandardProvider, VivlioStarter::Pdf.build_provider)
+          end
         end
       end
 
