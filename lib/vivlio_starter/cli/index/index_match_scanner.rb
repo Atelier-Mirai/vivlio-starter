@@ -379,8 +379,15 @@ module VivlioStarter
               end
             end
 
-            # 保護していたタグを元に戻す
-            placeholders.each do |token, original|
+            # 保護していたタグを元に戻す（必ず挿入の逆順＝LIFO で展開する）。
+            # 保護は IDX→HTML→RUBY→CODE の順に走るため、後段の CODE トークンの中身が
+            # 前段の HTML トークンを内包しうる（例: インラインコード `vs build <章名>` は
+            # 先に <章名> が HTML トークン化され、その状態の文字列ごと CODE トークン化される）。
+            # 挿入順（FIFO）で戻すと、まだ CODE トークンの中に隠れている HTML トークンを先に
+            # 展開しようとして空振りし、後から CODE トークンを開いた瞬間に未展開の HTML トークンが
+            # 表面化して `[[HTML_TOKEN_n]]` が残留する。逆順なら外側（CODE）→内側（HTML）と
+            # 入れ子を正しく巻き戻せる。
+            placeholders.reverse_each do |token, original|
               replaced_line.gsub!(token, original)
             end
 
@@ -442,7 +449,9 @@ module VivlioStarter
               end
             end
 
-            placeholders.each { |token, original| replaced_line.gsub!(token, original) }
+            # apply_auto_indexing と同様、入れ子（CODE が HTML を内包）を正しく巻き戻すため
+            # 挿入の逆順（LIFO）で復元する。FIFO だと `[[GLS_HTML_n]]` が残留する。
+            placeholders.reverse_each { |token, original| replaced_line.gsub!(token, original) }
             result = replaced_line
           end
           result

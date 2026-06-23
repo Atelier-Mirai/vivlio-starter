@@ -236,6 +236,53 @@ module VivlioStarter
           assert_equal 1, tagged.scan(/class="index-term"/).size
         end
 
+        # --- phase: 保護トークンの入れ子復元（html_token 露出回帰） ---
+
+        # インラインコード内に HTML タグ様の文字列（例: `vs build <章名>`）があると、
+        # 保護トークンが入れ子（CODE が HTML を内包）になる。復元を挿入順（FIFO）で行うと
+        # `[[HTML_TOKEN_n]]` が最終出力へ残留する（KNOWN_ISSUES の html_token 問題）。
+        # 逆順（LIFO）復元で残留しないこと・コード内容が保持されることを検証する。
+        def test_inline_code_with_html_like_tag_leaves_no_token
+          config_content = <<~YAML
+            terms:
+              - term: ビルド
+                yomi: びるど
+                flags: i
+          YAML
+          File.write('config/index_glossary_terms.yml', config_content)
+
+          scanner = IndexMatchScanner.new
+          File.write('11-workflow.md', "| | `vs build <章名>` | 章単位で素早く確認 |\n")
+
+          scanner.scan_and_tag_file!('11-workflow.md')
+
+          tagged = File.read('11-workflow.md')
+          refute_match(/\[\[(?:HTML|IDX|RUBY|CODE|GLS_HTML|GLS_RUBY|GLS_CODE)_\d+\]\]/, tagged,
+                       '保護トークンが最終出力に残留してはならない')
+          assert_includes tagged, '`vs build <章名>`', 'インラインコードの内容が保持されること'
+        end
+
+        # 用語集のみ（flags: g）の経路も同じ入れ子復元バグを持つため回帰検証する。
+        def test_glossary_only_inline_code_with_html_like_tag_leaves_no_token
+          config_content = <<~YAML
+            terms:
+              - term: WWW
+                yomi: WWW
+                flags: g
+          YAML
+          File.write('config/index_glossary_terms.yml', config_content)
+
+          scanner = IndexMatchScanner.new
+          File.write('08-web.md', "WWW の例は `<a href=\"x\">` のように書く。\n")
+
+          scanner.scan_and_tag_file!('08-web.md')
+
+          tagged = File.read('08-web.md')
+          refute_match(/\[\[(?:HTML|IDX|RUBY|CODE|GLS_HTML|GLS_RUBY|GLS_CODE)_\d+\]\]/, tagged,
+                       '用語集のみ経路でも保護トークンが残留してはならない')
+          assert_includes tagged, '`<a href="x">`', 'インラインコードの内容が保持されること'
+        end
+
         # --- phase: contents/ protection ---
 
         def test_contents_files_are_never_written_to
