@@ -424,17 +424,67 @@ module VivlioStarter
         # @return [Array<String>] そのままの配列（パス変更なし）
         def post_process_index_glossary_for_epub!(html_files)
           chapter_map = build_sequential_chapter_map(html_files)
+          # 索引・用語集の参照先 id が EPUB 内に実在するか照合するための id 集合（RSC-012 恒常対策）
+          existing_ids = collect_existing_fragment_ids(html_files)
 
           html_files.each do |path|
             basename = File.basename(path, '.html')
             case basename
             when '_indexpage'
-              rewrite_index_for_epub!(path, chapter_map)
+              rewrite_index_for_epub!(path, chapter_map, existing_ids)
             when '_glossarypage'
-              rewrite_glossary_for_epub!(path, chapter_map)
+              rewrite_glossary_for_epub!(path, chapter_map, existing_ids)
             end
           end
           html_files
+        end
+
+        # EPUB に含まれる全 HTML から id 属性値を収集する（RSC-012 恒常対策）。
+        # 索引（#idx-…）・用語集バックリンク（#gls-src-…）の参照先が実在するかの照合に使う。
+        # epubcheck は当該 EPUB に存在しないフラグメントを指すリンクを RSC-012 ERROR とするため、
+        # ここで集めた集合に無い id を指すリンクは rewrite 時に素のテキストへフォールバックする。
+        #
+        # 重要: 正規表現で `id="…"` を拾うと、コード例として本文に載った
+        # `&lt;span id="idx-…"&gt;`（エスケープ済みテキスト）まで実在 id と誤カウントし、
+        # 実 DOM には無い id を「実在」と判定して死リンクを温存してしまう（RSC-012 残存）。
+        # epubcheck と同じく **実 DOM の要素 id だけ**を数えるため Nokogiri でパースする。
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Set<String>] EPUB 内に実在する（要素として存在する）id 値の集合
+        def collect_existing_fragment_ids(html_files)
+          ids = Set.new
+          html_files.each do |path|
+            next unless File.exist?(path)
+
+            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
+            doc.xpath('//*[@id]').each { |node| ids << node['id'] }
+          end
+          ids
+        end
+
+        # 索引・用語集 HTML 内で、参照先フラグメント id が EPUB に実在しないリンクを
+        # 素のテキスト（内側の中身）へフォールバックして解除する（RSC-012 恒常対策・付録 A-2）。
+        # 索引リンク・用語集バックリンクは中身が空の <a> のため、解除されたリンクは消える。
+        # ハッシュ（#）を含まない外部・絶対 URL や、実在 id を指すリンクはそのまま残す。
+        #
+        # @param html [String] 対象 HTML
+        # @param existing_ids [Set<String>] EPUB 内に実在する id 値の集合
+        # @return [Array(String, Integer)] [解除後の HTML, 解除したリンク数]
+        def unlink_missing_fragment_links(html, existing_ids)
+          removed = 0
+          updated = html.gsub(%r{<a\b[^>]*\shref="([^"]*)"[^>]*>(.*?)</a>}m) do
+            whole = ::Regexp.last_match(0)
+            href = ::Regexp.last_match(1)
+            inner = ::Regexp.last_match(2)
+
+            fragment = href.split('#', 2)[1]
+            # フラグメントを持たないリンク・実在 id へのリンクは温存する
+            next whole if fragment.nil? || fragment.empty? || existing_ids.include?(fragment)
+
+            removed += 1
+            inner
+          end
+          [updated, removed]
         end
 
         # HTML ファイルの構成順から、ファイル名プレフィックス → 連番 のマッピングを構築
@@ -465,8 +515,14 @@ module VivlioStarter
         #
         # @param path [String] _indexpage.html のパス
         # @param chapter_map [Hash{String => Integer}] プレフィックス → 連番
-        def rewrite_index_for_epub!(path, chapter_map)
+        # @param existing_ids [Set<String>] EPUB 内に実在する id 値の集合（RSC-012 恒常対策）
+        def rewrite_index_for_epub!(path, chapter_map, existing_ids)
           html = File.read(path, encoding: 'utf-8')
+
+          # Step 0: 参照先 id が EPUB に実在しない索引リンクを解除（RSC-012 恒常対策）。
+          # 連番挿入・併合より前に行い、死リンクを空 <a> のうちに取り除く。
+          html, removed = unlink_missing_fragment_links(html, existing_ids)
+          Common.log_info("[EPUB] #{File.basename(path)} の未定義フラグメント索引リンクを #{removed} 件解除しました") if removed.positive?
 
           # Step 1: 空の <a> タグに連番の章番号を挿入
           html = html.gsub(%r{(<a\s+href="(\d{2})[^"]*"[^>]*)>\s*</a>}) do
@@ -492,13 +548,19 @@ module VivlioStarter
         #
         # @param path [String] _glossarypage.html のパス
         # @param chapter_map [Hash{String => Integer}] プレフィックス → 連番
-        def rewrite_glossary_for_epub!(path, chapter_map)
+        # @param existing_ids [Set<String>] EPUB 内に実在する id 値の集合（RSC-012 恒常対策）
+        def rewrite_glossary_for_epub!(path, chapter_map, existing_ids)
           html = File.read(path, encoding: 'utf-8')
 
           # RSC-005 是正（§1-8）: <dl class="glossary-list"> 直下のグループ見出し <div> は
           # XHTML5 の dl 内容モデル違反。見出しを <dl> の外（兄弟 <p role=heading>）へ出し、
           # 頭文字ごとに <dl> を分割する。PDF は生成元 HTML をそのまま使うため無影響（EPUB 専用後処理）。
           html = split_glossary_groups_for_epub(html)
+
+          # 参照先 id が EPUB に実在しない用語集バックリンク（#gls-src-…）を解除（RSC-012 恒常対策）。
+          # 連番挿入・併合より前に行い、死リンクを空 <a> のうちに取り除く。
+          html, removed = unlink_missing_fragment_links(html, existing_ids)
+          Common.log_info("[EPUB] #{File.basename(path)} の未定義フラグメントバックリンクを #{removed} 件解除しました") if removed.positive?
 
           # 空の <a> タグに連番の章番号を挿入
           html = html.gsub(%r{(<a\s+href="(\d{2})[^"]*"[^>]*)>\s*</a>}) do
