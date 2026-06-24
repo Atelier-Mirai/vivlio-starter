@@ -43,7 +43,7 @@ generated = Dir.glob(prune_globs.map { File.join(SCAFFOLD, it) })
 generated.each { FileUtils.rm_f(it) }
 puts "PRUNE 生成画像 #{generated.size} 件を除去 (派生バリアント＋中間生成物)"
 
-FILES = %w[README.md .gitignore].freeze
+FILES = %w[README.md .gitignore package.json].freeze
 
 FILES.each do |file|
   src = File.join(__dir__, file)

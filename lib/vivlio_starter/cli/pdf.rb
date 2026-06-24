@@ -96,6 +96,17 @@ module VivlioStarter
           Common.log_action('PDFを生成しています…')
           execute_build
           handle_build_result
+          build_succeeded?
+        end
+
+        # vivliostyle build が成功し、期待する出力ファイルまで生成できたかを返す。
+        # 入稿用本文のような最重量レンダリングは Chrome の一過性失敗で空振りする
+        # ことがあり、その際 system は非ゼロを返すか出力が生成されない。呼び出し側
+        # （パイプライン）がリトライ・中断を判断できるよう、真の成否を返す。
+        def build_succeeded?
+          return false unless @build_success
+
+          File.exist?(rename_requested? ? target_output : output_path)
         end
 
         private
