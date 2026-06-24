@@ -182,7 +182,67 @@ module VsTestSupport
       collect_outline_titles(reader.objects, outlines[:First])
     end
 
+    # アウトライン（しおり）のタイトルと飛び先ページ番号を階層順に平坦化して返す。
+    # outline_titles と異なり、各しおりが実際に指す 1 始まりのページ番号も得る。
+    # （明示的な [pageRef, /Fit] 形式の Dest を対象。名前付き宛先や解決不能は page=nil）
+    # @return [Array<Hash{Symbol=>Object}>] [{ title:, page: }, ...]
+    def self.outline_destinations(pdf_path)
+      reader = PDF::Reader.new(pdf_path)
+      objects = reader.objects
+      root = objects.deref(objects.trailer[:Root])
+      outlines = objects.deref(root[:Outlines])
+      return [] unless outlines
+
+      page_index = build_page_ref_index(objects)
+      collect_outline_destinations(objects, outlines[:First], page_index)
+    end
+
     # --- 内部実装 ---
+
+    # ページ参照（PDF::Reader::Reference）→ 1 始まりページ番号 のマップを構築する。
+    def self.build_page_ref_index(objects)
+      root = objects.deref(objects.trailer[:Root])
+      pages_root = objects.deref(root[:Pages])
+      index = {}
+      counter = 0
+      walk = lambda do |ref|
+        node = objects.deref(ref)
+        kids = objects.deref(node[:Kids])
+        if kids
+          kids.each { |kid| walk.call(kid) }
+        else
+          counter += 1
+          index[ref] = counter
+        end
+      end
+      Array(objects.deref(pages_root[:Kids])).each { |kid| walk.call(kid) }
+      index
+    end
+    private_class_method :build_page_ref_index
+
+    def self.collect_outline_destinations(objects, first_ref, page_index)
+      dests = []
+      node = objects.deref(first_ref)
+      while node
+        dests << { title: decode_pdf_string(objects.deref(node[:Title])),
+                   page: outline_node_page(objects, node, page_index) }
+        dests.concat(collect_outline_destinations(objects, node[:First], page_index)) if node[:First]
+        node = objects.deref(node[:Next])
+      end
+      dests
+    end
+    private_class_method :collect_outline_destinations
+
+    # しおりノードの Dest（または /A /D）からページ番号を解決する。
+    def self.outline_node_page(objects, node, page_index)
+      dest = node[:Dest]
+      dest = objects.deref(node[:A])[:D] if dest.nil? && node[:A]
+      dest = objects.deref(dest)
+      return nil unless dest.is_a?(Array)
+
+      page_index[dest.first]
+    end
+    private_class_method :outline_node_page
 
     def self.describe_font(objects, font_ref, page_number)
       font = objects.deref(font_ref)

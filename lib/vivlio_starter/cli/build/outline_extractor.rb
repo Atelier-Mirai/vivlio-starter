@@ -306,33 +306,21 @@ module VivlioStarter
           { search_markers: search_markers, find_page_by_first_line: find_page_by_first_line }
         end
 
-        # _toc.pdf の先頭行から目次見出し（例: 「目次」）を取得する。
-        # 取得できない場合は既定値「目次」を返す。
+        # 目次見出し（例: 「目次」）を取得する。注釈対象 PDF 内で目次ページを
+        # 「ページ先頭テキスト」として特定するために用いる。_toc.html の見出しから取得し、
+        # 取得できない場合は既定値「目次」を返す（旧実装の _toc.pdf 依存を解消）。
         def toc_heading_title
-          return '目次' unless File.exist?('_toc.pdf')
+          return '目次' unless File.exist?('_toc.html')
 
-          text = `pdftotext -f 1 -l 1 "_toc.pdf" - 2>/dev/null`
-          line = text.to_s.lines.map(&:strip).find { |l| !l.empty? }
-          line.to_s.empty? ? '目次' : line
+          doc = Nokogiri::HTML.parse(File.read('_toc.html', encoding: 'utf-8'))
+          h1 = doc.at_css('h1')
+          title = h1 ? (h1['data-h1'].to_s.strip.empty? ? h1.text : h1['data-h1']).to_s.strip : ''
+          title.empty? ? '目次' : title
         rescue StandardError
           '目次'
         end
 
         def calculate_chapter_ranges(chapter_order, chapter_markers, search_helpers, from_base, total_pages)
-          preface_pages = (Build::Utilities.page_count('00-preface.pdf') || '0').to_i
-          toc_pages = (Build::Utilities.page_count('_toc.pdf') || '0').to_i
-
-          # 00-preface.pdfが存在しない場合、目次ページを直接特定して前書きのページ数を確定する。
-          if preface_pages.zero? && toc_pages.positive?
-            # 前書きの開始ページ = タイトルページ(from_base) の 2 ページ後。
-            # output.pdf 先頭に表紙 PDF が結合される場合、from_base にその分のオフセットが入る。
-            preface_start = from_base + 2
-            # 目次は「先頭行が目次見出し」のページとして特定する。
-            # （前書き本文中に出てくる「目次」の語へ誤マッチしないようにするため）
-            toc_start = search_helpers[:find_page_by_first_line].call(toc_heading_title, preface_start, total_pages)
-            preface_pages = toc_start - preface_start if toc_start && toc_start > preface_start
-          end
-
           chapter_starts = {}
           chapter_ranges = {}
           # 本文章（01-89）の最初の章を特定（_titlepage, _legalpage, 00-preface, _toc は除外）
@@ -341,6 +329,11 @@ module VivlioStarter
             entry = resolver.resolve_file(token)
             entry.number&.to_i&.between?(1, 89)
           end
+
+          # 前付（preface）・目次（toc）のページ数を、注釈対象の結合 PDF から直接算出する。
+          preface_pages, toc_pages = detect_front_matter_spans(
+            chapter_markers, search_helpers, from_base, total_pages, first_chapter_bn
+          )
 
           ctx = build_page_range_context(
             chapter_ranges, chapter_starts, chapter_markers,
@@ -358,6 +351,43 @@ module VivlioStarter
           end
 
           clamp_all_ranges(chapter_ranges, from_base, total_pages)
+        end
+
+        # 前付（preface）・目次（toc）のページ数を、注釈対象の結合 PDF
+        # （output.pdf / output_print.pdf）から「ページ先頭の見出し」テキスト検出で算出する。
+        #
+        # 旧実装は補助 PDF `00-preface.pdf` / `_toc.pdf` のページ数に依存していたが、これらは
+        # 閲覧用パイプライン専用の副産物で、print_pdf 単独ビルドでは生成されない。その結果、
+        # 入稿用 PDF のしおりが目次ページへ集中する不具合があった。注釈対象の PDF そのものから
+        # 算出することで pdf / print_pdf を同一ロジックに統一し、前書きを書かない書籍
+        # （00-preface 不在）でも破綻しないようにする。
+        #
+        # 目次・最初の本文章は「ページ先頭が見出し」のページとして特定する（前書き本文や
+        # 目次一覧に同じ語が現れても誤マッチしない）。最初の本文章の目次項目は目次の先頭ページに
+        # あり、探索は toc_start+1 以降に限るため、目次一覧へ吸い寄せられることはない。
+        #
+        # @return [Array(Integer, Integer)] [preface のページ数, toc のページ数]
+        def detect_front_matter_spans(chapter_markers, search_helpers, from_base, total_pages, first_chapter_bn)
+          find_first_line = search_helpers[:find_page_by_first_line]
+          # タイトル・権利の 2 ページ後が前付/目次の開始候補（表紙ぶんは from_base に含まれる）。
+          front_start = (from_base + 2).clamp(1, total_pages)
+
+          # 目次ページを特定。前書きが無ければ front_start 自体が目次になり preface_pages=0。
+          toc_start = find_first_line.call(toc_heading_title, front_start, total_pages)
+          return [0, 0] unless toc_start
+
+          preface_pages = toc_start > front_start ? toc_start - front_start : 0
+
+          # 最初の本文章のページを特定し、目次のページ数を確定する。
+          # 章扉ページではページ先頭に「第1章」だけが出て、フルタイトルは画像化・改行などで
+          # ページ先頭一致しないことがある（フルタイトルは柱として後続ページに現れる）。
+          # マーカーごとの一致ページの最小値を採り、最も早い＝実際の章開始ページを選ぶ。
+          first_chapter_start = Array(chapter_markers[first_chapter_bn]).filter_map do |term|
+            find_first_line.call(term, toc_start + 1, total_pages)
+          end.min
+          toc_pages = first_chapter_start && first_chapter_start > toc_start ? first_chapter_start - toc_start : 1
+
+          [preface_pages, toc_pages]
         end
 
         def update_previous_chapter_end(chapter_ranges, prev_bn, start_page, total_pages)
@@ -611,7 +641,7 @@ module VivlioStarter
         module_function :extract_number_text, :extract_title_text, :build_search_terms,
                         :validate_inputs, :build_chapter_paths, :build_chapter_order,
                         :extract_all_headings, :build_search_helpers, :toc_heading_title,
-                        :calculate_chapter_ranges,
+                        :calculate_chapter_ranges, :detect_front_matter_spans,
                         :build_page_range_context, :calculate_page_range,
                         :page_range_titlepage, :page_range_legalpage, :page_range_preface,
                         :page_range_toc, :page_range_first_chapter, :page_range_backmatter,

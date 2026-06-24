@@ -4,12 +4,16 @@
 # File: lib/vivlio_starter/cli/build/toc_generator.rb
 # ================================================================
 # 責務:
-#   目次（Table of Contents）の HTML/PDF を生成する。
+#   目次（Table of Contents）の HTML を生成する。
 #
 # 生成ファイル:
 #   - _toc.md: 目次 Markdown
 #   - _toc.html: 目次 HTML（VFM 変換後）
-#   - _toc.pdf: 目次 PDF（単独ビルド用）
+#
+# NOTE: かつて補助 PDF `_toc.pdf` も生成していたが、これは結合（merge）には使われず、
+#   アウトラインのページ計算専用の副産物だった。print_pdf 単独ビルドでは生成されず
+#   入稿用しおりが目次へ集中する不具合の原因になっていたため廃止し、ページ計算は
+#   注釈対象 PDF からのテキスト検出（OutlineExtractor）へ移した。
 #
 # 章構成:
 #   - PREFACE (00): 前書き
@@ -37,50 +41,8 @@ module VivlioStarter
 
         module_function
 
-        # Step 6: TOC 生成（_toc.html, _toc.pdf）
-        # @param base_dir [String] ベースディレクトリ
-        # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
-        def generate_toc_and_pdf!(base_dir = '.', entries_or_keep = nil)
-          keep_numbers_main = Build::Utilities.chapter_numbers_for_book(entries_or_keep)
-          # 前書き、付録、後書きの keep を抽出
-          keep_numbers_preface = nil
-          keep_numbers_appx = nil
-          keep_numbers_post = nil
-          if entries_or_keep&.any?
-            chapter_numbers = extract_chapter_numbers(entries_or_keep)
-            keep_numbers_preface = chapter_numbers.select { |n| PREFACE_RANGE.include?(n) }
-            keep_numbers_appx = chapter_numbers.select { |n| APPX_RANGE.include?(n) }
-            keep_numbers_post = chapter_numbers.select { |n| POSTFACE_RANGE.include?(n) }
-          end
-          # base_dir 内の HTML から前書き(00) + 本文(01..89) + 付録(90..98) + 後書き(99) を抽出
-          chapter_htmls_preface = Build::ChapterConfig.htmls_for_range(base_dir, PREFACE_RANGE, keep_numbers_preface)
-          chapter_htmls_main = Build::ChapterConfig.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers_main)
-          chapter_htmls_appx = Build::ChapterConfig.htmls_for_range(base_dir, APPX_RANGE, keep_numbers_appx)
-          chapter_htmls_post = Build::ChapterConfig.htmls_for_range(base_dir, POSTFACE_RANGE, keep_numbers_post)
-          targets_for_toc = (chapter_htmls_preface + chapter_htmls_main + chapter_htmls_appx + chapter_htmls_post).uniq.sort
-
-          if targets_for_toc.empty?
-            Common.log_warn('[Step 5] 対象HTMLが見つかりません。スキップします。')
-            return
-          end
-
-          Common.log_info("[Step 5] 対象: #{targets_for_toc.map { |p| File.basename(p) }.join(', ')}")
-          TocCommands.execute_toc({}, targets_for_toc)
-          toc_html = File.join(base_dir, '_toc.html')
-          unless File.exist?(toc_html)
-            Common.log_warn('[Step 5] _toc.html が見つかりません。TOC の PDF 生成をスキップします。')
-            return
-          end
-          # TOC も post_process を適用して見出しメタを付与（PDFアウトライン用）
-          PostProcessCommands.execute_post_process({}, ['_toc'])
-          Common.log_info('[Step 5] _toc.html に post_process を適用しました（見出しメタ付与）')
-          EntriesCommands.execute_entries({}, ['_toc'])
-          # 改良された pdf コマンドに出力ファイル名を渡してリネームも一括処理
-          PdfCommands.execute_pdf({}, '_toc.pdf')
-          Common.log_success('[Step 5] _toc.pdf を生成しました') if File.exist?('_toc.pdf')
-        end
-
-        # Step 6 (print_pdf only): TOC HTML のみ生成（_toc.pdf ビルドをスキップ）
+        # Step 6: TOC HTML を生成する（pdf / print_pdf 共通）。
+        # 見出しメタ（PDF アウトライン用）まで付与した _toc.html を生成する。
         # @param base_dir [String] ベースディレクトリ
         # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil]
         def generate_toc_html!(base_dir = '.', entries_or_keep = nil)

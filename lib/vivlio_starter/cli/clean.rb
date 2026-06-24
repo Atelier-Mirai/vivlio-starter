@@ -171,7 +171,9 @@ module VivlioStarter
           # 内部名ベースの中間PDF
           '_titlepage.pdf', '_legalpage.pdf', '_colophon.pdf',
           '_titlepage_legalpage.pdf', '_sections.pdf',
-          '00-preface.pdf', '_toc.pdf',
+          # _toc.pdf は廃止済み（OutlineExtractor が注釈対象 PDF から直接算出）。
+          # 旧バージョンのビルドが残した stale を掃除するため掃除対象には残す。
+          '_toc.pdf',
           'blank_page.pdf', 'blank_frontmatter_insert.pdf',
           'output_tmp*.pdf',
           # 入稿用 PDF の中間ファイル（Step 13）
