@@ -87,7 +87,6 @@
 
 - [Medium] **コードブロックの行番号と折り返し**: リフロー型 EPUB での行番号ずれ・テーブル化時の体裁崩れの是正。方式の選択肢を整理済み。→ [epub-code-line-numbers-spec.md](epub-code-line-numbers-spec.md)
 - [Medium] **Kindle 向け simple ヘッダーの SVG 画像化**。→ [kindle-simple-header-svg-spec.md](kindle-simple-header-svg-spec.md)
-- **`kindlepreviewer` を `vs doctor` でインストール可能にする**。
 
 ---
 
