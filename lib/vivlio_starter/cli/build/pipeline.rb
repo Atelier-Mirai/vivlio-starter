@@ -615,10 +615,26 @@ module VivlioStarter
         # pdf + print_pdf 併用フローでは、直前の Step 9（前付・奥付ビルド）で entries.js が
         # 奥付のみに上書きされている。周囲の entries.js 状態に依存せず本文を確実にビルドするため、
         # ここで本文用 entries.js を再生成してから入稿用 PDF を生成する。
+        #
+        # 入稿用本文は最重量レンダリングで Chrome の一過性失敗により本文欠落（約4ページ）に
+        # なる flaky があったため、本文ガードで検証・リトライし、回復不能ならビルドを中断する。
         def print_pdf_build_sections!
           Common.log_action('[Step 13] 本文 PDF をトンボ・塗り足し付きでビルドします…')
-          Build::PdfBuilder.generate_entries_for_sections!('.', entries)
-          PdfCommands.execute_print_pdf({}, '_sections_print.pdf')
+          Build::Utilities.build_pdf_with_body_guard!('_sections_print.pdf', min_pages: sections_min_pages) do
+            Build::PdfBuilder.generate_entries_for_sections!('.', entries)
+            PdfCommands.execute_print_pdf({}, '_sections_print.pdf')
+          end
+        end
+
+        # 入稿用本文 PDF の本文欠落判定に使う下限ページ数。
+        # 閲覧用本文 _sections.pdf（Step 7 で生成済みの既知良）があればその半分、
+        # 無ければ（print_pdf 単独ビルド）本文エントリ数の半分を下限にする。
+        # いずれも degenerate（約4ページ）は確実に下回り、正常ビルドは余裕で上回る。
+        def sections_min_pages
+          viewing = Build::Utilities.page_count('_sections.pdf').to_i
+          return [(viewing * 0.5).floor, 5].max if viewing.positive?
+
+          [(entries.size / 2.0).floor, 5].max
         end
 
         # 前付・奥付の入稿用 PDF を生成

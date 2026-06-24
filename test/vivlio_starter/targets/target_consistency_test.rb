@@ -294,6 +294,7 @@ class TargetConsistencyTest < Minitest::Test
     # Kindle を含む構成は中間 EPUB（…-kindle.epub）を検査するため --no-clean で残す。
     def build_one!(targets)
       cleanup_artifacts!
+      reset_intermediate_state!
       value = targets.join(", ")
       extra_args = targets.include?("kindle") ? "--no-clean" : ""
       captured = nil
@@ -305,6 +306,15 @@ class TargetConsistencyTest < Minitest::Test
         captured = capture(targets)
       end
       captured
+    end
+
+    # combo 間の状態汚染を防ぐため、中間生成物（*.html・images/{headings,_epub_assets,math} 等）を
+    # 明示的にリセットする。kindle を含む combo は中間 EPUB 保全のため --no-clean で走り、
+    # ビルド側の初期 clean がスキップされる。直前 combo の画像派生物（特に images/headings の
+    # kindle 版）を引き継ぐと閲覧用 PDF が膨らみ、サイズ乖離（> 2%）で誤検知するため、
+    # 各 combo を必ずクリーンな中間状態から開始させる（製品挙動は変えずテストを隔離する）。
+    def reset_intermediate_state!
+      system("#{VsTestSupport::VsBuilder.repo_vs_command} clean", out: File::NULL, err: File::NULL)
     end
 
     # targets に含まれるフォーマットだけ成果物を取得する。

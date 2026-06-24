@@ -45,6 +45,37 @@ module VivlioStarter
           nil
         end
 
+        # 本文 PDF（閲覧用 _sections.pdf / 入稿用 _sections_print.pdf）の生成を、
+        # 本文欠落に備えてリトライ付きで実行する。
+        #
+        # 背景: 入稿用本文はトンボ・塗り足し付きの最重量レンダリングで、Chrome の
+        # 一過性失敗により本文欠落（数ページの degenerate）になる flaky があった。
+        # 従来は失敗が握り潰され、merge が front+colophon だけで「成功」してしまい、
+        # 約4ページの不正な PDF が出荷されていた。ここで本文相応のページ数を検証し、
+        # 失敗・degenerate ならリトライ、回復不能ならビルドを明示的に中断する
+        # （黙って本文欠落 PDF を残さない）。
+        #
+        # @param output_path [String] 検証対象の本文 PDF パス（block が生成する）
+        # @param min_pages [Integer] 本文欠落とみなす下限（これ未満なら degenerate）
+        # @param attempts [Integer] 最大試行回数
+        # @yield 本文 PDF を生成する処理。最後の式は生成コマンドの成否（Boolean）を返すこと。
+        # @return [true] 本文相応の PDF を生成できた場合
+        def build_pdf_with_body_guard!(output_path, min_pages:, attempts: 3)
+          attempts.times do |i|
+            success = yield
+            pages = page_count(output_path).to_i
+            return true if success && File.exist?(output_path) && pages >= min_pages
+
+            Common.log_warn(
+              "[本文ガード] #{output_path} が生成失敗/本文欠落の疑い" \
+              "（success=#{success}, #{pages}p < 想定 #{min_pages}p）。再ビルドします（#{i + 1}/#{attempts}）"
+            )
+          end
+
+          Common.log_error("[本文ガード] #{output_path} の本文生成に繰り返し失敗しました。ビルドを中止します。")
+          exit 1
+        end
+
         # 1..89 範囲の章番号（整数）の配列を返す（新仕様）
         # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
         # @return [Array<Integer>] 1..89 範囲の章番号配列

@@ -134,6 +134,9 @@ module VivlioStarter
 
         # 全体PDF生成（内部メソッド）
         # entries.jsを生成し、VivliostyleでPDFをビルド
+        #
+        # 閲覧用本文も Chrome の一過性失敗で本文欠落になり得るため、本文ガードで
+        # 検証・リトライし、回復不能ならビルドを中断する（merge での degenerate を防ぐ）。
         def compile_overall_pdf!(targets_for_pdf)
           if targets_for_pdf.empty?
             Common.log_warn('[Step 7] 対象HTMLが見つかりません。スキップします。')
@@ -141,14 +144,13 @@ module VivlioStarter
           end
           Common.log_info("[Step 7] 対象: #{targets_for_pdf.map { |p| File.basename(p) }.join(', ')}")
 
-          EntriesCommands.execute_entries({}, targets_for_pdf)
-          PdfCommands.execute_pdf({})
+          pdf_config = Common::CONFIG['pdf'] || {}
+          output_pdf = pdf_config['output_file'] || 'output.pdf'
+          min_pages  = [(targets_for_pdf.size / 2.0).floor, 5].max
 
-          pdf_config   = Common::CONFIG['pdf'] || {}
-          output_pdf   = pdf_config['output_file'] || 'output.pdf'
-          unless File.exist?(output_pdf)
-            Common.log_warn("[Step 7] 出力PDFが見つかりません: #{output_pdf}")
-            return
+          Build::Utilities.build_pdf_with_body_guard!(output_pdf, min_pages:) do
+            EntriesCommands.execute_entries({}, targets_for_pdf)
+            PdfCommands.execute_pdf({})
           end
 
           # 全体PDFをそのまま _sections.pdf として使用
