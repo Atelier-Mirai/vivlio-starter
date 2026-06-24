@@ -110,7 +110,7 @@ Kindle で CSS による装飾が信頼できない箇所は、**合成画像に
 ### 5.4 KPF 変換まわり
 
 - `kindlepreviewer_available?`（`which` で存在確認）が false なら、中間 EPUB を残して変換をスキップし警告（ビルド自体は止めない）。
-- `vs doctor` は現状 `kindlepreviewer` を診断対象に**含まない**。導入有無は `which kindlepreviewer` で確認する。
+- `vs doctor` は `kindlepreviewer` を**任意ツールとして診断**する（導入済みは `✅`、未導入は 🟡 案内でハードエラーにはしない）。macOS では `vs doctor --fix` が Homebrew cask `kindle-previewer` を導入し、アプリ内 CLI を呼ぶラッパーを Homebrew の bin へ作成して PATH を通す。
 - 表紙は `kindle.embed: false`（既定）。Kindle は本文に表紙を埋めると KDP 側表紙と二重化するため、表紙は KDP 管理画面でアップロードする運用。
 
 ---

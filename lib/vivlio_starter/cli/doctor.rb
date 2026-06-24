@@ -67,6 +67,14 @@ module VivlioStarter
       # poppler（pdfinfo / pdftoppm）は本体のビルドでも使うため含めない
       OCR_OPTIONAL_TOOLS = %w[tesseract tesseract-lang vips].freeze
 
+      # Kindle Previewer 3 同梱の CLI（targets: kindle の KPF 変換専用の任意ツール）。
+      # Build::EpubBuilder::KINDLEPREVIEWER_COMMAND と同値だが、doctor を軽量に保つため
+      # epub_builder を require せず独立に持つ。kindle を使わない利用者には不足を
+      # ハードエラーにせず 🟡 注記に回す。
+      KINDLEPREVIEWER_COMMAND = 'kindlepreviewer'
+      # macOS の Kindle Previewer 3 アプリ内 CLI 実行ファイル（ラッパーが呼ぶ実体）。
+      KINDLE_PREVIEWER_APP_BIN = '/Applications/Kindle Previewer 3.app/Contents/MacOS/Kindle Previewer 3'
+
       # Enhanced Mode プラグインの gem 名（Pdf::PLUGIN_GEM_NAME と同値。
       # provider.rb は pdf/reader 等の重い require を伴うため doctor からは参照しない）
       PDF_PLUGIN_GEM_NAME = 'vivlio-starter-pdf'
@@ -105,6 +113,7 @@ module VivlioStarter
             - imagemagick
             - inkscape
             - waifu2x
+            - kindlepreviewer (Kindle Previewer 3・targets: kindle の KPF 変換時のみ。任意)
 
           役割の補足:
             - 圧縮は Ghostscript(pdfwrite) を使用します
@@ -219,6 +228,11 @@ module VivlioStarter
           end
         end
 
+        # kindlepreviewer（Kindle Previewer 3）は targets: kindle 専用の任意ツール。
+        # 存在すれば ✅、無ければ後段で 🟡 案内（ハードエラーにはしない）。
+        kindle_previewer_present = command_exists?(KINDLEPREVIEWER_COMMAND)
+        Common.log_always('✅ kindlepreviewer (Kindle Previewer 3): OK') if kindle_previewer_present
+
         if is_macos
           if ssl_certificate_configured?
             Common.log_always('✅ Google Fonts 用 SSL 証明書: OK')
@@ -235,6 +249,16 @@ module VivlioStarter
         report_ocr_optional_tools(ocr_optional_missing)
         # --fix 時は OCR ツールも従来どおり先回りインストールする（spec §5.1）
         missing.concat(ocr_optional_missing) if options[:fix]
+
+        # kindlepreviewer が不足の場合、--fix(macOS) ならインストール対象に積み（後段で導入）、
+        # それ以外は 🟡 案内に留める（OCR ツールと同じ「任意ツールは fix 時だけ missing に積む」方式）。
+        unless kindle_previewer_present
+          if options[:fix] && is_macos
+            missing << KINDLEPREVIEWER_COMMAND
+          else
+            report_kindle_previewer_optional(is_macos)
+          end
+        end
 
         os_family = detect_os_family(os)
         waifu2x_install_root = nil
@@ -418,6 +442,9 @@ module VivlioStarter
               Common.log_always('npx が見つかりません。Playwright インストール後に `npx playwright install chromium` を実行してください。')
             end
           end
+
+          # Kindle Previewer 3（kindlepreviewer）: cask 導入＋アプリ内 CLI への PATH ラッパー作成
+          install_kindlepreviewer_macos! if missing.include?(KINDLEPREVIEWER_COMMAND)
 
           install_ssl_certificates! if missing.include?('ssl-certificates')
         rescue StandardError => e
@@ -751,6 +778,67 @@ module VivlioStarter
                         detail: lines.join("\n"))
       end
 
+      # kindlepreviewer 未導入時の案内（targets: kindle の KPF 変換時のみ必要・不足はエラーにしない）
+      def report_kindle_previewer_optional(is_macos)
+        detail = if is_macos
+                   'macOS では vs doctor --fix で自動導入できます（Homebrew cask kindle-previewer ＋ PATH ラッパー作成）。'
+                 else
+                   'Amazon KDP のサイトから Kindle Previewer 3 を導入し、kindlepreviewer に PATH を通してください。'
+                 end
+        Common.log_warn('任意ツール kindlepreviewer（Kindle Previewer 3・targets: kindle の KPF 変換時のみ必要）:',
+                        detail:)
+      end
+
+      # Kindle Previewer 3（kindlepreviewer）を macOS へ導入する。
+      # cask でアプリ本体（Pkg・管理者パスワードを求められることがある）を入れた後、
+      # 単体では PATH に乗らない CLI を呼ぶラッパーを Homebrew の bin へ作成する
+      # （アプリ内 "Kindle Previewer 3" 実行ファイルを引数透過で呼ぶ定石を自動化）。
+      def install_kindlepreviewer_macos!
+        unless system('which brew >/dev/null 2>&1')
+          Common.log_warn('Homebrew が見つからないため kindlepreviewer を導入できません。')
+          return false
+        end
+
+        Common.log_always('Kindle Previewer 3（kindlepreviewer）を導入します（Homebrew cask）…')
+        system('brew install --cask kindle-previewer')
+
+        unless File.exist?(KINDLE_PREVIEWER_APP_BIN)
+          Common.log_warn("Kindle Previewer 3 の実行ファイルが見つかりません: #{KINDLE_PREVIEWER_APP_BIN}")
+          return false
+        end
+
+        bin_dir = homebrew_bin_dir
+        unless bin_dir
+          Common.log_warn('Homebrew の bin ディレクトリを特定できず、kindlepreviewer ラッパーを作成できません。')
+          return false
+        end
+
+        !create_kindlepreviewer_wrapper!(KINDLE_PREVIEWER_APP_BIN, bin_dir).nil?
+      end
+
+      # アプリ内 CLI（app_bin）を引数透過で呼ぶ kindlepreviewer ラッパーを bin_dir に作成する。
+      # 既存の手動セットアップと同形の sh ラッパーを生成し、実行権限を付与する。
+      # @return [String, nil] 作成したラッパーのパス（失敗時 nil）
+      def create_kindlepreviewer_wrapper!(app_bin, bin_dir)
+        wrapper = File.join(bin_dir, 'kindlepreviewer')
+        File.write(wrapper, %(#!/bin/sh\n"#{app_bin}" "$@"\n))
+        FileUtils.chmod('+x', wrapper)
+        Common.log_always("kindlepreviewer ラッパーを作成しました: #{wrapper}")
+        wrapper
+      rescue StandardError => e
+        Common.log_warn("kindlepreviewer ラッパー作成に失敗: #{e}")
+        nil
+      end
+
+      # Homebrew の bin ディレクトリ（PATH 上）を返す。特定できなければ nil。
+      def homebrew_bin_dir
+        prefix = `brew --prefix 2>/dev/null`.strip
+        return nil if prefix.empty?
+
+        bin = File.join(prefix, 'bin')
+        Dir.exist?(bin) ? bin : nil
+      end
+
       # 不足しているツールの表示名マッピングを返します。
       # ※ img2pdfは依存排除されたため削除されています。
       def describe_missing(keys)
@@ -776,7 +864,8 @@ module VivlioStarter
           'playwright' => 'Playwright (バックリンク重複排除用)',
           'chromium' => 'Chromium (Playwright 用ブラウザ)',
           'rouge' => 'Rouge (コードブロック言語推定用)',
-          'mathjax' => '数式SVG化 (mathjax-full)'
+          'mathjax' => '数式SVG化 (mathjax-full)',
+          'kindlepreviewer' => 'Kindle Previewer 3 (kindlepreviewer・targets: kindle 用)'
         }
         keys.uniq.map { |key| label_map[key] || key }
       end

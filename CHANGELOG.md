@@ -7,6 +7,7 @@
 ## unreleased
 
 ### Added
+- [Medium] **`vs doctor` に `kindlepreviewer`（Kindle Previewer 3）の診断と `--fix` 導入を追加**: Kindle 対応（`targets: kindle` の KPF 変換）に必須の `kindlepreviewer` を、これまで `vs doctor` が診断対象に含んでいなかった。`kindlepreviewer` を **`targets: kindle` 専用の任意ツール**として診断対象に追加（導入済みは `✅ kindlepreviewer`、未導入は OCR ツールと同様に 🟡 案内でハードエラーにはしない＝Kindle を使わない利用者の妨げにしない）。macOS の `vs doctor --fix` では Homebrew cask `kindle-previewer`（Pkg）を導入後、単体では PATH に乗らない CLI を呼ぶラッパー（`#!/bin/sh` で `/Applications/Kindle Previewer 3.app/Contents/MacOS/Kindle Previewer 3` を引数透過実行）を Homebrew の bin へ作成して `which kindlepreviewer` を通す（手動セットアップの定石を自動化）。`describe_missing` のラベル・`DOCTOR_DESC` も追補。ユニットテスト（ラッパー生成の実行権限・内容、案内文の macOS/非 macOS 分岐）を `doctor_commands_test` に追加。ドキュメント（`contents/44-build.md` のインストール節、`kindle-css-compatibility-notes.md` §5.4）も更新。
 - [Medium] **`rake test:standard`（Standard モード強制テスト）を追加**: 開発機には拡張プラグイン `vivlio-starter-pdf` が入っているため通常の `rake test` は常に `EnhancedProvider` 経路を通り、MIT 本体の `StandardProvider` 経路が exercise されず、改修で standard 版が壊れても気付けない懸念があった。プラグインを uninstall せずとも、本体が備える `VIVLIO_PDF_PLUGIN=disable` を独立プロセスで与えて同じスイートを standard 経路で実行する `test:standard` を追加。`test:release` の前段に組み込み、リリース前に両プロバイダ経路（enhanced / standard）を必ず検証する。
 
 ### Changed

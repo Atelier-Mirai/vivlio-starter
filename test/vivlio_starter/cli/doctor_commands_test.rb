@@ -461,6 +461,45 @@ module VivlioStarter
         end
       end
 
+      # kindlepreviewer ラッパーを bin_dir に実行可能な sh シムとして作成する
+      def test_create_kindlepreviewer_wrapper_writes_executable_shim
+        Dir.mktmpdir do |bin_dir|
+          app_bin = DoctorCommands::KINDLE_PREVIEWER_APP_BIN
+          wrapper = nil
+          stub_logging do
+            wrapper = DoctorCommands.create_kindlepreviewer_wrapper!(app_bin, bin_dir)
+          end
+
+          assert_equal File.join(bin_dir, 'kindlepreviewer'), wrapper
+          assert File.exist?(wrapper), 'ラッパーが作成されること'
+          assert File.executable?(wrapper), 'ラッパーに実行権限が付くこと'
+          content = File.read(wrapper)
+          assert_includes content, '#!/bin/sh'
+          assert_includes content, %("#{app_bin}" "$@"), 'アプリ内 CLI を引数透過で呼ぶこと'
+        end
+      end
+
+      # macOS では --fix での自動導入を案内する
+      def test_report_kindle_previewer_optional_hints_fix_on_macos
+        captured = nil
+        Common.stub :log_warn, ->(msg, **kw) { captured = [msg, kw[:detail].to_s] } do
+          DoctorCommands.report_kindle_previewer_optional(true)
+        end
+
+        assert_includes captured[0], 'kindlepreviewer'
+        assert_includes captured[1], 'vs doctor --fix'
+      end
+
+      # macOS 以外では手動セットアップ（KDP からの導入）を案内する
+      def test_report_kindle_previewer_optional_hints_manual_on_non_macos
+        captured = nil
+        Common.stub :log_warn, ->(msg, **kw) { captured = [msg, kw[:detail].to_s] } do
+          DoctorCommands.report_kindle_previewer_optional(false)
+        end
+
+        assert_includes captured[1], 'KDP'
+      end
+
       private
 
       def options_context(opts = {})
