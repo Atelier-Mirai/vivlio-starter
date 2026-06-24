@@ -59,7 +59,7 @@ module VivlioStarter
             order << 'step5'
           }],
           [Build::PartTitleGenerator, :generate_all!, -> { order << 'step5b' }],
-          [Build::TocGenerator, :generate_toc_and_pdf!, lambda { |dir, entries|
+          [Build::TocGenerator, :generate_toc_html!, lambda { |dir, entries|
             test_case.assert_equal '.', dir
             test_case.assert_equal [], entries
             order << 'step6'
@@ -108,7 +108,7 @@ module VivlioStarter
           'Step  4 (index scan and build)',
           'Step  5 (convert sections html)',
           'Step 5b (generate part title pages)',
-          'Step  6 (generate toc and pdf)',
+          'Step  6 (generate toc html)',
           'Step  7 (build overall pdf)',
           'Step  8 (backlink dedup)',
           'Step  9 (build front pages and tail)',
@@ -119,7 +119,7 @@ module VivlioStarter
         labels = pipeline.timings.map(&:first)
         # Step 5c (techbook post-process) が追加されている場合も許容する
         if labels.include?('Step 5c (techbook post-process)')
-          expected_labels.insert(expected_labels.index('Step  6 (generate toc and pdf)'), 'Step 5c (techbook post-process)')
+          expected_labels.insert(expected_labels.index('Step  6 (generate toc html)'), 'Step 5c (techbook post-process)')
         end
         assert_equal expected_labels, labels
       end
@@ -181,7 +181,7 @@ module VivlioStarter
           Build::SectionBuilder.stub :preprocess_sections!, ->(_) {} do
             Build::SectionBuilder.stub :convert_sections_html!, ->(_) {} do
               Build::PartTitleGenerator.stub :generate_all!, -> {} do
-                Build::TocGenerator.stub :generate_toc_and_pdf!, ->(_, _) {} do
+                Build::TocGenerator.stub :generate_toc_html!, ->(_, _) {} do
                   Build::PdfBuilder.stub :build_overall_pdf_from_dir!, ->(_, _) {} do
                     Build::BacklinkDedupOrchestrator.stub :run!, ->(_) {} do
                       Build::PdfMerger.stub :merge_all_pdfs!, ->(_) {} do
@@ -598,7 +598,7 @@ module VivlioStarter
           Build::SectionBuilder.stub :preprocess_sections!, ->(_) {} do
             Build::SectionBuilder.stub :convert_sections_html!, ->(_) {} do
               Build::PartTitleGenerator.stub :generate_all!, -> {} do
-                Build::TocGenerator.stub :generate_toc_and_pdf!, ->(_, _) {} do
+                Build::TocGenerator.stub :generate_toc_html!, ->(_, _) {} do
                   Build::PdfBuilder.stub :build_overall_pdf_from_dir!, ->(_, _) {} do
                     Build::BacklinkDedupOrchestrator.stub :run!, ->(_) {} do
                       Build::PdfMerger.stub :merge_all_pdfs!, ->(_) {} do

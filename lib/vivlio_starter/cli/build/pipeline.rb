@@ -160,8 +160,8 @@ module VivlioStarter
 
         # Steps 6-11: 閲覧用 PDF のビルド・結合・アウトライン
         def register_pdf_build_steps
-          add_step('Step  6 (generate toc and pdf)', lambda {
-            Build::TocGenerator.generate_toc_and_pdf!('.', entries)
+          add_step('Step  6 (generate toc html)', lambda {
+            Build::TocGenerator.generate_toc_html!('.', entries)
           })
           add_step('Step  7 (build overall pdf)', lambda {
             Build::PdfBuilder.build_overall_pdf_from_dir!('.', entries)

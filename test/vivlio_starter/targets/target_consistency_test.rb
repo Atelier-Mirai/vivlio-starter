@@ -80,7 +80,7 @@ class TargetConsistencyTest < Minitest::Test
   # build.yml が再生成する派生ファイル（ビルド後に元へ戻す）
   GENERATED_FILES = ["vivliostyle.config.js", File.join("stylesheets", "page-settings.css")].freeze
 
-  PdfSnap  = Data.define(:page_count, :texts, :outline, :size, :body)
+  PdfSnap  = Data.define(:page_count, :texts, :outline, :outline_dests, :size, :body)
   # vs_kindle / vs_code_epub / math_px は Kindle 専用 rewrite の痕跡（§5-3）。
   # クリーン EPUB（:epub）では 0/false、Kindle EPUB（…-kindle.epub）では検出されるべき。
   EpubSnap = Data.define(:spine, :body, :size, :webp_files, :unresolved_images,
@@ -188,6 +188,39 @@ class TargetConsistencyTest < Minitest::Test
                  "pdf と print_pdf のアウトラインが一致しません"
   end
 
+  # 【アウトライン飛び先検証】各 target 構成（pdf 単体・print_pdf 単体・全部入り）で、
+  # 章しおりの飛び先ページが「その章のページ」を指し目次へ集中しないこと。
+  # outline_titles の一致だけでは、タイトルは正しく飛び先ページだけが目次へ向く不具合
+  # （print_pdf 単独で発生）を検出できないため、ページ番号まで検証する。
+  def test_outline_destinations_land_on_chapter_pages
+    [["pdf", :pdf], ["print_pdf", :print_pdf], [FULL_KEY, :pdf], [FULL_KEY, :print_pdf]].each do |key, fmt|
+      snap = fetch!(key, fmt)
+      # 本文欠落（print_pdf が 4 ページ等に degenerate する既知の flaky）の健全性は
+      # test_single_targets_produce_substantial_body 等が捕捉する。アウトラインの飛び先検証は
+      # 実体のあるビルドにのみ適用し、degenerate ビルドでは検証をスキップする（噪音を増やさない）。
+      next if snap.page_count < 20
+
+      chapters = chapter_destinations(snap)
+      assert_operator chapters.size, :>=, 3, "「#{key}」/#{fmt}: 章しおりが取得できません"
+
+      pages = chapters.map { it[:page] }
+      assert pages.all?, "「#{key}」/#{fmt}: 飛び先ページが解決できない章しおりがあります"
+      assert_equal pages.sort, pages, "「#{key}」/#{fmt}: 章しおりの飛び先が章順（昇順）になっていません"
+      assert_equal pages.uniq, pages, "「#{key}」/#{fmt}: 章しおりの飛び先ページが重複（目次集中の疑い）"
+
+      # 最も「章番号が密」なページ＝目次。各章の飛び先はそれより疎（＝目次でない）であるべき。
+      toc_density = snap.texts.map { chapter_token_count(it) }.max
+      chapters.each do |ch|
+        num = ch[:title][/\A第\d+章/]
+        page_text = snap.texts[ch[:page] - 1].to_s
+        assert_includes strip_spaces(page_text), num,
+                        "「#{key}」/#{fmt}: しおり「#{ch[:title]}」の飛び先 p#{ch[:page]} に #{num} がありません"
+        assert_operator chapter_token_count(page_text), :<, toc_density,
+                        "「#{key}」/#{fmt}: しおり「#{ch[:title]}」の飛び先 p#{ch[:page]} が目次相当（章一覧）のページです"
+      end
+    end
+  end
+
   # 【クリーン EPUB の回帰ガード】<img> 参照がすべて EPUB 内の実体に解決する。
   # クリーン EPUB（Kobo/Apple Books）は WebP を高画質維持するため、WebP が残ること自体は正常
   # （EPUB 3.3 で image/webp はコアメディアタイプ）。WebP ゼロは Kindle 側で検査する（§4・§5-3）。
@@ -293,6 +326,7 @@ class TargetConsistencyTest < Minitest::Test
         page_count: texts.size,
         texts: texts,
         outline: VsTestSupport::PdfInspector.outline_titles(path),
+        outline_dests: VsTestSupport::PdfInspector.outline_destinations(path),
         size: File.size(path),
         body: normalize(texts.join)
       )
@@ -369,6 +403,20 @@ class TargetConsistencyTest < Minitest::Test
   # 複合ターゲット（単体を除く）のうち、指定フォーマットを含むキー
   def combined_keys_including(target)
     COMBOS.select { |_key, targets| targets.include?(target) && targets.size > 1 }.keys
+  end
+
+  # しおりのうち章見出し（第N章…）の飛び先。タイトル重複は最初の 1 件に集約する。
+  def chapter_destinations(snap)
+    snap.outline_dests.select { |d| d[:title] =~ /\A第\d+章/ }.uniq { |d| d[:title] }
+  end
+
+  # テキスト中に現れる相異なる「第N章」トークン数（目次ページは多く、本文ページは少ない）
+  def chapter_token_count(text)
+    strip_spaces(text).scan(/第\d+章/).uniq.size
+  end
+
+  def strip_spaces(text)
+    text.to_s.gsub(/\s+/, "")
   end
 
   # 指定の組み合わせ・フォーマットの成果物スナップショットを取得（無ければ即失敗）
