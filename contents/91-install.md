@@ -52,21 +52,24 @@ gem install query-stream        # データ展開機能
 | Vivliostyle CLI | `npm install -g @vivliostyle/cli` | PDF 生成エンジン |
 | textlint と推奨ルール | `npm install -g textlint ...` | 文章校正。設定ファイルも `config/` に自動配置 |
 | qpdf | `brew install qpdf` | PDF 分割・結合・ページ操作 |
-| poppler（pdfinfo） | `brew install poppler` | PDF メタデータ取得 |
+| poppler（pdfinfo / pdftoppm） | `brew install poppler` | PDF メタデータ取得・ページ画像化 |
 | Ghostscript | `brew install ghostscript` | PDF 圧縮 |
 | ImageMagick | `brew install imagemagick` | 画像変換・WebP 変換 |
 | Inkscape | `brew install inkscape` | SVG → PDF 変換（カバー生成用） |
+| librsvg（rsvg-convert） | `brew install librsvg` | EPUB 扉絵・節絵の合成画像ラスタライズ |
 | libvips | `brew install vips` | 高速画像処理 |
 | Tesseract + 日本語データ | `brew install tesseract tesseract-lang` | OCR エンジン |
 | MeCab | `brew install mecab mecab-ipadic` | 索引機能の読み自動推測 |
 | Playwright / Chromium | npm 経由 | バックリンク重複排除用 |
 | rouge | `gem install rouge` | コードブロック言語推定 |
+| mathjax-full | `npm install -g mathjax-full` | 数式の SVG 化 |
 | waifu2x-ncnn-vulkan | GitHub Releases から自動取得 | AI 画像拡大（オプション） |
+| Kindle Previewer 3（kindlepreviewer） | `brew install --cask kindle-previewer` ＋ ラッパー作成 | Kindle（KPF）変換（任意・targets: kindle 用） |
 | Google Fonts 用 SSL 証明書 | 自動設定 | Google Fonts ダウンロード（macOS のみ） |
 
 Xcode Command Line Tools と Homebrew のインストール時のみ確認プロンプトが表示されます。`--yes` オプションで省略できます。
 
-**自動インストールは macOS + Homebrew 環境でのみ対応しています。** Linux や Windows では以降の手動インストール手順を参照してください。
+**自動インストール（`vs doctor --fix`）が対応しているのは macOS + Homebrew 環境のみです。** Linux や Windows については、現時点で動作検証を行えておらず、公式のサポート対象外です。必要なツールさえ揃えば動作する見込みはありますので、以降の手動インストール手順を手がかりに、お使いの環境へ読み替えてセットアップしてみてください（うまく動くことを願っています）。将来的に正式対応するかもしれません。
 
 ## 手動インストール
 

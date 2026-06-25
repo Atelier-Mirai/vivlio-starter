@@ -108,6 +108,7 @@
 
 - [High] **日本語表記・組版 Lint（スタイルガイド）**。
 - [High] **`vs doctor` にツールのバージョンアップ機能**: 各種ツールを最新版へ更新する機能を付与する。
+- [Low] **Linux / Windows の自動セットアップ対応（やるかもしれない枠）**: 現状 `vs doctor --fix` の自動インストールは macOS + Homebrew のみで、Linux / Windows は動作検証もできていない。将来的に Linux（apt / dnf など）や Windows（winget / Scoop / Chocolatey など）でも `vs doctor --fix` でひと通り揃うようにできると望ましい。需要と検証コスト次第で、対応するかどうかも含めて将来検討する。
 - [Medium] **ビルドログ整備**: 各ステップに要約出力とエラーヒントを追加し、失敗時の原因特定とリカバリーを容易にする。
 - [Medium] **`vs preflight` の章別エラー・警告サマリー**: 現状はファイル処理中にリアルタイム出力され章をまたいで混在する。章ごとに「21 章: 警告 N 件、エラー N 件」とまとめて表示するには、`LinkImageValidator` にコードインクルード・クロスリファレンス・QueryStream のエラーも蓄積する汎用メカニズムが必要（影響 4〜5 ファイル）。
 - [Low] **スタイルガイド整備**: 章タイプ別（preface / chapter / appendix / postface）の設計指針、ユーティリティクラス（`.aki`, `.aki2` ほか）一覧と使用例をドキュメント化する。

@@ -16,10 +16,18 @@
 #   - qpdf: PDF 分割・結合・ページ操作
 #   - pdfinfo / pdftoppm (poppler): PDF メタデータ取得・ページ画像化
 #   - gs (Ghostscript): PDF 圧縮
-#   - img2pdf: JPEG から PDF への再結合
 #   - imagemagick: 画像変換・リサイズ
 #   - inkscape: SVG編集・変換（カバー生成用）
+#   - rsvg-convert (librsvg): EPUB 扉絵/節絵の合成画像ラスタライズ
+#   - vips (libvips): 高速画像処理（Enhanced Mode の OCR 用）
+#   - tesseract / tesseract-lang: OCR エンジンと日本語データ（Enhanced Mode 用）
+#   - mecab: 索引機能の読み自動推測
+#   - playwright / chromium: バックリンク重複排除用のヘッドレスブラウザ
+#   - rouge: コードブロック言語推定（Ruby gem）
+#   - mathjax (mathjax-full): 数式の SVG 化（npm パッケージ）
 #   - waifu2x-ncnn-vulkan: AI 画像拡大（オプション）
+#   - kindlepreviewer (Kindle Previewer 3): Kindle(KPF) 変換（任意・targets: kindle 用）
+#   - Google Fonts 用 SSL 証明書 (macOS): Web フォント取得
 #
 # 自動インストール:
 #   - macOS + Homebrew 環境でのみ対応
@@ -109,9 +117,16 @@ module VivlioStarter
             - pdfinfo / pdftoppm (poppler)
             - node
             - vivliostyle
+            - textlint
             - gs
             - imagemagick
             - inkscape
+            - rsvg-convert (librsvg)
+            - vips / tesseract / tesseract-lang (Enhanced Mode の OCR 用)
+            - mecab
+            - playwright / chromium
+            - rouge
+            - mathjax (mathjax-full)
             - waifu2x
             - kindlepreviewer (Kindle Previewer 3・targets: kindle の KPF 変換時のみ。任意)
 
