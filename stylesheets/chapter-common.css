@@ -88,9 +88,9 @@ h6 {
 }
 
 /* 改ページ直後の h3 マージン抑制 */
-hr+h3,
-hr+section>h3:first-child,
-section:has(hr:last-child)+section>h3:first-child {
+hr + h3,
+hr + section > h3:first-child,
+section:has(hr:last-child) + section > h3:first-child {
   margin-break: discard;
 }
 
@@ -174,7 +174,7 @@ blockquote {
 em {
   font-style: normal;
   text-decoration: underline;
-  text-decoration-thickness: 0.10em;
+  text-decoration-thickness: 0.1em;
   text-decoration-color: var(--color-em-underline);
   text-underline-offset: 0.08em;
   text-decoration-skip-ink: auto;
@@ -334,7 +334,7 @@ img[src$=".svg"] {
   border: none;
 }
 
-p>img {
+p > img {
   vertical-align: text-bottom;
 }
 
@@ -433,8 +433,9 @@ p>img {
   margin-inline: auto;
   padding-block: 3mm;
   padding-inline: 0;
-  border-block-start: solid 0.2mm var(--color-border-weak);
-  border-block-end: solid 0.2mm var(--color-border-weak);
+  /* アクセントカラーの二重線で挟んだデザイン */
+  border-block-start: double 1mm var(--color-mark);
+  border-block-end: double 1mm var(--color-mark);
 }
 
 .note p {
@@ -457,10 +458,12 @@ p>img {
 }
 
 /* =============================================================
-   Kindle 専用 コラム枠ラベル（tip / memo / column）（epub-kindle-target-split-spec.md §1-5）
+   Kindle 専用 コラム・注記枠ラベル（tip / memo / column / notice / note）（epub-kindle-target-split-spec.md §1-5）
    Kindle(KFX) は ::before(position:absolute) のラベル帯・var() を解さない。そこで Kindle
    ビルド（body.vs-kindle）でのみ ::before ラベルを抑止し、EpubBuilder が先頭注入する実体
    ラベル <p class="vs-adm-label"> を枠上に通常表示する。枠線は var() 不可のため具体色で描く。
+   notice / note は PDF では枠タブを持たない（左/上下アクセント線）が、Kindle では var() 線が
+   消えてしまうため、tip/memo/column と同じ「具体色の囲み枠＋ラベル」へ劣化させる。
    クリーン EPUB（Kobo/Apple Books・vs-kindle 無し）は上の ::before 角タブ・themed 枠のまま。
    ============================================================= */
 /* Kindle KFX は :is() を解さずルールごと破棄するため、明示セレクタへ展開する。 */
@@ -471,15 +474,23 @@ body.vs-kindle .column::before {
 }
 body.vs-kindle .tip,
 body.vs-kindle .memo,
-body.vs-kindle .column {
+body.vs-kindle .column,
+body.vs-kindle .notice,
+body.vs-kindle .note {
   /* ::before 角タブ用に空けていた上余白（6mm）を詰め、注入ラベル上の空行を解消する */
   padding-block-start: 4mm;
-  /* Kindle は var() 不可。base .tip の var() 枠線は Kindle で無効化され消えるため、具体色で描く。 */
+  /* Kindle は var() 不可。base の var() 枠線は Kindle で無効化され消えるため、具体色で描く。 */
   border: 1px solid #888;
   /* 枠どうしが一体化して見えないよう、上下に明確な余白を確保する。Kindle は mm 余白が
      詰まりがちなので em で指定（隣接枠の margin 相殺後も視認できる間隔を残す）。 */
   margin-top: 1.5em;
   margin-bottom: 1.5em;
+}
+/* base .note は枠なし（padding-inline:0・上下の二重線のみ）。Kindle では囲み枠化するため、
+   テキストが枠線に触れないよう左右と下の余白を補う。 */
+body.vs-kindle .note {
+  padding-inline: 4mm;
+  padding-block-end: 3mm;
 }
 body.vs-kindle .vs-adm-label {
   margin: 0 0 0.4em;

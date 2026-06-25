@@ -195,28 +195,27 @@ module VivlioStarter
           add_step('Step 11 (final clean)', -> { run_final_clean })
         end
 
-        # single mode: targetsに応じてビルド方法を切り替え
+        # single mode は閲覧用 PDF のみ生成する（プレビュー・サンプル配布が主用途）。
+        # print_pdf / EPUB / Kindle(KPF) は入稿・配信を前提とした全章成果物なので、
+        # 単章では作らず全章 `vs build` 専用とする（中途半端な出力を避け、負担も抑える）。
         def register_single_mode_steps
+          warn_single_mode_pdf_only
+
           add_step('Step  0 (clean)',                -> { run_step0_clean })
           add_step('Step  1 (optimize images)',      -> { run_step1_optimize_images })
           add_step('Step  2 (prepare theme images)', -> { Build::ImageOptimizer.prepare_theme_images! })
           add_step('Step  3 (build sections html)',  -> { build_target_sections_html })
+          add_step('Step  4 (entries.js + pdf)',     -> { generate_entries_and_pdf })
+          add_step('Step  5 (rename output pdfs)',   -> { rename_single_mode_pdf })
+          add_step('Step F (final clean)',           -> { run_final_clean })
+        end
 
-          if pdf_target?
-            add_step('Step  4 (entries.js + pdf)',    -> { generate_entries_and_pdf })
-            add_step('Step  5 (rename output pdfs)',  -> { rename_single_mode_pdf })
-          end
+        # targets に PDF 以外（print_pdf / EPUB / Kindle）が含まれていても、
+        # 単章ビルドは閲覧用 PDF のみ生成する旨を一度だけ案内する。
+        def warn_single_mode_pdf_only
+          return unless print_pdf_target? || epub_or_kindle_target?
 
-          if print_pdf_target?
-            add_step('Step  6 (generate entries js)', lambda {
-              Build::PdfBuilder.generate_entries_for_sections!('.', entries)
-            })
-            add_step('Step  7 (print pdf)', -> { generate_single_mode_print_pdf })
-          end
-
-          add_step('Step E (generate epub)', -> { generate_single_mode_epub }) if epub_or_kindle_target?
-
-          add_step('Step F (final clean)', -> { run_final_clean })
+          Common.log_info('単章ビルドは閲覧用 PDF のみ生成します（print_pdf / EPUB / Kindle は全章 `vs build` で生成してください）')
         end
 
         # ステップを記録して順次処理できるようにする
@@ -300,122 +299,6 @@ module VivlioStarter
           FileUtils.rm_f(@generated_pdf_name)
           FileUtils.mv(output_pdf, @generated_pdf_name)
           Common.log_success("[Step 5] PDFをリネームしました: #{@generated_pdf_name}")
-        end
-
-        # single mode: 単章EPUB生成
-        def generate_single_mode_epub
-          Common.log_action('[Step E] 単章 EPUB を生成します…')
-
-          # --- Phase: EPUB 用カバー画像生成 ---
-          generate_epub_cover_if_needed
-
-          # --- Phase: EPUB 用 entries.js 生成 ---
-          epub_htmls = Build::EpubBuilder.generate_epub_entries!('.', entries)
-          if epub_htmls.empty?
-            Common.log_warn('[Step E] EPUB 対象 HTML がありません。スキップします。')
-            return
-          end
-
-          # --- Phase: EPUB 用 vivliostyle.config.js 生成 ---
-          Build::EpubBuilder.generate_epub_config!
-
-          # --- Phase: Vivliostyle build ---
-          target_name = determine_single_mode_epub_name
-          EpubCommands.execute_epub({}, target_name)
-
-          # --- Phase: EPUB 内 CSS サニタイズ（@page マージンボックス除去） ---
-          Build::EpubBuilder.sanitize_epub_css!(target_name) if File.exist?(target_name)
-
-          # --- Phase: content.opf の数字始まり id を NCName 準拠へ修正 ---
-          sanitize_epub_opf_ids!(target_name) if File.exist?(target_name)
-
-          # --- Phase: EPUB identifier 安定化 ---
-          stabilize_epub_identifier!(target_name) if File.exist?(target_name)
-
-          Common.log_success("[Step E] 単章 EPUB を生成しました: #{target_name}")
-        end
-
-        # single mode: 単章EPUB名を決定
-        def determine_single_mode_epub_name
-          if basenames.size == 1
-            # 単一章: 01-life.epub
-            "#{basenames.first}.epub"
-          else
-            # 複数章: 01-03.epub（最初と最後の章番号）
-            sorted = basenames.sort_by { |bn| bn[/^(\d+)/, 1].to_i }
-            first_num = sorted.first[/^(\d+)/, 1]
-            last_num = sorted.last[/^(\d+)/, 1]
-            "#{first_num}-#{last_num}.epub"
-          end
-        end
-
-        # single mode: 単章入稿用PDF生成
-        def generate_single_mode_print_pdf
-          Common.log_action('[Step 5] 単章 入稿用 PDF を生成します…')
-
-          # --- Phase: Vivliostyle build（トンボ・塗り足し付き） ---
-          print_pdf_build_sections_for_single!
-
-          # --- Phase: PDF 結合 ---
-          print_pdf_merge_for_single!
-
-          # --- Phase: 隠しノンブル書き込み ---
-          print_pdf_stamp_nombre!
-
-          # --- Phase: アウトライン付与 ---
-          print_pdf_add_outline!
-
-          # --- Phase: リネーム ---
-          rename_single_mode_print_pdf!
-        end
-
-        # single mode: 単章本文の入稿用 PDF を生成
-        def print_pdf_build_sections_for_single!
-          Common.log_action('[Step 5] 単章 PDF をトンボ・塗り足し付きでビルドします…')
-          PdfCommands.execute_print_pdf({}, '_sections_print.pdf')
-        end
-
-        # single mode: 単章入稿用 PDF を結合する
-        def print_pdf_merge_for_single!
-          files = %w[_sections_print.pdf]
-          existing = files.select { File.exist?(it) }
-
-          if existing.empty?
-            Common.log_error('[Step 5] 結合対象の入稿用 PDF がありません')
-            return
-          end
-
-          if Build::PdfMerger.merge_pdfs_with_qpdf!(existing, output: 'output_print.pdf')
-            Common.log_success('[Step 5] 入稿用 PDF を結合しました')
-          else
-            Common.log_error('[Step 5] 入稿用 PDF の結合に失敗しました')
-          end
-        end
-
-        # single mode: 単章入稿用PDFリネーム
-        def rename_single_mode_print_pdf!
-          return unless File.exist?('output_print.pdf')
-
-          target_name = determine_single_mode_print_pdf_name
-          return if target_name == 'output_print.pdf'
-
-          FileUtils.rm_f(target_name)
-          FileUtils.mv('output_print.pdf', target_name)
-          Common.log_success("[Step 5] 単章 入稿用 PDF をリネームしました: output_print.pdf → #{target_name}")
-        end
-
-        # single mode: 単章入稿用PDF名を決定
-        def determine_single_mode_print_pdf_name
-          if basenames.size == 1
-            # 単一章: 01-life_print.pdf
-            "#{basenames.first}_print.pdf"
-          else
-            # 複数章: 01-03_print.pdf（最初と最後の章番号）
-            sorted = basenames.sort_by { |bn| bn[/^(\d+)/, 1].to_i }
-            first_num = sorted.first[/^(\d+)/, 1]
-            last_num = sorted.last[/^(\d+)/, 1]
-            "#{first_num}-#{last_num}_print.pdf"
-          end
         end
 
         # single mode の出力 PDF 名を決定する

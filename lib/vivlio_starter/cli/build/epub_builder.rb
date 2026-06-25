@@ -1287,11 +1287,15 @@ module VivlioStarter
           end
         end
 
-        # tip / memo（コラム枠）に見出しラベル要素を実体注入する。
+        # tip / memo / column / notice / note（コラム・注記枠）に見出しラベル要素を実体注入する。
         # PDF では ::before（position:absolute）でラベル帯を描くが、Kindle は absolute を無視して
         # ラベルが消える。実体の <p class="vs-adm-label"> を先頭に挿し、枠線は code/chapter CSS の
         # body.vs-kindle ルール（px 枠線）に委ねることで、Kindle でもラベル付きの囲み枠を保証する（§5）。
-        ADMONITION_LABELS = { 'tip' => '【TIP】', 'memo' => '【MEMO】', 'column' => '【COLUMN】' }.freeze
+        # notice / note は PDF では ::before ラベルを持たないが、Kindle では囲み枠＋ラベルへ劣化させる。
+        ADMONITION_LABELS = {
+          'tip' => '【TIP】', 'memo' => '【MEMO】', 'column' => '【COLUMN】',
+          'notice' => '【NOTICE】', 'note' => '【NOTE】'
+        }.freeze
 
         # @param html_files [Array<String>] HTML ファイルパスの配列
         # @return [Array<String>] そのままの配列（パス変更なし）

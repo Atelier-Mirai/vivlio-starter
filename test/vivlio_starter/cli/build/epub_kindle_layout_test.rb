@@ -126,16 +126,20 @@ module VivlioStarter
         assert_equal '16', img['width']
       end
 
-      # tip / memo / column にラベル要素が先頭注入される（Kindle で ::before ラベルが消える対策）
+      # tip / memo / column / notice / note にラベル要素が先頭注入される（Kindle で ::before ラベルが消える対策）
       def test_should_inject_admonition_label
         html = '<html><body class="vs-kindle">' \
                '<div class="tip"><p>ヒント本文</p></div>' \
                '<div class="memo"><p>メモ本文</p></div>' \
+               '<div class="notice"><p>注意本文</p></div>' \
+               '<div class="note"><p>補足本文</p></div>' \
                '<div class="column"><h5>コラム見出し</h5><p>本文</p></div></body></html>'
         doc = process(html) { |files| Builder.decorate_admonitions_for_epub!(files) }
 
         assert_equal '【TIP】', doc.at_css('.tip > .vs-adm-label')&.text
         assert_equal '【MEMO】', doc.at_css('.memo > .vs-adm-label')&.text
+        assert_equal '【NOTICE】', doc.at_css('.notice > .vs-adm-label')&.text
+        assert_equal '【NOTE】', doc.at_css('.note > .vs-adm-label')&.text
         assert_equal '【COLUMN】', doc.at_css('.column > .vs-adm-label')&.text
         assert_equal doc.at_css('.column > .vs-adm-label'), doc.at_css('.column').element_children.first,
                      'ラベルはコラム枠の先頭子要素（見出しより前）'

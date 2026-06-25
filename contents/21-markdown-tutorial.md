@@ -1,7 +1,7 @@
 # Markdown 執筆チュートリアル
 
 :::{.chapter-lead}
-本章では、Vivlio Starter で技術書を執筆するための Markdown 記法を体系的に解説します。標準の Markdown 記法から始まり、Vivliostyle Flavored Markdown（VFM）の拡張機能、そして Vivlio Starter 独自の便利な拡張までを順を追って学びます。これらの記法を使いこなすことで、効率的に美しい技術書を作成できます。
+本章では、Vivlio Starter で技術書を執筆するための Markdown 記法を体系的に解説します。標準の Markdown 記法から始まり、Vivliostyle Flavored Markdown（VFM）の拡張機能を紹介しています。次章の Vivlio Starter 独自の便利な拡張記法も併せて習得することで、効率的に美しい技術書を作成できます。
 :::
 
 ## Markdown とは
@@ -584,5 +584,3 @@ vfm:
 ```
 
 ---
-
-

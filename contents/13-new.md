@@ -285,7 +285,7 @@ vs new my/book
 トラブルシューティング用に、コピー中のファイルパスやコマンドの詳細を表示できます。
 
 ```bash
-vs new mybook --yes --log debug
+vs new mybook --yes --log=debug
 ```
 
 ## 作成後の次のステップ

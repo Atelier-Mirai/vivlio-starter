@@ -468,6 +468,31 @@ module VivlioStarter
           assert_empty result[:errors]
         end
 
+        # 回帰: キャプション付きコードブロックが、キャプションだけでなくコード本体ごと
+        # 出力される（list_markdown がコードを読み飛ばして消す不具合の防止）。
+        # post_process の wrap_cross_ref_code_blocks! が <!--xref--> 直後の <pre> を
+        # 参照するため、コードフェンスがマーカーに続いて残ることが必須。
+        def test_transform_captioned_code_block_keeps_code_body
+          content = <<~'MD'
+            ** サンプルコード @sample-code **
+            ```ruby
+            def hello(name)
+              puts "Hello, #{name}!"
+            end
+            ```
+          MD
+          labels_map = build_labels_map_with_duplicates_check(
+            collect_labels(content, 'test.md', '1')[:labels]
+          )[:labels_map]
+
+          result = transform_captioned_blocks(content, 'test.md', labels_map)
+
+          assert_includes result, '<!--xref:sample-code-->', 'xref マーカーが出力される'
+          assert_includes result, '```ruby', 'コードフェンスが保持される'
+          assert_includes result, 'def hello(name)', 'コード本体が保持される'
+          assert_includes result, 'サンプルコード', 'キャプションのタイトルが出力される'
+        end
+
         def test_collect_labels_multiple_types
           content = <<~MD
             ** コード @code1 **

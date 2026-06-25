@@ -306,9 +306,9 @@ module VivlioStarter
           Common.log_success('table-rotate内のMarkdownをHTMLへ変換しました')
         end
 
-        # long-table / table-scroll 記法をHTMLに変換し、内部Markdownを整形する
+        # long-table 記法をHTMLに変換し、内部Markdownを整形する
         def transform_table_containers!
-          %w[long-table table-scroll].each do |klass|
+          %w[long-table].each do |klass|
             context.content, opened, closed = MarkdownTransformer.convert_container_blocks(
               context.content,
               class_name: klass

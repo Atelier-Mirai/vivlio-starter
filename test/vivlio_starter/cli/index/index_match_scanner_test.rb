@@ -118,6 +118,52 @@ module VivlioStarter
           assert_includes term_names, '本文の用語'
         end
 
+        # インラインコード `[!]` 内の [...] は明示マーカー [用語] と誤認せずリテラル表示する。
+        # コメント強調マーカー [!] を説明する地の文（`[!]` マーカー…）が索引語化される回帰を防ぐ。
+        def test_scan_skips_index_marker_inside_inline_code
+          File.write('14-inline.md', <<~MD)
+            # Test
+
+            コメントに `[!]` マーカーを書くと強調されます。
+            バックティックの外の [本文用語] は検出される。
+          MD
+
+          @scanner.scan_and_tag_file!('14-inline.md')
+
+          term_names = @scanner.matches.map { it['term'] }
+          refute_includes term_names, '!', 'インラインコード内の [!] は索引語化しない'
+          assert_includes term_names, '本文用語'
+
+          tagged = File.read('14-inline.md')
+          assert_includes tagged, '`[!]`', 'インラインコードの内容は保持される'
+        end
+
+        # ````（4連）で ``` を入れ子にしたコード例の中の [!] は索引語化しない。
+        # フェンス長を見ないと内側 ``` で閉じたと誤判定し、コード本文を地の文として
+        # 索引スキャンしてしまう（コメント強調 [!] が誤索引化される）回帰を防ぐ。
+        def test_scan_excludes_nested_quadruple_backtick_fence
+          File.write('15-fence.md', <<~MD)
+            # Test
+
+            ````markdown
+            ```ruby
+            puts "x"   # [!] この行が強調される
+            ```
+            ````
+
+            フェンスの外の [本文用語] は検出される。
+          MD
+
+          @scanner.scan_and_tag_file!('15-fence.md')
+
+          term_names = @scanner.matches.map { it['term'] }
+          refute_includes term_names, '!', '4連フェンス内の [!] は索引語化しない'
+          assert_includes term_names, '本文用語'
+
+          tagged = File.read('15-fence.md')
+          assert_includes tagged, '# [!] この行が強調される', 'コード例の内容は保持される'
+        end
+
         def test_scan_handles_special_characters
           File.write('07-test.md', <<~MD)
             # Test

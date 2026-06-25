@@ -223,19 +223,33 @@ module VivlioStarter
         def process_content_with_code_block_exclusion(content, file_basename)
           lines = content.lines
           result = []
-          in_code_block = false
+          fence_len = nil # 開いているコードフェンスのバッククォート数（nil = コード外）
 
           lines.each do |line|
             stripped = line.lstrip
 
-            # コードブロックの開始・終了を検出
+            # コードフェンスの開始・終了を検出（``` 以上の可変長に対応）。
+            # ```include: は単一行のインクルード指令でありフェンスではないので除外。
             if stripped.start_with?('```') && !stripped.start_with?('```include:')
-              in_code_block = !in_code_block
-              result << line
-              next
+              run = stripped[/\A`+/].length
+              if fence_len.nil?
+                # コード外 → フェンス開始（開いた長さを記憶）
+                fence_len = run
+                result << line
+                next
+              elsif run >= fence_len
+                # コード内 → 開始と同じ長さ以上の行でのみ閉じる。
+                # ````（4連）の中の ```（3連）のような短い入れ子フェンスでは閉じない
+                # （閉じてしまうと内側のコード本文が地の文として索引スキャンされ、
+                #   コメント強調マーカー [!] などが誤って索引語化される）。
+                fence_len = nil
+                result << line
+                next
+              end
+              # それ以外（コード内の開始より短い入れ子フェンス）はコード本文として扱う
             end
 
-            result << if in_code_block
+            result << if fence_len
                         line
                       else
                         process_line(line, file_basename)
@@ -247,8 +261,19 @@ module VivlioStarter
 
         # 1行を処理して索引語をタグ付け
         def process_line(line, file_basename)
-          # 1. まず [用語|読み] または [用語] 記法を処理
-          processed_line = line.gsub(INDEX_TERM_PATTERN) do |_match|
+          # 1. まず [用語|読み] または [用語] 記法を処理する。
+          #    インラインコード `...` 内はリテラル表示が目的なので保護して索引対象から外す
+          #    （コメント強調マーカー `[!]` のように [...] と綴る記法が、明示マーカー [用語]
+          #     と誤認されて索引語化されるのを防ぐ。後段 2/3 のインラインコード保護に揃える）。
+          #    トークンは [...] を含めない（含めると INDEX_TERM_PATTERN に自己マッチする）。
+          code_spans = {}
+          protected_line = line.gsub(/`[^`]+`/) do |match|
+            token = "\u0000VSCODE#{code_spans.size}\u0000"
+            code_spans[token] = match
+            token
+          end
+
+          processed_line = protected_line.gsub(INDEX_TERM_PATTERN) do |_match|
             term_with_optional_yomi = ::Regexp.last_match(1)
             term_text, yomi_raw = extract_term_and_yomi(term_with_optional_yomi)
 
@@ -265,6 +290,8 @@ module VivlioStarter
               process_term(term_text, yomi, file_basename)
             end
           end
+
+          code_spans.each { |token, original| processed_line = processed_line.gsub(token) { original } }
 
           # 2. 次に config/index_glossary_terms.yml に基づく自動タグ付け（索引用語）
           indexed_line = apply_auto_indexing(processed_line, file_basename)

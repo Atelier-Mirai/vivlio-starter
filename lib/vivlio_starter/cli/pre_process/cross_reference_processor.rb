@@ -448,7 +448,7 @@ module VivlioStarter
             case type
             when :fig then figure_html(block_start, info, label)
             when :table then table_html(block_start, info, label, wrapper)
-            when :list then list_markdown(info, label)
+            when :list then list_markdown(block_start, info, label)
             end
           end
 
@@ -578,10 +578,14 @@ module VivlioStarter
             lines
           end
 
-          def list_markdown(info, label)
+          def list_markdown(block_start, info, label)
             caption = label ? "#{label.full_number}: #{info[:title]}" : info[:title]
             data_id = label&.id || info[:id]
-            "**#{caption}**\n<!--xref:#{data_id}-->\n"
+            # キャプション（<p>）→ <!--xref--> マーカー → コードブロック本体、の順で出力する。
+            # 本体を出さないと post_process の wrap_cross_ref_code_blocks! が参照する <pre> が
+            # 生成されず、リスト番号（キャプション）だけ残ってコードブロックが消える。
+            code = @lines[block_start..find_code_end(block_start)].join
+            "**#{caption}**\n<!--xref:#{data_id}-->\n\n#{code}"
           end
 
           def id_attr(label)
