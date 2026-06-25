@@ -15,6 +15,7 @@
 #   - 既存ディレクトリ（--force）で既存ファイルをスキップ
 #   - vs doctor --fix 失敗時に警告を出力しファイルは残る
 #   - 対話で「n」を入力した場合の中断
+#   - 対話モードのプロンプト文言と確認サマリー（著者/発行者の振り分け）
 #   - --log=debug でコピー中のファイルパスが出力される
 #
 # テスト環境:
@@ -183,6 +184,36 @@ module VivlioStarter
           assert_equal 'my"book', parsed.dig('book', 'main_title')
           assert_equal '\\\\series', parsed.dig('book', 'subtitle')
           assert_equal "山田\t太郎", parsed.dig('book', 'author')
+        end
+      end
+
+      # 対話モードで、実際に表示されるプロンプト文言と確認サマリーを検証する。
+      # プロンプトの例文・ヒント（著者＝原稿を書いた人／発行者＝世に出す主体）や、
+      # 入力値が「著者」「発行者」へ正しく振り分けられることの回帰防止が目的。
+      # doctor 実行は system スタブで差し替えるため brew install や実ビルドは走らない。
+      def test_should_display_author_publisher_prompts_and_confirmation_summary
+        within_temp_dir do
+          # 書籍名 → 副題 → 著者 → 発行者 → 確認(y) の順で入力を流し込む
+          input = StringIO.new("我輩は猫である\n吾輩シリーズ\n夏目 漱石\n吾輩社\ny\n")
+
+          out = nil
+          stub_system_call do
+            $stdin = input
+            out, = capture_io { run_new_command(['promptbook']) }
+          ensure
+            $stdin = STDIN
+          end
+
+          # --- プロンプト文言（著者/発行者の違いのヒントと、差し替えた例文）---
+          assert_includes out, '書籍名を入力してください（例: はじめての技術書づくり）'
+          assert_includes out, '著者名を入力してください（原稿を書いた人。例: 早乙女 遙香）'
+          assert_includes out,
+                          '発行者・サークル名を入力してください（本を世に出す主体。お一人なら著者と同じでも可。例: アトリヱ未來）'
+
+          # --- 確認サマリー（入力値が書籍名/著者/発行者へ正しく振り分けられる）---
+          assert_match(/書籍名:\s+我輩は猫である/, out)
+          assert_match(/著者:\s+夏目 漱石/, out)
+          assert_match(/発行者:\s+吾輩社/, out)
         end
       end
 
