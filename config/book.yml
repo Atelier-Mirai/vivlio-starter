@@ -40,9 +40,9 @@ book:
   # ----------------------------
   series: "「技術書典20 新刊」" # 連載名
   release: "令和八年四月二十六日" # 発行日
-  publisher: "早乙女 遙香" # 日光企画 ねこのしっぽ
+  publisher: "アトリヱ未來" # 発行者・サークル名（例: アトリヱ未來）。本を世に出す主体。印刷所とは別
   contact: "contact@atelier-mirai.net" # 連絡先
-  author: "アトリヱ未來" # 著者名
+  author: "早乙女 遙香" # 著者名（本名・ペンネーム）
   language: "ja" # 言語
   isbn: "" # 任意（独自ISBN取得の場合。Kindle は ASIN 自動割り当て）
 

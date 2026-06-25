@@ -74,10 +74,10 @@ module VivlioStarter
         Common.log_always ''
 
         answers = {
-          main_title: prompt('書籍名を入力してください（例: はじめての Ruby）', DEFAULT_ANSWERS[:main_title]),
+          main_title: prompt('書籍名を入力してください（例: はじめての技術書づくり）', DEFAULT_ANSWERS[:main_title]),
           subtitle: prompt('副題を入力してください（任意。Enter でスキップ）', DEFAULT_ANSWERS[:subtitle]),
-          author: prompt('著者名を入力してください（例: 山田 太郎）', DEFAULT_ANSWERS[:author]),
-          publisher: prompt('発行者・サークル名を入力してください（例: アトリヱ未來）', DEFAULT_ANSWERS[:publisher])
+          author: prompt('著者名を入力してください（原稿を書いた人。例: 早乙女 遙香）', DEFAULT_ANSWERS[:author]),
+          publisher: prompt('発行者・サークル名を入力してください（本を世に出す主体。お一人なら著者と同じでも可。例: アトリヱ未來）', DEFAULT_ANSWERS[:publisher])
         }
 
         confirm_answers!(project_name, answers)
