@@ -17,7 +17,7 @@
 #      → 新設の cleanup_partial_scaffold が走り、部分展開ディレクトリを削除する。
 #   C. expand_scaffold 中の想定外例外
 #      → 同じく部分展開ディレクトリを削除する。
-#   D. 既存ディレクトリに展開中の中断（--force 相当）
+#   D. 既存ディレクトリに展開中の中断（--add-missing 相当）
 #      → ユーザーの既存ファイルを壊さないため **削除しない**。
 # ================================================================
 
@@ -95,7 +95,7 @@ module VivlioStarter
       end
 
       # ----------------------------------------------------------------
-      # D. 既存ディレクトリに上書き展開中の中断は削除しない
+      # D. 既存ディレクトリへ不足ファイル追加中の中断は削除しない
       # ----------------------------------------------------------------
 
       def test_expand_scaffold_preserves_pre_existing_directory_on_interrupt
@@ -114,7 +114,7 @@ module VivlioStarter
           end
 
           assert File.exist?(project),
-                 '既存ディレクトリは削除してはならない（--force のユースケース）'
+                 '既存ディレクトリは削除してはならない（--add-missing のユースケース）'
           assert File.exist?(precious),
                  '既存ユーザーファイルは保護されるべき'
           assert_equal 'keep me', File.read(precious)

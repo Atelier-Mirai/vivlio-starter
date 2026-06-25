@@ -12,7 +12,7 @@
 #   - --yes モードで全ファイルが展開されデフォルト値が反映される
 #   - {{PROJECT_NAME}} が引数のプロジェクト名で置換される
 #   - 既存ディレクトリ（デフォルト）でエラー終了
-#   - 既存ディレクトリ（--force）で既存ファイルをスキップ
+#   - 既存ディレクトリ（--add-missing）で既存ファイルをスキップし不足分のみ追加
 #   - vs doctor --fix 失敗時に警告を出力しファイルは残る
 #   - 対話で「n」を入力した場合の中断
 #   - 対話モードのプロンプト文言と確認サマリー（著者/発行者の振り分け）
@@ -87,8 +87,8 @@ module VivlioStarter
         end
       end
 
-      # 既存ディレクトリ（--force なし）でエラー終了しディレクトリが変更されないことを確認
-      def test_should_exit_with_error_when_directory_exists_without_force
+      # 既存ディレクトリ（--add-missing なし）でエラー終了しディレクトリが変更されないことを確認
+      def test_should_exit_with_error_when_directory_exists_without_add_missing
         within_temp_dir do
           FileUtils.mkdir_p('existing')
           File.write('existing/my_file.txt', 'original', encoding: 'utf-8')
@@ -102,14 +102,14 @@ module VivlioStarter
         end
       end
 
-      # --force で既存ファイルをスキップし不足ファイルのみ追加されることを確認
-      def test_should_skip_existing_files_and_add_missing_ones_with_force
+      # --add-missing で既存ファイルをスキップし不足ファイルのみ追加されることを確認
+      def test_should_add_only_missing_files_when_add_missing_option_given
         within_temp_dir do
           FileUtils.mkdir_p('partial/config')
           File.write('partial/config/book.yml', 'custom content', encoding: 'utf-8')
 
           stub_system_call do
-            capture_io { run_new_command(['partial', '--force', '--yes']) }
+            capture_io { run_new_command(['partial', '--add-missing', '--yes']) }
           end
 
           # 既存ファイルは上書きされない

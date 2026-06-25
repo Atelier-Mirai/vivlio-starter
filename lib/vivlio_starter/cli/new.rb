@@ -56,11 +56,11 @@ module VivlioStarter
 
       def check_existing_directory!(cmd, project_name)
         return unless Dir.exist?(project_name)
-        return if cmd.options[:force]
+        return if cmd.options[:add_missing]
 
         Common.log_error("エラー: ディレクトリ \"#{project_name}\" はすでに存在します。")
-        Common.log_error('上書き展開する場合は --force オプションを指定してください。')
-        Common.log_error("  vs new #{project_name} --force")
+        Common.log_error('既存ディレクトリに不足ファイルだけを追加する場合は --add-missing オプションを指定してください（既存ファイルは保持されます）。')
+        Common.log_error("  vs new #{project_name} --add-missing")
         exit 1
       end
 
@@ -117,7 +117,7 @@ module VivlioStarter
 
       def expand_scaffold(cmd, project_name, answers)
         # クリーンアップ対象にするのは「今回作成した」ディレクトリのみ。
-        # `--force` で既存ディレクトリに重ねる場合は、部分破壊を避けるため保持する。
+        # `--add-missing` で既存ディレクトリに重ねる場合は、部分破壊を避けるため保持する。
         created_root = !File.exist?(project_name)
         FileUtils.mkdir_p(project_name)
 
