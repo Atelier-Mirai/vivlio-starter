@@ -126,6 +126,36 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 `--force` オプションは既存ファイルを上書きします。実行前にバックアップを取ってください。
 :::
 
+### `.terminal` — ターミナルへの入力
+
+ターミナル（端末）に打ち込むコマンドを示します。黒地に白文字の全幅枠で表示され、「ここはコマンド入力だ」と一目で分かります。
+
+```markdown
+:::{.terminal}
+vs build
+:::
+```
+
+:::{.terminal}
+vs build
+:::
+
+### `.output` — 実行結果・出力例
+
+コマンドの実行結果や、記法を書いたときの表示例を示します。細い全幅の囲み枠で、本文と区別しつつ控えめに見せます。中身は通常の Markdown として組まれるので、箇条書き・表なども入れられます。
+
+```markdown
+:::{.output}
+✅ ビルドが完了しました
+- 出力: dist/sample.pdf
+:::
+```
+
+:::{.output}
+✅ ビルドが完了しました
+- 出力: dist/sample.pdf
+:::
+
 ### 編集者コメント `@comment ... @commend`
 
 推敲中のメモを本文に残したいときに使います。`<span class="hen-comment">` に変換されるので、CSS で色を付けることができます。
@@ -216,7 +246,7 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 ** アインシュタインの肖像 @einstein-portrait **
 ![アインシュタイン](Einstein.webp){width=40% align=center}
 
-図番号は表・リストにも同じ要領で付けられます。たとえば上で定義した図は、本文から参照すると @einstein-portrait のように図番号付きのリンクへ展開されます。自動ID・参照の書き方・ID一覧レポートなど詳しい仕組みは「クロスリファレンス」の章で解説します。
+図番号は表・リストにも同じ要領で付けられます。たとえば上で定義した図は、本文から参照すると @einstein-portrait のように図番号付きのリンクへ展開されます。自動ID・参照の書き方・重複チェックなど詳しい仕組みは「クロスリファレンス」の章で解説します。
 
 ### `.pictures` — 写真グリッド
 

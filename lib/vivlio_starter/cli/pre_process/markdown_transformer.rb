@@ -333,6 +333,40 @@ module VivlioStarter
           "#{line.chomp.sub(/[ \t]+\z/, '')}  \n"
         end
 
+        # 単独行の {.aki} / {.aki2} を縦余白マクロ @vspace に置換する。
+        # {.aki} は本来「段落末に付けて段落へ class を与える」インライン記法のため、
+        # それ自身だけを 1 行に書くと（付与先の本文が無いので）VFM が "{.aki}" を
+        # そのまま文字として出力してしまう。空行用途（<br> のように 1 行空ける）で
+        # 書かれた単独行は @vspace:1lh（aki2 は 2lh）へ置き換え、独立段落となるよう
+        # 直後に空行を補う。段落末に付いた {.aki} は対象外（post_replace でクラス化）。
+        # コードフェンス内は対象外。
+        def convert_standalone_spacing(content)
+          lines = content.lines
+          fence = nil
+          out = []
+          lines.each_with_index do |line, i|
+            stripped = line.lstrip
+            if stripped.start_with?('```', '~~~')
+              marker = stripped[/\A([`~]+)/, 1]
+              if fence.nil? then fence = marker
+              elsif stripped.start_with?(fence) then fence = nil
+              end
+              out << line
+              next
+            end
+            m = fence.nil? && line.strip.match(/\A\{\.(aki2?)\}\z/)
+            prev_blank = out.empty? || out.last.strip.empty?
+            if m && prev_blank
+              out << "@vspace:#{m[1] == 'aki2' ? 2 : 1}lh\n"
+              next_line = lines[i + 1]
+              out << "\n" unless next_line.nil? || next_line.strip.empty?
+            else
+              out << line
+            end
+          end
+          out.join
+        end
+
         # インラインコード内の HTML 予約文字をエスケープする
         def escape_inline_code_html(line)
           MarkdownUtils.escape_inline_code_html(line)

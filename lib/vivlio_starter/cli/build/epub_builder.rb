@@ -1303,7 +1303,8 @@ module VivlioStarter
         # notice / note は PDF では ::before ラベルを持たないが、Kindle では囲み枠＋ラベルへ劣化させる。
         ADMONITION_LABELS = {
           'tip' => '【TIP】', 'memo' => '【MEMO】', 'column' => '【COLUMN】',
-          'notice' => '【NOTICE】', 'note' => '【NOTE】'
+          'notice' => '【NOTICE】', 'note' => '【NOTE】',
+          'output' => '【OUTPUT】', 'terminal' => '【TERMINAL】'
         }.freeze
 
         # @param html_files [Array<String>] HTML ファイルパスの配列

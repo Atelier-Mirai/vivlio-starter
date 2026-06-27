@@ -100,6 +100,33 @@ module VivlioStarter
           assert_equal text, restore_code_spans(protected_text, spans)
         end
 
+        # 入れ子（後から退避したインラインの original が先のフェンスのプレースホルダを
+        # 内包する）でも、復元が LIFO のためプレースホルダが残留しない（回帰テスト）。
+        # FIFO だと `__VS_CODE_SPAN__0__` が本文へ漏れ出す。
+        def test_restore_code_spans_lifo_for_nested_placeholders
+          # 行を跨ぐバッククォート対が、フェンス置換後のプレースホルダを巻き込む構図
+          text = "`a\n```ruby\nx\n```\nb`\n"
+          protected_text, spans = extract_code_spans(text)
+
+          assert_operator spans.size, :>=, 2, '入れ子（フェンス＋それを内包するインライン）が成立する前提'
+          restored = restore_code_spans(protected_text, spans)
+
+          assert_equal text, restored, 'LIFO 復元で入れ子のプレースホルダも完全に巻き戻る'
+          refute_match(/__VS_CODE_SPAN__\d+__/, restored, 'プレースホルダが本文へ漏れ出さない')
+        end
+
+        # 章原稿規模（フェンス多数＋行跨ぎインライン）でも往復が完全一致する（回帰テスト）。
+        def test_extract_and_restore_code_spans_round_trip_identity
+          text = +''
+          5.times { |i| text << "段落#{i} `inline#{i}`\n\n```\ncode #{i}\n```\n\n" }
+          # 行跨ぎのバッククォート対でプレースホルダ巻き込みを誘発
+          text << "`open\n```\nfenced\n```\nclose`\n"
+
+          protected_text, spans = extract_code_spans(text)
+
+          assert_equal text, restore_code_spans(protected_text, spans)
+        end
+
         # =================================================================
         # detect_language
         # =================================================================
@@ -340,6 +367,51 @@ module VivlioStarter
           out = convert_definition_lists(md)
 
           assert_equal md, out, '定義行（: ）を伴わない地の文は変換されない'
+        end
+
+        # =================================================================
+        # convert_standalone_spacing（単独行 {.aki} → @vspace）
+        # =================================================================
+        def test_convert_standalone_spacing_aki_to_vspace
+          md = "前の段落。\n\n{.aki}\n次の段落。\n"
+          out = convert_standalone_spacing(md)
+
+          assert_equal "前の段落。\n\n@vspace:1lh\n\n次の段落。\n", out
+        end
+
+        def test_convert_standalone_spacing_aki2_to_vspace
+          md = "前。\n\n{.aki2}\n次。\n"
+          out = convert_standalone_spacing(md)
+
+          assert_equal "前。\n\n@vspace:2lh\n\n次。\n", out
+        end
+
+        def test_convert_standalone_spacing_keeps_trailing_marker
+          md = "文章の終わり。{.aki}\n"
+          out = convert_standalone_spacing(md)
+
+          assert_equal md, out, '段落末（同一行末尾）の {.aki} はクラス付与用なので変換しない'
+        end
+
+        def test_convert_standalone_spacing_keeps_marker_attached_to_prev_line
+          md = "本文\n{.aki}\n"
+          out = convert_standalone_spacing(md)
+
+          assert_equal md, out, '直前が空行でない（本文に続く）{.aki} は trailing 添付なので変換しない'
+        end
+
+        def test_convert_standalone_spacing_skips_code_fence
+          md = "```\n{.aki}\n```\n"
+          out = convert_standalone_spacing(md)
+
+          assert_equal md, out, 'コードフェンス内の {.aki} は変換しない'
+        end
+
+        def test_convert_standalone_spacing_no_double_blank
+          md = "前。\n\n{.aki}\n\n次。\n"
+          out = convert_standalone_spacing(md)
+
+          assert_equal "前。\n\n@vspace:1lh\n\n次。\n", out, '直後が既に空行なら余分な空行を足さない'
         end
 
         # =================================================================

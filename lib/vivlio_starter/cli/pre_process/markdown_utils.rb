@@ -93,11 +93,18 @@ module VivlioStarter
           [protected_text, spans]
         end
 
-        # extract_code_spans で退避したコードスパンを元に戻す
+        # extract_code_spans で退避したコードスパンを元に戻す。
+        # extract はフェンス→インラインの順に退避するため、後から退避したインラインの
+        # original が先のフェンスのプレースホルダ（`__VS_CODE_SPAN__n__`）を内包しうる
+        # （例: 行を跨ぐバッククォートがフェンス置換後のプレースホルダを巻き込むケース）。
+        # この入れ子を正しく巻き戻すには、挿入の逆順（LIFO / reverse_each）で復元し、
+        # 外側（後から退避したもの）→内側の順に開く必要がある。挿入順（FIFO）だと、
+        # 内側プレースホルダを先に復元しようとして空振りし、後で外側を開いた瞬間に
+        # 未復元のプレースホルダ文字列が表面化して残留する。
         def restore_code_spans(text, spans)
           restored = text.to_s
-          # gsub の置換文字列として解釈されないよう Regexp.last_match を使う
-          spans.each do |placeholder, original|
+          # gsub の置換文字列として解釈されないようブロック形式で戻す
+          spans.reverse_each do |placeholder, original|
             restored = restored.gsub(placeholder) { original }
           end
           restored

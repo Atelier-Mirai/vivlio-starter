@@ -77,6 +77,7 @@ module VivlioStarter
           normalize_html_block_boundaries!
           escape_inline_code_html!
           transform_text_right_inlines!
+          transform_spacing_markers!
           transform_text_align_containers!
           transform_book_cards!
           transform_table_rotations!
@@ -326,6 +327,13 @@ module VivlioStarter
           before = context.content.dup
           context.content = MarkdownTransformer.convert_definition_lists(context.content)
           Common.log_success('定義リストを変換しました') if context.content != before
+        end
+
+        # 単独行の {.aki} / {.aki2} を縦余白マクロ @vspace へ置換する
+        def transform_spacing_markers!
+          before = context.content.dup
+          context.content = MarkdownTransformer.convert_standalone_spacing(context.content)
+          Common.log_success('単独行の {.aki} を @vspace へ変換しました') if context.content != before
         end
 
         # 外部リンクを脚注化して本文を整える
