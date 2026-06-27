@@ -151,7 +151,6 @@
 }
 
 /* 本文の二段組ブロック */
-.two-col,
 .text-2dan {
   column-count: 2;
   column-gap: 1.2em;
@@ -185,8 +184,7 @@
 .text-img,
 .img-text2,
 .text2-img,
-.text-2dan,
-.two-col {
+.text-2dan {
   /* 周囲との視覚的な余白（上下 0.5 行高） */
   margin-block: 0.5lh;
 }
@@ -225,11 +223,20 @@
   text-align: right;
 }
 
-/* テキスト右寄せ（幅を変えずに text-align のみ適用）
+/* テキスト整列（幅を変えずに text-align のみ適用）
    ブロック記法: :::{.text-right} ... :::
-   インライン記法: 段落末尾に {.text-right} を付与 */
+   インライン記法: 段落末尾に {.text-right} を付与
+   text-center / text-left も対称に用意（使い方は同じ） */
 .text-right {
   text-align: right;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
 }
 
 /* 図版・画像以外のブロックは余白で位置合わせする */
@@ -298,7 +305,6 @@
 }
 
 /* 段組内の分割回避 */
-.two-col>*,
 .text-2dan>* {
   break-inside: avoid;
 }

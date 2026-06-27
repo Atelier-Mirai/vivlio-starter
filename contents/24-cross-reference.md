@@ -167,9 +167,8 @@ end
 
 | 予約ID | マクロの役割 |
 | :--- | :--- |
-| `@div` / `@divend` | `:::{.class}` コンテナの短縮記法 |
-| `@nega` / `@posi` | 上下方向への余白挿入（`@nega:3`, `@posi:5` のように数値を続ける） |
-| `@clear` | 浮動要素の回り込み解除 |
+| `@vspace` | 縦方向の余白挿入（`@vspace:1.5lh` / `@vspace:10`（単位省略時は mm）。負値で上に詰める） |
+| `@nega` / `@posi` | 上下方向への余白挿入（`@vspace` の旧記法。`@nega:3`, `@posi:5` のように数値を続ける） |
 | `@comment` / `@commend` | 編集者コメント囲み（`@comment:...@commend`） |
 
 #### `post_replace_list.yml` 絶対配置マクロの予約接頭辞（**Planned**）

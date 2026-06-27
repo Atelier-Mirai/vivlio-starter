@@ -14,9 +14,9 @@
   "devDependencies": {
     "@vivliostyle/cli": "11.0.2",
     "@vivliostyle/vfm": "^2.7.0",
-    "playwright": "^1.50.0",
-    "stylelint": "^16.8.0",
-    "stylelint-config-standard": "^36.0.0"
+    "playwright": "^1.60.0",
+    "stylelint": "^17.13.0",
+    "stylelint-config-standard": "^40.0.0"
   },
   "overrides": {
     "prismjs": ">=1.30.0",
@@ -29,7 +29,7 @@
     "trim": "0.0.3"
   },
   "dependencies": {
-    "@vivliostyle/core": "^2.40.0",
+    "@vivliostyle/core": "^2.43.2",
     "minimatch": "^9.0.9"
   }
 }

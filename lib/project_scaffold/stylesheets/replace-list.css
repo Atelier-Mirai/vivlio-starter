@@ -10,8 +10,8 @@
    定義クラス:
      - .hen-comment    : 編集者コメント（@comment: ... @commend）
      - .kaiwa          : 会話文（【先生X】【生徒X】）
-     - .kaiwa.sense    : 先生ラベル
-     - .kaiwa.deshi    : 生徒ラベル
+     - .kaiwa.sensei   : 先生ラベル
+     - .kaiwa.seito    : 生徒ラベル
      - li.aokome       : 青コメ（▶ で始まる項目）
      - li.akakome      : 赤コメ（❶❷❸ で始まる項目）
      - .figure-guides  : `@lu/@ru/@ld/@rd` など絶対配置ガイド線の親コンテナ
@@ -27,7 +27,7 @@
   border-radius: 0.2em;
 }
 
-/* 会話文（【先生X】【生徒X】→ <p class="kaiwa sense|deshi X">） */
+/* 会話文（【先生X】【生徒X】→ <p class="kaiwa sensei|seito X">） */
 .kaiwa {
   position: relative;
   margin-block: 0.4lh;
@@ -42,11 +42,11 @@
   font-family: var(--font-header);
   font-weight: bold;
 }
-.kaiwa.sense::before {
+.kaiwa.sensei::before {
   color: #1565c0;
   content: "先生: ";
 }
-.kaiwa.deshi::before {
+.kaiwa.seito::before {
   color: #c62828;
   content: "生徒: ";
 }

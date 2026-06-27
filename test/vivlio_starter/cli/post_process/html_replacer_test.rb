@@ -55,25 +55,25 @@ module VivlioStarter
 
         def test_preserves_multiple_macros_inside_pre
           html = <<~HTML
-            <pre><code class="language-markdown">@div:memo
+            <pre><code class="language-markdown">:::{.memo}
             1 行だけクラス付き div で囲みたいとき。
-            @divend
+            :::
             </code></pre>
-            @divend
+            :::
           HTML
           rules = [
-            { 'f' => '@div:([a-z0-9_\\- ]+)', 'r' => '<div class="$1">' },
-            { 'f' => '@divend', 'r' => '</div>' }
+            { 'f' => ':{3,}\\s*\\{\\.?([a-z0-9.\\-_\\s]+)\\}', 'r' => '<div class="$1">' },
+            { 'f' => ':{3,}', 'r' => '</div>' }
           ]
 
           out = run_rules(html, rules)
 
-          # <pre> 内の @div:memo / @divend は原文のまま残る
-          assert_includes out, '@div:memo'
+          # <pre> 内の :::{.memo} / ::: は原文のまま残る
+          assert_includes out, ':::{.memo}'
           pre_body = out[/<pre>.*?<\/pre>/m]
-          assert_includes pre_body, '@divend'
-          # <pre> の外の @divend は置換される
-          refute_match(/<\/pre>\s*@divend/m, out)
+          assert_includes pre_body, ':::'
+          # <pre> の外の ::: は置換される
+          refute_match(%r{</pre>\s*:::}m, out)
           assert_match(%r{</pre>\s*</div>}m, out)
         end
 
@@ -103,14 +103,14 @@ module VivlioStarter
         # =============================================================
 
         def test_preserves_inline_code_content
-          html = '<p>本文中で <code>@clear</code> と書くと、段組を解除します。</p>'
-          rules = [{ 'f' => '@clear', 'r' => '<div class="floatclear"></div>' }]
+          html = '<p>本文中で <code>@vspace:10</code> と書くと、下に余白を入れます。</p>'
+          rules = [{ 'f' => '@vspace:10', 'r' => '<div style="margin-top:10mm"></div>' }]
 
           out = run_rules(html, rules)
 
           # インラインコードは温存
-          assert_includes out, '<code>@clear</code>'
-          refute_includes out, '<code><div class="floatclear"></div></code>'
+          assert_includes out, '<code>@vspace:10</code>'
+          refute_includes out, '<code><div style="margin-top:10mm"></div></code>'
         end
 
         # =============================================================
@@ -138,30 +138,30 @@ module VivlioStarter
         # タグ定義（属性値を含む）の内側では置換しない
         # =============================================================
 
-        # `@clear` などのマクロが HeadingProcessor によって data-heading 属性に
-        # コピーされた後、HtmlReplacer 最終パスが属性値内の `@clear` を
-        # 置換してしまい、`data-heading="... <div class=\"floatclear\"></div> ..."`
+        # `@vspace` などのマクロが HeadingProcessor によって data-heading 属性に
+        # コピーされた後、HtmlReplacer 最終パスが属性値内の `@vspace:10` を
+        # 置換してしまい、`data-heading="... <div style=\"margin-top:10mm\"></div> ..."`
         # となって属性値内の `"` で HTML 解析が破綻する事故を防ぐ。
         def test_text_only_rule_does_not_substitute_inside_attribute_values
-          html = '<h3 id="x" data-heading="回り込みの解除 @clear" data-h3="回り込みの解除 @clear">回り込みの解除 <code>@clear</code></h3>'
-          rules = [{ 'f' => '@clear', 'r' => '<div class="floatclear"></div>' }]
+          html = '<h3 id="x" data-heading="余白の調整 @vspace:10" data-h3="余白の調整 @vspace:10">余白の調整 <code>@vspace:10</code></h3>'
+          rules = [{ 'f' => '@vspace:10', 'r' => '<div style="margin-top:10mm"></div>' }]
 
           out = run_rules(html, rules)
 
-          assert_includes out, 'data-heading="回り込みの解除 @clear"'
-          assert_includes out, 'data-h3="回り込みの解除 @clear"'
-          assert_includes out, '<code>@clear</code>'
+          assert_includes out, 'data-heading="余白の調整 @vspace:10"'
+          assert_includes out, 'data-h3="余白の調整 @vspace:10"'
+          assert_includes out, '<code>@vspace:10</code>'
         end
 
         def test_text_only_rule_substitutes_plain_text_only
-          html = '<h3 data-heading="回り込みの解除 @clear">回り込みの解除 <code>@clear</code></h3><p>本文中の @clear は展開される。</p>'
-          rules = [{ 'f' => '@clear', 'r' => '<div class="floatclear"></div>' }]
+          html = '<h3 data-heading="余白の調整 @vspace:10">余白の調整 <code>@vspace:10</code></h3><p>本文中の @vspace:10 は展開される。</p>'
+          rules = [{ 'f' => '@vspace:10', 'r' => '<div style="margin-top:10mm"></div>' }]
 
           out = run_rules(html, rules)
 
-          assert_includes out, 'data-heading="回り込みの解除 @clear"'
-          assert_includes out, '<code>@clear</code>'
-          assert_match(%r{<p>本文中の <div class="floatclear"></div> は展開される。</p>}, out)
+          assert_includes out, 'data-heading="余白の調整 @vspace:10"'
+          assert_includes out, '<code>@vspace:10</code>'
+          assert_match(%r{<p>本文中の <div style="margin-top:10mm"></div> は展開される。</p>}, out)
         end
 
         def test_text_only_rule_does_not_confuse_attribute_with_similar_text
@@ -188,8 +188,8 @@ module VivlioStarter
 
         def test_returns_changed_false_when_only_protected_matches
           # <pre>/<code>/属性値 内だけにマッチするルールは、実質「無変更」で返る
-          html = "<p data-x=\"@clear\">普通の段落</p>\n<pre><code>@clear</code></pre>\n"
-          rules = [{ 'f' => '@clear', 'r' => '<div class="floatclear"></div>' }]
+          html = "<p data-x=\"@vspace:10\">普通の段落</p>\n<pre><code>@vspace:10</code></pre>\n"
+          rules = [{ 'f' => '@vspace:10', 'r' => '<div style="margin-top:10mm"></div>' }]
 
           result = nil
           with_html(html) do |path|
@@ -206,7 +206,7 @@ module VivlioStarter
         def test_rule_mode_classification
           assert_equal :code_aware,
                        HtmlReplacer.rule_mode('<span class="token comment"([^>]*)>#←')
-          assert_equal :text_only, HtmlReplacer.rule_mode('@clear')
+          assert_equal :text_only, HtmlReplacer.rule_mode('@vspace:(-?\\d+)')
           assert_equal :text_only, HtmlReplacer.rule_mode('@posi:(\\d+)')
           assert_equal :text_only, HtmlReplacer.rule_mode(':{3,}')
           assert_equal :text_only, HtmlReplacer.rule_mode('〘')

@@ -218,15 +218,37 @@ li :is(ul, ol) {
 }
 
 /* -------------------------------------------------------------
+   定義リスト（用語 / : 説明 → <dl class="def-list">）
+   用語＝太字の独立行、説明＝字下げ、エントリ間に 1/4 行のアキ。
+   ------------------------------------------------------------- */
+.def-list {
+  margin-block: 0.5lh;
+  margin-inline: 0;
+}
+
+.def-list dt {
+  margin-block-start: 0.25lh; /* エントリ間（前の説明との間）に 1/4 行アキ */
+  font-weight: 700;
+}
+
+.def-list dt:first-child {
+  margin-block-start: 0;
+}
+
+.def-list dd {
+  margin-block: 0;
+  margin-inline-start: 1.5em; /* 説明は字下げ */
+}
+
+.def-list dd + dd {
+  margin-block-start: 0.25lh; /* 同一用語に複数の説明があるとき、説明（dd）間に 1/4 行アキ */
+}
+
+/* -------------------------------------------------------------
    改ページ
    ------------------------------------------------------------- */
 hr.pagebreak {
   break-after: page;
-  visibility: hidden;
-}
-
-hr.blankline {
-  height: var(--base-line-height);
   visibility: hidden;
 }
 

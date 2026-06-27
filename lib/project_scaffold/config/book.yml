@@ -40,9 +40,9 @@ book:
   # ----------------------------
   series: "「技術書典20 新刊」" # 連載名
   release: "令和八年四月二十六日" # 発行日
-  publisher: "{{PUBLISHER}}" # 日光企画 ねこのしっぽ
+  publisher: "{{PUBLISHER}}" # 発行者・サークル名（例: アトリヱ未來）。本を世に出す主体。印刷所とは別
   contact: "contact@atelier-mirai.net" # 連絡先
-  author: "{{AUTHOR}}" # 著者名
+  author: "{{AUTHOR}}" # 著者名（本名・ペンネーム）
   language: "ja" # 言語
   isbn: "" # 任意（独自ISBN取得の場合。Kindle は ASIN 自動割り当て）
 
@@ -135,7 +135,7 @@ typography:
   # - 明朝体:     Zen Old Mincho
   # - ゴシック体: Zen Kaku Gothic New
   # - 丸ゴシック体: Zen Maru Gothic
-  # - プログラミング用フォント: hackgen35
+  # - プログラミング用フォント: HackGen35 Console NF
   # ※ Chromium が CFF ベース OTF / 可変フォントを Type 3 として PDF に
   #   埋め込む問題を避けるため、いずれも TrueType アウトラインの静的 TTF。
   # ※ 上記以外のフォント名を指定すると Google Fonts から自動取得を試みます。
@@ -163,7 +163,7 @@ typography:
   # コード
   # ----------------------------
   code:
-    font: hackgen35
+    font: HackGen35 Console NF
 
   # ----------------------------
   # ノンブル（ページ番号）
@@ -202,12 +202,12 @@ output:
   # ----------------------------
   # 出力フォーマット
   # ----------------------------
-  targets: pdf # pdf / print_pdf / epub / kindleから選択可
+  # targets: pdf # pdf / print_pdf / epub / kindleから選択可
   # 例:
   # targets: pdf                          # 閲覧用PDFを指定
   # targets: pdf, print_pdf               # 閲覧用PDF, 印刷所入稿用PDFを指定
   # targets: pdf, print_pdf, epub         # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUBを指定
-  # targets: pdf, print_pdf, epub, kindle # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUB, Kindle用EPUBを指定
+  targets: pdf, print_pdf, epub, kindle # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUB, Kindle用EPUBを指定
 
   # ----------------------------
   # ファイル名規則

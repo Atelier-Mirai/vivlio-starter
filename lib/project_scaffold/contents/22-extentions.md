@@ -108,7 +108,7 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 
 ### `.note` — Note
 
-補足説明や注意事項を上下の罫線で区切って表示します。
+補足説明や注意事項を、上下のアクセントカラーの線で挟んで表示します。
 
 ```markdown
 :::{.note}
@@ -188,17 +188,63 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 ![代替テキスト](画像パス)
 ```
 
+たとえば次のように、幅 50%・中央寄せで配置してみます。{.aki}
+
+```markdown
+![アインシュタイン](Einstein.webp){width=50% align=center}
+```
+
+実行結果は次のようになります。{.aki}
+
+![アインシュタイン](Einstein.webp){width=50% align=center}
+
+### 画像にキャプション（見出し）と図番号を付ける
+
+画像の直前に `** タイトル **`（行頭・行末を `**` で囲む）のキャプション行を置くと、画像のキャプション（見出し）として表示されます。
+
+```markdown
+** アインシュタインの肖像 **
+![アインシュタイン](Einstein.webp){width=40% align=center}
+```
+
+実行結果は次のようになります。{.aki}
+
+** アインシュタインの肖像 **
+![アインシュタイン](Einstein.webp){width=40% align=center}
+
+さらにタイトルの末尾に `@ラベルID` を付けると、「**図 2-1: アインシュタインの肖像**」のように章番号付きの**図番号**が自動で割り振られ、本文中から `@ラベルID` で参照できるようになります。
+
+```markdown
+** アインシュタインの肖像 @einstein-portrait **
+![アインシュタイン](Einstein.webp){width=40% align=center}
+```
+
+実行結果は次のようになります（図番号が自動で付きます）。{.aki}
+
+** アインシュタインの肖像 @einstein-portrait **
+![アインシュタイン](Einstein.webp){width=40% align=center}
+
+図番号は表・リストにも同じ要領で付けられます。たとえば上で定義した図は、本文から参照すると @einstein-portrait のように図番号付きのリンクへ展開されます。自動ID・参照の書き方・ID一覧レポートなど詳しい仕組みは「クロスリファレンス」の章で解説します。
+
 ### `.pictures` — 写真グリッド
 
 複数の画像をグリッド状に並べます。画像数に応じて列数が自動調整されます。
 
 ```markdown
 :::{.pictures}
-![alt](a.webp)
-![alt](b.webp)
-![alt](c.webp)
+![ファインマン](feynman.webp)
+![相対性理論](relativity.webp)
+![量子](quantum.webp)
 :::
 ```
+
+実行結果は次のようになります。{.aki}
+
+:::{.pictures}
+![ファインマン](feynman.webp)
+![相対性理論](relativity.webp)
+![量子](quantum.webp)
+:::
 
 ### `.image-group` — 2枚横並び
 
@@ -206,10 +252,17 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 
 ```markdown
 :::{.image-group}
-![before](before.webp){width=40%}
-![after](after.webp)
+![メートル原器](prototype_meter.webp){width=30%}
+![キログラム原器](kilogram.webp)
 :::
 ```
+
+実行結果は次のようになります。{.aki}
+
+:::{.image-group}
+![メートル原器](prototype_meter.webp){width=30%}
+![キログラム原器](kilogram.webp)
+:::
 
 ### `.img-text` / `.text-img` — 画像＋本文の横並び
 
@@ -226,30 +279,38 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 
 ```markdown
 :::{.img-text2}
-![](vs_logo_outline.svg)
+![アインシュタイン](Einstein.webp)
 
-ここに説明文を書きます。画像の右側に表示されます。
+アルベルト・アインシュタインは、特殊相対性理論と一般相対性理論を提唱した物理学者です。`.img-text2` では画像と本文が 1:2 の比率で並びます。
 :::
 ```
+
+実行結果は次のようになります。{.aki}
+
+:::{.img-text2}
+![アインシュタイン](Einstein.webp)
+
+アルベルト・アインシュタインは、特殊相対性理論と一般相対性理論を提唱した物理学者です。`.img-text2` では画像と本文が 1:2 の比率で並びます。
+:::
 
 ### `.sideimage-right` / `.sideimage-left` — サイドイメージ
 
-本文の横に画像を配置します。`figure` タグを使った回り込みレイアウトです。
+本文の横に画像を配置します。`figure` タグを使った回り込みレイアウトです。`.sideimage-right` は画像を右、`.sideimage-left` は画像を左に置きます。なお `.sideimage-left` は `.sideimage` の別名（エイリアス）で、どちらを書いても同じ結果になります。画像の `{width=NN%}` で画像側の幅の比率を調整できます。
 
 ```markdown
 :::{.sideimage-right}
-説明文がここに入ります。画像の左側に表示されます。
+アルベルト・アインシュタインは、特殊相対性理論と一般相対性理論を提唱したことで知られる物理学者です。本文はこのように画像の左側へ回り込みます。`.sideimage-right` では画像が右側に配置されます。
 
-![](vs_logo_outline.svg){width=20%}
+![アインシュタイン](Einstein.webp){width=30%}
 :::
 ```
 
-実行例は次のようになります。
+実行結果は次のようになります。{.aki}
 
 :::{.sideimage-right}
-説明文がここに入ります。画像の左側に表示されます。
+アルベルト・アインシュタインは、特殊相対性理論と一般相対性理論を提唱したことで知られる物理学者です。本文はこのように画像の左側へ回り込みます。`.sideimage-right` では画像が右側に配置されます。
 
-![](vs_logo_outline.svg){width=20%}
+![アインシュタイン](Einstein.webp){width=30%}
 :::
 
 ### 余白の調整（`.gap-s` / `.gap-m` / `.gap-l`）
@@ -258,42 +319,46 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 
 ```markdown
 :::{.img-text .gap-s}
-![画像説明](vs_logo_outline.svg)
+![ノート](note.webp)
+小さな余白（0.5rem）で配置
+:::
+
+:::{.img-text .gap-m}
+![ノート](note.webp)
+標準の余白（1rem）で配置
+:::
+
+:::{.img-text .gap-l}
+![ノート](note.webp)
+大きな余白（1.5rem）で配置
+:::
+```
+
+実行結果は次のようになります（余白が段階的に広がります）。{.aki}
+
+:::{.img-text .gap-s}
+![ノート](note.webp)
 
 小さな余白（0.5rem）で配置
 :::
 
 :::{.img-text .gap-m}
-![画像説明](vs_logo_outline.svg)
+![ノート](note.webp)
 
 標準の余白（1rem）で配置
 :::
 
 :::{.img-text .gap-l}
-![画像説明](vs_logo_outline.svg)
+![ノート](note.webp)
 
 大きな余白（1.5rem）で配置
 :::
-```
 
 ## 段組
 
-### `.two-col` — 2段組
+### `.text-2dan` — 二段組
 
-内容を2列に分けて表示します。用語集や短い項目の一覧に便利です。
-
-```markdown
-:::{.two-col}
-- 項目A
-- 項目B
-- 項目C
-- 項目D
-:::
-```
-
-### `.text-2dan` — 二段組テキスト
-
-長いテキストを雑誌風の二段組で表示します。`column-count: 2` / `column-gap: 1.2em` で設定されます。
+長いテキストを雑誌風の二段組（2列）で流し込みます（`column-count: 2` / `column-gap: 1.2em`）。各要素は `break-inside: avoid` により段をまたいで分割されません。
 
 ```markdown
 :::{.text-2dan}
@@ -303,6 +368,14 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 :::
 ```
 
+実行結果は次のようになります。{.aki}
+
+:::{.text-2dan}
+これは二段組で表示されるテキストです。長い文章を効率的に配置でき、雑誌のようなレイアウトを実現できます。
+
+各要素は break-inside: avoid で段をまたいで分割されるのを防ぎます。
+:::
+
 ## 表のレイアウト
 
 ### `.long-table` — 長い表
@@ -311,13 +384,15 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 
 ```markdown
 :::{.long-table}
-| 列1 | 列2 | 列3 |
-|---|---|---|
-| ... | ... | ... |
+| 名前 | 年齢 | 職種 | 部署 | 勤続年数 | スキルレベル | リモート勤務 |
+|:---:|:---:|:---:|:---|:---:|:---:|:---:|
+| 太郎 | 25 | エンジニア | 開発1課 | 2年 | ★★☆☆☆ | 可 |
+| 花子 | 30 | デザイナー | UXデザイン部 | 5年 | ★★★★☆ | 一部可 |
+| 次郎 | 35 | マネージャー | プロダクト部 | 8年 | ★★★★☆ | 不可 |
 :::
 ```
 
-次の例では、7列の表を `.long-table` で表示しています。
+表示結果は次のようになります。
 
 :::{.long-table}
 | 名前 | 年齢 | 職種 | 部署 | 勤続年数 | スキルレベル | リモート勤務 |
@@ -326,18 +401,6 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 | 花子 | 30 | デザイナー | UXデザイン部 | 5年 | ★★★★☆ | 一部可 |
 | 次郎 | 35 | マネージャー | プロダクト部 | 8年 | ★★★★☆ | 不可 |
 :::
-
-### `.table-scroll` — 横スクロール表
-
-列数が多く横幅が広い表に適用します。HTML プレビュー時に横スクロールが有効になります（PDF では折り返し）。
-
-```markdown
-:::{.table-scroll}
-| 列1 | 列2 | 列3 | 列4 | 列5 | 列6 |
-|---|---|---|---|---|---|
-| ... | ... | ... | ... | ... | ... |
-:::
-```
 
 ### `.table-rotate` — 表を90度回転
 
@@ -384,7 +447,7 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 
 ## テキストの配置
 
-### `.align-left` / `.align-center` / `.align-right` — 寄せ
+### `.align-left` / `.align-center` / `.align-right`
 
 ブロック単位でテキストを寄せて表示します。
 
@@ -402,7 +465,21 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 :::
 ```
 
-### `.text-right` — 右寄せ（インライン・ブロック共用）
+実行結果は次のようになります。{.aki}
+
+:::{.align-left}
+左寄せで表示されるテキストブロックです。
+:::
+
+:::{.align-center}
+中央寄せで表示されるテキストブロックです。
+:::
+
+:::{.align-right}
+右寄せで表示されるテキストブロックです。
+:::
+
+### `.text-left` / `.text-center` / `.text-right`
 
 `.align-right` がブロック全体を右寄せにするのに対し、`.text-right` は **テキストの揃え方向だけ** を右寄せにします。段落・見出し・表のセルなど、要素の幅を変えずに文字を右端に揃えたいときに使います。
 
@@ -415,6 +492,13 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 :::
 ```
 
+実行結果は次のようになります。{.aki}
+
+:::{.text-right}
+この段落全体が右寄せで表示されます。
+複数行あっても、すべて右端に揃います。
+:::
+
 #### インライン記法（段落・見出し単位）
 
 段落や見出しの末尾に `{.text-right}` を付けると、その要素だけ右寄せになります。
@@ -425,18 +509,57 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 ### 右寄せの見出し {.text-right}
 ```
 
-#### `.align-right` との違い
+実行結果は次のようになります。{.aki}
 
-| クラス | `text-align` | 要素幅 | 主な用途 |
+右寄せにしたい段落です。{.text-right}
+
+### 右寄せの見出し {.text-right}
+
+
+#### `.align-right` と `text-right`の違い
+
+| クラス | 文字の配置| 要素幅 | 主な用途 |
 |---|---|---|---|
-| `.align-right` | right | `fit-content`（内容幅に縮む） | 画像・短いブロックを右端に寄せる |
-| `.text-right` | right | 変更なし（親要素の幅を維持） | 段落・見出しのテキストを右端に揃える |
+| `.align-right` | 右寄せ | `fit-content`（内容幅に縮む） | 画像・短いブロックを右端に寄せる |
+| `.text-right` | 右寄せ | 変更なし（親要素の幅を維持） | 段落・見出しのテキストを右端に揃える |
 
-:::{.note}
+:::{.notice}
 `.text-right` は `text-align: right` のみを適用します。ブロックの幅は変わらないため、段落テキストや表のセルなど、幅を維持したまま文字だけ右寄せにしたい場面に適しています。
 :::
 
+プレーンなテキストでは両者は同じに見えます（どちらも文字が右端に並ぶため）。違いがはっきり出るのは「枠の見える要素」や「短いブロック」に当てたときです。枠付きの `.column` に当てて見比べると、`.align-right` は**枠そのものが内容の幅に縮んで右端へ寄り**、`.text-right` は**枠は全幅のまま中の文字だけ右に揃う**のが分かります。{.aki}
+
+```markdown
+:::{.column .align-right}
+align-right：枠が内容の幅に縮んで右端へ寄ります
+:::
+
+:::{.column .text-right}
+text-right：本文の全幅のまま、文字だけ右端へ揃います
+:::
+```
+
+実行結果は次のようになります。{.aki}
+
+:::{.column .align-right}
+align-right：枠が内容の幅に縮んで右端へ寄ります
+:::
+
+:::{.column .text-right}
+text-right：本文の全幅のまま、文字だけ右端へ揃います
+:::
+
+:::{.tip}
+**使い分けの目安** — ブロックそのものの配置は `.align-*`、文字の揃えは `.text-*` と棲み分けると分かりやすいです。`.align-left` / `.align-center` / `.align-right` は `:::{.align-center}` のようにブロックを囲んで使い、`.text-left` / `.text-center` / `.text-right` は段落・見出し・表のセル末尾に `{.text-right}` を付けるインライン記法が中心です。
+:::
+
 ## インライン装飾
+
+<!--
+TODO: 会話文（対話）記法は記法・設定方式が未確定のため、いったん本文から外している。
+config/characters.yml 化（色・表示名・アイコン・吹き出しの左右レイアウト等）と
+記法（:::{.talk} ブロック内に yamada: … / 【山田】… を並べる案）を仕様確定してから書き直す。
+詳細は docs/specs/PLANNED.md「会話文（対話）記法の刷新と config/characters.yml 化」を参照。
 
 ### 会話文 【先生】【生徒】
 
@@ -451,6 +574,7 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 【先生A】Vivlio Starter の拡張記法は便利だよ。
 
 【生徒B】自分でカスタマイズもできるんですね！
+-->
 
 ### キーボード入力 `〘 〙`
 
@@ -563,6 +687,7 @@ end
 | `/* [!] コメント */` | `/* コメント */`（赤色） |
 
 `[!]`を使った例を次に示します。
+
 ````markdown
 ```ruby
 def greet(name)
@@ -620,6 +745,27 @@ end
 @sample-code のコードを参照してください。
 @data-table にデータをまとめました。
 ```
+
+### 実行例
+
+次のように出力されます。
+図や表、コードに自動で番号が振られていることを確かめて下さい。
+
+**サンプルコード @sample-code**
+```ruby
+def hello(name)
+  puts "Hello, #{name}!"
+end
+```
+
+**データテーブル @data-table**
+| 項目 | 値 |
+|------|-----|
+| A | 100 |
+| B | 200 |
+
+@sample-code のコードを参照してください。
+@data-table にデータをまとめました。
 
 ## 索引・用語集
 

@@ -11,7 +11,7 @@ require 'fileutils'
 
 SCAFFOLD = File.join(__dir__, 'lib/project_scaffold')
 
-DIRS = %w[contents stylesheets images config codes data templates].freeze
+DIRS = %w[contents stylesheets images config codes data templates covers].freeze
 
 DIRS.each do |dir|
   src = File.join(__dir__, dir)
@@ -42,6 +42,20 @@ prune_globs = %w[
 generated = Dir.glob(prune_globs.map { File.join(SCAFFOLD, it) })
 generated.each { FileUtils.rm_f(it) }
 puts "PRUNE 生成画像 #{generated.size} 件を除去 (派生バリアント＋中間生成物)"
+
+# ================================================================
+# covers/ の不要ファイル除去
+# ================================================================
+# covers/ には表紙画像 (*.png / *.jpg / *.svg) と説明 (*.md) のみを同梱する。
+# それ以外 (作業用の .pdf / .ai / .psd など) は scaffold に運ばない。
+covers_dir = File.join(SCAFFOLD, 'covers')
+if Dir.exist?(covers_dir)
+  keep_exts = %w[.png .jpg .jpeg .svg .md].freeze
+  removed = Dir.glob(File.join(covers_dir, '**', '*')).select { File.file?(it) }
+                                                      .reject { keep_exts.include?(File.extname(it).downcase) }
+  removed.each { FileUtils.rm_f(it) }
+  puts "PRUNE covers/ の不要ファイル #{removed.size} 件を除去 (#{keep_exts.join(' / ')} 以外)"
+end
 
 FILES = %w[README.md .gitignore package.json].freeze
 

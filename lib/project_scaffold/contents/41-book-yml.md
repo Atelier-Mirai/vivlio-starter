@@ -119,13 +119,13 @@ typography:
     font: Zen Maru Gothic       # コラム（丸ゴシック体）
     font_size: 8pt
   code:
-    font: hackgen35             # コードブロック
+    font: HackGen35 Console NF  # コードブロック
   folio:
     font: Zen Kaku Gothic New   # ページ番号
     placement: sides            # center: 中央 / sides: 左右
 ```
 
-標準添付書体は、明朝体（Zen Old Mincho）・ゴシック体（Zen Kaku Gothic New）・丸ゴシック体（Zen Maru Gothic）・プログラミング用フォント（hackgen35）の四種類です。これ以外のフォント名を指定すると、Google Fonts からの自動取得を試みます。
+標準添付書体は、明朝体（Zen Old Mincho）・ゴシック体（Zen Kaku Gothic New）・丸ゴシック体（Zen Maru Gothic）・プログラミング用フォント（HackGen35 Console NF）の四種類です。これ以外のフォント名を指定すると、Google Fonts からの自動取得を試みます。
 
 ### output — 出力設定
 

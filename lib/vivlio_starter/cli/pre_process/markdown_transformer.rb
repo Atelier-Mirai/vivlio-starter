@@ -223,6 +223,116 @@ module VivlioStarter
           [converted, opened_count, closed_count]
         end
 
+        # 標準 Markdown（pandoc / Markdown Extra 風）の定義リスト記法を <dl> に変換する。
+        #   用語           ← <dt>
+        #   : 説明         ← <dd>（複数並べれば複数 <dd>）
+        #     続き行       ← 直前 <dd> の続き（半角スペース字下げ）
+        # VFM は定義リストに未対応なので、検出ブロックを Kramdown でレンダリングして
+        # <dl class="def-list"> を生成する（class は索引/奥付の <dl> と衝突させないため）。
+        # 著者は空行なしのコンパクトな形でも書け、内部でエントリ間に空行を補ってから
+        # Kramdown に渡す。インラインコード `...` 等のインライン装飾は Kramdown が処理する。
+        # コードフェンス（``` 可変長）内は対象外。
+        def convert_definition_lists(content)
+          lines = content.lines
+          out = []
+          i = 0
+          fence_len = nil
+          while i < lines.size
+            line = lines[i]
+            stripped = line.lstrip
+            if stripped.start_with?('```')
+              run = stripped[/\A`+/].length
+              if fence_len.nil? then fence_len = run
+              elsif run >= fence_len then fence_len = nil
+              end
+              out << line
+              i += 1
+            elsif fence_len.nil? && definition_list_start?(lines, i)
+              j = definition_list_end(lines, i)
+              out << render_definition_list(lines[i...j].join)
+              i = j
+            else
+              out << line
+              i += 1
+            end
+          end
+          out.join
+        end
+
+        # 用語行: 行頭から始まる非空行で、定義行（: ）・継続行（字下げ）・他のブロック構文でないもの
+        def definition_term_line?(line)
+          s = line.to_s.chomp
+          return false if s.strip.empty?
+          return false if s.start_with?(' ', "\t") # 字下げ＝継続行
+          return false if s.match?(/\A:[ \t]/)      # 定義行
+          # 見出し / 引用 / 表 / コンテナ / フェンス / 生HTML / 箇条書き・番号リストは用語にしない
+          return false if s.match?(%r{\A(\#|>|\||:::|```|<|[-*+][ \t]|\d+[.)][ \t])})
+
+          true
+        end
+
+        # 定義行: 行頭が「: 」（コロン＋空白）で内容が続くもの
+        def definition_def_line?(line)
+          line.to_s.match?(/\A:[ \t]+\S/)
+        end
+
+        # 継続行: 字下げされた非空行（直前の定義の続き）
+        def definition_continuation_line?(line)
+          return false if line.to_s.strip.empty?
+
+          line.to_s.start_with?(' ', "\t")
+        end
+
+        # 用語行の直後が定義行なら、定義リストの開始
+        def definition_list_start?(lines, idx)
+          return false unless definition_term_line?(lines[idx])
+
+          definition_def_line?(lines[idx + 1])
+        end
+
+        # 定義リストブロックの終端（排他的 index）を返す。
+        # 定義/継続/（定義が続く）用語/内部空行（ルーズ形式の区切り）を取り込む。
+        def definition_list_end(lines, idx)
+          j = idx
+          while j < lines.size
+            line = lines[j]
+            if definition_def_line?(line) || definition_continuation_line?(line)
+              j += 1
+            elsif definition_term_line?(line) && definition_def_line?(lines[j + 1])
+              j += 1
+            elsif line.to_s.strip.empty? && definition_list_start?(lines, j + 1)
+              j += 1
+            else
+              break
+            end
+          end
+          j
+        end
+
+        # 定義リストブロックを Kramdown で <dl> 化する。
+        # Kramdown はエントリ間に空行を要求するため、用語行の前へ空行を補ってから渡す。
+        # また本書全体の hardLineBreaks: true（改行＝<br>）に揃えるため、説明（dd）内の
+        # 各行末へ Markdown のハード改行（半角スペース2つ）を補い、複数行の説明が
+        # <br> で改行されるようにする（空行＝エントリ区切りはそのまま残す）。
+        def render_definition_list(block)
+          normalized = []
+          block.lines.each do |line|
+            normalized << "\n" if definition_term_line?(line) && !normalized.empty? && !normalized.last.strip.empty?
+            normalized << hard_break_line(line)
+          end
+          html = MarkdownUtils.render_markdown_to_html(normalized.join).strip
+          html = html.sub(/\A<dl>/, '<dl class="def-list">')
+          "#{html}\n\n"
+        end
+
+        # 非空行の末尾を Markdown のハード改行（半角スペース2つ）へ正規化する。
+        # 既存の末尾空白は一度除いてから2つに揃えるため冪等。空行はそのまま返す。
+        def hard_break_line(line)
+          return line if line.strip.empty?
+
+          "#{line.chomp.sub(/[ \t]+\z/, '')}  \n"
+        end
+
         # インラインコード内の HTML 予約文字をエスケープする
         def escape_inline_code_html(line)
           MarkdownUtils.escape_inline_code_html(line)

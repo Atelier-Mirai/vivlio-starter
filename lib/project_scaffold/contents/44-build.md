@@ -277,7 +277,9 @@ Kindle 版は既定で `embed: false`（表紙を埋め込まない）です。K
 
 `.kpf` への変換には、Amazon が配布する **Kindle Previewer 3** に含まれる `kindlepreviewer` コマンドが必要です。未インストールの場合、Kindle 用の中間 EPUB までは生成されますが、`.kpf` への変換はスキップされ、その旨が警告として表示されます。
 
-Kindle Previewer は [Amazon KDP のサイト](https://kdp.amazon.co.jp/ja_JP/help/topic/G202131170)からダウンロードできます。インストール後、ターミナルで `which kindlepreviewer` を実行し、コマンドにパスが通っているか確認できます。パスが通っていない場合は、Kindle Previewer のインストール先（macOS では `/Applications/Kindle Previewer 3.app` 配下）にパスを通してください。
+macOS であれば、`vs doctor --fix` で Kindle Previewer 3 の導入（Homebrew cask）と `kindlepreviewer` コマンドのパス通し（アプリ内 CLI を呼ぶラッパー作成）をまとめて自動実行できます。`vs doctor` は導入状況の診断（`✅ kindlepreviewer` / 未導入時は 🟡 案内）も行います。
+
+手動で導入する場合は、[Amazon KDP のサイト](https://kdp.amazon.co.jp/ja_JP/help/topic/G202131170)から Kindle Previewer をダウンロードしてください。インストール後、ターミナルで `which kindlepreviewer` を実行し、コマンドにパスが通っているか確認できます。パスが通っていない場合は、Kindle Previewer のインストール先（macOS では `/Applications/Kindle Previewer 3.app` 配下）にパスを通してください。
 
 :::{.note}
 **生成された KPF の確認**
@@ -302,7 +304,7 @@ vs build 01-life      # ファイル名で指定
 
 章番号は自動的にゼロ埋めされるので、`1` と入力しても `01` として解釈されます。
 
-単章ビルドでは PDF のみが生成され、目次や索引などの全体構成ページは生成されません。原稿の体裁をすばやく確認したいときに活用してください。
+単章ビルドでは、`output.targets` の指定にかかわらず**閲覧用 PDF のみ**が生成されます（印刷入稿用 PDF・EPUB・Kindle は作られません）。目次や索引などの全体構成ページも生成されません。原稿の体裁をすばやく確認するための用途に絞った仕様です。印刷入稿用 PDF や EPUB・Kindle が必要なときは、章を指定せずに `vs build`（全章ビルド）を実行してください。
 
 
 ## コマンドラインオプション

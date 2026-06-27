@@ -158,8 +158,14 @@ module VivlioStarter
                   else
                     combined_title.empty? ? '書籍タイトル' : combined_title
                   end
-          author   = book_config&.author || '著者名'
-          language = book_config&.language || 'ja'
+          # vivliostyle 11 の config スキーマは author / language に
+          # 1 文字以上を要求する。著者名未入力（book.yml が空文字）でも EPUB を
+          # 生成できるよう、nil だけでなく空文字もプレースホルダへ寄せる
+          # （`||` は空文字を素通りさせるため不可）。
+          author   = book_config&.author
+          author   = '著者名' if author.to_s.strip.empty?
+          language = book_config&.language
+          language = 'ja' if language.to_s.strip.empty?
 
           # ページサイズを解決（vivliostyle.rb から移植）
           page_size = resolve_page_size(config)
@@ -387,8 +393,11 @@ module VivlioStarter
           theme = Common.cover_theme
           return nil unless theme
 
-          image_name = "cover_#{theme}.jpg"
-          File.join(covers_dir, image_name)
+          # 拡張子は .jpg / .jpeg のどちらでも表紙として受け付ける（.jpg 優先）。
+          # 実在する方を返し、いずれも無ければ既定の .jpg パスを返して
+          # 呼び出し側に「見つかりません」と判定させる。
+          candidates = %w[jpg jpeg].map { File.join(covers_dir, "cover_#{theme}.#{it}") }
+          candidates.find { File.exist?(it) } || candidates.first
         end
 
         # book.yml のページ設定から Vivliostyle CLI 用サイズ文字列を解決する

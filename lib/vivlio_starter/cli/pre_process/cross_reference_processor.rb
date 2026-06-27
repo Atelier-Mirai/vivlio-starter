@@ -33,8 +33,7 @@ module VivlioStarter
         # これらは @ID 参照ではなくシステム予約のマクロなので、
         # 未定義のラベルIDとして警告しない。
         RESERVED_MACRO_IDS = %w[
-          div divend
-          nega posi clear
+          vspace nega posi
           comment commend
         ].freeze
 

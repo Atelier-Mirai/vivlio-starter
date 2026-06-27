@@ -286,6 +286,63 @@ module VivlioStarter
         end
 
         # =================================================================
+        # convert_definition_lists
+        # =================================================================
+        def test_convert_definition_lists_basic
+          md = "用語1\n: 用語1の説明\n用語2\n: 用語2の説明\n"
+          out = convert_definition_lists(md)
+
+          assert_includes out, '<dl class="def-list">', '索引/奥付と衝突しない class 付きの dl になる'
+          assert_includes out, '<dt>用語1</dt>'
+          assert_includes out, '<dd>用語1の説明</dd>'
+          assert_includes out, '<dt>用語2</dt>'
+          assert_includes out, '<dd>用語2の説明</dd>'
+        end
+
+        def test_convert_definition_lists_multiple_dd_and_continuation
+          md = "Ruby\n: 開発者は Matz です。\n  動的型付けが特徴です。\n: 宝石の名前。\n"
+          out = convert_definition_lists(md)
+
+          # 複数の : 行 → 複数 <dd>
+          assert_equal 2, out.scan('<dd>').size, '用語に対し定義 2 つぶんの <dd> ができる'
+          # 字下げ継続行は直前の <dd> に取り込まれる
+          assert_includes out, '動的型付けが特徴です。'
+          assert_includes out, '<dd>宝石の名前。</dd>'
+        end
+
+        def test_convert_definition_lists_continuation_is_hard_break
+          md = "Ruby\n: 1行目の説明。\n  2行目の説明。\n"
+          out = convert_definition_lists(md)
+
+          # 本書の hardLineBreaks: true に合わせ、説明内の改行は <br> になる
+          assert_includes out, '<br', '複数行の説明は <br> で改行される'
+          assert_includes out, '1行目の説明。'
+          assert_includes out, '2行目の説明。'
+        end
+
+        def test_convert_definition_lists_renders_inline_code
+          md = "Ruby\n: `<ruby>` は振り仮名のタグです。\n"
+          out = convert_definition_lists(md)
+
+          assert_includes out, '<code>&lt;ruby&gt;</code>', '定義内のインラインコードは Kramdown が処理する'
+        end
+
+        def test_convert_definition_lists_skips_code_fence
+          md = "```markdown\n用語X\n: コード例なので変換しない\n```\n"
+          out = convert_definition_lists(md)
+
+          refute_includes out, '<dl', 'コードフェンス内の定義リスト記法は変換しない'
+          assert_includes out, ': コード例なので変換しない'
+        end
+
+        def test_convert_definition_lists_leaves_plain_prose
+          md = "これは普通の段落です。\n次の行も普通の文章です。\n"
+          out = convert_definition_lists(md)
+
+          assert_equal md, out, '定義行（: ）を伴わない地の文は変換されない'
+        end
+
+        # =================================================================
         # extract_caption_label
         # =================================================================
         def test_extract_caption_label_manual_id
@@ -574,14 +631,13 @@ module VivlioStarter
 
           # post_replace_list.yml の完全一致マクロ
           content = <<~MD
-            コンテナ短縮: @div:note ... @divend
-            余白: @nega:3 と @posi:5
-            解除: @clear
+            余白: @vspace:10 と @vspace:-10
+            旧記法: @nega:3 と @posi:5
             コメント: @comment:編集中@commend
           MD
           result = replace_references(content, labels_map, 'test.md')
 
-          %w[@div @divend @nega @posi @clear @comment @commend].each do |macro|
+          %w[@vspace @nega @posi @comment @commend].each do |macro|
             assert_includes result[:content], macro, "予約マクロ #{macro} が残っていない"
           end
           assert_empty result[:errors], "予約マクロで未定義警告が出てはいけない: #{result[:errors].inspect}"
@@ -613,7 +669,7 @@ module VivlioStarter
           %w[auto omakase id].each do |id|
             assert CrossReferenceProcessor.reserved_id?(id), "#{id} は予約ID"
           end
-          %w[div divend nega posi clear comment commend].each do |id|
+          %w[vspace nega posi comment commend].each do |id|
             assert CrossReferenceProcessor.reserved_id?(id), "#{id} は予約マクロID"
           end
           # 接頭辞＋数字グループ

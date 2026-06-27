@@ -143,5 +143,67 @@ module VivlioStarter
         end
       end
     end
+
+    # ================================================================
+    # Test: EPUB config メタデータのプレースホルダ化
+    # ================================================================
+    # vivliostyle 11 の config スキーマは author / language に 1 文字以上を要求する。
+    # book.yml で著者名が空（vs new で未入力）でも EPUB を生成できるよう、
+    # generate_epub_config! が空文字をプレースホルダへ寄せることを検証する回帰テスト。
+    # （CONFIG 定数を最小 book.yml で差し替えるため、teardown で canonical へ復元する）
+    # ================================================================
+    class EpubConfigMetadataTest < Minitest::Test
+      Builder = Build::EpubBuilder
+      LOG_METHODS = %i[log_info log_success log_warn log_error log_action log_summary].freeze
+
+      def setup
+        @saved_logs = LOG_METHODS.to_h { [it, Common.method(it)] }
+        LOG_METHODS.each { |name| Common.define_singleton_method(name) { |*, **| } }
+        @original_dir = Dir.pwd
+        @temp_dir = Dir.mktmpdir('vs-epub-meta')
+        Dir.chdir(@temp_dir)
+        FileUtils.mkdir_p('config')
+        %w[book catalog page_presets post_replace_list].each { File.write("config/#{it}.yml", '{}') }
+      end
+
+      def teardown
+        Dir.chdir(@original_dir)
+        FileUtils.rm_rf(@temp_dir)
+        # CONFIG 定数の汚染を canonical book.yml で復元（後続テストへの波及防止）
+        Common.reload_configuration!(silent: true) if File.file?('config/book.yml')
+        @saved_logs&.each { |name, m| Common.define_singleton_method(name, m) }
+      end
+
+      # 著者名が空文字でも author はプレースホルダへ寄せられ、空文字を出力しない
+      def test_should_substitute_placeholder_when_author_is_empty
+        write_book_yml(author: '', language: '')
+        content = File.read(Builder.generate_epub_config!(flavor: :epub))
+
+        assert_includes content, "author: '著者名'", '空 author はプレースホルダへ寄せる'
+        refute_match(/author:\s*'',/, content, 'author: \'\' を出力しない（vivliostyle 11 が拒否）')
+        assert_includes content, "language: 'ja'", '空 language は ja へ寄せる'
+      end
+
+      # 著者名が設定済みならその値をそのまま使う（プレースホルダで上書きしない）
+      def test_should_keep_author_when_present
+        write_book_yml(author: '早乙女 遙香', language: 'ja')
+        content = File.read(Builder.generate_epub_config!(flavor: :epub))
+
+        assert_includes content, "author: '早乙女 遙香'", '設定済み author はそのまま使う'
+      end
+
+      private
+
+      # 最小 book.yml を書き出して CONFIG を再読み込みする。
+      # cover 解決を避けるため output.epub.embed: false（cover 行はコメントになる）。
+      def write_book_yml(author:, language:)
+        config = {
+          'book'   => { 'main_title' => 'テスト書籍', 'subtitle' => '', 'author' => author, 'language' => language },
+          'output' => { 'epub' => { 'embed' => false } }
+        }
+        File.write('config/book.yml', config.to_yaml)
+        Common.reload_configuration!(silent: true)
+      end
+    end
   end
 end

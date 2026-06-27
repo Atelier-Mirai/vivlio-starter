@@ -140,10 +140,10 @@
   r: "</kbd>"
 # 会話：先生ラベルをクラス化
 - f: "<p[^>]*>【先生([^】]+)】"
-  r: <p class="kaiwa sense $1">
+  r: <p class="kaiwa sensei $1">
 # 会話：生徒ラベルをクラス化
 - f: "<p[^>]*>【生徒([^】]+)】"
-  r: <p class="kaiwa deshi $1">
+  r: <p class="kaiwa seito $1">
 # p が余分に div を囲っているのを除去（div 先頭を裸に）
 - f: <p>(<div class="[^"]+">)</p>
   r: "$1"

@@ -81,6 +81,7 @@ module VivlioStarter
           transform_book_cards!
           transform_table_rotations!
           transform_table_containers!
+          transform_definition_lists!
           transform_links!
           expose_container_footnotes!
           strip_index_markup!
@@ -318,6 +319,13 @@ module VivlioStarter
             Common.log_success("#{klass}ブロックの事前変換が完了しました（開始:#{opened}件 終了:#{closed}件）")
             context.content = MarkdownTransformer.convert_table_container_inner_markdown(context.content, klass)
           end
+        end
+
+        # 定義リスト記法（用語 / : 説明）を <dl class="def-list"> に変換する
+        def transform_definition_lists!
+          before = context.content.dup
+          context.content = MarkdownTransformer.convert_definition_lists(context.content)
+          Common.log_success('定義リストを変換しました') if context.content != before
         end
 
         # 外部リンクを脚注化して本文を整える
