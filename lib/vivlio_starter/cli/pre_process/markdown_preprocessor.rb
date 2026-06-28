@@ -82,6 +82,7 @@ module VivlioStarter
           transform_book_cards!
           transform_table_rotations!
           transform_table_containers!
+          normalize_container_fences!
           transform_definition_lists!
           transform_links!
           expose_container_footnotes!
@@ -327,6 +328,13 @@ module VivlioStarter
           before = context.content.dup
           context.content = MarkdownTransformer.convert_definition_lists(context.content)
           Common.log_success('定義リストを変換しました') if context.content != before
+        end
+
+        # :::{.class} コンテナ開始直後・終了直前に空行を補い、独立段落として整形させる
+        def normalize_container_fences!
+          before = context.content.dup
+          context.content = MarkdownTransformer.normalize_container_fence_spacing(context.content)
+          Common.log_success('コンテナ記法（:::）の前後に空行を補いました') if context.content != before
         end
 
         # 単独行の {.aki} / {.aki2} を縦余白マクロ @vspace へ置換する

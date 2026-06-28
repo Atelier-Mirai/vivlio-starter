@@ -367,6 +367,42 @@ module VivlioStarter
           out.join
         end
 
+        # :::{.class} コンテナの開始行直後・終了行直前に空行を補い、開始/終了行を独立段落にする。
+        # VFM は hardLineBreaks のため、空行が無いと開始 ":::{.output}" 行を直後の本文行と
+        # 1 つの <p> に結合してしまう。その状態で post_replace が ":::{.class}" を <div> へ
+        # 置換すると <p> が分割され、先頭の本文（クロスリファレンスのキャプション <strong> 等）が
+        # コンテナ直下に取り残されて wrap されず、見出しが素の強調表示になる不具合が起きる。
+        # 開始直後・終了直前に空行を挟むことで、内側の各ブロックが独立段落になり正しく整形される。
+        # コードフェンス内の ::: は対象外。既に空行がある場合は二重に入れない。
+        def normalize_container_fence_spacing(content)
+          lines = content.lines
+          fence = nil
+          out = []
+          lines.each_with_index do |line, i|
+            stripped = line.lstrip
+            if stripped.start_with?('```', '~~~')
+              marker = stripped[/\A([`~]+)/, 1]
+              if fence.nil? then fence = marker
+              elsif stripped.start_with?(fence) then fence = nil
+              end
+              out << line
+              next
+            end
+
+            if fence.nil? && stripped.match?(/\A:{3,}\s*\{/) # 開始 :::{.class}
+              out << line
+              nxt = lines[i + 1]
+              out << "\n" if nxt && !nxt.strip.empty?
+            elsif fence.nil? && line.strip.match?(/\A:{3,}\z/) # 終了 :::
+              out << "\n" unless out.empty? || out.last.strip.empty?
+              out << line
+            else
+              out << line
+            end
+          end
+          out.join
+        end
+
         # インラインコード内の HTML 予約文字をエスケープする
         def escape_inline_code_html(line)
           MarkdownUtils.escape_inline_code_html(line)
@@ -381,21 +417,27 @@ module VivlioStarter
         def process_code_include(content, source_filename: nil, source_path: nil)
           matches_found = 0
           line_number_map = build_line_number_map(content)
+          occurrence = Hash.new(0)
           skippable_lines = lines_inside_code_blocks(content)
           inline_code_lines = lines_with_inline_code_include(content)
           source_line_map = build_source_include_line_map(source_path)
 
           content.gsub!(/```include:([^:`\s]+)(?::(\d+)-(\d+))?\s*```/) do |match|
+            # 同一 include 文字列が複数回現れても行番号を取り違えないよう、出現順に
+            # 対応する行番号を消費する（例: 記法説明フェンス内の例文と、:::{.output} 等に
+            # 置いた本物の include が同一文字列のとき、前者の行番号で後者まで誤スキップするのを防ぐ）。
+            # ln=前処理後コンテンツ内の行（スキップ判定用）、report_ln=著者向けに原稿ファイルの行を優先。
+            idx = occurrence[match]
+            occurrence[match] += 1
+            ln = line_number_map[match][idx]
+            report_ln = source_line_map[match][idx] || ln
+
             # コードブロック内の include 記法はスキップ（記法説明用の例文）
-            if (ln = line_number_map[match]) && skippable_lines.include?(ln)
-              next match
-            end
+            next match if ln && skippable_lines.include?(ln)
 
             # インラインコード内の include 記法はスキップ
             # `` ```include:file.rb``` `` のようにバッククォートで囲まれた場合
-            if (ln = line_number_map[match]) && inline_code_lines.include?(ln)
-              next match
-            end
+            next match if ln && inline_code_lines.include?(ln)
 
             matches_found += 1
             original_path = ::Regexp.last_match(1)
@@ -416,12 +458,31 @@ module VivlioStarter
               source_content = File.read(file_path)
               lines = source_content.lines
 
-              code_content = if start_line && end_line
-                               selected_lines = lines[(start_line - 1)..(end_line - 1)]
-                               selected_lines.join
-                             else
-                               "#{source_content}\n"
-                             end
+              code_content =
+                if start_line && end_line
+                  selected_lines = extract_line_range(lines, start_line, end_line)
+                  warn_prefix = "#{source_filename || '(不明)'}#{report_ln ? ":#{report_ln}" : ''} - "
+                  if selected_lines.nil?
+                    # 開始行がファイル末尾を超える／逆順など、救済不能な不正指定。全文取り込みへフォールバック。
+                    Common.log_warn(
+                      "#{warn_prefix}include の範囲指定が不正です" \
+                      "（#{original_path} は #{lines.size} 行、指定は #{start_line}-#{end_line}）。全文を取り込みます。"
+                    )
+                    "#{source_content}\n"
+                  else
+                    # 開始は有効で終了だけがファイル末尾を超える場合は、末尾までにクランプして取り込む。
+                    if end_line > lines.size
+                      Common.log_warn(
+                        "#{warn_prefix}include の終了行がファイル末尾を超えています" \
+                        "（#{original_path} は #{lines.size} 行、指定は #{start_line}-#{end_line}）。" \
+                        "#{start_line}-#{lines.size} 行を取り込みます。"
+                      )
+                    end
+                    selected_lines.join
+                  end
+                else
+                  "#{source_content}\n"
+                end
 
               language = MarkdownUtils.detect_language(file_path)
               replacement = "```#{language}:#{original_path}\n#{code_content}```"
@@ -431,7 +492,7 @@ module VivlioStarter
             else
               code_name = File.basename(original_path)
               # 元ファイルの行番号があればそちらを使う
-              source_ln = source_line_map[original_path] || line_number_map[match]
+              source_ln = report_ln
               if source_filename && source_ln
                 Common.log_error(
                   "#{source_filename}:#{source_ln} - ソースコード '#{code_name}' が見つかりません",
@@ -454,11 +515,26 @@ module VivlioStarter
         end
 
         # content 内の各 include 記法マッチ文字列 → 行番号のマップを構築する
+        # 1 始まりの行範囲 [start_line, end_line] の行配列を返す。
+        # 終了行がファイル末尾を超える場合はファイル末尾までにクランプする（開始が有効な限り取り込む）。
+        # 開始行がファイル末尾を超える・開始 < 1・逆順（end < start）のように救済不能な場合は nil を返し、
+        # 呼び出し側は全文取り込みへフォールバックする（lines[(s-1)..(e-1)] は範囲外で nil を返し
+        # `nil.join` で落ちるため、ここで明示的に弾く）。
+        def extract_line_range(lines, start_line, end_line)
+          return nil if start_line < 1 || end_line < start_line
+          return nil if start_line > lines.size
+
+          effective_end = [end_line, lines.size].min
+          lines[(start_line - 1)..(effective_end - 1)]
+        end
+
+        # include 文字列 → その文字列が出現する行番号の配列（出現順）。
+        # 同一文字列が複数行に現れても各出現を取りこぼさないよう配列で保持する。
         def build_line_number_map(content)
-          map = {}
+          map = Hash.new { |h, k| h[k] = [] }
           content.lines.each_with_index do |line, idx|
             line.scan(/```include:[^`\s]+(?::\d+-\d+)?\s*```/) do |match|
-              map[match] ||= idx + 1
+              map[match] << (idx + 1)
             end
           end
           map
@@ -486,22 +562,17 @@ module VivlioStarter
 
         # 元ファイルから include 記法のパス → 行番号のマップを構築する。
         # pre_process で行数が変わる前の正しい行番号を取得するため。
+        # include 文字列 → 原稿ファイル（前処理前）での出現行番号の配列（出現順）。
+        # build_line_number_map（前処理後コンテンツ）と同じフルマッチ文字列キー・全出現走査にして
+        # 出現インデックスを一致させ、同一文字列・同一パスが複数回現れても取り違えないようにする。
+        # 著者向けメッセージは前処理でずれる前処理後の行ではなく、この原稿ファイルの行を優先する。
         def build_source_include_line_map(source_path)
-          return {} unless source_path && File.exist?(source_path)
+          map = Hash.new { |h, k| h[k] = [] }
+          return map unless source_path && File.exist?(source_path)
 
-          map = {}
-          in_code_block = false
           File.readlines(source_path, encoding: 'utf-8').each_with_index do |line, idx|
-            stripped = line.lstrip
-            if stripped.match?(/\A`{3,}/) && !stripped.start_with?('```include:')
-              in_code_block = !in_code_block
-              next
-            end
-            next if in_code_block
-
-            line.scan(/```include:([^:`\s]+)(?::\d+-\d+)?\s*```/) do
-              path = ::Regexp.last_match(1)
-              map[path] ||= idx + 1
+            line.scan(/```include:[^`\s]+(?::\d+-\d+)?\s*```/) do |match|
+              map[match] << (idx + 1)
             end
           end
           map

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'minitest/autorun'
+require 'tmpdir'
+require 'fileutils'
 require_relative '../../../lib/vivlio_starter/cli/pre_process/markdown_transformer'
 require_relative '../../../lib/vivlio_starter/cli/pre_process/markdown_utils'
 require_relative '../../../lib/vivlio_starter/cli/pre_process/cross_reference_processor'
@@ -412,6 +414,145 @@ module VivlioStarter
           out = convert_standalone_spacing(md)
 
           assert_equal "前。\n\n@vspace:1lh\n\n次。\n", out, '直後が既に空行なら余分な空行を足さない'
+        end
+
+        # =================================================================
+        # normalize_container_fence_spacing
+        # =================================================================
+        def test_normalize_container_fence_inserts_blank_after_open_and_before_close
+          md = ":::{.output}\n**見出し**\n本文\n:::\n"
+          out = normalize_container_fence_spacing(md)
+
+          assert_equal ":::{.output}\n\n**見出し**\n本文\n\n:::\n", out
+        end
+
+        def test_normalize_container_fence_keeps_existing_blanks
+          md = ":::{.note}\n\n本文\n\n:::\n"
+          out = normalize_container_fence_spacing(md)
+
+          assert_equal md, out, '既に空行があれば二重に入れない'
+        end
+
+        def test_normalize_container_fence_skips_inside_code_fence
+          md = "```markdown\n:::{.note}\n本文\n:::\n```\n"
+          out = normalize_container_fence_spacing(md)
+
+          assert_equal md, out, 'コードフェンス内の ::: は対象外'
+        end
+
+        # =================================================================
+        # process_code_include（同一 include 文字列の取り違え防止）
+        # =================================================================
+        # 記法説明フェンス内の例文と、:::{.output} 等に置いた本物の include が同一文字列でも、
+        # 例文だけスキップし本物は展開する（行番号を出現順に消費する回帰テスト）。
+        def test_process_code_include_distinguishes_duplicate_strings
+          Dir.mktmpdir do |dir|
+            Dir.chdir(dir) do
+              FileUtils.mkdir_p('codes')
+              File.write('codes/sample.rb', "puts 'hi'\n")
+              content = +''
+              content << "````markdown\n"          # 記法説明（4 連フェンス）の例文
+              content << "**例 @x**\n"
+              content << "```include:sample.rb```\n"
+              content << "````\n\n"
+              content << ":::{.output}\n"            # 本物（フェンス外）
+              content << "**本物 @y**\n"
+              content << "```include:sample.rb```\n"
+              content << ":::\n"
+
+              out = process_code_include(content)
+
+              assert_includes out, '```include:sample.rb```', 'フェンス内の例文は展開しない'
+              assert_includes out, "```ruby:sample.rb\nputs 'hi'", '同一文字列でも本物は展開する'
+            end
+          end
+        end
+
+        # 開始は有効で終了だけがファイル末尾を超える場合は、末尾までクランプして取り込む（回帰テスト）。
+        def test_process_code_include_end_beyond_eof_clamps_to_last_line
+          Dir.mktmpdir do |dir|
+            Dir.chdir(dir) do
+              FileUtils.mkdir_p('codes')
+              File.write('codes/sample.rb', (1..5).map { |i| "line#{i}\n" }.join) # 5 行
+
+              out = process_code_include(+"```include:sample.rb:4-99```\n", source_filename: 'x.md')
+
+              assert_includes out, "```ruby:sample.rb\nline4\nline5\n```", '開始〜ファイル末尾までを取り込む'
+              refute_includes out, 'line3', 'クランプ後も開始行より前は含まない'
+            end
+          end
+        end
+
+        # 開始行自体がファイル末尾を超える（救済不能）なら、クラッシュせず全文取り込みへフォールバックする。
+        # 旧実装は lines[(start-1)..(end-1)] が nil を返し nil.join で落ちていた。
+        def test_process_code_include_start_beyond_eof_falls_back_to_whole_file
+          Dir.mktmpdir do |dir|
+            Dir.chdir(dir) do
+              FileUtils.mkdir_p('codes')
+              File.write('codes/sample.rb', (1..5).map { |i| "line#{i}\n" }.join) # 5 行
+
+              out = process_code_include(+"```include:sample.rb:22-25```\n", source_filename: 'x.md')
+
+              assert_includes out, '```ruby:sample.rb', '言語付きコードブロックとして展開される'
+              assert_includes out, 'line1', '全文（先頭行）が含まれる'
+              assert_includes out, 'line5', '全文（末尾行）が含まれる'
+            end
+          end
+        end
+
+        # 逆順の範囲も全文フォールバックする。
+        def test_process_code_include_reversed_range_falls_back
+          Dir.mktmpdir do |dir|
+            Dir.chdir(dir) do
+              FileUtils.mkdir_p('codes')
+              File.write('codes/sample.rb', (1..5).map { |i| "line#{i}\n" }.join)
+
+              out = process_code_include(+"```include:sample.rb:4-2```\n", source_filename: 'x.md')
+
+              assert_includes out, 'line1'
+              assert_includes out, 'line5'
+            end
+          end
+        end
+
+        # 有効な範囲は従来どおり該当行のみを取り込む。
+        def test_process_code_include_valid_range_extracts_lines
+          Dir.mktmpdir do |dir|
+            Dir.chdir(dir) do
+              FileUtils.mkdir_p('codes')
+              File.write('codes/sample.rb', (1..5).map { |i| "line#{i}\n" }.join)
+
+              out = process_code_include(+"```include:sample.rb:2-4```\n", source_filename: 'x.md')
+
+              assert_includes out, "```ruby:sample.rb\nline2\nline3\nline4\n```"
+              refute_includes out, 'line1'
+              refute_includes out, 'line5'
+            end
+          end
+        end
+
+        # 同一パスを複数回 include したとき、警告は**その出現の原稿ファイル行**を報告する（回帰テスト）。
+        # 旧実装は source_line_map がパスキーで衝突し、常に最初の出現行を報告していた。
+        def test_process_code_include_warning_reports_correct_line_for_duplicate_path
+          Dir.mktmpdir do |dir|
+            Dir.chdir(dir) do
+              FileUtils.mkdir_p('codes')
+              File.write('codes/sample.rb', (1..5).map { |i| "line#{i}\n" }.join) # 5 行
+              src = +''
+              src << "# title\n\n"                  # 1, 2
+              src << "```include:sample.rb```\n\n"  # 3（全文・正常）, 4
+              src << "```include:sample.rb:9-9```\n" # 5（範囲超過）
+              File.write('chapter.md', src)
+              content = File.read('chapter.md')
+
+              out, = capture_io do
+                process_code_include(content, source_filename: 'chapter.md', source_path: 'chapter.md')
+              end
+
+              assert_match(/chapter\.md:5 -/, out, '2 つ目の include（5 行目）の行番号を報告する')
+              refute_match(/chapter\.md:3 -/, out, '1 つ目の行番号（3 行目）を誤報告しない')
+            end
+          end
         end
 
         # =================================================================
