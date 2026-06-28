@@ -85,13 +85,22 @@ module VivlioStarter
           lines = md_text.to_s.split(/\r?\n/, -1)
           out = []
           lines.each_with_index do |line, i|
-            out << line
             next_line = lines[i + 1]
+            next_nonblank = next_line && next_line.strip != ''
+            is_image = line.match?(/^\s*!\[[^\]]*\]\([^)]+\)\s*$/)
+            is_title = line.match?(/^\s*\*\*[^*].*\*\*\s*$/)
 
-            if line.match(/^\s*!\[[^\]]*\]\([^)]+\)\s*$/)
-              out << '' if next_line && next_line.strip != ''
-            elsif line.match(/^\s*\*\*[^*].*\*\*\s*$/)
-              out << '' if next_line && next_line.strip != ''
+            if (is_image || is_title) && next_nonblank
+              # 画像・タイトルの後は段落を分ける（独立した <p> にする）
+              out << line
+              out << ''
+            elsif !line.strip.empty? && next_nonblank
+              # 説明部の連続行（著者・説明など）は本書全体の hardLineBreaks に合わせて
+              # 行ごとに改行させる。Kramdown のソフト改行はそのままだと半角空白へ潰れて
+              # 1 行に連結されるため、Markdown のハード改行（末尾2スペース）を補って <br> 化する。
+              out << "#{line.rstrip}  "
+            else
+              out << line
             end
           end
           out.join("\n")

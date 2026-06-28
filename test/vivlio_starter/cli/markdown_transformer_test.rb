@@ -220,6 +220,21 @@ module VivlioStarter
           assert_equal '', lines[1]
         end
 
+        # 説明部の連続行は hardLineBreaks に合わせてハード改行（末尾2スペース→<br>）になる
+        def test_normalize_book_card_md_hard_breaks_description_lines
+          md = <<~MD
+            **Title**
+            高橋征義 著
+            Rubyを楽しく学べる入門書。
+          MD
+          result = normalize_book_card_md(md)
+
+          assert_includes result, "高橋征義 著  \n", '著者行に Markdown ハード改行（末尾2スペース）が付く'
+          # 実際に <br> へ描画されることまで確認
+          html = MarkdownUtils.render_markdown_to_html(result)
+          assert_match(%r{高橋征義 著<br\s*/?>}, html, '著者と説明が <br> で改行される')
+        end
+
         # =================================================================
         # pipe_table_to_html
         # =================================================================
