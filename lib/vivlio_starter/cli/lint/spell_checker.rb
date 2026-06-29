@@ -31,26 +31,37 @@ module VivlioStarter
           []
         end
 
-        # 複数ファイルのエラーを標準出力に表示する
+        # 表示する出現行番号の最大件数（超過分は … で省略）
+        MAX_SHOWN_LINES = 10
+
+        # 複数ファイルのエラーを標準出力に表示する。
+        # 同じ語の指摘は 1 行に集約し、出現行と件数をまとめて見やすくする。
         # @param errors_by_file [Hash] { path => [{ line:, word:, suggestion: }] }
         # @return [Boolean] エラーがあれば true
         def print_errors(errors_by_file)
           return false if errors_by_file.empty?
 
           errors_by_file.each do |path, errors|
-            Common.log_always "📄 #{path}"
-            errors.each do |err|
-              if err[:suggestion]
-                Common.log_always format('  %4d  %s => %s', err[:line], err[:word], err[:suggestion])
-              else
-                Common.log_always format('  %4d  %s', err[:line], err[:word])
-              end
-              Common.log_always '        綴りが誤っている可能性があります (spellcheck)'
+            Common.log_always "📄 #{path}  (spellcheck)"
+            aggregate(errors).each do |row|
+              Common.log_always format('  %3d件  %-28s 行: %s', row[:count], row[:label], row[:lines])
             end
             Common.log_always ''
           end
 
           true
+        end
+
+        # エラー配列を語ごとに集約し、表示用の行情報へ整える
+        # @return [Array<Hash>] { count:, label:, lines: } を出現数の多い順で返す
+        def aggregate(errors)
+          errors.group_by { |e| e[:word] }.map do |word, items|
+            lines = items.map { |e| e[:line] }.uniq.sort
+            shown = lines.first(MAX_SHOWN_LINES).join(', ')
+            shown += ', …' if lines.size > MAX_SHOWN_LINES
+            suggestion = items.first[:suggestion]
+            { count: lines.size, label: suggestion ? "#{word} => #{suggestion}" : word, lines: shown }
+          end.sort_by { |row| -row[:count] }
         end
 
         # Levenshtein距離で最良の候補語を返す

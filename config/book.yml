@@ -484,13 +484,37 @@ metrics:
 # Lint 設定（文章校正コマンドの既定値）
 # ========================================
 lint:
-  # vs lint 実行時に既定で使用する textlint 設定ファイル
-  # CLI で --config を指定するとこの値を一時的に上書きできます
+  # vs lint 実行時に使用する textlint 設定ファイル
+  # 設定を使い分けたい場合は config/.textlintrc1.yml などを用意し、ここで切り替えます
   config: config/.textlintrc.yml
 
-  # vs lint の既定出力フォーマット
-  # CLI で --format を指定するとこの値を一時的に上書きできます
-  format: stylish
+  # 無効化したい textlint ルール ID（集約表示で [ ] に出る名前）。ルールごと丸ごと黙らせます。
+  # 例: ルール衝突（arabic-kanji-numbers の「一つ→1つ」と prh の「一つ→ひとつ」）の片方を切る
+  disabled_rules:
+    # - arabic-kanji-numbers
+    # - sentence-length
+
+  # 無効化したい表記揺れの指摘語。"X => Y" 形式（prh / spellcheck-tech-word など）の
+  # 指摘先頭行に含まれる語にマッチした指摘を黙らせます（「お節介」ルールの個別無効化）。
+  # 例: 「以下 => 次の」を消すなら 次の（または 以下）を指定
+  disabled_terms:
+    # - 次の
+    # - とおり
+
+  # 一文の最大文字数（sentence-length）。未指定なら既定 100。好みに応じて 80 / 120 など。
+  sentence_length_max: 100
+
+  # 技術者向けに「サーバ／パラメータ／フィルタ」等の末尾長音を省く文体を選ぶ場合は true。
+  # 「X => Xー」（末尾に長音を足す）系の指摘を黙らせます。
+  trim_long_vowel: true
+
+  # インラインコードと和文の間のスペース（例: `vs import` コマンド）を許容する場合は true。
+  # 技術書で一般的な「和欧間スペース」を残したいとき。textlint 設定レベルで無効化するため
+  # vs lint --fix でもスペースは削除されません。
+  allow_space_around_code: true
+
+  # 全角と半角（英数・記号）の間のスペースを許容する場合は true。
+  allow_space_between_ja_en: true
 
 # ========================================
 # spellcheck 設定

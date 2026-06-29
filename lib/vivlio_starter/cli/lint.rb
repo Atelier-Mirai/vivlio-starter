@@ -27,6 +27,7 @@ require 'open3'
 require 'shellwords'
 require 'rbconfig'
 require 'tempfile'
+require 'yaml'
 
 require_relative 'common'
 require_relative 'textlint_formatter'
@@ -65,15 +66,13 @@ module VivlioStarter
             vs lint:check           # lint のエイリアス
 
           オプション:
-            --config PATH    使用する .textlintrc.yml のパスを切り替えます。
-                             省略時は book.yml の lint.config が使われます。
-            --format NAME    textlint の出力フォーマットを指定します。
-                             省略時は book.yml の lint.format（既定: stylish）が使われます。
-            --fix            自動修正可能なエラーを修正します。
+            --fix              自動修正可能なエラーを修正します。
+            --textlint-only    日本語校正（textlint）のみ実行します。
+            --spellcheck-only  スペルチェックのみ実行します。
+            --register         未知語を config/user_words.txt へ一括登録します（スペルチェック専用）。
         DESC
       }.freeze
 
-      DEFAULT_FORMAT_FALLBACK = 'stylish'
       TEXTLINT_ENV_VAR = 'VIVLIO_TEXTLINT_BIN'
 
       # CONFIG.lint セクションから設定ファイルパスを取得（シンボルキー前提）
@@ -83,16 +82,6 @@ module VivlioStarter
         value || DEFAULT_CONFIG_FALLBACK
       rescue StandardError
         DEFAULT_CONFIG_FALLBACK
-      end
-
-      # CONFIG.lint セクションから出力フォーマットを取得（シンボルキー前提）
-      def self.default_lint_format
-        value = Common::CONFIG.lint&.format
-        value = nil if Common.blank?(value)
-        format = value || DEFAULT_FORMAT_FALLBACK
-        format.to_s.strip.empty? ? DEFAULT_FORMAT_FALLBACK : format
-      rescue StandardError
-        DEFAULT_FORMAT_FALLBACK
       end
 
       def self.execute_lint(targets, options = {})
@@ -108,74 +97,101 @@ module VivlioStarter
           @options = normalize_options(options)
         end
 
+        # --spellcheck-only / --textlint-only / --register による実行範囲。
+        # --register はスペルチェック専用の操作なので、暗黙に spellcheck 単独で動く
+        # （`--spellcheck-only` を併記する必要はない）。
+        def spellcheck_only? = options[:register] || options[:spellcheck_only]
+        def textlint_only?   = !options[:register] && options[:textlint_only]
+
         def call
-          ensure_textlint_available!
-          ensure_config_present!
-          ensure_support_yaml_files!
+          ensure_textlint_available! unless spellcheck_only?
+          ensure_config_present! unless spellcheck_only?
+          ensure_support_yaml_files! unless spellcheck_only?
 
           files = resolve_targets
           if files.empty?
-            Common.log_warn('textlint 対象となる Markdown ファイルが見つかりません。')
+            Common.log_warn('検査対象となる Markdown ファイルが見つかりません。')
             return 0
           end
 
-          # vs-lint コメントを textlint ネイティブ記法に変換
-          converted_files = convert_vs_lint_comments(files)
+          lint_info  = { exit: 0, lint_count: 0, fixable_count: 0 }
+          spell_info = { exit: 0, spell_count: 0 }
 
-          begin
-            command = build_command(converted_files)
-            Common.log_action("textlint 実行: #{Shellwords.join(command)}")
+          lint_info  = run_textlint(files) unless spellcheck_only?
+          spell_info = run_spellcheck(files) unless textlint_only?
 
-            stdout, stderr, status = Open3.capture3(*command)
-            raw_stdout = stdout
-            raw_stderr = stderr
-
-            # stylish 出力の構造的再整形（列番号除去・ルール名括弧化・冗長部除去・日本語化）
-            stdout = TextlintFormatter.reformat_output(stdout) unless stdout.nil? || stdout.empty?
-
-            stdout = filter_textlint_summary(stdout)
-            stderr = filter_textlint_summary(stderr)
-
-            $stdout.print(stdout) unless stdout.nil? || stdout.empty?
-            $stderr.print(stderr) unless stderr.nil? || stderr.empty?
-            Common.log_always '' unless stdout.nil? || stdout.empty?
-
-            lint_info   = collect_textlint_info(status, raw_stdout, raw_stderr)
-            spell_info  = run_spellcheck(files)
-            print_combined_summary(lint_info, spell_info)
-            [lint_info[:exit], spell_info[:exit]].max
-          ensure
-            # 一時ファイルのクリーンアップ
-            cleanup_temp_files(converted_files)
-          end
+          print_combined_summary(lint_info, spell_info)
+          [lint_info[:exit], spell_info[:exit]].max
         rescue LintError => e
           Common.log_error(e.message)
           1
         end
 
+        # textlint 本体を実行して結果サマリーを返す。
+        # 出力は常にルール単位の集約表示（textlint --format json を取得して整形）。
+        def run_textlint(files)
+          converted_files = convert_vs_lint_comments(files)
+          # textlint は一時ファイルを検査するため、出力の一時パスを元ファイル名へ戻すマップ
+          path_map = files.zip(converted_files).to_h { |orig, tmp| [File.expand_path(tmp), orig] }
+          run_textlint_aggregated(converted_files, path_map)
+        ensure
+          cleanup_temp_files(converted_files) if converted_files
+          @runtime_config_tmp&.unlink
+        end
+
+        # ルール単位で集約した独自表示（--format json で取得して整形）
+        def run_textlint_aggregated(files, path_map = {})
+          command = build_command(files, format: 'json')
+          Common.log_action("textlint 実行: #{Shellwords.join(command)}")
+          stdout, stderr, status = Open3.capture3(*command)
+          $stderr.print(stderr) unless stderr.nil? || stderr.empty?
+
+          result = TextlintFormatter.aggregate_json(
+            stdout, disabled_rules: disabled_rules, disabled_terms: disabled_terms,
+                    trim_long_vowel: trim_long_vowel?
+          )
+          if result.nil?
+            # JSON 解釈に失敗（textlint 自体のエラー等）。生出力をそのまま見せる。
+            $stdout.print(stdout) unless stdout.nil? || stdout.empty?
+            return { exit: textlint_exit(status), lint_count: 0, fixable_count: 0 }
+          end
+
+          # 一時ファイルのパスを元ファイル名へ戻す
+          result[:files].each { |f| f[:path] = path_map[File.expand_path(f[:path])] || f[:path] }
+          print_textlint_aggregated(result)
+          # 無効化で除外した分は問題数に数えない（残り 0 なら成功扱い）
+          { exit: result[:total].positive? ? 1 : 0, lint_count: result[:total], fixable_count: result[:fixable] }
+        end
+
+        # book.yml lint.disabled_rules（ルール ID で丸ごと無効化）
+        def disabled_rules
+          Array(Common::CONFIG.lint&.[](:disabled_rules)).map(&:to_s)
+        end
+
+        # book.yml lint.disabled_terms（"X => Y" 表記揺れ系の指摘を語で無効化）
+        def disabled_terms
+          Array(Common::CONFIG.lint&.[](:disabled_terms)).map(&:to_s)
+        end
+
+        # book.yml lint.trim_long_vowel（末尾長音を足す指摘を抑止：技術者向け文体）
+        def trim_long_vowel?
+          Common.truthy?(Common::CONFIG.lint&.[](:trim_long_vowel))
+        end
+
+        def print_textlint_aggregated(result)
+          result[:files].each do |file|
+            Common.log_always "📄 #{file[:path]}  (textlint)"
+            file[:rows].each do |row|
+              Common.log_always format('  %3d件  %s', row[:count], row[:label])
+              Common.log_always format('         行: %s', row[:lines])
+            end
+            Common.log_always ''
+          end
+        end
+
+        def textlint_exit(status) = status.success? ? 0 : (status.exitstatus || 1)
+
         private
-
-        def extract_fixable_count(output)
-          return 0 if output.nil? || output.empty?
-
-          match = output.match(/✓\s+(\d+)\s+fixable\s+problems?\./)
-          match ? match[1].to_i : 0
-        end
-
-        def extract_problem_count(output)
-          return 0 if output.nil? || output.empty?
-
-          match = output.match(/✖\s+(\d+)\s+problems?/)
-          match ? match[1].to_i : 0
-        end
-
-        def collect_textlint_info(status, raw_stdout, raw_stderr)
-          combined      = [raw_stdout, raw_stderr].compact.join("\n")
-          lint_count    = extract_problem_count(combined)
-          fixable_count = extract_fixable_count(combined)
-          exit_code     = status.success? ? 0 : (status.exitstatus || 1)
-          { exit: exit_code, lint_count: lint_count, fixable_count: fixable_count }
-        end
 
         def print_combined_summary(lint_info, spell_info)
           lint_count  = lint_info[:lint_count].to_i
@@ -198,21 +214,6 @@ module VivlioStarter
           else
             Common.log_result('文章チェックで問題は見つかりませんでした。', status: :success)
           end
-        end
-
-        SUMMARY_PATTERNS = [
-          /^\s*✖\s+\d+\s+problems?.*$/i,
-          /^\s*✓\s+\d+\s+fixable\s+problems?.*$/i,
-          /^\s*Try to run:.*$/i
-        ].freeze
-
-        def filter_textlint_summary(output)
-          return output if output.nil? || output.empty?
-
-          filtered_lines = output.lines.reject do |line|
-            SUMMARY_PATTERNS.any? { |pattern| line.match?(pattern) }
-          end
-          filtered_lines.join
         end
 
         def normalize_options(raw)
@@ -264,7 +265,8 @@ module VivlioStarter
 
         def run_spellcheck(files)
           config       = Common::CONFIG.spellcheck
-          word_map     = Lint::DictManager.new.build_word_map(config)
+          dict         = Lint::DictManager.new
+          word_map     = dict.build_word_map(config)
           ignore_words = Array(config&.ignore_words).map { it.to_s.downcase }
           check_code   = Common.truthy?(config&.check_code_blocks)
 
@@ -277,10 +279,27 @@ module VivlioStarter
           end
 
           Lint::SpellChecker.print_errors(all_errors)
+          return register_unknown_words(dict, all_errors) if options[:register]
+
           spell_count = all_errors.values.sum(&:length)
           { exit: spell_count.positive? ? 1 : 0, spell_count: spell_count }
         rescue StandardError => e
           Common.log_warn("[spellcheck] スペルチェック中にエラーが発生しました: #{e.message}")
+          { exit: 0, spell_count: 0 }
+        end
+
+        # 検出した未知語をユーザー辞書へ一括登録する（--register）
+        def register_unknown_words(dict, all_errors)
+          words = all_errors.values.flatten.filter_map { it[:word] }.uniq
+          added = dict.register_user_words(words)
+          if added.empty?
+            Common.log_result('登録すべき新しい語はありませんでした（すべて登録済み）。', status: :success)
+          else
+            Common.log_success("ユーザー辞書へ #{added.size} 語を登録しました")
+            Common.log_always "   ファイル: #{dict.user_dict_path}"
+            Common.log_always "   登録語: #{added.join(', ')}"
+          end
+          # 登録が目的のため、未知語が在っても成功（次回 vs lint で消える）
           { exit: 0, spell_count: 0 }
         end
 
@@ -289,26 +308,73 @@ module VivlioStarter
           resolver.resolve
         end
 
-        def build_command(files)
-          cmd = [textlint_command, '--config', config_path]
+        # 集約表示のため出力は常に json で取得する
+        def build_command(files, format: 'json')
+          cmd = [textlint_command, '--config', effective_config_path]
           cmd << '--fix' if options[:fix]
-          fmt = format_option
-          cmd += ['--format', fmt] if fmt
+          cmd += ['--format', format]
           cmd + files
         end
 
         def config_path
-          path = options[:config]
-          path = LintCommands.default_lint_config if Common.blank?(path)
+          path = LintCommands.default_lint_config
           resolved = Common.resolve_path_from_root(path)
           resolved || File.expand_path(path.to_s)
         end
 
-        def format_option
-          value = options[:format]
-          value = LintCommands.default_lint_format if Common.blank?(value)
-          stripped = value.to_s.strip
-          stripped.empty? ? LintCommands.default_lint_format : stripped
+        # 実際に textlint へ渡す設定パス。book.yml の lint.* で文体の上書きが指定されていれば、
+        # 既定 textlintrc にその上書きを反映した一時設定を生成して使う（なければ既定をそのまま）。
+        def effective_config_path
+          return config_path unless runtime_overrides?
+
+          @effective_config_path ||= generate_runtime_config(
+            config_path,
+            sentence_max: sentence_length_max,
+            allow_code_space: allow_space_around_code?,
+            allow_ja_en_space: allow_space_between_ja_en?
+          )
+        end
+
+        # 実行時 textlintrc を生成する必要があるか（いずれかの上書きが指定されている）
+        def runtime_overrides?
+          sentence_length_max || allow_space_around_code? || allow_space_between_ja_en?
+        end
+
+        # book.yml lint.sentence_length_max（一文の最大文字数。未指定なら nil＝既定 100）
+        def sentence_length_max
+          value = Common::CONFIG.lint&.[](:sentence_length_max)
+          return nil if Common.blank?(value)
+
+          value.to_i.positive? ? value.to_i : nil
+        end
+
+        # book.yml lint.allow_space_around_code（インラインコード前後のスペースを許容）
+        def allow_space_around_code? = Common.truthy?(Common::CONFIG.lint&.[](:allow_space_around_code))
+
+        # book.yml lint.allow_space_between_ja_en（全角と半角の間のスペースを許容）
+        def allow_space_between_ja_en? = Common.truthy?(Common::CONFIG.lint&.[](:allow_space_between_ja_en))
+
+        # 既定 textlintrc に文体の上書きを反映した一時設定を config/ 直下に生成する。
+        # 設定レベルで無効化するため、隠すだけの出力フィルタと違い --fix でも変更されない。
+        # 相対パス（prh.rulePaths / allowlistConfigPaths）が壊れないよう、元の設定と同じ
+        # ディレクトリへ書き出す。後始末は run_textlint の ensure で行う。
+        def generate_runtime_config(base_path, sentence_max: nil, allow_code_space: false, allow_ja_en_space: false)
+          cfg = YAML.safe_load_file(base_path) || {}
+          rules = (cfg['rules'] ||= {})
+
+          if sentence_max
+            (rules['preset-ja-technical-writing'] ||= {})['sentence-length'] = { 'max' => sentence_max }
+          end
+          if allow_code_space || allow_ja_en_space
+            spacing = (rules['preset-ja-spacing'] ||= {})
+            spacing['ja-space-around-code'] = false if allow_code_space
+            spacing['ja-space-between-half-and-full-width'] = false if allow_ja_en_space
+          end
+
+          @runtime_config_tmp = Tempfile.new(['.textlintrc-runtime-', '.yml'], File.dirname(base_path))
+          @runtime_config_tmp.write(cfg.to_yaml)
+          @runtime_config_tmp.close
+          @runtime_config_tmp.path
         end
 
         def textlint_command

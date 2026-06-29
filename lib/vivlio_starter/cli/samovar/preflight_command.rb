@@ -74,7 +74,8 @@ module VivlioStarter
             Guards::VivliostyleConfigCheck.new,
             Guards::NodeCheck.new,
             Guards::OrphanFileCheck.new,
-            Guards::ImageFilenameCheck.new
+            Guards::ImageFilenameCheck.new,
+            Guards::CodeFenceCheck.new
           )
 
           # ensure 節の execute_clean は本処理開始後のみ実行する
@@ -146,6 +147,8 @@ module VivlioStarter
           else
             Common.log_result('Preflight 完了: 良好な状態です', status: :success)
           end
+          # preflight は構造チェックのみ。文章校正（textlint/spellcheck）は別コマンドへ誘導する。
+          Common.log_always '   文章校正（表記揺れ・スペル）は vs lint で行えます。'
         end
 
         # --log オプションのトークンを正規化する（BuildCommand と同一ロジック）

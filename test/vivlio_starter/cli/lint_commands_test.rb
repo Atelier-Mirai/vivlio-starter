@@ -18,6 +18,7 @@
 require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
+require 'yaml'
 require 'vivlio_starter/cli/lint'
 
 module VivlioStarter
@@ -50,7 +51,7 @@ module VivlioStarter
           end
         end
         assert status.zero?, "ステータスは 0 であること"
-        assert logged_warnings.any? { it.include?('textlint 対象となる Markdown ファイルが見つかりません。') },
+        assert logged_warnings.any? { it.include?('検査対象となる Markdown ファイルが見つかりません。') },
                "Markdown 未検出の警告が出力されること: #{logged_warnings.inspect}"
       end
 
@@ -71,21 +72,28 @@ module VivlioStarter
             ['STDOUT', 'STDERR', fake_status]
           end) do
             stdout, stderr = capture_io do
-              returned_status = LintCommands.execute_lint(['11-install'], format: nil)
+              returned_status = LintCommands.execute_lint(['11-install'], {})
             end
-            assert_match(/\ASTDOUT\n\n✏️ 文章の品質チェックが完了しました/, stdout)
+            # 出力は常に json 集約。'STDOUT' は不正 json なので生出力へフォールバックして表示される
+            assert_match(/STDOUT/, stdout)
+            assert_match(/✏️ 文章の品質チェックが完了しました/, stdout)
             assert_equal 'STDERR', stderr
           end
         end
         assert_equal 0, returned_status
 
         # vs-lint コメント変換により一時ファイルが使用されるため、
-        # 一時ファイルのパスパターンをチェック
+        # 一時ファイルのパスパターンをチェック（出力は常に --format json）
         assert_equal 'textlint', expected_command[0]
         assert_equal '--config', expected_command[1]
-        assert_equal File.expand_path(File.join('config', '.textlintrc.yml')), expected_command[2]
+        # ベースの .textlintrc.yml か、book.yml の lint 設定で生成される
+        # 実行時設定（.textlintrc-runtime-*.yml）か、いずれも config/ 配下の textlintrc。
+        # 利用者の book.yml(lint設定) にテストを結合させないため、パスパターンで検証する。
+        config_dir = Regexp.escape(File.expand_path('config'))
+        assert_match %r{\A#{config_dir}/\.textlintrc(-runtime-[\w-]+)?\.yml\z}, expected_command[2],
+                     '--config に config/ 配下の textlintrc が渡されること'
         assert_equal '--format', expected_command[3]
-        assert_equal 'stylish', expected_command[4]
+        assert_equal 'json', expected_command[4]
         assert_match %r{/textlint_.*\.md\z}, expected_command[5], '一時ファイルのパスが渡されること'
       end
 
@@ -128,7 +136,9 @@ module VivlioStarter
             stdout, stderr = capture_io do
               returned_status = LintCommands.execute_lint(['11-install'], { fix: true })
             end
-            assert_match(/\ASTDOUT\n\n✏️ 文章の品質チェックが完了しました/, stdout)
+            # 'STDOUT' は不正 json なので生出力へフォールバックして表示される
+            assert_match(/STDOUT/, stdout)
+            assert_match(/✏️ 文章の品質チェックが完了しました/, stdout)
             assert_equal 'STDERR', stderr
           end
         end
@@ -270,18 +280,6 @@ module VivlioStarter
         assert temp_files.length >= 3, "少なくとも3つの一時ファイルが渡されること (実際: #{temp_files.length})"
       end
 
-      def test_fixable_count_extraction
-        output_with_fixable = "✖ 10 problems (10 errors, 0 warnings, 0 infos)\n✓ 4 fixable problems.\n"
-        output_without_fixable = "✖ 10 problems (10 errors, 0 warnings, 0 infos)\n"
-        empty_output = ""
-
-        runner = LintCommands::LintRunner.new([], {})
-        
-        assert_equal 4, runner.send(:extract_fixable_count, output_with_fixable)
-        assert_equal 0, runner.send(:extract_fixable_count, output_without_fixable)
-        assert_equal 0, runner.send(:extract_fixable_count, empty_output)
-      end
-
       def test_target_resolver_zero_pads_single_digit
         setup_catalog(%w[01-life])
         FileUtils.touch('contents/01-life.md')
@@ -366,6 +364,38 @@ module VivlioStarter
         end
         assert logged_errors.any? { it.include?('不正な章指定') },
                "不正な章指定エラーが出力されること: #{logged_errors.inspect}"
+      end
+
+      # sentence_length_max 指定時に、上限を上書きした一時 textlintrc を生成する
+      def test_generate_runtime_config_overrides_sentence_length_max
+        Dir.mktmpdir do |dir|
+          base = File.join(dir, '.textlintrc.yml')
+          File.write(base, { 'rules' => { 'prh' => { 'rulePaths' => ['./textlint_prh.yml'] } } }.to_yaml)
+
+          runner = LintCommands::LintRunner.new([], {})
+          path = runner.send(:generate_runtime_config, base, sentence_max: 80)
+
+          cfg = YAML.safe_load_file(path)
+          assert_equal 80, cfg.dig('rules', 'preset-ja-technical-writing', 'sentence-length', 'max')
+          assert_includes cfg.dig('rules', 'prh', 'rulePaths'), './textlint_prh.yml', '既存設定を保持'
+          assert_equal dir, File.dirname(path), '元設定と同じディレクトリに生成（相対パス保持）'
+        end
+      end
+
+      # スペース許容指定時に、preset-ja-spacing の該当ルールを設定レベルで無効化する
+      def test_generate_runtime_config_allows_spacing
+        Dir.mktmpdir do |dir|
+          base = File.join(dir, '.textlintrc.yml')
+          File.write(base, { 'rules' => { 'preset-ja-spacing' => { 'jaSpacing' => true } } }.to_yaml)
+
+          runner = LintCommands::LintRunner.new([], {})
+          path = runner.send(:generate_runtime_config, base, allow_code_space: true, allow_ja_en_space: true)
+
+          spacing = YAML.safe_load_file(path).dig('rules', 'preset-ja-spacing')
+          assert_equal false, spacing['ja-space-around-code']
+          assert_equal false, spacing['ja-space-between-half-and-full-width']
+          assert_equal true, spacing['jaSpacing'], '既存の設定は保持'
+        end
       end
 
       private

@@ -182,4 +182,24 @@ class TestTokenizer < Minitest::Test
     words = T.tokenize("## Introduction\n").map { _1[0] }
     assert_includes words, 'Introduction'
   end
+
+  # 相互参照ラベル @id が除外され、ラベル内の語が誤検出されないことを確認する
+  def test_cross_reference_label_excluded
+    words = T.tokenize("@photoelectric-table に示した値\n").map { _1[0] }
+    refute_includes words, 'photoelectric-table'
+    refute_includes words, 'photoelectric'
+  end
+
+  # 見出し中のラベル定義 ** タイトル @id ** でもラベルが除外されることを確認する
+  def test_cross_reference_label_in_caption_excluded
+    words = T.tokenize("**しきい周波数 @photoelectric-table**\n").map { _1[0] }
+    refute_includes words, 'photoelectric-table'
+  end
+
+  # メールアドレスは相互参照ラベルとして誤って分解されないことを確認する
+  def test_email_address_not_treated_as_label
+    words = T.tokenize("contact@example.com まで\n").map { _1[0] }
+    assert_includes words, 'example'  # @ 直前が単語文字なのでラベル除去は発動しない
+    assert_includes words, 'contact'
+  end
 end

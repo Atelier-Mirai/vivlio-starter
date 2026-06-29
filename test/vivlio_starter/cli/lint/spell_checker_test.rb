@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
 require_relative '../../../test_helper'
+require 'tmpdir'
 require 'vivlio_starter/cli/lint/tokenizer'
 require 'vivlio_starter/cli/lint/spell_checker'
+require 'vivlio_starter/cli/lint/dict_manager'
 
 class TestSpellChecker < Minitest::Test
   SC = VivlioStarter::CLI::Lint::SpellChecker
@@ -158,12 +160,12 @@ class TestSpellChecker < Minitest::Test
     assert_equal false, SC.print_errors({})
   end
 
-  # 候補語がある場合に「語 => 候補」形式で出力されることを確認する
+  # 候補語がある場合に「語 => 候補」形式で出力され、ヘッダに (spellcheck) が付くことを確認する
   def test_print_errors_with_suggestion_shows_arrow
     errors = { 'test.md' => [{ line: 5, word: 'bandle', suggestion: 'bundle' }] }
     out, = capture_io { SC.print_errors(errors) }
     assert_includes out, 'bandle => bundle'
-    assert_includes out, '綴りが誤っている可能性があります'
+    assert_includes out, '(spellcheck)'
   end
 
   # 候補語がない場合は単語のみ表示され '=>' が含まれないことを確認する
@@ -185,5 +187,37 @@ class TestSpellChecker < Minitest::Test
   def test_print_errors_returns_true_when_has_errors
     errors = { 'test.md' => [{ line: 1, word: 'foo', suggestion: nil }] }
     capture_io { assert_equal true, SC.print_errors(errors) }
+  end
+
+  # --- aggregate（語ごとの集約） ---
+
+  # 同じ語を 1 行へ集約し、出現数の多い順に並べることを確認する
+  def test_aggregate_groups_by_word_and_sorts_by_count
+    errors = [
+      { line: 302, word: 'textlint', suggestion: 'textline' },
+      { line: 4,   word: 'textlint', suggestion: 'textline' },
+      { line: 383, word: 'yml', suggestion: nil }
+    ]
+    rows = SC.aggregate(errors)
+
+    assert_equal 'textlint => textline', rows.first[:label], '件数の多い語が先頭'
+    assert_equal 2, rows.first[:count]
+    assert_equal '4, 302', rows.first[:lines], '出現行はソートして列挙'
+    assert_equal 'yml', rows.last[:label]
+    assert_equal 1, rows.last[:count]
+  end
+
+  # --- extra_words による抑制（end-to-end / #2） ---
+
+  # book.yml の extra_words に登録した語がスペルチェックで検出されないことを確認する
+  def test_extra_words_suppress_spellcheck_end_to_end
+    config = Struct.new(:extra_dictionaries, :extra_words, :ignore_words, :check_code_blocks)
+                   .new(nil, ['Mbed'], nil, false)
+    word_map = VivlioStarter::CLI::Lint::DictManager.new.build_word_map(config)
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, 'test.md')
+      File.write(path, "Mbed\n")
+      assert_empty SC.check(path, word_map), 'extra_words の語は検出されない'
+    end
   end
 end

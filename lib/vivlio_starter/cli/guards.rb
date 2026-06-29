@@ -29,6 +29,7 @@ require_relative 'guards/vivliostyle_config_check'
 require_relative 'guards/node_check'
 require_relative 'guards/images_dir_check'
 require_relative 'guards/image_filename_check'
+require_relative 'guards/code_fence_check'
 require_relative 'guards/pdf_artifact_check'
 require_relative 'guards/config_validity_check'
 

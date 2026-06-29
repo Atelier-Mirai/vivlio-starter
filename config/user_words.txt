@@ -1,0 +1,20 @@
+# vivlio-starter ユーザー辞書（このプロジェクトのスペルチェック許可語）
+# 1 行 1 語。# 始まりはコメント。辞書順・重複なしで自動管理されます。
+# `vs lint --register` を実行すると、スペルチェックで未知だった語がここへ追加されます。
+# 別の本でも使いたい場合は、このファイルをコピーしてください。
+ajisai
+asagao
+greet
+High-Score
+himawari
+kauplan
+kiku
+kikyo
+kosumosu
+Low-Score
+nanohana
+sakura
+suisen
+suzuran
+tsubaki
+ume

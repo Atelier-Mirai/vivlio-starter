@@ -9,12 +9,33 @@ module VivlioStarter
     module Lint
       # 辞書ファイルのロードとキャッシュを管理する
       class DictManager
-        BUNDLED_DIR   = File.expand_path('../../../../config/spellcheck_dictionaries', __dir__)
-        CACHE_DIR     = File.expand_path('../../../../.cache/spellcheck-dictionaries', __dir__)
+        # 辞書の探索先。プロジェクト直下の config/（vs new が配置し、ユーザーが追加・編集できる）を
+        # 優先し、無ければ gem 同梱の scaffold コピーへフォールバックする。
+        # ※ gem は lib/ 配下しかパッケージしない（gemspec の files が {bin,lib}/**/*）ため、
+        #   リポジトリ直下の config/ を指していた旧実装ではインストール済み gem で辞書が 0 件になり、
+        #   技術用語が軒並み誤検知されていた（CWD 相対の config/ なら開発リポジトリでもユーザー
+        #   プロジェクトでも実在し、.textlintrc.yml の参照方法とも一貫する）。
+        PROJECT_DICT_DIR  = 'config/spellcheck_dictionaries'
+        PACKAGED_DICT_DIR = File.expand_path('../../../project_scaffold/config/spellcheck_dictionaries', __dir__)
+
+        CACHE_DIR     = '.cache/spellcheck-dictionaries'
         DICT_BASE_URL = 'https://raw.githubusercontent.com/streetsidesoftware/' \
                         'cspell-dicts/main/dictionaries'
 
         GLOSSARY_PATH = 'config/index_glossary_terms.yml'
+
+        # ユーザー辞書（このプロジェクト固有のスペルチェック許可語）のパス。
+        # プロジェクト直下の config/ に置く（隠しフォルダでなく見つけやすい。別の本でも
+        # 使いたければこのファイルをコピーすればよい）。`vs lint --register` の追記先。
+        # 定数でなくメソッドにして呼び出し時の CWD を読む（テストで chdir しても追従する）。
+        def user_dict_path
+          File.join('config', 'user_words.txt')
+        end
+
+        # 実際に使う辞書ディレクトリ（プロジェクト優先・gem 同梱フォールバック）
+        def bundled_dir
+          Dir.exist?(PROJECT_DICT_DIR) ? PROJECT_DICT_DIR : PACKAGED_DICT_DIR
+        end
 
         # 辞書をマージして word_map を返す
         # @param config [Object, nil] Common::CONFIG.spellcheck の値
@@ -33,15 +54,55 @@ module VivlioStarter
 
             words[word.gsub('-', '').downcase] ||= word
           end
+          load_into_word_map(user_dict_path, words) if File.exist?(user_dict_path)
           words
+        end
+
+        # 未知語をユーザー辞書（user_dict_path）へ登録する。
+        # 既存語＋新規語を大文字小文字無視で一意化し、辞書順に並べ替えてファイルを書き直す
+        # （編集過程の重複や未整列も毎回整える）。実際に追加した語の配列を返す。
+        def register_user_words(new_words)
+          candidates = Array(new_words).map { it.to_s.strip }.reject(&:empty?).uniq
+          return [] if candidates.empty?
+
+          existing = read_user_words
+          existing_down = existing.map(&:downcase)
+          added = candidates.reject { |w| existing_down.include?(w.downcase) }
+          return [] if added.empty?
+
+          merged = (existing + added).uniq { it.downcase }.sort_by(&:downcase)
+          write_user_words(merged)
+          added
         end
 
         private
 
+        # ユーザー辞書に登録済みの語（表示形のまま。コメント・記号は除去）
+        def read_user_words
+          return [] unless File.exist?(user_dict_path)
+
+          File.readlines(user_dict_path, chomp: true).filter_map { normalize(it) }
+        end
+
+        # ヘッダ＋辞書順の語でユーザー辞書を書き直す
+        def write_user_words(words)
+          FileUtils.mkdir_p(File.dirname(user_dict_path))
+          File.write(user_dict_path, user_dict_header + words.join("\n") + "\n")
+        end
+
+        def user_dict_header
+          <<~HEADER
+            # vivlio-starter ユーザー辞書（このプロジェクトのスペルチェック許可語）
+            # 1 行 1 語。# 始まりはコメント。辞書順・重複なしで自動管理されます。
+            # `vs lint --register` を実行すると、スペルチェックで未知だった語がここへ追加されます。
+            # 別の本でも使いたい場合は、このファイルをコピーしてください。
+          HEADER
+        end
+
         # BUNDLED_DIR 内の .txt ファイルを動的に列挙して辞書名の配列を返す
         # @return [Array<String>] ファイル名（.txt 拡張子なし）のソート済み配列
         def bundled_dict_names
-          Dir.glob(File.join(BUNDLED_DIR, '*.txt')).map { File.basename(it, '.txt') }.sort
+          Dir.glob(File.join(bundled_dir, '*.txt')).map { File.basename(it, '.txt') }.sort
         end
 
         # book.yml の extra_dictionaries から辞書名の配列を取り出す
@@ -62,7 +123,7 @@ module VivlioStarter
         # @param name [String] 辞書名
         # @return [String, nil] 解決されたパス、またはダウンロード失敗時に nil
         def resolve_path(name)
-          bundled = File.join(BUNDLED_DIR, "#{name}.txt")
+          bundled = File.join(bundled_dir, "#{name}.txt")
           return bundled if File.exist?(bundled)
 
           cached = File.join(CACHE_DIR, "#{name}.txt")

@@ -4,285 +4,111 @@
 # File: lib/vivlio_starter/cli/textlint_formatter.rb
 # ================================================================
 # 責務:
-#   textlint の stylish 出力を日本語話者向けに再整形する。
-#
-# 処理内容:
-#   - 列番号の除去（行番号のみ表示）
-#   - ✓ error / error ラベルの除去
-#   - ルール名を (ルール名) 形式で末尾に統一
-#   - 冗長な中間説明（助詞リスト・Total ブロック等）の除去
-#   - 英語メッセージの日本語翻訳（sentence-length 等）
-#   - 補足説明のインデント整理
-#   - ファイルパスの相対パス化
+#   textlint --format json の出力を、ルール（メッセージ先頭行）単位に集約して整形する。
+#   同じ指摘を 1 行へ畳み、book.yml の lint.disabled_rules / disabled_terms による
+#   個別無効化も適用する（スペルチェック側 SpellChecker.aggregate と体裁を揃える）。
 #
 # 用途:
-#   - LintCommands から呼び出される
-#   - 日本語ユーザー向けの lint 出力改善
+#   - LintCommands（vs lint の textlint 集約表示）から呼び出される
 # ================================================================
+
+require 'json'
 
 module VivlioStarter
   module CLI
-    # textlint stylish 出力の再整形フォーマッター
+    # textlint --format json 出力の集約フォーマッター
     class TextlintFormatter
-      # パース済みエラーエントリ
-      LintEntry = Data.define(:line, :fixable, :message, :details, :rule)
-
-      # エラーメッセージの日本語マッピング（既存の translate_output 用）
-      MESSAGE_TRANSLATIONS = {
-        'Disallow to use "!"' => '感嘆符「!」は使用しないでください',
-        'Disallow to use "！"' => '感嘆符「！」は使用しないでください',
-        'Disallow to use "?"' => '疑問符「?」は使用しないでください',
-        'Disallow to use "？"' => '疑問符「？」は使用しないでください'
-      }.freeze
-
-      # エラー開始行のパターン: "  行:列  [✓] error  メッセージ  ルール名"
-      ERROR_LINE_PATTERN = /\A\s+(\d+):(\d+)\s+(✓\s+)?error\s+(.+)\z/
-
-      # ファイルパスヘッダー行のパターン
-      FILE_HEADER_PATTERN = %r{\A(/\S+\.md)\s*\z}
-
-      # 除去対象の冗長行パターン
-      NOISE_PATTERNS = [
-        /\A次の助詞が連続しているため/,
-        /\A\s*-\s+"[^"]+"\s*\z/,
-        /\AOver\s+\d+\s+characters/,
-        /\ATotal:\s*\z/,
-        /\A(である|ですます)\s*:\s*\d+\s*\z/,
-        %r{\A解説:\s*https?://},
-        /\A\s*Try to run:/i,
-        /\A\s*=>\s*/,
-        /\AThis pair of marks is called/,
-        /\A✖\s+\d+\s+problem/,
-        /\A✓\s+\d+\s+fixable/
-      ].freeze
-
-      # sentence-length 英語→日本語翻訳パターン
-      SENTENCE_LENGTH_PATTERN = /Line\s+\d+\s+sentence\s+length\((\d+)\)\s+exceeds\s+the\s+maximum\s+sentence\s+length\s+of\s+(\d+)\./
+      # 集約表示で出現行を並べる最大件数（超過分は … で省略）
+      MAX_SHOWN_LINES = 10
 
       # --- Public API ---
 
-      # textlint stylish 出力を再整形する
-      # @param output [String, nil] textlint の生出力
-      # @return [String, nil] 整形済み出力
-      def self.reformat_output(output)
-        return output if output.nil? || output.empty?
+      # textlint --format json の出力を、メッセージ（先頭行）＋ルール単位で集約する。
+      # スペルチェック側（SpellChecker.aggregate）と同様、同じ指摘を 1 行へ畳んで見やすくする。
+      # @param json_string [String] textlint --format json の生出力
+      # @param base_dir [String] ファイルパスの相対化基準
+      # @param disabled_rules [Array<String>] 無効化するルール ID（短縮名・完全名の両対応）
+      # @param disabled_terms [Array<String>] 無効化する指摘語（"X => Y" 表記揺れ系。先頭行に含めば除外）
+      # @param trim_long_vowel [Boolean] true なら「X => Xー」（末尾長音を足す）系の指摘を抑止
+      # @return [Hash, nil] { files: [{ path:, rows: }], total:, fixable: } / JSON 解釈失敗時 nil
+      #   rows: [{ count:, label:, lines: }]（出現数の多い順。label は "[ルール] 指摘先頭行"）
+      def self.aggregate_json(json_string, base_dir: Dir.pwd, disabled_rules: [], disabled_terms: [],
+                              trim_long_vowel: false)
+        data = JSON.parse(json_string.to_s)
+        return nil unless data.is_a?(Array)
 
-        Reformatter.new(output).call
+        drules = Array(disabled_rules).map(&:to_s)
+        dterms = Array(disabled_terms).map(&:to_s).reject(&:empty?)
+        total = 0
+        fixable = 0
+        files = data.filter_map do |file|
+          messages = Array(file['messages']).reject { |m| disabled_message?(m, drules, dterms, trim_long_vowel) }
+          next if messages.empty?
+
+          total += messages.size
+          fixable += messages.count { |m| m['fix'] }
+          { path: relative_md_path(file['filePath'], base_dir), rows: aggregate_messages(messages) }
+        end
+        { files: files, total: total, fixable: fixable }
+      rescue JSON::ParserError
+        nil
       end
 
-      # 個別メッセージの日本語翻訳（既存互換）
-      def self.translate_output(output)
-        return output if output.nil? || output.empty?
+      # book.yml の lint.disabled_rules / disabled_terms / trim_long_vowel に該当する指摘か
+      def self.disabled_message?(message, disabled_rules, disabled_terms, trim_long_vowel = false)
+        rule = message['ruleId'].to_s
+        return true if disabled_rules.include?(rule) || disabled_rules.include?(short_rule(rule))
 
-        translated = output.dup
-        MESSAGE_TRANSLATIONS.each { translated.gsub!(it.first, it.last) }
-        translated
+        head = message_head(message['message'])
+        return true if disabled_terms.any? { |t| head.include?(t) }
+
+        trim_long_vowel && long_vowel_addition?(head)
       end
 
-      # stylish 出力の再整形エンジン
-      class Reformatter
-        # インデント幅: 行番号表示幅に合わせた補足行のインデント
-        DETAIL_INDENT = '         '
+      # 「X => Xー」（末尾に長音記号を足すだけ）の表記揺れ指摘か。
+      # 技術者向けに「サーバ／パラメータ／フィルタ」等の末尾長音を省く文体を選べるようにする。
+      def self.long_vowel_addition?(head)
+        m = head.match(/\A(.+?)\s*=>\s*(.+)\z/)
+        return false unless m
 
-        def initialize(raw_output)
-          @raw_output = raw_output
-        end
+        m[2].strip == "#{m[1].strip}ー"
+      end
 
-        # 再整形済み文字列を返す
-        # stylish 形式として認識できない場合は元の出力をそのまま返す
-        def call
-          lines = @raw_output.lines.map(&:chomp)
-          entries = parse(lines)
-          return @raw_output unless entries.any? { it[:type] == :entry }
+      # メッセージが出現ごとに変動する（行番号・文字数を含む等）ルールの、集約用の要約ラベル。
+      # これらは個別メッセージを使わず 1 つにまとめる（件数と出現行だけ見られれば十分）。
+      RULE_SUMMARIES = {
+        'sentence-length' => '一文が長すぎます（最大文長を超過）'
+      }.freeze
 
-          format_entries(entries)
-        end
+      # メッセージ配列を [集約見出し, ルール] 単位で集約する。
+      # 通常はメッセージ先頭行ごと（prh の置換などは別グループ）だが、出現ごとに数値が変わる
+      # ルール（sentence-length 等）は要約ラベル＋数字マスクで 1 つに畳む。
+      def self.aggregate_messages(messages)
+        messages.group_by { |m| [grouping_head(m['message'], m['ruleId']), short_rule(m['ruleId'])] }
+                .map do |(head, rule), items|
+          lines = items.filter_map { it['line'] }.uniq.sort
+          shown = lines.first(MAX_SHOWN_LINES).join(', ')
+          shown += ', …' if lines.size > MAX_SHOWN_LINES
+          { count: items.size, label: "[#{rule}] #{head}", lines: shown }
+        end.sort_by { |row| -row[:count] }
+      end
 
-        private
+      # 集約見出し：出現ごとに数値が変わるルール（sentence-length 等）は要約ラベルで 1 つに畳み、
+      # それ以外は先頭行そのまま（"一つ => 1つ" の数字など、意味のある数値を保つ）。
+      def self.grouping_head(message, rule_id)
+        RULE_SUMMARIES[short_rule(rule_id)] || message_head(message)
+      end
 
-        # --- Phase: Parse --- textlint stylish 出力を構造化データに変換
-        def parse(lines)
-          result = []
-          current_entry = nil
-          continuation_lines = []
+      # メッセージの先頭行（actionable な指摘部分。prh の置換や ja-spacing の本文）
+      def self.message_head(message) = message.to_s.lines.first.to_s.strip
 
-          lines.each do |line|
-            case line
-            in FILE_HEADER_PATTERN
-              # ファイルヘッダー: 前のエントリを確定してからヘッダーを追加
-              flush_entry(result, current_entry, continuation_lines) if current_entry
-              current_entry = nil
-              continuation_lines = []
-              result << { type: :header, path: ::Regexp.last_match(1) }
-            in ERROR_LINE_PATTERN
-              # 新しいエラー行: 前のエントリを確定
-              flush_entry(result, current_entry, continuation_lines) if current_entry
-              current_entry = { line: ::Regexp.last_match(1).to_i, fixable: !::Regexp.last_match(3).nil?,
-                                raw_message: ::Regexp.last_match(4).strip }
-              continuation_lines = []
-            in /\A\s*\z/
-              # 空行: 無視（ただしエントリ間の区切りとして認識）
-              next
-            in /\A[✖✓]\s+\d+\s+(problem|fixable)/
-              # textlint サマリ行: 無視
-              next
-            else
-              # 継続行: 現在のエントリに追加
-              continuation_lines << line.strip if current_entry
-            end
-          end
+      # ルール ID を短縮（"ja-spacing/ja-space-around-code" → "ja-space-around-code"）
+      def self.short_rule(rule_id) = rule_id.to_s.split('/').last.to_s
 
-          # 最後のエントリを確定
-          flush_entry(result, current_entry, continuation_lines) if current_entry
-          result
-        end
-
-        # パース中のエントリと継続行から LintEntry を生成して result に追加
-        def flush_entry(result, entry_data, continuation_lines)
-          message, rule = extract_rule(entry_data[:raw_message], continuation_lines)
-          details = clean_details(continuation_lines, rule)
-          message = translate_message(message)
-          details = details.map { translate_message(it) }
-
-          result << {
-            type: :entry,
-            entry: LintEntry.new(
-              line: entry_data[:line],
-              fixable: entry_data[:fixable],
-              message: message.strip,
-              details: details,
-              rule: rule
-            )
-          }
-        end
-
-        # メッセージ末尾または継続行末尾からルール名を抽出
-        # 継続行を末尾から逆順に走査し、最初に見つかったルール名を返す
-        def extract_rule(message, continuation_lines)
-          # 継続行を末尾から逆順に走査
-          continuation_lines.size.times do |i|
-            idx = continuation_lines.size - 1 - i
-            line = continuation_lines[idx].strip
-
-            # ルール名のみの行（例: "prh", "ja-spacing/ja-space-between-half-and-full-width"）
-            if line =~ %r{\A([\w-]+(?:/[\w-]+)*)\s*\z} && rule_like?(::Regexp.last_match(1))
-              continuation_lines.delete_at(idx)
-              return [message, ::Regexp.last_match(1)]
-            end
-
-            # 行末に空白区切りでルール名が付いている場合
-            if line =~ %r{^(.+?)\s{2,}([\w-]+(?:/[\w-]+)*)$}
-              continuation_lines[idx] = ::Regexp.last_match(1).strip
-              return [message, ::Regexp.last_match(2)]
-            end
-
-            # ノイズ行はスキップして前の行を探索し続ける
-            next if noise_line?(line)
-
-            # ルール名もノイズでもない通常の継続行に到達 → ルールなし
-            break
-          end
-
-          # メッセージ行末にルール名が空白区切りで付いている場合
-          if message =~ %r{^(.+?)\s{2,}([\w-]+(?:/[\w-]+)*)$}
-            return [::Regexp.last_match(1).strip,
-                    ::Regexp.last_match(2)]
-          end
-
-          [message, nil]
-        end
-
-        # ルール名らしい文字列かどうか判定（日本語を含まないこと）
-        def rule_like?(str) = str.match?(%r{\A[a-zA-Z][\w-]*(/[\w-]+)*\z}) && !str.match?(/[ぁ-んァ-ヶ一-龥]/)
-
-        # 継続行から冗長な行を除去する
-        def clean_details(lines, rule)
-          lines
-            .reject { noise_line?(it) }
-            .reject { it.strip == rule }
-            .map { it.sub(/\A【dict\d+】\s*/, '') }
-            .reject(&:empty?)
-        end
-
-        # 冗長行パターンにマッチするか判定
-        def noise_line?(line) = NOISE_PATTERNS.any? { it.match?(line.strip) }
-
-        # 英語メッセージを日本語に翻訳し、冗長なラベルを除去する
-        def translate_message(msg)
-          # 【dictN】 ラベル除去
-          msg = msg.sub(/\A【dict\d+】\s*/, '')
-
-          # sentence-length
-          msg = msg.gsub(SENTENCE_LENGTH_PATTERN) do
-            "文の長さ (#{::Regexp.last_match(1)}) が最大文長の #{::Regexp.last_match(2)} を超えています。"
-          end
-
-          # unmatched-pair: Cannot find a pairing character for X.
-          msg = msg.gsub(/Cannot find a pairing character for (.+)\./) do
-            "#{::Regexp.last_match(1)} のペアとなる文字が見つかりません。"
-          end
-
-          # unmatched-pair: You should close this sentence with X.
-          msg = msg.gsub(/You should close this sentence with (.+)\./) { "#{::Regexp.last_match(1)} で閉じてください。" }
-
-          # Disallow to use 系
-          MESSAGE_TRANSLATIONS.each { msg = msg.gsub(it.first, it.last) }
-
-          msg
-        end
-
-        # --- Phase: Format --- 構造化データを整形済み文字列に変換
-        def format_entries(parsed)
-          lines = []
-
-          parsed.each do |item|
-            case item
-            in { type: :header, path: String => path }
-              # ファイルパスを相対パス化（2つ目以降は空行で区切る）
-              relative = path.sub(%r{.*/contents/}, 'contents/')
-              lines << '' unless lines.empty?
-              lines << "📄 #{relative}"
-            in { type: :entry, entry: LintEntry => e }
-              lines.concat(format_single_entry(e))
-            end
-          end
-
-          "#{lines.join("\n")}\n"
-        end
-
-        # 単一エントリを整形済み行の配列に変換
-        def format_single_entry(entry)
-          rule_suffix = entry.rule ? " (#{entry.rule})" : ''
-          line_prefix = format('%5d', entry.line)
-
-          # unmatched-pair の主メッセージと補足を結合
-          message, details = merge_unmatched_pair(entry.message, entry.details)
-
-          if details.empty?
-            # 詳細なし: 1行で完結
-            ["#{line_prefix}  #{message}#{rule_suffix}"]
-          else
-            # 詳細あり: 主メッセージ + インデント付き補足行
-            result = ["#{line_prefix}  #{message}"]
-            details.each_with_index do |detail, idx|
-              suffix = idx == details.size - 1 ? rule_suffix : ''
-              result << "#{DETAIL_INDENT}#{detail}#{suffix}"
-            end
-            result
-          end
-        end
-
-        # unmatched-pair: 主メッセージと「閉じてください」を1行に結合
-        def merge_unmatched_pair(message, details)
-          return [message, details] unless message.include?('ペアとなる文字が見つかりません。')
-
-          close_detail = details.find { it.include?('で閉じてください。') }
-          return [message, details] unless close_detail
-
-          merged = "#{message}#{close_detail}"
-          remaining = details.reject { it.include?('で閉じてください。') }
-          [merged, remaining]
-        end
+      # textlint の絶対パスを base_dir 相対へ
+      def self.relative_md_path(path, base_dir)
+        rel = path.to_s.sub(%r{\A#{Regexp.escape(base_dir.to_s)}/?}, '')
+        rel.empty? ? path.to_s : rel
       end
     end
   end

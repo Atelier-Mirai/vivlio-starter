@@ -27,9 +27,10 @@ module VivlioStarter
         self.description = 'contents/ 以下の Markdown を textlint で検査します'
 
         options do
-          option '--config PATH', '使用する .textlintrc.yml のパス', key: :config
-          option '--format NAME', '出力フォーマット (stylish/compact/pretty-error)', key: :format
           option '--fix', '自動修正可能なエラーを修正', default: false, key: :fix
+          option '--textlint-only', '日本語校正（textlint）のみ実行', default: false, key: :textlint_only
+          option '--spellcheck-only', 'スペルチェックのみ実行', default: false, key: :spellcheck_only
+          option '--register', 'スペルチェックの未知語をユーザー辞書へ一括登録', default: false, key: :register
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
@@ -71,9 +72,11 @@ module VivlioStarter
                       範囲指定:   vs lint 11-21
 
             オプション:
-              --config PATH    使用する .textlintrc.yml のパスを切り替えます
-              --format NAME    出力フォーマット (stylish/compact/pretty-error)
-              --fix            自動修正可能なエラーを修正します
+              --fix              自動修正可能なエラーを修正します
+              --textlint-only    日本語校正（textlint）のみ実行します
+              --spellcheck-only  スペルチェックのみ実行します
+              --register         スペルチェックの未知語を config/user_words.txt へ一括登録します
+                                 （スペルチェック専用。textlint は実行しません）
 
             例:
               vs lint                 # 全 Markdown を検査
@@ -81,15 +84,18 @@ module VivlioStarter
               vs lint 91 93           # 91-*.md と 93-*.md を検査
               vs lint 11-21           # 11-*.md から 21-*.md の範囲を検査
               vs lint --fix           # 自動修正を適用
+              vs lint --spellcheck-only   # スペルチェックのみ
+              vs lint --register          # 未知語を辞書へ登録（スペルチェック専用）
           HELP
           0
         end
 
         def build_options
           {
-            config: options[:config],
-            format: options[:format],
-            fix: options[:fix]
+            fix: options[:fix],
+            textlint_only: options[:textlint_only],
+            spellcheck_only: options[:spellcheck_only],
+            register: options[:register]
           }
         end
       end

@@ -118,6 +118,7 @@ module VivlioStarter
           cleaned.gsub!(/`[^`]*`/, ' ')                          # インラインコードを除去
           cleaned.gsub!(/<[^>]+>/, ' ')                          # HTMLタグを除去
           cleaned.gsub!(/\{[^}]*\}/, ' ')                        # Vivliostyle拡張記法 {.aki} 等
+          cleaned.gsub!(/(?<![A-Za-z0-9_])@[A-Za-z][A-Za-z0-9-]*/, ' ') # 相互参照ラベル @id（メールは除外）
           cleaned.gsub!(/!?\[([^\]]*)\]\([^)]*\)/, '\1') # Markdownリンク・画像
           cleaned.gsub!(/!?\[([^\]]*)\]\[[^\]]*\]/, '\1')        # 参照リンク
           cleaned.gsub!(%r{https?://\S+}, ' ')                   # URLを除去

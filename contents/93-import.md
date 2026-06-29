@@ -13,7 +13,7 @@ Vivlio Starter の `vs import` コマンドを使うと、Re:VIEW Starter プロ
 - Ruby 4.x / Bundler
 - node / npm
 - ImageMagick, qpdf, pdfinfo, Ghostscript, mecab
-- waifu2x-ncnn-vulkan（任意）
+- `waifu2x-ncnn-vulkan`（任意）
 - Rouge（コードブロック言語推定用 gem）
 
 ### Starter プロジェクトの確認
