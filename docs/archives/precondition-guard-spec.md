@@ -6,7 +6,7 @@
 | 対象 | vivlio-starter Gem（v1.0.0-beta 以降） |
 | 目的 | 各コマンド実行前に前提条件を検証し、致命的な不整合を早期に弾く |
 | 関連 | `vs preflight` / `vs doctor` との役割分担を含む |
-| 改訂 | 2026-06-11 実装に先立ち現行コードベースへ整合（catalog パス・TokenResolver 再利用・🔴/🟡 アイコン規約・OrphanFileCheck の preflight 限定） |
+| 改訂 | 2026-06-11 実装に先立ち現行コードベースへ整合（catalog パス・TokenResolver 再利用・🔴/🟡 アイコン規約・OrphanFileCheck の preflight 限定）／ 2026-06-30 `CodeFenceCheck`（preflight 専用・コードフェンス整合のエラー）を追記 |
 
 ---
 
@@ -69,6 +69,7 @@
 | `CatalogFileCheck` | `config/catalog.yml` が存在するか | 前提条件違反 |
 | `CatalogEntriesCheck` | catalog 参照先の `.md` がすべて実在するか | 参照整合性エラー |
 | `OrphanFileCheck` | contents/ の未登録ファイル（警告扱い・preflight 専用） | 参照整合性エラー（警告） |
+| `CodeFenceCheck` | contents/ のコードフェンス（```/~~~）の開始・終了が揃っているか（preflight 専用） | 原稿構造エラー |
 | `ContentsDirCheck` | `contents/` ディレクトリが存在するか | 前提条件違反 |
 | `VivliostyleConfigCheck` | `vivliostyle.config.js` が存在するか | 前提条件違反 |
 | `NodeCheck` | Node.js が利用可能か | 環境前提違反 |
@@ -116,7 +117,8 @@
 - **PdfArtifactCheck は明示パス指定時のみ検証**する。`vs open` / `vs pdf:read` および pdf 系の引数省略時は「ビルド生成物の自動選択」「sources/ 探索」「章トークン解決」がドメイン層に実装済みのため、解決ロジックを Check に複製せず、失敗時のメッセージもドメイン層（`MissingPdfError` 等）に委ねる。
 - **resize** は `vs resize <dir>` で任意ディレクトリを対象にできるため、ImagesDir ◎ は既定の `images/` を対象とする場合のみ適用する。
 - **OrphanFileCheck** は **preflight 専用の警告**とし、build では実行しない。catalog.yml で章をコメントアウトして除外するのはマニュアル記載の正規ワークフローであり、build のたびに未登録章の警告を出すと意図的な除外に対するノイズになるため。
-- **preflight** は Phase 4 で全 Check（ProjectRoot / CatalogFile / CatalogEntries / ContentsDir / VivliostyleConfig / Node / OrphanFile）を網羅実行する。`Guard.run!` は全違反をログしてから停止判定するため、複数の問題を一度に報告できる。
+- **CodeFenceCheck** は **preflight 専用のエラー（🔴・停止）**。`contents/*.md` の行頭フェンス（```` ``` ````／`~~~`、3 連以上）を「区切り」と数え、総数が奇数なら「閉じ忘れ／余分」としてビルド前に停止する。閉じ忘れがあると以降の本文がコード扱い（またはその逆）になり、ビルドが意図通りにならない（＝画像ファイル名チェック等と同じく「ビルドを壊す原稿」を弾く位置づけ）ため、警告でなくエラーとする。整形式は入れ子を含め常に偶数になる（コード例で ```` ``` ```` を見せる入れ子は外側を ```` ```` ```` 4 連バッククォートにすれば内側 2 行と合わせて整合）。メッセージには修正案＋出現箇所（フェンス行番号）を添える。実装は `lib/vivlio_starter/cli/guards/code_fence_check.rb`。
+- **preflight** は Phase 4 で全 Check（ProjectRoot / CatalogFile / CatalogEntries / ContentsDir / VivliostyleConfig / Node / OrphanFile）を網羅実行する。`Guard.run!` は全違反をログしてから停止判定するため、複数の問題を一度に報告できる。その後、原稿構造の Check（`ImageFilenameCheck`〔警告〕／`CodeFenceCheck`〔エラー〕）も同じ `Guard.run!` で併せて実行する。
 - **既存の二重防御**: `root_command#ensure_project_context!` が new/doctor/help 以外の全コマンドで `Common.ensure_configured!`（config 4ファイルの存在・妥当性検証）を実行している。コマンド単位の Guard はこれと重複する部分があるが、`Command#call` を直接呼ぶ経路（テスト等）でも前提が保証される自己完結性を優先して併存させる。
 
 ---
