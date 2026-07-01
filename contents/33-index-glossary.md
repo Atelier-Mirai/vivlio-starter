@@ -39,7 +39,8 @@ vs build
 |:---|:---|
 | `config/index_glossary_terms.yml` | 承認済み用語の統合辞書（索引・用語集共通） |
 | `config/index_glossary_rejected.yml` | 棄却済み用語のリスト |
-| `index_library.yml` | 書籍間で持ち運ぶ用語集[g]・reject（export/import） |
+| `index_library.yml` | 書籍間で持ち運ぶ用語集[g]・reject・読み（export/import） |
+| `config/index_yomi_overrides.yml` | 読みの個人辞書（MeCab より優先。import で蓄積） |
 | `_index_glossary_review.md` | レビュー用 Markdown ファイル |
 | `_indexpage.html` | 生成された索引ページ |
 | `_glossarypage.html` | 生成された用語集ページ |
@@ -238,12 +239,12 @@ vs index:apply
 ## 索引ライブラリの持ち運び
 
 :::{.section-lead}
-自分で書いた用語集の定義や、誤検出として棄却した語の判断は、同じ分野の次作でも役立つ知的資産です。`vs index:export` / `vs index:import` で、書籍をまたいで引き継げます。
+自分で書いた用語集の定義や、誤検出として棄却した語の判断、読みの補正は、同じ分野の次作でも役立つ知的資産です。`vs index:export` / `vs index:import` で、書籍をまたいで引き継げます。
 :::
 
-`config/index_glossary_terms.yml` などは、この本固有のデータ（各語の出現章・行やバックリンク）と、作者の資産（用語集の定義・棄却の判断）が混在しています。ライブラリ機能は、**持ち運べる分だけ**を1ファイルに抜き出します。
+`config/index_glossary_terms.yml` などは、この本固有のデータ（各語の出現章・行やバックリンク）と、作者の資産（用語集の定義・棄却の判断・読みの補正）が混在しています。ライブラリ機能は、**持ち運べる分だけ**を1ファイルに抜き出します。
 
-- `vs index:export` … 用語集の定義（`[g]`）と reject 一覧を `index_library.yml` に書き出す
+- `vs index:export` … 用語集の定義（`[g]`）・reject 一覧・読みの個人辞書を `index_library.yml` に書き出す
 - `vs index:import` … 別の本で書き出した `index_library.yml` を取り込む
 
 ```bash
@@ -254,7 +255,9 @@ vs index:export
 vs index:import
 ```
 
-書き出されるのは用語集の `term` / `yomi` / `definition` と reject 一覧だけで、出現箇所やバックリンクなどの本固有情報は含みません。取り込みは追記マージで、既存の語は既定で温存します（`--prefer-import` を付けるとライブラリ側で上書き）。すでに索引・用語集に採用済みの語は reject には追加しません。
+書き出されるのは用語集の `term` / `yomi` / `definition`、reject 一覧、読みの個人辞書（`term => yomi`）だけで、出現箇所やバックリンクなどの本固有情報は含みません。取り込みは追記マージで、既存の語は既定で温存します（`--prefer-import` を付けるとライブラリ側で上書き）。すでに索引・用語集に採用済みの語は reject には追加しません。
+
+取り込んだ読みは `config/index_yomi_overrides.yml` に蓄積され、MeCab の自動推測より優先して使われます（読みの優先順位は、記法 `[用語|読み]` → `index_glossary_terms.yml` の読み → 個人辞書 → MeCab）。「碍子」を「がいし」と読ませたい、といった補正を本ごとに登録し直す手間がなくなります。
 
 書き出し先・取り込み元のパスは `book.yml` で設定でき、引数を省略すればその既定パスが使われます。
 

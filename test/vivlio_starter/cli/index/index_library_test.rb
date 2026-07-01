@@ -56,6 +56,20 @@ module VivlioStarter
           refute_path_exists 'lib.yml'
         end
 
+        def test_export_includes_yomi_from_author_touched_terms
+          write_terms([
+                        { 'term' => '碍子', 'yomi' => 'がいし', 'flags' => 'g', 'definition' => '絶縁体。' },
+                        { 'term' => 'PDF', 'yomi' => 'ぴーでぃーえふ', 'flags' => 'i', 'definition' => '',
+                          'source' => 'auto_extracted' }
+                      ])
+
+          IndexLibrary.new.export!('lib.yml')
+          yomi = YAML.load_file('lib.yml')['yomi']
+
+          # 用語集[g]の碍子は読みを持ち運ぶ。索引専用[i]の PDF は含まない。
+          assert_equal({ '碍子' => 'がいし' }, yomi)
+        end
+
         # --- import ---
 
         def test_import_merges_glossary_and_reject_additively
@@ -100,6 +114,16 @@ module VivlioStarter
           assert_nil IndexLibrary.new.import!('missing.yml')
         end
 
+        def test_import_merges_yomi_into_overrides
+          write_library('lib.yml', glossary: [], reject: [], yomi: { '重力' => 'じゅうりょく' })
+
+          result = IndexLibrary.new.import!('lib.yml')
+
+          assert_equal 1, result.yomi_added
+          overrides = YAML.load_file('config/index_yomi_overrides.yml')['yomi']
+          assert_equal 'じゅうりょく', overrides['重力']
+        end
+
         # --- resolve_path ---
 
         def test_resolve_path_prefers_explicit_arg
@@ -125,8 +149,9 @@ module VivlioStarter
                      { 'rejected_at' => '2026-07-01 00:00:00', 'rejected_terms' => rejected }.to_yaml)
         end
 
-        def write_library(path, glossary:, reject:)
-          File.write(path, { 'version' => 1, 'glossary' => glossary, 'reject' => reject }.to_yaml)
+        def write_library(path, glossary:, reject:, yomi: {})
+          File.write(path,
+                     { 'version' => 1, 'glossary' => glossary, 'reject' => reject, 'yomi' => yomi }.to_yaml)
         end
 
         def load_terms = YAML.load_file('config/index_glossary_terms.yml')['terms']

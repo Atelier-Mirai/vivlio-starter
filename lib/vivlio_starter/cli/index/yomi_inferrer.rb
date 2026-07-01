@@ -15,6 +15,7 @@
 # ================================================================
 
 require_relative '../common'
+require_relative 'yomi_overrides'
 
 module VivlioStarter
   module CLI
@@ -30,6 +31,10 @@ module VivlioStarter
         # @param text [String] 読みを推測するテキスト
         # @return [String] ひらがなの読み（推測できない場合は元のテキスト）
         def infer(text)
+          # 読みの個人辞書（import で蓄積）を MeCab より優先する。
+          override = overrides[text]
+          return override if override
+
           return text unless available?
 
           yomi_parts = []
@@ -77,6 +82,9 @@ module VivlioStarter
         end
 
         private
+
+        # 読みの個人辞書（config/index_yomi_overrides.yml）を一度だけ読み込む。
+        def overrides = @overrides ||= YomiOverrides.load
 
         # MeCab インスタンスを取得
         def mecab

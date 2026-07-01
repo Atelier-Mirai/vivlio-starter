@@ -7,12 +7,12 @@
 #   索引ライブラリ（書籍間で持ち運べる作者の資産）の export/import。
 #   - 用語集の定義[g]（term/yomi/definition）
 #   - reject 一覧（索引に載せない語）
+#   - 読みの個人辞書（term => yomi。MeCab の誤読補正）
 #
 #   書籍固有情報（contexts / backlink_sources / link / source 等）は含めず、
 #   別の書籍へそのまま引き継げる最小限のデータだけを扱う。
 #
 # 仕様: docs/specs/index-library-portability-spec.md
-#   （yomi 個人辞書は Phase 2 で追加予定）
 # ================================================================
 
 require 'yaml'
@@ -20,6 +20,7 @@ require 'fileutils'
 require_relative '../common'
 require_relative 'unified_terms_manager'
 require_relative 'review_queue_manager'
+require_relative 'yomi_overrides'
 
 module VivlioStarter
   module CLI
@@ -29,7 +30,8 @@ module VivlioStarter
         DEFAULT_PATH = 'index_library.yml'
 
         # import の結果サマリ。
-        ImportResult = Data.define(:glossary_added, :glossary_skipped, :reject_added, :reject_skipped)
+        ImportResult = Data.define(:glossary_added, :glossary_skipped, :reject_added, :reject_skipped,
+                                   :yomi_added, :yomi_skipped)
 
         def initialize(terms_manager: UnifiedTermsManager.new, queue_manager: ReviewQueueManager.new)
           @terms_manager = terms_manager
@@ -64,9 +66,10 @@ module VivlioStarter
         def export!(path)
           glossary = export_glossary
           reject = export_reject
+          yomi = export_yomi
 
-          if glossary.empty? && reject.empty?
-            Common.log_warn('書き出す用語集[g]・reject がありません（ライブラリは作成しませんでした）')
+          if glossary.empty? && reject.empty? && yomi.empty?
+            Common.log_warn('書き出す用語集[g]・reject・読みがありません（ライブラリは作成しませんでした）')
             return false
           end
 
@@ -74,13 +77,17 @@ module VivlioStarter
             'version' => SCHEMA_VERSION,
             'exported_at' => Time.now.strftime('%Y-%m-%d %H:%M:%S'),
             'glossary' => glossary,
-            'reject' => reject
+            'reject' => reject,
+            'yomi' => yomi
           }
 
           dir = File.dirname(path)
           FileUtils.mkdir_p(dir) unless dir == '.'
           File.write(path, library.to_yaml, encoding: 'utf-8')
-          Common.log_success("索引ライブラリを書き出しました: #{path}（用語集 #{glossary.size} 件 / reject #{reject.size} 件）")
+          Common.log_success(
+            "索引ライブラリを書き出しました: #{path}" \
+            "（用語集 #{glossary.size} 件 / reject #{reject.size} 件 / 読み #{yomi.size} 件）"
+          )
           true
         end
 
@@ -102,6 +109,26 @@ module VivlioStarter
           end
         end
 
+        # 読みの個人辞書（term => yomi）を term 昇順で抽出する。
+        # 作者由来の語（用語集[g]・手動マークアップ）の実読みと、これまでに
+        # 蓄積した overrides をまとめる（作者の語の読みを優先）。
+        def export_yomi
+          from_terms = @terms_manager.load_terms
+                                     .select { author_touched?(it) }
+                                     .reject { blank_yomi?(it) }
+                                     .to_h { [it['term'], it['yomi']] }
+          YomiOverrides.load.merge(from_terms).sort.to_h
+        end
+
+        def author_touched?(term)
+          term['flags'].to_s.include?('g') || term['source'] == 'manual_markup'
+        end
+
+        def blank_yomi?(term)
+          yomi = term['yomi'].to_s
+          yomi.empty? || yomi == term['term'].to_s
+        end
+
         # --- Phase: import ---
 
         # ライブラリファイルを現プロジェクトへ取り込む（追記マージ・既定は既存優先）。
@@ -116,12 +143,15 @@ module VivlioStarter
 
           glossary_added, glossary_skipped = import_glossary(data['glossary'] || [], prefer_import:)
           reject_added, reject_skipped = import_reject(data['reject'] || [])
+          yomi_added, yomi_skipped = YomiOverrides.merge!(data['yomi'] || {}, prefer_import:)
 
           Common.log_success(
             "取り込み完了: 用語集 +#{glossary_added}（スキップ #{glossary_skipped}） / " \
-            "reject +#{reject_added}（スキップ #{reject_skipped}）"
+            "reject +#{reject_added}（スキップ #{reject_skipped}） / " \
+            "読み +#{yomi_added}（スキップ #{yomi_skipped}）"
           )
-          ImportResult.new(glossary_added:, glossary_skipped:, reject_added:, reject_skipped:)
+          ImportResult.new(glossary_added:, glossary_skipped:, reject_added:, reject_skipped:,
+                           yomi_added:, yomi_skipped:)
         end
 
         private

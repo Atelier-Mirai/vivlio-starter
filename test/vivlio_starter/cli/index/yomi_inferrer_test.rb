@@ -2,6 +2,8 @@
 
 require 'test_helper'
 require 'vivlio_starter/cli/index/yomi_inferrer'
+require 'tmpdir'
+require 'fileutils'
 
 module VivlioStarter
   module CLI
@@ -11,6 +13,24 @@ module VivlioStarter
 
         def setup
           @inferrer = YomiInferrer.new
+        end
+
+        # --- phase: 読みの個人辞書（overrides）の優先 ---
+
+        # overrides に登録された読みは MeCab 有無に関わらず最優先で返る。
+        def test_infer_prefers_yomi_overrides_over_mecab
+          Dir.mktmpdir do |dir|
+            Dir.chdir(dir) do
+              FileUtils.mkdir_p('config')
+              File.write('config/index_yomi_overrides.yml',
+                         { 'yomi' => { '重力' => 'じゅうりょく' } }.to_yaml)
+
+              # 新しいインスタンス（override をロードさせる）で検証
+              result = YomiInferrer.new.infer('重力')
+
+              assert_equal 'じゅうりょく', result
+            end
+          end
         end
 
         # --- phase: infer tests ---

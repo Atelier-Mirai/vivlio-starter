@@ -122,6 +122,8 @@ index_glossary:
 
 ## 5. 段階
 
-- Phase 1: `export` / `import`（glossary[g] + reject）。
-- Phase 2: yomi 個人辞書（`index_yomi_overrides.yml` + `YomiInferrer` override）。
-  読み解決へ手を入れるため面が最も広い。Phase 1 と分けて実装・検証する。
+- Phase 1（実装済み）: `export` / `import`（glossary[g] + reject）。
+- Phase 2（実装済み）: yomi 個人辞書。`IndexCommands::YomiOverrides`（`config/index_yomi_overrides.yml`
+  の読み書き）を新設し、`YomiInferrer#infer` 冒頭で override を最優先で返す（MeCab の手前）。
+  `export` は用語集[g]・手動マークアップ由来の実読み＋蓄積済み overrides を `yomi:` に書き出し、
+  `import` は `YomiOverrides.merge!`（追記・既定は既存優先）で取り込む。
