@@ -11,6 +11,9 @@ non_commands:
   # 24-cross-reference.md にて「将来的には…追加される予定」と明記された
   # 構想段階の機能名。意図的な予告のため許容する（2026-06-12）
   - "xref:list"
+  # 32-metrics.md で将来構想として予告している半自動ルビ付与コマンド。
+  # 実装は PLANNED.md 起票済み・未実装のため意図的に許容する（2026-07-01）
+  - "furigana"
 
 # DC-02: マニュアルに「vs <コマンド>」表記が無くても許容する Public コマンド
 undocumented_commands:

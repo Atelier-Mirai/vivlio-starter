@@ -61,8 +61,13 @@ module VivlioStarter
           loader = ConfigLoader.new({})
           thresholds = loader.readability_thresholds
 
-          assert_equal 30, thresholds[:easy]
-          assert_equal 60, thresholds[:standard]
+          assert_equal 60, thresholds[:easy]
+          assert_equal 40, thresholds[:standard]
+        end
+
+        def test_mattr_window_defaults_and_overrides
+          assert_equal Analyzer::DEFAULT_MATTR_WINDOW, ConfigLoader.new({}).mattr_window
+          assert_equal 50, ConfigLoader.new({ 'metrics' => { 'mattr_window' => 50 } }).mattr_window
         end
 
         def test_labels_returns_defaults

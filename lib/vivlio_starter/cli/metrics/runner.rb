@@ -24,6 +24,11 @@ require_relative 'chapter_parser'
 require_relative 'catalog_loader'
 require_relative 'cache'
 require_relative 'parallel_runner'
+require_relative 'consistency'
+require_relative 'sentence_collector'
+require_relative 'sentence_endings'
+require_relative 'content_words'
+require_relative 'kanji_levels'
 require_relative '../token_resolver'
 
 module VivlioStarter
@@ -33,6 +38,17 @@ module VivlioStarter
       class Runner
         ChapterAnalysis = Data.define(:chapter, :basic, :vocab, :readability)
         PlaceholderChapter = Data.define(:path, :title, :chapter_num, :chars)
+
+        # キャッシュの構造バージョン。読解難度の特徴量導入や MATTR 追加など
+        # 互換性を破る変更時にインクリメントし、旧バージョンのキャッシュを無効化する。
+        CACHE_SCHEMA_VERSION = 4
+
+        # 「見直したい長い文」として挙げる下限文字数と最大件数。
+        LONG_SENTENCE_MIN = 80
+        LONG_SENTENCE_TOP = 5
+
+        # 頻出内容語ランキングの表示件数。
+        CONTENT_WORD_TOP = 15
 
         def initialize(targets, options = {})
           @targets = Array(targets)
@@ -87,6 +103,13 @@ module VivlioStarter
 
           final_basic, final_vocab, final_readability = aggregate_summary_from_analyses(all_analyses)
           output_final_summary(final_basic, final_vocab, final_readability)
+          output_consistency(all_analyses)
+
+          body_sentences = collect_body_sentences(all_analyses)
+          output_long_sentences(body_sentences)
+          output_sentence_rhythm(body_sentences)
+          output_content_words(all_analyses)
+          output_kanji_levels(body_sentences)
 
           0
         end
@@ -103,7 +126,7 @@ module VivlioStarter
 
           basic = aggregate_basic_stats(basics)
           vocab = aggregate_vocabulary_stats(vocabularies)
-          readability = aggregate_readability(basic, vocab)
+          readability = aggregate_readability(analyses)
 
           [basic, vocab, readability]
         end
@@ -131,6 +154,9 @@ module VivlioStarter
           total_word_length = vocabularies.sum(&:total_word_length)
           total_char_count = vocabularies.sum(&:total_char_count)
           kanji_char_count = vocabularies.sum(&:kanji_char_count)
+          hira_char_count = vocabularies.sum(&:hira_char_count)
+          kata_char_count = vocabularies.sum(&:kata_char_count)
+          alpha_char_count = vocabularies.sum(&:alpha_char_count)
 
           merged_tokens = vocabularies.each_with_object(Hash.new(0)) do |vocab, acc|
             vocab.tokens_map.each { |token, count| acc[token] += count }
@@ -140,33 +166,39 @@ module VivlioStarter
           avg_word_length = total_tokens.positive? ? total_word_length.to_f / total_tokens : 0.0
           ttr = total_tokens.positive? ? unique_tokens.to_f / total_tokens : 0.0
           kanji_ratio = total_char_count.positive? ? (kanji_char_count.to_f / total_char_count) * 100 : 0.0
+          # MATTR は文書長に頑健なので、全体は章ごと MATTR の語数加重平均で代表させる
+          # （頻度マップからは語順を復元できず全体を再走査できないため）。
+          mattr = total_tokens.positive? ? vocabularies.sum { it.mattr * it.total_tokens } / total_tokens : 0.0
 
           Metrics::VocabularyStats.new(
             kanji_ratio:,
             avg_word_length:,
             ttr:,
+            mattr:,
             total_tokens:,
             unique_tokens:,
             kanji_char_count:,
+            hira_char_count:,
+            kata_char_count:,
+            alpha_char_count:,
             total_char_count:,
             total_word_length:,
             tokens_map: merged_tokens
           )
         end
 
-        def aggregate_readability(basic, vocab)
-          thresholds = config.readability_thresholds
-          score = (basic.avg_sentence_len * 0.5) + (vocab.kanji_ratio * 0.5)
+        # 章ごとの特徴量を合算してから全体 RS を一度だけ算出する
+        # （各 l* は平均値なので、章 RS の平均では全体 RS にならない）。
+        def aggregate_readability(analyses)
+          features = Readability.aggregate(analyses.map { it.readability.features })
+          build_readability(features)
+        end
 
-          label = if score <= thresholds[:easy]
-                    'Easy'
-                  elsif score <= thresholds[:standard]
-                    'Standard'
-                  else
-                    'Professional'
-                  end
-
-          Metrics::ReadabilityScore.new(score:, label:)
+        # 特徴量から ReadabilityScore（スコア＋ラベル）を構築する。
+        def build_readability(features)
+          score = Readability.score(features)
+          label = Readability.label(score, config.readability_thresholds)
+          Metrics::ReadabilityScore.new(score:, label:, features:)
         end
 
         # ================================================================
@@ -222,14 +254,18 @@ module VivlioStarter
             kanji_ratio: 0.0,
             avg_word_length: 0.0,
             ttr: 0.0,
+            mattr: 0.0,
             total_tokens: 0,
             unique_tokens: 0,
             kanji_char_count: 0,
+            hira_char_count: 0,
+            kata_char_count: 0,
+            alpha_char_count: 0,
             total_char_count: 0,
             total_word_length: 0,
             tokens_map: {}
           )
-          readability = Metrics::ReadabilityScore.new(score: 0.0, label: 'Easy')
+          readability = build_readability(Metrics::ReadabilityFeatures.zero)
           ChapterAnalysis.new(chapter:, basic:, vocab:, readability:)
         end
 
@@ -244,7 +280,8 @@ module VivlioStarter
         def compute_chapter_analysis(file)
           content = File.read(file, encoding: 'UTF-8')
           chapter = chapter_parser.parse_content(file, content)
-          analyzer = Analyzer.new(content, readability: config.readability_thresholds)
+          analyzer = Analyzer.new(content, readability: config.readability_thresholds,
+                                           mattr_window: config.mattr_window)
           basic = analyzer.basic_stats
           vocab = analyzer.vocabulary_stats
           readability = analyzer.readability
@@ -276,6 +313,7 @@ module VivlioStarter
         def analysis_to_cache_hash(analysis)
           chapter = analysis.chapter
           {
+            'schema_version' => CACHE_SCHEMA_VERSION,
             'path' => chapter.path,
             'title' => chapter.title,
             'chapter_num' => chapter.chapter_num,
@@ -308,9 +346,13 @@ module VivlioStarter
             'kanji_ratio' => vocab.kanji_ratio,
             'avg_word_length' => vocab.avg_word_length,
             'ttr' => vocab.ttr,
+            'mattr' => vocab.mattr,
             'total_tokens' => vocab.total_tokens,
             'unique_tokens' => vocab.unique_tokens,
             'kanji_char_count' => vocab.kanji_char_count,
+            'hira_char_count' => vocab.hira_char_count,
+            'kata_char_count' => vocab.kata_char_count,
+            'alpha_char_count' => vocab.alpha_char_count,
             'total_char_count' => vocab.total_char_count,
             'total_word_length' => vocab.total_word_length,
             'tokens_map' => vocab.tokens_map.to_h
@@ -320,12 +362,14 @@ module VivlioStarter
         def readability_to_hash(readability)
           {
             'score' => readability.score,
-            'label' => readability.label
+            'label' => readability.label,
+            'features' => readability.features.to_h.transform_keys(&:to_s)
           }
         end
 
         def rebuild_analysis_from_cache(data)
           return nil unless data
+          return nil unless data['schema_version'] == CACHE_SCHEMA_VERSION
 
           chapter = rebuild_chapter_from_cache(data)
           basic = rebuild_basic_stats(data['basic_stats'])
@@ -359,9 +403,13 @@ module VivlioStarter
             kanji_ratio: data['kanji_ratio'],
             avg_word_length: data['avg_word_length'],
             ttr: data['ttr'],
+            mattr: data['mattr'] || 0.0,
             total_tokens: data['total_tokens'],
             unique_tokens: data['unique_tokens'],
             kanji_char_count: data['kanji_char_count'],
+            hira_char_count: data['hira_char_count'] || 0,
+            kata_char_count: data['kata_char_count'] || 0,
+            alpha_char_count: data['alpha_char_count'] || 0,
             total_char_count: data['total_char_count'],
             total_word_length: data['total_word_length'],
             tokens_map: data['tokens_map'] || {}
@@ -371,7 +419,16 @@ module VivlioStarter
         def rebuild_readability(data)
           return nil unless data
 
-          Metrics::ReadabilityScore.new(score: data['score'], label: data['label'])
+          features = rebuild_readability_features(data['features'])
+          Metrics::ReadabilityScore.new(score: data['score'], label: data['label'], features:)
+        end
+
+        # キャッシュの特徴量ハッシュから ReadabilityFeatures を復元する。
+        def rebuild_readability_features(data)
+          return Metrics::ReadabilityFeatures.zero unless data.is_a?(Hash)
+
+          fields = Metrics::ReadabilityFeatures.members.to_h { [it, data[it.to_s] || 0] }
+          Metrics::ReadabilityFeatures.new(**fields)
         end
 
         def build_placeholder_chapters(files)
@@ -485,6 +542,87 @@ module VivlioStarter
           puts formatter.format_detailed_analysis(vocab, readability)
         end
 
+        # 章間のばらつき（漢字比率・平均文長）を表示する。除外章と本文のない章は
+        # 比較対象から外し、2 章以上そろったときだけ出力する。
+        def output_consistency(analyses)
+          body = analyses.reject { excluded_or_empty?(it) }
+          return if body.size < 2
+
+          metrics = [
+            Consistency.build(metric_label: '漢字比率', unit: '%', high_label: '高め', low_label: '低め',
+                              entries: body.map { [chapter_num_label(it.chapter), it.vocab.kanji_ratio] }),
+            Consistency.build(metric_label: '平均文長', unit: '字', high_label: '長め', low_label: '短め',
+                              entries: body.map { [chapter_num_label(it.chapter), it.basic.avg_sentence_len] })
+          ]
+
+          puts ''
+          puts formatter.format_consistency(metrics)
+        end
+
+        def excluded_or_empty?(analysis)
+          warning_checker.excluded_chapter?(analysis.chapter.chapter_num) || analysis.basic.sentences.zero?
+        end
+
+        def chapter_num_label(chapter) = format('第%02d章', chapter.chapter_num)
+
+        # 本文の章（除外章・本文なし章を除く）から、位置つきの文を順序どおり集める。
+        def collect_body_sentences(analyses)
+          collector = SentenceCollector.new
+          analyses.reject { excluded_or_empty?(it) }
+                  .flat_map { collect_chapter_sentences(collector, it) }
+        end
+
+        def collect_chapter_sentences(collector, analysis)
+          collector.collect(File.read(analysis.chapter.path, encoding: 'UTF-8'), analysis.chapter.chapter_num)
+        rescue Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError, Errno::ENOENT
+          []
+        end
+
+        # 本文中で特に長い文（下限以上）の上位を、位置つきで表示する。
+        def output_long_sentences(sentences)
+          longest = sentences.select { it.length >= LONG_SENTENCE_MIN }.max_by(LONG_SENTENCE_TOP, &:length)
+          return if longest.empty?
+
+          puts ''
+          puts formatter.format_long_sentences(longest)
+        end
+
+        # 文末表現の内訳と、同一文末が連続する箇所を表示する。
+        def output_sentence_rhythm(sentences)
+          return if sentences.empty?
+
+          distribution = SentenceEndings.distribution(sentences)
+          # 連続が多い順（最悪箇所が先頭）。同数なら出現順。
+          runs = SentenceEndings.monotone_runs(sentences).sort_by { [-it.count, it.chapter_num, it.line] }
+          puts ''
+          puts formatter.format_sentence_rhythm(distribution, runs)
+        end
+
+        # 頻出する内容語を品詞ラベルつきで表示する（MeCab 前提。無ければ非表示）。
+        def output_content_words(analyses)
+          words = analyses.reject { excluded_or_empty?(it) }.flat_map { content_words_for(it) }
+          ranked = ContentWords.rank(words, limit: CONTENT_WORD_TOP)
+          return if ranked.empty?
+
+          puts ''
+          puts formatter.format_content_words(ranked)
+        end
+
+        def content_words_for(analysis)
+          Analyzer.new(File.read(analysis.chapter.path, encoding: 'UTF-8')).content_words
+        rescue Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError, Errno::ENOENT
+          []
+        end
+
+        # 本文の漢字をレベル分けし、ルビ候補（中学以上・一般・専門）を表示する。
+        def output_kanji_levels(sentences)
+          report = KanjiLevels.build_report(sentences)
+          return unless report
+
+          puts ''
+          puts formatter.format_kanji_levels(report)
+        end
+
         # 対象なしの警告
         def warn_no_targets
           Common.log_warn('対象となる Markdown ファイルが見つかりません。')
@@ -500,7 +638,10 @@ module VivlioStarter
           analyses = parallel_runner.parallel_map(files) { analyze_chapter_with_cache(it) }.compact
           stats = analyses.map { analysis_to_stat_hash(it) }
           totals_basic = aggregate_basic_stats(analyses.map(&:basic))
-          totals = basic_stats_to_structured_hash(totals_basic)
+          totals_readability = aggregate_readability(analyses)
+          totals = basic_stats_to_structured_hash(totals_basic).merge(
+            'readability' => { 'score' => totals_readability.score.round(2), 'label' => totals_readability.label }
+          )
 
           case format
           when :json

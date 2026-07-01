@@ -49,6 +49,20 @@ module VivlioStarter
         end
       end
 
+      # JSON の totals に読解難度（建石式 RS）の集計が含まれることを確認
+      def test_text_metrics_json_totals_include_readability
+        within_temp_dir do
+          write_markdown('contents/11-sample.md', "本文です。テストの文章を、いくつか並べます。\n")
+
+          output = capture_io { TextMetricsCommands.execute_text_metrics([], { json: true }) }.first
+          totals = JSON.parse(output)['totals']
+
+          assert totals.key?('readability'), "totals に readability が含まれること: #{totals.keys.inspect}"
+          assert_kind_of Numeric, totals['readability']['score']
+          assert_includes %w[Easy Standard Professional], totals['readability']['label']
+        end
+      end
+
       def test_text_metrics_handles_numeric_only_target
         within_temp_dir do
           write_markdown('contents/15.md', "数字だけの章です。\n")

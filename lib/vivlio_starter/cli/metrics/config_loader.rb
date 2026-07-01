@@ -12,6 +12,8 @@
 #   - しきい値の取得
 # ================================================================
 
+require_relative 'analyzer'
+
 module VivlioStarter
   module CLI
     module Metrics
@@ -39,7 +41,10 @@ module VivlioStarter
           'ttr' => { 'min' => 0.3, 'ideal' => [0.5, 0.7], 'max' => 1.0 }
         }.freeze
 
-        DEFAULT_READABILITY = { 'easy' => 30, 'standard' => 60 }.freeze
+        # 建石式 RS は値が大きいほど読みやすい。easy/standard は各バンドの下限。
+        # RS >= easy → Easy（やさしい）、>= standard → Standard、未満 → Professional。
+        # 既定値は建石式の絶対尺度上の目安（児童書 60+／実用書 40〜60／専門書 〜40）。
+        DEFAULT_READABILITY = { 'easy' => 60, 'standard' => 40 }.freeze
 
         DEFAULT_LABELS = {
           'too_short' => '加筆検討',
@@ -69,6 +74,11 @@ module VivlioStarter
         # 語彙難度のしきい値を取得する
         def vocabulary_thresholds
           merge_with_defaults(metrics_config, DEFAULT_VOCABULARY, %w[kanji_ratio word_length ttr])
+        end
+
+        # MATTR（移動平均 TTR）の窓幅を取得する（語彙多様度の算出単位）。
+        def mattr_window
+          (metrics_config['mattr_window'] || Analyzer::DEFAULT_MATTR_WINDOW).to_i
         end
 
         # 読解難度のしきい値を取得する
