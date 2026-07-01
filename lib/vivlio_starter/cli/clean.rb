@@ -308,10 +308,12 @@ module VivlioStarter
       # 削除対象:
       #   - config/index_glossary_terms.yml（登録済み用語）
       #   - config/index_glossary_rejected.yml（除外用語）
+      #   - config/index_yomi_overrides.yml（読みの個人辞書）
       def clean_index_dictionaries
         targets = [
           File.join('config', 'index_glossary_terms.yml'),
-          File.join('config', 'index_glossary_rejected.yml')
+          File.join('config', 'index_glossary_rejected.yml'),
+          File.join('config', 'index_yomi_overrides.yml')
         ].select { |f| File.exist?(f) }
 
         if targets.empty?

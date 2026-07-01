@@ -171,6 +171,24 @@ module VivlioStarter
         end
       end
 
+      # --index-dictionaries で 3 つの辞書（terms/rejected/読みの個人辞書）が削除されることを確認
+      def test_clean_index_dictionaries_removes_yomi_overrides
+        within_temp_dir do
+          FileUtils.mkdir_p('config')
+          %w[index_glossary_terms.yml index_glossary_rejected.yml index_yomi_overrides.yml].each do |name|
+            write_file(File.join('config', name))
+          end
+
+          with_stdin("y\n") do
+            capture_io { CleanCommands.execute_clean({ index_dictionaries: true }) }
+          end
+
+          refute File.exist?('config/index_glossary_terms.yml'), '登録済み用語辞書は削除されるべきです'
+          refute File.exist?('config/index_glossary_rejected.yml'), '除外用語辞書は削除されるべきです'
+          refute File.exist?('config/index_yomi_overrides.yml'), '読みの個人辞書は削除されるべきです'
+        end
+      end
+
       # book.yml の設定に基づいてカバー画像が削除されることを確認
       def test_clean_cover_respects_config
         within_temp_dir do
@@ -257,6 +275,15 @@ module VivlioStarter
           config['output_file'] || 'output.pdf',
           config['output_file_compressed'] || 'output_compressed.pdf'
         ].uniq
+      end
+
+      # 確認プロンプト用に $stdin を差し替える
+      def with_stdin(input)
+        original = $stdin
+        $stdin = StringIO.new(input)
+        yield
+      ensure
+        $stdin = original
       end
 
       # テスト用に空ファイルを生成する
