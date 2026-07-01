@@ -42,8 +42,8 @@ module VivlioStarter
 
               vs index:auto [章]  - 候補抽出・分類・_index_review.md 生成（章を指定可）
               vs index:apply      - レビュー結果を index_glossary_terms.yml に適用
-              vs index:export     - 用語集[g]・reject を index_library.yml に書き出す
-              vs index:import     - index_library.yml から用語集[g]・reject を取り込む
+              vs index:export     - 用語集[g]・棄却語 を index_library.yml に書き出す
+              vs index:import     - index_library.yml から用語集[g]・棄却語 を取り込む
 
             ワークフロー:
               1. vs index:auto   → _index_review.md を生成
@@ -55,7 +55,7 @@ module VivlioStarter
               vs index:auto 21          # 21 章だけを対象に候補抽出
               vs index:auto 21-23,25    # 範囲・複数指定も可
 
-            書籍間での持ち運び（用語集[g]・reject を別の本へ引き継ぐ）:
+            書籍間での持ち運び（用語集[g]・棄却語 を別の本へ引き継ぐ）:
               vs index:export           # book.yml の既定パスへ書き出す
               vs index:import           # book.yml の既定パスから取り込む
 
@@ -147,9 +147,9 @@ module VivlioStarter
         end
       end
 
-      # index:export コマンド - 用語集[g]・reject を持ち運び用ファイルへ書き出す
+      # index:export コマンド - 用語集[g]・棄却語 を持ち運び用ファイルへ書き出す
       class IndexExportCommand < Samovar::Command
-        self.description = '用語集[g]・reject を index_library.yml に書き出す'
+        self.description = '用語集[g]・棄却語 を index_library.yml に書き出す'
 
         options do
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
@@ -175,9 +175,9 @@ module VivlioStarter
         end
       end
 
-      # index:import コマンド - 持ち運び用ファイルから用語集[g]・reject を取り込む
+      # index:import コマンド - 持ち運び用ファイルから用語集[g]・棄却語 を取り込む
       class IndexImportCommand < Samovar::Command
-        self.description = 'index_library.yml から用語集[g]・reject を取り込む'
+        self.description = 'index_library.yml から用語集[g]・棄却語 を取り込む'
 
         options do
           option '--prefer-import', '衝突時にライブラリ側で既存を上書きする', default: false, key: :prefer_import

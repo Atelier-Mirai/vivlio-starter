@@ -204,10 +204,10 @@ output:
   # ----------------------------
   # targets: pdf # pdf / print_pdf / epub / kindleから選択可
   # 例:
-  # targets: pdf                          # 閲覧用PDFを指定
+  targets: pdf # 閲覧用PDFを指定
   # targets: pdf, print_pdf               # 閲覧用PDF, 印刷所入稿用PDFを指定
   # targets: pdf, print_pdf, epub         # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUBを指定
-  targets: pdf, print_pdf, epub, kindle # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUB, Kindle用EPUBを指定
+  # targets: pdf, print_pdf, epub, kindle # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUB, Kindle用EPUBを指定
 
   # ----------------------------
   # ファイル名規則
@@ -317,6 +317,16 @@ index_glossary:
 
   # 文脈抽出時に形態素境界で賢く文脈を引用するか
   smart_context_cutting: true
+
+  # 索引ライブラリ（用語集[g]・reject を書籍間で持ち運ぶ）
+  #   vs index:export … 現プロジェクトの用語集[g]・reject を書き出す
+  #   vs index:import … 別の本で書き出したライブラリを取り込む
+  # 引数を省略すると、ここで設定した既定パスが使われます。
+  library:
+    path: "index_library.yml" # export/import 共通の既定パス
+    # 上級者向け（省略可・path を上書き）:
+    # export_to:   "index_library.yml"          # 書き出し先だけ変える
+    # import_from: "~/vivlio/index_library.yml" # 共有ライブラリから取り込む
 
 # ========================================
 # 索引設定
