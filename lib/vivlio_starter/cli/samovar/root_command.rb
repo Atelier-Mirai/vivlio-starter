@@ -60,6 +60,8 @@ module VivlioStarter
               'index' => IndexCommand,
               'index:auto' => IndexAutoCommand,
               'index:apply' => IndexApplyCommand,
+              'index:export' => IndexExportCommand,
+              'index:import' => IndexImportCommand,
               'pdf:compress' => PdfCompressCommand,
               'pdf:pages' => PdfPagesCommand,
               'pdf:rasterize' => PdfRasterizeCommand,

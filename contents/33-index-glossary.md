@@ -39,6 +39,7 @@ vs build
 |:---|:---|
 | `config/index_glossary_terms.yml` | 承認済み用語の統合辞書（索引・用語集共通） |
 | `config/index_glossary_rejected.yml` | 棄却済み用語のリスト |
+| `index_library.yml` | 書籍間で持ち運ぶ用語集[g]・reject（export/import） |
 | `_index_glossary_review.md` | レビュー用 Markdown ファイル |
 | `_indexpage.html` | 生成された索引ページ |
 | `_glossarypage.html` | 生成された用語集ページ |
@@ -105,6 +106,17 @@ vs index:auto
 2. **候補の自動抽出** - 定義パターン、専門用語、名詞連続を検出
 3. **TF-IDF スコアリング** - 候補に重要度スコアを付与
 4. **レビューファイル生成** - `_index_glossary_review.md` を生成
+
+#### 章を指定して抽出する
+
+長い本では全章を一度に見直すのは大変です。章を指定すると、その章だけを対象に候補を抽出できます。
+
+```bash
+vs index:auto 21          # 21 章だけを対象に候補抽出
+vs index:auto 21-23,25    # 範囲・複数指定も可
+```
+
+用語の登録は追記マージなので、章を指定して実行しても、他の章で登録済みの用語が消えることはありません（非破壊）。`catalog.yml` に未登録の章でも、`contents/` にファイルがあれば指定できます。なお、部分指定時はレビューファイル §1「登録済み用語」の文脈プレビューが指定章内でしか再検索されず空欄になることがありますが、辞書本体には影響しません。
 
 ### スコアリングの仕組み
 
@@ -222,6 +234,39 @@ vs index:apply
 - `[-g]` マークされた用語から用語集フラグを除去
 - `[r]` `[-ig]` マークされた候補を `config/index_glossary_rejected.yml` に追加
 - 読みの変更を反映
+
+## 索引ライブラリの持ち運び
+
+:::{.section-lead}
+自分で書いた用語集の定義や、誤検出として棄却した語の判断は、同じ分野の次作でも役立つ知的資産です。`vs index:export` / `vs index:import` で、書籍をまたいで引き継げます。
+:::
+
+`config/index_glossary_terms.yml` などは、この本固有のデータ（各語の出現章・行やバックリンク）と、作者の資産（用語集の定義・棄却の判断）が混在しています。ライブラリ機能は、**持ち運べる分だけ**を1ファイルに抜き出します。
+
+- `vs index:export` … 用語集の定義（`[g]`）と reject 一覧を `index_library.yml` に書き出す
+- `vs index:import` … 別の本で書き出した `index_library.yml` を取り込む
+
+```bash
+# 現在の本から書き出す
+vs index:export
+
+# 新しい本のプロジェクトで取り込む
+vs index:import
+```
+
+書き出されるのは用語集の `term` / `yomi` / `definition` と reject 一覧だけで、出現箇所やバックリンクなどの本固有情報は含みません。取り込みは追記マージで、既存の語は既定で温存します（`--prefer-import` を付けるとライブラリ側で上書き）。すでに索引・用語集に採用済みの語は reject には追加しません。
+
+書き出し先・取り込み元のパスは `book.yml` で設定でき、引数を省略すればその既定パスが使われます。
+
+```yaml
+# config/book.yml（抜粋）
+index_glossary:
+  library:
+    path: "index_library.yml" # export/import 共通の既定パス
+    # import_from: "~/vivlio/index_library.yml" # 共有ライブラリから取り込む場合
+```
+
+引数でその都度パスを指定することもできます（`vs index:export path/to/lib.yml`）。
 
 ## 索引データの生成
 
