@@ -102,14 +102,11 @@ module VivlioStarter
           end
 
           final_basic, final_vocab, final_readability = aggregate_summary_from_analyses(all_analyses)
+          output_chapter_count(all_analyses)
           output_final_summary(final_basic, final_vocab, final_readability)
-          output_consistency(all_analyses)
 
-          body_sentences = collect_body_sentences(all_analyses)
-          output_long_sentences(body_sentences)
-          output_sentence_rhythm(body_sentences)
-          output_content_words(all_analyses)
-          output_kanji_levels(body_sentences)
+          # --all のときだけ、推敲用の参考資料（A–G）を続けて出力する。
+          output_advice(all_analyses) if options[:all]
 
           0
         end
@@ -511,10 +508,8 @@ module VivlioStarter
         # フィルタリング
         # ================================================================
 
-        # オプションに応じてフィルタリングする
+        # オプションに応じてフィルタリングする（--warn 時のみ警告章に絞る）
         def analysis_visible?(analysis)
-          return true if options[:all]
-
           if options[:warn]
             chapter_num = analysis.chapter.chapter_num
             return false if warning_checker.excluded_chapter?(chapter_num)
@@ -525,12 +520,19 @@ module VivlioStarter
           true
         end
 
-        # 節を表示するか判定する
+        # 節まで展開するか判定する（--sections / --warn、または章を明示指定したとき）
         def show_sections?
-          return true if options[:all]
+          return true if options[:sections]
           return true if options[:warn]
 
           targets.any?
+        end
+
+        # 章別リストの直後に「合計◯章／平均◯文字」を出力する。
+        def output_chapter_count(analyses)
+          total_chars = analyses.sum { it.chapter.chars }
+          puts ''
+          puts formatter.format_chapter_count_summary(analyses.size, total_chars)
         end
 
         def output_final_summary(basic, vocab, readability)
@@ -542,21 +544,38 @@ module VivlioStarter
           puts formatter.format_detailed_analysis(vocab, readability)
         end
 
-        # 章間のばらつき（漢字比率・平均文長）を表示する。除外章と本文のない章は
-        # 比較対象から外し、2 章以上そろったときだけ出力する。
-        def output_consistency(analyses)
-          body = analyses.reject { excluded_or_empty?(it) }
-          return if body.size < 2
+        # 推敲用の参考資料（A–G）をまとめて出力する（--all / 構造化出力で使用）。
+        def output_advice(analyses)
+          output_consistency(analyses)
 
-          metrics = [
+          body_sentences = collect_body_sentences(analyses)
+          output_long_sentences(body_sentences)
+          output_sentence_rhythm(body_sentences)
+          output_content_words(analyses)
+          output_kanji_levels(body_sentences)
+        end
+
+        # 章間のばらつき（漢字比率・平均文長）を表示する。
+        def output_consistency(analyses)
+          metrics = build_consistency_metrics(analyses)
+          return if metrics.empty?
+
+          puts ''
+          puts formatter.format_consistency(metrics)
+        end
+
+        # 章間のばらつき指標を組み立てる。除外章と本文のない章は比較対象から外し、
+        # 2 章以上そろったときだけ算出する（そろわなければ空配列）。
+        def build_consistency_metrics(analyses)
+          body = analyses.reject { excluded_or_empty?(it) }
+          return [] if body.size < 2
+
+          [
             Consistency.build(metric_label: '漢字比率', unit: '%', high_label: '高め', low_label: '低め',
                               entries: body.map { [chapter_num_label(it.chapter), it.vocab.kanji_ratio] }),
             Consistency.build(metric_label: '平均文長', unit: '字', high_label: '長め', low_label: '短め',
                               entries: body.map { [chapter_num_label(it.chapter), it.basic.avg_sentence_len] })
           ]
-
-          puts ''
-          puts formatter.format_consistency(metrics)
         end
 
         def excluded_or_empty?(analysis)
@@ -580,11 +599,16 @@ module VivlioStarter
 
         # 本文中で特に長い文（下限以上）の上位を、位置つきで表示する。
         def output_long_sentences(sentences)
-          longest = sentences.select { it.length >= LONG_SENTENCE_MIN }.max_by(LONG_SENTENCE_TOP, &:length)
+          longest = select_long_sentences(sentences)
           return if longest.empty?
 
           puts ''
           puts formatter.format_long_sentences(longest)
+        end
+
+        # 下限以上の長文を、長い順に上位まで返す。
+        def select_long_sentences(sentences)
+          sentences.select { it.length >= LONG_SENTENCE_MIN }.max_by(LONG_SENTENCE_TOP, &:length)
         end
 
         # 文末表現の内訳と、同一文末が連続する箇所を表示する。
@@ -592,20 +616,28 @@ module VivlioStarter
           return if sentences.empty?
 
           distribution = SentenceEndings.distribution(sentences)
-          # 連続が多い順（最悪箇所が先頭）。同数なら出現順。
-          runs = SentenceEndings.monotone_runs(sentences).sort_by { [-it.count, it.chapter_num, it.line] }
           puts ''
-          puts formatter.format_sentence_rhythm(distribution, runs)
+          puts formatter.format_sentence_rhythm(distribution, monotone_runs_for(sentences))
+        end
+
+        # 同一文末の連続を、多い順（最悪箇所が先頭）に並べる。同数なら出現順。
+        def monotone_runs_for(sentences)
+          SentenceEndings.monotone_runs(sentences).sort_by { [-it.count, it.chapter_num, it.line] }
         end
 
         # 頻出する内容語を品詞ラベルつきで表示する（MeCab 前提。無ければ非表示）。
         def output_content_words(analyses)
-          words = analyses.reject { excluded_or_empty?(it) }.flat_map { content_words_for(it) }
-          ranked = ContentWords.rank(words, limit: CONTENT_WORD_TOP)
+          ranked = rank_content_words(analyses)
           return if ranked.empty?
 
           puts ''
           puts formatter.format_content_words(ranked)
+        end
+
+        # 本文の章から内容語を集め、頻度上位を返す。
+        def rank_content_words(analyses)
+          words = analyses.reject { excluded_or_empty?(it) }.flat_map { content_words_for(it) }
+          ContentWords.rank(words, limit: CONTENT_WORD_TOP)
         end
 
         def content_words_for(analysis)
@@ -633,25 +665,112 @@ module VivlioStarter
         # 構造化出力（JSON/YAML）
         # ================================================================
 
-        # 構造化フォーマットで出力する（一括処理）
+        # 構造化フォーマットで出力する（一括処理）。画面出力と同じ内容を、
+        # 章別統計（stats）・全体集計（totals）・推敲用の参考資料（advice）で構成する。
         def output_structured(format, files)
           analyses = parallel_runner.parallel_map(files) { analyze_chapter_with_cache(it) }.compact
-          stats = analyses.map { analysis_to_stat_hash(it) }
-          totals_basic = aggregate_basic_stats(analyses.map(&:basic))
-          totals_readability = aggregate_readability(analyses)
-          totals = basic_stats_to_structured_hash(totals_basic).merge(
-            'readability' => { 'score' => totals_readability.score.round(2), 'label' => totals_readability.label }
-          )
+          payload = {
+            'stats' => analyses.map { analysis_to_stat_hash(it) },
+            'totals' => structured_totals(analyses),
+            'advice' => structured_advice(analyses)
+          }
 
           case format
           when :json
             require 'json'
-            puts JSON.pretty_generate({ 'stats' => stats, 'totals' => totals })
+            puts JSON.pretty_generate(payload)
           when :yaml
             require 'yaml'
-            puts({ 'stats' => stats, 'totals' => totals }.to_yaml)
+            puts payload.to_yaml
           end
           0
+        end
+
+        # 全体集計（基本統計＋語彙＋読解難度）を構造化ハッシュにまとめる。
+        def structured_totals(analyses)
+          basic = aggregate_basic_stats(analyses.map(&:basic))
+          vocab = aggregate_vocabulary_stats(analyses.map(&:vocab))
+          readability = aggregate_readability(analyses)
+
+          basic_stats_to_structured_hash(basic).merge(
+            'vocabulary' => vocabulary_to_structured_hash(vocab),
+            'readability' => { 'score' => readability.score.round(2), 'label' => readability.label }
+          )
+        end
+
+        def vocabulary_to_structured_hash(vocab)
+          {
+            'kanji_ratio' => vocab.kanji_ratio.round(2),
+            'avg_word_length' => vocab.avg_word_length.round(2),
+            'mattr' => vocab.mattr.round(3),
+            'ttr' => vocab.ttr.round(3),
+            'total_tokens' => vocab.total_tokens,
+            'unique_tokens' => vocab.unique_tokens,
+            'kanji_char_count' => vocab.kanji_char_count,
+            'hira_char_count' => vocab.hira_char_count,
+            'kata_char_count' => vocab.kata_char_count,
+            'alpha_char_count' => vocab.alpha_char_count,
+            'total_char_count' => vocab.total_char_count
+          }
+        end
+
+        # 推敲用の参考資料（A–G）を構造化ハッシュにまとめる。各項目は対象が
+        # なければ空配列 / nil を返し、消費側が扱いやすいよう常にキーを備える。
+        def structured_advice(analyses)
+          body_sentences = collect_body_sentences(analyses)
+          {
+            'consistency' => build_consistency_metrics(analyses).map { consistency_to_structured_hash(it) },
+            'long_sentences' => select_long_sentences(body_sentences).map { located_sentence_to_structured_hash(it) },
+            'sentence_rhythm' => sentence_rhythm_to_structured_hash(body_sentences),
+            'content_words' => rank_content_words(analyses).map { { 'word' => it.word, 'pos' => it.pos, 'count' => it.count } },
+            'kanji_levels' => kanji_levels_to_structured_hash(body_sentences)
+          }
+        end
+
+        def consistency_to_structured_hash(metric)
+          {
+            'label' => metric.label,
+            'unit' => metric.unit,
+            'mean' => metric.mean.round(2),
+            'stdev' => metric.stdev.round(2),
+            'high' => metric.high.map { |chapter, value| { 'chapter' => chapter, 'value' => value.round(2) } },
+            'low' => metric.low.map { |chapter, value| { 'chapter' => chapter, 'value' => value.round(2) } }
+          }
+        end
+
+        def located_sentence_to_structured_hash(sentence)
+          {
+            'chapter_num' => sentence.chapter_num,
+            'line' => sentence.line,
+            'length' => sentence.length,
+            'text' => sentence.text
+          }
+        end
+
+        def sentence_rhythm_to_structured_hash(sentences)
+          return { 'distribution' => {}, 'monotone_runs' => [] } if sentences.empty?
+
+          {
+            'distribution' => SentenceEndings.distribution(sentences),
+            'monotone_runs' => monotone_runs_for(sentences).map do |run|
+              { 'chapter_num' => run.chapter_num, 'line' => run.line, 'label' => run.label, 'count' => run.count }
+            end
+          }
+        end
+
+        def kanji_levels_to_structured_hash(sentences)
+          report = KanjiLevels.build_report(sentences)
+          return nil unless report
+
+          {
+            'ratios' => report.ratios.map { |label, percent| { 'label' => label, 'percent' => percent } },
+            'lists' => report.lists.transform_keys(&:to_s).transform_values do |list|
+              list.map { |char, count| { 'char' => char, 'count' => count } }
+            end,
+            'locations' => report.locations.map do |char, places|
+              { 'char' => char, 'places' => places.map { |chapter_num, line| { 'chapter_num' => chapter_num, 'line' => line } } }
+            end
+          }
         end
 
         def analysis_to_stat_hash(analysis)

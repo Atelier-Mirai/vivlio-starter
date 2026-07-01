@@ -44,8 +44,23 @@ module VivlioStarter
           output = capture_io { TextMetricsCommands.execute_text_metrics([], { json: true }) }.first
           parsed = JSON.parse(output)
 
-          assert_equal ['stats', 'totals'], parsed.keys.sort
+          assert_equal %w[advice stats totals], parsed.keys.sort
           assert_equal 'contents/11-sample.md', parsed['stats'].first['path']
+        end
+      end
+
+      # JSON 出力に推敲用の参考資料（advice）と語彙集計が含まれることを確認
+      def test_text_metrics_json_includes_advice_and_vocabulary
+        within_temp_dir do
+          write_markdown('contents/11-sample.md', "本文です。テストの文章を、いくつか並べます。\n")
+
+          output = capture_io { TextMetricsCommands.execute_text_metrics([], { json: true }) }.first
+          parsed = JSON.parse(output)
+
+          advice = parsed['advice']
+          assert_equal %w[consistency content_words kanji_levels long_sentences sentence_rhythm], advice.keys.sort
+          assert parsed['totals'].key?('vocabulary'), "totals に vocabulary が含まれること: #{parsed['totals'].keys.inspect}"
+          assert_kind_of Numeric, parsed['totals']['vocabulary']['mattr']
         end
       end
 

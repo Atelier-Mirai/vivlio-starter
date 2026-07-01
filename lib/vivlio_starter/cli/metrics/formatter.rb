@@ -30,6 +30,12 @@ module VivlioStarter
           @labels = config_loader.labels
         end
 
+        # 章別リスト直後の集計行（合計章数・平均文字数）を生成する。
+        def format_chapter_count_summary(count, total_chars)
+          avg = count.positive? ? (total_chars.to_f / count).round : 0
+          "📚 合計 #{count} 章 ／ 平均 #{number_with_comma(avg)} 文字"
+        end
+
         # 基本情報セクションを生成する
         def format_basic_info(basic)
           <<~OUTPUT.chomp

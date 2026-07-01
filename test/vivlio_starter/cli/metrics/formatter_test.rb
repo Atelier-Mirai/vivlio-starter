@@ -38,6 +38,13 @@ module VivlioStarter
           assert_includes output, '100 行'
         end
 
+        def test_format_chapter_count_summary_shows_total_and_average
+          output = @formatter.format_chapter_count_summary(34, 219_628)
+
+          assert_includes output, '合計 34 章'
+          assert_includes output, '平均 6,460 文字'
+        end
+
         def test_format_sentence_structure_includes_counts
           basic = BasicStats.new(
             chars: 12_345,

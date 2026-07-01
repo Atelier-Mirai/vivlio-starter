@@ -27,10 +27,11 @@ module VivlioStarter
         self.description = 'Markdown の行数・文字数を集計します'
 
         options do
-          option '--all', '全章の節まで表示', default: false, key: :all
-          option '--warn', '警告がある章のみ節まで表示', default: false, key: :warn
-          option '--json', 'JSON形式で出力', default: false, key: :json
-          option '--yaml', 'YAML形式で出力', default: false, key: :yaml
+          option '--all', '解析結果に加えて推敲用の参考資料（ばらつき・長い文・文末リズム・内容語・漢字レベル）も表示', default: false, key: :all
+          option '--sections', '全章を節まで展開', default: false, key: :sections
+          option '--warn', '警告がある章のみ節まで展開', default: false, key: :warn
+          option '--json', 'JSON形式で出力（参考資料を含む）', default: false, key: :json
+          option '--yaml', 'YAML形式で出力（参考資料を含む）', default: false, key: :yaml
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
@@ -73,16 +74,18 @@ module VivlioStarter
                         組み合わせ: vs metrics 1-3,5,8-10
 
             オプション:
-              --all     全章の節まで表示
-              --warn    警告がある章のみ節まで表示
-              --json    JSON形式で出力
-              --yaml    YAML形式で出力
+              --all       解析結果＋推敲用の参考資料も表示
+              --sections  全章を節まで展開
+              --warn      警告がある章のみ節まで展開
+              --json      JSON形式で出力（参考資料を含む）
+              --yaml      YAML形式で出力（参考資料を含む）
 
             例:
-              vs metrics              # 全章の概要を表示
-              vs metrics 2            # 第2章の節まで表示
-              vs metrics --all        # 全章の節まで表示
-              vs metrics --warn       # 警告がある章のみ節まで表示
+              vs metrics              # 全章の解析結果を表示
+              vs metrics --all        # 解析結果＋推敲用の参考資料も表示
+              vs metrics 2            # 第2章を節まで表示
+              vs metrics --sections   # 全章を節まで展開
+              vs metrics --warn       # 警告がある章のみ節まで展開
           HELP
           0
         end
@@ -90,6 +93,7 @@ module VivlioStarter
         def build_options
           {
             all: options[:all],
+            sections: options[:sections],
             warn: options[:warn],
             json: options[:json],
             yaml: options[:yaml]
