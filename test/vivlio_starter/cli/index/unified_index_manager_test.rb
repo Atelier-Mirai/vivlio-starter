@@ -76,6 +76,36 @@ module VivlioStarter
         assert_includes content, '**JavaScript**'
       end
 
+      # 回帰: 地の文中のインライン ``` があっても、後続コードブロック内の
+      # [###] や [00, 90-98, 99] を手動マークアップとして誤検出しない。
+      def test_auto_process_excludes_code_even_with_inline_backticks
+        File.write('contents/03b-metrics.md', <<~MD)
+          # Metrics
+
+          コードブロック（` ``` ` で囲んだ部分）は分析から除きます。
+
+          ```
+          第1章 はじめに  [##########  ] 2,500 文字
+          ```
+
+          ```yaml
+          exclude_chapters: [00, 90-98, 99]
+          ```
+
+          本文の [実用語] は残ります。
+        MD
+
+        @manager.auto_process!(['03b-metrics'])
+
+        content = File.read('_index_glossary_review.md')
+        terms_section = content.split('## 2.')[0]
+        # コード内の [] は「用語」（**...** 太字）として抽出されない
+        # （周辺文脈のプレビューには現れうるが、それは登録語ではない）。
+        refute_includes terms_section, '**##########  **'
+        refute_includes terms_section, '**00, 90-98, 99**'
+        assert_includes content, '**実用語**'
+      end
+
       def test_auto_process_handles_special_characters
         File.write('contents/04-special.md', <<~MD)
           # Special Characters

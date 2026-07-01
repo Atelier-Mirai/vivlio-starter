@@ -18,6 +18,7 @@ require 'yaml'
 require 'fileutils'
 require_relative '../common'
 require_relative 'yomi_inferrer'
+require_relative 'code_block_stripper'
 
 module VivlioStarter
   module CLI
@@ -301,10 +302,10 @@ module VivlioStarter
         # 抽出用にコンテンツをサニタイズ
         # HTMLタグ、Vivliostyle拡張記法、コードブロックなどを除外
         def sanitize_content_for_extraction(content)
-          text = content.dup
-
-          # コードブロックを除外
-          text.gsub!(/```[\s\S]*?```/, ' ')
+          # コード（フェンス／インライン）を除外。素朴な /```...```/ は地の文中の
+          # インライン ``` でフェンス対がズレ、コード例をスコア対象にしてしまうため
+          # 行頭フェンスを数える状態機械方式で確実に取り除く。
+          text = CodeBlockStripper.strip(content)
 
           # HTMLタグを除外（索引用のspanタグなど）
           text.gsub!(/<[^>]+>/, ' ')

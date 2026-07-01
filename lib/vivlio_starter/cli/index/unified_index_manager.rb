@@ -20,6 +20,7 @@ require_relative 'review_queue_manager'
 require_relative 'review_markdown_generator'
 require_relative 'index_candidate_extractor'
 require_relative 'index_match_scanner'
+require_relative 'code_block_stripper'
 require_relative 'unified_page_builder'
 require_relative 'yomi_inferrer'
 
@@ -28,6 +29,7 @@ module VivlioStarter
     # IndexCommands モジュール内のクラスへのエイリアス
     IndexCandidateExtractor = IndexCommands::IndexCandidateExtractor
     IndexMatchScanner = IndexCommands::IndexMatchScanner
+    CodeBlockStripper = IndexCommands::CodeBlockStripper
     UnifiedPageBuilder = IndexCommands::UnifiedPageBuilder
     YomiInferrer = IndexCommands::YomiInferrer
 
@@ -458,8 +460,10 @@ module VivlioStarter
           next unless chapter_path && File.exist?(chapter_path)
 
           content = File.read(chapter_path, encoding: 'utf-8')
-          # コードフェンス内を除外（```...```）
-          content_without_code = content.gsub(/```[\s\S]*?```/, '')
+          # コード（フェンス／インライン）を除外してから索引記法を拾う。
+          # 素朴な /```...```/ は地の文中のインライン ``` でフェンス対がズレ、
+          # コード例の [###] や [00, 90-98, 99] を誤検出するため状態機械方式を使う。
+          content_without_code = CodeBlockStripper.strip(content)
           chapter_name = File.basename(chapter_path, '.*')
 
           # [用語|読み] 形式を検出（コードフェンス除外済みコンテンツから）
