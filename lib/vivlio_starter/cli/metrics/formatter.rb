@@ -338,19 +338,20 @@ module VivlioStarter
         # 安定した値域になる。バンドは実用書原稿の実測分布で較正した目安。
         def mattr_evaluation(mattr)
           case mattr
-          in ..0.5 then '単調'
+          in ..0.5 then @labels[:monotonous]
           in 0.5..0.6 then '標準的'
           in 0.6..0.7 then '豊富'
           else '非常に豊富'
           end
         end
 
-        # 読解難度の説明
+        # 読解難度の説明。難解側（Professional）の文言は book.yml の
+        # labels.too_complex に由来するため、著者が対象読者に合わせて変えられる。
         def readability_description(label)
           case label
           in 'Easy' then '小中学生向け'
           in 'Standard' then '一般的なビジネス・実用書'
-          in 'Professional' then '専門家・技術者向け'
+          in 'Professional' then @labels[:too_complex]
           else label
           end
         end

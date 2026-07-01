@@ -139,6 +139,44 @@ module VivlioStarter
           assert_includes output, '平均語長: 平易（2.3 文字） — 理想的な範囲 4.0〜5.0 文字'
         end
 
+        # 語彙多様度が低い（MATTR<0.5）とき、単調バンドの文言は labels.monotonous に由来する
+        # 読解難度が難解側（Professional）のとき、その文言は labels.too_complex に由来する
+        def test_detailed_analysis_uses_monotonous_and_too_complex_labels
+          vocab = build_vocab(
+            kanji_ratio: 28.5, avg_word_length: 2.3, ttr: 0.3, mattr: 0.42,
+            total_tokens: 1000, unique_tokens: 300, total_char_count: 4_000,
+            kanji_char_count: 1_140, hira_char_count: 2_000, kata_char_count: 400,
+            alpha_char_count: 200, total_word_length: 2_300, tokens_map: { 'Ruby' => 2 }
+          )
+          readability = ReadabilityScore.new(score: 30.0, label: 'Professional', features: ReadabilityFeatures.zero)
+
+          output = @formatter.format_detailed_analysis(vocab, readability)
+
+          assert_includes output, '語彙の豊かさ: 表現が単調'   # labels.monotonous の既定
+          assert_includes output, 'Professional（やや難解）'    # labels.too_complex の既定
+        end
+
+        # labels.monotonous / too_complex を book.yml で変えると詳細分析の文言が追従する
+        # （旧実装ではキー定義のみで一切参照されない死蔵だった回帰テスト）
+        def test_detailed_analysis_honors_custom_monotonous_and_too_complex_labels
+          config = ConfigLoader.new(
+            'metrics' => { 'labels' => { 'monotonous' => 'のっぺり', 'too_complex' => '難しめ' } }
+          )
+          formatter = Formatter.new(config)
+          vocab = build_vocab(
+            kanji_ratio: 28.5, avg_word_length: 2.3, ttr: 0.3, mattr: 0.42,
+            total_tokens: 1000, unique_tokens: 300, total_char_count: 4_000,
+            kanji_char_count: 1_140, hira_char_count: 2_000, kata_char_count: 400,
+            alpha_char_count: 200, total_word_length: 2_300, tokens_map: { 'Ruby' => 2 }
+          )
+          readability = ReadabilityScore.new(score: 30.0, label: 'Professional', features: ReadabilityFeatures.zero)
+
+          output = formatter.format_detailed_analysis(vocab, readability)
+
+          assert_includes output, '語彙の豊かさ: のっぺり'
+          assert_includes output, 'Professional（難しめ）'
+        end
+
         def test_format_consistency_lists_high_and_low_on_separate_lines
           metric = ConsistencyMetric.new(
             label: '漢字比率', unit: '%', high_label: '高め', low_label: '低め',

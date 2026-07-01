@@ -126,6 +126,7 @@
 
 - [Medium] **Post-processing 単体テスト整備**: `_postReplaceList.json` の主要ルール（段落クラス付与、見出し・body クラス、各種クレンジング）のスナップショットテストを追加。想定外パターン（複数ブレース、引用符・バックスラッシュ混入等）の回帰防止。
 - [Low] **自動検証パイプライン（CI）**: 最小サンプルでのビルド、Lint、HTML ポスト処理テストの自動実行。
+- [Medium] **`vs metrics` の章別「表現が単調／やや難解」警告**: 現状 `metrics.labels` のうち `too_short`/`too_long` は分量警告として章別リストに出るが、`monotonous`（表現が単調）/`too_complex`（やや難解）は詳細分析の**表示文言**として使うのみ（2026-07-02 に配線）。これを一歩進め、**MATTR が低い章・建石式 RS が低い（難解な）章に対して、分量警告と同様に章別リストへ警告ラベルを出す**機能。要設計: (1) 警告発火のしきい値をどこに置くか（`metrics.mattr_window` 帯／`metrics.readability` の easy/standard を流用するか、専用の警告しきい値を設けるか）、(2) `WarningChecker` へ語彙多様度・読解難度の判定を追加し `has_warning?`/章別表示に統合、(3) 誤検知を避けるための除外章（`exclude_chapters`）との整合。`labels.monotonous`/`too_complex` は本機能のために用意されたキーで、この実装で本来の用途に達する。
 
 ### 堅牢性テスト（追加候補）
 
