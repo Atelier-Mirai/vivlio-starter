@@ -278,7 +278,7 @@ glossary:
 
 ### metrics — メトリクス基準値
 
-`vs metrics` コマンドの評価基準を設定します。プリセットを選ぶだけで、章・節の分量目安・語彙難度・語彙多様度・読解難度の判定基準を一括設定できます。
+`vs metrics` コマンドの評価基準を設定します。`use` でプリセットを選ぶと、本の規模に応じて章・節の分量目安が切り替わります。語彙難度・語彙多様度・読解難度の基準は、プリセットとは独立した共通設定として調整します。
 
 ```yaml
 metrics:
@@ -293,7 +293,7 @@ metrics:
 | `commercial` | 200 ページ以上の商業出版レベル |
 | `author_custom` | 自分で基準値を定義したい場合 |
 
-`use` で選んだプリセット（`compact`/`standard`/`commercial`/`author_custom`）は、`chapter`/`section` の分量基準に加え、`kanji_ratio`（漢字比率）・`word_length`（平均語長）・`sentence_length`（平均文長）・`clause_length`（平均節長）の判定基準を持ちます。プリセットの外側にも `mattr_window`（語彙多様度の窓幅）・`readability`（読解難度バンドのしきい値）・`labels`（警告メッセージの文言）を設定できます。詳細な基準値のカスタマイズは「Metrics」の章を参照してください。
+`use` で選んだプリセット（`compact`/`standard`/`commercial`/`author_custom`）が切り替えるのは、`chapter`/`section` の分量基準だけです。語彙難度（`kanji_ratio`・`word_length`）・語彙多様度（`mattr_window`）・読解難度（`readability`）・警告メッセージの文言（`labels`）は、プリセットの外側に置く共通設定で、どのプリセットを選んでも同じ値が使われます。詳細な基準値のカスタマイズは「Metrics」の章を参照してください。
 
 ### lint / spellcheck — 文章校正
 

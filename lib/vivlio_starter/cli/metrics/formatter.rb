@@ -27,6 +27,7 @@ module VivlioStarter
         def initialize(config_loader)
           @config = config_loader
           @thresholds = config_loader.volume_thresholds
+          @vocabulary = config_loader.vocabulary_thresholds
           @labels = config_loader.labels
         end
 
@@ -57,12 +58,14 @@ module VivlioStarter
 
         # 詳細分析セクションを生成する
         def format_detailed_analysis(vocab, readability)
+          kanji = @vocabulary[:kanji_ratio]
+          word = @vocabulary[:word_length]
           <<~OUTPUT.chomp
             📈 詳細分析
 
             【語彙難度】
-            - 漢字比率: #{kanji_evaluation(vocab.kanji_ratio)}（#{vocab.kanji_ratio.round(1)}%） — 理想的な範囲 25〜35%
-            - 平均語長: #{vocab.avg_word_length.round(1)} 文字
+            - 漢字比率: #{difficulty_evaluation(vocab.kanji_ratio, kanji)}（#{vocab.kanji_ratio.round(1)}%） — 理想的な範囲 #{kanji[:ideal_min]}〜#{kanji[:ideal_max]}%
+            - 平均語長: #{difficulty_evaluation(vocab.avg_word_length, word)}（#{vocab.avg_word_length.round(1)} 文字） — 理想的な範囲 #{word[:ideal_min]}〜#{word[:ideal_max]} 文字
             - 文字種構成: #{character_composition(vocab)}
 
             【語彙多様度】
@@ -319,15 +322,16 @@ module VivlioStarter
 
         def format_metric_value(value, unit) = "#{value.round(1)}#{unit}"
 
-        # 漢字比率の評価
-        def kanji_evaluation(ratio)
-          case ratio
-          in ..20 then '平易'
-          in 20..25 then 'やや平易'
-          in 25..35 then '適切'
-          in 35..45 then 'やや難解'
-          else '難解'
-          end
+        # 語彙難度（漢字比率・平均語長）を book.yml の閾値で 5 段階評価する。
+        # 帯は ConfigLoader#vocabulary_thresholds（min/ideal/max）に由来するため、
+        # 著者が対象読者に合わせて基準をカスタムできる（ハードコードだった帯を設定化）。
+        def difficulty_evaluation(value, threshold)
+          return '平易' if value < threshold[:min]
+          return 'やや平易' if value < threshold[:ideal_min]
+          return '適切' if value <= threshold[:ideal_max]
+          return 'やや難解' if value <= threshold[:max]
+
+          '難解'
         end
 
         # 語彙多様度（MATTR）の評価。窓付き移動平均のため、生 TTR より高め・

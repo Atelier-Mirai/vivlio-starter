@@ -97,6 +97,48 @@ module VivlioStarter
           assert_includes output, 'Standard'
         end
 
+        # 既定の閾値では 漢字比率 28.5% / 平均語長 2.3 が「適切」帯に入る
+        # （kanji_ratio ideal[25,35] / word_length ideal[2.0,2.5]）
+        def test_format_detailed_analysis_uses_default_vocabulary_bands
+          vocab = build_vocab(
+            kanji_ratio: 28.5, avg_word_length: 2.3, ttr: 0.65, mattr: 0.62,
+            total_tokens: 1000, unique_tokens: 650, total_char_count: 4_000,
+            kanji_char_count: 1_140, hira_char_count: 2_000, kata_char_count: 400,
+            alpha_char_count: 200, total_word_length: 2_300, tokens_map: { 'Ruby' => 2 }
+          )
+          readability = ReadabilityScore.new(score: 45.2, label: 'Standard', features: ReadabilityFeatures.zero)
+
+          output = @formatter.format_detailed_analysis(vocab, readability)
+
+          assert_includes output, '漢字比率: 適切（28.5%） — 理想的な範囲 25〜35%'
+          assert_includes output, '平均語長: 適切（2.3 文字） — 理想的な範囲 2.0〜2.5 文字'
+        end
+
+        # book.yml の kanji_ratio / word_length を変えると評価帯と理想範囲が追従する
+        # （旧実装ではハードコード帯・固定文言だった回帰テスト）
+        def test_format_detailed_analysis_honors_custom_vocabulary_thresholds
+          config = ConfigLoader.new(
+            'metrics' => {
+              'kanji_ratio' => { 'min' => 35, 'ideal' => [40, 50], 'max' => 60 },
+              'word_length' => { 'min' => 3.0, 'ideal' => [4.0, 5.0], 'max' => 6.0 }
+            }
+          )
+          formatter = Formatter.new(config)
+          vocab = build_vocab(
+            kanji_ratio: 28.5, avg_word_length: 2.3, ttr: 0.65, mattr: 0.62,
+            total_tokens: 1000, unique_tokens: 650, total_char_count: 4_000,
+            kanji_char_count: 1_140, hira_char_count: 2_000, kata_char_count: 400,
+            alpha_char_count: 200, total_word_length: 2_300, tokens_map: { 'Ruby' => 2 }
+          )
+          readability = ReadabilityScore.new(score: 45.2, label: 'Standard', features: ReadabilityFeatures.zero)
+
+          output = formatter.format_detailed_analysis(vocab, readability)
+
+          # 28.5% は min(35) 未満なので「平易」、理想範囲も設定値へ追従
+          assert_includes output, '漢字比率: 平易（28.5%） — 理想的な範囲 40〜50%'
+          assert_includes output, '平均語長: 平易（2.3 文字） — 理想的な範囲 4.0〜5.0 文字'
+        end
+
         def test_format_consistency_lists_high_and_low_on_separate_lines
           metric = ConsistencyMetric.new(
             label: '漢字比率', unit: '%', high_label: '高め', low_label: '低め',
