@@ -21,6 +21,8 @@
 #   - ImageGenerator: バリアント画像の生成
 # ================================================================
 
+require 'cgi'
+require 'uri'
 require_relative '../common'
 
 module VivlioStarter
@@ -29,8 +31,14 @@ module VivlioStarter
       # テーマ画像パス解決モジュール
       module ThemeImageResolver
         THEME_IMAGE_EXTENSIONS = %w[.webp .png .jpg .jpeg].freeze
-        FRONTISPIECE_DEFAULT_PATH = 'images/door2.webp'
-        ORNAMENT_DEFAULT_PATH = 'images/frame-yellow.webp'
+
+        # 扉絵・飾り画像の既定画像スラッグ。未指定時も無効な指定時もこの画像に寄せる。
+        # （無効な color が yellow へフォールバックするのと揃えた挙動。バンドルの桜を使う）
+        FALLBACK_THEME_IMAGE_SLUG = 'sakura'
+
+        # 万一バリアント解決に失敗したときの最終フォールバックパス（通常は到達しない）。
+        FRONTISPIECE_DEFAULT_PATH = 'images/bundled/sakura_portrait.webp'
+        ORNAMENT_DEFAULT_PATH = 'images/bundled/sakura_landscape.webp'
 
         DEFAULT_PAGE_WIDTH_MM = 210.0
         DEFAULT_PAGE_HEIGHT_MM = 297.0
@@ -54,23 +62,25 @@ module VivlioStarter
 
         module_function
 
-        # frontispiece (扉絵) の解決（未指定時は door2.webp を返す）
+        # frontispiece (扉絵) の解決（未指定時は既定画像 sakura を生成して使う）
         def resolve_frontispiece_path(raw, allow_generation: false)
+          source = raw.nil? || raw.to_s.strip.empty? ? FALLBACK_THEME_IMAGE_SLUG : raw
           resolve_theme_image_path(
-            raw,
+            source,
             variant: :portrait,
             default_path: FRONTISPIECE_DEFAULT_PATH,
             placeholder_svg: FRONTISPIECE_PLACEHOLDER_SVG,
             allow_generation: allow_generation,
+            fallback_slug: FALLBACK_THEME_IMAGE_SLUG,
             slug_transform: lambda do |value|
               value =~ /^door[1-7](?:_portrait)?(?:\.[^.]+)?$/i ? value.downcase : value
             end
           )
         end
 
-        # ornament (装飾画像) の解決
+        # ornament (装飾画像) の解決（未指定時は既定画像 sakura を生成して使う）
         def resolve_ornament_path(raw, allow_generation: false)
-          return ORNAMENT_DEFAULT_PATH if raw.nil? || raw.to_s.strip.empty?
+          raw = FALLBACK_THEME_IMAGE_SLUG if raw.nil? || raw.to_s.strip.empty?
 
           value = raw.to_s.strip
           return value if value =~ /^url\(/i || value =~ %r{^https?://}i
@@ -108,7 +118,8 @@ module VivlioStarter
             variant: :landscape,
             default_path: ORNAMENT_DEFAULT_PATH,
             placeholder_svg: ORNAMENT_PLACEHOLDER_SVG,
-            allow_generation: allow_generation
+            allow_generation: allow_generation,
+            fallback_slug: FALLBACK_THEME_IMAGE_SLUG
           )
         end
 
@@ -145,7 +156,7 @@ module VivlioStarter
 
         # テーマ画像パスの解決
         def resolve_theme_image_path(raw, variant:, default_path:, placeholder_svg:, allow_generation: false,
-                                     slug_transform: nil)
+                                     slug_transform: nil, fallback_slug: nil)
           return default_path if raw.nil? || raw.to_s.strip.empty?
 
           value = raw.to_s.strip
@@ -186,7 +197,40 @@ module VivlioStarter
             end
           end
 
+          # 指定名が解決できない場合は既定画像（sakura 等）へフォールバックする。
+          # フォールバック自身も無ければ（fallback_slug: nil の再帰）プレースホルダーを返す。
+          if fallback_slug && normalize_theme_image_slug(fallback_slug) != base_slug
+            fallback = resolve_theme_image_path(
+              fallback_slug, variant: variant, default_path: default_path,
+              placeholder_svg: placeholder_svg, allow_generation: allow_generation
+            )
+            return fallback unless fallback.start_with?('data:')
+          end
+
           placeholder_uri(base_slug, placeholder_svg)
+        end
+
+        # 指定されたテーマ画像名が実在する（またはバリアント生成の元になる画像が存在する）かを返す。
+        # resolve_* が allow_generation: true でプレースホルダーではなく実画像を返せるかと一致する。
+        # 未指定・URL/url() 指定は検証対象外として true（既定画像・外部指定のため）。
+        # @param raw [String, nil] book.yml の frontispiece/ornament 指定値
+        # @param variant [:portrait, :landscape] 判定するバリアント
+        # @return [Boolean]
+        def theme_image_available?(raw, variant:)
+          return true if raw.nil? || raw.to_s.strip.empty?
+
+          value = raw.to_s.strip
+          return true if value =~ /^url\(/i || value =~ %r{^https?://}i
+
+          slug = normalize_theme_image_slug(value)
+          base_slug, requested_variant, ext = split_slug_and_variant(slug)
+          base_query = ext.empty? ? base_slug : "#{base_slug}#{ext}"
+
+          # 既に該当バリアントがある / バリアント名を直接指定している / 生成元の base 画像がある、のいずれか
+          return true if find_existing_theme_variant(base_slug, variant)
+          return true if requested_variant && find_existing_theme_image(slug)
+
+          !find_existing_theme_image(base_query).nil?
         end
 
         # バリアント画像を探索
@@ -330,8 +374,6 @@ module VivlioStarter
 
         # SVGをdata URIに変換
         def svg_to_data_uri(svg_content)
-          require 'uri'
-          require 'cgi'
           # シンプルにURL encoding
           encoded = URI.encode_www_form_component(svg_content)
           "data:image/svg+xml;charset=utf-8,#{encoded}"

@@ -21,6 +21,7 @@
 # - FrontmatterGenerator: フロントマター生成・CSS更新
 # - CssUpdater: theme.css, appendix.css等の更新
 # - ThemeImageResolver: テーマ画像のパス解決
+# - ThemeValidator: theme 設定（色・扉絵・飾り画像）の検証と著者向け警告
 # - ImageGenerator: waifu2x連携画像生成
 # - MarkdownTransformer: Markdown→HTML変換
 # - ImagePathNormalizer: 画像パス正規化・プレースホルダー生成
@@ -34,6 +35,7 @@ require_relative 'pre_process/markdown_preprocessor'
 require_relative 'pre_process/frontmatter_generator'
 require_relative 'pre_process/css_updater'
 require_relative 'pre_process/theme_image_resolver'
+require_relative 'pre_process/theme_validator'
 require_relative 'pre_process/image_generator'
 require_relative 'pre_process/markdown_transformer'
 require_relative 'pre_process/image_path_normalizer'

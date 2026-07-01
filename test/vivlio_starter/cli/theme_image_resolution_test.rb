@@ -38,7 +38,54 @@ module VivlioStarter
         end
       end
 
-      # ornament: nothing 指定時に SVG プレースホルダーの data URI が返ることを検証
+      # ユーザー提供画像がバンドル画像より優先して解決されることを確認
+      # （stylesheets/images/ で bundled/ の同名画像を上書きできる仕組みの回帰テスト）
+      def test_user_image_overrides_bundled_image_with_same_name
+        with_temp_theme_images do |images_root|
+          bundled = File.join(images_root, 'bundled')
+          FileUtils.mkdir_p(bundled)
+          File.write(File.join(bundled, 'sample_portrait.webp'), 'bundled')
+          File.write(File.join(images_root, 'sample_portrait.webp'), 'user')
+
+          front = PreProcessCommands.resolve_frontispiece_path('sample', allow_generation: false)
+
+          assert_equal 'images/sample_portrait.webp', front, 'ユーザー提供画像が優先して解決されるべき'
+        end
+      end
+
+      # 未指定（nil/空）時は既定画像 sakura に解決されることを確認
+      def test_unspecified_uses_sakura_default
+        with_temp_theme_images do |images_root|
+          bundled = File.join(images_root, 'bundled')
+          FileUtils.mkdir_p(bundled)
+          File.write(File.join(bundled, 'sakura_portrait.webp'), 'p')
+          File.write(File.join(bundled, 'sakura_landscape.webp'), 'l')
+
+          assert_equal 'images/bundled/sakura_portrait.webp',
+                       PreProcessCommands.resolve_frontispiece_path(nil, allow_generation: false)
+          assert_equal 'images/bundled/sakura_landscape.webp',
+                       PreProcessCommands.resolve_ornament_path('', allow_generation: false)
+        end
+      end
+
+      # 存在しない画像名は既定画像（sakura）へフォールバックすることを確認
+      # （color: pink → yellow と同様の一貫したフォールバック）
+      def test_missing_image_falls_back_to_sakura
+        with_temp_theme_images do |images_root|
+          bundled = File.join(images_root, 'bundled')
+          FileUtils.mkdir_p(bundled)
+          File.write(File.join(bundled, 'sakura_portrait.webp'), 'p')
+          File.write(File.join(bundled, 'sakura_landscape.webp'), 'l')
+
+          front = PreProcessCommands.resolve_frontispiece_path('fuji', allow_generation: false)
+          ornament = PreProcessCommands.resolve_ornament_path('fuji', allow_generation: false)
+
+          assert_equal 'images/bundled/sakura_portrait.webp', front, '扉絵は sakura へフォールバックすべき'
+          assert_equal 'images/bundled/sakura_landscape.webp', ornament, '飾り画像は sakura へフォールバックすべき'
+        end
+      end
+
+      # フォールバック先（sakura）自体も存在しない場合はプレースホルダーへ落ちることを確認
       def test_ornament_nothing_uses_placeholder
         with_temp_theme_images do |_images_root|
           result = PreProcessCommands.resolve_ornament_path('nothing', allow_generation: false)

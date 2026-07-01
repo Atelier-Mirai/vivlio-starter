@@ -55,6 +55,10 @@ module VivlioStarter
             return
           end
 
+          # theme.color / frontispiece / ornament の設定ミスを著者向けに警告する（一度だけ）
+          require_relative '../pre_process/theme_validator'
+          VivlioStarter::CLI::PreProcessCommands::ThemeValidator.validate!(cfg)
+
           # CSS更新のためにfrontmatter生成を実行（HTMLファイルは生成しない）
           require_relative '../pre_process/frontmatter_generator'
           require_relative '../pre_process/css_updater'

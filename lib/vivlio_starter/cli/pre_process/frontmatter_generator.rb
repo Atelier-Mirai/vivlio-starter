@@ -273,8 +273,10 @@ module VivlioStarter
           elsif ALLOWED_COLORS.include?(t)
             [t, "var(--accent-#{t})"]
           else
-            Common.log_error("設定エラー: theme.color は #{ALLOWED_COLORS.join('/')} または #rrggbb/#rrggbbaa のHEXを指定してください（現在: '#{raw_color}'）。ファイル: #{Common::CONFIG_FILE}")
-            exit 1
+            # 無効な色名は既定色（yellow）へフォールバックしてビルドを継続する。
+            # 著者向けの警告は ThemeValidator が Step 2 で一度だけ表示する
+            # （ここは章ごとに呼ばれるため、ログを出すと重複してしまう）。
+            ['yellow', 'var(--accent-yellow)']
           end
         end
 

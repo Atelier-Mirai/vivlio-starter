@@ -21,6 +21,7 @@
 # ================================================================
 
 require_relative '../common'
+require_relative 'theme_image_resolver'
 
 module VivlioStarter
   module CLI
@@ -95,9 +96,10 @@ module VivlioStarter
                 "#{::Regexp.last_match(1)}#{ornament_value}#{::Regexp.last_match(2)}"
               end
             else
-              # ornament 未指定時は既定の frame-yellow.webp を使用
+              # ornament 未指定時は既定画像（sakura の飾り画像）を使用
+              # 通常は resolve_ornament_path が値を返すため、この分岐は保険。
               updated = updated.sub(/(--section-bg-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
-                "#{::Regexp.last_match(1)}url(\"images/frame-yellow.webp\")#{::Regexp.last_match(2)}"
+                "#{::Regexp.last_match(1)}url(\"#{ThemeImageResolver::ORNAMENT_DEFAULT_PATH}\")#{::Regexp.last_match(2)}"
               end
             end
 
