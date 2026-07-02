@@ -378,11 +378,10 @@ module VivlioStarter
           config_path = Common::VIVLIOSTYLE_CONFIG_FILE
           return unless File.exist?(config_path)
 
-          cfg = Common::CONFIG
-          book = cfg[:book] || cfg['book'] || {}
-          title_raw = book[:title] || book['title']
-          main_title = (book[:main_title] || book['main_title']).to_s.strip
-          subtitle = (book[:subtitle] || book['subtitle']).to_s.strip
+          book = Common::CONFIG.book
+          title_raw = book.title
+          main_title = book.main_title.to_s.strip
+          subtitle = book.subtitle.to_s.strip
 
           new_title = if title_raw && !title_raw.to_s.strip.empty?
                         title_raw.to_s.strip
