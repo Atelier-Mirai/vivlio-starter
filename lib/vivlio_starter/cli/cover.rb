@@ -463,7 +463,7 @@ module VivlioStarter
       # @param covers_dir [String] カバーディレクトリ
       # @param config [Hash] シンボルキーの設定ハッシュ
       def self.generate_epub_cover(covers_dir, config)
-        theme = config.dig(:output, :cover) || config.dig('output', 'cover')
+        theme = config.dig(:output, :cover)
         return unless theme
 
         output_jpg = File.join(covers_dir, "cover_#{theme}.jpg")
@@ -542,7 +542,7 @@ module VivlioStarter
 
       # bleed 値を mm で取得（"3mm" → 3）
       def self.parse_bleed_mm(config)
-        bleed_raw = config.dig(:output, :print_pdf, :bleed) || config.dig('output', 'print_pdf', 'bleed')
+        bleed_raw = config.dig(:output, :print_pdf, :bleed)
         return 0 unless bleed_raw
 
         bleed_raw.to_s.gsub(/mm\z/i, '').to_f

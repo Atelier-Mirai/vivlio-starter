@@ -402,10 +402,9 @@ module VivlioStarter
           # --compress または --no-compress が明示的に指定されている場合はそれを優先
           return options[:compress] unless options[:compress].nil?
 
-          # オプション未指定の場合は book.yml の pdf.compress を参照（デフォルト: false）
-          config = Common::CONFIG
-          pdf_config = config&.dig('pdf')
-          pdf_config&.dig('compress') == true
+          # オプション未指定の場合は book.yml の output.pdf.compress を参照（デフォルト: false）
+          # （従来はレガシーの pdf.compress を読んでおり、正規キーが効いていなかった）
+          Common.pdf_compress?
         end
 
         # 圧縮設定のソース（ログ用）
@@ -414,14 +413,10 @@ module VivlioStarter
             return options[:compress] ? '--compress オプション' : '--no-compress オプション'
           end
 
-          config = Common::CONFIG
-          pdf_config = config&.dig('pdf')
-          if pdf_config&.dig('compress') == true
-            'book.yml: pdf.compress = true'
-          elsif pdf_config&.dig('compress') == false
-            'book.yml: pdf.compress = false'
-          else
-            'デフォルト設定 (compress: false)'
+          case Common::CONFIG.output.pdf.compress
+          in true then 'book.yml: output.pdf.compress = true'
+          in false then 'book.yml: output.pdf.compress = false'
+          else 'デフォルト設定 (compress: false)'
           end
         end
 

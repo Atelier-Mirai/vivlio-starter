@@ -24,10 +24,12 @@ module VivlioStarter
         private
 
         # 1つのフォント設定から全インスタンスの @font-face 宣言を生成する
+        # エントリは著者定義の自由構造（キー欠落があり得る）ため、
+        # nil 安全なシンボル [] で参照する（Data / シンボルキー Hash の双方で同義）
         def generate_declarations(config)
-          family = config_value(config, :family)
-          src = config_value(config, :src)
-          instances = config_value(config, :instances)
+          family = config[:family]
+          src = config[:src]
+          instances = config[:instances]
 
           unless family && src && instances
             log_warning("[Techbook] variable_fonts エントリに必須フィールドが不足: #{config.inspect}")
@@ -38,8 +40,8 @@ module VivlioStarter
         end
 
         def build_font_face(family, src, instance)
-          weight = config_value(instance, :weight)
-          settings = config_value(instance, :settings)
+          weight = instance[:weight]
+          settings = instance[:settings]
           derived_family = "#{family}-#{weight}"
 
           <<~CSS
@@ -51,16 +53,6 @@ module VivlioStarter
               font-variation-settings: #{settings};
             }
           CSS
-        end
-
-        # Hash / Data 両対応のアクセサ
-        # Common::CONFIG 経由の設定値は再帰的 Data ラッパーだが、
-        # テスト等で Hash が渡される場合にも対応する
-        def config_value(obj, key)
-          case obj
-          when Hash then obj[key.to_sym] || obj[key.to_s]
-          else obj.respond_to?(key) ? obj.public_send(key) : nil
-          end
         end
 
         # Common.log_warn が利用可能ならそちらを使い、

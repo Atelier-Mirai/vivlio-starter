@@ -242,8 +242,7 @@ module VivlioStarter
       #   - vivlio_starter*.epub（Kindle 中間 …-kindle.epub もここで拾う）
       #   - vivlio_starter*.kpf（Kindle 最終成果物）
       def add_dynamic_filename_patterns(patterns)
-        config = Common::CONFIG
-        project_name = config.dig('project', 'name')
+        project_name = Common::CONFIG.project.name
         return unless project_name
 
         patterns << "#{project_name}*.pdf"

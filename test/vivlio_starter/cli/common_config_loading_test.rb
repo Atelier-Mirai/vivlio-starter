@@ -49,12 +49,12 @@ module VivlioStarter
         assert_equal false, cfg.dig(:output, :pdf, :compress)
       end
 
-      # 移行期間の互換: String キーは Symbol へ正規化される（Phase 3 で廃止予定）
-      def test_should_normalize_string_keys_to_symbols
+      # The One Way: String キーは受け付けない（記法混在の再発防止・Phase 3）
+      def test_should_reject_string_keys_with_argument_error
         cfg = sample_config
 
-        assert_equal 'タイトル', cfg['book']['main_title']
-        assert_equal true, cfg.dig('output', 'pdf', 'combined')
+        assert_raises(ArgumentError) { cfg['book'] }
+        assert_raises(ArgumentError) { cfg.dig('output', 'pdf') }
       end
 
       def test_should_return_nil_for_missing_keys_via_bracket_and_dig
@@ -64,13 +64,13 @@ module VivlioStarter
         assert_nil cfg.dig(:output, :epub, :embed)
       end
 
-      # 回帰: 旧実装（respond_to? ベースの []）では cfg[:to_h] が設定全体を、
-      # cfg['inspect'] が inspect 文字列を返していた（メソッド漏れ）
+      # 回帰: 旧実装（respond_to? ベースの []）では cfg[:to_h] が設定全体を
+      # 返していた（メソッド漏れ）
       def test_should_not_leak_methods_through_bracket_access
         cfg = sample_config
 
         assert_nil cfg[:to_h]
-        assert_nil cfg['inspect']
+        assert_nil cfg[:inspect]
         assert_nil cfg[:members]
         assert_nil cfg.dig(:book, :class)
       end
@@ -97,11 +97,11 @@ module VivlioStarter
         assert_equal 'intro', cfg.chapters.first.slug
       end
 
-      # 廃止予定（仕様書 Phase 3）の fetch の現行互換: nil 値も default 扱い
-      def test_should_treat_nil_value_as_default_in_fetch
+      # 廃止済み（仕様書 Phase 3）: Hash#fetch と意味論が異なる fetch は提供しない
+      def test_should_not_provide_fetch_method
         cfg = Common.wrap_config(page: { size: nil })
 
-        assert_equal 'B5', cfg.page.fetch(:size, 'B5')
+        refute_respond_to cfg.page, :fetch
       end
 
       # Data の予約メソッド名と衝突するキーはロード時に警告される

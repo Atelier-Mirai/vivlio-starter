@@ -268,13 +268,10 @@ module VivlioStarter
         end
       end
 
-      # CONFIG から最終PDF名を取得する
+      # 最終PDF名（vivliostyle build の既定出力とその圧縮版。
+      # レガシー pdf: セクションによる上書きは Phase 2 で廃止済み）
       def pdf_output_files
-        config = VivlioStarter::CLI::Common::CONFIG['pdf'] || {}
-        [
-          config['output_file'] || 'output.pdf',
-          config['output_file_compressed'] || 'output_compressed.pdf'
-        ].uniq
+        %w[output.pdf output_compressed.pdf]
       end
 
       # 確認プロンプト用に $stdin を差し替える

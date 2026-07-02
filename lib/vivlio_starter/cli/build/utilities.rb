@@ -142,8 +142,7 @@ module VivlioStarter
 
         # 現在の設定からページサイズ（文字列: mm/pt）を取得
         def page_size_strings_from_config
-          page_cfg = Common::CONFIG.page
-          result = Common.resolve_page_size(page_cfg)
+          result = Common.resolve_page_size(Common::CONFIG.page.to_h)
           if result.is_a?(Array) && result.size == 2 && result.all? do |dim|
             dim.to_s.strip.match?(/\A[0-9.]+(mm|pt)?\z/)
           end

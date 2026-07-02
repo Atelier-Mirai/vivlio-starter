@@ -122,7 +122,8 @@ module VivlioStarter
 
           create_dummy_png(input_png, width: 2894, height: 4092)
 
-          config = YAML.load_file('config/book.yml')
+          # 本番と同じシンボルキーで読み込む（文字列キーは Phase 3 で廃止）
+          config = YAML.load_file('config/book.yml', symbolize_names: true)
           CoverCommands.generate_epub_cover(covers_dir, config)
 
           output_jpg = File.join(covers_dir, 'cover_master.jpg')

@@ -1,7 +1,7 @@
 # Common::CONFIG アクセス記法統一 仕様（Data オブジェクト統一リファクタリング）
 
 対象: `lib/` 全域（＋テストの設定偽装方法） / 策定日: 2026-07-02 /
-ステータス: **Phase 1・2 実装完了（2026-07-02）**・Phase 3 未着手
+ステータス: **Phase 1〜3 すべて実装完了（2026-07-02）** — 本仕様の記法が現行の唯一の記法
 
 Phase 1 実装メモ:
 - `wrap_config` の `[]` を member 限定化・`deconstruct_keys(nil)` 修正・予約名警告（`common.rb`）
@@ -22,10 +22,19 @@ Phase 2 実装メモ:
   発見した消費漏れ 4 件（vfm.hard_line_breaks / book.isbn / output.*.layout /
   index_glossary.use_mecab）を配線
 
-Phase 3（未着手・残作業）:
-- `fetch` 削除、`[]`/`dig` の String キー受け付け廃止
-- Hash/Data ブリッジ削除（`resolve_page_size` 正規化分岐・`variable_font_injector#config_value`・`fetch_bool`）
-- common.rb 冒頭のハイブリッド仕様コメントの整理
+Phase 3 実装メモ（次期メジャーを待たず即時適用）:
+- `fetch` / `fetch_bool` を削除（呼び出しゼロを確認のうえ撤去）
+- `[]`/`dig` の String キーは**警告ではなく即 ArgumentError**（「Symbol でエラーになったので
+  String を渡す」式のその場凌ぎを構造的に不可能にした）。この厳格化が残存 6 箇所を検出:
+  clean.rb の `dig('project','name')`、cover.rb の二重 dig 2 箇所（シンボル側 nil 時に
+  文字列側で raise する時限バグ）、pipeline.rb の圧縮判定 2 メソッド
+  （**レガシー `pdf.compress` を読んでおり正規の `output.pdf.compress` が効かない実バグ**）、
+  テストヘルパー 1 箇所 — すべて正規記法へ修正
+- Hash/Data ブリッジ削除: `resolve_page_size` は「シンボルキー Hash 前提・Data は境界で
+  `.to_h`」に統一、`variable_font_injector#config_value` は `[:key]` 直接参照へ、
+  `resolve_vivliostyle_size` / epub_builder の `respond_to?` 分岐も撤去
+- common.rb 冒頭コメントを本仕様への参照に刷新
+- テストの設定偽装を One Way に統一（`wrap_config` 経由・`symbolize_names: true`）
 
 ## 背景 / 目的
 
@@ -157,11 +166,11 @@ directories, cache, commands, files, vivliostyle
 
 ### 2.3 `wrap_config` の改修仕様
 
-| メソッド | 新仕様 |
+| メソッド | 新仕様（Phase 3 適用後の最終形） |
 |---|---|
-| `[]` | **メンバー限定**の参照に修正（メソッド漏れ排除）。生成時に member 集合を保持し、非メンバーは nil。String キーは to_sym 正規化（Phase 3 で警告→将来削除） |
-| `dig` | `[]` ベースの現行チェーンを維持（`[]` の安全化を自動的に継承） |
-| `fetch` | Phase 2 で deprecation 警告、Phase 3 で削除 |
+| `[]` | **メンバー限定・Symbol 限定**の参照（メソッド漏れ排除）。非メンバーは nil。String キーは ArgumentError |
+| `dig` | `[]` ベースのチェーン（`[]` の安全化・Symbol 限定を自動的に継承。配列添字の Integer は可） |
+| `fetch` | 削除済み（Hash#fetch と意味論が異なるため。`fetch_bool` も削除） |
 | `deconstruct_keys` | `keys.nil?` なら `to_h` を返すよう修正（Ruby 標準仕様に一致） |
 | 予約名検査 | Data の既存メソッド（`with` / `to_h` / `members` / `hash` / `inspect` / `dig` 等）と衝突するキーをロード時に `log_warn` |
 | freeze | 維持（不変性の保証は変えない） |

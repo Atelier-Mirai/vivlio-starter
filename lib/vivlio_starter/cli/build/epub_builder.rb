@@ -421,14 +421,14 @@ module VivlioStarter
         # @param config [Object] Common::CONFIG
         # @return [String] 'A5', 'B5', 'A4', または '148mm 210mm' 形式
         def resolve_page_size(config)
-          page_cfg = config.respond_to?(:page) ? config.page : config[:page]
+          page_cfg = config.page
           return 'A5' unless page_cfg
 
+          # 版面キーはプリセット由来で存在保証がないため [] で参照する
           size_name = page_cfg[:size].to_s.strip.upcase
           return size_name unless size_name.empty?
 
-          raw = page_cfg.respond_to?(:to_h) ? page_cfg.to_h : page_cfg
-          w, h = Common.resolve_page_size(raw)
+          w, h = Common.resolve_page_size(page_cfg.to_h)
           "#{w} #{h}"
         end
 

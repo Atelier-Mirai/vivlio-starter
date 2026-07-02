@@ -30,37 +30,36 @@ module VivlioStarter
     # ================================================================
     class VivliostyleConfigSizeTest < Minitest::Test
       def test_resolve_vivliostyle_size_returns_a5_for_a5_preset
-        config = { page: { size: 'A5' } }
+        config = Common.wrap_config(page: { size: 'A5' })
         size = VivliostyleCommands.resolve_vivliostyle_size(config)
         assert_equal 'A5', size
       end
 
       def test_resolve_vivliostyle_size_returns_a5_when_page_nil
-        size = VivliostyleCommands.resolve_vivliostyle_size({ page: nil })
+        size = VivliostyleCommands.resolve_vivliostyle_size(Common.wrap_config(page: nil))
         assert_equal 'A5', size
       end
 
       def test_resolve_vivliostyle_size_returns_dimensions_when_no_size_key
-        config = { page: { width: '182mm', height: '257mm' } }
+        config = Common.wrap_config(page: { width: '182mm', height: '257mm' })
         size = VivliostyleCommands.resolve_vivliostyle_size(config)
         assert_equal '182mm 257mm', size
       end
 
       def test_resolve_vivliostyle_size_returns_b5_for_b5_preset
-        config = { page: { size: 'B5' } }
+        config = Common.wrap_config(page: { size: 'B5' })
         size = VivliostyleCommands.resolve_vivliostyle_size(config)
         assert_equal 'B5', size
       end
 
       def test_resolve_vivliostyle_size_normalizes_case
-        config = { page: { size: 'a4' } }
+        config = Common.wrap_config(page: { size: 'a4' })
         size = VivliostyleCommands.resolve_vivliostyle_size(config)
         assert_equal 'A4', size
       end
 
       def test_vivliostyle_config_js_contains_size_property
-        fresh_config = Common.load_config
-        expected_size = VivliostyleCommands.resolve_vivliostyle_size(fresh_config)
+        expected_size = VivliostyleCommands.resolve_vivliostyle_size(Common::CONFIG)
         pattern = /size:\s*'#{Regexp.escape(expected_size)}'/
 
         content = File.read('vivliostyle.config.js', encoding: 'utf-8')

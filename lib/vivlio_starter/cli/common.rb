@@ -4,16 +4,14 @@ require 'fileutils'
 require 'json'
 require 'yaml'
 
-# このコードで可能になったこと
-# * ハイブリッドなアクセス:
-#     * Common::CONFIG.page.base_font_size （ドット記法でスマートに）
-#     * Common::CONFIG[:page][:base_font_size] （変数を使った動的なアクセスもOK）
-# * パターンマッチングの継続サポート:
-#     * def deconstruct_keys を実装したため、case Common::CONFIG in { page: { size: } } のようなパターンマッチも引き続き機能します。
-# * 安全な設定変更:
-#     * 著者が book.yml を編集した後に reload_configuration! を呼べば、警告なしで CONFIG の中身が最新の状態に置き換わります。
-# * 不変性の保証:
-#     * .freeze を適用しているため、ビルド実行中に設定が誤って書き換えられる副作用を防ぎます。
+# Common::CONFIG — book.yml の再帰的 Data ラッパー
+# 正規記法（The One Way）は docs/specs/config-access-unification-spec.md §2 を参照。
+# * 静的キーはドット記法:   Common::CONFIG.book.main_title
+# * 動的キーはシンボル:     Common::CONFIG[section] / CONFIG.dig(:a, :b)（Symbol のみ。String は不可）
+# * パターンマッチ対応:     case Common::CONFIG in { page: { size: } } ...
+# * 安全な設定変更:         著者が book.yml を編集した後は reload_configuration! で最新化
+# * 不変性の保証:           .freeze により、ビルド実行中の誤った書き換えを防止
+# * 存在保証:               default_config_schema が全セクション・既知キーを保証（未設定は nil）
 
 module VivlioStarter
   module CLI
@@ -48,8 +46,8 @@ module VivlioStarter
       # ================================================================
 
       # Data の既存メソッドと衝突すると [] やドット記法が member を返せなくなるため、
-      # ロード時に警告する（dig / fetch は wrap_config が後付けするメソッド）
-      RESERVED_CONFIG_KEYS = (Data.instance_methods | %i[dig fetch]).freeze
+      # ロード時に警告する（dig は wrap_config が後付けするメソッド）
+      RESERVED_CONFIG_KEYS = (Data.instance_methods | %i[dig]).freeze
 
       # Hashを再帰的にDataオブジェクトに変換するヘルパー
       # ドット記法と [] アクセスの両方を提供します
@@ -61,11 +59,12 @@ module VivlioStarter
           keys = input.keys
           warn_reserved_config_keys(keys)
           cls = Data.define(*keys) do
-            # 従来型の [] アクセスも提供。respond_to? ベースだと to_h 等の
-            # メソッド戻り値が漏れるため、member 限定で参照する。
-            # String キーは移行期間の互換として Symbol へ正規化（Phase 3 で廃止予定）
+            # 動的キー用の [] アクセス（Symbol 限定・member 限定）。
+            # respond_to? ベースだと to_h 等のメソッド戻り値が漏れるため member 限定とし、
+            # String キーは記法混在の再発を防ぐため即座にエラーにする（The One Way）。
             def [](key)
-              key = key.to_sym if key.respond_to?(:to_sym)
+              raise ArgumentError, "CONFIG のキーは Symbol で指定してください（String は不可）: #{key.inspect}" if key.is_a?(String)
+
               members.include?(key) ? public_send(key) : nil
             end
 
@@ -73,22 +72,13 @@ module VivlioStarter
             # keys が nil のとき全体を返すのは Ruby の規約（`in { **rest }` で全キーを束縛可能にする）
             def deconstruct_keys(keys) = keys.nil? ? to_h : to_h.slice(*keys)
 
-            # dig メソッドの提供（既存コードとの互換性）
+            # 動的な多段アクセス用の dig（Symbol キーのみ。配列添字の Integer は可）
             def dig(*keys)
               keys.reduce(self) do |obj, key|
                 return nil unless obj.respond_to?(:[])
 
                 obj[key]
               end
-            end
-
-            # fetch メソッドの提供
-            # Hash#fetch と異なり KeyError を出さず、nil 値も default 扱いになるため
-            # 廃止予定（仕様書 Phase 3）。新規コードでは使用しない。
-            def fetch(key, default = nil)
-              warn "[DEPRECATION] CONFIG#fetch は廃止予定です。ドット記法または [] を使用してください（キー: #{key}）"
-              val = self[key]
-              val.nil? ? default : val
             end
           end
           cls.new(**input.transform_values { wrap_config(it) })
@@ -615,16 +605,9 @@ module VivlioStarter
         'B5' => { width: '182mm', height: '257mm' }
       }.freeze
 
-      # ページサイズを解決する（シンボルキー前提）
-      def resolve_page_size(page_cfg)
-        # page_cfg は Hash（load_config 由来・テスト直渡し）のほか、CONFIG.page のように
-        # Data オブジェクト（wrap_config でラップ済み）で渡ることがある。
-        # Data を Hash 扱いしないと size 等が読めず B5 へ誤フォールバックするため、
-        # to_h でシンボルキーの Hash へ正規化してから参照する。
-        pcfg = case page_cfg
-               when Hash then page_cfg
-               else page_cfg.respond_to?(:to_h) ? page_cfg.to_h : {}
-               end
+      # ページサイズを解決する（シンボルキーの Hash 前提）
+      # CONFIG.page（Data）を渡す場合は呼び出し側の境界で .to_h してから渡す（spec §2.4）
+      def resolve_page_size(pcfg)
         size = pcfg[:size].to_s.strip.upcase
         defaults = PAGE_SIZES[size] || PAGE_SIZES['B5']
 
@@ -719,25 +702,6 @@ module VivlioStarter
 
       def current_step_label
         Thread.current[VIVLIOSTYLE_CURRENT_STEP_KEY]
-      end
-
-      # ================================================================
-      # Boolean Utilities
-      # ================================================================
-
-      # シンボルキーのみを前提としたブール値取得
-      def fetch_bool(obj, keys, default: false)
-        cur = obj
-        Array(keys).each do |k|
-          return default unless cur.respond_to?(:[])
-
-          cur = cur[k.to_sym]
-        end
-        return default if cur.nil?
-
-        truthy?(cur)
-      rescue StandardError
-        default
       end
 
       def abort_with_error(msg)
@@ -914,7 +878,7 @@ module VivlioStarter
                       :current_log_level, :current_step_label, :deep_merge_config, :default_cache,
                       :default_commands, :default_config_schema, :default_directories, :default_files,
                       :default_vfm, :default_vivliostyle, :log_always, :ensure_cache_dir!,
-                      :ensure_required_yaml_files!, :required_yaml_files_loadable?, :fetch_bool, :format_pt,
+                      :ensure_required_yaml_files!, :required_yaml_files_loadable?, :format_pt,
                       :generate_compressed_pdf_filename, :generate_epub_filename,
                       :generate_kpf_filename, :generate_kindle_epub_filename,
                       :generate_output_filename, :generate_print_pdf_filename,
