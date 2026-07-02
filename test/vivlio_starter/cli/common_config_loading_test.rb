@@ -203,5 +203,90 @@ module VivlioStarter
         assert_equal true, Common::CONFIG.vfm.hard_line_breaks
       end
     end
+
+    # 版面単位変換（normalize_page_units / resolve_page_size）の検証。
+    # 純粋メソッド（Hash 入出力）のため chdir 不要。
+    # 仕様: docs/specs/page-unit-conversion-spec.md §3.3 / §7.2
+    class CommonPageUnitConversionTest < Minitest::Test
+      def test_should_convert_q_font_size_to_pt_in_page_units
+        result = Common.normalize_page_units(base_font_size: '24Q')
+
+        assert_equal '17.008pt', result[:base_font_size]
+      end
+
+      def test_should_append_pt_to_bare_numeric_font_size
+        result = Common.normalize_page_units(base_font_size: 10.5)
+
+        assert_equal '10.5pt', result[:base_font_size]
+      end
+
+      # B1 回帰: 変換後の base_font_size を基準に倍率行送りを絶対 pt へ解決する
+      def test_should_resolve_ratio_line_height_from_converted_font_size
+        result = Common.normalize_page_units(base_font_size: '30Q', base_line_height: 1.7)
+
+        assert_equal '21.26pt', result[:base_font_size]
+        assert_equal '36.142pt', result[:base_line_height]
+      end
+
+      def test_should_resolve_em_line_height_to_pt
+        result = Common.normalize_page_units(base_font_size: '10pt', base_line_height: '1.7em')
+
+        assert_equal '17.0pt', result[:base_line_height]
+      end
+
+      # pt・Q 行送りは基準文字サイズが無くても解決できる（分岐順の前置）
+      def test_should_keep_pt_line_height_and_convert_q_line_height_without_base
+        assert_equal '17pt', Common.normalize_page_units(base_line_height: '17pt')[:base_line_height]
+        assert_equal '34.016pt', Common.normalize_page_units(base_line_height: '48Q')[:base_line_height]
+      end
+
+      def test_should_pass_through_percent_and_unitless_without_base
+        assert_equal '150%', Common.normalize_page_units(base_line_height: '150%')[:base_line_height]
+        assert_equal 1.7, Common.normalize_page_units(base_line_height: 1.7)[:base_line_height]
+      end
+
+      def test_should_omit_blank_line_height
+        result = Common.normalize_page_units(base_font_size: '10pt')
+
+        refute result.key?(:base_line_height)
+      end
+
+      def test_should_resolve_jis_b5_page_size
+        assert_equal %w[182mm 257mm], Common.resolve_page_size(size: 'JIS-B5')
+      end
+    end
+
+    # apply_page_preset のプリセット合成（プリセット既定 < 著者インライン値）。
+    # PAGE_PRESETS_FILE（相対パス）を読むため一時ディレクトリでプリセットを用意する。
+    class CommonPagePresetTest < Minitest::Test
+      def setup
+        @original_dir = Dir.pwd
+        @temp_dir = Dir.mktmpdir
+        Dir.chdir(@temp_dir)
+        FileUtils.mkdir_p('config')
+        File.write('config/page_presets.yml', {
+          'a5_standard' => {
+            'size' => 'A5', 'base_font_size' => '10pt',
+            'base_line_height' => 1.7, 'margin_top' => '22mm'
+          }
+        }.to_yaml)
+      end
+
+      def teardown
+        Dir.chdir(@original_dir)
+        FileUtils.rm_rf(@temp_dir)
+      end
+
+      # 著者インライン値がプリセット既定に勝ち、かつ正規化（倍率→絶対 pt）が走る
+      def test_should_apply_page_preset_with_author_overrides_winning
+        cfg = { page: { use: 'a5_standard', margin_top: '30mm' } }
+
+        merged = Common.apply_page_preset(cfg)[:page]
+
+        assert_equal '30mm', merged[:margin_top]           # 著者値が優先
+        assert_equal '10pt', merged[:base_font_size]        # プリセット既定
+        assert_equal '17.0pt', merged[:base_line_height]    # 倍率 1.7 → 10pt × 1.7 = 17pt
+      end
+    end
   end
 end

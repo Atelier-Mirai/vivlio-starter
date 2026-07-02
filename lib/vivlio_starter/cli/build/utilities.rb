@@ -155,7 +155,7 @@ module VivlioStarter
         # 現在の設定からページサイズ（pt）を取得
         def page_size_points_from_config
           width_s, height_s = page_size_strings_from_config
-          mm_to_pt = 72.0 / 25.4
+          mm_to_pt = Units::PT_PER_MM
           parse_len = lambda { |s|
             str = s.to_s.strip.downcase
             if str.end_with?('mm')

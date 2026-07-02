@@ -41,7 +41,7 @@ module VivlioStarter
       # @param original_pdf_path [String] 対象のPDFファイルパス
       # @param bleed_pt [Float] 塗り足し幅 (pt)
       # @return [Boolean] 成功したか
-      def stamp_nombre!(original_pdf_path, bleed_pt: 3.0 * (72.0 / 25.4))
+      def stamp_nombre!(original_pdf_path, bleed_pt: 3.0 * CLI::Units::PT_PER_MM)
         # --- Phase: Validation ---
         unless File.exist?(original_pdf_path)
           CLI::Common.log_warn("[NombreStamper] PDF が見つかりません: #{original_pdf_path}")

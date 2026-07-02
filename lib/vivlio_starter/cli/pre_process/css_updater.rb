@@ -266,7 +266,7 @@ module VivlioStarter
           page_cfg[:column_font]      = typo_cfg&.dig(:column, :font)
           page_cfg[:code_font]        = typo_cfg&.dig(:code, :font)
           page_cfg[:folio_font]       = typo_cfg&.dig(:folio, :font)
-          page_cfg[:column_font_size] = typo_cfg&.dig(:column, :font_size)
+          page_cfg[:column_font_size] = Units.font_size_to_pt(typo_cfg&.dig(:column, :font_size))
           page_cfg[:folio_placement]  = typo_cfg&.dig(:folio, :placement)
 
           # 紙サイズを正規化
@@ -435,7 +435,7 @@ module VivlioStarter
         # 詳細は docs/specs/vivliostyle_warnings_spec.md 参照。
         # 用紙幅 mm から判型を推定し、A5=26em / B5=36em / A4=40em を返す。
         def calculate_align_max_width(width)
-          w_mm = parse_to_mm(width)
+          w_mm = Units.length_to_mm(width) || 0
           return '40em' unless w_mm.positive?
           return '26em' if w_mm <= 155 # A5 相当（148mm）
           return '36em' if w_mm <= 190 # B5 相当（JIS 182mm / ISO 176mm）
@@ -447,8 +447,8 @@ module VivlioStarter
         def calculate_paper_scale(width, height)
           a4_w_mm = 210.0
           a4_h_mm = 297.0
-          w_mm = parse_to_mm(width)
-          h_mm = parse_to_mm(height)
+          w_mm = Units.length_to_mm(width) || 0
+          h_mm = Units.length_to_mm(height) || 0
 
           return 1.0 unless w_mm.positive? && h_mm.positive?
 
@@ -460,21 +460,9 @@ module VivlioStarter
           paper_scale.clamp(0.5, 1.0).round(4)
         end
 
-        # CSS長さ文字列をmm単位に変換
-        def parse_to_mm(val)
-          s = val.to_s.strip
-          if (m = s.match(/^([0-9]+(?:\.[0-9]+)?)\s*(mm|pt)$/i))
-            num = m[1].to_f
-            unit = m[2].downcase
-            unit == 'pt' ? (num * 0.3527777778) : num
-          else
-            s.to_f
-          end
-        end
-
         def calculate_frontispiece_binding_offset(margin_inner, margin_outer)
-          inner_mm = parse_to_mm(margin_inner)
-          outer_mm = parse_to_mm(margin_outer)
+          inner_mm = Units.length_to_mm(margin_inner) || 0
+          outer_mm = Units.length_to_mm(margin_outer) || 0
           diff = inner_mm - outer_mm
           return '0mm' unless diff.positive?
 
@@ -560,6 +548,7 @@ module VivlioStarter
             ['--page-margin-outer',     page_cfg[:margin_outer]],
             ['--frontispiece-binding-offset', page_cfg[:frontispiece_binding_offset]],
             ['--column-font-size',      page_cfg[:column_font_size]],
+            ['--folio-font-size',       page_cfg[:folio_font_size]],
             ['--font-main-text',        page_cfg[:main_text_font],  :font],
             ['--font-header',           page_cfg[:header_font],     :font],
             ['--font-code',             page_cfg[:code_font],       :font],

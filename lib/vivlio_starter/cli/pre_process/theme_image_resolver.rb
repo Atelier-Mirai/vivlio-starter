@@ -322,10 +322,10 @@ module VivlioStarter
         def binding_safe_portrait_ratio
           # page の版面キー（width 等）は page_presets 由来で存在保証がないため [] で参照する
           page_cfg = Common::CONFIG.page
-          width_mm = css_length_to_mm(page_cfg[:width]) || DEFAULT_PAGE_WIDTH_MM
-          height_mm = css_length_to_mm(page_cfg[:height]) || DEFAULT_PAGE_HEIGHT_MM
-          margin_inner_mm = css_length_to_mm(page_cfg[:margin_inner]) || 0
-          margin_outer_mm = css_length_to_mm(page_cfg[:margin_outer]) || 0
+          width_mm = Units.length_to_mm(page_cfg[:width]) || DEFAULT_PAGE_WIDTH_MM
+          height_mm = Units.length_to_mm(page_cfg[:height]) || DEFAULT_PAGE_HEIGHT_MM
+          margin_inner_mm = Units.length_to_mm(page_cfg[:margin_inner]) || 0
+          margin_outer_mm = Units.length_to_mm(page_cfg[:margin_outer]) || 0
 
           binding_delta = [margin_inner_mm - margin_outer_mm, 0].max
           effective_width = width_mm - binding_delta
@@ -335,26 +335,6 @@ module VivlioStarter
           ratio.clamp(MIN_BINDING_RATIO, MAX_BINDING_RATIO)
         rescue StandardError
           1.414
-        end
-
-        def css_length_to_mm(value)
-          s = value.to_s.strip
-          return nil if s.empty?
-
-          if (m = s.match(/^([0-9]+(?:\.[0-9]+)?)\s*(mm|cm|in|pt)$/i))
-            num = m[1].to_f
-            unit = m[2].downcase
-            case unit
-            when 'mm' then num
-            when 'cm' then num * 10.0
-            when 'in' then num * 25.4
-            when 'pt' then num * 0.3527777778
-            else
-              num
-            end
-          else
-            s.to_f
-          end
         end
 
         # プレースホルダーURIを生成

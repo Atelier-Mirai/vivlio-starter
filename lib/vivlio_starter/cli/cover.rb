@@ -388,7 +388,7 @@ module VivlioStarter
         trim_h_px = size[:height]
         trim_w_mm = size[:mm][0]
         trim_h_mm = size[:mm][1]
-        px_per_mm = DPI / 25.4
+        px_per_mm = DPI / Units::MM_PER_INCH
 
         if crop_marks
           # --- Phase: トンボ付き PDF 生成 ---

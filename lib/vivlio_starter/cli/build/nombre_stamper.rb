@@ -22,13 +22,15 @@
 #   - Provider (Prawn + CombinePDF): PDF overlay によるテキスト描画（MIT互換）
 # ================================================================
 
+require_relative '../units'
+
 module VivlioStarter
   module CLI
     module Build
       module NombreStamper
         module_function
 
-        MM_TO_PT = 72.0 / 25.4
+        MM_TO_PT = Units::PT_PER_MM
         FONT_NAME = 'Helvetica'
         FONT_SIZE = 6
 

@@ -3,6 +3,7 @@
 require 'fileutils'
 require 'json'
 require 'yaml'
+require_relative 'units'
 
 # Common::CONFIG — book.yml の再帰的 Data ラッパー
 # 正規記法（The One Way）は docs/specs/config-access-unification-spec.md §2 を参照。
@@ -256,9 +257,9 @@ module VivlioStarter
           presets = load_page_presets
           case presets[preset_name.to_sym]
           in Hash => selected
-            overrides = page_cfg.reject { PAGE_PRESET_EXCLUDE_KEYS.include?(it) }
-            merged = selected.merge(overrides).merge(page_cfg)
-            cfg.merge(page: normalize_page_units(merged))
+            # プリセット既定 < 著者インライン値（page_cfg）。page_cfg は use 等の選択子キーも
+            # 含むが、選択子は既に消費済みで害はない（仕様 §3.6）。
+            cfg.merge(page: normalize_page_units(selected.merge(page_cfg)))
           else
             cfg
           end
@@ -275,37 +276,33 @@ module VivlioStarter
       # Normalization (Unit conversion)
       # ================================================================
 
+      # page 設定の単位を正規化する（仕様: docs/specs/page-unit-conversion-spec.md §3.3）。
+      # 文字サイズを先に pt 化し、その結果を基準に行送り（倍率/em）を絶対 pt へ解決する。
+      # 行送りを倍率のまま CSS へ渡さないのは、参照箇所ごとの font-size に依存させず
+      # 版面の行グリッドを揃えるため（同 §1.3）。
       def normalize_page_units(pcfg)
-        pcfg.merge(
-          **normalize_font_sizes(pcfg),
-          base_line_height: normalize_line_height(pcfg)
-        ).compact
+        sized = pcfg.merge(**normalize_font_sizes(pcfg))
+        sized.merge(base_line_height: normalize_line_height(sized)).compact
       end
 
       def normalize_font_sizes(pcfg)
         FONT_SIZE_KEYS.each_with_object({}) do |key, memo|
-          case pcfg[key]&.to_s&.strip
-          in /q\z/i => s then memo[key] = q_to_pt(s)
-          else # Skip
-          end
+          normalized = Units.font_size_to_pt(pcfg[key])
+          memo[key] = normalized if normalized
         end
       end
 
       def normalize_line_height(pcfg)
-        case [pcfg[:base_line_height]&.to_s&.strip, pt_value(pcfg[:base_font_size])]
-        in [nil | '', _]         then nil
-        in [_, nil]              then pcfg[:base_line_height]
-        in [/pt\z/i => s, _]     then s
-        in [/q\z/i => s, _]      then q_to_pt(s)
-        in [/em\z/i => s, f_pt]  then format_pt(f_pt * s.to_f)
-        in [/\A[\d.]+\z/ => s, f_pt] then format_pt(f_pt * s.to_f)
-        in [other, _] then other
+        case [pcfg[:base_line_height]&.to_s&.strip, Units.pt_value(pcfg[:base_font_size])]
+        in [nil | '', _]             then nil
+        in [/pt\z/i => s, _]         then s
+        in [/q\z/i => s, _]          then Units.format_pt(s.to_f * Units::PT_PER_Q)
+        in [_, nil]                  then pcfg[:base_line_height]
+        in [/em\z/i => s, f_pt]      then Units.format_pt(f_pt * s.to_f)
+        in [/\A[\d.]+\z/ => s, f_pt] then Units.format_pt(f_pt * s.to_f)
+        in [other, _]                then other
         end
       end
-
-      def q_to_pt(value) = format_pt(value.to_f * 0.709)
-      def pt_value(value) = value&.to_s&.match(/\A([\d.]+)pt\z/i)&.[](1)&.to_f
-      def format_pt(value) = "#{value.to_f.round(3)}pt"
 
       # ================================================================
       # Log & UI
@@ -602,7 +599,9 @@ module VivlioStarter
       PAGE_SIZES = {
         'A4' => { width: '210mm', height: '297mm' },
         'A5' => { width: '148mm', height: '210mm' },
-        'B5' => { width: '182mm', height: '257mm' }
+        # 'B5' は技術書慣習により JIS 寸法（182×257）の別名。ISO B5（176×250）は非サポート。
+        'B5' => { width: '182mm', height: '257mm' },
+        'JIS-B5' => { width: '182mm', height: '257mm' }
       }.freeze
 
       # ページサイズを解決する（シンボルキーの Hash 前提）
@@ -878,7 +877,7 @@ module VivlioStarter
                       :current_log_level, :current_step_label, :deep_merge_config, :default_cache,
                       :default_commands, :default_config_schema, :default_directories, :default_files,
                       :default_vfm, :default_vivliostyle, :log_always, :ensure_cache_dir!,
-                      :ensure_required_yaml_files!, :required_yaml_files_loadable?, :format_pt,
+                      :ensure_required_yaml_files!, :required_yaml_files_loadable?,
                       :generate_compressed_pdf_filename, :generate_epub_filename,
                       :generate_kpf_filename, :generate_kindle_epub_filename,
                       :generate_output_filename, :generate_print_pdf_filename,
@@ -887,7 +886,7 @@ module VivlioStarter
                       :merge_hardcoded_defaults, :normalize_font_sizes,
                       :normalize_line_height, :normalize_page_size!,
                       :normalize_page_units, :post_replace_file, :post_replace_file_path,
-                      :pt_value, :q_to_pt, :record_vivliostyle_build,
+                      :record_vivliostyle_build,
                       :reload_configuration!, :relative_path_from_root, :validate_book_config!,
                       :resolve_page_size, :resolve_path_from_root,
                       :reset_vivliostyle_build_timings, :stylesheets_dir, :to_roman_lower,

@@ -629,7 +629,7 @@ module VivlioStarter
         require 'prawn'
         require 'combine_pdf'
 
-        mm2pt = 72.0 / 25.4
+        mm2pt = Units::PT_PER_MM
         margin_mm    = bleed_mm + crop_offset_mm
         page_w_pt    = (trim_w_mm + (2 * margin_mm)) * mm2pt
         page_h_pt    = (trim_h_mm + (2 * margin_mm)) * mm2pt
@@ -685,7 +685,7 @@ module VivlioStarter
         overlay = CombinePDF.load(overlay_path)
         base.pages.first << overlay.pages.first
 
-        mm2pt_local = 72.0 / 25.4
+        mm2pt_local = Units::PT_PER_MM
         trim_x1_pt  = margin_pt
         trim_y1_pt  = margin_pt
         trim_x2_pt  = margin_pt + (trim_w_mm * mm2pt_local)

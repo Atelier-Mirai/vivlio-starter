@@ -1,7 +1,7 @@
 # 版面単位変換 仕様書（page-unit-conversion-spec）
 
 - 策定日: 2026-07-02
-- ステータス: **仕様確定・実装待ち**
+- ステータス: **実装完了（2026-07-02、Claude Opus 4.8）**。Phase A/B/C すべて実装・検証済み。全テスト green（1414 件・両プロバイダ経路）／rubocop 0 offenses／フルビルド完走・`page-settings.css` バイト不変を実測確認。
 - 実装担当想定: Claude Opus 4.8（本書のみで実装が完結するよう、参照実装コード・動作表・テスト表・検証コマンドまで記載する）
 - 関連文書:
   - [config-access-unification-spec.md](config-access-unification-spec.md) — CONFIG アクセス統一（実装完了）。本書はその続編で、`page:` セクションの**値の単位**を扱う。

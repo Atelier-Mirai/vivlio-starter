@@ -592,7 +592,7 @@ module VivlioStarter
       def mm_to_pt(value)
         return 0.0 unless value
 
-        value.to_f * (72.0 / 25.4)
+        value.to_f * CLI::Units::PT_PER_MM
       end
 
       # 設定オブジェクトから安全にキー値を取得する（メソッド呼び出し or Hash アクセス）
