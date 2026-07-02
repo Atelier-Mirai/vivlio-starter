@@ -622,13 +622,9 @@ module VivlioStarter
         end
 
         def prepend_cover_item(items)
-          book_cfg = begin
-            Common::CONFIG.fetch('book', {})
-          rescue StandardError
-            {}
-          end
-          main_title = book_cfg.fetch('main_title', '').to_s.strip
-          fallback_title = book_cfg.fetch('title', '').to_s.strip
+          book_cfg = Common::CONFIG.book
+          main_title = book_cfg.main_title.to_s.strip
+          fallback_title = book_cfg.title.to_s.strip
           cover_title = main_title.empty? ? fallback_title : main_title
           cover_title = '表紙' if cover_title.empty?
 

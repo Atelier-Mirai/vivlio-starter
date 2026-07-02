@@ -328,24 +328,12 @@ module VivlioStarter
 
       # 設定を読み込み（index_glossary 共通設定 + index 個別設定をマージ）
       def load_index_config
-        shared = load_shared_config
-        idx = Common::CONFIG.index
-        idx_hash = idx.respond_to?(:to_h) ? idx.to_h : (idx || {})
-        shared.merge(idx_hash)
-      rescue StandardError
-        {}
+        load_shared_config.merge(Common::CONFIG.index.to_h)
       end
 
       # 共通設定（index_glossary）を読み込み
       def load_shared_config
-        return {} unless Common::CONFIG.respond_to?(:index_glossary)
-
-        shared = Common::CONFIG.index_glossary
-        return {} if shared.nil?
-
-        shared.respond_to?(:to_h) ? shared.to_h : {}
-      rescue StandardError
-        {}
+        Common::CONFIG.index_glossary.to_h
       end
 
       # Markdown形式を構築

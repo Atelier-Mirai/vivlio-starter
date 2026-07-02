@@ -116,7 +116,7 @@ module VivlioStarter
         #
         # @return [Float] 塗り足し幅（mm）
         def bleed_mm_from_config
-          raw = Common::CONFIG.dig(:output, :print_pdf, :bleed)
+          raw = Common::CONFIG.output.print_pdf.bleed
           parse_bleed_mm(raw)
         end
 

@@ -25,7 +25,7 @@ module VivlioStarter
         # @param html [String] HTML文字列
         # @return [String] 変換後のHTML文字列
         def wrap_h2_with_article_if_image_style!(html)
-          return html unless Common::CONFIG.dig('theme', 'style') == 'image'
+          return html unless Common::CONFIG.theme.style == 'image'
 
           doc = HtmlParser.parse_html_document(html)
           transformed = wrap_sections_with_article!(doc)

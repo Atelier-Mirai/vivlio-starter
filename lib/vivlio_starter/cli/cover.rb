@@ -73,9 +73,8 @@ module VivlioStarter
           require_relative 'create' unless defined?(CreateCommands)
           CreateCommands.execute_cover({})
         else
-          config = Common.load_config
-          page_cfg = config[:page] || {}
-          page_use = page_cfg[:use] || 'b5_standard'
+          config = Common::CONFIG
+          page_use = config.page.use || 'b5_standard'
           size = detect_page_size(page_use)
           # PDF カバー（RGB/CMYK）は pdf/print_pdf ターゲットがある場合のみ生成する。
           # epub/kindle のみのビルドでは不要で、無条件に呼ぶと execute_for_size が
@@ -83,7 +82,7 @@ module VivlioStarter
           targets = target_list(config)
           execute_for_size(size, nil) if targets.intersect?(%w[pdf print_pdf])
           # EPUB/Kindle 表紙の元になる JPG は常に生成する。
-          generate_epub_cover(config[:directories][:covers], config)
+          generate_epub_cover(config.directories.covers, config)
         end
       end
 
@@ -94,8 +93,8 @@ module VivlioStarter
       def execute_generate(_context = nil)
         Common.log_info '📚 カバー画像の一括生成を開始します'
 
-        config = Common.load_config
-        theme = config.dig(:output, :cover)
+        config = Common::CONFIG
+        theme = config.output.cover
 
         unless theme
           Common.log_error 'output.cover 設定が見つかりません'
@@ -110,8 +109,8 @@ module VivlioStarter
         end
 
         # master/カスタム テーマ: PNGから生成
-        covers_dir = config[:directories][:covers]
-        page_cfg = config[:page] || {}
+        covers_dir = config.directories.covers
+        page_cfg = config.page
         page_use = page_cfg[:use] || page_cfg[:preset] || page_cfg[:preset_name] || page_cfg[:size] || 'b5_standard'
         targets = target_list(config)
         page_size = CoverCommands.detect_page_size(page_use)
@@ -144,8 +143,8 @@ module VivlioStarter
       def execute_for_size(page_size, _context = nil)
         label = page_size.to_s.upcase
         Common.log_info "📚 #{label}サイズのカバーPDFを生成します"
-        config = Common.load_config
-        theme = config.dig(:output, :cover) || 'master'
+        config = Common::CONFIG
+        theme = config.output.cover || 'master'
 
         # light/dark テーマ: SVGテンプレートから生成
         if STANDARD_THEMES.include?(theme)
@@ -155,7 +154,7 @@ module VivlioStarter
         end
 
         # master/カスタム テーマ: PNGから生成
-        covers_dir = config[:directories][:covers]
+        covers_dir = config.directories.covers
         targets = target_list(config)
 
         unless CoverCommands.check_master_files(covers_dir)
@@ -175,8 +174,8 @@ module VivlioStarter
 
       def execute_epub(_context = nil)
         Common.log_info '📚 EPUB用JPEGを生成します'
-        config = Common.load_config
-        theme = config.dig(:output, :cover)
+        config = Common::CONFIG
+        theme = config.output.cover
 
         unless theme
           Common.log_error 'output.cover 設定が見つかりません'
@@ -192,7 +191,7 @@ module VivlioStarter
         end
 
         # master/カスタム テーマ: PNGから生成
-        covers_dir = config[:directories][:covers]
+        covers_dir = config.directories.covers
         input_file = CoverCommands.resolve_epub_cover_input(covers_dir, theme)
         unless input_file
           Common.log_error "カバー入力画像が見つかりません（テーマ: #{theme}）"

@@ -52,12 +52,8 @@ module VivlioStarter
 
         # book.yml の index_glossary.library をシンボルキーのハッシュで返す。
         def self.library_config
-          shared = Common::CONFIG.respond_to?(:index_glossary) ? Common::CONFIG.index_glossary : nil
-          shared_hash = shared.respond_to?(:to_h) ? shared.to_h : {}
-          library = shared_hash[:library]
+          library = Common::CONFIG.index_glossary.library
           library.respond_to?(:to_h) ? library.to_h : {}
-        rescue StandardError
-          {}
         end
 
         # --- Phase: export ---

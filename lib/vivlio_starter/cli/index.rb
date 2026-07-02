@@ -51,9 +51,9 @@ module VivlioStarter
         manager.build_index!(chapters)
       end
 
-      # 索引・用語集機能が有効かどうか（シンボルキー前提）
+      # 索引・用語集機能が有効かどうか
       def index_enabled?
-        Common::CONFIG.index_glossary&.enabled == true
+        Common::CONFIG.index_glossary.enabled == true
       end
 
       # 対象章を解決

@@ -44,7 +44,7 @@ book:
   contact: "contact@atelier-mirai.net" # 連絡先
   author: "{{AUTHOR}}" # 著者名（本名・ペンネーム）
   language: "ja" # 言語
-  isbn: "" # 任意（独自ISBN取得の場合。Kindle は ASIN 自動割り当て）
+  isbn: "" # 任意（独自ISBN取得の場合、EPUB の識別子 urn:isbn に使用。Kindle は ASIN 自動割り当て）
 
 # ========================================
 # プロジェクト情報
@@ -204,10 +204,10 @@ output:
   # ----------------------------
   # targets: pdf # pdf / print_pdf / epub / kindleから選択可
   # 例:
-  # targets: pdf                          # 閲覧用PDFを指定
+  targets: pdf # 閲覧用PDFを指定
   # targets: pdf, print_pdf               # 閲覧用PDF, 印刷所入稿用PDFを指定
   # targets: pdf, print_pdf, epub         # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUBを指定
-  targets: pdf, print_pdf, epub, kindle # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUB, Kindle用EPUBを指定
+  # targets: pdf, print_pdf, epub, kindle # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUB, Kindle用EPUBを指定
 
   # ----------------------------
   # ファイル名規則
@@ -266,7 +266,7 @@ output:
   # ----------------------------
   epub:
     embed: true # 表紙画像を EPUB に埋め込むか（楽天/Apple向けは true 推奨）
-    layout: reflowable # reflowable（リフロー型） / fixed（固定レイアウト型）
+    layout: reflowable # reflowable（リフロー型）。fixed（固定レイアウト型）は将来対応
     # 注: メタデータ（title, author, language, isbn, publisher）は
     #     book セクションから自動的に流用される
 
@@ -275,14 +275,14 @@ output:
   # ----------------------------
   kindle:
     embed: false # 表紙画像を EPUB に埋め込むか（Kindle は二重表紙を避けるため false 推奨）
-    layout: reflowable # reflowable（リフロー型） / fixed（固定レイアウト型）
+    layout: reflowable # reflowable（リフロー型）。fixed（固定レイアウト型）は将来対応
     # 注: メタデータは book セクションから自動流用。KPF 変換は kindlepreviewer を使用。
 
 # ========================================
 # VFM マークダウン記法に関する設定
 # ========================================
 vfm:
-  hardLineBreaks:
+  hard_line_breaks:
     true # true:  文章中の改行(エンター)を改行として処理
     # false: 文章中の改行をスペースとして処理(改行したい場合には空行または<br>)
 
@@ -317,6 +317,16 @@ index_glossary:
 
   # 文脈抽出時に形態素境界で賢く文脈を引用するか
   smart_context_cutting: true
+
+  # 索引ライブラリ（用語集[g]・reject を書籍間で持ち運ぶ）
+  #   vs index:export … 現プロジェクトの用語集[g]・reject を書き出す
+  #   vs index:import … 別の本で書き出したライブラリを取り込む
+  # 引数を省略すると、ここで設定した既定パスが使われます。
+  library:
+    path: "index_library.yml" # export/import 共通の既定パス
+    # 上級者向け（省略可・path を上書き）:
+    # export_to:   "index_library.yml"          # 書き出し先だけ変える
+    # import_from: "~/vivlio/index_library.yml" # 共有ライブラリから取り込む
 
 # ========================================
 # 索引設定
@@ -431,43 +441,27 @@ metrics:
     max: 3.0 # 専門用語が多すぎる可能性
 
   # ----------------------------
-  # 語彙多様度の基準
+  # 語彙多様度の基準（MATTR）
   # ----------------------------
 
-  # TTR (Type-Token Ratio)
-  # 異なり語数 ÷ 総語数
-  ttr:
-    min: 0.3 # これ未満: 表現が単調
-    ideal: [0.5, 0.7] # 理想的な範囲
-    max: 1.0 # 理論上の最大値
+  # MATTR (Moving-Average Type-Token Ratio) の窓幅（語数）。
+  # 一定語数の窓をずらしながら TTR を平均する指標で、文書長に依存しない。
+  # Covington & McFall (2010)。50〜100 が目安（既定 100）。
+  mattr_window: 100
+
+  # 評価バンドの目安（実用書原稿の実測分布で較正）:
+  #   0.6 以上=豊富 / 0.5〜0.6=標準的 / 0.5 未満=単調
 
   # ----------------------------
-  # 文構造の基準
+  # 読解難度スコア（建石式リーダビリティー RS）
   # ----------------------------
 
-  # 平均文長（文字数/文）
-  sentence_length:
-    min: 20 # これ未満: 短すぎて幼稚な印象
-    ideal: [40, 60] # 読みやすい長さの範囲
-    max: 80 # これ超過: 長すぎて読みにくい
-
-  # 平均節長（文字数/節）
-  clause_length:
-    min: 15
-    ideal: [30, 40] # 理想的な範囲
-    max: 50
-
-  # ----------------------------
-  # 読解難度スコア
-  # ----------------------------
-
-  # 日本語版 Flesch/Kincaid スコア
+  # 建石由佳・小野芳彦・山田尚勇 (1988)「日本文の読みやすさの評価式」。
+  # 文長・各文字種の連の平均長・句読点比から算出。RS は値が大きいほど読みやすい。
   readability:
-    # スコア範囲と評価ラベルの対応
-    easy: 30 # 0〜30: Easy（小中学生向け）
-    standard:
-      60 # 30〜60: Standard（一般ビジネス・実用書）
-      # 60〜: Professional（専門家・技術者向け）
+    # 各評価ラベルのバンド下限（RS >= easy なら Easy、>= standard なら Standard）
+    easy: 60 # 60 以上: Easy（小中学生向け）
+    standard: 40 # 40 以上: Standard（一般ビジネス・実用書） / 40 未満: Professional（専門家・技術者向け）
 
   # ----------------------------
   # 警告メッセージのカスタマイズ（オプション）
@@ -502,19 +496,19 @@ lint:
     # - とおり
 
   # 一文の最大文字数（sentence-length）。未指定なら既定 100。好みに応じて 80 / 120 など。
-  # sentence_length_max: 100
+  sentence_length_max: 100
 
   # 技術者向けに「サーバ／パラメータ／フィルタ」等の末尾長音を省く文体を選ぶ場合は true。
   # 「X => Xー」（末尾に長音を足す）系の指摘を黙らせます。
-  trim_long_vowel: false
+  trim_long_vowel: true
 
   # インラインコードと和文の間のスペース（例: `vs import` コマンド）を許容する場合は true。
   # 技術書で一般的な「和欧間スペース」を残したいとき。textlint 設定レベルで無効化するため
   # vs lint --fix でもスペースは削除されません。
-  allow_space_around_code: false
+  allow_space_around_code: true
 
   # 全角と半角（英数・記号）の間のスペースを許容する場合は true。
-  allow_space_between_ja_en: false
+  allow_space_between_ja_en: true
 
 # ========================================
 # spellcheck 設定

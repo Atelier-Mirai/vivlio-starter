@@ -47,18 +47,31 @@ module VivlioStarter
       # Recursive Data Wrapper (Ruby 4.0 Style)
       # ================================================================
 
+      # Data の既存メソッドと衝突すると [] やドット記法が member を返せなくなるため、
+      # ロード時に警告する（dig / fetch は wrap_config が後付けするメソッド）
+      RESERVED_CONFIG_KEYS = (Data.instance_methods | %i[dig fetch]).freeze
+
       # Hashを再帰的にDataオブジェクトに変換するヘルパー
       # ドット記法と [] アクセスの両方を提供します
+      # 正規記法は docs/specs/config-access-unification-spec.md §2 を参照
       def wrap_config(input)
         case input
         in Hash
           # キーを動的にDataの属性として定義
           keys = input.keys
+          warn_reserved_config_keys(keys)
           cls = Data.define(*keys) do
-            # 従来型の [] アクセスも提供
-            def [](key) = respond_to?(key) ? public_send(key) : nil
-            # パターンマッチング(deconstruct_keys)への対応
-            def deconstruct_keys(keys) = to_h.slice(*keys)
+            # 従来型の [] アクセスも提供。respond_to? ベースだと to_h 等の
+            # メソッド戻り値が漏れるため、member 限定で参照する。
+            # String キーは移行期間の互換として Symbol へ正規化（Phase 3 で廃止予定）
+            def [](key)
+              key = key.to_sym if key.respond_to?(:to_sym)
+              members.include?(key) ? public_send(key) : nil
+            end
+
+            # パターンマッチング(deconstruct_keys)への対応。
+            # keys が nil のとき全体を返すのは Ruby の規約（`in { **rest }` で全キーを束縛可能にする）
+            def deconstruct_keys(keys) = keys.nil? ? to_h : to_h.slice(*keys)
 
             # dig メソッドの提供（既存コードとの互換性）
             def dig(*keys)
@@ -70,7 +83,10 @@ module VivlioStarter
             end
 
             # fetch メソッドの提供
+            # Hash#fetch と異なり KeyError を出さず、nil 値も default 扱いになるため
+            # 廃止予定（仕様書 Phase 3）。新規コードでは使用しない。
             def fetch(key, default = nil)
+              warn "[DEPRECATION] CONFIG#fetch は廃止予定です。ドット記法または [] を使用してください（キー: #{key}）"
               val = self[key]
               val.nil? ? default : val
             end
@@ -81,6 +97,16 @@ module VivlioStarter
         else
           input
         end
+      end
+
+      # book.yml のキーが Data の予約メソッド名と衝突していないかを検査する。
+      # 衝突すると member 定義がメソッドを上書き（またはその逆）して静かに誤動作するため、
+      # ロード時に著者へ改名を促す。
+      def warn_reserved_config_keys(keys)
+        reserved = keys.map { it.respond_to?(:to_sym) ? it.to_sym : it } & RESERVED_CONFIG_KEYS
+        return if reserved.empty?
+
+        log_warn("book.yml のキー名 #{reserved.join(', ')} は予約名のため正しく参照できません。別名への変更を推奨します（例: hash → hash_value）")
       end
 
       # ================================================================
@@ -121,17 +147,77 @@ module VivlioStarter
         merge_hardcoded_defaults(cfg)
       end
 
-      # ハードコーディングされた既定値をマージする
-      # book.yml に記述がなくても、これらの値は常に利用可能
+      # ハードコーディングされた既定値スキーマをマージする
+      # book.yml に記述がなくても全セクション・既知キーが常に存在し、
+      # CONFIG.lint.config のようなドット記法が安全になる（値未設定なら nil）。
+      # 仕様: docs/specs/config-access-unification-spec.md §2.2
       def merge_hardcoded_defaults(cfg)
-        cfg.merge(
-          directories: default_directories.merge(cfg[:directories] || {}),
-          cache: default_cache.merge(cfg[:cache] || {}),
-          commands: default_commands.merge(cfg[:commands] || {}),
-          files: default_files.merge(cfg[:files] || {}),
-          vivliostyle: default_vivliostyle.merge(cfg[:vivliostyle] || {}),
-          vfm: default_vfm.merge(cfg[:vfm] || {})
-        )
+        default_config_schema.merge(cfg) { |_key, default_val, user_val| deep_merge_config(default_val, user_val) }
+      end
+
+      # 既定値と book.yml の値を再帰的にマージする。
+      # 著者が「キーだけ書いて値を空欄」にした場合（nil）は既定値を採用する。
+      # false は明示的な設定として尊重する（nil のみ既定値扱い）。
+      def deep_merge_config(default, user)
+        case [default, user]
+        in [Hash => d, Hash => u] then d.merge(u) { |_k, dv, uv| deep_merge_config(dv, uv) }
+        in [_, nil] then default
+        else user
+        end
+      end
+
+      # book.yml の全セクションの既定値スキーマ。
+      # コードが参照する既知キーを列挙し、未設定時のドット記法アクセスを保証する。
+      # nil は「既定値なし（未設定）」を表し、実際の既定値は従来どおり参照側が決める。
+      def default_config_schema
+        {
+          book: { main_title: nil, subtitle: nil, subtitle_style: nil, title: nil, series: nil,
+                  release: nil, publisher: nil, contact: nil, author: nil, language: nil, isbn: nil },
+          project: { name: nil, version: nil },
+          theme: { style: nil, color: nil, preface_color: nil, appendix_color: nil,
+                   frontispiece: nil, ornament: nil, markers: { h3: nil, h4: nil } },
+          # page の版面キー（size/width/margin_* 等）は page_presets 由来のため列挙しない
+          page: { use: nil },
+          typography: { body: { font: nil }, heading: { font: nil },
+                        column: { font: nil, font_size: nil }, code: { font: nil },
+                        folio: { font: nil, placement: nil } },
+          legal: { disclaimer: nil, trademark: nil, twemoji: nil },
+          output: { targets: nil, cover: nil,
+                    filename: { include_version: nil },
+                    pdf_preview: { close_existing_windows: nil, window_bounds: nil },
+                    pdf: { combined: nil, compress: nil, techbook: nil },
+                    print_pdf: { bleed: nil, crop_marks: nil },
+                    epub: { embed: nil, layout: nil },
+                    kindle: { embed: nil, layout: nil } },
+          build: { verify: { images: nil, bare_urls: nil, external_links: nil,
+                             timeout: nil, max_concurrency: nil } },
+          index_glossary: { enabled: nil, use_mecab: nil, timezone: nil,
+                            context_width: nil, smart_context_cutting: nil,
+                            library: nil },
+          index: { auto_discovery: nil, title: nil, auto_approve_threshold: nil,
+                   review_threshold: nil, high_candidates_ratio: nil, backlink_dedup: nil },
+          glossary: { title: nil, require_definition: nil, max_definition_length: nil,
+                      backlink_dedup: nil },
+          # ビルド対象章の絞り込み（例: "54-56" / [11, 12]）。未指定はフルビルド
+          chapters: nil,
+          metrics: { use: nil, exclude_chapters: nil, kanji_ratio: nil, word_length: nil,
+                     ttr: nil, mattr_window: nil, sentence_length: nil, clause_length: nil,
+                     readability: nil, labels: nil },
+          lint: { config: nil, disabled_rules: nil, disabled_terms: nil, sentence_length_max: nil,
+                  trim_long_vowel: nil, allow_space_around_code: nil, allow_space_between_ja_en: nil },
+          spellcheck: { extra_dictionaries: nil, extra_words: nil, ignore_words: nil,
+                        check_code_blocks: nil },
+          pdf_read: { text_area: { top_margin: nil, bottom_margin: nil,
+                                   inner_margin: nil, outer_margin: nil },
+                      page_separator: nil,
+                      ocr: { mode: nil, languages: nil, dpi: nil, psm: nil, inline_image_text: nil } },
+          directories: default_directories,
+          cache: default_cache,
+          commands: default_commands,
+          files: default_files,
+          vivliostyle: default_vivliostyle,
+          vfm: default_vfm
+        }
       end
 
       # --- Hardcoded Defaults (Data objects for immutability) ---
@@ -143,7 +229,9 @@ module VivlioStarter
           images: IMAGES_DIR,
           codes: CODES_DIR,
           templates: TEMPLATES_DIR,
-          covers: COVERS_DIR
+          covers: COVERS_DIR,
+          # pdf:read の入力 PDF 置き場（任意設定・既定なし）
+          sources: nil
         }
       end
 
@@ -161,10 +249,11 @@ module VivlioStarter
       end
 
       # VFM (Vivliostyle Flavored Markdown) の既定値設定
-      # 日本語文章の直感的な執筆体験を提供するため、hardLineBreaks をデフォルト有効化
+      # 日本語文章の直感的な執筆体験を提供するため、hard_line_breaks をデフォルト有効化
+      # （book.yml では snake_case。VFM 自体のフロントマターキーは camelCase の hardLineBreaks）
       def default_vfm
         {
-          hardLineBreaks: true
+          hard_line_breaks: true
         }
       end
 
@@ -528,7 +617,7 @@ module VivlioStarter
 
       # ページサイズを解決する（シンボルキー前提）
       def resolve_page_size(page_cfg)
-        # page_cfg は Hash（load_config 由来）のほか、CONFIG['page'] のように
+        # page_cfg は Hash（load_config 由来・テスト直渡し）のほか、CONFIG.page のように
         # Data オブジェクト（wrap_config でラップ済み）で渡ることがある。
         # Data を Hash 扱いしないと size 等が読めず B5 へ誤フォールバックするため、
         # to_h でシンボルキーの Hash へ正規化してから参照する。
@@ -562,10 +651,10 @@ module VivlioStarter
       # ================================================================
 
       def generate_output_filename(target = 'pdf', suffix: nil)
-        project = CONFIG[:project]
+        project = CONFIG&.project
         project_name = project&.name || 'vivlio_starter'
         project_version = project&.version
-        include_version = CONFIG.dig(:output, :filename, :include_version) || false
+        include_version = CONFIG&.output&.filename&.include_version || false
 
         filename = project_name.to_s.dup
         filename += '_print' if target == 'print_pdf'
@@ -761,13 +850,14 @@ module VivlioStarter
         resolve_path_from_root(file)
       end
 
-      # カバー設定関連
-      def cover_theme        = CONFIG.dig('output', 'cover')
-      def pdf_combined?      = CONFIG.dig('output', 'pdf', 'combined') == true
-      def pdf_compress?      = CONFIG.dig('output', 'pdf', 'compress') == true
-      def epub_embed?        = CONFIG.dig('output', 'epub', 'embed') == true
+      # カバー設定関連（CONFIG&. は CONFIG 未ロード（プロジェクト外）を吸収する。
+      # 各セクションは既定値スキーマで存在保証されるため、以降はドットで辿れる）
+      def cover_theme        = CONFIG&.output&.cover
+      def pdf_combined?      = CONFIG&.output&.pdf&.combined == true
+      def pdf_compress?      = CONFIG&.output&.pdf&.compress == true
+      def epub_embed?        = CONFIG&.output&.epub&.embed == true
       # Kindle 表紙の埋め込み。未設定時は false（二重表紙回避・§1-6）。
-      def kindle_embed?      = CONFIG.dig('output', 'kindle', 'embed') == true
+      def kindle_embed?      = CONFIG&.output&.kindle&.embed == true
 
       # カバー設定のバリデーション
       def validate_cover_settings
@@ -821,8 +911,8 @@ module VivlioStarter
                       :config_dir_path,
                       :consume_vivliostyle_build_timings, :contents_dir, :covers_dir,
                       :cover_theme, :pdf_combined?, :pdf_compress?, :epub_embed?, :kindle_embed?,
-                      :current_log_level, :current_step_label, :default_cache,
-                      :default_commands, :default_directories, :default_files,
+                      :current_log_level, :current_step_label, :deep_merge_config, :default_cache,
+                      :default_commands, :default_config_schema, :default_directories, :default_files,
                       :default_vfm, :default_vivliostyle, :log_always, :ensure_cache_dir!,
                       :ensure_required_yaml_files!, :required_yaml_files_loadable?, :fetch_bool, :format_pt,
                       :generate_compressed_pdf_filename, :generate_epub_filename,
@@ -837,8 +927,8 @@ module VivlioStarter
                       :reload_configuration!, :relative_path_from_root, :validate_book_config!,
                       :resolve_page_size, :resolve_path_from_root,
                       :reset_vivliostyle_build_timings, :stylesheets_dir, :to_roman_lower,
-                      :truthy?, :vfm_command, :validate_cover_settings, :verbose?, :with_current_step_label,
-                      :wrap_config
+                      :truthy?, :vfm_command, :validate_cover_settings, :verbose?, :warn_reserved_config_keys,
+                      :with_current_step_label, :wrap_config
     end
   end
 end

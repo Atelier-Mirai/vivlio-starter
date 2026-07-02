@@ -77,7 +77,7 @@ module VivlioStarter
 
       # CONFIG.lint セクションから設定ファイルパスを取得（シンボルキー前提）
       def self.default_lint_config
-        value = Common::CONFIG.lint&.config
+        value = Common::CONFIG.lint.config
         value = nil if Common.blank?(value)
         value || DEFAULT_CONFIG_FALLBACK
       rescue StandardError
@@ -165,17 +165,17 @@ module VivlioStarter
 
         # book.yml lint.disabled_rules（ルール ID で丸ごと無効化）
         def disabled_rules
-          Array(Common::CONFIG.lint&.[](:disabled_rules)).map(&:to_s)
+          Array(Common::CONFIG.lint.disabled_rules).map(&:to_s)
         end
 
         # book.yml lint.disabled_terms（"X => Y" 表記揺れ系の指摘を語で無効化）
         def disabled_terms
-          Array(Common::CONFIG.lint&.[](:disabled_terms)).map(&:to_s)
+          Array(Common::CONFIG.lint.disabled_terms).map(&:to_s)
         end
 
         # book.yml lint.trim_long_vowel（末尾長音を足す指摘を抑止：技術者向け文体）
         def trim_long_vowel?
-          Common.truthy?(Common::CONFIG.lint&.[](:trim_long_vowel))
+          Common.truthy?(Common::CONFIG.lint.trim_long_vowel)
         end
 
         def print_textlint_aggregated(result)
@@ -342,17 +342,17 @@ module VivlioStarter
 
         # book.yml lint.sentence_length_max（一文の最大文字数。未指定なら nil＝既定 100）
         def sentence_length_max
-          value = Common::CONFIG.lint&.[](:sentence_length_max)
+          value = Common::CONFIG.lint.sentence_length_max
           return nil if Common.blank?(value)
 
           value.to_i.positive? ? value.to_i : nil
         end
 
         # book.yml lint.allow_space_around_code（インラインコード前後のスペースを許容）
-        def allow_space_around_code? = Common.truthy?(Common::CONFIG.lint&.[](:allow_space_around_code))
+        def allow_space_around_code? = Common.truthy?(Common::CONFIG.lint.allow_space_around_code)
 
         # book.yml lint.allow_space_between_ja_en（全角と半角の間のスペースを許容）
-        def allow_space_between_ja_en? = Common.truthy?(Common::CONFIG.lint&.[](:allow_space_between_ja_en))
+        def allow_space_between_ja_en? = Common.truthy?(Common::CONFIG.lint.allow_space_between_ja_en)
 
         # 既定 textlintrc に文体の上書きを反映した一時設定を config/ 直下に生成する。
         # 設定レベルで無効化するため、隠すだけの出力フィルタと違い --fix でも変更されない。

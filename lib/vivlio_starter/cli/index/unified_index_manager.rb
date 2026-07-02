@@ -412,39 +412,24 @@ module VivlioStarter
         end
       end
 
-      # 設定を読み込み（シンボルキー前提）
+      # 設定を読み込み
       # 共通設定（index_glossary）と個別設定（index）をマージ
       # @return [Hash] index設定
       def load_index_config
-        shared = load_shared_config
-        idx = Common::CONFIG[:index]
-        idx_hash = idx.respond_to?(:to_h) ? idx.to_h : (idx || {})
-        shared.merge(idx_hash)
+        load_shared_config.merge(Common::CONFIG.index.to_h)
       end
 
       # glossary設定を読み込み
       # 共通設定（index_glossary）と個別設定（glossary）をマージ
       # @return [Hash] glossary設定
       def load_glossary_config
-        shared = load_shared_config
-        gls = Common::CONFIG[:glossary]
-        gls_hash = gls.respond_to?(:to_h) ? gls.to_h : (gls || {})
-        shared.merge(gls_hash)
-      rescue StandardError
-        load_shared_config
+        load_shared_config.merge(Common::CONFIG.glossary.to_h)
       end
 
       # 共通設定（index_glossary）を読み込み
       # @return [Hash] 共通設定
       def load_shared_config
-        return {} unless Common::CONFIG.respond_to?(:index_glossary)
-
-        shared = Common::CONFIG.index_glossary
-        return {} if shared.nil?
-
-        shared.respond_to?(:to_h) ? shared.to_h : {}
-      rescue StandardError
-        {}
+        Common::CONFIG.index_glossary.to_h
       end
 
       # 手動マークアップ用語を抽出

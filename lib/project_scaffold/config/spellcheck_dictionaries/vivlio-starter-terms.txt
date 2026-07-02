@@ -1,0 +1,133 @@
+# vivlio-starter のドキュメントで用いる技術用語のうち、cspell 由来の標準辞書に
+# 未収録のものを補う、プロジェクト管理の辞書。
+# 大文字小文字は無視されるため（word_map は downcase キー）、小文字 1 形で十分。
+# 例: textlint を登録すれば「textlint」「Textlint」の両方が認識される。
+#
+# ここに置くのは「どの技術書でも出てくる広く知られたツール名・略語」と
+# 「vivlio-starter 自身の機能・記法・コマンド名（フォークの原稿でも使う語）」。
+# 本固有の作例（サンプル画像のローマ字名・作例の識別子など）は config/user_words.txt へ。
+
+# vivlio-starter 固有の機能・記法・コマンド・内部名
+querystream
+query-stream
+renumber
+add-missing
+postface
+book-card
+table-rotate
+long-table
+image-group
+sideimage
+align-right
+text-right
+page-settings
+textlint-only
+spellcheck-only
+CrossReference
+TokenResolver
+vivlio-starter-pdf
+vivliostyle
+vivlio-starter
+RSC
+
+# 校正・スペルチェック関連ツール
+textlint
+prh
+SCOWL
+
+# Markdown・組版フォーマット
+VFM
+CommonMark
+GFM
+ATX
+MathJax
+Flavored
+hardLineBreaks
+Sectionization
+kebab-case
+
+# 電子書籍・出版
+Kobo
+KPF
+KDP
+KFX
+ISBN
+epubcheck
+kindlepreviewer
+OPF
+NCName
+Techbook
+preflight
+frontispiece
+ornament
+Coated
+typography
+glossary
+
+# PDF・画像・組版ツール
+HexaPDF
+poppler
+pdftotext
+pdftoppm
+pdfinfo
+qpdf
+Ghostscript
+ruby-vips
+inkscape
+librsvg
+rsvg-convert
+vips
+libvips
+mathjax-full
+rasterize
+
+# OCR・自然言語処理
+OCR
+Tesseract
+MeCab
+natto
+
+# Ruby・開発環境・CLI ツール
+Samovar
+Psych
+chromium
+cask
+brew
+WSL
+CLT
+CI
+iTerm
+Finder
+ruby-build
+scaffold
+
+# 文章メトリクス・CSS
+TTR
+Type-Token
+Flesch
+Kincaid
+TF-IDF
+TF
+IDF
+at-rule
+target-counter
+UX
+
+# フォント
+Zen
+Kaku
+Maru
+NF
+
+# Markdown の歴史（人名）
+John
+Gruber
+Aaron
+Swartz
+Fireball
+
+# ライセンス・略語
+AGPL
+
+# よく使うファイル拡張子・略語
+yml

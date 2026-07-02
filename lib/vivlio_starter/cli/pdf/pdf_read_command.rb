@@ -271,7 +271,7 @@ module VivlioStarter
       def sources_dir
         return @sources_dir if defined?(@sources_dir)
 
-        configured = CLI::Common::CONFIG.dig(:directories, :sources)
+        configured = CLI::Common::CONFIG.directories.sources
         dir = configured || SOURCES_DIR
         FileUtils.mkdir_p(dir)
         @sources_dir = dir
@@ -636,14 +636,8 @@ module VivlioStarter
         nil
       end
 
-      # book.yml の pdf_read 設定全体を取得する
-      def pdf_read_settings
-        return unless CLI::Common::CONFIG.respond_to?(:pdf_read)
-
-        CLI::Common::CONFIG.pdf_read
-      rescue StandardError
-        nil
-      end
+      # book.yml の pdf_read 設定全体を取得する（プロジェクト外では nil）
+      def pdf_read_settings = CLI::Common::CONFIG&.pdf_read
 
       # vivlio-starter-pdf の有無に応じて :enhanced / :standard を返す
       def resolved_mode = plugin_available? ? :enhanced : :standard

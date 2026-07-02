@@ -65,19 +65,20 @@ module VivlioStarter
 
       private
 
-      # binding_safe_portrait_ratio が参照する Common::CONFIG['page'] を一時的に差し替える
+      # binding_safe_portrait_ratio が参照する Common::CONFIG.page を一時的に差し替える。
+      # 本物と同じ Data ラッパーで包む（Hash 直渡しは仕様で廃止・spec §2.4）
       def stub_page_config(width:, height:, margin_inner:, margin_outer:)
         @original_config = Common::CONFIG
         @config_stubbed = true
         Common.send(:remove_const, :CONFIG)
-        Common.const_set(:CONFIG, {
-                            'page' => {
-                              'width' => width,
-                              'height' => height,
-                              'margin_inner' => margin_inner,
-                              'margin_outer' => margin_outer
-                            }
-                          })
+        Common.const_set(:CONFIG, Common.wrap_config(
+                                    page: {
+                                      width: width,
+                                      height: height,
+                                      margin_inner: margin_inner,
+                                      margin_outer: margin_outer
+                                    }
+                                  ))
       end
 
       # 元の CONFIG が nil/false でも確実に復元する（他テストへの汚染防止）

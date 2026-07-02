@@ -42,24 +42,23 @@
 # ::: ブロック終端を </div> に変換（終了）
 - f: ":{3,}"
   r: "</div>"
-# 簡易マクロ @div:CLASS → <div class="CLASS">
-- f: "@div:([a-z0-9_\\- ]+)"
-  r: <div class="$1">
-# 簡易マクロ @divend → </div>
-- f: "@divend"
-  r: "</div>"
 # <hr> を 改ページ用の <hr class="pagebreak"> に
 - f: "<hr>"
   r: <hr class="pagebreak">
-# 余白（上方向へ）マイナス mm を挿入 @nega:N
+# 縦方向の余白を符号付きで挿入 @vspace:N[単位]（正＝下に空ける / 負＝上に詰める）
+# 単位付き（lh=行の高さ / rem / em / mm / cm / pt / px）はそのまま、単位なしは mm を補う。
+# 例: @vspace:1.5lh → margin-top:1.5lh / @vspace:-2lh → margin-top:-2lh / @vspace:10 → margin-top:10mm
+# ※ 単位付きルールを先に適用する（先に単位なしルールが走ると数値だけ拾って単位が残るため）。
+- f: "@vspace:(-?[\\d.]+(?:lh|rem|em|mm|cm|pt|px))"
+  r: <div style="margin-top:$1"></div>
+- f: "@vspace:(-?[\\d.]+)"
+  r: <div style="margin-top:$1mm"></div>
+# 余白（上方向へ）マイナス mm を挿入 @nega:N（@vspace:-N と同じ・後方互換）
 - f: "@nega:(\\d+)"
   r: <div style="margin-top:-$1mm"></div>
-# 余白（下方向へ）プラス mm を挿入 @posi:N
+# 余白（下方向へ）プラス mm を挿入 @posi:N（@vspace:N と同じ・後方互換）
 - f: "@posi:(\\d+)"
   r: <div style="margin-top:$1mm"></div>
-# 浮動要素回り込み解除 @clear
-- f: "@clear"
-  r: <div class="floatclear"></div>
 # コメント囲み @comment:...@commend → <span class="hen-comment">...</span>
 - f: "@comment:([^@]*)@commend"
   r: <span class="hen-comment">$1</span>

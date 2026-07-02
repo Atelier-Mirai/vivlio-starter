@@ -36,7 +36,7 @@ module VivlioStarter
         # 例: vs build 54-56 のような単章/範囲ビルド時に、
         #     そのビルド対象だけを 1,2,3... の順番で扱いたい場合に使用する。
         #
-        # - nil または空配列の場合はオーバーライドなし（従来どおり CONFIG['chapters'] や HTML から自動検出）
+        # - nil または空配列の場合はオーバーライドなし（従来どおり CONFIG.chapters や HTML から自動検出）
         # - 設定された場合は、その並びを優先的に main_chapter_order の候補として利用する
         def chapter_tokens_override=(tokens)
           @chapter_tokens_override = Array(tokens).compact.map(&:to_s)
@@ -244,7 +244,7 @@ module VivlioStarter
 
         # h3 のスパン処理
         def process_h3_spans(doc)
-          marker = Common::CONFIG.dig(:theme, :markers, :h3) || Common::CONFIG.dig('theme', 'markers', 'h3') || '♣'
+          marker = Common::CONFIG.theme.markers.h3 || '♣'
           modified = false
           doc.css('h3').each do |h3|
             title_text = extract_heading_core_text(h3)
@@ -411,7 +411,7 @@ module VivlioStarter
         #   - "11-install\n12-tutorial" → ファイルベース名（行ごと）
         #   - ["11-install", "12-tutorial"] → ファイルベース名配列
         def configured_main_chapter_tokens
-          cfg = Common::CONFIG['chapters']
+          cfg = Common::CONFIG.chapters
 
           case cfg
           when nil

@@ -147,11 +147,11 @@ output:
 
   epub:                     # 楽天 Kobo / Apple Books 向けクリーン EPUB
     embed: true             # true: 表紙を埋め込む（楽天/Apple Books 推奨）
-    layout: reflowable      # reflowable: リフロー型 / fixed: 固定レイアウト型
+    layout: reflowable      # reflowable: リフロー型（fixed: 固定レイアウト型は将来対応）
 
   kindle:                   # Amazon Kindle 向け（KPF へ自動変換）
     embed: false            # false: KDP で別途アップロードするため埋め込まない（既定・推奨）
-    layout: reflowable      # reflowable: リフロー型 / fixed: 固定レイアウト型
+    layout: reflowable      # reflowable: リフロー型（fixed: 固定レイアウト型は将来対応）
 ```
 
 **`targets` と出力物の関係**
@@ -197,11 +197,13 @@ VFM（Vivliostyle Flavored Markdown）の挙動を設定します。
 
 ```yaml
 vfm:
-  hardLineBreaks: true   # true:  エンターキーの改行をそのまま改行として処理
+  hard_line_breaks: true # true:  エンターキーの改行をそのまま改行として処理
                          # false: 改行はスペース扱い（空行か<br>で改行）
 ```
 
-日本語の技術書では `true` が扱いやすい設定です。
+日本語の技術書では `true` が扱いやすい設定です。ここでの設定は本全体に適用されます。
+特定の章だけ変えたい場合は、その章のフロントマターに `vfm: hardLineBreaks: false` を
+書くと章単位で上書きできます（フロントマター側のキー名は VFM の仕様により camelCase です）。
 
 ### legal — 免責・商標
 

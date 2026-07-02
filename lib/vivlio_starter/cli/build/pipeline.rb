@@ -286,8 +286,7 @@ module VivlioStarter
 
         # single mode: 出力 PDF を章名にリネーム（54.pdf または 54-56.pdf）
         def rename_single_mode_pdf
-          pdf_config = Common::CONFIG['pdf'] || {}
-          output_pdf = pdf_config['output_file'] || 'output.pdf'
+          output_pdf = PdfCommands::PdfCommandRunner::DEFAULT_OUTPUT_PDF
 
           unless File.exist?(output_pdf)
             Common.log_warn("出力PDFが見つかりません: #{output_pdf}")
@@ -801,8 +800,14 @@ module VivlioStarter
         # プロジェクト名が未設定の場合は book.main_title を fallback とし、
         # それでも空なら nil を返す。
         def stable_project_uuid
+          book = Common::CONFIG.book
+
+          # 著者が独自 ISBN を取得している場合は urn:isbn を dc:identifier に使う
+          # （EPUB の標準作法。未設定ならプロジェクト名由来の安定 UUID を使用）
+          isbn = book.isbn.to_s.delete('- ').strip
+          return "urn:isbn:#{isbn}" unless isbn.empty?
+
           project = Common::CONFIG.project
-          book    = Common::CONFIG.book
           raw     = project&.name.to_s.strip
           fallback = [book&.main_title, book&.subtitle].compact.join(' ').strip
           base = raw.empty? ? fallback : raw

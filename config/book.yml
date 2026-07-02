@@ -44,7 +44,7 @@ book:
   contact: "contact@atelier-mirai.net" # 連絡先
   author: "早乙女 遙香" # 著者名（本名・ペンネーム）
   language: "ja" # 言語
-  isbn: "" # 任意（独自ISBN取得の場合。Kindle は ASIN 自動割り当て）
+  isbn: "" # 任意（独自ISBN取得の場合、EPUB の識別子 urn:isbn に使用。Kindle は ASIN 自動割り当て）
 
 # ========================================
 # プロジェクト情報
@@ -266,7 +266,7 @@ output:
   # ----------------------------
   epub:
     embed: true # 表紙画像を EPUB に埋め込むか（楽天/Apple向けは true 推奨）
-    layout: reflowable # reflowable（リフロー型） / fixed（固定レイアウト型）
+    layout: reflowable # reflowable（リフロー型）。fixed（固定レイアウト型）は将来対応
     # 注: メタデータ（title, author, language, isbn, publisher）は
     #     book セクションから自動的に流用される
 
@@ -275,14 +275,14 @@ output:
   # ----------------------------
   kindle:
     embed: false # 表紙画像を EPUB に埋め込むか（Kindle は二重表紙を避けるため false 推奨）
-    layout: reflowable # reflowable（リフロー型） / fixed（固定レイアウト型）
+    layout: reflowable # reflowable（リフロー型）。fixed（固定レイアウト型）は将来対応
     # 注: メタデータは book セクションから自動流用。KPF 変換は kindlepreviewer を使用。
 
 # ========================================
 # VFM マークダウン記法に関する設定
 # ========================================
 vfm:
-  hardLineBreaks:
+  hard_line_breaks:
     true # true:  文章中の改行(エンター)を改行として処理
     # false: 文章中の改行をスペースとして処理(改行したい場合には空行または<br>)
 

@@ -6,8 +6,6 @@
 本章では、設定項目を「**必ず設定する**」「**必要に応じて調整する**」「**機能別の詳細設定**」の三層に分けて解説します。
 :::
 
----
-
 ## はじめに — 設定項目の全体像
 
 `book.yml` の設定セクションは、大きく三種類に分けられます。
@@ -15,10 +13,8 @@
 | 種別 | セクション | 説明 |
 | :--- | :--- | :--- |
 | 必ず設定する | `book` `project` `theme` `page` | 書籍ごとに異なる基本情報 |
-| 必要に応じて調整する | `typography` `output` `vfm` `legal` | 既定値で動くが、カスタマイズしたい場合に |
-| 機能別の詳細設定 | `index_glossary` `metrics` `lint` `spellcheck` `pdf_read` | 各機能を使う場合のみ設定 |
-
----
+| 必要に応じて調整する | `typography` `output` `vfm` `legal` `build` | 既定値で動くが、カスタマイズしたい場合に |
+| 機能別の詳細設定 | `index_glossary` `index` `glossary` `metrics` `lint` `spellcheck` `pdf_read` | 各機能を使う場合のみ設定 |
 
 ## 必ず設定する項目
 
@@ -28,19 +24,19 @@
 
 ```yaml
 book:
-  main_title: "初めてのアプリ開発"
-  subtitle: "ゲームを創ろう"
+  main_title: "はじめての技術書づくり"
+  subtitle: "Vivlio Starter 実践ガイド"
   subtitle_style: wave   # 副題の装飾: wave / bar / none
-  series: "技術書典20 新刊"
-  release: "令和八年四月一日"
-  publisher: "出版社名"
-  contact: "contact@example.com"
-  author: "著者名"
+  series: "「技術書典20 新刊」"
+  release: "令和八年四月二十六日"
+  publisher: "アトリヱ未來"
+  contact: "contact@atelier-mirai.net"
+  author: "早乙女 遙香"
   language: "ja"
-  isbn: ''               # 独自 ISBN 取得の場合のみ記入
+  isbn: ''               # 独自 ISBN 取得の場合のみ記入（Kindle は ASIN が自動割り当てされる）
 ```
 
-`subtitle_style` は副題の表示スタイルを指定します。`wave` は波線、`bar` は横棒、`none` は装飾なしです。
+`subtitle_style` は副題の表示スタイルを指定します。`wave` は波線、`bar` は横棒、`none` は装飾なしです。副題が不要な場合には省略して構いません。
 
 ### project — プロジェクト情報
 
@@ -48,7 +44,7 @@ book:
 
 ```yaml
 project:
-  name: "mybook"     # 出力例: mybook_v1.0.0.pdf
+  name: "vivlio_starter"     # 出力例: vivlio_starter_v1.0.0.pdf
   version: "1.0.0"
 ```
 
@@ -81,9 +77,9 @@ theme:
 
 | 系統 | 選択肢 |
 | :--- | :--- |
-| 暖色 | `yellow` `orange` `red` |
-| ピンク・紫 | `magenta` `purple` `indigo` |
-| 青・緑 | `navy` `blue` `cyan` `teal` `green` `lime` |
+| 暖色 | `yellow` `orange` `red` `magenta` |
+| 寒色 | `purple` `indigo` `navy` `blue` |
+| 中間色 | `cyan` `teal` `green` `lime` |
 | カスタム | `'#ff0000'` のような HEX 記法も指定可 |
 
 `style: simple` のときは `frontispiece` と `ornament` の設定は無視されます。扉絵なしのシンプルなデザインで十分な場合は `simple` を指定してください。
@@ -100,8 +96,6 @@ page:
 ```
 
 `airy` は行間が広めの読みやすいレイアウト、`compact` はより多くの文字を詰めたレイアウトです。`custom` を選ぶと `page_presets.yml` で独自の版面を定義できます。
-
----
 
 ## 必要に応じて調整する項目
 
@@ -139,11 +133,13 @@ output:
   filename:
     include_version: true   # true: mybook_v1.0.0.pdf / false: mybook.pdf
 
-  cover: light              # カバーテーマ: light / dark / master（または独自スラッグ）
+  cover: light              # カバーテーマ: light / dark（標準添付 SVG）
+                            # master または独自スラッグ（covers/frontcover_master.png 等、著者用意の画像）
 
   pdf:
     combined: true          # true: 表紙を本文 PDF に結合する
     compress: false         # true: ビルド後に自動圧縮（処理時間が増加）
+    techbook: false         # true: 技術書典向け Techbook モード（絵文字を Twemoji SVG 画像に自動差し替え）
 
   print_pdf:                # 印刷入稿用 PDF の設定
     bleed: 3mm              # 塗り足し幅（既定: 3mm）
@@ -151,11 +147,11 @@ output:
 
   epub:                     # 楽天 Kobo / Apple Books 向けクリーン EPUB
     embed: true             # true: 表紙を埋め込む（楽天/Apple Books 推奨）
-    layout: reflowable      # reflowable: リフロー型 / fixed: 固定レイアウト型
+    layout: reflowable      # reflowable: リフロー型（fixed: 固定レイアウト型は将来対応）
 
   kindle:                   # Amazon Kindle 向け（KPF へ自動変換）
     embed: false            # false: KDP で別途アップロードするため埋め込まない（既定・推奨）
-    layout: reflowable      # reflowable: リフロー型 / fixed: 固定レイアウト型
+    layout: reflowable      # reflowable: リフロー型（fixed: 固定レイアウト型は将来対応）
 ```
 
 **`targets` と出力物の関係**
@@ -180,6 +176,8 @@ output:
 
 `cover` に指定するスラッグは `vs cover` コマンドで生成したカバーのテーマ名と対応します。詳細は「カバー画像の生成」の章を参照してください。
 
+`pdf.techbook` は、技術書典などの即売会向けに絵文字をカラー SVG 画像へ自動差し替えるモードです。Chromium の PDF エンジンが絵文字を Type 3 フォントとして埋め込む問題を回避し、印刷入稿に適した PDF を生成します。詳細は「ビルド（vs build）」の章を参照してください。
+
 :::{.column}
 **PDF プレビュー設定（macOS のみ）**
 
@@ -199,11 +197,13 @@ VFM（Vivliostyle Flavored Markdown）の挙動を設定します。
 
 ```yaml
 vfm:
-  hardLineBreaks: true   # true:  エンターキーの改行をそのまま改行として処理
+  hard_line_breaks: true # true:  エンターキーの改行をそのまま改行として処理
                          # false: 改行はスペース扱い（空行か<br>で改行）
 ```
 
-日本語の技術書では `true` が扱いやすい設定です。
+日本語の技術書では `true` が扱いやすい設定です。ここでの設定は本全体に適用されます。
+特定の章だけ変えたい場合は、その章のフロントマターに `vfm: hardLineBreaks: false` を
+書くと章単位で上書きできます（フロントマター側のキー名は VFM の仕様により camelCase です）。
 
 ### legal — 免責・商標
 
@@ -217,9 +217,29 @@ legal:
   trademark: |
     本書に登場するシステム名や製品名は、関係各社の商標または登録商標です。
     本書では ™、®、© などのマークは省略しています。
+  twemoji: |
+    本書で使用している絵文字画像は Twemoji (https://twemoji.twitter.com) を利用しています。
+    Copyright © Twitter, Inc and other contributors. Licensed under CC BY 4.0
+    (https://creativecommons.org/licenses/by/4.0/).
 ```
 
----
+`twemoji` は、奥付にクレジット表記として挿入されるテキストです。`output.pdf.techbook: true` にして絵文字を Twemoji SVG に差し替える場合は、ライセンス表記としてここに設定してください（未設定なら何も挿入されません）。
+
+### build — ビルド時の検証
+
+`vs build` 実行時に行う、画像パス・URL の検証設定です。
+
+```yaml
+build:
+  verify:
+    images: true          # 画像パスの存在チェック（既定: true）
+    bare_urls: true        # 裸 URL（Markdown リンク記法でない URL）の検出と警告（既定: true）
+    external_links: false  # 外部 URL の HTTP 到達性チェック（既定: false。--verify-links で有効化）
+    timeout: 10             # HTTP チェックのタイムアウト秒数
+    max_concurrency: 5      # HTTP チェックの最大同時接続数
+```
+
+`images`/`bare_urls` は Markdown 前処理の中で常時チェックされます。`external_links` は `vs build --verify-links` を指定したときのみ実行される重い検証で、ここでは既定の挙動と並列数・タイムアウトだけを設定します。`vs build --no-verify` で `images`/`bare_urls`/`external_links` をまとめて無効化できます。詳細は「ビルド（vs build）」の章を参照してください。
 
 ## 機能別の詳細設定
 
@@ -235,12 +255,20 @@ index_glossary:
   use_mecab: true        # MeCab による読み自動推測を使用するか
   timezone: 'Asia/Tokyo'
   context_width: 40      # キーワード前後の文脈抽出幅（文字数）
+  smart_context_cutting: true   # 文脈抽出時に形態素境界を考慮して賢く切り出すか（既定: true）
+
+  # 索引ライブラリ（用語集の[g]・reject を書籍間で持ち運ぶ vs index:export/import 用）
+  library:
+    path: "index_library.yml"   # export/import 共通の既定パス
+    # export_to:   "index_library.yml"          # 書き出し先だけ変える場合（省略可）
+    # import_from: "~/vivlio/index_library.yml" # 共有ライブラリから取り込む場合（省略可）
 
 index:
   auto_discovery: true   # 手動登録以外の語句を自動で探索・提案するか
   title: '索引'
   auto_approve_threshold: 300   # このスコア以上は自動的に承認
   review_threshold: 150         # このスコア以上はレビュー候補に
+  high_candidates_ratio: 0.25   # レビュー候補のうちスコア上位何割を優先候補(High)にするか（既定: 0.25）
 
 glossary:
   title: '用語集'
@@ -248,11 +276,11 @@ glossary:
   max_definition_length: 500
 ```
 
-詳細なワークフローは「索引・用語集機能」の章を参照してください。
+詳細なワークフローは「索引・用語集機能」の章を参照してください。索引ライブラリの持ち運び（`vs index:export` / `vs index:import`）についても同章で解説しています。
 
 ### metrics — メトリクス基準値
 
-`vs metrics` コマンドの評価基準を設定します。プリセットを選ぶだけで、章・節の分量目安や語彙難度の判定基準を一括設定できます。
+`vs metrics` コマンドの評価基準を設定します。`use` でプリセットを選ぶと、本の規模に応じて章・節の分量目安が切り替わります。語彙難度・語彙多様度・読解難度の基準は、プリセットとは独立した共通設定として調整します。
 
 ```yaml
 metrics:
@@ -267,7 +295,7 @@ metrics:
 | `commercial` | 200 ページ以上の商業出版レベル |
 | `author_custom` | 自分で基準値を定義したい場合 |
 
-詳細な基準値のカスタマイズは「Metrics」の章を参照してください。
+`use` で選んだプリセット（`compact`/`standard`/`commercial`/`author_custom`）が切り替えるのは、`chapter`/`section` の分量基準だけです。語彙難度（`kanji_ratio`・`word_length`）・語彙多様度（`mattr_window`）・読解難度（`readability`）・警告メッセージの文言（`labels`）は、プリセットの外側に置く共通設定で、どのプリセットを選んでも同じ値が使われます。詳細な基準値のカスタマイズは「Metrics」の章を参照してください。
 
 ### lint / spellcheck — 文章校正
 
@@ -276,9 +304,15 @@ metrics:
 ```yaml
 lint:
   config: config/.textlintrc.yml   # 使用する textlint 設定ファイル
-  format: stylish                   # 出力フォーマット
+  disabled_rules: []               # 丸ごと無効化したい textlint ルール ID
+  disabled_terms: []               # 無効化したい表記揺れの指摘語（prh 等の個別無効化）
+  sentence_length_max: 100         # 一文の最大文字数（sentence-length ルール）
+  trim_long_vowel: false           # true: 「サーバ」等、末尾長音を省く文体の指摘を黙らせる
+  allow_space_around_code: false   # true: インラインコードと和文の間のスペースを許容
+  allow_space_between_ja_en: false # true: 全角と半角（英数・記号）の間のスペースを許容
 
 spellcheck:
+  extra_dictionaries: []   # オンデマンドダウンロード辞書（例: ada）
   extra_words:             # プロジェクト固有の正しい語（誤検知防止）
     - vivliostyle
     - vivlio-starter
@@ -287,7 +321,7 @@ spellcheck:
   check_code_blocks: false # コードブロック内をチェック対象にするか
 ```
 
-詳細は「Textlint」の章を参照してください。
+詳細は「文章校正」の章を参照してください。
 
 ### pdf_read — PDF 読み取り設定
 
@@ -308,6 +342,7 @@ pdf_read:
       - japanese
     dpi: 300
     psm: 3
+    inline_image_text: include   # include / exclude / captionize（イラスト内テキストの扱い）
 ```
 
 詳細は「PDF 読み取りコマンドの使い方」の章を参照してください。

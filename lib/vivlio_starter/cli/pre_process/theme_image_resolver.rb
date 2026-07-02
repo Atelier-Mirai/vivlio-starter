@@ -320,11 +320,12 @@ module VivlioStarter
         end
 
         def binding_safe_portrait_ratio
-          page_cfg = Common::CONFIG['page'] || {}
-          width_mm = css_length_to_mm(page_cfg['width']) || DEFAULT_PAGE_WIDTH_MM
-          height_mm = css_length_to_mm(page_cfg['height']) || DEFAULT_PAGE_HEIGHT_MM
-          margin_inner_mm = css_length_to_mm(page_cfg['margin_inner']) || 0
-          margin_outer_mm = css_length_to_mm(page_cfg['margin_outer']) || 0
+          # page の版面キー（width 等）は page_presets 由来で存在保証がないため [] で参照する
+          page_cfg = Common::CONFIG.page
+          width_mm = css_length_to_mm(page_cfg[:width]) || DEFAULT_PAGE_WIDTH_MM
+          height_mm = css_length_to_mm(page_cfg[:height]) || DEFAULT_PAGE_HEIGHT_MM
+          margin_inner_mm = css_length_to_mm(page_cfg[:margin_inner]) || 0
+          margin_outer_mm = css_length_to_mm(page_cfg[:margin_outer]) || 0
 
           binding_delta = [margin_inner_mm - margin_outer_mm, 0].max
           effective_width = width_mm - binding_delta

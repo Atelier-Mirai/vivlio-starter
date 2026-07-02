@@ -183,10 +183,7 @@ module VivlioStarter
         ]
         cleanup_patterns.concat(intermediate_pdfs)
 
-        final_pdfs = [
-          Common::CONFIG.dig('pdf', 'output_file') || 'output.pdf',
-          Common::CONFIG.dig('pdf', 'output_file_compressed') || 'output_compressed.pdf'
-        ].uniq
+        final_pdfs = %w[output.pdf output_compressed.pdf]
 
         # --purge 指定時は最終PDFも削除対象に含める
         if purge_requested
@@ -352,8 +349,7 @@ module VivlioStarter
       #   - covers/bundled/ 内のファイル（テンプレート本体）
       #   - light/dark 以外の *.svg（frontcover_floral.svg 等、利用者が用意したSVG）
       def clean_cover_files
-        config = Common.load_config
-        covers_dir = config.dig(:directories, :covers) || Common::COVERS_DIR
+        covers_dir = Common.covers_dir
 
         unless File.directory?(covers_dir)
           Common.log_info("カバーディレクトリが存在しません: #{covers_dir}")

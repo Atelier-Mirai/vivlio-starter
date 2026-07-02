@@ -31,6 +31,10 @@ bundle exec rubocop
 VS_DEBUG=1 vs build --no-clean --log=debug
 ```
 
+## Scaffold Sync — NEVER edit `lib/project_scaffold/` directly
+
+`lib/project_scaffold/` is the asset tree that `vs new mybook` copies for authors. Its **source of truth is the project root**: `contents/`, `stylesheets/`, `images/`, `config/`, `codes/`, `data/`, `templates/`, `covers/`, `README.md`, `.gitignore`, `package.json`. Development and verification happen against the root copies; then `ruby copy_to_scaffold.rb` overwrites the scaffold wholesale (and re-templates `book.yml` values like `main_title`/`author` into `{{PLACEHOLDER}}` form). Any direct edit under `lib/project_scaffold/` is silently lost on the next sync — always edit the root file and run `ruby copy_to_scaffold.rb`. Code under `lib/vivlio_starter/` is not scaffold-managed; after editing it, use `rake reinstall` when a globally installed `vs` needs the change.
+
 ## Architecture
 
 ### Entry Points

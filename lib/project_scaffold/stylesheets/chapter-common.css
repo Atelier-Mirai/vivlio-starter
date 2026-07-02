@@ -218,15 +218,37 @@ li :is(ul, ol) {
 }
 
 /* -------------------------------------------------------------
+   定義リスト（用語 / : 説明 → <dl class="def-list">）
+   用語＝太字の独立行、説明＝字下げ、エントリ間に 1/4 行のアキ。
+   ------------------------------------------------------------- */
+.def-list {
+  margin-block: 0.5lh;
+  margin-inline: 0;
+}
+
+.def-list dt {
+  margin-block-start: 0.25lh; /* エントリ間（前の説明との間）に 1/4 行アキ */
+  font-weight: 700;
+}
+
+.def-list dt:first-child {
+  margin-block-start: 0;
+}
+
+.def-list dd {
+  margin-block: 0;
+  margin-inline-start: 1.5em; /* 説明は字下げ */
+}
+
+.def-list dd + dd {
+  margin-block-start: 0.25lh; /* 同一用語に複数の説明があるとき、説明（dd）間に 1/4 行アキ */
+}
+
+/* -------------------------------------------------------------
    改ページ
    ------------------------------------------------------------- */
 hr.pagebreak {
   break-after: page;
-  visibility: hidden;
-}
-
-hr.blankline {
-  height: var(--base-line-height);
   visibility: hidden;
 }
 
@@ -457,6 +479,36 @@ p > img {
   text-indent: 0;
 }
 
+/* 実行例・出力結果（:::{.output}）。シンプルな全幅の細い囲み枠 */
+.output {
+  margin-block: 3mm;
+  padding: 2.5mm 3mm;
+  border: solid 0.2mm var(--color-border-weak);
+  border-radius: 3px;
+}
+
+.output p {
+  text-indent: 0;
+}
+
+/* ターミナル入力（:::{.terminal}）。黒地・白文字・等幅で「端末への入力」を示す */
+.terminal {
+  margin-block: 3mm;
+  padding: 2.5mm 3mm;
+  border-radius: 3px;
+  /* テーマ非依存。Kindle(KFX) も var() なしの具体色なら反映される */
+  background: #1a1a1a;
+  color: #f5f5f5;
+  font-family: var(--font-code), monospace;
+  /* 長いコマンドは枠内で折り返す */
+  overflow-wrap: anywhere;
+}
+
+.terminal p {
+  text-indent: 0;
+  margin-block: 0.2em;
+}
+
 /* =============================================================
    Kindle 専用 コラム・注記枠ラベル（tip / memo / column / notice / note）（epub-kindle-target-split-spec.md §1-5）
    Kindle(KFX) は ::before(position:absolute) のラベル帯・var() を解さない。そこで Kindle
@@ -491,6 +543,28 @@ body.vs-kindle .note {
 body.vs-kindle .note {
   padding-inline: 4mm;
   padding-block-end: 3mm;
+}
+/* .output / .terminal の Kindle 劣化（§5 と同方針）。PDF・クリーン EPUB ではラベルなしの
+   素枠だが、Kindle では EpubBuilder が先頭注入する実体ラベル <p class="vs-adm-label">
+   （【OUTPUT】/【TERMINAL】）を見せ、枠線・地色を具体色で描く。注入ラベル用に上余白を確保する。 */
+body.vs-kindle .output {
+  padding-block-start: 4mm;
+  /* .output の枠線は var() のため Kindle で消える。具体色で描き直す。 */
+  border: 1px solid #888;
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+body.vs-kindle .terminal {
+  padding-block-start: 4mm;
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+  /* var() を含む base の font 宣言が Kindle で破棄されても等幅を保証する。
+     地色 #1a1a1a・文字色 #f5f5f5 は具体色なので Kindle でもそのまま効く。 */
+  font-family: monospace;
+}
+/* 端末ラベルは黒地に沈まないよう白で見せる（既定の vs-adm-label 色 #444 を上書き）。 */
+body.vs-kindle .terminal .vs-adm-label {
+  color: #f5f5f5;
 }
 body.vs-kindle .vs-adm-label {
   margin: 0 0 0.4em;

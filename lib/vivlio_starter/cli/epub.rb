@@ -76,8 +76,7 @@ module VivlioStarter
 
         # quiet モードが有効かどうか返す
         def quiet_mode?
-          @quiet_mode ||= (ENV['VIVLIO_QUIET'] == '1') ||
-                          Common.truthy?((Common::CONFIG['vivliostyle'] || {})['quiet'])
+          (ENV['VIVLIO_QUIET'] == '1') || Common.truthy?(Common::CONFIG.vivliostyle.quiet)
         end
 
         # EPUB ビルド用のコマンド文字列を組み立てる

@@ -1,5 +1,6 @@
 :::{.book-card}
 ![](cover)
-**=title**
-=desc
+**= title**
+= author.name 著
+= desc
 :::

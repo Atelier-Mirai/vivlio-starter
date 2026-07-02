@@ -295,7 +295,7 @@ module VivlioStarter
         # 生成されたファイルのリストを取得
         def get_created_files_list
           files = []
-          targets = Build::PdfMerger.extract_targets(Common::CONFIG.dig(:output, :targets))
+          targets = Build::PdfMerger.extract_targets(Common::CONFIG.output.targets)
 
           # PDF系
           if targets.include?('pdf')
@@ -331,7 +331,7 @@ module VivlioStarter
         # 単章ビルド用の生成ファイルリストを取得
         def get_created_files_list_for_single_mode(basenames)
           files = []
-          targets = Build::PdfMerger.extract_targets(Common::CONFIG.dig(:output, :targets))
+          targets = Build::PdfMerger.extract_targets(Common::CONFIG.output.targets)
 
           # 単章ビルドのファイル名ベースを決定
           if basenames.size == 1

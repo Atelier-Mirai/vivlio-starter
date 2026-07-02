@@ -212,7 +212,7 @@ module VivlioStarter
       #
       # @return [Array<String>] 対象フォーマット（例: ['pdf', 'print_pdf']）
       def resolve_cover_targets
-        raw_targets = Common::CONFIG.dig(:output, :targets)
+        raw_targets = Common::CONFIG.output.targets
         targets = Build::PdfMerger.extract_targets(raw_targets) if raw_targets
         targets = ['pdf'] if targets.nil? || targets.empty?
         targets
@@ -440,9 +440,9 @@ module VivlioStarter
         placeholders = {
           '{{title}}' => title,
           '{{subtitle}}' => subtitle,
-          '{{author}}' => fetch_config_value('book', 'author'),
-          '{{series}}' => fetch_config_value('book', 'series'),
-          '{{release}}' => fetch_config_value('book', 'release')
+          '{{author}}' => fetch_config_value(:book, :author),
+          '{{series}}' => fetch_config_value(:book, :series),
+          '{{release}}' => fetch_config_value(:book, :release)
         }
         placeholders.each { |ph, val| svg = svg.gsub(ph, val.to_s) }
         svg
@@ -796,7 +796,7 @@ module VivlioStarter
       #
       # @return [Symbol] :a4 / :b5 / :a5 のいずれか（デフォルト: :b5）
       def resolve_page_size
-        page_use = Common::CONFIG.dig(:page, :use) || 'b5_standard'
+        page_use = Common::CONFIG.page.use || 'b5_standard'
         CoverCommands.detect_page_size(page_use)
       end
 
@@ -829,9 +829,9 @@ module VivlioStarter
       def execute_titlepage(options)
         apply_verbose(options)
         title, subtitle = extract_title_and_subtitle
-        author  = fetch_config_value('book', 'author')
-        series  = fetch_config_value('book', 'series')
-        release = fetch_config_value('book', 'release')
+        author  = fetch_config_value(:book, :author)
+        series  = fetch_config_value(:book, :series)
+        release = fetch_config_value(:book, :release)
         subtitle_class = "subtitle subtitle--#{subtitle_style}"
 
         content = <<~MD
@@ -866,11 +866,11 @@ module VivlioStarter
       def execute_colophon(options)
         apply_verbose(options)
         title, subtitle = extract_title_and_subtitle
-        author    = fetch_config_value('book', 'author')
-        publisher = fetch_config_value('book', 'publisher')
-        publisher = fetch_config_value('book', 'publisher_name') if publisher.empty?
-        contact   = fetch_config_value('book', 'contact')
-        release   = fetch_config_value('book', 'release')
+        author    = fetch_config_value(:book, :author)
+        publisher = fetch_config_value(:book, :publisher)
+        publisher = fetch_config_value(:book, :publisher_name) if publisher.empty?
+        contact   = fetch_config_value(:book, :contact)
+        release   = fetch_config_value(:book, :release)
         subtitle_class = "subtitle subtitle--#{subtitle_style}"
         current_wareki = "令和#{kanji_year(Time.now.year - 2018)}年"
 
@@ -937,8 +937,7 @@ module VivlioStarter
         MD
 
         # Twemoji クレジット（legal.twemoji が設定されている場合のみ）
-        # Common::CONFIG に legal キーが存在しない場合は nil を返す
-        twemoji_credit = Common::CONFIG.respond_to?(:legal) ? Common::CONFIG.legal&.twemoji : nil
+        twemoji_credit = Common::CONFIG.legal.twemoji
         if twemoji_credit && !twemoji_credit.to_s.strip.empty?
           body += <<~MD
 
@@ -1069,15 +1068,15 @@ module VivlioStarter
 
       # config/book.yml からタイトルとサブタイトルを取得する
       def extract_title_and_subtitle
-        book = Common::CONFIG.fetch('book', {})
-        title    = (book['main_title'] || book['title'] || '').to_s
-        subtitle = (book['subtitle'] || '').to_s
+        book = Common::CONFIG.book
+        title    = (book.main_title || book.title || '').to_s
+        subtitle = (book.subtitle || '').to_s
         [title, subtitle]
       end
 
       # サブタイトルの装飾スタイルを取得する
       def subtitle_style
-        style = fetch_config_value('book', 'subtitle_style').downcase
+        style = fetch_config_value(:book, :subtitle_style).downcase
         %w[wave bar none].include?(style) ? style : 'wave'
       end
 
@@ -1104,9 +1103,9 @@ module VivlioStarter
 
       # config/book.yml から免責・商標文面を取得する
       def legal_texts
-        legal = Common::CONFIG.fetch('legal', {})
-        disclaimer = (legal['disclaimer'] || '').strip
-        trademark  = (legal['trademark']  || '').strip
+        legal = Common::CONFIG.legal
+        disclaimer = (legal.disclaimer || '').strip
+        trademark  = (legal.trademark  || '').strip
 
         if disclaimer.empty? && trademark.empty?
           Common.log_warn('config/book.yml の legal.disclaimer / legal.trademark が未設定です。テンプレート文面で生成します。')

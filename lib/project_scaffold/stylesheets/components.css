@@ -92,6 +92,12 @@
   line-height: 1.4;
 }
 
+/* book-card 内の段落はグローバルの text-indent: 1em を打ち消し、
+   タイトル・著者・説明の行頭を左端へ揃える（<br> 後の行も含めて不揃いを防ぐ）。 */
+.book-info p {
+  text-indent: 0;
+}
+
 /* =====================================================================
    Page Footnotes (Vivliostyle)
    - post_process で本文直後に挿入される <aside class="page-footnote"> を

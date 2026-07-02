@@ -83,14 +83,12 @@ module VivlioStarter
 
         # 用語集の重複排除が有効か
         def glossary_dedup_enabled?
-          dedup_setting = Common::CONFIG.dig('glossary', 'backlink_dedup')
-          dedup_setting != false
+          Common::CONFIG.glossary.backlink_dedup != false
         end
 
         # 索引の重複排除が有効か
         def index_dedup_enabled?
-          dedup_setting = Common::CONFIG.dig('index', 'backlink_dedup')
-          dedup_setting != false
+          Common::CONFIG.index.backlink_dedup != false
         end
 
         # 重複排除対象の HTML が存在するか
@@ -124,8 +122,7 @@ module VivlioStarter
           # 既存の entries.js がそのまま使えるため、PDF 生成のみ
           PdfCommands.execute_pdf({})
 
-          pdf_config = Common::CONFIG['pdf'] || {}
-          output_pdf = pdf_config['output_file'] || 'output.pdf'
+          output_pdf = PdfCommands::PdfCommandRunner::DEFAULT_OUTPUT_PDF
 
           if File.exist?(output_pdf)
             FileUtils.cp(output_pdf, '_sections.pdf')

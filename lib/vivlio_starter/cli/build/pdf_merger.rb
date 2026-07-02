@@ -16,9 +16,8 @@ module VivlioStarter
           files = %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf]
           cfg = Common::CONFIG
 
-          # ターゲット判定（dig で安全アクセス）
-          targets = extract_targets(cfg.dig(:output, :targets))
-          targets = extract_targets(cfg.dig(:output, :pdf, :targets)) if targets.empty?
+          # ターゲット判定
+          targets = extract_targets(cfg.output.targets)
           pdf_selected = targets.empty? || targets.any? { it.include?('pdf') }
 
           return files.compact unless pdf_selected
@@ -28,7 +27,7 @@ module VivlioStarter
 
           begin
             page_use   = resolve_page_use(cfg.page)
-            covers_dir = cfg.directories&.covers || 'covers'
+            covers_dir = cfg.directories.covers || 'covers'
 
             ensure_cover_assets_for_page_size!(page_use)
 

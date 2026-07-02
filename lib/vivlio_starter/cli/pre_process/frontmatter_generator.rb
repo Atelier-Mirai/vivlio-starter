@@ -41,12 +41,12 @@ module VivlioStarter
         # テーマ設定を解析して構造化データを返す
         def parse_theme_settings(cfg = nil)
           cfg ||= Common::CONFIG
-          theme_cfg = cfg[:theme] || {}
+          theme_cfg = cfg.theme
 
-          theme_color = theme_cfg[:color]
-          theme_style_raw = theme_cfg[:style]
-          frontispiece_raw = theme_cfg[:frontispiece]
-          ornament_raw = theme_cfg[:ornament]
+          theme_color = theme_cfg.color
+          theme_style_raw = theme_cfg.style
+          frontispiece_raw = theme_cfg.frontispiece
+          ornament_raw = theme_cfg.ornament
 
           theme_name, theme_accent_value = parse_theme_color(theme_color)
           theme_style = parse_theme_style(theme_style_raw)
@@ -119,13 +119,21 @@ module VivlioStarter
         # フロントマターのベース構造を構築
         def build_base_frontmatter(chapter_css)
           stylesheets = ['theme.css', chapter_css, 'custom.css']
-          lang = (Common::CONFIG.dig(:book, :language) || 'ja').to_s.strip
+          lang = (Common::CONFIG.book.language || 'ja').to_s.strip
           lang = 'ja' if lang.empty?
 
           {
             'link' => stylesheets.map { |css| { 'rel' => 'stylesheet', 'href' => "stylesheets/#{css}" } },
-            'lang' => lang
+            'lang' => lang,
+            'vfm' => { 'hardLineBreaks' => book_hard_line_breaks? }
           }
+        end
+
+        # book.yml の vfm.hard_line_breaks（snake_case）を読み、VFM が解する
+        # フロントマターキー hardLineBreaks（camelCase）へ引き渡す。
+        # 未設定（nil）は既定の true（日本語執筆で直感的なハード改行）。
+        def book_hard_line_breaks?
+          Common::CONFIG.vfm.hard_line_breaks != false
         end
 
         # 既存フロントマターを併合するか新規生成して Markdown に反映する
@@ -326,13 +334,13 @@ module VivlioStarter
 
           # appendix.css を更新
           CssUpdater.update_appendix_css(
-            appendix_color: theme_cfg&.dig(:appendix_color),
+            appendix_color: theme_cfg.appendix_color,
             theme_accent_value: theme_accent_value
           )
 
           # preface.css を更新
           CssUpdater.update_preface_css(
-            preface_color: theme_cfg&.dig(:preface_color),
+            preface_color: theme_cfg.preface_color,
             theme_accent_value: theme_accent_value
           )
 
@@ -340,13 +348,13 @@ module VivlioStarter
           CssUpdater.update_chapter_css(theme_style: theme_style)
 
           # chapter-common.css のマーカーを更新
-          markers_cfg = theme_cfg&.dig(:markers)
+          markers_cfg = theme_cfg.markers
           CssUpdater.update_chapter_common_css(markers: safe_config_hash(markers_cfg))
 
           # page-settings.css を更新
           cfg = Common::CONFIG
-          page_cfg = safe_config_hash(cfg&.dig(:page))
-          typo_cfg = safe_config_hash(cfg&.dig(:typography))
+          page_cfg = safe_config_hash(cfg.page)
+          typo_cfg = safe_config_hash(cfg.typography)
 
           # フォント設定をマージ
           font_names = [
@@ -362,13 +370,18 @@ module VivlioStarter
         end
 
         # フロントマターをマージ
+        # link は重複を除外して結合、vfm は著者の章別指定（既存側）を book.yml 由来の値より優先
         def merge_frontmatter(existing_frontmatter, new_frontmatter)
           merged = existing_frontmatter.dup
           merged.delete('stylesheet')
           merged['link'] = filter_legacy_theme_links(merged['link']) if merged['link'].is_a?(Array)
 
           new_frontmatter.each do |key, value|
-            merged[key] = key == 'link' && merged['link'] ? merge_links(merged['link'], value) : value
+            merged[key] = case [key, merged[key]]
+                          in ['link', Array => existing] then merge_links(existing, value)
+                          in ['vfm', Hash => existing] then value.merge(existing)
+                          else value
+                          end
           end
           merged
         end

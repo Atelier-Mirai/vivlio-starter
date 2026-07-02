@@ -145,6 +145,7 @@ module VivlioStarter
 
           config = Common::CONFIG
           book_config = config.book
+          validate_epub_layout_setting!(config, flavor:)
 
           # JS 文字列に安全に埋め込むための簡易エスケープ
           esc = ->(s) { s.to_s.gsub('\\', '\\\\').gsub("'", "\\'") }
@@ -203,6 +204,20 @@ module VivlioStarter
           File.write(EPUB_CONFIG_FILE, config_content)
           Common.log_success("[EPUB] #{EPUB_CONFIG_FILE} を生成しました")
           EPUB_CONFIG_FILE
+        end
+
+        # book.yml の output.epub.layout / output.kindle.layout を検証する。
+        # 現在サポートするのは reflowable（リフロー型）のみ。fixed（固定レイアウト型）は
+        # 将来対応の予約値のため、指定されていたら警告して reflowable として続行する
+        # （黙って無視すると「設定したのに効かない」事故になるため）。
+        def validate_epub_layout_setting!(config, flavor:)
+          layout = config.output[flavor]&.layout.to_s.strip.downcase
+          return if layout.empty? || layout == 'reflowable'
+
+          Common.log_warn(
+            "output.#{flavor}.layout: #{layout} は未対応です。reflowable として出力します",
+            detail: "対応: config/book.yml の output.#{flavor}.layout を reflowable に変更してください（fixed は将来対応予定）"
+          )
         end
 
         # EPUB に含める HTML ファイルを収集する
@@ -749,7 +764,7 @@ module VivlioStarter
         # @param html_files [Array<String>] HTML ファイルパスの配列
         # @return [Array<String>] そのままの配列（パス変更なし）
         def inject_heading_images_for_epub!(html_files, flavor: :epub)
-          return html_files unless Common::CONFIG.dig('theme', 'style') == 'image'
+          return html_files unless Common::CONFIG.theme.style == 'image'
 
           theme = read_theme_heading_assets
           return html_files unless theme
@@ -821,7 +836,7 @@ module VivlioStarter
         #
         # @return [String]
         def epub_heading_font_family
-          book_font = Common::CONFIG.dig('typography', 'heading', 'font').to_s.strip
+          book_font = Common::CONFIG.typography.heading.font.to_s.strip
           stack = []
           stack << "'#{book_font}'" unless book_font.empty?
           stack.concat(["'Hiragino Sans'", "'Hiragino Kaku Gothic ProN'", "'Noto Sans JP'",

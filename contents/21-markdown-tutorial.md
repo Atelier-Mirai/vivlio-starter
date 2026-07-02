@@ -530,15 +530,6 @@ vfm:
   hardLineBreaks: false
 ---
 
-あるいは、`book.yml` で
-
-```yaml
-vfm:
-  hardLineBreaks: false
-```
-
-と設定することもできます。
-
 ### 技術的な説明
 
 この関数は引数を受け取り、
@@ -549,6 +540,15 @@ vfm:
 改行はスペースとして扱われ、
 自然な段落として表示されます。
 ```
+
+あるいは、本全体の既定を変えたい場合は `book.yml` で
+
+```yaml
+vfm:
+  hard_line_breaks: false
+```
+
+と設定することもできます（章のフロントマター指定が book.yml より優先されます）。
 
 #### HTML 出力（hardLineBreaks: false）
 ```html

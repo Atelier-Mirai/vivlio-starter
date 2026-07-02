@@ -59,8 +59,11 @@ module VivlioStarter
         end
 
         # MeCab が利用可能かどうか
+        # book.yml の index_glossary.use_mecab: false は「導入済みでも使わない」という
+        # 著者の明示的な選択なので、導入案内の警告は出さずに静かに無効化する
         def available?
           return @available unless @available.nil?
+          return @available = false if Common::CONFIG&.index_glossary&.use_mecab == false
 
           @available = begin
             require 'natto'

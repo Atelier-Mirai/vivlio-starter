@@ -263,7 +263,7 @@ module VivlioStarter
 
           # book.yml + CLI オプションから検証設定を解決する
           def resolve_config
-            build_cfg = Common::CONFIG&.dig(:build, :verify) || {}
+            build_cfg = Common::CONFIG.build.verify
             cli_opts = Thread.current[:vs_verify_options] || {}
 
             # --no-verify で全無効
@@ -272,12 +272,13 @@ module VivlioStarter
                        timeout: 10, max_concurrency: 5 }
             end
 
+            # 未設定（nil）時の既定: images/bare_urls は有効、external_links は無効
             {
-              verify_images: cli_opts.fetch(:verify_images, build_cfg.fetch(:images, true)),
-              verify_bare_urls: cli_opts.fetch(:verify_bare_urls, build_cfg.fetch(:bare_urls, true)),
-              verify_external_links: cli_opts.fetch(:verify_external_links, build_cfg.fetch(:external_links, false)),
-              timeout: build_cfg.fetch(:timeout, 10),
-              max_concurrency: build_cfg.fetch(:max_concurrency, 5)
+              verify_images: cli_opts.fetch(:verify_images, build_cfg.images != false),
+              verify_bare_urls: cli_opts.fetch(:verify_bare_urls, build_cfg.bare_urls != false),
+              verify_external_links: cli_opts.fetch(:verify_external_links, build_cfg.external_links == true),
+              timeout: build_cfg.timeout || 10,
+              max_concurrency: build_cfg.max_concurrency || 5
             }
           end
 

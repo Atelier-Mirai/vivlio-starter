@@ -84,10 +84,12 @@ module VivlioStarter
 
       # npx vivliostyle build をラップして PDF を生成する
       class PdfCommandRunner
+        # vivliostyle build の既定出力ファイル名（最終成果物は Step 14 でリネームされる）
+        DEFAULT_OUTPUT_PDF = 'output.pdf'
+
         def initialize(options, target_output)
           @options = options || {}
           @target_output = target_output
-          @config = Common::CONFIG['pdf'] || {}
           @build_success = false
         end
 
@@ -111,7 +113,7 @@ module VivlioStarter
 
         private
 
-        attr_reader :options, :target_output, :config
+        attr_reader :options, :target_output
 
         def apply_verbose
           ENV['VERBOSE'] = '1' if options[:verbose]
@@ -154,19 +156,15 @@ module VivlioStarter
         end
 
         # quiet モードが有効かどうか返す
+        # （reload_configuration! 後の stale 参照を避けるため CONFIG は都度参照する）
         def quiet_mode?
-          @quiet_mode ||= (ENV['VIVLIO_QUIET'] == '1') || Common.truthy?(vivliostyle_config['quiet'])
-        end
-
-        # vivliostyle 設定を返す
-        def vivliostyle_config
-          @vivliostyle_config ||= Common::CONFIG['vivliostyle'] || {}
+          (ENV['VIVLIO_QUIET'] == '1') || Common.truthy?(Common::CONFIG.vivliostyle.quiet)
         end
 
         # 実行するビルドコマンド文字列を組み立てる
         def build_command
           cmd = 'npx vivliostyle build'
-          cmd += ' -d' if SingleDocDecider.new(config).call
+          cmd += ' -d' if SingleDocDecider.new.call
           cmd
         end
 
@@ -193,7 +191,7 @@ module VivlioStarter
 
         # 出力ファイルのパスを返す
         def output_path
-          config['output_file'] || 'output.pdf'
+          DEFAULT_OUTPUT_PDF
         end
 
         # 出力先の絶対パスをログ出力する
@@ -237,10 +235,6 @@ module VivlioStarter
 
       # --single-doc オプションの有効化可否を判定する
       class SingleDocDecider
-        def initialize(config)
-          @config = config
-        end
-
         # single-doc を有効化すべきかどうか返す
         def call
           return false unless requested?
@@ -255,11 +249,9 @@ module VivlioStarter
 
         private
 
-        attr_reader :config
-
-        # single_doc 設定が要求されているか
+        # single_doc が要求されているか（環境変数でのみ有効化できる開発者向け機能）
         def requested?
-          (ENV['VIVLIO_SINGLE_DOC'] == '1') || Common.truthy?(config['single_doc'])
+          ENV['VIVLIO_SINGLE_DOC'] == '1'
         end
 
         # vivliostyle.config.js が entries.js を参照していないか
@@ -308,7 +300,6 @@ module VivlioStarter
       class PdfCompressor
         def initialize(options, cli_input = nil, cli_output = nil)
           @options = options || {}
-          @config = Common::CONFIG['pdf'] || {}
           @cli_input = cli_input
           @cli_output = cli_output
           @input_pdf = nil
@@ -328,7 +319,7 @@ module VivlioStarter
 
         private
 
-        attr_reader :options, :config, :cli_input, :cli_output, :input_pdf, :output_pdf, :compression_success
+        attr_reader :options, :cli_input, :cli_output, :input_pdf, :output_pdf, :compression_success
 
         # ビルドパイプライン（Step 12）から呼ばれているか
         def pipeline_mode? = !!options[:pipeline]
@@ -352,8 +343,8 @@ module VivlioStarter
             @output_pdf = default_compressed_name(input)
           else
             # vs pdf:compress（引数なし）
-            @input_pdf  = config['output_file'] || 'output.pdf'
-            @output_pdf = config['output_file_compressed'] || default_compressed_name(@input_pdf)
+            @input_pdf  = PdfCommandRunner::DEFAULT_OUTPUT_PDF
+            @output_pdf = default_compressed_name(@input_pdf)
           end
         end
 
@@ -610,8 +601,6 @@ module VivlioStarter
         def initialize(options, path)
           @options = options || {}
           @explicit_path = path
-          @pdf_config = Common::CONFIG['pdf'] || {}
-          @pdf_preview_config = Common::CONFIG.dig('output', 'pdf_preview') || {}
         end
 
         def call
@@ -634,7 +623,7 @@ module VivlioStarter
 
         private
 
-        attr_reader :options, :explicit_path, :pdf_config, :pdf_preview_config
+        attr_reader :options, :explicit_path
 
         def apply_verbose
           ENV['VERBOSE'] = '1' if options[:verbose]
@@ -673,17 +662,14 @@ module VivlioStarter
 
         # 既定の PDF を選択する
         def select_preferred_pdf
-          # 動的ファイル名を優先、次に固定ファイル名、最後にconfig設定
+          # 動的ファイル名（project.name 由来）を優先、次に固定ファイル名
           compressed_dynamic = Common.generate_compressed_pdf_filename('pdf')
           normal_dynamic = Common.generate_output_filename('pdf')
           compressed_fixed = 'output_compressed.pdf'
           normal_fixed = 'output.pdf'
-          compressed_config = pdf_config['output_file_compressed']
-          normal_config = pdf_config['output_file']
-
           # 存在するファイルを優先度順に探す
-          compressed = find_existing_file([compressed_dynamic, compressed_fixed, compressed_config].compact)
-          normal = find_existing_file([normal_dynamic, normal_fixed, normal_config].compact)
+          compressed = find_existing_file([compressed_dynamic, compressed_fixed])
+          normal = find_existing_file([normal_dynamic, normal_fixed])
 
           if compressed && normal
             choose_by_timestamp(compressed, normal)
@@ -773,19 +759,15 @@ module VivlioStarter
           APPLE_SCRIPT
         end
 
+        # 既存 PDF ウィンドウを閉じるか。未設定（nil）は true（既定）、false は明示的な無効化
         def close_existing_windows?
-          if pdf_preview_config.key?('close_existing_windows')
-            Common.fetch_bool({ 'flag' => pdf_preview_config['close_existing_windows'] }, %w[flag], default: true)
-          else
-            Common.fetch_bool({ 'flag' => pdf_config['close_existing_windows'] }, %w[flag], default: true)
-          end
+          Common::CONFIG.output.pdf_preview.close_existing_windows != false
         rescue StandardError
           true
         end
 
         def resolved_window_bounds
-          bounds = pdf_preview_config['window_bounds']
-          bounds = pdf_config['window_bounds'] if bounds.nil? || bounds.to_s.strip.empty?
+          bounds = Common::CONFIG.output.pdf_preview.window_bounds
           bounds = '{3072, 0, 4096, 2160}' if bounds.to_s.strip.empty?
           bounds
         end
@@ -800,14 +782,12 @@ module VivlioStarter
         # book.yml の output.print_pdf.bleed / crop_marks を参照
         def build_command
           cmd = 'npx vivliostyle build'
-          cmd += ' -d' if SingleDocDecider.new(config).call
+          cmd += ' -d' if SingleDocDecider.new.call
 
-          print_cfg = Common::CONFIG.dig(:output, :print_pdf)
-          return cmd unless print_cfg
+          print_cfg = Common::CONFIG.output.print_pdf
+          bleed = print_cfg.bleed&.to_s || '3mm'
 
-          bleed = print_cfg[:bleed]&.to_s || '3mm'
-
-          if print_cfg[:crop_marks] != false
+          if print_cfg.crop_marks != false
             cmd += ' --crop-marks'
             cmd += " --bleed #{bleed}"
           end

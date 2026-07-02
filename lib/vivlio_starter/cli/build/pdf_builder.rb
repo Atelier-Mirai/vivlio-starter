@@ -144,8 +144,7 @@ module VivlioStarter
           end
           Common.log_info("[Step 7] 対象: #{targets_for_pdf.map { |p| File.basename(p) }.join(', ')}")
 
-          pdf_config = Common::CONFIG['pdf'] || {}
-          output_pdf = pdf_config['output_file'] || 'output.pdf'
+          output_pdf = PdfCommands::PdfCommandRunner::DEFAULT_OUTPUT_PDF
           min_pages  = [(targets_for_pdf.size / 2.0).floor, 5].max
 
           Build::Utilities.build_pdf_with_body_guard!(output_pdf, min_pages:) do

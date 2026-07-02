@@ -63,7 +63,7 @@ gem install query-stream        # データ展開機能
 | Playwright / Chromium | npm 経由 | バックリンク重複排除用 |
 | rouge | `gem install rouge` | コードブロック言語推定 |
 | mathjax-full | `npm install -g mathjax-full` | 数式の SVG 化 |
-| waifu2x-ncnn-vulkan | GitHub Releases から自動取得 | AI 画像拡大（オプション） |
+| `waifu2x-ncnn-vulkan` | GitHub Releases から自動取得 | AI 画像拡大（オプション） |
 | Kindle Previewer 3（kindlepreviewer） | `brew install --cask kindle-previewer` ＋ ラッパー作成 | Kindle（KPF）変換（任意・targets: kindle 用） |
 | Google Fonts 用 SSL 証明書 | 自動設定 | Google Fonts ダウンロード（macOS のみ） |
 

@@ -1,6 +1,31 @@
 # Common::CONFIG アクセス記法統一 仕様（Data オブジェクト統一リファクタリング）
 
-対象: `lib/` 全域（＋テストの設定偽装方法） / 策定日: 2026-07-02 / ステータス: 提案
+対象: `lib/` 全域（＋テストの設定偽装方法） / 策定日: 2026-07-02 /
+ステータス: **Phase 1・2 実装完了（2026-07-02）**・Phase 3 未着手
+
+Phase 1 実装メモ:
+- `wrap_config` の `[]` を member 限定化・`deconstruct_keys(nil)` 修正・予約名警告（`common.rb`）
+- 既定値スキーマ `default_config_schema` ＋ `deep_merge_config` を導入（§2.2 の 16 セクション
+  ＋ `chapters` / `directories.sources` / `index_glossary.library` / `backlink_dedup` 等の
+  コード参照キーを追補）
+- 回帰テスト `test/vivlio_starter/cli/common_config_loading_test.rb`（16 件）
+- book.yml の `vfm.hardLineBreaks` → `vfm.hard_line_breaks` 改名も同時実施
+  （フロントマター・vivliostyle.config.js の camelCase は VFM / Vivliostyle CLI の API のため維持）
+
+Phase 2 実装メモ:
+- §1.3 の全ファイルを正規記法へ移行（文字列キー・respond_to? ガード・`&.[]`・`|| {}` を撤去）
+- cover.rb / clean.rb の `load_config` 直呼びと metrics/ConfigLoader の YAML 直読みを CONFIG に一本化
+  （ConfigLoader 内部はシンボルキーへ全面書き換え。テスト用 Hash 入力は境界で正規化）
+- pdf.rb の ivar メモ化を都度参照化、`CONFIG#fetch` に deprecation 警告を追加
+- 未文書のレガシー設定パス（`pdf:` トップレベル / `output.pdf.targets` / `single_doc` 設定キー）を削除
+- 併せて book.yml キーの消費保証テスト `book_yml_consumption_test.rb` を新設し、
+  発見した消費漏れ 4 件（vfm.hard_line_breaks / book.isbn / output.*.layout /
+  index_glossary.use_mecab）を配線
+
+Phase 3（未着手・残作業）:
+- `fetch` 削除、`[]`/`dig` の String キー受け付け廃止
+- Hash/Data ブリッジ削除（`resolve_page_size` 正規化分岐・`variable_font_injector#config_value`・`fetch_bool`）
+- common.rb 冒頭のハイブリッド仕様コメントの整理
 
 ## 背景 / 目的
 

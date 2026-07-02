@@ -292,11 +292,7 @@ module VivlioStarter
 
         # config から context_width を読み込み（既定値 40）
         def load_context_width
-          shared = Common::CONFIG.respond_to?(:index_glossary) ? Common::CONFIG.index_glossary : nil
-          shared_hash = shared.respond_to?(:to_h) ? shared.to_h : {}
-          shared_hash[:context_width] || 40
-        rescue StandardError
-          40
+          Common::CONFIG.index_glossary.context_width || 40
         end
 
         # 抽出用にコンテンツをサニタイズ
