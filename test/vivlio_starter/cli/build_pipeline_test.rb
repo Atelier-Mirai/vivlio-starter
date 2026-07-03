@@ -35,8 +35,16 @@ require 'vivlio_starter/cli/token_resolver'
 
 module VivlioStarter
   module CLI
+    # P2: pdf 専用の Targets（旧 pdf_target? 等の override の代替）を供給する DI ヘルパー。
+    module PdfOnlyTargetsHelper
+      def pdf_only_targets
+        Build::Targets.new(pdf: true, print_pdf: false, epub: false, kindle: false)
+      end
+    end
+
     # UnifiedBuildPipeline フルモードのユニットテスト
     class UnifiedBuildPipelineFullModeTest < Minitest::Test
+      include PdfOnlyTargetsHelper
       # フルビルドパイプラインが登録順にステップを実行することを確認
       def test_run_executes_each_step_in_order
         pipeline = build_full_pipeline
@@ -146,13 +154,8 @@ module VivlioStarter
         options = default_options
         command = Struct.new(:options).new(options)
         # book.yml の targets 設定に依存しないよう pdf 専用モードを強制する
-        klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
-          define_method(:pdf_target?)       { true }
-          define_method(:epub_target?)      { false }
-          define_method(:kindle_target?)    { false }
-          define_method(:print_pdf_target?) { false }
-        end
-        klass.new(command, entries: [], mode: :full)
+        klass = BuildCommands::UnifiedBuildPipeline
+        klass.new(command, entries: [], mode: :full, targets: pdf_only_targets)
       end
 
       def default_options
@@ -214,6 +217,7 @@ module VivlioStarter
     # UnifiedBuildPipeline Single Mode Tests
     # ================================================================
     class UnifiedBuildPipelineSingleModeTest < Minitest::Test
+      include PdfOnlyTargetsHelper
       def test_single_mode_executes_correct_steps
         pipeline = build_single_pipeline(targets: ['45-first-html'])
         order = []
@@ -275,13 +279,8 @@ module VivlioStarter
         options = default_options
         command = Struct.new(:options).new(options)
         entries = targets.map { |bn| make_entry(bn) }
-        klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
-          define_method(:pdf_target?)       { true }
-          define_method(:epub_target?)      { false }
-          define_method(:kindle_target?)    { false }
-          define_method(:print_pdf_target?) { false }
-        end
-        klass.new(command, entries: entries, mode: :single)
+        klass = BuildCommands::UnifiedBuildPipeline
+        klass.new(command, entries: entries, mode: :single, targets: pdf_only_targets)
       end
 
       def make_entry(basename)
@@ -338,6 +337,7 @@ module VivlioStarter
     # PDF Output Filename Tests
     # ================================================================
     class PdfOutputFilenameTest < Minitest::Test
+      include PdfOnlyTargetsHelper
       def test_single_chapter_pdf_name
         pipeline = build_single_pipeline(targets: ['54-operator'])
 
@@ -381,13 +381,8 @@ module VivlioStarter
         options = { clean: true, resize: true, compress: true, high: false, low: false }
         command = Struct.new(:options).new(options)
         entries = targets.map { |bn| make_entry(bn) }
-        klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
-          define_method(:pdf_target?)       { true }
-          define_method(:epub_target?)      { false }
-          define_method(:kindle_target?)    { false }
-          define_method(:print_pdf_target?) { false }
-        end
-        klass.new(command, entries: entries, mode: :single)
+        klass = BuildCommands::UnifiedBuildPipeline
+        klass.new(command, entries: entries, mode: :single, targets: pdf_only_targets)
       end
 
       def make_entry(basename)
@@ -411,6 +406,7 @@ module VivlioStarter
     # Option Handling Tests
     # ================================================================
     class BuildOptionHandlingTest < Minitest::Test
+      include PdfOnlyTargetsHelper
       def test_no_clean_option_detected
         options = default_options.merge(clean: false)
         pipeline = build_pipeline(options, mode: :full)
@@ -472,13 +468,8 @@ module VivlioStarter
       def build_pipeline(options, mode:)
         command = Struct.new(:options).new(options)
         # book.yml の targets 設定に依存しないよう pdf 専用モードを強制する
-        klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
-          define_method(:pdf_target?)       { true }
-          define_method(:epub_target?)      { false }
-          define_method(:kindle_target?)    { false }
-          define_method(:print_pdf_target?) { false }
-        end
-        klass.new(command, entries: [], mode: mode)
+        klass = BuildCommands::UnifiedBuildPipeline
+        klass.new(command, entries: [], mode: mode, targets: pdf_only_targets)
       end
 
       def stub_all_steps(pipeline)
@@ -494,6 +485,7 @@ module VivlioStarter
     # Timing Measurement Tests
     # ================================================================
     class BuildTimingMeasurementTest < Minitest::Test
+      include PdfOnlyTargetsHelper
       def test_timings_are_recorded_for_each_step
         pipeline = build_full_pipeline
         stub_pipeline_steps(pipeline)
@@ -537,26 +529,16 @@ module VivlioStarter
         options = { clean: true, resize: true, compress: true, high: false, low: false }
         command = Struct.new(:options).new(options)
         # book.yml の targets 設定に依存しないよう pdf 専用モードを強制する
-        klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
-          define_method(:pdf_target?)       { true }
-          define_method(:epub_target?)      { false }
-          define_method(:kindle_target?)    { false }
-          define_method(:print_pdf_target?) { false }
-        end
-        klass.new(command, entries: [], mode: :full)
+        klass = BuildCommands::UnifiedBuildPipeline
+        klass.new(command, entries: [], mode: :full, targets: pdf_only_targets)
       end
 
       def build_single_pipeline(targets)
         options = { clean: true, resize: true, compress: true, high: false, low: false }
         command = Struct.new(:options).new(options)
         entries = targets.map { |bn| make_entry(bn) }
-        klass = Class.new(BuildCommands::UnifiedBuildPipeline) do
-          define_method(:pdf_target?)       { true }
-          define_method(:epub_target?)      { false }
-          define_method(:kindle_target?)    { false }
-          define_method(:print_pdf_target?) { false }
-        end
-        klass.new(command, entries: entries, mode: :single)
+        klass = BuildCommands::UnifiedBuildPipeline
+        klass.new(command, entries: entries, mode: :single, targets: pdf_only_targets)
       end
 
       def make_entry(basename)
@@ -619,6 +601,7 @@ module VivlioStarter
     # catalog.yml に記載があるのに contents/ に原稿が存在しない場合の
     # フェイルファスト（ensure_entry_files_exist!）を検証する
     class UnifiedBuildPipelineMissingFileTest < Minitest::Test
+      include PdfOnlyTargetsHelper
       def test_should_abort_with_guidance_when_catalog_entry_file_is_missing
         existing = make_entry('11-install', exists: true)
         missing  = make_entry('89-bugfix-check', exists: false)

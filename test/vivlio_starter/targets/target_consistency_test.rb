@@ -48,14 +48,14 @@ class TargetConsistencyTest < Minitest::Test
   # に絞れば検出力を保ったまま大幅に軽量化できる（pdf/print_pdf/epub/kindle で
   # 2^4−1=15 → 6 ビルド）。docs/specs/epub-kindle-target-split-spec.md §5-2。
   #
-  # kindle はターゲット実装後（pipeline に kindle_target? が入った時点）に自動で
+  # kindle はターゲット実装後（pipeline が targets.kindle を参照した時点）に自動で
   # 有効化される。未実装の間は kindle を除いた 3 フォーマット（4 ビルド）で回す。
   FORMATS = %w[pdf print_pdf epub kindle].freeze
 
   # repo ソースに kindle ターゲットが実装されているか（実ビルドを伴わない軽量判定）。
   def self.kindle_available?
     src = File.expand_path("../../../../lib/vivlio_starter/cli/build/pipeline.rb", __dir__)
-    File.exist?(src) && File.read(src).include?("def kindle_target?")
+    File.exist?(src) && File.read(src).include?("targets.kindle")
   end
 
   def self.active_formats

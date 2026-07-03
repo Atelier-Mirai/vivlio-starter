@@ -282,7 +282,7 @@ module VivlioStarter
     end
 
     # ================================================================
-    # epub_target? のユニットテスト
+    # Targets.epub（旧 epub_target?）のユニットテスト
     # ================================================================
     class EpubTargetTest < Minitest::Test
       def setup
@@ -294,7 +294,7 @@ module VivlioStarter
       def test_epub_target_true_when_epub_in_targets
         with_config_targets('pdf, epub') do
           pipeline = BuildCommands::UnifiedBuildPipeline.new(@command, entries: [], mode: :full)
-          assert pipeline.send(:epub_target?), 'epub が targets に含まれる場合 true を返すべき'
+          assert pipeline.targets.epub, 'epub が targets に含まれる場合 true を返すべき'
         end
       end
 
@@ -302,7 +302,7 @@ module VivlioStarter
       def test_epub_target_false_when_no_epub_in_targets
         with_config_targets('pdf') do
           pipeline = BuildCommands::UnifiedBuildPipeline.new(@command, entries: [], mode: :full)
-          refute pipeline.send(:epub_target?), 'epub が targets にない場合 false を返すべき'
+          refute pipeline.targets.epub, 'epub が targets にない場合 false を返すべき'
         end
       end
 
@@ -310,7 +310,7 @@ module VivlioStarter
       def test_epub_target_true_when_epub_only
         with_config_targets('epub') do
           pipeline = BuildCommands::UnifiedBuildPipeline.new(@command, entries: [], mode: :full)
-          assert pipeline.send(:epub_target?), 'epub のみの場合 true を返すべき'
+          assert pipeline.targets.epub, 'epub のみの場合 true を返すべき'
         end
       end
 

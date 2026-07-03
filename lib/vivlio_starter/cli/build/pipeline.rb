@@ -23,16 +23,19 @@ module VivlioStarter
       class UnifiedBuildPipeline
         Step = Data.define(:label, :handler)
 
-        attr_reader :timings, :mode, :entries, :generated_pdf_name
+        attr_reader :timings, :mode, :entries, :generated_pdf_name, :targets
 
         # @param command [Samovar::Command] ビルドコマンドインスタンス
         # @param entries [Array<TokenResolver::Entry>] ビルド対象の Entry 配列
         # @param mode [:full, :single] ビルドモード
-        def initialize(command, entries: [], mode: :full)
+        # @param targets [Build::Targets, nil] 出力ターゲット（省略時は book.yml から 1 回だけ解決）。
+        #   ビルド中は不変（ターゲット集合はビルド開始時に確定し、reload には追従しない）。
+        def initialize(command, entries: [], mode: :full, targets: nil)
           @command = command
           @entries = Array(entries)
           @mode = mode
           @options = command.options
+          @targets = targets || Build::Targets.resolve
           @timings = []
           @steps = []
           @generated_pdf_name = nil
@@ -102,22 +105,22 @@ module VivlioStarter
           # 共通ステップ（HTML 生成まで）
           register_common_prep_steps
 
-          if pdf_target? && print_pdf_target?
+          if targets.pdf && targets.print_pdf
             # --- 閲覧用 + 入稿用の両方 ---
             register_pdf_build_steps
             # Step 12 ではリネーム・圧縮のみ。クリーンアップは最後に延期
             add_step('Step 12 (rename)',                      -> { run_step12_rename_only })
             add_step('Step 13 (print pdf)',                   -> { run_step13_print_pdf })
             # EPUB / Kindle ターゲット時は EPUB → final clean の順
-            add_step('Step E (generate epub)', -> { run_step_epub }) if epub_or_kindle_target?
+            add_step('Step E (generate epub)', -> { run_step_epub }) if targets.epub_or_kindle?
             add_step('Step 14 (final clean)', -> { run_final_clean })
-          elsif print_pdf_target?
+          elsif targets.print_pdf
             # --- 入稿用のみ（閲覧用 PDF をスキップ） ---
             register_print_pdf_only_steps_with_epub
-          elsif epub_or_kindle_target? && !pdf_target?
+          elsif targets.epub_or_kindle? && !targets.pdf
             # --- EPUB / Kindle のみ（PDF ビルドをスキップ） ---
             register_epub_only_steps
-          elsif epub_or_kindle_target?
+          elsif targets.epub_or_kindle?
             # --- 閲覧用 + EPUB / Kindle ---
             # クリーンアップは EPUB ビルド後に延期（HTML を保持するため）
             register_pdf_build_steps
@@ -167,7 +170,7 @@ module VivlioStarter
             Build::PdfBuilder.build_overall_pdf_from_dir!('.', entries)
           })
           # EPUB/Kindle 対象時は dedup 前の章 HTML を退避（⑦: run_step_epub で復元し EPUB を dedup から隔離）
-          add_step('Step  7b (snapshot pre-dedup html for epub)', -> { snapshot_pre_dedup_htmls }) if epub_or_kindle_target?
+          add_step('Step  7b (snapshot pre-dedup html for epub)', -> { snapshot_pre_dedup_htmls }) if targets.epub_or_kindle?
           add_step('Step  8 (backlink dedup)',              -> { Build::BacklinkDedupOrchestrator.run!(entries) })
           add_step('Step  9 (build front pages and tail)',  -> { run_step9_front_pages_and_tail })
           add_step('Step 10 (merge all pdfs)',              -> { Build::PdfMerger.merge_all_pdfs!(entries) })
@@ -187,11 +190,11 @@ module VivlioStarter
             Build::PdfBuilder.generate_entries_for_sections!('.', entries)
           })
           # EPUB/Kindle 対象時は dedup 前の章 HTML を退避（⑦: run_step_epub で復元し EPUB を dedup から隔離）
-          add_step('Step  7b (snapshot pre-dedup html for epub)', -> { snapshot_pre_dedup_htmls }) if epub_or_kindle_target?
+          add_step('Step  7b (snapshot pre-dedup html for epub)', -> { snapshot_pre_dedup_htmls }) if targets.epub_or_kindle?
           add_step('Step  8 (backlink dedup)',             -> { Build::BacklinkDedupOrchestrator.run!(entries) })
           add_step('Step  9 (build front pages html)',     -> { run_step9_front_pages_html_only })
           add_step('Step 10 (print pdf)',                  -> { run_step13_print_pdf })
-          add_step('Step E (generate epub)', -> { run_step_epub }) if epub_or_kindle_target?
+          add_step('Step E (generate epub)', -> { run_step_epub }) if targets.epub_or_kindle?
           add_step('Step 11 (final clean)', -> { run_final_clean })
         end
 
@@ -213,7 +216,7 @@ module VivlioStarter
         # targets に PDF 以外（print_pdf / EPUB / Kindle）が含まれていても、
         # 単章ビルドは閲覧用 PDF のみ生成する旨を一度だけ案内する。
         def warn_single_mode_pdf_only
-          return unless print_pdf_target? || epub_or_kindle_target?
+          return unless targets.print_pdf || targets.epub_or_kindle?
 
           Common.log_info('単章ビルドは閲覧用 PDF のみ生成します（print_pdf / EPUB / Kindle は全章 `vs build` で生成してください）')
         end
@@ -445,25 +448,6 @@ module VivlioStarter
         # 隠しノンブル書き込み → アウトライン付与 → リネーム の一連を行う。
         # ================================================================
 
-        # output.targets に pdf が含まれるかを判定する
-        def pdf_target?
-          cfg = Common::CONFIG
-          targets = Build::PdfMerger.extract_targets(cfg.dig(:output, :targets))
-          targets = Build::PdfMerger.extract_targets(cfg.dig(:output, :pdf, :targets)) if targets.empty?
-          # targets 未指定時はデフォルトで pdf を生成
-          return true if targets.empty?
-
-          targets.include?('pdf')
-        end
-
-        # output.targets に print_pdf が含まれるかを判定する
-        def print_pdf_target?
-          cfg = Common::CONFIG
-          targets = Build::PdfMerger.extract_targets(cfg.dig(:output, :targets))
-          targets = Build::PdfMerger.extract_targets(cfg.dig(:output, :pdf, :targets)) if targets.empty?
-          targets.include?('print_pdf')
-        end
-
         # Step 13 のメインフロー
         def run_step13_print_pdf
           Common.log_action('[Step 13] 入稿用 PDF を生成します…')
@@ -598,24 +582,6 @@ module VivlioStarter
         # EPUB 専用 entries / config を生成して vivliostyle build --format epub を実行する。
         # ================================================================
 
-        # output.targets に epub が含まれるかを判定する
-        def epub_target?
-          cfg = Common::CONFIG
-          targets = Build::PdfMerger.extract_targets(cfg.dig(:output, :targets))
-          targets.include?('epub')
-        end
-
-        # output.targets に kindle が含まれるかを判定する（§2）。
-        # 本メソッドの存在自体が target_consistency_test の combo を 4→6 ビルドへ拡張する目印になる。
-        def kindle_target?
-          cfg = Common::CONFIG
-          targets = Build::PdfMerger.extract_targets(cfg.dig(:output, :targets))
-          targets.include?('kindle')
-        end
-
-        # クリーン EPUB / Kindle のいずれかが対象か（EPUB ビルド経路を起動するか）。
-        def epub_or_kindle_target? = epub_target? || kindle_target?
-
         # EPUB のみビルド（PDF ビルドをスキップ）
         # 前付・奥付の HTML 生成は行うが、PDF 結合等はスキップ
         # Step 8 (backlink dedup) は vivliostyle preview が必要なため除外
@@ -645,11 +611,11 @@ module VivlioStarter
 
           # 両フレーバ同時のときだけ、クリーン処理が書き換える前の章 HTML を退避する。
           # 上で pre-dedup 状態へ戻した後に退避するため、Kindle も dedup 前から始まる。
-          snapshot = (epub_target? && kindle_target?) ? snapshot_chapter_htmls : nil
+          snapshot = (targets.epub && targets.kindle) ? snapshot_chapter_htmls : nil
 
-          build_epub_flavor(:epub) if epub_target?
+          build_epub_flavor(:epub) if targets.epub
 
-          if kindle_target?
+          if targets.kindle
             restore_chapter_htmls(snapshot) if snapshot
             build_epub_flavor(:kindle)
           end
