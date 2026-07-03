@@ -166,10 +166,8 @@ module VivlioStarter
         XML
         epub = build_epub_with_css('EPUB/content.opf' => opf)
 
-        options = { clean: true, resize: true, compress: true, high: false, low: false }
-        command = Struct.new(:options).new(options)
-        pipeline = BuildCommands::UnifiedBuildPipeline.new(command, entries: [], mode: :full)
-        pipeline.send(:sanitize_epub_opf_ids!, epub)
+        # P2: content.opf zip 手術は Build::EpubBuilder へ移設済み。
+        Build::EpubBuilder.sanitize_epub_opf_ids!(epub)
 
         result = read_css_from_epub(epub, 'EPUB/content.opf')
         assert_includes result, 'id="id-00-prefacexhtml"', '数字始まりの id に接頭辞が付くべき'

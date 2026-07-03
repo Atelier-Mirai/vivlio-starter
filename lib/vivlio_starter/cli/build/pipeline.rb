@@ -594,10 +594,10 @@ module VivlioStarter
           Build::EpubBuilder.sanitize_epub_css!(target_name, flavor:) if File.exist?(target_name)
 
           # --- Phase: content.opf の数字始まり id を NCName 準拠へ修正 ---
-          sanitize_epub_opf_ids!(target_name) if File.exist?(target_name)
+          Build::EpubBuilder.sanitize_epub_opf_ids!(target_name) if File.exist?(target_name)
 
           # --- Phase: EPUB identifier 安定化 ---
-          stabilize_epub_identifier!(target_name) if File.exist?(target_name)
+          Build::EpubBuilder.stabilize_epub_identifier!(target_name) if File.exist?(target_name)
 
           # --- Phase: 中間ファイルクリーンアップ（entries/config/output.epub） ---
           Build::EpubBuilder.cleanup!
@@ -633,110 +633,6 @@ module VivlioStarter
           converted = Build::EpubBuilder.convert_epub_to_kpf!(kindle_epub, kpf_name)
           # 成功時のみ中間 EPUB を片付ける。--no-clean では検証用に残す（§1-4）。
           FileUtils.rm_f(kindle_epub) if converted && options[:clean] != false && File.exist?(kindle_epub)
-        end
-
-        # EPUB の dc:identifier を書籍固有の決定的な UUID に置換する。
-        # プロジェクト名（config.project.name）が同一である限り、バージョンが変わっても
-        # UUID が変化しないため、電子書籍ストアでの差し替えが容易になる。
-        def stabilize_epub_identifier!(epub_path)
-          stable_id = stable_project_uuid
-          return unless stable_id
-
-          abs_epub = File.expand_path(epub_path)
-
-          Dir.mktmpdir('vs-epub-id') do |tmpdir|
-            system('unzip', '-o', abs_epub, 'EPUB/content.opf', '-d', tmpdir,
-                   out: File::NULL, err: File::NULL)
-            opf_path = File.join(tmpdir, 'EPUB', 'content.opf')
-            return unless File.exist?(opf_path)
-
-            content = File.read(opf_path, encoding: 'UTF-8')
-            replaced = content.sub(
-              %r{(<dc:identifier\s+id="bookid">)urn:uuid:[0-9a-f-]+(</dc:identifier>)},
-              "\\1#{stable_id}\\2"
-            )
-
-            if replaced == content
-              Common.log_info('[EPUB] identifier は既に安定化済みです')
-              return
-            end
-
-            File.write(opf_path, replaced)
-
-            Dir.chdir(tmpdir) do
-              system('zip', '-q', abs_epub, 'EPUB/content.opf',
-                     out: File::NULL, err: File::NULL)
-            end
-
-            Common.log_info("[EPUB] identifier を安定化しました: #{stable_id}")
-          end
-        rescue StandardError => e
-          Common.log_warn("[EPUB] identifier 安定化に失敗: #{e.message}")
-        end
-
-        # content.opf の数字始まり id / idref に接頭辞を付与して NCName 違反を解消する。
-        # vivliostyle CLI はファイル名（例: 00-preface）から manifest item の id を
-        # 機械生成するため、数字始まりの id が XML の NCName 規則（先頭は英字または _）に
-        # 違反し epubcheck の RSC-005 ERROR になる。spine の idref も同値を参照するため、
-        # id と idref を同一規則（固定接頭辞 id-）で書き換えて整合を保つ。
-        # stabilize_epub_identifier! と同型の unzip → 修正 → zip 差し替え方式。
-        def sanitize_epub_opf_ids!(epub_path)
-          abs_epub = File.expand_path(epub_path)
-
-          Dir.mktmpdir('vs-epub-opf') do |tmpdir|
-            system('unzip', '-o', abs_epub, 'EPUB/content.opf', '-d', tmpdir,
-                   out: File::NULL, err: File::NULL)
-            opf_path = File.join(tmpdir, 'EPUB', 'content.opf')
-            return unless File.exist?(opf_path)
-
-            content = File.read(opf_path, encoding: 'UTF-8')
-            replaced = content.gsub(/\b(id|idref)="(\d[^"]*)"/) do
-              %(#{::Regexp.last_match(1)}="id-#{::Regexp.last_match(2)}")
-            end
-
-            return if replaced == content
-
-            File.write(opf_path, replaced)
-
-            Dir.chdir(tmpdir) do
-              system('zip', '-q', abs_epub, 'EPUB/content.opf',
-                     out: File::NULL, err: File::NULL)
-            end
-
-            Common.log_info('[EPUB] content.opf の数字始まり id を NCName 準拠に修正しました')
-          end
-        rescue StandardError => e
-          Common.log_warn("[EPUB] content.opf id 修正に失敗: #{e.message}")
-        end
-
-        # プロジェクト名から決定的に算出した UUID を urn:uuid: に載せて返す。
-        # プロジェクト名が未設定の場合は book.main_title を fallback とし、
-        # それでも空なら nil を返す。
-        def stable_project_uuid
-          book = Common::CONFIG.book
-
-          # 著者が独自 ISBN を取得している場合は urn:isbn を dc:identifier に使う
-          # （EPUB の標準作法。未設定ならプロジェクト名由来の安定 UUID を使用）
-          isbn = book.isbn.to_s.delete('- ').strip
-          return "urn:isbn:#{isbn}" unless isbn.empty?
-
-          project = Common::CONFIG.project
-          raw     = project&.name.to_s.strip
-          fallback = [book&.main_title, book&.subtitle].compact.join(' ').strip
-          base = raw.empty? ? fallback : raw
-          base = base.to_s.strip
-          return if base.empty?
-
-          normalized = base.downcase
-          hex = Digest::SHA1.hexdigest(normalized)
-          uuid = [
-            hex[0, 8],
-            hex[8, 4],
-            hex[12, 4],
-            hex[16, 4],
-            hex[20, 12]
-          ].join('-')
-          "urn:uuid:#{uuid}"
         end
 
         # EPUB 用カバー画像を生成（cover_{theme}.jpg が未生成の場合のみ）
