@@ -20,6 +20,8 @@
   html/ から消費者 dir への**コピーが無加工**（バイト同一）で成立する。
 - 回帰リスクの核は P3 と同型の「**相対パスの基準**」1 点に、
   「**EPUB パッケージルートの決定**」を加えた 2 点。着手前に **5 つの実験（§6）で確定**する。
+  → **実験 E1〜E5 は 2026-07-04 に完了（§6.1）**。config のパスは全て cwd 基準・
+  EPUB は「ローカライズ＋entryContext」案で確定・pdf/ 移設のレンダリングは完全一致。
 - entries.js の上書き衝突は「dir 分離」だけでは解けない——**固定名 `entries.js` 単一資源の廃止**
   （用途別 entries ファイル＋用途別 config を `--config` で渡す）が本質。EPUB 経路が既に
   この方式（`entries.epub.js` ＋ `vivliostyle.config.epub.js`）で実証済み。PDF 側を揃える。
@@ -253,6 +255,90 @@ final clean が成果物に触れる経路が消える。
 | E4 | `PageMappingExtractor` を pdf/ の HTML で実行 | headless 抽出のパス依存有無 |
 | E5 | 単章ビルド（`vs build 11`）を workspace 経由で | single モードの entries/config 経路と `-d`（single-doc）判定の整合 |
 
+### 6.1 実験結果（2026-07-04 実施・全 5 件完了）
+
+環境: vivliostyle CLI 11.0.2 / core 2.43.2。実素材（25 章・394 ページ・リンク注釈 2,414 件）で実施。
+
+#### E1: `--config` のパス解決基準 —— すべて cwd 基準
+
+- config 内の **entry / output / workspaceDir / entryContext は cwd 基準**（config ファイル基準では
+  ない）。config と同 dir に置いた entry は解決されず
+  `Specified input does not exist: <cwd>/11-workflow.html` で失敗することを確認。
+- config 内の ESM `import`（entries ファイル読込）だけは config ファイル基準
+  → **entries ファイルは config と同居**でよい（§3.2 の表どおり）。
+- 本命案（cwd=ルート固定・生成 config に `.cache/vs/build/pdf/...` の cwd 相対パスを記述）で
+  完走。出力も pdf/ 内に着地。node_modules 解決も問題なし。
+- **entryContext を pdf/ へ向ける案は PDF では不成立**: dev サーバのルートが entryContext になり
+  `../../../../` の上方参照が全 404。しかも 404 でも build は SUCCESS で完走する
+  （様式欠落 PDF が黙って生まれる）ため、この経路は封じる。
+- workspaceDir ミラーは context（ルート）全体から画像資産を走査コピーする（covers/docs/lib/test
+  まで）。現行ルートビルドの `.vivliostyle/` と同一挙動であり新規コストではない。
+
+#### E2: EPUB パッケージルート —— (a) 上方参照案は不成立・(b) ローカライズ＋entryContext で確定
+
+- (a) `../../../../` 参照＋dot-dir パス entry: **ビルド自体が失敗**
+  （`ENOENT: .../EPUB/.cache/vs/build/epub/00-preface.html`）。EPUB 内部パスは entry の
+  cwd 相対パスがそのまま使われ（共通祖先方式ではない）、資産コピー段が dot ディレクトリを
+  スキップするため transpile 段が開けない。§4-1 の懸念「dot-dir 混入」は
+  「そもそもビルド不能」というより強い形で確定。
+- (b) 資産ローカライズのみ（entry パスに dot-dir が残る）でも同エラー。
+- **(b') ローカライズ＋ `entryContext: '.cache/vs/build/epub'` ＋ entries `./xx.html`: 成功**。
+  パッケージルート＝epub/・dot-dir 混入ゼロ（`EPUB/00-preface.xhtml` 等のクリーン構造・
+  mimetype/META-INF 正常）。**§5.2 の推奨案をこの形（entryContext 併用）で採用**。
+  軽量代替案（上方参照＋entryContext・資産コピー無し）は不成立につき棄却。
+- 注意: copyAsset 既定は entryContext 配下の資産を**全同梱**する（spike では stylesheets/ を
+  丸ごと置いたため twemoji 7,497 ファイル＝46MB が混入）。ローカライズは
+  「参照される資産だけの選択コピー」が必須（§5.2 の「excludes 全面書き直し」は
+  「必要物だけを epub/ に置く」方式として確定）。
+
+#### E3: pdf/ 移設のレンダリング不変 —— 完全一致
+
+- 全 32 HTML を `../../../../` プレフィックス書換で pdf/ へ複製し、
+  entries.sections.js＋config.sections.js（cwd 相対表記）でビルド。
+- 基準（ルートビルド）と比較: **394 ページ数・全ページテキスト・MediaBox・
+  リンク注釈 2,414 件・画像 XObject 562 件すべて一致**。
+  target-counter / 章間リンク / `@page :nth(1)` 扉絵とも差異なし（確認のみ、の想定どおり）。
+
+#### E4: PageMappingExtractor —— パス依存なし・変更点は `-c` の差し替えのみ
+
+- preview は `-c .cache/vs/build/pdf/config.sections.js` で起動可能。フォールバック URL
+  `http://localhost:13100/vivliostyle/publication.json` は **workspaceDir を移設しても有効な
+  仮想ルート**（readingOrder は `.cache/vs/build/pdf/...` を正しく反映）。
+- glossary-link / glossary-backlink / index-term をテスト注入し、3 種とも正しい
+  page_index / spine_index（エントリ順と整合）で抽出できた。
+- 抽出結果の href には `.cache/vs/build/pdf/` セグメントが入るが、dedup のマッチングは
+  anchor_id（fragment）のみで行われるため無害（`backlink_deduplicator.rb:232`）。
+- 実装変更点は `launch_preview_process!` のハードコード `-c vivliostyle.config.js` を
+  sections 用生成 config へ差し替える 1 点のみ（`page_mapping_extractor.rb:112`）。
+- 補足（原稿側の発見）: 現原稿には `config/index_glossary_terms.yml` が無く、
+  index_glossary.enabled=true でも glossary-link は実 0 件（辞書なしスキップ）。
+  本実験はアンカー注入で検証した。
+
+#### E5: 単章ビルド —— 同方式で成立・`-d` は生成 config と併用不可
+
+- single-mode 生成物の単章 HTML を pdf/ へ複製し entries.single.js＋config.single.js で
+  ビルド → ルート単章ビルド（`vs build 11` の 11-workflow.pdf）と
+  **5 ページ・全テキスト・MediaBox 一致**。
+- `-d` を生成 config と併用すると、**XML パースエラーページ 1 枚の PDF が SUCCESS として
+  生成される**（single-doc モードは entry を XML として直読みし、VFM 生成 HTML は
+  well-formed XML でないため）。⇒ パイプラインは `-d` を使わない。
+  `SingleDocDecider`（env ゲート・ルート config/entries.js 前提）は著者手動フロー専用として
+  現状維持（P4 の変更対象外）。
+- single モードも full と同じ「html/ → pdf/ コピー＋用途別 entries/config」経路で成立。
+  `rename_single_mode_pdf` は pdf/ からルートへの mv になる（§3.4 どおり）。
+
+#### 実験による仕様確定事項（§3〜5 への反映）
+
+1. 生成 config のパス表記は**すべて cwd（ルート）相対**・実行 cwd はルート固定（§4-2 確定）。
+   entries ファイルの path も `.cache/vs/build/{consumer}/...` の cwd 相対で書く。
+2. PDF 消費者（pdf/）は entryContext 不使用・上方参照 `../../../../` のまま（§3.3 どおり）。
+3. EPUB/Kindle 消費者（epub/・kindle/）は**資産ローカライズ＋entryContext 指定**が必須
+   （§5.2 の推奨案を entryContext 併用で確定・§4-1 解消）。html/ → epub/ コピー時に
+   プレフィックスを剥がす決定的 gsub＋参照資産の選択コピー。
+4. copyAsset は「epub/ 内に必要資産だけを置く」前提（excludes 方式の全面書き直し確定）。
+5. PageMappingExtractor は preview の `-c` 差し替えのみ・URL パターン不変（§5.1 に追記）。
+6. `-d`（single-doc）はパイプラインでは使用しない（生成 config との併用は不可を実証）。
+
 ---
 
 ## 7. 段階実装（各段で出力同一性を検証・独立コミット可能）
@@ -263,6 +349,7 @@ P2/P3 と同じく「現行から採取した基準」に対し各段で `rake t
 1. **プレフィックス配線（出力不変）**: `Common.asset_prefix`（`''`）と workspace パス定数を導入し、
    §3.3 の choke point を prefix 参照へ置換。全成果物バイト同一を確認（安全網）。
 2. **実験 E1〜E5** を実施し、§5.2 の案と config 生成仕様を本書へ追記・確定。
+   → **完了（2026-07-04・§6.1）**。
 3. **prep 出力を html/ へ移設**＋PDF 消費経路を pdf/ 化（コピー＋用途別 entries/config）。
    → 完了条件 3（entries.js 再生成の解消）・E1/E3/E4 の実証。**最大差分のゲート**。
 4. **EPUB/Kindle を epub/・kindle/ 化**（E2 の確定案）。`EpubFlow` の snapshot 3 メソッド削除
