@@ -24,6 +24,7 @@
 # ================================================================
 
 require_relative '../common'
+require_relative '../masking'
 require_relative 'markdown_utils'
 require_relative 'cross_reference_processor'
 require_relative 'link_image_validator'
@@ -243,25 +244,19 @@ module VivlioStarter
         # コードフェンス（``` 可変長）内は対象外。
         def convert_definition_lists(content)
           lines = content.lines
+          code_lines = code_line_numbers(content)
           out = []
           i = 0
-          fence_len = nil
           while i < lines.size
-            line = lines[i]
-            stripped = line.lstrip
-            if stripped.start_with?('```')
-              run = stripped[/\A`+/].length
-              if fence_len.nil? then fence_len = run
-              elsif run >= fence_len then fence_len = nil
-              end
-              out << line
+            if code_lines.include?(i + 1)
+              out << lines[i]
               i += 1
-            elsif fence_len.nil? && definition_list_start?(lines, i)
+            elsif definition_list_start?(lines, i)
               j = definition_list_end(lines, i)
               out << render_definition_list(lines[i...j].join)
               i = j
             else
-              out << line
+              out << lines[i]
               i += 1
             end
           end
@@ -351,19 +346,14 @@ module VivlioStarter
         # コードフェンス内は対象外。
         def convert_standalone_spacing(content)
           lines = content.lines
-          fence = nil
+          code_lines = code_line_numbers(content)
           out = []
           lines.each_with_index do |line, i|
-            stripped = line.lstrip
-            if stripped.start_with?('```', '~~~')
-              marker = stripped[/\A([`~]+)/, 1]
-              if fence.nil? then fence = marker
-              elsif stripped.start_with?(fence) then fence = nil
-              end
+            if code_lines.include?(i + 1)
               out << line
               next
             end
-            m = fence.nil? && line.strip.match(/\A\{\.(aki2?)\}\z/)
+            m = line.strip.match(/\A\{\.(aki2?)\}\z/)
             prev_blank = out.empty? || out.last.strip.empty?
             if m && prev_blank
               out << "@vspace:#{m[1] == 'aki2' ? 2 : 1}lh\n"
@@ -385,24 +375,20 @@ module VivlioStarter
         # コードフェンス内の ::: は対象外。既に空行がある場合は二重に入れない。
         def normalize_container_fence_spacing(content)
           lines = content.lines
-          fence = nil
+          code_lines = code_line_numbers(content)
           out = []
           lines.each_with_index do |line, i|
-            stripped = line.lstrip
-            if stripped.start_with?('```', '~~~')
-              marker = stripped[/\A([`~]+)/, 1]
-              if fence.nil? then fence = marker
-              elsif stripped.start_with?(fence) then fence = nil
-              end
+            if code_lines.include?(i + 1)
               out << line
               next
             end
 
-            if fence.nil? && stripped.match?(/\A:{3,}\s*\{/) # 開始 :::{.class}
+            stripped = line.lstrip
+            if stripped.match?(/\A:{3,}\s*\{/) # 開始 :::{.class}
               out << line
               nxt = lines[i + 1]
               out << "\n" if nxt && !nxt.strip.empty?
-            elsif fence.nil? && line.strip.match?(/\A:{3,}\z/) # 終了 :::
+            elsif line.strip.match?(/\A:{3,}\z/) # 終了 :::
               out << "\n" unless out.empty? || out.last.strip.empty?
               out << line
             else
@@ -589,35 +575,21 @@ module VivlioStarter
         private_class_method :build_source_include_line_map
 
         # マークダウンのコードブロック内にある行番号の Set を返す。
-        # ```include: で始まる行はコードブロックの開閉トグルとみなさない
-        # （実際の include 記法であるため）。
-        def lines_inside_code_blocks(content)
-          inside = Set.new
-          in_code = false
-          fence_marker = nil
-
-          content.lines.each_with_index do |line, idx|
-            stripped = line.lstrip
-            if (m = stripped.match(/\A(`{3,})/)) && !stripped.start_with?('```include:')
-              fence = m[1]
-              if in_code
-                if fence.length >= fence_marker.length
-                  in_code = false
-                  fence_marker = nil
-                end
-              else
-                in_code = true
-                fence_marker = fence
-              end
-              next
-            end
-
-            inside << (idx + 1) if in_code
-          end
-
-          inside
-        end
+        # コード判定は Masking（唯一の実装）へ委ねる。```include: 行はフェンスとみなさない
+        # （実際の include 記法であるため）点も Masking が保証する。
+        # 消費側（process_code_include）は ```include:...``` 行の行番号でのみ参照するため、
+        # フェンス区切り行が集合へ含まれても判定結果は変わらない。
+        def lines_inside_code_blocks(content) = code_line_numbers(content)
         private_class_method :lines_inside_code_blocks
+
+        # コード（フェンス区切り行・内容行）とみなす行番号（1 始まり）の集合を Masking で判定する。
+        def code_line_numbers(content)
+          prose = Set.new
+          Masking.each_prose_line(content) { |_line, lineno| prose << lineno }
+          total = content.each_line.count
+          (1..total).reject { prose.include?(it) }.to_set
+        end
+        private_class_method :code_line_numbers
       end
     end
   end

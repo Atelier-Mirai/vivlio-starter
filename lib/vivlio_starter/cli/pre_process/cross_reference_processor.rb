@@ -13,6 +13,7 @@
 require 'cgi'
 require 'set'
 require_relative '../common'
+require_relative '../masking'
 require_relative '../post_process/heading_processor'
 require_relative 'markdown_utils'
 
@@ -74,6 +75,16 @@ module VivlioStarter
         module_function
 
         # === Public API ===
+
+        # コード（フェンス区切り行・内容行）とみなす行番号（1 始まり）の集合を Masking で判定する。
+        # 各内部クラスのフェンス追跡（自前の状態機械）を Masking（唯一の実装）へ一元化するための述語。
+        # 可変長フェンス・入れ子・~~~・```include: 除外に一貫して追従する。
+        def code_line_numbers(content)
+          prose = Set.new
+          Masking.each_prose_line(content) { |_line, lineno| prose << lineno }
+          total = content.each_line.count
+          (1..total).reject { prose.include?(it) }.to_set
+        end
 
         def process_cross_references(chapters)
           all_labels, all_errors = collect_all_labels(chapters)
@@ -155,32 +166,20 @@ module VivlioStarter
             @labels = []
             @errors = []
             @counters = Hash.new(0)
-            @in_code = false
-            @fence_marker = nil
           end
 
           def collect(content)
             lines = content.lines
-            lines.each_with_index { |line, idx| process_line(line, idx, lines) }
+            # コードブロックの除外は Masking（唯一の実装）へ委ねる。
+            code_lines = CrossReferenceProcessor.code_line_numbers(content)
+            lines.each_with_index { |line, idx| process_line(line, idx, lines, code_lines) }
             { labels: @labels, errors: @errors }
           end
 
           private
 
-          def process_line(line, idx, lines)
-            # バッククォートの数を考慮してコードブロックの開閉を追跡する。
-            # ````markdown のような4バッククォートブロックは ``` では閉じない。
-            stripped = line.lstrip
-            if (m = stripped.match(/\A(`{3,})/)) && !line.include?('```include:')
-              fence = m[1]
-              if @in_code
-                @in_code = false if fence == @fence_marker
-              else
-                @in_code = true
-                @fence_marker = fence
-              end
-            end
-            return if @in_code
+          def process_line(line, idx, lines, code_lines)
+            return if code_lines.include?(idx + 1)
 
             info = CrossReferenceProcessor.extract_caption_label(line)
             return unless info
@@ -355,28 +354,14 @@ module VivlioStarter
           def transform
             output = []
             idx = 0
-            in_code = false
-            fence_marker = nil
+            # コードブロックの除外は Masking（唯一の実装）へ委ねる。
+            code_lines = CrossReferenceProcessor.code_line_numbers(@lines.join)
             while idx < @lines.size
-              line = @lines[idx]
-              stripped = line.lstrip
-              if (m = stripped.match(/\A(`{3,})/))
-                fence = m[1]
-                if in_code
-                  if fence == fence_marker
-                    in_code = false
-                    fence_marker = nil
-                  end
-                else
-                  in_code = true
-                  fence_marker = fence
-                end
-                output << line
-                idx += 1
-                next
-              end
-
-              idx = in_code ? passthrough(output, idx) : process_line(output, idx)
+              idx = if code_lines.include?(idx + 1)
+                      passthrough(output, idx)
+                    else
+                      process_line(output, idx)
+                    end
             end
             output.join
           end
@@ -616,22 +601,10 @@ module VivlioStarter
           end
 
           def replace
-            in_code = false
-            fence_marker = nil
+            # コードブロックの除外は Masking（唯一の実装）へ委ねる。
+            code_lines = CrossReferenceProcessor.code_line_numbers(@content)
             result = @content.lines.map.with_index(1) do |line, num|
-              stripped = line.lstrip
-              if (m = stripped.match(/\A(`{3,})/))
-                fence = m[1]
-                if in_code
-                  if fence == fence_marker
-                    in_code = false
-                    fence_marker = nil
-                  end
-                else
-                  in_code = true
-                  fence_marker = fence
-                end
-              end
+              in_code = code_lines.include?(num)
               # キャプション定義行（** タイトル @id **）は参照としてカウントしない
               next line if !in_code && CrossReferenceProcessor.extract_caption_label(line)
 

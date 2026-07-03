@@ -25,6 +25,7 @@
 
 require 'yaml'
 require_relative '../common'
+require_relative '../masking'
 require_relative '../font_manager'
 require_relative 'css_updater'
 require_relative 'theme_image_resolver'
@@ -177,22 +178,32 @@ module VivlioStarter
         # @param text [String] ファイル全体のテキスト
         # @return [Integer, nil] 終了 `---\n` の開始インデックス、見つからなければ nil
         def find_frontmatter_end(text)
-          # 先頭の `---\n` をスキップ
+          # 先頭の `---\n` をスキップした本文領域について、コードフェンス内の `---` を
+          # 終端と誤認しないよう、フェンス行の判定は Masking（唯一の実装）へ委ねる。
+          # 可変長フェンス・入れ子・~~~ に一貫して追従する。
+          code_lines = frontmatter_body_code_lines(text[4..].to_s)
+
           pos = 4
-          in_code_fence = false
+          lineno = 0
           while pos < text.length
             line_end = text.index("\n", pos)
             break unless line_end
 
+            lineno += 1
             line = text[pos...line_end]
-            if line.start_with?('```') || line.start_with?('~~~')
-              in_code_fence = !in_code_fence
-            elsif !in_code_fence && line == '---'
-              return pos
-            end
+            return pos if line == '---' && !code_lines.include?(lineno)
+
             pos = line_end + 1
           end
           nil
+        end
+
+        # 先頭 `---\n` を除いた本文領域について、コードとみなす行番号（1 始まり）を返す。
+        def frontmatter_body_code_lines(body)
+          prose = Set.new
+          Masking.each_prose_line(body) { |_line, lineno| prose << lineno }
+          total = body.each_line.count
+          (1..total).reject { prose.include?(it) }.to_set
         end
 
         # フロントマター開始の `---` に対応する閉じ `---` が見つからない場合に警告を出す。

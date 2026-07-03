@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../masking'
+
 module VivlioStarter
   module CLI
     module Guards
@@ -18,9 +20,6 @@ module VivlioStarter
       # 重大度はエラー（ビルドしても意図通りにならないため、画像名チェック等と同様に
       # ビルド前に停止させる）。
       class CodeFenceCheck < BaseCheck
-        # 行頭（先頭空白許容）の 3 連以上のバックティック or チルダ。
-        FENCE_LINE = /\A\s*(?:`{3,}|~{3,})/
-
         # @return [Array<Violation>] エラーの配列（合格なら空配列）
         def validate
           markdown_files.filter_map { |path| check_file(path) }
@@ -33,10 +32,11 @@ module VivlioStarter
         end
 
         # 1 ファイルのフェンス区切り行を数え、奇数なら警告を返す（偶数なら nil）。
+        # フェンス判定は Masking（唯一の実装）の FENCE を参照する（先頭空白は lstrip で許容）。
         def check_file(path)
           fence_lines = []
           File.foreach(path).with_index(1) do |line, lineno|
-            fence_lines << lineno if line.match?(FENCE_LINE)
+            fence_lines << lineno if line.lstrip.match?(Masking::FENCE)
           end
           return nil if fence_lines.size.even?
 
