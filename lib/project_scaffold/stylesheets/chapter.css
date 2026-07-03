@@ -7,6 +7,9 @@
 @import url("base.css");
 @import url("theme.css");
 @import url("page-settings.css");
+/* ヘッダは simple/image を両方 import し、body.vs-header-* クラスで相互排他に
+   切り替える（方式A・P3-3）。theme.style に応じ BodyClassInjector が注入する。 */
+@import url("simple-header.css");
 @import url("image-header.css");
 @import url("prism.css");
 @import url("code.css");

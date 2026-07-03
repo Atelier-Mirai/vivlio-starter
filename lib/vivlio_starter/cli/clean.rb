@@ -164,7 +164,9 @@ module VivlioStarter
           '_part*.md',
           # EPUB 中間ファイル
           'vivliostyle.config.epub.js',
-          'entries.epub.js'
+          'entries.epub.js',
+          # EPUB 同梱用 book-settings.css 変種（正規の .cache/vs/ 版は --cache で掃除）
+          'book-settings.css'
         ]
 
         intermediate_pdfs = [

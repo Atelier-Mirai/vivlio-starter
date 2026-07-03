@@ -3,338 +3,36 @@
 # ================================================================
 # File: lib/vivlio_starter/cli/pre_process/css_updater.rb
 # ================================================================
-# 責務:
-#   テーマ設定に基づいて CSS ファイルのカスタムプロパティを更新する。
+# 責務（P3 以降）:
+#   ビルド設定 CSS の「値計算」と vivliostyle.config.js の同期を担う。
 #
-# 更新対象ファイル:
-#   - stylesheets/theme.css: テーマカラー・扉絵・飾り画像
-#   - stylesheets/appendix.css: 付録用スタイル
-#   - stylesheets/preface.css: 前書き用スタイル
-#   - stylesheets/chapter.css: 章共通スタイル
-#   - stylesheets/page-settings.css: ページサイズ・余白
+#   かつては theme.css / page-settings.css 等のソース CSS を毎ビルド正規表現で
+#   in-place 書換していたが、それはソース CSS を可変化させテーマ CSS セットの
+#   差し替えを阻んだ。P3（課題 C）でその書換を全廃し、設定値は
+#   BookSettingsCss 生成器が `.cache/vs/book-settings.css` へ全文書き出す。
+#   本モジュールは生成器が使う実証済みの値計算ロジック（用紙スケール・行長・
+#   ノンブル配置・綴じオフセット・フォントスタック整形・色正規化・CSS 変数
+#   マッピング）と、@page size / title を JS 設定へ書く config.js 同期のみを残す。
 #
-# 更新する CSS カスタムプロパティ:
-#   - --theme-accent: アクセントカラー
-#   - --frontispiece-image: 扉絵画像 URL
-#   - --ornament-image: 飾り画像 URL
-#   - --page-width, --page-height: ページサイズ
+# 提供する値計算 API（BookSettingsCss から利用）:
+#   - calculate_paper_scale / calculate_align_max_width /
+#     calculate_frontispiece_binding_offset / apply_folio_placement!
+#   - format_font_value / normalize_color_value / build_css_variable_mappings
+#
+# config.js 同期（P3-4: JS ファイルは書換のまま維持）:
+#   - sync_vivliostyle_config_size! / sync_vivliostyle_config_title!
 # ================================================================
 
 require_relative '../common'
-require_relative 'theme_image_resolver'
 
 module VivlioStarter
   module CLI
     module PreProcessCommands
-      # CSS ファイル更新モジュール
+      # CSS 値計算・config.js 同期モジュール
       module CssUpdater
         ALLOWED_COLORS = %w[yellow orange red magenta purple indigo navy blue cyan teal green lime].freeze
 
         module_function
-
-        # 安全なCSS更新処理
-        # ファイルの読み込み→変換→書き込みを行い、失敗時にファイルを空にしないようガード
-        def safe_css_update(path, &block)
-          return unless File.exist?(path)
-
-          original_content = File.read(path, encoding: 'utf-8')
-          updated_content = block.call(original_content)
-
-          # 変更がない、または空になってしまう場合は書き込まない
-          if updated_content.nil? || updated_content.strip.empty?
-            Common.log_warn("CSS更新がスキップされました（空の内容）: #{path}")
-            return false
-          end
-
-          return false if updated_content == original_content
-
-          File.write(path, updated_content, encoding: 'utf-8')
-          true
-        rescue StandardError => e
-          Common.log_error("CSS更新に失敗: #{path} - #{e.message}")
-          false
-        end
-
-        # theme.css を更新
-        def update_theme_css(theme_name:, theme_accent_value:, theme_style:, frontispiece_path:,
-                             door_padding_value:, ornament_path:, heading_width_value: nil,
-                             lead_width_value: nil)
-          theme_css_path = File.join(Common::STYLESHEETS_DIR, 'theme.css')
-
-          unless File.exist?(theme_css_path)
-            Common.log_error("theme.css が見つかりません: #{theme_css_path}")
-            return
-          end
-
-          css = File.read(theme_css_path, encoding: 'utf-8')
-          if css.strip.empty?
-            Common.log_error("theme.css が空です: #{theme_css_path}")
-            return
-          end
-
-          updated = css.dup
-
-          # --theme-accent を更新
-          updated = updated.sub(/(--theme-accent:\s*)[^;]+(\s*;)/) do
-            "#{::Regexp.last_match(1)}#{theme_accent_value}#{::Regexp.last_match(2)}"
-          end
-
-          # 強調色・強意の下線色もテーマアクセントに追従
-          updated = updated.sub(/(--color-strong:\s*)[^;]+(\s*;)/, '\\1var(--theme-accent)\\2')
-          updated = updated.sub(/(--color-em-underline:\s*)[^;]+(\s*;)/, '\\1var(--theme-accent)\\2')
-
-          if theme_style == 'simple'
-            # 画像を使わないシンプルスタイル
-            updated = updated.sub(/(--section-bg-image:\s*)[^;]+(\s*;)/, '\\1none\\2')
-            updated = updated.sub(/(--frontispiece-image:\s*)[^;]+(\s*;)/, '\\1none\\2')
-          else
-            # 画像ありスタイル
-            # ornament の指定があればそれを優先
-            if ornament_path
-              ornament_value = ornament_path.start_with?('url(') ? ornament_path : "url(\"#{ornament_path}\")"
-              updated = updated.sub(/(--section-bg-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
-                "#{::Regexp.last_match(1)}#{ornament_value}#{::Regexp.last_match(2)}"
-              end
-            else
-              # ornament 未指定時は既定画像（sakura の飾り画像）を使用
-              # 通常は resolve_ornament_path が値を返すため、この分岐は保険。
-              updated = updated.sub(/(--section-bg-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
-                "#{::Regexp.last_match(1)}url(\"#{ThemeImageResolver::ORNAMENT_DEFAULT_PATH}\")#{::Regexp.last_match(2)}"
-              end
-            end
-
-            # frontispiece_path を CSS の url(...) 形式で設定
-            door_value = frontispiece_path.start_with?('url(') ? frontispiece_path : "url(\"#{frontispiece_path}\")"
-            updated = updated.sub(/(--frontispiece-image:\s*)(?:url\("[^"]+"\)|none)(\s*;)/) do
-              "#{::Regexp.last_match(1)}#{door_value}#{::Regexp.last_match(2)}"
-            end
-
-            updated = updated.sub(/(--frontispiece-padding:\s*)[^;]+(\s*;)/) do
-              "#{::Regexp.last_match(1)}#{door_padding_value}#{::Regexp.last_match(2)}"
-            end
-          end
-
-          if heading_width_value
-            updated = updated.sub(/(--frontispiece-heading-width:\s*)[^;]+(\s*;)/) do
-              "#{::Regexp.last_match(1)}#{heading_width_value}#{::Regexp.last_match(2)}"
-            end
-          end
-
-          if lead_width_value
-            updated = updated.sub(/(--frontispiece-lead-width:\s*)[^;]+(\s*;)/) do
-              "#{::Regexp.last_match(1)}#{lead_width_value}#{::Regexp.last_match(2)}"
-            end
-          end
-
-          if updated == css
-            Common.log_info('theme.css: 更新不要（変更なし）')
-            return
-          end
-
-          File.write(theme_css_path, updated, encoding: 'utf-8')
-          Common.log_success("theme.css を更新: theme=#{theme_name}, style=#{theme_style}")
-        rescue StandardError => e
-          Common.log_error("theme.css の更新に失敗: #{e.message}")
-        end
-
-        # appendix.css の付録専用色を更新
-        def update_appendix_css(appendix_color:, theme_accent_value:)
-          appendix_css_path = File.join(Common::STYLESHEETS_DIR, 'appendix.css')
-          return unless File.exist?(appendix_css_path)
-
-          changed = safe_css_update(appendix_css_path) do |css|
-            # appendix_color が指定されている場合のみ更新
-            next css if appendix_color.to_s.strip.empty?
-
-            # 色名または HEX として解釈
-            appendix_accent_value = normalize_color_value(appendix_color, fallback: theme_accent_value)
-
-            # --appendix-accent-color を更新
-            css.sub(/(--appendix-accent-color:\s*)[^;]+(\s*;)/) do
-              "#{::Regexp.last_match(1)}#{appendix_accent_value}#{::Regexp.last_match(2)}"
-            end
-          end
-
-          Common.log_success("appendix.css を更新: appendix_color=#{appendix_color}") if changed
-        rescue StandardError => e
-          Common.log_warn("appendix.css の更新に失敗: #{e.message}")
-        end
-
-        # preface.css の前書き専用色を更新
-        def update_preface_css(preface_color:, theme_accent_value:)
-          preface_css_path = File.join(Common::STYLESHEETS_DIR, 'preface.css')
-          return unless File.exist?(preface_css_path)
-
-          using_theme_color = preface_color.to_s.strip.empty?
-          preface_accent_value = normalize_color_value(preface_color, fallback: theme_accent_value)
-
-          changed = safe_css_update(preface_css_path) do |css|
-            result = css.sub(/(--color-preface-accent:\s*)[^;]+(\s*;)/) do
-              "#{::Regexp.last_match(1)}#{preface_accent_value}#{::Regexp.last_match(2)}"
-            end
-            # デバッグ: 変換結果を確認
-            if result.strip.empty?
-              Common.log_warn("CSS変換結果が空です。元のCSS長: #{css.length}, 正規表現マッチ: #{css =~ /(--color-preface-accent:\s*)[^;]+(\s*;)/}")
-            end
-            result
-          end
-
-          if changed
-            log_color = using_theme_color ? 'theme.color (fallback)' : preface_color.to_s.strip
-            Common.log_success("preface.css を更新: preface_color=#{log_color} => #{preface_accent_value}")
-          else
-            Common.log_info("preface.css: 更新不要または変更なし (適用値 #{preface_accent_value})")
-          end
-        rescue StandardError => e
-          Common.log_warn("preface.css の更新に失敗: #{e.message}")
-          Common.log_warn("  スタックトレース: #{e.backtrace.first(3).join("\n  ")}")
-        end
-
-        # chapter.css のヘッダ import を theme.style に連動して切替
-        def update_chapter_css(theme_style:)
-          chapter_css_path = File.join(Common::STYLESHEETS_DIR, 'chapter.css')
-          return unless File.exist?(chapter_css_path)
-
-          ccss = File.read(chapter_css_path, encoding: 'utf-8')
-          desired = theme_style == 'image' ? 'image-header.css' : 'simple-header.css'
-
-          if ccss.include?('@import url("simple-header.css");') || ccss.include?('@import url("image-header.css");')
-            updated = ccss
-                      .sub(/@import\s+url\("simple-header\.css"\);/, "@import url(\"#{desired}\");")
-                      .sub(/@import\s+url\("image-header\.css"\);/, "@import url(\"#{desired}\");")
-
-            if updated == ccss
-              Common.log_info("chapter.css のヘッダーimportは既に最新です: #{desired}")
-            else
-              File.write(chapter_css_path, updated, encoding: 'utf-8')
-              Common.log_success("chapter.css のヘッダーimportを切替: #{desired}")
-            end
-          else
-            # importが存在しない場合は追加
-            insert_point = begin
-              ccss.index(';', ccss.index('@import')).to_i + 1
-            rescue StandardError
-              0
-            end
-            insert_point = ccss.index("\n", insert_point).to_i + 1
-            insert_point = 0 if insert_point.negative?
-            header_import = "@import url(\"#{desired}\");\n"
-            updated = ccss.dup.insert(insert_point, header_import)
-            File.write(chapter_css_path, updated, encoding: 'utf-8')
-            Common.log_success("chapter.css にヘッダーimportを追加: #{desired}")
-          end
-        rescue StandardError => e
-          Common.log_warn("chapter.css の更新に失敗: #{e.message}")
-        end
-
-        # chapter-common.css の章・付録共通マーカー（h3/h4）を設定
-        def update_chapter_common_css(markers:)
-          chapter_common_css_path = File.join(Common::STYLESHEETS_DIR, 'chapter-common.css')
-          return unless File.exist?(chapter_common_css_path)
-
-          mark_h3 = (markers[:h3] || markers['h3']).to_s
-          mark_h4 = (markers[:h4] || markers['h4']).to_s
-
-          mark_h3 = '♣' if mark_h3.strip.empty?
-          mark_h4 = '♦' if mark_h4.strip.empty?
-
-          changed = safe_css_update(chapter_common_css_path) do |css|
-            # マーカーをエスケープして正規表現置換
-            esc_h3 = mark_h3.gsub('\\', '\\\\\\\\').gsub('"', '\\"')
-            esc_h4 = mark_h4.gsub('\\', '\\\\\\\\').gsub('"', '\\"')
-
-            # 正規表現を修正：絵文字などの複数バイト文字にも対応
-            css = css.sub(/(--h3-marker:\s*)"[^"]*"(\s*;)/, "\\1\"#{esc_h3}\"\\2")
-            css = css.sub(/(--h4-marker:\s*)"[^"]*"(\s*;)/, "\\1\"#{esc_h4}\"\\2")
-            css
-          end
-
-          if changed
-            Common.log_success("chapter-common.css にマーカーを反映: h3='#{mark_h3}', h4='#{mark_h4}'")
-          else
-            Common.log_info('theme.markers による変更はありません（既存定義を維持）')
-          end
-        rescue StandardError => e
-          Common.log_warn("chapter-common.css のマーカー更新に失敗: #{e.message}")
-        end
-
-        # page-settings.css の各種変数を反映
-        def update_page_settings_css(page_cfg:, typo_cfg:)
-          # typography セクションからフォント設定を読み込み、page_cfg にマージ
-          page_cfg[:main_text_font]   = typo_cfg&.dig(:body, :font)
-          page_cfg[:header_font]      = typo_cfg&.dig(:heading, :font)
-          page_cfg[:column_font]      = typo_cfg&.dig(:column, :font)
-          page_cfg[:code_font]        = typo_cfg&.dig(:code, :font)
-          page_cfg[:folio_font]       = typo_cfg&.dig(:folio, :font)
-          page_cfg[:column_font_size] = Units.font_size_to_pt(typo_cfg&.dig(:column, :font_size))
-          page_cfg[:folio_placement]  = typo_cfg&.dig(:folio, :placement)
-
-          # 紙サイズを正規化
-          Common.normalize_page_size!(page_cfg)
-
-          # 用紙スケールを算出（A4=1.0 基準）
-          page_cfg[:paper_scale] = calculate_paper_scale(page_cfg[:width], page_cfg[:height])
-
-          # .align-* ブロックの最大行長を算出（A5=26em, B5=36em, A4=40em）
-          page_cfg[:align_max_width] = calculate_align_max_width(page_cfg[:width])
-
-          # ノンブル配置
-          apply_folio_placement!(page_cfg)
-
-          page_cfg[:frontispiece_binding_offset] = calculate_frontispiece_binding_offset(
-            page_cfg[:margin_inner], page_cfg[:margin_outer]
-          )
-
-          # CSS変数マッピング
-          mappings = build_css_variable_mappings(page_cfg)
-
-          # 更新対象のCSSファイル
-          candidates = [
-            File.join(Common::STYLESHEETS_DIR, 'page-settings.css'),
-            File.join('awesomebook', 'stylesheets', 'page-settings.css')
-          ].uniq
-
-          candidates.each do |css_path|
-            next unless File.exist?(css_path)
-
-            changed = safe_css_update(css_path) do |css|
-              updated = css.dup
-              mappings.each do |name, val, kind|
-                next if val.nil? || val.to_s.strip.empty?
-
-                v = format_font_value(name, val.to_s.strip, kind)
-
-                updated = updated.sub(/(#{Regexp.escape(name)}:\s*)[^;]+(\s*;)/) do
-                  "#{::Regexp.last_match(1)}#{v}#{::Regexp.last_match(2)}"
-                end
-              end
-              updated
-            end
-
-            # @page { size } をリテラル値で更新（var() は @page size で使用不可）
-            changed2 = safe_css_update(css_path) do |css|
-              w = page_cfg[:width].to_s.strip
-              h = page_cfg[:height].to_s.strip
-              next css if w.empty? || h.empty?
-
-              css.sub(/(@page\s*\{[^}]*?\bsize:\s*)[^;]+(;)/) do
-                "#{::Regexp.last_match(1)}#{w} #{h}#{::Regexp.last_match(2)}"
-              end
-            end
-
-            if changed || changed2
-              Common.log_success("#{File.basename(css_path)} を更新: #{css_path}")
-            else
-              Common.log_info("#{File.basename(css_path)} に適用すべき差分はありません")
-            end
-          end
-          # vivliostyle.config.js の size プロパティも同期
-          sync_vivliostyle_config_size!(page_cfg[:width], page_cfg[:height], page_cfg[:size])
-          # vivliostyle.config.js の title プロパティも同期
-          sync_vivliostyle_config_title!
-        rescue StandardError => e
-          Common.log_warn("page-settings.css の更新に失敗: #{e.message}")
-        end
 
         # vivliostyle.config.js の size プロパティを book.yml のページ設定に同期する
         def sync_vivliostyle_config_size!(width, height, size_name = nil)

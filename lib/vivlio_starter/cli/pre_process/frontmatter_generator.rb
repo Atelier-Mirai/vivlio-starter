@@ -28,6 +28,7 @@ require_relative '../common'
 require_relative '../masking'
 require_relative '../font_manager'
 require_relative 'css_updater'
+require_relative 'book_settings_css'
 require_relative 'theme_image_resolver'
 
 module VivlioStarter
@@ -89,20 +90,10 @@ module VivlioStarter
           }
         end
 
-        # CSS更新のみを実行（ビルド時にStep 2で呼ばれる）
-        def update_css_only!(cfg = nil)
-          settings = parse_theme_settings(cfg)
-          update_all_css_files(**settings)
-          Common.log_success('[Step 2] CSS設定を更新しました')
-        rescue StandardError => e
-          Common.log_warn("[Step 2] CSS更新に失敗: #{e.message}")
-        end
-
         # フロントマターを生成
+        # CSS 設定の反映は BookSettingsCss 生成器（'prepare theme images' ステップ）が
+        # 一括で担うため、章ごとの CSS 書換はここでは行わない（P3・調査報告 §7.3-3）。
         def generate_frontmatter(file_type, _chapter_num = nil, existing_frontmatter = {})
-          settings = parse_theme_settings
-          update_all_css_files(**settings)
-
           chapter_css = resolve_chapter_css(file_type, existing_frontmatter)
           new_frontmatter = build_base_frontmatter(chapter_css)
           merge_frontmatter(existing_frontmatter, new_frontmatter)
@@ -118,13 +109,21 @@ module VivlioStarter
         end
 
         # フロントマターのベース構造を構築
+        # link 順は [theme.css, {種別}.css, book-settings.css, custom.css]。
+        # book-settings.css（生成物・.cache/vs/ 配下）を {種別}.css の後段へ置くことで
+        # book.yml 由来の設定値が既存テーマ CSS にカスケードで勝つ（P3）。
         def build_base_frontmatter(chapter_css)
-          stylesheets = ['theme.css', chapter_css, 'custom.css']
+          hrefs = [
+            "stylesheets/theme.css",
+            "stylesheets/#{chapter_css}",
+            BookSettingsCss.output_path,
+            "stylesheets/custom.css"
+          ]
           lang = (Common::CONFIG.book.language || 'ja').to_s.strip
           lang = 'ja' if lang.empty?
 
           {
-            'link' => stylesheets.map { |css| { 'rel' => 'stylesheet', 'href' => "stylesheets/#{css}" } },
+            'link' => hrefs.map { { 'rel' => 'stylesheet', 'href' => it } },
             'lang' => lang,
             'vfm' => { 'hardLineBreaks' => book_hard_line_breaks? }
           }
@@ -325,59 +324,6 @@ module VivlioStarter
 
             "#{numeric}#{fallback_unit}"
           end
-        end
-
-        # 全CSSファイルを更新
-        def update_all_css_files(theme_name:, theme_accent_value:, theme_style:, theme_cfg:,
-                                 frontispiece_path:, door_padding_value:, heading_width_value:,
-                                 lead_width_value:, ornament_path:)
-          # theme.css を更新
-          CssUpdater.update_theme_css(
-            theme_name: theme_name,
-            theme_accent_value: theme_accent_value,
-            theme_style: theme_style,
-            frontispiece_path: frontispiece_path,
-            door_padding_value: door_padding_value,
-            ornament_path: ornament_path,
-            heading_width_value: heading_width_value,
-            lead_width_value: lead_width_value
-          )
-
-          # appendix.css を更新
-          CssUpdater.update_appendix_css(
-            appendix_color: theme_cfg.appendix_color,
-            theme_accent_value: theme_accent_value
-          )
-
-          # preface.css を更新
-          CssUpdater.update_preface_css(
-            preface_color: theme_cfg.preface_color,
-            theme_accent_value: theme_accent_value
-          )
-
-          # chapter.css を更新
-          CssUpdater.update_chapter_css(theme_style: theme_style)
-
-          # chapter-common.css のマーカーを更新
-          markers_cfg = theme_cfg.markers
-          CssUpdater.update_chapter_common_css(markers: safe_config_hash(markers_cfg))
-
-          # page-settings.css を更新
-          cfg = Common::CONFIG
-          page_cfg = safe_config_hash(cfg.page)
-          typo_cfg = safe_config_hash(cfg.typography)
-
-          # フォント設定をマージ
-          font_names = [
-            typo_cfg&.dig(:body, :font),
-            typo_cfg&.dig(:heading, :font),
-            typo_cfg&.dig(:column, :font),
-            typo_cfg&.dig(:code, :font),
-            typo_cfg&.dig(:folio, :font)
-          ]
-          FontManager.ensure_fonts_available(font_names)
-
-          CssUpdater.update_page_settings_css(page_cfg: page_cfg, typo_cfg: typo_cfg)
         end
 
         # フロントマターをマージ

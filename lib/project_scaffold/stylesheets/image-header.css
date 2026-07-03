@@ -2,7 +2,12 @@
    image-header.css
    -------------------------------------------------------------
    画像あり版の章ヘッダー用スタイル。
-   chapter.css から @import される想定。
+   chapter.css から simple-header.css と共に常時 @import される。
+   theme.style: image のとき body.vs-header-image が付与され、この規則群だけが
+   有効になる（方式A・book.yml→BodyClassInjector が注入）。simple 版とは
+   body クラスで相互排他になるため、両方 import しても衝突しない。
+   ※ @page :nth(1) だけは body クラスで限定できないが、simple では
+     --frontispiece-image が none になるため画像は描画されない（変数で制御）。
    ============================================================= */
 
 /* -------------------------------------------------------------
@@ -19,7 +24,7 @@
 
 /* stylelint-enable */
 
-h1 {
+body.vs-header-image h1 {
   display: grid;
   grid-template-columns: auto;
   grid-template-rows: auto auto;
@@ -37,13 +42,13 @@ h1 {
   padding-block: clamp(3mm, calc(var(--paper-scale) * 6mm), 8mm);
 }
 
-.chapter-lead {
+body.vs-header-image .chapter-lead {
   inline-size: var(--frontispiece-lead-width);
   margin-block: clamp(-8mm, calc(var(--paper-scale) * -10mm), -6mm)
     clamp(8mm, calc(var(--paper-scale) * 10mm), 12mm);
 }
 
-h1 .chapter-number {
+body.vs-header-image h1 .chapter-number {
   display: block;
   font-family: var(--font-header);
   font-size: clamp(24Q, calc(var(--paper-scale) * 30Q), 32Q);
@@ -58,7 +63,7 @@ h1 .chapter-number {
   position: relative;
 }
 
-h1 .chapter-number::after {
+body.vs-header-image h1 .chapter-number::after {
   content: "";
   position: absolute;
   inset-inline: 15%;
@@ -68,7 +73,7 @@ h1 .chapter-number::after {
   border-radius: 0.6mm;
 }
 
-h1 .chapter-title {
+body.vs-header-image h1 .chapter-title {
   display: block;
   margin: 0 auto;
   padding: 0;
@@ -93,14 +98,14 @@ h1 .chapter-title {
   margin-block-end: clamp(2mm, calc(var(--paper-scale) * 4mm), 5mm);
 }
 
-h1::after {
+body.vs-header-image h1::after {
   content: none;
 }
 
 /* -------------------------------------------------------------
    節見出し
    ------------------------------------------------------------- */
-.section-topic {
+body.vs-header-image .section-topic {
   display: grid;
   grid-template:
     "section-title" 150px
@@ -110,7 +115,7 @@ h1::after {
   margin-block-end: 1em;
 }
 
-.section-topic h2 {
+body.vs-header-image .section-topic h2 {
   font-family: var(--font-header);
   font-weight: 900;
   break-before: page;
@@ -131,7 +136,7 @@ h1::after {
   text-align: left;
 }
 
-.section-topic h2::before {
+body.vs-header-image .section-topic h2::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -142,7 +147,7 @@ h1::after {
   z-index: -1;
 }
 
-.section-topic h2 > * {
+body.vs-header-image .section-topic h2 > * {
   position: relative;
   z-index: 1;
   display: inline-flex;
@@ -151,7 +156,7 @@ h1::after {
   white-space: normal;
 }
 
-.section-topic h2 .section-number {
+body.vs-header-image .section-topic h2 .section-number {
   font-size: calc(1em * 1.1);
   font-weight: 900;
   color: var(--section-number-color);
@@ -163,7 +168,7 @@ h1::after {
   margin-inline-start: clamp(6mm, calc(var(--paper-scale) * 8mm), 10mm);
 }
 
-.section-topic .section-lead {
+body.vs-header-image .section-topic .section-lead {
   grid-area: section-lead;
   text-indent: 1em;
   margin-block-start: clamp(

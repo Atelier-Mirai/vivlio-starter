@@ -23,6 +23,8 @@ require 'tmpdir'
 require_relative '../entries'
 require_relative 'heading_image_composer'
 require_relative '../post_process/html_parser'
+require_relative '../pre_process/frontmatter_generator'
+require_relative '../pre_process/book_settings_css'
 
 module VivlioStarter
   module CLI
@@ -35,6 +37,10 @@ module VivlioStarter
         EPUB_ENTRIES_FILE = 'entries.epub.js'
         # EPUB デフォルト出力ファイル名
         EPUB_OUTPUT_FILE  = 'output.epub'
+        # EPUB へ同梱する book-settings.css の配置先（ルート直下）。
+        # 生成物の正規の置き場は .cache/vs/ だが copyAsset が `.cache/**` を除外するため、
+        # EPUB では同梱される場所（ルート直下）へ url() を組み替えた変種をコピーする（§7.2）。
+        EPUB_BOOK_SETTINGS_FILE = 'book-settings.css'
 
         # EPUB で除外する特殊ページ
         # 目次は EPUB リーダーが自動生成するため不要
@@ -102,6 +108,8 @@ module VivlioStarter
           # EPUB リフロー文脈の目印 vs-epub を全 body に付与（クリーン・Kindle 共通）。
           # クリーン EPUB のコード折返し等、PDF を壊さず EPUB だけに効かせる体裁の足場（§6 A 案）。
           mark_body_for_epub!(chapter_htmls)
+          # 生成物 book-settings.css を EPUB へ同梱（.cache/** 除外との衝突を解消・§7.2）
+          bundle_book_settings_for_epub!(chapter_htmls)
           # 索引・用語集を EPUB 用に書き換え（空リンクに連番テキストを挿入）
           post_process_index_glossary_for_epub!(chapter_htmls)
           # 段落内脚注 span の重複 id を除去（XHTML の id 重複 ERROR を回避）
@@ -781,23 +789,84 @@ module VivlioStarter
           html_files
         end
 
-        # theme.css から扉絵・節絵の実画像パストと節番号色を読み取る。
+        # 扉絵・節絵の実画像パスと節番号色を取得する。
         # PDF と同一画像を単一の参照元から使う（二重解決を避ける・§B-4）。
         #
-        # @return [Hash, nil] { frontispiece:, ornament:, number_color: }。theme.css 不読時は nil
+        # P3 以降、theme.css は読み取り専用のテーマ資産となり book.yml の設定は
+        # book-settings.css へ書き出されるため、theme.css の正規表現読みでは設定変更を
+        # 拾えず既定値に化ける（調査報告 §7.1）。そこで生成器と同じ参照元
+        # （parse_theme_settings の計算値）を直接使う。節番号色（--section-number-color）は
+        # in-place 版でも書換対象外で常に var(--theme-accent) だったため、book.yml で選ばれた
+        # theme accent を、パレット定義（theme.css の --accent-* は P3 でも不変）で具体色へ解決する。
+        #
+        # @return [Hash, nil] { frontispiece:, ornament:, number_color: }。解決不能時は nil
         def read_theme_heading_assets
+          settings = PreProcessCommands::FrontmatterGenerator.parse_theme_settings
           theme_css_path = File.join(Common::STYLESHEETS_DIR, 'theme.css')
-          return nil unless File.exist?(theme_css_path)
+          palette_css = File.exist?(theme_css_path) ? File.read(theme_css_path, encoding: 'utf-8') : ''
 
-          css = File.read(theme_css_path, encoding: 'utf-8')
           {
-            frontispiece: resolve_theme_image_file(css[/--frontispiece-image:\s*url\(["']?([^"')]+)["']?\)/, 1]),
-            ornament: resolve_theme_image_file(css[/--section-bg-image:\s*url\(["']?([^"')]+)["']?\)/, 1]),
-            number_color: resolve_css_color(css, css[/--section-number-color:\s*([^;]+);/, 1])
+            frontispiece: resolve_theme_image_file(theme_image_rel(settings[:frontispiece_path])),
+            ornament: resolve_theme_image_file(theme_image_rel(settings[:ornament_path])),
+            number_color: resolve_css_color(palette_css, settings[:theme_accent_value])
           }
         rescue StandardError => e
-          Common.log_warn("[EPUB] theme.css の読み取りに失敗（扉絵の画像化をスキップ）: #{e.message}")
+          Common.log_warn("[EPUB] テーマ設定の読み取りに失敗（扉絵の画像化をスキップ）: #{e.message}")
           nil
+        end
+
+        # テーマ画像の解決結果（素の相対パス or url(...) or 外部 URL）から
+        # stylesheets/ 基準の相対パスを取り出す。url(...) 形式ならその内側を返す。
+        def theme_image_rel(value)
+          v = value.to_s.strip
+          return v unless v.start_with?('url(')
+
+          v[/\Aurl\(\s*["']?(.*?)["']?\s*\)\z/i, 1].to_s
+        end
+
+        # 生成物 book-settings.css を EPUB へ同梱する（調査報告 §7.2）。
+        # copyAsset excludes が `.cache/**` を除外するため、link を .cache/vs/ のままにすると
+        # RSC-007（参照切れ）になる。EPUB ルート直下へ変種をコピーし、章 HTML の link href を
+        # その相対（book-settings.css）へ書き換える。ルート直下 CSS からは画像相対が
+        # stylesheets/ 基準へ変わるため url() も組み替える。Kindle の webp url() 除去や
+        # マージンボックス除去は sanitize_epub_css! が同梱後の CSS へ自動適用する。
+        #
+        # @param html_files [Array<String>] 章 HTML パスの配列
+        # @return [Array<String>] そのままの配列
+        def bundle_book_settings_for_epub!(html_files)
+          source = PreProcessCommands::BookSettingsCss.output_path
+          src_href = source
+
+          unless File.exist?(source)
+            Common.log_warn("[EPUB] #{source} が見つかりません。book-settings.css の link を除去します。")
+            strip_book_settings_link!(html_files, src_href)
+            return html_files
+          end
+
+          # .cache/vs/ 基準（../../stylesheets/）→ EPUB ルート基準（stylesheets/）へ url() を組替
+          css = File.read(source, encoding: 'utf-8').gsub('../../stylesheets/', 'stylesheets/')
+          File.write(EPUB_BOOK_SETTINGS_FILE, css, encoding: 'utf-8')
+
+          rewrote = html_files.count do |path|
+            html = File.read(path, encoding: 'utf-8')
+            updated = html.gsub(src_href, EPUB_BOOK_SETTINGS_FILE)
+            next false if updated == html
+
+            File.write(path, updated, encoding: 'utf-8')
+            true
+          end
+          Common.log_success("[EPUB] book-settings.css を同梱しました（#{rewrote} エントリの link を書換）")
+          html_files
+        end
+
+        # book-settings.css が無い異常時に、参照切れを避けるため link 要素を除去する。
+        def strip_book_settings_link!(html_files, href)
+          pattern = /[ \t]*<link\b[^>]*href="#{Regexp.escape(href)}"[^>]*>\s*\n?/
+          html_files.each do |path|
+            html = File.read(path, encoding: 'utf-8')
+            updated = html.gsub(pattern, '')
+            File.write(path, updated, encoding: 'utf-8') unless updated == html
+          end
         end
 
         # theme.css の url(...) 値（stylesheets からの相対）を実ファイルパスへ解決する。

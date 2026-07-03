@@ -59,10 +59,10 @@ module VivlioStarter
           require_relative '../pre_process/theme_validator'
           VivlioStarter::CLI::PreProcessCommands::ThemeValidator.validate!(cfg)
 
-          # CSS更新のためにfrontmatter生成を実行（HTMLファイルは生成しない）
-          require_relative '../pre_process/frontmatter_generator'
-          require_relative '../pre_process/css_updater'
-          VivlioStarter::CLI::PreProcessCommands::FrontmatterGenerator.update_css_only!(cfg)
+          # ビルド設定を .cache/vs/book-settings.css へ全文生成する（課題 C / P3）。
+          # 全モード（full/preflight/single）がこのステップを通るため、生成器の唯一の接続先。
+          require_relative '../pre_process/book_settings_css'
+          VivlioStarter::CLI::PreProcessCommands::BookSettingsCss.generate!(cfg)
 
           # style: simple のときは画像を使わないため生成をスキップ
           theme_style = theme_cfg[:style].to_s.strip.downcase

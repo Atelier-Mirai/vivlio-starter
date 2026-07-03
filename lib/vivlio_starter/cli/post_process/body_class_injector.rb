@@ -28,6 +28,13 @@ module VivlioStarter
           file_type = entry.kind.to_s
           classes = [file_type]
 
+          # ヘッダ切替（方式A・P3-3）: chapter.css / appendix.css が simple/image の
+          # 両ヘッダを import し、この body クラスで相互排他に有効化する。
+          # 注入は literal `<body>` の gsub なので、必ずこの同一注入内で classes に足す
+          # （後付けの別パスは `<body class=...>` に一致せず失敗する）。
+          header_class = header_mode_class(entry.kind)
+          classes << header_class if header_class
+
           # 最初の本文章には chapter-first クラスを追加
           classes << 'chapter-first' if entry.kind == :chapter && first_main_chapter?(html_file)
 
@@ -41,6 +48,21 @@ module VivlioStarter
 
           File.write(html_file, updated, encoding: 'utf-8')
           Common.log_info("#{html_file}: <body>→class追加(#{class_attr})")
+        end
+
+        # ヘッダ切替（方式A）用の body クラスを種別ごとに決める。
+        #   - chapter : theme.style（image 既定 / simple 明示）に従う
+        #   - appendix: 常に simple（appendix.css は simple-header.css を単独 import）
+        #   - その他  : ヘッダ CSS を import しないため付与不要（nil）
+        # @param kind [Symbol] entry.kind
+        # @return [String, nil]
+        def header_mode_class(kind)
+          case kind
+          when :chapter
+            Common::CONFIG.theme.style.to_s.strip.downcase == 'simple' ? 'vs-header-simple' : 'vs-header-image'
+          when :appendix
+            'vs-header-simple'
+          end
         end
 
         # 最初の本文章かどうかを判定

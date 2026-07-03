@@ -2,7 +2,11 @@
    simple-header.css
    -------------------------------------------------------------
    シンプル版（画像なし）の章ヘッダースタイル。
-   chapter.css から @import される想定。
+   chapter.css から image-header.css と共に常時 @import され、
+   appendix.css からは単独で @import される。
+   theme.style: simple の章／付録（付録は常に simple）で body.vs-header-simple が
+   付与され、この規則群だけが有効になる（方式A・BodyClassInjector が注入）。
+   画像版とは body クラスで相互排他になるため、両方 import しても衝突しない。
    ============================================================= */
 
 :root {
@@ -15,7 +19,7 @@
 /* -------------------------------------------------------------
    章タイトル
    ------------------------------------------------------------- */
-h1 {
+body.vs-header-simple h1 {
   /* layout */
   break-before: recto;
   position: relative;
@@ -58,8 +62,8 @@ h1 {
   background-color: var(--heading-gray);
 }
 
-h1::before,
-h1::after {
+body.vs-header-simple h1::before,
+body.vs-header-simple h1::after {
   content: "";
   position: absolute;
   inset-inline: 0;
@@ -67,7 +71,7 @@ h1::after {
 }
 
 /* 上部リボン */
-h1::before {
+body.vs-header-simple h1::before {
   inset-block-start: 0;
   block-size: clamp(3mm, calc(var(--paper-scale) * 5mm), 6mm);
   background:
@@ -80,7 +84,7 @@ h1::before {
 }
 
 /* 下部リボン */
-h1::after {
+body.vs-header-simple h1::after {
   inset-block-end: 0;
   block-size: clamp(3mm, calc(var(--paper-scale) * 4mm), 5mm);
   background:
@@ -91,14 +95,14 @@ h1::after {
     var(--heading-accent);
 }
 
-h1 .chapter-number {
+body.vs-header-simple h1 .chapter-number {
   font-size: clamp(21Q, calc(var(--paper-scale) * 30Q), 30Q);
   font-weight: 700;
   line-height: 1.1;
   color: var(--heading-text);
 }
 
-h1 .chapter-title {
+body.vs-header-simple h1 .chapter-title {
   display: block;
 }
 
@@ -106,7 +110,7 @@ h1 .chapter-title {
 /* -------------------------------------------------------------
    節見出し
    ------------------------------------------------------------- */
-h2 {
+body.vs-header-simple h2 {
   position: relative;
   display: grid;
   grid-template-areas: "number title";
@@ -149,13 +153,13 @@ h2 {
 }
 
 /* 節リードとの間隔を確保 */
-h2 + .section-lead,
-h2 + * + .section-lead,
-h2 ~ .section-lead {
+body.vs-header-simple h2 + .section-lead,
+body.vs-header-simple h2 + * + .section-lead,
+body.vs-header-simple h2 ~ .section-lead {
   margin-block-start: clamp(6mm, calc(var(--paper-scale) * 8mm), 12mm);
 }
 
-h2 .section-number {
+body.vs-header-simple h2 .section-number {
   grid-area: number;
   display: inline-flex;
   align-items: center;
@@ -175,7 +179,7 @@ h2 .section-number {
   font-variant-numeric: tabular-nums;
 }
 
-h2 .section-title {
+body.vs-header-simple h2 .section-title {
   grid-area: title;
   color: var(--heading-text);
 }
@@ -185,14 +189,15 @@ h2 .section-title {
    -------------------------------------------------------------
    Kindle KFX は var() / display:grid / clamp() / calc() / ::before(absolute) /
    linear-gradient を解さず、上の simple-header 装飾が崩れて素テキスト化する
-   （docs/specs/kindle_epub_debug.md）。body.vs-kindle 配下に具体値のみの装飾を与え、
-   付録の章/節見出しにも枠付きの装飾を施す。クリーン EPUB / PDF はこの規則の影響を受けない。
+   （docs/specs/kindle_epub_debug.md）。body.vs-header-simple.vs-kindle 配下に
+   具体値のみの装飾を与え、付録の章/節見出しにも枠付きの装飾を施す。
+   画像版（vs-header-image）や PDF はこの規則の影響を受けない。
    ============================================================= */
-body.vs-kindle h1::before,
-body.vs-kindle h1::after {
+body.vs-header-simple.vs-kindle h1::before,
+body.vs-header-simple.vs-kindle h1::after {
   content: none;
 }
-body.vs-kindle h1 {
+body.vs-header-simple.vs-kindle h1 {
   display: block;
   overflow: visible;
   border: 2px solid #b8860b;
@@ -206,14 +211,14 @@ body.vs-kindle h1 {
   page-break-before: always;
   break-before: page;
 }
-body.vs-kindle h1 .chapter-number {
+body.vs-header-simple.vs-kindle h1 .chapter-number {
   display: block;
   margin-bottom: 0.3em;
   font-size: 0.7em;
   font-weight: 700;
   color: #b8860b;
 }
-body.vs-kindle h2 {
+body.vs-header-simple.vs-kindle h2 {
   display: block;
   border: 1px solid #b8860b;
   border-left: 4px solid #b8860b;
@@ -226,7 +231,7 @@ body.vs-kindle h2 {
   page-break-before: always;
   break-before: page;
 }
-body.vs-kindle h2 .section-number {
+body.vs-header-simple.vs-kindle h2 .section-number {
   display: inline-block;
   margin-right: 0.5em;
   padding: 0 0.4em;
