@@ -48,6 +48,24 @@ class TestTokenizer < Minitest::Test
     assert_includes words, 'wrongword'
   end
 
+  # 回帰(P1-4): ````markdown の中の ``` は入れ子フェンスであり、````で閉じるまで
+  # コード扱い。フェンス後の本文がコード扱いに反転せず正しく検査される。
+  def test_nested_longer_outer_fence_does_not_invert
+    content = "before word\n````markdown\n```\ninnerword\n```\n````\nafter word\n"
+    words = T.tokenize(content).map { _1[0] }
+    refute_includes words, 'innerword'
+    assert_includes words, 'before'
+    assert_includes words, 'after'
+  end
+
+  # ~~~ フェンスもコードブロックとして除外される（従来の /^```/ では未対応だった）。
+  def test_tilde_fence_skipped
+    content = "text one\n~~~\ntildeword\n~~~\ntext two\n"
+    words = T.tokenize(content).map { _1[0] }
+    refute_includes words, 'tildeword'
+    assert_includes words, 'text'
+  end
+
   # バッククォートで囲まれたインラインコード内の単語がスキップされることを確認する
   def test_inline_code_skipped
     words = T.tokenize("Use `wrongword` here\n").map { _1[0] }

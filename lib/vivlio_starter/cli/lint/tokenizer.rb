@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../masking'
+
 module VivlioStarter
   module CLI
     module Lint
@@ -7,7 +9,6 @@ module VivlioStarter
       module Tokenizer
         module_function
 
-        FENCE_PATTERN    = /^```/
         FRONTMATTER_SEP  = /^---\s*$/
 
         # vs-lint コメント記法の定義
@@ -21,13 +22,18 @@ module VivlioStarter
         # @return [Array<[String, Integer]>] [word, line_no] のペア配列
         def tokenize(content, check_code_blocks: false, path: nil)
           tokens           = []
-          in_code_fence    = false
           in_frontmatter   = false
           line_no          = 0
 
           # vs-lint コメントによる除外行番号セットを構築
           excluded_lines, unclosed_disable_at = build_excluded_lines(content)
           warn_unclosed_disable(path, unclosed_disable_at) if unclosed_disable_at
+
+          # コードフェンス行の集合を Masking（唯一の実装）で判定する。
+          # 従来の /^```/ 単純トグルと異なり、可変長フェンス（```/````/~~~）と
+          # 入れ子・```include: 除外に追従するため、入れ子フェンスで本文を誤って
+          # コード扱いしなくなる。check_code_blocks 時はコードも検査対象に含める。
+          code_lines = check_code_blocks ? Set.new : code_fence_lines(content)
 
           content.each_line do |line|
             line_no += 1
@@ -43,14 +49,8 @@ module VivlioStarter
               next
             end
 
-            # コードフェンスのトグル
-            if line.match?(FENCE_PATTERN)
-              in_code_fence = !in_code_fence
-              next
-            end
-
             # コードブロック内のスキップ
-            next if in_code_fence && !check_code_blocks
+            next if code_lines.include?(line_no)
 
             # vs-lint コメントによる除外
             next if excluded_lines.include?(line_no)
@@ -59,6 +59,14 @@ module VivlioStarter
           end
 
           tokens
+        end
+
+        # コード（フェンス区切り行・内容行）とみなす行番号の集合を Masking で判定する。
+        def code_fence_lines(content)
+          prose = Set.new
+          Masking.each_prose_line(content) { |_line, lineno| prose << lineno }
+          total = content.each_line.count
+          (1..total).reject { prose.include?(it) }.to_set
         end
 
         # vs-lint コメントに基づいて除外すべき行番号のセットを構築する
