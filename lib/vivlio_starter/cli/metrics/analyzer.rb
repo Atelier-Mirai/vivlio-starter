@@ -20,6 +20,7 @@
 #   - エンドレスメソッド
 # ================================================================
 
+require_relative '../masking'
 require_relative 'readability'
 require_relative 'content_words'
 
@@ -265,34 +266,10 @@ module VivlioStarter
         # コード片と Markdown 記法を除いた本文を取り出す。
         # 技術書はコード量が多く、コード内の英数字・記号が漢字比率や読解難度を
         # 実態より平易側に歪めるため、文章品質の分析対象からは外す。
+        # フェンス／インラインのコード除去は Masking（唯一の実装）に委ねる。
         def extract_prose(text)
-          stripped = strip_code_blocks(text)
-          stripped = stripped.gsub(/`[^`\n]*`/, ' ') # インラインコード
-          strip_markdown(stripped)
+          strip_markdown(Masking.strip_code(text))
         end
-
-        # フェンスドコードブロック（``` / ~~~）を中身ごと除去する。
-        # 開きフェンスと同種・同連長以上の閉じフェンスで閉じる（入れ子に追従）。
-        def strip_code_blocks(text)
-          open_marker = nil
-          kept = text.each_line.reject do |line|
-            marker = line[/\A\s*(`{3,}|~{3,})/, 1]
-
-            if open_marker
-              open_marker = nil if marker && closing_fence?(marker, open_marker)
-              true # フェンス内（閉じ行含む）は捨てる
-            elsif marker
-              open_marker = marker
-              true # 開き行を捨てる
-            else
-              false # 通常の本文行は残す
-            end
-          end
-          kept.join
-        end
-
-        # 閉じフェンスとして妥当か（同種・同連長以上）。
-        def closing_fence?(marker, opener) = marker[0] == opener[0] && marker.length >= opener.length
 
         # Markdown 記法を除去する
         def strip_markdown(text)

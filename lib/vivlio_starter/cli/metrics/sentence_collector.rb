@@ -17,6 +17,8 @@
 #   - 文末（。！？!?）で区切り、文の開始行を記録する（文は複数行にまたがり得る）
 # ================================================================
 
+require_relative '../masking'
+
 module VivlioStarter
   module CLI
     module Metrics
@@ -25,7 +27,6 @@ module VivlioStarter
 
       # 章本文から位置つきで文を収集する。
       class SentenceCollector
-        FENCE = /\A\s*(`{3,}|~{3,})/
         # 文ではない構造行（見出し/表/HTMLコメント/コンテナ/画像/引用）。
         STRUCTURAL = /\A\s*(?:#|\||<!--|:::|!\[|>)/
         SENTENCE_END = /[。！？!?]+/
@@ -35,10 +36,13 @@ module VivlioStarter
           @results = []
           @buffer = +''
           @start_line = nil
-          @open_fence = nil
+
+          # コード（フェンス区切り行・内容行）とみなす行番号を Masking で判定する。
+          # 行番号を保ったまま、可変長フェンス・入れ子・~~~ に一貫して追従する。
+          code_lines = code_fence_lines(content)
 
           content.each_line.with_index(1) do |raw, lineno|
-            next if handle_fence(raw)
+            next if code_lines.include?(lineno)
             next if reset_on_boundary(raw)
 
             accumulate(raw, lineno, chapter_num)
@@ -49,18 +53,12 @@ module VivlioStarter
 
         private
 
-        # フェンス行・フェンス内行を処理し、消費したら true を返す。
-        def handle_fence(raw)
-          marker = raw[FENCE, 1]
-          if @open_fence
-            @open_fence = nil if marker && closing_fence?(marker, @open_fence)
-            true
-          elsif marker
-            @open_fence = marker
-            true
-          else
-            false
-          end
+        # コード行番号の集合を Masking（唯一の実装）で判定する。
+        def code_fence_lines(content)
+          prose = Set.new
+          Masking.each_prose_line(content) { |_line, lineno| prose << lineno }
+          total = content.each_line.count
+          (1..total).reject { prose.include?(it) }.to_set
         end
 
         # 段落境界（空行）や構造行で、未完の文バッファを破棄する。
@@ -102,8 +100,6 @@ module VivlioStarter
               .gsub(/\A\s*\d+\.\s+/, '')           # 番号付きリストの行頭
               .gsub(/[*_~]/, '')                   # 強調記号
         end
-
-        def closing_fence?(marker, opener) = marker[0] == opener[0] && marker.length >= opener.length
       end
     end
   end
