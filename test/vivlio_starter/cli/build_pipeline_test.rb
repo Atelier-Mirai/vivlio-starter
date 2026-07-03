@@ -108,27 +108,25 @@ module VivlioStarter
 
         with_build_stubs { pipeline.run }
 
+        # P2-2: ステップ番号を撤去し、番号なしの安定ラベルへ統一済み。
         expected_labels = [
-          'Step  0 (clean)',
-          'Step  1 (optimize images)',
-          'Step  2 (prepare theme images)',
-          'Step  3 (preprocess sections)',
-          'Step  4 (index scan and build)',
-          'Step  5 (convert sections html)',
-          'Step 5b (generate part title pages)',
-          'Step  6 (generate toc html)',
-          'Step  7 (build overall pdf)',
-          'Step  8 (backlink dedup)',
-          'Step  9 (build front pages and tail)',
-          'Step 10 (merge all pdfs)',
-          'Step 11 (apply outline to output pdf)',
-          'Step 12 (compress, rename and final clean)'
+          'clean',
+          'optimize images',
+          'prepare theme images',
+          'preprocess sections',
+          'index scan and build',
+          'convert sections html',
+          'generate part title pages',
+          'techbook post-process',
+          'generate toc html',
+          'build overall pdf',
+          'backlink dedup',
+          'build front pages and tail',
+          'merge all pdfs',
+          'apply outline to output pdf',
+          'compress, rename and final clean'
         ]
         labels = pipeline.timings.map(&:first)
-        # Step 5c (techbook post-process) が追加されている場合も許容する
-        if labels.include?('Step 5c (techbook post-process)')
-          expected_labels.insert(expected_labels.index('Step  6 (generate toc html)'), 'Step 5c (techbook post-process)')
-        end
         assert_equal expected_labels, labels
       end
 
@@ -249,13 +247,13 @@ module VivlioStarter
         end
 
         expected_labels = [
-          'Step  0 (clean)',
-          'Step  1 (optimize images)',
-          'Step  2 (prepare theme images)',
-          'Step  3 (build sections html)',
-          'Step  4 (entries.js + pdf)',
-          'Step  5 (rename output pdfs)',
-          'Step F (final clean)'
+          'clean',
+          'optimize images',
+          'prepare theme images',
+          'build sections html',
+          'entries.js + pdf',
+          'rename output pdfs',
+          'final clean'
         ]
         labels = pipeline.timings.map(&:first)
         assert_equal expected_labels, labels

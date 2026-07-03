@@ -101,101 +101,65 @@ module VivlioStarter
         #   Step 12:    リネーム・クリーンアップ
         #   Step 13:    入稿用PDF生成（print_pdf ターゲット時のみ）
         #   Step E:     EPUB生成（epub ターゲット時のみ）
+        # full mode: 1 枚の宣言的ステップ表を上から評価して登録する。
+        # 従来の 5 分岐＋3 補助メソッドを、行ごとの実行条件（targets 依存）を持つ
+        # 1 テーブルへ畳んだ（課題 A: 分岐爆発・番号矛盾の解消）。ステップ番号は撤去し、
+        # 安定したラベル名をログ・計時・ドキュメントの共通語彙とする。
         def register_full_mode_steps
-          # 共通ステップ（HTML 生成まで）
-          register_common_prep_steps
-
-          if targets.pdf && targets.print_pdf
-            # --- 閲覧用 + 入稿用の両方 ---
-            register_pdf_build_steps
-            # Step 12 ではリネーム・圧縮のみ。クリーンアップは最後に延期
-            add_step('Step 12 (rename)',                      -> { run_step12_rename_only })
-            add_step('Step 13 (print pdf)',                   -> { run_step13_print_pdf })
-            # EPUB / Kindle ターゲット時は EPUB → final clean の順
-            add_step('Step E (generate epub)', -> { run_step_epub }) if targets.epub_or_kindle?
-            add_step('Step 14 (final clean)', -> { run_final_clean })
-          elsif targets.print_pdf
-            # --- 入稿用のみ（閲覧用 PDF をスキップ） ---
-            register_print_pdf_only_steps_with_epub
-          elsif targets.epub_or_kindle? && !targets.pdf
-            # --- EPUB / Kindle のみ（PDF ビルドをスキップ） ---
-            register_epub_only_steps
-          elsif targets.epub_or_kindle?
-            # --- 閲覧用 + EPUB / Kindle ---
-            # クリーンアップは EPUB ビルド後に延期（HTML を保持するため）
-            register_pdf_build_steps
-            add_step('Step 12 (rename)',                      -> { run_step12_rename_only })
-            add_step('Step E (generate epub)',                -> { run_step_epub })
-            add_step('Step F (final clean)',                  -> { run_final_clean })
-          else
-            # --- 閲覧用のみ（従来どおり） ---
-            register_pdf_build_steps
-            add_step('Step 12 (compress, rename and final clean)', -> { run_step12_rename_and_clean })
+          full_mode_step_table.each do |label, handler, enabled|
+            add_step(label, handler) if enabled
           end
+        end
+
+        # full mode のステップ表。各行 = [ラベル, ハンドラ, 実行条件]。
+        # 条件はビルド開始時に確定した targets から評価した真偽値（ビルド中は不変）。
+        # 分岐はこの条件列に吸収され、経路の組み合わせは表を上から評価するだけで一意に定まる。
+        def full_mode_step_table
+          t = targets
+          [
+            # --- 共通prep（HTML 生成まで・無条件） ---
+            ['clean',                     -> { run_step0_clean },                                     true],
+            ['optimize images',           -> { run_step1_optimize_images },                           true],
+            ['prepare theme images',      -> { Build::ImageOptimizer.prepare_theme_images! },         true],
+            ['preprocess sections',       -> { Build::SectionBuilder.preprocess_sections!(entries) }, true],
+            ['index scan and build',      -> { run_step4_index_processing },                          true],
+            ['convert sections html',     -> { Build::SectionBuilder.convert_sections_html!(entries) }, true],
+            ['generate part title pages', -> { Build::PartTitleGenerator.generate_all! },             true],
+            ['techbook post-process',     -> { run_techbook_post_process },                           true],
+            ['generate toc html',         -> { Build::TocGenerator.generate_toc_html!('.', entries) }, true],
+            # --- toc 後: ターゲット依存（分岐は条件列に吸収） ---
+            # 閲覧用 PDF は本文全体を、入稿用のみ経路は entries.js だけを生成する。
+            ['build overall pdf',   -> { Build::PdfBuilder.build_overall_pdf_from_dir!('.', entries) }, t.pdf],
+            ['generate entries.js', -> { Build::PdfBuilder.generate_entries_for_sections!('.', entries) }, !t.pdf && t.print_pdf],
+            # EPUB/Kindle かつ PDF も作る場合のみ、dedup 前の章 HTML を退避（⑦: EPUB を dedup から隔離）。
+            ['snapshot pre-dedup html for epub', -> { snapshot_pre_dedup_htmls }, t.epub_or_kindle? && t.any_pdf?],
+            ['backlink dedup',      -> { Build::BacklinkDedupOrchestrator.run!(entries) }, t.any_pdf?],
+            # 前付・奥付: PDF 経路は PDF まで、それ以外（入稿用のみ／EPUB のみ）は HTML のみ。
+            ['build front pages and tail', -> { run_step9_front_pages_and_tail },  t.pdf],
+            ['build front pages html',     -> { run_step9_front_pages_html_only }, !t.pdf],
+            ['merge all pdfs',             -> { Build::PdfMerger.merge_all_pdfs!(entries) },        t.pdf],
+            ['apply outline to output pdf', -> { Build::PdfMerger.add_outline_to_output_pdf!(entries) }, t.pdf],
+            # --- 終端: リネーム／入稿用／EPUB／クリーンアップ ---
+            # 閲覧用 PDF 単独はリネーム＋圧縮＋クリーンを一括。他ターゲット併存時はリネームのみで
+            # クリーンを最後へ延期（HTML を後段の入稿用・EPUB が再利用するため）。
+            ['compress, rename and final clean', -> { run_step12_rename_and_clean }, t.pdf && !t.print_pdf && !t.epub_or_kindle?],
+            ['rename',       -> { run_step12_rename_only }, t.pdf && (t.print_pdf || t.epub_or_kindle?)],
+            ['print pdf',    -> { run_step13_print_pdf },   t.print_pdf],
+            ['generate epub', -> { run_step_epub },         t.epub_or_kindle?],
+            # 閲覧用 PDF 単独以外は、末尾で明示的にクリーンアップする。
+            ['final clean',  -> { run_final_clean },        t.print_pdf || t.epub_or_kindle? || !t.pdf]
+          ]
         end
 
         # preflight mode: Step 1〜4 のみ実行（HTML変換・PDF生成なし）
         # build 側の Step 1〜4 変更が自動追従するよう、既存メソッドを直接呼ぶ
         def register_preflight_steps
           [
-            ['Step  1 (optimize images)',      -> { run_step1_optimize_images }],
-            ['Step  2 (prepare theme images)', -> { Build::ImageOptimizer.prepare_theme_images! }],
-            ['Step  3 (preprocess sections)',  -> { Build::SectionBuilder.preprocess_sections!(entries) }],
-            ['Step  4 (index scan and build)', -> { run_step4_index_processing }]
+            ['optimize images',      -> { run_step1_optimize_images }],
+            ['prepare theme images', -> { Build::ImageOptimizer.prepare_theme_images! }],
+            ['preprocess sections',  -> { Build::SectionBuilder.preprocess_sections!(entries) }],
+            ['index scan and build', -> { run_step4_index_processing }]
           ].each { |label, handler| add_step(label, handler) }
-        end
-
-        # Steps 0-5: HTML 生成までの共通ステップ
-        def register_common_prep_steps
-          add_step('Step  0 (clean)',                       -> { run_step0_clean })
-          add_step('Step  1 (optimize images)',             -> { run_step1_optimize_images })
-          add_step('Step  2 (prepare theme images)',        -> { Build::ImageOptimizer.prepare_theme_images! })
-          add_step('Step  3 (preprocess sections)',         lambda {
-            Build::SectionBuilder.preprocess_sections!(entries)
-          })
-          add_step('Step  4 (index scan and build)',        -> { run_step4_index_processing })
-          add_step('Step  5 (convert sections html)',       lambda {
-            Build::SectionBuilder.convert_sections_html!(entries)
-          })
-          add_step('Step 5b (generate part title pages)', -> { Build::PartTitleGenerator.generate_all! })
-          add_step('Step 5c (techbook post-process)', -> { run_techbook_post_process })
-        end
-
-        # Steps 6-11: 閲覧用 PDF のビルド・結合・アウトライン
-        def register_pdf_build_steps
-          add_step('Step  6 (generate toc html)', lambda {
-            Build::TocGenerator.generate_toc_html!('.', entries)
-          })
-          add_step('Step  7 (build overall pdf)', lambda {
-            Build::PdfBuilder.build_overall_pdf_from_dir!('.', entries)
-          })
-          # EPUB/Kindle 対象時は dedup 前の章 HTML を退避（⑦: run_step_epub で復元し EPUB を dedup から隔離）
-          add_step('Step  7b (snapshot pre-dedup html for epub)', -> { snapshot_pre_dedup_htmls }) if targets.epub_or_kindle?
-          add_step('Step  8 (backlink dedup)',              -> { Build::BacklinkDedupOrchestrator.run!(entries) })
-          add_step('Step  9 (build front pages and tail)',  -> { run_step9_front_pages_and_tail })
-          add_step('Step 10 (merge all pdfs)',              -> { Build::PdfMerger.merge_all_pdfs!(entries) })
-          add_step('Step 11 (apply outline to output pdf)', lambda {
-            Build::PdfMerger.add_outline_to_output_pdf!(entries)
-          })
-        end
-
-        # print_pdf のみ（+ 任意で epub）: 閲覧用 PDF ビルドをスキップし、
-        # entries.js / HTML 生成のみ行ってから入稿用 PDF を生成する。
-        # epub ターゲットがある場合は入稿用 PDF の後に EPUB を生成し、最後にクリーンアップする。
-        def register_print_pdf_only_steps_with_epub
-          add_step('Step  6 (generate toc html)',          lambda {
-            Build::TocGenerator.generate_toc_html!('.', entries)
-          })
-          add_step('Step  7 (generate entries.js)', lambda {
-            Build::PdfBuilder.generate_entries_for_sections!('.', entries)
-          })
-          # EPUB/Kindle 対象時は dedup 前の章 HTML を退避（⑦: run_step_epub で復元し EPUB を dedup から隔離）
-          add_step('Step  7b (snapshot pre-dedup html for epub)', -> { snapshot_pre_dedup_htmls }) if targets.epub_or_kindle?
-          add_step('Step  8 (backlink dedup)',             -> { Build::BacklinkDedupOrchestrator.run!(entries) })
-          add_step('Step  9 (build front pages html)',     -> { run_step9_front_pages_html_only })
-          add_step('Step 10 (print pdf)',                  -> { run_step13_print_pdf })
-          add_step('Step E (generate epub)', -> { run_step_epub }) if targets.epub_or_kindle?
-          add_step('Step 11 (final clean)', -> { run_final_clean })
         end
 
         # single mode は閲覧用 PDF のみ生成する（プレビュー・サンプル配布が主用途）。
@@ -204,13 +168,13 @@ module VivlioStarter
         def register_single_mode_steps
           warn_single_mode_pdf_only
 
-          add_step('Step  0 (clean)',                -> { run_step0_clean })
-          add_step('Step  1 (optimize images)',      -> { run_step1_optimize_images })
-          add_step('Step  2 (prepare theme images)', -> { Build::ImageOptimizer.prepare_theme_images! })
-          add_step('Step  3 (build sections html)',  -> { build_target_sections_html })
-          add_step('Step  4 (entries.js + pdf)',     -> { generate_entries_and_pdf })
-          add_step('Step  5 (rename output pdfs)',   -> { rename_single_mode_pdf })
-          add_step('Step F (final clean)',           -> { run_final_clean })
+          add_step('clean',                -> { run_step0_clean })
+          add_step('optimize images',      -> { run_step1_optimize_images })
+          add_step('prepare theme images', -> { Build::ImageOptimizer.prepare_theme_images! })
+          add_step('build sections html',  -> { build_target_sections_html })
+          add_step('entries.js + pdf',     -> { generate_entries_and_pdf })
+          add_step('rename output pdfs',   -> { rename_single_mode_pdf })
+          add_step('final clean',          -> { run_final_clean })
         end
 
         # targets に PDF 以外（print_pdf / EPUB / Kindle）が含まれていても、
@@ -581,18 +545,6 @@ module VivlioStarter
         # PDF ビルドで生成済みの HTML を再利用し、
         # EPUB 専用 entries / config を生成して vivliostyle build --format epub を実行する。
         # ================================================================
-
-        # EPUB のみビルド（PDF ビルドをスキップ）
-        # 前付・奥付の HTML 生成は行うが、PDF 結合等はスキップ
-        # Step 8 (backlink dedup) は vivliostyle preview が必要なため除外
-        def register_epub_only_steps
-          add_step('Step  6 (generate toc html)', lambda {
-            Build::TocGenerator.generate_toc_html!('.', entries)
-          })
-          add_step('Step  9 (build front pages html)',     -> { run_step9_front_pages_html_only })
-          add_step('Step E (generate epub)',               -> { run_step_epub })
-          add_step('Step F (final clean)',                 -> { run_final_clean })
-        end
 
         # EPUB / Kindle ビルドのメインフロー（§1-3 方式B）。
         # クリーン EPUB（:epub）と Kindle（:kindle）の両方が対象の場合、クリーンを先に確定し、
