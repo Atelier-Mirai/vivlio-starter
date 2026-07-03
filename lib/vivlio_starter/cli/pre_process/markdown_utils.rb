@@ -13,6 +13,8 @@
 #   - パイプテーブルの HTML 変換
 # ================================================================
 
+require_relative '../masking'
+
 module VivlioStarter
   module CLI
     module PreProcessCommands
@@ -48,67 +50,18 @@ module VivlioStarter
           'yml' => 'yaml'
         }.freeze
 
-        CODE_SPAN_PLACEHOLDER_PREFIX = '__VS_CODE_SPAN__'
+        # プレースホルダ書式は Masking と共有（唯一の定義元は Masking 側）。
+        CODE_SPAN_PLACEHOLDER_PREFIX = Masking::CODE_SPAN_PLACEHOLDER_PREFIX
 
         module_function
 
-        # コードスパン（バッククォートで囲まれた部分）を一時的に退避し、
-        # その中身を後続のテキスト変形処理から除外するためのユーティリティ。
-        # コードフェンス（```...```）も退避対象とする。
-        #
-        # 対応するケース:
-        #   - 3 個以上のバッククォートまたはチルダによるフェンス（先頭 0-3 スペースまで許容）
-        #   - 単一バッククォートのインラインコード `foo`
-        #   - マルチバッククォートのインラインコード ``foo`bar`` （N 個の開き=N 個の閉じ）
-        def extract_code_spans(text)
-          spans = {}
-          counter = 0
+        # コードスパン（フェンス／インライン）を一時的に退避し、その中身を
+        # 後続のテキスト変形処理から除外する。実装は CLI::Masking へ一元化済み（P1）。
+        # フェンス判定は状態機械で可変長・入れ子・~~~・include: 除外に追従する。
+        def extract_code_spans(text) = Masking.protect_code(text.to_s)
 
-          alloc = lambda do |match|
-            key = "#{CODE_SPAN_PLACEHOLDER_PREFIX}#{counter}__"
-            spans[key] = match
-            counter += 1
-            key
-          end
-
-          # まずコードフェンスブロック全体を退避（インラインコードより先に処理）
-          # CommonMark に合わせて先頭 0-3 スペースのインデントも許容する。
-          # ```include: で始まる行はインクルード記法であり、フェンスブロックの
-          # 開始ではないため除外する。
-          protected_text = text.to_s.gsub(/^ {0,3}(`{3,}|~{3,}).*?^ {0,3}\1\s*$/m) do |block|
-            # ```include: で始まる行はフェンスブロックではなくインクルード記法
-            if block.match?(/\A\s*`{3,}include:/)
-              block
-            else
-              alloc.call(block)
-            end
-          end
-
-          # 次にインラインコードスパンを退避
-          # N 個の連続バッククォート同士の対を 1 組として扱い、
-          # ``foo`bar`` のように内部にバッククォートを含むケースも保護する。
-          # (?<!`) / (?!`) で開き・閉じの両端が「ちょうど N 個のラン」であることを担保する。
-          protected_text = protected_text.gsub(/(?<!`)(`+)(?!`).+?(?<!`)\1(?!`)/m, &alloc)
-
-          [protected_text, spans]
-        end
-
-        # extract_code_spans で退避したコードスパンを元に戻す。
-        # extract はフェンス→インラインの順に退避するため、後から退避したインラインの
-        # original が先のフェンスのプレースホルダ（`__VS_CODE_SPAN__n__`）を内包しうる
-        # （例: 行を跨ぐバッククォートがフェンス置換後のプレースホルダを巻き込むケース）。
-        # この入れ子を正しく巻き戻すには、挿入の逆順（LIFO / reverse_each）で復元し、
-        # 外側（後から退避したもの）→内側の順に開く必要がある。挿入順（FIFO）だと、
-        # 内側プレースホルダを先に復元しようとして空振りし、後で外側を開いた瞬間に
-        # 未復元のプレースホルダ文字列が表面化して残留する。
-        def restore_code_spans(text, spans)
-          restored = text.to_s
-          # gsub の置換文字列として解釈されないようブロック形式で戻す
-          spans.reverse_each do |placeholder, original|
-            restored = restored.gsub(placeholder) { original }
-          end
-          restored
-        end
+        # extract_code_spans で退避したコードスパンを元に戻す（LIFO 復元）。
+        def restore_code_spans(text, spans) = Masking.restore_code(text, spans)
 
         # インラインコード（`...`）内は、そのままの文字列を維持する
         def escape_inline_code_html(md_text)
