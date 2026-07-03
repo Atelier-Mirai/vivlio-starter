@@ -131,7 +131,7 @@ class TargetConsistencyTest < Minitest::Test
   #
   # ⑦（docs/specs/epub-backlink-dedup-isolation-spec.md）実装により、PDF を併せて
   # ビルドしても EPUB は Step 8（backlink dedup）前の章 HTML から生成される
-  # （run_step_epub 冒頭で pre-dedup スナップショットを復元）。このためリフロー EPUB は
+  # （EpubFlow#run! 冒頭で pre-dedup スナップショットを復元）。このためリフロー EPUB は
   # 「全 † / 全出現リンク」を保ち、epub 単体（dedup 非実行）と pdf+epub（PDF 側のみ dedup）
   # とで本文が完全一致する。† を除かずに比較してこの隔離を保証する（dedup が EPUB へ
   # 漏れると † 数差として即座に検知される）。
