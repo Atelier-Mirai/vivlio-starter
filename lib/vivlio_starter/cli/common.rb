@@ -268,8 +268,10 @@ module VivlioStarter
         end
       end
 
+      # safe_load_file に統一（ensure_required_yaml_files! の検証経路と同一ポリシー）。
+      # aliases はプリセットの差分定義（<<: *a5_std）に必須のため許可する。
       def load_page_presets
-        YAML.load_file(PAGE_PRESETS_FILE, aliases: true, symbolize_names: true)
+        YAML.safe_load_file(PAGE_PRESETS_FILE, aliases: true, symbolize_names: true)
       end
 
       # ================================================================

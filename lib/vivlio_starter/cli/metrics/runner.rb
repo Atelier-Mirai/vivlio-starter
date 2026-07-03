@@ -21,7 +21,6 @@ require_relative 'analyzer'
 require_relative 'config_loader'
 require_relative 'formatter'
 require_relative 'chapter_parser'
-require_relative 'catalog_loader'
 require_relative 'cache'
 require_relative 'parallel_runner'
 require_relative 'consistency'
@@ -57,7 +56,6 @@ module VivlioStarter
           @warning_checker = WarningChecker.new(@config)
           @formatter = Formatter.new(@config)
           @chapter_parser = ChapterParser.new(@warning_checker)
-          @catalog_loader = CatalogLoader.new
           @cache = Cache.new
           @parallel_runner = ParallelRunner.new
           @analysis_buffer = {}
@@ -114,7 +112,7 @@ module VivlioStarter
         private
 
         attr_reader :targets, :options, :config, :warning_checker, :formatter,
-                    :chapter_parser, :catalog_loader, :cache, :parallel_runner,
+                    :chapter_parser, :cache, :parallel_runner,
                     :analysis_buffer, :analysis_mutex
 
         def aggregate_summary_from_analyses(analyses)
@@ -480,15 +478,18 @@ module VivlioStarter
           paths.select { File.exist?(it) }.sort
         end
 
-        # catalog.yml から有効章を解決する
+        # catalog.yml から有効章を解決する（パーサは TokenResolver に一本化。
+        # 仕様: docs/specs/catalog-parser-unification-spec.md §3.3）。
+        # metrics は統計ツールのため catalog 破損でもハード停止せず、書ける範囲で答える
+        # （catalog 不在/空 → 全 Markdown へフォールバック、破損 → warn + フォールバック）。
         def resolve_from_catalog
-          enabled = catalog_loader.enabled_chapters
+          entries = TokenResolver::Resolver.new.resolve
+          return glob_all_chapters if entries.empty?
 
-          if enabled.any?
-            enabled.map { File.join(Common::CONTENTS_DIR, "#{it}.md") }
-          else
-            glob_all_chapters
-          end
+          entries.select(&:exists?).map(&:path)
+        rescue StandardError => e
+          Common.log_warn("catalog.yml の読み込みに失敗したため、全 Markdown ファイルを対象にします: #{e.message}")
+          glob_all_chapters
         end
 
         # 全章ファイルを列挙する（カタログがない場合のフォールバック）

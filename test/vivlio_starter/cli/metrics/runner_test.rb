@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'test_helper'
+require 'tmpdir'
+require 'fileutils'
 require 'vivlio_starter/cli/metrics/runner'
 
 module VivlioStarter
@@ -129,7 +131,45 @@ module VivlioStarter
           assert_nil @runner.send(:rebuild_analysis_from_cache, hash)
         end
 
+        # --- catalog 解決のエラー耐性（パーサ一本化後） ---
+        # 仕様: docs/specs/catalog-parser-unification-spec.md §3.3 / §4
+
+        # catalog 破損時はハード停止せず、warn して全 Markdown へフォールバックする。
+        def test_resolve_from_catalog_warns_and_globs_on_broken_yaml
+          warnings = []
+          within_project(catalog: "CHAPTERS:\n  - [broken\n", chapters: %w[01-intro 02-setup]) do
+            Common.stub(:log_warn, ->(msg) { warnings << msg }) do
+              paths = @runner.send(:resolve_from_catalog)
+
+              assert_equal %w[contents/01-intro.md contents/02-setup.md], paths.sort
+            end
+          end
+
+          assert(warnings.any? { it.include?('catalog.yml') }, "破損時は警告すべき: #{warnings.inspect}")
+        end
+
+        # catalog 不在時も全 Markdown へフォールバックする（従来挙動の保存）。
+        def test_resolve_from_catalog_globs_when_catalog_missing
+          within_project(catalog: nil, chapters: %w[01-intro]) do
+            paths = @runner.send(:resolve_from_catalog)
+
+            assert_equal %w[contents/01-intro.md], paths
+          end
+        end
+
         private
+
+        # catalog（nil で不在）と章ファイルを持つ一時プロジェクトへ chdir する。
+        def within_project(catalog:, chapters:)
+          Dir.mktmpdir do |dir|
+            FileUtils.mkdir_p(File.join(dir, 'config'))
+            FileUtils.mkdir_p(File.join(dir, 'contents'))
+            File.write(File.join(dir, 'config', 'catalog.yml'), catalog) if catalog
+            chapters.each { File.write(File.join(dir, 'contents', "#{it}.md"), "# #{it}") }
+
+            Dir.chdir(dir) { yield }
+          end
+        end
 
         def build_analysis(readability_features:)
           chapter = Metrics::ChapterMetrics.new(path: 'contents/01-intro.md', title: 'Intro',

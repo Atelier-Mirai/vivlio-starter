@@ -238,4 +238,6 @@ Phase 1 は挙動完全互換なので RC 前でも実施可。Phase 2 以降は
 
 - 単位変換（Q/pt/em）の仕様書化 — 別タスク（config-core-refactor タスク 2）。
 - `catalog.yml` / `page_presets.yml` / `post_replace_list.yml` のアクセス統一 —
-  book.yml の統一完了後に同じ原則を適用するか判断する。
+  判断済み（2026-07-03）: `page_presets` / `post_replace_list` は読み込み各 1 箇所に
+  一元化済みで追加作業なし（safe_load への揃えのみ実施）。`catalog.yml` は記法統一ではなく
+  **パーサ一本化**が本質 — [catalog-parser-unification-spec.md](catalog-parser-unification-spec.md) を策定。

@@ -125,6 +125,66 @@ module VivlioStarter
           assert_empty result
         end
 
+        # --- Parser Unification Regression Tests ---
+        # 仕様: docs/specs/catalog-parser-unification-spec.md §1.2 / §4
+
+        # バグ1回帰: catalog.yml の YAML アンカー/エイリアスで TokenResolver がクラッシュしていた
+        # （CatalogLoader は許可 / TokenResolver は Psych::AliasesNotEnabled）。委譲化で解消。
+        def test_resolves_catalog_with_yaml_aliases
+          Dir.mktmpdir do |dir|
+            catalog_path = File.join(dir, 'catalog.yml')
+            contents_dir = File.join(dir, 'contents')
+            FileUtils.mkdir_p(contents_dir)
+            File.write(catalog_path, <<~YAML)
+              PREFACE: &empty []
+              CHAPTERS:
+                - 10-intro
+                - 30-outro
+              APPENDICES: *empty
+              POSTFACE: *empty
+            YAML
+
+            resolver = Resolver.new(catalog_path:, contents_dir:)
+            result = resolver.resolve([])
+
+            assert_equal %w[10-intro 30-outro], result.map(&:basename)
+          end
+        end
+
+        # バグ2回帰: catalog.yml 内のショートハンド "21-25" を「number=21, slug=25」の
+        # 幽霊エントリと誤解釈し 21〜25 章が脱落していた。委譲化で範囲展開されるようになる。
+        def test_expands_shorthand_range_written_in_catalog
+          Dir.mktmpdir do |dir|
+            catalog_path = File.join(dir, 'catalog.yml')
+            contents_dir = File.join(dir, 'contents')
+            FileUtils.mkdir_p(contents_dir)
+            %w[21-alpha 22-bravo 23-charlie 24-delta 25-echo].each do |bn|
+              File.write(File.join(contents_dir, "#{bn}.md"), "# #{bn}")
+            end
+            File.write(catalog_path, "CHAPTERS:\n  - 21-25\n")
+
+            resolver = Resolver.new(catalog_path:, contents_dir:)
+            result = resolver.resolve([])
+
+            assert_equal %w[21 22 23 24 25], result.map(&:number)
+            assert(result.all?(&:in_catalog?), 'ショートハンド展開した章はすべて in_catalog であるべき')
+            refute(result.any? { it.slug == '25' }, '"21-25" を slug=25 の単一章と誤解釈してはならない')
+          end
+        end
+
+        # 破損 YAML は CatalogLoader の親切なメッセージ付き StandardError になる。
+        def test_raises_friendly_error_on_broken_catalog
+          Dir.mktmpdir do |dir|
+            catalog_path = File.join(dir, 'catalog.yml')
+            File.write(catalog_path, "CHAPTERS:\n  - [unbalanced\n")
+
+            resolver = Resolver.new(catalog_path:, contents_dir: File.join(dir, 'contents'))
+
+            error = assert_raises(StandardError) { resolver.resolve([]) }
+            assert_match(/catalog\.yml/, error.message)
+          end
+        end
+
         # --- Matching Tests ---
 
         def test_returns_catalog_entry_when_found

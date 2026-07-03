@@ -27,6 +27,10 @@ module VivlioStarter
         # セクションキー
         SECTION_KEYS = %w[PREFACE CHAPTERS APPENDICES POSTFACE].freeze
 
+        # TokenResolver へ渡す 3 つ組。label は最内の部タイトル（なければセクション名）。
+        # 仕様: docs/specs/catalog-parser-unification-spec.md §3.1
+        CatalogEntry = Data.define(:basename, :label, :section)
+
         # 章番号からセクションを決定
         # @param num [Integer] 章番号
         # @return [String] セクションキー
@@ -85,6 +89,49 @@ module VivlioStarter
           existing
         end
 
+        # catalog.yml を解析し、ラベル付きの章一覧を返す（TokenResolver の下層 API）。
+        #
+        # ファイル不在は [] を返す（TokenResolver の「カタログなしでも動く」契約を維持するため、
+        # ビルド専用の load_all_basenames と違い raise しない）。空カタログ・重複番号の検証も
+        # 行わない（それはビルド時の関心事 = load_all_basenames 側）。
+        # 仕様: docs/specs/catalog-parser-unification-spec.md §3.1
+        #
+        # @param catalog_path [String] catalog.yml のパス（テスト用に注入可能）
+        # @param contents_dir [String] ショートハンド展開時の glob 基点
+        # @return [Array<CatalogEntry>]
+        def load_labeled_entries(catalog_path: CATALOG_FILE, contents_dir: Common::CONTENTS_DIR)
+          return [] unless File.exist?(catalog_path)
+
+          catalog = load_catalog(catalog_path:)
+          warn_unknown_sections(catalog)
+
+          SECTION_KEYS.flat_map do |section|
+            collect_labeled(catalog[section], label: section, section:, contents_dir:)
+          end
+        end
+
+        # セクション内を再帰走査し、Hash キー（部タイトル）を label として伝播させつつ
+        # ショートハンド（21-25 等）を展開する。
+        # @return [Array<CatalogEntry>]
+        def collect_labeled(items, label:, section:, contents_dir:)
+          case items
+          in nil then []
+          in String | Integer
+            expand_item(items, contents_dir:).map { CatalogEntry.new(basename: it, label:, section:) }
+          in Array then items.flat_map { collect_labeled(it, label:, section:, contents_dir:) }
+          in Hash  then items.flat_map { |k, v| collect_labeled(v, label: k.to_s, section:, contents_dir:) }
+          else []
+          end
+        end
+
+        # catalog.yml の未知トップレベルセクションを警告する（タイプミス検出）。
+        # 有効セクションは catalog_spec が定める 4 種のみ。黙って落とすと調査困難なため知らせる。
+        def warn_unknown_sections(catalog)
+          (catalog.keys - SECTION_KEYS).each do |key|
+            Common.log_warn("catalog.yml に未知のセクション '#{key}' があります（有効: #{SECTION_KEYS.join(' / ')}）")
+          end
+        end
+
         # catalog.yml を読み込み、YAML として返す
         #
         # セキュリティ設計（堅牢性仕様 9-7 対応）:
@@ -96,11 +143,12 @@ module VivlioStarter
         #   - `!ruby/object` など許可されないクラスタグは `Psych::DisallowedClass` を
         #     発生させ、ユーザー向けの明示的なメッセージに変換する。
         #
+        # @param catalog_path [String] catalog.yml のパス（テスト用に注入可能）
         # @return [Hash] catalog データ
-        def load_catalog
-          raise StandardError, "catalog.yml が見つかりません: #{CATALOG_FILE}" unless File.exist?(CATALOG_FILE)
+        def load_catalog(catalog_path: CATALOG_FILE)
+          raise StandardError, "catalog.yml が見つかりません: #{catalog_path}" unless File.exist?(catalog_path)
 
-          content = File.read(CATALOG_FILE, encoding: 'utf-8')
+          content = File.read(catalog_path, encoding: 'utf-8')
           catalog = YAML.safe_load(content, permitted_classes: [], aliases: true)
 
           raise StandardError, 'catalog.yml の形式が不正です（Hash ではありません）' unless catalog.is_a?(Hash)
@@ -168,8 +216,9 @@ module VivlioStarter
 
         # アイテム（文字列）を basename 配列に展開
         # @param item [String] basename またはショートハンド
+        # @param contents_dir [String] ショートハンド展開時の glob 基点
         # @return [Array<String>] basename 配列
-        def expand_item(item)
+        def expand_item(item, contents_dir: Common::CONTENTS_DIR)
           normalized = item.to_s.strip
 
           # .md 拡張子を除去
@@ -177,7 +226,7 @@ module VivlioStarter
 
           # ショートハンド判定
           if shorthand?(normalized)
-            expand_shorthand(normalized)
+            expand_shorthand(normalized, contents_dir:)
           else
             [normalized]
           end
@@ -193,10 +242,11 @@ module VivlioStarter
 
         # ショートハンドを展開して basename 配列を返す
         # @param str [String] "21-25" や "21-25, 38" 形式
+        # @param contents_dir [String] glob 基点
         # @return [Array<String>] basename 配列
-        def expand_shorthand(str)
+        def expand_shorthand(str, contents_dir: Common::CONTENTS_DIR)
           numbers = parse_shorthand_to_numbers(str)
-          numbers.flat_map { |num| find_basenames_by_number(num) }
+          numbers.flat_map { |num| find_basenames_by_number(num, contents_dir:) }
         end
 
         # ショートハンド文字列を章番号配列に変換
@@ -223,13 +273,19 @@ module VivlioStarter
         end
 
         # 章番号に対応する basename を contents/ から検索
+        # slug 付き（NN-*.md）に加え、番号のみファイル（NN.md）も拾う。番号のみファイルは
+        # TokenResolver が従来サポートする章形態であり、これを glob 対象に含めないと
+        # bare number の catalog エントリ（`- 15`）が脱落する（パーサ乖離の原因になっていた）。
         # @param num [Integer] 章番号
-        # @return [Array<String>] basename 配列（見つからない場合は空）
-        def find_basenames_by_number(num)
-          pattern = File.join(Common::CONTENTS_DIR, "#{num.to_s.rjust(2, '0')}-*.md")
-          files = Dir.glob(pattern)
+        # @param contents_dir [String] glob 基点
+        # @return [Array<String>] basename 配列（見つからない場合は空。slug 付きを先に並べる）
+        def find_basenames_by_number(num, contents_dir: Common::CONTENTS_DIR)
+          padded = num.to_s.rjust(2, '0')
+          slug_files = Dir.glob(File.join(contents_dir, "#{padded}-*.md"))
+          numeric_file = File.join(contents_dir, "#{padded}.md")
+          slug_files << numeric_file if File.exist?(numeric_file)
 
-          files.map { |f| File.basename(f, '.md') }
+          slug_files.map { |f| File.basename(f, '.md') }
         end
 
         # catalog.yml から部タイトル情報を抽出する

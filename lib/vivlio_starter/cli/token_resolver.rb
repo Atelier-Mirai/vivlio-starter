@@ -3,6 +3,7 @@
 require 'yaml'
 
 require_relative 'common'
+require_relative 'build/catalog_loader'
 
 module VivlioStarter
   module CLI
@@ -126,32 +127,15 @@ module VivlioStarter
         end
 
         # --- Phase 2: Catalog Loading (カタログ読み込み) ---
-        # catalog.yml を解析し、定義済みの全章を Entry オブジェクトとして展開する。
+        # YAML パース・セクション/ショートハンド展開は Build::CatalogLoader に一本化した
+        # （仕様: docs/specs/catalog-parser-unification-spec.md）。ここでは
+        # CatalogEntry（basename/label/section）→ Entry への変換のみを行う。
+        # instantiate_entry は常に Entry を返すため compact は不要。
         def load_catalog_entries
-          return [] unless File.exist?(catalog_path)
-
-          raw_yaml = YAML.safe_load(File.read(catalog_path, encoding: 'utf-8')) || {}
-
-          raw_yaml.flat_map do |section, items|
-            extract_from_yaml(items, context: section).map do |base, label|
-              instantiate_entry(base, label, section_to_kind(section), in_catalog: true)
-            end
-          end.compact.uniq(&:number)
-        end
-
-        # YAML の階層構造を再帰的に走査し、[basename, label] のペアを抽出する。
-        # Hash のキー（「歴史篇」等）を label として伝播させる。
-        def extract_from_yaml(items, context:)
-          case items
-          in String | Integer then [[normalize_catalog_basename(items), context]]
-          in Array            then items.flat_map { extract_from_yaml(it, context:) }
-          in Hash             then items.flat_map { |k, v| extract_from_yaml(v, context: k.to_s) }
-          else []
-          end
-        end
-
-        def normalize_catalog_basename(item)
-          item.to_s.strip.sub(/\.md\z/i, '')
+          Build::CatalogLoader
+            .load_labeled_entries(catalog_path:, contents_dir:)
+            .map { instantiate_entry(it.basename, it.label, section_to_kind(it.section), in_catalog: true) }
+            .uniq(&:number)
         end
 
         # セクション名を kind シンボルに変換する。
