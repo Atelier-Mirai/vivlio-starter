@@ -20,6 +20,7 @@ require 'fileutils'
 require 'cgi'
 require 'digest'
 require_relative '../common'
+require_relative '../masking'
 require_relative 'yomi_inferrer'
 
 module VivlioStarter
@@ -219,44 +220,17 @@ module VivlioStarter
 
         private
 
-        # コードブロックを除外してコンテンツを処理
+        # コードブロックを除外してコンテンツを処理する。
+        # コード（フェンス区切り行・内容行）とみなす行は Masking（唯一の実装）が判定し、
+        # 地の文の行だけを process_line でタグ付けする。索引タグは行を跨がないため、
+        # 地の文行を原文行配列の同位置へ置換して再結合すれば行数・コード行は不変。
+        # 可変長フェンス・入れ子・```include: 除外は Masking が一貫して保証する。
         def process_content_with_code_block_exclusion(content, file_basename)
           lines = content.lines
-          result = []
-          fence_len = nil # 開いているコードフェンスのバッククォート数（nil = コード外）
-
-          lines.each do |line|
-            stripped = line.lstrip
-
-            # コードフェンスの開始・終了を検出（``` 以上の可変長に対応）。
-            # ```include: は単一行のインクルード指令でありフェンスではないので除外。
-            if stripped.start_with?('```') && !stripped.start_with?('```include:')
-              run = stripped[/\A`+/].length
-              if fence_len.nil?
-                # コード外 → フェンス開始（開いた長さを記憶）
-                fence_len = run
-                result << line
-                next
-              elsif run >= fence_len
-                # コード内 → 開始と同じ長さ以上の行でのみ閉じる。
-                # ````（4連）の中の ```（3連）のような短い入れ子フェンスでは閉じない
-                # （閉じてしまうと内側のコード本文が地の文として索引スキャンされ、
-                #   コメント強調マーカー [!] などが誤って索引語化される）。
-                fence_len = nil
-                result << line
-                next
-              end
-              # それ以外（コード内の開始より短い入れ子フェンス）はコード本文として扱う
-            end
-
-            result << if fence_len
-                        line
-                      else
-                        process_line(line, file_basename)
-                      end
+          Masking.each_prose_line(content) do |_line, lineno|
+            lines[lineno - 1] = process_line(lines[lineno - 1], file_basename)
           end
-
-          result.join
+          lines.join
         end
 
         # 1行を処理して索引語をタグ付け
