@@ -1,7 +1,7 @@
 # VivlioVerso 基盤整備 個別改修計画 P1〜P5（第 3 部）
 
 対象: 各個票に記載 / 策定日: 2026-07-03 /
-ステータス: **P1〜P4 実装待ち（実装担当: Opus 4.8）・P5 は V2.0 の依存マップ**
+ステータス: **P1 実装完了（2026-07-03）・P2〜P4 実装待ち（実装担当: Opus 4.8）・P5 は V2.0 の依存マップ**
 
 第 1 部 = [vivlioverso-build-investigation.md](vivlioverso-build-investigation.md)（現状調査）、
 第 2 部 = [vivlioverso-foundation-plan.md](vivlioverso-foundation-plan.md)（基本構想）。
