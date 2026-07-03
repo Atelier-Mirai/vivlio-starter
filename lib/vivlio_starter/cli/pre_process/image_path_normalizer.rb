@@ -18,6 +18,7 @@
 
 require 'cgi'
 require_relative '../common'
+require_relative '../masking'
 require_relative 'markdown_utils'
 
 module VivlioStarter
@@ -142,22 +143,16 @@ module VivlioStarter
 
         # 元ファイルから画像名 → 行番号のマップを構築する。
         # pre_process で行数が変わる前の正しい行番号を取得するため。
+        # コード領域の除外は Masking（唯一の実装）に委ね、地の文の画像記法のみ拾う。
         def build_source_image_line_map(source_path)
           return {} unless source_path && File.exist?(source_path)
 
           map = {}
-          in_code_block = false
-          File.readlines(source_path, encoding: 'utf-8').each_with_index do |line, idx|
-            stripped = line.lstrip
-            if stripped.start_with?('```')
-              in_code_block = !in_code_block
-              next
-            end
-            next if in_code_block
-
+          source = File.read(source_path, encoding: 'utf-8')
+          Masking.each_prose_line(source) do |line, lineno|
             line.scan(/!\[[^\]]*\]\(([^)]+)\)/) do
               image_name = File.basename(::Regexp.last_match(1))
-              map[image_name] ||= idx + 1
+              map[image_name] ||= lineno
             end
           end
           map

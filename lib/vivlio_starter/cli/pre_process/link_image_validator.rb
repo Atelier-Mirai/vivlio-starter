@@ -28,6 +28,7 @@ require 'net/http'
 require 'uri'
 require 'monitor'
 require_relative '../common'
+require_relative '../masking'
 
 module VivlioStarter
   module CLI
@@ -289,17 +290,9 @@ module VivlioStarter
           # その痕跡から欠落画像を特定する
           def scan_missing_images(content, filename)
             issues = []
-            in_code_block = false
 
-            content.each_line.with_index(1) do |line, line_number|
-              stripped = line.lstrip
-
-              if stripped.start_with?('```')
-                in_code_block = !in_code_block
-                next
-              end
-              next if in_code_block
-
+            # コード領域の除外は Masking（唯一の実装）に委ねる。
+            Masking.each_prose_line(content) do |line, line_number|
               # data: URI に置換された画像を検出
               line.scan(%r{!\[([^\]]*)\]\((data:image/svg\+xml[^)]+)\)}) do
                 # プレースホルダー SVG 内にファイル名が埋め込まれている
@@ -345,17 +338,9 @@ module VivlioStarter
           # @return [Array<LinkIssue>] 検出された issue の配列
           def scan_dangerous_schemes(content, filename)
             issues = []
-            in_code_block = false
 
-            content.each_line.with_index(1) do |line, line_number|
-              stripped = line.lstrip
-
-              if stripped.start_with?('```')
-                in_code_block = !in_code_block
-                next
-              end
-              next if in_code_block
-
+            # コードフェンスの除外は Masking（唯一の実装）に委ねる。
+            Masking.each_prose_line(content) do |line, line_number|
               # インラインコード内はスキップ（説明文中の例示を無視）
               scannable = line.gsub(/`[^`]+`/, '')
 
@@ -406,17 +391,9 @@ module VivlioStarter
           # Markdown リンク記法でない直書き URL を検出する
           def scan_bare_urls(content, filename)
             issues = []
-            in_code_block = false
 
-            content.each_line.with_index(1) do |line, line_number|
-              stripped = line.lstrip
-
-              if stripped.start_with?('```')
-                in_code_block = !in_code_block
-                next
-              end
-              next if in_code_block
-
+            # コードフェンスの除外は Masking（唯一の実装）に委ねる。
+            Masking.each_prose_line(content) do |line, line_number|
               # インラインコード内はスキップ
               line_without_inline_code = line.gsub(/`[^`]+`/, '')
 
@@ -449,17 +426,9 @@ module VivlioStarter
           # Markdown リンク記法から外部 URL を抽出する
           def extract_external_urls(content, filename)
             urls = []
-            in_code_block = false
 
-            content.each_line.with_index(1) do |line, line_number|
-              stripped = line.lstrip
-
-              if stripped.start_with?('```')
-                in_code_block = !in_code_block
-                next
-              end
-              next if in_code_block
-
+            # コードフェンスの除外は Masking（唯一の実装）に委ねる。
+            Masking.each_prose_line(content) do |line, line_number|
               # Markdown リンク記法 [text](https://...)
               line.scan(%r{\[([^\]]*)\]\((https?://[^\s)]+)\)}) do
                 urls << { url: ::Regexp.last_match(2), filename:, line_number: }
