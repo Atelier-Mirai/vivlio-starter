@@ -4,6 +4,7 @@
 # `cli/startup.rb` から読み込まれ、`cli.rb` は `startup` のみを参照する。
 
 require_relative 'common'
+require_relative 'masking'
 require_relative 'image_filename_sanitizer'
 require_relative 'guards'
 require_relative 'create'
