@@ -195,6 +195,13 @@ end
 - 値の**計算ロジックは現 CssUpdater をそのまま流用**（paper_scale・align_max_width・
   folio 配置・フォントスタック整形・Type3 フォールバック等は実証済みの資産）。
   変わるのは「正規表現で既存ファイルへ差し込む」→「テンプレートへ書き出す」だけ。
+- **条件付き書込みのセマンティクスを再現する**こと（出力同一性の要・調査報告 §7.3-2）:
+  現行 updater が「書かない」条件（appendix_color 未指定・simple スタイル・nil/空値等）では
+  生成器も**宣言しない**（カスケードで既存 CSS 値が生きる）。宣言条件の一覧は調査報告参照。
+- 生成器の接続先は `image_optimizer.rb:65`（'prepare theme images'）——full/preflight/single
+  全モードで実行される。`generate_frontmatter` の章ごと `update_all_css_files` 呼出は撤去し、
+  `FontManager.ensure_fonts_available` と `sync_vivliostyle_config_*` の呼出は
+  生成器側へ引っ越す（調査報告 §7.3-3 / §7.3-4）。
 - 画像 URL は生成ファイルの位置（`.cache/vs/`）からの相対で解決すること
   （`../../stylesheets/images/…`）。**ここが最大の実装注意点**。
   absolute 化（`file://` は不可・プロジェクトルート相対）や、章 HTML から見た
@@ -212,8 +219,16 @@ end
   再宣言するため**上書きされて正しく動く**。scaffold の CSS も無修正で良い
   （プレースホルダ値のままでも生成ファイルが実値を供給）。
 - `vs clean` の削除対象に book-settings.css を追加（`.cache/vs/` 配下なら自動)。
-- EPUB: `collect_epub_htmls` / copy_asset 系が `.cache/vs/book-settings.css` を
-  EPUB へ同梱するよう配線確認（テーマ CSS と同列に扱う）。
+- **EPUB 同梱は copyAsset excludes と衝突する（要実装・調査報告 §7.2）**:
+  `build_copy_asset_excludes_config`（epub_builder.rb:347）が `.cache/**` を除外するため、
+  link をそのままにすると RSC-007（参照切れ）になる。EPUB rewrite フェーズで
+  link href を EPUB 用パスへ書換え＋実ファイルをコピーして同梱する
+  （url() 相対の再組替に注意）。`sanitize_epub_css!` は同梱後の book-settings.css にも
+  自動適用される（EPUB 内 *.css 全対象）。
+- **`read_theme_heading_assets`（epub_builder.rb:788）の参照元切替（要実装・調査報告 §7.1）**:
+  EPUB 扉絵/節絵合成が theme.css の書換結果を正規表現で読んでいる。撤去後は
+  黙って既定値（sakura/yellow）に化けるため、**撤去より先に**
+  `parse_theme_settings` の計算値を直接使う方式へ切り替える。
 
 ### P3-3. chapter.css の header import 切替の解消
 
@@ -226,6 +241,9 @@ end
   `body` 属性 or `:root` 変数分岐で適用。※ Vivliostyle は `@container`/`@supports var`
   が使えないため、実装は「image-header の規則群に `body.vs-header-image` を前置し、
   post_process の BodyClassInjector（既存機構）でクラス注入」が確実。
+  post_process は Vivliostyle PDF の**前**に実行されるため PDF 組版にも効く。
+  注入は `inject_body_class` の classes 配列に**同一注入内で**足すこと
+  （literal `<body>` gsub のため後付けの別パスは一致しない。調査報告 §7.3-5）。
 - 方式 B: frontmatter link に header CSS を動的選択で入れる
   （{kind}.css の @import から header を外す）。CSS 編集は少ないが link 生成が複雑化。
 
@@ -245,7 +263,13 @@ V2.0 での config.js 全文生成化を KNOWN 事項として本個票の完了
   移行前後で一致（レイアウト回帰なし）。`rake test:layout` 全プリセット緑。
 - **編集自由の実証**: theme.css の `--theme-accent` 行を削除したプロジェクトで
   book.yml の theme.color が正しく効くこと（現在は黙って無効になるケース）。
-- ビルド後に `git status` で stylesheets/ に差分が出ないこと。
+- **EPUB の設定追従**: theme.css を既定のまま book.yml の theme.color / frontispiece /
+  ornament を変更 → EPUB の扉絵・節絵・節番号色が追従すること（調査報告 §7.1 の回帰ゲート。
+  同梱プリセットの出力同一性では検出できない）。
+- clean EPUB の epubcheck 緑（book-settings.css 同梱で RSC-007 が出ないこと）＋
+  `epub_kindle_layout_test` 緑。
+- ビルド後に `git status` で stylesheets/ に差分が出ないこと
+  （FontManager 生成の `stylesheets/fonts/google-fonts.css` は対象外・調査報告 §7.3-7）。
 
 ---
 
