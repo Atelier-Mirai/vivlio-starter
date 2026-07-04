@@ -27,16 +27,20 @@ module VivlioStarter
       # @param options [Hash] オプション
       #   - :verbose [Boolean] 詳細ログ出力
       # @param target_output [String, nil] 出力ファイル名（リネーム先）
+      # @param config_path [String] --config で渡す生成 config のパス（消費者 dir 内・P4 §5.2）
+      # @param output_path [String] config の output と一致する生成先（消費者 dir 内）
       # @return [Boolean] ビルド成功なら true
-      def execute_epub(options, target_output = nil)
-        EpubCommandRunner.new(options, target_output).call
+      def execute_epub(options, target_output = nil, config_path:, output_path:)
+        EpubCommandRunner.new(options, target_output, config_path:, output_path:).call
       end
 
       # Vivliostyle CLI を --format epub で実行して EPUB を生成する
       class EpubCommandRunner
-        def initialize(options, target_output = nil)
+        def initialize(options, target_output = nil, config_path:, output_path:)
           @options = options || {}
           @target_output = target_output
+          @config_path = config_path
+          @output_path = output_path
           @build_success = false
         end
 
@@ -52,7 +56,7 @@ module VivlioStarter
 
         private
 
-        attr_reader :options, :target_output
+        attr_reader :options, :target_output, :config_path, :output_path
 
         # verbose モードを有効化する
         def apply_verbose
@@ -80,10 +84,10 @@ module VivlioStarter
         end
 
         # EPUB ビルド用のコマンド文字列を組み立てる
-        # --config で EPUB 専用設定ファイルを指定する
+        # --config で EPUB 専用設定ファイル（消費者 dir 内の生成 config）を指定する
         def build_command
           cmd = 'npx vivliostyle build'
-          cmd += " --config #{Build::EpubBuilder::EPUB_CONFIG_FILE}"
+          cmd += " --config #{config_path}"
           cmd
         end
 
@@ -98,7 +102,7 @@ module VivlioStarter
 
         # 成功時の出力ファイル処理を行う
         def handle_successful_build
-          output = Build::EpubBuilder::EPUB_OUTPUT_FILE
+          output = output_path
           unless File.exist?(output)
             Common.log_warn("EPUB 生成は成功しましたが、出力ファイルが見つかりません: #{output}")
             return

@@ -12,7 +12,7 @@
 #   - EPUB 用 vivliostyle.config.js の生成（cover 埋め込み制御）
 #   - epub_target? の判定
 #   - EPUB ファイル名の生成
-#   - クリーンアップ
+#   - html/ → 消費者 dir ステージング（asset_prefix 剥がし・P4 段階 4）
 # ================================================================
 
 require 'test_helper'
@@ -212,26 +212,21 @@ module VivlioStarter
                'cover.embed: false の場合は false を返すべき'
       end
 
-      # クリーンアップが中間ファイルを削除することを確認
-      def test_cleanup_removes_intermediate_files
-        # テスト用中間ファイルを作成
-        File.write(Build::EpubBuilder::EPUB_CONFIG_FILE, 'test')
-        File.write(Build::EpubBuilder::EPUB_ENTRIES_FILE, 'test')
-        File.write(Build::EpubBuilder::EPUB_OUTPUT_FILE, 'test')
+      # html/ → 消費者 dir のステージングで asset_prefix が剥がれることを確認（P4 段階 4）
+      def test_stage_consumer_htmls_strips_asset_prefix
+        FileUtils.mkdir_p(Common::BUILD_HTML_DIR)
+        File.write(File.join(Common::BUILD_HTML_DIR, '01-intro.html'), <<~HTML)
+          <html><head>
+          <link rel="stylesheet" href="#{Common::ASSET_PREFIX}stylesheets/theme.css">
+          </head><body><img src="#{Common::ASSET_PREFIX}images/01/a.webp"></body></html>
+        HTML
 
-        Build::EpubBuilder.cleanup!
+        Build::EpubBuilder.stage_consumer_htmls!(Common::BUILD_EPUB_DIR)
 
-        refute File.exist?(Build::EpubBuilder::EPUB_CONFIG_FILE),
-               'vivliostyle.config.epub.js が削除されるべき'
-        refute File.exist?(Build::EpubBuilder::EPUB_ENTRIES_FILE),
-               'entries.epub.js が削除されるべき'
-        refute File.exist?(Build::EpubBuilder::EPUB_OUTPUT_FILE),
-               'output.epub が削除されるべき'
-      end
-
-      # クリーンアップがファイル不在でもエラーにならないことを確認
-      def test_cleanup_does_not_error_when_no_files
-        assert_silent_or_logged { Build::EpubBuilder.cleanup! }
+        staged = File.read(File.join(Common::BUILD_EPUB_DIR, '01-intro.html'))
+        assert_includes staged, 'href="stylesheets/theme.css"', 'CSS 参照はパッケージルート相対になるべき'
+        assert_includes staged, 'src="images/01/a.webp"', '画像参照はパッケージルート相対になるべき'
+        refute_includes staged, Common::ASSET_PREFIX, 'asset_prefix は残らないべき'
       end
 
       private
@@ -258,26 +253,23 @@ module VivlioStarter
         Struct.new(:output, :directories, keyword_init: true).new(output:, directories:)
       end
 
-      # ログ出力があってもエラーにならないことを確認するヘルパー
-      def assert_silent_or_logged
-        yield
-        pass
-      rescue StandardError => e
-        flunk "予期しないエラー: #{e.message}"
-      end
     end
 
     # ================================================================
     # EpubCommandRunner のユニットテスト
     # ================================================================
     class EpubCommandRunnerTest < Minitest::Test
-      # build_command が --format epub オプションを含むことを確認
-      def test_build_command_includes_format_epub
-        runner = EpubCommands::EpubCommandRunner.new({})
+      # build_command が指定された生成 config（消費者 dir 内）を --config で渡すことを確認
+      def test_build_command_includes_consumer_dir_config
+        runner = EpubCommands::EpubCommandRunner.new(
+          {},
+          config_path: '.cache/vs/build/epub/vivliostyle.config.epub.js',
+          output_path: '.cache/vs/build/epub/output.epub'
+        )
         cmd = runner.send(:build_command)
 
-        assert_match(/--config vivliostyle\.config\.epub\.js/, cmd,
-                     '--config で EPUB 専用設定ファイルを指定するべき')
+        assert_match(%r{--config \.cache/vs/build/epub/vivliostyle\.config\.epub\.js}, cmd,
+                     '--config で消費者 dir 内の生成 config を指定するべき')
       end
     end
 

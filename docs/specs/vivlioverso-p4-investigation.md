@@ -362,6 +362,18 @@ P2/P3 と同じく「現行から採取した基準」に対し各段で `rake t
    単章 5p＝E5 一致・ルート無汚染）。
 4. **EPUB/Kindle を epub/・kindle/ 化**（E2 の確定案）。`EpubFlow` の snapshot 3 メソッド削除
    → 完了条件 1。epubcheck 緑＋`epub_kindle_layout_test` 緑＋KPF 生成確認。
+   → **完了（2026-07-04）**。`stage_consumer_htmls!`（prefix 剥がしコピー）＋
+   `localize_assets!`（選択コピー＝旧 copyAsset.excludes の知識を移設・config から
+   copyAsset ブロック撤去）＋ `entryContext` 指定の生成 config（entries は `./xx.html`）で
+   実装。暫定ブリッジとフレーバ間スナップショットを撤去し、headings 合成画像・
+   `_epub_assets` 変換物・book-settings 変種も消費者 dir 内へ（§5.2-b の著者 dir 汚染解消を
+   前倒し）。カバーは埋め込み対象の 1 枚だけを dir/covers/ へローカライズ
+   （未参照の表 1/表 4 PNG 同梱が消え約 5.7MB 減）。検証: rake test 全緑（1,453）・
+   epubcheck 0/0・KPF 生成成功（Error 0）・段階 3 成果物との突き合わせで EPUB 内
+   4,128 ファイル全てバイト同一（差分は dcterms:modified と外した PNG 2 点の manifest のみ）・
+   PDF 2 点の全ページテキスト一致・ルート無汚染を実測。
+   （補足: EPUB 生成 config は E2 スパイクどおり workspaceDir 未指定＝ルート `.vivliostyle`
+   が一時生成され final clean が掃除する。移設は段階 5 以降の任意課題とする。）
 5. **final clean 刷新**: `.keep` ハック削除（完了条件 2）・ワークスペース一括掃除・
    clean.rb のルートパターンを legacy 掃除へ縮退 → 完了条件 4（ルート無汚染）。
 6. **テスト前提更新＋構造保証テスト新設**（§5.5）。`rake test:release` 全緑。
