@@ -145,7 +145,7 @@ module VivlioStarter
             <head>
               <meta charset="UTF-8">
               <title>索引</title>
-              <link rel="stylesheet" href="stylesheets/index.css">
+              <link rel="stylesheet" href="#{Common.asset_prefix}stylesheets/index.css">
             </head>
             <body class="index-page">
               <section class="index">
@@ -286,7 +286,7 @@ module VivlioStarter
             <head>
               <meta charset="UTF-8">
               <title>#{title}</title>
-              <link rel="stylesheet" href="stylesheets/glossary.css">
+              <link rel="stylesheet" href="#{Common.asset_prefix}stylesheets/glossary.css">
             </head>
             <body class="glossary-page">
               <section class="glossarypage" role="doc-glossary">

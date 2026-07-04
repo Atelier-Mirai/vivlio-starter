@@ -125,18 +125,21 @@ module VivlioStarter
 
       # TOC の Markdown ドキュメントを構築する
       class TocDocumentBuilder
-        FRONT_MATTER = <<~MD
-          ---
-          link:
-            - rel: "stylesheet"
-              href: "stylesheets/toc.css"
-          lang: 'ja'
-          ---
+        # href はワークスペース内 HTML からの相対（Common.asset_prefix 前置・P4 §3.3）
+        def self.front_matter
+          <<~MD
+            ---
+            link:
+              - rel: "stylesheet"
+                href: "#{Common.asset_prefix}stylesheets/toc.css"
+            lang: 'ja'
+            ---
 
-          # 目次
-          <nav id="toc" role="doc-toc">
-          <ul>
-        MD
+            # 目次
+            <nav id="toc" role="doc-toc">
+            <ul>
+          MD
+        end
 
         # @param entry_map [Hash{String => TokenResolver::Entry}] HTML パス => Entry のマップ
         # @param base_dir [Pathname] ベースディレクトリ
@@ -148,7 +151,7 @@ module VivlioStarter
 
         # TOC の Markdown 文字列を構築する
         def build
-          buffer = [FRONT_MATTER.dup]
+          buffer = [self.class.front_matter]
           append_preface(buffer)
           append_headings(buffer)
           append_postface(buffer)

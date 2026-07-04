@@ -97,7 +97,8 @@ module VivlioStarter
           replace_text_segments(html) do |text|
             text.gsub(CIRCLED_NUMBER_REGEX) do |char|
               number = CIRCLED_NUMBER_TEXT.fetch(char)
-              src = File.join(GENERATED_ASSET_DIR, "circled-#{number}.webp")
+              # src はワークスペース内 HTML からの相対（asset_prefix 前置・P4 §3.3）
+              src = "#{Common.asset_prefix}#{File.join(GENERATED_ASSET_DIR, "circled-#{number}.webp")}"
               %(<img src="#{src}" alt="#{number}" aria-label="#{number}" class="emoji vs-emoji vs-circled-number" style="width: 1em; height: 1em; vertical-align: -0.12em;">)
             end
           end
@@ -236,7 +237,7 @@ module VivlioStarter
             content = File.read(html_file, encoding: 'utf-8')
             normalized = content.gsub(%r{<span\b[^>]*\bclass="[^"]*\bvs-circled-number\b[^"]*"[^>]*\baria-label="(\d{1,2})"[^>]*>\s*\d{1,2}\s*</span>}i) do
               number = Regexp.last_match(1)
-              src = File.join(GENERATED_ASSET_DIR, "circled-#{number}.webp")
+              src = "#{Common.asset_prefix}#{File.join(GENERATED_ASSET_DIR, "circled-#{number}.webp")}"
               %(<img src="#{src}" alt="#{number}" aria-label="#{number}" class="emoji vs-emoji vs-circled-number" style="width: 1em; height: 1em; vertical-align: -0.12em;">)
             end
             next if content == normalized
@@ -247,12 +248,16 @@ module VivlioStarter
         end
 
         def rewrite_svg_references!(html_files)
+          asset_prefix = Common.asset_prefix
           html_files.each do |html_file|
             content = File.read(html_file, encoding: 'utf-8')
             rewritten = content.gsub(/(<img\s[^>]*src=")([^"]*\.svg)(")/i) do
               prefix, svg_src, suffix = Regexp.last_match.captures
               webp_src = svg_src.sub(/\.svg\z/i, '.webp')
-              File.exist?(webp_src) ? "#{prefix}#{webp_src}#{suffix}" : "#{prefix}#{svg_src}#{suffix}"
+              # src はワークスペース相対（asset_prefix 付き）のため、存在確認は
+              # ルート（cwd）基準に剥がしたパスで行う（P4 §3.3）
+              webp_on_disk = webp_src.delete_prefix(asset_prefix)
+              File.exist?(webp_on_disk) ? "#{prefix}#{webp_src}#{suffix}" : "#{prefix}#{svg_src}#{suffix}"
             end
             next if content == rewritten
 
@@ -313,6 +318,9 @@ module VivlioStarter
         end
 
         def emoji_css
+          # インライン <style> の url() は HTML ファイル基準で解決されるため、
+          # ワークスペース内 HTML からの相対（asset_prefix 前置）で書く（P4 §3.3）
+          p = Common.asset_prefix
           <<~CSS
             /* Vivlio Starter: techbook emoji style */
             img.vs-emoji {
@@ -331,9 +339,9 @@ module VivlioStarter
                記号を CSS 文字列として描画すると Chromium が Type 3
                フォントとして埋め込むため、Twemoji WebP の url() に置き換える。 */
             :root {
-              --h3-marker: url("stylesheets/twemoji/vs-techbook/marker-h3.webp") !important;
-              --h4-marker: url("stylesheets/twemoji/vs-techbook/marker-h4.webp") !important;
-              --subtitle-wave-image: url("stylesheets/twemoji/vs-techbook/wave.webp") !important;
+              --h3-marker: url("#{p}stylesheets/twemoji/vs-techbook/marker-h3.webp") !important;
+              --h4-marker: url("#{p}stylesheets/twemoji/vs-techbook/marker-h4.webp") !important;
+              --subtitle-wave-image: url("#{p}stylesheets/twemoji/vs-techbook/wave.webp") !important;
               --code-font: var(--font-code);
             }
 

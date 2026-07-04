@@ -42,6 +42,28 @@ module VivlioStarter
       CACHE_DIR = '.cache/vs'
       VIVLIOSTYLE_CONFIG_FILE = 'vivliostyle.config.js'
 
+      # ------------------------------------------------------------
+      # ビルドワークスペース（P4: 中間生成物の分離場所）
+      # ------------------------------------------------------------
+      # 中間 md/HTML/中間 PDF/EPUB 作業物はルートではなくこの配下に閉じる。
+      # 4 消費者 dir は同一深度（ルートから 4 階層）にすることが仕様の要:
+      # 資産への相対プレフィックスが全消費者で共通になり、html/ から
+      # 消費者 dir へのコピーが無加工（バイト同一）で成立する（P4 §3.1）。
+      BUILD_DIR        = "#{CACHE_DIR}/build"
+      BUILD_HTML_DIR   = "#{BUILD_DIR}/html"
+      BUILD_PDF_DIR    = "#{BUILD_DIR}/pdf"
+      BUILD_EPUB_DIR   = "#{BUILD_DIR}/epub"
+      BUILD_KINDLE_DIR = "#{BUILD_DIR}/kindle"
+
+      # 中間 HTML/md から著者資産（stylesheets/ images/ 等）への相対プレフィックス。
+      # 生成時に正しいプレフィックスで書く（コピー時 gsub はしない）が P4 §3.3 の方針。
+      # 資産参照を生成する choke point（FrontmatterGenerator / ImagePathNormalizer /
+      # MathTransformer / Techbook::Processor / TocGenerator / UnifiedPageBuilder）は
+      # 必ずこの値を参照すること。
+      # 段階 1（配線・出力不変確認）では '' のまま。段階 3（workspace 切替）で
+      # '../../../../' に変更する（P4 §7 の 2 段安全網）。
+      ASSET_PREFIX = ''
+
       # ================================================================
       # Recursive Data Wrapper (Ruby 4.0 Style)
       # ================================================================
@@ -797,6 +819,18 @@ module VivlioStarter
       def cache_dir          = CONFIG&.cache&.dir || CACHE_DIR
       def cache_enabled?     = CONFIG&.cache&.enabled != false
 
+      # ワークスペース関連（P4）
+      def asset_prefix       = ASSET_PREFIX
+      def build_dir          = BUILD_DIR
+      def build_html_dir     = BUILD_HTML_DIR
+      def build_pdf_dir      = BUILD_PDF_DIR
+
+      # 4 消費者 dir を作成してワークスペースを準備する
+      def ensure_build_workspace!
+        [BUILD_HTML_DIR, BUILD_PDF_DIR, BUILD_EPUB_DIR, BUILD_KINDLE_DIR].each { FileUtils.mkdir_p(it) }
+        BUILD_DIR
+      end
+
       # コマンド関連
       def vfm_command        = CONFIG&.commands&.vfm || VFM_COMMAND
 
@@ -870,6 +904,8 @@ module VivlioStarter
                       :ensure_external_command!, :external_command_available?,
                       :missing_external_command_message, :run_svg_converter!, :format_converter_stderr,
                       :blank?, :cache_cfg, :cache_dir, :cache_enabled?,
+                      :asset_prefix, :build_dir, :build_html_dir, :build_pdf_dir,
+                      :ensure_build_workspace!,
                       :stylesheets_dir, :templates_dir, :to_roman_lower,
                       :template_path, :chapter_template_path, :preface_template_path,
                       :appendix_template_path, :postface_template_path,
