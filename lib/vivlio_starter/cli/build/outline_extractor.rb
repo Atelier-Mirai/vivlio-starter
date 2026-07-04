@@ -309,10 +309,12 @@ module VivlioStarter
         # 目次見出し（例: 「目次」）を取得する。注釈対象 PDF 内で目次ページを
         # 「ページ先頭テキスト」として特定するために用いる。_toc.html の見出しから取得し、
         # 取得できない場合は既定値「目次」を返す（旧実装の _toc.pdf 依存を解消）。
+        # _toc.html はワークスペースの html/ に置かれる（P4 §3.4-1）
         def toc_heading_title
-          return '目次' unless File.exist?('_toc.html')
+          toc_html = File.join(Common::BUILD_HTML_DIR, '_toc.html')
+          return '目次' unless File.exist?(toc_html)
 
-          doc = Nokogiri::HTML.parse(File.read('_toc.html', encoding: 'utf-8'))
+          doc = Nokogiri::HTML.parse(File.read(toc_html, encoding: 'utf-8'))
           h1 = doc.at_css('h1')
           title = h1 ? (h1['data-h1'].to_s.strip.empty? ? h1.text : h1['data-h1']).to_s.strip : ''
           title.empty? ? '目次' : title

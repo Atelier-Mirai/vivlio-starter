@@ -147,6 +147,12 @@ module VivlioStarter
         Common.log_action('.vivliostyle ディレクトリを削除中...')
         FileUtils.rm_rf('.vivliostyle')
 
+        # ビルドワークスペース（P4: 中間 md/HTML/中間 PDF の置き場）を一括削除
+        if File.directory?(Common::BUILD_DIR)
+          FileUtils.rm_rf(Common::BUILD_DIR)
+          Common.log_info("#{Common::BUILD_DIR} を削除しました")
+        end
+
         Common.log_action('生成ファイルを削除中...')
         cleanup_patterns = [
           # HTML/JS 中間生成物

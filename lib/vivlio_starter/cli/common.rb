@@ -60,9 +60,8 @@ module VivlioStarter
       # 資産参照を生成する choke point（FrontmatterGenerator / ImagePathNormalizer /
       # MathTransformer / Techbook::Processor / TocGenerator / UnifiedPageBuilder）は
       # 必ずこの値を参照すること。
-      # 段階 1（配線・出力不変確認）では '' のまま。段階 3（workspace 切替）で
-      # '../../../../' に変更する（P4 §7 の 2 段安全網）。
-      ASSET_PREFIX = ''
+      # ワークスペース（ルートから 4 階層）からルート資産への上方参照。
+      ASSET_PREFIX = '../../../../'
 
       # ================================================================
       # Recursive Data Wrapper (Ruby 4.0 Style)

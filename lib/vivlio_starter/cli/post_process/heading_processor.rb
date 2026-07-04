@@ -508,10 +508,12 @@ module VivlioStarter
         end
 
         # 発見されたHTMLファイルから章トークンを取得
+        # 中間 HTML はワークスペースの html/ に置かれる（P4 §3.4-1）
         # @return [Array<String>] 章トークンの配列
         def discovered_main_chapter_tokens
           resolver = TokenResolver::Resolver.new
-          html_tokens = Dir.glob(File.join('.', '*.html')).map { |path| File.basename(path, '.html') }
+          html_tokens = Dir.glob(File.join(Common::BUILD_HTML_DIR, '*.html'))
+                           .map { |path| File.basename(path, '.html') }
           normalize_and_filter_tokens(html_tokens).sort_by { |token| resolver.resolve_file(token).number.to_i }
         end
 

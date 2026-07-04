@@ -56,12 +56,13 @@ module VivlioStarter
 
         # 生成済み HTML に対して Techbook 後処理を適用する。
         # Step 5c と Step 9 後の両方から呼ばれるため、CSS 注入は既存ブロックを置換して冪等にする。
-        # @param html_files [Array<String>, nil] 対象 HTML（nil 時はカレントディレクトリの全 HTML）
+        # @param html_files [Array<String>, nil] 対象 HTML（nil 時はワークスペース html/ の全 HTML）
         # @param inject_css [Boolean] CSS 注入も実施するか
         def post_process_html_files!(html_files = nil, inject_css: true)
           return unless enabled?
 
-          files = Array(html_files || Dir.glob('*.html')).select { File.file?(it) }.sort
+          files = Array(html_files || Dir.glob(File.join(Common::BUILD_HTML_DIR, '*.html')))
+                  .select { File.file?(it) }.sort
           return if files.empty?
 
           ensure_generated_assets!

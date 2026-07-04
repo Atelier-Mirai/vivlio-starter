@@ -92,8 +92,10 @@ module VivlioStarter
         end
 
         # 重複排除対象の HTML が存在するか
+        # dedup はワークスペース pdf/ 配下のコピーに閉じる（P4 §3.4-4）
         def dedup_target_exists?
-          File.exist?('_glossarypage.html') || File.exist?('_indexpage.html')
+          File.exist?(File.join(Common::BUILD_PDF_DIR, '_glossarypage.html')) ||
+            File.exist?(File.join(Common::BUILD_PDF_DIR, '_indexpage.html'))
         end
 
         # --- 各フェーズの実行 ---
@@ -117,15 +119,14 @@ module VivlioStarter
         end
 
         # 浄化済み HTML で PDF を再ビルド
+        # 本文用生成 config（vivliostyle.config.sections.js）を再実行するだけでよい
+        # （P4 §3.2: entries は用途別ファイルのため再生成不要・出力も pdf/_sections.pdf 直行）
         def rebuild_pdf!(_entries)
-          # entries.js を再生成して PDF をビルド
-          # 既存の entries.js がそのまま使えるため、PDF 生成のみ
-          PdfCommands.execute_pdf({})
+          sections_pdf = File.join(Common::BUILD_PDF_DIR, '_sections.pdf')
+          config = File.join(Common::BUILD_PDF_DIR, 'vivliostyle.config.sections.js')
+          PdfCommands.execute_pdf({}, nil, config_path: config, output_path: sections_pdf)
 
-          output_pdf = PdfCommands::PdfCommandRunner::DEFAULT_OUTPUT_PDF
-
-          if File.exist?(output_pdf)
-            FileUtils.cp(output_pdf, '_sections.pdf')
+          if File.exist?(sections_pdf)
             Common.log_success('[Step 8] 重複排除済み _sections.pdf を再生成しました')
           else
             Common.log_warn('[Step 8] PDF 再ビルドの出力が見つかりません')

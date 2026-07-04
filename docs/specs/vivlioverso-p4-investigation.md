@@ -348,10 +348,18 @@ P2/P3 と同じく「現行から採取した基準」に対し各段で `rake t
 
 1. **プレフィックス配線（出力不変）**: `Common.asset_prefix`（`''`）と workspace パス定数を導入し、
    §3.3 の choke point を prefix 参照へ置換。全成果物バイト同一を確認（安全網）。
+   → **完了（2026-07-04）**。閲覧用 400p・入稿用 398p の全ページテキスト一致・
+   クリーン EPUB バイト同一・KPF 生成成功を実測（コミット 1b11d778）。
 2. **実験 E1〜E5** を実施し、§5.2 の案と config 生成仕様を本書へ追記・確定。
    → **完了（2026-07-04・§6.1）**。
 3. **prep 出力を html/ へ移設**＋PDF 消費経路を pdf/ 化（コピー＋用途別 entries/config）。
    → 完了条件 3（entries.js 再生成の解消）・E1/E3/E4 の実証。**最大差分のゲート**。
+   → **完了（2026-07-04）**。段階 1（prefix `''` 配線・出力不変実測）と合わせて実装。
+   `Build::VivliostyleConfigWriter` 新設・dedup は pdf/ に閉じ
+   `snapshot pre-dedup html for epub` ステップを撤去（完了条件 1 の前半）。
+   EPUB/Kindle は暫定ブリッジ（html/ → ルートへ prefix 剥がし展開・`EpubFlow`）で
+   現行経路のまま。検証: rake test 全緑＋実ビルド突き合わせ（PDF 全ページテキスト一致・
+   単章 5p＝E5 一致・ルート無汚染）。
 4. **EPUB/Kindle を epub/・kindle/ 化**（E2 の確定案）。`EpubFlow` の snapshot 3 メソッド削除
    → 完了条件 1。epubcheck 緑＋`epub_kindle_layout_test` 緑＋KPF 生成確認。
 5. **final clean 刷新**: `.keep` ハック削除（完了条件 2）・ワークスペース一括掃除・

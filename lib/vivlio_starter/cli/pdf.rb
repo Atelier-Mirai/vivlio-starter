@@ -29,9 +29,11 @@ module VivlioStarter
       # @param options [Hash] オプション
       #   - :verbose [Boolean] 詳細ログ出力
       # @param target_output [String, nil] 出力ファイル名（リネーム先）
+      # @param config_path [String, nil] 生成 config（-c 指定・パイプライン専用。P4 §3.2）
+      # @param output_path [String, nil] config の output に対応する成否確認先
       # @return [void]
-      def execute_pdf(options, target_output = nil)
-        PdfCommandRunner.new(options, target_output).call
+      def execute_pdf(options, target_output = nil, config_path: nil, output_path: nil)
+        PdfCommandRunner.new(options, target_output, config_path:, output_path:).call
       end
 
       # PDF 圧縮を実行する
@@ -77,9 +79,11 @@ module VivlioStarter
       #
       # @param options [Hash] オプション
       # @param target_output [String, nil] 出力ファイル名
+      # @param config_path [String, nil] 生成 config（-c 指定・パイプライン専用。P4 §3.2）
+      # @param output_path [String, nil] config の output に対応する成否確認先
       # @return [void]
-      def execute_print_pdf(options, target_output = nil)
-        PrintPdfCommandRunner.new(options, target_output).call
+      def execute_print_pdf(options, target_output = nil, config_path: nil, output_path: nil)
+        PrintPdfCommandRunner.new(options, target_output, config_path:, output_path:).call
       end
 
       # npx vivliostyle build をラップして PDF を生成する
@@ -87,9 +91,14 @@ module VivlioStarter
         # vivliostyle build の既定出力ファイル名（最終成果物は Step 14 でリネームされる）
         DEFAULT_OUTPUT_PDF = 'output.pdf'
 
-        def initialize(options, target_output)
+        # @param config_path [String, nil] 生成 config のパス（指定時は `-c` で渡す。
+        #   entries は config が import するためルート entries.js には依存しない）
+        # @param output_path [String, nil] config の output と同じパス（成否確認用）
+        def initialize(options, target_output, config_path: nil, output_path: nil)
           @options = options || {}
           @target_output = target_output
+          @config_path = config_path
+          @output_path_override = output_path
           @build_success = false
         end
 
@@ -113,7 +122,7 @@ module VivlioStarter
 
         private
 
-        attr_reader :options, :target_output
+        attr_reader :options, :target_output, :config_path
 
         def apply_verbose
           ENV['VERBOSE'] = '1' if options[:verbose]
@@ -121,7 +130,8 @@ module VivlioStarter
 
         # Vivliostyle CLI を実行して PDF を生成する
         def execute_build
-          ensure_entries_file!
+          # 生成 config は entries を同梱するため、ルート entries.js の存在確認は不要
+          ensure_entries_file! unless config_path
           start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
           @build_success = if quiet_mode?
@@ -162,7 +172,11 @@ module VivlioStarter
         end
 
         # 実行するビルドコマンド文字列を組み立てる
+        # 生成 config 指定時は cwd（ルート）から -c で渡す（E1: パス解決は cwd 基準）。
+        # -d（single-doc）は生成 config と併用不可（E5）のため付けない。
         def build_command
+          return "npx vivliostyle build -c #{config_path}" if config_path
+
           cmd = 'npx vivliostyle build'
           cmd += ' -d' if SingleDocDecider.new.call
           cmd
@@ -189,9 +203,9 @@ module VivlioStarter
           target_output && !target_output.to_s.strip.empty?
         end
 
-        # 出力ファイルのパスを返す
+        # 出力ファイルのパスを返す（生成 config 指定時はその output と同じパス）
         def output_path
-          DEFAULT_OUTPUT_PDF
+          @output_path_override || DEFAULT_OUTPUT_PDF
         end
 
         # 出力先の絶対パスをログ出力する
@@ -780,9 +794,14 @@ module VivlioStarter
 
         # トンボ・塗り足しオプションを付加したビルドコマンドを組み立てる
         # book.yml の output.print_pdf.bleed / crop_marks を参照
+        # 生成 config 指定時は -c で渡す（-d は併用不可・E5）
         def build_command
           cmd = 'npx vivliostyle build'
-          cmd += ' -d' if SingleDocDecider.new.call
+          if config_path
+            cmd += " -c #{config_path}"
+          elsif SingleDocDecider.new.call
+            cmd += ' -d'
+          end
 
           print_cfg = Common::CONFIG.output.print_pdf
           bleed = print_cfg.bleed&.to_s || '3mm'

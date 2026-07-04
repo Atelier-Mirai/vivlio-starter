@@ -93,8 +93,10 @@ module VivlioStarter
         # HTML の width/height 属性は整数 px のみ許容され "1em" は EPUB で
         # RSC-005 ERROR になるため、属性ではなくインライン style で寸法を与える。
         # src はワークスペース内 HTML からの相対（asset_prefix 前置・P4 §3.3）。
+        # 絶対パス（テスト注入等）はそのまま解決できるため前置しない。
         def build_img_tag(char, svg_path)
-          %(<img src="#{Common.asset_prefix}#{svg_path}" alt="#{char}" ) +
+          prefix = svg_path.absolute? ? '' : Common.asset_prefix
+          %(<img src="#{prefix}#{svg_path}" alt="#{char}" ) +
             %(class="emoji vs-emoji" ) +
             %(style="width: 1em; height: 1em; vertical-align: -0.15em;">)
         end

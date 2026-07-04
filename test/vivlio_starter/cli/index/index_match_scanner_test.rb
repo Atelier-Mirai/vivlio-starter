@@ -225,8 +225,10 @@ module VivlioStarter
         # --- phase: scan_all_chapters! tests ---
 
         def test_scan_all_chapters_saves_matches
-          File.write('11-a.md', "[用語A]を説明。\n")
-          File.write('12-b.md', "[用語B]を説明。\n")
+          # 前処理済み中間 .md はワークスペースの html/ に置かれる（P4 §3.4-1）
+          FileUtils.mkdir_p(Common::BUILD_HTML_DIR)
+          File.write(File.join(Common::BUILD_HTML_DIR, '11-a.md'), "[用語A]を説明。\n")
+          File.write(File.join(Common::BUILD_HTML_DIR, '12-b.md'), "[用語B]を説明。\n")
 
           @scanner.scan_all_chapters!(%w[11-a 12-b])
 
@@ -366,17 +368,21 @@ module VivlioStarter
 
         # --- phase: find_chapter_file tests ---
 
-        def test_find_chapter_file_prefers_root_by_default
-          File.write('chapter.md', 'root content')
+        def test_find_chapter_file_prefers_workspace_by_default
+          # 前処理済み（ワークスペース html/）を優先する（P4 §3.4-1）
+          workspace_md = File.join(Common::BUILD_HTML_DIR, 'chapter.md')
+          FileUtils.mkdir_p(Common::BUILD_HTML_DIR)
+          File.write(workspace_md, 'workspace content')
           File.write('contents/chapter.md', 'contents content')
 
           result = @scanner.find_chapter_file('chapter', prefer_contents: false)
 
-          assert_equal 'chapter.md', result
+          assert_equal workspace_md, result
         end
 
         def test_find_chapter_file_prefers_contents_when_specified
-          File.write('chapter.md', 'root content')
+          FileUtils.mkdir_p(Common::BUILD_HTML_DIR)
+          File.write(File.join(Common::BUILD_HTML_DIR, 'chapter.md'), 'workspace content')
           File.write('contents/chapter.md', 'contents content')
 
           result = @scanner.find_chapter_file('chapter', prefer_contents: true)

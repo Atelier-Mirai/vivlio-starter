@@ -15,7 +15,8 @@ module VivlioStarter
         ctx = normalized_context(command_or_context)
         enable_verbose(ctx)
 
-        base_dir = '.'
+        # 中間 .md / .html はワークスペースの html/ に置かれる（P4 §3.4-1）
+        base_dir = Common::BUILD_HTML_DIR
         md_files = resolve_md_files_for_convert(tokens_or_entries, base_dir)
 
         md_files.each do |md|

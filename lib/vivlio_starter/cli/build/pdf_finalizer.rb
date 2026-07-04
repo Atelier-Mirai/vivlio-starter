@@ -25,42 +25,43 @@ module VivlioStarter
   module CLI
     module Build
       # PDF 圧縮・リネームモジュール
+      # 中間 PDF はワークスペース pdf/ 内にあり、最終リネームでのみルートへ出る（P4 §3.4-6）
       module PdfFinalizer
         module_function
+
+        # 結合済み PDF（リネーム前）のワークスペース内パス
+        def workspace_output_pdf            = File.join(Common::BUILD_PDF_DIR, 'output.pdf')
+        def workspace_compressed_output_pdf = File.join(Common::BUILD_PDF_DIR, 'output_compressed.pdf')
 
         # Step 12: 生成PDFを圧縮
         # pipeline: true — PDF は生成済みのため、gs 不在や圧縮失敗で
         # ビルド全体を止めず、スキップして未圧縮 PDF のまま続行する
         def compress_pdf!
           Common.log_action('[Step 12] 生成PDFを圧縮します…')
-          PdfCommands.execute_pdf_compress({ pipeline: true })
+          PdfCommands.execute_pdf_compress({ pipeline: true }, workspace_output_pdf, workspace_compressed_output_pdf)
         end
 
-        # Step 13: 出力PDFを最終ファイル名にリネーム
+        # Step 13: 出力PDFを最終ファイル名にリネーム（ワークスペース → ルート）
         def rename_output_pdfs!
           rename_main_pdf
-          rename_compressed_pdf if File.exist?('output_compressed.pdf')
+          rename_compressed_pdf if File.exist?(workspace_compressed_output_pdf)
         end
 
-        # output.pdf を動的生成されたファイル名にリネーム
+        # pdf/output.pdf をルート直下の動的生成ファイル名へ移動
         def rename_main_pdf
-          return unless File.exist?('output.pdf')
+          return unless File.exist?(workspace_output_pdf)
 
           target_name = Common.generate_output_filename('pdf')
-          return if target_name == 'output.pdf'
-
           FileUtils.rm_f(target_name)
-          FileUtils.mv('output.pdf', target_name)
+          FileUtils.mv(workspace_output_pdf, target_name)
           Common.log_success("出力PDFをリネームしました: output.pdf → #{target_name}")
         end
 
-        # output_compressed.pdf を動的生成されたファイル名にリネーム
+        # pdf/output_compressed.pdf をルート直下の動的生成ファイル名へ移動
         def rename_compressed_pdf
           target_name = Common.generate_compressed_pdf_filename('pdf')
-          return if target_name == 'output_compressed.pdf'
-
           FileUtils.rm_f(target_name)
-          FileUtils.mv('output_compressed.pdf', target_name)
+          FileUtils.mv(workspace_compressed_output_pdf, target_name)
           Common.log_success("圧縮PDFをリネームしました: output_compressed.pdf → #{target_name}")
         end
       end

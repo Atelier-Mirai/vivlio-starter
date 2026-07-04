@@ -57,7 +57,7 @@ class TestBacklinkDeduplicator < Minitest::Test
           </body>
           </html>
         HTML
-        File.write('_glossarypage.html', glossary_html, encoding: 'utf-8')
+        File.write(pdf_path('_glossarypage.html'), glossary_html, encoding: 'utf-8')
 
         # ページマッピング: anchor-1 と anchor-2 は同じページ(4), anchor-3 はページ5
         page_mapping = build_page_mapping(
@@ -75,7 +75,7 @@ class TestBacklinkDeduplicator < Minitest::Test
         assert_equal 1, result.glossary_removed
 
         # 残ったバックリンクは2件（ページ4に1件、ページ5に1件）
-        doc = Nokogiri::HTML5(File.read('_glossarypage.html'))
+        doc = Nokogiri::HTML5(File.read(pdf_path('_glossarypage.html')))
         remaining_links = doc.css('a.glossary-backlink')
         assert_equal 2, remaining_links.size
 
@@ -105,7 +105,7 @@ class TestBacklinkDeduplicator < Minitest::Test
           </body>
           </html>
         HTML
-        File.write('_glossarypage.html', glossary_html, encoding: 'utf-8')
+        File.write(pdf_path('_glossarypage.html'), glossary_html, encoding: 'utf-8')
 
         page_mapping = build_page_mapping(
           mappings: [
@@ -120,7 +120,7 @@ class TestBacklinkDeduplicator < Minitest::Test
         # Assert: 重複なし
         assert_equal 0, result.glossary_removed
 
-        doc = Nokogiri::HTML5(File.read('_glossarypage.html'))
+        doc = Nokogiri::HTML5(File.read(pdf_path('_glossarypage.html')))
         assert_equal 2, doc.css('a.glossary-backlink').size
       end
     end
@@ -144,7 +144,7 @@ class TestBacklinkDeduplicator < Minitest::Test
           </body>
           </html>
         HTML
-        File.write('_glossarypage.html', glossary_html, encoding: 'utf-8')
+        File.write(pdf_path('_glossarypage.html'), glossary_html, encoding: 'utf-8')
 
         page_mapping = build_page_mapping(
           mappings: [
@@ -160,7 +160,7 @@ class TestBacklinkDeduplicator < Minitest::Test
         # Assert: 2件削除、1件残る
         assert_equal 2, result.glossary_removed
 
-        doc = Nokogiri::HTML5(File.read('_glossarypage.html'))
+        doc = Nokogiri::HTML5(File.read(pdf_path('_glossarypage.html')))
         remaining = doc.css('a.glossary-backlink')
         assert_equal 1, remaining.size
         assert_equal '08-web.html#gls-src-08-web-javascript-1', remaining.first['href']
@@ -184,7 +184,7 @@ class TestBacklinkDeduplicator < Minitest::Test
           </body>
           </html>
         HTML
-        File.write('08-web.html', body_html, encoding: 'utf-8')
+        File.write(pdf_path('08-web.html'), body_html, encoding: 'utf-8')
 
         # 両方とも同じページ（ページ4）に配置
         page_mapping = build_page_mapping(
@@ -200,7 +200,7 @@ class TestBacklinkDeduplicator < Minitest::Test
         # Assert: 本文の2件目の†が削除される
         assert_equal 1, result.body_removed
 
-        doc = Nokogiri::HTML5(File.read('08-web.html'))
+        doc = Nokogiri::HTML5(File.read(pdf_path('08-web.html')))
         remaining = doc.css('a.glossary-link')
         assert_equal 1, remaining.size
         assert_equal 'gls-src-08-web-ウェブサイト-1', remaining.first['id']
@@ -222,7 +222,7 @@ class TestBacklinkDeduplicator < Minitest::Test
           </body>
           </html>
         HTML
-        File.write('08-web.html', body_html, encoding: 'utf-8')
+        File.write(pdf_path('08-web.html'), body_html, encoding: 'utf-8')
 
         # 異なるページに配置
         page_mapping = build_page_mapping(
@@ -238,7 +238,7 @@ class TestBacklinkDeduplicator < Minitest::Test
         # Assert: 異なるページなので両方残る
         assert_equal 0, result.body_removed
 
-        doc = Nokogiri::HTML5(File.read('08-web.html'))
+        doc = Nokogiri::HTML5(File.read(pdf_path('08-web.html')))
         assert_equal 2, doc.css('a.glossary-link').size
       end
     end
@@ -258,7 +258,7 @@ class TestBacklinkDeduplicator < Minitest::Test
           </body>
           </html>
         HTML
-        File.write('08-web.html', body_html, encoding: 'utf-8')
+        File.write(pdf_path('08-web.html'), body_html, encoding: 'utf-8')
 
         page_mapping = build_page_mapping(
           mappings: [
@@ -273,7 +273,7 @@ class TestBacklinkDeduplicator < Minitest::Test
         # Assert: 異なる用語なので両方残る
         assert_equal 0, result.body_removed
 
-        doc = Nokogiri::HTML5(File.read('08-web.html'))
+        doc = Nokogiri::HTML5(File.read(pdf_path('08-web.html')))
         assert_equal 2, doc.css('a.glossary-link').size
       end
     end
@@ -307,7 +307,7 @@ class TestBacklinkDeduplicator < Minitest::Test
           </body>
           </html>
         HTML
-        File.write('08-web.html', body_html, encoding: 'utf-8')
+        File.write(pdf_path('08-web.html'), body_html, encoding: 'utf-8')
 
         # 同じ page_index=0 でも spine が異なる
         page_mapping = build_page_mapping(
@@ -350,7 +350,7 @@ class TestBacklinkDeduplicator < Minitest::Test
           </body>
           </html>
         HTML
-        File.write('_indexpage.html', index_html, encoding: 'utf-8')
+        File.write(pdf_path('_indexpage.html'), index_html, encoding: 'utf-8')
 
         # idx-abc-1 と idx-abc-2 は同一ページ(1,3)、idx-abc-3 は別ページ(2,0)
         page_mapping = build_page_mapping(
@@ -367,7 +367,7 @@ class TestBacklinkDeduplicator < Minitest::Test
         # Assert: 1件の重複索引リンクが削除される
         assert_equal 1, result.index_removed
 
-        doc = Nokogiri::HTML5(File.read('_indexpage.html'))
+        doc = Nokogiri::HTML5(File.read(pdf_path('_indexpage.html')))
         remaining = doc.css('.index-list dd a')
         assert_equal 2, remaining.size
 
@@ -396,7 +396,7 @@ class TestBacklinkDeduplicator < Minitest::Test
           </body>
           </html>
         HTML
-        File.write('_indexpage.html', index_html, encoding: 'utf-8')
+        File.write(pdf_path('_indexpage.html'), index_html, encoding: 'utf-8')
 
         page_mapping = build_page_mapping(
           index_mappings: [
@@ -411,7 +411,7 @@ class TestBacklinkDeduplicator < Minitest::Test
         # Assert: 異なるページなので両方残る
         assert_equal 0, result.index_removed
 
-        doc = Nokogiri::HTML5(File.read('_indexpage.html'))
+        doc = Nokogiri::HTML5(File.read(pdf_path('_indexpage.html')))
         assert_equal 2, doc.css('.index-list dd a').size
       end
     end
@@ -435,7 +435,7 @@ class TestBacklinkDeduplicator < Minitest::Test
           </body>
           </html>
         HTML
-        File.write('_indexpage.html', index_html, encoding: 'utf-8')
+        File.write(pdf_path('_indexpage.html'), index_html, encoding: 'utf-8')
 
         page_mapping = build_page_mapping(
           index_mappings: [
@@ -452,7 +452,7 @@ class TestBacklinkDeduplicator < Minitest::Test
         # Assert: 3件削除、1件残る
         assert_equal 3, result.index_removed
 
-        doc = Nokogiri::HTML5(File.read('_indexpage.html'))
+        doc = Nokogiri::HTML5(File.read(pdf_path('_indexpage.html')))
         remaining = doc.css('.index-list dd a')
         assert_equal 1, remaining.size
         assert_equal '08-web.html#idx-br-1', remaining.first['href']
@@ -478,7 +478,7 @@ class TestBacklinkDeduplicator < Minitest::Test
           </body>
           </html>
         HTML
-        File.write('_indexpage.html', index_html, encoding: 'utf-8')
+        File.write(pdf_path('_indexpage.html'), index_html, encoding: 'utf-8')
 
         # idx-html-1 と idx-html-2 は同一ページ
         page_mapping = build_page_mapping(
@@ -495,7 +495,7 @@ class TestBacklinkDeduplicator < Minitest::Test
         # Assert: 1件削除、frontmatter クラスが保持される
         assert_equal 1, result.index_removed
 
-        doc = Nokogiri::HTML5(File.read('_indexpage.html'))
+        doc = Nokogiri::HTML5(File.read(pdf_path('_indexpage.html')))
         remaining = doc.css('.index-list dd a')
         assert_equal 2, remaining.size
 
@@ -524,7 +524,7 @@ class TestBacklinkDeduplicator < Minitest::Test
           </body>
           </html>
         HTML
-        File.write('_indexpage.html', index_html, encoding: 'utf-8')
+        File.write(pdf_path('_indexpage.html'), index_html, encoding: 'utf-8')
 
         # 同じ page_index=0 だが spine が異なる
         page_mapping = build_page_mapping(
@@ -563,7 +563,7 @@ class TestBacklinkDeduplicator < Minitest::Test
           </body>
           </html>
         HTML
-        File.write('_indexpage.html', index_html, encoding: 'utf-8')
+        File.write(pdf_path('_indexpage.html'), index_html, encoding: 'utf-8')
 
         # 全て同一ページ
         page_mapping = build_page_mapping(
@@ -581,7 +581,7 @@ class TestBacklinkDeduplicator < Minitest::Test
         # Assert: 各用語で1件ずつ削除、合計2件
         assert_equal 2, result.index_removed
 
-        doc = Nokogiri::HTML5(File.read('_indexpage.html'))
+        doc = Nokogiri::HTML5(File.read(pdf_path('_indexpage.html')))
         # CSS の dd には1件、HTML の dd には1件残る
         dds = doc.css('.index-list dd')
         assert_equal 2, dds.size
@@ -608,7 +608,7 @@ class TestBacklinkDeduplicator < Minitest::Test
           </body>
           </html>
         HTML
-        File.write('_indexpage.html', index_html, encoding: 'utf-8')
+        File.write(pdf_path('_indexpage.html'), index_html, encoding: 'utf-8')
 
         # idx-missing-2 はマッピングに含めない（Playwright が見つけられなかったアンカー）
         page_mapping = build_page_mapping(
@@ -624,7 +624,7 @@ class TestBacklinkDeduplicator < Minitest::Test
         # Assert: マッピングのないリンク（idx-missing-2）が削除される
         assert_equal 1, result.index_removed
 
-        doc = Nokogiri::HTML5(File.read('_indexpage.html'))
+        doc = Nokogiri::HTML5(File.read(pdf_path('_indexpage.html')))
         remaining = doc.css('.index-list dd a')
         assert_equal 2, remaining.size
 
@@ -656,6 +656,13 @@ class TestBacklinkDeduplicator < Minitest::Test
   end
 
   private
+
+  # dedup 対象の HTML はワークスペース pdf/ 配下に置かれる（P4 §3.4-4）
+  def pdf_path(name)
+    dir = VivlioStarter::CLI::Common::BUILD_PDF_DIR
+    FileUtils.mkdir_p(dir)
+    File.join(dir, name)
+  end
 
   # テスト用 PageMapping を構築するヘルパー
   def build_page_mapping(mappings: [], backlink_mappings: [], index_mappings: [])

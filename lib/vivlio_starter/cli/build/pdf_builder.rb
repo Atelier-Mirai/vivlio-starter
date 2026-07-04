@@ -3,6 +3,7 @@
 require 'fileutils'
 
 require_relative '../techbook/processor'
+require_relative 'vivliostyle_config_writer'
 
 module VivlioStarter
   module CLI
@@ -17,6 +18,11 @@ module VivlioStarter
       #   - PDF分割をスキップし、全体を1つのPDFとして生成
       #   - これにより索引から前書きへのリンクなど内部リンクが維持される
       #   - ローマ数字ノンブルはCSSの @page front で対応
+      #
+      # ワークスペース（P4 §3.1/§3.4）:
+      #   共通 prep の成果（html/）を pdf/ へ無加工コピーし、pdf/ 内で
+      #   用途別 entries/config（VivliostyleConfigWriter）によりビルドする。
+      #   dedup の破壊的書換は pdf/ 配下のコピーに閉じ、html/ は常にクリーンな原本。
       # ------------------------------------------------
       module PdfBuilder
         # 章レンジ（定数）- 新仕様に合わせて更新
@@ -27,12 +33,63 @@ module VivlioStarter
 
         module_function
 
-        # Step 8: 全体PDF生成（ディレクトリスキャン版）
+        # html/ の全 HTML を pdf/ へ無加工コピーする（P4 §3.4-2）。
+        # 4 兄弟 dir は同一深度のため、資産への相対参照は書き換え不要（§3.3）。
+        def stage_workspace_htmls!
+          FileUtils.mkdir_p(Common::BUILD_PDF_DIR)
+          Dir.glob(File.join(Common::BUILD_HTML_DIR, '*.html')).each do |src|
+            FileUtils.cp(src, File.join(Common::BUILD_PDF_DIR, File.basename(src)))
+          end
+        end
+
+        # 特殊ページ HTML（前付・奥付）だけを html/ から pdf/ へコピーする。
+        # Step 9 で html/ に再生成された特殊ページを PDF 消費者へ届ける（P4 §3.4-5）。
+        # @param basenames [Array<String>] 例: %w[_titlepage _legalpage _colophon]
+        def stage_special_pages!(basenames)
+          FileUtils.mkdir_p(Common::BUILD_PDF_DIR)
+          basenames.each do |bn|
+            src = File.join(Common::BUILD_HTML_DIR, "#{bn}.html")
+            next unless File.exist?(src)
+
+            FileUtils.cp(src, File.join(Common::BUILD_PDF_DIR, "#{bn}.html"))
+          end
+        end
+
+        # Step 8: 全体PDF生成
         # 前書き+目次+本文+付録+後書き+索引を1つのPDFとして生成
-        # @param base_dir [String] ベースディレクトリ
         # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil] Entry 配列または basename 配列
-        def build_overall_pdf_from_dir!(base_dir = '.', entries_or_keep = nil)
-          # 前付け: 00-preface + _toc
+        def build_overall_pdf_from_dir!(entries_or_keep = nil)
+          stage_workspace_htmls!
+          targets_for_pdf = sections_entry_htmls(Common::BUILD_PDF_DIR, entries_or_keep)
+          Common.log_info("[Step 7] targets_for_pdf: #{targets_for_pdf.map { |p| File.basename(p) }.join(', ')}")
+
+          compile_overall_pdf!(targets_for_pdf)
+        end
+
+        # Step 7 (print_pdf only): 本文用 entries/config のみ生成（PDF ビルドをスキップ）
+        # 生成した entries.sections.js / config は PrintPdfBuilder と dedup が再利用する
+        def generate_entries_for_sections!(entries_or_keep = nil)
+          stage_workspace_htmls!
+          targets_for_pdf = sections_entry_htmls(Common::BUILD_PDF_DIR, entries_or_keep)
+
+          if targets_for_pdf.empty?
+            Common.log_warn('[Step 7] 対象HTMLが見つかりません。スキップします。')
+            return
+          end
+
+          Common.log_info('[Step 7] 本文用 entries/config を生成します（PDF ビルドはスキップ）')
+          VivliostyleConfigWriter.write!(name: 'sections', entry_htmls: targets_for_pdf,
+                                         output: File.join(Common::BUILD_PDF_DIR, '_sections.pdf'))
+          Common.log_success('[Step 7] entries.sections.js を生成しました')
+        end
+
+        # 書籍構成順（前書き → 目次 → [中扉+本文] → 付録 → 用語集 → 後書き → 索引）の
+        # 本文エントリ HTML を base_dir から収集する。
+        # ※ 00-preface, _toc を先頭に含めることで target-counter が正しく解決される
+        # @param base_dir [String] HTML の置き場（pdf/）
+        # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil]
+        # @return [Array<String>] 結合順の HTML パス配列
+        def sections_entry_htmls(base_dir, entries_or_keep = nil)
           preface_html = [File.join(base_dir, '00-preface.html')].select { |f| File.exist?(f) }
           toc_html = [File.join(base_dir, '_toc.html')].select { |f| File.exist?(f) }
 
@@ -59,9 +116,7 @@ module VivlioStarter
           main_htmls = Build::ChapterConfig.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers_main)
           main_htmls_with_parts = Build::PartTitleGenerator.insert_part_titles_into(main_htmls, base_dir)
 
-          # 書籍構成順序: 前書き → 目次 → [中扉+本文] → 付録 → 用語集 → 後書き → 索引
-          # ※ 00-preface, _toc を先頭に含めることで target-counter が正しく解決される
-          chapter_htmls_for_pdf = [
+          [
             preface_html,
             toc_html,
             main_htmls_with_parts,
@@ -70,70 +125,10 @@ module VivlioStarter
             Build::ChapterConfig.htmls_for_range(base_dir, POSTFACE_RANGE, keep_numbers_post),
             index_html
           ].flatten
-
-          targets_for_pdf = chapter_htmls_for_pdf
-          Common.log_info("[Step 7] targets_for_pdf: #{targets_for_pdf.map { |p| File.basename(p) }.join(', ')}")
-
-          compile_overall_pdf!(targets_for_pdf)
-        end
-
-        # Step 7 (print_pdf only): entries.js のみ生成（PDF ビルドをスキップ）
-        # print_pdf ターゲットのみの場合、entries.js は Step 13 で再利用される
-        # @param base_dir [String] ベースディレクトリ
-        # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil]
-        def generate_entries_for_sections!(base_dir = '.', entries_or_keep = nil)
-          preface_html = [File.join(base_dir, '00-preface.html')].select { |f| File.exist?(f) }
-          toc_html = [File.join(base_dir, '_toc.html')].select { |f| File.exist?(f) }
-
-          keep_numbers_main = Build::Utilities.chapter_numbers_for_book(entries_or_keep)
-          keep_numbers_appx = nil
-          keep_numbers_post = nil
-          if entries_or_keep&.any?
-            chapter_numbers = extract_chapter_numbers(entries_or_keep)
-            keep_numbers_appx = chapter_numbers.select { |n| APPX_RANGE.include?(n) }
-            keep_numbers_post = chapter_numbers.select { |n| POSTFACE_RANGE.include?(n) }
-          end
-          glossary_html = if IndexCommands.index_enabled?
-                            [File.join(base_dir, '_glossarypage.html')].select do |f|
-                              File.exist?(f)
-                            end
-                          else
-                            []
-                          end
-          index_html = if IndexCommands.index_enabled?
-                         [File.join(base_dir, '_indexpage.html')].select do |f|
-                           File.exist?(f)
-                         end
-                       else
-                         []
-                       end
-
-          # 本文章 HTML に中扉を挿入（部タイトルが定義されている場合）
-          main_htmls = Build::ChapterConfig.htmls_for_range(base_dir, MAIN_RANGE, keep_numbers_main)
-          main_htmls_with_parts = Build::PartTitleGenerator.insert_part_titles_into(main_htmls, base_dir)
-
-          chapter_htmls_for_pdf = [
-            preface_html,
-            toc_html,
-            main_htmls_with_parts,
-            Build::ChapterConfig.htmls_for_range(base_dir, APPX_RANGE, keep_numbers_appx),
-            glossary_html,
-            Build::ChapterConfig.htmls_for_range(base_dir, POSTFACE_RANGE, keep_numbers_post),
-            index_html
-          ].flatten
-
-          if chapter_htmls_for_pdf.empty?
-            Common.log_warn('[Step 7] 対象HTMLが見つかりません。スキップします。')
-            return
-          end
-
-          Common.log_info('[Step 7] entries.js を生成します（PDF ビルドはスキップ）')
-          EntriesCommands.execute_entries({}, chapter_htmls_for_pdf)
-          Common.log_success('[Step 7] entries.js を生成しました')
         end
 
         # 全体PDF生成（内部メソッド）
-        # entries.jsを生成し、VivliostyleでPDFをビルド
+        # 本文用 entries/config を生成し、Vivliostyle で pdf/_sections.pdf を直接ビルドする。
         #
         # 閲覧用本文も Chrome の一過性失敗で本文欠落になり得るため、本文ガードで
         # 検証・リトライし、回復不能ならビルドを中断する（merge での degenerate を防ぐ）。
@@ -144,31 +139,27 @@ module VivlioStarter
           end
           Common.log_info("[Step 7] 対象: #{targets_for_pdf.map { |p| File.basename(p) }.join(', ')}")
 
-          output_pdf = PdfCommands::PdfCommandRunner::DEFAULT_OUTPUT_PDF
-          min_pages  = [(targets_for_pdf.size / 2.0).floor, 5].max
+          sections_pdf = File.join(Common::BUILD_PDF_DIR, '_sections.pdf')
+          min_pages    = [(targets_for_pdf.size / 2.0).floor, 5].max
 
-          Build::Utilities.build_pdf_with_body_guard!(output_pdf, min_pages:) do
-            EntriesCommands.execute_entries({}, targets_for_pdf)
-            PdfCommands.execute_pdf({})
+          Build::Utilities.build_pdf_with_body_guard!(sections_pdf, min_pages:) do
+            config = VivliostyleConfigWriter.write!(name: 'sections', entry_htmls: targets_for_pdf,
+                                                    output: sections_pdf)
+            PdfCommands.execute_pdf({}, nil, config_path: config, output_path: sections_pdf)
           end
 
-          # 全体PDFをそのまま _sections.pdf として使用
-          # これにより内部リンク（索引→00-preface等）が維持される
-          FileUtils.cp(output_pdf, '_sections.pdf')
           Common.log_success('[Step 7] _sections.pdf を生成しました')
         end
 
         # Step 9: 本扉・扉裏・後書き・奥付の生成
         # 新仕様: _titlepage, _legalpage, _colophon を使用
         #
-        # 設計方針: mtime 比較・キャッシュ判定は行わず、常に HTML と PDF を再生成する。
-        # 計測上これらの生成はビルド全体への影響が軽微なため、判定ロジックの脆さ
-        # （`FileUtils.cp` による mtime 破壊、book.yml 無関係変更での誤判定等）を
-        # 排除する方を優先する。詳細は docs/specs/book_yml_regeneration_spec.md 参照。
+        # 設計方針: mtime 比較・キャッシュ判定は行わず、常に .md / HTML / PDF を再生成する。
+        # 詳細は docs/specs/book_yml_regeneration_spec.md を参照。
         def build_front_pages_and_tail!
-          # --- Phase: 特殊ページ HTML を常に再生成 ---
-          special_html_files = %w[_titlepage _legalpage _colophon].map { "#{it}.html" }
-          %w[_titlepage _legalpage _colophon].each do |basename|
+          # --- Phase: 特殊ページ HTML を常に再生成（html/ へ） ---
+          special_basenames = %w[_titlepage _legalpage _colophon]
+          special_basenames.each do |basename|
             Common.log_info("[HTML] 再生成します: #{basename}.html")
             Build::SectionBuilder.preprocess_single_chapter!(basename)
             Build::SectionBuilder.convert_single_chapter!(basename)
@@ -176,26 +167,30 @@ module VivlioStarter
 
           # Step 9 で生成されたタイトル・奥付 HTML は Step 5c より後に作られるため、
           # 波ダッシュ置換 / 絵文字画像化 / SVG→WebP 参照整合 / CSS 注入をここで再適用する。
+          special_html_files = special_basenames.map { File.join(Common::BUILD_HTML_DIR, "#{it}.html") }
           Techbook::Processor.new(Common::CONFIG).post_process_html_files!(special_html_files)
 
-          # --- Phase: 表紙＋扉裏 PDF を常に再生成 ---
-          front_pdf = '_titlepage_legalpage.pdf'
-          EntriesCommands.execute_entries({}, ['_titlepage.html', '_legalpage.html'])
-          PdfCommands.execute_pdf({}, front_pdf)
-          if File.exist?(front_pdf)
-            Common.log_success("[Step 9] #{front_pdf} を生成しました")
-          else
-            Common.log_warn("[Step 9] #{front_pdf} の生成に失敗しました")
-          end
+          # --- Phase: pdf/ へステージングして前付・奥付 PDF を生成 ---
+          stage_special_pages!(special_basenames)
+          build_special_page_pdf!(name: 'front', basenames: %w[_titlepage _legalpage],
+                                  output_basename: '_titlepage_legalpage.pdf')
+          build_special_page_pdf!(name: 'colophon', basenames: %w[_colophon],
+                                  output_basename: '_colophon.pdf')
+        end
 
-          # --- Phase: 奥付 PDF を常に再生成 ---
-          colophon_pdf = '_colophon.pdf'
-          EntriesCommands.execute_entries({}, ['_colophon.html'])
-          PdfCommands.execute_pdf({}, colophon_pdf)
-          if File.exist?(colophon_pdf)
-            Common.log_success('[Step 9] _colophon.pdf を生成しました')
+        # 特殊ページ（前付/奥付）の PDF を用途別 config でビルドする
+        def build_special_page_pdf!(name:, basenames:, output_basename:)
+          entry_htmls = basenames.map { File.join(Common::BUILD_PDF_DIR, "#{it}.html") }
+                                 .select { File.exist?(it) }
+          output = File.join(Common::BUILD_PDF_DIR, output_basename)
+
+          config = VivliostyleConfigWriter.write!(name:, entry_htmls:, output:)
+          PdfCommands.execute_pdf({}, nil, config_path: config, output_path: output)
+
+          if File.exist?(output)
+            Common.log_success("[Step 9] #{output_basename} を生成しました")
           else
-            Common.log_warn('[Step 9] _colophon.pdf の生成に失敗しました')
+            Common.log_warn("[Step 9] #{output_basename} の生成に失敗しました")
           end
         end
 

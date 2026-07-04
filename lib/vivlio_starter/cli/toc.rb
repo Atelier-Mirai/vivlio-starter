@@ -28,8 +28,9 @@ module VivlioStarter
       end
 
       # toc コマンドのエントリ処理を統括する
+      # 中間 HTML と _toc.md/_toc.html はワークスペースの html/ に置く（P4 §3.4-1）
       class TocCommandExecutor
-        BASE_DIR = Pathname.new('.').expand_path
+        BASE_DIR = Pathname.new(Common::BUILD_HTML_DIR).expand_path
 
         def initialize(options, htmls)
           @options = options || {}
@@ -115,11 +116,16 @@ module VivlioStarter
                                            .sort
         end
 
-        # 渡されたパスを絶対パスに正規化する
+        # 渡されたパスを絶対パスに正規化する。
+        # パイプラインはワークスペース内のパスを cwd 相対で渡してくるため、
+        # 現存するパスはそのまま採用し、ベース名だけの指定のみ base_dir で解決する
+        # （base_dir を機械的に join すると html/ が二重に前置される）。
         def normalize_path(name)
           path = Pathname.new(name)
-          path = base_dir.join(path) unless path.absolute?
-          path.cleanpath.to_s
+          return path.cleanpath.to_s if path.absolute?
+          return path.expand_path.cleanpath.to_s if path.exist?
+
+          base_dir.join(path).cleanpath.to_s
         end
       end
 

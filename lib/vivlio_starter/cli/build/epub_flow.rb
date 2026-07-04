@@ -12,10 +12,11 @@ module VivlioStarter
       # 生成済みの章 HTML を再利用して EPUB（クリーン）/ Kindle（KPF）を生成する一連の
       # フローを担う。P2 で pipeline.rb から本フローへ移設した。
       #
-      # dedup 隔離（⑦）のため、backlink dedup 直前の章 HTML スナップショットを保持する
-      # 必要があり、その退避（snapshot_pre_dedup!）と EPUB 生成（run!）は別々のパイプライン
-      # ステップから呼ばれる。両ステップが同一インスタンスを共有できるよう、pipeline 側は
-      # 本フローを 1 度だけ生成して使い回す。
+      # P4 段階 3: dedup の破壊的書換はワークスペース pdf/ 配下のコピーに閉じたため、
+      # 「dedup 前スナップショット」（旧 snapshot_pre_dedup!・⑦）は不要になった。
+      # 章 HTML は html/（常にクリーンな原本）からルートへ展開して現行の EPUB 経路を
+      # そのまま動かす（暫定ブリッジ）。段階 4（epub/・kindle/ 消費者 dir 化）で
+      # ブリッジとフレーバ間スナップショットは撤去される。
       # ================================================================
       class EpubFlow
         # @param entries [Array<TokenResolver::Entry>] ビルド対象の Entry 配列
@@ -25,16 +26,6 @@ module VivlioStarter
           @entries = Array(entries)
           @targets = targets
           @options = options
-          @pre_dedup_snapshot = nil
-        end
-
-        # backlink dedup 直前の章 HTML を退避する（⑦）。
-        # dedup は共有の章 HTML を「PDF ページ依存」で破壊的に書き換える（同一ページ内の
-        # 2 回目以降の † / index-term を削除）。EPUB はこの dedup 済み HTML を再利用すると
-        # †・索引リンクが間引かれてしまうため、dedup 前の状態を保持し run! で復元する。
-        # docs/specs/epub-backlink-dedup-isolation-spec.md ⑦ を参照。
-        def snapshot_pre_dedup!
-          @pre_dedup_snapshot = snapshot_chapter_htmls
         end
 
         # EPUB / Kindle 生成のメインフロー。
@@ -47,13 +38,12 @@ module VivlioStarter
           # --- Phase: EPUB 用カバー画像生成 ---
           generate_cover_if_needed
 
-          # dedup 前の章 HTML を復元して EPUB を dedup（backlink dedup）から隔離する（⑦）。
-          # PDF（閲覧用・入稿用）は dedup 済み HTML で既に生成済み。リフロー型 EPUB は
-          # 「全 † / 全出現リンク」を持つべきなので、dedup 前の状態へ戻してからビルドする。
-          restore_chapter_htmls(@pre_dedup_snapshot) if @pre_dedup_snapshot
+          # ワークスペース html/ のクリーンな原本（dedup 非通過）をルートへ展開する。
+          # リフロー型 EPUB は「全 † / 全出現リンク」を持つべきところ、pdf/ に閉じた
+          # dedup の影響を構造的に受けない（P4 §3.1: kindle/ ・epub/ は html/ 直系）。
+          stage_root_htmls_from_workspace!
 
           # 両フレーバ同時のときだけ、クリーン処理が書き換える前の章 HTML を退避する。
-          # 上で pre-dedup 状態へ戻した後に退避するため、Kindle も dedup 前から始まる。
           snapshot = (targets.epub && targets.kindle) ? snapshot_chapter_htmls : nil
 
           build_flavor(:epub) if targets.epub
@@ -99,6 +89,19 @@ module VivlioStarter
 
           # --- Phase: Kindle は KPF へ変換（§1-7） ---
           run_kpf(target_name) if flavor == :kindle
+        end
+
+        # P4 段階 3 暫定ブリッジ: ワークスペース html/ の全 HTML をルートへ展開する。
+        # asset_prefix（../../../../）を剥がすことで、従来ルートに置かれていた
+        # 中間 HTML と同一の内容になり、既存の EPUB 経路（ルート基準の rewrite・
+        # copyAsset excludes・book-settings.css 同梱）が無変更で成立する。
+        # 展開したルート HTML は final clean の既存パターン（*.html）が掃除する。
+        # 段階 4 で「epub/ ・kindle/ への選択コピー＋entryContext」方式に置き換える。
+        def stage_root_htmls_from_workspace!
+          Dir.glob(File.join(Common::BUILD_HTML_DIR, '*.html')).each do |src|
+            content = File.read(src, encoding: 'utf-8').gsub(Common::ASSET_PREFIX, '')
+            File.write(File.basename(src), content, encoding: 'utf-8')
+          end
         end
 
         # クリーン処理前の章 HTML（パス→内容）を退避する。

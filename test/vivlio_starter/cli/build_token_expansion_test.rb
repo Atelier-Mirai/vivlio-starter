@@ -165,29 +165,44 @@ module VivlioStarter
         end
       end
 
+      # single mode も full と同じ「html/ → pdf/ コピー＋用途別 entries/config」経路（P4・E5）
       def test_single_mode_generates_entries_and_pdf
         within_temp_dir do
+          # ワークスペース html/ に対象章の中間 HTML を用意する
+          FileUtils.mkdir_p(Common::BUILD_HTML_DIR)
+          File.write(File.join(Common::BUILD_HTML_DIR, '11-sample.html'), '<html><title>11</title></html>')
+          File.write(File.join(Common::BUILD_HTML_DIR, '12-tutorial.html'), '<html><title>12</title></html>')
+
           pipeline = build_pipeline(['11-sample', '12-tutorial'])
-          entries_calls = []
+          writer_calls = []
           pdf_calls = []
 
-          EntriesCommands.stub :execute_entries, ->(opts, tokens) { entries_calls << tokens } do
-            PdfCommands.stub :execute_pdf, ->(opts, *args) { pdf_calls << args } do
+          writer_stub = lambda { |name:, entry_htmls:, output:|
+            writer_calls << { name:, entry_htmls:, output: }
+            File.join(Common::BUILD_PDF_DIR, "vivliostyle.config.#{name}.js")
+          }
+          Build::VivliostyleConfigWriter.stub :write!, writer_stub do
+            PdfCommands.stub :execute_pdf, ->(opts, *args, **kwargs) { pdf_calls << kwargs } do
               pipeline.send(:generate_entries_and_pdf)
             end
           end
 
-          # entries コマンドに Entry オブジェクトが渡される
-          assert_equal [['11-sample', '12-tutorial']], entries_calls.map { |c| c.map(&:basename) }
-          # pdf コマンドが呼ばれる
+          # 用途別 config（single）が pdf/ へステージ済みの章 HTML で生成される
+          assert_equal 1, writer_calls.size
+          assert_equal 'single', writer_calls.first[:name]
+          expected_htmls = ['11-sample', '12-tutorial'].map { File.join(Common::BUILD_PDF_DIR, "#{it}.html") }
+          assert_equal expected_htmls, writer_calls.first[:entry_htmls]
+          # pdf コマンドが生成 config で呼ばれる
           assert_equal 1, pdf_calls.size
+          assert_equal File.join(Common::BUILD_PDF_DIR, 'output.pdf'), pdf_calls.first[:output_path]
         end
       end
 
       def test_rename_single_mode_pdf_single_chapter
         within_temp_dir do
-          # output.pdf を作成
-          FileUtils.touch('output.pdf')
+          # ワークスペース pdf/ に output.pdf を作成
+          FileUtils.mkdir_p(Common::BUILD_PDF_DIR)
+          FileUtils.touch(File.join(Common::BUILD_PDF_DIR, 'output.pdf'))
 
           pipeline = build_pipeline(['54-operator'])
 
@@ -197,14 +212,15 @@ module VivlioStarter
           end
 
           assert File.exist?('54-operator.pdf'), '単章PDFにリネームされるべき'
-          refute File.exist?('output.pdf'), 'output.pdf は削除されるべき'
+          refute File.exist?(File.join(Common::BUILD_PDF_DIR, 'output.pdf')), 'ワークスペースの output.pdf は移動されるべき'
           assert_equal '54-operator.pdf', pipeline.generated_pdf_name
         end
       end
 
       def test_rename_single_mode_pdf_multiple_chapters
         within_temp_dir do
-          FileUtils.touch('output.pdf')
+          FileUtils.mkdir_p(Common::BUILD_PDF_DIR)
+          FileUtils.touch(File.join(Common::BUILD_PDF_DIR, 'output.pdf'))
 
           pipeline = build_pipeline(['54-operator', '55-condition', '56-loop'])
 

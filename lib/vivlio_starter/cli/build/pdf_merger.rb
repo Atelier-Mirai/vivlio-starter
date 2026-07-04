@@ -13,7 +13,9 @@ module VivlioStarter
         # 1. 結合対象ファイルのリスト作成
         # ================================================================
         def cover_enhanced_files
+          # 中間 PDF はワークスペース pdf/ 内・カバー PDF は covers/（著者資産）のまま（P4 §5.1）
           files = %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf]
+                  .map { File.join(Common::BUILD_PDF_DIR, it) }
           cfg = Common::CONFIG
 
           # ターゲット判定
@@ -123,9 +125,10 @@ module VivlioStarter
 
           # _sections.pdf があればそれをベースに、なければ最初のファイルを使用
           # （ベース PDF のメタデータ・しおりが出力に引き継がれるため、本文を優先する）
-          base_pdf = existing_files.include?('_sections.pdf') ? '_sections.pdf' : existing_files.first
+          sections_pdf = File.join(Common::BUILD_PDF_DIR, '_sections.pdf')
+          base_pdf = existing_files.include?(sections_pdf) ? sections_pdf : existing_files.first
 
-          if merge_pdfs_with_qpdf!(existing_files, output: 'output.pdf', base_pdf:)
+          if merge_pdfs_with_qpdf!(existing_files, output: merged_output_pdf, base_pdf:)
             Common.log_success('[Step 10] output.pdf を生成しました')
             true
           else
@@ -133,6 +136,9 @@ module VivlioStarter
             false
           end
         end
+
+        # 結合済み PDF のパス（ワークスペース pdf/ 内。最終リネームでルートへ出る）
+        def merged_output_pdf = File.join(Common::BUILD_PDF_DIR, 'output.pdf')
 
         # 複数 PDF を qpdf で1つに結合する（閲覧用・入稿用ビルドの共通基盤）
         #
@@ -179,7 +185,7 @@ module VivlioStarter
           # total が偶数 → 次ページは奇数（右） → 空白ページを挿入して偶数に
           # total が奇数 → 次ページは偶数（左） → そのままでOK
           if total.even?
-            blank = Build::Utilities.ensure_blank_page_pdf('_blank_before_colophon.pdf')
+            blank = Build::Utilities.ensure_blank_page_pdf(File.join(Common::BUILD_PDF_DIR, '_blank_before_colophon.pdf'))
             Common.log_debug("[Step 10] 奥付を偶数ページに配置するため空白ページを挿入します（前方 #{total} ページ）")
             files.dup.insert(colophon_idx, blank)
           else
@@ -214,15 +220,15 @@ module VivlioStarter
         # 5. アウトライン付与 (Step 11)
         # ================================================================
         def add_outline_to_output_pdf!(entries_or_keep = nil)
-          return false unless File.exist?('output.pdf')
+          return false unless File.exist?(merged_output_pdf)
 
           keep_numbers = Build::Utilities.chapter_numbers_for_outline(entries_or_keep)
 
-          # 抽出対象HTMLの絞り込み
+          # 抽出対象HTMLの絞り込み（dedup 済み HTML はワークスペース pdf/ 内・P4 §5.1）
           special_pages = %w[_toc]
           special_pages.push('_glossarypage', '_indexpage') if IndexCommands.index_enabled?
 
-          chapter_htmls = Dir.glob('*.html').select do |path|
+          chapter_htmls = Dir.glob(File.join(Common::BUILD_PDF_DIR, '*.html')).select do |path|
             bn = File.basename(path, '.html')
             num = bn[/\A(\d+)-/, 1]&.to_i
 
@@ -237,8 +243,8 @@ module VivlioStarter
 
           Common.log_action('[Step 11] PDF ブックマークを付与します…')
           # 表紙 PDF のページ数を基点に加味して、前付・本文・巻末のページ範囲を正しく算出する。
-          OutlineExtractor.add_outline_from_headings!('output.pdf', chapter_htmls, max_level: 3,
-                                                                                   start_page: front_matter_offset + 1)
+          OutlineExtractor.add_outline_from_headings!(merged_output_pdf, chapter_htmls, max_level: 3,
+                                                                                        start_page: front_matter_offset + 1)
           true
         end
       end

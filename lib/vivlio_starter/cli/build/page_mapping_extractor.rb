@@ -106,10 +106,12 @@ module VivlioStarter
         end
 
         # preview プロセスを新規起動する内部メソッド
+        # config は本文用生成 config（entries.sections.js を参照・P4 §5.1）。
+        # フォールバック URL（publication.json）は workspaceDir 移設後も有効な仮想ルート（E4）。
         def launch_preview_process!
           cmd = [
             'npx', 'vivliostyle', 'preview',
-            '-c', 'vivliostyle.config.js',
+            '-c', File.join(Common::BUILD_PDF_DIR, 'vivliostyle.config.sections.js'),
             '--no-open-viewer',
             '--port', port.to_s
           ]

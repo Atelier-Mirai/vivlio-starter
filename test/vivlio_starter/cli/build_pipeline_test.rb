@@ -68,12 +68,11 @@ module VivlioStarter
           }],
           [Build::PartTitleGenerator, :generate_all!, -> { order << 'step5b' }],
           [Build::TocGenerator, :generate_toc_html!, lambda { |dir, entries|
-            test_case.assert_equal '.', dir
+            test_case.assert_equal Common::BUILD_HTML_DIR, dir
             test_case.assert_equal [], entries
             order << 'step6'
           }],
-          [Build::PdfBuilder, :build_overall_pdf_from_dir!, lambda { |dir, entries|
-            test_case.assert_equal '.', dir
+          [Build::PdfBuilder, :build_overall_pdf_from_dir!, lambda { |entries|
             test_case.assert_equal [], entries
             order << 'step7'
           }],
@@ -183,7 +182,7 @@ module VivlioStarter
             Build::SectionBuilder.stub :convert_sections_html!, ->(_) {} do
               Build::PartTitleGenerator.stub :generate_all!, -> {} do
                 Build::TocGenerator.stub :generate_toc_html!, ->(_, _) {} do
-                  Build::PdfBuilder.stub :build_overall_pdf_from_dir!, ->(_, _) {} do
+                  Build::PdfBuilder.stub :build_overall_pdf_from_dir!, ->(_) {} do
                     Build::BacklinkDedupOrchestrator.stub :run!, ->(_) {} do
                       Build::PdfMerger.stub :merge_all_pdfs!, ->(_) {} do
                         Build::PdfMerger.stub :add_outline_to_output_pdf!, ->(_) {} do
@@ -579,7 +578,7 @@ module VivlioStarter
             Build::SectionBuilder.stub :convert_sections_html!, ->(_) {} do
               Build::PartTitleGenerator.stub :generate_all!, -> {} do
                 Build::TocGenerator.stub :generate_toc_html!, ->(_, _) {} do
-                  Build::PdfBuilder.stub :build_overall_pdf_from_dir!, ->(_, _) {} do
+                  Build::PdfBuilder.stub :build_overall_pdf_from_dir!, ->(_) {} do
                     Build::BacklinkDedupOrchestrator.stub :run!, ->(_) {} do
                       Build::PdfMerger.stub :merge_all_pdfs!, ->(_) {} do
                         Build::PdfMerger.stub :add_outline_to_output_pdf!, ->(_) {} do
