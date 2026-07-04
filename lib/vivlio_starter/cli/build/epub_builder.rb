@@ -237,11 +237,15 @@ module VivlioStarter
         # cover.embed 設定に応じて表紙画像の埋め込みを制御
         #
         # パス表記の規則（実験 E1/E2 で確定・P4 §6.1）:
-        #   - entryContext / output は cwd（プロジェクトルート）相対で書く。実行 cwd はルート固定。
+        #   - entryContext / output / workspaceDir は cwd（プロジェクトルート）相対で書く。
+        #     実行 cwd はルート固定。
         #   - entries の path は entryContext 基準（'./xx.html'）。
         #   - cover は entryContext 基準で解決される → ローカライズ済みの 'covers/…' がそのまま通る。
         #   - copyAsset の選択は「dir 内に必要資産だけを置く」ローカライズ（localize_assets!）が担う
         #     ため excludes は不要（E2: copyAsset 既定は entryContext 配下を全同梱）。
+        #   - workspaceDir は PDF 用生成 config（VivliostyleConfigWriter）と同じワークスペース内を
+        #     指定し、ルートへの一時 .vivliostyle/ 生成をなくす（P4 §5.6・段階 5）。
+        #     消費者 dir 内に置くと copyAsset がパッケージへ巻き込むため dir の外へ置く。
         #
         # @param flavor [Symbol] :epub（表紙は book.yml の embed 設定に従う）/ :kindle（embed:false 固定・§1-6）
         # @param dir [String] 消費者 dir（= entryContext・生成先。既定 '.' は単体テスト用）
@@ -295,6 +299,7 @@ module VivlioStarter
               language: '#{esc.call(language)}',
               size: '#{esc.call(page_size)}',
               readingProgression: '#{esc.call(reading_progression)}',
+              workspaceDir: '#{Common::BUILD_DIR}/.vivliostyle',
               entryContext: '#{esc.call(dir)}',
             #{cover_line}  entry: entries,
               output: [

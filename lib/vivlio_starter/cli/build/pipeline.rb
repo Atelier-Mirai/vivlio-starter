@@ -390,20 +390,20 @@ module VivlioStarter
         end
 
         # 最終的なクリーン処理を担当する
-        # ワークスペースは一括削除（--no-clean 時は残す＝デバッグ資材が 1 箇所に揃う・P4 §3.4-8）
+        # 中間物はワークスペースに閉じているため掃除は一括削除で完結し、ルートの最終成果物に
+        # 触れる理由がない（単章 PDF の .keep 退避ハックは P4 段階 5 で撤去・完了条件 2）。
+        # --no-clean 時は残す＝デバッグ資材が 1 箇所に揃う（P4 §3.4-8）
         def run_final_clean
           if options[:clean] == false
             Common.log_action('[final clean] クリーンアップをスキップします（--no-clean）')
           else
-            Common.log_action('[final clean] 中間生成物をクリーンアップします…')
-            # 単章ビルドで生成した最終 PDF がクリーン対象パターンに含まれる場合があるため、
-            # 一時退避してからクリーンし、復元する（.keep ハックの撤去は P4 段階 5）
-            pdf_to_protect = @generated_pdf_name
-            tmp_path = pdf_to_protect && File.exist?(pdf_to_protect) ? "#{pdf_to_protect}.keep" : nil
-            FileUtils.mv(pdf_to_protect, tmp_path) if tmp_path
-            CleanCommands.execute_clean({})
-            FileUtils.mv(tmp_path, pdf_to_protect) if tmp_path
+            Common.log_action('[final clean] ビルドワークスペースを削除します…')
             FileUtils.rm_rf(Common::BUILD_DIR)
+            # ルート側に生成される数少ない中間物を個別に掃除する:
+            # images/math/ は PDF が参照する数式 SVG（workspace 化は P4b・§8）、
+            # _index_matches.yml は索引スキャンのルート出力（同上）。
+            FileUtils.rm_rf(File.join(Common.images_dir, 'math'))
+            FileUtils.rm_f('_index_matches.yml')
           end
         end
 
