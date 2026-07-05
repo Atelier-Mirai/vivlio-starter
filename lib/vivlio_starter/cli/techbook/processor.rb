@@ -249,15 +249,15 @@ module VivlioStarter
         end
 
         def rewrite_svg_references!(html_files)
-          asset_prefix = Common.asset_prefix
           html_files.each do |html_file|
             content = File.read(html_file, encoding: 'utf-8')
             rewritten = content.gsub(/(<img\s[^>]*src=")([^"]*\.svg)(")/i) do
               prefix, svg_src, suffix = Regexp.last_match.captures
               webp_src = svg_src.sub(/\.svg\z/i, '.webp')
-              # src はワークスペース相対（asset_prefix 付き）のため、存在確認は
-              # ルート（cwd）基準に剥がしたパスで行う（P4 §3.3）
-              webp_on_disk = webp_src.delete_prefix(asset_prefix)
+              # 存在確認は src を HTML ファイル自身の位置基準で解決する（P4b §2.4）。
+              # asset_prefix 付き（ルート資産）・dir 相対（数式など workspace 生成物）の
+              # 両参照形を 1 つの規則で正しく扱える。
+              webp_on_disk = File.expand_path(webp_src, File.dirname(html_file))
               File.exist?(webp_on_disk) ? "#{prefix}#{webp_src}#{suffix}" : "#{prefix}#{svg_src}#{suffix}"
             end
             next if content == rewritten

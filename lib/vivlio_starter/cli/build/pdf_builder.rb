@@ -40,6 +40,14 @@ module VivlioStarter
           Dir.glob(File.join(Common::BUILD_HTML_DIR, '*.html')).each do |src|
             FileUtils.cp(src, File.join(Common::BUILD_PDF_DIR, File.basename(src)))
           end
+          # ビルド生成画像（数式 SVG）を pdf/ へミラーし、消費者 dir 相対の
+          # images/math/… 参照を解決する（P4b §2.2）。存在すれば上書きコピー。
+          images_src = File.join(Common::BUILD_HTML_DIR, 'images')
+          return unless Dir.exist?(images_src)
+
+          dest = File.join(Common::BUILD_PDF_DIR, 'images')
+          FileUtils.mkdir_p(dest)
+          FileUtils.cp_r(File.join(images_src, '.'), dest)
         end
 
         # 特殊ページ HTML（前付・奥付）だけを html/ から pdf/ へコピーする。

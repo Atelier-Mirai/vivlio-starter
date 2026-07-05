@@ -123,21 +123,30 @@ module VivlioStarter
         # @param flavor [Symbol] :epub / :kindle
         def localize_assets!(dir, flavor:)
           copy_asset_tree!(Common.images_dir, dir) { localized_image?(it, flavor) }
+          # ビルド生成画像（数式 SVG）は workspace の html/images/ 配下から同梱する（P4b §2.3）。
+          # EPUB 内の最終パスは images/math/… でルートの著者画像と同一階層に収まる。
+          copy_asset_tree!(File.join(Common::BUILD_HTML_DIR, 'images'), dir, dest_root: 'images') do
+            localized_image?(it, flavor)
+          end
           copy_asset_tree!(Common.stylesheets_dir, dir) { localized_stylesheet?(it, flavor) }
           localize_cover_image!(dir, flavor)
           Common.log_info("[EPUB] 参照資産を #{dir} 内へローカライズしました（flavor: #{flavor}）")
         end
 
         # src_root 配下のファイルを、フィルタ（root からの相対パスを yield）を通して
-        # dir/src_root/ へミラーコピーする。
-        def copy_asset_tree!(src_root, dir)
+        # dir/dest_root/ へミラーコピーする。dest_root 既定は src_root（cwd 相対の著者資産は
+        # そのままの相対階層で dir 下へ接がる）。ワークスペース配下の生成物は src_root が
+        # 深い絶対的相対になるため dest_root: 'images' 等で置き場を明示する（P4b §2.3）。
+        def copy_asset_tree!(src_root, dir, dest_root: src_root)
           return unless Dir.exist?(src_root)
 
           Dir.glob(File.join(src_root, '**', '*')).each do |src|
             next unless File.file?(src)
-            next unless yield(src.delete_prefix("#{src_root}/"))
 
-            dest = File.join(dir, src)
+            rel = src.delete_prefix("#{src_root}/")
+            next unless yield(rel)
+
+            dest = File.join(dir, dest_root, rel)
             FileUtils.mkdir_p(File.dirname(dest))
             FileUtils.cp(src, dest)
           end

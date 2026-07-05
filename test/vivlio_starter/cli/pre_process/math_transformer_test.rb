@@ -19,6 +19,8 @@ require 'vivlio_starter/cli/pre_process/math_transformer'
 
 class MathTransformerTest < Minitest::Test
   MT = VivlioStarter::CLI::PreProcessCommands::MathTransformer
+  # SVG はワークスペースの html/images/math/ へ書き出される（P4b §2.1）
+  MATH_DIR = File.join(VivlioStarter::CLI::Common::BUILD_HTML_DIR, 'images', 'math')
 
   # MathJax 風の SVG（ex 単位の整列情報付き）を返すフェイクのバッチレンダラ。
   # Node/mathjax-full に依存せず決定論的にテストするため。
@@ -51,8 +53,8 @@ class MathTransformerTest < Minitest::Test
       result = MT.transform('式 $E=mc^2$ です。', chapter_slug: '94-sample', renderer: FakeRenderer.new)
 
       assert_match(/<img class="vs-math vs-math-inline"/, result)
-      # 参照パスはワークスペース内 HTML からの相対（asset_prefix 前置・P4 §3.3）
-      assert_match(%r{src="#{Regexp.escape(VivlioStarter::CLI::Common.asset_prefix)}images/math/94-sample/[0-9a-f]{16}\.svg"}, result)
+      # 参照パスは消費者 dir 相対（asset_prefix 無し・P4b §2.1）
+      assert_match(%r{src="images/math/94-sample/[0-9a-f]{16}\.svg"}, result)
       assert_match(/alt="\$E=mc\^2\$"/, result)
       # MathJax SVG の ex 値が <img> の style に写る
       assert_match(/vertical-align: -0\.5ex; width: 3ex; height: 2ex;/, result)
@@ -65,7 +67,7 @@ class MathTransformerTest < Minitest::Test
       result = MT.transform(md, chapter_slug: '94-sample', renderer: FakeRenderer.new)
 
       assert_match(/<figure class="vs-math vs-math-display">/, result)
-      assert_match(%r{<img src="#{Regexp.escape(VivlioStarter::CLI::Common.asset_prefix)}images/math/94-sample/[0-9a-f]{16}\.svg"}, result)
+      assert_match(%r{<img src="images/math/94-sample/[0-9a-f]{16}\.svg"}, result)
       assert_match(/width: 3ex; height: 2ex;/, result)
       # alt は改行を畳んで 1 行になる
       assert_match(/alt="\$\$ \\nu_0 = \\frac\{\\phi\}\{h\} \$\$"/, result)
@@ -111,7 +113,7 @@ class MathTransformerTest < Minitest::Test
       md = '同じ式 $a+b$ が二度 $a+b$ 出る。'
       MT.transform(md, chapter_slug: 'ch', renderer:)
 
-      assert_equal 1, Dir.glob('images/math/ch/*.svg').size, '同一式は 1 ファイルに集約される'
+      assert_equal 1, Dir.glob(File.join(MATH_DIR, 'ch', '*.svg')).size, '同一式は 1 ファイルに集約される'
       assert_equal 1, renderer.batches.size, 'レンダラ呼び出しは 1 回に束ねられる'
       assert_equal 1, renderer.batches.first.size, '重複式は 1 件に集約して渡される'
     end
@@ -135,7 +137,7 @@ class MathTransformerTest < Minitest::Test
       result = MT.transform(md, chapter_slug: 'ch', renderer: nil)
 
       assert_equal md, result
-      assert_empty Dir.glob('images/math/**/*.svg')
+      assert_empty Dir.glob(File.join(MATH_DIR, '**', '*.svg'))
     end
   end
 
@@ -148,7 +150,7 @@ class MathTransformerTest < Minitest::Test
       result = MT.transform('式 $E=mc^2$ です。', chapter_slug: 'ch', renderer: bad_renderer)
 
       assert_equal '式 $E=mc^2$ です。', result
-      assert_empty Dir.glob('images/math/**/*.svg')
+      assert_empty Dir.glob(File.join(MATH_DIR, '**', '*.svg'))
     end
   end
 
@@ -160,7 +162,7 @@ class MathTransformerTest < Minitest::Test
       result = MT.transform('式 $\\langle x \\rangle$ です。', chapter_slug: 'ch')
 
       assert_match(/vs-math-inline/, result)
-      svg = Dir.glob('images/math/ch/*.svg').first
+      svg = Dir.glob(File.join(MATH_DIR, 'ch', '*.svg')).first
       assert svg, 'SVG ファイルが生成される'
       assert_match(/\A<svg/, File.read(svg))
     end
