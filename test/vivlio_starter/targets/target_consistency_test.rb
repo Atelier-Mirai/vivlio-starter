@@ -328,7 +328,8 @@ class TargetConsistencyTest < Minitest::Test
       captured
     end
 
-    # 各 combo をクリーンな中間状態（ワークスペース・images/math 等）から開始させる。
+    # 各 combo をクリーンな中間状態（ワークスペース。数式 SVG・索引 YAML も P4b で
+    # workspace 内へ移設済み）から開始させる。
     # 旧: kindle 版画像派生物のルート引き継ぎによるサイズ乖離 flaky の隔離が主目的だったが、
     # P4（ワークスペース分離）で combo 間の画像汚染は構造的に不可能になった
     # （test_kindle_build_leaves_root_images_unpolluted が構造を直接検証する）。

@@ -378,6 +378,7 @@ P2/P3 と同じく「現行から採取した基準」に対し各段で `rake t
    clean.rb のルートパターンを legacy 掃除へ縮退 → 完了条件 4（ルート無汚染）。
    → **完了（2026-07-04）**。`run_final_clean` は「workspace `rm_rf`＋ルート側の現行中間物
    2 点（`images/math/`・`_index_matches.yml`＝P4b 対象）の個別掃除」のみとなり、
+   （※ P4b 完了（2026-07-05）でこの 2 点も workspace 化し、個別掃除は撤去＝`rm_rf BUILD_DIR` のみ）
    `CleanCommands.execute_clean` 呼び出しと `.keep` 退避を撤去（final clean が最終成果物に
    触れる経路が消滅）。clean.rb は `ACTIVE_ROOT_PATTERNS`（手動フロー entries.js・索引
    ルート生成物）と `LEGACY_ROOT_PATTERNS` / `LEGACY_INTERMEDIATE_PDF_PATTERNS`
@@ -428,5 +429,7 @@ P2/P3 と同じく「現行から採取した基準」に対し各段で `rake t
 - 縦書き・novel テーマ・テーマ CSS セット差し替え（P3 の変数語彙の上に V2.0 で構築）
 - `vs pdf` / `vs entries` 等の著者向け単体コマンドの workspace 化（ルート運用のまま）
 - `vivliostyle.config.js` 全文生成化（P3-4 の残課題・V2.0）
-- P4b（`images/math` 等の prep 段生成物の workspace 化）——§5.2 の資産ローカライズで
-  EPUB/Kindle 分は解消するが、PDF が参照する `images/math/` の移設は E3 の結果を見て判断
+- ~~P4b（`images/math` 等の prep 段生成物の workspace 化）~~ → **完了（2026-07-05）**。
+  数式 SVG を `BUILD_HTML_DIR/images/math/`（消費者 dir 相対参照）へ、`_index_matches.yml` を
+  `BUILD_DIR` 直下へ移設し、`run_final_clean` は `rm_rf BUILD_DIR` のみへ縮退（ルート個別掃除が
+  消滅）。詳細は [vivlioverso-p4b-workspace-remnants-spec.md](vivlioverso-p4b-workspace-remnants-spec.md)。

@@ -11,8 +11,8 @@
 #   - .cache/vs/build/: ビルドワークスペース（P4: 現行パイプラインの中間物はここに閉じる）
 #   - .vivliostyle/: Vivliostyle CLI のワークディレクトリ（手動フロー vs pdf 用）
 #   - entries.js: 手動フロー（vs entries）が生成する ES Module
-#   - _index_matches.yml 等: 索引機能がルートへ生成する作業ファイル
-#   - ルートの *.html / 章 .md / 中間 PDF 等: 旧バージョン（P4 以前）の残骸掃除
+#   - _index_review.md 等: vs index:auto が著者レビュー用にルートへ出す作業ファイル
+#   - ルートの *.html / 章 .md / 中間 PDF / _index_matches.yml 等: 旧バージョン（P4/P4b 以前）の残骸掃除
 #     （LEGACY_* パターン・1 リリース残して V2.0 で撤去予定）
 #   - .cache/vs/: ビルドキャッシュ（--cache オプション）
 #   - .cache/metrics/: metrics キャッシュ（--cache オプション）
@@ -59,10 +59,11 @@ module VivlioStarter
 
       # 現行機能がプロジェクトルートへ生成する作業ファイルの掃除パターン。
       # - entries.js: 著者向け手動フロー（vs entries → vs pdf）の生成物
-      # - _index_*: 索引スキャン（ビルド中）と vs index:auto（著者レビュー用）の生成物
+      # - _index_review.md / _index_glossary_review.md: vs index:auto（著者レビュー用）の生成物
+      #   （_index_matches.yml は P4b で workspace 化したため LEGACY_ROOT_PATTERNS へ移動）
       ACTIVE_ROOT_PATTERNS = %w[
         entries.js
-        _index_matches.yml _index_review.md _index_glossary_review.md
+        _index_review.md _index_glossary_review.md
       ].freeze
 
       # ------------------------------------------------------------
@@ -91,7 +92,9 @@ module VivlioStarter
         'vivliostyle.config.epub.js',
         'entries.epub.js',
         # EPUB 同梱用 book-settings.css 変種（正規の .cache/vs/ 版は --cache で掃除）
-        'book-settings.css'
+        'book-settings.css',
+        # 索引スキャンのルート出力（P4b で workspace 直下へ移行・.cache/vs 側は --cache で掃除）
+        '_index_matches.yml'
       ].freeze
 
       # ルートの中間 PDF の残骸パターン（P4 段階 3 で pdf/ 内生成へ移行）
@@ -163,7 +166,9 @@ module VivlioStarter
               Common.log_info("#{metrics_cache} を削除しました")
             end
 
-            # 索引のキャッシュも削除
+            # 索引のキャッシュ（旧ルート出力）も削除する。現行の新配置
+            # .cache/vs/build/_index_matches.yml は上の rm_rf(dir) が掃除するため、
+            # ここはルート残骸掃除として残置する（V2.0 で撤去予定・P4b §2.6）。
             index_cache = '_index_matches.yml'
             if File.exist?(index_cache)
               FileUtils.rm_f(index_cache)
@@ -234,18 +239,13 @@ module VivlioStarter
           end
         end
 
-        # 数式 SVG（前処理が images/math/ へ生成する中間成果物）を削除する
-        # （PDF がルートの images/math/ を参照するため現行生成物。workspace 化は P4b）
-        math_dir = File.join(Common.images_dir, 'math')
-        if File.directory?(math_dir)
-          FileUtils.rm_rf(math_dir)
-          Common.log_info("#{math_dir} を削除しました")
-        end
-
-        # 扉絵・節絵の合成 SVG / EPUB 用 WebP→JPEG 変換物の残骸を削除する
-        # （P4 段階 4 で消費者 dir 内生成へ移行済み。旧バージョン残骸掃除として
-        #   1 リリース残し V2.0 で撤去する）
-        %w[headings _epub_assets].each do |subdir|
+        # ビルドが images/ 配下へ生成していた派生物の残骸を削除する。いずれも現行では
+        # workspace / 消費者 dir 内生成へ移行済み。旧バージョン残骸掃除として 1 リリース残し
+        # V2.0 で撤去する:
+        #   - math: 数式 SVG（P4b で workspace html/images/ へ移行）
+        #   - headings: 扉絵・節絵の合成画像（P4 段階 4 で消費者 dir 内へ）
+        #   - _epub_assets: EPUB 用 WebP→JPEG 変換物（同上）
+        %w[math headings _epub_assets].each do |subdir|
           legacy_dir = File.join(Common.images_dir, subdir)
           next unless File.directory?(legacy_dir)
 

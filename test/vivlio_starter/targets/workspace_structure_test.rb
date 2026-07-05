@@ -36,16 +36,17 @@ class WorkspaceStructureTest < Minitest::Test
   BUILD_DIR = File.join(".cache", "vs", "build")
   CONSUMER_DIRS = %w[html pdf epub kindle].map { File.join(BUILD_DIR, it) }.freeze
 
-  # ビルドがルートへ残してはいけない旧方式（P4 以前）の生成物パターン。
-  # images/math/ と _index_matches.yml は --no-clean 時に残る現行仕様
-  # （workspace 化は P4b・§8）のため対象外とする。
+  # ビルドがルートへ残してはいけない旧方式（P4/P4b 以前）の生成物パターン。
+  # images/math/ と _index_matches.yml も workspace 化済み（P4b）のため、
+  # --no-clean でもルートには現れない（残るのは workspace 配下のみ）。
   ROOT_POLLUTION_GLOBS = %w[
     *.html
     _toc.md [0-9][0-9]-*.md _titlepage.md _legalpage.md _colophon.md _part*.md
     .vivliostyle
     book-settings.css vivliostyle.config.epub.js entries.epub.js
     _*.pdf output_tmp*.pdf blank_*.pdf
-    images/_epub_assets images/headings
+    _index_matches.yml
+    images/_epub_assets images/headings images/math
   ].freeze
 
   # build が book.yml から再生成する派生ファイル（ビルド後に元へ戻し、
@@ -114,6 +115,24 @@ class WorkspaceStructureTest < Minitest::Test
     # Vivliostyle の workspaceDir もワークスペース内（ルート .vivliostyle/ の撤去・§5.6）
     assert File.directory?(File.join(BUILD_DIR, ".vivliostyle")),
            "workspaceDir（#{BUILD_DIR}/.vivliostyle/）が生成されていません"
+  end
+
+  # WS-02b: 数式 SVG はワークスペース html/images/math/ に生成され、
+  #         pdf/ へミラー・epub/kindle/ へローカライズされる（P4b §2.1〜2.3）
+  def test_should_workspace_math_svgs_and_stage_to_consumers
+    skip_unless_built!
+
+    html_math = Dir.glob(File.join(BUILD_DIR, "html", "images", "math", "**", "*.svg"))
+    skip "この原稿には数式 SVG が無いため検査対象なし" if html_math.empty?
+
+    # pdf/ へミラーされ、消費者 dir 相対の images/math/… 参照が解決される（§2.2）
+    refute_empty Dir.glob(File.join(BUILD_DIR, "pdf", "images", "math", "**", "*.svg")),
+                 "数式 SVG が pdf/ へミラーされていません（P4b §2.2）"
+    # epub/・kindle/ へもローカライズされる（EPUB 内部パスは images/math/… で現行と同一・§2.3）
+    %w[epub kindle].each do |consumer|
+      refute_empty Dir.glob(File.join(BUILD_DIR, consumer, "images", "math", "**", "*.svg")),
+                   "#{consumer}/ に数式 SVG がローカライズされていません（P4b §2.3）"
+    end
   end
 
   # WS-03: ビルド後もプロジェクトルートに旧方式の中間物が現れない
