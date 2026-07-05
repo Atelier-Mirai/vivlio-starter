@@ -1,0 +1,5338 @@
+---
+generated_at: '2026-07-05 21:00:15'
+terms:
+- term: "--force"
+  yomi: "--force"
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\-\\-force/"
+  score: 313.62876291124417
+  contexts:
+  - chapter: 23-chapter-management
+    context: '11〜13 番の章をまとめて削除します。 ### 確認をスキップする（--force） ```bash vs delete 11-intro
+      --force '
+  updated_at: '2026-07-05 21:00:15'
+- term: Amazon
+  yomi: Amazon
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bAmazon\\b/"
+  score: 381.0261523831114
+  contexts:
+  - chapter: 41-book-yml
+    context: '型は将来対応） kindle: # Amazon Kindle 向け（KPF へ自動変換） embed: false'
+  - chapter: 44-build
+    context: 閲覧用 PDF、印刷入稿用 PDF、電子書籍（EPUB）、Amazon Kindle 用ファイル（KPF）の四つの形式を、ひとつのコマンドで生成できま
+  - chapter: 61-developer
+    context: "/ Apple Books 向けのクリーン EPUB、`kindle` は Amazon Kindle 向けに調整した EPUB から変換した
+      KPF を生成します。"
+  updated_at: '2026-07-05 21:00:15'
+- term: Apple
+  yomi: Apple
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bApple\\b/"
+  score: 377.3069655034742
+  contexts:
+  - chapter: 11-workflow
+    context: "| コミケ（印刷所入稿） | `print_pdf`（トンボ付き） | | Apple Books, Kobo | `epub`| |
+      Kindle | "
+  - chapter: 41-book-yml
+    context: 'epub: # 楽天 Kobo / Apple Books 向けクリーン EPUB embed: true'
+  - chapter: 44-build
+    context: "| `epub` | クリーン EPUB（電子書籍） | 楽天 Kobo、Apple Books への配信 | | `kindle` |
+      Kindle 用 "
+  - chapter: 61-developer
+    context: 'の値に応じて実行するステップを切り替えます。`epub` は楽天 Kobo / Apple Books 向けのクリーン EPUB、`kindle`
+      は Amazon '
+  - chapter: 91-install
+    context: 'shellenv)"'' >> ~/.zprofile # Apple Silicon echo ''eval "$(/usr/local/bin/br'
+  updated_at: '2026-07-05 21:00:15'
+- term: Books
+  yomi: Books
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bBooks\\b/"
+  score: 350.4061037911167
+  contexts:
+  - chapter: 11-workflow
+    context: "| `print_pdf`（トンボ付き） | | Apple Books, Kobo | `epub`| | Kindle | `kindle`（専用）"
+  - chapter: 41-book-yml
+    context: ": # 楽天 Kobo / Apple Books 向けクリーン EPUB embed: true"
+  - chapter: 44-build
+    context: "| クリーン EPUB（電子書籍） | 楽天 Kobo、Apple Books への配信 | | `kindle` | Kindle 用
+      KPF | Amaz"
+  - chapter: 61-developer
+    context: "`epub` は楽天 Kobo / Apple Books 向けのクリーン EPUB、`kindle` は Amazon Kindle
+      向"
+  updated_at: '2026-07-05 21:00:15'
+- term: CLI
+  yomi: CLI
+  flags: ig
+  definition: Command Line Interface の略。ターミナルからコマンドを打ち込んで操作するインターフェイスです。Vivlio Starter
+    は vs コマンドとして提供されます。
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bCLI\\b/"
+  score: 1059.949822234587
+  contexts:
+  - chapter: 00-preface
+    context: Markdown から始まる執筆の第一歩と継続的な成長を表し、青は CLI や CSS 組版が支える技術的信頼性と出力のゴールを象徴します。シンプルな操作
+  - chapter: 44-build
+    context: "`kindlepreviewer` コマンドのパス通し（アプリ内 CLI を呼ぶラッパー作成）をまとめて自動実行できます。`vs doctor`
+      は導入"
+  updated_at: '2026-07-05 21:00:15'
+  backlink_sources:
+  - chapter: 00-preface
+    occurrence: 1
+    anchor_id: gls-src-00-preface-cli-1
+  - chapter: 44-build
+    occurrence: 2
+    anchor_id: gls-src-44-build-cli-2
+  - chapter: 44-build
+    occurrence: 3
+    anchor_id: gls-src-44-build-cli-3
+  - chapter: 44-build
+    occurrence: 4
+    anchor_id: gls-src-44-build-cli-4
+  - chapter: 44-build
+    occurrence: 5
+    anchor_id: gls-src-44-build-cli-5
+  - chapter: 51-doctor
+    occurrence: 6
+    anchor_id: gls-src-51-doctor-cli-6
+  - chapter: 61-developer
+    occurrence: 7
+    anchor_id: gls-src-61-developer-cli-7
+  - chapter: 61-developer
+    occurrence: 8
+    anchor_id: gls-src-61-developer-cli-8
+  - chapter: 61-developer
+    occurrence: 9
+    anchor_id: gls-src-61-developer-cli-9
+  - chapter: 61-developer
+    occurrence: 10
+    anchor_id: gls-src-61-developer-cli-10
+  - chapter: 61-developer
+    occurrence: 11
+    anchor_id: gls-src-61-developer-cli-11
+  - chapter: 61-developer
+    occurrence: 12
+    anchor_id: gls-src-61-developer-cli-12
+  - chapter: 61-developer
+    occurrence: 13
+    anchor_id: gls-src-61-developer-cli-13
+  - chapter: 61-developer
+    occurrence: 14
+    anchor_id: gls-src-61-developer-cli-14
+  - chapter: 61-developer
+    occurrence: 15
+    anchor_id: gls-src-61-developer-cli-15
+  - chapter: 61-developer
+    occurrence: 16
+    anchor_id: gls-src-61-developer-cli-16
+  - chapter: 61-developer
+    occurrence: 17
+    anchor_id: gls-src-61-developer-cli-17
+  - chapter: 61-developer
+    occurrence: 18
+    anchor_id: gls-src-61-developer-cli-18
+  - chapter: 61-developer
+    occurrence: 19
+    anchor_id: gls-src-61-developer-cli-19
+  - chapter: 91-install
+    occurrence: 20
+    anchor_id: gls-src-91-install-cli-20
+  - chapter: 91-install
+    occurrence: 21
+    anchor_id: gls-src-91-install-cli-21
+  - chapter: 91-install
+    occurrence: 22
+    anchor_id: gls-src-91-install-cli-22
+  - chapter: 91-install
+    occurrence: 23
+    anchor_id: gls-src-91-install-cli-23
+- term: CMYK
+  yomi: CMYK
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bCMYK\\b/"
+  score: 721.7458461821041
+  contexts:
+  - chapter: 43-cover
+    context: 'rontcover_cmyk.pdf # 印刷用表紙（B5/A5、CMYK、PDF/X-1a） ├── backcover_cmyk.pdf'
+  - chapter: 44-build
+    context: "### 入稿用の表紙 印刷入稿用の表紙は本文とは別ファイルとして出力されます（CMYK カラープロファイル対応）。 ```yaml output:
+      print_"
+  updated_at: '2026-07-05 21:00:15'
+- term: CSS
+  yomi: CSS
+  flags: ig
+  definition: Cascading Style Sheets の略。文書の見た目（色・フォント・レイアウト）を指定するスタイルシート言語で、CSS 組版では紙面設計にも用いられます。
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bCSS\\b/"
+  score: 1876.0148278141673
+  contexts:
+  - chapter: 00-preface
+    context: で書いた原稿から高品質な PDF・EPUB を生成する書籍制作システムです。CSS 組版エンジン Vivliostyle をコアに据え、原稿の前処理から目次生成、
+  - chapter: 13-new
+    context: 書籍内で掲載するサンプルコード stylesheets/ ← CSSスタイルシート config/ book.yml ←
+  updated_at: '2026-07-05 21:00:15'
+  backlink_sources:
+  - chapter: 00-preface
+    occurrence: 1
+    anchor_id: gls-src-00-preface-css-1
+  - chapter: 00-preface
+    occurrence: 2
+    anchor_id: gls-src-00-preface-css-2
+  - chapter: 00-preface
+    occurrence: 3
+    anchor_id: gls-src-00-preface-css-3
+  - chapter: 13-new
+    occurrence: 4
+    anchor_id: gls-src-13-new-css-4
+  - chapter: 13-new
+    occurrence: 5
+    anchor_id: gls-src-13-new-css-5
+  - chapter: 21-markdown-tutorial
+    occurrence: 6
+    anchor_id: gls-src-21-markdown-tutorial-css-6
+  - chapter: 21-markdown-tutorial
+    occurrence: 7
+    anchor_id: gls-src-21-markdown-tutorial-css-7
+  - chapter: 21-markdown-tutorial
+    occurrence: 8
+    anchor_id: gls-src-21-markdown-tutorial-css-8
+  - chapter: 22-extentions
+    occurrence: 9
+    anchor_id: gls-src-22-extentions-css-9
+  - chapter: 22-extentions
+    occurrence: 10
+    anchor_id: gls-src-22-extentions-css-10
+  - chapter: 24-cross-reference
+    occurrence: 11
+    anchor_id: gls-src-24-cross-reference-css-11
+  - chapter: 31-lint
+    occurrence: 12
+    anchor_id: gls-src-31-lint-css-12
+  - chapter: 33-index-glossary
+    occurrence: 13
+    anchor_id: gls-src-33-index-glossary-css-13
+  - chapter: 33-index-glossary
+    occurrence: 14
+    anchor_id: gls-src-33-index-glossary-css-14
+  - chapter: 33-index-glossary
+    occurrence: 15
+    anchor_id: gls-src-33-index-glossary-css-15
+  - chapter: 43-cover
+    occurrence: 16
+    anchor_id: gls-src-43-cover-css-16
+  - chapter: 44-build
+    occurrence: 17
+    anchor_id: gls-src-44-build-css-17
+  - chapter: 45-utility
+    occurrence: 18
+    anchor_id: gls-src-45-utility-css-18
+  - chapter: 45-utility
+    occurrence: 19
+    anchor_id: gls-src-45-utility-css-19
+  - chapter: 45-utility
+    occurrence: 20
+    anchor_id: gls-src-45-utility-css-20
+  - chapter: 45-utility
+    occurrence: 21
+    anchor_id: gls-src-45-utility-css-21
+  - chapter: 45-utility
+    occurrence: 22
+    anchor_id: gls-src-45-utility-css-22
+  - chapter: 61-developer
+    occurrence: 23
+    anchor_id: gls-src-61-developer-css-23
+  - chapter: 61-developer
+    occurrence: 24
+    anchor_id: gls-src-61-developer-css-24
+  - chapter: 61-developer
+    occurrence: 25
+    anchor_id: gls-src-61-developer-css-25
+  - chapter: 61-developer
+    occurrence: 26
+    anchor_id: gls-src-61-developer-css-26
+  - chapter: 61-developer
+    occurrence: 27
+    anchor_id: gls-src-61-developer-css-27
+  - chapter: 61-developer
+    occurrence: 28
+    anchor_id: gls-src-61-developer-css-28
+  - chapter: 61-developer
+    occurrence: 29
+    anchor_id: gls-src-61-developer-css-29
+  - chapter: 61-developer
+    occurrence: 30
+    anchor_id: gls-src-61-developer-css-30
+  - chapter: 61-developer
+    occurrence: 31
+    anchor_id: gls-src-61-developer-css-31
+  - chapter: 61-developer
+    occurrence: 32
+    anchor_id: gls-src-61-developer-css-32
+  - chapter: 61-developer
+    occurrence: 33
+    anchor_id: gls-src-61-developer-css-33
+  - chapter: 61-developer
+    occurrence: 34
+    anchor_id: gls-src-61-developer-css-34
+  - chapter: 61-developer
+    occurrence: 35
+    anchor_id: gls-src-61-developer-css-35
+  - chapter: 61-developer
+    occurrence: 36
+    anchor_id: gls-src-61-developer-css-36
+  - chapter: 61-developer
+    occurrence: 37
+    anchor_id: gls-src-61-developer-css-37
+  - chapter: 61-developer
+    occurrence: 38
+    anchor_id: gls-src-61-developer-css-38
+  - chapter: 61-developer
+    occurrence: 39
+    anchor_id: gls-src-61-developer-css-39
+  - chapter: 61-developer
+    occurrence: 40
+    anchor_id: gls-src-61-developer-css-40
+  - chapter: 61-developer
+    occurrence: 41
+    anchor_id: gls-src-61-developer-css-41
+  - chapter: 61-developer
+    occurrence: 42
+    anchor_id: gls-src-61-developer-css-42
+  - chapter: 61-developer
+    occurrence: 43
+    anchor_id: gls-src-61-developer-css-43
+  - chapter: 99-postface
+    occurrence: 44
+    anchor_id: gls-src-99-postface-css-44
+- term: CSS組版
+  yomi: CSSくみはん
+  flags: ig
+  definition: HTML と CSS を使って書籍の紙面を設計・組版する手法。Web 制作の知識をそのまま活かして印刷品質の PDF を作れるのが特徴です。
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/CSS組版/"
+  contexts: []
+  updated_at: '2026-07-05 21:00:15'
+  backlink_sources:
+  - chapter: 21-markdown-tutorial
+    occurrence: 1
+    anchor_id: gls-src-21-markdown-tutorial-css組版-1
+  - chapter: 95-further-inspiration
+    occurrence: 2
+    anchor_id: gls-src-95-further-inspiration-css組版-2
+  - chapter: 95-further-inspiration
+    occurrence: 3
+    anchor_id: gls-src-95-further-inspiration-css組版-3
+  - chapter: 95-further-inspiration
+    occurrence: 4
+    anchor_id: gls-src-95-further-inspiration-css組版-4
+  - chapter: 95-further-inspiration
+    occurrence: 5
+    anchor_id: gls-src-95-further-inspiration-css組版-5
+- term: CommonMark
+  yomi: CommonMark
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/\\bCommonMark\\b/"
+- term: EPUB
+  yomi: EPUB
+  flags: ig
+  definition: 電子書籍の国際標準フォーマット。リフロー型が基本で、画面サイズに応じて文字サイズやレイアウトが変化します。Apple Books や Kobo
+    など多くのリーダーで閲覧できます。
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bEPUB\\b/"
+  score: 3126.391575676515
+  contexts:
+  - chapter: 00-preface
+    context: Starter は Markdown で書いた原稿から高品質な PDF・EPUB を生成する書籍制作システムです。CSS 組版エンジン Vivliostyle
+  - chapter: 11-workflow
+    context: build` で書籍全体を組版します。閲覧用 PDF・印刷入稿用 PDF・EPUB・Kindle の四形式を、一度のコマンドで生成できます。
+      ```bash v
+  updated_at: '2026-07-05 21:00:15'
+  backlink_sources:
+  - chapter: 00-preface
+    occurrence: 1
+    anchor_id: gls-src-00-preface-epub-1
+  - chapter: 00-preface
+    occurrence: 2
+    anchor_id: gls-src-00-preface-epub-2
+  - chapter: 00-preface
+    occurrence: 3
+    anchor_id: gls-src-00-preface-epub-3
+  - chapter: 11-workflow
+    occurrence: 4
+    anchor_id: gls-src-11-workflow-epub-4
+  - chapter: 21-markdown-tutorial
+    occurrence: 5
+    anchor_id: gls-src-21-markdown-tutorial-epub-5
+  - chapter: 41-book-yml
+    occurrence: 6
+    anchor_id: gls-src-41-book-yml-epub-6
+  - chapter: 41-book-yml
+    occurrence: 7
+    anchor_id: gls-src-41-book-yml-epub-7
+  - chapter: 41-book-yml
+    occurrence: 8
+    anchor_id: gls-src-41-book-yml-epub-8
+  - chapter: 41-book-yml
+    occurrence: 9
+    anchor_id: gls-src-41-book-yml-epub-9
+  - chapter: 41-book-yml
+    occurrence: 10
+    anchor_id: gls-src-41-book-yml-epub-10
+  - chapter: 41-book-yml
+    occurrence: 11
+    anchor_id: gls-src-41-book-yml-epub-11
+  - chapter: 41-book-yml
+    occurrence: 12
+    anchor_id: gls-src-41-book-yml-epub-12
+  - chapter: 43-cover
+    occurrence: 13
+    anchor_id: gls-src-43-cover-epub-13
+  - chapter: 43-cover
+    occurrence: 14
+    anchor_id: gls-src-43-cover-epub-14
+  - chapter: 44-build
+    occurrence: 15
+    anchor_id: gls-src-44-build-epub-15
+  - chapter: 44-build
+    occurrence: 16
+    anchor_id: gls-src-44-build-epub-16
+  - chapter: 44-build
+    occurrence: 17
+    anchor_id: gls-src-44-build-epub-17
+  - chapter: 44-build
+    occurrence: 18
+    anchor_id: gls-src-44-build-epub-18
+  - chapter: 44-build
+    occurrence: 19
+    anchor_id: gls-src-44-build-epub-19
+  - chapter: 44-build
+    occurrence: 20
+    anchor_id: gls-src-44-build-epub-20
+  - chapter: 44-build
+    occurrence: 21
+    anchor_id: gls-src-44-build-epub-21
+  - chapter: 44-build
+    occurrence: 22
+    anchor_id: gls-src-44-build-epub-22
+  - chapter: 44-build
+    occurrence: 23
+    anchor_id: gls-src-44-build-epub-23
+  - chapter: 44-build
+    occurrence: 24
+    anchor_id: gls-src-44-build-epub-24
+  - chapter: 44-build
+    occurrence: 25
+    anchor_id: gls-src-44-build-epub-25
+  - chapter: 44-build
+    occurrence: 26
+    anchor_id: gls-src-44-build-epub-26
+  - chapter: 44-build
+    occurrence: 27
+    anchor_id: gls-src-44-build-epub-27
+  - chapter: 44-build
+    occurrence: 28
+    anchor_id: gls-src-44-build-epub-28
+  - chapter: 44-build
+    occurrence: 29
+    anchor_id: gls-src-44-build-epub-29
+  - chapter: 44-build
+    occurrence: 30
+    anchor_id: gls-src-44-build-epub-30
+  - chapter: 44-build
+    occurrence: 31
+    anchor_id: gls-src-44-build-epub-31
+  - chapter: 44-build
+    occurrence: 32
+    anchor_id: gls-src-44-build-epub-32
+  - chapter: 44-build
+    occurrence: 33
+    anchor_id: gls-src-44-build-epub-33
+  - chapter: 44-build
+    occurrence: 34
+    anchor_id: gls-src-44-build-epub-34
+  - chapter: 44-build
+    occurrence: 35
+    anchor_id: gls-src-44-build-epub-35
+  - chapter: 44-build
+    occurrence: 36
+    anchor_id: gls-src-44-build-epub-36
+  - chapter: 44-build
+    occurrence: 37
+    anchor_id: gls-src-44-build-epub-37
+  - chapter: 44-build
+    occurrence: 38
+    anchor_id: gls-src-44-build-epub-38
+  - chapter: 44-build
+    occurrence: 39
+    anchor_id: gls-src-44-build-epub-39
+  - chapter: 44-build
+    occurrence: 40
+    anchor_id: gls-src-44-build-epub-40
+  - chapter: 44-build
+    occurrence: 41
+    anchor_id: gls-src-44-build-epub-41
+  - chapter: 44-build
+    occurrence: 42
+    anchor_id: gls-src-44-build-epub-42
+  - chapter: 44-build
+    occurrence: 43
+    anchor_id: gls-src-44-build-epub-43
+  - chapter: 44-build
+    occurrence: 44
+    anchor_id: gls-src-44-build-epub-44
+  - chapter: 44-build
+    occurrence: 45
+    anchor_id: gls-src-44-build-epub-45
+  - chapter: 44-build
+    occurrence: 46
+    anchor_id: gls-src-44-build-epub-46
+  - chapter: 51-doctor
+    occurrence: 47
+    anchor_id: gls-src-51-doctor-epub-47
+  - chapter: 61-developer
+    occurrence: 48
+    anchor_id: gls-src-61-developer-epub-48
+  - chapter: 61-developer
+    occurrence: 49
+    anchor_id: gls-src-61-developer-epub-49
+  - chapter: 61-developer
+    occurrence: 50
+    anchor_id: gls-src-61-developer-epub-50
+  - chapter: 61-developer
+    occurrence: 51
+    anchor_id: gls-src-61-developer-epub-51
+  - chapter: 61-developer
+    occurrence: 52
+    anchor_id: gls-src-61-developer-epub-52
+  - chapter: 61-developer
+    occurrence: 53
+    anchor_id: gls-src-61-developer-epub-53
+  - chapter: 61-developer
+    occurrence: 54
+    anchor_id: gls-src-61-developer-epub-54
+  - chapter: 61-developer
+    occurrence: 55
+    anchor_id: gls-src-61-developer-epub-55
+  - chapter: 61-developer
+    occurrence: 56
+    anchor_id: gls-src-61-developer-epub-56
+  - chapter: 61-developer
+    occurrence: 57
+    anchor_id: gls-src-61-developer-epub-57
+  - chapter: 61-developer
+    occurrence: 58
+    anchor_id: gls-src-61-developer-epub-58
+  - chapter: 61-developer
+    occurrence: 59
+    anchor_id: gls-src-61-developer-epub-59
+  - chapter: 61-developer
+    occurrence: 60
+    anchor_id: gls-src-61-developer-epub-60
+  - chapter: 61-developer
+    occurrence: 61
+    anchor_id: gls-src-61-developer-epub-61
+  - chapter: 61-developer
+    occurrence: 62
+    anchor_id: gls-src-61-developer-epub-62
+  - chapter: 61-developer
+    occurrence: 63
+    anchor_id: gls-src-61-developer-epub-63
+  - chapter: 61-developer
+    occurrence: 64
+    anchor_id: gls-src-61-developer-epub-64
+  - chapter: 61-developer
+    occurrence: 65
+    anchor_id: gls-src-61-developer-epub-65
+  - chapter: 61-developer
+    occurrence: 66
+    anchor_id: gls-src-61-developer-epub-66
+  - chapter: 61-developer
+    occurrence: 67
+    anchor_id: gls-src-61-developer-epub-67
+  - chapter: 61-developer
+    occurrence: 68
+    anchor_id: gls-src-61-developer-epub-68
+  - chapter: 61-developer
+    occurrence: 69
+    anchor_id: gls-src-61-developer-epub-69
+  - chapter: 61-developer
+    occurrence: 70
+    anchor_id: gls-src-61-developer-epub-70
+  - chapter: 91-install
+    occurrence: 71
+    anchor_id: gls-src-91-install-epub-71
+- term: Enhanced
+  yomi: Enhanced
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bEnhanced\\b/"
+  score: 615.2572503436829
+  contexts:
+  - chapter: 44-build
+    context: も生成物が異なります。Kindle の表示エンジン（KFX / Enhanced Typesetting）は EPUB の一部の CSS・画像形式に対応していな
+  - chapter: 61-developer
+    context: CSS 制約 Kindle の表示エンジン（KFX / Enhanced Typesetting）は、EPUB で広く使える一部の CSS
+      をサポートし
+  - chapter: 92-pdf-read
+    context: 'pdf:read` は **Standard Mode** と **Enhanced Mode** の 2 段階で機能を提供します。 |
+      項目 | '
+  updated_at: '2026-07-05 21:00:15'
+- term: Ghostscript
+  yomi: Ghostscript
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/\\bGhostscript\\b/"
+- term: Git
+  yomi: Git
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/\\bGit\\b/"
+- term: GitHub
+  yomi: GitHub
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/\\bGitHub\\b/"
+- term: HTML
+  yomi: HTML
+  flags: ig
+  definition: HyperText Markup Language の略。Web ページを記述するマークアップ言語で、Vivlio Starter では
+    Markdown から HTML へ変換した後に CSS 組版へ渡します。
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bHTML\\b/"
+  score: 1464.913630367889
+  contexts:
+  - chapter: 00-preface
+    context: 未來](https://atelier-mirai.net/)」を創業。HTML 講座や Ruby 講座などプログラミングの個人指導、IT
+      パスポート講座等の資
+  - chapter: 21-markdown-tutorial
+    context: "**汎用性**: 多くのプラットフォームでサポート - **変換可能**: HTML、PDF、Word など様々な形式に変換 - **バージョン管理友好**:"
+  updated_at: '2026-07-05 21:00:15'
+  backlink_sources:
+  - chapter: 00-preface
+    occurrence: 1
+    anchor_id: gls-src-00-preface-html-1
+  - chapter: 21-markdown-tutorial
+    occurrence: 2
+    anchor_id: gls-src-21-markdown-tutorial-html-2
+  - chapter: 21-markdown-tutorial
+    occurrence: 3
+    anchor_id: gls-src-21-markdown-tutorial-html-3
+  - chapter: 21-markdown-tutorial
+    occurrence: 4
+    anchor_id: gls-src-21-markdown-tutorial-html-4
+  - chapter: 21-markdown-tutorial
+    occurrence: 5
+    anchor_id: gls-src-21-markdown-tutorial-html-5
+  - chapter: 21-markdown-tutorial
+    occurrence: 6
+    anchor_id: gls-src-21-markdown-tutorial-html-6
+  - chapter: 21-markdown-tutorial
+    occurrence: 7
+    anchor_id: gls-src-21-markdown-tutorial-html-7
+  - chapter: 21-markdown-tutorial
+    occurrence: 8
+    anchor_id: gls-src-21-markdown-tutorial-html-8
+  - chapter: 21-markdown-tutorial
+    occurrence: 9
+    anchor_id: gls-src-21-markdown-tutorial-html-9
+  - chapter: 21-markdown-tutorial
+    occurrence: 10
+    anchor_id: gls-src-21-markdown-tutorial-html-10
+  - chapter: 22-extentions
+    occurrence: 11
+    anchor_id: gls-src-22-extentions-html-11
+  - chapter: 31-lint
+    occurrence: 12
+    anchor_id: gls-src-31-lint-html-12
+  - chapter: 33-index-glossary
+    occurrence: 13
+    anchor_id: gls-src-33-index-glossary-html-13
+  - chapter: 33-index-glossary
+    occurrence: 14
+    anchor_id: gls-src-33-index-glossary-html-14
+  - chapter: 33-index-glossary
+    occurrence: 15
+    anchor_id: gls-src-33-index-glossary-html-15
+  - chapter: 33-index-glossary
+    occurrence: 16
+    anchor_id: gls-src-33-index-glossary-html-16
+  - chapter: 44-build
+    occurrence: 17
+    anchor_id: gls-src-44-build-html-17
+  - chapter: 44-build
+    occurrence: 18
+    anchor_id: gls-src-44-build-html-18
+  - chapter: 44-build
+    occurrence: 19
+    anchor_id: gls-src-44-build-html-19
+  - chapter: 61-developer
+    occurrence: 20
+    anchor_id: gls-src-61-developer-html-20
+  - chapter: 61-developer
+    occurrence: 21
+    anchor_id: gls-src-61-developer-html-21
+  - chapter: 61-developer
+    occurrence: 22
+    anchor_id: gls-src-61-developer-html-22
+  - chapter: 61-developer
+    occurrence: 23
+    anchor_id: gls-src-61-developer-html-23
+  - chapter: 61-developer
+    occurrence: 24
+    anchor_id: gls-src-61-developer-html-24
+  - chapter: 61-developer
+    occurrence: 25
+    anchor_id: gls-src-61-developer-html-25
+  - chapter: 61-developer
+    occurrence: 26
+    anchor_id: gls-src-61-developer-html-26
+  - chapter: 61-developer
+    occurrence: 27
+    anchor_id: gls-src-61-developer-html-27
+  - chapter: 61-developer
+    occurrence: 28
+    anchor_id: gls-src-61-developer-html-28
+  - chapter: 61-developer
+    occurrence: 29
+    anchor_id: gls-src-61-developer-html-29
+  - chapter: 61-developer
+    occurrence: 30
+    anchor_id: gls-src-61-developer-html-30
+  - chapter: 61-developer
+    occurrence: 31
+    anchor_id: gls-src-61-developer-html-31
+  - chapter: 61-developer
+    occurrence: 32
+    anchor_id: gls-src-61-developer-html-32
+  - chapter: 61-developer
+    occurrence: 33
+    anchor_id: gls-src-61-developer-html-33
+  - chapter: 61-developer
+    occurrence: 34
+    anchor_id: gls-src-61-developer-html-34
+  - chapter: 61-developer
+    occurrence: 35
+    anchor_id: gls-src-61-developer-html-35
+  - chapter: 61-developer
+    occurrence: 36
+    anchor_id: gls-src-61-developer-html-36
+  - chapter: 92-pdf-read
+    occurrence: 37
+    anchor_id: gls-src-92-pdf-read-html-37
+- term: HexaPDF
+  yomi: HexaPDF
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/\\bHexaPDF\\b/"
+- term: Homebrew
+  yomi: Homebrew
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bHomebrew\\b/"
+  score: 516.6337068793428
+  contexts:
+  - chapter: 12-quickstart
+    context: " - Xcode コマンドラインツールの確認・インストール案内 - Homebrew（macOS 用パッケージマネージャ）の導入 - rbenv（Ruby "
+  - chapter: 44-build
+    context: "--fix` で Kindle Previewer 3 の導入（Homebrew cask）と `kindlepreviewer` コマンドのパス通し（アプリ内"
+  - chapter: 51-doctor
+    context: 不足しているツールを自動インストールします。macOS では Homebrew 経由でインストールします。Homebrew 自体や Xcode
+      Command
+  - chapter: 61-developer
+    context: "`--fix` オプションを指定すると、macOS + Homebrew 環境で不足ツールを自動インストールします。 `targets:
+      kindle"
+  - chapter: 91-install
+    context: Xcode Command Line Tools の確認とインストール案内、Homebrew の導入、rbenv / ruby-build
+      の導入、
+  updated_at: '2026-07-05 21:00:15'
+- term: Hz
+  yomi: Hz
+  flags: i
+  definition: ''
+  source: manual_markup
+  approved_at: '2026-07-05 20:49:56'
+  pattern: "/\\bHz\\b/"
+  contexts:
+  - chapter: 94-sample
+    context: 'phi)   puts "#{metal}: #{"%.3e" % freq} Hz" end ``` 各金属のしきい周波数を比較すると次のようになります。
+      *'
+  updated_at: '2026-07-05 21:00:15'
+- term: ImageMagick
+  yomi: ImageMagick
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bImageMagick\\b/"
+  score: 318.73118333797015
+  contexts:
+  - chapter: 11-workflow
+    context: "--fix` が自動的に呼び出され、Vivliostyle や ImageMagick など、書籍制作に必要な外部ツールが一括でセットアップされます。"
+  - chapter: 42-frontispiece
+    context: "**症状**: バリアント画像の自動生成が失敗する **原因**: ImageMagick がインストールされていない **対処法**:
+      ```bash # "
+  - chapter: 43-cover
+    context: "**症状**: カバー画像が生成されない **原因**: ImageMagick または Ghostscript がインストールされていない
+      **解決方法**"
+  - chapter: 61-developer
+    context: 診断対象は qpdf・pdfinfo・Ghostscript・ImageMagick・Inkscape・Vivliostyle CLI・textlint・MeC
+  - chapter: 91-install
+    context: 'install ghostscript` | PDF 圧縮 | | ImageMagick | `brew install imagemagick`
+      | '
+  - chapter: 93-import
+    context: " - Ruby 4.x / Bundler - node / npm - ImageMagick, qpdf, pdfinfo, Ghostscript,
+      mecab - "
+  updated_at: '2026-07-05 21:00:15'
+- term: JPEG
+  yomi: JPEG
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bJPEG\\b/"
+  score: 688.3792763028644
+  contexts:
+  - chapter: 42-frontispiece
+    context: " - WebP（`.webp`）- 推奨 - PNG（`.png`） - JPEG（`.jpg`, `.jpeg`） <!-- vs-lint-disable"
+  - chapter: 43-cover
+    context: 'g # EPUB用カバー（1600×2560、JPEG） ``` ### フォーマット別の生成 特定のフォーマットのみを生成したい'
+  - chapter: 44-build
+    context: "| `.kpf` | | 画像形式 | WebP をそのまま使用 | JPEG / PNG へ変換（Kindle は WebP 非対応）
+      | | 扉絵・節絵・"
+  - chapter: 61-developer
+    context: DFを圧縮します pdf:pages PDFをページ単位でJPEG画像に切り出します pdf:rasterize PDFをラスタライ
+  updated_at: '2026-07-05 21:00:15'
+- term: KDP
+  yomi: KDP
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bKDP\\b/"
+  score: 505.3664762079692
+  contexts:
+  - chapter: 41-book-yml
+    context: '換） embed: false # false: KDP で別途アップロードするため埋め込まない（既定・推奨） layout:'
+  - chapter: 44-build
+    context: "`kindle` | Kindle 用 KPF | Amazon Kindle（KDP）への配信 | ## 閲覧用 PDF のビルド :::{.section-"
+  updated_at: '2026-07-05 21:00:15'
+- term: KFX
+  yomi: KFX
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/\\bKFX\\b/"
+- term: KPF
+  yomi: KPF
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bKPF\\b/"
+  score: 738.9653922233099
+  contexts:
+  - chapter: 41-book-yml
+    context: 'e: # Amazon Kindle 向け（KPF へ自動変換） embed: false # fa'
+  - chapter: 44-build
+    context: '電子書籍（EPUB）、Amazon Kindle 用ファイル（KPF）の四つの形式を、ひとつのコマンドで生成できます。 ::: `vs
+      build'
+  - chapter: 51-doctor
+    context: "(Kindle Previewer 3) | Kindle（KPF）変換（任意・targets: kindle 用） | | Google
+      Fon"
+  - chapter: 61-developer
+    context: は Amazon Kindle 向けに調整した EPUB から変換した KPF を生成します。`output.epub` / `output.kindle`
+  - chapter: 91-install
+    context: 'kindle-previewer` ＋ ラッパー作成 | Kindle（KPF）変換（任意・targets: kindle 用） | |
+      Google Fon'
+  updated_at: '2026-07-05 21:00:15'
+- term: Kindle
+  yomi: Kindle
+  flags: ig
+  definition: Amazon の電子書籍プラットフォーム。KDP（Kindle Direct Publishing）から出版でき、Vivlio Starter
+    は Kindle 向けに最適化した EPUB / KPF の生成に対応しています。
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bKindle\\b/"
+  score: 1541.2763238476186
+  contexts:
+  - chapter: 00-preface
+    context: 印刷所にそのまま入稿できます - **電子書籍も出力** — EPUB / Kindle 形式での出力にも対応。電子出版の道も開かれています
+      -
+  - chapter: 11-workflow
+    context: 閲覧用 PDF・印刷入稿用 PDF・EPUB・Kindle の四形式を、一度のコマンドで生成できます。 ```bash vs build
+  updated_at: '2026-07-05 21:00:15'
+  backlink_sources:
+  - chapter: 00-preface
+    occurrence: 1
+    anchor_id: gls-src-00-preface-kindle-1
+  - chapter: 00-preface
+    occurrence: 2
+    anchor_id: gls-src-00-preface-kindle-2
+  - chapter: 11-workflow
+    occurrence: 3
+    anchor_id: gls-src-11-workflow-kindle-3
+  - chapter: 11-workflow
+    occurrence: 4
+    anchor_id: gls-src-11-workflow-kindle-4
+  - chapter: 41-book-yml
+    occurrence: 5
+    anchor_id: gls-src-41-book-yml-kindle-5
+  - chapter: 41-book-yml
+    occurrence: 6
+    anchor_id: gls-src-41-book-yml-kindle-6
+  - chapter: 41-book-yml
+    occurrence: 7
+    anchor_id: gls-src-41-book-yml-kindle-7
+  - chapter: 41-book-yml
+    occurrence: 8
+    anchor_id: gls-src-41-book-yml-kindle-8
+  - chapter: 44-build
+    occurrence: 9
+    anchor_id: gls-src-44-build-kindle-9
+  - chapter: 44-build
+    occurrence: 10
+    anchor_id: gls-src-44-build-kindle-10
+  - chapter: 44-build
+    occurrence: 11
+    anchor_id: gls-src-44-build-kindle-11
+  - chapter: 44-build
+    occurrence: 12
+    anchor_id: gls-src-44-build-kindle-12
+  - chapter: 44-build
+    occurrence: 13
+    anchor_id: gls-src-44-build-kindle-13
+  - chapter: 44-build
+    occurrence: 14
+    anchor_id: gls-src-44-build-kindle-14
+  - chapter: 44-build
+    occurrence: 15
+    anchor_id: gls-src-44-build-kindle-15
+  - chapter: 44-build
+    occurrence: 16
+    anchor_id: gls-src-44-build-kindle-16
+  - chapter: 44-build
+    occurrence: 17
+    anchor_id: gls-src-44-build-kindle-17
+  - chapter: 44-build
+    occurrence: 18
+    anchor_id: gls-src-44-build-kindle-18
+  - chapter: 44-build
+    occurrence: 19
+    anchor_id: gls-src-44-build-kindle-19
+  - chapter: 44-build
+    occurrence: 20
+    anchor_id: gls-src-44-build-kindle-20
+  - chapter: 44-build
+    occurrence: 21
+    anchor_id: gls-src-44-build-kindle-21
+  - chapter: 44-build
+    occurrence: 22
+    anchor_id: gls-src-44-build-kindle-22
+  - chapter: 44-build
+    occurrence: 23
+    anchor_id: gls-src-44-build-kindle-23
+  - chapter: 44-build
+    occurrence: 24
+    anchor_id: gls-src-44-build-kindle-24
+  - chapter: 44-build
+    occurrence: 25
+    anchor_id: gls-src-44-build-kindle-25
+  - chapter: 44-build
+    occurrence: 26
+    anchor_id: gls-src-44-build-kindle-26
+  - chapter: 44-build
+    occurrence: 27
+    anchor_id: gls-src-44-build-kindle-27
+  - chapter: 44-build
+    occurrence: 28
+    anchor_id: gls-src-44-build-kindle-28
+  - chapter: 44-build
+    occurrence: 29
+    anchor_id: gls-src-44-build-kindle-29
+  - chapter: 44-build
+    occurrence: 30
+    anchor_id: gls-src-44-build-kindle-30
+  - chapter: 44-build
+    occurrence: 31
+    anchor_id: gls-src-44-build-kindle-31
+  - chapter: 44-build
+    occurrence: 32
+    anchor_id: gls-src-44-build-kindle-32
+  - chapter: 44-build
+    occurrence: 33
+    anchor_id: gls-src-44-build-kindle-33
+  - chapter: 44-build
+    occurrence: 34
+    anchor_id: gls-src-44-build-kindle-34
+  - chapter: 44-build
+    occurrence: 35
+    anchor_id: gls-src-44-build-kindle-35
+  - chapter: 44-build
+    occurrence: 36
+    anchor_id: gls-src-44-build-kindle-36
+  - chapter: 44-build
+    occurrence: 37
+    anchor_id: gls-src-44-build-kindle-37
+  - chapter: 44-build
+    occurrence: 38
+    anchor_id: gls-src-44-build-kindle-38
+  - chapter: 51-doctor
+    occurrence: 39
+    anchor_id: gls-src-51-doctor-kindle-39
+  - chapter: 51-doctor
+    occurrence: 40
+    anchor_id: gls-src-51-doctor-kindle-40
+  - chapter: 51-doctor
+    occurrence: 41
+    anchor_id: gls-src-51-doctor-kindle-41
+  - chapter: 61-developer
+    occurrence: 42
+    anchor_id: gls-src-61-developer-kindle-42
+  - chapter: 61-developer
+    occurrence: 43
+    anchor_id: gls-src-61-developer-kindle-43
+  - chapter: 61-developer
+    occurrence: 44
+    anchor_id: gls-src-61-developer-kindle-44
+  - chapter: 61-developer
+    occurrence: 45
+    anchor_id: gls-src-61-developer-kindle-45
+  - chapter: 61-developer
+    occurrence: 46
+    anchor_id: gls-src-61-developer-kindle-46
+  - chapter: 61-developer
+    occurrence: 47
+    anchor_id: gls-src-61-developer-kindle-47
+  - chapter: 61-developer
+    occurrence: 48
+    anchor_id: gls-src-61-developer-kindle-48
+  - chapter: 61-developer
+    occurrence: 49
+    anchor_id: gls-src-61-developer-kindle-49
+  - chapter: 61-developer
+    occurrence: 50
+    anchor_id: gls-src-61-developer-kindle-50
+  - chapter: 61-developer
+    occurrence: 51
+    anchor_id: gls-src-61-developer-kindle-51
+  - chapter: 61-developer
+    occurrence: 52
+    anchor_id: gls-src-61-developer-kindle-52
+  - chapter: 61-developer
+    occurrence: 53
+    anchor_id: gls-src-61-developer-kindle-53
+  - chapter: 61-developer
+    occurrence: 54
+    anchor_id: gls-src-61-developer-kindle-54
+  - chapter: 61-developer
+    occurrence: 55
+    anchor_id: gls-src-61-developer-kindle-55
+  - chapter: 91-install
+    occurrence: 56
+    anchor_id: gls-src-91-install-kindle-56
+  - chapter: 91-install
+    occurrence: 57
+    anchor_id: gls-src-91-install-kindle-57
+- term: Kobo
+  yomi: Kobo
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bKobo\\b/"
+  score: 337.1628106631798
+  contexts:
+  - chapter: 11-workflow
+    context: "| `print_pdf`（トンボ付き） | | Apple Books, Kobo | `epub`| | Kindle | `kindle`（専用）
+      | "
+  - chapter: 41-book-yml
+    context: 'true） epub: # 楽天 Kobo / Apple Books 向けクリーン EPUB embed: tr'
+  - chapter: 44-build
+    context: "| | `epub` | クリーン EPUB（電子書籍） | 楽天 Kobo、Apple Books への配信 | | `kindle`
+      | Kindle"
+  - chapter: 61-developer
+    context: がこの値に応じて実行するステップを切り替えます。`epub` は楽天 Kobo / Apple Books 向けのクリーン EPUB、`kindle`
+      は A
+  updated_at: '2026-07-05 21:00:15'
+- term: MATTR
+  yomi: MATTR
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bMATTR\\b/"
+  score: 513.8969614476922
+  contexts:
+  - chapter: 32-metrics
+    context: '漢字比率と平均語長から文章の「硬さ」を測定 - **語彙多様度**: MATTR（移動平均 Type-Token Ratio）で表現の豊かさを評価
+      - **読解'
+  updated_at: '2026-07-05 21:00:15'
+- term: Markdown
+  yomi: Markdown
+  flags: ig
+  definition: 見出しや箇条書きなどを簡単な記号で表現できる軽量マークアップ言語。プレーンテキストのまま読み書きでき、HTML や PDF など様々な形式へ変換できます。
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bMarkdown\\b/"
+  score: 2210.619553689268
+  contexts:
+  - chapter: 00-preface
+    context: ":::{.chapter-lead} Vivlio Starter は Markdown で書いた原稿から高品質な PDF・EPUB を生成する書籍制作システムで"
+  - chapter: 11-workflow
+    context: "### ② 執筆 `contents/` ディレクトリ内の Markdown ファイルに原稿を書きます。章ファイルの追加・削除・番号の振り直しには専用のコマ"
+  updated_at: '2026-07-05 21:00:15'
+  backlink_sources:
+  - chapter: 00-preface
+    occurrence: 1
+    anchor_id: gls-src-00-preface-markdown-1
+  - chapter: 00-preface
+    occurrence: 2
+    anchor_id: gls-src-00-preface-markdown-2
+  - chapter: 00-preface
+    occurrence: 3
+    anchor_id: gls-src-00-preface-markdown-3
+  - chapter: 00-preface
+    occurrence: 4
+    anchor_id: gls-src-00-preface-markdown-4
+  - chapter: 11-workflow
+    occurrence: 5
+    anchor_id: gls-src-11-workflow-markdown-5
+  - chapter: 11-workflow
+    occurrence: 6
+    anchor_id: gls-src-11-workflow-markdown-6
+  - chapter: 12-quickstart
+    occurrence: 7
+    anchor_id: gls-src-12-quickstart-markdown-7
+  - chapter: 12-quickstart
+    occurrence: 8
+    anchor_id: gls-src-12-quickstart-markdown-8
+  - chapter: 13-new
+    occurrence: 9
+    anchor_id: gls-src-13-new-markdown-9
+  - chapter: 13-new
+    occurrence: 10
+    anchor_id: gls-src-13-new-markdown-10
+  - chapter: 13-new
+    occurrence: 11
+    anchor_id: gls-src-13-new-markdown-11
+  - chapter: 21-markdown-tutorial
+    occurrence: 12
+    anchor_id: gls-src-21-markdown-tutorial-markdown-12
+  - chapter: 21-markdown-tutorial
+    occurrence: 13
+    anchor_id: gls-src-21-markdown-tutorial-markdown-13
+  - chapter: 21-markdown-tutorial
+    occurrence: 14
+    anchor_id: gls-src-21-markdown-tutorial-markdown-14
+  - chapter: 21-markdown-tutorial
+    occurrence: 15
+    anchor_id: gls-src-21-markdown-tutorial-markdown-15
+  - chapter: 21-markdown-tutorial
+    occurrence: 16
+    anchor_id: gls-src-21-markdown-tutorial-markdown-16
+  - chapter: 21-markdown-tutorial
+    occurrence: 17
+    anchor_id: gls-src-21-markdown-tutorial-markdown-17
+  - chapter: 21-markdown-tutorial
+    occurrence: 18
+    anchor_id: gls-src-21-markdown-tutorial-markdown-18
+  - chapter: 21-markdown-tutorial
+    occurrence: 19
+    anchor_id: gls-src-21-markdown-tutorial-markdown-19
+  - chapter: 21-markdown-tutorial
+    occurrence: 20
+    anchor_id: gls-src-21-markdown-tutorial-markdown-20
+  - chapter: 21-markdown-tutorial
+    occurrence: 21
+    anchor_id: gls-src-21-markdown-tutorial-markdown-21
+  - chapter: 21-markdown-tutorial
+    occurrence: 22
+    anchor_id: gls-src-21-markdown-tutorial-markdown-22
+  - chapter: 21-markdown-tutorial
+    occurrence: 23
+    anchor_id: gls-src-21-markdown-tutorial-markdown-23
+  - chapter: 21-markdown-tutorial
+    occurrence: 24
+    anchor_id: gls-src-21-markdown-tutorial-markdown-24
+  - chapter: 21-markdown-tutorial
+    occurrence: 25
+    anchor_id: gls-src-21-markdown-tutorial-markdown-25
+  - chapter: 21-markdown-tutorial
+    occurrence: 26
+    anchor_id: gls-src-21-markdown-tutorial-markdown-26
+  - chapter: 21-markdown-tutorial
+    occurrence: 27
+    anchor_id: gls-src-21-markdown-tutorial-markdown-27
+  - chapter: 21-markdown-tutorial
+    occurrence: 28
+    anchor_id: gls-src-21-markdown-tutorial-markdown-28
+  - chapter: 21-markdown-tutorial
+    occurrence: 29
+    anchor_id: gls-src-21-markdown-tutorial-markdown-29
+  - chapter: 21-markdown-tutorial
+    occurrence: 30
+    anchor_id: gls-src-21-markdown-tutorial-markdown-30
+  - chapter: 21-markdown-tutorial
+    occurrence: 31
+    anchor_id: gls-src-21-markdown-tutorial-markdown-31
+  - chapter: 21-markdown-tutorial
+    occurrence: 32
+    anchor_id: gls-src-21-markdown-tutorial-markdown-32
+  - chapter: 21-markdown-tutorial
+    occurrence: 33
+    anchor_id: gls-src-21-markdown-tutorial-markdown-33
+  - chapter: 21-markdown-tutorial
+    occurrence: 34
+    anchor_id: gls-src-21-markdown-tutorial-markdown-34
+  - chapter: 21-markdown-tutorial
+    occurrence: 35
+    anchor_id: gls-src-21-markdown-tutorial-markdown-35
+  - chapter: 22-extentions
+    occurrence: 36
+    anchor_id: gls-src-22-extentions-markdown-36
+  - chapter: 22-extentions
+    occurrence: 37
+    anchor_id: gls-src-22-extentions-markdown-37
+  - chapter: 22-extentions
+    occurrence: 38
+    anchor_id: gls-src-22-extentions-markdown-38
+  - chapter: 22-extentions
+    occurrence: 39
+    anchor_id: gls-src-22-extentions-markdown-39
+  - chapter: 22-extentions
+    occurrence: 40
+    anchor_id: gls-src-22-extentions-markdown-40
+  - chapter: 22-extentions
+    occurrence: 41
+    anchor_id: gls-src-22-extentions-markdown-41
+  - chapter: 23-chapter-management
+    occurrence: 42
+    anchor_id: gls-src-23-chapter-management-markdown-42
+  - chapter: 23-chapter-management
+    occurrence: 43
+    anchor_id: gls-src-23-chapter-management-markdown-43
+  - chapter: 23-chapter-management
+    occurrence: 44
+    anchor_id: gls-src-23-chapter-management-markdown-44
+  - chapter: 24-cross-reference
+    occurrence: 45
+    anchor_id: gls-src-24-cross-reference-markdown-45
+  - chapter: 25-querystream
+    occurrence: 46
+    anchor_id: gls-src-25-querystream-markdown-46
+  - chapter: 25-querystream
+    occurrence: 47
+    anchor_id: gls-src-25-querystream-markdown-47
+  - chapter: 31-lint
+    occurrence: 48
+    anchor_id: gls-src-31-lint-markdown-48
+  - chapter: 31-lint
+    occurrence: 49
+    anchor_id: gls-src-31-lint-markdown-49
+  - chapter: 31-lint
+    occurrence: 50
+    anchor_id: gls-src-31-lint-markdown-50
+  - chapter: 32-metrics
+    occurrence: 51
+    anchor_id: gls-src-32-metrics-markdown-51
+  - chapter: 33-index-glossary
+    occurrence: 52
+    anchor_id: gls-src-33-index-glossary-markdown-52
+  - chapter: 33-index-glossary
+    occurrence: 53
+    anchor_id: gls-src-33-index-glossary-markdown-53
+  - chapter: 33-index-glossary
+    occurrence: 54
+    anchor_id: gls-src-33-index-glossary-markdown-54
+  - chapter: 33-index-glossary
+    occurrence: 55
+    anchor_id: gls-src-33-index-glossary-markdown-55
+  - chapter: 33-index-glossary
+    occurrence: 56
+    anchor_id: gls-src-33-index-glossary-markdown-56
+  - chapter: 41-book-yml
+    occurrence: 57
+    anchor_id: gls-src-41-book-yml-markdown-57
+  - chapter: 41-book-yml
+    occurrence: 58
+    anchor_id: gls-src-41-book-yml-markdown-58
+  - chapter: 41-book-yml
+    occurrence: 59
+    anchor_id: gls-src-41-book-yml-markdown-59
+  - chapter: 44-build
+    occurrence: 60
+    anchor_id: gls-src-44-build-markdown-60
+  - chapter: 44-build
+    occurrence: 61
+    anchor_id: gls-src-44-build-markdown-61
+  - chapter: 44-build
+    occurrence: 62
+    anchor_id: gls-src-44-build-markdown-62
+  - chapter: 44-build
+    occurrence: 63
+    anchor_id: gls-src-44-build-markdown-63
+  - chapter: 45-utility
+    occurrence: 64
+    anchor_id: gls-src-45-utility-markdown-64
+  - chapter: 61-developer
+    occurrence: 65
+    anchor_id: gls-src-61-developer-markdown-65
+  - chapter: 61-developer
+    occurrence: 66
+    anchor_id: gls-src-61-developer-markdown-66
+  - chapter: 61-developer
+    occurrence: 67
+    anchor_id: gls-src-61-developer-markdown-67
+  - chapter: 61-developer
+    occurrence: 68
+    anchor_id: gls-src-61-developer-markdown-68
+  - chapter: 61-developer
+    occurrence: 69
+    anchor_id: gls-src-61-developer-markdown-69
+  - chapter: 61-developer
+    occurrence: 70
+    anchor_id: gls-src-61-developer-markdown-70
+  - chapter: 61-developer
+    occurrence: 71
+    anchor_id: gls-src-61-developer-markdown-71
+  - chapter: 61-developer
+    occurrence: 72
+    anchor_id: gls-src-61-developer-markdown-72
+  - chapter: 61-developer
+    occurrence: 73
+    anchor_id: gls-src-61-developer-markdown-73
+  - chapter: 61-developer
+    occurrence: 74
+    anchor_id: gls-src-61-developer-markdown-74
+  - chapter: 61-developer
+    occurrence: 75
+    anchor_id: gls-src-61-developer-markdown-75
+  - chapter: 61-developer
+    occurrence: 76
+    anchor_id: gls-src-61-developer-markdown-76
+  - chapter: 61-developer
+    occurrence: 77
+    anchor_id: gls-src-61-developer-markdown-77
+  - chapter: 61-developer
+    occurrence: 78
+    anchor_id: gls-src-61-developer-markdown-78
+  - chapter: 61-developer
+    occurrence: 79
+    anchor_id: gls-src-61-developer-markdown-79
+  - chapter: 61-developer
+    occurrence: 80
+    anchor_id: gls-src-61-developer-markdown-80
+  - chapter: 61-developer
+    occurrence: 81
+    anchor_id: gls-src-61-developer-markdown-81
+  - chapter: 61-developer
+    occurrence: 82
+    anchor_id: gls-src-61-developer-markdown-82
+  - chapter: 61-developer
+    occurrence: 83
+    anchor_id: gls-src-61-developer-markdown-83
+  - chapter: 61-developer
+    occurrence: 84
+    anchor_id: gls-src-61-developer-markdown-84
+  - chapter: 61-developer
+    occurrence: 85
+    anchor_id: gls-src-61-developer-markdown-85
+  - chapter: 61-developer
+    occurrence: 86
+    anchor_id: gls-src-61-developer-markdown-86
+  - chapter: 61-developer
+    occurrence: 87
+    anchor_id: gls-src-61-developer-markdown-87
+  - chapter: 61-developer
+    occurrence: 88
+    anchor_id: gls-src-61-developer-markdown-88
+  - chapter: 92-pdf-read
+    occurrence: 89
+    anchor_id: gls-src-92-pdf-read-markdown-89
+  - chapter: 92-pdf-read
+    occurrence: 90
+    anchor_id: gls-src-92-pdf-read-markdown-90
+  - chapter: 92-pdf-read
+    occurrence: 91
+    anchor_id: gls-src-92-pdf-read-markdown-91
+  - chapter: 92-pdf-read
+    occurrence: 92
+    anchor_id: gls-src-92-pdf-read-markdown-92
+  - chapter: 92-pdf-read
+    occurrence: 93
+    anchor_id: gls-src-92-pdf-read-markdown-93
+  - chapter: 93-import
+    occurrence: 94
+    anchor_id: gls-src-93-import-markdown-94
+  - chapter: 93-import
+    occurrence: 95
+    anchor_id: gls-src-93-import-markdown-95
+  - chapter: 93-import
+    occurrence: 96
+    anchor_id: gls-src-93-import-markdown-96
+  - chapter: 93-import
+    occurrence: 97
+    anchor_id: gls-src-93-import-markdown-97
+  - chapter: 93-import
+    occurrence: 98
+    anchor_id: gls-src-93-import-markdown-98
+  - chapter: 95-further-inspiration
+    occurrence: 99
+    anchor_id: gls-src-95-further-inspiration-markdown-99
+  - chapter: 99-postface
+    occurrence: 100
+    anchor_id: gls-src-99-postface-markdown-100
+- term: MeCab
+  yomi: MeCab
+  flags: ig
+  definition: オープンソースの日本語形態素解析エンジン。文章を単語に分割し品詞や読みを推定します。索引語の読み推測などに利用されます。
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bMeCab\\b/"
+  score: 487.8654996341647
+  contexts:
+  - chapter: 22-extentions
+    context: "— 用語と読み（ひらがな）を指定 - `[用語]` — 用語のみ（読みは MeCab で自動推測） :::{.note} **注意**:
+      索引・用語集の記法は"
+  - chapter: 32-metrics
+    context: 記号は除外します。品詞の判定には形態素解析（MeCab）を使うため、MeCab を導入していない環境ではこのセクションは表示されません
+  updated_at: '2026-07-05 21:00:15'
+  backlink_sources:
+  - chapter: 22-extentions
+    occurrence: 1
+    anchor_id: gls-src-22-extentions-mecab-1
+  - chapter: 32-metrics
+    occurrence: 2
+    anchor_id: gls-src-32-metrics-mecab-2
+  - chapter: 32-metrics
+    occurrence: 3
+    anchor_id: gls-src-32-metrics-mecab-3
+  - chapter: 32-metrics
+    occurrence: 4
+    anchor_id: gls-src-32-metrics-mecab-4
+  - chapter: 33-index-glossary
+    occurrence: 5
+    anchor_id: gls-src-33-index-glossary-mecab-5
+  - chapter: 33-index-glossary
+    occurrence: 6
+    anchor_id: gls-src-33-index-glossary-mecab-6
+  - chapter: 33-index-glossary
+    occurrence: 7
+    anchor_id: gls-src-33-index-glossary-mecab-7
+  - chapter: 33-index-glossary
+    occurrence: 8
+    anchor_id: gls-src-33-index-glossary-mecab-8
+  - chapter: 33-index-glossary
+    occurrence: 9
+    anchor_id: gls-src-33-index-glossary-mecab-9
+  - chapter: 33-index-glossary
+    occurrence: 10
+    anchor_id: gls-src-33-index-glossary-mecab-10
+  - chapter: 33-index-glossary
+    occurrence: 11
+    anchor_id: gls-src-33-index-glossary-mecab-11
+  - chapter: 61-developer
+    occurrence: 12
+    anchor_id: gls-src-61-developer-mecab-12
+  - chapter: 61-developer
+    occurrence: 13
+    anchor_id: gls-src-61-developer-mecab-13
+  - chapter: 61-developer
+    occurrence: 14
+    anchor_id: gls-src-61-developer-mecab-14
+  - chapter: 61-developer
+    occurrence: 15
+    anchor_id: gls-src-61-developer-mecab-15
+  - chapter: 91-install
+    occurrence: 16
+    anchor_id: gls-src-91-install-mecab-16
+  - chapter: 92-pdf-read
+    occurrence: 17
+    anchor_id: gls-src-92-pdf-read-mecab-17
+  - chapter: 92-pdf-read
+    occurrence: 18
+    anchor_id: gls-src-92-pdf-read-mecab-18
+- term: Node.js
+  yomi: Node.js
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/Node\\.js/"
+- term: OCR
+  yomi: OCR
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bOCR\\b/"
+  score: 1059.9505603190141
+  contexts:
+  - chapter: 41-book-yml
+    context: 'F 読み取り設定 `vs pdf:read` でテキストを抽出する際の範囲と OCR 設定を管理します。 ```yaml pdf_read:
+      text_are'
+  - chapter: 51-doctor
+    context: "| | pdftoppm (poppler) | PDF ページの画像化（OCR 用） | | gs (Ghostscript) | PDF
+      圧縮 | | im"
+  - chapter: 61-developer
+    context: "| | 変換対象 | テキストのみ | テキスト + 画像 + OCR | | 依存ライブラリ | PDF::Reader | HexaPDF,
+      ru"
+  - chapter: 91-install
+    context: install tesseract tesseract-lang` | OCR エンジン | | MeCab | `brew install
+      mecab me
+  - chapter: 92-pdf-read
+    context: "| | 変換対象 | テキストのみ | テキスト + 画像 + OCR | | 依存ライブラリ | PDF::Reader | HexaPDF,
+      ru"
+  updated_at: '2026-07-05 21:00:15'
+- term: PDF
+  yomi: PDF
+  flags: ig
+  definition: Portable Document Format の略。環境に依存せずレイアウトを保ったまま文書を表示・印刷できるファイル形式で、閲覧用・印刷入稿用の双方に用いられます。
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bPDF\\b/"
+  score: 7727.879935708777
+  contexts:
+  - chapter: 00-preface
+    context: ページレイアウト、目次の生成、画像の配置、表紙の作成、入稿用 PDF の調整……。Vivlio Starter は、そうした煩雑な作業をすべて引き受
+  - chapter: 11-workflow
+    context: 執筆が完了したら、`vs build` で書籍全体を組版します。閲覧用 PDF・印刷入稿用 PDF・EPUB・Kindle の四形式を、一度のコマンドで生成で
+  updated_at: '2026-07-05 21:00:15'
+  backlink_sources:
+  - chapter: 00-preface
+    occurrence: 1
+    anchor_id: gls-src-00-preface-pdf-1
+  - chapter: 00-preface
+    occurrence: 2
+    anchor_id: gls-src-00-preface-pdf-2
+  - chapter: 00-preface
+    occurrence: 3
+    anchor_id: gls-src-00-preface-pdf-3
+  - chapter: 00-preface
+    occurrence: 4
+    anchor_id: gls-src-00-preface-pdf-4
+  - chapter: 00-preface
+    occurrence: 5
+    anchor_id: gls-src-00-preface-pdf-5
+  - chapter: 00-preface
+    occurrence: 6
+    anchor_id: gls-src-00-preface-pdf-6
+  - chapter: 00-preface
+    occurrence: 7
+    anchor_id: gls-src-00-preface-pdf-7
+  - chapter: 00-preface
+    occurrence: 8
+    anchor_id: gls-src-00-preface-pdf-8
+  - chapter: 11-workflow
+    occurrence: 9
+    anchor_id: gls-src-11-workflow-pdf-9
+  - chapter: 11-workflow
+    occurrence: 10
+    anchor_id: gls-src-11-workflow-pdf-10
+  - chapter: 11-workflow
+    occurrence: 11
+    anchor_id: gls-src-11-workflow-pdf-11
+  - chapter: 12-quickstart
+    occurrence: 12
+    anchor_id: gls-src-12-quickstart-pdf-12
+  - chapter: 12-quickstart
+    occurrence: 13
+    anchor_id: gls-src-12-quickstart-pdf-13
+  - chapter: 12-quickstart
+    occurrence: 14
+    anchor_id: gls-src-12-quickstart-pdf-14
+  - chapter: 12-quickstart
+    occurrence: 15
+    anchor_id: gls-src-12-quickstart-pdf-15
+  - chapter: 12-quickstart
+    occurrence: 16
+    anchor_id: gls-src-12-quickstart-pdf-16
+  - chapter: 13-new
+    occurrence: 17
+    anchor_id: gls-src-13-new-pdf-17
+  - chapter: 21-markdown-tutorial
+    occurrence: 18
+    anchor_id: gls-src-21-markdown-tutorial-pdf-18
+  - chapter: 21-markdown-tutorial
+    occurrence: 19
+    anchor_id: gls-src-21-markdown-tutorial-pdf-19
+  - chapter: 21-markdown-tutorial
+    occurrence: 20
+    anchor_id: gls-src-21-markdown-tutorial-pdf-20
+  - chapter: 22-extentions
+    occurrence: 21
+    anchor_id: gls-src-22-extentions-pdf-21
+  - chapter: 33-index-glossary
+    occurrence: 22
+    anchor_id: gls-src-33-index-glossary-pdf-22
+  - chapter: 33-index-glossary
+    occurrence: 23
+    anchor_id: gls-src-33-index-glossary-pdf-23
+  - chapter: 33-index-glossary
+    occurrence: 24
+    anchor_id: gls-src-33-index-glossary-pdf-24
+  - chapter: 41-book-yml
+    occurrence: 25
+    anchor_id: gls-src-41-book-yml-pdf-25
+  - chapter: 41-book-yml
+    occurrence: 26
+    anchor_id: gls-src-41-book-yml-pdf-26
+  - chapter: 41-book-yml
+    occurrence: 27
+    anchor_id: gls-src-41-book-yml-pdf-27
+  - chapter: 41-book-yml
+    occurrence: 28
+    anchor_id: gls-src-41-book-yml-pdf-28
+  - chapter: 41-book-yml
+    occurrence: 29
+    anchor_id: gls-src-41-book-yml-pdf-29
+  - chapter: 41-book-yml
+    occurrence: 30
+    anchor_id: gls-src-41-book-yml-pdf-30
+  - chapter: 41-book-yml
+    occurrence: 31
+    anchor_id: gls-src-41-book-yml-pdf-31
+  - chapter: 41-book-yml
+    occurrence: 32
+    anchor_id: gls-src-41-book-yml-pdf-32
+  - chapter: 41-book-yml
+    occurrence: 33
+    anchor_id: gls-src-41-book-yml-pdf-33
+  - chapter: 43-cover
+    occurrence: 34
+    anchor_id: gls-src-43-cover-pdf-34
+  - chapter: 43-cover
+    occurrence: 35
+    anchor_id: gls-src-43-cover-pdf-35
+  - chapter: 43-cover
+    occurrence: 36
+    anchor_id: gls-src-43-cover-pdf-36
+  - chapter: 43-cover
+    occurrence: 37
+    anchor_id: gls-src-43-cover-pdf-37
+  - chapter: 43-cover
+    occurrence: 38
+    anchor_id: gls-src-43-cover-pdf-38
+  - chapter: 43-cover
+    occurrence: 39
+    anchor_id: gls-src-43-cover-pdf-39
+  - chapter: 43-cover
+    occurrence: 40
+    anchor_id: gls-src-43-cover-pdf-40
+  - chapter: 44-build
+    occurrence: 41
+    anchor_id: gls-src-44-build-pdf-41
+  - chapter: 44-build
+    occurrence: 42
+    anchor_id: gls-src-44-build-pdf-42
+  - chapter: 44-build
+    occurrence: 43
+    anchor_id: gls-src-44-build-pdf-43
+  - chapter: 44-build
+    occurrence: 44
+    anchor_id: gls-src-44-build-pdf-44
+  - chapter: 44-build
+    occurrence: 45
+    anchor_id: gls-src-44-build-pdf-45
+  - chapter: 44-build
+    occurrence: 46
+    anchor_id: gls-src-44-build-pdf-46
+  - chapter: 44-build
+    occurrence: 47
+    anchor_id: gls-src-44-build-pdf-47
+  - chapter: 44-build
+    occurrence: 48
+    anchor_id: gls-src-44-build-pdf-48
+  - chapter: 44-build
+    occurrence: 49
+    anchor_id: gls-src-44-build-pdf-49
+  - chapter: 44-build
+    occurrence: 50
+    anchor_id: gls-src-44-build-pdf-50
+  - chapter: 44-build
+    occurrence: 51
+    anchor_id: gls-src-44-build-pdf-51
+  - chapter: 44-build
+    occurrence: 52
+    anchor_id: gls-src-44-build-pdf-52
+  - chapter: 44-build
+    occurrence: 53
+    anchor_id: gls-src-44-build-pdf-53
+  - chapter: 44-build
+    occurrence: 54
+    anchor_id: gls-src-44-build-pdf-54
+  - chapter: 44-build
+    occurrence: 55
+    anchor_id: gls-src-44-build-pdf-55
+  - chapter: 44-build
+    occurrence: 56
+    anchor_id: gls-src-44-build-pdf-56
+  - chapter: 44-build
+    occurrence: 57
+    anchor_id: gls-src-44-build-pdf-57
+  - chapter: 44-build
+    occurrence: 58
+    anchor_id: gls-src-44-build-pdf-58
+  - chapter: 44-build
+    occurrence: 59
+    anchor_id: gls-src-44-build-pdf-59
+  - chapter: 44-build
+    occurrence: 60
+    anchor_id: gls-src-44-build-pdf-60
+  - chapter: 44-build
+    occurrence: 61
+    anchor_id: gls-src-44-build-pdf-61
+  - chapter: 44-build
+    occurrence: 62
+    anchor_id: gls-src-44-build-pdf-62
+  - chapter: 44-build
+    occurrence: 63
+    anchor_id: gls-src-44-build-pdf-63
+  - chapter: 44-build
+    occurrence: 64
+    anchor_id: gls-src-44-build-pdf-64
+  - chapter: 44-build
+    occurrence: 65
+    anchor_id: gls-src-44-build-pdf-65
+  - chapter: 44-build
+    occurrence: 66
+    anchor_id: gls-src-44-build-pdf-66
+  - chapter: 44-build
+    occurrence: 67
+    anchor_id: gls-src-44-build-pdf-67
+  - chapter: 44-build
+    occurrence: 68
+    anchor_id: gls-src-44-build-pdf-68
+  - chapter: 44-build
+    occurrence: 69
+    anchor_id: gls-src-44-build-pdf-69
+  - chapter: 44-build
+    occurrence: 70
+    anchor_id: gls-src-44-build-pdf-70
+  - chapter: 44-build
+    occurrence: 71
+    anchor_id: gls-src-44-build-pdf-71
+  - chapter: 44-build
+    occurrence: 72
+    anchor_id: gls-src-44-build-pdf-72
+  - chapter: 44-build
+    occurrence: 73
+    anchor_id: gls-src-44-build-pdf-73
+  - chapter: 44-build
+    occurrence: 74
+    anchor_id: gls-src-44-build-pdf-74
+  - chapter: 44-build
+    occurrence: 75
+    anchor_id: gls-src-44-build-pdf-75
+  - chapter: 44-build
+    occurrence: 76
+    anchor_id: gls-src-44-build-pdf-76
+  - chapter: 44-build
+    occurrence: 77
+    anchor_id: gls-src-44-build-pdf-77
+  - chapter: 44-build
+    occurrence: 78
+    anchor_id: gls-src-44-build-pdf-78
+  - chapter: 44-build
+    occurrence: 79
+    anchor_id: gls-src-44-build-pdf-79
+  - chapter: 44-build
+    occurrence: 80
+    anchor_id: gls-src-44-build-pdf-80
+  - chapter: 45-utility
+    occurrence: 81
+    anchor_id: gls-src-45-utility-pdf-81
+  - chapter: 45-utility
+    occurrence: 82
+    anchor_id: gls-src-45-utility-pdf-82
+  - chapter: 45-utility
+    occurrence: 83
+    anchor_id: gls-src-45-utility-pdf-83
+  - chapter: 45-utility
+    occurrence: 84
+    anchor_id: gls-src-45-utility-pdf-84
+  - chapter: 45-utility
+    occurrence: 85
+    anchor_id: gls-src-45-utility-pdf-85
+  - chapter: 45-utility
+    occurrence: 86
+    anchor_id: gls-src-45-utility-pdf-86
+  - chapter: 45-utility
+    occurrence: 87
+    anchor_id: gls-src-45-utility-pdf-87
+  - chapter: 45-utility
+    occurrence: 88
+    anchor_id: gls-src-45-utility-pdf-88
+  - chapter: 51-doctor
+    occurrence: 89
+    anchor_id: gls-src-51-doctor-pdf-89
+  - chapter: 51-doctor
+    occurrence: 90
+    anchor_id: gls-src-51-doctor-pdf-90
+  - chapter: 51-doctor
+    occurrence: 91
+    anchor_id: gls-src-51-doctor-pdf-91
+  - chapter: 51-doctor
+    occurrence: 92
+    anchor_id: gls-src-51-doctor-pdf-92
+  - chapter: 51-doctor
+    occurrence: 93
+    anchor_id: gls-src-51-doctor-pdf-93
+  - chapter: 61-developer
+    occurrence: 94
+    anchor_id: gls-src-61-developer-pdf-94
+  - chapter: 61-developer
+    occurrence: 95
+    anchor_id: gls-src-61-developer-pdf-95
+  - chapter: 61-developer
+    occurrence: 96
+    anchor_id: gls-src-61-developer-pdf-96
+  - chapter: 61-developer
+    occurrence: 97
+    anchor_id: gls-src-61-developer-pdf-97
+  - chapter: 61-developer
+    occurrence: 98
+    anchor_id: gls-src-61-developer-pdf-98
+  - chapter: 61-developer
+    occurrence: 99
+    anchor_id: gls-src-61-developer-pdf-99
+  - chapter: 61-developer
+    occurrence: 100
+    anchor_id: gls-src-61-developer-pdf-100
+  - chapter: 61-developer
+    occurrence: 101
+    anchor_id: gls-src-61-developer-pdf-101
+  - chapter: 61-developer
+    occurrence: 102
+    anchor_id: gls-src-61-developer-pdf-102
+  - chapter: 61-developer
+    occurrence: 103
+    anchor_id: gls-src-61-developer-pdf-103
+  - chapter: 61-developer
+    occurrence: 104
+    anchor_id: gls-src-61-developer-pdf-104
+  - chapter: 61-developer
+    occurrence: 105
+    anchor_id: gls-src-61-developer-pdf-105
+  - chapter: 61-developer
+    occurrence: 106
+    anchor_id: gls-src-61-developer-pdf-106
+  - chapter: 61-developer
+    occurrence: 107
+    anchor_id: gls-src-61-developer-pdf-107
+  - chapter: 61-developer
+    occurrence: 108
+    anchor_id: gls-src-61-developer-pdf-108
+  - chapter: 61-developer
+    occurrence: 109
+    anchor_id: gls-src-61-developer-pdf-109
+  - chapter: 61-developer
+    occurrence: 110
+    anchor_id: gls-src-61-developer-pdf-110
+  - chapter: 61-developer
+    occurrence: 111
+    anchor_id: gls-src-61-developer-pdf-111
+  - chapter: 61-developer
+    occurrence: 112
+    anchor_id: gls-src-61-developer-pdf-112
+  - chapter: 61-developer
+    occurrence: 113
+    anchor_id: gls-src-61-developer-pdf-113
+  - chapter: 61-developer
+    occurrence: 114
+    anchor_id: gls-src-61-developer-pdf-114
+  - chapter: 61-developer
+    occurrence: 115
+    anchor_id: gls-src-61-developer-pdf-115
+  - chapter: 61-developer
+    occurrence: 116
+    anchor_id: gls-src-61-developer-pdf-116
+  - chapter: 61-developer
+    occurrence: 117
+    anchor_id: gls-src-61-developer-pdf-117
+  - chapter: 61-developer
+    occurrence: 118
+    anchor_id: gls-src-61-developer-pdf-118
+  - chapter: 61-developer
+    occurrence: 119
+    anchor_id: gls-src-61-developer-pdf-119
+  - chapter: 61-developer
+    occurrence: 120
+    anchor_id: gls-src-61-developer-pdf-120
+  - chapter: 61-developer
+    occurrence: 121
+    anchor_id: gls-src-61-developer-pdf-121
+  - chapter: 61-developer
+    occurrence: 122
+    anchor_id: gls-src-61-developer-pdf-122
+  - chapter: 61-developer
+    occurrence: 123
+    anchor_id: gls-src-61-developer-pdf-123
+  - chapter: 61-developer
+    occurrence: 124
+    anchor_id: gls-src-61-developer-pdf-124
+  - chapter: 61-developer
+    occurrence: 125
+    anchor_id: gls-src-61-developer-pdf-125
+  - chapter: 61-developer
+    occurrence: 126
+    anchor_id: gls-src-61-developer-pdf-126
+  - chapter: 61-developer
+    occurrence: 127
+    anchor_id: gls-src-61-developer-pdf-127
+  - chapter: 61-developer
+    occurrence: 128
+    anchor_id: gls-src-61-developer-pdf-128
+  - chapter: 61-developer
+    occurrence: 129
+    anchor_id: gls-src-61-developer-pdf-129
+  - chapter: 61-developer
+    occurrence: 130
+    anchor_id: gls-src-61-developer-pdf-130
+  - chapter: 91-install
+    occurrence: 131
+    anchor_id: gls-src-91-install-pdf-131
+  - chapter: 91-install
+    occurrence: 132
+    anchor_id: gls-src-91-install-pdf-132
+  - chapter: 91-install
+    occurrence: 133
+    anchor_id: gls-src-91-install-pdf-133
+  - chapter: 91-install
+    occurrence: 134
+    anchor_id: gls-src-91-install-pdf-134
+  - chapter: 91-install
+    occurrence: 135
+    anchor_id: gls-src-91-install-pdf-135
+  - chapter: 91-install
+    occurrence: 136
+    anchor_id: gls-src-91-install-pdf-136
+  - chapter: 91-install
+    occurrence: 137
+    anchor_id: gls-src-91-install-pdf-137
+  - chapter: 91-install
+    occurrence: 138
+    anchor_id: gls-src-91-install-pdf-138
+  - chapter: 91-install
+    occurrence: 139
+    anchor_id: gls-src-91-install-pdf-139
+  - chapter: 91-install
+    occurrence: 140
+    anchor_id: gls-src-91-install-pdf-140
+  - chapter: 92-pdf-read
+    occurrence: 141
+    anchor_id: gls-src-92-pdf-read-pdf-141
+  - chapter: 92-pdf-read
+    occurrence: 142
+    anchor_id: gls-src-92-pdf-read-pdf-142
+  - chapter: 92-pdf-read
+    occurrence: 143
+    anchor_id: gls-src-92-pdf-read-pdf-143
+  - chapter: 92-pdf-read
+    occurrence: 144
+    anchor_id: gls-src-92-pdf-read-pdf-144
+  - chapter: 92-pdf-read
+    occurrence: 145
+    anchor_id: gls-src-92-pdf-read-pdf-145
+  - chapter: 92-pdf-read
+    occurrence: 146
+    anchor_id: gls-src-92-pdf-read-pdf-146
+  - chapter: 92-pdf-read
+    occurrence: 147
+    anchor_id: gls-src-92-pdf-read-pdf-147
+  - chapter: 92-pdf-read
+    occurrence: 148
+    anchor_id: gls-src-92-pdf-read-pdf-148
+  - chapter: 92-pdf-read
+    occurrence: 149
+    anchor_id: gls-src-92-pdf-read-pdf-149
+  - chapter: 92-pdf-read
+    occurrence: 150
+    anchor_id: gls-src-92-pdf-read-pdf-150
+  - chapter: 92-pdf-read
+    occurrence: 151
+    anchor_id: gls-src-92-pdf-read-pdf-151
+  - chapter: 92-pdf-read
+    occurrence: 152
+    anchor_id: gls-src-92-pdf-read-pdf-152
+  - chapter: 92-pdf-read
+    occurrence: 153
+    anchor_id: gls-src-92-pdf-read-pdf-153
+  - chapter: 92-pdf-read
+    occurrence: 154
+    anchor_id: gls-src-92-pdf-read-pdf-154
+  - chapter: 92-pdf-read
+    occurrence: 155
+    anchor_id: gls-src-92-pdf-read-pdf-155
+  - chapter: 92-pdf-read
+    occurrence: 156
+    anchor_id: gls-src-92-pdf-read-pdf-156
+  - chapter: 93-import
+    occurrence: 157
+    anchor_id: gls-src-93-import-pdf-157
+  - chapter: 93-import
+    occurrence: 158
+    anchor_id: gls-src-93-import-pdf-158
+  - chapter: 93-import
+    occurrence: 159
+    anchor_id: gls-src-93-import-pdf-159
+  - chapter: 93-import
+    occurrence: 160
+    anchor_id: gls-src-93-import-pdf-160
+  - chapter: 93-import
+    occurrence: 161
+    anchor_id: gls-src-93-import-pdf-161
+- term: PNG
+  yomi: PNG
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bPNG\\b/"
+  score: 695.1856746890402
+  contexts:
+  - chapter: 13-new
+    context: が自動生成されます。 原稿には `.webp` 形式を推奨します。PNG/JPG は `vs resize` で WebP に変換できます。`vs
+      bu
+  - chapter: 42-frontispiece
+    context: " - WebP（`.webp`）- 推奨 - PNG（`.png`） - JPEG（`.jpg`, `.jpeg`） <!-- v"
+  - chapter: 43-cover
+    context: SVG デザインをそのまま使うことも、著者が独自に用意した SVG や PNG を使うこともできます。本章では、カバー画像の準備から生成、管理までの一連のワー
+  - chapter: 44-build
+    context: "| | 画像形式 | WebP をそのまま使用 | JPEG / PNG へ変換（Kindle は WebP 非対応） | | 扉絵・節絵・数式
+      | S"
+  - chapter: 45-utility
+    context: "`vs resize` は `images/` ディレクトリ内の PNG・JPG 画像を WebP 形式に一括変換します。ビルド時にも自動実行されますが"
+  - chapter: 61-developer
+    context: "== :kindle` のときのみ）: WebP → JPEG/PNG への変換、Kindle 用 body マーカー付与（`mark_body_fo"
+  - chapter: 93-import
+    context: PDF がコピーされない | `frontcover_pdffile` が PNG など PDF 以外 | 仕様通り PDF のみに対応。
+  updated_at: '2026-07-05 21:00:15'
+- term: Playwright
+  yomi: Playwright
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/\\bPlaywright\\b/"
+- term: Previewer
+  yomi: Previewer
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bPreviewer\\b/"
+  score: 352.1628106631798
+  contexts:
+  - chapter: 44-build
+    context: 'macOS の「ブック」アプリ、Calibre、Kindle Previewer などが利用できます。 ## Kindle のビルド :::{.secti'
+  - chapter: 51-doctor
+    context: "| | kindlepreviewer (Kindle Previewer 3) | Kindle（KPF）変換（任意・targets:
+      kindle 用"
+  - chapter: 61-developer
+    context: が `kindlepreviewer`（Kindle Previewer 3 同梱の CLI）を呼び出して `.kpf` を生成します。`kindlep
+  - chapter: 91-install
+    context: 'から自動取得 | AI 画像拡大（オプション） | | Kindle Previewer 3（kindlepreviewer） | `brew
+      install '
+  updated_at: '2026-07-05 21:00:15'
+- term: QueryStream
+  yomi: QueryStream
+  flags: ig
+  definition: データファイル（data/*.yml）から書籍紹介カードなどを本文へ展開する、Vivlio Starter 独自の記法です。文字情報を一元管理できます。
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bQueryStream\\b/"
+  score: 856.7696173300757
+  contexts:
+  - chapter: 13-new
+    context: の画像ファイル data/ ← 書籍内で展開したいQueryStream用データ（YAML形式） templates/ ← 各種雛形
+  - chapter: 22-extentions
+    context: '2 行目以降を半角スペースで字下げする ## データ展開（QueryStream） `data/` ディレクトリの YAML ファイルからデータを展開できます'
+  updated_at: '2026-07-05 21:00:15'
+  backlink_sources:
+  - chapter: 13-new
+    occurrence: 1
+    anchor_id: gls-src-13-new-querystream-1
+  - chapter: 13-new
+    occurrence: 2
+    anchor_id: gls-src-13-new-querystream-2
+  - chapter: 13-new
+    occurrence: 3
+    anchor_id: gls-src-13-new-querystream-3
+  - chapter: 13-new
+    occurrence: 4
+    anchor_id: gls-src-13-new-querystream-4
+  - chapter: 22-extentions
+    occurrence: 5
+    anchor_id: gls-src-22-extentions-querystream-5
+  - chapter: 22-extentions
+    occurrence: 6
+    anchor_id: gls-src-22-extentions-querystream-6
+  - chapter: 22-extentions
+    occurrence: 7
+    anchor_id: gls-src-22-extentions-querystream-7
+  - chapter: 22-extentions
+    occurrence: 8
+    anchor_id: gls-src-22-extentions-querystream-8
+  - chapter: 23-chapter-management
+    occurrence: 9
+    anchor_id: gls-src-23-chapter-management-querystream-9
+  - chapter: 25-querystream
+    occurrence: 10
+    anchor_id: gls-src-25-querystream-querystream-10
+  - chapter: 25-querystream
+    occurrence: 11
+    anchor_id: gls-src-25-querystream-querystream-11
+  - chapter: 25-querystream
+    occurrence: 12
+    anchor_id: gls-src-25-querystream-querystream-12
+  - chapter: 25-querystream
+    occurrence: 13
+    anchor_id: gls-src-25-querystream-querystream-13
+  - chapter: 25-querystream
+    occurrence: 14
+    anchor_id: gls-src-25-querystream-querystream-14
+  - chapter: 25-querystream
+    occurrence: 15
+    anchor_id: gls-src-25-querystream-querystream-15
+  - chapter: 25-querystream
+    occurrence: 16
+    anchor_id: gls-src-25-querystream-querystream-16
+  - chapter: 25-querystream
+    occurrence: 17
+    anchor_id: gls-src-25-querystream-querystream-17
+  - chapter: 25-querystream
+    occurrence: 18
+    anchor_id: gls-src-25-querystream-querystream-18
+  - chapter: 25-querystream
+    occurrence: 19
+    anchor_id: gls-src-25-querystream-querystream-19
+  - chapter: 25-querystream
+    occurrence: 20
+    anchor_id: gls-src-25-querystream-querystream-20
+  - chapter: 44-build
+    occurrence: 21
+    anchor_id: gls-src-44-build-querystream-21
+  - chapter: 45-utility
+    occurrence: 22
+    anchor_id: gls-src-45-utility-querystream-22
+  - chapter: 45-utility
+    occurrence: 23
+    anchor_id: gls-src-45-utility-querystream-23
+  - chapter: 45-utility
+    occurrence: 24
+    anchor_id: gls-src-45-utility-querystream-24
+  - chapter: 45-utility
+    occurrence: 25
+    anchor_id: gls-src-45-utility-querystream-25
+  - chapter: 61-developer
+    occurrence: 26
+    anchor_id: gls-src-61-developer-querystream-26
+  - chapter: 61-developer
+    occurrence: 27
+    anchor_id: gls-src-61-developer-querystream-27
+  - chapter: 61-developer
+    occurrence: 28
+    anchor_id: gls-src-61-developer-querystream-28
+  - chapter: 61-developer
+    occurrence: 29
+    anchor_id: gls-src-61-developer-querystream-29
+  - chapter: 61-developer
+    occurrence: 30
+    anchor_id: gls-src-61-developer-querystream-30
+  - chapter: 61-developer
+    occurrence: 31
+    anchor_id: gls-src-61-developer-querystream-31
+  - chapter: 61-developer
+    occurrence: 32
+    anchor_id: gls-src-61-developer-querystream-32
+  - chapter: 94-sample
+    occurrence: 33
+    anchor_id: gls-src-94-sample-querystream-33
+- term: RGB
+  yomi: RGB
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bRGB\\b/"
+  score: 358.24746787307686
+  contexts:
+  - chapter: 43-cover
+    context: 'frontcover_rgb.pdf # PDF用表紙（A4、RGB） ├── backcover_rgb.pdf # PDF用裏'
+  updated_at: '2026-07-05 21:00:15'
+- term: Ruby
+  yomi: Ruby
+  flags: ig
+  definition: まつもとゆきひろ氏が開発したプログラミング言語。読みやすく書きやすい文法が特徴で、Vivlio Starter 本体は Ruby で実装されています。
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bRuby\\b/"
+  score: 945.514364444974
+  contexts:
+  - chapter: 00-preface
+    context: ttps://atelier-mirai.net/)」を創業。HTML 講座や Ruby 講座などプログラミングの個人指導、IT パスポート講座等の資格講座の開催
+  - chapter: 12-quickstart
+    context: '本が完成します。早速、一緒に取り組んで参りましょう。 ::: ## Ruby のインストール Vivlio Starter は Ruby
+      で動作します。す'
+  updated_at: '2026-07-05 21:00:15'
+  backlink_sources:
+  - chapter: 00-preface
+    occurrence: 1
+    anchor_id: gls-src-00-preface-ruby-1
+  - chapter: 12-quickstart
+    occurrence: 2
+    anchor_id: gls-src-12-quickstart-ruby-2
+  - chapter: 12-quickstart
+    occurrence: 3
+    anchor_id: gls-src-12-quickstart-ruby-3
+  - chapter: 12-quickstart
+    occurrence: 4
+    anchor_id: gls-src-12-quickstart-ruby-4
+  - chapter: 12-quickstart
+    occurrence: 5
+    anchor_id: gls-src-12-quickstart-ruby-5
+  - chapter: 12-quickstart
+    occurrence: 6
+    anchor_id: gls-src-12-quickstart-ruby-6
+  - chapter: 12-quickstart
+    occurrence: 7
+    anchor_id: gls-src-12-quickstart-ruby-7
+  - chapter: 12-quickstart
+    occurrence: 8
+    anchor_id: gls-src-12-quickstart-ruby-8
+  - chapter: 12-quickstart
+    occurrence: 9
+    anchor_id: gls-src-12-quickstart-ruby-9
+  - chapter: 22-extentions
+    occurrence: 10
+    anchor_id: gls-src-22-extentions-ruby-10
+  - chapter: 22-extentions
+    occurrence: 11
+    anchor_id: gls-src-22-extentions-ruby-11
+  - chapter: 25-querystream
+    occurrence: 12
+    anchor_id: gls-src-25-querystream-ruby-12
+  - chapter: 31-lint
+    occurrence: 13
+    anchor_id: gls-src-31-lint-ruby-13
+  - chapter: 51-doctor
+    occurrence: 14
+    anchor_id: gls-src-51-doctor-ruby-14
+  - chapter: 51-doctor
+    occurrence: 15
+    anchor_id: gls-src-51-doctor-ruby-15
+  - chapter: 61-developer
+    occurrence: 16
+    anchor_id: gls-src-61-developer-ruby-16
+  - chapter: 61-developer
+    occurrence: 17
+    anchor_id: gls-src-61-developer-ruby-17
+  - chapter: 61-developer
+    occurrence: 18
+    anchor_id: gls-src-61-developer-ruby-18
+  - chapter: 61-developer
+    occurrence: 19
+    anchor_id: gls-src-61-developer-ruby-19
+  - chapter: 91-install
+    occurrence: 20
+    anchor_id: gls-src-91-install-ruby-20
+  - chapter: 91-install
+    occurrence: 21
+    anchor_id: gls-src-91-install-ruby-21
+  - chapter: 91-install
+    occurrence: 22
+    anchor_id: gls-src-91-install-ruby-22
+  - chapter: 91-install
+    occurrence: 23
+    anchor_id: gls-src-91-install-ruby-23
+  - chapter: 91-install
+    occurrence: 24
+    anchor_id: gls-src-91-install-ruby-24
+  - chapter: 91-install
+    occurrence: 25
+    anchor_id: gls-src-91-install-ruby-25
+  - chapter: 91-install
+    occurrence: 26
+    anchor_id: gls-src-91-install-ruby-26
+  - chapter: 91-install
+    occurrence: 27
+    anchor_id: gls-src-91-install-ruby-27
+  - chapter: 92-pdf-read
+    occurrence: 28
+    anchor_id: gls-src-92-pdf-read-ruby-28
+  - chapter: 93-import
+    occurrence: 29
+    anchor_id: gls-src-93-import-ruby-29
+  - chapter: 94-sample
+    occurrence: 30
+    anchor_id: gls-src-94-sample-ruby-30
+- term: SVG
+  yomi: SVG
+  flags: ig
+  definition: Scalable Vector Graphics の略。拡大しても劣化しないベクター画像形式で、図版や数式、扉絵の合成などに用いられます。
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bSVG\\b/"
+  score: 1270.0438735130685
+  contexts:
+  - chapter: 13-new
+    context: は gem 同梱テンプレートを使用します。著者が用意した PNG/SVG を使う場合は `covers/frontcover_<theme>.png`
+  - chapter: 41-book-yml
+    context: "# カバーテーマ: light / dark（標準添付 SVG） # master ま"
+  updated_at: '2026-07-05 21:00:15'
+  backlink_sources:
+  - chapter: 13-new
+    occurrence: 1
+    anchor_id: gls-src-13-new-svg-1
+  - chapter: 41-book-yml
+    occurrence: 2
+    anchor_id: gls-src-41-book-yml-svg-2
+  - chapter: 41-book-yml
+    occurrence: 3
+    anchor_id: gls-src-41-book-yml-svg-3
+  - chapter: 41-book-yml
+    occurrence: 4
+    anchor_id: gls-src-41-book-yml-svg-4
+  - chapter: 42-frontispiece
+    occurrence: 5
+    anchor_id: gls-src-42-frontispiece-svg-5
+  - chapter: 43-cover
+    occurrence: 6
+    anchor_id: gls-src-43-cover-svg-6
+  - chapter: 43-cover
+    occurrence: 7
+    anchor_id: gls-src-43-cover-svg-7
+  - chapter: 43-cover
+    occurrence: 8
+    anchor_id: gls-src-43-cover-svg-8
+  - chapter: 43-cover
+    occurrence: 9
+    anchor_id: gls-src-43-cover-svg-9
+  - chapter: 43-cover
+    occurrence: 10
+    anchor_id: gls-src-43-cover-svg-10
+  - chapter: 43-cover
+    occurrence: 11
+    anchor_id: gls-src-43-cover-svg-11
+  - chapter: 43-cover
+    occurrence: 12
+    anchor_id: gls-src-43-cover-svg-12
+  - chapter: 43-cover
+    occurrence: 13
+    anchor_id: gls-src-43-cover-svg-13
+  - chapter: 44-build
+    occurrence: 14
+    anchor_id: gls-src-44-build-svg-14
+  - chapter: 44-build
+    occurrence: 15
+    anchor_id: gls-src-44-build-svg-15
+  - chapter: 51-doctor
+    occurrence: 16
+    anchor_id: gls-src-51-doctor-svg-16
+  - chapter: 51-doctor
+    occurrence: 17
+    anchor_id: gls-src-51-doctor-svg-17
+  - chapter: 51-doctor
+    occurrence: 18
+    anchor_id: gls-src-51-doctor-svg-18
+  - chapter: 61-developer
+    occurrence: 19
+    anchor_id: gls-src-61-developer-svg-19
+  - chapter: 61-developer
+    occurrence: 20
+    anchor_id: gls-src-61-developer-svg-20
+  - chapter: 61-developer
+    occurrence: 21
+    anchor_id: gls-src-61-developer-svg-21
+  - chapter: 61-developer
+    occurrence: 22
+    anchor_id: gls-src-61-developer-svg-22
+  - chapter: 61-developer
+    occurrence: 23
+    anchor_id: gls-src-61-developer-svg-23
+  - chapter: 61-developer
+    occurrence: 24
+    anchor_id: gls-src-61-developer-svg-24
+  - chapter: 61-developer
+    occurrence: 25
+    anchor_id: gls-src-61-developer-svg-25
+  - chapter: 61-developer
+    occurrence: 26
+    anchor_id: gls-src-61-developer-svg-26
+  - chapter: 61-developer
+    occurrence: 27
+    anchor_id: gls-src-61-developer-svg-27
+  - chapter: 91-install
+    occurrence: 28
+    anchor_id: gls-src-91-install-svg-28
+  - chapter: 91-install
+    occurrence: 29
+    anchor_id: gls-src-91-install-svg-29
+- term: Samovar
+  yomi: Samovar
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/\\bSamovar\\b/"
+- term: Standard
+  yomi: Standard
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bStandard\\b/"
+  score: 584.616261228191
+  contexts:
+  - chapter: 32-metrics
+    context: '0.5〜0.6=標準的、0.5 未満=単調 【読解難度】 - 評価: Standard（一般的なビジネス・実用書） - スコア: 45.2
+      点 ``` '
+  - chapter: 61-developer
+    context: " 既存の PDF を解析して Markdown に変換・抽出します。Standard Mode と Enhanced Mode の2段階で機能を提供し、"
+  - chapter: 92-pdf-read
+    context: " ::: ## 概要と事前準備 `vs pdf:read` は **Standard Mode** と **Enhanced Mode**
+      の 2 "
+  updated_at: '2026-07-05 21:00:15'
+- term: TTR
+  yomi: TTR
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bTTR\\b/"
+  score: 464.3535824418035
+  contexts:
+  - chapter: 32-metrics
+    context: '漢字比率と平均語長から文章の「硬さ」を測定 - **語彙多様度**: MATTR（移動平均 Type-Token Ratio）で表現の豊かさを評価
+      - **読解'
+  - chapter: 61-developer
+    context: '漢字比率・平均語長（MeCab による形態素解析） - 語彙多様度: TTR（Type-Token Ratio）— 異なり語数 ÷ 総語数
+      - 読解難度スコ'
+  updated_at: '2026-07-05 21:00:15'
+- term: URL
+  yomi: URL
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bURL\\b/"
+  score: 777.618874975047
+  contexts:
+  - chapter: 23-chapter-management
+    context: "`setup`、`appendix-a`）。URL やファイル名に使える「見出し代わりの名札」とイメージすると分かりやすいでしょう"
+  - chapter: 41-book-yml
+    context: 'build — ビルド時の検証 `vs build` 実行時に行う、画像パス・URL の検証設定です。 ```yaml build: verify:'
+  - chapter: 44-build
+    context: 有効） | | `--verify-links` | 外部 URL の HTTP 到達性チェックを有効にする | | `--log <level>
+  - chapter: 61-developer
+    context: オプションでも無効化されません。ビルド高速化のために画像存在チェックや裸 URL 検出はオフにできますが、**セキュリティ保護は明示的な選択肢から除外**
+      する
+  updated_at: '2026-07-05 21:00:15'
+- term: VFM
+  yomi: VFM
+  flags: ig
+  definition: Vivliostyle Flavored Markdown の略。ルビや脚注など書籍組版に必要な拡張記法を備えた、Vivliostyle
+    向けの Markdown 方言です。
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bVFM\\b/"
+  score: 509.63865084744134
+  contexts:
+  - chapter: 21-markdown-tutorial
+    context: Vivliostyle Flavored Markdown（VFM）の拡張機能を紹介しています。次章の Vivlio Starter 独自の便利な
+  - chapter: 22-extentions
+    context: "::: ## 拡張記法の基本 Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカスタムコンテナ"
+  updated_at: '2026-07-05 21:00:15'
+  backlink_sources:
+  - chapter: 21-markdown-tutorial
+    occurrence: 1
+    anchor_id: gls-src-21-markdown-tutorial-vfm-1
+  - chapter: 21-markdown-tutorial
+    occurrence: 2
+    anchor_id: gls-src-21-markdown-tutorial-vfm-2
+  - chapter: 21-markdown-tutorial
+    occurrence: 3
+    anchor_id: gls-src-21-markdown-tutorial-vfm-3
+  - chapter: 21-markdown-tutorial
+    occurrence: 4
+    anchor_id: gls-src-21-markdown-tutorial-vfm-4
+  - chapter: 21-markdown-tutorial
+    occurrence: 5
+    anchor_id: gls-src-21-markdown-tutorial-vfm-5
+  - chapter: 21-markdown-tutorial
+    occurrence: 6
+    anchor_id: gls-src-21-markdown-tutorial-vfm-6
+  - chapter: 21-markdown-tutorial
+    occurrence: 7
+    anchor_id: gls-src-21-markdown-tutorial-vfm-7
+  - chapter: 22-extentions
+    occurrence: 8
+    anchor_id: gls-src-22-extentions-vfm-8
+  - chapter: 31-lint
+    occurrence: 9
+    anchor_id: gls-src-31-lint-vfm-9
+  - chapter: 41-book-yml
+    occurrence: 10
+    anchor_id: gls-src-41-book-yml-vfm-10
+  - chapter: 41-book-yml
+    occurrence: 11
+    anchor_id: gls-src-41-book-yml-vfm-11
+  - chapter: 61-developer
+    occurrence: 12
+    anchor_id: gls-src-61-developer-vfm-12
+  - chapter: 61-developer
+    occurrence: 13
+    anchor_id: gls-src-61-developer-vfm-13
+  - chapter: 61-developer
+    occurrence: 14
+    anchor_id: gls-src-61-developer-vfm-14
+- term: VivlioStarter
+  yomi: VivlioStarter
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bVivlioStarter\\b/"
+  score: 360.0
+  contexts:
+  - chapter: 00-preface
+    context: ''
+  - chapter: 11-workflow
+    context: ''
+  - chapter: 12-quickstart
+    context: ''
+  - chapter: 21-markdown-tutorial
+    context: ''
+  - chapter: 22-extentions
+    context: ''
+  - chapter: 23-chapter-management
+    context: ''
+  - chapter: 31-lint
+    context: ''
+  - chapter: 32-metrics
+    context: ''
+  - chapter: 41-book-yml
+    context: ''
+  - chapter: 44-build
+    context: ''
+  - chapter: 45-utility
+    context: ''
+  - chapter: 51-doctor
+    context: ''
+  - chapter: 61-developer
+    context: ''
+  - chapter: 92-pdf-read
+    context: ''
+  - chapter: 99-postface
+    context: ''
+  updated_at: '2026-07-05 21:00:15'
+- term: Vivliostyle
+  yomi: Vivliostyle
+  flags: ig
+  definition: CSS 組版を実現するオープンソースの組版エンジン。HTML と CSS から印刷品質の PDF を生成します。Vivlio Starter
+    の中核を担います。
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bVivliostyle\\b/"
+  score: 964.7613525452216
+  contexts:
+  - chapter: 00-preface
+    context: PDF・EPUB を生成する書籍制作システムです。CSS 組版エンジン Vivliostyle をコアに据え、原稿の前処理から目次生成、表紙作成、
+  - chapter: 11-workflow
+    context: さらに内部で `vs doctor --fix` が自動的に呼び出され、Vivliostyle や ImageMagick など、書籍制作に必要な外部ツールが一括
+  updated_at: '2026-07-05 21:00:15'
+  backlink_sources:
+  - chapter: 00-preface
+    occurrence: 1
+    anchor_id: gls-src-00-preface-vivliostyle-1
+  - chapter: 00-preface
+    occurrence: 2
+    anchor_id: gls-src-00-preface-vivliostyle-2
+  - chapter: 11-workflow
+    occurrence: 3
+    anchor_id: gls-src-11-workflow-vivliostyle-3
+  - chapter: 21-markdown-tutorial
+    occurrence: 4
+    anchor_id: gls-src-21-markdown-tutorial-vivliostyle-4
+  - chapter: 21-markdown-tutorial
+    occurrence: 5
+    anchor_id: gls-src-21-markdown-tutorial-vivliostyle-5
+  - chapter: 21-markdown-tutorial
+    occurrence: 6
+    anchor_id: gls-src-21-markdown-tutorial-vivliostyle-6
+  - chapter: 21-markdown-tutorial
+    occurrence: 7
+    anchor_id: gls-src-21-markdown-tutorial-vivliostyle-7
+  - chapter: 22-extentions
+    occurrence: 8
+    anchor_id: gls-src-22-extentions-vivliostyle-8
+  - chapter: 31-lint
+    occurrence: 9
+    anchor_id: gls-src-31-lint-vivliostyle-9
+  - chapter: 33-index-glossary
+    occurrence: 10
+    anchor_id: gls-src-33-index-glossary-vivliostyle-10
+  - chapter: 33-index-glossary
+    occurrence: 11
+    anchor_id: gls-src-33-index-glossary-vivliostyle-11
+  - chapter: 41-book-yml
+    occurrence: 12
+    anchor_id: gls-src-41-book-yml-vivliostyle-12
+  - chapter: 44-build
+    occurrence: 13
+    anchor_id: gls-src-44-build-vivliostyle-13
+  - chapter: 44-build
+    occurrence: 14
+    anchor_id: gls-src-44-build-vivliostyle-14
+  - chapter: 44-build
+    occurrence: 15
+    anchor_id: gls-src-44-build-vivliostyle-15
+  - chapter: 51-doctor
+    occurrence: 16
+    anchor_id: gls-src-51-doctor-vivliostyle-16
+  - chapter: 61-developer
+    occurrence: 17
+    anchor_id: gls-src-61-developer-vivliostyle-17
+  - chapter: 61-developer
+    occurrence: 18
+    anchor_id: gls-src-61-developer-vivliostyle-18
+  - chapter: 61-developer
+    occurrence: 19
+    anchor_id: gls-src-61-developer-vivliostyle-19
+  - chapter: 61-developer
+    occurrence: 20
+    anchor_id: gls-src-61-developer-vivliostyle-20
+  - chapter: 61-developer
+    occurrence: 21
+    anchor_id: gls-src-61-developer-vivliostyle-21
+  - chapter: 61-developer
+    occurrence: 22
+    anchor_id: gls-src-61-developer-vivliostyle-22
+  - chapter: 61-developer
+    occurrence: 23
+    anchor_id: gls-src-61-developer-vivliostyle-23
+  - chapter: 61-developer
+    occurrence: 24
+    anchor_id: gls-src-61-developer-vivliostyle-24
+  - chapter: 61-developer
+    occurrence: 25
+    anchor_id: gls-src-61-developer-vivliostyle-25
+  - chapter: 61-developer
+    occurrence: 26
+    anchor_id: gls-src-61-developer-vivliostyle-26
+  - chapter: 61-developer
+    occurrence: 27
+    anchor_id: gls-src-61-developer-vivliostyle-27
+  - chapter: 61-developer
+    occurrence: 28
+    anchor_id: gls-src-61-developer-vivliostyle-28
+  - chapter: 61-developer
+    occurrence: 29
+    anchor_id: gls-src-61-developer-vivliostyle-29
+  - chapter: 61-developer
+    occurrence: 30
+    anchor_id: gls-src-61-developer-vivliostyle-30
+  - chapter: 61-developer
+    occurrence: 31
+    anchor_id: gls-src-61-developer-vivliostyle-31
+  - chapter: 91-install
+    occurrence: 32
+    anchor_id: gls-src-91-install-vivliostyle-32
+  - chapter: 91-install
+    occurrence: 33
+    anchor_id: gls-src-91-install-vivliostyle-33
+  - chapter: 91-install
+    occurrence: 34
+    anchor_id: gls-src-91-install-vivliostyle-34
+  - chapter: 91-install
+    occurrence: 35
+    anchor_id: gls-src-91-install-vivliostyle-35
+  - chapter: 92-pdf-read
+    occurrence: 36
+    anchor_id: gls-src-92-pdf-read-vivliostyle-36
+  - chapter: 95-further-inspiration
+    occurrence: 37
+    anchor_id: gls-src-95-further-inspiration-vivliostyle-37
+- term: Web
+  yomi: Web
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bWeb\\b/"
+  score: 441.23582597019856
+  contexts:
+  - chapter: 32-metrics
+    context: " ::: :::{.section-lead} metrics では、Web/技術書の黄金律に基づいた評価基準を使用しています。これらの基準は
+      `confi"
+  - chapter: 45-utility
+    context: "| | `resize` | 画像管理 | イメージ画像をWebPに一括変換する | ## vs open — PDFを開く :::{.se"
+  - chapter: 95-further-inspiration
+    context: "![](vivliostyle_introduction.webp) **Web技術で「本」が作れるCSS組版Vivliostyle入門**
+      リブロワークス ("
+  updated_at: '2026-07-05 21:00:15'
+- term: WebP
+  yomi: WebP
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bWebP\\b/"
+  score: 876.3247317803501
+  contexts:
+  - chapter: 13-new
+    context: PNG/JPG は `vs resize` で WebP に変換できます。`vs build` 実行時にも自動で WebP 変換が行われ
+  - chapter: 41-book-yml
+    context: 'EPUB）**: 楽天 Kobo・Apple Books 向け。WebP 画像・SVG 化した扉絵や数式をそのまま活かした、高品質な EPUB
+      を生成し'
+  - chapter: 42-frontispiece
+    context: "**対応している画像形式** 以下の画像形式に対応しています。 - WebP（`.webp`）- 推奨 - PNG（`.png`） -
+      JPEG（`.jpg"
+  - chapter: 44-build
+    context: "| 最終成果物 | `.epub` | `.kpf` | | 画像形式 | WebP をそのまま使用 | JPEG / PNG へ変換（Kindle
+      は "
+  - chapter: 45-utility
+    context: "| | `resize` | 画像管理 | イメージ画像をWebPに一括変換する | ## vs open — PDFを開く :::{.sec"
+  - chapter: 61-developer
+    context: "/EPUB対応） resize images/画像をWebP形式に変換・最適化します（--high/--lowで品質変更可） ビルド・"
+  - chapter: 91-install
+    context: "| `brew install imagemagick` | 画像変換・WebP 変換 | | Inkscape | `brew install
+      inkscap"
+  - chapter: 93-import
+    context: "**画像処理** — Starter `images/` をコピー → WebP 化 → 元画像（png/jpg/gif）は削除。`config-starter"
+  updated_at: '2026-07-05 21:00:15'
+- term: Xcode
+  yomi: Xcode
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bXcode\\b/"
+  score: 337.3081306140955
+  contexts:
+  - chapter: 12-quickstart
+    context: "::: スクリプトは次の作業を自動で行います。 - Xcode コマンドラインツールの確認・インストール案内 - Homebrew（macOS"
+  - chapter: 51-doctor
+    context: "| ツール | 用途 | |--------|------| | Xcode Command Line Tools | macOS のビルドツールチェーン（"
+  - chapter: 91-install
+    context: の導入をスキップ ``` このスクリプトは次の作業を自動で行います。Xcode Command Line Tools の確認とインストール案内、Homebre
+  updated_at: '2026-07-05 21:00:15'
+- term: YAML
+  yomi: YAML
+  flags: ig
+  definition: 設定ファイルの記述によく使われるテキスト形式。インデントで階層構造を表現します。book.yml や catalog.yml など、Vivlio
+    Starter の設定ファイルで用いられます。
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/\\bYAML\\b/"
+  score: 1012.6593884295272
+  contexts:
+  - chapter: 13-new
+    context: "← 書籍内で展開したいQueryStream用データ（YAML形式） templates/ ← 各種雛形ファイル置き場"
+  - chapter: 22-extentions
+    context: "| CSS | | `sql` | SQL | | `yaml` | YAML | | `bash`, `sh` | シェルスクリプト
+      | | `json`"
+  updated_at: '2026-07-05 21:00:15'
+  backlink_sources:
+  - chapter: 21-markdown-tutorial
+    occurrence: 1
+    anchor_id: gls-src-21-markdown-tutorial-yaml-1
+  - chapter: 22-extentions
+    occurrence: 2
+    anchor_id: gls-src-22-extentions-yaml-2
+  - chapter: 22-extentions
+    occurrence: 3
+    anchor_id: gls-src-22-extentions-yaml-3
+  - chapter: 25-querystream
+    occurrence: 4
+    anchor_id: gls-src-25-querystream-yaml-4
+  - chapter: 25-querystream
+    occurrence: 5
+    anchor_id: gls-src-25-querystream-yaml-5
+  - chapter: 25-querystream
+    occurrence: 6
+    anchor_id: gls-src-25-querystream-yaml-6
+  - chapter: 25-querystream
+    occurrence: 7
+    anchor_id: gls-src-25-querystream-yaml-7
+  - chapter: 25-querystream
+    occurrence: 8
+    anchor_id: gls-src-25-querystream-yaml-8
+  - chapter: 25-querystream
+    occurrence: 9
+    anchor_id: gls-src-25-querystream-yaml-9
+  - chapter: 25-querystream
+    occurrence: 10
+    anchor_id: gls-src-25-querystream-yaml-10
+  - chapter: 25-querystream
+    occurrence: 11
+    anchor_id: gls-src-25-querystream-yaml-11
+  - chapter: 32-metrics
+    occurrence: 12
+    anchor_id: gls-src-32-metrics-yaml-12
+  - chapter: 32-metrics
+    occurrence: 13
+    anchor_id: gls-src-32-metrics-yaml-13
+  - chapter: 51-doctor
+    occurrence: 14
+    anchor_id: gls-src-51-doctor-yaml-14
+  - chapter: 61-developer
+    occurrence: 15
+    anchor_id: gls-src-61-developer-yaml-15
+  - chapter: 61-developer
+    occurrence: 16
+    anchor_id: gls-src-61-developer-yaml-16
+  - chapter: 61-developer
+    occurrence: 17
+    anchor_id: gls-src-61-developer-yaml-17
+  - chapter: 61-developer
+    occurrence: 18
+    anchor_id: gls-src-61-developer-yaml-18
+  - chapter: 61-developer
+    occurrence: 19
+    anchor_id: gls-src-61-developer-yaml-19
+  - chapter: 61-developer
+    occurrence: 20
+    anchor_id: gls-src-61-developer-yaml-20
+  - chapter: 61-developer
+    occurrence: 21
+    anchor_id: gls-src-61-developer-yaml-21
+  - chapter: 61-developer
+    occurrence: 22
+    anchor_id: gls-src-61-developer-yaml-22
+  - chapter: 93-import
+    occurrence: 23
+    anchor_id: gls-src-93-import-yaml-23
+- term: eV
+  yomi: eV
+  flags: i
+  definition: ''
+  source: manual_markup
+  approved_at: '2026-07-05 20:49:56'
+  pattern: "/\\beV\\b/"
+  contexts:
+  - chapter: 94-sample
+    context: "@photoelectric-table** | 金属 | 仕事関数 φ [eV] | しきい周波数 [Hz] | | :--- | :---:
+      | ---:"
+  updated_at: '2026-07-05 21:00:15'
+- term: text-right
+  yomi: text-right
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/text\\-right/"
+  score: 314.5957419425489
+  contexts:
+  - chapter: 22-extentions
+    context: "`.text-left` / `.text-center` / `.text-right` `.align-right` がブロック全体を右寄せにするのに対し、"
+  updated_at: '2026-07-05 21:00:15'
+- term: アインシュタイン
+  yomi: あいんしゅたいん
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/アインシュタイン/"
+  score: 1220.2586748394933
+  contexts:
+  - chapter: 22-extentions
+    context: "{.aki} ```markdown ![アインシュタイン](Einstein.webp){width=50% align=center}"
+  - chapter: 94-sample
+    context: 科学の世界に革命をもたらした{Albert Einstein|アルバート・アインシュタイン}。言葉が遅いと心配された少年が、やがて「20世紀最高の物理学者」と呼ばれるまで
+  updated_at: '2026-07-05 21:00:15'
+- term: アウトライン
+  yomi: あうとらいん
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/アウトライン/"
+  score: 408.64939691905363
+  contexts:
+  - chapter: 44-build
+    context: 'Vivliostyle による組版、PDF 結合、アウトライン付与まで、書籍制作に必要な一連の工程を自動的に実行します。 ## はじめてのビ'
+  - chapter: 61-developer
+    context: '生成 | | Step 10 | PDF 結合 | | Step 11 | アウトライン付与 | | Step 12 | 圧縮・リネーム（最終クリーンは
+      Step '
+  - chapter: 91-install
+    context: gem install vivlio-starter ``` PDF アウトライン・しおり機能などを使う場合は、追加の gem も導入してください（いずれも
+  - chapter: 92-pdf-read
+    context: 'OCR 精度を段階的に改善できます。 ## PDF アウトラインの付与 PDF ビューワの「しおり」や「ブックマーク」として表示されるアウトラ'
+  updated_at: '2026-07-05 21:00:15'
+- term: 章番号
+  yomi: あきらばんごう
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/章番号/"
+  score: 633.2867951399865
+  contexts:
+  - chapter: 13-new
+    context: 'tro # 章を削除 vs rename 11 12 # 章番号を変更 vs renumber # 章番号を一括で整列 `'
+  - chapter: 23-chapter-management
+    context: " :::{.memo} **「スラッグ」とは**：ファイル名のうち、章番号に続く短い識別名のことです。`11-intro` であれば `11`
+      が章番号、"
+  - chapter: 24-cross-reference
+    context: 図を参照してください」「詳しくは前の表を参照してください」といった記述を、章番号付きの 番号（図 3-2, 表 4-1 など）とリンク付きで自動生成するための仕
+  - chapter: 31-lint
+    context: '以下の Markdown を検査します。引数なしで全章、章のベース名・章番号・範囲指定で部分的に検査できます。 ::: ### すべての章をチェック
+      引'
+  - chapter: 44-build
+    context: ":::{.section-lead} 特定の章だけを素早くビルドしたい場合は、章番号やファイル名を引数に指定します。執筆中の確認に便利です。"
+  - chapter: 61-developer
+    context: 'やファイル名（スラッグ）を変更します renumber 章番号を一括で付け直します 文章校正・統計: lint'
+  - chapter: 92-pdf-read
+    context: "``` PDF ファイルのパスを指定すると、空いている章番号が自動で割り当てられ、`contents/` に Markdown が出力されま"
+  updated_at: '2026-07-05 21:00:15'
+- term: 一般相対性理論
+  yomi: いっぱんそうたいせいりろん
+  flags: i
+  definition: ''
+  source: manual_markup
+  approved_at: '2026-07-05 20:49:56'
+  pattern: "/一般相対性理論/"
+  contexts:
+  - chapter: 94-sample
+    context: "・アインシュタイン（1879–1955）。20世紀を代表する理論物理学者。特殊・一般相対性理論の提唱者。1921年ノーベル物理学賞受賞。"
+  updated_at: '2026-07-05 21:00:15'
+- term: 印刷用
+  yomi: いんさつよう
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/印刷用/"
+- term: インストール
+  yomi: いんすとーる
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/インストール/"
+  score: 2338.025948674792
+  contexts:
+  - chapter: 11-workflow
+    context: cd mybook ``` **参照:** 「インストール」「新規プロジェクトの作成（vs new）」「環境診断（vs doctor）」
+  - chapter: 12-quickstart
+    context: この章では、Vivlio Starter をインストールして、最初の PDF を生成するまでの流れを体験します。コマンドをいくつか入力す
+  - chapter: 13-new
+    context: "--fix` が自動的に実行されます。これにより npm パッケージのインストールなど、執筆に必要な環境が一括でセットアップされます。
+      万が一 `vs doct"
+  - chapter: 31-lint
+    context: が見つからない 以下のエラーが表示される場合は、textlint がインストールされていません。 ``` textlint コマンドが見つかりません。npm
+  - chapter: 33-index-glossary
+    context: '以下のコマンドで MeCab と natto を自動的にインストールできます: ```bash vs doctor --fix ```
+      または手'
+  - chapter: 42-frontispiece
+    context: '画像の自動生成が失敗する **原因**: ImageMagick がインストールされていない **対処法**: ```bash # macOS
+      の場合 br'
+  - chapter: 43-cover
+    context: "`directories.covers` 設定を確認 ### 必要なツールがインストールされていない **症状**: カバー画像が生成されない
+      **原因**: "
+  - chapter: 44-build
+    context: 'する運用を推奨します。 ### kindlepreviewer のインストール `.kpf` への変換には、Amazon が配布する **Kindle
+      Pr'
+  - chapter: 51-doctor
+    context: '不足しているツールがあれば、`--fix` オプションで自動インストールも可能です。 ::: ## vs doctor とは :::{.sectio'
+  - chapter: 61-developer
+    context: previewer_available?` が `which` で存在確認し、未インストール時は中間 EPUB を残したまま変換をスキップして警告します。
+  - chapter: 91-install
+    context: 'インストール詳細 :::{.chapter-lead} 本章は、`vs new` が自動で行う環境構築の内訳を知りたい方、macOS '
+  - chapter: 92-pdf-read
+    context: 'Mode は vivlio-starter 本体に組み込まれており、追加インストール不要で動作します。Enhanced Mode を利用するには '
+  - chapter: 93-import
+    context: 下記が揃っているか `vs doctor --fix` で確認・自動インストールしてください。 - Ruby 4.x / Bundler
+      - node / n
+  updated_at: '2026-07-05 21:00:15'
+- term: インライン
+  yomi: いんらいん
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/インライン/"
+  score: 311.64873602918516
+  contexts:
+  - chapter: 22-extentions
+    context: " 複数行あっても、すべて右端に揃います。 ::: #### インライン記法（段落・見出し単位） 段落や見出しの末尾に `{.text-right}`"
+  - chapter: 43-cover
+    context: "`rsvg-convert` が解釈できないため、ビルド時に自動でインライン展開されます。 :::{.note} **複数デザインの管理**
+      `flor"
+  - chapter: 44-build
+    context: コードブロック（`` ``` `` 〜 `` ``` ``）やインラインコード（`` ` `` 〜 `` ` ``）内の画像記法・URL
+      は検証されませ
+  - chapter: 94-sample
+    context: "`` | コードインクルード | | `$E=mc^2$` | インライン数式 | | `$$...$$` | ディスプレイ数式 | |
+      `{漢字\\|よみ"
+  updated_at: '2026-07-05 21:00:15'
+- term: エラー
+  yomi: えらー
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/エラー/"
+  score: 797.1472973274311
+  contexts:
+  - chapter: 13-new
+    context: '同名のディレクトリがすでに存在する場合、通常はエラーになります。 ``` エラー: ディレクトリ "mybook" はすでに存在し'
+  - chapter: 22-extentions
+    context: ":::{.tip} `vs preflight` を使うと、ビルド前にエラーを素早く確認できます。 ::: ``` :::{.tip}
+      効率化やトラブル回"
+  - chapter: 24-cross-reference
+    context: " 同じIDが複数箇所で定義されていると、ビルド時に重複エラーとして検出され、次のようなメッセージが表示されます。 ``` \U0001F534
+      71-ins"
+  - chapter: 31-lint
+    context: '介します。 ::: ### textlint コマンドが見つからない 以下のエラーが表示される場合は、textlint がインストールされていません。
+      ```'
+  - chapter: 44-build
+    context: 技術書典向け（Techbook）モード 技術書典などの入稿システムでエラーになりやすい絵文字（Type 3フォントエラー）を回避するための専用モードです。
+  - chapter: 51-doctor
+    context: を参照して手動インストール | | Google Fonts の SSL エラーが解消しない | 証明書パスが未反映 | シェルを再起動して
+      `SSL_CERT
+  - chapter: 61-developer
+    context: "・出力・プレビュー: preflight ビルド前の原稿エラーチェックを高速実行します build 書籍全体また"
+  - chapter: 91-install
+    context: install bundler` | | Node.js の依存関係エラー | `node_modules` の不整合 | `rm -rf
+      node_mo
+  updated_at: '2026-07-05 21:00:15'
+- term: エンジン
+  yomi: えんじん
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/エンジン/"
+  score: 374.869756854821
+  contexts:
+  - chapter: 00-preface
+    context: PDF・EPUB を生成する書籍制作システムです。CSS 組版エンジン Vivliostyle をコアに据え、原稿の前処理から目次生成、表紙作成、トン
+  - chapter: 33-index-glossary
+    context: 並び替えるために読みが必要です。読みを省略した場合、MeCab（形態素解析エンジン）で自動推測されますが、固有名詞や専門用語は誤認識される場合があります。
+  - chapter: 41-book-yml
+    context: Amazon Kindle 向け。Kindle の表示エンジン（KFX）の制約に合わせて画像形式やレイアウトを調整した中間 EPUB を作り、
+  - chapter: 44-build
+    context: KPF ファイルを生成します。Kindle の表示エンジンに合わせて調整した中間 EPUB を作り、`kindlepreviewer` で
+  - chapter: 51-doctor
+    context: CLI の前提） | | vivliostyle | PDF 生成エンジン | | textlint | 文章校正ツール | | qpdf
+      | PDF 分
+  - chapter: 61-developer
+    context: '書き出します。 ## ビルドパイプライン Vivlio Starter のエンジンとなる Vivliostyle CLI では、ビルドは次のように行われます。'
+  - chapter: 91-install
+    context: 'install -g @vivliostyle/cli` | PDF 生成エンジン | | textlint と推奨ルール | `npm
+      install -g '
+  - chapter: 92-pdf-read
+    context: "`tesseract` + `tesseract-lang` | OCR エンジン（日本語対応） | | `poppler`（pdftoppm）
+      | "
+  updated_at: '2026-07-05 21:00:15'
+- term: オプション
+  yomi: おぷしょん
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/オプション/"
+  score: 1332.3358699783644
+  contexts:
+  - chapter: 12-quickstart
+    context: 'これらが執筆の参考になります。 各ディレクトリの役割やオプションの詳細は、次の「新規プロジェクトの作成（vs new）」で説明しています。
+      #'
+  - chapter: 13-new
+    context: "`--yes` や `--add-missing` などのオプション、ディレクトリ構成の意味やプロジェクト名のルールなどを確認したくなったときに戻っ"
+  - chapter: 21-markdown-tutorial
+    context: '少なくとも1つのスペースを空ける - 末尾の `#` はオプション（装飾として） ### テキスト装飾 ```markdown **太字**'
+  - chapter: 22-extentions
+    context: " ```markdown :::{.notice} `--force` オプションは既存ファイルを上書きします。実行前にバックアップを取ってください。"
+  - chapter: 23-chapter-management
+    context: "``` 確認プロンプトをスキップして即座に削除します。 ### オプション一覧 | オプション | 説明 | |------------|------|"
+  - chapter: 31-lint
+    context: '日本語校正とスペルチェックの両方が実行されますが、片方だけを実行したい場合はオプションで切り替えられます。 ::: ### --textlint-only
+      / '
+  - chapter: 32-metrics
+    context: 'metrics 1 vs metrics 01 ``` ## コマンドオプション :::{.section-lead} metrics
+      コマンドには、出力内容'
+  - chapter: 41-book-yml
+    context: '出力設定 出力フォーマット・ファイル名規則・表紙設定・PDF/EPUB の詳細オプションをまとめて管理します。 ```yaml output:
+      targets:'
+  - chapter: 42-frontispiece
+    context: "├── my_image_portrait.webp # 縦長バリアント（オプション） └── my_image_landscape.webp
+      # 横長バ"
+  - chapter: 43-cover
+    context: 'マスター画像（`*_master.png`） ### 複数のオプションとの組み合わせ `vs clean` コマンドは、複数のオプションを同時に指定'
+  - chapter: 44-build
+    context: 小説など特定の書体を厳密に保ちたい用途に向けたフォント埋め込みオプションは、将来のバージョンで `config/book.yml` に追加される予定です
+  - chapter: 45-utility
+    context: 'n # 後から手動でクリーンアップ ``` ### オプション ```bash # 最終PDFも含めてすべて削除 vs clean --pu'
+  - chapter: 51-doctor
+    context: '不足しているツールがあれば、`--fix` オプションで自動インストールも可能です。 ::: ## vs doctor とは ::'
+  - chapter: 61-developer
+    context: "`require` 先 `CLI.start(ARGV)` の定義と無効オプション時の `--help` 誘導は `cli/startup.rb` "
+  - chapter: 91-install
+    context: "| GitHub Releases から自動取得 | AI 画像拡大（オプション） | | Kindle Previewer 3（kindlepreviewer"
+  - chapter: 93-import
+    context: Starter プロジェクトのルートを指定します。 | オプション | 説明 | | --- | --- | | `--force` |
+      既存ディ
+  updated_at: '2026-07-05 21:00:15'
+- term: 拡張記法
+  yomi: かくちょうきほう
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/拡張記法/"
+- term: カスタマイズ
+  yomi: かすたまいず
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/カスタマイズ/"
+  score: 566.6487360291853
+  contexts:
+  - chapter: 00-preface
+    context: それぞれの出力フローを理解する - **デザインのカスタマイズ** — テーマカラー、フォント、版面設計を `book.yml` で自在に調整
+  - chapter: 13-new
+    context: は章のスラッグに自動置換されます。 章テンプレートのカスタマイズ方法や QueryStream テンプレートの詳細は「ユーティリティ・コマンド集
+  - chapter: 32-metrics
+    context: ":::{.section-lead} metrics コマンドには、出力内容をカスタマイズするオプションが用意されています。 ::: ###
+      --all "
+  - chapter: 33-index-glossary
+    context: '他の行も同様 --> </section> ``` ## 設定のカスタマイズ :::{.section-lead} `book.yml`
+      の `index'
+  - chapter: 41-book-yml
+    context: "`vfm` `legal` `build` | 既定値で動くが、カスタマイズしたい場合に | | 機能別の詳細設定 | `index_glossary`
+      `"
+  - chapter: 42-frontispiece
+    context: "/ lime）を指定してください。{.aki} ## 見出し記号のカスタマイズ :::{.section-lead} Vivlio Starter
+      では、目"
+  - chapter: 43-cover
+    context: 'vs cover epub ``` ## 設定のカスタマイズ :::{.section-lead} `book.yml` でカバー画像のフ'
+  - chapter: 45-utility
+    context: '次の `vs build` で元に戻ってしまいます。恒久的なカスタマイズには必ず `custom.css` を使ってください。 :::
+      ### 使い方'
+  - chapter: 61-developer
+    context: "| | `b5_custom` など | 各サイズ | 自由にカスタマイズ可 | `CssUpdater` がこのプリセット値を読み取り、`@page`"
+  - chapter: 92-pdf-read
+    context: '著者が加筆・修正した既存原稿が誤って消えることを防ぎます。 ## 設定とカスタマイズ ### `book.yml` の設定 `config/book.yml`'
+  updated_at: '2026-07-05 21:00:15'
+- term: カバー
+  yomi: かばー
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/カバー/"
+  score: 1227.4207642347146
+  contexts:
+  - chapter: 11-workflow
+    context: "。 ```bash vs build # 書籍全体をビルドする ``` カバー画像がまだ生成されていない場合、`vs build` が内部で自動的に
+      `vs"
+  - chapter: 41-book-yml
+    context: 'book.pdf cover: light # カバーテーマ: light / dark（標準添付 SVG）'
+  - chapter: 43-cover
+    context: カバー画像の生成 :::{.chapter-lead} Vivlio Starter では、`vs cover` コマンドを使用して、カバー画像から
+      PDF 用
+  - chapter: 44-build
+    context: '定レイアウト型） ``` ```bash vs build ``` ### カバー画像 EPUB のカバー画像は `covers/cover.jpg`
+      を使用し'
+  - chapter: 45-utility
+    context: 'e # キャッシュのみ削除 vs clean --cache # 生成されたカバー画像のみ削除（マスター画像は保持） vs clean
+      --cover # すべ'
+  - chapter: 51-doctor
+    context: "| 画像変換・リサイズ | | inkscape | SVG 編集・変換（カバー生成用） | | rsvg-convert (librsvg)
+      | EPUB 扉"
+  - chapter: 61-developer
+    context: '確認済みの候補を、プロジェクトの索引辞書に登録・保存します 画像・カバー: cover 表紙・裏表紙の画像を生成します（A'
+  - chapter: 91-install
+    context: install inkscape` | SVG → PDF 変換（カバー生成用） | | librsvg（rsvg-convert） |
+      `brew i
+  - chapter: 95-further-inspiration
+    context: Vivliostyleはそれを実現するためのソフトウェアです。本書も（カバーを除いて）すべてVivliostyleで制作しています。本書ではVivliost
+  updated_at: '2026-07-05 21:00:15'
+- term: カバー画像
+  yomi: かばーがぞう
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/カバー画像/"
+  score: 530.3713493780799
+  contexts:
+  - chapter: 11-workflow
+    context: "```bash vs build # 書籍全体をビルドする ``` カバー画像がまだ生成されていない場合、`vs build` が内部で自動的に
+      `vs co"
+  - chapter: 41-book-yml
+    context: cover` コマンドで生成したカバーのテーマ名と対応します。詳細は「カバー画像の生成」の章を参照してください。 `pdf.techbook`
+      は、技術書典な
+  - chapter: 43-cover
+    context: カバー画像の生成 :::{.chapter-lead} Vivlio Starter では、`vs cover` コマンドを使用して、カバー画像から
+      PDF 用、
+  - chapter: 44-build
+    context: "``` ```bash vs build ``` ### カバー画像 EPUB のカバー画像は `covers/cover.jpg` を使用します"
+  - chapter: 45-utility
+    context: "# キャッシュのみ削除 vs clean --cache # 生成されたカバー画像のみ削除（マスター画像は保持） vs clean --cover
+      # すべての"
+  updated_at: '2026-07-05 21:00:15'
+- term: カラー
+  yomi: からー
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/カラー/"
+  score: 363.1042739792526
+  contexts:
+  - chapter: 41-book-yml
+    context: '0" ``` ### theme — テーマ設定 章扉のスタイル・アクセントカラー・扉絵・装飾画像をまとめて設定します。 ```yaml
+      theme: st'
+  - chapter: 44-build
+    context: "``` これを `true` に設定しておくと、原稿に書かれたカラー絵文字が自動的にきれいな画像（TwemojiのSVG画像）へと置き換えられ、入稿"
+  - chapter: 61-developer
+    context: でバージョン番号が付与されます。 `theme` セクションでテーマカラー・章扉の背景画像（`frontispiece`）・節見出しの装飾画像（`orna
+  updated_at: '2026-07-05 21:00:15'
+- term: 画像名
+  yomi: がぞうめい
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/画像名/"
+  score: 375.19594859692296
+  contexts:
+  - chapter: 42-frontispiece
+    context: 'sheets/images/bundled/` に配置されており、設定ファイルで画像名を指定するだけで使用できます。 **利用可能なバンドル画像** '
+  updated_at: '2026-07-05 21:00:15'
+- term: キャッシュ
+  yomi: きゃっしゅ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/キャッシュ/"
+  score: 548.9940450787037
+  contexts:
+  - chapter: 24-cross-reference
+    context: 'IDを一意になるように変更 #### 番号がおかしい - 原因: ビルドのキャッシュ残留 - 解決: `vs clean` でクリーンアップ
+      ### '
+  - chapter: 31-lint
+    context: "`.cache/spellcheck-dictionaries/` にキャッシュされます。 - **check_code_blocks**:
+      `true` にす"
+  - chapter: 32-metrics
+    context: 出力時はライブ UI をスキップして即座に結果を返します。キャッシュされた章は再解析せず、トークン頻度マップ（語彙多様度の再集計用）や読解難度の特徴
+  - chapter: 42-frontispiece
+    context: 'と `_landscape` バリアントを生成 4. **キャッシュ**: 生成した画像は次回以降再利用される **バリアント画像の命名規則**'
+  - chapter: 44-build
+    context: "- それでも直らない場合は `vs clean --all` でキャッシュも含めて削除してからビルドする ### EPUB で索引リンクが機能しない"
+  - chapter: 45-utility
+    context: "# 最終PDFも含めてすべて削除 vs clean --purge # キャッシュのみ削除 vs clean --cache # 生成されたカバー画像のみ削除（"
+  - chapter: 61-developer
+    context: '不足ツールの自動セットアップ clean 生成物やキャッシュを削除します 執筆・編集支援: create'
+  updated_at: '2026-07-05 21:00:15'
+- term: キャプション
+  yomi: きゃぷしょん
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/キャプション/"
+  score: 451.29707756727703
+  contexts:
+  - chapter: 22-extentions
+    context: 'align=center} ### 画像にキャプション（見出し）と図番号を付ける 画像の直前に `** タイトル **`（行頭・行末'
+  - chapter: 24-cross-reference
+    context: 'リンク付きで自動生成するための仕組みです。 ::: ## ラベル付きキャプションの書き方 クロスリファレンスは、次の二段階で構成されています。
+      1. **定'
+  - chapter: 61-developer
+    context: 'の前処理パイプライン内で実行されます。 ### 著者向けの記法 キャプション行に `@id` を付けると、直後のブロック種別（コードブロック
+      → リスト、テ'
+  updated_at: '2026-07-05 21:00:15'
+- term: 技術書
+  yomi: ぎじゅつしょ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/技術書/"
+  score: 582.447066733209
+  contexts:
+  - chapter: 00-preface
+    context: "## 対象読者 コンピュータの基本操作ができる方を想定しています。はじめて技術書を書く方から、より効率的な執筆環境を求めている方まで、Vivlio
+      Starte"
+  - chapter: 11-workflow
+    context: "** 書いては整え、また書く——この往復が、読みやすい技術書を仕上げる近道です。 **参照:** 「Textlint」「Metrics」"
+  - chapter: 12-quickstart
+    context: "が生成されて自動的に開きます。これがあなたの最初の技術書です！ :::{.column} **\U0001F4A1 ヒント** `contents/`"
+  - chapter: 21-markdown-tutorial
+    context: ":::{.chapter-lead} 本章では、Vivlio Starter で技術書を執筆するための Markdown 記法を体系的に解説します。"
+  - chapter: 22-extentions
+    context: Vivlio Starter では、標準 Markdown に加えて、技術書制作に特化した独自の拡張記法を利用できます。本章では、コラム・注記・レイアウト・
+  - chapter: 24-cross-reference
+    context: "- **柔軟性**: 手動IDと自動IDの使い分け これらの機能を活用して、読者にとって使いやすく、著者にとって管理しやすい技術書を作成しましょう！"
+  - chapter: 31-lint
+    context: 'allow_space_between_ja_en`（和欧間スペースの許容） 技術書では、`` `vs import` コマンド `` '
+  - chapter: 32-metrics
+    context: "「難易度」「表現の多様性」「構成のバランス」を客観的に把握し、より読みやすい技術書の執筆をサポートします。 ::: ## metrics
+      とは :::{.se"
+  - chapter: 33-index-glossary
+    context: 索引の候補となる用語の自動抽出機能を実装しています。 技術書の索引の目安は、一般的に**1ページあたり1〜2語**程度と言われています。20
+  - chapter: 41-book-yml
+    context: 'れます。 ```yaml book: main_title: "はじめての技術書づくり" subtitle: "Vivlio Starter
+      実践ガイド"'
+  - chapter: 61-developer
+    context: "です。 ``` vs --help \U0001F4DA Vivlio Starter - 技術書執筆のためのCLIツール \U0001F6E0️
+      使い方: vs <command> [optio"
+  - chapter: 99-postface
+    context: その一連の流れを、本書を通じて体験していただけたなら幸いです。技術書、解説書、同人誌、社内マニュアル——Vivlio Starter の世界は、あな
+  updated_at: '2026-07-05 21:00:15'
+- term: クラス
+  yomi: くらす
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/クラス/"
+  score: 416.62256943080126
+  contexts:
+  - chapter: 22-extentions
+    context: 'カスタムコンテナ構文を使います。 ```markdown :::{.クラス名} ここに内容を書く ::: ``` `:::` の開始行にクラス名を指定す'
+  - chapter: 61-developer
+    context: " 1. `<body>` タグへのファイルタイプクラス付与（`body_class_injector.rb`） 2. `config/"
+  updated_at: '2026-07-05 21:00:15'
+- term: クリーン
+  yomi: くりーん
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/クリーン/"
+  score: 624.9498222345869
+  contexts:
+  - chapter: 41-book-yml
+    context: "# 楽天 Kobo / Apple Books 向けクリーン EPUB embed: true # true"
+  - chapter: 44-build
+    context: 'の両方 # targets: epub # クリーン EPUB のみ # targets: kindle'
+  - chapter: 61-developer
+    context: '実装 clean.rb # クリーンコマンド実装 create.rb # 章作成'
+  updated_at: '2026-07-05 21:00:15'
+- term: クロスリファレンス
+  yomi: くろすりふぁれんす
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/クロスリファレンス/"
+- term: 形態素解析
+  yomi: けいたいそかいせき
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/形態素解析/"
+- term: コマンド
+  yomi: こまんど
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/コマンド/"
+  score: 3152.789471495483
+  contexts:
+  - chapter: 00-preface
+    context: 特別なフォーマットを覚える必要はありません - **コマンド一発でビルド** — `vs build` ひとつで、原稿が美しい PDF に変
+  - chapter: 11-workflow
+    context: "## 各ステップの概要 ### ① プロジェクト作成 `vs new` コマンドで書籍プロジェクトの雛形を生成します。書籍名・著者名などを対話形式で入力すると、"
+  - chapter: 12-quickstart
+    context: 最初の PDF を生成するまでの流れを体験します。コマンドをいくつか入力するだけで、あなたの本が完成します。早速、一緒に取り組んで参りまし
+  - chapter: 13-new
+    context: '方法や QueryStream テンプレートの詳細は「ユーティリティ・コマンド集」と「QueryStream」の章を参照すると理解が深まります。
+      ### s'
+  - chapter: 22-extentions
+    context: "— ターミナルへの入力 ターミナル（端末）に打ち込むコマンドを示します。黒地に白文字の全幅枠で表示され、「ここはコマンド入力だ」と一目で分か"
+  - chapter: 23-chapter-management
+    context: 章ファイルの作成・削除・名前変更・連番整理をコマンドで行えます。手作業でファイルを操作する必要はなく、`catalog.yml` や
+  - chapter: 31-lint
+    context: Markdown で書かれた原稿の品質をチェックする `vs lint` コマンドが統合されています。日本語の校正（textlint）と英単語のスペルチェックを
+  - chapter: 32-metrics
+    context: "**: 各章の分量を可視化し、構成の偏りを検出 ## metrics コマンドの基本 :::{.section-lead} Vivlio
+      Starter で"
+  - chapter: 33-index-glossary
+    context: Vivlio Starter では、`vs index` コマンドを使用して、書籍の索引と用語集を効率的に作成できます。本章では、用語の登録から自
+  - chapter: 41-book-yml
+    context: " ::: `cover` に指定するスラッグは `vs cover` コマンドで生成したカバーのテーマ名と対応します。詳細は「カバー画像の生成」の章を参照して"
+  - chapter: 43-cover
+    context: Vivlio Starter では、`vs cover` コマンドを使用して、カバー画像から PDF 用、印刷用、EPUB 用のカバー画像を自動生
+  - chapter: 44-build
+    context: 原稿の執筆が一段落したら、`vs build` コマンドで書籍を組版しましょう。閲覧用 PDF、印刷入稿用 PDF、電子書籍（EPUB）
+  - chapter: 45-utility
+    context: ユーティリティ・コマンド集 :::{.chapter-lead} 執筆環境を整えたり、成果物作成を補助する為の便利なコマンド群です。普段は既定値で充分かと
+  - chapter: 51-doctor
+    context: いくつかの外部ツールが必要です。`vs doctor` コマンドを使うと、必要なツールがすべて揃っているかを一括で確認できます。不足しているツー
+  - chapter: 61-developer
+    context: mands::RootCommand └─ 各コマンド（build / lint / metrics / ...） lib/vivl
+  - chapter: 92-pdf-read
+    context: PDF 読み取りコマンドの使い方 :::{.chapter-lead} `vs pdf:read` は PDF ファイルからテキストと画像を抽出し、Vivlio
+  - chapter: 93-import
+    context: Import コマンドの使い方 :::{.chapter-lead} Vivlio Starter の `vs import` コマンドを使うと、Re:VIEW
+  - chapter: 99-postface
+    context: " Markdown で原稿を書き、`vs build` コマンドひとつで美しい書籍が生まれる。その一連の流れを、本書を通じて体験していただけたな"
+  updated_at: '2026-07-05 21:00:15'
+- term: コメント
+  yomi: こめんと
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/コメント/"
+  score: 579.949822234587
+  contexts:
+  - chapter: 22-extentions
+    context: "- 出力: dist/sample.pdf ::: ### 編集者コメント `@comment ... @commend` 推敲中のメモを本文に残したい"
+  - chapter: 31-lint
+    context: '特定の箇所だけチェックを無効化したい場合は、`vs-lint` コメント記法を使用します。日本語校正・スペルチェックの両方に共通して機能します。
+      :::'
+  - chapter: 61-developer
+    context: "・更新（`frontmatter_generator.rb`） 2. HTML コメント除去 3. QueryStream 記法展開（`=
+      books | "
+  - chapter: 93-import
+    context: を `page.use` にマッピング）を変換。コメントは保持されます。 7. **片付け** — Vivlio 側 `temp/` と
+  updated_at: '2026-07-05 21:00:15'
+- term: コード
+  yomi: こーど
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/コード/"
+  score: 1217.6042620786761
+  contexts:
+  - chapter: 22-extentions
+    context: 'を編集する - ❸ `vs build` で反映を確認する ## ソースコード Vivlio Starter では、コードブロックに対して自動的にシンタック'
+  - chapter: 24-cross-reference
+    context: タイトルの末尾に `@ラベルID` を付ける - 直後に続くブロック要素（コードブロック / テーブル / 画像）がその対象になります ラベルIDは、本文中で
+  - chapter: 31-lint
+    context: 2 種類のチェックをまとめて実行します。プログラムコードの Linter（ESLint や RuboCop など）の文章版と考えるとわか
+  - chapter: 32-metrics
+    context: "・実用書） - スコア: 45.2 点 ``` :::{.note} **コードは分析対象から除外されます。** 漢字比率・語彙多様度・読解難度は、文章としての"
+  - chapter: 33-index-glossary
+    context: "- Markdown リンク - `[^1]` - 脚注参照 - コードブロック内の `[...]` - コードフェンス内は無視 ##
+      自動抽出とレビ"
+  - chapter: 41-book-yml
+    context: 'る項目 ### typography — タイポグラフィ設定 本文・見出し・コード・ページ番号のフォントを設定します。既定のフォントで問題なければ変更不要です。'
+  - chapter: 42-frontispiece
+    context: "**HEX表記**：`color: #ff0000` のように色コードを直接指定することもできます。 一覧にない色名（例: `pink`）を指定した"
+  - chapter: 44-build
+    context: "**フォントを埋め込みません**: 本文（明朝体）・見出し（ゴシック体）・コード（等幅）は、リーダー側の標準フォントで表示されます。`font-family`"
+  - chapter: 61-developer
+    context: 置き場 codes/ ← 書籍内で掲載するサンプルコード stylesheets/ ← CSSスタイルシート con
+  - chapter: 94-sample
+    context: "。 ::: もしアインシュタインが Ruby を知っていたら、こんなコードを書いたでしょう。 ```ruby:photoelectric.rb
+      # 光電"
+  updated_at: '2026-07-05 21:00:15'
+- term: コードブロック
+  yomi: こーどぶろっく
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/コードブロック/"
+  score: 946.5106574914325
+  contexts:
+  - chapter: 21-markdown-tutorial
+    context: 'ウェブ公開が容易 - **技術文書向け**: コードブロック、テーブル、リストなど技術文書に必要な要素をサポート ### 主な用途 ##'
+  - chapter: 22-extentions
+    context: "## ソースコード Vivlio Starter では、コードブロックに対して自動的にシンタックスハイライトと行番号が付与されます。外部ファイルからの"
+  - chapter: 23-chapter-management
+    context: " ``` この先には、見出し・リスト・定義リスト・表・コードブロック・数式・画像レイアウト・コラム/注記ブロック・索引・QueryStream
+      など"
+  - chapter: 24-cross-reference
+    context: タイトルの末尾に `@ラベルID` を付ける - 直後に続くブロック要素（コードブロック / テーブル / 画像）がその対象になります ラベルIDは、
+  - chapter: 31-lint
+    context: 配下の `*.md` ファイル内の英単語が対象です。 - コードブロック（` ``` `〜` ``` `）内は既定でチェック対象外です。
+      - Vivli
+  - chapter: 32-metrics
+    context: 漢字比率・語彙多様度・読解難度は、文章としての読みやすさを測る指標です。コードブロック（` ``` ` で囲んだ部分）やインラインコードは、
+  - chapter: 33-index-glossary
+    context: "- Markdown リンク - `[^1]` - 脚注参照 - コードブロック内の `[...]` - コードフェンス内は無視 ##
+      自動抽出とレビュー"
+  - chapter: 44-build
+    context: なし | 画像チェックのみスキップ | :::{.note} **コードブロック内は検証対象外** コードブロック（`` ``` `` 〜
+      `` ``` ``
+  - chapter: 45-utility
+    context: 色やフォントを簡単に切り替えられますが、「リンクの色だけ変えたい」「コードブロックの角を丸くしたい」といった細かな調整をしたい場合もあるでしょう。
+  - chapter: 51-doctor
+    context: "| Playwright 用ヘッドレスブラウザ | | rouge | コードブロック言語推定（Ruby gem） | | mathjax-full
+      | 数式の "
+  - chapter: 61-developer
+    context: 行番号付与（`prism_lines.rb`） 9. クロスリファレンス用コードブロックのラップ 10. 見出しマーカー・番号スパンの
+  - chapter: 91-install
+    context: "| | rouge | `gem install rouge` | コードブロック言語推定 | | mathjax-full | `npm
+      install -g"
+  - chapter: 93-import
+    context: "- `waifu2x-ncnn-vulkan`（任意） - Rouge（コードブロック言語推定用 gem） ### Starter プロジェクトの確認 "
+  updated_at: '2026-07-05 21:00:15'
+- term: 語彙多様度
+  yomi: ごいたようど
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/語彙多様度/"
+- term: 索引ページ
+  yomi: さくいんぺーじ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/索引ページ/"
+- term: システム
+  yomi: しすてむ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/システム/"
+  score: 360.32113284842666
+  contexts:
+  - chapter: 00-preface
+    context: で書いた原稿から高品質な PDF・EPUB を生成する書籍制作システムです。CSS 組版エンジン Vivliostyle をコアに据え、原稿の前処理か
+  - chapter: 22-extentions
+    context: "**はじめての技術書づくり** はじめて技術書を書く方にお勧め。電子書籍執筆システム Vivlio Starter の実践ガイドです。"
+  - chapter: 31-lint
+    context: 重要なファイルを修正する前に、必ずバージョン管理システム（Git など）でコミットしておくことをお勧めします。 <!-- vs-lint
+  - chapter: 33-index-glossary
+    context: 'に表示されない **原因**: 自動索引機能が有効になっていない 索引システムは以下の2つの方法で用語をタグ付けします： 1. **手動マークアップ**:'
+  - chapter: 44-build
+    context: "### 技術書典向け（Techbook）モード 技術書典などの入稿システムでエラーになりやすい絵文字（Type 3フォントエラー）を回避するための専用モー"
+  - chapter: 61-developer
+    context: 各ステップの詳細を確認することが出来ます。 ビルドシステムの中核を担う、`pre_process`, `covert`, `post_pr
+  - chapter: 99-postface
+    context: 誰もが手軽に享受できるよう地に下ろすこと。それがこのシステムの目指すところです。 Vivlio Starter は、半年以上の年月をかけて
+  updated_at: '2026-07-05 21:00:15'
+- term: 実行結果
+  yomi: じっこうけっか
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/実行結果/"
+  score: 448.1091556866751
+  contexts:
+  - chapter: 22-extentions
+    context: 'vs build ::: ### `.output` — 実行結果・出力例 コマンドの実行結果や、記法を書いたときの表示例を示します。細い全幅の'
+  updated_at: '2026-07-05 21:00:15'
+- term: 自動インストール
+  yomi: じどういんすとーる
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/自動インストール/"
+  score: 341.2186388966169
+  contexts:
+  - chapter: 51-doctor
+    context: '不足しているツールがあれば、`--fix` オプションで自動インストールも可能です。 ::: ## vs doctor とは :::{.sectio'
+  - chapter: 61-developer
+    context: 'macOS + Homebrew 環境で不足ツールを自動インストールします。 `targets: kindle` の KPF 変換に使う
+      `kin'
+  - chapter: 93-import
+    context: 下記が揃っているか `vs doctor --fix` で確認・自動インストールしてください。 - Ruby 4.x / Bundler
+      - node / n
+  updated_at: '2026-07-05 21:00:15'
+- term: 自動生成
+  yomi: じどうせいせい
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/自動生成/"
+  score: 534.8444326761895
+  contexts:
+  - chapter: 00-preface
+    context: "— 校正 Lint、メトリクス分析、索引・用語集の自動生成を活用する ## ロゴに込めた想い ![Vivlio Starter ロゴ]"
+  - chapter: 11-workflow
+    context: "④ ビルド | `vs build` | 書籍全体をビルド（カバー未生成時は自動生成） | | | `vs cover` | カバーを個別に生成・調整したい場合 "
+  - chapter: 13-new
+    context: "`vs create` で章を作成すると対応する画像ディレクトリが自動生成されます。 原稿には `.webp` 形式を推奨します。PNG/JPG
+      は `"
+  - chapter: 22-extentions
+    context: 'た。 ## 索引・用語集 Vivlio Starter では、索引と用語集を自動生成する機能があります。 ### 手動マークアップ 原稿中で索引や用語集に登録し'
+  - chapter: 23-chapter-management
+    context: "`templates/` ディレクトリのテンプレートから自動生成されます。章番号によって使用されるテンプレートが変わります。 | 章番号の範囲"
+  - chapter: 24-cross-reference
+    context: '章番号付きの 番号（図 3-2, 表 4-1 など）とリンク付きで自動生成するための仕組みです。 ::: ## ラベル付きキャプションの書き方
+      クロ'
+  - chapter: 42-frontispiece
+    context: '系ページでは √2:1 ≒ 1.414）。この比率と異なる画像を指定しても、自動生成（後述）でページ比率に合わせてクロップされます。 -
+      **推奨サイズ**: '
+  - chapter: 43-cover
+    context: を使用して、カバー画像から PDF 用、印刷用、EPUB 用のカバー画像を自動生成できます。開発者が用意した `light` / `dark`
+      テーマの SVG
+  - chapter: 44-build
+    context: "`covers/frontcover_master.png` から自動生成されます。 ### PDF 圧縮 ファイルサイズを抑えたい場合は、PDF
+      圧"
+  - chapter: 45-utility
+    context: ビルド後に `_compressed` 付きのファイルが自動生成されます。`vs pdf:compress` は既存の PDF を後から圧縮した
+  - chapter: 61-developer
+    context: "`vs create` で章を作ると対応するディレクトリも自動生成されます。`vs build` の Step 1 で WebP への変換・最適化"
+  updated_at: '2026-07-05 21:00:15'
+- term: 重力
+  yomi: じゅうりょく
+  flags: i
+  definition: ''
+  source: manual_markup
+  approved_at: '2026-07-05 20:49:56'
+  pattern: "/重力/"
+  contexts:
+  - chapter: 94-sample
+    context: '特殊相対性理論は等速運動のみを扱い、一般相対性理論は加速度運動と重力を含みます。アインシュタインは特殊から一般へ到達するのに10年を要しました。
+      :'
+  updated_at: '2026-07-05 21:00:15'
+- term: スキャン
+  yomi: すきゃん
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/スキャン/"
+  score: 300.6485387836385
+  contexts:
+  - chapter: 32-metrics
+    context: " 2. **ライブプレースホルダー** — 章ごとの軽量スキャン結果（タイトル・概算文字数）をプレースホルダーとして描画し、解析完了次第リアルタ"
+  - chapter: 33-index-glossary
+    context: ":::{.section-lead} `vs build` コマンドは、原稿をスキャンして索引用語にタグを付与し、索引データを含む本文
+      PDF "
+  - chapter: 44-build
+    context: 画像パス修正） | | Step 4 | 索引語のスキャンと索引ページ生成 | | Step 5 | Markdown → HTML 変換
+  - chapter: 61-developer
+    context: 付加・画像パス修正など） | | Step 4 | 索引スキャン・索引ページ生成 | | Step 5 | Markdown → HTML
+      変換
+  - chapter: 92-pdf-read
+    context: "| --- | --- | --- | | `mode` | `auto`（スキャン PDF を自動検出）/ `force`（全ページ
+      OCR）/ "
+  updated_at: '2026-07-05 21:00:15'
+- term: スコア
+  yomi: すこあ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/スコア/"
+  score: 521.798249451247
+  contexts:
+  - chapter: 32-metrics
+    context: "【読解難度】 - 評価: Standard（一般的なビジネス・実用書） - スコア: 45.2 点 ``` :::{.note} **コードは分析対象から除外さ"
+  - chapter: 33-index-glossary
+    context: と自動抽出を組み合わせて、索引・用語集候補を統合管理します。TF-IDF スコアリングによる候補の優先順位付けと、Markdown ベースのレビューワークフロー
+  - chapter: 61-developer
+    context: 'Ratio）— 異なり語数 ÷ 総語数 - 読解難度スコア: 日本語版 Flesch/Kincaid を応用したスコアと Easy /
+      S'
+  updated_at: '2026-07-05 21:00:15'
+- term: スタイル
+  yomi: すたいる
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/スタイル/"
+  score: 876.7632060219923
+  contexts:
+  - chapter: 11-workflow
+    context: "<章名>` でこまめに確認するのが、Vivlio Starter での執筆スタイルです。 **参照:** 「Markdown 執筆チュートリアル」「章の管理」"
+  - chapter: 22-extentions
+    context: "::: ``` `:::` の開始行にクラス名を指定するだけで、対応するスタイルが自動的に適用されます。`:::` と `{` の間にスペースを入れても構いませ"
+  - chapter: 25-querystream
+    context: "= [源泉] | [抽出条件] | [並び替え] | [件数] | [スタイル] ``` 各ステージは省略可能です。途中のパイプも省略でき、トークンの形式か"
+  - chapter: 31-lint
+    context: 'textlint の設定ファイルで管理します。プロジェクトの執筆スタイルに合わせて調整できます。 ::: Vivlio Starter
+      では、以下の場'
+  - chapter: 33-index-glossary
+    context: "`vs build` コマンドで本文 PDF に統合されます。索引ページのスタイルは `stylesheets/index.css` でカスタマイズできます。"
+  - chapter: 41-book-yml
+    context: "``` `subtitle_style` は副題の表示スタイルを指定します。`wave` は波線、`bar` は横棒、`none` は装飾なし"
+  - chapter: 42-frontispiece
+    context: '画像を使った華やかなデザインと、シンプルで洗練されたデザインの2つのスタイルから選択可能です。 ::: ## frontispiece
+      と ornamen'
+  - chapter: 45-utility
+    context: "| Web配布・ファイルサイズ優先 | ## カスタム CSS — スタイルを自由に調整する :::{.section-lead} Vivlio
+      Star"
+  - chapter: 61-developer
+    context: 内で掲載するサンプルコード stylesheets/ ← CSSスタイルシート config/ book.yml ← 書籍の
+  updated_at: '2026-07-05 21:00:15'
+- term: ステップ
+  yomi: すてっぷ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/ステップ/"
+  score: 678.5220744959369
+  contexts:
+  - chapter: 11-workflow
+    context: 作成 → 執筆 → 整える → ビルド → 入稿・配布」という5つのステップで完結します。本章では、それぞれのステップで何をするのかを俯瞰します。各ステップ
+  - chapter: 13-new
+    context: "--yes --log=debug ``` ## 作成後の次のステップ プロジェクト作成後、`vs doctor --fix` が自動的に実行されま"
+  - chapter: 25-querystream
+    context: '内）は書き換えられません。 ## はじめかた ### ステップ 1: データファイルを作る `data/` ディレクトリに YAML ファイ'
+  - chapter: 33-index-glossary
+    context: '用語の登録、候補の抽出、レビュー、ページ生成という4つのステップで構成されます。 ::: ### 基本的なワークフロー ```bash
+      #'
+  - chapter: 43-cover
+    context: 効率的に作成できます。 :::{.column} **次のステップ** カバー画像を生成したら、`vs build` コマンドで本文PDFにカバ
+  - chapter: 44-build
+    context: ":::{.section-lead} `vs build` の内部では、複数のステップが順番に実行されます。各ステップの所要時間はビルド完了時に表示されます。"
+  - chapter: 61-developer
+    context: " pipeline.rb # ステップ登録・実行制御 image_optimizer.rb # 画像"
+  updated_at: '2026-07-05 21:00:15'
+- term: スペル
+  yomi: すぺる
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/スペル/"
+  score: 323.29213359917844
+  contexts:
+  - chapter: 24-cross-reference
+    context: "- 解決: 定義側のキャプション行（`@id`）のスペルを確認する #### 重複エラー - 原因: 同じIDを複数の要素で使用 -"
+  updated_at: '2026-07-05 21:00:15'
+- term: スペルチェック
+  yomi: すぺるちぇっく
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/スペルチェック/"
+  score: 632.1802176901591
+  contexts:
+  - chapter: 31-lint
+    context: コマンドが統合されています。日本語の校正（textlint）と英単語のスペルチェックを一度に実行し、表記揺れ・冗長表現・文体の混在・綴り誤りなどを検出して、
+  - chapter: 41-book-yml
+    context: "/ spellcheck — 文章校正 `vs lint` の既定設定とスペルチェックの辞書を管理します。 ```yaml lint:
+      config: conf"
+  - chapter: 61-developer
+    context: が日本語に変換して出力します。 textlint に加えて、独自のスペルチェック（`lint/spell_checker.rb`）も並行して実行します。`con
+  updated_at: '2026-07-05 21:00:15'
+- term: スペース
+  yomi: すぺーす
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/スペース/"
+  score: 500.01169948783047
+  contexts:
+  - chapter: 21-markdown-tutorial
+    context: '数でレベルを指定（1〜6） - 行頭に記述し、少なくとも1つのスペースを空ける - 末尾の `#` はオプション（装飾として） ###
+      テキスト装飾'
+  - chapter: 22-extentions
+    context: 対応するスタイルが自動的に適用されます。`:::` と `{` の間にスペースを入れても構いません。 ```markdown :::{.column}
+      スペ
+  - chapter: 25-querystream
+    context: "``` `= title` のように `=` の後にスペースを空けてキー名を書くと、YAML の値に置き換わります。 ### ステップ
+      3"
+  - chapter: 31-lint
+    context: "-half-and-full-width] 原則として、全角文字と半角文字の間にスペースを入れません。 行: 4, 10, 13, 20,
+      26, 3"
+  - chapter: 92-pdf-read
+    context: " 1. **空白圧縮** --- 日本語文字間の不要な半角スペースを除去（例: `プ ロ グ ラ ミ ン グ` → `プログラミング`）
+      2. *"
+  updated_at: '2026-07-05 21:00:15'
+- term: セクション
+  yomi: せくしょん
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/セクション/"
+  score: 863.8078416812447
+  contexts:
+  - chapter: 13-new
+    context: "`config/book.yml` の `theme` セクションで行います。`theme.css` はビルド時に自動生成されるため、直接編集して"
+  - chapter: 22-extentions
+    context: ":::{.note} この設定は `book.yml` の `theme` セクションで変更できます。 ::: ``` :::{.note}
+      この設定は "
+  - chapter: 31-lint
+    context: 使用例 固有名詞や製品名など、辞書に登録されていない語句が多数登場するセクションをまとめて除外する場合： ```markdown <!--
+      vs-lint-d
+  - chapter: 32-metrics
+    context: 'metrics の出力は、基本情報、詳細分析、章別分量の3つのセクションで構成されています。 ::: ### 基本情報 文章全体の基礎的な統計を表示'
+  - chapter: 33-index-glossary
+    context: "`_index_glossary_review.md` は4つのセクションで構成されます： ```markdown # 索引・用語集レビュー
+      ※ フラグ"
+  - chapter: 41-book-yml
+    context: "::: ## はじめに — 設定項目の全体像 `book.yml` の設定セクションは、大きく三種類に分けられます。 | 種別 | セクション
+      | 説明 | |"
+  - chapter: 42-frontispiece
+    context: 'できます。`config/book.yml` の `markers` セクションで記号を設定することで、書籍のテーマに合わせた装飾を追加できます。
+      ::: #'
+  - chapter: 43-cover
+    context: "### ファイル名の設定 `book.yml` の `output` セクションで、各フォーマットのファイル名を指定します： ```yaml
+      output:"
+  - chapter: 44-build
+    context: 著者名、言語、ISBN など）は `book` セクションから自動的に取得されます。別途設定する必要はありません。 ```yaml bo
+  - chapter: 45-utility
+    context: 'はじめに ## まとめ ``` 毎回同じ構成で書き始める場合は、よく使うセクション見出しをあらかじめ入れておくと便利です。 ### QueryStream
+      テン'
+  - chapter: 61-developer
+    context: はビルドのたびに `book.yml` の `theme` セクションから自動生成されるため直接編集しても上書きされます。カスタム CSS
+      は `cu
+  - chapter: 92-pdf-read
+    context: 'の設定 `config/book.yml` の `pdf_read` セクションで変換の挙動を細かく制御できます。 ```yaml pdf_read:
+      t'
+  updated_at: '2026-07-05 21:00:15'
+- term: 設定ファイル
+  yomi: せっていふぁいる
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/設定ファイル/"
+  score: 418.3311961095822
+  contexts:
+  - chapter: 22-extentions
+    context: 'のでフォントや色を個別に装飾できます。 ```markdown - ❶ 最初に設定ファイルを開く - ❷ `post_replace_list.yml`
+      を編集する '
+  - chapter: 25-querystream
+    context: 'データファイルとテンプレートを置くだけで使えるため、設定ファイルの編集は不要です。 ::: ## 概要 Vivlio Starter のデー'
+  - chapter: 31-lint
+    context: 'す。 ::: ```yaml lint: # 使用する textlint 設定ファイル config: config/.textlintrc.yml
+      # ル'
+  - chapter: 41-book-yml
+    context: は Vivlio Starter プロジェクトの中心となる設定ファイルです。書籍情報からテーマ、出力形式、各機能の詳細パラメータまで、プロジェクト全体
+  - chapter: 42-frontispiece
+    context: "`stylesheets/images/bundled/` に配置されており、設定ファイルで画像名を指定するだけで使用できます。 **利用可能なバンドル画像** "
+  - chapter: 51-doctor
+    context: 'Google Fonts ダウンロード（macOS のみ） | ### 設定ファイルの診断 外部ツールに加えて、`vs doctor`
+      はプロジェクト内の '
+  - chapter: 91-install
+    context: "`npm install -g textlint ...` | 文章校正。設定ファイルも `config/` に自動配置 | | qpdf
+      | `brew "
+  updated_at: '2026-07-05 21:00:15'
+- term: セットアップ
+  yomi: せっとあっぷ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/セットアップ/"
+  score: 373.39912472562344
+  contexts:
+  - chapter: 00-preface
+    context: "`vs doctor` で必要なツールを自動セットアップ ## この本で学べること - **Markdown で執筆する為の各種記法"
+  - chapter: 11-workflow
+    context: 'や ImageMagick など、書籍制作に必要な外部ツールが一括でセットアップされます。 ```bash vs new mybook
+      # 雛形生成 +'
+  - chapter: 12-quickstart
+    context: をインストールする場合 同梱のスクリプトを使うと、必要なツールを自動でセットアップできます。ターミナルを開いて、次のコマンドを実行してください。
+      ```bash
+  - chapter: 13-new
+    context: これにより npm パッケージのインストールなど、執筆に必要な環境が一括でセットアップされます。 万が一 `vs doctor --fix`
+      が失敗した場合は、
+  - chapter: 51-doctor
+    context: 'すべて自動で進めます。CI/CD 環境や自動セットアップスクリプトで活用できます。 ## コマンドオプション ``` doctor'
+  - chapter: 61-developer
+    context: 抽出します doctor 環境診断と不足ツールの自動セットアップ clean 生成物やキャッシュを削除します
+  - chapter: 91-install
+    context: 以降の手動インストール手順を手がかりに、お使いの環境へ読み替えてセットアップしてみてください（うまく動くことを願っています）。将来的に正式対応するかもしれま
+  updated_at: '2026-07-05 21:00:15'
+- term: 相対性
+  yomi: そうたいせい
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/相対性/"
+  score: 469.4883483042546
+  contexts:
+  - chapter: 94-sample
+    context: "（1879–1955）。20世紀を代表する理論物理学者。特殊・一般相対性理論の提唱者。1921年ノーベル物理学賞受賞。 ::: アルバート・アインシュ"
+  updated_at: '2026-07-05 21:00:15'
+- term: タイトル
+  yomi: たいとる
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/タイトル/"
+  score: 454.0462733449956
+  contexts:
+  - chapter: 13-new
+    context: "`.md` を省いたファイル名で登録します。`CHAPTERS` の下にタイトル（末尾に半角コロン `:`）を置くと、その配下がひとつの「部」にまとまり、部扉ペ"
+  - chapter: 22-extentions
+    context: " ```markdown :::{.column} **コラムタイトル** ここにコラムの内容を書きます。 ::: ``` :::{.column"
+  - chapter: 24-cross-reference
+    context: 行** を付けます。 - 行頭に太字 (`** ... **`) でタイトルを書く - タイトルの末尾に `@ラベルID` を付ける -
+      直後に続くブロック
+  - chapter: 32-metrics
+    context: " 2. **ライブプレースホルダー** — 章ごとの軽量スキャン結果（タイトル・概算文字数）をプレースホルダーとして描画し、解析完了次第リアルタイムで差し替え"
+  - chapter: 42-frontispiece
+    context: frontispiece は、各章の扉ページ（章タイトルが表示されるページ）の背景に配置される画像です。縦長（portrait）の画像が
+  - chapter: 43-cover
+    context: テンプレートに、テーマに応じたカラーパレットとタイトル・著者名などの書籍情報を自動適用して PDF を生成します。 ```yaml
+  - chapter: 44-build
+    context: '図版が多い書籍向け | ### メタデータ EPUB のメタデータ（タイトル、著者名、言語、ISBN など）は `book` セクションから自動的に取得され'
+  - chapter: 61-developer
+    context: "| `create:titlepage` | タイトルページを生成 | | `create:colophon` | 奥付を生成 | |"
+  updated_at: '2026-07-05 21:00:15'
+- term: ツール
+  yomi: つーる
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/ツール/"
+  score: 1344.7659862371488
+  contexts:
+  - chapter: 00-preface
+    context: "— `vs new` でプロジェクトを作成し、`vs doctor` で必要なツールを自動セットアップ ## この本で学べること - **Markdown
+      で執"
+  - chapter: 11-workflow
+    context: "、Vivliostyle や ImageMagick など、書籍制作に必要な外部ツールが一括でセットアップされます。 ```bash vs
+      new mybook"
+  - chapter: 12-quickstart
+    context: Ruby をインストールする場合 同梱のスクリプトを使うと、必要なツールを自動でセットアップできます。ターミナルを開いて、次のコマンドを実行してください
+  - chapter: 21-markdown-tutorial
+    context: 'を解析するライブラリ - **レンダラー**: 各形式に変換するツール - **エディタ**: Markdown 専用の編集環境 ####
+      拡張仕様'
+  - chapter: 31-lint
+    context: "**日本語校正（textlint）**: Node.js 製のオープンソース校正ツール textlint を利用し、日本語技術文書向けのルールで文章をチェックします。"
+  - chapter: 32-metrics
+    context: 執筆中の原稿を統計的に分析し、文章品質を数値化するツールです。漢字比率、語彙の豊かさ、読解難度などを自動計算し、改善のヒントを提供します
+  - chapter: 43-cover
+    context: 'l` の `directories.covers` 設定を確認 ### 必要なツールがインストールされていない **症状**: カバー画像が生成されない
+      **原'
+  - chapter: 44-build
+    context: " - **epubcheck 準拠**: 生成された EPUB は、構造検証ツール epubcheck でエラーが出ないよう自動調整されます。楽天
+      Kobo や"
+  - chapter: 51-doctor
+    context: Vivlio Starter の動作には、いくつかの外部ツールが必要です。`vs doctor` コマンドを使うと、必要なツールがすべて揃って
+  - chapter: 61-developer
+    context: "s --help \U0001F4DA Vivlio Starter - 技術書執筆のためのCLIツール \U0001F6E0️ 使い方:
+      vs <command> [options] プロジェク"
+  - chapter: 91-install
+    context: 内部で `vs doctor --fix` が呼び出され、次のツール群が自動でインストールされます。何が導入されるかを把握しておきたい方のための一覧
+  - chapter: 92-pdf-read
+    context: "`vivlio-starter-pdf` gem が必要です。 ### 必須ツール ```zsh vs doctor --fix ```
+      `vs doctor"
+  - chapter: 93-import
+    context: '了できるよう手順をまとめました。 ::: ## 事前準備と実行 ### 必要ツール 下記が揃っているか `vs doctor --fix`
+      で確認・自動インスト'
+  updated_at: '2026-07-05 21:00:15'
+- term: テキスト
+  yomi: てきすと
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/テキスト/"
+  score: 1439.7794997631293
+  contexts:
+  - chapter: 21-markdown-tutorial
+    context: '言語です。「書きやすく、読みやすい」ことを目指して設計され、プレーンテキストで構造化された文書を作成できます。 ### 開発者と歴史 ####
+      開発者'
+  - chapter: 22-extentions
+    context: 'ge.png){align=right} # 標準の画像（拡張なし） ![代替テキスト](画像パス) ``` たとえば次のように、幅 '
+  - chapter: 24-cross-reference
+    context: 'は「図 3-2」「表 4-1」「リスト 5-3」のような番号付きのテキスト（＋リンク）に 置き換えられます。 ### 共通ルール 図・表・リストには、'
+  - chapter: 41-book-yml
+    context: "— 免責・商標 奥付に掲載する免責事項と商標に関する文面を設定します。既定のテキストで問題なければ変更不要です。 ```yaml legal:
+      disclai"
+  - chapter: 44-build
+    context: "| `reflowable` | リフロー型。端末の画面サイズに応じてテキストが自動的に折り返される。一般的な技術書向け | | `fixed`
+      | 固定レイ"
+  - chapter: 45-utility
+    context: " | | `--color-text` | `#000` | 本文テキスト色 | | `--color-link` | `#000` |
+      リンク色 | |"
+  - chapter: 61-developer
+    context: "| ライセンス | MIT | AGPL-3.0 | | 変換対象 | テキストのみ | テキスト + 画像 + OCR | | 依存ライブラリ
+      | PDF::"
+  - chapter: 92-pdf-read
+    context: "`vs pdf:read` は PDF ファイルからテキストと画像を抽出し、Vivlio Starter の原稿形式（Markdown）に変"
+  updated_at: '2026-07-05 21:00:15'
+- term: テスト
+  yomi: てすと
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/テスト/"
+  score: 542.543267428871
+  contexts:
+  - chapter: 24-cross-reference
+    context: 表の番号を管理する手間が省けるので便利です。 ```markdown **テスト図（自動ID） @auto** ![](Einstein.png){width
+  - chapter: 61-developer
+    context: を読みたいときの入口（内部で `startup` を読み込む） 2. テストの `require 'vivlio_starter/cli'`
+      の共通 `re
+  updated_at: '2026-07-05 21:00:15'
+- term: テンプレート
+  yomi: てんぷれーと
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/テンプレート/"
+  score: 1432.9572284021524
+  contexts:
+  - chapter: 13-new
+    context: "`light` / `dark` は gem 同梱テンプレートを使用します。著者が用意した PNG/SVG を使う場合は `covers/fr"
+  - chapter: 22-extentions
+    context: '正の整数で制限 - **スタイル**: `:stylename` でテンプレート指定 ### データとテンプレートで展開する QueryStream
+      は *'
+  - chapter: 23-chapter-management
+    context: 'create intro setup advanced ``` ### テンプレートの自動選択 章ファイルの内容は `templates/` '
+  - chapter: 25-querystream
+    context: 気象観測データなど、繰り返し登場する情報を YAML で一元管理し、テンプレートに従って自動展開できます。データファイルとテンプレートを置くだけで使えるため、設
+  - chapter: 43-cover
+    context: "`covers/bundled/frontcover.svg` | 開発者提供のテンプレート SVG | 例えば `cover: dark`
+      の場合： 1. "
+  - chapter: 45-utility
+    context: "-frontispiece-padding: 15mm; } ``` ## 章テンプレートのカスタマイズ :::{.section-lead}
+      `vs "
+  - chapter: 51-doctor
+    context: きる値（書名・著者名など）を可能な限り救出**したうえで初期状態のテンプレートへ書き戻します。元の破損ファイルはバックアップが取得されるため、安心して復元でき
+  - chapter: 61-developer
+    context: "`covers/bundled/` には gem 同梱の SVG テンプレート（light / dark テーマ）が入っています。 `data/`
+      は Qu"
+  updated_at: '2026-07-05 21:00:15'
+- term: テーブル
+  yomi: てーぶる
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/テーブル/"
+  score: 400.90143473110936
+  contexts:
+  - chapter: 21-markdown-tutorial
+    context: 'ウェブ公開が容易 - **技術文書向け**: コードブロック、テーブル、リストなど技術文書に必要な要素をサポート ### 主な用途 ####
+      技術'
+  - chapter: 22-extentions
+    context: " | |---|---|---| | `scale=N%` | 回転テーブルの倍率。列数が多い場合は小さくする | 70% | | `shift-y=N%`"
+  - chapter: 24-cross-reference
+    context: "`@ラベルID` を付ける - 直後に続くブロック要素（コードブロック / テーブル / 画像）がその対象になります ラベルIDは、本文中で参照するときに"
+  - chapter: 25-querystream
+    context: "`![](画像)` 記法とまったく同じ扱いです）。 ::: ### テーブルスタイル テーブル形式のテンプレートも作れます。`= key`
+      を含む行だけが"
+  - chapter: 45-utility
+    context: "| `data/books.yml` | 書籍テーブル形式 | 新しいデータファイルを追加する場合は、対応するテンプレートをこのディ"
+  - chapter: 61-developer
+    context: 索引・用語集の後処理、不可視脚注 id の整理、テーブル align の正規化、絵文字復元、扉絵・節絵の見出し画像注入（`inject_
+  updated_at: '2026-07-05 21:00:15'
+- term: テーマ
+  yomi: てーま
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/テーマ/"
+  score: 836.0293709407053
+  contexts:
+  - chapter: 00-preface
+    context: Kindle 形式での出力にも対応。電子出版の道も開かれています - **テーマで簡単デザイン** — `book.yml` でアクセントカラーや扉絵を選ぶだけ
+  - chapter: 13-new
+    context: " `config/book.yml` の `output.cover` でテーマ名を指定します。`light` / `dark` は gem
+      同梱テンプレートを"
+  - chapter: 33-index-glossary
+    context: " | | 100語以下 | 情報不足の索引 | 主要な章のテーマしか拾えておらず、索引として物足りない印象。 | 閾値を設定することで、自動承"
+  - chapter: 41-book-yml
+    context: Starter プロジェクトの中心となる設定ファイルです。書籍情報からテーマ、出力形式、各機能の詳細パラメータまで、プロジェクト全体の挙動をここで一元管理し
+  - chapter: 42-frontispiece
+    context: '幅 2880px 程度 - **用途**: 節見出しの背景装飾 ## テーマスタイルの選択 :::{.section-lead} Vivlio
+      Start'
+  - chapter: 43-cover
+    context: 開発者が用意した `light` / `dark` テーマの SVG デザインをそのまま使うことも、著者が独自に用意した SVG や PN
+  - chapter: 44-build
+    context: 'Step 1 | 画像の最適化（リサイズ・圧縮） | | Step 2 | テーマ画像の準備 | | Step 3 | Markdown '
+  - chapter: 45-utility
+    context: Vivlio Starter は `config/book.yml` のテーマ設定で色やフォントを簡単に切り替えられますが、「リンクの色だけ変えたい」「コード
+  - chapter: 61-developer
+    context: には gem 同梱の SVG テンプレート（light / dark テーマ）が入っています。 `data/` は QueryStream
+      記法（`= b
+  updated_at: '2026-07-05 21:00:15'
+- term: テーマカラー
+  yomi: てーまからー
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/テーマカラー/"
+  score: 395.3119094715728
+  contexts:
+  - chapter: 00-preface
+    context: 'それぞれの出力フローを理解する - **デザインのカスタマイズ** — テーマカラー、フォント、版面設計を `book.yml` で自在に調整する
+      - '
+  - chapter: 13-new
+    context: CSS ファイルを配置するディレクトリです。テーマカラーや扉絵などのデザイン設定は `config/book.yml` の `theme
+  - chapter: 42-frontispiece
+    context: 'theme: style: image color: blue # テーマカラー frontispiece: image: sakura
+      # 桜の'
+  - chapter: 45-utility
+    context: " 1. **`theme.css`** — テーマカラーや扉絵などの基本設定（`book.yml` から自動生成） 2. **`chap"
+  - chapter: 61-developer
+    context: true` でバージョン番号が付与されます。 `theme` セクションでテーマカラー・章扉の背景画像（`frontispiece`）・節見出しの
+  updated_at: '2026-07-05 21:00:15'
+- term: ディレクトリ
+  yomi: でぃれくとり
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/ディレクトリ/"
+  score: 1640.0185347677088
+  contexts:
+  - chapter: 11-workflow
+    context: 'doctor）」 ### ② 執筆 `contents/` ディレクトリ内の Markdown ファイルに原稿を書きます。章ファイルの追加・削除・番号の'
+  - chapter: 12-quickstart
+    context: 'vs new mybook cd mybook ``` ## ディレクトリ構成 `vs new` コマンドが自動的にプロジェクトの雛形を生成します。'
+  - chapter: 13-new
+    context: "`--yes` や `--add-missing` などのオプション、ディレクトリ構成の意味やプロジェクト名のルールなどを確認したくなったときに戻ってきて"
+  - chapter: 22-extentions
+    context: "### コードインクルード `codes/` ディレクトリに配置した外部ファイルからコードを読み込めます。ファイルの拡張子から言語が自動判"
+  - chapter: 23-chapter-management
+    context: '手作業でファイルを操作する必要はなく、`catalog.yml` や画像ディレクトリも自動で更新されます。 ::: ## vs create
+      — '
+  - chapter: 25-querystream
+    context: "### ステップ 1: データファイルを作る `data/` ディレクトリに YAML ファイルを置きます。1 件のデータは 1 つのハッシュで、ファイル"
+  - chapter: 31-lint
+    context: "`vs lint` は `contents/` ディレクトリ以下の Markdown を検査します。引数なしで全章、章のベース名・章番号・範"
+  - chapter: 42-frontispiece
+    context: 独自の画像を使用したい場合は、`stylesheets/images/` ディレクトリに画像ファイルを配置します。 **画像の配置場所**
+      独自の画像は、
+  - chapter: 43-cover
+    context: SVG ファイルを使うこともできます。`covers/` ディレクトリに `frontcover_<テーマ名>.svg` を配置し、`book.yml
+  - chapter: 45-utility
+    context: '必要に応じて利用してください。また、templates/ディレクトリの活用についても補足しています。 ::: | コマンド | カテゴリ
+      | 目的'
+  - chapter: 51-doctor
+    context: " - **任意設定ファイル**（textlint の設定や辞書ディレクトリなど）の有無を確認します。 すべて揃っていれば次のように表示されます。
+      ``"
+  - chapter: 61-developer
+    context: 'からフル CLI を読む場合（startup を経由） ``` ### ディレクトリ構造 ``` lib/vivlio_starter/
+      cli.rb'
+  - chapter: 92-pdf-read
+    context: three-elements ``` `sources/` ディレクトリに `three-elements.pdf` を配置しておき、章トークンで指定す
+  - chapter: 93-import
+    context: "# 確認を省略したい場合 ``` インポート対象ディレクトリは Starter プロジェクトのルートを指定します。 | オプション |
+      説"
+  updated_at: '2026-07-05 21:00:15'
+- term: デザイン
+  yomi: でざいん
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/デザイン/"
+  score: 852.0402530446225
+  contexts:
+  - chapter: 00-preface
+    context: 電子出版の道も開かれています - **テーマで簡単デザイン** — `book.yml` でアクセントカラーや扉絵を選ぶだけで、統一感ある
+  - chapter: 11-workflow
+    context: "`vs cover` を呼び出すため、別途実行する必要はありません。カバーのデザインを細かく調整したいときや、カバーだけを単独で生成・確認したい場合には
+      `vs "
+  - chapter: 13-new
+    context: "``` ### stylesheets/ 書籍のレイアウトとデザインを定義する CSS ファイルを配置するディレクトリです。テーマカラーや扉絵などの"
+  - chapter: 22-extentions
+    context: "| ★★☆☆☆ | 可 | | 花子 | 30 | デザイナー | UXデザイン部 | 5年 | ★★★★☆ | 一部可 | | 次郎
+      | 35 | マネージャ"
+  - chapter: 25-querystream
+    context: '原稿ファイルの QueryStream 記法はそのまま保持されるため、データの修正やテンプレートのデザイン変更を気軽に試すことができます。
+      :::'
+  - chapter: 41-book-yml
+    context: 'と `ornament` の設定は無視されます。扉絵なしのシンプルなデザインで十分な場合は `simple` を指定してください。 ###
+      page —'
+  - chapter: 42-frontispiece
+    context: '節見出しの装飾画像（ornament）を設定できます。画像を使った華やかなデザインと、シンプルで洗練されたデザインの2つのスタイルから選択可能です。
+      ::: #'
+  - chapter: 43-cover
+    context: 開発者が用意した `light` / `dark` テーマの SVG デザインをそのまま使うことも、著者が独自に用意した SVG や PNG
+      を使うこともでき
+  - chapter: 44-build
+    context: これが原因で、特定の環境で文字化けしたり、一部の文字だけデザインが変わって見えたりすることがあります。 Vivlio Starterでは、表紙
+  updated_at: '2026-07-05 21:00:15'
+- term: デフォルト
+  yomi: でふぉると
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/デフォルト/"
+  score: 470.50634118119217
+  contexts:
+  - chapter: 13-new
+    context: 以下の質問が順に表示されます。何も入力せずに Enter を押すとデフォルト値が使われます。 ``` Vivlio Starter へようこそ！新しい書籍
+  - chapter: 21-markdown-tutorial
+    context: 'と本体を区切る - コロン `:` で配置を制御 - `:--` 左寄せ（デフォルト） - `:-:` 中央揃え - `--:` 右寄せ
+      ### リンクと'
+  - chapter: 22-extentions
+    context: "| ... | ... | ::: ``` | オプション | 説明 | デフォルト | |---|---|---| | `scale=N%`
+      | "
+  - chapter: 23-chapter-management
+    context: "| | `--step <n>` / `-s <n>` | 章番号の刻み幅（デフォルト: 1） | ## 注意事項 :::{.section-lead} "
+  - chapter: 32-metrics
+    context: '変更の無い章はライブ表示が即座に最終表示へ切り替わります。 - デフォルト並列度: CPUコア数と4の小さい方 - 並列度の上書き: `VIVLIO_ME'
+  - chapter: 33-index-glossary
+    context: とって非常に使い勝手の良い、引きやすい索引になります。 | 設定 | デフォルト | 説明 | |:---|:---|:---| | `auto_approve
+  - chapter: 42-frontispiece
+    context: '記号。h4見出しの前に表示される。一文字推奨。 ``` ### 設定例 **デフォルト設定（トランプ記号）** ```yaml markers:
+      h3: ♣'
+  - chapter: 44-build
+    context: 'HTTP リクエストを送信して到達性を確認します。ネットワーク依存のため、デフォルトでは無効です。 ```bash vs build '
+  - chapter: 45-utility
+    context: " ::: ### 基本的な使い方 ```bash # デフォルトファイルを圧縮 vs pdf:compress # 入力ファイルを指定（拡張子"
+  - chapter: 61-developer
+    context: 'PDF を開く（`PdfOpener`）: 生成済み PDF をシステムのデフォルトアプリで開く `cli/build/` 配下の `PdfMerger`・`P'
+  updated_at: '2026-07-05 21:00:15'
+- term: 電子書籍
+  yomi: でんししょせき
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/電子書籍/"
+- term: データ
+  yomi: でーた
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/データ/"
+  score: 1510.4462692240224
+  contexts:
+  - chapter: 13-new
+    context: ta/ ← 書籍内で展開したいQueryStream用データ（YAML形式） templates/ ← 各種雛形ファイル
+  - chapter: 22-extentions
+    context: 'me) puts "Hello, #{name}!" end ``` **データテーブル @data-table** | 項目 | 値
+      | |------|--'
+  - chapter: 25-querystream
+    context: データ展開機能の使い方 :::{.chapter-lead} 原稿の中に外部データを埋め込む **QueryStream 記法** の使い方を解説します。参考書
+  - chapter: 32-metrics
+    context: "### --json / --yaml オプション 統計情報を構造化データとして出力します。章ごとの基本統計 `stats`、全体集計
+      `totals`（"
+  - chapter: 33-index-glossary
+    context: fig/index_glossary_terms.yml` などは、この本固有のデータ（各語の出現章・行やバックリンク）と、作者の資産（用語集の定義・棄却の
+  - chapter: 44-build
+    context: '型。PDF と同じ見た目を維持する。図版が多い書籍向け | ### メタデータ EPUB のメタデータ（タイトル、著者名、言語、ISBN
+      など）は `boo'
+  - chapter: 45-utility
+    context: 'は、Ghostscript を利用してビルド済みの PDF ファイルを圧縮し、データサイズを軽量化するコマンドです。 ::: ### 主な利用シーン
+      本コマンド'
+  - chapter: 51-doctor
+    context: "| | pdfinfo (poppler) | PDF メタデータ取得 | | pdftoppm (poppler) | PDF ページの画像化（"
+  - chapter: 61-developer
+    context: 表紙画像 data/ ← QueryStream用データ（YAML） templates/ ← 各種雛形ファイル
+  - chapter: 91-install
+    context: '別 gem gem install query-stream # データ展開機能 ``` ## 自動インストールの内訳 `vs new
+      mybook'
+  - chapter: 94-sample
+    context: の大きさを逆算できます——当時「原子など存在しない」と主張していた科学者たちを、データで黙らせた瞬間でした。 ```include:brownian_motio
+  - chapter: 95-further-inspiration
+    context: 'Markdown（マークダウン）の書き方やCSS組版のテクニック集、実際に印刷所への入稿データを作る際の注意点など、現場のノウハウが満載の1冊です。
+      :::'
+  updated_at: '2026-07-05 21:00:15'
+- term: データファイル
+  yomi: でーたふぁいる
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/データファイル/"
+  score: 380.4061037911167
+  contexts:
+  - chapter: 22-extentions
+    context: "[並び替え] | [件数] | [スタイル] ``` - **源泉**: データファイル名（例: `books`, `prefectures`）
+      - "
+  - chapter: 25-querystream
+    context: 'YAML で一元管理し、テンプレートに従って自動展開できます。データファイルとテンプレートを置くだけで使えるため、設定ファイルの編集は不要です。
+      :::'
+  - chapter: 45-utility
+    context: "| `data/books.yml` | 書籍テーブル形式 | 新しいデータファイルを追加する場合は、対応するテンプレートをこのディレクトリに作成してください。"
+  - chapter: 61-developer
+    context: "}` の構造化ハッシュを返します。 `DataResolver` がデータファイルを探索します。`books` と書けば `data/books.yml`
+      を、"
+  updated_at: '2026-07-05 21:00:15'
+- term: 特殊相対性理論
+  yomi: とくしゅそうたいせいりろん
+  flags: i
+  definition: ''
+  source: manual_markup
+  approved_at: '2026-07-05 20:49:56'
+  pattern: "/特殊相対性理論/"
+  contexts:
+  - chapter: 94-sample
+    context: 原子・分子の実在を統計的に裏付け 3. **特殊相対性理論** — 同時性の相対性、時間の遅れ、光速度不変を導出 4. **$E=mc^2
+  updated_at: '2026-07-05 21:00:15'
+- term: トラブルシューティング
+  yomi: とらぶるしゅーてぃんぐ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/トラブルシューティング/"
+  score: 367.989241617511
+  contexts:
+  - chapter: 13-new
+    context: 'my/book ``` ### デバッグログ（--log debug） トラブルシューティング用に、コピー中のファイルパスやコマンドの詳細を表示できます。'
+  - chapter: 24-cross-reference
+    context: '5-1」のように正しい章番号付きのリンクになります。 ## トラブルシューティング ### よくある問題 #### IDが見つからない
+      - 原因: タイプミス'
+  - chapter: 31-lint
+    context: '「対処方法」が「対処方」と誤検出される） - "対処方法" ``` ## トラブルシューティング :::{.section-lead}
+      `vs lint` '
+  - chapter: 33-index-glossary
+    context: '含めて）PDFをビルドして確認 vs build ``` ## トラブルシューティング :::{.section-lead} 索引機能の実行時によくある問題とその'
+  - chapter: 42-frontispiece
+    context: "# 横長バリアントを直接指定 ``` ### image スタイルのトラブルシューティング **画像が表示されない** **症状**:
+      設定した画像が表示されず、"
+  - chapter: 43-cover
+    context: 'clean --cover --cache --purge ``` ## トラブルシューティング :::{.section-lead}
+      `vs cover` '
+  - chapter: 44-build
+    context: 'どの環境で開いても文字化けのない美しい表示が保証されます。 ## トラブルシューティング :::{.section-lead} ビルド時によくある問題とその解決方法を'
+  - chapter: 51-doctor
+    context: "--fix --yes ``` ### ビルドが失敗したときのトラブルシューティング ```bash # 環境を診断して原因を特定 vs
+      doctor ```"
+  - chapter: 91-install
+    context: "--version vs --version ``` ## トラブルシューティング | 症状 | 原因 | 解決策 | | :--- |
+      :--- | :---"
+  - chapter: 92-pdf-read
+    context: 'doctor --fix` でインストールできます。 ::: ## トラブルシューティング ### 実行中のログ例 Standard Mode
+      と '
+  - chapter: 93-import
+    context: Vivlio プロジェクトに移行できます。本章では前提条件から実行手順、トラブルシューティングまで、著者が自力で移行を完了できるよう手順をまとめました。
+  updated_at: '2026-07-05 21:00:15'
+- term: トンボ
+  yomi: とんぼ
+  flags: ig
+  definition: 印刷物の裁断位置や見当合わせを示すマーク。入稿用 PDF の四隅と中央に付与され、印刷所が仕上がりサイズに正確に裁ち落とすための目印になります。
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/トンボ/"
+  contexts:
+  - chapter: 00-preface
+    context: コアに据え、原稿の前処理から目次生成、表紙作成、トンボ付き入稿用 PDF の出力まで、執筆から入稿に至るすべての工程を自動化します。こ
+  - chapter: 11-workflow
+    context: 技術書典向けには `pdf`、印刷所入稿には `print_pdf`（トンボ・塗り足し付き）、電子書籍配信には `epub` または `kindle`
+      を選
+  updated_at: '2026-07-05 21:00:15'
+  backlink_sources:
+  - chapter: 00-preface
+    occurrence: 1
+    anchor_id: gls-src-00-preface-トンボ-1
+  - chapter: 00-preface
+    occurrence: 2
+    anchor_id: gls-src-00-preface-トンボ-2
+  - chapter: 11-workflow
+    occurrence: 3
+    anchor_id: gls-src-11-workflow-トンボ-3
+  - chapter: 11-workflow
+    occurrence: 4
+    anchor_id: gls-src-11-workflow-トンボ-4
+  - chapter: 41-book-yml
+    occurrence: 5
+    anchor_id: gls-src-41-book-yml-トンボ-5
+  - chapter: 44-build
+    occurrence: 6
+    anchor_id: gls-src-44-build-トンボ-6
+  - chapter: 44-build
+    occurrence: 7
+    anchor_id: gls-src-44-build-トンボ-7
+  - chapter: 61-developer
+    occurrence: 8
+    anchor_id: gls-src-61-developer-トンボ-8
+  - chapter: 61-developer
+    occurrence: 9
+    anchor_id: gls-src-61-developer-トンボ-9
+  - chapter: 61-developer
+    occurrence: 10
+    anchor_id: gls-src-61-developer-トンボ-10
+- term: 読解難度
+  yomi: どっかいなんど
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/読解難度/"
+  score: 358.46219592114323
+  contexts:
+  - chapter: 32-metrics
+    context: '文章品質を数値化するツールです。漢字比率、語彙の豊かさ、読解難度などを自動計算し、改善のヒントを提供します。 ::: 技術書の執筆では、内容の'
+  - chapter: 41-book-yml
+    context: 本の規模に応じて章・節の分量目安が切り替わります。語彙難度・語彙多様度・読解難度の基準は、プリセットとは独立した共通設定として調整します。
+      ```yaml m
+  updated_at: '2026-07-05 21:00:15'
+- term: ニュートン
+  yomi: にゅーとん
+  flags: i
+  definition: ''
+  source: manual_markup
+  approved_at: '2026-07-05 20:49:56'
+  pattern: "/ニュートン/"
+  contexts:
+  - chapter: 94-sample
+    context: " ::: 「質量が時空を曲げる」——この革命的な考えは、[ニュートン|にゅーとん]以来200年間続いた[重力|じゅうりょく]の常識を塗り替えました。"
+  updated_at: '2026-07-05 21:00:15'
+- term: 背景画像
+  yomi: はいけいがぞう
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/背景画像/"
+- term: バックリンク
+  yomi: ばっくりんく
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/バックリンク/"
+  score: 432.6435948155399
+  contexts:
+  - chapter: 33-index-glossary
+    context: などは、この本固有のデータ（各語の出現章・行やバックリンク）と、作者の資産（用語集の定義・棄却の判断・読みの補正）が混在しています。ライブ
+  - chapter: 44-build
+    context: による組版） | | Step 8 | 用語集バックリンクの重複排除 | | Step 9 | 表紙・奥付 PDF の生成 | | Ste
+  - chapter: 51-doctor
+    context: 'mecab | 索引機能の読み自動推測 | | playwright | バックリンク重複排除用 | | chromium | Playwright '
+  - chapter: 61-developer
+    context: '生成（前書き＋目次＋本文＋付録＋後書き＋索引） | | Step 8 | バックリンク重複排除 | | Step 9 | 表紙・奥付 PDF
+      生成 | | '
+  - chapter: 91-install
+    context: "| | Playwright / Chromium | npm 経由 | バックリンク重複排除用 | | rouge | `gem install
+      rouge` "
+  updated_at: '2026-07-05 21:00:15'
+- term: バンド
+  yomi: ばんど
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/バンド/"
+  score: 345.94842493533724
+  contexts:
+  - chapter: 32-metrics
+    context: 'Standard〜Professional に収まるのが自然です。バンドの境界値は `config/book.yml` で調整できます（後述）。
+      ##'
+  updated_at: '2026-07-05 21:00:15'
+- term: バンドル
+  yomi: ばんどる
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/バンドル/"
+  score: 560.8454421715384
+  contexts:
+  - chapter: 42-frontispiece
+    context: 章扉と節見出しに画像を使用したデザインが適用されます。バンドル画像を使用するか、独自の画像を配置することで、書籍に華やかさを加えることができま
+  updated_at: '2026-07-05 21:00:15'
+- term: バンドル画像
+  yomi: ばんどるがぞう
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/バンドル画像/"
+  score: 353.02069538423063
+  contexts:
+  - chapter: 42-frontispiece
+    context: 章扉と節見出しに画像を使用したデザインが適用されます。バンドル画像を使用するか、独自の画像を配置することで、書籍に華やかさを加えることができます。
+  updated_at: '2026-07-05 21:00:15'
+- term: バージョン
+  yomi: ばーじょん
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/バージョン/"
+  score: 593.9940450787038
+  contexts:
+  - chapter: 12-quickstart
+    context: '済みか確認 ruby -v ``` `ruby 4.0.2` のようにバージョンが表示されれば準備完了です。 ### はじめて Ruby
+      をインストールする場'
+  - chapter: 21-markdown-tutorial
+    context: "#### 歴史的背景 - **2004年**: Markdown 最初のバージョン公開 - **2014年**: CommonMark "
+  - chapter: 31-lint
+    context: は元のファイルを直接書き換えます。重要なファイルを修正する前に、必ずバージョン管理システム（Git など）でコミットしておくことをお勧めします。
+      <!-- v
+  - chapter: 44-build
+    context: " :::{.note} **フォント埋め込みについて** 現在のバージョンでは、ファイルサイズを優先してフォントを埋め込まない設定が既定です。小説など特定"
+  - chapter: 51-doctor
+    context: 各ツールの公式サイトや最新のドキュメントを参照してください。ツールのバージョンや手順は変わることがあるため、公式情報や AI アシスタントで確認するのが確実で
+  - chapter: 61-developer
+    context: "-verbose 冗長出力を有効化 --version バージョン情報を表示 各コマンドの詳細: vs <command> --help
+      ```"
+  - chapter: 91-install
+    context: 'bin/install-ruby.zsh -v 4.0.2 # バージョンを明示して導入 bin/install-ruby.zsh --no-bundle'
+  updated_at: '2026-07-05 21:00:15'
+- term: パターン
+  yomi: ぱたーん
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/パターン/"
+  score: 322.94911972958755
+  contexts:
+  - chapter: 33-index-glossary
+    context: '原稿内の `[用語]` 記法を検出 2. **候補の自動抽出** - 定義パターン、専門用語、名詞連続を検出 3. **TF-IDF スコアリング**
+      - '
+  - chapter: 61-developer
+    context: 記法 - MeCab による名詞・複合名詞の自動抽出 - 定義表現パターン（「〜とは」「〜を…と定義」など）の検出 2. `ScoringEngine`
+  - chapter: 92-pdf-read
+    context: "`config/textlint_prh.yml` に定義された表記ゆれ・誤読パターンを自動修正 5. **MeCab 改行補正** ---
+      MeCab "
+  updated_at: '2026-07-05 21:00:15'
+- term: 表記揺れ
+  yomi: ひょうきゆれ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/表記揺れ/"
+- term: ファイル
+  yomi: ふぁいる
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/ファイル/"
+  score: 5268.991943927382
+  contexts:
+  - chapter: 11-workflow
+    context: の雛形を生成します。書籍名・著者名などを対話形式で入力すると、必要なファイル一式が自動的に用意されます。さらに内部で `vs doctor
+      --fix` が
+  - chapter: 12-quickstart
+    context: book/ contents/ ← 原稿（Markdownファイル） images/ ← 画像ファイル covers
+  - chapter: 13-new
+    context: book/ contents/ ← 原稿（Markdownファイル） images/ ← 画像ファイル covers
+  - chapter: 22-extentions
+    context: ":::{.notice} `--force` オプションは既存ファイルを上書きします。実行前にバックアップを取ってください。 ::: ```
+      :::"
+  - chapter: 23-chapter-management
+    context: ":::{.chapter-lead} Vivlio Starter では、章ファイルの作成・削除・名前変更・連番整理をコマンドで行えます。"
+  - chapter: 25-querystream
+    context: 'テンプレートに従って自動展開できます。データファイルとテンプレートを置くだけで使えるため、設定ファイルの編集は不要です。 :::'
+  - chapter: 31-lint
+    context: 'が対象になります。 ```bash vs lint ``` ### 特定のファイルをチェック 章のベース名（例: `11-install`）を指定すると、そのフ'
+  - chapter: 32-metrics
+    context: う言葉（内容語 上位15） 1. 画像 名詞 306回 2. ファイル 名詞 235回 3. 生成 名詞 225回 4. 設定
+  - chapter: 33-index-glossary
+    context: "[用語|読み] を追加 # 1. 索引・用語集候補の自動抽出とレビューファイル生成 vs index:auto # 2. _index_glossary_r"
+  - chapter: 41-book-yml
+    context: は Vivlio Starter プロジェクトの中心となる設定ファイルです。書籍情報からテーマ、出力形式、各機能の詳細パラメータまで、プロジェクト全体
+  - chapter: 42-frontispiece
+    context: 'stylesheets/images/bundled/` に配置されており、設定ファイルで画像名を指定するだけで使用できます。 **利用可能なバンドル画像** '
+  - chapter: 43-cover
+    context: 'を使用（従来の方法） ``` ### テーマ別のソースファイル探索順 `cover: <テーマ名>` を指定すると、以下の順でソースファイル'
+  - chapter: 44-build
+    context: '印刷入稿用 PDF、電子書籍（EPUB）、Amazon Kindle 用ファイル（KPF）の四つの形式を、ひとつのコマンドで生成できます。
+      ::: `vs b'
+  - chapter: 45-utility
+    context: 'PDFを軽量化する | | `clean` | メンテナンス | 不要な生成ファイルを削除する | | `resize` | 画像管理
+      | '
+  - chapter: 51-doctor
+    context: 'Fonts ダウンロード（macOS のみ） | ### 設定ファイルの診断 外部ツールに加えて、`vs doctor` はプロジェクト内の
+      `co'
+  - chapter: 61-developer
+    context: '配下のドメイン実装の2層構造になっています。 ## コマンドとファイルの対応 | コマンド | Samovar エントリ | ドメイン実装
+      | |-'
+  - chapter: 91-install
+    context: install -g textlint ...` | 文章校正。設定ファイルも `config/` に自動配置 | | qpdf | `brew
+      insta
+  - chapter: 92-pdf-read
+    context: ":::{.chapter-lead} `vs pdf:read` は PDF ファイルからテキストと画像を抽出し、Vivlio Starter "
+  - chapter: 93-import
+    context: プロジェクトの確認 `starter_project/` 直下に次のファイルが必須です。 | 必須ファイル | 用途 | | --- |
+      --- | |
+  updated_at: '2026-07-05 21:00:15'
+- term: ファイル名
+  yomi: ふぁいるめい
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/ファイル名/"
+  score: 572.3698765290312
+  contexts:
+  - chapter: 13-new
+    context: '書籍の本文となる Markdown ファイルを配置するディレクトリです。ファイル名は `NN-slug.md` 形式（例: `01-quickstart.md`'
+  - chapter: 22-extentions
+    context: 'ません コードの場所: codes/prime.rb ``` ファイル名のタイプミスか、`codes/` ディレクトリへの配置忘れを確認してください。'
+  - chapter: 23-chapter-management
+    context: " :::{.memo} **「スラッグ」とは**：ファイル名のうち、章番号に続く短い識別名のことです。`11-intro` であれば `11"
+  - chapter: 25-querystream
+    context: "`templates/` ディレクトリにテンプレートファイルを置きます。ファイル名の先頭に `_`（アンダースコア）を付け、データ名の**単数形**を使います。"
+  - chapter: 41-book-yml
+    context: " ### project — プロジェクト情報 出力ファイル名のベースとなる `name` と、ファイル名に付加される `version`
+      を"
+  - chapter: 43-cover
+    context: " :::{.section-lead} `book.yml` でカバー画像のファイル名や出力先を自由にカスタマイズできます。 ::: ###
+      ファイル名の設定 "
+  - chapter: 44-build
+    context: "`janken_v0.1.0.pdf` のようなファイルが生成されます。ファイル名は `project.name` と `project.version` "
+  - chapter: 45-utility
+    context: 'PDF を macOS の Preview.app で即座に開きます。ファイル名を指定して任意の PDF を開くこともできます。 :::
+      ```bash #'
+  - chapter: 61-developer
+    context: own と画像を削除します rename 章の番号やファイル名（スラッグ）を変更します renumber 章番号を一括
+  updated_at: '2026-07-05 21:00:15'
+- term: フォント
+  yomi: ふぉんと
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/フォント/"
+  score: 923.0874715473316
+  contexts:
+  - chapter: 00-preface
+    context: "- **デザインのカスタマイズ** — テーマカラー、フォント、版面設計を `book.yml` で自在に調整する - **便利な執筆支援機能"
+  - chapter: 22-extentions
+    context: "— 章リード 章の冒頭に配置する導入文です。本文より大きめのフォントで表示され、章の内容を簡潔に紹介します。 ```markdown :::{.c"
+  - chapter: 41-book-yml
+    context: "— タイポグラフィ設定 本文・見出し・コード・ページ番号のフォントを設定します。既定のフォントで問題なければ変更不要です。 ```yaml
+      ty"
+  - chapter: 42-frontispiece
+    context: '複数文字を設定すると、レイアウトが崩れる可能性があります。 - **フォント対応**: 使用する記号がフォントに含まれているか確認してください。一部の記号は'
+  - chapter: 43-cover
+    context: 商業印刷用の国際標準規格です。CMYK カラーモードの使用、フォント埋め込み、透明効果の禁止などが規定されており、印刷所での再現性が保証されます。
+  - chapter: 44-build
+    context: 'k）モード 技術書典などの入稿システムでエラーになりやすい絵文字（Type 3フォントエラー）を回避するための専用モードです。 ```yaml
+      output:'
+  - chapter: 45-utility
+    context: "`vs pdf:compress` は、画像解像度の調整やフォントの最適化によってサイズを削るため、印刷品質に影響を与える可能性があります。入稿に"
+  - chapter: 61-developer
+    context: 'df:rasterize PDFをラスタライズして再結合します（Type3フォント対策） オプション: -h, --help ヘルプを表'
+  updated_at: '2026-07-05 21:00:15'
+- term: フォーマット
+  yomi: ふぉーまっと
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/フォーマット/"
+  score: 340.3119094715728
+  contexts:
+  - chapter: 00-preface
+    context: "**Markdown で執筆** — 使い慣れた記法でさくさく書ける。特別なフォーマットを覚える必要はありません - **コマンド一発でビルド**
+      — `vs "
+  - chapter: 41-book-yml
+    context: " ### output — 出力設定 出力フォーマット・ファイル名規則・表紙設定・PDF/EPUB の詳細オプションをまとめて管理しま"
+  - chapter: 43-cover
+    context: カバーのソース画像から、用途に応じた複数のフォーマットのカバー画像を自動生成します。これにより、PDF閲覧用、商業印刷用、電子書籍用の
+  - chapter: 61-developer
+    context: " 技術書では「参考書籍の紹介」「おすすめツール一覧」のように、同じフォーマットで複数のアイテムを並べる場面が頻繁にあります。これを Markdown
+      で手書き"
+  updated_at: '2026-07-05 21:00:15'
+- term: フロー
+  yomi: ふろー
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/フロー/"
+  score: 338.99404507870395
+  contexts:
+  - chapter: 00-preface
+    context: "— PDF・印刷用 PDF・EPUB・Kindle、それぞれの出力フローを理解する - **デザインのカスタマイズ** — テーマカラー、フォント、版面"
+  - chapter: 61-developer
+    context: などの装飾調整。 `vs-epub` は EPUB リフロー文脈であることを示す両フレーバ共通のマーカー、`vs-kindle` は Kin
+  - chapter: 93-import
+    context: '_DEBUG=1` | 例外発生時にフルスタックトレースを表示 | ## 処理フローとログ `vs import` を実行すると、以下の処理が順に実行されます。'
+  updated_at: '2026-07-05 21:00:15'
+- term: 物理学
+  yomi: ぶつりがく
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/物理学/"
+  score: 318.5561611950366
+  contexts:
+  - chapter: 22-extentions
+    context: アルベルト・アインシュタインは、特殊相対性理論と一般相対性理論を提唱した物理学者です。`.img-text2` では画像と本文が 1:2
+      の比率で並びます。
+  - chapter: 94-sample
+    context: "・アインシュタイン}。言葉が遅いと心配された少年が、やがて「20世紀最高の物理学者」と呼ばれるまでに至った背景には、型破りな発想力と、誰もが信じる「常識」に疑問"
+  updated_at: '2026-07-05 21:00:15'
+- term: ブロック
+  yomi: ぶろっく
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/ブロック/"
+  score: 783.016681290938
+  contexts:
+  - chapter: 22-extentions
+    context: "/ `.align-center` / `.align-right` ブロック単位でテキストを寄せて表示します。 ```markdown
+      :::{.alig"
+  - chapter: 23-chapter-management
+    context: " ``` この先には、見出し・リスト・定義リスト・表・コードブロック・数式・画像レイアウト・コラム/注記ブロック・索引・QueryStream
+      など"
+  - chapter: 24-cross-reference
+    context: を書く - タイトルの末尾に `@ラベルID` を付ける - 直後に続くブロック要素（コードブロック / テーブル / 画像）がその対象になります
+      ラベルID
+  - chapter: 45-utility
+    context: 色やフォントを簡単に切り替えられますが、「リンクの色だけ変えたい」「コードブロックの角を丸くしたい」といった細かな調整をしたい場合もあるでしょう。
+  - chapter: 61-developer
+    context: "```include:file.rb``` ``） 6. HTML ブロック境界の正規化 7. インラインコード HTML エスケープ
+      8. `{.text"
+  updated_at: '2026-07-05 21:00:15'
+- term: プレビュー
+  yomi: ぷれびゅー
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/プレビュー/"
+- term: プロジェクト
+  yomi: ぷろじぇくと
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/プロジェクト/"
+  score: 1568.6375271557665
+  contexts:
+  - chapter: 00-preface
+    context: '統一感あるデザインに - **環境構築も自動** — `vs new` でプロジェクトを作成し、`vs doctor` で必要なツールを自動セットアップ
+      ## '
+  - chapter: 11-workflow
+    context: Vivlio Starter を使った書籍制作は、「プロジェクト作成 → 執筆 → 整える → ビルド → 入稿・配布」という5つのステップで完
+  - chapter: 12-quickstart
+    context: 'gem install vivlio-starter ``` ## 新規プロジェクトの作成 インストールが完了したら、新しい書籍プロジェクトを作成します。'
+  - chapter: 13-new
+    context: 新規プロジェクトの作成（vs new） :::{.chapter-lead} クイックスタートで `vs new` をひと通り体験した方向けの詳細リファレンスです。
+  - chapter: 21-markdown-tutorial
+    context: '最初のバージョン公開 - **2014年**: CommonMark プロジェクト開始（標準化の取り組み） - **2017年**: GitHub '
+  - chapter: 23-chapter-management
+    context: "| 後書き・おわりに | テンプレートファイルはプロジェクトの `templates/` ディレクトリに配置されており、自由に編集できます。"
+  - chapter: 31-lint
+    context: 辞書に載っていない固有名詞や造語は「綴り誤り」として指摘されます。プロジェクト固有の語をまとめて許可語に加えたいときは、`--register`
+      が便利です。
+  - chapter: 32-metrics
+    context: 'の `metrics` セクションで、評価基準をプロジェクトに合わせてカスタマイズできます。 ::: ### プリセットの選択 4種類の'
+  - chapter: 41-book-yml
+    context: "`config/book.yml` は Vivlio Starter プロジェクトの中心となる設定ファイルです。書籍情報からテーマ、出力形式、"
+  - chapter: 44-build
+    context: "``` ```bash vs build ``` ビルドが完了すると、プロジェクトルートに `janken_v0.1.0.pdf` のようなファイルが"
+  - chapter: 51-doctor
+    context: "`vs doctor` を実行するのが近道です。 ::: 新しい環境でプロジェクトを始めるときや、コマンドが予期せず失敗するときに実行してください。"
+  - chapter: 61-developer
+    context: "LIツール \U0001F6E0️ 使い方: vs <command> [options] プロジェクト管理: new プロジェクトを新規作成します"
+  - chapter: 91-install
+    context: vivlio-starter vs --version ``` 8) プロジェクト作成と動作確認 ```bash vs new mybook
+      cd mybook
+  - chapter: 92-pdf-read
+    context: には文字列リテラルまたは正規表現（`/pattern/` 形式）を指定できます。プロジェクト固有の専門用語や誤読パターンを辞書に追加することで、
+  - chapter: 93-import
+    context: "`vs import` コマンドを使うと、Re:VIEW Starter プロジェクトを丸ごと Vivlio プロジェクトに移行できます。"
+  updated_at: '2026-07-05 21:00:15'
+- term: ページ
+  yomi: ぺーじ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/ページ/"
+  score: 2872.782139202386
+  contexts:
+  - chapter: 00-preface
+    context: いざ書籍を作ろうとすると、執筆以外の作業に多くの時間を取られてしまいます。ページレイアウト、目次の生成、画像の配置、表紙の作成、入稿用 PDF
+      の調整……。Vi
+  - chapter: 13-new
+    context: g.yml ← 章構成 page_presets.yml ← ページレイアウト設定 index_glossary_terms.yml
+  - chapter: 22-extentions
+    context: "— 表を90度回転 横幅が非常に広い表を、専用ページで90度回転して表示します。前後に自動的に改ページが入ります。 ```mark"
+  - chapter: 32-metrics
+    context: 'これらの分析からは除かれます（章別分量の文字数には、ページを占める実体としてコードも含めます）。 ::: ### 章別分量 各章の文字'
+  - chapter: 33-index-glossary
+    context: '本章では、用語の登録から自動抽出、レビュー、索引・用語集ページ生成までの一連のワークフローを解説します。 ::: `vs index`
+      コマ'
+  - chapter: 41-book-yml
+    context: '項目 ### book — 書籍情報 書籍のメタデータを設定します。タイトルページ・奥付・EPUB メタデータに自動反映されます。 ```yaml
+      book:'
+  - chapter: 42-frontispiece
+    context: ":::{.chapter-lead} Vivlio Starter では、章の扉ページに表示する背景画像（frontispiece）と、"
+  - chapter: 44-build
+    context: PDF・EPUB・Kindle は作られません）。目次や索引などの全体構成ページも生成されません。原稿の体裁をすばやく確認するための用途に絞った仕様です。印刷入
+  - chapter: 51-doctor
+    context: "| 文章校正ツール | | qpdf | PDF 分割・結合・ページ操作 | | pdfinfo (poppler) | PDF メタデータ取得
+      |"
+  - chapter: 61-developer
+    context: 生成済みPDFを圧縮します pdf:pages PDFをページ単位でJPEG画像に切り出します pdf:rasterize PD
+  - chapter: 91-install
+    context: "| `brew install qpdf` | PDF 分割・結合・ページ操作 | | poppler（pdfinfo / pdftoppm）
+      | `br"
+  - chapter: 92-pdf-read
+    context: 'mode=enhanced) [pdf:read] ページ数: 7 [pdf:read] 変換が完了しました -> contents/12'
+  - chapter: 95-further-inspiration
+    context: "(監修)<br><br> 簡単に説明すると、CSS組版とはWebページの技術を使って本を作ることで、Vivliostyleはそれを実現するためのソフト"
+  updated_at: '2026-07-05 21:00:15'
+- term: ページ番号
+  yomi: ぺーじばんごう
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/ページ番号/"
+  score: 425.9604482552113
+  contexts:
+  - chapter: 33-index-glossary
+    context: "- **CSS target-counter 対応** - ページ番号は CSS で自動挿入 - **重複排除** - 同一ページ内の複数出現は1つに"
+  - chapter: 41-book-yml
+    context: typography — タイポグラフィ設定 本文・見出し・コード・ページ番号のフォントを設定します。既定のフォントで問題なければ変更不要です。
+      ```ya
+  - chapter: 44-build
+    context: 'Playwright など）の状態を確認する ### PDF のページ番号がずれる **症状**: 目次のページ番号と実際のページが一致しない
+      **解'
+  - chapter: 61-developer
+    context: の `target-counter` はレンダリング時にページ番号を解決するため、Ruby のビルド時点では実際のページ番号が不明です。そのため「
+  - chapter: 92-pdf-read
+    context: 'それぞれ適切なラベルで表示されます。 ### ページ番号の特定 アウトラインの各項目には正確なページ番号が必要です。Vivliosty'
+  updated_at: '2026-07-05 21:00:15'
+- term: マスター
+  yomi: ますたー
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/マスター/"
+  score: 394.10318503663524
+  contexts:
+  - chapter: 43-cover
+    context: "``` ## カバー画像の生成 :::{.section-lead} マスター画像を配置したら、`vs cover` コマンドで各フォーマットのカバー画像を生"
+  - chapter: 45-utility
+    context: 'vs clean --cache # 生成されたカバー画像のみ削除（マスター画像は保持） vs clean --cover # すべてのオプションをまとめ'
+  - chapter: 61-developer
+    context: "/ `backcover_master.png`（高解像度マスター）を元に、`vs cover` または `vs build` が PDF
+      / J"
+  updated_at: '2026-07-05 21:00:15'
+- term: マーク
+  yomi: まーく
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/マーク/"
+  score: 362.3318745427058
+  contexts:
+  - chapter: 33-index-glossary
+    context: 'を解説します。 ::: `vs index` コマンドは、原稿内の手動マークアップと自動抽出を組み合わせて、索引・用語集候補を統合管理します。TF-IDF'
+  - chapter: 44-build
+    context: '同人印刷所に入稿するための PDF を生成します。トンボ（トリムマーク）と塗り足し（ブリード）が自動的に付与されます。 ::: ```yaml
+      ou'
+  updated_at: '2026-07-05 21:00:15'
+- term: マークアップ
+  yomi: まーくあっぷ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/マークアップ/"
+  score: 416.0261523831114
+  contexts:
+  - chapter: 21-markdown-tutorial
+    context: Swartz）によって2004年に開発された軽量マークアップ言語です。「書きやすく、読みやすい」ことを目指して設計され、プレーンテキストで構
+  - chapter: 22-extentions
+    context: '索引と用語集を自動生成する機能があります。 ### 手動マークアップ 原稿中で索引や用語集に登録したい単語を明示的に指定します。 ```mark'
+  - chapter: 33-index-glossary
+    context: " ::: `vs index` コマンドは、原稿内の手動マークアップと自動抽出を組み合わせて、索引・用語集候補を統合管理します。TF-IDF
+      スコア"
+  updated_at: '2026-07-05 21:00:15'
+- term: 無効化
+  yomi: むこうか
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/無効化/"
+  score: 362.7795708414477
+  contexts:
+  - chapter: 31-lint
+    context: ":::{.section-lead} 特定の箇所だけチェックを無効化したい場合は、`vs-lint` コメント記法を使用します。日本語校正・スペルチ"
+  - chapter: 32-metrics
+    context: "`VIVLIO_METRICS_CACHE=0` を設定すると、読み書きともに無効化され、常にフル解析が実施されます。 ### 並列処理と再利用
+      章の解析は自動"
+  - chapter: 41-book-yml
+    context: ages`/`bare_urls`/`external_links` をまとめて無効化できます。詳細は「ビルド（vs build）」の章を参照してください。
+  - chapter: 42-frontispiece
+    context: "``` この設定だけで、以下が自動的に適用されます： - 章扉の背景画像が無効化（`--frontispiece-image: none`）
+      - 節見出しの装飾"
+  - chapter: 61-developer
+    context: "-->` コメントを使うと、その範囲の lint を無効化できます。これらは実行時に textlint ネイティブの `<!-- text"
+  updated_at: '2026-07-05 21:00:15'
+- term: モード
+  yomi: もーど
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/モード/"
+  score: 332.3069655034742
+  contexts:
+  - chapter: 41-book-yml
+    context: ": false # true: 技術書典向け Techbook モード（絵文字を Twemoji SVG 画像に自動差し替え） print_pd"
+  - chapter: 44-build
+    context: "# 圧縮を無効にしてビルド ``` ### 技術書典向け（Techbook）モード 技術書典などの入稿システムでエラーになりやすい絵文字（Type
+      3フォントエ"
+  - chapter: 61-developer
+    context: "/ config と PDF を直接生成します（最終クリーンは単章モードでも実行）。 本文 PDF を生成する Step 7（閲覧用）・Step
+      13"
+  - chapter: 92-pdf-read
+    context: "-003-image-01.webp)` のように参照されます。 ### 動作モードの切り替え モードは以下の優先順位で自動決定されます。
+      1. 環境変数 `V"
+  updated_at: '2026-07-05 21:00:15'
+- term: ユーザー
+  yomi: ゆーざー
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/ユーザー/"
+  score: 425.3851632676193
+  contexts:
+  - chapter: 31-lint
+    context: "--> - **表記揺れの検出**: 「ユーザ」と「ユーザー」、「javascript」と「JavaScript」などの不統一を検出 -
+      *"
+  - chapter: 42-frontispiece
+    context: "# 横長バリアントを直接指定 ``` ### 画像の検索順序 画像は、ユーザー提供画像を優先し、見つからない場合はバンドル画像を検索します。この仕組みにより、"
+  - chapter: 61-developer
+    context: 書き込み不可時に `Errno::EACCES` が自然送出されユーザーが原因特定可能 | | 2-3-4 | `malicious_image_pat
+  updated_at: '2026-07-05 21:00:15'
+- term: 用語集
+  yomi: ようごしゅう
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/用語集/"
+  score: 1047.7895630242847
+  contexts:
+  - chapter: 00-preface
+    context: "- **便利な執筆支援機能** — 校正 Lint、メトリクス分析、索引・用語集の自動生成を活用する ## ロゴに込めた想い ![Vivlio
+      Starte"
+  - chapter: 13-new
+    context: 設定 index_glossary_terms.yml ← 用語集 package.json Gemfile ``` 入力した書籍名・著
+  - chapter: 22-extentions
+    context: " @data-table にデータをまとめました。 ## 索引・用語集 Vivlio Starter では、索引と用語集を自動生成する機能があります"
+  - chapter: 33-index-glossary
+    context: 索引・用語集機能 :::{.chapter-lead} Vivlio Starter では、`vs index` コマンドを使用して、書籍の索引と用語集を効率的
+  - chapter: 61-developer
+    context: 'cs Markdownの行数・文字数を集計します 索引・用語集: index:auto 索引・用語集の候補を抽出し、確認用'
+  - chapter: 92-pdf-read
+    context: 'な使い方 | 付録は「付録A」「付録B」の形式で、前書き・目次・後書き・索引・用語集もそれぞれ適切なラベルで表示されます。 ### ページ番号の特定
+      アウトライ'
+  updated_at: '2026-07-05 21:00:15'
+- term: 用語集ページ
+  yomi: ようごしゅうぺーじ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 21:00:15'
+  pattern: "/用語集ページ/"
+- term: ラベル
+  yomi: らべる
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/ラベル/"
+  score: 747.783111743905
+  contexts:
+  - chapter: 22-extentions
+    context: 'align=center} さらにタイトルの末尾に `@ラベルID` を付けると、「**図 2-1: アインシュタインの肖像**」のように章番'
+  - chapter: 24-cross-reference
+    context: '4-1 など）とリンク付きで自動生成するための仕組みです。 ::: ## ラベル付きキャプションの書き方 クロスリファレンスは、次の二段階で構成されています。'
+  - chapter: 31-lint
+    context: "スペルチェックは `(spellcheck)` のラベルが付きます。 ``` \U0001F4C4 contents/11-install.md
+      (t"
+  - chapter: 32-metrics
+    context: "本文に頻出する内容語（名詞・固有名詞・形容動詞・動詞・形容詞）を、品詞ラベルつきで上位 15 語まで挙げます。 ``` \U0001F524
+      よく使う言葉（内容語 上位15"
+  - chapter: 33-index-glossary
+    context: "。著者は余裕がある時だけ見れば良い。 :::{.note} **新着ラベルについて** 執筆の参考となるよう、`NEW!` と `TODAY`
+      が付いて"
+  - chapter: 44-build
+    context: "| \U0001F534 | | QueryStream 雛形ファイル不在 | \U0001F534 | | ラベルID重複 | \U0001F534
+      | | 裸URL | \U0001F7E1 | | 孤立ラベル | \U0001F7E1 | 具"
+  - chapter: 61-developer
+    context: 'Easy / Standard / Professional の評価ラベル - 章・節単位の分量可視化: `[ ]` 枠内に `#` と空白でバーを描画'
+  - chapter: 92-pdf-read
+    context: '前書き・目次・後書き・索引・用語集もそれぞれ適切なラベルで表示されます。 ### ページ番号の特定 アウトラインの各項目には正確なペ'
+  updated_at: '2026-07-05 21:00:15'
+- term: リスト
+  yomi: りすと
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/リスト/"
+  score: 1045.8563542624715
+  contexts:
+  - chapter: 13-new
+    context: "| | `catalog.yml` | ビルド対象の章リスト（章の順序を定義） | | `page_presets.yml` | 用紙サイズ"
+  - chapter: 21-markdown-tutorial
+    context: 'ウェブ公開が容易 - **技術文書向け**: コードブロック、テーブル、リストなど技術文書に必要な要素をサポート ### 主な用途 ####
+      技術分野 -'
+  - chapter: 22-extentions
+    context: in.webp){width=40% align=center} 図番号は表・リストにも同じ要領で付けられます。たとえば上で定義した図は、
+  - chapter: 23-chapter-management
+    context: "[^1]: 脚注の内容をここに記述します。 ``` この先には、見出し・リスト・定義リスト・表・コードブロック・数式・画像レイアウト・コラム/注記ブロック・索"
+  - chapter: 24-cross-reference
+    context: ":::{.chapter-lead} 本章では、本書で定義している **図・表・リストのナンバリングと相互参照（クロスリファレンス）**
+      の 書き方を説明します。"
+  - chapter: 31-lint
+    context: "- `config/textlint_allowlist.yml`: 除外リスト（VFM 記法・書籍名・資格名称など） - `config/textlint_d"
+  - chapter: 32-metrics
+    context: "⚠️ 加筆検討 \U0001F4DA 合計 3 章 ／ 平均 2,633 文字 ``` 章別リストの直後には、対象が全部で何章あり、1
+      章あたり平均何文字なのかをまとめた集計行が"
+  - chapter: 33-index-glossary
+    context: 'g/index_glossary_rejected.yml` | 棄却済み用語のリスト | | `index_library.yml`
+      | '
+  - chapter: 44-build
+    context: 'なくこの問題を回避できるよう、以下の対策を自動で行っています。 - **特殊なリスト記号の画像化**: 章の中で箇条書きのマークとして使われるクローバー（`♣`'
+  - chapter: 61-developer
+    context: 'extlint_allowlist.yml` は lint の表記揺れ辞書と許可リストです。 ### book.yml 書籍プロジェクト全体の設定を管理するメイ'
+  updated_at: '2026-07-05 21:00:15'
+- term: リンク
+  yomi: りんく
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/リンク/"
+  score: 1228.2744681325514
+  contexts:
+  - chapter: 22-extentions
+    context: "@einstein-portrait のように図番号付きのリンクへ展開されます。自動ID・参照の書き方・重複チェックなど詳しい仕組みは「クロスリ"
+  - chapter: 24-cross-reference
+    context: '章番号付きの 番号（図 3-2, 表 4-1 など）とリンク付きで自動生成するための仕組みです。 ::: ## ラベル付きキャプションの'
+  - chapter: 33-index-glossary
+    context: マークアップの除外 以下の記法は索引として認識されません： - `[リンクテキスト](URL)` - Markdown リンク - `[^1]`
+      - 脚注
+  - chapter: 44-build
+    context: '中間生成物を残す（デバッグ用） | | `--[no]-verify` | リンク・画像の基本検証を有効/無効にする（既定: 有効） |
+      | '
+  - chapter: 45-utility
+    context: のテーマ設定で色やフォントを簡単に切り替えられますが、「リンクの色だけ変えたい」「コードブロックの角を丸くしたい」といった細かな調整をしたい場
+  - chapter: 61-developer
+    context: '生成（前書き＋目次＋本文＋付録＋後書き＋索引） | | Step 8 | バックリンク重複排除 | | Step 9 | 表紙・奥付 PDF
+      生成 | | '
+  updated_at: '2026-07-05 21:00:15'
+- term: ルール
+  yomi: るーる
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/ルール/"
+  score: 786.9060787643616
+  contexts:
+  - chapter: 13-new
+    context: などのオプション、ディレクトリ構成の意味やプロジェクト名のルールなどを確認したくなったときに戻ってきてください。急いでいる方は読み飛ばして次の章
+  - chapter: 21-markdown-tutorial
+    context: '見出し ###### 第6レベル見出し ``` #### ATX 形式のルール - `#` の数でレベルを指定（1〜6） - 行頭に記述し、少なくとも1つのス'
+  - chapter: 22-extentions
+    context: "`config/post_replace_list.yml` という置換ルールで実現されています。このファイルに正規表現ベースのルールを
+      1 行追加するだけで"
+  - chapter: 24-cross-reference
+    context: '3」のような番号付きのテキスト（＋リンク）に 置き換えられます。 ### 共通ルール 図・表・リストには、次のような **キャプション行**
+      を付けます。 -'
+  - chapter: 25-querystream
+    context: 'p=gas | :full ``` ## テンプレートの書き方 ### 基本ルール テンプレートは Markdown ファイルです。`=
+      key` と書くと Y'
+  - chapter: 31-lint
+    context: 'textlint を利用し、日本語技術文書向けのルールで文章をチェックします。 - **英語スペルチェック**: Vivlio Sta'
+  - chapter: 45-utility
+    context: tylesheets/custom.css` を開き、変更したい CSS 変数やルールを記述します。 ```css /* stylesheets/custom.
+  - chapter: 51-doctor
+    context: "| node が前提 | | textlint と推奨ルール | `npm install -g textlint ...` | 日本語技術"
+  - chapter: 61-developer
+    context: 'post_replace_list.yml` は HTML 後処理での文字列置換ルールを定義します。`textlint_prh.yml`
+      / '
+  - chapter: 91-install
+    context: "| PDF 生成エンジン | | textlint と推奨ルール | `npm install -g textlint ...` | 文章校正。"
+  updated_at: '2026-07-05 21:00:15'
+- term: レイアウト
+  yomi: れいあうと
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/レイアウト/"
+  score: 622.6174495971823
+  contexts:
+  - chapter: 13-new
+    context: ml ← 章構成 page_presets.yml ← ページレイアウト設定 index_glossary_terms.yml ← 用語
+  - chapter: 22-extentions
+    context: 技術書制作に特化した独自の拡張記法を利用できます。本章では、コラム・注記・レイアウト・表・会話文・装飾など、よく使う拡張記法を一覧で解説します。
+  - chapter: 23-chapter-management
+    context: 見出し・リスト・定義リスト・表・コードブロック・数式・画像レイアウト・コラム/注記ブロック・索引・QueryStream など、これまでの章で紹介し
+  - chapter: 25-querystream
+    context: 'テンプレート | `templates/_[名前].md` | データの表示レイアウト | | QueryStream 記法 | `contents/*.md` '
+  - chapter: 41-book-yml
+    context: "/ a4_custom ``` `airy` は行間が広めの読みやすいレイアウト、`compact` はより多くの文字を詰めたレイアウトです。`custom`"
+  - chapter: 42-frontispiece
+    context: "**一文字推奨**: 記号は一文字の使用を推奨します。複数文字を設定すると、レイアウトが崩れる可能性があります。 - **フォント対応**: "
+  - chapter: 44-build
+    context: 'le # reflowable（リフロー型）/ fixed（固定レイアウト型） ``` ```bash vs build ``` ###
+      カバー画像'
+  - chapter: 45-utility
+    context: 2. **`chapter.css`** 等 — 章タイプごとのレイアウト（自動生成） 3. **`custom.css`** — 著者が自由に編集できる
+  - chapter: 61-developer
+    context: ml ← 章構成 page_presets.yml ← ページレイアウト設定 index_glossary_terms.yml ← 索引
+  updated_at: '2026-07-05 21:00:15'
+- term: レビュー
+  yomi: れびゅー
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/レビュー/"
+  score: 734.6092705644629
+  contexts:
+  - chapter: 22-extentions
+    context: "`{単語|読み}` と区別して下さい。 ::: ### 自動抽出とレビュー `vs index:auto` コマンドで、原稿から索引候補を自動的に抽出で"
+  - chapter: 33-index-glossary
+    context: 書籍の索引と用語集を効率的に作成できます。本章では、用語の登録から自動抽出、レビュー、索引・用語集ページ生成までの一連のワークフローを解説します。
+  - chapter: 45-utility
+    context: "| | :--- | :--- | :--- | | `open` | プレビュー | PDFを即座に開く | | `pdf:compress`
+      | 圧縮 | "
+  - chapter: 61-developer
+    context: '換・最適化します（--high/--lowで品質変更可） ビルド・出力・プレビュー: preflight ビルド前の原稿エラーチェックを高速'
+  updated_at: '2026-07-05 21:00:15'
+- term: レベル
+  yomi: れべる
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/レベル/"
+  score: 411.43859956099755
+  contexts:
+  - chapter: 21-markdown-tutorial
+    context: " ### 見出し ```markdown # 第1レベル見出し ## 第2レベル見出し ### 第3レベル見出し #### 第4レベル見"
+  - chapter: 31-lint
+    context: この 2 つは「指摘を隠す」のではなく、textlint の設定レベルでルールを無効化します。そのため `vs lint --fix` を実行しても、
+  - chapter: 32-metrics
+    context: ばらつき・見直したい長い文・文末表現のリズム・よく使う言葉・漢字レベル）も続けて表示します。情報量が多いので、通常は解析結果だけを見て、推敲に入るとき
+  - chapter: 41-book-yml
+    context: "| | `commercial` | 200 ページ以上の商業出版レベル | | `author_custom` | 自分で基準値を定義したい場合
+      |"
+  - chapter: 92-pdf-read
+    context: "～ `h3`）を解析して階層的に構築されます。 | 見出しレベル | アウトラインでの表示 | 例 | |---|---|---| |
+      `h1`"
+  updated_at: '2026-07-05 21:00:15'
+- term: ワークフロー
+  yomi: わーくふろー
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/ワークフロー/"
+  score: 396.8530472276318
+  contexts:
+  - chapter: 11-workflow
+    context: '執筆ワークフロー概観 :::{.chapter-lead} Vivlio Starter を使った書籍制作は、「プロジェクト作成 → 執筆
+      → 整える → ビルド '
+  - chapter: 31-lint
+    context: 'をコピーしてください。 :::{.tip} 想定ワークフロー: まず `vs lint --register` で大量に指摘された語を一括登'
+  - chapter: 33-index-glossary
+    context: 'は、用語の登録から自動抽出、レビュー、索引・用語集ページ生成までの一連のワークフローを解説します。 ::: `vs index` コマンドは、'
+  - chapter: 41-book-yml
+    context: " max_definition_length: 500 ``` 詳細なワークフローは「索引・用語集機能」の章を参照してください。索引ライブラリの持ち運び（`vs"
+  - chapter: 43-cover
+    context: '本章では、カバー画像の準備から生成、管理までの一連のワークフローを解説します。 ::: `vs cover` コマンドは、カバーのソース画像か'
+  - chapter: 61-developer
+    context: 'は本文への逆引きリンク（バックリンク）も生成されます。 ### ワークフロー ```bash vs index:auto # 候補抽出
+      → _ind'
+  updated_at: '2026-07-05 21:00:15'
+- term: スラッグ
+  yomi: スラッグ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/スラッグ/"
+  score: 697.6915244329552
+  contexts:
+  - chapter: 23-chapter-management
+    context: に `11-intro` が追記されます。 :::{.memo} **「スラッグ」とは**：ファイル名のうち、章番号に続く短い識別名のことです。`11-intr
+  - chapter: 13-new
+    context: テンプレート内の `{{TITLE}}` は章のスラッグに自動置換されます。 章テンプレートのカスタマイズ方法や QueryStrea
+  - chapter: 41-book-yml
+    context: "# master または独自スラッグ（covers/frontcover_master.png 等、著者用意の画像）"
+  - chapter: 45-utility
+    context: テンプレート内の `{{TITLE}}` は章のスラッグ（`11-intro` など）に自動置換されます。 ```markdown <
+  - chapter: 61-developer
+    context: 像を削除します rename 章の番号やファイル名（スラッグ）を変更します renumber 章番号を一括で付け直し
+  updated_at: '2026-07-05 21:00:15'
+- term: バリアント
+  yomi: バリアント
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/バリアント/"
+  score: 500.84544217153837
+  contexts:
+  - chapter: 42-frontispiece
+    context: '画像 ├── my_image_portrait.webp # 縦長バリアント（オプション） └── my_image_landscape.webp'
+  updated_at: '2026-07-05 21:00:15'
+- term: ビルド
+  yomi: ビルド
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/ビルド/"
+  score: 3301.406393118015
+  contexts:
+  - chapter: 00-preface
+    context: 特別なフォーマットを覚える必要はありません - **コマンド一発でビルド** — `vs build` ひとつで、原稿が美しい PDF に変わります
+      -
+  - chapter: 11-workflow
+    context: "「プロジェクト作成 → 執筆 → 整える → ビルド → 入稿・配布」という5つのステップで完結します。本章では、それぞれのステップ"
+  - chapter: 12-quickstart
+    context: "「新規プロジェクトの作成（vs new）」で説明しています。 ## はじめてのビルド さっそく PDF を生成してみましょう。 ```bash
+      vs build"
+  - chapter: 13-new
+    context: 'vs renumber # 章番号を一括で整列 ``` ビルド対象は `config/catalog.yml` に登録された章のみです。`ca'
+  - chapter: 22-extentions
+    context: ":::{.tip} `vs preflight` を使うと、ビルド前にエラーを素早く確認できます。 ::: ``` :::{.tip}
+      効率化や"
+  - chapter: 23-chapter-management
+    context: " ::: - `vs renumber` 実行後は、古い章番号で生成されたビルド中間ファイル（`.html` など）が `vs clean`
+      と同じ処理で自動削"
+  - chapter: 24-cross-reference
+    context: "**参照側**: 本文中から `@id` を使ってその要素を参照する ビルド時に、各章の図・表・リストに「章番号＋連番」の番号が自動で割り振られ、
+      本文中の"
+  - chapter: 33-index-glossary
+    context: ":: ### マッチングの実行 ```bash vs build ``` ビルド時、内部では以下の処理が行われます： 1. `config/index_glo"
+  - chapter: 41-book-yml
+    context: '合する compress: false # true: ビルド後に自動圧縮（処理時間が増加） techbook: false'
+  - chapter: 42-frontispiece
+    context: '節見出し装飾 | ornament 画像 | なし（色とボーダー） | | ビルド時間 | やや時間がかかる | 高速 | | 設定の複雑さ
+      | やや複雑 | '
+  - chapter: 43-cover
+    context: "`{{author}}` などのプレースホルダーを記述しておくと、ビルド時に `book.yml` の値で自動置換されます。また SVG
+      内の CSS"
+  - chapter: 44-build
+    context: ビルド（vs build） :::{.chapter-lead} 原稿の執筆が一段落したら、`vs build` コマンドで書籍を組版しましょう。閲覧用
+      PDF
+  - chapter: 45-utility
+    context: PDFを開く :::{.section-lead} `vs open` はビルドで生成された PDF を macOS の Preview.app
+      で即座に開きま
+  - chapter: 51-doctor
+    context: Starter が依存する外部ツールの存在を診断するコマンドです。ビルドや lint が突然失敗したとき、まず `vs doctor` を実行するのが近
+  - chapter: 61-developer
+    context: "... build/ # ビルドパイプライン pipeline.rb # ステッ"
+  - chapter: 91-install
+    context: "| `xcode-select --install` | macOS のビルド基盤 | | Homebrew | 公式インストーラ |
+      macOS 用パッケー"
+  - chapter: 92-pdf-read
+    context: '章の先頭ページにフォールバックします。`--log=debug` を付けてビルドすると、フォールバックが発生した見出しの一覧が表示されます。
+      ### ビルドロ'
+  updated_at: '2026-07-05 21:00:15'
+- term: ビルド時
+  yomi: ビルドじ
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/ビルド時/"
+  score: 381.12717080512
+  contexts:
+  - chapter: 13-new
+    context: の `theme` セクションで行います。`theme.css` はビルド時に自動生成されるため、直接編集しても次回ビルド時に上書きされます。カスタム
+      CS
+  - chapter: 22-extentions
+    context: "| ### 行番号 すべてのコードブロックに行番号が自動で付与されます。ビルド時に Prism.js の `line-numbers`
+      プラグインが適用されるた"
+  - chapter: 24-cross-reference
+    context: "**参照側**: 本文中から `@id` を使ってその要素を参照する ビルド時に、各章の図・表・リストに「章番号＋連番」の番号が自動で割り振られ、
+      本文中の"
+  - chapter: 41-book-yml
+    context: 'に設定してください（未設定なら何も挿入されません）。 ### build — ビルド時の検証 `vs build` 実行時に行う、画像パス・URL
+      の検証設定です。'
+  - chapter: 43-cover
+    context: "`{{author}}` などのプレースホルダーを記述しておくと、ビルド時に `book.yml` の値で自動置換されます。また SVG
+      内の CSS カ"
+  - chapter: 44-build
+    context: false で除外 ``` 表紙の PDF がまだ存在しない場合、ビルド時に `covers/frontcover_master.png`
+      から自動生成さ
+  - chapter: 45-utility
+    context: 'ディレクトリ内の PNG・JPG 画像を WebP 形式に一括変換します。ビルド時にも自動実行されますが、手動で変換したい場合に使います。
+      ::: ### 基本'
+  - chapter: 61-developer
+    context: " **このため `theme.css` を直接編集しても、次回ビルド時に上書きされます。** テーマカラーや扉絵の設定は必ず `config/boo"
+  updated_at: '2026-07-05 21:00:15'
+- term: プリセット
+  yomi: プリセット
+  flags: i
+  definition: ''
+  source: auto_extracted
+  approved_at: '2026-07-05 20:49:59'
+  pattern: "/プリセット/"
+  score: 584.3405027862785
+  contexts:
+  - chapter: 13-new
+    context: "| | `page_presets.yml` | 用紙サイズ等のプリセット定義 | | `index_glossary_terms.yml`
+      | 索引・用"
+  - chapter: 32-metrics
+    context: '評価基準をプロジェクトに合わせてカスタマイズできます。 ::: ### プリセットの選択 4種類のプリセットから選択できます。 ```yaml
+      metrics'
+  - chapter: 41-book-yml
+    context: '字サイズなどの版面設定を、`config/page_presets.yml` のプリセットから選択します。 ```yaml page:
+      use: b5_airy'
+  - chapter: 44-build
+    context: "`--high` / `--medium` / `--low` | 画像品質プリセットを指定 | | `--compress` / `--no-compress` "
+  - chapter: 45-utility
+    context: 'バックアップを取ってから実行することを推奨します。 ### 品質プリセットの比較 | プリセット | オプション | 品質 | 最大サイズ
+      | 用途 |'
+  - chapter: 61-developer
+    context: " `page.use` で `page_presets.yml` のプリセット名を指定します（例: `b5_airy`）。 `output.targets`"
+  updated_at: '2026-07-05 21:00:15'
+updated_at: '2026-07-05 21:01:10'

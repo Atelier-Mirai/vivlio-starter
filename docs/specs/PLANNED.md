@@ -13,7 +13,7 @@
 後方互換を破る大きな方向転換を伴うため、v2.0 でまとめて取り組む。
 
 - [High] **ビルドパイプライン全般の見直し**: `targets`（pdf / print_pdf / epub / kindle の単独・複合）×（単章 / フルビルド）の組み合わせが多く、`register_*_steps` が継ぎ接ぎになっている。ステップ登録ロジック・メソッド責務・テストカバレッジを再設計して共通化する（pdf と print_pdf の差は本来カバー・トンボの有無のみ）。
-  - [High] **print_pdf を pdf から導出して高速化**: 現状は本文を pdf と print_pdf で 2 回レンダリングしている。pdf を生成後、カバー除去＋トンボ付与＋メディアボックス拡張で print_pdf を導出すれば、最重量レンダリングを 1 回省ける。ただし **塗り足し（bleed）** はクリップ済みの閲覧用 PDF からは復元できない（フチなし画像・背景で白フチ裁ち落とし事故になる）。フチなし要素の有無を検出するか `book.yml` のフラグで「無ければ導出（高速）／有れば個別レンダリング」のハイブリッドとする。
+  - [High] **print_pdf を pdf から導出して高速化**: 現状は本文を pdf と print_pdf で 2 回レンダリングしている。pdf を生成後、カバー除去＋トンボ付与＋メディアボックス拡張で print_pdf を導出すれば、最重量レンダリングを 1 回省ける。ただし **塗り足し（bleed）** はクリップ済みの閲覧用 PDF からは復元できない（フチなし画像・背景で白フチ裁ち落とし事故になる）。フチなし要素の有無を検出するか `book.yml` のフラグで「無ければ導出（高速）／有れば個別レンダリング」のハイブリッドとする。**2026-07-05〜06 調査・スパイク実証完了、実装仕様確定**（カバー除去は不要＝結合前中間物から導出。**本体 MIT のみ**＝qpdf `--update-from-json`＋`--overlay`＋Prawn で実装（プラグイン不要・CombinePDF は /Dests 全損のため不使用）。`full_bleed` フラグ・print_pdf 目次リンク不具合の真因特定と 1 行修正込み。print pdf ステップ実測 192.5s → 約 35s 見込み）。→ [print-pdf-derivation-spec.md](print-pdf-derivation-spec.md)
 - [High] **設定ファイルを経由しない直接ビルドコマンド**: `vs build myawesome.md --pdf --theme:blue` のように、`book.yml` / `catalog.yml` を介さず単一 Markdown を直接ビルドできる軽量経路を提供する。
 - [Low] **既存プロジェクトのアップグレード専用コマンド（`vs sync` / `vs upgrade`）**: 現状は `vs new <既存> --add-missing` が「不足ファイルの非破壊バックフィル」を兼ねているが、(1) 新規作成コマンドへの相乗りで意味が紛らわしい、(2) 既存ファイルが新しい雛形で**更新された**場合（CSS 改良など）は反映できない、という弱点がある。gem 更新時に新規追加ファイルの補完だけでなく更新差分の取り込み（diff 提示・選択適用）まで行う専用コマンドへ切り出し、`vs new` から `--add-missing` を外す。
 - [High] **小説（挿絵入り）への対応**: 現在は技術書専用。小説向けレイアウト（縦書き・挿絵配置・章扉など）に対応できるようテーマ／組版を拡張する。この段階でビルドパイプライン全般の見直しを併せて行うのが良い。
@@ -24,7 +24,7 @@
 
 ## ビルド / 出力
 
-- [High] **Step 8（backlink dedup）の抜本的高速化**: 現状は「vivliostyle preview で全ページをブラウザレンダリング（〜150 秒）→ Playwright でページ番号取得 → vivliostyle build で PDF 再生成（〜196 秒）」の 2 段階構成で計 〜350 秒。vivliostyle CLI がページ番号情報を JSON 等で出力できれば Playwright フェーズを丸ごと省略できる。
+- [High] **Step 8（backlink dedup）の抜本的高速化**: 現状は「vivliostyle preview で全ページをブラウザレンダリング → Playwright でページ番号取得 → vivliostyle build で PDF 再生成」の 2 段階構成（2026-07-05 実測: 73s ＋ 106.5s ＝ 179.4s）。vivliostyle CLI にページ番号 JSON 出力は存在しないが、**Step 7 の生成 PDF 自体が named destinations（`/Dests`）に全アンカー ID →ページを保持している**ことが判明。pdf-reader でのパース（0.5 秒）に置換でき、Playwright/preview 依存も丸ごと除去できる。**2026-07-05 調査・スパイク実証完了（公式 dedup と判定一致・境界 15 件はむしろ新方式が正確）、実装仕様確定**。→ [backlink-dedup-pdf-map-spec.md](backlink-dedup-pdf-map-spec.md)
 - [High] **単章ビルドシステムのリファクタリング**: 機能的には完備しているが、ステップ登録ロジックの最適化・メソッド責務の明確化・テストカバレッジ拡充のため整理する（v2.0 のパイプライン見直しと連動）。
 - [Medium] **リスト体裁改善（アルファベットリスト）**: 技術書で頻出する `a. b. c.` に対応。Markdown では `a.` がリストとして解釈されないため、CSS ユーティリティ（`ol.lower-alpha { list-style-type: lower-alpha; }`）を追加し、`<ol class="lower-alpha">` の生 HTML 記法で簡潔に実現する。
 - [Low] **画像の width 属性自動補完**: `![](foo.png)` のように幅指定なしでも、実寸やクラス指定に応じて `width=100%` 等を自動補う（大判図をページ送りにせず収めるため）。
