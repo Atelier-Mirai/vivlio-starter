@@ -592,6 +592,14 @@ module VivlioStarter
         class ReferenceReplacer
           REFERENCE_PATTERN = /(?<![a-zA-Z0-9_.])@([\w-]+)/
 
+          # 参照走査から除外するスパン（インライン code 以外の正当な @ 出現箇所）:
+          # - Markdown リンク/画像 [text](url): リンクテキスト・URL とも @ は正当な表現
+          #   （npm スコープ名 [npmjs.com/@vivliostyle/cli](https://…/@vivliostyle/cli) 等）
+          # - 単独の角括弧 [ … ]: 索引・用語集の手動登録（[用語|読み]・[@用語]）や脚注参照 [^url1]
+          # - 裸 URL: リンク脚注化が追記する脚注定義行（[^url1]: https://…/@scope/pkg）など、
+          #   角括弧の外に現れる URL 内の @
+          MASKED_SPAN_PATTERN = %r{`+[^`]*`+|!?\[[^\]]*\](?:\([^)]*\))?|https?://[^\s)]+}
+
           def initialize(content, labels_map, filename)
             @content = content
             @labels_map = labels_map
@@ -621,10 +629,17 @@ module VivlioStarter
             end.join
           end
 
+          # 除外スパン（インライン code・リンク/角括弧・裸 URL）は素通しし、
+          # 残りの平文だけを参照置換にかける
           def replace_outside_code(text, line_num)
-            text.scan(/`+[^`]*`+|[^`]+/).map do |seg|
-              seg.start_with?('`') ? seg : replace_refs(seg, line_num)
-            end.join
+            result = +''
+            pos = 0
+            text.scan(MASKED_SPAN_PATTERN) do
+              match = Regexp.last_match
+              result << replace_refs(text[pos...match.begin(0)], line_num) << match[0]
+              pos = match.end(0)
+            end
+            result << replace_refs(text[pos..], line_num)
           end
 
           def replace_refs(text, line_num)
