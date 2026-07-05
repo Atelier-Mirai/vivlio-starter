@@ -391,6 +391,32 @@ P2/P3 と同じく「現行から採取した基準」に対し各段で `rake t
    ルート無汚染（`.vivliostyle`・workspace・`_index_matches.yml`・images 配下・
    中間 HTML/PDF すべて無し）・単章ビルドで `.keep` 無しでも最終 PDF 残存を実測。
 6. **テスト前提更新＋構造保証テスト新設**（§5.5）。`rake test:release` 全緑。
+   → **完了（2026-07-04）**。§5.5 のテスト影響のうち「ルートの中間 HTML を覗くテストの
+   参照先更新」は段階 3〜5 のテスト更新（`BUILD_PDF_DIR` 配線・tmpdir 化）で解消済みと
+   確認（robustness / epub_kindle_layout にルート参照は残存せず）。実施分:
+   (1) `target_consistency_test` へ `test_kindle_build_leaves_root_images_unpolluted` を
+   追加——kindle を含む `--no-clean` combo のビルド直後にルート
+   `images/{_epub_assets,headings}` が存在しないことを capture 時に観測して検証
+   （旧「画像汚染」隔離の構造検証への格上げ。`reset_intermediate_state!` は
+   衛生措置として残置）。
+   (2) `workspace_structure_test`（新設・`rake test:targets` 配下）——`--no-clean`
+   フルビルド（targets: pdf, epub, kindle）1 回で WS-01〜04 を検証: 4 消費者 dir の
+   生成と各用途の中間物配置（html=章 HTML 原本 / pdf=ステージ HTML＋用途別
+   entries/config / epub・kindle=ステージ HTML＋ローカライズ資産＋生成 config・
+   kindle は WebP ゼロ / workspaceDir もワークスペース内）・ルート無汚染
+   （旧方式パターン網羅）・git 作業ツリー無汚染（MB-04 と同規約）。
+   (3) `manual_build_test` へ MB-05 を追加——通常ビルドの final clean 後に
+   `.cache/vs/build/` とルート `.vivliostyle/` が存在しないことを検証。
+   検証（`rake test:release` 全緑: test/standard 各 1,453・layout 7・targets 18・
+   manual 12・package 4）の過程で P4 と無関係の既存問題 2 件を発見し対処:
+   ① daa87921（2026-07-01）で用語辞書 `config/index_glossary_terms.yml` が削除され
+   索引/用語集ページが生成されない状態のため、spine 検証を「辞書が存在するときのみ
+   `_glossarypage`/`_indexpage` を要求」する条件付きへ変更（辞書復帰で検証も自動復活）。
+   ② 61-developer.md の npm スコープ名（`@vivliostyle/cli` 等・バッククォート外の
+   リンク URL・表セル）が相互参照 `@ID` として誤検出される false positive 5 件
+   → リンク/画像・索引マークアップ（`[用語|読み]`・`[@用語]`）・裸 URL を参照走査から
+   除外する修正を `ReferenceReplacer` へ実装し恒久解消（表セルの生書き分は原稿を
+   バッククォート化。CHANGELOG Fixed 参照）。
 
 破綻時の切り分けは段階単位。段階 3 が最重量のため、必要なら「章 HTML のみ先行・特殊ページ後続」に
 さらに分割して良い。

@@ -21,6 +21,7 @@
 #   - print_pdf のページ数が pdf に近い
 #   - epub の spine に前書き・後書き・奥付などの構成ページが含まれる（③-b 等）
 #   - pdf と print_pdf のアウトライン（しおり）が一致する
+#   - kindle を含むビルド後もルート images/ が汚染されない（P4 構造検証・§5.5）
 #
 # 【実行方法】
 #   rake test:targets   （実マニュアルを最小セットの targets でビルドするため最も遅い。
@@ -173,10 +174,16 @@ class TargetConsistencyTest < Minitest::Test
                     "print_pdf(#{ppdf.page_count}p) と pdf(#{pdf.page_count}p) のページ数乖離が大きすぎます"
   end
 
-  # epub の spine に主要な構成ページが含まれる（③-b 奥付など）
+  # epub の spine に主要な構成ページが含まれる（③-b 奥付など）。
+  # 索引・用語集ページは統合用語辞書（config/index_glossary_terms.yml）から生成される
+  # 条件付きページ（UnifiedPageBuilder は辞書が無ければページ自体をスキップする）のため、
+  # 辞書が存在するときだけ検証する（daa87921 で辞書がリポジトリから削除され、現原稿は
+  # 辞書なしでビルドされる。辞書を復帰させれば検証も自動で復活する）。
   def test_epub_spine_includes_structural_pages
     spine = fetch!("epub", :epub).spine
-    %w[00-preface _colophon 99-postface _glossarypage _indexpage].each do |doc|
+    expected = %w[00-preface _colophon 99-postface]
+    expected += %w[_glossarypage _indexpage] if File.exist?(File.join("config", "index_glossary_terms.yml"))
+    expected.each do |doc|
       assert_includes spine, doc, "epub の spine に #{doc} が含まれていません"
     end
   end
@@ -265,6 +272,19 @@ class TargetConsistencyTest < Minitest::Test
     end
   end
 
+  # 【P4 構造検証・§5.5】kindle を含むビルド（--no-clean）後もルート images/ が汚染されない。
+  # 旧: kindle の WebP→JPEG 変換が images/_epub_assets/ へ、扉絵合成が images/headings/ へ
+  # 書き込み、後続 combo の PDF を膨らませるサイズ乖離 flaky を生んでいた（隔離＝
+  # reset_intermediate_state! で回避）。P4 段階 4 で生成先が消費者 dir 内へ移り、汚染は
+  # 構造的に不可能になった。ここではその構造自体を検証する（隔離が無くても成立する保証）。
+  def test_kindle_build_leaves_root_images_unpolluted
+    KINDLE_COMBO_KEYS.each do |key|
+      pollution = self.class.snapshots.fetch(key)[:root_pollution]
+      assert_empty pollution,
+                   "kindle を含む「#{key}」ビルド後にルート images/ が汚染されています: #{pollution.join(', ')}"
+    end
+  end
+
   # epub の本文に代表的なマーカーが含まれる（実本文が EPUB へ届いているかの煙検査）
   def test_epub_contains_body_markers
     body = fetch!("epub", :epub).body
@@ -308,24 +328,32 @@ class TargetConsistencyTest < Minitest::Test
       captured
     end
 
-    # combo 間の状態汚染を防ぐため、中間生成物（*.html・images/{headings,_epub_assets,math} 等）を
-    # 明示的にリセットする。kindle を含む combo は中間 EPUB 保全のため --no-clean で走り、
-    # ビルド側の初期 clean がスキップされる。直前 combo の画像派生物（特に images/headings の
-    # kindle 版）を引き継ぐと閲覧用 PDF が膨らみ、サイズ乖離（> 2%）で誤検知するため、
-    # 各 combo を必ずクリーンな中間状態から開始させる（製品挙動は変えずテストを隔離する）。
+    # 各 combo をクリーンな中間状態（ワークスペース・images/math 等）から開始させる。
+    # 旧: kindle 版画像派生物のルート引き継ぎによるサイズ乖離 flaky の隔離が主目的だったが、
+    # P4（ワークスペース分離）で combo 間の画像汚染は構造的に不可能になった
+    # （test_kindle_build_leaves_root_images_unpolluted が構造を直接検証する）。
+    # 現在は --no-clean combo が初期 clean をスキップすることへの一般的な衛生措置として残す。
     def reset_intermediate_state!
       system("#{VsTestSupport::VsBuilder.repo_vs_command} clean", out: File::NULL, err: File::NULL)
     end
 
     # targets に含まれるフォーマットだけ成果物を取得する。
     # epub=クリーン EPUB（…-kindle.epub を除く）、kindle=Kindle 中間 EPUB（…-kindle.epub）。
+    # root_pollution はビルド直後のルート images/ 汚染の観測（P4 構造検証・§5.5）。
     def capture(targets)
       {
         pdf:       targets.include?("pdf")       ? pdf_snapshot(find_viewing_pdf) : nil,
         print_pdf: targets.include?("print_pdf") ? pdf_snapshot(find_print_pdf)   : nil,
         epub:      targets.include?("epub")      ? epub_snapshot(find_clean_epub)  : nil,
-        kindle:    targets.include?("kindle")    ? epub_snapshot(find_kindle_epub) : nil
+        kindle:    targets.include?("kindle")    ? epub_snapshot(find_kindle_epub) : nil,
+        root_pollution: root_image_pollution
       }
+    end
+
+    # EPUB/Kindle 生成がルートの著者 dir へ書いていた旧生成先（P4 段階 4 で消費者 dir 内へ移設）。
+    # --no-clean の kindle combo でも空であるべき。
+    def root_image_pollution
+      %w[_epub_assets headings].filter_map { File.join("images", it) if Dir.exist?(File.join("images", it)) }
     end
 
     def pdf_snapshot(path)
