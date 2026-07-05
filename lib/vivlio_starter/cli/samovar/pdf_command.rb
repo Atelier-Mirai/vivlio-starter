@@ -58,7 +58,6 @@ module VivlioStarter
               vs pdf:rasterize [PDF_FILE] [--clean]
 
             詳細は vs <command> --help を参照してください。
-            内部コマンドの情報: docs/DEVELOPER_GUIDE.md
           HELP
           0
         end
