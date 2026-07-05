@@ -5,17 +5,21 @@
 # ================================================================
 # 責務:
 #   Samovar CLI の pdf 系コマンドを実装する。
-#   Vivliostyle による PDF 生成と Ghostscript による圧縮を行う。
+#   生成済み PDF の圧縮・画像化・変換を行う。
 #
 # コマンド分類 (help_spec.md 準拠):
-#   - pdf: 内部コマンド（ビルドパイプラインから呼び出し）
 #   - pdf:compress: Public コマンド（利用者向け）
 #   - pdf:pages: Public コマンド（PDFページ画像化）
 #   - pdf:rasterize: Public コマンド（Type3フォント対策）
 #   - pdf:read: Public コマンド（PDF→Markdown 変換）
 #
+# PDF 生成そのもの（PdfCommands.execute_pdf）はビルドパイプラインが
+# 直接呼び出す純粋な内部処理であり、Samovar コマンドは持たない
+# （旧 `vs pdf` は手動フローの実体消滅に伴い撤去。
+#  docs/specs/vivlioverso-manual-flow-removal-spec.md）。
+#
 # 依存:
-#   - PdfCommands: 実際の PDF 生成・圧縮・ページ画像化処理
+#   - PdfCommands: 実際の PDF 圧縮・ページ画像化処理
 #   - Commands::PdfReadCommand: PDF 読み取り処理
 # ================================================================
 
@@ -25,52 +29,6 @@ require_relative '../guards'
 module VivlioStarter
   module CLI
     module SamovarCommands
-      # pdf コマンドの Samovar 実装（内部コマンド）
-      # --help 時は pdf:compress の存在を案内する
-      class PdfCommand < Samovar::Command
-        self.description = 'PDFを生成します（内部コマンド）'
-
-        one :output, '出力ファイル名（省略時は設定に従う）', required: false
-
-        def call
-          return print_pdf_internal_help if help_requested?
-
-          PdfCommands.execute_pdf(build_options, output)
-        end
-
-        private
-
-        def help_requested?
-          help_flag_argument?(output)
-        end
-
-        def help_flag_argument?(value)
-          %w[-h --help].include?(value.to_s.strip)
-        end
-
-        def print_pdf_internal_help
-          puts <<~HELP
-            vs pdf は内部コマンドです（ビルドパイプラインから自動呼び出し）。
-
-            利用者向けのPDF関連コマンド:
-              vs pdf:compress [INPUT] [OUTPUT]
-              vs pdf:pages [PDF_FILE] [--dpi 350] [--pages 1,3,5-8]
-              vs pdf:rasterize [PDF_FILE] [--clean]
-
-            詳細は vs <command> --help を参照してください。
-          HELP
-          0
-        end
-
-        def build_options
-          { verbose: parent_verbose? }
-        end
-
-        def parent_verbose?
-          parent&.options&.[](:verbose) || false
-        end
-      end
-
       # pdf:compress コマンドの Samovar 実装（Public コマンド）
       class PdfCompressCommand < Samovar::Command
         self.description = '生成済みPDFを圧縮します'

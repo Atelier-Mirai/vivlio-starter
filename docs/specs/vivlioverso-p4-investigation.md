@@ -427,7 +427,11 @@ P2/P3 と同じく「現行から採取した基準」に対し各段で `rake t
 ## 8. スコープ外（明示）
 
 - 縦書き・novel テーマ・テーマ CSS セット差し替え（P3 の変数語彙の上に V2.0 で構築）
-- `vs pdf` / `vs entries` 等の著者向け単体コマンドの workspace 化（ルート運用のまま）
+- ~~`vs pdf` / `vs entries` 等の著者向け単体コマンドの workspace 化（ルート運用のまま）~~
+  → **撤去で決着（2026-07-05）**。P4 完了時点で手動フローは実体を失っていた（`vs entries` は
+  ルーティング不在・`vs pdf` はルートに HTML が無く空振り）ため、workspace 化ではなく
+  ルート `vivliostyle.config.js` ごと撤去。詳細は
+  [vivlioverso-manual-flow-removal-spec.md](vivlioverso-manual-flow-removal-spec.md)。
 - `vivliostyle.config.js` 全文生成化（P3-4 の残課題・V2.0）
 - ~~P4b（`images/math` 等の prep 段生成物の workspace 化）~~ → **完了（2026-07-05）**。
   数式 SVG を `BUILD_HTML_DIR/images/math/`（消費者 dir 相対参照）へ、`_index_matches.yml` を

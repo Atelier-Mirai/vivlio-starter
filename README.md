@@ -205,8 +205,6 @@ book:
   language: ja
 vivliostyle:
   reading_progression: ltr
-  entries_file: entries.js
-  config_file: vivliostyle.config.js
 pdf:
   output_file: output.pdf
   close_existing_windows: true

@@ -40,6 +40,8 @@ module VivlioStarter
       VFM_COMMAND = 'vfm'
       POST_REPLACE_FILE = 'post_replace_list.yml'
       CACHE_DIR = '.cache/vs'
+      # 旧バージョン（撤去済み手動フロー）のルート config 名。
+      # doctor の旧プロジェクト検出マーカーとしてのみ参照する。
       VIVLIOSTYLE_CONFIG_FILE = 'vivliostyle.config.js'
 
       # ------------------------------------------------------------
@@ -258,9 +260,7 @@ module VivlioStarter
       def default_vivliostyle
         {
           quiet: true,
-          reading_progression: 'ltr',
-          entries_file: 'entries.js',
-          config_file: VIVLIOSTYLE_CONFIG_FILE
+          reading_progression: 'ltr'
         }
       end
 

@@ -124,7 +124,7 @@ module VivlioStarter
         def rebuild_pdf!(_entries)
           sections_pdf = File.join(Common::BUILD_PDF_DIR, '_sections.pdf')
           config = File.join(Common::BUILD_PDF_DIR, 'vivliostyle.config.sections.js')
-          PdfCommands.execute_pdf({}, nil, config_path: config, output_path: sections_pdf)
+          PdfCommands.execute_pdf({}, config_path: config, output_path: sections_pdf)
 
           if File.exist?(sections_pdf)
             Common.log_success('[Step 8] 重複排除済み _sections.pdf を再生成しました')

@@ -80,7 +80,6 @@ module VivlioStarter
               File.write('contents/15.md', "# Chapter 15\n")
               # Guard（前提条件検証）を通過させるための最小プロジェクト構成
               File.write('config/book.yml', "book:\n  main_title: 'test'\n")
-              File.write('vivliostyle.config.js', '// test config')
 
               pipelines = []
               with_pipeline_stub(pipelines) do
@@ -96,10 +95,10 @@ module VivlioStarter
           end
         end
 
-        # P3-4: vivliostyle.config.js の存在 Guard を撤去したため、config が
-        # 欠落していても build は Guard で弾かれず進行する（config は
-        # 'prepare theme images' ステップで全文生成され自己修復される）。
-        def test_call_proceeds_when_vivliostyle_config_absent
+        # ルート vivliostyle.config.js は撤去済み（手動フロー撤去・
+        # vivlioverso-manual-flow-removal-spec.md）。build はルート config の
+        # 存在に一切依存しない（パイプラインは workspace の生成 config を使う）。
+        def test_call_proceeds_without_root_vivliostyle_config
           Dir.mktmpdir do |dir|
             Dir.chdir(dir) do
               FileUtils.mkdir_p('contents')
@@ -107,14 +106,13 @@ module VivlioStarter
               File.write('config/catalog.yml', "CHAPTERS:\n  - 15\n")
               File.write('contents/15.md', "# Chapter 15\n")
               File.write('config/book.yml', "book:\n  main_title: 'test'\n")
-              # vivliostyle.config.js は敢えて作らない（自己修復の検証）
               refute_path_exists('vivliostyle.config.js')
 
               pipelines = []
               with_pipeline_stub(pipelines) do
                 command = BuildCommand.new(['15'])
                 suppress_build_outputs(command) do
-                  assert_equal 0, command.call, 'config 欠落でも Guard で弾かれず build が進行するはずです'
+                  assert_equal 0, command.call, 'ルート config が無くても build が進行するはずです'
                 end
               end
             end

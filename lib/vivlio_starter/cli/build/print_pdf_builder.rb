@@ -71,7 +71,7 @@ module VivlioStarter
             config = Build::VivliostyleConfigWriter.write_config_only!(
               name: 'sections_print', entries_name: 'sections', output: sections_print
             )
-            PdfCommands.execute_print_pdf({}, nil, config_path: config, output_path: sections_print)
+            PdfCommands.execute_print_pdf({}, config_path: config, output_path: sections_print)
           end
         end
 
@@ -103,7 +103,7 @@ module VivlioStarter
           entry_htmls = basenames.map { pdf_path("#{it}.html") }.select { File.exist?(it) }
           output = pdf_path(output_basename)
           config = Build::VivliostyleConfigWriter.write!(name:, entry_htmls:, output:)
-          PdfCommands.execute_print_pdf({}, nil, config_path: config, output_path: output)
+          PdfCommands.execute_print_pdf({}, config_path: config, output_path: output)
         end
 
         # 入稿用 PDF を結合する

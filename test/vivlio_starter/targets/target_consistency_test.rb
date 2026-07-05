@@ -79,7 +79,7 @@ class TargetConsistencyTest < Minitest::Test
   KINDLE_COMBO_KEYS = COMBOS.select { |_key, targets| targets.include?("kindle") }.keys.freeze
 
   # build.yml が再生成する派生ファイル（ビルド後に元へ戻す）
-  GENERATED_FILES = ["vivliostyle.config.js", File.join("stylesheets", "page-settings.css")].freeze
+  GENERATED_FILES = [File.join("stylesheets", "page-settings.css")].freeze
 
   PdfSnap  = Data.define(:page_count, :texts, :outline, :outline_dests, :size, :body)
   # vs_kindle / vs_code_epub / math_px は Kindle 専用 rewrite の痕跡（§5-3）。

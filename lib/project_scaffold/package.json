@@ -4,8 +4,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:pdf": "vivliostyle build -c vivliostyle.config.js",
-    "build:pdf:verbose": "vivliostyle build -c vivliostyle.config.js --verbose",
     "viv:version": "vivliostyle --version",
     "vfm:version": "vfm --version",
     "lint:css": "stylelint \"stylesheets/**/*.css\"",

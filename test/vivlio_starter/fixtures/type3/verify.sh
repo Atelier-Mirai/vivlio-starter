@@ -4,8 +4,8 @@
 # フル `vs build`（数分）を回さずに、フォント埋め込み層だけを素早く検査する。
 # type3-check.html を vivliostyle で直接ビルドし、pdffonts で Type 3 を数える。
 #
-# リポジトリ root には vivliostyle.config.js があり単一 HTML ビルドの邪魔になるため、
-# 一時ディレクトリへ HTML をコピーし、フォント参照を絶対パス化してからビルドする。
+# Chrome は絶対パスの @font-face url() を読み込まないため、一時ディレクトリへ HTML と
+# フォントを複製し、相対参照のまま単一 HTML をビルドする。
 #
 # 使い方:  test/vivlio_starter/fixtures/type3/verify.sh
 # 前提:    リポジトリ root に node_modules（vivliostyle）と poppler の pdffonts。
@@ -18,9 +18,7 @@ viv="$root/node_modules/.bin/vivliostyle"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
-# Chrome は絶対パスの @font-face url() を読み込まないため、フォントを作業ディレクトリへ
-# 複製し相対参照のまま使う。あわせて vivliostyle.config.js の無い一時ディレクトリで
-# ビルドし、リポジトリの config を拾わせない。
+# フォントを作業ディレクトリへ複製し、HTML の @font-face url() を相対参照へ書き換える。
 mkdir -p "$work/stylesheets"
 cp -R "$root/stylesheets/fonts" "$work/stylesheets/fonts"
 sed "s#\.\./\.\./\.\./\.\./stylesheets#stylesheets#g" \

@@ -20,9 +20,8 @@
 #     - index, index:auto, index:apply
 #     - lint, metrics
 #     - pdf:compress, pdf:pages, pdf:rasterize
-#   Internal Commands (vs --help に非表示、DEVELOPER_GUIDE.md 参照):
-#     - pre_process, convert, post_process, pdf, toc, entries, vivliostyle
-#     - create:titlepage, create:colophon, create:legalpage
+#   Internal Commands (vs --help に非表示):
+#     - create:cover, create:titlepage, create:colophon, create:legalpage
 # ================================================================
 
 require_relative '../../version'
@@ -73,11 +72,10 @@ module VivlioStarter
           end
 
           # 内部コマンド (vs --help に非表示、開発者向け)
-          # 注: pre_process, convert, post_process, entries, toc, vivliostyle は
+          # 注: pre_process, convert, post_process, entries, toc, pdf, vivliostyle は
           #     build コマンドから内部的に呼び出される純粋な内部処理に移行済み
           def internal_commands
             @internal_commands ||= {
-              'pdf' => PdfCommand,
               'create:cover' => CreateCoverCommand,
               'create:titlepage' => CreateTitlepageCommand,
               'create:colophon' => CreateColophonCommand,

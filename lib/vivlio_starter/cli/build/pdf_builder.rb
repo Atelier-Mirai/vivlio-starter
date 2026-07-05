@@ -153,7 +153,7 @@ module VivlioStarter
           Build::Utilities.build_pdf_with_body_guard!(sections_pdf, min_pages:) do
             config = VivliostyleConfigWriter.write!(name: 'sections', entry_htmls: targets_for_pdf,
                                                     output: sections_pdf)
-            PdfCommands.execute_pdf({}, nil, config_path: config, output_path: sections_pdf)
+            PdfCommands.execute_pdf({}, config_path: config, output_path: sections_pdf)
           end
 
           Common.log_success('[Step 7] _sections.pdf を生成しました')
@@ -193,7 +193,7 @@ module VivlioStarter
           output = File.join(Common::BUILD_PDF_DIR, output_basename)
 
           config = VivliostyleConfigWriter.write!(name:, entry_htmls:, output:)
-          PdfCommands.execute_pdf({}, nil, config_path: config, output_path: output)
+          PdfCommands.execute_pdf({}, config_path: config, output_path: output)
 
           if File.exist?(output)
             Common.log_success("[Step 9] #{output_basename} を生成しました")

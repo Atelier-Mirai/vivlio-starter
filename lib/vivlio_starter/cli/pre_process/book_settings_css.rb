@@ -66,10 +66,6 @@ module VivlioStarter
 
           # --- Phase: CSS 書換とは独立に必要な副作用（旧 update_all_css_files から引越し）---
           ensure_fonts_available(cfg)
-          # ルート vivliostyle.config.js を book.yml から全文生成する（P3-4）。
-          # かつては CssUpdater が size/title を正規表現 in-place 書換していたが、
-          # 全文生成へ移行し、脆い正規表現機構を全廃した。
-          Build::VivliostyleConfigWriter.write_root_config!
 
           Common.log_success('[Step 2] book-settings.css を生成しました')
           path

@@ -51,7 +51,7 @@ class WorkspaceStructureTest < Minitest::Test
 
   # build が book.yml から再生成する派生ファイル（ビルド後に元へ戻し、
   # WS-04 の git 差分検査から除外する）
-  GENERATED_FILES = ["vivliostyle.config.js", File.join("stylesheets", "page-settings.css")].freeze
+  GENERATED_FILES = [File.join("stylesheets", "page-settings.css")].freeze
 
   # MB-04 と同じ規約: ビルドが書き込み得る著者領域。追跡済み開発ファイル
   # （lib/ test/ docs/ 等）の変更はビルド中の開発者編集と区別できないため対象外。

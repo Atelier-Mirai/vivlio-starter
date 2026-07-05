@@ -4,7 +4,7 @@
 # Test: page_layout_test.rb
 # ================================================================
 # テスト対象:
-#   - vivliostyle.config.js の size プロパティ同期
+#   - vivliostyle size 解決（resolve_vivliostyle_size）
 #   - CSS break-before: recto による右ページ始まり
 #   - 奥付の偶数ページ配置（空白ページ挿入）
 #   - 画像オーバーフロー防止 CSS
@@ -58,14 +58,9 @@ module VivlioStarter
         assert_equal 'A4', size
       end
 
-      def test_vivliostyle_config_js_contains_size_property
-        expected_size = VivliostyleCommands.resolve_vivliostyle_size(Common::CONFIG)
-        pattern = /size:\s*'#{Regexp.escape(expected_size)}'/
-
-        content = File.read('vivliostyle.config.js', encoding: 'utf-8')
-        assert_match(pattern, content,
-                     "vivliostyle.config.js に size: #{expected_size} が含まれていること")
-      end
+      # 注: ルート vivliostyle.config.js の size 検証は手動フロー撤去
+      # （vivlioverso-manual-flow-removal-spec.md）に伴い削除。生成 config の
+      # size は vivliostyle_config_writer_test.rb が検証する。
     end
 
     # ================================================================

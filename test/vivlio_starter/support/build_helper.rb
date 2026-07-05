@@ -39,8 +39,7 @@ module VsTestSupport
     # book.yml だけ復元しても作業ツリーに差分が残る。apply のブロック終了時に
     # book.yml と一緒に元の内容へ復元する（docs/specs/test-suite-expansion-spec.md §15）。
     BUILD_GENERATED_FILES = [
-      File.join("stylesheets", "page-settings.css"),
-      "vivliostyle.config.js"
+      File.join("stylesheets", "page-settings.css")
     ].freeze
 
     # 指定プリセットだけ有効化し、残りをコメントアウト。

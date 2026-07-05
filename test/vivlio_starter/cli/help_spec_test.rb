@@ -64,16 +64,8 @@ module VivlioStarter
         assert_includes output, 'pdf:rasterize'
       end
 
-      # vs pdf --help: 内部コマンドであることと pdf:compress への案内
-      def test_pdf_help_shows_compress_guidance
-        output, = capture_io do
-          status = ::VivlioStarter::CLI.start(['pdf', '--help'])
-          assert_equal 0, status
-        end
-
-        assert_includes output, '内部コマンド'
-        assert_includes output, 'pdf:compress'
-      end
+      # 旧 `vs pdf`（内部コマンド）は手動フロー撤去で削除済み
+      # （vivlioverso-manual-flow-removal-spec.md）。ヘルプ検証も撤去した。
 
       # vs pdf:compress --help: 圧縮コマンドの詳細ヘルプ
       def test_pdf_compress_help_shows_usage
@@ -175,10 +167,10 @@ module VivlioStarter
         refute_includes public_commands, 'pre_process'
 
         # Internal Commands の確認
-        # 注: pre_process, convert, post_process, toc, entries, vivliostyle は
+        # 注: pre_process, convert, post_process, toc, entries, vivliostyle, pdf は
         #     build コマンドから内部的に呼び出される純粋な内部処理に移行済み
         internal_commands = root.internal_commands.keys
-        assert_includes internal_commands, 'pdf'
+        refute_includes internal_commands, 'pdf'
         assert_includes internal_commands, 'create:titlepage'
         assert_includes internal_commands, 'create:colophon'
         assert_includes internal_commands, 'create:legalpage'

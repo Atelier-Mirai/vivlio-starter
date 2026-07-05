@@ -5,7 +5,6 @@ require 'English'
 require 'rbconfig'
 require 'fileutils'
 
-require_relative 'entries'
 require_relative 'pdf/pdf_to_jpeg'
 require_relative 'pdf/jpeg_to_pdf'
 
@@ -24,16 +23,15 @@ module VivlioStarter
     module PdfCommands
       module_function
 
-      # PDF 生成を実行する
+      # PDF 生成を実行する（パイプライン専用・P4 §3.2）
       #
       # @param options [Hash] オプション
       #   - :verbose [Boolean] 詳細ログ出力
-      # @param target_output [String, nil] 出力ファイル名（リネーム先）
-      # @param config_path [String, nil] 生成 config（-c 指定・パイプライン専用。P4 §3.2）
-      # @param output_path [String, nil] config の output に対応する成否確認先
-      # @return [void]
-      def execute_pdf(options, target_output = nil, config_path: nil, output_path: nil)
-        PdfCommandRunner.new(options, target_output, config_path:, output_path:).call
+      # @param config_path [String] 生成 config（-c で vivliostyle へ渡す）
+      # @param output_path [String] config の output に対応する成否確認先
+      # @return [Boolean] ビルドが成功し出力ファイルまで生成できたか
+      def execute_pdf(options, config_path:, output_path:)
+        PdfCommandRunner.new(options, config_path:, output_path:).call
       end
 
       # PDF 圧縮を実行する
@@ -75,30 +73,27 @@ module VivlioStarter
         PdfOpener.new(options, path).call
       end
 
-      # 入稿用 PDF を生成する（--crop-marks --bleed 付き）
+      # 入稿用 PDF を生成する（--crop-marks --bleed 付き・パイプライン専用）
       #
       # @param options [Hash] オプション
-      # @param target_output [String, nil] 出力ファイル名
-      # @param config_path [String, nil] 生成 config（-c 指定・パイプライン専用。P4 §3.2）
-      # @param output_path [String, nil] config の output に対応する成否確認先
-      # @return [void]
-      def execute_print_pdf(options, target_output = nil, config_path: nil, output_path: nil)
-        PrintPdfCommandRunner.new(options, target_output, config_path:, output_path:).call
+      # @param config_path [String] 生成 config（-c で vivliostyle へ渡す）
+      # @param output_path [String] config の output に対応する成否確認先
+      # @return [Boolean] ビルドが成功し出力ファイルまで生成できたか
+      def execute_print_pdf(options, config_path:, output_path:)
+        PrintPdfCommandRunner.new(options, config_path:, output_path:).call
       end
 
-      # npx vivliostyle build をラップして PDF を生成する
+      # npx vivliostyle build をラップして PDF を生成する。
+      # 常に workspace の生成 config（用途別 entries を同梱・P4 §3.2）を -c で渡す。
+      # かつての「ルート entries.js ＋ ルート config」の手動フロー経路は
+      # 実体消滅につき撤去した（vivlioverso-manual-flow-removal-spec.md）。
       class PdfCommandRunner
-        # vivliostyle build の既定出力ファイル名（最終成果物は Step 14 でリネームされる）
-        DEFAULT_OUTPUT_PDF = 'output.pdf'
-
-        # @param config_path [String, nil] 生成 config のパス（指定時は `-c` で渡す。
-        #   entries は config が import するためルート entries.js には依存しない）
-        # @param output_path [String, nil] config の output と同じパス（成否確認用）
-        def initialize(options, target_output, config_path: nil, output_path: nil)
+        # @param config_path [String] 生成 config のパス（`-c` で渡す）
+        # @param output_path [String] config の output と同じパス（成否確認用）
+        def initialize(options, config_path:, output_path:)
           @options = options || {}
-          @target_output = target_output
           @config_path = config_path
-          @output_path_override = output_path
+          @output_path = output_path
           @build_success = false
         end
 
@@ -115,14 +110,12 @@ module VivlioStarter
         # ことがあり、その際 system は非ゼロを返すか出力が生成されない。呼び出し側
         # （パイプライン）がリトライ・中断を判断できるよう、真の成否を返す。
         def build_succeeded?
-          return false unless @build_success
-
-          File.exist?(rename_requested? ? target_output : output_path)
+          @build_success && File.exist?(output_path)
         end
 
         private
 
-        attr_reader :options, :target_output, :config_path
+        attr_reader :options, :config_path, :output_path
 
         def apply_verbose
           ENV['VERBOSE'] = '1' if options[:verbose]
@@ -130,8 +123,6 @@ module VivlioStarter
 
         # Vivliostyle CLI を実行して PDF を生成する
         def execute_build
-          # 生成 config は entries を同梱するため、ルート entries.js の存在確認は不要
-          ensure_entries_file! unless config_path
           start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
           @build_success = if quiet_mode?
@@ -145,162 +136,25 @@ module VivlioStarter
           Common.record_vivliostyle_build(elapsed, Common.current_step_label)
         end
 
-        def ensure_entries_file!
-          return if File.exist?(entries_file_path)
-
-          Common.log_info('[pdf] entries.js が存在しないため全HTMLから再生成します')
-          EntriesCommands.execute_entries({}, [])
-
-          return if File.exist?(entries_file_path)
-
-          raise 'entries.js の再生成に失敗しました'
-        rescue StandardError => e
-          raise unless e.is_a?(RuntimeError) && e.message == 'entries.js の再生成に失敗しました'
-
-          Common.log_error('[pdf] entries.js の自動生成に失敗したためビルドを中止します')
-          raise
-        end
-
-        def entries_file_path
-          File.join(Dir.pwd, 'entries.js')
-        end
-
         # quiet モードが有効かどうか返す
         # （reload_configuration! 後の stale 参照を避けるため CONFIG は都度参照する）
         def quiet_mode?
           (ENV['VIVLIO_QUIET'] == '1') || Common.truthy?(Common::CONFIG.vivliostyle.quiet)
         end
 
-        # 実行するビルドコマンド文字列を組み立てる
-        # 生成 config 指定時は cwd（ルート）から -c で渡す（E1: パス解決は cwd 基準）。
-        # -d（single-doc）は生成 config と併用不可（E5）のため付けない。
-        def build_command
-          return "npx vivliostyle build -c #{config_path}" if config_path
-
-          cmd = 'npx vivliostyle build'
-          cmd += ' -d' if SingleDocDecider.new.call
-          cmd
-        end
+        # 実行するビルドコマンド文字列を組み立てる。
+        # 生成 config は cwd（ルート）から -c で渡す（E1: パス解決は cwd 基準）。
+        # -d（single-doc）は生成 config と併用不可（E5）のため使わない。
+        def build_command = "npx vivliostyle build -c #{config_path}"
 
         # ビルド結果に応じてログを出す
         def handle_build_result
           if @build_success
-            handle_successful_build
+            Common.log_success('PDFの生成が完了しました')
+            Common.log_info("出力先: #{File.expand_path(output_path)}")
           else
             Common.log_error('PDFの生成に失敗しました')
           end
-        end
-
-        # 成功時の出力ファイル処理を行う
-        def handle_successful_build
-          return finalize_default_output unless rename_requested?
-
-          rename_output_file
-        end
-
-        # リネーム指定があるかどうか返す
-        def rename_requested?
-          target_output && !target_output.to_s.strip.empty?
-        end
-
-        # 出力ファイルのパスを返す（生成 config 指定時はその output と同じパス）
-        def output_path
-          @output_path_override || DEFAULT_OUTPUT_PDF
-        end
-
-        # 出力先の絶対パスをログ出力する
-        def log_output_location(path)
-          Common.log_info("出力先: #{File.expand_path(path)}")
-        end
-
-        # 生成された PDF をターゲットにリネームする
-        def rename_output_file
-          unless File.exist?(output_path)
-            Common.log_warn("PDF生成は成功しましたが、出力ファイルが見つかりません: #{output_path}")
-            return
-          end
-
-          return finalize_default_output if same_target_path?
-
-          perform_rename
-        end
-
-        # 出力先をそのまま利用する際の後処理
-        def finalize_default_output
-          Common.log_success('PDFの生成が完了しました')
-          log_output_location(output_path)
-        end
-
-        # 出力先とターゲットが同一パスか判定する
-        def same_target_path?
-          File.expand_path(output_path) == File.expand_path(target_output)
-        end
-
-        # 出力 PDF をターゲットへ移動する
-        def perform_rename
-          FileUtils.rm_f(target_output)
-          FileUtils.mv(output_path, target_output)
-          Common.log_success("PDFの生成が完了しました（リネーム: #{output_path} → #{target_output}）")
-          log_output_location(target_output)
-        rescue StandardError => e
-          Common.log_warn("PDFのリネームに失敗しました: #{e}")
-        end
-      end
-
-      # --single-doc オプションの有効化可否を判定する
-      class SingleDocDecider
-        # single-doc を有効化すべきかどうか返す
-        def call
-          return false unless requested?
-          return false unless config_allows_single_doc?
-          return false unless entries_js_allows_single_doc?
-
-          true
-        rescue StandardError => e
-          Common.log_warn("[pdf] --single-doc 判定に失敗: #{e}。安全側で無効化します")
-          false
-        end
-
-        private
-
-        # single_doc が要求されているか（環境変数でのみ有効化できる開発者向け機能）
-        def requested?
-          ENV['VIVLIO_SINGLE_DOC'] == '1'
-        end
-
-        # vivliostyle.config.js が entries.js を参照していないか
-        def config_allows_single_doc?
-          path = root_join('vivliostyle.config.js')
-          return true unless File.exist?(path)
-
-          text = File.read(path, encoding: 'utf-8')
-          return true unless text.match?(/entries\.(js|mjs)\b/)
-
-          Common.log_info('[pdf] vivliostyle.config.js が entries.js を参照しているため --single-doc を無効化します')
-          false
-        rescue StandardError
-          true
-        end
-
-        # entries.js のエントリ数が 1 件か判定する
-        def entries_js_allows_single_doc?
-          path = root_join('entries.js')
-          unless File.exist?(path)
-            Common.log_info('[pdf] entries.js が見つからないため --single-doc は無効化します')
-            return false
-          end
-
-          text = File.read(path, encoding: 'utf-8')
-          paths = text.scan(/"path"\s*:/)
-          return true if paths.size == 1
-
-          Common.log_info("[pdf] entries.js に複数エントリ(#{paths.size})があるため --single-doc は無効化します")
-          false
-        end
-
-        # プロジェクトルート配下のファイルパスを返す
-        def root_join(name)
-          File.join(Dir.pwd, name)
         end
       end
 
@@ -356,8 +210,10 @@ module VivlioStarter
             @input_pdf  = input
             @output_pdf = default_compressed_name(input)
           else
-            # vs pdf:compress（引数なし）
-            @input_pdf  = PdfCommandRunner::DEFAULT_OUTPUT_PDF
+            # vs pdf:compress（引数なし）: book.yml から解決した最終成果物名を既定入力にする
+            # （例: vivlio_starter.pdf。パイプラインが output.pdf をこの名前へリネームするため、
+            #  ルートに残る閲覧用 PDF はこの動的名になる）
+            @input_pdf  = Common.generate_output_filename('pdf')
             @output_pdf = default_compressed_name(@input_pdf)
           end
         end
@@ -794,14 +650,8 @@ module VivlioStarter
 
         # トンボ・塗り足しオプションを付加したビルドコマンドを組み立てる
         # book.yml の output.print_pdf.bleed / crop_marks を参照
-        # 生成 config 指定時は -c で渡す（-d は併用不可・E5）
         def build_command
-          cmd = 'npx vivliostyle build'
-          if config_path
-            cmd += " -c #{config_path}"
-          elsif SingleDocDecider.new.call
-            cmd += ' -d'
-          end
+          cmd = "npx vivliostyle build -c #{config_path}"
 
           print_cfg = Common::CONFIG.output.print_pdf
           bleed = print_cfg.bleed&.to_s || '3mm'

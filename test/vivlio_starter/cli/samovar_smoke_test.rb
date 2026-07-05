@@ -26,7 +26,7 @@ module VivlioStarter
     # ================================================================
     class SamovarCommandsSmokeTest < Minitest::Test
       # テスト対象のコマンドクラス一覧
-      # 注: entries, toc, pre_process, post_process, convert は
+      # 注: entries, toc, pre_process, post_process, convert, pdf は
       #     build コマンドから内部的に呼び出される純粋な内部処理に移行済み
       COMMAND_CLASSES = {
         build: SamovarCommands::BuildCommand,
@@ -36,7 +36,6 @@ module VivlioStarter
         doctor: SamovarCommands::DoctorCommand,
         help: SamovarCommands::HelpCommand,
         new: SamovarCommands::NewCommand,
-        pdf: SamovarCommands::PdfCommand,
         rename: SamovarCommands::RenameCommand,
         resize: SamovarCommands::ResizeCommand,
         "pdf:read": SamovarCommands::PdfReadCommand
@@ -97,9 +96,9 @@ module VivlioStarter
                'CleanCommand から CleanCommands が参照可能であるべき'
       end
 
-      def test_pdf_command_resolves_pdf_commands
+      def test_pdf_compress_command_resolves_pdf_commands
         assert defined?(VivlioStarter::CLI::PdfCommands),
-               'PdfCommand から PdfCommands が参照可能であるべき'
+               'PdfCompressCommand から PdfCommands が参照可能であるべき'
       end
 
       def test_new_command_resolves_new_commands

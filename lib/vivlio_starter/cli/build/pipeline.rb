@@ -243,7 +243,7 @@ module VivlioStarter
                                .select { File.exist?(it) }
           config = Build::VivliostyleConfigWriter.write!(name: 'single', entry_htmls:,
                                                          output: single_mode_output_pdf)
-          PdfCommands.execute_pdf({}, nil, config_path: config, output_path: single_mode_output_pdf)
+          PdfCommands.execute_pdf({}, config_path: config, output_path: single_mode_output_pdf)
         end
 
         # single mode の中間出力 PDF（ワークスペース pdf/ 内）

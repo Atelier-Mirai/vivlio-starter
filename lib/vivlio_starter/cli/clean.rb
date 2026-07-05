@@ -9,11 +9,10 @@
 #
 # 削除対象:
 #   - .cache/vs/build/: ビルドワークスペース（P4: 現行パイプラインの中間物はここに閉じる）
-#   - .vivliostyle/: Vivliostyle CLI のワークディレクトリ（手動フロー vs pdf 用）
-#   - entries.js: 手動フロー（vs entries）が生成する ES Module
+#   - .vivliostyle/: Vivliostyle CLI のワークディレクトリ（旧バージョンの残骸）
 #   - _index_review.md 等: vs index:auto が著者レビュー用にルートへ出す作業ファイル
-#   - ルートの *.html / 章 .md / 中間 PDF / _index_matches.yml 等: 旧バージョン（P4/P4b 以前）の残骸掃除
-#     （LEGACY_* パターン・1 リリース残して V2.0 で撤去予定）
+#   - ルートの *.html / 章 .md / 中間 PDF / entries.js 等: 旧バージョン（P4 以前・
+#     撤去済み手動フロー）の残骸掃除（LEGACY_* パターン・1 リリース残して V2.0 で撤去予定）
 #   - .cache/vs/: ビルドキャッシュ（--cache オプション）
 #   - .cache/metrics/: metrics キャッシュ（--cache オプション）
 #   - covers/: 生成されたカバー画像（--cover オプション、マスターは保持）
@@ -58,11 +57,10 @@ module VivlioStarter
       }.freeze
 
       # 現行機能がプロジェクトルートへ生成する作業ファイルの掃除パターン。
-      # - entries.js: 著者向け手動フロー（vs entries → vs pdf）の生成物
       # - _index_review.md / _index_glossary_review.md: vs index:auto（著者レビュー用）の生成物
-      #   （_index_matches.yml は P4b で workspace 化したため LEGACY_ROOT_PATTERNS へ移動）
+      #   （_index_matches.yml は P4b で workspace 化、entries.js は手動フロー撤去で
+      #    いずれも LEGACY_ROOT_PATTERNS へ移動）
       ACTIVE_ROOT_PATTERNS = %w[
-        entries.js
         _index_review.md _index_glossary_review.md
       ].freeze
 
@@ -91,6 +89,8 @@ module VivlioStarter
         # EPUB 中間ファイル（P4 段階 4 で epub/・kindle/ 内生成へ移行）
         'vivliostyle.config.epub.js',
         'entries.epub.js',
+        # 旧手動フロー（vs entries → vs pdf・撤去済み）の生成物
+        'entries.js',
         # EPUB 同梱用 book-settings.css 変種（正規の .cache/vs/ 版は --cache で掃除）
         'book-settings.css',
         # 索引スキャンのルート出力（P4b で workspace 直下へ移行・.cache/vs 側は --cache で掃除）
@@ -201,9 +201,9 @@ module VivlioStarter
           return
         end
 
-        # 手動フロー（vs pdf）と旧バージョンのビルドが残す Vivliostyle ワークディレクトリ。
-        # パイプラインの生成 config は workspaceDir をワークスペース内へ向けるため
-        # ルートには生成しない（P4 §5.6・段階 5）。
+        # 旧バージョンのビルド・撤去済み手動フロー（vs pdf）が残していた
+        # Vivliostyle ワークディレクトリ。パイプラインの生成 config は workspaceDir を
+        # ワークスペース内へ向けるためルートには生成しない（P4 §5.6・段階 5）。
         Common.log_action('.vivliostyle ディレクトリを削除中...')
         FileUtils.rm_rf('.vivliostyle')
 

@@ -65,8 +65,6 @@ mybook/
     catalog.yml      ← 章構成
     page_presets.yml ← ページレイアウト設定
     index_glossary_terms.yml     ← 用語集
-  vivliostyle.config.js
-  entries.js
   package.json
   Gemfile
 ```
