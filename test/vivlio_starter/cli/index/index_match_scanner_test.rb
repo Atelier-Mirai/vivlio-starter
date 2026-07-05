@@ -232,8 +232,8 @@ module VivlioStarter
 
           @scanner.scan_all_chapters!(%w[11-a 12-b])
 
-          assert File.exist?('_index_matches.yml')
-          data = YAML.load_file('_index_matches.yml')
+          assert File.exist?(Common::INDEX_MATCHES_FILE)
+          data = YAML.load_file(Common::INDEX_MATCHES_FILE)
           assert_equal 2, data['total_matches']
         end
 

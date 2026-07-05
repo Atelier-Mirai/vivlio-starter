@@ -55,6 +55,10 @@ module VivlioStarter
       BUILD_EPUB_DIR   = "#{BUILD_DIR}/epub"
       BUILD_KINDLE_DIR = "#{BUILD_DIR}/kindle"
 
+      # 索引スキャン結果の中間 YAML（書き手 IndexMatchScanner・読み手 UnifiedPageBuilder）。
+      # ルートではなくワークスペース直下へ置き、ルート無汚染を保つ（P4b §2.5）。
+      INDEX_MATCHES_FILE = "#{BUILD_DIR}/_index_matches.yml"
+
       # 中間 HTML/md から著者資産（stylesheets/ images/ 等）への相対プレフィックス。
       # 生成時に正しいプレフィックスで書く（コピー時 gsub はしない）が P4 §3.3 の方針。
       # 資産参照を生成する choke point（FrontmatterGenerator / ImagePathNormalizer /
@@ -823,6 +827,7 @@ module VivlioStarter
       def build_dir          = BUILD_DIR
       def build_html_dir     = BUILD_HTML_DIR
       def build_pdf_dir      = BUILD_PDF_DIR
+      def index_matches_file = INDEX_MATCHES_FILE
 
       # 4 消費者 dir を作成してワークスペースを準備する
       def ensure_build_workspace!
@@ -904,7 +909,7 @@ module VivlioStarter
                       :missing_external_command_message, :run_svg_converter!, :format_converter_stderr,
                       :blank?, :cache_cfg, :cache_dir, :cache_enabled?,
                       :asset_prefix, :build_dir, :build_html_dir, :build_pdf_dir,
-                      :ensure_build_workspace!,
+                      :index_matches_file, :ensure_build_workspace!,
                       :stylesheets_dir, :templates_dir, :to_roman_lower,
                       :template_path, :chapter_template_path, :preface_template_path,
                       :appendix_template_path, :postface_template_path,

@@ -183,7 +183,8 @@ module VivlioStarter
             'total_matches' => terms_hash.values.sum { it.size },
             'terms' => terms_hash
           }
-          File.write('_index_matches.yml', data.to_yaml)
+          FileUtils.mkdir_p(File.dirname(Common::INDEX_MATCHES_FILE))
+          File.write(Common::INDEX_MATCHES_FILE, data.to_yaml)
         end
       end
     end

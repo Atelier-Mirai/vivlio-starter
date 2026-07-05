@@ -49,7 +49,6 @@ module VivlioStarter
           [letter, /^[#{letter.downcase}#{letter}]/]
         end.freeze
 
-        INDEX_MATCH_FILE = '_index_matches.yml'
         # 出力先はワークスペースの html/（P4 §3.4-1）
         INDEX_OUTPUT_FILE = File.join(Common::BUILD_HTML_DIR, '_indexpage.html')
         GLOSSARY_OUTPUT_FILE = File.join(Common::BUILD_HTML_DIR, '_glossarypage.html')
@@ -67,8 +66,8 @@ module VivlioStarter
         # 索引ページを生成
         # @return [String, nil] 出力ファイルパス、または nil
         def build_index!
-          unless File.exist?(INDEX_MATCH_FILE)
-            Common.log_warn("索引データが見つかりません: #{INDEX_MATCH_FILE}")
+          unless File.exist?(Common::INDEX_MATCHES_FILE)
+            Common.log_warn("索引データが見つかりません: #{Common::INDEX_MATCHES_FILE}")
             return nil
           end
 
@@ -123,7 +122,7 @@ module VivlioStarter
 
         # 索引データを読み込み
         def load_index_data!
-          data = YAML.load_file(INDEX_MATCH_FILE, permitted_classes: [Time, Symbol])
+          data = YAML.load_file(Common::INDEX_MATCHES_FILE, permitted_classes: [Time, Symbol])
           @index_data = data['terms'] || {}
 
           # HierarchicalIndex にエントリを追加（全リンクを保持、重複排除なし）
