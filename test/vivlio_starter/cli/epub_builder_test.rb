@@ -256,6 +256,66 @@ module VivlioStarter
     end
 
     # ================================================================
+    # EPUB config メタデータ解決の一本化（P3-4 §2.6）
+    # ================================================================
+    # generate_epub_config! の title/author/language が VivliostyleConfigWriter の
+    # リゾルバ（ルート config・パイプライン config と共通の単一の解決規則）から
+    # 生成されることを固定する。旧インライン解決との二重管理を防ぐ回帰網。
+    class EpubConfigMetadataUnificationTest < Minitest::Test
+      Writer = Build::VivliostyleConfigWriter
+      LOG_METHODS = %i[log_info log_success log_warn log_error log_action].freeze
+
+      def setup
+        @original_dir = Dir.pwd
+        @temp_dir = Dir.mktmpdir('epub-config-meta')
+        Dir.chdir(@temp_dir)
+        FileUtils.mkdir_p('config')
+        %w[catalog page_presets post_replace_list].each { File.write("config/#{it}.yml", '{}') }
+        @saved_logs = LOG_METHODS.to_h { [it, Common.method(it)] }
+        LOG_METHODS.each { |m| Common.define_singleton_method(m) { |*_a, **_k| } }
+      end
+
+      def teardown
+        @saved_logs.each { |m, impl| Common.define_singleton_method(m, impl) }
+        Dir.chdir(@original_dir)
+        FileUtils.rm_rf(@temp_dir)
+        Common.reload_configuration!(silent: true) if File.file?('config/book.yml')
+      end
+
+      def config_metadata(book:)
+        File.write('config/book.yml', { 'book' => book }.to_yaml)
+        Common.reload_configuration!(silent: true)
+        path = Build::EpubBuilder.generate_epub_config!(flavor: :epub, dir: @temp_dir)
+        lines = File.readlines(path)
+        %i[title author language].to_h do |key|
+          line = lines.find { it =~ /^\s*#{key}:/ }
+          [key, line[/'(.*)'/, 1]]
+        end
+      end
+
+      # main_title + subtitle 構成: EPUB config の 3 値が writer のリゾルバと一致する
+      def test_epub_config_metadata_matches_writer_resolvers
+        meta = config_metadata(book: { 'main_title' => 'はじめての技術書', 'subtitle' => '実践ガイド',
+                                       'author' => '早乙女 遙香', 'language' => 'ja' })
+
+        assert_equal Writer.resolve_title, meta[:title]
+        assert_equal Writer.resolve_author, meta[:author]
+        assert_equal Writer.resolve_language, meta[:language]
+        assert_equal 'はじめての技術書 実践ガイド', meta[:title]
+      end
+
+      # 著者名・言語・title キー未設定: 空文字もプレースホルダへ寄る（writer と同一規則）
+      def test_epub_config_falls_back_to_placeholders_like_writer
+        meta = config_metadata(book: { 'main_title' => 'T', 'author' => '', 'language' => '' })
+
+        assert_equal '著者名', meta[:author]
+        assert_equal 'ja', meta[:language]
+        assert_equal Writer.resolve_author, meta[:author]
+        assert_equal Writer.resolve_language, meta[:language]
+      end
+    end
+
+    # ================================================================
     # EpubCommandRunner のユニットテスト
     # ================================================================
     class EpubCommandRunnerTest < Minitest::Test

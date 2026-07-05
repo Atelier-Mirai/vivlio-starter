@@ -21,6 +21,7 @@ require 'fileutils'
 require 'open3'
 require 'tmpdir'
 require_relative '../entries'
+require_relative 'vivliostyle_config_writer'
 require_relative 'heading_image_composer'
 require_relative '../post_process/html_parser'
 require_relative '../pre_process/frontmatter_generator'
@@ -254,29 +255,19 @@ module VivlioStarter
           Common.log_action("[EPUB] vivliostyle.config.epub.js を生成しています…（flavor: #{flavor}）")
 
           config = Common::CONFIG
-          book_config = config.book
           validate_epub_layout_setting!(config, flavor:)
 
           # JS 文字列に安全に埋め込むための簡易エスケープ
           esc = ->(s) { s.to_s.gsub('\\', '\\\\').gsub("'", "\\'") }
 
-          # メタデータを book セクションから取得
-          # book.title は存在しない場合がある（main_title + subtitle から合成）
-          combined_title = [book_config&.main_title, book_config&.subtitle].compact.join(' ').strip
-          title_raw = book_config.respond_to?(:title) ? book_config.title : nil
-          title = if title_raw && !title_raw.to_s.strip.empty?
-                    title_raw
-                  else
-                    combined_title.empty? ? '書籍タイトル' : combined_title
-                  end
-          # vivliostyle 11 の config スキーマは author / language に
-          # 1 文字以上を要求する。著者名未入力（book.yml が空文字）でも EPUB を
-          # 生成できるよう、nil だけでなく空文字もプレースホルダへ寄せる
-          # （`||` は空文字を素通りさせるため不可）。
-          author   = book_config&.author
-          author   = '著者名' if author.to_s.strip.empty?
-          language = book_config&.language
-          language = 'ja' if language.to_s.strip.empty?
+          # メタデータ解決は VivliostyleConfigWriter へ一本化する（P3-4 §2.6）。
+          # title は book.title 明示 → main_title + subtitle 合成 → プレースホルダ、
+          # author / language は空文字もプレースホルダへ寄せる（vivliostyle 11 の
+          # config スキーマが 1 文字以上を要求するため）。規則の二重管理を避け、
+          # ルート config・パイプライン config・EPUB config で同一値を保証する。
+          title    = VivliostyleConfigWriter.resolve_title
+          author   = VivliostyleConfigWriter.resolve_author
+          language = VivliostyleConfigWriter.resolve_language
 
           # ページサイズを解決（vivliostyle.rb から移植）
           page_size = resolve_page_size(config)

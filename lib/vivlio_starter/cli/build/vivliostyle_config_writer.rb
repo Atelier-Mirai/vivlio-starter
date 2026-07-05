@@ -87,8 +87,9 @@ module VivlioStarter
           path
         end
 
-        # config 全文を組み立てる。メタデータの解決規則は EPUB 経路
-        # （EpubBuilder.generate_epub_config!）と同一に保つ。
+        # config 全文を組み立てる。メタデータの解決（resolve_title/author/language・
+        # EpubBuilder.resolve_page_size）はルート config・EPUB config（P3-4 §2.6 で
+        # EpubBuilder.generate_epub_config! が本モジュールのリゾルバを呼ぶ）と共通。
         def config_content(entries_basename:, output:)
           esc = ->(s) { s.to_s.gsub('\\', '\\\\').gsub("'", "\\'") }
 
