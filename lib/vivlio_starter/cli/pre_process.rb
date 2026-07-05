@@ -338,21 +338,23 @@ module VivlioStarter
         end
 
         # ------------------------------------------------
-        # Phase 3: 対象のルート直下 .md に対してのみ変換を適用
+        # Phase 3: 対象のワークスペース内（html/）.md に対してのみ変換を適用
+        # （前処理済み中間 .md の置き場・P4 §3.4-1）
         # ------------------------------------------------
         processed_chapters = {}
 
         md_files.each do |md_file|
           filename = File.basename(md_file)
-          next unless File.exist?(filename)
+          workspace_md = File.join(Common::BUILD_HTML_DIR, filename)
+          next unless File.exist?(workspace_md)
 
-          content = File.read(filename, encoding: 'utf-8')
+          content = File.read(workspace_md, encoding: 'utf-8')
 
           # キャプション付きブロックをHTML化
           transformed = CrossReferenceProcessor.transform_captioned_blocks(content, filename, labels_map)
 
           # 本文中の @id を番号付きテキストに置換
-          # - 実際の置換はプロジェクトルート直下の .md に対して実行
+          # - 実際の置換はワークスペース内（html/）の .md に対して実行
           # - 警告用の行番号は contents/ 配下の元Markdownに対して計算してログ出力する
 
           # 1) contents/ 側で未定義参照を検出（警告・行番号用）
@@ -364,9 +366,9 @@ module VivlioStarter
             logging_errors = logging_result[:errors]
           end
 
-          # 2) ルート直下 .md に対して置換を適用（こちらのエラーは行番号がずれるため無視）
+          # 2) ワークスペース内 .md に対して置換を適用（こちらのエラーは行番号がずれるため無視）
           ref_result = CrossReferenceProcessor.replace_references(transformed, labels_map, nil)
-          processed_chapters[filename] = ref_result[:content]
+          processed_chapters[workspace_md] = ref_result[:content]
 
           # 3) エラー集計とログは contents/ 側の行番号に基づく
           all_errors.concat(logging_errors)
@@ -397,10 +399,10 @@ module VivlioStarter
           )
         end
 
-        # 処理済みのファイルを書き戻す（プロジェクトルート直下の .md）
-        processed_chapters.each do |filename, content|
-          File.write(filename, content, encoding: 'utf-8')
-          Common.log_success("更新: #{filename}")
+        # 処理済みのファイルを書き戻す（ワークスペース内の .md）
+        processed_chapters.each do |path, content|
+          File.write(path, content, encoding: 'utf-8')
+          Common.log_success("更新: #{path}")
         end
 
         Common.log_success("\n=== クロスリファレンス処理が完了しました ===")

@@ -37,9 +37,9 @@ module VivlioStarter
         EPUB_ENTRIES_FILE = 'entries.epub.js'
         # EPUB デフォルト出力ファイル名
         EPUB_OUTPUT_FILE  = 'output.epub'
-        # EPUB へ同梱する book-settings.css の配置先（ルート直下）。
-        # 生成物の正規の置き場は .cache/vs/ だが copyAsset が `.cache/**` を除外するため、
-        # EPUB では同梱される場所（ルート直下）へ url() を組み替えた変種をコピーする（§7.2）。
+        # EPUB へ同梱する book-settings.css の配置先（消費者 dir 直下）。
+        # 生成物の正規の置き場は .cache/vs/ だが、EPUB パッケージルート（= 消費者 dir）の
+        # 外にあるため、dir 直下へ url() を組み替えた変種をコピーして同梱する（§7.2 → P4 §5.4）。
         EPUB_BOOK_SETTINGS_FILE = 'book-settings.css'
 
         # EPUB で除外する特殊ページ
@@ -71,7 +71,7 @@ module VivlioStarter
         INLINE_WEBP_DECL_PATTERN = /[\w-]+\s*:\s*[^;{}]*url\([^)]*\.webp[^)]*\)[^;}]*;?/i
 
         # `url(....webp)` を含む CSS 宣言を 1 つ検出する正規表現（1 宣言＝1 マッチ）。
-        # WebP は EPUB から全除外する（build_copy_asset_excludes_config）ため、CSS の
+        # WebP は Kindle の EPUB へ同梱しない（localize_assets! が除外）ため、CSS の
         # `background-image: url(...webp)` や `--frontispiece-image: url(...webp)` が参照切れ
         # （RSC-007 / Kindle W14010）になる。これらの背景はリフロー EPUB で元々描画されない
         # （扉絵/節絵は合成画像へ置換済み）ので、宣言ごと EPUB 内 CSS から除去する。
@@ -86,6 +86,96 @@ module VivlioStarter
         EMOJI_IMG_PATTERN = /<img\b[^>]*\bclass="[^"]*\bvs-emoji\b[^"]*"[^>]*>/
 
         module_function
+
+        # ================================================================
+        # ワークスペース消費者 dir（P4 段階 4・実験 E2 の確定案）
+        # ================================================================
+        # EPUB/Kindle はそれぞれ .cache/vs/build/{epub,kindle}/ で完結する。
+        # html/ の原本から asset_prefix を剥がしてステージし、参照資産を dir 内へ
+        # ローカライズ（選択コピー）することで、entryContext = dir がそのまま
+        # EPUB パッケージルートになる（dot-dir 混入が構造的に起こらない・§4-1）。
+        # ================================================================
+
+        # html/ の全 HTML を消費者 dir へ展開する（asset_prefix 剥がし）。
+        # 剥がした後の参照（stylesheets/… ・images/…）は dir 基準の相対となり、
+        # ローカライズされた資産と対応する。章間リンクは同一 dir 内のため不変。
+        #
+        # @param dir [String] 消費者 dir（BUILD_EPUB_DIR / BUILD_KINDLE_DIR）
+        def stage_consumer_htmls!(dir)
+          FileUtils.mkdir_p(dir)
+          Dir.glob(File.join(Common::BUILD_HTML_DIR, '*.html')).each do |src|
+            content = File.read(src, encoding: 'utf-8').gsub(Common::ASSET_PREFIX, '')
+            File.write(File.join(dir, File.basename(src)), content, encoding: 'utf-8')
+          end
+        end
+
+        # EPUB が参照する資産を消費者 dir 内へローカライズする（E2: 選択コピーが必須。
+        # copyAsset は entryContext 配下を全同梱するため、「必要物だけを dir に置く」ことが
+        # そのままパッケージ内容の選択になる。旧 copyAsset.excludes の知識はここへ移した）。
+        # - images/**: _epub_assets/ と headings/ は除外（消費者 dir 内へ直接生成されるため、
+        #   ルートの stale な残骸を拾わない）。kindle は WebP も除外（transcode 済み・非対応）。
+        # - stylesheets/**: twemoji 直下 svg（絵文字マスター・プレーン復元で未参照）と
+        #   フォント実体（非埋め込み時）を除外。kindle は WebP も除外（CSS 参照は sanitize が除去）。
+        # - カバー画像: embed 有効時のみ dir/covers/ へコピー（cover は entryContext 基準で解決）。
+        #
+        # @param dir [String] 消費者 dir
+        # @param flavor [Symbol] :epub / :kindle
+        def localize_assets!(dir, flavor:)
+          copy_asset_tree!(Common.images_dir, dir) { localized_image?(it, flavor) }
+          copy_asset_tree!(Common.stylesheets_dir, dir) { localized_stylesheet?(it, flavor) }
+          localize_cover_image!(dir, flavor)
+          Common.log_info("[EPUB] 参照資産を #{dir} 内へローカライズしました（flavor: #{flavor}）")
+        end
+
+        # src_root 配下のファイルを、フィルタ（root からの相対パスを yield）を通して
+        # dir/src_root/ へミラーコピーする。
+        def copy_asset_tree!(src_root, dir)
+          return unless Dir.exist?(src_root)
+
+          Dir.glob(File.join(src_root, '**', '*')).each do |src|
+            next unless File.file?(src)
+            next unless yield(src.delete_prefix("#{src_root}/"))
+
+            dest = File.join(dir, src)
+            FileUtils.mkdir_p(File.dirname(dest))
+            FileUtils.cp(src, dest)
+          end
+        end
+
+        # images/ 配下でローカライズ対象とするか（rel は images/ からの相対パス）。
+        def localized_image?(rel, flavor)
+          return false if rel.start_with?("#{EPUB_ASSETS_REL_SUBDIR}/", "#{HEADINGS_REL_SUBDIR}/")
+          return false if flavor == :kindle && rel.match?(/\.webp\z/i)
+
+          true
+        end
+
+        # stylesheets/ 配下でローカライズ対象とするか（rel は stylesheets/ からの相対パス）。
+        # twemoji 直下 svg は restore_plain_emoji_for_epub! で参照されなくなるため両フレーバで
+        # 除外する（vs-techbook/ サブツリーの囲み数字等は同梱維持）。クリーン EPUB（:epub）は
+        # WebP を高画質のまま同梱維持する ── EPUB 3.3 では image/webp がコアメディアタイプ（§4）。
+        def localized_stylesheet?(rel, flavor)
+          return false if rel.match?(%r{\Atwemoji/[^/]+\.svg\z})
+          return false if rel.start_with?('fonts/') && !embed_fonts?
+          return false if flavor == :kindle && rel.match?(/\.webp\z/i)
+
+          true
+        end
+
+        # 表紙埋め込みが有効なフレーバに限り、カバー画像を dir/covers/ へコピーする。
+        # config の cover: './covers/…' は entryContext 基準で解決されるため（CLI 実装確認済み）、
+        # パッケージに必要なのは埋め込み対象の 1 枚のみ（frontcover/backcover PNG は同梱しない）。
+        def localize_cover_image!(dir, flavor)
+          embed = flavor == :kindle ? Common.kindle_embed? : Common.epub_embed?
+          return unless embed
+
+          cover = resolve_cover_image_path(Common::CONFIG)
+          return unless cover && File.exist?(cover)
+
+          dest = File.join(dir, cover)
+          FileUtils.mkdir_p(File.dirname(dest))
+          FileUtils.cp(cover, dest)
+        end
 
         # EPUB 用 entries.js を生成する
         # PDF 用の構成から目次・裏表紙を除外した EPUB 専用エントリを生成
@@ -108,8 +198,8 @@ module VivlioStarter
           # EPUB リフロー文脈の目印 vs-epub を全 body に付与（クリーン・Kindle 共通）。
           # クリーン EPUB のコード折返し等、PDF を壊さず EPUB だけに効かせる体裁の足場（§6 A 案）。
           mark_body_for_epub!(chapter_htmls)
-          # 生成物 book-settings.css を EPUB へ同梱（.cache/** 除外との衝突を解消・§7.2）
-          bundle_book_settings_for_epub!(chapter_htmls)
+          # 生成物 book-settings.css を消費者 dir 直下へ同梱（パッケージルート内へ・§7.2 → P4 §5.4）
+          bundle_book_settings_for_epub!(chapter_htmls, base_dir)
           # 索引・用語集を EPUB 用に書き換え（空リンクに連番テキストを挿入）
           post_process_index_glossary_for_epub!(chapter_htmls)
           # 段落内脚注 span の重複 id を除去（XHTML の id 重複 ERROR を回避）
@@ -146,9 +236,21 @@ module VivlioStarter
         # EPUB 専用 vivliostyle.config.js を生成する
         # cover.embed 設定に応じて表紙画像の埋め込みを制御
         #
+        # パス表記の規則（実験 E1/E2 で確定・P4 §6.1）:
+        #   - entryContext / output / workspaceDir は cwd（プロジェクトルート）相対で書く。
+        #     実行 cwd はルート固定。
+        #   - entries の path は entryContext 基準（'./xx.html'）。
+        #   - cover は entryContext 基準で解決される → ローカライズ済みの 'covers/…' がそのまま通る。
+        #   - copyAsset の選択は「dir 内に必要資産だけを置く」ローカライズ（localize_assets!）が担う
+        #     ため excludes は不要（E2: copyAsset 既定は entryContext 配下を全同梱）。
+        #   - workspaceDir は PDF 用生成 config（VivliostyleConfigWriter）と同じワークスペース内を
+        #     指定し、ルートへの一時 .vivliostyle/ 生成をなくす（P4 §5.6・段階 5）。
+        #     消費者 dir 内に置くと copyAsset がパッケージへ巻き込むため dir の外へ置く。
+        #
         # @param flavor [Symbol] :epub（表紙は book.yml の embed 設定に従う）/ :kindle（embed:false 固定・§1-6）
+        # @param dir [String] 消費者 dir（= entryContext・生成先。既定 '.' は単体テスト用）
         # @return [String] 生成されたファイルパス
-        def generate_epub_config!(flavor: :epub)
+        def generate_epub_config!(flavor: :epub, dir: '.')
           Common.log_action("[EPUB] vivliostyle.config.epub.js を生成しています…（flavor: #{flavor}）")
 
           config = Common::CONFIG
@@ -182,9 +284,6 @@ module VivlioStarter
           # 表紙画像の埋め込み設定を取得（kindle は二重表紙回避のため embed:false 固定・§1-6）
           cover_line = build_cover_config_line(config, esc, flavor:)
 
-          # 原稿外ファイルの EPUB 混入を防ぐ copyAsset.excludes（WebP 除外は kindle のみ・§4）
-          copy_asset_lines = build_copy_asset_excludes_config(flavor:)
-
           # 横書き固定（将来の縦書き対応に備えてハードコーディング）
           reading_progression = 'ltr'
 
@@ -200,18 +299,21 @@ module VivlioStarter
               language: '#{esc.call(language)}',
               size: '#{esc.call(page_size)}',
               readingProgression: '#{esc.call(reading_progression)}',
-            #{cover_line}#{copy_asset_lines}  entry: entries,
+              workspaceDir: '#{Common::BUILD_DIR}/.vivliostyle',
+              entryContext: '#{esc.call(dir)}',
+            #{cover_line}  entry: entries,
               output: [
-                './#{EPUB_OUTPUT_FILE}'
+                '#{esc.call(File.join(dir, EPUB_OUTPUT_FILE))}'
               ]
             };
 
             export default vivliostyleConfig;
           JS
 
-          File.write(EPUB_CONFIG_FILE, config_content)
-          Common.log_success("[EPUB] #{EPUB_CONFIG_FILE} を生成しました")
-          EPUB_CONFIG_FILE
+          config_path = File.join(dir, EPUB_CONFIG_FILE)
+          File.write(config_path, config_content)
+          Common.log_success("[EPUB] #{config_path} を生成しました")
+          config_path
         end
 
         # book.yml の output.epub.layout / output.kindle.layout を検証する。
@@ -289,12 +391,16 @@ module VivlioStarter
           ].flatten.reject { excluded_basename?(it) }
         end
 
-        # EPUB 用 entries.js をファイルに書き出す
+        # EPUB 用 entries.js をファイルに書き出す。
+        # path は entryContext（= base_dir）基準の './xx.html' で書く（E2 の確定案。
+        # 全エントリは base_dir 直下にあるため basename がそのまま entryContext 相対になる）。
         #
-        # @param base_dir [String] ベースディレクトリ
+        # @param base_dir [String] ベースディレクトリ（= 消費者 dir）
         # @param html_files [Array<String>] HTML ファイルパスの配列
         def write_epub_entries(base_dir, html_files)
-          entries = html_files.map { CLI::EntriesCommands.build_entry(it) }
+          entries = html_files.map do |html|
+            CLI::EntriesCommands.build_entry(html).merge(path: "./#{File.basename(html)}")
+          end
 
           File.open(File.join(base_dir, EPUB_ENTRIES_FILE), 'w') do |f|
             f.puts 'export default ['
@@ -343,52 +449,6 @@ module VivlioStarter
           return "  // cover: 表紙画像が見つかりません\n" unless cover_image && File.exist?(cover_image)
 
           "  cover: './#{esc.call(cover_image)}',\n"
-        end
-
-        # Vivliostyle CLI は EPUB 生成時に CWD 以下のアセット
-        # （css/png/jpg 等の DEFAULT_ASSET_EXTENSIONS）を node_modules を除き
-        # 丸ごと webpub→EPUB へコピーする。原稿外ファイル（gem 雛形・仕様書・
-        # ページ画像など）が混入し肥大化・CSS-008/RSC-007 を生むため、
-        # copyAsset.excludes で明示的に除外する。
-        #
-        # @return [String] config に差し込む copyAsset ブロック（末尾改行付き）
-        def build_copy_asset_excludes_config(flavor: :epub)
-          patterns = %w[
-            lib/**
-            docs/**
-            test/**
-            sources/**
-            codes/**
-            templates/**
-            data/**
-            .cache/**
-            *_images/**
-            covers/bundled/**
-            stylesheets/twemoji/*.svg
-          ]
-          # twemoji 直下（絵文字マスター 7,000+ 個）の SVG は restore_plain_emoji_for_epub! で
-          # 参照されなくなるため両フレーバで除外する。
-
-          # WebP は Kindle のみ非対応。Kindle は transcode_webp_images_for_epub! が <img> 参照分を
-          # images/_epub_assets/ の JPEG/PNG へ移すため、残る WebP をすべて除外してよい。
-          # クリーン EPUB（:epub・Kobo/Apple Books）は WebP を高画質のまま同梱維持する（§4）
-          # ── EPUB 3.3 では image/webp がコアメディアタイプのため妥当。
-          if flavor == :kindle
-            patterns.push('images/**/*.webp', 'stylesheets/**/*.webp')
-          end
-
-          # フォント非埋め込み時は実体（51MB の TTF/OTF）も同梱しない。
-          # @font-face は sanitize_epub_css! が EPUB 内 CSS から除去する。
-          patterns << 'stylesheets/fonts/**' unless embed_fonts?
-
-          excludes = patterns.map { "      '#{it}'," }.join("\n")
-          <<~JS
-              copyAsset: {
-                excludes: [
-            #{excludes}
-                ],
-              },
-          JS
         end
 
         # EPUB にフォント実体を埋め込むかどうか。
@@ -724,8 +784,8 @@ module VivlioStarter
         # techbook の絵文字画像化（EmojiReplacer）は PDF の Type 3 障害対策で、
         # EPUB には不要（EPUB に Type 3 は存在せずリーダーのカラー絵文字で描画される）。
         # EPUB 経路でのみ <img class="... vs-emoji ...">  を alt の元絵文字へ戻し、
-        # twemoji 画像の同梱を不要にして軽量化する（build_copy_asset_excludes_config で
-        # stylesheets/twemoji 直下を除外）。囲み数字（vs-circled-number）は alt が数字で
+        # twemoji 画像の同梱を不要にして軽量化する（localize_assets! が
+        # stylesheets/twemoji 直下 svg を除外）。囲み数字（vs-circled-number）は alt が数字で
         # 字形・アクセント色を保てないため画像のまま残す。
         # ================================================================
 
@@ -824,17 +884,19 @@ module VivlioStarter
           v[/\Aurl\(\s*["']?(.*?)["']?\s*\)\z/i, 1].to_s
         end
 
-        # 生成物 book-settings.css を EPUB へ同梱する（調査報告 §7.2）。
-        # copyAsset excludes が `.cache/**` を除外するため、link を .cache/vs/ のままにすると
-        # RSC-007（参照切れ）になる。EPUB ルート直下へ変種をコピーし、章 HTML の link href を
-        # その相対（book-settings.css）へ書き換える。ルート直下 CSS からは画像相対が
-        # stylesheets/ 基準へ変わるため url() も組み替える。Kindle の webp url() 除去や
+        # 生成物 book-settings.css を EPUB へ同梱する（調査報告 §7.2 → P4 §5.4）。
+        # 正規の置き場 .cache/vs/ はパッケージルート（= 消費者 dir）の外のため、link を
+        # そのままにすると RSC-007（参照切れ）になる。消費者 dir 直下へ変種をコピーし、
+        # 章 HTML の link href をその相対（book-settings.css）へ書き換える。dir 直下 CSS からは
+        # 画像相対が stylesheets/ 基準へ変わるため url() も組み替える。Kindle の webp url() 除去や
         # マージンボックス除去は sanitize_epub_css! が同梱後の CSS へ自動適用する。
         #
         # @param html_files [Array<String>] 章 HTML パスの配列
+        # @param base_dir [String] 消費者 dir（変種 CSS の配置先）
         # @return [Array<String>] そのままの配列
-        def bundle_book_settings_for_epub!(html_files)
+        def bundle_book_settings_for_epub!(html_files, base_dir)
           source = PreProcessCommands::BookSettingsCss.output_path
+          # ステージ済み HTML の link href は asset_prefix 剥がし後の cwd 相対（= source と同値）
           src_href = source
 
           unless File.exist?(source)
@@ -843,9 +905,9 @@ module VivlioStarter
             return html_files
           end
 
-          # .cache/vs/ 基準（../../stylesheets/）→ EPUB ルート基準（stylesheets/）へ url() を組替
+          # .cache/vs/ 基準（../../stylesheets/）→ パッケージルート基準（stylesheets/）へ url() を組替
           css = File.read(source, encoding: 'utf-8').gsub('../../stylesheets/', 'stylesheets/')
-          File.write(EPUB_BOOK_SETTINGS_FILE, css, encoding: 'utf-8')
+          File.write(File.join(base_dir, EPUB_BOOK_SETTINGS_FILE), css, encoding: 'utf-8')
 
           rewrote = html_files.count do |path|
             html = File.read(path, encoding: 'utf-8')
@@ -918,6 +980,9 @@ module VivlioStarter
         def inject_heading_images_into_file!(path, context)
           return unless main_chapter_file?(path)
 
+          # 合成画像は HTML と同じ消費者 dir 配下（images/headings/）へ生成する（P4 §5.2-b）
+          context = context.merge(base_dir: File.dirname(path))
+
           html = File.read(path, encoding: 'utf-8')
           doc = PostProcessCommands::HtmlParser.parse_html_document(html)
 
@@ -951,7 +1016,7 @@ module VivlioStarter
             title = h1['data-chapter-title'].to_s.strip
             src = heading_image_src(
               image_path: context[:frontispiece], number:, title:, kind: :frontispiece,
-              font_family: context[:font_family], flavor: context[:flavor]
+              font_family: context[:font_family], flavor: context[:flavor], base_dir: context[:base_dir]
             )
             next unless src
 
@@ -973,7 +1038,8 @@ module VivlioStarter
 
             src = heading_image_src(
               image_path: context[:ornament], number:, title:, kind: :ornament,
-              font_family: context[:font_family], number_color: context[:number_color], flavor: context[:flavor]
+              font_family: context[:font_family], number_color: context[:number_color],
+              flavor: context[:flavor], base_dir: context[:base_dir]
             )
             next unless src
 
@@ -1012,10 +1078,12 @@ module VivlioStarter
         # Kindle（:kindle）は SVG 内 base64 を非対応のため平坦 JPEG へラスタライズして配る（§1-2）。
         # 入力（フレーバ・種別・画像・番号・タイトル・フォント・色）のハッシュをファイル名にして
         # 同一見出しを使い回す。フレーバを鍵に含め SVG/JPEG のキャッシュ衝突を避ける。
+        # 出力先は base_dir（消費者 dir）配下の images/headings/（著者 dir を汚さない・P4 §5.2-b）。
         # ツール不在・合成失敗時は nil（→ simple 縮退）。
-        def heading_image_src(image_path:, number:, title:, kind:, font_family:, number_color: '#333333', flavor: :epub)
+        def heading_image_src(image_path:, number:, title:, kind:, font_family:,
+                              number_color: '#333333', flavor: :epub, base_dir: '.')
           key = Digest::SHA256.hexdigest([flavor, kind, image_path, number, title, font_family, number_color].join('|'))[0, 16]
-          dir = File.join(Common.images_dir, HEADINGS_REL_SUBDIR)
+          dir = File.join(base_dir, Common.images_dir, HEADINGS_REL_SUBDIR)
           filename = "#{kind}-#{key}.#{flavor == :kindle ? 'jpg' : 'svg'}"
           abs = File.join(dir, filename)
 
@@ -1081,7 +1149,7 @@ module VivlioStarter
             src = tag[/\ssrc="([^"]*)"/i, 1]
             next tag unless src&.match?(/\.webp\z/i)
 
-            staged = cache.fetch(src) { cache[src] = stage_webp_replacement(src) }
+            staged = cache.fetch(src) { cache[src] = stage_webp_replacement(src, File.dirname(path)) }
             next tag unless staged
 
             changed = true
@@ -1094,7 +1162,9 @@ module VivlioStarter
         end
 
         # src の WebP を変換し、staging の相対パスを返す。変換不能なら nil（src 据え置き）。
-        def stage_webp_replacement(src_attr)
+        # 変換元は cwd（ルート）の著者資産を読み、出力は base_dir（消費者 dir）配下の
+        # images/_epub_assets/ に置く（著者 dir を汚さない・P4 §5.3）。
+        def stage_webp_replacement(src_attr, base_dir)
           webp_path = decode_html_entities(src_attr)
           return nil unless File.exist?(webp_path)
 
@@ -1104,7 +1174,7 @@ module VivlioStarter
             [File.expand_path(source), File.mtime(source).to_i, ext].join('|')
           )[0, 16]
 
-          dir = File.join(Common.images_dir, EPUB_ASSETS_REL_SUBDIR)
+          dir = File.join(base_dir, Common.images_dir, EPUB_ASSETS_REL_SUBDIR)
           abs = File.join(dir, "#{key}.#{ext}")
           rel = "#{Common.images_dir}/#{EPUB_ASSETS_REL_SUBDIR}/#{key}.#{ext}"
           return rel if File.exist?(abs)
@@ -1217,7 +1287,7 @@ module VivlioStarter
 
         # Kindle 専用: 章 HTML のインライン <style> 内の webp url() 宣言を除去する（RSC-007 回避）。
         # Techbook が PDF の Type3 対策で head に注入する :root{ --h3-marker: url(...webp) } 等は、
-        # Kindle では WebP を同梱しない（build_copy_asset_excludes_config が除外）ため参照切れになる。
+        # Kindle では WebP を同梱しない（localize_assets! が除外）ため参照切れになる。
         # Kindle は var() も解さずこのマーカーを描画しないので、宣言ごと除去して無害化する。
         # sanitize_epub_css! は EPUB 内の .css ファイルが対象でインライン <style> は拾わないため、
         # ここで章 HTML の <style> ブロックを処理する。
@@ -1606,18 +1676,6 @@ module VivlioStarter
           end
         rescue StandardError => e
           Common.log_warn("[EPUB] CSS サニタイズに失敗: #{e.message}")
-        end
-
-        # EPUB 中間ファイルをクリーンアップする
-        #
-        # @return [void]
-        def cleanup!
-          [EPUB_CONFIG_FILE, EPUB_ENTRIES_FILE, EPUB_OUTPUT_FILE].each do |file|
-            next unless File.exist?(file)
-
-            FileUtils.rm_f(file)
-            Common.log_info("[EPUB] #{file} を削除しました")
-          end
         end
 
         # ================================================================

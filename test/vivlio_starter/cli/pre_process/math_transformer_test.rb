@@ -51,7 +51,8 @@ class MathTransformerTest < Minitest::Test
       result = MT.transform('式 $E=mc^2$ です。', chapter_slug: '94-sample', renderer: FakeRenderer.new)
 
       assert_match(/<img class="vs-math vs-math-inline"/, result)
-      assert_match(%r{src="images/math/94-sample/[0-9a-f]{16}\.svg"}, result)
+      # 参照パスはワークスペース内 HTML からの相対（asset_prefix 前置・P4 §3.3）
+      assert_match(%r{src="#{Regexp.escape(VivlioStarter::CLI::Common.asset_prefix)}images/math/94-sample/[0-9a-f]{16}\.svg"}, result)
       assert_match(/alt="\$E=mc\^2\$"/, result)
       # MathJax SVG の ex 値が <img> の style に写る
       assert_match(/vertical-align: -0\.5ex; width: 3ex; height: 2ex;/, result)
@@ -64,7 +65,7 @@ class MathTransformerTest < Minitest::Test
       result = MT.transform(md, chapter_slug: '94-sample', renderer: FakeRenderer.new)
 
       assert_match(/<figure class="vs-math vs-math-display">/, result)
-      assert_match(%r{<img src="images/math/94-sample/[0-9a-f]{16}\.svg"}, result)
+      assert_match(%r{<img src="#{Regexp.escape(VivlioStarter::CLI::Common.asset_prefix)}images/math/94-sample/[0-9a-f]{16}\.svg"}, result)
       assert_match(/width: 3ex; height: 2ex;/, result)
       # alt は改行を畳んで 1 行になる
       assert_match(/alt="\$\$ \\nu_0 = \\frac\{\\phi\}\{h\} \$\$"/, result)

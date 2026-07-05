@@ -11,6 +11,7 @@
 #   MB-02: 出力に 🔴 行が無い
 #   MB-03: 出力に 🟡 行が無い（allowed_warnings.yml 記載分を除く）
 #   MB-04: ビルドが git 作業ツリーを汚さない（§16-1）
+#   MB-05: final clean がビルドワークスペースを残さない（P4 段階 5）
 #   FT-01: 生成 PDF に Type 3 フォントが存在しない
 #   FT-02: 全フォントが埋め込み済み
 #   FT-03: 標準添付書体が実際に使用されている
@@ -119,6 +120,18 @@ class ManualBuildTest < Minitest::Test
       ビルドによって git 作業ツリーが汚れました（gitignore 漏れ、または原稿・設定への書き込み）:
       #{offending.join}
     MSG
+  end
+
+  # MB-05: 通常ビルド（--no-clean なし）の final clean が中間物を残さない（P4 段階 5）
+  # 中間物は .cache/vs/build/ に閉じ、ビルド終端で丸ごと削除される。
+  # ルートの .vivliostyle/ もパイプラインは生成しない（workspaceDir 移設・P4 §5.6）。
+  def test_should_remove_build_workspace_after_final_clean
+    self.class.build_result
+
+    refute File.directory?(File.join(".cache", "vs", "build")),
+           "final clean 後もビルドワークスペース .cache/vs/build/ が残っています"
+    refute File.directory?(".vivliostyle"),
+           "パイプラインビルドがルートへ .vivliostyle/ を生成しています（workspaceDir 移設の回帰・P4 §5.6）"
   end
 
   # FT-01: Type 3 フォントが 1 つも埋め込まれていない（Chromium 由来の混入検知）

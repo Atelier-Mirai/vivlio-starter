@@ -165,20 +165,21 @@ module VivlioStarter
         end
 
         # 章ファイルを探す
+        # 前処理済み中間 .md はワークスペースの html/ に置かれる（P4 §3.4-1）
         # @param chapter [String] 章名
         # @param prefer_contents [Boolean] contents/ ディレクトリを優先するか
         # @return [String, nil] ファイルパス
         def find_chapter_file(chapter, prefer_contents: false)
-          root_file = "#{chapter}.md"
+          workspace_file = File.join(Common::BUILD_HTML_DIR, "#{chapter}.md")
           contents_file = File.join(Common::CONTENTS_DIR, "#{chapter}.md")
 
           if prefer_contents
             # contents/ を優先
             return contents_file if File.exist?(contents_file)
-            return root_file if File.exist?(root_file)
+            return workspace_file if File.exist?(workspace_file)
           else
-            # ルート直下を優先
-            return root_file if File.exist?(root_file)
+            # 前処理済み（ワークスペース）を優先
+            return workspace_file if File.exist?(workspace_file)
             return contents_file if File.exist?(contents_file)
           end
 

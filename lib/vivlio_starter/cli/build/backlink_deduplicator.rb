@@ -78,8 +78,9 @@ module VivlioStarter
         # --- 用語集ページ（_glossarypage.html）の重複排除 ---
 
         # 同一用語について、同じページを指すバックリンクの2件目以降を削除
+        # dedup の破壊的書換はワークスペース pdf/ 配下のコピーに閉じる（P4 §3.4-4）
         def deduplicate_glossary_backlinks!(anchor_to_page)
-          glossary_file = '_glossarypage.html'
+          glossary_file = File.join(Common::BUILD_PDF_DIR, '_glossarypage.html')
           return unless File.exist?(glossary_file)
 
           html = File.read(glossary_file, encoding: 'utf-8')
@@ -181,7 +182,7 @@ module VivlioStarter
 
         # 同一用語について、同じページを指すリンクの2件目以降を削除
         def deduplicate_index_page_links!(index_anchor_to_page)
-          index_file = '_indexpage.html'
+          index_file = File.join(Common::BUILD_PDF_DIR, '_indexpage.html')
           return unless File.exist?(index_file)
 
           html = File.read(index_file, encoding: 'utf-8')
@@ -240,12 +241,12 @@ module VivlioStarter
         end
 
         # anchor_to_page のキーから対象の本文 HTML ファイルを特定
-        # "gls-src-08-web-ウェブサイト-4" → "08-web.html"
+        # "gls-src-08-web-ウェブサイト-4" → pdf/08-web.html（P4 §3.4-4）
         def detect_body_html_files(anchor_to_page)
           anchor_to_page.keys
                         .filter_map { extract_chapter_from_anchor_id(it) }
                         .uniq
-                        .map { "#{it}.html" }
+                        .map { File.join(Common::BUILD_PDF_DIR, "#{it}.html") }
                         .select { File.exist?(it) }
         end
 

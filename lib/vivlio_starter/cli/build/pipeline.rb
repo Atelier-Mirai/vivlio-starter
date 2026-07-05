@@ -47,6 +47,7 @@ module VivlioStarter
         # 登録済みステップを順に実行し、経過時間を収集する
         def run
           ensure_entry_files_exist!
+          Common.ensure_build_workspace!
           Common.reset_vivliostyle_build_timings
           @steps.each do |step|
             execute(step)
@@ -113,13 +114,15 @@ module VivlioStarter
             ['convert sections html',     -> { Build::SectionBuilder.convert_sections_html!(entries) }, true],
             ['generate part title pages', -> { Build::PartTitleGenerator.generate_all! },             true],
             ['techbook post-process',     -> { run_techbook_post_process },                           true],
-            ['generate toc html',         -> { Build::TocGenerator.generate_toc_html!('.', entries) }, true],
+            ['generate toc html',         -> { Build::TocGenerator.generate_toc_html!(Common::BUILD_HTML_DIR, entries) }, true],
             # --- toc 後: ターゲット依存（分岐は条件列に吸収） ---
-            # 閲覧用 PDF は本文全体を、入稿用のみ経路は entries.js だけを生成する。
-            ['build overall pdf',   -> { Build::PdfBuilder.build_overall_pdf_from_dir!('.', entries) }, t.pdf],
-            ['generate entries.js', -> { Build::PdfBuilder.generate_entries_for_sections!('.', entries) }, !t.pdf && t.print_pdf],
-            # EPUB/Kindle かつ PDF も作る場合のみ、dedup 前の章 HTML を退避（⑦: EPUB を dedup から隔離）。
-            ['snapshot pre-dedup html for epub', -> { epub_flow.snapshot_pre_dedup! }, t.epub_or_kindle? && t.any_pdf?],
+            # 閲覧用 PDF は本文全体を、入稿用のみ経路は entries/config だけを生成する。
+            # いずれも html/ → pdf/ のステージングを内包する（P4 §3.4-2）。
+            ['build overall pdf',   -> { Build::PdfBuilder.build_overall_pdf_from_dir!(entries) }, t.pdf],
+            ['generate entries.js', -> { Build::PdfBuilder.generate_entries_for_sections!(entries) }, !t.pdf && t.print_pdf],
+            # dedup の破壊的書換は pdf/ 配下のコピーに閉じるため、EPUB 隔離のための
+            # 「dedup 前スナップショット」ステップは不要になった（P4 §3.4-3。
+            # EPUB/Kindle は html/ のクリーンな原本から直接展開する）。
             ['backlink dedup',      -> { Build::BacklinkDedupOrchestrator.run!(entries) }, t.any_pdf?],
             # 前付・奥付: PDF 経路は PDF まで、それ以外（入稿用のみ／EPUB のみ）は HTML のみ。
             ['build front pages and tail', -> { run_step9_front_pages_and_tail },  t.pdf],
@@ -198,6 +201,8 @@ module VivlioStarter
           else
             Common.log_action('[clean] クリーンアップを実行します…')
             CleanCommands.execute_clean({})
+            # 前回ビルドのワークスペースを一括掃除（stale HTML の混入防止・P4 §3.4-8）
+            FileUtils.rm_rf(Common::BUILD_DIR)
           end
         end
 
@@ -229,25 +234,33 @@ module VivlioStarter
           end
         end
 
-        # single mode: entries.js を生成して PDF をビルド
+        # single mode: 用途別 entries/config を生成して PDF をビルド
+        # full mode と同じ「html/ → pdf/ コピー＋生成 config」経路（E5 で成立を実証）
         def generate_entries_and_pdf
-          Common.log_action('[entries.js + pdf] entries.js を生成して PDF をビルドします…')
-          # 対象章のみを含む entries.js を生成
-          EntriesCommands.execute_entries({}, entries)
-          # PDF を生成
-          PdfCommands.execute_pdf({})
+          Common.log_action('[entries.js + pdf] entries/config を生成して PDF をビルドします…')
+          Build::PdfBuilder.stage_workspace_htmls!
+          entry_htmls = entries.map { File.join(Common::BUILD_PDF_DIR, "#{it.basename}.html") }
+                               .select { File.exist?(it) }
+          config = Build::VivliostyleConfigWriter.write!(name: 'single', entry_htmls:,
+                                                         output: single_mode_output_pdf)
+          PdfCommands.execute_pdf({}, nil, config_path: config, output_path: single_mode_output_pdf)
         end
 
-        # single mode: 出力 PDF を章名にリネーム（54.pdf または 54-56.pdf）
+        # single mode の中間出力 PDF（ワークスペース pdf/ 内）
+        def single_mode_output_pdf
+          File.join(Common::BUILD_PDF_DIR, 'output.pdf')
+        end
+
+        # single mode: 出力 PDF を章 basename にリネームしてルートへ移動
+        # （例: 11-workflow.pdf、複数章指定時は 54-56.pdf）
         def rename_single_mode_pdf
-          output_pdf = PdfCommands::PdfCommandRunner::DEFAULT_OUTPUT_PDF
+          output_pdf = single_mode_output_pdf
 
           unless File.exist?(output_pdf)
             Common.log_warn("出力PDFが見つかりません: #{output_pdf}")
             return
           end
 
-          # 出力ファイル名を決定（54.pdf または 54-56.pdf）
           @generated_pdf_name = determine_single_mode_pdf_name
           FileUtils.rm_f(@generated_pdf_name)
           FileUtils.mv(output_pdf, @generated_pdf_name)
@@ -257,7 +270,7 @@ module VivlioStarter
         # single mode の出力 PDF 名を決定する
         def determine_single_mode_pdf_name
           if basenames.size == 1
-            # 単一章: 54.pdf
+            # 単一章: 11-workflow.pdf
             "#{basenames.first}.pdf"
           else
             # 複数章: 54-56.pdf（最初と最後の章番号）
@@ -305,7 +318,9 @@ module VivlioStarter
           Build::SectionBuilder.ensure_chapter_html_up_to_date!('_colophon',
                                                                 extra_sources: File.join('config', 'book.yml'))
 
-          special_html_files = %w[_titlepage _legalpage _colophon].map { "#{it}.html" }
+          special_html_files = %w[_titlepage _legalpage _colophon].map do
+            File.join(Common::BUILD_HTML_DIR, "#{it}.html")
+          end
           Techbook::Processor.new(Common::CONFIG).post_process_html_files!(special_html_files)
 
           Common.log_success('[build front pages html] 前付・奥付 HTML を生成しました（PDF ビルドはスキップ）')
@@ -375,23 +390,24 @@ module VivlioStarter
         end
 
         # 最終的なクリーン処理を担当する
+        # 中間物はワークスペースに閉じているため掃除は一括削除で完結し、ルートの最終成果物に
+        # 触れる理由がない（単章 PDF の .keep 退避ハックは P4 段階 5 で撤去・完了条件 2）。
+        # --no-clean 時は残す＝デバッグ資材が 1 箇所に揃う（P4 §3.4-8）
         def run_final_clean
           if options[:clean] == false
             Common.log_action('[final clean] クリーンアップをスキップします（--no-clean）')
           else
-            Common.log_action('[final clean] 中間生成物をクリーンアップします…')
-            # 単章ビルドで生成した最終 PDF がクリーン対象パターンに含まれる場合があるため、
-            # 一時退避してからクリーンし、復元する
-            pdf_to_protect = @generated_pdf_name
-            tmp_path = pdf_to_protect && File.exist?(pdf_to_protect) ? "#{pdf_to_protect}.keep" : nil
-            FileUtils.mv(pdf_to_protect, tmp_path) if tmp_path
-            CleanCommands.execute_clean({})
-            FileUtils.mv(tmp_path, pdf_to_protect) if tmp_path
+            Common.log_action('[final clean] ビルドワークスペースを削除します…')
+            FileUtils.rm_rf(Common::BUILD_DIR)
+            # ルート側に生成される数少ない中間物を個別に掃除する:
+            # images/math/ は PDF が参照する数式 SVG（workspace 化は P4b・§8）、
+            # _index_matches.yml は索引スキャンのルート出力（同上）。
+            FileUtils.rm_rf(File.join(Common.images_dir, 'math'))
+            FileUtils.rm_f('_index_matches.yml')
           end
         end
 
         # EPUB / Kindle ビルドのオーケストレーションは Build::EpubFlow へ移設済み（P2）。
-        # dedup 隔離のスナップショットを 2 ステップ間で共有するため、同一インスタンスを使い回す。
         def epub_flow
           @epub_flow ||= Build::EpubFlow.new(entries, targets, options)
         end

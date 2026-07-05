@@ -63,11 +63,13 @@ module VivlioStarter
 
           css = processor.inject_css
 
-          assert_includes css, '--h3-marker: url("stylesheets/twemoji/vs-techbook/marker-h3.webp") !important;'
-          assert_includes css, '--h4-marker: url("stylesheets/twemoji/vs-techbook/marker-h4.webp") !important;'
+          # url() はワークスペース内 HTML からの相対（asset_prefix 前置・P4 §3.3）
+          prefix = Common.asset_prefix
+          assert_includes css, %(--h3-marker: url("#{prefix}stylesheets/twemoji/vs-techbook/marker-h3.webp") !important;)
+          assert_includes css, %(--h4-marker: url("#{prefix}stylesheets/twemoji/vs-techbook/marker-h4.webp") !important;)
           assert_includes css, 'background-image: var(--h3-marker) !important;'
           assert_includes css, 'background-image: var(--h4-marker) !important;'
-          assert_includes css, '--subtitle-wave-image: url("stylesheets/twemoji/vs-techbook/wave.webp") !important;'
+          assert_includes css, %(--subtitle-wave-image: url("#{prefix}stylesheets/twemoji/vs-techbook/wave.webp") !important;)
           assert_includes css, '--code-font: var(--font-code);'
           refute_includes css, '-webkit-text-stroke: 0 !important;'
           refute_includes css, 'mask-image'
@@ -189,8 +191,10 @@ module VivlioStarter
 
           refute_includes result, "①"
           refute_includes result, "⑩"
-          assert_includes result, '<img src="stylesheets/twemoji/vs-techbook/circled-1.webp" alt="1" aria-label="1" class="emoji vs-emoji vs-circled-number"'
-          assert_includes result, '<img src="stylesheets/twemoji/vs-techbook/circled-10.webp" alt="10" aria-label="10" class="emoji vs-emoji vs-circled-number"'
+          # src はワークスペース内 HTML からの相対（asset_prefix 前置・P4 §3.3）
+          prefix = Common.asset_prefix
+          assert_includes result, %(<img src="#{prefix}stylesheets/twemoji/vs-techbook/circled-1.webp" alt="1" aria-label="1" class="emoji vs-emoji vs-circled-number")
+          assert_includes result, %(<img src="#{prefix}stylesheets/twemoji/vs-techbook/circled-10.webp" alt="10" aria-label="10" class="emoji vs-emoji vs-circled-number")
         end
 
         def test_should_not_replace_fullwidth_tilde_when_disabled

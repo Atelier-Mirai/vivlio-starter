@@ -841,6 +841,60 @@ module VivlioStarter
           assert_match(/未定義のラベルID.*@undefined/, result[:errors].first)
         end
 
+        # Markdown リンクのテキスト・URL 内の @（npm スコープ名等）は参照として扱わない
+        def test_replace_references_ignores_at_inside_markdown_links
+          labels_map = {}
+
+          content = <<~MD
+            最新版は [npmjs.com/@vivliostyle/cli](https://www.npmjs.com/package/@vivliostyle/cli) で確認。
+            画像も ![alt @vivliostyle](images/@vivliostyle/logo.png) 同様。
+            脚注定義行の裸 URL も対象外:
+            [^url1]: https://www.npmjs.com/package/@vivliostyle/cli
+          MD
+          result = replace_references(content, labels_map, 'test.md')
+
+          assert_empty result[:errors], "リンク内の @ で未定義警告が出てはいけない: #{result[:errors].inspect}"
+          assert_includes result[:content], '[npmjs.com/@vivliostyle/cli](https://www.npmjs.com/package/@vivliostyle/cli)'
+        end
+
+        # 索引・用語集の手動登録マークアップ（[用語|読み]・[@用語]）内の @ は参照として扱わない
+        def test_replace_references_ignores_at_inside_index_markup
+          labels_map = {}
+
+          content = <<~MD
+            索引登録: [@vivliostyle] と [@vivliostyle/cli|びぶりおすたいるしーえるあい] を掲載。
+          MD
+          result = replace_references(content, labels_map, 'test.md')
+
+          assert_empty result[:errors], "索引マークアップ内の @ で未定義警告が出てはいけない: #{result[:errors].inspect}"
+          assert_includes result[:content], '[@vivliostyle]'
+        end
+
+        # 角括弧・リンク・code の外に裸で書かれた @語 は従来どおり未定義参照として検出する
+        # （表セルへ平文で書かれた npm パッケージ名等。バッククォートで括るのが正）
+        def test_replace_references_still_flags_bare_at_words
+          labels_map = {}
+
+          content = "| @vivliostyle/cli | 11.0.2 |\n"
+          result = replace_references(content, labels_map, 'test.md')
+
+          assert_equal 1, result[:errors].size
+          assert_match(/未定義のラベルID.*@vivliostyle/, result[:errors].first)
+        end
+
+        # 除外スパンが混在する行でも、平文部分の正当な参照は置換される
+        def test_replace_references_replaces_refs_between_masked_spans
+          label = Label.new('sample', :fig, '1', '1-1', 'Sample', 'test.md', 5, false)
+          labels_map = { 'sample' => label }
+
+          content = '[リンク @vivliostyle](https://example.com/@vivliostyle) の後で @sample を参照。'
+          result = replace_references(content, labels_map, 'test.md')
+
+          assert_empty result[:errors]
+          assert_includes result[:content], '<a href="test.html#sample"'
+          assert_includes result[:content], '(https://example.com/@vivliostyle)'
+        end
+
         def test_replace_references_preserves_reserved_ids
           labels_map = {}
 

@@ -90,17 +90,19 @@ module VivlioStarter
         FileUtils.remove_entry(@tmpdir) if @tmpdir && Dir.exist?(@tmpdir)
       end
 
+      # 中間 HTML はワークスペースの html/ に置かれる（P4 §3.4-1）
       def test_resolve_entry_map_for_toc
         Dir.chdir(@tmpdir) do
-          # _toc.html を作成
-          File.write('_toc.html', '<html><body><h1 id="toc">目次</h1></body></html>')
+          FileUtils.mkdir_p(Common::BUILD_HTML_DIR)
+          File.write(File.join(Common::BUILD_HTML_DIR, '_toc.html'),
+                     '<html><body><h1 id="toc">目次</h1></body></html>')
 
           entry_map = PostProcessCommands.resolve_entry_map(['_toc'])
 
           assert_equal 1, entry_map.size
           html_path, entry = entry_map.first
 
-          assert_equal './_toc.html', html_path
+          assert_equal File.join(Common::BUILD_HTML_DIR, '_toc.html'), html_path
           assert_equal :toc, entry.kind
           assert_equal '_toc', entry.basename
         end
@@ -108,14 +110,16 @@ module VivlioStarter
 
       def test_resolve_entry_map_for_chapter
         Dir.chdir(@tmpdir) do
-          File.write('11-sample.html', '<html><body><h1 id="ch1">Chapter 1</h1></body></html>')
+          FileUtils.mkdir_p(Common::BUILD_HTML_DIR)
+          File.write(File.join(Common::BUILD_HTML_DIR, '11-sample.html'),
+                     '<html><body><h1 id="ch1">Chapter 1</h1></body></html>')
 
           entry_map = PostProcessCommands.resolve_entry_map(['11-sample'])
 
           assert_equal 1, entry_map.size
           html_path, entry = entry_map.first
 
-          assert_equal './11-sample.html', html_path
+          assert_equal File.join(Common::BUILD_HTML_DIR, '11-sample.html'), html_path
           assert_equal :chapter, entry.kind
           assert_equal '11-sample', entry.basename
         end
@@ -123,15 +127,16 @@ module VivlioStarter
 
       def test_resolve_entry_map_for_all_html_files
         Dir.chdir(@tmpdir) do
-          File.write('11-sample.html', '<html><body></body></html>')
-          File.write('_toc.html', '<html><body></body></html>')
+          FileUtils.mkdir_p(Common::BUILD_HTML_DIR)
+          File.write(File.join(Common::BUILD_HTML_DIR, '11-sample.html'), '<html><body></body></html>')
+          File.write(File.join(Common::BUILD_HTML_DIR, '_toc.html'), '<html><body></body></html>')
 
           entry_map = PostProcessCommands.resolve_entry_map([])
 
           assert_equal 2, entry_map.size
 
-          toc_entry = entry_map['./_toc.html']
-          chapter_entry = entry_map['./11-sample.html']
+          toc_entry = entry_map[File.join(Common::BUILD_HTML_DIR, '_toc.html')]
+          chapter_entry = entry_map[File.join(Common::BUILD_HTML_DIR, '11-sample.html')]
 
           assert_equal :toc, toc_entry.kind
           assert_equal :chapter, chapter_entry.kind

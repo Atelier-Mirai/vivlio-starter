@@ -348,15 +348,75 @@ P2/P3 と同じく「現行から採取した基準」に対し各段で `rake t
 
 1. **プレフィックス配線（出力不変）**: `Common.asset_prefix`（`''`）と workspace パス定数を導入し、
    §3.3 の choke point を prefix 参照へ置換。全成果物バイト同一を確認（安全網）。
+   → **完了（2026-07-04）**。閲覧用 400p・入稿用 398p の全ページテキスト一致・
+   クリーン EPUB バイト同一・KPF 生成成功を実測（コミット 1b11d778）。
 2. **実験 E1〜E5** を実施し、§5.2 の案と config 生成仕様を本書へ追記・確定。
    → **完了（2026-07-04・§6.1）**。
 3. **prep 出力を html/ へ移設**＋PDF 消費経路を pdf/ 化（コピー＋用途別 entries/config）。
    → 完了条件 3（entries.js 再生成の解消）・E1/E3/E4 の実証。**最大差分のゲート**。
+   → **完了（2026-07-04）**。段階 1（prefix `''` 配線・出力不変実測）と合わせて実装。
+   `Build::VivliostyleConfigWriter` 新設・dedup は pdf/ に閉じ
+   `snapshot pre-dedup html for epub` ステップを撤去（完了条件 1 の前半）。
+   EPUB/Kindle は暫定ブリッジ（html/ → ルートへ prefix 剥がし展開・`EpubFlow`）で
+   現行経路のまま。検証: rake test 全緑＋実ビルド突き合わせ（PDF 全ページテキスト一致・
+   単章 5p＝E5 一致・ルート無汚染）。
 4. **EPUB/Kindle を epub/・kindle/ 化**（E2 の確定案）。`EpubFlow` の snapshot 3 メソッド削除
    → 完了条件 1。epubcheck 緑＋`epub_kindle_layout_test` 緑＋KPF 生成確認。
+   → **完了（2026-07-04）**。`stage_consumer_htmls!`（prefix 剥がしコピー）＋
+   `localize_assets!`（選択コピー＝旧 copyAsset.excludes の知識を移設・config から
+   copyAsset ブロック撤去）＋ `entryContext` 指定の生成 config（entries は `./xx.html`）で
+   実装。暫定ブリッジとフレーバ間スナップショットを撤去し、headings 合成画像・
+   `_epub_assets` 変換物・book-settings 変種も消費者 dir 内へ（§5.2-b の著者 dir 汚染解消を
+   前倒し）。カバーは埋め込み対象の 1 枚だけを dir/covers/ へローカライズ
+   （未参照の表 1/表 4 PNG 同梱が消え約 5.7MB 減）。検証: rake test 全緑（1,453）・
+   epubcheck 0/0・KPF 生成成功（Error 0）・段階 3 成果物との突き合わせで EPUB 内
+   4,128 ファイル全てバイト同一（差分は dcterms:modified と外した PNG 2 点の manifest のみ）・
+   PDF 2 点の全ページテキスト一致・ルート無汚染を実測。
+   （補足: EPUB 生成 config は E2 スパイクどおり workspaceDir 未指定＝ルート `.vivliostyle`
+   が一時生成され final clean が掃除する。移設は段階 5 以降の任意課題とする。）
 5. **final clean 刷新**: `.keep` ハック削除（完了条件 2）・ワークスペース一括掃除・
    clean.rb のルートパターンを legacy 掃除へ縮退 → 完了条件 4（ルート無汚染）。
+   → **完了（2026-07-04）**。`run_final_clean` は「workspace `rm_rf`＋ルート側の現行中間物
+   2 点（`images/math/`・`_index_matches.yml`＝P4b 対象）の個別掃除」のみとなり、
+   `CleanCommands.execute_clean` 呼び出しと `.keep` 退避を撤去（final clean が最終成果物に
+   触れる経路が消滅）。clean.rb は `ACTIVE_ROOT_PATTERNS`（手動フロー entries.js・索引
+   ルート生成物）と `LEGACY_ROOT_PATTERNS` / `LEGACY_INTERMEDIATE_PDF_PATTERNS`
+   （V2.0 で撤去予定）へ分離（削除挙動は不変）。§5.6 の任意課題も同時に実施:
+   EPUB/Kindle 生成 config に `workspaceDir: '.cache/vs/build/.vivliostyle'` を指定し、
+   ルートの一時 `.vivliostyle/` 生成を解消（消費者 dir 内に置くと copyAsset が
+   パッケージへ巻き込むため dir の外＝PDF 用と同じ場所を共用）。
+   検証: rake test 全緑（1,453）・4 ターゲット実ビルドで PDF 400p/398p 全ページ
+   テキスト＋MediaBox 一致・EPUB 内 4,108 ファイル全バイト同一（差分は
+   dcterms:modified のみ）・epubcheck 0/0・KPF 生成成功（Error 0）・ビルド後の
+   ルート無汚染（`.vivliostyle`・workspace・`_index_matches.yml`・images 配下・
+   中間 HTML/PDF すべて無し）・単章ビルドで `.keep` 無しでも最終 PDF 残存を実測。
 6. **テスト前提更新＋構造保証テスト新設**（§5.5）。`rake test:release` 全緑。
+   → **完了（2026-07-04）**。§5.5 のテスト影響のうち「ルートの中間 HTML を覗くテストの
+   参照先更新」は段階 3〜5 のテスト更新（`BUILD_PDF_DIR` 配線・tmpdir 化）で解消済みと
+   確認（robustness / epub_kindle_layout にルート参照は残存せず）。実施分:
+   (1) `target_consistency_test` へ `test_kindle_build_leaves_root_images_unpolluted` を
+   追加——kindle を含む `--no-clean` combo のビルド直後にルート
+   `images/{_epub_assets,headings}` が存在しないことを capture 時に観測して検証
+   （旧「画像汚染」隔離の構造検証への格上げ。`reset_intermediate_state!` は
+   衛生措置として残置）。
+   (2) `workspace_structure_test`（新設・`rake test:targets` 配下）——`--no-clean`
+   フルビルド（targets: pdf, epub, kindle）1 回で WS-01〜04 を検証: 4 消費者 dir の
+   生成と各用途の中間物配置（html=章 HTML 原本 / pdf=ステージ HTML＋用途別
+   entries/config / epub・kindle=ステージ HTML＋ローカライズ資産＋生成 config・
+   kindle は WebP ゼロ / workspaceDir もワークスペース内）・ルート無汚染
+   （旧方式パターン網羅）・git 作業ツリー無汚染（MB-04 と同規約）。
+   (3) `manual_build_test` へ MB-05 を追加——通常ビルドの final clean 後に
+   `.cache/vs/build/` とルート `.vivliostyle/` が存在しないことを検証。
+   検証（`rake test:release` 全緑: test/standard 各 1,453・layout 7・targets 18・
+   manual 12・package 4）の過程で P4 と無関係の既存問題 2 件を発見し対処:
+   ① daa87921（2026-07-01）で用語辞書 `config/index_glossary_terms.yml` が削除され
+   索引/用語集ページが生成されない状態のため、spine 検証を「辞書が存在するときのみ
+   `_glossarypage`/`_indexpage` を要求」する条件付きへ変更（辞書復帰で検証も自動復活）。
+   ② 61-developer.md の npm スコープ名（`@vivliostyle/cli` 等・バッククォート外の
+   リンク URL・表セル）が相互参照 `@ID` として誤検出される false positive 5 件
+   → リンク/画像・索引マークアップ（`[用語|読み]`・`[@用語]`）・裸 URL を参照走査から
+   除外する修正を `ReferenceReplacer` へ実装し恒久解消（表セルの生書き分は原稿を
+   バッククォート化。CHANGELOG Fixed 参照）。
 
 破綻時の切り分けは段階単位。段階 3 が最重量のため、必要なら「章 HTML のみ先行・特殊ページ後続」に
 さらに分割して良い。

@@ -47,19 +47,21 @@ module VivlioStarter
 
       EPUB_ONLY = (PREFIX + ['build front pages html', 'generate epub', 'final clean']).freeze
 
+      # P4 段階 3: dedup がワークスペース pdf/ に閉じたため、EPUB 隔離用の
+      # 'snapshot pre-dedup html for epub' ステップは撤去された（P4 §3.4-3）。
       PDF_EPUB = (PREFIX + [
-        'build overall pdf', 'snapshot pre-dedup html for epub', 'backlink dedup',
+        'build overall pdf', 'backlink dedup',
         'build front pages and tail', 'merge all pdfs', 'apply outline to output pdf',
         'rename', 'generate epub', 'final clean'
       ]).freeze
 
       PRINT_EPUB = (PREFIX + [
-        'generate entries.js', 'snapshot pre-dedup html for epub', 'backlink dedup',
+        'generate entries.js', 'backlink dedup',
         'build front pages html', 'print pdf', 'generate epub', 'final clean'
       ]).freeze
 
       ALL = (PREFIX + [
-        'build overall pdf', 'snapshot pre-dedup html for epub', 'backlink dedup',
+        'build overall pdf', 'backlink dedup',
         'build front pages and tail', 'merge all pdfs', 'apply outline to output pdf',
         'rename', 'print pdf', 'generate epub', 'final clean'
       ]).freeze

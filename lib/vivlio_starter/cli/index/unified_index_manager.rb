@@ -632,11 +632,10 @@ module VivlioStarter
       def resolve_chapter_path(chapter)
         return chapter if File.exist?(chapter)
 
-        # contents/ ディレクトリ内を探す
+        # contents/ → ワークスペース（前処理済み中間 .md・P4 §3.4-1）の順で探す
         possible_paths = [
           File.join(Common::CONTENTS_DIR, "#{chapter}.md"),
-          File.join('.', "#{chapter}.md"),
-          "#{chapter}.md"
+          File.join(Common::BUILD_HTML_DIR, "#{chapter}.md")
         ]
 
         possible_paths.find { |path| File.exist?(path) }

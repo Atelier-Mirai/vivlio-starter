@@ -28,8 +28,9 @@ module VivlioStarter
       end
 
       # toc コマンドのエントリ処理を統括する
+      # 中間 HTML と _toc.md/_toc.html はワークスペースの html/ に置く（P4 §3.4-1）
       class TocCommandExecutor
-        BASE_DIR = Pathname.new('.').expand_path
+        BASE_DIR = Pathname.new(Common::BUILD_HTML_DIR).expand_path
 
         def initialize(options, htmls)
           @options = options || {}
@@ -115,28 +116,36 @@ module VivlioStarter
                                            .sort
         end
 
-        # 渡されたパスを絶対パスに正規化する
+        # 渡されたパスを絶対パスに正規化する。
+        # パイプラインはワークスペース内のパスを cwd 相対で渡してくるため、
+        # 現存するパスはそのまま採用し、ベース名だけの指定のみ base_dir で解決する
+        # （base_dir を機械的に join すると html/ が二重に前置される）。
         def normalize_path(name)
           path = Pathname.new(name)
-          path = base_dir.join(path) unless path.absolute?
-          path.cleanpath.to_s
+          return path.cleanpath.to_s if path.absolute?
+          return path.expand_path.cleanpath.to_s if path.exist?
+
+          base_dir.join(path).cleanpath.to_s
         end
       end
 
       # TOC の Markdown ドキュメントを構築する
       class TocDocumentBuilder
-        FRONT_MATTER = <<~MD
-          ---
-          link:
-            - rel: "stylesheet"
-              href: "stylesheets/toc.css"
-          lang: 'ja'
-          ---
+        # href はワークスペース内 HTML からの相対（Common.asset_prefix 前置・P4 §3.3）
+        def self.front_matter
+          <<~MD
+            ---
+            link:
+              - rel: "stylesheet"
+                href: "#{Common.asset_prefix}stylesheets/toc.css"
+            lang: 'ja'
+            ---
 
-          # 目次
-          <nav id="toc" role="doc-toc">
-          <ul>
-        MD
+            # 目次
+            <nav id="toc" role="doc-toc">
+            <ul>
+          MD
+        end
 
         # @param entry_map [Hash{String => TokenResolver::Entry}] HTML パス => Entry のマップ
         # @param base_dir [Pathname] ベースディレクトリ
@@ -148,7 +157,7 @@ module VivlioStarter
 
         # TOC の Markdown 文字列を構築する
         def build
-          buffer = [FRONT_MATTER.dup]
+          buffer = [self.class.front_matter]
           append_preface(buffer)
           append_headings(buffer)
           append_postface(buffer)

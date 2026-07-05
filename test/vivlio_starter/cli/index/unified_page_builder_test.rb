@@ -9,6 +9,10 @@ module VivlioStarter
   module CLI
     module IndexCommands
       class UnifiedPageBuilderTest < Minitest::Test
+        # 出力先はワークスペースの html/（P4 §3.4-1）
+        INDEX_OUTPUT_FILE    = UnifiedPageBuilder::INDEX_OUTPUT_FILE
+        GLOSSARY_OUTPUT_FILE = UnifiedPageBuilder::GLOSSARY_OUTPUT_FILE
+
         def setup
           @original_dir = Dir.pwd
           @temp_dir = Dir.mktmpdir('unified_page_builder_test')
@@ -34,8 +38,8 @@ module VivlioStarter
 
           result = @builder.build_index!
 
-          assert_equal '_indexpage.html', result
-          assert File.exist?('_indexpage.html')
+          assert_equal INDEX_OUTPUT_FILE, result
+          assert File.exist?(INDEX_OUTPUT_FILE)
         end
 
         def test_build_index_generates_valid_structure
@@ -43,7 +47,7 @@ module VivlioStarter
 
           @builder.build_index!
 
-          html = File.read('_indexpage.html')
+          html = File.read(INDEX_OUTPUT_FILE)
           assert_includes html, '<!DOCTYPE html>'
           assert_includes html, '<title>索引</title>'
           assert_includes html, 'class="index-page"'
@@ -58,7 +62,7 @@ module VivlioStarter
 
           @builder.build_index!
 
-          html = File.read('_indexpage.html')
+          html = File.read(INDEX_OUTPUT_FILE)
           assert_includes html, 'data-initial="あ"'
           assert_includes html, 'data-initial="か"'
         end
@@ -72,12 +76,13 @@ module VivlioStarter
         end
 
         def test_build_index_removes_stale_file
-          File.write('_indexpage.html', '<html>stale</html>')
+          FileUtils.mkdir_p(File.dirname(INDEX_OUTPUT_FILE))
+          File.write(INDEX_OUTPUT_FILE, '<html>stale</html>')
           create_index_cache({})
 
           @builder.build_index!
 
-          refute File.exist?('_indexpage.html')
+          refute File.exist?(INDEX_OUTPUT_FILE)
         end
 
         # === 用語集ページ ===
@@ -93,8 +98,8 @@ module VivlioStarter
 
           result = @builder.build_glossary!(terms)
 
-          assert_equal '_glossarypage.html', result
-          assert File.exist?('_glossarypage.html')
+          assert_equal GLOSSARY_OUTPUT_FILE, result
+          assert File.exist?(GLOSSARY_OUTPUT_FILE)
         end
 
         def test_build_glossary_includes_definition
@@ -102,7 +107,7 @@ module VivlioStarter
 
           @builder.build_glossary!(terms)
 
-          html = File.read('_glossarypage.html')
+          html = File.read(GLOSSARY_OUTPUT_FILE)
           assert_includes html, 'スタイルシート言語'
           assert_includes html, 'CSS'
         end
@@ -117,17 +122,18 @@ module VivlioStarter
 
           @builder.build_glossary!(terms)
 
-          html = File.read('_glossarypage.html')
+          html = File.read(GLOSSARY_OUTPUT_FILE)
           assert_includes html, 'gls-src-01-intro-css-1'
           assert_includes html, 'glossary-backlink'
         end
 
         def test_build_glossary_removes_stale_file
-          File.write('_glossarypage.html', '<html>stale</html>')
+          FileUtils.mkdir_p(File.dirname(GLOSSARY_OUTPUT_FILE))
+          File.write(GLOSSARY_OUTPUT_FILE, '<html>stale</html>')
 
           @builder.build_glossary!([])
 
-          refute File.exist?('_glossarypage.html')
+          refute File.exist?(GLOSSARY_OUTPUT_FILE)
         end
 
         def test_build_glossary_groups_by_initial
@@ -138,7 +144,7 @@ module VivlioStarter
 
           @builder.build_glossary!(terms)
 
-          html = File.read('_glossarypage.html')
+          html = File.read(GLOSSARY_OUTPUT_FILE)
           assert_includes html, 'glossary-group-header'
         end
 
@@ -148,7 +154,7 @@ module VivlioStarter
 
           builder.build_glossary!(terms)
 
-          html = File.read('_glossarypage.html')
+          html = File.read(GLOSSARY_OUTPUT_FILE)
           assert_includes html, 'カスタム用語集'
         end
 
@@ -162,10 +168,10 @@ module VivlioStarter
           @builder.build_index!
           @builder.build_glossary!(terms)
 
-          assert File.exist?('_indexpage.html')
-          assert File.exist?('_glossarypage.html')
+          assert File.exist?(INDEX_OUTPUT_FILE)
+          assert File.exist?(GLOSSARY_OUTPUT_FILE)
 
-          glossary_html = File.read('_glossarypage.html')
+          glossary_html = File.read(GLOSSARY_OUTPUT_FILE)
           assert_includes glossary_html, 'gls-src-01-css-1'
         end
 

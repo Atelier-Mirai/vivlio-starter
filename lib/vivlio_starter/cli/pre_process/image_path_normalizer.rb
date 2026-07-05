@@ -96,20 +96,26 @@ module VivlioStarter
               alt_text = ::Regexp.last_match(1)
               image_path = ::Regexp.last_match(2)
 
-              # すでに images/ から始まる場合はそのまま。相対パスは images/<章ディレクトリ>/ に正規化
-              normalized = if image_path.start_with?('images/')
-                             image_path
-                           else
-                             "images/#{chapter_dir}/#{image_path}"
-                           end
+              # ワークスペース相対（asset_prefix 付き）で既に正規化済みなら再変換しない（冪等）
+              prefix = Common.asset_prefix
+              if !prefix.empty? && image_path.start_with?(prefix)
+                "![#{alt_text}](#{image_path})"
+              else
+                # すでに images/ から始まる場合はそのまま。相対パスは images/<章ディレクトリ>/ に正規化
+                normalized = if image_path.start_with?('images/')
+                               image_path
+                             else
+                               "images/#{chapter_dir}/#{image_path}"
+                             end
 
-              # 生成物ポリシーに合わせて拡張子を .webp に寄せる（png/jpg のみ対象）
-              normalized = normalized.sub(/\.(png|jpe?g)\z/i, '.webp')
+                # 生成物ポリシーに合わせて拡張子を .webp に寄せる（png/jpg のみ対象）
+                normalized = normalized.sub(/\.(png|jpe?g)\z/i, '.webp')
 
-              original_image_name = File.basename(image_path)
-              # 元ファイルの行番号があればそちらを使う
-              source_ln = source_line_map[original_image_name] || line_number
-              resolved_placeholder_or_path(alt_text, normalized, filename, source_ln, original_image_name)
+                original_image_name = File.basename(image_path)
+                # 元ファイルの行番号があればそちらを使う
+                source_ln = source_line_map[original_image_name] || line_number
+                resolved_placeholder_or_path(alt_text, normalized, filename, source_ln, original_image_name)
+              end
             end
           end
 
@@ -117,10 +123,12 @@ module VivlioStarter
           MarkdownUtils.restore_code_spans(transformed_lines.join, spans)
         end
 
-        # 既存画像なら元のパスを、無い場合はプレースホルダーを返す
+        # 既存画像なら正規化パス（ワークスペース相対 = asset_prefix 前置）を、
+        # 無い場合はプレースホルダー（data URI・prefix 不要）を返す。
+        # 存在確認とログはルート基準の images/... パスで行う（著者に分かる表記のため）。
         def resolved_placeholder_or_path(alt_text, normalized_path, source_filename = nil, line_number = nil,
                                          original_image_name = nil)
-          return "![#{alt_text}](#{normalized_path})" if image_exists_for?(normalized_path)
+          return "![#{alt_text}](#{Common.asset_prefix}#{normalized_path})" if image_exists_for?(normalized_path)
 
           image_name = original_image_name || File.basename(normalized_path)
 

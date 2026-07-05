@@ -50,8 +50,9 @@ module VivlioStarter
         end.freeze
 
         INDEX_MATCH_FILE = '_index_matches.yml'
-        INDEX_OUTPUT_FILE = '_indexpage.html'
-        GLOSSARY_OUTPUT_FILE = '_glossarypage.html'
+        # 出力先はワークスペースの html/（P4 §3.4-1）
+        INDEX_OUTPUT_FILE = File.join(Common::BUILD_HTML_DIR, '_indexpage.html')
+        GLOSSARY_OUTPUT_FILE = File.join(Common::BUILD_HTML_DIR, '_glossarypage.html')
 
         attr_reader :index_data, :hierarchical_index
 
@@ -80,6 +81,7 @@ module VivlioStarter
           end
 
           html = generate_index_html
+          FileUtils.mkdir_p(File.dirname(INDEX_OUTPUT_FILE))
           File.write(INDEX_OUTPUT_FILE, html, encoding: 'utf-8')
           Common.log_success("索引ページを生成しました: #{INDEX_OUTPUT_FILE}")
           INDEX_OUTPUT_FILE
@@ -99,6 +101,7 @@ module VivlioStarter
 
           sorted_terms = terms.sort_by { it['yomi'] || it['term'] }
           html = generate_glossary_html(sorted_terms)
+          FileUtils.mkdir_p(File.dirname(GLOSSARY_OUTPUT_FILE))
           File.write(GLOSSARY_OUTPUT_FILE, html, encoding: 'utf-8')
           Common.log_success("用語集ページを生成しました: #{GLOSSARY_OUTPUT_FILE}")
           GLOSSARY_OUTPUT_FILE
@@ -145,7 +148,7 @@ module VivlioStarter
             <head>
               <meta charset="UTF-8">
               <title>索引</title>
-              <link rel="stylesheet" href="stylesheets/index.css">
+              <link rel="stylesheet" href="#{Common.asset_prefix}stylesheets/index.css">
             </head>
             <body class="index-page">
               <section class="index">
@@ -286,7 +289,7 @@ module VivlioStarter
             <head>
               <meta charset="UTF-8">
               <title>#{title}</title>
-              <link rel="stylesheet" href="stylesheets/glossary.css">
+              <link rel="stylesheet" href="#{Common.asset_prefix}stylesheets/glossary.css">
             </head>
             <body class="glossary-page">
               <section class="glossarypage" role="doc-glossary">

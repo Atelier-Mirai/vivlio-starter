@@ -112,12 +112,14 @@ module VivlioStarter
         # link 順は [theme.css, {種別}.css, book-settings.css, custom.css]。
         # book-settings.css（生成物・.cache/vs/ 配下）を {種別}.css の後段へ置くことで
         # book.yml 由来の設定値が既存テーマ CSS にカスケードで勝つ（P3）。
+        # href はワークスペース内 HTML からの相対（Common.asset_prefix 前置・P4 §3.3）。
         def build_base_frontmatter(chapter_css)
+          prefix = Common.asset_prefix
           hrefs = [
-            "stylesheets/theme.css",
-            "stylesheets/#{chapter_css}",
-            BookSettingsCss.output_path,
-            "stylesheets/custom.css"
+            "#{prefix}stylesheets/theme.css",
+            "#{prefix}stylesheets/#{chapter_css}",
+            "#{prefix}#{BookSettingsCss.output_path}",
+            "#{prefix}stylesheets/custom.css"
           ]
           lang = (Common::CONFIG.book.language || 'ja').to_s.strip
           lang = 'ja' if lang.empty?

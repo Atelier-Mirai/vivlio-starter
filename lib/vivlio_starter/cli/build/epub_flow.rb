@@ -12,10 +12,12 @@ module VivlioStarter
       # 生成済みの章 HTML を再利用して EPUB（クリーン）/ Kindle（KPF）を生成する一連の
       # フローを担う。P2 で pipeline.rb から本フローへ移設した。
       #
-      # dedup 隔離（⑦）のため、backlink dedup 直前の章 HTML スナップショットを保持する
-      # 必要があり、その退避（snapshot_pre_dedup!）と EPUB 生成（run!）は別々のパイプライン
-      # ステップから呼ばれる。両ステップが同一インスタンスを共有できるよう、pipeline 側は
-      # 本フローを 1 度だけ生成して使い回す。
+      # P4 段階 4: 各フレーバは専用の消費者 dir（.cache/vs/build/epub/・kindle/）で
+      # 完結する。html/（常にクリーンな原本・dedup 非通過）から prefix を剥がして
+      # ステージし、参照資産を dir 内へローカライズ、entryContext 指定の生成 config で
+      # ビルドする（実験 E2 の確定案）。フレーバごとに dir が分かれるため、
+      # 旧来の「dedup 前スナップショット」「epub⇄kindle フレーバ間スナップショット」は
+      # 構造的に不要となり撤去した（完了条件 1）。
       # ================================================================
       class EpubFlow
         # @param entries [Array<TokenResolver::Entry>] ビルド対象の Entry 配列
@@ -25,65 +27,54 @@ module VivlioStarter
           @entries = Array(entries)
           @targets = targets
           @options = options
-          @pre_dedup_snapshot = nil
-        end
-
-        # backlink dedup 直前の章 HTML を退避する（⑦）。
-        # dedup は共有の章 HTML を「PDF ページ依存」で破壊的に書き換える（同一ページ内の
-        # 2 回目以降の † / index-term を削除）。EPUB はこの dedup 済み HTML を再利用すると
-        # †・索引リンクが間引かれてしまうため、dedup 前の状態を保持し run! で復元する。
-        # docs/specs/epub-backlink-dedup-isolation-spec.md ⑦ を参照。
-        def snapshot_pre_dedup!
-          @pre_dedup_snapshot = snapshot_chapter_htmls
         end
 
         # EPUB / Kindle 生成のメインフロー。
-        # クリーン EPUB（:epub）と Kindle（:kindle）の両方が対象の場合、クリーンを先に確定し、
-        # その章 HTML を Kindle の rewrite が破壊しないよう、クリーン処理前の章 HTML を
-        # スナップショットしておき、Kindle ビルド前に復元してフレーバ間の相互汚染を防ぐ。
+        # 各フレーバは独立した消費者 dir でビルドされるため相互汚染は構造的に起こらない。
         def run!
           Common.log_action('[generate epub] EPUB を生成します…')
 
           # --- Phase: EPUB 用カバー画像生成 ---
           generate_cover_if_needed
 
-          # dedup 前の章 HTML を復元して EPUB を dedup（backlink dedup）から隔離する（⑦）。
-          # PDF（閲覧用・入稿用）は dedup 済み HTML で既に生成済み。リフロー型 EPUB は
-          # 「全 † / 全出現リンク」を持つべきなので、dedup 前の状態へ戻してからビルドする。
-          restore_chapter_htmls(@pre_dedup_snapshot) if @pre_dedup_snapshot
-
-          # 両フレーバ同時のときだけ、クリーン処理が書き換える前の章 HTML を退避する。
-          # 上で pre-dedup 状態へ戻した後に退避するため、Kindle も dedup 前から始まる。
-          snapshot = (targets.epub && targets.kindle) ? snapshot_chapter_htmls : nil
-
           build_flavor(:epub) if targets.epub
-
-          return unless targets.kindle
-
-          restore_chapter_htmls(snapshot) if snapshot
-          build_flavor(:kindle)
+          build_flavor(:kindle) if targets.kindle
         end
 
         private
 
         attr_reader :entries, :targets, :options
 
+        # フレーバごとの消費者 dir（P4 §3.1: epub/ ・kindle/ は html/ 直系）。
+        def consumer_dir(flavor)
+          flavor == :kindle ? Common::BUILD_KINDLE_DIR : Common::BUILD_EPUB_DIR
+        end
+
         # 1 フレーバ分の EPUB を生成する（クリーンは .epub、Kindle は中間 .epub→.kpf）。
         def build_flavor(flavor)
-          # --- Phase: EPUB 用 entries.js 生成 ---
-          epub_htmls = Build::EpubBuilder.generate_epub_entries!('.', entries, flavor:)
+          dir = consumer_dir(flavor)
+
+          # --- Phase: html/ → 消費者 dir へステージ（asset_prefix 剥がし） ---
+          Build::EpubBuilder.stage_consumer_htmls!(dir)
+
+          # --- Phase: EPUB 用 entries.js 生成（フレーバ別 rewrite を含む） ---
+          epub_htmls = Build::EpubBuilder.generate_epub_entries!(dir, entries, flavor:)
           if epub_htmls.empty?
             Common.log_warn("[generate epub] EPUB 対象 HTML がありません。スキップします。（flavor: #{flavor}）")
             return
           end
 
-          # --- Phase: EPUB 用 vivliostyle.config.js 生成 ---
-          Build::EpubBuilder.generate_epub_config!(flavor:)
+          # --- Phase: 参照資産を消費者 dir 内へローカライズ（E2: パッケージルート＝dir） ---
+          Build::EpubBuilder.localize_assets!(dir, flavor:)
+
+          # --- Phase: EPUB 用 vivliostyle.config.js 生成（entryContext = dir） ---
+          config_path = Build::EpubBuilder.generate_epub_config!(flavor:, dir:)
 
           # --- Phase: Vivliostyle build ---
           # Kindle は KPF 変換の入力にすぎないため中間 EPUB（…-kindle.epub）として作る（§1-4）。
           target_name = flavor == :kindle ? Common.generate_kindle_epub_filename : Common.generate_epub_filename
-          EpubCommands.execute_epub({}, target_name)
+          EpubCommands.execute_epub({}, target_name, config_path:,
+                                                     output_path: File.join(dir, Build::EpubBuilder::EPUB_OUTPUT_FILE))
 
           # --- Phase: EPUB 内 CSS サニタイズ（@page マージンボックス除去・webp url() は kindle のみ） ---
           Build::EpubBuilder.sanitize_epub_css!(target_name, flavor:) if File.exist?(target_name)
@@ -94,22 +85,10 @@ module VivlioStarter
           # --- Phase: EPUB identifier 安定化 ---
           Build::EpubBuilder.stabilize_epub_identifier!(target_name) if File.exist?(target_name)
 
-          # --- Phase: 中間ファイルクリーンアップ（entries/config/output.epub） ---
-          Build::EpubBuilder.cleanup!
-
           # --- Phase: Kindle は KPF へ変換（§1-7） ---
+          # 中間物（entries/config/資産コピー）は消費者 dir 内にあり final clean が
+          # ワークスペースごと掃除する（--no-clean 時はデバッグ資材として残る）。
           run_kpf(target_name) if flavor == :kindle
-        end
-
-        # クリーン処理前の章 HTML（パス→内容）を退避する。
-        def snapshot_chapter_htmls
-          Build::EpubBuilder.collect_epub_htmls('.', entries)
-                            .each_with_object({}) { |path, acc| acc[path] = File.read(path, encoding: 'utf-8') }
-        end
-
-        # 退避した章 HTML を書き戻し、Kindle ビルドをクリーンな状態から始める。
-        def restore_chapter_htmls(snapshot)
-          snapshot.each { |path, content| File.write(path, content) }
         end
 
         # Kindle 中間 EPUB を KPF へ変換し、成功時は中間 EPUB を削除する（§1-7）。

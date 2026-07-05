@@ -23,6 +23,7 @@
 #   - content: 処理中の内容
 # ================================================================
 
+require 'fileutils'
 require_relative '../common'
 require_relative 'frontmatter_generator'
 require_relative 'data_render'
@@ -56,7 +57,8 @@ module VivlioStarter
           filename = File.basename(md_file)
           @context = PreProcessContext.new(
             source_path: md_file,
-            output_path: filename,
+            # 中間 .md はルートではなくワークスペースの html/ へ書く（P4 §3.4-1）
+            output_path: File.join(Common::BUILD_HTML_DIR, filename),
             filename: filename,
             file_type: entry.kind.to_s,
             chapter_number: entry.number,
@@ -452,6 +454,7 @@ module VivlioStarter
 
         # 加工済みコンテンツを書き戻す
         def write_output!
+          FileUtils.mkdir_p(File.dirname(context.output_path))
           File.write(context.output_path, context.content, encoding: 'utf-8')
           Common.log_success('保存が完了しました')
         end

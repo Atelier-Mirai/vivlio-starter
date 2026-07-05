@@ -8,11 +8,12 @@
 #   最終成果物（output.pdf）は通常保持し、--purge で削除可能。
 #
 # 削除対象:
-#   - .vivliostyle/: Vivliostyle CLI のワークディレクトリ
-#   - *.html: Markdown から変換された HTML
-#   - entries.js: 目次生成用の ES Module
-#   - _toc.md, _titlepage.md 等: ビルド時に生成される特殊ページ
-#   - 中間 PDF: _titlepage.pdf, _sections.pdf 等の作業用ファイル
+#   - .cache/vs/build/: ビルドワークスペース（P4: 現行パイプラインの中間物はここに閉じる）
+#   - .vivliostyle/: Vivliostyle CLI のワークディレクトリ（手動フロー vs pdf 用）
+#   - entries.js: 手動フロー（vs entries）が生成する ES Module
+#   - _index_matches.yml 等: 索引機能がルートへ生成する作業ファイル
+#   - ルートの *.html / 章 .md / 中間 PDF 等: 旧バージョン（P4 以前）の残骸掃除
+#     （LEGACY_* パターン・1 リリース残して V2.0 で撤去予定）
 #   - .cache/vs/: ビルドキャッシュ（--cache オプション）
 #   - .cache/metrics/: metrics キャッシュ（--cache オプション）
 #   - covers/: 生成されたカバー画像（--cover オプション、マスターは保持）
@@ -55,6 +56,58 @@ module VivlioStarter
           - `vs clean --cover`    : 生成されたカバー画像のみを削除（マスターは保持）
         DESC
       }.freeze
+
+      # 現行機能がプロジェクトルートへ生成する作業ファイルの掃除パターン。
+      # - entries.js: 著者向け手動フロー（vs entries → vs pdf）の生成物
+      # - _index_*: 索引スキャン（ビルド中）と vs index:auto（著者レビュー用）の生成物
+      ACTIVE_ROOT_PATTERNS = %w[
+        entries.js
+        _index_matches.yml _index_review.md _index_glossary_review.md
+      ].freeze
+
+      # ------------------------------------------------------------
+      # 旧バージョン残骸掃除（legacy・V2.0 で撤去予定）
+      # ------------------------------------------------------------
+      # P4（ワークスペース分離）以前のビルドは中間 md/HTML/中間 PDF を
+      # プロジェクトルートへ生成していた。現行パイプラインの中間物は
+      # .cache/vs/build/ に閉じており、以下のパターンに該当するルート生成は
+      # もう起きない。旧バージョンからの移行者のために 1 リリースだけ残す
+      # （P4 §3.4-8）。
+
+      # HTML / 章 Markdown / 特殊ページ / EPUB 補助ファイルの残骸パターン
+      LEGACY_ROOT_PATTERNS = [
+        # Markdown から変換されたルート HTML（_indexpage.html 等の特殊ページ HTML を含む）
+        '*.html',
+        # 生成される一時/補助的な Markdown
+        '_toc.md',
+        # pre_process がルートへ展開していた章 Markdown のみ削除対象に限定
+        # 例: 11-install.md など（任意の *.md やドキュメントは削除しない）
+        '[0-9][0-9]-*.md',
+        # 内部 basename 方式の特殊ページ
+        '_titlepage.md', '_legalpage.md', '_colophon.md',
+        # 中扉（Part Title Page）
+        '_part*.md',
+        # EPUB 中間ファイル（P4 段階 4 で epub/・kindle/ 内生成へ移行）
+        'vivliostyle.config.epub.js',
+        'entries.epub.js',
+        # EPUB 同梱用 book-settings.css 変種（正規の .cache/vs/ 版は --cache で掃除）
+        'book-settings.css'
+      ].freeze
+
+      # ルートの中間 PDF の残骸パターン（P4 段階 3 で pdf/ 内生成へ移行）
+      LEGACY_INTERMEDIATE_PDF_PATTERNS = [
+        # 内部名ベースの中間PDF
+        '_titlepage.pdf', '_legalpage.pdf', '_colophon.pdf',
+        '_titlepage_legalpage.pdf', '_sections.pdf',
+        # _toc.pdf は廃止済み（OutlineExtractor が注釈対象 PDF から直接算出）
+        '_toc.pdf',
+        'blank_page.pdf', 'blank_frontmatter_insert.pdf',
+        'output_tmp*.pdf',
+        # 入稿用 PDF の中間ファイル
+        '_titlepage_legalpage_print.pdf', '_sections_print.pdf',
+        '_colophon_print.pdf', '_blank_before_colophon.pdf',
+        'output_print.pdf'
+      ].freeze
 
       # クリーンアップ処理のエントリーポイント
       #
@@ -143,47 +196,20 @@ module VivlioStarter
           return
         end
 
-        # BuildHelpers.clean_generated_files! と等価の処理をここに実装
+        # 手動フロー（vs pdf）と旧バージョンのビルドが残す Vivliostyle ワークディレクトリ。
+        # パイプラインの生成 config は workspaceDir をワークスペース内へ向けるため
+        # ルートには生成しない（P4 §5.6・段階 5）。
         Common.log_action('.vivliostyle ディレクトリを削除中...')
         FileUtils.rm_rf('.vivliostyle')
 
-        Common.log_action('生成ファイルを削除中...')
-        cleanup_patterns = [
-          # HTML/JS 中間生成物
-          '*.html',
-          'entries.js',
-          # 生成される一時/補助的な Markdown（任意）
-          '_toc.md',
-          # pre_process によりプロジェクトルートへ展開される章系の Markdown のみ削除対象に限定
-          # 例: 11-install.md など（任意の *.md やドキュメントは削除しない）
-          '[0-9][0-9]-*.md',
-          # 内部 basename 方式の特殊ページ
-          '_titlepage.md', '_legalpage.md', '_colophon.md', '_indexpage.html',
-          '_index_matches.yml', '_index_review.md', '_index_glossary_review.md',
-          # 中扉（Part Title Page）
-          '_part*.md',
-          # EPUB 中間ファイル
-          'vivliostyle.config.epub.js',
-          'entries.epub.js',
-          # EPUB 同梱用 book-settings.css 変種（正規の .cache/vs/ 版は --cache で掃除）
-          'book-settings.css'
-        ]
+        # ビルドワークスペース（P4: 現行パイプラインの中間物はすべてここに閉じる）を一括削除
+        if File.directory?(Common::BUILD_DIR)
+          FileUtils.rm_rf(Common::BUILD_DIR)
+          Common.log_info("#{Common::BUILD_DIR} を削除しました")
+        end
 
-        intermediate_pdfs = [
-          # 内部名ベースの中間PDF
-          '_titlepage.pdf', '_legalpage.pdf', '_colophon.pdf',
-          '_titlepage_legalpage.pdf', '_sections.pdf',
-          # _toc.pdf は廃止済み（OutlineExtractor が注釈対象 PDF から直接算出）。
-          # 旧バージョンのビルドが残した stale を掃除するため掃除対象には残す。
-          '_toc.pdf',
-          'blank_page.pdf', 'blank_frontmatter_insert.pdf',
-          'output_tmp*.pdf',
-          # 入稿用 PDF の中間ファイル（Step 13）
-          '_titlepage_legalpage_print.pdf', '_sections_print.pdf',
-          '_colophon_print.pdf', '_blank_before_colophon.pdf',
-          'output_print.pdf'
-        ]
-        cleanup_patterns.concat(intermediate_pdfs)
+        Common.log_action('生成ファイルを削除中...')
+        cleanup_patterns = ACTIVE_ROOT_PATTERNS + LEGACY_ROOT_PATTERNS + LEGACY_INTERMEDIATE_PDF_PATTERNS
 
         final_pdfs = %w[output.pdf output_compressed.pdf]
 
@@ -209,24 +235,22 @@ module VivlioStarter
         end
 
         # 数式 SVG（前処理が images/math/ へ生成する中間成果物）を削除する
+        # （PDF がルートの images/math/ を参照するため現行生成物。workspace 化は P4b）
         math_dir = File.join(Common.images_dir, 'math')
         if File.directory?(math_dir)
           FileUtils.rm_rf(math_dir)
           Common.log_info("#{math_dir} を削除しました")
         end
 
-        # 扉絵・節絵の合成 SVG（EpubBuilder が images/headings/ へ生成する中間成果物）を削除する
-        headings_dir = File.join(Common.images_dir, 'headings')
-        if File.directory?(headings_dir)
-          FileUtils.rm_rf(headings_dir)
-          Common.log_info("#{headings_dir} を削除しました")
-        end
+        # 扉絵・節絵の合成 SVG / EPUB 用 WebP→JPEG 変換物の残骸を削除する
+        # （P4 段階 4 で消費者 dir 内生成へ移行済み。旧バージョン残骸掃除として
+        #   1 リリース残し V2.0 で撤去する）
+        %w[headings _epub_assets].each do |subdir|
+          legacy_dir = File.join(Common.images_dir, subdir)
+          next unless File.directory?(legacy_dir)
 
-        # EPUB 用 WebP→JPEG/PNG 変換物（EpubBuilder が images/_epub_assets/ へ生成）を削除する
-        epub_assets_dir = File.join(Common.images_dir, '_epub_assets')
-        if File.directory?(epub_assets_dir)
-          FileUtils.rm_rf(epub_assets_dir)
-          Common.log_info("#{epub_assets_dir} を削除しました")
+          FileUtils.rm_rf(legacy_dir)
+          Common.log_info("#{legacy_dir} を削除しました")
         end
 
         Common.log_success('不要ファイルの削除が完了しました')

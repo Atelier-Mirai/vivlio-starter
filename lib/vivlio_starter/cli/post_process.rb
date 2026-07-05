@@ -188,6 +188,7 @@ module VivlioStarter
       module_function :normalize_options
 
       # Entry 配列を解決し、HTML パス => Entry の Hash を返す
+      # 中間 HTML はワークスペースの html/ に置かれる（P4 §3.4-1）
       # @param entries [Array<TokenResolver::Entry>]
       # @return [Hash{String => TokenResolver::Entry}] HTML パス => Entry のマップ
       def resolve_entry_map(entries)
@@ -196,21 +197,21 @@ module VivlioStarter
 
         if raw.empty?
           # 全 HTML ファイルを TokenResolver で解決
-          Dir.glob('./*.html').each_with_object({}) do |html_file, map|
+          Dir.glob(File.join(Common::BUILD_HTML_DIR, '*.html')).each_with_object({}) do |html_file, map|
             entry = resolver.resolve_file(html_file)
             map[html_file] = entry
           end
         elsif raw.first.respond_to?(:kind)
           # Entry 配列: HTML パスと紐付け
           raw.each_with_object({}) do |entry, map|
-            html_file = "./#{entry.basename}.html"
+            html_file = File.join(Common::BUILD_HTML_DIR, "#{entry.basename}.html")
             map[html_file] = entry
           end
         else
           # basename/パスの場合は TokenResolver で解決
           raw.each_with_object({}) do |bn, map|
             entry = resolver.resolve_file(bn)
-            html_file = "./#{entry.basename}.html"
+            html_file = File.join(Common::BUILD_HTML_DIR, "#{entry.basename}.html")
             map[html_file] = entry
           end
         end

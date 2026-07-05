@@ -12,7 +12,7 @@
 #   - EPF-02: マージンボックス除去が通常ルール（margin-bottom 等）を壊さない
 #   - EPF-03: 段落内脚注 span の id のみ除去（aside の id / data-footnote-number は残す）
 #   - EPF-04: 絵文字 <img> に width/height 属性が無く style に寸法が入る
-#   - EPF-05: generate_epub_config! が copyAsset.excludes を出力する
+#   - EPF-05: generate_epub_config! が entryContext と dir 内 output を出力する（P4 段階 4）
 #   - EPF-06: @footnote at-rule もサニタイズで除去される（Fix-5）
 #   - EPF-07: テーブルの align 属性が style の text-align へ変換される（Fix-6）
 #   - EPF-08: content.opf の数字始まり id/idref に接頭辞が付く（Fix-7）
@@ -94,16 +94,19 @@ module VivlioStarter
         assert_match(/style="width: 1em; height: 1em;/, result, '寸法は style に統合されるべき')
       end
 
-      # --- EPF-05: generate_epub_config! が copyAsset.excludes を出力する ---
-      def test_should_generate_config_with_copy_asset_excludes
-        path = Build::EpubBuilder.generate_epub_config!
+      # --- EPF-05: generate_epub_config! が entryContext と dir 内 output を出力する（P4 段階 4）。
+      #   パッケージ内容の選択は copyAsset.excludes ではなくローカライズ（localize_assets!）が
+      #   担うため、config に copyAsset ブロックは出力しない。 ---
+      def test_should_generate_config_with_entry_context
+        dir = '.cache/vs/build/epub'
+        FileUtils.mkdir_p(dir)
+        path = Build::EpubBuilder.generate_epub_config!(dir:)
         content = File.read(path)
 
-        assert_includes content, 'copyAsset:', 'copyAsset ブロックが出力されるべき'
-        assert_includes content, 'excludes:', 'excludes 配列が出力されるべき'
-        %w[lib/** docs/** test/** *_images/** covers/bundled/**].each do |pattern|
-          assert_includes content, "'#{pattern}'", "除外パターン #{pattern} が含まれるべき"
-        end
+        assert_equal File.join(dir, 'vivliostyle.config.epub.js'), path, 'config は消費者 dir 内に生成されるべき'
+        assert_includes content, "entryContext: '#{dir}'", 'entryContext は消費者 dir を指すべき'
+        assert_includes content, "'#{dir}/output.epub'", 'output は消費者 dir 内を指すべき'
+        refute_includes content, 'copyAsset:', 'copyAsset ブロックは出力しない（選択はローカライズが担う）'
       end
 
       # --- EPF-06: @footnote at-rule の除去（Fix-5。通常ルールは残す） ---
@@ -194,25 +197,31 @@ module VivlioStarter
         assert_includes result, 'font-family: var(--font-main-text)', '通常の font-family 宣言は残すべき'
       end
 
-      # --- EPF-09b: 非埋め込み時は copyAsset.excludes に fonts/ が含まれる ---
+      # --- EPF-09b: 非埋め込み時はローカライズが fonts/ をコピーしない ---
       def test_should_exclude_fonts_dir_when_not_embedding
-        path = Build::EpubBuilder.generate_epub_config!
-        content = File.read(path)
+        create_stylesheet_fixture
+        dir = '.cache/vs/build/epub'
 
-        assert_includes content, "'stylesheets/fonts/**'", '非埋め込み時 fonts/ を除外すべき'
+        Build::EpubBuilder.localize_assets!(dir, flavor: :epub)
+
+        assert File.exist?(File.join(dir, 'stylesheets/theme.css')), 'CSS はローカライズされるべき'
+        refute File.exist?(File.join(dir, 'stylesheets/fonts/zen.ttf')),
+               '非埋め込み時 fonts/ はローカライズしないべき'
       end
 
       # --- EPF-10: 埋め込み経路（embed_fonts? = true）では fonts/@font-face を保持 ---
       def test_should_keep_fonts_when_embedding_enabled
         css = %(@font-face { font-family: "X"; src: url("fonts/x.ttf"); }\n)
         epub = build_epub_with_css('EPUB/stylesheets/page-settings.css' => css)
+        create_stylesheet_fixture
+        dir = '.cache/vs/build/epub'
 
         Build::EpubBuilder.stub(:embed_fonts?, true) do
           Build::EpubBuilder.sanitize_epub_css!(epub)
-          config = Build::EpubBuilder.generate_epub_config!
+          Build::EpubBuilder.localize_assets!(dir, flavor: :epub)
 
-          refute_includes File.read(config), "'stylesheets/fonts/**'",
-                          '埋め込み時は fonts/ を除外しないべき'
+          assert File.exist?(File.join(dir, 'stylesheets/fonts/zen.ttf')),
+                 '埋め込み時は fonts/ もローカライズすべき'
         end
 
         result = read_css_from_epub(epub, 'EPUB/stylesheets/page-settings.css')
@@ -239,21 +248,36 @@ module VivlioStarter
 
       # --- EPF-11b: WebP 除外は Kindle フレーバのみ（Kindle 非対応）。
       #   クリーン EPUB（:epub・Kobo/Apple Books）は WebP を高画質維持するため除外しない（§4）。
-      #   twemoji 直下 svg は両フレーバで除外、vs-techbook サブツリーは丸ごと全除外しない。 ---
+      #   twemoji 直下 svg は両フレーバで除外、vs-techbook サブツリーは丸ごと全除外しない。
+      #   さらに消費者 dir 内へ直接生成される _epub_assets/・headings/ はルートの残骸を拾わない。 ---
       def test_should_exclude_webp_only_for_kindle_flavor
-        kindle = File.read(Build::EpubBuilder.generate_epub_config!(flavor: :kindle))
-        assert_includes kindle, "'images/**/*.webp'", 'kindle は本文画像の WebP を全除外すべき（Kindle 非対応）'
-        assert_includes kindle, "'stylesheets/**/*.webp'", 'kindle はスタイルシート配下の WebP も全除外すべき'
+        create_stylesheet_fixture
+        create_image_fixture
+        epub_dir = '.cache/vs/build/epub'
+        kindle_dir = '.cache/vs/build/kindle'
 
-        clean = File.read(Build::EpubBuilder.generate_epub_config!(flavor: :epub))
-        refute_includes clean, "'images/**/*.webp'", 'クリーン EPUB は WebP を維持する（除外しない・§4）'
-        refute_includes clean, "'stylesheets/**/*.webp'", 'クリーン EPUB はスタイルシート配下の WebP も維持する'
+        Build::EpubBuilder.localize_assets!(epub_dir, flavor: :epub)
+        Build::EpubBuilder.localize_assets!(kindle_dir, flavor: :kindle)
 
-        # twemoji 直下 svg は両フレーバで除外、vs-techbook を巻き込む全除外はしない
-        [kindle, clean].each do |content|
-          assert_includes content, "'stylesheets/twemoji/*.svg'", 'twemoji 直下 svg を除外すべき'
-          refute_includes content, "'stylesheets/twemoji/**'", 'vs-techbook を巻き込む全除外はしないべき'
+        # kindle は WebP を同梱しない（transcode 済み・Kindle 非対応）
+        refute File.exist?(File.join(kindle_dir, 'images/01/photo.webp')), 'kindle は本文画像の WebP を除外すべき'
+        refute File.exist?(File.join(kindle_dir, 'stylesheets/twemoji/vs-techbook/circled-1.webp')),
+               'kindle はスタイルシート配下の WebP も除外すべき'
+        # クリーン EPUB は WebP を高画質のまま維持する（§4）
+        assert File.exist?(File.join(epub_dir, 'images/01/photo.webp')), 'クリーン EPUB は WebP を維持すべき'
+        assert File.exist?(File.join(epub_dir, 'stylesheets/twemoji/vs-techbook/circled-1.webp')),
+               'クリーン EPUB は vs-techbook の WebP も維持すべき'
+        # 非 WebP 画像は両フレーバで同梱する
+        assert File.exist?(File.join(kindle_dir, 'images/01/pic.png')), 'kindle も PNG は同梱すべき'
+        # twemoji 直下 svg（絵文字マスター）は両フレーバで除外、vs-techbook svg は維持
+        [epub_dir, kindle_dir].each do |dir|
+          refute File.exist?(File.join(dir, 'stylesheets/twemoji/1f004.svg')), 'twemoji 直下 svg を除外すべき'
+          assert File.exist?(File.join(dir, 'stylesheets/twemoji/vs-techbook/mark.svg')),
+                 'vs-techbook を巻き込む全除外はしないべき'
         end
+        # ルートの生成物残骸（_epub_assets/・headings/）は拾わない（消費者 dir 内へ直接生成される）
+        refute File.exist?(File.join(epub_dir, 'images/_epub_assets/stale.jpg')), 'ルートの _epub_assets は拾わない'
+        refute File.exist?(File.join(epub_dir, 'images/headings/stale.svg')), 'ルートの headings は拾わない'
       end
 
       # --- EPF-12: 用語集 <dl> 直下のグループ見出し div を dl の外へ出し頭文字ごとに分割（RSC-005・§1-8） ---
@@ -303,6 +327,28 @@ module VivlioStarter
       end
 
       private
+
+      # ローカライズ検証用の stylesheets/ ソースツリーを作る。
+      def create_stylesheet_fixture
+        FileUtils.mkdir_p('stylesheets/twemoji/vs-techbook')
+        FileUtils.mkdir_p('stylesheets/fonts')
+        File.write('stylesheets/theme.css', 'body {}')
+        File.write('stylesheets/twemoji/1f004.svg', '<svg/>')
+        File.write('stylesheets/twemoji/vs-techbook/mark.svg', '<svg/>')
+        File.write('stylesheets/twemoji/vs-techbook/circled-1.webp', 'webp')
+        File.write('stylesheets/fonts/zen.ttf', 'font')
+      end
+
+      # ローカライズ検証用の images/ ソースツリーを作る（生成物の残骸を含む）。
+      def create_image_fixture
+        FileUtils.mkdir_p('images/01')
+        FileUtils.mkdir_p('images/_epub_assets')
+        FileUtils.mkdir_p('images/headings')
+        File.write('images/01/photo.webp', 'webp')
+        File.write('images/01/pic.png', 'png')
+        File.write('images/_epub_assets/stale.jpg', 'jpg')
+        File.write('images/headings/stale.svg', '<svg/>')
+      end
 
       # EPUB 構造を模した zip を作成して .epub パスを返す。
       # sanitize_epub_css! は unzip/zip による実差し替えを行うため、
