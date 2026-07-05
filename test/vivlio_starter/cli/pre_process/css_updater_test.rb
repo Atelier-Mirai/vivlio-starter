@@ -3,11 +3,13 @@
 # ================================================================
 # Test: css_updater_test.rb
 # ================================================================
-# 検証内容（P3 以降・CssUpdater は値計算＋config.js 同期のみ担う）:
+# 検証内容（P3-4 以降・CssUpdater は値計算専業）:
 #   - format_font_value: :font 変数へ generic フォールバックを付与する
 #     （明朝=serif / ゴシック=sans-serif / コード=monospace）。
 #     フォント非埋め込み EPUB でも category がリーダー側で保たれることの担保。
-#   - sync_vivliostyle_config_title!: book.yml のタイトルを config.js へ同期する。
+#
+# vivliostyle.config.js の size/title 同期は P3-4 で全文生成（Build::
+# VivliostyleConfigWriter）へ移行したため vivliostyle_config_writer_test.rb で検証する。
 #
 # theme.style（simple/image）による画像変数切替・ヘッダ切替・マーカー既定値は、
 # P3 で BookSettingsCss 生成器＋方式A（body クラス）へ移行したため
@@ -51,51 +53,5 @@ class CssUpdaterFontValueTest < Minitest::Test
   # :font 以外（kind が nil）の値はそのまま返す
   def test_should_not_touch_non_font_values
     assert_equal '210mm', CU.format_font_value('--page-width', '210mm', nil)
-  end
-end
-
-# sync_vivliostyle_config_title!: book.yml のタイトルを vivliostyle.config.js へ同期する。
-# 回帰: CONFIG 互換層撤去後、book.yml に title キーが無い通常構成（main_title + subtitle）で
-# 旧ブラケットアクセス book['title'] が ArgumentError を送出し、同期が沈黙して失敗していた。
-# （chdir + reload_configuration! で canonical CONFIG を復旧する common_config_loading_test と同じ流儀）
-class CssUpdaterTitleSyncTest < Minitest::Test
-  CU = VivlioStarter::CLI::PreProcessCommands::CssUpdater
-  Common = VivlioStarter::CLI::Common
-
-  def setup
-    @temp_dir = Dir.mktmpdir
-    @original_dir = Dir.pwd
-    Dir.chdir(@temp_dir)
-    FileUtils.mkdir_p('config')
-    %w[catalog page_presets post_replace_list].each { File.write("config/#{it}.yml", '{}') }
-    File.write('vivliostyle.config.js', "  language: 'ja',\n  title: 'PLACEHOLDER',\n")
-  end
-
-  def teardown
-    Dir.chdir(@original_dir)
-    FileUtils.rm_rf(@temp_dir)
-    Common.reload_configuration!(silent: true) if File.file?('config/book.yml')
-  end
-
-  # 回帰の本丸: title キー不在でも main_title + subtitle を結合して同期できる
-  def test_should_sync_title_from_main_title_and_subtitle_without_title_key
-    File.write('config/book.yml',
-               { 'book' => { 'main_title' => 'はじめての技術書', 'subtitle' => '実践ガイド' } }.to_yaml)
-    Common.reload_configuration!(silent: true)
-
-    CU.sync_vivliostyle_config_title!
-
-    assert_match(/title:\s*'はじめての技術書 実践ガイド'/, File.read('vivliostyle.config.js'))
-  end
-
-  # title キーを明示した場合はそれを優先する
-  def test_should_prefer_explicit_title_key
-    File.write('config/book.yml',
-               { 'book' => { 'main_title' => '無視される', 'title' => '明示タイトル' } }.to_yaml)
-    Common.reload_configuration!(silent: true)
-
-    CU.sync_vivliostyle_config_title!
-
-    assert_match(/title:\s*'明示タイトル'/, File.read('vivliostyle.config.js'))
   end
 end

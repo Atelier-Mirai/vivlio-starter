@@ -3,24 +3,22 @@
 # ================================================================
 # File: lib/vivlio_starter/cli/pre_process/css_updater.rb
 # ================================================================
-# 責務（P3 以降）:
-#   ビルド設定 CSS の「値計算」と vivliostyle.config.js の同期を担う。
+# 責務（P3-4 以降）:
+#   ビルド設定 CSS の「値計算」専業モジュール。
 #
 #   かつては theme.css / page-settings.css 等のソース CSS を毎ビルド正規表現で
 #   in-place 書換していたが、それはソース CSS を可変化させテーマ CSS セットの
 #   差し替えを阻んだ。P3（課題 C）でその書換を全廃し、設定値は
 #   BookSettingsCss 生成器が `.cache/vs/book-settings.css` へ全文書き出す。
-#   本モジュールは生成器が使う実証済みの値計算ロジック（用紙スケール・行長・
-#   ノンブル配置・綴じオフセット・フォントスタック整形・色正規化・CSS 変数
-#   マッピング）と、@page size / title を JS 設定へ書く config.js 同期のみを残す。
+#   さらに P3-4 で vivliostyle.config.js の size/title 正規表現同期も全廃し
+#   （Build::VivliostyleConfigWriter による全文生成へ移行）、本モジュールは
+#   生成器が使う実証済みの値計算ロジック（用紙スケール・行長・ノンブル配置・
+#   綴じオフセット・フォントスタック整形・色正規化・CSS 変数マッピング）のみを残す。
 #
 # 提供する値計算 API（BookSettingsCss から利用）:
 #   - calculate_paper_scale / calculate_align_max_width /
 #     calculate_frontispiece_binding_offset / apply_folio_placement!
 #   - format_font_value / normalize_color_value / build_css_variable_mappings
-#
-# config.js 同期（P3-4: JS ファイルは書換のまま維持）:
-#   - sync_vivliostyle_config_size! / sync_vivliostyle_config_title!
 # ================================================================
 
 require_relative '../common'
@@ -33,74 +31,6 @@ module VivlioStarter
         ALLOWED_COLORS = %w[yellow orange red magenta purple indigo navy blue cyan teal green lime].freeze
 
         module_function
-
-        # vivliostyle.config.js の size プロパティを book.yml のページ設定に同期する
-        def sync_vivliostyle_config_size!(width, height, size_name = nil)
-          config_path = Common::VIVLIOSTYLE_CONFIG_FILE
-          return unless File.exist?(config_path)
-
-          # サイズ文字列を決定（'A5', 'B5', 'A4' またはカスタム寸法）
-          new_size = if size_name && !size_name.to_s.strip.empty?
-                       size_name.to_s.strip.upcase
-                     else
-                       "#{width} #{height}"
-                     end
-
-          content = File.read(config_path, encoding: 'utf-8')
-
-          if content.match?(/^\s*size:\s/)
-            # 既存の size プロパティを更新
-            updated = content.sub(/^(\s*size:\s*)'[^']*'/, "\\1'#{new_size}'")
-            updated = updated.sub(/^(\s*size:\s*)"[^"]*"/, "\\1'#{new_size}'") if updated == content
-          else
-            # size プロパティが存在しない場合、language の後に挿入
-            updated = content.sub(
-              %r{^(\s*language:\s*'[^']*',\s*//[^\n]*\n)},
-              "\\1  size: '#{new_size}', // ページサイズ（book.yml のプリセットから自動設定）\n"
-            )
-          end
-
-          return if updated == content
-
-          File.write(config_path, updated)
-          Common.log_success("vivliostyle.config.js の size を '#{new_size}' に同期しました")
-        rescue StandardError => e
-          Common.log_warn("vivliostyle.config.js の size 同期に失敗: #{e.message}")
-        end
-
-        # vivliostyle.config.js の title を book.yml の main_title + subtitle に同期する
-        #
-        # PDF の文書タイトル（メタデータ）は vivliostyle.config.js の title から設定される。
-        # book.yml に title キーがあればそれを優先し、なければ main_title と subtitle を結合する。
-        def sync_vivliostyle_config_title!
-          config_path = Common::VIVLIOSTYLE_CONFIG_FILE
-          return unless File.exist?(config_path)
-
-          book = Common::CONFIG.book
-          title_raw = book.title
-          main_title = book.main_title.to_s.strip
-          subtitle = book.subtitle.to_s.strip
-
-          new_title = if title_raw && !title_raw.to_s.strip.empty?
-                        title_raw.to_s.strip
-                      elsif !main_title.empty?
-                        [main_title, subtitle].reject(&:empty?).join(' ')
-                      else
-                        return
-                      end
-
-          esc_title = new_title.gsub('\\', '\\\\').gsub("'", "\\'")
-          content = File.read(config_path, encoding: 'utf-8')
-          updated = content.sub(/^(\s*title:\s*)'[^']*'/, "\\1'#{esc_title}'")
-          updated = updated.sub(/^(\s*title:\s*)"[^"]*"/, "\\1'#{esc_title}'") if updated == content
-
-          return if updated == content
-
-          File.write(config_path, updated)
-          Common.log_success("vivliostyle.config.js の title を '#{new_title}' に同期しました")
-        rescue StandardError => e
-          Common.log_warn("vivliostyle.config.js の title 同期に失敗: #{e.message}")
-        end
 
         # 色値を正規化（色名 or HEX）
         def normalize_color_value(raw_value, fallback: 'var(--accent-yellow)')

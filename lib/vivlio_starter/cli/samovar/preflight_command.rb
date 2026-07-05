@@ -71,7 +71,6 @@ module VivlioStarter
             Guards::CatalogFileCheck.new,
             Guards::CatalogEntriesCheck.new,
             Guards::ContentsDirCheck.new,
-            Guards::VivliostyleConfigCheck.new,
             Guards::NodeCheck.new,
             Guards::OrphanFileCheck.new,
             Guards::ImageFilenameCheck.new,

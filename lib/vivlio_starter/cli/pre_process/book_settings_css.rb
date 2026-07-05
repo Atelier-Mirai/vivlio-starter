@@ -33,6 +33,7 @@
 require 'fileutils'
 require_relative '../common'
 require_relative '../font_manager'
+require_relative '../build/vivliostyle_config_writer'
 require_relative 'css_updater'
 require_relative 'frontmatter_generator'
 
@@ -65,7 +66,10 @@ module VivlioStarter
 
           # --- Phase: CSS 書換とは独立に必要な副作用（旧 update_all_css_files から引越し）---
           ensure_fonts_available(cfg)
-          sync_vivliostyle_config!(cfg)
+          # ルート vivliostyle.config.js を book.yml から全文生成する（P3-4）。
+          # かつては CssUpdater が size/title を正規表現 in-place 書換していたが、
+          # 全文生成へ移行し、脆い正規表現機構を全廃した。
+          Build::VivliostyleConfigWriter.write_root_config!
 
           Common.log_success('[Step 2] book-settings.css を生成しました')
           path
@@ -272,13 +276,6 @@ module VivlioStarter
             typo_cfg&.dig(:folio, :font)
           ]
           FontManager.ensure_fonts_available(font_names)
-        end
-
-        # vivliostyle.config.js の size / title を同期する（P3-4: config.js は書換のまま維持）。
-        def sync_vivliostyle_config!(cfg)
-          page_cfg = build_page_cfg(cfg)
-          CssUpdater.sync_vivliostyle_config_size!(page_cfg[:width], page_cfg[:height], page_cfg[:size])
-          CssUpdater.sync_vivliostyle_config_title!
         end
       end
     end

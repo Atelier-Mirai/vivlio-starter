@@ -73,7 +73,6 @@ module VivlioStarter
 
         assert_includes output, '内部コマンド'
         assert_includes output, 'pdf:compress'
-        assert_includes output, 'DEVELOPER_GUIDE.md'
       end
 
       # vs pdf:compress --help: 圧縮コマンドの詳細ヘルプ

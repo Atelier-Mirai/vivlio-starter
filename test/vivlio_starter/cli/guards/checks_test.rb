@@ -116,18 +116,17 @@ module VivlioStarter
         end
       end
 
-      # ContentsDirCheck / VivliostyleConfigCheck: 存在チェック
-      def test_should_detect_missing_contents_dir_and_vivliostyle_config
+      # ContentsDirCheck: 存在チェック
+      # （vivliostyle.config.js の存在 Guard は P3-4 で撤去。config は
+      #  'prepare theme images' ステップで全文生成され欠落が自己修復されるため）
+      def test_should_detect_missing_contents_dir
         Dir.mktmpdir('vs-guards') do |dir|
           Dir.chdir(dir) do
             assert_equal 1, Guards::ContentsDirCheck.new.validate.size
-            assert_equal 1, Guards::VivliostyleConfigCheck.new.validate.size
 
             FileUtils.mkdir_p('contents')
-            File.write('vivliostyle.config.js', '// config')
 
             assert_empty Guards::ContentsDirCheck.new.validate
-            assert_empty Guards::VivliostyleConfigCheck.new.validate
           end
         end
       end

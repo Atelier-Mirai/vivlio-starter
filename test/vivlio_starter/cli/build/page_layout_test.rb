@@ -190,75 +190,9 @@ module VivlioStarter
       end
     end
 
-    # ================================================================
-    # vivliostyle.config.js size 同期のテスト
-    # ================================================================
-    class VivliostyleConfigSizeSyncTest < Minitest::Test
-      def setup
-        @tmpdir = Dir.mktmpdir
-        @original_dir = Dir.pwd
-        Dir.chdir(@tmpdir)
-      end
-
-      def teardown
-        Dir.chdir(@original_dir)
-        FileUtils.rm_rf(@tmpdir)
-      end
-
-      def test_sync_updates_existing_size_property
-        File.write('vivliostyle.config.js', <<~JS)
-          const vivliostyleConfig = {
-            title: 'テスト',
-            language: 'ja', // 言語設定
-            size: 'A4', // ページサイズ
-            entry: entries,
-          };
-        JS
-
-        VivlioStarter::CLI::PreProcessCommands::CssUpdater.sync_vivliostyle_config_size!('148mm', '210mm', 'A5')
-
-        content = File.read('vivliostyle.config.js')
-        assert_match(/size:\s*'A5'/, content, 'size が A5 に更新されること')
-        refute_match(/size:\s*'A4'/, content, '旧サイズ A4 が残らないこと')
-      end
-
-      def test_sync_inserts_size_when_missing
-        File.write('vivliostyle.config.js', <<~JS)
-          const vivliostyleConfig = {
-            title: 'テスト',
-            language: 'ja', // 言語設定
-            entry: entries,
-          };
-        JS
-
-        VivlioStarter::CLI::PreProcessCommands::CssUpdater.sync_vivliostyle_config_size!('148mm', '210mm', 'A5')
-
-        content = File.read('vivliostyle.config.js')
-        assert_match(/size:\s*'A5'/, content, 'size プロパティが挿入されること')
-      end
-
-      def test_sync_uses_dimensions_when_size_name_empty
-        File.write('vivliostyle.config.js', <<~JS)
-          const vivliostyleConfig = {
-            title: 'テスト',
-            language: 'ja', // 言語設定
-            size: 'A4', // ページサイズ
-            entry: entries,
-          };
-        JS
-
-        VivlioStarter::CLI::PreProcessCommands::CssUpdater.sync_vivliostyle_config_size!('200mm', '300mm', nil)
-
-        content = File.read('vivliostyle.config.js')
-        assert_match(/size:\s*'200mm 300mm'/, content,
-                     'サイズ名がない場合は幅×高さが設定されること')
-      end
-
-      def test_sync_skips_when_file_missing
-        # vivliostyle.config.js が存在しない場合はエラーにならない
-        assert_nil VivlioStarter::CLI::PreProcessCommands::CssUpdater.sync_vivliostyle_config_size!('148mm', '210mm', 'A5')
-      end
-    end
+    # vivliostyle.config.js の size/title 同期テストは P3-4 で全文生成
+    # （Build::VivliostyleConfigWriter）へ移行したため撤去した。
+    # 生成の検証は test/vivlio_starter/cli/build/vivliostyle_config_writer_test.rb を参照。
 
     # ================================================================
     # calculate_align_max_width のテスト
