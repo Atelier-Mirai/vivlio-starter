@@ -330,39 +330,54 @@ module VivlioStarter
 
         Common.log_info "  塗り足し: #{bleed_mm}mm（片側）" if bleed_mm.positive?
 
-        theme = config.dig(:output, :cover) || 'master'
-
-        front_output = "frontcover_#{theme}_#{page_size}_cmyk.pdf"
-        back_output  = "backcover_#{theme}_#{page_size}_cmyk.pdf"
-
-        front_input = theme == 'master' ? FRONTCOVER_MASTER : "frontcover_#{theme}.png"
-        back_input  = theme == 'master' ? BACKCOVER_MASTER  : "backcover_#{theme}.png"
+        theme       = config.dig(:output, :cover) || 'master'
+        cover_bleed = (config.dig(:output, :print_pdf, :cover_bleed) || 'scale').to_s
 
         # print_pdf ターゲットは常にトンボ付きで生成する
-        CoverCommands.generate_pdfx_single(
-          File.join(covers_dir, front_input),
-          File.join(covers_dir, front_output),
-          base_size,
-          bleed_mm: bleed_mm,
-          crop_marks: true
-        )
+        %w[front back].each do |side|
+          base_input = theme == 'master' ? "#{side}cover_master.png" : "#{side}cover_#{theme}.png"
+          src, fill  = resolve_print_cover_input(covers_dir, base_input, cover_bleed)
+          CoverCommands.generate_pdfx_single(
+            File.join(covers_dir, src),
+            File.join(covers_dir, "#{side}cover_#{theme}_#{page_size}_cmyk.pdf"),
+            base_size,
+            bleed_mm: bleed_mm,
+            crop_marks: true,
+            fill: fill
+          )
+        end
+      end
 
-        CoverCommands.generate_pdfx_single(
-          File.join(covers_dir, back_input),
-          File.join(covers_dir, back_output),
-          base_size,
-          bleed_mm: bleed_mm,
-          crop_marks: true
-        )
+      # print 用の入力画像と充填モードを決める。
+      #
+      # 塗り足し込みの著者画像 `<base>_bleed.png`（例 frontcover_master_bleed.png）があれば
+      # 最優先で採用する（実画が塗り足しまで届くのでトリム画像との絵柄差が出ない）。無ければ
+      # `output.print_pdf.cover_bleed` 設定で分岐する:
+      #   scale（既定）= トリム画像を塗り足しまで拡大して流用（中央拡大・端裁断を許容）
+      #   keep         = 拡大しない（塗り足し帯は白。フチが端まで無いデザイン向け）
+      #
+      # @param covers_dir  [String] covers/ ディレクトリのフルパス
+      # @param base_input  [String] 既定入力ファイル名（frontcover_master.png 等）
+      # @param cover_bleed [String] 'scale' | 'keep'
+      # @return [Array(String, Symbol)] [入力ファイル名, 充填モード（:bleed=塗り足し込み / :trim=仕上がりのみ）]
+      def self.resolve_print_cover_input(covers_dir, base_input, cover_bleed)
+        bleed_input = base_input.sub(/\.png\z/i, '_bleed.png')
+        if File.exist?(File.join(covers_dir, bleed_input))
+          Common.log_info "  塗り足し込み画像を使用: #{bleed_input}"
+          return [bleed_input, :bleed]
+        end
+
+        cover_bleed == 'keep' ? [base_input, :trim] : [base_input, :bleed]
       end
 
       # CMYK PDF 生成（単一ファイル）
       #
       # crop_marks: false 時（pdf ターゲット）:
-      #   PNG → 塗り足し込みサイズでリサイズ + CMYK変換 → PDF
+      #   PNG → 塗り足し込みサイズ(trim+bleed×2)でリサイズ + CMYK変換 → PDF
       #
       # crop_marks: true 時（print_pdf ターゲット）:
-      #   PNG → 塗り足し込みサイズでリサイズ + CMYK変換 → 中間 PDF
+      #   PNG → 充填サイズ(fill=:bleed なら trim+bleed×2 / :trim なら trim)へリサイズ
+      #       → トンボ代(offset)帯を白で残して全紙サイズへ中央配置 + CMYK変換 → 中間 PDF
       #       → add_crop_marks_overlay でトンボを追加 → 最終 PDF
       #
       # Ghostscript による PDF/X-1a 変換は省略し、ImageMagick のみで処理する。
@@ -373,7 +388,8 @@ module VivlioStarter
       # @param size       [Hash]    仕上がりサイズ { width: px, height: px, mm: [w, h] }
       # @param bleed_mm   [Float]   塗り足し幅（mm）
       # @param crop_marks [Boolean] トンボを付与するか
-      def self.generate_pdfx_single(input_png, output_pdf, size, bleed_mm:, crop_marks: false)
+      # @param fill       [Symbol]  充填モード（:bleed=塗り足し込み / :trim=仕上がりのみ）
+      def self.generate_pdfx_single(input_png, output_pdf, size, bleed_mm:, crop_marks: false, fill: :bleed)
         return unless File.exist?(input_png)
 
         convert_cmd = imagemagick_convert_command
@@ -392,25 +408,35 @@ module VivlioStarter
 
         if crop_marks
           # --- Phase: トンボ付き PDF 生成 ---
-          # CreateCommands モジュールの add_crop_marks_overlay を使用
+          # 画像は塗り足しボックス(trim+bleed×2)または仕上がり(trim)サイズに収め、
+          # トンボ代(offset)帯を白で残して全紙サイズへ中央配置する。かつて画像を全紙
+          # サイズ(trim+(bleed+offset)×2)へ引き伸ばし約 +15% 拡大していた不具合を是正。
           require_relative 'create' unless defined?(CreateCommands)
 
           # ページサイズ = 仕上がり + 塗り足し×2 + オフセット×2
           offset_mm  = CROP_MARK_OFFSET_MM
-          margin_mm  = bleed_mm + offset_mm
-          (bleed_mm * px_per_mm).round
-          margin_px  = (margin_mm * px_per_mm).round
+          bleed_px   = (bleed_mm * px_per_mm).round
+          margin_px  = ((bleed_mm + offset_mm) * px_per_mm).round
           total_w_px = trim_w_px + (2 * margin_px)
           total_h_px = trim_h_px + (2 * margin_px)
+
+          content_w_px, content_h_px =
+            if fill == :trim
+              [trim_w_px, trim_h_px]
+            else
+              [trim_w_px + (2 * bleed_px), trim_h_px + (2 * bleed_px)]
+            end
 
           temp_pdf = "#{output_pdf}.temp.pdf"
 
           begin
-            # Step 1: 塗り足し込みサイズでPDFを生成（トンボなし、背景色のみ）
-            # ページサイズは仕上がり + 2 × (bleed + crop_offset) に設定
+            # Step 1: 画像を充填サイズへリサイズ→白背景の全紙サイズへ中央配置→CMYK PDF
             cmd_convert = convert_cmd + [
               input_png,
-              '-resize', "#{total_w_px}x#{total_h_px}!",
+              '-resize', "#{content_w_px}x#{content_h_px}!",
+              '-background', 'white',
+              '-gravity', 'center',
+              '-extent', "#{total_w_px}x#{total_h_px}",
               '-colorspace', 'CMYK',
               '-density', DPI.to_s,
               '-units', 'PixelsPerInch',

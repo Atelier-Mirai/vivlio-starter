@@ -27,6 +27,13 @@ module VivlioStarter
   module CLI
     # CoverCommands のユニットテスト
     class CoverCommandsTest < Minitest::Test
+      # setup_config が temp book.yml で CONFIG を上書きするため、テスト後に
+      # プロジェクトルートの canonical な book.yml で復旧する（後続テストファイルへの
+      # CONFIG 汚染＝metadata / spellcheck キー欠落の波及を防ぐ。CoverConfigTest と同方針）。
+      def teardown
+        Common.reload_configuration!(silent: true) if File.file?('config/book.yml')
+      end
+
       # マスターファイルが存在しない場合、false を返すことを確認
       def test_check_master_files_returns_false_when_missing
         within_temp_dir do
@@ -199,6 +206,14 @@ module VivlioStarter
         File.write('config/book.yml', config.to_yaml)
         File.write('config/page_presets.yml', DUMMY_PAGE_PRESETS.to_yaml)
         File.write('config/post_replace_list.yml', { 'replacements' => [] }.to_yaml)
+        # reload_configuration! の ensure_required_yaml_files! が要求する必須 4 ファイルを揃える
+        File.write('config/catalog.yml',
+                   { 'PREFACE' => [], 'CHAPTERS' => [], 'APPENDICES' => [], 'POSTFACE' => [] }.to_yaml)
+
+        # 書き込んだ temp book.yml を CONFIG へ反映する。これを怠ると Samovar コマンド
+        # 経路（execute_for_size 等）が起動時ロードの実プロジェクト CONFIG を参照し、
+        # theme が実プロジェクト側の値になって cover:master 前提のテストが崩れる。
+        Common.reload_configuration!(silent: true)
       end
 
       # テスト用のマスター画像を配置

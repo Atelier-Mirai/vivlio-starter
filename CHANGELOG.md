@@ -6,10 +6,16 @@
 
 ## unreleased
 
+### Added
+- [Medium] **入稿用表紙の塗り足し制御（著者持ち込み master 画像）**: `output.print_pdf.cover_bleed`（`scale`（既定）/ `keep`）を新設。`scale`=トリム画像を塗り足しまで拡大して流用（中央が数% 拡大・端が裁断される）、`keep`=拡大せず塗り足し帯を白のまま残す（フチが紙端まで無いデザイン向け）。加えて `covers/<front|back>cover_master_bleed.png`（塗り足し込みの専用画像）を置けば最優先で自動採用する（ゼロコンフィグ・拡大なしでトリム画像と絵柄差が出ない）。`CoverCommands.resolve_print_cover_input` を新設し、`config/book.yml` の print_pdf ブロックにコメントを追記（要 `ruby copy_to_scaffold.rb` 同期）。
+
 ### Removed
 - [Medium] **著者向け手動フロー（`vs pdf` / `vs entries` / ルート `vivliostyle.config.js`）の撤去**: P4（ワークスペース分離）完了時点で手動フローは実体を失っていた（`vs entries` はルーティング不在で呼べず、`vs pdf` はルートに中間 HTML が無いため空 entries.js を生成して空振り。パイプラインは全経路で workspace の用途別生成 config を使用）ため、workspace 化ではなく撤去した。(1) Samovar `vs pdf`（内部コマンド）を削除（`pdf:compress` / `pdf:pages` / `pdf:rasterize` / `pdf:read` は従来どおり）。(2) `PdfCommandRunner` の config なし経路を廃止し `config_path:` / `output_path:` を必須化。ルート entries.js の自動再生成（`ensure_entries_file!`）・`SingleDocDecider`（`VIVLIO_SINGLE_DOC`）・`vs pdf [output]` 専用のリネーム機構を削除。(3) `EntriesCommands.execute_entries` 系を削除（`build_entry` / `extract_html_title` は workspace entries 生成の基盤として残置）。(4) `VivliostyleConfigWriter.write_root_config!` 系（P3-4 のルート config 全文生成・`.bak` 退避）を削除し、ルートと scaffold の `vivliostyle.config.js` 本体・package.json の `build:pdf` script・book.yml の `vivliostyle.entries_file` / `config_file` 既定値も撤去。既存プロジェクトに残る `vivliostyle.config.js`（と `.bak`）は無害な残骸のため手動削除してよい（ルート `entries.js` は `vs clean` が旧残骸として掃除）。単章再生成は `vs build <章>` を、開発者デバッグは `vs build --no-clean` 後の `npx vivliostyle build -c .cache/vs/build/pdf/vivliostyle.config.sections.js` を使う。原稿（12-quickstart / 13-new / 61-developer）のプロジェクトツリー・内部コマンド表も更新。仕様書: [vivlioverso-manual-flow-removal-spec.md](docs/specs/vivlioverso-manual-flow-removal-spec.md)。
 
 ### Fixed
+- [Medium] **著者持ち込み表紙(master)の入稿版が約 +15% 拡大していた不具合**: `CoverCommands.generate_pdfx_single` のトンボ付き経路が、表紙画像を全紙サイズ(trim+(bleed+offset)×2)へ `-resize …!` で引き伸ばしていたため、閲覧版(trim)に対し中央が約 +15% 拡大＋端部裁断され、さらにトンボ代帯まで画像が回り込んでいた。画像を塗り足しボックス(trim+bleed×2、約 +2.86%)へ収めて白背景の全紙サイズへ**中央配置**する方式へ是正（トンボ代帯は白を維持）。`fill:` 引数（`:bleed` / `:trim`）を追加し、`keep` 指定時は仕上がりサイズのまま配置。実測（A4・単色）: scale/keep/`_bleed.png` の 3 モードで塗り足し帯の充填・白 offset を px 単位で確認。
+- [Medium] **bundle 表紙（light/dark）print 版の絵柄ずれを解消**: 入稿用表紙を生成する `CreateCommands#convert_svg_to_pdf_with_crop_marks` が、トリム設計の SVG を trim+bleed サイズへスケールして描画していたため、閲覧用（pdf）表紙に対し絵柄が約 +2.86% 拡大＋端部裁断され、pdf 版と print 版でずれていた。SVG の `viewBox` を塗り足し分だけ外側へ拡張して**等倍レンダ**する方式（新ヘルパー `expand_svg_viewbox_for_bleed`）へ変更し、pdf/print で内容が 1:1 一致するようにした。塗り足し帯は同梱テンプレの背景矩形（`id="vs-cover-bg"`）を viewBox 連動でリサイズして埋め、背景グラデを `userSpaceOnUse`＋`spreadMethod="pad"` 化（トンボ代の白帯は白のまま保持）。実測（A4・light）: 閲覧版と入稿版トリムの構造 RMSE 0.098→0.0007、塗り足し帯・トンボ・白 offset を目視確認。対象テンプレ `covers/bundled/{front,back}cover.svg` は要 `ruby copy_to_scaffold.rb` 同期。
+- [Low] **bundled 表紙の初回生成で中央グラフィックが黒く描画される不具合**: `render_bundled_svg`（bundled テンプレ経路）が CSS `var()` のインライン展開（`expand_css_custom_properties`）を呼んでおらず、生成 SVG キャッシュが無い初回生成時に RGB 経路 `convert_svg_to_pdf` で `var(--vs-node-fill)` 等が解決されずノード等が黒く描画されていた（2 回目以降は生成 SVG が user_svg 扱いで展開されるため顕在化せず）。user_svg 経路（`apply_text_placeholders_to_svg`）と揃えて展開を追加。
 - [Low] **workspace 生成 config のタイトルエスケープ**: `VivliostyleConfigWriter.config_content` の `'` エスケープが gsub 置換文字列の `\'`（後方一致バックリファレンス）誤解釈で壊れる形だった（旧ルート config 生成側で修正済みだったブロック形へ一本化）。タイトルに `'` を含む書籍で生成 config が JS 構文エラーになる問題の予防。
 
 ### Changed

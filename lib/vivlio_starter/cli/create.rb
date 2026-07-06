@@ -322,6 +322,10 @@ module VivlioStarter
         svg = File.read(template_path, encoding: 'utf-8')
         svg = apply_palette(svg, palette)
         svg = apply_text_replacements(svg)
+        # rsvg-convert は CSS var() 非対応。user_svg 経路（apply_text_placeholders_to_svg）と
+        # 揃えてここでもインライン展開しないと、RGB 経路（convert_svg_to_pdf）で
+        # var(--vs-node-fill) 等が解決されず初回生成時にノードが黒く描画される。
+        svg = expand_css_custom_properties(svg)
         safe_write(output_svg, svg)
         Common.log_info("#{side}表紙SVGを生成しました: #{output_svg}")
         output_svg
@@ -569,9 +573,13 @@ module VivlioStarter
       end
 
       # SVG → PDF（トンボ・塗り足し付き入稿用）
-      # 1. rsvg-convert で大ページ（trim + bleed×2 + crop_offset×2）にSVGを配置
-      # 2. Prawn でトンボ線のみのオーバーレイPDFを生成
-      # 3. CombinePDF で合成
+      #
+      # 内容は等倍（pdf 版と 1:1 一致）でレンダし、塗り足し帯はテンプレート背景
+      # （トリム外までのオーバーサイズ矩形＋pad グラデ）を viewBox 拡張で露出させて埋める。
+      # かつて SVG を trim+bleed サイズへスケールしていたため内容が約 +2.86% 拡大し、
+      # pdf 版と print 版で絵柄がずれていた不具合を本方式で解消する。
+      # 1. viewBox を bleed 分だけ外側へ拡張し、rsvg-convert で大ページに等倍配置
+      # 2. Prawn でトンボ線のオーバーレイを生成し合成（add_crop_marks_overlay）
       def convert_svg_to_pdf_with_crop_marks(input, output, trim_w_mm, trim_h_mm)
         bleed_mm = Build::NombreStamper.bleed_mm_from_config
         crop_offset_mm = CROP_MARK_OFFSET_MM
@@ -580,7 +588,7 @@ module VivlioStarter
         page_w_mm = trim_w_mm + (2 * margin_mm)
         page_h_mm = trim_h_mm + (2 * margin_mm)
 
-        # SVGをbleedサイズで描画（背景色が塗り足し領域まで伸びる）
+        # SVG 配置サイズ = トリム + 塗り足し×2（トンボ代の外側は白のまま）
         svg_w_mm = trim_w_mm + (2 * bleed_mm)
         svg_h_mm = trim_h_mm + (2 * bleed_mm)
 
@@ -590,16 +598,13 @@ module VivlioStarter
           return
         end
 
-        # rsvg-convert は CSS var() を完全サポートしないため、変換前にインライン展開する
+        # rsvg-convert は CSS var() 非対応 → インライン展開。
+        # さらに viewBox を塗り足し分だけ広げ、内容は等倍のまま背景だけ塗り足し帯へ伸ばす。
         svg_content = File.read(input, encoding: 'utf-8')
         expanded    = expand_css_custom_properties(svg_content)
-        input_to_use = if expanded == svg_content
-                         input
-                       else
-                         tmp = "#{input}.expanded.svg"
-                         File.write(tmp, expanded, encoding: 'utf-8')
-                         tmp
-                       end
+        expanded    = expand_svg_viewbox_for_bleed(expanded, bleed_mm, trim_w_mm, trim_h_mm)
+        tmp         = "#{input}.bleed.svg"
+        File.write(tmp, expanded, encoding: 'utf-8')
 
         success = Common.run_svg_converter!(
           ['rsvg-convert',
@@ -611,14 +616,56 @@ module VivlioStarter
            '--left', "#{crop_offset_mm}mm",
            '--top', "#{crop_offset_mm}mm",
            '-o', output,
-           input_to_use],
+           tmp],
           input_path: input, output_path: output, purpose: 'カバー PDF（トンボ付き）変換'
         )
 
-        FileUtils.rm_f(input_to_use) if input_to_use != input
+        FileUtils.rm_f(tmp)
         return unless success
 
         add_crop_marks_overlay(output, trim_w_mm, trim_h_mm, bleed_mm, crop_offset_mm)
+      end
+
+      # viewBox を塗り足し分だけ外側へ拡張し、背景矩形を同じ範囲へ広げる。
+      #
+      # 内容のユーザー座標は変えず、viewBox 原点を bleed 分だけ負方向へずらして全体を
+      # 広げる。これにより pdf 版（トリム viewBox）と print 版が同一スケールで描画され、
+      # 内容が 1:1 一致する。塗り足し帯は id="vs-cover-bg" の背景矩形を拡張後 viewBox
+      # ちょうどへ広げて埋める（rsvg-convert は viewBox 外へはみ出した描画をクリップ
+      # しないため、オーバーサイズ矩形だとトンボ代の白帯まで背景が回り込む。viewBox 一致で
+      # 塗り足し帯だけを埋め、トンボ代は白のまま保つ）。viewBox を持たない SVG は素通しする。
+      #
+      # @param svg [String]        SVG 文字列
+      # @param bleed_mm [Float]    塗り足し幅（mm・片側）
+      # @param trim_w_mm [Numeric] 仕上がり幅（mm）
+      # @param trim_h_mm [Numeric] 仕上がり高さ（mm）
+      # @return [String]
+      def expand_svg_viewbox_for_bleed(svg, bleed_mm, trim_w_mm, trim_h_mm)
+        return svg unless bleed_mm.positive?
+
+        m = svg.match(/<svg\b[^>]*viewBox\s*=\s*"(-?[\d.]+)\s+(-?[\d.]+)\s+([\d.]+)\s+([\d.]+)"/m)
+        return svg unless m
+
+        min_x, min_y, vb_w, vb_h = m.captures.map(&:to_f)
+        bx = (bleed_mm * vb_w / trim_w_mm).round(3)
+        by = (bleed_mm * vb_h / trim_h_mm).round(3)
+        new_x = (min_x - bx).round(3)
+        new_y = (min_y - by).round(3)
+        new_w = (vb_w + (2 * bx)).round(3)
+        new_h = (vb_h + (2 * by)).round(3)
+
+        # --- Phase: ルート <svg> の viewBox / width / height を拡張 ---
+        svg = svg.sub(/<svg\b[^>]*>/m) do |tag|
+          tag = tag.sub(/viewBox\s*=\s*"[^"]*"/, %(viewBox="#{new_x} #{new_y} #{new_w} #{new_h}"))
+          tag = tag.sub(/\bwidth\s*=\s*"[^"]*"/, %(width="#{new_w}"))
+          tag.sub(/\bheight\s*=\s*"[^"]*"/, %(height="#{new_h}"))
+        end
+
+        # --- Phase: 背景矩形を拡張後 viewBox いっぱいへ広げて塗り足し帯を埋める ---
+        svg.sub(%r{<rect\b[^>]*\bid="vs-cover-bg"[^>]*/>}m) do |rect|
+          fill = rect[/fill\s*=\s*"[^"]*"/] || 'fill="none"'
+          %(<rect id="vs-cover-bg" x="#{new_x}" y="#{new_y}" width="#{new_w}" height="#{new_h}" #{fill}/>)
+        end
       end
 
       # トンボ線オーバーレイを生成し、カバーPDFに合成する
