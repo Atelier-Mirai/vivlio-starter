@@ -27,8 +27,11 @@
       }
     </style>
 
-    <!-- 背景グラデーション: stop-color は rsvg-convert 制限のため直接値 -->
-    <linearGradient id="bg-grad" x1="0" y1="0" x2="0" y2="1">
+    <!-- 背景グラデーション: stop-color は rsvg-convert 制限のため直接値。
+         userSpaceOnUse + spreadMethod="pad" により、トリム外（塗り足し帯）へ
+         はみ出した背景矩形の領域では上下端の色がそのまま padding される。 -->
+    <linearGradient id="bg-grad" gradientUnits="userSpaceOnUse" spreadMethod="pad"
+                    x1="0" y1="0" x2="0" y2="842">
       <stop offset="0%"   stop-color="{{bg-from}}"/>
       <stop offset="100%" stop-color="{{bg-to}}"/>
     </linearGradient>
@@ -43,13 +46,18 @@
   </defs>
 
   <!-- === 背景 === -->
-  <rect width="595" height="842" fill="url(#bg-grad)"/>
+  <!-- トリム(595×842)より外側まで描画して塗り足し帯を埋める。print 版は
+       expand_svg_viewbox_for_bleed が拡張 viewBox でクリップするのでトンボ代へはみ出さず、
+       pdf 版は rsvg が viewBox で自動クリップして見た目不変。 -->
+  <rect x="-60" y="-60" width="715" height="962" fill="url(#bg-grad)"/>
 
   <!-- === ゴールドフレームアクセント === -->
-  <rect x="0" y="0" width="595" height="4" fill="#c9a43a"/>
-  <rect x="0" y="838" width="595" height="4" fill="#c9a43a"/>
-  <rect x="28" y="0" width="2" height="842" fill="#c9a43a" opacity="0.5"/>
-  <rect x="565" y="0" width="2" height="842" fill="#c9a43a" opacity="0.5"/>
+  <!-- 上下の太バーは塗り足し帯まで伸ばす（断裁位置がズレても紙の縁に金線が残る）。
+       左右 corner も埋めるため横幅もトリム外まで。縦アクセントは横位置内側のまま上下だけ拡張。 -->
+  <rect x="-60" y="-60" width="715" height="64" fill="#c9a43a"/>
+  <rect x="-60" y="838" width="715" height="64" fill="#c9a43a"/>
+  <rect x="28" y="-60" width="2" height="962" fill="#c9a43a" opacity="0.5"/>
+  <rect x="565" y="-60" width="2" height="962" fill="#c9a43a" opacity="0.5"/>
 
   <!-- === 中央グラフィック: 抽象回路 / ウェブネットワーク（中心 cy=421） === -->
   <!-- 中環 -->

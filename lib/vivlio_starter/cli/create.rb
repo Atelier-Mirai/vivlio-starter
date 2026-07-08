@@ -626,14 +626,15 @@ module VivlioStarter
         add_crop_marks_overlay(output, trim_w_mm, trim_h_mm, bleed_mm, crop_offset_mm)
       end
 
-      # viewBox を塗り足し分だけ外側へ拡張し、背景矩形を同じ範囲へ広げる。
+      # viewBox を塗り足し分だけ外側へ拡張し、拡張後 viewBox でクリップする。
       #
-      # 内容のユーザー座標は変えず、viewBox 原点を bleed 分だけ負方向へずらして全体を
-      # 広げる。これにより pdf 版（トリム viewBox）と print 版が同一スケールで描画され、
-      # 内容が 1:1 一致する。塗り足し帯は id="vs-cover-bg" の背景矩形を拡張後 viewBox
-      # ちょうどへ広げて埋める（rsvg-convert は viewBox 外へはみ出した描画をクリップ
-      # しないため、オーバーサイズ矩形だとトンボ代の白帯まで背景が回り込む。viewBox 一致で
-      # 塗り足し帯だけを埋め、トンボ代は白のまま保つ）。viewBox を持たない SVG は素通しする。
+      # 内容のユーザー座標は変えず、viewBox 原点を bleed 分だけ負方向へずらして全体を広げる。
+      # これにより pdf 版（トリム viewBox）と print 版が同一スケールで描画され内容が 1:1 一致する。
+      # テンプレ側で塗り足し帯を埋めたい要素（背景・上下の金バー等）をトリム外までオーバーサイズに
+      # 描いておき、ここで拡張後 viewBox ちょうどのクリップパスを全ボディに掛ける。rsvg-convert は
+      # 大ページ配置時に viewBox 外を自動クリップしないため、これが無いとオーバーサイズ要素が
+      # トンボ代の白帯まではみ出す。クリップにより塗り足し帯だけを埋め、トンボ代は白のまま保つ。
+      # viewBox / <defs> を持たない SVG は素通しする。
       #
       # @param svg [String]        SVG 文字列
       # @param bleed_mm [Float]    塗り足し幅（mm・片側）
@@ -661,10 +662,12 @@ module VivlioStarter
           tag.sub(/\bheight\s*=\s*"[^"]*"/, %(height="#{new_h}"))
         end
 
-        # --- Phase: 背景矩形を拡張後 viewBox いっぱいへ広げて塗り足し帯を埋める ---
-        svg.sub(%r{<rect\b[^>]*\bid="vs-cover-bg"[^>]*/>}m) do |rect|
-          fill = rect[/fill\s*=\s*"[^"]*"/] || 'fill="none"'
-          %(<rect id="vs-cover-bg" x="#{new_x}" y="#{new_y}" width="#{new_w}" height="#{new_h}" #{fill}/>)
+        # --- Phase: 拡張後 viewBox ちょうどのクリップを全ボディへ掛ける ---
+        clip = %(<clipPath id="vs-print-bleed-clip">) +
+               %(<rect x="#{new_x}" y="#{new_y}" width="#{new_w}" height="#{new_h}"/></clipPath>)
+        svg.sub(%r{</defs>(.*)</svg>}m) do
+          body = ::Regexp.last_match(1)
+          %(#{clip}</defs><g clip-path="url(#vs-print-bleed-clip)">#{body}</g></svg>)
         end
       end
 
