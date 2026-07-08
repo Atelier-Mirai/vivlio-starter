@@ -19,7 +19,6 @@
 | table-colspan-spec.md | 確定仕様・未着手 | Phase 0（TableConverter コア）から実装 |
 | explanatory-diagram-spec.md | 確定仕様・未着手 | Phase 0（showcase_svg_builder コア）から実装 |
 | code-include-line-number-spec.md | 確定仕様・未着手 | 実装 |
-| lint-spellcheck-workflow-spec.md | 第1段実装済み・第2段は計画中 | 第2段の詳細化・着手 |
 | epub-code-line-numbers-spec.md | 将来タスク・一部未解決 | 方式決定待ち（優先度低） |
 | kindle-simple-header-svg-spec.md | 将来タスク・未着手 | 優先度低 |
 | release-1.0-considerations.md | 検討メモ | RC版完成後に再検討 |
