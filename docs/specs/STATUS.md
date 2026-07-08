@@ -9,19 +9,60 @@
 
 ## 一覧
 
-| Spec | 状態 | 次のアクション |
-|---|---|---|
-| print-pdf-derivation-spec.md | 確定仕様・未着手（①） | Phase 0 から実装。ステップ6で②の変更範囲に踏み込む点に注意（→メモ） |
-| backlink-dedup-pdf-map-spec.md | 確定仕様・未着手（②） | ①と合わせて着手（→メモ） |
-| print-pdf-full-bleed-notes.md | 設計メモ・実装保留 | フチなし要素のある本が実際に企画されるまで着手しない |
-| cover-cmyk-color-management-spec.md | 未着手・別タスク | full-bleed notes の表紙ジオメトリ議論が固まってから着手 |
-| generated-assets-cache-relocation-spec.md | 設計・実装前レビュー待ち | ①の実装方針が固まってからレビュー（→メモ） |
-| table-colspan-spec.md | 確定仕様・未着手 | Phase 0（TableConverter コア）から実装 |
-| explanatory-diagram-spec.md | 確定仕様・未着手 | Phase 0（showcase_svg_builder コア）から実装 |
-| code-include-line-number-spec.md | 確定仕様・未着手 | 実装 |
-| epub-code-line-numbers-spec.md | 将来タスク・一部未解決 | 方式決定待ち（優先度低） |
-| kindle-simple-header-svg-spec.md | 将来タスク・未着手 | 優先度低 |
-| release-1.0-considerations.md | 検討メモ | RC版完成後に再検討 |
+`print-pdf-derivation-spec.md`
+: print_pdf を pdf ビルドから導出して高速化する仕様。入稿用 PDF を毎回 vivliostyle で個別レンダリングする代わりに、閲覧用 PDF に qpdf ベースでトンボ・塗り足し（bleed）を付与して作る（①）。
+  状態: 確定仕様・未着手（①）
+  次のアクション: Phase 0 から実装。ステップ6で②の変更範囲に踏み込む点に注意（→メモ）
+
+`backlink-dedup-pdf-map-spec.md`
+: Step 8（backlink dedup）を高速化する仕様。vivliostyle preview の全ページレンダリング＋Playwright でのページ番号取得という重い処理を、生成済み PDF の named destinations（/Dests）を pdf-reader で読む方式に置き換える（②）。
+  状態: 確定仕様・未着手（②）
+  次のアクション: ①と合わせて着手（→メモ）
+
+`print-pdf-full-bleed-notes.md`
+: print_pdf のフチなし（full_bleed）要素対応についての設計メモ。写真集・爪見出しなど紙の端まで達するデザイン要素を持つ本を将来作る際の判断材料として、導出方式と個別レンダー方式の違いを整理したもの。
+  状態: 設計メモ・実装保留
+  次のアクション: フチなし要素のある本が実際に企画されるまで着手しない
+
+`cover-cmyk-color-management-spec.md`
+: 表紙の CMYK カラーマネジメント改善についての仕様メモ。
+  状態: 未着手・別タスク
+  次のアクション: full-bleed notes の表紙ジオメトリ議論が固まってから着手
+
+`generated-assets-cache-relocation-spec.md`
+: covers 生成物・テーマ画像バリアントなど、ビルド時生成資産の置き場所を `.cache` へ移設する仕様。
+  状態: 設計・実装前レビュー待ち
+  次のアクション: ①の実装方針が固まってからレビュー（→メモ）
+
+`table-colspan-spec.md`
+: テーブルの横結合（colspan）と複数行ヘッダーに対応する仕様（PHP Markdown Extra / Backlog 風の記法拡張）。
+  状態: 確定仕様・未着手
+  次のアクション: Phase 0（TableConverter コア）から実装
+
+`explanatory-diagram-spec.md`
+: 図解注釈記法（Explanatory Diagram Syntax）の仕様。スクリーンショット等の画像に矩形囲み・矢印（pointer）などの注釈を SVG で重ねる記法を追加する。
+  状態: 確定仕様・未着手
+  次のアクション: Phase 0（showcase_svg_builder コア）から実装
+
+`code-include-line-number-spec.md`
+: コードインクルード範囲指定時の行番号を、元ファイルでの実際の行番号に合わせる仕様。現状は常に 1 から振り直されてしまう。
+  状態: 確定仕様・未着手
+  次のアクション: 実装
+
+`epub-code-line-numbers-spec.md`
+: EPUB/Kindle のコードブロックにおける行番号表示と折返しについての仕様検討（リフロー環境での行番号ずれ対策）。
+  状態: 将来タスク・一部未解決
+  次のアクション: 方式決定待ち（優先度低）
+
+`kindle-simple-header-svg-spec.md`
+: Kindle 向け simple ヘッダーを SVG 画像化する仕様。
+  状態: 将来タスク・未着手
+  次のアクション: 優先度低
+
+`release-1.0-considerations.md`
+: RC版 → 正式版（1.0.0）へ移行するにあたっての検討事項メモ。
+  状態: 検討メモ
+  次のアクション: RC版完成後に再検討
 
 ---
 
