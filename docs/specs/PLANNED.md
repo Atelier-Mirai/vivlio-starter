@@ -98,8 +98,7 @@
 - [Low] **Linux / Windows の自動セットアップ対応（やるかもしれない枠）**: 現状 `vs doctor --fix` の自動インストールは macOS + Homebrew のみで、Linux / Windows は動作検証もできていない。将来的に Linux（apt / dnf など）や Windows（winget / Scoop / Chocolatey など）でも `vs doctor --fix` でひと通り揃うようにできると望ましい。需要と検証コスト次第で、対応するかどうかも含めて将来検討する。
 - [Medium] **ビルドログ整備**: 各ステップに要約出力とエラーヒントを追加し、失敗時の原因特定とリカバリーを容易にする。
 - [Medium] **`vs preflight` の章別エラー・警告サマリー**: 現状はファイル処理中にリアルタイム出力され章をまたいで混在する。章ごとに「21 章: 警告 N 件、エラー N 件」とまとめて表示するには、`LinkImageValidator` にコードインクルード・クロスリファレンス・QueryStream のエラーも蓄積する汎用メカニズムが必要（影響 4〜5 ファイル）。
-- [Medium] **`vs preflight` でのクラス名チェック**: `:::{.notice}` を `:::{.notion}` と打ち間違えても、現状はそのままビルドされ（未知クラスは CSS が当たらず黙殺される）著者が気づけない。仕様確定済み — [container-class-validation-spec](container-class-validation-spec.md) を参照。`terminal-literal-spec.md` の実装より先に着手する。
-  - 要点: `:::{.class}` の div 化は**二経路**（Ruby 前処理の 6 クラス／`post_replace_list.yml:33` の汎用正規表現＝それ以外すべて）で、後者はクラス名を一切知らない。許可リストは `stylesheets/**/*.css` から自動抽出する（`custom.css` があるため「CSS を書けば許可される」で完結）。偽陽性は `strip_html_comments!` の後に `Masking.protect_code` を通せばゼロになることを実測で確認済み。
+  - **付随して直したい非対称**: 最終行のサマリー（`print_preflight_summary`）は `LinkImageValidator.any_issues?` だけを見るため、**Guard 系の `:warn` がサマリーに反映されない**。`ContainerClassCheck` が未知クラスを警告しても最終行は「✅ Preflight 完了: 良好な状態です」になる（終了コード 0 は設計どおりだが、文言は警告件数を拾う方が親切）。一方 `LinkImageValidator` の裸 URL 警告は `link_issues` に積まれるため「課題あり」に転ぶ。
 - [Low] **スタイルガイド整備**: 章タイプ別（preface / chapter / appendix / postface）の設計指針、ユーティリティクラス（`.aki`, `.aki2` ほか）一覧と使用例をドキュメント化する。
 - **コマンド実行時の応答メッセージ**: `vs clean` などで処理結果の応答があると親切。
 - **CLI スピナー（ビルド進捗表示）**: ビルドは時間がかかるため、止まって見えないよう進捗アニメーションを表示したい。定番ライブラリ（`ora` / `cli-spinners`）か、以下のような簡易自作で実装できる。

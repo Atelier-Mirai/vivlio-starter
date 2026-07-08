@@ -1,5 +1,17 @@
 # `:::{.terminal}` リテラル化 仕様書
 
+## 現況（2026-07-08 時点）
+
+**未実装。この仕様書に沿ってこれから実装する。**
+
+前提としていた [container-class-validation-spec](container-class-validation-spec.md)（`vs preflight` の `:::` 構造検証）は **実装済み**（`Guards::ContainerFenceCheck` / `ContainerClassCheck` / `ContainerScanner`）。両ガードとの関係は次のとおりで、**本仕様の実装で壊れるものは無い**。
+
+- `ContainerClassCheck` は `contents/*.md` を**生で**読み、許可リストを `stylesheets/**/*.css` から抽出する。`.terminal` は本仕様の実装後も CSS クラスとして残る（`<pre>` を装飾する）ため、許可され続ける。
+- `ContainerFenceCheck` も生原稿を読むため、前処理の変更（`transform_terminal_blocks!` の追加）の影響を受けない。
+- 前処理でフェンス化した後は `:::{.terminal}` が消えるため、`post_replace_list.yml` の経路 B には届かなくなる。これが本仕様の目的そのもの。
+
+以下の記述はすべて `@vivliostyle/vfm` の実挙動と現行コードに対して実測で裏付けてある（参照行番号も検証済み）。
+
 ## 背景 — 「プロンプト記号を設定可能にする」は不要と結論した
 
 当初 `prompt-setting-spec.md` として「`:::{.terminal}` の行頭プロンプト記号（`$` / `%` / なし）を `book.yml` で設定する」機能を検討したが、**実装不要**と結論し、当該仕様書は破棄した。理由:
@@ -117,7 +129,7 @@
   - `convert_terminal_blocks`: `*.png` / `` `date` `` / `$A$B` / `_old_ _new_` / `---` / 連続空白 / 空行を含む本文 が、いずれもフェンス内に逐語で入ること。
   - ```` ```markdown ```` フェンス内の `:::{.terminal}` は変換されないこと。
   - 本文に `~~~` を含む場合にフェンス長が伸びること。
-- `test/vivlio_starter/cli/post_process/terminal_block_converter_test.rb`（新規）
+- `test/vivlio_starter/cli/post_process/terminal_block_converter_test.rb`（新規。既存の `footnote_converter_test.rb` / `html_replacer_test.rb` と同じ置き場）
   - `pre.language-vs-terminal` → `div.terminal > pre`、`language-*` クラスが残らないこと。
 - `test/vivlio_starter/cli/build/epub_kindle_layout_test.rb`
   - `div.terminal` の先頭に `【TERMINAL】` ラベルが `<pre>` の前に注入されること（既存アサーションが `<pre>` 化後も通ること）。
