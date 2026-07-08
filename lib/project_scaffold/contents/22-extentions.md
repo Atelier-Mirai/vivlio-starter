@@ -130,14 +130,20 @@ Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカ
 
 ターミナル（端末）に打ち込むコマンドを示します。黒地に白文字の全幅枠で表示され、「ここはコマンド入力だ」と一目で分かります。
 
+中身は**リテラル**（書いたとおり）に組まれます。Markdown としては解釈されないので、`*.png` の `*` が斜体化したり、`` `date` `` のバッククォートが消えたりしません。連続する空白もそのまま保たれます。
+
+プロンプト記号（`$` / `%` / `#`）は著者が書きます。どの行がコマンドでどの行が出力かは著者だけが知っているので、コマンドと実行結果を 1 つのブロックに混在させても構いません。
+
 ```markdown
 :::{.terminal}
-vs build
+$ vs build
+$ cp *.png *.bak
 :::
 ```
 
 :::{.terminal}
-vs build
+$ vs build
+$ cp *.png *.bak
 :::
 
 ### `.output` — 実行結果・出力例
@@ -154,6 +160,28 @@ vs build
 :::{.output}
 ✅ ビルドが完了しました
 - 出力: dist/sample.pdf
+:::
+
+`.terminal` と違い、中身は Markdown です。桁揃えが要る逐語の出力（SQL のテーブル表示など）は、`.output` の中にコードフェンスを書いて囲んでください。フェンスの中なら連続空白がそのまま保たれます。
+
+````markdown
+:::{.output}
+```text
+ id | name  | email
+----+-------+------------------
+  1 | Alice | alice@example.com
+  2 | Bob   | bob@example.com
+```
+:::
+````
+
+:::{.output}
+```text
+ id | name  | email
+----+-------+------------------
+  1 | Alice | alice@example.com
+  2 | Bob   | bob@example.com
+```
 :::
 
 ### 編集者コメント `@comment ... @commend`

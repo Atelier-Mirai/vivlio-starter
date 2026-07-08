@@ -2,7 +2,10 @@
 
 ## 現況（2026-07-08 時点）
 
-**未実装。この仕様書に沿ってこれから実装する。**
+**実装完了。** 本仕様のとおり実装・検証した。相違点は次の 2 点のみ。
+
+- 「テスト」節の `test/vivlio_starter/page_layout/` への追加は**見送った**。当該スイートは判型プリセット × `vs build` の実行時間が支配的な専用テストであり、`---` の改ページ回避は前処理でフェンス化された時点で確定する（`convert_terminal_blocks` のユニットテストが直接保証する）。代わりに `vs build 22` の実 PDF で `hr.pagebreak` が terminal 由来で増えないことを実測確認した。
+- `PrismLines.decorate_pre_tag` が全 `<pre>` に `line-numbers` クラスを付けるため、terminal の `<pre>` も `pre.line-numbers` に一致する。`<code>` を持たないので `EpubBuilder.convert_code_pre_to_table!` は `false` を返して何もしないが、この不変条件を `epub_kindle_layout_test` の回帰テストで固定した。行番号ガター（`.line-numbers-rows`）は `<code>` が無いため生成されず、`prism.css` の行番号スタイルは `pre[class*="language-"]` を要求するので当たらない。
 
 前提としていた [container-class-validation-spec](container-class-validation-spec.md)（`vs preflight` の `:::` 構造検証）は **実装済み**（`Guards::ContainerFenceCheck` / `ContainerClassCheck` / `ContainerScanner`）。両ガードとの関係は次のとおりで、**本仕様の実装で壊れるものは無い**。
 

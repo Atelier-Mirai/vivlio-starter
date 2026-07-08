@@ -134,7 +134,7 @@ module VivlioStarter
                '<div class="notice"><p>注意本文</p></div>' \
                '<div class="note"><p>補足本文</p></div>' \
                '<div class="output"><p>出力本文</p></div>' \
-               '<div class="terminal"><p>vs build</p></div>' \
+               '<div class="terminal"><pre>$ vs build</pre></div>' \
                '<div class="column"><h5>コラム見出し</h5><p>本文</p></div></body></html>'
         doc = process(html) { |files| Builder.decorate_admonitions_for_epub!(files) }
 
@@ -144,6 +144,8 @@ module VivlioStarter
         assert_equal '【NOTE】', doc.at_css('.note > .vs-adm-label')&.text
         assert_equal '【OUTPUT】', doc.at_css('.output > .vs-adm-label')&.text
         assert_equal '【TERMINAL】', doc.at_css('.terminal > .vs-adm-label')&.text
+        assert_equal doc.at_css('.terminal > .vs-adm-label'), doc.at_css('.terminal').element_children.first,
+                     'ラベルは <pre> の兄弟として枠の先頭に入る（<pre> の内側には置けない）'
         assert_equal '【COLUMN】', doc.at_css('.column > .vs-adm-label')&.text
         assert_equal doc.at_css('.column > .vs-adm-label'), doc.at_css('.column').element_children.first,
                      'ラベルはコラム枠の先頭子要素（見出しより前）'
@@ -204,6 +206,17 @@ module VivlioStarter
         assert_equal %w[1 2 3], rows.map { it.at_css('.vs-code-num').text }
         assert_includes rows[1].at_css('.vs-code-line').inner_html, '<span class="token keyword">puts</span>',
                         'トークン span は保持されるべき'
+      end
+
+      # .terminal の <pre> は <code> を持たない（前処理でリテラル化し後処理で code を畳むため）。
+      # PrismLines が全 <pre> へ line-numbers クラスを付けるので pre.line-numbers に一致するが、
+      # 行番号テーブル化の対象にしてはならない（端末の逐語転写に行番号は付かない）。
+      def test_should_not_tableize_terminal_pre_without_code
+        html = '<html><body><div class="terminal"><pre class="line-numbers">$ vs build</pre></div></body></html>'
+        doc = process(html) { |files| Builder.convert_code_blocks_for_epub!(files) }
+
+        assert_empty doc.css('table.vs-code-epub')
+        assert_equal '$ vs build', doc.at_css('div.terminal > pre').text
       end
 
       # 複数行に跨るトークン（ブロックコメント等）は行ごとに span を開き直す

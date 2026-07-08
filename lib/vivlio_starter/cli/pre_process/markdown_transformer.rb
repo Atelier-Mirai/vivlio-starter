@@ -8,6 +8,7 @@
 #
 # 変換処理:
 #   - コードインクルード: ```ruby:codes/sample.rb → ファイル内容を埋め込み
+#   - terminal: :::{.terminal} → ~~~vs-terminal フェンス（中身をリテラル化）
 #   - book-card: :::book-card → 書籍紹介カード HTML
 #   - table-rotate: :::table-rotate → 90度回転テーブル
 #   - リンク脚注化: [text](url) → text[^n] + 脚注定義
@@ -35,6 +36,43 @@ module VivlioStarter
       # Markdown 特殊記法変換モジュール
       module MarkdownTransformer
         module_function
+
+        # :::{.terminal} … ::: の検出パターン（開始・終了とも独立行）。
+        TERMINAL_BLOCK_PATTERN = /^:{3,}[ \t]*\{\.terminal\}[ \t]*\n(.*?)^:{3,}[ \t]*$\n?/m
+
+        # 前処理で terminal ブロックを退避するチルダフェンスの言語名。
+        # 後処理の TerminalBlockConverter が pre.language-vs-terminal を拾う。
+        TERMINAL_FENCE_LANG = 'vs-terminal'
+
+        # :::{.terminal} を独自言語名のチルダフェンスへ書き換える。
+        #
+        # `.terminal` は「端末の逐語転写」であり、中身は Markdown ではない。
+        # 素の Markdown として VFM に渡すと `*.png` が斜体化し、`` `date` `` の
+        # バッククォートが消え、桁揃えの連続空白が HTML 生成の時点で失われ、
+        # `---` の行は `<hr class="pagebreak">`（改ページ）に化ける。
+        # フェンス化してしまえば以降の前処理ステップは Masking.protect_code で
+        # 中身を退避し、VFM が HTML エスケープと空白保持を引き受ける。
+        # 専用のプレースホルダ機構を持たず既存のコード保護機構へ相乗りする形。
+        #
+        # 記法解説フェンス（```markdown 内の :::{.terminal}）は変換しない。
+        def convert_terminal_blocks(content)
+          protected_text, spans = MarkdownUtils.extract_code_spans(content)
+
+          converted = protected_text.gsub(TERMINAL_BLOCK_PATTERN) do
+            body = ::Regexp.last_match(1)
+            fence = '~' * terminal_fence_length(body)
+            "\n#{fence}#{TERMINAL_FENCE_LANG}\n#{body}#{fence}\n\n"
+          end
+
+          MarkdownUtils.restore_code_spans(converted, spans)
+        end
+
+        # フェンスの長さ。本文に `~~~` が現れても閉じ位置がずれないよう、
+        # 本文中の最長のチルダ連続 + 1 と 3 の大きい方を採る。
+        def terminal_fence_length(body)
+          longest = body.to_s.scan(/~+/).map(&:length).max.to_i
+          [3, longest + 1].max
+        end
 
         # Markdown内のリンク記法を脚注化
         def transform_links_to_footnotes(md_text)

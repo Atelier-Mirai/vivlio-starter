@@ -1012,6 +1012,77 @@ module VivlioStarter
           assert_equal 1, result[:duplicates_by_id].size
           assert result[:duplicates_by_id].key?('same-id')
         end
+
+        # =================================================================
+        # convert_terminal_blocks
+        # -----------------------------------------------------------------
+        # :::{.terminal} は「端末の逐語転写」であり、中身は Markdown ではない。
+        # ~~~vs-terminal フェンスへ書き換えることで以降の前処理・VFM から
+        # 中身を守る（docs/specs/terminal-literal-spec.md）。
+        # =================================================================
+
+        def test_convert_terminal_blocks_keeps_body_verbatim
+          md = <<~MD
+            :::{.terminal}
+            $ cp *.png *.bak
+            $ echo `date`
+            $ echo $A$B
+            $ mv _old_ _new_
+            ---
+            | id | name  | email |
+
+            $ ls
+            foobar.png
+            :::
+          MD
+
+          result = MarkdownTransformer.convert_terminal_blocks(md)
+
+          assert_includes result, "~~~vs-terminal\n"
+          assert_includes result, '$ cp *.png *.bak'
+          assert_includes result, '$ echo `date`'
+          assert_includes result, '$ echo $A$B'
+          assert_includes result, '$ mv _old_ _new_'
+          assert_includes result, "---\n"
+          assert_includes result, '| id | name  | email |'
+          assert_includes result, "$ ls\nfoobar.png\n"
+          refute_includes result, ':::'
+        end
+
+        def test_convert_terminal_blocks_preserves_blank_lines_inside_body
+          md = ":::{.terminal}\n$ ls\n\nfoo.png\n:::\n"
+
+          result = MarkdownTransformer.convert_terminal_blocks(md)
+
+          assert_equal "\n~~~vs-terminal\n$ ls\n\nfoo.png\n~~~\n\n", result
+        end
+
+        def test_convert_terminal_blocks_skips_notation_inside_code_fence
+          md = <<~MD
+            ```markdown
+            :::{.terminal}
+            vs build
+            :::
+            ```
+          MD
+
+          assert_equal md, MarkdownTransformer.convert_terminal_blocks(md)
+        end
+
+        def test_convert_terminal_blocks_lengthens_fence_when_body_has_tildes
+          md = ":::{.terminal}\n$ echo\n~~~~\n:::\n"
+
+          result = MarkdownTransformer.convert_terminal_blocks(md)
+
+          assert_includes result, "~~~~~vs-terminal\n"
+          assert_includes result, "\n~~~~~\n"
+        end
+
+        def test_convert_terminal_blocks_leaves_other_containers_untouched
+          md = ":::{.output}\n- 出力: dist/sample.pdf\n:::\n"
+
+          assert_equal md, MarkdownTransformer.convert_terminal_blocks(md)
+        end
       end
     end
   end

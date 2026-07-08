@@ -11,6 +11,7 @@
 # 1. 引数からHTMLファイルを解決
 # 2. 各HTMLファイルに対して以下の処理を実行:
 #    - <body> タグにファイルタイプクラスを付与
+#    - ~~~vs-terminal フェンスを <div class="terminal"><pre> へ復元
 #    - YAML置換ルールを適用
 #    - h2を<article.section-topic>でラップ（theme.style=imageの場合）
 #    - 章末脚注→ページ脚注変換
@@ -19,6 +20,7 @@
 #
 # 【依存モジュール】
 # - BodyClassInjector: <body>タグへのクラス付与
+# - TerminalBlockConverter: ~~~vs-terminal フェンス → 端末枠（<div.terminal><pre>）
 # - HtmlReplacer: YAML置換ルール適用
 # - SectionWrapper: h2を<article.section-topic>でラップ
 # - FootnoteConverter: 章末脚注→ページ脚注変換
@@ -35,6 +37,7 @@ require_relative 'post_process/html_replacer'
 require_relative 'post_process/section_wrapper'
 require_relative 'post_process/footnote_converter'
 require_relative 'post_process/heading_processor'
+require_relative 'post_process/terminal_block_converter'
 require_relative 'prism_lines'
 
 module VivlioStarter
@@ -75,7 +78,12 @@ module VivlioStarter
 
         entry_map = resolve_entry_map(entries)
 
-        entry_map.each { |html_file, entry| BodyClassInjector.inject_body_class(html_file, entry) }
+        entry_map.each do |html_file, entry|
+          BodyClassInjector.inject_body_class(html_file, entry)
+          # HtmlReplacer より前に <pre> 化しておく。以降 <pre> は退避対象となり、
+          # 端末の逐語出力に含まれる `---` 等が置換ルール（<hr class="pagebreak">）に食われない。
+          TerminalBlockConverter.convert_terminal_blocks!(html_file)
+        end
 
         replace_rules = load_replace_rules
         total_replacements = 0

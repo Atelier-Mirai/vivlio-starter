@@ -491,7 +491,17 @@ p > img {
   text-indent: 0;
 }
 
-/* ターミナル入力（:::{.terminal}）。黒地・白文字・等幅で「端末への入力」を示す */
+/* .output の中身は Markdown のまま。桁揃えが要る逐語出力はコードフェンスで囲む運用なので、
+   その <pre> が .output の枠と二重枠にならないよう地色・枠線を落とす。
+   特異度 (0,2,1) で code.css の pre[class*="language-"] (0,1,1) に読み込み順によらず勝つ。 */
+.output pre[class*="language-"] {
+  margin: 0;
+  background: none;
+  border: none;
+}
+
+/* ターミナル入力（:::{.terminal}）。黒地・白文字・等幅で「端末への入力」を示す。
+   中身は前処理でリテラル化され <div class="terminal"><pre>…</pre></div> になる。 */
 .terminal {
   margin-block: 3mm;
   padding: 2.5mm 3mm;
@@ -504,9 +514,17 @@ p > img {
   overflow-wrap: anywhere;
 }
 
-.terminal p {
-  text-indent: 0;
-  margin-block: 0.2em;
+/* 端末の逐語転写。code.css の pre 既定（白地・枠線・上下マージン）を打ち消し、
+   枠は親の .terminal に任せる。連続空白は桁揃えのため pre-wrap で必ず保つ。 */
+.terminal pre {
+  margin: 0;
+  padding: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-code), monospace;
+  background: none;
+  border: none;
+  color: inherit;
 }
 
 /* =============================================================
@@ -564,6 +582,11 @@ body.vs-kindle .terminal {
 }
 /* 端末ラベルは黒地に沈まないよう白で見せる（既定の vs-adm-label 色 #444 を上書き）。 */
 body.vs-kindle .terminal .vs-adm-label {
+  color: #f5f5f5;
+}
+/* 中身の <pre> も var() 不可・具体色で。code.css の pre 既定色（黒文字）に負けないよう明示する。 */
+body.vs-kindle .terminal pre {
+  font-family: monospace;
   color: #f5f5f5;
 }
 body.vs-kindle .vs-adm-label {

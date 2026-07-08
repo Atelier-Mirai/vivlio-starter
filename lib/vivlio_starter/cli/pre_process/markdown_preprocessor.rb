@@ -71,6 +71,7 @@ module VivlioStarter
           Common.log_info("#{context.source_path} → #{context.output_path}")
           apply_frontmatter!
           strip_html_comments!
+          transform_terminal_blocks!
           process_data_streams!
           normalize_image_paths!
           validate_links_and_images!
@@ -102,6 +103,16 @@ module VivlioStarter
             context.chapter_number,
             path: context.source_path
           )
+        end
+
+        # :::{.terminal} をチルダフェンス（~~~vs-terminal）へ書き換え、中身をリテラル化する。
+        # 以降のステップは Masking.protect_code でフェンス内を退避するため中身に触れない。
+        # 数式の SVG 化（transform_math!）より前に走らせなければ `$ echo $A$B` が数式化される。
+        # normalize_container_fences! が走る頃には :::{.terminal} は既に消えている。
+        def transform_terminal_blocks!
+          before = context.content.dup
+          context.content = MarkdownTransformer.convert_terminal_blocks(context.content)
+          Common.log_success('terminal ブロックをリテラル化しました') if context.content != before
         end
 
         # QueryStream 記法（= books | tags=ruby 等）をデータ展開する
