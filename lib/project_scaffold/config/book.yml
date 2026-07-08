@@ -204,8 +204,8 @@ output:
   # ----------------------------
   # targets: pdf # pdf / print_pdf / epub / kindleから選択可
   # 例:
-  targets: pdf # 閲覧用PDFを指定
-  # targets: pdf, print_pdf               # 閲覧用PDF, 印刷所入稿用PDFを指定
+  # targets: pdf # 閲覧用PDFを指定
+  targets: pdf, print_pdf # 閲覧用PDF, 印刷所入稿用PDFを指定
   # targets: pdf, print_pdf, epub         # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUBを指定
   # targets: pdf, print_pdf, epub, kindle # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUB, Kindle用EPUBを指定
 
@@ -231,8 +231,8 @@ output:
   # ----------------------------
   # 表紙・裏表紙設定
   # ----------------------------
-  cover: master # covers/内の著者用意画像(frontcover_master.png, backcover_master.png)を指定
-  # cover: light  # 標準添付 light 表紙・裏表紙を指定
+  # cover: master # covers/内の著者用意画像(frontcover_master.png, backcover_master.png)を指定
+  cover: light # 標準添付 light 表紙・裏表紙を指定
   # cover: dark   # 標準添付 light 表紙・裏表紙を指定
 
   # ----------------------------
@@ -256,6 +256,11 @@ output:
   print_pdf:
     bleed: 3mm # 塗り足し幅（既定: 3mm）
     crop_marks: true # トンボを付ける（既定: true）
+    # cover_bleed: scale # 著者持ち込み表紙(master)の入稿用 塗り足し処理（既定: scale）
+    #   scale = トリム画像を塗り足しまで拡大して流用（中央が数%拡大・端が裁断される）
+    #   keep  = 拡大しない（塗り足し帯は白。フチが紙端まで無いデザイン向け）
+    #   ※ covers/frontcover_master_bleed.png / backcover_master_bleed.png を置くと
+    #      塗り足し込みの専用画像として最優先で自動採用され、この設定は無視される
     # Vivliostyle CLI で --crop-marks --bleed 3mm を付加してビルド
     # 出力は PDF/X-4 準拠（ねこのしっぽ、日光企画で対応済み）
     # 隠しノンブルも PDF 結合後に自動書き込み
@@ -285,6 +290,16 @@ vfm:
   hard_line_breaks:
     true # true:  文章中の改行(エンター)を改行として処理
     # false: 文章中の改行をスペースとして処理(改行したい場合には空行または<br>)
+
+# ========================================
+# vs preflight（原稿チェック）に関する設定
+# ========================================
+preflight:
+  # :::{.class} のクラス名チェックで、追加で許可するクラス名。
+  # 通常は stylesheets/*.css に定義したクラスが自動的に許可されるため、
+  # 指定は不要。CSS を書かずに使う独自クラスだけをここへ列挙する。
+  # 例: allowed_classes: ["talk", "my-box"]
+  allowed_classes: []
 
 # ========================================
 # ビルドに関する設定

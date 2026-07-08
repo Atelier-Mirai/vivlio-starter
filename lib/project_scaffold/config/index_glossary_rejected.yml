@@ -1,0 +1,62 @@
+---
+rejected_at: '2026-07-05 21:00:15'
+rejected_terms:
+- term: Starter
+  yomi: Starter
+  rejected_at: '2026-07-05 21:00:15'
+  score: 2146.8
+- term: Vivlio
+  yomi: Vivlio
+  rejected_at: '2026-07-05 21:00:15'
+  score: 2074.0
+- term: ヒント
+  yomi: ひんと
+  rejected_at: '2026-07-05 21:00:15'
+  score: 369.6
+- term: コピー
+  yomi: こぴー
+  rejected_at: '2026-07-05 21:00:15'
+  score: 368.4
+- term: サイズ
+  yomi: さいず
+  rejected_at: '2026-07-05 21:00:15'
+  score: 745.2
+- term: スキップ
+  yomi: すきっぷ
+  rejected_at: '2026-07-05 21:00:15'
+  score: 939.8
+- term: ジョン
+  yomi: じょん
+  rejected_at: '2026-07-05 21:00:15'
+  score: 313.5
+- term: チェック
+  yomi: ちぇっく
+  rejected_at: '2026-07-05 21:00:15'
+  score: 1510.9
+- term: ベース
+  yomi: べーす
+  rejected_at: '2026-07-05 21:00:15'
+  score: 317.5
+- term: g
+  yomi: g
+  rejected_at: '2026-07-05 21:00:15'
+- term: Step
+  yomi: Step
+  rejected_at: '2026-07-05 21:00:15'
+  score: 1790.0
+- term: Command
+  yomi: Command
+  rejected_at: '2026-07-05 21:00:15'
+  score: 651.3
+- term: Line
+  yomi: Line
+  rejected_at: '2026-07-05 21:00:15'
+  score: 371.6
+- term: Mode
+  yomi: Mode
+  rejected_at: '2026-07-05 21:00:15'
+  score: 957.1
+- term: VIEW
+  yomi: VIEW
+  rejected_at: '2026-07-05 21:00:15'
+  score: 269.2
