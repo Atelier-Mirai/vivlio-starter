@@ -74,7 +74,9 @@ module VivlioStarter
             Guards::NodeCheck.new,
             Guards::OrphanFileCheck.new,
             Guards::ImageFilenameCheck.new,
-            Guards::CodeFenceCheck.new
+            Guards::CodeFenceCheck.new,
+            Guards::ContainerFenceCheck.new,
+            Guards::ContainerClassCheck.new
           )
 
           # ensure 節の execute_clean は本処理開始後のみ実行する
