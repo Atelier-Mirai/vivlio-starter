@@ -25,13 +25,14 @@
 
 `generated-assets-cache-relocation-spec.md`
 : covers 生成物・テーマ画像バリアントなど、ビルド時生成資産の置き場所を `.cache` へ移設する仕様。
-  状態: 設計・実装前レビュー待ち（レビュー可能になった）
-  次のアクション: **着手前に現行コードとの突合レビューが必須**。本仕様は §7 で
-  「移設 → ①print_pdf 導出」の順を想定していたが、実際は①②が先に実装された
-  （2026-07-10・5f7406cf）ため前提コードが変わっている。特に `print_pdf_builder.rb` は
-  導出フローへ全面改稿済みで、§1.1 の「CMYK カバーを印刷 PDF へ結合」は現行と不一致
-  （カバーは結合せず別ファイル入稿・`ensure_cover_files_for_build!` を呼ぶのみ）。
-  §4 の変更ファイル一覧を現行コードと突合して改稿 → 実装、の 2 段で進める
+  状態: 確定仕様・実装待ち（2026-07-10 に現行コード突合レビュー・全面改稿済み）
+  次のアクション: §4 の変更ファイル一覧に沿って実装。突合での主な改稿点:
+  (1) print_pdf_builder.rb は変更不要（①導出化でカバー結合が消滅・covers パス参照なし）
+  (2) EPUB 表紙は「ソース相対＝パッケージ内相対」の偶然一致に依存していたため
+  config の cover: 行とローカライズ先を分離（§3.2）(3) CMYK 生成は cover.rb（PNG 経由）と
+  create.rb（light/dark SVG 経由）の 2 経路あり、ルート複製ヘルパは両方から呼ぶ（§3.4）
+  (4) 扉絵合成の `resolve_theme_image_file` の cache 解決分岐が初版で漏れていた（§3.2）
+  (5) 同名ファイルのソース/生成物衝突に対する探索規則を §3.5 に新設
 
 `table-colspan-spec.md`
 : テーブルの横結合（colspan）と複数行ヘッダーに対応する仕様（PHP Markdown Extra / Backlog 風の記法拡張）。
@@ -76,7 +77,8 @@
 - **cover-cmyk-color-management-spec は print-pdf-full-bleed-notes の表紙ジオメトリ議論が発端。**
   full-bleed 側が動くまでは着手の実益が薄い。
 
-- **generated-assets-cache-relocation-spec は print-pdf-derivation-spec（実装済み）と `cover.rb` / `print_pdf_builder.rb` を共有する。**
-  ①の実装が完了した（2026-07-10）ため、現行コードを前提にレビュー・改稿できる。
+- **generated-assets-cache-relocation-spec の突合レビュー・改稿は 2026-07-10 完了。**
+  ①導出化により print_pdf 側のカバー結合が消えたため、PDF 経路の変更は pdf_merger.rb
+  1 箇所に減り、print_pdf_builder.rb は変更不要になった（仕様 §7 改訂）。
 
 - **table-colspan-spec と explanatory-diagram-spec は互いに独立。** どちらから着手してもよい。どちらも `markdown_preprocessor.rb` の変換ステップに新規フックを挿入する点は共通するため、同時期に着手する場合はフック挿入順序（既存ステップとの前後関係）の衝突に注意。
