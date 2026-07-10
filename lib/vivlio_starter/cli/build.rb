@@ -34,6 +34,10 @@ require_relative 'post_process/heading_processor'
 
 # Build モジュール群
 require_relative 'build/utilities'
+require_relative 'build/qpdf_json'
+require_relative 'build/qpdf_overlay'
+require_relative 'build/crop_marks_overlay'
+require_relative 'build/print_geometry'
 require_relative 'build/catalog_loader'
 require_relative 'build/catalog_updater'
 require_relative 'build/chapter_config'

@@ -6,7 +6,7 @@ require 'fileutils'
 require 'nokogiri'
 
 require_relative '../../../../lib/vivlio_starter/cli/common'
-require_relative '../../../../lib/vivlio_starter/cli/build/page_mapping_extractor'
+require_relative '../../../../lib/vivlio_starter/cli/build/pdf_page_map_extractor'
 require_relative '../../../../lib/vivlio_starter/cli/build/backlink_deduplicator'
 
 class TestBacklinkDeduplicator < Minitest::Test
@@ -31,10 +31,9 @@ class TestBacklinkDeduplicator < Minitest::Test
     end
   end
   # テスト用の PageMapping Data オブジェクトを構築するヘルパー
-  MappingEntry = VivlioStarter::CLI::Build::PageMappingExtractor::MappingEntry
-  BacklinkEntry = VivlioStarter::CLI::Build::PageMappingExtractor::BacklinkEntry
-  IndexMappingEntry = VivlioStarter::CLI::Build::PageMappingExtractor::IndexMappingEntry
-  PageMapping = VivlioStarter::CLI::Build::PageMappingExtractor::PageMapping
+  MappingEntry = VivlioStarter::CLI::Build::PdfPageMapExtractor::MappingEntry
+  IndexMappingEntry = VivlioStarter::CLI::Build::PdfPageMapExtractor::IndexMappingEntry
+  PageMapping = VivlioStarter::CLI::Build::PdfPageMapExtractor::PageMapping
   Deduplicator = VivlioStarter::CLI::Build::BacklinkDeduplicator
 
   # --- 用語集バックリンクの重複排除テスト ---
@@ -281,7 +280,7 @@ class TestBacklinkDeduplicator < Minitest::Test
 
   def test_should_return_empty_result_when_no_mapping
     # Arrange: マッピングが空
-    page_mapping = build_page_mapping(mappings: [], backlink_mappings: [], index_mappings: [])
+    page_mapping = build_page_mapping(mappings: [], index_mappings: [])
 
     # Act
     result = Deduplicator.new(page_mapping).deduplicate!
@@ -590,7 +589,7 @@ class TestBacklinkDeduplicator < Minitest::Test
     end
   end
 
-  def test_should_remove_index_links_without_playwright_mapping
+  def test_should_remove_index_links_without_page_mapping
     Dir.mktmpdir do |dir|
       Dir.chdir(dir) do
         # Arrange: 3つのリンクのうち、idx-missing-2 はマッピングに存在しない
@@ -610,7 +609,7 @@ class TestBacklinkDeduplicator < Minitest::Test
         HTML
         File.write(pdf_path('_indexpage.html'), index_html, encoding: 'utf-8')
 
-        # idx-missing-2 はマッピングに含めない（Playwright が見つけられなかったアンカー）
+        # idx-missing-2 はマッピングに含めない（PDF の /Dests に現れなかったアンカー）
         page_mapping = build_page_mapping(
           index_mappings: [
             { anchor_id: 'idx-ok-1', page_index: 1, spine_index: 1 },
@@ -665,21 +664,13 @@ class TestBacklinkDeduplicator < Minitest::Test
   end
 
   # テスト用 PageMapping を構築するヘルパー
-  def build_page_mapping(mappings: [], backlink_mappings: [], index_mappings: [])
+  def build_page_mapping(mappings: [], index_mappings: [])
     mapping_entries = mappings.map do |m|
       MappingEntry.new(
         anchor_id: m[:anchor_id],
         href: m[:href],
         page_index: m[:page_index],
         spine_index: m[:spine_index]
-      )
-    end
-
-    backlink_entries = backlink_mappings.map do |b|
-      BacklinkEntry.new(
-        href: b[:href],
-        page_index: b[:page_index],
-        spine_index: b[:spine_index]
       )
     end
 
@@ -693,7 +684,6 @@ class TestBacklinkDeduplicator < Minitest::Test
 
     PageMapping.new(
       mappings: mapping_entries,
-      backlink_mappings: backlink_entries,
       index_mappings: index_mapping_entries,
       total_pages: 42,
       extracted_at: Time.now.iso8601

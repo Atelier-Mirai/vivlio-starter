@@ -8,7 +8,7 @@
 #
 # 隠しノンブルとは:
 #   印刷所が製本工程で乱丁・落丁を検出するための通しページ番号。
-#   読者には見えないノド側（綴じ側）の塗り足し領域内に配置する。
+#   読者には見えないノド側（綴じ側）の裁ち落とし領域内に配置する。
 #
 # 配置仕様:
 #   - 位置: ノド側（綴じ側）の中央付近
@@ -16,13 +16,22 @@
 #   - フォント: 同梱 HackGen35ConsoleNF（TTF・サブセット埋め込み）6pt
 #     ※ 非埋め込みの標準 14 フォント（Helvetica）は入稿で事故になるため使わない（FT-02）
 #   - 色: 黒
-#   - 領域: 塗り足し領域内（仕上がり線の外側）
 #
-# 依存:
-#   - Provider (Prawn + CombinePDF): PDF overlay によるテキスト描画（MIT互換）
+# 実装:
+#   Prawn（MIT）で全ページ分のノンブル PDF を生成し、qpdf --overlay で 1:1 に重畳する。
+#   かつては PDF プロバイダ（CombinePDF / HexaPDF）へ委譲していたが、
+#   CombinePDF は保存時に named destinations（`/Dests`）を再構築しないため、
+#   Standard モードではノンブル書き込みが入稿用 PDF のリンクを全損させていた。
+#   構造保存型の qpdf overlay に置換することでこの潜在バグを解消し、
+#   ノンブルはプロバイダ非依存の MIT 共通実装になった（プラグインは outline のみ担当）。
 # ================================================================
 
+require 'fileutils'
+require 'pdf/reader'
+require 'prawn'
 require_relative '../units'
+require_relative 'qpdf_overlay'
+require_relative 'utilities'
 
 module VivlioStarter
   module CLI
@@ -31,86 +40,115 @@ module VivlioStarter
         module_function
 
         MM_TO_PT = Units::PT_PER_MM
-        FONT_NAME = 'Helvetica'
         FONT_SIZE = 6
+
+        # 隠しノンブルに使う埋め込み可能フォント（TTF）。
+        # Prawn の標準 14 フォント 'Helvetica' は PDF に埋め込まれず、印刷所入稿で
+        # 「非埋め込みフォント」事故になる（FT-02）。同梱の HackGen35ConsoleNF（TTF）を
+        # 使えば Prawn が使用グリフ（数字のみ）をサブセット埋め込みするため極小で済む。
+        NOMBRE_FONT_RELATIVE = File.join('stylesheets', 'fonts', 'hackgen35', 'HackGen35ConsoleNF-Regular.ttf')
 
         # 入稿用 PDF に隠しノンブルを書き込む
         # 結合済み PDF のすべてのページに通し番号（1〜N）を付与する。
         #
-        # @param pdf_path [String] 対象 PDF のパス
+        # @param pdf_path [String] 対象 PDF のパス（成功時に上書きされる）
         # @param bleed_mm [Numeric] 塗り足し幅（mm）。ノンブルの X 座標に使う
         # @return [Boolean] 書き込み成功なら true
         def stamp!(pdf_path, bleed_mm: 3)
-          bleed_pt = bleed_mm.to_f * MM_TO_PT
+          # --- Phase: 検証 ---
+          unless File.exist?(pdf_path)
+            Common.log_warn("[NombreStamper] PDF が見つかりません: #{pdf_path}")
+            return false
+          end
 
-          # 新実装 (MIT版 Provider への委譲)
-          require 'vivlio_starter/cli/pdf/provider'
-          VivlioStarter::Pdf.provider.stamp_nombre!(pdf_path, bleed_pt:)
+          total_pages = Build::Utilities.page_count(pdf_path).to_i
+          return false unless total_pages.positive?
 
-          # --- 旧実装（MIT化動作確認後に削除予定） ---
-          # unless File.exist?(pdf_path)
-          #   Common.log_warn("[NombreStamper] PDF が見つかりません: #{pdf_path}")
-          #   return false
-          # end
-          #
-          # doc = HexaPDF::Document.open(pdf_path)
-          # total = doc.pages.count
-          #
-          # Common.log_action("[NombreStamper] 隠しノンブルを書き込みます（#{total} ページ）…")
-          #
-          # doc.pages.each_with_index do |page, idx|
-          #   stamp_page!(page, idx + 1, bleed_pt:)
-          # end
-          #
-          # doc.write(pdf_path, optimize: true)
-          # Common.log_success("[NombreStamper] 隠しノンブル書き込み完了（#{total} ページ）")
-          # true
-          # rescue StandardError => e
-          #   Common.log_error("[NombreStamper] 隠しノンブル書き込みに失敗: #{e.message}")
-          #   false
+          # --- Phase: ノンブル PDF の生成（Prawn） ---
+          Common.log_action("[NombreStamper] 隠しノンブルを書き込みます（#{total_pages} ページ）…")
+          nombre_pdf = "#{pdf_path}.nombre.pdf"
+          create_nombre_pdf!(nombre_pdf, pdf_path, bleed_mm.to_f * MM_TO_PT)
+
+          # --- Phase: 重畳（qpdf・構造保存・等倍） ---
+          success = Build::QpdfOverlay.apply!(pdf_path, nombre_pdf)
+          FileUtils.rm_f(nombre_pdf)
+
+          if success
+            Common.log_success("[NombreStamper] 隠しノンブル書き込み完了（#{total_pages} ページ）")
+          else
+            Common.log_error('[NombreStamper] 隠しノンブルの重畳（qpdf --overlay）に失敗しました')
+          end
+          success
+        rescue StandardError => e
+          Common.log_error("[NombreStamper] 隠しノンブル書き込みに失敗: #{e.message}")
+          FileUtils.rm_f("#{pdf_path}.nombre.pdf")
+          false
+        end
+
+        # 対象 PDF と同じページ数・同じページサイズで、ノンブルだけを描いた PDF を生成する。
+        # ページサイズを 1 ページずつ元 PDF から読み取るのは、空白ページ挿入や
+        # 前付・奥付の混在でページサイズが揃わない場合にも重畳位置をずらさないため。
+        #
+        # @param output_path [String] 出力先
+        # @param source_pdf [String] ページ数・ページサイズの参照元
+        # @param bleed_pt [Float] 塗り足し幅（pt）
+        def create_nombre_pdf!(output_path, source_pdf, bleed_pt)
+          reader = ::PDF::Reader.new(source_pdf)
+          font = nombre_font
+
+          Prawn::Document.generate(output_path, skip_page_creation: true, margin: 0) do |pdf|
+            reader.pages.each_with_index do |page, idx|
+              box = page.attributes[:MediaBox] || [0, 0, 595.28, 841.89]
+              width  = box[2].to_f - box[0].to_f
+              height = box[3].to_f - box[1].to_f
+
+              pdf.start_new_page(size: [width, height], margin: 0)
+              # フォントはページ作成後に設定する（skip_page_creation のため最初のページ前は不可）。
+              # 数字のみのため TTF はサブセット埋め込みされ極小で済む。
+              pdf.font(font, size: FONT_SIZE)
+              pdf.fill_color('000000')
+
+              draw_page_number(pdf, idx + 1, width, height, bleed_pt)
+            end
+          end
+        end
+
+        # 隠しノンブルのフォントを解決する。
+        # プロジェクト（cwd）→ gem 同梱 の順に同梱 TTF を探し、いずれも無ければ
+        # 'Helvetica'（非埋め込み）へフォールバックして従来どおりビルドは継続する。
+        # @return [String] Prawn に渡すフォント（TTF パス or 'Helvetica'）
+        def nombre_font
+          gem_bundled = File.expand_path(File.join('../../../..', NOMBRE_FONT_RELATIVE), __dir__)
+          [NOMBRE_FONT_RELATIVE, gem_bundled].find { File.exist?(it) } || 'Helvetica'
         end
 
         # 個別ページにノンブルを描画する
         # 奇数ページ（右ページ）はノド側 = 左端、偶数ページ（左ページ）はノド側 = 右端
-        #
-        # @param page [HexaPDF::Type::Page] 対象ページ
-        # @param page_number [Integer] 通しページ番号（1〜）
-        # @param bleed_pt [Float] 塗り足し幅（pt）
-        def stamp_page!(page, page_number, bleed_pt:)
-          canvas = page.canvas(type: :overlay)
-          box = page.box(:media)
-
-          canvas.font(FONT_NAME, size: FONT_SIZE)
-          canvas.fill_color(0) # 黒
-
-          # ノド側の X 座標: 塗り足し領域の中央
+        def draw_page_number(pdf, page_number, width, height, bleed_pt)
           x_offset = bleed_pt / 2.0
-          y_center = box.height / 2.0
+          y_center = height / 2.0
+          text = page_number.to_s
 
           if page_number.odd?
             # 右ページ → ノド = 左端、時計回り 90°
-            draw_rotated_text(canvas, page_number.to_s, x: x_offset, y: y_center, angle: 90)
+            draw_rotated_text(pdf, text, x: x_offset, y: y_center, angle: 90)
           else
             # 左ページ → ノド = 右端、反時計回り -90°
-            draw_rotated_text(canvas, page_number.to_s, x: box.width - x_offset, y: y_center, angle: -90)
+            draw_rotated_text(pdf, text, x: width - x_offset, y: y_center, angle: -90)
           end
         end
 
-        # テキストを回転して描画する
-        # translate → rotate → text の順に変換を適用
-        #
-        # @param canvas [HexaPDF::Content::Canvas] 描画対象キャンバス
-        # @param text [String] 描画テキスト
-        # @param x [Float] X 座標（pt）
-        # @param y [Float] Y 座標（pt）
-        # @param angle [Numeric] 回転角度（度）
-        def draw_rotated_text(canvas, text, x:, y:, angle:)
-          canvas
-            .save_graphics_state
-            .translate(x, y)
-            .rotate(angle)
-            .text(text, at: [0, 0])
-            .restore_graphics_state
+        # テキストを回転して描画する（translate → rotate → draw_text）
+        def draw_rotated_text(pdf, text, x:, y:, angle:)
+          text_width  = pdf.width_of(text)
+          text_height = pdf.font.height
+
+          pdf.save_graphics_state do
+            pdf.translate(x, y)
+            pdf.rotate(angle) do
+              pdf.draw_text(text, at: [-text_width / 2.0, -text_height / 2.0])
+            end
+          end
         end
 
         # 塗り足し幅を book.yml から取得する（mm 単位の数値を返す）

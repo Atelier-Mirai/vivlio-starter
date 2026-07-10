@@ -48,8 +48,8 @@ module VivlioStarter
       end
 
       # --fix 実行時に設定ファイルの診断・復元（diagnose_config_files!）が起動することを確認するテスト。
-      # ※ 開発環境のNode.jsやPlaywrightの有無に依存せずテストをパスさせるため、
-      #    playwright_npm_available?, chromium_available?, rouge_gem_available? も true にスタブ化しています。
+      # ※ 開発環境の Node.js やツールの有無に依存せずテストをパスさせるため、
+      #    rouge_gem_available? / mathjax_full_available? も true にスタブ化しています。
       def test_doctor_fix_diagnoses_config_files_when_environment_complete
         with_host_os('darwin') do
           diagnose_called = false
@@ -58,8 +58,6 @@ module VivlioStarter
             DoctorCommands.stub :ssl_certificate_configured?, true do
               DoctorCommands.stub :tesseract_language_available?, true do
                 DoctorCommands.stub :waifu2x_available?, true do
-                  DoctorCommands.stub :playwright_npm_available?, true do
-                    DoctorCommands.stub :chromium_available?, true do
                       DoctorCommands.stub :rouge_gem_available?, true do
                         DoctorCommands.stub :mathjax_full_available?, true do
                         DoctorCommands.stub :command_exists?, ->(_) { true } do
@@ -69,8 +67,6 @@ module VivlioStarter
                         end
                       end
                       end
-                    end
-                  end
                 end
               end
             end
@@ -172,8 +168,6 @@ module VivlioStarter
             DoctorCommands.stub :ssl_certificate_configured?, true do
               DoctorCommands.stub :tesseract_language_available?, true do
                 DoctorCommands.stub :waifu2x_available?, true do
-                  DoctorCommands.stub :playwright_npm_available?, true do
-                    DoctorCommands.stub :chromium_available?, true do
                       DoctorCommands.stub :rouge_gem_available?, true do
                         DoctorCommands.stub :mathjax_full_available?, true do
                         DoctorCommands.stub :diagnose_config_files!, nil do
@@ -200,8 +194,6 @@ module VivlioStarter
                             end
                           end
                         end
-                      end
-                      end
                     end
                   end
                 end
@@ -222,8 +214,6 @@ module VivlioStarter
           stub_logging do
             DoctorCommands.stub :ssl_certificate_configured?, true do
               DoctorCommands.stub :waifu2x_available?, true do
-                DoctorCommands.stub :playwright_npm_available?, true do
-                  DoctorCommands.stub :chromium_available?, true do
                     DoctorCommands.stub :rouge_gem_available?, true do
                       DoctorCommands.stub :mathjax_full_available?, true do
                       DoctorCommands.stub :diagnose_config_files!, nil do
@@ -257,8 +247,6 @@ module VivlioStarter
                           end
                         end
                       end
-                    end
-                    end
                   end
                 end
               end
@@ -270,50 +258,6 @@ module VivlioStarter
         end
       end
 
-
-      def test_doctor_fix_installs_chromium_when_missing
-        with_host_os('darwin') do
-          system_calls = []
-
-          stub_logging do
-            DoctorCommands.stub :ssl_certificate_configured?, true do
-              DoctorCommands.stub :tesseract_language_available?, true do
-                DoctorCommands.stub :waifu2x_available?, true do
-                  DoctorCommands.stub :playwright_npm_available?, true do
-                    DoctorCommands.stub :chromium_available?, false do
-                      DoctorCommands.stub :rouge_gem_available?, true do
-                        DoctorCommands.stub :mathjax_full_available?, true do
-                        DoctorCommands.stub :diagnose_config_files!, nil do
-                          DoctorCommands.stub :command_exists?, ->(_) { true } do
-                            DoctorCommands.stub :system, lambda { |cmd|
-                              system_calls << cmd
-                              true
-                            } do
-                              original_exist = File.method(:exist?)
-                              File.stub :exist?, lambda { |path|
-                                if path == 'node_modules/playwright/cli.js'
-                                  true
-                                else
-                                  original_exist.call(path)
-                                end
-                              } do
-                                capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
-                              end
-                            end
-                          end
-                        end
-                      end
-                      end
-                    end
-                  end
-                end
-              end
-            end
-          end
-
-          assert_includes system_calls, 'node node_modules/playwright/cli.js install chromium'
-        end
-      end
 
       # --fix 指定が非 macOS 環境ではインストールを試みず終了することを確認
       def test_doctor_fix_on_non_macos_aborts_install
@@ -352,8 +296,6 @@ module VivlioStarter
                     DoctorCommands.stub :pdf_plugin_installed?, false do
                       DoctorCommands.stub :tesseract_language_available?, false do
                         DoctorCommands.stub :waifu2x_available?, true do
-                          DoctorCommands.stub :playwright_npm_available?, true do
-                            DoctorCommands.stub :chromium_available?, true do
                               DoctorCommands.stub :rouge_gem_available?, true do
                                 DoctorCommands.stub :mathjax_full_available?, true do
                                 DoctorCommands.stub :command_exists?, ->(cmd) { !%w[tesseract vips].include?(cmd) } do
@@ -361,8 +303,6 @@ module VivlioStarter
                                 end
                               end
                               end
-                            end
-                          end
                         end
                       end
                     end
@@ -393,8 +333,6 @@ module VivlioStarter
                     DoctorCommands.stub :pdf_plugin_installed?, true do
                       DoctorCommands.stub :tesseract_language_available?, false do
                         DoctorCommands.stub :waifu2x_available?, true do
-                          DoctorCommands.stub :playwright_npm_available?, true do
-                            DoctorCommands.stub :chromium_available?, true do
                               DoctorCommands.stub :rouge_gem_available?, true do
                                 DoctorCommands.stub :mathjax_full_available?, true do
                                 DoctorCommands.stub :command_exists?, ->(cmd) { !%w[tesseract vips].include?(cmd) } do
@@ -402,8 +340,6 @@ module VivlioStarter
                                 end
                               end
                               end
-                            end
-                          end
                         end
                       end
                     end

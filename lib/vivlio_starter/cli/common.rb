@@ -204,7 +204,7 @@ module VivlioStarter
                     filename: { include_version: nil },
                     pdf_preview: { close_existing_windows: nil, window_bounds: nil },
                     pdf: { combined: nil, compress: nil, techbook: nil },
-                    print_pdf: { bleed: nil, crop_marks: nil },
+                    print_pdf: { bleed: nil, crop_marks: nil, full_bleed: nil },
                     epub: { embed: nil, layout: nil },
                     kindle: { embed: nil, layout: nil } },
           build: { verify: { images: nil, bare_urls: nil, external_links: nil,
@@ -861,6 +861,9 @@ module VivlioStarter
       def epub_embed?        = CONFIG&.output&.epub&.embed == true
       # Kindle 表紙の埋め込み。未設定時は false（二重表紙回避・§1-6）。
       def kindle_embed?      = CONFIG&.output&.kindle&.embed == true
+      # 本文にフチなし（塗り足しまで届く）要素があるか。true の本は閲覧用 PDF から
+      # 塗り足しを復元できないため、入稿用 PDF を個別レンダリングする（既定 false = 導出）。
+      def print_pdf_full_bleed? = truthy?(CONFIG&.output&.print_pdf&.full_bleed)
 
       # カバー設定のバリデーション
       def validate_cover_settings
@@ -916,6 +919,7 @@ module VivlioStarter
                       :config_dir_path,
                       :consume_vivliostyle_build_timings, :contents_dir, :covers_dir,
                       :cover_theme, :pdf_combined?, :pdf_compress?, :epub_embed?, :kindle_embed?,
+                      :print_pdf_full_bleed?,
                       :current_log_level, :current_step_label, :deep_merge_config, :default_cache,
                       :default_commands, :default_config_schema, :default_directories, :default_files,
                       :default_vfm, :default_vivliostyle, :log_always, :ensure_cache_dir!,

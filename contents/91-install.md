@@ -60,7 +60,6 @@ gem install query-stream        # データ展開機能
 | libvips | `brew install vips` | 高速画像処理 |
 | Tesseract + 日本語データ | `brew install tesseract tesseract-lang` | OCR エンジン |
 | MeCab | `brew install mecab mecab-ipadic` | 索引機能の読み自動推測 |
-| Playwright / Chromium | npm 経由 | バックリンク重複排除用 |
 | rouge | `gem install rouge` | コードブロック言語推定 |
 | mathjax-full | `npm install -g mathjax-full` | 数式の SVG 化 |
 | `waifu2x-ncnn-vulkan` | GitHub Releases から自動取得 | AI 画像拡大（オプション） |

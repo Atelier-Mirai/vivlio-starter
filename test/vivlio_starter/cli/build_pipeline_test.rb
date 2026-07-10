@@ -76,7 +76,7 @@ module VivlioStarter
             test_case.assert_equal [], entries
             order << 'step7'
           }],
-          [Build::BacklinkDedupOrchestrator, :run!, lambda { |entries|
+          [Build::BacklinkDedupOrchestrator, :run!, lambda { |entries, **|
             test_case.assert_equal [], entries
             order << 'step8'
           }],
@@ -183,7 +183,7 @@ module VivlioStarter
               Build::PartTitleGenerator.stub :generate_all!, -> {} do
                 Build::TocGenerator.stub :generate_toc_html!, ->(_, _) {} do
                   Build::PdfBuilder.stub :build_overall_pdf_from_dir!, ->(_) {} do
-                    Build::BacklinkDedupOrchestrator.stub :run!, ->(_) {} do
+                    Build::BacklinkDedupOrchestrator.stub :run!, ->(_, **) {} do
                       Build::PdfMerger.stub :merge_all_pdfs!, ->(_) {} do
                         Build::PdfMerger.stub :add_outline_to_output_pdf!, ->(_) {} do
                           yield
@@ -579,7 +579,7 @@ module VivlioStarter
               Build::PartTitleGenerator.stub :generate_all!, -> {} do
                 Build::TocGenerator.stub :generate_toc_html!, ->(_, _) {} do
                   Build::PdfBuilder.stub :build_overall_pdf_from_dir!, ->(_) {} do
-                    Build::BacklinkDedupOrchestrator.stub :run!, ->(_) {} do
+                    Build::BacklinkDedupOrchestrator.stub :run!, ->(_, **) {} do
                       Build::PdfMerger.stub :merge_all_pdfs!, ->(_) {} do
                         Build::PdfMerger.stub :add_outline_to_output_pdf!, ->(_) {} do
                           yield

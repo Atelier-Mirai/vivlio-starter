@@ -256,15 +256,19 @@ output:
   print_pdf:
     bleed: 3mm # 塗り足し幅（既定: 3mm）
     crop_marks: true # トンボを付ける（既定: true）
+    full_bleed: false # 本文にフチなし（塗り足しまで届く）要素があるか（既定: false）
+    #   false = 閲覧用 PDF からトンボ・塗り足し付き PDF を高速導出（本文は同一レンダリング由来）
+    #   true  = 従来どおり --crop-marks --bleed 付きで個別レンダリング
+    #   ※ 閲覧用 PDF は仕上がりサイズで裁たれており塗り足しを復元できないため、
+    #      紙端まで届く画像・背景がある本を false のまま導出すると白フチ事故になる
     # cover_bleed: scale # 著者持ち込み表紙(master)の入稿用 塗り足し処理（既定: scale）
     #   scale = トリム画像を塗り足しまで拡大して流用（中央が数%拡大・端が裁断される）
     #   keep  = 拡大しない（塗り足し帯は白。フチが紙端まで無いデザイン向け）
     #   ※ covers/frontcover_master_bleed.png / backcover_master_bleed.png を置くと
     #      塗り足し込みの専用画像として最優先で自動採用され、この設定は無視される
-    # Vivliostyle CLI で --crop-marks --bleed 3mm を付加してビルド
     # 出力は PDF/X-4 準拠（ねこのしっぽ、日光企画で対応済み）
     # 隠しノンブルも PDF 結合後に自動書き込み
-    # (専用gem vivlio-starter-pdf の導入を推奨)
+    # PDF しおり（アウトライン）が必要な場合は専用 gem vivlio-starter-pdf の導入を推奨
 
   # ----------------------------
   # EPUB設定（楽天Kobo / Apple Books 向けクリーン EPUB）

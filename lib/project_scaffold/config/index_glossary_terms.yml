@@ -1242,42 +1242,42 @@ terms:
   - chapter: 22-extentions
     occurrence: 41
     anchor_id: gls-src-22-extentions-markdown-41
-  - chapter: 23-chapter-management
+  - chapter: 22-extentions
     occurrence: 42
-    anchor_id: gls-src-23-chapter-management-markdown-42
-  - chapter: 23-chapter-management
+    anchor_id: gls-src-22-extentions-markdown-42
+  - chapter: 22-extentions
     occurrence: 43
-    anchor_id: gls-src-23-chapter-management-markdown-43
+    anchor_id: gls-src-22-extentions-markdown-43
   - chapter: 23-chapter-management
     occurrence: 44
     anchor_id: gls-src-23-chapter-management-markdown-44
-  - chapter: 24-cross-reference
+  - chapter: 23-chapter-management
     occurrence: 45
-    anchor_id: gls-src-24-cross-reference-markdown-45
-  - chapter: 25-querystream
+    anchor_id: gls-src-23-chapter-management-markdown-45
+  - chapter: 23-chapter-management
     occurrence: 46
-    anchor_id: gls-src-25-querystream-markdown-46
-  - chapter: 25-querystream
+    anchor_id: gls-src-23-chapter-management-markdown-46
+  - chapter: 24-cross-reference
     occurrence: 47
-    anchor_id: gls-src-25-querystream-markdown-47
-  - chapter: 31-lint
+    anchor_id: gls-src-24-cross-reference-markdown-47
+  - chapter: 25-querystream
     occurrence: 48
-    anchor_id: gls-src-31-lint-markdown-48
-  - chapter: 31-lint
+    anchor_id: gls-src-25-querystream-markdown-48
+  - chapter: 25-querystream
     occurrence: 49
-    anchor_id: gls-src-31-lint-markdown-49
+    anchor_id: gls-src-25-querystream-markdown-49
   - chapter: 31-lint
     occurrence: 50
     anchor_id: gls-src-31-lint-markdown-50
-  - chapter: 32-metrics
+  - chapter: 31-lint
     occurrence: 51
-    anchor_id: gls-src-32-metrics-markdown-51
-  - chapter: 33-index-glossary
+    anchor_id: gls-src-31-lint-markdown-51
+  - chapter: 31-lint
     occurrence: 52
-    anchor_id: gls-src-33-index-glossary-markdown-52
-  - chapter: 33-index-glossary
+    anchor_id: gls-src-31-lint-markdown-52
+  - chapter: 32-metrics
     occurrence: 53
-    anchor_id: gls-src-33-index-glossary-markdown-53
+    anchor_id: gls-src-32-metrics-markdown-53
   - chapter: 33-index-glossary
     occurrence: 54
     anchor_id: gls-src-33-index-glossary-markdown-54
@@ -1287,36 +1287,36 @@ terms:
   - chapter: 33-index-glossary
     occurrence: 56
     anchor_id: gls-src-33-index-glossary-markdown-56
-  - chapter: 41-book-yml
+  - chapter: 33-index-glossary
     occurrence: 57
-    anchor_id: gls-src-41-book-yml-markdown-57
-  - chapter: 41-book-yml
+    anchor_id: gls-src-33-index-glossary-markdown-57
+  - chapter: 33-index-glossary
     occurrence: 58
-    anchor_id: gls-src-41-book-yml-markdown-58
+    anchor_id: gls-src-33-index-glossary-markdown-58
   - chapter: 41-book-yml
     occurrence: 59
     anchor_id: gls-src-41-book-yml-markdown-59
-  - chapter: 44-build
+  - chapter: 41-book-yml
     occurrence: 60
-    anchor_id: gls-src-44-build-markdown-60
-  - chapter: 44-build
+    anchor_id: gls-src-41-book-yml-markdown-60
+  - chapter: 41-book-yml
     occurrence: 61
-    anchor_id: gls-src-44-build-markdown-61
+    anchor_id: gls-src-41-book-yml-markdown-61
   - chapter: 44-build
     occurrence: 62
     anchor_id: gls-src-44-build-markdown-62
   - chapter: 44-build
     occurrence: 63
     anchor_id: gls-src-44-build-markdown-63
-  - chapter: 45-utility
+  - chapter: 44-build
     occurrence: 64
-    anchor_id: gls-src-45-utility-markdown-64
-  - chapter: 61-developer
+    anchor_id: gls-src-44-build-markdown-64
+  - chapter: 44-build
     occurrence: 65
-    anchor_id: gls-src-61-developer-markdown-65
-  - chapter: 61-developer
+    anchor_id: gls-src-44-build-markdown-65
+  - chapter: 45-utility
     occurrence: 66
-    anchor_id: gls-src-61-developer-markdown-66
+    anchor_id: gls-src-45-utility-markdown-66
   - chapter: 61-developer
     occurrence: 67
     anchor_id: gls-src-61-developer-markdown-67
@@ -1383,12 +1383,12 @@ terms:
   - chapter: 61-developer
     occurrence: 88
     anchor_id: gls-src-61-developer-markdown-88
-  - chapter: 92-pdf-read
+  - chapter: 61-developer
     occurrence: 89
-    anchor_id: gls-src-92-pdf-read-markdown-89
-  - chapter: 92-pdf-read
+    anchor_id: gls-src-61-developer-markdown-89
+  - chapter: 61-developer
     occurrence: 90
-    anchor_id: gls-src-92-pdf-read-markdown-90
+    anchor_id: gls-src-61-developer-markdown-90
   - chapter: 92-pdf-read
     occurrence: 91
     anchor_id: gls-src-92-pdf-read-markdown-91
@@ -1398,12 +1398,12 @@ terms:
   - chapter: 92-pdf-read
     occurrence: 93
     anchor_id: gls-src-92-pdf-read-markdown-93
-  - chapter: 93-import
+  - chapter: 92-pdf-read
     occurrence: 94
-    anchor_id: gls-src-93-import-markdown-94
-  - chapter: 93-import
+    anchor_id: gls-src-92-pdf-read-markdown-94
+  - chapter: 92-pdf-read
     occurrence: 95
-    anchor_id: gls-src-93-import-markdown-95
+    anchor_id: gls-src-92-pdf-read-markdown-95
   - chapter: 93-import
     occurrence: 96
     anchor_id: gls-src-93-import-markdown-96
@@ -1413,12 +1413,18 @@ terms:
   - chapter: 93-import
     occurrence: 98
     anchor_id: gls-src-93-import-markdown-98
-  - chapter: 95-further-inspiration
+  - chapter: 93-import
     occurrence: 99
-    anchor_id: gls-src-95-further-inspiration-markdown-99
-  - chapter: 99-postface
+    anchor_id: gls-src-93-import-markdown-99
+  - chapter: 93-import
     occurrence: 100
-    anchor_id: gls-src-99-postface-markdown-100
+    anchor_id: gls-src-93-import-markdown-100
+  - chapter: 95-further-inspiration
+    occurrence: 101
+    anchor_id: gls-src-95-further-inspiration-markdown-101
+  - chapter: 99-postface
+    occurrence: 102
+    anchor_id: gls-src-99-postface-markdown-102
 - term: MeCab
   yomi: MeCab
   flags: ig
@@ -5335,4 +5341,4 @@ terms:
   - chapter: 61-developer
     context: " `page.use` で `page_presets.yml` のプリセット名を指定します（例: `b5_airy`）。 `output.targets`"
   updated_at: '2026-07-05 21:00:15'
-updated_at: '2026-07-05 21:01:10'
+updated_at: '2026-07-08 21:30:08'

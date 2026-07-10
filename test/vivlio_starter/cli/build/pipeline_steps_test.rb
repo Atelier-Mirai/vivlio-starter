@@ -36,7 +36,16 @@ module VivlioStarter
         'merge all pdfs', 'apply outline to output pdf', 'compress, rename and final clean'
       ]).freeze
 
+      # 入稿用のみ・導出フロー（既定）。導出のソースとして閲覧用の中間 PDF を作るため、
+      # print_pdf 単独でも 'build overall pdf' / 'build front pages and tail' が入る。
+      # 最終成果物（merge 以降）は t.pdf 次第なので閲覧用 output.pdf は生まれない。
       PRINT_ONLY = (PREFIX + [
+        'build overall pdf', 'backlink dedup', 'build front pages and tail', 'print pdf', 'final clean'
+      ]).freeze
+
+      # 入稿用のみ・従来フロー（output.print_pdf.full_bleed: true）。
+      # 本文を個別レンダするため閲覧用 PDF は不要で、entries/config と HTML だけを用意する。
+      PRINT_ONLY_FULL_BLEED = (PREFIX + [
         'generate entries.js', 'backlink dedup', 'build front pages html', 'print pdf', 'final clean'
       ]).freeze
 
@@ -56,8 +65,8 @@ module VivlioStarter
       ]).freeze
 
       PRINT_EPUB = (PREFIX + [
-        'generate entries.js', 'backlink dedup',
-        'build front pages html', 'print pdf', 'generate epub', 'final clean'
+        'build overall pdf', 'backlink dedup',
+        'build front pages and tail', 'print pdf', 'generate epub', 'final clean'
       ]).freeze
 
       ALL = (PREFIX + [
@@ -100,6 +109,15 @@ module VivlioStarter
           pipeline = build_pipeline(mode: :full, targets: targets_from(targets_list))
           assert_equal expected, op_keys(pipeline),
                        "targets=#{targets_list.inspect} のステップ列が想定と一致しません"
+        end
+      end
+
+      # full_bleed: true（本文にフチなし要素がある本）では導出できないため、
+      # 入稿用は個別レンダリングし、閲覧用の中間 PDF を作らない従来の経路に戻る。
+      def test_full_bleed_falls_back_to_legacy_print_rendering
+        Common.stub :print_pdf_full_bleed?, true do
+          pipeline = build_pipeline(mode: :full, targets: targets_from(%w[print_pdf]))
+          assert_equal PRINT_ONLY_FULL_BLEED, op_keys(pipeline)
         end
       end
 

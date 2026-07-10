@@ -7,8 +7,8 @@
 #
 # 検証内容:
 #   DG-01: mecab 不在 → metrics の解析が簡易トークナイザへ縮退して完走する
-#   DG-02: playwright/chromium 不在 → バックリンク重複排除がスキップされ
-#          ビルド処理が例外なく続行する
+#   DG-02: ページマッピング抽出失敗（本文 PDF 破損・/Dests 欠落等）→
+#          バックリンク重複排除がスキップされビルド処理が例外なく続行する
 #   DG-03: gs 不在 → 圧縮スキップ（現状は exit(1) するため skip / 課題切り出し）
 #   DG-04: waifu2x 不在 → ImageMagick のみへフォールバック（画像実処理と
 #          不可分なため本階層では対象外。skip に理由を記載）
@@ -52,7 +52,7 @@ module VivlioStarter
         assert_operator vocabulary.ttr, :>, 0, '簡易トークナイザでも TTR は算出されるべき'
       end
 
-      # DG-02a: ページマッピングが取得できない（playwright 不在相当）場合、
+      # DG-02a: ページマッピングが取得できない（本文 PDF 不在・/Dests 欠落等）場合、
       # 重複排除はスキップされ、例外なく false を返してビルドが続行できる
       def test_should_skip_backlink_dedup_when_page_mapping_unavailable
         orchestrator = Build::BacklinkDedupOrchestrator
@@ -78,7 +78,7 @@ module VivlioStarter
         Common.stub :log_warn, ->(msg, **) { warns << msg } do
           orchestrator.stub :dedup_enabled?, true do
             orchestrator.stub :dedup_target_exists?, true do
-              orchestrator.stub :extract_page_mapping, ->(*) { raise 'playwright crashed' } do
+              orchestrator.stub :extract_page_mapping, ->(*) { raise 'pdf parse crashed' } do
                 capture_io { result = orchestrator.run! }
               end
             end

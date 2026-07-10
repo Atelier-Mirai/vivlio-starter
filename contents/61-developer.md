@@ -482,7 +482,7 @@ VIVLIO_PDF_PLUGIN=disable vs pdf:read document.pdf  # 強制 Standard Mode
 
 `cli/doctor.rb`（`DoctorCommands`）が担当します。
 
-Vivlio Starter の動作に必要な外部ツールの存在を診断します。診断対象は qpdf・pdfinfo・Ghostscript・ImageMagick・Inkscape・Vivliostyle CLI・textlint・MeCab・Playwright など多岐にわたります。`--fix` オプションを指定すると、macOS + Homebrew 環境で不足ツールを自動インストールします。
+Vivlio Starter の動作に必要な外部ツールの存在を診断します。診断対象は qpdf（入稿用 PDF の導出にバージョン 11 以上が必要）・pdfinfo・Ghostscript・ImageMagick・Inkscape・Vivliostyle CLI・textlint・MeCab など多岐にわたります。`--fix` オプションを指定すると、macOS + Homebrew 環境で不足ツールを自動インストールします。
 
 `targets: kindle` の KPF 変換に使う `kindlepreviewer`（Kindle Previewer 3）は**任意ツール**として診断します（導入済みは `✅`、未導入は 🟡 案内に留めハードエラーにしません＝Kindle を使わない利用者の妨げにしない）。macOS の `--fix` では Homebrew cask `kindle-previewer` を導入し、単体では PATH に乗らないアプリ内 CLI を呼ぶラッパーを Homebrew の `bin` へ作成して `which kindlepreviewer` を通します。
 
@@ -706,7 +706,7 @@ vs build         # ビルド時に索引・用語集ページを自動生成
 
 `vs build` の Step 4（索引スキャン・索引ページ生成）で `IndexCommands.process_index_for_build!` が呼ばれます。`IndexMatchScanner` が `[用語|読み]` 記法を `<dfn>/<span>` に変換し、`UnifiedPageBuilder` が索引・用語集ページを生成します。
 
-Step 8（バックリンク重複排除）では Playwright + Vivliostyle preview による DOM 解析で、同一ページを指す索引リンクの重複を排除します（`BacklinkDedupOrchestrator`）。これにより、1章が複数ページにまたがる場合でも正確なページ番号が索引に掲載されます。
+Step 8（バックリンク重複排除）では、生成済み本文 PDF の named destinations（`/Dests`）を pdf-reader で解析して「アンカー ID → ページ番号」の対応を取得し、同一ページを指す索引リンクの重複を排除します（`BacklinkDedupOrchestrator` ＋ `PdfPageMapExtractor`）。実際に組まれた PDF そのものを測るため決定的で、1章が複数ページにまたがる場合でも正確なページ番号が索引に掲載されます。
 
 ### 本文中の記法
 
@@ -930,7 +930,7 @@ bundle exec rake test
 | `cli/lint/` | スペルチェック・辞書管理・トークナイザー |
 | `cli/pdf/` | pdf:read コマンド・Enhanced Mode プロバイダー |
 | `cli/import/` | Re:VIEW Starter インポート処理 |
-| `cli/build/backlink_deduplicator_test.rb` | バックリンク重複排除（Playwright 連携） |
+| `cli/build/backlink_deduplicator_test.rb` | バックリンク重複排除 |
 | `targets/target_consistency_test.rb` | 出力ターゲット整合性（単体／複合ビルドの突き合わせ・`rake test:targets`） |
 
 外部ツール（Vivliostyle CLI・textlint・Ghostscript など）に依存するテストは `stub` でモックしており、ツール未インストール環境でも実行できます。

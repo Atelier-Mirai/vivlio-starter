@@ -675,105 +675,39 @@ module VivlioStarter
       # crop offset 領域（bleed 外側）のみに描画し、カバー内部に食い込まない:
       #   - 角トンボ: trim境界位置の直線を bleed 外側に配置
       #   - センタートンボ: 丸十字 ⊕ を crop offset 帯の中央に配置
+      #
+      # 描画そのものは Build::CropMarksOverlay と共通（本文の入稿用 PDF と同一幾何）。
+      # カバーは単一ページでリンクを持たないため、合成は従来どおり CombinePDF で行う。
       def add_crop_marks_overlay(pdf_path, trim_w_mm, trim_h_mm, bleed_mm, crop_offset_mm)
-        require 'prawn'
         require 'combine_pdf'
 
-        mm2pt = Units::PT_PER_MM
-        margin_mm    = bleed_mm + crop_offset_mm
-        page_w_pt    = (trim_w_mm + (2 * margin_mm)) * mm2pt
-        page_h_pt    = (trim_h_mm + (2 * margin_mm)) * mm2pt
-        margin_pt    = margin_mm * mm2pt
-        bleed_pt     = bleed_mm * mm2pt
-        crop_off_pt  = crop_offset_mm * mm2pt
-
-        # 仕上がり線（trim）の座標（PDF座標: 左下原点）
-        tx1 = margin_pt
-        ty1 = margin_pt
-        tx2 = margin_pt + (trim_w_mm * mm2pt)
-        ty2 = margin_pt + (trim_h_mm * mm2pt)
-
-        # bleed 境界の座標
-
-        line_w_pt      = 0.24
-        circle_r_pt    = 2.5 * mm2pt
-        cross_arm_h_pt = 10.0 * mm2pt
-        cross_arm_v_pt = 5.0 * mm2pt
-        corner_len_pt  = 10.0 * mm2pt
+        mm2pt       = Units::PT_PER_MM
+        margin_pt   = (bleed_mm + crop_offset_mm) * mm2pt
+        bleed_pt    = bleed_mm * mm2pt
+        trim_w_pt   = trim_w_mm * mm2pt
+        trim_h_pt   = trim_h_mm * mm2pt
 
         overlay_path = "#{pdf_path}.crop_marks.pdf"
-
-        Prawn::Document.generate(overlay_path,
-                                 page_size: [page_w_pt, page_h_pt],
-                                 margin: 0) do |pdf|
-          pdf.stroke_color '000000'
-          pdf.line_width line_w_pt
-
-          s  = corner_len_pt
-          bl = bleed_pt
-
-          draw_corner_crop_mark(pdf, tx1, ty2, -1,  1, s, bl)
-          draw_corner_crop_mark(pdf, tx2, ty2,  1,  1, s, bl)
-          draw_corner_crop_mark(pdf, tx1, ty1, -1, -1, s, bl)
-          draw_corner_crop_mark(pdf, tx2, ty1,  1, -1, s, bl)
-
-          cx = page_w_pt / 2.0
-          cy = page_h_pt / 2.0
-          mid_crop = crop_off_pt / 2.0
-
-          draw_center_crop_mark(pdf, cx, page_h_pt - mid_crop,
-                                cross_arm_h_pt, cross_arm_v_pt, circle_r_pt)
-          draw_center_crop_mark(pdf, cx, mid_crop,
-                                cross_arm_h_pt, cross_arm_v_pt, circle_r_pt)
-          draw_center_crop_mark(pdf, mid_crop, cy,
-                                cross_arm_v_pt, cross_arm_h_pt, circle_r_pt)
-          draw_center_crop_mark(pdf, page_w_pt - mid_crop, cy,
-                                cross_arm_v_pt, cross_arm_h_pt, circle_r_pt)
-        end
+        Build::CropMarksOverlay.generate!(overlay_path, trim_w_pt:, trim_h_pt:, bleed_pt:,
+                                                        crop_offset_pt: crop_offset_mm * mm2pt)
 
         base    = CombinePDF.load(pdf_path)
         overlay = CombinePDF.load(overlay_path)
         base.pages.first << overlay.pages.first
 
-        mm2pt_local = Units::PT_PER_MM
-        trim_x1_pt  = margin_pt
-        trim_y1_pt  = margin_pt
-        trim_x2_pt  = margin_pt + (trim_w_mm * mm2pt_local)
-        trim_y2_pt  = margin_pt + (trim_h_mm * mm2pt_local)
-        bleed_x1_pt = trim_x1_pt - bleed_pt
-        bleed_y1_pt = trim_y1_pt - bleed_pt
-        bleed_x2_pt = trim_x2_pt + bleed_pt
-        bleed_y2_pt = trim_y2_pt + bleed_pt
+        trim_x2_pt = margin_pt + trim_w_pt
+        trim_y2_pt = margin_pt + trim_h_pt
 
         page_dict = base.pages.first
-        page_dict[:TrimBox]  = [trim_x1_pt,  trim_y1_pt,  trim_x2_pt,  trim_y2_pt]
-        page_dict[:BleedBox] = [bleed_x1_pt, bleed_y1_pt, bleed_x2_pt, bleed_y2_pt]
+        page_dict[:TrimBox]  = [margin_pt, margin_pt, trim_x2_pt, trim_y2_pt]
+        page_dict[:BleedBox] = [margin_pt - bleed_pt, margin_pt - bleed_pt,
+                                trim_x2_pt + bleed_pt, trim_y2_pt + bleed_pt]
 
         base.save(pdf_path)
         FileUtils.rm_f(overlay_path)
       rescue StandardError => e
         Common.log_warn("トンボ描画中にエラー: #{e.message}")
         FileUtils.rm_f(overlay_path) if overlay_path && File.exist?(overlay_path)
-      end
-
-      # センタートンボ: ⊕（円＋十字線）
-      def draw_center_crop_mark(pdf, cx, cy, half_h, half_v, radius)
-        pdf.stroke_line [cx - half_h, cy], [cx + half_h, cy]
-        pdf.stroke_line [cx, cy - half_v], [cx, cy + half_v]
-        pdf.stroke_circle [cx, cy], radius
-      end
-
-      # 角トンボ: 二重L字交差型
-      def draw_corner_crop_mark(pdf, x, y, dx, dy, s, bl)
-        pdf.move_to(x + (bl * dx), y)
-        pdf.line_to(x + ((s + bl) * dx), y)
-        pdf.move_to(x, y + (bl * dy))
-        pdf.line_to(x, y + ((s + bl) * dy))
-        pdf.move_to(x, y + (bl * dy))
-        pdf.line_to(x + (s * dx), y + (bl * dy))
-        pdf.move_to(x + (bl * dx), y)
-        pdf.line_to(x + (bl * dx), y + (s * dy))
-        pdf.stroke
       end
 
       # SVG → JPG/PNG（ImageMagick）

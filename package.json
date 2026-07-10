@@ -12,7 +12,6 @@
   "devDependencies": {
     "@vivliostyle/cli": "11.0.2",
     "@vivliostyle/vfm": "^2.7.0",
-    "playwright": "^1.60.0",
     "stylelint": "^17.13.0",
     "stylelint-config-standard": "^40.0.0"
   },

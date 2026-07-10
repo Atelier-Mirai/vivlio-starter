@@ -4,7 +4,7 @@
 # Class: BacklinkDeduplicator
 # ================================================================
 # 責務:
-#   PageMappingExtractor が取得したページマッピングを基に、
+#   PdfPageMapExtractor が取得したページマッピングを基に、
 #   HTML ファイルからバックリンクの重複を排除する。
 #
 # 処理対象:
@@ -14,7 +14,7 @@
 #
 # 依存:
 #   - Nokogiri（HTML パーサー）
-#   - PageMappingExtractor::PageMapping（ページマッピングデータ）
+#   - PdfPageMapExtractor::PageMapping（ページマッピングデータ）
 # ================================================================
 
 require 'nokogiri'
@@ -198,7 +198,7 @@ module VivlioStarter
 
         # 1つの <dd> 内の重複を排除
         # 同一 (spine_index, page_index) を指す <a> の2件目以降を削除
-        # Playwright マッピングに存在しないリンクも削除（target-counter で ?? になるため）
+        # ページマッピングに存在しないリンクも削除（target-counter で ?? になるため）
         def deduplicate_links_in_dd!(dd, index_anchor_to_page)
           seen_pages = Set.new
           links_to_remove = []

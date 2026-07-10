@@ -1,7 +1,7 @@
 # print_pdf 導出化 調査報告＋実装仕様（閲覧用 PDF ＋トンボ＝入稿用 PDF・本体 MIT のみで実装）
 
 調査日: 2026-07-05〜06 / 調査・設計: Claude (Fable 5) / 実装担当: Claude (Opus 4.8) 想定
-対象: [PLANNED.md](PLANNED.md) 「print_pdf を pdf から導出して高速化」（V2.0 構想・[High]）
+対象: [PLANNED.md](../specs/PLANNED.md) 「print_pdf を pdf から導出して高速化」（V2.0 構想・[High]）
 
 関連: [backlink-dedup-pdf-map-spec.md](backlink-dedup-pdf-map-spec.md)（②。§7 で本件と連動）
 
@@ -115,26 +115,37 @@ vivliostyle のリンクは named destination 参照（`Dest: viv-id-…#anchor`
 2. qpdf 結合: merge_pdfs_with_qpdf!(files, output: output_print.pdf, base_pdf: _sections.pdf)
    - 奥付偶数ページ調整（insert_blank_page_before_colophon）は共通ロジックをそのまま使用
    - base_pdf 指定により /Dests・メタデータが本文から継承される（Phase 0 と同根）
-3. ジオメトリ変換（新モジュール・qpdf --update-from-json 一発）:
+3a. ジオメトリ拡張（新モジュール・qpdf --update-from-json 一発。TrimBox/BleedBox はまだ書かない）:
    - 各ページ: /Contents を [preストリーム, 元contents…, postストリーム] に差し替え
      （pre = "q 1 0 0 1 m m cm\n" / post = "\nQ" の共有ストリーム 2 本を新規オブジェクト追加）
-   - 各ページ: MediaBox/TrimBox/BleedBox 再定義（ページごとの元原点 ox/oy を補正）・CropBox 削除
+   - 各ページ: MediaBox を原点 0 の拡大版へ再定義（ページごとの元原点 ox/oy を補正）・
+     CropBox/ArtBox 削除
    - 全アノテーション: Rect（あれば QuadPoints）を (m, m) シフト
    - /Dests 辞書: XYZ/FitH/FitV/FitR 系の座標を (m, m) シフト（1 オブジェクト丸ごと更新）
 4. トンボ: Prawn で大判 1 ページの marks.pdf を生成 → qpdf --overlay marks.pdf --repeat=1-z
    （幾何は既存 add_crop_marks_overlay と同一: コーナー二重 L 字＋センター丸十字・線幅 0.24pt）
 5. 隠しノンブル: Prawn で全ページ分の nombre.pdf を生成（既存 StandardProvider の描画コードを流用:
    HackGen TTF サブセット・6pt・ノド側 90° 回転）→ qpdf --overlay nombre.pdf --to=1-z --from=1-z
+3b. ボックス確定（qpdf --update-from-json）: 各ページに TrimBox/BleedBox を書く
+   （MediaBox は原点 0 に正規化済みなので Trim = [m, m, W−m, H−m] の定型）
 6. アウトライン付与（従来どおり provider 経由・Enhanced のみ実施）
 7. リネーム（従来どおり）
 ```
 
-空白ページ（`ensure_blank_page_pdf`）はトリムサイズで結合され、手順 3 で他ページと
+**手順 3b（TrimBox/BleedBox の確定）を overlay（4・5）より後ろに置くのは必須**（§3.8 で実証）。
+qpdf `--overlay` は重ねる側のページを**宛先ページの TrimBox（無ければ CropBox）に収まるよう
+拡大縮小してセンタリング**する。TrimBox を先に書いてから overlay すると、トンボ・ノンブルが
+約 0.85 倍（B5 実測）に縮小されて仕上がり線の内側へ入り込む——トンボは裁断位置を示さなくなり、
+隠しノンブルは裁断後も紙面に残って読者に見えてしまう。宛先が MediaBox のみなら
+`1 0 0 1 0 0 cm`（等倍・原点一致）で重なるため、ボックスの確定を最後に回す。
+
+空白ページ（`ensure_blank_page_pdf`）はトリムサイズで結合され、手順 3a で他ページと
 一緒に拡張されるため個別対応不要。
 
 ### 2.3 新モジュール構成（すべて本体・MIT）
 
-- `Build::PrintGeometry`（仮）: 手順 3 の実装。
+- `Build::PrintGeometry`（仮）: 手順 3a（`expand!`）と 3b（`finalize_boxes!`）の実装。
+  overlay の縮小配置（§3.8）を避けるため 2 段に分かれており、単発の `apply!` は提供しない。
   - 入力構造の取得は `qpdf --json=2 --json-key=qpdf --json-key=pages --json-stream-data=none`
     （ページ object id・/Contents 参照）＋ pdf-reader（アノテーション・/Dests の値読み出し）。
   - 更新 JSON は `{"version":2,"qpdf":[header, {"obj:N 0 R": {"value"|"stream": …}}]}` 形式。
@@ -313,6 +324,34 @@ system('qpdf', src, dst, '--update-from-json=update.json')
 system('qpdf', dst, dst2, '--overlay', 'marks.pdf', '--repeat=1-z', '--')
 system('qpdf', dst2, out, '--overlay', 'nombre.pdf', '--to=1-z', '--from=1-z', '--')
 ```
+
+### 3.8 qpdf --overlay の縮小配置（2026-07-08 実装時に発見・順序変更の根拠）
+
+初版仕様（手順 3 で TrimBox/BleedBox を書いてから overlay）を実装したところ、
+qpdf `--overlay` が重ねる側を**宛先ページの TrimBox（無ければ CropBox）に収まるよう
+拡大縮小・センタリング**することが判明した（`--help=overlay-underlay` には記載なし。
+qpdf 12.3.2 実測）:
+
+| 宛先ページの状態 | 重ねる側に掛かる変換 |
+|---|---|
+| MediaBox のみ | `1 0 0 1 0 0 cm`（等倍・原点一致） |
+| MediaBox ＋ TrimBox（仕上がり線） | `0.85047 0 0 0.85047 45.354 61.250 cm`（B5 実測・約 0.85 倍） |
+
+縮小されると、ノド側 x = bleed/2 ≒ 4.25pt に描いた隠しノンブルが
+`45.354 + 4.25 × 0.85 ≒ 49pt`（TrimBox 左端 45.354pt の内側 ≒ 1.3mm）へ入り込み、
+**裁断後も紙面に残る**。トンボも仕上がり線から約 13.6mm 内側へずれる。
+初版スパイク（§3.1）の検証項目は /Dests・アノテーション件数・本文配置・ボックス値であり、
+overlay 後のトンボ・ノンブルの**配置座標**が含まれていなかったための見落とし。
+
+対処は手順の順序変更のみ（§2.2: 3a → 4 → 5 → 3b）。ボックスを書く前に overlay を済ませれば
+宛先は MediaBox のみとなり等倍で重なる。順序 `3a→4→5→3b` の全観点
+（等倍・ボックス確定・/Dests とアノテーション生存・座標一致）と、
+逆順 `3(box込)→4` での縮小再現（反証）は 2026-07-10 に qpdf 実機で検証済み。
+
+なお、従来レンダのフォールバック経路（§2.6）では vivliostyle の print 出力がもともと
+TrimBox を持つため、ノンブル overlay 時に同じ縮小が起きる。こちらは順序変更では避けられず、
+`QpdfOverlay` が**重畳の間だけ MediaBox 以外のページボックスを退避し、終了後に書き戻す**
+ガードで対処する（導出フローでは退避対象が無いため素通り・追加コストなし）。
 
 ---
 

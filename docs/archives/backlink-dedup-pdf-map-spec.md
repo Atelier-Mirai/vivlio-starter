@@ -1,7 +1,7 @@
 # Step 8（backlink dedup）高速化 調査報告＋実装仕様（PDF named destinations 方式）
 
 調査日: 2026-07-05 / 調査・設計: Claude (Fable 5) / 実装担当: Claude (Opus 4.8) 想定
-対象: [PLANNED.md](PLANNED.md) 「Step 8（backlink dedup）の抜本的高速化」（ビルド/出力・[High]）
+対象: [PLANNED.md](../specs/PLANNED.md) 「Step 8（backlink dedup）の抜本的高速化」（ビルド/出力・[High]）
 
 関連: [print-pdf-derivation-spec.md](print-pdf-derivation-spec.md)（①。§7 で連動）
 前提: 用語辞書 `config/index_glossary_terms.yml` は 2026-07-05 に `vs index:auto` → `vs index:apply`

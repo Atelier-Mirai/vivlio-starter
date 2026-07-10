@@ -13,7 +13,8 @@
 #   - node: JavaScript ランタイム（Vivliostyle CLI の依存）
 #   - vivliostyle: PDF 生成エンジン
 #   - textlint: 文章校正ツール
-#   - qpdf: PDF 分割・結合・ページ操作
+#   - qpdf: PDF 分割・結合・ページ操作（11 以上必須。入稿用 PDF 導出の
+#     --update-from-json / --overlay を使用する）
 #   - pdfinfo / pdftoppm (poppler): PDF メタデータ取得・ページ画像化
 #   - gs (Ghostscript): PDF 圧縮
 #   - imagemagick: 画像変換・リサイズ
@@ -22,7 +23,6 @@
 #   - vips (libvips): 高速画像処理（Enhanced Mode の OCR 用）
 #   - tesseract / tesseract-lang: OCR エンジンと日本語データ（Enhanced Mode 用）
 #   - mecab: 索引機能の読み自動推測
-#   - playwright / chromium: バックリンク重複排除用のヘッドレスブラウザ
 #   - rouge: コードブロック言語推定（Ruby gem）
 #   - mathjax (mathjax-full): 数式の SVG 化（npm パッケージ）
 #   - waifu2x-ncnn-vulkan: AI 画像拡大（オプション）
@@ -124,7 +124,6 @@ module VivlioStarter
             - rsvg-convert (librsvg)
             - vips / tesseract / tesseract-lang (Enhanced Mode の OCR 用)
             - mecab
-            - playwright / chromium
             - rouge
             - mathjax (mathjax-full)
             - waifu2x
@@ -132,7 +131,8 @@ module VivlioStarter
 
           役割の補足:
             - 圧縮は Ghostscript(pdfwrite) を使用します
-            - qpdf は分割/結合・ページ抽出などの PDF 操作用に使用します（圧縮用途ではありません）
+            - qpdf は分割/結合・ページ抽出などの PDF 操作用に使用します（圧縮用途ではありません）。
+              入稿用 PDF の導出（--update-from-json / --overlay）にバージョン 11 以上が必要です
 
           --fix オプション指定時、macOS かつ Homebrew が利用可能であれば
           不足しているツールの自動インストールを試みます。
@@ -198,8 +198,6 @@ module VivlioStarter
           'tesseract' => 'tesseract',
           'tesseract-lang' => nil,
           'waifu2x' => nil,
-          'playwright' => nil, # バックリンク重複排除用（npm パッケージ）
-          'chromium' => nil,   # Playwright 用ヘッドレスブラウザ
           'mecab' => 'mecab', # 索引機能の読み自動推測用
           'rouge' => nil, # コードブロック言語推定用
           'mathjax' => nil, # 数式の SVG 化用（mathjax-full・npm パッケージ）
@@ -223,10 +221,6 @@ module VivlioStarter
                  rouge_gem_available?
                when 'mathjax'
                  mathjax_full_available?
-               when 'playwright'
-                 playwright_npm_available?
-               when 'chromium'
-                 chromium_available?
                else
                  command_exists?(cmd)
                end
@@ -421,43 +415,6 @@ module VivlioStarter
             end
           end
 
-          # Playwright npm パッケージ（グローバルインストール）
-          if missing.include?('playwright')
-            if system('which npm >/dev/null 2>&1')
-              Common.log_always('Playwright（バックリンク重複排除用）をインストールします…')
-              system('npm install --loglevel=error -g playwright')
-            else
-              Common.log_always('npm が見つかりません。node のインストール後に `npm install -g playwright` を実行してください。')
-            end
-          end
-
-          # Chromium ブラウザ
-          if missing.include?('chromium')
-            Common.log_always('Chromium（Playwright 用ブラウザ）をインストールします…')
-            installed_any = false
-
-            if File.exist?('node_modules/playwright/cli.js')
-              system('node node_modules/playwright/cli.js install chromium')
-              installed_any = true
-            end
-
-            global_root = begin
-              `npm root -g 2>/dev/null`.strip
-            rescue StandardError
-              ''
-            end
-            has_global_playwright = !global_root.empty? && File.exist?(File.join(global_root, 'playwright', 'package.json'))
-
-            if has_global_playwright || (!installed_any && system('which npx >/dev/null 2>&1'))
-              system('npx playwright install chromium')
-              installed_any = true
-            end
-
-            unless installed_any
-              Common.log_always('npx が見つかりません。Playwright インストール後に `npx playwright install chromium` を実行してください。')
-            end
-          end
-
           # Kindle Previewer 3（kindlepreviewer）: cask 導入＋アプリ内 CLI への PATH ラッパー作成
           install_kindlepreviewer_macos! if missing.include?(KINDLEPREVIEWER_COMMAND)
 
@@ -512,10 +469,6 @@ module VivlioStarter
                  rouge_gem_available?
                when 'mathjax'
                  mathjax_full_available?
-               when 'playwright'
-                 playwright_npm_available?
-               when 'chromium'
-                 chromium_available?
                else
                  command_exists?(cmd)
                end
@@ -876,8 +829,6 @@ module VivlioStarter
           'waifu2x' => 'waifu2x-ncnn-vulkan',
           'ssl-certificates' => 'Google Fonts 用 SSL 証明書',
           'mecab' => 'MeCab (索引機能用)',
-          'playwright' => 'Playwright (バックリンク重複排除用)',
-          'chromium' => 'Chromium (Playwright 用ブラウザ)',
           'rouge' => 'Rouge (コードブロック言語推定用)',
           'mathjax' => '数式SVG化 (mathjax-full)',
           'kindlepreviewer' => 'Kindle Previewer 3 (kindlepreviewer・targets: kindle 用)'
@@ -980,35 +931,6 @@ module VivlioStarter
 
         output = capture_command('tesseract --list-langs 2>/dev/null')
         output.lines.map(&:strip).include?(language.to_s)
-      rescue StandardError
-        false
-      end
-
-      def playwright_npm_available?
-        # ローカル node_modules を優先確認
-        return true if File.exist?(File.join('node_modules', 'playwright', 'package.json'))
-
-        # グローバルインストールを確認
-        global_root = `npm root -g 2>/dev/null`.strip
-        return false if global_root.empty?
-
-        File.exist?(File.join(global_root, 'playwright', 'package.json'))
-      rescue StandardError
-        false
-      end
-
-      def chromium_available?
-        return false unless playwright_npm_available?
-
-        chromium_path = `node -e "try { const { chromium } = require('playwright'); console.log(chromium.executablePath()); } catch(e) {}" 2>/dev/null`.strip
-        return true if !chromium_path.empty? && File.exist?(chromium_path)
-
-        # グローバルの playwright から検出
-        global_root = `npm root -g 2>/dev/null`.strip
-        return false if global_root.empty?
-
-        chromium_path = `NODE_PATH=#{global_root} node -e "try { const { chromium } = require('playwright'); console.log(chromium.executablePath()); } catch(e) {}" 2>/dev/null`.strip
-        !chromium_path.empty? && File.exist?(chromium_path)
       rescue StandardError
         false
       end

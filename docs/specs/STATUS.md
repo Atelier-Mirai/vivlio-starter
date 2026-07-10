@@ -9,16 +9,6 @@
 
 ## 一覧
 
-`print-pdf-derivation-spec.md`
-: print_pdf を pdf ビルドから導出して高速化する仕様。入稿用 PDF を毎回 vivliostyle で個別レンダリングする代わりに、閲覧用 PDF に qpdf ベースでトンボ・塗り足し（bleed）を付与して作る（①）。
-  状態: 確定仕様・未着手（①）
-  次のアクション: Phase 0 から実装。ステップ6で②の変更範囲に踏み込む点に注意（→メモ）
-
-`backlink-dedup-pdf-map-spec.md`
-: Step 8（backlink dedup）を高速化する仕様。vivliostyle preview の全ページレンダリング＋Playwright でのページ番号取得という重い処理を、生成済み PDF の named destinations（/Dests）を pdf-reader で読む方式に置き換える（②）。
-  状態: 確定仕様・未着手（②）
-  次のアクション: ①と合わせて着手（→メモ）
-
 `print-pdf-full-bleed-notes.md`
 : print_pdf のフチなし（full_bleed）要素対応についての設計メモ。写真集・爪見出しなど紙の端まで達するデザイン要素を持つ本を将来作る際の判断材料として、導出方式と個別レンダー方式の違いを整理したもの。
   状態: 設計メモ・実装保留
@@ -68,8 +58,8 @@
 
 ## メモ（依存関係・実装順序）
 
-- **① print-pdf-derivation-spec と ② backlink-dedup-pdf-map-spec はセットで着手する。**
-  ①の実装ステップ6（`pipeline.rb` の dedup 再レンダ条件を `t.pdf || derive_print` にする）が②の変更範囲に直接踏み込むため、順序をバラバラに進めると手戻りが出る。①→②の順で着手し、①の Phase 0〜5 を終えた時点で②に着手する。両仕様書の冒頭に「①」「②」の相互リンクあり。
+- **① print-pdf-derivation-spec と ② backlink-dedup-pdf-map-spec は 2026-07-10 に実装完了し `docs/archives/` へ移動した。**
+  実装時の追加知見（qpdf `--overlay` が宛先 TrimBox に合わせて縮小配置する仕様と、手順順序 3a→4→5→3b への変更）は①仕様書 §3.8 に追記済み。
 
 - **print-pdf-full-bleed-notes は実装対象ではない。**
   「フチなし要素のある本」が実際に企画されるまで保留（本文§0・§5に明記）。①（print-pdf-derivation-spec）の `full_bleed` 設定（§2.6）自体は①側の実装で完結するので、full-bleed-notes を待つ必要はない。
@@ -77,7 +67,7 @@
 - **cover-cmyk-color-management-spec は print-pdf-full-bleed-notes の表紙ジオメトリ議論が発端。**
   full-bleed 側が動くまでは着手の実益が薄い。
 
-- **generated-assets-cache-relocation-spec は print-pdf-derivation-spec（Phase 0〜）と `cover.rb` / `print_pdf_builder.rb` を共有する。**
-  ①を先に実装すると、キャッシュ移設の対象コードが変わる可能性があるため、①の実装方針が確定してからレビューする方が手戻りが少ない。
+- **generated-assets-cache-relocation-spec は print-pdf-derivation-spec（実装済み）と `cover.rb` / `print_pdf_builder.rb` を共有する。**
+  ①の実装が完了した（2026-07-10）ため、現行コードを前提にレビュー・改稿できる。
 
 - **table-colspan-spec と explanatory-diagram-spec は互いに独立。** どちらから着手してもよい。どちらも `markdown_preprocessor.rb` の変換ステップに新規フックを挿入する点は共通するため、同時期に着手する場合はフック挿入順序（既存ステップとの前後関係）の衝突に注意。

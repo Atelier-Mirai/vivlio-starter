@@ -99,11 +99,21 @@ module VivlioStarter
           end
         end
 
+        # 入稿用 PDF を閲覧用 PDF から導出するか（ビルド開始時に一度だけ確定）。
+        # 導出時は print_pdf 単独ターゲットでも閲覧用の中間 PDF が必要になるため、
+        # ステップ表の条件と dedup の再レンダ条件がこの値に連動する。
+        # プロバイダ能力には依存しない（MIT のみで完結する）。
+        def derive_print? = targets.print_pdf && !Common.print_pdf_full_bleed?
+
         # full mode のステップ表。各行 = [ラベル, ハンドラ, 実行条件]。
         # 条件はビルド開始時に確定した targets から評価した真偽値（ビルド中は不変）。
         # 分岐はこの条件列に吸収され、経路の組み合わせは表を上から評価するだけで一意に定まる。
         def full_mode_step_table
           t = targets
+          derive_print = derive_print?
+          # 導出のソースは「dedup 済みの閲覧用中間 PDF」。よって print_pdf 単独でも
+          # 本文・前付・奥付の閲覧用 PDF を作る。最終成果物（merge 以降）は従来どおり t.pdf 次第。
+          need_viewing_pdf = t.pdf || derive_print
           [
             # --- 共通prep（HTML 生成まで・無条件） ---
             ['clean',                     -> { run_step0_clean },                                     true],
@@ -118,15 +128,17 @@ module VivlioStarter
             # --- toc 後: ターゲット依存（分岐は条件列に吸収） ---
             # 閲覧用 PDF は本文全体を、入稿用のみ経路は entries/config だけを生成する。
             # いずれも html/ → pdf/ のステージングを内包する（P4 §3.4-2）。
-            ['build overall pdf',   -> { Build::PdfBuilder.build_overall_pdf_from_dir!(entries) }, t.pdf],
-            ['generate entries.js', -> { Build::PdfBuilder.generate_entries_for_sections!(entries) }, !t.pdf && t.print_pdf],
+            ['build overall pdf',   -> { Build::PdfBuilder.build_overall_pdf_from_dir!(entries) }, need_viewing_pdf],
+            ['generate entries.js', -> { Build::PdfBuilder.generate_entries_for_sections!(entries) },
+             !t.pdf && t.print_pdf && !derive_print],
             # dedup の破壊的書換は pdf/ 配下のコピーに閉じるため、EPUB 隔離のための
             # 「dedup 前スナップショット」ステップは不要になった（P4 §3.4-3。
             # EPUB/Kindle は html/ のクリーンな原本から直接展開する）。
-            ['backlink dedup',      -> { Build::BacklinkDedupOrchestrator.run!(entries) }, t.any_pdf?],
-            # 前付・奥付: PDF 経路は PDF まで、それ以外（入稿用のみ／EPUB のみ）は HTML のみ。
-            ['build front pages and tail', -> { run_step9_front_pages_and_tail },  t.pdf],
-            ['build front pages html',     -> { run_step9_front_pages_html_only }, !t.pdf],
+            ['backlink dedup',      -> { Build::BacklinkDedupOrchestrator.run!(entries, rebuild_pdf: need_viewing_pdf) },
+             t.any_pdf?],
+            # 前付・奥付: 閲覧用 PDF が要る経路は PDF まで、それ以外（EPUB のみ）は HTML のみ。
+            ['build front pages and tail', -> { run_step9_front_pages_and_tail },  need_viewing_pdf],
+            ['build front pages html',     -> { run_step9_front_pages_html_only }, !need_viewing_pdf],
             ['merge all pdfs',             -> { Build::PdfMerger.merge_all_pdfs!(entries) },        t.pdf],
             ['apply outline to output pdf', -> { Build::PdfMerger.add_outline_to_output_pdf!(entries) }, t.pdf],
             # --- 終端: リネーム／入稿用／EPUB／クリーンアップ ---
@@ -134,7 +146,7 @@ module VivlioStarter
             # クリーンを最後へ延期（HTML を後段の入稿用・EPUB が再利用するため）。
             ['compress, rename and final clean', -> { run_step12_rename_and_clean }, t.pdf && !t.print_pdf && !t.epub_or_kindle?],
             ['rename',       -> { run_step12_rename_only }, t.pdf && (t.print_pdf || t.epub_or_kindle?)],
-            ['print pdf',    -> { Build::PrintPdfBuilder.new(entries).build! }, t.print_pdf],
+            ['print pdf',    -> { Build::PrintPdfBuilder.new(entries, derive: derive_print).build! }, t.print_pdf],
             ['generate epub', -> { epub_flow.run! },        t.epub_or_kindle?],
             # 閲覧用 PDF 単独以外は、末尾で明示的にクリーンアップする。
             ['final clean',  -> { run_final_clean },        t.print_pdf || t.epub_or_kindle? || !t.pdf]
