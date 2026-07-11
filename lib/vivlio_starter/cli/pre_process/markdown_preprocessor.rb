@@ -11,7 +11,7 @@
 #   1. フロントマター生成・更新
 #   2. 画像パスの正規化（相対パス → 絶対パス）
 #   3. コードインクルード展開
-#   4. book-card / table-rotate 変換
+#   4. book-card / テーブル（コンテナ＋拡張テーブル）変換
 #   5. リンクの脚注化
 #
 # コンテキスト:
@@ -29,6 +29,7 @@ require_relative 'frontmatter_generator'
 require_relative 'data_render'
 require_relative 'image_path_normalizer'
 require_relative 'markdown_transformer'
+require_relative 'table_converter'
 require_relative 'math_transformer'
 require_relative 'markdown_utils'
 require_relative 'link_image_validator'
@@ -50,6 +51,9 @@ module VivlioStarter
       # Markdown 前処理を段階的に実行するクラス
       class MarkdownPreprocessor
         attr_reader :context
+
+        # テーブルコンテナのクラス名（long-table との語順統一で rotate-table を採用）。
+        TABLE_CONTAINER_CLASSES = %w[long-table rotate-table].freeze
 
         # @param md_file [String] Markdown ファイルパス
         # @param entry [TokenResolver::Entry] 章情報を持つ Entry オブジェクト
@@ -83,8 +87,7 @@ module VivlioStarter
           transform_spacing_markers!
           transform_text_align_containers!
           transform_book_cards!
-          transform_table_rotations!
-          transform_table_containers!
+          transform_tables!
           normalize_container_fences!
           transform_definition_lists!
           transform_links!
@@ -309,22 +312,12 @@ module VivlioStarter
           Common.log_success('book-card内のMarkdownをHTMLへ変換しました')
         end
 
-        # table-rotate 記法をHTMLに変換し、内部Markdownを整形する
-        def transform_table_rotations!
-          context.content, opened, closed = MarkdownTransformer.convert_container_blocks(
-            context.content,
-            class_name: 'table-rotate'
-          )
-          Common.log_success("table-rotateブロックの事前変換が完了しました（開始:#{opened}件 終了:#{closed}件）")
-
-          Common.log_action('table-rotate内のMarkdownをHTMLへ変換しています…')
-          context.content = MarkdownTransformer.convert_table_rotate_inner_markdown(context.content)
-          Common.log_success('table-rotate内のMarkdownをHTMLへ変換しました')
-        end
-
-        # long-table 記法をHTMLに変換し、内部Markdownを整形する
-        def transform_table_containers!
-          %w[long-table].each do |klass|
+        # テーブルコンテナ（long-table / rotate-table）を div 化し内側テーブルを拡張変換する。
+        # あわせてコンテナ外の拡張テーブル（colspan / 複数行ヘッダー）を横取り変換する（統合テーブル変換）。
+        # rotate-table では版面自動フィット（scale/height）を TableConverter へ委ねる。
+        def transform_tables!
+          # --- Phase: コンテナ変換 ---
+          TABLE_CONTAINER_CLASSES.each do |klass|
             context.content, opened, closed = MarkdownTransformer.convert_container_blocks(
               context.content,
               class_name: klass
@@ -332,8 +325,22 @@ module VivlioStarter
             next unless opened.positive?
 
             Common.log_success("#{klass}ブロックの事前変換が完了しました（開始:#{opened}件 終了:#{closed}件）")
-            context.content = MarkdownTransformer.convert_table_container_inner_markdown(context.content, klass)
+            context.content = TableConverter.convert_container_inner(context.content, klass, page_cfg: resolved_page_cfg)
           end
+
+          # --- Phase: 素テーブル横取り ---
+          context.content, converted = TableConverter.intercept_extended_tables(context.content)
+          Common.log_success("拡張テーブル（colspan/複数行ヘッダー）を#{converted}件変換しました") if converted.positive?
+        end
+
+        # rotate-table 自動フィットへ渡す page 設定（プリセット適用・単位正規化済み Hash）。
+        # CONFIG 未ロード（プロジェクト外・単体テスト）では nil を返し、自動算出をスキップさせる。
+        # 境界で .to_h する規約は Common#resolve_page_size のコメント準拠。
+        def resolved_page_cfg
+          return @resolved_page_cfg if defined?(@resolved_page_cfg)
+
+          page = Common.configured? ? Common::CONFIG.page : nil
+          @resolved_page_cfg = page&.to_h
         end
 
         # 定義リスト記法（用語 / : 説明）を <dl class="def-list"> に変換する

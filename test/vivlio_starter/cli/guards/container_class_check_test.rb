@@ -98,7 +98,7 @@ module VivlioStarter
       # 属性トークン（scale=60%）はクラス名として照合しない
       def test_should_not_validate_attribute_tokens
         with_temp_project do
-          File.write('contents/11-install.md', ":::{.table-rotate scale=60%}\n:::\n")
+          File.write('contents/11-install.md', ":::{.rotate-table scale=60%}\n:::\n")
 
           assert_empty Guards::ContainerClassCheck.new(allowed_classes: []).validate
         end

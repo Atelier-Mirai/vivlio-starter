@@ -14,7 +14,7 @@
 #    - フロントマター生成/更新
 #    - 画像パス正規化
 #    - コードインクルード
-#    - book-card/table-rotate変換
+#    - book-card/テーブル（コンテナ＋拡張テーブル）変換
 #    - リンク脚注化
 #
 # 【依存モジュール】
@@ -234,16 +234,6 @@ module VivlioStarter
       end
       module_function :convert_book_card_inner_markdown
 
-      def pipe_table_to_html(md_text)
-        MarkdownTransformer.pipe_table_to_html(md_text)
-      end
-      module_function :pipe_table_to_html
-
-      def convert_table_rotate_inner_markdown(content)
-        MarkdownTransformer.convert_table_rotate_inner_markdown(content)
-      end
-      module_function :convert_table_rotate_inner_markdown
-
       def format_book_card_inner_html(inner_html)
         MarkdownTransformer.format_book_card_inner_html(inner_html)
       end
@@ -253,11 +243,6 @@ module VivlioStarter
         MarkdownTransformer.convert_container_blocks(content, class_name: class_name)
       end
       module_function :convert_container_blocks
-
-      def convert_table_container_inner_markdown(content, class_name)
-        MarkdownTransformer.convert_table_container_inner_markdown(content, class_name)
-      end
-      module_function :convert_table_container_inner_markdown
 
       def process_code_include(content, source_filename: nil)
         MarkdownTransformer.process_code_include(content, source_filename: source_filename)

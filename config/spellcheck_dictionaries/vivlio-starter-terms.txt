@@ -14,7 +14,7 @@ renumber
 add-missing
 postface
 book-card
-table-rotate
+rotate-table
 long-table
 image-group
 sideimage

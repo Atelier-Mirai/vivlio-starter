@@ -105,9 +105,9 @@ module VivlioStarter
 
       # scale=60% / shift-y=20% は属性であってクラス名ではない
       def test_should_separate_attribute_tokens_from_class_names
-        directives = scan(":::{.table-rotate scale=60% shift-y=20%}\n:::\n")
+        directives = scan(":::{.rotate-table scale=60% shift-y=20%}\n:::\n")
 
-        assert_equal ['table-rotate'], directives.first.classes
+        assert_equal ['rotate-table'], directives.first.classes
         assert_equal ['scale=60%', 'shift-y=20%'], directives.first.attributes
       end
 

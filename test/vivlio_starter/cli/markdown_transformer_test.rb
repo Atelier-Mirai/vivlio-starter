@@ -5,6 +5,7 @@ require 'tmpdir'
 require 'fileutils'
 require_relative '../../../lib/vivlio_starter/cli/pre_process/markdown_transformer'
 require_relative '../../../lib/vivlio_starter/cli/pre_process/markdown_utils'
+require_relative '../../../lib/vivlio_starter/cli/pre_process/table_converter'
 require_relative '../../../lib/vivlio_starter/cli/pre_process/cross_reference_processor'
 
 module VivlioStarter
@@ -236,7 +237,7 @@ module VivlioStarter
         end
 
         # =================================================================
-        # pipe_table_to_html
+        # pipe_table_to_html（TableConverter へ移管済み）
         # =================================================================
         def test_pipe_table_to_html_basic
           md = <<~MD
@@ -244,7 +245,7 @@ module VivlioStarter
             | ------- | ------- |
             | Cell1   | Cell2   |
           MD
-          result = pipe_table_to_html(md)
+          result = TableConverter.pipe_table_to_html(md)
 
           assert_includes result, '<table>'
           assert_includes result, '<th>Header1</th>'
@@ -260,18 +261,15 @@ module VivlioStarter
             | ---- | ----------- |
             | `foo` | A foo value |
           MD
-          result = pipe_table_to_html(md)
+          result = TableConverter.pipe_table_to_html(md)
 
-          # 実装では <code> 変換後に HTML エスケープが適用されるため、
-          # <code> タグ自体がエスケープされる（既存動作）
-          assert_includes result, '&lt;code&gt;foo&lt;/code&gt;'
+          # 新パーサはセルを Kramdown で描画するため <code> が非エスケープで出る（既知バグ解消）
+          assert_includes result, '<code>foo</code>'
+          refute_includes result, '&lt;code&gt;'
         end
 
         def test_pipe_table_to_html_invalid_returns_nil
-          md = 'Not a table'
-          result = pipe_table_to_html(md)
-
-          assert_nil result
+          assert_nil TableConverter.pipe_table_to_html('Not a table')
         end
 
         # =================================================================
@@ -279,40 +277,40 @@ module VivlioStarter
         # =================================================================
         def test_convert_container_blocks_basic
           content = <<~MD
-            ::: {.table-rotate}
+            ::: {.rotate-table}
             | A | B |
             | - | - |
             | 1 | 2 |
             :::
           MD
-          converted, opened, closed = convert_container_blocks(content, class_name: 'table-rotate')
+          converted, opened, closed = convert_container_blocks(content, class_name: 'rotate-table')
 
           assert_equal 1, opened
           assert_equal 1, closed
-          assert_includes converted, '<div class="table-rotate">'
+          assert_includes converted, '<div class="rotate-table">'
           assert_includes converted, '</div>'
         end
 
         def test_convert_container_blocks_with_scale_param
           content = <<~MD
-            ::: {.table-rotate scale=60%}
+            ::: {.rotate-table scale=60%}
             | A | B |
             :::
           MD
-          converted, _, _ = convert_container_blocks(content, class_name: 'table-rotate')
+          converted, _, _ = convert_container_blocks(content, class_name: 'rotate-table')
 
-          assert_includes converted, '--table-rotate-scale:60%;'
+          assert_includes converted, '--rotate-table-scale:60%;'
         end
 
         def test_convert_container_blocks_with_shift_y_param
           content = <<~MD
-            ::: {.table-rotate shift-y=20%}
+            ::: {.rotate-table shift-y=20%}
             | A | B |
             :::
           MD
-          converted, _, _ = convert_container_blocks(content, class_name: 'table-rotate')
+          converted, _, _ = convert_container_blocks(content, class_name: 'rotate-table')
 
-          assert_includes converted, '--table-rotate-shift-y:+20%;'
+          assert_includes converted, '--rotate-table-shift-y:+20%;'
         end
 
         def test_convert_container_blocks_ignores_other_classes
@@ -321,7 +319,7 @@ module VivlioStarter
             Some content
             :::
           MD
-          converted, opened, closed = convert_container_blocks(content, class_name: 'table-rotate')
+          converted, opened, closed = convert_container_blocks(content, class_name: 'rotate-table')
 
           assert_equal 0, opened
           assert_equal 0, closed

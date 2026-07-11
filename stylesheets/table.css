@@ -132,6 +132,13 @@ tr:nth-child(even) {
   vertical-align: middle;
 }
 
+/* 結合セル（colspan）は中央寄せ。列整列より結合の視覚的まとまりを優先する */
+th[colspan],
+td[colspan] {
+  text-align: center;
+  vertical-align: middle;
+}
+
 /* =====================================================================
    広い表対策（組版用の折返し / 横向き）
    ===================================================================== */
@@ -148,7 +155,7 @@ table code {
    縦置きのまま「表だけ」を 90 度回転してページいっぱいに配置するユーティリティ（90°固定）
    ===================================================================== */
 
-.table-rotate {
+.rotate-table {
   /* 配置ラッパ（子tableの絶対配置の基準） */
   display: block;
   position: relative;
@@ -158,28 +165,22 @@ table code {
   break-after: page;
   break-inside: avoid;
 
-  /* ページ領域いっぱい確保（@page の margin を除く） */
-  block-size: 100%;
-  min-block-size: 100%;
-  overflow: visible;
-
-  /* 既定の回転テーブル用パラメータ（必要に応じてスタイル属性で上書き） */
-  --table-rotate-scale: 70%;
-  --table-rotate-shift-y: +25%;
-
-  /* ラッパのサイズ（暫定。必要に応じて調整） */
+  /* ラッパー高さ＝版面高さ。pre_process が --rotate-table-height を mm で注入する。
+     ラッパー高さ＝版面高さ・translateY(-50%) なら回転後のテーブルは数学的に完全センタリングされる。
+     フォールバックは旧実装の暫定値（通常は注入値が使われる） */
   width: 100%;
-  height: clamp(320px, calc(500px * var(--paper-scale)), 560px);
+  height: var(--rotate-table-height, clamp(320px, calc(500px * var(--paper-scale)), 560px));
+  overflow: visible;
 }
 
-.table-rotate > table {
+.rotate-table > table {
   position: absolute;
   top: 50%;
   left: 50%;
   transform-origin: center center;
-  /* 回転時の縮尺は上書き可能な変数を用意（既定 0.9）。
-     ペーパー倍率との二重縮小を避けるため、既定では paper-scale を掛けない。 */
-  transform: translate(-50%, var(--table-rotate-shift-y)) rotate(-90deg) scale(var(--table-rotate-scale));
+  /* 完全センタリング基準。--rotate-table-shift-y は中央からの追加オフセット（既定 0%・正で下方向）。
+     scale は pre_process の自動算出値または著者指定（scale= パラメータ）が注入される（既定 70%） */
+  transform: translate(-50%, calc(-50% + var(--rotate-table-shift-y, 0%))) rotate(-90deg) scale(var(--rotate-table-scale, 70%));
   margin: 0;
   inline-size: max-content;
   max-inline-size: none;

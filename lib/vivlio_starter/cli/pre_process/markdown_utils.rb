@@ -10,7 +10,6 @@
 #   - コードスパンの退避と復元
 #   - 拡張子から言語名の推定
 #   - 簡易 Markdown→HTML 変換
-#   - パイプテーブルの HTML 変換
 # ================================================================
 
 require_relative '../masking'
@@ -138,52 +137,6 @@ module VivlioStarter
           flush_p.call
           html_parts << '</ol>' if in_ol
           html_parts.join("\n")
-        end
-
-        # パイプテーブルを簡易HTML化
-        def pipe_table_to_html(md_text)
-          text = md_text.to_s.strip
-          lines = text.split(/\r?\n/).map(&:rstrip)
-          return nil if lines.size < 2
-
-          header = lines[0]
-          sep    = lines[1]
-          return nil unless header.include?('|')
-          return nil unless sep && sep =~ /^\s*\|?[\s:\-|]+\|?\s*$/
-
-          rows = lines[2..] || []
-
-          to_cells = lambda do |line|
-            parts = line.split('|')
-            parts.shift if parts.first&.strip == ''
-            parts.pop   if parts.last&.strip  == ''
-            parts.map(&:strip)
-          end
-
-          esc_code = lambda do |s|
-            s.gsub(/`([^`]+)`/) { "<code>#{::Regexp.last_match(1)}</code>" }
-             .gsub('&', '&amp;')
-             .gsub('<', '&lt;')
-             .gsub('>', '&gt;')
-          end
-
-          thead_cells = to_cells.call(header)
-          tbody_rows  = rows.map { |r| to_cells.call(r) }
-
-          html = []
-          html << '<table>'
-          html << '  <thead>'
-          html << "    <tr>#{thead_cells.map { |c| "<th>#{esc_code.call(c)}</th>" }.join}</tr>"
-          html << '  </thead>'
-          if tbody_rows.any?
-            html << '  <tbody>'
-            tbody_rows.each do |cells|
-              html << "    <tr>#{cells.map { |c| "<td>#{esc_code.call(c)}</td>" }.join}</tr>"
-            end
-            html << '  </tbody>'
-          end
-          html << '</table>'
-          html.join("\n")
         end
       end
     end

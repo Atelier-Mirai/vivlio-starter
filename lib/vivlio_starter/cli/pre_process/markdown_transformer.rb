@@ -10,7 +10,6 @@
 #   - コードインクルード: ```ruby:codes/sample.rb → ファイル内容を埋め込み
 #   - terminal: :::{.terminal} → ~~~vs-terminal フェンス（中身をリテラル化）
 #   - book-card: :::book-card → 書籍紹介カード HTML
-#   - table-rotate: :::table-rotate → 90度回転テーブル
 #   - リンク脚注化: [text](url) → text[^n] + 脚注定義
 #
 # コードブロック:
@@ -156,29 +155,6 @@ module VivlioStarter
           end
         end
 
-        # <div ... class="... table-rotate ..." ...> ... </div> の内側MarkdownをHTMLへ
-        def convert_table_rotate_inner_markdown(content)
-          convert_table_container_inner_markdown(content, 'table-rotate')
-        end
-
-        # <div ... class="... CLASS ..." ...> ... </div> の内側パイプテーブルをHTMLへ変換する汎用メソッド
-        def convert_table_container_inner_markdown(content, class_name)
-          content.gsub(%r{<div\s+([^>]*\bclass="[^"]*\b#{Regexp.escape(class_name)}\b[^"]*"[^>]*)>\s*(.*?)\s*</div>}m) do
-            attrs = ::Regexp.last_match(1)
-            inner = ::Regexp.last_match(2)
-
-            normalized = "\n\n#{inner.to_s.strip}\n\n"
-            html = MarkdownUtils.render_markdown_to_html(normalized).to_s.strip
-
-            if !html.include?('<table') && inner.include?('|')
-              table_html = MarkdownUtils.pipe_table_to_html(inner)
-              html = table_html if table_html
-            end
-
-            "<div #{attrs}>\n#{html}\n</div>"
-          end
-        end
-
         # book-card の内側を整形
         def format_book_card_inner_html(inner_html)
           html = inner_html.to_s.strip
@@ -248,7 +224,7 @@ module VivlioStarter
                 raw = m_scale[1].strip
                 scale_percent = raw.end_with?('%') ? raw.to_f : raw.to_f * 100.0
                 scale_int = scale_percent.round
-                style_parts << "--table-rotate-scale:#{scale_int}%;"
+                style_parts << "--rotate-table-scale:#{scale_int}%;"
               end
 
               next unless (m_shift = token.match(/^shift-y=(.+)$/))
@@ -257,7 +233,7 @@ module VivlioStarter
               shift_percent = raw.end_with?('%') ? raw.to_f : raw.to_f * 100.0
               shift_int = shift_percent.round
               sign = shift_int.negative? ? '' : '+'
-              style_parts << "--table-rotate-shift-y:#{sign}#{shift_int}%;"
+              style_parts << "--rotate-table-shift-y:#{sign}#{shift_int}%;"
             end
 
             style_attr = style_parts.empty? ? '' : " style=\"#{style_parts.join(' ')}\""

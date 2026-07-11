@@ -25,7 +25,7 @@ module VivlioStarter
         # 経路 A（MarkdownTransformer.convert_container_blocks）が扱うクラス。
         # いずれも CSS にも存在するが、CSS 側が消えても検証が壊れないよう明示しておく。
         PREPROCESSED_CLASSES = %w[
-          book-card table-rotate long-table text-right text-center text-left
+          book-card rotate-table long-table text-right text-center text-left
         ].freeze
 
         # CSS のクラスセレクタ。小数（`0.5em`）や `nth-child()` を拾わないよう直前を除外する。
