@@ -14,11 +14,6 @@
   状態: 設計メモ・実装保留
   次のアクション: フチなし要素のある本が実際に企画されるまで着手しない
 
-`table-colspan-spec.md`
-: テーブルの横結合（colspan）と複数行ヘッダーに対応する仕様（PHP Markdown Extra / Backlog 風の記法拡張）。
-  状態: 確定仕様・未着手
-  次のアクション: Phase 0（TableConverter コア）から実装
-
 `explanatory-diagram-spec.md`
 : 図解注釈記法（Explanatory Diagram Syntax）の仕様。スクリーンショット等の画像に矩形囲み・矢印（pointer）などの注釈を SVG で重ねる記法を追加する。
   状態: 確定仕様・未着手

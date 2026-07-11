@@ -1800,9 +1800,9 @@ terms:
   - chapter: 44-build
     occurrence: 86
     anchor_id: gls-src-44-build-pdf-86
-  - chapter: 45-utility
+  - chapter: 44-build
     occurrence: 87
-    anchor_id: gls-src-45-utility-pdf-87
+    anchor_id: gls-src-44-build-pdf-87
   - chapter: 45-utility
     occurrence: 88
     anchor_id: gls-src-45-utility-pdf-88
@@ -1824,9 +1824,9 @@ terms:
   - chapter: 45-utility
     occurrence: 94
     anchor_id: gls-src-45-utility-pdf-94
-  - chapter: 51-doctor
+  - chapter: 45-utility
     occurrence: 95
-    anchor_id: gls-src-51-doctor-pdf-95
+    anchor_id: gls-src-45-utility-pdf-95
   - chapter: 51-doctor
     occurrence: 96
     anchor_id: gls-src-51-doctor-pdf-96
@@ -1839,9 +1839,9 @@ terms:
   - chapter: 51-doctor
     occurrence: 99
     anchor_id: gls-src-51-doctor-pdf-99
-  - chapter: 61-developer
+  - chapter: 51-doctor
     occurrence: 100
-    anchor_id: gls-src-61-developer-pdf-100
+    anchor_id: gls-src-51-doctor-pdf-100
   - chapter: 61-developer
     occurrence: 101
     anchor_id: gls-src-61-developer-pdf-101
@@ -1959,9 +1959,9 @@ terms:
   - chapter: 61-developer
     occurrence: 139
     anchor_id: gls-src-61-developer-pdf-139
-  - chapter: 91-install
+  - chapter: 61-developer
     occurrence: 140
-    anchor_id: gls-src-91-install-pdf-140
+    anchor_id: gls-src-61-developer-pdf-140
   - chapter: 91-install
     occurrence: 141
     anchor_id: gls-src-91-install-pdf-141
@@ -1989,9 +1989,9 @@ terms:
   - chapter: 91-install
     occurrence: 149
     anchor_id: gls-src-91-install-pdf-149
-  - chapter: 92-pdf-read
+  - chapter: 91-install
     occurrence: 150
-    anchor_id: gls-src-92-pdf-read-pdf-150
+    anchor_id: gls-src-91-install-pdf-150
   - chapter: 92-pdf-read
     occurrence: 151
     anchor_id: gls-src-92-pdf-read-pdf-151
@@ -2037,9 +2037,9 @@ terms:
   - chapter: 92-pdf-read
     occurrence: 165
     anchor_id: gls-src-92-pdf-read-pdf-165
-  - chapter: 93-import
+  - chapter: 92-pdf-read
     occurrence: 166
-    anchor_id: gls-src-93-import-pdf-166
+    anchor_id: gls-src-92-pdf-read-pdf-166
   - chapter: 93-import
     occurrence: 167
     anchor_id: gls-src-93-import-pdf-167
@@ -2052,6 +2052,9 @@ terms:
   - chapter: 93-import
     occurrence: 170
     anchor_id: gls-src-93-import-pdf-170
+  - chapter: 93-import
+    occurrence: 171
+    anchor_id: gls-src-93-import-pdf-171
 - term: PNG
   yomi: PNG
   flags: i
@@ -4406,15 +4409,18 @@ terms:
   - chapter: 44-build
     occurrence: 7
     anchor_id: gls-src-44-build-トンボ-7
-  - chapter: 61-developer
+  - chapter: 44-build
     occurrence: 8
-    anchor_id: gls-src-61-developer-トンボ-8
+    anchor_id: gls-src-44-build-トンボ-8
   - chapter: 61-developer
     occurrence: 9
     anchor_id: gls-src-61-developer-トンボ-9
   - chapter: 61-developer
     occurrence: 10
     anchor_id: gls-src-61-developer-トンボ-10
+  - chapter: 61-developer
+    occurrence: 11
+    anchor_id: gls-src-61-developer-トンボ-11
 - term: 読解難度
   yomi: どっかいなんど
   flags: i
@@ -5365,4 +5371,4 @@ terms:
   - chapter: 61-developer
     context: " `page.use` で `page_presets.yml` のプリセット名を指定します（例: `b5_airy`）。 `output.targets`"
   updated_at: '2026-07-05 21:00:15'
-updated_at: '2026-07-10 23:06:24'
+updated_at: '2026-07-11 15:52:55'
