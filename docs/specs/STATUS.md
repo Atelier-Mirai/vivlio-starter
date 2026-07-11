@@ -24,6 +24,11 @@
   状態: 確定仕様・未着手
   次のアクション: 実装
 
+`post-replace-list-retirement-spec.md`
+: `config/post_replace_list.yml` を廃止し、全置換ルールを post_process のコード（`ReplacementRules`）へ移植する仕様。`[!]` 赤強調は prism_lines へ移設、会話記法（`.kaiwa`）とガイド線マクロ（`@lu` 系）は完全廃止、著者向けの置換ルール拡張機能も廃止する。
+  状態: 確定仕様・未着手
+  次のアクション: 実装（`ReplacementRules` の新設から）
+
 `epub-code-line-numbers-spec.md`
 : EPUB/Kindle のコードブロックにおける行番号表示と折返しについての仕様検討（リフロー環境での行番号ずれ対策）。
   状態: 将来タスク・一部未解決
@@ -60,3 +65,5 @@
   旧配置の移行掃除（clean.rb）は 1 リリース後に撤去予定。
 
 - **table-colspan-spec と explanatory-diagram-spec は互いに独立。** どちらから着手してもよい。どちらも `markdown_preprocessor.rb` の変換ステップに新規フックを挿入する点は共通するため、同時期に着手する場合はフック挿入順序（既存ステップとの前後関係）の衝突に注意。
+
+- **post-replace-list-retirement-spec は post_process 側の改修で、explanatory-diagram-spec（pre_process 側）と衝突しない。** 実装順はどちらが先でもよい。ただし前者はガイド線マクロ（`@lu` 系）を完全廃止し、後者（`.showcase` 記法）をその後継と位置づけている。code-include-line-number-spec とは `prism_lines.rb` を共に触るが、別メソッド（`[!]` 強調 vs `decorate_pre_tag`）のため独立。
