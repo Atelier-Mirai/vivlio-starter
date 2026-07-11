@@ -72,7 +72,7 @@
 
 ## EPUB / Kindle
 
-- [Medium] **コードブロックの行番号と折り返し**: リフロー型 EPUB での行番号ずれ・テーブル化時の体裁崩れの是正。方式の選択肢を整理済み。→ [epub-code-line-numbers-spec.md](epub-code-line-numbers-spec.md)
+- [Medium] **コードブロックの行番号と折り返し**: 方式確定・実装待ち（2026-07-12）。テーブル方式を廃止し「行ブロック＋ぶら下げインデント」（番号はクリーン EPUB＝CSS カウンタ／Kindle＝実テキスト注入）へ。クリーン EPUB の折返し番号ずれも同時解消。`code-include-line-number-spec.md` と連携規定あり。→ [epub-code-line-numbers-spec.md](epub-code-line-numbers-spec.md)
 - [Medium] **Kindle 向け simple ヘッダーの SVG 画像化**。→ [kindle-simple-header-svg-spec.md](kindle-simple-header-svg-spec.md)
 - [Low] **Kindle 固定レイアウト（`kindle.layout: fixed`・PDF ラスタライズ流用）**: A5 PDF をページ画像化して固定レイアウト KPF にする案。劣化対応不要で組版忠実だが、主力端末 6〜7″ は文庫（A6）サイズで判型が合わず、フォント可変・検索・配信料（約 ¥50〜90/冊 増）を失うため**見送り**。数式・図版主体の本や文庫判型向けの第 3 ターゲットとして RC 後に再検討。調査結果・実装スケッチ → [kindle-fixed-layout-ideas.md](kindle-fixed-layout-ideas.md)
 

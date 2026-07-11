@@ -2,6 +2,7 @@
 
 > 作成日: 2026-07-08
 > ステータス: **実装待ち**
+> **後日追記（2026-07-12）**: `epub-code-line-numbers-spec.md` が F 案（テーブル廃止・行ブロック＋ぶら下げインデント）で方式確定した。両仕様は同じ箇所を触るため、**あちらが先に実装された場合**は本仕様の §3.3 と §3.5 の一部を読み替える（各節の追記参照。読み替えの詳細はあちらの §8）。実装順序はどちらが先でも整合する。
 > 対象: `` ```include:file.rb:22-25``` `` で範囲取り込みしたコードブロックの表示行番号
 > 関連: `lib/vivlio_starter/cli/pre_process/markdown_transformer.rb`, `lib/vivlio_starter/cli/prism_lines.rb`, `lib/vivlio_starter/cli/build/epub_builder.rb`, `stylesheets/prism.css`, `stylesheets/code.css`, `stylesheets/page-settings.css`, `lib/vivlio_starter/cli/techbook/processor.rb`, `docs/specs/epub-code-line-numbers-spec.md`, `docs/archives/svg_luster_bugfix_technical_notes.md`
 
@@ -179,6 +180,7 @@ flowchart TD
 - `convert_code_pre_to_table!` で `start = (pre['data-start'] || 1).to_i` を読み取り、`build_code_table(doc, lines, language_class, start:)` へ渡す。
 - `build_code_table` の採番を `idx + 1` → `idx + start` に変更する（`build_code_row` は受け取った番号を出すだけなので変更不要）。
 - 2〜3 桁の行番号がセル幅 `td.vs-code-num` に収まるかは既存の既知問題（`epub-code-line-numbers-spec.md` §0）の範囲であり、本タスクでは対応しない。
+- **読み替え（2026-07-12 追記）**: `epub-code-line-numbers-spec.md` の F 案が先に実装済みの場合、テーブルは存在しない。本節は「容器 `div.vs-code-epub` への `data-start` 引き継ぎ（あちらの §2.1 で実装済みのはず）を確認し、`inject_code_line_numbers_for_kindle!` の採番を `idx + start` にする」と読み替える。クリーン EPUB（R6）はあちらの容器 `counter-reset: vs-code-ln N-1` が担うため、§3.2 のインライン `counter-reset: linenumber` は PDF 専用の意味になる（変更自体は不要）。
 
 ### 3.4 CSS（`stylesheets/prism.css`）
 
@@ -194,6 +196,7 @@ flowchart TD
   - `code.css:5`（`code`） → `font-family: var(--font-code), monospace;`
   - `code.css:20`（`pre, pre[class*="language-"]`） → `font-family: var(--font-code), monospace;`
   - `code.css:193`（`body.vs-kindle table.vs-code-epub`） → Kindle(KFX) は `var()` を解さないため、Kindle 劣化規約（`../archives/terminal-literal-spec.md` / `../archives/epub-kindle-layout-spec.md` と同方針）に従い**具体名で** `font-family: "HackGen35 Console NF", monospace;` と書く。
+    - **読み替え（2026-07-12 追記）**: `epub-code-line-numbers-spec.md`（F 案）が先に実装済みの場合、このセレクタは `.vs-code-epub`（div 容器）へ置き換わっており、あちらの新 CSS が最初から具体名＋`monospace` で書かれているはず。その場合この項目は「新セレクタのフォント指定を確認して完了」とする。
 - `lib/vivlio_starter/cli/techbook/processor.rb:346` の `--code-font: var(--font-code);` 注入は本修正後は不要になるので**削除する**。同ブロックの `code, pre, … { font-family: var(--font-code), monospace !important; text-shadow: none !important; }` は Type 3 フォント対策なので**残す**。
 - 修正後は `ruby copy_to_scaffold.rb` で `lib/project_scaffold/stylesheets/code.css` へ同期する。
 
