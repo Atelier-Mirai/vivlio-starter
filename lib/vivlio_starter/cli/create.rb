@@ -708,24 +708,66 @@ module VivlioStarter
         FileUtils.rm_f(overlay_path) if overlay_path && File.exist?(overlay_path)
       end
 
-      # SVG → JPG/PNG（ImageMagick）
+      # SVG → JPG/PNG
+      #
+      # ラスタライズは rsvg-convert（librsvg）を優先する。ImageMagick に SVG を直接
+      # 読ませると、環境によっては SVG デコードを inkscape delegate に委譲し、壊れた
+      # inkscape（実体欠落の Homebrew ラッパー等）を踏んで失敗するため。PDF 経路
+      # （convert_svg_to_pdf）と同じエンジンになり、表紙 PDF と JPG の絵柄も揃う。
+      # librsvg は JPEG 出力を持たないため、JPEG は PNG を経由して ImageMagick で
+      # 書き出す（この magick 呼び出しは PNG 入力なので inkscape delegate を踏まない）。
       def convert_svg_to_raster(input, output, w_mm, h_mm)
+        require 'tmpdir'
+        raster_dpi = 150
+        w_px = (w_mm / MM_PER_INCH * raster_dpi).round
+        h_px = (h_mm / MM_PER_INCH * raster_dpi).round
+
+        # --- Phase: rsvg-convert 優先 ---
+        if CoverCommands.find_executable('rsvg-convert')
+          return convert_svg_to_png_with_rsvg(input, output, w_px, h_px) if raster_ext(output) == 'png'
+
+          return Dir.mktmpdir('cover-raster') do |tmp|
+            tmp_png = File.join(tmp, 'cover.png')
+            next false unless convert_svg_to_png_with_rsvg(input, tmp_png, w_px, h_px)
+
+            encode_raster_from_png(tmp_png, output)
+          end
+        end
+
+        # --- Phase: フォールバック（rsvg-convert 不在時は ImageMagick に委ねる）---
         convert_cmd = CoverCommands.imagemagick_convert_command
         unless convert_cmd
           Common.log_error('ImageMagick（magick/convert）が見つかりません')
           return false
         end
-        raster_dpi = 150
-        w_px = (w_mm / MM_PER_INCH * raster_dpi).round
-        h_px = (h_mm / MM_PER_INCH * raster_dpi).round
         Common.run_svg_converter!(
           [*convert_cmd, '-density', raster_dpi.to_s,
-           input,
-           '-resize', "#{w_px}x#{h_px}!",
-           '-quality', '90',
-           output],
+           input, '-resize', "#{w_px}x#{h_px}!", '-quality', '90', output],
           input_path: input, output_path: output, purpose: 'カバー画像 (JPG/PNG) 変換'
         )
+      end
+
+      # 出力パスの拡張子（小文字・ドットなし）
+      def raster_ext(output) = File.extname(output).delete('.').downcase
+
+      # rsvg-convert で SVG を指定ピクセル寸法の PNG へラスタライズする。
+      # 幅・高さの両指定で仕上がりサイズへ強制フィットさせる（従来 magick の -resize "WxH!" と同型）。
+      def convert_svg_to_png_with_rsvg(input, output_png, w_px, h_px)
+        Common.run_svg_converter!(
+          ['rsvg-convert', '-f', 'png', '-w', w_px.to_s, '-h', h_px.to_s, '-o', output_png, input],
+          input_path: input, output_path: output_png, purpose: 'カバー画像 (SVG→PNG) 変換'
+        )
+      end
+
+      # 中間 PNG を最終フォーマット（JPEG 等）へ ImageMagick で書き出す。
+      # 入力が PNG なので SVG delegate（inkscape）は介在しない。
+      def encode_raster_from_png(png_path, output)
+        convert_cmd = CoverCommands.imagemagick_convert_command
+        unless convert_cmd
+          Common.log_error('ImageMagick（magick/convert）が見つかりません')
+          return false
+        end
+        system(*convert_cmd, png_path, '-quality', '90', output, out: File::NULL, err: File::NULL)
       end
 
       # PNGを変換（ImageMagick）

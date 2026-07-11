@@ -436,6 +436,24 @@ module VivlioStarter
         assert_includes captured[1], 'KDP'
       end
 
+      # command_runnable? は「存在し、かつ実際に起動できる」ときだけ true を返す。
+      # POSIX の true/false を実プロセスで叩き、presence だけでなく終了ステータスまで
+      # 見ていることを確認する（壊れた inkscape ラッパー＝存在するが exit 126 の検出根拠）。
+      def test_command_runnable_true_when_command_exits_zero
+        assert DoctorCommands.command_runnable?('true'), 'exit 0 のコマンドは runnable と判定すべき'
+      end
+
+      # 存在するが非ゼロ終了するコマンド（壊れたラッパー相当）は runnable ではない
+      def test_command_runnable_false_when_command_exits_nonzero
+        refute DoctorCommands.command_runnable?('false'), 'exit 非0 のコマンドは runnable でないと判定すべき'
+      end
+
+      # そもそも存在しないコマンドは runnable ではない（presence チェックで弾く）
+      def test_command_runnable_false_when_command_absent
+        refute DoctorCommands.command_runnable?('vs-nonexistent-command-xyz'),
+               '存在しないコマンドは runnable でないと判定すべき'
+      end
+
       private
 
       def options_context(opts = {})

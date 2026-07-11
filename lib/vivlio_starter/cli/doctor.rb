@@ -18,8 +18,9 @@
 #   - pdfinfo / pdftoppm (poppler): PDF メタデータ取得・ページ画像化
 #   - gs (Ghostscript): PDF 圧縮
 #   - imagemagick: 画像変換・リサイズ
-#   - inkscape: SVG編集・変換（カバー生成用）
-#   - rsvg-convert (librsvg): EPUB 扉絵/節絵の合成画像ラスタライズ
+#   - inkscape: ImageMagick が SVG を読む際の delegate（カバー生成の
+#     ラスタライズ・フォールバック用。主経路は rsvg-convert）
+#   - rsvg-convert (librsvg): EPUB 扉絵/節絵の合成画像ラスタライズ・カバー SVG 変換の主経路
 #   - vips (libvips): 高速画像処理（Enhanced Mode の OCR 用）
 #   - tesseract / tesseract-lang: OCR エンジンと日本語データ（Enhanced Mode 用）
 #   - mecab: 索引機能の読み自動推測
@@ -212,7 +213,7 @@ module VivlioStarter
                when 'imagemagick'
                  command_exists?('convert') || command_exists?('magick')
                when 'inkscape'
-                 command_exists?('inkscape')
+                 command_runnable?('inkscape')
                when 'tesseract-lang'
                  tesseract_language_available?('jpn')
                when 'waifu2x'
@@ -460,7 +461,7 @@ module VivlioStarter
                when 'imagemagick'
                  command_exists?('convert') || command_exists?('magick')
                when 'inkscape'
-                 command_exists?('inkscape')
+                 command_runnable?('inkscape')
                when 'tesseract-lang'
                  tesseract_language_available?('jpn')
                when 'waifu2x'
@@ -850,6 +851,21 @@ module VivlioStarter
             file_executable?(resolved)
           end
         end
+      end
+
+      # コマンドが存在し、かつ実際に起動できるかを検証する。
+      # presence チェック（command_exists?）は「ファイルが在り実行ビットが立つ」だけを見るため、
+      # Homebrew cask のラッパーが削除済みアプリ本体を exec する等の「在るのに動かない」壊れ方を
+      # 見抜けない（例: /opt/homebrew/bin/inkscape が欠落した Inkscape.app を指し exit 126）。
+      # version_arg の実起動で終了ステータスまで確認し、壊れたラッパーを MISSING として扱う。
+      def command_runnable?(cmd, version_arg: '--version')
+        return false unless command_exists?(cmd)
+
+        require 'open3'
+        _out, _err, status = Open3.capture3(cmd, version_arg)
+        status.success?
+      rescue StandardError
+        false
       end
 
       def rouge_gem_available?
