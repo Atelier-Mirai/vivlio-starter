@@ -49,18 +49,20 @@ module VivlioStarter
           }
         end
 
-        # バリアント画像が存在しなければ生成
+        # バリアント画像が存在しなければ生成。
+        # 生成物はソースの隣ではなく生成キャッシュ .cache/vs/theme-images/ へ
+        # （images root からの相対サブパスを維持・generated-assets 移設仕様 §2）。
+        # waifu2x を伴う高コスト処理のため、生成済みチェックが実質のメモ化になる。
         def ensure_variant_generated(source_path, variant)
           images_root = ThemeImageResolver.theme_images_root
           relative = source_path.sub(%r{\A#{Regexp.escape(images_root)}/}, '')
           return nil if relative.empty?
 
           base = relative.sub(/\.[^.]+\z/, '')
-          target = File.join(images_root, "#{base}_#{variant}.webp")
+          target = File.join(ThemeImageResolver.theme_images_cache_root, "#{base}_#{variant}.webp")
           return target if File.exist?(target)
 
-          spec = relative
-          success = generate_frontispiece_and_ornament_from(spec)
+          success = generate_frontispiece_and_ornament_from(relative)
           success ? target : nil
         end
 
@@ -73,8 +75,14 @@ module VivlioStarter
 
           images_root = File.join(Common::STYLESHEETS_DIR, 'images')
           source_path = resolve_image_reference(images_root, image_spec)
-          base_dir = File.dirname(source_path)
           basename = File.basename(source_path, '.*')
+
+          # 出力先はソースの隣ではなく生成キャッシュ（相対サブパス維持・移設仕様 §2）。
+          # bundled/sakura.webp → theme-images/bundled/、myphoto.png → theme-images/ 直下。
+          relative_dir = File.dirname(
+            File.expand_path(source_path).delete_prefix("#{File.expand_path(images_root)}/")
+          )
+          base_dir = File.join(ThemeImageResolver.theme_images_cache_root, relative_dir == '.' ? '' : relative_dir)
 
           Common.log_action("frontispiece/ornament 生成: #{image_spec} → #{basename}_portrait/landscape.webp")
 

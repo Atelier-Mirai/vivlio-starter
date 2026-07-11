@@ -270,9 +270,12 @@ module VivlioStarter
       end
 
       # RGB版PDF生成（ページサイズ依存）
+      # 入力（マスター PNG）は covers_dir から、出力（生成物）は cover_cache_dir へ
+      # （generated-assets 移設仕様 §3.5: ソース探索と生成物書き込みの分離）
       def self.generate_rgb_pdf(covers_dir, page_size, config)
         size = SIZES[page_size] || SIZES[:b5]
         theme = config.dig(:output, :cover) || 'master'
+        FileUtils.mkdir_p(Common.cover_cache_dir)
 
         # 新しい命名規則で出力ファイル名を生成
         front_output = "frontcover_#{theme}_#{page_size}_rgb.pdf"
@@ -284,13 +287,13 @@ module VivlioStarter
 
         CoverCommands.generate_rgb_pdf_single(
           File.join(covers_dir, front_input),
-          File.join(covers_dir, front_output),
+          File.join(Common.cover_cache_dir, front_output),
           size
         )
 
         CoverCommands.generate_rgb_pdf_single(
           File.join(covers_dir, back_input),
-          File.join(covers_dir, back_output),
+          File.join(Common.cover_cache_dir, back_output),
           size
         )
       end
@@ -332,20 +335,46 @@ module VivlioStarter
 
         theme       = config.dig(:output, :cover) || 'master'
         cover_bleed = (config.dig(:output, :print_pdf, :cover_bleed) || 'scale').to_s
+        FileUtils.mkdir_p(Common.cover_cache_dir)
 
         # print_pdf ターゲットは常にトンボ付きで生成する
         %w[front back].each do |side|
           base_input = theme == 'master' ? "#{side}cover_master.png" : "#{side}cover_#{theme}.png"
           src, fill  = resolve_print_cover_input(covers_dir, base_input, cover_bleed)
+          cache_pdf  = File.join(Common.cover_cache_dir, "#{side}cover_#{theme}_#{page_size}_cmyk.pdf")
           CoverCommands.generate_pdfx_single(
             File.join(covers_dir, src),
-            File.join(covers_dir, "#{side}cover_#{theme}_#{page_size}_cmyk.pdf"),
+            cache_pdf,
             base_size,
             bleed_mm: bleed_mm,
             crop_marks: true,
             fill: fill
           )
+          CoverCommands.publish_print_cover!(side, cache_pdf)
         end
+      end
+
+      # 印刷カバー PDF（CMYK）をルート直下へ成果品として複製する（移設仕様 §3.4）。
+      # CMYK カバーは入稿物であり、著者が covers/ や .cache を掘らずに最終 print PDF と
+      # 同じ場所（ルート）で入稿一式を揃えられるようにする。cache 側は再生成判定と
+      # vs cover 再実行の生成場所として残すため move ではなく copy とする。
+      #
+      # @param side [String] 'front' | 'back'
+      # @param cache_pdf_path [String] cache 内の内部名 CMYK PDF
+      # @return [String, nil] ルート側の成果品パス（生成元が無ければ nil）
+      def self.publish_print_cover!(side, cache_pdf_path)
+        return nil unless File.exist?(cache_pdf_path)
+
+        output = Common.generate_cover_output_filename(side)
+        FileUtils.cp(cache_pdf_path, output)
+        # 1 ビルド内でカバー生成は複数回走り得る（print フェーズ＋Step 10）ため、
+        # 常時表示の log_result は同一成果品につきプロセス内 1 回に抑える
+        @published_print_covers ||= {}
+        unless @published_print_covers[output]
+          @published_print_covers[output] = true
+          Common.log_result("入稿用カバー PDF: #{output}", status: :artifact)
+        end
+        output
       end
 
       # print 用の入力画像と充填モードを決める。
@@ -492,7 +521,9 @@ module VivlioStarter
         theme = config.dig(:output, :cover)
         return unless theme
 
-        output_jpg = File.join(covers_dir, "cover_#{theme}.jpg")
+        # 入力はソース置き場（covers_dir）から、出力（生成物）は cache へ（移設仕様 §3.5）
+        FileUtils.mkdir_p(Common.cover_cache_dir)
+        output_jpg = File.join(Common.cover_cache_dir, "cover_#{theme}.jpg")
 
         # 入力画像を解決（PNG優先、SVGフォールバック）
         input_file = resolve_epub_cover_input(covers_dir, theme)

@@ -188,12 +188,12 @@ module VivlioStarter
 
         Common.log_action("カバーを生成しています（テーマ: #{theme}, targets: #{targets.join(', ')}）…")
 
-        covers_dir = File.join(Dir.pwd, 'covers')
-        book_config_path = File.join(Dir.pwd, 'config', 'book.yml')
-        FileUtils.mkdir_p(covers_dir)
+        # covers_dir はソース探索専用。生成物はすべて cover_cache_dir へ出す（移設仕様 §3.5）
+        covers_dir = Common.covers_dir
+        FileUtils.mkdir_p(Common.cover_cache_dir)
 
         %w[front back].each do |side|
-          process_cover_side(side, theme, targets, covers_dir, book_config_path)
+          process_cover_side(side, theme, targets, covers_dir)
         end
       end
 
@@ -227,28 +227,25 @@ module VivlioStarter
       # @param side [String] 'front' または 'back'
       # @param theme [String] テーマ名
       # @param targets [Array<String>] 生成対象フォーマット
-      # @param covers_dir [String] covers/ ディレクトリのフルパス
-      # @param book_config_path [String] config/book.yml のフルパス
-      def process_cover_side(side, theme, targets, covers_dir, book_config_path)
+      # @param covers_dir [String] ソース置き場 covers/ のパス（生成物は cover_cache_dir へ）
+      def process_cover_side(side, theme, targets, covers_dir)
         source = resolve_cover_source(side, theme, covers_dir)
 
         case source[:type]
         when :png
           # PNG がそのままソースになる場合は解像度チェックのみ
           check_image_resolution(source[:path], theme)
-          generate_cover_outputs_from_png(source[:path], side, theme, targets, covers_dir)
+          generate_cover_outputs_from_png(source[:path], side, theme, targets)
 
         when :user_svg
           # ユーザー用意のSVG: テキスト置換のみ行い、そのまま変換
-          svg_path = apply_text_placeholders_to_svg(source[:path], side, theme, covers_dir,
-                                                    book_config_path)
-          generate_cover_outputs_from_svg(svg_path, side, theme, targets, covers_dir)
+          svg_path = apply_text_placeholders_to_svg(source[:path], side, theme)
+          generate_cover_outputs_from_svg(svg_path, side, theme, targets)
 
         when :bundled_svg
           # gem同梱テンプレート: パレット置換＋テキスト置換してから変換
-          svg_path = render_bundled_svg(source[:path], side, theme, covers_dir,
-                                        book_config_path)
-          generate_cover_outputs_from_svg(svg_path, side, theme, targets, covers_dir)
+          svg_path = render_bundled_svg(source[:path], side, theme)
+          generate_cover_outputs_from_svg(svg_path, side, theme, targets)
         end
       end
 
@@ -291,13 +288,13 @@ module VivlioStarter
 
       # gem同梱テンプレートのパスを返す
       #
-      # covers/bundled/<name>.svg を参照する。
+      # covers/bundled/<name>.svg を参照する（テンプレート本体はソース資産・移設対象外）。
       # プロジェクトルートで実行されることを前提とする。
       #
       # @param name [String] 'frontcover' または 'backcover'
       # @return [String] フルパス
       def bundled_template_path(name)
-        File.join(Dir.pwd, 'covers', 'bundled', "#{name}.svg")
+        File.join(Common.covers_dir, 'bundled', "#{name}.svg")
       end
 
       # ================================================================
@@ -306,18 +303,17 @@ module VivlioStarter
 
       # gem同梱テンプレートにパレット＋テキストを適用して出力SVGを生成する
       #
-      # 生成したSVGは covers/<side>cover_<theme>.svg に保存する。
-      # book.yml またはテンプレートが更新されている場合のみ再生成する。
+      # 生成したSVGは cache（cover_cache_dir/<side>cover_<theme>.svg）に保存する。
+      # covers/ に出すとユーザー SVG（resolve_cover_source 優先順位 2）と同名になり、
+      # 生成物をソースと誤認する余地があった（移設仕様 §3.5 で構造的に解消）。
       #
       # @param template_path [String] bundled テンプレートのパス
       # @param side [String] 'front' または 'back'
       # @param theme [String] テーマ名
-      # @param covers_dir [String] covers/ ディレクトリのフルパス
-      # @param book_config_path [String] config/book.yml のフルパス
       # @return [String] 生成されたSVGのパス
-      def render_bundled_svg(template_path, side, theme, covers_dir, _book_config_path)
+      def render_bundled_svg(template_path, side, theme)
         # 常に再生成する（book.yml / テンプレート変更を確実に反映するため）
-        output_svg = File.join(covers_dir, "#{side}cover_#{theme}.svg")
+        output_svg = File.join(Common.cover_cache_dir, "#{side}cover_#{theme}.svg")
         palette = theme == 'dark' ? DARK_PALETTE : LIGHT_PALETTE
         svg = File.read(template_path, encoding: 'utf-8')
         svg = apply_palette(svg, palette)
@@ -336,17 +332,15 @@ module VivlioStarter
       # パレットは適用しない（ユーザーが色を自由に設定しているため）。
       # ただし CSS カスタムプロパティ（var(--xxx)）は rsvg-convert が解釈できないため
       # インライン展開してから保存する。
-      # 生成したSVGは covers/<side>cover_<theme>_rendered.svg に保存する。
+      # 生成したSVGは cache（cover_cache_dir/<side>cover_<theme>_rendered.svg）に保存する。
       #
       # @param user_svg_path [String] ユーザー用意のSVGのパス
       # @param side [String] 'front' または 'back'
       # @param theme [String] テーマ名
-      # @param covers_dir [String] covers/ ディレクトリのフルパス
-      # @param book_config_path [String] config/book.yml のフルパス
       # @return [String] 生成されたSVGのパス
-      def apply_text_placeholders_to_svg(user_svg_path, side, theme, covers_dir, _book_config_path)
+      def apply_text_placeholders_to_svg(user_svg_path, side, theme)
         # 常に再生成する（book.yml / ユーザ SVG 変更を確実に反映するため）
-        output_svg = File.join(covers_dir, "#{side}cover_#{theme}_rendered.svg")
+        output_svg = File.join(Common.cover_cache_dir, "#{side}cover_#{theme}_rendered.svg")
         svg = File.read(user_svg_path, encoding: 'utf-8')
         svg = apply_text_replacements(svg)
         svg = expand_css_custom_properties(svg)
@@ -463,23 +457,25 @@ module VivlioStarter
       # @param side [String] 'front' または 'back'
       # @param theme [String] テーマ名
       # @param targets [Array<String>] 生成対象フォーマット
-      # @param covers_dir [String] covers/ ディレクトリのフルパス
-      def generate_cover_outputs_from_svg(svg_path, side, theme, targets, covers_dir)
+      def generate_cover_outputs_from_svg(svg_path, side, theme, targets)
         page_size = resolve_page_size
+        cache_dir = Common.cover_cache_dir
 
         if targets.include?('pdf')
-          pdf_path = File.join(covers_dir, "#{side}cover_#{theme}_#{page_size}_rgb.pdf")
+          pdf_path = File.join(cache_dir, "#{side}cover_#{theme}_#{page_size}_rgb.pdf")
           convert_svg(svg_path, pdf_path, page_size: page_size)
         end
 
         if targets.include?('print_pdf')
-          pdf_path = File.join(covers_dir, "#{side}cover_#{theme}_#{page_size}_cmyk.pdf")
+          pdf_path = File.join(cache_dir, "#{side}cover_#{theme}_#{page_size}_cmyk.pdf")
           convert_svg(svg_path, pdf_path, page_size: page_size, crop_marks: true)
+          # CMYK は入稿物なのでルート直下へ成果品として複製する（移設仕様 §3.4・SVG 経路）
+          CoverCommands.publish_print_cover!(side, pdf_path)
         end
 
         return unless targets.include?('epub') && side == 'front'
 
-        jpg_path = File.join(covers_dir, "cover_#{theme}.jpg")
+        jpg_path = File.join(cache_dir, "cover_#{theme}.jpg")
         convert_svg(svg_path, jpg_path, page_size: page_size)
       end
 
@@ -489,23 +485,25 @@ module VivlioStarter
       # @param side [String] 'front' または 'back'
       # @param theme [String] テーマ名
       # @param targets [Array<String>] 生成対象フォーマット
-      # @param covers_dir [String] covers/ ディレクトリのフルパス
-      def generate_cover_outputs_from_png(png_path, side, theme, targets, covers_dir)
+      def generate_cover_outputs_from_png(png_path, side, theme, targets)
         page_size = resolve_page_size
+        cache_dir = Common.cover_cache_dir
 
         if targets.include?('pdf')
-          pdf_path = File.join(covers_dir, "#{side}cover_#{theme}_#{page_size}_rgb.pdf")
+          pdf_path = File.join(cache_dir, "#{side}cover_#{theme}_#{page_size}_rgb.pdf")
           convert_png(png_path, pdf_path)
         end
 
         if targets.include?('print_pdf')
-          pdf_path = File.join(covers_dir, "#{side}cover_#{theme}_#{page_size}_cmyk.pdf")
+          pdf_path = File.join(cache_dir, "#{side}cover_#{theme}_#{page_size}_cmyk.pdf")
           convert_png(png_path, pdf_path)
+          # CMYK は入稿物なのでルート直下へ成果品として複製する（移設仕様 §3.4・PNG 経路）
+          CoverCommands.publish_print_cover!(side, pdf_path)
         end
 
         return unless targets.include?('epub') && side == 'front'
 
-        jpg_path = File.join(covers_dir, "cover_#{theme}.jpg")
+        jpg_path = File.join(cache_dir, "cover_#{theme}.jpg")
         convert_png(png_path, jpg_path)
       end
 

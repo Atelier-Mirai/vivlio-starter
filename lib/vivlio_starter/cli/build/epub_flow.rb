@@ -112,8 +112,7 @@ module VivlioStarter
             return
           end
 
-          config = Common::CONFIG
-          cover_path = Build::EpubBuilder.resolve_cover_image_path(config)
+          cover_path = Build::EpubBuilder.resolve_cover_image_path
 
           if cover_path && File.exist?(cover_path)
             Common.log_info("[EPUB] カバー画像は既に存在します: #{cover_path}")

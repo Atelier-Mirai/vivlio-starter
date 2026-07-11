@@ -50,21 +50,30 @@ class FrontmatterGeneratorFrontispieceConfigTest < Minitest::Test
 
   # フォールバック先（sakura）も含め画像が一切無い空の一時ディレクトリへ隔離する。
   # これにより実リポジトリの bundled 画像や ImageMagick 生成を巻き込まずに検証できる。
+  # バリアント生成キャッシュ（theme_images_cache_root）も同様に隔離する。
   def setup
     @had_root = TIR.instance_variable_defined?(:@theme_images_root)
     @original_root = TIR.instance_variable_get(:@theme_images_root)
+    @had_cache_root = TIR.instance_variable_defined?(:@theme_images_cache_root)
+    @original_cache_root = TIR.instance_variable_get(:@theme_images_cache_root)
     @tmp = Dir.mktmpdir('frontmatter-config-test')
     FileUtils.mkdir_p(File.join(@tmp, 'images'))
     TIR.instance_variable_set(:@theme_images_root, File.join(@tmp, 'images'))
+    TIR.instance_variable_set(:@theme_images_cache_root, File.join(@tmp, 'theme-images'))
   end
 
   def teardown
-    if @had_root
-      TIR.instance_variable_set(:@theme_images_root, @original_root)
-    elsif TIR.instance_variable_defined?(:@theme_images_root)
-      TIR.remove_instance_variable(:@theme_images_root)
-    end
+    restore_ivar(:@theme_images_root, @had_root, @original_root)
+    restore_ivar(:@theme_images_cache_root, @had_cache_root, @original_cache_root)
     FileUtils.rm_rf(@tmp)
+  end
+
+  def restore_ivar(name, had, original)
+    if had
+      TIR.instance_variable_set(name, original)
+    elsif TIR.instance_variable_defined?(name)
+      TIR.remove_instance_variable(name)
+    end
   end
 
   # frontispiece 未指定時は padding が既定値 0mm になり、

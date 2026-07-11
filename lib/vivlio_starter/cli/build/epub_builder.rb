@@ -117,6 +117,8 @@ module VivlioStarter
         #   ルートの stale な残骸を拾わない）。kindle は WebP も除外（transcode 済み・非対応）。
         # - stylesheets/**: twemoji 直下 svg（絵文字マスター・プレーン復元で未参照）と
         #   フォント実体（非埋め込み時）を除外。kindle は WebP も除外（CSS 参照は sanitize が除去）。
+        # - theme-images/**: 生成バリアント webp（生成キャッシュ）のうち book-settings.css が
+        #   参照する分を同梱（:epub のみ・移設仕様 §3.2）。
         # - カバー画像: embed 有効時のみ dir/covers/ へコピー（cover は entryContext 基準で解決）。
         #
         # @param dir [String] 消費者 dir
@@ -129,8 +131,33 @@ module VivlioStarter
             localized_image?(it, flavor)
           end
           copy_asset_tree!(Common.stylesheets_dir, dir) { localized_stylesheet?(it, flavor) }
+          localize_theme_variant_images!(dir, flavor)
           localize_cover_image!(dir, flavor)
           Common.log_info("[EPUB] 参照資産を #{dir} 内へローカライズしました（flavor: #{flavor}）")
+        end
+
+        # 生成バリアント webp（.cache/vs/theme-images/）を dir/theme-images/ へ同梱する。
+        # 旧配置（stylesheets/images/**）では stylesheets コピーへの相乗りで同梱されていたが、
+        # 生成キャッシュへの移設で相乗りが消えたため、book-settings.css が url() で参照する
+        # 分だけを選択コピーする（キャッシュに溜まった他テーマの変種を運ばない）。
+        # url は CSS 位置からの相対のため組替不要（cache 内でもパッケージ内でも
+        # 'theme-images/…' のまま解決する・移設仕様 §3.2）。
+        # kindle は WebP 非対応で url() ごと sanitize_epub_css! が除去するためスキップする。
+        def localize_theme_variant_images!(dir, flavor)
+          return if flavor == :kindle
+
+          source = PreProcessCommands::BookSettingsCss.output_path
+          return unless File.exist?(source)
+
+          css = File.read(source, encoding: 'utf-8')
+          css.scan(%r{url\(\s*["']?(theme-images/[^"')\s]+)["']?\s*\)}).flatten.uniq.each do |rel|
+            src = File.join(Common.cache_dir, rel)
+            next unless File.exist?(src)
+
+            dest = File.join(dir, rel)
+            FileUtils.mkdir_p(File.dirname(dest))
+            FileUtils.cp(src, dest)
+          end
         end
 
         # src_root 配下のファイルを、フィルタ（root からの相対パスを yield）を通して
@@ -175,14 +202,16 @@ module VivlioStarter
         # 表紙埋め込みが有効なフレーバに限り、カバー画像を dir/covers/ へコピーする。
         # config の cover: './covers/…' は entryContext 基準で解決されるため（CLI 実装確認済み）、
         # パッケージに必要なのは埋め込み対象の 1 枚のみ（frontcover/backcover PNG は同梱しない）。
+        # コピー元は生成キャッシュ・コピー先は config が指すパッケージ内 covers/ 固定
+        # （ソース相対を dest に流用しない・移設仕様 §3.2）。
         def localize_cover_image!(dir, flavor)
           embed = flavor == :kindle ? Common.kindle_embed? : Common.epub_embed?
           return unless embed
 
-          cover = resolve_cover_image_path(Common::CONFIG)
+          cover = resolve_cover_image_path
           return unless cover && File.exist?(cover)
 
-          dest = File.join(dir, cover)
+          dest = File.join(dir, 'covers', File.basename(cover))
           FileUtils.mkdir_p(File.dirname(dest))
           FileUtils.cp(cover, dest)
         end
@@ -445,10 +474,13 @@ module VivlioStarter
             return "  // cover: 表紙埋め込みなし（#{key}）\n"
           end
 
-          cover_image = resolve_cover_image_path(config)
+          cover_image = resolve_cover_image_path
           return "  // cover: 表紙画像が見つかりません\n" unless cover_image && File.exist?(cover_image)
 
-          "  cover: './#{esc.call(cover_image)}',\n"
+          # パッケージ内の固定パスを書く。ソースは生成キャッシュにあり、
+          # localize_cover_image! が dir/covers/ 配下の同じ basename へコピーする
+          # （ソース相対＝パッケージ相対の偶然一致に依存しない・移設仕様 §3.2）
+          "  cover: './covers/#{esc.call(File.basename(cover_image))}',\n"
         end
 
         # EPUB にフォント実体を埋め込むかどうか。
@@ -467,19 +499,17 @@ module VivlioStarter
         end
 
         # 表紙画像のパスを解決する
-        # 新しい設定構造に対応
+        # 生成物 cover JPG は生成資産キャッシュ .cache/vs/covers/ に出る（移設仕様 §3.2）
         #
-        # @param config [Object] Common::CONFIG
         # @return [String, nil] 表紙画像の相対パス
-        def resolve_cover_image_path(config)
-          covers_dir = config.directories&.covers || 'covers'
+        def resolve_cover_image_path
           theme = Common.cover_theme
           return nil unless theme
 
           # 拡張子は .jpg / .jpeg のどちらでも表紙として受け付ける（.jpg 優先）。
           # 実在する方を返し、いずれも無ければ既定の .jpg パスを返して
           # 呼び出し側に「見つかりません」と判定させる。
-          candidates = %w[jpg jpeg].map { File.join(covers_dir, "cover_#{theme}.#{it}") }
+          candidates = %w[jpg jpeg].map { File.join(Common.cover_cache_dir, "cover_#{theme}.#{it}") }
           candidates.find { File.exist?(it) } || candidates.first
         end
 
@@ -931,15 +961,21 @@ module VivlioStarter
           end
         end
 
-        # theme.css の url(...) 値（stylesheets からの相対）を実ファイルパスへ解決する。
+        # テーマ画像の url(...) 値を実ファイルパスへ解決する。
+        # 生成バリアント（theme-images/…）は生成キャッシュ基準、それ以外（images/…）は
+        # stylesheets/ 基準で解決する（返却 2 形・移設仕様 §3.1/§3.2）。
         #
-        # @param rel [String, nil] 例: "images/bundled/sakura_portrait.webp"
+        # @param rel [String, nil] 例: "theme-images/bundled/sakura_portrait.webp" / "images/mypic.webp"
         # @return [String, nil] 存在する実ファイルパス、無ければ nil
         def resolve_theme_image_file(rel)
           return nil if rel.nil? || rel.strip.empty?
           return nil if rel.start_with?('data:', 'http://', 'https://')
 
-          path = File.join(Common::STYLESHEETS_DIR, rel)
+          path = if rel.start_with?('theme-images/')
+                   File.join(Common.cache_dir, rel)
+                 else
+                   File.join(Common::STYLESHEETS_DIR, rel)
+                 end
           File.exist?(path) ? path : nil
         end
 

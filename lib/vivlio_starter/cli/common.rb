@@ -61,6 +61,14 @@ module VivlioStarter
       # ルートではなくワークスペース直下へ置き、ルート無汚染を保つ（P4b §2.5）。
       INDEX_MATCHES_FILE = "#{BUILD_DIR}/_index_matches.yml"
 
+      # ------------------------------------------------------------
+      # 再生成コストの高い生成資産のキャッシュ（generated-assets 移設仕様 §2）
+      # ------------------------------------------------------------
+      # BUILD_DIR の外に置くのが要点: final clean（rm_rf BUILD_DIR）を生き延び、
+      # waifu2x を伴う高コストなバリアント生成や covers の毎ビルド再生成を避ける。
+      COVER_CACHE_DIR        = "#{CACHE_DIR}/covers"
+      THEME_IMAGES_CACHE_DIR = "#{CACHE_DIR}/theme-images"
+
       # 中間 HTML/md から著者資産（stylesheets/ images/ 等）への相対プレフィックス。
       # 生成時に正しいプレフィックスで書く（コピー時 gsub はしない）が P4 §3.3 の方針。
       # 資産参照を生成する choke point（FrontmatterGenerator / ImagePathNormalizer /
@@ -682,6 +690,20 @@ module VivlioStarter
       end
 
       def generate_print_pdf_filename = generate_output_filename('print_pdf')
+
+      # 印刷カバー PDF のルート成果品名（generated-assets 移設仕様 §3.4）。
+      # generate_output_filename と同じ include_version 規則に従う。
+      # 例: vivlio_starter_frontcover_v1.0.0.pdf
+      # @param side [String, Symbol] 'front' | 'back'
+      # @return [String]
+      def generate_cover_output_filename(side)
+        project = CONFIG&.project
+        include_version = CONFIG&.output&.filename&.include_version || false
+
+        filename = "#{project&.name || 'vivlio_starter'}_#{side}cover"
+        filename += "_v#{project&.version}" if include_version && !blank?(project&.version)
+        "#{filename}.pdf"
+      end
       def generate_epub_filename = generate_output_filename('epub')
       # Kindle の最終成果物（KPF・ルート直下）。例: vivlio_starter_v1.0.0.kpf
       def generate_kpf_filename = generate_output_filename('kindle')
@@ -822,6 +844,11 @@ module VivlioStarter
       def cache_dir          = CONFIG&.cache&.dir || CACHE_DIR
       def cache_enabled?     = CONFIG&.cache&.enabled != false
 
+      # 生成資産キャッシュ（covers 生成物・テーマ画像バリアント）。
+      # cache.dir 設定で cache_dir が変わっても追従するようヘルパ経由で参照する。
+      def cover_cache_dir        = File.join(cache_dir, 'covers')
+      def theme_images_cache_dir = File.join(cache_dir, 'theme-images')
+
       # ワークスペース関連（P4）
       def asset_prefix       = ASSET_PREFIX
       def build_dir          = BUILD_DIR
@@ -911,6 +938,7 @@ module VivlioStarter
                       :ensure_external_command!, :external_command_available?,
                       :missing_external_command_message, :run_svg_converter!, :format_converter_stderr,
                       :blank?, :cache_cfg, :cache_dir, :cache_enabled?,
+                      :cover_cache_dir, :theme_images_cache_dir, :generate_cover_output_filename,
                       :asset_prefix, :build_dir, :build_html_dir, :build_pdf_dir,
                       :index_matches_file, :ensure_build_workspace!,
                       :stylesheets_dir, :templates_dir, :to_roman_lower,

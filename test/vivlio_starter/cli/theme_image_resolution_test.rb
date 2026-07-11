@@ -103,11 +103,13 @@ module VivlioStarter
           base_path = File.join(bundled, 'ajisai.webp')
           File.write(base_path, 'base')
 
-          # ImageGenerator.ensure_variant_generated をスタブして、バリアントファイルを生成
+          # ImageGenerator.ensure_variant_generated をスタブして、バリアントファイルを
+          # 生成キャッシュ（theme-images/・images root からの相対サブパス維持）へ生成する
+          cache_root = PreProcessCommands::ThemeImageResolver.theme_images_cache_root
           generator = lambda do |source_path, variant|
-            dir = File.dirname(source_path)
             basename = File.basename(source_path, '.*')
-            variant_path = File.join(dir, "#{basename}_#{variant}.webp")
+            variant_path = File.join(cache_root, 'bundled', "#{basename}_#{variant}.webp")
+            FileUtils.mkdir_p(File.dirname(variant_path))
             File.write(variant_path, variant.to_s)
             variant_path
           end
@@ -116,12 +118,14 @@ module VivlioStarter
             front = PreProcessCommands.resolve_frontispiece_path('ajisai', allow_generation: true)
             ornament = PreProcessCommands.resolve_ornament_path('ajisai', allow_generation: true)
 
-            assert_equal 'images/bundled/ajisai_portrait.webp', front
-            assert_equal 'images/bundled/ajisai_landscape.webp', ornament
+            assert_equal 'theme-images/bundled/ajisai_portrait.webp', front
+            assert_equal 'theme-images/bundled/ajisai_landscape.webp', ornament
           end
 
-          assert File.exist?(File.join(bundled, 'ajisai_portrait.webp')), 'portrait バリアントが生成されていません'
-          assert File.exist?(File.join(bundled, 'ajisai_landscape.webp')), 'landscape バリアントが生成されていません'
+          assert File.exist?(File.join(cache_root, 'bundled', 'ajisai_portrait.webp')),
+                 'portrait バリアントが生成されていません'
+          assert File.exist?(File.join(cache_root, 'bundled', 'ajisai_landscape.webp')),
+                 'landscape バリアントが生成されていません'
         end
       end
 
@@ -131,8 +135,9 @@ module VivlioStarter
       # ThemeImageResolver モジュールの @theme_images_root を差し替える
       def with_temp_theme_images
         resolver = PreProcessCommands::ThemeImageResolver
-        original_defined = resolver.instance_variable_defined?(:@theme_images_root)
-        original_root = resolver.instance_variable_get(:@theme_images_root)
+        originals = %i[@theme_images_root @theme_images_cache_root].to_h do |name|
+          [name, [resolver.instance_variable_defined?(name), resolver.instance_variable_get(name)]]
+        end
 
         Dir.mktmpdir('theme-images-test') do |tmp|
           images_root = File.join(tmp, 'images')
@@ -140,12 +145,16 @@ module VivlioStarter
 
           begin
             resolver.instance_variable_set(:@theme_images_root, images_root)
+            # バリアント生成キャッシュも隔離する（実リポジトリの .cache を読み書きさせない）
+            resolver.instance_variable_set(:@theme_images_cache_root, File.join(tmp, 'theme-images'))
             yield images_root
           ensure
-            if original_defined
-              resolver.instance_variable_set(:@theme_images_root, original_root)
-            elsif resolver.instance_variable_defined?(:@theme_images_root)
-              resolver.remove_instance_variable(:@theme_images_root)
+            originals.each do |name, (defined, value)|
+              if defined
+                resolver.instance_variable_set(name, value)
+              elsif resolver.instance_variable_defined?(name)
+                resolver.remove_instance_variable(name)
+              end
             end
           end
         end

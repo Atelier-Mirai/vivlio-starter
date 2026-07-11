@@ -133,7 +133,8 @@ module VivlioStarter
           config = YAML.load_file('config/book.yml', symbolize_names: true)
           CoverCommands.generate_epub_cover(covers_dir, config)
 
-          output_jpg = File.join(covers_dir, 'cover_master.jpg')
+          # 生成物は生成キャッシュに出る（generated-assets 移設仕様 §2）
+          output_jpg = File.join(Common.cover_cache_dir, 'cover_master.jpg')
           assert File.exist?(output_jpg), 'EPUB用JPEGが生成されるべきです'
           assert File.size(output_jpg).positive?, 'JPEGにデータが書き込まれているべきです'
         end
@@ -152,9 +153,10 @@ module VivlioStarter
           command = SamovarCommands::CoverCommand.new(['a4'])
           command.call
 
-          assert File.exist?(File.join(covers_dir, 'frontcover_master_a4_rgb.pdf')),
+          # 生成物は生成キャッシュに出る（generated-assets 移設仕様 §2）
+          assert File.exist?(File.join(Common.cover_cache_dir, 'frontcover_master_a4_rgb.pdf')),
                  'A4表紙PDFが生成されるべきです'
-          assert File.exist?(File.join(covers_dir, 'backcover_master_a4_rgb.pdf')),
+          assert File.exist?(File.join(Common.cover_cache_dir, 'backcover_master_a4_rgb.pdf')),
                  'A4裏表紙PDFが生成されるべきです'
         end
       end
@@ -172,7 +174,8 @@ module VivlioStarter
           command = SamovarCommands::CoverCommand.new(['epub'])
           command.call
 
-          assert File.exist?(File.join(covers_dir, 'cover_master.jpg')),
+          # 生成物は生成キャッシュに出る（generated-assets 移設仕様 §2）
+          assert File.exist?(File.join(Common.cover_cache_dir, 'cover_master.jpg')),
                  'EPUB用JPEGが生成されるべきです'
         end
       end
@@ -582,10 +585,15 @@ module VivlioStarter
           config = YAML.load_file('config/book.yml', symbolize_names: true)
           CoverCommands.generate_cmyk_pdf(covers_dir, :b5, config)
 
-          assert File.exist?(File.join(covers_dir, 'frontcover_master_b5_cmyk.pdf')),
+          # 生成は生成キャッシュ・入稿用の成果品はルート直下へ複製（移設仕様 §2/§3.4）
+          assert File.exist?(File.join(Common.cover_cache_dir, 'frontcover_master_b5_cmyk.pdf')),
             '表紙 CMYK PDF が生成されるべきです'
-          assert File.exist?(File.join(covers_dir, 'backcover_master_b5_cmyk.pdf')),
+          assert File.exist?(File.join(Common.cover_cache_dir, 'backcover_master_b5_cmyk.pdf')),
             '裏表紙 CMYK PDF が生成されるべきです'
+          assert File.exist?(Common.generate_cover_output_filename('front')),
+            '表紙 CMYK PDF がルート直下へ成果品として複製されるべきです'
+          assert File.exist?(Common.generate_cover_output_filename('back')),
+            '裏表紙 CMYK PDF がルート直下へ成果品として複製されるべきです'
         end
       end
 

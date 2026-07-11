@@ -16,9 +16,10 @@ Thumbs.db
 pkg/*.gem
 
 # Vivlio Starter artifacts
+# （covers/ はソースのみになったため無視しない。生成物は /.cache/ 配下に出る）
 /.cache/
-/covers/
-!/covers/*.svg
+# 表紙の編集ソース（Keynote 等）は大きい作業ファイルのため追跡しない
+*.key
 
 # Vivlio Starter 中間生成ファイル（vs build が一時展開し、通常は最終 clean で削除される。
 # --no-clean 実行時やビルド中断時に残ることがあるためコミット対象から除外する）

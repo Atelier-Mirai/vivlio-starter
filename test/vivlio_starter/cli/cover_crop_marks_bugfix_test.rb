@@ -198,8 +198,8 @@ module VivlioStarter
           config = Common.load_config
           CoverCommands.generate_epub_cover(covers_dir, config)
 
-          # 検証1: JPEGが生成されること
-          output_jpg = File.join(covers_dir, 'cover_master.jpg')
+          # 検証1: JPEGが生成されること（生成物は生成キャッシュに出る・移設仕様 §2）
+          output_jpg = File.join(Common.cover_cache_dir, 'cover_master.jpg')
           assert File.exist?(output_jpg), "EPUB用JPEGが生成されるべきです: #{output_jpg}"
 
           # 検証2: サイズが1600×2560であること

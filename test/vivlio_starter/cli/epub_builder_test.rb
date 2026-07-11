@@ -169,12 +169,11 @@ module VivlioStarter
         epub_cfg = build_epub_config(embed: true)
         esc = ->(s) { s.to_s }
 
-        # カバー画像ファイルを生成
-        covers_dir = 'covers'
-        FileUtils.mkdir_p(covers_dir)
-        File.write(File.join(covers_dir, 'cover_light.jpg'), 'dummy')
+        # カバー画像ファイルを生成（生成物は生成キャッシュに置かれる・移設仕様 §3.2）
+        FileUtils.mkdir_p(Common.cover_cache_dir)
+        File.write(File.join(Common.cover_cache_dir, 'cover_light.jpg'), 'dummy')
 
-        config = build_config_with_epub(epub_cfg, covers_dir:)
+        config = build_config_with_epub(epub_cfg, covers_dir: 'covers')
         Common.stub(:epub_embed?, true) do
           Common.stub(:cover_theme, 'light') do
             line = Build::EpubBuilder.build_cover_config_line(config, esc)
@@ -210,6 +209,45 @@ module VivlioStarter
         epub_cfg = build_epub_config(embed: false)
         refute Build::EpubBuilder.embed_cover?(epub_cfg),
                'cover.embed: false の場合は false を返すべき'
+      end
+
+      # 生成バリアント webp が book-settings.css の url() 参照分だけ
+      # パッケージ theme-images/ へ同梱されることを確認（generated-assets 移設仕様 §3.2）
+      def test_localize_theme_variant_images_copies_referenced_variants
+        cache_root = File.join(Common::CACHE_DIR, 'theme-images')
+        FileUtils.mkdir_p(File.join(cache_root, 'bundled'))
+        File.write(File.join(cache_root, 'bundled', 'sakura_landscape.webp'), 'ref')
+        File.write(File.join(cache_root, 'bundled', 'himawari_portrait.webp'), 'unref')
+        FileUtils.mkdir_p(Common::CACHE_DIR)
+        File.write(PreProcessCommands::BookSettingsCss.output_path, <<~CSS)
+          :root { --section-bg-image: url("theme-images/bundled/sakura_landscape.webp"); }
+        CSS
+
+        dir = 'pkg-epub'
+        FileUtils.mkdir_p(dir)
+        Build::EpubBuilder.localize_theme_variant_images!(dir, :epub)
+
+        assert_path_exists File.join(dir, 'theme-images', 'bundled', 'sakura_landscape.webp'),
+                           'CSS が参照するバリアントは同梱されるべき'
+        refute_path_exists File.join(dir, 'theme-images', 'bundled', 'himawari_portrait.webp'),
+                           'CSS が参照しないバリアントは同梱しないべき'
+      end
+
+      # kindle フレーバでは WebP 非対応のため theme-images を同梱しないことを確認
+      def test_localize_theme_variant_images_skips_kindle
+        cache_root = File.join(Common::CACHE_DIR, 'theme-images')
+        FileUtils.mkdir_p(File.join(cache_root, 'bundled'))
+        File.write(File.join(cache_root, 'bundled', 'sakura_landscape.webp'), 'ref')
+        FileUtils.mkdir_p(Common::CACHE_DIR)
+        File.write(PreProcessCommands::BookSettingsCss.output_path, <<~CSS)
+          :root { --section-bg-image: url("theme-images/bundled/sakura_landscape.webp"); }
+        CSS
+
+        dir = 'pkg-kindle'
+        FileUtils.mkdir_p(dir)
+        Build::EpubBuilder.localize_theme_variant_images!(dir, :kindle)
+
+        refute_path_exists File.join(dir, 'theme-images'), 'kindle には theme-images を同梱しないべき'
       end
 
       # html/ → 消費者 dir のステージングで asset_prefix が剥がれることを確認（P4 段階 4）

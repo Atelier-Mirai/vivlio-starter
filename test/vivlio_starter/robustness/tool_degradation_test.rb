@@ -152,8 +152,9 @@ module VivlioStarter
             assert result, 'waifu2x 不在でも生成は成功（true）するべき'
             assert warns.any? { it.include?('waifu2x') && it.include?('ImageMagick のみで生成します') },
                    '🟡 で ImageMagick フォールバックを案内するべき'
-            assert_path_exists 'stylesheets/images/dg04_portrait.webp'
-            assert_path_exists 'stylesheets/images/dg04_landscape.webp'
+            # バリアントはソースの隣ではなく生成キャッシュに出る（generated-assets 移設仕様 §2）
+            assert_path_exists '.cache/vs/theme-images/dg04_portrait.webp'
+            assert_path_exists '.cache/vs/theme-images/dg04_landscape.webp'
           end
         end
       end

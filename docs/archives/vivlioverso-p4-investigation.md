@@ -65,6 +65,9 @@
 最終成果物（`書名.pdf` / `書名_print.pdf` / `書名.epub` / `.kpf`・単章ビルドの
 `{basename}.pdf`＝`11-workflow.pdf` 等、複数章指定時は `54-56.pdf`）、
 `covers/`、`vivliostyle.config.js`（手動フロー用）、`_index_review.md` 等の著者レビュー用生成物。
+※後日更新（2026-07）: 「covers/ は不変」はマスターと生成物を区別しない粗い括りだった。
+`generated-assets-cache-relocation-spec.md` で「マスター＝covers/ ／ 生成物＝.cache/vs/covers/」
+に区別を導入し、covers 生成物・テーマ画像バリアントは `.cache/vs/` へ移設した。
 ※ `pipeline.rb:241/250/260` のコメントは「54.pdf」と記すが実装は `{basename}.pdf` を生成する
 （陳腐化コメント・P4 実装時に修正）。
 
@@ -198,6 +201,8 @@ final clean が成果物に触れる経路が消える。
   pdf/ 前提へ。`OutlineExtractor` / `PdfMerger.add_outline_to_output_pdf!` の `Dir.glob('*.html')` も。
 - 中間 PDF 一式（`_sections.pdf` 等）は pdf/ 内。`sections_min_pages` の既知良参照も pdf/ 内で完結。
 - カバー PDF は covers/（著者資産）から読むだけ——不変。
+  ※後日更新（2026-07）: generated-assets 移設により、カバー PDF（生成物）の読み取り元は
+  `.cache/vs/covers/` へ変更（`generated-assets-cache-relocation-spec.md` §3.1 参照）。
 
 ### 5.2 epub/（クリーン）
 

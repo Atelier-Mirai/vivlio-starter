@@ -243,11 +243,13 @@ module VivlioStarter
 
         # stylesheets/ 基準の相対パスを image_prefix で組み替える。
         # 外部 URL・data URI・絶対パスは対象外。二重組替を避ける冪等ガード付き。
+        # theme-images/… は生成バリアントのキャッシュ参照で、既に生成ファイル位置
+        # （.cache/vs/）基準のため組み替えない（generated-assets 移設仕様 §3.1）。
         def rebase_relative(path, image_prefix:)
           p = path.to_s.strip
           return p if p.empty?
           return p if p.start_with?('data:', 'http://', 'https://', '/')
-          return p if p.start_with?(image_prefix)
+          return p if p.start_with?(image_prefix, 'theme-images/')
 
           "#{image_prefix}#{p}"
         end

@@ -8,10 +8,15 @@
 #   指定された名前から実際のファイルパスまたはプレースホルダーを返す。
 #
 # 探索順序:
-#   1. images/bundled/{name}_portrait.webp（バリアント）
+#   1. {name}_portrait.webp（バリアント。ユーザー手置き → 生成キャッシュ .cache/vs/theme-images/）
 #   2. images/{name}.webp
 #   3. images/{name}.png/.jpg/.jpeg
 #   4. プレースホルダー SVG（見つからない場合）
+#
+# 返却形（generated-assets 移設仕様 §3.1）:
+#   - stylesheets/images/ 内の実体   → 'images/<サブパス>'（stylesheets/ 基準・従来形）
+#   - 生成キャッシュ内のバリアント   → 'theme-images/<サブパス>'（book-settings.css の
+#     生成位置 .cache/vs/ 基準。BookSettingsCss.rebase_relative はこの形を素通しする）
 #
 # バリアント:
 #   - portrait: 縦長（扉絵用、ページ比率に合わせてクロップ）
@@ -37,8 +42,9 @@ module VivlioStarter
         FALLBACK_THEME_IMAGE_SLUG = 'sakura'
 
         # 万一バリアント解決に失敗したときの最終フォールバックパス（通常は到達しない）。
-        FRONTISPIECE_DEFAULT_PATH = 'images/bundled/sakura_portrait.webp'
-        ORNAMENT_DEFAULT_PATH = 'images/bundled/sakura_landscape.webp'
+        # バリアントは生成キャッシュに出るため theme-images/ 形で指す（移設仕様 §3.1）。
+        FRONTISPIECE_DEFAULT_PATH = 'theme-images/bundled/sakura_portrait.webp'
+        ORNAMENT_DEFAULT_PATH = 'theme-images/bundled/sakura_landscape.webp'
 
         DEFAULT_PAGE_WIDTH_MM = 210.0
         DEFAULT_PAGE_HEIGHT_MM = 297.0
@@ -233,10 +239,25 @@ module VivlioStarter
           !find_existing_theme_image(base_query).nil?
         end
 
-        # バリアント画像を探索
+        # バリアント画像を探索。
+        # ユーザーが stylesheets/images/ に手置きしたバリアント（意図的な上書き）を優先し、
+        # 次に生成キャッシュ（.cache/vs/theme-images/。ImageGenerator の出力先）を見る。
         def find_existing_theme_variant(base_slug, variant)
           find_existing_theme_image("#{base_slug}_#{variant}", location_order: %i[user bundled],
-                                                               allowed_extensions: ['.webp'])
+                                                               allowed_extensions: ['.webp']) ||
+            find_cached_theme_variant(base_slug, variant)
+        end
+
+        # 生成キャッシュ内のバリアントを探索する。
+        # ImageGenerator は images root からの相対サブパスを保って生成するため、
+        # bundled 由来は theme-images/bundled/ に、ユーザー画像由来はルート直下に出る。
+        def find_cached_theme_variant(base_slug, variant)
+          %W[#{base_slug}_#{variant}.webp bundled/#{File.basename(base_slug)}_#{variant}.webp].uniq.each do |candidate|
+            path = File.join(theme_images_cache_root, candidate)
+            return path if File.exist?(path)
+          end
+
+          nil
         end
 
         # テーマ画像スラッグを正規化
@@ -281,13 +302,22 @@ module VivlioStarter
           nil
         end
 
-        # テーマ画像のルートディレクトリ
+        # テーマ画像のルートディレクトリ（ソース置き場: stylesheets/images/）
         def theme_images_root
           @theme_images_root ||= File.join(Common::STYLESHEETS_DIR, 'images')
         end
 
-        # テーマ画像の相対パスを取得
+        # 生成バリアントのキャッシュルート（.cache/vs/theme-images/）。
+        # theme_images_root と同様に ivar でメモ化し、テストが一時 dir へ差し替えられるようにする。
+        def theme_images_cache_root
+          @theme_images_cache_root ||= Common.theme_images_cache_dir
+        end
+
+        # テーマ画像の CSS 用相対パスを取得（返却 2 形はファイル冒頭コメント参照）
         def theme_relative_path(path)
+          cache_prefix = "#{theme_images_cache_root}/"
+          return "theme-images/#{path.delete_prefix(cache_prefix)}" if path.start_with?(cache_prefix)
+
           path.sub(%r{\A#{Regexp.escape(theme_images_root)}/}, 'images/')
         end
 

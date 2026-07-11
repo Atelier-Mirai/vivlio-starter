@@ -16,23 +16,12 @@
 
 `cover-cmyk-color-management-spec.md`
 : 表紙の CMYK カラーマネジメント改善についての仕様メモ。
-  状態: 仕様メモ（未確定）・未着手
-  次のアクション: 移設（generated-assets）完了後に着手。実装の前に調査・方針決定が必要:
+  状態: 仕様メモ（未確定）・未着手（前提だった generated-assets 移設は 2026-07-11 完了→着手可能）
+  次のアクション: 実装の前に調査・方針決定が必要:
   (1) Japan Color 2001 Coated ICC の入手経路（gem 同梱の再配布可否をライセンス調査／
   ユーザー用意＋doctor 検出／設定キー指定のいずれか）(2) PDF/X-1a 化まで行うか docs を
   実態に合わせるか。選択肢を調査・提示してユーザーが決定 → 仕様確定 → 実装の順。
   ※ 旧ゲート「full-bleed ジオメトリ議論待ち」は撤廃（本文§留意点どおりジオメトリと独立）
-
-`generated-assets-cache-relocation-spec.md`
-: covers 生成物・テーマ画像バリアントなど、ビルド時生成資産の置き場所を `.cache` へ移設する仕様。
-  状態: 確定仕様・実装待ち（2026-07-10 に現行コード突合レビュー・全面改稿済み）
-  次のアクション: §4 の変更ファイル一覧に沿って実装。突合での主な改稿点:
-  (1) print_pdf_builder.rb は変更不要（①導出化でカバー結合が消滅・covers パス参照なし）
-  (2) EPUB 表紙は「ソース相対＝パッケージ内相対」の偶然一致に依存していたため
-  config の cover: 行とローカライズ先を分離（§3.2）(3) CMYK 生成は cover.rb（PNG 経由）と
-  create.rb（light/dark SVG 経由）の 2 経路あり、ルート複製ヘルパは両方から呼ぶ（§3.4）
-  (4) 扉絵合成の `resolve_theme_image_file` の cache 解決分岐が初版で漏れていた（§3.2）
-  (5) 同名ファイルのソース/生成物衝突に対する探索規則を §3.5 に新設
 
 `table-colspan-spec.md`
 : テーブルの横結合（colspan）と複数行ヘッダーに対応する仕様（PHP Markdown Extra / Backlog 風の記法拡張）。
@@ -77,8 +66,9 @@
 - **cover-cmyk-color-management-spec は print-pdf-full-bleed-notes の表紙ジオメトリ議論が発端。**
   full-bleed 側が動くまでは着手の実益が薄い。
 
-- **generated-assets-cache-relocation-spec の突合レビュー・改稿は 2026-07-10 完了。**
-  ①導出化により print_pdf 側のカバー結合が消えたため、PDF 経路の変更は pdf_merger.rb
-  1 箇所に減り、print_pdf_builder.rb は変更不要になった（仕様 §7 改訂）。
+- **generated-assets-cache-relocation-spec は 2026-07-11 に実装完了し `docs/archives/` へ移動した。**
+  covers 生成物は `.cache/vs/covers/`・テーマ画像バリアントは `.cache/vs/theme-images/` へ移設。
+  入稿用 CMYK カバー PDF はルート直下へ成果品複製（`{name}_{front,back}cover_v{ver}.pdf`）。
+  旧配置の移行掃除（clean.rb）は 1 リリース後に撤去予定。
 
 - **table-colspan-spec と explanatory-diagram-spec は互いに独立。** どちらから着手してもよい。どちらも `markdown_preprocessor.rb` の変換ステップに新規フックを挿入する点は共通するため、同時期に着手する場合はフック挿入順序（既存ステップとの前後関係）の衝突に注意。

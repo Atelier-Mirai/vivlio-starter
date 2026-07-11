@@ -15,7 +15,8 @@
 #     撤去済み手動フロー）の残骸掃除（LEGACY_* パターン・1 リリース残して V2.0 で撤去予定）
 #   - .cache/vs/: ビルドキャッシュ（--cache オプション）
 #   - .cache/metrics/: metrics キャッシュ（--cache オプション）
-#   - covers/: 生成されたカバー画像（--cover オプション、マスターは保持）
+#   - .cache/vs/covers/: 生成されたカバー画像（--cover オプション。covers/ は
+#     著者マスターのみになったため触れない。旧配置の残骸掃除だけ 1 リリース残す）
 #
 # 保持対象（--purge 未指定時）:
 #   - 最終 PDF: output.pdf, output_compressed.pdf（config で名称変更可）
@@ -280,20 +281,34 @@ module VivlioStarter
         patterns << "#{project_name}_v*.kpf"
       end
 
-      # bundled テーマ用に生成されたバリアント画像を削除する
+      # 生成されたテーマバリアント画像を削除する
+      #
+      # 正位置は生成キャッシュ .cache/vs/theme-images/（generated-assets 移設仕様 §2）。
+      # 丸ごと削除して次ビルドで再生成させる。旧配置の残骸掃除も 1 リリースの間だけ行う（§6）。
       #
       # @return [void]
-      #
-      # 削除対象: stylesheets/images/bundled/ 内の *_portrait.webp, *_landscape.webp
-      # これらはビルド時に自動生成される派生画像であり、再生成可能
       def clean_bundled_variant_images
-        images_dir = File.join(Common::STYLESHEETS_DIR, 'images', 'bundled')
-        unless Dir.exist?(images_dir)
-          Common.log_info("bundled テーマ画像ディレクトリが存在しません: #{images_dir}")
-          return
+        cache_dir = Common.theme_images_cache_dir
+        if Dir.exist?(cache_dir)
+          FileUtils.rm_rf(cache_dir)
+          Common.log_success("テーマバリアント画像キャッシュを削除しました: #{cache_dir}")
+        else
+          Common.log_info("テーマバリアント画像キャッシュは存在しません: #{cache_dir}")
         end
 
-        Common.log_action('bundled テーマバリアント画像を削除中...')
+        clean_legacy_variant_images
+      rescue StandardError => e
+        Common.log_warn("テーマバリアント削除中にエラー: #{e.message}")
+      end
+
+      # 旧配置（stylesheets/images/bundled/ 内）の生成バリアント残骸を掃除する。
+      # generated-assets 移設前のプロジェクト向けの移行掃除（§6）。次のリリースで撤去する。
+      #
+      # @return [void]
+      def clean_legacy_variant_images
+        images_dir = File.join(Common::STYLESHEETS_DIR, 'images', 'bundled')
+        return unless Dir.exist?(images_dir)
+
         # 最終バリアント（*_portrait/*_landscape）に加え、生成途中の中間ファイル
         # （*_alpha* / *_color* / *_merged*、png/webp 双方）も保険として掃除対象に含める。
         # 元画像（sakura.webp 等）には一致しないパターンに限定する。
@@ -302,25 +317,17 @@ module VivlioStarter
           *_alpha*.webp *_color*.webp *_merged*.webp
           *_alpha*.png *_color*.png *_merged*.png
         ]
-        deleted = 0
-
-        patterns.each do |pattern|
-          Dir.glob(File.join(images_dir, pattern)).each do |file|
-            next unless File.file?(file)
+        deleted = patterns.sum do |pattern|
+          Dir.glob(File.join(images_dir, pattern)).count do |file|
+            next false unless File.file?(file)
 
             FileUtils.rm_f(file)
             Common.log_info("#{file} を削除しました")
-            deleted += 1
+            true
           end
         end
 
-        if deleted.zero?
-          Common.log_info('削除対象の bundled バリアント画像はありませんでした')
-        else
-          Common.log_success("bundled テーマバリアントを削除しました（#{deleted}ファイル）")
-        end
-      rescue StandardError => e
-        Common.log_warn("bundled テーマバリアント削除中にエラー: #{e.message}")
+        Common.log_success("旧配置の生成バリアント画像を削除しました（.cache へ移設済み・#{deleted}ファイル）") if deleted.positive?
       end
 
       # 索引・用語集辞書データを削除する（確認プロンプトあり）
@@ -359,9 +366,27 @@ module VivlioStarter
         end
       end
 
-      # 生成されたカバー画像を削除する（マスター画像・ユーザーSVGは保持）
+      # 生成されたカバー画像を削除する
+      #
+      # 正位置は生成キャッシュ .cache/vs/covers/（generated-assets 移設仕様 §2）。
+      # 丸ごと削除して次ビルド／vs cover で再生成させる。covers/ は著者ソースのみに
+      # なったため触れない。旧配置の残骸掃除だけ 1 リリースの間残す（§6）。
       #
       # @return [void]
+      def clean_cover_files
+        cache_dir = Common.cover_cache_dir
+        if Dir.exist?(cache_dir)
+          FileUtils.rm_rf(cache_dir)
+          Common.log_success("カバー画像キャッシュを削除しました: #{cache_dir}")
+        else
+          Common.log_info("カバー画像キャッシュは存在しません: #{cache_dir}")
+        end
+
+        clean_legacy_cover_files
+      end
+
+      # 旧配置（covers/ 内）の生成物残骸を掃除する（マスター画像・ユーザーSVGは保持）。
+      # generated-assets 移設前のプロジェクト向けの移行掃除（§6）。次のリリースで撤去する。
       #
       # 削除対象:
       #   - covers/ 内の *.pdf, *.jpg（coverコマンドで生成されたファイル）
@@ -373,15 +398,11 @@ module VivlioStarter
       #   - *.key（Keynote ソースファイル）
       #   - covers/bundled/ 内のファイル（テンプレート本体）
       #   - light/dark 以外の *.svg（frontcover_floral.svg 等、利用者が用意したSVG）
-      def clean_cover_files
+      #
+      # @return [void]
+      def clean_legacy_cover_files
         covers_dir = Common.covers_dir
-
-        unless File.directory?(covers_dir)
-          Common.log_info("カバーディレクトリが存在しません: #{covers_dir}")
-          return
-        end
-
-        Common.log_action('生成されたカバー画像を削除中...')
+        return unless File.directory?(covers_dir)
 
         deleted_count = 0
 
@@ -416,11 +437,7 @@ module VivlioStarter
           deleted_count += 1
         end
 
-        if deleted_count.zero?
-          Common.log_info('削除対象のカバー画像はありませんでした')
-        else
-          Common.log_success("カバー画像を削除しました（#{deleted_count}ファイル）")
-        end
+        Common.log_success("旧配置の生成カバー画像を削除しました（.cache へ移設済み・#{deleted_count}ファイル）") if deleted_count.positive?
       end
     end
   end

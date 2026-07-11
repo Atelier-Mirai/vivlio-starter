@@ -28,33 +28,32 @@ DIRS.each do |dir|
 end
 
 # ================================================================
-# 生成画像の除去
+# 残骸画像の保険除去
 # ================================================================
-# *_landscape.webp / *_portrait.webp は元画像 (sakura.webp など) から
-# ビルド時に生成される派生ファイル。中間生成物 (*_alpha* / *_color* / *_merged*) は
-# 通常 tmpdir に隔離され残らないが、過去の残骸が混入しても scaffold に運ばない。
-# いずれも scaffold に同梱する必要がないため、コピー後に削除しておく。
+# バリアント（*_portrait/*_landscape）と covers 生成物は generated-assets 移設で
+# .cache/vs/ に出るようになり、ソースツリーには通常発生しない。ここは移設前の
+# 残骸や生成途中の中間ファイル (*_alpha* / *_color* / *_merged*) が万一混入しても
+# scaffold に運ばないための保険掃除のみ残す。
 prune_globs = %w[
-  **/*_landscape.webp **/*_portrait.webp
   **/*_alpha*.webp **/*_color*.webp **/*_merged*.webp
   **/*_alpha*.png **/*_color*.png **/*_merged*.png
 ]
 generated = Dir.glob(prune_globs.map { File.join(SCAFFOLD, it) })
 generated.each { FileUtils.rm_f(it) }
-puts "PRUNE 生成画像 #{generated.size} 件を除去 (派生バリアント＋中間生成物)"
+puts "PRUNE 中間生成物の残骸 #{generated.size} 件を除去"
 
 # ================================================================
-# covers/ の不要ファイル除去
+# covers/ の開発ローカルファイル除去
 # ================================================================
-# covers/ には表紙画像 (*.png / *.jpg / *.svg) と説明 (*.md) のみを同梱する。
-# それ以外 (作業用の .pdf / .ai / .psd など) は scaffold に運ばない。
+# 移設後の covers/ はソースのみだが、開発リポジトリ固有の作業ファイル
+# (Keynote ソース .key / .DS_Store / 検証用 PDF など) は scaffold に運ばない。
 covers_dir = File.join(SCAFFOLD, 'covers')
 if Dir.exist?(covers_dir)
   keep_exts = %w[.png .jpg .jpeg .svg .md].freeze
   removed = Dir.glob(File.join(covers_dir, '**', '*')).select { File.file?(it) }
                                                       .reject { keep_exts.include?(File.extname(it).downcase) }
   removed.each { FileUtils.rm_f(it) }
-  puts "PRUNE covers/ の不要ファイル #{removed.size} 件を除去 (#{keep_exts.join(' / ')} 以外)"
+  puts "PRUNE covers/ の開発ローカルファイル #{removed.size} 件を除去 (#{keep_exts.join(' / ')} 以外)"
 end
 
 FILES = %w[README.md .gitignore package.json].freeze

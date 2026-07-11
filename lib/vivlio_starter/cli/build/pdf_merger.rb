@@ -13,7 +13,9 @@ module VivlioStarter
         # 1. 結合対象ファイルのリスト作成
         # ================================================================
         def cover_enhanced_files
-          # 中間 PDF はワークスペース pdf/ 内・カバー PDF は covers/（著者資産）のまま（P4 §5.1）
+          # 中間 PDF はワークスペース pdf/ 内・カバー PDF は生成資産キャッシュ
+          # .cache/vs/covers/ から読む（generated-assets 移設仕様 §3.1。P4 §5.1 の
+          # 「covers/ は著者資産・不変」はマスターのみへ純化された）
           files = %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf]
                   .map { File.join(Common::BUILD_PDF_DIR, it) }
           cfg = Common::CONFIG
@@ -28,8 +30,7 @@ module VivlioStarter
           return files.compact unless Common.pdf_combined?
 
           begin
-            page_use   = resolve_page_use(cfg.page)
-            covers_dir = cfg.directories.covers || 'covers'
+            page_use = resolve_page_use(cfg.page)
 
             ensure_cover_assets_for_page_size!(page_use)
 
@@ -37,9 +38,9 @@ module VivlioStarter
             theme = Common.cover_theme
             size = extract_size_from_preset(page_use)
 
-            # パス生成
-            front = File.join(covers_dir, "frontcover_#{theme}_#{size}_rgb.pdf")
-            back  = File.join(covers_dir, "backcover_#{theme}_#{size}_rgb.pdf")
+            # パス生成（生成物は cover_cache_dir に出ている）
+            front = File.join(Common.cover_cache_dir, "frontcover_#{theme}_#{size}_rgb.pdf")
+            back  = File.join(Common.cover_cache_dir, "backcover_#{theme}_#{size}_rgb.pdf")
 
             files.unshift(front) if File.exist?(front)
             files.push(back)     if File.exist?(back)
