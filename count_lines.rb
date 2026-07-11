@@ -140,7 +140,7 @@ grand_size      = ruby_stats.size + test_stats.size + css_stats.size + markdown_
 grand_total     = FileStat.aggregate("Grand Total (#{grand_size} files)", [ruby_total, test_total, css_total, markdown_total])
 
 puts
-puts 'Totals'
+puts format('%-60s %6s %6s %6s', 'Totals', 'total', 'code', 'comment')
 puts format_row(ruby_total)
 puts format_row(test_total)
 puts format_row(css_total)
