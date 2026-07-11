@@ -288,32 +288,10 @@ module VivlioStarter
           errors = []
           warns = []
 
-          Common.stub :log_error, ->(msg, **) { errors << msg } do
-            Common.stub :log_warn, ->(msg, **) { warns << msg } do
-              Common.stub :log_always, nil do
-                Common.stub :log_info, nil do
-                  DoctorCommands.stub :diagnose_config_files!, nil do
-                    DoctorCommands.stub :pdf_plugin_installed?, false do
-                      DoctorCommands.stub :tesseract_language_available?, false do
-                        DoctorCommands.stub :waifu2x_available?, true do
-                              DoctorCommands.stub :rouge_gem_available?, true do
-                                DoctorCommands.stub :mathjax_full_available?, true do
-                                # inkscape（任意ツール）は本テストの対象外。実プロセス起動に
-                                # 依存しないよう runnable 扱いにして inkscape 由来の注記を抑止する。
-                                DoctorCommands.stub :command_runnable?, ->(_) { true } do
-                                DoctorCommands.stub :command_exists?, ->(cmd) { !%w[tesseract vips].include?(cmd) } do
-                                  DoctorCommands.execute_doctor(options_context)
-                                end
-                                end
-                              end
-                              end
-                        end
-                      end
-                    end
-                  end
-                end
-              end
-            end
+          # inkscape（任意ツール）は本テストの対象外。実プロセス起動に依存しないよう
+          # runnable 扱いにして inkscape 由来の注記を抑止する。
+          with_stubs(ocr_test_stubs(errors:, warns:, plugin_installed: false)) do
+            DoctorCommands.execute_doctor(options_context)
           end
 
           refute errors.any? { it.include?('tesseract') || it.include?('vips') },
@@ -329,32 +307,10 @@ module VivlioStarter
           errors = []
           warns = []
 
-          Common.stub :log_error, ->(msg, **) { errors << msg } do
-            Common.stub :log_warn, ->(msg, **) { warns << msg } do
-              Common.stub :log_always, nil do
-                Common.stub :log_info, nil do
-                  DoctorCommands.stub :diagnose_config_files!, nil do
-                    DoctorCommands.stub :pdf_plugin_installed?, true do
-                      DoctorCommands.stub :tesseract_language_available?, false do
-                        DoctorCommands.stub :waifu2x_available?, true do
-                              DoctorCommands.stub :rouge_gem_available?, true do
-                                DoctorCommands.stub :mathjax_full_available?, true do
-                                # inkscape（任意ツール）は本テストの対象外。実プロセス起動に
-                                # 依存しないよう runnable 扱いにして inkscape 由来の注記を抑止する。
-                                DoctorCommands.stub :command_runnable?, ->(_) { true } do
-                                DoctorCommands.stub :command_exists?, ->(cmd) { !%w[tesseract vips].include?(cmd) } do
-                                  DoctorCommands.execute_doctor(options_context)
-                                end
-                                end
-                              end
-                              end
-                        end
-                      end
-                    end
-                  end
-                end
-              end
-            end
+          # inkscape（任意ツール）は本テストの対象外。実プロセス起動に依存しないよう
+          # runnable 扱いにして inkscape 由来の注記を抑止する。
+          with_stubs(ocr_test_stubs(errors:, warns:, plugin_installed: true)) do
+            DoctorCommands.execute_doctor(options_context)
           end
 
           assert errors.any? { it.include?('tesseract') }, 'プラグイン導入時は tesseract の不足を 🔴 で報告する'
@@ -453,32 +409,22 @@ module VivlioStarter
           warns = []
           successes = []
 
-          Common.stub :log_error, ->(msg, **) { errors << msg } do
-            Common.stub :log_warn, ->(msg, **) { warns << msg } do
-              Common.stub :log_always, ->(msg, **) { successes << msg } do
-                Common.stub :log_info, nil do
-                  DoctorCommands.stub :diagnose_config_files!, nil do
-                    DoctorCommands.stub :pdf_plugin_installed?, true do
-                      DoctorCommands.stub :tesseract_language_available?, true do
-                        DoctorCommands.stub :waifu2x_available?, true do
-                          DoctorCommands.stub :rouge_gem_available?, true do
-                            DoctorCommands.stub :mathjax_full_available?, true do
-                              # inkscape のみ起動不能、他は全て存在＋起動可能とする
-                              DoctorCommands.stub :command_runnable?, ->(cmd) { cmd != 'inkscape' } do
-                                DoctorCommands.stub :command_exists?, ->(_) { true } do
-                                  DoctorCommands.execute_doctor(options_context)
-                                end
-                              end
-                            end
-                          end
-                        end
-                      end
-                    end
-                  end
-                end
-              end
-            end
-          end
+          stubs = [
+            [Common, :log_error, ->(msg, **) { errors << msg }],
+            [Common, :log_warn, ->(msg, **) { warns << msg }],
+            [Common, :log_always, ->(msg, **) { successes << msg }],
+            [Common, :log_info, nil],
+            [DoctorCommands, :diagnose_config_files!, nil],
+            [DoctorCommands, :pdf_plugin_installed?, true],
+            [DoctorCommands, :tesseract_language_available?, true],
+            [DoctorCommands, :waifu2x_available?, true],
+            [DoctorCommands, :rouge_gem_available?, true],
+            [DoctorCommands, :mathjax_full_available?, true],
+            # inkscape のみ起動不能、他は全て存在＋起動可能とする
+            [DoctorCommands, :command_runnable?, ->(cmd) { cmd != 'inkscape' }],
+            [DoctorCommands, :command_exists?, ->(_) { true }]
+          ]
+          with_stubs(stubs) { DoctorCommands.execute_doctor(options_context) }
 
           refute errors.any? { it.include?('inkscape') }, 'inkscape の不在を 🔴 にしない（任意ツール）'
           assert warns.any? { it.include?('inkscape') }, 'inkscape の不在は 🟡 任意ツールとして案内する'
@@ -507,8 +453,45 @@ module VivlioStarter
 
       private
 
+      # 複数の Minitest スタブをネスト（ピラミッド）にせず畳み込んで適用する。
+      # specs は [receiver, method, value] の配列。value が Proc ならその戻り値、
+      # それ以外は定数としてスタブされる（Minitest#stub と同じ意味）。
+      # 全スタブを積んだ状態で block を実行する。
+      #
+      # 例:
+      #   with_stubs([[Common, :log_error, ->(m, **) { errs << m }],
+      #               [DoctorCommands, :command_runnable?, ->(c) { c != 'inkscape' }]]) do
+      #     DoctorCommands.execute_doctor(options_context)
+      #   end
+      def with_stubs(specs, &block)
+        return block.call if specs.empty?
+
+        receiver, method, value = specs.first
+        receiver.stub(method, value) { with_stubs(specs[1..], &block) }
+      end
+
       def options_context(opts = {})
         { options: { fix: false, yes: false, verbose: false }.merge(opts) }
+      end
+
+      # OCR 任意ツール診断テスト（PT-01/PT-02）共通のスタブ一式。
+      # tesseract / vips のみ不在、それ以外は存在＋起動可能。inkscape は本テストの
+      # 対象外なので常に runnable 扱いにして注記を抑止する。
+      def ocr_test_stubs(errors:, warns:, plugin_installed:)
+        [
+          [Common, :log_error, ->(msg, **) { errors << msg }],
+          [Common, :log_warn, ->(msg, **) { warns << msg }],
+          [Common, :log_always, nil],
+          [Common, :log_info, nil],
+          [DoctorCommands, :diagnose_config_files!, nil],
+          [DoctorCommands, :pdf_plugin_installed?, plugin_installed],
+          [DoctorCommands, :tesseract_language_available?, false],
+          [DoctorCommands, :waifu2x_available?, true],
+          [DoctorCommands, :rouge_gem_available?, true],
+          [DoctorCommands, :mathjax_full_available?, true],
+          [DoctorCommands, :command_runnable?, ->(_) { true }],
+          [DoctorCommands, :command_exists?, ->(cmd) { !%w[tesseract vips].include?(cmd) }]
+        ]
       end
 
       # 指定した host_os を一時的に設定
