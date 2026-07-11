@@ -5,6 +5,9 @@
 # ================================================================
 # 責務:
 #   Vivlio Starter の動作に必要な外部ツールの診断と自動インストールを行う。
+#   診断は「存在」だけでなく「実際に起動できるか」を --version 実起動で確認する
+#   （command_runnable? / cli_tool_ok?）。これにより Homebrew cask の壊れたラッパー
+#   （実体を失った .app を指し exit 126）や dylib 切れ等の「在るのに動かない」も検出する。
 #   あわせて config/ 配下の設定ファイルを診断し、--fix 時は scaffold から
 #   復元する（docs/specs/doctor-restore-and-plugin-tools-spec.md Phase 5）。
 #
@@ -84,6 +87,10 @@ module VivlioStarter
       # macOS の Kindle Previewer 3 アプリ内 CLI 実行ファイル（ラッパーが呼ぶ実体）。
       KINDLE_PREVIEWER_APP_BIN = '/Applications/Kindle Previewer 3.app/Contents/MacOS/Kindle Previewer 3'
 
+      # 機能チェック（--version 実起動）でのバージョン確認フラグ。既定は --version。
+      # poppler 系（pdfinfo / pdftoppm）は --version を解さず -v が正しい（実測 exit 差）。
+      VERSION_ARGS = { 'pdfinfo' => '-v', 'pdftoppm' => '-v' }.freeze
+
       # Enhanced Mode プラグインの gem 名（Pdf::PLUGIN_GEM_NAME と同値。
       # provider.rb は pdf/reader 等の重い require を伴うため doctor からは参照しない）
       PDF_PLUGIN_GEM_NAME = 'vivlio-starter-pdf'
@@ -112,7 +119,8 @@ module VivlioStarter
       DOCTOR_DESC = {
         short: '必要ツール(Xcode Command Line Tools, qpdf, pdfinfo, pdftoppm, gs, ImageMagick, Inkscape)の診断とセットアップを行います',
         long: <<~DESC
-          環境診断を行い、以下の外部コマンドの存在をチェックします:
+          環境診断を行い、以下の外部コマンドが実際に動作するかをチェックします
+          （存在だけでなく --version 実起動で確認し、壊れたラッパー等も検出します）:
             - Xcode Command Line Tools (macOS)
             - qpdf
             - pdfinfo / pdftoppm (poppler)
@@ -213,7 +221,7 @@ module VivlioStarter
         checks.each do |label, cmd|
           ok = case label
                when 'imagemagick'
-                 command_exists?('convert') || command_exists?('magick')
+                 cli_tool_ok?('magick') || cli_tool_ok?('convert')
                when 'tesseract-lang'
                  tesseract_language_available?('jpn')
                when 'waifu2x'
@@ -223,7 +231,7 @@ module VivlioStarter
                when 'mathjax'
                  mathjax_full_available?
                else
-                 command_exists?(cmd)
+                 cli_tool_ok?(cmd)
                end
 
           if ok
@@ -247,7 +255,8 @@ module VivlioStarter
 
         # kindlepreviewer（Kindle Previewer 3）は targets: kindle 専用の任意ツール。
         # 存在すれば ✅、無ければ後段で 🟡 案内（ハードエラーにはしない）。
-        kindle_previewer_present = command_exists?(KINDLEPREVIEWER_COMMAND)
+        # シムだけ残って .app 本体が消えた inkscape 型の半壊を見抜くため機能チェックする。
+        kindle_previewer_present = kindlepreviewer_functional?
         Common.log_always('✅ kindlepreviewer (Kindle Previewer 3): OK') if kindle_previewer_present
 
         if is_macos
@@ -475,7 +484,7 @@ module VivlioStarter
         checks.each do |label, cmd|
           ok = case label
                when 'imagemagick'
-                 command_exists?('convert') || command_exists?('magick')
+                 cli_tool_ok?('magick') || cli_tool_ok?('convert')
                when 'tesseract-lang'
                  tesseract_language_available?('jpn')
                when 'waifu2x'
@@ -485,7 +494,7 @@ module VivlioStarter
                when 'mathjax'
                  mathjax_full_available?
                else
-                 command_exists?(cmd)
+                 cli_tool_ok?(cmd)
                end
           still_missing << label unless ok
         end
@@ -930,6 +939,22 @@ module VivlioStarter
         status.success?
       rescue StandardError
         false
+      end
+
+      # CLI ツールが存在し、かつ実際に起動できるか（--version 実起動で確認）。
+      # ツールごとの正しいバージョン確認フラグ（VERSION_ARGS）を使う。
+      # これにより「バイナリは在るが dylib 切れ/ダングリング symlink で起動失敗」も
+      # 「見つかりません」として拾える（presence だけの command_exists? では素通りしていた）。
+      def cli_tool_ok?(cmd) = command_runnable?(cmd, version_arg: VERSION_ARGS.fetch(cmd, '--version'))
+
+      # kindlepreviewer（Kindle Previewer 3）が実際に使えるかを機能チェックする。
+      # kindlepreviewer は GUI アプリ（.app）を呼ぶラッパーシムなので、inkscape 同様
+      # 「シムだけ残って .app 本体が消えた」半壊がある。--version は GUI を起動しかねないため
+      # 実起動はせず、シムの存在に加えてシムが呼ぶ .app 実体の存在まで確認する。
+      def kindlepreviewer_functional?
+        return false unless command_exists?(KINDLEPREVIEWER_COMMAND)
+
+        File.exist?(KINDLE_PREVIEWER_APP_BIN)
       end
 
       def rouge_gem_available?

@@ -35,9 +35,14 @@ module VivlioStarter
             DoctorCommands.stub :diagnose_config_files!, nil do
               DoctorCommands.stub :tesseract_language_available?, true do
                 DoctorCommands.stub :command_exists?, ->(_) { true } do
-                  DoctorCommands.stub :waifu2x_available?, true do
-                    DoctorCommands.stub :install_waifu2x_macos!, ->(*) { flunk('install_waifu2x_macos! should not be called when waifu2x is available') } do
-                      capture_io { DoctorCommands.execute_doctor(options_context) }
+                  # 機能チェック（cli_tool_ok? → command_runnable?）も全て起動可能に固定する
+                  DoctorCommands.stub :command_runnable?, ->(*, **) { true } do
+                    DoctorCommands.stub :kindlepreviewer_functional?, true do
+                      DoctorCommands.stub :waifu2x_available?, true do
+                        DoctorCommands.stub :install_waifu2x_macos!, ->(*) { flunk('install_waifu2x_macos! should not be called when waifu2x is available') } do
+                          capture_io { DoctorCommands.execute_doctor(options_context) }
+                        end
+                      end
                     end
                   end
                 end
@@ -61,8 +66,12 @@ module VivlioStarter
                       DoctorCommands.stub :rouge_gem_available?, true do
                         DoctorCommands.stub :mathjax_full_available?, true do
                         DoctorCommands.stub :command_exists?, ->(_) { true } do
-                          DoctorCommands.stub :diagnose_config_files!, ->(_opts) { diagnose_called = true } do
-                            capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
+                          DoctorCommands.stub :command_runnable?, ->(*, **) { true } do
+                            DoctorCommands.stub :kindlepreviewer_functional?, true do
+                              DoctorCommands.stub :diagnose_config_files!, ->(_opts) { diagnose_called = true } do
+                                capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
+                              end
+                            end
                           end
                         end
                       end
@@ -86,7 +95,9 @@ module VivlioStarter
                 DoctorCommands.stub :tesseract_language_available?, true do
                   DoctorCommands.stub :waifu2x_available?, true do
                     DoctorCommands.stub :command_exists?, ->(cmd) { cmd != 'textlint' } do
-                      DoctorCommands.execute_doctor(options_context)
+                      DoctorCommands.stub :command_runnable?, ->(cmd, **) { cmd != 'textlint' } do
+                        DoctorCommands.execute_doctor(options_context)
+                      end
                     end
                   end
                 end
@@ -108,12 +119,10 @@ module VivlioStarter
             DoctorCommands.stub :ssl_certificate_configured?, true do
               DoctorCommands.stub :tesseract_language_available?, true do
                 DoctorCommands.stub :waifu2x_available?, true do
-                  DoctorCommands.stub :command_exists?, lambda { |cmd|
-                    case cmd
-                    when 'textlint' then textlint_installed
-                    else true
-                    end
-                  } do
+                  # 存在チェック・機能チェックとも同じ述語（textlint は install 後に true）で駆動する
+                  tool_present = ->(cmd, **) { cmd == 'textlint' ? textlint_installed : true }
+                  DoctorCommands.stub :command_exists?, tool_present do
+                   DoctorCommands.stub :command_runnable?, tool_present do
                     DoctorCommands.stub :diagnose_config_files!, ->(_opts) { diagnose_called = true } do
                       DoctorCommands.stub :system, lambda { |cmd|
                         system_calls << cmd
@@ -133,6 +142,7 @@ module VivlioStarter
                         capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
                       end
                     end
+                   end
                   end
                 end
               end
@@ -171,12 +181,10 @@ module VivlioStarter
                       DoctorCommands.stub :rouge_gem_available?, true do
                         DoctorCommands.stub :mathjax_full_available?, true do
                         DoctorCommands.stub :diagnose_config_files!, nil do
-                          DoctorCommands.stub :command_exists?, lambda { |cmd|
-                            case cmd
-                            when 'vips' then vips_installed
-                            else true
-                            end
-                          } do
+                          # 存在・機能チェックとも同じ述語（vips は install 後に true）で駆動する
+                          tool_present = ->(cmd, **) { cmd == 'vips' ? vips_installed : true }
+                          DoctorCommands.stub :command_exists?, tool_present do
+                           DoctorCommands.stub :command_runnable?, tool_present do
                             DoctorCommands.stub :system, lambda { |cmd|
                               system_calls << cmd
 
@@ -192,6 +200,7 @@ module VivlioStarter
                             } do
                               capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
                             end
+                           end
                           end
                         end
                     end
@@ -220,12 +229,10 @@ module VivlioStarter
                         DoctorCommands.stub :tesseract_language_available?, lambda { |language|
                           language == 'jpn' && tesseract_lang_installed
                         } do
-                          DoctorCommands.stub :command_exists?, lambda { |cmd|
-                            case cmd
-                            when 'tesseract' then tesseract_installed
-                            else true
-                            end
-                          } do
+                          # 存在・機能チェックとも同じ述語（tesseract は install 後に true）で駆動する
+                          tool_present = ->(cmd, **) { cmd == 'tesseract' ? tesseract_installed : true }
+                          DoctorCommands.stub :command_exists?, tool_present do
+                           DoctorCommands.stub :command_runnable?, tool_present do
                             DoctorCommands.stub :system, lambda { |cmd|
                               system_calls << cmd
 
@@ -244,6 +251,7 @@ module VivlioStarter
                             } do
                               capture_io { DoctorCommands.execute_doctor(options_context(fix: true, yes: true)) }
                             end
+                           end
                           end
                         end
                       end
@@ -267,10 +275,12 @@ module VivlioStarter
           stub_logging do
             DoctorCommands.stub :diagnose_config_files!, nil do
               DoctorCommands.stub :command_exists?, ->(_) { false } do
-                DoctorCommands.stub :waifu2x_available?, false do
-                  DoctorCommands.stub :install_waifu2x_macos!, ->(*) { flunk('install_waifu2x_macos! should not be called on non-macOS') } do
-                    DoctorCommands.stub :system, ->(cmd) { system_calls << cmd; false } do
-                      capture_io { DoctorCommands.execute_doctor(options_context(fix: true)) }
+                DoctorCommands.stub :command_runnable?, ->(*, **) { false } do
+                  DoctorCommands.stub :waifu2x_available?, false do
+                    DoctorCommands.stub :install_waifu2x_macos!, ->(*) { flunk('install_waifu2x_macos! should not be called on non-macOS') } do
+                      DoctorCommands.stub :system, ->(cmd) { system_calls << cmd; false } do
+                        capture_io { DoctorCommands.execute_doctor(options_context(fix: true)) }
+                      end
                     end
                   end
                 end
@@ -420,8 +430,9 @@ module VivlioStarter
             [DoctorCommands, :waifu2x_available?, true],
             [DoctorCommands, :rouge_gem_available?, true],
             [DoctorCommands, :mathjax_full_available?, true],
+            [DoctorCommands, :kindlepreviewer_functional?, true],
             # inkscape のみ起動不能、他は全て存在＋起動可能とする
-            [DoctorCommands, :command_runnable?, ->(cmd) { cmd != 'inkscape' }],
+            [DoctorCommands, :command_runnable?, ->(cmd, **) { cmd != 'inkscape' }],
             [DoctorCommands, :command_exists?, ->(_) { true }]
           ]
           with_stubs(stubs) { DoctorCommands.execute_doctor(options_context) }
@@ -475,9 +486,11 @@ module VivlioStarter
       end
 
       # OCR 任意ツール診断テスト（PT-01/PT-02）共通のスタブ一式。
-      # tesseract / vips のみ不在、それ以外は存在＋起動可能。inkscape は本テストの
-      # 対象外なので常に runnable 扱いにして注記を抑止する。
+      # tesseract / vips のみ不在、それ以外は存在＋起動可能。inkscape / kindlepreviewer は
+      # 本テストの対象外なので常に「動作可能」扱いにして注記を抑止する。
       def ocr_test_stubs(errors:, warns:, plugin_installed:)
+        # ツールの有無は「tesseract / vips だけ不可」で統一（存在チェック・機能チェック共通）。
+        available = ->(cmd, **) { !%w[tesseract vips].include?(cmd) }
         [
           [Common, :log_error, ->(msg, **) { errors << msg }],
           [Common, :log_warn, ->(msg, **) { warns << msg }],
@@ -489,8 +502,9 @@ module VivlioStarter
           [DoctorCommands, :waifu2x_available?, true],
           [DoctorCommands, :rouge_gem_available?, true],
           [DoctorCommands, :mathjax_full_available?, true],
-          [DoctorCommands, :command_runnable?, ->(_) { true }],
-          [DoctorCommands, :command_exists?, ->(cmd) { !%w[tesseract vips].include?(cmd) }]
+          [DoctorCommands, :kindlepreviewer_functional?, true],
+          [DoctorCommands, :command_runnable?, available],
+          [DoctorCommands, :command_exists?, available]
         ]
       end
 
