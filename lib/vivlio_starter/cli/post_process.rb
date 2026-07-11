@@ -12,7 +12,7 @@
 # 2. 各HTMLファイルに対して以下の処理を実行:
 #    - <body> タグにファイルタイプクラスを付与
 #    - ~~~vs-terminal フェンスを <div class="terminal"><pre> へ復元
-#    - YAML置換ルールを適用
+#    - 組み込み置換ルール（ReplacementRules）を適用
 #    - h2を<article.section-topic>でラップ（theme.style=imageの場合）
 #    - 章末脚注→ページ脚注変換
 #    - Prism.js行番号付与
@@ -21,7 +21,7 @@
 # 【依存モジュール】
 # - BodyClassInjector: <body>タグへのクラス付与
 # - TerminalBlockConverter: ~~~vs-terminal フェンス → 端末枠（<div.terminal><pre>）
-# - HtmlReplacer: YAML置換ルール適用
+# - ReplacementRules: 組み込み置換ルール適用（HtmlReplacer エンジン経由）
 # - SectionWrapper: h2を<article.section-topic>でラップ
 # - FootnoteConverter: 章末脚注→ページ脚注変換
 # - HeadingProcessor: 見出しマーカー/番号スパンの付与（後で作成）
@@ -34,6 +34,7 @@ require_relative 'common'
 require_relative 'post_process/html_parser'
 require_relative 'post_process/body_class_injector'
 require_relative 'post_process/html_replacer'
+require_relative 'post_process/replacement_rules'
 require_relative 'post_process/section_wrapper'
 require_relative 'post_process/footnote_converter'
 require_relative 'post_process/heading_processor'
@@ -57,7 +58,7 @@ module VivlioStarter
 
           処理内容:
           - <body> タグにファイルタイプクラスを付与
-          - book.yml の files.post_replace で指定された YAML に基づく置換処理
+          - 組み込み置換ルールによる置換処理
           - 章末脚注をページ脚注に変換
           - ソースコードに行番号を追加（Prism.js対応）
 
@@ -85,13 +86,12 @@ module VivlioStarter
           TerminalBlockConverter.convert_terminal_blocks!(html_file)
         end
 
-        replace_rules = load_replace_rules
         total_replacements = 0
 
         entry_map.each do |html_file, entry|
           Common.log_action("処理中: #{html_file}")
 
-          result = HtmlReplacer.process_html_file(html_file, replace_rules)
+          result = ReplacementRules.apply_builtin!(html_file)
           if result[:changed]
             total_replacements += result[:replacements]
             Common.log_success("#{html_file}: #{result[:replacements]}個の置換を反映")
@@ -105,7 +105,7 @@ module VivlioStarter
             if content_after != content_before
               File.write(html_file, content_after, encoding: 'utf-8')
               Common.log_success("#{html_file}: h2を<article.section-topic>でラップ（theme.style=image）")
-              result2 = HtmlReplacer.process_html_file(html_file, replace_rules)
+              result2 = ReplacementRules.apply_builtin!(html_file)
               if result2[:changed]
                 Common.log_success("#{html_file}: ラップ後の不要な空段落をクリーンアップ (#{result2[:replacements]}件)")
               end
@@ -172,7 +172,7 @@ module VivlioStarter
 
           # 最終クリーンアップ: Nokogiri 系のステップが <p><div>...</div></p> の
           # ねじれを正すときに残してしまう空の <p></p> などを除去する。
-          final_result = HtmlReplacer.process_html_file(html_file, replace_rules)
+          final_result = ReplacementRules.apply_builtin!(html_file)
           if final_result[:changed]
             total_replacements += final_result[:replacements]
             Common.log_info("#{html_file}: 最終クリーンアップで #{final_result[:replacements]} 件を整理")
@@ -978,44 +978,6 @@ module VivlioStarter
           end
         end
       end
-
-      # ================================================================
-      # 置換ルールの読み込み
-      # ----------------------------------------------------------------
-      # book.ymlのfiles.post_replaceで指定されたYAMLファイルから
-      # 置換ルールを読み込みます。
-      # ================================================================
-      def load_replace_rules
-        target_yml = Common.post_replace_file_path
-        display_yml = target_yml && Common.relative_path_from_root(target_yml)
-
-        if target_yml && File.exist?(target_yml)
-          begin
-            yml_content = File.read(target_yml, encoding: 'utf-8')
-            parsed = YAML.safe_load(yml_content, permitted_classes: [], aliases: true)
-            replace_rules = parsed.is_a?(Array) ? parsed : nil
-            Common.log_error('エラー: YAMLファイルは置換オブジェクト配列である必要があります') unless replace_rules
-            Common.log_info("置換ルール: #{display_yml || target_yml} を使用")
-            replace_rules
-          rescue StandardError => e
-            Common.log_error("YAMLの読み込みに失敗: #{e.message}")
-            nil
-          end
-        else
-          missing_label = if display_yml
-                            display_yml
-                          elsif target_yml
-                            target_yml
-                          elsif Common::POST_REPLACE_FILE
-                            Common::POST_REPLACE_FILE
-                          else
-                            '(未設定)'
-                          end
-          Common.log_error("置換ルールYAMLが見つかりません: #{missing_label}")
-          nil
-        end
-      end
-      module_function :load_replace_rules
     end
   end
 end

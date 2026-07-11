@@ -21,7 +21,7 @@ module VivlioStarter
 
       # --- 定数定義 ---
       REQUIRED_YAML_FILES = %w[
-        config/book.yml config/catalog.yml config/page_presets.yml config/post_replace_list.yml
+        config/book.yml config/catalog.yml config/page_presets.yml
       ].freeze
 
       CONFIG_FILE = 'config/book.yml'
@@ -38,7 +38,6 @@ module VivlioStarter
       TEMPLATES_DIR = 'templates'
       COVERS_DIR = 'covers'
       VFM_COMMAND = 'vfm'
-      POST_REPLACE_FILE = 'post_replace_list.yml'
       CACHE_DIR = '.cache/vs'
       # 旧バージョン（撤去済み手動フロー）のルート config 名。
       # doctor の旧プロジェクト検出マーカーとしてのみ参照する。
@@ -240,7 +239,6 @@ module VivlioStarter
           directories: default_directories,
           cache: default_cache,
           commands: default_commands,
-          files: default_files,
           vivliostyle: default_vivliostyle,
           vfm: default_vfm
         }
@@ -263,7 +261,6 @@ module VivlioStarter
 
       def default_cache = { dir: CACHE_DIR, enabled: true }
       def default_commands = { vfm: VFM_COMMAND }
-      def default_files = { post_replace: POST_REPLACE_FILE }
 
       def default_vivliostyle
         {
@@ -865,21 +862,6 @@ module VivlioStarter
       # コマンド関連
       def vfm_command        = CONFIG&.commands&.vfm || VFM_COMMAND
 
-      # ファイル関連
-      def post_replace_file  = CONFIG&.files&.post_replace || POST_REPLACE_FILE
-
-      def post_replace_file_path
-        file = post_replace_file
-        return nil if blank?(file)
-
-        pn = Pathname.new(file)
-        base = Pathname.new(config_dir)
-        pn = base.join(pn) unless pn.absolute?
-        pn.cleanpath.to_s
-      rescue StandardError
-        resolve_path_from_root(file)
-      end
-
       # カバー設定関連（CONFIG&. は CONFIG 未ロード（プロジェクト外）を吸収する。
       # 各セクションは既定値スキーマで存在保証されるため、以降はドットで辿れる）
       def cover_theme        = CONFIG&.output&.cover
@@ -949,7 +931,7 @@ module VivlioStarter
                       :cover_theme, :pdf_combined?, :pdf_compress?, :epub_embed?, :kindle_embed?,
                       :print_pdf_full_bleed?,
                       :current_log_level, :current_step_label, :deep_merge_config, :default_cache,
-                      :default_commands, :default_config_schema, :default_directories, :default_files,
+                      :default_commands, :default_config_schema, :default_directories,
                       :default_vfm, :default_vivliostyle, :log_always, :ensure_cache_dir!,
                       :ensure_required_yaml_files!, :required_yaml_files_loadable?,
                       :generate_compressed_pdf_filename, :generate_epub_filename,
@@ -959,7 +941,7 @@ module VivlioStarter
                       :log_debug, :log_error, :log_info, :log_success, :log_warn,
                       :merge_hardcoded_defaults, :normalize_font_sizes,
                       :normalize_line_height, :normalize_page_size!,
-                      :normalize_page_units, :post_replace_file, :post_replace_file_path,
+                      :normalize_page_units,
                       :record_vivliostyle_build,
                       :reload_configuration!, :relative_path_from_root, :validate_book_config!,
                       :resolve_page_size, :resolve_path_from_root,

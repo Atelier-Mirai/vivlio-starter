@@ -197,7 +197,6 @@ vs pdf:read reference        # sources/reference.pdf を自動探索
 | `catalog.yml` | ビルド対象の章リスト（章の順序を定義） |
 | `page_presets.yml` | 用紙サイズ等のプリセット定義 |
 | `index_glossary_terms.yml` | 索引・用語集の登録済み用語 |
-| `post_replace_list.yml` | ビルド後処理の文字列置換ルール |
 | `.textlintrc.yml` | textlint の校正ルール設定 |
 
 

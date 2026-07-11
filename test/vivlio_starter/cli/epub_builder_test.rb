@@ -308,7 +308,7 @@ module VivlioStarter
         @temp_dir = Dir.mktmpdir('epub-config-meta')
         Dir.chdir(@temp_dir)
         FileUtils.mkdir_p('config')
-        %w[catalog page_presets post_replace_list].each { File.write("config/#{it}.yml", '{}') }
+        %w[catalog page_presets].each { File.write("config/#{it}.yml", '{}') }
         @saved_logs = LOG_METHODS.to_h { [it, Common.method(it)] }
         LOG_METHODS.each { |m| Common.define_singleton_method(m) { |*_a, **_k| } }
       end

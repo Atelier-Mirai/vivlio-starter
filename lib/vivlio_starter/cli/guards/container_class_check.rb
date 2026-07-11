@@ -10,7 +10,7 @@ module VivlioStarter
       #
       # なぜ黙殺されるのか:
       #   `:::{.class}` の div 化には二経路ある。Ruby 前処理（convert_container_blocks）が扱う
-      #   のは 6 クラスのみで、残りはすべて config/post_replace_list.yml の汎用正規表現が
+      #   のは 6 クラスのみで、残りはすべて組み込み置換ルール（ReplacementRules）の汎用正規表現が
       #   `<div class="$1">` へ置換する。後者はクラス名を一切知らないため、`:::{.notion}` は
       #   無言で `<div class="notion">` になり、CSS が当たらないまま素の段落として組まれる。
       #   著者は完成 PDF を目視するまで気づけない。

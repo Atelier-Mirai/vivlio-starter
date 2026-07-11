@@ -163,7 +163,7 @@ module VivlioStarter
         @temp_dir = Dir.mktmpdir('vs-epub-meta')
         Dir.chdir(@temp_dir)
         FileUtils.mkdir_p('config')
-        %w[book catalog page_presets post_replace_list].each { File.write("config/#{it}.yml", '{}') }
+        %w[book catalog page_presets].each { File.write("config/#{it}.yml", '{}') }
       end
 
       def teardown

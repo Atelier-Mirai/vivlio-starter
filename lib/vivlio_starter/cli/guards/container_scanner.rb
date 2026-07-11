@@ -17,7 +17,7 @@ module VivlioStarter
       #   （実測: protect_code 経由だと contents/41-book-yml.md が「閉じ忘れ」と誤検出された）
       module ContainerScanner
         # 開始行。`:::{.a .b}` / `::: {.a scale=60%}` の両方を受ける。
-        # 経路 B（post_replace_list.yml）は行頭の空白を問わないため lstrip 後に判定する。
+        # 経路 B（組み込み置換ルール ReplacementRules）は行頭の空白を問わないため lstrip 後に判定する。
         OPEN = /\A:{3,}\s*\{(?<body>[^}]*)\}/
         # 終了行。`:::` / `::::` のみの行。
         CLOSE = /\A:{3,}\s*\z/

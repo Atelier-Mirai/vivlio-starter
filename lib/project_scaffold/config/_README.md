@@ -11,7 +11,6 @@
 | `page_presets.yml` | 用紙サイズ等のプリセット定義 |
 | `index_glossary_terms.yml` | 索引・用語集の登録済み用語(vs indexにより生成) |
 | `index_glossary_rejected.yml` | 索引・用語集の除外用語(vs indexにより生成) |
-| `post_replace_list.yml` | ビルド後処理の文字列置換ルール |
 | `.textlintrc.yml` | textlint の校正ルール設定 |
 | `textlint_allowlist.yml` | textlint の許可リスト（誤検知を除外） |
 | `textlint_prh.yml` | 表記揺れ検出の辞書設定 |

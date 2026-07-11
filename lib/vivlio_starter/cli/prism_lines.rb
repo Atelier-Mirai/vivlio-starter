@@ -59,9 +59,15 @@ module VivlioStarter
         pre.text.count("\n") + 1
       end
 
+      # Prism コメントトークンの [!] マーカーを赤強調クラスに変換する。
+      # コメント記号（# / // / -- / /* / <!--）は保持し、[!] とその前後の空白 1 つを除去する。
+      # 旧 post_replace_list.yml の [!] 赤強調ルール（Prism 出力狙い）をここへ移設したもの。
+      ALERT_COMMENT_PATTERN = %r{\A(\#|//|--|/\*|<!--)\s*\[!\]\s?}
+
       # Prism.jsの行番号を追加する処理
       def add_prism_line_numbers(input_file, output_file = nil)
         document = parse_html(input_file)
+        highlight_alert_comments!(document)
         document.css('pre').each { |pre| decorate_pre_tag(pre, document) }
         remove_legacy_meta(document)
 
@@ -74,6 +80,24 @@ module VivlioStarter
       def parse_html(path)
         html = File.read(path, encoding: 'UTF-8')
         PostProcessCommands::HtmlParser.parse_html_document(html)
+      end
+
+      # Prism コメントトークン内の [!] マーカーを赤強調（codered）に変換する。
+      # 旧実装は Prism のエンティティ出力 &#x3C;!-- を文字列マッチしていたが、
+      # Nokogiri のテキストノードではデコード済みの <!-- になるため素の <!-- で書く
+      # （旧ルール 2 本＝一般コメント＋HTML コメントが 1 パターンに統合される）。
+      def highlight_alert_comments!(document)
+        document.css('pre span.token.comment').each do |span|
+          # 記法解説用のネストコード（language-markdown の pre 内）は対象外
+          next if span.ancestors('pre').any? { |pre| pre['class'].to_s.include?('language-markdown') }
+
+          text_node = span.children.find(&:text?)
+          next unless text_node
+          next unless (m = text_node.text.match(ALERT_COMMENT_PATTERN))
+
+          text_node.content = text_node.text.sub(ALERT_COMMENT_PATTERN) { "#{m[1]} " }
+          span['class'] = "#{span['class']} codered"
+        end
       end
 
       # <pre> 要素と内包する <code> に行番号用クラスと要素を付与

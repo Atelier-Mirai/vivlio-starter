@@ -906,42 +906,16 @@ module VivlioStarter
           assert_empty result[:errors]
         end
 
-        def test_replace_references_preserves_post_replace_list_macros
+        def test_replace_references_preserves_builtin_macros
           labels_map = {}
 
-          # post_replace_list.yml の完全一致マクロ
-          content = <<~MD
-            余白: @vspace:10 と @vspace:-10
-            旧記法: @nega:3 と @posi:5
-            コメント: @comment:編集中@commend
-          MD
+          # 組み込み置換ルール（ReplacementRules）の完全一致マクロは @vspace のみ
+          content = "余白: @vspace:10 と @vspace:-10 を使えます。\n"
           result = replace_references(content, labels_map, 'test.md')
 
-          %w[@vspace @nega @posi @comment @commend].each do |macro|
-            assert_includes result[:content], macro, "予約マクロ #{macro} が残っていない"
-          end
-          assert_empty result[:errors], "予約マクロで未定義警告が出てはいけない: #{result[:errors].inspect}"
-        end
-
-        def test_replace_references_preserves_absolute_position_macros
-          labels_map = {}
-
-          # @lu25,15@20,30 や @ls40@20,20 のような絶対配置マクロ
-          # （Planned 扱いだが Planned-期間中も警告を出さない）
-          content = <<~MD
-            左上ガイド @lu25,15@20,30
-            右下ガイド @rd30,20@100,80
-            水平線 @ls40@20,20 / 垂直線 @us30@40,40
-            接頭辞のみ @lu / @ld / @ru / @rd / @ur / @ls / @rs / @us / @ds
-          MD
-          result = replace_references(content, labels_map, 'test.md')
-
-          # prefix+digits パターン（@lu25, @rd30, @ls40, @us30 など）が予約扱い
-          assert_empty result[:errors], "絶対配置マクロで未定義警告が出てはいけない: #{result[:errors].inspect}"
-          # 原文が保持されている
-          assert_includes result[:content], '@lu25'
-          assert_includes result[:content], '@rd30'
-          assert_includes result[:content], '@ls40'
+          assert_includes result[:content], '@vspace:10'
+          assert_includes result[:content], '@vspace:-10'
+          assert_empty result[:errors], "予約マクロ @vspace で未定義警告が出てはいけない: #{result[:errors].inspect}"
         end
 
         def test_reserved_id_helper
@@ -949,15 +923,10 @@ module VivlioStarter
           %w[auto omakase id].each do |id|
             assert CrossReferenceProcessor.reserved_id?(id), "#{id} は予約ID"
           end
-          %w[vspace nega posi comment commend].each do |id|
-            assert CrossReferenceProcessor.reserved_id?(id), "#{id} は予約マクロID"
-          end
-          # 接頭辞＋数字グループ
-          %w[lu ld ru rd ur ls rs us ds lu25 rd30 ls40 us30].each do |id|
-            assert CrossReferenceProcessor.reserved_id?(id), "#{id} は予約マクロ接頭辞"
-          end
-          # 非予約ID は false を返す
-          %w[foo bar einstein ruby-sample prop-list lux ldap russet].each do |id|
+          # 予約マクロは @vspace のみ
+          assert CrossReferenceProcessor.reserved_id?('vspace'), 'vspace は予約マクロID'
+          # 非予約ID は false を返す（@nega/@posi/@comment/@commend・旧ガイド線接頭辞は撤去済み）
+          %w[foo bar einstein ruby-sample prop-list nega posi comment commend lu ld lu25].each do |id|
             refute CrossReferenceProcessor.reserved_id?(id), "#{id} は予約IDではない"
           end
         end

@@ -30,33 +30,19 @@ module VivlioStarter
         # 自動採番用の予約ID（キャプションで @auto / @omakase / @id と書くと type-chapter-N 形式に採番される）
         RESERVED_IDS = %w[auto omakase id].freeze
 
-        # config/post_replace_list.yml のマクロ名（完全一致で予約）。
-        # これらは @ID 参照ではなくシステム予約のマクロなので、
+        # 組み込み置換ルール（ReplacementRules）のマクロ名（完全一致で予約）。
+        # これは @ID 参照ではなくシステム予約のマクロなので、
         # 未定義のラベルIDとして警告しない。
-        RESERVED_MACRO_IDS = %w[
-          vspace nega posi
-          comment commend
-        ].freeze
-
-        # config/post_replace_list.yml の絶対配置＋SVG ガイド線マクロ接頭辞。
-        # 例: @lu25,15@20,30 の `lu25` や、@ls40@20,20 の `ls40` など、
-        # 接頭辞に続く数字列（幅/高さ指定）を丸ごと予約する。
-        # Planned 扱いのため現状はコメントアウトされているが、
-        # 資料やコードサンプルで登場しても警告しないようにしておく。
-        RESERVED_MACRO_POSITION_PREFIXES = %w[
-          lu ld ru rd ur
-          ls rs us ds
-        ].freeze
+        # （@nega/@posi の後方互換別名・@comment/@commend の編集者コメントは廃止済み）
+        RESERVED_MACRO_IDS = %w[vspace].freeze
 
         # 予約IDの判定を一元化する。
         # RESERVED_IDS: auto / omakase / id
-        # RESERVED_MACRO_IDS: div / nega / comment など完全一致
-        # RESERVED_MACRO_POSITION_PREFIXES: lu25 / ls40 など接頭辞＋数字
+        # RESERVED_MACRO_IDS: vspace（完全一致）
         def self.reserved_id?(label_id)
           return true if RESERVED_IDS.include?(label_id)
-          return true if RESERVED_MACRO_IDS.include?(label_id)
 
-          RESERVED_MACRO_POSITION_PREFIXES.any? { |prefix| label_id.match?(/\A#{prefix}\d*\z/) }
+          RESERVED_MACRO_IDS.include?(label_id)
         end
         IMAGE_PATTERN = /^!\[[^\]]*\]\([^)]+\)(?:\{[^}]+\})?$/
         MAIN_CHAPTER_RANGE = PostProcessCommands::HeadingProcessor::MAIN_CHAPTER_RANGE

@@ -208,8 +208,7 @@ module VivlioStarter
         }
         File.write('config/book.yml', config.to_yaml)
         File.write('config/page_presets.yml', DUMMY_PAGE_PRESETS.to_yaml)
-        File.write('config/post_replace_list.yml', { 'replacements' => [] }.to_yaml)
-        # reload_configuration! の ensure_required_yaml_files! が要求する必須 4 ファイルを揃える
+        # reload_configuration! の ensure_required_yaml_files! が要求する必須ファイルを揃える
         File.write('config/catalog.yml',
                    { 'PREFACE' => [], 'CHAPTERS' => [], 'APPENDICES' => [], 'POSTFACE' => [] }.to_yaml)
 
@@ -448,7 +447,7 @@ module VivlioStarter
       # テスト実行前に必要なディレクトリと設定ファイルを作成
       def setup_test_environment
         FileUtils.mkdir_p('config')
-        %w[book catalog page_presets post_replace_list].each do |file|
+        %w[book catalog page_presets].each do |file|
           File.write("config/#{file}.yml", '{}')
         end
         FileUtils.mkdir_p('covers')
@@ -628,7 +627,6 @@ module VivlioStarter
         }
         File.write('config/book.yml', config.to_yaml)
         File.write('config/page_presets.yml', CoverCommandsTest::DUMMY_PAGE_PRESETS.to_yaml)
-        File.write('config/post_replace_list.yml', { 'replacements' => [] }.to_yaml)
       end
 
       # マスター PNG を一時ディレクトリに生成する

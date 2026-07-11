@@ -240,10 +240,6 @@ module VivlioStarter
             base_line_height: 15pt
         YAML
 
-        File.write('config/post_replace_list.yml', <<~YAML)
-          replacements: []
-        YAML
-
         File.write(File.join('chapter_templates', 'chapter_template.md'), "# {{TITLE}}\n")
       end
     end

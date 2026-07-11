@@ -4,16 +4,17 @@
 # File: lib/vivlio_starter/cli/post_process/html_replacer.rb
 # ================================================================
 # 責務:
-#   config/post_replace_list.yml の置換ルールを HTML に適用する。
+#   ReplacementRules の組み込み置換ルールを HTML に適用するエンジン。
 #
-# 置換ルール形式:
-#   - f: 検索パターン（正規表現）
-#   - r: 置換文字列（$1〜$9 でキャプチャ参照）
+# ルール形式（ReplacementRules::Rule）:
+#   - pattern      … 検索パターン（Regexp リテラル・/m 付き）
+#   - replacement  … 置換文字列（$1〜$9 でキャプチャ参照）
+#   - mode         … 保護モード（:text_only / :tag_aware）
 #
 # 用途:
-#   - 特殊文字の変換（例: 〈〉→《》）
-#   - クラス追加（例: <p> に特定クラスを付与）
-#   - カスタム記法の展開
+#   - :::{.class} → <div> 化、p/div のねじれ修正、空段落除去
+#   - クラス追加（例: <hr> → <hr class="pagebreak">）
+#   - マクロ展開（@vspace など）
 # ================================================================
 
 require_relative '../common'
@@ -21,14 +22,9 @@ require_relative '../common'
 module VivlioStarter
   module CLI
     module PostProcessCommands
-      # YAML 置換ルール適用モジュール
+      # 組み込み置換ルール適用エンジン
       module HtmlReplacer
         module_function
-
-        # Prism ハイライト済みコードブロック内に適用したいルールの目印。
-        # パターン文字列に `class="token` を含むルールのみ、<pre>...</pre>
-        # の内側も対象とする（C 言語の `/*← */` や HTML コメント強調など）。
-        CODE_AWARE_PATTERN_MARKER = 'class="token'
 
         # 退避プレースホルダのマーカー。Unicode 制御文字 (U+0000) を両端に置くので
         # 原稿内やルールパターンに出現することはない。
@@ -37,7 +33,7 @@ module VivlioStarter
         TAG_PLACEHOLDER_PREFIX  = "\u0000__VS_TAG__"
         PLACEHOLDER_SUFFIX      = "__\u0000"
 
-        # YAML置換ルールを適用してHTMLファイルを更新
+        # ReplacementRules::Rule の配列を適用して HTML ファイルを更新
         def process_html_file(html_file, replace_rules)
           return { changed: false, replacements: 0 } unless replace_rules&.any?
 
@@ -45,17 +41,8 @@ module VivlioStarter
           replacements = 0
 
           replace_rules.each do |rule|
-            pattern_str = rule['f']
-            replacement_str = rule['r']
-            next unless pattern_str && replacement_str
-
-            begin
-              regex = Regexp.new(pattern_str, Regexp::MULTILINE)
-              content, applied = apply_rule(content, regex, replacement_str, pattern_str)
-              replacements += applied
-            rescue RegexpError => e
-              Common.log_warn("不正な正規表現: #{pattern_str} - #{e.message}")
-            end
+            content, applied = apply_rule(content, rule)
+            replacements += applied
           end
 
           if replacements.positive?
@@ -69,41 +56,22 @@ module VivlioStarter
           { changed: false, replacements: 0 }
         end
 
-        # 単一のルールを適用する。ルールのパターン文字列からモードを判定し、
-        # 対象領域を絞り込んでから gsub を実行する。
+        # 単一のルールを適用する。rule.mode で対象領域を絞り込んでから gsub を実行する。
         #
         # モード:
-        # - :code_aware   … パターンに `class="token` を含む。<pre> 内も含めて全体に適用
-        #                   （Prism ハイライト強調ルールを意図）。
-        # - :text_only    … パターンに `<` を含まない。HTML 構造（<pre>/<code> の本体、
-        #                   および全てのタグ定義 `<...>`）を退避し、テキストノード部分
-        #                   だけに適用する。これにより `@vspace` などのマクロが
-        #                   `data-heading="..."` のような属性値の中で置換されて
-        #                   HTML が壊れる事故を防ぐ。
-        # - :tag_aware    … 上記以外。`<p>` `<li ...>` `<span ...>` など HTML 構造を
-        #                   対象にするルール。<pre>/<code> 内にはそもそもこれらの
-        #                   リテラルタグが存在しない（実体参照化される）ため、
-        #                   追加の保護なしで全体に適用する。
-        def apply_rule(content, regex, replacement_str, pattern_str)
-          case rule_mode(pattern_str)
-          when :code_aware
-            # language-markdown 内のネストされたコードブロックは退避して
-            # [!] 等の強調ルールが記法説明用コードに適用されるのを防ぐ
-            md_blocks = []
-            protected = content.gsub(%r{<pre\b[^>]*\bclass="[^"]*\blanguage-markdown\b[^"]*"[^>]*>.*?</pre>}m) do |block|
-              md_blocks << block
-              "#{PRE_PLACEHOLDER_PREFIX}MD#{md_blocks.size - 1}#{PLACEHOLDER_SUFFIX}"
-            end
-
-            result, applied = replace_with_captures(protected, regex, replacement_str)
-
-            result = result.gsub(/#{Regexp.escape(PRE_PLACEHOLDER_PREFIX)}MD(\d+)#{Regexp.escape(PLACEHOLDER_SUFFIX)}/) do
-              md_blocks[Regexp.last_match(1).to_i]
-            end
-            [result, applied]
+        # - :text_only    … HTML 構造（<pre>/<code> の本体、および全てのタグ定義
+        #                   `<...>`）を退避し、テキストノード部分だけに適用する。
+        #                   これにより `@vspace` などのマクロが `data-heading="..."` の
+        #                   ような属性値の中で置換されて HTML が壊れる事故を防ぐ。
+        # - :tag_aware    … `<p>` `<li ...>` `<span ...>` など HTML 構造を対象にする
+        #                   ルール。<pre>/<code> 内にはそもそもこれらのリテラルタグが
+        #                   存在しない（実体参照化される）ため、<pre> ブロックのみ退避
+        #                   して全体に適用する。
+        def apply_rule(content, rule)
+          case rule.mode
           when :text_only
             with_text_scope_protected(content) do |stashed|
-              replace_with_captures(stashed, regex, replacement_str)
+              replace_with_captures(stashed, rule.pattern, rule.replacement)
             end
           else # :tag_aware
             # <pre> ブロック内のテキストは置換対象外とする
@@ -114,20 +82,13 @@ module VivlioStarter
               "#{PRE_PLACEHOLDER_PREFIX}TA#{pre_blocks.size - 1}#{PLACEHOLDER_SUFFIX}"
             end
 
-            result, applied = replace_with_captures(protected, regex, replacement_str)
+            result, applied = replace_with_captures(protected, rule.pattern, rule.replacement)
 
             result = result.gsub(/#{Regexp.escape(PRE_PLACEHOLDER_PREFIX)}TA(\d+)#{Regexp.escape(PLACEHOLDER_SUFFIX)}/) do
               pre_blocks[Regexp.last_match(1).to_i]
             end
             [result, applied]
           end
-        end
-
-        def rule_mode(pattern_str)
-          return :code_aware if pattern_str.include?(CODE_AWARE_PATTERN_MARKER)
-          return :text_only unless pattern_str.include?('<')
-
-          :tag_aware
         end
 
         # テキスト専用ルール向けに、HTML 構造を全て退避したビューをブロックへ渡す。

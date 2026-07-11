@@ -2,17 +2,18 @@
 
 require 'minitest/autorun'
 require 'tempfile'
-require_relative '../../../../lib/vivlio_starter/cli/post_process/html_replacer'
+require_relative '../../../../lib/vivlio_starter/cli/post_process/replacement_rules'
 
 module VivlioStarter
   module CLI
     module PostProcessCommands
-      # HtmlReplacer は config/post_replace_list.yml の置換ルールを HTML に適用する。
-      # その際、<pre>…</pre>（フェンス付きコードブロック）および <code>…</code>
-      # （インラインコード）は「書き方の説明」の一部なので置換対象から除外される。
-      # ただし Prism ハイライト出力（<span class="token ...">）を明示的に狙う
-      # ルールは例外として <pre> 内にも適用される。
+      # HtmlReplacer は ReplacementRules の組み込みルール（Rule 配列）を HTML に適用する
+      # エンジン。<pre>…</pre>（コードブロック）と <code>…</code>（インラインコード）、
+      # および全タグ定義は「書き方の説明」の一部なので、保護モードに応じて置換対象から
+      # 除外される。ここではエンジンの保護挙動を Rule 単位で検証する。
       class HtmlReplacerTest < Minitest::Test
+        Rule = ReplacementRules::Rule
+
         def with_html(html)
           Tempfile.create(['vs_replacer_test_', '.html']) do |f|
             f.write(html)
@@ -34,22 +35,22 @@ module VivlioStarter
 
         def test_preserves_content_inside_pre_blocks
           html = <<~HTML
-            <p>@posi:10 を書くと下に余白を入れます。</p>
+            <p>@vspace:10 を書くと下に余白を入れます。</p>
             <pre><code class="language-markdown">本文の流れ。
 
-            @posi:10
+            @vspace:10
 
             次の段落を 10mm 下げて始めたい。
             </code></pre>
           HTML
-          rules = [{ 'f' => '@posi:(\\d+)', 'r' => '<div style="margin-top:$1mm"></div>' }]
+          rules = [Rule.new(/@vspace:(\d+)/m, '<div style="margin-top:$1mm"></div>', :text_only)]
 
           out = run_rules(html, rules)
 
           # <pre> の外側は置換される
           assert_match(%r{<p><div style="margin-top:10mm"></div> を書くと下に余白を入れます。</p>}, out)
           # <pre> の中身は「書かれたそのまま」
-          assert_includes out, '@posi:10'
+          assert_includes out, '@vspace:10'
           refute_match(%r{<pre>.*?<div style="margin-top:10mm"></div>.*?</pre>}m, out)
         end
 
@@ -62,15 +63,15 @@ module VivlioStarter
             :::
           HTML
           rules = [
-            { 'f' => ':{3,}\\s*\\{\\.?([a-z0-9.\\-_\\s]+)\\}', 'r' => '<div class="$1">' },
-            { 'f' => ':{3,}', 'r' => '</div>' }
+            Rule.new(%r{:{3,}\s*\{\.?([a-z0-9.\-_\s]+)\}}m, '<div class="$1">', :text_only),
+            Rule.new(%r{:{3,}}m, '</div>', :text_only)
           ]
 
           out = run_rules(html, rules)
 
           # <pre> 内の :::{.memo} / ::: は原文のまま残る
           assert_includes out, ':::{.memo}'
-          pre_body = out[/<pre>.*?<\/pre>/m]
+          pre_body = out[%r{<pre>.*?</pre>}m]
           assert_includes pre_body, ':::'
           # <pre> の外の ::: は置換される
           refute_match(%r{</pre>\s*:::}m, out)
@@ -84,14 +85,14 @@ module VivlioStarter
             <p>保存は 〘Ctrl〙 + 〘S〙 で行います。</p>
           HTML
           rules = [
-            { 'f' => '〘', 'r' => '<kbd>' },
-            { 'f' => '〙', 'r' => '</kbd>' }
+            Rule.new(/〘/m, '<kbd>', :text_only),
+            Rule.new(/〙/m, '</kbd>', :text_only)
           ]
 
           out = run_rules(html, rules)
 
           # <pre> 内は原文維持
-          pre_body = out[/<pre>.*?<\/pre>/m]
+          pre_body = out[%r{<pre>.*?</pre>}m]
           assert_includes pre_body, '〘Ctrl〙'
           refute_includes pre_body, '<kbd>'
           # <pre> 外は置換される
@@ -104,7 +105,7 @@ module VivlioStarter
 
         def test_preserves_inline_code_content
           html = '<p>本文中で <code>@vspace:10</code> と書くと、下に余白を入れます。</p>'
-          rules = [{ 'f' => '@vspace:10', 'r' => '<div style="margin-top:10mm"></div>' }]
+          rules = [Rule.new(/@vspace:10/m, '<div style="margin-top:10mm"></div>', :text_only)]
 
           out = run_rules(html, rules)
 
@@ -114,37 +115,16 @@ module VivlioStarter
         end
 
         # =============================================================
-        # Prism ハイライト狙いルールは <pre> 内も適用される
-        # =============================================================
-
-        def test_prism_token_targeting_rule_still_reaches_inside_pre
-          html = <<~HTML
-            <pre><code class="language-ruby"><span class="token comment">#← 強調したいコメント</span>
-            puts "hello"</code></pre>
-          HTML
-          rules = [{
-            'f' => '<span class="token comment"([^>]*)>#←',
-            'r' => '<span class="token comment codered"$1>'
-          }]
-
-          out = run_rules(html, rules)
-
-          # コードブロックの中であっても、Prism の token span を狙うルールは適用される
-          assert_includes out, '<span class="token comment codered">'
-          refute_includes out, '#←'
-        end
-
-        # =============================================================
         # タグ定義（属性値を含む）の内側では置換しない
         # =============================================================
 
         # `@vspace` などのマクロが HeadingProcessor によって data-heading 属性に
-        # コピーされた後、HtmlReplacer 最終パスが属性値内の `@vspace:10` を
-        # 置換してしまい、`data-heading="... <div style=\"margin-top:10mm\"></div> ..."`
-        # となって属性値内の `"` で HTML 解析が破綻する事故を防ぐ。
+        # コピーされた後、text_only ルールが属性値内の `@vspace:10` を置換してしまい、
+        # `data-heading="... <div style=\"margin-top:10mm\"></div> ..."` となって
+        # 属性値内の `"` で HTML 解析が破綻する事故を防ぐ。
         def test_text_only_rule_does_not_substitute_inside_attribute_values
           html = '<h3 id="x" data-heading="余白の調整 @vspace:10" data-h3="余白の調整 @vspace:10">余白の調整 <code>@vspace:10</code></h3>'
-          rules = [{ 'f' => '@vspace:10', 'r' => '<div style="margin-top:10mm"></div>' }]
+          rules = [Rule.new(/@vspace:10/m, '<div style="margin-top:10mm"></div>', :text_only)]
 
           out = run_rules(html, rules)
 
@@ -155,7 +135,7 @@ module VivlioStarter
 
         def test_text_only_rule_substitutes_plain_text_only
           html = '<h3 data-heading="余白の調整 @vspace:10">余白の調整 <code>@vspace:10</code></h3><p>本文中の @vspace:10 は展開される。</p>'
-          rules = [{ 'f' => '@vspace:10', 'r' => '<div style="margin-top:10mm"></div>' }]
+          rules = [Rule.new(/@vspace:10/m, '<div style="margin-top:10mm"></div>', :text_only)]
 
           out = run_rules(html, rules)
 
@@ -165,9 +145,9 @@ module VivlioStarter
         end
 
         def test_text_only_rule_does_not_confuse_attribute_with_similar_text
-          # 属性値に `:::` が入っていても text-only ルールは触れない
+          # 属性値に `:::` が入っていても text_only ルールは触れない
           html = '<div data-note=":::">内容 :::</div>'
-          rules = [{ 'f' => ':{3,}', 'r' => '</div>' }]
+          rules = [Rule.new(/:{3,}/m, '</div>', :text_only)]
 
           out = run_rules(html, rules)
 
@@ -181,7 +161,7 @@ module VivlioStarter
 
         def test_no_op_when_no_match
           html = '<p>ただの段落。</p>'
-          rules = [{ 'f' => '@nonexistent', 'r' => '<span>x</span>' }]
+          rules = [Rule.new(/@nonexistent/m, '<span>x</span>', :text_only)]
           out = run_rules(html, rules)
           assert_equal html, out
         end
@@ -189,7 +169,7 @@ module VivlioStarter
         def test_returns_changed_false_when_only_protected_matches
           # <pre>/<code>/属性値 内だけにマッチするルールは、実質「無変更」で返る
           html = "<p data-x=\"@vspace:10\">普通の段落</p>\n<pre><code>@vspace:10</code></pre>\n"
-          rules = [{ 'f' => '@vspace:10', 'r' => '<div style="margin-top:10mm"></div>' }]
+          rules = [Rule.new(/@vspace:10/m, '<div style="margin-top:10mm"></div>', :text_only)]
 
           result = nil
           with_html(html) do |path|
@@ -200,19 +180,20 @@ module VivlioStarter
         end
 
         # =============================================================
-        # rule_mode 判定
+        # tag_aware モード: <pre> のみ退避して全体に適用
         # =============================================================
 
-        def test_rule_mode_classification
-          assert_equal :code_aware,
-                       HtmlReplacer.rule_mode('<span class="token comment"([^>]*)>#←')
-          assert_equal :text_only, HtmlReplacer.rule_mode('@vspace:(-?\\d+)')
-          assert_equal :text_only, HtmlReplacer.rule_mode('@posi:(\\d+)')
-          assert_equal :text_only, HtmlReplacer.rule_mode(':{3,}')
-          assert_equal :text_only, HtmlReplacer.rule_mode('〘')
-          assert_equal :tag_aware, HtmlReplacer.rule_mode('<p[^>]*>【先生([^】]+)】')
-          assert_equal :tag_aware, HtmlReplacer.rule_mode('<hr>')
-          assert_equal :tag_aware, HtmlReplacer.rule_mode('<p></p>')
+        def test_tag_aware_rule_applies_outside_pre_only
+          html = "<p><div class=\"box\">\n<pre><code class=\"language-html\">&lt;p&gt;&lt;div class=\"x\"&gt;</code></pre>"
+          rules = [Rule.new(%r{<p>\s*(<div class="[^"]+">)}m, '$1', :tag_aware)]
+
+          out = run_rules(html, rules)
+
+          # <pre> の外の <p><div ...> は裸の div になる
+          assert_match(%r{^<div class="box">}, out)
+          refute_match(%r{<p>\s*<div class="box">}, out)
+          # <pre> 内の実体参照テキストは不変
+          assert_includes out, '&lt;p&gt;&lt;div class="x"&gt;'
         end
       end
     end

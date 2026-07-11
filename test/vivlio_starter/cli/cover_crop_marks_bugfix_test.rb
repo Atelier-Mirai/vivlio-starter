@@ -422,7 +422,6 @@ module VivlioStarter
         }
         File.write('config/book.yml', config.to_yaml)
         File.write('config/page_presets.yml', dummy_page_presets.to_yaml)
-        File.write('config/post_replace_list.yml', { 'replacements' => [] }.to_yaml)
       end
 
       # pdf ターゲットと指定されたページサイズ・bleed値を含む設定ファイルを生成する
@@ -440,7 +439,6 @@ module VivlioStarter
         }
         File.write('config/book.yml', config.to_yaml)
         File.write('config/page_presets.yml', dummy_page_presets_all_sizes.to_yaml)
-        File.write('config/post_replace_list.yml', { 'replacements' => [] }.to_yaml)
       end
 
       # epub ターゲットを含む設定ファイルを生成する
@@ -456,7 +454,6 @@ module VivlioStarter
         }
         File.write('config/book.yml', config.to_yaml)
         File.write('config/page_presets.yml', dummy_page_presets.to_yaml)
-        File.write('config/post_replace_list.yml', { 'replacements' => [] }.to_yaml)
       end
 
       # print_pdf ターゲットを含む設定ファイルを生成する（PNGテーマ用）
@@ -473,7 +470,6 @@ module VivlioStarter
         }
         File.write('config/book.yml', config.to_yaml)
         File.write('config/page_presets.yml', dummy_page_presets.to_yaml)
-        File.write('config/post_replace_list.yml', { 'replacements' => [] }.to_yaml)
       end
 
       # print_pdf ターゲットを含む設定ファイルを生成する（SVGテーマ用）
@@ -490,7 +486,6 @@ module VivlioStarter
         }
         File.write('config/book.yml', config.to_yaml)
         File.write('config/page_presets.yml', dummy_page_presets.to_yaml)
-        File.write('config/post_replace_list.yml', { 'replacements' => [] }.to_yaml)
       end
 
       # マスター PNG を一時ディレクトリに生成する

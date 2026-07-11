@@ -254,7 +254,7 @@ module VivlioStarter
         @original_dir = Dir.pwd
         Dir.chdir(@temp_dir)
         FileUtils.mkdir_p('config')
-        %w[catalog page_presets post_replace_list].each { File.write("config/#{it}.yml", '{}') }
+        %w[catalog page_presets].each { File.write("config/#{it}.yml", '{}') }
       end
 
       def teardown

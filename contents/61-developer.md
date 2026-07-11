@@ -196,7 +196,7 @@ mybook/
 
 `stylesheets/` は CSS ファイル群です。`theme.css` はビルドのたびに `book.yml` の `theme` セクションから自動生成されるため直接編集しても上書きされます。カスタム CSS は `custom.css` に記述してください。`page-settings.css` がページサイズ・余白を定義し、`chapter.css`・`base.css` などが本文スタイルを担います。
 
-`config/` には各種設定ファイルが入ります。`book.yml` が書籍全体の設定（タイトル・著者・テーマ・ビルドターゲットなど）を管理するメインファイルです。`catalog.yml` が章の並び順と構成を定義します。`index_glossary_terms.yml` が索引・用語集の統合辞書です。`post_replace_list.yml` は HTML 後処理での文字列置換ルールを定義します。`textlint_prh.yml` / `textlint_allowlist.yml` は lint の表記揺れ辞書と許可リストです。
+`config/` には各種設定ファイルが入ります。`book.yml` が書籍全体の設定（タイトル・著者・テーマ・ビルドターゲットなど）を管理するメインファイルです。`catalog.yml` が章の並び順と構成を定義します。`index_glossary_terms.yml` が索引・用語集の統合辞書です。`textlint_prh.yml` / `textlint_allowlist.yml` は lint の表記揺れ辞書と許可リストです。
 
 
 ### book.yml
@@ -333,7 +333,7 @@ QueryStream 展開（ステップ 3）はフロントマター生成の直後に
 `PostProcessCommands#execute_post_process` が生成された HTML に対して以下の処理を順に適用します。実装は `cli/post_process.rb` と `cli/post_process/` 配下のモジュール群です。
 
 1. `<body>` タグへのファイルタイプクラス付与（`body_class_injector.rb`）
-2. `config/post_replace_list.yml` に基づく文字列置換（`html_replacer.rb`）
+2. 組み込み置換ルール（`replacement_rules.rb`）による文字列置換（`html_replacer.rb`）
 3. `theme.style = image` 時の h2 を `<article.section-topic>` でラップ（`section_wrapper.rb`）
 4. sideimage コンテナの正規化・列比率の CSS 変数埋め込み
 5. image-group コンテナの列比率設定

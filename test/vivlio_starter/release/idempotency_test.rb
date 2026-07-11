@@ -61,7 +61,6 @@ class IdempotencyTest < Minitest::Test
         File.write("config/book.yml", "book:\n  main_title: 'idem'\n")
         File.write("config/catalog.yml", "PREFACE:\nCHAPTERS:\nAPPENDICES:\nPOSTFACE:\n")
         File.write("config/page_presets.yml", "presets: {}\n")
-        File.write("config/post_replace_list.yml", "replacements: []\n")
 
         # 1 回目: 欠落分（textlint 系・辞書ディレクトリ）が復元される
         capture_io { VivlioStarter::CLI::DoctorCommands.diagnose_config_files!(fix: true, yes: true) }

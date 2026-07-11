@@ -106,7 +106,6 @@ module VivlioStarter
         File.write('config/book.yml', "book:\n  main_title: 'test'\n")
         File.write('config/catalog.yml', "PREFACE:\nCHAPTERS:\n  - 11-intro\nAPPENDICES:\nPOSTFACE:\n")
         File.write('config/page_presets.yml', "presets:\n  a5_standard:\n    size: A5\n")
-        File.write('config/post_replace_list.yml', "replacements: []\n")
       end
     end
   end

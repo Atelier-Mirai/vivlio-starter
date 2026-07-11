@@ -9,7 +9,7 @@ module VivlioStarter
       #
       # なぜエラー（停止）なのか:
       #   `:::{.class}` は最終的に `<div class="class">` へ、残る `:::` は一律 `</div>` へ
-      #   置換される（config/post_replace_list.yml）。数が合わなければ `<div>` が閉じず、
+      #   置換される（組み込み置換ルール ReplacementRules）。数が合わなければ `<div>` が閉じず、
       #   以降の本文がまるごと枠の中へ飲み込まれる。CodeFenceCheck（``` の数）と同じ性質の
       #   破綻であり、ビルド前に止めるのが親切である。
       #
