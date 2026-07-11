@@ -25,7 +25,7 @@
 ## ビルド / 出力
 
 - [High] **単章ビルドシステムのリファクタリング**: 機能的には完備しているが、ステップ登録ロジックの最適化・メソッド責務の明確化・テストカバレッジ拡充のため整理する（v2.0 のパイプライン見直しと連動）。
-- [Medium] **リスト体裁改善（アルファベットリスト）**: 技術書で頻出する `a. b. c.` に対応。Markdown では `a.` がリストとして解釈されないため、CSS ユーティリティ（`ol.lower-alpha { list-style-type: lower-alpha; }`）を追加し、`<ol class="lower-alpha">` の生 HTML 記法で簡潔に実現する。
+- [Medium] **リスト体裁改善（アルファベットリスト等）**: 仕様策定済み・実装待ち（2026-07-12）。当初案の生 HTML 記法ではなく、Pandoc `fancy_lists` 互換（`a.` `(A)` `i.` 等をそのまま書ける）＋複合番号 `:::{.outline-list}`＋ul レベル別マーカー「● ○ ・」で対応する。→ [nested-list-notation-spec.md](nested-list-notation-spec.md)
 - [Low] **画像の width 属性自動補完**: `![](foo.png)` のように幅指定なしでも、実寸やクラス指定に応じて `width=100%` 等を自動補う（大判図をページ送りにせず収めるため）。
 - [Medium] **改ページ制御の改善（空白ページ対策・任意化）**: 現状 `h2`（節）は一律 `break-before: page`、`---` は `hr.pagebreak { break-after: page }` で改ページする。このため「`---` の直後が `## 見出し`」のように**改ページ指定が二重になると空白ページが 1 枚挟まる**。複数の案があり、今後どれを採るか検討する。
   - **(a) ビルド時 lint で警告**: 「`---` の直後（空行のみ挟んで）が `##`／`#`」など、冗長な改ページになる並びを検出して 🟡 警告する（修正案も提示）。原稿側の予防に有効。
@@ -74,6 +74,7 @@
 
 - [Medium] **コードブロックの行番号と折り返し**: リフロー型 EPUB での行番号ずれ・テーブル化時の体裁崩れの是正。方式の選択肢を整理済み。→ [epub-code-line-numbers-spec.md](epub-code-line-numbers-spec.md)
 - [Medium] **Kindle 向け simple ヘッダーの SVG 画像化**。→ [kindle-simple-header-svg-spec.md](kindle-simple-header-svg-spec.md)
+- [Low] **Kindle 固定レイアウト（`kindle.layout: fixed`・PDF ラスタライズ流用）**: A5 PDF をページ画像化して固定レイアウト KPF にする案。劣化対応不要で組版忠実だが、主力端末 6〜7″ は文庫（A6）サイズで判型が合わず、フォント可変・検索・配信料（約 ¥50〜90/冊 増）を失うため**見送り**。数式・図版主体の本や文庫判型向けの第 3 ターゲットとして RC 後に再検討。調査結果・実装スケッチ → [kindle-fixed-layout-ideas.md](kindle-fixed-layout-ideas.md)
 
 ---
 
