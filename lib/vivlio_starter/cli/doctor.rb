@@ -194,7 +194,9 @@ module VivlioStarter
           'pdftoppm' => 'pdftoppm',
           'gs' => 'gs', # Ghostscript
           'imagemagick' => nil,
-          'inkscape' => 'inkscape',
+          # inkscape はここには含めない。カバー SVG ラスタライズの主経路は rsvg-convert で、
+          # inkscape は ImageMagick の SVG フォールバックでしか使われない任意ツールのため、
+          # kindlepreviewer と同様にループ外で個別に診断する（ハードエラーにしない）。
           'vips' => 'vips',
           'tesseract' => 'tesseract',
           'tesseract-lang' => nil,
@@ -212,8 +214,6 @@ module VivlioStarter
           ok = case label
                when 'imagemagick'
                  command_exists?('convert') || command_exists?('magick')
-               when 'inkscape'
-                 command_runnable?('inkscape')
                when 'tesseract-lang'
                  tesseract_language_available?('jpn')
                when 'waifu2x'
@@ -237,6 +237,13 @@ module VivlioStarter
             missing << label
           end
         end
+
+        # inkscape は任意ツール（カバー SVG ラスタライズの主経路は rsvg-convert。inkscape は
+        # ImageMagick の SVG フォールバックでしか使われない）。存在＋起動可能なら ✅、
+        # 壊れ/不在は --fix(macOS) で復旧を試み、それ以外は 🟡 案内（ハードエラーにしない）。
+        # command_runnable? を使うのは、半壊ラッパー（在るのに exit 126）まで見抜くため。
+        inkscape_ok = command_runnable?('inkscape')
+        Common.log_always('✅ inkscape: OK') if inkscape_ok
 
         # kindlepreviewer（Kindle Previewer 3）は targets: kindle 専用の任意ツール。
         # 存在すれば ✅、無ければ後段で 🟡 案内（ハードエラーにはしない）。
@@ -267,6 +274,15 @@ module VivlioStarter
             missing << KINDLEPREVIEWER_COMMAND
           else
             report_kindle_previewer_optional(is_macos)
+          end
+        end
+
+        # inkscape も同方式（任意ツール）。--fix(macOS) なら復旧を試み、それ以外は 🟡 案内。
+        unless inkscape_ok
+          if options[:fix] && is_macos
+            missing << 'inkscape'
+          else
+            report_inkscape_optional(is_macos)
           end
         end
 
@@ -383,8 +399,8 @@ module VivlioStarter
           # ImageMagick
           system('brew install imagemagick') if missing.include?('imagemagick')
 
-          # Inkscape
-          system('brew install inkscape') if missing.include?('inkscape')
+          # Inkscape（任意・カバー SVG フォールバック用）。半壊 cask も復旧できるよう force 対応。
+          install_inkscape_macos! if missing.include?('inkscape')
 
           # librsvg（rsvg-convert）: EPUB 扉絵/節絵の合成画像ラスタライズ用
           system('brew install librsvg') if missing.include?('rsvg-convert')
@@ -460,8 +476,6 @@ module VivlioStarter
           ok = case label
                when 'imagemagick'
                  command_exists?('convert') || command_exists?('magick')
-               when 'inkscape'
-                 command_runnable?('inkscape')
                when 'tesseract-lang'
                  tesseract_language_available?('jpn')
                when 'waifu2x'
@@ -478,6 +492,13 @@ module VivlioStarter
         still_missing << 'ssl-certificates' if is_macos && !ssl_certificate_configured?
         # プラグイン未導入の利用者には OCR ツールの不足を ❗ として残さない（spec §5.1）
         still_missing.reject! { OCR_OPTIONAL_TOOLS.include?(it) } unless plugin_installed
+
+        # inkscape は任意ツール。--fix で導入を試みてもなお壊れている場合はハード ❗ ではなく
+        # 🟡 で補足する（主経路は rsvg-convert なのでカバー生成自体は可能）。
+        if missing.include?('inkscape') && !command_runnable?('inkscape')
+          report_inkscape_optional(is_macos, install_failed: true)
+        end
+
         if still_missing.empty?
           Common.log_always('✅ すべてのツールがインストールされました')
         else
@@ -756,6 +777,49 @@ module VivlioStarter
                  end
         Common.log_warn('任意ツール kindlepreviewer（Kindle Previewer 3・targets: kindle の KPF 変換時のみ必要）:',
                         detail:)
+      end
+
+      # inkscape 不在/破損時の 🟡 案内（任意ツール）。
+      # カバー SVG のラスタライズ主経路は rsvg-convert なので、無くてもカバー生成は通る。
+      # 半壊 cask（記録は在るのに app 本体が消え、ラッパーが exit 126）の復旧には
+      # 通常の brew install ではなく --force 再インストールが要る点を明示する。
+      #
+      # @param is_macos [Boolean]
+      # @param install_failed [Boolean] --fix で導入を試みた後の案内か（見出しを変える）
+      def report_inkscape_optional(is_macos, install_failed: false)
+        heading = if install_failed
+                    '任意ツール inkscape の導入に失敗しました（主経路は rsvg-convert なのでカバー生成は可能）:'
+                  else
+                    '任意ツール inkscape（ImageMagick の SVG フォールバック用・主経路は rsvg-convert）:'
+                  end
+        detail = if is_macos
+                   "macOS では次で導入/復旧できます:\n" \
+                     '  brew reinstall --cask --force inkscape   # 半壊 cask（app 本体欠落）の復旧\n' \
+                     '  brew install --cask inkscape             # 未導入からの新規インストール'
+                 else
+                   'https://inkscape.org/ から導入し、inkscape に PATH を通してください。'
+                 end
+        Common.log_warn(heading, detail:)
+      end
+
+      # inkscape を macOS へ導入/復旧する（任意ツール）。
+      # 通常の `brew install --cask inkscape` を先に試し、失敗（半壊 cask のアップグレード扱いで
+      # purge に失敗する等）した場合は `brew reinstall --cask --force inkscape` で復旧する。
+      #
+      # @return [Boolean] 導入/復旧に成功したか
+      def install_inkscape_macos!
+        unless system('which brew >/dev/null 2>&1')
+          Common.log_warn('Homebrew が見つからないため inkscape を導入できません。')
+          return false
+        end
+
+        Common.log_always('Inkscape を導入します（Homebrew cask）…')
+        return true if system('brew install --cask inkscape')
+
+        # 半壊 cask（記録は在るのに /Applications/Inkscape.app が無い等）は通常インストールが
+        # アップグレード扱いになり purge に失敗する。--force 再インストールで上書き復旧する。
+        Common.log_warn('通常インストールに失敗しました。壊れた cask を --force で再インストールします…')
+        system('brew reinstall --cask --force inkscape')
       end
 
       # Kindle Previewer 3（kindlepreviewer）を macOS へ導入する。

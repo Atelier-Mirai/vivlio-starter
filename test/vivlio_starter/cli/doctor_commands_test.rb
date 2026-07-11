@@ -298,8 +298,12 @@ module VivlioStarter
                         DoctorCommands.stub :waifu2x_available?, true do
                               DoctorCommands.stub :rouge_gem_available?, true do
                                 DoctorCommands.stub :mathjax_full_available?, true do
+                                # inkscape（任意ツール）は本テストの対象外。実プロセス起動に
+                                # 依存しないよう runnable 扱いにして inkscape 由来の注記を抑止する。
+                                DoctorCommands.stub :command_runnable?, ->(_) { true } do
                                 DoctorCommands.stub :command_exists?, ->(cmd) { !%w[tesseract vips].include?(cmd) } do
                                   DoctorCommands.execute_doctor(options_context)
+                                end
                                 end
                               end
                               end
@@ -335,8 +339,12 @@ module VivlioStarter
                         DoctorCommands.stub :waifu2x_available?, true do
                               DoctorCommands.stub :rouge_gem_available?, true do
                                 DoctorCommands.stub :mathjax_full_available?, true do
+                                # inkscape（任意ツール）は本テストの対象外。実プロセス起動に
+                                # 依存しないよう runnable 扱いにして inkscape 由来の注記を抑止する。
+                                DoctorCommands.stub :command_runnable?, ->(_) { true } do
                                 DoctorCommands.stub :command_exists?, ->(cmd) { !%w[tesseract vips].include?(cmd) } do
                                   DoctorCommands.execute_doctor(options_context)
+                                end
                                 end
                               end
                               end
@@ -434,6 +442,49 @@ module VivlioStarter
         end
 
         assert_includes captured[1], 'KDP'
+      end
+
+      # inkscape が起動不能（不在・半壊ラッパー）でも、他が揃っていれば
+      # 🔴 ハードエラーにせず 🟡 任意ツール注記に留め、🎉 成功で終わることを確認する
+      # （カバー SVG の主経路は rsvg-convert のため inkscape は任意）。
+      def test_broken_inkscape_is_optional_note_not_hard_error
+        with_host_os('linux') do
+          errors = []
+          warns = []
+          successes = []
+
+          Common.stub :log_error, ->(msg, **) { errors << msg } do
+            Common.stub :log_warn, ->(msg, **) { warns << msg } do
+              Common.stub :log_always, ->(msg, **) { successes << msg } do
+                Common.stub :log_info, nil do
+                  DoctorCommands.stub :diagnose_config_files!, nil do
+                    DoctorCommands.stub :pdf_plugin_installed?, true do
+                      DoctorCommands.stub :tesseract_language_available?, true do
+                        DoctorCommands.stub :waifu2x_available?, true do
+                          DoctorCommands.stub :rouge_gem_available?, true do
+                            DoctorCommands.stub :mathjax_full_available?, true do
+                              # inkscape のみ起動不能、他は全て存在＋起動可能とする
+                              DoctorCommands.stub :command_runnable?, ->(cmd) { cmd != 'inkscape' } do
+                                DoctorCommands.stub :command_exists?, ->(_) { true } do
+                                  DoctorCommands.execute_doctor(options_context)
+                                end
+                              end
+                            end
+                          end
+                        end
+                      end
+                    end
+                  end
+                end
+              end
+            end
+          end
+
+          refute errors.any? { it.include?('inkscape') }, 'inkscape の不在を 🔴 にしない（任意ツール）'
+          assert warns.any? { it.include?('inkscape') }, 'inkscape の不在は 🟡 任意ツールとして案内する'
+          assert successes.any? { it.include?('すべての必要ツール') },
+                 'inkscape 以外が揃っていれば診断は成功で終わる'
+        end
       end
 
       # command_runnable? は「存在し、かつ実際に起動できる」ときだけ true を返す。
