@@ -467,6 +467,10 @@ module VivlioStarter
               source_content = File.read(file_path)
               lines = source_content.lines
 
+              # 範囲 include が成立したときだけ #L<開始>-L<実効終了> マーカーをフェンス情報文字列へ
+              # 付与し、post_process（prism_lines）が元ファイルの行番号で採番できるようにする。
+              # 全文取り込み（範囲指定なし・救済不能フォールバック）ではマーカーを付けない。
+              line_marker = ''
               code_content =
                 if start_line && end_line
                   selected_lines = extract_line_range(lines, start_line, end_line)
@@ -487,6 +491,8 @@ module VivlioStarter
                         "#{start_line}-#{lines.size} 行を取り込みます。"
                       )
                     end
+                    # 終了行は extract_line_range のクランプと同値の実効値を書く（GitHub パーマリンク風）。
+                    line_marker = "#L#{start_line}-L#{[end_line, lines.size].min}"
                     selected_lines.join
                   end
                 else
@@ -494,7 +500,7 @@ module VivlioStarter
                 end
 
               language = MarkdownUtils.detect_language(file_path)
-              replacement = "```#{language}:#{original_path}\n#{code_content}```"
+              replacement = "```#{language}:#{original_path}#{line_marker}\n#{code_content}```"
               Common.log_success("置換完了: #{original_path} (#{language})")
 
               replacement

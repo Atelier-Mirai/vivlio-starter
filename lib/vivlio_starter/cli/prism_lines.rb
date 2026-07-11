@@ -100,14 +100,42 @@ module VivlioStarter
         end
       end
 
+      # figcaption 末尾の開始行マーカー（例: prime.rb#L22-L25）。
+      # パスに # が含まれ得るため、末尾アンカーで最後のマーカーのみ解釈する。
+      START_LINE_MARKER_PATTERN = /#L(\d+)(?:-L(\d+))?\z/
+
       # <pre> 要素と内包する <code> に行番号用クラスと要素を付与
       def decorate_pre_tag(pre, document)
+        consume_start_line_marker(pre)
         pre[:class] = combine_class(pre[:class], 'line-numbers')
         code = pre.at_css('code')
         return unless code
 
         code[:class] = combine_class(code[:class], 'line-numbers')
         code.add_child(build_line_numbers_span(document, line_count(pre)))
+      end
+
+      # figcaption 末尾の #L 開始行マーカーを消費し、行番号ガターの開始値へ変換する。
+      # マーカーは pre_process の範囲 include（または著者手書きの ```ruby:foo.rb#L5）が
+      # フェンス情報文字列に載せたもので、VFM を経て figcaption テキストとして届く。
+      # インライン style の counter-reset は prism.css の `counter-reset: linenumber`
+      # （クラスセレクタ）より優先されるため、CSS 側の変更なしで開始値が変わる。
+      # 表示テキストは従来どおりパスのみへ戻す（R8）。
+      def consume_start_line_marker(pre)
+        figure = pre.parent
+        return unless figure&.name == 'figure'
+
+        figcaption = figure.at_css('figcaption')
+        return unless figcaption
+        return unless (m = figcaption.text.match(START_LINE_MARKER_PATTERN))
+
+        figcaption.content = figcaption.text.sub(START_LINE_MARKER_PATTERN, '')
+        start = m[1].to_i
+        return if start < 1 # 不正な開始値はマーカー除去のみ行い従来動作（1 始まり）
+
+        pre['data-start'] = start.to_s
+        reset = "counter-reset: linenumber #{start - 1}"
+        pre['style'] = [pre['style'], reset].compact.reject(&:empty?).join('; ')
       end
 
       # 行数分の <span> line-numbers-rows 構造を生成

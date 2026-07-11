@@ -249,12 +249,16 @@ module VivlioStarter
           restore_plain_emoji_for_epub!(chapter_htmls)
           # 扉絵（h1）・節絵（h2）の合成画像を注入。クリーンは高画質 SVG、Kindle は JPEG（§1-2）。
           inject_heading_images_for_epub!(chapter_htmls, flavor:)
+          # Prism の行番号付き pre を「1 論理行 = 1 ブロック＋ぶら下げインデント」へ変換（F 案・
+          # epub-code-line-numbers-spec §2.1）。長行折返しでの番号ずれ（クリーン EPUB）と
+          # テーブルセル起因の崩れ（Kindle）を同じ構造で解消するため、両フレーバ共通で行う。
+          convert_code_blocks_for_epub!(chapter_htmls)
 
           # --- Phase: Kindle 専用 rewrite（クリーン EPUB は無改変のまま・§1-2）---
           # Kindle(KFX) は WebP・CSS Grid・position:absolute・var()・外部 CSS の画像サイズを解さない。
           # そこで body.vs-kindle マーカー配下で WebP→JPEG・画像 inline 制約・数式 px 化・
-          # コードのテーブル化・admonition ラベル注入を行う。クリーン EPUB（:epub）はこれを一切適用せず、
-          # ::before 角タブ・var() テーマ色・WebP を維持した高品質 EPUB のままにする。
+          # コード行番号の実テキスト注入・admonition ラベル注入を行う。クリーン EPUB（:epub）はこれを
+          # 一切適用せず、::before 角タブ・var() テーマ色・WebP を維持した高品質 EPUB のままにする。
           if flavor == :kindle
             # 残った <img> 参照 WebP を JPEG/PNG へ変換（<img> の出入り確定後＝扉絵/絵文字処理の後）。
             transcode_webp_images_for_epub!(chapter_htmls)
@@ -263,7 +267,7 @@ module VivlioStarter
             mark_body_for_kindle!(chapter_htmls)
             constrain_layout_images_for_epub!(chapter_htmls)
             convert_math_units_for_epub!(chapter_htmls)
-            convert_code_blocks_for_epub!(chapter_htmls)
+            inject_code_line_numbers_for_kindle!(chapter_htmls)
             decorate_admonitions_for_epub!(chapter_htmls)
           end
 
@@ -1524,8 +1528,11 @@ module VivlioStarter
           html_files
         end
 
-        # Prism の行番号付きコードブロックを、Kindle が解す 2 列テーブル（番号｜コード）へ変換する。
-        # Kindle は .line-numbers-rows の position:absolute ガターを描けないため（§4）。
+        # Prism の行番号付きコードブロックを、リフローで崩れない行ブロック構造へ変換する
+        # （F 案・epub-code-line-numbers-spec §1）。1 論理行 = 1 ブロック要素とし、折返しは
+        # ぶら下げインデント（code.css）で番号の右＝コード開始位置へ揃える。行番号はクリーン
+        # EPUB では CSS カウンタ（::before）、Kindle では inject_code_line_numbers_for_kindle!
+        # の実テキスト注入が担うため、ここでは番号を持たない構造だけを作る（両フレーバ共通）。
         #
         # @param html_files [Array<String>] HTML ファイルパスの配列
         # @return [Array<String>] そのままの配列（パス変更なし）
@@ -1538,17 +1545,17 @@ module VivlioStarter
             next if targets.empty?
 
             changed = false
-            targets.each { |pre| changed |= convert_code_pre_to_table!(pre, doc) }
+            targets.each { |pre| changed |= convert_code_pre_to_lines!(pre, doc) }
             next unless changed
 
             PostProcessCommands::HtmlParser.save_html_document(path, doc)
-            Common.log_info("[EPUB] #{File.basename(path)} のコード行番号をテーブル化しました")
+            Common.log_info("[EPUB] #{File.basename(path)} のコードを行ブロック化しました")
           end
           html_files
         end
 
-        # 1 つの pre.line-numbers を table.vs-code-epub へ置換する。失敗時は変更せず false。
-        def convert_code_pre_to_table!(pre, doc)
+        # 1 つの pre.line-numbers を div.vs-code-epub（行ブロック容器）へ置換する。失敗時は変更せず false。
+        def convert_code_pre_to_lines!(pre, doc)
           code = pre.at_css('code')
           return false unless code
 
@@ -1560,11 +1567,18 @@ module VivlioStarter
 
           language_class = code['class'].to_s.split.find { it.start_with?('language-') }
 
-          table = build_code_table(doc, lines, language_class)
-          pre.replace(table)
+          container = build_code_lines(doc, lines, language_class)
+          # 範囲 include の開始行番号（code-include-line-number-spec）を容器へ引き継ぐ。
+          # クリーン EPUB はインライン counter-reset がカウンタ開始値として消費し、
+          # Kindle は注入時に data-start を採番開始値として消費する。
+          if (start = pre['data-start']&.to_i) && start >= 1
+            container['data-start'] = start.to_s
+            container['style'] = "counter-reset: vs-code-ln #{start - 1}"
+          end
+          pre.replace(container)
           true
         rescue StandardError => e
-          Common.log_warn("[EPUB] コードのテーブル化に失敗（元のまま維持）: #{e.message}")
+          Common.log_warn("[EPUB] コードの行ブロック化に失敗（元のまま維持）: #{e.message}")
           false
         end
 
@@ -1621,38 +1635,62 @@ module VivlioStarter
           "<span#{attrs}>"
         end
 
-        # 行配列から table.vs-code-epub を構築する。
-        def build_code_table(doc, lines, language_class)
-          table = Nokogiri::XML::Node.new('table', doc)
-          table['class'] = 'vs-code-epub'
-          tbody = Nokogiri::XML::Node.new('tbody', doc)
-          table.add_child(tbody)
+        # 行配列から div.vs-code-epub（1 論理行 = 1 div.vs-code-line）を構築する。
+        # language-* クラスは容器と各行 <code> の両方に付け、Prism トークン色 CSS と
+        # 既存の [class*="language-"] 系セレクタの適用を保つ。
+        def build_code_lines(doc, lines, language_class)
+          container = Nokogiri::XML::Node.new('div', doc)
+          container['class'] = ['vs-code-epub', language_class].compact.join(' ')
 
-          lines.each_with_index do |line_html, idx|
-            tbody.add_child(build_code_row(doc, idx + 1, line_html, language_class))
+          lines.each do |line_html|
+            line = Nokogiri::XML::Node.new('div', doc)
+            line['class'] = 'vs-code-line'
+            code = Nokogiri::XML::Node.new('code', doc)
+            code['class'] = language_class if language_class
+            # 空行は &nbsp; で 1 行ぶんの高さを保ち、行高を揃える（空ブロックの潰れ防止）。
+            code.inner_html = line_html.strip.empty? ? "\u00A0" : line_html
+            line.add_child(code)
+            container.add_child(line)
           end
-          table
+          container
         end
 
-        # 1 行ぶんの <tr><td 番号><td コード> を組み立てる。
-        def build_code_row(doc, number, line_html, language_class)
-          tr = Nokogiri::XML::Node.new('tr', doc)
+        # Kindle 向けに各コード行の先頭へ実テキストの行番号 span を注入する（F 案 §2.2）。
+        # KFX は ::before と var() を解さないため、vs-adm-label と同じ実体注入パターンで
+        # 番号を持たせる。番号は nbsp で最大桁数へ右詰めパディングし、等幅フォントで桁を
+        # 揃える（CSS の幅指定に依存せず、nbsp＋数字には分割機会が無いため縦折返しも起きない）。
+        # クリーン EPUB はこのフェーズを通らないため span は混入しない。
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def inject_code_line_numbers_for_kindle!(html_files)
+          html_files.each do |path|
+            html = File.read(path, encoding: 'utf-8')
+            doc = PostProcessCommands::HtmlParser.parse_html_document(html)
 
-          num_td = Nokogiri::XML::Node.new('td', doc)
-          num_td['class'] = 'vs-code-num'
-          num_td.content = number.to_s
-          tr.add_child(num_td)
+            changed = false
+            doc.css('div.vs-code-epub').each do |container|
+              lines = container.css('> div.vs-code-line')
+              next if lines.empty?
 
-          line_td = Nokogiri::XML::Node.new('td', doc)
-          line_td['class'] = 'vs-code-line'
-          code = Nokogiri::XML::Node.new('code', doc)
-          code['class'] = language_class if language_class
-          # 空行は &nbsp; で 1 行ぶんの高さを保ち、行高を揃える（空セルの潰れ防止）。
-          code.inner_html = line_html.strip.empty? ? "\u00A0" : line_html
-          line_td.add_child(code)
-          tr.add_child(line_td)
+              start = (container['data-start'] || 1).to_i
+              width = (start + lines.size - 1).to_s.length
+              lines.each_with_index do |line, idx|
+                next if line.at_css('.vs-code-ln') # 二重注入を防ぐ（冪等）
 
-          tr
+                span = Nokogiri::XML::Node.new('span', doc)
+                span['class'] = 'vs-code-ln'
+                span.content = "#{(start + idx).to_s.rjust(width, "\u00A0")} "
+                line.prepend_child(span)
+                changed = true
+              end
+            end
+            next unless changed
+
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+            Common.log_info("[EPUB] #{File.basename(path)} のコード行番号を注入しました")
+          end
+          html_files
         end
 
         # コード行テキストの HTML エスケープ（行スプリットでテキスト断片を再構成するため）。

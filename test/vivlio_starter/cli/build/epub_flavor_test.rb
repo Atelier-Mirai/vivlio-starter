@@ -45,14 +45,17 @@ module VivlioStarter
         @saved_logs&.each { |name, m| Common.define_singleton_method(name, m) }
       end
 
-      # クリーン EPUB（:epub）は Kindle 専用 rewrite を一切行わない
+      # クリーン EPUB（:epub）は Kindle 専用 rewrite を行わない
+      # （コードの行ブロック化は F 案で両フレーバ共通・番号は CSS カウンタなので実テキストなし）
       def test_epub_flavor_keeps_chapter_clean
         doc = build_entries_and_parse(:epub)
 
         refute_includes doc.at_css('body')['class'].to_s.split, 'vs-kindle',
                         'クリーン EPUB に vs-kindle マーカーは付かない'
-        refute_nil doc.at_css('pre.line-numbers'), 'コードはテーブル化されない（pre.line-numbers が残る）'
-        assert_nil doc.at_css('table.vs-code-epub'), 'コードテーブルは生成されない'
+        refute_nil doc.at_css('div.vs-code-epub > div.vs-code-line'),
+                   'コードは行ブロック化される（F 案・両フレーバ共通）'
+        assert_nil doc.at_css('pre.line-numbers'), '元の pre.line-numbers は残らない'
+        assert_nil doc.at_css('span.vs-code-ln'), '行番号の実テキストは注入されない（CSS カウンタで描く）'
         assert_includes doc.at_css('img.vs-math-inline')['style'], 'ex', '数式の ex 単位は変換されない'
         assert_nil doc.at_css('.vs-adm-label'), 'admonition ラベルは注入されない'
       end
@@ -63,8 +66,10 @@ module VivlioStarter
 
         assert_includes doc.at_css('body')['class'].to_s.split, 'vs-kindle',
                         'Kindle EPUB に vs-kindle マーカーが付く'
-        refute_nil doc.at_css('table.vs-code-epub'), 'コードは 2 列テーブルへ変換される'
+        refute_nil doc.at_css('div.vs-code-epub > div.vs-code-line'), 'コードは行ブロックへ変換される'
         assert_nil doc.at_css('pre.line-numbers'), '元の pre.line-numbers は残らない'
+        refute_nil doc.at_css('div.vs-code-line > span.vs-code-ln'),
+                   '行番号の実テキスト span が注入される（KFX は ::before を描けない）'
         style = doc.at_css('img.vs-math-inline')['style']
         refute_includes style, 'ex', '数式の ex は em へ変換される'
         assert_includes style, 'em'

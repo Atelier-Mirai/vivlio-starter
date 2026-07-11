@@ -1,8 +1,10 @@
 @charset "utf-8";
 
-/* コード */
+/* コード
+   フォント変数の定義名は --font-code（page-settings.css）。かつて未定義の
+   別名変数を参照して本文の明朝を継承していたため、総称 fallback も添える。 */
 code {
-  font-family: var(--code-font);
+  font-family: var(--font-code), monospace;
 }
 
 pre,
@@ -17,7 +19,7 @@ pre[class*="language-"] {
   margin-inline: 0;
 
   /* typography */
-  font-family: var(--code-font);
+  font-family: var(--font-code), monospace;
   white-space: pre-wrap;
   line-break: anywhere;
   font-size: 13Q;
@@ -182,61 +184,59 @@ figure[class*=" language-"] > figcaption + pre {
 }
 
 /* =============================================================
-   EPUB(Kindle) 専用 コード行番号テーブル（epub-kindle-layout-spec.md §4）
-   Kindle は Prism の .line-numbers-rows（position:absolute）を描けないため、
-   EpubBuilder が pre.line-numbers を 2 列テーブル（番号｜コード）へ変換する。
-   折り返しても番号は上端に留まり、論理行との対応が崩れない。
+   EPUB 共通 コード行ブロック（epub-code-line-numbers-spec.md F 案）
+   -------------------------------------------------------------
+   リフロー EPUB では Prism の .line-numbers-rows（position:absolute ガター）が
+   長行折返しで番号とずれ、Kindle はそもそも描けない。EpubBuilder が
+   pre.line-numbers を「1 論理行 = 1 div.vs-code-line」の容器 div.vs-code-epub へ
+   変換し（両フレーバ共通）、折返しはぶら下げインデントで番号の右へ揃える。
+   行番号はクリーン EPUB では CSS カウンタ（::before）、Kindle では実テキスト
+   span.vs-code-ln（EpubBuilder が注入）で出す。
+   Kindle(KFX) が var()・論理プロパティを解さないため、共通部は物理プロパティ・
+   具体値のみで書く。この div は EPUB 経路でしか生成されず PDF には現れない。
    ============================================================= */
-body.vs-kindle table.vs-code-epub {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: var(--code-font, monospace);
+.vs-code-epub {
+  font-family: "HackGen35 Console NF", monospace;
   font-size: 0.85em;
   line-height: 1.4;
   margin: 0.4em 0;
-
-  /* 全体は囲み枠で括る（外枠のみ・行ごとの横罫線は出さない） */
+  padding: 0.3em 0.4em;
   border: 1px solid #ccc;
   border-radius: 2px;
 }
 
-/* table.css の td,th{border} と tr:nth-child(even){background} はコード表では邪魔になる。
-   行ごとの横罫線・ゼブラを打ち消し、番号とコードの間の縦仕切りだけ残す（§4）。 */
-body.vs-kindle table.vs-code-epub td {
-  border: none;
-}
-body.vs-kindle table.vs-code-epub tr:nth-child(even) {
-  background: transparent;
+.vs-code-epub .vs-code-line {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;   /* 長トークンの折返し（旧 §6 A 案の継承） */
+  padding-left: 3.1em;       /* 番号幅 2.5em ＋ 区切り余白 0.6em */
+  text-indent: -3.1em;       /* 1 行目だけ左へ戻す ＝ 番号が行頭・折返し行はコード開始位置へ揃う */
 }
 
-body.vs-kindle td.vs-code-num {
-  width: 2.5em;
+/* クリーン EPUB の行番号: CSS カウンタで描き、選択・コピーに混入させない。
+   範囲 include（data-start 付き）は容器のインライン counter-reset が開始値を上書きする。 */
+body.vs-epub .vs-code-epub { counter-reset: vs-code-ln; }
+body.vs-epub .vs-code-line { counter-increment: vs-code-ln; }
+body.vs-epub .vs-code-line::before {
+  content: counter(vs-code-ln);
+  display: inline-block;
+  inline-size: 2.5em;
+  padding-inline-end: 0.6em;
   text-align: right;
-  vertical-align: middle;   /* 番号・コードを上下中央で揃える */
-  padding: 0 0.6em 0 0;
   color: #999;
-  border: none;
-  border-right: 1px solid #eee;   /* 番号｜コードの縦仕切りのみ残す */
-  white-space: nowrap;
-  user-select: none;
 }
-body.vs-kindle .vs-code-line {
-  vertical-align: middle;
-  padding: 0 0 0 0.6em;
-}
-body.vs-kindle .vs-code-line code {
-  white-space: pre-wrap;
-  word-break: break-word;
+
+/* Kindle の行番号: 実テキスト span（nbsp 右詰め）。色だけ添える。 */
+body.vs-kindle .vs-code-ln {
+  color: #999;
 }
 
 /* =============================================================
-   クリーン EPUB（body.vs-epub）のコードブロック リフロー安全化（§6 A 案）
+   クリーン EPUB（body.vs-epub）のコードブロック リフロー安全化（§6 A 案由来）
    -------------------------------------------------------------
    Apple Books 等のリフロー閲覧では Prism の pre{overflow:auto} が改ページできず、
    特定のウィンドウ幅でコードが途中から消える（クリップ）。長行を折り返し、ブロックを
-   通常フローで流して全文を表示する。body.vs-epub は EpubBuilder が EPUB 章 HTML にのみ
-   付与するため PDF には無影響。Kindle はコードをテーブル化（vs-code-epub）するため
-   pre は残らず、この規則は不発。
+   通常フローで流して全文を表示する。コードは通常 vs-code-epub へ行ブロック化されて
+   pre が残らないため、この規則は「行ブロック化に失敗して残存した pre」への安全網。
    ============================================================= */
 body.vs-epub pre[class*="language-"] {
   white-space: pre-wrap;

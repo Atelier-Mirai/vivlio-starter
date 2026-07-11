@@ -490,7 +490,8 @@ module VivlioStarter
 
               out = process_code_include(+"```include:sample.rb:4-99```\n", source_filename: 'x.md')
 
-              assert_includes out, "```ruby:sample.rb\nline4\nline5\n```", '開始〜ファイル末尾までを取り込む'
+              assert_includes out, "```ruby:sample.rb#L4-L5\nline4\nline5\n```",
+                              '開始〜ファイル末尾までを取り込み、マーカーは実効終了行（クランプ後）を書く'
               refute_includes out, 'line3', 'クランプ後も開始行より前は含まない'
             end
           end
@@ -506,7 +507,8 @@ module VivlioStarter
 
               out = process_code_include(+"```include:sample.rb:22-25```\n", source_filename: 'x.md')
 
-              assert_includes out, '```ruby:sample.rb', '言語付きコードブロックとして展開される'
+              assert_includes out, "```ruby:sample.rb\n", '言語付きコードブロックとして展開される'
+              refute_includes out, '#L', 'フォールバック時は開始行マーカーを付けない（1 始まり）'
               assert_includes out, 'line1', '全文（先頭行）が含まれる'
               assert_includes out, 'line5', '全文（末尾行）が含まれる'
             end
@@ -537,9 +539,25 @@ module VivlioStarter
 
               out = process_code_include(+"```include:sample.rb:2-4```\n", source_filename: 'x.md')
 
-              assert_includes out, "```ruby:sample.rb\nline2\nline3\nline4\n```"
+              assert_includes out, "```ruby:sample.rb#L2-L4\nline2\nline3\nline4\n```",
+                              '該当行のみ取り込み、開始行マーカー #L2-L4 をフェンスへ付ける'
               refute_includes out, 'line1'
               refute_includes out, 'line5'
+            end
+          end
+        end
+
+        # 全文 include（範囲指定なし）には開始行マーカーを付けない（従来どおり 1 始まり・R2）。
+        def test_process_code_include_whole_file_has_no_line_marker
+          Dir.mktmpdir do |dir|
+            Dir.chdir(dir) do
+              FileUtils.mkdir_p('codes')
+              File.write('codes/sample.rb', (1..5).map { |i| "line#{i}\n" }.join)
+
+              out = process_code_include(+"```include:sample.rb```\n", source_filename: 'x.md')
+
+              assert_includes out, "```ruby:sample.rb\nline1", 'フェンスはパスのみ（マーカーなし）'
+              refute_includes out, '#L', '全文取り込みにマーカーは付かない'
             end
           end
         end

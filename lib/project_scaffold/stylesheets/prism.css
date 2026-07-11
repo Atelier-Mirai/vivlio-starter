@@ -137,6 +137,8 @@ pre[class*="language-"] {
 pre[class*="language-"].line-numbers {
 	position: relative;
 	padding-left: 3.8em;
+	/* 範囲 include（data-start 付き pre）はインライン style の
+	   counter-reset: linenumber N が下記より優先され、N+1 始まりで採番される。 */
 	counter-reset: linenumber;
 }
 

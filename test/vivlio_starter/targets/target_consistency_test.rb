@@ -82,11 +82,12 @@ class TargetConsistencyTest < Minitest::Test
   GENERATED_FILES = [File.join("stylesheets", "page-settings.css")].freeze
 
   PdfSnap  = Data.define(:page_count, :texts, :outline, :outline_dests, :size, :body)
-  # vs_kindle / vs_code_epub / math_px は Kindle 専用 rewrite の痕跡（§5-3）。
+  # vs_kindle / vs_code_ln / math_px は Kindle 専用 rewrite の痕跡（§5-3）。
   # クリーン EPUB（:epub）では 0/false、Kindle EPUB（…-kindle.epub）では検出されるべき。
+  # vs_code_epub は F 案の行ブロック容器で、両フレーバに現れる（コード行番号の土台）。
   EpubSnap = Data.define(:spine, :body, :size, :webp_files, :unresolved_images,
                          :legacy_code_gutters, :math_ex_units,
-                         :vs_kindle, :vs_code_epub, :math_px)
+                         :vs_kindle, :vs_code_epub, :vs_code_ln, :math_px)
 
   def setup
     skip "config/book.yml が見つかりません（リポジトリルートで実行してください）" \
@@ -239,22 +240,27 @@ class TargetConsistencyTest < Minitest::Test
     end
   end
 
-  # 【クリーン EPUB 非汚染ガード・§5-3】Kindle 専用 rewrite（vs-kindle マーカー・コードテーブル化・
-  # 数式 px 属性）がクリーン EPUB には一切現れない（::before 角タブ・var()・SVG・WebP を維持）。
+  # 【クリーン EPUB 非汚染ガード・§5-3】Kindle 専用 rewrite（vs-kindle マーカー・行番号の実テキスト
+  # span・数式 px 属性）がクリーン EPUB には一切現れない（::before 角タブ・var()・SVG・WebP を維持）。
+  # コードの行ブロック化（vs-code-epub）自体は F 案で両フレーバ共通なので、クリーンにも現れてよい。
   def test_clean_epub_has_no_kindle_degradation
     EPUB_COMBO_KEYS.each do |key|
       snap = fetch!(key, :epub)
       refute snap.vs_kindle, "クリーン epub「#{key}」に vs-kindle マーカーが付いてはいけない"
-      assert_equal 0, snap.vs_code_epub,
-                   "クリーン epub「#{key}」にコードテーブル化（vs-code-epub）が現れてはいけない"
+      assert_equal 0, snap.vs_code_ln,
+                   "クリーン epub「#{key}」に行番号の実テキスト（vs-code-ln）が現れてはいけない（CSS カウンタで描く）"
       assert_equal 0, snap.math_px,
                    "クリーン epub「#{key}」に数式 px 属性が現れてはいけない"
+      assert_equal 0, snap.legacy_code_gutters,
+                   "クリーン epub「#{key}」に Prism の絶対配置ガターが残っています（行ブロック化されていない）"
+      assert_operator snap.vs_code_epub, :>, 0,
+                      "クリーン epub「#{key}」にコード行ブロック（vs-code-epub）が必要（F 案・両フレーバ共通）"
     end
   end
 
   # 【Kindle EPUB の回帰ガード・§5-2/§5-3】Kindle 中間 EPUB は WebP が 1 つも残らず（Kindle 非対応）、
-  # <img> 参照が解決し、コードの絶対配置ガターが残らず（テーブル化済み）、数式 ex が残らない（em 化済み）。
-  # さらに Kindle 専用 rewrite の痕跡（vs-kindle・コードテーブル・数式 px）が確かに現れる。
+  # <img> 参照が解決し、コードの絶対配置ガターが残らず（行ブロック化済み）、数式 ex が残らない（em 化済み）。
+  # さらに Kindle 専用 rewrite の痕跡（vs-kindle・行番号の実テキスト span・数式 px）が確かに現れる。
   def test_kindle_epub_is_degraded_for_amazon
     KINDLE_COMBO_KEYS.each do |key|
       snap = fetch!(key, :kindle)
@@ -263,11 +269,12 @@ class TargetConsistencyTest < Minitest::Test
       assert_empty snap.unresolved_images,
                    "kindle epub「#{key}」に解決できない <img src> があります: #{snap.unresolved_images.first(5).join(', ')}"
       assert_equal 0, snap.legacy_code_gutters,
-                   "kindle epub「#{key}」に Prism の絶対配置ガターが残っています（テーブル化されていない）"
+                   "kindle epub「#{key}」に Prism の絶対配置ガターが残っています（行ブロック化されていない）"
       assert_equal 0, snap.math_ex_units,
                    "kindle epub「#{key}」の数式寸法に ex 単位が残っています（em へ変換されていない）"
       assert snap.vs_kindle, "kindle epub「#{key}」に vs-kindle マーカーが必要"
-      assert_operator snap.vs_code_epub, :>, 0, "kindle epub「#{key}」にコードテーブル（vs-code-epub）が必要"
+      assert_operator snap.vs_code_epub, :>, 0, "kindle epub「#{key}」にコード行ブロック（vs-code-epub）が必要"
+      assert_operator snap.vs_code_ln, :>, 0, "kindle epub「#{key}」に行番号の実テキスト（vs-code-ln）が必要"
       assert_operator snap.math_px, :>, 0, "kindle epub「#{key}」に数式 px 属性が必要"
     end
   end
@@ -386,10 +393,11 @@ class TargetConsistencyTest < Minitest::Test
         # Kindle 専用 rewrite の痕跡（§5-3）。
         # 文字列の素朴な include? だと、開発者ガイド（61-developer.md）が
         # vs-kindle / vs-code-epub という仕組みを解説する地の文・コード例に誤反応する。
-        # クリーン EPUB はそれらの「実マーカー」（body の class・テーブルの class）を
-        # 持たないことが要件なので、マーカーそのものを検出する。
+        # クリーン EPUB は「実マーカー」（body の class・実要素の class）を
+        # 持たない／持つことが要件なので、マーカーそのものを検出する。
         vs_kindle: raw.match?(/<body[^>]*\bvs-kindle\b/),
-        vs_code_epub: raw.scan(/<table[^>]*\bvs-code-epub\b/).size,
+        vs_code_epub: raw.scan(/<div[^>]*\bvs-code-epub\b/).size,
+        vs_code_ln: raw.scan(/<span[^>]*\bvs-code-ln\b/).size,
         math_px: raw.scan(/vs-math[^>]*\s(?:width|height)="\d+"/).size
       )
     end

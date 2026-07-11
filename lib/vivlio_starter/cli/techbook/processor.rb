@@ -343,7 +343,6 @@ module VivlioStarter
               --h3-marker: url("#{p}stylesheets/twemoji/vs-techbook/marker-h3.webp") !important;
               --h4-marker: url("#{p}stylesheets/twemoji/vs-techbook/marker-h4.webp") !important;
               --subtitle-wave-image: url("#{p}stylesheets/twemoji/vs-techbook/wave.webp") !important;
-              --code-font: var(--font-code);
             }
 
             .subsection-marker,
@@ -387,7 +386,7 @@ module VivlioStarter
               background-size: contain;
             }
 
-            /* --code-font 未定義時のOS既定 monospace fallback（Osaka等）を避ける。 */
+            /* Type 3 フォント対策: コードを必ず --font-code で組み、text-shadow を消す。 */
             code,
             pre,
             code[class*="language-"],

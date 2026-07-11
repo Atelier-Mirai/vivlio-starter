@@ -7,7 +7,8 @@
 #   Build::EpubBuilder の Kindle レイアウト是正（epub-kindle-layout-spec.md §6-1）
 #   - mark_body_for_kindle!        : body へ vs-kindle クラス付与
 #   - convert_math_units_for_epub! : inline/display 数式の ex→em 変換
-#   - convert_code_blocks_for_epub! : Prism 行番号 → 2 列テーブル化
+#   - convert_code_blocks_for_epub! : Prism 行番号 pre → 行ブロック化（F 案・両フレーバ共通）
+#   - inject_code_line_numbers_for_kindle! : 行番号の実テキスト注入（Kindle 限定）
 # ================================================================
 
 require 'test_helper'
@@ -169,9 +170,9 @@ module VivlioStarter
           </body></html>
         HTML
         doc = process(html) { |files| Builder.convert_code_blocks_for_epub!(files) }
-        rows = doc.css('table.vs-code-epub tbody > tr')
+        rows = doc.css('div.vs-code-epub > div.vs-code-line')
         assert_equal 3, rows.size
-        assert_equal "\u00A0", rows[1].at_css(%q{.vs-code-line code}).text, %q{空行は nbsp で埋める}
+        assert_equal "\u00A0", rows[1].at_css('code').text, %q{空行は nbsp で埋める}
       end
 
       # display 数式画像の ex 寸法も変換される
@@ -185,8 +186,8 @@ module VivlioStarter
         assert_includes style, 'height: 2.0em'
       end
 
-      # Prism 行番号付きコードが 2 列テーブルへ変換される（番号・トークン span 保持・ガター除去）
-      def test_should_convert_code_block_to_table
+      # Prism 行番号付きコードが行ブロック（1 論理行 = 1 div）へ変換される（F 案・トークン span 保持・ガター除去）
+      def test_should_convert_code_block_to_line_blocks
         html = <<~HTML
           <html><body>
           <pre class="language-ruby line-numbers"><code class="language-ruby line-numbers">def f
@@ -196,16 +197,36 @@ module VivlioStarter
         HTML
         doc = process(html) { |files| Builder.convert_code_blocks_for_epub!(files) }
 
-        table = doc.at_css('table.vs-code-epub')
-        refute_nil table, 'pre.line-numbers は table.vs-code-epub へ変換されるべき'
+        container = doc.at_css('div.vs-code-epub')
+        refute_nil container, 'pre.line-numbers は div.vs-code-epub へ変換されるべき'
+        assert_includes container['class'].split, 'language-ruby', '容器に language-* クラスが付くべき'
         assert_nil doc.at_css('.line-numbers-rows'), '絶対配置ガターは除去されるべき'
         assert_nil doc.at_css('pre.line-numbers'), '元の pre は残らないべき'
+        assert_nil container['data-start'], 'data-start なしの pre では容器にも付かない（1 始まり）'
 
-        rows = table.css('tbody > tr')
-        assert_equal 3, rows.size, '論理行数ぶんの行ができるべき'
-        assert_equal %w[1 2 3], rows.map { it.at_css('.vs-code-num').text }
-        assert_includes rows[1].at_css('.vs-code-line').inner_html, '<span class="token keyword">puts</span>',
+        rows = container.css('> div.vs-code-line')
+        assert_equal 3, rows.size, '論理行数ぶんの行ブロックができるべき'
+        rows.each do |row|
+          assert_includes row.at_css('code')['class'].split, 'language-ruby', '各行 code に language-* が付くべき'
+        end
+        assert_includes rows[1].inner_html, '<span class="token keyword">puts</span>',
                         'トークン span は保持されるべき'
+      end
+
+      # 範囲 include の data-start は容器へ引き継がれ、クリーン EPUB 用カウンタ開始値になる
+      def test_should_carry_data_start_to_container
+        html = <<~HTML
+          <html><body>
+          <pre class="language-ruby line-numbers" data-start="22" style="counter-reset: linenumber 21"><code class="language-ruby line-numbers">a = 1
+          b = 2</code></pre>
+          </body></html>
+        HTML
+        doc = process(html) { |files| Builder.convert_code_blocks_for_epub!(files) }
+
+        container = doc.at_css('div.vs-code-epub')
+        assert_equal '22', container['data-start'], 'data-start は容器へ引き継がれるべき'
+        assert_equal 'counter-reset: vs-code-ln 21', container['style'],
+                     'クリーン EPUB のカウンタ開始値（N-1）が style に載るべき'
       end
 
       # .terminal の <pre> は <code> を持たない（前処理でリテラル化し後処理で code を畳むため）。
@@ -215,7 +236,7 @@ module VivlioStarter
         html = '<html><body><div class="terminal"><pre class="line-numbers">$ vs build</pre></div></body></html>'
         doc = process(html) { |files| Builder.convert_code_blocks_for_epub!(files) }
 
-        assert_empty doc.css('table.vs-code-epub')
+        assert_empty doc.css('div.vs-code-epub')
         assert_equal '$ vs build', doc.at_css('div.terminal > pre').text
       end
 
@@ -230,13 +251,66 @@ module VivlioStarter
         HTML
         doc = process(html) { |files| Builder.convert_code_blocks_for_epub!(files) }
 
-        rows = doc.css('table.vs-code-epub tbody > tr')
+        rows = doc.css('div.vs-code-epub > div.vs-code-line')
         assert_equal 3, rows.size
-        rows.each_with_index do |tr, i|
-          line = tr.at_css('.vs-code-line')
+        rows.each_with_index do |line, i|
           assert_equal 1, line.css('span.token.comment').size,
                        "#{i + 1} 行目もコメント span で包まれているべき（行跨ぎトークンの復元）"
         end
+      end
+
+      # Kindle 行番号注入: nbsp 右詰めパディング＋末尾区切り空白（等幅で桁が揃う）
+      def test_should_inject_right_padded_line_numbers_for_kindle
+        lines = (1..10).map { "line#{it}" }.join("\n")
+        html = <<~HTML
+          <html><body class="vs-kindle">
+          <pre class="language-ruby line-numbers"><code class="language-ruby line-numbers">#{lines}</code></pre>
+          </body></html>
+        HTML
+        doc = process(html) do |files|
+          Builder.convert_code_blocks_for_epub!(files)
+          Builder.inject_code_line_numbers_for_kindle!(files)
+        end
+
+        spans = doc.css('div.vs-code-epub > div.vs-code-line > span.vs-code-ln')
+        assert_equal 10, spans.size, '各行の先頭に番号 span が注入されるべき'
+        assert_equal "\u00A09 ", spans[8].text, '1 桁の番号は nbsp で最大桁数へ右詰めされる'
+        assert_equal '10 ', spans[9].text, '最大桁の番号はパディングなし＋区切り空白'
+        assert_equal spans[0], doc.at_css('div.vs-code-line').element_children.first,
+                     '番号 span は行ブロックの先頭子要素'
+      end
+
+      # Kindle 行番号注入: data-start があれば採番の開始値になる
+      def test_should_inject_line_numbers_from_data_start
+        html = <<~HTML
+          <html><body class="vs-kindle">
+          <pre class="language-ruby line-numbers" data-start="22"><code class="language-ruby line-numbers">a = 1
+          b = 2</code></pre>
+          </body></html>
+        HTML
+        doc = process(html) do |files|
+          Builder.convert_code_blocks_for_epub!(files)
+          Builder.inject_code_line_numbers_for_kindle!(files)
+        end
+
+        assert_equal ['22 ', '23 '], doc.css('span.vs-code-ln').map(&:text),
+                     'data-start=22 なら 22 始まりで採番される'
+      end
+
+      # Kindle 行番号注入は冪等（再実行しても二重注入されない）
+      def test_should_not_double_inject_line_numbers
+        html = <<~HTML
+          <html><body class="vs-kindle">
+          <pre class="language-ruby line-numbers"><code class="language-ruby line-numbers">a = 1</code></pre>
+          </body></html>
+        HTML
+        doc = process(html) do |files|
+          Builder.convert_code_blocks_for_epub!(files)
+          Builder.inject_code_line_numbers_for_kindle!(files)
+          Builder.inject_code_line_numbers_for_kindle!(files)
+        end
+
+        assert_equal 1, doc.css('span.vs-code-ln').size
       end
 
       private

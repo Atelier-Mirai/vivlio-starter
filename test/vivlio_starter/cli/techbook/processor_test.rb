@@ -70,7 +70,9 @@ module VivlioStarter
           assert_includes css, 'background-image: var(--h3-marker) !important;'
           assert_includes css, 'background-image: var(--h4-marker) !important;'
           assert_includes css, %(--subtitle-wave-image: url("#{prefix}stylesheets/twemoji/vs-techbook/wave.webp") !important;)
-          assert_includes css, '--code-font: var(--font-code);'
+          # --code-font 別名注入は code.css の参照名修正（--font-code）で不要になり削除済み
+          refute_includes css, '--code-font'
+          assert_includes css, 'font-family: var(--font-code), monospace !important;'
           refute_includes css, '-webkit-text-stroke: 0 !important;'
           refute_includes css, 'mask-image'
         end

@@ -95,6 +95,65 @@ module VivlioStarter
         assert_includes out, 'line-numbers-rows'
         assert_includes out, 'codered'
       end
+
+      # =============================================================
+      # 開始行マーカー（figcaption 末尾の #L 記法・code-include-line-number-spec §3.2）
+      # =============================================================
+
+      def figure_with(caption, code_lines = "line22\nline23\nline24\nline25")
+        <<~HTML
+          <figure class="language-ruby"><figcaption>#{caption}</figcaption><pre class="language-ruby"><code class="language-ruby">#{code_lines}</code></pre></figure>
+        HTML
+      end
+
+      def test_should_consume_start_line_marker_from_figcaption
+        out = process(figure_with('prime.rb#L22-L25'))
+
+        assert_includes out, 'data-start="22"', 'pre に data-start が付く'
+        assert_includes out, 'counter-reset: linenumber 21', '開始値 N-1 の counter-reset がインライン style に載る'
+        assert_includes out, '<figcaption>prime.rb</figcaption>', 'figcaption はパスのみへ戻る（R8）'
+        assert_equal 4, out.scan('<span></span>').size, 'ガター span の個数は行数どおり'
+      end
+
+      def test_should_keep_default_numbering_without_marker
+        out = process(figure_with('prime.rb'))
+
+        refute_includes out, 'data-start'
+        refute_includes out, 'counter-reset'
+        assert_includes out, '<figcaption>prime.rb</figcaption>'
+      end
+
+      def test_should_keep_default_numbering_for_bare_pre
+        out = process(<<~HTML)
+          <pre class="language-ruby"><code class="language-ruby">x = 1</code></pre>
+        HTML
+
+        refute_includes out, 'data-start'
+        assert_includes out, 'line-numbers-rows'
+      end
+
+      def test_should_append_counter_reset_to_existing_style
+        out = process(<<~HTML)
+          <figure class="language-ruby"><figcaption>prime.rb#L5</figcaption><pre class="language-ruby" style="margin: 0"><code class="language-ruby">x = 1</code></pre></figure>
+        HTML
+
+        assert_includes out, 'margin: 0; counter-reset: linenumber 4', '既存 style へ ; 連結で追記される'
+      end
+
+      def test_should_interpret_only_trailing_marker_for_path_with_hash
+        out = process(figure_with('dir#1/prime.rb#L22-L25'))
+
+        assert_includes out, 'data-start="22"', '末尾アンカーで最後のマーカーのみ解釈する'
+        assert_includes out, '<figcaption>dir#1/prime.rb</figcaption>'
+      end
+
+      def test_should_drop_invalid_zero_start_marker
+        out = process(figure_with('prime.rb#L0'))
+
+        refute_includes out, 'data-start', '開始値 0 は不正としてマーカー除去のみ行う'
+        refute_includes out, 'counter-reset'
+        assert_includes out, '<figcaption>prime.rb</figcaption>', '不正でもマーカーは表示から除去される'
+      end
     end
   end
 end

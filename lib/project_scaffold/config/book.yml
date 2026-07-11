@@ -231,8 +231,8 @@ output:
   # ----------------------------
   # 表紙・裏表紙設定
   # ----------------------------
-  # cover: master # covers/内の著者用意画像(frontcover_master.png, backcover_master.png)を指定
-  cover: light # 標準添付 light 表紙・裏表紙を指定
+  cover: master # covers/内の著者用意画像(frontcover_master.png, backcover_master.png)を指定
+  # cover: light # 標準添付 light 表紙・裏表紙を指定
   # cover: dark   # 標準添付 light 表紙・裏表紙を指定
 
   # ----------------------------
