@@ -51,6 +51,26 @@ module VivlioStarter
           assert_includes svg, '導入'
         end
 
+        # 節題の長短でフォントサイズが不揃いにならない（固定基準・kindle_h2 不揃いの回帰テスト）
+        def test_should_use_uniform_ornament_font_size_regardless_of_title_length
+          short = HeadingImageComposer.ornament_svg(1196, 500, DATA_URI, '8-1', '概要', FONT, '#f0a000')
+          mid   = HeadingImageComposer.ornament_svg(1196, 500, DATA_URI, '8-2', 'はじめかた', FONT, '#f0a000')
+
+          size = ->(svg) { svg[/<text [^>]*font-size="(\d+)"/, 1].to_i }
+          assert_equal size.call(short), size.call(mid), '通常長の節題は同じフォントサイズで組まれる'
+          assert_equal (500 * 0.22).round, size.call(short), '基準サイズは height 比の固定値'
+        end
+
+        # 長い節題は幅に収まるまで縮小される（幅あふれの回帰テスト）
+        def test_should_shrink_ornament_font_for_long_title_to_fit_width
+          svg = HeadingImageComposer.ornament_svg(1196, 500, DATA_URI, '7-5', 'トラブルシューティング', FONT, '#f0a000')
+
+          font_size = svg[/<text [^>]*font-size="(\d+)"/, 1].to_i
+          char_count = '7-5　トラブルシューティング'.length
+          assert_operator font_size * char_count, :<=, (1196 * 0.88).ceil, 'テキスト幅は画像幅 88% に収まる'
+          assert_operator font_size, :<, (500 * 0.22).round, '長い節題は基準サイズより縮む'
+        end
+
         def test_should_wrap_long_frontispiece_title_into_multiple_tspans
           long_title = 'あ' * 30
           svg = HeadingImageComposer.frontispiece_svg(1000, 1414, DATA_URI, '第2章', long_title, FONT)

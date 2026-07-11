@@ -59,6 +59,9 @@ module VivlioStarter
         # RSC-007 になるため、EPUB パッケージ内 CSS から @font-face ごと除去する。
         FONT_FACE_PATTERN = /@font-face\s*\{[^{}]*\}/
 
+        # 非埋め込みでも保持する @font-face（keyfont・keyfont_asset? で実体も同梱される）。
+        KEYFONT_FACE_PATTERN = /font-family:\s*["']?keyfont\b/i
+
         # fonts/ 配下を参照する @import を検出する正規表現。
         # page-settings.css は FontManager 生成の `@import url("fonts/google-fonts.css")`
         # を持つ。非埋め込みで fonts/ を除外すると参照切れ（RSC-007）になるため、
@@ -193,10 +196,19 @@ module VivlioStarter
         # WebP を高画質のまま同梱維持する ── EPUB 3.3 では image/webp がコアメディアタイプ（§4）。
         def localized_stylesheet?(rel, flavor)
           return false if rel.match?(%r{\Atwemoji/[^/]+\.svg\z})
-          return false if rel.start_with?('fonts/') && !embed_fonts?
+          return keyfont_asset?(rel) if rel.start_with?('fonts/') && !embed_fonts?
           return false if flavor == :kindle && rel.match?(/\.webp\z/i)
 
           true
+        end
+
+        # フォント非埋め込みの既定でも同梱する keyfont 資産（kbd キーキャップ描画用 TTF・約 90KB）。
+        # 本文フォントと違いリーダー側に代替が存在せず、非同梱だと 〘Ctrl〙 が素の等幅文字へ
+        # 落ちるため、この 1 書体だけ実体を運ぶ（sanitize_epub_css! も対の @font-face を保持する）。
+        # OTF は PDF の Type 3 回避で TTF へ変換する前の原本なので運ばない（ライセンス表記は
+        # gem 同梱の stylesheets/fonts/Keyboard_font/LICENSE* を正とする）。
+        def keyfont_asset?(rel)
+          rel.start_with?('fonts/Keyboard_font/') && rel.end_with?('.ttf')
         end
 
         # 表紙埋め込みが有効なフレーバに限り、カバー画像を dir/covers/ へコピーする。
@@ -1722,7 +1734,7 @@ module VivlioStarter
           abs_epub = File.expand_path(epub_path)
           patterns = [MARGIN_BOX_PATTERN]
           patterns << WEBP_URL_PATTERN if flavor == :kindle
-          patterns.push(FONT_FACE_PATTERN, FONT_IMPORT_PATTERN) unless embed_fonts?
+          patterns << FONT_IMPORT_PATTERN unless embed_fonts?
 
           Dir.mktmpdir('vs-epub-css') do |tmpdir|
             # unzip のグロブは '*' がパス区切りも跨ぐため EPUB/*.css で全 CSS を取り出す
@@ -1732,6 +1744,7 @@ module VivlioStarter
             changed = Dir.glob(File.join(tmpdir, 'EPUB/**/*.css')).filter_map do |path|
               css = File.read(path, encoding: 'UTF-8')
               sanitized = patterns.inject(css) { |acc, pat| acc.gsub(pat, '') }
+              sanitized = strip_font_faces_except_keyfont(sanitized) unless embed_fonts?
               next if sanitized == css
 
               File.write(path, sanitized)
@@ -1750,6 +1763,12 @@ module VivlioStarter
           end
         rescue StandardError => e
           Common.log_warn("[EPUB] CSS サニタイズに失敗: #{e.message}")
+        end
+
+        # 非埋め込み時の @font-face 除去。keyfont（kbd キーキャップ描画）だけは実体を
+        # 同梱する（keyfont_asset?）ため対の @font-face を保持し、他はすべて除去する。
+        def strip_font_faces_except_keyfont(css)
+          css.gsub(FONT_FACE_PATTERN) { |block| block.match?(KEYFONT_FACE_PATTERN) ? block : '' }
         end
 
         # ================================================================

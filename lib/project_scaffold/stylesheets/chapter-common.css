@@ -186,9 +186,14 @@ strong {
   color: var(--color-strong);
 }
 
-/* キーボードフォント */
+/* キーボードフォント（keyfont は EPUB/Kindle にも実体同梱される・epub_builder keyfont_asset?） */
 kbd {
   font-family: keyfont, var(--font-code);
+}
+
+/* Kindle(KFX) は var() を含む宣言を丸ごと落とすため、具体値で書き直す（Kindle 劣化規約） */
+body.vs-kindle kbd {
+  font-family: keyfont, monospace;
 }
 
 /* リンク */

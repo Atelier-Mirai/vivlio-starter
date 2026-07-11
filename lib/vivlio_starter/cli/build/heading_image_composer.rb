@@ -123,7 +123,11 @@ module VivlioStarter
         def ornament_svg(width, height, data_uri, number, title, font_family, number_color)
           segments  = [number, title].reject(&:empty?)
           char_count = [segments.join('　').length, 1].max
-          font_size  = (width * 0.80 / char_count).floor.clamp((height * 0.16).round, (height * 0.34).round)
+          # フォントサイズは全節で同じ基準値（height 比）に固定し、長いタイトルだけ
+          # 幅 88% に収まるまで縮小する。旧実装の「幅いっぱいへの拡大＋clamp」は、
+          # 短い節題（例「8-1 概要」）が上限に張り付いて巨大化し、長い節題は下限で
+          # 幅からあふれて、節ごとに見出しの大きさが不揃いになっていた。
+          font_size  = [(height * 0.22).round, (width * 0.88 / char_count).floor].min
           halo       = [(font_size * 0.14).round, 1].max
           baseline   = (height * 0.50 + font_size * 0.34).round
 

@@ -213,10 +213,13 @@ figure[class*=" language-"] > figcaption + pre {
 }
 
 /* クリーン EPUB の行番号: CSS カウンタで描き、選択・コピーに混入させない。
-   範囲 include（data-start 付き）は容器のインライン counter-reset が開始値を上書きする。 */
-body.vs-epub .vs-code-epub { counter-reset: vs-code-ln; }
-body.vs-epub .vs-code-line { counter-increment: vs-code-ln; }
-body.vs-epub .vs-code-line::before {
+   範囲 include（data-start 付き）は容器のインライン counter-reset が開始値を上書きする。
+   Kindle の body は vs-epub と vs-kindle の両方を持つ（vs-epub は両フレーバ共通の基底マーカー）。
+   Kindle には実テキスト span.vs-code-ln が注入済みのため、:not(.vs-kindle) で除外しないと
+   ::before を描ける環境（Kindle Previewer 等）で行番号が二重表示になる。 */
+body.vs-epub:not(.vs-kindle) .vs-code-epub { counter-reset: vs-code-ln; }
+body.vs-epub:not(.vs-kindle) .vs-code-line { counter-increment: vs-code-ln; }
+body.vs-epub:not(.vs-kindle) .vs-code-line::before {
   content: counter(vs-code-ln);
   display: inline-block;
   inline-size: 2.5em;

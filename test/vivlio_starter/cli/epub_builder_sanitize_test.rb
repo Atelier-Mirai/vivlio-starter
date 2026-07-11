@@ -180,11 +180,13 @@ module VivlioStarter
         assert_includes result, 'href="00-preface.xhtml"', 'href は変更しないべき'
       end
 
-      # --- EPF-09: フォント非埋め込み時に @font-face と fonts/ への @import を除去（既定） ---
+      # --- EPF-09: フォント非埋め込み時に @font-face と fonts/ への @import を除去（既定）。
+      #     ただし keyfont（kbd キーキャップ描画・実体同梱）だけは保持する ---
       def test_should_strip_font_face_when_not_embedding_fonts
         css = <<~CSS
           @import url("fonts/google-fonts.css");
           @font-face { font-family: "Zen Old Mincho"; src: url("fonts/ZenOldMincho-Regular.ttf"); }
+          @font-face { font-family: keyfont; src: url("fonts/Keyboard_font/Keyboard-JP-Regular.ttf") format("truetype"); }
           body { font-family: var(--font-main-text); }
         CSS
         epub = build_epub_with_css('EPUB/stylesheets/page-settings.css' => css)
@@ -192,12 +194,13 @@ module VivlioStarter
         Build::EpubBuilder.sanitize_epub_css!(epub)
 
         result = read_css_from_epub(epub, 'EPUB/stylesheets/page-settings.css')
-        refute_includes result, '@font-face', '非埋め込み時 @font-face は除去されるべき'
+        refute_includes result, 'Zen Old Mincho', '非埋め込み時 @font-face は除去されるべき'
         refute_includes result, 'fonts/google-fonts.css', 'fonts/ への @import も除去されるべき（RSC-007 回避）'
+        assert_includes result, 'font-family: keyfont', 'keyfont の @font-face は保持されるべき（実体同梱）'
         assert_includes result, 'font-family: var(--font-main-text)', '通常の font-family 宣言は残すべき'
       end
 
-      # --- EPF-09b: 非埋め込み時はローカライズが fonts/ をコピーしない ---
+      # --- EPF-09b: 非埋め込み時はローカライズが fonts/ をコピーしない（keyfont TTF を除く） ---
       def test_should_exclude_fonts_dir_when_not_embedding
         create_stylesheet_fixture
         dir = '.cache/vs/build/epub'
@@ -207,6 +210,10 @@ module VivlioStarter
         assert File.exist?(File.join(dir, 'stylesheets/theme.css')), 'CSS はローカライズされるべき'
         refute File.exist?(File.join(dir, 'stylesheets/fonts/zen.ttf')),
                '非埋め込み時 fonts/ はローカライズしないべき'
+        assert File.exist?(File.join(dir, 'stylesheets/fonts/Keyboard_font/Keyboard-JP-Regular.ttf')),
+               'keyfont TTF は非埋め込みでも同梱されるべき（kbd キーキャップ描画）'
+        refute File.exist?(File.join(dir, 'stylesheets/fonts/Keyboard_font/Keyboard-JP-Regular.otf')),
+               'keyfont の OTF 原本は運ばない'
       end
 
       # --- EPF-10: 埋め込み経路（embed_fonts? = true）では fonts/@font-face を保持 ---
@@ -331,12 +338,14 @@ module VivlioStarter
       # ローカライズ検証用の stylesheets/ ソースツリーを作る。
       def create_stylesheet_fixture
         FileUtils.mkdir_p('stylesheets/twemoji/vs-techbook')
-        FileUtils.mkdir_p('stylesheets/fonts')
+        FileUtils.mkdir_p('stylesheets/fonts/Keyboard_font')
         File.write('stylesheets/theme.css', 'body {}')
         File.write('stylesheets/twemoji/1f004.svg', '<svg/>')
         File.write('stylesheets/twemoji/vs-techbook/mark.svg', '<svg/>')
         File.write('stylesheets/twemoji/vs-techbook/circled-1.webp', 'webp')
         File.write('stylesheets/fonts/zen.ttf', 'font')
+        File.write('stylesheets/fonts/Keyboard_font/Keyboard-JP-Regular.ttf', 'keyfont')
+        File.write('stylesheets/fonts/Keyboard_font/Keyboard-JP-Regular.otf', 'keyfont-otf')
       end
 
       # ローカライズ検証用の images/ ソースツリーを作る（生成物の残骸を含む）。

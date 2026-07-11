@@ -745,12 +745,9 @@ terms:
   - chapter: 61-developer
     occurrence: 35
     anchor_id: gls-src-61-developer-html-35
-  - chapter: 61-developer
-    occurrence: 36
-    anchor_id: gls-src-61-developer-html-36
   - chapter: 92-pdf-read
-    occurrence: 37
-    anchor_id: gls-src-92-pdf-read-html-37
+    occurrence: 36
+    anchor_id: gls-src-92-pdf-read-html-36
 - term: HexaPDF
   yomi: HexaPDF
   flags: i
@@ -5371,4 +5368,4 @@ terms:
   - chapter: 61-developer
     context: " `page.use` で `page_presets.yml` のプリセット名を指定します（例: `b5_airy`）。 `output.targets`"
   updated_at: '2026-07-05 21:00:15'
-updated_at: '2026-07-11 15:52:55'
+updated_at: '2026-07-12 06:54:48'
