@@ -266,7 +266,10 @@ output:
     #   keep  = 拡大しない（塗り足し帯は白。フチが紙端まで無いデザイン向け）
     #   ※ covers/frontcover_master_bleed.png / backcover_master_bleed.png を置くと
     #      塗り足し込みの専用画像として最優先で自動採用され、この設定は無視される
-    # 出力は PDF/X-4 準拠（ねこのしっぽ、日光企画で対応済み）
+    # icc_profile: /path/to/JapanColor2001Coated.icc # CMYK 変換用 ICC を明示指定（任意）
+    #   未指定なら @vivliostyle/cli 同梱の press-ready の Japan Color 2001 Coated を自動利用。
+    #   表紙 CMYK は ICC ベース変換で PDF/X-1a:2001（出力インテント Japan Color 2001 Coated）化される。
+    #   ICC が見つからない環境では従来どおり素朴な CMYK 変換にフォールバックする。
     # 隠しノンブルも PDF 結合後に自動書き込み
     # PDF しおり（アウトライン）が必要な場合は専用 gem vivlio-starter-pdf の導入を推奨
 

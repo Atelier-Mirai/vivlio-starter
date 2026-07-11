@@ -2,6 +2,7 @@
 
 require 'fileutils'
 require 'yaml'
+require_relative 'build/cmyk_converter'
 
 module VivlioStarter
   module CLI
@@ -406,11 +407,13 @@ module VivlioStarter
       #
       # crop_marks: true 時（print_pdf ターゲット）:
       #   PNG → 充填サイズ(fill=:bleed なら trim+bleed×2 / :trim なら trim)へリサイズ
-      #       → トンボ代(offset)帯を白で残して全紙サイズへ中央配置 + CMYK変換 → 中間 PDF
-      #       → add_crop_marks_overlay でトンボを追加 → 最終 PDF
+      #       → トンボ代(offset)帯を白で残して全紙サイズへ中央配置 → 中間 PDF
+      #       → add_crop_marks_overlay でトンボを追加
+      #       → Build::CmykConverter で Japan Color 2001 Coated → CMYK PDF/X-1a 化（ICC 有時）
       #
-      # Ghostscript による PDF/X-1a 変換は省略し、ImageMagick のみで処理する。
-      # PDF/X-1a 対応が必要な場合は将来のオプション機能として追加する。
+      # ICC が使える環境（press-ready 同梱 or 設定指定）ではレイアウトを RGB で作り、
+      # gs で ICC ベース CMYK 変換＋PDF/X-1a 出力インテント埋込を行う。ICC 不在時は
+      # 従来どおり ImageMagick の素朴 CMYK 変換にフォールバックする。
       #
       # @param input_png  [String]  入力 PNG パス
       # @param output_pdf [String]  出力 PDF パス
@@ -458,15 +461,21 @@ module VivlioStarter
 
           temp_pdf = "#{output_pdf}.temp.pdf"
 
+          # ICC ベースの CMYK 変換が可能なら、レイアウトは RGB で作り、後段の gs で
+          # Japan Color 2001 Coated → CMYK PDF/X-1a 化する（くすみ解消・出力インテント埋込）。
+          # ICC が無い環境では従来どおり magick の素朴 CMYK 変換にフォールバックする。
+          use_icc = Build::CmykConverter.available?
+          colorspace_args = use_icc ? [] : ['-colorspace', 'CMYK']
+
           begin
-            # Step 1: 画像を充填サイズへリサイズ→白背景の全紙サイズへ中央配置→CMYK PDF
+            # Step 1: 画像を充填サイズへリサイズ→白背景の全紙サイズへ中央配置→PDF
             cmd_convert = convert_cmd + [
               input_png,
               '-resize', "#{content_w_px}x#{content_h_px}!",
               '-background', 'white',
               '-gravity', 'center',
               '-extent', "#{total_w_px}x#{total_h_px}",
-              '-colorspace', 'CMYK',
+              *colorspace_args,
               '-density', DPI.to_s,
               '-units', 'PixelsPerInch',
               temp_pdf
@@ -478,6 +487,13 @@ module VivlioStarter
 
             # Step 2: add_crop_marks_overlay でトンボを追加
             CreateCommands.add_crop_marks_overlay(temp_pdf, trim_w_mm, trim_h_mm, bleed_mm, offset_mm)
+
+            # Step 2b: ICC ベースの CMYK PDF/X-1a 化（gs で色変換＋出力インテント埋込、
+            # qpdf で TrimBox/BleedBox 確定）。失敗時は RGB のまま残す（印刷所側で変換可能）。
+            if use_icc
+              Build::CmykConverter.to_pdfx!(temp_pdf, bleed_mm:, crop_offset_mm: offset_mm,
+                                                      title: File.basename(output_pdf, '.pdf'))
+            end
 
             # Step 3: 中間PDFを最終PDFにリネーム
             FileUtils.mv(temp_pdf, output_pdf)

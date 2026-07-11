@@ -14,15 +14,6 @@
   状態: 設計メモ・実装保留
   次のアクション: フチなし要素のある本が実際に企画されるまで着手しない
 
-`cover-cmyk-color-management-spec.md`
-: 表紙の CMYK カラーマネジメント改善についての仕様メモ。
-  状態: 仕様メモ（未確定）・未着手（前提だった generated-assets 移設は 2026-07-11 完了→着手可能）
-  次のアクション: 実装の前に調査・方針決定が必要:
-  (1) Japan Color 2001 Coated ICC の入手経路（gem 同梱の再配布可否をライセンス調査／
-  ユーザー用意＋doctor 検出／設定キー指定のいずれか）(2) PDF/X-1a 化まで行うか docs を
-  実態に合わせるか。選択肢を調査・提示してユーザーが決定 → 仕様確定 → 実装の順。
-  ※ 旧ゲート「full-bleed ジオメトリ議論待ち」は撤廃（本文§留意点どおりジオメトリと独立）
-
 `table-colspan-spec.md`
 : テーブルの横結合（colspan）と複数行ヘッダーに対応する仕様（PHP Markdown Extra / Backlog 風の記法拡張）。
   状態: 確定仕様・未着手
@@ -63,8 +54,10 @@
 - **print-pdf-full-bleed-notes は実装対象ではない。**
   「フチなし要素のある本」が実際に企画されるまで保留（本文§0・§5に明記）。①（print-pdf-derivation-spec）の `full_bleed` 設定（§2.6）自体は①側の実装で完結するので、full-bleed-notes を待つ必要はない。
 
-- **cover-cmyk-color-management-spec は print-pdf-full-bleed-notes の表紙ジオメトリ議論が発端。**
-  full-bleed 側が動くまでは着手の実益が薄い。
+- **cover-cmyk-color-management-spec は 2026-07-11 に実装完了し `docs/archives/` へ移動した。**
+  表紙 CMYK を Japan Color 2001 Coated の ICC ベース変換で PDF/X-1a:2001 化（出力インテント埋込）。
+  ICC は @vivliostyle/cli 同梱の press-ready から自動解決（`output.print_pdf.icc_profile` で上書き可）。
+  gs は SAFER 維持のため `--permit-file-read`、箱確定は `PrintGeometry.finalize_boxes!`（qpdf）。
 
 - **generated-assets-cache-relocation-spec は 2026-07-11 に実装完了し `docs/archives/` へ移動した。**
   covers 生成物は `.cache/vs/covers/`・テーマ画像バリアントは `.cache/vs/theme-images/` へ移設。

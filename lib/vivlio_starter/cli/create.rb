@@ -48,6 +48,7 @@
 
 require 'fileutils'
 require_relative 'build/pdf_merger'
+require_relative 'build/cmyk_converter'
 require_relative 'cover'
 
 module VivlioStarter
@@ -622,6 +623,14 @@ module VivlioStarter
         return unless success
 
         add_crop_marks_overlay(output, trim_w_mm, trim_h_mm, bleed_mm, crop_offset_mm)
+
+        # rsvg-convert 出力は RGB。ICC が使えるなら Japan Color 2001 Coated → CMYK PDF/X-1a
+        # 化する（従来この SVG 経路は RGB のまま「CMYK カバー」を名乗っていた。ICC 無し環境では
+        # 従来どおり RGB のまま＝挙動不変）。
+        if Build::CmykConverter.available?
+          Build::CmykConverter.to_pdfx!(output, bleed_mm:, crop_offset_mm:,
+                                                title: File.basename(output, '.pdf'))
+        end
       end
 
       # viewBox を塗り足し分だけ外側へ拡張し、拡張後 viewBox でクリップする。
