@@ -54,7 +54,13 @@ module VivlioStarter
         EMBED_MAX_EDGE = 1400
 
         # ラスタライズ後の出力幅（px）。viewBox 比からの縦は rsvg が自動算出する。
-        RENDER_WIDTH = { frontispiece: 1000, ornament: 1400 }.freeze
+        RENDER_WIDTH = { frontispiece: 1000, frontispiece_tail: 1000, ornament: 1400 }.freeze
+
+        # 扉絵の上下分割位置（原画高さ比）。上側（0〜62%）に「飾り上部＋章番号＋タイトル」を
+        # 収め、下側（62%〜）は文字なしの裾飾りとして chapter-lead の後ろへ流す。
+        # PDF の「見出し → リード → 裾の飾り」という読み順を EPUB のリフローで再現するための
+        # 分割で、同梱テーマの飾り（四隅装飾）は 62% 前後が絵柄の空白帯にあたる。
+        FRONTISPIECE_SPLIT = 0.62
 
         module_function
 
@@ -76,7 +82,8 @@ module VivlioStarter
         # @param image_path [String] 飾り画像の実ファイルパス（portrait/landscape webp 等）
         # @param number [String] 見出し番号（"第1章" / "1-1" 等。空可）
         # @param title [String] 見出しタイトル
-        # @param kind [Symbol] :frontispiece（扉絵・縦）/ :ornament（節絵・横）
+        # @param kind [Symbol] :frontispiece（扉絵上部・縦）/ :frontispiece_tail（扉絵裾・文字なし）/
+        #   :ornament（節絵・横）
         # @param font_family [String] <text> 用フォントスタック（単一引用符で囲んだ名前の羅列）
         # @param number_color [String] 節絵の番号色（CSS 色。既定はダーク）
         # @return [String, nil] SVG 文字列。画像が読めない/寸法不明時は nil（→ simple 縮退）
@@ -90,12 +97,15 @@ module VivlioStarter
           width, height = dims
           case kind
           when :frontispiece then frontispiece_svg(width, height, data_uri, number.to_s.strip, title.to_s.strip, font_family)
+          when :frontispiece_tail then frontispiece_tail_svg(width, height, data_uri)
           when :ornament     then ornament_svg(width, height, data_uri, number.to_s.strip, title.to_s.strip, font_family, number_color)
           end
         end
 
-        # 扉絵（portrait）の合成 SVG。番号を上部に、タイトルを中央に縦並びで重ねる。
+        # 扉絵（portrait）上部の合成 SVG。番号を上部に、タイトルを中央に縦並びで重ねる。
         # PDF の image-header.css（番号→下線→タイトル）の意図を SVG 座標で再現する。
+        # viewport は FRONTISPIECE_SPLIT で切り、原画の下側（裾飾り）は含めない——
+        # 裾は frontispiece_tail_svg が受け持ち、リード文の後ろへ流す（読み順を PDF と揃える）。
         def frontispiece_svg(width, height, data_uri, number, title, font_family)
           number_size = (width * 0.052).round
           # 0.085 だと 1 行 9 字となり「拡張記法リファレンス」級（10 字）が不格好に
@@ -103,9 +113,8 @@ module VivlioStarter
           title_size  = (width * 0.072).round
           halo        = [(title_size * 0.14).round, 1].max
 
-          # --- Phase: タイトルを段組み（CJK 全角想定で 1 行字数を算出） ---
-          per_line   = [(width * 0.80 / title_size).floor, 1].max
-          lines      = wrap_text(title, per_line)
+          # --- Phase: タイトルを段組み（表示幅ベース・半角 0.55 換算） ---
+          lines      = wrap_text_by_width(title, width * 0.80 / title_size)
           line_step  = (title_size * 1.4).round
 
           # --- Phase: 縦位置（タイトル行ブロックをページ中央やや上に centering） ---
@@ -118,7 +127,14 @@ module VivlioStarter
           parts << frontispiece_number(number, width, number_y, underline_y, number_size, font_family) unless number.empty?
           parts << frontispiece_title(lines, width, first_y, line_step, title_size, halo, font_family) unless lines.empty?
 
-          svg_wrapper(width, height, [number, title], parts)
+          svg_wrapper(width, (height * FRONTISPIECE_SPLIT).round, [number, title], parts)
+        end
+
+        # 扉絵（portrait）裾の合成 SVG（文字なしの飾りのみ）。原画の FRONTISPIECE_SPLIT 以降を
+        # そのまま見せる装飾で、chapter-lead の後ろに <img alt=""> として注入される。
+        def frontispiece_tail_svg(width, height, data_uri)
+          cut = (height * FRONTISPIECE_SPLIT).round
+          svg_wrapper(width, height - cut, [], [image_element(width, height, data_uri)], view_y: cut)
         end
 
         # 節絵の見出しフォント基準（height 比）。kindle_h2 実測フィードバックで確定した
@@ -250,20 +266,29 @@ module VivlioStarter
         # width/height 属性（intrinsic size）を明示する——viewBox だけだと <img> で参照した
         # ときに一部リーダーが縦横比を確定できず、レイアウト箱と描画サイズがずれて
         # 後続コンテンツへのはみ出し（epub_h2 実測）を誘発する。
-        def svg_wrapper(width, height, label_segments, parts)
+        # view_y で viewBox の縦開始位置を指定でき、原画座標のまま部分帯を切り出せる
+        # （扉絵の上下分割）。viewport 外は SVG 既定でクリップされる。
+        def svg_wrapper(width, height, label_segments, parts, view_y: 0)
           aria = escape_attr(label_segments.reject(&:empty?).join(' '))
           %(<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ) +
-            %(width="#{width}" height="#{height}" viewBox="0 0 #{width} #{height}" ) +
+            %(width="#{width}" height="#{height}" viewBox="0 #{view_y} #{width} #{height}" ) +
             %(preserveAspectRatio="xMidYMid meet" role="img" aria-label="#{aria}">) +
             parts.join +
             '</svg>'
         end
 
-        # テキストを 1 行あたり per_line 文字で折り返す（CJK 全角を 1 文字として数える素朴版）。
-        def wrap_text(text, per_line)
+        # テキストを表示幅（全角換算 capacity）で折り返す。半角は 0.55 換算で数え、
+        # Latin 語の途中では直近の空白で折る（split_by_display_width と同じ規則）。
+        def wrap_text_by_width(text, capacity)
           return [] if text.empty?
 
-          text.chars.each_slice(per_line).map(&:join)
+          lines = []
+          rest = text
+          until rest.empty?
+            head, rest = split_by_display_width(rest, capacity)
+            lines << head
+          end
+          lines
         end
 
         # 合成 SVG をフラット JPEG（バイト列）へラスタライズする。

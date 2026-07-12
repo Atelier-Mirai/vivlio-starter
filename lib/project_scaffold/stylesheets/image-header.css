@@ -14,10 +14,13 @@
    章タイトル
    ------------------------------------------------------------- */
 /* stylelint-disable */
+/* background-position は var() を calc() 内で解せない（宣言ごと落ちて左上 0 0 になる）ため、
+   ここでは var 不使用の中央配置を既定とし、綴じオフセット（--frontispiece-binding-offset 由来）は
+   生成物 book-settings.css がリテラル値の @page :nth(1) 上書きとして焼き込む。 */
 @page :nth(1) {
   background-image: var(--frontispiece-image);
   background-repeat: no-repeat;
-  background-position: calc(50% + var(--frontispiece-binding-offset));
+  background-position: center center;
   background-attachment: fixed;
   background-size: var(--frontispiece-background-size);
 }

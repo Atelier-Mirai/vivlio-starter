@@ -33,13 +33,26 @@ module VivlioStarter
           svg = HeadingImageComposer.frontispiece_svg(1000, 1414, DATA_URI, '第1章', '春のお花見', FONT)
 
           assert svg.start_with?('<svg')
-          assert_includes svg, 'viewBox="0 0 1000 1414"'
+          # viewport は上下分割位置（62%）で切られ、原画の裾は含めない
+          cut = (1414 * HeadingImageComposer::FRONTISPIECE_SPLIT).round
+          assert_includes svg, %(viewBox="0 0 1000 #{cut}")
+          assert_includes svg, %(width="1000" height="#{cut}")
           assert_includes svg, %(xlink:href="#{DATA_URI}")
           assert_includes svg, 'aria-label="第1章 春のお花見"'
           assert_includes svg, '第1章'
           assert_includes svg, '春のお花見'
           # 番号には下線（line）が付く
           assert_includes svg, '<line'
+        end
+
+        # 扉絵の裾（文字なし）は原画の分割位置以降を切り出した装飾 SVG になる
+        def test_should_compose_frontispiece_tail_as_textless_band
+          svg = HeadingImageComposer.frontispiece_tail_svg(1000, 1414, DATA_URI)
+
+          cut = (1414 * HeadingImageComposer::FRONTISPIECE_SPLIT).round
+          assert_includes svg, %(viewBox="0 #{cut} 1000 #{1414 - cut}"), '裾は分割位置から始まる帯'
+          assert_includes svg, %(width="1000" height="#{1414 - cut}")
+          refute_includes svg, '<text', '裾に文字は載せない'
         end
 
         def test_should_compose_ornament_with_colored_number_tspan

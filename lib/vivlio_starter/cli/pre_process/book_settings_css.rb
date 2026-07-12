@@ -91,6 +91,7 @@ module VivlioStarter
           <<~CSS
             #{header_comment}
             #{page_size_rule(page_cfg)}
+            #{frontispiece_position_rule(settings, page_cfg)}
             :root {
             #{root_lines.map { "  #{it}" }.join("\n")}
             }
@@ -185,6 +186,19 @@ module VivlioStarter
           return '' if w.empty? || h.empty?
 
           "@page { size: #{w} #{h}; }"
+        end
+
+        # 扉背景の background-position もリテラル必須——Vivliostyle は background-position の
+        # calc() 内 var() を解さず宣言ごと落とし、背景が左上（0 0）へ偏る（pdf_chapter5 実測。
+        # background-size の calc()+var() は解すので size 側は image-header.css のままでよい）。
+        # 綴じオフセットを生成時に焼き込み、image-header.css の既定（center center）を上書きする。
+        def frontispiece_position_rule(settings, page_cfg)
+          return '' if settings[:theme_style] == 'simple'
+
+          offset = page_cfg[:frontispiece_binding_offset].to_s.strip
+          return '' if offset.empty? || offset == '0mm'
+
+          "@page :nth(1) { background-position: calc(50% + #{offset}) center; }"
         end
 
         # ================================================================

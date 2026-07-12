@@ -5368,4 +5368,4 @@ terms:
   - chapter: 61-developer
     context: " `page.use` で `page_presets.yml` のプリセット名を指定します（例: `b5_airy`）。 `output.targets`"
   updated_at: '2026-07-05 21:00:15'
-updated_at: '2026-07-12 15:11:33'
+updated_at: '2026-07-12 16:30:20'

@@ -1057,6 +1057,9 @@ module VivlioStarter
         end
 
         # 章扉（data-chapter-number-display を持つ h1）に扉絵画像を注入する。
+        # 扉絵は上下 2 分割で運ぶ（FRONTISPIECE_SPLIT）: h1 には「飾り上部＋番号＋タイトル」の
+        # 上側を、直後の chapter-lead の後ろには文字なしの裾飾りを置き、PDF の
+        # 「見出し → リード → 裾の飾り」という読み順をリフローでも再現する（epub_chapter5 実測）。
         def inject_frontispiece_headings!(doc, context)
           return false unless context[:frontispiece]
 
@@ -1073,9 +1076,29 @@ module VivlioStarter
             next unless src
 
             apply_image_heading!(h1, src, [number, title], doc)
+            inject_frontispiece_tail!(h1, doc, context)
             changed = true
           end
           changed
+        end
+
+        # 扉絵の裾飾り（文字なし）を chapter-lead の直後へ注入する。
+        # リードが無い章は h1 の直後に置く。合成失敗時は注入しない（上側だけでも成立する）。
+        def inject_frontispiece_tail!(h1, doc, context)
+          src = heading_image_src(
+            image_path: context[:frontispiece], number: '', title: '', kind: :frontispiece_tail,
+            font_family: context[:font_family], flavor: context[:flavor], base_dir: context[:base_dir]
+          )
+          return unless src
+
+          anchor = h1.next_element&.[]('class').to_s.split.include?('chapter-lead') ? h1.next_element : h1
+          return if anchor.next_element&.[]('class').to_s.split.include?('vs-frontispiece-tail') # 冪等
+
+          img = Nokogiri::XML::Node.new('img', doc)
+          img['class'] = 'vs-frontispiece-tail'
+          img['src'] = src
+          img['alt'] = '' # 純装飾（読み上げ対象にしない）
+          anchor.add_next_sibling(img)
         end
 
         # 節扉（article.section-topic 直下の h2）に節絵画像を注入する。

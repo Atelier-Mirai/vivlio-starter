@@ -73,6 +73,7 @@ module VivlioStarter
           <h1 data-chapter-number-display="第1章" data-chapter-title="春のお花見">
             <span class="chapter-number">第1章</span><span class="chapter-title">春のお花見</span>
           </h1>
+          <div class="chapter-lead"><p>春の章のリード文です。</p></div>
           <article class="section-topic">
             <h2 data-section-number-display="1-1" data-section-title="導入">
               <span class="section-number">1-1</span><span class="section-title">導入</span>
@@ -105,8 +106,12 @@ module VivlioStarter
         # 節絵: 親 article に EPUB 用クラス、h2 に画像（alt に節番号＋タイトル）
         assert_includes html, 'vs-section-topic-epub'
         assert_includes html, 'alt="1-1 導入"'
+        # 扉絵の裾飾り（文字なし・alt=""）が chapter-lead の直後へ注入される（読み順を PDF と揃える）
+        assert_match(%r{chapter-lead.*?</div>\s*<img class="vs-frontispiece-tail"[^>]*alt=""}m, html,
+                     '裾飾りはリード文の直後に入るべき')
         # 合成画像が images/headings/ に JPEG として書き出される
         assert Dir.glob('images/headings/frontispiece-*.jpg').any?, '扉絵 JPEG が書き出されるべき'
+        assert Dir.glob('images/headings/frontispiece_tail-*.jpg').any?, '裾飾り JPEG が書き出されるべき'
         assert Dir.glob('images/headings/ornament-*.jpg').any?, '節絵 JPEG が書き出されるべき'
       end
 
