@@ -34,6 +34,7 @@ module VivlioStarter
       CONTENTS_DIR = 'contents'
       STYLESHEETS_DIR = 'stylesheets'
       IMAGES_DIR = 'images'
+      DATA_DIR = 'data'
       CODES_DIR = 'codes'
       TEMPLATES_DIR = 'templates'
       COVERS_DIR = 'covers'
@@ -251,6 +252,7 @@ module VivlioStarter
           contents: CONTENTS_DIR,
           stylesheets: STYLESHEETS_DIR,
           images: IMAGES_DIR,
+          data: DATA_DIR,
           codes: CODES_DIR,
           templates: TEMPLATES_DIR,
           covers: COVERS_DIR,
@@ -824,6 +826,7 @@ module VivlioStarter
       def contents_dir       = CONFIG&.directories&.contents || CONTENTS_DIR
       def stylesheets_dir    = CONFIG&.directories&.stylesheets || STYLESHEETS_DIR
       def images_dir         = CONFIG&.directories&.images || IMAGES_DIR
+      def data_dir           = CONFIG&.directories&.data || DATA_DIR
       def templates_dir      = CONFIG&.directories&.templates || TEMPLATES_DIR
       def covers_dir         = CONFIG&.directories&.covers || COVERS_DIR
 
@@ -937,7 +940,7 @@ module VivlioStarter
                       :generate_compressed_pdf_filename, :generate_epub_filename,
                       :generate_kpf_filename, :generate_kindle_epub_filename,
                       :generate_output_filename, :generate_print_pdf_filename,
-                      :images_dir, :load_config, :load_page_presets, :log_action,
+                      :images_dir, :data_dir, :load_config, :load_page_presets, :log_action,
                       :log_debug, :log_error, :log_info, :log_success, :log_warn,
                       :merge_hardcoded_defaults, :normalize_font_sizes,
                       :normalize_line_height, :normalize_page_size!,

@@ -100,6 +100,11 @@ module VivlioStarter
               prefix = Common.asset_prefix
               if !prefix.empty? && image_path.start_with?(prefix)
                 "![#{alt_text}](#{image_path})"
+              elsif image_path.start_with?('images/data/')
+                # DataImageResolver が確定させたビルド生成物参照（spec §3.4 の無 prefix 形）。
+                # 実体はワークスペース html/images/data/ にあり、ルート images/ には無い。
+                # asset_prefix 前置・.webp 寄せ・存在チェックのいずれも行わず素通しする。
+                "![#{alt_text}](#{image_path})"
               else
                 # すでに images/ から始まる場合はそのまま。相対パスは images/<章ディレクトリ>/ に正規化
                 normalized = if image_path.start_with?('images/')

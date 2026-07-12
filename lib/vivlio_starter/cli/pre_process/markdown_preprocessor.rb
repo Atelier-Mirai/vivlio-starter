@@ -124,7 +124,8 @@ module VivlioStarter
           before = context.content.dup
           context.content = DataRender.process(
             context.content,
-            source_filename: context.filename
+            source_filename: context.filename,
+            chapter_slug: File.basename(context.output_path, '.md')
           )
           if context.content == before
             Common.log_info('QueryStream 記法はありません')

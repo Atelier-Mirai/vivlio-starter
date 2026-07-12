@@ -14,6 +14,7 @@
 
 require 'query_stream'
 require_relative '../common'
+require_relative 'data_image_resolver'
 
 module VivlioStarter
   module CLI
@@ -26,10 +27,12 @@ module VivlioStarter
         # Markdown コンテンツ内の QueryStream 記法をすべて展開する
         # @param content [String] Markdown コンテンツ
         # @param source_filename [String] エラー報告用のソースファイル名
+        # @param chapter_slug [String, nil] 章スラッグ（データ画像の章ローカル探索に使う。nil ならデータ画像解決なし）
         # @param data_dir [String] データディレクトリのパス
         # @param templates_dir [String] テンプレートディレクトリのパス
         # @return [String] 展開後の Markdown コンテンツ
-        def process(content, source_filename: nil, data_dir: 'data', templates_dir: Common::TEMPLATES_DIR)
+        def process(content, source_filename: nil, chapter_slug: nil, data_dir: Common.data_dir,
+                    templates_dir: Common::TEMPLATES_DIR)
           # gem 側はログを出力しないため、on_error / on_warning コールバックでメッセージを構成する。
           # Common.log_error / log_warn が 🔴 / 🟡 の絵文字プレフィックスを付与するため、
           # コールバック側ではプレフィックスを付けない。
@@ -68,13 +71,27 @@ module VivlioStarter
             end
           end
 
+          # QueryStream 展開結果内の素ファイル名画像を data/ 配下から解決する後段フィルタ。
+          # gem は画像を知らないため、この post_render で vivlio-starter 固有の解決を担う（spec §3.3）。
+          # chapter_slug が無い（単体テスト等）ときは解決を行わず素通しする。
+          post_render = nil
+          if chapter_slug
+            post_render = lambda do |text, ctx|
+              DataImageResolver.rewrite(text, ctx, chapter_slug:)
+            rescue StandardError => e
+              Common.log_warn("データ画像の解決に失敗しました: #{e.class}: #{e.message}")
+              text
+            end
+          end
+
           QueryStream.render(
             content,
             source_filename:,
             data_dir:,
             templates_dir:,
             on_error:,
-            on_warning:
+            on_warning:,
+            post_render:
           )
         end
       end

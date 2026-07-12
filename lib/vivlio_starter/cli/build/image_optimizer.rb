@@ -17,7 +17,8 @@ module VivlioStarter
           preset_task = { high: 'resize:high', low: 'resize:low' }[p] || 'resize:medium'
 
           Common.log_action("[Step 1] 画像の最適化（WebP 変換/リサイズ）を実行します… preset=#{p}")
-          dirs = [Common::IMAGES_DIR, File.join(Common::STYLESHEETS_DIR, 'images')]
+          # data/ 配下の png/jpg も対象に含める（QueryStream データ画像の .webp 並置・spec §3.6）。
+          dirs = [Common::IMAGES_DIR, File.join(Common::STYLESHEETS_DIR, 'images'), Common.data_dir]
           dirs.each do |d|
             if Dir.exist?(d)
               Common.log_info("[Step 1] 対象ディレクトリ: #{d}（preset: #{p}）")
@@ -38,6 +39,7 @@ module VivlioStarter
           # Techbook モード: 全 SVG を rsvg-convert → lossless WebP に変換
           # Chromium PDF エンジンが SVG 内のパスを Type 3 フォントとして埋め込む問題を回避する
           if Common::CONFIG.output.pdf.techbook == true
+            # dirs には data/ も含まれるため、データ画像の SVG も Type 3 フォント問題回避の対象になる。
             svg_dirs = dirs + [File.join(Common::STYLESHEETS_DIR, 'twemoji')]
             Common.log_action('[Step 1] Techbook: SVG → lossless WebP 変換を実行します')
             ResizeCommands.convert_svg_to_webp(svg_dirs)

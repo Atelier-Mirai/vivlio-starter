@@ -6,7 +6,7 @@ source 'https://rubygems.org'
 gemspec
 
 # query-stream は公開済みバージョンを使用
-gem 'query-stream', '~> 1.2.2'
+gem 'query-stream', '~> 1.3'
 
 # strscan を単一バージョンへ固定する（テスト flaky の恒久対策）。
 # Ruby 4.0 環境では strscan が default gem（3.1.6 = stdlib 実体）と通常 gem（3.1.8 等）で

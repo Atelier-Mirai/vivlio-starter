@@ -806,6 +806,70 @@ module VivlioStarter
           )
         end
       end
+
+      # ================================================================
+      # 5. データ画像解決の配線（post_render 注入）統合テスト
+      # ================================================================
+      # chapter_slug を渡すと DataImageResolver が post_render として働き、
+      # data/ 配下のデータ画像が images/data/… へ書き換わることを end-to-end で検証する
+      # （querystream-data-images-spec.md §3.3・§4-1）。
+      class DataRenderDataImageWiringTest < Minitest::Test
+        require 'tmpdir'
+        require 'fileutils'
+
+        # cwd 相対の data/ ・templates/ を組み立てて DataRender.process を通す
+        def in_project
+          Dir.mktmpdir('vs-data-image-') do |dir|
+            Dir.chdir(dir) do
+              FileUtils.mkdir_p('data/books')
+              File.write('data/books.yml', <<~YAML)
+                - title: 楽しいRuby
+                  cover: ruby.webp
+              YAML
+              FileUtils.mkdir_p('templates')
+              File.write('templates/_book.md', "### = title\n![](cover)\n")
+              yield
+            end
+          end
+        end
+
+        # chapter_slug 指定時、data/books/ の画像が images/data/books/… へ書き換わる
+        def test_should_rewrite_data_image_when_chapter_slug_given
+          in_project do
+            File.write('data/books/ruby.webp', 'WEBP')
+
+            result = DataRender.process(
+              "= books\n",
+              source_filename: '10-intro.md',
+              chapter_slug: '10-intro',
+              data_dir: 'data',
+              templates_dir: 'templates'
+            )
+
+            assert_includes result, '![](images/data/books/ruby.webp)'
+            assert File.exist?(
+              File.join(Common::BUILD_HTML_DIR, 'images', 'data', 'books', 'ruby.webp')
+            ), 'ワークスペースへ実体がコピーされるべき'
+          end
+        end
+
+        # chapter_slug 未指定（既定 nil）なら解決せず素のファイル名のまま
+        def test_should_not_rewrite_without_chapter_slug
+          in_project do
+            File.write('data/books/ruby.webp', 'WEBP')
+
+            result = DataRender.process(
+              "= books\n",
+              source_filename: '10-intro.md',
+              data_dir: 'data',
+              templates_dir: 'templates'
+            )
+
+            assert_includes result, '![](ruby.webp)'
+            refute_includes result, 'images/data/'
+          end
+        end
+      end
     end
   end
 end

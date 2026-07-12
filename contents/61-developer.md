@@ -186,7 +186,7 @@ mybook/
 
 `covers/` は表紙・裏表紙の画像を置く場所です。`frontcover_master.png` / `backcover_master.png`（高解像度マスター）を元に、`vs cover` または `vs build` が PDF / JPEG を自動生成します。`covers/bundled/` には gem 同梱の SVG テンプレート（light / dark テーマ）が入っています。
 
-`data/` は QueryStream 記法（`= books | ...`）で本文中に展開する YAML データを置く場所です。書籍紹介カードや技術書一覧など、繰り返し使うデータを外部化できます。
+`data/` は QueryStream 記法（`= books | ...`）で本文中に展開する YAML データを置く場所です。書籍紹介カードや技術書一覧など、繰り返し使うデータを外部化できます。データが参照する画像（`cover:` など）は `data/<データ名>/`（そのデータ専用）や `data/images/`（データ横断の共有）に同居させられ、データ一式が自己完結します。
 
 `templates/` は `vs create` が章ファイルを生成する際に使う Markdown 雛形です。`chapter.md`・`preface.md`・`appendix.md` などが同梱されています。
 

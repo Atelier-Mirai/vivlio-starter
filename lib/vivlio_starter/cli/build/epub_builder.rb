@@ -1241,6 +1241,12 @@ module VivlioStarter
         # images/_epub_assets/ に置く（著者 dir を汚さない・P4 §5.3）。
         def stage_webp_replacement(src_attr, base_dir)
           webp_path = decode_html_entities(src_attr)
+          # 著者資産（cwd 相対）で見つからない場合はワークスペース生成物（html/images/data/ 等）を
+          # フォールバックで探す。DataImageResolver が置いた data 画像は cwd に実体が無い（spec §3.5）。
+          unless File.exist?(webp_path)
+            candidate = File.join(Common::BUILD_HTML_DIR, webp_path)
+            webp_path = candidate if File.exist?(candidate)
+          end
           return nil unless File.exist?(webp_path)
 
           source = transcode_source_for(webp_path)

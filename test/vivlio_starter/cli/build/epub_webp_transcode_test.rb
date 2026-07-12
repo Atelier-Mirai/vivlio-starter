@@ -98,6 +98,26 @@ module VivlioStarter
         end
       end
 
+      # cwd に実体が無く、ワークスペース html/images/data/ にある WebP を解決して変換する
+      # （DataImageResolver が置いたデータ画像・spec §3.5）
+      def test_should_fall_back_to_workspace_for_data_images
+        in_temp_project do
+          ws_webp = File.join(Common::BUILD_HTML_DIR, 'images', 'data', 'physics_books', 'relativity.webp')
+          make_webp(ws_webp, 'xc:green')
+          # HTML は消費者 dir 相対の images/data/… を参照する（cwd には実体が無い）
+          write_html('chapter.html', 'images/data/physics_books/relativity.webp')
+          refute File.exist?('images/data/physics_books/relativity.webp'), 'cwd には実体が無い前提'
+
+          Builder.transcode_webp_images_for_epub!(['chapter.html'])
+          updated = File.read('chapter.html')
+
+          assert_match %r{images/_epub_assets/[0-9a-f]{16}\.(jpg|png)}, updated,
+                       'ワークスペースの WebP から変換して差し替えるべき'
+          refute_includes updated, 'relativity.webp'
+          assert File.exist?(staged_src(updated))
+        end
+      end
+
       # 2 回実行しても同一ハッシュで、staging の出力が増えない（冪等）
       def test_should_be_idempotent
         in_temp_project do
