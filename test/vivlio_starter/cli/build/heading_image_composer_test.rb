@@ -51,24 +51,37 @@ module VivlioStarter
           assert_includes svg, '導入'
         end
 
-        # 節題の長短でフォントサイズが不揃いにならない（固定基準・kindle_h2 不揃いの回帰テスト）
+        # 節題の長短でフォントサイズが不揃いにならない（固定基準・kindle_h2 c/d/e の回帰テスト）
         def test_should_use_uniform_ornament_font_size_regardless_of_title_length
           short = HeadingImageComposer.ornament_svg(1196, 500, DATA_URI, '8-1', '概要', FONT, '#f0a000')
           mid   = HeadingImageComposer.ornament_svg(1196, 500, DATA_URI, '8-2', 'はじめかた', FONT, '#f0a000')
+          long  = HeadingImageComposer.ornament_svg(1196, 500, DATA_URI, '7-5', 'トラブルシューティング', FONT, '#f0a000')
 
           size = ->(svg) { svg[/<text [^>]*font-size="(\d+)"/, 1].to_i }
-          assert_equal size.call(short), size.call(mid), '通常長の節題は同じフォントサイズで組まれる'
-          assert_equal (500 * 0.22).round, size.call(short), '基準サイズは height 比の固定値'
+          base = (500 * HeadingImageComposer::ORNAMENT_FONT_RATIO).round
+          assert_equal base, size.call(short), '短い節題も基準サイズ（巨大化しない）'
+          assert_equal base, size.call(mid), '中間長も基準サイズ'
+          assert_equal base, size.call(long), '1 行に収まる長さは基準サイズのまま（縮小しない）'
         end
 
-        # 長い節題は幅に収まるまで縮小される（幅あふれの回帰テスト）
-        def test_should_shrink_ornament_font_for_long_title_to_fit_width
-          svg = HeadingImageComposer.ornament_svg(1196, 500, DATA_URI, '7-5', 'トラブルシューティング', FONT, '#f0a000')
+        # 1 行に収まらない長い節題は縮小せず 2 行へ折り返す（kindle_h2_c 極小化の回帰テスト）
+        def test_should_wrap_long_ornament_title_instead_of_shrinking
+          svg = HeadingImageComposer.ornament_svg(
+            1196, 500, DATA_URI, '6-4', 'vs renumber — 章番号を一括で付け直す', FONT, '#f0a000'
+          )
 
           font_size = svg[/<text [^>]*font-size="(\d+)"/, 1].to_i
-          char_count = '7-5　トラブルシューティング'.length
-          assert_operator font_size * char_count, :<=, (1196 * 0.88).ceil, 'テキスト幅は画像幅 88% に収まる'
-          assert_operator font_size, :<, (500 * 0.22).round, '長い節題は基準サイズより縮む'
+          assert_equal (500 * HeadingImageComposer::ORNAMENT_FONT_RATIO).round, font_size,
+                       '折り返しで対応し、フォントは基準サイズを保つ'
+          assert_equal 2, svg.scan('<text ').size, '2 行の <text> へ折り返される'
+          assert_equal 1, svg.scan('<tspan fill=').size, '番号 tspan は 1 行目にのみ付く'
+        end
+
+        # 合成 SVG は intrinsic size（width/height 属性）を持つ（epub_h2 はみ出しの回帰テスト）
+        def test_should_emit_intrinsic_size_attributes_on_svg_root
+          svg = HeadingImageComposer.ornament_svg(1196, 500, DATA_URI, '1-1', '導入', FONT, '#f0a000')
+
+          assert_includes svg, 'width="1196" height="500" viewBox="0 0 1196 500"'
         end
 
         def test_should_wrap_long_frontispiece_title_into_multiple_tspans

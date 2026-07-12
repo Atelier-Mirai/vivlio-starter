@@ -232,6 +232,45 @@ article.vs-section-topic-epub {
   break-before: page;
 }
 
+/* PDF 用画像ヘッダー CSS（image-header.css の body.vs-header-image 配下）は特異度が
+   上の EPUB リセットより高く、EPUB でも勝ってしまう。実害（epub_h1/h2 実測）:
+   - h1 の inline-size clamp(≈110mm) で扉絵が異常に幅狭になる
+   - .section-topic の 150px 固定グリッド行に節絵が収まらず、後続コンテンツを覆い
+     ページ跨ぎで上下に割れる
+   - h2::before の背景飾りが合成 SVG と二重に描かれる
+   EPUB 限定マーカー body.vs-epub を重ねて確実に上書きする（PDF には vs-epub が無く不発）。 */
+body.vs-epub h1.vs-image-heading-epub,
+body.vs-epub .section-topic h2.vs-image-heading-epub {
+  display: block;
+  inline-size: auto;
+  max-inline-size: 100%;
+  min-block-size: auto;
+  aspect-ratio: auto;
+  padding: 0;
+  margin-block: 0.5rem;
+  white-space: normal;
+}
+
+body.vs-epub .section-topic {
+  display: block; /* 150px 固定行のグリッドを解除 */
+}
+
+body.vs-epub .section-topic h2::before {
+  content: none; /* PDF 用の背景飾り（節絵 SVG と二重になる）を無効化 */
+}
+
+/* PDF の扉レイアウト幅（--frontispiece-lead-width ≈ 段組幅）と負マージンを解除し、
+   リード文をページ幅いっぱいの通常フローで組む（epub_h1 実測） */
+body.vs-epub .chapter-lead {
+  inline-size: auto;
+  margin-block: 1em;
+}
+
+body.vs-epub .section-lead {
+  inline-size: auto;
+  margin-block: 0.5em 1em;
+}
+
 /* =============================================================
    EPUB(Kindle) 専用レイアウト是正（epub-kindle-layout-spec.md §2・§3）
    body.vs-kindle は EpubBuilder が EPUB 章 HTML にのみ付与する（PDF では不発で無害）。

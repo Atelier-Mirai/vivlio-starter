@@ -150,6 +150,12 @@ module VivlioStarter
       # フェンスドコードブロック（開始区切り〜同種・同連長以上の終了区切りまで）を
       # 1 チャンクとして yield の戻り値で置き換える。未終了のフェンスは（正規表現方式の
       # 従来挙動に合わせ）退避せずそのまま残す。
+      #
+      # 終了区切り行の改行はチャンクへ含めず、プレースホルダの外側に残す。
+      # 改行ごと退避すると後続行がプレースホルダと同一行に癒着し（例: `__VS_CODE_SPAN__13__:::`）、
+      # 行頭 `:::` を前提とするコンテナ変換などの行アンカー処理が退避中テキストで誤動作する
+      # （book-card がコンテナごと `.output` の中身として飲み込まれた実バグの原因）。
+      # 復元はプレースホルダ→チャンクの置換なので、改行を外に置いても原文と同一に戻る。
       def replace_fenced_blocks(text)
         out = +''
         block = nil # 蓄積中のフェンスブロック（nil = ブロック外）
@@ -168,7 +174,8 @@ module VivlioStarter
           else
             block << line
             if marker && closing_fence?(marker, fence)
-              out << yield(block)
+              trailing = block.chomp!("\n") ? "\n" : ''
+              out << yield(block) << trailing
               fence = nil
               block = nil
             end

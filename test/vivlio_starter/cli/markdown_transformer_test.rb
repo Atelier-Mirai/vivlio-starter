@@ -236,6 +236,34 @@ module VivlioStarter
           assert_match(%r{高橋征義 著<br\s*/?>}, html, '著者と説明が <br> で改行される')
         end
 
+        # 「フェンス入りコンテナの直後の book-card」が正しく変換される回帰テスト。
+        # 旧 Masking はフェンス終端の改行までプレースホルダへ飲み込み、直後の閉じ ::: が
+        # 同一行へ癒着 → 前のコンテナの閉じを見失った変換が book-card ごと飲み込んで
+        # 素通ししていた（22-extentions の実バグ・EPUB/PDF 全ターゲットで崩れ）。
+        def test_convert_book_card_after_container_holding_code_fence
+          md = <<~MD
+            :::{.output}
+            ```text
+            id | name
+            ```
+            :::
+
+            :::{.book-card}
+            ![](images/x.webp)
+            **はじめての技術書づくり**
+            はじめて技術書を書く方にお勧め。
+            :::
+          MD
+
+          out, opened, = convert_container_blocks(md, class_name: 'book-card')
+          out = convert_book_card_inner_markdown(out)
+
+          assert_equal 1, opened, 'book-card コンテナが検出される'
+          assert_includes out, '<div class="book-card">'
+          assert_includes out, '<p class="book-title">はじめての技術書づくり</p>', 'タイトルが book-info へ抽出される'
+          assert_includes out, ':::{.output}', '前のコンテナ（対象外クラス）は素通しのまま'
+        end
+
         # =================================================================
         # pipe_table_to_html（TableConverter へ移管済み）
         # =================================================================

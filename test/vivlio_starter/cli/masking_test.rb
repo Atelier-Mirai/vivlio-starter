@@ -180,6 +180,18 @@ module VivlioStarter
         assert_empty spans
       end
 
+      # フェンス終端行の改行はプレースホルダの外に残り、後続行が同一行へ癒着しない。
+      # 癒着すると `__VS_CODE_SPAN__N__:::` のようになり、行頭 `:::` を前提とする
+      # コンテナ変換が閉じを見失って後続ブロックごと飲み込む（book-card 崩れの実バグ）。
+      def test_protect_code_keeps_newline_after_fence_outside_placeholder
+        text = ":::{.output}\n```text\ncols\n```\n:::\n"
+        protected_text, spans = Masking.protect_code(text)
+
+        assert_match(/__VS_CODE_SPAN__\d+__\n:::\n/, protected_text,
+                     '閉じ ::: はプレースホルダの次の行に留まる')
+        assert_equal text, Masking.restore_code(protected_text, spans), '往復同一性は保たれる'
+      end
+
       # --- 意味論統一の回帰ゲート -----------------------------------------
       # lint / metrics / index の各経路が共有する状態機械が、入れ子フェンスを含む
       # 原稿に対し「コードとみなす行の集合」を一致させることを固定する。
