@@ -126,7 +126,7 @@ body.vs-header-image .section-topic h2 {
   font-size: clamp(25.2Q, calc(var(--paper-scale) * 36Q), 36Q);
   line-height: clamp(33.6Q, calc(var(--paper-scale) * 48Q), 48Q);
   align-self: center;
-  white-space: nowrap;
+  white-space: normal;
 
   display: flex;
   align-items: center;
@@ -137,6 +137,12 @@ body.vs-header-image .section-topic h2 {
   aspect-ratio: 239 / 100;
   min-block-size: 120px;
   text-align: left;
+
+  /* 長い節題でも箱（＝飾り帯の描画範囲）を版面内に留める。上限が無いと箱が
+     max-content 幅で版面を超え、タイトルが 1 行のまま帯を突き抜ける（pdf_section3-2）。 */
+  inline-size: 100%;
+  max-inline-size: 100%;
+  box-sizing: border-box;
 }
 
 body.vs-header-image .section-topic h2::before {
@@ -157,6 +163,20 @@ body.vs-header-image .section-topic h2 > * {
   align-items: center;
   gap: clamp(2mm, calc(var(--paper-scale) * 3mm), 3mm);
   white-space: normal;
+}
+
+/* 長い節題は折り返して飾り帯（h2 箱いっぱいの背景）の中に収める
+   （EPUB/Kindle の節絵折返しと同挙動・pdf_section3-2 実測）。
+   - display: block   … 既定の inline-flex は内側の匿名 flex アイテムが min-width:auto で
+                        縮まず、1 行のまま帯と版面を突き抜ける
+   - min-inline-size  … flex アイテム自体の縮小も許可する
+   - word-break       … base.css の見出し共通 keep-all は CJK 文字間の折返しまで禁止する
+                        ため、節題に限り通常の日本語行分割へ戻す（text-wrap: balance は
+                        継承で生き、2 行時の行長も揃う） */
+body.vs-header-image .section-topic h2 .section-title {
+  display: block;
+  min-inline-size: 0;
+  word-break: normal;
 }
 
 body.vs-header-image .section-topic h2 .section-number {
