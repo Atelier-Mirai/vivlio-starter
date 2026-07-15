@@ -138,4 +138,4 @@ Kindle 向けに CSS / 画像処理を追加・変更するときは:
 - `stylesheets/chapter-common.css` / `components.css` / `simple-header.css` / `glossary.css` / `index.css` / `preface.css` / `code.css` — `body.vs-kindle` / `body.vs-epub` フォールバック。
 - `docs/specs/epub-kindle-target-split-spec.md` — ターゲット分離の全体設計。
 - `docs/specs/kindle-simple-header-svg-spec.md` — 付録見出しの SVG 画像化（将来タスク）。
-- `docs/specs/epub-code-line-numbers-spec.md` — コード行番号と Kindle テーブルの不具合。
+- `docs/archives/epub-code-line-numbers-spec.md` — コード行番号と Kindle テーブルの不具合（実装済み）。

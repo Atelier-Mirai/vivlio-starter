@@ -4,7 +4,7 @@
 > ステータス: **実装済み（2026-07-12）**。`epub-code-line-numbers-spec.md`（F 案）と同時実装のため、§3.3 は `inject_code_line_numbers_for_kindle!` の採番（`start + idx`）として、§3.5 の `code.css:193` は F 案の新セレクタ `.vs-code-epub`（具体名フォント）として実装された
 > **後日追記（2026-07-12）**: `epub-code-line-numbers-spec.md` が F 案（テーブル廃止・行ブロック＋ぶら下げインデント）で方式確定した。両仕様は同じ箇所を触るため、**あちらが先に実装された場合**は本仕様の §3.3 と §3.5 の一部を読み替える（各節の追記参照。読み替えの詳細はあちらの §8）。実装順序はどちらが先でも整合する。
 > 対象: `` ```include:file.rb:22-25``` `` で範囲取り込みしたコードブロックの表示行番号
-> 関連: `lib/vivlio_starter/cli/pre_process/markdown_transformer.rb`, `lib/vivlio_starter/cli/prism_lines.rb`, `lib/vivlio_starter/cli/build/epub_builder.rb`, `stylesheets/prism.css`, `stylesheets/code.css`, `stylesheets/page-settings.css`, `lib/vivlio_starter/cli/techbook/processor.rb`, `docs/specs/epub-code-line-numbers-spec.md`, `docs/archives/svg_luster_bugfix_technical_notes.md`
+> 関連: `lib/vivlio_starter/cli/pre_process/markdown_transformer.rb`, `lib/vivlio_starter/cli/prism_lines.rb`, `lib/vivlio_starter/cli/build/epub_builder.rb`, `stylesheets/prism.css`, `stylesheets/code.css`, `stylesheets/page-settings.css`, `lib/vivlio_starter/cli/techbook/processor.rb`, `docs/archives/epub-code-line-numbers-spec.md`, `docs/archives/svg_luster_bugfix_technical_notes.md`
 
 ## 背景
 現在は、`include:prime2.rb:22-25 `` のように範囲指定で取り込んだコードは、現状ハイライト表示の行番号が常に `1, 2, 3, 4` から振り直される。元ファイルでの実際の行番号（`22, 23, 24, 25`）を表示できれば、抜粋元との対応が取りやすい。`prism.css`（行番号プラグインの `counter-reset` / 開始値）を調整し、取り込み時に開始行番号を `<pre>` 等へ渡す仕組みを足す必要がある。

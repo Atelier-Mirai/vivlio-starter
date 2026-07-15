@@ -9,7 +9,7 @@
 > - Planned のガイド線マクロ（`@lu` 系）は**完全廃止**。後継は `explanatory-diagram-spec.md`（`.showcase` 記法・確定仕様）であり、退避ドキュメントは作らない
 >
 > **後日追記（2026-07-12・ユーザー確認済み）**: 本仕様実装後のフォローアップで、`@nega`/`@posi`（`@vspace` の後方互換別名）と `@comment`/`@commend`（編集者コメント）も**廃止**した（残る `@` 記法は `@vspace` のみ）。編集者コメントは HTML コメント `<!-- TODO: … -->` で代替可能かつ本番出力にハイライトが残る地雷であったため。これに伴い R9 の予約 ID は `@vspace` のみ、`SPACING_MACRO_RULES` は 2 本、`ALL` は 31 本、`.hen-comment` CSS・22 章「編集者コメント」節・`templates/chapter.md` の実演・本 PLANNED の @comment 一括除去項目も撤去済み。
-> 関連: `lib/vivlio_starter/cli/post_process/html_replacer.rb`, `lib/vivlio_starter/cli/post_process.rb`, `lib/vivlio_starter/cli/prism_lines.rb`, `lib/vivlio_starter/cli/common.rb`, `docs/specs/code-include-line-number-spec.md`, `docs/specs/explanatory-diagram-spec.md`, `docs/specs/PLANNED.md`
+> 関連: `lib/vivlio_starter/cli/post_process/html_replacer.rb`, `lib/vivlio_starter/cli/post_process.rb`, `lib/vivlio_starter/cli/prism_lines.rb`, `lib/vivlio_starter/cli/common.rb`, `docs/archives/code-include-line-number-spec.md`, `docs/specs/explanatory-diagram-spec.md`, `docs/specs/PLANNED.md`
 
 ## 背景・動機
 

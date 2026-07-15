@@ -8,7 +8,7 @@
 > - **テーブル方式（現行 Kindle・旧 A 案）は廃止**。KFX がテーブルセルの `width`/`white-space: nowrap` を尊重しない（kindle-css-compatibility-notes §2 で△実測）土俵では戦わない
 > - **F 案採用**: 1 論理行 = 1 ブロック要素＋ぶら下げインデント。番号はクリーン EPUB では `::before`＋CSS カウンタ（コピーに混入しない）、Kindle では nbsp 右詰めの実テキスト注入（既存の実体注入パターン）
 > - クリーン EPUB の「長行折返しで番号がずれる」未解決問題（旧 §0）も同じ構造で**同時に解消**する
-> 関連: `lib/vivlio_starter/cli/build/epub_builder.rb`（`convert_code_blocks_for_epub!` ほか・行スプリッタ）, `stylesheets/code.css`, `stylesheets/prism.css`, `docs/specs/kindle-css-compatibility-notes.md`, `docs/specs/code-include-line-number-spec.md`（**§8 連携必読**・`data-start` と `--code-font` 修正はあちら側）
+> 関連: `lib/vivlio_starter/cli/build/epub_builder.rb`（`convert_code_blocks_for_epub!` ほか・行スプリッタ）, `stylesheets/code.css`, `stylesheets/prism.css`, `docs/specs/kindle-css-compatibility-notes.md`, `docs/archives/code-include-line-number-spec.md`（**§8 連携必読**・`data-start` と `--code-font` 修正はあちら側）
 
 ## 0. 現状と問題（2026-07-12 時点）
 
