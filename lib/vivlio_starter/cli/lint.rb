@@ -114,7 +114,7 @@ module VivlioStarter
             return 0
           end
 
-          lint_info  = { exit: 0, lint_count: 0, fixable_count: 0 }
+          lint_info  = { exit: 0, lint_count: 0, fixable_count: 0, fixed_count: 0 }
           spell_info = { exit: 0, spell_count: 0 }
 
           lint_info  = run_textlint(files) unless spellcheck_only?
@@ -129,11 +129,19 @@ module VivlioStarter
 
         # textlint 本体を実行して結果サマリーを返す。
         # 出力は常にルール単位の集約表示（textlint --format json を取得して整形）。
+        #
+        # --fix 指定時は「修正パス → 解析パス」の 2 段構成を採る。修正パスは記法ガードを
+        # 通さない一時ファイルを textlint に直させて原稿へ書き戻し、解析パスはガード済みの
+        # 一時ファイルから残存指摘を集める。ガードによる記法の中和は非可逆なので、
+        # ガード済みの内容を原稿へ書き戻すことはできない（両立させるための 2 パス）。
+        # 仕様: docs/specs/lint-notation-guard-spec.md §2.3
         def run_textlint(files)
+          fixed_count = options[:fix] ? apply_textlint_fixes!(files).size : 0
+
           converted_files = convert_vs_lint_comments(files)
           # textlint は一時ファイルを検査するため、出力の一時パスを元ファイル名へ戻すマップ
           path_map = files.zip(converted_files).to_h { |orig, tmp| [File.expand_path(tmp), orig] }
-          run_textlint_aggregated(converted_files, path_map)
+          run_textlint_aggregated(converted_files, path_map).merge(fixed_count: fixed_count)
         ensure
           cleanup_temp_files(converted_files) if converted_files
           @runtime_config_tmp&.unlink
@@ -201,6 +209,9 @@ module VivlioStarter
 
           Common.log_always ''
           Common.log_always '✏️ 文章の品質チェックが完了しました'
+          # 修正パスが原稿を直した件数。以降のサマリーは「修正後に残った指摘」を指す。
+          fixed = lint_info[:fixed_count].to_i
+          Common.log_always "🔧 #{fixed}ファイルへ自動修正を適用しました" if fixed.positive?
           if total.positive?
             Common.log_warn("#{total}箇所に改善提案があります")
             Common.log_always "   - 日本語校正: #{lint_count}箇所" if lint_count.positive?
@@ -308,10 +319,11 @@ module VivlioStarter
           resolver.resolve
         end
 
-        # 集約表示のため出力は常に json で取得する
+        # 集約表示のため出力は常に json で取得する。
+        # --fix は付けない（自動修正は apply_textlint_fixes! の修正パスが担う。
+        # ここで付けると解析用の一時ファイルを直して捨てるだけの no-op になる）。
         def build_command(files, format: 'json')
           cmd = [textlint_command, '--config', effective_config_path]
-          cmd << '--fix' if options[:fix]
           cmd += ['--format', format]
           cmd + files
         end
@@ -437,6 +449,73 @@ module VivlioStarter
             .gsub(/<!--\s*vs-lint-disable-next-line\s*-->/, '<!-- textlint-disable-next-line -->')
             .gsub(/<!--\s*vs-lint-disable\s*-->/, '<!-- textlint-disable -->')
             .gsub(/<!--\s*vs-lint-enable\s*-->/, '<!-- textlint-enable -->')
+        end
+
+        # --- 修正パス（--fix） ------------------------------------------------
+
+        # textlint の自動修正を原稿へ実際に適用する（--fix 指定時のみ）。
+        # 一時ファイルを直させてから書き戻すのは、textlint に原稿を直接掴ませないため
+        # （プロセス実行中に中断されても原稿が半端な状態で残らない）。
+        # @param files [Array<String>] 対象の原稿パス
+        # @return [Array<String>] 実際に書き戻した原稿パス
+        def apply_textlint_fixes!(files)
+          converted = convert_vs_lint_comments(files)
+          baselines = converted.map { File.read(it, encoding: 'UTF-8') }
+
+          command = [textlint_command, '--config', effective_config_path, '--fix', *converted]
+          Common.log_action("textlint --fix 実行: #{Shellwords.join(command)}")
+          stdout, stderr, = Open3.capture3(*command)
+          # --fix の終了コードと出力は判定に使わない。残存指摘の判定は解析パスが行う。
+          Common.log_debug(stdout) unless stdout.nil? || stdout.empty?
+          $stderr.print(stderr) unless stderr.nil? || stderr.empty?
+
+          write_back_fixes(files, converted, baselines)
+        ensure
+          cleanup_temp_files(converted) if converted
+        end
+
+        # textlint が実際に書き換えた一時ファイルだけを原稿へ書き戻す。
+        # 未変更のファイルへは触れない（原稿の mtime とコメント書式を無用に変えない）。
+        # @return [Array<String>] 書き戻した原稿パス
+        def write_back_fixes(files, converted, baselines)
+          files.zip(converted, baselines).filter_map do |original, tmp, baseline|
+            fixed = File.read(tmp, encoding: 'UTF-8')
+            next if fixed == baseline
+
+            atomic_write(original, rewrite_textlint_to_vs_lint(fixed))
+            original
+          end
+        end
+
+        # textlint ネイティブ記法を vs-lint コメントへ戻す（rewrite_vs_lint_to_textlint の逆）。
+        # next-line を先に処理する（後続の disable パターンが next-line 形を食わないように）。
+        # 著者が素の textlint コメントを直書きしていた場合も vs-lint 形へ正規化されるが、
+        # 機能は等価であり vs-lint 形が本プロジェクトの正典記法なので許容する。
+        # @param source [String] textlint が修正した内容
+        # @return [String] 原稿へ書き戻す内容
+        def rewrite_textlint_to_vs_lint(source)
+          source
+            .gsub(/<!--\s*textlint-disable-next-line\s*-->/, '<!-- vs-lint-disable-next-line -->')
+            .gsub(/<!--\s*textlint-disable\s*-->/, '<!-- vs-lint-disable -->')
+            .gsub(/<!--\s*textlint-enable\s*-->/, '<!-- vs-lint-enable -->')
+        end
+
+        # 原稿を同一ディレクトリの一時ファイル経由で置換する。
+        # File.write の直書きだと書き込み中に Ctrl+C を受けた原稿が半端な状態で残るため、
+        # rename によるアトミック置換にする（旧内容のままか新内容へ完全置換済みかの
+        # どちらかにしかならない）。パーミッションは元ファイルから引き継ぐ。
+        def atomic_write(path, content)
+          mode = File.stat(path).mode & 0o7777
+          tmp  = Tempfile.new(['.vs-lint-fix-', '.md'], File.dirname(path), encoding: 'UTF-8')
+          begin
+            tmp.write(content)
+            tmp.close
+            File.chmod(mode, tmp.path)
+            File.rename(tmp.path, path)
+          ensure
+            # rename 済みなら既に存在しない。失敗・中断時に原稿の隣へ残さないための保険。
+            FileUtils.rm_f(tmp.path)
+          end
         end
 
         # 一時ファイルをクリーンアップする

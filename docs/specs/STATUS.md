@@ -79,6 +79,11 @@
   状態: 提案仕様・未着手（2026-07-12 策定）
   次のアクション: 優先度 [Low] だが RC 前導入を推奨（lock なし旧プロジェクトを最小化できるため）。実装は lock 生成＋分類ロジックから着手
 
+`lint-notation-guard-spec.md`
+: `vs lint` の記法ガード機構（Notation Guard）＋ `--fix` 修復の仕様。VFM 記法（showcase 座標行・ふりがな・クラス属性）を `Lint::NotationGuard` で中和してから textlint へ渡し、`textlint_allowlist.yml` の「VFM 記法」5 エントリを撤去する。Phase 0 として **`vs lint --fix` が no-op である既存バグ**（一時ファイルを修正して捨てている）の修復を先行させる。調査・実測は `lint-notation-guard-report.md`。
+  状態: 確定仕様・未着手（2026-07-16 策定。lint-notation-guard-report.md からの昇格）
+  次のアクション: Phase 0（`--fix` 修復・独立コミット）から実装。robustness テストが no-op を「仕様」として固定している点に注意（仕様書 §2.4）
+
 ---
 
 ## 参考メモ

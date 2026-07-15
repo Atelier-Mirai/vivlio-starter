@@ -118,10 +118,13 @@ module VivlioStarter
         assert_equal 3, returned_status
       end
 
-      def test_fix_option_includes_fix_flag
+      # --fix は「修正パス（--fix つき）→ 解析パス（--format json）」の 2 回実行になる。
+      # 解析パスに --fix を付けてはならない（解析用の一時ファイルを直して捨てるだけの
+      # no-op になる。docs/specs/lint-notation-guard-spec.md §2.3）。
+      def test_fix_option_runs_fix_pass_then_analysis_pass
         FileUtils.touch('contents/11-install.md')
 
-        expected_command = nil
+        commands = []
         fake_status = Struct.new(:success?).new(true)
         def fake_status.exitstatus
           0
@@ -130,21 +133,25 @@ module VivlioStarter
         returned_status = nil
         with_stubbed_textlint_available do
           Open3.stub(:capture3, ->(*args) do
-            expected_command = args
+            commands << args
             ['STDOUT', 'STDERR', fake_status]
           end) do
-            stdout, stderr = capture_io do
+            stdout, = capture_io do
               returned_status = LintCommands.execute_lint(['11-install'], { fix: true })
             end
             # 'STDOUT' は不正 json なので生出力へフォールバックして表示される
             assert_match(/STDOUT/, stdout)
             assert_match(/✏️ 文章の品質チェックが完了しました/, stdout)
-            assert_equal 'STDERR', stderr
           end
         end
         assert_equal 0, returned_status
 
-        assert_includes expected_command, '--fix'
+        assert_equal 2, commands.size, '修正パスと解析パスで 2 回実行されること'
+        fix_pass, analysis_pass = commands
+        assert_includes fix_pass, '--fix', '修正パスには --fix が渡ること'
+        refute_includes fix_pass, '--format', '修正パスは json 集約を取得しないこと'
+        refute_includes analysis_pass, '--fix', '解析パスには --fix を渡さないこと'
+        assert_includes analysis_pass, '--format', '解析パスは json 集約を取得すること'
       end
 
       def test_chapter_number_only_resolution
