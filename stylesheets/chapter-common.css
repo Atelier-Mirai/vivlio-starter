@@ -324,6 +324,21 @@ figcaption {
   text-indent: 0;
 }
 
+/* 図解注釈（:::{.showcase}）。中身は前処理が焼いた合成画像 1 枚なので、
+   置き場と分割禁止だけを面倒みる。枠・引き出し記号・丸数字はすべて画像の中に
+   入っており、PDF・EPUB・Kindle が同じ生成物を共有する（explanatory-diagram-spec §6.2）。
+   ゆえに body.vs-kindle 用の劣化対策は不要。 */
+figure.vs-showcase {
+  margin-block: 1em;
+  text-align: center;
+  break-inside: avoid;
+}
+
+figure.vs-showcase img {
+  max-width: 100%;
+  height: auto;
+}
+
 .figure.right {
   float: inline-end;
   margin-left: 1em;

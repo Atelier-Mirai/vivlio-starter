@@ -183,8 +183,12 @@ module VivlioStarter
         end
 
         # images/ 配下でローカライズ対象とするか（rel は images/ からの相対パス）。
+        # 図解注釈（showcase）の合成 SVG は元画像を base64 で内包しており Kindle が非対応。
+        # localize_showcase_images! が参照を対の PNG へ差し替え済みで未参照になるため、
+        # 両フレーバとも同梱しない（パッケージ肥大の防止・explanatory-diagram-spec §7.9）。
         def localized_image?(rel, flavor)
           return false if rel.start_with?("#{EPUB_ASSETS_REL_SUBDIR}/", "#{HEADINGS_REL_SUBDIR}/")
+          return false if rel.start_with?("#{SHOWCASE_REL_SUBDIR}/") && rel.match?(/\.svg\z/i)
           return false if flavor == :kindle && rel.match?(/\.webp\z/i)
 
           true
@@ -261,6 +265,8 @@ module VivlioStarter
           restore_plain_emoji_for_epub!(chapter_htmls)
           # 扉絵（h1）・節絵（h2）の合成画像を注入。クリーンは高画質 SVG、Kindle は JPEG（§1-2）。
           inject_heading_images_for_epub!(chapter_htmls, flavor:)
+          # 図解注釈（showcase）の参照を SVG→PNG へ差し替え（EPUB は SVG 内 base64 を運べない）
+          localize_showcase_images!(chapter_htmls)
           # Prism の行番号付き pre を「1 論理行 = 1 ブロック＋ぶら下げインデント」へ変換（F 案・
           # epub-code-line-numbers-spec §2.1）。長行折返しでの番号ずれ（クリーン EPUB）と
           # テーブルセル起因の崩れ（Kindle）を同じ構造で解消するため、両フレーバ共通で行う。
@@ -893,6 +899,52 @@ module VivlioStarter
 
           html_files.each { |path| inject_heading_images_into_file!(path, context) }
           html_files
+        end
+
+        # 図解注釈（showcase）の生成物サブディレクトリ（images/showcase/）。
+        SHOWCASE_REL_SUBDIR = 'showcase'
+
+        # 図解注釈の <img> 参照を合成 SVG からラスターへ差し替える（explanatory-diagram-spec §7.9）。
+        # 合成 SVG は元画像を base64 data URI で内包しており、Kindle はこれを非対応
+        # （変換時ブロッキングエラー）。前処理が SVG とラスターを必ず対で焼き、参照先を
+        # data-vs-raster に明示しているため、ここは参照の書き換えだけで済む（形式は元画像が
+        # 写真か否かで png / jpg に分かれるので、拡張子は推測せず属性の値をそのまま使う）。
+        # 同梱側は localized_image? が showcase の .svg を弾くので、未参照 SVG がパッケージへ
+        # 紛れ込むこともない（クリーン EPUB も同じラスターを使い、両フレーバで見た目を揃える）。
+        # ラスター実体が無い場合（通常起きない）は参照を変えず警告に留める。
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def localize_showcase_images!(html_files)
+          html_files.each do |path|
+            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
+            images = doc.css('img.vs-showcase[data-vs-raster]')
+            next if images.empty?
+
+            images.each { |img| localize_showcase_image!(img, path) }
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+            Common.log_info("[EPUB] #{File.basename(path)} の図解注釈 #{images.size} 件をラスター参照へ差し替えました")
+          end
+          html_files
+        end
+
+        # <img> 1 つを data-vs-raster の参照へ差し替え、EPUB に不要な同属性を取り除く。
+        # 実体確認は消費者 dir ではなく生成元（html/images/showcase/）に対して行う——
+        # 資産のローカライズ（localize_assets!）はこの書き換えより後に走るため、
+        # この時点の消費者 dir にはまだ画像が置かれていない。
+        def localize_showcase_image!(img, html_path)
+          raster = img['data-vs-raster'].to_s
+          img.remove_attribute('data-vs-raster')
+
+          if raster.empty? || !File.exist?(File.join(Common::BUILD_HTML_DIR, raster))
+            Common.log_warn(
+              "[EPUB] 図解注釈のラスター画像が見つかりません: #{raster}",
+              detail: "→ #{File.basename(html_path)} は SVG 参照のまま出力します（Kindle では表示されない可能性があります）"
+            )
+            return
+          end
+
+          img['src'] = raster
         end
 
         # 扉絵・節絵の実画像パスと節番号色を取得する。

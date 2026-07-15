@@ -31,6 +31,7 @@ require_relative 'image_path_normalizer'
 require_relative 'markdown_transformer'
 require_relative 'table_converter'
 require_relative 'math_transformer'
+require_relative 'showcase_transformer'
 require_relative 'markdown_utils'
 require_relative 'link_image_validator'
 
@@ -79,6 +80,7 @@ module VivlioStarter
           process_data_streams!
           normalize_image_paths!
           validate_links_and_images!
+          transform_showcases!
           process_code_includes!
           transform_math!
           normalize_html_block_boundaries!
@@ -145,6 +147,21 @@ module VivlioStarter
         # リンク・画像の自動検証を実行する
         def validate_links_and_images!
           LinkImageValidator.validate(context.content, context.filename, source_path: context.source_path)
+        end
+
+        # 図解注釈記法 :::{.showcase} を「元画像＋注釈を焼き込んだ合成 SVG」へ変換する
+        # （explanatory-diagram-spec.md §6.1）。ImagePathNormalizer が画像パスを正規化した
+        # 後でなければ実ファイルを引き当てられず、かつ後続の変換がブロック内部の行
+        # （{…} や […]）を壊す前でなければならないため、この位置に置く（§8）。
+        # magick / rsvg-convert 不在時は注釈なしの通常画像へ縮退する。
+        def transform_showcases!
+          before = context.content.dup
+          context.content = ShowcaseTransformer.transform(
+            context.content,
+            chapter_slug: File.basename(context.output_path, '.md'),
+            source_filename: context.filename
+          )
+          Common.log_success('図解注釈（showcase）を合成画像へ変換しました') if context.content != before
         end
 
         # include 記法によるソースコード取り込みを実行する

@@ -10,6 +10,28 @@
 
 * kindle 節見出し 文字の大きさを一定にする。
 
+### `vs lint --fix` が原稿を修正しない（no-op）
+* **詳細:** 「💡 そのうち N 箇所は自動修正可能です。`vs lint --fix`」と案内しておきながら、
+  実行しても原稿は 1 バイトも変わらない（2026-07-16 実測・md5 不変）。同じ指摘が出続ける。
+* **原因:** `Lint#run_textlint` が常に一時ファイル（`convert_vs_lint_comments`）を作って
+  textlint に渡すため、`--fix` は**一時ファイルを修正し、`ensure` の `cleanup_temp_files` で
+  そのまま削除**される。元ファイルへ書き戻す経路が無い。
+* **影響:** `--fix` は完全な no-op。著者は修正されたと誤認しうる。
+* **要注意:** `test/vivlio_starter/robustness/lint_fix_interrupt_test.rb` の
+  `test_original_file_is_untouched_on_normal_completion` が **この no-op を assert しており**、
+  バグが「仕様」として固定されている（堅牢性＝中断時に原稿を壊さない、の確認が
+  正常終了時にも「書き換えない」を期待してしまった）。修正時は同テストの見直しが必須。
+* **対応方針:** 直し方が lint の記法ガード機構の設計に絡む（ガードを入れると一時ファイルは
+  記法が中和済みになり、単純な書き戻しができない）。**ガードより先に単独で直す**こと。
+  詳細・再現手順・テストの切り分け → `docs/specs/lint-notation-guard-report.md` §4.1。
+
+### `vs lint` が VFM 記法を日本語の文として読む（誤検出）
+* **詳細:** `:::{.showcase}` の座標行が `sentence-length` / `max-comma` に触れる等、記法が
+  地の文として検査される。現状は `config/textlint_allowlist.yml` の「VFM 記法」5 エントリで
+  抑え込んでいるが（実測 76 件を肩代わり）、allowlist は語彙の除外リストであり流用は誤り。
+* **対応方針:** lint システム内部での記法ガードを設計中（案 A: textlint へ渡す前段で
+  記法を中和／行数は保存）。報告書 → `docs/specs/lint-notation-guard-report.md`。
+
 ---
 
 ## 既知の制限（運用回避推奨）

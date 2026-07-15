@@ -20,10 +20,11 @@
 #     --update-from-json / --overlay を使用する）
 #   - pdfinfo / pdftoppm (poppler): PDF メタデータ取得・ページ画像化
 #   - gs (Ghostscript): PDF 圧縮
-#   - imagemagick: 画像変換・リサイズ
+#   - imagemagick: 画像変換・リサイズ・図解注釈（showcase）の元画像取り込み
 #   - inkscape: ImageMagick が SVG を読む際の delegate（カバー生成の
 #     ラスタライズ・フォールバック用。主経路は rsvg-convert）
-#   - rsvg-convert (librsvg): EPUB 扉絵/節絵の合成画像ラスタライズ・カバー SVG 変換の主経路
+#   - rsvg-convert (librsvg): EPUB 扉絵/節絵・図解注釈（showcase）の合成画像
+#     ラスタライズ・カバー SVG 変換の主経路
 #   - vips (libvips): 高速画像処理（Enhanced Mode の OCR 用）
 #   - tesseract / tesseract-lang: OCR エンジンと日本語データ（Enhanced Mode 用）
 #   - mecab: 索引機能の読み自動推測
@@ -212,7 +213,8 @@ module VivlioStarter
           'mecab' => 'mecab', # 索引機能の読み自動推測用
           'rouge' => nil, # コードブロック言語推定用
           'mathjax' => nil, # 数式の SVG 化用（mathjax-full・npm パッケージ）
-          'rsvg-convert' => 'rsvg-convert' # EPUB 扉絵/節絵の合成画像ラスタライズ用（librsvg）
+          # EPUB 扉絵/節絵・図解注釈（showcase）の合成画像ラスタライズ用（librsvg）
+          'rsvg-convert' => 'rsvg-convert'
         }
 
         plugin_installed = pdf_plugin_installed?
@@ -411,7 +413,7 @@ module VivlioStarter
           # Inkscape（任意・カバー SVG フォールバック用）。半壊 cask も復旧できるよう force 対応。
           install_inkscape_macos! if missing.include?('inkscape')
 
-          # librsvg（rsvg-convert）: EPUB 扉絵/節絵の合成画像ラスタライズ用
+          # librsvg（rsvg-convert）: EPUB 扉絵/節絵・図解注釈（showcase）の合成画像ラスタライズ用
           system('brew install librsvg') if missing.include?('rsvg-convert')
 
           system('brew install vips') if missing.include?('vips')
