@@ -374,4 +374,4 @@ npx textlint -c config/.textlintrc.yml -f compact contents/22-extentions.md | gr
 | `lib/vivlio_starter/cli/lint/tokenizer.rb` | スペルチェック側。既に `Masking` 依存 |
 | `config/textlint_allowlist.yml` | 撤去対象の「VFM 記法」5 エントリ |
 | `config/.textlintrc.yml` | `filters.comments: true`（`<!-- textlint-disable -->` が効く根拠） |
-| `docs/specs/explanatory-diagram-spec.md` | 本件の発端（図解注釈記法） |
+| `docs/archives/explanatory-diagram-spec.md` | 本件の発端（図解注釈記法） |

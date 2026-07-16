@@ -3,7 +3,7 @@
 > **ステータス（2026-07-16）: Phase 0〜3 実装済み。Phase 4 は掲載まで完了。**
 > 原稿は `22-extentions.md`「図解注釈の方法」（リファレンス）と `94-sample.md`（バイオリンの
 > 逸話に沿った作例）へ掲載済み。§7.7 の視覚定数は実測レイアウトで妥当と判断し初期値のまま。
-> scaffold 同期（`copy_to_scaffold.rb`）は未実行。
+> scaffold 同期（`copy_to_scaffold.rb`）は 2026-07-16 に実行済み（lint 記法ガードのコミット `766851f8` に同梱）。
 > 実測での確認: PDF は単章ビルドで枠・破線枠・引き出し記号・丸数字の描画を確認。
 > EPUB はフルビルドで「PNG のみ同梱・src が .png へ差し替わる」ことと、epubcheck が
 > showcase 起因のエラーを出さないこと（既存の索引 RSC-005/012 のみ）を確認。
@@ -30,7 +30,7 @@
 > （`sentence-length` / `max-comma`）は、allowlist ではなく lint システム内部の記法ガード
 > `Lint::NotationGuard` で根治した。showcase は「機械データを持つコンテナ」として宣言され、
 > ブロック全体が textlint へ渡る前に空行化される（`textlint_allowlist.yml` の「VFM 記法」
-> 節は撤去済み）。詳細: [lint-notation-guard-spec.md](../archives/lint-notation-guard-spec.md)。
+> 節は撤去済み）。詳細: [lint-notation-guard-spec.md](lint-notation-guard-spec.md)。
 
 ## 1. 概要
 技術文書やマニュアル作成において、スクリーンショット等の画像（図版）に対して「トリミング」「対象を囲む枠（色・線種のカスタマイズ可）」「引き出し記号（ホームベース型等）」および「説明テキスト」を、外部の画像編集ソフトを使わずにMarkdown単体で表現・オーサリングするための拡張記法。

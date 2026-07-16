@@ -24,7 +24,7 @@
 
   ## マルチターゲット
   - `<table>` の `colspan` と複数 `<tr>` の `thead` は PDF/EPUB/Kindle すべてで有効なので、出力面の劣化対応は不要。結合セルの罫線 CSS は要追加。
-  - 参照: `docs/specs/table.png`。
+  - 参照: `docs/archives/table.png`。
 
 ---
 

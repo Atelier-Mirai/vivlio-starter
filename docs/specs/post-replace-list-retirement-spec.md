@@ -6,10 +6,10 @@
 > 決定事項（2026-07-11 ユーザー確認済み）:
 > - 著者向け「独自の拡張記法を追加する」機能（22 章コラム）は**完全廃止**（任意ファイルとしての存続はしない）
 > - 実装方式は **正規表現のコード移植**（HtmlReplacer の適用エンジンを温存。Nokogiri 書き直しはしない）
-> - Planned のガイド線マクロ（`@lu` 系）は**完全廃止**。後継は `explanatory-diagram-spec.md`（`.showcase` 記法・確定仕様）であり、退避ドキュメントは作らない
+> - Planned のガイド線マクロ（`@lu` 系）は**完全廃止**。後継は `explanatory-diagram-spec.md`（`.showcase` 記法・2026-07-15 実装済み）であり、退避ドキュメントは作らない
 >
 > **後日追記（2026-07-12・ユーザー確認済み）**: 本仕様実装後のフォローアップで、`@nega`/`@posi`（`@vspace` の後方互換別名）と `@comment`/`@commend`（編集者コメント）も**廃止**した（残る `@` 記法は `@vspace` のみ）。編集者コメントは HTML コメント `<!-- TODO: … -->` で代替可能かつ本番出力にハイライトが残る地雷であったため。これに伴い R9 の予約 ID は `@vspace` のみ、`SPACING_MACRO_RULES` は 2 本、`ALL` は 31 本、`.hen-comment` CSS・22 章「編集者コメント」節・`templates/chapter.md` の実演・本 PLANNED の @comment 一括除去項目も撤去済み。
-> 関連: `lib/vivlio_starter/cli/post_process/html_replacer.rb`, `lib/vivlio_starter/cli/post_process.rb`, `lib/vivlio_starter/cli/prism_lines.rb`, `lib/vivlio_starter/cli/common.rb`, `docs/archives/code-include-line-number-spec.md`, `docs/specs/explanatory-diagram-spec.md`, `docs/specs/PLANNED.md`
+> 関連: `lib/vivlio_starter/cli/post_process/html_replacer.rb`, `lib/vivlio_starter/cli/post_process.rb`, `lib/vivlio_starter/cli/prism_lines.rb`, `lib/vivlio_starter/cli/common.rb`, `docs/archives/code-include-line-number-spec.md`, `docs/archives/explanatory-diagram-spec.md`, `docs/specs/PLANNED.md`
 
 ## 背景・動機
 
@@ -253,7 +253,7 @@ end
 
 ### 3.5 Planned ガイド線マクロ（yml 66–117 行）の完全廃止
 
-「画像への注釈・ガイド線」という用途は `docs/specs/explanatory-diagram-spec.md`（図解注釈記法 `.showcase`＋`rect:`/`pointer:` コマンド。確定仕様・未着手、STATUS.md 参照）が後継となることが決定済み（2026-07-11 ユーザー確認）。`@lu` 系マクロは正式サポートに至らないまま廃止する。**退避ドキュメントは作らない**（yml のコメントアウト部は git 履歴で参照できる）。
+「画像への注釈・ガイド線」という用途は `docs/archives/explanatory-diagram-spec.md`（図解注釈記法 `.showcase`＋`rect:`/`pointer:` コマンド。**2026-07-15 実装済み**）が後継となることが決定済み（2026-07-11 ユーザー確認）。`@lu` 系マクロは正式サポートに至らないまま廃止する。**退避ドキュメントは作らない**（yml のコメントアウト部は git 履歴で参照できる）。
 
 - yml のコメントアウトブロック（66–117 行）はファイルごと削除（移植しない）。
 - `cross_reference_processor.rb` の `RESERVED_MACRO_POSITION_PREFIXES`（46–49 行）と `reserved_id?` の接頭辞判定分岐（59 行）、および関連コメント（41–45, 54 行）を削除する。`RESERVED_MACRO_IDS`（`@vspace` 等）は存続（R9）。
@@ -359,4 +359,4 @@ end
 
 - パス 2・3（SectionWrapper 後／最終）の適用を `PARAGRAPH_CLEANUP_RULES` のみに絞る最適化（現在は全ルール再適用。冪等性は h6 ルールの再マッチを Nokogiri の重複属性破棄が偶然吸収している構図のため、絞り込みはむしろ健全化になるが、挙動同一性を優先し本タスクでは見送る）。
 - 会話文記法の刷新（`config/characters.yml` 化、PLANNED.md:41）。
-- 図解注釈記法（`explanatory-diagram-spec.md`、ガイド線マクロの後継）。Phase 0（showcase_svg_builder コア）から着手予定の別タスク。
+- 図解注釈記法（`explanatory-diagram-spec.md`、ガイド線マクロの後継）。**2026-07-15 に実装済み**（`docs/archives/` 参照）。廃止の受け皿は存在する。

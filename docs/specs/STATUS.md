@@ -9,11 +9,6 @@
 
 ## 一覧
 
-`explanatory-diagram-spec.md`
-: 図解注釈記法（Explanatory Diagram Syntax）の仕様。スクリーンショット等の画像に矩形囲み・矢印（pointer）などの注釈を SVG で重ねる記法を追加する。
-  状態: 確定仕様・未着手
-  次のアクション: Phase 0（showcase_svg_builder コア）から実装
-
 `post-replace-list-retirement-spec.md`
 : `config/post_replace_list.yml` を廃止し、全置換ルールを post_process のコード（`ReplacementRules`）へ移植する仕様。`[!]` 赤強調は prism_lines へ移設、会話記法（`.kaiwa`）とガイド線マクロ（`@lu` 系）は完全廃止、著者向けの置換ルール拡張機能も廃止する。
   状態: 確定仕様・未着手
@@ -119,9 +114,10 @@
   入稿用 CMYK カバー PDF はルート直下へ成果品複製（`{name}_{front,back}cover_v{ver}.pdf`）。
   旧配置の移行掃除（clean.rb）は 1 リリース後に撤去予定。
 
-- **table-colspan-spec と explanatory-diagram-spec は互いに独立。** どちらから着手してもよい。どちらも `markdown_preprocessor.rb` の変換ステップに新規フックを挿入する点は共通するため、同時期に着手する場合はフック挿入順序（既存ステップとの前後関係）の衝突に注意。
+- **explanatory-diagram-spec は 2026-07-15 に実装完了し、2026-07-16 に `docs/archives/` へ移動した（挿絵 explanatory_diagram.png・table-colspan-spec の挿絵 table.png も同時にアーカイブ）。**
+  図解注釈記法 `:::{.showcase}`（rect/pointer/crop・合成 SVG 焼き込み・PDF はベクタ / EPUB・Kindle はラスター差し替え）。コミット `1f1799c9`。showcase 起因の textlint 誤検出は lint-notation-guard-spec で根治済み。
 
 - **lint-notation-guard-spec は 2026-07-16 に実装完了し `docs/archives/` へ移動した（調査報告 lint-notation-guard-report.md も同時にアーカイブ）。**
   Phase 0（`vs lint --fix` no-op 修復・2 パス方式）とPhase 1（`Lint::NotationGuard` 新設・allowlist VFM 5 エントリ撤去）を実装。実装中に G2 マーカー判定の厳格化（`:::-->` 巻き込みで textlint 暴走）と `Tempfile.new` の GC 削除による検査漏れ（既存潜在バグ）を追加で修正した——経緯は仕様書 §7 の追記を参照。
 
-- **post-replace-list-retirement-spec は post_process 側の改修で、explanatory-diagram-spec（pre_process 側）と衝突しない。** 実装順はどちらが先でもよい。ただし前者はガイド線マクロ（`@lu` 系）を完全廃止し、後者（`.showcase` 記法）をその後継と位置づけている。code-include-line-number-spec とは `prism_lines.rb` を共に触るが、別メソッド（`[!]` 強調 vs `decorate_pre_tag`）のため独立。
+- **post-replace-list-retirement-spec の前提は揃った。** ガイド線マクロ（`@lu` 系）の後継と位置づけられていた `.showcase` 記法（explanatory-diagram-spec）が実装済みになったため、廃止の受け皿が存在する状態で着手できる。code-include-line-number-spec とは `prism_lines.rb` を共に触るが、別メソッド（`[!]` 強調 vs `decorate_pre_tag`）のため独立。

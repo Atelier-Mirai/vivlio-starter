@@ -10,7 +10,7 @@
 > - **`--fix` 修復を Phase 0 として先行**させる（独立コミット。ガードの設計が fix の直し方に依存するため）
 > - 機械データ・ブロックは**宣言的な定数**（コンテナ名の配列）で持つ
 > - allowlist の「VFM 記法」5 エントリは**全撤去**（root + scaffold 同期）
-> 関連: `lib/vivlio_starter/cli/lint.rb`, `lib/vivlio_starter/cli/masking.rb`, `lib/vivlio_starter/cli/lint/tokenizer.rb`, `config/textlint_allowlist.yml`, `test/vivlio_starter/robustness/lint_fix_interrupt_test.rb`, `docs/specs/explanatory-diagram-spec.md`
+> 関連: `lib/vivlio_starter/cli/lint.rb`, `lib/vivlio_starter/cli/masking.rb`, `lib/vivlio_starter/cli/lint/tokenizer.rb`, `config/textlint_allowlist.yml`, `test/vivlio_starter/robustness/lint_fix_interrupt_test.rb`, `docs/archives/explanatory-diagram-spec.md`
 
 ## 0. 背景（要約）
 
@@ -320,7 +320,7 @@ end
 | `lib/vivlio_starter/cli/lint/tokenizer.rb` | `strip_notation` を読み込み直後に適用 | 1 |
 | `test/vivlio_starter/cli/lint/notation_guard_test.rb` | 新設（§3.8） | 1 |
 | `config/textlint_allowlist.yml` | VFM 5 エントリ撤去（root 編集 → `ruby copy_to_scaffold.rb`） | 1 |
-| `docs/specs/explanatory-diagram-spec.md` | 冒頭の「未解決（要判断）: textlint が showcase を…」注記を本仕様への参照に差し替え | 1 |
+| `docs/archives/explanatory-diagram-spec.md` | 冒頭の「未解決（要判断）: textlint が showcase を…」注記を本仕様への参照に差し替え | 1 |
 
 ## 5. 報告書 §7（未決事項）の決定一覧
 
