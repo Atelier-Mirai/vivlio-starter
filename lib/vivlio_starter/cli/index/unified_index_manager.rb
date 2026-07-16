@@ -34,6 +34,12 @@ module VivlioStarter
     YomiInferrer = IndexCommands::YomiInferrer
 
     class UnifiedIndexManager
+      # R9: [用語]（読みなし）記法で ASCII 可視文字のみ 2 文字以下の語は登録しない。
+      # 単位 [eV] [Hz] やフラグ解説 [g] が索引語として誤登録されるのを防ぐ
+      # （[g] は pattern /\bg\b/ となり本文中の英字 g 全部にタグが付く）。
+      # 意図的に登録したい場合は読み付き [eV|いーぶい] を使う。
+      ASCII_SHORT_TERM_PATTERN = /\A[\x21-\x7E]{1,2}\z/
+
       attr_reader :terms_manager, :queue_manager, :markdown_generator
 
       def initialize
@@ -54,15 +60,21 @@ module VivlioStarter
 
         Common.log_action('索引の自動処理を開始します...')
 
+        # R8: 辞書へ書いた登録内容を種別ごとに集め、既定ログレベルで要約表示する
+        dictionary_writes = {}
+
         # 1. 手動マークアップを検出して統合辞書に登録
         manual_terms = extract_manual_markup_terms(chapters)
         if manual_terms.any?
-          @terms_manager.merge_terms!(manual_terms, flags: 'i', source: 'manual_markup')
+          added = @terms_manager.merge_terms!(manual_terms, flags: 'i', source: 'manual_markup')
+          dictionary_writes['手動マークアップ'] = added if added.any?
           Common.log_info("手動マークアップから #{manual_terms.size} 件の用語を登録しました")
         end
 
         # auto_discovery が無効の場合、自動候補抽出をスキップ
         unless auto_discovery
+          @terms_manager.record_scanned_chapters!(chapters)
+          report_dictionary_writes(dictionary_writes)
           Common.log_info('auto_discovery: false のため、自動候補抽出をスキップします')
           Common.log_info('手動マークアップ [用語|読み] のみが索引に反映されます')
           return
@@ -93,7 +105,10 @@ module VivlioStarter
         auto_approved = filtered_candidates
                         .select { |c| c['score'] >= auto_threshold }
                         .map { |candidate| normalize_candidate(candidate) }
-        @terms_manager.merge_terms!(auto_approved, flags: 'i', source: 'auto_extracted') if auto_approved.any?
+        if auto_approved.any?
+          added = @terms_manager.merge_terms!(auto_approved, flags: 'i', source: 'auto_extracted')
+          dictionary_writes['自動承認'] = added if added.any?
+        end
 
         # 5. 中スコア候補をHigh/Lowに分割
         review_candidates = filtered_candidates
@@ -117,7 +132,11 @@ module VivlioStarter
           rejected: rejected_with_context
         )
 
-        # 9. 結果レポート
+        # 9. 走査した章集合を辞書へ記録（R7: ビルド時の章追加検知に使う）
+        @terms_manager.record_scanned_chapters!(chapters)
+
+        # 10. 結果レポート
+        report_dictionary_writes(dictionary_writes)
         report_auto_results(auto_approved, high_candidates, low_candidates, auto_threshold, review_threshold,
                             rejected_count_in_candidates)
       end
@@ -345,13 +364,17 @@ module VivlioStarter
         builder.build_index!
 
         # 用語集ページ生成（glossary_enabled かつ g フラグの用語がある場合）
+        # スキャンは辞書を書かない（R1）ためリロード不要
         if glossary_enabled?
-          @terms_manager.clear_cache! # scan 後に backlink_sources が更新されるためリロード
           glossary = @terms_manager.glossary_terms
           builder.build_glossary!(glossary)
+          warn_unmatched_glossary_terms(glossary, scanner.glossary_backlinks, chapters)
         end
 
         Common.log_success('索引・用語集ページの生成が完了しました')
+
+        # R7: 索引候補の抽出（vs index:auto）が未実施の章を検出して案内
+        warn_unscanned_chapters(chapters)
 
         return unless scanner.config_missing || scanner.no_matches
 
@@ -372,6 +395,51 @@ module VivlioStarter
       # 用語集機能が有効か
       def glossary_enabled?
         @glossary_config[:enabled] == true
+      end
+
+      # R7: ビルド対象のうち index:auto が未走査の章があれば、ビルド末尾の案内へ積む。
+      # 旧辞書（scanned_chapters キーなし）では判定しない——誤警告を避けるため
+      # @param chapters [Array<String>] ビルド対象章
+      def warn_unscanned_chapters(chapters)
+        scanned = @terms_manager.scanned_chapters
+        return if scanned.nil?
+
+        unscanned = chapters.map { File.basename(it.to_s, '.md') } - scanned
+        return if unscanned.empty?
+
+        IndexCommands.add_post_build_message(
+          "🟡 索引候補の抽出が未実施の章があります: #{unscanned.join(', ')} → vs index:auto を実行してください"
+        )
+      end
+
+      # R4: ビルド対象章に 1 回も出現しない用語集語を警告する（掲載自体は維持）。
+      # catalog 外の章に出現があるならその章名を添え、どこにも無ければその旨を伝える。
+      # 除外したい場合の判断（-g フラグ）は著者に委ねる——定義は書籍の語彙資産のため。
+      # @param glossary_terms [Array<Hash>] 用語集対象の用語
+      # @param glossary_backlinks [Hash{String => Array}] 今回のスキャンで出現した語 → 出現箇所
+      # @param chapters [Array<String>] ビルド対象章
+      def warn_unmatched_glossary_terms(glossary_terms, glossary_backlinks, chapters)
+        missing = glossary_terms.reject { glossary_backlinks.key?(it['term']) }
+        return if missing.empty?
+
+        build_targets = chapters.map { File.basename(it.to_s, '.md') }
+        all_contents = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).to_h do |path|
+          [File.basename(path, '.md'), File.read(path, encoding: 'utf-8')]
+        end
+
+        missing.each do |term|
+          name = term['term']
+          found = all_contents.keys.select { all_contents[it].include?(name) }
+          outside = found - build_targets
+          hint = if outside.any?
+                   "catalog 外の #{outside.join(', ')} に出現"
+                 elsif found.any?
+                   "#{found.join(', ')} に文字列出現はあるがリンク化されていません（コード内・タグ内等）"
+                 else
+                   '原稿のどこにも出現しません（語の変更・削除？）'
+                 end
+          Common.log_warn("用語集語がビルド対象章に出現しません: #{name}（#{hint}）")
+        end
       end
 
       # リジェクト済み候補の一覧表示
@@ -438,6 +506,8 @@ module VivlioStarter
       def extract_manual_markup_terms(chapters)
         terms = []
         yomi_inferrer = YomiInferrer.new
+        # R9 でスキップした語 → 出現章のリスト（章ごとに 1 回だけ警告するため集約）
+        skipped_short_terms = Hash.new { |h, k| h[k] = [] }
 
         chapters.each do |chapter|
           # ベースネームの場合はフルパスに変換
@@ -471,6 +541,12 @@ module VivlioStarter
             next if term.match?(/^https?:/) # URL を除外
             next if term.match?(/^\^/) # 脚注参照 [^1] を除外
 
+            # R9: 単位・記号表記（[eV] [Hz] [g] 等）は登録せず、集約して後で警告
+            if term.match?(ASCII_SHORT_TERM_PATTERN)
+              skipped_short_terms[term] << chapter_name
+              next
+            end
+
             yomi = yomi_inferrer.available? ? yomi_inferrer.infer(term) : term
             context = extract_surrounding_context(content, term)
             terms << {
@@ -492,8 +568,21 @@ module VivlioStarter
           end
         end
 
+        warn_skipped_short_terms(skipped_short_terms)
+
         # 重複を除去
         terms.uniq { |t| t['term'] }
+      end
+
+      # R9 でスキップした短い ASCII 語を警告する（警告親切方針: before→after ＋出現箇所）
+      # @param skipped [Hash{String => Array<String>}] 語 → 出現章のリスト
+      def warn_skipped_short_terms(skipped)
+        skipped.each do |term, chapter_names|
+          Common.log_warn(
+            "[#{term}] は単位・記号表記とみなし索引登録しません（#{chapter_names.uniq.join(', ')}）",
+            detail: "索引に載せる場合は読み付きで [#{term}|よみ] と書いてください"
+          )
+        end
       end
 
       # 候補を抽出
@@ -558,10 +647,14 @@ module VivlioStarter
       end
 
       # 登録済み用語に文脈と用語集登録状態を付与
+      # R5: 原稿推敲に追従するため、現原稿に無い context を捨て、空になったら複数章ぶん補充する
+      # （温存条件は context_live? に集約・R6）
       # @param terms [Array<Hash>] 用語のリスト
       # @param chapters [Array<String>] 対象章のリスト
       # @return [Array<Hash>] 文脈付き用語のリスト
       def enrich_terms_with_context(terms, chapters)
+        loaded_contents = load_squashed_chapter_contents(chapters)
+
         terms.map do |term|
           enriched = term.dup
           flags = term['flags'].to_s
@@ -570,11 +663,10 @@ module VivlioStarter
           enriched['in_index'] = flags.include?('i')
           enriched['in_glossary'] = flags.include?('g')
 
-          # 文脈がない場合は本文から抽出
-          unless enriched['contexts']&.any?
-            context = find_context_for_term(term['term'], chapters)
-            enriched['contexts'] = context ? [context] : []
-          end
+          # stale な context を捨て、空になったら本文から補充
+          fresh = Array(enriched['contexts']).select { context_live?(it, loaded_contents) }
+          fresh = collect_contexts_for_term(term['term'], chapters) if fresh.empty?
+          enriched['contexts'] = annotate_out_of_scope_contexts(fresh, loaded_contents)
 
           enriched
         end
@@ -597,20 +689,23 @@ module VivlioStarter
           end
 
           # 文脈がない場合は本文から抽出
-          unless enriched['contexts']&.any?
-            context = find_context_for_term(item['term'], chapters)
-            enriched['contexts'] = context ? [context] : []
-          end
+          enriched['contexts'] = collect_contexts_for_term(item['term'], chapters) unless enriched['contexts']&.any?
 
           enriched
         end
       end
 
-      # 用語の文脈を本文から検索
+      # context の収集上限（章数）。候補抽出側（IndexCandidateExtractor）の蓄積数
+      # `.first(3)` と揃える——レビュー表示は先頭 2 件のためこれで十分
+      MAX_CONTEXT_CHAPTERS = 3
+
+      # 用語の文脈を全対象章から収集する（出現する章ごとに 1 件・上限 MAX_CONTEXT_CHAPTERS）
+      # 最初の 1 章で打ち切ると複数章で使われる語の使用例が 1 件に痩せるため（報告書 §5.1）
       # @param term [String] 用語
       # @param chapters [Array<String>] 対象章のリスト（ベースネームまたはフルパス）
-      # @return [Hash, nil] 文脈情報
-      def find_context_for_term(term, chapters)
+      # @return [Array<Hash>] 文脈情報のリスト
+      def collect_contexts_for_term(term, chapters)
+        contexts = []
         chapters.each do |chapter|
           # ベースネームの場合はフルパスに変換
           chapter_path = resolve_chapter_path(chapter)
@@ -619,11 +714,55 @@ module VivlioStarter
           content = File.read(chapter_path, encoding: 'utf-8')
           next unless content.include?(term)
 
-          chapter_name = File.basename(chapter_path, '.*')
           context = extract_surrounding_context(content, term)
-          return { 'chapter' => chapter_name, 'context' => context } if context
+          next if context.to_s.empty?
+
+          contexts << { 'chapter' => File.basename(chapter_path, '.*'), 'context' => context }
+          break if contexts.size >= MAX_CONTEXT_CHAPTERS
         end
-        nil
+        contexts
+      end
+
+      # context が現原稿に生存しているかを判定する（stale 判定の 1 実装・§4.3）。
+      # YAML 折返し等の空白の揺れを無視するため、両者から全空白を除去して部分一致で見る。
+      # 参照章が今回読み込んだ集合に無い場合:
+      #   - contents/ 等に実在する章なら判定せず温存（R6: catalog 外・部分実行を壊さない）
+      #   - どこにも実在しない章（削除・改名）なら stale として捨てる
+      # @param ctx [Hash] 文脈情報（'chapter'/'context'）
+      # @param loaded_contents [Hash{String => String}] 今回読み込んだ章 → 空白除去済み本文
+      # @return [Boolean]
+      def context_live?(ctx, loaded_contents)
+        chapter = ctx['chapter'] || ctx[:chapter]
+        text = (ctx['context'] || ctx[:context]).to_s.gsub(/[[:space:]]+/, '')
+        return false if chapter.nil? || text.empty?
+
+        return !resolve_chapter_path(chapter).nil? unless loaded_contents.key?(chapter)
+
+        loaded_contents[chapter].include?(text)
+      end
+
+      # 今回読み込む章の本文を全空白除去済みで用意する（context_live? の下準備）
+      # @param chapters [Array<String>] 対象章のリスト
+      # @return [Hash{String => String}] 章ベースネーム → 空白除去済み本文
+      def load_squashed_chapter_contents(chapters)
+        chapters.each_with_object({}) do |chapter, result|
+          path = resolve_chapter_path(chapter)
+          next unless path && File.exist?(path)
+
+          result[File.basename(path, '.*')] = File.read(path, encoding: 'utf-8').gsub(/[[:space:]]+/, '')
+        end
+      end
+
+      # 今回対象外の章を参照する context に表示用マークを付ける（判断材料の誤解防止・§4.3-4）。
+      # レビュー md の表示にのみ使われ、apply のパース時に注記は剥がされるため辞書へは戻らない
+      # @param contexts [Array<Hash>] 文脈情報のリスト
+      # @param loaded_contents [Hash{String => String}] 今回読み込んだ章の集合
+      # @return [Array<Hash>]
+      def annotate_out_of_scope_contexts(contexts, loaded_contents)
+        contexts.map do |ctx|
+          chapter = ctx['chapter'] || ctx[:chapter]
+          loaded_contents.key?(chapter) ? ctx : ctx.merge('out_of_scope' => true)
+        end
       end
 
       # 章のパスを解決（ベースネーム → フルパス）
@@ -843,18 +982,28 @@ module VivlioStarter
         false
       end
 
+      # R8: auto_process! が辞書へ書いた登録内容を既定ログレベルで必ず表示する。
+      # 何も登録しなかった実行では無言（無言＝無変更が成立する）。
+      # @param dictionary_writes [Hash{String => Array<String>}] 登録種別 → 追加された語名
+      def report_dictionary_writes(dictionary_writes)
+        return if dictionary_writes.empty?
+
+        summary = dictionary_writes.map { |kind, names| "#{kind} #{names.size} 語（#{names.join(', ')}）" }.join('・')
+        Common.log_always("📝 辞書を更新しました: #{summary}")
+      end
+
       # 結果をレポート（auto_process!用）
+      # 総括行（候補数・レビューファイル案内）は既定ログレベルで表示する（R8）
       def report_auto_results(auto_approved, high_candidates, low_candidates, auto_threshold, review_threshold,
                               rejected_count)
-        Common.log_success('候補抽出完了')
-        Common.log_info("自動承認: #{auto_approved.size}件 (スコア≥#{auto_threshold})")
-        Common.log_info("推奨候補: #{high_candidates.size}件")
-        Common.log_info("一般候補: #{low_candidates.size}件 (#{review_threshold}≤スコア<#{auto_threshold})")
+        Common.log_summary(
+          "候補抽出完了: 自動承認 #{auto_approved.size} 件（スコア≥#{auto_threshold}）・" \
+          "推奨候補 #{high_candidates.size} 件・一般候補 #{low_candidates.size} 件" \
+          "（#{review_threshold}≤スコア<#{auto_threshold}）",
+          detail: "#{ReviewMarkdownGenerator::REVIEW_FILE} を編集後、vs index:apply を実行してください"
+        )
 
         Common.log_info("リジェクト設定により #{rejected_count} 件の候補を除外しました") if rejected_count.positive?
-
-        Common.log_success('_index_review.md を生成しました')
-        Common.log_info('ファイルを編集後、vs index:apply を実行してください')
       end
     end
   end

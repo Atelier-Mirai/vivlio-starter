@@ -110,8 +110,6 @@ module VivlioStarter
         File.write('contents/04-special.md', <<~MD)
           # Special Characters
 
-          [!]は否定演算子です。
-          [&&]は論理積演算子です。
           [||]は論理和演算子です。
           [404]はエラーコードです。
           [<h1>]は見出しタグです。
@@ -121,11 +119,75 @@ module VivlioStarter
 
         content = File.read('_index_glossary_review.md')
         # 特殊文字を含む手動マークアップが表示される
-        assert_includes content, '**!**'
-        assert_includes content, '**&&**'
+        # （ASCII のみ 2 文字以下（[!] [&&] 等）は R9 により登録対象外・下の R9 テスト参照）
         assert_includes content, '**||**'
         assert_includes content, '**404**'
         assert_includes content, '**<h1>**'
+      end
+
+      # --- phase: R9 ASCII 短語ガード ---
+
+      # R9: [用語]（読みなし）で ASCII のみ 2 文字以下は単位・記号表記とみなし登録しない
+      def test_auto_process_skips_short_ascii_terms_with_warning
+        File.write('contents/94-sample.md', <<~MD)
+          # Units
+
+          | 金属 | 仕事関数 φ [eV] | しきい周波数 [Hz] |
+          書籍間で持ち運ぶ用語集[g]・reject・読み
+        MD
+
+        output, = capture_io { @manager.auto_process!(['94-sample']) }
+
+        terms = load_all_terms
+        refute_includes terms, 'eV'
+        refute_includes terms, 'Hz'
+        refute_includes terms, 'g'
+        # 既定ログレベルで章名つきの警告と読み付き記法の案内が出る
+        assert_includes output, '[eV] は単位・記号表記とみなし索引登録しません'
+        assert_includes output, '94-sample'
+        assert_includes output, '[eV|よみ]'
+      end
+
+      # R9 の逃げ道: 読み付き [eV|いーぶい] は従来どおり登録される
+      def test_auto_process_registers_short_ascii_term_with_explicit_yomi
+        File.write('contents/94-sample.md', <<~MD)
+          # Units
+
+          仕事関数の単位は[eV|いーぶい]です。
+        MD
+
+        @manager.auto_process!(['94-sample'])
+
+        assert_includes load_all_terms, 'eV'
+      end
+
+      # --- phase: R8 辞書更新の可視化 ---
+
+      # R8: auto が辞書へ書いた語は既定ログレベル（warn）で必ず要約表示される
+      def test_auto_process_reports_dictionary_writes_at_default_level
+        File.write('contents/05-visible.md', <<~MD)
+          # Visible
+
+          [特殊相対性理論|とくしゅそうたいせいりろん]を説明します。
+        MD
+
+        output, = capture_io { @manager.auto_process!(['05-visible']) }
+
+        assert_includes output, '📝 辞書を更新しました'
+        assert_includes output, '特殊相対性理論'
+      end
+
+      # R8: 何も登録しなかった実行では要約を出さない（無言＝無変更）
+      def test_auto_process_stays_silent_when_nothing_written
+        File.write('contents/06-plain.md', <<~MD)
+          # Plain
+
+          マークアップのない本文です。
+        MD
+
+        output, = capture_io { @manager.auto_process!(['06-plain']) }
+
+        refute_includes output, '📝 辞書を更新しました'
       end
 
       def test_auto_process_saves_terms_to_yaml
@@ -204,6 +266,116 @@ module VivlioStarter
         content = File.read('_index_glossary_review.md')
         # 文脈情報が含まれる
         assert_match(/08-context/, content)
+      end
+
+      # --- phase: context 鮮度（R5/R6） ---
+
+      # R5: 現原稿に生きている context はそのまま温存される
+      def test_enrich_preserves_live_context
+        File.write('contents/10-intro.md', "この章では特殊相対性理論を丁寧に説明します。\n")
+        terms = [{ 'term' => '特殊相対性理論', 'flags' => 'i',
+                   'contexts' => [{ 'chapter' => '10-intro',
+                                    'context' => 'この章では特殊相対性理論を 丁寧に説明します。' }] }]
+
+        enriched = @manager.send(:enrich_terms_with_context, terms, ['10-intro'])
+
+        contexts = enriched.first['contexts']
+        assert_equal 1, contexts.size
+        # 空白の揺れ（YAML 折返し）は stale とみなさない
+        assert_includes contexts.first['context'], '特殊相対性理論'
+      end
+
+      # R5: stale な context は捨てられ、出現する複数章から補充される
+      def test_enrich_discards_stale_context_and_refills_from_multiple_chapters
+        File.write('contents/10-intro.md', "推敲後の新しい文章に特殊相対性理論が登場します。\n")
+        File.write('contents/20-body.md', "この章でも特殊相対性理論を扱います。\n")
+        terms = [{ 'term' => '特殊相対性理論', 'flags' => 'i',
+                   'contexts' => [{ 'chapter' => '10-intro', 'context' => '推敲前の古い抜粋テキスト' }] }]
+
+        enriched = @manager.send(:enrich_terms_with_context, terms, %w[10-intro 20-body])
+
+        contexts = enriched.first['contexts']
+        assert_equal %w[10-intro 20-body], contexts.map { it['chapter'] }.sort
+        refute(contexts.any? { it['context'].include?('推敲前の古い抜粋') })
+      end
+
+      # R6: 今回対象外だが実在する章（catalog 外・部分実行）の context は判定せず温存
+      def test_enrich_preserves_context_of_chapters_outside_scope
+        File.write('contents/61-developer.md', "開発者向けの内容。\n")
+        File.write('contents/10-intro.md', "本文。\n")
+        terms = [{ 'term' => 'PDF/X-1a', 'flags' => 'g',
+                   'contexts' => [{ 'chapter' => '61-developer', 'context' => '古い抜粋でも対象外章なら温存される' }] }]
+
+        enriched = @manager.send(:enrich_terms_with_context, terms, ['10-intro'])
+
+        contexts = enriched.first['contexts']
+        assert_equal 1, contexts.size
+        assert_equal '61-developer', contexts.first['chapter']
+        assert contexts.first['out_of_scope'], 'catalog 外の表示注記フラグが付くこと'
+      end
+
+      # R5: 実在しない章（削除・改名）を参照する context は stale として捨てる
+      def test_enrich_discards_context_of_deleted_chapters
+        File.write('contents/10-intro.md', "本文にはこの語は出ません。\n")
+        terms = [{ 'term' => '幻の用語', 'flags' => 'i',
+                   'contexts' => [{ 'chapter' => '99-removed', 'context' => '削除済み章の抜粋' }] }]
+
+        enriched = @manager.send(:enrich_terms_with_context, terms, ['10-intro'])
+
+        assert_empty enriched.first['contexts']
+      end
+
+      # --- phase: 未出現の用語集語警告（R4） ---
+
+      # R4: 今回のスキャンに出現しない g 語は catalog 外の出現章名つきで警告される（掲載は維持）
+      def test_warn_unmatched_glossary_terms_hints_outside_chapter
+        File.write('contents/61-developer.md', "PDF/X-1a は印刷入稿の規格です。\n")
+        glossary = [{ 'term' => 'PDF/X-1a', 'flags' => 'g' }]
+
+        output, = capture_io do
+          @manager.send(:warn_unmatched_glossary_terms, glossary, {}, ['10-intro'])
+        end
+
+        assert_includes output, '用語集語がビルド対象章に出現しません: PDF/X-1a'
+        assert_includes output, 'catalog 外の 61-developer に出現'
+      end
+
+      # R4: 原稿のどこにも出現しない g 語は「語の変更・削除？」の手掛かりを添える
+      def test_warn_unmatched_glossary_terms_hints_missing_everywhere
+        File.write('contents/10-intro.md', "本文。\n")
+        glossary = [{ 'term' => '消えた用語', 'flags' => 'g' }]
+
+        output, = capture_io do
+          @manager.send(:warn_unmatched_glossary_terms, glossary, {}, ['10-intro'])
+        end
+
+        assert_includes output, '原稿のどこにも出現しません（語の変更・削除？）'
+      end
+
+      # R4: 今回のスキャンで出現した語には警告を出さない
+      def test_warn_unmatched_glossary_terms_silent_when_all_matched
+        glossary = [{ 'term' => 'CSS', 'flags' => 'g' }]
+        backlinks = { 'CSS' => [{ 'chapter' => '10-intro', 'occurrence' => 1 }] }
+
+        output, = capture_io do
+          @manager.send(:warn_unmatched_glossary_terms, glossary, backlinks, ['10-intro'])
+        end
+
+        assert_empty output
+      end
+
+      # --- phase: 章走査記録（R7） ---
+
+      # R7: auto_process! は走査した章集合を和集合で辞書へ記録する
+      def test_auto_process_records_scanned_chapters_as_union
+        File.write('contents/10-intro.md', "[Ruby|るびー]は良い言語です。\n")
+        File.write('contents/20-body.md', "本文です。\n")
+
+        @manager.auto_process!(['10-intro'])
+        @manager.auto_process!(['20-body'])
+
+        data = YAML.load_file('config/index_glossary_terms.yml')
+        assert_equal %w[10-intro 20-body], data['scanned_chapters']
       end
 
       # --- phase: utility method tests ---
@@ -656,6 +828,13 @@ module VivlioStarter
 
         data = YAML.load_file('config/index_glossary_rejected.yml')
         (data['rejected_terms'] || []).map { it['term'] }
+      end
+
+      def load_all_terms
+        return [] unless File.exist?('config/index_glossary_terms.yml')
+
+        data = YAML.load_file('config/index_glossary_terms.yml')
+        (data['terms'] || []).map { it['term'] }
       end
 
       def write_review_with_rejected_items(terms:, rejected:)

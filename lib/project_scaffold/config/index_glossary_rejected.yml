@@ -60,3 +60,9 @@ rejected_terms:
   yomi: VIEW
   rejected_at: '2026-07-05 21:00:15'
   score: 269.2
+- term: Hz
+  yomi: Hz
+  rejected_at: '2026-07-16 20:06:30'
+- term: eV
+  yomi: eV
+  rejected_at: '2026-07-16 20:06:30'

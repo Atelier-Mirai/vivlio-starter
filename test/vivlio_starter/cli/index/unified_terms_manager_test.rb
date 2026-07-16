@@ -143,14 +143,58 @@ module VivlioStarter
         assert_equal 'スタイルシート言語', @manager.find_term('CSS')['definition']
       end
 
-      def test_update_backlink_sources
-        @manager.merge_terms!([{ 'term' => 'CSS', 'yomi' => 'CSS' }], flags: 'g')
-        sources = [{ 'chapter' => '01-intro', 'occurrence' => 1, 'anchor_id' => 'gls-src-01-intro-css-1' }]
-        @manager.update_backlink_sources!('CSS', sources)
+      # R3: 旧辞書に残置した backlink_sources は次の保存の機会に黙って消える
+      def test_save_terms_discards_legacy_backlink_sources
+        legacy_data = {
+          'generated_at' => Time.now.to_s,
+          'terms' => [
+            { 'term' => 'CSS', 'yomi' => 'CSS', 'flags' => 'g', 'definition' => '',
+              'backlink_sources' => [{ 'chapter' => '01-intro', 'occurrence' => 1 }] }
+          ]
+        }
+        File.write('config/index_glossary_terms.yml', legacy_data.to_yaml)
+        @manager.clear_cache!
 
-        term = @manager.find_term('CSS')
-        assert_equal 1, term['backlink_sources'].size
-        assert_equal '01-intro', term['backlink_sources'].first['chapter']
+        # 保存を伴う操作（読み更新）を実行
+        @manager.update_yomi!([{ 'term' => 'CSS', 'yomi' => 'しーえすえす' }])
+
+        saved = File.read('config/index_glossary_terms.yml')
+        refute_includes saved, 'backlink_sources'
+      end
+
+      # --- Phase: scanned_chapters（R7） ---
+
+      def test_scanned_chapters_returns_nil_for_legacy_dictionary
+        seed_terms([{ 'term' => 'CSS', 'flags' => 'i' }])
+
+        assert_nil @manager.scanned_chapters
+      end
+
+      def test_record_scanned_chapters_unions_and_filters_by_existing_files
+        FileUtils.mkdir_p('contents')
+        File.write('contents/10-intro.md', '# intro')
+        File.write('contents/20-body.md', '# body')
+        seed_terms([{ 'term' => 'CSS', 'flags' => 'i' }])
+
+        # 初回: 10-intro のみ走査
+        @manager.record_scanned_chapters!(['10-intro'])
+        assert_equal ['10-intro'], @manager.scanned_chapters
+
+        # 2 回目: 20-body と実在しない章（改名残骸）→ 和集合＋実在フィルタ
+        @manager.record_scanned_chapters!(%w[20-body 99-deleted])
+        assert_equal %w[10-intro 20-body], @manager.scanned_chapters
+      end
+
+      def test_save_terms_preserves_scanned_chapters
+        FileUtils.mkdir_p('contents')
+        File.write('contents/10-intro.md', '# intro')
+        seed_terms([{ 'term' => 'CSS', 'flags' => 'i' }])
+        @manager.record_scanned_chapters!(['10-intro'])
+
+        # 用語の保存（merge）で走査記録が落ちないこと
+        @manager.merge_terms!([{ 'term' => 'HTML', 'yomi' => 'HTML' }], flags: 'i')
+
+        assert_equal ['10-intro'], @manager.scanned_chapters
       end
 
       # --- Phase: 後方互換 ---

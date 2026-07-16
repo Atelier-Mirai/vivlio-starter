@@ -289,7 +289,8 @@ module VivlioStarter
 
               # 出現箇所行: "  - chapter: context"
               if current_line =~ /^  - ([^:]+): (.+)/
-                chapter = Regexp.last_match(1)
+                # 表示用の「（catalog 外）」注記は辞書へ戻さない
+                chapter = Regexp.last_match(1).sub(/（catalog 外）\z/, '')
                 context_text = Regexp.last_match(2)
                 contexts << { 'chapter' => chapter, 'context' => context_text }
                 i += 1
@@ -488,6 +489,8 @@ module VivlioStarter
         contexts = term['contexts'] || []
         contexts.first(2).each do |ctx|
           chapter = ctx['chapter'] || '不明'
+          # 今回対象外の章の抜粋は注記する（表示のみ・apply のパースで剥がされる）
+          chapter = "#{chapter}（catalog 外）" if ctx['out_of_scope']
           context_text = extract_context(ctx['context'])
           line += "  - #{chapter}: #{context_text}\n"
         end

@@ -1,7 +1,7 @@
 # 索引・用語集の整合性仕様書 — 辞書と出現情報の分離・context 鮮度・catalog 変更への追従
 
 > 作成日: 2026-07-16
-> ステータス: **確定仕様・実装待ち**
+> ステータス: **実装済み（2026-07-16・Phase 1〜4 完了）**
 > 元報告: [index-context-staleness-report.md](index-context-staleness-report.md)（context stale 化の実測・原因・設計案比較。本書はそれを包含して昇格）
 > 対象: (1) 索引辞書 `config/index_glossary_terms.yml` の `context:` が原稿推敲に追従しない問題、(2) `vs index:auto` が黙って辞書へ書き込む問題、(3) **著者が catalog.yml で章を追加・削除（コメントアウト）したときの索引・用語集の整合性**（起票時にユーザー追加の論点。例: 61-developer.md を全章版 pdf には含め、印刷版 print_pdf では除く運用）
 > 決定事項:
@@ -254,14 +254,15 @@ print_pdf は**閲覧用 PDF からの導出**（`pipeline.rb:106` `derive_print
 
 ## 7. 受け入れ条件
 
-- [ ] R1〜R10 をすべて満たす。
-- [ ] §5 のトグル運用（除外ビルド → 復帰ビルド）で、幽霊バックリンクゼロ・辞書の git 差分ゼロ。
-- [ ] `vs build` 後に `git status` が索引起因で汚れない（R1 の実地確認）。
-- [ ] 実原稿での stale 率 0%（報告書 §6.3 の照合スクリプトで検証）。
-- [ ] `vs index:auto` 実行で、辞書へ書いた語がコンソールに必ず表示される。
-- [ ] 同梱原稿の誤登録（`g`）を棄却済みにし、`[eV]`/`[Hz]` が再登録されないことを確認。
-- [ ] root 辞書・scaffold 辞書から `backlink_sources` が除去され、`ruby copy_to_scaffold.rb` 同期済み。
-- [ ] CHANGELOG（Fixed: 幽霊バックリンク・context stale・誤登録／Changed: ビルドの辞書読み取り専用化・auto の可視化）。
+- [x] R1〜R10 をすべて満たす。
+- [x] §5 のトグル運用（除外ビルド → 復帰ビルド）で、幽霊バックリンクゼロ・辞書の git 差分ゼロ。
+      （2026-07-16 実測: Step 4 相当を実原稿で 3 回実行——全章版 15 リンク → 61-developer 除外版 0 → 復元版 15。辞書ハッシュ不変）
+- [x] `vs build` 後に `git status` が索引起因で汚れない（R1 の実地確認）。
+- [x] 実原稿での stale 率 0%（報告書 §6.3 の照合スクリプトで検証。2026-07-16 実測: 707 context 中 stale 0 件）。
+- [x] `vs index:auto` 実行で、辞書へ書いた語がコンソールに必ず表示される。
+- [x] 同梱原稿の誤登録（`g`）を棄却済みにし、`[eV]`/`[Hz]` が再登録されないことを確認（eV/Hz も棄却リストへ移動済み）。
+- [x] root 辞書・scaffold 辞書から `backlink_sources` が除去され、`ruby copy_to_scaffold.rb` 同期済み。
+- [x] CHANGELOG（Fixed: 幽霊バックリンク・context stale・誤登録／Changed: ビルドの辞書読み取り専用化・auto の可視化）。
 
 ## 8. スコープ外（将来）
 

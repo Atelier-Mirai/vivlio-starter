@@ -86,11 +86,12 @@ module VivlioStarter
       # @param new_terms [Array<Hash>] 追加する用語
       # @param flags [String] デフォルトの flags ('i', 'g', 'ig')
       # @param source [String] 登録元
+      # @return [Array<String>] 新規追加された用語名（呼び出し元の登録要約表示・R8 に使う）
       def merge_terms!(new_terms, flags: 'i', source: 'auto_extracted')
-        return if new_terms.nil? || new_terms.empty?
+        return [] if new_terms.nil? || new_terms.empty?
 
         existing = load_terms.dup
-        added_count = 0
+        added_names = []
 
         new_terms.each do |term|
           term_name = term['term'] || term[:term]
@@ -103,12 +104,13 @@ module VivlioStarter
           else
             # 新規追加
             existing << build_term_entry(term, flags, source)
-            added_count += 1
+            added_names << term_name
           end
         end
 
         save_terms!(existing)
-        Common.log_success("#{added_count} 件の用語を追加しました") if added_count.positive?
+        Common.log_success("#{added_names.size} 件の用語を追加しました") if added_names.any?
+        added_names
       end
 
       # 用語を削除
@@ -198,17 +200,32 @@ module VivlioStarter
         true
       end
 
-      # backlink_sources を更新
-      # @param term_name [String] 用語名
-      # @param sources [Array<Hash>] 出現箇所リスト
-      def update_backlink_sources!(term_name, sources)
-        existing = load_terms.dup
-        term = existing.find { it['term'] == term_name }
-        return false unless term
+      # --- Phase: 章走査記録（R7: 章追加の検知） ---
 
-        term['backlink_sources'] = sources
-        save_terms!(existing)
-        true
+      # index:auto が走査した章集合（辞書トップレベル）
+      # キーが無い旧辞書・辞書なしでは nil（呼び出し側は判定をスキップする）
+      # @return [Array<String>, nil]
+      def scanned_chapters
+        return nil unless File.exist?(UNIFIED_FILE)
+
+        data = YAML.load_file(UNIFIED_FILE, symbolize_names: false)
+        data['scanned_chapters']
+      rescue StandardError
+        nil
+      end
+
+      # 走査した章集合を和集合で記録する（R7）。
+      # contents/ に実在する章だけ残し、改名・削除の残骸は落とす。
+      # 辞書ファイルが無いときは何もしない（空辞書を作ると「辞書なし」案内を壊すため）
+      # @param chapters [Array<String>] 今回走査した章（ベースネームまたはパス）
+      def record_scanned_chapters!(chapters)
+        return unless File.exist?(UNIFIED_FILE)
+
+        data = YAML.load_file(UNIFIED_FILE, symbolize_names: false)
+        existing_files = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { File.basename(it, '.md') }
+        merged = ((data['scanned_chapters'] || []) | chapters.map { File.basename(it.to_s, '.md') }) & existing_files
+        data['scanned_chapters'] = merged.sort
+        File.write(UNIFIED_FILE, data.to_yaml, encoding: 'utf-8')
       end
 
       # キャッシュをクリア
@@ -239,7 +256,6 @@ module VivlioStarter
         # nilでない場合のみ上書き
         merged['yomi'] = new_data['yomi'] || new_data[:yomi] || merged['yomi']
         merged['definition'] = new_data['definition'] if new_data['definition']
-        merged['backlink_sources'] = new_data['backlink_sources'] if new_data['backlink_sources']
         merged['score'] = new_data['score'] || new_data[:score] if new_data['score'] || new_data[:score]
         merged['contexts'] = new_data['contexts'] if new_data['contexts']
         merged['updated_at'] = Time.now.strftime('%Y-%m-%d %H:%M:%S')
@@ -260,7 +276,6 @@ module VivlioStarter
         entry['pattern'] = term['pattern'] || build_pattern(entry['term'])
         entry['auto_approved'] = term['auto_approved'] if term.key?('auto_approved')
         entry['score'] = term['score'] if term['score']
-        entry['backlink_sources'] = term['backlink_sources'] if term['backlink_sources']
         entry['contexts'] = term['contexts'] if term['contexts']&.any?
         entry
       end
@@ -275,12 +290,18 @@ module VivlioStarter
       def save_terms!(terms)
         FileUtils.mkdir_p(File.dirname(UNIFIED_FILE))
 
-        sorted = terms.sort_by { it['yomi'] || it['term'] || '' }
+        # R3: 廃止済みの backlink_sources（出現情報は中間 YAML へ移行済み）が
+        # 旧辞書に残置していても、保存の機会に黙って捨てる
+        sorted = terms.map { it.except('backlink_sources') }
+                      .sort_by { it['yomi'] || it['term'] || '' }
 
         data = {
           'generated_at' => Time.now.strftime('%Y-%m-%d %H:%M:%S'),
           'terms' => sorted
         }
+        # 既存の走査記録（R7）は用語の保存で落とさない
+        scanned = scanned_chapters
+        data['scanned_chapters'] = scanned if scanned
         File.write(UNIFIED_FILE, data.to_yaml, encoding: 'utf-8')
 
         @cache = sorted

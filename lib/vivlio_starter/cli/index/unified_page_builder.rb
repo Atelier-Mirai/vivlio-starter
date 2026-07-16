@@ -59,6 +59,7 @@ module VivlioStarter
           @index_data = {}
           @hierarchical_index = HierarchicalIndex.new
           @glossary_config = glossary_config
+          @glossary_backlinks = {}
         end
 
         # --- Phase: 索引ページ生成 ---
@@ -97,6 +98,10 @@ module VivlioStarter
             cleanup_stale_file!(GLOSSARY_OUTPUT_FILE)
             return nil
           end
+
+          # バックリンクはそのビルドのスキャン結果（中間 YAML）から導出する（R2）。
+          # 辞書の backlink_sources は読まない——前回ビルドの幽霊リンクを持ち込まないため
+          @glossary_backlinks = load_glossary_backlinks
 
           sorted_terms = terms.sort_by { it['yomi'] || it['term'] }
           html = generate_glossary_html(sorted_terms)
@@ -425,9 +430,18 @@ module VivlioStarter
           result.gsub(/`(.+?)`/, '<code>\1</code>')
         end
 
+        # 中間 YAML（_index_matches.yml）から用語集バックリンクを読み込む
+        # @return [Hash{String => Array<Hash>}] 用語名 → 出現箇所リスト
+        def load_glossary_backlinks
+          return {} unless File.exist?(Common::INDEX_MATCHES_FILE)
+
+          data = YAML.load_file(Common::INDEX_MATCHES_FILE, permitted_classes: [Time, Symbol])
+          data['glossary_backlinks'] || {}
+        end
+
         # 用語集のバックリンクを構築
         def build_glossary_backlinks(term)
-          sources = term['backlink_sources']
+          sources = @glossary_backlinks[term['term']]
           return '' unless sources&.any?
 
           sorted_sources = sources.sort_by do |source|

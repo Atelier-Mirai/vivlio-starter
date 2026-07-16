@@ -67,7 +67,8 @@ module VivlioStarter
         # ただし、[text](url) 形式のリンクは除外（後ろに ( が続く場合はスキップ）
         INDEX_TERM_PATTERN = /\[([^\[\]\n]+)\](?!\()/
 
-        attr_reader :seen_terms, :term_occurrence, :index_data, :matches, :config_missing, :no_matches
+        attr_reader :seen_terms, :term_occurrence, :index_data, :matches, :config_missing, :no_matches,
+                    :glossary_backlinks
 
         def initialize(defer_warnings: false)
           @seen_terms = Set[]
@@ -112,33 +113,6 @@ module VivlioStarter
           end
         end
 
-        # 用語集のバックリンクを index_glossary_terms.yml に保存
-        def save_glossary_backlinks!
-          return if @glossary_backlinks.empty?
-
-          config_file = 'config/index_glossary_terms.yml'
-          return unless File.exist?(config_file)
-
-          begin
-            data = YAML.load_file(config_file)
-            terms = data['terms'] || []
-
-            terms.each do |term|
-              term_name = term['term']
-              next unless @glossary_backlinks.key?(term_name)
-
-              term['backlink_sources'] = @glossary_backlinks[term_name]
-            end
-
-            data['terms'] = terms
-            data['updated_at'] = Time.now.strftime('%Y-%m-%d %H:%M:%S')
-            File.write(config_file, data.to_yaml, encoding: 'utf-8')
-            Common.log_info('用語集のバックリンクを更新しました')
-          rescue StandardError => e
-            Common.log_warn("用語集のバックリンク保存に失敗しました: #{e.message}")
-          end
-        end
-
         # 全章ファイルをスキャンして索引語をタグ付け
         # @param chapters [Array<String>] 対象章のファイル名リスト（例: ['11-basics', '12-advanced']）
         # @param read_only [Boolean] 読み取り専用モード（ファイルを書き換えない、contents/ を優先）
@@ -160,7 +134,6 @@ module VivlioStarter
           end
 
           save_matches!
-          save_glossary_backlinks!
           Common.log_success("索引語スキャン完了: #{@matches.size} 件の索引語を検出")
         end
 
@@ -542,11 +515,18 @@ module VivlioStarter
             [term, @index_data[term].to_a]
           end
 
+          # 用語集バックリンクは出現情報（派生データ）なので辞書には書かず、
+          # matches と書き手・読み手・ライフサイクルが同じ中間 YAML に同居させる（R1/R2）
+          sorted_backlinks = @glossary_backlinks.keys.sort.to_h do |term|
+            [term, @glossary_backlinks[term]]
+          end
+
           data = {
             'generated_at' => Time.now.iso8601,
             'total_matches' => @matches.size,
             'terms' => sorted_terms,
-            'matches' => @matches
+            'matches' => @matches,
+            'glossary_backlinks' => sorted_backlinks
           }
 
           File.write(cache_file, data.to_yaml, encoding: 'utf-8')

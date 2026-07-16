@@ -34,7 +34,7 @@ module VivlioStarter
         end
 
         def test_build_index_creates_html
-          create_index_cache('CSS' => [{ 'yomi' => 'CSS', 'link' => '01.html#1' }])
+          create_index_cache({ 'CSS' => [{ 'yomi' => 'CSS', 'link' => '01.html#1' }] })
 
           result = @builder.build_index!
 
@@ -43,7 +43,7 @@ module VivlioStarter
         end
 
         def test_build_index_generates_valid_structure
-          create_index_cache('CSS' => [{ 'yomi' => 'CSS', 'link' => '01.html#1' }])
+          create_index_cache({ 'CSS' => [{ 'yomi' => 'CSS', 'link' => '01.html#1' }] })
 
           @builder.build_index!
 
@@ -56,8 +56,10 @@ module VivlioStarter
 
         def test_build_index_groups_by_kana_row
           create_index_cache(
-            'あいう' => [{ 'yomi' => 'あいう', 'link' => '01.html#1' }],
-            'かきく' => [{ 'yomi' => 'かきく', 'link' => '01.html#2' }]
+            {
+              'あいう' => [{ 'yomi' => 'あいう', 'link' => '01.html#1' }],
+              'かきく' => [{ 'yomi' => 'かきく', 'link' => '01.html#2' }]
+            }
           )
 
           @builder.build_index!
@@ -112,19 +114,39 @@ module VivlioStarter
           assert_includes html, 'CSS'
         end
 
-        def test_build_glossary_includes_backlinks
-          terms = [{
-            'term' => 'CSS', 'yomi' => 'CSS', 'definition' => 'テスト', 'flags' => 'g',
-            'backlink_sources' => [
-              { 'chapter' => '01-intro', 'occurrence' => 1, 'anchor_id' => 'gls-src-01-intro-css-1' }
-            ]
-          }]
+        # R2: バックリンクは中間 YAML（_index_matches.yml）の glossary_backlinks から描画する
+        def test_build_glossary_includes_backlinks_from_matches_file
+          create_index_cache(
+            {},
+            backlinks: { 'CSS' => [{ 'chapter' => '01-intro', 'occurrence' => 1,
+                                     'anchor_id' => 'gls-src-01-intro-css-1' }] }
+          )
+          terms = [{ 'term' => 'CSS', 'yomi' => 'CSS', 'definition' => 'テスト', 'flags' => 'g' }]
 
           @builder.build_glossary!(terms)
 
           html = File.read(GLOSSARY_OUTPUT_FILE)
           assert_includes html, 'gls-src-01-intro-css-1'
           assert_includes html, 'glossary-backlink'
+        end
+
+        # 幽霊リンク回帰（R2）: 辞書に前回ビルドの backlink_sources が残置していても読まない。
+        # 今回のスキャン結果（中間 YAML）に無い語はバックリンクなしで掲載される
+        def test_build_glossary_ignores_stale_backlink_sources_in_dictionary
+          create_index_cache({}, backlinks: {})
+          terms = [{
+            'term' => 'CSS', 'yomi' => 'CSS', 'definition' => 'テスト', 'flags' => 'g',
+            'backlink_sources' => [
+              { 'chapter' => '61-developer', 'occurrence' => 1, 'anchor_id' => 'gls-src-61-developer-css-1' }
+            ]
+          }]
+
+          @builder.build_glossary!(terms)
+
+          html = File.read(GLOSSARY_OUTPUT_FILE)
+          refute_includes html, 'gls-src-61-developer-css-1', '存在しない章への幽霊バックリンクを印字しない'
+          refute_includes html, 'glossary-backlink'
+          assert_includes html, 'CSS', '掲載自体は維持される'
         end
 
         def test_build_glossary_removes_stale_file
@@ -161,9 +183,11 @@ module VivlioStarter
         # === 統合テスト ===
 
         def test_both_pages_can_be_built_sequentially
-          create_index_cache('CSS' => [{ 'yomi' => 'CSS', 'link' => '01.html#1' }])
-          terms = [{ 'term' => 'CSS', 'yomi' => 'CSS', 'definition' => 'スタイルシート', 'flags' => 'ig',
-                     'backlink_sources' => [{ 'chapter' => '01', 'occurrence' => 1, 'anchor_id' => 'gls-src-01-css-1' }] }]
+          create_index_cache(
+            { 'CSS' => [{ 'yomi' => 'CSS', 'link' => '01.html#1' }] },
+            backlinks: { 'CSS' => [{ 'chapter' => '01', 'occurrence' => 1, 'anchor_id' => 'gls-src-01-css-1' }] }
+          )
+          terms = [{ 'term' => 'CSS', 'yomi' => 'CSS', 'definition' => 'スタイルシート', 'flags' => 'ig' }]
 
           @builder.build_index!
           @builder.build_glossary!(terms)
@@ -177,11 +201,12 @@ module VivlioStarter
 
         private
 
-        def create_index_cache(terms_hash)
+        def create_index_cache(terms_hash, backlinks: {})
           data = {
             'generated_at' => Time.now.iso8601,
             'total_matches' => terms_hash.values.sum { it.size },
-            'terms' => terms_hash
+            'terms' => terms_hash,
+            'glossary_backlinks' => backlinks
           }
           FileUtils.mkdir_p(File.dirname(Common::INDEX_MATCHES_FILE))
           File.write(Common::INDEX_MATCHES_FILE, data.to_yaml)

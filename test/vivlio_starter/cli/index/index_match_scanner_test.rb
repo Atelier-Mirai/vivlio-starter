@@ -366,6 +366,51 @@ module VivlioStarter
           refute_match(/class="index-term"/, tagged)
         end
 
+        # --- phase: 辞書は読み取り専用（R1）・バックリンクは中間 YAML へ（R2） ---
+
+        # R1: スキャンは config/index_glossary_terms.yml を一切書き換えない
+        def test_scan_all_chapters_does_not_modify_dictionary
+          config_content = <<~YAML
+            terms:
+              - term: WWW
+                yomi: WWW
+                flags: g
+          YAML
+          File.write('config/index_glossary_terms.yml', config_content)
+
+          scanner = IndexMatchScanner.new
+          FileUtils.mkdir_p(Common::BUILD_HTML_DIR)
+          File.write(File.join(Common::BUILD_HTML_DIR, '08-web.md'), "WWWは世界中に広がっている。\n")
+
+          scanner.scan_all_chapters!(['08-web'])
+
+          assert_equal config_content, File.read('config/index_glossary_terms.yml'),
+                       'ビルドスキャンで辞書が汚れてはならない（git クリーン保証）'
+        end
+
+        # R2: 用語集バックリンクは辞書ではなく中間 YAML（_index_matches.yml）へ書かれる
+        def test_scan_all_chapters_saves_glossary_backlinks_to_matches_file
+          config_content = <<~YAML
+            terms:
+              - term: WWW
+                yomi: WWW
+                flags: g
+          YAML
+          File.write('config/index_glossary_terms.yml', config_content)
+
+          scanner = IndexMatchScanner.new
+          FileUtils.mkdir_p(Common::BUILD_HTML_DIR)
+          File.write(File.join(Common::BUILD_HTML_DIR, '08-web.md'), "WWWは世界中に広がっている。\n")
+
+          scanner.scan_all_chapters!(['08-web'])
+
+          data = YAML.load_file(Common::INDEX_MATCHES_FILE)
+          backlinks = data['glossary_backlinks']
+          assert backlinks.key?('WWW'), 'バックリンクが中間 YAML に保存されること'
+          assert_equal '08-web', backlinks['WWW'].first['chapter']
+          assert backlinks['WWW'].first['anchor_id'].start_with?('gls-src-08-web-')
+        end
+
         # --- phase: find_chapter_file tests ---
 
         def test_find_chapter_file_prefers_workspace_by_default
