@@ -14,7 +14,7 @@
 #
 # コマンド分類 (help_spec.md 準拠):
 #   Public Commands (vs --help に表示):
-#     - help, new, build, clean, delete, doctor, import
+#     - help, new, upgrade, build, clean, delete, doctor, import
 #     - create, rename, renumber, open, cover
 #     - resize
 #     - index, index:auto, index:apply
@@ -45,6 +45,7 @@ module VivlioStarter
             @public_commands ||= {
               'help' => HelpCommand,
               'new' => NewCommand,
+              'upgrade' => UpgradeCommand,
               'build' => BuildCommand,
               'clean' => CleanCommand,
               'delete' => DeleteCommand,

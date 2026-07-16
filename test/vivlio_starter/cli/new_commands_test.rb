@@ -217,6 +217,44 @@ module VivlioStarter
         end
       end
 
+      # 展開時に scaffold.lock が生成され、雛形原本のハッシュが記録されることを確認
+      # （book.yml もプレースホルダー書き換え後ではなく雛形原本のハッシュで記録される）
+      def test_should_generate_scaffold_lock_with_scaffold_original_hashes
+        within_temp_dir do
+          stub_system_call do
+            capture_io { run_new_command(['lockbook', '--yes']) }
+          end
+
+          lock = ScaffoldLock.read('lockbook')
+          refute_nil lock, 'scaffold.lock が生成されるべき'
+          assert_equal VivlioStarter::VERSION, lock[:version]
+
+          scaffold_book_yml = File.join(NewCommands::SCAFFOLD_SOURCE, 'config', 'book.yml')
+          assert_equal ScaffoldLock.file_digest(scaffold_book_yml), lock[:files]['config/book.yml'],
+                       'book.yml は雛形原本のハッシュで記録されるべき'
+          assert_equal ScaffoldLock.file_digest('lockbook/package.json'), lock[:files]['package.json'],
+                       '展開されたファイルのハッシュが記録されるべき'
+        end
+      end
+
+      # --add-missing で非推奨警告が表示され、従来動作（不足分の追加）は維持されることを確認
+      def test_should_warn_deprecation_when_add_missing_option_given
+        within_temp_dir do
+          FileUtils.mkdir_p('legacy/config')
+          File.write('legacy/config/book.yml', 'custom content', encoding: 'utf-8')
+
+          out = nil
+          stub_system_call do
+            out, = capture_io { run_new_command(['legacy', '--add-missing', '--yes']) }
+          end
+
+          assert_match(/非推奨/, out, '非推奨警告が表示されるべき')
+          assert_match(/vs upgrade/, out, '代替コマンドが案内されるべき')
+          assert_equal 'custom content', File.read('legacy/config/book.yml'), '既存ファイルは保持されるべき'
+          assert File.exist?('legacy/package.json'), '不足ファイルの追加は従来どおり動くべき'
+        end
+      end
+
       # --log=debug でコピー中のファイルパスが出力されることを確認
       def test_should_output_debug_logs_when_log_debug_is_set
         within_temp_dir do

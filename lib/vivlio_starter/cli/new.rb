@@ -7,6 +7,9 @@ require 'shellwords'
 require 'yaml'
 require 'fileutils'
 
+require_relative 'scaffold_lock'
+require_relative '../version'
+
 module VivlioStarter
   module CLI
     module NewCommands
@@ -56,7 +59,12 @@ module VivlioStarter
 
       def check_existing_directory!(cmd, project_name)
         return unless Dir.exist?(project_name)
-        return if cmd.options[:add_missing]
+
+        if cmd.options[:add_missing]
+          # 非推奨（project-upgrade-command-spec.md §2.2）: 1 リリース後に削除予定
+          Common.log_warn('--add-missing は非推奨です。今後は vs upgrade を使ってください（不足追加に加え、雛形の改良取り込みもできます）。')
+          return
+        end
 
         Common.log_error("エラー: ディレクトリ \"#{project_name}\" はすでに存在します。")
         Common.log_error('既存ディレクトリに不足ファイルだけを追加する場合は --add-missing オプションを指定してください（既存ファイルは保持されます）。')
@@ -158,6 +166,10 @@ module VivlioStarter
           cleanup_partial_scaffold(project_name, created_root)
           raise
         end
+
+        # 雛形マニフェストを生成（vs upgrade の三者比較の基準になる展開時点ハッシュ）
+        ScaffoldLock.generate!(project_name, scaffold_source: SCAFFOLD_SOURCE, version: VivlioStarter::VERSION)
+        log_debug(cmd, "scaffold.lock を生成しました: #{File.join(project_name, ScaffoldLock::LOCK_RELATIVE)}")
 
         Common.log_action("プロジェクトファイルを展開しました: #{project_name}/")
       end

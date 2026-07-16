@@ -8,7 +8,7 @@
 #   Public Commands のみをカテゴリ別に表示する。
 #
 # 表示内容:
-#   - プロジェクト管理: new, import, pdf:read, doctor, clean
+#   - プロジェクト管理: new, upgrade, import, pdf:read, doctor, clean
 #   - 執筆・編集支援: create, delete, rename, renumber
 #   - 文章校正・統計: lint, metrics
 #   - 索引・用語集: index:auto, index:apply
@@ -26,6 +26,7 @@ module VivlioStarter
         COMMAND_CATEGORIES = {
           'プロジェクト管理' => {
             'new' => 'プロジェクトを新規作成します',
+            'upgrade' => 'プロジェクトを新しい雛形に追従させます（gem 更新後の取り込み）',
             'import' => 'Re:VIEW Starter プロジェクトを取り込みます',
             'pdf:read' => 'PDFを解析して Markdown 形式へ変換・抽出します',
             'doctor' => '環境診断と不足ツールの自動セットアップ',

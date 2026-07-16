@@ -109,6 +109,7 @@ vs --help
 
   プロジェクト管理:
     new              プロジェクトを新規作成します
+    upgrade          プロジェクトを新しい雛形に追従させます（gem 更新後の取り込み）
     import           Re:VIEW Starter プロジェクトを取り込みます
     pdf:read         PDFを解析して Markdown 形式へ変換・抽出します
     doctor           環境診断と不足ツールの自動セットアップ
