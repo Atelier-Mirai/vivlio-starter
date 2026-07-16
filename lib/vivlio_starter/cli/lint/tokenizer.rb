@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../masking'
+require_relative 'notation_guard'
 
 module VivlioStarter
   module CLI
@@ -21,6 +22,11 @@ module VivlioStarter
         # @param path [String, nil] 警告メッセージに含めるファイルパス（省略可）
         # @return [Array<[String, Integer]>] [word, line_no] のペア配列
         def tokenize(content, check_code_blocks: false, path: nil)
+          # VFM 記法（showcase の座標行・クラス属性など）を先に中和する。textlint 側と
+          # 同じ NotationGuard を通すことで、記法の判定が lint 全体で一本化される。
+          # 行数は保存されるため、以降の行番号は原稿のものと一致したままになる。
+          content = NotationGuard.strip_notation(content)
+
           tokens           = []
           in_frontmatter   = false
           line_no          = 0

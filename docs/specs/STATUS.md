@@ -79,11 +79,6 @@
   状態: 提案仕様・未着手（2026-07-12 策定）
   次のアクション: 優先度 [Low] だが RC 前導入を推奨（lock なし旧プロジェクトを最小化できるため）。実装は lock 生成＋分類ロジックから着手
 
-`lint-notation-guard-spec.md`
-: `vs lint` の記法ガード機構（Notation Guard）＋ `--fix` 修復の仕様。VFM 記法（showcase 座標行・ふりがな・クラス属性）を `Lint::NotationGuard` で中和してから textlint へ渡し、`textlint_allowlist.yml` の「VFM 記法」5 エントリを撤去する。Phase 0 として **`vs lint --fix` が no-op である既存バグ**（一時ファイルを修正して捨てている）の修復を先行させる。調査・実測は `lint-notation-guard-report.md`。
-  状態: 確定仕様・未着手（2026-07-16 策定。lint-notation-guard-report.md からの昇格）
-  次のアクション: Phase 0（`--fix` 修復・独立コミット）から実装。robustness テストが no-op を「仕様」として固定している点に注意（仕様書 §2.4）
-
 ---
 
 ## 参考メモ
@@ -125,5 +120,8 @@
   旧配置の移行掃除（clean.rb）は 1 リリース後に撤去予定。
 
 - **table-colspan-spec と explanatory-diagram-spec は互いに独立。** どちらから着手してもよい。どちらも `markdown_preprocessor.rb` の変換ステップに新規フックを挿入する点は共通するため、同時期に着手する場合はフック挿入順序（既存ステップとの前後関係）の衝突に注意。
+
+- **lint-notation-guard-spec は 2026-07-16 に実装完了し `docs/archives/` へ移動した（調査報告 lint-notation-guard-report.md も同時にアーカイブ）。**
+  Phase 0（`vs lint --fix` no-op 修復・2 パス方式）とPhase 1（`Lint::NotationGuard` 新設・allowlist VFM 5 エントリ撤去）を実装。実装中に G2 マーカー判定の厳格化（`:::-->` 巻き込みで textlint 暴走）と `Tempfile.new` の GC 削除による検査漏れ（既存潜在バグ）を追加で修正した——経緯は仕様書 §7 の追記を参照。
 
 - **post-replace-list-retirement-spec は post_process 側の改修で、explanatory-diagram-spec（pre_process 側）と衝突しない。** 実装順はどちらが先でもよい。ただし前者はガイド線マクロ（`@lu` 系）を完全廃止し、後者（`.showcase` 記法）をその後継と位置づけている。code-include-line-number-spec とは `prism_lines.rb` を共に触るが、別メソッド（`[!]` 強調 vs `decorate_pre_tag`）のため独立。

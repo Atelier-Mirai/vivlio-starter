@@ -32,6 +32,7 @@ require 'yaml'
 require_relative 'common'
 require_relative 'textlint_formatter'
 require_relative 'token_resolver'
+require_relative 'lint/notation_guard'
 require_relative 'lint/tokenizer'
 require_relative 'lint/dict_manager'
 require_relative 'lint/spell_checker'
@@ -427,24 +428,33 @@ module VivlioStarter
 
         # vs-lint コメントを textlint ネイティブ記法に変換する
         # @param files [Array<String>] 対象ファイルパスの配列
+        # @param guard [Boolean] VFM 記法を中和するか（解析パスは true、修正パスは false）
         # @return [Array<String>] 変換後のファイルパスの配列（一時ファイル）
-        def convert_vs_lint_comments(files)
+        def convert_vs_lint_comments(files, guard: true)
           files.map do |path|
             content = File.read(path, encoding: 'UTF-8')
-            converted = rewrite_vs_lint_to_textlint(content)
+            converted = rewrite_vs_lint_to_textlint(content, guard: guard)
 
-            # 一時ファイルに書き出す
-            tmpfile = Tempfile.new(['textlint_', '.md'], encoding: 'UTF-8')
-            tmpfile.write(converted)
-            tmpfile.close
-            tmpfile.path
+            # Tempfile.new は不可: パス文字列だけ返すと Tempfile オブジェクトが GC され、
+            # ファイナライザが textlint 実行前にファイルを削除してしまう（textlint は
+            # 存在しないパスを黙って無視するため、一部ファイルだけ検査されない事故になる）。
+            # Tempfile.create はファイナライザを登録せず、削除は cleanup_temp_files だけが担う。
+            file = Tempfile.create(['textlint_', '.md'], encoding: 'UTF-8')
+            file.write(converted)
+            file.close
+            file.path
           end
         end
 
-        # vs-lint コメントを textlint コメントに置換する
+        # vs-lint コメントを textlint コメントに置換する。
+        # あわせて VFM 記法を中和する（guard: true）。記法は機械データであって文ではなく、
+        # textlint に読ませると誤検出になるため、textlint へ渡す前にここで落とす。
+        # 中和は非可逆なので、原稿へ書き戻す修正パス（--fix）は guard: false で呼ぶ。
         # @param source [String] 元のMarkdown内容
+        # @param guard [Boolean] VFM 記法を中和するか
         # @return [String] 変換後のMarkdown内容
-        def rewrite_vs_lint_to_textlint(source)
+        def rewrite_vs_lint_to_textlint(source, guard: true)
+          source = Lint::NotationGuard.strip_notation(source) if guard
           source
             .gsub(/<!--\s*vs-lint-disable-next-line\s*-->/, '<!-- textlint-disable-next-line -->')
             .gsub(/<!--\s*vs-lint-disable\s*-->/, '<!-- textlint-disable -->')
@@ -459,7 +469,8 @@ module VivlioStarter
         # @param files [Array<String>] 対象の原稿パス
         # @return [Array<String>] 実際に書き戻した原稿パス
         def apply_textlint_fixes!(files)
-          converted = convert_vs_lint_comments(files)
+          # 記法ガードは通さない。中和は非可逆で、ガード済みの内容は原稿へ書き戻せない。
+          converted = convert_vs_lint_comments(files, guard: false)
           baselines = converted.map { File.read(it, encoding: 'UTF-8') }
 
           command = [textlint_command, '--config', effective_config_path, '--fix', *converted]
@@ -506,7 +517,8 @@ module VivlioStarter
         # どちらかにしかならない）。パーミッションは元ファイルから引き継ぐ。
         def atomic_write(path, content)
           mode = File.stat(path).mode & 0o7777
-          tmp  = Tempfile.new(['.vs-lint-fix-', '.md'], File.dirname(path), encoding: 'UTF-8')
+          # Tempfile.create（ファイナライザなし）。rename で移動した後に GC の削除が走る余地を残さない。
+          tmp  = Tempfile.create(['.vs-lint-fix-', '.md'], File.dirname(path), encoding: 'UTF-8')
           begin
             tmp.write(content)
             tmp.close

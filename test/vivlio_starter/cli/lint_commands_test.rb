@@ -154,6 +154,25 @@ module VivlioStarter
         assert_includes analysis_pass, '--format', '解析パスは json 集約を取得すること'
       end
 
+      # 一時ファイルは textlint の実行が終わるまで生存しなければならない。
+      # Tempfile.new でパス文字列だけ保持すると、Tempfile オブジェクトの GC が
+      # ファイナライザ経由でファイルを削除し、textlint が存在しないパスを黙って
+      # 無視する（＝一部ファイルだけ検査されない）事故が実際に起きた。
+      def test_converted_tempfiles_survive_garbage_collection
+        FileUtils.touch('contents/11-install.md')
+        FileUtils.touch('contents/21-customize.md')
+
+        runner = LintCommands::LintRunner.new([], {})
+        paths  = runner.send(:convert_vs_lint_comments, %w[contents/11-install.md contents/21-customize.md])
+        GC.start
+
+        paths.each do |path|
+          assert File.exist?(path), "GC 後も一時ファイルが存在すること: #{path}"
+        end
+      ensure
+        paths&.each { FileUtils.rm_f(it) }
+      end
+
       def test_chapter_number_only_resolution
         setup_catalog(%w[91-appendix-a 93-appendix-d])
         FileUtils.touch('contents/91-appendix-a.md')

@@ -26,10 +26,11 @@
 > 作例が変換に食われて消える（22-extentions.md で実際に発生）。MathTransformer と同じく
 > `MarkdownUtils.extract_code_spans` で退避してから走査する。回帰テストあり。
 >
-> **未解決（要判断）**: textlint が showcase ブロックを日本語の文として読み、
-> 1 ブロックあたり 2 件前後の誤検出（`sentence-length` が座標行込みで文長を数える／
-> 座標のカンマが `max-comma` に触れる）を出す。`config/textlint_allowlist.yml` の
-> 「VFM 記法」節へ注釈行の除外パターンを足すのが筋（§11 に追記候補）。
+> **解決済み（2026-07-16）**: textlint が showcase ブロックを日本語の文として読む誤検出
+> （`sentence-length` / `max-comma`）は、allowlist ではなく lint システム内部の記法ガード
+> `Lint::NotationGuard` で根治した。showcase は「機械データを持つコンテナ」として宣言され、
+> ブロック全体が textlint へ渡る前に空行化される（`textlint_allowlist.yml` の「VFM 記法」
+> 節は撤去済み）。詳細: [lint-notation-guard-spec.md](../archives/lint-notation-guard-spec.md)。
 
 ## 1. 概要
 技術文書やマニュアル作成において、スクリーンショット等の画像（図版）に対して「トリミング」「対象を囲む枠（色・線種のカスタマイズ可）」「引き出し記号（ホームベース型等）」および「説明テキスト」を、外部の画像編集ソフトを使わずにMarkdown単体で表現・オーサリングするための拡張記法。
