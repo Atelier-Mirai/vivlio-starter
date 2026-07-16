@@ -3,7 +3,7 @@
 > 作成日: 2026-07-12
 > ステータス: **一部確定** — §2 Tier 1（＋§5 `@pageref` の深掘り）は [at-directive-tier1-spec.md](at-directive-tier1-spec.md) へ昇格済み（2026-07-12）。§3 Tier 2 と §4 `@abbr` 代替案は引き続きブレスト段階。
 > 対象: 本文中の `@` ディレクティブ記法を今後どう広げるか（or 広げないか）
-> 関連: `lib/vivlio_starter/cli/post_process/replacement_rules.rb`（`@vspace` の実装）, `lib/vivlio_starter/cli/pre_process/cross_reference_processor.rb`（`@id` 参照・`RESERVED_MACRO_IDS`）, `docs/specs/post-replace-list-retirement-spec.md`, `docs/specs/PLANNED.md`
+> 関連: `lib/vivlio_starter/cli/post_process/replacement_rules.rb`（`@vspace` の実装）, `lib/vivlio_starter/cli/pre_process/cross_reference_processor.rb`（`@id` 参照・`RESERVED_MACRO_IDS`）, `docs/archives/post-replace-list-retirement-spec.md`, `docs/specs/PLANNED.md`
 
 ## 0. 経緯
 

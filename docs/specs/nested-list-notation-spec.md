@@ -10,7 +10,7 @@
 > - 階層ごとに違うマーカー（`1.` の子に `(a)`）は fancy_lists 方式の副産物として自動解決（追加設計なし）
 > - Kindle は実体マーカー注入フォールバック必須（§6。`::before` ❌ は実測済み）
 > - **番号なし箇条書き（ul）のレベル別マーカーは和文組版寄りの「● ○ ・」をデフォルトとして CSS で明示**（記法なし・著者はネストして書くだけ）。`-`/`*`/`+` のマーカー文字への意味付けはしない（§11）
-> 関連: `docs/specs/nested-list-notation-ideas.md`（検討経緯）, `docs/specs/kindle-css-compatibility-notes.md`（KFX 制約の実測記録）, `docs/specs/post-replace-list-retirement-spec.md`（`:::` div 化の現行実装）, `lib/vivlio_starter/cli/pre_process/markdown_transformer.rb`（定義リスト＝実装前例）, `lib/vivlio_starter/cli/build/epub_builder.rb`（ADMONITION_LABELS＝注入前例）
+> 関連: `docs/specs/nested-list-notation-ideas.md`（検討経緯）, `docs/specs/kindle-css-compatibility-notes.md`（KFX 制約の実測記録）, `docs/archives/post-replace-list-retirement-spec.md`（`:::` div 化の現行実装）, `lib/vivlio_starter/cli/pre_process/markdown_transformer.rb`（定義リスト＝実装前例）, `lib/vivlio_starter/cli/build/epub_builder.rb`（ADMONITION_LABELS＝注入前例）
 
 ## 0. 背景・目的
 

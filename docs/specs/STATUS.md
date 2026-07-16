@@ -9,11 +9,6 @@
 
 ## 一覧
 
-`post-replace-list-retirement-spec.md`
-: `config/post_replace_list.yml` を廃止し、全置換ルールを post_process のコード（`ReplacementRules`）へ移植する仕様。`[!]` 赤強調は prism_lines へ移設、会話記法（`.kaiwa`）とガイド線マクロ（`@lu` 系）は完全廃止、著者向けの置換ルール拡張機能も廃止する。
-  状態: 確定仕様・未着手
-  次のアクション: 実装（`ReplacementRules` の新設から）
-
 `kindle-simple-header-svg-spec.md`
 : Kindle 向け simple ヘッダーを SVG 画像化する仕様。
   状態: 将来タスク・未着手
@@ -120,4 +115,6 @@
 - **lint-notation-guard-spec は 2026-07-16 に実装完了し `docs/archives/` へ移動した（調査報告 lint-notation-guard-report.md も同時にアーカイブ）。**
   Phase 0（`vs lint --fix` no-op 修復・2 パス方式）とPhase 1（`Lint::NotationGuard` 新設・allowlist VFM 5 エントリ撤去）を実装。実装中に G2 マーカー判定の厳格化（`:::-->` 巻き込みで textlint 暴走）と `Tempfile.new` の GC 削除による検査漏れ（既存潜在バグ）を追加で修正した——経緯は仕様書 §7 の追記を参照。
 
-- **post-replace-list-retirement-spec の前提は揃った。** ガイド線マクロ（`@lu` 系）の後継と位置づけられていた `.showcase` 記法（explanatory-diagram-spec）が実装済みになったため、廃止の受け皿が存在する状態で着手できる。code-include-line-number-spec とは `prism_lines.rb` を共に触るが、別メソッド（`[!]` 強調 vs `decorate_pre_tag`）のため独立。
+- **post-replace-list-retirement-spec は 2026-07-12 に実装完了し、2026-07-16 に `docs/archives/` へ移動した（コミット `adaf6f2d`）。**
+  旧 yml の全ルールを `ReplacementRules`（31 本）へコード化・`[!]` 赤強調は prism_lines へ移設・会話記法（`.kaiwa`）とガイド線マクロ（`@lu` 系）と著者拡張機能を廃止。フォローアップで `@nega`/`@posi`/`@comment`/`@commend` も廃止済み（**残る `@` 記法は `@vspace` のみ**＝`RESERVED_MACRO_IDS` も vspace 単独）。
+  **残作業（軽微・別タスク）**: `config/index_glossary_terms.yml` の `context:` 抜粋 3 件が旧 22 章の記述（`post_replace_list.yml` を編集する等）を引用したままで、`vs index:auto` → 差分確認 → apply の通常フローで追従させる（仕様 §1.3 の方針どおり手動編集しない。受け入れ条件 §6 も本ファイルを除外している）。
