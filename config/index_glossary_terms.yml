@@ -171,9 +171,6 @@ terms:
   contexts:
   - chapter: 43-cover
     context: 'rontcover_cmyk.pdf # 印刷用表紙（B5/A5、CMYK、PDF/X-1a） ├── backcover_cmyk.pdf'
-  - chapter: 44-build
-    context: "### 入稿用の表紙 印刷入稿用の表紙は本文とは別ファイルとして出力されます（CMYK カラープロファイル対応）。 ```yaml output:
-      print_"
   updated_at: '2026-07-05 21:00:15'
 - term: CSS
   yomi: CSS
@@ -807,8 +804,6 @@ terms:
   - chapter: 43-cover
     context: "**症状**: カバー画像が生成されない **原因**: ImageMagick または Ghostscript がインストールされていない
       **解決方法**"
-  - chapter: 61-developer
-    context: 診断対象は qpdf・pdfinfo・Ghostscript・ImageMagick・Inkscape・Vivliostyle CLI・textlint・MeC
   - chapter: 91-install
     context: 'install ghostscript` | PDF 圧縮 | | ImageMagick | `brew install imagemagick`
       | '
@@ -1079,8 +1074,6 @@ terms:
   - chapter: 11-workflow
     context: "| `print_pdf`（トンボ付き） | | Apple Books, Kobo | `epub`| | Kindle | `kindle`（専用）
       | "
-  - chapter: 41-book-yml
-    context: 'true） epub: # 楽天 Kobo / Apple Books 向けクリーン EPUB embed: tr'
   - chapter: 44-build
     context: "| | `epub` | クリーン EPUB（電子書籍） | 楽天 Kobo、Apple Books への配信 | | `kindle`
       | Kindle"
@@ -3365,8 +3358,6 @@ terms:
   contexts:
   - chapter: 22-extentions
     context: 'カスタムコンテナ構文を使います。 ```markdown :::{.クラス名} ここに内容を書く ::: ``` `:::` の開始行にクラス名を指定す'
-  - chapter: 61-developer
-    context: " 1. `<body>` タグへのファイルタイプクラス付与（`body_class_injector.rb`） 2. `config/"
   updated_at: '2026-07-05 21:00:15'
 - term: クリーン
   yomi: くりーん
@@ -3455,8 +3446,6 @@ terms:
   pattern: "/コメント/"
   score: 579.949822234587
   contexts:
-  - chapter: 22-extentions
-    context: "- 出力: dist/sample.pdf ::: ### 編集者コメント `@comment ... @commend` 推敲中のメモを本文に残したい"
   - chapter: 31-lint
     context: '特定の箇所だけチェックを無効化したい場合は、`vs-lint` コメント記法を使用します。日本語校正・スペルチェックの両方に共通して機能します。
       :::'
@@ -3529,9 +3518,6 @@ terms:
       `` ``` ``
   - chapter: 45-utility
     context: 色やフォントを簡単に切り替えられますが、「リンクの色だけ変えたい」「コードブロックの角を丸くしたい」といった細かな調整をしたい場合もあるでしょう。
-  - chapter: 51-doctor
-    context: "| Playwright 用ヘッドレスブラウザ | | rouge | コードブロック言語推定（Ruby gem） | | mathjax-full
-      | 数式の "
   - chapter: 61-developer
     context: 行番号付与（`prism_lines.rb`） 9. クロスリファレンス用コードブロックのラップ 10. 見出しマーカー・番号スパンの
   - chapter: 91-install
@@ -3586,9 +3572,6 @@ terms:
   approved_at: '2026-07-05 20:49:59'
   pattern: "/実行結果/"
   score: 448.1091556866751
-  contexts:
-  - chapter: 22-extentions
-    context: 'vs build ::: ### `.output` — 実行結果・出力例 コマンドの実行結果や、記法を書いたときの表示例を示します。細い全幅の'
   updated_at: '2026-07-05 21:00:15'
 - term: 自動インストール
   yomi: じどういんすとーる
@@ -3859,9 +3842,6 @@ terms:
   pattern: "/設定ファイル/"
   score: 418.3311961095822
   contexts:
-  - chapter: 22-extentions
-    context: 'のでフォントや色を個別に装飾できます。 ```markdown - ❶ 最初に設定ファイルを開く - ❷ `post_replace_list.yml`
-      を編集する '
   - chapter: 25-querystream
     context: 'データファイルとテンプレートを置くだけで使えるため、設定ファイルの編集は不要です。 ::: ## 概要 Vivlio Starter のデー'
   - chapter: 31-lint
@@ -4076,13 +4056,8 @@ terms:
   - chapter: 21-markdown-tutorial
     context: 'ウェブ公開が容易 - **技術文書向け**: コードブロック、テーブル、リストなど技術文書に必要な要素をサポート ### 主な用途 ####
       技術'
-  - chapter: 22-extentions
-    context: " | |---|---|---| | `scale=N%` | 回転テーブルの倍率。列数が多い場合は小さくする | 70% | | `shift-y=N%`"
   - chapter: 24-cross-reference
     context: "`@ラベルID` を付ける - 直後に続くブロック要素（コードブロック / テーブル / 画像）がその対象になります ラベルIDは、本文中で参照するときに"
-  - chapter: 25-querystream
-    context: "`![](画像)` 記法とまったく同じ扱いです）。 ::: ### テーブルスタイル テーブル形式のテンプレートも作れます。`= key`
-      を含む行だけが"
   - chapter: 45-utility
     context: "| `data/books.yml` | 書籍テーブル形式 | 新しいデータファイルを追加する場合は、対応するテンプレートをこのディ"
   - chapter: 61-developer
@@ -4464,14 +4439,9 @@ terms:
     context: などは、この本固有のデータ（各語の出現章・行やバックリンク）と、作者の資産（用語集の定義・棄却の判断・読みの補正）が混在しています。ライブ
   - chapter: 44-build
     context: による組版） | | Step 8 | 用語集バックリンクの重複排除 | | Step 9 | 表紙・奥付 PDF の生成 | | Ste
-  - chapter: 51-doctor
-    context: 'mecab | 索引機能の読み自動推測 | | playwright | バックリンク重複排除用 | | chromium | Playwright '
   - chapter: 61-developer
     context: '生成（前書き＋目次＋本文＋付録＋後書き＋索引） | | Step 8 | バックリンク重複排除 | | Step 9 | 表紙・奥付 PDF
       生成 | | '
-  - chapter: 91-install
-    context: "| | Playwright / Chromium | npm 経由 | バックリンク重複排除用 | | rouge | `gem install
-      rouge` "
   updated_at: '2026-07-05 21:00:15'
 - term: バンド
   yomi: ばんど
@@ -4857,9 +4827,6 @@ terms:
   - chapter: 41-book-yml
     context: typography — タイポグラフィ設定 本文・見出し・コード・ページ番号のフォントを設定します。既定のフォントで問題なければ変更不要です。
       ```ya
-  - chapter: 44-build
-    context: 'Playwright など）の状態を確認する ### PDF のページ番号がずれる **症状**: 目次のページ番号と実際のページが一致しない
-      **解'
   - chapter: 61-developer
     context: の `target-counter` はレンダリング時にページ番号を解決するため、Ruby のビルド時点では実際のページ番号が不明です。そのため「
   - chapter: 92-pdf-read
@@ -5107,9 +5074,6 @@ terms:
     context: などのオプション、ディレクトリ構成の意味やプロジェクト名のルールなどを確認したくなったときに戻ってきてください。急いでいる方は読み飛ばして次の章
   - chapter: 21-markdown-tutorial
     context: '見出し ###### 第6レベル見出し ``` #### ATX 形式のルール - `#` の数でレベルを指定（1〜6） - 行頭に記述し、少なくとも1つのス'
-  - chapter: 22-extentions
-    context: "`config/post_replace_list.yml` という置換ルールで実現されています。このファイルに正規表現ベースのルールを
-      1 行追加するだけで"
   - chapter: 24-cross-reference
     context: '3」のような番号付きのテキスト（＋リンク）に 置き換えられます。 ### 共通ルール 図・表・リストには、次のような **キャプション行**
       を付けます。 -'
@@ -5122,9 +5086,6 @@ terms:
     context: tylesheets/custom.css` を開き、変更したい CSS 変数やルールを記述します。 ```css /* stylesheets/custom.
   - chapter: 51-doctor
     context: "| node が前提 | | textlint と推奨ルール | `npm install -g textlint ...` | 日本語技術"
-  - chapter: 61-developer
-    context: 'post_replace_list.yml` は HTML 後処理での文字列置換ルールを定義します。`textlint_prh.yml`
-      / '
   - chapter: 91-install
     context: "| PDF 生成エンジン | | textlint と推奨ルール | `npm install -g textlint ...` | 文章校正。"
   updated_at: '2026-07-05 21:00:15'

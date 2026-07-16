@@ -117,4 +117,7 @@
 
 - **post-replace-list-retirement-spec は 2026-07-12 に実装完了し、2026-07-16 に `docs/archives/` へ移動した（コミット `adaf6f2d`）。**
   旧 yml の全ルールを `ReplacementRules`（31 本）へコード化・`[!]` 赤強調は prism_lines へ移設・会話記法（`.kaiwa`）とガイド線マクロ（`@lu` 系）と著者拡張機能を廃止。フォローアップで `@nega`/`@posi`/`@comment`/`@commend` も廃止済み（**残る `@` 記法は `@vspace` のみ**＝`RESERVED_MACRO_IDS` も vspace 単独）。
-  **残作業（軽微・別タスク）**: `config/index_glossary_terms.yml` の `context:` 抜粋 3 件が旧 22 章の記述（`post_replace_list.yml` を編集する等）を引用したままで、`vs index:auto` → 差分確認 → apply の通常フローで追従させる（仕様 §1.3 の方針どおり手動編集しない。受け入れ条件 §6 も本ファイルを除外している）。
+  残作業だった `config/index_glossary_terms.yml` の stale な `context:` 抜粋も 2026-07-16 に解消済み（root/scaffold 同期・下記）。
+
+- **索引辞書の stale context 15 件を除去した（2026-07-16）。** post-replace-list-retirement の残作業として起票した「旧 22 章の `post_replace_list.yml` 引用が context に残る」問題を調べた際、辞書全体で 15 件（724 中 2.1%）の context が現原稿と一致しない stale であることが判明（CMYK・doctor・編集者コメント節など複数の変更に由来）。原稿から消えた 15 件を機械的に除去（削除のみ・追加 0 行、語数 155 不変）、root と `ruby copy_to_scaffold.rb` で scaffold の両方を更新。
+  **判明した設計上の注意**: `UnifiedIndexManager#enrich_terms_with_context` は **context が空の語だけ**本文から再抽出する（`unless enriched['contexts']&.any?`）。既存 context は stale でも温存されるため、仕様 §1.3 が想定した「`vs index:auto` で自動追従」は**成立しない**。context を空にすれば次回 auto が埋め直す。原稿を大きく推敲したら stale が溜まるので、将来的には enrich 側で「参照章に現存しない context を落とす」を検討（本タスクでは辞書側の除去のみ）。
