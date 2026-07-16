@@ -6,6 +6,8 @@
 # 責務:
 #   Samovar CLI の doctor コマンドを実装する。
 #   必要な外部ツールの診断と自動インストールを行う。
+#   導入済みツールの一括更新は `vs upgrade` が担う（本体 gem・雛形の追従と
+#   あわせて実行される。docs/archives/upgrade-unification-spec.md）。
 #
 # 診断対象:
 #   - node, vivliostyle, textlint
@@ -38,6 +40,7 @@ module VivlioStarter
         def call
           return print_usage if options[:help]
 
+          # 診断の戻り値（Boolean）は従来どおり終了コードへ反映しない
           DoctorCommands.execute_doctor(context_options)
           0
         rescue SystemExit => e

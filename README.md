@@ -109,7 +109,7 @@ vs --help
 
   プロジェクト管理:
     new              プロジェクトを新規作成します
-    upgrade          プロジェクトを新しい雛形に追従させます（gem 更新後の取り込み）
+    upgrade          本体 gem・プロジェクト雛形・外部ツールをまとめて最新化します
     import           Re:VIEW Starter プロジェクトを取り込みます
     pdf:read         PDFを解析して Markdown 形式へ変換・抽出します
     doctor           環境診断と不足ツールの自動セットアップ
@@ -215,6 +215,8 @@ pdf:
 ## 追加ツールのインストール（PDF 操作）
 
 一括ビルドで PDF のページ数取得・分割/結合を行うため、以下の CLI を利用します。`vs doctor --fix` で自動導入されますが、手動でインストールする場合は以下の通りです。
+
+導入済みツールの更新は `vs upgrade` で一括して行えます。vivlio-starter 本体の gem 更新・プロジェクト雛形の追従とあわせて、更新計画（現在版 → 最新版）を提示し、確認後に brew / npm / gem をまとめて更新して再診断します（不足ツールのインストールも同時に行われます。`--yes` で確認スキップ、`--dry-run` で計画表示のみ）。
 
 ```bash
 brew install poppler qpdf ghostscript imagemagick

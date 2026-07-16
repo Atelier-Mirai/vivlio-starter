@@ -7,7 +7,7 @@
 #   UpgradeCommands（lib/vivlio_starter/cli/upgrade.rb）
 #   ScaffoldLock（lib/vivlio_starter/cli/scaffold_lock.rb）
 #
-# 検証内容（docs/specs/project-upgrade-command-spec.md §3）:
+# 検証内容（docs/archives/project-upgrade-command-spec.md §3）:
 #   - §1.2 の分類（追加/更新/競合/最新/保持）× lock あり/なし
 #   - 著者データ領域（contents/・著者辞書）が計画に載らず触られない
 #   - 著者辞書が無い場合は「空の辞書」を追加（雛形サンプルは配らない）
@@ -15,8 +15,14 @@
 #   - lock の生成・更新（適用分だけハッシュが進む・スキップ分は旧ハッシュのまま）
 #   - --dry-run はファイルシステムに一切書き込まない（lock 含む）
 #
+# 三段オーケストレーション（docs/archives/upgrade-unification-spec.md）:
+#   - 自己更新: 新版なし/dry-run/非対話/更新失敗 の各分岐（exec は relaunch! を検知）
+#   - プロジェクト外では雛形追従だけをスキップし、ツール更新は実行される
+#   - 終了コードは各フェーズの悪い方（max）
+#
 # テスト環境:
 #   - Dir.mktmpdir にミニ雛形とプロジェクトを組み、scaffold_source を DI で差し替え
+#   - ネットワーク・外部コマンドは tool_deps（Deps）を DI で差し替えて遮断
 # ================================================================
 
 require 'test_helper'
@@ -208,6 +214,117 @@ module VivlioStarter
         end
       end
 
+      # ==============================================================
+      # 三段オーケストレーション（本体更新 → 雛形追従 → ツール更新）
+      # ==============================================================
+
+      GEM_LATEST_URL = format(DoctorCommands::ToolUpgrader::RUBYGEMS_LATEST_URL, 'vivlio-starter')
+
+      # --- プロジェクト外: 雛形追従だけスキップされ、ツール更新は実行される ---
+      def test_should_skip_scaffold_sync_outside_project_but_still_run_tool_upgrade
+        Dir.mktmpdir do |dir|
+          Dir.chdir(dir) do
+            UpgradeCommands.tool_deps = stub_tool_deps
+            tools_called = false
+            out, = capture_io do
+              DoctorCommands::ToolUpgrader.stub(:run!, lambda { |*|
+                tools_called = true
+                0
+              }) do
+                UpgradeCommands.run_from_command(FakeCmd.new(options: { dry_run: false, yes: true }))
+              end
+            end
+
+            assert_match(/プロジェクト外のため、雛形の追従はスキップ/, out)
+            assert tools_called, 'プロジェクト外でもツール更新フェーズは実行されるべき'
+            refute File.exist?('config/scaffold.lock'), 'プロジェクト外で lock を書いてはならない'
+          end
+        ensure
+          UpgradeCommands.tool_deps = nil
+        end
+      end
+
+      # --- 終了コード: ツール更新フェーズの失敗（1）が全体の終了コードに反映される ---
+      def test_should_propagate_tool_phase_failure_to_exit_code
+        within_project do |scaffold|
+          UpgradeCommands.scaffold_source = scaffold
+          code = nil
+          capture_io do
+            DoctorCommands::ToolUpgrader.stub(:run!, 1) do
+              code = UpgradeCommands.run_from_command(
+                FakeCmd.new(options: { dry_run: false, yes: true, skip_self_update: true })
+              )
+            end
+          end
+
+          assert_equal 1, code
+        ensure
+          UpgradeCommands.scaffold_source = nil
+        end
+      end
+
+      # --- 自己更新: 最新なら何もしない ---
+      def test_self_update_should_do_nothing_when_gem_is_latest
+        deps = stub_tool_deps(fetch: { GEM_LATEST_URL => '{"version":"1.0.0"}' })
+
+        result = UpgradeCommands.self_update!({ yes: true }, deps, current: '1.0.0')
+
+        assert_equal :none, result
+      end
+
+      # --- 自己更新: --dry-run は新版の案内のみ ---
+      def test_self_update_should_announce_only_on_dry_run
+        executed = []
+        deps = stub_tool_deps(fetch: { GEM_LATEST_URL => '{"version":"2.0.0"}' }, executed:)
+
+        result = nil
+        out, = capture_io { result = UpgradeCommands.self_update!({ dry_run: true }, deps, current: '1.0.0') }
+
+        assert_equal :skipped, result
+        assert_match(/2\.0\.0 が公開されています/, out)
+        assert_empty executed, 'dry-run では gem update を実行しない'
+      end
+
+      # --- 自己更新: 非対話（tty でない）かつ --yes なしでは案内してスキップ ---
+      def test_self_update_should_skip_with_guidance_when_non_interactive
+        deps = stub_tool_deps(fetch: { GEM_LATEST_URL => '{"version":"2.0.0"}' })
+
+        result = nil
+        out, = capture_io { result = UpgradeCommands.self_update!({ yes: false }, deps, current: '1.0.0') }
+
+        assert_equal :skipped, result
+        assert_match(/gem update vivlio-starter/, out, '手動更新コマンドを必ず案内する')
+      end
+
+      # --- 自己更新: gem update 失敗は警告して続行（:failed） ---
+      def test_self_update_should_continue_as_failed_when_gem_update_fails
+        executed = []
+        deps = stub_tool_deps(fetch: { GEM_LATEST_URL => '{"version":"2.0.0"}' },
+                              run_ok: { 'gem update vivlio-starter' => false }, executed:)
+
+        result = nil
+        capture_io { result = UpgradeCommands.self_update!({ yes: true }, deps, current: '1.0.0') }
+
+        assert_equal :failed, result
+        assert_includes executed, 'gem update vivlio-starter'
+      end
+
+      # --- 自己更新: 成功したら新しい版の vs upgrade --skip-self-update へ引き継ぐ ---
+      def test_self_update_should_relaunch_with_skip_flag_after_successful_update
+        executed = []
+        deps = stub_tool_deps(fetch: { GEM_LATEST_URL => '{"version":"2.0.0"}' }, executed:)
+        relaunched_with = nil
+
+        capture_io do
+          UpgradeCommands.stub(:relaunch!, ->(options) { relaunched_with = options }) do
+            UpgradeCommands.self_update!({ yes: true }, deps, current: '1.0.0')
+          end
+        end
+
+        assert_includes executed, 'gem update vivlio-starter'
+        refute_nil relaunched_with, '更新成功後は新しい版で再実行されるべき'
+      end
+
       private
 
       # ミニ雛形＋プロジェクトディレクトリを用意し、プロジェクト直下で yield する
@@ -222,9 +339,12 @@ module VivlioStarter
         end
       end
 
+      # 雛形追従フェーズだけを検証する（自己更新はフラグで、ツール更新はスタブで遮断）
       def run_upgrade(scaffold, dry_run: false, yes: false)
         UpgradeCommands.scaffold_source = scaffold
-        UpgradeCommands.run_from_command(FakeCmd.new(options: { dry_run:, yes: }))
+        DoctorCommands::ToolUpgrader.stub(:run!, 0) do
+          UpgradeCommands.run_from_command(FakeCmd.new(options: { dry_run:, yes:, skip_self_update: true }))
+        end
       ensure
         UpgradeCommands.scaffold_source = nil
       end
@@ -250,6 +370,20 @@ module VivlioStarter
         yield
       ensure
         $stdin = STDIN
+      end
+
+      # ツール更新・自己更新用の Deps スタブ（ネットワーク・外部コマンドを遮断）。
+      # 素の StringIO は tty? が false のため、既定で非対話環境として振る舞う。
+      def stub_tool_deps(fetch: {}, run_ok: {}, executed: [])
+        DoctorCommands::ToolUpgrader::Deps.new(
+          run: lambda { |cmd|
+            executed << cmd
+            run_ok.fetch(cmd, true)
+          },
+          capture: ->(_cmd) { ['', false] },
+          fetch: ->(url) { fetch[url] },
+          stdin: StringIO.new
+        )
       end
     end
   end

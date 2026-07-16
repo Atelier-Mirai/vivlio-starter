@@ -58,6 +58,7 @@ require 'json'
 
 require_relative 'guards'
 require_relative 'doctor/config_salvager'
+require_relative 'doctor/tool_upgrader'
 
 module VivlioStarter
   module CLI
@@ -96,25 +97,9 @@ module VivlioStarter
       # provider.rb は pdf/reader 等の重い require を伴うため doctor からは参照しない）
       PDF_PLUGIN_GEM_NAME = 'vivlio-starter-pdf'
 
-      TEXTLINT_NPM_PACKAGES = %w[
-        textlint
-        textlint-rule-preset-ja-technical-writing
-        textlint-rule-preset-japanese
-        textlint-rule-prh
-        textlint-filter-rule-node-types
-        textlint-filter-rule-allowlist
-        textlint-filter-rule-comments
-        textlint-rule-no-dropping-the-ra
-        textlint-rule-max-ten
-        textlint-rule-ja-no-mixed-period
-        textlint-rule-no-doubled-conjunction@3.0.0
-        textlint-rule-no-doubled-joshi
-        textlint-rule-ja-no-successive-word
-        textlint-rule-preset-ja-spacing
-        textlint-rule-spellcheck-tech-word
-        textlint-rule-no-dead-link
-        textlint-rule-ng-word
-      ].freeze
+      # textlint と推奨ルール一式（npm -g）。定義の正典は ToolUpgrader
+      # （vs upgrade の更新と --fix のインストールで共用し、二重管理しない）
+      TEXTLINT_NPM_PACKAGES = ToolUpgrader::TEXTLINT_NPM_PACKAGES
 
       # img2pdfの依存排除に伴い、診断対象および説明からimg2pdfを削除しています。
       DOCTOR_DESC = {
@@ -147,9 +132,13 @@ module VivlioStarter
           --fix オプション指定時、macOS かつ Homebrew が利用可能であれば
           不足しているツールの自動インストールを試みます。
 
+          導入済みツールの一括更新は vs upgrade が担います
+          （vivlio-starter 本体・プロジェクト雛形の追従とあわせて実行されます）。
+
           例:
             vs doctor
             vs doctor --fix
+            vs doctor --fix --yes
         DESC
       }.freeze
 
@@ -167,6 +156,11 @@ module VivlioStarter
       #   - :fix [Boolean] 不足ツールを自動インストール（macOS + Homebrew のみ）
       #   - :yes [Boolean] 確認プロンプトをスキップ
       #   - :verbose [Boolean] 詳細ログを出力
+      #
+      # 戻り値:
+      #   - 「必要ツールがすべて揃っているか」の Boolean
+      #     （vs upgrade のツール更新後の再診断が終了コード判定に使う。
+      #       doctor コマンド自身は戻り値を終了コードへ反映しない）
       def execute_doctor(command = nil)
         options = extract_options(command)
         ENV['VERBOSE'] = '1' if options[:verbose]
@@ -313,7 +307,7 @@ module VivlioStarter
 
         if missing.empty?
           Common.log_always('🎉 すべての必要ツールが見つかりました')
-          return
+          return true
         end
 
         Common.log_always("不足しているツール: #{describe_missing(missing).join(', ')}")
@@ -323,13 +317,13 @@ module VivlioStarter
           if missing.include?('xcode-command-line-tools')
             Common.log_always('  Xcode Command Line Tools は手動でも `xcode-select --install` で導入できます')
           end
-          return
+          return false
         end
 
         # --fix: 自動インストール試行
         unless is_macos
           Common.log_always('自動インストールは macOS(Homebrew) のみ対応です。手動でインストールしてください。')
-          return
+          return false
         end
 
         # 先に CLT を処理（GUI 承認が必要）
@@ -382,11 +376,11 @@ module VivlioStarter
             ENV['PATH'] = [brew_bin, ENV.fetch('PATH', nil)].compact.join(':') if brew_bin
           else
             Common.log_always('Homebrew をインストールしないため、自動インストール処理を中止します。手動で https://brew.sh/ を参照してください。')
-            return
+            return false
           end
           unless system('which brew >/dev/null 2>&1')
             Common.log_always('Homebrew コマンドが見つかりませんでした。シェルの再起動や PATH 設定を確認してください。')
-            return
+            return false
           end
         end
 
@@ -400,32 +394,13 @@ module VivlioStarter
             Common.log_always('node の Homebrew インストールに失敗しました。手動インストールをご検討ください。') unless ok
           end
 
-          # qpdf / poppler(pdfinfo, pdftoppm)
-          system('brew install qpdf') if missing.include?('qpdf')
-          system('brew install poppler') if missing.any? { %w[pdfinfo pdftoppm].include?(it) }
-
-          # Ghostscript
-          system('brew install ghostscript') if missing.include?('gs')
-
-          # ImageMagick
-          system('brew install imagemagick') if missing.include?('imagemagick')
+          # qpdf / poppler(pdfinfo, pdftoppm) / ghostscript / imagemagick / librsvg /
+          # vips / tesseract(+lang) / mecab(+ipadic)。
+          # formula 名の正典は ToolUpgrader::TOOLS（vs upgrade と共用し、二重管理しない）
+          ToolUpgrader.brew_install_packages(missing).each { system("brew install #{it}") }
 
           # Inkscape（任意・カバー SVG フォールバック用）。半壊 cask も復旧できるよう force 対応。
           install_inkscape_macos! if missing.include?('inkscape')
-
-          # librsvg（rsvg-convert）: EPUB 扉絵/節絵・図解注釈（showcase）の合成画像ラスタライズ用
-          system('brew install librsvg') if missing.include?('rsvg-convert')
-
-          system('brew install vips') if missing.include?('vips')
-
-          system('brew install tesseract') if missing.include?('tesseract')
-          system('brew install tesseract-lang') if missing.include?('tesseract-lang')
-
-          # MeCab（索引機能の読み自動推測用）
-          if missing.include?('mecab')
-            Common.log_always('MeCab（索引機能の読み自動推測用）をインストールします…')
-            system('brew install mecab mecab-ipadic')
-          end
 
           # Rouge（コードブロック言語推定用）
           if missing.include?('rouge')
@@ -512,8 +487,10 @@ module VivlioStarter
 
         if still_missing.empty?
           Common.log_always('✅ すべてのツールがインストールされました')
+          true
         else
           Common.log_always("❗ まだ見つからないツールがあります: #{describe_missing(still_missing).join(', ')}。手動でのセットアップをご確認ください。")
+          false
         end
       end
       module_function :execute_doctor

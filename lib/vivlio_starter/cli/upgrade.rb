@@ -4,10 +4,17 @@
 # File: lib/vivlio_starter/cli/upgrade.rb
 # ================================================================
 # 責務:
-#   既存プロジェクトを新しい gem の雛形へ追従させる（`vs upgrade` のドメイン層）。
-#   docs/specs/project-upgrade-command-spec.md の実装。
+#   執筆環境をまとめて最新化する（`vs upgrade` のドメイン層）。三段構成:
+#   ① vivlio-starter 本体の gem 更新（新版があれば確認のうえ gem update →
+#      新しい版の vs で自分を再起動して続きを実行）
+#   ② プロジェクトの雛形追従（docs/archives/project-upgrade-command-spec.md）
+#   ③ 外部ツールの一括更新（DoctorCommands::ToolUpgrader へ委譲）
+#   ①を最初に行うのは、古い gem の雛形で②を済ませると本体更新後にもう一度
+#   upgrade が必要になるため。②を③より先に行うのは、対話（競合確認）を
+#   前半へ集め、時間のかかる brew/npm 更新を無人で流せるようにするため
+#   （docs/archives/upgrade-unification-spec.md）。
 #
-# 仕組み（三者比較）:
+# 雛形追従の仕組み（三者比較）:
 #   config/scaffold.lock（展開時の雛形ハッシュ）・現在の雛形・プロジェクト現物の
 #   3 点から各ファイルを 追加/更新/競合/保持/最新 に分類する。
 #   - 追加: 雛形の新規ファイル → コピー
@@ -18,12 +25,15 @@
 # 安全策:
 #   - 上書き前に必ず .cache/vs/upgrade-backup/<timestamp>/ へ元ファイルを退避
 #   - --dry-run はファイルシステムに一切書き込まない（lock 含む）
+#   - プロジェクト外（config/book.yml なし）では雛形追従だけをスキップし、
+#     本体更新・ツール更新は実行できる
 # ================================================================
 
 require 'fileutils'
 
 require_relative 'scaffold_lock'
 require_relative 'new'
+require_relative 'doctor'
 require_relative '../version'
 
 module VivlioStarter
@@ -66,8 +76,69 @@ module VivlioStarter
 
       def scaffold_source = @scaffold_source || NewCommands::SCAFFOLD_SOURCE
 
-      # Samovar `UpgradeCommand` から呼び出すメイン処理（終了コードを返す）
+      # ツール更新フェーズと自己更新の外部依存（テストで差し替える DI）
+      attr_writer :tool_deps
+
+      def tool_deps = @tool_deps || DoctorCommands::ToolUpgrader.default_deps
+
+      # Samovar `UpgradeCommand` から呼び出すメイン処理（終了コードを返す）。
+      # ①本体 gem 更新 → ②雛形追従 → ③外部ツール更新 の順に実行する（順序の理由は
+      # ファイル冒頭コメント参照）。①で更新が走った場合は exec で新しい版に置き換わる
+      # ため、②③は新しい版の vs が実行する。
       def run_from_command(cmd)
+        options = cmd.options
+
+        # --- Phase: ① 本体 gem 更新（--skip-self-update は再起動ループ防止も兼ねる）---
+        self_result = options[:skip_self_update] ? :none : self_update!(options, tool_deps)
+
+        # --- Phase: ② 雛形追従（プロジェクト外はスキップ——③は場所を問わず有用）---
+        scaffold_code =
+          if File.exist?(File.join('config', 'book.yml'))
+            sync_scaffold!(cmd)
+          else
+            Common.log_always('ℹ️ 書籍プロジェクト外のため、雛形の追従はスキップします（プロジェクト直下で再実行すると適用できます）。')
+            0
+          end
+
+        # --- Phase: ③ 外部ツール更新 ---
+        tools_code = DoctorCommands::ToolUpgrader.run!(
+          { yes: options[:yes], dry_run: options[:dry_run], verbose: options[:verbose] },
+          deps: tool_deps
+        )
+
+        [self_result == :failed ? 1 : 0, scaffold_code, tools_code].max
+      end
+
+      # 本体 gem の自己更新。新版があれば確認のうえ gem update し、新しい版の vs で
+      # 同じ upgrade を再実行する（relaunch! で exec に置き換わり、戻ってこない）。
+      # 更新失敗は警告して現在の版のまま続行——雛形追従・ツール更新の価値は残るため。
+      # @return [Symbol] :none（新版なし）/ :skipped（案内のみ）/ :failed（更新失敗）
+      def self_update!(options, deps, current: VivlioStarter::VERSION)
+        latest = DoctorCommands::ToolUpgrader.latest_gem_version(deps, 'vivlio-starter')
+        return :none unless latest && Gem::Version.correct?(current) &&
+                            Gem::Version.new(latest) > Gem::Version.new(current)
+
+        if options[:dry_run]
+          Common.log_always("📣 vivlio-starter #{latest} が公開されています（現在 #{current}）。--dry-run のため更新しません。")
+          return :skipped
+        end
+        unless options[:yes] || confirm_self_update?(latest, current, deps)
+          Common.log_always("本体の更新をスキップしました（手動更新: gem update vivlio-starter）。今回は現在の版（#{current}）の雛形で続行します。")
+          return :skipped
+        end
+
+        Common.log_always("⬆️  vivlio-starter を #{current} → #{latest} に更新しています…")
+        unless DoctorCommands::ToolUpgrader.run_gem_command('gem update vivlio-starter', deps)
+          Common.log_warn('vivlio-starter の更新に失敗しました。現在の版のまま続行します（手動更新: gem update vivlio-starter）。')
+          return :failed
+        end
+
+        Common.log_always("🔁 vivlio-starter #{latest} で続きを実行します…")
+        relaunch!(options)
+      end
+
+      # --- Phase: 分類（三者比較）以降の雛形追従フェーズ ---
+      def sync_scaffold!(cmd)
         # --- Phase: 分類（三者比較） ---
         Common.log_summary("雛形との差分を確認しています…（gem #{VivlioStarter::VERSION} の雛形）")
         scaffold_digests = ScaffoldLock.digest_scaffold(scaffold_source)
@@ -246,6 +317,25 @@ module VivlioStarter
         $stdout.print(message)
         $stdout.flush
         $stdin.gets&.strip.to_s.downcase
+      end
+
+      # 自己更新の最終確認。非対話（パイプ/CI）では安全側に倒して更新しない
+      def confirm_self_update?(latest, current, deps)
+        return false unless deps.stdin.tty?
+
+        $stdout.print("vivlio-starter を #{current} → #{latest} に更新しますか？ [y/N]: ")
+        $stdout.flush
+        deps.stdin.gets&.strip&.downcase == 'y'
+      end
+
+      # 更新後の新しい gem の vs で同じ upgrade を続きから実行する（exec で置き換わる）。
+      # --skip-self-update を付けて再帰を防ぐ。Bundler 配下だと exec 先が Gemfile に
+      # 拘束されて新しい版を見られないため、素の環境で実行する。
+      # $PROGRAM_NAME（RubyGems の binstub）は実行時に最新版へディスパッチする。
+      def relaunch!(options)
+        args = [$PROGRAM_NAME, 'upgrade', '--skip-self-update']
+        args << '--yes' if options[:yes]
+        defined?(Bundler) ? Bundler.with_unbundled_env { Kernel.exec(*args) } : Kernel.exec(*args)
       end
 
       # 上書き対象の現物を .cache/vs/upgrade-backup/<timestamp>/ へツリー構造のまま退避する

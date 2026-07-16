@@ -29,11 +29,6 @@
   状態: 提案仕様・未着手（2026-07-12 策定）
   次のアクション: 実装（`Common.build_direct_configuration` から着手）
 
-`doctor-tool-upgrade-spec.md`
-: PLANNED.md「`vs doctor` にツールのバージョンアップ機能」の仕様。`vs doctor --upgrade` として `--fix` の上位互換に。計画提示→確認→実行→再診断の 4 段構成。Ruby 本体・vivlio-starter 本体は自動更新せず新版検出＋手順案内のみ（導入経路が多様・gem 再インストールを伴うため）。
-  状態: 提案仕様・未着手（2026-07-12 策定、2026-07-13 に Ruby/本体の新版お知らせ機能を追記）
-  次のアクション: 実装（`tool_upgrader.rb` の骨格＋ TOOLS 定義から着手）
-
 `characters-dialogue-spec.md`
 : PLANNED.md「会話文（対話）記法の刷新と `config/characters.yml` 化」の仕様。記法は `:::{.talk}` 内 `キー: 発話`（ローマ字キー）に一本化。PDF/クリーン EPUB はチャットアプリ風吹き出し、Kindle は実体ラベル＋リテラル色の劣化表示。
   状態: 提案仕様・未着手（2026-07-12 策定）
