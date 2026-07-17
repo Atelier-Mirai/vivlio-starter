@@ -33,6 +33,8 @@ module VivlioStarter
         <div class="tip"><p>ヒント本文</p></div>
         <pre class="language-ruby line-numbers"><code class="language-ruby line-numbers">x = 1<span class="line-numbers-rows" aria-hidden="true"><span></span></span></code></pre>
         <p><img class="vs-math vs-math-inline" src="images/math/a.svg" style="height: 1.4ex; width: 1.4ex;" alt="A"></p>
+        <ol class="vs-fancy-list vs-list-lower-alpha-paren2" type="a" style="counter-reset: vs-fancy 0"><li>選択肢イ</li></ol>
+        <div class="outline-list"><ol><li>概要<ol><li>基本</li></ol></li></ol></div>
         </body></html>
       HTML
 
@@ -58,6 +60,8 @@ module VivlioStarter
         assert_nil doc.at_css('span.vs-code-ln'), '行番号の実テキストは注入されない（CSS カウンタで描く）'
         assert_includes doc.at_css('img.vs-math-inline')['style'], 'ex', '数式の ex 単位は変換されない'
         assert_nil doc.at_css('.vs-adm-label'), 'admonition ラベルは注入されない'
+        assert_nil doc.at_css('span.vs-li-marker'),
+                   'リストの実体マーカーは注入されない（::before ＋ CSS カウンタで描く）'
       end
 
       # Kindle EPUB（:kindle）は全 rewrite を行う
@@ -74,6 +78,10 @@ module VivlioStarter
         refute_includes style, 'ex', '数式の ex は em へ変換される'
         assert_includes style, 'em'
         assert_equal '【TIP】', doc.at_css('.tip > .vs-adm-label')&.text, 'admonition ラベルが注入される'
+        assert_equal '(a) ', doc.at_css('ol.vs-fancy-list span.vs-li-marker')&.text,
+                     'fancy list の実体マーカーが注入される（KFX は ::before を破棄する）'
+        assert_equal ['1. ', '1.1. '], doc.css('.outline-list span.vs-li-marker').map(&:text),
+                     'outline-list の複合番号が注入される'
       end
 
       # 両フレーバとも body に vs-epub マーカーが付く（§6 A案・EPUB リフロー文脈の足場）。

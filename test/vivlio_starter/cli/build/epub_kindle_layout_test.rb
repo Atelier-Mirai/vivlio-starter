@@ -313,6 +313,91 @@ module VivlioStarter
         assert_equal 1, doc.css('span.vs-code-ln').size
       end
 
+      # =================================================================
+      # decorate_list_markers_for_epub!（fancy list / outline-list の実体マーカー注入・
+      # nested-list-notation-spec.md §6.1）
+      # =================================================================
+
+      # fancy 各様式のマーカー文字列が li 先頭へ実体注入される（KFX は ::before を描けない）
+      def test_should_inject_fancy_list_markers_for_kindle
+        html = <<~HTML
+          <html><body class="vs-kindle">
+          <ol class="vs-fancy-list vs-list-lower-alpha" type="a"><li>甲</li><li>乙</li></ol>
+          <ol class="vs-fancy-list vs-list-upper-roman-paren" type="I"><li>壱</li><li>弐</li></ol>
+          <ol class="vs-fancy-list vs-list-decimal-paren2" style="counter-reset: vs-fancy 0"><li>一</li></ol>
+          </body></html>
+        HTML
+        doc = process(html) { |files| Builder.decorate_list_markers_for_epub!(files) }
+
+        alpha = doc.css('ol.vs-list-lower-alpha > li > span.vs-li-marker').map(&:text)
+        assert_equal ['a. ', 'b. '], alpha, 'ピリオド様式は「a. 」形式'
+        roman = doc.css('ol.vs-list-upper-roman-paren > li > span.vs-li-marker').map(&:text)
+        assert_equal ['I) ', 'II) '], roman, '片括弧様式は「I) 」形式'
+        decimal = doc.css('ol.vs-list-decimal-paren2 > li > span.vs-li-marker').map(&:text)
+        assert_equal ['(1) '], decimal, '両括弧様式は「(1) 」形式'
+      end
+
+      # start 属性から開始値を復元して採番する
+      def test_should_inject_fancy_markers_from_start_attribute
+        html = <<~HTML
+          <html><body class="vs-kindle">
+          <ol class="vs-fancy-list vs-list-lower-roman-paren2" type="i" start="4"
+              style="counter-reset: vs-fancy 3"><li>四</li><li>五</li></ol>
+          </body></html>
+        HTML
+        doc = process(html) { |files| Builder.decorate_list_markers_for_epub!(files) }
+
+        assert_equal ['(iv) ', '(v) '], doc.css('span.vs-li-marker').map(&:text),
+                     'start="4" のローマ数字は iv 始まり'
+      end
+
+      # outline-list はネスト位置から複合番号を計算して注入する（ul は素通し）
+      def test_should_inject_outline_list_compound_numbers
+        html = <<~HTML
+          <html><body class="vs-kindle">
+          <div class="outline-list">
+          <ol><li>概要<ol><li>この機能について</li><li>インストール方法</li></ol></li>
+          <li>使い方<ol><li>基本</li></ol><ul><li>補足の箇条書き</li></ul></li></ol>
+          </div>
+          </body></html>
+        HTML
+        doc = process(html) { |files| Builder.decorate_list_markers_for_epub!(files) }
+
+        markers = doc.css('.outline-list span.vs-li-marker').map(&:text)
+        assert_equal ['1. ', '1.1. ', '1.2. ', '2. ', '2.1. '], markers,
+                     '複合番号は CSS counters(vs-outline, ".") と同じ「1.1. 」表記'
+        assert_empty doc.css('.outline-list ul span.vs-li-marker'), 'ul には注入されない'
+      end
+
+      # ルーズ形式（li 直下が <p>）は最初の <p> の内側へ注入され、独立行にならない
+      def test_should_inject_marker_inside_first_paragraph_of_loose_item
+        html = <<~HTML
+          <html><body class="vs-kindle">
+          <ol class="vs-fancy-list vs-list-lower-alpha" type="a"><li><p>ルーズ項目</p></li></ol>
+          </body></html>
+        HTML
+        doc = process(html) { |files| Builder.decorate_list_markers_for_epub!(files) }
+
+        refute_nil doc.at_css('li > p > span.vs-li-marker'), 'マーカーは p の内側の先頭に入る'
+        assert_equal 'a. ルーズ項目', doc.at_css('li > p').text
+      end
+
+      # リストマーカー注入は冪等（再実行しても二重注入されない）
+      def test_should_not_double_inject_list_markers
+        html = <<~HTML
+          <html><body class="vs-kindle">
+          <ol class="vs-fancy-list vs-list-lower-alpha" type="a"><li>甲</li></ol>
+          <div class="outline-list"><ol><li>概要</li></ol></div>
+          </body></html>
+        HTML
+        doc = process(html) do |files|
+          Builder.decorate_list_markers_for_epub!(files)
+          Builder.decorate_list_markers_for_epub!(files)
+        end
+
+        assert_equal 2, doc.css('span.vs-li-marker').size, '2 回適用しても注入は各 li に 1 つ'
+      end
+
       private
 
       # 一時ファイルに html を書き、ブロックで変換を適用し、保存結果を Nokogiri で返す

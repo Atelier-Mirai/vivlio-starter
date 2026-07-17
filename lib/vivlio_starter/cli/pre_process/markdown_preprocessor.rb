@@ -91,6 +91,7 @@ module VivlioStarter
           transform_book_cards!
           transform_tables!
           normalize_container_fences!
+          transform_fancy_lists!
           transform_definition_lists!
           transform_links!
           expose_container_footnotes!
@@ -359,6 +360,17 @@ module VivlioStarter
 
           page = Common.configured? ? Common::CONFIG.page : nil
           @resolved_page_cfg = page&.to_h
+        end
+
+        # fancy list（A. / (a) / i. 等・Pandoc fancy_lists 互換）を含むリストブロックを HTML 化する。
+        # `A. 用語` が定義リストの用語行と両義になるため、定義リストより先に確定させる
+        # （1 スペースの `A. 用語` は 2 スペース規則により fancy にならず、従来どおり定義リストへ流れる）。
+        def transform_fancy_lists!
+          before = context.content.dup
+          context.content = MarkdownTransformer.convert_fancy_lists(
+            context.content, source_filename: context.filename
+          )
+          Common.log_success('fancy list を変換しました') if context.content != before
         end
 
         # 定義リスト記法（用語 / : 説明）を <dl class="def-list"> に変換する

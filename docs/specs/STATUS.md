@@ -14,11 +14,6 @@
   状態: 将来タスク・未着手
   次のアクション: 優先度低
 
-`nested-list-notation-spec.md`
-: 箇条書き拡張（fancy list / 複合番号）の仕様。Pandoc `fancy_lists` 互換マーカー（`a.` `(A)` `i.` 等）＋複合番号 `:::{.outline-list}`＋ul レベル別マーカー「● ○ ・」。
-  状態: 確定仕様・未着手（2026-07-12 策定。`nested-list-notation-ideas.md` からの昇格）
-  次のアクション: 実装
-
 `kindle-inline-math-textify-spec.md`
 : Kindle 限定でインライン数式を SVG 画像でなくテキスト（`<sup>`/`<sub>`＋Unicode 記号）へ劣化変換し、フォントサイズ変更への追従不全を根治する仕様。KNOWN_ISSUES.md の数式サイズ不安定 2 件に対応。
   状態: 確定仕様・未着手（2026-07-12 策定）
@@ -76,6 +71,10 @@
 ---
 
 ## メモ（依存関係・実装順序）
+
+- **nested-list-notation-spec は 2026-07-17 に実装完了し `docs/archives/` へ移動した（検討経緯 nested-list-notation-ideas.md も同時にアーカイブ）。**
+  fancy list 13 様式（前処理 `convert_fancy_lists`・Kramdown 経由・fancy なしブロックはバイト一致素通し）＋ `:::{.outline-list}` 複合番号（CSS `counters()`・Ruby 実装ゼロ）＋ ul レベル別マーカー「● ○ ・」（文字列 `list-style-type: "・"` は Vivliostyle で有効と PDF 実測）＋ Kindle 実体マーカー注入（`decorate_list_markers_for_epub!`）。
+  仕様からの改良点: 空行を挟んだ様式変更は警告でなく**別リストとして分裂**させる（Kramdown EOB マーカー `^` 注入。警告の修正案「空行を挟んで分ける」が通らない矛盾の解消）。§10-12 の Kindle Previewer 実機確認のみ未実施（受け入れ時に確認）。
 
 - **① print-pdf-derivation-spec と ② backlink-dedup-pdf-map-spec は 2026-07-10 に実装完了し `docs/archives/` へ移動した。**
   実装時の追加知見（qpdf `--overlay` が宛先 TrimBox に合わせて縮小配置する仕様と、手順順序 3a→4→5→3b への変更）は①仕様書 §3.8 に追記済み。

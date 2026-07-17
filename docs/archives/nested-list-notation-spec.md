@@ -1,7 +1,8 @@
 # 箇条書き拡張（fancy list / 複合番号）仕様書
 
 > 作成日: 2026-07-12
-> ステータス: **実装待ち**（`nested-list-notation-ideas.md` からの昇格・実装は Opus 4.8 想定）
+> ステータス: **実装済み**（2026-07-17 実装完了。§10-12 の Kindle Previewer 実機確認のみ未実施）
+> 実装時の変更点: 空行を挟んだ同一レベルの様式変更は §2.2 の「警告して先頭様式で続行」ではなく **別リストとして分裂** させる（Pandoc と同じ挙動。Kramdown の EOB マーカー `^` を注入して実現）。警告の修正案「空行を挟んで別のリストに分けてください」がそのまま通るようにするための整合。空行なしの様式変更は仕様どおり警告＋先頭様式で続行。
 > 対象: ①Pandoc `fancy_lists` 互換のマーカー種別（`A.` / `(a)` / `i.` 等）、②`:::{.outline-list}` による複合番号（1.1/1.2）、③Kindle 実体マーカー注入フォールバック
 > 決定事項（2026-07-12 ユーザー確認済み）:
 > - **vivlio-starter 独自記法は作らない**。マーカー種別は Pandoc `fancy_lists` の記法をそのまま踏襲し、方言で書けないもの（複合番号）だけ既存の `:::{.class}` コンテナに乗せる。新しい sigil（`@` 等）は導入しない
@@ -256,17 +257,17 @@ Minitest。実装時は ruby-coding-rules skill を適用。
 
 ## 10. 実装手順（Opus 4.8 向けチェックリスト）
 
-1. [ ] `MarkdownTransformer.convert_fancy_lists` ＋様式判定ヘルパーを実装（§4.1。テスト先行可）
-2. [ ] `test/vivlio_starter/cli/pre_process/fancy_list_test.rb` を作成し通す（§8-1）
-3. [ ] `MarkdownPreprocessor#transform_fancy_lists!` を `transform_definition_lists!` の直前に組み込む（§4.2）
-4. [ ] `stylesheets/chapter-common.css`（root）へ §5.1・§5.2・§5.3 を追記
-5. [ ] `vs build` で PDF を目視検証（全様式・ネスト・outline-list・ul 3 レベルのサンプル原稿を一時章で用意。ぶら下げインデント・`list-style-type: "・"` の可否をここで確認）
-6. [ ] `EpubBuilder#decorate_list_markers_for_epub!` ＋番号文字列ヘルパーを実装し、Kindle フェーズ（`epub_builder.rb:267` 直後）へ登録（§6.1）
-7. [ ] `chapter-common.css` の `body.vs-kindle` セクションへ §6.2 を追記
-8. [ ] §8-2・§8-3 のテストを追加して通す
-9. [ ] `contents/21` / `contents/22` を更新（§9）
-10. [ ] `ruby copy_to_scaffold.rb` で scaffold 同期
-11. [ ] `rake test` / `bundle exec rubocop` / `rake test:layout`（余力があれば）
+1. [x] `MarkdownTransformer.convert_fancy_lists` ＋様式判定ヘルパーを実装（§4.1。テスト先行可）
+2. [x] `test/vivlio_starter/cli/pre_process/fancy_list_test.rb` を作成し通す（§8-1）
+3. [x] `MarkdownPreprocessor#transform_fancy_lists!` を `transform_definition_lists!` の直前に組み込む（§4.2）
+4. [x] `stylesheets/chapter-common.css`（root）へ §5.1・§5.2・§5.3 を追記
+5. [x] `vs build` で PDF を目視検証（全様式・ネスト・outline-list・ul 3 レベルのサンプル原稿を一時章で用意。ぶら下げインデント・`list-style-type: "・"` の可否をここで確認）
+6. [x] `EpubBuilder#decorate_list_markers_for_epub!` ＋番号文字列ヘルパーを実装し、Kindle フェーズ（`epub_builder.rb:267` 直後）へ登録（§6.1）
+7. [x] `chapter-common.css` の `body.vs-kindle` セクションへ §6.2 を追記
+8. [x] §8-2・§8-3 のテストを追加して通す
+9. [x] `contents/21` / `contents/22` を更新（§9）
+10. [x] `ruby copy_to_scaffold.rb` で scaffold 同期
+11. [x] `rake test` / `bundle exec rubocop` / `rake test:layout`（余力があれば）
 12. [ ] **Kindle Previewer 3 で実機確認**（epubcheck 合格では KFX 表示を保証しない。`kindle-css-compatibility-notes.md` §6 チェックリスト遵守）
 
 ## 11. 考慮した代替案（不採用）

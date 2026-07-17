@@ -222,6 +222,40 @@ li :is(ul, ol) {
   margin-block: 0; /* 入れ子時は上下余白なし */
 }
 
+/* 番号なし箇条書き — レベル別マーカー（和文組版: ● ○ ・）。
+   第3レベルの中黒は list-style-type の標準値に無いため文字列指定（CSS Lists 3）。
+   nested-list-notation-spec.md §5.3 */
+ul { list-style-type: disc; }            /* ● */
+ul ul { list-style-type: circle; }       /* ○ */
+ul ul ul { list-style-type: "・"; }      /* ・ */
+
+/* fancy list（Pandoc fancy_lists 互換・前処理が ol へクラス付与）
+   nested-list-notation-spec.md §5.1 */
+ol.vs-list-lower-alpha { list-style-type: lower-alpha; }
+ol.vs-list-upper-alpha { list-style-type: upper-alpha; }
+ol.vs-list-lower-roman { list-style-type: lower-roman; }
+ol.vs-list-upper-roman { list-style-type: upper-roman; }
+
+/* 括弧付きマーカーは list-style-type で表現できないため自前描画。
+   カウンタ開始値は前処理が ol の style="counter-reset: vs-fancy N" で与える */
+ol[class*="-paren"] { list-style: none; }
+ol[class*="-paren"] > li { counter-increment: vs-fancy; }
+ol.vs-list-lower-alpha-paren  > li::before { content: counter(vs-fancy, lower-alpha) ") "; }
+ol.vs-list-upper-alpha-paren  > li::before { content: counter(vs-fancy, upper-alpha) ") "; }
+ol.vs-list-lower-roman-paren  > li::before { content: counter(vs-fancy, lower-roman) ") "; }
+ol.vs-list-upper-roman-paren  > li::before { content: counter(vs-fancy, upper-roman) ") "; }
+ol.vs-list-decimal-paren2     > li::before { content: "(" counter(vs-fancy) ") "; }
+ol.vs-list-lower-alpha-paren2 > li::before { content: "(" counter(vs-fancy, lower-alpha) ") "; }
+ol.vs-list-upper-alpha-paren2 > li::before { content: "(" counter(vs-fancy, upper-alpha) ") "; }
+ol.vs-list-lower-roman-paren2 > li::before { content: "(" counter(vs-fancy, lower-roman) ") "; }
+ol.vs-list-upper-roman-paren2 > li::before { content: "(" counter(vs-fancy, upper-roman) ") "; }
+
+/* :::{.outline-list} — ネスト番号リストを 1. / 1.1 / 1.2 の複合番号で表示
+   （counters() のネスト連結は Vivliostyle ネイティブサポート・§5.2） */
+.outline-list ol { list-style: none; counter-reset: vs-outline; }
+.outline-list ol > li { counter-increment: vs-outline; }
+.outline-list ol > li::before { content: counters(vs-outline, ".") ". "; font-weight: 700; }
+
 /* -------------------------------------------------------------
    定義リスト（用語 / : 説明 → <dl class="def-list">）
    用語＝太字の独立行、説明＝字下げ、エントリ間に 1/4 行のアキ。
@@ -615,4 +649,25 @@ body.vs-kindle .vs-adm-label {
   font-weight: bold;
   font-size: 0.9em;
   color: #444;
+}
+
+/* =============================================================
+   Kindle 専用 fancy list / outline-list マーカー（nested-list-notation-spec.md §6.2）
+   Kindle(KFX) は ::before を破棄するため、EpubBuilder が先頭注入する実体マーカー
+   <span class="vs-li-marker"> で番号を出す。ネイティブマーカーとの二重表示を防ぐため
+   list-style を消す。:is()/var()/calc() 禁止・具体値で記述（本ファイル §6 チェックリスト遵守）。
+   ============================================================= */
+body.vs-kindle ol.vs-fancy-list,
+body.vs-kindle .outline-list ol {
+  list-style: none;
+  padding-inline-start: 1em;
+}
+body.vs-kindle .vs-li-marker {
+  font-weight: 700;
+}
+
+/* ul 第3レベル: KFX は文字列 list-style-type（"・"）を解さない見込みのため
+   ネイティブ値 square（■）へ優雅に劣化させる。●○は disc/circle がそのまま効く */
+body.vs-kindle ul ul ul {
+  list-style-type: square;
 }

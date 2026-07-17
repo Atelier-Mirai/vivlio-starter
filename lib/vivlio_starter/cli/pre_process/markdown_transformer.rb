@@ -351,6 +351,346 @@ module VivlioStarter
           "#{line.chomp.sub(/[ \t]+\z/, '')}  \n"
         end
 
+        # =================================================================
+        # fancy list（Pandoc fancy_lists 互換サブセット）
+        # nested-list-notation-spec.md §2（記法）/ §4（実装設計）
+        # =================================================================
+
+        # リストマーカー 1 行ぶんの解析結果。
+        # token はマーカー中身の原文（'a' / 'IV' / '3'）、gap はマーカー直後の空白
+        # （2 スペース規則の判定に使う）、body は項目本文。
+        # ul マーカー（- * +）は style / separator / token / value が nil。
+        FancyMarker = Data.define(:indent, :list_type, :style, :separator, :token, :value, :gap, :body)
+
+        # ローマ数字 1 文字の値（小文字で引く）
+        ROMAN_DIGIT_VALUES = { 'i' => 1, 'v' => 5, 'x' => 10, 'l' => 50, 'c' => 100, 'd' => 500, 'm' => 1000 }.freeze
+
+        # 出力 <ol> クラス名の様式部・区切り部（§2.1 対応表。vs-list-<様式><区切り接尾辞>）
+        FANCY_STYLE_CSS = {
+          decimal: 'decimal', lower_alpha: 'lower-alpha', upper_alpha: 'upper-alpha',
+          lower_roman: 'lower-roman', upper_roman: 'upper-roman'
+        }.freeze
+        FANCY_SEPARATOR_SUFFIX = { period: '', paren: '-paren', paren2: '-paren2' }.freeze
+
+        # <ol type="…"> へ写せる様式（decimal は HTML 既定のため付けない）
+        FANCY_TYPE_ATTR = { lower_alpha: 'a', upper_alpha: 'A', lower_roman: 'i', upper_roman: 'I' }.freeze
+
+        # Pandoc fancy_lists 互換マーカー（A. / (a) / i. 等）を含むリストブロックを
+        # Kramdown で HTML 化し、<ol> へ様式クラス・type・start を付与して生 HTML として
+        # インライン展開する（定義リスト convert_definition_lists と同方式）。
+        # fancy マーカーを 1 つも含まないブロックはバイト一致で素通しし、標準リストは
+        # VFM の機能（ルビ・脚注等）を維持する。コードフェンス/インラインコード内は対象外。
+        # 行頭 \ でエスケープされた fancy マーカー行は \ を除去して地の文にする。
+        def convert_fancy_lists(content, source_filename: nil)
+          lines = content.lines
+          code_lines = code_line_numbers(content)
+          out = []
+          i = 0
+          while i < lines.size
+            if code_lines.include?(i + 1)
+              out << lines[i]
+              i += 1
+            elsif fancy_block_start?(lines[i])
+              block_end, replacement = convert_list_block(lines, i, code_lines, source_filename:)
+              out << replacement
+              i = block_end
+            else
+              out << unescape_fancy_marker(lines[i])
+              i += 1
+            end
+          end
+          out.join
+        end
+
+        # 行をリストマーカーとして解析する（マーカーでなければ nil）。
+        # `aa.` のような複数英字は様式に該当せずマーカーにしない（§2.2-4）。
+        def parse_list_marker(line)
+          s = line.chomp
+          if (m = s.match(/\A( *)([-*+])([ \t]+)(\S.*)?\z/))
+            return FancyMarker.new(indent: m[1].length, list_type: :ul, style: nil, separator: nil,
+                                   token: nil, value: nil, gap: m[3], body: m[4].to_s)
+          end
+          if (m = s.match(/\A( *)\(([0-9a-zA-Z]{1,9})\)([ \t]+)(\S.*)?\z/))
+            return build_ol_marker(m[1], :paren2, m[2], m[3], m[4])
+          end
+          if (m = s.match(/\A( *)([0-9a-zA-Z]{1,9})([.)])([ \t]+)(\S.*)?\z/))
+            return build_ol_marker(m[1], m[3] == '.' ? :period : :paren, m[2], m[4], m[5])
+          end
+          nil
+        end
+
+        # ol マーカーを組み立てる（トークンが様式に分類できなければ nil ＝マーカーでない）
+        def build_ol_marker(indent_str, separator, token, gap, body)
+          style, value = classify_fancy_token(token)
+          return nil unless style
+
+          FancyMarker.new(indent: indent_str.length, list_type: :ol, style:, separator:,
+                          token:, value:, gap:, body: body.to_s)
+        end
+
+        # マーカー中身のトークンを [様式, 開始値] へ分類する（§2.2 の判定順）。
+        # 単文字の i / v / x 等はローマ数字を優先する（Pandoc 準拠。c 始まりの英字リストは書けない）。
+        def classify_fancy_token(token)
+          case token
+          when /\A\d{1,9}\z/    then [:decimal, token.to_i]
+          when /\A[ivxlcdm]+\z/ then [:lower_roman, roman_to_int(token)]
+          when /\A[IVXLCDM]+\z/ then [:upper_roman, roman_to_int(token)]
+          when /\A[a-z]\z/      then [:lower_alpha, token.ord - 96]
+          when /\A[A-Z]\z/      then [:upper_alpha, token.ord - 64]
+          end
+        end
+
+        # ローマ数字文字列を整数へ（iv → 4）。減算則: 次の桁より小さい桁は引く。
+        def roman_to_int(token)
+          digits = token.downcase.chars.map { ROMAN_DIGIT_VALUES.fetch(it) }
+          digits.each_cons(2).sum { |a, b| a < b ? -a : a } + digits.last
+        end
+
+        # fancy マーカーか（標準＝数字＋ピリオド/片括弧。ul は fancy でない）
+        def fancy_marker?(marker)
+          marker.list_type == :ol && (marker.separator == :paren2 || marker.style != :decimal)
+        end
+
+        # 大文字様式＋ピリオドのリスト開始行は空白 2 つ以上を要求する（`B. Russell` 誤爆防止・§2.2）
+        def acceptable_list_start?(marker)
+          return true unless marker.list_type == :ol && marker.separator == :period
+          return true unless %i[upper_alpha upper_roman].include?(marker.style)
+
+          marker.gap.length >= 2
+        end
+
+        # リストブロックの開始行か（インデント 0-3 のマーカー行）
+        def fancy_block_start?(line)
+          marker = parse_list_marker(line)
+          !marker.nil? && marker.indent <= 3 && acceptable_list_start?(marker)
+        end
+
+        # start 行から始まるリストブロックを走査し、[終端 index（排他的）, 置換文字列] を返す。
+        # fancy マーカーを含まないブロックは原文のまま（バイト一致）返す。
+        def convert_list_block(lines, start, code_lines, source_filename:)
+          # --- Phase: 走査（レベル追跡・マーカー受理・正規化行の生成）---
+          stack = []      # 開いているリスト（末尾が最内）
+          ol_queue = []   # <ol> 出現順（＝リスト開始イベント順）の属性キュー
+          original = []
+          normalized = []
+          fancy_found = false
+          pending_blank_at = nil
+          j = start
+
+          while j < lines.size
+            break if code_lines.include?(j + 1)
+
+            line = lines[j]
+            if line.strip.empty?
+              break unless pending_blank_at.nil? # 空行 2 連続はブロック終端
+
+              pending_blank_at = j
+              j += 1
+              next
+            end
+
+            marker = parse_list_marker(line)
+            accepted = marker && accept_marker!(marker, stack, ol_queue,
+                                                line:, source_filename:, after_blank: !pending_blank_at.nil?)
+            if accepted
+              fancy_found ||= fancy_marker?(marker)
+              # :split（空行を挟んだ様式変更＝別リスト）は Kramdown の EOB マーカー ^ で
+              # 前のリストを閉じ、連番どうしでも 1 つのルーズリストに併合されないようにする。
+              # ^ の前に空行を入れると直前のリストがルーズ化（li が <p> 包み）するため入れない。
+              normalized << (accepted == :split ? "^\n\n" : "\n") unless pending_blank_at.nil?
+              normalized << normalized_marker_line(marker, stack)
+            elsif stack.any? && line.match?(/\A {2,}\S/)
+              # 字下げ継続行（2 スペース規則で受理されなかった入れ子マーカー含む）は現在項目の続き
+              normalized << "\n" unless pending_blank_at.nil?
+              normalized << normalized_continuation_line(line, stack)
+            else
+              break
+            end
+
+            original << lines[pending_blank_at] unless pending_blank_at.nil?
+            original << line
+            pending_blank_at = nil
+            j += 1
+          end
+
+          block_end = pending_blank_at || j
+          return [block_end, original.join] unless fancy_found
+
+          # --- Phase: Kramdown レンダリングと <ol> 属性パッチ ---
+          html = MarkdownUtils.render_markdown_to_html(normalized.join).strip
+          patched = patch_fancy_ol_attributes(html, ol_queue, source_filename:)
+          return [block_end, original.join] if patched.nil?
+
+          [block_end, "#{patched}\n\n"]
+        end
+
+        # マーカー行を現在のリスト文脈で受理できるか判定し、受理時はスタック・キューを更新する。
+        # 戻り値: true（項目/新リスト）/ :split（空行を挟んだ様式変更＝EOB で別リストに分ける）/
+        # false（不受理。大文字＋ピリオド 1 スペースの新規リスト等。呼び出し側が継続行または
+        # ブロック終端として扱う）。
+        def accept_marker!(marker, stack, ol_queue, line:, source_filename:, after_blank: false)
+          if stack.empty?
+            open_fancy_list!(marker, stack, ol_queue)
+            return true
+          end
+
+          # 浅いインデントへ戻ったら、そのレベルまで内側のリストを閉じる
+          stack.pop while stack.size > 1 && marker.indent < stack.last[:indent]
+
+          top = stack.last
+          if marker.indent >= top[:indent] + 2 # 2 スペース以上深ければ入れ子の新規リスト
+            return false unless acceptable_list_start?(marker)
+
+            open_fancy_list!(marker, stack, ol_queue)
+            return true
+          end
+
+          # 同一レベルで ul ⇔ ol が変われば新しいリストを開く（CommonMark と同じ分裂挙動）
+          if marker.list_type != top[:list_type]
+            return false unless acceptable_list_start?(marker)
+
+            stack.pop
+            open_fancy_list!(marker, stack, ol_queue)
+            return true
+          end
+
+          # 同一レベル・同一種別: 様式一致なら次項目
+          if same_list_style?(marker, top)
+            top[:counter] += 1
+            return true
+          end
+          return false unless acceptable_list_start?(marker)
+
+          # 空行を挟んだトップレベルの様式変更は別リストの開始（Pandoc と同じ分裂挙動）。
+          # ネスト中は EOB マーカーが外側のリストまで閉じてしまうため分裂させない。
+          if after_blank && stack.size == 1
+            stack.pop
+            open_fancy_list!(marker, stack, ol_queue)
+            return :split
+          end
+
+          # 空行なしの様式変更は非サポート: 警告して先頭様式のまま続行（§2.2）
+          warn_fancy_style_change(top, line, source_filename)
+          top[:counter] += 1
+          true
+        end
+
+        # マーカーが現在のリストの様式（先頭項目で確定）と一致するか
+        def same_list_style?(marker, top)
+          return true if marker.list_type == :ul
+
+          if fancy_marker?(marker)
+            marker.style == top[:style] && marker.separator == top[:separator]
+          else
+            top[:style].nil?
+          end
+        end
+
+        # 新しいリストを開く（スタックへ push・ol なら属性キューへ登録）
+        def open_fancy_list!(marker, stack, ol_queue)
+          fancy = fancy_marker?(marker)
+          entry = {
+            indent: marker.indent, depth: stack.size, list_type: marker.list_type,
+            style: fancy ? marker.style : nil,
+            separator: fancy ? marker.separator : nil,
+            start: marker.value || 1, counter: 1,
+            head_literal: fancy_marker_literal(marker), warned: false
+          }
+          stack.push(entry)
+          ol_queue << entry if marker.list_type == :ol
+        end
+
+        # マーカーの原文表記（警告メッセージの修正例に使う）
+        def fancy_marker_literal(marker)
+          case marker.separator
+          when :paren2 then "(#{marker.token})"
+          when :paren  then "#{marker.token})"
+          when :period then "#{marker.token}."
+          else '-'
+          end
+        end
+
+        # マーカー行を「4 スペース/レベルの字下げ＋連番 1. 2. …（ul は -）」へ正規化する。
+        # 開始値はここでは反映せず、patch_fancy_ol_attributes が start 属性で与える（§4.1-3）。
+        # hard_break_line は本書全体の hardLineBreaks: true と改行挙動を揃える措置（定義リストと同じ）。
+        def normalized_marker_line(marker, stack)
+          top = stack.last
+          head = top[:list_type] == :ul ? '-' : "#{top[:counter]}."
+          hard_break_line("#{' ' * (4 * top[:depth])}#{head} #{marker.body}\n")
+        end
+
+        # 継続行を現在項目の本文開始位置（マーカー行の字下げ + 4 スペース）へ揃える
+        def normalized_continuation_line(line, stack)
+          hard_break_line("#{' ' * ((4 * stack.last[:depth]) + 4)}#{line.strip}\n")
+        end
+
+        # 生成 HTML の <ol>（出現順＝ソース順）へ様式クラス・type・start・counter-reset を注入する。
+        # キューと <ol> 出現数が食い違ったら nil を返し、呼び出し側は原文のまま埋め戻す
+        # （防御・ビルドは止めない）。
+        def patch_fancy_ol_attributes(html, ol_queue, source_filename:)
+          occurrences = html.scan('<ol>').size
+          unless occurrences == ol_queue.size
+            where = source_filename ? "#{source_filename}: " : ''
+            Common.log_warn(
+              "#{where}fancy list の <ol> 対応付けに失敗したため、このブロックは変換せずそのまま出力します" \
+              "（検出 #{ol_queue.size} 件 / 生成 #{occurrences} 件）"
+            )
+            return nil
+          end
+
+          queue = ol_queue.dup
+          html.gsub('<ol>') do
+            attrs = fancy_ol_attributes(queue.shift)
+            attrs.empty? ? '<ol>' : "<ol #{attrs.join(' ')}>"
+          end
+        end
+
+        # 1 つの <ol> に付与する属性のリスト。標準様式（style nil）は start 以外無加工。
+        def fancy_ol_attributes(entry)
+          style, separator, start = entry.values_at(:style, :separator, :start)
+          attrs = []
+          if style
+            attrs << %(class="vs-fancy-list #{fancy_list_class(style, separator)}")
+            type = FANCY_TYPE_ATTR[style]
+            attrs << %(type="#{type}") if type
+          end
+          attrs << %(start="#{start}") if start != 1
+          # 括弧付き様式は CSS カウンタで自前描画するため、開始値を counter-reset のインライン指定で
+          # 常に与える（start 属性からカウンタ開始値を読む標準手段が無い・§4.1-5）
+          attrs << %(style="counter-reset: vs-fancy #{start - 1}") if style && separator != :period
+          attrs
+        end
+
+        # 出力 <ol> のクラス名（§2.1 対応表のセル値）
+        def fancy_list_class(style, separator)
+          "vs-list-#{FANCY_STYLE_CSS.fetch(style)}#{FANCY_SEPARATOR_SUFFIX.fetch(separator)}"
+        end
+
+        # 同一リスト途中の様式変更を警告する（リストごとに 1 回・先頭様式で続行）
+        def warn_fancy_style_change(top, line, source_filename)
+          return if top[:warned]
+
+          top[:warned] = true
+          where = source_filename ? "#{source_filename}: " : ''
+          Common.log_warn(
+            "#{where}リストの途中でマーカー様式が変わっています。" \
+            "先頭項目の様式（#{top[:head_literal]}）のまま採番を続行します",
+            detail: "該当行: #{line.strip} → 修正例: マーカーを #{top[:head_literal]} と同じ様式に揃えるか、" \
+                    '空行を挟んで別のリストに分けてください'
+          )
+        end
+
+        # 行頭マーカーの \ エスケープ（\(1) 等）を解除して地の文にする（§2.2）。
+        # fancy マーカーの形をした行だけが対象（標準リスト・ul の \ は VFM に委ねる）。
+        def unescape_fancy_marker(line)
+          m = line.match(/\A( *)\\(\S.*)\z/m)
+          return line unless m
+
+          candidate = "#{m[1]}#{m[2]}"
+          marker = parse_list_marker(candidate)
+          marker && fancy_marker?(marker) ? candidate : line
+        end
+
         # 単独行の {.aki} / {.aki2} を縦余白マクロ @vspace に置換する。
         # {.aki} は本来「段落末に付けて段落へ class を与える」インライン記法のため、
         # それ自身だけを 1 行に書くと（付与先の本文が無いので）VFM が "{.aki}" を
