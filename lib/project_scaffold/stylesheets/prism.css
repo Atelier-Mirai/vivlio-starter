@@ -122,12 +122,17 @@ pre[class*="language-"] {
 	color: #e90;
 }
 
-.token.important,
-.token.bold {
+.token.important {
 	font-weight: bold;
 }
+/* コードブロック内では markdown 強調トークンの字形変化を抑制する。```markdown の記法例で
+   **太字** / *斜体* がそのまま太字・斜体になると、記法の見本と実際の装飾が混ざって紛らわしく、
+   等幅の桁揃えも崩れるため。色によるハイライトは他トークンで付く。 */
+.token.bold {
+	font-weight: inherit;
+}
 .token.italic {
-	font-style: italic;
+	font-style: inherit;
 }
 
 .token.entity {
