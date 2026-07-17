@@ -533,15 +533,20 @@ p > img {
   text-indent: 0;
 }
 
-/* 実行例・出力結果（:::{.output}）。シンプルな全幅の細い囲み枠 */
-.output {
+/* 実行例・出力結果（:::{.output}）／テキストの図・アスキーアート（:::{.figure}）。
+   どちらもシンプルな全幅の細い囲み枠。中の <pre> は行番号を付けない（prism_lines が
+   .output/.terminal/.figure 配下の <pre> を除外する）。figure は output のエイリアスだが、
+   Kindle ではラベル注入の対象外（図に【OUTPUT】ラベルは付けない）。 */
+.output,
+.figure {
   margin-block: 3mm;
   padding: 2.5mm 3mm;
   border: solid 0.2mm var(--color-border-weak);
   border-radius: 3px;
 }
 
-.output p {
+.output p,
+.figure p {
   text-indent: 0;
 }
 
@@ -552,6 +557,17 @@ p > img {
   margin: 0;
   background: none;
   border: none;
+}
+
+/* .figure の中身はインデントで描いた図（class なしの <pre>）が主。code.css の pre 既定
+   （地色・枠線・上下マージン）を打ち消し、枠は親の .figure に任せて二重枠を防ぐ。
+   桁揃えのため連続空白は pre-wrap で必ず保つ。 */
+.figure pre {
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  white-space: pre-wrap;
 }
 
 /* ターミナル入力（:::{.terminal}）。黒地・白文字・等幅で「端末への入力」を示す。
@@ -622,6 +638,13 @@ body.vs-kindle .note {
 body.vs-kindle .output {
   padding-block-start: 4mm;
   /* .output の枠線は var() のため Kindle で消える。具体色で描き直す。 */
+  border: 1px solid #888;
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+/* .figure（テキストの図・アスキーアート）も var() 枠線が Kindle で消えるため具体色で描く。
+   ラベル注入は無い（図に【OUTPUT】は付けない）ので上余白は詰めない。 */
+body.vs-kindle .figure {
   border: 1px solid #888;
   margin-top: 1.5em;
   margin-bottom: 1.5em;

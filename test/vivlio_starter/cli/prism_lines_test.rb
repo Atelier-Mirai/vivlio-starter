@@ -132,6 +132,45 @@ module VivlioStarter
         assert_includes out, 'line-numbers-rows'
       end
 
+      # =============================================================
+      # 行番号の免除枠（.output / .terminal / .figure）
+      # 実行結果・端末転写・テキストの図は「コードの提示」ではないため行番号を付けない。
+      # =============================================================
+      def test_should_not_number_pre_inside_output
+        out = process('<div class="output"><pre><code>実行結果の行</code></pre></div>')
+
+        refute_includes out, 'line-numbers-rows', '.output 内の <pre> には行番号を付けない'
+      end
+
+      def test_should_not_number_pre_inside_terminal
+        out = process('<div class="terminal"><pre><code>$ ls -l</code></pre></div>')
+
+        refute_includes out, 'line-numbers-rows', '.terminal 内の <pre> には行番号を付けない'
+      end
+
+      def test_should_not_number_pre_inside_figure
+        out = process('<div class="figure"><pre><code>┌─┐\n└─┘</code></pre></div>')
+
+        refute_includes out, 'line-numbers-rows', '.figure 内の <pre>（図・アスキーアート）には行番号を付けない'
+      end
+
+      # 複数クラスの div（class="output foo"）でも免除される
+      def test_should_exempt_pre_when_class_has_extra_tokens
+        out = process('<div class="foo figure bar"><pre><code>art</code></pre></div>')
+
+        refute_includes out, 'line-numbers-rows'
+      end
+
+      # 免除枠の外にある通常のコードブロックには従来どおり行番号を付ける
+      def test_should_still_number_pre_outside_exempt_containers
+        out = process(<<~HTML)
+          <div class="figure"><pre><code>図</code></pre></div>
+          <pre class="language-ruby"><code class="language-ruby">x = 1</code></pre>
+        HTML
+
+        assert_includes out, 'line-numbers-rows', '免除枠の外の <pre> には行番号が付く'
+      end
+
       def test_should_append_counter_reset_to_existing_style
         out = process(<<~HTML)
           <figure class="language-ruby"><figcaption>prime.rb#L5</figcaption><pre class="language-ruby" style="margin: 0"><code class="language-ruby">x = 1</code></pre></figure>
