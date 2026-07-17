@@ -308,10 +308,11 @@ module VivlioStarter
             )
           end
 
-          # 変換後の <div class="text-*"> 内の Markdown を HTML に変換する
+          # 変換後の <div class="text-*"> 内の Markdown を HTML に変換する。
+          # 生 HTML 化で VFM のハード改行が効かなくなるため、Kramdown 側で改行を再現する
           context.content = context.content.gsub(%r{(<div class="text-(?:right|center|left)"[^>]*>)\n(.*?)\n(</div>)}m) do
             open_tag = ::Regexp.last_match(1)
-            inner    = ::Regexp.last_match(2)
+            inner    = MarkdownUtils.apply_hard_line_breaks(::Regexp.last_match(2))
             close_tag = ::Regexp.last_match(3)
             html = MarkdownUtils.render_markdown_to_html(inner).strip
             "#{open_tag}\n#{html}\n#{close_tag}"

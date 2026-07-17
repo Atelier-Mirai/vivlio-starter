@@ -73,6 +73,12 @@ module VivlioStarter
           EXT_TO_LANG.fetch(ext, 'text')
         end
 
+        # 段落内の改行を Kramdown の強制改行（行末スペース 2 つ）へ変換する。
+        # 生 HTML 化経路（text-* コンテナ等）は VFM を通らずハード改行が失われるため、
+        # Kramdown へ渡す前にこれを適用して VFM 本文と同じ「見たまま改行」を再現する。
+        # 空行区切りの段落境界・リスト・表には作用しない（\S に挟まれた改行のみ対象）。
+        def apply_hard_line_breaks(md_text) = md_text.to_s.gsub(/(?<=\S)\n(?=\S)/, "  \n")
+
         # 簡易Markdown→HTML 変換
         def render_markdown_to_html(md_text)
           # まずはKramdownを試す

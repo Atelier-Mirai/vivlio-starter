@@ -6,6 +6,9 @@
 
 ## unreleased
 
+### Fixed
+- [Low] **`:::{.text-right}` 等の text-* ブロック内でハード改行が失われる問題を修正**: text-* コンテナの中身は前処理で Kramdown により生 HTML 化されるため VFM のハード改行（改行→`<br>`）が適用されず、複数行の段落が 1 行に連結されていた。Kramdown へ渡す前に段落内の改行を強制改行（行末スペース 2 つ）へ変換する `MarkdownUtils.apply_hard_line_breaks` を text-align 経路にのみ適用して解消。空行区切りの段落・リスト・表には作用しない（`render_markdown_to_html` を共用する表セル・book-card 等は不変）。
+
 ### Added
 - [Medium] **図・アスキーアート用の枠 `:::{.figure}` を新設**: 罫線ツリー・構成図など、桁揃えの要るテキスト図を「行番号なしの囲み枠」で組めるようにした。見た目は `.output` と同じ細枠のエイリアスだが、意味づけが「実行結果」ではなく「図」で、Kindle でも `.output` の【OUTPUT】のようなラベルは付かない。div 化は既存の汎用コンテナ機構が担うため Ruby 追加はなく、CSS（root→scaffold 同期）と行番号免除の 1 箇所のみ。原稿 21 章（Markdown フレーバーの系統図＝印欧祖語アナロジー）・22 章（`.figure` リファレンス節）で使用。
 
