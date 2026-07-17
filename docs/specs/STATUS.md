@@ -14,6 +14,11 @@
   状態: 将来タスク・未着手
   次のアクション: 優先度低
 
+`mermaid-diagram-spec.md`
+: ` ```mermaid ` フェンスをビルド時に図化（PDF はベクタ SVG・EPUB/Kindle はラスター）する仕様。レンダラは `mmdc`、生成・差し替えは showcase（explanatory-diagram-spec）の構造を流用。
+  状態: 提案仕様・未着手（2026-07-17 策定）
+  次のアクション: §12 の要決定事項（レンダラ確定・CJK フォント方式・配置・キャプション/ダーク見送り可否・21 章系統図の扱い）をユーザー確認してから実装
+
 `kindle-inline-math-textify-spec.md`
 : Kindle 限定でインライン数式を SVG 画像でなくテキスト（`<sup>`/`<sub>`＋Unicode 記号）へ劣化変換し、フォントサイズ変更への追従不全を根治する仕様。KNOWN_ISSUES.md の数式サイズ不安定 2 件に対応。
   状態: 確定仕様・未着手（2026-07-12 策定）
