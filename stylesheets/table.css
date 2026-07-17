@@ -123,6 +123,12 @@ tr:nth-child(even) {
   font-size: clamp(9Q, calc(11Q * var(--paper-scale)), 12Q);
 }
 
+.long-table table {
+  /* 内容が短い表でも版面いっぱいに広げる。既定の table は内容幅＋中央寄せのため、
+     セルの短い表（記法早見表など）だけ小さく中央に浮いて見えるのを防ぐ */
+  inline-size: 100%;
+}
+
 .long-table th {
   min-inline-size: auto;
 }

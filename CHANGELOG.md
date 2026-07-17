@@ -6,6 +6,9 @@
 
 ## unreleased
 
+### Changed
+- [Low] **`.long-table` 内の表を版面いっぱいに広げるようにした**: 既定の表は内容幅＋中央寄せのため、セルの短い表（付録の記法早見表など）だけ小さく中央に浮いて見えていた。`.long-table table { inline-size: 100% }` を追加し、長い表は常に全幅で粒を揃えた。
+
 ### Fixed
 - [Low] **`:::{.text-right}` 等の text-* ブロック内でハード改行が失われる問題を修正**: text-* コンテナの中身は前処理で Kramdown により生 HTML 化されるため VFM のハード改行（改行→`<br>`）が適用されず、複数行の段落が 1 行に連結されていた。Kramdown へ渡す前に段落内の改行を強制改行（行末スペース 2 つ）へ変換する `MarkdownUtils.apply_hard_line_breaks` を text-align 経路にのみ適用して解消。空行区切りの段落・リスト・表には作用しない（`render_markdown_to_html` を共用する表セル・book-card 等は不変）。
 
