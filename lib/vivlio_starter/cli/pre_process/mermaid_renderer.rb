@@ -101,12 +101,23 @@ module VivlioStarter
           end
         end
 
-        # mmdc へ渡す mermaid 設定 JSON。fontFamily を本書の和文フォントへ固定し（§5.1）、
-        # useMaxWidth:false で SVG に実寸（intrinsic size）を持たせる
-        # （vivliostyle-css-pitfalls-notes: SVG intrinsic size）。
+        # mmdc へ渡す mermaid 設定 JSON。
+        #
+        # htmlLabels:false が肝——mermaid は既定で図中ラベルを <foreignObject> 内の HTML
+        # （<div>/<span>）で描く。だが本書は SVG を <img src> で参照するため、ブラウザ
+        # （Vivliostyle の PDF エンジン＝Chromium）は <img> 経由の SVG 内の foreignObject を
+        # 描画しない仕様で、**PDF だとラベルだけ消える**（§5.1 案 1 の前提が崩れる）。
+        # htmlLabels:false にすると native な <text>/<tspan> で描かれ、font-family を
+        # Vivliostyle が解決できる（<br/> は tspan の複数行に分割される）。EPUB/Kindle 用の
+        # PNG は mmdc（Chromium）が自前でラスタライズするためどちらでも文字は出るが、SVG も
+        # native text に揃えて PDF と一致させる。
+        #
+        # fontFamily を本書の和文フォントへ固定し（§5.1 案 1）、useMaxWidth:false で SVG に
+        # 実寸（intrinsic size）を持たせる（vivliostyle-css-pitfalls-notes: SVG intrinsic size）。
         def mermaid_config_json(font_family)
           config = { 'theme' => DEFAULT_THEME,
-                     'flowchart' => { 'useMaxWidth' => false } }
+                     'htmlLabels' => false,
+                     'flowchart' => { 'useMaxWidth' => false, 'htmlLabels' => false } }
           config['themeVariables'] = { 'fontFamily' => font_family } if font_family && !font_family.empty?
           JSON.generate(config)
         end

@@ -179,7 +179,9 @@ module VivlioStarter
         # 図ソースを撮り直せば（＝内容が変われば）別キーになり再生成される。
         def cache_key(source, font_family, renderer)
           version = renderer.respond_to?(:version) ? renderer.version.to_s : ''
-          payload = ['v1', Digest::SHA256.hexdigest(source), font_family.to_s,
+          # v2: mmdc 設定を htmlLabels:false へ変更（foreignObject→native text）した際に
+          # 旧キャッシュを無効化するためスキーマ版を上げた。
+          payload = ['v2', Digest::SHA256.hexdigest(source), font_family.to_s,
                      MermaidRenderer::DEFAULT_THEME, version].join('|')
           Digest::SHA256.hexdigest(payload)[0, 16]
         end
