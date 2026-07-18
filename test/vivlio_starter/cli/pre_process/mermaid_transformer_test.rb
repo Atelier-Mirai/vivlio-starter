@@ -124,6 +124,25 @@ class MermaidTransformerTest < Minitest::Test
     end
   end
 
+  # 永続キャッシュ（.cache/vs/mermaid/）は BUILD_DIR の外にあり、ワークスペースが
+  # final clean で消えても図ソースが同じなら mmdc を呼ばずに復元される。
+  def test_should_reuse_the_persistent_cache_across_a_workspace_clean
+    in_project do
+      transform(diagram, renderer: FakeRenderer.new)
+      # final clean 相当: BUILD_DIR（ワークスペース）を丸ごと削除
+      FileUtils.rm_rf(VivlioStarter::CLI::Common::BUILD_DIR)
+      refute_path_exists mermaid_dir, 'ワークスペースは消えている'
+      assert Dir.exist?(File.join('.cache', 'vs', 'mermaid')), '永続キャッシュは残る'
+
+      second = FakeRenderer.new
+      result = transform(diagram, renderer: second)
+
+      assert_empty second.calls, 'キャッシュヒット時は mmdc を呼ばない'
+      assert_match(%r{<img class="vs-mermaid" src="images/mermaid/10-intro/[0-9a-f]{16}\.svg"}, result)
+      assert_equal 1, Dir.glob(File.join(mermaid_dir, '*.svg')).size, 'ワークスペースへ復元される'
+    end
+  end
+
   # 図ソースが変われば別キー（別ファイル）になる。
   def test_should_use_a_different_key_when_the_source_changes
     in_project do

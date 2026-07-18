@@ -90,13 +90,37 @@ module VivlioStarter
           figure("#{rel_dir}/#{key}.svg", "#{rel_dir}/#{key}.png", alt_text(source))
         end
 
-        # 未生成なら SVG（PDF 用）とラスター PNG（EPUB/Kindle 用）を対で書き出す。
-        # 既に両方あればスキップ（--no-clean で効く）。どちらか描けなければ縮退させる。
+        # SVG（PDF 用）とラスター PNG（EPUB/Kindle 用）を対でワークスペースへ用意する。
+        #
+        # 描画は重い（mmdc が Chromium を起動）ので、生成物は **BUILD_DIR の外**の永続キャッシュ
+        # `.cache/vs/mermaid/<hash>.{svg,png}` に置き、各ビルドではそこからワークスペースへ
+        # コピーするだけにする。final clean（rm_rf BUILD_DIR）を生き延びるため、図ソースが
+        # 変わらなければクリーンビルドを跨いで mmdc を呼ばない（covers / theme-images と同じ
+        # 「再生成コストの高い資産は BUILD_DIR 外にキャッシュ」方針・generated-assets 移設 §2）。
+        # ハッシュは内容アドレスなので、図を書き換えれば別キー＝自動で再描画される。
+        #
+        # 既にワークスペースに両方あれば即真（--no-clean の同一ビルド内）。どちらか描けなければ縮退。
         def write_assets!(source, key, out_dir, font_family, renderer, block, source_filename)
-          svg_path = File.join(out_dir, "#{key}.svg")
-          png_path = File.join(out_dir, "#{key}.png")
-          return true if File.exist?(svg_path) && File.exist?(png_path)
+          ws_svg = File.join(out_dir, "#{key}.svg")
+          ws_png = File.join(out_dir, "#{key}.png")
+          return true if File.exist?(ws_svg) && File.exist?(ws_png)
 
+          cache_dir = mermaid_cache_dir
+          cache_svg = File.join(cache_dir, "#{key}.svg")
+          cache_png = File.join(cache_dir, "#{key}.png")
+          unless File.exist?(cache_svg) && File.exist?(cache_png)
+            return false unless render_to_cache!(source, font_family, renderer, cache_dir, cache_svg, cache_png,
+                                                 block, source_filename)
+          end
+
+          FileUtils.mkdir_p(out_dir)
+          FileUtils.cp(cache_svg, ws_svg)
+          FileUtils.cp(cache_png, ws_png)
+          true
+        end
+
+        # mmdc で SVG/PNG を描画し永続キャッシュへ書き出す。描けなければ縮退（false）。
+        def render_to_cache!(source, font_family, renderer, cache_dir, cache_svg, cache_png, block, source_filename)
           svg = renderer.render(source, format: :svg, font_family:)
           png = renderer.render(source, format: :png, font_family:)
           unless svg && png
@@ -104,11 +128,15 @@ module VivlioStarter
             return false
           end
 
-          FileUtils.mkdir_p(out_dir)
-          File.write(svg_path, svg, encoding: 'utf-8')
-          File.binwrite(png_path, png)
+          FileUtils.mkdir_p(cache_dir)
+          File.write(cache_svg, svg, encoding: 'utf-8')
+          File.binwrite(cache_png, png)
           true
         end
+
+        # 永続キャッシュのルート（.cache/vs/mermaid/）。BUILD_DIR の外に置き final clean を生き延びる。
+        # `vs clean --cache`（.cache/vs 一括削除）で掃除される。
+        def mermaid_cache_dir = File.join(Common.cache_dir, REL_BASE)
 
         # --- 行スキャン（トップレベルの ```mermaid ブロックだけを拾う） ---
 
