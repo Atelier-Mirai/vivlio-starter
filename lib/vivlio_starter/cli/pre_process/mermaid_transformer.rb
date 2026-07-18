@@ -12,22 +12,28 @@
 # なぜコード保護の前段で横取りするのか（§0・§4.2）:
 #   ```mermaid は言語付きフェンスなので、通常のコード保護に任せると Prism へ流れ、
 #   図の代わりに「行番号付きソース」が本文に載る（prism_lines が全 <pre> に行番号を
-#   付けるため）。よってコード化される前に、行スキャンでブロックを抜き出して図へ置換する。
+#   付けるため）。よってコード化される前にブロックを図へ置換する。
 #
-# 記法解説フェンスは温存（§2.1）:
-#   拡張記法リファレンスでは ````markdown の中に ```mermaid の**書き方の例**が入る。
-#   フェンスの入れ子（外側が長いフェンス）を状態機械で追い、トップレベルの ```mermaid
-#   だけを変換対象にする（内側の例示は本文に残す）。Masking.scan_lines と同じ意味論。
+# フェンス解釈は Masking に委ねる（P1「唯一の実装」）:
+#   ブロックの抽出は Masking.replace_top_level_fences が担う。記法解説フェンス
+#   （````markdown の中の ```mermaid の作例）は外側フェンスの本文として素通りし、
+#   トップレベルの ```mermaid だけが yield される（§2.1）。
+#
+# 生成物のキャッシュは GeneratedAssetCache に委ねる:
+#   mmdc は Chromium を起動し 1 図 ≈0.9s と重いため、生成物は .cache/vs/mermaid/ に
+#   永続キャッシュされ、図ソースが変わらない限りクリーンビルドを跨いで再描画しない。
 #
 # 縮退（§6）:
-#   mmdc 不在時は本文を変えずブロックを ```mermaid のまま残す（＝コードブロックとして
-#   表示され、ビルドは止まらない）。生成失敗時も当該ブロックだけ原文のまま残し、
-#   出現位置つきで著者に警告する（[[warning-messages-actionable]]）。
+#   mmdc 不在時・生成失敗時は当該ブロックを ```mermaid のまま残す（＝コードブロック
+#   として表示され、ビルドは止まらない）。失敗は出現位置つきで著者に警告する
+#   （[[warning-messages-actionable]]）。
 # ================================================================
 
 require 'digest'
 require 'fileutils'
 require_relative '../common'
+require_relative '../masking'
+require_relative 'generated_asset_cache'
 require_relative 'mermaid_renderer'
 
 module VivlioStarter
@@ -37,11 +43,12 @@ module VivlioStarter
       module MermaidTransformer
         module_function
 
-        # 生成物の出力先（images/ 配下）。著者画像・数式・showcase とは別系統に置く。
+        # 生成物の出力先（images/ 配下）と永続キャッシュの種別名。
         REL_BASE = 'mermaid'
 
-        # 行頭フェンス（``` または ~~~ を 3 連以上・先頭空白許容）。
-        FENCE = /\A[ \t]*(`{3,}|~{3,})/
+        # ```mermaid / ~~~mermaid 開始行の存在を安価に判定する前置きフィルタ
+        # （大半の章はこれで即 return し、行走査すら行わない）。
+        OPENER_HINT = /^[ \t]*(?:`{3,}|~{3,})[ \t]*mermaid[ \t]*$/i
 
         # mmdc の描画が利用可能か（既定レンダラ経由）。
         def available?(renderer: default_renderer)
@@ -56,155 +63,69 @@ module VivlioStarter
         # @param renderer [#available?, #render, #version] mmdc レンダラ（テスト差し替え用）
         # @return [String] 置換後の本文
         def transform(content, chapter_slug:, source_filename:, renderer: default_renderer)
-          blocks = scan_blocks(content)
-          return content if blocks.empty?
+          return content unless content.match?(OPENER_HINT)
 
-          unless renderer.available?
-            warn_renderer_missing(source_filename)
-            return content
+          warned = false
+          Masking.replace_top_level_fences(content) do |block, lineno|
+            next nil unless mermaid_block?(block)
+
+            unless renderer.available?
+              warn_renderer_missing(source_filename) unless warned
+              warned = true
+              next nil
+            end
+
+            render_block(block_source(block), lineno, chapter_slug:, source_filename:, renderer:)
           end
-
-          rewrite(content, blocks, chapter_slug:, source_filename:, renderer:)
         end
 
-        # 走査で得たブロック（末尾から）を置換していく。末尾から処理するのは、
-        # 前方の [start, end) 範囲が後続の置換でずれないようにするため。
-        def rewrite(content, blocks, chapter_slug:, source_filename:, renderer:)
-          result = content.dup
-          blocks.reverse_each do |block|
-            replacement = render_block(block, chapter_slug:, source_filename:, renderer:)
-            result[block[:range]] = replacement
-          end
-          result
-        end
-
-        # ブロック 1 つを figure へ変換する。生成できないときは原文（raw フェンス）を返す。
-        def render_block(block, chapter_slug:, source_filename:, renderer:)
-          source = block[:source]
+        # ブロック 1 つを figure へ変換する。生成できないときは nil（原文フェンス温存）。
+        def render_block(source, lineno, chapter_slug:, source_filename:, renderer:)
           font_family = configured_font_family
           key = cache_key(source, font_family, renderer)
           out_dir = File.join(Common::BUILD_HTML_DIR, 'images', REL_BASE, chapter_slug)
-          return block[:raw] unless write_assets!(source, key, out_dir, font_family, renderer, block, source_filename)
+
+          ok = GeneratedAssetCache.fetch(REL_BASE, ["#{key}.svg", "#{key}.png"], out_dir:) do |cache_dir|
+            generate_pair!(source, font_family, renderer, cache_dir, key)
+          end
+          unless ok
+            warn_render_failed(source_filename, lineno)
+            return nil
+          end
 
           rel_dir = "images/#{REL_BASE}/#{chapter_slug}"
           figure("#{rel_dir}/#{key}.svg", "#{rel_dir}/#{key}.png", alt_text(source))
         end
 
-        # SVG（PDF 用）とラスター PNG（EPUB/Kindle 用）を対でワークスペースへ用意する。
-        #
-        # 描画は重い（mmdc が Chromium を起動）ので、生成物は **BUILD_DIR の外**の永続キャッシュ
-        # `.cache/vs/mermaid/<hash>.{svg,png}` に置き、各ビルドではそこからワークスペースへ
-        # コピーするだけにする。final clean（rm_rf BUILD_DIR）を生き延びるため、図ソースが
-        # 変わらなければクリーンビルドを跨いで mmdc を呼ばない（covers / theme-images と同じ
-        # 「再生成コストの高い資産は BUILD_DIR 外にキャッシュ」方針・generated-assets 移設 §2）。
-        # ハッシュは内容アドレスなので、図を書き換えれば別キー＝自動で再描画される。
-        #
-        # 既にワークスペースに両方あれば即真（--no-clean の同一ビルド内）。どちらか描けなければ縮退。
-        def write_assets!(source, key, out_dir, font_family, renderer, block, source_filename)
-          ws_svg = File.join(out_dir, "#{key}.svg")
-          ws_png = File.join(out_dir, "#{key}.png")
-          return true if File.exist?(ws_svg) && File.exist?(ws_png)
-
-          cache_dir = mermaid_cache_dir
-          cache_svg = File.join(cache_dir, "#{key}.svg")
-          cache_png = File.join(cache_dir, "#{key}.png")
-          unless File.exist?(cache_svg) && File.exist?(cache_png)
-            return false unless render_to_cache!(source, font_family, renderer, cache_dir, cache_svg, cache_png,
-                                                 block, source_filename)
-          end
-
-          FileUtils.mkdir_p(out_dir)
-          FileUtils.cp(cache_svg, ws_svg)
-          FileUtils.cp(cache_png, ws_png)
-          true
-        end
-
-        # mmdc で SVG/PNG を描画し永続キャッシュへ書き出す。描けなければ縮退（false）。
-        def render_to_cache!(source, font_family, renderer, cache_dir, cache_svg, cache_png, block, source_filename)
+        # SVG（PDF 用）とラスター PNG（EPUB/Kindle 用）を対でキャッシュへ描き出す。
+        def generate_pair!(source, font_family, renderer, cache_dir, key)
           svg = renderer.render(source, format: :svg, font_family:)
           png = renderer.render(source, format: :png, font_family:)
-          unless svg && png
-            warn_render_failed(source_filename, block[:lineno])
-            return false
-          end
+          return false unless svg && png
 
-          FileUtils.mkdir_p(cache_dir)
-          File.write(cache_svg, svg, encoding: 'utf-8')
-          File.binwrite(cache_png, png)
+          File.write(File.join(cache_dir, "#{key}.svg"), svg, encoding: 'utf-8')
+          File.binwrite(File.join(cache_dir, "#{key}.png"), png)
           true
         end
 
-        # 永続キャッシュのルート（.cache/vs/mermaid/）。BUILD_DIR の外に置き final clean を生き延びる。
-        # `vs clean --cache`（.cache/vs 一括削除）で掃除される。
-        def mermaid_cache_dir = File.join(Common.cache_dir, REL_BASE)
-
-        # --- 行スキャン（トップレベルの ```mermaid ブロックだけを拾う） ---
-
-        # フェンスの入れ子を状態機械で追い、トップレベルの ```mermaid ブロックを
-        # [範囲, 図ソース, 原文, 開始行番号] として返す。内側（記法解説）の ```mermaid は
-        # 外側フェンスの本文として素通りするので拾わない。
-        # @return [Array<Hash>] { range:, source:, raw:, lineno: } の配列（出現順）
-        def scan_blocks(content)
-          blocks = []
-          fence = nil           # 開いているフェンスのマーカー（nil = コード外）
-          collecting = false    # トップレベル mermaid ブロックを収集中か
-          start_off = nil       # 収集中ブロックの開始バイトオフセット
-          source_lines = nil    # 図ソース行の蓄積
-          block_lineno = nil    # 収集中ブロックの開始行番号（ループ前に宣言し反復間で保持）
-          lineno = 0
-          offset = 0
-
-          content.each_line do |line|
-            lineno += 1
-            marker = fence_marker(line)
-
-            if fence.nil?
-              if marker
-                fence = marker
-                if mermaid_opener?(line, marker)
-                  collecting = true
-                  start_off = offset
-                  source_lines = []
-                  block_lineno = lineno
-                end
-              end
-            elsif marker && closing_fence?(marker, fence)
-              if collecting
-                raw = content[start_off...(offset + line.length)]
-                blocks << { range: start_off...(offset + line.length),
-                            source: source_lines.join, raw:, lineno: block_lineno }
-                collecting = false
-              end
-              fence = nil
-            elsif collecting
-              source_lines << line
-            end
-
-            offset += line.length
-          end
-
-          blocks
-        end
-
-        # 行頭（空白許容）のフェンスマーカー（``` または ~~~ の連なり）を返す。無ければ nil。
-        def fence_marker(line)
-          m = line.match(FENCE)
-          m && m[1]
-        end
-
-        # 閉じフェンスとして妥当か（同種・同連長以上）。Masking と同じ規則。
-        def closing_fence?(marker, opener) = marker[0] == opener[0] && marker.length >= opener.length
+        # --- ブロック判定・切り出し ---
 
         # 開始フェンス行の情報文字列が mermaid か（```mermaid / ~~~ mermaid、大小無視）。
-        def mermaid_opener?(line, marker)
-          info = line.lstrip.delete_prefix(marker).strip
-          info.casecmp?('mermaid')
+        def mermaid_block?(block)
+          first = block.lines.first.to_s.lstrip
+          marker = first[/\A(?:`{3,}|~{3,})/]
+          return false unless marker
+
+          first.delete_prefix(marker).strip.casecmp?('mermaid')
         end
+
+        # フェンスブロックから図ソース（開始行・終了行を除く中身）を取り出す。
+        def block_source(block) = block.lines[1..-2].to_a.join
 
         # --- 生成物のパスとキー ---
 
         # 図ソース＋フォント＋テーマ＋mermaid バージョンのハッシュをキーにする（§4.1-2）。
-        # 図ソースを撮り直せば（＝内容が変われば）別キーになり再生成される。
+        # 図ソースを書き換えれば（＝内容が変われば）別キーになり再生成される。
         def cache_key(source, font_family, renderer)
           version = renderer.respond_to?(:version) ? renderer.version.to_s : ''
           # v2: mmdc 設定を htmlLabels:false へ変更（foreignObject→native text）した際に

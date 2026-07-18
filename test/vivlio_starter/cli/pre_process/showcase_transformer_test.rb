@@ -161,6 +161,24 @@ class ShowcaseTransformerTest < Minitest::Test
     end
   end
 
+  # 永続キャッシュ（.cache/vs/showcase/）は BUILD_DIR の外にあり、ワークスペースが
+  # final clean で消えても元画像・注釈が同じなら再合成せずに復元される。
+  def test_should_reuse_the_persistent_cache_across_a_workspace_clean
+    in_project do
+      transform(block, tools: CountingTools.new)
+      # final clean 相当: BUILD_DIR（ワークスペース）を丸ごと削除
+      FileUtils.rm_rf(VivlioStarter::CLI::Common::BUILD_DIR)
+      assert Dir.exist?(File.join('.cache', 'vs', 'showcase')), '永続キャッシュは残る'
+
+      second = CountingTools.new
+      result = transform(block, tools: second)
+
+      assert_equal 0, second.rasterized, 'キャッシュヒット時は再合成しない'
+      assert_match(%r{src="images/showcase/10-intro/[0-9a-f]{16}\.svg"}, result)
+      assert_equal 1, Dir.glob(File.join(showcase_dir, '*.svg')).size, 'ワークスペースへ復元される'
+    end
+  end
+
   def test_should_regenerate_with_a_new_key_when_the_source_image_changes
     in_project do |dir|
       first = transform(block, tools: CountingTools.new)

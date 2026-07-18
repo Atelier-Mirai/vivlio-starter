@@ -66,6 +66,8 @@ module VivlioStarter
       # ------------------------------------------------------------
       # BUILD_DIR の外に置くのが要点: final clean（rm_rf BUILD_DIR）を生き延び、
       # waifu2x を伴う高コストなバリアント生成や covers の毎ビルド再生成を避ける。
+      # 前処理の生成資産（mermaid / showcase / math）も同方針で CACHE_DIR 配下に置く
+      # （PreProcessCommands::GeneratedAssetCache が .cache/vs/<種別>/ を管理する）。
       COVER_CACHE_DIR        = "#{CACHE_DIR}/covers"
       THEME_IMAGES_CACHE_DIR = "#{CACHE_DIR}/theme-images"
 

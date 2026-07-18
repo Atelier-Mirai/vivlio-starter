@@ -38,6 +38,7 @@ require 'fileutils'
 require 'json'
 require 'open3'
 require_relative '../common'
+require_relative 'generated_asset_cache'
 require_relative 'markdown_utils'
 require_relative 'showcase_svg_builder'
 
@@ -127,8 +128,9 @@ module VivlioStarter
           key = cache_key(source, block)
           out_dir = File.join(Common::BUILD_HTML_DIR, 'images', REL_BASE, chapter_slug)
           # 元画像の素性でラスター形式を選ぶ（冒頭コメント参照）。同じ画像なら判定も同じに
-          # なるため、キャッシュキーに形式を含める必要はない。
-          ext = tools.photographic?(source) ? 'jpg' : 'png'
+          # なるため、キャッシュキーに形式を含める必要はない——ゆえに永続キャッシュに残る
+          # 拡張子をそのまま信じてよく、ヒット時は magick identify（0.2〜0.35 秒）ごと省ける。
+          ext = cached_raster_ext(key) || (tools.photographic?(source) ? 'jpg' : 'png')
           return nil unless write_assets!(block, key, out_dir, ext, source:, orig_w:, orig_h:, tools:)
 
           # <img> の参照は消費者 dir 相対（asset_prefix 無し）。数式 SVG と同じ理由で、
@@ -138,24 +140,28 @@ module VivlioStarter
           [block, "#{rel_dir}/#{key}.svg", "#{rel_dir}/#{key}.#{ext}"]
         end
 
-        # 未生成なら SVG とラスターを対で書き出す。既に両方あればスキップ（--no-clean で効く）。
+        # SVG とラスターを対でワークスペースへ用意する。合成は magick+rsvg で 1 枚 0.5〜1 秒級
+        # のため、生成物は GeneratedAssetCache（.cache/vs/showcase/）に永続キャッシュされ、
+        # 元画像・注釈が変わらない限りクリーンビルドを跨いで再合成しない（キーは内容アドレス）。
         # @return [Boolean] 参照可能な生成物が揃ったか
         def write_assets!(block, key, out_dir, ext, source:, orig_w:, orig_h:, tools:)
-          svg_path    = File.join(out_dir, "#{key}.svg")
-          raster_path = File.join(out_dir, "#{key}.#{ext}")
-          return true if File.exist?(svg_path) && File.exist?(raster_path)
+          GeneratedAssetCache.fetch(REL_BASE, ["#{key}.svg", "#{key}.#{ext}"], out_dir:) do |cache_dir|
+            data_uri = tools.data_uri(source)
+            next false unless data_uri
 
-          data_uri = tools.data_uri(source)
-          return false unless data_uri
+            svg = ShowcaseSvgBuilder.build(block, orig_w:, orig_h:, data_uri:)
+            raster = tools.rasterize(svg, raster_width(block, orig_w:, orig_h:), format: ext.to_sym)
+            next false unless raster
 
-          svg = ShowcaseSvgBuilder.build(block, orig_w:, orig_h:, data_uri:)
-          raster = tools.rasterize(svg, raster_width(block, orig_w:, orig_h:), format: ext.to_sym)
-          return false unless raster
+            File.write(File.join(cache_dir, "#{key}.svg"), svg, encoding: 'utf-8')
+            File.binwrite(File.join(cache_dir, "#{key}.#{ext}"), raster)
+            true
+          end
+        end
 
-          FileUtils.mkdir_p(out_dir)
-          File.write(svg_path, svg, encoding: 'utf-8')
-          File.binwrite(raster_path, raster)
-          true
+        # 永続キャッシュに残るラスターの拡張子（png/jpg）。無ければ nil（＝形式判定から決める）。
+        def cached_raster_ext(key)
+          %w[png jpg].find { File.exist?(File.join(GeneratedAssetCache.dir(REL_BASE), "#{key}.#{it}")) }
         end
 
         # 画像内容をキーに含めるため、著者がスクリーンショットを撮り直せば再生成される。

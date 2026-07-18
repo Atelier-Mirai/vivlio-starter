@@ -14,6 +14,7 @@
 # ================================================================
 
 require_relative '../../../test_helper'
+require 'fileutils'
 require 'tmpdir'
 require 'vivlio_starter/cli/pre_process/math_transformer'
 
@@ -127,6 +128,35 @@ class MathTransformerTest < Minitest::Test
 
       # 2 回目はキャッシュ済みのためレンダラを呼ばない
       assert_equal 1, renderer.batches.size
+    end
+  end
+
+  # 永続キャッシュ（.cache/vs/math/）は BUILD_DIR の外にあり、ワークスペースが
+  # final clean で消えても式が同じなら再描画せずに復元される。
+  def test_should_reuse_the_persistent_cache_across_a_workspace_clean
+    in_tmp do
+      renderer = FakeRenderer.new
+      MT.transform('式 $a+b$。', chapter_slug: 'ch', renderer:)
+      # final clean 相当: BUILD_DIR（ワークスペース）を丸ごと削除
+      FileUtils.rm_rf(VivlioStarter::CLI::Common::BUILD_DIR)
+
+      result = MT.transform('再び $a+b$。', chapter_slug: 'ch', renderer:)
+
+      assert_equal 1, renderer.batches.size, 'キャッシュヒット時はレンダラを呼ばない'
+      assert_match(%r{src="images/math/ch/[0-9a-f]{16}\.svg"}, result)
+      assert_equal 1, Dir.glob(File.join(MATH_DIR, 'ch', '*.svg')).size, 'ワークスペースへ復元される'
+    end
+  end
+
+  # キャッシュキーは章に依存しないため、別章に現れる同一式は 1 回しか描かれない。
+  def test_should_share_identical_formulas_across_chapters
+    in_tmp do
+      renderer = FakeRenderer.new
+      MT.transform('式 $a+b$。', chapter_slug: 'ch1', renderer:)
+      MT.transform('式 $a+b$。', chapter_slug: 'ch2', renderer:)
+
+      assert_equal 1, renderer.batches.size, '2 章目はキャッシュヒットで描画しない'
+      assert_equal 1, Dir.glob(File.join(MATH_DIR, 'ch2', '*.svg')).size, '各章のワークスペースには配られる'
     end
   end
 
