@@ -110,6 +110,33 @@ module VivlioStarter
         assert Builder.localized_image?('math/10-intro/deadbeef.svg', :epub)
       end
 
+      # mermaid 図も data-vs-raster に従い SVG → PNG へ差し替える（mermaid-diagram-spec §4.4）。
+      def test_should_rewrite_mermaid_src_to_the_declared_raster
+        in_temp_project do
+          make_mermaid_assets('10-intro', 'beef1234beef5678')
+          rel = 'images/mermaid/10-intro/beef1234beef5678'
+          File.write('10-intro.html', %(<html><body><figure class="vs-mermaid">) +
+                                       %(<img class="vs-mermaid" src="#{rel}.svg" data-vs-raster="#{rel}.png" ) +
+                                       %(alt="graph LR"></figure></body></html>),
+                     encoding: 'utf-8')
+
+          Builder.localize_showcase_images!(['10-intro.html'])
+          updated = File.read('10-intro.html')
+
+          assert_includes updated, 'images/mermaid/10-intro/beef1234beef5678.png'
+          refute_includes updated, '.svg'
+          refute_includes updated, 'data-vs-raster'
+          assert_empty @warnings
+        end
+      end
+
+      # mermaid の SVG も EPUB へは同梱しない（参照は PNG へ移り未参照になる）。対の PNG は残す。
+      def test_should_exclude_mermaid_svg_from_localized_assets
+        refute Builder.localized_image?('mermaid/10-intro/beef.svg', :epub)
+        refute Builder.localized_image?('mermaid/10-intro/beef.svg', :kindle)
+        assert Builder.localized_image?('mermaid/10-intro/beef.png', :epub)
+      end
+
       private
 
       def in_temp_project(&)
@@ -125,6 +152,14 @@ module VivlioStarter
         FileUtils.mkdir_p(dir)
         File.write(File.join(dir, "#{key}.svg"), '<svg/>', encoding: 'utf-8')
         File.binwrite(File.join(dir, "#{key}.#{ext}"), 'RASTER') if ext
+      end
+
+      # mermaid の生成物（SVG=PDF 用 / PNG=EPUB 用）を生成元ワークスペースに用意する。
+      def make_mermaid_assets(chapter_slug, key)
+        dir = File.join(Common::BUILD_HTML_DIR, 'images', 'mermaid', chapter_slug)
+        FileUtils.mkdir_p(dir)
+        File.write(File.join(dir, "#{key}.svg"), '<svg/>', encoding: 'utf-8')
+        File.binwrite(File.join(dir, "#{key}.png"), 'RASTER')
       end
 
       def write_html(path, key, ext:)

@@ -183,12 +183,12 @@ module VivlioStarter
         end
 
         # images/ 配下でローカライズ対象とするか（rel は images/ からの相対パス）。
-        # 図解注釈（showcase）の合成 SVG は元画像を base64 で内包しており Kindle が非対応。
-        # localize_showcase_images! が参照を対の PNG へ差し替え済みで未参照になるため、
-        # 両フレーバとも同梱しない（パッケージ肥大の防止・explanatory-diagram-spec §7.9）。
+        # 図解注釈（showcase）の合成 SVG・mermaid 図の SVG は、localize_showcase_images! が
+        # 参照を対のラスターへ差し替え済みで未参照になるため、両フレーバとも同梱しない
+        # （パッケージ肥大の防止・explanatory-diagram-spec §7.9・mermaid-diagram-spec §4.4）。
         def localized_image?(rel, flavor)
           return false if rel.start_with?("#{EPUB_ASSETS_REL_SUBDIR}/", "#{HEADINGS_REL_SUBDIR}/")
-          return false if rel.start_with?("#{SHOWCASE_REL_SUBDIR}/") && rel.match?(/\.svg\z/i)
+          return false if rel.start_with?("#{SHOWCASE_REL_SUBDIR}/", "#{MERMAID_REL_SUBDIR}/") && rel.match?(/\.svg\z/i)
           return false if flavor == :kindle && rel.match?(/\.webp\z/i)
 
           true
@@ -905,12 +905,17 @@ module VivlioStarter
         # 図解注釈（showcase）の生成物サブディレクトリ（images/showcase/）。
         SHOWCASE_REL_SUBDIR = 'showcase'
 
-        # 図解注釈の <img> 参照を合成 SVG からラスターへ差し替える（explanatory-diagram-spec §7.9）。
-        # 合成 SVG は元画像を base64 data URI で内包しており、Kindle はこれを非対応
-        # （変換時ブロッキングエラー）。前処理が SVG とラスターを必ず対で焼き、参照先を
-        # data-vs-raster に明示しているため、ここは参照の書き換えだけで済む（形式は元画像が
-        # 写真か否かで png / jpg に分かれるので、拡張子は推測せず属性の値をそのまま使う）。
-        # 同梱側は localized_image? が showcase の .svg を弾くので、未参照 SVG がパッケージへ
+        # mermaid 図の生成物サブディレクトリ（images/mermaid/）。SVG（PDF 用）と PNG（EPUB/
+        # Kindle 用）を対で焼き、EPUB では PNG を参照する（mermaid-diagram-spec.md §4.4）。
+        MERMAID_REL_SUBDIR = 'mermaid'
+
+        # data-vs-raster を持つ <img>（図解注釈 showcase・mermaid 図）の参照を、SVG から
+        # 対のラスターへ差し替える（explanatory-diagram-spec §7.9・mermaid-diagram-spec §4.4）。
+        # showcase の合成 SVG は元画像を base64 data URI で内包し、mermaid SVG は図中テキストを
+        # <text> で持つ——どちらも Kindle（KFX）で確実に運ぶにはラスター化が要る。前処理が
+        # SVG とラスターを必ず対で焼き、参照先を data-vs-raster に明示しているため、ここは
+        # 参照の書き換えだけで済む（拡張子は推測せず属性の値をそのまま使う）。同梱側は
+        # localized_image? が showcase / mermaid の .svg を弾くので、未参照 SVG がパッケージへ
         # 紛れ込むこともない（クリーン EPUB も同じラスターを使い、両フレーバで見た目を揃える）。
         # ラスター実体が無い場合（通常起きない）は参照を変えず警告に留める。
         #
@@ -919,12 +924,12 @@ module VivlioStarter
         def localize_showcase_images!(html_files)
           html_files.each do |path|
             doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
-            images = doc.css('img.vs-showcase[data-vs-raster]')
+            images = doc.css('img[data-vs-raster]')
             next if images.empty?
 
             images.each { |img| localize_showcase_image!(img, path) }
             PostProcessCommands::HtmlParser.save_html_document(path, doc)
-            Common.log_info("[EPUB] #{File.basename(path)} の図解注釈 #{images.size} 件をラスター参照へ差し替えました")
+            Common.log_info("[EPUB] #{File.basename(path)} の図版 #{images.size} 件をラスター参照へ差し替えました")
           end
           html_files
         end

@@ -32,6 +32,7 @@ require_relative 'markdown_transformer'
 require_relative 'table_converter'
 require_relative 'math_transformer'
 require_relative 'showcase_transformer'
+require_relative 'mermaid_transformer'
 require_relative 'markdown_utils'
 require_relative 'link_image_validator'
 
@@ -81,6 +82,7 @@ module VivlioStarter
           normalize_image_paths!
           validate_links_and_images!
           transform_showcases!
+          transform_mermaid!
           process_code_includes!
           transform_math!
           normalize_html_block_boundaries!
@@ -163,6 +165,22 @@ module VivlioStarter
             source_filename: context.filename
           )
           Common.log_success('図解注釈（showcase）を合成画像へ変換しました') if context.content != before
+        end
+
+        # ```mermaid フェンスを mmdc で図（PDF=ベクタ SVG / EPUB・Kindle=ラスター）へ変換し
+        # <figure class="vs-mermaid"><img> 化する（mermaid-diagram-spec.md §4.2）。
+        # コード保護・Prism 化より前に横取りしなければ「行番号付きソース」が本文に載る。
+        # showcase の直後に置くのは、画像パス正規化の後・コードインクルードや後続の
+        # 行アンカー変換がブロック内部（graph 定義等）を壊す前であるため。
+        # mmdc 不在時・生成失敗時は本文を変えず ```mermaid のまま残す（ビルドは止めない）。
+        def transform_mermaid!
+          before = context.content.dup
+          context.content = MermaidTransformer.transform(
+            context.content,
+            chapter_slug: File.basename(context.output_path, '.md'),
+            source_filename: context.filename
+          )
+          Common.log_success('mermaid 図を生成しました') if context.content != before
         end
 
         # include 記法によるソースコード取り込みを実行する

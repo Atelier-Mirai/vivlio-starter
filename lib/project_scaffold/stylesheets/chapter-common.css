@@ -382,6 +382,21 @@ figure.vs-showcase img {
   height: auto;
 }
 
+/* mermaid 図（```mermaid）。中身は前処理が mmdc で焼いた画像 1 枚（PDF=ベクタ SVG /
+   EPUB・Kindle=対のラスター）なので、置き場と分割禁止だけを面倒みる。
+   SVG は intrinsic size を持つため（useMaxWidth:false で出力）、max-width で版面に収める
+   （vivliostyle-css-pitfalls-notes: SVG intrinsic size）。showcase と同じく劣化対策は不要。 */
+figure.vs-mermaid {
+  margin-block: 1em;
+  text-align: center;
+  break-inside: avoid;
+}
+
+figure.vs-mermaid img.vs-mermaid {
+  max-width: 100%;
+  height: auto;
+}
+
 /* 図中文字（図内注釈リスト） */
 figure ul {
   position: absolute;

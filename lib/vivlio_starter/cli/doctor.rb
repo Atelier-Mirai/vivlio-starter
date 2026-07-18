@@ -121,6 +121,7 @@ module VivlioStarter
             - mecab
             - rouge
             - mathjax (mathjax-full)
+            - mermaid (mmdc・@mermaid-js/mermaid-cli)
             - waifu2x
             - kindlepreviewer (Kindle Previewer 3・targets: kindle の KPF 変換時のみ。任意)
 
@@ -207,6 +208,7 @@ module VivlioStarter
           'mecab' => 'mecab', # 索引機能の読み自動推測用
           'rouge' => nil, # コードブロック言語推定用
           'mathjax' => nil, # 数式の SVG 化用（mathjax-full・npm パッケージ）
+          'mermaid' => nil, # ```mermaid の図化用（@mermaid-js/mermaid-cli・mmdc）
           # EPUB 扉絵/節絵・図解注釈（showcase）の合成画像ラスタライズ用（librsvg）
           'rsvg-convert' => 'rsvg-convert'
         }
@@ -226,6 +228,8 @@ module VivlioStarter
                  rouge_gem_available?
                when 'mathjax'
                  mathjax_full_available?
+               when 'mermaid'
+                 mmdc_available?
                else
                  cli_tool_ok?(cmd)
                end
@@ -418,6 +422,16 @@ module VivlioStarter
             end
           end
 
+          # @mermaid-js/mermaid-cli（```mermaid の図化用・mmdc・npm パッケージ）
+          if missing.include?('mermaid')
+            if system('which npm >/dev/null 2>&1')
+              Common.log_always('mermaid の図化用 @mermaid-js/mermaid-cli をインストールします…')
+              system('npm install --loglevel=error -g @mermaid-js/mermaid-cli')
+            else
+              Common.log_always('npm が見つかりません。node のインストール後に `npm install -g @mermaid-js/mermaid-cli` を実行してください。')
+            end
+          end
+
           # Kindle Previewer 3（kindlepreviewer）: cask 導入＋アプリ内 CLI への PATH ラッパー作成
           install_kindlepreviewer_macos! if missing.include?(KINDLEPREVIEWER_COMMAND)
 
@@ -470,6 +484,8 @@ module VivlioStarter
                  rouge_gem_available?
                when 'mathjax'
                  mathjax_full_available?
+               when 'mermaid'
+                 mmdc_available?
                else
                  cli_tool_ok?(cmd)
                end
@@ -884,6 +900,7 @@ module VivlioStarter
           'mecab' => 'MeCab (索引機能用)',
           'rouge' => 'Rouge (コードブロック言語推定用)',
           'mathjax' => '数式SVG化 (mathjax-full)',
+          'mermaid' => 'mermaid 図化 (mmdc・@mermaid-js/mermaid-cli)',
           'kindlepreviewer' => 'Kindle Previewer 3 (kindlepreviewer・targets: kindle 用)'
         }
         keys.uniq.map { |key| label_map[key] || key }
@@ -1006,6 +1023,22 @@ module VivlioStarter
 
         global = capture_command('npm root -g 2>/dev/null').to_s.strip
         !global.empty? && File.directory?(File.join(global, 'mathjax-full'))
+      rescue StandardError
+        false
+      end
+
+      # mmdc（@mermaid-js/mermaid-cli）が解決でき起動できるか。
+      # ```mermaid の図化は前処理で mmdc を呼ぶため、node の存在に加え mmdc 本体を見る。
+      # プロジェクト直下の node_modules/.bin を優先し、無ければ PATH 上の mmdc を確認する
+      # （MermaidRenderer#resolve_mmdc_command と同じ解決順）。未導入時は図化されず
+      # ```mermaid はコードブロックのまま残る（ビルドは止まらない）。
+      def mmdc_available?
+        return false unless command_exists?('node')
+
+        local = File.join(Dir.pwd, 'node_modules', '.bin', 'mmdc')
+        return true if File.executable?(local)
+
+        command_runnable?('mmdc')
       rescue StandardError
         false
       end
