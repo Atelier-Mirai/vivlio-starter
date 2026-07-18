@@ -67,19 +67,18 @@ Markdown は、ジョン・グルーバー（John Gruber）とアーロン・ス
 
 Markdown には長らく公式の標準がなく、実装ごとに解釈が揺れていました。その揺れを厳密に定義し直した **CommonMark** が、今日の共通の土台です。主要なフレーバーは、この CommonMark を基準に位置づけられます。
 
-:::{.diagram}
-            Markdown（2004・Gruber）
-            ＝ 曖昧な共通の祖先
-                      │
-          ┌─────────┴──────────┐
-          │                    │
-     CommonMark          Pandoc's Markdown
-     ＝ 標準の共通語        ＝ 別系統の近縁言語
-          │
-     ┌────┴────┐
-     GFM        VFM
-     ＝＋GitHub   ＝＋出版（本書）
-:::
+```mermaid
+graph TD
+  MD["Markdown（2004・Gruber）<br/>＝ 曖昧な共通の祖先"]
+  CM["CommonMark<br/>＝ 標準の共通語"]
+  PD["Pandoc's Markdown<br/>＝ 別系統の近縁言語"]
+  GFM["GFM<br/>＝ ＋GitHub"]
+  VFM["VFM<br/>＝ ＋出版（本書）"]
+  MD --> CM
+  MD -.別系統.-> PD
+  CM --> GFM
+  CM --> VFM
+```
 
 - **CommonMark**: 実装間の揺れをなくした厳密な標準仕様（すべての土台）
 - **GFM**（GitHub Flavored Markdown）: CommonMark にテーブル・タスクリスト・打ち消し線などを加えた拡張。最も広く使われている
