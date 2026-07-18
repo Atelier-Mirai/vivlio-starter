@@ -5,6 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Coding Rules
 Always apply the ruby-coding-rules skill when working with .rb files.
 
+When adding or extending an author-facing notation (`:::{.class}` boxes, fences like ```` ```mermaid ````, inline syntax, generated assets), follow `docs/specs/notation-implementation-guide.md` — it maps the established infrastructure (Masking, GeneratedAssetCache, doctor, EpubBuilder localize) and the per-type checklists.
+
 ## What This Project Is
 
 `vivlio-starter` is a Ruby gem (CLI tool `vs`) that wraps Vivliostyle (CSS typesetting engine) to generate publication-quality PDFs and EPUBs from Markdown. Requires Ruby 4.0+. The CLI framework is Samovar.
