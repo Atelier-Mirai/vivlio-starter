@@ -218,6 +218,69 @@ module VivlioStarter
         assert_equal prose_lines, kept.sort
         assert_equal [1, 7, 11], prose_lines
       end
+
+      # --- replace_top_level_fences ---------------------------------------
+
+      def test_replace_top_level_fences_replaces_selected_blocks_with_lineno
+        md = <<~MD
+          本文A
+          ```mermaid
+          graph LR
+          ```
+          本文B
+          ```ruby
+          code
+          ```
+        MD
+
+        seen = []
+        result = Masking.replace_top_level_fences(md) do |block, lineno|
+          seen << [block.lines.first.strip, lineno]
+          block.start_with?('```mermaid') ? '[FIGURE]' : nil
+        end
+
+        # mermaid だけ置換され、ruby は nil 戻りで原文のまま
+        assert_includes result, '[FIGURE]'
+        refute_includes result, '```mermaid'
+        assert_includes result, "```ruby\ncode\n```"
+        # 開始フェンスの行番号が yield される
+        assert_equal [['```mermaid', 2], ['```ruby', 6]], seen
+      end
+
+      # ````markdown の中の ```mermaid は外側フェンスの本文であり、独立ブロックとして
+      # yield されない（記法解説の作例を横取りしない）。
+      def test_replace_top_level_fences_does_not_yield_nested_fences
+        md = <<~MD
+          ````markdown
+          ```mermaid
+          graph LR
+          ```
+          ````
+        MD
+
+        openers = []
+        result = Masking.replace_top_level_fences(md) do |block, _lineno|
+          openers << block.lines.first.strip
+          nil
+        end
+
+        assert_equal ['````markdown'], openers
+        assert_equal md, result
+      end
+
+      # 未終了フェンスは yield されず原文のまま残る（protect_code と同じ従来挙動）。
+      def test_replace_top_level_fences_keeps_unterminated_fence
+        md = "本文\n```mermaid\ngraph LR\n"
+
+        yielded = 0
+        result = Masking.replace_top_level_fences(md) do |_block, _lineno|
+          yielded += 1
+          '[FIGURE]'
+        end
+
+        assert_equal 0, yielded
+        assert_equal md, result
+      end
     end
   end
 end

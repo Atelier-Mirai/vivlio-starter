@@ -64,7 +64,26 @@ module VivlioStarter
       # インラインコード `...` を空白に置き換える。
       def strip_inline_code(text) = text.gsub(/`[^`\n]+`/, ' ')
 
-      # --- (c) コード退避 → 処理 → 復元（プレースホルダ方式） ---------------
+      # --- (c) トップレベルのフェンスブロックを選択的に置換する -------------
+
+      # トップレベルのフェンスドコードブロック（開始区切り〜終了区切り）を 1 つずつ
+      # yield し、戻り値で置き換える。nil を返したブロックは原文のまま残す。
+      # yield には開始フェンス行の行番号（1 始まり）も渡す——著者向け警告に
+      # 「ファイル:行」を添えるため（warning-messages の流儀）。
+      #
+      # コード保護（protect_code）より前段で特定言語のフェンスを横取りする変換
+      # （例: ```mermaid の図化）のための公開 API。フェンス解釈（可変長・入れ子・
+      # ~~~・include: 除外・未終了は素通し）はこのモジュールの状態機械に一元化され、
+      # 独自の再実装を作らせないための入り口でもある（P1「唯一の実装」）。
+      #
+      # @param text [String] 処理対象テキスト
+      # @yieldparam block [String] フェンスブロック全体（開始行〜終了行。末尾改行は含まない）
+      # @yieldparam lineno [Integer] 開始フェンス行の行番号（1 始まり）
+      # @yieldreturn [String, nil] 置換文字列（nil なら置換しない）
+      # @return [String] 置換後のテキスト
+      def replace_top_level_fences(text, &) = replace_fenced_blocks(text, &)
+
+      # --- (d) コード退避 → 処理 → 復元（プレースホルダ方式） ---------------
 
       # コードフェンスブロックとインラインコードスパンを一時プレースホルダへ退避し、
       # 後続のテキスト変形処理から除外できるようにする。
@@ -74,7 +93,8 @@ module VivlioStarter
         spans = {}
         counter = 0
 
-        alloc = lambda do |chunk|
+        # 第 2 引数はフェンス経由でのみ渡る行番号（gsub 経由の呼び出しでは省略される）
+        alloc = lambda do |chunk, _lineno = nil|
           key = "#{CODE_SPAN_PLACEHOLDER_PREFIX}#{counter}__"
           spans[key] = chunk
           counter += 1
@@ -148,7 +168,8 @@ module VivlioStarter
       private_class_method :closing_fence?
 
       # フェンスドコードブロック（開始区切り〜同種・同連長以上の終了区切りまで）を
-      # 1 チャンクとして yield の戻り値で置き換える。未終了のフェンスは（正規表現方式の
+      # 1 チャンクとして yield の戻り値で置き換える。nil が返ったブロックは原文のまま
+      # 残す（replace_top_level_fences の選択的置換）。未終了のフェンスは（正規表現方式の
       # 従来挙動に合わせ）退避せずそのまま残す。
       #
       # 終了区切り行の改行はチャンクへ含めず、プレースホルダの外側に残す。
@@ -160,14 +181,18 @@ module VivlioStarter
         out = +''
         block = nil # 蓄積中のフェンスブロック（nil = ブロック外）
         fence = nil
+        block_lineno = nil # 蓄積中ブロックの開始行番号（反復間で保持するためループ前に宣言）
+        lineno = 0
 
         text.each_line do |line|
+          lineno += 1
           marker = fence_marker(line)
 
           if fence.nil?
             if marker
               fence = marker
               block = +line
+              block_lineno = lineno
             else
               out << line
             end
@@ -175,7 +200,7 @@ module VivlioStarter
             block << line
             if marker && closing_fence?(marker, fence)
               trailing = block.chomp!("\n") ? "\n" : ''
-              out << yield(block) << trailing
+              out << (yield(block, block_lineno) || block) << trailing
               fence = nil
               block = nil
             end
