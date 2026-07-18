@@ -22,10 +22,12 @@ module VivlioStarter
       #   著者の自由記述用に用意されているため「クラスに CSS を書けば自動的に許可される」で
       #   完結する。過剰許可（Prism のトークンクラス等が混ざる）は偽陰性しか生まないため許容する。
       class ContainerClassCheck < BaseCheck
-        # 経路 A（MarkdownTransformer.convert_container_blocks）が扱うクラス。
-        # いずれも CSS にも存在するが、CSS 側が消えても検証が壊れないよう明示しておく。
+        # 経路 A（Ruby 前処理）が扱うクラス。convert_container_blocks の 6 クラスに加え、
+        # showcase は ShowcaseTransformer がブロックごと消費して figure.vs-showcase へ
+        # 変換するため、CSS に `.showcase` セレクタが存在しないのが正しい状態。
+        # 他は CSS にも存在するが、CSS 側が消えても検証が壊れないよう明示しておく。
         PREPROCESSED_CLASSES = %w[
-          book-card rotate-table long-table text-right text-center text-left
+          book-card rotate-table long-table text-right text-center text-left showcase
         ].freeze
 
         # CSS のクラスセレクタ。小数（`0.5em`）や `nth-child()` を拾わないよう直前を除外する。

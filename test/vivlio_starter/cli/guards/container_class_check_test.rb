@@ -83,6 +83,16 @@ module VivlioStarter
         end
       end
 
+      # showcase は ShowcaseTransformer がブロックごと消費するため、
+      # CSS に `.showcase` セレクタが無くても警告しない
+      def test_should_not_warn_on_showcase_without_css
+        with_temp_project(css: '') do
+          File.write('contents/11-install.md', ":::{.showcase}\n![shot](a.png)\nrect:1 0,0,10,10\n:::\n")
+
+          assert_empty Guards::ContainerClassCheck.new(allowed_classes: []).validate
+        end
+      end
+
       # 複数クラスは各々を照合する（既知のものは警告せず、未知のものだけ警告する）
       def test_should_validate_each_class_of_multiple_classes
         with_temp_project do
