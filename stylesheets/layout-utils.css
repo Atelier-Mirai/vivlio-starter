@@ -240,20 +240,20 @@
 }
 
 /* 図版・画像以外のブロックは余白で位置合わせする */
-.align-left:not(:is(.figure, figure, img, svg)) {
+.align-left:not(:is(figure, img, svg)) {
   margin-inline-start: 0;
   margin-inline-end: auto;
   max-inline-size: var(--align-max-width);
   inline-size: fit-content;
 }
 
-.align-center:not(:is(.figure, figure, img, svg)) {
+.align-center:not(:is(figure, img, svg)) {
   margin-inline: auto;
   max-inline-size: var(--align-max-width);
   inline-size: fit-content;
 }
 
-.align-right:not(:is(.figure, figure, img, svg)) {
+.align-right:not(:is(figure, img, svg)) {
   margin-inline-start: auto;
   margin-inline-end: 0;
   max-inline-size: var(--align-max-width);

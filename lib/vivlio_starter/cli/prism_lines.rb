@@ -65,9 +65,9 @@ module VivlioStarter
       ALERT_COMMENT_PATTERN = %r{\A(\#|//|--|/\*|<!--)\s*\[!\]\s?}
 
       # 行番号を付けない枠。実行結果（.output）・端末転写（.terminal）・
-      # テキストの図/アスキーアート（.figure）の <pre> は「コードの提示」ではないため、
+      # テキストの図/アスキーアート（.diagram）の <pre> は「コードの提示」ではないため、
       # Prism 行番号の対象外とする（後処理はコンテナ div 化の後に走るため祖先で判定できる）。
-      LINE_NUMBER_EXEMPT_ANCESTORS = '.output, .terminal, .figure'
+      LINE_NUMBER_EXEMPT_ANCESTORS = '.output, .terminal, .diagram'
 
       # Prism.jsの行番号を追加する処理
       def add_prism_line_numbers(input_file, output_file = nil)
@@ -113,7 +113,7 @@ module VivlioStarter
       # パスに # が含まれ得るため、末尾アンカーで最後のマーカーのみ解釈する。
       START_LINE_MARKER_PATTERN = /#L(\d+)(?:-L(\d+))?\z/
 
-      # <pre> が行番号免除枠（.output / .terminal / .figure）の中にあるか。
+      # <pre> が行番号免除枠（.output / .terminal / .diagram）の中にあるか。
       def line_number_exempt?(pre)
         pre.ancestors(LINE_NUMBER_EXEMPT_ANCESTORS).any?
       end

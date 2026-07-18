@@ -182,7 +182,7 @@ figure.vs-math-display img {
 /* 数式画像には図版の枠線・余白・背景を付けない（twemoji のラスター埋め込みと同様）。
    chapter-common.css は SVG の枠を img[src$=".svg"] で外しているが、一部の EPUB
    リーダーは属性部分一致セレクタを解さず img の既定枠が残るため、クラスで明示的に外す。
-   セレクタ特異度を図版枠ルール（:is(.figure, figure) :is(img, svg)）より高く保つ。 */
+   セレクタ特異度を図版枠ルール（figure :is(img, svg)）より高く保つ。 */
 img.vs-math-inline,
 figure.vs-math-display,
 figure.vs-math-display > img {

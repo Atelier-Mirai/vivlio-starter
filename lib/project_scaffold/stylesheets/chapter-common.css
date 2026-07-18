@@ -294,46 +294,55 @@ hr.pagebreak {
 /* -------------------------------------------------------------
    図版
    ------------------------------------------------------------- */
-/* 図版全般（旧来の .figure と素の figure をまとめて扱う） */
-:is(.figure, figure) {
+/* 図版全般。図版は <figure> 要素として生成される（cross_reference_processor）。
+   かつての `.figure` クラスセレクタ（:is(.figure, figure)）はどこからも生成されない
+   死に符号だったため廃止した。テキスト枠には .diagram を使う。 */
+figure {
   display: block;
   position: relative;
   margin-block: 4mm;
 }
 
 /* デフォルト（および align-left）: 左寄せ。幅は style="width: .." で制御 */
-:is(.figure, figure):not(.align-center):not(.align-right) {
+figure:not(.align-center):not(.align-right) {
   margin-inline-start: 0;
   margin-inline-end: auto;
 }
 
 /* 中央寄せ: figure 自体を中央に配置 */
-:is(.figure, figure).align-center {
+figure.align-center {
   margin-inline: auto;
 }
 
 /* 右寄せ: figure 自体を右端に配置 */
-:is(.figure, figure).align-right {
+figure.align-right {
   margin-inline-start: auto;
   margin-inline-end: 0;
 }
 
+/* 配置指定付き図版の上下余白。layout-utils.css の汎用 .align-* ユーティリティ
+   （margin-block: 0.5em・特異度 0,1,0）が要素セレクタ figure（0,0,1）に勝つため、
+   図版の 4mm はクラス付き（0,1,1）で明示して保つ。 */
+figure:is(.align-left, .align-center, .align-right) {
+  margin-block: 4mm;
+}
+
 /* width スタイルを持たない align-center / align-right 図版は
      コンテンツ幅に縮むようにし、auto マージンで正しく配置できるようにする */
-:is(.figure, figure).align-center:not([style*="width"]),
-:is(.figure, figure).align-right:not([style*="width"]) {
+figure.align-center:not([style*="width"]),
+figure.align-right:not([style*="width"]) {
   inline-size: fit-content;
 }
 
 /* width 指定のない align-right 図版内の画像だけを右寄せする */
-:is(.figure, figure).align-right:not([style*="width"]) > img {
+figure.align-right:not([style*="width"]) > img {
   display: block;
   margin-inline-start: auto;
   margin-inline-end: 0;
 }
 
 /* 図版で width スタイルを持つ場合は画像を枠いっぱいに広げる */
-:is(.figure, figure)[style*="width"] > img {
+figure[style*="width"] > img {
   display: block;
   width: 100%;
   height: auto;
@@ -350,11 +359,11 @@ figcaption {
   margin-block-start: 0.25lh;
 }
 
-:is(.figure, figure) :is(img, svg) {
+figure :is(img, svg) {
   border: solid 0.5mm var(--color-figure-border);
 }
 
-:is(.figure, figure) p {
+figure p {
   text-indent: 0;
 }
 
@@ -373,13 +382,8 @@ figure.vs-showcase img {
   height: auto;
 }
 
-.figure.right {
-  float: inline-end;
-  margin-left: 1em;
-}
-
 /* 図中文字（図内注釈リスト） */
-:is(.figure, figure) ul {
+figure ul {
   position: absolute;
   font-size: 11Q;
   max-inline-size: 14em;
@@ -389,7 +393,7 @@ figure.vs-showcase img {
   margin: 0;
 }
 
-:is(.figure, figure) li {
+figure li {
   font-size: 11Q;
   line-height: 16Q;
   border: solid 0.25mm var(--color-danger);
@@ -533,12 +537,14 @@ p > img {
   text-indent: 0;
 }
 
-/* 実行例・出力結果（:::{.output}）／テキストの図・アスキーアート（:::{.figure}）。
+/* 実行例・出力結果（:::{.output}）／テキストの図・アスキーアート（:::{.diagram}）。
    どちらもシンプルな全幅の細い囲み枠。中の <pre> は行番号を付けない（prism_lines が
-   .output/.terminal/.figure 配下の <pre> を除外する）。figure は output のエイリアスだが、
-   Kindle ではラベル注入の対象外（図に【OUTPUT】ラベルは付けない）。 */
+   .output/.terminal/.diagram 配下の <pre> を除外する）。diagram は output のエイリアスだが、
+   Kindle ではラベル注入の対象外（図に【OUTPUT】ラベルは付けない）。
+   ※ .figure という名前は図版（figure 要素）と紛れるため使わない
+   （経緯: docs/specs/figure-class-name-collision-report.md）。 */
 .output,
-.figure {
+.diagram {
   margin-block: 3mm;
   padding: 2.5mm 3mm;
   border: solid 0.2mm var(--color-border-weak);
@@ -546,7 +552,7 @@ p > img {
 }
 
 .output p,
-.figure p {
+.diagram p {
   text-indent: 0;
 }
 
@@ -559,10 +565,10 @@ p > img {
   border: none;
 }
 
-/* .figure の中身はインデントで描いた図（class なしの <pre>）が主。code.css の pre 既定
-   （地色・枠線・上下マージン）を打ち消し、枠は親の .figure に任せて二重枠を防ぐ。
+/* .diagram の中身はインデントで描いた図（class なしの <pre>）が主。code.css の pre 既定
+   （地色・枠線・上下マージン）を打ち消し、枠は親の .diagram に任せて二重枠を防ぐ。
    桁揃えのため連続空白は pre-wrap で必ず保つ。 */
-.figure pre {
+.diagram pre {
   margin: 0;
   padding: 0;
   background: none;
@@ -642,9 +648,9 @@ body.vs-kindle .output {
   margin-top: 1.5em;
   margin-bottom: 1.5em;
 }
-/* .figure（テキストの図・アスキーアート）も var() 枠線が Kindle で消えるため具体色で描く。
+/* .diagram（テキストの図・アスキーアート）も var() 枠線が Kindle で消えるため具体色で描く。
    ラベル注入は無い（図に【OUTPUT】は付けない）ので上余白は詰めない。 */
-body.vs-kindle .figure {
+body.vs-kindle .diagram {
   border: 1px solid #888;
   margin-top: 1.5em;
   margin-bottom: 1.5em;

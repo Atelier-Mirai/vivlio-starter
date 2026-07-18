@@ -67,7 +67,7 @@ Markdown は、ジョン・グルーバー（John Gruber）とアーロン・ス
 
 Markdown には長らく公式の標準がなく、実装ごとに解釈が揺れていました。その揺れを厳密に定義し直した **CommonMark** が、今日の共通の土台です。主要なフレーバーは、この CommonMark を基準に位置づけられます。
 
-:::{.figure}
+:::{.diagram}
             Markdown（2004・Gruber）
             ＝ 曖昧な共通の祖先
                       │
