@@ -24,6 +24,7 @@ require_relative '../entries'
 require_relative '../units'
 require_relative 'vivliostyle_config_writer'
 require_relative 'heading_image_composer'
+require_relative 'math_text_renderer'
 require_relative '../post_process/html_parser'
 require_relative '../pre_process/frontmatter_generator'
 require_relative '../pre_process/book_settings_css'
@@ -285,6 +286,9 @@ module VivlioStarter
             strip_webp_inline_styles_for_kindle!(chapter_htmls)
             mark_body_for_kindle!(chapter_htmls)
             constrain_layout_images_for_epub!(chapter_htmls)
+            # 単純なインライン数式を先にテキスト化する（フォントサイズ追従）。残った複雑な式には
+            # 直後の convert_math_units_for_epub! が px フォールバックを効かせる（この順序が肝）。
+            textify_simple_math_for_kindle!(chapter_htmls)
             convert_math_units_for_epub!(chapter_htmls)
             inject_code_line_numbers_for_kindle!(chapter_htmls)
             decorate_admonitions_for_epub!(chapter_htmls)
@@ -1598,6 +1602,57 @@ module VivlioStarter
           existing = node['style'].to_s.strip
           existing += ';' unless existing.empty? || existing.end_with?(';')
           node['style'] = "#{existing}#{css}"
+        end
+
+        # Kindle 用に、単純なインライン数式（img.vs-math-inline）を HTML テキストへ変換する。
+        # KFX は画像を本文フォント相対サイズにできず、数式 SVG がフォントサイズ変更に追従しない
+        # （KNOWN_ISSUES の 2 件）。alt に保存された元 LaTeX を MathTextRenderer のサブセットで
+        # テキスト化できたものだけ <span class="vs-math vs-math-text"> へ置換し、以降フォントに
+        # 100% 追従させる。サブセット外の複雑な式は無変換で残し、直後の convert_math_units_for_epub!
+        # が px フォールバックを効かせる（kindle-inline-math-textify-spec.md §2・§4.2）。
+        # ディスプレイ数式（figure.vs-math-display）は対象外——行占有で px 固定でも破綻しない。
+        # 置換後は img.vs-math-inline が消えるため冪等。
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def textify_simple_math_for_kindle!(html_files)
+          html_files.each do |path|
+            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
+            nodes = doc.css('img.vs-math-inline')
+            next if nodes.empty?
+
+            textified = 0
+            nodes.each do |img|
+              latex = strip_math_delimiters(img['alt'])
+              html = MathTextRenderer.render(latex)
+              next unless html # サブセット外は SVG のまま（px フォールバックへ委ねる）
+
+              span = Nokogiri::XML::Node.new('span', doc)
+              span['class'] = 'vs-math vs-math-text'
+              span.inner_html = html
+              img.replace(span)
+              textified += 1
+            end
+            next if textified.zero?
+
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+            remaining = nodes.size - textified
+            Common.log_info("[EPUB] #{File.basename(path)} のインライン数式 #{textified} 件をテキスト化" \
+                            "#{remaining.positive? ? "（#{remaining} 件は SVG 維持）" : ''}")
+          end
+          html_files
+        end
+
+        # 数式 alt から $…$ / \(…\) デリミタを剥いで LaTeX 本文を取り出す。
+        def strip_math_delimiters(alt)
+          s = alt.to_s.strip
+          if s.start_with?('\\(') && s.end_with?('\\)')
+            s[2...-2].to_s.strip
+          elsif s.start_with?('$') && s.end_with?('$')
+            s[1...-1].to_s.strip
+          else
+            s
+          end
         end
 
         # inline 数式（img.vs-math-inline）・display 数式画像の inline style の ex 値を em へ変換し、

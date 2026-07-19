@@ -238,6 +238,58 @@ module VivlioStarter
         assert_in_delta 0.60, Build::EpubBuilder.frontispiece_lead_ratio, 0.001
       end
 
+      # Kindle 数式テキスト化: 単純式 img は span 化され、複雑式 img は無傷で残る
+      def test_textify_simple_math_replaces_only_convertible_formulas
+        File.write('30-math.html', <<~HTML)
+          <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
+          <p>質量エネルギー <img class="vs-math vs-math-inline" src="images/math/30/a.svg" alt="$E=mc^2$" style="height: 1.2ex" width="52" height="17"> です。</p>
+          <p>根号 <img class="vs-math vs-math-inline" src="images/math/30/b.svg" alt="$\\sqrt{2}$" style="height: 2ex" width="20" height="30"> は残る。</p>
+          </body></html>
+        HTML
+
+        Build::EpubBuilder.textify_simple_math_for_kindle!(['30-math.html'])
+        html = File.read('30-math.html')
+
+        # 単純式はテキスト span へ（img が消える）
+        assert_includes html, '<span class="vs-math vs-math-text"><i>E</i>=<i>mc</i><sup>2</sup></span>'
+        # 複雑式（\sqrt）は img のまま無傷（px 属性も保持）
+        assert_includes html, 'alt="$\sqrt{2}$"'
+        assert_includes html, 'width="20"'
+        assert_equal 1, html.scan('vs-math-inline').size, '単純式だけが img から消える'
+      end
+
+      # alt のデリミタは $…$ / \(…\) の 2 形式とも剥がす
+      def test_textify_simple_math_strips_both_delimiter_forms
+        File.write('31-math.html', <<~HTML)
+          <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
+          <p><img class="vs-math vs-math-inline" src="a.svg" alt="$\\gamma$">
+          <img class="vs-math vs-math-inline" src="b.svg" alt="\\(\\gamma\\)"></p>
+          </body></html>
+        HTML
+
+        Build::EpubBuilder.textify_simple_math_for_kindle!(['31-math.html'])
+        html = File.read('31-math.html')
+
+        assert_equal 2, html.scan('vs-math-text').size, '$…$ と \\(…\\) の両形式が span 化される'
+        refute_includes html, 'vs-math-inline', 'img は残らない'
+      end
+
+      # 冪等: 置換後は vs-math-inline が消えるので再実行しても変化しない
+      def test_textify_simple_math_is_idempotent
+        File.write('32-math.html', <<~HTML)
+          <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
+          <p><img class="vs-math vs-math-inline" src="a.svg" alt="$x^2$"></p>
+          </body></html>
+        HTML
+
+        Build::EpubBuilder.textify_simple_math_for_kindle!(['32-math.html'])
+        first = File.read('32-math.html')
+        Build::EpubBuilder.textify_simple_math_for_kindle!(['32-math.html'])
+        second = File.read('32-math.html')
+
+        assert_equal first, second
+      end
+
       # EPUB entries.js が正しく書き出されることを確認
       def test_write_epub_entries_creates_file
         html_files = ['./01-intro.html', './02-basics.html']

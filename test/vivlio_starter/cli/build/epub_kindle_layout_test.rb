@@ -398,6 +398,19 @@ module VivlioStarter
         assert_equal 2, doc.css('span.vs-li-marker').size, '2 回適用しても注入は各 li に 1 つ'
       end
 
+      # Kindle: 単純式は span.vs-math-text へ、複雑式は img.vs-math-inline のまま残る
+      def test_should_textify_simple_inline_math_for_kindle
+        html = '<html><body>' \
+               '<p><img class="vs-math vs-math-inline" src="a.svg" alt="$E=mc^2$" style="height: 1.2ex"></p>' \
+               '<p><img class="vs-math vs-math-inline" src="b.svg" alt="$\sqrt{2}$" style="height: 2ex"></p>' \
+               '</body></html>'
+        doc = process(html) { |files| Builder.textify_simple_math_for_kindle!(files) }
+
+        assert_equal 1, doc.css('span.vs-math-text').size, '単純式はテキスト span になる'
+        assert_equal '<i>E</i>=<i>mc</i><sup>2</sup>', doc.at_css('span.vs-math-text').inner_html
+        assert_equal 1, doc.css('img.vs-math-inline').size, '複雑式（\sqrt）は img のまま残る'
+      end
+
       private
 
       # 一時ファイルに html を書き、ブロックで変換を適用し、保存結果を Nokogiri で返す

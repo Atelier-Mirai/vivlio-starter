@@ -16,8 +16,8 @@
 
 `kindle-inline-math-textify-spec.md`
 : Kindle 限定でインライン数式を SVG 画像でなくテキスト（`<sup>`/`<sub>`＋Unicode 記号）へ劣化変換し、フォントサイズ変更への追従不全を根治する仕様。KNOWN_ISSUES.md の数式サイズ不安定 2 件に対応。
-  状態: 確定仕様・未着手（2026-07-12 策定）
-  次のアクション: 実装
+  状態: 実装完了・実機確認待ち（2026-07-19 実装）。`MathTextRenderer` 新設＋`textify_simple_math_for_kindle!` を Kindle 専用フェーズへ組込。rake test 全 1808 件・rubocop クリーン。原稿の現行インライン数式 26 種が 100% テキスト化可能を実測。KNOWN_ISSUES 2 件は複雑式のみの制限へ縮小して更新済み。
+  次のアクション: 実機確認（`vs build --target=kindle` → Kindle Previewer 3 で 94-sample のフォントサイズを最小⇔最大に振り数式が本文追従することを確認）。確認後に本行を削除し仕様書を `docs/archives/` へ移動。
 
 `kindle-simple-header-svg-spec.md`
 : Kindle 向け simple ヘッダーを SVG 画像化する仕様。

@@ -1,0 +1,176 @@
+# frozen_string_literal: true
+
+# ================================================================
+# File: lib/vivlio_starter/cli/build/math_text_renderer.rb
+# ================================================================
+# 責務:
+#   単純な LaTeX インライン数式を HTML テキスト（<i>/<sup>/<sub>＋Unicode 記号）へ
+#   変換する純粋関数。Kindle(KFX) は画像を本文フォント相対サイズにできず、数式 SVG が
+#   フォントサイズ変更に追従しないため、テキスト化して 100% 追従させる（本文テキストは
+#   定義上フォントサイズに追従する）。kindle-inline-math-textify-spec.md の実装。
+#
+# 方針（ホワイトリスト・全体拒否）:
+#   §3.1 のサブセット（数字・ラテン文字・上下付き・\frac・記号・ギリシャ・\text 等）を
+#   1 トークンずつ消費し、**1 つでも解釈できないトークンがあれば式全体を nil で拒否する**
+#   （部分変換はしない）。拒否された式は呼び出し側が SVG のまま残す（px 固定フォールバック）。
+#   拒否は異常ではなく正常系——複雑な式（\sqrt/\sum/積分/2 段入れ子等）は SVG で運ぶ。
+#
+# 純粋性:
+#   Nokogiri 非依存・CONFIG 非依存・副作用なし。入力は $…$/\(…\) を剥いだ LaTeX 本文、
+#   出力は HTML 文字列 or nil。単体テストで全規則を直接検証する。
+# ================================================================
+
+require 'strscan'
+
+module VivlioStarter
+  module CLI
+    module Build
+      # LaTeX 単純サブセット → HTML テキスト変換器（Kindle 数式テキスト化）
+      module MathTextRenderer
+        # 名前付き記号コマンド（\times 等）→ Unicode。§3.1 の記号行。
+        SYMBOLS = {
+          'times' => '×', 'cdot' => '⋅', 'pm' => '±', 'mp' => '∓',
+          'approx' => '≈', 'neq' => '≠', 'leq' => '≤', 'geq' => '≥',
+          'le' => '≤', 'ge' => '≥', 'sim' => '∼', 'propto' => '∝',
+          'infty' => '∞', 'll' => '≪', 'gg' => '≫',
+          'langle' => '⟨', 'rangle' => '⟩',
+          'ldots' => '…', 'cdots' => '…', 'dots' => '…'
+        }.freeze
+
+        # ギリシャ文字コマンド → Unicode（立体＝イタリックにしない・§3.1）。
+        GREEK = {
+          'alpha' => 'α', 'beta' => 'β', 'gamma' => 'γ', 'delta' => 'δ',
+          'epsilon' => 'ε', 'varepsilon' => 'ε', 'zeta' => 'ζ', 'eta' => 'η',
+          'theta' => 'θ', 'vartheta' => 'ϑ', 'iota' => 'ι', 'kappa' => 'κ',
+          'lambda' => 'λ', 'mu' => 'μ', 'nu' => 'ν', 'xi' => 'ξ',
+          'omicron' => 'ο', 'pi' => 'π', 'varpi' => 'ϖ', 'rho' => 'ρ',
+          'varrho' => 'ϱ', 'sigma' => 'σ', 'varsigma' => 'ς', 'tau' => 'τ',
+          'upsilon' => 'υ', 'phi' => 'φ', 'varphi' => 'ϕ', 'chi' => 'χ',
+          'psi' => 'ψ', 'omega' => 'ω',
+          'Gamma' => 'Γ', 'Delta' => 'Δ', 'Theta' => 'Θ', 'Lambda' => 'Λ',
+          'Xi' => 'Ξ', 'Pi' => 'Π', 'Sigma' => 'Σ', 'Upsilon' => 'Υ',
+          'Phi' => 'Φ', 'Psi' => 'Ψ', 'Omega' => 'Ω'
+        }.freeze
+
+        # そのまま通す演算子・区切り（§3.1）。< > & は出力時にエスケープする。
+        OPERATORS = %r{[+\-=/<>()\[\]|,.:;!]}
+
+        module_function
+
+        # LaTeX（デリミタ除去済み）を HTML テキストへ変換する。
+        # @param latex [String] $…$ / \(…\) を剥いだ LaTeX 本文
+        # @return [String, nil] HTML 文字列（変換可能時）/ nil（サブセット外・空）
+        def render(latex)
+          src = latex.to_s
+          return nil if src.strip.empty?
+
+          scanner = StringScanner.new(src)
+          html = consume_run(scanner, upright: false, allow_script: true, allow_frac: true, stop_at_brace: false)
+          return nil if html.nil? || !scanner.eos? # 未消費が残る＝解釈できないトークンがあった
+
+          html
+        end
+
+        # トークン列を消費して HTML を組む。stop_at_brace 時はトップレベルの '}' で停止（消費しない）。
+        # 1 つでも解釈不能なトークンがあれば nil（＝式全体を拒否）。
+        def consume_run(scanner, upright:, allow_script:, allow_frac:, stop_at_brace:)
+          buf = +''
+          until scanner.eos?
+            break if stop_at_brace && scanner.check(/\}/)
+
+            piece = consume_atom(scanner, upright:, allow_script:, allow_frac:)
+            return nil if piece.nil?
+
+            buf << piece
+          end
+          buf
+        end
+
+        # 1 アトムを消費して HTML 片を返す（空白は '' か ' '）。未知トークンは nil。
+        def consume_atom(scanner, upright:, allow_script:, allow_frac:)
+          if scanner.scan(/\s+/)
+            upright ? ' ' : '' # 数式空白は無視、\text 等の立体テキスト内は保持
+          elsif (letters = scanner.scan(/[A-Za-z]+/))
+            upright ? escape_html(letters) : "<i>#{escape_html(letters)}</i>"
+          elsif (digits = scanner.scan(/[0-9]+/))
+            digits
+          elsif scanner.scan(/\^/)
+            wrap_script(scanner, 'sup', upright:, allow_script:, allow_frac:)
+          elsif scanner.scan(/_/)
+            wrap_script(scanner, 'sub', upright:, allow_script:, allow_frac:)
+          elsif scanner.check(/\{/)
+            consume_brace_group(scanner, upright:, allow_script:, allow_frac:) # 透過グループ
+          elsif scanner.scan(/\\/)
+            consume_command(scanner, upright:, allow_frac:)
+          elsif (op = scanner.scan(OPERATORS))
+            escape_html(op)
+          end
+        end
+
+        # 上/下付き（<sup>/<sub>）。2 段入れ子は許さない（引数を allow_script: false で読む）。
+        def wrap_script(scanner, tag, upright:, allow_script:, allow_frac:)
+          return nil unless allow_script
+
+          arg = consume_group_or_token(scanner, upright:, allow_script: false, allow_frac:)
+          arg && "<#{tag}>#{arg}</#{tag}>"
+        end
+
+        # \command を消費する。\ は消費済みで、続く名前/記号を読む。
+        def consume_command(scanner, upright:, allow_frac:)
+          if (name = scanner.scan(/[A-Za-z]+/))
+            dispatch_named_command(name, scanner, allow_frac:)
+          elsif scanner.scan(/,/)      # \,  細空白
+            " "
+          elsif scanner.scan(/[;:]/)   # \; \:  通常空白
+            ' '
+          elsif (esc = scanner.scan(/[%&#_{}$]/)) # \% \& \# \_ \{ \} \$  リテラル
+            escape_html(esc)
+          end
+          # \\ やその他の記号は nil（拒否）
+        end
+
+        # 英字コマンドの振り分け（\text/\mathrm・\frac・空白語・記号/ギリシャ表）。未知は nil。
+        def dispatch_named_command(name, scanner, allow_frac:)
+          case name
+          when 'text', 'mathrm'
+            consume_brace_group(scanner, upright: true, allow_script: false, allow_frac: false)
+          when 'frac'
+            return nil unless allow_frac
+
+            numer = consume_brace_group(scanner, upright: false, allow_script: true, allow_frac: false)
+            denom = numer && consume_brace_group(scanner, upright: false, allow_script: true, allow_frac: false)
+            denom && "#{numer}/#{denom}"
+          when 'quad', 'qquad'
+            ' '
+          else
+            SYMBOLS[name] || GREEK[name]
+          end
+        end
+
+        # 上/下付き・\frac の引数（'{…}' グループ or 単一アトム）。先行空白は読み飛ばす。
+        def consume_group_or_token(scanner, upright:, allow_script:, allow_frac:)
+          scanner.skip(/\s+/)
+          if scanner.check(/\{/)
+            consume_brace_group(scanner, upright:, allow_script:, allow_frac:)
+          else
+            consume_atom(scanner, upright:, allow_script:, allow_frac:)
+          end
+        end
+
+        # '{ … }' を必須で読み、中身の run を返す（透過）。閉じ '}' が無ければ nil。
+        def consume_brace_group(scanner, upright:, allow_script:, allow_frac:)
+          scanner.skip(/\s+/)
+          return nil unless scanner.scan(/\{/)
+
+          inner = consume_run(scanner, upright:, allow_script:, allow_frac:, stop_at_brace: true)
+          return nil if inner.nil? || !scanner.scan(/\}/)
+
+          inner
+        end
+
+        # 出力の HTML 予約文字をエスケープする（< > & のみ。" は属性化しないので不要）。
+        def escape_html(str) = str.gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;')
+      end
+    end
+  end
+end

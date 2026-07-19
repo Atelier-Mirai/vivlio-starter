@@ -26,13 +26,15 @@ module VivlioStarter
       Builder = Build::EpubBuilder
       LOG_METHODS = %i[log_info log_success log_warn log_error log_action log_summary].freeze
 
-      # Kindle 専用 rewrite を一通り誘発する章 HTML（コラム枠・行番号コード・ex 数式）。
-      # WebP は外部ツール（magick）依存になるため意図的に含めない。
+      # Kindle 専用 rewrite を一通り誘発する章 HTML（コラム枠・行番号コード・数式）。
+      # 数式は 2 種入れる: 単純式（Kindle でテキスト化される）と複雑式（テキスト化不可＝
+      # img のまま ex→em 変換を受ける）。WebP は外部ツール（magick）依存になるため含めない。
       FIXTURE_HTML = <<~HTML
         <html><body class="chapter">
         <div class="tip"><p>ヒント本文</p></div>
         <pre class="language-ruby line-numbers"><code class="language-ruby line-numbers">x = 1<span class="line-numbers-rows" aria-hidden="true"><span></span></span></code></pre>
-        <p><img class="vs-math vs-math-inline" src="images/math/a.svg" style="height: 1.4ex; width: 1.4ex;" alt="A"></p>
+        <p><img class="vs-math vs-math-inline" src="images/math/s.svg" style="height: 1.2ex;" alt="$E=mc^2$"></p>
+        <p><img class="vs-math vs-math-inline" src="images/math/c.svg" style="height: 1.4ex; width: 1.4ex;" alt="$\\sqrt{2}$"></p>
         <ol class="vs-fancy-list vs-list-lower-alpha-paren2" type="a" style="counter-reset: vs-fancy 0"><li>選択肢イ</li></ol>
         <div class="outline-list"><ol><li>概要<ol><li>基本</li></ol></li></ol></div>
         </body></html>
@@ -59,6 +61,8 @@ module VivlioStarter
         assert_nil doc.at_css('pre.line-numbers'), '元の pre.line-numbers は残らない'
         assert_nil doc.at_css('span.vs-code-ln'), '行番号の実テキストは注入されない（CSS カウンタで描く）'
         assert_includes doc.at_css('img.vs-math-inline')['style'], 'ex', '数式の ex 単位は変換されない'
+        assert_nil doc.at_css('span.vs-math-text'), 'クリーン EPUB では数式をテキスト化しない（SVG のまま）'
+        assert_equal 2, doc.css('img.vs-math-inline').size, '数式は 2 件とも img のまま残る'
         assert_nil doc.at_css('.vs-adm-label'), 'admonition ラベルは注入されない'
         assert_nil doc.at_css('span.vs-li-marker'),
                    'リストの実体マーカーは注入されない（::before ＋ CSS カウンタで描く）'
@@ -74,8 +78,12 @@ module VivlioStarter
         assert_nil doc.at_css('pre.line-numbers'), '元の pre.line-numbers は残らない'
         refute_nil doc.at_css('div.vs-code-line > span.vs-code-ln'),
                    '行番号の実テキスト span が注入される（KFX は ::before を描けない）'
+        # 単純式（E=mc^2）はテキスト化され、複雑式（\sqrt）だけが img として残り ex→em を受ける
+        assert_equal '<i>E</i>=<i>mc</i><sup>2</sup>', doc.at_css('span.vs-math-text')&.inner_html,
+                     '単純式はフォント追従するテキストへ変換される'
+        assert_equal 1, doc.css('img.vs-math-inline').size, '複雑式のみ img で残る'
         style = doc.at_css('img.vs-math-inline')['style']
-        refute_includes style, 'ex', '数式の ex は em へ変換される'
+        refute_includes style, 'ex', '残った数式の ex は em へ変換される'
         assert_includes style, 'em'
         assert_equal '【TIP】', doc.at_css('.tip > .vs-adm-label')&.text, 'admonition ラベルが注入される'
         assert_equal '(a) ', doc.at_css('ol.vs-fancy-list span.vs-li-marker')&.text,

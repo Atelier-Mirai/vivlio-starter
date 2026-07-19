@@ -74,7 +74,7 @@ Kindle は WebP を表示できない。`vs build` の画像最適化は WebP �
 | 用語集・後書き・索引の h1 下線が消える | テーマ装飾が var()/擬似要素依存 | `glossary.css`/`index.css`/`preface.css` に具体色の下線フォールバック |
 | book-card がグリッド崩れ | `display:grid` 非対応 | `body.vs-kindle .book-card { display:block }`（`components.css`） |
 | コードブロックが特定幅でクリップ消失（Apple Books） | リフロー文脈での折り返し未指定 | **クリーン EPUB 側**の `body.vs-epub pre[class*="language-"]{ white-space:pre-wrap; overflow:visible }`（`code.css`）。Kindle ではなく EPUB 共通マーカー側の対処 |
-| 数式が極大表示／表内数式が崩れる | 単位・レイアウトの解釈差 | `convert_math_units_for_epub!` で単位変換。表内数式は原稿側で回避（テキスト化）も検討 |
+| 数式が極大表示／表内数式が崩れる／フォント変更に非追従 | 画像を本文フォント相対にできない KFX の本質的制約 | **単純式は `textify_simple_math_for_kindle!`（`MathTextRenderer`）で HTML テキスト化**し 100% 追従させる（Kindle 限定・`convert_math_units_for_epub!` の直前）。テキスト化不可の複雑式のみ従来の px フォールバックで巨大化を防ぐ（`kindle-inline-math-textify-spec.md`） |
 
 ---
 
