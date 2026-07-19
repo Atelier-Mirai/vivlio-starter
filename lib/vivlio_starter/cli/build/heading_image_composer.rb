@@ -55,7 +55,15 @@ module VivlioStarter
 
         # ラスタライズ後の出力幅（px）。viewBox 比からの縦は rsvg が自動算出する。
         # 扉絵はリード文字を焼き込むため 1400 に引き上げる（Kindle 端末幅 1072px 以上での可読性）。
-        RENDER_WIDTH = { frontispiece: 1400, ornament: 1400 }.freeze
+        RENDER_WIDTH = { frontispiece: 1400, ornament: 1400, simple_frontispiece: 1400, simple_ornament: 1400 }.freeze
+
+        # simple ヘッダー（付録など theme.style=simple の見出し）の合成 SVG 規格（ピュアベクター）。
+        # simple-header.css の Kindle フォールバック（角丸枠・番号バッジ・金アクセント）を SVG で
+        # 再現し、KFX の CSS 非対応に依存せず確実に描く（kindle-simple-header-svg-spec.md）。
+        SIMPLE_CANVAS_WIDTH   = 1400
+        SIMPLE_DEFAULT_ACCENT = '#b8860b' # simple-header.css の vs-kindle フォールバックと同じ金
+        SIMPLE_BG_COLOR       = '#f5f2ea' # 淡いクリーム地
+        SIMPLE_TEXT_COLOR     = '#1a1a1a'
 
         # 合成レイアウトの版数。座標・方式を変えたら +1 する（EpubBuilder が生成キャッシュのキーに混ぜる）。
         # v2: 上下分割（62% 帯＋裾飾り）を廃止し、リード文まで焼き込む縦長ファクシミリ 1 枚へ。
@@ -77,9 +85,9 @@ module VivlioStarter
         # @param (see #compose)
         # @return [String, nil] JPEG バイト列。画像不読・ツール不在・失敗時は nil（→ simple 縮退）
         def render(image_path:, number:, title:, kind:, font_family:,
-                   lead: '', lead_font_family: nil, lead_ratio: 0.60, number_color: '#333333')
+                   lead: '', lead_font_family: nil, lead_ratio: 0.60, accent_color: nil, number_color: '#333333')
           svg = compose(image_path:, number:, title:, kind:, font_family:,
-                        lead:, lead_font_family:, lead_ratio:, number_color:)
+                        lead:, lead_font_family:, lead_ratio:, accent_color:, number_color:)
           return nil unless svg
 
           rasterize_to_jpeg(svg, RENDER_WIDTH.fetch(kind, 1000))
@@ -90,15 +98,25 @@ module VivlioStarter
         # @param image_path [String] 飾り画像の実ファイルパス（portrait/landscape webp 等）
         # @param number [String] 見出し番号（"第1章" / "1-1" 等。空可）
         # @param title [String] 見出しタイトル
-        # @param kind [Symbol] :frontispiece（扉絵・縦。リード込み）/ :ornament（節絵・横）
+        # @param kind [Symbol] :frontispiece（扉絵・縦。リード込み）/ :ornament（節絵・横）/
+        #   :simple_frontispiece（付録の章見出し・ベクター枠）/ :simple_ornament（付録の節見出し・ベクター帯）
         # @param font_family [String] <text> 用フォントスタック（単一引用符で囲んだ名前の羅列）
         # @param lead [String] 章リード文（:frontispiece のみ。段落は "\n" 区切り。空可）
         # @param lead_font_family [String, nil] リード用フォント（nil なら font_family で代用）
         # @param lead_ratio [Float] リード焼き込み幅の画像幅比（判型 lead_width÷page.width 由来）
+        # @param accent_color [String, nil] simple ヘッダーのアクセント色（枠・番号バッジ。付録用）
         # @param number_color [String] 節絵の番号色（CSS 色。既定はダーク）
         # @return [String, nil] SVG 文字列。画像が読めない/寸法不明時は nil（→ simple 縮退）
         def compose(image_path:, number:, title:, kind:, font_family:,
-                    lead: '', lead_font_family: nil, lead_ratio: 0.60, number_color: '#333333')
+                    lead: '', lead_font_family: nil, lead_ratio: 0.60, accent_color: nil, number_color: '#333333')
+          # simple ヘッダー（付録など）は背景画像を持たないピュアベクター（画像不要）。
+          case kind
+          when :simple_frontispiece
+            return simple_frontispiece_svg(number.to_s.strip, title.to_s.strip, font_family, accent_color)
+          when :simple_ornament
+            return simple_ornament_svg(number.to_s.strip, title.to_s.strip, font_family, accent_color)
+          end
+
           return nil unless image_path && File.exist?(image_path)
 
           dims = image_dimensions(image_path)
@@ -244,6 +262,104 @@ module VivlioStarter
             break if rest.empty?
           end
           lines
+        end
+
+        # 付録の章見出し（simple_frontispiece）の合成 SVG。背景画像を持たず、角丸のアクセント枠＋
+        # 番号（アクセント色）＋下線＋タイトル（ダーク）を縦積みで描く（simple-header.css の h1 意匠を
+        # ベクターで再現）。高さはタイトル行数に応じて可変。Kindle の CSS 非対応に依存しない。
+        def simple_frontispiece_svg(number, title, font_family, accent)
+          accent = accent.to_s.strip.empty? ? SIMPLE_DEFAULT_ACCENT : accent
+          w = SIMPLE_CANVAS_WIDTH
+          border      = (w * 0.009).round
+          radius      = (w * 0.028).round
+          pad         = (w * 0.08).round
+          number_size = (w * 0.05).round
+          title_size  = (w * 0.078).round
+          title_step  = (title_size * 1.32).round
+
+          lines = title.empty? ? [] : wrap_text_by_width(title, (w - 2 * pad) / title_size.to_f)
+          cx = w / 2
+
+          # 縦積み: 番号 → アクセント下線 → タイトル（各ベースラインを積む）
+          number_base = pad + number_size
+          underline_y = number_base + (number_size * 0.42).round
+          title_top   = number.empty? ? pad : underline_y + (number_size * 0.7).round
+          first_title = title_top + title_size
+          title_bottom = lines.empty? ? title_top : first_title + ((lines.size - 1) * title_step) + (title_size * 0.22).round
+          h = title_bottom + pad
+
+          parts = [simple_frame(w, h, border, radius, accent)]
+          unless number.empty?
+            parts << %(<text x="#{cx}" y="#{number_base}" text-anchor="middle" font-family="#{font_family}" ) +
+                     %(font-size="#{number_size}" font-weight="700" letter-spacing="#{(number_size * 0.06).round}" ) +
+                     %(fill="#{escape_attr(accent)}">#{escape_text(number)}</text>)
+            lw = (w * 0.13).round
+            parts << %(<line x1="#{cx - lw}" y1="#{underline_y}" x2="#{cx + lw}" y2="#{underline_y}" ) +
+                     %(stroke="#{escape_attr(accent)}" stroke-width="#{[(number_size * 0.06).round, 2].max}" stroke-linecap="round"/>)
+          end
+          lines.each_with_index do |line, i|
+            parts << %(<text x="#{cx}" y="#{first_title + (i * title_step)}" text-anchor="middle" ) +
+                     %(font-family="#{font_family}" font-size="#{title_size}" font-weight="800" ) +
+                     %(fill="#{SIMPLE_TEXT_COLOR}">#{escape_text(line)}</text>)
+          end
+          svg_wrapper(w, h, [number, title], parts)
+        end
+
+        # 付録の節見出し（simple_ornament）の合成 SVG。左のアクセント帯＋番号バッジ（アクセント地・
+        # 白文字）＋タイトル（ダーク）を横並びで描く（simple-header.css の h2 意匠をベクターで再現）。
+        # 高さはタイトル行数に応じて可変。
+        def simple_ornament_svg(number, title, font_family, accent)
+          accent = accent.to_s.strip.empty? ? SIMPLE_DEFAULT_ACCENT : accent
+          w = SIMPLE_CANVAS_WIDTH
+          border     = (w * 0.004).round
+          left_bar   = (w * 0.014).round
+          radius     = (w * 0.02).round
+          pad        = (w * 0.045).round
+          title_size = (w * 0.058).round
+          badge_size = (w * 0.046).round
+          title_step = (title_size * 1.3).round
+
+          content_left = left_bar + pad
+          badge_w = number.empty? ? 0 : ((display_width(number) * badge_size).round + badge_size)
+          title_left = content_left + (number.empty? ? 0 : badge_w + (pad * 0.7).round)
+          lines = title.empty? ? [] : wrap_text_by_width(title, [w - title_left - pad, title_size].max / title_size.to_f)
+          n_lines = [lines.size, 1].max
+
+          badge_h = (badge_size * 1.5).round
+          content_h = [title_step * n_lines, badge_h].max
+          h = (pad * 2) + content_h
+          cy = h / 2
+
+          parts = [simple_left_bar_frame(w, h, border, left_bar, radius, accent)]
+          unless number.empty?
+            by = cy - (badge_h / 2)
+            parts << %(<rect x="#{content_left}" y="#{by}" width="#{badge_w}" height="#{badge_h}" ) +
+                     %(rx="#{(badge_size * 0.24).round}" ry="#{(badge_size * 0.24).round}" fill="#{escape_attr(accent)}"/>)
+            parts << %(<text x="#{content_left + (badge_w / 2)}" y="#{cy + (badge_size * 0.35).round}" text-anchor="middle" ) +
+                     %(font-family="#{font_family}" font-size="#{badge_size}" font-weight="900" fill="#ffffff">#{escape_text(number)}</text>)
+          end
+          first_title = (cy - ((n_lines - 1) * title_step / 2.0) + (title_size * 0.34)).round
+          lines.each_with_index do |line, i|
+            parts << %(<text x="#{title_left}" y="#{first_title + (i * title_step)}" text-anchor="start" ) +
+                     %(font-family="#{font_family}" font-size="#{title_size}" font-weight="800" ) +
+                     %(fill="#{SIMPLE_TEXT_COLOR}">#{escape_text(line)}</text>)
+          end
+          svg_wrapper(w, h, [number, title].reject(&:empty?), parts)
+        end
+
+        # simple_frontispiece の角丸アクセント枠（クリーム地＋アクセント縁）。
+        def simple_frame(w, h, border, radius, accent)
+          %(<rect x="#{border / 2.0}" y="#{border / 2.0}" width="#{w - border}" height="#{h - border}" ) +
+            %(rx="#{radius}" ry="#{radius}" fill="#{SIMPLE_BG_COLOR}" stroke="#{escape_attr(accent)}" stroke-width="#{border}"/>)
+        end
+
+        # simple_ornament の左アクセント帯付き角丸枠。アクセント地の上へクリームの内側矩形を重ね、
+        # 左 left_bar・上下右 border 分だけアクセントを覗かせる。
+        def simple_left_bar_frame(w, h, border, left_bar, radius, accent)
+          inner_r = [radius - border, 2].max
+          %(<rect x="0" y="0" width="#{w}" height="#{h}" rx="#{radius}" ry="#{radius}" fill="#{escape_attr(accent)}"/>) +
+            %(<rect x="#{left_bar}" y="#{border}" width="#{w - left_bar - border}" height="#{h - (border * 2)}" ) +
+            %(rx="#{inner_r}" ry="#{inner_r}" fill="#{SIMPLE_BG_COLOR}"/>)
         end
 
         # 表示幅（全角=1.0・半角=0.55）で先頭 chunk を切り出す。半角語の途中で切れる場合は、

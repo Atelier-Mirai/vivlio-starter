@@ -20,9 +20,9 @@
   次のアクション: 実機確認（`vs build --target=kindle` → Kindle Previewer 3 で 94-sample のフォントサイズを最小⇔最大に振り数式が本文追従することを確認）。確認後に本行を削除し仕様書を `docs/archives/` へ移動。
 
 `kindle-simple-header-svg-spec.md`
-: Kindle 向け simple ヘッダーを SVG 画像化する仕様。
-  状態: 将来タスク・未着手
-  次のアクション: 優先度低
+: Kindle 向け simple ヘッダー（付録の章/節見出し）をベクター合成画像化する仕様。KFX で崩れる simple-header.css の CSS 装飾を、背景画像なしの `<rect>`/`<text>` だけの SVG→JPEG で確実に描く。
+  状態: 実装完了・実機確認待ち（2026-07-19 実装）。`simple_frontispiece_svg`/`simple_ornament_svg` 新設＋付録範囲(90-98)を Kindle のみ画像化。rake test 全 1813 件・rubocop クリーン。実付録 HTML で h1×1＋h2×11 の JPEG 生成・chapter-lead 保持を確認。スコープは image テーマ本の付録のみ（simple テーマ本の全章化は §6 未決）。
+  次のアクション: 実機確認（`vs build --target=kindle` → Kindle Previewer 3 で付録の章/節見出しが枠付きバナー画像で表示されること）。確認後に本行を削除し仕様書を `docs/archives/` へ移動。
 
 `direct-build-spec.md`
 : PLANNED.md「設定ファイルを経由しない直接ビルドコマンド」の仕様。`vs build myawesome.md --theme blue` のように `book.yml` / `catalog.yml` を介さず単一 Markdown を PDF 化する。一時ワークスペースに最小プロジェクトを組み立て既存 `:single` パイプラインを chdir 流用する案（案A）を採る。

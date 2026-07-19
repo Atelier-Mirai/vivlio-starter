@@ -46,7 +46,7 @@ module VivlioStarter
         FileUtils.rm_rf(@test_dir)
       end
 
-      # 扉絵/節絵注入テスト用の context（リードフォント・幅比も含む facsimile 仕様）
+      # 扉絵/節絵注入テスト用の context（リードフォント・幅比・付録アクセントも含む）
       def heading_context(flavor: :kindle)
         {
           frontispiece: 'dummy_portrait.webp',
@@ -55,8 +55,26 @@ module VivlioStarter
           lead_font_family: "'Zen Old Mincho', serif",
           lead_ratio: 0.60,
           number_color: '#f0a000',
+          appendix_accent: '#f0a000',
           flavor:
         }
+      end
+
+      # 付録章 HTML（h1＝付録見出し・chapter-lead・article.section-topic 直下の h2）
+      def appendix_fixture_html
+        <<~HTML
+          <!DOCTYPE html><html><head><title>付録</title></head><body class="appendix vs-header-simple">
+          <h1 data-chapter-number-display="付録 A" data-chapter-title="サンプル">
+            <span class="chapter-number">付録 A</span><span class="chapter-title">サンプル</span>
+          </h1>
+          <div class="chapter-lead"><p>付録のリード文です。</p></div>
+          <article class="section-topic">
+            <h2 data-section-number-display="A-1" data-section-title="導入">
+              <span class="section-number">A-1</span><span class="section-title">導入</span>
+            </h2>
+          </article>
+          </body></html>
+        HTML
       end
 
       # 目次（_toc）が EPUB entries から除外されることを確認
@@ -187,23 +205,46 @@ module VivlioStarter
       end
 
       # 付録（番号 90..98）には扉絵/節絵を注入せず simple 版にすることを確認（PDF と整合）
-      def test_inject_heading_images_skips_appendix_chapters
-        File.write('94-sample.html', <<~HTML)
-          <!DOCTYPE html><html><head><title>付録</title></head><body>
-          <h1 data-chapter-number-display="付録 A" data-chapter-title="サンプル">
-            <span class="chapter-title">サンプル</span>
-          </h1>
-          </body></html>
-        HTML
-
-        context = { frontispiece: 'x.webp', ornament: nil, font_family: 'sans-serif', number_color: '#333' }
+      # クリーン EPUB（:epub）では付録に扉絵画像を注入しない（CSS 装飾のまま）
+      def test_inject_heading_images_skips_appendix_on_clean_epub
+        File.write('94-sample.html', appendix_fixture_html)
 
         Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
-          Build::EpubBuilder.inject_heading_images_into_file!('94-sample.html', context)
+          Build::EpubBuilder.inject_heading_images_into_file!('94-sample.html', heading_context(flavor: :epub))
         end
 
         html = File.read('94-sample.html')
-        refute_includes html, 'vs-image-heading-epub', '付録は simple 版（画像注入しない）'
+        refute_includes html, 'vs-image-heading-epub', 'クリーン EPUB の付録は simple CSS のまま'
+      end
+
+      # Kindle（:kindle）では付録の h1/h2 を simple ヘッダーのベクター合成画像へ置換する
+      def test_inject_simple_headers_for_appendix_on_kindle
+        File.write('94-sample.html', appendix_fixture_html)
+
+        Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
+          Build::EpubBuilder.inject_heading_images_into_file!('94-sample.html', heading_context(flavor: :kindle))
+        end
+
+        html = File.read('94-sample.html')
+        assert_includes html, 'vs-image-heading-epub', 'Kindle の付録は画像化する'
+        assert_includes html, 'alt="付録 A サンプル"', 'h1 の番号＋タイトルが alt に入る'
+        assert_includes html, 'alt="A-1 導入"', 'h2 の番号＋タイトルが alt に入る'
+        assert_includes html, 'vs-section-topic-epub', '付録節の article もグリッド解除マークが付く'
+        assert_includes html, 'chapter-lead', 'simple ヘッダーは chapter-lead を残す（除去しない）'
+        assert Dir.glob('images/headings/simple_frontispiece-*.jpg').any?, '付録章見出しの JPEG が出る'
+        assert Dir.glob('images/headings/simple_ornament-*.jpg').any?, '付録節見出しの JPEG が出る'
+      end
+
+      # 合成不能（render が nil）時は付録も画像化せず simple CSS へ縮退する
+      def test_inject_simple_headers_degrades_when_compose_fails
+        File.write('94-sample.html', appendix_fixture_html)
+
+        Build::HeadingImageComposer.stub(:render, nil) do
+          Build::EpubBuilder.inject_heading_images_into_file!('94-sample.html', heading_context(flavor: :kindle))
+        end
+
+        html = File.read('94-sample.html')
+        refute_includes html, 'vs-image-heading-epub', '合成失敗時は CSS フォールバックへ縮退'
       end
 
       # 番号を持たない見出し（前付など）には扉絵を注入しないことを確認

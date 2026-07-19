@@ -96,6 +96,47 @@ module VivlioStarter
           refute HeadingImageComposer.const_defined?(:FRONTISPIECE_SPLIT), 'FRONTISPIECE_SPLIT 定数は削除済み'
         end
 
+        # simple 章見出し（付録）: 角丸枠＋アクセント番号＋下線＋タイトルのベクター（背景画像なし）
+        def test_should_compose_simple_frontispiece_as_pure_vector
+          svg = HeadingImageComposer.compose(
+            image_path: nil, number: '付録 A', title: 'サンプル',
+            kind: :simple_frontispiece, font_family: FONT, accent_color: '#f0a000'
+          )
+
+          assert svg.start_with?('<svg')
+          refute_includes svg, '<image', '背景画像を持たない（ピュアベクター）'
+          assert_includes svg, '<rect', '角丸枠を描く'
+          assert_includes svg, 'fill="#f0a000"', 'アクセント色を使う'
+          assert_includes svg, '付録 A'
+          assert_includes svg, 'サンプル'
+          assert_includes svg, 'aria-label="付録 A サンプル"'
+        end
+
+        # simple 節見出し（付録）: 番号バッジ（アクセント地・白文字）＋タイトル
+        def test_should_compose_simple_ornament_with_number_badge
+          svg = HeadingImageComposer.compose(
+            image_path: nil, number: 'A-1', title: '導入',
+            kind: :simple_ornament, font_family: FONT, accent_color: '#0ea5e9'
+          )
+
+          assert svg.start_with?('<svg')
+          refute_includes svg, '<image'
+          assert_includes svg, 'fill="#0ea5e9"', 'バッジ・帯にアクセント色'
+          assert_includes svg, 'fill="#ffffff"', 'バッジ番号は白文字'
+          assert_includes svg, 'A-1'
+          assert_includes svg, '導入'
+        end
+
+        # accent 未指定時は既定の金へフォールバックする
+        def test_should_fall_back_to_default_accent_when_blank
+          svg = HeadingImageComposer.compose(
+            image_path: nil, number: '付録 B', title: 'X',
+            kind: :simple_frontispiece, font_family: FONT, accent_color: ''
+          )
+
+          assert_includes svg, HeadingImageComposer::SIMPLE_DEFAULT_ACCENT
+        end
+
         def test_should_compose_ornament_with_colored_number_tspan
           svg = HeadingImageComposer.ornament_svg(1196, 500, DATA_URI, '1-1', '導入', FONT, '#f0a000')
 

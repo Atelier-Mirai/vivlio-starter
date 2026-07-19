@@ -1,7 +1,7 @@
-# Kindle 向け simple ヘッダーの SVG 画像化 仕様（将来タスク）
+# Kindle 向け simple ヘッダーの SVG 画像化 仕様
 
 > 作成日: 2026-06-20
-> ステータス: **将来やりたいこと（未着手）**
+> ステータス: **実装完了・実機確認待ち（2026-07-19 実装）**。付録（90–98）の h1/h2 を Kindle でベクター合成画像化。rake test 全 1813 件・rubocop クリーン。実付録 HTML（96-sample）で h1×1＋h2×11 の JPEG 生成・chapter-lead 保持・article グリッド解除を確認。残: Kindle Previewer 3 実機確認。スコープは image テーマ本の付録のみ（simple テーマ本の全章 SVG 化は §6 の未決事項として見送り）。
 > 対象: Kindle（`target=kindle`）における **付録など simple スタイルの章/節見出し**の装飾。
 > 関連: `epub-kindle-target-split-spec.md`（ターゲット分離）, `math-frontispiece-svg-spec.md`（本文の扉絵/節絵 SVG→JPEG 化・③-a）, `epub-frontispiece-facsimile-spec.md`（本文章 h1 のファクシミリ化・2026-07-19。本仕様の実装はこちらの変更後インフラに追随する）, `stylesheets/simple-header.css`
 

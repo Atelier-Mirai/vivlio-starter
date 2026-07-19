@@ -240,3 +240,22 @@ body.vs-header-simple.vs-kindle h2 .section-number {
   color: #fff;
   font-weight: 900;
 }
+
+/* 見出しが simple ヘッダーのベクター合成画像へ置換されたとき（kindle-simple-header-svg-spec.md）は、
+   上の CSS フォールバック装飾を無効化する——さもないと画像自身の枠と h1/h2 要素の枠が二重になる。
+   クラスを 1 つ多く含むぶん上のフォールバック規則より特異度が高く、確実に打ち消せる。 */
+body.vs-header-simple.vs-kindle h1.vs-image-heading-epub,
+body.vs-header-simple.vs-kindle h2.vs-image-heading-epub {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0.5em 0;
+  page-break-before: always;
+  break-before: page;
+}
+body.vs-header-simple.vs-kindle .vs-image-heading-epub > img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+}
