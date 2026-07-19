@@ -3,13 +3,15 @@
 > 作成日: 2026-06-20
 > ステータス: **将来やりたいこと（未着手）**
 > 対象: Kindle（`target=kindle`）における **付録など simple スタイルの章/節見出し**の装飾。
-> 関連: `epub-kindle-target-split-spec.md`（ターゲット分離）, `math-frontispiece-svg-spec.md`（本文の扉絵/節絵 SVG→JPEG 化・③-a）, `stylesheets/simple-header.css`
+> 関連: `epub-kindle-target-split-spec.md`（ターゲット分離）, `math-frontispiece-svg-spec.md`（本文の扉絵/節絵 SVG→JPEG 化・③-a）, `epub-frontispiece-facsimile-spec.md`（本文章 h1 のファクシミリ化・2026-07-19。本仕様の実装はこちらの変更後インフラに追随する）, `stylesheets/simple-header.css`
 
 ---
 
 ## 0. 背景
 
 本文章（01–89）の扉絵（h1）・節絵（h2）は、`HeadingImageComposer` が「飾り画像＋見出し文字」を 1 枚の合成 SVG に組み、Kindle 用に **平坦 JPEG へラスタライズ**して `<img>` 注入することで、Kindle の CSS 制約に左右されず確実に描画している（③-a）。
+
+> **2026-07-19 追記**: h1 の合成は `epub-frontispiece-facsimile-spec.md` により「章リード文まで焼き込む縦長ファクシミリ 1 枚」へ変更される（裾飾り `frontispiece_tail` は全廃）。ただし**リード焼き込みは image スタイルの本文章 h1 だけの挙動**であり、本仕様の simple 見出し画像化には持ち込まない（§2）。
 
 一方、**付録（90–98）は `theme.style=simple` 扱い**で、背景画像を持たず `stylesheets/simple-header.css` の CSS 装飾（枠・リボン・番号バッジ）で見出しを飾る。この CSS は `var()` / `display:grid` / `clamp()` / `calc()` / `::before(position:absolute)` / `linear-gradient` を多用しており、**Kindle KFX ではすべて解されず崩れて素テキスト化**する。
 
@@ -31,12 +33,15 @@
 - **注入**: `inject_heading_images_for_epub!` を simple 章/節にも対応させる。
   - `main_chapter_file?`（1..89）の判定を拡張し、付録（90..98）も対象にして simple テンプレートで `heading_image_src(kind: :simple_frontispiece / :simple_ornament, flavor: :kindle)` を呼ぶ。
   - 既存と同様、合成失敗（rsvg/magick 不在）時は注入せず simple 縮退（CSS フォールバック）に戻す（§B-5 と同じ設計）。
+  - **リードは焼き込まない・除去しない**（facsimile 仕様との違い・2026-07-19 追記）: simple ヘッダーはページ全面でなくコンパクトな見出しバナーであり、付録の `chapter-lead` は実テキストのままバナーの後ろへ流すのが正しい。facsimile 実装後の `inject_frontispiece_headings!` にあるリード抽出・除去ロジック（`extract_lead_text` 等）を simple 経路に**適用してはならない**。
+  - **冪等ガードを共用する**（同追記）: facsimile 実装後、h1 は `vs-image-heading-epub` クラスの有無で処理済み判定される。simple 注入も同じガードに乗ること（再入時にリード無し合成へ差し替わる事故の防止と同型）。
 - **クリーン EPUB**: 何もしない（CSS のまま）。`heading_image_src` の `flavor: :epub` は simple についても画像化しない。
 
 ## 3. ファイル名 / キャッシュ
 
 - `images/headings/simple-frontispiece-<hash>.jpg` / `simple-ornament-<hash>.jpg`。
 - ハッシュ鍵に `flavor` / `kind` / `number` / `title` / `font` / `color` を含める（既存 `heading_image_src` と同様）。
+- facsimile 実装後（2026-07-19 追記）、鍵には `HeadingImageComposer::LAYOUT_VERSION` ソルトと `lead` 系引数が加わっている。simple 種別は既存 `heading_image_src` をそのまま通し（`lead` は空のまま）、独自のキー計算を持ち込まないこと。
 
 ## 4. テスト方針
 

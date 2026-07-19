@@ -7,7 +7,7 @@
 > - **方式はテキスト化**（LaTeX 単純サブセット → `<sup>`/`<sub>`＋Unicode 記号の HTML）。**Kindle フレーバのみ**。PDF・クリーン EPUB は現行の SVG のまま一切触らない
 > - **MathML は不採用**（KDP 公式は Enhanced Typesetting での対応を謳うが、実機はデバイス間で表示が非一貫との報告あり。「Kindle で確実に表示」優先の本プロジェクト方針に反する。§8）
 > - テキスト化できない複雑な式は現行の px 固定フォールバックを維持（既知の制限として存続・ただし対象は大幅に縮小）
-> 関連: `lib/vivlio_starter/cli/build/epub_builder.rb`（`convert_math_units_for_epub!`・Kindle 限定フェーズ）, `lib/vivlio_starter/cli/pre_process/math_transformer.rb`（SVG 化・`alt` に元 LaTeX 保存）, `docs/archives/epub-kindle-target-split-spec.md` §3（px 固定の経緯）, `docs/specs/kindle-css-compatibility-notes.md`, `docs/specs/KNOWN_ISSUES.md`
+> 関連: `lib/vivlio_starter/cli/build/epub_builder.rb`（`convert_math_units_for_epub!`・Kindle 限定フェーズ）, `lib/vivlio_starter/cli/pre_process/math_transformer.rb`（SVG 化・`alt` に元 LaTeX 保存）, `docs/archives/epub-kindle-target-split-spec.md` §3（px 固定の経緯）, `docs/specs/kindle-css-compatibility-notes.md`, `docs/specs/KNOWN_ISSUES.md`, `docs/specs/epub-frontispiece-facsimile-spec.md`（章扉リード内の数式は本仕様の対象外・§4.5）
 
 ## 0. 背景・問題
 
@@ -105,6 +105,18 @@ MathTextRenderer.render(latex)
 - `MathTransformer`（前処理）: 変更なし。PDF・クリーン EPUB・Kindle の初期状態は今までどおり SVG。
 - `convert_math_units_for_epub!` / `apply_math_px_fallback!` / `MIN_TABLE_MATH_EM`: 変更なし（サブセット外の式のフォールバックとして存続）。
 - ディスプレイ数式・クリーン EPUB・PDF の経路: 変更なし。
+
+### 4.5 章扉リード内の数式は対象外（2026-07-19 追記・facsimile 仕様との整合）
+
+`epub-frontispiece-facsimile-spec.md` の実装後、本文章（01–89）の章リード（`div.chapter-lead`）は
+**両フレーバ共通フェーズ**の `inject_heading_images_for_epub!` で章扉画像へ焼き込まれ、
+HTML から除去される。本仕様の `textify_simple_math_for_kindle!` は Kindle 専用フェーズ
+（共通フェーズより後）で走るため、**リード内の `img.vs-math-inline` には決して到達しない**。
+
+- リード内数式の扱い（alt の元 LaTeX をデリミタ除去して焼き込み＋著者向け警告）は
+  facsimile 仕様 §4.2 の `extract_lead_text` が持つ。本仕様側での対応・考慮は不要。
+- 本仕様の走査対象（本文・表セル内の数式）はリード除去の影響を受けない。
+- §5 のテストにリード内数式のケースを**含めない**こと（責務は facsimile 側のテスト項目 13）。
 
 ## 5. テスト計画
 

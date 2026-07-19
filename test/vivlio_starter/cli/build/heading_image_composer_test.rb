@@ -30,13 +30,12 @@ module VivlioStarter
         DATA_URI = 'data:image/jpeg;base64,AAAA'
 
         def test_should_compose_frontispiece_with_image_and_heading_text
-          svg = HeadingImageComposer.frontispiece_svg(1000, 1414, DATA_URI, '第1章', '春のお花見', FONT)
+          svg = HeadingImageComposer.frontispiece_svg(1000, 1414, DATA_URI, '第1章', '春のお花見', '', FONT, nil, 0.60)
 
           assert svg.start_with?('<svg')
-          # viewport は上下分割位置（62%）で切られ、原画の裾は含めない
-          cut = (1414 * HeadingImageComposer::FRONTISPIECE_SPLIT).round
-          assert_includes svg, %(viewBox="0 0 1000 #{cut}")
-          assert_includes svg, %(width="1000" height="#{cut}")
+          # 原画は全高で出す（帯切り出しは廃止・facsimile 仕様）
+          assert_includes svg, %(viewBox="0 0 1000 1414")
+          assert_includes svg, %(width="1000" height="1414")
           assert_includes svg, %(xlink:href="#{DATA_URI}")
           assert_includes svg, 'aria-label="第1章 春のお花見"'
           assert_includes svg, '第1章'
@@ -45,14 +44,56 @@ module VivlioStarter
           assert_includes svg, '<line'
         end
 
-        # 扉絵の裾（文字なし）は原画の分割位置以降を切り出した装飾 SVG になる
-        def test_should_compose_frontispiece_tail_as_textless_band
-          svg = HeadingImageComposer.frontispiece_tail_svg(1000, 1414, DATA_URI)
+        # リードを渡すと段落先頭が全角字下げされた <tspan> として焼き込まれる
+        def test_should_bake_lead_paragraphs_into_frontispiece
+          lead = "最初の段落です。\n二つ目の段落です。"
+          svg = HeadingImageComposer.frontispiece_svg(2880, 4153, DATA_URI, '第3章', '章タイトル', lead, FONT, nil, 0.60)
 
-          cut = (1414 * HeadingImageComposer::FRONTISPIECE_SPLIT).round
-          assert_includes svg, %(viewBox="0 #{cut} 1000 #{1414 - cut}"), '裾は分割位置から始まる帯'
-          assert_includes svg, %(width="1000" height="#{1414 - cut}")
-          refute_includes svg, '<text', '裾に文字は載せない'
+          assert_includes svg, '　最初の段落です。', '段落先頭は全角 1 字下げ'
+          assert_includes svg, '　二つ目の段落です。', '2 段落目も字下げ'
+          assert_includes svg, 'aria-label="第3章 章タイトル 最初の段落です。'
+        end
+
+        # リードが空なら扉絵にリード <text> ブロックは現れない（従来相当の SVG）
+        def test_should_omit_lead_block_when_lead_blank
+          with_lead    = HeadingImageComposer.frontispiece_svg(2880, 4153, DATA_URI, '第3章', 'T', 'リード文', FONT, nil, 0.60)
+          without_lead = HeadingImageComposer.frontispiece_svg(2880, 4153, DATA_URI, '第3章', 'T', '', FONT, nil, 0.60)
+
+          assert_operator with_lead.scan('<text').size, :>, without_lead.scan('<text').size,
+                          'リードありは <text> が 1 つ多い'
+        end
+
+        # 極端に長いリードは基準フォントより縮小され、下限で止まる
+        def test_should_shrink_long_lead_font_down_to_floor
+          base_size, = HeadingImageComposer.lead_layout(2880, 4153, '短い。', 0.60)
+          long = '長い文章。' * 400
+          long_size, = HeadingImageComposer.lead_layout(2880, 4153, long, 0.60)
+          floor = (2880 * HeadingImageComposer::LEAD_FONT_FLOOR).round
+
+          assert_equal (2880 * HeadingImageComposer::LEAD_FONT_RATIO).round, base_size, '短文は基準フォント'
+          assert_operator long_size, :<, base_size, '長文は縮小される'
+          assert_operator long_size, :>=, floor, '下限を割らない'
+        end
+
+        # リード内の Latin 語は語中で折れない（wrap_text_by_width 経由）
+        def test_should_not_break_latin_word_in_lead
+          lead = 'コマンド --add-missing を実行します。' * 3
+          _size, lines = HeadingImageComposer.lead_layout(2880, 4153, lead, 0.60)
+
+          assert lines.none? { |l| l.match?(/--add-\z/) || l.match?(/\A(?:missing)/) && l.length < 8 },
+                 'Latin 語が語中で分断されない'
+          assert lines.any? { |l| l.include?('--add-missing') }, '語が 1 つの塊として残る行がある'
+        end
+
+        # レイアウト版数はキャッシュ鍵ソルト用に 2 以上（62% 帯からの刷新の目印）
+        def test_layout_version_is_at_least_two
+          assert_operator HeadingImageComposer::LAYOUT_VERSION, :>=, 2
+        end
+
+        # 裾帯 SVG（frontispiece_tail_svg）と FRONTISPIECE_SPLIT は廃止された（回帰防止）
+        def test_frontispiece_tail_svg_is_removed
+          refute HeadingImageComposer.respond_to?(:frontispiece_tail_svg), 'frontispiece_tail_svg は削除済み'
+          refute HeadingImageComposer.const_defined?(:FRONTISPIECE_SPLIT), 'FRONTISPIECE_SPLIT 定数は削除済み'
         end
 
         def test_should_compose_ornament_with_colored_number_tspan
@@ -99,14 +140,14 @@ module VivlioStarter
 
         def test_should_wrap_long_frontispiece_title_into_multiple_tspans
           long_title = 'あ' * 30
-          svg = HeadingImageComposer.frontispiece_svg(1000, 1414, DATA_URI, '第2章', long_title, FONT)
+          svg = HeadingImageComposer.frontispiece_svg(1000, 1414, DATA_URI, '第2章', long_title, '', FONT, nil, 0.60)
 
           tspan_count = svg.scan('<tspan').size
           assert_operator tspan_count, :>=, 2, 'long title should wrap into multiple tspans'
         end
 
         def test_should_escape_xml_reserved_characters_in_heading_text
-          svg = HeadingImageComposer.frontispiece_svg(800, 1131, DATA_URI, '第3章', 'A < B & "C"', FONT)
+          svg = HeadingImageComposer.frontispiece_svg(800, 1131, DATA_URI, '第3章', 'A < B & "C"', '', FONT, nil, 0.60)
 
           assert_includes svg, '&lt;'
           assert_includes svg, '&amp;'
@@ -114,7 +155,7 @@ module VivlioStarter
         end
 
         def test_should_omit_number_markup_when_number_blank
-          svg = HeadingImageComposer.frontispiece_svg(1000, 1414, DATA_URI, '', 'タイトルのみ', FONT)
+          svg = HeadingImageComposer.frontispiece_svg(1000, 1414, DATA_URI, '', 'タイトルのみ', '', FONT, nil, 0.60)
 
           refute_includes svg, '<line', 'no underline when number is blank'
           assert_includes svg, 'タイトルのみ'

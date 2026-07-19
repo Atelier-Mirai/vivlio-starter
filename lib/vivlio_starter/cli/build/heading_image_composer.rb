@@ -54,13 +54,19 @@ module VivlioStarter
         EMBED_MAX_EDGE = 1400
 
         # ラスタライズ後の出力幅（px）。viewBox 比からの縦は rsvg が自動算出する。
-        RENDER_WIDTH = { frontispiece: 1000, frontispiece_tail: 1000, ornament: 1400 }.freeze
+        # 扉絵はリード文字を焼き込むため 1400 に引き上げる（Kindle 端末幅 1072px 以上での可読性）。
+        RENDER_WIDTH = { frontispiece: 1400, ornament: 1400 }.freeze
 
-        # 扉絵の上下分割位置（原画高さ比）。上側（0〜62%）に「飾り上部＋章番号＋タイトル」を
-        # 収め、下側（62%〜）は文字なしの裾飾りとして chapter-lead の後ろへ流す。
-        # PDF の「見出し → リード → 裾の飾り」という読み順を EPUB のリフローで再現するための
-        # 分割で、同梱テーマの飾り（四隅装飾）は 62% 前後が絵柄の空白帯にあたる。
-        FRONTISPIECE_SPLIT = 0.62
+        # 合成レイアウトの版数。座標・方式を変えたら +1 する（EpubBuilder が生成キャッシュのキーに混ぜる）。
+        # v2: 上下分割（62% 帯＋裾飾り）を廃止し、リード文まで焼き込む縦長ファクシミリ 1 枚へ。
+        LAYOUT_VERSION = 2
+
+        # リード焼き込みの規格（画像 width / height 比・モック実証値）。
+        LEAD_FONT_RATIO   = 0.024  # 基準フォント（A5 判型でおよそ 10pt 相当）
+        LEAD_FONT_FLOOR   = 0.018  # 縮小の下限
+        LEAD_LINE_HEIGHT  = 1.75   # 行送り（フォントサイズ比）
+        LEAD_TOP_RATIO    = 0.615  # リード 1 行目のベースライン（height 比）
+        LEAD_BOTTOM_RATIO = 0.80   # リード最終行ベースラインの上限（height 比）。右下飾りとの干渉回避
 
         module_function
 
@@ -70,8 +76,10 @@ module VivlioStarter
         #
         # @param (see #compose)
         # @return [String, nil] JPEG バイト列。画像不読・ツール不在・失敗時は nil（→ simple 縮退）
-        def render(image_path:, number:, title:, kind:, font_family:, number_color: '#333333')
-          svg = compose(image_path:, number:, title:, kind:, font_family:, number_color:)
+        def render(image_path:, number:, title:, kind:, font_family:,
+                   lead: '', lead_font_family: nil, lead_ratio: 0.60, number_color: '#333333')
+          svg = compose(image_path:, number:, title:, kind:, font_family:,
+                        lead:, lead_font_family:, lead_ratio:, number_color:)
           return nil unless svg
 
           rasterize_to_jpeg(svg, RENDER_WIDTH.fetch(kind, 1000))
@@ -82,12 +90,15 @@ module VivlioStarter
         # @param image_path [String] 飾り画像の実ファイルパス（portrait/landscape webp 等）
         # @param number [String] 見出し番号（"第1章" / "1-1" 等。空可）
         # @param title [String] 見出しタイトル
-        # @param kind [Symbol] :frontispiece（扉絵上部・縦）/ :frontispiece_tail（扉絵裾・文字なし）/
-        #   :ornament（節絵・横）
+        # @param kind [Symbol] :frontispiece（扉絵・縦。リード込み）/ :ornament（節絵・横）
         # @param font_family [String] <text> 用フォントスタック（単一引用符で囲んだ名前の羅列）
+        # @param lead [String] 章リード文（:frontispiece のみ。段落は "\n" 区切り。空可）
+        # @param lead_font_family [String, nil] リード用フォント（nil なら font_family で代用）
+        # @param lead_ratio [Float] リード焼き込み幅の画像幅比（判型 lead_width÷page.width 由来）
         # @param number_color [String] 節絵の番号色（CSS 色。既定はダーク）
         # @return [String, nil] SVG 文字列。画像が読めない/寸法不明時は nil（→ simple 縮退）
-        def compose(image_path:, number:, title:, kind:, font_family:, number_color: '#333333')
+        def compose(image_path:, number:, title:, kind:, font_family:,
+                    lead: '', lead_font_family: nil, lead_ratio: 0.60, number_color: '#333333')
           return nil unless image_path && File.exist?(image_path)
 
           dims = image_dimensions(image_path)
@@ -96,17 +107,19 @@ module VivlioStarter
 
           width, height = dims
           case kind
-          when :frontispiece then frontispiece_svg(width, height, data_uri, number.to_s.strip, title.to_s.strip, font_family)
-          when :frontispiece_tail then frontispiece_tail_svg(width, height, data_uri)
-          when :ornament     then ornament_svg(width, height, data_uri, number.to_s.strip, title.to_s.strip, font_family, number_color)
+          when :frontispiece
+            frontispiece_svg(width, height, data_uri, number.to_s.strip, title.to_s.strip,
+                             lead.to_s, font_family, lead_font_family, lead_ratio)
+          when :ornament
+            ornament_svg(width, height, data_uri, number.to_s.strip, title.to_s.strip, font_family, number_color)
           end
         end
 
-        # 扉絵（portrait）上部の合成 SVG。番号を上部に、タイトルを中央に縦並びで重ねる。
-        # PDF の image-header.css（番号→下線→タイトル）の意図を SVG 座標で再現する。
-        # viewport は FRONTISPIECE_SPLIT で切り、原画の下側（裾飾り）は含めない——
-        # 裾は frontispiece_tail_svg が受け持ち、リード文の後ろへ流す（読み順を PDF と揃える）。
-        def frontispiece_svg(width, height, data_uri, number, title, font_family)
+        # 扉絵（portrait）全面の合成 SVG。PDF の縦長章扉（左上飾り→番号→タイトル→リード→
+        # 右下飾り）を 1 枚に焼き込む。番号を上部・タイトルを中央・リードをその下へ縦に重ね、
+        # 原画の下側（右下飾り）まで含めて全高で出す。リフローでも千切れない完全な章扉ページを
+        # 実現するため、旧実装の上下分割（62% 帯＋裾飾り注入）は廃止した（facsimile 仕様）。
+        def frontispiece_svg(width, height, data_uri, number, title, lead, font_family, lead_font_family, lead_ratio)
           number_size = (width * 0.052).round
           # 0.085 だと 1 行 9 字となり「拡張記法リファレンス」級（10 字）が不格好に
           # 折り返すため、11 字まで 1 行に収まる大きさに抑える（epub_h1 実測フィードバック）。
@@ -126,15 +139,43 @@ module VivlioStarter
           parts = [image_element(width, height, data_uri)]
           parts << frontispiece_number(number, width, number_y, underline_y, number_size, font_family) unless number.empty?
           parts << frontispiece_title(lines, width, first_y, line_step, title_size, halo, font_family) unless lines.empty?
+          parts << frontispiece_lead(lead, width, height, lead_font_family || font_family, lead_ratio) unless lead.empty?
 
-          svg_wrapper(width, (height * FRONTISPIECE_SPLIT).round, [number, title], parts)
+          svg_wrapper(width, height, [number, title, lead], parts)
         end
 
-        # 扉絵（portrait）裾の合成 SVG（文字なしの飾りのみ）。原画の FRONTISPIECE_SPLIT 以降を
-        # そのまま見せる装飾で、chapter-lead の後ろに <img alt=""> として注入される。
-        def frontispiece_tail_svg(width, height, data_uri)
-          cut = (height * FRONTISPIECE_SPLIT).round
-          svg_wrapper(width, height - cut, [], [image_element(width, height, data_uri)], view_y: cut)
+        # リード段落の焼き込み。段落は "\n" 区切りで受け、各段落の先頭を全角 1 字下げする。
+        # 基準フォントで LEAD_BOTTOM_RATIO に収まらない長文だけ 8% ずつ縮小する（下限 LEAD_FONT_FLOOR）。
+        def frontispiece_lead(lead, width, height, font_family, lead_ratio)
+          font_size, lines = lead_layout(width, height, lead, lead_ratio)
+          halo      = [(font_size * 0.14).round, 1].max
+          step      = (font_size * LEAD_LINE_HEIGHT).round
+          first_y   = (height * LEAD_TOP_RATIO).round
+          left_x    = ((width * (1.0 - lead_ratio)) / 2.0).round
+
+          tspans = lines.each_with_index.map do |line, i|
+            %(<tspan x="#{left_x}" y="#{first_y + (i * step)}">#{escape_text(line)}</tspan>)
+          end.join
+          %(<text text-anchor="start" font-family="#{font_family}" font-size="#{font_size}" ) +
+            %(font-weight="400" fill="#1a1a1a" paint-order="stroke" stroke="#ffffff" ) +
+            %(stroke-width="#{halo}" stroke-linejoin="round">#{tspans}</text>)
+        end
+
+        # リードのフォントサイズと行分割。折返しは既存 wrap_text_by_width（半角 0.55 換算・
+        # Latin 語は空白で折る——"--add-missing" 等の語中折れを防ぐ）を必ず使う。
+        # @return [Array(Integer, Array<String>)] [フォントサイズ, 折り返し済み行の配列]
+        def lead_layout(width, height, lead, lead_ratio)
+          paragraphs = lead.split("\n")
+          font_size = (width * LEAD_FONT_RATIO).round
+          floor     = (width * LEAD_FONT_FLOOR).round
+          loop do
+            capacity = (width * lead_ratio) / font_size
+            lines = paragraphs.flat_map { |p| wrap_text_by_width("　#{p}", capacity) }
+            bottom = (height * LEAD_TOP_RATIO) + ((lines.size - 1) * font_size * LEAD_LINE_HEIGHT)
+            return [font_size, lines] if bottom <= height * LEAD_BOTTOM_RATIO || font_size <= floor
+
+            font_size = [(font_size * 0.92).round, floor].max
+          end
         end
 
         # 節絵の見出しフォント基準（height 比）。kindle_h2 実測フィードバックで確定した
@@ -262,16 +303,14 @@ module VivlioStarter
             %(fill="#111111" paint-order="stroke" stroke="#ffffff" stroke-width="#{halo}" stroke-linejoin="round">#{tspans}</text>)
         end
 
-        # SVG ルート要素で包む。aria-label に番号＋タイトルを入れて読み上げに資する。
+        # SVG ルート要素で包む。aria-label に番号＋タイトル（＋リード）を入れて読み上げに資する。
         # width/height 属性（intrinsic size）を明示する——viewBox だけだと <img> で参照した
         # ときに一部リーダーが縦横比を確定できず、レイアウト箱と描画サイズがずれて
         # 後続コンテンツへのはみ出し（epub_h2 実測）を誘発する。
-        # view_y で viewBox の縦開始位置を指定でき、原画座標のまま部分帯を切り出せる
-        # （扉絵の上下分割）。viewport 外は SVG 既定でクリップされる。
-        def svg_wrapper(width, height, label_segments, parts, view_y: 0)
+        def svg_wrapper(width, height, label_segments, parts)
           aria = escape_attr(label_segments.reject(&:empty?).join(' '))
           %(<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ) +
-            %(width="#{width}" height="#{height}" viewBox="0 #{view_y} #{width} #{height}" ) +
+            %(width="#{width}" height="#{height}" viewBox="0 0 #{width} #{height}" ) +
             %(preserveAspectRatio="xMidYMid meet" role="img" aria-label="#{aria}">) +
             parts.join +
             '</svg>'

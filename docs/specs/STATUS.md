@@ -9,20 +9,20 @@
 
 ## 一覧
 
-`kindle-simple-header-svg-spec.md`
-: Kindle 向け simple ヘッダーを SVG 画像化する仕様。
-  状態: 将来タスク・未着手
-  次のアクション: 優先度低
-
-`mermaid-diagram-spec.md`
-: ` ```mermaid ` フェンスをビルド時に図化（PDF はベクタ SVG・EPUB/Kindle はラスター）する仕様。レンダラは `mmdc`、生成・差し替えは showcase（explanatory-diagram-spec）の構造を流用。
-  状態: 提案仕様・未着手（2026-07-17 策定）
-  次のアクション: §12 の要決定事項（レンダラ確定・CJK フォント方式・配置・キャプション/ダーク見送り可否・21 章系統図の扱い）をユーザー確認してから実装
+`epub-frontispiece-facsimile-spec.md`
+: EPUB/Kindle 章扉の「右下の桜が次ページへ落ちる」問題（実測 `epub_chapter.png` / `kindle_chapter.png`）の根治仕様。縦長章扉（左上桜→中央 chapter-lead→右下桜）はユーザー確定の意匠であり、リード文まで portrait 1 枚に焼き込むファクシミリ合成＋HTML 側 chapter-lead 除去で、リフローでも千切れない完全な章扉ページを実現する。62% 上下分割（`frontispiece_tail`）は全廃。期待見た目は `epub_chapter_facsimile_mock.png`（実レンダリング検証済み）。1:1 square 案は 2026-07-19 に棄却済み（再提案禁止）。
+  状態: 実装完了・実機確認待ち（2026-07-19 実装）。rake test 全 1796 件・rubocop クリーン。実 `compose` 経路の出力がモックと一致することと、実 CONFIG を通した注入経路（chapter-lead 除去・裾帯なし・全高 viewBox・alt へリード）を確認済み。
+  次のアクション: 実機確認（`vs build` で EPUB/Kindle を実出力し、章扉が 1 ページに収まること・次ページに桜が単独出現しないことを Kindle Previewer 3 と実機で確認。※本環境は Node 26 で vivliostyle が展開ハングするためフルビルド未実施）。確認後に本行を削除し仕様書を `docs/archives/` へ移動。
 
 `kindle-inline-math-textify-spec.md`
 : Kindle 限定でインライン数式を SVG 画像でなくテキスト（`<sup>`/`<sub>`＋Unicode 記号）へ劣化変換し、フォントサイズ変更への追従不全を根治する仕様。KNOWN_ISSUES.md の数式サイズ不安定 2 件に対応。
   状態: 確定仕様・未着手（2026-07-12 策定）
   次のアクション: 実装
+
+`kindle-simple-header-svg-spec.md`
+: Kindle 向け simple ヘッダーを SVG 画像化する仕様。
+  状態: 将来タスク・未着手
+  次のアクション: 優先度低
 
 `direct-build-spec.md`
 : PLANNED.md「設定ファイルを経由しない直接ビルドコマンド」の仕様。`vs build myawesome.md --theme blue` のように `book.yml` / `catalog.yml` を介さず単一 Markdown を PDF 化する。一時ワークスペースに最小プロジェクトを組み立て既存 `:single` パイプラインを chdir 流用する案（案A）を採る。

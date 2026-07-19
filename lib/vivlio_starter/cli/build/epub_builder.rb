@@ -21,6 +21,7 @@ require 'fileutils'
 require 'open3'
 require 'tmpdir'
 require_relative '../entries'
+require_relative '../units'
 require_relative 'vivliostyle_config_writer'
 require_relative 'heading_image_composer'
 require_relative '../post_process/html_parser'
@@ -894,12 +895,43 @@ module VivlioStarter
             frontispiece: theme[:frontispiece],
             ornament: theme[:ornament],
             font_family: epub_heading_font_family,
+            lead_font_family: epub_lead_font_family,
+            lead_ratio: frontispiece_lead_ratio,
             number_color: theme[:number_color],
             flavor:
           }
 
           html_files.each { |path| inject_heading_images_into_file!(path, context) }
           html_files
+        end
+
+        # リード焼き込み用の本文フォントスタック（PDF の本文=明朝系に合わせる）。
+        def epub_lead_font_family
+          body_font = Common::CONFIG.typography.body.font.to_s.strip
+          stack = []
+          stack << "'#{body_font}'" unless body_font.empty?
+          stack.concat(["'Hiragino Mincho ProN'", "'Noto Serif JP'", "'Noto Serif CJK JP'", 'serif'])
+          stack.join(', ')
+        end
+
+        # リード焼き込み幅の画像幅比。theme.frontispiece.lead_width（例 88mm）÷ 判型幅（page.width）。
+        # page.width が明示された構成では実比を導き、preset 構成（width 未指定）や単位不明時は
+        # 0.60（A5 で 88/148 相当・モック検証値）へフォールバックする。portrait 画像幅は綴じ補正で
+        # 判型幅と数 % ずれ得るが誤差として許容する。
+        def frontispiece_lead_ratio
+          settings = PreProcessCommands::FrontmatterGenerator.parse_theme_settings
+          lead_mm = Units.length_to_mm(settings[:lead_width_value])
+          page_mm = Units.length_to_mm(Common::CONFIG.page[:width])
+          lead_ratio_from(lead_mm, page_mm)
+        rescue StandardError
+          0.60
+        end
+
+        # リード幅比の純計算。導けない（幅欠落・非正）ときは 0.60、導ける場合は [0.40, 0.75] に収める。
+        def lead_ratio_from(lead_mm, page_mm)
+          return 0.60 unless lead_mm && page_mm&.positive?
+
+          (lead_mm / page_mm).clamp(0.40, 0.75)
         end
 
         # 図解注釈（showcase）の生成物サブディレクトリ（images/showcase/）。
@@ -1114,49 +1146,77 @@ module VivlioStarter
           (m = base.match(/\A(\d{2})-/)) ? PdfBuilder::MAIN_RANGE.include?(m[1].to_i) : false
         end
 
-        # 章扉（data-chapter-number-display を持つ h1）に扉絵画像を注入する。
-        # 扉絵は上下 2 分割で運ぶ（FRONTISPIECE_SPLIT）: h1 には「飾り上部＋番号＋タイトル」の
-        # 上側を、直後の chapter-lead の後ろには文字なしの裾飾りを置き、PDF の
-        # 「見出し → リード → 裾の飾り」という読み順をリフローでも再現する（epub_chapter5 実測）。
+        # 章扉（data-chapter-number-display を持つ h1）へファクシミリ合成画像を注入する。
+        # PDF の縦長章扉（左上飾り→番号→タイトル→リード→右下飾り）を 1 枚に焼き込み、
+        # リフローでも千切れない完全なページとして運ぶ（epub-frontispiece-facsimile-spec.md）。
+        # 焼き込みに成功した章のみ、二重表示を避けるため HTML 側の chapter-lead を取り除く。
         def inject_frontispiece_headings!(doc, context)
           return false unless context[:frontispiece]
 
           changed = false
           doc.css('h1').each do |h1|
+            next if h1['class'].to_s.split.include?('vs-image-heading-epub') # 冪等ガード（§4.5）
+
             number = h1['data-chapter-number-display'].to_s.strip
             next if number.empty?
 
             title = h1['data-chapter-title'].to_s.strip
+            lead_el = frontispiece_lead_element(h1)
+            lead = extract_lead_text(lead_el)
+
             src = heading_image_src(
               image_path: context[:frontispiece], number:, title:, kind: :frontispiece,
+              lead:, lead_font_family: context[:lead_font_family], lead_ratio: context[:lead_ratio],
               font_family: context[:font_family], flavor: context[:flavor], base_dir: context[:base_dir]
             )
             next unless src
 
-            apply_image_heading!(h1, src, [number, title], doc)
-            inject_frontispiece_tail!(h1, doc, context)
+            apply_image_heading!(h1, src, [number, title, lead], doc)
+            lead_el&.remove # 焼き込み成功時のみ除去（合成失敗なら実テキストのまま simple 縮退）
             changed = true
           end
           changed
         end
 
-        # 扉絵の裾飾り（文字なし）を chapter-lead の直後へ注入する。
-        # リードが無い章は h1 の直後に置く。合成失敗時は注入しない（上側だけでも成立する）。
-        def inject_frontispiece_tail!(h1, doc, context)
-          src = heading_image_src(
-            image_path: context[:frontispiece], number: '', title: '', kind: :frontispiece_tail,
-            font_family: context[:font_family], flavor: context[:flavor], base_dir: context[:base_dir]
+        # h1 直後の chapter-lead 要素（無ければ nil）。
+        def frontispiece_lead_element(h1)
+          el = h1.next_element
+          el && el['class'].to_s.split.include?('chapter-lead') ? el : nil
+        end
+
+        # chapter-lead の段落テキストを抽出する。段落は "\n" 区切り（合成側で段落ごとに字下げ）。
+        # インライン装飾はプレーン文字化される（仕様 §2.1）。空白・改行は 1 空白へ正規化する。
+        #
+        # リード内の <img>（インライン数式 SVG 等）は alt テキストへ置換して統合する——
+        # .text だけだと <img> は無音で脱落する。数式 SVG の alt には元 LaTeX が保存されている
+        # （math_transformer.rb）ため、$…$ / \(…\) デリミタを剥いだ素の式文字列を焼き込む。
+        # 注意: 本注入は両フレーバ共通フェーズで走り、Kindle 数式テキスト化
+        # （kindle-inline-math-textify-spec.md・Kindle 専用フェーズ）より前にリードを除去する。
+        # リード内数式の救済は本メソッドが唯一の機会（同仕様側では対処不能）。
+        def extract_lead_text(lead_el)
+          return '' unless lead_el
+
+          el = lead_el.dup # 元ノードは呼び出し側が remove する。ここでの img 置換は複製に対して行う
+          imgs = el.css('img')
+          imgs.each do |img|
+            alt = img['alt'].to_s.sub(/\A\s*(?:\$|\\\()/, '').sub(/(?:\$|\\\))\s*\z/, '').strip
+            img.replace(Nokogiri::XML::Text.new(alt, img.document))
+          end
+          warn_lead_contains_images(lead_el, imgs.size) unless imgs.empty?
+
+          paragraphs = el.css('p')
+          texts = paragraphs.empty? ? [el.text] : paragraphs.map(&:text)
+          texts.map { |t| t.gsub(/\s+/, ' ').strip }.reject(&:empty?).join("\n")
+        end
+
+        # リード内に画像（インライン数式等）があるときの著者向け警告。alt で焼き込む旨と回避策を添える。
+        def warn_lead_contains_images(lead_el, count)
+          h1 = lead_el.previous_element
+          chapter = h1 ? h1['data-chapter-number-display'].to_s.strip : ''
+          Common.log_warn(
+            "[EPUB] 章リードに画像/数式が #{count} 件あります#{chapter.empty? ? '' : "（#{chapter}）"}",
+            detail: '章扉画像へは alt テキストとして焼き込みます。数式・画像はリードでなく本文へ移すことを推奨します'
           )
-          return unless src
-
-          anchor = h1.next_element&.[]('class').to_s.split.include?('chapter-lead') ? h1.next_element : h1
-          return if anchor.next_element&.[]('class').to_s.split.include?('vs-frontispiece-tail') # 冪等
-
-          img = Nokogiri::XML::Node.new('img', doc)
-          img['class'] = 'vs-frontispiece-tail'
-          img['src'] = src
-          img['alt'] = '' # 純装飾（読み上げ対象にしない）
-          anchor.add_next_sibling(img)
         end
 
         # 節扉（article.section-topic 直下の h2）に節絵画像を注入する。
@@ -1214,17 +1274,26 @@ module VivlioStarter
         # 出力先は base_dir（消費者 dir）配下の images/headings/（著者 dir を汚さない・P4 §5.2-b）。
         # ツール不在・合成失敗時は nil（→ simple 縮退）。
         def heading_image_src(image_path:, number:, title:, kind:, font_family:,
+                              lead: '', lead_font_family: nil, lead_ratio: 0.60,
                               number_color: '#333333', flavor: :epub, base_dir: '.')
-          key = Digest::SHA256.hexdigest([flavor, kind, image_path, number, title, font_family, number_color].join('|'))[0, 16]
+          # LAYOUT_VERSION ソルトでレイアウト刷新（帯切り出し→全高＋リード焼き込み）を鍵に反映する——
+          # image_path/番号/タイトルが同じでもレイアウトが変わるため、--no-clean 時に残る旧画像を
+          # 掴む事故を防ぐ（§4.4）。lead / lead_ratio も鍵に含めリードの差異を取りこぼさない。
+          key = Digest::SHA256.hexdigest(
+            [HeadingImageComposer::LAYOUT_VERSION, flavor, kind, image_path,
+             number, title, lead, lead_ratio, font_family, lead_font_family, number_color].join('|')
+          )[0, 16]
           dir = File.join(base_dir, Common.images_dir, HEADINGS_REL_SUBDIR)
           filename = "#{kind}-#{key}.#{flavor == :kindle ? 'jpg' : 'svg'}"
           abs = File.join(dir, filename)
 
           unless File.exist?(abs)
             data = if flavor == :kindle
-                     HeadingImageComposer.render(image_path:, number:, title:, kind:, font_family:, number_color:)
+                     HeadingImageComposer.render(image_path:, number:, title:, kind:, font_family:,
+                                                 lead:, lead_font_family:, lead_ratio:, number_color:)
                    else
-                     HeadingImageComposer.compose(image_path:, number:, title:, kind:, font_family:, number_color:)
+                     HeadingImageComposer.compose(image_path:, number:, title:, kind:, font_family:,
+                                                  lead:, lead_font_family:, lead_ratio:, number_color:)
                    end
             return nil unless data
 

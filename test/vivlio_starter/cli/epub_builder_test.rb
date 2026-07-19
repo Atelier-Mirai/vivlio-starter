@@ -46,6 +46,19 @@ module VivlioStarter
         FileUtils.rm_rf(@test_dir)
       end
 
+      # 扉絵/節絵注入テスト用の context（リードフォント・幅比も含む facsimile 仕様）
+      def heading_context(flavor: :kindle)
+        {
+          frontispiece: 'dummy_portrait.webp',
+          ornament: 'dummy_landscape.webp',
+          font_family: "'Zen Kaku Gothic New', sans-serif",
+          lead_font_family: "'Zen Old Mincho', serif",
+          lead_ratio: 0.60,
+          number_color: '#f0a000',
+          flavor:
+        }
+      end
+
       # 目次（_toc）が EPUB entries から除外されることを確認
       def test_excluded_basename_toc
         assert Build::EpubBuilder.excluded_basename?('_toc.html'),
@@ -84,13 +97,7 @@ module VivlioStarter
 
         # flavor: :kindle は合成画像を JPEG（render）で焼き込む経路。クリーン EPUB（:epub）は
         # 合成 SVG（compose）を配るため別経路（Step ④ のテストで検証）。
-        context = {
-          frontispiece: 'dummy_portrait.webp',
-          ornament: 'dummy_landscape.webp',
-          font_family: "'Zen Kaku Gothic New', sans-serif",
-          number_color: '#f0a000',
-          flavor: :kindle
-        }
+        context = heading_context(flavor: :kindle)
 
         Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
           Build::EpubBuilder.inject_heading_images_into_file!('10-spring.html', context)
@@ -100,19 +107,83 @@ module VivlioStarter
         # h1 に EPUB クラスと合成画像 <img>（JPEG）が入る
         assert_match(%r{<h1[^>]*class="[^"]*vs-image-heading-epub}, html)
         assert_includes html, 'class="vs-image-heading-img"'
-        # 見出しテキストは alt に格納（目次は <title> 由来・clip による隠し span は廃止）
-        assert_includes html, 'alt="第1章 春のお花見"'
+        # 見出しテキスト＋リードが alt に格納（章扉画像へ焼き込んだリードの読み上げフォールバック）
+        assert_includes html, 'alt="第1章 春のお花見 春の章のリード文です。"'
         refute_includes html, 'vs-visually-hidden', '隠し span（clip）は使わない'
+        # リードは章扉画像へ焼き込むため HTML からは除去される（二重表示回避・facsimile 仕様）
+        refute_includes html, 'chapter-lead', 'chapter-lead は焼き込み成功時に除去される'
+        # 裾飾り（旧方式）は全廃した
+        refute_includes html, 'vs-frontispiece-tail', '裾飾りは廃止済み'
         # 節絵: 親 article に EPUB 用クラス、h2 に画像（alt に節番号＋タイトル）
         assert_includes html, 'vs-section-topic-epub'
         assert_includes html, 'alt="1-1 導入"'
-        # 扉絵の裾飾り（文字なし・alt=""）が chapter-lead の直後へ注入される（読み順を PDF と揃える）
-        assert_match(%r{chapter-lead.*?</div>\s*<img class="vs-frontispiece-tail"[^>]*alt=""}m, html,
-                     '裾飾りはリード文の直後に入るべき')
         # 合成画像が images/headings/ に JPEG として書き出される
         assert Dir.glob('images/headings/frontispiece-*.jpg').any?, '扉絵 JPEG が書き出されるべき'
-        assert Dir.glob('images/headings/frontispiece_tail-*.jpg').any?, '裾飾り JPEG が書き出されるべき'
         assert Dir.glob('images/headings/ornament-*.jpg').any?, '節絵 JPEG が書き出されるべき'
+      end
+
+      # 冪等: 既に vs-image-heading-epub の付いた h1 は再注入されず、リードが空合成へ差し替わらない
+      def test_inject_heading_images_is_idempotent
+        File.write('11-summer.html', <<~HTML)
+          <!DOCTYPE html><html><head><title>夏</title></head><body>
+          <h1 data-chapter-number-display="第2章" data-chapter-title="夏">
+            <span class="chapter-title">夏</span>
+          </h1>
+          <div class="chapter-lead"><p>夏のリード。</p></div>
+          </body></html>
+        HTML
+
+        context = heading_context(flavor: :kindle)
+        Build::HeadingImageComposer.stub(:render, 'FAKEJPEGBYTES') do
+          Build::EpubBuilder.inject_heading_images_into_file!('11-summer.html', context)
+          first = File.read('11-summer.html')
+          Build::EpubBuilder.inject_heading_images_into_file!('11-summer.html', context)
+          second = File.read('11-summer.html')
+
+          assert_equal first, second, '2 回目の注入で HTML は変化しない'
+          assert_includes second, 'alt="第2章 夏 夏のリード。"', 'リードが空合成へ差し替わっていない'
+        end
+      end
+
+      # 合成失敗（render が nil）時は h1 も chapter-lead も実テキストのまま残る（simple 縮退）
+      def test_inject_heading_images_degrades_when_compose_fails
+        File.write('12-autumn.html', <<~HTML)
+          <!DOCTYPE html><html><head><title>秋</title></head><body>
+          <h1 data-chapter-number-display="第3章" data-chapter-title="秋">
+            <span class="chapter-title">秋</span>
+          </h1>
+          <div class="chapter-lead"><p>秋のリード。</p></div>
+          </body></html>
+        HTML
+
+        context = heading_context(flavor: :kindle)
+        Build::HeadingImageComposer.stub(:render, nil) do
+          Build::EpubBuilder.inject_heading_images_into_file!('12-autumn.html', context)
+        end
+
+        html = File.read('12-autumn.html')
+        refute_includes html, 'vs-image-heading-epub', '合成失敗時は画像化しない'
+        assert_includes html, 'chapter-lead', 'リードは実テキストのまま残る'
+      end
+
+      # リード内のインライン数式 <img> は alt（元 LaTeX・デリミタ除去）で焼き込まれる
+      def test_extract_lead_text_absorbs_inline_math_alt
+        doc = PostProcessCommands::HtmlParser.parse_html_document(<<~HTML)
+          <!DOCTYPE html><html><body>
+          <h1 data-chapter-number-display="第4章"></h1>
+          <div class="chapter-lead"><p>公式 <img class="vs-math-inline" alt="$E=mc^2$"> が有名です。</p></div>
+          </body></html>
+        HTML
+        lead_el = doc.css('div.chapter-lead').first
+
+        warned = []
+        Common.stub(:log_warn, ->(msg, **_) { warned << msg }) do
+          text = Build::EpubBuilder.extract_lead_text(lead_el)
+          assert_includes text, 'E=mc^2', 'デリミタを剥いだ式が焼き込まれる'
+          refute_includes text, '$', 'デリミタ $ は残さない'
+        end
+        assert_equal 1, warned.size, '警告は 1 回'
+        assert_includes lead_el.to_html, '<img', '元ノードは破壊しない（dup 処理）'
       end
 
       # 付録（番号 90..98）には扉絵/節絵を注入せず simple 版にすることを確認（PDF と整合）
@@ -151,6 +222,20 @@ module VivlioStarter
 
         html = File.read('00-preface.html')
         refute_includes html, 'vs-image-heading-epub', '番号なし見出し（前付）には注入しない'
+      end
+
+      # リード焼き込み幅比の純計算: lead_width ÷ 判型幅。導けない場合は 0.60 へフォールバック
+      def test_lead_ratio_from_derives_or_falls_back
+        assert_in_delta 88.0 / 148.0, Build::EpubBuilder.lead_ratio_from(88.0, 148.0), 0.001, '88/148 ≒ 0.595'
+        assert_in_delta 0.60, Build::EpubBuilder.lead_ratio_from(nil, nil), 0.001, '幅欠落時は 0.60'
+        assert_in_delta 0.60, Build::EpubBuilder.lead_ratio_from(88.0, 0), 0.001, '判型幅が非正なら 0.60'
+        assert_in_delta 0.75, Build::EpubBuilder.lead_ratio_from(200.0, 210.0), 0.001, '上限 0.75 にクランプ'
+        assert_in_delta 0.40, Build::EpubBuilder.lead_ratio_from(50.0, 210.0), 0.001, '下限 0.40 にクランプ'
+      end
+
+      # 実 CONFIG（preset 構成で page.width 未指定）では 0.60 にフォールバックする
+      def test_frontispiece_lead_ratio_falls_back_on_preset_config
+        assert_in_delta 0.60, Build::EpubBuilder.frontispiece_lead_ratio, 0.001
       end
 
       # EPUB entries.js が正しく書き出されることを確認
