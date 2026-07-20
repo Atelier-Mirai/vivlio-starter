@@ -220,6 +220,8 @@ module VivlioStarter
           # 付録色がテーマ色と同一なら付録専用の上書きは不要（既定構成は両方 yellow）。
           lines = base_kindle_accent_rules(acc, colbg)
           lines += appendix_kindle_accent_rules(apx) unless apx == acc
+          # 前書き/後書き（preface.css）の accent は preface_color 由来。preface 固有要素のため常に出す。
+          lines += preface_kindle_accent_rules(preface_accent_hex6(theme_cfg, acc))
 
           <<~CSS.chomp
             /* Kindle 用テーマ色リテラル（KFX は var()/color-mix 非対応・最後に読まれ静的フォールバックを上書き） */
@@ -233,6 +235,16 @@ module VivlioStarter
         def appendix_accent_hex6(theme_cfg, theme_hex)
           raw = theme_cfg.appendix_color
           return ThemeColor::DEFAULT if raw.to_s.strip.empty?
+
+          ThemeColor.to_hex6(raw, fallback: theme_hex)
+        end
+
+        # 前書き/後書きアクセントのリテラル hex。preface_color 未指定時はテーマ色へフォールバック
+        # （supplemental_color_declarations が --color-preface-accent を常に fallback: accent で宣言する
+        # のと一致＝PDF/クリーン EPUB のカスケードと揃える。appendix の yellow 既定とは異なる）。
+        def preface_accent_hex6(theme_cfg, theme_hex)
+          raw = theme_cfg.preface_color
+          return theme_hex if raw.to_s.strip.empty?
 
           ThemeColor.to_hex6(raw, fallback: theme_hex)
         end
@@ -276,6 +288,24 @@ module VivlioStarter
           %w[tip memo column notice note]
             .map { "#{prefix} .#{it} .vs-adm-label" }.join(', ') + " { color: #{color}; }"
         end
+
+        # 前書き（body.preface）/ 後書き（body.postface。postface.css が preface.css を import）の
+        # accent 規則。preface.css は h1 下線・h2/引用の左罫・リンク色を var(--color-preface-accent) で
+        # 塗るが KFX で全滅する（h1 下線だけ静的 #4f46e5 フォールバックがあるがテーマ非追従）。
+        # book-settings.css は全ページ共通のため body.preface / body.postface で必ずスコープする
+        # （裸の h1/h2 規則を出すと本文章へ波及する）。論理プロパティは避け物理で書く。
+        def preface_kindle_accent_rules(pref)
+          scopes = %w[body.preface.vs-kindle body.postface.vs-kindle]
+          [
+            selector_group(scopes, 'h1') + " { border-bottom-color: #{pref}; }",
+            selector_group(scopes, 'h2') + " { border-left: 3px solid #{pref}; }",
+            selector_group(scopes, 'blockquote') + " { border-left: 3px solid #{pref}; }",
+            selector_group(scopes, 'a') + " { color: #{pref}; border-bottom: 1px dotted #{pref}; }"
+          ]
+        end
+
+        # 複数スコープ × 要素をカンマ区切りのセレクタ群にする（"a b, c b"）。
+        def selector_group(scopes, element) = scopes.map { "#{it} #{element}" }.join(', ')
 
         # ================================================================
         # 値計算（旧 update_page_settings_css の前処理を移設）

@@ -21,8 +21,8 @@
 
 `kindle-theme-color-literalize-spec.md`
 : Kindle でテーマのアクセント色が出ない問題の根治（＋book-settings テスト脆弱性の修正）。KFX は `var()`/`color-mix` を解さないため、本文の太字・下線・マーカー・コラム枠・付録見出しのアクセント色が黒/グレー/くすんだ金へ劣化していた。ビルド時にテーマ色をリテラル hex へ解決し、最後に読まれる `book-settings.css` に `body.vs-kindle` 規則として焼き込んで静的フォールバックを上書きする。image/simple 両テーマ・本文/付録の両方に対応。別件で `book_settings_css_test` の style:simple 落ちも条件化で修正。
-  状態: 実装完了・実機確認待ち（2026-07-20 実装）。`ThemeColor` 新設（色名/hex→リテラル hex・color-mix 事前計算・注入耐性）＋`BookSettingsCss#kindle_accent_rules`。`techbook` の色決定も `ThemeColor` へ一元化（挙動不変）。rake test 全 1817 件・rubocop クリーン。生成 CSS に `var(`/`color-mix(` が漏れないこと・テーマ色追従・付録色差分・クリーン EPUB 非汚染をテストで確認。付録色未指定は yellow 既定（PDF の実カスケードと一致）。
-  次のアクション: 実機確認（`vs build --target=kindle` → Kindle Previewer 3 で strong・枠・付録見出しがテーマ色で出ること／`theme.color` 変更で追従すること）。確認後に本行を削除し仕様書を `docs/archives/` へ移動。
+  状態: 実装完了・実機確認待ち（2026-07-20 実装）。`ThemeColor` 新設（色名/hex→リテラル hex・color-mix 事前計算・注入耐性）＋`BookSettingsCss#kindle_accent_rules`。`techbook` の色決定も `ThemeColor` へ一元化（挙動不変）。**本文・付録・前書き/後書き（preface_color）すべて対応**。rake test 全 1819 件・rubocop クリーン。生成 CSS に `var(`/`color-mix(` が漏れないこと・theme/appendix/preface 各色の追従・クリーン EPUB 非汚染をテストで確認。付録色未指定は yellow 既定、前書き色未指定はテーマ色（どちらも PDF の実カスケードと一致）。
+  次のアクション: 実機確認（`vs build --target=kindle` → Kindle Previewer 3 で strong・枠・付録見出し・前書き下線がテーマ色で出ること／各色設定の変更で追従すること）。確認後に本行を削除し仕様書を `docs/archives/` へ移動。
 
 `kindle-simple-header-svg-spec.md`
 : Kindle 向け simple ヘッダー（付録見出し）を SVG 画像化する仕様。

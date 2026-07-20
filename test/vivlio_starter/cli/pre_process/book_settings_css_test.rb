@@ -305,8 +305,28 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
     assert(accent_rules.all? { it.include?('vs-kindle') }, '裸の accent 規則を book-settings.css に出さない')
   end
 
-  # theme.color / appendix_color を差し替えた Common::CONFIG 相当の Data を組む
-  def build_config(theme_color: 'yellow', appendix_color: nil)
-    Common::CONFIG.with(theme: Common::CONFIG.theme.with(color: theme_color, appendix_color:))
+  # 前書き/後書きの accent も preface_color に追従してリテラル化される（body.preface/postface スコープ）
+  def test_should_bake_preface_accent_following_preface_color
+    css = BSC.render(build_config(theme_color: 'yellow', preface_color: 'red'))
+
+    assert_includes css, 'body.preface.vs-kindle h1, body.postface.vs-kindle h1 { border-bottom-color: #dc2626; }'
+    assert_includes css, 'body.preface.vs-kindle a, body.postface.vs-kindle a { color: #dc2626; border-bottom: 1px dotted #dc2626; }'
+    # 前書き固有の border-bottom-color 規則は必ず body.preface / body.postface でスコープする
+    # （裸の h1 を出すと本文章 h1 へ波及する）
+    css.lines.select { it.include?('border-bottom-color') }.each do |line|
+      assert_includes line, 'body.preface', '前書き h1 下線は preface/postface にスコープする'
+    end
+  end
+
+  # preface_color 未指定時はテーマ色へフォールバック（PDF の --color-preface-accent と同じ挙動）
+  def test_should_default_unset_preface_accent_to_theme_color
+    css = BSC.render(build_config(theme_color: 'blue', preface_color: nil))
+
+    assert_includes css, 'body.preface.vs-kindle h1, body.postface.vs-kindle h1 { border-bottom-color: #0ea5e9; }'
+  end
+
+  # theme.color / appendix_color / preface_color を差し替えた Common::CONFIG 相当の Data を組む
+  def build_config(theme_color: 'yellow', appendix_color: nil, preface_color: nil)
+    Common::CONFIG.with(theme: Common::CONFIG.theme.with(color: theme_color, appendix_color:, preface_color:))
   end
 end

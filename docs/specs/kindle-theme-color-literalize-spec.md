@@ -50,6 +50,9 @@ Kindle(KFX) は **`var()`（CSS カスタムプロパティ）・`color-mix()`�
 | `chapter-common.css:532,533,547` | 引用等の罫・左罫 | `border-*` | color-mark |
 | `image-header.css:185` | 画像ヘッダーの章番号色 | `color` | section-number-color |
 | `simple-header.css:13` | simple ヘッダーの `--heading-accent` | （変数定義） | theme-accent（付録は appendix.css で appendix-accent 上書き） |
+| `preface.css:49` | 前書き/後書き h1 下線 | `border-block-end` | color-preface-accent（既存 vs-kindle 静的 `#4f46e5` 固定・非追従） |
+| `preface.css:70` | 前書き/後書き h2 左罫 | `border-inline-start` | color-preface-accent（Kindle で消失） |
+| `preface.css:122-130,178` | リンク色/罫・引用左罫 | `color`/`border-*` | color-preface-accent（Kindle で消失） |
 
 補足:
 - `image-header.css:185` は **PDF/クリーン EPUB 用**。image テーマの本文章は Kindle では見出しが**画像（JPEG）**になるため、この番号色は Kindle では出番がない（無害・対象外としてよい）。
@@ -100,6 +103,8 @@ Kindle(KFX) は **`var()`（CSS カスタムプロパティ）・`color-mix()`�
 
 **最適化**: 解決した `appendix-accent` リテラルが `theme-accent` リテラルと**等しい場合は、付録専用の上書き規則を出さない**（既定構成では両方 yellow=`#f0a000` なので等しく、規則数を減らせる）。
 
+- **前書き/後書き（preface.css）**は `--color-preface-accent`（= `theme.preface_color`）を使う。preface.css は前書き（`body.preface`）と後書き（`body.postface`＝postface.css が preface.css を import）だけに読み込まれるが、本仕様の生成 CSS は**全ページ共通**なので、preface 規則は必ず **`body.preface.vs-kindle` / `body.postface.vs-kindle`** でスコープする（裸の `h1`/`h2` を出すと本文章へ波及する）。**preface_color 未指定時はテーマ色へフォールバック**（`supplemental_color_declarations` が `--color-preface-accent` を `fallback: accent` で常時宣言するのと一致＝PDF と揃う。appendix の yellow 既定とは異なる）。preface 固有要素のため常に出す（base 規則では色が付かない）。
+
 ### 2.4 生成する `body.vs-kindle` 規則（焼き込む CSS）
 
 `BookSettingsCss` が `book-settings.css` の末尾に付す（`ACC` = theme-accent リテラル、`APX` = appendix-accent リテラル、`COLBG` = color-mix 結果）。**具体値のみ**・`:is()`/`var()`/`calc()`/`clamp()`/`color-mix` 禁止（`kindle-css-compatibility-notes.md` §6 チェックリスト遵守）。
@@ -145,6 +150,14 @@ body.appendix.vs-kindle .memo .vs-adm-label,
 body.appendix.vs-kindle .column .vs-adm-label,
 body.appendix.vs-kindle .notice .vs-adm-label,
 body.appendix.vs-kindle .note .vs-adm-label { color: APX; }
+
+/* 前書き/後書き（PREF = preface_color リテラル。preface.css を読む body.preface/body.postface に限定）。
+   物理プロパティで書く（KFX の border-inline-* 対応は疑わしい）。h1 下線は静的 #4f46e5 を色だけ上書き、
+   h2/引用の左罫・リンクは KFX で消えているので border ごと再定義する。 */
+body.preface.vs-kindle h1, body.postface.vs-kindle h1 { border-bottom-color: PREF; }
+body.preface.vs-kindle h2, body.postface.vs-kindle h2 { border-left: 3px solid PREF; }
+body.preface.vs-kindle blockquote, body.postface.vs-kindle blockquote { border-left: 3px solid PREF; }
+body.preface.vs-kindle a, body.postface.vs-kindle a { color: PREF; border-bottom: 1px dotted PREF; }
 ```
 
 実装時の必須事項（実コード調査 2026-07-20 で確定済み）:
