@@ -3,7 +3,7 @@
 > 作成日: 2026-06-21
 > ステータス: **知見メモ（恒久参照）**
 > 対象: Kindle ターゲット（`target=kindle`）の EPUB→KPF 変換で得られた、Kindle 表示エンジンの CSS/画像対応状況と回避策。
-> 関連: `epub-kindle-target-split-spec.md`（ターゲット分離）, `kindle-simple-header-svg-spec.md`（付録見出しの SVG 化・将来タスク）, `epub-code-line-numbers-spec.md`（コード行番号）, `stylesheets/`（各 `body.vs-kindle` フォールバック）, `lib/vivlio_starter/cli/build/epub_builder.rb`
+> 関連: `epub-kindle-target-split-spec.md`（ターゲット分離）, `kindle-simple-header-svg-spec.md`（付録見出しの SVG 化・実装したが却下）, `epub-code-line-numbers-spec.md`（コード行番号）, `stylesheets/`（各 `body.vs-kindle` フォールバック）, `lib/vivlio_starter/cli/build/epub_builder.rb`
 
 ---
 
@@ -70,7 +70,7 @@ Kindle は WebP を表示できない。`vs build` の画像最適化は WebP �
 |:---|:---|:---|
 | TIP/MEMO/COLUMN の枠線が出ず「TIP」ラベルが重複 | `:is()` でルール破棄＋`::before` ラベルが効かない | `body.vs-kindle` で明示セレクタ展開・`::before` 抑止・実体ラベル注入・具体色枠線（`chapter-common.css`） |
 | 節（節絵）がページ途中から始まる | modern `break-before` 非対応 | `article.vs-section-topic-epub` に `page-break-before: always` 併記（`components.css`） |
-| 付録（simple スタイル）の見出しが素テキスト化 | `var()`/`grid`/`clamp()`/`::before` 多用 | **付録の h1/h2 を simple ヘッダーのベクター合成画像へ置換**（Kindle のみ・`HeadingImageComposer#simple_frontispiece_svg`/`simple_ornament_svg`・`kindle-simple-header-svg-spec.md`）。合成不能時は従来の `body.vs-kindle` 具体値 CSS フォールバックへ縮退 |
+| 付録（simple スタイル）の見出しが素テキスト化 | `var()`/`grid`/`clamp()`/`::before` 多用 | `simple-header.css` に `body.vs-kindle` 具体値フォールバック（SVG 画像化を試したが却下・2026-07-20 revert） |
 | 用語集・後書き・索引の h1 下線が消える | テーマ装飾が var()/擬似要素依存 | `glossary.css`/`index.css`/`preface.css` に具体色の下線フォールバック |
 | book-card がグリッド崩れ | `display:grid` 非対応 | `body.vs-kindle .book-card { display:block }`（`components.css`） |
 | コードブロックが特定幅でクリップ消失（Apple Books） | リフロー文脈での折り返し未指定 | **クリーン EPUB 側**の `body.vs-epub pre[class*="language-"]{ white-space:pre-wrap; overflow:visible }`（`code.css`）。Kindle ではなく EPUB 共通マーカー側の対処 |
@@ -99,7 +99,7 @@ Kindle で CSS による装飾が信頼できない箇所は、**合成画像に
   - クリーン EPUB: `HeadingImageComposer.compose`（**SVG**。Kobo/Apple は SVG を解すので高品質・検索可）
   - Kindle: `HeadingImageComposer.render`（**JPEG ラスタライズ**。CSS 非依存で確実）
   - 出し分けは `heading_image_src(..., flavor:)`。ハッシュ鍵に `flavor` を含めキャッシュを分離。
-- 付録など simple スタイル見出しも同方式で画像化する（`simple_frontispiece_svg`/`simple_ornament_svg`＝背景画像なしのピュアベクターで枠・番号バッジを描き JPEG 化）。Kindle のみ・付録範囲（90–98）が対象で、クリーン EPUB は CSS のまま。詳細は `kindle-simple-header-svg-spec.md`。
+- 付録など simple スタイル見出しは CSS フォールバック（`simple-header.css` の `body.vs-kindle` 具体値）で表示する。同方式の SVG→JPEG 化を 2026-07-19 に一度実装したが「PDF ほど美しくならない」と判断され 2026-07-20 に revert（`kindle-simple-header-svg-spec.md`・再実装しない）。
 
 ### 5.3 クリーン EPUB を汚染しない（方式B）
 
@@ -137,5 +137,5 @@ Kindle 向けに CSS / 画像処理を追加・変更するときは:
 - `lib/vivlio_starter/cli/build/pipeline.rb` — スナップショット方式（方式B）とステップ登録。
 - `stylesheets/chapter-common.css` / `components.css` / `simple-header.css` / `glossary.css` / `index.css` / `preface.css` / `code.css` — `body.vs-kindle` / `body.vs-epub` フォールバック。
 - `docs/specs/epub-kindle-target-split-spec.md` — ターゲット分離の全体設計。
-- `docs/specs/kindle-simple-header-svg-spec.md` — 付録見出しの SVG 画像化（将来タスク）。
+- `docs/specs/kindle-simple-header-svg-spec.md` — 付録見出しの SVG 画像化（実装したが却下）。
 - `docs/archives/epub-code-line-numbers-spec.md` — コード行番号と Kindle テーブルの不具合（実装済み）。

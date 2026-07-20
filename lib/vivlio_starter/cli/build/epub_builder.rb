@@ -902,7 +902,6 @@ module VivlioStarter
             lead_font_family: epub_lead_font_family,
             lead_ratio: frontispiece_lead_ratio,
             number_color: theme[:number_color],
-            appendix_accent: theme[:appendix_accent],
             flavor:
           }
 
@@ -1009,24 +1008,11 @@ module VivlioStarter
           {
             frontispiece: resolve_theme_image_file(theme_image_rel(settings[:frontispiece_path])),
             ornament: resolve_theme_image_file(theme_image_rel(settings[:ornament_path])),
-            number_color: resolve_css_color(palette_css, settings[:theme_accent_value]),
-            appendix_accent: resolve_appendix_accent(palette_css, settings)
+            number_color: resolve_css_color(palette_css, settings[:theme_accent_value])
           }
         rescue StandardError => e
           Common.log_warn("[EPUB] テーマ設定の読み取りに失敗（扉絵の画像化をスキップ）: #{e.message}")
           nil
-        end
-
-        # 付録 simple ヘッダーのアクセント色（金/テーマ色）を具体色へ解決する。
-        # theme.appendix_color 未指定時は appendix.css 既定の var(--accent-yellow) 相当（テーマ accent）。
-        def resolve_appendix_accent(palette_css, settings)
-          raw = Common::CONFIG.theme.appendix_color
-          value = if raw.to_s.strip.empty?
-                    settings[:theme_accent_value] # 付録色未指定 → テーマ accent へフォールバック
-                  else
-                    PreProcessCommands::CssUpdater.normalize_color_value(raw, fallback: settings[:theme_accent_value])
-                  end
-          resolve_css_color(palette_css, value)
         end
 
         # テーマ画像の解決結果（素の相対パス or url(...) or 外部 URL）から
@@ -1135,14 +1121,10 @@ module VivlioStarter
           stack.join(', ')
         end
 
-        # 1 ファイルの見出しへ合成画像を注入する。
-        # 本文章（1..89）は扉絵/節絵（背景画像＋見出し）。付録（90..98）は Kindle のみ simple ヘッダーを
-        # ベクター合成する（KFX で崩れる simple-header.css の CSS 装飾を画像で確実に描く・
-        # kindle-simple-header-svg-spec.md）。付録の simple 化はクリーン EPUB では行わない
-        # （Kobo/Apple は CSS を解すため CSS 装飾のままが再流動・検索に有利）。前付/後付は対象外。
+        # 1 ファイルの h1（扉絵）・h2（節絵）へ合成画像を注入する。
+        # 本文章（番号 1..89）のみが対象。付録・前付・後付は simple 版とする（§B-4・PDF と整合）。
         def inject_heading_images_into_file!(path, context)
-          simple_appendix = appendix_chapter_file?(path) && context[:flavor] == :kindle
-          return unless main_chapter_file?(path) || simple_appendix
+          return unless main_chapter_file?(path)
 
           # 合成画像は HTML と同じ消費者 dir 配下（images/headings/）へ生成する（P4 §5.2-b）
           context = context.merge(base_dir: File.dirname(path))
@@ -1151,19 +1133,14 @@ module VivlioStarter
           doc = PostProcessCommands::HtmlParser.parse_html_document(html)
 
           changed = false
-          if simple_appendix
-            changed |= inject_simple_frontispiece_headings!(doc, context)
-            changed |= inject_simple_ornament_headings!(doc, context)
-          else
-            changed |= inject_frontispiece_headings!(doc, context)
-            changed |= inject_ornament_headings!(doc, context)
-          end
+          changed |= inject_frontispiece_headings!(doc, context)
+          changed |= inject_ornament_headings!(doc, context)
           return unless changed
 
           PostProcessCommands::HtmlParser.save_html_document(path, doc)
-          Common.log_info("[EPUB] #{File.basename(path)} に見出しの合成画像を注入しました")
+          Common.log_info("[EPUB] #{File.basename(path)} に扉絵/節絵の合成画像を注入しました")
         rescue StandardError => e
-          Common.log_warn("[EPUB] #{File.basename(path)} の見出し注入に失敗（simple 縮退）: #{e.message}")
+          Common.log_warn("[EPUB] #{File.basename(path)} の扉絵注入に失敗（simple 縮退）: #{e.message}")
         end
 
         # 本文章（ファイル名の番号が 1..89）か。付録(90-98)・前付(00)・後付(99)・
@@ -1171,12 +1148,6 @@ module VivlioStarter
         def main_chapter_file?(path)
           base = File.basename(path)
           (m = base.match(/\A(\d{2})-/)) ? PdfBuilder::MAIN_RANGE.include?(m[1].to_i) : false
-        end
-
-        # 付録（ファイル名の番号が 90..98）か。付録は theme.style によらず常に simple ヘッダー。
-        def appendix_chapter_file?(path)
-          base = File.basename(path)
-          (m = base.match(/\A(\d{2})-/)) ? PdfBuilder::APPX_RANGE.include?(m[1].to_i) : false
         end
 
         # 章扉（data-chapter-number-display を持つ h1）へファクシミリ合成画像を注入する。
@@ -1276,57 +1247,6 @@ module VivlioStarter
           changed
         end
 
-        # 付録の章見出し（h1）へ simple ヘッダーのベクター合成画像を注入する（Kindle のみ）。
-        # facsimile とは違いリードは焼き込まない・除去しない——simple ヘッダーはコンパクトな
-        # 見出しバナーで、付録の chapter-lead は実テキストのままバナーの後ろへ流す（仕様 §2）。
-        # 冪等ガード（vs-image-heading-epub）は本文章の注入と共用する。
-        def inject_simple_frontispiece_headings!(doc, context)
-          changed = false
-          doc.css('h1').each do |h1|
-            next if h1['class'].to_s.split.include?('vs-image-heading-epub')
-
-            number = h1['data-chapter-number-display'].to_s.strip
-            title  = h1['data-chapter-title'].to_s.strip
-            next if number.empty? && title.empty?
-
-            src = heading_image_src(
-              image_path: nil, number:, title:, kind: :simple_frontispiece,
-              font_family: context[:font_family], accent_color: context[:appendix_accent],
-              flavor: context[:flavor], base_dir: context[:base_dir]
-            )
-            next unless src
-
-            apply_image_heading!(h1, src, [number, title], doc)
-            changed = true
-          end
-          changed
-        end
-
-        # 付録の節見出し（article.section-topic 直下の h2）へ simple ヘッダーのベクター合成画像を
-        # 注入する（Kindle のみ）。
-        def inject_simple_ornament_headings!(doc, context)
-          changed = false
-          doc.css('article.section-topic > h2').each do |h2|
-            next if h2['class'].to_s.split.include?('vs-image-heading-epub')
-
-            number = h2['data-section-number-display'].to_s.strip
-            title  = h2['data-section-title'].to_s.strip
-            next if number.empty? && title.empty?
-
-            src = heading_image_src(
-              image_path: nil, number:, title:, kind: :simple_ornament,
-              font_family: context[:font_family], accent_color: context[:appendix_accent],
-              flavor: context[:flavor], base_dir: context[:base_dir]
-            )
-            next unless src
-
-            apply_image_heading!(h2, src, [number, title], doc)
-            mark_section_topic_for_epub!(h2)
-            changed = true
-          end
-          changed
-        end
-
         # 見出し要素の中身を合成画像 <img> へ置換する。
         # 目次（nav）は各章 HTML の <title> から生成され h1 テキストに依存しないため、
         # 見出しテキストは <img alt> に格納する（読み上げ・検索・画像非表示時のフォールバック）。
@@ -1359,13 +1279,13 @@ module VivlioStarter
         # ツール不在・合成失敗時は nil（→ simple 縮退）。
         def heading_image_src(image_path:, number:, title:, kind:, font_family:,
                               lead: '', lead_font_family: nil, lead_ratio: 0.60,
-                              accent_color: nil, number_color: '#333333', flavor: :epub, base_dir: '.')
+                              number_color: '#333333', flavor: :epub, base_dir: '.')
           # LAYOUT_VERSION ソルトでレイアウト刷新（帯切り出し→全高＋リード焼き込み）を鍵に反映する——
           # image_path/番号/タイトルが同じでもレイアウトが変わるため、--no-clean 時に残る旧画像を
-          # 掴む事故を防ぐ（§4.4）。lead / lead_ratio / accent_color も鍵に含め差異を取りこぼさない。
+          # 掴む事故を防ぐ（§4.4）。lead / lead_ratio も鍵に含めリードの差異を取りこぼさない。
           key = Digest::SHA256.hexdigest(
             [HeadingImageComposer::LAYOUT_VERSION, flavor, kind, image_path,
-             number, title, lead, lead_ratio, accent_color, font_family, lead_font_family, number_color].join('|')
+             number, title, lead, lead_ratio, font_family, lead_font_family, number_color].join('|')
           )[0, 16]
           dir = File.join(base_dir, Common.images_dir, HEADINGS_REL_SUBDIR)
           filename = "#{kind}-#{key}.#{flavor == :kindle ? 'jpg' : 'svg'}"
@@ -1374,10 +1294,10 @@ module VivlioStarter
           unless File.exist?(abs)
             data = if flavor == :kindle
                      HeadingImageComposer.render(image_path:, number:, title:, kind:, font_family:,
-                                                 lead:, lead_font_family:, lead_ratio:, accent_color:, number_color:)
+                                                 lead:, lead_font_family:, lead_ratio:, number_color:)
                    else
                      HeadingImageComposer.compose(image_path:, number:, title:, kind:, font_family:,
-                                                  lead:, lead_font_family:, lead_ratio:, accent_color:, number_color:)
+                                                  lead:, lead_font_family:, lead_ratio:, number_color:)
                    end
             return nil unless data
 

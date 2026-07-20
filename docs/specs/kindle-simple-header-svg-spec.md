@@ -1,7 +1,7 @@
-# Kindle 向け simple ヘッダーの SVG 画像化 仕様
+# Kindle 向け simple ヘッダーの SVG 画像化 仕様（実装したが却下）
 
 > 作成日: 2026-06-20
-> ステータス: **実装完了・実機確認待ち（2026-07-19 実装）**。付録（90–98）の h1/h2 を Kindle でベクター合成画像化。rake test 全 1813 件・rubocop クリーン。実付録 HTML（96-sample）で h1×1＋h2×11 の JPEG 生成・chapter-lead 保持・article グリッド解除を確認。残: Kindle Previewer 3 実機確認。スコープは image テーマ本の付録のみ（simple テーマ本の全章 SVG 化は §6 の未決事項として見送り）。
+> ステータス: **一度実装したが 2026-07-20 に revert（不採用）**。2026-07-19 に付録の h1/h2 をベクター合成画像化（commit 4b26786f）したが、**ユーザー確認で「PDF 版ほど美しくならない」と判断され取りやめ**（revert 済み）。付録の Kindle 見出しは従来どおり `simple-header.css` の `body.vs-kindle` 具体値 CSS フォールバックで表示する。**再実装しないこと**（同じベクター合成方式は見た目の品質が CSS フォールバックと大差なく、労力に見合わない）。方式を根本から変える新案が出たときのみ再検討する。
 > 対象: Kindle（`target=kindle`）における **付録など simple スタイルの章/節見出し**の装飾。
 > 関連: `epub-kindle-target-split-spec.md`（ターゲット分離）, `math-frontispiece-svg-spec.md`（本文の扉絵/節絵 SVG→JPEG 化・③-a）, `epub-frontispiece-facsimile-spec.md`（本文章 h1 のファクシミリ化・2026-07-19。本仕様の実装はこちらの変更後インフラに追随する）, `stylesheets/simple-header.css`
 
