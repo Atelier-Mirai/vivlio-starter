@@ -228,18 +228,85 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
     --folio-center-content --folio-left-content --folio-right-content
   ].freeze
 
-  THEME_VARS = %w[
+  # 両 style で必ず宣言される公開変数（--frontispiece-image / --section-bg-image は
+  # simple では値が none になるが宣言自体は出る）。image 固有の --frontispiece-padding は除く。
+  THEME_VARS_COMMON = %w[
     --theme-accent --color-strong --color-em-underline
-    --frontispiece-image --section-bg-image --frontispiece-padding
+    --frontispiece-image --section-bg-image
     --color-preface-accent --h3-marker --h4-marker
   ].freeze
 
+  # live book.yml の theme.style（image/simple どちらで作業中でも）に依存せず通るようにする。
+  # image 固有の --frontispiece-padding は style で条件分岐して検証する。
   def test_should_render_all_public_interface_variables_and_page_size
     css = BSC.render(Common::CONFIG)
 
-    (PAGE_VARS + THEME_VARS).each do |var|
+    (PAGE_VARS + THEME_VARS_COMMON).each do |var|
       assert_includes css, "#{var}:", "生成 CSS に #{var} が含まれること"
     end
+    if Common::CONFIG.theme.style == 'image'
+      assert_includes css, '--frontispiece-padding:', 'image では扉余白を宣言する'
+    else
+      assert_includes css, '--frontispiece-image: none;', 'simple では画像を none 宣言する'
+      refute_includes css, '--frontispiece-padding:', 'simple では扉余白を宣言しない'
+    end
     assert_match(/@page \{ size: \d+mm \d+mm; \}/, css)
+  end
+
+  # Kindle 用テーマ色リテラル: body.vs-kindle 規則がリテラル hex で焼かれ、var()/color-mix を含まない
+  def test_should_bake_kindle_accent_literals
+    settings_yellow = build_config(theme_color: 'yellow')
+    css = BSC.render(settings_yellow)
+
+    assert_includes css, 'body.vs-kindle strong { color: #f0a000; }'
+    assert_includes css, 'body.vs-header-simple.vs-kindle h1 { border-color: #f0a000; }'
+    assert_includes css, 'body.vs-kindle .column { border-color: #f0a000; background: #fdf1d9; }'
+    # vs-kindle 規則の実行部分に var()/color-mix() が漏れていない
+    kindle_lines = css.lines.grep(/vs-kindle/).grep_v(%r{/\*})
+    assert(kindle_lines.none? { it.include?('var(') }, 'Kindle 規則に var() を残さない')
+    assert(kindle_lines.none? { it.include?('color-mix(') }, 'Kindle 規則に color-mix() を残さない')
+  end
+
+  # テーマ色を変えると Kindle アクセントが追従する（固定でない）。付録色も揃えれば yellow は消える。
+  def test_should_follow_theme_color_in_kindle_accent
+    css = BSC.render(build_config(theme_color: 'blue', appendix_color: 'blue'))
+
+    assert_includes css, 'body.vs-kindle strong { color: #0ea5e9; }'
+    assert_includes css, 'body.vs-header-simple.vs-kindle h1 { border-color: #0ea5e9; }'
+    refute_includes css, '#f0a000', '全て blue に追従し、既定の yellow は焼かれない'
+  end
+
+  # 付録色未指定のときは appendix.css の静的既定（yellow）に合わせる（PDF の実カスケードと一致）
+  def test_should_default_unset_appendix_accent_to_yellow
+    css = BSC.render(build_config(theme_color: 'blue', appendix_color: nil))
+
+    assert_includes css, 'body.appendix.vs-header-simple.vs-kindle h1 { border-color: #f0a000; }',
+                    '付録は未指定なら yellow（PDF と同じ）'
+    assert_includes css, 'body.vs-header-simple.vs-kindle h1 { border-color: #0ea5e9; }', '本文は theme 色'
+  end
+
+  # appendix_color がテーマ色と異なるときだけ付録専用（body.appendix）規則を出す
+  def test_should_emit_appendix_override_only_when_distinct
+    same = BSC.render(build_config(theme_color: 'yellow', appendix_color: 'yellow'))
+    refute_includes same, 'body.appendix.vs-header-simple.vs-kindle h1', '同色なら付録規則は出さない'
+
+    distinct = BSC.render(build_config(theme_color: 'blue', appendix_color: 'red'))
+    assert_includes distinct, 'body.appendix.vs-header-simple.vs-kindle h1 { border-color: #dc2626; }'
+    assert_includes distinct, 'body.vs-header-simple.vs-kindle h1 { border-color: #0ea5e9; }', '本文側は theme 色のまま'
+  end
+
+  # クリーン EPUB 非汚染: 生成した accent 規則はすべて body.vs-kindle 前置
+  def test_should_scope_all_accent_rules_to_vs_kindle
+    css = BSC.render(build_config(theme_color: 'blue', appendix_color: 'red'))
+
+    accent_rules = css.lines.select { it.match?(/\{[^}]*(?:border-color|text-decoration-color|section-number|chapter-number|\bcolor:)/) }
+                      .grep_v(%r{/\*}).grep_v(/^\s*--/) # コメントと :root の変数宣言を除く
+    refute_empty accent_rules
+    assert(accent_rules.all? { it.include?('vs-kindle') }, '裸の accent 規則を book-settings.css に出さない')
+  end
+
+  # theme.color / appendix_color を差し替えた Common::CONFIG 相当の Data を組む
+  def build_config(theme_color: 'yellow', appendix_color: nil)
+    Common::CONFIG.with(theme: Common::CONFIG.theme.with(color: theme_color, appendix_color:))
   end
 end

@@ -5,6 +5,7 @@ require 'fileutils'
 require_relative 'emoji_replacer'
 require_relative 'variable_font_injector'
 require_relative '../common'
+require_relative '../theme_color'
 require_relative '../resize'
 
 module VivlioStarter
@@ -87,12 +88,6 @@ module VivlioStarter
         }.freeze
         CIRCLED_NUMBER_REGEX = Regexp.union(CIRCLED_NUMBER_TEXT.keys)
         GENERATED_ASSET_DIR = File.join('stylesheets', 'twemoji', 'vs-techbook')
-        THEME_COLOR_HEX = {
-          'yellow' => '#f0a000', 'orange' => '#ea580c', 'red' => '#dc2626',
-          'magenta' => '#e11d48', 'purple' => '#7c3aed', 'indigo' => '#4f46e5',
-          'navy' => '#1e40af', 'blue' => '#0ea5e9', 'cyan' => '#06b6d4',
-          'teal' => '#0d9488', 'green' => '#16a34a', 'lime' => '#65a30d'
-        }.freeze
 
         def replace_circled_numbers(html)
           replace_text_segments(html) do |text|
@@ -154,15 +149,8 @@ module VivlioStarter
           Common.log_warn("[Techbook] 画像化アセットの生成に失敗しました: #{e.message}")
         end
 
-        def theme_color_hex
-          raw = @config.dig(:theme, :color).to_s.strip.downcase
-          return '#f0a000' if raw.empty?
-          return raw if raw.match?(/\A#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})\z/i)
-          return "##{raw}" if raw.match?(/\A(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})\z/i)
-          return "##{raw.delete_prefix('0x')}" if raw.match?(/\A0x(?:[0-9a-f]{6}|[0-9a-f]{8})\z/i)
-
-          THEME_COLOR_HEX.fetch(raw, '#f0a000')
-        end
+        # theme.color を hex へ解決する（パレット・解決規則は ThemeColor に一元化）。未解決は既定色。
+        def theme_color_hex = ThemeColor.resolve(@config.dig(:theme, :color)) || ThemeColor::DEFAULT
 
         def marker_codepoint(char)
           char.codepoints

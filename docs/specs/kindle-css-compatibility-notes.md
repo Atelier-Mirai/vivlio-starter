@@ -70,7 +70,8 @@ Kindle は WebP を表示できない。`vs build` の画像最適化は WebP �
 |:---|:---|:---|
 | TIP/MEMO/COLUMN の枠線が出ず「TIP」ラベルが重複 | `:is()` でルール破棄＋`::before` ラベルが効かない | `body.vs-kindle` で明示セレクタ展開・`::before` 抑止・実体ラベル注入・具体色枠線（`chapter-common.css`） |
 | 節（節絵）がページ途中から始まる | modern `break-before` 非対応 | `article.vs-section-topic-epub` に `page-break-before: always` 併記（`components.css`） |
-| 付録（simple スタイル）の見出しが素テキスト化 | `var()`/`grid`/`clamp()`/`::before` 多用 | `simple-header.css` に `body.vs-kindle` 具体値フォールバック（SVG 画像化を試したが却下・2026-07-20 revert） |
+| 付録（simple スタイル）の見出しが素テキスト化 | `var()`/`grid`/`clamp()`/`::before` 多用 | `simple-header.css` に `body.vs-kindle` 具体値フォールバック（SVG 画像化を試したが却下・2026-07-20 revert）。枠色は下記のテーマ色リテラル焼き込みでテーマ追従化 |
+| 本文アクセント（strong 太字・強調下線・見出しマーカー・コラム/注記枠）がテーマ色にならない | すべて `var(--theme-accent)`/`color-mix()` 依存。KFX で解決されず、strong 等は**黒**、枠は静的フォールバックの**グレー #888**、付録見出しは**くすんだ金 #b8860b** に劣化 | **テーマ色をリテラル hex へ解決し、最後に読まれる `book-settings.css` に `body.vs-kindle` 規則として焼き込む**（`ThemeColor`＋`BookSettingsCss#kindle_accent_rules`）。静的フォールバックを後勝ちで上書き。`theme.color` に追従（`kindle-theme-color-literalize-spec.md`） |
 | 用語集・後書き・索引の h1 下線が消える | テーマ装飾が var()/擬似要素依存 | `glossary.css`/`index.css`/`preface.css` に具体色の下線フォールバック |
 | book-card がグリッド崩れ | `display:grid` 非対応 | `body.vs-kindle .book-card { display:block }`（`components.css`） |
 | コードブロックが特定幅でクリップ消失（Apple Books） | リフロー文脈での折り返し未指定 | **クリーン EPUB 側**の `body.vs-epub pre[class*="language-"]{ white-space:pre-wrap; overflow:visible }`（`code.css`）。Kindle ではなく EPUB 共通マーカー側の対処 |
@@ -90,6 +91,7 @@ Kindle は WebP を表示できない。`vs build` の画像最適化は WebP �
 - CSS 編集時の原則:
   - クリーン EPUB/PDF 向けの装飾は従来どおり（`:is()`/`var()` 等を使ってよい）。
   - Kindle 向け調整は **`body.vs-kindle` セレクタ配下に、§2 の禁止機能を避けた具体値で**追記する。
+- **テーマ色は「静的 CSS」でなく「生成 CSS」でリテラル化する**: テーマ色は book.yml 依存でビルドごとに変わるため、`body.vs-kindle` フォールバックに固定色を直書きすると**テーマに追従しない**（実際 `#b8860b`/`#888` がこの罠だった）。`BookSettingsCss#kindle_accent_rules` が、最後に読まれる生成 CSS `book-settings.css` へ**テーマ色を `ThemeColor` でリテラル hex 解決**して `body.vs-kindle` 規則を焼き、静的フォールバックを後勝ちで上書きする。KFX 非対応の `color-mix()` は `ThemeColor.mix_with_white` で事前計算する（`kindle-theme-color-literalize-spec.md`）。
 
 ### 5.2 「CSS で無理なら画像」戦略
 

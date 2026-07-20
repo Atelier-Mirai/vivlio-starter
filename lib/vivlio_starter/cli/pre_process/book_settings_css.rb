@@ -33,6 +33,7 @@
 require 'fileutils'
 require_relative '../common'
 require_relative '../font_manager'
+require_relative '../theme_color'
 require_relative '../build/vivliostyle_config_writer'
 require_relative 'css_updater'
 require_relative 'frontmatter_generator'
@@ -95,6 +96,7 @@ module VivlioStarter
             :root {
             #{root_lines.map { "  #{it}" }.join("\n")}
             }
+            #{kindle_accent_rules(cfg)}
           CSS
         end
 
@@ -199,6 +201,80 @@ module VivlioStarter
           return '' if offset.empty? || offset == '0mm'
 
           "@page :nth(1) { background-position: calc(50% + #{offset}) center; }"
+        end
+
+        # ================================================================
+        # Kindle 用テーマ色リテラル（kindle-theme-color-literalize-spec.md）
+        # ================================================================
+        # KFX は var()/color-mix()/calc() を解さないため、テーマ色で塗った本文アクセント
+        # （strong・下線・見出しマーカー・コラム/注記枠・付録見出し）が Kindle では黒/グレー/
+        # くすんだ金へ劣化する。book-settings.css は最後に読まれるので、ここへテーマ色を
+        # リテラル hex で焼いた body.vs-kindle 規則を出せば、静的な #888/#b8860b フォールバックを
+        # 後勝ちで上書きできる。body.vs-kindle 前置のためクリーン EPUB では不発（無害）。
+        def kindle_accent_rules(cfg)
+          theme_cfg = cfg.theme
+          acc = ThemeColor.to_hex6(theme_cfg.color)
+          colbg = ThemeColor.mix_with_white(acc, 0.15)
+          apx = appendix_accent_hex6(theme_cfg, acc)
+
+          # 付録色がテーマ色と同一なら付録専用の上書きは不要（既定構成は両方 yellow）。
+          lines = base_kindle_accent_rules(acc, colbg)
+          lines += appendix_kindle_accent_rules(apx) unless apx == acc
+
+          <<~CSS.chomp
+            /* Kindle 用テーマ色リテラル（KFX は var()/color-mix 非対応・最後に読まれ静的フォールバックを上書き） */
+            #{lines.join("\n")}
+          CSS
+        end
+
+        # 付録アクセントのリテラル hex。appendix_color 未指定時は appendix.css の静的既定
+        # （--appendix-accent-color: var(--accent-yellow)）に合わせて yellow を返す——PDF/クリーン
+        # EPUB の実カスケードと一致させるため（theme.color にはフォールバックしない）。
+        def appendix_accent_hex6(theme_cfg, theme_hex)
+          raw = theme_cfg.appendix_color
+          return ThemeColor::DEFAULT if raw.to_s.strip.empty?
+
+          ThemeColor.to_hex6(raw, fallback: theme_hex)
+        end
+
+        # 本文・見出しのアクセント規則（テーマ色 ACC / コラム地色 COLBG）。theme.style によらず共通。
+        def base_kindle_accent_rules(acc, colbg)
+          [
+            "body.vs-kindle strong { color: #{acc}; }",
+            "body.vs-kindle em { text-decoration-color: #{acc}; }",
+            "body.vs-kindle .subsection-marker { color: #{acc}; }",
+            "body.vs-kindle .column { border-color: #{acc}; background: #{colbg}; }",
+            "body.vs-kindle .tip { border-color: #{acc}; }",
+            "body.vs-kindle .memo { border-color: #{acc}; }",
+            "body.vs-kindle .note { border-color: #{acc}; }",
+            "body.vs-kindle .notice { border-color: #{acc}; }",
+            adm_label_rule('body.vs-kindle', acc),
+            "body.vs-header-simple.vs-kindle h1 { border-color: #{acc}; }",
+            "body.vs-header-simple.vs-kindle h1 .chapter-number { color: #{acc}; }",
+            "body.vs-header-simple.vs-kindle h2 { border-color: #{acc}; border-left-color: #{acc}; }",
+            "body.vs-header-simple.vs-kindle h2 .section-number { background: #{acc}; }"
+          ]
+        end
+
+        # 付録は appendix.css が --heading-accent / --color-mark を appendix-accent へ差し替えるため、
+        # 見出し・h3 マーカー・ラベルを APX で上書きする（strong/枠は theme-accent のままで base が担う）。
+        # .appendix が 1 つ多く特異度で勝つ。
+        def appendix_kindle_accent_rules(apx)
+          [
+            "body.appendix.vs-header-simple.vs-kindle h1 { border-color: #{apx}; }",
+            "body.appendix.vs-header-simple.vs-kindle h1 .chapter-number { color: #{apx}; }",
+            "body.appendix.vs-header-simple.vs-kindle h2 { border-color: #{apx}; border-left-color: #{apx}; }",
+            "body.appendix.vs-header-simple.vs-kindle h2 .section-number { background: #{apx}; }",
+            "body.appendix.vs-kindle .subsection-marker { color: #{apx}; }",
+            adm_label_rule('body.appendix.vs-kindle', apx)
+          ]
+        end
+
+        # 実体ラベル【TIP】等（Kindle は ::before を content:none で抑止し vs-adm-label を注入・既定 #444）。
+        # .terminal は白ラベル override が特異度で勝つため、.output は PDF にラベル無しのため、含めない。
+        def adm_label_rule(prefix, color)
+          %w[tip memo column notice note]
+            .map { "#{prefix} .#{it} .vs-adm-label" }.join(', ') + " { color: #{color}; }"
         end
 
         # ================================================================
