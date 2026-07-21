@@ -273,3 +273,11 @@ end
 - [ ] クリーン EPUB 無変化（規則は全て `body.vs-kindle` 前置）
 - [ ] `book_settings_css_test` が live book.yml の `style` に依存せず、image / simple 両方を統制 config で検証
 - [ ] rake test / rubocop クリーン、CHANGELOG / STATUS / kindle-css-compatibility-notes を更新
+
+---
+
+## 10. 状態（アーカイブ時点・2026-07-20 追記）
+
+実装完了・実機確認待ち（2026-07-20 実装）。`ThemeColor` 新設（色名/hex→リテラル hex・color-mix 事前計算・注入耐性）＋`BookSettingsCss#kindle_accent_rules`。`techbook` の色決定も `ThemeColor` へ一元化（挙動不変）。**本文・付録・前書き/後書き（preface_color）すべて対応**。rake test 全 1819 件・rubocop クリーン。生成 CSS に `var(`/`color-mix(` が漏れないこと・theme/appendix/preface 各色の追従・クリーン EPUB 非汚染をテストで確認。付録色未指定は yellow 既定、前書き色未指定はテーマ色（どちらも PDF の実カスケードと一致）。
+
+**次のアクション**: 実機確認（`vs build --target=kindle` → Kindle Previewer 3 で strong・枠・付録見出し・前書き下線がテーマ色で出ること／各色設定の変更で追従すること）。

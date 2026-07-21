@@ -465,3 +465,11 @@ ImageGenerator / ThemeImageResolver は**無変更**（本方式は PDF と同�
 - [ ] `LAYOUT_VERSION`・リード本文がキャッシュキーに入っている
 - [ ] 冪等ガード（`vs-image-heading-epub` スキップ）がある
 - [ ] rake test / rubocop クリーン、§8-4 の見た目（モック同等）を実機確認済み
+
+---
+
+## 11. 状態（アーカイブ時点・2026-07-20 追記）
+
+実装完了・実機確認待ち（2026-07-19 実装）。rake test 全 1796 件・rubocop クリーン。実 `compose` 経路の出力がモックと一致することと、実 CONFIG を通した注入経路（chapter-lead 除去・裾帯なし・全高 viewBox・alt へリード）を確認済み。
+
+**次のアクション**: 実機確認（`vs build` で EPUB/Kindle を実出力し、章扉が 1 ページに収まること・次ページに桜が単独出現しないことを Kindle Previewer 3 と実機で確認。※本環境は Node 26 で vivliostyle が展開ハングするためフルビルド未実施）。

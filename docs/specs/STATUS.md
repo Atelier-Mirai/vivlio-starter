@@ -9,26 +9,6 @@
 
 ## 一覧
 
-`epub-frontispiece-facsimile-spec.md`
-: EPUB/Kindle 章扉の「右下の桜が次ページへ落ちる」問題（実測 `epub_chapter.png` / `kindle_chapter.png`）の根治仕様。縦長章扉（左上桜→中央 chapter-lead→右下桜）はユーザー確定の意匠であり、リード文まで portrait 1 枚に焼き込むファクシミリ合成＋HTML 側 chapter-lead 除去で、リフローでも千切れない完全な章扉ページを実現する。62% 上下分割（`frontispiece_tail`）は全廃。期待見た目は `epub_chapter_facsimile_mock.png`（実レンダリング検証済み）。1:1 square 案は 2026-07-19 に棄却済み（再提案禁止）。
-  状態: 実装完了・実機確認待ち（2026-07-19 実装）。rake test 全 1796 件・rubocop クリーン。実 `compose` 経路の出力がモックと一致することと、実 CONFIG を通した注入経路（chapter-lead 除去・裾帯なし・全高 viewBox・alt へリード）を確認済み。
-  次のアクション: 実機確認（`vs build` で EPUB/Kindle を実出力し、章扉が 1 ページに収まること・次ページに桜が単独出現しないことを Kindle Previewer 3 と実機で確認。※本環境は Node 26 で vivliostyle が展開ハングするためフルビルド未実施）。確認後に本行を削除し仕様書を `docs/archives/` へ移動。
-
-`kindle-inline-math-textify-spec.md`
-: Kindle 限定でインライン数式を SVG 画像でなくテキスト（`<sup>`/`<sub>`＋Unicode 記号）へ劣化変換し、フォントサイズ変更への追従不全を根治する仕様。KNOWN_ISSUES.md の数式サイズ不安定 2 件に対応。
-  状態: 実装完了・実機確認待ち（2026-07-19 実装）。`MathTextRenderer` 新設＋`textify_simple_math_for_kindle!` を Kindle 専用フェーズへ組込。rake test 全 1808 件・rubocop クリーン。原稿の現行インライン数式 26 種が 100% テキスト化可能を実測。KNOWN_ISSUES 2 件は複雑式のみの制限へ縮小して更新済み。
-  次のアクション: 実機確認（`vs build --target=kindle` → Kindle Previewer 3 で 94-sample のフォントサイズを最小⇔最大に振り数式が本文追従することを確認）。確認後に本行を削除し仕様書を `docs/archives/` へ移動。
-
-`kindle-theme-color-literalize-spec.md`
-: Kindle でテーマのアクセント色が出ない問題の根治（＋book-settings テスト脆弱性の修正）。KFX は `var()`/`color-mix` を解さないため、本文の太字・下線・マーカー・コラム枠・付録見出しのアクセント色が黒/グレー/くすんだ金へ劣化していた。ビルド時にテーマ色をリテラル hex へ解決し、最後に読まれる `book-settings.css` に `body.vs-kindle` 規則として焼き込んで静的フォールバックを上書きする。image/simple 両テーマ・本文/付録の両方に対応。別件で `book_settings_css_test` の style:simple 落ちも条件化で修正。
-  状態: 実装完了・実機確認待ち（2026-07-20 実装）。`ThemeColor` 新設（色名/hex→リテラル hex・color-mix 事前計算・注入耐性）＋`BookSettingsCss#kindle_accent_rules`。`techbook` の色決定も `ThemeColor` へ一元化（挙動不変）。**本文・付録・前書き/後書き（preface_color）すべて対応**。rake test 全 1819 件・rubocop クリーン。生成 CSS に `var(`/`color-mix(` が漏れないこと・theme/appendix/preface 各色の追従・クリーン EPUB 非汚染をテストで確認。付録色未指定は yellow 既定、前書き色未指定はテーマ色（どちらも PDF の実カスケードと一致）。
-  次のアクション: 実機確認（`vs build --target=kindle` → Kindle Previewer 3 で strong・枠・付録見出し・前書き下線がテーマ色で出ること／各色設定の変更で追従すること）。確認後に本行を削除し仕様書を `docs/archives/` へ移動。
-
-`kindle-simple-header-svg-spec.md`
-: Kindle 向け simple ヘッダー（付録見出し）を SVG 画像化する仕様。
-  状態: **実装したが却下（2026-07-20 revert）**。2026-07-19 に実装（commit 4b26786f）したが、ユーザー確認で「PDF 版ほど美しくならない」と判断され取りやめ。付録の Kindle 見出しは `simple-header.css` の CSS フォールバックのまま（色は `kindle-theme-color-literalize-spec.md` でテーマ色へ改善する）。
-  次のアクション: なし（再実装しない。方式を根本から変える新案が出たときのみ再検討）。
-
 `direct-build-spec.md`
 : PLANNED.md「設定ファイルを経由しない直接ビルドコマンド」の仕様。`vs build myawesome.md --theme blue` のように `book.yml` / `catalog.yml` を介さず単一 Markdown を PDF 化する。一時ワークスペースに最小プロジェクトを組み立て既存 `:single` パイプラインを chdir 流用する案（案A）を採る。
   状態: 提案仕様・未着手（2026-07-12 策定）
