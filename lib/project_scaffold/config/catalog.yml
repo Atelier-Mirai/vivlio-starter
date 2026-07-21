@@ -39,13 +39,13 @@ CHAPTERS:
 
 # 付録
 APPENDICES:
-  - 90-cheatsheet
-  - 91-install
-  - 92-pdf-read
-  - 93-import
-  - 94-sample
+  - 90-notation-cheatsheet
+  - 91-command-cheatsheet
+  - 92-install
+  - 93-pdf-read
+  - 94-import
   - 95-further-inspiration
-  - 96-command-cheatsheet
+  - 96-sample
 
 # あとがき
 POSTFACE:

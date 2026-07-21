@@ -67,6 +67,7 @@ Markdown は、ジョン・グルーバー（John Gruber）とアーロン・ス
 
 Markdown には長らく公式の標準がなく、実装ごとに解釈が揺れていました。その揺れを厳密に定義し直した **CommonMark** が、今日の共通の土台です。主要なフレーバーは、この CommonMark を基準に位置づけられます。
 
+
 ```mermaid
 graph TD
   MD["Markdown<br/>（2004・Gruber）<br/>＝ 曖昧な共通の祖先"]
@@ -79,6 +80,7 @@ graph TD
   CM --> GFM
   CM --> VFM
 ```
+
 
 - **CommonMark**: 実装間の揺れをなくした厳密な標準仕様（すべての土台）
 - **GFM**（GitHub Flavored Markdown）: CommonMark にテーブル・タスクリスト・打ち消し線などを加えた拡張。最も広く使われている
