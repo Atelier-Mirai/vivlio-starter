@@ -77,6 +77,17 @@ vs build  10-awesome        # その章だけ素早くビルドして確認
 
 すべての章を書き終わったら `vs build` で全体をビルドすれば、表紙・目次・索引・奥付まで揃った本が完成します。
 
+### Markdown 1 枚をそのまま PDF に
+
+プロジェクトを作らずに、手元の Markdown を 1 枚だけ組版することもできます。
+
+```bash
+vs build myawesome.md                  # カレントディレクトリに myawesome.pdf を生成
+vs build ~/notes/idea.md --theme blue  # テーマカラーを指定
+```
+
+`book.yml` も `catalog.yml` も使わない軽量経路です。出力は閲覧用 PDF のみ・装飾は画像なし（simple）固定で、コードインクルードやクロスリファレンス、索引・用語集は使えません。
+
 ## ディレクトリ構成
 
 ```

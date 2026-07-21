@@ -22,6 +22,39 @@ module VivlioStarter
 
           assert_equal false, command.options[:clean], '--no-clean 指定時は options[:clean] が false になるはずです'
         end
+
+        # Samovar は `--opt=value` を解さないため、初期化時に `--opt value` へ開いている
+        def test_should_accept_equals_separated_option_values
+          assert_equal 'blue', BuildCommand.new(['x.md', '--theme=blue']).options[:theme]
+          assert_equal '#e91e63', BuildCommand.new(['x.md', '--theme=#e91e63']).options[:theme]
+          assert_equal 'debug', BuildCommand.new(['10-intro', '--log=debug']).options[:log_level]
+        end
+
+        def test_should_keep_space_separated_option_values
+          command = BuildCommand.new(['x.md', '--theme', 'blue'])
+
+          assert_equal 'blue', command.options[:theme]
+          assert_equal ['x.md'], command.targets
+        end
+
+        # 値の既定を持つのは --log だけ（bare `--log` = info）
+        def test_should_fill_default_value_only_for_log
+          assert_equal 'info', BuildCommand.new(['--log']).options[:log_level]
+          assert_nil BuildCommand.new(['x.md', '--theme']).options[:theme]
+        end
+
+        # 値が続かない --log の後ろに別オプションが並んでも取りこぼさない
+        def test_should_not_swallow_the_option_following_a_bare_log
+          command = BuildCommand.new(['10-intro', '--log', '--no-clean'])
+
+          assert_equal 'info', command.options[:log_level]
+          assert_equal false, command.options[:clean], '--log の次のオプションが失われないはずです'
+        end
+
+        # `=` を含むビルド対象は正規化の対象外（素通し）
+        def test_should_pass_through_targets_containing_equals
+          assert_equal ['a=b.md'], BuildCommand.new(['a=b.md']).targets
+        end
       end
 
       class BuildCommandExecutionTest < Minitest::Test
@@ -66,6 +99,39 @@ module VivlioStarter
             assert_equal :single, pipeline.mode
             assert_equal entries, pipeline.entries_param
           end
+        end
+
+        # 単章ビルドは output.targets によらず閲覧用 PDF だけを作るため、成果物の報告と
+        # 自動オープンも targets ではなく「生成できた事実」で決める（targets: kindle でも報告する）
+        def test_single_mode_reports_and_opens_generated_pdf_regardless_of_targets
+          original_config = Common::CONFIG
+          kindle_only = Common.build_direct_configuration(output: { targets: ['kindle'] })
+
+          Dir.mktmpdir do |dir|
+            Dir.chdir(dir) do
+              FileUtils.mkdir_p('contents')
+              FileUtils.mkdir_p('config')
+              File.write('config/catalog.yml', "CHAPTERS:\n  - 15\n")
+              File.write('contents/15.md', "# Chapter 15\n")
+              File.write('config/book.yml', "book:\n  main_title: 'test'\n")
+              # PipelineStub が生成したと報告するファイル
+              File.write('single.pdf', '%PDF-1.7')
+              Common.install_configuration!(kindle_only)
+
+              opened = []
+              command = BuildCommand.new(['15'])
+              command.stub(:open_generated_pdf, ->(path) { opened << path }) do
+                with_pipeline_stub([]) do
+                  out = capture_io { assert_equal 0, command.call }.join
+
+                  assert_match(/single\.pdf を作成しました/, out, 'targets: kindle でも成果物を報告するべきです')
+                  assert_equal ['single.pdf'], opened, '生成された PDF を開くべきです'
+                end
+              end
+            end
+          end
+        ensure
+          Common.install_configuration!(original_config)
         end
 
         def test_call_accepts_numeric_only_chapter_targets

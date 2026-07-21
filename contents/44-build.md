@@ -313,6 +313,35 @@ vs build 01-life      # ファイル名で指定
 単章ビルドでは、`output.targets` の指定にかかわらず**閲覧用 PDF のみ**が生成されます（印刷入稿用 PDF・EPUB・Kindle は作られません）。目次や索引などの全体構成ページも生成されません。原稿の体裁をすばやく確認するための用途に絞った仕様です。印刷入稿用 PDF や EPUB・Kindle が必要なときは、章を指定せずに `vs build`（全章ビルド）を実行してください。
 
 
+## 設定ファイルなしのビルド
+
+:::{.section-lead}
+書き捨てのメモや企画書を、プロジェクトを作らずに 1 枚だけ組版したいことがあります。`vs build` に `.md` ファイルを直接指定すると、`book.yml` も `catalog.yml` も使わずに PDF を生成します。
+:::
+
+```bash
+vs build myawesome.md                      # どこで実行しても OK（プロジェクト外でも動く）
+vs build ~/notes/idea.md --theme blue      # テーマカラーを指定
+vs build contents/00-preface.md            # 執筆中の章を、その場でプレビュー
+```
+
+カレントディレクトリに `myawesome.pdf`（元ファイル名の拡張子違い）が生成され、macOS では自動的に開きます。
+
+`--theme` には `book.yml` の `theme.color` と同じ色名（yellow / orange / red / magenta / purple / indigo / navy / blue / cyan / teal / green / lime）に加えて、`--theme '#e91e63'` のような HEX 記法も指定できます。省略時は yellow です。シェルが `#` をコメントとして解釈しないよう、HEX は引用符で囲んでください。
+
+:::{.note}
+このモードは「軽量な確認」に用途を絞っています。
+
+- 出力は**閲覧用 PDF のみ**（印刷入稿用 PDF・EPUB・Kindle は作られません）
+- 装飾は**画像なし（simple）固定**、版面は B5 判、原稿は常に**本章**として組まれます（`00-` や `99-` で始まるファイル名でも前書き・後書きにはなりません）
+- 画像は入力ファイルと同じ場所からの相対パスで解決します（プロジェクトの章を指定したときは、その章の `images/` も探します）
+- `codes/` からのコードインクルード、QueryStream 記法、他章へのクロスリファレンス、索引・用語集は使えません
+- `--no-resize` や `--compress` などプロジェクト前提のオプションは無視されます（指定すると 🟡 でお知らせします）
+
+きちんとした本に育てるときは `vs new` でプロジェクトを作成してください。
+:::
+
+
 ## コマンドラインオプション
 
 :::{.section-lead}
@@ -333,6 +362,7 @@ vs build --help     # ヘルプを表示
 | `--no-clean` | 中間生成物を残す（デバッグ用） |
 | `--[no]-verify` | リンク・画像の基本検証を有効/無効にする（既定: 有効） |
 | `--verify-links` | 外部 URL の HTTP 到達性チェックを有効にする |
+| `--theme <color>` | テーマカラーを指定（`.md` ファイルの直接指定時のみ有効） |
 | `--log <level>` | ログレベルを指定（error / warn / info / debug） |
 
 ### 使用例

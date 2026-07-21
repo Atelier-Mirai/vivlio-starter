@@ -23,6 +23,7 @@
 
 require_relative '../build'
 require_relative '../build/build_lock'
+require_relative '../build/direct_build'
 require_relative '../build/pipeline'
 require_relative '../build/output_helpers'
 require_relative '../pre_process'
@@ -41,9 +42,10 @@ module VivlioStarter
       class BuildCommand < Samovar::Command
         self.description = '書籍全体または指定章をビルドします'
 
-        many :targets, 'ビルド対象（章番号 / 範囲 / ベース名）', default: []
+        many :targets, 'ビルド対象（章番号 / 範囲 / ベース名 / 単一の .md ファイル）', default: []
 
         options do
+          option '--theme <color>', 'テーマカラー（.md 直接指定時のみ有効）', key: :theme
           option '--[no]-resize', '画像最適化を行う（--no-resize で無効）', default: true, key: :resize
           option '--high', '画像最適化プリセット: 高品質', default: false
           option '--medium', '画像最適化プリセット: 中品質', default: false
@@ -58,9 +60,15 @@ module VivlioStarter
 
         include VivlioStarter::CLI::BuildCommands::OutputHelpers
 
+        # 値を取るオプションと、値が省略されたときの既定値。
+        # Samovar は `--opt=value` 記法を解さない（"Could not parse token" になる）ため、
+        # 初期化時にこの表を使って `--opt value` へ開く。既定値を持つのは `--log` だけで、
+        # bare `--log` は info と解する（`--theme` は値必須＝未指定は既定色で組む）。
+        VALUE_OPTIONS = { '--log' => 'info', '--theme' => nil }.freeze
+
         def initialize(input = nil, **)
           processed_input = if input
-                              normalized = normalize_log_option_tokens(input)
+                              normalized = normalize_value_option_tokens(input)
 
                               if input.respond_to?(:replace) && !input.equal?(normalized)
                                 input.replace(normalized)
@@ -80,6 +88,15 @@ module VivlioStarter
             print_usage
             return 0
           end
+
+          # 設定ファイルを経由しない直接ビルド（vs build myawesome.md）。
+          # プロジェクト前提の Guard は通さず、PDF 生成に必須の Node だけを確認する。
+          if direct_mode?
+            Guards::Guard.run!(Guards::NodeCheck.new)
+            return run_direct_build
+          end
+
+          warn_theme_option_ignored
 
           # 前提条件の検証（docs/specs/precondition-guard-spec.md）
           # 違反があれば 🔴 メッセージを表示して本処理に入らず終了する
@@ -130,37 +147,106 @@ module VivlioStarter
           PostProcessCommands::HeadingProcessor.chapter_tokens_override = nil
         end
 
+        # プロジェクト文脈（config/book.yml）なしで実行できるか。
+        # RootCommand#ensure_project_context! がこの応答を見て ensure_configured! を省く。
+        # 直接ビルドは book.yml の値に依存しないことが機能の定義そのもの（spec §2.2）。
+        def projectless? = direct_mode?
+
         private
 
-        def normalize_log_option_tokens(input)
+        # ターゲットが .md ファイル指定なら直接ビルドの候補とする（spec §1.3）。
+        # catalog の章 basename は拡張子を含まないため衝突しない。
+        # 個数・混在・実在の検証は run_direct_build 側で行い、ここでは分岐だけを決める。
+        def direct_mode? = targets.any? { it.to_s.end_with?('.md') }
+
+        # 設定ファイルを経由しない単一 Markdown のビルドを実行する（spec §1.3）。
+        # 誤用（複数指定・章トークンとの混在・不在ファイル）は従来解釈へフォールバック
+        # させず、その場で 🔴 と対処を示して終える。
+        def run_direct_build
+          mixed = targets.reject { it.to_s.end_with?('.md') }
+          if mixed.any?
+            common.log_error(".md ファイルと章の指定は同時に使えません: #{mixed.join(', ')}",
+                             detail: '対処: 直接ビルドなら .md だけ' \
+                                     "（vs build #{targets.find { it.to_s.end_with?('.md') }}）、" \
+                                     "プロジェクトの章なら拡張子なし（vs build #{mixed.first}）で指定してください。")
+            return 1
+          end
+
+          if targets.size > 1
+            common.log_error("直接ビルドは 1 ファイルのみ指定できます: #{targets.join(', ')}",
+                             detail: '対処: 1 ファイルずつ実行するか、複数の原稿を 1 冊にまとめるなら ' \
+                                     'vs new でプロジェクトを作成してください。')
+            return 1
+          end
+
+          source = targets.first.to_s
+          unless File.file?(source)
+            common.log_error("ファイルが見つかりません: #{source}",
+                             detail: '対処: パスを確認してください。プロジェクトの章を指定する場合は' \
+                                     '拡張子を付けません（例: vs build 10-intro）。')
+            return 1
+          end
+
+          warn_ignored_options!
+          BuildCommands::DirectBuild.new(source, theme: options[:theme]).call
+        end
+
+        # 直接ビルドで受け付けないオプションを 1 回だけ通知する（spec §1.4）。
+        # 既定値と区別できる「明示指定」だけを拾う。
+        def warn_ignored_options!
+          ignored = []
+          ignored << '--no-resize' if options[:resize] == false
+          ignored << '--no-clean' if options[:clean] == false
+          ignored << '--no-verify' if options[:verify] == false
+          ignored << '--verify-links' if options[:verify_links]
+          ignored << (options[:compress] ? '--compress' : '--no-compress') unless options[:compress].nil?
+          ignored.concat(%w[--high --medium --low].select { options[it.delete_prefix('--').to_sym] })
+          return if ignored.empty?
+
+          common.log_warn("直接ビルドでは次のオプションは無視されます: #{ignored.join(', ')}",
+                          detail: '対処: これらを使うには vs new で作成したプロジェクトでビルドしてください。')
+        end
+
+        # 通常ビルドでの --theme を案内する（テーマ色はプロジェクトの設定が正典・spec §2.1）。
+        def warn_theme_option_ignored
+          return if options[:theme].nil?
+
+          common.log_warn('--theme は直接ビルド（.md 指定）専用です。',
+                          detail: "対処: config/book.yml の theme.color を '#{options[:theme]}' に変更してください。")
+        end
+
+        # `--log=debug` / `--theme=blue` のような `=` 区切りを、Samovar が解せる
+        # `--log debug` 形式へ開く（VALUE_OPTIONS が対象と既定値を定める）。
+        # 値が続かないときは既定値のあるオプションだけ補い、無いものはそのまま渡して
+        # Samovar の検証に委ねる。対象外のトークンは順序を保って素通しする。
+        def normalize_value_option_tokens(input)
           tokens = array_from_input(input)
           normalized = []
           idx = 0
 
           while idx < tokens.length
-            token = tokens[idx]
+            name, inline_value = tokens[idx].to_s.split('=', 2)
 
-            if token == '--log'
-              normalized << '--log'
-              next_value = tokens[idx + 1]
-
-              if next_value.nil? || next_value.start_with?('-')
-                normalized << 'info'
-                idx += 1
-              else
-                normalized << next_value
-                idx += 2
-                next
-              end
-            elsif token.start_with?('--log=')
-              normalized << '--log'
-              level = token.split('=', 2)[1]
-              normalized << (level.nil? || level.empty? ? 'info' : level)
-            else
-              normalized << token
+            unless VALUE_OPTIONS.key?(name)
+              normalized << tokens[idx]
+              idx += 1
+              next
             end
 
-            idx += 1
+            fallback = VALUE_OPTIONS[name]
+            following = tokens[idx + 1]
+            normalized << name
+
+            if inline_value # --opt=value 形式（空値は既定へ倒す）
+              normalized << (inline_value.empty? ? fallback.to_s : inline_value)
+              idx += 1
+            elsif following && !following.to_s.start_with?('-') # --opt value 形式
+              normalized << following
+              idx += 2
+            else # 値なし（末尾・次が別オプション）
+              normalized << fallback if fallback
+              idx += 1
+            end
           end
 
           normalized
@@ -197,15 +283,20 @@ module VivlioStarter
           build_timings = pipeline.run
           IndexCommands.flush_post_build_messages
 
-          open_generated_pdf(pipeline.generated_pdf_name)
+          # 単章ビルドは output.targets によらず閲覧用 PDF だけを作る
+          # （pipeline.rb register_single_mode_steps）。よって成果物の報告・自動オープンも
+          # targets ではなく「実際に生成された PDF」で判断する——targets: kindle 等のときに
+          # PDF は出来ているのに無言で終わり、開きもしない、という食い違いを避けるため。
+          generated_pdf = pipeline.generated_pdf_name
+          open_generated_pdf(generated_pdf)
 
           # 外部 URL の到達性チェック（--verify-links 有効時のみ）
           PreProcessCommands::LinkImageValidator.check_external_urls!
           # 検証サマリーを表示
           PreProcessCommands::LinkImageValidator.print_summary
 
-          common.log_success("単章ビルドが完了しました: #{pipeline.generated_pdf_name}")
-          created_files = get_created_files_list_for_single_mode(basenames)
+          common.log_success("単章ビルドが完了しました: #{generated_pdf}")
+          created_files = [generated_pdf].compact.select { File.exist?(it) }
           print_created_files_message(created_files, build_timings: build_timings)
 
           print_build_timings(build_timings)
@@ -244,11 +335,13 @@ module VivlioStarter
           print_build_timings(build_timings)
         end
 
+        # 単章ビルドの成果物を開く。フルビルドの open_pdf と違い output.targets は見ない——
+        # 単章は targets によらず常に閲覧用 PDF だけを生成するため、生成できた事実が唯一の条件。
         def open_generated_pdf(path)
-          return unless pdf_outputs_requested?
           return unless path && File.exist?(path)
+          return unless defined?(VivlioStarter::CLI::PdfCommands::PdfOpener)
 
-          open_pdf(path)
+          VivlioStarter::CLI::PdfCommands::PdfOpener.new(pdf_command_options, path).call
         rescue StandardError
           # PDF を開く処理は失敗してもビルド結果には影響させない
         end
@@ -322,47 +415,6 @@ module VivlioStarter
           if targets.include?('kindle')
             kpf_file = Common.generate_kpf_filename
             files << kpf_file if File.exist?(kpf_file)
-          end
-
-          files
-        end
-
-        # 単章ビルド用の生成ファイルリストを取得
-        def get_created_files_list_for_single_mode(basenames)
-          files = []
-          targets = Build::PdfMerger.extract_targets(Common::CONFIG.output.targets)
-
-          # 単章ビルドのファイル名ベースを決定
-          if basenames.size == 1
-            base_name = basenames.first
-          else
-            sorted = basenames.sort_by { |bn| bn[/^(\d+)/, 1].to_i }
-            first_num = sorted.first[/^(\d+)/, 1]
-            last_num = sorted.last[/^(\d+)/, 1]
-            base_name = "#{first_num}-#{last_num}"
-          end
-
-          # PDF系
-          if targets.include?('pdf')
-            pdf_file = "#{base_name}.pdf"
-            files << pdf_file if File.exist?(pdf_file)
-
-            if options[:compress]
-              compressed_file = "#{base_name}_compressed.pdf"
-              files << compressed_file if File.exist?(compressed_file)
-            end
-          end
-
-          # 入稿用PDF
-          if targets.include?('print_pdf')
-            print_pdf_file = "#{base_name}_print.pdf"
-            files << print_pdf_file if File.exist?(print_pdf_file)
-          end
-
-          # EPUB
-          if targets.include?('epub')
-            epub_file = "#{base_name}.epub"
-            files << epub_file if File.exist?(epub_file)
           end
 
           files

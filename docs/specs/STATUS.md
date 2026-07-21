@@ -9,11 +9,6 @@
 
 ## 一覧
 
-`direct-build-spec.md`
-: PLANNED.md「設定ファイルを経由しない直接ビルドコマンド」の仕様。`vs build myawesome.md --theme blue` のように `book.yml` / `catalog.yml` を介さず単一 Markdown を PDF 化する。一時ワークスペースに最小プロジェクトを組み立て既存 `:single` パイプラインを chdir 流用する案（案A）を採る。
-  状態: 提案仕様・未着手（2026-07-12 策定）
-  次のアクション: 実装（`Common.build_direct_configuration` から着手）
-
 `characters-dialogue-spec.md`
 : PLANNED.md「会話文（対話）記法の刷新と `config/characters.yml` 化」の仕様。記法は `:::{.talk}` 内 `キー: 発話`（ローマ字キー）に一本化。PDF/クリーン EPUB はチャットアプリ風吹き出し、Kindle は実体ラベル＋リテラル色の劣化表示。
   状態: 提案仕様・未着手（2026-07-12 策定）

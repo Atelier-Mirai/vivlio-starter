@@ -132,6 +132,8 @@ module VivlioStarter
 
         def ensure_project_context!(target)
           return if PROJECTLESS_COMMANDS.any? { |klass| target.is_a?(klass) }
+          # コマンド自身が引数からプロジェクト不要と判断する場合（build の .md 直接指定）
+          return if target.respond_to?(:projectless?) && target.projectless?
 
           Common.ensure_configured!
         end

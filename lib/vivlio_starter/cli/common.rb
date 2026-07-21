@@ -28,6 +28,9 @@ module VivlioStarter
       PAGE_PRESETS_FILE = 'config/page_presets.yml'
       FONT_SIZE_KEYS = %i[base_font_size column_font_size folio_font_size].freeze
       PAGE_PRESET_EXCLUDE_KEYS = %i[preset use preset_name].freeze
+      # 直接ビルド（book.yml を持たない単一 Markdown）の版面。日本の技術書の主流サイズであり、
+      # resolve_page_size の既定フォールバック（B5）とも一致する。
+      DIRECT_PAGE_PRESET = 'b5_standard'
       LEVELS = { 'error' => 0, 'warn' => 1, 'info' => 2, 'success' => 2, 'action' => 2, 'debug' => 3 }.freeze
 
       CONFIG_DIR = 'config'
@@ -767,13 +770,39 @@ module VivlioStarter
         # load_configの結果をDataオブジェクトにラップしてフリーズ
         raw_config = load_config
         validate_book_config!(raw_config) unless silent
-        new_config = wrap_config(raw_config).freeze
-
-        # 定数の再定義（既存なら削除して警告を回避）
-        remove_const(:CONFIG) if const_defined?(:CONFIG)
-        const_set(:CONFIG, new_config)
+        install_configuration!(wrap_config(raw_config).freeze)
 
         puts("🧪 Configuration reloaded: #{CONFIG_FILE}") if !silent && current_log_level >= 3
+      end
+
+      # CONFIG 定数を差し替える唯一の入口（既存なら削除して再定義警告を回避）。
+      # book.yml 由来の reload_configuration! と、YAML を読まずに組み立てる
+      # 直接ビルド（build_direct_configuration）の両方がここを通る。
+      # @param config [Data, nil] wrap_config 済みの設定（nil = 未ロード状態へ戻す）
+      def install_configuration!(config)
+        remove_const(:CONFIG) if const_defined?(:CONFIG)
+        const_set(:CONFIG, config)
+      end
+
+      # 直接ビルド（vs build myawesome.md）用の CONFIG を YAML を読まずに組み立てる。
+      # 「設定ファイルを介さない」が本機能の定義のため book.yml は一切参照せず、
+      # 既定値スキーマ＋版面プリセットに呼び出し側の上書きを重ねるだけで完結させる。
+      # 仕様: docs/archives/direct-build-spec.md §2.3
+      # @param overrides [Hash] 既定値へ深くマージする設定（シンボルキー）
+      # @return [Data] frozen な CONFIG 相当オブジェクト
+      def build_direct_configuration(overrides = {})
+        base = merge_hardcoded_defaults({ page: direct_page_settings })
+        wrap_config(deep_merge_config(base, overrides)).freeze
+      end
+
+      # 直接ビルドの版面。page の版面キー（size/margin_* 等）は既定値スキーマに無く
+      # page_presets.yml 由来のため、ここでプリセットを 1 つ解決して埋める。
+      # プリセットが読めない環境でも組版自体は page-settings.css の既定で成立する。
+      def direct_page_settings
+        apply_page_preset({ page: { use: DIRECT_PAGE_PRESET } })[:page]
+      rescue StandardError => e
+        log_debug("[direct] 版面プリセットの解決に失敗しました（既定値で続行）: #{e.message}")
+        { use: DIRECT_PAGE_PRESET }
       end
 
       # book.yml の主要キー（book.main_title, book.author, project.name）が
@@ -936,6 +965,7 @@ module VivlioStarter
                       :cover_theme, :pdf_combined?, :pdf_compress?, :epub_embed?, :kindle_embed?,
                       :print_pdf_full_bleed?,
                       :current_log_level, :current_step_label, :deep_merge_config, :default_cache,
+                      :build_direct_configuration, :direct_page_settings, :install_configuration!,
                       :default_commands, :default_config_schema, :default_directories,
                       :default_vfm, :default_vivliostyle, :log_always, :ensure_cache_dir!,
                       :ensure_required_yaml_files!, :required_yaml_files_loadable?,

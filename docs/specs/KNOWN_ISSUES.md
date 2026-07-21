@@ -25,6 +25,20 @@
   記法が中和済みになり、単純な書き戻しができない）。**ガードより先に単独で直す**こと。
   詳細・再現手順・テストの切り分け → `docs/specs/lint-notation-guard-report.md` §4.1。
 
+### `--opt=value` 記法の対応がコマンドごとにバラバラ／`vs preflight --log` の直後のオプションが消える
+* **詳細:** Samovar は `--opt=value` を解さないため、各コマンドが独自にトークンを正規化している。
+  対応しているのは `build`（2026-07-21 改修済み）と `preflight` だけで、**`vs new mybook --log=debug` /
+  `vs pdf:pages a.pdf --dpi=200` は今も 🔴「Could not parse token」**になる（2026-07-21 実測）。
+* **原因:** 正規化の実装が 2026-04-13 の「preflight 実装」時に `build_command.rb` から
+  `preflight_command.rb` へ**コピーされた**まま並存している（`new` / `pdf:*` にはそもそも無い）。
+* **影響:** `vs preflight --log --no-verify` で **`--no-verify` が黙って捨てられる**（コピー元にあった
+  インデックス二重加算のバグ。エラーも警告も出ないため気づけない。`--log=info --no-verify` なら効く、
+  という原因の見当がつかない非対称になる）。build 側は 2026-07-21 に修正済みで、現在は
+  **名前も中身も違う 2 実装**に分岐している。
+* **対応方針:** 正規化を 1 モジュールへ共通化し、各コマンドは「値を取るオプションと既定値の表」だけを
+  宣言する（案 A）。`new` / `pdf:*` へも `include` 1 行で展開でき、CLI 全体で `=` 記法が揃う。
+  経緯・Samovar 側の根本原因・実測表・選択肢 → `docs/specs/cli-option-parsing-report.md`。
+
 ### `vs lint` が VFM 記法を日本語の文として読む（誤検出）
 * **詳細:** `:::{.showcase}` の座標行が `sentence-length` / `max-comma` に触れる等、記法が
   地の文として検査される。現状は `config/textlint_allowlist.yml` の「VFM 記法」5 エントリで

@@ -1,7 +1,12 @@
 # 設定ファイルを経由しない直接ビルドコマンド 仕様書
 
 > 作成日: 2026-07-12
-> ステータス: **提案（未実装・レビュー待ち）**
+> ステータス: **実装済み（2026-07-21）**。実装との差分は §6 を参照
+> 実装: `lib/vivlio_starter/cli/build/direct_build.rb`（`BuildCommands::DirectBuild`）,
+> `Common.build_direct_configuration` / `Common.install_configuration!`,
+> `BuildCommand#direct_mode?` / `#projectless?` / `#run_direct_build`,
+> テスト: `test/vivlio_starter/cli/build/direct_build_test.rb`,
+> `test/vivlio_starter/cli/samovar/build_command_direct_mode_test.rb`
 > 対象: PLANNED.md:17 [High]「設定ファイルを経由しない直接ビルドコマンド」。`vs build myawesome.md --theme blue` のように `book.yml` / `catalog.yml` を介さず単一 Markdown を PDF 化する軽量経路
 > 決定事項（本仕様の提案）:
 > - **入口は `vs build` に相乗り**（新コマンドを増やさない）。ターゲットが「実在する `.md` ファイルパス 1 件」のときだけ直接モードへ分岐
@@ -132,7 +137,21 @@ Minitest・ruby-coding-rules skill 適用。
 5. ドキュメント: `README.md` のビルド節・`contents/` の該当章（build コマンド解説）に直接モードを追記。ヘルプ文言（`many :targets` の説明）更新
 6. `ruby copy_to_scaffold.rb`（README 更新分の同期）
 
-## 5. スコープ外・将来拡張
+## 5. 実装との差分（2026-07-21）
+
+本文の提案どおりに作ると破綻する／用途を殺す点があり、以下は実装時に変更した。
+
+| 項目 | 仕様の記述 | 実装 | 理由 |
+|---|---|---|---|
+| stylesheets の持ち込み（§2.3-2） | 丸ごとコピー | **エントリ単位のシンボリックリンク**（`stylesheets/`・`fonts/`・`fonts/google/` だけ実体ディレクトリにし、直下の各エントリへリンク。不可な環境ではコピーへ退避） | 実体は fonts / twemoji を含み 90MB 超で、毎回コピーしては「軽量経路」たり得ない。ただし丸ごと 1 本の symlink にすると、FontManager が毎ビルド書き直す `fonts/google-fonts.css` がリンク先の実体（著者のプロジェクト／gem 同梱 scaffold）へ書き込まれる。この 1 ファイルだけ実体コピーへ逃がし、`fonts/google/` も実体ディレクトリにする（FontManager の書き込み先が `fonts/google/../google-fonts.css` 形で、symlink だと `..` が物理的に実体側へ抜けるため） |
+| 版面（§2.3-3） | 言及なし | `Common::DIRECT_PAGE_PRESET = 'b5_standard'` を `apply_page_preset` で解決し、`config/page_presets.yml` を scaffold からワークスペースへ複製 | `page` の版面キーは既定値スキーマに無く preset 由来。未解決だと `@page size` が B5、余白・文字サイズは page-settings.css の A4 既定という混成になる |
+| catalog.yml（§2.3-3） | 置かない | 対象 1 章のみの最小 catalog.yml を置く | 同一ファイル内クロスリファレンスのラベル収集（`process_cross_references_for_files` は catalog 登録章からラベルを集める）と `chapter-first` の body クラス判定が正しく働く |
+| 画像最適化（§2.5） | スキップ（`--no-resize` 相当） | 同伴した png/jpg のみ **ワークスペース内で WebP 変換**（`ResizeCommands.execute_resize_medium`） | `ImagePathNormalizer` は画像参照を `.webp` へ正規化する。変換しないと HTML から参照が外れ、画像が黙って落ちる。パイプラインの `optimize images` ステップ自体は従来どおりスキップ（symlink 先の著者 stylesheets/images を書き換えないため必須） |
+| 画像の探索元（§2.4） | 入力 .md と同じディレクトリのみ | 加えて、プロジェクトの章を指定したときは `images/<元basename>/` も探す | `vs build contents/00-preface.md` は仕様自身が挙げる用途。章の図版は `contents/` ではなく `images/<章>/` にあるため、これが無いと図版が全滅する |
+| 画像のコピー先（§2.4） | `images/10-<slug>/<ファイル名>` | `images/10-<slug>/<参照文字列>`（相対構造ごと） | normalizer の正規化先は `images/<章>/<参照文字列>`。ファイル名だけ平らに置くと `![](assets/x.png)` の参照が外れる |
+| ワークスペース補助 | 言及なし | `package.json`（`type: module`）と、呼び出し元から遡って見つけた `node_modules` へのリンクを置く | 生成 config が ESM。`npx vivliostyle` にローカル解決先を与え、レジストリ取得へ流れるのを防ぐ |
+
+## 6. スコープ外・将来拡張
 
 - **`image` スタイル（扉絵・節絵）**: 生成アセットの準備が重く軽量経路に反するため v1 は `simple` 固定。要望があれば `--style image` を後日検討
 - **EPUB / print_pdf / Kindle 出力**: 要件により恒久的に対象外（オプション自体を設けない）
