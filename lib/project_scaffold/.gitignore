@@ -45,3 +45,9 @@ vivlio_starter_v1.0.0_images/
 
 # Kindle artifacts
 /output/
+
+# techbook processor（lib/vivlio_starter/cli/techbook/processor.rb）が theme.color から
+# ビルド時に自動生成する再着色アセット（circled-*/marker-h3,h4/wave）。
+# book.yml の色設定が変わるたび中身が変わるため追跡しない（root/scaffold 両方）
+/stylesheets/twemoji/vs-techbook/
+/lib/project_scaffold/stylesheets/twemoji/vs-techbook/
