@@ -35,7 +35,7 @@
     :::
   */
 
-  /* 
+  /*
     <div class="book-card">
       <img src="images/91-appendix-a/ruby.webp">
       <div class="book-info">
@@ -269,6 +269,198 @@ body.vs-epub .chapter-lead {
 body.vs-epub .section-lead {
   inline-size: auto;
   margin-block: 0.5em 1em;
+}
+
+/* =====================================================================
+   会話文（対話）（characters-dialogue-spec.md §1.3 / talk-display-options-spec.md §2.4）
+   ---------------------------------------------------------------------
+   前処理（MarkdownTransformer.convert_talk_blocks）が :::{.talk} を
+   <div class="talk talk-style-chat"> … へ変換する。表示形式は 2 種類:
+     chat   … 吹き出し（左右振り分け・話者列＝アバターの下に名前・尻尾つき）
+     inline … 「名前：発話」を 1 段落で組む
+   話者色はクラス経由（--talk-accent。既定はテーマ色、話者ごとの色は生成 CSS が
+   --talk-c-<key> で上書き）。Kindle は EpubBuilder が DOM を inline 形式へ組み替えるため、
+   ここの inline 用ルールがそのまま Kindle の見た目になる。
+   ===================================================================== */
+.talk {
+  /* 話者色の既定はテーマアクセント色。話者ごとの色は .talk-c-<key> が差し替える。 */
+  --talk-accent: var(--theme-accent);
+  /* 吹き出しの地色。尻尾の内側三角と必ず同じ色にする（別々に書くとずれる）。 */
+  --talk-bg: #fff;
+
+  /* spacing */
+  margin-block: 6mm;
+}
+
+/* name=off で隠した話者名・区切り（DOM には残す。Kindle 劣化がこのクラスを外して見せる）。
+   .talk-style-chat .talk-name / .talk-style-inline .talk-name（ともに 0,2,0）に
+   確実に勝つよう、要素クラスを重ねて特異度 (0,3,0) にする。 */
+.talk .talk-name.talk-name-off,
+.talk .talk-sep.talk-name-off {
+  display: none;
+}
+
+/* ---------------------------------------------------------------------
+   chat: 吹き出し
+   --------------------------------------------------------------------- */
+.talk-style-chat .talk-item {
+  /* layout */
+  display: flex;
+  align-items: flex-start;
+
+  /* spacing */
+  margin-block: 3mm;
+  gap: 3mm;
+}
+
+/* side=right の話者は左右反転（話者列が右、吹き出しが右寄せ） */
+.talk-style-chat .talk-item.talk-right {
+  flex-direction: row-reverse;
+}
+
+/* 話者列: アバターの下に名前を積む */
+.talk-speaker {
+  /* layout */
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  /* box-size */
+  inline-size: 14mm;
+
+  /* spacing */
+  gap: 1mm;
+}
+
+/* アバターは丸抜き。話者色の細枠で囲む。 */
+.talk-icon {
+  /* box-size */
+  width: 12mm;
+  height: 12mm;
+
+  /* visual */
+  object-fit: cover;
+  border: 1.5px solid var(--talk-accent);
+  border-radius: 50%;
+}
+
+.talk-style-chat .talk-name {
+  /* layout */
+  display: block;
+
+  /* typography */
+  font-family: var(--font-header);
+  font-weight: bold;
+  line-height: 1.2;
+
+  /* visual */
+  color: var(--talk-accent);
+}
+
+/* 話者列の名前（アバターの下に小さく添える） */
+.talk-speaker .talk-name {
+  font-size: 0.7em;
+  text-align: center;
+}
+
+/* アバターが無いときの名前は吹き出し上部のラベルにする（細い列に取り残さない） */
+.talk-body > .talk-name {
+  margin-block-end: 1mm;
+  font-size: 0.75em;
+}
+
+.talk-style-chat .talk-body {
+  /* layout */
+  position: relative;   /* 尻尾（絶対配置の三角）の基準 */
+
+  /* box-size */
+  max-inline-size: 76%;
+
+  /* spacing */
+  margin-block: 0;
+  padding: 2mm 3mm;
+
+  /* visual */
+  background: var(--talk-bg);
+  border: 1.5px solid var(--talk-accent);
+  border-radius: 8px;
+}
+
+/* 吹き出し内の段落はグローバルの字下げ（text-indent: 1em）を打ち消す。 */
+.talk-body p {
+  margin-block: 0;
+  text-indent: 0;
+}
+
+/* 発話内の強調は話者色に揃える（既定の strong 色＝テーマ色だと吹き出しの枠色とぶつかる）。
+   主語を .talk-item にするのは chat（item > body > p）と inline（item > p）の
+   両方へ届かせるため。特異度 (0,1,1) で chapter-common.css の `strong`（0,0,1）に勝つ。
+   Kindle は var() を解さずこの宣言ごと捨てるため、生成 CSS（book-settings.css）が
+   body.vs-kindle .talk-c-<key> strong にリテラル色を焼いて同じ見た目を担保する。 */
+.talk-item strong {
+  color: var(--talk-accent);
+}
+
+/* 尻尾（tail）: 枠色の三角（::before）と地色の三角（::after）を重ねて枠線付きにする。
+   Kindle(KFX) は擬似要素の生成内容を解さないため、尻尾は自動的に消える（無害）。 */
+.talk-style-chat .talk-body::before,
+.talk-style-chat .talk-body::after {
+  content: "";
+  position: absolute;
+  top: 4mm;
+  width: 0;
+  height: 0;
+  border-top: 1.6mm solid transparent;
+  border-bottom: 1.6mm solid transparent;
+}
+.talk-style-chat .talk-left .talk-body::before {
+  left: -2.6mm;
+  border-right: 2.6mm solid var(--talk-accent);
+}
+.talk-style-chat .talk-left .talk-body::after {
+  left: -2.0mm;                                   /* 枠線ぶん内側へ寄せる */
+  border-right: 2.6mm solid var(--talk-bg);
+}
+.talk-style-chat .talk-right .talk-body::before {
+  right: -2.6mm;
+  border-left: 2.6mm solid var(--talk-accent);
+}
+.talk-style-chat .talk-right .talk-body::after {
+  right: -2.0mm;
+  border-left: 2.6mm solid var(--talk-bg);
+}
+
+/* ---------------------------------------------------------------------
+   inline: 「名前：発話」を 1 段落で
+   Kindle 劣化後の chat もこの形になるため、.talk-body が残っていても
+   吹き出しの体裁が出ないよう明示的に打ち消す。
+   --------------------------------------------------------------------- */
+.talk-style-inline .talk-item {
+  display: block;
+  margin-block: 0.4em;
+}
+
+.talk-style-inline .talk-body {
+  max-inline-size: none;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+}
+
+.talk-style-inline .talk-name {
+  display: inline;          /* chat 側の縦積み指定を打ち消す */
+  font-weight: bold;
+  color: var(--talk-accent);
+}
+
+.talk-style-inline .talk-sep {
+  color: var(--talk-accent);
+}
+
+.talk-style-inline p {
+  text-indent: 0;
 }
 
 /* =============================================================

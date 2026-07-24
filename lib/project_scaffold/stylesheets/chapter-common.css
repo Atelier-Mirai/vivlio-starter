@@ -687,6 +687,17 @@ body.vs-kindle .terminal pre {
   font-family: monospace;
   color: #f5f5f5;
 }
+
+/* =============================================================
+   Kindle 専用 会話文（.talk）劣化（talk-display-options-spec.md §2.5）
+   Kindle(KFX) は flex・::before/::after・var()・丸抜き画像を解さない。吹き出しを CSS で
+   近似するのではなく、EpubBuilder が DOM を inline 形式（名前＋区切り＋発話の 1 段落）へ
+   組み替え、容器のクラスを talk-style-inline に差し替える。以降は components.css の
+   inline 用ルールがそのまま効くため、ここに Kindle 専用の体裁は要らない。
+   話者色だけは var() が効かないので、生成 CSS（book-settings.css）が
+   body.vs-kindle .talk-c-<key> の .talk-name / .talk-sep / strong にリテラル色を焼く。
+   クリーン EPUB（vs-kindle 無し）は components.css の吹き出し表示のまま。
+   ============================================================= */
 body.vs-kindle .vs-adm-label {
   margin: 0 0 0.4em;
   font-family: var(--font-header);

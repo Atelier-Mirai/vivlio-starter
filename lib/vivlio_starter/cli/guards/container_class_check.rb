@@ -27,7 +27,7 @@ module VivlioStarter
         # 変換するため、CSS に `.showcase` セレクタが存在しないのが正しい状態。
         # 他は CSS にも存在するが、CSS 側が消えても検証が壊れないよう明示しておく。
         PREPROCESSED_CLASSES = %w[
-          book-card rotate-table long-table text-right text-center text-left showcase
+          book-card rotate-table long-table text-right text-center text-left showcase talk
         ].freeze
 
         # CSS のクラスセレクタ。小数（`0.5em`）や `nth-child()` を拾わないよう直前を除外する。

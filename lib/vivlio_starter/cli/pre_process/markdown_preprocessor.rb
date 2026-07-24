@@ -33,6 +33,7 @@ require_relative 'table_converter'
 require_relative 'math_transformer'
 require_relative 'showcase_transformer'
 require_relative 'mermaid_transformer'
+require_relative 'talk_registry'
 require_relative 'markdown_utils'
 require_relative 'link_image_validator'
 
@@ -83,6 +84,7 @@ module VivlioStarter
           validate_links_and_images!
           transform_showcases!
           transform_mermaid!
+          transform_talk!
           process_code_includes!
           transform_math!
           normalize_html_block_boundaries!
@@ -181,6 +183,20 @@ module VivlioStarter
             source_filename: context.filename
           )
           Common.log_success('mermaid 図を生成しました') if context.content != before
+        end
+
+        # 会話文記法 :::{.talk} を会話文 HTML へ変換する（characters-dialogue-spec.md §2.2 /
+        # talk-display-options-spec.md）。表示設定と話者定義は config/talk.yml。
+        # 画像パス正規化の後・コードインクルードやコンテナ整形がブロック内部を壊す前に置く。
+        # 発話内インライン Markdown は Kramdown で変換するため、コード保護より前でよい。
+        def transform_talk!
+          before = context.content.dup
+          context.content = MarkdownTransformer.convert_talk_blocks(
+            context.content,
+            registry: TalkRegistry.shared,
+            source_filename: context.filename
+          )
+          Common.log_success('会話文（talk）を変換しました') if context.content != before
         end
 
         # include 記法によるソースコード取り込みを実行する

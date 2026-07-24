@@ -37,6 +37,7 @@ require_relative '../theme_color'
 require_relative '../build/vivliostyle_config_writer'
 require_relative 'css_updater'
 require_relative 'frontmatter_generator'
+require_relative 'talk_registry'
 
 module VivlioStarter
   module CLI
@@ -82,12 +83,14 @@ module VivlioStarter
         def render(cfg = Common::CONFIG, image_prefix: CACHE_TO_STYLESHEETS)
           settings = FrontmatterGenerator.parse_theme_settings(cfg)
           page_cfg = build_page_cfg(cfg)
+          registry = TalkRegistry.load
 
           root_lines = []
           root_lines.concat(theme_declarations(settings, image_prefix:))
           root_lines.concat(supplemental_color_declarations(settings, cfg))
           root_lines.concat(marker_declarations(cfg))
           root_lines.concat(page_declarations(page_cfg))
+          root_lines.concat(talk_variable_declarations(registry))
 
           <<~CSS
             #{header_comment}
@@ -97,6 +100,7 @@ module VivlioStarter
             #{root_lines.map { "  #{it}" }.join("\n")}
             }
             #{kindle_accent_rules(cfg)}
+            #{talk_class_rules(registry)}
           CSS
         end
 
@@ -306,6 +310,48 @@ module VivlioStarter
 
         # 複数スコープ × 要素をカンマ区切りのセレクタ群にする（"a b, c b"）。
         def selector_group(scopes, element) = scopes.map { "#{it} #{element}" }.join(', ')
+
+        # ================================================================
+        # 会話文キャラクター色（characters-dialogue-spec.md §2.3-2 / §2.4-2）
+        # ================================================================
+        # characters.yml の各話者色を book-settings.css へ焼き込む。ソース CSS
+        # （components.css）は色を var(--talk-c-<key>) 経由で参照するのみで、色自体は
+        # 生成側が持つ（P3「生成 1 枚がカスケードで勝つ」方式）。色未指定・不在なら何も出さない。
+
+        # :root に置く --talk-c-<key> の宣言行。色を明示した話者のみ（未指定はテーマ色を使う）。
+        def talk_variable_declarations(registry)
+          registry.with_color.map do |char|
+            "--talk-c-#{char.key}: #{CssUpdater.normalize_color_value(char.color)};"
+          end
+        end
+
+        # .talk-c-<key> の --talk-accent 差し替えと、Kindle 用リテラル色。
+        # PDF/クリーン EPUB は var() 経由で色を当て、Kindle は KFX が var() を解さないため
+        # 具体色（hex）で焼く（テーマ色名→hex は ThemeColor.to_hex6 で解決）。
+        #
+        # Kindle は会話文を inline 形式（名前＋区切り＋発話の 1 段落）へ組み替えるため
+        # （talk-display-options-spec.md §2.5）、焼くのは話者名・区切り・発話内 strong の 3 つ。
+        # 吹き出しの枠線は Kindle には存在しないのでリテラル化しない。
+        # `strong` は base_kindle_accent_rules の `body.vs-kindle strong`（テーマ色・特異度 0,1,2）
+        # に落ちてしまうため話者色で塗り直す。セレクタは (0,2,2) でその既定に勝つ。
+        def talk_class_rules(registry)
+          chars = registry.with_color
+          return '' if chars.empty?
+
+          lines = chars.flat_map do |char|
+            hex = ThemeColor.to_hex6(char.color)
+            [
+              ".talk-c-#{char.key} { --talk-accent: var(--talk-c-#{char.key}); }",
+              "body.vs-kindle .talk-c-#{char.key} .talk-name { color: #{hex}; }",
+              "body.vs-kindle .talk-c-#{char.key} .talk-sep { color: #{hex}; }",
+              "body.vs-kindle .talk-c-#{char.key} strong { color: #{hex}; }"
+            ]
+          end
+          <<~CSS.chomp
+            /* 会話文キャラクター色（KFX は var() 不可のため Kindle 用は hex リテラル） */
+            #{lines.join("\n")}
+          CSS
+        end
 
         # ================================================================
         # 値計算（旧 update_page_settings_css の前処理を移設）

@@ -28,6 +28,8 @@ require_relative '../masking'
 require_relative 'markdown_utils'
 require_relative 'cross_reference_processor'
 require_relative 'link_image_validator'
+require_relative 'talk_registry'
+require_relative 'talk_avatar_generator'
 
 module VivlioStarter
   module CLI
@@ -71,6 +73,346 @@ module VivlioStarter
         def terminal_fence_length(body)
           longest = body.to_s.scan(/~+/).map(&:length).max.to_i
           [3, longest + 1].max
+        end
+
+        # =================================================================
+        # 会話文（対話）記法 :::{.talk}
+        # characters-dialogue-spec.md §2.2 / talk-display-options-spec.md §2.2-2.3
+        # =================================================================
+
+        # :::{.talk [オプション]} … ::: の検出（開始・終了とも独立行）。
+        # キャプチャ 1 = オプション文字列（`{.talk}` なら空）、キャプチャ 2 = ブロック本文。
+        TALK_BLOCK_PATTERN = /^:{3,}[ \t]*\{\s*\.talk((?:[ \t][^}]*)?)\}[ \t]*\n(.*?)^:{3,}[ \t]*$\n?/m
+
+        # 行頭の「キー: 発話」（半角キー＋半角コロン＋空白）で話者を切り替える。
+        # 発話が空（キーのみ）で継続行に続けるケースも許すため、本文はオプショナル。
+        TALK_SPEAKER_PATTERN = /\A([A-Za-z0-9][A-Za-z0-9_-]*):(?:[ \t]+(.*))?\z/
+
+        # ブロック単位で指定できるオプションキー。
+        TALK_OPTION_KEYS = %w[style name avatar separator].freeze
+
+        # :::{.talk} ブロックを会話文 HTML へ変換する。
+        # 発話内のインライン Markdown（強調・コード・リンク）は生 HTML 内では VFM が処理
+        # しないため、book-card と同じく発話部分だけ Kramdown でインライン変換して埋め込む。
+        #
+        # 記法解説フェンス（```markdown 内の :::{.talk}）を巻き込まないようコードスパンを退避する。
+        #
+        # @param registry [TalkRegistry::Registry] 表示設定と話者定義
+        # @param source_filename [String] 警告に添える原稿ファイル名
+        def convert_talk_blocks(content, registry:, source_filename:)
+          # コードスパン退避で ```markdown フェンス内の :::{.talk} 作例を巻き込まないようにする。
+          # 退避にはインラインコード（`code`）も含まれるため、発話内インライン Markdown を
+          # Kramdown へ渡す前に spans を使ってその発話ぶんだけ復元する（render_talk_body）。
+          text, spans = MarkdownUtils.extract_code_spans(content)
+          return content unless text.match?(TALK_BLOCK_PATTERN)
+
+          # talk.yml 不在のまま .talk を使っている場合は作成を促す。
+          warn_talk_missing_file(source_filename) unless registry.present?
+
+          converted = text.gsub(TALK_BLOCK_PATTERN) do
+            args = ::Regexp.last_match(1)
+            body = ::Regexp.last_match(2)
+            options, extra_classes = parse_talk_options(args, registry.display, source_filename:)
+            render_talk_block(body, registry:, source_filename:, spans:, options:, extra_classes:)
+          end
+          MarkdownUtils.restore_code_spans(converted, spans)
+        end
+
+        # ブロック引数（`style=inline name=off .foo`）を解析し、talk.yml の表示設定へ重ねる。
+        # @return [Array(TalkRegistry::TalkDisplay, Array<String>)] 確定した表示設定と追加クラス
+        def parse_talk_options(args, display, source_filename:)
+          options = display
+          extra_classes = []
+          avatar_requested = false
+
+          args.to_s.split.each do |token|
+            if token.start_with?('.')
+              extra_classes << token.delete_prefix('.')
+              next
+            end
+
+            key, value = token.split('=', 2)
+            unless TALK_OPTION_KEYS.include?(key) && value
+              warn_talk_unknown_option(token, source_filename)
+              next
+            end
+
+            avatar_requested = true if key == 'avatar' && TalkRegistry.parse_avatar_mode(value) != :off
+            options = apply_talk_option(options, key, value, source_filename:)
+          end
+
+          warn_talk_option_conflicts(options, avatar_requested, source_filename)
+          [options, extra_classes]
+        end
+
+        # オプション 1 つを表示設定へ反映する（未知の値は 🟡 で現状維持）。
+        def apply_talk_option(options, key, value, source_filename:)
+          case key
+          when 'style'
+            style = value.strip.downcase.to_sym
+            unless TalkRegistry::STYLES.include?(style)
+              warn_talk_unknown_style(value, source_filename)
+              return options
+            end
+            options.with(style:)
+          when 'name'      then options.with(name: Common.truthy?(value))
+          when 'avatar'    then options.with(avatar: TalkRegistry.parse_avatar_mode(value))
+          when 'separator' then options.with(separator: value)
+          end
+        end
+
+        # 組み合わせとして無意味・危険な指定を知らせる（§1.6）。
+        def warn_talk_option_conflicts(options, avatar_requested, source_filename)
+          return unless options.style == :inline
+
+          warn_talk_inline_avatar(source_filename) if avatar_requested
+          warn_talk_inline_nameless(source_filename) unless options.name
+        end
+
+        # ブロック 1 つ分を <div class="talk"> … </div> へ。発話が 1 つも無ければ空文字。
+        # 区切り文字は data-talk-sep として容器に持たせる——Kindle 劣化（EpubBuilder）が
+        # talk.yml を読み直さずに inline 形式へ組み替えられるようにするため（§2.3）。
+        def render_talk_block(body, registry:, source_filename:, spans:, options:, extra_classes:)
+          utterances = parse_talk_utterances(body, source_filename:)
+          return '' if utterances.empty?
+
+          items = utterances.map do
+            render_talk_item(it, registry:, source_filename:, spans:, options:)
+          end
+          classes = ['talk', "talk-style-#{options.style}", *extra_classes].join(' ')
+          "\n\n<div class=\"#{classes}\" data-talk-sep=\"#{escape_html(options.separator)}\">\n" \
+            "#{items.join("\n")}\n</div>\n\n"
+        end
+
+        # ブロック本文を発話（{key, lines}）の配列へ。空行は無視、字下げ行は継続、
+        # 「キー:」に一致しない非字下げ行は 🔴（話者キーなし）。
+        def parse_talk_utterances(body, source_filename:)
+          utterances = []
+          body.each_line do |raw|
+            line = raw.chomp
+            next if line.strip.empty?
+
+            if line.start_with?(' ', "\t")
+              if utterances.empty?
+                warn_talk_orphan_continuation(line, source_filename)
+              else
+                utterances.last[:lines] << line.strip
+              end
+            elsif (m = line.match(TALK_SPEAKER_PATTERN))
+              first = m[2].to_s.strip
+              utterances << { key: m[1], lines: first.empty? ? [] : [first] }
+            else
+              warn_talk_missing_speaker(line, source_filename)
+            end
+          end
+          utterances
+        end
+
+        # 発話 1 つを .talk-item へ。未定義キーは 🔴 で追記例を提示し、
+        # 表示名＝キー・色なしのフォールバックで組む（ビルドは止めない）。
+        def render_talk_item(utterance, registry:, source_filename:, spans:, options:)
+          key = utterance[:key]
+          char = registry[key]
+          warn_talk_undefined_key(key, source_filename) unless char
+
+          name = char&.name || key
+          body = render_talk_body(utterance[:lines], spans:)
+          if options.style == :inline
+            render_talk_item_inline(key, name, body, options:)
+          else
+            render_talk_item_chat(key, char, name, body, options:, source_filename:)
+          end
+        end
+
+        # chat: 話者の見せ方はアバターの有無で変わる。
+        #   アバターあり … 吹き出しの外側に話者列を立て、アバターの下へ名前を積む
+        #   アバターなし … 名前だけの列は幅を持て余すため、吹き出し上部のラベルにする
+        # name=off でも .talk-name は出力し talk-name-off で隠す——Kindle 劣化が
+        # この要素を段落内へ移して話者名を見せるため、DOM から消してはならない（§2.3）。
+        def render_talk_item_chat(key, char, name, body, options:, source_filename:)
+          side = char&.side || 'left'
+          avatar = talk_avatar_tag(char, options:, source_filename:)
+          name_span = "<span class=\"#{talk_name_classes(options)}\">#{escape_html(name)}</span>"
+
+          parts = ["<div class=\"talk-item talk-#{side} talk-c-#{key}\">"]
+          if avatar
+            parts << '<div class="talk-speaker">'
+            parts << avatar
+            parts << name_span
+            parts << '</div>'
+          end
+          parts << '<div class="talk-body">'
+          parts << name_span unless avatar
+          parts << body
+          parts << '</div>'
+          parts << '</div>'
+          parts.join("\n")
+        end
+
+        # inline: 「名前＋区切り＋発話」を 1 段落に収める。アバターと左右振り分けは行わない。
+        def render_talk_item_inline(key, name, body, options:)
+          klass = talk_name_classes(options)
+          prefix = "<span class=\"#{klass}\">#{escape_html(name)}</span>" \
+                   "<span class=\"talk-sep#{options.name ? '' : ' talk-name-off'}\">" \
+                   "#{escape_html(options.separator)}</span>"
+          "<div class=\"talk-item talk-c-#{key}\">\n#{inject_talk_prefix(body, prefix)}\n</div>"
+        end
+
+        # 話者名 span のクラス（name=off は隠す。Kindle 劣化時にこのクラスを外す）。
+        def talk_name_classes(options) = options.name ? 'talk-name' : 'talk-name talk-name-off'
+
+        # レンダリング済みの発話 HTML の先頭 <p> の内側へ名前＋区切りを差し込む。
+        # <p> で始まらない出力（リスト等）になった場合は段落を前置してフォールバックする。
+        def inject_talk_prefix(body, prefix)
+          return body.sub(/\A<p([^>]*)>/) { "<p#{::Regexp.last_match(1)}>#{prefix}" } if body.match?(/\A<p[ >]/)
+
+          "<p>#{prefix}</p>\n#{body}"
+        end
+
+        # アバター画像として探す拡張子（talk.yml の指定が実体と食い違うときの変種）。
+        TALK_AVATAR_EXTENSIONS = %w[.webp .png .jpg .jpeg].freeze
+
+        # アバター <img>（吹き出し外側の丸抜き）。出せない場合は nil を返す（ビルドは止めない）。
+        # 解決順は talk-auto-avatar-spec.md §1.3:
+        #   1. avatar=off なら何もしない
+        #   2. 話者が画像を指定 → その画像。見つからなければ 🟡（auto なら自動生成へ落とす）
+        #   3. 話者が `auto`、または avatar=auto かつ話者の指定なし → 簡易アバターを自動生成
+        def talk_avatar_tag(char, options:, source_filename:)
+          return nil if char.nil? || options.avatar == :off
+
+          spec = char.avatar.to_s.strip
+          auto = options.avatar == :auto
+          return auto_talk_avatar_tag(char, source_filename:) if spec.casecmp?(TalkRegistry::AVATAR_AUTO)
+          return auto ? auto_talk_avatar_tag(char, source_filename:) : nil if spec.empty?
+
+          resolved = resolve_talk_avatar(spec)
+          return image_talk_avatar_tag("#{Common.asset_prefix}images/characters/#{resolved}") if resolved
+
+          warn_talk_missing_avatar(char.key, spec, source_filename)
+          auto ? auto_talk_avatar_tag(char, source_filename:) : nil
+        end
+
+        # 著者が用意した画像の <img>。
+        # src には asset_prefix を前置する。アバターは images/ 配下の**著者資産**であり、
+        # ワークスペース内に実体を持つ生成物（数式 SVG・showcase・mermaid）とは違って
+        # pdf/ ミラーへコピーされないため、prefix 無しの相対では PDF 側で解決できない
+        # （ImagePathNormalizer が通常画像へ付けるのと同じ規約）。EPUB では EpubBuilder が
+        # prefix を剥がし、localize_assets! が images/ を同梱するのでそのまま解決する。
+        def image_talk_avatar_tag(src)
+          "<img class=\"talk-icon\" src=\"#{escape_html(src)}\" alt=\"\" />"
+        end
+
+        # 自動生成した簡易アバターの <img>。生成物はワークスペース内実体のため
+        # asset_prefix を付けない（数式 SVG・showcase と同じ規約）。
+        def auto_talk_avatar_tag(char, source_filename:)
+          src = TalkAvatarGenerator.generate(char, source_filename:)
+          src ? image_talk_avatar_tag(src) : nil
+        end
+
+        # avatar 指定から images/characters/ 配下の実在ファイル名を解決する（無ければ nil）。
+        # 著者が書いた拡張子をまず尊重し、次に .webp/.png/.jpg/.jpeg の変種を探す。
+        # ImagePathNormalizer.image_exists_for? は「正規化済み .webp パス」を前提に .webp だけを
+        # 剥がすため、`avatar: a.png` を渡すと `a.png.webp` 等を探して実在する a.png を取りこぼし、
+        # 逆に `avatar: a.webp`（実体は a.png）では実在しない .webp を src に出してしまう。
+        # ここは著者の生の指定を受けるので、常に「実在するファイル」を src にする。
+        def resolve_talk_avatar(avatar)
+          base = avatar.sub(/\.[A-Za-z0-9]+\z/, '')
+          [avatar, *TALK_AVATAR_EXTENSIONS.map { "#{base}#{it}" }]
+            .uniq
+            .find { File.exist?(File.join(Common::IMAGES_DIR, 'characters', it)) }
+        end
+
+        # 発話本文（継続行を含む）を単一段落 HTML へ。継続行は本書の hardLineBreaks に揃え <br> 化する。
+        # インラインコード等は退避済みのため、Kramdown へ渡す前に spans でこの発話ぶんを復元する。
+        def render_talk_body(lines, spans:)
+          return '<p></p>' if lines.empty?
+
+          md = MarkdownUtils.restore_code_spans(lines.join("  \n"), spans)
+          html = MarkdownUtils.render_markdown_to_html(md).strip
+          html.empty? ? '<p></p>' : html
+        end
+
+        # 生 HTML 属性・テキストへ差し込む文字列を最小エスケープする。
+        def escape_html(str)
+          str.to_s.gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;').gsub('"', '&quot;')
+        end
+
+        # --- 会話文の警告（§1.2・warning-messages-actionable: 修正例＋出現位置を添える）---
+
+        def warn_talk_missing_file(source_filename)
+          Common.log_error(
+            "#{source_filename}: 会話文（:::{.talk}）が使われていますが config/talk.yml がありません",
+            detail: "→ config/talk.yml を作成し、話者を定義してください（例）:\n" \
+                    "    sensei: indigo        # 色だけの簡易形\n" \
+                    '    hanako: teal'
+          )
+        end
+
+        def warn_talk_unknown_option(token, source_filename)
+          Common.log_warn(
+            %(#{source_filename}: 会話文の不明な指定です: "#{token}"),
+            detail: "→ 指定できるのは #{TALK_OPTION_KEYS.join(' / ')} です（例: :::{.talk style=inline name=off}）"
+          )
+        end
+
+        def warn_talk_unknown_style(value, source_filename)
+          Common.log_warn(
+            "#{source_filename}: 会話文の style '#{value}' は不明な表示形式です。既定のまま続行します",
+            detail: "→ 指定できるのは #{TalkRegistry::STYLES.join(' / ')} です"
+          )
+        end
+
+        def warn_talk_inline_avatar(source_filename)
+          Common.log_warn(
+            "#{source_filename}: style=inline ではアバターを表示しません（avatar=on の指定は無視されます）",
+            detail: '→ アバターを見せたい場合は style=chat にしてください'
+          )
+        end
+
+        # inline かつ name=off はアバター・左右・話者色のいずれも出ないため、
+        # 発話が地の文と区別できず誰の台詞か判別不能になる（§1.6）。
+        def warn_talk_inline_nameless(source_filename)
+          Common.log_warn(
+            "#{source_filename}: style=inline かつ name=off では話者を判別できません",
+            detail: "→ name=on に戻すか、style=chat にしてください\n" \
+                    '→ inline は話者名だけが手がかりのため、名前を消すと地の文と区別が付きません'
+          )
+        end
+
+        def warn_talk_missing_speaker(line, source_filename)
+          Common.log_error(
+            %(#{source_filename}: 会話文に話者キーがありません: "#{line}"),
+            detail: "→ 各行は「キー: 発話」で書きます（例: sensei: こんにちは）\n" \
+                    '→ 前の発話の続きなら行頭を空白で字下げしてください'
+          )
+        end
+
+        def warn_talk_orphan_continuation(line, source_filename)
+          Common.log_error(
+            %(#{source_filename}: 継続行の前に発話がありません: "#{line.strip}"),
+            detail: '→ 継続行（字下げ行）の前に「キー: 発話」の行が必要です'
+          )
+        end
+
+        def warn_talk_undefined_key(key, source_filename)
+          Common.log_error(
+            "#{source_filename}: 未定義の話者キー '#{key}' が使われています",
+            detail: "→ config/talk.yml に追記してください:\n" \
+                    "    #{key}: indigo        # 色だけの簡易形\n" \
+                    "  または詳細形:\n" \
+                    "    #{key}:\n" \
+                    "      name: 表示名\n" \
+                    "      color: indigo\n" \
+                    "      avatar: #{key}.webp"
+          )
+        end
+
+        def warn_talk_missing_avatar(key, avatar, source_filename)
+          Common.log_warn(
+            "#{source_filename}: 話者 '#{key}' のアバター images/characters/#{avatar} が見つかりません。" \
+            'アバターなしで表示します',
+            detail: '→ images/characters/ に画像を置くか、talk.yml の avatar 指定を見直してください'
+          )
         end
 
         # Markdown内のリンク記法を脚注化

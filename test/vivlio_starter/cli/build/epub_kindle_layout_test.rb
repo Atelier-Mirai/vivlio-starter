@@ -160,6 +160,88 @@ module VivlioStarter
         assert_equal 1, doc.css('.tip .vs-adm-label').size
       end
 
+      # chat の会話文は Kindle で inline 形式（名前＋区切り＋発話の 1 段落）へ組み替わる
+      def test_should_flatten_chat_talk_to_inline_for_kindle
+        html = '<html><body class="vs-kindle">' \
+               '<div class="talk talk-style-chat" data-talk-sep="：">' \
+               '<div class="talk-item talk-left talk-c-sensei">' \
+               '<div class="talk-speaker">' \
+               '<img class="talk-icon" src="images/characters/sensei.webp" alt="" />' \
+               '<span class="talk-name">山田先生</span></div>' \
+               '<div class="talk-body"><p>やあ。</p></div>' \
+               '</div></div></body></html>'
+        doc = process(html) { |files| Builder.decorate_talk_for_kindle!(files) }
+
+        assert_nil doc.at_css('img.talk-icon'), '丸アイコンは除去される'
+        assert_nil doc.at_css('.talk-speaker'), '空になった話者列は除去される'
+        assert_includes doc.at_css('div.talk')['class'].split, 'talk-style-inline'
+        refute_includes doc.at_css('div.talk')['class'].split, 'talk-style-chat'
+        assert_nil doc.at_css('div.talk')['data-talk-sep'], '使用後の属性は残さない'
+
+        item = doc.at_css('.talk-item')
+        refute_includes item['class'].split, 'talk-left', '左右振り分けクラスは外れる'
+        assert_equal '<p><span class="talk-name">山田先生</span><span class="talk-sep">：</span>やあ。</p>',
+                     item.at_css('p').to_html
+      end
+
+      # name=off でも Kindle では話者名を見せる（隠しクラスを外す）
+      def test_should_reveal_hidden_talk_name_for_kindle
+        html = '<html><body class="vs-kindle">' \
+               '<div class="talk talk-style-chat" data-talk-sep="：">' \
+               '<div class="talk-item talk-left talk-c-sensei">' \
+               '<div class="talk-speaker talk-speaker-empty">' \
+               '<span class="talk-name talk-name-off">山田先生</span></div>' \
+               '<div class="talk-body"><p>やあ。</p></div>' \
+               '</div></div></body></html>'
+        doc = process(html) { |files| Builder.decorate_talk_for_kindle!(files) }
+
+        name = doc.at_css('.talk-name')
+        refute_nil name
+        refute_includes name['class'].to_s.split, 'talk-name-off', '隠しクラスは外れる'
+        assert_equal '山田先生', name.text
+      end
+
+      # 会話文のアバターは Kindle で <img> ごと除去されるため、パッケージへも同梱しない
+      def test_should_exclude_talk_avatars_from_kindle_package
+        %w[characters/haruka.webp characters/haruka.png
+           talk-avatars/abc.webp talk-avatars/abc.png].each do |rel|
+          refute Builder.send(:localized_image?, rel, :kindle), "#{rel} は Kindle へ同梱しない"
+          assert Builder.send(:localized_image?, rel, :epub), "#{rel} はクリーン EPUB では同梱する"
+        end
+        assert Builder.send(:localized_image?, '10-intro/photo.png', :kindle), '通常の本文画像は同梱する'
+      end
+
+      # twemoji 直下の絵文字マスターは形式を問わず同梱しない（プレーン絵文字へ復元済みで未参照）
+      def test_should_exclude_twemoji_masters_regardless_of_format
+        %w[twemoji/1f600.webp twemoji/1f600.svg].each do |rel|
+          refute Builder.send(:localized_stylesheet?, rel, :epub), "#{rel} は未参照なので同梱しない"
+          refute Builder.send(:localized_stylesheet?, rel, :kindle)
+        end
+        # vs-techbook/ の囲み数字は実際に参照されるので残す
+        %w[twemoji/vs-techbook/circled-1.webp twemoji/vs-techbook/circled-1.svg].each do |rel|
+          assert Builder.send(:localized_stylesheet?, rel, :epub), "#{rel} は参照されるので同梱する"
+        end
+      end
+
+      # Kindle 向け画像は長辺 1024px へ抑える（クリーン EPUB の 1600px には影響しない）
+      def test_should_cap_kindle_image_edge
+        assert_equal 1024, Builder.const_get(:KINDLE_IMAGE_MAX_EDGE)
+      end
+
+      # 元から inline の原稿は名前を二重に動かさない（隠しクラスの除去のみ）
+      def test_should_keep_native_inline_talk_intact_for_kindle
+        html = '<html><body class="vs-kindle">' \
+               '<div class="talk talk-style-inline" data-talk-sep="：">' \
+               '<div class="talk-item talk-c-mirai">' \
+               '<p><span class="talk-name">未來</span><span class="talk-sep">：</span>やあ。</p>' \
+               '</div></div></body></html>'
+        doc = process(html) { |files| Builder.decorate_talk_for_kindle!(files) }
+
+        assert_equal '<p><span class="talk-name">未來</span><span class="talk-sep">：</span>やあ。</p>',
+                     doc.at_css('.talk-item p').to_html
+        assert_equal 1, doc.css('.talk-name').size, '名前が二重に入らない'
+      end
+
       # 空のコード行は nbsp で高さを保つ（行高の不揃い防止）
       def test_should_keep_blank_code_line_height_with_nbsp
         html = <<~HTML

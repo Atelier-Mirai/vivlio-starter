@@ -7,6 +7,7 @@ require_relative '../../../lib/vivlio_starter/cli/pre_process/markdown_transform
 require_relative '../../../lib/vivlio_starter/cli/pre_process/markdown_utils'
 require_relative '../../../lib/vivlio_starter/cli/pre_process/table_converter'
 require_relative '../../../lib/vivlio_starter/cli/pre_process/cross_reference_processor'
+require_relative '../../../lib/vivlio_starter/cli/pre_process/talk_registry'
 
 module VivlioStarter
   module CLI
@@ -1095,6 +1096,400 @@ module VivlioStarter
           md = ":::{.output}\n- 出力: dist/sample.pdf\n:::\n"
 
           assert_equal md, MarkdownTransformer.convert_terminal_blocks(md)
+        end
+
+        # =================================================================
+        # 会話文（対話）記法 :::{.talk}（characters-dialogue-spec.md §3-2）
+        # =================================================================
+
+        # ログ副作用（未定義キー 🔴 等）を黙らせて実行する DI ヘルパー。
+        def silence_logs
+          methods = %i[log_info log_success log_warn log_error log_action]
+          saved = methods.to_h { [it, Common.method(it)] }
+          methods.each { |name| Common.define_singleton_method(name) { |*, **| } }
+          yield
+        ensure
+          saved.each { |name, m| Common.define_singleton_method(name, m) }
+        end
+
+        def talk_registry
+          TalkRegistry.from_hash({
+            'sensei' => { 'name' => '山田先生', 'color' => 'indigo', 'side' => 'left' },
+            'hanako' => { 'name' => '花子', 'color' => 'teal', 'side' => 'right' }
+          })
+        end
+
+        # 基本構造: .talk 容器・話者ごとの .talk-item・左右クラス・話者色クラス・表示名・本文。
+        def test_convert_talk_blocks_basic_structure
+          md = ":::{.talk}\nsensei: こんにちは。\nhanako: どうも。\n:::\n"
+
+          html = silence_logs do
+            MarkdownTransformer.convert_talk_blocks(md, registry: talk_registry, source_filename: 'x.md')
+          end
+
+          assert_includes html, '<div class="talk talk-style-chat" data-talk-sep="：">'
+          assert_includes html, '<div class="talk-item talk-left talk-c-sensei">'
+          assert_includes html, '<div class="talk-item talk-right talk-c-hanako">'
+          assert_includes html, '<span class="talk-name">山田先生</span>'
+          assert_includes html, '<span class="talk-name">花子</span>'
+          assert_includes html, '<p>こんにちは。</p>'
+        end
+
+        # 継続行（字下げ）は直前の発話へ連結し、単一段落内で <br> 改行になる。
+        def test_convert_talk_blocks_continuation_line
+          md = ":::{.talk}\nsensei: 1 行目。\n       2 行目。\n:::\n"
+
+          html = silence_logs do
+            MarkdownTransformer.convert_talk_blocks(md, registry: talk_registry, source_filename: 'x.md')
+          end
+
+          # 継続行は同じ <p> 内（発話ブロックは 1 つ）に <br> 改行で入る
+          assert_equal 1, html.scan('talk-item').size
+          assert_includes html, '1 行目。'
+          assert_includes html, '2 行目。'
+          assert_includes html, '<br'
+        end
+
+        # 発話内インライン Markdown（強調・コード）が HTML へ変換される。
+        def test_convert_talk_blocks_inline_markdown
+          md = ":::{.talk}\nsensei: **強調**と`code`。\n:::\n"
+
+          html = silence_logs do
+            MarkdownTransformer.convert_talk_blocks(md, registry: talk_registry, source_filename: 'x.md')
+          end
+
+          assert_includes html, '<strong>強調</strong>'
+          assert_includes html, '<code>code</code>'
+        end
+
+        # 🔴 エラーのメッセージを捕捉して実行する（他のログは黙らせる）DI ヘルパー。
+        def capture_errors
+          methods = %i[log_info log_success log_warn log_action]
+          saved = methods.to_h { [it, Common.method(it)] }
+          saved_error = Common.method(:log_error)
+          messages = []
+          methods.each { |name| Common.define_singleton_method(name) { |*, **| } }
+          Common.define_singleton_method(:log_error) { |msg, **| messages << msg }
+          yield
+          messages
+        ensure
+          saved.each { |name, m| Common.define_singleton_method(name, m) }
+          Common.define_singleton_method(:log_error, saved_error)
+        end
+
+        # 未定義キーは 🔴 エラー（追記例つき）で報告しつつ、表示名＝キーのフォールバックで組む。
+        def test_convert_talk_blocks_undefined_key_reports_and_falls_back
+          md = ":::{.talk}\nunknown: だれ？\n:::\n"
+          html = nil
+          messages = capture_errors do
+            html = MarkdownTransformer.convert_talk_blocks(md, registry: talk_registry, source_filename: 'ch.md')
+          end
+
+          assert_includes html, 'talk-c-unknown'
+          assert_includes html, '<span class="talk-name">unknown</span>'
+          assert(messages.any? { it.include?('未定義の話者キー') && it.include?('unknown') })
+        end
+
+        # 「キー:」に一致しない非字下げ行は 🔴（話者キーなし）で報告する。
+        def test_convert_talk_blocks_missing_speaker_reports
+          md = ":::{.talk}\nいきなり地の文。\n:::\n"
+          messages = capture_errors do
+            MarkdownTransformer.convert_talk_blocks(md, registry: talk_registry, source_filename: 'ch.md')
+          end
+
+          assert(messages.any? { it.include?('話者キーがありません') })
+        end
+
+        # characters.yml 不在（present: false）で .talk を使うと 🔴 で作成を促す。
+        def test_convert_talk_blocks_missing_file_reports
+          md = ":::{.talk}\nsensei: やあ。\n:::\n"
+          absent = TalkRegistry::Registry.new([], display: TalkRegistry::DEFAULT_DISPLAY, present: false)
+          messages = capture_errors do
+            MarkdownTransformer.convert_talk_blocks(md, registry: absent, source_filename: 'ch.md')
+          end
+
+          assert(messages.any? { it.include?('config/talk.yml がありません') })
+        end
+
+        # ```markdown フェンス内の :::{.talk} 作例は変換しない（コードスパン退避）。
+        def test_convert_talk_blocks_skips_fenced_example
+          md = "説明:\n\n```markdown\n:::{.talk}\nsensei: 例。\n:::\n```\n"
+
+          html = silence_logs do
+            MarkdownTransformer.convert_talk_blocks(md, registry: talk_registry, source_filename: 'x.md')
+          end
+
+          assert_equal md, html
+          refute_includes html, '<div class="talk">'
+        end
+
+        # アイコン指定が実在すれば <img class="talk-icon"> が入り、不在なら省かれる（🟡 フォールバック）。
+        def test_convert_talk_blocks_icon_presence
+          icon_dir = File.join(Common::IMAGES_DIR, 'characters')
+          FileUtils.mkdir_p(icon_dir)
+          icon_path = File.join(icon_dir, 'vs_test_talk_icon.webp')
+          File.binwrite(icon_path, 'RIFFxxxxWEBP')
+
+          reg = TalkRegistry.from_hash({
+            'withicon' => { 'name' => 'アイコンあり', 'avatar' => 'vs_test_talk_icon.webp' },
+            'noicon' => { 'name' => 'アイコンなし', 'avatar' => 'does_not_exist.webp' }
+          })
+          md = ":::{.talk}\nwithicon: あり。\nnoicon: なし。\n:::\n"
+
+          html = silence_logs do
+            MarkdownTransformer.convert_talk_blocks(md, registry: reg, source_filename: 'x.md')
+          end
+
+          assert_includes html, %(<img class="talk-icon" src="#{Common.asset_prefix}images/characters/vs_test_talk_icon.webp" alt="" />)
+          refute_includes html, 'does_not_exist.webp'
+        ensure
+          FileUtils.rm_f(icon_path)
+        end
+
+        # 著者が書いた拡張子（.png 等）をそのまま尊重して src にする。
+        def test_convert_talk_blocks_icon_honors_given_extension
+          icon_dir = File.join(Common::IMAGES_DIR, 'characters')
+          FileUtils.mkdir_p(icon_dir)
+          icon_path = File.join(icon_dir, 'vs_test_png_icon.png')
+          File.binwrite(icon_path, "\x89PNG\r\n")
+
+          reg = TalkRegistry.from_hash({ 'p' => { 'avatar' => 'vs_test_png_icon.png' } })
+          html = silence_logs do
+            MarkdownTransformer.convert_talk_blocks(":::{.talk}\np: あり。\n:::\n",
+                                                    registry: reg, source_filename: 'x.md')
+          end
+
+          assert_includes html, %(src="#{Common.asset_prefix}images/characters/vs_test_png_icon.png")
+        ensure
+          FileUtils.rm_f(icon_path)
+        end
+
+        # =================================================================
+        # 表示オプション（talk-display-options-spec.md §3）
+        # =================================================================
+
+        def talk_convert(md, registry: talk_registry)
+          silence_logs do
+            MarkdownTransformer.convert_talk_blocks(md, registry:, source_filename: 'x.md')
+          end
+        end
+
+        # name=off でも .talk-name は DOM に残し、talk-name-off で隠す（Kindle 劣化が見せるため）。
+        def test_talk_name_off_keeps_element_but_hides_it
+          html = talk_convert(":::{.talk name=off}\nsensei: やあ。\n:::\n")
+
+          assert_includes html, '<span class="talk-name talk-name-off">山田先生</span>'
+        end
+
+        # avatar=off ではアバター <img> を出さない。
+        def test_talk_avatar_off_omits_icon
+          icon_dir = File.join(Common::IMAGES_DIR, 'characters')
+          FileUtils.mkdir_p(icon_dir)
+          icon_path = File.join(icon_dir, 'vs_test_opt_icon.webp')
+          File.binwrite(icon_path, 'RIFFxxxxWEBP')
+          reg = TalkRegistry.from_hash({ 'a' => { 'name' => 'ア', 'avatar' => 'vs_test_opt_icon.webp' } })
+
+          with_icon = talk_convert(":::{.talk}\na: あり。\n:::\n", registry: reg)
+          without = talk_convert(":::{.talk avatar=off}\na: なし。\n:::\n", registry: reg)
+
+          assert_includes with_icon, 'class="talk-icon"'
+          refute_includes without, 'talk-icon'
+        ensure
+          FileUtils.rm_f(icon_path)
+        end
+
+        # アバターが無いときは話者列を作らず、名前を吹き出し上部のラベルにする。
+        def test_talk_name_becomes_bubble_label_without_avatar
+          html = talk_convert(":::{.talk avatar=off}\nsensei: やあ。\n:::\n")
+
+          refute_includes html, 'talk-speaker'
+          assert_includes html, "<div class=\"talk-body\">\n<span class=\"talk-name\">山田先生</span>"
+        end
+
+        # style=inline は名前と区切りを <p> の内側へ入れ、左右クラスを付けない。
+        def test_talk_inline_puts_name_inside_paragraph
+          html = talk_convert(":::{.talk style=inline}\nsensei: やあ。\n:::\n")
+
+          assert_includes html, '<div class="talk talk-style-inline" data-talk-sep="：">'
+          assert_includes html, '<div class="talk-item talk-c-sensei">'
+          assert_includes html,
+                          '<p><span class="talk-name">山田先生</span><span class="talk-sep">：</span>やあ。</p>'
+          refute_includes html, 'talk-left'
+          refute_includes html, 'talk-right'
+          refute_includes html, 'talk-body'
+        end
+
+        # separator はブロック指定で差し替えられる。
+        def test_talk_inline_custom_separator
+          html = talk_convert(":::{.talk style=inline separator=>}\nsensei: やあ。\n:::\n")
+
+          assert_includes html, '<span class="talk-sep">&gt;</span>'
+          assert_includes html, 'data-talk-sep="&gt;"'
+        end
+
+        # talk.yml の display: が既定になり、ブロック指定がそれを上書きする。
+        def test_talk_display_defaults_and_block_override
+          reg = TalkRegistry.from_hash({
+            'display' => { 'style' => 'inline', 'separator' => '— ' },
+            'sensei' => 'indigo'
+          })
+
+          from_defaults = talk_convert(":::{.talk}\nsensei: やあ。\n:::\n", registry: reg)
+          overridden = talk_convert(":::{.talk style=chat}\nsensei: やあ。\n:::\n", registry: reg)
+
+          assert_includes from_defaults, 'talk-style-inline', 'display: の style が既定になる'
+          assert_includes from_defaults, '<span class="talk-sep">— </span>'
+          assert_includes overridden, 'talk-style-chat', 'ブロック指定が display: に勝つ'
+        end
+
+        # 未知のオプションキーは 🟡 で知らせ、既定のまま続行する。
+        def test_talk_unknown_option_warns
+          messages = []
+          saved = Common.method(:log_warn)
+          Common.define_singleton_method(:log_warn) { |msg, **| messages << msg }
+          html = MarkdownTransformer.convert_talk_blocks(
+            ":::{.talk styl=inline}\nsensei: やあ。\n:::\n", registry: talk_registry, source_filename: 'x.md'
+          )
+
+          assert(messages.any? { it.include?('不明な指定') })
+          assert_includes html, 'talk-style-chat', '既定のまま続行する'
+        ensure
+          Common.define_singleton_method(:log_warn, saved)
+        end
+
+        # inline かつ name=off は話者が判別できないため 🟡（chat では警告しない）。
+        def test_talk_inline_nameless_warns
+          messages = []
+          saved = Common.method(:log_warn)
+          Common.define_singleton_method(:log_warn) { |msg, **| messages << msg }
+          MarkdownTransformer.convert_talk_blocks(
+            ":::{.talk style=inline name=off}\nsensei: やあ。\n:::\n",
+            registry: talk_registry, source_filename: 'x.md'
+          )
+          inline_warned = messages.any? { it.include?('話者を判別できません') }
+
+          messages.clear
+          MarkdownTransformer.convert_talk_blocks(
+            ":::{.talk name=off}\nsensei: やあ。\n:::\n", registry: talk_registry, source_filename: 'x.md'
+          )
+          chat_warned = messages.any? { it.include?('話者を判別できません') }
+
+          assert inline_warned, 'inline + name=off は警告する'
+          refute chat_warned, 'chat + name=off は警告しない'
+        ensure
+          Common.define_singleton_method(:log_warn, saved)
+        end
+
+        # 引数なしの :::{.talk} は従来どおり chat で組む（後方互換）。
+        def test_talk_without_options_defaults_to_chat
+          html = talk_convert(":::{.talk}\nsensei: やあ。\n:::\n")
+
+          assert_includes html, 'talk-style-chat'
+          assert_includes html, '<div class="talk-body">'
+        end
+
+        # 追加クラスは容器の class へ素通しする。
+        def test_talk_extra_class_passes_through
+          html = talk_convert(":::{.talk .myclass}\nsensei: やあ。\n:::\n")
+
+          assert_includes html, 'class="talk talk-style-chat myclass"'
+        end
+
+        # =================================================================
+        # 簡易アバターの自動生成（talk-auto-avatar-spec.md §3）
+        # =================================================================
+
+        # 自動生成を呼ばずに「呼ばれたか」だけを記録する差し替え。
+        def stub_avatar_generator
+          saved = TalkAvatarGenerator.method(:generate)
+          calls = []
+          TalkAvatarGenerator.define_singleton_method(:generate) do |char, **|
+            calls << char.key
+            "images/talk-avatars/#{char.key}.webp"
+          end
+          yield
+          calls
+        ensure
+          TalkAvatarGenerator.define_singleton_method(:generate, saved)
+        end
+
+        # avatar=auto かつ話者の画像指定なし → 自動生成する（src に asset_prefix を付けない）。
+        def test_talk_avatar_auto_generates_when_unspecified
+          reg = TalkRegistry.from_hash({ 'display' => { 'avatar' => 'auto' }, 'a' => 'teal' })
+          html = nil
+          calls = stub_avatar_generator { html = talk_convert(":::{.talk}\na: やあ。\n:::\n", registry: reg) }
+
+          assert_equal %w[a], calls
+          assert_includes html, '<img class="talk-icon" src="images/talk-avatars/a.webp" alt="" />'
+          refute_includes html, Common.asset_prefix
+        end
+
+        # 話者が avatar: auto と書けば、display が on のままでもその話者だけ自動生成。
+        def test_talk_avatar_auto_per_character
+          reg = TalkRegistry.from_hash({ 'a' => { 'avatar' => 'auto' } })
+          calls = stub_avatar_generator { talk_convert(":::{.talk}\na: やあ。\n:::\n", registry: reg) }
+
+          assert_equal %w[a], calls
+        end
+
+        # 画像指定があれば display が auto でも画像を優先する。
+        def test_talk_avatar_image_wins_over_auto
+          icon_dir = File.join(Common::IMAGES_DIR, 'characters')
+          FileUtils.mkdir_p(icon_dir)
+          icon_path = File.join(icon_dir, 'vs_test_auto_pref.webp')
+          File.binwrite(icon_path, 'RIFFxxxxWEBP')
+          reg = TalkRegistry.from_hash({
+            'display' => { 'avatar' => 'auto' }, 'a' => { 'avatar' => 'vs_test_auto_pref.webp' }
+          })
+          html = nil
+          calls = stub_avatar_generator { html = talk_convert(":::{.talk}\na: やあ。\n:::\n", registry: reg) }
+
+          assert_empty calls, '画像があるときは生成しない'
+          assert_includes html, 'images/characters/vs_test_auto_pref.webp'
+        ensure
+          FileUtils.rm_f(icon_path)
+        end
+
+        # avatar=off は auto 指定より優先し、何も出さない。
+        def test_talk_avatar_off_beats_auto
+          reg = TalkRegistry.from_hash({ 'display' => { 'avatar' => 'auto' }, 'a' => { 'avatar' => 'auto' } })
+          html = nil
+          calls = stub_avatar_generator do
+            html = talk_convert(":::{.talk avatar=off}\na: やあ。\n:::\n", registry: reg)
+          end
+
+          assert_empty calls
+          refute_includes html, 'talk-icon'
+        end
+
+        # 指定した画像が見つからないとき、auto なら自動生成へ落とす。
+        def test_talk_avatar_falls_back_to_auto_when_image_missing
+          reg = TalkRegistry.from_hash({
+            'display' => { 'avatar' => 'auto' }, 'a' => { 'avatar' => 'no_such_file.webp' }
+          })
+          calls = stub_avatar_generator { talk_convert(":::{.talk}\na: やあ。\n:::\n", registry: reg) }
+
+          assert_equal %w[a], calls
+        end
+
+        # 指定拡張子が実体と食い違う場合は変種を探し、実在するファイルを src にする。
+        def test_convert_talk_blocks_icon_falls_back_to_existing_variant
+          icon_dir = File.join(Common::IMAGES_DIR, 'characters')
+          FileUtils.mkdir_p(icon_dir)
+          icon_path = File.join(icon_dir, 'vs_test_variant_icon.png')
+          File.binwrite(icon_path, "\x89PNG\r\n")
+
+          # characters.yml は .webp と書いているが、実体は .png しかない
+          reg = TalkRegistry.from_hash({ 'v' => { 'avatar' => 'vs_test_variant_icon.webp' } })
+          html = silence_logs do
+            MarkdownTransformer.convert_talk_blocks(":::{.talk}\nv: あり。\n:::\n",
+                                                    registry: reg, source_filename: 'x.md')
+          end
+
+          assert_includes html, %(src="#{Common.asset_prefix}images/characters/vs_test_variant_icon.png"),
+                          '実在する変種を src にする（存在しない .webp を指さない）'
+        ensure
+          FileUtils.rm_f(icon_path)
         end
       end
     end

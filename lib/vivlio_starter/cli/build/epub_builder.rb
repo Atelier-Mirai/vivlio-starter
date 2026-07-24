@@ -191,17 +191,29 @@ module VivlioStarter
         def localized_image?(rel, flavor)
           return false if rel.start_with?("#{EPUB_ASSETS_REL_SUBDIR}/", "#{HEADINGS_REL_SUBDIR}/")
           return false if rel.start_with?("#{SHOWCASE_REL_SUBDIR}/", "#{MERMAID_REL_SUBDIR}/") && rel.match?(/\.svg\z/i)
+          return false if flavor == :kindle && talk_avatar_asset?(rel)
           return false if flavor == :kindle && rel.match?(/\.webp\z/i)
 
           true
         end
 
+        # 会話文のアバター（著者が置いた images/characters/… と自動生成の images/talk-avatars/…）。
+        # Kindle は decorate_talk_for_kindle! が <img> ごと除去して inline 形式へ組み替えるため、
+        # どのみち表示されない。WebP は既に拡張子で弾かれるが、png/jpg のアバターも
+        # 未参照のまま同梱されてパッケージを太らせるので、サブディレクトリごと除外する。
+        def talk_avatar_asset?(rel)
+          rel.start_with?("#{TALK_CHARACTERS_REL_SUBDIR}/", "#{TALK_AVATARS_REL_SUBDIR}/")
+        end
+
         # stylesheets/ 配下でローカライズ対象とするか（rel は stylesheets/ からの相対パス）。
-        # twemoji 直下 svg は restore_plain_emoji_for_epub! で参照されなくなるため両フレーバで
-        # 除外する（vs-techbook/ サブツリーの囲み数字等は同梱維持）。クリーン EPUB（:epub）は
+        # twemoji 直下の絵文字マスターは restore_plain_emoji_for_epub! がプレーン絵文字へ
+        # 戻すため未参照になる。両フレーバで除外する（vs-techbook/ サブツリーの囲み数字等は
+        # 実際に参照されるので同梱維持）。**形式を問わず直下を丸ごと外す** —— 以前は
+        # `\Atwemoji/[^/]+\.svg\z` と svg 限定だったため、実体である webp 3689 件（約 3MB）が
+        # 未参照のままクリーン EPUB へ同梱され続けていた（Kindle は WebP 除外で偶然弾けていた）。クリーン EPUB（:epub）は
         # WebP を高画質のまま同梱維持する ── EPUB 3.3 では image/webp がコアメディアタイプ（§4）。
         def localized_stylesheet?(rel, flavor)
-          return false if rel.match?(%r{\Atwemoji/[^/]+\.svg\z})
+          return false if rel.match?(%r{\Atwemoji/[^/]+\z})
           return keyfont_asset?(rel) if rel.start_with?('fonts/') && !embed_fonts?
           return false if flavor == :kindle && rel.match?(/\.webp\z/i)
 
@@ -280,6 +292,9 @@ module VivlioStarter
           # コード行番号の実テキスト注入・admonition ラベル注入を行う。クリーン EPUB（:epub）はこれを
           # 一切適用せず、::before 角タブ・var() テーマ色・WebP を維持した高品質 EPUB のままにする。
           if flavor == :kindle
+            # 会話文のアイコン <img> 除去は WebP 変換より先に行う（除去される画像を
+            # 変換して未使用の _epub_assets を作らないため）。
+            decorate_talk_for_kindle!(chapter_htmls)
             # 残った <img> 参照 WebP を JPEG/PNG へ変換（<img> の出入り確定後＝扉絵/絵文字処理の後）。
             transcode_webp_images_for_epub!(chapter_htmls)
             # インライン <style> 内の webp url()（Techbook の Type3 対策マーカー）を除去（RSC-007 回避）。
@@ -945,6 +960,11 @@ module VivlioStarter
         # Kindle 用）を対で焼き、EPUB では PNG を参照する（mermaid-diagram-spec.md §4.4）。
         MERMAID_REL_SUBDIR = 'mermaid'
 
+        # 会話文の話者アバター。著者が置く images/characters/ と、
+        # 自動生成の images/talk-avatars/（TalkAvatarGenerator::REL_BASE と対）。
+        TALK_CHARACTERS_REL_SUBDIR = 'characters'
+        TALK_AVATARS_REL_SUBDIR = 'talk-avatars'
+
         # data-vs-raster を持つ <img>（図解注釈 showcase・mermaid 図）の参照を、SVG から
         # 対のラスターへ差し替える（explanatory-diagram-spec §7.9・mermaid-diagram-spec §4.4）。
         # showcase の合成 SVG は元画像を base64 data URI で内包し、mermaid SVG は図中テキストを
@@ -1331,9 +1351,14 @@ module VivlioStarter
         # EPUB 用トランスコード出力の集約サブディレクトリ（images/ 配下）。クリーン対象（clean.rb）。
         EPUB_ASSETS_REL_SUBDIR = '_epub_assets'
 
-        # EPUB 用画像の長辺上限（px）。WebP は既に最適化済みだが、元画像から変換する場合の
-        # 肥大化を防ぐためここでも上限を掛ける（medium プリセット既定相当）。
-        EPUB_IMAGE_MAX_EDGE = 1600
+        # Kindle 用画像の長辺上限（px）。この変換経路は :kindle でしか呼ばれないため、
+        # クリーン EPUB（iPad 等の高精細画面で読まれうる）には影響しない。
+        #
+        # 1024 にする根拠: Amazon は入稿 KPF の画像を**すべて JPEG へ再エンコード**して配信する
+        # （実測: KFX resources は 244 件すべて JPEG・透過は白へフラット化）。1600px のまま送っても
+        # 端末表示に対して過剰で、配信サイズだけが増える。クリーン EPUB は 1600px を維持し、
+        # 高精細画面向けの画質を落とさない。
+        KINDLE_IMAGE_MAX_EDGE = 1024
 
         # 各 HTML の <img src="*.webp"> を JPEG/PNG へ変換し src を差し替える。
         # 変換結果はソース src 文字列でメモ化し、同一画像の重複変換を避ける。
@@ -1438,10 +1463,10 @@ module VivlioStarter
         # 変換元 → 出力（JPEG は白フラット化、PNG は透過保持）。成否を返す。
         def convert_image_for_epub(source, dest, ext)
           cmd = if ext == 'png'
-                  ['magick', source, '-resize', "#{EPUB_IMAGE_MAX_EDGE}x#{EPUB_IMAGE_MAX_EDGE}>", '-strip', dest]
+                  ['magick', source, '-resize', "#{KINDLE_IMAGE_MAX_EDGE}x#{KINDLE_IMAGE_MAX_EDGE}>", '-strip', dest]
                 else
                   ['magick', source, '-background', 'white', '-flatten',
-                   '-resize', "#{EPUB_IMAGE_MAX_EDGE}x#{EPUB_IMAGE_MAX_EDGE}>", '-strip', '-quality', '90', dest]
+                   '-resize', "#{KINDLE_IMAGE_MAX_EDGE}x#{KINDLE_IMAGE_MAX_EDGE}>", '-strip', '-quality', '90', dest]
                 end
           system(*cmd, out: File::NULL, err: File::NULL)
         rescue StandardError
@@ -1749,6 +1774,102 @@ module VivlioStarter
             Common.log_info("[EPUB] #{File.basename(path)} のコラム枠にラベルを注入しました")
           end
           html_files
+        end
+
+        # 会話文（.talk）を Kindle 向けに劣化させる（talk-display-options-spec.md §2.5）。
+        #
+        # KFX は flex・::before/::after・var()・丸抜き画像を解さないため、吹き出しを近似せず
+        # **style=inline と同じ形（名前＋区切り＋発話の 1 段落）へ DOM ごと組み替える**。
+        # 容器のクラスを talk-style-inline へ差し替えるので、以降は inline 用 CSS が
+        # そのまま効き、Kindle 専用 CSS をほとんど持たずに済む。
+        #
+        # name=off が指定されていても Kindle では話者名を見せる（talk-name-off クラスを外す）。
+        # アバターも左右振り分けも吹き出しも無い Kindle で名前まで落とすと、話者を判別する
+        # 手がかりが皆無になるため。前処理は name=off でも .talk-name を DOM に残している。
+        #
+        # クリーン EPUB・PDF には適用しない（Kindle 専用フェーズからのみ呼ばれる）。
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def decorate_talk_for_kindle!(html_files)
+          html_files.each do |path|
+            html = File.read(path, encoding: 'utf-8')
+            doc = PostProcessCommands::HtmlParser.parse_html_document(html)
+
+            changed = doc.css('div.talk').map { flatten_talk_container_for_kindle!(doc, it) }.any?
+            next unless changed
+
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+            Common.log_info("[EPUB] #{File.basename(path)} の会話文を Kindle 表示へ変換しました")
+          end
+          html_files
+        end
+
+        # 会話文コンテナ 1 つを inline 形式へ組み替える。
+        # 区切り文字は前処理が付けた data-talk-sep から取る（talk.yml を読み直さない）。
+        def flatten_talk_container_for_kindle!(doc, container)
+          separator = container['data-talk-sep'].to_s
+          separator = '：' if separator.empty?
+          changed = container.css('.talk-item').map { flatten_talk_item_for_kindle!(doc, it, separator) }.any?
+
+          classes = container['class'].to_s.split
+          if classes.delete('talk-style-chat')
+            classes << 'talk-style-inline' unless classes.include?('talk-style-inline')
+            container['class'] = classes.join(' ')
+            changed = true
+          end
+          container.remove_attribute('data-talk-sep')
+          changed
+        end
+
+        # 発話 1 つを「名前＋区切り＋発話」の 1 段落へ。既に inline の原稿は移動不要で、
+        # 隠しクラスの除去と左右クラスの掃除だけを行う。
+        def flatten_talk_item_for_kindle!(doc, item, separator)
+          changed = item.css('img.talk-icon').map { it.remove }.any?
+          changed |= strip_talk_side_classes!(item)
+
+          name = item.at_css('.talk-name')
+          return changed if name.nil?
+
+          # name=off でも Kindle では見せる（隠しクラスを外す）
+          changed |= remove_css_class!(name, 'talk-name-off')
+          item.css('.talk-sep').each { changed |= remove_css_class!(it, 'talk-name-off') }
+
+          target = item.at_css('.talk-body p') || item.at_css('p')
+          if target && !name.ancestors.include?(target)
+            sep_node = Nokogiri::XML::Node.new('span', doc)
+            sep_node['class'] = 'talk-sep'
+            sep_node.content = separator
+            # prepend は先頭挿入なので「区切り → 名前」の順に入れると [名前, 区切り, 本文] になる
+            target.prepend_child(sep_node)
+            target.prepend_child(name)
+            changed = true
+          end
+
+          item.css('.talk-speaker').each do |speaker|
+            speaker.remove
+            changed = true
+          end
+          changed
+        end
+
+        # 左右振り分けクラスを外す（inline では左右に振らない）。
+        def strip_talk_side_classes!(item)
+          classes = item['class'].to_s.split
+          remaining = classes.reject { %w[talk-left talk-right].include?(it) }
+          return false if remaining.size == classes.size
+
+          item['class'] = remaining.join(' ')
+          true
+        end
+
+        # 要素から class を 1 つ取り除く（取り除いたら true）。
+        def remove_css_class!(node, klass)
+          classes = node['class'].to_s.split
+          return false unless classes.delete(klass)
+
+          node['class'] = classes.join(' ')
+          true
         end
 
         # fancy list / outline-list のマーカーを実体注入する（nested-list-notation-spec.md §6.1）。

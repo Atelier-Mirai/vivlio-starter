@@ -330,3 +330,68 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
     Common::CONFIG.with(theme: Common::CONFIG.theme.with(color: theme_color, appendix_color:, preface_color:))
   end
 end
+
+# ================================================================
+# 会話文キャラクター色の生成（characters-dialogue-spec.md §3-3）
+# ================================================================
+class BookSettingsCssTalkTest < Minitest::Test
+  BSC = VivlioStarter::CLI::PreProcessCommands::BookSettingsCss
+  TalkRegistry = VivlioStarter::CLI::PreProcessCommands::TalkRegistry
+  LOG_METHODS = %i[log_info log_success log_warn log_error log_action].freeze
+  Common = VivlioStarter::CLI::Common
+
+  def setup
+    @saved = LOG_METHODS.to_h { [it, Common.method(it)] }
+    LOG_METHODS.each { |name| Common.define_singleton_method(name) { |*, **| } }
+  end
+
+  def teardown
+    @saved&.each { |name, m| Common.define_singleton_method(name, m) }
+  end
+
+  def registry
+    TalkRegistry.from_hash({
+      'sensei' => { 'color' => 'indigo' }, # テーマ色名 → var(--accent-indigo) / Kindle は hex
+      'yamada' => '#1565c0',               # HEX はそのまま
+      'nocolor' => { 'name' => '色なし' }  # 色未指定 → 生成しない（テーマ色を使う）
+    })
+  end
+
+  # :root の --talk-c-<key> は色を明示した話者のみ。名前色は var()、HEX はそのまま。
+  def test_should_declare_talk_color_variables_for_colored_characters
+    lines = BSC.talk_variable_declarations(registry)
+
+    assert_includes lines, '--talk-c-sensei: var(--accent-indigo);'
+    assert_includes lines, '--talk-c-yamada: #1565c0;'
+    refute(lines.any? { it.include?('nocolor') }, '色未指定の話者は宣言しない')
+  end
+
+  # .talk-c-<key> の var() 差し替え。
+  def test_should_emit_class_rules
+    css = BSC.talk_class_rules(registry)
+
+    assert_includes css, '.talk-c-sensei { --talk-accent: var(--talk-c-sensei); }'
+    assert_includes css, '.talk-c-yamada { --talk-accent: var(--talk-c-yamada); }'
+    refute_includes css, 'nocolor'
+  end
+
+  # Kindle は inline 形式へ組み替わるため、話者名・区切り・強調の色をリテラルで焼く
+  # （吹き出しの枠線は Kindle に存在しないのでリテラル化しない）。
+  def test_should_emit_kindle_literals_for_inline_form
+    css = BSC.talk_class_rules(registry)
+
+    assert_includes css, 'body.vs-kindle .talk-c-sensei .talk-name { color: #4f46e5; }'
+    assert_includes css, 'body.vs-kindle .talk-c-sensei .talk-sep { color: #4f46e5; }'
+    assert_includes css, 'body.vs-kindle .talk-c-sensei strong { color: #4f46e5; }'
+    assert_includes css, 'body.vs-kindle .talk-c-yamada .talk-name { color: #1565c0; }'
+    refute_includes css, 'border-left-color', 'Kindle に吹き出しの枠線は無い'
+  end
+
+  # characters.yml 不在（空 registry）なら talk の宣言・ルールを一切出さない。
+  def test_should_emit_nothing_when_registry_empty
+    empty = TalkRegistry.from_hash({})
+
+    assert_empty BSC.talk_variable_declarations(empty)
+    assert_equal '', BSC.talk_class_rules(empty)
+  end
+end

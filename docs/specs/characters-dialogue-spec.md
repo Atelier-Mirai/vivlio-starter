@@ -1,7 +1,7 @@
 # 会話文（対話）記法の刷新と `config/characters.yml` 仕様書
 
 > 作成日: 2026-07-12
-> ステータス: **提案（未実装・レビュー待ち）** — 本仕様の確定が実装着手のブロッカー（PLANNED「記法・データモデルを練ってから着手」）
+> ステータス: **実装済み（2026-07-22）** — `CharacterRegistry` ／ `MarkdownTransformer.convert_talk_blocks` ／ `BookSettingsCss` の会話文色生成 ／ `EpubBuilder#decorate_talk_for_kindle!` ／ `components.css`・`chapter-common.css` の会話文スタイルとして実装。原稿 22 章の会話文節も新記法で復活済み。残: 実機 Kindle Previewer での目視確認（§3-5）
 > 対象: PLANNED.md:43 [Medium]「会話文（対話）記法の刷新と `config/characters.yml` 化」。旧 `先生`/`生徒` ハードコード方式は**廃止済み**であり、後継をゼロから設計する
 > 決定事項（本仕様の提案）:
 > - 記法は **`:::{.talk}` ブロック内に `キー: 発話`（ローマ字キー＋半角コロン）** を主記法とする。`【表示名】発話` の全角形は**採用しない**（§1.4 に理由）

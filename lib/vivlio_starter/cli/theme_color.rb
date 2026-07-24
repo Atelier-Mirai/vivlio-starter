@@ -58,6 +58,15 @@ module VivlioStarter
         end
       end
 
+      # WCAG の相対輝度（0.0〜1.0）。地色の明るさに応じて載せる文字色を白/黒へ
+      # 切り替えるために使う（簡易アバターの自動生成・talk-auto-avatar-spec.md §2.2）。
+      # @param hex6 [String] "#rrggbb"（to_hex6 の出力）
+      def luminance(hex6)
+        channels = hex6.delete_prefix('#').scan(/../).map { it.to_i(16) / 255.0 }
+        linear = channels.map { it <= 0.03928 ? it / 12.92 : (((it + 0.055) / 1.055)**2.4) }
+        (0.2126 * linear[0]) + (0.7152 * linear[1]) + (0.0722 * linear[2])
+      end
+
       # accent を白と混色して #rrggbb を返す（ratio = accent の割合・0.0〜1.0）。
       # KFX は color-mix() 非対応のため、CSS の color-mix(in srgb, accent R%, white) を事前計算する。
       # @param hex6 [String] "#rrggbb"（to_hex6 の出力）
