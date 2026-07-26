@@ -40,6 +40,7 @@ require_relative 'pre_process/theme_validator'
 require_relative 'pre_process/image_generator'
 require_relative 'pre_process/markdown_transformer'
 require_relative 'pre_process/image_path_normalizer'
+require_relative 'pre_process/issue_registry'
 require_relative 'pre_process/link_image_validator'
 
 module VivlioStarter
@@ -317,6 +318,11 @@ module VivlioStarter
               "#{first.source_file}:#{first.line} - ラベルID '#{first.title} @#{first.id}' は重複しています",
               detail: "重複箇所: #{detail_lines.join("\n          ")}"
             )
+            # 章別サマリーへブリッジする（preflight-chapter-summary-spec.md §2.2）
+            IssueRegistry.record(
+              chapter: first.source_file, line: first.line, severity: :error,
+              category: :cross_reference, message: "ラベルID '@#{first.id}' が重複しています"
+            )
             all_errors << "ラベルID '@#{first.id}' 重複"
           end
           # 重複があっても先勝ちのラベルマップで処理を続行する
@@ -363,6 +369,12 @@ module VivlioStarter
           Common.log_warn(" #{filename}: #{logging_errors.size}個の未定義参照を検出")
           logging_errors.each do |msg|
             Common.log_warn("    - #{msg}")
+            # 章別サマリーへブリッジする（同 spec §2.2）。行番号は contents/ 側の
+            # メッセージに埋まっているため、ここでは章単位の件数として積む
+            IssueRegistry.record(
+              chapter: filename, severity: :warn,
+              category: :cross_reference, message: "未定義の参照: #{msg}"
+            )
           end
         end
 
@@ -381,6 +393,10 @@ module VivlioStarter
         orphan_labels.each do |label|
           Common.log_warn(
             "#{label.source_file}:#{label.line} - 孤立ラベル '#{label.title} @#{label.id}' は未参照です"
+          )
+          IssueRegistry.record(
+            chapter: label.source_file, line: label.line, severity: :warn,
+            category: :cross_reference, message: "孤立ラベル '@#{label.id}' は未参照です"
           )
         end
 

@@ -29,6 +29,7 @@ require 'uri'
 require 'monitor'
 require_relative '../common'
 require_relative '../masking'
+require_relative 'issue_registry'
 
 module VivlioStarter
   module CLI
@@ -42,6 +43,10 @@ module VivlioStarter
 
         # ファイル単位の検証結果
         ValidationReport = Data.define(:filename, :image_issues, :link_issues)
+
+        # このモジュール自身が IssueRegistry へ積むカテゴリ。
+        # print_other_warnings_note が「ほかの発生源の警告」を数えるために使う。
+        LINK_IMAGE_CATEGORIES = %i[image link code_include].freeze
 
         # --- グローバル蓄積用（スレッドセーフ） ---
         @monitor = Monitor.new
@@ -92,6 +97,10 @@ module VivlioStarter
               @monitor.synchronize { @external_urls.concat(urls) }
             end
 
+            # 章別サマリー用の横断集計へブリッジする（preflight-chapter-summary-spec.md §2.2）。
+            # 逐次ログは上記のとおり各所で既に出しているため、ここでは記録だけ行う。
+            (image_issues + link_issues).each { record_to_registry(it) }
+
             report = ValidationReport.new(filename:, image_issues:, link_issues:)
             @monitor.synchronize { @reports << report }
             report
@@ -124,6 +133,7 @@ module VivlioStarter
                 message: result[:message]
               )
               add_link_issue_to_report(result[:filename], issue)
+              record_to_registry(issue)
             end
           end
 
@@ -217,9 +227,50 @@ module VivlioStarter
                 @reports << ValidationReport.new(filename:, image_issues: [issue], link_issues: [])
               end
             end
+            record_to_registry(issue)
+          end
+
+          # ビルド側の 1 行（preflight-chapter-summary-spec.md §2.4）。
+          # print_summary はリンク・画像しか語らないため、他の発生源（Guard 警告・
+          # クロスリファレンス・QueryStream）の警告が埋もれないよう件数だけ知らせる。
+          # 章別の内訳は vs preflight に任せる（build の主役はビルド成果物の一覧）。
+          def print_other_warnings_note
+            others = IssueRegistry.issues.count do
+              it.severity == :warn && !LINK_IMAGE_CATEGORIES.include?(it.category)
+            end
+            return if others.zero?
+
+            Common.log_warn("ほか警告 #{others} 件（詳細は vs preflight で確認できます）")
           end
 
           private
+
+          # issue_type から重要度・カテゴリを決めて IssueRegistry へ橋渡しする。
+          # 重要度は既存の逐次ログの絵文字（log_error / log_warn）と一致させる:
+          #   欠落画像・欠落コード・リンク切れ = 🔴 error
+          #   裸 URL・危険スキーム             = 🟡 warn
+          def record_to_registry(issue)
+            severity, category, message =
+              case issue
+              in ImageIssue[issue_type: :missing, image_path:]
+                [:error, :image, "存在しない画像: #{image_path}"]
+              in ImageIssue[issue_type: :missing_code, image_path:]
+                [:error, :code_include, "存在しないコードファイル: #{image_path}"]
+              in LinkIssue[issue_type: :unreachable, url:, message: msg]
+                [:error, :link, "リンク切れ: #{url}（#{msg}）"]
+              in LinkIssue[issue_type: :dangerous_scheme, url:]
+                [:warn, :link, "危険なスキーム: #{url}"]
+              in LinkIssue[issue_type: :bare_url, url:]
+                [:warn, :link, "裸 URL: #{url}"]
+              else
+                [:warn, :link, "検証で指摘されました（#{issue.issue_type}）"]
+              end
+
+            IssueRegistry.record(
+              chapter: issue.filename, line: issue.line_number,
+              severity:, category:, message:
+            )
+          end
 
           # 画像 issue の行番号を元ファイルの行番号に補正する。
           # プレースホルダー SVG から抽出した画像名を元ファイルで検索し、

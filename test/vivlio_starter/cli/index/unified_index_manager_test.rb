@@ -327,7 +327,8 @@ module VivlioStarter
 
       # --- phase: 未出現の用語集語警告（R4） ---
 
-      # R4: 今回のスキャンに出現しない g 語は catalog 外の出現章名つきで警告される（掲載は維持）
+      # R4: 今回のスキャンに出現しない g 語は catalog 未登録の出現章名つきで警告される（掲載は維持）
+      # （catalog.yml が無い環境なので走査範囲の判定はフォールバックし、従来どおり警告する）
       def test_warn_unmatched_glossary_terms_hints_outside_chapter
         File.write('contents/61-developer.md', "PDF/X-1a は印刷入稿の規格です。\n")
         glossary = [{ 'term' => 'PDF/X-1a', 'flags' => 'g' }]
@@ -337,7 +338,7 @@ module VivlioStarter
         end
 
         assert_includes output, '用語集語がビルド対象章に出現しません: PDF/X-1a'
-        assert_includes output, 'catalog 外の 61-developer に出現'
+        assert_includes output, 'catalog 未登録の 61-developer に出現'
       end
 
       # R4: 原稿のどこにも出現しない g 語は「語の変更・削除？」の手掛かりを添える

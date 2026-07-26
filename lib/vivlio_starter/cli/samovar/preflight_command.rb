@@ -11,7 +11,12 @@
 #   Step 1: 画像最適化（--no-resize でスキップ）
 #   Step 2: テーマ画像準備
 #   Step 3: Markdown前処理（frontmatter・画像パス・QueryStream・コードインクルード・クロスリファレンス）
-#   Step 4: 索引スキャン（index_glossary.enabled 時のみ）
+#   Step 4: 索引スキャン（index_glossary.enabled かつ全章実行時のみ）
+#
+# 「vs build が報告することを先に見る」機能なので、build が言わないことは言わない:
+#   章を絞った実行（vs preflight 24）は vs build 24（single mode）と同じく Step 4 を行わない。
+#   索引・用語集は書籍全体を単位とする検査のため、章を絞ると誤検知の山になる
+#   （docs/specs/preflight-glossary-warning-scope-report.md）。
 #
 # 終了コード:
 #   0: エラーなし（警告のみ、または問題なし）
@@ -20,6 +25,7 @@
 
 require_relative '../build'
 require_relative '../build/pipeline'
+require_relative '../index'
 require_relative '../pre_process'
 require_relative '../token_resolver'
 require_relative '../clean'
@@ -31,6 +37,19 @@ module VivlioStarter
       # preflight コマンドの Samovar 実装
       class PreflightCommand < Samovar::Command
         self.description = 'ビルド前の原稿エラーチェックを高速実行します'
+
+        # 章別サマリー表のラベル幅（全角 1 文字＝2 幅で数える）。
+        # 長い章タイトルは切り詰めて 🔴🟡✅ の縦位置を揃える（揃わないと表として読めない）
+        CHAPTER_LABEL_WIDTH = 30
+
+        # 章に紐付かない指摘（Guard 警告など）を示す行ラベル
+        UNATTACHED_LABEL = '章に紐付かない指摘'
+
+        # 章タイトル（H1）を探す行数の上限。原稿冒頭にあるため深追いしない
+        TITLE_SCAN_LINES = 60
+
+        # 指摘ゼロの章に使う件数オブジェクト
+        NO_ISSUES = PreProcessCommands::IssueRegistry::Counts.new(errors: 0, warns: 0)
 
         many :targets, 'チェック対象（章番号 / 範囲 / スラッグ）', default: []
 
@@ -62,6 +81,10 @@ module VivlioStarter
             print_usage
             return 0
           end
+
+          # 章別サマリーの集計をリセットする。Guard の 🟡 警告も最終判定に含めるため、
+          # Guard.run! より前に置く（preflight-chapter-summary-spec.md §2.2）
+          PreProcessCommands::IssueRegistry.reset!
 
           # 前提条件の網羅的診断（docs/specs/precondition-guard-spec.md Phase 4）
           # preflight は診断コマンドのため build より広く全 Check を実行する。
@@ -97,10 +120,16 @@ module VivlioStarter
           pipeline = BuildCommands::UnifiedBuildPipeline.new(self, entries: entries, mode: :preflight)
           pipeline.run
 
+          # 索引処理が積んだ案内（未走査章の vs index:auto 誘導・辞書不在）を吐き出す。
+          # build 側は従来から flush しており、preflight だけが握り潰していた
+          # （＝原稿の問題を先に知るための機能なのに知らせていなかった）
+          IndexCommands.flush_post_build_messages
+
           # --verify-links 有効時のみ外部 URL チェックを実行
           PreProcessCommands::LinkImageValidator.check_external_urls!
           PreProcessCommands::LinkImageValidator.print_summary
 
+          print_chapter_summary(entries)
           print_preflight_summary
 
           PreProcessCommands::LinkImageValidator.any_issues? ? 1 : 0
@@ -141,10 +170,115 @@ module VivlioStarter
           Thread.current[:vs_verify_options] = opts
         end
 
-        # preflight 完了サマリーを表示する
+        # 章別サマリーを表示する（preflight-chapter-summary-spec.md §1）。
+        # 前処理はファイル単位（並列）で流れるため 🔴🟡 が章をまたいで混在する。
+        # 「どの章に何件あるか」を最後に一覧化して読み取れるようにする。
+        # 指摘ゼロの章も載せる（検査したことの証明）が、全章 ✅ なら 1 行へ短縮する。
+        def print_chapter_summary(entries)
+          by_chapter = PreProcessCommands::IssueRegistry.summary_by_chapter
+          rows = chapter_summary_rows(entries, by_chapter)
+          unattached = by_chapter[nil]
+
+          if unattached.nil? && rows.all? { |_, counts| counts.clean? }
+            Common.log_result("全 #{rows.size} 章: 問題なし", status: :success) unless rows.empty?
+            return
+          end
+
+          Common.log_always ''
+          Common.log_always '📋 章別サマリー'
+          rows.each { |label, counts| Common.log_always("   #{format_label(label)} #{issue_mark(counts)}") }
+          return unless unattached
+
+          Common.log_always ''
+          Common.log_always("   #{format_label(UNATTACHED_LABEL)} #{issue_mark(unattached)}")
+        end
+
+        # 表の行（[ラベル, Counts]）を章番号順に組み立てる。
+        # registry のキーが entries に無い場合（コードインクルードの '(不明)' 等）も
+        # 末尾へ足し、集計した指摘を表から取りこぼさない。
+        def chapter_summary_rows(entries, by_chapter)
+          sorted = entries.sort_by { it.number.to_i }
+          rows = sorted.map { [chapter_summary_label(it), by_chapter[it.basename] || NO_ISSUES] }
+
+          extras = by_chapter.keys.compact - sorted.map(&:basename)
+          rows + extras.sort.map { [it, by_chapter[it]] }
+        end
+
+        # 「21 画像」のように番号＋章タイトルで表示する
+        def chapter_summary_label(entry)
+          number = entry.number ? format('%02d', entry.number.to_i) : ''
+          "#{number} #{chapter_title(entry)}".strip
+        end
+
+        # 原稿冒頭の H1 見出しを章タイトルとして読む。
+        # 見つからない・読めない場合はスラッグで代替する（表示だけの用途なので失敗させない）。
+        def chapter_title(entry)
+          return entry.slug.to_s unless entry.path && File.file?(entry.path)
+
+          File.foreach(entry.path, encoding: 'utf-8').with_index do |line, idx|
+            break if idx >= TITLE_SCAN_LINES
+
+            matched = line.match(/\A#\s+(.+)/)
+            return plain_title(matched[1]) if matched
+          end
+          entry.slug.to_s
+        rescue StandardError
+          entry.slug.to_s
+        end
+
+        # H1 には改行タグ・振り仮名・強調が入り得るため、1 行表示用に地の文だけを取り出す
+        def plain_title(text)
+          text.gsub(/<[^>]*>/, '')                       # <br> などのインライン HTML
+              .gsub(/\{([^|{}]+)\|[^{}]*\}/, '\1')       # 振り仮名 {漢字|よみ} → 漢字
+              .delete('*`')                              # 強調・コード記法の記号
+              .squeeze(' ').strip
+        end
+
+        # ラベルを CHAPTER_LABEL_WIDTH に揃える（溢れは … で切り、不足は空白で埋める）
+        def format_label(text)
+          truncated = truncate_to_width(text, CHAPTER_LABEL_WIDTH)
+          truncated + (' ' * [CHAPTER_LABEL_WIDTH - display_width(truncated), 0].max)
+        end
+
+        def truncate_to_width(text, width)
+          return text if display_width(text) <= width
+
+          kept = +''
+          text.each_char do |char|
+            break if display_width(kept) + display_width(char) > width - 1
+
+            kept << char
+          end
+          "#{kept}…"
+        end
+
+        # 全角文字を 2 幅として数える（Metrics::Formatter と同じ数え方）
+        def display_width(text) = text.each_char.sum { it.ascii_only? ? 1 : 2 }
+
+        # 件数を 🔴 / 🟡 表示へ変換する。指摘ゼロは ✅。
+        def issue_mark(counts)
+          return '✅' if counts.clean?
+
+          parts = []
+          parts << "🔴 エラー #{counts.errors} 件" if counts.errors.positive?
+          parts << "🟡 警告 #{counts.warns} 件" if counts.warns.positive?
+          parts.join('・')
+        end
+
+        # preflight 完了サマリーを表示する。
+        # 🔴 エラーあり / 🟡 警告のみ / ✅ 指摘なし の 3 段階（同 spec §1・§2.3）。
+        # 終了コードは従来判定（LinkImageValidator.any_issues?）のままで、
+        # ここで変えるのは文言だけ（警告件数を拾う）。
         def print_preflight_summary
-          if PreProcessCommands::LinkImageValidator.any_issues?
-            Common.log_result('Preflight 完了: 課題あり — 詳細は上記を確認してください', status: :failure)
+          counts = PreProcessCommands::IssueRegistry.counts
+
+          if counts.errors.positive?
+            Common.log_result(
+              "Preflight 完了: エラー #{counts.errors} 件・警告 #{counts.warns} 件 — 詳細は上記を確認してください",
+              status: :failure
+            )
+          elsif counts.warns.positive?
+            Common.log_result("Preflight 完了: 警告 #{counts.warns} 件（ビルドは可能です）", status: :warning)
           else
             Common.log_result('Preflight 完了: 良好な状態です', status: :success)
           end

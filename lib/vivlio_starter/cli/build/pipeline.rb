@@ -432,6 +432,16 @@ module VivlioStarter
             return
           end
 
+          # 索引・用語集は書籍全体を単位とする検査・生成なので、章を絞った実行では行わない。
+          # vs build <章>（single mode）が Step 4 を持たないのと揃える——preflight は
+          # 「そのビルドが何を報告するか」を先に見るための機能であり、build が言わないことを
+          # 言ってはならない（章を絞ると用語集語がほぼ全滅して誤検知になる問題も構造的に消える。
+          # 詳細 → docs/specs/preflight-glossary-warning-scope-report.md）
+          unless full_catalog_scope?
+            Common.log_action('[index scan and build] 章を絞った実行のためスキップします（索引・用語集は全章実行で確認できます）')
+            return
+          end
+
           Common.log_action('[index scan and build] 索引語のスキャンと索引ページ生成を実行します…')
 
           # 対象章を取得（Entry 配列から basename を抽出）
@@ -445,6 +455,19 @@ module VivlioStarter
                             end
 
           IndexCommands.process_index_for_build!(chapter_targets)
+        end
+
+        # 今回の対象章が catalog の全章を覆っているか。
+        # entries が空（＝contents/ 全 .md を対象にするフォールバック）も全章とみなす。
+        # catalog を読めない環境では従来どおり実行する（判定材料が無いのに黙るのは危険）。
+        def full_catalog_scope?
+          catalog = Build::CatalogLoader.load_existing_basenames
+          return true if catalog.empty? || entries.empty?
+
+          (catalog - basenames).empty?
+        rescue StandardError => e
+          Common.log_debug("catalog の全章判定に失敗したため索引処理を実行します: #{e.message}")
+          true
         end
       end
     end

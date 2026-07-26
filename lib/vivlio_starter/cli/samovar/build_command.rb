@@ -112,6 +112,7 @@ module VivlioStarter
           # 検証オプションをスレッドローカルに設定（LinkImageValidator が参照）
           setup_verify_options!
           PreProcessCommands::LinkImageValidator.reset!
+          PreProcessCommands::IssueRegistry.reset!
 
           # 同一プロジェクトでの多重 build を防ぐため、.cache/vs/.build.lock を
           # File::LOCK_EX | LOCK_NB で取得する。取得失敗時は即座にエラー終了。
@@ -294,6 +295,7 @@ module VivlioStarter
           PreProcessCommands::LinkImageValidator.check_external_urls!
           # 検証サマリーを表示
           PreProcessCommands::LinkImageValidator.print_summary
+          PreProcessCommands::LinkImageValidator.print_other_warnings_note
 
           common.log_success("単章ビルドが完了しました: #{generated_pdf}")
           created_files = [generated_pdf].compact.select { File.exist?(it) }
@@ -325,6 +327,7 @@ module VivlioStarter
           PreProcessCommands::LinkImageValidator.check_external_urls!
           # 検証サマリーを表示
           PreProcessCommands::LinkImageValidator.print_summary
+          PreProcessCommands::LinkImageValidator.print_other_warnings_note
 
           common.log_success('全ファイルのビルドが完了しました')
 

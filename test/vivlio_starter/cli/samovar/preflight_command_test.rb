@@ -223,6 +223,134 @@ module VivlioStarter
       end
 
       # ----------------------------------------------------------------
+      # 章別サマリー・3 段階の最終行
+      # （docs/specs/preflight-chapter-summary-spec.md §1・§3-2・§3-4）
+      # ----------------------------------------------------------------
+      class PreflightCommandSummaryTest < Minitest::Test
+        def teardown
+          PreProcessCommands::IssueRegistry.reset!
+        end
+
+        # エラーがあると章別表に内訳が出て、最終行は ❌・終了コード 1
+        def test_should_report_errors_with_chapter_breakdown_and_exit_1
+          output, status = run_preflight(entries: fixture_entries('10-alpha', '21-beta'), any_issues: true) do
+            PreProcessCommands::IssueRegistry.record(
+              chapter: '21-beta.md', severity: :error, category: :image, message: '存在しない画像: a.webp'
+            )
+            PreProcessCommands::IssueRegistry.record(
+              chapter: '21-beta.md', severity: :warn, category: :link, message: '裸 URL'
+            )
+          end
+
+          assert_equal 1, status
+          assert_includes output, '📋 章別サマリー'
+          assert_includes output, '🔴 エラー 1 件・🟡 警告 1 件'
+          assert_includes output, '❌ Preflight 完了: エラー 1 件・警告 1 件'
+          # 指摘ゼロの章も「検査した」証明として載る
+          assert_match(/10 alpha\s+✅/, output)
+        end
+
+        # 警告のみなら最終行は ⚠️（ビルドは可能）で終了コード 0
+        # Guard 警告（章に紐付かない）も最終判定に反映される（§0-2 の非対称の解消）
+        def test_should_report_warning_only_and_exit_0
+          output, status = run_preflight(entries: fixture_entries('10-alpha'), any_issues: false) do
+            PreProcessCommands::IssueRegistry.record(
+              severity: :warn, category: :guard, message: '未知のコンテナクラス .foo'
+            )
+          end
+
+          assert_equal 0, status
+          assert_includes output, '章に紐付かない指摘'
+          assert_includes output, '🟡 警告 1 件'
+          assert_includes output, '⚠️ Preflight 完了: 警告 1 件（ビルドは可能です）'
+        end
+
+        # 全章 ✅ なら表は 1 行へ短縮され、最終行は ✅・終了コード 0
+        def test_should_shorten_table_when_all_chapters_are_clean
+          output, status = run_preflight(entries: fixture_entries('10-alpha', '21-beta'), any_issues: false)
+
+          assert_equal 0, status
+          assert_includes output, '✅ 全 2 章: 問題なし'
+          refute_includes output, '📋 章別サマリー'
+          assert_includes output, '✅ Preflight 完了: 良好な状態です'
+        end
+
+        # 章単位実行（vs preflight 21）でも対象章のみの同形式になる
+        def test_should_limit_table_to_targeted_chapter
+          output, = run_preflight(entries: fixture_entries('21-beta'), any_issues: true, targets: ['21']) do
+            PreProcessCommands::IssueRegistry.record(
+              chapter: '21-beta.md', severity: :error, category: :image, message: '存在しない画像: a.webp'
+            )
+          end
+
+          assert_includes output, '21 beta'
+          refute_includes output, '10 alpha'
+        end
+
+        private
+
+        # contents/ に実在しない basename を使い、章タイトルがスラッグへ縮退する形で固定する
+        def fixture_entries(*basenames)
+          basenames.map do |bn|
+            TokenResolver::Entry.new(
+              number: bn[/^\d+/, 0], slug: bn.sub(/^\d+-/, ''), kind: :chapter, label: 'CHAPTERS',
+              path: "contents/#{bn}.md", exists: false, in_catalog: true, valid: true
+            )
+          end
+        end
+
+        # pipeline.run のタイミングで recorder を呼び、各発生源が指摘を積んだ状態を作る
+        def run_preflight(entries:, any_issues:, targets: [], &recorder)
+          status = nil
+          output, = capture_io do
+            with_stubs(entries, any_issues, recorder) do
+              status = PreflightCommand.new(targets).call
+            end
+          end
+          [output, status]
+        end
+
+        def with_stubs(entries, any_issues, recorder, &block)
+          validator = PreProcessCommands::LinkImageValidator
+          Guards::Guard.stub(:run!, nil) do
+            CleanCommands.stub(:execute_clean, nil) do
+              TokenResolver::Resolver.stub(:new, -> { ResolverStub.new(entries) }) do
+                BuildCommands::UnifiedBuildPipeline.stub(:new, ->(*, **) { RecordingPipelineStub.new(recorder) }) do
+                  validator.stub(:reset!, nil) do
+                    validator.stub(:check_external_urls!, nil) do
+                      validator.stub(:print_summary, nil) do
+                        validator.stub(:any_issues?, any_issues, &block)
+                      end
+                    end
+                  end
+                end
+              end
+            end
+          end
+        end
+
+        class ResolverStub
+          def initialize(entries)
+            @entries = entries
+          end
+
+          def resolve(*_tokens) = @entries
+        end
+
+        # run の中で指摘を積む pipeline スタブ（実際の前処理は走らせない）
+        class RecordingPipelineStub
+          def initialize(recorder)
+            @recorder = recorder
+          end
+
+          def run
+            @recorder&.call
+            []
+          end
+        end
+      end
+
+      # ----------------------------------------------------------------
       # CLI 統合テスト
       # ----------------------------------------------------------------
       class PreflightCommandRegistrationTest < Minitest::Test

@@ -18,6 +18,7 @@
 
 require_relative 'token_resolver'
 require_relative 'build/catalog_loader'
+require_relative 'pre_process/issue_registry'
 require_relative 'guards/base_check'
 require_relative 'guards/relaxed_check'
 require_relative 'guards/project_root_check'
@@ -55,6 +56,16 @@ module VivlioStarter
 
           warns.each  { Common.log_warn(it.message, detail: join_detail(it.detail)) }
           errors.each { Common.log_error(it.message, detail: join_detail(it.detail)) }
+
+          # 🟡 警告は停止させないため、そのままでは preflight の最終判定に載らない
+          # （発生源次第で最終行が変わる非対称の解消・preflight-chapter-summary-spec.md §0-2）。
+          # Guard は特定の章に紐付かない横断的な検査なので chapter は nil のままにする。
+          # :error は GuardError で即停止しサマリーへ到達しないため記録しない。
+          warns.each do |violation|
+            PreProcessCommands::IssueRegistry.record(
+              severity: :warn, category: :guard, message: violation.message
+            )
+          end
 
           return if errors.empty?
 

@@ -15,6 +15,7 @@
 # ================================================================
 
 require_relative '../common'
+require_relative '../build/catalog_loader'
 require_relative 'unified_terms_manager'
 require_relative 'review_queue_manager'
 require_relative 'review_markdown_generator'
@@ -413,16 +414,23 @@ module VivlioStarter
       end
 
       # R4: ビルド対象章に 1 回も出現しない用語集語を警告する（掲載自体は維持）。
-      # catalog 外の章に出現があるならその章名を添え、どこにも無ければその旨を伝える。
+      # catalog 未登録の原稿に出現があるならその章名を添え、どこにも無ければその旨を伝える。
       # 除外したい場合の判断（-g フラグ）は著者に委ねる——定義は書籍の語彙資産のため。
+      #
+      # 判定材料は「今回のスキャン結果」なので、章を絞った実行では出現しないのが当然になる
+      # （1 章だけを対象にすると用語集語がほぼ全滅して誤検知の山になる）。
+      # 全章を走査したときだけ意味を持つ検査なので、部分実行では黙る。
+      # 詳細 → docs/specs/preflight-glossary-warning-scope-report.md
       # @param glossary_terms [Array<Hash>] 用語集対象の用語
       # @param glossary_backlinks [Hash{String => Array}] 今回のスキャンで出現した語 → 出現箇所
       # @param chapters [Array<String>] ビルド対象章
       def warn_unmatched_glossary_terms(glossary_terms, glossary_backlinks, chapters)
+        build_targets = chapters.map { File.basename(it.to_s, '.md') }
+        return unless full_catalog_scope?(build_targets)
+
         missing = glossary_terms.reject { glossary_backlinks.key?(it['term']) }
         return if missing.empty?
 
-        build_targets = chapters.map { File.basename(it.to_s, '.md') }
         all_contents = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).to_h do |path|
           [File.basename(path, '.md'), File.read(path, encoding: 'utf-8')]
         end
@@ -432,7 +440,9 @@ module VivlioStarter
           found = all_contents.keys.select { all_contents[it].include?(name) }
           outside = found - build_targets
           hint = if outside.any?
-                   "catalog 外の #{outside.join(', ')} に出現"
+                   # 走査は catalog 全章を覆っている（上のガード）ため、ここに来るのは
+                   # contents/ にはあるが catalog.yml に載っていない原稿に限られる
+                   "catalog 未登録の #{outside.join(', ')} に出現"
                  elsif found.any?
                    "#{found.join(', ')} に文字列出現はあるがリンク化されていません（コード内・タグ内等）"
                  else
@@ -440,6 +450,18 @@ module VivlioStarter
                  end
           Common.log_warn("用語集語がビルド対象章に出現しません: #{name}（#{hint}）")
         end
+      end
+
+      # 走査対象が catalog の全章を覆っているか（R4 の前提条件）。
+      # catalog を読めない場合は従来どおり検査する（判定材料が無いのに黙るのは危険）。
+      # @param build_targets [Array<String>] 走査した章の basename
+      def full_catalog_scope?(build_targets)
+        catalog = Build::CatalogLoader.load_existing_basenames
+        return true if catalog.empty?
+
+        (catalog - build_targets).empty?
+      rescue StandardError
+        true
       end
 
       # リジェクト済み候補の一覧表示

@@ -15,6 +15,7 @@
 require 'query_stream'
 require_relative '../common'
 require_relative 'data_image_resolver'
+require_relative 'issue_registry'
 
 module VivlioStarter
   module CLI
@@ -36,7 +37,19 @@ module VivlioStarter
           # gem 側はログを出力しないため、on_error / on_warning コールバックでメッセージを構成する。
           # Common.log_error / log_warn が 🔴 / 🟡 の絵文字プレフィックスを付与するため、
           # コールバック側ではプレフィックスを付けない。
+          # 章別サマリーへの記録（preflight-chapter-summary-spec.md §2.2）。
+          # 章は処理中のファイルそのもの、行は location（"file:line"）から取る
+          # （location を持たない一般エラー・警告もあるため respond_to? で確かめる）。
+          record_issue = lambda do |severity, subject|
+            location = subject.respond_to?(:location) ? subject.location : nil
+            IssueRegistry.record(
+              chapter: source_filename, line: line_from_location(location),
+              severity:, category: :query_stream, message: subject.message
+            )
+          end
+
           on_error = lambda do |error|
+            record_issue.call(:error, error)
             case error
             in QueryStream::TemplateNotFoundError => e
               # location は "filename:line" 形式
@@ -57,6 +70,7 @@ module VivlioStarter
           end
 
           on_warning = lambda do |warning|
+            record_issue.call(:warn, warning)
             case warning
             in QueryStream::NoResultWarning => w
               Common.log_warn(
@@ -93,6 +107,13 @@ module VivlioStarter
             on_warning:,
             post_render:
           )
+        end
+
+        # QueryStream の location（"21-images.md:42"）から行番号だけを取り出す。
+        # 章はコールバック側で source_filename を使うため、ここでは行のみを見る。
+        # @return [Integer, nil]
+        def line_from_location(location)
+          location.to_s[/:(\d+)\z/, 1]&.to_i
         end
       end
     end

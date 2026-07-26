@@ -401,11 +401,14 @@ module VivlioStarter
         format_detail(detail).each { |line| puts("#{DETAIL_INDENT}#{line}") }
       end
 
-      # 処理の最終結果を報告する（✅/❌/📚）。ログレベルに関わらず常に表示。
-      # @param status [:success, :failure, :artifact] アイコンの種別
+      # 処理の最終結果を報告する（✅/⚠️/❌/📚）。ログレベルに関わらず常に表示。
+      # :warning は「警告はあるが処理は成立した」中間の結末を表す
+      # （preflight の警告のみ＝終了コード 0 のケース）。
+      # @param status [:success, :warning, :failure, :artifact] アイコンの種別
       def log_result(msg, status:)
         icon = case status
               when :success  then "✅"
+              when :warning  then "⚠️"
               when :failure  then "❌"
               when :artifact then "📚"
               end
