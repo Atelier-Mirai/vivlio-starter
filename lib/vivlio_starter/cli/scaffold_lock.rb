@@ -37,7 +37,7 @@ module VivlioStarter
       AUTHOR_DATA_FILES = [
         File.join('config', 'book.yml'),
         File.join('config', 'catalog.yml'),
-        File.join('config', 'characters.yml'),
+        File.join('config', 'talk.yml'),
         File.join('config', 'index_glossary_terms.yml'),
         File.join('config', 'index_glossary_rejected.yml'),
         File.join('config', 'user_words.txt'),
