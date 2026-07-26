@@ -1200,7 +1200,7 @@ module VivlioStarter
           assert(messages.any? { it.include?('話者キーがありません') })
         end
 
-        # characters.yml 不在（present: false）で .talk を使うと 🔴 で作成を促す。
+        # talk.yml 不在（present: false）で .talk を使うと 🔴 で作成を促す。
         def test_convert_talk_blocks_missing_file_reports
           md = ":::{.talk}\nsensei: やあ。\n:::\n"
           absent = TalkRegistry::Registry.new([], display: TalkRegistry::DEFAULT_DISPLAY, present: false)

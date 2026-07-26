@@ -22,9 +22,9 @@
 #
 # なぜ話者をネストせず平置きするのか:
 #   display: を別セクションへ切り出した時点で「表示の name（真偽値）」と
-#   「話者の name（表示名）」の衝突は解消する。話者を characters: 配下へ
-#   さらに寄せると旧 characters.yml からの移行で全行の字下げが必要になるため、
-#   予約キーを display: ひとつに絞って平置きのままとする。
+#   「話者の name（表示名）」の衝突は解消する。さらに話者用の親キーを設けても
+#   曖昧さは減らず著者の字下げが 1 段深くなるだけなので、予約キーを display:
+#   ひとつに絞って平置きのままとする。
 #
 # 正規化の要点:
 #   - 簡易形（値が文字列＝色）と詳細形（値がマップ）を Character へ吸収する
@@ -98,17 +98,11 @@ module VivlioStarter
         # config/talk.yml の既定パス（config ディレクトリ直下）。
         def default_path = File.join(Common.config_dir, 'talk.yml')
 
-        # 旧仕様のファイル。存在したら移行を促す（§1.7）。
-        def legacy_path = File.join(Common.config_dir, 'characters.yml')
-
         # ファイルを読んで Registry を返す。存在しなければ空（present: false）。
         # @param path [String] 読み込み対象（既定は default_path）
         # @return [Registry]
         def load(path = default_path)
-          unless File.exist?(path)
-            warn_legacy_characters_yml if File.exist?(legacy_path)
-            return Registry.new([], display: DEFAULT_DISPLAY, present: false)
-          end
+          return Registry.new([], display: DEFAULT_DISPLAY, present: false) unless File.exist?(path)
 
           from_hash(read_yaml(path))
         end
@@ -224,16 +218,6 @@ module VivlioStarter
         def blank_to_nil(value)
           s = value.to_s.strip
           s.empty? ? nil : s
-        end
-
-        # 旧 config/characters.yml が残っている場合の移行案内（§1.7）。
-        def warn_legacy_characters_yml
-          Common.log_error(
-            'config/characters.yml は config/talk.yml へ移行してください（旧ファイルは読み込まれません）',
-            detail: "→ 1. config/characters.yml を config/talk.yml へリネーム\n" \
-                    "→ 2. 各話者の `icon:` を `avatar:` へ書き換え\n" \
-                    '→ 3. 表示設定を変えたい場合はファイル先頭に display: セクションを追加'
-          )
         end
 
         # 壊れた YAML は 🔴＋行番号で報告し、空（{}）として扱う（ビルドは止めない）。
