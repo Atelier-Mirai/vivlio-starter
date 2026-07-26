@@ -32,6 +32,7 @@ require_relative '../pre_process'
 require_relative '../token_resolver'
 require_relative '../clean'
 require_relative '../guards'
+require_relative 'option_token_normalizer'
 
 module VivlioStarter
   module CLI
@@ -63,20 +64,8 @@ module VivlioStarter
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
-        def initialize(input = nil, **)
-          processed_input = if input
-                              normalized = normalize_log_option_tokens(input)
-                              if input.respond_to?(:replace) && !input.equal?(normalized)
-                                input.replace(normalized)
-                                input
-                              else
-                                normalized
-                              end
-                            else
-                              input
-                            end
-          super(processed_input, **)
-        end
+        # `--log=debug` を Samovar が解せる形へ開く（対象は上の定義から自動導出）
+        prepend OptionTokenNormalizer
 
         def call
           if options[:help]
@@ -292,40 +281,6 @@ module VivlioStarter
           Common.log_always '   文章校正（表記揺れ・スペル）は vs lint で行えます。'
         end
 
-        # --log オプションのトークンを正規化する（BuildCommand と同一ロジック）
-        def normalize_log_option_tokens(input)
-          tokens = array_from_input(input)
-          normalized = []
-          idx = 0
-
-          while idx < tokens.length
-            token = tokens[idx]
-
-            if token == '--log'
-              normalized << '--log'
-              next_value = tokens[idx + 1]
-              if next_value.nil? || next_value.start_with?('-')
-                normalized << 'info'
-                idx += 1
-              else
-                normalized << next_value
-                idx += 2
-                next
-              end
-            elsif token.start_with?('--log=')
-              normalized << '--log'
-              level = token.split('=', 2)[1]
-              normalized << (level.nil? || level.empty? ? 'info' : level)
-            else
-              normalized << token
-            end
-
-            idx += 1
-          end
-
-          normalized
-        end
-
         def print_usage
           puts <<~USAGE
             vs preflight - ビルド前の原稿エラーチェックを高速実行します
@@ -349,15 +304,6 @@ module VivlioStarter
           USAGE
         end
 
-        def array_from_input(input)
-          if input.is_a?(Array)
-            input.dup
-          elsif input.respond_to?(:to_a)
-            input.to_a
-          else
-            Array(input)
-          end
-        end
       end
     end
   end

@@ -34,6 +34,7 @@ require_relative '../epub'
 require_relative '../pdf'
 require_relative '../token_resolver'
 require_relative '../guards'
+require_relative 'option_token_normalizer'
 
 module VivlioStarter
   module CLI
@@ -60,28 +61,8 @@ module VivlioStarter
 
         include VivlioStarter::CLI::BuildCommands::OutputHelpers
 
-        # 値を取るオプションと、値が省略されたときの既定値。
-        # Samovar は `--opt=value` 記法を解さない（"Could not parse token" になる）ため、
-        # 初期化時にこの表を使って `--opt value` へ開く。既定値を持つのは `--log` だけで、
-        # bare `--log` は info と解する（`--theme` は値必須＝未指定は既定色で組む）。
-        VALUE_OPTIONS = { '--log' => 'info', '--theme' => nil }.freeze
-
-        def initialize(input = nil, **)
-          processed_input = if input
-                              normalized = normalize_value_option_tokens(input)
-
-                              if input.respond_to?(:replace) && !input.equal?(normalized)
-                                input.replace(normalized)
-                                input
-                              else
-                                normalized
-                              end
-                            else
-                              input
-                            end
-
-          super(processed_input, **)
-        end
+        # `--theme=blue` `--log=debug` を Samovar が解せる形へ開く（対象は上の定義から自動導出）
+        prepend OptionTokenNormalizer
 
         def call
           if options[:help]
@@ -214,53 +195,6 @@ module VivlioStarter
 
           common.log_warn('--theme は直接ビルド（.md 指定）専用です。',
                           detail: "対処: config/book.yml の theme.color を '#{options[:theme]}' に変更してください。")
-        end
-
-        # `--log=debug` / `--theme=blue` のような `=` 区切りを、Samovar が解せる
-        # `--log debug` 形式へ開く（VALUE_OPTIONS が対象と既定値を定める）。
-        # 値が続かないときは既定値のあるオプションだけ補い、無いものはそのまま渡して
-        # Samovar の検証に委ねる。対象外のトークンは順序を保って素通しする。
-        def normalize_value_option_tokens(input)
-          tokens = array_from_input(input)
-          normalized = []
-          idx = 0
-
-          while idx < tokens.length
-            name, inline_value = tokens[idx].to_s.split('=', 2)
-
-            unless VALUE_OPTIONS.key?(name)
-              normalized << tokens[idx]
-              idx += 1
-              next
-            end
-
-            fallback = VALUE_OPTIONS[name]
-            following = tokens[idx + 1]
-            normalized << name
-
-            if inline_value # --opt=value 形式（空値は既定へ倒す）
-              normalized << (inline_value.empty? ? fallback.to_s : inline_value)
-              idx += 1
-            elsif following && !following.to_s.start_with?('-') # --opt value 形式
-              normalized << following
-              idx += 2
-            else # 値なし（末尾・次が別オプション）
-              normalized << fallback if fallback
-              idx += 1
-            end
-          end
-
-          normalized
-        end
-
-        def array_from_input(input)
-          if input.is_a?(Array)
-            input.dup
-          elsif input.respond_to?(:to_a)
-            input.to_a
-          else
-            Array(input)
-          end
         end
 
         # CLI 引数から Entry 配列を解決する

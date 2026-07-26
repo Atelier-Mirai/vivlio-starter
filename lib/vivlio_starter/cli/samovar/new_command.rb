@@ -3,6 +3,7 @@
 # `vs new` の Samovar エントリ。処理本体は `CLI::NewCommands` に集約する。
 
 require_relative '../new'
+require_relative 'option_token_normalizer'
 
 module VivlioStarter
   module CLI
@@ -16,9 +17,12 @@ module VivlioStarter
         options do
           option '--yes/-y', '対話をスキップしデフォルト設定で作成する', default: false, key: :yes
           option '--add-missing', '既存ディレクトリに不足ファイルだけを追加する（既存は保持）', default: false, key: :add_missing
-          option '--log <level>', 'ログレベル（debug など）', key: :log
+          option '--log <level>', 'ログレベル（debug など）', key: :log_level
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
+
+        # `--log=debug` を Samovar が解せる形へ開く（対象は上の定義から自動導出）
+        prepend OptionTokenNormalizer
 
         def call
           return print_usage if options[:help]
@@ -37,7 +41,7 @@ module VivlioStarter
 
         private
 
-        def debug? = options[:log] == 'debug'
+        def debug? = options[:log_level] == 'debug'
 
         def log_debug(msg)
           puts "[debug] #{msg}" if debug?

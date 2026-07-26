@@ -253,7 +253,7 @@ module VivlioStarter
       end
 
       def log_debug(cmd, msg)
-        puts "[debug] #{msg}" if cmd&.options&.[](:log) == 'debug'
+        puts "[debug] #{msg}" if cmd&.options&.[](:log_level) == 'debug'
       end
     end
   end

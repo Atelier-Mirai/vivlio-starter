@@ -25,6 +25,7 @@
 
 require_relative '../pdf/pdf_read_command'
 require_relative '../guards'
+require_relative 'option_token_normalizer'
 
 module VivlioStarter
   module CLI
@@ -100,6 +101,9 @@ module VivlioStarter
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
+        # `--dpi=200` のような `=` 区切りを Samovar が解せる形へ開く
+        prepend OptionTokenNormalizer
+
         def call
           return print_usage if help_requested?
 
@@ -155,6 +159,9 @@ module VivlioStarter
           option '--clean', '中間JPEGを処理後に削除する', default: false, key: :clean
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
+
+        # `--dpi=200` のような `=` 区切りを Samovar が解せる形へ開く
+        prepend OptionTokenNormalizer
 
         def call
           return print_usage if help_requested?

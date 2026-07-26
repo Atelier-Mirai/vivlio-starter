@@ -1,9 +1,9 @@
 # CLI オプション解析（`--opt=value` 対応とトークン正規化の重複）に関する調査報告
 
 > 作成日: 2026-07-21
-> ステータス: **未対応（棚上げ・将来のリファクタリング資料）**。`vs build` のみ 2026-07-21 に個別対応済み
+> ステータス: **対応済み（2026-07-27・案 A の改良版で実装）**。§10 に実装結果を記す。§1〜§7 は調査当時（2026-07-21）の記録として原文のまま残す。
 > 目的: `vs build --theme=blue` が動かなかった件の調査で判明した「`=` 区切りオプションの対応状況がコマンドごとにバラバラ」「トークン正規化の実装が複製され片方だけ直っている」構造を記録し、将来の共通化リファクタリングの資料とする。
-> 関連ファイル: `lib/vivlio_starter/cli/samovar/build_command.rb`（正規化・2026-07-21 改修済み）, `lib/vivlio_starter/cli/samovar/preflight_command.rb:156`（複製・未改修）, `lib/vivlio_starter/cli/samovar/new_command.rb`・`lib/vivlio_starter/cli/samovar/pdf_command.rb`（正規化なし）, `lib/vivlio_starter/cli/common.rb`（`current_log_level` の ARGV 直接走査）
+> 関連ファイル: `lib/vivlio_starter/cli/samovar/option_token_normalizer.rb`（共通化後の唯一の実装）, `lib/vivlio_starter/cli/common.rb`（`current_log_level` の ARGV 直接走査・未対応のまま）
 
 ## 1. 要約
 
@@ -203,3 +203,57 @@ require "vivlio_starter/cli/startup"
 c = VivlioStarter::CLI::SamovarCommands::PreflightCommand.new(%w[--log --no-verify])
 puts "verify=#{c.options[:verify].inspect}"'
 ```
+
+## 10. 実装結果（2026-07-27）
+
+§7 の**案 A を採用**し、`lib/vivlio_starter/cli/samovar/option_token_normalizer.rb` へ 1 本化した。案 A の原案からの変更点が 1 つある——**「値を取るオプションと既定値の表」を手で書かない**。
+
+### 10.1 対象フラグは options 定義から自動導出する
+
+案 A は各コマンドに `VALUE_OPTIONS` の宣言を求めていたが、それではオプション定義と正規化表の**二重管理**が残り、オプションを増やすたびに表の更新漏れが起きうる。Samovar のコマンド定義そのものから値フラグを引けることが分かったため、宣言を不要にした。
+
+```ruby
+table.merged.each.to_a.grep(Samovar::Options)
+     .flat_map { it.each.to_a }
+     .flat_map { it.flags.each.to_a }
+     .select { it.is_a?(Samovar::ValueFlag) && !it.boolean? }
+     .flat_map { [it.prefix, *it.alternatives] }
+```
+
+- `ValueFlag` は値なしフラグ（`--high` 等）も表現するため、値プレースホルダを持たないもの（`boolean?`）を除く。
+- `table` ではなく **`table.merged`** を使う。`RenumberCommand < RenameCommand` のような継承コマンドは自身の table が空で、merged でなければ親の `--step` を拾えない（実測で確認）。
+- `alternatives` も含めるため、短縮形の `-s=3` も通る。
+
+各コマンドの記述は `prepend OptionTokenNormalizer` の 1 行だけになり、**今後オプションを追加しても `=` 記法は自動で効く**。
+
+### 10.2 既定値の宣言は 1 箇所に集約
+
+値が省略されたときに補うのは `--log`（= `info`）だけなので、モジュール側の `BARE_VALUE_DEFAULTS` に持たせた。値必須のフラグ（`--theme` 等）は補完せず、そのまま Samovar の検証へ委ねる（`--theme=` は空文字を渡し、色名の妥当性判定は build 側の責務のまま）。
+
+### 10.3 正規化結果は元の配列へ書き戻す
+
+`Samovar::Command#parse` は「渡された配列が空になったか」で未解釈トークンを検出し、`Nested#parse` は親と同じ配列オブジェクトをそのまま子へ渡す。正規化結果を新しい配列で返すと親側の配列が消費されないまま残り、親が `InvalidInputError` を上げる。そのため `input.replace(normalized)` で元の配列を書き換えて返す（2026-07-21 の build 実装が持っていた挙動を、理由をコメントに残して引き継いだ）。
+
+### 10.4 対応状況（実測・§5 の表の更新版）
+
+| コマンド | オプション | `=` 記法 |
+|---|---|---|
+| `build` | `--theme` / `--log` | ✅ |
+| `preflight` | `--log` | ✅ |
+| `new` | `--log` | ✅ |
+| `pdf:pages` | `--dpi` / `--quality` / `--pages` / `--output` | ✅ |
+| `pdf:rasterize` | `--dpi` / `--quality` | ✅ |
+| `rename` / `renumber` | `--step` / `-s` | ✅ |
+
+**§5 の表は `rename` を落としていた**（`--step/-s <step>` は当時から存在し、`vs rename --step=2` は 🔴 になっていた）。自動導出により、この種の見落としは構造的に起こらなくなった。`type: Integer` のオプションは正規化後に Samovar が型変換する（`--dpi=200` → `200`）ことも実測で確認した。
+
+### 10.5 併せて解消したもの
+
+- **§4.2 のトークン脱落バグ**（`vs preflight --log --no-verify` で `--no-verify` が消える）: 複製実装ごと撤去され解消。回帰テスト付き。
+- **§4.3 の重複**: ①②が 1 実装に統合された。③ `Common.current_log_level` の ARGV 直接走査は**未対応のまま**（KNOWN_ISSUES へ移した）。
+- **`--log` のキー名不統一**: `new_command.rb` の `key: :log` を `:log_level` へ揃えた（参照は `NewCommand#debug?` と `new.rb` の `log_debug` の 2 箇所）。
+
+### 10.6 残件
+
+- **§3.3 オプションを位置引数より前に置けない件** — 未対応。正規化器が値フラグを知っているので実装可能だが、全コマンドの受理範囲が変わるため別タスク（KNOWN_ISSUES に記載）。
+- **§7 案 C（Samovar 本体への `=` 対応提案）** — 未実施。本対応で実害は消えているため急がない。

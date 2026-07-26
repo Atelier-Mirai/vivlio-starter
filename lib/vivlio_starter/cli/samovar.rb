@@ -12,6 +12,7 @@ module VivlioStarter
   end
 end
 
+require_relative 'samovar/option_token_normalizer'
 require_relative 'samovar/build_command'
 require_relative 'samovar/clean_command'
 require_relative 'samovar/delete_command'
