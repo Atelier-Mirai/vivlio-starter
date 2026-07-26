@@ -18,12 +18,13 @@
 
 require_relative '../lint'
 require_relative '../guards'
+require_relative 'vs_command'
 
 module VivlioStarter
   module CLI
     module SamovarCommands
       # lint コマンドの Samovar 実装
-      class LintCommand < Samovar::Command
+      class LintCommand < VsCommand
         self.description = 'contents/ 以下の Markdown を textlint で検査します'
 
         options do

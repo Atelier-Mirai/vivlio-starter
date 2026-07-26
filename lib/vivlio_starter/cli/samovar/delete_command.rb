@@ -21,12 +21,13 @@
 
 require_relative '../delete'
 require_relative '../guards'
+require_relative 'vs_command'
 
 module VivlioStarter
   module CLI
     module SamovarCommands
       # delete コマンドの Samovar 実装
-      class DeleteCommand < Samovar::Command
+      class DeleteCommand < VsCommand
         self.description = '指定した章の Markdown と画像を削除します'
 
         many :targets, '削除対象（章番号/レンジ/ファイル名）', default: []

@@ -18,12 +18,13 @@
 
 require_relative '../metrics'
 require_relative '../guards'
+require_relative 'vs_command'
 
 module VivlioStarter
   module CLI
     module SamovarCommands
       # metrics コマンドの Samovar 実装
-      class MetricsCommand < Samovar::Command
+      class MetricsCommand < VsCommand
         self.description = 'Markdown の行数・文字数を集計します'
 
         options do

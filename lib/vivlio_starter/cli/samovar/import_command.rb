@@ -19,12 +19,13 @@
 # ================================================================
 
 require_relative '../import'
+require_relative 'vs_command'
 
 module VivlioStarter
   module CLI
     module SamovarCommands
       # import コマンドの Samovar 実装
-      class ImportCommand < Samovar::Command
+      class ImportCommand < VsCommand
         self.description = 'Re:VIEW Starter プロジェクトをインポートします'
 
         many :arguments, 'Re:VIEW Starter プロジェクトのディレクトリ', default: []

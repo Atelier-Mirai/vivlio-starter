@@ -19,12 +19,13 @@
 
 require_relative '../create'
 require_relative '../guards'
+require_relative 'vs_command'
 
 module VivlioStarter
   module CLI
     module SamovarCommands
       # create コマンド（Publicコマンド）
-      class CreateCommand < Samovar::Command
+      class CreateCommand < VsCommand
         self.description = '章ファイルと画像ディレクトリを生成します'
 
         many :names, '作成する章スラッグ（複数可）', default: []

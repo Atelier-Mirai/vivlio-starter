@@ -25,20 +25,27 @@
 
 require_relative '../pdf/pdf_read_command'
 require_relative '../guards'
-require_relative 'option_token_normalizer'
+require_relative 'vs_command'
 
 module VivlioStarter
   module CLI
     module SamovarCommands
       # pdf:compress コマンドの Samovar 実装（Public コマンド）
-      class PdfCompressCommand < Samovar::Command
+      class PdfCompressCommand < VsCommand
         self.description = '生成済みPDFを圧縮します'
+
+        # options を位置引数より先に宣言する。`Samovar::One` の既定パターンは `//`
+        # （何にでもマッチ）のため、one が先だと `-h` を入力 PDF 名として食ってしまう
+        # （cli-argument-parsing-spec.md §5.3）
+        options do
+          option '-h/--help', 'このコマンドの使い方を表示', key: :help
+        end
 
         one :input, '入力PDFファイル', required: false
         one :output, '出力PDFファイル', required: false
 
         def call
-          return print_compress_help if help_requested?
+          return print_compress_help if options[:help]
 
           # 前提条件の検証（ProjectRoot ○ / PdfArtifact ◎: 明示パス指定時のみ）
           guard_failure = Guards.precheck(
@@ -51,14 +58,6 @@ module VivlioStarter
         end
 
         private
-
-        def help_requested?
-          help_flag_argument?(input) || help_flag_argument?(output)
-        end
-
-        def help_flag_argument?(value)
-          %w[-h --help].include?(value.to_s.strip)
-        end
 
         def print_compress_help
           puts <<~HELP
@@ -88,11 +87,10 @@ module VivlioStarter
       end
 
       # pdf:pages コマンドの Samovar 実装（Public コマンド）
-      class PdfPagesCommand < Samovar::Command
+      class PdfPagesCommand < VsCommand
         self.description = 'PDFをページ単位でJPEG画像に切り出します'
 
-        one :input, '入力PDFファイル（省略時はビルド生成物）', required: false
-
+        # options を位置引数より先に宣言する（§5.3 — one が先だと `-h` を食う）
         options do
           option '--dpi <value>', '解像度（dpi、既定: 350）', type: Integer, default: 350, key: :dpi
           option '--quality <value>', 'JPEG品質 1〜100（既定: 95）', type: Integer, default: 95, key: :quality
@@ -101,11 +99,10 @@ module VivlioStarter
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
-        # `--dpi=200` のような `=` 区切りを Samovar が解せる形へ開く
-        prepend OptionTokenNormalizer
+        one :input, '入力PDFファイル（省略時はビルド生成物）', required: false
 
         def call
-          return print_usage if help_requested?
+          return print_usage if options[:help]
 
           # 前提条件の検証（ProjectRoot ○ / PdfArtifact ◎: 明示パス指定時のみ）
           guard_failure = Guards.precheck(
@@ -124,14 +121,6 @@ module VivlioStarter
 
         private
 
-        def help_requested?
-          options[:help] || help_flag_argument?(input)
-        end
-
-        def help_flag_argument?(value)
-          %w[-h --help].include?(value.to_s.strip)
-        end
-
         def build_options
           {
             dpi: options[:dpi],
@@ -148,11 +137,10 @@ module VivlioStarter
       end
 
       # pdf:rasterize コマンドの Samovar 実装（Public コマンド）
-      class PdfRasterizeCommand < Samovar::Command
+      class PdfRasterizeCommand < VsCommand
         self.description = 'PDFをラスタライズして再結合します（Type3フォント対策）'
 
-        one :input, '入力PDFファイル（省略時はビルド生成物）', required: false
-
+        # options を位置引数より先に宣言する（§5.3 — one が先だと `-h` を食う）
         options do
           option '--dpi <value>', '解像度（dpi、既定: 350）', type: Integer, default: 350, key: :dpi
           option '--quality <value>', 'JPEG品質 1〜100（既定: 95）', type: Integer, default: 95, key: :quality
@@ -160,11 +148,10 @@ module VivlioStarter
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
-        # `--dpi=200` のような `=` 区切りを Samovar が解せる形へ開く
-        prepend OptionTokenNormalizer
+        one :input, '入力PDFファイル（省略時はビルド生成物）', required: false
 
         def call
-          return print_usage if help_requested?
+          return print_usage if options[:help]
 
           # 前提条件の検証（ProjectRoot ○ / PdfArtifact ◎: 明示パス指定時のみ）
           guard_failure = Guards.precheck(
@@ -183,14 +170,6 @@ module VivlioStarter
 
         private
 
-        def help_requested?
-          options[:help] || help_flag_argument?(input)
-        end
-
-        def help_flag_argument?(value)
-          %w[-h --help].include?(value.to_s.strip)
-        end
-
         def build_options
           {
             dpi: options[:dpi],
@@ -206,7 +185,7 @@ module VivlioStarter
       end
 
       # pdf:read コマンドの Samovar 実装（Public コマンド）
-      class PdfReadCommand < Samovar::Command
+      class PdfReadCommand < VsCommand
         self.description = 'PDF を Markdown へ変換します'
 
         # options を位置引数より先に宣言する。逆順だと Samovar が `--help` を

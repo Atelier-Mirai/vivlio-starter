@@ -23,12 +23,13 @@
 # ================================================================
 
 require_relative '../doctor'
+require_relative 'vs_command'
 
 module VivlioStarter
   module CLI
     module SamovarCommands
       # doctor コマンドの Samovar 実装
-      class DoctorCommand < Samovar::Command
+      class DoctorCommand < VsCommand
         self.description = '環境診断と不足ツールの自動セットアップを行います'
 
         options do

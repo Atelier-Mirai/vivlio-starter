@@ -3,13 +3,13 @@
 # `vs new` の Samovar エントリ。処理本体は `CLI::NewCommands` に集約する。
 
 require_relative '../new'
-require_relative 'option_token_normalizer'
+require_relative 'vs_command'
 
 module VivlioStarter
   module CLI
     module SamovarCommands
       # 新規書籍プロジェクトを作成する Public コマンド
-      class NewCommand < Samovar::Command
+      class NewCommand < VsCommand
         self.description = '新しい書籍プロジェクトを作成します'
 
         many :names, 'プロジェクト名', default: []
@@ -20,9 +20,6 @@ module VivlioStarter
           option '--log <level>', 'ログレベル（debug など）', key: :log_level
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
-
-        # `--log=debug` を Samovar が解せる形へ開く（対象は上の定義から自動導出）
-        prepend OptionTokenNormalizer
 
         def call
           return print_usage if options[:help]

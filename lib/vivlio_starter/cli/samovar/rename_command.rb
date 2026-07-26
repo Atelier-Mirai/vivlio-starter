@@ -22,13 +22,13 @@
 
 require_relative '../rename'
 require_relative '../guards'
-require_relative 'option_token_normalizer'
+require_relative 'vs_command'
 
 module VivlioStarter
   module CLI
     module SamovarCommands
       # rename コマンドの Samovar 実装
-      class RenameCommand < Samovar::Command
+      class RenameCommand < VsCommand
         self.description = '章のスラッグ/番号を変更します'
 
         many :arguments, 'OLD と NEW を指定。省略すると一括連番モード', default: []
@@ -38,9 +38,6 @@ module VivlioStarter
           option '--step/-s <step>', '章番号の刻み幅を指定（既定: 1）', type: Integer, key: :step
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
-
-        # `--step=2` `-s=2` を Samovar が解せる形へ開く（RenumberCommand へも継承される）
-        prepend OptionTokenNormalizer
 
         def call
           return print_usage if options[:help]

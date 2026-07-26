@@ -32,13 +32,13 @@ require_relative '../pre_process'
 require_relative '../token_resolver'
 require_relative '../clean'
 require_relative '../guards'
-require_relative 'option_token_normalizer'
+require_relative 'vs_command'
 
 module VivlioStarter
   module CLI
     module SamovarCommands
       # preflight コマンドの Samovar 実装
-      class PreflightCommand < Samovar::Command
+      class PreflightCommand < VsCommand
         self.description = 'ビルド前の原稿エラーチェックを高速実行します'
 
         # 章別サマリー表のラベル幅（全角 1 文字＝2 幅で数える）。
@@ -63,9 +63,6 @@ module VivlioStarter
           option '--log <level>', 'ログレベルを指定（error/warn/info/debug）', key: :log_level
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
-
-        # `--log=debug` を Samovar が解せる形へ開く（対象は上の定義から自動導出）
-        prepend OptionTokenNormalizer
 
         def call
           if options[:help]

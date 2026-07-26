@@ -16,11 +16,13 @@
 #   - ビルド・出力・プレビュー: build, open, pdf:compress, pdf:pages, pdf:rasterize
 # ================================================================
 
+require_relative 'vs_command'
+
 module VivlioStarter
   module CLI
     module SamovarCommands
       # help コマンドの Samovar 実装
-      class HelpCommand < Samovar::Command
+      class HelpCommand < VsCommand
         self.description = 'Vivlio Starter の主要コマンド一覧を表示します'
 
         COMMAND_CATEGORIES = {

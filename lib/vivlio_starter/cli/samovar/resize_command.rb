@@ -20,12 +20,13 @@
 
 require_relative '../resize'
 require_relative '../guards'
+require_relative 'vs_command'
 
 module VivlioStarter
   module CLI
     module SamovarCommands
       # resize コマンドの Samovar 実装
-      class ResizeCommand < Samovar::Command
+      class ResizeCommand < VsCommand
         self.description = '画像をWebPに変換します（標準品質）'
 
         options do

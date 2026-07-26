@@ -10,12 +10,13 @@
 
 require_relative '../cover'
 require_relative '../guards'
+require_relative 'vs_command'
 
 module VivlioStarter
   module CLI
     module SamovarCommands
       # cover コマンドの Samovar 実装
-      class CoverCommand < Samovar::Command
+      class CoverCommand < VsCommand
         self.description = 'カバー画像を生成します（A4/B5/A5/EPUB）'
 
         options do

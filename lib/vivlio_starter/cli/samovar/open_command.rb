@@ -9,12 +9,13 @@
 # ================================================================
 
 require_relative '../guards'
+require_relative 'vs_command'
 
 module VivlioStarter
   module CLI
     module SamovarCommands
       # open コマンド - 生成されたPDFを開く
-      class OpenCommand < Samovar::Command
+      class OpenCommand < VsCommand
         self.description = '生成されたPDFを開く（macOS専用）'
 
         # options を位置引数より先に宣言する。逆順だと Samovar が `--help` を

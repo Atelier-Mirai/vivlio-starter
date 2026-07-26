@@ -6,12 +6,13 @@
 # その場合は雛形追従だけがスキップされる。
 
 require_relative '../upgrade'
+require_relative 'vs_command'
 
 module VivlioStarter
   module CLI
     module SamovarCommands
       # 執筆環境（本体 gem・プロジェクト雛形・外部ツール）を一括更新する Public コマンド
-      class UpgradeCommand < Samovar::Command
+      class UpgradeCommand < VsCommand
         self.description = '本体 gem・プロジェクト雛形・外部ツールをまとめて最新化します'
 
         options do

@@ -19,12 +19,13 @@
 
 require_relative '../clean'
 require_relative '../guards'
+require_relative 'vs_command'
 
 module VivlioStarter
   module CLI
     module SamovarCommands
       # clean コマンドの Samovar 実装
-      class CleanCommand < Samovar::Command
+      class CleanCommand < VsCommand
         self.description = '生成物やキャッシュを削除します'
 
         options do

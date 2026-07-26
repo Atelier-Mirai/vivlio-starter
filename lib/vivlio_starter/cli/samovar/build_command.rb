@@ -34,13 +34,13 @@ require_relative '../epub'
 require_relative '../pdf'
 require_relative '../token_resolver'
 require_relative '../guards'
-require_relative 'option_token_normalizer'
+require_relative 'vs_command'
 
 module VivlioStarter
   module CLI
     module SamovarCommands
       # build コマンドの Samovar 実装
-      class BuildCommand < Samovar::Command
+      class BuildCommand < VsCommand
         self.description = '書籍全体または指定章をビルドします'
 
         many :targets, 'ビルド対象（章番号 / 範囲 / ベース名 / 単一の .md ファイル）', default: []
@@ -60,9 +60,6 @@ module VivlioStarter
         end
 
         include VivlioStarter::CLI::BuildCommands::OutputHelpers
-
-        # `--theme=blue` `--log=debug` を Samovar が解せる形へ開く（対象は上の定義から自動導出）
-        prepend OptionTokenNormalizer
 
         def call
           if options[:help]

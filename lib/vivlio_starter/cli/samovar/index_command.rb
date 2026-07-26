@@ -24,12 +24,13 @@ require_relative '../index'
 require_relative '../index/unified_index_manager'
 require_relative '../index/index_library'
 require_relative '../guards'
+require_relative 'vs_command'
 
 module VivlioStarter
   module CLI
     module SamovarCommands
       # index コマンドの Samovar 実装
-      class IndexCommand < Samovar::Command
+      class IndexCommand < VsCommand
         self.description = '索引機能のサブコマンドを表示します'
 
         options do
@@ -66,7 +67,7 @@ module VivlioStarter
       end
 
       # index:auto コマンド - 全自動索引候補抽出
-      class IndexAutoCommand < Samovar::Command
+      class IndexAutoCommand < VsCommand
         self.description = '候補抽出・分類・_index_review.md 生成'
 
         options do
@@ -113,7 +114,7 @@ module VivlioStarter
       end
 
       # index:apply コマンド - レビュー結果を適用
-      class IndexApplyCommand < Samovar::Command
+      class IndexApplyCommand < VsCommand
         self.description = 'レビュー結果を index_glossary_terms.yml に適用'
 
         options do
@@ -147,7 +148,7 @@ module VivlioStarter
       end
 
       # index:export コマンド - 用語集[g]・棄却語 を持ち運び用ファイルへ書き出す
-      class IndexExportCommand < Samovar::Command
+      class IndexExportCommand < VsCommand
         self.description = '用語集[g]・棄却語 を index_library.yml に書き出す'
 
         options do
@@ -175,7 +176,7 @@ module VivlioStarter
       end
 
       # index:import コマンド - 持ち運び用ファイルから用語集[g]・棄却語 を取り込む
-      class IndexImportCommand < Samovar::Command
+      class IndexImportCommand < VsCommand
         self.description = 'index_library.yml から用語集[g]・棄却語 を取り込む'
 
         options do
