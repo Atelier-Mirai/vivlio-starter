@@ -1,7 +1,7 @@
 # `vs preflight` 章別エラー・警告サマリー 仕様書
 
 > 作成日: 2026-07-12
-> ステータス: **提案（未実装・レビュー待ち）**
+> ステータス: **実装完了（2026-07-25）** — 実装との差分は §5 実装記録を参照
 > 対象: PLANNED.md:98 [Medium]「`vs preflight` の章別エラー・警告サマリー」＋付随の非対称（Guard 系 `:warn` が最終サマリーに反映されない）の解消
 > 決定事項（本仕様の提案）:
 > - **`LinkImageValidator` を汎用化するのではなく、横断的な `IssueRegistry`（新規）を一段上に設ける**。LinkImageValidator・コードインクルード・クロスリファレンス・QueryStream・Guard 警告の各発生源は registry へ「章・行・重要度・カテゴリ・メッセージ」を積むだけにする（LinkImageValidator の内部構造 `ValidationReport` は現状のまま温存し、registry へのブリッジのみ足す——改修範囲を最小化）
@@ -101,7 +101,56 @@ end
 4. build 側の 1 行追加（§2.4）
 5. `rake test`・実プロジェクトで `vs preflight` 目視
 
-## 5. スコープ外
+## 5. 実装記録（2026-07-25・実装完了時に追記）
+
+実装は §4 の手順どおり進めた。仕様との差分・実装中に判明した事実を記録する。
+
+### 5.1 クロスリファレンスのブリッジ先は §2.2 の表と違う
+
+§2.2 は `CrossReferenceProcessor`（`log_duplicates` / `log_reference_errors`）を指していたが、
+**実ビルドはそこを通らない**。実際に走るのは `PreProcessCommands.process_cross_references_for_files`
+（`pre_process.rb`）で、重複ラベル 🔴・未定義参照 🟡・孤立ラベル 🟡 をそこで直接ログしている。
+
+`CrossReferenceProcessor.process_cross_references` は**未定義メソッド `generate_report` を呼ぶため
+呼べば必ず `NoMethodError`** になる到達不能コードだった（`pre_process.rb` が委譲する
+`MarkdownTransformer.process_cross_references` も不存在＝委譲が二重に壊れている。
+`PreProcessCommands.process_cross_references` の呼び出し元も無い）。
+
+よって record はライブ経路（`pre_process.rb`）へ置き、仕様が触れていなかった**孤立ラベル警告も
+併せてブリッジ**した。**死にコードの撤去は本タスクでは行っていない**（別途）。
+
+### 5.2 章ラベルの体裁
+
+§1 は表の見た目だけを示していたため、以下を補った:
+
+- ラベルは原稿の H1 見出しを読む（`TITLE_SCAN_LINES` = 60 行で打ち切り・取れなければスラッグ）
+- H1 に含まれる `<br>` 等のインライン HTML・振り仮名 `{漢字|よみ}`・強調記号を除去する
+- 全角 2 幅換算で `CHAPTER_LABEL_WIDTH` = 30 に切り詰め（溢れは `…`）、🔴🟡✅ の縦位置を揃える
+
+### 5.3 索引・用語集スキャンは未ブリッジ
+
+§2.2 の表に索引系が無いため未対応のまま残した。結果として `vs preflight 24` のように章を絞ると
+「🟡 用語集語がビルド対象章に出現しません」が十数件流れた後に ✅ が出る（実測）。
+これらは辞書（`config/index_glossary_terms.yml`）と catalog の突き合わせが出す警告で、
+部分実行では構造的にノイズになるため、全部積むと逆効果になる。分類の整理を前提に別タスクとし、
+KNOWN_ISSUES へ記録した。
+
+### 5.4 終了コード
+
+§2.3 の決定どおり `LinkImageValidator.any_issues?` を維持した。裸 URL・危険スキームという
+**警告のみでも 1 を返す**歪みは残っており、「⚠️ 警告 N 件（ビルドは可能です）」と表示しつつ
+終了コード 1 になる場合がある。KNOWN_ISSUES に転記済み。
+
+### 5.5 テスト
+
+- `test/vivlio_starter/cli/pre_process/issue_registry_test.rb`（8 件）: record / counts /
+  summary_by_chapter・章キー正規化・nil キー・reset!・8 スレッド並列 record
+- `test/vivlio_starter/cli/pre_process/issue_registry_bridge_test.rb`（10 件）: 5 発生源の
+  ブリッジ（逐次ログが出続けることも併せて確認）＋ build 側 1 行の出る／出ない
+- `test/vivlio_starter/cli/samovar/preflight_command_test.rb`（+4 件）: エラー / 警告のみ /
+  ゼロの 3 パターンの最終行と終了コード（1 / 0 / 0）・指摘ゼロ章の掲載・全 ✅ 短縮・章単位実行
+
+## 6. スコープ外
 
 - 終了コード体系の変更（§2.3 のとおり KNOWN_ISSUES 送り）
 - `vs lint`（textlint/spellcheck）の指摘統合——preflight は構造チェック専用という既存の役割分担を維持

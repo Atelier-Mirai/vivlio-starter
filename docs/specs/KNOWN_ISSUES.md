@@ -39,6 +39,28 @@
   宣言する（案 A）。`new` / `pdf:*` へも `include` 1 行で展開でき、CLI 全体で `=` 記法が揃う。
   経緯・Samovar 側の根本原因・実測表・選択肢 → `docs/specs/cli-option-parsing-report.md`。
 
+### `vs preflight` の終了コードが「警告のみ」でも 1 になる場合がある（裸 URL・危険スキーム）
+* **詳細:** 章別サマリー（2026-07-25 実装）で最終行は 3 段階（🔴 エラー / 🟡 警告のみ / ✅ 指摘なし）に
+  なったが、**終了コードは従来判定の `LinkImageValidator.any_issues?` のまま**である。
+  `any_issues?` は severity を見ず「レポートに issue があるか」だけで判定するため、
+  裸 URL・危険スキームという**警告**しかない場合でも 1 を返す。
+  結果として「⚠️ Preflight 完了: 警告 N 件（ビルドは可能です）」と表示しつつ終了コード 1、
+  という食い違いが起こる（Guard 警告・クロスリファレンス警告のみなら 0 で整合する）。
+* **原因:** `any_issues?` の定義が severity を持たない時代のもので、registry 移行後も温存した
+  （`preflight-chapter-summary-spec.md` §2.3 が「挙動変更になるため本仕様では現状維持」と決定）。
+* **対応方針:** 「終了コードは registry の severity `:error` のみで決める」へ寄せる。
+  裸 URL が CI を落とさなくなる**挙動変更**なので、単独のコミットで意思決定してから行う。
+
+### 索引・用語集スキャンの警告が章別サマリーに載らない（全章実行時）
+* **詳細:** 章別サマリーは `IssueRegistry` に積まれた指摘だけを数えるが、索引・用語集スキャン
+  （Step 4）の 🟡 は**未ブリッジ**。全章 `vs preflight` で R4（辞書に残った死語）や
+  R7（`vs index:auto` 未実施の案内）が出ても、章別サマリーと最終行には反映されない。
+* **経緯:** 章を絞った実行で 14 件の誤検知が出る問題は 2026-07-26 に解消済み（CHANGELOG 参照）。
+  残るのは「全章実行で出る**正しい**索引警告を集計に載せるか」というブリッジの課題のみ。
+* **対応方針:** 索引系の `log_warn` 約 28 箇所を「原稿の欠陥／実行範囲由来／環境・設定」に分類し、
+  原稿の欠陥だけを `:index` カテゴリで record する。分類表 →
+  `docs/specs/preflight-glossary-warning-scope-report.md` §7。
+
 ### `vs lint` が VFM 記法を日本語の文として読む（誤検出）
 * **詳細:** `:::{.showcase}` の座標行が `sentence-length` / `max-comma` に触れる等、記法が
   地の文として検査される。現状は `config/textlint_allowlist.yml` の「VFM 記法」5 エントリで

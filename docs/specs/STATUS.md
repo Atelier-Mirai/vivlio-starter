@@ -9,16 +9,6 @@
 
 ## 一覧
 
-`characters-dialogue-spec.md`
-: PLANNED.md「会話文（対話）記法の刷新と `config/characters.yml` 化」の仕様。記法は `:::{.talk}` 内 `キー: 発話`（ローマ字キー）に一本化。PDF/クリーン EPUB はチャットアプリ風吹き出し、Kindle は実体ラベル＋リテラル色の劣化表示。
-  状態: 提案仕様・未着手（2026-07-12 策定）
-  次のアクション: 仕様レビュー・確定後、`character_registry.rb` から実装（`contents/22-extentions.md` の会話文節が書き直し待ち）
-
-`preflight-chapter-summary-spec.md`
-: PLANNED.md「`vs preflight` の章別エラー・警告サマリー」＋付随の非対称（Guard 系 `:warn` が最終サマリーに反映されない）の仕様。横断的な `IssueRegistry` を新設し各発生源（LinkImageValidator・code-include・クロスリファレンス・QueryStream・Guard 警告）がブリッジする構成。
-  状態: 提案仕様・未着手（2026-07-12 策定）
-  次のアクション: 実装（`IssueRegistry` ＋ LinkImageValidator ブリッジから着手）
-
 `command-feedback-spinner-spec.md`
 : PLANNED.md「コマンド実行時の応答メッセージ」＋「CLI スピナー」を統合した仕様。Public コマンドは成功時に実績値入り 1 行報告を規約化。スピナーは外部ライブラリなしの自作（TTY かつ既定ログレベル時のみ、pipeline の `execute` 1 箇所に装着）。
   状態: 提案仕様・未着手（2026-07-12 策定）
@@ -48,6 +38,11 @@
   状態: 検討メモ
   次のアクション: RC版完成後に再検討
 
+`preflight-glossary-warning-scope-report.md`
+: `vs preflight <章>` で「用語集語がビルド対象章に出現しません」が最大 14 件出る問題（原稿は正常・警告件数は対象章数に反比例）の調査報告。索引系警告 28 箇所の分類表（原稿の欠陥／実行範囲由来／環境・設定）付き。
+  状態: **対応済み（2026-07-26・§6.5／§6.6 に実施記録）** — ①章を絞った実行では索引処理を行わない（`vs build <章>` と同一挙動）／R4 ガード／文言修正／preflight の flush 漏れ修正　②索引スキャン 8.3 倍高速化（黄金マスタで結果不変を確認・`\` 破損 3 行を是正）
+  次のアクション: 索引系警告の `IssueRegistry` ブリッジ（§7 の分類表に沿って「原稿の欠陥」だけを `:index` で積む）
+
 `print-pdf-full-bleed-notes.md`
 : print_pdf のフチなし（full_bleed）要素対応についての設計メモ。写真集・爪見出しなど紙の端まで達するデザイン要素を持つ本を将来作る際の判断材料として、導出方式と個別レンダー方式の違いを整理したもの。
   状態: 設計メモ・実装保留
@@ -56,6 +51,17 @@
 ---
 
 ## メモ（依存関係・実装順序）
+
+- **preflight-chapter-summary-spec は 2026-07-25 に実装完了し `docs/archives/` へ移動した。**
+  横断収集器 `IssueRegistry`（`Issue`/`Counts` の Data・Monitor 同期）＋ 5 発生源のブリッジ＋章別サマリー表＋3 段階の最終行（`Common.log_result` に `:warning` 追加）。
+  **仕様からの改良点・実装時の判明事項**:
+  - クロスリファレンスのブリッジ先は仕様書が指した `CrossReferenceProcessor#log_duplicates` / `#log_reference_errors` **ではない**。実ビルドが通るのは `PreProcessCommands.process_cross_references_for_files`（`pre_process.rb`）で、`CrossReferenceProcessor.process_cross_references` は**未定義メソッド `generate_report` を呼ぶ到達不能コード**（`MarkdownTransformer.process_cross_references` も不存在＝委譲が二重に壊れている）。ライブ経路側へ record を置き、孤立ラベル警告も併せて拾うようにした。**この死にコードの撤去は未実施**（別タスク）。
+  - 章ラベルは原稿の H1 を読む（`<br>`・振り仮名・強調記号を除去し全角 2 幅換算で 30 幅に切り詰め）。仕様書は表の体裁だけを示していたため、記号の縦位置が揃う実装を補った。
+  - 索引・用語集スキャン（Step 4）の 🟡 は**未ブリッジ**（仕様書 §2.2 の表に無い）。章を絞った実行では辞書と catalog の突き合わせで構造的にノイズが出るため、分類の整理が必要 → KNOWN_ISSUES に記録。
+  - 終了コードは仕様どおり `any_issues?` のまま（裸 URL 警告でも 1 になる歪みは KNOWN_ISSUES 送り・§2.3 の決定）。
+
+- **characters-dialogue-spec / talk-display-options-spec / talk-auto-avatar-spec は 2026-07-25 に実装完了し `docs/archives/` へ移動した（コミット `5bc952ab`）。**
+  旧 【先生】/【生徒】 ハードコード方式を廃し、`:::{.talk}` 内「キー: 発話」＋ `config/talk.yml`（display 設定＋話者定義）に一本化。表示は style（chat 吹き出し / inline）・name・avatar（`auto` で簡易アバター自動生成）の 3 軸。Kindle は KFX が flex・擬似要素・var() を解さないため EpubBuilder が DOM ごと inline 形式へ組み替え、話者色は hex リテラルで焼き込み。
 
 - **nested-list-notation-spec は 2026-07-17 に実装完了し `docs/archives/` へ移動した（検討経緯 nested-list-notation-ideas.md も同時にアーカイブ）。**
   fancy list 13 様式（前処理 `convert_fancy_lists`・Kramdown 経由・fancy なしブロックはバイト一致素通し）＋ `:::{.outline-list}` 複合番号（CSS `counters()`・Ruby 実装ゼロ）＋ ul レベル別マーカー「● ○ ・」（文字列 `list-style-type: "・"` は Vivliostyle で有効と PDF 実測）＋ Kindle 実体マーカー注入（`decorate_list_markers_for_epub!`）。
