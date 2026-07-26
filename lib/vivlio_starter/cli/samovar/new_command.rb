@@ -38,7 +38,8 @@ module VivlioStarter
 
         private
 
-        def debug? = options[:log_level] == 'debug'
+        # --log の解釈は Common に一本化する（options[:log_level] を直接読まない）
+        def debug? = Common.current_log_level >= Common::LEVELS['debug']
 
         def log_debug(msg)
           puts "[debug] #{msg}" if debug?

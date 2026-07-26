@@ -32,6 +32,10 @@ module VivlioStarter
       # resolve_page_size の既定フォールバック（B5）とも一致する。
       DIRECT_PAGE_PRESET = 'b5_standard'
       LEVELS = { 'error' => 0, 'warn' => 1, 'info' => 2, 'success' => 2, 'action' => 2, 'debug' => 3 }.freeze
+      # --log 未指定時のレベル（🟡 警告と 🔴 エラーだけを出す）
+      DEFAULT_LOG_LEVEL = LEVELS['warn']
+      # 利用者に案内するログレベル名（success / action は内部の分類なので出さない）
+      LOG_LEVEL_NAMES = %w[error warn info debug].freeze
 
       CONFIG_DIR = 'config'
       CONTENTS_DIR = 'contents'
@@ -350,15 +354,51 @@ module VivlioStarter
       # detail 行のインデント幅（半角スペース 8 文字）
       DETAIL_INDENT = '        '
 
-      # --log オプションから現在のログレベルを解決する。
-      # error: 0 / warn: 1 / info,success,action: 2 / debug: 3
-      def current_log_level
-        case ARGV
-        in [*, /^--log=(.+)$/, *] then LEVELS[::Regexp.last_match(1).downcase] || 2
-        in [*, '--log', level, *] if LEVELS.key?(level) then LEVELS[level]
-        in [*, '--log', *] then 2
-        else 1
-        end
+      # ログレベルは起動時に 1 回だけ決めて保持する（cli-argument-parsing-spec.md Part 2）。
+      # 従来は log 出力のたびに ARGV をパターンマッチしていたため、Samovar が弾いた入力でも
+      # ログレベルだけは効くという捻れがあった。解析結果を唯一の入力とすることで
+      # 「--log を宣言していないコマンドでは単に無効なオプション」と一貫させる。
+      #
+      # module_function されたメソッドは include 先のインスタンスからも呼ばれ、その場合
+      # インスタンス変数は別物になってしまうため、状態は必ずモジュール自身に置く。
+      class << self
+        attr_writer :log_level
+
+        def log_level = @log_level || DEFAULT_LOG_LEVEL
+      end
+
+      # 現在のログレベル。error: 0 / warn: 1 / info,success,action: 2 / debug: 3
+      def current_log_level = Common.log_level
+
+      # 解析済みコマンドの --log 指定からログレベルを確定する。
+      # 呼ぶのは CLI.start の 1 箇所だけ（各所で ARGV を読み直さない）。
+      def apply_log_level!(command)
+        Common.log_level = resolve_log_level(log_option_value(command))
+      end
+
+      # ルートコマンドが受け取った実行対象（サブコマンド）の --log を読む。
+      # --log を宣言していないコマンドでは nil になり、既定レベルのままとなる。
+      def log_option_value(command)
+        target = (command.command if command.respond_to?(:command)) || command
+        target.options[:log_level] if target.respond_to?(:options)
+      end
+
+      # 値なし `--log` は OptionTokenNormalizer が info へ開いて渡すため、ここには
+      # 常に具体的な値か nil だけが来る。大文字は記法を問わず downcase して扱う
+      # （従来は `--log=DEBUG` だけが downcase され `--log DEBUG` は info に落ちていた）。
+      def resolve_log_level(raw)
+        return DEFAULT_LOG_LEVEL if raw.nil?
+
+        LEVELS[raw.to_s.downcase] || warn_unknown_log_level(raw)
+      end
+
+      # 不明なログレベルは 🟡 で知らせて info へ倒す。ログ指定のタイプミスでビルドを
+      # 止めるのは過剰だが、黙って既定に落とすと間違いに気づけない。
+      def warn_unknown_log_level(raw)
+        log_warn("--log=#{raw} は不明なログレベルです。",
+                 detail: "対処: #{LOG_LEVEL_NAMES.join(' / ')} のいずれかを指定してください" \
+                         '（今回は info で続行します）。')
+        LEVELS['info']
       end
 
       # 補足情報・処理の詳細（🔵）。--log=info 以上で表示。
@@ -967,7 +1007,9 @@ module VivlioStarter
                       :consume_vivliostyle_build_timings, :contents_dir, :covers_dir,
                       :cover_theme, :pdf_combined?, :pdf_compress?, :epub_embed?, :kindle_embed?,
                       :print_pdf_full_bleed?,
-                      :current_log_level, :current_step_label, :deep_merge_config, :default_cache,
+                      :current_log_level, :apply_log_level!, :resolve_log_level, :log_option_value,
+                      :warn_unknown_log_level,
+                      :current_step_label, :deep_merge_config, :default_cache,
                       :build_direct_configuration, :direct_page_settings, :install_configuration!,
                       :default_commands, :default_config_schema, :default_directories,
                       :default_vfm, :default_vivliostyle, :log_always, :ensure_cache_dir!,

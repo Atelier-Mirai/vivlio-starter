@@ -14,6 +14,9 @@ module VivlioStarter
       args = Array(argv).dup
 
       command = VivlioStarter::CLI::SamovarCommands::RootCommand.parse(args)
+      # ログレベルはここで 1 回だけ確定する。解析より前の出力（未知コマンドのエラー等）は
+      # 既定レベルで出す——解析に失敗した入力の --log 指定を尊重する必要はない。
+      Common.apply_log_level!(command)
       result = command.call
       result.is_a?(Integer) ? result : 0
     rescue Samovar::InvalidInputError => e

@@ -83,7 +83,7 @@ module VivlioStarter
         end
 
         # 索引処理の実行有無だけを見たいので、実処理は差し替える。
-        # 判断理由（log_action）は info 以上でしか出ないため、ARGV に --log を足して拾う
+        # 判断理由（log_action）は info 以上でしか出ないため、ログレベルを上げて拾う
         def run_step4(entries:)
           pipeline = UnifiedBuildPipeline.new(CommandStub.new, entries: entries, mode: :preflight)
 
@@ -99,13 +99,13 @@ module VivlioStarter
           end
         end
 
-        # Common.current_log_level は ARGV を直接見るため、一時的に --log を積む
+        # ログレベルは Common が保持する状態なので、ARGV を汚さずに切り替えられる
         def with_info_log
-          original = ARGV.dup
-          ARGV.replace(original + ['--log'])
+          original = Common.log_level
+          Common.log_level = Common::LEVELS['info']
           yield
         ensure
-          ARGV.replace(original)
+          Common.log_level = original
         end
 
         def processed? = !@processed_chapters.nil?

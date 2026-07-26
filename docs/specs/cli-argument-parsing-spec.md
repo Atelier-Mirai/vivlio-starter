@@ -1,8 +1,8 @@
 # CLI 引数解析の統一（オプション位置の自由化とログレベルの一本化）仕様書
 
 > 作成日: 2026-07-27
-> 改訂: 2026-07-27（方針決定を反映・§4 に決定事項を追加／**Part 1 実装完了**）
-> ステータス: **Part 1 実装済み（2026-07-27）・Part 2 実装待ち**
+> 改訂: 2026-07-27（方針決定を反映・§4 に決定事項を追加／**Part 1・Part 2 とも実装完了**）
+> ステータス: **実装済み（2026-07-27）**
 > 目的: `docs/specs/cli-option-parsing-report.md` の残件 2 件——「オプションを位置引数より前に置けない」（§3.3）と「`Common.current_log_level` が ARGV を直接走査している」（§4.3 ③）——を解消する。
 > 前提: `--opt=value` 記法の共通化（`OptionTokenNormalizer`）は 2026-07-27 に実装済み。本仕様はその上に載る。
 > 関連ファイル: `lib/vivlio_starter/cli/samovar/option_token_normalizer.rb`, `lib/vivlio_starter/cli/common.rb`, `lib/vivlio_starter/cli/startup.rb`, `lib/vivlio_starter/cli/samovar/*_command.rb`
@@ -359,14 +359,22 @@ Part 1 と Part 2 は独立しており、D6 のとおり Part 1 から着手す
 - `RootCommand` は `command_map` に含まれないルーターのため `VsCommand` を継承させていない（`options` → `nested` の順で既に正しく動作する）。
 - 検証結果: `rake test` **1966 runs, 0 failures**（+12 件）／`rake test:standard` 同数／RuboCop **393 files, no offenses**。
 
-### Part 2
+### Part 2 — ✅ 実装完了（2026-07-27）
 
-| 手順 | 内容 | 対象 |
-|---|---|---|
-| 2-1 | `apply_log_level!` / `log_level=` を追加し `current_log_level` を保持値の参照に変更 | `common.rb` |
-| 2-2 | `CLI.start` で解析後に 1 回だけ適用する | `startup.rb` |
-| 2-3 | 大文字統一・不正値の 🟡 警告を実装 | `common.rb` |
-| 2-4 | `vs new` の 2 箇所を `Common.current_log_level` へ寄せる | `new_command.rb` / `new.rb` |
+| 手順 | 内容 | 対象 | 状態 |
+|---|---|---|---|
+| 2-1 | `apply_log_level!` / `log_level=` を追加し `current_log_level` を保持値の参照に変更 | `common.rb` | ✅ |
+| 2-2 | `CLI.start` で解析後に 1 回だけ適用する | `startup.rb` | ✅ |
+| 2-3 | 大文字統一・不正値の 🟡 警告を実装 | `common.rb` | ✅ |
+| 2-4 | `vs new` の 2 箇所を `Common.current_log_level` へ寄せる | `new_command.rb` / `new.rb` | ✅ |
+
+**実装時の補足**
+
+- **状態は `class << self` の `@log_level` に置いた。** `Common` は `module_function` を使っており、そのままインスタンス変数を書くと include 先のオブジェクトごとに別の変数になってしまう。`current_log_level` は `Common.log_level` を明示的に呼ぶため、include 経由でも同じ値を見る（テストで固定）。
+- **`BARE_VALUE_DEFAULTS` の参照は不要だった**（§6.2 の想定からの変更）。値なし `--log` は正規化器が `info` へ開いてから Samovar に渡すため、`Common` へ届く時点では具体的な値か `nil` しかない。既定値の定義は正規化器の 1 箇所だけで完結する。
+- **`CLI.start` を通らない呼び出しはログレベルが既定のままになる。** `NewCommand.new(...).call` を直接呼ぶテストは `Common.apply_log_level!` を挟んで実運用の流れを再現した（`new_commands_test.rb`）。
+- ARGV を触っていた既存テスト（`index_step_scope_test.rb`）は `Common.log_level=` へ移行し、ARGV を汚さなくなった。
+- 検証結果: `rake test` **1977 runs, 0 failures**（+11 件）／`rake test:standard` 同数／RuboCop **394 files, no offenses**。
 
 ---
 

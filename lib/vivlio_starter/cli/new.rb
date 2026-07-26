@@ -138,7 +138,7 @@ module VivlioStarter
 
             if File.directory?(src)
               FileUtils.mkdir_p(dst)
-              log_debug(cmd, "ディレクトリ作成: #{dst}")
+              log_debug("ディレクトリ作成: #{dst}")
               next
             end
 
@@ -155,7 +155,7 @@ module VivlioStarter
               FileUtils.cp(src, dst)
             end
 
-            log_debug(cmd, "コピー: #{relative}")
+            log_debug("コピー: #{relative}")
           end
         rescue Interrupt, SignalException
           # Ctrl+C / SIGTERM: 中途半端なディレクトリを残さない
@@ -169,7 +169,7 @@ module VivlioStarter
 
         # 雛形マニフェストを生成（vs upgrade の三者比較の基準になる展開時点ハッシュ）
         ScaffoldLock.generate!(project_name, scaffold_source: SCAFFOLD_SOURCE, version: VivlioStarter::VERSION)
-        log_debug(cmd, "scaffold.lock を生成しました: #{File.join(project_name, ScaffoldLock::LOCK_RELATIVE)}")
+        log_debug("scaffold.lock を生成しました: #{File.join(project_name, ScaffoldLock::LOCK_RELATIVE)}")
 
         Common.log_action("プロジェクトファイルを展開しました: #{project_name}/")
       end
@@ -206,7 +206,7 @@ module VivlioStarter
         content = File.read(src_path, encoding: 'utf-8').gsub(pattern) { substitutions[it] }
 
         File.write(dest_path, content, encoding: 'utf-8')
-        log_debug(cmd, "book.yml を置換して書き込みました: #{dest_path}")
+        log_debug("book.yml を置換して書き込みました: #{dest_path}")
       end
 
       # YAML の double-quoted string リテラル内で安全になるよう値をエスケープする。
@@ -228,7 +228,7 @@ module VivlioStarter
 
       def run_doctor(cmd, project_name)
         shell_cmd = "cd #{Shellwords.escape(project_name)} && vs doctor --fix"
-        log_debug(cmd, "実行: #{shell_cmd}")
+        log_debug("実行: #{shell_cmd}")
 
         # system の呼び出しを cmd 経由にすることでテスト時のスタブが有効になる
         return if cmd.system(shell_cmd)
@@ -252,8 +252,9 @@ module VivlioStarter
         MSG
       end
 
-      def log_debug(cmd, msg)
-        puts "[debug] #{msg}" if cmd&.options&.[](:log_level) == 'debug'
+      # --log の解釈は Common に一本化する（options[:log_level] を直接読まない）
+      def log_debug(msg)
+        puts "[debug] #{msg}" if Common.current_log_level >= Common::LEVELS['debug']
       end
     end
   end

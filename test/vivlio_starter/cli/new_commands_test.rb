@@ -270,9 +270,14 @@ module VivlioStarter
 
       # NewCommand を Samovar 経由で実行するヘルパー
       # @param args [Array<String>] コマンド引数
+      # ログレベルの確定は CLI.start が担うため、テストでも同じ流れを再現する
+      # （--log の解釈は Common へ一本化されており、options[:log_level] は直接読まれない）
       def run_new_command(args)
         cmd = SamovarCommands::NewCommand.new(args)
+        Common.apply_log_level!(cmd)
         cmd.call
+      ensure
+        Common.log_level = nil
       end
 
       # system() をスタブ化して doctor 実行をスキップする
