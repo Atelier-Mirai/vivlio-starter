@@ -19,8 +19,10 @@
 #   （docs/specs/preflight-glossary-warning-scope-report.md）。
 #
 # 終了コード:
-#   0: エラーなし（警告のみ、または問題なし）
-#   1: エラー1件以上、または実行時例外
+#   0: 🔴 なし（🟡 警告のみ、または問題なし）
+#   1: 🔴 1件以上（欠落画像・欠落コード・リンク切れ・危険スキーム・ラベルID重複・
+#      QueryStream 展開エラー）、または実行時例外
+#   ＝画面に出た絵文字と CI の成否が一致する。判定は IssueRegistry の severity のみで行う。
 # ================================================================
 
 require_relative '../build'
@@ -132,7 +134,11 @@ module VivlioStarter
           print_chapter_summary(entries)
           print_preflight_summary
 
-          PreProcessCommands::LinkImageValidator.any_issues? ? 1 : 0
+          # 終了コードは 🔴 の有無だけで決める。画面に出た絵文字と CI の成否が一致し、
+          # 「⚠️ 警告 N 件（ビルドは可能です）」と言いながら 1 を返す食い違いが起きない。
+          # 従来は LinkImageValidator.any_issues?（severity を見ない）で判定していたため、
+          # 裸 URL の警告だけでも 1 を返していた。
+          PreProcessCommands::IssueRegistry.counts.errors.positive? ? 1 : 0
         rescue Guards::GuardError => e
           Common.log_error(e.message)
           1

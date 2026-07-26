@@ -240,10 +240,15 @@ module VivlioStarter
         }
       end
 
+      # 危険スキームは 🔴（log_error）、裸 URL 等は 🟡（log_warn）で報告されるため、
+      # 「報告されたか」を見るこのテスト群では両方を同じ入れ物へ集める。
       def stub_common_log_warn
-        Common.stub(:log_warn, ->(msg, detail: nil) { @warn_messages << msg }) do
-          Common.stub(:log_info, ->(*) {}) do
-            yield
+        collect = ->(msg, detail: nil) { @warn_messages << msg }
+        Common.stub(:log_warn, collect) do
+          Common.stub(:log_error, collect) do
+            Common.stub(:log_info, ->(*) {}) do
+              yield
+            end
           end
         end
       end

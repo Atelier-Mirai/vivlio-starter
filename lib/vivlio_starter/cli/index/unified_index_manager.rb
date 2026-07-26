@@ -16,6 +16,7 @@
 
 require_relative '../common'
 require_relative '../build/catalog_loader'
+require_relative '../pre_process/issue_registry'
 require_relative 'unified_terms_manager'
 require_relative 'review_queue_manager'
 require_relative 'review_markdown_generator'
@@ -380,6 +381,11 @@ module VivlioStarter
         return unless scanner.config_missing || scanner.no_matches
 
         IndexCommands.add_post_build_message(IndexCommands::INDEX_TERMS_MISSING_MESSAGE)
+        # 画面に 🟡 を出す以上は集計にも載せる（出ているのに「良好」と総括しない）。
+        PreProcessCommands::IssueRegistry.record(
+          severity: :warn, category: :index,
+          message: '索引語辞書がありません（vs index:auto → vs index:apply で作成できます）'
+        )
       end
 
       # 用語集ページを生成（後方互換 - 単独呼び出し用）
@@ -411,6 +417,13 @@ module VivlioStarter
         IndexCommands.add_post_build_message(
           "🟡 索引候補の抽出が未実施の章があります: #{unscanned.join(', ')} → vs index:auto を実行してください"
         )
+        # 章別サマリーへブリッジする。どの章が未走査かは特定できているので章ごとに積む。
+        unscanned.each do |chapter|
+          PreProcessCommands::IssueRegistry.record(
+            chapter: chapter, severity: :warn, category: :index,
+            message: '索引候補の抽出が未実施です（vs index:auto を実行してください）'
+          )
+        end
       end
 
       # R4: ビルド対象章に 1 回も出現しない用語集語を警告する（掲載自体は維持）。
@@ -449,6 +462,13 @@ module VivlioStarter
                    '原稿のどこにも出現しません（語の変更・削除？）'
                  end
           Common.log_warn("用語集語がビルド対象章に出現しません: #{name}（#{hint}）")
+          # 章別サマリーへブリッジする。全章走査時にしか到達しないので（上のガード）
+          # ここに来る指摘は「辞書に残った死語」＝原稿とのズレであり、集計に載せる価値がある。
+          # 特定の章の欠陥ではないため chapter は付けない（「章に紐付かない指摘」へ入る）。
+          PreProcessCommands::IssueRegistry.record(
+            severity: :warn, category: :index,
+            message: "用語集語が原稿に出現しません: #{name}"
+          )
         end
       end
 

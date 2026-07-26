@@ -246,9 +246,10 @@ module VivlioStarter
           private
 
           # issue_type から重要度・カテゴリを決めて IssueRegistry へ橋渡しする。
-          # 重要度は既存の逐次ログの絵文字（log_error / log_warn）と一致させる:
-          #   欠落画像・欠落コード・リンク切れ = 🔴 error
-          #   裸 URL・危険スキーム             = 🟡 warn
+          # 重要度は逐次ログの絵文字（log_error / log_warn）と一致させる。
+          # この重要度が preflight の終了コードを決める（:error が 1 件でもあれば 1）:
+          #   欠落画像・欠落コード・リンク切れ・危険スキーム = 🔴 error
+          #   裸 URL（記法の推奨に過ぎない）                = 🟡 warn
           def record_to_registry(issue)
             severity, category, message =
               case issue
@@ -259,7 +260,7 @@ module VivlioStarter
               in LinkIssue[issue_type: :unreachable, url:, message: msg]
                 [:error, :link, "リンク切れ: #{url}（#{msg}）"]
               in LinkIssue[issue_type: :dangerous_scheme, url:]
-                [:warn, :link, "危険なスキーム: #{url}"]
+                [:error, :link, "危険なスキーム: #{url}"]
               in LinkIssue[issue_type: :bare_url, url:]
                 [:warn, :link, "裸 URL: #{url}"]
               else
@@ -419,10 +420,12 @@ module VivlioStarter
             issues
           end
 
-          # 危険スキーム検出 issue を生成しつつ警告ログを出力する
+          # 危険スキーム検出 issue を生成しつつエラーログを出力する。
+          # ローカルファイル漏洩・スクリプト注入の第一防衛線であり、CI を通してはならない
+          # 指摘なので 🔴（＝preflight の終了コード 1）で報告する。
           def build_dangerous_issue(filename, line_number, url)
             scheme_label = url.match?(/\Afile:/i) ? 'file://' : 'javascript:'
-            Common.log_warn(
+            Common.log_error(
               "#{filename}:#{line_number} - 危険なスキームを検出しました（#{scheme_label}）",
               detail: "URL: #{url}\n→ ローカルファイル漏洩 / スクリプト注入のリスクがあります。"
             )

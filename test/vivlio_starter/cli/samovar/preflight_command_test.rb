@@ -233,7 +233,7 @@ module VivlioStarter
 
         # エラーがあると章別表に内訳が出て、最終行は ❌・終了コード 1
         def test_should_report_errors_with_chapter_breakdown_and_exit_1
-          output, status = run_preflight(entries: fixture_entries('10-alpha', '21-beta'), any_issues: true) do
+          output, status = run_preflight(entries: fixture_entries('10-alpha', '21-beta')) do
             PreProcessCommands::IssueRegistry.record(
               chapter: '21-beta.md', severity: :error, category: :image, message: '存在しない画像: a.webp'
             )
@@ -253,7 +253,7 @@ module VivlioStarter
         # 警告のみなら最終行は ⚠️（ビルドは可能）で終了コード 0
         # Guard 警告（章に紐付かない）も最終判定に反映される（§0-2 の非対称の解消）
         def test_should_report_warning_only_and_exit_0
-          output, status = run_preflight(entries: fixture_entries('10-alpha'), any_issues: false) do
+          output, status = run_preflight(entries: fixture_entries('10-alpha')) do
             PreProcessCommands::IssueRegistry.record(
               severity: :warn, category: :guard, message: '未知のコンテナクラス .foo'
             )
@@ -267,7 +267,7 @@ module VivlioStarter
 
         # 全章 ✅ なら表は 1 行へ短縮され、最終行は ✅・終了コード 0
         def test_should_shorten_table_when_all_chapters_are_clean
-          output, status = run_preflight(entries: fixture_entries('10-alpha', '21-beta'), any_issues: false)
+          output, status = run_preflight(entries: fixture_entries('10-alpha', '21-beta'))
 
           assert_equal 0, status
           assert_includes output, '✅ 全 2 章: 問題なし'
@@ -275,9 +275,35 @@ module VivlioStarter
           assert_includes output, '✅ Preflight 完了: 良好な状態です'
         end
 
+        # 裸 URL の警告だけなら終了コード 0（🟡 しか出ていないのに CI が落ちる食い違いの解消）。
+        # 従来は LinkImageValidator.any_issues? が severity を見ず 1 を返していた。
+        def test_should_exit_0_when_only_bare_url_warnings_exist
+          output, status = run_preflight(entries: fixture_entries('10-alpha')) do
+            PreProcessCommands::IssueRegistry.record(
+              chapter: '10-alpha.md', line: 12, severity: :warn,
+              category: :link, message: '裸 URL: https://example.com'
+            )
+          end
+
+          assert_equal 0, status, '警告のみなら終了コードは 0'
+          assert_includes output, '⚠️ Preflight 完了: 警告 1 件（ビルドは可能です）'
+        end
+
+        # 危険スキームは 🔴 なので終了コード 1（セキュリティ検出を CI で止める）
+        def test_should_exit_1_when_dangerous_scheme_detected
+          _, status = run_preflight(entries: fixture_entries('10-alpha')) do
+            PreProcessCommands::IssueRegistry.record(
+              chapter: '10-alpha.md', line: 3, severity: :error,
+              category: :link, message: '危険なスキーム: file:///etc/passwd'
+            )
+          end
+
+          assert_equal 1, status, '危険スキームは終了コード 1'
+        end
+
         # 章単位実行（vs preflight 21）でも対象章のみの同形式になる
         def test_should_limit_table_to_targeted_chapter
-          output, = run_preflight(entries: fixture_entries('21-beta'), any_issues: true, targets: ['21']) do
+          output, = run_preflight(entries: fixture_entries('21-beta'), targets: ['21']) do
             PreProcessCommands::IssueRegistry.record(
               chapter: '21-beta.md', severity: :error, category: :image, message: '存在しない画像: a.webp'
             )
@@ -299,18 +325,20 @@ module VivlioStarter
           end
         end
 
-        # pipeline.run のタイミングで recorder を呼び、各発生源が指摘を積んだ状態を作る
-        def run_preflight(entries:, any_issues:, targets: [], &recorder)
+        # pipeline.run のタイミングで recorder を呼び、各発生源が指摘を積んだ状態を作る。
+        # 終了コードは IssueRegistry の severity だけで決まるため、
+        # LinkImageValidator.any_issues? はスタブしない（呼ばれない）。
+        def run_preflight(entries:, targets: [], &recorder)
           status = nil
           output, = capture_io do
-            with_stubs(entries, any_issues, recorder) do
+            with_stubs(entries, recorder) do
               status = PreflightCommand.new(targets).call
             end
           end
           [output, status]
         end
 
-        def with_stubs(entries, any_issues, recorder, &block)
+        def with_stubs(entries, recorder, &block)
           validator = PreProcessCommands::LinkImageValidator
           Guards::Guard.stub(:run!, nil) do
             CleanCommands.stub(:execute_clean, nil) do
@@ -318,9 +346,7 @@ module VivlioStarter
                 BuildCommands::UnifiedBuildPipeline.stub(:new, ->(*, **) { RecordingPipelineStub.new(recorder) }) do
                   validator.stub(:reset!, nil) do
                     validator.stub(:check_external_urls!, nil) do
-                      validator.stub(:print_summary, nil) do
-                        validator.stub(:any_issues?, any_issues, &block)
-                      end
+                      validator.stub(:print_summary, nil, &block)
                     end
                   end
                 end

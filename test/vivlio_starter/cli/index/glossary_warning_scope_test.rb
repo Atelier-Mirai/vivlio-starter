@@ -62,6 +62,34 @@ module VivlioStarter
           end
         end
 
+        # 全章走査で出た死語は章別サマリーへ積まれる（:index・章に紐付かない指摘）
+        def test_should_record_dead_term_into_issue_registry
+          in_project do
+            PreProcessCommands::IssueRegistry.reset!
+            warn_for(chapters: %w[21-images 22-tables])
+
+            issue = PreProcessCommands::IssueRegistry.issues.first
+            assert_pattern do
+              issue => { chapter: nil, severity: :warn, category: :index }
+            end
+            assert_includes issue.message, 'トンボ'
+          ensure
+            PreProcessCommands::IssueRegistry.reset!
+          end
+        end
+
+        # 部分走査では警告も集計も行わない（誤検知を集計へ昇格させない）
+        def test_should_not_record_when_scanning_a_subset
+          in_project do
+            PreProcessCommands::IssueRegistry.reset!
+            warn_for(chapters: ['21-images'])
+
+            assert_empty PreProcessCommands::IssueRegistry.issues
+          ensure
+            PreProcessCommands::IssueRegistry.reset!
+          end
+        end
+
         private
 
         # catalog に 2 章を持つ最小プロジェクトを組む。
