@@ -11,9 +11,10 @@
 # 公開コマンド:
 #   - index:auto: 全自動索引候補抽出 → _index_review.md 生成
 #   - index:apply: レビュー結果を適用
+#   - index:export / index:import: 用語辞書のライブラリ連携
 #
-# 内部コマンド（利用者には非公開）:
-#   - index:build: 索引ページを生成（vs build から呼ばれる）
+# 索引ページの生成そのものはコマンドを持たない。ビルドパイプラインが
+# IndexCommands.process_index_for_build! を直接呼ぶ（build/pipeline.rb）。
 #
 # 依存:
 #   - UnifiedIndexManager: 統合マネージャー
@@ -204,35 +205,6 @@ module VivlioStarter
         end
       end
 
-      # index:build コマンド - 索引ページを生成（内部用）
-      # 利用者には非公開だが、デバッグ用に残す
-      class IndexBuildCommand < Samovar::Command
-        self.description = '索引ページを生成（内部用）'
-
-        options do
-          option '-v/--verbose', '詳細出力', default: false, key: :verbose
-          option '-h/--help', 'このコマンドの使い方を表示', key: :help
-        end
-
-        many :files, '対象ファイル（省略時は全章）'
-
-        def call
-          return print_usage if options[:help]
-
-          ENV['VERBOSE'] = '1' if options[:verbose]
-          chapters = IndexCommands.resolve_chapters(files || [])
-
-          manager = UnifiedIndexManager.new
-          manager.build_index!(chapters)
-          0
-        rescue SystemExit => e
-          raise e
-        rescue StandardError => e
-          Common.log_error("index:build 実行中にエラー: #{e.message}")
-          Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
-          1
-        end
-      end
     end
   end
 end

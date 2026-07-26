@@ -419,18 +419,27 @@ Part 1 と Part 2 は独立しており、D6 のとおり Part 1 から着手す
 
 ## 10. 調査中に見つかった別件（本仕様のスコープ外）
 
-### 10.1 `IndexBuildCommand` が廃止後もクラスとして残っている
+### 10.1 `IndexBuildCommand` の残存 — ✅ 解消（2026-07-27）
 
-`vs index:build` は廃止済みだが、**`IndexBuildCommand` のクラス定義（`index_command.rb:208-236`）だけが残っている**。`RootCommand.command_map` に登録されていないため CLI からは到達できず、ヘルプにも出ない完全なデッドコードである。
+`vs index:build` は廃止済みだったが、**`IndexBuildCommand` のクラス定義（`index_command.rb:208-236`）だけが残っていた**。`RootCommand.command_map` に登録されておらず CLI からは到達できない完全なデッドコードで、`docs/archives/test-suite-expansion-spec.md:413` の記述から**ドキュメント側からは削除されたがクラス本体の削除が漏れた**ものと判明した。
 
-`docs/archives/test-suite-expansion-spec.md:413` に「DC が検出した文書残骸（cover:a4 系 / index:build）はマニュアル修正済み」とあることから、**ドキュメント側からは削除されたがクラス本体の削除が漏れた**ものと見られる。あわせて次の 2 つのコメントも実態と食い違っている。
+削除にあたり、索引ページ生成の実処理が別経路で生きていることを確認した。
 
-| 箇所 | 記述 | 実態 |
+```
+build/pipeline.rb:457  →  IndexCommands.process_index_for_build!（index.rb:46）
+                       →  UnifiedIndexManager#build_index!（unified_index_manager.rb:355）
+```
+
+`IndexBuildCommand` はこの `build_index!` を独自に呼び直していただけで、ビルド経路は同メソッドを `process_index_for_build!` 経由で呼んでいる。クラスを削除しても索引生成には影響しない（`rake test` 1977 runs で確認）。
+
+あわせて実態と食い違っていたコメント 2 箇所も是正した。
+
+| 箇所 | 旧記述 | 是正後 |
 |---|---|---|
-| `index_command.rb:16` | `- index:build: 索引ページを生成（vs build から呼ばれる）` | `vs build` から呼ばれていない（`command_map` 未登録） |
-| `unified_index_manager.rb:147` | `仕様: vs index:apply は内部で vs index:build を実行しない` | 参照先のコマンドが存在しない |
+| `index_command.rb:16` | `- index:build: 索引ページを生成（vs build から呼ばれる）` | 索引ページ生成はコマンドを持たず、パイプラインが `process_index_for_build!` を直接呼ぶ旨に変更 |
+| `unified_index_manager.rb:147` | `仕様: vs index:apply は内部で vs index:build を実行しない` | 「辞書を更新するだけで索引ページの生成は行わない（生成はパイプラインの責務）」へ変更 |
 
-**対応方針:** クラスと上記コメントを削除する。索引ページ生成の実処理が別経路（`IndexCommands` 側）で生きていることを確認したうえで行う必要があるため、本仕様とは分けて実施する。
+これで **CLI から到達できない孤立コマンドクラスはゼロ**になった（登録済み 30 コマンド）。
 
 ### 10.2 `create:cover` に `--help` がない
 

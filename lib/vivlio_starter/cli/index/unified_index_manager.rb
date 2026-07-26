@@ -144,7 +144,8 @@ module VivlioStarter
       end
 
       # Markdownから承認・リジェクトを適用
-      # 仕様: vs index:apply は内部で vs index:build を実行しない
+      # 仕様: vs index:apply は辞書を更新するだけで、索引ページの生成は行わない
+      # （生成はビルドパイプラインの責務）
       def apply_markdown_review!
         unless @markdown_generator.exists?
           Common.log_warn('_index_glossary_review.md が見つかりません')
