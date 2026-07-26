@@ -286,6 +286,14 @@ module VivlioStarter
 
         # --- phase: 保護トークンの入れ子復元（html_token 露出回帰） ---
 
+        # 退避トークンが最終出力に残っていないことを検査する。
+        # 旧実装の `[[HTML_TOKEN_n]]` 形式と現行の NUL 区切り形式の両方を見る
+        # （形式が変わってもこの回帰検査が空振りしないように）。
+        def refute_leftover_token(text, message)
+          refute_match(/\[\[(?:HTML|IDX|RUBY|CODE|GLS_HTML|GLS_RUBY|GLS_CODE)_\d+\]\]/, text, message)
+          refute_includes text, IndexMatchScanner::LineMask::SENTINEL, message
+        end
+
         # インラインコード内に HTML タグ様の文字列（例: `vs build <章名>`）があると、
         # 保護トークンが入れ子（CODE が HTML を内包）になる。復元を挿入順（FIFO）で行うと
         # `[[HTML_TOKEN_n]]` が最終出力へ残留する（KNOWN_ISSUES の html_token 問題）。
@@ -305,8 +313,7 @@ module VivlioStarter
           scanner.scan_and_tag_file!('11-workflow.md')
 
           tagged = File.read('11-workflow.md')
-          refute_match(/\[\[(?:HTML|IDX|RUBY|CODE|GLS_HTML|GLS_RUBY|GLS_CODE)_\d+\]\]/, tagged,
-                       '保護トークンが最終出力に残留してはならない')
+          refute_leftover_token(tagged, '保護トークンが最終出力に残留してはならない')
           assert_includes tagged, '`vs build <章名>`', 'インラインコードの内容が保持されること'
         end
 
@@ -326,9 +333,65 @@ module VivlioStarter
           scanner.scan_and_tag_file!('08-web.md')
 
           tagged = File.read('08-web.md')
-          refute_match(/\[\[(?:HTML|IDX|RUBY|CODE|GLS_HTML|GLS_RUBY|GLS_CODE)_\d+\]\]/, tagged,
-                       '用語集のみ経路でも保護トークンが残留してはならない')
+          refute_leftover_token(tagged, '用語集のみ経路でも保護トークンが残留してはならない')
           assert_includes tagged, '`<a href="x">`', 'インラインコードの内容が保持されること'
+        end
+
+        # --- phase: 退避内容の逐語復元（バックスラッシュ破損回帰） ---
+
+        # 退避した内容を `gsub!(token, original)` で戻すと、置換文字列中の `\`` が
+        # 「マッチ前の文字列」参照として解釈され、行頭が重複して混入する（実害あり・
+        # 2026-07-26 に原稿 3 章で発生していた）。`\` を含むインラインコードでも
+        # 原文が逐語で戻ることを検証する。
+        def test_inline_code_containing_backslash_is_restored_verbatim
+          config_content = <<~YAML
+            terms:
+              - term: エスケープ
+                yomi: えすけーぷ
+                flags: i
+          YAML
+          File.write('config/index_glossary_terms.yml', config_content)
+
+          scanner = IndexMatchScanner.new
+          line = "記号は `\\*` のように `\\` を前置してエスケープします。\n"
+          File.write('21-markdown.md', line)
+
+          scanner.scan_and_tag_file!('21-markdown.md')
+
+          tagged = File.read('21-markdown.md')
+          assert_includes tagged, '`\\*`', 'バックスラッシュを含むインラインコードが保持されること'
+          assert_includes tagged, '`\\`', '単独のバックスラッシュのインラインコードが保持されること'
+          assert_equal 1, tagged.scan('記号は').size, '行頭が重複して混入してはならない'
+          assert_includes tagged, 'class="index-term"', '用語のタグ付け自体は行われること'
+        end
+
+        # --- phase: 生成タグの遮蔽（保護を 1 回化しても等価であること） ---
+
+        # 生成した索引タグには class="index-term" のような英字が含まれるため、
+        # 後続の用語（例: index）がタグの属性内へ食い込みうる。退避を用語ごとに
+        # やり直す旧方式と、生成タグを即退避する現行方式は、この遮蔽において等価。
+        def test_generated_tag_is_not_matched_by_later_terms
+          config_content = <<~YAML
+            terms:
+              - term: Ruby
+                yomi: るびー
+                flags: i
+              - term: index
+                yomi: いんでっくす
+                flags: i
+          YAML
+          File.write('config/index_glossary_terms.yml', config_content)
+
+          scanner = IndexMatchScanner.new
+          File.write('31-terms.md', "Ruby の index を作ります。\n")
+
+          scanner.scan_and_tag_file!('31-terms.md')
+
+          tagged = File.read('31-terms.md')
+          # Ruby と index の 2 語ぶんだけタグが付く（生成タグの属性内に増殖しない）
+          assert_equal 2, tagged.scan(/class="index-term"/).size
+          refute_match(/class="<(?:span|dfn)/, tagged, '属性内にタグが入り込んではならない')
+          refute_match(/data-yomi="[^"]*<(?:span|dfn)/, tagged, '属性内にタグが入り込んではならない')
         end
 
         # --- phase: contents/ protection ---

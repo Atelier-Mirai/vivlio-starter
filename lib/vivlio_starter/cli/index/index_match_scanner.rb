@@ -88,6 +88,10 @@ module VivlioStarter
             flags = t['flags'].to_s
             flags.include?('g') && !flags.include?('i')
           end
+          # 用語ごとに不変な導出物のキャッシュ（1 行ごとに作り直さない）
+          @index_patterns = {}
+          @literal_patterns = {}
+          @term_yomis = {}
         end
 
         # 統合用語辞書（config/index_glossary_terms.yml）を読み込む
@@ -285,151 +289,143 @@ module VivlioStarter
           config ? config['yomi'] : nil
         end
 
+        # 用語を当ててはいけない領域（既にタグ付けされた要素・HTML タグ・振り仮名・
+        # インラインコード）を退避してから用語を順に当て、最後にまとめて戻す。
+        #
+        # 退避を用語ごとにやり直さないのが要点。従来は 1 行あたり用語数（153 語）だけ
+        # 4 本の保護 gsub と Regexp 生成を繰り返しており、これがスキャン時間の大半を
+        # 占めていた（地の文 7,421 行 × 153 語 = 113 万反復）。
+        #
+        # 生成したタグは即座に退避するため、後続の用語が先行タグの中身や属性
+        # （class="index-term" 等）へ食い込むことはない——従来の「用語ごとに保護し直す」
+        # 方式と遮蔽の効果は同じで、結果は 1 バイトも変わらない。
+        class LineMask
+          # 退避トークンは NUL 区切り。原稿に現れず、用語パターン（/\bTERM\b/）が
+          # 退避内容へ食い込む余地もない（従来の `[[HTML_TOKEN_0]]` 形式は文字列
+          # "HTML" を含み、直後の `_` が単語文字であるおかげで偶然無事だった）。
+          SENTINEL = "\u0000VSIDX"
+
+          def initialize(text)
+            @text = text
+            @stash = []
+          end
+
+          # パターンに一致する箇所を退避する
+          def protect!(pattern)
+            @text = @text.gsub(pattern) { |match| stash(match) }
+          end
+
+          # 退避済みテキストに対して用語を置換する
+          def substitute!(pattern, &) = @text = @text.gsub(pattern, &)
+
+          # 文字列を退避してトークンを返す（生成したタグを後続の用語から隠すため）
+          def stash(content)
+            token = "#{SENTINEL}#{@stash.size}\u0000"
+            @stash << [token, content]
+            token
+          end
+
+          def token?(text) = text.include?(SENTINEL)
+
+          # 退避を戻して完成した行を返す。
+          # 入れ子（インラインコード `vs build <章名>` は HTML タグを内包する）を正しく
+          # 巻き戻すため挿入の逆順（LIFO）で展開する。順方向だと内側のトークンが
+          # 未展開のまま表面化して残留する。
+          # 置換文字列中の `\\` や `\1` を特殊扱いさせないため、必ずブロック形式で戻す。
+          def restore
+            @stash.reverse_each { |token, content| @text = @text.gsub(token) { content } }
+            @text
+          end
+        end
+
+        # 既にタグ付けされた索引語要素（直後の用語集リンクを含む）
+        TAGGED_TERM_PATTERN =
+          %r{(<(?:span|dfn)[^>]*class="index-term"[^>]*>.*?</(?:span|dfn)>)(\s*<a[^>]*class="glossary-link"[^>]*>.*?</a>)?}
+
         # config/index_glossary_terms.yml に基づく自動タグ付けを適用
         def apply_auto_indexing(line, file_basename)
           return line if @config_terms.empty?
 
-          result = line
+          mask = LineMask.new(line)
+          protect_untouchable_regions!(mask)
+
           @config_terms.each do |config|
-            term = config['term']
-            yomi = config['yomi'] || @yomi_inferrer.infer(term)
+            yomi = term_yomi(config)
+            mask.substitute!(index_term_pattern(config)) do |match|
+              # 退避トークンへのマッチは触らない（念のための保険）
+              next match if mask.token?(match)
 
-            # すでにタグ付けされた部分を保護（二重タグ付け防止）
-            # タグ自体とその中身を一時的に置換する
-            placeholders = {}
-            # index-term 要素全体を保護（後続の glossary-link も含む）
-            protected_line = result.gsub(
-              %r{(<(?:span|dfn)[^>]*class="index-term"[^>]*>.*?</(?:span|dfn)>)(\s*<a[^>]*class="glossary-link"[^>]*>.*?</a>)?}
-            ) do |match|
-              token = "[[IDX_TOKEN_#{placeholders.size}]]"
-              placeholders[token] = match
-              token
+              # 生成したタグ（索引タグ＋用語集リンク）を丸ごと隠す。従来は次の用語の
+              # 保護 gsub が同じ範囲を 1 トークンへ退避していたので粒度も等しい。
+              mask.stash(process_term(match, yomi, file_basename))
             end
-
-            # 残りの HTML タグを保護（属性内の用語名が誤マッチしないように）
-            protected_line = protected_line.gsub(/<[^>]+>/) do |match|
-              token = "[[HTML_TOKEN_#{placeholders.size}]]"
-              placeholders[token] = match
-              token
-            end
-
-            # 振り仮名記法 {漢字|ふりがな} を保護（索引対象から除外）
-            protected_line = protected_line.gsub(/(\{[^{}]*\|[^{}]*\})/) do |match|
-              token = "[[RUBY_TOKEN_#{placeholders.size}]]"
-              placeholders[token] = match
-              token
-            end
-
-            # インラインコード `...` を保護（索引対象から除外）
-            # コードブロック内のタグはHTMLでエスケープされるため、IDとして機能しない
-            protected_line = protected_line.gsub(/(`[^`]+`)/) do |match|
-              token = "[[CODE_TOKEN_#{placeholders.size}]]"
-              placeholders[token] = match
-              token
-            end
-
-            # pattern が指定されていればそれを使用、なければ完全一致
-            pattern = if config['pattern']
-                        begin
-                          p_str = config['pattern'].to_s
-                          if p_str.start_with?('/') && p_str.end_with?('/')
-                            Regexp.new(p_str[1...-1])
-                          else
-                            Regexp.new(p_str)
-                          end
-                        rescue StandardError
-                          Regexp.new(Regexp.escape(term))
-                        end
-                      else
-                        Regexp.new(Regexp.escape(term))
-                      end
-
-            # 保護された状態の行に対して、用語を置換
-            replaced_line = protected_line.gsub(pattern) do |match|
-              # マッチした箇所が保護トークン内でないことを確認（念のため）
-              if match.start_with?('[[IDX_TOKEN_')
-                match
-              else
-                process_term(match, yomi, file_basename)
-              end
-            end
-
-            # 保護していたタグを元に戻す（必ず挿入の逆順＝LIFO で展開する）。
-            # 保護は IDX→HTML→RUBY→CODE の順に走るため、後段の CODE トークンの中身が
-            # 前段の HTML トークンを内包しうる（例: インラインコード `vs build <章名>` は
-            # 先に <章名> が HTML トークン化され、その状態の文字列ごと CODE トークン化される）。
-            # 挿入順（FIFO）で戻すと、まだ CODE トークンの中に隠れている HTML トークンを先に
-            # 展開しようとして空振りし、後から CODE トークンを開いた瞬間に未展開の HTML トークンが
-            # 表面化して `[[HTML_TOKEN_n]]` が残留する。逆順なら外側（CODE）→内側（HTML）と
-            # 入れ子を正しく巻き戻せる。
-            placeholders.reverse_each do |token, original|
-              replaced_line.gsub!(token, original)
-            end
-
-            result = replaced_line
           end
-          result
+
+          mask.restore
         end
 
-        # 用語集のみの用語にバックリンク・†リンクを付与（索引タグは追加しない）
+        # 用語を当ててはいけない領域を退避する。
+        # 順序は従来の保護順を踏襲する——先に索引語要素を丸ごと退避しないと、
+        # 内側の HTML タグだけが個別に退避されて要素が分断される。
+        def protect_untouchable_regions!(mask)
+          mask.protect!(TAGGED_TERM_PATTERN)  # 既にタグ付けされた索引語要素
+          mask.protect!(/<[^>]+>/)            # 残りの HTML タグ（属性内の誤マッチ防止）
+          mask.protect!(/\{[^{}]*\|[^{}]*\}/) # 振り仮名 {漢字|ふりがな}
+          mask.protect!(/`[^`]+`/)            # インラインコード（リテラル表示が目的）
+        end
+
+        # 索引語のマッチングパターン。辞書由来で不変なので初回だけ組み立てて使い回す。
+        # pattern が指定されていればそれを使い、無ければ用語の完全一致にする。
+        def index_term_pattern(config)
+          @index_patterns[config['term']] ||= begin
+            raw = config['pattern']
+            if raw
+              begin
+                body = raw.to_s
+                body = body[1...-1] if body.start_with?('/') && body.end_with?('/')
+                Regexp.new(body)
+              rescue StandardError
+                literal_term_pattern(config['term'])
+              end
+            else
+              literal_term_pattern(config['term'])
+            end
+          end
+        end
+
+        # 用語そのものの完全一致パターン（用語集のみの用語はこちらを使う）
+        def literal_term_pattern(term)
+          @literal_patterns[term] ||= Regexp.new(Regexp.escape(term))
+        end
+
+        # 用語の読み。辞書の指定が無ければ MeCab の推測で、いずれも用語ごとに不変。
+        def term_yomi(config)
+          @term_yomis[config['term']] ||= config['yomi'] || @yomi_inferrer.infer(config['term'])
+        end
+
+        # 用語集のみの用語にバックリンク・†リンクを付与（索引タグは追加しない）。
+        # apply_auto_indexing と同じく退避は 1 回だけ行う。生成するのは †リンクのみで、
+        # 用語そのものの文字は伏せない——従来も †リンクの <a> タグだけが退避対象で、
+        # 用語の文字は次の用語から見えていたため、その粒度を保つ。
         def apply_glossary_only_linking(line, file_basename)
           return line if @glossary_only_terms.empty?
 
-          result = line
+          mask = LineMask.new(line)
+          protect_untouchable_regions!(mask)
+
           @glossary_only_terms.each do |config|
             term = config['term']
+            # 用語集のみの用語は辞書の pattern を使わず完全一致で当てる（従来通り）
+            mask.substitute!(literal_term_pattern(term)) do |match|
+              next match if mask.token?(match)
 
-            # 既にタグ付けされた部分を保護
-            placeholders = {}
-            # index-term 要素全体を保護（後続の glossary-link も含む）
-            protected_line = result.gsub(
-              %r{(<(?:span|dfn)[^>]*class="index-term"[^>]*>.*?</(?:span|dfn)>)(\s*<a[^>]*class="glossary-link"[^>]*>.*?</a>)?}
-            ) do |match|
-              token = "[[GLS_TOKEN_#{placeholders.size}]]"
-              placeholders[token] = match
-              token
+              @term_occurrence[term] += 1
+              link = build_glossary_link(term, file_basename, @term_occurrence[term])
+              link ? "#{match}#{mask.stash(link)}" : match
             end
-
-            # 残りの HTML タグを保護（属性内の用語名が誤マッチしないように）
-            protected_line = protected_line.gsub(/<[^>]+>/) do |match|
-              token = "[[GLS_HTML_#{placeholders.size}]]"
-              placeholders[token] = match
-              token
-            end
-
-            # 振り仮名記法 {漢字|ふりがな} を保護
-            protected_line = protected_line.gsub(/(\{[^{}]*\|[^{}]*\})/) do |match|
-              token = "[[GLS_RUBY_#{placeholders.size}]]"
-              placeholders[token] = match
-              token
-            end
-
-            # インラインコード `...` を保護
-            protected_line = protected_line.gsub(/(`[^`]+`)/) do |match|
-              token = "[[GLS_CODE_#{placeholders.size}]]"
-              placeholders[token] = match
-              token
-            end
-
-            pattern = Regexp.new(Regexp.escape(term))
-
-            replaced_line = protected_line.gsub(pattern) do |match|
-              if match.start_with?('[[GLS_')
-                match
-              else
-                @term_occurrence[term] += 1
-                occurrence_num = @term_occurrence[term]
-                glossary_link = build_glossary_link(term, file_basename, occurrence_num)
-                glossary_link ? "#{match}#{glossary_link}" : match
-              end
-            end
-
-            # apply_auto_indexing と同様、入れ子（CODE が HTML を内包）を正しく巻き戻すため
-            # 挿入の逆順（LIFO）で復元する。FIFO だと `[[GLS_HTML_n]]` が残留する。
-            placeholders.reverse_each { |token, original| replaced_line.gsub!(token, original) }
-            result = replaced_line
           end
-          result
+
+          mask.restore
         end
 
         # 索引語を処理してタグを生成
