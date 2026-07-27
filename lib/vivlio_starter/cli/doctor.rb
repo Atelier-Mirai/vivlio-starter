@@ -334,9 +334,7 @@ module VivlioStarter
         if missing.include?('xcode-command-line-tools')
           proceed = options[:yes]
           if !proceed && $stdin.tty?
-            $stdout.print('Xcode Command Line Tools をインストールしますか？ [y/N]: ')
-            ans = $stdin.gets
-            proceed = ans && ans.strip.downcase == 'y'
+            proceed = Common.confirm?('Xcode Command Line Tools をインストールしますか？')
           end
           if proceed
             Common.log_always('Xcode Command Line Tools のインストーラを起動します…')
@@ -362,9 +360,7 @@ module VivlioStarter
           Common.log_always('Homebrew が見つかりません。自動インストールを試みます。')
           proceed = options[:yes]
           if !proceed && $stdin.tty?
-            $stdout.print('Homebrew をインストールしますか？ [y/N]: ')
-            ans = $stdin.gets
-            proceed = ans && ans.strip.downcase == 'y'
+            proceed = Common.confirm?('Homebrew をインストールしますか？')
           end
           if proceed
             begin
@@ -684,9 +680,7 @@ module VivlioStarter
       def confirm_config_restore?(options)
         return true if options[:yes] || !$stdin.tty?
 
-        $stdout.print('設定ファイルを初期状態から復元しますか？（破損ファイルはバックアップを取得します） [y/N]: ')
-        ans = $stdin.gets
-        return true if ans && ans.strip.downcase == 'y'
+        return true if Common.confirm?('設定ファイルを初期状態から復元しますか？（破損ファイルはバックアップを取得します）')
 
         Common.log_always('設定ファイルの復元をスキップしました。')
         false

@@ -113,6 +113,14 @@ module VivlioStarter
         'output_print.pdf'
       ].freeze
 
+      # 削除結果の内訳。表示は呼び出し側の責務とし、ドメイン層は件数を返すだけにする。
+      # `vs build` の Step 0 も execute_clean を呼ぶため、ここで結果報告を出すと
+      # ビルドのたびに「削除しました」が混ざってしまう。
+      CleanSummary = Data.define(:cache, :cover, :generated_images, :artifacts, :dictionaries) do
+        def total = cache + cover + generated_images + artifacts + dictionaries
+        def none? = total.zero?
+      end
+
       # クリーンアップ処理のエントリーポイント
       #
       # @param option_hash [Hash] オプション設定
@@ -121,7 +129,7 @@ module VivlioStarter
       #   - :cache [Boolean] キャッシュのみ削除
       #   - :purge [Boolean] 最終 PDF も含めて削除
       #   - :generated_images [Boolean] テーマバリアント画像を削除
-      # @return [void]
+      # @return [CleanSummary] 削除した対象の内訳
       def execute_clean(option_hash)
         opts = option_hash || {}
 
@@ -133,84 +141,114 @@ module VivlioStarter
         variant_cleanup_requested = opts[:generated_images] || all_mode
         index_dictionaries_requested = opts[:index_dictionaries] # --all には含めない
 
-        # カバー画像の削除（マスター画像は保持）
-        clean_cover_files if cover_requested
-        # テーマ用の生成済みバリアント画像を削除
-        clean_bundled_variant_images if variant_cleanup_requested
-        # 索引・用語集辞書データの削除（確認あり）
-        clean_index_dictionaries if index_dictionaries_requested
+        cover = cover_requested ? clean_cover_files : 0
+        generated_images = variant_cleanup_requested ? clean_bundled_variant_images : 0
+        dictionaries = index_dictionaries_requested ? clean_index_dictionaries : 0
+        cache = cache_requested ? clean_cache_files : 0
 
-        if cache_requested
-          begin
-            dir = begin
-              Common.cache_dir
-            rescue StandardError
-              '.cache/vs'
-            end
-            if dir.nil? || dir.to_s.strip.empty?
-              Common.log_warn('キャッシュディレクトリが不明のため中止します')
-              return
-            end
-            if File.directory?(dir)
-              Common.log_action("キャッシュディレクトリを削除中: #{dir}")
-              FileUtils.rm_rf(dir)
-              Common.log_success('キャッシュ削除が完了しました')
-            else
-              Common.log_info("キャッシュディレクトリは存在しません: #{dir}")
-            end
-
-            # metrics キャッシュも削除
-            metrics_cache = File.join('.cache', 'metrics')
-            if File.directory?(metrics_cache)
-              Common.log_action("metrics キャッシュを削除中: #{metrics_cache}")
-              FileUtils.rm_rf(metrics_cache)
-              Common.log_info("#{metrics_cache} を削除しました")
-            end
-
-            # 索引のキャッシュ（旧ルート出力）も削除する。現行の新配置
-            # .cache/vs/build/_index_matches.yml は上の rm_rf(dir) が掃除するため、
-            # ここはルート残骸掃除として残置する（V2.0 で撤去予定・P4b §2.6）。
-            index_cache = '_index_matches.yml'
-            if File.exist?(index_cache)
-              FileUtils.rm_f(index_cache)
-              Common.log_info("#{index_cache} を削除しました")
-            end
-
-            # 索引ページもキャッシュ削除時に削除対象とする
-            index_page = '_indexpage.html'
-            if File.exist?(index_page)
-              FileUtils.rm_f(index_page)
-              Common.log_info("#{index_page} を削除しました")
-            end
-
-            if File.directory?('.vivliostyle')
-              Common.log_action('.vivliostyle ディレクトリを削除中...')
-              FileUtils.rm_rf('.vivliostyle')
-              Common.log_info('.vivliostyle ディレクトリを削除しました')
-            else
-              Common.log_info('.vivliostyle ディレクトリは存在しません')
-            end
-          rescue StandardError => e
-            Common.log_warn("clean --cache 実行中にエラー: #{e}")
-          end
+        # キャッシュディレクトリを特定できない異常時は後続の削除も行わない（従来の挙動）
+        if cache.nil?
+          return CleanSummary.new(cache: 0, cover: cover, generated_images: generated_images,
+                                  artifacts: 0, dictionaries: dictionaries)
         end
 
-        # --cache または --cover のみが指定された場合は通常のクリーン処理をスキップ
-        # --purge が指定されている、またはオプションなしの場合は通常のクリーン処理を実行
-        if (cache_requested || cover_requested) && !purge_requested
-          # --cache または --cover のみの場合はここで終了
-          return
+        # --cache または --cover のみが指定された場合は通常のクリーン処理をスキップ。
+        # --purge 指定時、またはオプションなしの場合は通常のクリーン処理を実行する
+        artifacts = if (cache_requested || cover_requested) && !purge_requested
+                      0
+                    else
+                      clean_build_artifacts(purge_requested)
+                    end
+
+        CleanSummary.new(cache: cache, cover: cover, generated_images: generated_images,
+                         artifacts: artifacts, dictionaries: dictionaries)
+      end
+
+      # キャッシュ類（.cache/vs・metrics・索引の旧ルート残骸・.vivliostyle）を削除する
+      #
+      # @return [Integer, nil] 削除した対象の数。キャッシュディレクトリが特定できない場合は nil
+      def clean_cache_files
+        deleted = 0
+        dir = begin
+          Common.cache_dir
+        rescue StandardError
+          '.cache/vs'
         end
+
+        if dir.nil? || dir.to_s.strip.empty?
+          Common.log_warn('キャッシュディレクトリが不明のため中止します')
+          return nil
+        end
+
+        if File.directory?(dir)
+          Common.log_action("キャッシュディレクトリを削除中: #{dir}")
+          FileUtils.rm_rf(dir)
+          deleted += 1
+          Common.log_success('キャッシュ削除が完了しました')
+        else
+          Common.log_info("キャッシュディレクトリは存在しません: #{dir}")
+        end
+
+        # metrics キャッシュも削除
+        metrics_cache = File.join('.cache', 'metrics')
+        if File.directory?(metrics_cache)
+          Common.log_action("metrics キャッシュを削除中: #{metrics_cache}")
+          FileUtils.rm_rf(metrics_cache)
+          deleted += 1
+          Common.log_info("#{metrics_cache} を削除しました")
+        end
+
+        # 索引のキャッシュ（旧ルート出力）も削除する。現行の新配置
+        # .cache/vs/build/_index_matches.yml は上の rm_rf(dir) が掃除するため、
+        # ここはルート残骸掃除として残置する（V2.0 で撤去予定・P4b §2.6）。
+        index_cache = '_index_matches.yml'
+        if File.exist?(index_cache)
+          FileUtils.rm_f(index_cache)
+          deleted += 1
+          Common.log_info("#{index_cache} を削除しました")
+        end
+
+        # 索引ページもキャッシュ削除時に削除対象とする
+        index_page = '_indexpage.html'
+        if File.exist?(index_page)
+          FileUtils.rm_f(index_page)
+          deleted += 1
+          Common.log_info("#{index_page} を削除しました")
+        end
+
+        if File.directory?('.vivliostyle')
+          Common.log_action('.vivliostyle ディレクトリを削除中...')
+          FileUtils.rm_rf('.vivliostyle')
+          deleted += 1
+          Common.log_info('.vivliostyle ディレクトリを削除しました')
+        else
+          Common.log_info('.vivliostyle ディレクトリは存在しません')
+        end
+
+        deleted
+      rescue StandardError => e
+        Common.log_warn("clean --cache 実行中にエラー: #{e}")
+        deleted
+      end
+
+      # ビルドの中間生成物・成果物を削除する
+      #
+      # @param purge [Boolean] 最終 PDF / EPUB も削除対象に含めるか
+      # @return [Integer] 削除した対象の数
+      def clean_build_artifacts(purge)
+        deleted = 0
 
         # 旧バージョンのビルド・撤去済み手動フロー（vs pdf）が残していた
         # Vivliostyle ワークディレクトリ。パイプラインの生成 config は workspaceDir を
         # ワークスペース内へ向けるためルートには生成しない（P4 §5.6・段階 5）。
         Common.log_action('.vivliostyle ディレクトリを削除中...')
+        deleted += 1 if File.directory?('.vivliostyle')
         FileUtils.rm_rf('.vivliostyle')
 
         # ビルドワークスペース（P4: 現行パイプラインの中間物はすべてここに閉じる）を一括削除
         if File.directory?(Common::BUILD_DIR)
           FileUtils.rm_rf(Common::BUILD_DIR)
+          deleted += 1
           Common.log_info("#{Common::BUILD_DIR} を削除しました")
         end
 
@@ -220,7 +258,7 @@ module VivlioStarter
         final_pdfs = %w[output.pdf output_compressed.pdf]
 
         # --purge 指定時は最終PDFも削除対象に含める
-        if purge_requested
+        if purge
           cleanup_patterns.concat(final_pdfs)
           # 単章PDF（例: 11-install.pdf, 81-install.pdf など）も削除
           # 既に個別に列挙している中間PDFと重複しても問題ない
@@ -236,6 +274,7 @@ module VivlioStarter
             next if File.directory?(file)
 
             FileUtils.rm_f(file)
+            deleted += 1
             Common.log_info("#{file} を削除しました")
           end
         end
@@ -251,10 +290,12 @@ module VivlioStarter
           next unless File.directory?(legacy_dir)
 
           FileUtils.rm_rf(legacy_dir)
+          deleted += 1
           Common.log_info("#{legacy_dir} を削除しました")
         end
 
         Common.log_success('不要ファイルの削除が完了しました')
+        deleted
       end
 
       # config/book.yml の project.name から動的ファイル名パターンを生成し追加する
@@ -286,28 +327,31 @@ module VivlioStarter
       # 正位置は生成キャッシュ .cache/vs/theme-images/（generated-assets 移設仕様 §2）。
       # 丸ごと削除して次ビルドで再生成させる。旧配置の残骸掃除も 1 リリースの間だけ行う（§6）。
       #
-      # @return [void]
+      # @return [Integer] 削除した対象の数
       def clean_bundled_variant_images
+        deleted = 0
         cache_dir = Common.theme_images_cache_dir
         if Dir.exist?(cache_dir)
           FileUtils.rm_rf(cache_dir)
+          deleted += 1
           Common.log_success("テーマバリアント画像キャッシュを削除しました: #{cache_dir}")
         else
           Common.log_info("テーマバリアント画像キャッシュは存在しません: #{cache_dir}")
         end
 
-        clean_legacy_variant_images
+        deleted + clean_legacy_variant_images
       rescue StandardError => e
         Common.log_warn("テーマバリアント削除中にエラー: #{e.message}")
+        deleted
       end
 
       # 旧配置（stylesheets/images/bundled/ 内）の生成バリアント残骸を掃除する。
       # generated-assets 移設前のプロジェクト向けの移行掃除（§6）。次のリリースで撤去する。
       #
-      # @return [void]
+      # @return [Integer] 削除した対象の数
       def clean_legacy_variant_images
         images_dir = File.join(Common::STYLESHEETS_DIR, 'images', 'bundled')
-        return unless Dir.exist?(images_dir)
+        return 0 unless Dir.exist?(images_dir)
 
         # 最終バリアント（*_portrait/*_landscape）に加え、生成途中の中間ファイル
         # （*_alpha* / *_color* / *_merged*、png/webp 双方）も保険として掃除対象に含める。
@@ -328,11 +372,12 @@ module VivlioStarter
         end
 
         Common.log_success("旧配置の生成バリアント画像を削除しました（.cache へ移設済み・#{deleted}ファイル）") if deleted.positive?
+        deleted
       end
 
       # 索引・用語集辞書データを削除する（確認プロンプトあり）
       #
-      # @return [void]
+      # @return [Integer] 削除した対象の数（未実施・キャンセル時は 0）
       #
       # 削除対象:
       #   - config/index_glossary_terms.yml（登録済み用語）
@@ -347,23 +392,22 @@ module VivlioStarter
 
         if targets.empty?
           Common.log_info('削除対象の索引辞書ファイルはありませんでした')
-          return
+          return 0
         end
 
         Common.log_warn('以下の索引・用語集辞書データを削除しようとしています:')
         targets.each { |f| Common.log_always("  - #{f}") }
         Common.log_always('これらのファイルには著者が登録した用語データが含まれています。')
-        $stdout.print('本当に削除しますか？ [y/N]: ')
-        ans = $stdin.gets
-        unless ans && ans.strip.downcase == 'y'
+        unless Common.confirm?('本当に削除しますか？')
           Common.log_info('索引辞書データの削除をキャンセルしました')
-          return
+          return 0
         end
 
         targets.each do |f|
           FileUtils.rm_f(f)
           Common.log_success("削除しました: #{f}")
         end
+        targets.size
       end
 
       # 生成されたカバー画像を削除する
@@ -372,17 +416,19 @@ module VivlioStarter
       # 丸ごと削除して次ビルド／vs cover で再生成させる。covers/ は著者ソースのみに
       # なったため触れない。旧配置の残骸掃除だけ 1 リリースの間残す（§6）。
       #
-      # @return [void]
+      # @return [Integer] 削除した対象の数
       def clean_cover_files
+        deleted = 0
         cache_dir = Common.cover_cache_dir
         if Dir.exist?(cache_dir)
           FileUtils.rm_rf(cache_dir)
+          deleted += 1
           Common.log_success("カバー画像キャッシュを削除しました: #{cache_dir}")
         else
           Common.log_info("カバー画像キャッシュは存在しません: #{cache_dir}")
         end
 
-        clean_legacy_cover_files
+        deleted + clean_legacy_cover_files
       end
 
       # 旧配置（covers/ 内）の生成物残骸を掃除する（マスター画像・ユーザーSVGは保持）。
@@ -399,10 +445,10 @@ module VivlioStarter
       #   - covers/bundled/ 内のファイル（テンプレート本体）
       #   - light/dark 以外の *.svg（frontcover_floral.svg 等、利用者が用意したSVG）
       #
-      # @return [void]
+      # @return [Integer] 削除した対象の数
       def clean_legacy_cover_files
         covers_dir = Common.covers_dir
-        return unless File.directory?(covers_dir)
+        return 0 unless File.directory?(covers_dir)
 
         deleted_count = 0
 
@@ -438,6 +484,7 @@ module VivlioStarter
         end
 
         Common.log_success("旧配置の生成カバー画像を削除しました（.cache へ移設済み・#{deleted_count}ファイル）") if deleted_count.positive?
+        deleted_count
       end
     end
   end

@@ -99,7 +99,7 @@ vivliostyle がレンダリング時に**その場で塗り足し帯まで矩形
 - **`pdf` ＋ `print_pdf`**: 閲覧用レンダは pdf ターゲットのためどのみち走るので、
   print_pdf はその成果物を qpdf 変換するだけ。実質「pdf ビルド時間 ＋ 約35s」。最大の勝ち筋。
 - **`print_pdf` のみ**: `derive_print` が真だと `!t.pdf` でも `build overall pdf`〜
-  `build front pages and tail` が走る（本仕様 §2.5）。「入稿用3回レンダ」の代わりに
+  `build front and back matter` が走る（本仕様 §2.5）。「入稿用3回レンダ」の代わりに
   「閲覧用1回レンダ＋dedup＋変換」をやるので時間は**相殺**。導出化“単体”では速くならず、
   ②（dedup 高速化）併用で preview 分（約70s）が浮く。
 - 約35s の内訳: qpdf 結合7s ＋ 変換13s ＋ outline15s。

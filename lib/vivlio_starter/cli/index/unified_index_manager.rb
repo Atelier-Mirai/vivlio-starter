@@ -293,9 +293,10 @@ module VivlioStarter
 
         if changes_made
           rejected_total = both_rejected.size + (confirmed_rejected&.size || 0)
-          Common.log_success("索引: #{index_count}件、用語集: #{glossary_count}件、リジェクト: #{rejected_total}件")
+          # 何をどれだけ適用したかを既定ログレベルでも 1 行で報告する
+          Common.log_result("辞書を更新しました（索引 #{index_count} 件・用語集 #{glossary_count} 件・" \
+                            "リジェクト #{rejected_total} 件）", status: :success)
           Common.log_info("読み変更: #{yomi_changes.size}件") if yomi_changes.any?
-          Common.log_success('index_glossary_terms.yml を更新しました')
           Common.log_info('ページ生成は vs build 実行時に行われます')
         else
           Common.log_warn('変更がありませんでした')

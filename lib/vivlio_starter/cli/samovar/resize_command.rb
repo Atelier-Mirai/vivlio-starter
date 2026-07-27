@@ -60,10 +60,29 @@ module VivlioStarter
                    else
                      '標準'
                    end
-          ResizeCommands.execute_resize_with_preset(preset, resolve_dir, merged_options)
+          report_result(ResizeCommands.execute_resize_with_preset(preset, resolve_dir, merged_options))
+          0
         end
 
         private
+
+        # 変換の実績を既定ログレベルでも 1 行で報告する。
+        # 表示をここで行うのは、同じ関数を vs build の Step 1 も呼ぶため
+        # （ドメイン層で報告するとビルド中に対象ディレクトリの数だけ混ざる）。
+        def report_result(summary)
+          return unless summary.is_a?(ResizeCommands::ResizeSummary)
+
+          VivlioStarter::CLI::Common.log_result(result_message(summary), status: :success)
+        end
+
+        # 「0 件生成」は何が起きたか読み取れないため、実績に応じて言い方を変える
+        def result_message(summary)
+          return "最適化の対象画像はありませんでした: #{resolve_dir}" if summary.none?
+          return "画像はすべて最新でした（#{summary.skipped} 件を確認）" if summary.converted.zero?
+
+          skipped_note = summary.skipped.positive? ? "・最新のため据え置き #{summary.skipped} 件" : ''
+          "画像を最適化しました（WebP #{summary.converted} 件生成#{skipped_note}）"
+        end
 
         def resolve_dir
           d = dir || 'images'

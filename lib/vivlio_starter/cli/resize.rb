@@ -90,6 +90,14 @@ module VivlioStarter
 
       def included(base); end
 
+      # 変換実績。表示は呼び出し側の責務とし、ドメイン層は件数を返すだけにする。
+      # `vs build` の Step 1 も同じ関数を対象ディレクトリごとに呼ぶため、ここで結果報告を
+      # 出すとビルド中に「対象画像が見つかりませんでした」等が何行も混ざってしまう。
+      ResizeSummary = Data.define(:converted, :skipped) do
+        def +(other) = ResizeSummary.new(converted: converted + other.converted, skipped: skipped + other.skipped)
+        def none? = converted.zero? && skipped.zero?
+      end
+
       # Samovar/直接呼び出し用: 高品質プリセット
       def execute_resize_high(dir = 'images', options = {})
         execute_resize_with_preset('高精細', dir, options)
@@ -140,16 +148,20 @@ module VivlioStarter
 
         if files.empty?
           Common.log_info("対象画像が見つかりませんでした: #{dir}")
-          return
+          return ResizeSummary.new(converted: 0, skipped: 0)
         end
 
         Common.log_action("画像変換を開始: Preset=#{preset_name}, Dir=#{dir}, Files=#{files.size}")
+
+        converted = 0
+        skipped = 0
 
         files.each do |src|
           dst = src.sub(/\.[^.]+\z/, '.webp')
 
           if ENV['FORCE'].nil? && File.exist?(dst) && File.mtime(dst) >= File.mtime(src)
             Common.log_info("skip: up-to-date #{dst}")
+            skipped += 1
             next
           end
 
@@ -167,14 +179,17 @@ module VivlioStarter
           Common.log_info(cmd.join(' '))
           unless system(*cmd)
             Common.log_error("変換に失敗しました: #{src}")
-            return
+            return ResizeSummary.new(converted: converted, skipped: skipped)
           end
+
+          converted += 1
         end
 
         Common.log_success('画像変換が完了しました')
+        summary = ResizeSummary.new(converted: converted, skipped: skipped)
 
         # --delete-originals: 変換成功した元ファイルを確認後に削除
-        return unless options[:delete_originals]
+        return summary unless options[:delete_originals]
 
         converted_originals = files.select { |src| File.exist?(src.sub(/\.[^.]+\z/, '.webp')) }
         if converted_originals.empty?
@@ -182,9 +197,7 @@ module VivlioStarter
         else
           Common.log_warn('以下の元画像ファイルを削除しようとしています:')
           converted_originals.each { |f| Common.log_always("  - #{f}") }
-          $stdout.print('本当に削除しますか？ [y/N]: ')
-          ans = $stdin.gets
-          if ans && ans.strip.downcase == 'y'
+          if Common.confirm?('本当に削除しますか？')
             converted_originals.each do |f|
               FileUtils.rm_f(f)
               Common.log_info("削除しました: #{f}")
@@ -194,6 +207,8 @@ module VivlioStarter
             Common.log_info('元ファイルの削除をキャンセルしました')
           end
         end
+
+        summary
       end
       module_function :execute_resize_with_preset
 

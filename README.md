@@ -174,6 +174,28 @@ vs build --log=debug  # debug（すべてのログを出力）
 vs build --log=error  # error（エラーのみ）
 ```
 
+`--log` が使えるのは処理の段階が多い `vs build` / `vs preflight` / `vs new` です。
+ほかのコマンドは実行結果を最後に 1 行で報告します。
+
+### ビルド中の進捗表示（スピナー）
+
+`vs build` は端末で実行すると、いま何をしているかをスピナーで表示します。
+
+```
+⠹ ビルド中: convert … (5/14)
+```
+
+次の場合は自動的に表示されません（出力を汚さないため）。
+
+- パイプ・リダイレクト経由での実行（`vs build | tee log.txt` など）や CI
+- `--log` を指定したとき（逐次ログが流れるため）
+
+意図的に止めたいときは `VS_NO_SPINNER=1` を指定します。
+
+```bash
+VS_NO_SPINNER=1 vs build
+```
+
 ## Vivlio Starter のしくみ
 
 Vivlio Starter は、Vivliostyle をコアエンジンとして活用する独自ビルドシステムです。単なるラッパーではなく、執筆から入稿まで必要な処理の約半分を独自に担っています。

@@ -45,13 +45,39 @@ module VivlioStarter
           guard_failure = Guards.precheck(Guards::RelaxedCheck.new(Guards::ProjectRootCheck.new))
           return guard_failure if guard_failure
 
-          CleanCommands.execute_clean(options.dup)
+          report_result(CleanCommands.execute_clean(options.dup))
           0
         rescue SystemExit => e
           raise e
         rescue StandardError => e
           VivlioStarter::CLI::Common.log_warn("clean コマンド実行中にエラー: #{e.message}")
           1
+        end
+
+        private
+
+        # 削除の実績を既定ログレベルでも 1 行で報告する。
+        # 実行して無音だと「効いたのか分からない」ため、何も無かった場合も黙らない。
+        # 表示をここで行うのは、同じ execute_clean を vs build の Step 0 も呼ぶため
+        # （ドメイン層で報告するとビルドのたびに混ざる）。
+        def report_result(summary)
+          if summary.none?
+            VivlioStarter::CLI::Common.log_result('削除対象はありませんでした', status: :success)
+            return
+          end
+
+          VivlioStarter::CLI::Common.log_result("削除しました（#{breakdown(summary)}）", status: :success)
+        end
+
+        # 実績のあったカテゴリだけを並べる（「キャッシュ 3 件・生成物 12 件」）
+        def breakdown(summary)
+          {
+            'キャッシュ' => summary.cache,
+            '生成物' => summary.artifacts,
+            'カバー画像' => summary.cover,
+            '生成画像' => summary.generated_images,
+            '辞書' => summary.dictionaries
+          }.filter_map { |label, count| "#{label} #{count} 件" if count.positive? }.join('・')
         end
       end
     end

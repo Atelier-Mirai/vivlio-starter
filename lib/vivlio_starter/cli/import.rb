@@ -105,13 +105,10 @@ module VivlioStarter
         Common.log_warn('以下のディレクトリを削除してインポートを行います:')
         dirs_to_delete.each { |d| Common.log_warn("  - #{d}/") }
 
-        print '続行しますか？ [y/N]: '
+        # 非対話（パイプ/CI）では質問せず安全側に倒す
         return false unless $stdin.tty?
 
-        ans = $stdin.gets
-        return false unless ans && ans.strip.downcase == 'y'
-
-        true
+        Common.confirm?('続行しますか？')
       end
 
       # 既存ディレクトリの削除

@@ -380,9 +380,7 @@ module VivlioStarter
           return true if options[:yes]
           return false unless deps.stdin.tty?
 
-          $stdout.print('更新を実行しますか？ [y/N]: ')
-          ans = deps.stdin.gets
-          !ans.nil? && ans.strip.downcase == 'y'
+          Common.confirm?('更新を実行しますか？', input: deps.stdin)
         end
 
         # ============================================================

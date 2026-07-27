@@ -259,8 +259,7 @@ module VivlioStarter
 
         # --- Phase: 追加＋更新（全体確認は 1 回。--yes でスキップ） ---
         if (adds.any? || updates.any?) && !cmd.options[:yes]
-          answer = prompt("適用しますか？ 追加 #{adds.size} 件・更新 #{updates.size} 件 [y/N]: ")
-          unless answer == 'y'
+          unless Common.confirm?("適用しますか？ 追加 #{adds.size} 件・更新 #{updates.size} 件")
             Common.log_always('中止しました（ファイルは変更していません）。')
             return [nil, nil, nil]
           end
@@ -323,9 +322,7 @@ module VivlioStarter
       def confirm_self_update?(latest, current, deps)
         return false unless deps.stdin.tty?
 
-        $stdout.print("vivlio-starter を #{current} → #{latest} に更新しますか？ [y/N]: ")
-        $stdout.flush
-        deps.stdin.gets&.strip&.downcase == 'y'
+        Common.confirm?("vivlio-starter を #{current} → #{latest} に更新しますか？", input: deps.stdin)
       end
 
       # 更新後の新しい gem の vs で同じ upgrade を続きから実行する（exec で置き換わる）。

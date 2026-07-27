@@ -32,47 +32,47 @@ module VivlioStarter
 
       # toc 生成後のターゲット依存テール（pre-P2 実装から採取）。
       PDF_ONLY = (PREFIX + [
-        'build overall pdf', 'backlink dedup', 'build front pages and tail',
+        'build overall pdf', 'backlink dedup', 'build front and back matter',
         'merge all pdfs', 'apply outline to output pdf', 'compress, rename and final clean'
       ]).freeze
 
       # 入稿用のみ・導出フロー（既定）。導出のソースとして閲覧用の中間 PDF を作るため、
-      # print_pdf 単独でも 'build overall pdf' / 'build front pages and tail' が入る。
+      # print_pdf 単独でも 'build overall pdf' / 'build front and back matter' が入る。
       # 最終成果物（merge 以降）は t.pdf 次第なので閲覧用 output.pdf は生まれない。
       PRINT_ONLY = (PREFIX + [
-        'build overall pdf', 'backlink dedup', 'build front pages and tail', 'print pdf', 'final clean'
+        'build overall pdf', 'backlink dedup', 'build front and back matter', 'print pdf', 'final clean'
       ]).freeze
 
       # 入稿用のみ・従来フロー（output.print_pdf.full_bleed: true）。
       # 本文を個別レンダするため閲覧用 PDF は不要で、entries/config と HTML だけを用意する。
       PRINT_ONLY_FULL_BLEED = (PREFIX + [
-        'generate entries.js', 'backlink dedup', 'build front pages html', 'print pdf', 'final clean'
+        'generate entries.js', 'backlink dedup', 'build front and back matter html', 'print pdf', 'final clean'
       ]).freeze
 
       PDF_PRINT = (PREFIX + [
-        'build overall pdf', 'backlink dedup', 'build front pages and tail', 'merge all pdfs',
-        'apply outline to output pdf', 'rename', 'print pdf', 'final clean'
+        'build overall pdf', 'backlink dedup', 'build front and back matter', 'merge all pdfs',
+        'apply outline to output pdf', 'compress and rename', 'print pdf', 'final clean'
       ]).freeze
 
-      EPUB_ONLY = (PREFIX + ['build front pages html', 'generate epub', 'final clean']).freeze
+      EPUB_ONLY = (PREFIX + ['build front and back matter html', 'generate epub', 'final clean']).freeze
 
       # P4 段階 3: dedup がワークスペース pdf/ に閉じたため、EPUB 隔離用の
       # 'snapshot pre-dedup html for epub' ステップは撤去された（P4 §3.4-3）。
       PDF_EPUB = (PREFIX + [
         'build overall pdf', 'backlink dedup',
-        'build front pages and tail', 'merge all pdfs', 'apply outline to output pdf',
-        'rename', 'generate epub', 'final clean'
+        'build front and back matter', 'merge all pdfs', 'apply outline to output pdf',
+        'compress and rename', 'generate epub', 'final clean'
       ]).freeze
 
       PRINT_EPUB = (PREFIX + [
         'build overall pdf', 'backlink dedup',
-        'build front pages and tail', 'print pdf', 'generate epub', 'final clean'
+        'build front and back matter', 'print pdf', 'generate epub', 'final clean'
       ]).freeze
 
       ALL = (PREFIX + [
         'build overall pdf', 'backlink dedup',
-        'build front pages and tail', 'merge all pdfs', 'apply outline to output pdf',
-        'rename', 'print pdf', 'generate epub', 'final clean'
+        'build front and back matter', 'merge all pdfs', 'apply outline to output pdf',
+        'compress and rename', 'print pdf', 'generate epub', 'final clean'
       ]).freeze
 
       # 全 16 組（空＝既定 pdf を含む）→ 期待する操作キー列。

@@ -49,8 +49,8 @@ module VivlioStarter
           ensure_entry_files_exist!
           Common.ensure_build_workspace!
           Common.reset_vivliostyle_build_timings
-          @steps.each do |step|
-            execute(step)
+          @steps.each_with_index do |step, index|
+            execute(step, position: index + 1)
           end
           timings
         end
@@ -137,15 +137,18 @@ module VivlioStarter
             ['backlink dedup',      -> { Build::BacklinkDedupOrchestrator.run!(entries, rebuild_pdf: need_viewing_pdf) },
              t.any_pdf?],
             # 前付・奥付: 閲覧用 PDF が要る経路は PDF まで、それ以外（EPUB のみ）は HTML のみ。
-            ['build front pages and tail', -> { run_step9_front_pages_and_tail },  need_viewing_pdf],
-            ['build front pages html',     -> { run_step9_front_pages_html_only }, !need_viewing_pdf],
+            # 生成するのは扉・権利ページ（前付）と奥付（後付）。旧称の "tail" は
+            # 奥付を指す曖昧語だったため、出版用語に合わせた
+            ['build front and back matter', -> { run_step9_front_pages_and_tail },  need_viewing_pdf],
+            ['build front and back matter html', -> { run_step9_front_pages_html_only }, !need_viewing_pdf],
             ['merge all pdfs',             -> { Build::PdfMerger.merge_all_pdfs!(entries) },        t.pdf],
             ['apply outline to output pdf', -> { Build::PdfMerger.add_outline_to_output_pdf!(entries) }, t.pdf],
             # --- 終端: リネーム／入稿用／EPUB／クリーンアップ ---
             # 閲覧用 PDF 単独はリネーム＋圧縮＋クリーンを一括。他ターゲット併存時はリネームのみで
             # クリーンを最後へ延期（HTML を後段の入稿用・EPUB が再利用するため）。
             ['compress, rename and final clean', -> { run_step12_rename_and_clean }, t.pdf && !t.print_pdf && !t.epub_or_kindle?],
-            ['rename',       -> { run_step12_rename_only }, t.pdf && (t.print_pdf || t.epub_or_kindle?)],
+            # 実処理は圧縮（設定次第）＋リネーム。'rename' だけでは圧縮が隠れるため明示する
+            ['compress and rename', -> { run_step12_rename_only }, t.pdf && (t.print_pdf || t.epub_or_kindle?)],
             ['print pdf',    -> { Build::PrintPdfBuilder.new(entries, derive: derive_print).build! }, t.print_pdf],
             ['generate epub', -> { epub_flow.run! },        t.epub_or_kindle?],
             # 閲覧用 PDF 単独以外は、末尾で明示的にクリーンアップする。
@@ -193,17 +196,27 @@ module VivlioStarter
         end
 
         # 指定ステップを実行し、前後でタイマーを計測する
-        def execute(step)
+        # 既定ログレベルではステップ間の出力がなく「止まっている」のと区別が付かないため、
+        # TTY のときだけスピナーで進行を示す（表示条件は Spinner が判断する）。
+        # step.label はログ・計時と同じ語彙なので、そのまま進捗表示名に使う。
+        def execute(step, position: nil)
           start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           Common.log_action("[Timer] #{step.label} start")
           Common.with_current_step_label(step.label) do
-            step.handler.call
+            Spinner.while(spinner_label(step, position)) { step.handler.call }
           end
         ensure
           finish_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           elapsed = finish_time - start_time
           timings << [step.label, elapsed]
           Common.log_action("[Timer] #{step.label} finish: #{format('%.2f', elapsed)}s")
+        end
+
+        # スピナーに出す進捗の見出し。総数が分かるので「あと何段階か」が読める
+        def spinner_label(step, position)
+          return "ビルド中: #{step.label}" if position.nil?
+
+          "ビルド中: #{step.label} … (#{position}/#{@steps.size})"
         end
 
         # クリーンオプションに応じて中間生成物を削除する

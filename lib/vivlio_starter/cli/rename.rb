@@ -114,13 +114,14 @@ module VivlioStarter
         rename_map = build_rename_map(files[:regular], files[:appendix], effective_step, start_num)
 
         if rename_map.empty?
-          Common.log_success('すでに正しい連番になっています')
+          # 何もしなかったことも既定ログレベルで報告する（無音で終わらない）
+          Common.log_result('すでに正しい連番です（変更はありません）', status: :success)
           exit 0
         end
 
         apply_renumber(rename_map)
         cleanup_after_renumber
-        Common.log_success('連番付け直し完了')
+        Common.log_result("#{rename_map.size} 章の連番を付け直しました", status: :success)
         exit 0
       end
 
@@ -215,11 +216,9 @@ module VivlioStarter
         Common.log_warn("付録の一覧表示でエラーが発生しました: #{e}")
       end
 
-      # 操作実行前に y/N でユーザー確認を行う
+      # 操作実行前にユーザー確認を行う（表記は Common.confirm? に統一）
       def confirm_or_exit(action_label)
-        print "  ❓ #{action_label}を実行しますか？ (y/N): "
-        response = $stdin.gets&.chomp&.downcase
-        return if %w[y yes].include?(response)
+        return if Common.confirm?("#{action_label}を実行しますか？")
 
         Common.log_warn("#{action_label}をキャンセルしました")
         exit 0
@@ -487,7 +486,8 @@ module VivlioStarter
         end
 
         cleanup_generated_files(old_number, old_slug)
-        Common.log_success('章名・番号変更が完了しました')
+        # 何がどう変わったかを既定ログレベルでも 1 行で報告する（実行して無音にしない）
+        Common.log_result("#{old_basename} を #{new_basename} に変更しました", status: :success)
       end
 
       # 章リネーム後に残る生成物 (HTML) を削除する

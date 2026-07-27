@@ -113,11 +113,8 @@ module VivlioStarter
         Common.log_always "  著者:           #{author_display}"
         Common.log_always "  発行者:         #{publisher_display}"
         Common.log_always ''
-        $stdout.print('よろしいですか？ [Y/n]: ')
-        $stdout.flush
-        input = $stdin.gets&.strip || ''
-
-        return unless input.downcase == 'n'
+        # Enter だけなら続行（既定 Yes）。表記は Common.confirm? に統一する
+        return if Common.confirm?('よろしいですか？', default: true)
 
         Common.log_always "中断しました。もう一度 vs new #{project_name} を実行してください。"
         exit 0

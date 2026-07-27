@@ -120,7 +120,7 @@ module VivlioStarter
           'generate toc html',
           'build overall pdf',
           'backlink dedup',
-          'build front pages and tail',
+          'build front and back matter',
           'merge all pdfs',
           'apply outline to output pdf',
           'compress, rename and final clean'

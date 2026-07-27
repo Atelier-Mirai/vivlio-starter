@@ -427,7 +427,7 @@ vs build --log debug
     (vivliostyle build)                          (9.93s)
   - Step  8 (backlink dedup)                     17.33s
     (vivliostyle build)                          (9.82s)
-  - Step  9 (build front pages and tail)          7.05s
+  - Step  9 (build front and back matter)          7.05s
     (vivliostyle build)                          (3.01s)
     (vivliostyle build)                          (2.91s)
   - Step 10 (merge all pdfs)                      2.91s

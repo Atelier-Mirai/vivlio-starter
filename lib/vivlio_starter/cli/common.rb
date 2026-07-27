@@ -4,6 +4,7 @@ require 'fileutils'
 require 'json'
 require 'yaml'
 require_relative 'units'
+require_relative 'spinner'
 
 # Common::CONFIG — book.yml の再帰的 Data ラッパー
 # 正規記法（The One Way）は docs/specs/config-access-unification-spec.md §2 を参照。
@@ -401,44 +402,51 @@ module VivlioStarter
         LEVELS['info']
       end
 
+      # ログ行を出力する唯一の出口。スピナーが回っていれば行を消してから出す
+      # （消さないとスピナーの残骸とログが同じ行に重なる）。
+      def emit(line)
+        Spinner.clear_active_line
+        puts(line)
+      end
+
       # 補足情報・処理の詳細（🔵）。--log=info 以上で表示。
       def log_info(msg)
-        puts("🔵 #{msg}") if current_log_level >= 2
+        emit("🔵 #{msg}") if current_log_level >= 2
       end
 
       # 処理の成功（✅）。--log=info 以上で表示。
       def log_success(msg)
-        puts("✅ #{msg}") if current_log_level >= 2
+        emit("✅ #{msg}") if current_log_level >= 2
       end
 
       # 注意・警告（🟡）。--log=warn 以上（既定）で表示。
       def log_warn(msg, detail: nil)
         return unless current_log_level >= 1
 
-        puts("🟡 #{msg}")
-        format_detail(detail).each { |line| puts("#{DETAIL_INDENT}#{line}") }
+        emit("🟡 #{msg}")
+        format_detail(detail).each { |line| emit("#{DETAIL_INDENT}#{line}") }
       end
 
       # エラー（🔴）。ログレベルに関わらず常に表示。
       def log_error(msg, detail: nil)
-        puts("🔴 #{msg}")
-        format_detail(detail).each { |line| puts("#{DETAIL_INDENT}#{line}") }
+        emit("🔴 #{msg}")
+        format_detail(detail).each { |line| emit("#{DETAIL_INDENT}#{line}") }
       end
 
       # 処理ステップの開始・進行（🔧）。--log=info 以上で表示。
       def log_action(msg)
-        puts("🔧 #{msg}") if current_log_level >= 2
+        emit("🔧 #{msg}") if current_log_level >= 2
       end
 
       # デバッグ情報（🧪）。--log=debug のみ表示。
       def log_debug(msg)
-        puts("🧪 #{msg}") if current_log_level >= 3
+        emit("🧪 #{msg}") if current_log_level >= 3
       end
 
       # 検証結果の集計サマリー（🔍）。ログレベルに関わらず常に表示。
       def log_summary(msg, detail: nil)
-        puts "🔍 #{msg}"
-        format_detail(detail).each { |line| puts("#{DETAIL_INDENT}#{line}") }
+        emit("🔍 #{msg}")
+        format_detail(detail).each { |line| emit("#{DETAIL_INDENT}#{line}") }
       end
 
       # 処理の最終結果を報告する（✅/⚠️/❌/📚）。ログレベルに関わらず常に表示。
@@ -452,12 +460,29 @@ module VivlioStarter
               when :failure  then "❌"
               when :artifact then "📚"
               end
-        puts "#{icon} #{msg}"
+        emit("#{icon} #{msg}")
       end
 
       # アイコンなしで常に表示する汎用出力。
       def log_always(msg)
-        puts(msg)
+        emit(msg)
+      end
+
+      # 取り返しのつかない操作の前に確認を取る（❓）。ログレベルに関わらず常に表示する。
+      # 各コマンドが独自に print していると絵文字も表記も揃わないため、ここに集約する。
+      # @param message [String] 「〜しますか？」までの質問文
+      # @param default [Boolean] Enter だけで確定したときの答え（既定は「いいえ」）
+      # @param input [IO] 応答の読み取り先（テストや DI で差し替える）
+      # @return [Boolean] 実行してよいか
+      def confirm?(message, default: false, input: $stdin)
+        Spinner.clear_active_line
+        $stdout.print("❓ #{message} #{default ? '[Y/n]' : '[y/N]'}: ")
+        $stdout.flush
+
+        answer = input.gets&.strip&.downcase
+        return default if answer.nil? || answer.empty?
+
+        %w[y yes].include?(answer)
       end
 
       # detail 文字列を行配列に変換する。nil の場合は空配列を返す。
@@ -1018,7 +1043,7 @@ module VivlioStarter
                       :generate_kpf_filename, :generate_kindle_epub_filename,
                       :generate_output_filename, :generate_print_pdf_filename,
                       :images_dir, :data_dir, :load_config, :load_page_presets, :log_action,
-                      :log_debug, :log_error, :log_info, :log_success, :log_warn,
+                      :emit, :confirm?, :log_debug, :log_error, :log_info, :log_success, :log_warn,
                       :merge_hardcoded_defaults, :normalize_font_sizes,
                       :normalize_line_height, :normalize_page_size!,
                       :normalize_page_units,
