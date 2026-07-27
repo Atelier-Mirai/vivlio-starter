@@ -173,7 +173,7 @@ module VivlioStarter
 
         output, = capture_io { @manager.auto_process!(['05-visible']) }
 
-        assert_includes output, '📝 辞書を更新しました'
+        assert_includes output, '✅ 辞書を更新しました'
         assert_includes output, '特殊相対性理論'
       end
 

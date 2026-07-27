@@ -1033,7 +1033,8 @@ module VivlioStarter
         return if dictionary_writes.empty?
 
         summary = dictionary_writes.map { |kind, names| "#{kind} #{names.size} 語（#{names.join(', ')}）" }.join('・')
-        Common.log_always("📝 辞書を更新しました: #{summary}")
+        # 絵文字を手書きせず log_result に載せる（他コマンドの結果報告と体系を揃える）
+        Common.log_result("辞書を更新しました: #{summary}", status: :success)
       end
 
       # 結果をレポート（auto_process!用）
