@@ -31,6 +31,14 @@ module VivlioStarter
   module CLI
     # 章削除コマンドの実装モジュール
     module DeleteCommands
+      # 削除実績。表示は呼び出し側（DeleteCommand）の責務とし、ここでは件数を返すだけにする
+      DeleteSummary = Data.define(:documents, :image_dirs) do
+        def self.none = new(documents: 0, image_dirs: 0)
+        def +(other) = DeleteSummary.new(documents: documents + other.documents,
+                                         image_dirs: image_dirs + other.image_dirs)
+        def none? = documents.zero? && image_dirs.zero?
+      end
+
       # delete コマンドの制御フローを担う実行クラス
       #
       # オプション解釈・対象解決・削除処理の各責務を分離し、
@@ -51,13 +59,13 @@ module VivlioStarter
 
         # 削除処理を実行する
         #
-        # @return [void]
+        # @return [DeleteSummary] 削除した対象の内訳（表示は呼び出し側の責務）
         # @raise [SystemExit] 対象が見つからない場合 exit(1)
         def call
           options.apply_verbose!
           ensure_targets!
 
-          targets.each { |basename| deletion.remove(basename) }
+          targets.sum(DeleteSummary.none) { |basename| deletion.remove(basename) }
         end
 
         private
@@ -175,19 +183,21 @@ module VivlioStarter
         # 章ファイルと関連リソースを削除する
         #
         # @param basename [String] 章ファイル名（例: "11-install.md"）
-        # @return [void]
+        # @return [DeleteSummary] 削除した対象の内訳
         #
         # 副作用:
         #   - contents/XX-slug.md を削除
         #   - images/XX-slug/ ディレクトリを削除
         #   - config/catalog.yml から該当エントリを削除
         def remove(basename)
-          delete_markdown_file(basename)
-          delete_image_directory(basename)
+          documents = delete_markdown_file(basename) ? 1 : 0
+          image_dirs = delete_image_directory(basename) ? 1 : 0
 
           # catalog.yml からも削除することで build 時に含まれなくなる
           base = basename.sub(/\.md\z/, '')
           Build::CatalogUpdater.remove_chapter(base)
+
+          DeleteSummary.new(documents: documents, image_dirs: image_dirs)
         end
 
         private
@@ -197,40 +207,44 @@ module VivlioStarter
         # Markdown ファイルを削除する（確認プロンプト付き）
         #
         # @param filename [String] ファイル名
-        # @return [void]
+        # @return [Boolean] 実際に削除したか
         def delete_markdown_file(filename)
           md_file = File.join(Common::CONTENTS_DIR, filename)
           unless File.exist?(md_file)
             Common.log_info("文書ファイルは存在しません: #{md_file}")
-            return
+            return false
           end
 
-          if confirm_deletion?("文書ファイル: #{md_file}")
-            File.delete(md_file)
-            Common.log_success("文書ファイルを削除しました: #{md_file}")
-          else
+          unless confirm_deletion?("文書ファイル: #{md_file}")
             Common.log_info("文書ファイルの削除をスキップしました: #{md_file}")
+            return false
           end
+
+          File.delete(md_file)
+          Common.log_success("文書ファイルを削除しました: #{md_file}")
+          true
         end
 
         # 画像ディレクトリを削除する（確認プロンプト付き）
         #
         # @param filename [String] 章ファイル名（拡張子付き）
-        # @return [void]
+        # @return [Boolean] 実際に削除したか
         def delete_image_directory(filename)
           base_filename = filename.sub(/\.md\z/, '')
           image_dir = File.join(Common::IMAGES_DIR, base_filename)
           unless Dir.exist?(image_dir)
             Common.log_info("画像ディレクトリは存在しません: #{image_dir}")
-            return
+            return false
           end
 
-          if confirm_deletion?("画像ディレクトリ: #{image_dir}")
-            FileUtils.remove_dir(image_dir, true)
-            Common.log_success("画像ディレクトリを削除しました: #{image_dir}")
-          else
+          unless confirm_deletion?("画像ディレクトリ: #{image_dir}")
             Common.log_info("画像ディレクトリの削除をスキップしました: #{image_dir}")
+            return false
           end
+
+          FileUtils.remove_dir(image_dir, true)
+          Common.log_success("画像ディレクトリを削除しました: #{image_dir}")
+          true
         end
 
         # ユーザーに削除確認を求める

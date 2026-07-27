@@ -106,6 +106,9 @@ module VivlioStarter
           # --all のときだけ、推敲用の参考資料（A–G）を続けて出力する。
           output_advice(all_analyses) if options[:all]
 
+          # 長い解析結果の最後を 1 行で締める（何章を対象にしたかが読み取れる）
+          Common.log_result("#{all_analyses.size} 章を解析しました（総 #{final_basic.chars} 文字）",
+                            status: :success)
           0
         end
 

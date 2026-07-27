@@ -89,8 +89,10 @@ module VivlioStarter
         with_host_os('linux') do
           outputs = []
 
-          Common.stub :log_always, ->(message) { outputs << message } do
-            stub_logging_without_echo do
+          # 診断の締めは log_result（⚠️ 不足あり）で出るため、両方のチャネルを拾う
+          Common.stub :log_result, ->(message, **) { outputs << message } do
+            Common.stub :log_always, ->(message) { outputs << message } do
+              stub_logging_without_echo do
               DoctorCommands.stub :diagnose_config_files!, nil do
                 DoctorCommands.stub :tesseract_language_available?, true do
                   DoctorCommands.stub :waifu2x_available?, true do
@@ -101,6 +103,7 @@ module VivlioStarter
                     end
                   end
                 end
+              end
               end
             end
           end
@@ -423,6 +426,8 @@ module VivlioStarter
             [Common, :log_error, ->(msg, **) { errors << msg }],
             [Common, :log_warn, ->(msg, **) { warns << msg }],
             [Common, :log_always, ->(msg, **) { successes << msg }],
+            # 診断の締めは log_result（✅ 問題なし）で出る
+            [Common, :log_result, ->(msg, **) { successes << msg }],
             [Common, :log_info, nil],
             [DoctorCommands, :diagnose_config_files!, nil],
             [DoctorCommands, :pdf_plugin_installed?, true],

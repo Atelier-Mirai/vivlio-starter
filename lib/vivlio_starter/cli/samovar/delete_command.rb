@@ -50,7 +50,7 @@ module VivlioStarter
           )
           return guard_failure if guard_failure
 
-          DeleteCommands::DeleteCommandExecutor.new(options, target_args).call
+          report_result(DeleteCommands::DeleteCommandExecutor.new(options, target_args).call)
           0
         rescue SystemExit => e
           raise e
@@ -60,6 +60,21 @@ module VivlioStarter
         end
 
         private
+
+        # 削除の実績を既定ログレベルでも 1 行で報告する（実行して無音にしない）
+        def report_result(summary)
+          return unless summary.is_a?(DeleteCommands::DeleteSummary)
+
+          if summary.none?
+            common.log_result('削除したものはありません', status: :success)
+            return
+          end
+
+          parts = []
+          parts << "文書 #{summary.documents} 件" if summary.documents.positive?
+          parts << "画像ディレクトリ #{summary.image_dirs} 件" if summary.image_dirs.positive?
+          common.log_result("削除しました（#{parts.join('・')}）", status: :success)
+        end
 
         def target_args
           Array(targets).dup

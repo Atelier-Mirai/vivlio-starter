@@ -66,7 +66,9 @@ module VivlioStarter
         Import::YamlProcessor.convert_catalog!(@starter_dir)
         convert_config_with_cover!
 
-        Common.log_success('インポートが完了しました')
+        # 実績を添えて既定ログレベルでも報告する（vs build からは呼ばれない独立コマンド）
+        chapters = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).size
+        Common.log_result("インポートしました（contents/ に #{chapters} 章）", status: :success)
         0
       rescue StandardError => e
         Common.log_error("インポート中にエラーが発生しました: #{e.message}")

@@ -80,9 +80,10 @@ module VivlioStarter
           dir = File.dirname(path)
           FileUtils.mkdir_p(dir) unless dir == '.'
           File.write(path, library.to_yaml, encoding: 'utf-8')
-          Common.log_success(
+          Common.log_result(
             "索引ライブラリを書き出しました: #{path}" \
-            "（用語集 #{glossary.size} 件 / reject #{reject.size} 件 / 読み #{yomi.size} 件）"
+            "（用語集 #{glossary.size} 件 / reject #{reject.size} 件 / 読み #{yomi.size} 件）",
+            status: :success
           )
           true
         end
@@ -141,10 +142,11 @@ module VivlioStarter
           reject_added, reject_skipped = import_reject(data['reject'] || [])
           yomi_added, yomi_skipped = YomiOverrides.merge!(data['yomi'] || {}, prefer_import:)
 
-          Common.log_success(
-            "取り込み完了: 用語集 +#{glossary_added}（スキップ #{glossary_skipped}） / " \
+          Common.log_result(
+            "索引ライブラリを取り込みました: 用語集 +#{glossary_added}（スキップ #{glossary_skipped}） / " \
             "reject +#{reject_added}（スキップ #{reject_skipped}） / " \
-            "読み +#{yomi_added}（スキップ #{yomi_skipped}）"
+            "読み +#{yomi_added}（スキップ #{yomi_skipped}）",
+            status: :success
           )
           ImportResult.new(glossary_added:, glossary_skipped:, reject_added:, reject_skipped:,
                            yomi_added:, yomi_skipped:)

@@ -236,7 +236,7 @@ module VivlioStarter
       end
 
       def print_success(project_name)
-        Common.log_success("プロジェクト \"#{project_name}\" を作成しました。")
+        Common.log_result("プロジェクト \"#{project_name}\" を作成しました", status: :success)
         Common.log_always <<~MSG
 
           book.yml で書籍の設定を変更できます。

@@ -145,6 +145,7 @@ module VivlioStarter
 
         # 3. すべてクリアしたら、一括で作成
         errors = false
+        created = []
         entries.each do |entry|
           fname = ensure_filename(entry.basename)
           unless fname
@@ -154,12 +155,16 @@ module VivlioStarter
           end
 
           create_single_chapter(fname, entry)
+          created << entry.basename
         rescue StandardError => e
           errors = true
           Common.log_error("作成に失敗しました: #{fname} (#{e.class}: #{e.message})")
         end
 
         exit 1 if errors
+
+        # 作成した章名を返す（表示は呼び出し側の責務）
+        created
       end
 
       # ================================================================

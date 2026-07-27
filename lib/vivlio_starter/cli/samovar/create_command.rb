@@ -45,7 +45,7 @@ module VivlioStarter
           )
           return guard_failure if guard_failure
 
-          CreateCommands.execute_create(build_options, names)
+          report_created(CreateCommands.execute_create(build_options, names))
           0
         rescue SystemExit => e
           raise e
@@ -55,6 +55,18 @@ module VivlioStarter
         end
 
         private
+
+        # 作成した章を既定ログレベルでも 1 行で報告する（実行して無音にしない）
+        def report_created(created)
+          return unless created.is_a?(Array)
+
+          if created.empty?
+            Common.log_result('作成した章はありません', status: :success)
+            return
+          end
+
+          Common.log_result("#{created.size} 章を作成しました（#{created.join(', ')}）", status: :success)
+        end
 
         def build_options
           { verbose: parent_verbose? }

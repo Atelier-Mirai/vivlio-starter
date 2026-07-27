@@ -286,7 +286,14 @@ module VivlioStarter
           return if @skipped
 
           if compression_success && File.exist?(output_pdf)
-            Common.log_success("圧縮したPDFを出力しました: #{File.expand_path(output_pdf)}")
+            # ビルド経路（pipeline_mode?）では最終報告をビルド側が出すため info のままにする。
+            # vs pdf:compress として直接叩かれたときだけ既定ログレベルで結果を返す
+            if pipeline_mode?
+              Common.log_success("圧縮したPDFを出力しました: #{File.expand_path(output_pdf)}")
+            else
+              size = format('%.1f', File.size(output_pdf).to_f / (1024 * 1024))
+              Common.log_result("PDF を圧縮しました: #{File.basename(output_pdf)}（#{size} MB）", status: :success)
+            end
           elsif pipeline_mode?
             # ビルド経路では PDF 生成済みのため、圧縮失敗でビルドを失敗させない
             Common.log_warn('PDFの圧縮に失敗しました。未圧縮のPDFで続行します。')
@@ -322,7 +329,7 @@ module VivlioStarter
             pages: options[:pages]
           )
 
-          Common.log_success("完了: #{images.size} ページ → #{output_dir}/")
+          Common.log_result("#{images.size} ページを画像化しました（#{output_dir}/）", status: :success)
           { pdf_path:, output_dir:, images: }
         end
 
@@ -402,7 +409,8 @@ module VivlioStarter
           Common.log_action('--- Phase 2: JPEG → PDF ---')
           jpeg_to_pdf.convert(images, output_pdf)
 
-          Common.log_success("完了: #{output_pdf} (#{output_size_mb(output_pdf)} MB)")
+          Common.log_result("#{images.size} ページをラスタライズしました: " \
+                            "#{File.basename(output_pdf)}（#{output_size_mb(output_pdf)} MB）", status: :success)
           cleanup_work_dir_if_needed(work_dir)
 
           { pdf_path:, work_dir:, output_pdf:, images: }
@@ -488,7 +496,8 @@ module VivlioStarter
           close_existing_windows_if_needed
           open_pdf(pdf_path)
           position_window
-          Common.log_success('PDFを開きました')
+          # どのファイルを開いたかを既定ログレベルでも報告する（省略時は自動選択のため）
+          Common.log_result("#{File.basename(pdf_path)} を開きました", status: :success)
         end
 
         private

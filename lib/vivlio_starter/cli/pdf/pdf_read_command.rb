@@ -66,7 +66,7 @@ module VivlioStarter
 
         result = mode == :enhanced ? convert_enhanced(pdf_path, entry) : convert_standard(pdf_path, entry)
 
-        CLI::Common.log_success("[pdf:read] 変換が完了しました -> #{result[:markdown_path]}")
+        CLI::Common.log_result("Markdown に変換しました: #{result[:markdown_path]}", status: :success)
 
         {
           mode:,

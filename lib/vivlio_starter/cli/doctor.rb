@@ -310,11 +310,13 @@ module VivlioStarter
         end
 
         if missing.empty?
-          Common.log_always('🎉 すべての必要ツールが見つかりました')
+          Common.log_result('すべての必要ツールが見つかりました', status: :success)
           return true
         end
 
-        Common.log_always("不足しているツール: #{describe_missing(missing).join(', ')}")
+        # 「不足あり」も結末なので log_result で締める（⚠️ = 実行は成立したが要対応）
+        Common.log_result("不足しているツール: #{describe_missing(missing).join(', ')}（#{missing.size} 件）",
+                          status: :warning)
 
         unless options[:fix]
           Common.log_always('ヒント: macOS の場合は `vs doctor --fix` で自動インストールを試行できます')
