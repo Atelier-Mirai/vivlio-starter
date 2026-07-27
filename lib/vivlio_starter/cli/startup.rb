@@ -64,7 +64,14 @@ module VivlioStarter
 
       VivlioStarter::CLI::Common.log_warn('代わりに --help を表示します。') if defined?(VivlioStarter::CLI::Common)
 
-      if command.respond_to?(:print_usage)
+      # `vs hogehoge` のような未知のコマンドは、RootCommand の nested が既定の help を
+      # 選ぶため error.command が HelpCommand になる。この場合に help 自身の usage
+      # （`help [-h/--help]`）を見せても手がかりにならないので、`vs --help` と同じ
+      # 主要コマンド一覧を出す。既知コマンドのオプション誤りは、そのコマンドの
+      # 使い方を見せたいので従来どおり print_usage を呼ぶ。
+      if command.is_a?(VivlioStarter::CLI::SamovarCommands::HelpCommand)
+        command.call
+      elsif command.respond_to?(:print_usage)
         command.print_usage
       else
         VivlioStarter::CLI::SamovarCommands::RootCommand.new(['--help']).print_usage

@@ -59,6 +59,24 @@ module VivlioStarter
         assert_includes combined, 'clean [--purge/-P]'
         assert_includes combined, '生成物やキャッシュを削除します'
       end
+
+      # `vs hogehoge`（存在しないコマンド）は主要コマンド一覧を出す。
+      # 未知コマンドでは nested の既定で HelpCommand が選ばれるため、放っておくと
+      # help 自身の usage（`help [-h/--help]`）という手がかりのない表示になる。
+      def test_unknown_command_displays_the_public_command_list
+        output, error = capture_io do
+          status = ::VivlioStarter::CLI.start(['hogehoge'])
+
+          assert_equal 1, status, '未知コマンドは POSIX 慣習で非 0 を返すはずです'
+        end
+
+        combined = "#{output}#{error}"
+
+        assert_includes combined, '使い方: vs <command> [options]', '主要コマンド一覧を出すはずです'
+        assert_includes combined, 'プロジェクト管理:'
+        assert_includes combined, 'build'
+        refute_includes combined, 'help [-h/--help]', 'help 自身の usage は手がかりにならない'
+      end
     end
   end
 end
