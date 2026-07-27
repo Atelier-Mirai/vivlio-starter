@@ -200,7 +200,7 @@ module VivlioStarter
           _, old_slug = extract_number_and_slug(old_name)
           new_number = format('%02d', start_number + (index * effective_step))
           new_basename = build_basename(new_number, old_slug)
-          Common.log_always("  #{old_name.ljust(label_width)} → #{new_basename}")
+          Common.log_always("  #{old_name.ljust(label_width)} →  #{new_basename}")
         end
       end
 
@@ -216,7 +216,7 @@ module VivlioStarter
           adjusted_slug = adjust_slug_for_appendix(new_number, old_slug)
           new_slug = adjusted_slug || old_slug
           new_basename = build_basename(new_number, new_slug)
-          Common.log_always("  #{old_name.ljust(label_width)} → #{new_basename}")
+          Common.log_always("  #{old_name.ljust(label_width)} →  #{new_basename}")
         end
       rescue StandardError => e
         Common.log_warn("付録の一覧表示でエラーが発生しました: #{e}")
@@ -371,9 +371,8 @@ module VivlioStarter
 
         # 実行予定は既定ログレベルで見せてから確認を求める（何が変わるか分からないまま
         # y/N に答えることにならないように）
-        Common.log_always("章名・番号変更: #{chapter_label(old_number, old_slug)} → " \
+        Common.log_always("章名・番号変更: #{chapter_label(old_number, old_slug)} →  " \
                           "#{chapter_label(new_number, new_slug)}")
-        Common.log_always("  Markdown: #{File.basename(old_md)} → #{File.basename(new_md)}")
 
         confirm_or_exit('章名・番号変更') unless options[:force]
 
