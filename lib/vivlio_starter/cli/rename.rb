@@ -102,9 +102,12 @@ module VivlioStarter
         # 実行予定は既定ログレベルで必ず見せる。全章の番号が動く操作なので、
         # 中身を知らないまま y/N に答えることになってはいけない。変更のない章も含めて
         # 全件並べる——--step=2 のような飛び番指定でも「どういう連番になるか」が読み取れる。
+        # → の位置は通常章と付録で揃える（続けて並ぶので 1 つの表として読める）
+        label_width = old_name_width(files[:regular] + files[:appendix])
+
         Common.log_always('対象ファイル:')
-        display_regular_chapters(files[:regular], effective_step, start_num)
-        display_appendix_files(files[:appendix])
+        display_regular_chapters(files[:regular], effective_step, start_num, label_width)
+        display_appendix_files(files[:appendix], label_width)
 
         confirm_or_exit('連番付け直し') unless options[:force]
 
@@ -181,8 +184,14 @@ module VivlioStarter
         end
       end
 
+      # 旧名の最大長。→ の位置を揃えるための桁数
+      # （章のベース名は英数字・ハイフンのみなので単純な文字数でよい）
+      def old_name_width(files)
+        files.map { File.basename(it, '.md').length }.max || 0
+      end
+
       # 連番後の通常章の新旧対応を実行前に示す（確認プロンプトの判断材料）
-      def display_regular_chapters(chapters, effective_step, start_number = 1)
+      def display_regular_chapters(chapters, effective_step, start_number = 1, label_width = 0)
         return if chapters.empty?
 
         Common.log_always('通常の章:')
@@ -191,12 +200,12 @@ module VivlioStarter
           _, old_slug = extract_number_and_slug(old_name)
           new_number = format('%02d', start_number + (index * effective_step))
           new_basename = build_basename(new_number, old_slug)
-          Common.log_always("  #{old_name} → #{new_basename}")
+          Common.log_always("  #{old_name.ljust(label_width)} → #{new_basename}")
         end
       end
 
       # 付録章の新旧対応を実行前に示す
-      def display_appendix_files(appendix_files)
+      def display_appendix_files(appendix_files, label_width = 0)
         return if appendix_files.empty?
 
         Common.log_always('付録:')
@@ -207,7 +216,7 @@ module VivlioStarter
           adjusted_slug = adjust_slug_for_appendix(new_number, old_slug)
           new_slug = adjusted_slug || old_slug
           new_basename = build_basename(new_number, new_slug)
-          Common.log_always("  #{old_name} → #{new_basename}")
+          Common.log_always("  #{old_name.ljust(label_width)} → #{new_basename}")
         end
       rescue StandardError => e
         Common.log_warn("付録の一覧表示でエラーが発生しました: #{e}")
