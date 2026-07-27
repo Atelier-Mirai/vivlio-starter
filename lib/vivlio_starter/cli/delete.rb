@@ -210,18 +210,10 @@ module VivlioStarter
         # @return [Boolean] 実際に削除したか
         def delete_markdown_file(filename)
           md_file = File.join(Common::CONTENTS_DIR, filename)
-          unless File.exist?(md_file)
-            Common.log_info("文書ファイルは存在しません: #{md_file}")
-            return false
-          end
-
-          unless confirm_deletion?("文書ファイル: #{md_file}")
-            Common.log_info("文書ファイルの削除をスキップしました: #{md_file}")
-            return false
-          end
+          return false unless File.exist?(md_file)
+          return false unless confirm_deletion?("文書ファイル: #{md_file}")
 
           File.delete(md_file)
-          Common.log_success("文書ファイルを削除しました: #{md_file}")
           true
         end
 
@@ -232,18 +224,10 @@ module VivlioStarter
         def delete_image_directory(filename)
           base_filename = filename.sub(/\.md\z/, '')
           image_dir = File.join(Common::IMAGES_DIR, base_filename)
-          unless Dir.exist?(image_dir)
-            Common.log_info("画像ディレクトリは存在しません: #{image_dir}")
-            return false
-          end
-
-          unless confirm_deletion?("画像ディレクトリ: #{image_dir}")
-            Common.log_info("画像ディレクトリの削除をスキップしました: #{image_dir}")
-            return false
-          end
+          return false unless Dir.exist?(image_dir)
+          return false unless confirm_deletion?("画像ディレクトリ: #{image_dir}")
 
           FileUtils.remove_dir(image_dir, true)
-          Common.log_success("画像ディレクトリを削除しました: #{image_dir}")
           true
         end
 

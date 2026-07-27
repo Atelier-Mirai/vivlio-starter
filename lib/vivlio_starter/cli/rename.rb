@@ -50,7 +50,6 @@ module VivlioStarter
     class RenameCommandExecutor
       # @param options [Hash] オプション設定
       #   - :force [Boolean] 確認をスキップ
-      #   - :dry_run [Boolean] 実行せずに変更予定のみ表示
       #   - :verbose [Boolean] 詳細ログを出力
       #   - :step [Integer] 章番号の刻み幅（デフォルト: 1）
       def initialize(options = {})
@@ -62,7 +61,7 @@ module VivlioStarter
       # @param old_arg [String, nil] 旧名（nil の場合は全章連番付け直し）
       # @param new_arg [String, nil] 新名（nil の場合は全章連番付け直し）
       # @return [void]
-      # @raise [SystemExit] エラー時または dry-run 完了時
+      # @raise [SystemExit] エラー時または処理完了時
       def call(old_arg = nil, new_arg = nil)
         enable_verbose_mode
 
@@ -77,9 +76,9 @@ module VivlioStarter
 
       attr_reader :options
 
-      # verbose または dry_run 時はログを詳細化する
+      # verbose 時はログを詳細化する
       def enable_verbose_mode
-        ENV['VERBOSE'] = '1' if options[:verbose] || options[:dry_run]
+        ENV['VERBOSE'] = '1' if options[:verbose]
       end
 
       # 全章の連番を付け直す
@@ -100,16 +99,14 @@ module VivlioStarter
         effective_step = effective_step_for(requested_step, files[:regular].size, start_num)
         report_step_adjustment(requested_step, effective_step)
 
-        Common.log_info('対象ファイル:')
+        # 実行予定は既定ログレベルで必ず見せる。全章の番号が動く操作なので、
+        # 中身を知らないまま y/N に答えることになってはいけない。変更のない章も含めて
+        # 全件並べる——--step=2 のような飛び番指定でも「どういう連番になるか」が読み取れる。
+        Common.log_always('対象ファイル:')
         display_regular_chapters(files[:regular], effective_step, start_num)
         display_appendix_files(files[:appendix])
 
-        confirm_or_exit('連番付け直し') unless options[:force] || options[:dry_run]
-
-        if options[:dry_run]
-          Common.log_info('[dry-run] ここまでの内容で変更を実行します')
-          exit 0
-        end
+        confirm_or_exit('連番付け直し') unless options[:force]
 
         rename_map = build_rename_map(files[:regular], files[:appendix], effective_step, start_num)
 
@@ -178,31 +175,31 @@ module VivlioStarter
 
       def report_step_adjustment(requested_step, effective_step)
         if requested_step == effective_step
-          Common.log_info("章の刻み幅: #{effective_step}")
+          Common.log_always("章の刻み幅: #{effective_step}")
         else
           Common.log_warn("章の刻み幅 #{requested_step} は 01..89 の範囲に収まらないため、#{effective_step} に調整しました")
         end
       end
 
-      # 連番後の通常章の新旧対応をログ出力する
+      # 連番後の通常章の新旧対応を実行前に示す（確認プロンプトの判断材料）
       def display_regular_chapters(chapters, effective_step, start_number = 1)
         return if chapters.empty?
 
-        Common.log_info('通常の章:')
+        Common.log_always('通常の章:')
         chapters.each_with_index do |file, index|
           old_name = File.basename(file, '.md')
           _, old_slug = extract_number_and_slug(old_name)
           new_number = format('%02d', start_number + (index * effective_step))
           new_basename = build_basename(new_number, old_slug)
-          Common.log_info("#{old_name} → #{new_basename}")
+          Common.log_always("  #{old_name} → #{new_basename}")
         end
       end
 
-      # 付録章の新旧対応をログ出力する
+      # 付録章の新旧対応を実行前に示す
       def display_appendix_files(appendix_files)
         return if appendix_files.empty?
 
-        Common.log_info('付録:')
+        Common.log_always('付録:')
         appendix_files.each_with_index do |file, index|
           old_name = File.basename(file, '.md')
           _, old_slug = extract_number_and_slug(old_name)
@@ -210,7 +207,7 @@ module VivlioStarter
           adjusted_slug = adjust_slug_for_appendix(new_number, old_slug)
           new_slug = adjusted_slug || old_slug
           new_basename = build_basename(new_number, new_slug)
-          Common.log_info("#{old_name} → #{new_basename}")
+          Common.log_always("  #{old_name} → #{new_basename}")
         end
       rescue StandardError => e
         Common.log_warn("付録の一覧表示でエラーが発生しました: #{e}")
@@ -272,14 +269,11 @@ module VivlioStarter
 
       # 連番付け直し計画を実ファイルと catalog へ反映する
       def apply_renumber(rename_map)
-        Common.log_action('ファイル名変更を実行中...')
         rename_map.each do |old_basename, info|
-          Common.log_info("#{old_basename}.md → #{info[:new_basename]}.md")
           FileUtils.mv(info[:old_file], info[:new_file])
           Build::CatalogUpdater.rename_chapter(old_basename, info[:new_basename])
         end
 
-        Common.log_action('画像ディレクトリの更新中...')
         rename_map.each do |old_basename, info|
           old_dir = File.join('images', old_basename)
           next unless File.directory?(old_dir)
@@ -290,14 +284,12 @@ module VivlioStarter
             next
           end
 
-          Common.log_info("#{old_dir} → #{new_dir}")
           FileUtils.mv(old_dir, new_dir)
         end
       end
 
       # 連番付け直し後の生成物クリーニングを行う
       def cleanup_after_renumber
-        Common.log_action('既存の生成ファイルをクリーンアップ中...')
         CleanCommands.execute_clean({})
       rescue StandardError => e
         Common.log_warn("クリーンアップ中にエラー: #{e}")
@@ -368,15 +360,13 @@ module VivlioStarter
         new_md = markdown_path_for(new_number, new_slug)
         validate_markdown_paths(old_md, new_md)
 
-        Common.log_action("章名・番号変更: #{chapter_label(old_number, old_slug)} → #{chapter_label(new_number, new_slug)}")
-        Common.log_info("Markdown: #{File.basename(old_md)} → #{File.basename(new_md)}")
+        # 実行予定は既定ログレベルで見せてから確認を求める（何が変わるか分からないまま
+        # y/N に答えることにならないように）
+        Common.log_always("章名・番号変更: #{chapter_label(old_number, old_slug)} → " \
+                          "#{chapter_label(new_number, new_slug)}")
+        Common.log_always("  Markdown: #{File.basename(old_md)} → #{File.basename(new_md)}")
 
-        confirm_or_exit('章名・番号変更') unless options[:force] || options[:dry_run]
-
-        if options[:dry_run]
-          Common.log_info('[dry-run] ここまでの内容で変更を実行します')
-          exit 0
-        end
+        confirm_or_exit('章名・番号変更') unless options[:force]
 
         execute_single_rename(old_md, new_md, old_number, old_slug, new_number, new_slug)
       end
@@ -428,8 +418,9 @@ module VivlioStarter
             exit 1
           end
         elsif candidates.length > 1
-          Common.log_error("#{chapter_number}章のファイルが複数見つかりました:")
-          candidates.each { |f| Common.log_info("- #{File.basename(f)}") }
+          # どのファイルが競合したかはエラーの本体なので detail で必ず見せる
+          Common.log_error("#{chapter_number}章のファイルが複数見つかりました:",
+                           detail: candidates.map { "- #{File.basename(it)}" }.join("\n"))
           exit 1
         else
           old_md = candidates.first
@@ -466,7 +457,6 @@ module VivlioStarter
       # 単一章の Markdown/画像/catalog を新しいベース名へ切り替える
       def execute_single_rename(old_md, new_md, old_number, old_slug, new_number, new_slug)
         FileUtils.mv(old_md, new_md)
-        Common.log_success('Markdownの変更が完了しました')
 
         old_basename = build_basename(old_number, old_slug)
         new_basename = build_basename(new_number, new_slug)
@@ -479,10 +469,7 @@ module VivlioStarter
             Common.log_warn("#{new_img_dir} が既に存在するため、画像ディレクトリは手動で統合してください")
           else
             FileUtils.mv(old_img_dir, new_img_dir)
-            Common.log_success("画像ディレクトリの変更が完了しました: #{File.basename(new_img_dir)}")
           end
-        else
-          Common.log_info("画像ディレクトリは見つかりませんでした: #{old_img_dir}")
         end
 
         cleanup_generated_files(old_number, old_slug)
@@ -499,7 +486,6 @@ module VivlioStarter
           next unless File.exist?(file)
 
           File.delete(file)
-          Common.log_info("#{File.basename(file)} を削除")
         end
       end
 

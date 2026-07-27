@@ -151,7 +151,6 @@ module VivlioStarter
         # ルール単位で集約した独自表示（--format json で取得して整形）
         def run_textlint_aggregated(files, path_map = {})
           command = build_command(files, format: 'json')
-          Common.log_action("textlint 実行: #{Shellwords.join(command)}")
           stdout, stderr, status = Open3.capture3(*command)
           $stderr.print(stderr) unless stderr.nil? || stderr.empty?
 
@@ -307,7 +306,7 @@ module VivlioStarter
           if added.empty?
             Common.log_result('登録すべき新しい語はありませんでした（すべて登録済み）。', status: :success)
           else
-            Common.log_success("ユーザー辞書へ #{added.size} 語を登録しました")
+            Common.log_result("ユーザー辞書へ #{added.size} 語を登録しました", status: :success)
             Common.log_always "   ファイル: #{dict.user_dict_path}"
             Common.log_always "   登録語: #{added.join(', ')}"
           end
@@ -474,7 +473,6 @@ module VivlioStarter
           baselines = converted.map { File.read(it, encoding: 'UTF-8') }
 
           command = [textlint_command, '--config', effective_config_path, '--fix', *converted]
-          Common.log_action("textlint --fix 実行: #{Shellwords.join(command)}")
           stdout, stderr, = Open3.capture3(*command)
           # --fix の終了コードと出力は判定に使わない。残存指摘の判定は解析パスが行う。
           Common.log_debug(stdout) unless stdout.nil? || stdout.empty?

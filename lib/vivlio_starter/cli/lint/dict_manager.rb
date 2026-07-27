@@ -194,7 +194,6 @@ module VivlioStarter
           %w[dict src].each do |subdir|
             url = "#{DICT_BASE_URL}/#{name}/#{subdir}/#{name}.txt"
             URI.open(url) { |f| File.write(path, f.read) } # rubocop:disable Security/Open
-            Common.log_action("[spellcheck] 辞書をダウンロードしました: #{name} (#{subdir})")
             return path
           rescue OpenURI::HTTPError
             next
