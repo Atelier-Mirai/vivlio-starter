@@ -9,11 +9,6 @@
 
 ## 一覧
 
-`command-feedback-spinner-spec.md`
-: PLANNED.md「コマンド実行時の応答メッセージ」＋「CLI スピナー」を統合した仕様。Public コマンドは成功時に実績値入り 1 行報告を規約化。スピナーは外部ライブラリなしの自作（TTY かつ既定ログレベル時のみ、pipeline の `execute` 1 箇所に装着）。
-  状態: 提案仕様・未着手（2026-07-12 策定）
-  次のアクション: 実装（`Spinner` クラス＋テストから着手。応答メッセージ監査は `vs clean` から）
-
 `at-directive-tier1-spec.md`
 : `@` ディレクティブ Tier 1（`@pageref:id`・`@pagebreak:recto`/`:verso`・`@version`/`@today`/`@title`・`@qr:URL`・`@hspace:N`）の実装仕様。参照系は cross_reference 基盤＋CSS target-counter、定数/プラグマ系は ReplacementRules（`@vspace` の並び）、QR は rqrcode gem によるビルド生成 SVG。リフロー劣化は CSS カスケードで構造的に成立。
   状態: 確定仕様・未着手（2026-07-12 策定。[at-directive-ideas.md](at-directive-ideas.md) §2 Tier 1 からの昇格）
@@ -46,6 +41,15 @@
 ---
 
 ## メモ（依存関係・実装順序）
+
+- **CLI 引数解析・コマンド応答の 3 本は 2026-07-27〜28 に実装完了し `docs/archives/` へ移動した。**
+  `cli-option-parsing-report`（`--opt=value` の共通化）→ `cli-argument-parsing-spec`（オプション位置の自由化・ログレベルの一本化）→ `command-feedback-spinner-spec`（スピナー・応答メッセージ・確認プロンプト統一）の順で実施。
+  **実装時の判明事項（次に CLI を触るときの前提）**:
+  - 正規化・並べ替えの対象フラグは **`table.merged` から自動導出**する（`option_token_normalizer.rb`）。オプションを増やしても宣言の追加は不要。継承コマンド（`RenumberCommand`）を拾うには `table` ではなく `table.merged` が要る。
+  - 公開コマンドの基底クラス `VsCommand` は **`options` をあえて置いていない**。置くと `Table#merged` が親の行を先に並べるため、子の宣言順に関わらず行順が `Options` 先に固定され、usage 表示も一律に変わる。共通オプションを足したくなったときはこの副作用を踏まえて判断すること。
+  - **ドメイン層に「最終結果の報告」を置かない**。`execute_clean` は `vs build` の Step 0、`execute_resize_with_preset` は Step 1 が対象ディレクトリごとに呼ぶため、ビルド中に無関係な報告が何行も混ざる（実装中に実際に踏んだ）。表示はコマンドクラスの責務。`pdf:compress` のようにビルドと共用するものは `pipeline_mode?` で分岐する。
+  - **`--log` を持たないコマンドの `log_info` が未使用とは限らない**。`clean` / `resize` / `create` / `index` / `pdf` の 118 箇所は `vs build --log` で実際に表示される。削除前にビルド経路から呼ばれないか必ず確認すること。
+  - 撤去したデッドコード: `IndexBuildCommand`（`command_map` 未登録）・`rename` の dry-run 分岐（`--dry-run` がオプション定義に無く到達不能）。同種の「クラスやコードだけが残る」パターンは他にもありうる。
 
 - **preflight-glossary-warning-scope-report は 2026-07-26 に対応完了し `docs/archives/` へ移動した。**
   §6.5（`vs preflight <章>` と `vs build <章>` の索引処理有無を統一・R4 ガード・文言修正・preflight の flush 漏れ修正）と §6.6（索引スキャン 8.3 倍高速化・黄金マスタで結果不変を確認・`\` を含む行の破損 3 箇所を是正）を実施済み。残る「索引系警告の `IssueRegistry` ブリッジ」（全章実行で出る正しい R4/R7 警告を章別サマリーへ載せるか）は `KNOWN_ISSUES.md`「索引・用語集スキャンの警告が章別サマリーに載らない」で継続管理する。

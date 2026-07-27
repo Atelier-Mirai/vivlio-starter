@@ -3,7 +3,7 @@
 > 作成日: 2026-07-27
 > 改訂: 2026-07-27（方針決定を反映・§4 に決定事項を追加／**Part 1・Part 2 とも実装完了**）
 > ステータス: **実装済み（2026-07-27）**
-> 目的: `docs/specs/cli-option-parsing-report.md` の残件 2 件——「オプションを位置引数より前に置けない」（§3.3）と「`Common.current_log_level` が ARGV を直接走査している」（§4.3 ③）——を解消する。
+> 目的: `docs/archives/cli-option-parsing-report.md` の残件 2 件——「オプションを位置引数より前に置けない」（§3.3）と「`Common.current_log_level` が ARGV を直接走査している」（§4.3 ③）——を解消する。
 > 前提: `--opt=value` 記法の共通化（`OptionTokenNormalizer`）は 2026-07-27 に実装済み。本仕様はその上に載る。
 > 関連ファイル: `lib/vivlio_starter/cli/samovar/option_token_normalizer.rb`, `lib/vivlio_starter/cli/common.rb`, `lib/vivlio_starter/cli/startup.rb`, `lib/vivlio_starter/cli/samovar/*_command.rb`
 

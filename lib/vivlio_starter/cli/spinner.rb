@@ -22,7 +22,7 @@
 #   - VS_DEBUG が未設定
 #   - VS_NO_SPINNER が未設定（エスケープハッチ）
 #
-# 仕様: docs/specs/command-feedback-spinner-spec.md §2
+# 仕様: docs/archives/command-feedback-spinner-spec.md §2
 # ================================================================
 
 module VivlioStarter
