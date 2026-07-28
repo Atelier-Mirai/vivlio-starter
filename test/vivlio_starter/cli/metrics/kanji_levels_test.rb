@@ -22,6 +22,40 @@ module VivlioStarter
           assert_equal :senmon, KanjiLevels.level_of('薔')  # JIS第二水準
         end
 
+        def test_grade_of_returns_assigned_school_year
+          assert_equal 1, KanjiLevels.grade_of('一')
+          assert_equal 4, KanjiLevels.grade_of('城')   # 2017年告示で 6年 → 4年
+          assert_equal 6, KanjiLevels.grade_of('胃')   # 2017年告示で 4年 → 6年
+          assert_nil KanjiLevels.grade_of('換'), '中学（L1）は学年を持たない'
+          assert_nil KanjiLevels.grade_of('碍'), '常用外（L2）は同梱データに無い'
+        end
+
+        # 都道府県名の 20 字は 2017年告示（2020年度施行）で中学から小4へ移った。
+        # 古い配当表のままだと「小4向け」のルビ付与で本来不要な漢字が候補になる。
+        def test_prefecture_kanji_are_assigned_to_grade_four
+          '井佐埼奈媛岐岡崎栃梨沖滋潟熊縄茨阜阪香鹿'.each_char do |char|
+            assert_equal 4, KanjiLevels.grade_of(char), "#{char} は小4のはず"
+          end
+        end
+
+        # grade_of と level_of は同じ表の同じ値を見るので、両者の食い違いは起こらない。
+        # 「grade_of(1)〜(6) の合計＝level_of が :kyoiku を返す字数」が全字で成り立つ。
+        def test_grade_of_and_level_of_agree_over_the_whole_table
+          by_grade = Hash.new(0)
+          kyoiku = 0
+
+          KanjiLevels.table.each_key do |char|
+            grade = KanjiLevels.grade_of(char)
+            kyoiku += 1 if KanjiLevels.level_of(char) == :kyoiku
+            by_grade[grade] += 1 if grade
+          end
+
+          assert_equal KanjiLevels::GRADES.to_a, by_grade.keys.sort
+          assert_equal kyoiku, by_grade.values.sum
+          # 学年別漢字配当表（2017年3月告示・2020年度施行）の公式字数
+          assert_equal({ 1 => 80, 2 => 160, 3 => 200, 4 => 202, 5 => 193, 6 => 191 }, by_grade.sort.to_h)
+        end
+
         def test_build_report_aggregates_levels_lists_and_locations
           sentences = [
             sentence('一の碍', chapter: 1, line: 10),

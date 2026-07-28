@@ -346,13 +346,15 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
     assert_includes css, 'body.preface.vs-kindle h1, body.postface.vs-kindle h1 { border-bottom-color: #0ea5e9; }'
   end
 
-  # page.section_page_break: false を book.yml に書くと、全文生成に打ち消し規則が載る
+  # page.section_page_break: false を book.yml に書くと、全文生成に打ち消し規則が載る。
+  # 値は明示的に与える——このリポジトリ自身の book.yml を読ませると、著者が
+  # section_page_break を false にした瞬間に「既定では出ない」側の検証が落ちる。
   def test_should_render_section_page_break_negation_from_config
     disabled = Common::CONFIG.with(page: Common::CONFIG.page.with(section_page_break: false))
+    enabled  = Common::CONFIG.with(page: Common::CONFIG.page.with(section_page_break: true))
 
     assert_includes BSC.render(disabled), 'body.vs-header-simple h2'
-    # 既定（true）の book.yml では一切出ない
-    refute_includes BSC.render(Common::CONFIG), 'break-before: auto;'
+    refute_includes BSC.render(enabled), 'break-before: auto;'
   end
 
   # theme.color / appendix_color / preface_color を差し替えた Common::CONFIG 相当の Data を組む

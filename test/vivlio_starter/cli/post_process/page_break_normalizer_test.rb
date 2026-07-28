@@ -20,12 +20,18 @@ class PageBreakNormalizerTest < Minitest::Test
   PBN = VivlioStarter::CLI::PostProcessCommands::PageBreakNormalizer
 
   # HTML を一時ファイルへ書いて正規化し、[結果 HTML, 件数] を返す。
-  def normalize(body)
-    Tempfile.create(['vs_pbn_', '.html']) do |f|
-      f.write("<html><body>\n#{body}\n</body></html>")
-      f.flush
-      count = PBN.normalize!(f.path)
-      return [File.read(f.path, encoding: 'utf-8'), count]
+  #
+  # 節の改ページ設定は明示的に与える。プロジェクト自身の book.yml を読ませると、
+  # 著者が page.section_page_break を false にした瞬間にテストが落ちる
+  # （正規化は h2 が改ページする前提でのみ働くため）。
+  def normalize(body, section_page_break: true)
+    PBN.stub(:section_page_break_enabled?, section_page_break) do
+      Tempfile.create(['vs_pbn_', '.html']) do |f|
+        f.write("<html><body>\n#{body}\n</body></html>")
+        f.flush
+        count = PBN.normalize!(f.path)
+        return [File.read(f.path, encoding: 'utf-8'), count]
+      end
     end
   end
 
@@ -155,11 +161,7 @@ class PageBreakNormalizerTest < Minitest::Test
 
   # page.section_page_break: false では h2 が改ページしない＝冗長性が無いので何もしない
   def test_should_do_nothing_when_section_page_break_disabled
-    out = nil
-    count = nil
-    PBN.stub(:section_page_break_enabled?, false) do
-      out, count = normalize(sectioned('<hr class="pagebreak">'))
-    end
+    out, count = normalize(sectioned('<hr class="pagebreak">'), section_page_break: false)
 
     assert_equal 0, count
     assert_includes out, 'class="pagebreak"'

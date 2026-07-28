@@ -6,8 +6,8 @@
 # 責務:
 #   本文中の漢字を難易度レベルに分類し、ルビ候補として集計する。
 #
-# レベル定義:
-#   L0 教育       … 小学校の学年別配当漢字（同梱データ）
+# レベル定義（正典は docs の furigana-level-spec.md）:
+#   L0 教育       … 小学校の学年別配当漢字（同梱データ。学年は grade_of で取れる）
 #   L1 中学       … 中学で習う常用漢字（同梱データ）
 #   L2 一般(L2)   … JIS第一水準 ∖ 常用漢字（符号位置から算出）
 #   L3 専門(L3)   … JIS第二水準（符号位置から算出）
@@ -33,6 +33,10 @@ module VivlioStarter
 
         DATA_PATH = File.expand_path('data/kyoiku_joyo_kanji.tsv', __dir__)
         HAN = /\p{Han}/
+        # 同梱データで L1（中学で習う常用漢字）を表す値。これ以外の値は配当学年（1〜6）。
+        CHUGAKU = '中学'
+        # 教育漢字（L0）の配当学年。
+        GRADES = (1..6).freeze
         # 表示ラベルと内訳の並び順。
         LABELS = { kyoiku: '教育', chugaku: '中学', ippan: '一般(L2)', senmon: '専門(L3)', gaiji: 'JIS外' }.freeze
         ORDER = %i[kyoiku chugaku ippan senmon gaiji].freeze
@@ -42,12 +46,26 @@ module VivlioStarter
         LOCATION_PER_CHAR = 5
 
         # 漢字 1 文字のレベルを返す。教育・中学は同梱データ、それ以外は符号位置で判定。
+        # :kyoiku を返すのは grade_of が学年を返す文字と過不足なく一致する
+        # （判定を grade_of に委ねているため、両者がずれることが構造的に起こらない）。
         def level_of(char)
-          grade = table[char]
-          return :chugaku if grade == '中学'
-          return :kyoiku if grade
+          return :chugaku if table[char] == CHUGAKU
+          return :kyoiku if grade_of(char)
 
           jis_level(char)
+        end
+
+        # 教育漢字（L0）の配当学年 1〜6 を返す。教育漢字でなければ nil。
+        #
+        # レベル（L0〜L4）だけでは「小4向けの本なら小5以上にルビ」という学年基準の
+        # 判定ができないため、同梱データが持っている学年をそのまま取り出せるようにする
+        # （furigana-level-spec.md §3.2）。level_of の戻り値は変えないので、
+        # vs metrics の集計・表示には影響しない。
+        def grade_of(char)
+          grade = table[char]
+          return nil if grade.nil? || grade == CHUGAKU
+
+          grade.to_i
         end
 
         # 位置つきの文の列から、漢字レベルの集計レポートを作る。漢字が無ければ nil。
