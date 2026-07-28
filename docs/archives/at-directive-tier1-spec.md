@@ -2,7 +2,7 @@
 
 > 作成日: 2026-07-12
 > ステータス: **実装完了（2026-07-28）** — 実装時の判明事項は §6 に追記した
-> 元ステータス: 確定仕様・未着手 — [at-directive-ideas.md](at-directive-ideas.md) の Tier 1（§2）を確定仕様へ昇格したもの
+> 元ステータス: 確定仕様・未着手 — `at-directive-ideas.md` の Tier 1（§2）を確定仕様へ昇格したもの
 > 対象: `@pageref:id` / `@pagebreak:recto`・`:verso` / `@version`・`@today`・`@title` / `@qr:URL` / `@hspace:N` の 5 記法（7 ディレクティブ）
 > 決定事項:
 > - **2 トラック実装**（ideas §7 の方針どおり）: **参照系** `@pageref` は pre_process のクロスリファレンス基盤（`cross_reference_processor.rb`）へ、**定数・プラグマ系**（`@pagebreak`/`@version`/`@today`/`@title`/`@hspace`）は post_process の組み込み置換ルール（`replacement_rules.rb`・`@vspace` と同型）へ実装する。`@qr` のみ画像生成を伴うため pre_process の独立ステップ（数式 SVG と同じ「ビルド生成物」ファミリー）

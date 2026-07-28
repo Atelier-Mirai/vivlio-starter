@@ -5,7 +5,7 @@
 - 実装担当想定: Claude Opus 4.8（本書のみで実装が完結するよう、参照実装コード・動作表・テスト表・検証コマンドまで記載する）
 - 関連文書:
   - [config-access-unification-spec.md](config-access-unification-spec.md) — CONFIG アクセス統一（実装完了）。本書はその続編で、`page:` セクションの**値の単位**を扱う。
-  - [config-extension-guidelines.md](config-extension-guidelines.md) — 設定キー追加の手順。
+  - `config-extension-guidelines.md` — 設定キー追加の手順。
 
 ---
 

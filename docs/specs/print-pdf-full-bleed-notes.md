@@ -2,7 +2,7 @@
 
 作成日: 2026-07-06 / 議論: 利用者 × Claude (Opus 4.8)
 位置づけ: 将来「写真集」「爪見出し」など**フチなし要素のある本**を実装するときの参考メモ。
-関連: [print-pdf-derivation-spec.md](print-pdf-derivation-spec.md)（print_pdf 導出化の本仕様。§2.6 に `full_bleed` 設定の定義）
+関連: `print-pdf-derivation-spec.md`（print_pdf 導出化の本仕様。§2.6 に `full_bleed` 設定の定義）
 
 > 本メモは**実装指示書ではなく背景整理**。現時点でフチなし要素を持つデザインは無いため、
 > 実装は保留（§5 の運用方針を参照）。将来デザインが用意された時点で本メモを起点に判断する。
@@ -203,6 +203,6 @@ b=3mm 固定でも、判型が小さいほど拡大率が跳ね上がる:
 
 ## 7. 参照
 
-- [print-pdf-derivation-spec.md](print-pdf-derivation-spec.md) — print_pdf 導出化 本仕様
+- `print-pdf-derivation-spec.md` — print_pdf 導出化 本仕様
   （§1.2 実測ジオメトリ / §2.5 実行条件 / §2.6 book.yml 新設定 / §3.2 ジオメトリ式 / §3.6 フォールバック）
-- [backlink-dedup-pdf-map-spec.md](backlink-dedup-pdf-map-spec.md) — ②dedup 高速化（§4 の速度に連動）
+- `backlink-dedup-pdf-map-spec.md` — ②dedup 高速化（§4 の速度に連動）

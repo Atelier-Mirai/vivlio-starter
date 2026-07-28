@@ -11,7 +11,7 @@ When adding or extending an author-facing notation (`:::{.class}` boxes, fences 
 
 Specs live in `docs/specs/` while pending and move to `docs/archives/` once implemented. **Cite them by bare filename** — `` `page-break-control-spec.md` §2.1 `` — in code comments, in other specs, and in tests. Never write `docs/specs/…` or `docs/archives/…`, and don't make them relative Markdown links: a path (or link) encodes *where the file is today* and silently rots the moment the spec is archived. A bare filename is a name to grep for, so it stays correct in either directory. `docs/specs/STATUS.md` is the canonical answer to "is it implemented yet?" — that question should never be answered by reading a path.
 
-Paths are still right for things that don't migrate: source files, `test/`, `contents/`, and images.
+Paths are still right for things that don't migrate: source files, `test/`, `contents/`, and images. Relative links surviving *inside* `docs/archives/` are also fine and deliberate — archives is terminal, so a link between two archived documents can't rot. The rule targets references that outlive a move.
 
 ## What This Project Is
 

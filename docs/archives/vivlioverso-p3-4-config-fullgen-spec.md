@@ -207,7 +207,7 @@ EPUB 側の出力バイトが不変であることをテストで確認して行
 ## 3. VFM エントリーレベル適用の効果範囲（正直な整理）
 
 > 本節の詳細（2 経路の流れ図・`vfm` CLI 実測結果・V2.0 直接ビルド実装時の指針）は
-> [vfm-config-flow-notes.md](vfm-config-flow-notes.md) に恒久記録した。
+> `vfm-config-flow-notes.md` に恒久記録した。
 
 - **今日の実行時効果はゼロ**である: `vs entries` は HTML から entries.js を作り
   （`entries.rb:56-79`・.md は対象にならない）、パイプラインも全経路 HTML entry。

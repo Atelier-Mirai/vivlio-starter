@@ -1,7 +1,7 @@
 # VFM 設定の流れと有効範囲（技術ノート）
 
 記録日: 2026-07-05 / 記録者: Claude (Fable 5) /
-経緯: P3-4 仕様策定（[vivlioverso-p3-4-config-fullgen-spec.md](vivlioverso-p3-4-config-fullgen-spec.md)）の
+経緯: P3-4 仕様策定（`vivlioverso-p3-4-config-fullgen-spec.md`）の
 調査で確定した事実の恒久記録。**V2.0 の直接ビルド（`vs build my.md --pdf`）実装時に
 必ず参照すること**（§4）。
 
@@ -112,9 +112,9 @@ config の vfm 設定が**初めて実効化**する。その際:
 
 ## 5. 関連資料
 
-- [vivlioverso-p3-4-config-fullgen-spec.md](vivlioverso-p3-4-config-fullgen-spec.md) §1.3・§3
+- `vivlioverso-p3-4-config-fullgen-spec.md` §1.3・§3
   （本ノートの出自。config 全文生成化＋エントリーレベル VFM の実装仕様）
-- [vfm_hard_line_breaks_default.md](vfm_hard_line_breaks_default.md)
+- `vfm_hard_line_breaks_default.md`
   （hardLineBreaks 既定有効化の当初仕様。§「参考実装」にエントリーレベル方式の原型）
 - PLANNED.md「VFM 設定のエントリーレベル適用」（P3-4 実装で消化予定）
 - VFM 公式: https://vivliostyle.github.io/vfm/

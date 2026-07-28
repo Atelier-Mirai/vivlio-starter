@@ -1,7 +1,7 @@
 # 表紙 CMYK カラーマネジメント改善 仕様メモ（別タスク・未着手）
 
 作成日: 2026-07-06 / 位置づけ: 表紙ジオメトリ改修（Q1/Q3）から切り出した独立タスク。
-関連: [print-pdf-full-bleed-notes.md](print-pdf-full-bleed-notes.md)（表紙ジオメトリ議論の発端）
+関連: `print-pdf-full-bleed-notes.md`（表紙ジオメトリ議論の発端）
 
 ---
 

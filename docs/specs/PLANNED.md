@@ -4,7 +4,7 @@
 
 - 見出しは目的別の `##`／`###` に統一し、各項目は `-` の箇条書きで記す。
 - 優先度は行頭に `[High]` / `[Medium]` / `[Low]` で付す（未判定のものは付けない）。
-- 既存仕様書がある項目は末尾にリンクを添える。
+- 既存仕様書がある項目は末尾にファイル名を添える（`docs/specs/` / `docs/archives/` は付けない。実装後に移動しても壊れないようにするため）。
 
 ---
 
@@ -29,7 +29,7 @@
 
 ## 記法・置換ルール
 
-- **`@` ディレクティブ拡張**: Tier 1（`@pageref`・`@pagebreak:recto`/`:verso`・`@version`/`@today`/`@title`・`@qr`・`@hspace`）は **2026-07-28 に実装完了** → `at-directive-tier1-spec.md`。Tier 2（`@nobr`・`@fill`・`@index`）と `@abbr` の代替案（用語集統合 or 標準 `*[…]:` `<abbr>`）は引き続きブレスト段階 → [at-directive-ideas.md](at-directive-ideas.md)
+- **`@` ディレクティブ拡張**: Tier 1（`@pageref`・`@pagebreak:recto`/`:verso`・`@version`/`@today`/`@title`・`@qr`・`@hspace`）は **2026-07-28 に実装完了** → `at-directive-tier1-spec.md`。Tier 2（`@nobr`・`@fill`・`@index`）と `@abbr` の代替案（用語集統合 or 標準 `*[…]:` `<abbr>`）は引き続きブレスト段階 → `at-directive-ideas.md`
 
 - [Medium] **`vs furigana`（半自動ルビ付与）**: 小学生向けなど、対象読者の学年より上の漢字へ振り仮名 `{漢字|よみ}` を**半自動**で付けるコマンド。`vs metrics` の「漢字レベル（ルビ候補）」で**どの漢字が対象か**は把握できるので、その先の「本文へ実際にルビ記法を書き込む」変換を担う。
   - **対象の指定**: `book.yml` や引数で「基準レベル」を選ぶ（例: 小4向け＝小5以上／中学以上／常用外のみ、等。レベル定義は [furigana-level-spec] 参照＝`vs metrics` と共通の L0〜L4）。
@@ -55,7 +55,7 @@
 
 ## EPUB / Kindle
 
-- [Low] **Kindle 固定レイアウト（`kindle.layout: fixed`・PDF ラスタライズ流用）**: A5 PDF をページ画像化して固定レイアウト KPF にする案。劣化対応不要で組版忠実だが、主力端末 6〜7″ は文庫（A6）サイズで判型が合わず、フォント可変・検索・配信料（約 ¥50〜90/冊 増）を失うため**見送り**。数式・図版主体の本や文庫判型向けの第 3 ターゲットとして RC 後に再検討。調査結果・実装スケッチ → [kindle-fixed-layout-ideas.md](kindle-fixed-layout-ideas.md)
+- [Low] **Kindle 固定レイアウト（`kindle.layout: fixed`・PDF ラスタライズ流用）**: A5 PDF をページ画像化して固定レイアウト KPF にする案。劣化対応不要で組版忠実だが、主力端末 6〜7″ は文庫（A6）サイズで判型が合わず、フォント可変・検索・配信料（約 ¥50〜90/冊 増）を失うため**見送り**。数式・図版主体の本や文庫判型向けの第 3 ターゲットとして RC 後に再検討。調査結果・実装スケッチ → `kindle-fixed-layout-ideas.md`
 
 ---
 
