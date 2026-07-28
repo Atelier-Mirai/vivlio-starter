@@ -74,6 +74,39 @@ module VivlioStarter
           assert_equal 'contents/01-intro.md', result['path']
           assert_equal 1_200, result['chars']
           assert_equal 4, result['sentences']
+          # 警告のない章でも消費側が扱いやすいよう空配列を必ず備える
+          assert_equal [], result['warnings']
+        end
+
+        # 構造化出力の warnings は分量警告と品質警告を合わせた一覧になる
+        def test_analysis_to_stat_hash_lists_volume_and_quality_warnings
+          analysis = build_analysis(readability_features: build_features(sentence_count: 30),
+                                    chapter_warning: 'やや長い', mattr: 0.4, total_tokens: 500,
+                                    readability_label: 'Professional')
+
+          result = @runner.send(:analysis_to_stat_hash, analysis)
+
+          assert_equal ['やや長い', '表現が単調', 'やや難解'], result['warnings']
+          # 既存キーは不変（後方互換）
+          assert_equal 'contents/01-intro.md', result['path']
+          assert_equal 1_200, result['chars']
+        end
+
+        # --warn は分量警告がなくても品質警告だけで章を残す（分量は適正な 8,000 字）
+        def test_analysis_visible_keeps_quality_warning_only_chapter
+          runner = Runner.new([], warn: true)
+          analysis = build_analysis(readability_features: build_features(sentence_count: 30),
+                                    chapter_chars: 8_000, mattr: 0.4, total_tokens: 500)
+
+          assert runner.send(:analysis_visible?, analysis)
+        end
+
+        def test_analysis_visible_drops_chapter_without_any_warning
+          runner = Runner.new([], warn: true)
+          analysis = build_analysis(readability_features: build_features(sentence_count: 30),
+                                    chapter_chars: 8_000, mattr: 0.7, total_tokens: 500)
+
+          refute runner.send(:analysis_visible?, analysis)
         end
 
         def test_basic_stats_to_structured_hash_flattens_fields
@@ -171,15 +204,20 @@ module VivlioStarter
           end
         end
 
-        def build_analysis(readability_features:)
+        # 既定値は「分量・品質のどちらの警告にも該当しない」章。
+        # 品質警告のテストだけが mattr / total_tokens / readability_label を上書きする。
+        def build_analysis(readability_features:, chapter_chars: 1_200, chapter_warning: nil,
+                           mattr: 0.0, total_tokens: 1, readability_label: 'Standard')
           chapter = Metrics::ChapterMetrics.new(path: 'contents/01-intro.md', title: 'Intro',
-                                                chapter_num: 1, chars: 1_200, sections: [], warning: nil)
+                                                chapter_num: 1, chars: chapter_chars, sections: [],
+                                                warning: chapter_warning)
           readability = Metrics::ReadabilityScore.new(
             score: Metrics::Readability.score(readability_features),
-            label: 'Standard',
+            label: readability_label,
             features: readability_features
           )
-          Runner::ChapterAnalysis.new(chapter:, basic: build_basic_stats_default, vocab: build_vocab_stats,
+          Runner::ChapterAnalysis.new(chapter:, basic: build_basic_stats_default,
+                                      vocab: build_vocab_stats(mattr:, total_tokens:),
                                       readability:)
         end
 

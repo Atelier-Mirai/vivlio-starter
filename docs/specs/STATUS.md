@@ -14,15 +14,10 @@
   状態: 確定仕様・未着手（2026-07-12 策定。[at-directive-ideas.md](at-directive-ideas.md) §2 Tier 1 からの昇格）
   次のアクション: 実装（§2.1 予約 ID 拡張から。§2.4 の VFM 見出し内 span は実ビルド検証を最初に）
 
-`metrics-quality-warnings-spec.md`
-: `vs metrics` の章別リストに「表現が単調」（MATTR ≤ 0.5）／「やや難解」（建石式 RS が Professional）の 🟡 警告を出す仕様。専用しきい値は設けず詳細分析の評価バンドと同一条件で発火（単一の真実・新設定キーゼロ）。`WarningChecker#quality_warnings` 新設、表示時合成でキャッシュ不変、`--warn`/`--json` にも統合。誤検知対策は exclude_chapters ＋統計的安定性ガード（トークン数 < mattr_window・10 文未満は判定しない）。
-  状態: 確定仕様・未着手（2026-07-12 策定）
-  次のアクション: 実装（`MATTR_MONOTONOUS_MAX` 定数抽出から。挙動不変の単独コミット可）
-
 `page-break-control-spec.md`
 : 改ページ制御の改善。PLANNED の 3 案から (b) 二重改ページの自動正規化（post_process の `PageBreakNormalizer` 新設・`---`/`@pagebreak` 直後の h2 でマーカーを無効化、`:recto` は h2 側を無効化して合流）＋ (c) `page.section_page_break` 設定キー（false で節改ページなし）を採用。(a) lint 警告は不採用（自動修正されるものへの警告はノイズ・§2.3 に記録）。
-  状態: 確定仕様・未着手（2026-07-12 策定）
-  次のアクション: 実装（(c) が独立で先行可。(b) の `vs-break-*` 対応は at-directive-tier1-spec 実装後）
+  状態: **(c) 実装済み（2026-07-28）／(b) 未着手**
+  次のアクション: (b) `PageBreakNormalizer` の実装。`hr.pagebreak` のみ先行でも可だが、`vs-break-*`（`@pagebreak`）対応は at-directive-tier1-spec 実装後にまとめるのが効率的
 
 ---
 
@@ -41,6 +36,13 @@
 ---
 
 ## メモ（依存関係・実装順序）
+
+- **metrics-quality-warnings-spec は 2026-07-28 に実装完了し `docs/archives/` へ移動した。**
+  `WarningChecker#quality_warnings` 新設＋表示時合成（`format_chapter_line(extra_warnings:)`）・`--warn`（`has_warning?(analysis:)`）・`--json`/`--yaml` の `warnings` 配列。新設定キーはゼロ、キャッシュ不変（表示時に毎回導出）。
+  **仕様からの変更・実装時の判明事項**:
+  - **`mattr_evaluation` は `case/in` → `case/when` へ書き換えた。** 範囲パターンの端点に定数は置けず `in ..MATTR_MONOTONOUS_MAX` は**構文エラー**になる（`expected a pattern expression after the range operator`）。`when ..CONST` なら通常の式評価なので通る。バンドの挙動は完全に同一（境界値 0.5/0.6/0.7 で確認済み）。
+  - **文数は `analysis.basic.sentences` ではなく `analysis.readability.features.sentence_count` を使う。** 仕様書 §2.1 は前者を候補に挙げていたが、10 文ガードが守りたいのは「RS の母数」であり、それは RS 算出に使われた特徴量そのもの。`basic.sentences` はコード込みの本文全体を数えており母数がずれる。
+  - **`Metrics::LiveDisplay` は死にコードだったため撤去した**（`live_display.rb` と `live_display_test.rb`）。`Runner` は自前の pending/next_display_index で逐次表示しており `LiveDisplay` を一切呼んでいなかった（`require` すら無く、参照は自身のテストのみ）。あわせて `contents/32-metrics.md` の「ライブプレースホルダー」「ANSI 制御でグラフ部分だけを差し替える」という記述も撤回した——これは `LiveDisplay` の挙動を書いたもので、実際の出力（章番号順の逐次出力 → 全体集計）とは食い違っていた。「サマリを章の解析前に表示する」という記述も同様に誤りだったので実挙動へ直した。
 
 - **CLI 引数解析・コマンド応答の 3 本は 2026-07-27〜28 に実装完了し `docs/archives/` へ移動した。**
   `cli-option-parsing-report`（`--opt=value` の共通化）→ `cli-argument-parsing-spec`（オプション位置の自由化・ログレベルの一本化）→ `command-feedback-spinner-spec`（スピナー・応答メッセージ・確認プロンプト統一）の順で実施。

@@ -93,9 +93,12 @@ page:
   use: b5_airy    # a5_standard / a5_airy / a5_compact / a5_custom
                   # b5_standard / b5_airy / b5_compact / b5_custom
                   # a4_standard / a4_airy / a4_compact / a4_custom
+  section_page_break: true   # 節（##）をページの先頭から始めるか
 ```
 
 `airy` は行間が広めの読みやすいレイアウト、`compact` はより多くの文字を詰めたレイアウトです。`custom` を選ぶと `page_presets.yml` で独自の版面を定義できます。
+
+`section_page_break` は節見出し（`##`）でページを改めるかどうかの選択です。既定の `true` では節ごとに新しいページが始まります。`false` にすると節が本文の流れの中に続けて組まれ、ページ数を抑えられます。ページ数の上限が決まっている配布資料や、章あたりの節が多い薄い本で有効です。
 
 ## 必要に応じて調整する項目
 

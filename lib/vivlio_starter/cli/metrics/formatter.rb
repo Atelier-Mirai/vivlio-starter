@@ -8,7 +8,7 @@
 #
 # 機能:
 #   - 基本統計・詳細分析・章別分量のフォーマット
-#   - バーグラフの描画
+#   - 棒グラフの描画
 #   - 警告ラベルの付与
 # ================================================================
 
@@ -23,6 +23,12 @@ module VivlioStarter
         CHAPTER_LABEL_WIDTH = 30
         SECTION_LABEL_WIDTH = 36
         CHAR_COUNT_WIDTH = 6
+
+        # 「表現が単調」と評価する MATTR の上限（この値以下が単調帯）。
+        # 詳細分析の表示（#mattr_evaluation）と章別リストの品質警告
+        # （WarningChecker#quality_warnings）が同じ値を参照することで、
+        # 「詳細では単調と出るのに警告は出ない」という乖離を構造的に防ぐ。
+        MATTR_MONOTONOUS_MAX = 0.5
 
         def initialize(config_loader)
           @config = config_loader
@@ -145,10 +151,14 @@ module VivlioStarter
           lines.join("\n")
         end
 
-        # 章行をフォーマットする（公開メソッド）
-        def format_chapter_line(chapter, max_chars, show_sections)
+        # 章行をフォーマットする（公開メソッド）。
+        # extra_warnings は分量以外の警告（品質警告）。分量警告とは算出タイミングが
+        # 異なり章構造体に入っていないため、ここで 1 つの 🟡 に合成する
+        # （docs/specs/metrics-quality-warnings-spec.md §2.2）。
+        def format_chapter_line(chapter, max_chars, show_sections, extra_warnings: [])
           bar = render_bar(chapter.chars, max_chars)
-          warning = chapter.warning ? " 🟡 #{chapter.warning}" : ''
+          all_warnings = [chapter.warning, *extra_warnings].compact
+          warning = all_warnings.empty? ? '' : " 🟡 #{all_warnings.join('・')}"
 
           if show_sections && chapter.sections.any?
             format_chapter_with_sections(chapter, bar, warning, max_chars)
@@ -237,7 +247,7 @@ module VivlioStarter
           !char.ascii_only?
         end
 
-        # バーグラフを描画する
+        # 棒グラフを描画する
         def render_bar(value, max_value)
           return "[#{BAR_EMPTY_CHAR * BAR_WIDTH}]" if max_value.zero?
 
@@ -336,11 +346,13 @@ module VivlioStarter
 
         # 語彙多様度（MATTR）の評価。窓付き移動平均のため、生 TTR より高め・
         # 安定した値域になる。バンドは実用書原稿の実測分布で較正した目安。
+        # 単調帯の境界だけは品質警告と共有するため定数を参照する
+        # （範囲パターン `in ..CONST` は書けないため case/when を使う）。
         def mattr_evaluation(mattr)
           case mattr
-          in ..0.5 then @labels[:monotonous]
-          in 0.5..0.6 then '標準的'
-          in 0.6..0.7 then '豊富'
+          when ..MATTR_MONOTONOUS_MAX then @labels[:monotonous]
+          when ..0.6 then '標準的'
+          when ..0.7 then '豊富'
           else '非常に豊富'
           end
         end
@@ -359,10 +371,18 @@ module VivlioStarter
 
       # 章・節の警告判定
       class WarningChecker
+        # 読解難度（RS）を警告に使うために必要な最小文数。数文しかない章の RS は
+        # 平均文長・連長のブレが大きく、難解判定が偶然で振れるため判定しない。
+        MIN_SENTENCES_FOR_COMPLEXITY = 10
+
+        # 建石式 RS の最難バンド（metrics.readability.standard 未満）のラベル。
+        PROFESSIONAL_LABEL = 'Professional'
+
         def initialize(config_loader)
           @thresholds = config_loader.volume_thresholds
           @labels = config_loader.labels
           @exclude = config_loader.exclude_chapters
+          @mattr_window = config_loader.mattr_window
         end
 
         # 章の警告を判定する
@@ -379,9 +399,27 @@ module VivlioStarter
           check_volume(chars, thresholds[:section])
         end
 
-        # 警告がある章かどうか
-        def has_warning?(chapter_num, chars, sections)
+        # 品質警告（語彙多様度・読解難度）を判定する。分量警告と違い
+        # ChapterAnalysis（vocab / readability）が要るため章構造体には持たせず、
+        # 表示時に毎回導出する（しきい値・ラベルの変更が再解析なしで効く）。
+        # 発火条件は詳細分析の評価バンドと完全に同一
+        # （docs/specs/metrics-quality-warnings-spec.md §1.1）。
+        # @param analysis [Runner::ChapterAnalysis]
+        # @return [Array<String>] 該当ラベルの配列（該当なし・除外章は空）
+        def quality_warnings(analysis)
+          return [] if excluded?(analysis.chapter.chapter_num)
+
+          warnings = []
+          warnings << labels[:monotonous] if monotonous?(analysis.vocab)
+          warnings << labels[:too_complex] if too_complex?(analysis.readability)
+          warnings
+        end
+
+        # 警告がある章かどうか。analysis を渡すと品質警告も対象に含める
+        # （--warn で「単調・難解と評価された章だけを見る」ため）。
+        def has_warning?(chapter_num, chars, sections, analysis: nil)
           return true if chapter_warning(chapter_num, chars)
+          return true if analysis && quality_warnings(analysis).any?
 
           sections.any? { section_warning(it.chars, chapter_num:) }
         end
@@ -392,7 +430,20 @@ module VivlioStarter
 
         private
 
-        attr_reader :thresholds, :labels, :exclude
+        attr_reader :thresholds, :labels, :exclude, :mattr_window
+
+        # MATTR が「表現が単調」帯（詳細分析の表示と同一バンド）。
+        # 総語数が窓幅に満たない章は MATTR 自体が不安定なため判定しない。
+        def monotonous?(vocab)
+          vocab.total_tokens >= mattr_window && vocab.mattr <= Formatter::MATTR_MONOTONOUS_MAX
+        end
+
+        # 建石式 RS が最難バンド（Professional）。RS の母数である文数
+        # （features.sentence_count）が少ない章は不安定なため判定しない。
+        def too_complex?(readability)
+          readability.features.sentence_count >= MIN_SENTENCES_FOR_COMPLEXITY &&
+            readability.label == PROFESSIONAL_LABEL
+        end
 
         # 除外対象か判定する
         def excluded?(chapter_num)

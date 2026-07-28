@@ -212,8 +212,10 @@ module VivlioStarter
           project: { name: nil, version: nil },
           theme: { style: nil, color: nil, preface_color: nil, appendix_color: nil,
                    frontispiece: nil, ornament: nil, markers: { h3: nil, h4: nil } },
-          # page の版面キー（size/width/margin_* 等）は page_presets 由来のため列挙しない
-          page: { use: nil },
+          # page の版面キー（size/width/margin_* 等）は page_presets 由来のため列挙しない。
+          # section_page_break は版面のページネーション挙動（節をページ頭から始めるか）で、
+          # プリセットに依らない書籍単位の選択のためここに既定値を持つ。
+          page: { use: nil, section_page_break: true },
           typography: { body: { font: nil }, heading: { font: nil },
                         column: { font: nil, font_size: nil }, code: { font: nil },
                         folio: { font: nil, placement: nil } },

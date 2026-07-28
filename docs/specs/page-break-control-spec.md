@@ -1,7 +1,7 @@
 # 改ページ制御の改善（空白ページ対策・節改ページの任意化）仕様書
 
 > 作成日: 2026-07-12
-> ステータス: **確定仕様・未着手**
+> ステータス: **(c) 実装済み（2026-07-28）／(b) 未着手**
 > 対象: PLANNED.md [Medium]「改ページ制御の改善（空白ページ対策・任意化）」。3 案 (a) lint 警告 / (b) 連続改ページの正規化 / (c) h2 改ページの設定化 の取捨選択と実装仕様
 > 決定事項:
 > - **(b)＋(c) を採用し、(a) は不採用**。(b) が黙って無害化するものを (a) が警告するのは矛盾（自動で直る事象への警告はノイズ）。(b) の正規化発生時に `log_info` を出すことで透明性は担保する（`--log` で確認可能）
@@ -61,7 +61,8 @@ page:
 
 - 既定 `true`（現行挙動・後方互換）。`false` で節見出しが本文の流れの中に連続して組まれる（ページ数を抑えたい短い本・ハンドアウト向け）
 - `false` のとき、`---` や `@pagebreak` は**そのまま生きる**（h2 が改ページしなくなるため冗長ではなくなる——§1.1 の正規化は自動で無効になる）
-- 🟡 注意（ドキュメントに明記）: `theme.style: image` の節絵・飾り帯はページ頭に置かれる前提の意匠のため、`false` ではページ中間に飾り帯が現れる。動作はするが、`false` を使う本には `theme.style: simple` を推奨する
+- ~~🟡 注意（ドキュメントに明記）: `theme.style: image` の節絵・飾り帯はページ頭に置かれる前提の意匠のため、`false` ではページ中間に飾り帯が現れる。動作はするが、`false` を使う本には `theme.style: simple` を推奨する~~
+  → **撤回（2026-07-28・実装時）**: image の節絵・飾り帯はページ中間に置かれても意匠として成立する（実物で確認）。`theme.style` による推奨・注意書きは設けない
 
 ## 2. 実装
 
@@ -121,7 +122,25 @@ end
 
 5. **呼び出し位置**: `execute_post_process`（post_process.rb:76）の各ファイル処理で、`ReplacementRules.apply_builtin!`（hr.pagebreak / vs-break-* を生成）と `SectionWrapper`（article ラップ）の**両方が終わった後**に `PageBreakNormalizer.normalize!(html_file)` を追加する
 
-### 2.2 (c) `page.section_page_break`（設定キー＋生成 CSS）
+### 2.2 (c) `page.section_page_break`（設定キー＋生成 CSS）— **実装済み（2026-07-28）**
+
+**実装時の実際のセレクタ**（策定時から CSS が変わっていた）。`BookSettingsCss::SECTION_PAGE_BREAK_SELECTORS` に定義し、`stylesheets/` に実在することを回帰テスト（`BookSettingsCssSectionBreakSelectorTest`）で固定した:
+
+| セレクタ | 出所 | 対象 |
+|---|---|---|
+| `body.vs-header-image .section-topic h2` | image-header.css | PDF / EPUB |
+| `body.vs-header-simple h2` | simple-header.css | PDF / EPUB |
+| `body.vs-header-simple.vs-kindle h2` | simple-header.css | Kindle（legacy 併記あり） |
+| `article.vs-section-topic-epub` | components.css | EPUB の節絵 article |
+
+本仕様書 §2.2 が挙げていた `.section-topic h2`（components.css:244-245）は現存しない。EPUB 側は `EpubBuilder` が `article.section-topic` に `vs-section-topic-epub` を付ける方式へ変わっており、その article 自体が改ページ元になっている。
+
+判定は「明示的に `false`（`no`/`off`/`0` も可）と書かれたときだけ打ち消す」（`section_page_break_disabled?`）。未設定・空欄は既定の `true` を保つため、`Common.truthy?` の裏返しでは実装できない。
+
+実測（`vs build 31`・節 4 つの章）: `true` 17 ページ → `false` 13 ページ。
+
+以下は策定時の記述（実装の骨子は同じ）。
+
 
 config-extension-guidelines.md の 3 ステップに従う:
 

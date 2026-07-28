@@ -99,6 +99,7 @@ module VivlioStarter
             :root {
             #{root_lines.map { "  #{it}" }.join("\n")}
             }
+            #{section_page_break_rule(page_cfg)}
             #{kindle_accent_rules(cfg)}
             #{talk_class_rules(registry)}
           CSS
@@ -205,6 +206,44 @@ module VivlioStarter
           return '' if offset.empty? || offset == '0mm'
 
           "@page :nth(1) { background-position: calc(50% + #{offset}) center; }"
+        end
+
+        # ================================================================
+        # 節（h2）の改ページ（page-break-control-spec.md §2.2）
+        # ================================================================
+        # 節でページを改める既存ルールの元セレクタ。打ち消しは「元セレクタをそのまま
+        # 複製」する必要がある——book-settings.css は後段読込なので同特異度なら後勝ち
+        # できるが、セレクタがずれると特異度負けして効かない。
+        SECTION_PAGE_BREAK_SELECTORS = [
+          'body.vs-header-image .section-topic h2',  # image-header.css（PDF / EPUB）
+          'body.vs-header-simple h2',                # simple-header.css（PDF / EPUB）
+          'body.vs-header-simple.vs-kindle h2',      # simple-header.css の Kindle 用（legacy 併記）
+          'article.vs-section-topic-epub'            # components.css（EPUB の節絵 article）
+        ].freeze
+
+        # page.section_page_break: false のときだけ打ち消し規則を出す。
+        # true・未設定では何も出さず、テーマ CSS の改ページがそのまま生きる
+        # （P3 の「書かない条件では宣言しない」セマンティクス）。
+        def section_page_break_rule(page_cfg)
+          return '' unless section_page_break_disabled?(page_cfg)
+
+          <<~CSS.chomp
+            /* page.section_page_break: false — 節（h2）でページを改めない。
+               Kindle KFX 向けの legacy page-break-before も併せて打ち消す。 */
+            #{SECTION_PAGE_BREAK_SELECTORS.join(",\n")} {
+              break-before: auto;
+              page-break-before: auto;
+            }
+          CSS
+        end
+
+        # 明示的に false と書かれたときだけ「節で改ページしない」と解釈する。
+        # 未設定・空欄は既定の true（現行挙動）を保つため、truthy? の裏返しではない。
+        def section_page_break_disabled?(page_cfg)
+          case page_cfg[:section_page_break]&.to_s&.strip&.downcase
+          in 'false' | 'no' | 'off' | '0' then true
+          else false
+          end
         end
 
         # ================================================================

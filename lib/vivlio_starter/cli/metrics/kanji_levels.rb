@@ -117,12 +117,16 @@ module VivlioStarter
           end
         end
 
-        # 一般・専門漢字（稀でルビを振りたい）を、出現の少ない順に位置つきで返す。
+        # 一般・専門漢字（稀でルビを振りたい）を位置つきで返す。
+        # 挙げる漢字は出現の少ない順に選ぶ（稀なものほどルビが要る）が、
+        # 並べる順は初出の章・行にする——著者は原稿を頭から開いてルビを書き足すため、
+        # 出現順に並んでいないとファイルを行き来することになる。
         def locations(chars)
           chars.select { |_char, rec| %i[ippan senmon].include?(rec[:level]) }
                .sort_by { |char, rec| [rec[:count], char] }
                .first(LOCATION_CHAR_LIMIT)
                .map { |char, rec| [char, rec[:locations].uniq.first(LOCATION_PER_CHAR)] }
+               .sort_by { |_char, places| places.first }
         end
       end
     end

@@ -9,6 +9,7 @@ require 'vivlio_starter/cli/metrics/sentence_collector'
 require 'vivlio_starter/cli/metrics/sentence_endings'
 require 'vivlio_starter/cli/metrics/content_words'
 require 'vivlio_starter/cli/metrics/kanji_levels'
+require 'vivlio_starter/cli/metrics/runner'
 
 module VivlioStarter
   module CLI
@@ -292,6 +293,37 @@ module VivlioStarter
           assert_includes output, '🟡 加筆検討'
         end
 
+        # 分量警告と品質警告は「・」で連結し、1 つの 🟡 にまとめる
+        def test_format_chapter_line_joins_volume_and_quality_warnings
+          chapter = ChapterMetrics.new(path: 'contents/21-images.md', title: '画像',
+                                       chapter_num: 21, chars: 15_890, sections: [], warning: 'やや長い')
+
+          output = @formatter.format_chapter_line(chapter, 15_890, false, extra_warnings: ['表現が単調'])
+
+          assert_includes output, '🟡 やや長い・表現が単調'
+          assert_equal 1, output.scan('🟡').size
+        end
+
+        # 分量警告がない章でも、品質警告だけで 🟡 行になる
+        def test_format_chapter_line_shows_quality_warning_alone
+          chapter = ChapterMetrics.new(path: 'contents/35-math.md', title: '数式',
+                                       chapter_num: 35, chars: 4_120, sections: [], warning: nil)
+
+          output = @formatter.format_chapter_line(chapter, 15_890, false, extra_warnings: ['やや難解'])
+
+          assert_includes output, '🟡 やや難解'
+        end
+
+        # 品質警告なし（既定）のときは従来どおり 🟡 が出ない
+        def test_format_chapter_line_without_any_warning
+          chapter = ChapterMetrics.new(path: 'contents/10-intro.md', title: 'はじめに',
+                                       chapter_num: 10, chars: 8_234, sections: [], warning: nil)
+
+          output = @formatter.format_chapter_line(chapter, 15_890, false, extra_warnings: [])
+
+          refute_includes output, '🟡'
+        end
+
         private
 
         def build_vocab(kanji_ratio:, avg_word_length:, ttr:, total_tokens:, unique_tokens:,
@@ -362,6 +394,127 @@ module VivlioStarter
           result = @checker.has_warning?(1, 5000, sections)
 
           assert result
+        end
+
+        # --- 品質警告（metrics-quality-warnings-spec §1.1） ---
+
+        def test_quality_warnings_flags_monotonous_chapter
+          analysis = build_analysis(mattr: 0.45, total_tokens: 500)
+
+          assert_equal ['表現が単調'], @checker.quality_warnings(analysis)
+        end
+
+        # 詳細分析のバンドは 0.5 以下が単調帯。境界値も発火する
+        def test_quality_warnings_flags_monotonous_at_band_boundary
+          analysis = build_analysis(mattr: 0.5, total_tokens: 500)
+
+          assert_equal ['表現が単調'], @checker.quality_warnings(analysis)
+        end
+
+        def test_quality_warnings_ignores_rich_vocabulary
+          analysis = build_analysis(mattr: 0.55, total_tokens: 500)
+
+          assert_empty @checker.quality_warnings(analysis)
+        end
+
+        # 総語数が MATTR の窓幅（既定 100）未満の章は MATTR が不安定なので判定しない
+        def test_quality_warnings_skips_monotonous_below_mattr_window
+          analysis = build_analysis(mattr: 0.3, total_tokens: 80)
+
+          assert_empty @checker.quality_warnings(analysis)
+        end
+
+        def test_quality_warnings_flags_too_complex_chapter
+          analysis = build_analysis(readability_label: 'Professional', sentence_count: 30)
+
+          assert_equal ['やや難解'], @checker.quality_warnings(analysis)
+        end
+
+        def test_quality_warnings_ignores_standard_readability
+          analysis = build_analysis(readability_label: 'Standard', sentence_count: 30)
+
+          assert_empty @checker.quality_warnings(analysis)
+        end
+
+        # 数文しかない章の RS は不安定なので判定しない（境界は 10 文）
+        def test_quality_warnings_skips_too_complex_below_min_sentences
+          analysis = build_analysis(readability_label: 'Professional', sentence_count: 9)
+
+          assert_empty @checker.quality_warnings(analysis)
+        end
+
+        def test_quality_warnings_lists_both_labels
+          analysis = build_analysis(mattr: 0.4, total_tokens: 500,
+                                    readability_label: 'Professional', sentence_count: 30)
+
+          assert_equal ['表現が単調', 'やや難解'], @checker.quality_warnings(analysis)
+        end
+
+        # 除外章（既定 00 / 90-98 / 99）は分量警告と同じく品質警告も出さない
+        def test_quality_warnings_are_empty_for_excluded_chapters
+          analysis = build_analysis(chapter_num: 0, mattr: 0.4, total_tokens: 500,
+                                    readability_label: 'Professional', sentence_count: 30)
+
+          assert_empty @checker.quality_warnings(analysis)
+        end
+
+        # labels.monotonous / too_complex のカスタム文言が警告にも反映される
+        def test_quality_warnings_honor_custom_labels
+          config = ConfigLoader.new(
+            'metrics' => { 'labels' => { 'monotonous' => 'のっぺり', 'too_complex' => '難しめ' } }
+          )
+          checker = WarningChecker.new(config)
+          analysis = build_analysis(mattr: 0.4, total_tokens: 500,
+                                    readability_label: 'Professional', sentence_count: 30)
+
+          assert_equal ['のっぺり', '難しめ'], checker.quality_warnings(analysis)
+        end
+
+        # --warn は分量警告のない章でも品質警告があれば残す
+        def test_has_warning_returns_true_for_quality_warning_only
+          analysis = build_analysis(chars: 5000, mattr: 0.4, total_tokens: 500)
+
+          assert @checker.has_warning?(1, 5000, [], analysis:)
+        end
+
+        def test_has_warning_without_analysis_keeps_volume_only_behavior
+          analysis = build_analysis(chars: 5000, mattr: 0.4, total_tokens: 500)
+
+          refute @checker.has_warning?(1, 5000, [])
+          assert @checker.has_warning?(1, 5000, [], analysis:)
+        end
+
+        # 表示（詳細分析）と警告が同じバンド定数を見ていることを固定する回帰ゲート。
+        # 片方だけしきい値を動かすと必ず落ちる。
+        def test_monotonous_warning_matches_detailed_analysis_band
+          formatter = Formatter.new(@config)
+
+          [0.3, 0.45, 0.5, 0.51, 0.6, 0.75].each do |mattr|
+            shown_as_monotonous = formatter.send(:mattr_evaluation, mattr) == '表現が単調'
+            warned = @checker.quality_warnings(build_analysis(mattr:, total_tokens: 500)).include?('表現が単調')
+
+            assert_equal shown_as_monotonous, warned, "MATTR #{mattr} で表示と警告が食い違う"
+          end
+        end
+
+        private
+
+        # 品質警告の判定に必要な最小限の ChapterAnalysis を組み立てる。
+        # 既定値は「どちらの警告にも該当しない」状態にしてある。
+        def build_analysis(chapter_num: 21, chars: 8_000, mattr: 0.65, total_tokens: 500,
+                           readability_label: 'Standard', sentence_count: 30)
+          chapter = ChapterMetrics.new(path: "contents/#{format('%02d', chapter_num)}-sample.md",
+                                       title: 'サンプル', chapter_num:, chars:, sections: [], warning: nil)
+          vocab = VocabularyStats.new(
+            kanji_ratio: 28.0, avg_word_length: 2.3, ttr: 0.4, mattr:, total_tokens:,
+            unique_tokens: 300, kanji_char_count: 0, hira_char_count: 0, kata_char_count: 0,
+            alpha_char_count: 0, total_char_count: 1, total_word_length: 1, tokens_map: {}
+          )
+          readability = ReadabilityScore.new(
+            score: 35.0, label: readability_label,
+            features: ReadabilityFeatures.zero.with(sentence_count:)
+          )
+          Runner::ChapterAnalysis.new(chapter:, basic: nil, vocab:, readability:)
         end
       end
     end

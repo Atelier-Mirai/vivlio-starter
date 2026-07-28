@@ -211,6 +211,27 @@ class BookSettingsCssPageTest < Minitest::Test
 
     assert_includes lines, '--font-main-text: "Zen Old Mincho", "HackGen35 Console NF", serif;'
   end
+
+  # --- page.section_page_break（page-break-control-spec.md §2.2） ---
+
+  # false のときだけ、h2 改ページの元セレクタ一式を打ち消す規則を出す
+  def test_should_emit_section_page_break_negation_when_disabled
+    css = BSC.section_page_break_rule({ section_page_break: false })
+
+    assert_includes css, 'body.vs-header-image .section-topic h2'
+    assert_includes css, 'body.vs-header-simple h2'
+    assert_includes css, 'body.vs-header-simple.vs-kindle h2'
+    assert_includes css, 'article.vs-section-topic-epub'
+    assert_includes css, 'break-before: auto;'
+    # Kindle KFX 用の legacy 併記も打ち消す
+    assert_includes css, 'page-break-before: auto;'
+  end
+
+  # 既定（true）・未設定では何も出さず、テーマ CSS の改ページがそのまま生きる
+  def test_should_emit_nothing_when_section_page_break_enabled
+    assert_equal '', BSC.section_page_break_rule({ section_page_break: true })
+    assert_equal '', BSC.section_page_break_rule({})
+  end
 end
 
 # 実 book.yml（同梱プリセット）での全文生成が、テーマ互換の公開インターフェース
@@ -325,9 +346,39 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
     assert_includes css, 'body.preface.vs-kindle h1, body.postface.vs-kindle h1 { border-bottom-color: #0ea5e9; }'
   end
 
+  # page.section_page_break: false を book.yml に書くと、全文生成に打ち消し規則が載る
+  def test_should_render_section_page_break_negation_from_config
+    disabled = Common::CONFIG.with(page: Common::CONFIG.page.with(section_page_break: false))
+
+    assert_includes BSC.render(disabled), 'body.vs-header-simple h2'
+    # 既定（true）の book.yml では一切出ない
+    refute_includes BSC.render(Common::CONFIG), 'break-before: auto;'
+  end
+
   # theme.color / appendix_color / preface_color を差し替えた Common::CONFIG 相当の Data を組む
   def build_config(theme_color: 'yellow', appendix_color: nil, preface_color: nil)
     Common::CONFIG.with(theme: Common::CONFIG.theme.with(color: theme_color, appendix_color:, preface_color:))
+  end
+end
+
+# ================================================================
+# 打ち消しセレクタと元 CSS の一致（page-break-control-spec.md §2.2）
+# ================================================================
+# book-settings.css は後段読込のため「同特異度なら後勝ち」で打ち消せるが、
+# 元ルールのセレクタが変わると打ち消し側が特異度負けして黙って効かなくなる。
+# テーマ CSS を触ったときに必ず気づけるよう、対応を回帰として固定する。
+class BookSettingsCssSectionBreakSelectorTest < Minitest::Test
+  BSC = VivlioStarter::CLI::PreProcessCommands::BookSettingsCss
+  STYLESHEETS = File.expand_path('../../../../stylesheets', __dir__)
+
+  def test_should_mirror_selectors_that_actually_break_before_a_section
+    sources = Dir.glob(File.join(STYLESHEETS, '*.css')).map { File.read(it) }.join("\n")
+
+    BSC::SECTION_PAGE_BREAK_SELECTORS.each do |selector|
+      assert_includes sources, selector,
+                      "#{selector} が stylesheets/ に存在しません。" \
+                      '元ルールを改名したなら SECTION_PAGE_BREAK_SELECTORS も追随させてください。'
+    end
   end
 end
 

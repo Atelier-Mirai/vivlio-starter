@@ -88,7 +88,7 @@ module VivlioStarter
 
             while pending.key?(next_display_index)
               entry = pending.delete(next_display_index)
-              output_chapter_line(entry[:analysis].chapter, max_chars) if entry[:visible]
+              output_chapter_line(entry[:analysis], max_chars) if entry[:visible]
               next_display_index += 1
             end
           end
@@ -462,8 +462,11 @@ module VivlioStarter
           match ? match[1].to_i : 0
         end
 
-        def output_chapter_line(chapter, max_chars)
-          puts formatter.format_chapter_line(chapter, max_chars, show_sections?)
+        # 章行を出力する。品質警告は章構造体に無く analysis から毎回導出するため、
+        # 表示直前にここで合成する（metrics-quality-warnings-spec §2.2）。
+        def output_chapter_line(analysis, max_chars)
+          puts formatter.format_chapter_line(analysis.chapter, max_chars, show_sections?,
+                                             extra_warnings: warning_checker.quality_warnings(analysis))
         end
 
         # ================================================================
@@ -518,7 +521,8 @@ module VivlioStarter
             chapter_num = analysis.chapter.chapter_num
             return false if warning_checker.excluded_chapter?(chapter_num)
 
-            return warning_checker.has_warning?(chapter_num, analysis.chapter.chars, analysis.chapter.sections)
+            return warning_checker.has_warning?(chapter_num, analysis.chapter.chars, analysis.chapter.sections,
+                                                analysis:)
           end
 
           true
@@ -777,11 +781,16 @@ module VivlioStarter
           }
         end
 
+        # 章別統計。warnings は分量警告と品質警告を合わせた一覧で、
+        # 該当なし・除外章でも消費側が扱いやすいよう常に配列を返す。
         def analysis_to_stat_hash(analysis)
           basic = analysis.basic
           chapter = analysis.chapter
 
-          basic_stats_to_structured_hash(basic).merge('path' => chapter.path)
+          basic_stats_to_structured_hash(basic).merge(
+            'path' => chapter.path,
+            'warnings' => [chapter.warning, *warning_checker.quality_warnings(analysis)].compact
+          )
         end
 
         def basic_stats_to_structured_hash(basic)
