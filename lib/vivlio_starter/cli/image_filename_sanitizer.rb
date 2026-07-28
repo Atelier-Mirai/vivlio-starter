@@ -6,7 +6,7 @@
 # 責務:
 #   画像ファイル名に含まれる「ビルド／EPUB を壊す文字」の判定と除去を一元化する。
 #
-# なぜ一元化するか（docs/specs/epub-kindle-webp-transcode-spec.md §4）:
+# なぜ一元化するか（epub-kindle-webp-transcode-spec.md §4）:
 #   同じ基準を 2 つの局面で使うため、ここを単一の真実とする。
 #     - 検出: Guards::ImageFilenameCheck が既存プロジェクトの画像名を警告する
 #     - 正規化: vs import が Re:VIEW Starter から取り込む際にファイル名を正す

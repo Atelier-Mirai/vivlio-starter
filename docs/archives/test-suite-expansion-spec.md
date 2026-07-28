@@ -4,7 +4,7 @@
 |---|---|
 | 文書名 | テストスイート拡充仕様書（パッケージング / 成果物検査 / ファズ / 契約 / 冪等性 ほか） |
 | 対象 | vivlio-starter Gem v1.0.0-beta 以降（RC 移行前の品質保証） |
-| 関連 | `docs/specs/precondition-guard-spec.md` / `docs/specs/doctor-restore-and-plugin-tools-spec.md` / `test/vivlio_starter/robustness/README.md` |
+| 関連 | `precondition-guard-spec.md` / `doctor-restore-and-plugin-tools-spec.md` / `test/vivlio_starter/robustness/README.md` |
 | 位置づけ | 既存スイート（単体・統合・ロバストネス・前提条件・判型）を補完する 11 グループの新設 |
 | 作成 | 2026-06-12 |
 
@@ -331,9 +331,9 @@ EPUB 出力（`output.targets: epub`）の構造妥当性を第三者バリデ�
 > **2026-06-13 追記**: EP-02 を初回実行したところ、生成 EPUB に実 ERROR 35 件が見つかった
 > （WARNING は 0 件）。これは EPUB 生成パイプライン側の不具合であり、テスト（EP-02）は
 > 妥当に検出している。**EP-02 は緩めず**、不具合の分類・根本原因・修正方針を
-> `docs/specs/epub-validation-findings.md` に記録した。修正は別仕様書で対応する。
+> `epub-validation-findings.md` に記録した。修正は別仕様書で対応する。
 >
-> **2026-06-13 解消**: `docs/specs/epub-pipeline-fix-spec.md` の Fix-1〜7 を実装し、
+> **2026-06-13 解消**: `epub-pipeline-fix-spec.md` の Fix-1〜7 を実装し、
 > 全章・単章とも `epubcheck` = **FATAL 0 / ERROR 0 / WARNING 0** を達成。EP-02 は
 > `test:manual` 経由で `test:release` に含まれており（別途の除外機構は無い）、
 > **EPUB は RC 品質ゲートへ正式復帰**した。

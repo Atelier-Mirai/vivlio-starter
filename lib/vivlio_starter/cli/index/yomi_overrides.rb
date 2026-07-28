@@ -14,7 +14,7 @@
 #   3. index_yomi_overrides.yml（本ファイル）← MeCab の手前
 #   4. MeCab 推定
 #
-# 仕様: docs/specs/index-library-portability-spec.md（Phase 2）
+# 仕様: index-library-portability-spec.md（Phase 2）
 # ================================================================
 
 require 'yaml'

@@ -7,7 +7,7 @@
 #   前処理の各発生源（リンク・画像検証／コードインクルード／クロスリファレンス／
 #   QueryStream／Guard 警告）が検出した指摘を、章単位で横断的に集計する。
 #
-# 設計（docs/specs/preflight-chapter-summary-spec.md §2.1）:
+# 設計（preflight-chapter-summary-spec.md §2.1）:
 #   - 発生源は「章・行・重要度・カテゴリ・メッセージ」を record するだけ。
 #     各発生源が持つ固有の内部構造（LinkImageValidator の ValidationReport 等）は
 #     温存し、registry へのブリッジのみを足す

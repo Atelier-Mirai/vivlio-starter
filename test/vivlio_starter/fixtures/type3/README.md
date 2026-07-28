@@ -1,7 +1,7 @@
 # Type 3 フォント検証 fixture
 
 `vs build`（techbook: true）の PDF に **Type 3 フォント**が混入しないことを検査するための
-資材。背景・原因の全容は `docs/specs/type3-regression-investigation.md` を参照。
+資材。背景・原因の全容は `type3-regression-investigation.md` を参照。
 
 ## なぜ Type 3 を避けるのか
 

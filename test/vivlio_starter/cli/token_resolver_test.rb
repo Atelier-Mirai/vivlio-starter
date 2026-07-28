@@ -126,7 +126,7 @@ module VivlioStarter
         end
 
         # --- Parser Unification Regression Tests ---
-        # 仕様: docs/specs/catalog-parser-unification-spec.md §1.2 / §4
+        # 仕様: catalog-parser-unification-spec.md §1.2 / §4
 
         # バグ1回帰: catalog.yml の YAML アンカー/エイリアスで TokenResolver がクラッシュしていた
         # （CatalogLoader は許可 / TokenResolver は Psych::AliasesNotEnabled）。委譲化で解消。

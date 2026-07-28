@@ -154,7 +154,7 @@ module VivlioStarter
         # 章行をフォーマットする（公開メソッド）。
         # extra_warnings は分量以外の警告（品質警告）。分量警告とは算出タイミングが
         # 異なり章構造体に入っていないため、ここで 1 つの 🟡 に合成する
-        # （docs/specs/metrics-quality-warnings-spec.md §2.2）。
+        # （metrics-quality-warnings-spec.md §2.2）。
         def format_chapter_line(chapter, max_chars, show_sections, extra_warnings: [])
           bar = render_bar(chapter.chars, max_chars)
           all_warnings = [chapter.warning, *extra_warnings].compact
@@ -403,7 +403,7 @@ module VivlioStarter
         # ChapterAnalysis（vocab / readability）が要るため章構造体には持たせず、
         # 表示時に毎回導出する（しきい値・ラベルの変更が再解析なしで効く）。
         # 発火条件は詳細分析の評価バンドと完全に同一
-        # （docs/specs/metrics-quality-warnings-spec.md §1.1）。
+        # （metrics-quality-warnings-spec.md §1.1）。
         # @param analysis [Runner::ChapterAnalysis]
         # @return [Array<String>] 該当ラベルの配列（該当なし・除外章は空）
         def quality_warnings(analysis)

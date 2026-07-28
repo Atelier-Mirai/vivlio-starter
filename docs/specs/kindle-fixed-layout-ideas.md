@@ -3,7 +3,7 @@
 > 作成日: 2026-07-12
 > ステータス: **検討メモ（見送り・RC 後に再検討）** — 調査済み・実装せず。着想と調査結果を将来のために記録する
 > 対象: `kindle.layout: fixed` — A5 でビルド済みの PDF をページ画像化し、固定レイアウト EPUB→KPF として Kindle へ届ける案
-> 関連: `config/book.yml`（`output.kindle.layout` — 現状 `reflowable` のみ・`fixed` は将来対応として予約済み）, `lib/vivlio_starter/cli/build/epub_builder.rb:352`（`validate_epub_layout_setting!`）, `lib/vivlio_starter/cli/pdf.rb:62`（`vs pdf:rasterize`）, `docs/specs/kindle-inline-math-textify-spec.md`（先行する軽量対策）, `docs/specs/kindle-css-compatibility-notes.md`
+> 関連: `config/book.yml`（`output.kindle.layout` — 現状 `reflowable` のみ・`fixed` は将来対応として予約済み）, `lib/vivlio_starter/cli/build/epub_builder.rb:352`（`validate_epub_layout_setting!`）, `lib/vivlio_starter/cli/pdf.rb:62`（`vs pdf:rasterize`）, `kindle-inline-math-textify-spec.md`（先行する軽量対策）, `kindle-css-compatibility-notes.md`
 
 ## 0. 着想と動機
 

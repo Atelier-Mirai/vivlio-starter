@@ -8,7 +8,7 @@ module VivlioStarter
       # 必須 YAML が存在し、かつ妥当な YAML として解析できるかを検証する。
       # 存在のみを見る CatalogFileCheck より厳格（破損も検出する）。
       # doctor は diagnose の結果（欠落/破損/正常）を復元判断の根拠として共有する
-      # （docs/specs/doctor-restore-and-plugin-tools-spec.md §4）。
+      # （doctor-restore-and-plugin-tools-spec.md §4）。
       class ConfigValidityCheck < BaseCheck
         # @param paths [Array<String>] 検証対象（既定: Common::REQUIRED_YAML_FILES）
         def initialize(paths: Common::REQUIRED_YAML_FILES)

@@ -330,6 +330,6 @@ stdout = TextlintFormatter.translate_output(stdout) unless stdout.nil? || stdout
 
 ## 11. 参考資料
 
-- [docs/specs/lint_token_resolver_integration_spec.md](./lint_token_resolver_integration_spec.md): lint コマンド TokenResolver 対応仕様書
+- [lint_token_resolver_integration_spec.md](./lint_token_resolver_integration_spec.md): lint コマンド TokenResolver 対応仕様書
 - [lib/vivlio/starter/cli/textlint_formatter.rb](../../lib/vivlio/starter/cli/textlint_formatter.rb): 現行の翻訳フォーマッター
 - [lib/vivlio/starter/cli/lint.rb](../../lib/vivlio/starter/cli/lint.rb): lint コマンド本体

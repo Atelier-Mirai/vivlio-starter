@@ -6,7 +6,7 @@
 # テスト対象:
 #   Guards::ImageFilenameCheck（lib/vivlio_starter/cli/guards/image_filename_check.rb）
 #
-# 検証内容（docs/specs/epub-kindle-webp-transcode-spec.md §4・§6-1）:
+# 検証内容（epub-kindle-webp-transcode-spec.md §4・§6-1）:
 #   - 危険文字（' ( ) & 等）を含む画像名を検出し、警告のみ（非ブロッキング）で報告する
 #   - 許可文字・マルチバイト（日本語）は検出しない
 #   - 改名案（危険文字→_・連続_畳み）を detail に含む

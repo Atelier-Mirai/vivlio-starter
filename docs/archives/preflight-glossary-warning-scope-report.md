@@ -4,7 +4,7 @@
 > 発端: 章別サマリー実装（`preflight-chapter-summary-spec.md`）の実機確認中に、`vs preflight 24` で
 > 🟡 が 14 件流れた直後に「✅ Preflight 完了: 良好な状態です」と出る食い違いを発見した
 > ステータス: **対応済み（2026-07-26）** — 案 A・案 C ＋ build との挙動統一（§6.5）／索引スキャン高速化（§6.6）を実施
-> 関連: `docs/specs/KNOWN_ISSUES.md`「索引・用語集スキャンの警告が章別サマリーに載らない」
+> 関連: `KNOWN_ISSUES.md`「索引・用語集スキャンの警告が章別サマリーに載らない」
 > 対象コード: `lib/vivlio_starter/cli/index/unified_index_manager.rb:415-443`（`warn_unmatched_glossary_terms`＝R4）,
 > `lib/vivlio_starter/cli/build/pipeline.rb:429`（`run_step4_index_processing`）,
 > `lib/vivlio_starter/cli/index.rb:46`（`process_index_for_build!`）

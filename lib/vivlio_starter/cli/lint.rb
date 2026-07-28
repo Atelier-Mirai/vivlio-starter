@@ -135,7 +135,7 @@ module VivlioStarter
         # 通さない一時ファイルを textlint に直させて原稿へ書き戻し、解析パスはガード済みの
         # 一時ファイルから残存指摘を集める。ガードによる記法の中和は非可逆なので、
         # ガード済みの内容を原稿へ書き戻すことはできない（両立させるための 2 パス）。
-        # 仕様: docs/specs/lint-notation-guard-spec.md §2.3
+        # 仕様: lint-notation-guard-spec.md §2.3
         def run_textlint(files)
           fixed_count = options[:fix] ? apply_textlint_fixes!(files).size : 0
 

@@ -6,7 +6,7 @@
 # 対応する堅牢性テスト仕様書項目:
 #   - 11-2 (L307): QueryStream の data/*.yml に !ruby/object タグ
 #                 → safe_load を使っているか要確認（data_render.rb）
-#   docs/specs/vivlio_starter_robustness_test_spec.md
+#   vivlio_starter_robustness_test_spec.md
 #
 # 検証観点（上流 query-stream 1.2.1+ との統合）:
 #   A. data/*.yml に !ruby/object を含むと DataRender.process で

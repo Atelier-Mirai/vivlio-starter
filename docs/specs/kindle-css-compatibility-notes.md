@@ -138,6 +138,6 @@ Kindle 向けに CSS / 画像処理を追加・変更するときは:
 - `lib/vivlio_starter/cli/build/heading_image_composer.rb` — 見出し合成画像（`compose`=SVG / `render`=JPEG）。
 - `lib/vivlio_starter/cli/build/pipeline.rb` — スナップショット方式（方式B）とステップ登録。
 - `stylesheets/chapter-common.css` / `components.css` / `simple-header.css` / `glossary.css` / `index.css` / `preface.css` / `code.css` — `body.vs-kindle` / `body.vs-epub` フォールバック。
-- `docs/specs/epub-kindle-target-split-spec.md` — ターゲット分離の全体設計。
-- `docs/specs/kindle-simple-header-svg-spec.md` — 付録見出しの SVG 画像化（実装したが却下）。
-- `docs/archives/epub-code-line-numbers-spec.md` — コード行番号と Kindle テーブルの不具合（実装済み）。
+- `epub-kindle-target-split-spec.md` — ターゲット分離の全体設計。
+- `kindle-simple-header-svg-spec.md` — 付録見出しの SVG 画像化（実装したが却下）。
+- `epub-code-line-numbers-spec.md` — コード行番号と Kindle テーブルの不具合（実装済み）。

@@ -7,7 +7,7 @@
 #   Units（lib/vivlio_starter/cli/units.rb）— 印刷単位の変換定数と長さパーサ。
 #   CONFIG 非依存の純粋関数のため chdir 等の段取りは不要。
 #
-# 仕様: docs/specs/page-unit-conversion-spec.md §3.2 / §7.1
+# 仕様: page-unit-conversion-spec.md §3.2 / §7.1
 # ================================================================
 
 require 'test_helper'

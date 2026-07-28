@@ -8,7 +8,7 @@
 # 【背景】
 #   output.targets を `pdf, print_pdf, epub` にしてビルドすると、入稿用 PDF
 #   （print_pdf）の本文が欠落し titlepage/legalpage/colophon の 4 ページのみに
-#   なる重大不具合があった（docs/specs/build-output-bugfix-spec.md ②）。
+#   なる重大不具合があった（build-output-bugfix-spec.md ②）。
 #   単体ターゲットでは正常だが複合ターゲットで壊れる種の回帰を、成果物どうしの
 #   突き合わせで検知する。
 #
@@ -47,7 +47,7 @@ class TargetConsistencyTest < Minitest::Test
   #   各フォーマット単体（baseline）＋ epub↔kindle ペア（共有 HTML 汚染の直接検証）
   #   ＋ 全部入り（最大干渉）
   # に絞れば検出力を保ったまま大幅に軽量化できる（pdf/print_pdf/epub/kindle で
-  # 2^4−1=15 → 6 ビルド）。docs/specs/epub-kindle-target-split-spec.md §5-2。
+  # 2^4−1=15 → 6 ビルド）。epub-kindle-target-split-spec.md §5-2。
   #
   # kindle はターゲット実装後（pipeline が targets.kindle を参照した時点）に自動で
   # 有効化される。未実装の間は kindle を除いた 3 フォーマット（4 ビルド）で回す。
@@ -131,7 +131,7 @@ class TargetConsistencyTest < Minitest::Test
 
   # epub が単体ターゲットと複合ターゲットで一致する（spine 構成・本文の実体）
   #
-  # ⑦（docs/specs/epub-backlink-dedup-isolation-spec.md）実装により、PDF を併せて
+  # ⑦（epub-backlink-dedup-isolation-spec.md）実装により、PDF を併せて
   # ビルドしても EPUB は Step 8（backlink dedup）前の章 HTML から生成される
   # （EpubFlow#run! 冒頭で pre-dedup スナップショットを復元）。このためリフロー EPUB は
   # 「全 † / 全出現リンク」を保ち、epub 単体（dedup 非実行）と pdf+epub（PDF 側のみ dedup）

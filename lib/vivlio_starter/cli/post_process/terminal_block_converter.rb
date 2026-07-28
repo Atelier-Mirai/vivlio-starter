@@ -16,7 +16,7 @@
 #   stylesheets/code.css の pre[class*="language-"] に巻き込まれ、
 #   コードブロックの白地・枠線が端末枠の中に二重で描かれるため。
 #
-# 仕様: docs/specs/terminal-literal-spec.md
+# 仕様: terminal-literal-spec.md
 # ================================================================
 
 require 'nokogiri'

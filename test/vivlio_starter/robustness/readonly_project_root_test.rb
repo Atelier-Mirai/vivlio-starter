@@ -6,7 +6,7 @@
 # 対応する堅牢性テスト仕様書項目:
 #   - 1-3-1 (L77): プロジェクトルートへの書き込み権限なし
 #                  → ⚠️ PDF 出力段階で明示的エラー
-#   docs/specs/vivlio_starter_robustness_test_spec.md
+#   vivlio_starter_robustness_test_spec.md
 #
 # 期待される挙動:
 #   書き込み不可のディレクトリで Ruby 側のファイル作成が発生した場合、

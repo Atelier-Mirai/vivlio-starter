@@ -6,7 +6,7 @@
 # テスト対象:
 #   DoctorCommands::ConfigSalvager（lib/vivlio_starter/cli/doctor/config_salvager.rb）
 #
-# 検証内容（docs/specs/doctor-restore-and-plugin-tools-spec.md §7.3）:
+# 検証内容（doctor-restore-and-plugin-tools-spec.md §7.3）:
 #   SV-01: catalog.yml 破損 → contents/ から章番号順・正しいセクションで再構築
 #   SV-02: 部タイトル・除外設定が復元されない旨を案内する
 #   SV-03: book.yml 破損（値の行は無傷） → main_title / author 等を救出

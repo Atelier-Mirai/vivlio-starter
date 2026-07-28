@@ -10,7 +10,7 @@ module VivlioStarter
   module CLI
     module Build
       # Build::CatalogLoader.load_labeled_entries（TokenResolver の下層 API）の仕様検証。
-      # 仕様: docs/specs/catalog-parser-unification-spec.md §4
+      # 仕様: catalog-parser-unification-spec.md §4
       class CatalogLoaderTest < Minitest::Test
         # --- ラベル伝播 ---
 

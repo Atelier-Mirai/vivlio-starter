@@ -16,7 +16,7 @@
 # 「vs build が報告することを先に見る」機能なので、build が言わないことは言わない:
 #   章を絞った実行（vs preflight 24）は vs build 24（single mode）と同じく Step 4 を行わない。
 #   索引・用語集は書籍全体を単位とする検査のため、章を絞ると誤検知の山になる
-#   （docs/specs/preflight-glossary-warning-scope-report.md）。
+#   （preflight-glossary-warning-scope-report.md）。
 #
 # 終了コード:
 #   0: 🔴 なし（🟡 警告のみ、または問題なし）
@@ -74,7 +74,7 @@ module VivlioStarter
           # Guard.run! より前に置く（preflight-chapter-summary-spec.md §2.2）
           PreProcessCommands::IssueRegistry.reset!
 
-          # 前提条件の網羅的診断（docs/specs/precondition-guard-spec.md Phase 4）
+          # 前提条件の網羅的診断（precondition-guard-spec.md Phase 4）
           # preflight は診断コマンドのため build より広く全 Check を実行する。
           # Guard.run! は全違反をログしてから停止判定するため、複数の問題を一度に報告できる
           Guards::Guard.run!(

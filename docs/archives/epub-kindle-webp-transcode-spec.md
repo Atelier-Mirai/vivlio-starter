@@ -3,8 +3,8 @@
 > 作成日: 2026-06-16
 > ステータス: **策定（実装前）**
 > 対象: `vs build`（epub ターゲット）が生成する EPUB の Kindle 変換不能（WebP 非対応）の恒久対応
-> 原因調査: `docs/specs/epub-kindle-webp-incompatibility-report.md`
-> 関連: `docs/specs/math-frontispiece-svg-spec.md`（③-a 扉絵/節絵の JPEG 化）, `epub-kindle-compatibility-report.md`
+> 原因調査: `epub-kindle-webp-incompatibility-report.md`
+> 関連: `math-frontispiece-svg-spec.md`（③-a 扉絵/節絵の JPEG 化）, `epub-kindle-compatibility-report.md`
 > 優先度: **高**（EPUB の最重要ターゲット Kindle / Amazon KDP で変換不能 → RC ブロッカー）
 > スコープ: §5-1（WebP トランスコード）＋ §5-3（不要背景 WebP 除外）＋ §5-4（不正ファイル名の事前検出。W14010 アポストロフィを一般化）
 

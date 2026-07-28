@@ -6,7 +6,7 @@
 # テスト対象:
 #   TokenResolver::Resolver
 #
-# 検証する性質（docs/specs/test-suite-expansion-spec.md §7.2）:
+# 検証する性質（test-suite-expansion-spec.md §7.2）:
 #   FZ-03: resolve(任意トークン列) は例外を出さず、常に Entry の配列を返す
 #          （不正トークンは invalid Entry / 空配列として扱われ、クラッシュしない）
 #

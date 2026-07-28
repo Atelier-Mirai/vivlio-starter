@@ -29,7 +29,7 @@
 
 ## 記法・置換ルール
 
-- **`@` ディレクティブ拡張**: Tier 1（`@pageref`・`@pagebreak:recto`/`:verso`・`@version`/`@today`/`@title`・`@qr`・`@hspace`）は **2026-07-28 に実装完了** → [at-directive-tier1-spec.md](../archives/at-directive-tier1-spec.md)。Tier 2（`@nobr`・`@fill`・`@index`）と `@abbr` の代替案（用語集統合 or 標準 `*[…]:` `<abbr>`）は引き続きブレスト段階 → [at-directive-ideas.md](at-directive-ideas.md)
+- **`@` ディレクティブ拡張**: Tier 1（`@pageref`・`@pagebreak:recto`/`:verso`・`@version`/`@today`/`@title`・`@qr`・`@hspace`）は **2026-07-28 に実装完了** → `at-directive-tier1-spec.md`。Tier 2（`@nobr`・`@fill`・`@index`）と `@abbr` の代替案（用語集統合 or 標準 `*[…]:` `<abbr>`）は引き続きブレスト段階 → [at-directive-ideas.md](at-directive-ideas.md)
 
 - [Medium] **`vs furigana`（半自動ルビ付与）**: 小学生向けなど、対象読者の学年より上の漢字へ振り仮名 `{漢字|よみ}` を**半自動**で付けるコマンド。`vs metrics` の「漢字レベル（ルビ候補）」で**どの漢字が対象か**は把握できるので、その先の「本文へ実際にルビ記法を書き込む」変換を担う。
   - **対象の指定**: `book.yml` や引数で「基準レベル」を選ぶ（例: 小4向け＝小5以上／中学以上／常用外のみ、等。レベル定義は [furigana-level-spec] 参照＝`vs metrics` と共通の L0〜L4）。

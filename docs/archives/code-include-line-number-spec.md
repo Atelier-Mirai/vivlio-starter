@@ -4,7 +4,7 @@
 > ステータス: **実装済み（2026-07-12）**。`epub-code-line-numbers-spec.md`（F 案）と同時実装のため、§3.3 は `inject_code_line_numbers_for_kindle!` の採番（`start + idx`）として、§3.5 の `code.css:193` は F 案の新セレクタ `.vs-code-epub`（具体名フォント）として実装された
 > **後日追記（2026-07-12）**: `epub-code-line-numbers-spec.md` が F 案（テーブル廃止・行ブロック＋ぶら下げインデント）で方式確定した。両仕様は同じ箇所を触るため、**あちらが先に実装された場合**は本仕様の §3.3 と §3.5 の一部を読み替える（各節の追記参照。読み替えの詳細はあちらの §8）。実装順序はどちらが先でも整合する。
 > 対象: `` ```include:file.rb:22-25``` `` で範囲取り込みしたコードブロックの表示行番号
-> 関連: `lib/vivlio_starter/cli/pre_process/markdown_transformer.rb`, `lib/vivlio_starter/cli/prism_lines.rb`, `lib/vivlio_starter/cli/build/epub_builder.rb`, `stylesheets/prism.css`, `stylesheets/code.css`, `stylesheets/page-settings.css`, `lib/vivlio_starter/cli/techbook/processor.rb`, `docs/archives/epub-code-line-numbers-spec.md`, `docs/archives/svg_luster_bugfix_technical_notes.md`
+> 関連: `lib/vivlio_starter/cli/pre_process/markdown_transformer.rb`, `lib/vivlio_starter/cli/prism_lines.rb`, `lib/vivlio_starter/cli/build/epub_builder.rb`, `stylesheets/prism.css`, `stylesheets/code.css`, `stylesheets/page-settings.css`, `lib/vivlio_starter/cli/techbook/processor.rb`, `epub-code-line-numbers-spec.md`, `svg_luster_bugfix_technical_notes.md`
 
 ## 背景
 現在は、`include:prime2.rb:22-25 `` のように範囲指定で取り込んだコードは、現状ハイライト表示の行番号が常に `1, 2, 3, 4` から振り直される。元ファイルでの実際の行番号（`22, 23, 24, 25`）を表示できれば、抜粋元との対応が取りやすい。`prism.css`（行番号プラグインの `counter-reset` / 開始値）を調整し、取り込み時に開始行番号を `<pre>` 等へ渡す仕組みを足す必要がある。
@@ -98,9 +98,9 @@ flowchart TD
 
 - `prism.css:14` の `code[class*="language-"]` は特異度 (0,1,1) で `code.css:4` の `code` (0,0,1) に勝つため、**ハイライト済みコードブロックの中身は正しく `--font-code` で組まれる**。
 - `pre[class*="language-"]` は両者とも (0,1,1) で、`chapter.css` の import 順（`prism.css` → `code.css`）により **`code.css` が後勝ちして無効化される**。ただし文字は内側の `<code>` にあるので実害は出ていない。
-- 実害が出るのは (a) **`language-*` クラスを持たない素のインライン `<code>`**（本文中の `` `book.yml` `` 等 → 明朝で組まれる）、(b) **Kindle のコードテーブル `table.vs-code-epub`**（総称 monospace）、(c) **`language-*` を持たない素の `<pre>`**。なお (c) の唯一の実例である `.terminal` の `<pre>` は `chapter-common.css` 側で `font-family: var(--font-code), monospace` を明示済み（`../archives/terminal-literal-spec.md`）。
+- 実害が出るのは (a) **`language-*` クラスを持たない素のインライン `<code>`**（本文中の `` `book.yml` `` 等 → 明朝で組まれる）、(b) **Kindle のコードテーブル `table.vs-code-epub`**（総称 monospace）、(c) **`language-*` を持たない素の `<pre>`**。なお (c) の唯一の実例である `.terminal` の `<pre>` は `chapter-common.css` 側で `font-family: var(--font-code), monospace` を明示済み（`terminal-literal-spec.md`）。
 
-この不具合は一度発見されているが、**Techbook モードの上書きレイヤでしか回避されていない**。`lib/vivlio_starter/cli/techbook/processor.rb:346` がビルド時に `:root { --code-font: var(--font-code); }` と `code, pre, code[class*="language-"], pre[class*="language-"] { font-family: var(--font-code), monospace !important; }` を生成 HTML の `<head>` へインライン `<style>` として注入する（経緯: `docs/archives/svg_luster_bugfix_technical_notes.md` §4.8 — Type 3 フォント混入対策の一環）。
+この不具合は一度発見されているが、**Techbook モードの上書きレイヤでしか回避されていない**。`lib/vivlio_starter/cli/techbook/processor.rb:346` がビルド時に `:root { --code-font: var(--font-code); }` と `code, pre, code[class*="language-"], pre[class*="language-"] { font-family: var(--font-code), monospace !important; }` を生成 HTML の `<head>` へインライン `<style>` として注入する（経緯: `svg_luster_bugfix_technical_notes.md` §4.8 — Type 3 フォント混入対策の一環）。
 
 分岐は「PDF 経路か EPUB 経路か」**ではなく**「`output.pdf.techbook` が `true` か `false` か」である点に注意する。`pipeline.rb:116` の `techbook post-process` ステップは**ターゲットに関わらず無条件に走り**（有効判定は `Techbook::Processor#enabled?` が内部で行う）、注入先の `html/` は **PDF も EPUB/Kindle も共有する原本**なので、`techbook: true` なら 4 ターゲットすべてにこの `<style>` が乗る。Kindle の `strip_webp_inline_styles_for_kindle!` は webp の `url()` を含む宣言だけを剥がすため、`--code-font: var(--font-code);` は Kindle でも残る（`test/vivlio_starter/cli/epub_builder_sanitize_test.rb:326` がこの挙動を固定している）。
 
@@ -195,7 +195,7 @@ flowchart TD
 - `code.css` の 3 箇所を書き換える。総称フォールバックを併せて足し、カスタムプロパティが解決できなくても明朝へ落ちないようにする:
   - `code.css:5`（`code`） → `font-family: var(--font-code), monospace;`
   - `code.css:20`（`pre, pre[class*="language-"]`） → `font-family: var(--font-code), monospace;`
-  - `code.css:193`（`body.vs-kindle table.vs-code-epub`） → Kindle(KFX) は `var()` を解さないため、Kindle 劣化規約（`../archives/terminal-literal-spec.md` / `../archives/epub-kindle-layout-spec.md` と同方針）に従い**具体名で** `font-family: "HackGen35 Console NF", monospace;` と書く。
+  - `code.css:193`（`body.vs-kindle table.vs-code-epub`） → Kindle(KFX) は `var()` を解さないため、Kindle 劣化規約（`terminal-literal-spec.md` / `epub-kindle-layout-spec.md` と同方針）に従い**具体名で** `font-family: "HackGen35 Console NF", monospace;` と書く。
     - **読み替え（2026-07-12 追記）**: `epub-code-line-numbers-spec.md`（F 案）が先に実装済みの場合、このセレクタは `.vs-code-epub`（div 容器）へ置き換わっており、あちらの新 CSS が最初から具体名＋`monospace` で書かれているはず。その場合この項目は「新セレクタのフォント指定を確認して完了」とする。
 - `lib/vivlio_starter/cli/techbook/processor.rb:346` の `--code-font: var(--font-code);` 注入は本修正後は不要になるので**削除する**。同ブロックの `code, pre, … { font-family: var(--font-code), monospace !important; text-shadow: none !important; }` は Type 3 フォント対策なので**残す**。
 - 修正後は `ruby copy_to_scaffold.rb` で `lib/project_scaffold/stylesheets/code.css` へ同期する。

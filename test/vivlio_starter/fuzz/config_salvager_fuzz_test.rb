@@ -6,7 +6,7 @@
 # テスト対象:
 #   DoctorCommands::ConfigSalvager / Guards::ConfigValidityCheck
 #
-# 検証する性質（docs/specs/test-suite-expansion-spec.md §7.2）:
+# 検証する性質（test-suite-expansion-spec.md §7.2）:
 #   FZ-01: salvage(book.yml, 任意文字列) は例外を出さない。
 #          戻り値は nil または「妥当な YAML Hash になる content」を持つ Result
 #   FZ-02: salvage(catalog.yml, 任意文字列) + ランダムな contents/ 構成 で同上

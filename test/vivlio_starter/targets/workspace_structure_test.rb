@@ -4,7 +4,7 @@
 # test/vivlio_starter/targets/workspace_structure_test.rb
 #
 # ワークスペース構造保証テスト（WS）— 実ビルドを伴う構造検証
-# docs/specs/vivlioverso-p4-investigation.md §5.5
+# vivlioverso-p4-investigation.md §5.5
 #
 # 【背景】
 #   P4（ビルドワークスペース分離）で、ビルドの中間物はすべて

@@ -163,7 +163,7 @@ module VivlioStarter
         # 新仕様: _titlepage, _legalpage, _colophon を使用
         #
         # 設計方針: mtime 比較・キャッシュ判定は行わず、常に .md / HTML / PDF を再生成する。
-        # 詳細は docs/specs/book_yml_regeneration_spec.md を参照。
+        # 詳細は book_yml_regeneration_spec.md を参照。
         def build_front_pages_and_tail!
           # --- Phase: 特殊ページ HTML を常に再生成（html/ へ） ---
           special_basenames = %w[_titlepage _legalpage _colophon]

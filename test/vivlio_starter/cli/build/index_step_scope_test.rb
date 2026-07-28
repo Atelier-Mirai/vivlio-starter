@@ -5,7 +5,7 @@
 # ================================================================
 # テスト対象:
 #   UnifiedBuildPipeline#run_step4_index_processing のスコープ判定
-#   （docs/specs/preflight-glossary-warning-scope-report.md）
+#   （preflight-glossary-warning-scope-report.md）
 #
 # 検証内容:
 #   - 章を絞った実行では索引処理を行わない（vs build <章> と挙動を揃える）

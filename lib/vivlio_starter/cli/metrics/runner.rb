@@ -485,7 +485,7 @@ module VivlioStarter
         end
 
         # catalog.yml から有効章を解決する（パーサは TokenResolver に一本化。
-        # 仕様: docs/specs/catalog-parser-unification-spec.md §3.3）。
+        # 仕様: catalog-parser-unification-spec.md §3.3）。
         # metrics は統計ツールのため catalog 破損でもハード停止せず、書ける範囲で答える
         # （catalog 不在/空 → 全 Markdown へフォールバック、破損 → warn + フォールバック）。
         def resolve_from_catalog

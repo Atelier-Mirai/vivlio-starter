@@ -27,7 +27,7 @@
 # EPUB config（EpubBuilder.generate_epub_config!・P3-4 §2.6）と共用する。
 # かつて本モジュールが全文生成していたルートの vivliostyle.config.js は、
 # 手動フロー（vs entries → vs pdf）の実体消滅に伴い撤去した
-# （docs/specs/vivlioverso-manual-flow-removal-spec.md）。
+# （vivlioverso-manual-flow-removal-spec.md）。
 # ================================================================
 
 require 'fileutils'

@@ -5,7 +5,7 @@
 # ================================================================
 # 責務:
 #   `vs build myawesome.md` — config/book.yml や config/catalog.yml を介さず、
-#   単一 Markdown を閲覧用 PDF にする軽量経路（docs/archives/direct-build-spec.md）。
+#   単一 Markdown を閲覧用 PDF にする軽量経路（direct-build-spec.md）。
 #
 # 設計方針（案A: 一時ワークスペース方式）:
 #   専用パイプラインは作らない。一時ディレクトリに「最小プロジェクト相当」

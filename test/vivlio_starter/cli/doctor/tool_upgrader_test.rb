@@ -6,7 +6,7 @@
 # テスト対象:
 #   ToolUpgrader モジュール（lib/vivlio_starter/cli/doctor/tool_upgrader.rb）
 #   `vs upgrade` の外部ツール更新フェーズ
-#   （docs/archives/doctor-tool-upgrade-spec.md §3 のテスト項目 1〜6）。
+#   （doctor-tool-upgrade-spec.md §3 のテスト項目 1〜6）。
 #
 # 検証内容:
 #   1. 計画生成: brew/npm outdated のスタブ JSON から更新計画が正しく組まれる

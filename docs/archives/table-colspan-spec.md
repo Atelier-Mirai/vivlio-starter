@@ -402,7 +402,7 @@ td[colspan] {
 - `config/spellcheck_dictionaries/vivlio-starter-terms.txt`: `table-rotate` → `rotate-table`。
 - scaffold 側（`lib/project_scaffold/`）は `ruby copy_to_scaffold.rb` で同期。
 - `CHANGELOG.md`（unreleased）: Added（拡張テーブル・自動フィット）＋ **Breaking 3 点**を明記 — (1) `:::{.table-rotate}` → `:::{.rotate-table}`（旧記法は変換されない）、(2) テーブル内 `||` の意味変更（空セル→結合。空セルは `| |`）、(3) `shift-y` の意味変更（センタリング補正値→中央からの追加オフセット。既定 +25% → 自動センタリング）。本仕様書への参照リンクを付ける。
-- `docs/specs/PLANNED.md` の該当項目（[Low] テーブルの横結合）を消化としてマーク（または削除）。
+- `PLANNED.md` の該当項目（[Low] テーブルの横結合）を消化としてマーク（または削除）。
 
 ## 12. 将来拡張（本実装のスコープ外）
 

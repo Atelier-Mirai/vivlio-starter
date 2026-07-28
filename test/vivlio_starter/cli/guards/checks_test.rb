@@ -6,7 +6,7 @@
 # テスト対象:
 #   Guards の各 Check（lib/vivlio_starter/cli/guards/*.rb）
 #
-# 検証内容（docs/specs/precondition-guard-spec.md §7.1）:
+# 検証内容（precondition-guard-spec.md §7.1）:
 #   GC-01: CatalogEntriesCheck - 全参照先が実在 → 違反 0 件
 #   GC-02: CatalogEntriesCheck - 1 件欠落 → :error 1 件・detail に該当パス
 #   GC-03: CatalogEntriesCheck - catalog.yml なし → 違反 0 件

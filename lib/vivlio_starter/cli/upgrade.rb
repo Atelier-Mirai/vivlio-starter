@@ -7,12 +7,12 @@
 #   執筆環境をまとめて最新化する（`vs upgrade` のドメイン層）。三段構成:
 #   ① vivlio-starter 本体の gem 更新（新版があれば確認のうえ gem update →
 #      新しい版の vs で自分を再起動して続きを実行）
-#   ② プロジェクトの雛形追従（docs/archives/project-upgrade-command-spec.md）
+#   ② プロジェクトの雛形追従（project-upgrade-command-spec.md）
 #   ③ 外部ツールの一括更新（DoctorCommands::ToolUpgrader へ委譲）
 #   ①を最初に行うのは、古い gem の雛形で②を済ませると本体更新後にもう一度
 #   upgrade が必要になるため。②を③より先に行うのは、対話（競合確認）を
 #   前半へ集め、時間のかかる brew/npm 更新を無人で流せるようにするため
-#   （docs/archives/upgrade-unification-spec.md）。
+#   （upgrade-unification-spec.md）。
 #
 # 雛形追従の仕組み（三者比較）:
 #   config/scaffold.lock（展開時の雛形ハッシュ）・現在の雛形・プロジェクト現物の

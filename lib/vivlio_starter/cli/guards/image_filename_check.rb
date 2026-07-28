@@ -6,7 +6,7 @@ module VivlioStarter
   module CLI
     module Guards
       # 著者が配置した画像のファイル名に、ビルド／EPUB を壊す文字が含まれていないかを
-      # ビルド前に検出して警告する（docs/specs/epub-kindle-webp-transcode-spec.md §4）。
+      # ビルド前に検出して警告する（epub-kindle-webp-transcode-spec.md §4）。
       #
       # きっかけ: アポストロフィ `'` を含む画像が Kindle で解決できず W14010 になった。
       # `'` 限定ではなく「確実に壊れる文字」一般を、改名案と出現箇所を添えて警告する。

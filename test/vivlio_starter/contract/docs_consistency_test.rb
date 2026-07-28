@@ -3,7 +3,7 @@
 # ================================================================
 # Test: contract/docs_consistency_test.rb
 # ================================================================
-# ドキュメント整合テスト（DC）— docs/specs/test-suite-expansion-spec.md §11
+# ドキュメント整合テスト（DC）— test-suite-expansion-spec.md §11
 #
 # 検証内容:
 #   DC-01: contents/*.md 中の `vs <サブコマンド>` 表記がすべて実在する

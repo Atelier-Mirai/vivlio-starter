@@ -4,7 +4,7 @@
 |---|---|
 | 文書名 | Phase 5: doctor による設定ファイル復元・プラグイン外部ツール統合 仕様書 |
 | 対象 | vivlio-starter Gem v1.0.0-beta 以降 / vivlio-starter-pdf プラグイン |
-| 関連 | `docs/specs/precondition-guard-spec.md`（Phase 1〜4） |
+| 関連 | `precondition-guard-spec.md`（Phase 1〜4） |
 | 位置づけ | Precondition Guard 段階導入計画の Phase 5 |
 | 作成 | 2026-06-11 |
 

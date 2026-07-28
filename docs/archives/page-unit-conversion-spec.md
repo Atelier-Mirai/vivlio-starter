@@ -127,7 +127,7 @@ module VivlioStarter
     # 印刷単位の変換定数と長さパーサを一元管理する。
     # 基準は「1 inch = 25.4mm = 72pt」「1Q = 0.25mm」の 2 関係のみで、
     # 他の係数はすべてここから導出する（近似値の直書きを排除するため）。
-    # 仕様: docs/specs/page-unit-conversion-spec.md
+    # 仕様: page-unit-conversion-spec.md
     module Units
       MM_PER_INCH = 25.4
       PT_PER_INCH = 72.0
@@ -194,7 +194,7 @@ end
 処理順序を**「(1) 文字サイズを pt 化 → (2) その結果を使って行送りを解決 → (3) compact」**と定める（B1 修正）。参照実装:
 
 ```ruby
-# page 設定の単位を正規化する（仕様: docs/specs/page-unit-conversion-spec.md §3.3）。
+# page 設定の単位を正規化する（仕様: page-unit-conversion-spec.md §3.3）。
 # 文字サイズを先に pt 化し、その結果を基準に行送り（倍率/em）を絶対 pt へ解決する。
 # 行送りを倍率のまま CSS へ渡さないのは、参照箇所ごとの font-size に依存させず
 # 版面の行グリッドを揃えるため（同 §1.3）。

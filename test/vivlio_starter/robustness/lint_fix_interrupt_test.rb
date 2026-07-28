@@ -7,9 +7,9 @@
 #   - 5-6-2 (L231): --fix 実行中に Ctrl+C
 #                   → 元ファイルが textlint-disable に置換されたまま
 #                     残る可能性を懸念していた
-#   docs/specs/vivlio_starter_robustness_test_spec.md
+#   vivlio_starter_robustness_test_spec.md
 #
-# 現行実装の設計（docs/specs/lint-notation-guard-spec.md §2.3）:
+# 現行実装の設計（lint-notation-guard-spec.md §2.3）:
 #   `convert_vs_lint_comments` は元ファイルを書き換えず、変換後の内容を `Tempfile`
 #   に書き出して textlint へ渡す。--fix 指定時は「修正パス → 解析パス」の 2 段構成で、
 #   修正パスが一時ファイルを textlint に直させ、**textlint プロセスの正常終了後にのみ**

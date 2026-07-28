@@ -2,7 +2,7 @@
 
 # `vs upgrade` の Samovar エントリ。処理本体は `CLI::UpgradeCommands` に集約する。
 # 本体 gem 更新 → 雛形追従 → 外部ツール更新 の三段を一括実行する（統合の経緯は
-# docs/archives/upgrade-unification-spec.md）。プロジェクト外でも実行でき、
+# upgrade-unification-spec.md）。プロジェクト外でも実行でき、
 # その場合は雛形追従だけがスキップされる。
 
 require_relative '../upgrade'

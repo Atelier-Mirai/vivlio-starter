@@ -6,7 +6,7 @@
 # テスト対象:
 #   DoctorCommands.diagnose_config_files!（lib/vivlio_starter/cli/doctor.rb）
 #
-# 検証内容（docs/specs/doctor-restore-and-plugin-tools-spec.md §7.2 / §7.3）:
+# 検証内容（doctor-restore-and-plugin-tools-spec.md §7.2 / §7.3）:
 #   DR-01: catalog.yml 欠落 + --fix → scaffold から復元・妥当な YAML になる
 #   DR-02: book.yml 破損 + --fix → .bak 退避・本体は妥当・プレースホルダが残らない
 #   DR-03: 妥当な book.yml + --fix → 変更されない（バックアップも作らない）

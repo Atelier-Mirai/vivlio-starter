@@ -9,7 +9,7 @@
 #   - merge_hardcoded_defaults（既定値スキーマ・deep merge）
 #   - reload_configuration!（book.yml 編集後の再読込）
 #
-# 仕様: docs/specs/config-access-unification-spec.md
+# 仕様: config-access-unification-spec.md
 #   正規記法は「静的キーはドット・動的キーはシンボル dig」。
 #   [] のメソッド漏れ（旧実装では CONFIG[:to_h] が設定全体を返した）と
 #   セクション欠落時の NoMethodError が再発しないことを回帰として固定する。
@@ -206,7 +206,7 @@ module VivlioStarter
 
     # 版面単位変換（normalize_page_units / resolve_page_size）の検証。
     # 純粋メソッド（Hash 入出力）のため chdir 不要。
-    # 仕様: docs/specs/page-unit-conversion-spec.md §3.3 / §7.2
+    # 仕様: page-unit-conversion-spec.md §3.3 / §7.2
     class CommonPageUnitConversionTest < Minitest::Test
       def test_should_convert_q_font_size_to_pt_in_page_units
         result = Common.normalize_page_units(base_font_size: '24Q')

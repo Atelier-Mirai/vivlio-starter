@@ -7,7 +7,7 @@
 #   Vivliostyle CLI を --format epub で実行し EPUB を生成する。
 #   EPUB 専用の vivliostyle.config.epub.js を参照してビルドする。
 #
-# 仕様書: docs/specs/epub_output_spec.md
+# 仕様書: epub_output_spec.md
 #
 # 依存:
 #   - Build::EpubBuilder: EPUB 用中間ファイル生成

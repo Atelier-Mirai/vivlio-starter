@@ -31,7 +31,7 @@ B5 実版面・EPUB §7.1/§7.2 を実測確認。config.js 全文生成化は P
 module VivlioStarter
   module CLI
     # Markdown のコード領域（フェンス/インライン）解釈の唯一実装。
-    # 仕様: docs/specs/vivlioverso-foundation-workplans.md P1
+    # 仕様: vivlioverso-foundation-workplans.md P1
     module Masking
       module_function
 

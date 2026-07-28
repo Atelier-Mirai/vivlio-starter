@@ -5,7 +5,7 @@
 # ================================================================
 # 対応する堅牢性テスト仕様書項目:
 #   - 1-2-1 (L68): catalog.yml に登録されているが contents/ にファイルがない
-#   docs/specs/vivlio_starter_robustness_test_spec.md
+#   vivlio_starter_robustness_test_spec.md
 #
 # 期待される挙動:
 #   該当章は Entry.exists=false → build で警告し成果物から除外、**全体は成功**。

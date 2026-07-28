@@ -435,7 +435,7 @@ module VivlioStarter
       # 判定材料は「今回のスキャン結果」なので、章を絞った実行では出現しないのが当然になる
       # （1 章だけを対象にすると用語集語がほぼ全滅して誤検知の山になる）。
       # 全章を走査したときだけ意味を持つ検査なので、部分実行では黙る。
-      # 詳細 → docs/specs/preflight-glossary-warning-scope-report.md
+      # 詳細 → preflight-glossary-warning-scope-report.md
       # @param glossary_terms [Array<Hash>] 用語集対象の用語
       # @param glossary_backlinks [Hash{String => Array}] 今回のスキャンで出現した語 → 出現箇所
       # @param chapters [Array<String>] ビルド対象章

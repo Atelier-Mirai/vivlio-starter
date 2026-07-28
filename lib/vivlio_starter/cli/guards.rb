@@ -7,7 +7,7 @@
 #   各コマンドの実行前に「成立するための最低限の前提条件」を検証し、
 #   違反時はスタックトレースではなく行動可能なメッセージで早期に停止する。
 #
-# 設計（docs/specs/precondition-guard-spec.md）:
+# 設計（precondition-guard-spec.md）:
 #   - Guard 層: コマンド冒頭で致命的な前提だけを高速検証（違反で GuardError）
 #   - Check 層: 単一責務の検証オブジェクト群（preflight / doctor からも再利用可能）
 #

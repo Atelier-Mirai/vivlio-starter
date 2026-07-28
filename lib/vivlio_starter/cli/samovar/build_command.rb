@@ -76,7 +76,7 @@ module VivlioStarter
 
           warn_theme_option_ignored
 
-          # 前提条件の検証（docs/specs/precondition-guard-spec.md）
+          # 前提条件の検証（precondition-guard-spec.md）
           # 違反があれば 🔴 メッセージを表示して本処理に入らず終了する
           Guards::Guard.run!(
             Guards::ProjectRootCheck.new,

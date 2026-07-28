@@ -8,7 +8,7 @@
 #                 YAML anchors/aliases を悪用
 #                 → safe_load + aliases: true のため DoS は起きにくいが、
 #                   permitted_classes が限定的かを再確認
-#   docs/specs/vivlio_starter_robustness_test_spec.md
+#   vivlio_starter_robustness_test_spec.md
 #
 # 検証観点:
 #   A. !ruby/object:Object を含む catalog は Psych::DisallowedClass を捕捉して

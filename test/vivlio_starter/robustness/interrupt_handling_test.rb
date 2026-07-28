@@ -9,7 +9,7 @@
 #   - 5-6-2 (L231): `vs lint --fix` 実行中に Ctrl+C → 元ファイルを破壊せずに中断
 #
 #   共通の入口ハンドラは `CLI.start` / `CLI.handle_interrupt` / `CLI.handle_signal`。
-#   docs/specs/vivlio_starter_robustness_test_spec.md
+#   vivlio_starter_robustness_test_spec.md
 #
 # 期待される挙動:
 #   1. コマンド実行中の Interrupt 発生 → `CLI.start` が捕捉し exit 130 を返す

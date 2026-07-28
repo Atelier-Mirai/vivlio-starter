@@ -3,7 +3,7 @@
 > 作成日: 2026-06-21
 > ステータス: **実装済み（2026-06-22）**。`UnifiedBuildPipeline` に Step 7b（pre-dedup snapshot）を追加、`run_step_epub` 冒頭で復元。実測で `targets: epub` 単体と `targets: pdf, epub` の EPUB が †=200・索引リンク=329・本文完全一致を確認。テスト（§4）も † を除かず完全一致＋† 数一致へ強化済み。
 > 対象: `targets` に `pdf`/`print_pdf` と `epub`/`kindle` を同時指定したときの EPUB 出力整合性。
-> 関連: `lib/vivlio_starter/cli/build/pipeline.rb`（Step 8 / `run_step_epub` / `snapshot_chapter_htmls`）、`lib/vivlio_starter/cli/build/backlink_dedup_orchestrator.rb`、`lib/vivlio_starter/cli/build/epub_builder.rb`、`test/vivlio_starter/targets/target_consistency_test.rb`、`docs/specs/KNOWN_ISSUES.md`（既知の不具合・冒頭の Step 8 項）
+> 関連: `lib/vivlio_starter/cli/build/pipeline.rb`（Step 8 / `run_step_epub` / `snapshot_chapter_htmls`）、`lib/vivlio_starter/cli/build/backlink_dedup_orchestrator.rb`、`lib/vivlio_starter/cli/build/epub_builder.rb`、`test/vivlio_starter/targets/target_consistency_test.rb`、`KNOWN_ISSUES.md`（既知の不具合・冒頭の Step 8 項）
 
 ---
 

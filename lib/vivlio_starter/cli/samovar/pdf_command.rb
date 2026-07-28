@@ -16,7 +16,7 @@
 # PDF 生成そのもの（PdfCommands.execute_pdf）はビルドパイプラインが
 # 直接呼び出す純粋な内部処理であり、Samovar コマンドは持たない
 # （旧 `vs pdf` は手動フローの実体消滅に伴い撤去。
-#  docs/specs/vivlioverso-manual-flow-removal-spec.md）。
+#  vivlioverso-manual-flow-removal-spec.md）。
 #
 # 依存:
 #   - PdfCommands: 実際の PDF 圧縮・ページ画像化処理

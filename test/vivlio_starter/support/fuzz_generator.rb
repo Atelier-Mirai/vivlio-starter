@@ -4,7 +4,7 @@
 # test/vivlio_starter/support/fuzz_generator.rb
 #
 # ファズ / プロパティテスト用の決定的な入力ジェネレータ
-# docs/specs/test-suite-expansion-spec.md §7.3
+# test-suite-expansion-spec.md §7.3
 #
 # 【方針】
 #   - 専用 gem は使わない（依存追加を避ける）

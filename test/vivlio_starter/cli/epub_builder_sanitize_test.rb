@@ -5,7 +5,7 @@
 # ================================================================
 # テスト対象:
 #   Build::EpubBuilder の EPUB 構造修正フック
-#   （docs/specs/epub-pipeline-fix-spec.md の Fix-1〜4 / §4.1 EPF-01〜05）
+#   （epub-pipeline-fix-spec.md の Fix-1〜4 / §4.1 EPF-01〜05）
 #
 # 検証内容:
 #   - EPF-01: 生成後 EPUB の CSS から @page マージンボックスを除去（size: は残す）

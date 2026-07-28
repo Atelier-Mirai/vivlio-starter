@@ -3,12 +3,12 @@
 > 作成日: 2026-06-14
 > ステータス: **✅ クローズ（2026-06-15）** — A 実装済み（MathJax 採用）／B 実装済み（合成画像を JPEG ラスタライズ）
 > 対象不具合: `build-output-bugfix-spec.md` ④-A（EPUB 数式露出）／④-B（表セル内数式）／③-a（EPUB 扉絵・節絵未表示）— **いずれも解消**
-> 関連調査: `docs/specs/epub-kindle-compatibility-report.md`
+> 関連調査: `epub-kindle-compatibility-report.md`
 >
 > **クローズ注記（2026-06-15）**: 本仕様（④-A / ④-B / ③-a）は実装・実機検証まで完了したためクローズする。
 > Phase B の検証過程で判明した**本仕様の範囲外の残課題**は、以下の 2 報告書へ引き継ぐ（RC 前に別途仕様化・実装）。
-> - `docs/specs/epub-kindle-webp-incompatibility-report.md` — Kindle が WebP 非対応で EPUB 変換不能（最優先）。
-> - 用語集/索引の epubcheck ERROR（RSC-005 / RSC-012）→ `docs/specs/epub-kindle-target-split-spec.md`（§1-8 ＋ 付録 A）へ統合・対応。
+> - `epub-kindle-webp-incompatibility-report.md` — Kindle が WebP 非対応で EPUB 変換不能（最優先）。
+> - 用語集/索引の epubcheck ERROR（RSC-005 / RSC-012）→ `epub-kindle-target-split-spec.md`（§1-8 ＋ 付録 A）へ統合・対応。
 >
 > この 2 件の実装が完了すれば RC 移行の見込み。
 

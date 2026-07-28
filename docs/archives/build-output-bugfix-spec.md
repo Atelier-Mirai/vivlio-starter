@@ -3,7 +3,7 @@
 > 作成日: 2026-06-14
 > ステータス: **②⑤⑥③-b③-c①④-B 修正済み（2026-06-14）／ ④-A・③-a は保留（Kindle 互換性のため別途検討）**
 > 対象: RC 公開前に修正したい不具合（CHANGELOG「既知の不具合」記載分）
-> 保留分の Kindle 互換性調査: `docs/specs/epub-kindle-compatibility-report.md`
+> 保留分の Kindle 互換性調査: `epub-kindle-compatibility-report.md`
 
 CHANGELOG.md の「既知の不具合（Known Issues）」に記録した次の 3 件について、
 コードを調査して原因を特定し、修正方針を整理する。実装は本仕様書の合意後に行う。

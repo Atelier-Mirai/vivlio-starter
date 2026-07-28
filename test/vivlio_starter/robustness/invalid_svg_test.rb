@@ -6,7 +6,7 @@
 # 対応する堅牢性テスト仕様書項目:
 #   - 7-1 (L253): SVG が不正な XML
 #                 → ⚠️ rsvg/inkscape のエラーメッセージを整形して表示
-#   docs/specs/vivlio_starter_robustness_test_spec.md
+#   vivlio_starter_robustness_test_spec.md
 #
 # 検証観点:
 #   A. 外部コマンドが exit != 0 で失敗したとき、Common.log_error が

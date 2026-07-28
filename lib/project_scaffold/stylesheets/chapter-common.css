@@ -613,7 +613,7 @@ p > img {
    .output/.terminal/.diagram 配下の <pre> を除外する）。diagram は output のエイリアスだが、
    Kindle ではラベル注入の対象外（図に【OUTPUT】ラベルは付けない）。
    ※ .figure という名前は図版（figure 要素）と紛れるため使わない
-   （経緯: docs/specs/figure-class-name-collision-report.md）。 */
+   （経緯: figure-class-name-collision-report.md）。 */
 .output,
 .diagram {
   margin-block: 3mm;

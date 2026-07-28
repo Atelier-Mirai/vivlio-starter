@@ -1,6 +1,6 @@
 # 実装計画書: img2pdf依存の排除および仕様書への準拠
 
-[pdf_pages_rasterize_spec.md](file:///Users/mirai/projects/vivlio-starter/docs/specs/pdf_pages_rasterize_spec.md) の仕様に準拠するよう、`vs pdf:rasterize` コマンドを修正します。GPT-5.5がJPEGからPDFを再結合するカスタムジェネレータ（`JpegToPdf`）を独自実装しましたが、コードベースにいくつかの `img2pdf` の存在チェック、参照、およびテストが残ったままになっています。本計画では、`img2pdf` を完全に排除し、`vs doctor` をクリーンアップし、テストスイートを修正します。
+`pdf_pages_rasterize_spec.md` の仕様に準拠するよう、`vs pdf:rasterize` コマンドを修正します。GPT-5.5がJPEGからPDFを再結合するカスタムジェネレータ（`JpegToPdf`）を独自実装しましたが、コードベースにいくつかの `img2pdf` の存在チェック、参照、およびテストが残ったままになっています。本計画では、`img2pdf` を完全に排除し、`vs doctor` をクリーンアップし、テストスイートを修正します。
 
 ## ユーザーレビューが必要な項目
 破壊的変更や重大なリスクはありません。この変更により、禁止されている外部依存関係（`img2pdf`）が完全に排除され、独自実装のPDFビルダーが徹底的にテストされるようになります。

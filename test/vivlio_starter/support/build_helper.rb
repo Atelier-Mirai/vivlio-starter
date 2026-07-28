@@ -4,7 +4,7 @@
 # test/vivlio_starter/support/build_helper.rb
 #
 # 実ビルドを伴うテスト（判型 / マニュアルビルド / 冪等性 / EPUB / カナリア）の
-# 共通基盤（docs/specs/test-suite-expansion-spec.md §15）。
+# 共通基盤（test-suite-expansion-spec.md §15）。
 #
 #   - BookYmlPatcher : config/book.yml をブロック復元保証付きで書き換える
 #   - VsBuilder      : vs build の実行と成果物 PDF の探索
@@ -37,7 +37,7 @@ module VsTestSupport
     # vs build が book.yml のページ設定から再生成する派生ファイル。
     # プリセットを切り替えてビルドすると最終プリセットの値で上書きされ、
     # book.yml だけ復元しても作業ツリーに差分が残る。apply のブロック終了時に
-    # book.yml と一緒に元の内容へ復元する（docs/specs/test-suite-expansion-spec.md §15）。
+    # book.yml と一緒に元の内容へ復元する（test-suite-expansion-spec.md §15）。
     BUILD_GENERATED_FILES = [
       File.join("stylesheets", "page-settings.css")
     ].freeze
@@ -330,7 +330,7 @@ module VsTestSupport
 
     # EPUB パッケージ内に同梱された .webp ファイルの相対パス配列を返す。
     # Kindle は WebP 非対応のため、トランスコード後は 0 件であるべき
-    # （docs/specs/epub-kindle-webp-transcode-spec.md §6-1）。
+    # （epub-kindle-webp-transcode-spec.md §6-1）。
     # @return [Array<String>]
     def self.webp_files(epub_path)
       with_unzipped(epub_path) do |dir|

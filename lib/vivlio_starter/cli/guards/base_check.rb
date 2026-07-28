@@ -5,7 +5,7 @@ module VivlioStarter
     module Guards
       # 単一の前提条件違反。
       # detail は Common.log_error / log_warn の detail: に渡され、
-      # 2行目以降としてインデント表示される（docs/specs/logging_spec.md 準拠）。
+      # 2行目以降としてインデント表示される（logging_spec.md 準拠）。
       # @!attribute severity [r] :error（停止）または :warn（警告のみ）
       Violation = Data.define(:severity, :message, :detail) do
         def error? = severity == :error

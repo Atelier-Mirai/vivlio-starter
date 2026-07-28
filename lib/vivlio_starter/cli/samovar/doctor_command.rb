@@ -7,7 +7,7 @@
 #   Samovar CLI の doctor コマンドを実装する。
 #   必要な外部ツールの診断と自動インストールを行う。
 #   導入済みツールの一括更新は `vs upgrade` が担う（本体 gem・雛形の追従と
-#   あわせて実行される。docs/archives/upgrade-unification-spec.md）。
+#   あわせて実行される。upgrade-unification-spec.md）。
 #
 # 診断対象:
 #   - node, vivliostyle, textlint

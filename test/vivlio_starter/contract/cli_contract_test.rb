@@ -3,7 +3,7 @@
 # ================================================================
 # Test: contract/cli_contract_test.rb
 # ================================================================
-# CLI 契約テスト（CL）— docs/specs/test-suite-expansion-spec.md §10
+# CLI 契約テスト（CL）— test-suite-expansion-spec.md §10
 #
 # 検証内容:
 #   CL-01: 全 Public コマンドの --help が exit 0・🔴 なしで応答する

@@ -6,7 +6,7 @@
 # 対応する堅牢性テスト仕様書項目:
 #   - 3-2-1 (L155): 著者名に `'`（シングルクォート）を含めても book.yml が壊れない
 #   - 3-2-2 (L156): 著者名に改行（ペースト事故）を含めても book.yml が壊れない
-#   docs/specs/vivlio_starter_robustness_test_spec.md
+#   vivlio_starter_robustness_test_spec.md
 #
 # 目的:
 #   `vs new` のプレースホルダ置換が「想定外の入力」を受け取っても book.yml を

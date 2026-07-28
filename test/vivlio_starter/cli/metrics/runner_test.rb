@@ -165,7 +165,7 @@ module VivlioStarter
         end
 
         # --- catalog 解決のエラー耐性（パーサ一本化後） ---
-        # 仕様: docs/specs/catalog-parser-unification-spec.md §3.3 / §4
+        # 仕様: catalog-parser-unification-spec.md §3.3 / §4
 
         # catalog 破損時はハード停止せず、warn して全 Markdown へフォールバックする。
         def test_resolve_from_catalog_warns_and_globs_on_broken_yaml

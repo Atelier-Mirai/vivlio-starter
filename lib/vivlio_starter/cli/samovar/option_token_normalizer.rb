@@ -28,7 +28,7 @@
 #   対象フラグはコマンドの options 定義から自動導出するため、オプションを
 #   増やしても宣言の追加は要らない。
 #
-# 仕様: docs/archives/cli-argument-parsing-spec.md Part 1
+# 仕様: cli-argument-parsing-spec.md Part 1
 # ================================================================
 
 module VivlioStarter

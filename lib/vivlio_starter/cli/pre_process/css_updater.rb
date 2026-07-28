@@ -59,7 +59,7 @@ module VivlioStarter
         # .align-left / .align-center / .align-right ブロックの最大行長を算出する。
         # Vivliostyle は `min(26em, max-content)` のような比較関数を未対応のため、
         # CSS カスタムプロパティ `--align-max-width` として判型別に上書きする。
-        # 詳細は docs/specs/vivliostyle_warnings_spec.md 参照。
+        # 詳細は vivliostyle_warnings_spec.md 参照。
         # 用紙幅 mm から判型を推定し、A5=26em / B5=36em / A4=40em を返す。
         def calculate_align_max_width(width)
           w_mm = Units.length_to_mm(width) || 0

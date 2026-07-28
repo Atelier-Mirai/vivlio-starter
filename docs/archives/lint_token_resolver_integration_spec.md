@@ -20,7 +20,7 @@
 
 - `lib/vivlio/starter/cli/lint.rb` 内 `TargetResolver` の置換。
 - `LintCommands.execute_lint` から `TargetResolver#resolve` の呼び出し部分。
-- `docs/specs/cli_token_resolver_spec.md` に準拠した挙動確認。
+- `cli_token_resolver_spec.md` に準拠した挙動確認。
 - 付随するテスト（存在する場合は更新／なければ追加）。
 - CLI オプション・ヘルプ文言に変更は不要（挙動のみ統一）。
 
@@ -102,7 +102,7 @@
 
 1. 既存 `TargetResolver` 実装のバックアップとしてコメントまたは Git 履歴で参照できる状態を保持（コード上には残さない）。
 2. 新実装に置き換え後、`bundle exec ruby -Itest test/vivlio/starter/cli/lint_*` 等で回帰確認。
-3. `docs/specs/cli_token_resolver_spec.md` に lint を TokenResolver 対応済みコマンドとして追記（別タスクでも可）。
+3. `cli_token_resolver_spec.md` に lint を TokenResolver 対応済みコマンドとして追記（別タスクでも可）。
 4. CHANGELOG への記載: 「lint コマンドの章指定解釈を TokenResolver に統一」。
 
 ## 9. 検証項目
@@ -127,5 +127,5 @@
 
 ## 12. 参考資料
 
-- [docs/specs/cli_token_resolver_spec.md](./cli_token_resolver_spec.md): TokenResolver 全体仕様（対応コマンド一覧、正規化ルール、catalog.yml 構造）
+- [cli_token_resolver_spec.md](./cli_token_resolver_spec.md): TokenResolver 全体仕様（対応コマンド一覧、正規化ルール、catalog.yml 構造）
 - [docs/design/cli_token_resolver_internal.md](../design/cli_token_resolver_internal.md): Entry データ構造と Resolver 内部フェーズの設計思想

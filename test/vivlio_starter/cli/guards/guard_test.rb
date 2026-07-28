@@ -6,7 +6,7 @@
 # テスト対象:
 #   Guards::Guard.run!（lib/vivlio_starter/cli/guards.rb）
 #
-# 検証内容（docs/specs/precondition-guard-spec.md §7.2）:
+# 検証内容（precondition-guard-spec.md §7.2）:
 #   GG-01: error 違反あり → GuardError を raise・件数メッセージ・🔴 出力
 #   GG-02: warn のみ → raise しない・🟡 出力
 #   GG-03: 違反なし → raise しない・出力なし

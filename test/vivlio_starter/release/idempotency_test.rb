@@ -3,7 +3,7 @@
 # =============================================================================
 # test/vivlio_starter/release/idempotency_test.rb
 #
-# 冪等性テスト（ID）— docs/specs/test-suite-expansion-spec.md §12
+# 冪等性テスト（ID）— test-suite-expansion-spec.md §12
 #
 # 【検証内容】
 #   ID-01: vs build を 2 回連続実行しても 2 回目が成功し、意味的同一性が保たれる

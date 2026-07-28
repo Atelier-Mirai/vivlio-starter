@@ -7,7 +7,7 @@
 #   UpgradeCommands（lib/vivlio_starter/cli/upgrade.rb）
 #   ScaffoldLock（lib/vivlio_starter/cli/scaffold_lock.rb）
 #
-# 検証内容（docs/archives/project-upgrade-command-spec.md §3）:
+# 検証内容（project-upgrade-command-spec.md §3）:
 #   - §1.2 の分類（追加/更新/競合/最新/保持）× lock あり/なし
 #   - 著者データ領域（contents/・著者辞書）が計画に載らず触られない
 #   - 著者辞書が無い場合は「空の辞書」を追加（雛形サンプルは配らない）
@@ -15,7 +15,7 @@
 #   - lock の生成・更新（適用分だけハッシュが進む・スキップ分は旧ハッシュのまま）
 #   - --dry-run はファイルシステムに一切書き込まない（lock 含む）
 #
-# 三段オーケストレーション（docs/archives/upgrade-unification-spec.md）:
+# 三段オーケストレーション（upgrade-unification-spec.md）:
 #   - 自己更新: 新版なし/dry-run/非対話/更新失敗 の各分岐（exec は relaunch! を検知）
 #   - プロジェクト外では雛形追従だけをスキップし、ツール更新は実行される
 #   - 終了コードは各フェーズの悪い方（max）

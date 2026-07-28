@@ -7,7 +7,7 @@
 > - **方式はテキスト化**（LaTeX 単純サブセット → `<sup>`/`<sub>`＋Unicode 記号の HTML）。**Kindle フレーバのみ**。PDF・クリーン EPUB は現行の SVG のまま一切触らない
 > - **MathML は不採用**（KDP 公式は Enhanced Typesetting での対応を謳うが、実機はデバイス間で表示が非一貫との報告あり。「Kindle で確実に表示」優先の本プロジェクト方針に反する。§8）
 > - テキスト化できない複雑な式は現行の px 固定フォールバックを維持（既知の制限として存続・ただし対象は大幅に縮小）
-> 関連: `lib/vivlio_starter/cli/build/epub_builder.rb`（`convert_math_units_for_epub!`・Kindle 限定フェーズ）, `lib/vivlio_starter/cli/pre_process/math_transformer.rb`（SVG 化・`alt` に元 LaTeX 保存）, `docs/archives/epub-kindle-target-split-spec.md` §3（px 固定の経緯）, `docs/specs/kindle-css-compatibility-notes.md`, `docs/specs/KNOWN_ISSUES.md`, `docs/specs/epub-frontispiece-facsimile-spec.md`（章扉リード内の数式は本仕様の対象外・§4.5）
+> 関連: `lib/vivlio_starter/cli/build/epub_builder.rb`（`convert_math_units_for_epub!`・Kindle 限定フェーズ）, `lib/vivlio_starter/cli/pre_process/math_transformer.rb`（SVG 化・`alt` に元 LaTeX 保存）, `epub-kindle-target-split-spec.md` §3（px 固定の経緯）, `kindle-css-compatibility-notes.md`, `KNOWN_ISSUES.md`, `epub-frontispiece-facsimile-spec.md`（章扉リード内の数式は本仕様の対象外・§4.5）
 
 ## 0. 背景・問題
 

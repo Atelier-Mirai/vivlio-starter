@@ -15,7 +15,7 @@
 | 入稿用 PDF へのアウトライン付与 | `lib/vivlio/starter/cli/build/outline_extractor.rb` | 既存アウトラインの削除と新規追加 |
 | Print PDF パイプライン呼び出し | `lib/vivlio/starter/cli/build/pipeline.rb` | Step13 で上記モジュールを実行 |
 | PDF アウトライン検査スクリプト | `scripts/check_pdf_outlines.rb` | PDF を開いてアウトライン構造を列挙 |
-| 仕様書（print_pdf / pdf_reader） | `docs/specs/print_pdf_spec.md` など | HexaPDF 前提の機能記述 |
+| 仕様書（print_pdf / pdf_reader） | `print_pdf_spec.md` など | HexaPDF 前提の機能記述 |
 
 ### 2.1 HexaPDF 依存の代替可否
 

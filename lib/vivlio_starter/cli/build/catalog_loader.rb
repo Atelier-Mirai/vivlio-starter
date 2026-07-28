@@ -28,7 +28,7 @@ module VivlioStarter
         SECTION_KEYS = %w[PREFACE CHAPTERS APPENDICES POSTFACE].freeze
 
         # TokenResolver へ渡す 3 つ組。label は最内の部タイトル（なければセクション名）。
-        # 仕様: docs/specs/catalog-parser-unification-spec.md §3.1
+        # 仕様: catalog-parser-unification-spec.md §3.1
         CatalogEntry = Data.define(:basename, :label, :section)
 
         # 章番号からセクションを決定
@@ -94,7 +94,7 @@ module VivlioStarter
         # ファイル不在は [] を返す（TokenResolver の「カタログなしでも動く」契約を維持するため、
         # ビルド専用の load_all_basenames と違い raise しない）。空カタログ・重複番号の検証も
         # 行わない（それはビルド時の関心事 = load_all_basenames 側）。
-        # 仕様: docs/specs/catalog-parser-unification-spec.md §3.1
+        # 仕様: catalog-parser-unification-spec.md §3.1
         #
         # @param catalog_path [String] catalog.yml のパス（テスト用に注入可能）
         # @param contents_dir [String] ショートハンド展開時の glob 基点

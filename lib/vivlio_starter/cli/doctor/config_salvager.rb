@@ -6,7 +6,7 @@
 # 責務:
 #   破損した設定ファイルから救出できる値を最善努力（best-effort）で抽出し、
 #   scaffold 復元後のファイルへ書き戻して利用者の再入力を減らす。
-#   docs/specs/doctor-restore-and-plugin-tools-spec.md §3D（機能 D）の実装。
+#   doctor-restore-and-plugin-tools-spec.md §3D（機能 D）の実装。
 #
 # 大原則（spec §3D.1）:
 #   - 正確性は保証しない。誤抽出・取りこぼしがあっても、原本は呼び出し元

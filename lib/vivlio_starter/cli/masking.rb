@@ -15,7 +15,7 @@
 #   （```/````/~~~）と入れ子に一貫して耐える。IndexCommands::CodeBlockStripper の
 #   意味論を移植・一般化した原器。
 #
-# 仕様: docs/specs/vivlioverso-foundation-workplans.md P1
+# 仕様: vivlioverso-foundation-workplans.md P1
 # ================================================================
 
 module VivlioStarter

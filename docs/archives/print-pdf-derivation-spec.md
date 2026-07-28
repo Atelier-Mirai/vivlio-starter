@@ -1,7 +1,7 @@
 # print_pdf 導出化 調査報告＋実装仕様（閲覧用 PDF ＋トンボ＝入稿用 PDF・本体 MIT のみで実装）
 
 調査日: 2026-07-05〜06 / 調査・設計: Claude (Fable 5) / 実装担当: Claude (Opus 4.8) 想定
-対象: [PLANNED.md](../specs/PLANNED.md) 「print_pdf を pdf から導出して高速化」（V2.0 構想・[High]）
+対象: `PLANNED.md` 「print_pdf を pdf から導出して高速化」（V2.0 構想・[High]）
 
 関連: [backlink-dedup-pdf-map-spec.md](backlink-dedup-pdf-map-spec.md)（②。§7 で本件と連動）
 

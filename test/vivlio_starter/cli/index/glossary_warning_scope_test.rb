@@ -5,7 +5,7 @@
 # ================================================================
 # テスト対象:
 #   UnifiedIndexManager#warn_unmatched_glossary_terms（R4）のスコープ判定
-#   （docs/specs/preflight-glossary-warning-scope-report.md 案 A・案 C）
+#   （preflight-glossary-warning-scope-report.md 案 A・案 C）
 #
 # 検証内容:
 #   - 章を絞った走査では警告を出さない（用語集の照合は書籍全体が単位のため）

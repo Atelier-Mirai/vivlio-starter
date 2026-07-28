@@ -194,7 +194,7 @@ module VivlioStarter
     #
     # Vivliostyle が `min(26em, max-content)` を未対応なため、
     # CSS カスタムプロパティ `--align-max-width` として判型別に値を供給する。
-    # 詳細は docs/specs/vivliostyle_warnings_spec.md 参照。
+    # 詳細は vivliostyle_warnings_spec.md 参照。
     # ================================================================
     class CalculateAlignMaxWidthTest < Minitest::Test
       CssUpdater = VivlioStarter::CLI::PreProcessCommands::CssUpdater

@@ -8,7 +8,7 @@
 #   - EPUB 専用 entries.js（目次・裏表紙を除外）
 #   - EPUB 専用 vivliostyle.config.js（cover / output を EPUB 用に調整）
 #
-# 仕様書: docs/specs/epub_output_spec.md
+# 仕様書: epub_output_spec.md
 #
 # 設計方針:
 #   - PDF 用の vivliostyle.config.js を直接書き換えず、
@@ -1340,7 +1340,7 @@ module VivlioStarter
         # EPUB 用 WebP → JPEG/PNG トランスコード（§5-1）
         # ================================================================
         # Kindle は WebP 非対応のため、EPUB の <img> 参照 WebP を JPEG/PNG へ変換し
-        # src を差し替える（docs/specs/epub-kindle-webp-transcode-spec.md）。PDF 経路は
+        # src を差し替える（epub-kindle-webp-transcode-spec.md）。PDF 経路は
         # WebP のまま（無影響）。出力は images/_epub_assets/<hash>.{jpg,png} に集約し、
         # 元の png/jpg ソースの上書き・問題のあるファイル名（アポストロフィ等）の同梱を
         # 同時に避ける。CSS 背景の WebP は EPUB で描画されないため対象外（除外する）。

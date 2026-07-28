@@ -9,7 +9,7 @@
 > - Planned のガイド線マクロ（`@lu` 系）は**完全廃止**。後継は `explanatory-diagram-spec.md`（`.showcase` 記法・2026-07-15 実装済み）であり、退避ドキュメントは作らない
 >
 > **後日追記（2026-07-12・ユーザー確認済み）**: 本仕様実装後のフォローアップで、`@nega`/`@posi`（`@vspace` の後方互換別名）と `@comment`/`@commend`（編集者コメント）も**廃止**した（残る `@` 記法は `@vspace` のみ）。編集者コメントは HTML コメント `<!-- TODO: … -->` で代替可能かつ本番出力にハイライトが残る地雷であったため。これに伴い R9 の予約 ID は `@vspace` のみ、`SPACING_MACRO_RULES` は 2 本、`ALL` は 31 本、`.hen-comment` CSS・22 章「編集者コメント」節・`templates/chapter.md` の実演・本 PLANNED の @comment 一括除去項目も撤去済み。
-> 関連: `lib/vivlio_starter/cli/post_process/html_replacer.rb`, `lib/vivlio_starter/cli/post_process.rb`, `lib/vivlio_starter/cli/prism_lines.rb`, `lib/vivlio_starter/cli/common.rb`, `docs/archives/code-include-line-number-spec.md`, `docs/archives/explanatory-diagram-spec.md`, `docs/specs/PLANNED.md`
+> 関連: `lib/vivlio_starter/cli/post_process/html_replacer.rb`, `lib/vivlio_starter/cli/post_process.rb`, `lib/vivlio_starter/cli/prism_lines.rb`, `lib/vivlio_starter/cli/common.rb`, `code-include-line-number-spec.md`, `explanatory-diagram-spec.md`, `PLANNED.md`
 
 ## 背景・動機
 
@@ -103,9 +103,9 @@
 
 **docs**
 
-- `docs/specs/PLANNED.md:41-46`（会話文記法の刷新）… 「現状」注記を更新（`先生`/`生徒` ハードコード経路は**廃止済み**、`.kaiwa` CSS も削除済み、と書き換え）。
-- `docs/specs/PLANNED.md:52`（`@comment` 一括除去オプション）… 「現状は post_replace_list.yml で…変換し」→「現状は組み込み置換ルールで…変換し」。`contents/23-replace-list.md` という古いファイル名参照も実在の章名に正す。
-- `docs/specs/PLANNED.md:78`（品質/テスト「Post-processing 単体テスト整備」）… `_postReplaceList.json` という古い名称を実態に合わせ、本仕様の §5 テストで**完了扱い**にできる。
+- `PLANNED.md:41-46`（会話文記法の刷新）… 「現状」注記を更新（`先生`/`生徒` ハードコード経路は**廃止済み**、`.kaiwa` CSS も削除済み、と書き換え）。
+- `PLANNED.md:52`（`@comment` 一括除去オプション）… 「現状は post_replace_list.yml で…変換し」→「現状は組み込み置換ルールで…変換し」。`contents/23-replace-list.md` という古いファイル名参照も実在の章名に正す。
+- `PLANNED.md:78`（品質/テスト「Post-processing 単体テスト整備」）… `_postReplaceList.json` という古い名称を実態に合わせ、本仕様の §5 テストで**完了扱い**にできる。
 
 **test（フィクスチャとして yml を書いている箇所）**
 
@@ -249,11 +249,11 @@ end
 - yml #13 の 2 ルールは移植**しない**。
 - `stylesheets/replace-list.css` の `.kaiwa` / `.kaiwa::before` / `.kaiwa.sensei::before` / `.kaiwa.seito::before`（30–52 行）を削除し、ヘッダコメント（1–18 行）を「post_process の組み込み置換ルールが付与する隠れクラス」の説明に書き換え、定義クラス一覧から `.kaiwa` 系を除く。→ `ruby copy_to_scaffold.rb` で同期。
 - `contents/22-extentions.md` の会話文節は既に HTML コメントアウト済み（`container_scanner.rb:50-52` が前提にしている）ため本文変更は不要。**コメントアウトブロックは残す**（guards の `comment_state` テスト前提を崩さない）。
-- `docs/specs/PLANNED.md:46` の「現状」を更新（§1.3 参照）。
+- `PLANNED.md:46` の「現状」を更新（§1.3 参照）。
 
 ### 3.5 Planned ガイド線マクロ（yml 66–117 行）の完全廃止
 
-「画像への注釈・ガイド線」という用途は `docs/archives/explanatory-diagram-spec.md`（図解注釈記法 `.showcase`＋`rect:`/`pointer:` コマンド。**2026-07-15 実装済み**）が後継となることが決定済み（2026-07-11 ユーザー確認）。`@lu` 系マクロは正式サポートに至らないまま廃止する。**退避ドキュメントは作らない**（yml のコメントアウト部は git 履歴で参照できる）。
+「画像への注釈・ガイド線」という用途は `explanatory-diagram-spec.md`（図解注釈記法 `.showcase`＋`rect:`/`pointer:` コマンド。**2026-07-15 実装済み**）が後継となることが決定済み（2026-07-11 ユーザー確認）。`@lu` 系マクロは正式サポートに至らないまま廃止する。**退避ドキュメントは作らない**（yml のコメントアウト部は git 履歴で参照できる）。
 
 - yml のコメントアウトブロック（66–117 行）はファイルごと削除（移植しない）。
 - `cross_reference_processor.rb` の `RESERVED_MACRO_POSITION_PREFIXES`（46–49 行）と `reserved_id?` の接頭辞判定分岐（59 行）、および関連コメント（41–45, 54 行）を削除する。`RESERVED_MACRO_IDS`（`@vspace` 等）は存続（R9）。
@@ -352,7 +352,7 @@ end
 - [ ] §5 の自動テストが全件パスし、既存テストにリグレッションがない。
 - [ ] §5.5-1 の HTML diff が空（または差分の全件が本仕様で説明可能）。
 - [ ] `ruby copy_to_scaffold.rb` 実行済みで、scaffold から yml が消え、CSS/contents 変更が同期されている。
-- [ ] `docs/specs/PLANNED.md` の 3 箇所（会話記法・@comment・Post-processing テスト整備）が更新されている。
+- [ ] `PLANNED.md` の 3 箇所（会話記法・@comment・Post-processing テスト整備）が更新されている。
 - [ ] `CHANGELOG.md` の unreleased に Removed（yml・著者拡張機能・会話記法）と Changed（ルールのコード化・`[!]` の prism_lines 移設）を記載。
 
 ### 将来拡張（本タスクではやらない）

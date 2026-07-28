@@ -6,8 +6,8 @@
 # 責務:
 #   `vs upgrade` の外部ツール更新フェーズ。導入済み外部ツールの現在/最新
 #   バージョン取得・更新計画の提示・確認・一括更新・結果集計を担う
-#   （docs/archives/doctor-tool-upgrade-spec.md、統合の経緯は
-#   docs/archives/upgrade-unification-spec.md）。
+#   （doctor-tool-upgrade-spec.md、統合の経緯は
+#   upgrade-unification-spec.md）。
 #
 # 設計の要点:
 #   - --fix の上位互換: 導入済みツールの更新に加え、未導入分は

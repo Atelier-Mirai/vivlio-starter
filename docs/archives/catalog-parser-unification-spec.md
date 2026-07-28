@@ -18,8 +18,8 @@
 
 関連仕様:
 - [config-access-unification-spec.md](config-access-unification-spec.md) §4（本仕様の発端。book.yml の統一原則を関連 YAML へ展開する判断）
-- `docs/archives/catalog_spec.md`（catalog.yml の記法定義: 4 セクション・部タイトル・ショートハンド）
-- `docs/archives/cli_token_resolver_spec.md`（章指定トークン解釈の TokenResolver への集約）
+- `catalog_spec.md`（catalog.yml の記法定義: 4 セクション・部タイトル・ショートハンド）
+- `cli_token_resolver_spec.md`（章指定トークン解釈の TokenResolver への集約）
 
 ## 0. 経緯と目的
 
@@ -175,7 +175,7 @@ end
 ```ruby
 # --- Phase 2: Catalog Loading (カタログ読み込み) ---
 # YAML パース・セクション/ショートハンド展開は Build::CatalogLoader に一本化
-# （仕様: docs/specs/catalog-parser-unification-spec.md）。
+# （仕様: catalog-parser-unification-spec.md）。
 # ここでは CatalogEntry → Entry への変換のみを行う。
 def load_catalog_entries
   Build::CatalogLoader

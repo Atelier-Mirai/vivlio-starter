@@ -39,7 +39,7 @@ config/book.yml (vfm: hard_line_breaks: true/false)
 - **章ごとの上書き可**: 章の .md に自分でフロントマター `vfm: hardLineBreaks: false` を
   書けば、その章だけ上書きされる（マージは既存フロントマター優先。
   `frontmatter_generator.rb` の merge 規則・archives の
-  [vfm_hard_line_breaks_default.md](../archives/vfm_hard_line_breaks_default.md) §2 参照）。
+  `vfm_hard_line_breaks_default.md` §2 参照）。
 
 ### 実測（2026-07-05・`vfm` CLI 単体で検証済み）
 
@@ -114,7 +114,7 @@ config の vfm 設定が**初めて実効化**する。その際:
 
 - [vivlioverso-p3-4-config-fullgen-spec.md](vivlioverso-p3-4-config-fullgen-spec.md) §1.3・§3
   （本ノートの出自。config 全文生成化＋エントリーレベル VFM の実装仕様）
-- [../archives/vfm_hard_line_breaks_default.md](../archives/vfm_hard_line_breaks_default.md)
+- [vfm_hard_line_breaks_default.md](vfm_hard_line_breaks_default.md)
   （hardLineBreaks 既定有効化の当初仕様。§「参考実装」にエントリーレベル方式の原型）
 - PLANNED.md「VFM 設定のエントリーレベル適用」（P3-4 実装で消化予定）
 - VFM 公式: https://vivliostyle.github.io/vfm/

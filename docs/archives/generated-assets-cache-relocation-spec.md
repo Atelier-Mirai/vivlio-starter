@@ -33,7 +33,7 @@ P4/P4b で中間生成物は `.cache/vs/` へ集約されたが、**著者ディ
 P4 調査書 §1.3/§5.1 は「covers/ は著者資産・不変」としたが、これは
 **マスターと生成物を区別しない粗い括り**であり技術的制約ではない。本仕様は
 「マスター＝covers/ に残す ／ 生成物＝.cache へ」の区別を導入して同判断を更新する
-（`docs/archives/vivlioverso-p4-investigation.md` に相互参照の追記を行う）。
+（`vivlioverso-p4-investigation.md` に相互参照の追記を行う）。
 
 ## 1. 対象の棚卸し
 
@@ -231,7 +231,7 @@ CMYK カバー PDF は入稿物（成果品）であり、最終 print PDF（`�
 | theme.css | 既定 2 行の削除（§3.3）。**scaffold 同期対象**（copy_to_scaffold.rb 実行） |
 | .gitignore | `/covers/` ＋ `!/covers/*.svg` を撤去（`*.pdf` グローバル無視は既存のまま）。**scaffold 同期対象** |
 | copy_to_scaffold.rb | バリアント webp PRUNE・covers PRUNE を撤去（`*_alpha*` 等の保険掃除は残してよい） |
-| docs/archives/vivlioverso-p4-investigation.md | §1.3/§5.1 に本仕様への参照を追記（※docs/specs/ ではなく archives/ にある） |
+| `vivlioverso-p4-investigation.md` | §1.3/§5.1 に本仕様への参照を追記 |
 
 テスト影響: cover 系・clean 系・theme_image_resolver 系・epub cover 系ユニットのパス期待値
 更新、`rake test:layout` / `test:targets` での統合確認（特に test:targets は epub/kindle の

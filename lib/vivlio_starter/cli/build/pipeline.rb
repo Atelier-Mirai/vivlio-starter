@@ -309,7 +309,7 @@ module VivlioStarter
         # Step 9: タイトル・リーガルページなど front/tail PDF を生成する
         #
         # 設計方針: mtime 比較・キャッシュ判定は行わず、常に .md / HTML / PDF を再生成する。
-        # 詳細は docs/specs/book_yml_regeneration_spec.md を参照。
+        # 詳細は book_yml_regeneration_spec.md を参照。
         def run_step9_front_pages_and_tail
           # --- Phase: 特殊ページ .md を常に（強制）再生成 ---
           CreateCommands.execute_titlepage(force: true)
@@ -449,7 +449,7 @@ module VivlioStarter
           # vs build <章>（single mode）が Step 4 を持たないのと揃える——preflight は
           # 「そのビルドが何を報告するか」を先に見るための機能であり、build が言わないことを
           # 言ってはならない（章を絞ると用語集語がほぼ全滅して誤検知になる問題も構造的に消える。
-          # 詳細 → docs/specs/preflight-glossary-warning-scope-report.md）
+          # 詳細 → preflight-glossary-warning-scope-report.md）
           unless full_catalog_scope?
             Common.log_action('[index scan and build] 章を絞った実行のためスキップします（索引・用語集は全章実行で確認できます）')
             return

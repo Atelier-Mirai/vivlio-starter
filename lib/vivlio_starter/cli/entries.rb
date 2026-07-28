@@ -17,7 +17,7 @@ module VivlioStarter
     #
     # かつての `vs entries`（ルート entries.js の手動生成コマンド）は
     # P4 のワークスペース分離で実体を失ったため撤去した
-    # （docs/specs/vivlioverso-manual-flow-removal-spec.md）。
+    # （vivlioverso-manual-flow-removal-spec.md）。
     # ================================================================
     module EntriesCommands
       module_function

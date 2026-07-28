@@ -110,7 +110,7 @@ module VivlioStarter
 
       # 既存ファイルがあっても常に上書き再生成されることを確認
       # 旧仕様（force なしでスキップ）は book.yml 変更が反映されない不具合を招いたため廃止。
-      # 詳細: docs/specs/book_yml_regeneration_spec.md
+      # 詳細: book_yml_regeneration_spec.md
       def test_titlepage_always_regenerated_even_when_exists
         within_temp_dir do
           FileUtils.mkdir_p(Common::CACHE_DIR)

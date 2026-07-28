@@ -6,7 +6,7 @@
 # テスト対象:
 #   Guards::ConfigValidityCheck（lib/vivlio_starter/cli/guards/config_validity_check.rb）
 #
-# 検証内容（docs/specs/doctor-restore-and-plugin-tools-spec.md §7.1）:
+# 検証内容（doctor-restore-and-plugin-tools-spec.md §7.1）:
 #   CV-01: 必須 YAML 4 種すべて存在・妥当 → 違反 0 件
 #   CV-02: catalog.yml 欠落 → :error 1 件・該当パス
 #   CV-03: book.yml が不正 YAML → :error 1 件・解析失敗を detail に

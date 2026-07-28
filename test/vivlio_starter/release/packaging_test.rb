@@ -4,7 +4,7 @@
 # test/vivlio_starter/release/packaging_test.rb
 #
 # パッケージング E2E（PK）
-# docs/specs/test-suite-expansion-spec.md §6
+# test-suite-expansion-spec.md §6
 #
 # 【検証内容】
 #   PK-01: .gem に lib/project_scaffold/ の全ファイルと bin/ が含まれる

@@ -487,7 +487,7 @@ module VivlioStarter
     # ================================================================
     # CoverCropMarksTest: 表紙トンボ付与の検証テスト
     # ================================================================
-    # 仕様書 docs/specs/cover_crop_marks_bugfix_spec.md の
+    # 仕様書 cover_crop_marks_bugfix_spec.md の
     # P1・P2・P3 に対応する自動テスト。
     #
     # P1: print_pdf ターゲット時のページサイズ検証

@@ -166,7 +166,7 @@ vs import --force ../review_starter_directory  # 確認なし
 
 ## 10. 参考リソース
 
-- `docs/specs/import_spec.md` … 追従変換・YAML 変換の詳細仕様（本書）
+- `import_spec.md` … 追従変換・YAML 変換の詳細仕様（本書）
 - `lib/vivlio/starter/cli/import/*.rb` … `vs import` コマンド関連の実装コード
 - `test/vivlio/starter/cli/import/*_test.rb` … Markdown 変換や画像処理などの挙動テスト
 

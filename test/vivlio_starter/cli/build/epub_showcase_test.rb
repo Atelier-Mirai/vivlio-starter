@@ -5,7 +5,7 @@
 # ================================================================
 # テスト対象:
 #   Build::EpubBuilder の図解注釈（showcase）ローカライズ
-#   （docs/specs/explanatory-diagram-spec.md §7.9）
+#   （explanatory-diagram-spec.md §7.9）
 #
 # 検証内容:
 #   - img.vs-showcase の src を data-vs-raster の値へ差し替える（EPUB は SVG 内 base64 を運べない）

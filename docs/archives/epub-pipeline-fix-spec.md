@@ -9,7 +9,7 @@
 > Fix-5〜7 も実装し、最終検証で **epubcheck FATAL 0 / ERROR 0 / WARNING 0**
 > （全章 EP-01/EP-02 green・単章 0 件）を確認した。EPUB サイズは 322MB → 59MB。
 >
-> - 起点: `docs/specs/epub-validation-findings.md`（調査記録。残存 47 件の実測内訳は
+> - 起点: `epub-validation-findings.md`（調査記録。残存 47 件の実測内訳は
 >   その §7 に記録済み）
 > - 関連テスト: `test/vivlio_starter/release/epub_validation_test.rb`（EP-01 / EP-02）
 > - 作成日: 2026-06-13（同日、Fix-1〜4 実装後の再検証を受けて §2.5 を追補）
@@ -540,4 +540,4 @@ Fix-5〜7 が必要だった（§2.5・findings §7）。
 | `stylesheets/components.css:105-160` | 脚注の画面/印刷出し分け CSS（Fix-3 の判断根拠） |
 | `stylesheets/page-settings.css:169-173` | `@footnote { … }` の実体（Fix-5 の対象。**ソースは変更しない**。EPUB パッケージ内でのみ除去） |
 | `node_modules/@vivliostyle/cli/dist/chunk-P33ELNYE.js` | `DEFAULT_ASSET_EXTENSIONS`（:218）・`copyWebPublicationAssets`（:2848）・`exportEpub`（:2095） |
-| `docs/specs/epub-validation-findings.md` | エラー全件の分類。**§7 に残存 47 件（Fix-5〜7 の対象）の実測内訳**（§0・§7 の更新内容に注意） |
+| `epub-validation-findings.md` | エラー全件の分類。**§7 に残存 47 件（Fix-5〜7 の対象）の実測内訳**（§0・§7 の更新内容に注意） |

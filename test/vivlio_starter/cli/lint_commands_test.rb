@@ -120,7 +120,7 @@ module VivlioStarter
 
       # --fix は「修正パス（--fix つき）→ 解析パス（--format json）」の 2 回実行になる。
       # 解析パスに --fix を付けてはならない（解析用の一時ファイルを直して捨てるだけの
-      # no-op になる。docs/specs/lint-notation-guard-spec.md §2.3）。
+      # no-op になる。lint-notation-guard-spec.md §2.3）。
       def test_fix_option_runs_fix_pass_then_analysis_pass
         FileUtils.touch('contents/11-install.md')
 

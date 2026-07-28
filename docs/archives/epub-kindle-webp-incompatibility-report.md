@@ -4,7 +4,7 @@
 > ステータス: **調査報告（仕様・実装は別途）**
 > 対象: `vs build`（epub ターゲット）が生成する EPUB を Kindle Previewer で変換する経路
 > 検出: Kindle Previewer の変換ログ `*-conversionLog.csv`
-> 関連: `docs/specs/epub-kindle-compatibility-report.md`, `math-frontispiece-svg-spec.md` §B
+> 関連: `epub-kindle-compatibility-report.md`, `math-frontispiece-svg-spec.md` §B
 > 優先度: **高**（EPUB の最重要ターゲットである Kindle / Amazon KDP で変換不能になる）
 
 ## 1. 概要

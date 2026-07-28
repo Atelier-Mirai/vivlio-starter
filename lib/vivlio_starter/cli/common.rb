@@ -7,7 +7,7 @@ require_relative 'units'
 require_relative 'spinner'
 
 # Common::CONFIG — book.yml の再帰的 Data ラッパー
-# 正規記法（The One Way）は docs/specs/config-access-unification-spec.md §2 を参照。
+# 正規記法（The One Way）は config-access-unification-spec.md §2 を参照。
 # * 静的キーはドット記法:   Common::CONFIG.book.main_title
 # * 動的キーはシンボル:     Common::CONFIG[section] / CONFIG.dig(:a, :b)（Symbol のみ。String は不可）
 # * パターンマッチ対応:     case Common::CONFIG in { page: { size: } } ...
@@ -97,7 +97,7 @@ module VivlioStarter
 
       # Hashを再帰的にDataオブジェクトに変換するヘルパー
       # ドット記法と [] アクセスの両方を提供します
-      # 正規記法は docs/specs/config-access-unification-spec.md §2 を参照
+      # 正規記法は config-access-unification-spec.md §2 を参照
       def wrap_config(input)
         case input
         in Hash
@@ -186,7 +186,7 @@ module VivlioStarter
       # ハードコーディングされた既定値スキーマをマージする
       # book.yml に記述がなくても全セクション・既知キーが常に存在し、
       # CONFIG.lint.config のようなドット記法が安全になる（値未設定なら nil）。
-      # 仕様: docs/specs/config-access-unification-spec.md §2.2
+      # 仕様: config-access-unification-spec.md §2.2
       def merge_hardcoded_defaults(cfg)
         default_config_schema.merge(cfg) { |_key, default_val, user_val| deep_merge_config(default_val, user_val) }
       end
@@ -322,7 +322,7 @@ module VivlioStarter
       # Normalization (Unit conversion)
       # ================================================================
 
-      # page 設定の単位を正規化する（仕様: docs/specs/page-unit-conversion-spec.md §3.3）。
+      # page 設定の単位を正規化する（仕様: page-unit-conversion-spec.md §3.3）。
       # 文字サイズを先に pt 化し、その結果を基準に行送り（倍率/em）を絶対 pt へ解決する。
       # 行送りを倍率のまま CSS へ渡さないのは、参照箇所ごとの font-size に依存させず
       # 版面の行グリッドを揃えるため（同 §1.3）。
@@ -857,7 +857,7 @@ module VivlioStarter
       # 直接ビルド（vs build myawesome.md）用の CONFIG を YAML を読まずに組み立てる。
       # 「設定ファイルを介さない」が本機能の定義のため book.yml は一切参照せず、
       # 既定値スキーマ＋版面プリセットに呼び出し側の上書きを重ねるだけで完結させる。
-      # 仕様: docs/archives/direct-build-spec.md §2.3
+      # 仕様: direct-build-spec.md §2.3
       # @param overrides [Hash] 既定値へ深くマージする設定（シンボルキー）
       # @return [Data] frozen な CONFIG 相当オブジェクト
       def build_direct_configuration(overrides = {})

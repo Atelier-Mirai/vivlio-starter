@@ -2,10 +2,10 @@
 
 - 作成日: 2026-07-19
 - 対象実装者: Opus 4.8（本仕様のみで実装が完結するよう、根拠・座標・変更差分・テスト・検証手順を全て記す）
-- バグ実測: `docs/specs/epub_chapter.png`（クリーン EPUB）・`docs/specs/kindle_chapter.png`（Kindle）
-- 期待レイアウトのモック: `docs/specs/epub_chapter_facsimile_mock.png`
+- バグ実測: `docs/archives/epub_chapter.png`（クリーン EPUB）・`docs/archives/kindle_chapter.png`（Kindle）
+- 期待レイアウトのモック: `docs/archives/epub_chapter_facsimile_mock.png`
   （本仕様 §5 の座標で rsvg-convert により実レンダリング済み。衝突なしを確認済み）
-- 先行仕様: `docs/archives/math-frontispiece-svg-spec.md`（③-a 合成画像化）— 本仕様は同仕様の
+- 先行仕様: `math-frontispiece-svg-spec.md`（③-a 合成画像化）— 本仕様は同仕様の
   「扉絵の上下分割（FRONTISPIECE_SPLIT）」設計を**廃止**して置き換える
 - 関連仕様（実装待ち・本仕様と整合済み）:
   - `kindle-inline-math-textify-spec.md` — 数式テキスト化は Kindle 専用フェーズで走るため
@@ -52,7 +52,7 @@ EPUB / Kindle の章扉で、**右下の桜だけが次ページ先頭へ落ち�
   リーダーは裾帯を丸ごと次ページへ送る。画面サイズとフォントサイズは読者ごとに変わるため、
   ビルド時の分割比調整では**原理的に防げない**。
 - Kindle KFX は `break-inside: avoid` / `page-break-inside` を解さない
-  （`docs/specs/vivliostyle-css-pitfalls-notes.md` の既知系）。
+  （`vivliostyle-css-pitfalls-notes.md` の既知系）。
 
 **帰結: 縦長章扉（桜—リード—桜）を千切れずに運ぶ唯一の決定的方法は、リード文まで含めた
 「章扉全体を 1 枚の分割不能画像」にすること**（以下「ファクシミリ合成」）。
@@ -444,7 +444,7 @@ ImageGenerator / ThemeImageResolver は**無変更**（本方式は PDF と同�
    - Kindle Previewer: KFX 変換 Error 0・章扉が 1 画面に収まる
 5. 縮退経路: `rsvg-convert` を PATH から外して EPUB ビルド → テキスト見出し＋テキストリードで
    出力され、ビルドが失敗しない（リードが消えていないこと）。
-6. 完了後、`docs/specs/STATUS.md` へ結果を追記し、CHANGELOG にエントリを追加。
+6. 完了後、`STATUS.md` へ結果を追記し、CHANGELOG にエントリを追加。
 
 ## 9. 非対象（変更してはならないもの）
 

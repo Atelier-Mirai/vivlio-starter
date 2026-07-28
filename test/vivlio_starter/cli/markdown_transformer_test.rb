@@ -1032,7 +1032,7 @@ module VivlioStarter
         # -----------------------------------------------------------------
         # :::{.terminal} は「端末の逐語転写」であり、中身は Markdown ではない。
         # ~~~vs-terminal フェンスへ書き換えることで以降の前処理・VFM から
-        # 中身を守る（docs/specs/terminal-literal-spec.md）。
+        # 中身を守る（terminal-literal-spec.md）。
         # =================================================================
 
         def test_convert_terminal_blocks_keeps_body_verbatim

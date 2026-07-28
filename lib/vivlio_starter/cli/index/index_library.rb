@@ -12,7 +12,7 @@
 #   書籍固有情報（contexts / backlink_sources / link / source 等）は含めず、
 #   別の書籍へそのまま引き継げる最小限のデータだけを扱う。
 #
-# 仕様: docs/specs/index-library-portability-spec.md
+# 仕様: index-library-portability-spec.md
 # ================================================================
 
 require 'yaml'

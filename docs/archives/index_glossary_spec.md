@@ -69,7 +69,7 @@ _glossarypage.html       # 生成された用語集ページ
 ```
 
 その他の仕様は、現行の成果物 `_index_review.md` に従う。
-(仕様の詳細は、現行コードや docs/specs/indexing_plan.md や docs/specs/indexing_implementation_spec.md 参照のこと)
+(仕様の詳細は、現行コードや indexing_plan.md や indexing_implementation_spec.md 参照のこと)
 
 ---
 
@@ -224,7 +224,7 @@ index_glossary:
    * `test/vivlio/starter/cli/post_process/heading_processor_test.rb` など Pre-process で `<a class="glossary-link">` が挿入されるパターンを追加し、`link_label` 設定や `backlink_links` フラグの On/Off を網羅する。
 
 2. **既存仕様との整合**
-   * 本書に明記していない挙動は、`docs/specs/indexing_plan.md` / `docs/specs/indexing_implementation_spec.md` に記された従来仕様を踏襲する。
+   * 本書に明記していない挙動は、`indexing_plan.md` / `indexing_implementation_spec.md` に記された従来仕様を踏襲する。
    * 新機能を実装する際は、両ドキュメントと本書の差分を確認し、必要に応じて相互参照を更新する。
 
 3. **著者向けガイドの更新**

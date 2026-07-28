@@ -224,7 +224,7 @@ module VivlioStarter
 
       # ----------------------------------------------------------------
       # 章別サマリー・3 段階の最終行
-      # （docs/specs/preflight-chapter-summary-spec.md §1・§3-2・§3-4）
+      # （preflight-chapter-summary-spec.md §1・§3-2・§3-4）
       # ----------------------------------------------------------------
       class PreflightCommandSummaryTest < Minitest::Test
         def teardown

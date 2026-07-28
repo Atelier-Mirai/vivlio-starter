@@ -2,7 +2,7 @@
 
 > 作成日: 2026-06-14
 > ステータス: **調査報告（仕様未決・後日決定用の資料）**
-> 関連: `docs/specs/build-output-bugfix-spec.md`（③-a 扉絵 / ④-A 数式）
+> 関連: `build-output-bugfix-spec.md`（③-a 扉絵 / ④-A 数式）
 
 EPUB の「扉絵（frontispiece/ornament）が表示されない」「数式が生 LaTeX で露出する」の
 恒久対応にあたり、**Kindle / Amazon KDP での見え方と技術的制約**を調査した。

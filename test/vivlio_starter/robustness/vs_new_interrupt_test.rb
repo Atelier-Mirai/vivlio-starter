@@ -5,7 +5,7 @@
 # ================================================================
 # 対応する堅牢性テスト仕様書項目:
 #   - 3-1-8 (L146): プロンプト途中で Ctrl+C
-#   docs/specs/vivlio_starter_robustness_test_spec.md
+#   vivlio_starter_robustness_test_spec.md
 #
 # 期待される挙動:
 #   中途半端な `プロジェクト名/` ディレクトリが残らないこと。

@@ -1,7 +1,7 @@
 # 脚注処理の簡素化仕様書（Vivliostyle 11 対応）
 
 - 対象: `@vivliostyle/cli` 10.3.1 → **11.0.2**（core 2.40.0 → **2.43.2**）への更新に伴う脚注処理の簡素化
-- 起点資料: `docs/specs/vivliostyle_footnotes_report.md`（コアエンジンの脚注改善5点）、`docs/footnote.md`（現行ハックの導入経緯・解決済み記録）
+- 起点資料: `vivliostyle_footnotes_report.md`（コアエンジンの脚注改善5点）、`docs/footnote.md`（現行ハックの導入経緯・解決済み記録）
 - 方針: **実測バグ対策として導入されたハックを、実ビルド検証で「不要」を確認してから段階撤去する**。リリースノート要約のみを根拠にコードを消さない。
 - 進捗メモ: 本仕様は「検証実験 → 段階実装」の2フェーズ構成。Phase 0（検証）の結果次第で Phase 1〜3 の実施可否が決まる。
 
@@ -205,7 +205,7 @@
 
 ## 7. 参照（実装時に読むべき箇所）
 
-- `docs/specs/vivliostyle_footnotes_report.md` — コア改善5点（#2 が H1、#3 が H2、#4 が H3 に対応）
+- `vivliostyle_footnotes_report.md` — コア改善5点（#2 が H1、#3 が H2、#4 が H3 に対応）
 - `docs/footnote.md` — 重複描画バグの根本原因と解決経緯（H1 の背景）
 - `lib/vivlio_starter/cli/post_process/footnote_converter.rb` — 章末→ページ脚注変換の本体
 - `lib/vivlio_starter/cli/post_process.rb:638-918` — sideimage 脚注・再番号付け・aside 移動

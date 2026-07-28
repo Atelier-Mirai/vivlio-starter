@@ -50,7 +50,7 @@
    - `EpubBuilder::ADMONITION_LABELS` に `'class' => '【LABEL】'` を追加（Kindle のみ実ラベル `<p class="vs-adm-label">` 注入）
    - `chapter-common.css` に `body.vs-kindle .class { … }` を**リテラル色**で追加（KFX は `::before` と `var()` を無視する）
    - `epub_kindle_layout_test` にラベルのアサーションを追加
-4. **CSS の落とし穴**は先に `docs/specs/vivliostyle-css-pitfalls-notes.md` を確認（`calc()+var()` 破棄・特異度・SVG intrinsic size 等）。
+4. **CSS の落とし穴**は先に `vivliostyle-css-pitfalls-notes.md` を確認（`calc()+var()` 破棄・特異度・SVG intrinsic size 等）。
 
 ## 4.【B】前処理変換型の手順
 

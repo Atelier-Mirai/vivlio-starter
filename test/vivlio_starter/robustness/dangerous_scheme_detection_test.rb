@@ -8,7 +8,7 @@
 #                 → Vivliostyle/Chromium のローカルファイル読み取り
 #                   ポリシーに依存せず、ビルド成果物にローカルシステム
 #                   情報が埋め込まれないこと
-#   docs/specs/vivlio_starter_robustness_test_spec.md
+#   vivlio_starter_robustness_test_spec.md
 #
 # 検証観点:
 #   A. HTML <img src="file:///..."> を検出し警告する

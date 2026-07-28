@@ -3,7 +3,7 @@
 # ================================================================
 # Test: build_command_direct_mode_test.rb
 # ================================================================
-# 検証内容（docs/archives/direct-build-spec.md §3-1, §3-2）:
+# 検証内容（direct-build-spec.md §3-1, §3-2）:
 #   - 直接モードの発動条件と排他（.md 1 件のみ / 混在・複数・不在は 🔴）
 #   - projectless? が .md 指定時のみ真になり、ensure_project_context! が
 #     Common.ensure_configured! を呼ばないこと

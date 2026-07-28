@@ -7,6 +7,12 @@ Always apply the ruby-coding-rules skill when working with .rb files.
 
 When adding or extending an author-facing notation (`:::{.class}` boxes, fences like ```` ```mermaid ````, inline syntax, generated assets), follow `docs/specs/notation-implementation-guide.md` — it maps the established infrastructure (Masking, GeneratedAssetCache, doctor, EpubBuilder localize) and the per-type checklists.
 
+## Referring to spec documents — filename only, never a path
+
+Specs live in `docs/specs/` while pending and move to `docs/archives/` once implemented. **Cite them by bare filename** — `` `page-break-control-spec.md` §2.1 `` — in code comments, in other specs, and in tests. Never write `docs/specs/…` or `docs/archives/…`, and don't make them relative Markdown links: a path (or link) encodes *where the file is today* and silently rots the moment the spec is archived. A bare filename is a name to grep for, so it stays correct in either directory. `docs/specs/STATUS.md` is the canonical answer to "is it implemented yet?" — that question should never be answered by reading a path.
+
+Paths are still right for things that don't migrate: source files, `test/`, `contents/`, and images.
+
 ## What This Project Is
 
 `vivlio-starter` is a Ruby gem (CLI tool `vs`) that wraps Vivliostyle (CSS typesetting engine) to generate publication-quality PDFs and EPUBs from Markdown. Requires Ruby 4.0+. The CLI framework is Samovar.

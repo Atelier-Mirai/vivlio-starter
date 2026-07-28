@@ -7,7 +7,7 @@
 #   雛形マニフェスト `config/scaffold.lock` の生成・読み書きと、
 #   著者データ領域（upgrade が絶対に触れない範囲）の判定を提供する。
 #
-# 背景（docs/specs/project-upgrade-command-spec.md §2.1）:
+# 背景（project-upgrade-command-spec.md §2.1）:
 #   lock は「展開時点の雛形原本ハッシュ」を記録する。これにより
 #   雛形の旧版 / 新版 / プロジェクト現物 の三者比較が可能になり、
 #   「雛形が変わった」と「著者が変えた」を区別できる。

@@ -8,7 +8,7 @@
 # 【背景】
 #   vs build が生成する EPUB を Kindle Previewer で変換すると、画像が WebP の
 #   ままだと Kindle が非対応で「無効な画像」（W14015/W14012）になり変換不能だった
-#   （docs/specs/epub-kindle-webp-incompatibility-report.md）。WebP→JPEG/PNG
+#   （epub-kindle-webp-incompatibility-report.md）。WebP→JPEG/PNG
 #   トランスコード（epub-kindle-webp-transcode-spec.md §5-1）後、Kindle Previewer 3
 #   の CLI で実変換し、画像系警告がゼロであることを実機検証する。
 #

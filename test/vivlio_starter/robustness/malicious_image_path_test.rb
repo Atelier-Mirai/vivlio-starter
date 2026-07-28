@@ -5,7 +5,7 @@
 # ================================================================
 # 対応する堅牢性テスト仕様書項目:
 #   - 2-3-4 (L116): 画像パスに `../../etc/passwd`
-#   docs/specs/vivlio_starter_robustness_test_spec.md
+#   vivlio_starter_robustness_test_spec.md
 #
 # 期待される挙動（仕様書本文）:
 #   ✅ Markdown としては単に画像が無い扱い。

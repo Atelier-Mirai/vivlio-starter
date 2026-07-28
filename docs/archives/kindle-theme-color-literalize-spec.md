@@ -2,7 +2,7 @@
 
 - 作成日: 2026-07-20
 - 対象実装者: Opus 4.8（本仕様のみで実装が完結するよう、根拠・対象・設計・テスト・検証を全て記す）
-- 関連: `docs/specs/kindle-css-compatibility-notes.md`（KFX の CSS 非対応・§2）, `stylesheets/theme.css`（アクセントパレットの正典）, `lib/vivlio_starter/cli/pre_process/book_settings_css.rb`（book.yml→CSS 生成）, `lib/vivlio_starter/cli/build/epub_builder.rb`（`resolve_css_color`）
+- 関連: `kindle-css-compatibility-notes.md`（KFX の CSS 非対応・§2）, `stylesheets/theme.css`（アクセントパレットの正典）, `lib/vivlio_starter/cli/pre_process/book_settings_css.rb`（book.yml→CSS 生成）, `lib/vivlio_starter/cli/build/epub_builder.rb`（`resolve_css_color`）
 - 背景の経緯: `kindle-simple-header-svg-spec.md`（付録見出しの SVG 化を試みたが 2026-07-20 に却下。代わりに本仕様で「色を付ける」方向へ舵を切る）
 
 本仕様は 2 件を扱う（ユーザー要望でまとめて起こす）:
@@ -203,7 +203,7 @@ Minitest。実装時は ruby-coding-rules skill を適用。
 3. `theme.style: simple` でも同様に、全章の見出し枠・本文アクセントがテーマ色で出ること。
 4. `theme.color` を `blue` 等に変えて再ビルド → Kindle のアクセントが青へ追従すること（固定でないことの確認）。
 5. クリーン EPUB（Kobo/Apple）が**無変化**であること（`body.vs-kindle` 規則が不発）。
-6. `docs/specs/STATUS.md`・`CHANGELOG` を更新。`kindle-css-compatibility-notes.md` §4 の該当行（strong/枠/付録が黒・グレー・くすんだ金）を「テーマ色リテラルで解決」へ更新。
+6. `STATUS.md`・`CHANGELOG` を更新。`kindle-css-compatibility-notes.md` §4 の該当行（strong/枠/付録が黒・グレー・くすんだ金）を「テーマ色リテラルで解決」へ更新。
 
 ## 7. 非対象（主題）
 

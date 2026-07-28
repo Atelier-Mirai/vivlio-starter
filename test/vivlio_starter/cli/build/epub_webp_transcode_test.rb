@@ -5,7 +5,7 @@
 # ================================================================
 # テスト対象:
 #   Build::EpubBuilder の WebP→JPEG/PNG トランスコード
-#   （docs/specs/epub-kindle-webp-transcode-spec.md §2・§6-1）
+#   （epub-kindle-webp-transcode-spec.md §2・§6-1）
 #
 # 検証内容:
 #   - <img src="*.webp"> を images/_epub_assets/<hash>.{jpg,png} へ差し替える

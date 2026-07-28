@@ -189,7 +189,7 @@ body.vs-header-simple h2 .section-title {
    -------------------------------------------------------------
    Kindle KFX は var() / display:grid / clamp() / calc() / ::before(absolute) /
    linear-gradient を解さず、上の simple-header 装飾が崩れて素テキスト化する
-   （docs/specs/kindle_epub_debug.md）。body.vs-header-simple.vs-kindle 配下に
+   （kindle_epub_debug.md）。body.vs-header-simple.vs-kindle 配下に
    具体値のみの装飾を与え、付録の章/節見出しにも枠付きの装飾を施す。
    画像版（vs-header-image）や PDF はこの規則の影響を受けない。
    ============================================================= */

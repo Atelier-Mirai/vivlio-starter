@@ -3,7 +3,7 @@
 # =============================================================================
 # test/vivlio_starter/release/epub_validation_test.rb
 #
-# EPUB 構造検証（EP）— docs/specs/test-suite-expansion-spec.md §13
+# EPUB 構造検証（EP）— test-suite-expansion-spec.md §13
 #
 # 【検証内容】
 #   EP-01: output.targets を epub に切り替えてビルド → exit 0・.epub 生成

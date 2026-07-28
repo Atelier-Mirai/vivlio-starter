@@ -14,7 +14,7 @@
 #   - コード領域（フェンス・インラインコード）を 1 文字も変えないこと
 #   - I1 行数の保存
 #
-# 仕様: docs/specs/lint-notation-guard-spec.md §3
+# 仕様: lint-notation-guard-spec.md §3
 # ================================================================
 
 require 'test_helper'

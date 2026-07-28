@@ -3,7 +3,7 @@
 > 作成日: 2026-07-27
 > 改訂: 2026-07-27（方針決定を反映・§4 に決定事項を追加／**Part 1・Part 2 とも実装完了**）
 > ステータス: **実装済み（2026-07-27）**
-> 目的: `docs/archives/cli-option-parsing-report.md` の残件 2 件——「オプションを位置引数より前に置けない」（§3.3）と「`Common.current_log_level` が ARGV を直接走査している」（§4.3 ③）——を解消する。
+> 目的: `cli-option-parsing-report.md` の残件 2 件——「オプションを位置引数より前に置けない」（§3.3）と「`Common.current_log_level` が ARGV を直接走査している」（§4.3 ③）——を解消する。
 > 前提: `--opt=value` 記法の共通化（`OptionTokenNormalizer`）は 2026-07-27 に実装済み。本仕様はその上に載る。
 > 関連ファイル: `lib/vivlio_starter/cli/samovar/option_token_normalizer.rb`, `lib/vivlio_starter/cli/common.rb`, `lib/vivlio_starter/cli/startup.rb`, `lib/vivlio_starter/cli/samovar/*_command.rb`
 
@@ -421,7 +421,7 @@ Part 1 と Part 2 は独立しており、D6 のとおり Part 1 から着手す
 
 ### 10.1 `IndexBuildCommand` の残存 — ✅ 解消（2026-07-27）
 
-`vs index:build` は廃止済みだったが、**`IndexBuildCommand` のクラス定義（`index_command.rb:208-236`）だけが残っていた**。`RootCommand.command_map` に登録されておらず CLI からは到達できない完全なデッドコードで、`docs/archives/test-suite-expansion-spec.md:413` の記述から**ドキュメント側からは削除されたがクラス本体の削除が漏れた**ものと判明した。
+`vs index:build` は廃止済みだったが、**`IndexBuildCommand` のクラス定義（`index_command.rb:208-236`）だけが残っていた**。`RootCommand.command_map` に登録されておらず CLI からは到達できない完全なデッドコードで、`test-suite-expansion-spec.md:413` の記述から**ドキュメント側からは削除されたがクラス本体の削除が漏れた**ものと判明した。
 
 削除にあたり、索引ページ生成の実処理が別経路で生きていることを確認した。
 

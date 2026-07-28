@@ -26,7 +26,7 @@ require "yaml"
 require_relative "../support/build_helper"
 
 # BookYmlPatcher / VsBuilder は support/build_helper.rb へ移設した
-# （docs/specs/test-suite-expansion-spec.md §15。検証ロジックは不変更）
+# （test-suite-expansion-spec.md §15。検証ロジックは不変更）
 BookYmlPatcher = VsTestSupport::BookYmlPatcher
 VsBuilder = VsTestSupport::VsBuilder
 

@@ -9,7 +9,7 @@
 #   （command_runnable? / cli_tool_ok?）。これにより Homebrew cask の壊れたラッパー
 #   （実体を失った .app を指し exit 126）や dylib 切れ等の「在るのに動かない」も検出する。
 #   あわせて config/ 配下の設定ファイルを診断し、--fix 時は scaffold から
-#   復元する（docs/specs/doctor-restore-and-plugin-tools-spec.md Phase 5）。
+#   復元する（doctor-restore-and-plugin-tools-spec.md Phase 5）。
 #
 # 診断対象ツール:
 #   - Xcode Command Line Tools (macOS): ビルドツールチェーン

@@ -7,7 +7,7 @@
 > - レンダラは **`@mermaid-js/mermaid-cli`（`mmdc`）** を第一候補とする（公式・オフライン可・SVG 出力）。
 > - 生成物の扱いは **図解注釈（showcase / explanatory-diagram-spec）と同型**——前処理で図を生成して `<figure class="vs-mermaid"><img>` へ置換し、PDF はベクタ SVG、EPUB/Kindle は対のラスターへ `EpubBuilder` が差し替える。ラスター化判定・`data-vs-raster` 属性・キャッシュ機構・localize 差し替えは showcase の実装を**流用**する。
 > - `mmdc` 不在時は**注記付きコードブロックへ縮退**し、ビルドは止めない（`vs doctor` の案内対象に追加）。
-> 関連: `docs/archives/explanatory-diagram-spec.md`（合成 SVG / ラスター差し替えの前例＝実装の下敷き）, `docs/archives/math-frontispiece-svg-spec.md`（前処理 SVG 化の前例）, `lib/vivlio_starter/cli/pre_process/showcase_transformer.rb`, `lib/vivlio_starter/cli/build/epub_builder.rb`（`localize_showcase_images!`）, `docs/specs/vivliostyle-css-pitfalls-notes.md`（SVG intrinsic size 等）, 記憶 `node26-puppeteer-extract-hang`（puppeteer/Chromium 展開の落とし穴）。
+> 関連: `explanatory-diagram-spec.md`（合成 SVG / ラスター差し替えの前例＝実装の下敷き）, `math-frontispiece-svg-spec.md`（前処理 SVG 化の前例）, `lib/vivlio_starter/cli/pre_process/showcase_transformer.rb`, `lib/vivlio_starter/cli/build/epub_builder.rb`（`localize_showcase_images!`）, `vivliostyle-css-pitfalls-notes.md`（SVG intrinsic size 等）, 記憶 `node26-puppeteer-extract-hang`（puppeteer/Chromium 展開の落とし穴）。
 
 ## 0. 背景・目的
 

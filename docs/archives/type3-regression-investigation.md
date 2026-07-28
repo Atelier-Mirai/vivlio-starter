@@ -3,7 +3,7 @@
 > 作成日: 2026-06-22
 > ステータス: **原因確定。修正一部適用・一部方針提案**
 > 対象: `vs build`（techbook: true）の入稿用／閲覧用 PDF に混入する Type 3 フォント。
-> 関連: `lib/vivlio_starter/cli/techbook/processor.rb`、`stylesheets/page-settings.css`（@font-face）、`stylesheets/chapter.css`・`stylesheets/glossary.css`（†）、`test/vivlio_starter/release/manual_build_test.rb`（FT-01）、`docs/archives/svg_luster_bugfix_technical_notes.md`（10.x 時代の Type3 対策）、`docs/specs/KNOWN_ISSUES.md`
+> 関連: `lib/vivlio_starter/cli/techbook/processor.rb`、`stylesheets/page-settings.css`（@font-face）、`stylesheets/chapter.css`・`stylesheets/glossary.css`（†）、`test/vivlio_starter/release/manual_build_test.rb`（FT-01）、`svg_luster_bugfix_technical_notes.md`（10.x 時代の Type3 対策）、`KNOWN_ISSUES.md`
 
 ---
 

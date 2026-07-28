@@ -4,7 +4,7 @@
 # test/vivlio_starter/release/manual_build_test.rb
 #
 # マニュアルフルビルド（MB）+ PDF フォント検査（FT）
-# docs/specs/test-suite-expansion-spec.md §4 / §5
+# test-suite-expansion-spec.md §4 / §5
 #
 # 【検証内容】
 #   MB-01: リポジトリルートで vs build → exit 0・PDF 生成

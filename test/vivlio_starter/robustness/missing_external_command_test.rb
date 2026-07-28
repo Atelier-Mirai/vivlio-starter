@@ -7,7 +7,7 @@
 #   - 4-1-1 (L176): `vivliostyle` コマンド不在 → vs doctor --fix 案内
 #   - 4-1-2 (L177): `inkscape` 不在でカバー生成
 #   - 4-1-3 (L178): `imagemagick` 不在
-#   docs/specs/vivlio_starter_robustness_test_spec.md
+#   vivlio_starter_robustness_test_spec.md
 #
 # 期待される挙動:
 #   "command not found" の生ログではなく、`vs doctor` / `vs doctor --fix`

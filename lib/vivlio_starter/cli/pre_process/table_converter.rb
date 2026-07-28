@@ -8,7 +8,7 @@
 #   素テーブルの横取り・コンテナ（long-table / rotate-table）内テーブルの変換・
 #   rotate-table の版面自動フィット（scale/height 自動算出）を担う。
 #
-# 仕様: docs/specs/table-colspan-spec.md
+# 仕様: table-colspan-spec.md
 #
 # 設計の要点:
 #   - 記法 `||`（ゼロ幅セル）は直前セルへのマージ（colspan）。空白のみのセルは本物の空セル。

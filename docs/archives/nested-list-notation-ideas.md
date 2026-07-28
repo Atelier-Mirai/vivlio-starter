@@ -3,7 +3,7 @@
 > 作成日: 2026-07-12
 > ステータス: **確定仕様へ昇格済み（2026-07-12）** — 実装調査を経て `nested-list-notation-spec.md` へ昇格した。本メモは検討経緯の記録として残す。
 > 対象: 番号付き/番号なし箇条書きの入れ子、マーカー種別（A./（A）/a./i. 等）
-> 関連: `stylesheets/chapter-common.css`（現行の ol/ul スタイル、208〜218行目）, `docs/specs/at-directive-ideas.md`（`:::{.class}` を優先する既存方針）
+> 関連: `stylesheets/chapter-common.css`（現行の ol/ul スタイル、208〜218行目）, `at-directive-ideas.md`（`:::{.class}` を優先する既存方針）
 
 ## 0. 前提・方針
 

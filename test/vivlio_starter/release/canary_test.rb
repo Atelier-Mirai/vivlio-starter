@@ -3,7 +3,7 @@
 # =============================================================================
 # test/vivlio_starter/release/canary_test.rb
 #
-# 依存カナリアテスト（CN）— docs/specs/test-suite-expansion-spec.md §14
+# 依存カナリアテスト（CN）— test-suite-expansion-spec.md §14
 #
 # 【検証内容】
 #   CN-01: @vivliostyle/cli の最新版でマニュアルがビルドでき、Type 3 フォントが

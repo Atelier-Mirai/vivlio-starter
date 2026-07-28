@@ -6,7 +6,7 @@
 > 「EPUB 生成パイプライン修正仕様書」を起こすための、不具合の分類・根本原因・
 > 修正方針のたたき台です。
 >
-> **2026-06-13 追記**: 本記録を基に修正仕様書 `docs/specs/epub-pipeline-fix-spec.md` を
+> **2026-06-13 追記**: 本記録を基に修正仕様書 `epub-pipeline-fix-spec.md` を
 > 作成した。その際の追加調査で本書の推定 2 件が覆っている — ①雛形 CSS 混入の真因は
 > 生成器のパス参照ではなく **`vivliostyle.config.epub.js` に `copyAsset` 指定が無い**こと
 > （Vivliostyle CLI が CWD 以下の全アセットを EPUB に同梱していた）、② §3.1 案 B
@@ -18,7 +18,7 @@
 > - 対象: マニュアル（本リポジトリ自身を書籍として）`targets: epub` でフルビルドした
 >   `vivlio_starter_v1.0.0.epub`
 > - 関連テスト: `test/vivlio_starter/release/epub_validation_test.rb`（EP-01 / EP-02）
-> - 関連仕様: `docs/specs/test-suite-expansion-spec.md` §13
+> - 関連仕様: `test-suite-expansion-spec.md` §13
 
 ---
 
