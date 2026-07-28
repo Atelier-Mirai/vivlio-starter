@@ -15,6 +15,7 @@ require 'set'
 require_relative '../common'
 require_relative '../masking'
 require_relative '../post_process/heading_processor'
+require_relative 'issue_registry'
 require_relative 'markdown_utils'
 
 module VivlioStarter
@@ -23,22 +24,25 @@ module VivlioStarter
       # クロスリファレンス処理モジュール
       # rubocop:disable Metrics/ModuleLength
       module CrossReferenceProcessor
-        # ラベル種別の日本語名
-        LABEL_TYPE_NAMES = { list: 'リスト', table: '表', fig: '図' }.freeze
+        # ラベル種別の日本語名（sec は見出しラベル・at-directive-tier1-spec.md §2.4.1）
+        LABEL_TYPE_NAMES = { list: 'リスト', table: '表', fig: '図', sec: '節' }.freeze
         CAPTION_PATTERN = /^\*\*\s*(.+?)\s+@([-\w]+)\s*\*\*\s*$/
+
+        # 見出し行末の ` @id`（見出しラベル）。紙面には出さずアンカーだけを残す。
+        HEADING_LABEL_PATTERN = /^(\#{1,6})\s+(.+?)\s+@([-\w]+)\s*$/
 
         # 自動採番用の予約ID（キャプションで @auto / @omakase / @id と書くと type-chapter-N 形式に採番される）
         RESERVED_IDS = %w[auto omakase id].freeze
 
-        # 組み込み置換ルール（ReplacementRules）のマクロ名（完全一致で予約）。
-        # これは @ID 参照ではなくシステム予約のマクロなので、
-        # 未定義のラベルIDとして警告しない。
+        # 組み込み置換ルール（ReplacementRules）・ビルド生成物（QrTransformer）の
+        # マクロ名（完全一致で予約）。これは @ID 参照ではなくシステム予約のマクロなので、
+        # 未定義のラベルIDとして警告せず後段（post_process / pre_process）へ素通しする。
         # （@nega/@posi の後方互換別名・@comment/@commend の編集者コメントは廃止済み）
-        RESERVED_MACRO_IDS = %w[vspace].freeze
+        RESERVED_MACRO_IDS = %w[vspace hspace pagebreak pageref version today title qr].freeze
 
         # 予約IDの判定を一元化する。
         # RESERVED_IDS: auto / omakase / id
-        # RESERVED_MACRO_IDS: vspace（完全一致）
+        # RESERVED_MACRO_IDS: vspace / hspace / pagebreak / …（完全一致）
         def self.reserved_id?(label_id)
           return true if RESERVED_IDS.include?(label_id)
 
@@ -91,6 +95,15 @@ module VivlioStarter
 
           { title: match[1].strip, id: match[2].strip,
             auto: RESERVED_IDS.include?(match[2].strip) }
+        end
+
+        # 見出し行末の ` @id` を取り出す（`## インストール @install`）。
+        # 見出しラベルは @pageref / @id 参照の飛び先になる（at-directive-tier1-spec.md §1.1）。
+        def extract_heading_label(line)
+          match = line.match(HEADING_LABEL_PATTERN)
+          return nil unless match
+
+          { level: match[1].length, title: match[2].strip, id: match[3].strip }
         end
 
         def detect_block_type(lines, idx)
@@ -167,6 +180,11 @@ module VivlioStarter
           def process_line(line, idx, lines, code_lines)
             return if code_lines.include?(idx + 1)
 
+            if (heading = CrossReferenceProcessor.extract_heading_label(line))
+              add_heading_label(heading, idx)
+              return
+            end
+
             info = CrossReferenceProcessor.extract_caption_label(line)
             return unless info
 
@@ -174,6 +192,8 @@ module VivlioStarter
           end
 
           def add_label(info, idx, lines)
+            return if reserved_macro_id?(info[:id], idx + 1)
+
             type = CrossReferenceProcessor.detect_block_type(lines, idx)
             unless type
               @errors << "#{@source_file}:#{idx + 1} - ブロック種別を判定できません"
@@ -182,6 +202,35 @@ module VivlioStarter
 
             @counters[type] += 1
             @labels << create_label(info, type, idx + 1)
+          end
+
+          # 見出しラベル（type :sec）を登録する。番号は付けず、参照文言は
+          # 「見出しテキスト」をかぎ括弧で括る（at-directive-tier1-spec.md §2.4.2）。
+          def add_heading_label(heading, idx)
+            return if reserved_macro_id?(heading[:id], idx + 1)
+
+            @labels << Label.new(heading[:id], :sec, @chapter_number, @chapter_number,
+                                 heading[:title], @source_file, idx + 1, false)
+          end
+
+          # 予約マクロ名（@version 等）は ラベルID に使えない。使うと本文のマクロ展開と
+          # ラベル参照が衝突して解決不能になるため、収集時に 🔴 で弾く
+          # （at-directive-tier1-spec.md §2.1）。自動採番の @auto / @omakase / @id は
+          # 予約 *ID* であって予約マクロではないので、ここでは弾かない。
+          def reserved_macro_id?(label_id, line_number)
+            return false unless CrossReferenceProcessor::RESERVED_MACRO_IDS.include?(label_id)
+
+            Common.log_error(
+              "#{@source_file}:#{line_number} - '#{label_id}' は予約語のため ラベルID に使えません",
+              detail: "予約語: #{CrossReferenceProcessor::RESERVED_MACRO_IDS.join(', ')}\n" \
+                      "→ 別の ID に変更してください（例: @#{label_id} → @#{label_id}-detail）。"
+            )
+            IssueRegistry.record(
+              chapter: @source_file, line: line_number, severity: :error,
+              category: :cross_reference, message: "予約語 '@#{label_id}' は ラベルID に使えません"
+            )
+            @errors << "#{@source_file}:#{line_number} - 予約語をラベルIDに使用: @#{label_id}"
+            true
           end
 
           def create_label(info, type, line_number)
@@ -371,10 +420,26 @@ module VivlioStarter
           end
 
           def handle_non_caption(output, idx)
+            result = try_heading_label(output, idx)
+            return result if result
+
             result = try_plain_image(output, idx)
             return result if result
 
             output << @lines[idx]
+            idx + 1
+          end
+
+          # 見出し行末の ` @id` を除去し、アンカー span を見出しの「内側」へ移す。
+          # 見出しの前の行に置くと、h2 の break-before: page によってアンカーだけが
+          # 前ページ末尾に落ち、@pageref のページ番号が 1 ずれる
+          # （at-directive-tier1-spec.md §2.4.1）。
+          def try_heading_label(output, idx)
+            heading = CrossReferenceProcessor.extract_heading_label(@lines[idx])
+            return nil unless heading
+
+            marks = '#' * heading[:level]
+            output << %(#{marks} #{heading[:title]} <span id="#{heading[:id]}" class="vs-sec-anchor"></span>\n)
             idx + 1
           end
 
@@ -578,6 +643,14 @@ module VivlioStarter
         class ReferenceReplacer
           REFERENCE_PATTERN = /(?<![a-zA-Z0-9_.])@([\w-]+)/
 
+          # ページ番号つき参照（at-directive-tier1-spec.md §2.4.2）。
+          # generic の REFERENCE_PATTERN はコロンの手前までしか見ない（= `@pageref` だけを拾う）ため、
+          # 必ず generic より先に処理する。
+          PAGEREF_PATTERN = /@pageref:([\w-]+)/
+          # 引数を書き忘れた裸の @pageref。generic 側では予約語として黙って素通しされるので、
+          # ここで捕まえて書式を案内する。
+          BARE_PAGEREF_PATTERN = /@pageref\b(?!:)/
+
           # 参照走査から除外するスパン（インライン code 以外の正当な @ 出現箇所）:
           # - Markdown リンク/画像 [text](url): リンクテキスト・URL とも @ は正当な表現
           #   （npm スコープ名 [npmjs.com/@vivliostyle/cli](https://…/@vivliostyle/cli) 等）
@@ -599,8 +672,9 @@ module VivlioStarter
             code_lines = CrossReferenceProcessor.code_line_numbers(@content)
             result = @content.lines.map.with_index(1) do |line, num|
               in_code = code_lines.include?(num)
-              # キャプション定義行（** タイトル @id **）は参照としてカウントしない
-              next line if !in_code && CrossReferenceProcessor.extract_caption_label(line)
+              # 定義行（キャプション `** タイトル @id **` / 見出し `## タイトル @id`）は
+              # 参照としてカウントしない（孤立ラベル検出が定義行を「使用済み」と誤認するため）
+              next line if !in_code && definition_line?(line)
 
               in_code ? line : replace_in_line(line, num)
             end
@@ -608,6 +682,11 @@ module VivlioStarter
           end
 
           private
+
+          def definition_line?(line)
+            !CrossReferenceProcessor.extract_caption_label(line).nil? ||
+              !CrossReferenceProcessor.extract_heading_label(line).nil?
+          end
 
           def replace_in_line(line, line_num)
             line.split(%r{(<code[^>]*>.*?</code>)}).map do |part|
@@ -629,10 +708,33 @@ module VivlioStarter
           end
 
           def replace_refs(text, line_num)
+            text = text.gsub(PAGEREF_PATTERN) { replace_pageref(Regexp.last_match(1), line_num) }
+            text = text.gsub(BARE_PAGEREF_PATTERN) { report_bare_pageref(line_num) }
             text.gsub(REFERENCE_PATTERN) do
               label_id = Regexp.last_match(1)
               replace_single_ref(label_id, line_num)
             end
+          end
+
+          # @pageref:id → ページ番号つきリンク。ページ番号自体は CSS の target-counter が
+          # 組版時に注入するため（chapter-common.css の a.pageref::after）、ここでは
+          # class="pageref" を付けたリンクを置くだけでよい。EPUB/Kindle は target-counter を
+          # 解さず宣言ごと破棄するので、自動的にタイトルのみのリンクへ劣化する。
+          def replace_pageref(label_id, line_num)
+            label = @labels_map[label_id]
+            unless label
+              @errors << "#{@filename}:#{line_num} - 未定義のラベルID: @pageref:#{label_id}"
+              return "@pageref:#{label_id}"
+            end
+
+            @used_ids << label_id
+            %(<a href="#{build_href(label)}" class="cross-ref-link pageref">#{link_text(label)}</a>)
+          end
+
+          # 引数を書き忘れた裸の @pageref。そのままでは紙面に生テキストが出るため書式を案内する。
+          def report_bare_pageref(line_num)
+            @errors << "#{@filename}:#{line_num} - @pageref には参照先が必要です（書式例: @pageref:install）"
+            '@pageref'
           end
 
           def replace_single_ref(label_id, line_num)
@@ -650,7 +752,15 @@ module VivlioStarter
 
           def render_link(label)
             href = build_href(label)
-            %(<a href="#{href}" class="cross-ref-link">#{CGI.escapeHTML(label.full_number)}</a>)
+            %(<a href="#{href}" class="cross-ref-link">#{link_text(label)}</a>)
+          end
+
+          # 参照リンクの文言。見出しラベル（:sec）は「タイトル」をかぎ括弧で括り、
+          # 図・表・リストは従来どおり「図 3」形式にする（:sec に full_number は使わない）。
+          def link_text(label)
+            return "「#{CGI.escapeHTML(label.title.to_s)}」" if label.type == :sec
+
+            CGI.escapeHTML(label.full_number)
           end
 
           def build_href(label)

@@ -450,6 +450,10 @@ module VivlioStarter
             Masking.each_prose_line(content) do |line, line_number|
               # インラインコード内はスキップ
               line_without_inline_code = line.gsub(/`[^`]+`/, '')
+              # HTML タグの属性値（<a href="…"> / <img alt="…">）は「本文に直書きされた
+              # 裸 URL」ではないので走査対象から外す。前処理が生成する要素（@qr の
+              # <img alt="URL">）もここで除外される。
+              line_without_inline_code = line_without_inline_code.gsub(/<[^>]+>/, '')
 
               # 脚注定義行はスキップ
               next if line_without_inline_code.match?(/^\[\^[^\]]+\]:/)

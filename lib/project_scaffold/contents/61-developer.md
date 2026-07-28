@@ -889,11 +889,25 @@ table { border-collapse: collapse; }
 
 `process_cross_references` が以下を順に実行します。
 
-1. `LabelCollectorContext` が全章を走査し、`** タイトル @id **` 形式のキャプション行を収集してラベルマップを構築します。重複 ID はエラーとして記録します。
-2. `CaptionedBlockTransformer` がキャプション行とその直後のブロックを HTML に変換し、`id` 属性と章番号付き連番（`リスト 3-2` など）を埋め込みます。
-3. `ReferenceReplacer` が本文中の `@id` をラベルマップと照合し、番号付きリンクに置換します。コードブロック・インラインコード内の `@` は置換対象外です。
+1. `LabelCollectorContext` が全章を走査し、`** タイトル @id **` 形式のキャプション行と `## タイトル @id` 形式の見出し行を収集してラベルマップを構築します。重複 ID はエラーとして記録します。
+2. `CaptionedBlockTransformer` がキャプション行とその直後のブロックを HTML に変換し、`id` 属性と章番号付き連番（`リスト 3-2` など）を埋め込みます。見出しラベルは行末の `@id` を取り除き、見出しの**内側**に空のアンカー `<span id="…" class="vs-sec-anchor">` を残します（見出しの前に置くと `break-before: page` でアンカーだけが前ページに落ち、ページ番号が 1 ずれるためです）。
+3. `ReferenceReplacer` が本文中の `@id` をラベルマップと照合し、番号付きリンクに置換します。`@pageref:id` は先に処理され、`class="pageref"` 付きのリンクになります。コードブロック・インラインコード内の `@` は置換対象外です。
 
 `@auto` / `@omakase` / `@id` は予約済み ID として番号付与のみ行い、参照リンクは生成しません。
+
+### `@` ディレクティブの処理系（2 トラック）
+
+`@` で始まる記法は、実装される場所が 2 つに分かれています。
+
+| 記法 | 処理する場所 | 実装 |
+| :--- | :--- | :--- |
+| `@pageref:id` ／ 見出しラベル | 前処理（クロスリファレンス・全章一括） | `CrossReferenceProcessor` |
+| `@qr:URL` | 前処理（章ごと・画像生成を伴う） | `QrTransformer` |
+| `@vspace` `@hspace` `@pagebreak` `@version` `@title` `@today` | 後処理（HTML への文字列置換） | `ReplacementRules` |
+
+後処理の置換は PDF・EPUB・Kindle が共有する HTML に対して一度だけ効きます。ターゲットごとの差（`@pageref` のページ番号が PDF にだけ出る／`:recto` が EPUB では単純改ページになる）は Ruby ではなく CSS のカスケードで吸収しています。`target-counter()` や `break-before: recto` を解釈できないリーダーは、その宣言だけを破棄してフォールバック宣言を採るためです。
+
+`@version` / `@title` / `@today` は値が `book.yml` とビルド時刻に依存するため、凍結定数 `ReplacementRules::ALL` ではなく `value_macro_rules` として適用のたびに組み立てられます（定数にすると設定の再読み込み後に古い値を差し込んでしまうためです）。
 
 
 

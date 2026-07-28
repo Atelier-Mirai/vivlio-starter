@@ -105,6 +105,126 @@ module VivlioStarter
         end
 
         # =============================================================
+        # 水平アキ @hspace（at-directive-tier1-spec §1.5 / §2.2）
+        # =============================================================
+
+        # 単位なしの既定は em（@vspace の既定 mm とは意図的に非対称）
+        def test_should_complete_em_for_bare_hspace
+          out = apply('<p>@hspace:2 ここから字下げ。</p>')
+
+          assert_includes out, '<span class="vs-hspace" style="margin-left:2em"></span>'
+        end
+
+        def test_should_expand_hspace_with_unit_before_bare
+          out = apply('<p>@hspace:10mm の水平アキ。</p>')
+
+          assert_includes out, '<span class="vs-hspace" style="margin-left:10mm"></span>'
+        end
+
+        def test_should_expand_negative_hspace
+          out = apply('<p>@hspace:-0.5 で詰める。</p>')
+
+          assert_includes out, '<span class="vs-hspace" style="margin-left:-0.5em"></span>'
+        end
+
+        def test_should_not_expand_hspace_inside_pre
+          out = apply("<pre><code class=\"language-markdown\">@hspace:2</code></pre>\n")
+
+          assert_includes out, '@hspace:2'
+          refute_includes out, 'vs-hspace'
+        end
+
+        # =============================================================
+        # 改ページ @pagebreak（at-directive-tier1-spec §1.2 / §2.2）
+        # =============================================================
+
+        def test_should_convert_pagebreak_recto_and_verso
+          out = apply("<p>@pagebreak:recto</p>\n<p>@pagebreak:verso</p>")
+
+          assert_includes out, '<div class="vs-break-recto"></div>'
+          assert_includes out, '<div class="vs-break-verso"></div>'
+        end
+
+        # 引数なしの裸 @pagebreak は単純改ページ（--- と等価）
+        def test_should_convert_bare_pagebreak_to_simple_break
+          out = apply('<p>@pagebreak</p>')
+
+          assert_includes out, '<div class="vs-break-page"></div>'
+        end
+
+        # 不正引数は @pagebreak 部分も含めて丸ごと素通しする（否定先読みの回帰ゲート）。
+        # ここで部分置換されると ":left" だけが紙面に残る。検知は前処理側の責務。
+        def test_should_leave_invalid_pagebreak_argument_untouched
+          out = apply('<p>@pagebreak:left</p>')
+
+          assert_includes out, '@pagebreak:left'
+          refute_includes out, 'vs-break'
+        end
+
+        # =============================================================
+        # ビルド時定数 @version / @title / @today（at-directive-tier1-spec §2.3）
+        # =============================================================
+
+        # CONFIG は DI で差し替える（グローバル定数を書き換えない）
+        def stub_config(version: '1.2.3', main_title: 'テスト書名')
+          VivlioStarter::CLI::Common.wrap_config(
+            project: { version: }, book: { main_title: }
+          )
+        end
+
+        def test_should_expand_version_and_title_from_config
+          rules = ReplacementRules.value_macro_rules(stub_config)
+          out = Tempfile.create(['vs_rr_value_', '.html']) do |f|
+            f.write('<p>本書 @title は v@version です。</p>')
+            f.flush
+            HtmlReplacer.process_html_file(f.path, rules)
+            File.read(f.path, encoding: 'utf-8')
+          end
+
+          assert_includes out, '本書 テスト書名 は v1.2.3 です。'
+        end
+
+        # \b により @titlepage のような続き文字には反応しない
+        def test_should_not_expand_macro_with_trailing_word_characters
+          rules = ReplacementRules.value_macro_rules(stub_config)
+          out = Tempfile.create(['vs_rr_value_', '.html']) do |f|
+            f.write('<p>@titlepage と @versionup。</p>')
+            f.flush
+            HtmlReplacer.process_html_file(f.path, rules)
+            File.read(f.path, encoding: 'utf-8')
+          end
+
+          assert_includes out, '@titlepage'
+          assert_includes out, '@versionup'
+        end
+
+        # 値の $ は置換エンジンの $1〜$9 展開に食われるため無害化し、< > は HTML エスケープする
+        def test_should_sanitize_dollar_and_html_in_config_values
+          rules = ReplacementRules.value_macro_rules(stub_config(main_title: '<b>$1 の本</b>'))
+          out = Tempfile.create(['vs_rr_value_', '.html']) do |f|
+            f.write('<p>@title</p>')
+            f.flush
+            HtmlReplacer.process_html_file(f.path, rules)
+            File.read(f.path, encoding: 'utf-8')
+          end
+
+          assert_includes out, '&lt;b&gt;&#36;1 の本&lt;/b&gt;'
+          refute_includes out, '<b>'
+        end
+
+        def test_should_expand_today_in_japanese_date_format
+          rules = ReplacementRules.value_macro_rules(stub_config)
+          out = Tempfile.create(['vs_rr_value_', '.html']) do |f|
+            f.write('<p>@today 更新</p>')
+            f.flush
+            HtmlReplacer.process_html_file(f.path, rules)
+            File.read(f.path, encoding: 'utf-8')
+          end
+
+          assert_match(/\d{4}年\d{1,2}月\d{1,2}日 更新/, out)
+        end
+
+        # =============================================================
         # リスト装飾
         # =============================================================
 
@@ -225,8 +345,10 @@ module VivlioStarter
                      ReplacementRules::SPACING_CLASS_RULES
 
           assert_equal expected, ReplacementRules::ALL
-          # 旧 yml 34 ルールから @nega/@posi/@comment の 3 本を撤去して 31 本
-          assert_equal 31, ReplacementRules::ALL.size
+          # 旧 yml 34 ルールから @nega/@posi/@comment の 3 本を撤去して 31 本。
+          # そこへ @hspace（2 本）・@pagebreak（2 本）を追加して 35 本
+          # （@version/@title/@today は CONFIG 依存のため ALL ではなく value_macro_rules）。
+          assert_equal 35, ReplacementRules::ALL.size
         end
 
         def test_should_apply_multiline_mode_to_all_patterns

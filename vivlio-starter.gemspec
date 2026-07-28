@@ -38,6 +38,8 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'prawn', '~> 2.5'
   spec.add_dependency 'samovar', '~> 2.1'
   spec.add_dependency 'rouge', '~> 4.7'
+  # @qr:URL の QR コード生成（pure Ruby・MIT。ネイティブ拡張なし）
+  spec.add_dependency 'rqrcode', '~> 3.2'
 
   # Optional: 索引機能の読み自動推測に使用（MeCab が必要）
   # MeCab をシステムにインストールした上で使用:

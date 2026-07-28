@@ -25,7 +25,10 @@
 
 require 'fileutils'
 require_relative '../common'
+require_relative '../masking'
 require_relative 'frontmatter_generator'
+require_relative 'issue_registry'
+require_relative 'qr_transformer'
 require_relative 'data_render'
 require_relative 'image_path_normalizer'
 require_relative 'markdown_transformer'
@@ -58,6 +61,10 @@ module VivlioStarter
         # テーブルコンテナのクラス名（long-table との語順統一で rotate-table を採用）。
         TABLE_CONTAINER_CLASSES = %w[long-table rotate-table].freeze
 
+        # @pagebreak の不正な引数（:recto / :verso 以外）。置換ルールはこの形に一切
+        # マッチしないため、放置すると生テキストのまま紙面に出る（§2.2 の否定先読みの裏面）。
+        INVALID_PAGEBREAK_PATTERN = /@pagebreak:(?!(?:recto|verso)\b)([\w-]*)/
+
         # @param md_file [String] Markdown ファイルパス
         # @param entry [TokenResolver::Entry] 章情報を持つ Entry オブジェクト
         def initialize(md_file, entry)
@@ -76,11 +83,13 @@ module VivlioStarter
         # 指定Markdownの前処理パイプラインを順次実行する
         def run
           Common.log_info("#{context.source_path} → #{context.output_path}")
+          validate_directives!
           apply_frontmatter!
           strip_html_comments!
           transform_terminal_blocks!
           process_data_streams!
           normalize_image_paths!
+          transform_qr_codes!
           validate_links_and_images!
           transform_showcases!
           transform_mermaid!
@@ -104,6 +113,39 @@ module VivlioStarter
         end
 
         private
+
+        # @ ディレクティブの書式ミスを、原稿そのままの行番号で指摘する。
+        # パイプラインの最初に置くのは、この時点の content が加工前の原稿と 1 行ずつ
+        # 一致しており、著者に示す行番号がずれないため。
+        # 現在の対象は @pagebreak の不正引数のみ（裸の @pagebreak は正当な記法なので対象外）。
+        def validate_directives!
+          Masking.each_prose_line(context.content) do |line, line_number|
+            # インラインコード内の例示（`@pagebreak:left` など）は対象外
+            line.gsub(/`[^`]+`/, '').scan(INVALID_PAGEBREAK_PATTERN) do
+              arg = ::Regexp.last_match(1).to_s
+              Common.log_error(
+                "#{context.filename}:#{line_number} - @pagebreak の引数が不正です（@pagebreak:#{arg}）",
+                detail: "引数は :recto（奇数ページ開始）/ :verso（偶数ページ開始）です。\n" \
+                        "→ @pagebreak:#{arg} を @pagebreak:recto に、" \
+                        '単純な改ページなら引数なしの @pagebreak に直してください。'
+              )
+              IssueRegistry.record(
+                chapter: context.filename, line: line_number, severity: :error,
+                category: :notation, message: "@pagebreak の引数が不正です（@pagebreak:#{arg}）"
+              )
+            end
+          end
+        end
+
+        # @qr:URL を QR コード SVG（ビルド生成物）の <img> へ変換する。
+        # normalize_image_paths! の直後・validate_links_and_images! の前に置くのが要点:
+        # 変換後は HTML <img> になるため Markdown 画像記法しか見ない normalizer には掛からず、
+        # かつ validate より前に変換しないと @qr: 内の URL が裸 URL として 🟡 誤警告される。
+        def transform_qr_codes!
+          before = context.content.dup
+          context.content = QrTransformer.transform(context.content, source_filename: context.filename)
+          Common.log_success('QR コードを生成しました') if context.content != before
+        end
 
         # フロントマターを生成または併合して更新する
         def apply_frontmatter!

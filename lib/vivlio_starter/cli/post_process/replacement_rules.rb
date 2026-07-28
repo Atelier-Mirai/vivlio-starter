@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'cgi'
+require_relative '../common'
 require_relative 'html_replacer'
 
 module VivlioStarter
@@ -37,12 +39,22 @@ module VivlioStarter
           Rule.new(%r{<hr>}m, '<hr class="pagebreak">', :tag_aware)
         ].freeze
 
-        # 縦方向の余白を符号付きで挿入。単位付き @vspace を先に適用する
+        # 余白・改ページのプラグマ系マクロ。単位付きを先に適用する
         # （単位なしルールが先に走ると数値だけ拾って単位が残るため）。
+        # 単位なしの既定は @vspace が mm・@hspace が em（水平方向は文字数感覚が自然なため
+        # 意図的に非対称。at-directive-tier1-spec.md §1.5）。
         # @nega / @posi（後方互換別名）・@comment / @commend（編集者コメント）は廃止済み。
         SPACING_MACRO_RULES = [
           Rule.new(%r{@vspace:(-?[\d.]+(?:lh|rem|em|mm|cm|pt|px))}m, '<div style="margin-top:$1"></div>', :text_only),
-          Rule.new(%r{@vspace:(-?[\d.]+)}m, '<div style="margin-top:$1mm"></div>', :text_only)
+          Rule.new(%r{@vspace:(-?[\d.]+)}m, '<div style="margin-top:$1mm"></div>', :text_only),
+          Rule.new(%r{@hspace:(-?[\d.]+(?:lh|rem|em|mm|cm|pt|px))}m,
+                   '<span class="vs-hspace" style="margin-left:$1"></span>', :text_only),
+          Rule.new(%r{@hspace:(-?[\d.]+)}m, '<span class="vs-hspace" style="margin-left:$1em"></span>', :text_only),
+          # 引数付きを先に。裸形の否定先読み (?!:) は必須——これが無いと不正引数
+          # （@pagebreak:left 等）の @pagebreak 部分だけが置換され ":left" が紙面に残る。
+          # 不正形は丸ごと素通しし、前処理（MarkdownPreprocessor）の検知に委ねる。
+          Rule.new(%r{@pagebreak:(recto|verso)\b}m, '<div class="vs-break-$1"></div>', :text_only),
+          Rule.new(%r{@pagebreak\b(?!:)}m, '<div class="vs-break-page"></div>', :text_only)
         ].freeze
 
         # リストの先頭記号を装飾クラスに（▶＝青コメ / 囲み数字＝赤コメ）。
@@ -104,9 +116,28 @@ module VivlioStarter
                LIST_DECORATION_RULES + CODE_HEADING_RULES +
                KBD_RULES + PARAGRAPH_CLEANUP_RULES + SPACING_CLASS_RULES).freeze
 
+        # ビルド時定数マクロ（at-directive-tier1-spec.md §2.3）。
+        # 値が CONFIG・ビルド時刻に依存するため frozen 定数 ALL には入れず、適用時に組み立てる
+        # （定数にすると reload_configuration! 後に stale な値を差し込んでしまう）。
+        # `\b` により @titlepage のような続き文字には反応しない。
+        # @param cfg [Object, nil] 設定オブジェクト（省略時は Common::CONFIG。テストは DI で差し替える）
+        def value_macro_rules(cfg = Common.configured? ? Common::CONFIG : nil)
+          # 日付だけは CONFIG に依らないので、プロジェクト外（CONFIG 未ロード）でも展開する。
+          rules = [Rule.new(%r{@today\b}m, Time.now.strftime('%Y年%-m月%-d日'), :text_only)]
+          return rules unless cfg
+
+          rules.unshift(
+            Rule.new(%r{@version\b}m, sanitize_value(cfg.project.version), :text_only),
+            Rule.new(%r{@title\b}m,   sanitize_value(cfg.book.main_title), :text_only)
+          )
+        end
+
+        # 置換エンジンは $1〜$9 を手動展開するため、値中の `$` を無害化しつつ HTML エスケープする。
+        def sanitize_value(value) = CGI.escapeHTML(value.to_s).gsub('$', '&#36;')
+
         # 組み込みルール一式を適用する（旧 process_html_file(file, yaml_rules) 相当）。
         # @return [Hash] { changed: Boolean, replacements: Integer }
-        def apply_builtin!(html_file) = HtmlReplacer.process_html_file(html_file, ALL)
+        def apply_builtin!(html_file) = HtmlReplacer.process_html_file(html_file, ALL + value_macro_rules)
       end
     end
   end

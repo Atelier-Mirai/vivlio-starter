@@ -17,6 +17,7 @@
 #    - 章末脚注→ページ脚注変換
 #    - Prism.js行番号付与
 #    - 見出しマーカー/番号スパンの付与
+#    - 二重改ページの正規化（PageBreakNormalizer）
 #
 # 【依存モジュール】
 # - BodyClassInjector: <body>タグへのクラス付与
@@ -25,6 +26,7 @@
 # - SectionWrapper: h2を<article.section-topic>でラップ
 # - FootnoteConverter: 章末脚注→ページ脚注変換
 # - HeadingProcessor: 見出しマーカー/番号スパンの付与（後で作成）
+# - PageBreakNormalizer: 改ページマーカー直後の h2 による二重改ページの正規化
 # ================================================================
 
 require 'json'
@@ -35,6 +37,7 @@ require_relative 'post_process/html_parser'
 require_relative 'post_process/body_class_injector'
 require_relative 'post_process/html_replacer'
 require_relative 'post_process/replacement_rules'
+require_relative 'post_process/page_break_normalizer'
 require_relative 'post_process/section_wrapper'
 require_relative 'post_process/footnote_converter'
 require_relative 'post_process/heading_processor'
@@ -176,6 +179,15 @@ module VivlioStarter
           if final_result[:changed]
             total_replacements += final_result[:replacements]
             Common.log_info("#{html_file}: 最終クリーンアップで #{final_result[:replacements]} 件を整理")
+          end
+
+          # 二重改ページの正規化は最後に行う。改ページマーカー（ReplacementRules）と
+          # article.section-topic ラップ（SectionWrapper）が揃った DOM でなければ
+          # 「マーカーの直後が h2 か」を正しく判定できない（page-break-control-spec §2.1-5）。
+          begin
+            PageBreakNormalizer.normalize!(html_file)
+          rescue StandardError => e
+            Common.log_error("#{html_file}: 改ページ正規化中にエラー: #{e.message}")
           end
         end
 

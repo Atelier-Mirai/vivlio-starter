@@ -23,20 +23,24 @@
 - [Low] **画像の width 属性自動補完**: `![](foo.png)` のように幅指定なしでも、実寸やクラス指定に応じて `width=100%` 等を自動補う（大判図をページ送りにせず収めるため）。
 - [Medium] **「表1＋背＋表4 を 1 枚にくるみ表紙」の形**: 入稿先の慣習でくるみ表紙を求められる場合も有るが、結合処理を伴う別機能になるため、現状は非対応。
 
+- [Medium] $2^{1/3}$ $\sqrt{\pi r^2}$ $\pi$ などの TeX 記法を、2^(1/3)、√(πr²)、π の素の表記に改める機能（Kindle での表示を改善するため）は既に実装されています。逆に著者の書いた 、2^(1/3)、√(πr²)、π を $2^{1/3}$ $\sqrt{\pi r^2}$ $\pi$ などの TeX 記法に変換する機能の実装。
+
 ---
 
 ## 記法・置換ルール
 
-- **`@` ディレクティブ拡張**: Tier 1（`@pageref`・`@pagebreak:recto`/`:verso`・`@version`/`@today`/`@title`・`@qr`・`@hspace`）は**仕様確定済み・実装待ち** → [at-directive-tier1-spec.md](at-directive-tier1-spec.md)（進捗は STATUS.md）。Tier 2（`@nobr`・`@fill`・`@index`）と `@abbr` の代替案（用語集統合 or 標準 `*[…]:` `<abbr>`）は引き続きブレスト段階 → [at-directive-ideas.md](at-directive-ideas.md)
+- **`@` ディレクティブ拡張**: Tier 1（`@pageref`・`@pagebreak:recto`/`:verso`・`@version`/`@today`/`@title`・`@qr`・`@hspace`）は **2026-07-28 に実装完了** → [at-directive-tier1-spec.md](../archives/at-directive-tier1-spec.md)。Tier 2（`@nobr`・`@fill`・`@index`）と `@abbr` の代替案（用語集統合 or 標準 `*[…]:` `<abbr>`）は引き続きブレスト段階 → [at-directive-ideas.md](at-directive-ideas.md)
 
 - [Medium] **`vs furigana`（半自動ルビ付与）**: 小学生向けなど、対象読者の学年より上の漢字へ振り仮名 `{漢字|よみ}` を**半自動**で付けるコマンド。`vs metrics` の「漢字レベル（ルビ候補）」で**どの漢字が対象か**は把握できるので、その先の「本文へ実際にルビ記法を書き込む」変換を担う。
   - **対象の指定**: `book.yml` や引数で「基準レベル」を選ぶ（例: 小4向け＝小5以上／中学以上／常用外のみ、等。レベル定義は [furigana-level-spec] 参照＝`vs metrics` と共通の L0〜L4）。
   - **読みの生成と限界（最重要）**: 読みは MeCab から得るが、**まさにルビを振りたい稀な漢字（未知語）で最も外れる**（例「碍子」は `碍` が非常用で未知語となり誤分割・誤読になりやすい）。よって**全自動で正確なルビは不可能**という前提に立ち、(1) 読みが不確実・未知の語にはルビを付けずに**警告＋出現箇所を提示**して著者に委ねる、(2) 付けたルビも**要確認**として一覧化する、という半自動方式にする。将来的に漢字→音訓の補助辞書でカバー率を上げる。
   - **安全性・冪等性**: ファイルを改変するため、(1) 既に `{…|…}` でルビ済みの箇所を二重化しない、(2) コードブロック・URL・既存ルビ内は対象外、(3) `--dry-run` で差分プレビュー、(4) バックアップ or Git 前提。`vs metrics` は読み取り専用の統計に徹し、書き込み系はこの `vs furigana` に分離する。
+- [Medium] `vs lint` に「交ぜ書き」検出機能を設ける。「だ円」->「楕円」、「けん引」->「牽引」、「ばん回」->「挽回」などの検出を行なう。
 
 ## 参照・索引・書誌
 
 - [Low] **脚注・参考文献サポート**: 簡易 BibTeX / CSL 相当の仕組みを検討する。
+- [Medium] **索引辞書の stale な `context:` を自動で落とす**: `UnifiedIndexManager#enrich_terms_with_context` は **context が空の語だけ**本文から再抽出する（`unless enriched['contexts']&.any?`）。既存 context は原稿と食い違っても温存されるため、「`vs index:auto` で自動追従」は成立しない（2026-07-16 に 15 件の stale を手作業で除去した実績あり）。enrich 側で「参照章に現存しない context を落とす」を検討する。当面の回避策は context を空にして `vs index:auto` を再実行すること。
 
 ---
 
@@ -58,6 +62,14 @@
 ## 品質 / テスト
 
 - [Low] **自動検証パイプライン（CI）**: 最小サンプルでのビルド、Lint、HTML ポスト処理テストの自動実行。
+- [Medium] **Kindle Previewer 実機確認の積み残し**: 実装は完了しているが実機目視だけ未実施のものが 3 件ある。まとめて 1 回の確認で消化できる。
+  - 入れ子リスト記法（`nested-list-notation-spec` §10-12）: ul のレベル別マーカー「● ○ ・」の実体注入
+  - コード行番号（`epub-code-line-numbers-spec` §4）: 1 論理行＝1 行の対応とぶら下げインデント
+  - `@` ディレクティブ Tier 1（`at-directive-tier1-spec` §3-4）: `@pageref` がページ番号なしのタイトルリンクへ劣化するか・`@pagebreak:recto` が単純改ページになるか・QR コードの表示
+
+## コード整理
+
+- [Medium] **クロスリファレンスの死にコードを撤去する**: `CrossReferenceProcessor.process_cross_references` は**未定義メソッド `generate_report` を呼ぶ到達不能コード**で、実ビルドが通る経路は `PreProcessCommands.process_cross_references_for_files`（`pre_process.rb`）のほう。委譲先の `MarkdownTransformer.process_cross_references` も存在せず二重に壊れている（2026-07-25 の preflight-chapter-summary 実装時に判明）。読む人を確実に誤らせるので撤去する。
 
 ### 堅牢性テスト（追加候補）
 

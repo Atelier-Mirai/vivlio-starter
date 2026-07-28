@@ -1,7 +1,7 @@
 # 改ページ制御の改善（空白ページ対策・節改ページの任意化）仕様書
 
 > 作成日: 2026-07-12
-> ステータス: **(c) 実装済み（2026-07-28）／(b) 未着手**
+> ステータス: **実装完了（(c) 2026-07-28 / (b) 2026-07-28）** — (b) の実装記録は §6
 > 対象: PLANNED.md [Medium]「改ページ制御の改善（空白ページ対策・任意化）」。3 案 (a) lint 警告 / (b) 連続改ページの正規化 / (c) h2 改ページの設定化 の取捨選択と実装仕様
 > 決定事項:
 > - **(b)＋(c) を採用し、(a) は不採用**。(b) が黙って無害化するものを (a) が警告するのは矛盾（自動で直る事象への警告はノイズ）。(b) の正規化発生時に `log_info` を出すことで透明性は担保する（`--log` で確認可能）
@@ -75,7 +75,7 @@ module VivlioStarter
   module CLI
     module PostProcessCommands
       # 二重改ページ（改ページ要素の直後に改ページする h2）を正規化する。
-      # 詳細は docs/specs/page-break-control-spec.md §2.1
+      # 詳細は page-break-control-spec.md §2.1
       module PageBreakNormalizer
         # 改ページを引き起こす著者由来のマーカー要素
         BREAK_MARKERS = 'hr.pagebreak, div.vs-break-page, div.vs-break-recto, div.vs-break-verso'
@@ -199,3 +199,24 @@ Minitest・ruby-coding-rules skill 適用。
 - **h3 以下・h1 の改ページ制御**: h2 のみが対象（現状 CSS で改ページするのは h2 だけ。h1 は章単位の recto 開始でありビルド構造の一部）
 - **`---` 記法自体の意味変更**（break-after → break-before 化など）: 既存原稿の見え方を変えるため行わない。正規化はあくまで冗長ケースの無効化に限定
 - **部タイトルページ（part-title.css の recto/verso）との相互作用**: 部扉は独立生成ページ（PartTitleGenerator）で本文 HTML の隣接判定に現れないため対象外
+
+## 6. (b) の実装記録（2026-07-28）
+
+`at-directive-tier1-spec` の `@pagebreak` 実装と同時に行ったため、§4-2 と §4-3 をまとめて実施した（`hr.pagebreak` のみの先行実装は不要になった）。
+
+### 6.1 仕様どおり成立したこと
+
+- §2.1-1 の走査（マーカー → 次兄弟が無ければ親へ → ラッパーなら中へ降りる）で、VFM の素の構造（`section.level2` を跨ぐ）と image スタイルの `article.section-topic` ラップの**両方**を 1 つのロジックで扱えた。実ビルドで「冗長な改ページを 1 件正規化しました」を確認。
+- §2.1-4 の合流 CSS も実ビルドで確認: `<div class="vs-break-recto">` が残り、直後の h2 が `class="vs-h-marker vs-break-merged"` になって奇数ページ頭から組まれた。
+- §2.1-3 の「連続マーカーは h2 直前の 1 個だけ」は、マーカーごとに走査する実装で自然に成立した（テストで固定）。
+
+### 6.2 仕様からの補足・変更点
+
+1. **呼び出し位置は `execute_post_process` の各ファイル処理の「最後」**（§2.1-5 は「ReplacementRules と SectionWrapper の両方が終わった後」とだけ指定していた）。最終クリーンアップの `apply_builtin!` より後に置く——それより前だと、クリーンアップの `<p>` ねじれ修正が DOM を動かした後の状態を見ないことになる。例外は `log_error` で握って他ステップと同じくビルドを止めない。
+2. **ラッパー透過は `section` / `article` / `div` の 3 種**（§2.1-1 は section/article のみ挙げていた）。`div` を含めないと、将来コンテナ（`:::{.class}` 由来の div）が h2 を包んだときに透過できない。空のラッパーに当たった場合はそれ自体を「内容要素」として返す（h2 ではないので正規化されない＝安全側）。
+3. **`section_page_break_enabled?` は `BookSettingsCss#section_page_break_disabled?` の判定を複製した**（「明示的に false / no / off / 0 と書かれたときだけ無効」）。共有せず複製したのは、post_process から pre_process のモジュールを require する依存を作らないため。両者がずれると (b) と (c) の挙動が食い違うので、変更時は必ず両方を直すこと。
+4. **`Common.configured?` が false（プロジェクト外）なら有効とみなす**（＝正規化する）。直接ビルドの既定 CONFIG は `section_page_break: true` を持つため実挙動は変わらない。
+
+### 6.3 §3 テストの完了状況
+
+§3-1（`page_break_normalizer_test.rb`・10 ケース）・§3-2・§3-3 は完了。§3-4（`rake test:layout` の総ページ数比較）と §3-5（Kindle Previewer 目視）は未実施——代わりに実プロジェクトの `vs build 22` で「hr が消える」「recto が合流する」ことを HTML と PDF で確認した。

@@ -1,7 +1,8 @@
 # `vs metrics` 章別「表現が単調／やや難解」警告 仕様書
 
 > 作成日: 2026-07-12
-> ステータス: **確定仕様・未着手**
+> ステータス: **実装完了（2026-07-28）** — 実装時の判明事項は §6
+> 元ステータス: 確定仕様・未着手
 > 対象: PLANNED.md [Medium]「`vs metrics` の章別『表現が単調／やや難解』警告」。`labels.monotonous`/`too_complex`（本機能のために用意されたキー・現状は詳細分析の表示文言のみ）を、分量警告（`too_short`/`too_long`）と同様に章別リストの警告ラベルへ昇格させる
 > 決定事項（PLANNED の要設計 3 点への回答）:
 > - **(1) しきい値: 専用のしきい値は設けない**。「詳細分析が『表現が単調』『やや難解』と評価する条件と**完全に同一の条件**」で警告を発火させる（単一の真実。二重のしきい値は必ず乖離事故を生む）。具体的には monotonous = MATTR の既存バンド（formatter.rb:341 の `..0.5`）、too_complex = 建石式 RS ラベルが `Professional`（= score < `metrics.readability.standard`・既定 40）。**RS 側の調整は既存キーで可能なため新設定キーはゼロ**
@@ -165,3 +166,13 @@ Minitest・ruby-coding-rules skill 適用。`test/vivlio_starter/cli/metrics/` �
 - **節単位の品質警告**: 対象外。MATTR/RS は章単位でのみ算出しており、節の母数（数百字）では両指標とも不安定
 - **「平易すぎる」側の警告**（RS が easy 超・MATTR 非常に豊富）: 対象外。推敲で直すべき欠点ではない（対象読者次第の特性）
 - **語彙難度（漢字比率・平均語長）の警告化**: 対象外。`difficulty_evaluation`（formatter.rb:328）の「やや難解」は語彙難度の 5 段階評価で、本件の too_complex（読解難度 RS）とは別指標。両方を警告にするとラベル文言が衝突して紛らわしいため、警告は RS 側に一本化する（詳細分析では従来どおり両方見られる）
+
+## 6. 実装記録（2026-07-28）
+
+`WarningChecker#quality_warnings` 新設＋表示時合成（`format_chapter_line(extra_warnings:)`）・`--warn`（`has_warning?(analysis:)`）・`--json`/`--yaml` の `warnings` 配列で実装した。新設定キーはゼロ、キャッシュ不変（表示時に毎回導出するため `schema_version` に影響しない）。
+
+### 仕様からの変更・実装時の判明事項
+
+1. **`mattr_evaluation` は `case/in` ではなく `case/when` で書く。** 範囲パターンの端点に定数は置けず、`in ..MATTR_MONOTONOUS_MAX` は **構文エラー**になる（`expected a pattern expression after the range operator`）。`when ..CONST` なら通常の式評価なので通る。バンドの挙動は完全に同一（境界値 0.5 / 0.6 / 0.7 で確認済み）。
+2. **文数は `analysis.basic.sentences` ではなく `analysis.readability.features.sentence_count` を使う。** §2.1 は前者を候補に挙げていたが、10 文ガードが守りたいのは「RS の母数」であり、それは RS 算出に使われた特徴量そのもの。`basic.sentences` はコード込みの本文全体を数えており母数がずれる。
+3. **`Metrics::LiveDisplay` は死にコードだったため撤去した**（`live_display.rb` と `live_display_test.rb`）。`Runner` は自前の pending / next_display_index で逐次表示しており `LiveDisplay` を一切呼んでいなかった（`require` すら無く、参照は自身のテストのみ）。あわせて `contents/32-metrics.md` の「ライブプレースホルダー」「ANSI 制御でグラフ部分だけを差し替える」「サマリを章の解析前に表示する」という記述も撤回した——いずれも `LiveDisplay` の挙動を書いたもので、実際の出力（章番号順の逐次出力 → 全体集計）とは食い違っていた。

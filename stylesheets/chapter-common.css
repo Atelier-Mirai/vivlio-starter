@@ -291,6 +291,62 @@ hr.pagebreak {
   visibility: hidden;
 }
 
+/* @pagebreak / :recto / :verso（at-directive-tier1-spec §2.2）
+   1 行目は EPUB リーダー・Kindle 向けフォールバック（recto/verso 非対応環境は
+   単純改ページへ劣化する）。2〜3 行目が本命で、両プロパティは同一プロパティの
+   別名のため後勝ち＝ Vivliostyle は recto/verso を採る。recto/verso を解釈できない
+   リーダーは 2〜3 行目の宣言だけを破棄し 1 行目が生きる。 */
+.vs-break-page,
+.vs-break-recto,
+.vs-break-verso {
+  page-break-before: always;
+}
+
+.vs-break-recto {
+  break-before: recto;
+}
+
+.vs-break-verso {
+  break-before: verso;
+}
+
+/* PageBreakNormalizer が付与する合流クラス。@pagebreak:recto 直後の h2 は
+   recto 側の改ページに一本化する（page-break-control-spec §2.1-4）。
+   h2 の改ページ元セレクタ（image-header / simple-header）はスタイル別かつ
+   高特異度のため !important で一括無効化する（唯一のユーティリティ用途に限定）。 */
+h2.vs-break-merged {
+  break-before: auto !important;
+  page-break-before: auto !important;
+}
+
+/* @hspace:N の水平アキ（@vspace の水平版・at-directive-tier1-spec §1.5）。
+   実体は margin-left を持つ空 span。inline-block にしないと空要素の margin が
+   潰れて字下げにならない。 */
+.vs-hspace {
+  display: inline-block;
+  width: 0;
+}
+
+/* @pageref のページ番号（PDF のみ）。EPUB リーダーは target-counter を解釈できず
+   content 宣言ごと破棄・Kindle は ::after 自体を無視するため、リフローでは自動的に
+   「タイトルのみのリンク」へ劣化する（at-directive-tier1-spec §1.1）。 */
+a.pageref::after {
+  content: "（p." target-counter(attr(href url), page) "）";
+}
+
+/* 見出しラベル（`## タイトル @id`）が残すアンカー。紙面には何も出さない。 */
+.vs-sec-anchor {
+  display: inline;
+}
+
+/* @qr:URL が挿入する QR コード（at-directive-tier1-spec §1.4）。
+   サイズ変更は custom.css で .vs-qr { width: 25mm; } のように上書きする。 */
+.vs-qr {
+  width: 18mm;
+  height: auto;
+  vertical-align: middle;
+}
+
 /* -------------------------------------------------------------
    図版
    ------------------------------------------------------------- */

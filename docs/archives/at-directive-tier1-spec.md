@@ -1,7 +1,8 @@
 # `@` ディレクティブ Tier 1 実装仕様書
 
 > 作成日: 2026-07-12
-> ステータス: **確定仕様・未着手** — [at-directive-ideas.md](at-directive-ideas.md) の Tier 1（§2）を確定仕様へ昇格したもの
+> ステータス: **実装完了（2026-07-28）** — 実装時の判明事項は §6 に追記した
+> 元ステータス: 確定仕様・未着手 — [at-directive-ideas.md](at-directive-ideas.md) の Tier 1（§2）を確定仕様へ昇格したもの
 > 対象: `@pageref:id` / `@pagebreak:recto`・`:verso` / `@version`・`@today`・`@title` / `@qr:URL` / `@hspace:N` の 5 記法（7 ディレクティブ）
 > 決定事項:
 > - **2 トラック実装**（ideas §7 の方針どおり）: **参照系** `@pageref` は pre_process のクロスリファレンス基盤（`cross_reference_processor.rb`）へ、**定数・プラグマ系**（`@pagebreak`/`@version`/`@today`/`@title`/`@hspace`）は post_process の組み込み置換ルール（`replacement_rules.rb`・`@vspace` と同型）へ実装する。`@qr` のみ画像生成を伴うため pre_process の独立ステップ（数式 SVG と同じ「ビルド生成物」ファミリー）
@@ -9,7 +10,7 @@
 > - **リフロー劣化は CSS カスケードで構造的に達成**する: EPUB リーダーは `target-counter` を解釈できず `content` 宣言ごと破棄・Kindle は `::after` 自体を無視 → **PDF だけに（p.N）が出て、EPUB/Kindle はタイトルリンクのみ**という理想の劣化が追加コードなしで成立する
 > - **`@pagebreak:recto` の実装は `break-before: recto`**。ideas §2 の要検証メモ（「旧 `page-break-before` の方が確実」）の出所は contents/61-developer.md:392 で確認した——**Kindle KFX 限定の知見**であり Vivliostyle には該当しない。CSS は「`page-break-before: always`（フォールバック）→ `break-before: recto`（本命）」の 2 行重ねで PDF/EPUB 両対応する（§2.2）
 > - **`@qr` の QR 生成は `rqrcode` gem**（pure Ruby・MIT・依存は rqrcode_core のみ）を runtime 依存に追加。本体の MIT-only ポリシー（CLAUDE.md）に適合
-> 関連: `lib/vivlio_starter/cli/post_process/replacement_rules.rb:44`（`@vspace` の実装雛形・`ALL`:103・`apply_builtin!`:109）, `lib/vivlio_starter/cli/pre_process/cross_reference_processor.rb`（`RESERVED_MACRO_IDS`:37・`REFERENCE_PATTERN`:579・`render_link`:651・`build_href`:656）, `lib/vivlio_starter/cli/post_process/heading_processor.rb:95`（見出し id 保証）, `lib/vivlio_starter/cli/pre_process/math_transformer.rb`（ビルド生成画像の先行事例）, `stylesheets/index.css:94-108`（target-counter の実証コード）, `docs/specs/kindle-css-compatibility-notes.md`
+> 関連: `lib/vivlio_starter/cli/post_process/replacement_rules.rb:44`（`@vspace` の実装雛形・`ALL`:103・`apply_builtin!`:109）, `lib/vivlio_starter/cli/pre_process/cross_reference_processor.rb`（`RESERVED_MACRO_IDS`:37・`REFERENCE_PATTERN`:579・`render_link`:651・`build_href`:656）, `lib/vivlio_starter/cli/post_process/heading_processor.rb:95`（見出し id 保証）, `lib/vivlio_starter/cli/pre_process/math_transformer.rb`（ビルド生成画像の先行事例）, `stylesheets/index.css:94-108`（target-counter の実証コード）, `kindle-css-compatibility-notes.md`
 
 ## 0. 背景
 
@@ -288,10 +289,36 @@ Minitest・ruby-coding-rules skill 適用。
 6. ドキュメント: `contents/22-extentions.md`（`@vspace` の節の並びに 5 記法を追記）・`contents/61-developer.md` の記法一覧 → `ruby copy_to_scaffold.rb`
 7. `rake test` → §3-4 の実機確認 → at-directive-ideas.md の Tier 1 表へ「実装済み → 本仕様書」の注記、PLANNED/STATUS 更新
 
-## 5. スコープ外・将来拡張
+## 5. スコープ外・将来拡張（策定時）
 
 - **`@today` の書式指定**（`@today:%Y-%m-%d` 等）: 固定書式で開始。要望が出たら book.yml キー（`directives.today_format`）として追加（guidelines の 3 ステップ遵守）
 - **`@qr` の URL 自動併記・サイズ引数**（`@qr:URL{width=25mm}`）: 併記は著者の文章に委ねる。サイズは custom.css で足りる
 - **`@titleref`（タイトルのみ参照の明示形）**: 見出しラベルへの generic `@id` 参照がその役を兼ねるため新設しない（ideas §5 の「1 記法で両方出すか」への回答）
 - **Tier 1.5/2**（`@nobr`・`@fill`・`@index`）: 本仕様の対象外。ideas メモに残置
 - **`@pagebreak` の EPUB での見開き制御**（EPUB 3 の `page-spread` プロパティ等）: リフローでの recto/verso 再現は追わない（単純改ページ劣化で確定）
+
+## 6. 実装記録（2026-07-28）
+
+### 6.1 仕様どおり成立したこと（実ビルドで確認）
+
+- **§2.4.1 の「見出し内アンカー span」は VFM がそのまま保持する。** 代替案（見出しの直後行に置く）は不要だった。実ビルド出力:
+  `<h3 id="見出しにラベルを付ける-" … data-heading="見出しにラベルを付ける" …><span class="subsection-marker">♣</span><span class="subsection-title">見出しにラベルを付ける<span id="heading-label" class="vs-sec-anchor"></span></span></h3>`
+  - `data-heading` / `data-subsection-title`（＝ PDF アウトライン・TOC の材料）は **空 span で汚れない**（`extract_heading_core_text` は `node.text` を strip するため）。
+  - `HeadingProcessor#rebuild_heading_with_spans` は元の子ノードを丸ごと `span.section-title` へ移すので、アンカーは h2/h3 の内側に残る。
+  - **VFM が自動生成する見出しスラッグには末尾に `-` が付く**（`見出しにラベルを付ける-`）。TocGenerator は見出し id を使わず、OutlineExtractor は `data-heading` を読むため実害なし。
+- **§2.4.3 の `target-counter` は期待どおり動く。** PDF 実出力に `「見出しにラベルを付ける」（p.4）` を確認。
+- **§2.2 の `break-before: recto` も動く。** `<div class="vs-break-recto">` の直後の h2 が奇数ページ頭から組まれた。
+
+### 6.2 仕様からの変更点
+
+1. **予約語ガードは `reserved_id?` ではなく `RESERVED_MACRO_IDS.include?` で判定する（§2.1）。** `reserved_id?` は自動採番用の `RESERVED_IDS`（auto / omakase / id）も true にするため、そのまま使うと `** 図の題 @auto **` という正当な自動採番まで弾いてしまう。予約*マクロ*だけを弾く。
+2. **`@qr` の SVG には viewBox を後から補う（§2.5）。** rqrcode の `as_svg` は `width`/`height` と `viewBox` の**どちらか一方しか出さない**（`viewbox: false` で前者、`true` で後者）。intrinsic size が無いと Vivliostyle/EPUB で寸法が崩れ、viewBox が無いと `.vs-qr { width: 18mm }` で拡縮できない。`viewbox: false` で生成してから同値の `viewBox` を注入し、両方を備えさせる。
+3. **gem のバージョン制約は `~> 3.2`**（仕様書は `~> 2.2`）。実装時点の最新が 3.2.0 で、使用する `as_svg` の API は 2.x / 3.x で変わらない。
+4. **`value_macro_rules` は `cfg` 引数を取る（§2.3）。** テストが `Common::CONFIG` 定数を書き換えずに DI で差し替えられるようにするため（ruby-coding-rules §5）。既定は `Common::CONFIG`、CONFIG 未ロード時は `@today` のみを返す。
+5. **`ReferenceReplacer#replace` は見出し定義行も参照走査から除外する。** 既存はキャプション定義行だけを除外していたが、見出し定義行（`## タイトル @id`）を素通しすると Phase 4 の孤立ラベル検出が「定義行の @id」を参照として数え、**未参照の見出しラベルが永久に警告されなくなる**。
+6. **`LinkImageValidator#scan_bare_urls` が HTML タグの中を見ないようにした。** `@qr` の生成物 `<img alt="https://…">` が裸 URL として 🟡 になったため。原稿に直書きした `<a href="…">` も同様の誤検知だったので、タグ（`<…>`）を走査対象から外す形で根治した。
+7. **不正な `@pagebreak:` 引数の検知は `MarkdownPreprocessor#validate_directives!`（パイプライン先頭）に置いた。** `LinkImageValidator` は `ImageIssue` / `LinkIssue` の型で閉じており記法エラーが収まらない。パイプラインの**最初**に置くのは、その時点の `content` が加工前の原稿と 1 行ずつ一致し、著者に示す行番号がずれないため。`IssueRegistry` へは新カテゴリ `:notation` で積む。
+
+### 6.3 §4 手順の完了状況
+
+1〜6 は完了。7 の実機確認のうち **PDF は確認済み**（`@pageref` のページ番号・`@qr` の描画・`@hspace` の字下げ・`@version`/`@today` の展開・`:recto` の奇数ページ開始）。**EPUB / Kindle Previewer の目視のみ未実施**（受け入れ時に確認）。
