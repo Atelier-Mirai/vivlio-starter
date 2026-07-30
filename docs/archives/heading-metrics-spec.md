@@ -2,7 +2,7 @@
 
 見出し（章題 h1・章リード・節題 h2）と扉絵・節絵の**寸法指定を mm から文字数へ移し**、折返しの品質を上げ、節絵の帯を約半分の高さに縮め、見出しの帰属が読めるよう前後の余白比を正す。**PDF・EPUB・Kindle の全ターゲットを対象**とする。
 
-- 状態: **Phase 1（PDF）実装済み（2026-07-30）／ Phase 2（EPUB・Kindle）実装待ち**
+- 状態: **実装完了（Phase 1 = PDF・Phase 2 = EPUB / Kindle・いずれも 2026-07-30）**。実装記録は §9・§10
 - 起点: `section_page_break: false` の不具合調査（2026-07-30）で判明した設計上の歪み 4 点
 - 前提の実測: すべて A4 210×297mm・`theme.style: image`・`--paper-scale: 1.0` での実測値。実験は `stylesheets/custom.css` に一時上書きを置いて `vs build 12` で確認し、確認後に破棄した
 
@@ -13,7 +13,7 @@
 | | 対象 | 内容 | 状態 |
 |---|---|---|---|
 | **Phase 1** | PDF | §1〜§4 の設計を CSS と生成 CSS で実現する。EPUB / Kindle は**見た目を変えない**（設定キー改名への追随のみ） | **実装済み（2026-07-30）**・§9 に実装記録 |
-| **Phase 2** | EPUB / Kindle | §5。Phase 1 で決まった設定値（`heading_chars` / `lead_chars`）と余白比を合成画像側にも通し、PDF と同じ意匠へ揃える | 実装待ち |
+| **Phase 2** | EPUB / Kindle | §5。Phase 1 で決まった設定値（`heading_chars` / `lead_chars`）と余白比を合成画像側にも通し、PDF と同じ意匠へ揃える | **実装済み（2026-07-30）**・§10 に実装記録 |
 
 **Phase 1 でも EPUB のコードに手が入る**。`EpubBuilder#frontispiece_lead_ratio` は `theme.frontispiece.lead_width ÷ page.width` を読んでいるため、キーを改名すると参照先を失って EPUB が縮退する。Phase 1 では「新キーから従来と同じ比率を導く」最小限の追随だけを行い、見た目は据え置く（§5-1）。
 
@@ -444,3 +444,39 @@ Phase 1 の 1〜5 はどれも**既存書籍の PDF 組版を変える**（章�
 
 - §5-1 の追随は実装済み（`EpubBuilder#frontispiece_lead_width_mm` が `BookSettingsCss.chapter_lead_advance_mm` と既定字数を共有）。EPUB の見た目は Phase 1 では動いていない。
 - §5-2 以降（capacity の一本化・合成 SVG のコンパクト帯・EPUB 側の余白比・`LAYOUT_VERSION` +1）は未着手。
+
+---
+
+## 10. 実装記録（Phase 2・2026-07-30）
+
+### 10-1 仕様から変えた判断
+
+1. **§5-2 の「capacity から逆算」は、字面（フォントサイズ）を字数から導く形で実現した**。EPUB は `capacity = 幅比 ÷ font_size` という向きだったので、これを `font_size = 領域の幅 ÷ 字数` へ反転させた。3 箇所とも同じ形になった:
+
+   | 対象 | 領域の幅（画像幅比） | 字面 |
+   |---|---|---|
+   | 扉絵タイトル | `FRONTISPIECE_TITLE_WIDTH = 0.80` | `幅 ÷ heading_chars`（安全域 0.045〜0.115） |
+   | 章リード | `lead_ratio`（= `lead_chars × 1 字の送り ÷ 判型幅`） | `幅 ÷ lead_chars`（下限 `LEAD_FONT_FLOOR`） |
+   | 節題 | `ORNAMENT_TEXT_WIDTH ≈ 0.79`（左右の飾り避けを引いた残り） | `幅 ÷ ornament_chars`（下限 0.030） |
+
+   廃止した定数: `LEAD_FONT_RATIO`（0.024 固定）・`ORNAMENT_FONT_RATIO`（height × 0.14 固定）・扉絵タイトルの `width × 0.072` というマジックナンバー（コメントに「11 字まで 1 行に収まる大きさ」と書かれていた＝実質の字数指定だった）。
+2. **既存の 8% 縮小ループは残した**。Phase 1 で §2-2（PDF の自動縮小）を見送ったので「判定条件を揃える」相手がいない。EPUB 側は「字数から導いた基準字面 → 2 行に収まらなければ 8% 縮小」という従来の安全弁を保ち、PDF 側は `auto-phrase` の折返しに任せる。両者の差は §5-5 の非対称の一部として `KNOWN_ISSUES.md` に記録した。
+3. **§5-2 の「半角換算の共有」は、実装を 1 つに保つ形で満たした**。PDF 側に文字数を数える処理は存在しない（著者が書いた字数をそのまま使い、版面幅との比較だけを行う）ため、共有すべき第 2 の実装がない。`char_display_width`（半角 0.55 / 全角 1.0）は合成側の唯一の実装として維持する。
+4. **`frontispiece_lead_ratio` が preset 構成で既定 0.60 に落ちていたのを直した**（Phase 2 で発覚・仕様には無い項目）。`Common::CONFIG.page[:width]` は `page.use` のプリセット構成では nil なので、常にフォールバックしていた。解決済みの `BookSettingsCss.build_page_cfg` から版面幅を取ることで実比（A4・24 字なら 0.508）を導けるようにした。これで扉絵リードの幅が PDF と揃う。
+5. **節題を中央寄せから左寄せへ変えた**。PDF の h2 は `text-align: left` で左の飾りを避けた位置から始まるので、合成側も `text-anchor="start"` ＋ `x = 幅 × ORNAMENT_PAD_START` に合わせた。
+
+### 10-2 実測値
+
+| 項目 | 実装前 | 実装後 |
+|---|---|---|
+| 節絵の合成画像（EPUB SVG） | 2880×1205（2.39:1） | **2880×600（4.8:1・PDF の帯と一致）** |
+| 節絵の合成画像（Kindle JPEG） | 1400×586 | **1400×292** |
+| 左飾りの張り出し（帯幅比） | — | **16.0%**（PDF 実測 16.2% と一致） |
+| 節題の配置 | 中央寄せ | 左寄せ（`x = 幅 × 16/162`） |
+| 扉絵タイトルの字面 | `幅 × 0.072` 固定 | `幅 × 0.80 ÷ heading_chars` |
+
+### 10-3 落とし穴
+
+1. **`LAYOUT_VERSION` の +1 だけでは足りない**。文字数指定はキャッシュ鍵に含まれていなかったため、`heading_chars` を変えても旧画像が使い回される。`heading_image_src` の鍵に `metrics` を追加した。
+2. **Phase 1 の `.section-topic` の mm マージンは EPUB にも漏れていた**。`body.vs-header-image .section-topic`（0,2,1）が `article.vs-section-topic-epub`（0,1,1）より特異度が高いため、EPUB でも 16mm / 4mm が効いていた（Phase 1 の「EPUB は見た目不変」はこの点で不正確だった）。§5-4 で `body.vs-epub .section-topic`（同特異度・後段読込）へ相対単位の前後比を置いて是正した。
+3. **`clipPath` の id は SVG 文書内で固定でよい**。合成 SVG は `<img src>` で参照する独立文書なので、章ごとに id を振り分ける必要はない。

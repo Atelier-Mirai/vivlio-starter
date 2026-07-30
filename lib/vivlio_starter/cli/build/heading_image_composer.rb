@@ -59,14 +59,25 @@ module VivlioStarter
 
         # 合成レイアウトの版数。座標・方式を変えたら +1 する（EpubBuilder が生成キャッシュのキーに混ぜる）。
         # v2: 上下分割（62% 帯＋裾飾り）を廃止し、リード文まで焼き込む縦長ファクシミリ 1 枚へ。
-        LAYOUT_VERSION = 2
+        # v3: 寸法を book.yml の文字数指定（heading_chars / lead_chars / ornament.heading_chars）から
+        #     導き、節絵を左右並びのコンパクト帯へ（heading-metrics-spec §5-2・§5-3）。
+        LAYOUT_VERSION = 3
+
+        # 文字数指定の既定。theme.css の既定と BookSettingsCss::DEFAULT_*_CHARS に一致させる
+        # （EpubBuilder が book.yml の値を渡すので、ここが使われるのは直接呼び出し時だけ）。
+        DEFAULT_METRICS = { heading_chars: 8, lead_chars: 20, ornament_chars: 14 }.freeze
 
         # リード焼き込みの規格（画像 width / height 比・モック実証値）。
-        LEAD_FONT_RATIO   = 0.024  # 基準フォント（A5 判型でおよそ 10pt 相当）
+        # 基準フォントは lead_chars から導くため LEAD_FONT_RATIO は廃止した。
         LEAD_FONT_FLOOR   = 0.018  # 縮小の下限
         LEAD_LINE_HEIGHT  = 1.75   # 行送り（フォントサイズ比）
         LEAD_TOP_RATIO    = 0.615  # リード 1 行目のベースライン（height 比）
         LEAD_BOTTOM_RATIO = 0.80   # リード最終行ベースラインの上限（height 比）。右下飾りとの干渉回避
+
+        # 扉絵タイトルが使ってよい幅（画像幅比）。この幅を heading_chars で割って字面を決める。
+        FRONTISPIECE_TITLE_WIDTH = 0.80
+        # 字面サイズの安全域（画像幅比）。極端な字数指定でも番号・リードとの階層を壊さない。
+        FRONTISPIECE_TITLE_SIZE_RANGE = (0.045..0.115)
 
         module_function
 
@@ -77,9 +88,10 @@ module VivlioStarter
         # @param (see #compose)
         # @return [String, nil] JPEG バイト列。画像不読・ツール不在・失敗時は nil（→ simple 縮退）
         def render(image_path:, number:, title:, kind:, font_family:,
-                   lead: '', lead_font_family: nil, lead_ratio: 0.60, number_color: '#333333')
+                   lead: '', lead_font_family: nil, lead_ratio: 0.60, number_color: '#333333',
+                   metrics: DEFAULT_METRICS)
           svg = compose(image_path:, number:, title:, kind:, font_family:,
-                        lead:, lead_font_family:, lead_ratio:, number_color:)
+                        lead:, lead_font_family:, lead_ratio:, number_color:, metrics:)
           return nil unless svg
 
           rasterize_to_jpeg(svg, RENDER_WIDTH.fetch(kind, 1000))
@@ -97,21 +109,27 @@ module VivlioStarter
         # @param lead_ratio [Float] リード焼き込み幅の画像幅比（判型 lead_width÷page.width 由来）
         # @param number_color [String] 節絵の番号色（CSS 色。既定はダーク）
         # @return [String, nil] SVG 文字列。画像が読めない/寸法不明時は nil（→ simple 縮退）
+        # @param metrics [Hash] book.yml の文字数指定（heading_chars / lead_chars / ornament_chars）。
+        #   PDF 側（BookSettingsCss）と同じ値を渡すことで、同じ原稿の扉・節絵が両ターゲットで
+        #   同じ字数に組まれる（heading-metrics-spec §5-2）。
         def compose(image_path:, number:, title:, kind:, font_family:,
-                    lead: '', lead_font_family: nil, lead_ratio: 0.60, number_color: '#333333')
+                    lead: '', lead_font_family: nil, lead_ratio: 0.60, number_color: '#333333',
+                    metrics: DEFAULT_METRICS)
           return nil unless image_path && File.exist?(image_path)
 
           dims = image_dimensions(image_path)
           data_uri = raster_data_uri(image_path)
           return nil unless dims && data_uri
 
+          m = DEFAULT_METRICS.merge(metrics || {})
           width, height = dims
           case kind
           when :frontispiece
             frontispiece_svg(width, height, data_uri, number.to_s.strip, title.to_s.strip,
-                             lead.to_s, font_family, lead_font_family, lead_ratio)
+                             lead.to_s, font_family, lead_font_family, lead_ratio, m)
           when :ornament
-            ornament_svg(width, height, data_uri, number.to_s.strip, title.to_s.strip, font_family, number_color)
+            ornament_svg(width, height, data_uri, number.to_s.strip, title.to_s.strip,
+                         font_family, number_color, m[:ornament_chars])
           end
         end
 
@@ -119,15 +137,16 @@ module VivlioStarter
         # 右下飾り）を 1 枚に焼き込む。番号を上部・タイトルを中央・リードをその下へ縦に重ね、
         # 原画の下側（右下飾り）まで含めて全高で出す。リフローでも千切れない完全な章扉ページを
         # 実現するため、旧実装の上下分割（62% 帯＋裾飾り注入）は廃止した（facsimile 仕様）。
-        def frontispiece_svg(width, height, data_uri, number, title, lead, font_family, lead_font_family, lead_ratio)
+        def frontispiece_svg(width, height, data_uri, number, title, lead, font_family, lead_font_family,
+                             lead_ratio, metrics)
           number_size = (width * 0.052).round
-          # 0.085 だと 1 行 9 字となり「拡張記法リファレンス」級（10 字）が不格好に
-          # 折り返すため、11 字まで 1 行に収まる大きさに抑える（epub_h1 実測フィードバック）。
-          title_size  = (width * 0.072).round
+          # 字面は「タイトル領域の幅 ÷ heading_chars」で決める。以前は 0.072 固定
+          # （= 1 行 11 字）というマジックナンバーで、PDF の箱幅とは無関係だった。
+          title_size  = frontispiece_title_size(width, metrics[:heading_chars])
           halo        = [(title_size * 0.14).round, 1].max
 
           # --- Phase: タイトルを段組み（表示幅ベース・半角 0.55 換算） ---
-          lines      = wrap_text_by_width(title, width * 0.80 / title_size)
+          lines      = wrap_text_by_width(title, width * FRONTISPIECE_TITLE_WIDTH / title_size)
           line_step  = (title_size * 1.4).round
 
           # --- Phase: 縦位置（タイトル行ブロックをページ中央やや上に centering） ---
@@ -139,15 +158,26 @@ module VivlioStarter
           parts = [image_element(width, height, data_uri)]
           parts << frontispiece_number(number, width, number_y, underline_y, number_size, font_family) unless number.empty?
           parts << frontispiece_title(lines, width, first_y, line_step, title_size, halo, font_family) unless lines.empty?
-          parts << frontispiece_lead(lead, width, height, lead_font_family || font_family, lead_ratio) unless lead.empty?
+          unless lead.empty?
+            parts << frontispiece_lead(lead, width, height, lead_font_family || font_family,
+                                       lead_ratio, metrics[:lead_chars])
+          end
 
           svg_wrapper(width, height, [number, title, lead], parts)
         end
 
+        # 扉絵タイトルの字面（px）。「タイトル領域の幅 ÷ 字数」を安全域に収める。
+        def frontispiece_title_size(width, chars)
+          chars = chars.to_i
+          chars = DEFAULT_METRICS[:heading_chars] unless chars.positive?
+          raw = (width * FRONTISPIECE_TITLE_WIDTH) / chars
+          raw.clamp(width * FRONTISPIECE_TITLE_SIZE_RANGE.begin, width * FRONTISPIECE_TITLE_SIZE_RANGE.end).round
+        end
+
         # リード段落の焼き込み。段落は "\n" 区切りで受け、各段落の先頭を全角 1 字下げする。
         # 基準フォントで LEAD_BOTTOM_RATIO に収まらない長文だけ 8% ずつ縮小する（下限 LEAD_FONT_FLOOR）。
-        def frontispiece_lead(lead, width, height, font_family, lead_ratio)
-          font_size, lines = lead_layout(width, height, lead, lead_ratio)
+        def frontispiece_lead(lead, width, height, font_family, lead_ratio, lead_chars)
+          font_size, lines = lead_layout(width, height, lead, lead_ratio, lead_chars)
           halo      = [(font_size * 0.14).round, 1].max
           step      = (font_size * LEAD_LINE_HEIGHT).round
           first_y   = (height * LEAD_TOP_RATIO).round
@@ -163,11 +193,17 @@ module VivlioStarter
 
         # リードのフォントサイズと行分割。折返しは既存 wrap_text_by_width（半角 0.55 換算・
         # Latin 語は空白で折る——"--add-missing" 等の語中折れを防ぐ）を必ず使う。
+        #
+        # 基準の字面は「リード領域の幅 ÷ lead_chars」——リード幅比（lead_ratio）自体が
+        # lead_chars × 1 字の送り ÷ 判型幅なので、これで PDF と同じ字面比になる。
+        # 縦に収まらない長文だけ 8% ずつ縮める（幅は一定なので 1 行の字数が増えて行数が減る）。
         # @return [Array(Integer, Array<String>)] [フォントサイズ, 折り返し済み行の配列]
-        def lead_layout(width, height, lead, lead_ratio)
+        def lead_layout(width, height, lead, lead_ratio, lead_chars)
           paragraphs = lead.split("\n")
-          font_size = (width * LEAD_FONT_RATIO).round
+          chars = lead_chars.to_i
+          chars = DEFAULT_METRICS[:lead_chars] unless chars.positive?
           floor     = (width * LEAD_FONT_FLOOR).round
+          font_size = [((width * lead_ratio) / chars).round, floor].max
           loop do
             capacity = (width * lead_ratio) / font_size
             lines = paragraphs.flat_map { |p| wrap_text_by_width("　#{p}", capacity) }
@@ -178,25 +214,34 @@ module VivlioStarter
           end
         end
 
-        # 節絵の見出しフォント基準（height 比）。kindle_h2 実測フィードバックで確定した
-        # 「程よい」大きさ（7-5 トラブルシューティング相当）。全節で共通に使う。
-        ORNAMENT_FONT_RATIO = 0.14
         # 節絵タイトルの最大行数。これを超える長さのときだけフォントを縮小する。
         ORNAMENT_MAX_LINES = 2
-        # 節絵テキストが使ってよい幅（画像幅比）。
-        ORNAMENT_TEXT_WIDTH = 0.88
 
-        # 節絵（landscape 2.39:1）の合成 SVG。番号＋タイトルを中央に重ねる。
-        # フォントは全節共通の基準サイズに固定し、1 行に収まらない長い節題は
-        # 縮小せず 2 行へ折り返す（2 行でも収まらない例外だけ縮小する）。
-        # 旧実装の「幅いっぱいへの拡大＋clamp」は短い節題が巨大化し、その後の
-        # 「固定基準＋収まるまで縮小」は長い節題が極端に小さくなった（実測 c/d/e）。
-        def ornament_svg(width, height, data_uri, number, title, font_family, number_color)
-          font_size, lines = ornament_layout(width, height, number, title)
+        # --- コンパクト帯の規格（PDF の image-header.css と同じ比率・§5-3）---
+        # 帯の縦横比。h2 の aspect-ratio: 480 / 100 に対応する。
+        ORNAMENT_BAND_ASPECT = 4.8
+        # 各層に敷く飾り画像の幅（帯幅比）。CSS の background-size: 150% × 半幅 と等価。
+        ORNAMENT_LAYER_IMAGE_WIDTH = 0.75
+        # 左右の飾り避け（帯幅比）。CSS の padding-inline 16mm / 18mm ÷ A4 版面 162mm。
+        ORNAMENT_PAD_START = 16.0 / 162.0
+        ORNAMENT_PAD_END   = 18.0 / 162.0
+        # 節題が使ってよい幅（帯幅比）。この幅を字数で割って字面を決める。
+        ORNAMENT_TEXT_WIDTH = 1.0 - ORNAMENT_PAD_START - ORNAMENT_PAD_END
+        # 字面の下限（帯幅比）。長い節題でも本文と見分けが付く大きさを保つ。
+        ORNAMENT_FONT_FLOOR = 0.030
+
+        # 節絵の合成 SVG。飾りを左右に並べたコンパクト帯（PDF と同じ 4.8:1）へ、
+        # 番号＋節題を左寄せで重ねる。字面は ornament.heading_chars から導く。
+        # 元アセットは左上と右下に飾りを持つ 2.39:1 の 1 枚なので、clipPath で
+        # 左半分／右半分を切り出して同じ行に置き直す（CSS の 2 層スプライトの SVG 版）。
+        def ornament_svg(width, source_height, data_uri, number, title, font_family, number_color, chars)
+          band_h = (width / ORNAMENT_BAND_ASPECT).round
+          font_size, lines = ornament_layout(width, number, title, chars)
           halo       = [(font_size * 0.14).round, 1].max
           line_step  = (font_size * 1.35).round
           # 単行時は旧来のベースライン（中央＋0.34em）。複数行は行ブロックごと中央へ寄せる。
-          first_base = (height * 0.50 + font_size * 0.34 - (line_step * (lines.size - 1) / 2.0)).round
+          first_base = (band_h * 0.50 + font_size * 0.34 - (line_step * (lines.size - 1) / 2.0)).round
+          text_x     = (width * ORNAMENT_PAD_START).round
 
           texts = lines.each_with_index.map do |line, i|
             tspans = +''
@@ -207,23 +252,51 @@ module VivlioStarter
               dx = tspans.empty? ? '' : %( dx="#{(font_size * 0.5).round}")
               tspans << %(<tspan#{dx}>#{escape_text(line[:text])}</tspan>)
             end
-            %(<text x="#{(width / 2.0).round}" y="#{first_base + (line_step * i)}" text-anchor="middle" ) +
+            %(<text x="#{text_x}" y="#{first_base + (line_step * i)}" text-anchor="start" ) +
               %(font-family="#{font_family}" font-size="#{font_size}" font-weight="800" fill="#1a1a1a" ) +
               %(paint-order="stroke" stroke="#ffffff" stroke-width="#{halo}" stroke-linejoin="round">#{tspans}</text>)
           end
 
           segments = [number, title].reject(&:empty?)
-          svg_wrapper(width, height, segments, [image_element(width, height, data_uri), *texts])
+          layers = ornament_layers(width, band_h, source_height, data_uri)
+          svg_wrapper(width, band_h, segments, [*layers, *texts])
+        end
+
+        # 飾りを左右に並べる 2 層。左は元画像の左上（＝左上の飾り）、右は右下（＝右下の飾り）を
+        # 見せる。帯は飾り 1 つ分より少し高いので、左が上寄せ・右が下寄せになる差分が
+        # そのまま右飾りの下がり量になる（CSS の left top / right bottom と同じ）。
+        def ornament_layers(width, band_h, source_height, data_uri)
+          img_w = (width * ORNAMENT_LAYER_IMAGE_WIDTH).round
+          img_h = (img_w * source_height.to_f / width).round
+          half  = (width / 2.0).round
+
+          [
+            %(<clipPath id="vs-orn-l"><rect x="0" y="0" width="#{half}" height="#{band_h}"/></clipPath>),
+            %(<clipPath id="vs-orn-r"><rect x="#{half}" y="0" width="#{width - half}" height="#{band_h}"/></clipPath>),
+            ornament_layer(data_uri, 0, 0, img_w, img_h, 'vs-orn-l'),
+            ornament_layer(data_uri, width - img_w, band_h - img_h, img_w, img_h, 'vs-orn-r')
+          ]
+        end
+
+        # 飾り 1 層。旧リーダー互換のため xlink:href を用いる（image_element と同じ理由）。
+        # width/height は元画像の縦横比どおりに与えるので meet でも歪まない。
+        def ornament_layer(data_uri, x, y, w, h, clip_id)
+          %(<image xlink:href="#{data_uri}" x="#{x}" y="#{y}" width="#{w}" height="#{h}" ) +
+            %(clip-path="url(##{clip_id})" preserveAspectRatio="xMidYMid meet"/>)
         end
 
         # 節絵のフォントサイズと行分割を決める。
-        # 基準サイズで ORNAMENT_MAX_LINES 行以内に収まるまで（収まらなければ 8% ずつ）縮小する。
+        # 字面は「節題領域の幅 ÷ 字数」。ORNAMENT_MAX_LINES 行に収まらない長い節題だけ
+        # 8% ずつ縮める（幅は一定なので 1 行の字数が増えて行数が減る）。
         # @return [Array(Integer, Array<Hash>)] [フォントサイズ, {number:, text:} の行配列]
-        def ornament_layout(width, height, number, title)
-          font_size = (height * ORNAMENT_FONT_RATIO).round
-          floor     = (height * 0.09).round
+        def ornament_layout(width, number, title, chars)
+          count = chars.to_i
+          count = DEFAULT_METRICS[:ornament_chars] unless count.positive?
+          avail = width * ORNAMENT_TEXT_WIDTH
+          floor = (width * ORNAMENT_FONT_FLOOR).round
+          font_size = [(avail / count).round, floor].max
           loop do
-            capacity = ORNAMENT_TEXT_WIDTH * width / font_size
+            capacity = avail / font_size
             lines = wrap_ornament_lines(number, title, capacity)
             return [font_size, lines] if lines.size <= ORNAMENT_MAX_LINES || font_size <= floor
 

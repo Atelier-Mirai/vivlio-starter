@@ -233,9 +233,21 @@ module VivlioStarter
         assert_in_delta 0.40, Build::EpubBuilder.lead_ratio_from(50.0, 210.0), 0.001, '下限 0.40 にクランプ'
       end
 
-      # 実 CONFIG（preset 構成で page.width 未指定）では 0.60 にフォールバックする
-      def test_frontispiece_lead_ratio_falls_back_on_preset_config
-        assert_in_delta 0.60, Build::EpubBuilder.frontispiece_lead_ratio, 0.001
+      # preset 構成（book.yml に page.width 無し）でも、解決済みの版面幅から実比を導く。
+      # CONFIG.page[:width] を直接見ると nil で既定 0.60 に落ち、PDF の扉と幅がずれていた。
+      # 期待値は lead_chars × 1 字の送り ÷ 判型幅 を PDF 側と同じ換算で組み立てる
+      # （リポジトリの book.yml の値に依存しないよう、実装と同じ入口から導出する）。
+      def test_frontispiece_lead_ratio_derives_from_resolved_page_width
+        bsc = PreProcessCommands::BookSettingsCss
+        page_cfg = bsc.build_page_cfg(Common::CONFIG)
+        chars = Build::EpubBuilder.epub_heading_metrics[:lead_chars]
+        expected = Build::EpubBuilder.lead_ratio_from(
+          chars * bsc.chapter_lead_advance_mm(page_cfg), Units.length_to_mm(page_cfg[:width])
+        )
+
+        assert_in_delta expected, Build::EpubBuilder.frontispiece_lead_ratio, 0.001
+        refute_in_delta 0.60, Build::EpubBuilder.frontispiece_lead_ratio, 0.0001,
+                        'preset 構成でもフォールバック 0.60 に落ちない'
       end
 
       # Kindle 数式テキスト化: 単純式 img は span 化され、複雑式 img は無傷で残る

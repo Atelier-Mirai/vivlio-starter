@@ -916,6 +916,7 @@ module VivlioStarter
             font_family: epub_heading_font_family,
             lead_font_family: epub_lead_font_family,
             lead_ratio: frontispiece_lead_ratio,
+            metrics: epub_heading_metrics,
             number_color: theme[:number_color],
             flavor:
           }
@@ -943,8 +944,12 @@ module VivlioStarter
         # ここと PDF で幅が食い違うと同じ原稿の扉が両ターゲットで別物になるため（§5-1）。
         def frontispiece_lead_ratio
           settings = PreProcessCommands::FrontmatterGenerator.parse_theme_settings
-          lead_mm = frontispiece_lead_width_mm(settings)
-          page_mm = Units.length_to_mm(Common::CONFIG.page[:width])
+          page_cfg = PreProcessCommands::BookSettingsCss.build_page_cfg(Common::CONFIG)
+          lead_mm = frontispiece_lead_width_mm(settings, page_cfg)
+          # page.width は book.yml では未指定が普通（page.use のプリセット由来）なので、
+          # 解決済みの page_cfg から取る。CONFIG.page[:width] を直接見ると nil になり
+          # 既定 0.60 へ落ちて PDF の扉と幅がずれる。
+          page_mm = Units.length_to_mm(page_cfg[:width])
           lead_ratio_from(lead_mm, page_mm)
         rescue StandardError
           0.60
@@ -952,10 +957,24 @@ module VivlioStarter
 
         # 章リードの幅（mm）。文字数指定が無ければ theme.css の既定（88.9mm）に相当する
         # 20 文字として扱う。
-        def frontispiece_lead_width_mm(settings)
-          chars = settings[:lead_chars_value] || PreProcessCommands::BookSettingsCss::DEFAULT_LEAD_CHARS
-          page_cfg = PreProcessCommands::BookSettingsCss.build_page_cfg(Common::CONFIG)
+        def frontispiece_lead_width_mm(settings, page_cfg = nil)
+          chars = epub_heading_metrics(settings)[:lead_chars]
+          page_cfg ||= PreProcessCommands::BookSettingsCss.build_page_cfg(Common::CONFIG)
           chars * PreProcessCommands::BookSettingsCss.chapter_lead_advance_mm(page_cfg)
+        end
+
+        # 見出しの寸法（book.yml の文字数指定）。合成画像側の字面・折返しをこれで決める。
+        # 既定値は PDF 側（BookSettingsCss::DEFAULT_*_CHARS ＝ theme.css の既定）と共有する
+        # ——別々に持つと同じ原稿の扉・節絵が PDF と EPUB で違う字数に組まれる（§5-2）。
+        # @return [Hash]
+        def epub_heading_metrics(settings = nil)
+          settings ||= PreProcessCommands::FrontmatterGenerator.parse_theme_settings
+          bsc = PreProcessCommands::BookSettingsCss
+          {
+            heading_chars: settings[:heading_chars_value] || bsc::DEFAULT_HEADING_CHARS,
+            lead_chars: settings[:lead_chars_value] || bsc::DEFAULT_LEAD_CHARS,
+            ornament_chars: settings[:ornament_heading_chars_value] || bsc::DEFAULT_ORNAMENT_HEADING_CHARS
+          }
         end
 
         # リード幅比の純計算。導けない（幅欠落・非正）ときは 0.60、導ける場合は [0.40, 0.75] に収める。
@@ -1203,6 +1222,7 @@ module VivlioStarter
             src = heading_image_src(
               image_path: context[:frontispiece], number:, title:, kind: :frontispiece,
               lead:, lead_font_family: context[:lead_font_family], lead_ratio: context[:lead_ratio],
+              metrics: context[:metrics],
               font_family: context[:font_family], flavor: context[:flavor], base_dir: context[:base_dir]
             )
             next unless src
@@ -1268,6 +1288,7 @@ module VivlioStarter
             src = heading_image_src(
               image_path: context[:ornament], number:, title:, kind: :ornament,
               font_family: context[:font_family], number_color: context[:number_color],
+              metrics: context[:metrics],
               flavor: context[:flavor], base_dir: context[:base_dir]
             )
             next unless src
@@ -1311,25 +1332,27 @@ module VivlioStarter
         # ツール不在・合成失敗時は nil（→ simple 縮退）。
         def heading_image_src(image_path:, number:, title:, kind:, font_family:,
                               lead: '', lead_font_family: nil, lead_ratio: 0.60,
-                              number_color: '#333333', flavor: :epub, base_dir: '.')
+                              number_color: '#333333', flavor: :epub, base_dir: '.', metrics: nil)
           # LAYOUT_VERSION ソルトでレイアウト刷新（帯切り出し→全高＋リード焼き込み）を鍵に反映する——
           # image_path/番号/タイトルが同じでもレイアウトが変わるため、--no-clean 時に残る旧画像を
-          # 掴む事故を防ぐ（§4.4）。lead / lead_ratio も鍵に含めリードの差異を取りこぼさない。
+          # 掴む事故を防ぐ（§4.4）。lead / lead_ratio / metrics も鍵に含め、リードや
+          # 文字数指定の差異を取りこぼさない（字数を変えたのに旧画像が使われる事故を防ぐ）。
           key = Digest::SHA256.hexdigest(
             [HeadingImageComposer::LAYOUT_VERSION, flavor, kind, image_path,
-             number, title, lead, lead_ratio, font_family, lead_font_family, number_color].join('|')
+             number, title, lead, lead_ratio, metrics, font_family, lead_font_family, number_color].join('|')
           )[0, 16]
           dir = File.join(base_dir, Common.images_dir, HEADINGS_REL_SUBDIR)
           filename = "#{kind}-#{key}.#{flavor == :kindle ? 'jpg' : 'svg'}"
           abs = File.join(dir, filename)
 
           unless File.exist?(abs)
+            composer_args = { image_path:, number:, title:, kind:, font_family:,
+                              lead:, lead_font_family:, lead_ratio:, number_color: }
+            composer_args[:metrics] = metrics if metrics
             data = if flavor == :kindle
-                     HeadingImageComposer.render(image_path:, number:, title:, kind:, font_family:,
-                                                 lead:, lead_font_family:, lead_ratio:, number_color:)
+                     HeadingImageComposer.render(**composer_args)
                    else
-                     HeadingImageComposer.compose(image_path:, number:, title:, kind:, font_family:,
-                                                  lead:, lead_font_family:, lead_ratio:, number_color:)
+                     HeadingImageComposer.compose(**composer_args)
                    end
             return nil unless data
 

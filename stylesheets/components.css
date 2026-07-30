@@ -224,10 +224,10 @@ h2.vs-image-heading-epub {
 
 /* 節絵を含む article は PDF 用グリッドを解除し、通常フローで積む。
    節は新ページの先頭から始める（PDF の .section-topic h2 break-before: page と同じ意図）。
-   Kindle KFX は modern な break-before を解さないため legacy page-break-before も併記する。 */
+   Kindle KFX は modern な break-before を解さないため legacy page-break-before も併記する。
+   前後の空きは body.vs-epub .section-topic 側（特異度が高い）が決める。 */
 article.vs-section-topic-epub {
   display: block;
-  margin-block-end: 1em;
   page-break-before: always;
   break-before: page;
 }
@@ -251,11 +251,25 @@ body.vs-epub .section-topic h2.vs-image-heading-epub {
   white-space: normal;
 }
 
+/* PDF 用のグリッドと mm 単位の前後マージン（image-header.css の .section-topic）を
+   リフロー向けの相対単位へ置き換える。特異度は image-header.css と同じ (0,2,1) だが、
+   components.css が後に読まれるので後勝ちで上書きできる。
+   前後比は PDF と同じ「前 ≫ 後」を保つ（近接の原則・heading-metrics-spec §4・§5-4）——
+   前後が対称だと「前節の末尾＋次節の見出し」が 1 つの塊に見える。 */
 body.vs-epub .section-topic {
-  display: block; /* 150px 固定行のグリッドを解除 */
+  display: block; /* PDF 用グリッドを解除 */
+  margin-block: 1.8em 0.6em;
+  row-gap: normal;
 }
 
-body.vs-epub .section-topic h2::before {
+/* 見出し画像自身は article 側が持つ前後の空きに委ね、下だけわずかに空ける
+   （節リード・本文を見出しに近づける） */
+body.vs-epub .section-topic h2.vs-image-heading-epub {
+  margin-block: 0 0.3rem;
+}
+
+body.vs-epub .section-topic h2::before,
+body.vs-epub .section-topic h2::after {
   content: none; /* PDF 用の背景飾り（節絵 SVG と二重になる）を無効化 */
 }
 
@@ -266,9 +280,11 @@ body.vs-epub .chapter-lead {
   margin-block: 1em;
 }
 
+/* 節リードは見出しに近づける（PDF 側と同じ近接の扱い）。
+   image-header.css の !important（margin-block-start: 0）に勝つため !important を併記する。 */
 body.vs-epub .section-lead {
   inline-size: auto;
-  margin-block: 0.5em 1em;
+  margin-block: 0.3em 1em !important;
 }
 
 /* =====================================================================
