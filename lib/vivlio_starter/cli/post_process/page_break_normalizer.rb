@@ -21,6 +21,10 @@
 # 正規化の 2 種類:
 #   - hr.pagebreak / div.vs-break-page … マーカーを削除（h2 自身の改ページに一本化）
 #   - div.vs-break-recto / :verso      … マーカーを残し h2 側を無効化（recto 指定が勝つ）
+#
+# 対象範囲は page.section_page_break と theme.style で変わる（breaking_h2_scope）。
+# 「h2 が改ページする」ことが前提の処理なので、改ページしない h2 の前のマーカーは
+# 著者が書いた正当な改ページとしてそのまま残す。
 # ================================================================
 
 require 'nokogiri'
@@ -47,11 +51,11 @@ module VivlioStarter
         # @param html_file [String] 対象 HTML のパス
         # @return [Integer] 正規化した件数
         def normalize!(html_file)
-          # page.section_page_break: false なら h2 は改ページしない＝冗長性が消えるため何もしない
-          return 0 unless section_page_break_enabled?
-
           doc = HtmlParser.parse_html_document(File.read(html_file, encoding: 'utf-8'))
-          count = doc.css(BREAK_MARKERS).count { normalize_marker(it) }
+          scope = breaking_h2_scope(doc)
+          return 0 if scope == :none
+
+          count = doc.css(BREAK_MARKERS).count { normalize_marker(it, scope) }
           return 0 if count.zero?
 
           HtmlParser.save_html_document(html_file, doc)
@@ -59,11 +63,41 @@ module VivlioStarter
           count
         end
 
+        # CSS で改ページする h2 の範囲を返す。正規化は「h2 が改ページする」ことが
+        # 前提なので、この範囲の外にあるマーカーは著者の意図どおり残す。
+        #
+        #   :all                 … 既定（section_page_break: true）。全 h2 が改ページする
+        #   :first_section_only  … false かつ image スタイル。章扉を全面の扉絵で成立させる
+        #                          ため章の最初の節だけ改ページが残る
+        #                          （BookSettingsCss#chapter_frontispiece_guard_rule と対）
+        #   :none                … false かつ simple スタイル。どの h2 も改ページしない
+        #
+        # image スタイルの判定は config ではなく body クラスで行う——付録は
+        # theme.style: image でも常に vs-header-simple なので、CSS が実際に見るものと
+        # 同じ印を見るのが唯一ずれない方法（BodyClassInjector#header_mode_class）。
+        def breaking_h2_scope(doc)
+          return :all if section_page_break_enabled?
+
+          body_classes = doc.at_css('body')&.[]('class').to_s.split
+          body_classes.include?('vs-header-image') ? :first_section_only : :none
+        end
+
+        # 章（section.level1）の最初の節かどうか。章扉保護の CSS セレクタ
+        # `section.level2:first-of-type` と同じ判定を DOM 側で再現する。
+        def first_section_of_chapter?(h2)
+          level2 = h2.ancestors('section.level2').first
+          return false unless level2
+
+          level2.parent.element_children.find { it.name == 'section' }.equal?(level2)
+        end
+
         # マーカー 1 つを見て、直後が h2 なら正規化する。
+        # @param scope [Symbol] breaking_h2_scope の戻り値
         # @return [Boolean] 正規化したか
-        def normalize_marker(marker)
+        def normalize_marker(marker, scope = :all)
           following = next_content_element(marker)
           return false unless following&.name == 'h2'
+          return false if scope == :first_section_only && !first_section_of_chapter?(following)
 
           if recto_or_verso?(marker)
             # recto/verso 指定が勝つ。マーカーは残し、h2 側の改ページだけを無効化する。

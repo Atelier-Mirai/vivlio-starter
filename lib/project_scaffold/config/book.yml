@@ -60,37 +60,38 @@ theme:
   # ----------------------------
   # 装飾スタイル
   # ----------------------------
+  # style: image # image: 画像あり / simple: 画像なし
   style: image # image: 画像あり / simple: 画像なし
 
   # ----------------------------
   # テーマカラー
   # ----------------------------
   color:
-    yellow # yellow / orange / red / magenta
+    red # yellow / orange / red / magenta
     # purple / indigo / navy / blue
     # cyan / teal / green / lime から選択
     # '#ff0000' のような HEX 記法も指定可
 
   # 前書き/後書き専用カラー（オプション）
   # 指定しない場合は上記の color と同じ色が使用されます
-  preface_color: indigo # 前書き/後書きだけ別の色にしたい場合に指定
+  preface_color: purple # 前書き/後書きだけ別の色にしたい場合に指定
 
   # 付録専用カラー（オプション）
   # 指定しない場合は上記の color と同じ色が使用されます
-  appendix_color: yellow # 付録だけ別の色にしたい場合に指定
+  appendix_color: green # 付録だけ別の色にしたい場合に指定
 
   # ----------------------------
   # 章扉の背景画像
   # ----------------------------
   frontispiece:
     image:
-      sakura # suisen / ume / nanohana / sakura
+      himawari # suisen / ume / nanohana / sakura
       # suzuran / ajisai / asagao / himawari
       # kikyo / kosumosu / kiku / tsubaki から選択
       # images/内の独自画像も指定可
-    padding: 10mm # 余白の調整
-    heading_width: 108mm # 幅の調整
-    lead_width: 88mm # 章リード文の幅の調整
+    padding: 5mm # 余白の調整
+    heading_width: 128mm # 幅の調整
+    lead_width: 108mm # 章リード文の幅の調整
 
   # ----------------------------
   # 節見出しの背景画像
@@ -209,8 +210,9 @@ output:
   # ----------------------------
   # targets: pdf # pdf / print_pdf / epub / kindleから選択可
   # 例:
-  # targets: pdf # 閲覧用PDFを指定
-  targets: pdf, print_pdf # 閲覧用PDF, 印刷所入稿用PDFを指定
+  # targets: epub, kindle
+  targets: pdf # 閲覧用PDFを指定
+  # targets: pdf, print_pdf # 閲覧用PDF, 印刷所入稿用PDFを指定
   # targets: pdf, print_pdf, epub         # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUBを指定
   # targets: pdf, print_pdf, epub, kindle # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUB, Kindle用EPUBを指定
 

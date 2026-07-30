@@ -10,6 +10,7 @@
 #   - `--- ---` の連打（意図的な空白ページ）は h2 直前の 1 個だけを正規化する
 #   - :recto / :verso はマーカーを残し h2 側を無効化する（recto 指定が勝つ）
 #   - page.section_page_break: false では一切正規化しない
+#     （ただし image スタイルは章扉保護で章の最初の節だけ改ページが残るため、そこは正規化する）
 # ================================================================
 
 require_relative '../../../test_helper'
@@ -24,10 +25,13 @@ class PageBreakNormalizerTest < Minitest::Test
   # 節の改ページ設定は明示的に与える。プロジェクト自身の book.yml を読ませると、
   # 著者が page.section_page_break を false にした瞬間にテストが落ちる
   # （正規化は h2 が改ページする前提でのみ働くため）。
-  def normalize(body, section_page_break: true)
+  # body クラスは CSS が実際に見る印（vs-header-image / vs-header-simple）。
+  # section_page_break: false のとき対象範囲がこれで変わる（breaking_h2_scope）。
+  def normalize(body, section_page_break: true, body_class: nil)
+    body_tag = body_class ? %(<body class="#{body_class}">) : '<body>'
     PBN.stub(:section_page_break_enabled?, section_page_break) do
       Tempfile.create(['vs_pbn_', '.html']) do |f|
-        f.write("<html><body>\n#{body}\n</body></html>")
+        f.write("<html>#{body_tag}\n#{body}\n</body></html>")
         f.flush
         count = PBN.normalize!(f.path)
         return [File.read(f.path, encoding: 'utf-8'), count]
@@ -165,5 +169,49 @@ class PageBreakNormalizerTest < Minitest::Test
 
     assert_equal 0, count
     assert_includes out, 'class="pagebreak"'
+  end
+
+  # --- section_page_break: false ＋ image スタイル（章扉保護）---
+  # 節の改ページを止めても、image スタイルの章の最初の節だけは改ページが残る
+  # （章扉は全面の扉絵で成立するページなので独立させる）。そこだけは冗長性が生じる。
+
+  # 章（section.level1）配下に h1 と節を並べた image スタイルの構造。
+  def chaptered(first_marker:, second_marker:)
+    <<~HTML
+      <section class="level1">
+        <h1>章題</h1>
+        #{first_marker}
+        <section class="level2">
+          <article class="section-topic"><h2>最初の節</h2></article>
+          <p>本文。</p>
+          #{second_marker}
+        </section>
+        <section class="level2">
+          <article class="section-topic"><h2>次の節</h2></article>
+          <p>本文。</p>
+        </section>
+      </section>
+    HTML
+  end
+
+  def test_should_normalize_only_the_first_section_marker_when_disabled_in_image_style
+    body = chaptered(first_marker: '<hr class="pagebreak" id="before-first">',
+                     second_marker: '<hr class="pagebreak" id="before-second">')
+    out, count = normalize(body, section_page_break: false, body_class: 'chapter vs-header-image')
+
+    assert_equal 1, count
+    # 章扉保護で改ページする最初の節 → マーカーは冗長なので落とす
+    refute_includes out, 'id="before-first"'
+    # 2 つ目以降の節は改ページしない → 著者が書いた改ページとして残す
+    assert_includes out, 'id="before-second"'
+  end
+
+  # simple スタイルはどの h2 も改ページしないので、章の最初の節でも触らない
+  def test_should_keep_all_markers_when_disabled_in_simple_style
+    body = chaptered(first_marker: '<hr class="pagebreak" id="before-first">', second_marker: '')
+    out, count = normalize(body, section_page_break: false, body_class: 'chapter vs-header-simple')
+
+    assert_equal 0, count
+    assert_includes out, 'id="before-first"'
   end
 end

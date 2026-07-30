@@ -139,6 +139,15 @@ end
 
 実測（`vs build 31`・節 4 つの章）: `true` 17 ページ → `false` 13 ページ。
 
+**後日の是正（2026-07-30）**——上の打ち消しだけでは `theme.style: image` の PDF が 2 通りに崩れることが判明し、`false` のときだけ出す追加規則を 2 本足した（`true` の組版は不変）。いずれも「節は必ずページ先頭に来る」という既定の前提に依存していた箇所:
+
+| 症状 | 原因 | 追加規則 |
+|---|---|---|
+| 節絵が直前の段落・コードブロックに重なる | `.section-topic` の固定行 `"section-title" 150px` に対し h2 の箱は `aspect-ratio: 239/100`（版面 162mm で約 68mm）。`align-self: center` で上下へ 14mm ずつはみ出す。既定では上のはみ出しがページ上端の余白へ逃げるため不可視だった | `section_topic_intrinsic_height_rule`（行を `auto` へ・節リードの 16mm 押し下げも解除） |
+| 章扉に最初の節が流れ込み、扉絵の上に本文が重なる | 章扉は `@page :nth(1)` のページ全面背景で成立している | `chapter_frontispiece_guard_rule`（`section.level2:first-of-type` の h2 だけ `break-before: page` を残す。`:not(.vs-epub)` で PDF 限定） |
+
+章扉保護で最初の節の改ページが復活したため、§2.1 の early return も「範囲を狭める」形へ変えた（`breaking_h2_scope` が `:all` / `:first_section_only` / `:none` を返し、`:none` のときだけ従来どおり何もしない）。image スタイルの判定は `theme.style` ではなく **body クラス `vs-header-image`** を見る——付録は `theme.style: image` でも常に `vs-header-simple` なので、CSS が実際に見る印と同じものを見るのが唯一ずれない。
+
 以下は策定時の記述（実装の骨子は同じ）。
 
 

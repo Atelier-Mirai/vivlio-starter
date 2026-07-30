@@ -10,7 +10,10 @@
 
 ## 一覧
 
-（実装待ちの仕様書はありません。アイデア段階のものは [PLANNED.md](PLANNED.md) を参照）
+`heading-metrics-spec.md`
+: 見出し（章題 h1・章リード・節題 h2）と扉絵・節絵の寸法指定を mm から**文字数**へ移し、折返しの品質を上げ、節絵の帯を約半分の高さに縮め、見出しの帰属が読めるよう前後の余白比を正す。`theme.frontispiece.padding` → `edge_inset` の改名を含む。**Phase 1 = PDF（§1〜§4）／Phase 2 = EPUB・Kindle（§5）**の 2 段構成。
+  状態: 仕様（実装待ち）。§0〜§4 の実測は 2026-07-30 に `vs build 12` で採取済み
+  次のアクション: §7 の Phase 1 手順 1（`edge_inset` 改名）から。手順 2 では `EpubBuilder#frontispiece_lead_ratio` の追随を**同時に**入れること（改名だけでは EPUB の扉絵リードが崩れる）。Phase 1・2 とも既存書籍の見た目が変わるため、RC 公開との前後関係を先に判断する
 
 ---
 

@@ -224,6 +224,8 @@ module VivlioStarter
         # page.section_page_break: false のときだけ打ち消し規則を出す。
         # true・未設定では何も出さず、テーマ CSS の改ページがそのまま生きる
         # （P3 の「書かない条件では宣言しない」セマンティクス）。
+        # 打ち消しだけでは image スタイルの PDF が崩れるため、節絵の実寸化と
+        # 章扉の保護（後述の 2 メソッド）を続けて出す。
         def section_page_break_rule(page_cfg)
           return '' unless section_page_break_disabled?(page_cfg)
 
@@ -233,6 +235,52 @@ module VivlioStarter
             #{SECTION_PAGE_BREAK_SELECTORS.join(",\n")} {
               break-before: auto;
               page-break-before: auto;
+            }
+            #{section_topic_intrinsic_height_rule}
+            #{chapter_frontispiece_guard_rule}
+          CSS
+        end
+
+        # 節絵（image スタイルの h2 背景）を「行の実寸」で組ませる。
+        #
+        # image-header.css の .section-topic は節絵用に `"section-title" 150px` の
+        # 固定行を敷き、h2 側は `aspect-ratio: 239/100`（＝版面幅なら 60mm 超）を持つ。
+        # 行より背の高い箱が `align-self: center` で置かれるので、節絵は行の上下へ
+        # 十数 mm ずつはみ出す。節が必ずページ先頭に来る既定では上のはみ出しが
+        # ページ上端の余白へ逃げるため無害だが、節を本文に続けて組むと直前の段落や
+        # コードブロックに重なる（pdf_h2.png 実測）。
+        # 行を auto にして箱の実寸を占めさせ、はみ出しを見込んで節リードを 16mm
+        # 押し下げていた補正（image-header.css の !important）も打ち消す。
+        # simple スタイルでは body.vs-header-image が付かないため不発（無害）。
+        # EPUB/Kindle は components.css が固定行グリッドを display: block で解いた
+        # 別レイアウトなので触らない（:not(.vs-epub) で PDF に限定）。
+        def section_topic_intrinsic_height_rule
+          <<~CSS.chomp
+            /* 節絵の箱は固定 150px 行からはみ出すため、続けて組むと直前の本文に重なる。
+               行を実寸にしてはみ出しを解消する。 */
+            body.vs-header-image:not(.vs-epub) .section-topic {
+              grid-template: "section-title" auto "section-lead" auto / 100%;
+            }
+            body.vs-header-image:not(.vs-epub) .section-topic .section-lead {
+              margin-block-start: 0 !important;
+            }
+          CSS
+        end
+
+        # 章扉（h1 のページ）だけは節の改ページを止めても独立させる。
+        #
+        # image スタイルの章扉は @page :nth(1) の全面背景（扉絵）で成立しているので、
+        # 最初の節が同ページへ流れ込むと扉絵の上に本文と節絵が重なる（pdf_h1.png 実測）。
+        # EPUB/Kindle の扉絵は通常フローの合成 SVG 画像で全面背景ではないため保護不要
+        # ——body.vs-epub（クリーン・Kindle 共通マーカー）を除外して PDF に限定する。
+        # section.level2:first-of-type は section.level1 直下の最初の節。h1 と
+        # .chapter-lead は section 要素でないので :first-of-type の数に入らない。
+        def chapter_frontispiece_guard_rule
+          <<~CSS.chomp
+            /* 章扉は全面の扉絵で成立するページなので、最初の節だけは次ページから始める。 */
+            body.vs-header-image:not(.vs-epub) section.level2:first-of-type > .section-topic h2 {
+              break-before: page;
+              page-break-before: always;
             }
           CSS
         end

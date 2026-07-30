@@ -227,6 +227,30 @@ class BookSettingsCssPageTest < Minitest::Test
     assert_includes css, 'page-break-before: auto;'
   end
 
+  # 節絵の箱（aspect-ratio 239/100）は .section-topic の固定 150px 行より背が高く、
+  # align-self: center で上下へはみ出す。続けて組むと直前の本文に重なるため（pdf_h2.png）、
+  # 行を実寸へ戻し、はみ出しを見込んだ節リードの押し下げ補正も外す。
+  def test_should_emit_intrinsic_section_topic_row_when_disabled
+    css = BSC.section_page_break_rule({ section_page_break: false })
+
+    assert_includes css, 'grid-template: "section-title" auto "section-lead" auto / 100%;'
+    assert_includes css, 'margin-block-start: 0 !important;'
+    # EPUB/Kindle は別レイアウト（components.css が固定行を display: block で解く）ため除外する
+    assert_includes css, 'body.vs-header-image:not(.vs-epub) .section-topic {'
+    assert_includes css, 'body.vs-header-image:not(.vs-epub) .section-topic .section-lead {'
+  end
+
+  # 章扉は @page :nth(1) の全面背景（扉絵）で成立するページなので、節の改ページを
+  # 止めても最初の節だけは次ページから始める（pdf_h1.png）。PDF 限定。
+  def test_should_keep_chapter_frontispiece_page_dedicated_when_disabled
+    css = BSC.section_page_break_rule({ section_page_break: false })
+
+    assert_includes css,
+                    'body.vs-header-image:not(.vs-epub) section.level2:first-of-type > .section-topic h2'
+    assert_includes css, 'break-before: page;'
+    assert_includes css, 'page-break-before: always;'
+  end
+
   # 既定（true）・未設定では何も出さず、テーマ CSS の改ページがそのまま生きる
   def test_should_emit_nothing_when_section_page_break_enabled
     assert_equal '', BSC.section_page_break_rule({ section_page_break: true })
@@ -381,6 +405,20 @@ class BookSettingsCssSectionBreakSelectorTest < Minitest::Test
                       "#{selector} が stylesheets/ に存在しません。" \
                       '元ルールを改名したなら SECTION_PAGE_BREAK_SELECTORS も追随させてください。'
     end
+  end
+
+  # section_page_break: false のときの是正（節絵の行を実寸化・節リードの押し下げ解除）は、
+  # image-header.css の「固定 150px 行 ＋ 節リード 16mm 押し下げ」を後勝ちで上書きする前提で
+  # 成り立っている。前提が消えたら上書きは不要（あるいは別の形）になるので、前提を固定する。
+  def test_should_pin_fixed_section_topic_row_that_the_override_corrects
+    css = File.read(File.join(STYLESHEETS, 'image-header.css'))
+
+    assert_match(/"section-title"\s+150px/, css,
+                 '.section-topic の固定 150px 行が無くなりました。' \
+                 'BookSettingsCss#section_topic_intrinsic_height_rule の上書きが不要か見直してください。')
+    assert_match(/\.section-topic\s+\.section-lead\s*\{[^}]*margin-block-start:[^;]*!important/m, css,
+                 '節リードの押し下げ（margin-block-start !important）が無くなりました。' \
+                 'BookSettingsCss#section_topic_intrinsic_height_rule の打ち消しが不要か見直してください。')
   end
 end
 
