@@ -81,10 +81,12 @@ theme:
   color: blue  # テーマカラー
   frontispiece:
     image: sakura  # 桜の画像を使用
-    padding: 10mm  # 扉絵の余白
-    heading_width: 120mm  # 章タイトルの幅
-    lead_width: 100mm  # リード文の幅
-  ornament: sakura  # 桜の装飾を使用
+    edge_inset: 10mm  # 扉絵を紙の端から引っ込める量
+    heading_chars: 8  # 章題を 1 行に何文字入れるか
+    lead_chars: 20  # リード文を 1 行に何文字入れるか
+  ornament:
+    image: sakura  # 桜の装飾を使用
+    heading_chars: 14  # 節題を 1 行に何文字入れるか
 ```
 
 ### バンドル画像の使用
@@ -243,7 +245,7 @@ stylesheets/
 
 ### frontispiece の詳細設定
 
-frontispiece には、余白や見出しの幅などの詳細な設定オプションがあります。
+frontispiece には、扉絵の引っ込み量や見出しの字数などの詳細な設定オプションがあります。
 
 **設定可能な項目**
 
@@ -251,40 +253,64 @@ frontispiece には、余白や見出しの幅などの詳細な設定オプシ�
 theme:
   frontispiece:
     image: sakura  # 画像名
-    padding: 10mm  # 扉絵の余白（既定値: 0mm）
-    heading_width: 120mm  # 章タイトルの幅（省略可）
-    lead_width: 100mm  # リード文の幅（省略可）
+    edge_inset: 10mm  # 扉絵を紙の端から引っ込める量（既定値: 0mm）
+    heading_chars: 8  # 章題を 1 行に何文字入れるか（省略可）
+    lead_chars: 20  # リード文を 1 行に何文字入れるか（省略可）
 ```
 
-**padding（余白）**
+**edge_inset（扉絵を紙の端から引っ込める量）**
 
-扉絵の周囲に余白を設定します。画像の端が切れないようにしたい場合に使用します。
+扉絵をページの端からどれだけ内側に置くかを指定します。値を大きくすると扉絵が小さくなり、紙の周囲に白い余白が広く残ります。
 
 ```yaml
 frontispiece:
   image: himawari
-  padding: 15mm  # 15mm の余白を追加
+  edge_inset: 15mm  # 紙の端から 15mm 内側に扉絵を配置
 ```
 
-**heading_width（章タイトルの幅）**
+基準になるのは上下の端です。左右にできる余白は画像の縦横比に応じて自動で決まるため、上下より広くなることがあります。
 
-章タイトルの最大幅を設定します。長いタイトルを適切に折り返したい場合に使用します。
+**heading_chars（章題の字数）**
+
+章題を 1 行に何文字入れるかを指定します。「クイックスタート」のように 8 文字ある章題を 1 行に収めたいときは `8` 以上を指定します。
 
 ```yaml
 frontispiece:
   image: himawari
-  heading_width: 100mm  # タイトルの最大幅を 100mm に制限
+  heading_chars: 10  # 章題を 1 行 10 文字ぶんの幅で組む
 ```
 
-**lead_width（リード文の幅）**
+mm ではなく**文字数**で指定するのは、判型を変えても指定の意味が変わらないようにするためです。文字の大きさは判型に合わせて自動で調整されるので、「10 文字」は A4 でも A5 でも 10 文字になります。
 
-章のリード文（`:::{.chapter-lead}`）の最大幅を設定します。
+指定した字数が版面に収まらないときは、ビルド時に上限を添えた警告が出ます。
+
+```
+🟡 theme.frontispiece.heading_chars: 16 は版面幅 108mm に収まりません（最大 11 文字）
+        heading_chars: 11 をお試しください
+```
+
+**lead_chars（リード文の字数）**
+
+章のリード文（`:::{.chapter-lead}`）を 1 行に何文字入れるかを指定します。
 
 ```yaml
 frontispiece:
   image: himawari
-  lead_width: 90mm  # リード文の最大幅を 90mm に制限
+  lead_chars: 24  # リード文を 1 行 24 文字ぶんの幅で組む
 ```
+
+**ornament の heading_chars（節題の字数）**
+
+節見出し（`##`）の字数も同じように指定できます。画像名だけを書く短縮形に加えて、次のように書けます。
+
+```yaml
+theme:
+  ornament:
+    image: sakura
+    heading_chars: 14  # 節題を 1 行 14 文字で組む
+```
+
+節絵の帯は版面の幅いっぱいで固定されているため、章題とは違って**字の大きさ**が変わります。字数を少なくすると節題は大きく、多くすると小さく組まれます。
 
 ### 画像が見つからない場合
 
@@ -338,9 +364,9 @@ theme:
   color: green
   frontispiece:
     image: my_cover  # stylesheets/images/my_cover.webp
-    padding: 12mm
-    heading_width: 110mm
-    lead_width: 95mm
+    edge_inset: 12mm
+    heading_chars: 9
+    lead_chars: 22
   ornament: my_decoration  # stylesheets/images/my_decoration.webp
 ```
 

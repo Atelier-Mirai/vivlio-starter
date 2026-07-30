@@ -62,11 +62,13 @@ theme:
 
   frontispiece:      # 章扉の背景画像（style: image のときのみ有効）
     image: asagao
-    padding: 10mm
-    heading_width: 108mm
-    lead_width: 88mm
+    edge_inset: 10mm      # 扉絵を紙の端から引っ込める量
+    heading_chars: 8      # 章題を 1 行に何文字入れるか
+    lead_chars: 20        # リード文を 1 行に何文字入れるか
 
-  ornament: sakura   # 節見出しの装飾画像（style: image のときのみ有効）
+  ornament:          # 節見出しの装飾画像（style: image のときのみ有効）
+    image: sakura
+    heading_chars: 14     # 節題を 1 行に何文字入れるか
 
   markers:
     h3: ♣            # 目見出し（h3）の先頭記号

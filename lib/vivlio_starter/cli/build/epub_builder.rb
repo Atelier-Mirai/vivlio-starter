@@ -933,17 +933,29 @@ module VivlioStarter
           stack.join(', ')
         end
 
-        # リード焼き込み幅の画像幅比。theme.frontispiece.lead_width（例 88mm）÷ 判型幅（page.width）。
+        # リード焼き込み幅の画像幅比 ＝ 章リードの幅 ÷ 判型幅（page.width）。
         # page.width が明示された構成では実比を導き、preset 構成（width 未指定）や単位不明時は
         # 0.60（A5 で 88/148 相当・モック検証値）へフォールバックする。portrait 画像幅は綴じ補正で
         # 判型幅と数 % ずれ得るが誤差として許容する。
+        #
+        # リード幅は book.yml では「1 行の文字数」で指定される（heading-metrics-spec §1-2）ため、
+        # PDF 側と同じ換算（文字数 × 1 字の送り）で mm へ戻してから比を取る。換算を共有するのは
+        # ここと PDF で幅が食い違うと同じ原稿の扉が両ターゲットで別物になるため（§5-1）。
         def frontispiece_lead_ratio
           settings = PreProcessCommands::FrontmatterGenerator.parse_theme_settings
-          lead_mm = Units.length_to_mm(settings[:lead_width_value])
+          lead_mm = frontispiece_lead_width_mm(settings)
           page_mm = Units.length_to_mm(Common::CONFIG.page[:width])
           lead_ratio_from(lead_mm, page_mm)
         rescue StandardError
           0.60
+        end
+
+        # 章リードの幅（mm）。文字数指定が無ければ theme.css の既定（88.9mm）に相当する
+        # 20 文字として扱う。
+        def frontispiece_lead_width_mm(settings)
+          chars = settings[:lead_chars_value] || PreProcessCommands::BookSettingsCss::DEFAULT_LEAD_CHARS
+          page_cfg = PreProcessCommands::BookSettingsCss.build_page_cfg(Common::CONFIG)
+          chars * PreProcessCommands::BookSettingsCss.chapter_lead_advance_mm(page_cfg)
         end
 
         # リード幅比の純計算。導けない（幅欠落・非正）ときは 0.60、導ける場合は [0.40, 0.75] に収める。

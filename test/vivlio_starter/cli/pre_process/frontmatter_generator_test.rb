@@ -43,7 +43,7 @@ class FrontmatterGeneratorUnclosedTest < Minitest::Test
   end
 end
 
-# theme.frontispiece の padding/heading_width/lead_width 正規化を検証
+# theme.frontispiece の edge_inset/heading_chars/lead_chars 正規化を検証
 class FrontmatterGeneratorFrontispieceConfigTest < Minitest::Test
   FG = VivlioStarter::CLI::PreProcessCommands::FrontmatterGenerator
   TIR = VivlioStarter::CLI::PreProcessCommands::ThemeImageResolver
@@ -76,8 +76,8 @@ class FrontmatterGeneratorFrontispieceConfigTest < Minitest::Test
     end
   end
 
-  # frontispiece 未指定時は padding が既定値 0mm になり、
-  # heading_width/lead_width は省略可（nil）のまま、画像は既定の sakura になることを確認
+  # frontispiece 未指定時は edge_inset が既定値 0mm になり、
+  # heading_chars/lead_chars は省略可（nil）のまま、画像は既定の sakura になることを確認
   def test_parse_frontispiece_config_defaults_when_unset
     bundled = File.join(@tmp, 'images', 'bundled')
     FileUtils.mkdir_p(bundled)
@@ -85,22 +85,22 @@ class FrontmatterGeneratorFrontispieceConfigTest < Minitest::Test
 
     config = FG.parse_frontispiece_config(nil)
 
-    assert_equal '0mm', config[:padding]
-    assert_nil config[:heading_width]
-    assert_nil config[:lead_width]
+    assert_equal '0mm', config[:edge_inset]
+    assert_nil config[:heading_chars]
+    assert_nil config[:lead_chars]
     assert_equal 'images/bundled/sakura_portrait.webp', config[:path], '未指定時は既定画像 sakura になるべき'
   end
 
-  # padding/heading_width/lead_width を明示指定した場合、そのまま反映されることを確認。
+  # edge_inset/heading_chars/lead_chars を明示指定した場合、そのまま反映されることを確認。
   # 画像は空ディレクトリのためフォールバック先(sakura)も無く、プレースホルダーへ落ちる。
   def test_parse_frontispiece_config_respects_explicit_values
     config = FG.parse_frontispiece_config(
-      { image: 'not_a_real_theme_image_xyz', padding: '15mm', heading_width: '100mm', lead_width: '90mm' }
+      { image: 'not_a_real_theme_image_xyz', edge_inset: '15mm', heading_chars: 10, lead_chars: 24 }
     )
 
-    assert_equal '15mm', config[:padding]
-    assert_equal '100mm', config[:heading_width]
-    assert_equal '90mm', config[:lead_width]
+    assert_equal '15mm', config[:edge_inset]
+    assert_equal 10, config[:heading_chars]
+    assert_equal 24, config[:lead_chars]
     assert config[:path].start_with?('data:image/svg+xml'), '画像未検出時は data URI プレースホルダーになるはず'
     # プレースホルダーには要求された画像名がエンコードされる。
     # CGI 未ロードのフォールバック（空SVG）に落ちていないこと＝CGI require 順序バグの回帰テスト。

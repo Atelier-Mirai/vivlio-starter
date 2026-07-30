@@ -89,14 +89,16 @@ theme:
       # suzuran / ajisai / asagao / himawari
       # kikyo / kosumosu / kiku / tsubaki から選択
       # images/内の独自画像も指定可
-    padding: 5mm # 余白の調整
-    heading_width: 128mm # 幅の調整
-    lead_width: 108mm # 章リード文の幅の調整
+    edge_inset: 10mm # 扉絵を紙の端から内側へ引っ込める量
+    heading_chars: 8 # 章題を 1 行に何文字入れるか（全角換算）
+    lead_chars: 20 # 章リード文を 1 行に何文字入れるか（全角換算）
 
   # ----------------------------
   # 節見出しの背景画像
   # ----------------------------
-  ornament: sakura
+  ornament:
+    image: sakura
+    heading_chars: 14 # 節題を 1 行に何文字入れるか（全角換算・少なくすると字が大きくなる）
 
   # ----------------------------
   # 見出し記号

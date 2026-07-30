@@ -54,9 +54,7 @@ module VivlioStarter
           theme_style = parse_theme_style(theme_style_raw)
 
           frontispiece_cfg = parse_frontispiece_config(frontispiece_raw)
-          ornament_path = ThemeImageResolver.resolve_ornament_path(
-            ornament_raw, allow_generation: true
-          )
+          ornament_cfg = parse_ornament_config(ornament_raw)
 
           {
             theme_name: theme_name,
@@ -64,30 +62,63 @@ module VivlioStarter
             theme_style: theme_style,
             theme_cfg: theme_cfg,
             frontispiece_path: frontispiece_cfg[:path],
-            door_padding_value: frontispiece_cfg[:padding],
-            heading_width_value: frontispiece_cfg[:heading_width],
-            lead_width_value: frontispiece_cfg[:lead_width],
-            ornament_path: ornament_path
+            edge_inset_value: frontispiece_cfg[:edge_inset],
+            heading_chars_value: frontispiece_cfg[:heading_chars],
+            lead_chars_value: frontispiece_cfg[:lead_chars],
+            ornament_path: ornament_cfg[:path],
+            ornament_heading_chars_value: ornament_cfg[:heading_chars]
           }
         end
 
         # frontispiece 設定を解析（Data オブジェクト前提）
+        # 寸法は mm ではなく「1 行の文字数」で受ける（heading-metrics-spec §1-2）——
+        # 文字サイズが判型に追従するため、文字数なら A4 でも A5 でも同じ意味になる。
         def parse_frontispiece_config(frontispiece_raw)
           # String の場合はそのまま image 名として使用
           source = frontispiece_raw.is_a?(String) ? frontispiece_raw : frontispiece_raw&.dig(:image)
           path = ThemeImageResolver.resolve_frontispiece_path(source, allow_generation: true)
-
-          # padding/heading_width/lead_width を取得（String の場合は nil）
-          padding = frontispiece_raw.is_a?(String) ? nil : frontispiece_raw&.dig(:padding)
-          heading_width = frontispiece_raw.is_a?(String) ? nil : frontispiece_raw&.dig(:heading_width)
-          lead_width = frontispiece_raw.is_a?(String) ? nil : frontispiece_raw&.dig(:lead_width)
+          cfg = frontispiece_raw.is_a?(String) ? nil : frontispiece_raw
 
           {
             path: path,
-            padding: normalize_css_length(padding, label: 'theme.frontispiece.padding', default: '0mm'),
-            heading_width: normalize_css_length(heading_width, label: 'theme.frontispiece.heading_width'),
-            lead_width: normalize_css_length(lead_width, label: 'theme.frontispiece.lead_width')
+            edge_inset: normalize_css_length(cfg&.dig(:edge_inset),
+                                             label: 'theme.frontispiece.edge_inset', default: '0mm'),
+            heading_chars: normalize_char_count(cfg&.dig(:heading_chars),
+                                                label: 'theme.frontispiece.heading_chars'),
+            lead_chars: normalize_char_count(cfg&.dig(:lead_chars), label: 'theme.frontispiece.lead_chars')
           }
+        end
+
+        # ornament 設定を解析。frontispiece と同じく「スカラー＝画像名だけの短縮形」と
+        # 「マッピング＝画像名＋寸法」の両方を受ける（heading-metrics-spec §1-2）。
+        # resolve_ornament_path は raw.to_s を見るため、マッピングは先に image を取り出す。
+        def parse_ornament_config(ornament_raw)
+          scalar = ornament_raw.nil? || ornament_raw.is_a?(String) || ornament_raw.is_a?(Symbol)
+          source = scalar ? ornament_raw : ornament_raw&.dig(:image)
+          cfg = scalar ? nil : ornament_raw
+
+          {
+            path: ThemeImageResolver.resolve_ornament_path(source, allow_generation: true),
+            heading_chars: normalize_char_count(cfg&.dig(:heading_chars), label: 'theme.ornament.heading_chars')
+          }
+        end
+
+        # 「1 行の文字数」を正の整数へ正規化する。未設定・空欄・解釈不能は nil
+        # （呼び出し側が theme.css の既定を生かす。P3 の「書かない条件では宣言しない」）。
+        # @return [Integer, nil]
+        def normalize_char_count(value, label:)
+          return nil if value.nil?
+
+          v = value.to_s.strip
+          return nil if v.empty?
+
+          count = v.to_i
+          if count.positive? && v =~ /\A\d+\z/
+            count
+          else
+            Common.log_warn("#{label} は 1 行の文字数（正の整数）で指定してください (#{v})。既定値を使います。")
+            nil
+          end
         end
 
         # フロントマターを生成

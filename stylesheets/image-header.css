@@ -27,6 +27,10 @@
 
 /* stylelint-enable */
 
+/* 章題の箱幅は「1 行の文字数」で決まる（heading-metrics-spec §1-2）。
+   --frontispiece-heading-width は book.yml の theme.frontispiece.heading_chars を
+   BookSettingsCss がリテラル mm へ解いた値。以前は clamp() の上限に置いていたため
+   大きくしても効かず、8 字の章題が 1 字だけ泣き別れていた。 */
 body.vs-header-image h1 {
   display: grid;
   grid-template-columns: auto;
@@ -36,17 +40,16 @@ body.vs-header-image h1 {
   justify-items: center;
   margin: 0 auto;
   text-align: center;
-  inline-size: clamp(
-    70mm,
-    calc(var(--paper-scale) * 110mm),
-    var(--frontispiece-heading-width)
-  );
+  inline-size: var(--frontispiece-heading-width);
   max-inline-size: 100%;
   padding-block: clamp(3mm, calc(var(--paper-scale) * 6mm), 8mm);
 }
 
+/* リード文の幅も「1 行の文字数」で決まる（theme.frontispiece.lead_chars 由来）。
+   max-inline-size が無いと版面より大きい値で無警告に余白へはみ出す。 */
 body.vs-header-image .chapter-lead {
   inline-size: var(--frontispiece-lead-width);
+  max-inline-size: 100%;
   margin-block: clamp(-8mm, calc(var(--paper-scale) * -10mm), -6mm)
     clamp(8mm, calc(var(--paper-scale) * 10mm), 12mm);
 }
@@ -76,6 +79,9 @@ body.vs-header-image h1 .chapter-number::after {
   border-radius: 0.6mm;
 }
 
+/* font-size / letter-spacing は BookSettingsCss が heading_chars → mm 換算に使う
+   （font_q = (paper_scale * 48).clamp(34, 50)、1 字の送り = font_q * 0.25mm * 1.08）。
+   ここを変えたら book_settings_css.rb の換算も直すこと——回帰テストで固定してある。 */
 body.vs-header-image h1 .chapter-title {
   display: block;
   margin: 0 auto;
@@ -87,13 +93,15 @@ body.vs-header-image h1 .chapter-title {
   letter-spacing: 0.08em;
   line-height: 1.45;
   color: #111;
-  inline-size: clamp(
-    60mm,
-    calc(var(--paper-scale) * 96mm),
-    var(--frontispiece-heading-width)
-  );
+  inline-size: 100%;
   max-inline-size: 100%;
   box-sizing: border-box;
+  /* base.css の見出し共通 keep-all は CJK 文字間の分割点を全て消すため、
+     残るのは overflow-wrap: anywhere の緊急分割だけになり「入るところまで詰めて
+     1 字落とす」泣き別れが起きる。auto-phrase は日本語を文節で割る（Chromium 119+）。
+     非対応環境では normal へ自然に劣化するよう 2 段で書く。 */
+  word-break: normal;
+  word-break: auto-phrase;
   overflow-wrap: anywhere;
   white-space: normal;
   text-shadow: 0 0 1mm rgb(255 255 255 / 70%);
@@ -108,34 +116,59 @@ body.vs-header-image h1::after {
 /* -------------------------------------------------------------
    節見出し
    ------------------------------------------------------------- */
+/* 行は実寸（auto）で取る。以前は 150px 固定で、h2 の箱（aspect-ratio 由来）が
+   それより背が高く align-self: center で上下へはみ出していた——節が必ずページ先頭に
+   来る前提では上のはみ出しがページ上端の余白へ逃げるため見えなかったが、
+   節を本文に続けて組むと直前の本文に重なった（heading-metrics-spec §0-4）。
+
+   前後の余白は「前 ≫ 後」にする（§4 近接の原則）。見出しは自分が率いる内容に
+   近く、前の内容から遠くあるべきで、逆にすると「前節の末尾＋次節の見出し」が
+   1 つの塊に見える。margin-break: discard はページ先頭に来た節で先頭余白を
+   捨てるため（既定の section_page_break: true と章扉保護では h2 がページ頭に来る）。 */
 body.vs-header-image .section-topic {
+  /* 行は名前付きエリアではなく暗黙行にする。名前付きの 2 行を宣言すると
+     節リードが無い節（大多数）でも空行ぶんの row-gap が残り、「後ろの空き」が
+     膨らんで前後比が崩れる。grid のままにするのは、block にすると上マージンが
+     親（section.level2）へ collapse して margin-break の対象がずれるため。 */
   display: grid;
-  grid-template:
-    "section-title" 150px
-    "section-lead" auto
-    / 100%;
-  gap: clamp(5mm, calc(var(--paper-scale) * 8mm), 8mm);
-  margin-block-end: 1em;
+  grid-template-columns: 100%;
+  row-gap: clamp(2mm, calc(var(--paper-scale) * 3mm), 3mm);
+  margin-block-start: clamp(11mm, calc(var(--paper-scale) * 16mm), 16mm);
+  margin-block-end: clamp(3mm, calc(var(--paper-scale) * 4mm), 4mm);
+  margin-break: discard;
 }
 
+/* 節の直後の要素が自前の上マージンを足すと「後ろの空き」が膨らみ、前後比が崩れる */
+body.vs-header-image .section-topic + * {
+  margin-block-start: 0;
+}
+
+/* 節絵の帯（heading-metrics-spec §3）。
+   飾りは元は左上・右下の対角配置で、飾り 1 つ分の高さが 2 段ぶん必要だった
+   （帯 68mm ＝ A4 ページ高の 23%）。左右に並べ替えて約半分（33.8mm）にする。
+   font-size は theme.ornament.heading_chars から解いたリテラル（§1-2）。 */
 body.vs-header-image .section-topic h2 {
   font-family: var(--font-header);
   font-weight: 900;
   break-before: page;
   margin: 0;
-  font-size: clamp(25.2Q, calc(var(--paper-scale) * 36Q), 36Q);
-  line-height: clamp(33.6Q, calc(var(--paper-scale) * 48Q), 48Q);
+  font-size: var(--section-title-font-size);
+  line-height: 1.35;
   align-self: center;
   white-space: normal;
 
   display: flex;
   align-items: center;
-  gap: clamp(4mm, calc(var(--paper-scale) * 6mm), 6mm);
+  gap: clamp(3mm, calc(var(--paper-scale) * 4mm), 4mm);
   position: relative;
-  padding-inline: clamp(6mm, calc(var(--paper-scale) * 10mm), 10mm);
-  padding-block: clamp(6mm, calc(var(--paper-scale) * 9mm), 9mm);
-  aspect-ratio: 239 / 100;
-  min-block-size: 120px;
+  /* 左右の飾りを避ける。飾りの「最大張り出し」ではなく「節題の行位置での輪郭」で
+     決める——角飾りは帯の上端付近で最も張り出し中央へ向かって細くなるので、
+     最大値に合わせると横幅を約 20mm 捨てることになる（§3-2 の輪郭実測）。 */
+  padding-inline: clamp(11mm, calc(var(--paper-scale) * 16mm), 16mm)
+    clamp(12mm, calc(var(--paper-scale) * 18mm), 18mm);
+  padding-block: clamp(2mm, calc(var(--paper-scale) * 3mm), 3mm);
+  aspect-ratio: 480 / 100;
+  min-block-size: 60px;
   text-align: left;
 
   /* 長い節題でも箱（＝飾り帯の描画範囲）を版面内に留める。上限が無いと箱が
@@ -145,15 +178,31 @@ body.vs-header-image .section-topic h2 {
   box-sizing: border-box;
 }
 
-body.vs-header-image .section-topic h2::before {
+/* 節絵アセット（左上と右下に飾りを持つ 2.39:1 の 1 枚）を左右 2 層に切り出して
+   同じ行に並べる。各層は帯の半幅で、background-size 150% は「画像幅 = 帯の 75%」。
+   左は left top・右は right bottom なので、帯を飾り 1 つ分より高く取った差分
+   （約 7.7mm）がそのまま右飾りの下がり量になる（§3-3）。
+   専用アセットを作らないので同梱 12 種も著者の自作画像もそのまま使える。 */
+body.vs-header-image .section-topic h2::before,
+body.vs-header-image .section-topic h2::after {
   content: "";
   position: absolute;
-  inset: 0;
+  inset-block: 0;
+  inline-size: 50%;
   background-image: var(--section-bg-image);
   background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
+  background-size: 150% auto;
   z-index: -1;
+}
+
+body.vs-header-image .section-topic h2::before {
+  inset-inline-start: 0;
+  background-position: left top;
+}
+
+body.vs-header-image .section-topic h2::after {
+  inset-inline-end: 0;
+  background-position: right bottom;
 }
 
 body.vs-header-image .section-topic h2 > * {
@@ -176,9 +225,14 @@ body.vs-header-image .section-topic h2 > * {
 body.vs-header-image .section-topic h2 .section-title {
   display: block;
   min-inline-size: 0;
+  /* normal は語中でも割る（「Ruby のイ／ンストール」）。auto-phrase は文節で割る
+     （「Ruby の／インストール」・Chromium 119+ で実測）。非対応環境は normal へ劣化。 */
   word-break: normal;
+  word-break: auto-phrase;
 }
 
+/* 左飾りを避ける分は h2 の padding-inline が持つため、番号側の追い出しは 0 にする
+   （両方で持つと二重に効いて節題の幅を余計に削る） */
 body.vs-header-image .section-topic h2 .section-number {
   font-size: calc(1em * 1.1);
   font-weight: 900;
@@ -188,16 +242,15 @@ body.vs-header-image .section-topic h2 .section-number {
      -webkit-text-stroke: 0.3mm rgba(0, 0, 0, .30); */
   white-space: nowrap;
   flex-shrink: 0;
-  margin-inline-start: clamp(6mm, calc(var(--paper-scale) * 8mm), 10mm);
+  margin-inline-start: 0;
 }
 
+/* 節リードは見出しの直下に置く（近接の原則・§4-2）。
+   以前の 16mm 押し下げは「固定 150px 行から h2 の箱がはみ出す」ぶんを見込んだ補正で、
+   行を実寸にした今は不要（そのまま残すと帯とリードが離れて群が壊れる）。
+   chapter-common.css の .section-lead は負の上マージンを持つため打ち消しが必要。 */
 body.vs-header-image .section-topic .section-lead {
-  grid-area: section-lead;
   text-indent: 1em;
-  margin-block-start: clamp(
-    10mm,
-    calc(var(--paper-scale) * 16mm),
-    16mm
-  ) !important;
+  margin-block-start: 0 !important;
   margin-block-end: 0 !important;
 }

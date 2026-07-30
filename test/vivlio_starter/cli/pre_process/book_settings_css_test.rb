@@ -21,48 +21,50 @@ require 'vivlio_starter/cli/loader'
 
 class BookSettingsCssThemeTest < Minitest::Test
   BSC = VivlioStarter::CLI::PreProcessCommands::BookSettingsCss
+  Common = VivlioStarter::CLI::Common
   PREFIX = '../../stylesheets/'
 
-  # theme.style: simple では画像 2 変数を none にし、padding は宣言しない
-  def test_should_disable_images_and_omit_padding_for_simple_style
+  # theme.style: simple では画像 2 変数を none にし、edge_inset は宣言しない
+  def test_should_disable_images_and_omit_edge_inset_for_simple_style
     settings = {
       theme_accent_value: 'var(--accent-blue)', theme_style: 'simple',
       ornament_path: 'images/bundled/sakura_landscape.webp',
       frontispiece_path: 'images/bundled/sakura_portrait.webp',
-      door_padding_value: '10mm', heading_width_value: nil, lead_width_value: nil
+      edge_inset_value: '10mm', heading_chars_value: nil, lead_chars_value: nil
     }
 
     lines = BSC.theme_declarations(settings, image_prefix: PREFIX)
 
     assert_includes lines, '--section-bg-image: none;'
     assert_includes lines, '--frontispiece-image: none;'
-    refute(lines.any? { it.start_with?('--frontispiece-padding:') })
+    refute(lines.any? { it.start_with?('--frontispiece-edge-inset:') })
   end
 
-  # theme.style: image では画像 URL を .cache/vs/ 基準へ組み替え、padding と幅も宣言する
-  def test_should_emit_rebased_urls_and_padding_for_image_style
+  # theme.style: image では画像 URL を .cache/vs/ 基準へ組み替え、edge_inset と幅も宣言する
+  def test_should_emit_rebased_urls_and_edge_inset_for_image_style
     settings = {
       theme_accent_value: 'var(--accent-yellow)', theme_style: 'image',
       ornament_path: 'images/bundled/sakura_landscape.webp',
       frontispiece_path: 'images/bundled/sakura_portrait.webp',
-      door_padding_value: '10mm', heading_width_value: '108mm', lead_width_value: '88mm'
+      edge_inset_value: '10mm', heading_chars_value: 8, lead_chars_value: 20
     }
 
     lines = BSC.theme_declarations(settings, image_prefix: PREFIX)
 
     assert_includes lines, '--section-bg-image: url("../../stylesheets/images/bundled/sakura_landscape.webp");'
     assert_includes lines, '--frontispiece-image: url("../../stylesheets/images/bundled/sakura_portrait.webp");'
-    assert_includes lines, '--frontispiece-padding: 10mm;'
-    assert_includes lines, '--frontispiece-heading-width: 108mm;'
-    assert_includes lines, '--frontispiece-lead-width: 88mm;'
+    assert_includes lines, '--frontispiece-edge-inset: 10mm;'
+    # 文字数 → リテラル mm 換算（A4・paper_scale 1.0: 章題 8 × 12.96mm / リード 20 × 4.445mm）
+    assert_includes lines, '--frontispiece-heading-width: 103.68mm;'
+    assert_includes lines, '--frontispiece-lead-width: 88.9mm;'
   end
 
-  # heading_width / lead_width が nil のときはその行を宣言しない
+  # heading_chars / lead_chars が nil のときはその行を宣言しない
   def test_should_omit_widths_when_nil
     settings = {
       theme_accent_value: 'var(--accent-yellow)', theme_style: 'image',
       ornament_path: 'images/x_landscape.webp', frontispiece_path: 'images/x_portrait.webp',
-      door_padding_value: '0mm', heading_width_value: nil, lead_width_value: nil
+      edge_inset_value: '0mm', heading_chars_value: nil, lead_chars_value: nil
     }
 
     lines = BSC.theme_declarations(settings, image_prefix: PREFIX)
@@ -71,12 +73,72 @@ class BookSettingsCssThemeTest < Minitest::Test
     refute(lines.any? { it.start_with?('--frontispiece-lead-width:') })
   end
 
+  # --- 見出しの寸法（heading-metrics-spec §1-2） ---
+
+  # 文字数は判型ごとの 1 字の送りでリテラル mm へ解かれる。
+  # 「8 文字」がどの判型でも 8 文字になる（＝紙で意味が変わらない）ことが要点。
+  def test_should_resolve_heading_chars_to_literal_mm_per_paper_size
+    a4 = { width: '210mm', height: '297mm', margin_inner: '26mm', margin_outer: '22mm', paper_scale: 1.0 }
+    a5 = { width: '148mm', height: '210mm', margin_inner: '22mm', margin_outer: '18mm', paper_scale: 0.7048 }
+
+    # A4: font 48Q → 1 字 12.96mm / A5: font は下限 34Q → 1 字 9.18mm
+    assert_in_delta 12.96, BSC.chapter_title_advance_mm(BSC.paper_scale_of(a4)), 0.01
+    assert_in_delta 9.18, BSC.chapter_title_advance_mm(BSC.paper_scale_of(a5)), 0.01
+
+    lines = BSC.heading_metric_declarations({ heading_chars_value: 8 }, a4)
+    assert_includes lines, '--frontispiece-heading-width: 103.68mm;'
+    lines = BSC.heading_metric_declarations({ heading_chars_value: 8 }, a5)
+    assert_includes lines, '--frontispiece-heading-width: 73.44mm;'
+  end
+
+  # 節題は箱幅ではなくフォントサイズで字数を決める（帯は版面幅いっぱいで固定のため）。
+  # 字数を減らすと字が大きくなる関係が保たれること。
+  def test_should_resolve_ornament_chars_to_font_size_inversely
+    a4 = { width: '210mm', height: '297mm', margin_inner: '26mm', margin_outer: '22mm', paper_scale: 1.0 }
+
+    # 版面 162mm − 飾り避け 34mm = 128mm を字数で割る
+    assert_includes BSC.heading_metric_declarations({ ornament_heading_chars_value: 14 }, a4),
+                    '--section-title-font-size: 36.57Q;'
+    assert_includes BSC.heading_metric_declarations({ ornament_heading_chars_value: 20 }, a4),
+                    '--section-title-font-size: 25.6Q;'
+    # 極端な指定は本文との階層が壊れるため 20〜48Q に収める
+    assert_includes BSC.heading_metric_declarations({ ornament_heading_chars_value: 4 }, a4),
+                    '--section-title-font-size: 48Q;'
+    assert_includes BSC.heading_metric_declarations({ ornament_heading_chars_value: 40 }, a4),
+                    '--section-title-font-size: 20Q;'
+  end
+
+  # 版面に収まらない字数は 🟡 で上限を示す（warning-messages-actionable の方針）
+  def test_should_warn_when_heading_chars_exceed_text_area
+    a5 = { width: '148mm', height: '210mm', margin_inner: '22mm', margin_outer: '18mm', paper_scale: 0.7048 }
+    warnings = []
+    Common.stub(:log_warn, ->(msg, **) { warnings << msg }) do
+      BSC.heading_metric_declarations({ heading_chars_value: 16 }, a5)
+    end
+
+    # A5 の版面 108mm ÷ 1 字 9.18mm = 11 文字が上限
+    assert_equal 1, warnings.size
+    assert_includes warnings.first, 'theme.frontispiece.heading_chars: 16'
+    assert_includes warnings.first, '最大 11 文字'
+  end
+
+  # 版面に収まる指定では警告を出さない（正常系を騒がせない）
+  def test_should_not_warn_when_heading_chars_fit
+    a4 = { width: '210mm', height: '297mm', margin_inner: '26mm', margin_outer: '22mm', paper_scale: 1.0 }
+    warnings = []
+    Common.stub(:log_warn, ->(msg, **) { warnings << msg }) do
+      BSC.heading_metric_declarations({ heading_chars_value: 12, lead_chars_value: 24 }, a4)
+    end
+
+    assert_empty warnings
+  end
+
   # theme accent と強調色は常に宣言される
   def test_should_always_declare_accent_and_strong_colors
     settings = {
       theme_accent_value: '#123456', theme_style: 'simple',
       ornament_path: nil, frontispiece_path: nil,
-      door_padding_value: '0mm', heading_width_value: nil, lead_width_value: nil
+      edge_inset_value: '0mm', heading_chars_value: nil, lead_chars_value: nil
     }
 
     lines = BSC.theme_declarations(settings, image_prefix: PREFIX)
@@ -227,19 +289,6 @@ class BookSettingsCssPageTest < Minitest::Test
     assert_includes css, 'page-break-before: auto;'
   end
 
-  # 節絵の箱（aspect-ratio 239/100）は .section-topic の固定 150px 行より背が高く、
-  # align-self: center で上下へはみ出す。続けて組むと直前の本文に重なるため（pdf_h2.png）、
-  # 行を実寸へ戻し、はみ出しを見込んだ節リードの押し下げ補正も外す。
-  def test_should_emit_intrinsic_section_topic_row_when_disabled
-    css = BSC.section_page_break_rule({ section_page_break: false })
-
-    assert_includes css, 'grid-template: "section-title" auto "section-lead" auto / 100%;'
-    assert_includes css, 'margin-block-start: 0 !important;'
-    # EPUB/Kindle は別レイアウト（components.css が固定行を display: block で解く）ため除外する
-    assert_includes css, 'body.vs-header-image:not(.vs-epub) .section-topic {'
-    assert_includes css, 'body.vs-header-image:not(.vs-epub) .section-topic .section-lead {'
-  end
-
   # 章扉は @page :nth(1) の全面背景（扉絵）で成立するページなので、節の改ページを
   # 止めても最初の節だけは次ページから始める（pdf_h1.png）。PDF 限定。
   def test_should_keep_chapter_frontispiece_page_dedicated_when_disabled
@@ -274,7 +323,7 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
   ].freeze
 
   # 両 style で必ず宣言される公開変数（--frontispiece-image / --section-bg-image は
-  # simple では値が none になるが宣言自体は出る）。image 固有の --frontispiece-padding は除く。
+  # simple では値が none になるが宣言自体は出る）。image 固有の --frontispiece-edge-inset は除く。
   THEME_VARS_COMMON = %w[
     --theme-accent --color-strong --color-em-underline
     --frontispiece-image --section-bg-image
@@ -282,7 +331,7 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
   ].freeze
 
   # live book.yml の theme.style（image/simple どちらで作業中でも）に依存せず通るようにする。
-  # image 固有の --frontispiece-padding は style で条件分岐して検証する。
+  # image 固有の --frontispiece-edge-inset は style で条件分岐して検証する。
   def test_should_render_all_public_interface_variables_and_page_size
     css = BSC.render(Common::CONFIG)
 
@@ -290,10 +339,10 @@ class BookSettingsCssRenderIntegrationTest < Minitest::Test
       assert_includes css, "#{var}:", "生成 CSS に #{var} が含まれること"
     end
     if Common::CONFIG.theme.style == 'image'
-      assert_includes css, '--frontispiece-padding:', 'image では扉余白を宣言する'
+      assert_includes css, '--frontispiece-edge-inset:', 'image では扉絵の引っ込み量を宣言する'
     else
       assert_includes css, '--frontispiece-image: none;', 'simple では画像を none 宣言する'
-      refute_includes css, '--frontispiece-padding:', 'simple では扉余白を宣言しない'
+      refute_includes css, '--frontispiece-edge-inset:', 'simple では扉絵の引っ込み量を宣言しない'
     end
     assert_match(/@page \{ size: \d+mm \d+mm; \}/, css)
   end
@@ -407,18 +456,46 @@ class BookSettingsCssSectionBreakSelectorTest < Minitest::Test
     end
   end
 
-  # section_page_break: false のときの是正（節絵の行を実寸化・節リードの押し下げ解除）は、
-  # image-header.css の「固定 150px 行 ＋ 節リード 16mm 押し下げ」を後勝ちで上書きする前提で
-  # 成り立っている。前提が消えたら上書きは不要（あるいは別の形）になるので、前提を固定する。
-  def test_should_pin_fixed_section_topic_row_that_the_override_corrects
+  # 文字数 → mm 換算は image-header.css の実際の font-size / letter-spacing を
+  # Ruby 側で再現している（clamp() を calc() の中で掛けると Vivliostyle が宣言ごと落とすため
+  # 生成時に解いてリテラルで焼く）。CSS 側だけ変えると換算が黙ってずれるので前提を固定する。
+  def test_should_pin_chapter_title_metrics_that_the_char_conversion_reproduces
     css = File.read(File.join(STYLESHEETS, 'image-header.css'))
 
-    assert_match(/"section-title"\s+150px/, css,
-                 '.section-topic の固定 150px 行が無くなりました。' \
-                 'BookSettingsCss#section_topic_intrinsic_height_rule の上書きが不要か見直してください。')
-    assert_match(/\.section-topic\s+\.section-lead\s*\{[^}]*margin-block-start:[^;]*!important/m, css,
-                 '節リードの押し下げ（margin-block-start !important）が無くなりました。' \
-                 'BookSettingsCss#section_topic_intrinsic_height_rule の打ち消しが不要か見直してください。')
+    assert_match(/font-size:\s*clamp\(34Q,\s*calc\(var\(--paper-scale\)\s*\*\s*48Q\),\s*50Q\)/, css,
+                 '.chapter-title の font-size clamp が変わりました。' \
+                 'BookSettingsCss#chapter_title_advance_mm の換算も合わせてください。')
+    assert_match(/letter-spacing:\s*0\.08em/, css,
+                 '.chapter-title の letter-spacing が変わりました。' \
+                 'BookSettingsCss#chapter_title_advance_mm の 1.08 も合わせてください。')
+  end
+
+  # 節題のフォントサイズは「版面幅 − 左右の飾り避け」を文字数で割って決める。
+  # 飾り避け（padding-inline）が変わると 1 行の字数がずれるので、CSS 側の値を固定する。
+  def test_should_pin_ornament_padding_that_the_font_size_conversion_assumes
+    css = File.read(File.join(STYLESHEETS, 'image-header.css'))
+    assumed = BSC::SECTION_TITLE_ORNAMENT_PADDING_MM
+
+    assert_match(/padding-inline:\s*clamp\(11mm,[^;]*16mm\)\s*clamp\(12mm,[^;]*18mm\)/m, css,
+                 '節絵の飾り避け（padding-inline）が変わりました。' \
+                 "BookSettingsCss::SECTION_TITLE_ORNAMENT_PADDING_MM (#{assumed}) も合わせてください。")
+    assert_in_delta 34.0, assumed, 0.01, '16mm + 18mm = 34mm と一致していること'
+  end
+
+  # 見出しの前後の余白は「前 ≫ 後」でなければ、前節の末尾と次節の見出しが 1 つの塊に見える
+  # （近接の原則・heading-metrics-spec §4）。数値ではなく比の向きを固定する。
+  def test_should_keep_section_topic_margin_before_larger_than_after
+    css = File.read(File.join(STYLESHEETS, 'image-header.css'))
+    block = css[/body\.vs-header-image \.section-topic \{(.+?)\}/m, 1]
+
+    refute_nil block, '.section-topic のルールが見つかりません'
+    before_mm = block[/margin-block-start:[^;]*?(\d+(?:\.\d+)?)mm\s*\)/, 1]&.to_f
+    after_mm  = block[/margin-block-end:[^;]*?(\d+(?:\.\d+)?)mm\s*\)/, 1]&.to_f
+
+    refute_nil before_mm, 'margin-block-start が読み取れません'
+    refute_nil after_mm, 'margin-block-end が読み取れません'
+    assert_operator before_mm, :>, after_mm * 2,
+                    "見出しの前の空き(#{before_mm}mm)は後ろ(#{after_mm}mm)の 2 倍以上あるべきです（近接の原則）"
   end
 end
 

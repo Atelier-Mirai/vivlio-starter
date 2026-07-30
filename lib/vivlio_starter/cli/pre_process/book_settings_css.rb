@@ -86,7 +86,7 @@ module VivlioStarter
           registry = TalkRegistry.load
 
           root_lines = []
-          root_lines.concat(theme_declarations(settings, image_prefix:))
+          root_lines.concat(theme_declarations(settings, image_prefix:, page_cfg:))
           root_lines.concat(supplemental_color_declarations(settings, cfg))
           root_lines.concat(marker_declarations(cfg))
           root_lines.concat(page_declarations(page_cfg))
@@ -119,10 +119,10 @@ module VivlioStarter
         # theme 系変数（旧 update_theme_css 相当）
         # ================================================================
         # 条件付き宣言のセマンティクスを in-place 版と一致させる（調査報告 §7.3-2）:
-        #   - simple スタイル: 画像 2 変数は none、frontispiece-padding は宣言しない
-        #   - image スタイル : 画像 2 変数＋padding を宣言
-        #   - heading/lead width は値がある時だけ宣言
-        def theme_declarations(settings, image_prefix:)
+        #   - simple スタイル: 画像 2 変数は none、frontispiece-edge-inset は宣言しない
+        #   - image スタイル : 画像 2 変数＋edge_inset を宣言
+        #   - 見出しの寸法は文字数指定がある時だけ宣言（theme.css の既定が生きる）
+        def theme_declarations(settings, image_prefix:, page_cfg: {})
           lines = [
             "--theme-accent: #{settings[:theme_accent_value]};",
             '--color-strong: var(--theme-accent);',
@@ -135,12 +135,113 @@ module VivlioStarter
           else
             lines << "--section-bg-image: #{css_image_value(settings[:ornament_path], image_prefix:)};"
             lines << "--frontispiece-image: #{css_image_value(settings[:frontispiece_path], image_prefix:)};"
-            lines << "--frontispiece-padding: #{settings[:door_padding_value]};"
+            lines << "--frontispiece-edge-inset: #{settings[:edge_inset_value]};"
           end
 
-          lines << "--frontispiece-heading-width: #{settings[:heading_width_value]};" if settings[:heading_width_value]
-          lines << "--frontispiece-lead-width: #{settings[:lead_width_value]};" if settings[:lead_width_value]
+          lines.concat(heading_metric_declarations(settings, page_cfg))
+        end
+
+        # ================================================================
+        # 見出しの寸法（heading-metrics-spec §1-2）
+        # ================================================================
+        # 著者は book.yml に「1 行の文字数」で書く。判型に追従する CSS の
+        # clamp() を calc() の中で掛け合わせると Vivliostyle が宣言ごと落とすため、
+        # 換算は生成時に行いリテラルで焼き込む（@page size・綴じオフセットと同型）。
+        #
+        # 章題・章リードは「箱幅」を、節題は「フォントサイズ」を決める——節絵の帯は
+        # 版面幅いっぱいで固定なので、箱を広げる余地が無く字送りで調整するしかない。
+        def heading_metric_declarations(settings, page_cfg)
+          text_mm = text_area_width_mm(page_cfg)
+          scale = paper_scale_of(page_cfg)
+          lines = []
+
+          if (chars = settings[:heading_chars_value])
+            lines << "--frontispiece-heading-width: #{format_mm(chars * chapter_title_advance_mm(scale))};"
+            warn_if_wider_than_text_area('theme.frontispiece.heading_chars', chars,
+                                         chapter_title_advance_mm(scale), text_mm)
+          end
+
+          if (chars = settings[:lead_chars_value])
+            lines << "--frontispiece-lead-width: #{format_mm(chars * chapter_lead_advance_mm(page_cfg))};"
+            warn_if_wider_than_text_area('theme.frontispiece.lead_chars', chars,
+                                         chapter_lead_advance_mm(page_cfg), text_mm)
+          end
+
+          if (chars = settings[:ornament_heading_chars_value])
+            lines << "--section-title-font-size: #{section_title_font_q(chars, text_mm)}Q;"
+          end
+
           lines
+        end
+
+        # theme.css が持つ既定の文字数（未指定時の値と一致させる）。
+        # EpubBuilder も同じ既定でリード幅比を導くため公開している（§5-1）。
+        DEFAULT_HEADING_CHARS = 8
+        DEFAULT_LEAD_CHARS = 20
+        DEFAULT_ORNAMENT_HEADING_CHARS = 14
+
+        # 章題 1 字の送り（mm）。image-header.css の .chapter-title の
+        # `font-size: clamp(34Q, calc(var(--paper-scale) * 48Q), 50Q)` と
+        # `letter-spacing: 0.08em` を再現する。CSS 側を変えたらここも直すこと
+        # （回帰テストで両者の一致を固定してある）。
+        def chapter_title_advance_mm(scale)
+          font_q = (scale * 48).clamp(34, 50)
+          font_q * 0.25 * 1.08
+        end
+
+        # 章リード 1 字の送り（mm）。.chapter-lead は font-size: larger（= 親の 1.2 倍）で
+        # letter-spacing は本文既定（0）。基準は page プリセットの base_font_size。
+        def chapter_lead_advance_mm(page_cfg)
+          base_mm = Units.length_to_mm(page_cfg[:base_font_size]) || (10.5 * 25.4 / 72.0)
+          base_mm * 1.2
+        end
+
+        # 節題の基準フォントサイズ（Q）。節絵の帯は版面幅から左右の飾り避け（padding-inline）を
+        # 引いた幅が使える。字数を増やすほど小さく、減らすほど大きくなる。
+        # 極端な指定で本文と階層が崩れないよう 20〜48Q に収める。
+        SECTION_TITLE_ORNAMENT_PADDING_MM = 34.0 # image-header.css の padding-inline 16mm + 18mm
+        SECTION_TITLE_FONT_Q_RANGE = (20.0..48.0)
+
+        def section_title_font_q(chars, text_mm)
+          avail = text_mm - SECTION_TITLE_ORNAMENT_PADDING_MM
+          return 36 unless avail.positive?
+
+          q = (avail / chars) / 0.25
+          format_number(q.clamp(SECTION_TITLE_FONT_Q_RANGE.begin, SECTION_TITLE_FONT_Q_RANGE.end))
+        end
+
+        # 版面幅（mm）= 紙幅 − ノド − 小口。導けないときは A4 標準相当へ。
+        def text_area_width_mm(page_cfg)
+          width = Units.length_to_mm(page_cfg[:width])
+          inner = Units.length_to_mm(page_cfg[:margin_inner])
+          outer = Units.length_to_mm(page_cfg[:margin_outer])
+          return 162.0 unless width&.positive? && inner && outer
+
+          [width - inner - outer, 1.0].max
+        end
+
+        # build_page_cfg が算出済みの値を使う（同じ計算を 2 度しない）
+        def paper_scale_of(page_cfg)
+          (page_cfg[:paper_scale] || 1.0).to_f
+        end
+
+        # 版面に収まらない文字数指定は 🟡 で具体的な上限を示す（warning-messages の方針）。
+        def warn_if_wider_than_text_area(label, chars, advance_mm, text_mm)
+          return if advance_mm <= 0 || chars * advance_mm <= text_mm
+
+          fits = (text_mm / advance_mm).floor
+          Common.log_warn(
+            "#{label}: #{chars} は版面幅 #{format_mm(text_mm)} に収まりません（最大 #{fits} 文字）",
+            detail: "#{label.split('.').last}: #{fits} をお試しください"
+          )
+        end
+
+        def format_mm(value) = "#{format_number(value)}mm"
+
+        # 末尾の 0 を落とす（103.68 → 103.68 / 36.0 → 36）
+        def format_number(value)
+          rounded = value.round(2)
+          rounded == rounded.to_i ? rounded.to_i.to_s : rounded.to_s
         end
 
         # appendix / preface のアクセント色（旧 update_appendix_css / update_preface_css 相当）。
@@ -224,8 +325,11 @@ module VivlioStarter
         # page.section_page_break: false のときだけ打ち消し規則を出す。
         # true・未設定では何も出さず、テーマ CSS の改ページがそのまま生きる
         # （P3 の「書かない条件では宣言しない」セマンティクス）。
-        # 打ち消しだけでは image スタイルの PDF が崩れるため、節絵の実寸化と
-        # 章扉の保護（後述の 2 メソッド）を続けて出す。
+        # 打ち消しだけでは章扉に最初の節が流れ込むため、章扉の保護を続けて出す。
+        #
+        # かつては「節絵の箱が固定 150px 行からはみ出して直前の本文に重なる」是正も
+        # ここで出していたが、heading-metrics-spec §3・§4 で image-header.css 側の
+        # 行を実寸（auto）にしたため不要になった（はみ出し自体が消えた）。
         def section_page_break_rule(page_cfg)
           return '' unless section_page_break_disabled?(page_cfg)
 
@@ -236,34 +340,7 @@ module VivlioStarter
               break-before: auto;
               page-break-before: auto;
             }
-            #{section_topic_intrinsic_height_rule}
             #{chapter_frontispiece_guard_rule}
-          CSS
-        end
-
-        # 節絵（image スタイルの h2 背景）を「行の実寸」で組ませる。
-        #
-        # image-header.css の .section-topic は節絵用に `"section-title" 150px` の
-        # 固定行を敷き、h2 側は `aspect-ratio: 239/100`（＝版面幅なら 60mm 超）を持つ。
-        # 行より背の高い箱が `align-self: center` で置かれるので、節絵は行の上下へ
-        # 十数 mm ずつはみ出す。節が必ずページ先頭に来る既定では上のはみ出しが
-        # ページ上端の余白へ逃げるため無害だが、節を本文に続けて組むと直前の段落や
-        # コードブロックに重なる（pdf_h2.png 実測）。
-        # 行を auto にして箱の実寸を占めさせ、はみ出しを見込んで節リードを 16mm
-        # 押し下げていた補正（image-header.css の !important）も打ち消す。
-        # simple スタイルでは body.vs-header-image が付かないため不発（無害）。
-        # EPUB/Kindle は components.css が固定行グリッドを display: block で解いた
-        # 別レイアウトなので触らない（:not(.vs-epub) で PDF に限定）。
-        def section_topic_intrinsic_height_rule
-          <<~CSS.chomp
-            /* 節絵の箱は固定 150px 行からはみ出すため、続けて組むと直前の本文に重なる。
-               行を実寸にしてはみ出しを解消する。 */
-            body.vs-header-image:not(.vs-epub) .section-topic {
-              grid-template: "section-title" auto "section-lead" auto / 100%;
-            }
-            body.vs-header-image:not(.vs-epub) .section-topic .section-lead {
-              margin-block-start: 0 !important;
-            }
           CSS
         end
 

@@ -2,7 +2,7 @@
 
 見出し（章題 h1・章リード・節題 h2）と扉絵・節絵の**寸法指定を mm から文字数へ移し**、折返しの品質を上げ、節絵の帯を約半分の高さに縮め、見出しの帰属が読めるよう前後の余白比を正す。**PDF・EPUB・Kindle の全ターゲットを対象**とする。
 
-- 状態: **仕様（実装待ち）**
+- 状態: **Phase 1（PDF）実装済み（2026-07-30）／ Phase 2（EPUB・Kindle）実装待ち**
 - 起点: `section_page_break: false` の不具合調査（2026-07-30）で判明した設計上の歪み 4 点
 - 前提の実測: すべて A4 210×297mm・`theme.style: image`・`--paper-scale: 1.0` での実測値。実験は `stylesheets/custom.css` に一時上書きを置いて `vs build 12` で確認し、確認後に破棄した
 
@@ -10,10 +10,10 @@
 
 装飾の実現方式が PDF と EPUB で根本的に違う（PDF は CSS の箱＋`@page` 背景、EPUB は**飾りと見出しを 1 枚に焼いた合成画像**）ため、2 段に分ける。
 
-| | 対象 | 内容 |
-|---|---|---|
-| **Phase 1** | PDF | §1〜§4 の設計を CSS と生成 CSS で実現する。EPUB / Kindle は**見た目を変えない**（設定キー改名への追随のみ） |
-| **Phase 2** | EPUB / Kindle | §5。Phase 1 で決まった設定値（`heading_chars` / `lead_chars`）と余白比を合成画像側にも通し、PDF と同じ意匠へ揃える |
+| | 対象 | 内容 | 状態 |
+|---|---|---|---|
+| **Phase 1** | PDF | §1〜§4 の設計を CSS と生成 CSS で実現する。EPUB / Kindle は**見た目を変えない**（設定キー改名への追随のみ） | **実装済み（2026-07-30）**・§9 に実装記録 |
+| **Phase 2** | EPUB / Kindle | §5。Phase 1 で決まった設定値（`heading_chars` / `lead_chars`）と余白比を合成画像側にも通し、PDF と同じ意匠へ揃える | 実装待ち |
 
 **Phase 1 でも EPUB のコードに手が入る**。`EpubBuilder#frontispiece_lead_ratio` は `theme.frontispiece.lead_width ÷ page.width` を読んでいるため、キーを改名すると参照先を失って EPUB が縮退する。Phase 1 では「新キーから従来と同じ比率を導く」最小限の追随だけを行い、見た目は据え置く（§5-1）。
 
@@ -408,3 +408,39 @@ Phase 1 の 1〜5 はどれも**既存書籍の PDF 組版を変える**（章�
 - **付録（`appendix`）の見出し**: 常に `vs-header-simple` のため対象外
 - **MeCab による折返し**: §2-2 の理由により採らない（EPUB 側も §5-5 で同じ判断）
 - **PDF と EPUB で割り位置を一致させること**: §5-5 のとおり構造的に不可能。「割らずに済ませる」ことで実害を消す方針
+
+---
+
+## 9. 実装記録（Phase 1・2026-07-30）
+
+### 9-1 仕様から変えた判断
+
+0. **文字数 → 幅の換算は CSS の `em` ではなく生成時のリテラル mm にした**（§1-2 のコード例から変更）。`calc(var(--chars) * 1.08em)` は `.chapter-title` の中でなら成立するが、同じ字送りを h1 の箱幅にも使う必要があり、そこでは `em` が本文サイズを指してしまう。`clamp()` を `calc()` の中で掛け合わせる形は Vivliostyle が宣言ごと落とすリスクもあるため、`BookSettingsCss` が `font_q = (paper_scale * 48).clamp(34, 50)` を Ruby で解いて `--frontispiece-heading-width` へリテラル mm を焼く方式にした。CSS 側の `font-size` / `letter-spacing` と Ruby 側の換算がずれないよう、CSS の値を回帰テストで固定してある。
+1. **既定値は「版面幅からの導出」ではなく `theme.css` の定数にした**（§1-2 の案から変更）。文字サイズが既に判型へ追従しているので、**文字数を定数で持つだけで既定も判型に追従する**——導出は不要だった。`theme.css` は導出済みの mm（A4・8 字 = 103.7mm / 20 字 = 88.9mm・14 字 = 36Q）を持ち、`book.yml` に字数が書かれたときだけ `BookSettingsCss` が上書きする（P3 の「書かない条件では宣言しない」）。既定字数は `BookSettingsCss::DEFAULT_*_CHARS` に置き、`EpubBuilder` が §5-1 の追随で共有する。
+2. **既定値は現状維持寄りに選んだ**。`lead_chars: 20`（＝旧既定 88mm 相当）・`ornament.heading_chars: 14`（＝旧 36Q 相当）で既存書籍への影響を抑え、`heading_chars: 8` だけは意図的に広げた（7.4 字 → 8 字。これが直したかった不具合そのもの）。
+3. **`edge_inset` のリテラル 2 値 `background-size` は実装しなかった**（§1-1 の「併せて直す」）。縦長の扉絵では高さが拘束軸なので `auto calc(100% - 2 * inset)` と結果が一致し、差が出るのは「横長の自作画像で左右が切れる」場合だけ。`magick identify` への依存を CSS 生成経路へ持ち込む対価に見合わないため見送り、`KNOWN_ISSUES.md` の候補として残す。
+4. **`.section-topic` の名前付きグリッド行を暗黙行に変えた**（§4 の実装で判明）。`grid-template-areas` で 2 行を宣言すると、**節リードが無い節（同梱原稿では大多数）でも空行ぶんの `row-gap` が残り**、「後ろの空き」が膨らんで前後比が崩れる。`display: block` にすると上マージンが親（`section.level2`）へ collapse して `margin-break` の対象がずれるため、grid のまま暗黙行にした。
+5. **`section_page_break: false` 用の `section_topic_intrinsic_height_rule` を撤去した**。§3・§4 で行を実寸（auto）にしたため、固定 150px 行からのはみ出し自体が消え、生成 CSS 側の是正が不要になった。`chapter_frontispiece_guard_rule`（章扉の保護）は引き続き必要。
+
+### 9-2 実測値（`vs build 12`・A4 210×297・`a4_compact`）
+
+| 項目 | 実装前 | 実装後 |
+|---|---|---|
+| 章題「クイックスタート」 | 「クイックスター／ト」 | **1 行** |
+| 節絵の帯の高さ | 68mm（ページ高の 23%） | **33.0mm（11%）** |
+| 節題に使える幅 | 142mm | 128mm |
+| 節見出しの前後の空き | 4.4mm : 12.3mm（1 : 3） | **16.0mm : 5.3mm（3 : 1）** |
+| 章の総ページ数（`section_page_break: false`） | 7 | **6** |
+
+`section_page_break: true`（既定）でも確認済み——ページ先頭の節で `margin-break: discard` が効き、帯の上端が版面上端に来る。
+
+### 9-3 落とし穴
+
+1. **`theme.ornament` をマッピングにすると `ThemeValidator` が壊れる**。`resolve_ornament_path` は `raw.to_s` を見るので Data を渡すと画像名の代わりに `#<data …>` を検証し、**毎ビルド必ず「画像が見つかりません」の 🟡 が出る**（`frontispiece` 側には既に `frontispiece_source` があったが ornament には無かった）。両方を `image_source` で扱うよう共通化した。
+2. **`Data` は `dig` を持たない**が、`Common.wrap_config` が生成する Data クラスは `dig` を定義しているため設定オブジェクトでは使える。素の `Data.define` で書いた最小再現では動かないので混乱しやすい。
+3. **`book_yml_consumption_test` は scaffold の `book.yml` を読む**。キーを改名したら `lib/project_scaffold/config/book.yml` 側も同時に更新しないとテストが落ちる（`copy_to_scaffold.rb` の実行を待たない）。
+
+### 9-4 Phase 2 に持ち越した前提
+
+- §5-1 の追随は実装済み（`EpubBuilder#frontispiece_lead_width_mm` が `BookSettingsCss.chapter_lead_advance_mm` と既定字数を共有）。EPUB の見た目は Phase 1 では動いていない。
+- §5-2 以降（capacity の一本化・合成 SVG のコンパクト帯・EPUB 側の余白比・`LAYOUT_VERSION` +1）は未着手。

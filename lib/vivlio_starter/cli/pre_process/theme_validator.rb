@@ -43,8 +43,8 @@ module VivlioStarter
           # simple スタイルは扉絵・飾り画像を使わないため画像検証はスキップする
           return if theme_cfg[:style].to_s.strip.downcase == 'simple'
 
-          validate_image(:frontispiece, frontispiece_source(theme_cfg[:frontispiece]), variant: :portrait)
-          validate_image(:ornament, theme_cfg[:ornament], variant: :landscape)
+          validate_image(:frontispiece, image_source(theme_cfg[:frontispiece]), variant: :portrait)
+          validate_image(:ornament, image_source(theme_cfg[:ornament]), variant: :landscape)
         end
 
         # theme.color の妥当性を検証する
@@ -76,9 +76,11 @@ module VivlioStarter
           )
         end
 
-        # frontispiece 設定は String か { image: ... } の Data のため、画像名を取り出す
-        def frontispiece_source(raw)
-          raw.is_a?(String) ? raw : raw&.dig(:image)
+        # frontispiece / ornament は「スカラー＝画像名だけの短縮形」と
+        # 「マッピング＝画像名＋寸法（heading_chars 等）」の両方を受けるため、画像名を取り出す。
+        # スカラーのまま Data を渡すと画像名の代わりに `#<data …>` を検証して必ず警告になる。
+        def image_source(raw)
+          raw.is_a?(String) || raw.is_a?(Symbol) ? raw : raw&.dig(:image)
         end
 
         # color が既定色名・各種 HEX 記法のいずれかとして受理できるか
