@@ -65,6 +65,90 @@ module VivlioStarter
       end
     end
 
+    # 並列ビルドの子枝はログを溜め、親が合流時にまとめて吐く
+    # （build-target-parallelization-spec.md §3.4）
+    class EmitSinkTest < Minitest::Test
+      def setup
+        Common.log_level = Common::LEVELS['info']
+      end
+
+      def teardown
+        Common.log_level = nil
+      end
+
+      def test_should_collect_lines_into_the_sink_instead_of_stdout
+        buffer = []
+
+        out, = capture_io do
+          Common.with_emit_sink(buffer) { Common.log_info('子枝のログ') }
+        end
+
+        assert_empty out, '差し替え中は標準出力へ書かないはずです'
+        assert_equal ['🔵 子枝のログ'], buffer
+      end
+
+      # 例外で抜けても、それまでに溜めた行は呼び出し側に残る
+      # （枝が落ちたときこそログを読みたい）
+      def test_should_keep_collected_lines_when_the_block_raises
+        buffer = []
+
+        assert_raises(RuntimeError) do
+          Common.with_emit_sink(buffer) do
+            Common.log_info('落ちる直前のログ')
+            raise 'boom'
+          end
+        end
+
+        assert_equal ['🔵 落ちる直前のログ'], buffer
+      end
+
+      def test_should_restore_the_previous_destination_after_the_block
+        buffer = []
+        Common.with_emit_sink(buffer) { Common.log_info('溜まる') }
+
+        out, = capture_io { Common.log_info('直に出る') }
+
+        assert_match(/🔵 直に出る/, out)
+        assert_equal ['🔵 溜まる'], buffer
+      end
+
+      # 差し替えはスレッドローカル。親スレッドの出力は子枝の差し替えに巻き込まれない
+      def test_should_not_leak_the_sink_into_other_threads
+        buffer = []
+        parent_out = nil
+
+        Common.with_emit_sink(buffer) do
+          Thread.new { parent_out = capture_io { Common.log_info('別スレッド') }.first }.join
+        end
+
+        assert_match(/🔵 別スレッド/, parent_out)
+        assert_empty buffer
+      end
+    end
+
+    # 別スレッドで集めた vivliostyle 計時を親へ合流させる（§3.5）
+    class VivliostyleTimingMergeTest < Minitest::Test
+      def teardown
+        Common.reset_vivliostyle_build_timings
+      end
+
+      def test_should_append_timings_collected_in_another_thread
+        Common.reset_vivliostyle_build_timings
+        Common.record_vivliostyle_build(1.5, 'build overall pdf')
+
+        child = Thread.new do
+          Common.reset_vivliostyle_build_timings
+          Common.record_vivliostyle_build(2.5, 'generate epub')
+          Common.consume_vivliostyle_build_timings
+        end.value
+
+        Common.merge_vivliostyle_build_timings(child)
+
+        assert_equal ['build overall pdf', 'generate epub'],
+                     Common.consume_vivliostyle_build_timings.map { it[:label] }
+      end
+    end
+
     # ログレベルは ARGV ではなくモジュールの状態で決まる
     class LogLevelStateTest < Minitest::Test
       def teardown

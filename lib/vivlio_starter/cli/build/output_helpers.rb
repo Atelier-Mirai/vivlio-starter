@@ -25,11 +25,17 @@ module VivlioStarter
         STEP5_LABEL        = 'Step  5 (convert sections html)'
         STEP5B_LABEL       = 'Step 5b (generate part title pages)'
         STEP5_AGG_LABEL    = 'Step  5 (generate sections / part pages)'
+        # 集計行の見出し。数値列の桁を揃えるため ASCII のみで書く
+        # （日本語は 1 文字が 2 桁ぶんの幅を取り、%-Ns の桁揃えが崩れる）。
+        SUM_LABEL          = 'TOTAL (sum of steps)'
+        WALL_LABEL         = 'WALL (elapsed)'
 
         # ビルドタイミングをコンソールに出力する
         # - 通常時: print_created_files_message に合計時間を渡す形で表示するため何もしない
         # - debugモード時: ステップ別の詳細テーブルを表示
-        def print_build_timings(build_timings)
+        # @param wall_time [Float, nil] 実測の経過秒。枝を並列に走らせるとステップ計時の
+        #   合計より短くなるため、逐次合計と並べて出す（隠れた枝の劣化に気付けるように・§3.5）
+        def print_build_timings(build_timings, wall_time: nil)
           aggregated, label_groups = aggregate_step_timings(build_timings)
           return if aggregated.empty?
 
@@ -39,7 +45,7 @@ module VivlioStarter
           # --- debug モード: ステップ別詳細テーブル ---
           total = aggregated.map { |(_, dt)| dt }.inject(0.0, :+)
           label_width = aggregated.map { |(label, _)| label.to_s.length }.max || 0
-          label_width = [label_width, 'TOTAL'.length, 34].max
+          label_width = [label_width, SUM_LABEL.length, 34].max
           value_width = 7
 
           Common.log_always "\n== Build Step Timings =="
@@ -71,7 +77,10 @@ module VivlioStarter
               Common.log_always("#{base_prefix}#{entry_value}")
             end
           end
-          Common.log_always format("  = %-#{label_width}s %#{value_width}.2fs", 'TOTAL', total)
+          # 逐次合計を残すのは、並列化後も「どのステップが重いか」を現状と比較できる
+          # ようにするため。壁時計だけにすると、隠れた枝の劣化に気付けなくなる（§3.5）。
+          Common.log_always format("  = %-#{label_width}s %#{value_width}.2fs", SUM_LABEL, total)
+          Common.log_always format("  = %-#{label_width}s %#{value_width}.2fs", WALL_LABEL, wall_time) if wall_time
           Common.log_always "==========================\n"
         end
 

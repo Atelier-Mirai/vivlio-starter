@@ -230,9 +230,9 @@ module VivlioStarter
 
           common.log_success("単章ビルドが完了しました: #{generated_pdf}")
           created_files = [generated_pdf].compact.select { File.exist?(it) }
-          print_created_files_message(created_files, build_timings: build_timings)
+          print_created_files_message(created_files, build_timings:, wall_time: pipeline.wall_time)
 
-          print_build_timings(build_timings)
+          print_build_timings(build_timings, wall_time: pipeline.wall_time)
         ensure
           PostProcessCommands::HeadingProcessor.chapter_tokens_override = nil
         end
@@ -263,10 +263,10 @@ module VivlioStarter
           common.log_success('全ファイルのビルドが完了しました')
 
           created_files = get_created_files_list
-          print_created_files_message(created_files, build_timings: build_timings)
+          print_created_files_message(created_files, build_timings:, wall_time: pipeline.wall_time)
 
           print_outline_debug_info
-          print_build_timings(build_timings)
+          print_build_timings(build_timings, wall_time: pipeline.wall_time)
         end
 
         # 単章ビルドの成果物を開く。フルビルドの open_pdf と違い output.targets は見ない——
@@ -355,15 +355,17 @@ module VivlioStarter
         end
 
         # 作成されたファイルメッセージを表示
-        # build_timings が渡された場合は合計所要時間を末尾に付加する（通常時のみ）
-        def print_created_files_message(files, build_timings: nil)
+        # build_timings が渡された場合は所要時間を末尾に付加する（通常時のみ）。
+        # 枝を並列に走らせるとステップ計時の合計は実際に待った時間より長くなるため、
+        # 著者へ見せるのは壁時計（wall_time）を優先する（§3.5）。
+        def print_created_files_message(files, build_timings: nil, wall_time: nil)
           return if files.empty?
 
           file_list = files.map { |f| File.basename(f) }.join(', ')
 
           if build_timings && Common.current_log_level < 3
             aggregated, = aggregate_step_timings(build_timings)
-            total = aggregated.map { |(_, dt)| dt }.inject(0.0, :+)
+            total = wall_time || aggregated.map { |(_, dt)| dt }.inject(0.0, :+)
             Common.log_result("#{file_list} を作成しました (#{format('%.1f', total)}s)", status: :artifact)
           else
             Common.log_result("#{file_list} を作成しました。", status: :artifact)

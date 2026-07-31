@@ -259,7 +259,7 @@ module VivlioStarter
         end
 
         class PipelineStub
-          attr_reader :entries_param, :mode, :run_called, :generated_pdf_name
+          attr_reader :entries_param, :mode, :run_called, :generated_pdf_name, :wall_time
 
           def initialize(entries, mode)
             @entries_param = entries
@@ -270,6 +270,7 @@ module VivlioStarter
 
           def run
             @run_called = true
+            @wall_time = 0.0
             []
           end
         end

@@ -34,7 +34,9 @@ module VivlioStarter
         # :single / :preflight モードは相を持たない（すべて :shared 扱い）。
         PHASE_ORDER = %i[shared pdf epub join].freeze
 
-        attr_reader :timings, :mode, :entries, :generated_pdf_name, :targets
+        # @!attribute wall_time [Float, nil] run の実測経過秒。枝を並列に走らせると
+        #   ステップ計時の合計より短くなるため、著者へ見せる所要時間はこちらを使う。
+        attr_reader :timings, :mode, :entries, :generated_pdf_name, :targets, :wall_time
 
         # @param command [Samovar::Command] ビルドコマンドインスタンス
         # @param entries [Array<TokenResolver::Entry>] ビルド対象の Entry 配列
@@ -58,8 +60,11 @@ module VivlioStarter
           ensure_entry_files_exist!
           Common.ensure_build_workspace!
           Common.reset_vivliostyle_build_timings
+          started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           PHASE_ORDER.each { run_phase(it) }
           timings
+        ensure
+          @wall_time = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at if started_at
         end
 
         private

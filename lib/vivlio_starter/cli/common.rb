@@ -415,11 +415,31 @@ module VivlioStarter
         LEVELS['info']
       end
 
+      # 出力先を差し替えるためのスレッドローカル鍵（with_emit_sink が管理する）
+      EMIT_SINK_KEY = :vivlio_starter_emit_sink
+
       # ログ行を出力する唯一の出口。スピナーが回っていれば行を消してから出す
       # （消さないとスピナーの残骸とログが同じ行に重なる）。
+      #
+      # 出力先はスレッドごとに差し替えられる。並列ビルドの子枝はここへ配列を挿し、
+      # 親が合流時にまとめて吐く——スピナーと 2 つの枝が同じ TTY を奪い合うと行が
+      # 混ざるため、**書き手を常に 1 つに保つ**（build-target-parallelization-spec.md §3.4）。
       def emit(line)
+        sink = Thread.current[EMIT_SINK_KEY]
+        return sink << line if sink
+
         Spinner.clear_active_line
         puts(line)
+      end
+
+      # ブロックの間、このスレッドのログ行を sink（<< を受ける任意のオブジェクト）へ
+      # 溜める。溜めた行は呼び出し側が持つので、ブロックが例外で抜けても失われない。
+      def with_emit_sink(sink)
+        previous = Thread.current[EMIT_SINK_KEY]
+        Thread.current[EMIT_SINK_KEY] = sink
+        yield
+      ensure
+        Thread.current[EMIT_SINK_KEY] = previous
       end
 
       # 補足情報・処理の詳細（🔵）。--log=info 以上で表示。
@@ -823,6 +843,14 @@ module VivlioStarter
         timings = Thread.current[VIVLIOSTYLE_TIMINGS_KEY] || []
         Thread.current[VIVLIOSTYLE_TIMINGS_KEY] = []
         timings
+      end
+
+      # 別スレッドで集めた計時を、このスレッドの記録へ合流させる。
+      # 計時はスレッドローカルなので競合はしないが、そのままでは親が子枝の内訳を
+      # 見られない（build-target-parallelization-spec.md §3.5）。
+      def merge_vivliostyle_build_timings(entries)
+        timings = Thread.current[VIVLIOSTYLE_TIMINGS_KEY] ||= []
+        timings.concat(Array(entries))
       end
 
       def with_current_step_label(label)
