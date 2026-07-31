@@ -91,6 +91,36 @@
 ## 後日調査
 
 - **A4 以外の判型での目次・索引・用語集**: この 3 ページは長らく `book-settings.css` を読んでおらず、`page-settings.css` の `@page { size: 210mm 297mm }` で **A4 固定**に組まれていた（`chapter-pagebreak-spec.md` §7.2 で link を追加して解消）。A5 / B5 でのビルド確認は未実施。
-- **既定値の二重管理**: `page.section_pagebreak` などの既定が `common.rb` のスキーマと同梱 `book.yml` の両方にあり、黙ってずれる（実例: `section_page_break` 改名時にスキャフォールドが取り残された）。案 A = 既定値専用 YAML（`lib/vivlio_starter/config/defaults.yml`）を新設してスキーマをそこから読む／案 B = 同梱 `book.yml` の値とコード側既定の一致を回帰テストで固定する。**スキャフォールドの `book.yml` を既定値の情報源にするのは不可**——あれは `copy_to_scaffold.rb` が root から作る「サンプル本の設定」で、`theme.color: red` のような本書固有の値と `{{MAIN_TITLE}}` のテンプレート記法が混ざっている。
+- **既定値の二重管理**: `page.section_pagebreak` などの既定が `common.rb` のスキーマと同梱 `book.yml` の両方にあり、黙ってずれる（実例: `section_page_break` 改名時にスキャフォールドが取り残された）。案 A = 既定値専用 YAML（`lib/vivlio_starter/config/defaults.yml`）を新設してスキーマをそこから読む／案 B = 同梱 `book.yml` とコード側既定の**キー名の対応**、および `theme.css` のフォールバック値とコード側定数の一致を、回帰テストで固定する。**スキャフォールドの `book.yml` を既定値の情報源にするのは不可**——あれは `copy_to_scaffold.rb` が root から作る「サンプル本の設定」で、`theme.color: red` のような本書固有の値と `{{MAIN_TITLE}}` のテンプレート記法が混ざっている。
+
+  **資料: 既定値が実際にどこに置かれているか**（2026-08-01 実測）
+
+  | キー | 既定値 | 既定の在り処 | 同梱 `book.yml` の値 |
+  |---|---|---|---|
+  | `theme.frontispiece.edge_inset` | 10mm | `theme.css:79` `--frontispiece-edge-inset` | 5mm |
+  | `theme.frontispiece.heading_chars` | 8 | `book_settings_css.rb:184` `DEFAULT_HEADING_CHARS` ＋ `theme.css:87` の `103.7mm`（8 字ぶん） | 10 |
+  | `theme.frontispiece.lead_chars` | 20 | `book_settings_css.rb:185` `DEFAULT_LEAD_CHARS` ＋ `theme.css:88` の `88.9mm`（20 字ぶん） | 24 |
+  | `page.section_pagebreak` | true | `common.rb:219` スキーマ | false |
+  | `page.chapter_pagebreak` | recto | `common.rb:219` スキーマ ＋ `book_settings_css.rb:397` `DEFAULT_CHAPTER_PAGEBREAK` | recto |
+  | `output.targets` | pdf | `targets.rb:29`（空なら `pdf: true`） | pdf, epub, kindle |
+
+  「既定値」列がキー未記載時に効く値、「同梱 `book.yml` の値」列は同梱本が実際に書いている値。
+  **右 2 列が食い違うのは異常ではない**——同梱 `book.yml` は `copy_to_scaffold.rb` が root から
+  作るサンプル本の設定であり、既定を上書きして見せるのが役目だからである。したがって
+  **健全性の指標は値の一致ではなく「キー名が対応していること」**——実際に起きた事故は
+  `section_page_break` → `section_pagebreak` の改名でスキャフォールドが取り残されたことで、
+  値のずれではなかった。案 B の回帰テストもキー名の対応を見る形にする。
+
+  最もずれやすいのは `heading_chars` / `lead_chars` の 2 行で、**既定が Ruby 定数と
+  `theme.css` のフォールバック mm の 2 箇所にあり、字数 → mm の換算結果を手で焼き込んでいる**。
+  実際 `theme.css:87` は `103.7mm`、生成器が 8 字から算出する値は `103.68mm` で、既に 0.02mm
+  ずれている（実害は無いが、機械が見ていない証拠）。片方だけ直すと、キーを書いた本と
+  書かない本で扉のレイアウトが変わる。
+
+  なお**案 B の前例は既にある**——`book_settings_css_test.rb:557` が、字数 → mm 換算の
+  依拠する `image-header.css` の `font-size` / `letter-spacing` を「変えたら落ちる」形で
+  固定している。同じ形を `theme.css` のフォールバック値と `DEFAULT_HEADING_CHARS` /
+  `DEFAULT_LEAD_CHARS` の対応にも足せばよい。
+
 - **Kindle 表紙（KDP 渡し）** の扱い。
 - **`kindlepreviewer` の `-locale`** が現在 `en` 固定（必要に応じて切り替え可能にするか検討）。
