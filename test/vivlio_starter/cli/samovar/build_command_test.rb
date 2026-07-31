@@ -259,13 +259,15 @@ module VivlioStarter
         end
 
         class PipelineStub
-          attr_reader :entries_param, :mode, :run_called, :generated_pdf_name, :wall_time
+          attr_reader :entries_param, :mode, :run_called, :generated_pdf_name, :wall_time,
+                      :parallel_step_labels
 
           def initialize(entries, mode)
             @entries_param = entries
             @mode = mode
             @generated_pdf_name = mode == :single ? 'single.pdf' : nil
             @run_called = false
+            @parallel_step_labels = []
           end
 
           def run

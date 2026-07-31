@@ -29,13 +29,17 @@ module VivlioStarter
         # （日本語は 1 文字が 2 桁ぶんの幅を取り、%-Ns の桁揃えが崩れる）。
         SUM_LABEL          = 'TOTAL (sum of steps)'
         WALL_LABEL         = 'WALL (elapsed)'
+        # 子枝で並行に走ったステップの印。数値列より右なので桁揃えには影響しない
+        PARALLEL_MARK      = '   [epub 枝・PDF 枝と並行]'
 
         # ビルドタイミングをコンソールに出力する
         # - 通常時: print_created_files_message に合計時間を渡す形で表示するため何もしない
         # - debugモード時: ステップ別の詳細テーブルを表示
         # @param wall_time [Float, nil] 実測の経過秒。枝を並列に走らせるとステップ計時の
         #   合計より短くなるため、逐次合計と並べて出す（隠れた枝の劣化に気付けるように・§3.5）
-        def print_build_timings(build_timings, wall_time: nil)
+        # @param parallel_labels [Array<String>] 子枝で並行に走ったステップのラベル。
+        #   壁時計には現れないぶんなので、その旨を行末へ添える
+        def print_build_timings(build_timings, wall_time: nil, parallel_labels: [])
           aggregated, label_groups = aggregate_step_timings(build_timings)
           return if aggregated.empty?
 
@@ -58,6 +62,7 @@ module VivlioStarter
             value_text = format("%#{value_width}.2fs", dt)
             label_text = format("%-#{label_width}s", raw_label)
             line = "  - #{label_text} #{value_text}"
+            line += PARALLEL_MARK if parallel_labels.include?(raw_label)
             Common.log_always line
 
             original_labels = label_groups[raw_label] || [raw_label]

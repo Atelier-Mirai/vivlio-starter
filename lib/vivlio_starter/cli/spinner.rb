@@ -77,8 +77,12 @@ module VivlioStarter
 
       private
 
+      # 出力先が差し替えられているスレッド（並列ビルドの子枝）では回さない。
+      # スピナーは @output へ直に書くので Common.emit の差し替えを素通りしてしまい、
+      # 2 本のスピナーが同じ TTY を奪い合う（build-target-parallelization-spec.md §3.4）。
       def enabled?
-        @output.respond_to?(:tty?) && @output.tty? &&
+        Thread.current[Common::EMIT_SINK_KEY].nil? &&
+          @output.respond_to?(:tty?) && @output.tty? &&
           Common.current_log_level <= Common::DEFAULT_LOG_LEVEL &&
           ENV['VS_DEBUG'] != '1' &&
           ENV['VS_NO_SPINNER'].to_s.empty?

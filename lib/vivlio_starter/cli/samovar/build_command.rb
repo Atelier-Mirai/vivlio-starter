@@ -232,7 +232,8 @@ module VivlioStarter
           created_files = [generated_pdf].compact.select { File.exist?(it) }
           print_created_files_message(created_files, build_timings:, wall_time: pipeline.wall_time)
 
-          print_build_timings(build_timings, wall_time: pipeline.wall_time)
+          print_build_timings(build_timings, wall_time: pipeline.wall_time,
+                                             parallel_labels: pipeline.parallel_step_labels)
         ensure
           PostProcessCommands::HeadingProcessor.chapter_tokens_override = nil
         end
@@ -266,7 +267,8 @@ module VivlioStarter
           print_created_files_message(created_files, build_timings:, wall_time: pipeline.wall_time)
 
           print_outline_debug_info
-          print_build_timings(build_timings, wall_time: pipeline.wall_time)
+          print_build_timings(build_timings, wall_time: pipeline.wall_time,
+                                             parallel_labels: pipeline.parallel_step_labels)
         end
 
         # 単章ビルドの成果物を開く。フルビルドの open_pdf と違い output.targets は見ない——

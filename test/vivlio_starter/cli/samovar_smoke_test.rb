@@ -127,6 +127,9 @@ module VivlioStarter
         mock_pipeline = Object.new
         mock_pipeline.define_singleton_method(:run) { [] }
         mock_pipeline.define_singleton_method(:generated_pdf_name) { 'test.pdf' }
+        # 成果物メッセージが所要時間の報告に使う（並列時はステップ計時の合計と食い違う）
+        mock_pipeline.define_singleton_method(:wall_time) { 0.0 }
+        mock_pipeline.define_singleton_method(:parallel_step_labels) { [] }
 
         # UnifiedBuildPipeline.new が呼ばれることを確認
         BuildCommands::UnifiedBuildPipeline.stub :new, ->(*_args) {

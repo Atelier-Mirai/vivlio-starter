@@ -2266,13 +2266,21 @@ module VivlioStarter
               return
             end
 
-            Dir.chdir(tmpdir) do
-              system('zip', '-q', abs_epub, *changed, out: File::NULL, err: File::NULL)
-            end
+            zip_into(abs_epub, changed, from: tmpdir)
             Common.log_info("[EPUB] CSS をサニタイズしました（#{changed.size} ファイル）")
           end
         rescue StandardError => e
           Common.log_warn("[EPUB] CSS サニタイズに失敗: #{e.message}")
+        end
+
+        # 展開先の tmpdir を基準に、指定したメンバーだけを EPUB へ差し替える。
+        #
+        # `Dir.chdir` は**プロセス全体**の cwd を動かすため使わない。EPUB 枝と PDF 枝を
+        # 並列に走らせると、PDF 枝が起こす `npx vivliostyle` が一時ディレクトリを cwd と
+        # して継いでしまい、ビルドが不定に壊れる（build-target-parallelization-spec.md §3）。
+        # 子プロセスの cwd だけを変える spawn の `chdir:` なら親は動かない。
+        def zip_into(archive, members, from:)
+          system('zip', '-q', archive, *members, chdir: from, out: File::NULL, err: File::NULL)
         end
 
         # 非埋め込み時の @font-face 除去。keyfont（kbd キーキャップ描画）だけは実体を
@@ -2314,10 +2322,7 @@ module VivlioStarter
 
             File.write(opf_path, replaced)
 
-            Dir.chdir(tmpdir) do
-              system('zip', '-q', abs_epub, 'EPUB/content.opf',
-                     out: File::NULL, err: File::NULL)
-            end
+            zip_into(abs_epub, ['EPUB/content.opf'], from: tmpdir)
 
             Common.log_info("[EPUB] identifier を安定化しました: #{stable_id}")
           end
@@ -2349,10 +2354,7 @@ module VivlioStarter
 
             File.write(opf_path, replaced)
 
-            Dir.chdir(tmpdir) do
-              system('zip', '-q', abs_epub, 'EPUB/content.opf',
-                     out: File::NULL, err: File::NULL)
-            end
+            zip_into(abs_epub, ['EPUB/content.opf'], from: tmpdir)
 
             Common.log_info('[EPUB] content.opf の数字始まり id を NCName 準拠に修正しました')
           end

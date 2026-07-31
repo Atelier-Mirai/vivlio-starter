@@ -30,13 +30,20 @@ module VivlioStarter
         # :shared = 両ターゲットが読む中間物を作る共通前段
         # :pdf    = 閲覧用・入稿用 PDF の枝 / :epub = EPUB・Kindle の枝
         # :join   = 両枝の完了後（ワークスペースの掃除）
-        # :pdf と :epub は互いに独立で、将来ここを並列に走らせる。
+        # :pdf と :epub は互いに独立なので、両方に仕事があるときは並列に走らせる。
         # :single / :preflight モードは相を持たない（すべて :shared 扱い）。
         PHASE_ORDER = %i[shared pdf epub join].freeze
 
+        # 分岐した直後に 1 行だけ出す予告。EPUB 枝のログは合流時にまとめて出るので、
+        # 黙っていると「何も起きていない時間」に見える。
+        PARALLEL_NOTICE = '[parallel] EPUB/Kindle を並行生成しています（ログは完了時にまとめて出ます）'
+
         # @!attribute wall_time [Float, nil] run の実測経過秒。枝を並列に走らせると
         #   ステップ計時の合計より短くなるため、著者へ見せる所要時間はこちらを使う。
-        attr_reader :timings, :mode, :entries, :generated_pdf_name, :targets, :wall_time
+        # @!attribute parallel_step_labels [Array<String>] 子枝で並行に走った
+        #   ステップのラベル（＝壁時計には現れないぶん）。逐次実行なら空。
+        attr_reader :timings, :mode, :entries, :generated_pdf_name, :targets, :wall_time,
+                    :parallel_step_labels
 
         # @param command [Samovar::Command] ビルドコマンドインスタンス
         # @param entries [Array<TokenResolver::Entry>] ビルド対象の Entry 配列
@@ -52,16 +59,21 @@ module VivlioStarter
           @timings = []
           @steps = []
           @generated_pdf_name = nil
+          @parallel_step_labels = []
+          @aborted = false
           register_steps
         end
 
-        # 登録済みステップを相の順に実行し、経過時間を収集する
+        # 登録済みステップを相の順に実行し、経過時間を収集する。
+        # :pdf と :epub は互いに独立なので、両方に仕事があるときは並列に走らせる。
         def run
           ensure_entry_files_exist!
           Common.ensure_build_workspace!
           Common.reset_vivliostyle_build_timings
           started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          PHASE_ORDER.each { run_phase(it) }
+          run_phase(:shared)
+          fork_branches? ? run_branches_in_parallel : run_branches_sequentially
+          run_phase(:join)
           timings
         ensure
           @wall_time = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at if started_at
@@ -70,8 +82,16 @@ module VivlioStarter
         private
 
         # 1 相ぶんのステップを順に実行する。
-        def run_phase(phase)
-          phase_steps(phase).each { execute(it, position: step_positions[it.label]) }
+        # @param into [Array] 計時の記録先（子枝は自分の配列へ溜め、合流時に親へ足す）
+        def run_phase(phase, into: timings)
+          phase_steps(phase).each do |step|
+            # Ruby の Interrupt はメインスレッドにしか上がらない。子枝は system() が
+            # false を返しただけと解釈して次のステップへ進むため、ステップの境目で
+            # 中断を見る（build-target-parallelization-spec.md §3.6-1）。
+            break if @aborted
+
+            execute(step, position: step_positions[step.label], into:)
+          end
         end
 
         def phase_steps(phase) = @steps.select { it.phase == phase }
@@ -81,6 +101,87 @@ module VivlioStarter
         def step_positions
           @step_positions ||= PHASE_ORDER.flat_map { phase_steps(it) }
                                          .each_with_index.to_h { |step, i| [step.label, i + 1] }
+        end
+
+        # ================================================================
+        # 枝の並列実行（build-target-parallelization-spec.md §1.1・§3.6）
+        # ================================================================
+
+        # 両枝に実際の仕事があるときだけ分岐する。
+        # pdf 単独・epub 単独のビルドでは、スレッドを起こしても待つ相手がいない。
+        def fork_branches? = parallel_enabled? && phase_steps(:pdf).any? && phase_steps(:epub).any?
+
+        # VIVLIO_BUILD_PARALLEL=0 で逐次へ戻す。性能の保険ではなく**切り分けの道具**で、
+        # 並列化後に出た不具合が並列由来かどうかを 1 コマンドで判定できる状態を保つ。
+        # book.yml には出さない——著者の本の性質ではなく、実行機と切り分け作業の都合。
+        def parallel_enabled? = ENV['VIVLIO_BUILD_PARALLEL'].to_s != '0'
+
+        def run_branches_sequentially
+          run_phase(:pdf)
+          run_phase(:epub)
+        end
+
+        # 臨界経路である PDF 枝をメインスレッドで走らせ、EPUB 枝を子スレッドへ出す。
+        # こうすると進捗表示（スピナー）も Interrupt もどちらも自然な側に付く。
+        def run_branches_in_parallel
+          Common.log_action(PARALLEL_NOTICE)
+          @parallel_step_labels = phase_steps(:epub).map(&:label)
+          branch = start_epub_branch
+
+          parent_error = nil
+          begin
+            run_phase(:pdf)
+          rescue Exception => e # rubocop:disable Lint/RescueException — Interrupt も拾って子枝へ伝える
+            @aborted = true
+            parent_error = e
+          end
+
+          join_epub_branch(branch, reraise: parent_error.nil?)
+          raise parent_error if parent_error
+        end
+
+        # EPUB 枝を子スレッドで開始する。ログ・計時・例外はすべて親が持つ Hash へ
+        # 書き戻すので、途中で落ちてもそこまでの成果は合流時に読める。
+        def start_epub_branch
+          branch = { logs: [], timings: [], vivliostyle: [], error: nil }
+          branch[:thread] = Thread.new do
+            Common.with_emit_sink(branch[:logs]) do
+              Common.reset_vivliostyle_build_timings
+              run_phase(:epub, into: branch[:timings])
+            rescue Exception => e # rubocop:disable Lint/RescueException — 親へ持ち帰って投げ直す
+              branch[:error] = e
+            ensure
+              branch[:vivliostyle] = Common.consume_vivliostyle_build_timings
+            end
+          end
+          branch
+        end
+
+        # 子枝の完了を待ち、ログと計時を親へ合流させる。
+        #
+        # 親が先に死んだ場合も**待ってから**終わる。外部プロセスの pid を握っていないので
+        # 殺せないが、待てば宙ぶらりんの Chromium を残さずに済む（待ちは最長でも
+        # EPUB 枝の残り時間・§3.6-2）。
+        def join_epub_branch(branch, reraise: true)
+          branch[:thread].join
+          timings.concat(branch[:timings])
+          Common.merge_vivliostyle_build_timings(branch[:vivliostyle])
+          flush_branch_logs(branch[:logs])
+
+          return unless branch[:error]
+          raise branch[:error] if reraise
+
+          Common.log_error("[parallel] EPUB/Kindle 枝も失敗しました: #{branch[:error].message}")
+        end
+
+        # 子枝が溜めたログを親の出口から吐く。読み順が「共通前段 → PDF 枝 → EPUB 枝」で
+        # 安定し、ビルドログの diff が取れる。行は捕捉時にログレベルで濾してあるので、
+        # ここでは絵文字付きの完成行をそのまま流す。
+        def flush_branch_logs(lines)
+          return if lines.empty?
+
+          Common.log_action('[parallel] EPUB/Kindle 枝のログ ↓')
+          lines.each { Common.log_always(it) }
         end
 
         attr_reader :command, :options
@@ -242,7 +343,7 @@ module VivlioStarter
         # 既定ログレベルではステップ間の出力がなく「止まっている」のと区別が付かないため、
         # TTY のときだけスピナーで進行を示す（表示条件は Spinner が判断する）。
         # step.label はログ・計時と同じ語彙なので、そのまま進捗表示名に使う。
-        def execute(step, position: nil)
+        def execute(step, position: nil, into: timings)
           start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           Common.log_action("[Timer] #{step.label} start")
           Common.with_current_step_label(step.label) do
@@ -251,7 +352,7 @@ module VivlioStarter
         ensure
           finish_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           elapsed = finish_time - start_time
-          timings << [step.label, elapsed]
+          into << [step.label, elapsed]
           Common.log_action("[Timer] #{step.label} finish: #{format('%.2f', elapsed)}s")
         end
 
