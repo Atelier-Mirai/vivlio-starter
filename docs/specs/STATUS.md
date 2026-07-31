@@ -10,7 +10,10 @@
 
 ## 一覧
 
-（実装待ちの仕様書はありません。アイデア段階のものは [PLANNED.md](PLANNED.md) を参照）
+`kindle-rotate-table-image-spec.md`
+: Kindle で回転テーブルが回転せず素の表に戻る（KFX が `transform` / `position: absolute` を解さない）ため、画像へ劣化させて 90 度回転・中央配置で見せる。
+  状態: 仕様（実装待ち）
+  次のアクション: §3 案 A（生成済み PDF の該当ページを切り出す）で着手。`PdfPageMapExtractor` が任意 id を引ける入口を持つかの確認が最初の作業
 
 ---
 

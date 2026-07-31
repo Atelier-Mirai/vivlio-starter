@@ -79,7 +79,9 @@ module VivlioStarter
         LEAD_BOTTOM_RATIO = 0.88   # リード最終行ベースラインの上限（height 比）。右下飾りとの干渉回避
 
         # 章番号のベースライン（height 比）。ここから章番号 → 章題 → リードを下へ積む。
-        FRONTISPIECE_TOP_RATIO = 0.30
+        # PDF の章扉と同じく**ページ上部から**始める。中ほどから始めると、リードが長い章で
+        # 下の飾りへ食い込む余地が無くなる（epub_h1_chapter6.png 実測）。
+        FRONTISPIECE_TOP_RATIO = 0.17
 
         # 扉絵タイトルが使ってよい幅（画像幅比）。この幅を heading_chars で割って字面を決める。
         FRONTISPIECE_TITLE_WIDTH = 0.80

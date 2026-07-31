@@ -399,13 +399,22 @@ module VivlioStarter
           wrapped
         end
 
+        # 語ごとに nowrap の span を置く。**語末の空白は span の外へ出す**——
+        # 中に入れると nowrap がその空白での折返しまで禁止し、「（create / delete /
+        # rename」のような半角混じりの見出しが 1 つの塊になって版面をはみ出す
+        # （pdf_h1_chapter6.png 実測）。外に出せば空白が折返し候補として残る。
         def replace_with_nobr_words!(node, words, doc)
           fragment = Nokogiri::XML::Node.new('span', doc)
           words.each do |word|
-            nobr = Nokogiri::XML::Node.new('span', doc)
-            nobr['class'] = NOBR_CLASS
-            nobr.content = word
-            fragment.add_child(nobr)
+            core = word.sub(/\s+\z/, '')
+            unless core.empty?
+              nobr = Nokogiri::XML::Node.new('span', doc)
+              nobr['class'] = NOBR_CLASS
+              nobr.content = core
+              fragment.add_child(nobr)
+            end
+            trailing = word[core.length..]
+            fragment.add_child(Nokogiri::XML::Text.new(trailing, doc)) unless trailing.empty?
           end
           node.replace(fragment.children)
         end
