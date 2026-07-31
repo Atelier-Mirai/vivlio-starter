@@ -86,6 +86,9 @@
      ここの既定値は文字数から解いた値（A4・8 字 / 20 字 相当）。 */
   --frontispiece-heading-width: 103.7mm;
   --frontispiece-lead-width: 88.9mm;
+  /* 章扉の見出しブロック（章番号〜リード）を下げる量
+     （config/book.yml の theme.frontispiece.heading_offset） */
+  --frontispiece-heading-offset: 0mm;
 
   /* 節題の基準フォントサイズ（heading-metrics-spec §1-2）。
      節絵の帯は版面幅いっぱいで固定なので、節題は箱幅ではなく

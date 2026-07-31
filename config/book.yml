@@ -90,6 +90,7 @@ theme:
       # kikyo / kosumosu / kiku / tsubaki から選択
       # images/内の独自画像も指定可
     edge_inset: 5mm # 扉絵を紙の端から内側へ引っ込める量
+    heading_offset: 15mm # 章扉の見出しブロック（章番号〜リード）を下げる量
     heading_chars: 10 # 章題を 1 行に何文字入れるか（全角換算）
     lead_chars: 24 # 章リード文を 1 行に何文字入れるか（全角換算）
 

@@ -63,6 +63,7 @@ theme:
   frontispiece:      # 章扉の背景画像（style: image のときのみ有効）
     image: asagao
     edge_inset: 10mm      # 扉絵を紙の端から引っ込める量
+    heading_offset: 15mm  # 見出しブロック（章番号〜リード）を下げる量
     heading_chars: 8      # 章題を 1 行に何文字入れるか
     lead_chars: 20        # リード文を 1 行に何文字入れるか
 

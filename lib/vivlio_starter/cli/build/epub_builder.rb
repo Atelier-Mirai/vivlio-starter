@@ -973,8 +973,20 @@ module VivlioStarter
           {
             heading_chars: settings[:heading_chars_value] || bsc::DEFAULT_HEADING_CHARS,
             lead_chars: settings[:lead_chars_value] || bsc::DEFAULT_LEAD_CHARS,
-            ornament_chars: settings[:ornament_heading_chars_value] || bsc::DEFAULT_ORNAMENT_HEADING_CHARS
+            ornament_chars: settings[:ornament_heading_chars_value] || bsc::DEFAULT_ORNAMENT_HEADING_CHARS,
+            heading_offset_ratio: heading_offset_ratio(settings)
           }
+        end
+
+        # 見出しブロックの下げ量を判型比へ換算する。合成画像は判型と縦横比が揃っているので、
+        # mm 指定をそのまま画像高さの比として使える（PDF と同じ見え方になる）。
+        def heading_offset_ratio(settings)
+          offset_mm = Units.length_to_mm(settings[:heading_offset_value]) or return 0.0
+          page_cfg = PreProcessCommands::BookSettingsCss.build_page_cfg(Common::CONFIG)
+          page_mm = Units.length_to_mm(page_cfg[:height])
+          return 0.0 unless page_mm&.positive?
+
+          (offset_mm / page_mm).clamp(0.0, 0.25)
         end
 
         # リード幅比の純計算。導けない（幅欠落・非正）ときは 0.60、導ける場合は [0.40, 0.75] に収める。

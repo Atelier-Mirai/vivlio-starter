@@ -35,10 +35,15 @@ body.vs-header-image h1 {
   display: grid;
   grid-template-columns: auto;
   grid-template-rows: auto auto;
-  gap: clamp(4mm, calc(var(--paper-scale) * 6mm), 8mm);
+  /* 章番号と章題は同じ見出しの一部なので近づける（近接の原則）。
+     空けるのは章題とリード文の間（.chapter-lead 側で開ける）。 */
+  gap: clamp(1mm, calc(var(--paper-scale) * 2mm), 2mm);
   align-items: center;
   justify-items: center;
-  margin: 0 auto;
+  margin-inline: auto;
+  /* 見出しブロック（章番号〜リード）全体の下げ量。book.yml の
+     theme.frontispiece.heading_offset で調整できる（扉絵の絵柄に合わせて追い込む用）。 */
+  margin-block: var(--frontispiece-heading-offset) 0;
   text-align: center;
   inline-size: var(--frontispiece-heading-width);
   max-inline-size: 100%;
@@ -47,10 +52,12 @@ body.vs-header-image h1 {
 
 /* リード文の幅も「1 行の文字数」で決まる（theme.frontispiece.lead_chars 由来）。
    max-inline-size が無いと版面より大きい値で無警告に余白へはみ出す。 */
+/* 章題とリード文の間は空ける（章番号↔章題を詰めたぶんの対）。
+   以前は負マージンで章題へ引き寄せており、3 要素が等間隔で 1 つの塊に見えていた。 */
 body.vs-header-image .chapter-lead {
   inline-size: var(--frontispiece-lead-width);
   max-inline-size: 100%;
-  margin-block: clamp(-8mm, calc(var(--paper-scale) * -10mm), -6mm)
+  margin-block: clamp(3mm, calc(var(--paper-scale) * 5mm), 5mm)
     clamp(8mm, calc(var(--paper-scale) * 10mm), 12mm);
 }
 
@@ -105,7 +112,7 @@ body.vs-header-image h1 .chapter-title {
   overflow-wrap: anywhere;
   white-space: normal;
   text-shadow: 0 0 1mm rgb(255 255 255 / 70%);
-  margin-block-start: clamp(4mm, calc(var(--paper-scale) * 6mm), 8mm);
+  margin-block-start: 0;
   margin-block-end: clamp(2mm, calc(var(--paper-scale) * 4mm), 5mm);
 }
 
@@ -153,7 +160,8 @@ body.vs-header-image .section-topic h2 {
   break-before: page;
   margin: 0;
   font-size: var(--section-title-font-size);
-  line-height: 1.35;
+  /* 3 行の節題でも飾りの枠に収まるよう行送りは詰め気味にする（§3 の帯の高さと対で決まる） */
+  line-height: 1.25;
   align-self: center;
   white-space: normal;
 
@@ -166,8 +174,11 @@ body.vs-header-image .section-topic h2 {
      最大値に合わせると横幅を約 20mm 捨てることになる（§3-2 の輪郭実測）。 */
   padding-inline: clamp(11mm, calc(var(--paper-scale) * 16mm), 16mm)
     clamp(12mm, calc(var(--paper-scale) * 18mm), 18mm);
-  padding-block: clamp(2mm, calc(var(--paper-scale) * 3mm), 3mm);
-  aspect-ratio: 480 / 100;
+  padding-block: clamp(1.5mm, calc(var(--paper-scale) * 2mm), 2mm);
+  /* 帯の高さは「最長ケース（3 行）が飾りの枠に収まる」ことで決まる。
+     A4 版面 162mm では 38.6mm ＝ 3 行 34.3mm ＋ 上下パディング 4mm。
+     1 行・2 行の節題も同じ高さで組む（行数で帯の高さが変わると紙面が落ち着かない）。 */
+  aspect-ratio: 420 / 100;
   min-block-size: 60px;
   text-align: left;
 
@@ -191,7 +202,8 @@ body.vs-header-image .section-topic h2::after {
   inline-size: 50%;
   background-image: var(--section-bg-image);
   background-repeat: no-repeat;
-  background-size: 150% auto;
+  /* 帯を高くしたぶん飾りも大きくして枠として成立させる（帯幅の 80%） */
+  background-size: 160% auto;
   z-index: -1;
 }
 

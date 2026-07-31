@@ -275,7 +275,7 @@ module VivlioStarter
           original_title_nodes = extract_original_title_nodes(node, number_class, title_class)
           node.children.remove
           add_number_span(node, number_class, number_text, doc)
-          add_title_span(node, title_class, title_text, original_title_nodes, doc)
+          add_title_span(node, title_class, title_text, original_title_nodes, doc, kind)
           true
         end
 
@@ -323,15 +323,62 @@ module VivlioStarter
         end
 
         # タイトルスパンを追加
-        def add_title_span(node, title_class, title_text, original_nodes, doc)
+        def add_title_span(node, title_class, title_text, original_nodes, doc, kind = nil)
           if title_class
             span = Nokogiri::XML::Node.new('span', doc)
             span['class'] = title_class
             original_nodes.empty? ? span.content = title_text : original_nodes.each { |c| span.add_child(c) }
+            guard_last_character_orphan!(span, doc) if ORPHAN_GUARD_KINDS.include?(kind)
             node.add_child(span)
           elsif !title_text.empty?
             node.add_child(Nokogiri::XML::Text.new(title_text, doc))
           end
+        end
+
+        # 泣き別れ防止の対象。折り返す前提で大きく組まれる章題・節題だけに適用する
+        # （h3 は block-size 固定の小見出しで、折返し位置を動かすと段が崩れる）。
+        ORPHAN_GUARD_KINDS = %i[chapter section].freeze
+
+        # 見出しの末尾 1 文字だけが次の行へ落ちる「泣き別れ」を防ぐ。
+        #
+        # 日本語の見出しは 1 語で分割点を持たないことが多く（「コマンドラインオプション」）、
+        # word-break: auto-phrase でも文節境界が無いため文字間で折れて末尾 1 文字が独り残る
+        # （pdf_h2_nakiwakare.png 実測）。末尾 2 文字を white-space: nowrap の span で括ると
+        # その 2 文字が分割できなくなり、折返しが 1 文字ぶん手前へ移って一緒に落ちる。
+        #
+        # WORD JOINER（U+2060）を挟む方法は **Vivliostyle が無視した**（実測: HTML には
+        # 入るが組版結果は変わらない）。Vivliostyle は自前の行分割を持つため、制御文字より
+        # CSS で表現する方が確実。
+        #
+        # 見出し末尾は素のテキストとは限らない。索引語（`<span class="index-term">`）や
+        # 用語集リンクが末尾に来るため、**最も深い末尾のテキストノード**まで降りて括る
+        # （「コマンドライン<span class=index-term>オプション</span>」のように、
+        #  末尾が要素で終わる見出しは実際に多い）。
+        WORD_JOINER = "⁠"
+        NOBR_CLASS = 'vs-nobr'
+
+        def guard_last_character_orphan!(span, doc)
+          last = deepest_last_text_node(span)
+          return if last.nil?
+          return if last.parent['class'].to_s.split.include?(NOBR_CLASS) # 既に処理済み
+
+          text = last.text
+          return if text.strip.length < 2
+
+          nobr = Nokogiri::XML::Node.new('span', doc)
+          nobr['class'] = NOBR_CLASS
+          nobr.content = text[-2..]
+          last.content = text[0..-3]
+          last.add_next_sibling(nobr)
+        end
+
+        # 文書順で最後のテキストノードまで降りる（末尾が要素なら中へ入る）
+        def deepest_last_text_node(node)
+          child = node.children.last
+          return nil if child.nil?
+          return deepest_last_text_node(child) if child.element?
+
+          child.text? ? child : nil
         end
 
         # 見出しのコアテキストを抽出
@@ -340,9 +387,22 @@ module VivlioStarter
         def extract_heading_core_text(node)
           %w[chapter-title section-title subsection-title].each do |cls|
             span = node.at_css("span.#{cls}")
-            return span.text.to_s.strip if span
+            return heading_plain_text(span) if span
           end
-          node.text.to_s.strip
+          heading_plain_text(node)
+        end
+
+        # 見出しの素のテキスト。data 属性（EPUB の合成見出し画像・目次の素材）に入れるため、
+        # 表示上の装飾を落とす:
+        #   - 用語集の † リンク … 見出しを画像化するとクリックできず記号だけが残る
+        #   - WORD JOINER      … 泣き別れ防止で挟んだ制御文字（見た目に影響しないが
+        #                        比較・再構築の冪等性を壊すので比較前に落とす）
+        def heading_plain_text(node)
+          return '' unless node
+
+          copy = node.dup
+          copy.css('a.glossary-link').each(&:remove)
+          copy.text.to_s.delete(WORD_JOINER).strip
         end
 
         # メイン章の表示番号を解決

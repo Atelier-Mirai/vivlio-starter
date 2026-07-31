@@ -138,6 +138,10 @@ module VivlioStarter
             lines << "--frontispiece-edge-inset: #{settings[:edge_inset_value]};"
           end
 
+          if settings[:heading_offset_value]
+            lines << "--frontispiece-heading-offset: #{settings[:heading_offset_value]};"
+          end
+
           lines.concat(heading_metric_declarations(settings, page_cfg))
         end
 

@@ -65,14 +65,21 @@ module VivlioStarter
 
         # 文字数指定の既定。theme.css の既定と BookSettingsCss::DEFAULT_*_CHARS に一致させる
         # （EpubBuilder が book.yml の値を渡すので、ここが使われるのは直接呼び出し時だけ）。
-        DEFAULT_METRICS = { heading_chars: 8, lead_chars: 20, ornament_chars: 14 }.freeze
+        DEFAULT_METRICS = { heading_chars: 8, lead_chars: 20, ornament_chars: 14,
+                            heading_offset_ratio: 0.0 }.freeze
 
         # リード焼き込みの規格（画像 width / height 比・モック実証値）。
         # 基準フォントは lead_chars から導くため LEAD_FONT_RATIO は廃止した。
-        LEAD_FONT_FLOOR   = 0.018  # 縮小の下限
-        LEAD_LINE_HEIGHT  = 1.75   # 行送り（フォントサイズ比）
-        LEAD_TOP_RATIO    = 0.615  # リード 1 行目のベースライン（height 比）
-        LEAD_BOTTOM_RATIO = 0.80   # リード最終行ベースラインの上限（height 比）。右下飾りとの干渉回避
+        # 下限は「合成画像を端末幅で見たときに読める大きさ」で決まる。字数指定が多いと
+        # 字面がいくらでも小さくなるため、ここで止める（epub_h1.png 実測で 0.018 では
+        # 読めなかった。Kindle 端末幅 1072px 換算でおよそ 8pt 相当を確保する）。
+        LEAD_FONT_FLOOR   = 0.026  # 縮小の下限（画像幅比）
+        LEAD_LINE_HEIGHT  = 1.70   # 行送り（フォントサイズ比）
+        LEAD_TOP_RATIO    = 0.58   # リード 1 行目のベースライン（height 比・章題が短いときの下限）
+        LEAD_BOTTOM_RATIO = 0.84   # リード最終行ベースラインの上限（height 比）。右下飾りとの干渉回避
+        # 見出しブロックの下げ量のうちリードへ効かせる割合。リードは右下飾りに近いので
+        # 見出しと同じだけ下げると飾りへ食い込む（epub_h1.png 実測）。
+        LEAD_OFFSET_SHARE = 0.4
 
         # 扉絵タイトルが使ってよい幅（画像幅比）。この幅を heading_chars で割って字面を決める。
         FRONTISPIECE_TITLE_WIDTH = 0.80
@@ -149,18 +156,26 @@ module VivlioStarter
           lines      = wrap_text_by_width(title, width * FRONTISPIECE_TITLE_WIDTH / title_size)
           line_step  = (title_size * 1.4).round
 
-          # --- Phase: 縦位置（タイトル行ブロックをページ中央やや上に centering） ---
-          number_y    = (height * 0.30).round
+          # --- Phase: 縦位置 ---
+          # 章番号と章題は同じ見出しなので近づけ、章題とリードの間を空ける（近接の原則）。
+          # 全体の下げ量は book.yml の theme.frontispiece.heading_offset（判型比）で追い込める。
+          offset      = height * metrics[:heading_offset_ratio].to_f
+          number_y    = (height * 0.34 + offset).round
           underline_y = number_y + (number_size * 0.45).round
-          title_mid   = height * 0.50
+          title_mid   = (height * 0.46) + offset
           first_y     = (title_mid - ((lines.size - 1) * line_step / 2.0) + title_size * 0.34).round
+          # リードは章題の実際の下端から置く。固定比だと 2 行以上の章題と重なる
+          # （epub_h1.png 実測）。title↔lead を空けるぶんは lead_gap が持つ。
+          title_last_y = first_y + ((lines.size - 1) * line_step)
+          lead_top     = [(height * LEAD_TOP_RATIO) + (offset * LEAD_OFFSET_SHARE),
+                          title_last_y + (title_size * 1.15)].max
 
           parts = [image_element(width, height, data_uri)]
           parts << frontispiece_number(number, width, number_y, underline_y, number_size, font_family) unless number.empty?
           parts << frontispiece_title(lines, width, first_y, line_step, title_size, halo, font_family) unless lines.empty?
           unless lead.empty?
             parts << frontispiece_lead(lead, width, height, lead_font_family || font_family,
-                                       lead_ratio, metrics[:lead_chars])
+                                       lead_ratio, metrics[:lead_chars], lead_top)
           end
 
           svg_wrapper(width, height, [number, title, lead], parts)
@@ -176,12 +191,14 @@ module VivlioStarter
 
         # リード段落の焼き込み。段落は "\n" 区切りで受け、各段落の先頭を全角 1 字下げする。
         # 基準フォントで LEAD_BOTTOM_RATIO に収まらない長文だけ 8% ずつ縮小する（下限 LEAD_FONT_FLOOR）。
-        def frontispiece_lead(lead, width, height, font_family, lead_ratio, lead_chars)
-          font_size, lines = lead_layout(width, height, lead, lead_ratio, lead_chars)
+        def frontispiece_lead(lead, width, height, font_family, lead_ratio, lead_chars, lead_top = nil)
+          first_y   = (lead_top || (height * LEAD_TOP_RATIO)).round
+          font_size, lines = lead_layout(width, height, lead, lead_ratio, lead_chars, first_y)
           halo      = [(font_size * 0.14).round, 1].max
           step      = (font_size * LEAD_LINE_HEIGHT).round
-          first_y   = (height * LEAD_TOP_RATIO).round
-          left_x    = ((width * (1.0 - lead_ratio)) / 2.0).round
+          # リード列は中央ではなく左寄りに置く。飾りは右下にあるため、中央だと
+          # 行末が飾りへ重なる（epub_h1.png 実測）。余白の 35% を左に配分する。
+          left_x    = (width * (1.0 - lead_ratio) * 0.35).round
 
           tspans = lines.each_with_index.map do |line, i|
             %(<tspan x="#{left_x}" y="#{first_y + (i * step)}">#{escape_text(line)}</tspan>)
@@ -198,16 +215,17 @@ module VivlioStarter
         # lead_chars × 1 字の送り ÷ 判型幅なので、これで PDF と同じ字面比になる。
         # 縦に収まらない長文だけ 8% ずつ縮める（幅は一定なので 1 行の字数が増えて行数が減る）。
         # @return [Array(Integer, Array<String>)] [フォントサイズ, 折り返し済み行の配列]
-        def lead_layout(width, height, lead, lead_ratio, lead_chars)
+        def lead_layout(width, height, lead, lead_ratio, lead_chars, top_y = nil)
           paragraphs = lead.split("\n")
           chars = lead_chars.to_i
           chars = DEFAULT_METRICS[:lead_chars] unless chars.positive?
+          top       = top_y || (height * LEAD_TOP_RATIO)
           floor     = (width * LEAD_FONT_FLOOR).round
           font_size = [((width * lead_ratio) / chars).round, floor].max
           loop do
             capacity = (width * lead_ratio) / font_size
             lines = paragraphs.flat_map { |p| wrap_text_by_width("　#{p}", capacity) }
-            bottom = (height * LEAD_TOP_RATIO) + ((lines.size - 1) * font_size * LEAD_LINE_HEIGHT)
+            bottom = top + ((lines.size - 1) * font_size * LEAD_LINE_HEIGHT)
             return [font_size, lines] if bottom <= height * LEAD_BOTTOM_RATIO || font_size <= floor
 
             font_size = [(font_size * 0.92).round, floor].max
@@ -243,6 +261,10 @@ module VivlioStarter
           first_base = (band_h * 0.50 + font_size * 0.34 - (line_step * (lines.size - 1) / 2.0)).round
           text_x     = (width * ORNAMENT_PAD_START).round
 
+          # 2 行目以降は節番号のぶんだけ字下げして、番号の右で節題が上下に揃うようにする
+          # （PDF の flex レイアウトと同じ見え方。揃えないと 2 行目が番号の下に潜り込む）。
+          number_indent = ornament_number_indent(lines, font_size)
+
           texts = lines.each_with_index.map do |line, i|
             tspans = +''
             if line[:number] && !line[:number].empty?
@@ -252,7 +274,8 @@ module VivlioStarter
               dx = tspans.empty? ? '' : %( dx="#{(font_size * 0.5).round}")
               tspans << %(<tspan#{dx}>#{escape_text(line[:text])}</tspan>)
             end
-            %(<text x="#{text_x}" y="#{first_base + (line_step * i)}" text-anchor="start" ) +
+            x = i.zero? ? text_x : text_x + number_indent
+            %(<text x="#{x}" y="#{first_base + (line_step * i)}" text-anchor="start" ) +
               %(font-family="#{font_family}" font-size="#{font_size}" font-weight="800" fill="#1a1a1a" ) +
               %(paint-order="stroke" stroke="#ffffff" stroke-width="#{halo}" stroke-linejoin="round">#{tspans}</text>)
           end
@@ -260,6 +283,15 @@ module VivlioStarter
           segments = [number, title].reject(&:empty?)
           layers = ornament_layers(width, band_h, source_height, data_uri)
           svg_wrapper(width, band_h, segments, [*layers, *texts])
+        end
+
+        # 2 行目以降の字下げ量（px）。1 行目の節番号＋区切りアキと同じ幅。
+        # 節番号は font-weight 900 の 1.0em 相当で組むため、表示幅換算で概算する。
+        def ornament_number_indent(lines, font_size)
+          number = lines.first&.dig(:number).to_s
+          return 0 if number.empty?
+
+          ((display_width(number) + 0.5) * font_size).round
         end
 
         # 飾りを左右に並べる 2 層。左は元画像の左上（＝左上の飾り）、右は右下（＝右下の飾り）を
@@ -334,12 +366,61 @@ module VivlioStarter
                 rest = acc[(sp + 1)..] + rest
                 acc = acc[0...sp]
               end
-              return [acc.rstrip, rest.lstrip]
+              return refine_break(acc, rest, avail)
             end
             acc << ch
             used += w
           end
           [acc.rstrip, '']
+        end
+
+        # 折返し位置の追い込み。表示幅だけで切ると読みにくい位置で割れるため、2 点だけ直す。
+        #   1. 語の境界（空白）が行の後半にあるならそこで折る
+        #      「Markdown 執筆チュ／ートリアル」→「Markdown／執筆チュートリアル」
+        #   2. 残りが 1 文字だけになるなら 1 文字手前で折る（泣き別れ回避。PDF 側の
+        #      WORD JOINER と同じ意図で、こちらは Ruby が行分割を持つため直接調整する）
+        # @return [Array(String, String)] [確定した行, 残り]
+        # 語の境界で折るかを決める閾値（行の使用率）。低すぎると 1 語だけの短い行が増え、
+        # 高すぎると「Markdown 執筆チュー／トリアル」のような語中折れが残る（epub_h1.png 実測）。
+        WORD_BREAK_MIN_FILL = 0.35
+
+        # 行頭に来てはいけない文字（行頭禁則）。小書き仮名・長音・約物・閉じ括弧。
+        NO_LINE_START = /\A[ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮヵヶーゝゞヽヾ々‐–—、。，．・：；？！゛゜）］｝」』〉》】〕〙〗”’]/
+        # 行末に来てはいけない文字（行末禁則）。開き括弧。
+        NO_LINE_END = /[（［｛「『〈《【〔〘〖“‘]\z/
+
+        def refine_break(head, rest, avail)
+          if (sp = head.rstrip.rindex(' ')) && display_width(head[0...sp]) >= avail * WORD_BREAK_MIN_FILL
+            rest = head[(sp + 1)..].to_s + rest
+            head = head[0...sp]
+          elsif rest.strip.length == 1 && head.strip.length >= 2
+            # 末尾 1 文字の泣き別れ回避（PDF 側の .vs-nobr と同じ意図）
+            rest = head[-1] + rest
+            head = head[0..-2]
+          end
+
+          # 禁則。1 文字ずつ次行へ送る（送りすぎないよう 2 回まで）。
+          2.times do
+            break unless head.strip.length >= 2 && (rest.match?(NO_LINE_START) || head.match?(NO_LINE_END))
+
+            rest = head[-1] + rest
+            head = head[0..-2]
+          end
+
+          # 半角語（英数字の連なり）の途中では折らない。空白を持たない語（ID・API 名など）は
+          # 語の先頭まで戻す（「手動I／D・」のような分断を防ぐ。戻しすぎないよう 8 文字まで）。
+          # 禁則の後に置くのは、禁則の送りが語を割ることがあるため（「・」は行頭禁則なので
+          # 1 文字送られ、その 1 文字が ID の D だった、という並びが実際に起きる）。
+          if head[-1]&.match?(/[0-9A-Za-z]/) && rest[0]&.match?(/[0-9A-Za-z]/)
+            8.times do
+              break unless head.strip.length >= 2 && head[-1]&.match?(/[0-9A-Za-z]/)
+
+              rest = head[-1] + rest
+              head = head[0..-2]
+            end
+          end
+
+          [head.rstrip, rest.lstrip]
         end
 
         # 文字列の表示幅（全角=1.0・半角=0.55 の概算）。

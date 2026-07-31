@@ -63,6 +63,7 @@ module VivlioStarter
             theme_cfg: theme_cfg,
             frontispiece_path: frontispiece_cfg[:path],
             edge_inset_value: frontispiece_cfg[:edge_inset],
+            heading_offset_value: frontispiece_cfg[:heading_offset],
             heading_chars_value: frontispiece_cfg[:heading_chars],
             lead_chars_value: frontispiece_cfg[:lead_chars],
             ornament_path: ornament_cfg[:path],
@@ -83,6 +84,8 @@ module VivlioStarter
             path: path,
             edge_inset: normalize_css_length(cfg&.dig(:edge_inset),
                                              label: 'theme.frontispiece.edge_inset', default: '0mm'),
+            heading_offset: normalize_css_length(cfg&.dig(:heading_offset),
+                                                 label: 'theme.frontispiece.heading_offset'),
             heading_chars: normalize_char_count(cfg&.dig(:heading_chars),
                                                 label: 'theme.frontispiece.heading_chars'),
             lead_chars: normalize_char_count(cfg&.dig(:lead_chars), label: 'theme.frontispiece.lead_chars')
