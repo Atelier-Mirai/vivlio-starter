@@ -4,7 +4,8 @@
 対象: `PLANNED.md` 「ビルド / 出力」— ビルド時間の短縮
 
 関連: `backlink-dedup-pdf-map-spec.md`（Step 8 の再レンダが不可避である根拠）、
-`print-pdf-derivation-spec.md`（qpdf が構造保存型であることの実証）
+`print-pdf-derivation-spec.md`（qpdf が構造保存型であることの実証）、
+`build-target-parallelization-spec.md`（**本仕様を前提工程とする**。§2.1 が並列化の障害を 1 つ取り除く）
 
 ---
 
@@ -114,6 +115,16 @@ techbook 後処理 → pdf/ へのステージングを **Step 9 でまとめて
 すべて `book.yml` 由来で、**総ページ数など「本文を組んだ結果」に依存する値を含まない**
 （`.cache/vs/` の生成物を実見して確認）。したがって本文レンダより前に確定できる。
 
+**この前倒しには副産物がある。** EPUB のスパインは末尾に `./_colophon.html` を含み
+（`entries.epub.js` を実見）、`EpubBuilder.stage_consumer_htmls!` が `html/` から読んで写す。
+一方その `_colophon.html` を `html/` へ**書く**のは今のところ本ステップ（PDF 側）である。
+つまり **EPUB 生成は PDF 側の工程が書いたファイルを読んでいる**。
+
+逐次実行の今は「先に書かれている」だけで済んでいるが、
+`build-target-parallelization-spec.md` が PDF 枝と EPUB 枝を並列に走らせると、
+これは**読み書きの競合**になる。本節の前倒しは、その依存を先に断つことにもなる
+（同仕様 §3.3）。前倒し先は「共通前段」——両枝が分かれる前である。
+
 ### 2.2 本文 entries の末尾に 3 ページを足す
 
 `PdfBuilder.sections_entry_htmls`（`pdf_builder.rb:100`）の戻り値の末尾に
@@ -138,8 +149,10 @@ qpdf _sections_all.pdf --pages . N+3       -- _colophon.pdf
 `/Dests` 抽出（`backlink-dedup-pdf-map-spec.md` §2）をそのまま流用できる——
 `_colophon.html#…` のアンカー ID からページ番号が決定的に引ける。
 
-分割は **1 と 2 の両方の後**に必要である（dedup は再レンダするため）。
-分割処理を 1 箇所にまとめ、両方から呼ぶ。
+**分割は最後のレンダの後 1 回だけでよい。** 1 回目のレンダと dedup の再レンダの間に
+`_sections.pdf` を読む工程は無く、dedup 自身は分割前の PDF から `/Dests` を引くからである。
+dedup が再レンダしたならその後、重複が無くて再レンダしなかったなら 1 回目の後に、
+1 度だけ分割する。
 
 **dedup のページマップ抽出は分割前の PDF から行う**こと。分割後の `_sections.pdf` は
 qpdf を通っており、`/Dests` が保たれる保証を §3.1 で確かめるまでは依存しない。
@@ -245,8 +258,9 @@ C: `:left`/`:right` の数) の順で比較され、名前付きページ（A=1�
 
 `BookSettingsCss::CHAPTER_PAGEBREAK_SELECTORS` は**裸の `body`** を含み、生成 CSS は
 `body, body.toc, body.vs-header-simple h1, .part-title { … }` という形で出る。
-特殊ページ 3 枚はいずれも `book-settings.css` を読んでいる（`_colophon.html` の
-`<link>` を実見して確認）ので、**この裸の `body` は特殊ページにも当たる**。
+特殊ページ 3 枚はいずれも `book-settings.css` を読んでいる（`_titlepage.html` /
+`_legalpage.html` / `_colophon.html` の `<link>` を 3 つとも実見して確認）ので、
+**この裸の `body` は特殊ページにも当たる**。
 
 今は各々が独立ドキュメントの先頭なので `break-before` が無効化され実害が無いが、
 本文スパインに載せると設定値によって挙動が分かれる。
@@ -301,8 +315,22 @@ C: `:left`/`:right` の数) の順で比較され、名前付きページ（A=1�
 | | 現状 | 実装後 |
 |---|---|---|
 | PDF を吐く vivliostyle 起動 | 4 回 | **2 回** |
-| `build front and back matter` | 71.10s | **約 3s**（HTML 生成のみ・レンダ無し） |
-| フルビルド合計（A5・515 ページ） | 553.25s | **約 486s** |
+| `build front and back matter` | 71.10s | **ステップごと消える**（HTML 生成 約 3s は前段へ移り、レンダは本文に相乗り） |
+| 増える処理 | — | qpdf 分割 3 回（1 度だけ・約 1.5s） |
+| フルビルド合計（A5・515 ページ） | 553.25s | **約 487s** |
 
 削減 **約 67 秒（12%）**。ページ数・判型に依存しない固定費の削減なので、
 薄い本ほど相対的な効果は大きくなる。
+
+### 6.1 並列化との合成
+
+`build-target-parallelization-spec.md`（PDF 枝 ∥ EPUB/Kindle 枝・−130.5s）と本仕様は
+独立に効き、しかも本仕様は §2.1 のとおり並列化の障害を 1 つ先に取り除く。
+
+| | 共通前段 | PDF 枝 | EPUB 枝 | 合計 |
+|---|---|---|---|---|
+| 現状 | 16.2s | 406.5s | 130.5s | **553.25s** |
+| 本仕様のみ | 19.2s | 約 337s | 130.5s | **約 487s** |
+| 本仕様＋並列化 | 19.2s | 約 337s | （隠れる） | **約 356s** |
+
+**本仕様 → 並列化の順**で実装するのが素直である。
