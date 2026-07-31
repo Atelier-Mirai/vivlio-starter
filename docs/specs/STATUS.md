@@ -10,11 +10,6 @@
 
 ## 一覧
 
-`build-target-parallelization-spec.md`
-: 共通前段のあと PDF 枝と EPUB/Kindle 枝を並列に走らせる。EPUB 枝 130.5 秒がまるごと PDF 枝 406.5 秒の陰に隠れる（実測 −23.6%）。
-  状態: 仕様（実装待ち）
-  次のアクション: §3.3（`_colophon.html` の読み書き競合）は `front-back-matter-single-render-spec.md` の実装で解消済み。残る §3.1（workspaceDir の分離）と §3.2（カバー生成の共通前段への引き上げ）から着手する
-
 `kindle-rotate-table-image-spec.md`
 : Kindle で回転テーブルが回転せず素の表に戻る（KFX が `transform` / `position: absolute` を解さない）ため、画像へ劣化させて 90 度回転・中央配置で見せる。
   状態: 仕様（実装待ち）
@@ -48,20 +43,23 @@
 
 ## メモ（依存関係・実装順序）
 
-実装待ちの 2 本はビルド高速化で連なっており、**上から順に実装する**のが最短経路。
-前提の 1 本（`front-back-matter-single-render-spec.md`・−71s）は 2026-08-01 に実装済みで
-`docs/archives/` にある。
+ビルド高速化の 2 本（`front-back-matter-single-render-spec.md`・−71s と
+`build-target-parallelization-spec.md`・−176s）は 2026-08-01 に実装済みで
+`docs/archives/` にある。**実装待ちは `kindle-rotate-table-image-spec.md` 1 本**。
 
-1. **`build-target-parallelization-spec.md`**（−130s）
-   前提工程が §3.3 の枝間依存（`_colophon.html` の読み書き競合）を既に解消している。
-   残る関門は §3.1 の `workspaceDir` 分離と §3.2 のカバー生成の引き上げ。
-2. **`kindle-rotate-table-image-spec.md`**
-   実装済み仕様が作った「レンダ済み PDF からアンカー ID のページを引く」入口
-   （`PdfPageMapExtractor#document_first_pages`）と qpdf のページ範囲操作をそのまま使える。
-   1 のあとに入れると、枝間の依存（§7 のラッチ）を最初から並列構造の上に設計できる。
+着手時に効いてくる前提が 3 つある。
 
-**`/Dests` を新しい用途に使うときは注意**——書き出されるのは「リンクの飛び先になっている id」
-だけで、id を持つだけの要素は出てこない（実装済み仕様 §3.4 に実測表）。回転テーブルの
-ラッパ id も、誰からもリンクされないなら同じ落とし穴を踏む。
+1. **アンカー ID からページを引く入口はもう有る**。
+   `PdfPageMapExtractor#document_first_pages` と qpdf のページ範囲操作をそのまま使える。
+2. **`/Dests` に出るのは「リンクの飛び先になっている id」だけ**で、id を持つだけの要素は
+   出てこない（`front-back-matter-single-render-spec.md` §3.4 に実測表）。回転テーブルの
+   ラッパ id も、誰からもリンクされないなら同じ落とし穴を踏む。自己参照する空リンクを
+   埋める先例が `PdfBuilder.inject_matter_anchors!`。
+3. **ビルドは枝が並列に走る**。Kindle 枝から PDF 枝の成果物を読むとラッチが要る。
+   切り出し元は **dedup 前の 1 回目のレンダ**にすること（あちらの §7 に待ち時間の試算）。
+
+**新しく枝をまたぐ処理を書くときは、プロセス全体に効く API を疑うこと。** 並列化では
+`Dir.chdir`（cwd はプロセス共有）とスピナー（`$stdout` へ直書き）を取りこぼしていた
+（`build-target-parallelization-spec.md` §9.2）。`Common::` や `.cache/` の grep では出てこない。
 
 実装済みの内容は `CHANGELOG.md`、実装時に判明した落とし穴は各仕様書（`docs/archives/`）の「実装記録」節を参照してください。
