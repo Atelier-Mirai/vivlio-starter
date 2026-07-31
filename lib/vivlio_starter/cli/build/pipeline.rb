@@ -23,7 +23,16 @@ module VivlioStarter
       # - single mode では Step 6〜12, 14 をスキップし、Step 5 で entries.js + pdf を生成
       # ------------------------------------------------
       class UnifiedBuildPipeline
-        Step = Data.define(:label, :handler)
+        # @!attribute phase [Symbol] 実行相（PHASE_ORDER のいずれか）
+        Step = Data.define(:label, :handler, :phase)
+
+        # 相の実行順（build-target-parallelization-spec.md §1.1）。
+        # :shared = 両ターゲットが読む中間物を作る共通前段
+        # :pdf    = 閲覧用・入稿用 PDF の枝 / :epub = EPUB・Kindle の枝
+        # :join   = 両枝の完了後（ワークスペースの掃除）
+        # :pdf と :epub は互いに独立で、将来ここを並列に走らせる。
+        # :single / :preflight モードは相を持たない（すべて :shared 扱い）。
+        PHASE_ORDER = %i[shared pdf epub join].freeze
 
         attr_reader :timings, :mode, :entries, :generated_pdf_name, :targets
 
@@ -44,18 +53,30 @@ module VivlioStarter
           register_steps
         end
 
-        # 登録済みステップを順に実行し、経過時間を収集する
+        # 登録済みステップを相の順に実行し、経過時間を収集する
         def run
           ensure_entry_files_exist!
           Common.ensure_build_workspace!
           Common.reset_vivliostyle_build_timings
-          @steps.each_with_index do |step, index|
-            execute(step, position: index + 1)
-          end
+          PHASE_ORDER.each { run_phase(it) }
           timings
         end
 
         private
+
+        # 1 相ぶんのステップを順に実行する。
+        def run_phase(phase)
+          phase_steps(phase).each { execute(it, position: step_positions[it.label]) }
+        end
+
+        def phase_steps(phase) = @steps.select { it.phase == phase }
+
+        # ラベル → 通し番号。相で区切っても著者から見れば 1 本のビルドなので、
+        # 進捗表示の「あと何段階か」は相をまたいだ通し番号のままにする。
+        def step_positions
+          @step_positions ||= PHASE_ORDER.flat_map { phase_steps(it) }
+                                         .each_with_index.to_h { |step, i| [step.label, i + 1] }
+        end
 
         attr_reader :command, :options
 
@@ -94,8 +115,8 @@ module VivlioStarter
         # 1 テーブルへ畳んだ（課題 A: 分岐爆発・番号矛盾の解消）。ステップ番号は撤去し、
         # 安定したラベル名をログ・計時・ドキュメントの共通語彙とする。
         def register_full_mode_steps
-          full_mode_step_table.each do |label, handler, enabled|
-            add_step(label, handler) if enabled
+          full_mode_step_table.each do |label, handler, enabled, phase|
+            add_step(label, handler, phase) if enabled
           end
         end
 
@@ -105,9 +126,11 @@ module VivlioStarter
         # プロバイダ能力には依存しない（MIT のみで完結する）。
         def derive_print? = targets.print_pdf && !Common.print_pdf_full_bleed?
 
-        # full mode のステップ表。各行 = [ラベル, ハンドラ, 実行条件]。
+        # full mode のステップ表。各行 = [ラベル, ハンドラ, 実行条件, 相]。
         # 条件はビルド開始時に確定した targets から評価した真偽値（ビルド中は不変）。
         # 分岐はこの条件列に吸収され、経路の組み合わせは表を上から評価するだけで一意に定まる。
+        # 相は :shared → (:pdf ∥ :epub) → :join の順に評価される
+        # （build-target-parallelization-spec.md §1.1・§2）。
         def full_mode_step_table
           t = targets
           derive_print = derive_print?
@@ -115,48 +138,58 @@ module VivlioStarter
           # 本文・前付・奥付の閲覧用 PDF を作る。最終成果物（merge 以降）は従来どおり t.pdf 次第。
           need_viewing_pdf = t.pdf || derive_print
           [
-            # --- 共通prep（HTML 生成まで・無条件） ---
-            ['clean',                     -> { run_step0_clean },                                     true],
-            ['optimize images',           -> { run_step1_optimize_images },                           true],
-            ['prepare theme images',      -> { Build::ImageOptimizer.prepare_theme_images! },         true],
-            ['prepare cover assets',      -> { run_prepare_cover_assets },              cover_assets_needed?],
-            ['preprocess sections',       -> { Build::SectionBuilder.preprocess_sections!(entries) }, true],
-            ['index scan and build',      -> { run_step4_index_processing },                          true],
-            ['convert sections html',     -> { Build::SectionBuilder.convert_sections_html!(entries) }, true],
-            ['generate part title pages', -> { Build::PartTitleGenerator.generate_all! },             true],
+            # --- :shared 共通前段（HTML と共有資産を作る・両枝が読む） ---
+            ['clean',                     -> { run_step0_clean },                             true, :shared],
+            ['optimize images',           -> { run_step1_optimize_images },                   true, :shared],
+            ['prepare theme images',      -> { Build::ImageOptimizer.prepare_theme_images! }, true, :shared],
+            # カバー資産は両枝が同じファイルを読む。分岐前に 1 回だけ作る（§3.2）。
+            ['prepare cover assets',      -> { run_prepare_cover_assets },      cover_assets_needed?, :shared],
+            ['preprocess sections',       -> { Build::SectionBuilder.preprocess_sections!(entries) }, true, :shared],
+            ['index scan and build',      -> { run_step4_index_processing },                  true, :shared],
+            ['convert sections html',     -> { Build::SectionBuilder.convert_sections_html!(entries) }, true, :shared],
+            ['generate part title pages', -> { Build::PartTitleGenerator.generate_all! },     true, :shared],
             # 前付・奥付の HTML は本文レンダへ相乗りさせるため、techbook 後処理より前に置く。
             # ここで作れば html/ の一括後処理が拾い、個別再適用が要らなくなる
-            # （front-back-matter-single-render-spec.md §2.1）。
-            ['generate front and back matter html', -> { Build::PdfBuilder.generate_front_and_back_matter_html! }, true],
-            ['techbook post-process',     -> { run_techbook_post_process },                           true],
-            ['generate toc html',         -> { Build::TocGenerator.generate_toc_html!(Common::BUILD_HTML_DIR, entries) }, true],
-            # --- toc 後: ターゲット依存（分岐は条件列に吸収） ---
+            # （front-back-matter-single-render-spec.md §2.1）。EPUB のスパイン末尾も
+            # _colophon.html を読むので、生成が :shared にあることが枝の独立を支えている（§3.3）。
+            ['generate front and back matter html',
+             -> { Build::PdfBuilder.generate_front_and_back_matter_html! },                   true, :shared],
+            ['techbook post-process',     -> { run_techbook_post_process },                   true, :shared],
+            ['generate toc html',
+             -> { Build::TocGenerator.generate_toc_html!(Common::BUILD_HTML_DIR, entries) },  true, :shared],
+            # --- :pdf 枝（臨界経路。書き換えはワークスペース pdf/ に閉じる） ---
             # 閲覧用 PDF は本文全体を、入稿用のみ経路は entries/config だけを生成する。
             # いずれも html/ → pdf/ のステージングを内包する（P4 §3.4-2）。
-            ['build overall pdf',   -> { Build::PdfBuilder.build_overall_pdf_from_dir!(entries) }, need_viewing_pdf],
+            ['build overall pdf', -> { Build::PdfBuilder.build_overall_pdf_from_dir!(entries) },
+             need_viewing_pdf, :pdf],
             ['generate entries.js', -> { Build::PdfBuilder.generate_entries_for_sections!(entries) },
-             !t.pdf && t.print_pdf && !derive_print],
+             !t.pdf && t.print_pdf && !derive_print, :pdf],
             # dedup の破壊的書換は pdf/ 配下のコピーに閉じるため、EPUB 隔離のための
             # 「dedup 前スナップショット」ステップは不要になった（P4 §3.4-3。
             # EPUB/Kindle は html/ のクリーンな原本から直接展開する）。
-            ['backlink dedup',      -> { Build::BacklinkDedupOrchestrator.run!(entries, rebuild_pdf: need_viewing_pdf) },
-             t.any_pdf?],
+            ['backlink dedup', -> { Build::BacklinkDedupOrchestrator.run!(entries, rebuild_pdf: need_viewing_pdf) },
+             t.any_pdf?, :pdf],
             # 前付・奥付。HTML は共通前段で作り済みなので、ここは相乗りできなかった
             # ときのフォールバックレンダだけを持つ。生成するのは扉・権利ページ（前付）と
             # 奥付（後付）。旧称の "tail" は奥付を指す曖昧語だったため、出版用語に合わせた
-            ['build front and back matter', -> { run_step9_front_pages_and_tail },  need_viewing_pdf],
-            ['merge all pdfs',             -> { Build::PdfMerger.merge_all_pdfs!(entries) },        t.pdf],
-            ['apply outline to output pdf', -> { Build::PdfMerger.add_outline_to_output_pdf!(entries) }, t.pdf],
-            # --- 終端: リネーム／入稿用／EPUB／クリーンアップ ---
-            # 閲覧用 PDF 単独はリネーム＋圧縮＋クリーンを一括。他ターゲット併存時はリネームのみで
-            # クリーンを最後へ延期（HTML を後段の入稿用・EPUB が再利用するため）。
-            ['compress, rename and final clean', -> { run_step12_rename_and_clean }, t.pdf && !t.print_pdf && !t.epub_or_kindle?],
-            # 実処理は圧縮（設定次第）＋リネーム。'rename' だけでは圧縮が隠れるため明示する
-            ['compress and rename', -> { run_step12_rename_only }, t.pdf && (t.print_pdf || t.epub_or_kindle?)],
-            ['print pdf',    -> { Build::PrintPdfBuilder.new(entries, derive: derive_print).build! }, t.print_pdf],
-            ['generate epub', -> { epub_flow.run! },        t.epub_or_kindle?],
-            # 閲覧用 PDF 単独以外は、末尾で明示的にクリーンアップする。
-            ['final clean',  -> { run_final_clean },        t.print_pdf || t.epub_or_kindle? || !t.pdf]
+            ['build front and back matter', -> { run_step9_front_pages_and_tail }, need_viewing_pdf, :pdf],
+            ['merge all pdfs', -> { Build::PdfMerger.merge_all_pdfs!(entries) },            t.pdf, :pdf],
+            ['apply outline to output pdf', -> { Build::PdfMerger.add_outline_to_output_pdf!(entries) },
+             t.pdf, :pdf],
+            # 閲覧用 PDF 単独はリネーム＋圧縮＋クリーンを一括。この行が立つのは他ターゲットが
+            # 無いときだけなので、掃除を :pdf 相に含めても EPUB 枝と競合しない。
+            ['compress, rename and final clean', -> { run_step12_rename_and_clean },
+             t.pdf && !t.print_pdf && !t.epub_or_kindle?, :pdf],
+            # 実処理は圧縮（設定次第）＋リネーム。'rename' だけでは圧縮が隠れるため明示する。
+            # 他ターゲット併存時はクリーンを :join へ延期する（HTML を EPUB 枝が読むため）。
+            ['compress and rename', -> { run_step12_rename_only },
+             t.pdf && (t.print_pdf || t.epub_or_kindle?), :pdf],
+            ['print pdf', -> { Build::PrintPdfBuilder.new(entries, derive: derive_print).build! },
+             t.print_pdf, :pdf],
+            # --- :epub 枝（EPUB → Kindle。枝の中は逐次） ---
+            ['generate epub', -> { epub_flow.run! }, t.epub_or_kindle?, :epub],
+            # --- :join 合流（ワークスペースを消すので両枝の完了後） ---
+            ['final clean', -> { run_final_clean }, t.print_pdf || t.epub_or_kindle? || !t.pdf, :join]
           ]
         end
 
@@ -194,9 +227,10 @@ module VivlioStarter
           Common.log_info('単章ビルドは閲覧用 PDF のみ生成します（print_pdf / EPUB / Kindle は全章 `vs build` で生成してください）')
         end
 
-        # ステップを記録して順次処理できるようにする
-        def add_step(label, handler)
-          @steps << Step.new(label, handler)
+        # ステップを記録して順次処理できるようにする。
+        # 相の既定は :shared（:single / :preflight モードは相を持たない）。
+        def add_step(label, handler, phase = :shared)
+          @steps << Step.new(label, handler, phase)
         end
 
         # 指定ステップを実行し、前後でタイマーを計測する

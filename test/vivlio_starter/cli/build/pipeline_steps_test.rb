@@ -137,6 +137,58 @@ module VivlioStarter
         assert_equal PREFLIGHT_MODE, op_keys(pipeline)
       end
 
+      # 相の割り当て（build-target-parallelization-spec.md §2）。
+      #
+      # **`:pdf` 相に `html/` へ書くステップを入れてはならない**——EPUB 枝は
+      # `html/` のクリーンな原本を読んで消費者 dir へステージするため、書き換えが
+      # 走ると読んでいる最中に足元が変わる。前付・奥付の HTML 生成を `:shared` へ
+      # 前倒ししてこの依存は消えており（§3.3）、本スナップショットがその状態を固定する。
+      PHASE_OF = {
+        'clean' => :shared, 'optimize images' => :shared, 'prepare theme images' => :shared,
+        'prepare cover assets' => :shared, 'preprocess sections' => :shared,
+        'index scan and build' => :shared, 'convert sections html' => :shared,
+        'generate part title pages' => :shared, 'generate front and back matter html' => :shared,
+        'techbook post-process' => :shared, 'generate toc html' => :shared,
+        'build overall pdf' => :pdf, 'generate entries.js' => :pdf, 'backlink dedup' => :pdf,
+        'build front and back matter' => :pdf, 'merge all pdfs' => :pdf,
+        'apply outline to output pdf' => :pdf, 'compress, rename and final clean' => :pdf,
+        'compress and rename' => :pdf, 'print pdf' => :pdf,
+        'generate epub' => :epub,
+        'final clean' => :join
+      }.freeze
+
+      # 全ターゲット構成で、登録されたステップが想定どおりの相を名乗る。
+      def test_every_full_mode_step_declares_the_expected_phase
+        FULL_MODE_CASES.each_key do |targets_list|
+          pipeline = build_pipeline(mode: :full, targets: targets_from(targets_list))
+          steps(pipeline).each do |step|
+            assert_includes BuildCommands::UnifiedBuildPipeline::PHASE_ORDER, step.phase,
+                            "#{step.label} が未知の相 #{step.phase.inspect} を名乗っています"
+            assert_equal PHASE_OF.fetch(step.label), step.phase,
+                         "targets=#{targets_list.inspect} の #{step.label} の相が想定と違います"
+          end
+        end
+      end
+
+      # 相の順に並べ替えても、ステップの実行順は表の並びから動かない
+      # （＝逐次実行の等価性。並列化はこの上に載せる）。
+      def test_phase_order_preserves_the_sequential_execution_order
+        pipeline = build_pipeline(mode: :full, targets: targets_from(%w[pdf print_pdf epub kindle]))
+        by_phase = BuildCommands::UnifiedBuildPipeline::PHASE_ORDER
+                   .flat_map { |phase| steps(pipeline).select { |s| s.phase == phase } }
+
+        assert_equal steps(pipeline).map(&:label), by_phase.map(&:label)
+      end
+
+      # :single / :preflight は相を持たない（すべて :shared 扱い）。
+      def test_single_and_preflight_modes_stay_in_the_shared_phase
+        %i[single preflight].each do |mode|
+          pipeline = build_pipeline(mode:, targets: targets_from(%w[pdf]))
+          assert_equal [:shared], steps(pipeline).map(&:phase).uniq,
+                       "#{mode} モードのステップは全て :shared であるべき"
+        end
+      end
+
       # カバーを綴じも埋めもしない構成では、生成ステップごと落ちる（§3.2）。
       # 共通前段へ引き上げたぶん「誰も読まないのに毎ビルド magick を回す」ことが
       # ないよう、従来の各枝の実行条件をそのまま合成した条件を持たせている。
@@ -156,9 +208,11 @@ module VivlioStarter
 
       private
 
+      def steps(pipeline) = pipeline.instance_variable_get(:@steps)
+
       # ステップラベルを操作キー（番号を除いた括弧内説明、または番号なしラベルそのもの）へ正規化する。
       def op_keys(pipeline)
-        pipeline.instance_variable_get(:@steps).map do |step|
+        steps(pipeline).map do |step|
           m = step.label.match(/\AStep\s+\S+\s+\((.+)\)\z/)
           m ? m[1] : step.label
         end
