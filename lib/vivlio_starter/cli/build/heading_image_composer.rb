@@ -62,7 +62,8 @@ module VivlioStarter
         # v2: 上下分割（62% 帯＋裾飾り）を廃止し、リード文まで焼き込む縦長ファクシミリ 1 枚へ。
         # v3: 寸法を book.yml の文字数指定（heading_chars / lead_chars / ornament.heading_chars）から
         #     導き、節絵を左右並びのコンパクト帯へ（heading-metrics-spec §5-2・§5-3）。
-        LAYOUT_VERSION = 3
+        # v4: リード列の左寄せ（右下飾り回避）を廃し、左右中央へ。
+        LAYOUT_VERSION = 4
 
         # 文字数指定の既定。theme.css の既定と BookSettingsCss::DEFAULT_*_CHARS に一致させる
         # （EpubBuilder が book.yml の値を渡すので、ここが使われるのは直接呼び出し時だけ）。
@@ -200,9 +201,11 @@ module VivlioStarter
           font_size, lines = lead_layout(width, height, lead, lead_ratio, lead_chars, first_y)
           halo      = [(font_size * 0.14).round, 1].max
           step      = (font_size * LEAD_LINE_HEIGHT).round
-          # リード列は中央ではなく左寄りに置く。飾りは右下にあるため、中央だと
-          # 行末が飾りへ重なる（epub_h1.png 実測）。余白の 35% を左に配分する。
-          left_x    = (width * (1.0 - lead_ratio) * 0.45).round
+          # リード列は左右中央に置く。以前は右下の飾りを避けて左寄せ（余白の 45%）にして
+          # いたが、扉を上部起点へ改めた（FRONTISPIECE_TOP_RATIO）ことでリードが飾りの高さ
+          # まで下りてこなくなり、避ける必要が無くなった。左寄せのままだと右に 3 字ぶんの
+          # 余白が残り、PDF の章扉（margin-inline: auto で中央）と揃わない（epub_h1_justify.png）。
+          left_x    = (width * (1.0 - lead_ratio) * 0.5).round
 
           tspans = lines.each_with_index.map do |line, i|
             %(<tspan x="#{left_x}" y="#{first_y + (i * step)}">#{escape_text(line)}</tspan>)
