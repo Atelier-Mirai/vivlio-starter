@@ -31,11 +31,12 @@ module VivlioStarter
 
         # EPUB / Kindle 生成のメインフロー。
         # 各フレーバは独立した消費者 dir でビルドされるため相互汚染は構造的に起こらない。
+        #
+        # 表紙画像はここでは作らない。PDF 枝と同じ `.cache/vs/covers/` へ書くため、
+        # 枝を並列に走らせると衝突する——生成は共通前段の `prepare cover assets` が
+        # 1 回だけ行う（build-target-parallelization-spec.md §3.2）。
         def run!
           Common.log_action('[generate epub] EPUB を生成します…')
-
-          # --- Phase: EPUB 用カバー画像生成 ---
-          generate_cover_if_needed
 
           build_flavor(:epub) if targets.epub
           build_flavor(:kindle) if targets.kindle
@@ -98,29 +99,6 @@ module VivlioStarter
           converted = Build::EpubBuilder.convert_epub_to_kpf!(kindle_epub, kpf_name)
           # 成功時のみ中間 EPUB を片付ける。--no-clean では検証用に残す（§1-4）。
           FileUtils.rm_f(kindle_epub) if converted && options[:clean] != false && File.exist?(kindle_epub)
-        end
-
-        # EPUB 用カバー画像を生成（cover_{theme}.jpg が未生成の場合のみ）
-        def generate_cover_if_needed
-          unless Common.validate_cover_settings
-            Common.log_warn('[EPUB] カバー設定が無効なためカバー生成をスキップします')
-            return
-          end
-
-          unless Common.epub_embed?
-            Common.log_info('[EPUB] カバー埋め込みが無効なためスキップします')
-            return
-          end
-
-          cover_path = Build::EpubBuilder.resolve_cover_image_path
-
-          if cover_path && File.exist?(cover_path)
-            Common.log_info("[EPUB] カバー画像は既に存在します: #{cover_path}")
-            return
-          end
-
-          Common.log_action('[EPUB] カバー画像を生成しています…')
-          CoverCommands.ensure_cover_files_for_build!
         end
       end
     end

@@ -119,6 +119,7 @@ module VivlioStarter
             ['clean',                     -> { run_step0_clean },                                     true],
             ['optimize images',           -> { run_step1_optimize_images },                           true],
             ['prepare theme images',      -> { Build::ImageOptimizer.prepare_theme_images! },         true],
+            ['prepare cover assets',      -> { run_prepare_cover_assets },              cover_assets_needed?],
             ['preprocess sections',       -> { Build::SectionBuilder.preprocess_sections!(entries) }, true],
             ['index scan and build',      -> { run_step4_index_processing },                          true],
             ['convert sections html',     -> { Build::SectionBuilder.convert_sections_html!(entries) }, true],
@@ -246,6 +247,31 @@ module VivlioStarter
           end
           preset = %i[high low].find { |k| options[k] } || :medium
           Build::ImageOptimizer.optimize_images!(preset)
+        end
+
+        # カバー資産（表紙 PDF・表紙 JPG）を分岐前に 1 回だけ作る。
+        #
+        # かつては PDF 枝（PdfMerger）・入稿用（PrintPdfBuilder）・EPUB 枝（EpubFlow）が
+        # それぞれ同じ CoverCommands.ensure_cover_files_for_build! を呼び、先に走ったほうが
+        # 作って後続は素通りする——という順序頼みの暗黙の調停になっていた。枝を並列に
+        # 走らせると同じパスへ 2 つの magick が同時に書き、半端なファイルを他方が読む窓が
+        # 開く（build-target-parallelization-spec.md §3.2）。
+        #
+        # カバー生成は本文レンダに一切依存しないので、共通前段へ引き上げれば競合は消える。
+        def run_prepare_cover_assets
+          Common.log_action('[prepare cover assets] カバー画像を生成します…')
+          CoverCommands.ensure_cover_files_for_build!
+          Common.log_info('[prepare cover assets] カバー画像の生成を完了しました')
+        rescue StandardError => e
+          Common.log_warn("[prepare cover assets] カバー生成中にエラー: #{e.message}")
+        end
+
+        # カバー資産を読む枝があるか（従来の各枝の実行条件をそのまま合成したもの）。
+        # 閲覧用 PDF は結合が有効なときだけ表紙 PDF を綴じ、EPUB/Kindle は cover.embed が
+        # 真のときだけ表紙 JPG を埋める。どちらも使わない構成では作らない。
+        def cover_assets_needed?
+          (targets.pdf && Common.pdf_combined?) || targets.print_pdf ||
+            (targets.epub_or_kindle? && Common.epub_embed?)
         end
 
         # single mode: 対象章のみ HTML をビルド

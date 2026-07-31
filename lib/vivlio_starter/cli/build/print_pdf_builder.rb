@@ -50,8 +50,9 @@ module VivlioStarter
         def build!
           Common.log_action('[print pdf] 入稿用 PDF を生成します…')
 
-          # --- Phase: カバー画像の生成（本文と別ファイルで入稿・経路によらず共通） ---
-          CoverCommands.ensure_cover_files_for_build!
+          # カバー画像（本文と別ファイルで入稿）は共通前段の `prepare cover assets` が
+          # 作り済み。閲覧用 PDF の結合と同じ資産を読むため、生成はそちらに一本化した
+          #（build-target-parallelization-spec.md §3.2）。
 
           # --- Phase: 本文の用意（導出 or 個別レンダリング） ---
           derived = build_by_derivation!

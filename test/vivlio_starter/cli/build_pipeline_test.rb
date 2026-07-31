@@ -57,6 +57,7 @@ module VivlioStarter
           [pipeline, :run_step0_clean, -> { order << 'step0' }],
           [pipeline, :run_step1_optimize_images, -> { order << 'step1' }],
           [Build::ImageOptimizer, :prepare_theme_images!, -> { order << 'step2' }],
+          [pipeline, :run_prepare_cover_assets, -> { order << 'step2b' }],
           [Build::SectionBuilder, :preprocess_sections!, lambda { |entries|
             test_case.assert_equal [], entries
             order << 'step3'
@@ -96,8 +97,9 @@ module VivlioStarter
           pipeline.run
         end
 
-        # 期待する実行順を明示（Step 0, 1, 2, 3, 4, 5, 5b, 6, 7, 8, 9, 10, 11, 12）
-        expected_order = %w[step0 step1 step2 step3 step4 step5 step5b step6 step7 step8 step9 step10 step11 step12]
+        # 期待する実行順を明示（Step 0, 1, 2, 2b, 3, 4, 5, 5b, 6, 7, 8, 9, 10, 11, 12）
+        expected_order = %w[step0 step1 step2 step2b step3 step4 step5 step5b step6 step7 step8 step9 step10 step11
+                            step12]
         assert_equal expected_order, order
       end
 
@@ -112,6 +114,7 @@ module VivlioStarter
           'clean',
           'optimize images',
           'prepare theme images',
+          'prepare cover assets',
           'preprocess sections',
           'index scan and build',
           'convert sections html',
@@ -153,7 +156,11 @@ module VivlioStarter
         command = Struct.new(:options).new(options)
         # book.yml の targets 設定に依存しないよう pdf 専用モードを強制する
         klass = BuildCommands::UnifiedBuildPipeline
-        klass.new(command, entries: [], mode: :full, targets: pdf_only_targets)
+        # カバー資産ステップの有無も book.yml（output.pdf.combined）で揺れるため、
+        # 出荷時の既定「表紙を結合する」に固定する
+        Common.stub :pdf_combined?, true do
+          klass.new(command, entries: [], mode: :full, targets: pdf_only_targets)
+        end
       end
 
       def default_options
@@ -172,6 +179,7 @@ module VivlioStarter
         # インスタンスメソッドのスタブ
         pipeline.define_singleton_method(:run_step0_clean) {}
         pipeline.define_singleton_method(:run_step1_optimize_images) {}
+        pipeline.define_singleton_method(:run_prepare_cover_assets) {}
         pipeline.define_singleton_method(:run_step4_index_processing) {}
         pipeline.define_singleton_method(:run_step9_front_pages_and_tail) {}
         pipeline.define_singleton_method(:run_step12_rename_and_clean) {}
@@ -517,9 +525,11 @@ module VivlioStarter
 
         with_build_stubs { pipeline.run }
 
-        # full mode（pdf専用）は 16 ステップ。前付・奥付の HTML 生成を共通前段へ
-        # 前倒ししたぶん 1 つ増えている（front-back-matter-single-render-spec.md §2.1）。
-        assert_equal 16, pipeline.timings.length, 'full mode は 16 ステップを記録するべき'
+        # full mode（pdf専用）は 17 ステップ。前付・奥付の HTML 生成
+        # （front-back-matter-single-render-spec.md §2.1）とカバー資産の生成
+        # （build-target-parallelization-spec.md §3.2）を共通前段へ前倒ししたぶん、
+        # 元の 15 から 2 つ増えている。
+        assert_equal 17, pipeline.timings.length, 'full mode は 17 ステップを記録するべき'
       end
 
       private
@@ -529,7 +539,11 @@ module VivlioStarter
         command = Struct.new(:options).new(options)
         # book.yml の targets 設定に依存しないよう pdf 専用モードを強制する
         klass = BuildCommands::UnifiedBuildPipeline
-        klass.new(command, entries: [], mode: :full, targets: pdf_only_targets)
+        # カバー資産ステップの有無も book.yml（output.pdf.combined）で揺れるため、
+        # 出荷時の既定「表紙を結合する」に固定する
+        Common.stub :pdf_combined?, true do
+          klass.new(command, entries: [], mode: :full, targets: pdf_only_targets)
+        end
       end
 
       def build_single_pipeline(targets)
@@ -559,6 +573,7 @@ module VivlioStarter
       def stub_pipeline_steps(pipeline)
         pipeline.define_singleton_method(:run_step0_clean) {}
         pipeline.define_singleton_method(:run_step1_optimize_images) {}
+        pipeline.define_singleton_method(:run_prepare_cover_assets) {}
         pipeline.define_singleton_method(:run_step4_index_processing) {}
         pipeline.define_singleton_method(:run_step9_front_pages_and_tail) {}
         pipeline.define_singleton_method(:run_step12_rename_and_clean) {}

@@ -42,9 +42,10 @@ module VivlioStarter
           begin
             page_use = resolve_page_use(cfg.page)
 
-            ensure_cover_assets_for_page_size!(page_use)
-
-            # テーマに応じたカバーを生成
+            # カバー資産は共通前段の `prepare cover assets` が作り済み。ここでは並べるだけ。
+            # かつては本メソッドが生成も担っていたが、EPUB 枝・入稿用も同じ関数を呼んで
+            # おり、枝を並列に走らせると同じパスへ同時に書く
+            #（build-target-parallelization-spec.md §3.2）。
             theme = Common.cover_theme
             size = extract_size_from_preset(page_use)
 
@@ -134,27 +135,7 @@ module VivlioStarter
         end
 
         # ================================================================
-        # 3. カバー自動生成ロジック
-        # ================================================================
-        def ensure_cover_assets_for_page_size!(page_use)
-          size = CoverCommands.detect_page_size(page_use)
-          return if cover_generation_attempts[size]
-
-          cover_generation_attempts[size] = true
-          Common.log_action('[Step 10] カバー画像を自動生成します…')
-
-          CoverCommands.ensure_cover_files_for_build!
-          Common.log_info('[Step 10] カバー画像の生成を完了しました')
-        rescue StandardError => e
-          Common.log_warn("[Step 10] カバー生成中にエラー: #{e.message}")
-        end
-
-        def cover_generation_attempts
-          @cover_generation_attempts ||= {}
-        end
-
-        # ================================================================
-        # 4. PDF 結合実行 (Step 10)
+        # 3. PDF 結合実行 (Step 10)
         # ================================================================
         def merge_all_pdfs!(_entries_or_keep = nil)
           Common.log_action('[Step 10] 表紙、本文、奥付を結合します…')

@@ -26,10 +26,13 @@ module VivlioStarter
       # HTML 生成までの共通前処理（全ターゲットで不変）。
       # 前付・奥付の HTML は本文レンダへ相乗りさせるため、techbook 後処理より前に作る
       # （front-back-matter-single-render-spec.md §2.1）。
+      # カバー資産は PDF 枝と EPUB 枝が同じファイルを読むため、分岐前に 1 回だけ作る
+      # （build-target-parallelization-spec.md §3.2）。
       PREFIX = [
-        'clean', 'optimize images', 'prepare theme images', 'preprocess sections',
-        'index scan and build', 'convert sections html', 'generate part title pages',
-        'generate front and back matter html', 'techbook post-process', 'generate toc html'
+        'clean', 'optimize images', 'prepare theme images', 'prepare cover assets',
+        'preprocess sections', 'index scan and build', 'convert sections html',
+        'generate part title pages', 'generate front and back matter html',
+        'techbook post-process', 'generate toc html'
       ].freeze
 
       # toc 生成後のターゲット依存テール（pre-P2 実装から採取）。
@@ -134,6 +137,23 @@ module VivlioStarter
         assert_equal PREFLIGHT_MODE, op_keys(pipeline)
       end
 
+      # カバーを綴じも埋めもしない構成では、生成ステップごと落ちる（§3.2）。
+      # 共通前段へ引き上げたぶん「誰も読まないのに毎ビルド magick を回す」ことが
+      # ないよう、従来の各枝の実行条件をそのまま合成した条件を持たせている。
+      def test_cover_assets_step_is_skipped_when_no_branch_consumes_covers
+        options = { clean: true, resize: true, compress: true, high: false, low: false }
+        command = Struct.new(:options).new(options)
+        pipeline = Common.stub :pdf_combined?, false do
+          Common.stub :epub_embed?, false do
+            BuildCommands::UnifiedBuildPipeline.new(command, entries: [], mode: :full,
+                                                             targets: targets_from(%w[pdf epub]))
+          end
+        end
+
+        refute_includes op_keys(pipeline), 'prepare cover assets',
+                        '表紙を結合も埋め込みもしない構成でカバーを生成すべきではない'
+      end
+
       private
 
       # ステップラベルを操作キー（番号を除いた括弧内説明、または番号なしラベルそのもの）へ正規化する。
@@ -153,10 +173,18 @@ module VivlioStarter
         )
       end
 
+      # カバー資産ステップの有無は book.yml（output.pdf.combined / output.epub.embed）に
+      # 依存する。ステップ列のスナップショットを設定で揺らさないよう、ここでは出荷時の
+      # 既定「どちらの枝もカバーを使う」に固定する。使わない構成で落ちることは
+      # test_cover_assets_step_is_skipped_when_no_branch_consumes_covers が押さえる。
       def build_pipeline(mode:, targets:)
         options = { clean: true, resize: true, compress: true, high: false, low: false }
         command = Struct.new(:options).new(options)
-        BuildCommands::UnifiedBuildPipeline.new(command, entries: [], mode:, targets:)
+        Common.stub :pdf_combined?, true do
+          Common.stub :epub_embed?, true do
+            BuildCommands::UnifiedBuildPipeline.new(command, entries: [], mode:, targets:)
+          end
+        end
       end
     end
   end
