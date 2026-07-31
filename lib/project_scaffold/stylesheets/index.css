@@ -52,8 +52,12 @@ body.vs-kindle .index h1 {
 /* ----------------------------------------------------------------
  * 五十音セクション
  * ---------------------------------------------------------------- */
+/* 五十音の行はページや段を跨いで構わない——「あ行」の見出しは区切りを示すだけで、
+   改ページを意味しない。かつて break-inside: avoid（＋ avoid-column）を掛けていたが、
+   1 行ぶんの項目は段の高さを容易に超えるため、収まらない節が丸ごと次へ押し出され、
+   段が尽きれば次ページ送りになっていた（実測: 索引 8 ページ中、最終段の 6 割が空く
+   ページが 4 枚）。節を流し込み、見出しの孤立だけ break-after: avoid で防ぐ。 */
 .index-section {
-  break-inside: avoid-column;
   margin-bottom: 1.5em;
 }
 
@@ -65,6 +69,9 @@ body.vs-kindle .index h1 {
   padding-bottom: 0.25em;
   margin-bottom: 0.5em;
   margin-top: 0;
+  /* 行見出しだけが段末に取り残されないようにする */
+  break-after: avoid;
+  page-break-after: avoid; /* Kindle KFX 向け legacy 併記 */
 }
 
 /* ----------------------------------------------------------------
@@ -139,22 +146,17 @@ dfn.index-term {
 /* ----------------------------------------------------------------
  * 印刷用調整
  * ---------------------------------------------------------------- */
-@media print {
-  .index {
-    columns: 2;
-  }
-  
-  .index-section {
-    break-inside: avoid;
-  }
-  
-  .index-list dt {
-    break-after: avoid;
-  }
-  
-  .index-list dd {
-    break-before: avoid;
-  }
+/* 見出し語（dt）とページ番号（dd）は必ず同じ段・同じページに置く。
+   @media print の中にあると EPUB / Kindle へ届かないため外へ出した。
+   .index-section の break-inside: avoid はここにもあったが、上記の理由で撤去した。 */
+.index-list dt {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+.index-list dd {
+  break-before: avoid;
+  page-break-before: avoid;
 }
 
 /* ----------------------------------------------------------------

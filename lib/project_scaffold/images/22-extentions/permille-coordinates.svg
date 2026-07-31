@@ -1,0 +1,67 @@
+<svg width="100%" viewBox="128 22 518 318" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>パーミル（千分率）座標系の模式図</title>
+<desc>画像の左上を (0, 0)、右下を (1000, 1000) とする千分率の座標系。横方向は幅の千分率、縦方向は高さの千分率で、値は右へ・下へ増える。例として rect:1 530, 335, 175, 165 が描く枠を重ねてあり、起点が (530, 335)、幅 175・高さ 165 も同じ千分率であることを示している。</desc>
+<defs>
+  <marker id="pc-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+  <marker id="pc-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+    <path d="M3 2L9 5L3 8" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+  <style>
+    .frame   { fill: #F4F6F8; stroke: #4A4A4A; stroke-width: 1.2; }
+    .corner  { fill: #0F6E56; }
+    .coord   { font-family: sans-serif; font-size: 13px; font-weight: 600; fill: #1a1a1a; }
+    .axis    { stroke: #0F6E56; stroke-width: 1.5; fill: none; }
+    .axis-th { font-family: sans-serif; font-size: 13px; fill: #0F6E56; }
+    .lead    { stroke: #993C1D; stroke-width: 1; fill: none; stroke-dasharray: 4 3; }
+    .spot    { fill: #993C1D; }
+    .spot-th { font-family: sans-serif; font-size: 12px; font-weight: 600; fill: #993C1D; }
+    .spot-bx { fill: #993C1D; fill-opacity: 0.10; stroke: #993C1D; stroke-width: 1.4; }
+    .dim     { stroke: #993C1D; stroke-width: 1; fill: none; }
+    .dim-th  { font-family: sans-serif; font-size: 11px; fill: #993C1D; }
+    .subject { font-family: sans-serif; font-size: 20px; fill: #9AA0A6; }
+  </style>
+</defs>
+
+<!-- 画像そのもの -->
+<rect x="240" y="104" width="300" height="200" class="frame"/>
+<text class="subject" x="390" y="255" text-anchor="middle" dominant-baseline="central">画像</text>
+
+<!-- 横方向（X）＝ 幅の千分率 -->
+<line class="axis" x1="240" y1="64" x2="540" y2="64" marker-end="url(#pc-arrow)"/>
+<text class="axis-th" x="390" y="42" text-anchor="middle" dominant-baseline="central">横＝幅の千分率</text>
+
+<!-- 縦方向（Y）＝ 高さの千分率。日本語なので字を寝かせず縦組みに積む。
+     ただし ＝ だけは縦組みの作法どおり 90 度回して縦二本線にする（横線二本のままだと区切り線に見えるため）。 -->
+<line class="axis" x1="170" y1="104" x2="170" y2="304" marker-end="url(#pc-arrow)"/>
+<text class="axis-th" x="150" y="145" text-anchor="middle">縦</text>
+<text class="axis-th" x="150" y="158" text-anchor="middle" dominant-baseline="central" transform="rotate(90 150 158)">＝</text>
+<text class="axis-th" x="150" y="179" text-anchor="middle">高<tspan x="150" dy="17">さ</tspan><tspan x="150" dy="17">の</tspan><tspan x="150" dy="17">千</tspan><tspan x="150" dy="17">分</tspan><tspan x="150" dy="17">率</tspan></text>
+
+<!-- 例: rect:1 530, 335, 175, 165 が描く枠。
+     起点 (530, 335) は画像左上からの千分率、幅 175・高さ 165 も画像の幅・高さに対する千分率。
+     枠の寸法は 175/1000 × 300 = 52.5、165/1000 × 200 = 33。 -->
+<line class="lead" x1="240" y1="171" x2="399" y2="171"/>
+<line class="lead" x1="399" y1="104" x2="399" y2="171"/>
+<rect class="spot-bx" x="399" y="171" width="52.5" height="33"/>
+<circle class="spot" cx="399" cy="171" r="4"/>
+<text class="spot-th" x="391" y="159" text-anchor="end" dominant-baseline="central">(530, 335)</text>
+
+<!-- 枠の寸法 -->
+<line class="dim" x1="399"   y1="211" x2="451.5" y2="211" marker-start="url(#pc-dim)" marker-end="url(#pc-dim)"/>
+<text class="dim-th" x="425" y="225" text-anchor="middle" dominant-baseline="central">幅 175</text>
+<line class="dim" x1="459" y1="171" x2="459" y2="204" marker-start="url(#pc-dim)" marker-end="url(#pc-dim)"/>
+<text class="dim-th" x="467" y="187.5" text-anchor="start" dominant-baseline="central">高さ 165</text>
+
+<!-- 四隅 -->
+<circle class="corner" cx="240" cy="104" r="3.5"/>
+<circle class="corner" cx="540" cy="104" r="3.5"/>
+<circle class="corner" cx="240" cy="304" r="3.5"/>
+<circle class="corner" cx="540" cy="304" r="3.5"/>
+
+<text class="coord" x="232" y="92"  text-anchor="end"   dominant-baseline="central">(0, 0)</text>
+<text class="coord" x="548" y="92"  text-anchor="start" dominant-baseline="central">(1000, 0)</text>
+<text class="coord" x="232" y="318" text-anchor="end"   dominant-baseline="central">(0, 1000)</text>
+<text class="coord" x="548" y="318" text-anchor="start" dominant-baseline="central">(1000, 1000)</text>
+</svg>

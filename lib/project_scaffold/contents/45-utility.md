@@ -311,11 +311,11 @@ blockquote {
 }
 ```
 
-#### 章扉の余白を微調整する
+#### 章扉の引っ込み量を微調整する
 
 ```css
 :root {
-  --frontispiece-padding: 15mm;
+  --frontispiece-edge-inset: 15mm;
 }
 ```
 

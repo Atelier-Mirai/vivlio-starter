@@ -89,10 +89,10 @@ theme:
       # suzuran / ajisai / asagao / himawari
       # kikyo / kosumosu / kiku / tsubaki から選択
       # images/内の独自画像も指定可
-    edge_inset: 10mm # 扉絵を紙の端から内側へ引っ込める量
+    edge_inset: 5mm # 扉絵を紙の端から内側へ引っ込める量
     heading_offset: 15mm # 章扉の見出しブロック（章番号〜リード）を下げる量
-    heading_chars: 8 # 章題を 1 行に何文字入れるか（全角換算）
-    lead_chars: 20 # 章リード文を 1 行に何文字入れるか（全角換算）
+    heading_chars: 10 # 章題を 1 行に何文字入れるか（全角換算）
+    lead_chars: 24 # 章リード文を 1 行に何文字入れるか（全角換算）
 
   # ----------------------------
   # 節見出しの背景画像
@@ -131,8 +131,15 @@ page:
 
   # 節（## 見出し）をページの先頭から始めるか
   #   true  … 節ごとにページを改める（既定）
-  #   false … 節を本文の流れの中に続けて組む（ページ数を抑えたい薄い本・配布資料向け）
-  section_page_break: true
+  #   false … 節を本文の流れの中に続けて組む（ページ数を抑えたい本・配布資料向け）
+  section_pagebreak: false
+
+  # 章・目次・部扉・付録・用語集・後書き・索引を、どちら側の面から始めるか
+  #   recto … 右ページ（奇数）から。いわゆる改丁。必要なら白紙が 1 枚入る（既定）
+  #   any   … どちらでもよい。白紙が入らずページ数が減る
+  #   verso … 左ページ（偶数）から
+  # 原稿中の @pagebreak:recto / :verso は、この設定より優先されます
+  chapter_pagebreak: recto
 
 # ========================================
 # タイポグラフィ設定（書体・色・装飾）
@@ -213,8 +220,8 @@ output:
   # ----------------------------
   # targets: pdf # pdf / print_pdf / epub / kindleから選択可
   # 例:
-  # targets: epub, kindle
-  targets: pdf # 閲覧用PDFを指定
+  targets: pdf, epub, kindle
+  # targets: pdf # 閲覧用PDFを指定
   # targets: pdf, print_pdf # 閲覧用PDF, 印刷所入稿用PDFを指定
   # targets: pdf, print_pdf, epub         # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUBを指定
   # targets: pdf, print_pdf, epub, kindle # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUB, Kindle用EPUBを指定
@@ -304,9 +311,8 @@ output:
 # VFM マークダウン記法に関する設定
 # ========================================
 vfm:
-  hard_line_breaks:
-    true # true:  文章中の改行(エンター)を改行として処理
-    # false: 文章中の改行をスペースとして処理(改行したい場合には空行または<br>)
+  hard_line_breaks: true # true:  文章中の改行(エンター)を改行として処理
+                         # false: 文章中の改行をスペースとして処理(改行したい場合には空行または<br>)
 
 # ========================================
 # vs preflight（原稿チェック）に関する設定

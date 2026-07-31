@@ -15,11 +15,6 @@
   状態: 仕様（実装待ち）
   次のアクション: §3 案 A（生成済み PDF の該当ページを切り出す）で着手。`PdfPageMapExtractor` が任意 id を引ける入口を持つかの確認が最初の作業
 
-`chapter-pagebreak-spec.md`
-: 章・目次・部扉などの「右ページ始まり（改丁）」を `page.chapter_pagebreak: recto / verso / any` で選べるようにする。併せて `page.section_page_break` を `section_pagebreak` へ改名する。
-  状態: 仕様（実装待ち）
-  次のアクション: §2.5 の改名を先に済ませてから §2.2 の生成 CSS へ進む。改名を後回しにすると新旧キーが混在した状態でテストを書くことになる
-
 ---
 
 ## 参考メモ

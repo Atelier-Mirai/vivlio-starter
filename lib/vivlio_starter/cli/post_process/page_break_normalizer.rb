@@ -22,7 +22,7 @@
 #   - hr.pagebreak / div.vs-break-page … マーカーを削除（h2 自身の改ページに一本化）
 #   - div.vs-break-recto / :verso      … マーカーを残し h2 側を無効化（recto 指定が勝つ）
 #
-# 対象範囲は page.section_page_break と theme.style で変わる（breaking_h2_scope）。
+# 対象範囲は page.section_pagebreak と theme.style で変わる（breaking_h2_scope）。
 # 「h2 が改ページする」ことが前提の処理なので、改ページしない h2 の前のマーカーは
 # 著者が書いた正当な改ページとしてそのまま残す。
 # ================================================================
@@ -66,7 +66,7 @@ module VivlioStarter
         # CSS で改ページする h2 の範囲を返す。正規化は「h2 が改ページする」ことが
         # 前提なので、この範囲の外にあるマーカーは著者の意図どおり残す。
         #
-        #   :all                 … 既定（section_page_break: true）。全 h2 が改ページする
+        #   :all                 … 既定（section_pagebreak: true）。全 h2 が改ページする
         #   :first_section_only  … false かつ image スタイル。章扉を全面の扉絵で成立させる
         #                          ため章の最初の節だけ改ページが残る
         #                          （BookSettingsCss#chapter_frontispiece_guard_rule と対）
@@ -76,7 +76,7 @@ module VivlioStarter
         # theme.style: image でも常に vs-header-simple なので、CSS が実際に見るものと
         # 同じ印を見るのが唯一ずれない方法（BodyClassInjector#header_mode_class）。
         def breaking_h2_scope(doc)
-          return :all if section_page_break_enabled?
+          return :all if section_pagebreak_enabled?
 
           body_classes = doc.at_css('body')&.[]('class').to_s.split
           body_classes.include?('vs-header-image') ? :first_section_only : :none
@@ -168,10 +168,10 @@ module VivlioStarter
 
         # 節（h2）で改ページする設定かどうか。BookSettingsCss と同じ判定
         # （明示的に false と書かれたときだけ無効）を用いる。
-        def section_page_break_enabled?
+        def section_pagebreak_enabled?
           return true unless Common.configured?
 
-          case Common::CONFIG.page.section_page_break.to_s.strip.downcase
+          case Common::CONFIG.page.section_pagebreak.to_s.strip.downcase
           in 'false' | 'no' | 'off' | '0' then false
           else true
           end

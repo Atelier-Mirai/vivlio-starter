@@ -40,7 +40,7 @@ body {
   text-align: center;
   font-size: 2em;
   margin-bottom: 1em;
-  border-bottom: 2px solid var(--theme-color, #333);
+  border-bottom: 2px solid var(--theme-accent, #333);
   padding-bottom: 0.5em;
 }
 
@@ -64,8 +64,8 @@ body.vs-kindle .index h1 {
 .index-section h2 {
   font-size: 1.2em;
   font-weight: bold;
-  color: var(--theme-color, #333);
-  border-bottom: 1px solid var(--theme-color, #333);
+  color: var(--theme-accent, #333);
+  border-bottom: 1px solid var(--theme-accent, #333);
   padding-bottom: 0.25em;
   margin-bottom: 0.5em;
   margin-top: 0;

@@ -2,6 +2,7 @@
 
 require 'fileutils'
 require_relative '../cover'
+require_relative '../pre_process/book_settings_css'
 
 module VivlioStarter
   module CLI
@@ -163,7 +164,16 @@ module VivlioStarter
 
         # 奥付が偶数ページ（左ページ）始まりになるよう空白ページを挿入
         # _colophon.pdf（閲覧用）と _colophon_print.pdf（入稿用）の両方に対応
+        #
+        # page.chapter_pagebreak: any（面を問わない）では挿入しない。奥付を左ページに
+        # 置くのは改丁とは別の慣習だが、「どちら側でもよい」と宣言した本で白紙だけが
+        # 残るのは一貫しない（chapter-pagebreak-spec.md §2.3）。
         def insert_blank_page_before_colophon(files)
+          if chapter_pagebreak_any?
+            Common.log_debug('[Step 10] page.chapter_pagebreak: any のため奥付前の空白ページを挿入しません')
+            return files
+          end
+
           colophon_idx = files.index { it.include?('_colophon') }
           return files unless colophon_idx
 
@@ -193,6 +203,16 @@ module VivlioStarter
             Common.log_debug("[Step 10] 奥付は偶数ページに配置されます（前方 #{total} ページ、空白挿入なし）")
             files
           end
+        end
+
+        # 値の正規化と不正値の警告は BookSettingsCss が唯一の実装。ここは判定だけ借りる。
+        def chapter_pagebreak_any?
+          return false unless Common.configured?
+
+          PreProcessCommands::BookSettingsCss
+            .chapter_pagebreak_value(Common::CONFIG.page) == 'any'
+        rescue StandardError
+          false
         end
 
         def qpdf_available?

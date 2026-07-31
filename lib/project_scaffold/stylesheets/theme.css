@@ -75,9 +75,23 @@
      book-settings.css が必ず設定するため、ここでは既定値を持たない */
 
   /* 扉絵設定（config/book.yml の theme.frontispiece により自動更新） */
-  --frontispiece-padding: 10mm;
-  --frontispiece-background-size: auto calc(100% - 2 * var(--frontispiece-padding));
+  /* 扉絵をページの端から内側へ引っ込める量（上下基準・左右は画像の縦横比で自動追従） */
+  --frontispiece-edge-inset: 10mm;
+  --frontispiece-background-size: auto calc(100% - 2 * var(--frontispiece-edge-inset));
   /* --frontispiece-image も同様に book-settings.css が必ず設定する */
-  --frontispiece-heading-width: 108mm;
-  --frontispiece-lead-width: 88mm;
+
+  /* 章題・章リードの幅（heading-metrics-spec §1-2）。
+     著者は book.yml に「1 行の文字数」で書き、BookSettingsCss が
+     文字数 × 1 字の送り をリテラル mm へ解いてここを上書きする。
+     ここの既定値は文字数から解いた値（A4・8 字 / 20 字 相当）。 */
+  --frontispiece-heading-width: 103.7mm;
+  --frontispiece-lead-width: 88.9mm;
+  /* 章扉の見出しブロック（章番号〜リード）を下げる量
+     （config/book.yml の theme.frontispiece.heading_offset） */
+  --frontispiece-heading-offset: 0mm;
+
+  /* 節題の基準フォントサイズ（heading-metrics-spec §1-2）。
+     節絵の帯は版面幅いっぱいで固定なので、節題は箱幅ではなく
+     フォントサイズで「1 行の文字数」を決める（A4・14 字 相当）。 */
+  --section-title-font-size: 36Q;
 }

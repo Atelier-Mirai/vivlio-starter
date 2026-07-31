@@ -90,5 +90,7 @@
 
 ## 後日調査
 
+- **A4 以外の判型での目次・索引・用語集**: この 3 ページは長らく `book-settings.css` を読んでおらず、`page-settings.css` の `@page { size: 210mm 297mm }` で **A4 固定**に組まれていた（`chapter-pagebreak-spec.md` §7.2 で link を追加して解消）。A5 / B5 でのビルド確認は未実施。
+- **既定値の二重管理**: `page.section_pagebreak` などの既定が `common.rb` のスキーマと同梱 `book.yml` の両方にあり、黙ってずれる（実例: `section_page_break` 改名時にスキャフォールドが取り残された）。案 A = 既定値専用 YAML（`lib/vivlio_starter/config/defaults.yml`）を新設してスキーマをそこから読む／案 B = 同梱 `book.yml` の値とコード側既定の一致を回帰テストで固定する。**スキャフォールドの `book.yml` を既定値の情報源にするのは不可**——あれは `copy_to_scaffold.rb` が root から作る「サンプル本の設定」で、`theme.color: red` のような本書固有の値と `{{MAIN_TITLE}}` のテンプレート記法が混ざっている。
 - **Kindle 表紙（KDP 渡し）** の扱い。
 - **`kindlepreviewer` の `-locale`** が現在 `en` 固定（必要に応じて切り替え可能にするか検討）。

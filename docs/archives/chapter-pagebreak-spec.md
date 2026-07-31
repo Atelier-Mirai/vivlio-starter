@@ -1,7 +1,7 @@
 # 章の改丁を任意化する（`page.chapter_pagebreak`）仕様書
 
 > 作成日: 2026-07-31
-> ステータス: **仕様（実装待ち）**
+> ステータス: **実装完了（2026-07-31）** — 実装記録は §7
 > 対象: 章・目次・部扉・付録・用語集・後書き・索引の「右ページ始まり（改丁）」を著者が選べるようにする。併せて `page.section_page_break` を `page.section_pagebreak` へ改名する
 > 決定事項:
 > - **キーは `page.chapter_pagebreak`（既定 `recto`）**。値は `recto` / `verso` / `any` の 3 つで、`@pagebreak` 記法の値集合（裸＝`any` / `:recto` / `:verso`）とちょうど一致させる。「原稿に書けばその場だけ、book.yml に書けば本全体」で説明が済む
@@ -219,3 +219,41 @@ def insert_blank_page_before_colophon(files)
 - **表紙・裏表紙の結合**（`output.pdf.combined`）は無関係
 - **`section_pagebreak` の列挙化** — §0.3 のとおり採らない
 - **旧キーの受け入れ** — §1.2 のとおり不要
+
+## 7. 実装記録（2026-07-31）
+
+### 7.1 実測
+
+| | `recto`（既定） | `any` |
+|---|---|---|
+| 総ページ数 | 366 | **350**（−16） |
+| 完全な白紙 | 19 枚 | **2 枚** |
+
+残った 2 枚は改丁由来ではなく、前付け・後付けの構成に起因する既存の白紙（`recto` ビルドにも同じ位置にある）。
+
+### 7.2 目次・索引・用語集に生成 CSS が届いていなかった
+
+**本仕様の最大の落とし穴。** §1.1 が対象に挙げた 7 種のうち **目次・索引・用語集の 3 種に打ち消しが効かなかった**。原因は CSS ではなく HTML 側で、この 3 つは章 HTML と違って `FrontmatterGenerator` を通らず、自前で `<head>` を組み立てていた。
+
+| 生成器 | 従来の link |
+|---|---|
+| `toc.rb` `TocDocumentBuilder.front_matter` | `toc.css` のみ |
+| `unified_page_builder.rb` `generate_index_html` | `index.css` のみ |
+| `unified_page_builder.rb` `generate_glossary_html` | `glossary.css` のみ |
+
+**`book-settings.css` を読んでいないので、book.yml 由来の設定が一切届いていなかった。** 3 ファイルとも `{種別}.css` の後段へ link を足して解決した。
+
+これは `chapter_pagebreak` に限らない既存の不具合でもあった。判明した波及は 2 つ。
+
+1. **判型**: `page-settings.css` の `@page { size: 210mm 297mm }` は P3 以降どこからも書き換わらないフォールバックで、生成 CSS が届かないこの 3 ページは**判型プリセットに関わらず A4 で組まれていた**。本書が A4 のため露見していなかった。**A4 以外での確認は未実施**（`PLANNED.md` 送り）。
+2. **テーマ色**: `index.css` / `glossary.css` は `var(--theme-color, #333)` を 8 箇所で参照していたが、**`--theme-color` はどこにも定義されていない**（実在するのは `--theme-accent`）。常にフォールバックの `#333` で描かれていた。`--theme-accent` へ、`--theme-color-light` は既存の `--color-column-bg` へ差し替えた。Kindle 用リテラル（`index_glossary_kindle_accent_rules`）も追加している——`body.vs-kindle` の既存規則は章の body クラス前提で、索引・用語集の `.index-section h2` などには届かないため。
+
+**教訓**: 生成 CSS で挙動を変える仕様は、**対象ページが本当に `book-settings.css` を読んでいるか**を最初に確かめること。セレクタの特異度だけ合わせても、そもそも読まれていなければ効かない。
+
+### 7.3 警告は CSS 生成の 1 回だけ鳴らす
+
+`chapter_pagebreak_value`（正規化）と `warn_unknown_chapter_pagebreak!`（警告）を分けてある。`PdfMerger` も奥付の判定で同じ正規化を借りるため、値の解決側で鳴らすと 1 ビルドで二度警告が出る。
+
+### 7.4 既存テストの前提を 1 つ緩めた
+
+`test_should_bake_preface_accent_following_preface_color` は「`border-bottom-color` を含む**全行**が `body.preface` でスコープされていること」を要求していた。守りたい不変条件はコメントどおり「裸の `h1` に下線色を出さない」ことなので、索引・用語集のクラス付き規則が増えた時点で過剰になる。`refute_match(/\Abody\.vs-kindle h1\s*[{,]/)` へ言い換えた。

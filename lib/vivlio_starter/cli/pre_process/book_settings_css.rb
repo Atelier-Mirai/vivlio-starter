@@ -99,7 +99,8 @@ module VivlioStarter
             :root {
             #{root_lines.map { "  #{it}" }.join("\n")}
             }
-            #{section_page_break_rule(page_cfg)}
+            #{section_pagebreak_rule(page_cfg)}
+            #{chapter_pagebreak_rule(page_cfg)}
             #{kindle_accent_rules(cfg)}
             #{talk_class_rules(registry)}
           CSS
@@ -319,14 +320,14 @@ module VivlioStarter
         # 節でページを改める既存ルールの元セレクタ。打ち消しは「元セレクタをそのまま
         # 複製」する必要がある——book-settings.css は後段読込なので同特異度なら後勝ち
         # できるが、セレクタがずれると特異度負けして効かない。
-        SECTION_PAGE_BREAK_SELECTORS = [
+        SECTION_PAGEBREAK_SELECTORS = [
           'body.vs-header-image .section-topic h2',  # image-header.css（PDF / EPUB）
           'body.vs-header-simple h2',                # simple-header.css（PDF / EPUB）
           'body.vs-header-simple.vs-kindle h2',      # simple-header.css の Kindle 用（legacy 併記）
           'article.vs-section-topic-epub'            # components.css（EPUB の節絵 article）
         ].freeze
 
-        # page.section_page_break: false のときだけ打ち消し規則を出す。
+        # page.section_pagebreak: false のときだけ打ち消し規則を出す。
         # true・未設定では何も出さず、テーマ CSS の改ページがそのまま生きる
         # （P3 の「書かない条件では宣言しない」セマンティクス）。
         # 打ち消しだけでは章扉に最初の節が流れ込むため、章扉の保護を続けて出す。
@@ -334,13 +335,13 @@ module VivlioStarter
         # かつては「節絵の箱が固定 150px 行からはみ出して直前の本文に重なる」是正も
         # ここで出していたが、heading-metrics-spec §3・§4 で image-header.css 側の
         # 行を実寸（auto）にしたため不要になった（はみ出し自体が消えた）。
-        def section_page_break_rule(page_cfg)
-          return '' unless section_page_break_disabled?(page_cfg)
+        def section_pagebreak_rule(page_cfg)
+          return '' unless section_pagebreak_disabled?(page_cfg)
 
           <<~CSS.chomp
-            /* page.section_page_break: false — 節（h2）でページを改めない。
+            /* page.section_pagebreak: false — 節（h2）でページを改めない。
                Kindle KFX 向けの legacy page-break-before も併せて打ち消す。 */
-            #{SECTION_PAGE_BREAK_SELECTORS.join(",\n")} {
+            #{SECTION_PAGEBREAK_SELECTORS.join(",\n")} {
               break-before: auto;
               page-break-before: auto;
             }
@@ -368,11 +369,89 @@ module VivlioStarter
 
         # 明示的に false と書かれたときだけ「節で改ページしない」と解釈する。
         # 未設定・空欄は既定の true（現行挙動）を保つため、truthy? の裏返しではない。
-        def section_page_break_disabled?(page_cfg)
-          case page_cfg[:section_page_break]&.to_s&.strip&.downcase
+        def section_pagebreak_disabled?(page_cfg)
+          case page_cfg[:section_pagebreak]&.to_s&.strip&.downcase
           in 'false' | 'no' | 'off' | '0' then true
           else false
           end
+        end
+
+        # ================================================================
+        # 章の改丁（chapter-pagebreak-spec.md §2.2）
+        # ================================================================
+        # 章・目次・部扉・付録・用語集・後書き・索引を右ページ始まりにする既存ルールの
+        # 元セレクタ。7 ファイルに散っているが、chapter-common / glossary / index /
+        # postface の 4 つはいずれも素の body なので、相異なるセレクタは 4 つで足りる。
+        # 打ち消しは「元セレクタをそのまま複製」する必要がある——book-settings.css は
+        # 後段読込なので同特異度なら後勝ちできるが、ずれると特異度負けして効かない。
+        CHAPTER_PAGEBREAK_SELECTORS = [
+          'body',                     # chapter-common.css / glossary.css / index.css / postface.css
+          'body.toc',                 # toc.css
+          'body.vs-header-simple h1', # simple-header.css
+          '.part-title'               # part-title.css
+        ].freeze
+
+        # page.chapter_pagebreak が取りうる値。@pagebreak 記法（裸 / :recto / :verso）と
+        # ちょうど 1 対 1 に対応させてある（裸の @pagebreak ＝ any）。
+        CHAPTER_PAGEBREAK_VALUES = %w[recto verso any].freeze
+        DEFAULT_CHAPTER_PAGEBREAK = 'recto'
+
+        # 既定（recto）では何も出さず、テーマ CSS の break-before: recto をそのまま生かす
+        # （P3 の「書かない条件では宣言しない」セマンティクス）。
+        #
+        # any の置換先を auto ではなく page にするのは、.part-title と
+        # body.vs-header-simple h1 が**文書内の要素**であり、auto にすると直前の内容へ
+        # 流れ込んでしまうため。body への page は分割フローの先頭なので実害が無い。
+        # verso には legacy page-break-before の対応値が無いので併記しない
+        # （KFX はいずれにせよ recto/verso を解さない）。
+        def chapter_pagebreak_rule(page_cfg)
+          warn_unknown_chapter_pagebreak!(page_cfg)
+
+          case chapter_pagebreak_value(page_cfg)
+          when 'any'
+            chapter_pagebreak_css('page', legacy: 'always',
+                                          note: 'どちら側の面からでも始める（白紙を挿入しない）')
+          when 'verso'
+            chapter_pagebreak_css('verso', note: '左ページ（偶数）始まりにする')
+          else
+            ''
+          end
+        end
+
+        def chapter_pagebreak_css(value, legacy: nil, note: '')
+          declarations = ["break-before: #{value};"]
+          declarations << "page-break-before: #{legacy};" if legacy
+
+          <<~CSS.chomp
+            /* page.chapter_pagebreak — 章・目次・部扉・付録・用語集・後書き・索引を#{note}。
+               原稿中の @pagebreak:recto / :verso（.vs-break-*）はここでは触らないため、
+               局所の明示指定が本設定より優先される。 */
+            #{CHAPTER_PAGEBREAK_SELECTORS.join(",\n")} {
+              #{declarations.join("\n  ")}
+            }
+          CSS
+        end
+
+        # 設定値の正規化。不正値・未設定は既定（recto）へ倒す。**警告は出さない**
+        # ——PdfMerger も同じ判定を借りるため、ここで鳴らすと 1 ビルドで二度警告が出る。
+        def chapter_pagebreak_value(page_cfg)
+          raw = page_cfg[:chapter_pagebreak].to_s.strip.downcase
+          CHAPTER_PAGEBREAK_VALUES.include?(raw) ? raw : DEFAULT_CHAPTER_PAGEBREAK
+        end
+
+        # 綴り間違いが黙って既定へ戻ると著者は気づけないので知らせる。鳴らすのは CSS
+        # 生成の 1 回だけ（generate! はビルド Step 2 で必ず通る唯一の接続先）。
+        def warn_unknown_chapter_pagebreak!(page_cfg)
+          raw = page_cfg[:chapter_pagebreak].to_s.strip
+          return if raw.empty? || CHAPTER_PAGEBREAK_VALUES.include?(raw.downcase)
+
+          Common.log_warn(
+            "config/book.yml の page.chapter_pagebreak の値が不正です（#{raw}）\n" \
+            "   使える値: #{CHAPTER_PAGEBREAK_VALUES.join(' / ')}\n" \
+            "   before: chapter_pagebreak: #{raw}\n" \
+            "   after : chapter_pagebreak: #{DEFAULT_CHAPTER_PAGEBREAK}\n" \
+            "   今回は既定の #{DEFAULT_CHAPTER_PAGEBREAK} で処理しました。"
+          )
         end
 
         # ================================================================
@@ -437,6 +516,19 @@ module VivlioStarter
             "body.vs-header-simple.vs-kindle h1 .chapter-number { color: #{acc}; }",
             "body.vs-header-simple.vs-kindle h2 { border-color: #{acc}; border-left-color: #{acc}; }",
             "body.vs-header-simple.vs-kindle h2 .section-number { background: #{acc}; }"
+          ] + index_glossary_kindle_accent_rules(acc, colbg)
+        end
+
+        # 索引・用語集は章と別の HTML（UnifiedPageBuilder 生成）で body クラスも異なるため、
+        # 上の body.vs-kindle 規則では届かない罫線・見出し色を個別に literalize する。
+        def index_glossary_kindle_accent_rules(acc, colbg)
+          [
+            "body.vs-kindle .index h1 { border-bottom-color: #{acc}; }",
+            "body.vs-kindle .index-section h2 { color: #{acc}; border-bottom-color: #{acc}; }",
+            "body.vs-kindle .glossary-title { border-bottom-color: #{acc}; }",
+            "body.vs-kindle .glossary-group-header { color: #{acc}; border-left-color: #{acc}; " \
+            "background: linear-gradient(90deg, #{colbg} 0%, transparent 100%); }",
+            "body.vs-kindle .glossary-h4 { color: #{acc}; }"
           ]
         end
 

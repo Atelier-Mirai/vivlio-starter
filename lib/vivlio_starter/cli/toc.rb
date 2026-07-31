@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'nokogiri'
+require_relative 'pre_process/book_settings_css'
 module VivlioStarter
   module CLI
     # ================================================================
@@ -131,13 +132,18 @@ module VivlioStarter
 
       # TOC の Markdown ドキュメントを構築する
       class TocDocumentBuilder
-        # href はワークスペース内 HTML からの相対（Common.asset_prefix 前置・P4 §3.3）
+        # href はワークスペース内 HTML からの相対（Common.asset_prefix 前置・P4 §3.3）。
+        # book-settings.css を toc.css の後段に置く——章 HTML と同じ順序で、book.yml 由来の
+        # 設定値がテーマ CSS にカスケードで勝つ（P3）。これが無いと目次だけが book.yml を
+        # 見ずに組まれる（chapter-pagebreak-spec.md §6 実装記録）。
         def self.front_matter
           <<~MD
             ---
             link:
               - rel: "stylesheet"
                 href: "#{Common.asset_prefix}stylesheets/toc.css"
+              - rel: "stylesheet"
+                href: "#{Common.asset_prefix}#{PreProcessCommands::BookSettingsCss.output_path}"
             lang: 'ja'
             ---
 
