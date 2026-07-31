@@ -113,6 +113,31 @@ module VivlioStarter
         config = File.read(config_path)
         assert_includes config, "import entries from './entries.sections.js';"
       end
+
+      # --- workspaceDir の枝分け（build-target-parallelization-spec.md §3.1） -------
+
+      # PDF 枝と EPUB 枝は別の workspaceDir を指す。1 つを共有したまま 2 つの
+      # vivliostyle が同時に走ると、直下の publication.json を互いに上書きする。
+      def test_should_point_pdf_and_epub_workspaces_at_different_directories
+        write_book_yml(book: { 'main_title' => 'T' })
+
+        pdf_config  = Writer.config_content(entries_basename: 'entries.sections.js', output: 'x.pdf')
+        epub_config = Build::EpubBuilder.generate_epub_config!(flavor: :epub, dir: '.')
+
+        assert_includes pdf_config, "workspaceDir: '#{Common::BUILD_VIVLIOSTYLE_PDF_DIR}',"
+        assert_includes File.read(epub_config), "workspaceDir: '#{Common::BUILD_VIVLIOSTYLE_EPUB_DIR}',"
+        refute_equal Common::BUILD_VIVLIOSTYLE_PDF_DIR, Common::BUILD_VIVLIOSTYLE_EPUB_DIR
+      end
+
+      # 資産への相対プレフィックス（ASSET_PREFIX）は消費者 dir の深さに依存するため、
+      # workspaceDir も同じ 4 階層に置く。`.vivliostyle/pdf` のように 1 段深くすると壊れる。
+      def test_should_keep_both_workspaces_at_the_same_depth_as_consumer_dirs
+        depth = ->(path) { path.split('/').length }
+
+        assert_equal depth.call(Common::BUILD_PDF_DIR),  depth.call(Common::BUILD_VIVLIOSTYLE_PDF_DIR)
+        assert_equal depth.call(Common::BUILD_EPUB_DIR), depth.call(Common::BUILD_VIVLIOSTYLE_EPUB_DIR)
+        assert_equal 4, depth.call(Common::BUILD_VIVLIOSTYLE_PDF_DIR)
+      end
     end
   end
 end

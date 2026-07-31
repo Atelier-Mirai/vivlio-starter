@@ -325,9 +325,11 @@ module VivlioStarter
         #   - cover は entryContext 基準で解決される → ローカライズ済みの 'covers/…' がそのまま通る。
         #   - copyAsset の選択は「dir 内に必要資産だけを置く」ローカライズ（localize_assets!）が担う
         #     ため excludes は不要（E2: copyAsset 既定は entryContext 配下を全同梱）。
-        #   - workspaceDir は PDF 用生成 config（VivliostyleConfigWriter）と同じワークスペース内を
-        #     指定し、ルートへの一時 .vivliostyle/ 生成をなくす（P4 §5.6・段階 5）。
-        #     消費者 dir 内に置くと copyAsset がパッケージへ巻き込むため dir の外へ置く。
+        #   - workspaceDir はワークスペース内を指定し、ルートへの一時 .vivliostyle/ 生成を
+        #     なくす（P4 §5.6・段階 5）。消費者 dir 内に置くと copyAsset がパッケージへ
+        #     巻き込むため dir の外へ置く。PDF 用生成 config（VivliostyleConfigWriter）とは
+        #     **別の兄弟 dir** を使い、枝を並列に走らせても踏み合わないようにする
+        #     （build-target-parallelization-spec.md §3.1）。
         #
         # @param flavor [Symbol] :epub（表紙は book.yml の embed 設定に従う）/ :kindle（embed:false 固定・§1-6）
         # @param dir [String] 消費者 dir（= entryContext・生成先。既定 '.' は単体テスト用）
@@ -371,7 +373,7 @@ module VivlioStarter
               language: '#{esc.call(language)}',
               size: '#{esc.call(page_size)}',
               readingProgression: '#{esc.call(reading_progression)}',
-              workspaceDir: '#{Common::BUILD_DIR}/.vivliostyle',
+              workspaceDir: '#{Common::BUILD_VIVLIOSTYLE_EPUB_DIR}',
               entryContext: '#{esc.call(dir)}',
             #{cover_line}  entry: entries,
               output: [

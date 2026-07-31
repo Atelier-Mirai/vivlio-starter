@@ -65,6 +65,16 @@ module VivlioStarter
       BUILD_EPUB_DIR   = "#{BUILD_DIR}/epub"
       BUILD_KINDLE_DIR = "#{BUILD_DIR}/kindle"
 
+      # vivliostyle の作業ディレクトリ（生成 config の workspaceDir）。
+      # 中身はプロジェクトの木の写し（実測 15,263 ファイル）で、直下の
+      # publication.json は各ビルドが自分のエントリ一覧で上書きする。1 つを共有した
+      # まま 2 つの vivliostyle が同時に走れば確実に踏み合うため、PDF 枝と EPUB 枝で
+      # 分ける（build-target-parallelization-spec.md §3.1）。
+      # **消費者 dir と同じ 4 階層に置くこと**——`.vivliostyle/pdf` のように 1 段
+      # 深くすると資産への相対プレフィックス（ASSET_PREFIX）が合わなくなる。
+      BUILD_VIVLIOSTYLE_PDF_DIR  = "#{BUILD_DIR}/.vivliostyle-pdf"
+      BUILD_VIVLIOSTYLE_EPUB_DIR = "#{BUILD_DIR}/.vivliostyle-epub"
+
       # 索引スキャン結果の中間 YAML（書き手 IndexMatchScanner・読み手 UnifiedPageBuilder）。
       # ルートではなくワークスペース直下へ置き、ルート無汚染を保つ（P4b §2.5）。
       INDEX_MATCHES_FILE = "#{BUILD_DIR}/_index_matches.yml"

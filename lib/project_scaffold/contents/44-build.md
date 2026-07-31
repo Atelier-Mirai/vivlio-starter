@@ -2,9 +2,9 @@
 
 :::{.chapter-lead}
 原稿の執筆が一段落したら、`vs build` コマンドで書籍を組版しましょう。閲覧用 PDF、印刷入稿用 PDF、電子書籍（EPUB）、Amazon Kindle 用ファイル（KPF）の四つの形式を、ひとつのコマンドで生成できます。
-:::
 
 `vs build` は Vivlio Starter の中核となるコマンドです。原稿の前処理から画像最適化、Markdown→HTML 変換、Vivliostyle による組版、PDF 結合、アウトライン付与まで、書籍制作に必要な一連の工程を自動的に実行します。
+:::
 
 ## はじめてのビルド
 

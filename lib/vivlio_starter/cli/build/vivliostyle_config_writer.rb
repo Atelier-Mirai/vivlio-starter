@@ -21,6 +21,9 @@
 #     → entries は config と同居させ './entries.<name>.js' で参照する。
 #   - PDF 消費者は entryContext を使わない（E1: dev サーバの 404 が SUCCESS で
 #     完走し様式欠落 PDF が黙って生まれるため、この経路は封じる）。
+#   - workspaceDir は PDF 枝の専用ディレクトリを指す。EPUB 枝（EpubBuilder）とは
+#     別の兄弟 dir で、枝を並列に走らせても踏み合わない
+#     （build-target-parallelization-spec.md §3.1）。
 #   - single-doc（-d）は生成 config と併用不可（E5）。パイプラインでは使わない。
 #
 # メタデータ解決（title/author/language/size）は本モジュールに集約し、
@@ -101,7 +104,7 @@ module VivlioStarter
               language: '#{esc.call(resolve_language)}',
               size: '#{esc.call(EpubBuilder.resolve_page_size(Common::CONFIG))}',
               readingProgression: 'ltr',
-              workspaceDir: '#{Common::BUILD_DIR}/.vivliostyle',
+              workspaceDir: '#{Common::BUILD_VIVLIOSTYLE_PDF_DIR}',
               entry: entries,
               output: [
                 './#{output}'

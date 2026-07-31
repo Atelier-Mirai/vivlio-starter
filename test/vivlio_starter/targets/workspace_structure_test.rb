@@ -112,9 +112,12 @@ class WorkspaceStructureTest < Minitest::Test
     assert_empty Dir.glob(File.join(BUILD_DIR, "kindle", "**", "*.webp")),
                  "kindle/ に WebP が混入しています（Kindle は WebP 非対応）"
 
-    # Vivliostyle の workspaceDir もワークスペース内（ルート .vivliostyle/ の撤去・§5.6）
-    assert File.directory?(File.join(BUILD_DIR, ".vivliostyle")),
-           "workspaceDir（#{BUILD_DIR}/.vivliostyle/）が生成されていません"
+    # Vivliostyle の workspaceDir もワークスペース内（ルート .vivliostyle/ の撤去・§5.6）。
+    # PDF 枝と EPUB 枝で別 dir に分けてある（build-target-parallelization-spec.md §3.1）ため、
+    # そのビルドで走った枝のぶんが生成されていればよい。
+    workspaces = %w[.vivliostyle-pdf .vivliostyle-epub].select { File.directory?(File.join(BUILD_DIR, it)) }
+    refute_empty workspaces,
+                 "workspaceDir（#{BUILD_DIR}/.vivliostyle-pdf|-epub/）が 1 つも生成されていません"
   end
 
   # WS-02b: 数式 SVG はワークスペース html/images/math/ に生成され、
