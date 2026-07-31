@@ -56,126 +56,51 @@ module VivlioStarter
         end
       end
 
-      # PDF結合のテスト
+      # ================================================================
+      # PDF 結合（PdfMerger）のテスト
+      # ================================================================
+      # 注: かつてクラス冒頭の `private` が test_ メソッドの定義まで巻き込んでおり、
+      #     Minitest は public な test_ しか集めないため、本クラスは 1 件も実行されて
+      #     いなかった。ヘルパを末尾へ寄せて可視性の巻き込みを断ってある。
       class PdfMergerTest < Minitest::Test
-        private
-
-        def set_common_config(config)
-          Common.send(:remove_const, :CONFIG) if Common.const_defined?(:CONFIG, false)
-          Common.const_set(:CONFIG, config)
-        end
-
-        def restore_common_config
-          set_common_config(@original_config)
-        end
-
-        def deep_dup(obj)
-          Marshal.load(Marshal.dump(obj))
-        end
-
         def setup
-          @original_config = deep_dup(Common::CONFIG)
+          @original_config = Common::CONFIG
         end
 
         def teardown
-          restore_common_config
+          Common.install_configuration!(@original_config)
         end
 
-        # merge_all_pdfs! がカバー設定と targets に応じて結合対象を構築することを確認
-        def test_merge_all_pdfs_targets_include_covers_when_pdf_target_enabled
-          fake_config = {
-            'output' => {
-              'targets' => ['pdf'],
-              'pdf' => {
-                'cover' => {
-                  'enabled' => true,
-                  'front' => 'frontcover_rgb.pdf',
-                  'back' => 'backcover_rgb.pdf'
-                }
-              }
-            },
-            'directories' => {
-              'covers' => 'covers'
-            }
-          }
+        # 結合対象はカバー設定と targets に応じて組み立てられる
+        def test_should_wrap_the_body_with_front_and_back_covers_when_pdf_is_targeted
+          install_config(targets: ['pdf'], cover: 'master', combined: true)
 
-          set_common_config(fake_config)
-
-          existing_files = [
-            '_titlepage_legalpage.pdf',
-            '_sections.pdf',
-            '_colophon.pdf',
-            'covers/frontcover_rgb.pdf',
-            'covers/backcover_rgb.pdf'
-          ]
-
-          File.stub :exist?, ->(path) { existing_files.include?(path) } do
-            files = Build::PdfMerger.send(:cover_enhanced_segments).map(&:path)
-            assert_equal(
-              ['covers/frontcover_rgb.pdf',
-               '_titlepage_legalpage.pdf',
-               '_sections.pdf',
-               '_colophon.pdf',
-               'covers/backcover_rgb.pdf'],
-              files,
-              'front/back カバーが PDF 対象に含まれているべき'
-            )
-          end
+          assert_equal [cover_path('frontcover'), *matter_paths, cover_path('backcover')],
+                       segment_paths(existing: [cover_path('frontcover'), cover_path('backcover')]),
+                       'front/back カバーが結合対象に含まれるべき'
         end
 
-        def test_merge_all_pdfs_targets_exclude_covers_when_pdf_not_selected
-          fake_config = {
-            'output' => {
-              'targets' => ['epub'],
-              'pdf' => {
-                'cover' => {
-                  'enabled' => true,
-                  'front' => 'frontcover_rgb.pdf',
-                  'back' => 'backcover_rgb.pdf'
-                }
-              }
-            },
-            'directories' => {
-              'covers' => 'covers'
-            }
-          }
+        # pdf ターゲットが無ければ表紙は綴じない（EPUB 用の表紙は別経路）
+        def test_should_omit_covers_when_pdf_is_not_targeted
+          install_config(targets: ['epub'], cover: 'master', combined: true)
 
-          set_common_config(fake_config)
-
-          File.stub :exist?, true do
-            files = Build::PdfMerger.send(:cover_enhanced_segments).map(&:path)
-            assert_equal(
-              %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf],
-              files,
-              'pdf target でない場合はカバーを含めない'
-            )
-          end
+          assert_equal matter_paths, segment_paths, 'pdf 対象でない場合はカバーを含めない'
         end
 
-        def test_merge_all_pdfs_targets_respects_cover_disabled_flag
-          fake_config = {
-            'output' => {
-              'targets' => ['pdf'],
-              'pdf' => {
-                'cover' => {
-                  'enabled' => false,
-                  'front' => 'frontcover_rgb.pdf',
-                  'back' => 'backcover_rgb.pdf'
-                }
-              }
-            }
-          }
+        # output.pdf.combined: false は「表紙を別ファイルで入稿する」意思表示
+        def test_should_omit_covers_when_combining_is_disabled
+          install_config(targets: ['pdf'], cover: 'master', combined: false)
 
-          set_common_config(fake_config)
+          assert_equal matter_paths, segment_paths, 'combined=false の場合は front/back を結合しない'
+        end
 
-          File.stub :exist?, true do
-            files = Build::PdfMerger.send(:cover_enhanced_segments).map(&:path)
-            assert_equal(
-              %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf],
-              files,
-              'cover.enabled=false の場合は front/back を結合しない'
-            )
-          end
+        # 生成されていない表紙は黙って飛ばす（ビルドは止めない）
+        def test_should_skip_covers_that_were_not_generated
+          install_config(targets: ['pdf'], cover: 'master', combined: true)
+
+          assert_equal [*matter_paths, cover_path('backcover')],
+                       segment_paths(existing: [cover_path('backcover')]),
+                       '存在する表紙だけを結合対象にするべき'
         end
 
         # add_outline_to_output_pdf! が output.pdf なしの場合に早期リターンすることを確認
@@ -185,6 +110,40 @@ module VivlioStarter
             File.stub :exist?, false do
               result = PdfMerger.add_outline_to_output_pdf!(nil)
               assert_equal false, result, 'output.pdf がない場合は false を返すべき'
+            end
+          end
+        end
+
+        private
+
+        # book.yml 相当を CONFIG として差し込む。CONFIG は Data なので、生の Hash を
+        # const_set するとドット記法が壊れる——必ず wrap_config を通すこと。
+        def install_config(targets:, cover:, combined:)
+          Common.install_configuration!(
+            Common.wrap_config(
+              output: { targets:, cover:, pdf: { combined: } },
+              page: { use: 'a4_standard' },
+              cache: { dir: Common::CACHE_DIR, enabled: true },
+              directories: { covers: 'covers' }
+            ).freeze
+          )
+        end
+
+        # 生成済み表紙の置き場は キャッシュ dir（final clean を生き延びる）
+        def cover_path(kind) = File.join(Common.cover_cache_dir, "#{kind}_master_a4_rgb.pdf")
+
+        # 前付・奥付が本文へ相乗りできなかったときの 3 分割（フォールバック経路）。
+        # 相乗り判定は _sections.pdf の実在が前提なので、存在しない環境ではこちらを通る。
+        def matter_paths
+          %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf].map { File.join(Common::BUILD_PDF_DIR, it) }
+        end
+
+        # @param existing [Array<String>] 実在するものとして扱うファイル（表紙など）
+        def segment_paths(existing: [])
+          available = existing + matter_paths
+          Build::Utilities.stub(:page_count, 1) do
+            File.stub(:exist?, ->(path) { available.include?(path) }) do
+              Build::PdfMerger.send(:cover_enhanced_segments).map(&:path)
             end
           end
         end
