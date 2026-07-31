@@ -97,7 +97,7 @@ module VivlioStarter
           return false unless viewing_pdfs_ready?
 
           Common.log_action('[print pdf] 閲覧用 PDF からトンボ・塗り足し付き PDF を導出します…')
-          return false unless merge_into_output_print!(viewing_pdfs, base_basename: '_sections.pdf')
+          return false unless merge_into_output_print!(Build::PdfMerger.body_and_matter_segments)
 
           # crop_marks: false の本はトリムサイズのまま入稿する（従来レンダも --bleed を付けない）
           return true unless crop_marks?
@@ -123,11 +123,6 @@ module VivlioStarter
           Common.log_warn('[print pdf] TrimBox / BleedBox の書き込みに失敗しました')
         end
 
-        # 導出のソースになる閲覧用中間 PDF（トリムサイズ・非圧縮・dedup 済み）
-        def viewing_pdfs
-          %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf].map { pdf_path(it) }
-        end
-
         # 本文がなければ導出は成立しない（前付・奥付は欠けても結合を続行できる）
         def viewing_pdfs_ready?
           return true if File.exist?(pdf_path('_sections.pdf'))
@@ -140,13 +135,27 @@ module VivlioStarter
         # 従来フロー（full_bleed / 導出不能時）
         # ================================================================
 
-        # 本文・前付・奥付を --crop-marks --bleed 付きで個別にレンダリングして結合する。
+        # 本文を --crop-marks --bleed 付きでレンダリングして結合する。
+        #
+        # 本文 entries は閲覧用と共用（entries.sections.js）なので、前付・奥付も
+        # 一緒に組まれる。相乗りできていればそのページ範囲を切って並べ、
+        # できていなければ従来どおり個別にレンダしてから結合する。
         def build_by_rendering!
           build_sections!
-          build_front_and_tail!
 
-          files = %w[_titlepage_legalpage_print.pdf _sections_print.pdf _colophon_print.pdf].map { pdf_path(it) }
-          merge_into_output_print!(files, base_basename: '_sections_print.pdf')
+          sections_print = pdf_path('_sections_print.pdf')
+          ranges = Build::PdfBuilder.embedded_special_page_ranges(sections_print)
+
+          segments = if ranges
+                       Build::PdfMerger.embedded_segments(sections_print, ranges)
+                     else
+                       Build::PdfBuilder.ensure_separate_render_is_safe!
+                       build_front_and_tail!
+                       Build::PdfMerger.separate_segments(front_matter: '_titlepage_legalpage_print.pdf',
+                                                          body: '_sections_print.pdf',
+                                                          colophon: '_colophon_print.pdf')
+                     end
+          merge_into_output_print!(segments)
         end
 
         # 本文セクションの入稿用 PDF を生成
@@ -209,11 +218,10 @@ module VivlioStarter
         # named destinations（`/Dests`・数千件）が丸ごと捨てられ、リンクのクリック領域だけが
         # 残って目次・索引・用語集の全リンクが無反応になる（閲覧用 merge_all_pdfs! と同じ規約）。
         #
-        # @param files [Array<String>] 結合順の PDF パス（未生成のものは自動で除外）
-        # @param base_basename [String] カタログ引き継ぎ元にする本文 PDF の basename
+        # @param segments [Array<PdfMerger::Segment>] 結合順の区間（未生成のものは自動で除外）
         # @return [Boolean] 結合に成功したか
-        def merge_into_output_print!(files, base_basename:)
-          existing = files.select { File.exist?(it) }
+        def merge_into_output_print!(segments)
+          existing = segments.select { File.exist?(it.path) }
 
           if existing.empty?
             Common.log_error('[print pdf] 結合対象の入稿用 PDF がありません')
@@ -222,8 +230,7 @@ module VivlioStarter
 
           # 奥付が偶数ページ（左ページ）に来るよう空白ページ挿入判定
           existing = Build::PdfMerger.insert_blank_page_before_colophon(existing)
-          base = pdf_path(base_basename)
-          base = existing.first unless existing.include?(base)
+          base = Build::PdfMerger.base_pdf_for(existing)
 
           if Build::PdfMerger.merge_pdfs_with_qpdf!(existing, output: output_print_pdf, base_pdf: base)
             Common.log_success('[print pdf] output_print.pdf を生成しました')

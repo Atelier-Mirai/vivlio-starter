@@ -111,6 +111,27 @@ class TestPdfPageMapExtractor < Minitest::Test
     assert_match(/本文 PDF が見つかりません/, error.message)
   end
 
+  # ================================================================
+  # document_first_pages: 文書 → 開始ページ
+  # ================================================================
+
+  # /Dests の名前には元 URL が丸ごと入っているので、`#` の手前で文書を判別できる。
+  # 1 文書内の最小ページがその文書の開始ページ（vivliostyle はスパイン文書ごとに改ページする）。
+  def test_should_report_the_first_page_of_each_spine_document
+    Dir.mktmpdir do |dir|
+      pdf_path = create_pdf_with_dests(dir)
+
+      assert_equal({ '00-preface' => 1, '08-web' => 2 },
+                   Extractor.new(pdf_path).document_first_pages,
+                   '08-web は 2 ページ目と 3 ページ目に dest を持つので、小さい方を採ること')
+    end
+  end
+
+  def test_should_return_empty_when_pdf_is_missing
+    assert_empty Extractor.new('/nonexistent/sections.pdf').document_first_pages,
+                 'PDF が無い場合は例外ではなく空を返すこと（呼び出し側が個別レンダへ退避する）'
+  end
+
   private
 
   # vivliostyle と同形の PDF を作る:

@@ -99,10 +99,69 @@ module VivlioStarter
                      'postface.css に break-before: recto が含まれていること')
       end
 
+      # 前付・奥付は本文スパインの末尾に相乗りするため、単独ドキュメントだった頃に
+      # @page :nth(1) が消していた柱を、名前付きページ側で明示的に消す必要がある。
+      # 消し忘れると直前の章のタイトルが string() に残ったまま出る。
+      def test_front_and_back_matter_named_pages_suppress_running_head
+        { 'titlepage.css' => 'titlepage', 'legalpage.css' => 'legalpage',
+          'colophon.css' => 'colophon' }.each do |file, page_name|
+          block = named_page_block(read_css(file), page_name)
+
+          assert_match(/@top-right\s*\{\s*content:\s*none;?\s*\}/m, block,
+                       "#{file} の @page #{page_name} が柱を消していること")
+        end
+      end
+
+      # ノド／小口は @page :left / :right が表裏で入れ替える。相乗りすると本文の
+      # ページ数次第で表裏が変わるため、名前付きページ側で綴じ側を固定する。
+      # 本扉＝右ページ（ノドが左）、権利ページと奥付＝左ページ（ノドが右）。
+      def test_front_and_back_matter_named_pages_pin_the_gutter
+        title = named_page_block(read_css('titlepage.css'), 'titlepage')
+
+        assert_match(/margin-left:\s*var\(--page-margin-inner\)/, title, '本扉のノドは左であること')
+        assert_match(/margin-right:\s*var\(--page-margin-outer\)/, title, '本扉の小口は右であること')
+
+        { 'legalpage.css' => 'legalpage', 'colophon.css' => 'colophon' }.each do |file, page_name|
+          block = named_page_block(read_css(file), page_name)
+
+          assert_match(/margin-left:\s*var\(--page-margin-outer\)/, block, "#{file} の小口は左であること")
+          assert_match(/margin-right:\s*var\(--page-margin-inner\)/, block, "#{file} のノドは右であること")
+        end
+      end
+
+      # 生成 CSS（book-settings.css）は page.chapter_pagebreak: verso のとき裸の body へ
+      # break-before: verso を出す。打ち消さないと前付・奥付の前に白紙が挟まり、
+      # 結合時の切り出し位置がずれる。
+      def test_front_and_back_matter_cancel_the_generated_pagebreak
+        { 'titlepage.css' => 'titlepage', 'legalpage.css' => 'legalpage',
+          'colophon.css' => 'colophon' }.each do |file, klass|
+          css = read_css(file)
+
+          assert_match(/body\.#{klass}\s*\{[^}]*break-before:\s*auto/m, css,
+                       "#{file} が body.#{klass} で break-before を打ち消していること")
+        end
+      end
+
       private
 
       def read_css(filename)
         File.read(File.join(STYLESHEETS_DIR, filename), encoding: 'utf-8')
+      end
+
+      # `@page <name> { ... }` の中身を取り出す。マージンボックスの入れ子があるため
+      # 素朴な `[^}]*` では途中で切れる。深さを数えて閉じ括弧まで読む。
+      def named_page_block(css, page_name)
+        start = css.index(/@page\s+#{page_name}\s*\{/) or return ''
+
+        depth = 0
+        css[start..].each_char.with_index do |ch, i|
+          depth += 1 if ch == '{'
+          next unless ch == '}'
+
+          depth -= 1
+          return css[start, i + 1] if depth.zero?
+        end
+        ''
       end
     end
 
@@ -125,62 +184,112 @@ module VivlioStarter
         @merger = VivlioStarter::CLI::Build::PdfMerger
       end
 
+      # 検証したいのは parity 判定だけなので、改丁設定は「面を問わない（any）」以外に
+      # 固定する。固定しないと config/book.yml の chapter_pagebreak 次第で
+      # 早期 return に入り、判定を素通りしたまま緑になる。
+      def with_paged_colophon(&) = @merger.stub(:chapter_pagebreak_any?, false, &)
+
+      def segment(role, path, pages)
+        VivlioStarter::CLI::Build::PdfMerger::Segment.new(role:, path:, range: '1-z', pages:)
+      end
+
       def test_insert_blank_when_body_pages_even
         # カバー除外後の本文ページ数が偶数 → 空白ページ挿入が必要
-        files = %w[covers/front.pdf _titlepage_legalpage.pdf _sections.pdf _colophon.pdf]
+        # covers/ は除外、前付=2, 本文=8 → total=10(偶数)
+        segments = [
+          segment(:cover_front,  'covers/front.pdf',           1),
+          segment(:front_matter, '_titlepage_legalpage.pdf',   2),
+          segment(:body,         '_sections.pdf',              8),
+          segment(:colophon,     '_colophon.pdf',              1)
+        ]
 
-        # covers/ は除外、titlepage_legalpage=2, sections=8 → total=10(偶数)
-        fake_counts = { '_titlepage_legalpage.pdf' => 2, '_sections.pdf' => 8 }
-        VivlioStarter::CLI::Build::Utilities.stub(:page_count, ->(f) { fake_counts[f] || 0 }) do
+        with_paged_colophon do
           VivlioStarter::CLI::Build::Utilities.stub(:ensure_blank_page_pdf, '_blank_before_colophon.pdf') do
-            result = @merger.send(:insert_blank_page_before_colophon, files)
-            assert_includes result, '_blank_before_colophon.pdf',
-                           '偶数ページ数のとき空白ページが挿入されること'
-            colophon_idx = result.index('_colophon.pdf')
-            blank_idx = result.index('_blank_before_colophon.pdf')
-            assert blank_idx < colophon_idx, '空白ページは奥付の前に配置されること'
+            result = @merger.send(:insert_blank_page_before_colophon, segments)
+            roles = result.map(&:role)
+
+            assert_includes roles, :blank, '偶数ページ数のとき空白ページが挿入されること'
+            assert roles.index(:blank) < roles.index(:colophon), '空白ページは奥付の前に配置されること'
           end
         end
       end
 
       def test_no_blank_when_body_pages_odd
         # カバー除外後の本文ページ数が奇数 → 空白ページ不要
-        files = %w[covers/front.pdf _titlepage_legalpage.pdf _sections.pdf _colophon.pdf]
+        # covers/ は除外、前付=2, 本文=9 → total=11(奇数)
+        segments = [
+          segment(:cover_front,  'covers/front.pdf',           1),
+          segment(:front_matter, '_titlepage_legalpage.pdf',   2),
+          segment(:body,         '_sections.pdf',              9),
+          segment(:colophon,     '_colophon.pdf',              1)
+        ]
 
-        # covers/ は除外、titlepage_legalpage=2, sections=9 → total=11(奇数)
-        fake_counts = { '_titlepage_legalpage.pdf' => 2, '_sections.pdf' => 9 }
-        VivlioStarter::CLI::Build::Utilities.stub(:page_count, ->(f) { fake_counts[f] || 0 }) do
-          result = @merger.send(:insert_blank_page_before_colophon, files)
-          refute_includes result, '_blank_before_colophon.pdf',
-                         '奇数ページ数のとき空白ページは挿入されないこと'
+        with_paged_colophon do
+          result = @merger.send(:insert_blank_page_before_colophon, segments)
+
+          refute_includes result.map(&:role), :blank, '奇数ページ数のとき空白ページは挿入されないこと'
         end
       end
 
       def test_cover_excluded_from_parity
         # カバー(1p)を含めると偶数(12)だが、除外すると奇数(11) → 挿入なし
-        files = %w[covers/frontcover_rgb.pdf _titlepage_legalpage.pdf _sections.pdf _colophon.pdf]
+        segments = [
+          segment(:cover_front,  'covers/frontcover_rgb.pdf',  1),
+          segment(:front_matter, '_titlepage_legalpage.pdf',   2),
+          segment(:body,         '_sections.pdf',              9),
+          segment(:colophon,     '_colophon.pdf',              1)
+        ]
 
-        fake_counts = { 'covers/frontcover_rgb.pdf' => 1, '_titlepage_legalpage.pdf' => 2, '_sections.pdf' => 9 }
-        VivlioStarter::CLI::Build::Utilities.stub(:page_count, ->(f) { fake_counts[f] || 0 }) do
-          result = @merger.send(:insert_blank_page_before_colophon, files)
-          refute_includes result, '_blank_before_colophon.pdf',
-                         'カバーを除外した本文ページ数が奇数なら空白挿入なし'
+        with_paged_colophon do
+          result = @merger.send(:insert_blank_page_before_colophon, segments)
+
+          refute_includes result.map(&:role), :blank, 'カバーを除外した本文ページ数が奇数なら空白挿入なし'
         end
       end
 
       def test_no_colophon_in_files_returns_unchanged
-        files = %w[_titlepage_legalpage.pdf _sections.pdf]
-        result = @merger.send(:insert_blank_page_before_colophon, files)
-        assert_equal files, result, '奥付がない場合はファイルリストが変更されないこと'
+        segments = [
+          segment(:front_matter, '_titlepage_legalpage.pdf', 2),
+          segment(:body,         '_sections.pdf',            9)
+        ]
+
+        with_paged_colophon do
+          assert_equal segments, @merger.send(:insert_blank_page_before_colophon, segments),
+                       '奥付がない場合は区間列が変更されないこと'
+        end
       end
 
       def test_zero_page_count_returns_unchanged
-        files = %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf]
+        segments = [
+          segment(:front_matter, '_titlepage_legalpage.pdf', 0),
+          segment(:body,         '_sections.pdf',            0),
+          segment(:colophon,     '_colophon.pdf',            0)
+        ]
 
-        VivlioStarter::CLI::Build::Utilities.stub(:page_count, ->(_) { 0 }) do
-          result = @merger.send(:insert_blank_page_before_colophon, files)
-          refute_includes result, '_blank_before_colophon.pdf',
-                         'ページ数 0 のとき空白ページは挿入されないこと'
+        with_paged_colophon do
+          result = @merger.send(:insert_blank_page_before_colophon, segments)
+
+          refute_includes result.map(&:role), :blank, 'ページ数 0 のとき空白ページは挿入されないこと'
+        end
+      end
+
+      # 前付・奥付が本文 PDF に相乗りしていると 3 区間すべてが同じファイルを指す。
+      # parity 判定がパスの綴りでなく role を見ていることを固定する。
+      def test_parity_uses_role_not_path_when_matter_is_embedded
+        sections = '_sections.pdf'
+        segments = [
+          segment(:front_matter, sections, 2),
+          segment(:body,         sections, 8),
+          segment(:colophon,     sections, 1)
+        ]
+
+        with_paged_colophon do
+          VivlioStarter::CLI::Build::Utilities.stub(:ensure_blank_page_pdf, '_blank_before_colophon.pdf') do
+            result = @merger.send(:insert_blank_page_before_colophon, segments)
+
+            assert_includes result.map(&:role), :blank,
+                            '同一ファイルの 3 区間でも前方 10 ページを数えて空白を挿入できること'
+          end
         end
       end
     end

@@ -116,6 +116,7 @@ module VivlioStarter
           'index scan and build',
           'convert sections html',
           'generate part title pages',
+          'generate front and back matter html',
           'techbook post-process',
           'generate toc html',
           'build overall pdf',
@@ -516,8 +517,9 @@ module VivlioStarter
 
         with_build_stubs { pipeline.run }
 
-        # full mode（pdf専用）は 15 ステップ（Step 0, 1, 2, 3, 4, 5, 5b, 5c, 6, 7, 8, 9, 10, 11, 12）
-        assert_equal 15, pipeline.timings.length, 'full mode は 15 ステップを記録するべき'
+        # full mode（pdf専用）は 16 ステップ。前付・奥付の HTML 生成を共通前段へ
+        # 前倒ししたぶん 1 つ増えている（front-back-matter-single-render-spec.md §2.1）。
+        assert_equal 16, pipeline.timings.length, 'full mode は 16 ステップを記録するべき'
       end
 
       private

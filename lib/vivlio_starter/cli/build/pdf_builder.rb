@@ -3,6 +3,7 @@
 require 'fileutils'
 
 require_relative '../techbook/processor'
+require_relative 'pdf_page_map_extractor'
 require_relative 'vivliostyle_config_writer'
 
 module VivlioStarter
@@ -31,6 +32,11 @@ module VivlioStarter
         APPX_RANGE     = (90..98) # 90..98 付録
         POSTFACE_RANGE = (99..99) # 99-postface
 
+        # 本文スパインの末尾へ相乗りさせる特殊ページ。並び順は最終的な綴じ順
+        # （本扉 → 権利ページ → 奥付）と一致していること——結合時にこの順で
+        # 切り出して並べ替えるため。
+        SPECIAL_PAGE_BASENAMES = %w[_titlepage _legalpage _colophon].freeze
+
         module_function
 
         # html/ の全 HTML を pdf/ へ無加工コピーする（P4 §3.4-2）。
@@ -40,6 +46,7 @@ module VivlioStarter
           Dir.glob(File.join(Common::BUILD_HTML_DIR, '*.html')).each do |src|
             FileUtils.cp(src, File.join(Common::BUILD_PDF_DIR, File.basename(src)))
           end
+          inject_matter_anchors!
           # ビルド生成画像（数式 SVG）を pdf/ へミラーし、消費者 dir 相対の
           # images/math/… 参照を解決する（P4b §2.2）。存在すれば上書きコピー。
           images_src = File.join(Common::BUILD_HTML_DIR, 'images')
@@ -49,6 +56,37 @@ module VivlioStarter
           FileUtils.mkdir_p(dest)
           FileUtils.cp_r(File.join(images_src, '.'), dest)
         end
+
+        # 前付・奥付の staged HTML に、結合時にページ位置を引くための目印を埋める。
+        #
+        # vivliostyle が `/Dests` へ書き出すのは**リンクの飛び先になっている id だけ**で、
+        # id を持つだけの要素は出てこない（実測: `<body id>` は出ず、自己参照リンクは出る。
+        # 目次から参照される章見出しや脚注が dest を持つのはそのため）。前付・奥付は
+        # どこからもリンクされないので、自分自身を指す空リンクを 1 つ足して目印にする。
+        #
+        # `position: absolute` で流れから外すのは、本扉・権利ページの body が
+        # `display: grid` で行を明示しており、素の子要素を 1 つ足すと行の割り当てが
+        # 1 つずつずれてレイアウトが崩れるため。インラインで書くのは、この目印が
+        # 著者の意匠ではなくビルドの仕掛けで、CSS 側に散らしたくないから。
+        #
+        # 書き込むのは pdf/ のコピーだけ。html/ の原本はクリーンなままなので
+        # EPUB / Kindle には現れない。
+        def inject_matter_anchors!
+          SPECIAL_PAGE_BASENAMES.each do |basename|
+            path = File.join(Common::BUILD_PDF_DIR, "#{basename}.html")
+            next unless File.exist?(path)
+
+            html = File.read(path, encoding: 'utf-8')
+            id = matter_anchor_id(basename)
+            next if html.include?(id)
+
+            anchor = %(<a id="#{id}" href="##{id}" style="position:absolute"></a>)
+            File.write(path, html.sub(/<body[^>]*>/) { "#{it}#{anchor}" }, encoding: 'utf-8')
+          end
+        end
+
+        # 目印のアンカー ID。著者が付ける id と衝突しないよう vs- 接頭辞を持つ。
+        def matter_anchor_id(basename) = "vs-matter-#{basename.delete_prefix('_')}"
 
         # 特殊ページ HTML（前付・奥付）だけを html/ から pdf/ へコピーする。
         # Step 9 で html/ に再生成された特殊ページを PDF 消費者へ届ける（P4 §3.4-5）。
@@ -131,8 +169,39 @@ module VivlioStarter
             Build::ChapterConfig.htmls_for_range(base_dir, APPX_RANGE, keep_numbers_appx),
             glossary_html,
             Build::ChapterConfig.htmls_for_range(base_dir, POSTFACE_RANGE, keep_numbers_post),
-            index_html
+            index_html,
+            special_page_htmls(base_dir)
           ].flatten
+        end
+
+        # 特殊ページ（本扉・権利ページ・奥付）の HTML パス。3 つ揃っているときだけ返す。
+        #
+        # 本文の**末尾**に足すのが要点。先頭に足すと本文のページ番号が 2 つずれ、
+        # 目次の target-counter・索引・相互参照・dedup のページマップが軒並み動く。
+        # 末尾なら本文のページ番号は 1 つも動かず、結合時に切り出して先頭へ回せばよい。
+        #
+        # 揃っていなければ空を返し、従来どおり個別レンダへ委ねる（欠けた状態で
+        # 相乗りさせると、結合時のページ範囲を決められないため）。
+        def special_page_htmls(base_dir)
+          paths = SPECIAL_PAGE_BASENAMES.map { File.join(base_dir, "#{it}.html") }
+          paths.all? { File.exist?(it) } ? paths : []
+        end
+
+        # 本文スパインに前付・奥付が載っているか（entries へ足したかどうかと同義）
+        def special_pages_in_spine? = special_page_htmls(Common::BUILD_PDF_DIR).any?
+
+        # 前付・奥付を個別にレンダしてよいかを検査し、駄目なら止める。
+        #
+        # 本文へ相乗り済みなのに位置が引けない状態で個別レンダすると、同じページが
+        # **本文の中と結合列の両方に入って二重になる**（実測: 515 → 518 ページ）。
+        # 静かに壊れた PDF を出すより、原因と対処を示して止めるほうがよい。
+        def ensure_separate_render_is_safe!
+          return unless special_pages_in_spine?
+
+          Common.log_error('[前付・奥付] 本文 PDF に組まれているのにページ位置を特定できませんでした')
+          Common.log_error('  個別にレンダすると同じページが二重に入るため、ビルドを中止します。')
+          Common.log_error('  対処: vs build --clean で中間生成物を作り直してください。')
+          exit 1
         end
 
         # 全体PDF生成（内部メソッド）
@@ -159,31 +228,80 @@ module VivlioStarter
           Common.log_success('[Step 7] _sections.pdf を生成しました')
         end
 
-        # Step 9: 本扉・扉裏・後書き・奥付の生成
-        # 新仕様: _titlepage, _legalpage, _colophon を使用
+        # 本扉・権利ページ・奥付の Markdown と HTML を html/ に用意する（共通前段）。
         #
-        # 設計方針: mtime 比較・キャッシュ判定は行わず、常に .md / HTML / PDF を再生成する。
+        # 本文レンダより前に置く理由は 2 つ。
+        #   1. 本文スパインの末尾へ相乗りさせるので、レンダ開始時点で HTML が要る
+        #   2. techbook 後処理（波ダッシュ置換・絵文字画像化・SVG→WebP 参照整合）が
+        #      html/ を一括で舐めるため、そこへ間に合わせれば個別再適用が要らない
+        # 前倒しできるのは、これら 3 ページの内容が book.yml 由来だけで、
+        # 総ページ数のような「本文を組んだ結果」に依存しないからである。
+        #
+        # 設計方針: mtime 比較・キャッシュ判定は行わず常に再生成する。
         # 詳細は book_yml_regeneration_spec.md を参照。
-        def build_front_pages_and_tail!
-          # --- Phase: 特殊ページ HTML を常に再生成（html/ へ） ---
-          special_basenames = %w[_titlepage _legalpage _colophon]
-          special_basenames.each do |basename|
+        def generate_front_and_back_matter_html!
+          CreateCommands.execute_titlepage(force: true)
+          CreateCommands.execute_legalpage(force: true)
+          CreateCommands.execute_colophon(force: true)
+
+          SPECIAL_PAGE_BASENAMES.each do |basename|
             Common.log_info("[HTML] 再生成します: #{basename}.html")
             Build::SectionBuilder.preprocess_single_chapter!(basename)
             Build::SectionBuilder.convert_single_chapter!(basename)
           end
+        end
 
-          # Step 9 で生成されたタイトル・奥付 HTML は Step 5c より後に作られるため、
-          # 波ダッシュ置換 / 絵文字画像化 / SVG→WebP 参照整合 / CSS 注入をここで再適用する。
-          special_html_files = special_basenames.map { File.join(Common::BUILD_HTML_DIR, "#{it}.html") }
-          Techbook::Processor.new(Common::CONFIG).post_process_html_files!(special_html_files)
-
-          # --- Phase: pdf/ へステージングして前付・奥付 PDF を生成 ---
-          stage_special_pages!(special_basenames)
+        # 前付・奥付を単独レンダして `_titlepage_legalpage.pdf` / `_colophon.pdf` を作る。
+        #
+        # 本文へ相乗りできなかったとき（特殊ページの HTML が欠けている、
+        # レンダ結果から位置を特定できない）だけ通るフォールバック経路。
+        # vivliostyle は PDF を吐くたび約 22 秒の固定費がかかるため、
+        # 通常経路ではここを通らない（front-back-matter-single-render-spec.md §0.1）。
+        def build_front_pages_and_tail!
+          stage_special_pages!(SPECIAL_PAGE_BASENAMES)
           build_special_page_pdf!(name: 'front', basenames: %w[_titlepage _legalpage],
                                   output_basename: '_titlepage_legalpage.pdf')
           build_special_page_pdf!(name: 'colophon', basenames: %w[_colophon],
                                   output_basename: '_colophon.pdf')
+        end
+
+        # 本文 PDF に相乗りした特殊ページのページ範囲。相乗りしていなければ nil。
+        #
+        # 位置は「末尾 3 ページ」と決め打ちせず `/Dests` から実測する。権利ページが
+        # 2 ページに溢れることも、`chapter_pagebreak: verso` で白紙が挟まることもあり、
+        # 数え間違えると**静かに隣のページを切り出す**という壊れ方をするためである。
+        #
+        # 同じ PDF に対して結合工程が複数回問い合わせるので、パス・mtime・サイズで
+        # 覚えておく（1 回の走査が 93MB の PDF で約 0.8 秒）。
+        #
+        # @param sections_pdf [String] 本文 PDF のパス
+        # @return [Hash{Symbol => Range}, nil] `{ body:, front:, colophon: }`
+        def embedded_special_page_ranges(sections_pdf = File.join(Common::BUILD_PDF_DIR, '_sections.pdf'))
+          return nil unless File.exist?(sections_pdf)
+
+          stamp = [sections_pdf, File.mtime(sections_pdf), File.size(sections_pdf)]
+          return @special_ranges if defined?(@special_ranges_stamp) && @special_ranges_stamp == stamp
+
+          @special_ranges_stamp = stamp
+          @special_ranges = compute_special_page_ranges(sections_pdf)
+        rescue StandardError => e
+          Common.log_warn("[Step 9] 本文 PDF から前付・奥付の位置を特定できませんでした: #{e.message}")
+          nil
+        end
+
+        # `/Dests` から本扉と奥付の開始ページを引き、3 区間へ割る。
+        # 本扉より前が本文、本扉から奥付の手前までが前付、奥付から末尾が奥付。
+        def compute_special_page_ranges(sections_pdf)
+          firsts = PdfPageMapExtractor.new(sections_pdf).document_first_pages
+          title  = firsts['_titlepage']
+          colo   = firsts['_colophon']
+          total  = Build::Utilities.page_count(sections_pdf).to_i
+
+          # 本文が空・順序が逆・末尾を超える、のいずれも「相乗りしていない」と見なす。
+          # 中途半端な範囲で切り出すより、個別レンダへ退避したほうが安全。
+          return nil unless title && colo && title > 1 && colo > title && colo <= total
+
+          { body: (1..title - 1), front: (title..colo - 1), colophon: (colo..total) }
         end
 
         # 特殊ページ（前付/奥付）の PDF を用途別 config でビルドする

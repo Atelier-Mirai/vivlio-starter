@@ -53,7 +53,8 @@ Kindle で回転テーブル（`.rotate-table`）を**画像に劣化させ、90
 ## 4. 実装メモ（案 A）
 
 - **id の付与**は `TableConverter` の `.rotate-table` 生成箇所。著者が `@id` を書いていればそれを使い、無ければ自動採番（クロスリファレンスの `@auto` と同じ考え方で、本文からは参照しない内部 ID）
-- **ページ引き**は `PdfPageMapExtractor::PageMapping` をそのまま使えるか要確認。現在は用語集バックリンク（`gls-src-*`）と索引に限定して集めている可能性があるため、任意 id を引ける入口が要る
+- **ページ引き**は `PdfPageMapExtractor::PageMapping` をそのまま使えるか要確認。現在は用語集バックリンク（`gls-src-*`）と索引に限定して集めている可能性があるため、任意 id を引ける入口が要る（`document_first_pages` が 2026-08-01 に入り、`/Dests` を文書単位で引く経路は用意済み）
+- **`.rotate-table` の id は、誰かにリンクされていないと `/Dests` に出ない**。vivliostyle が書き出すのは「リンクの飛び先になっている id」だけで、id を持つだけの要素は無視される（`front-back-matter-single-render-spec.md` §3.4 に実測表）。前付・奥付と同じく、**自己参照する空リンク**（`<a id="x" href="#x" style="position:absolute">`）を目印として埋める必要がある。`PdfBuilder.inject_matter_anchors!` が同じ手口の先例
 - **切り出し元の PDF は「1 回目のレンダ（dedup 前）」の出力**とする。理由と待ち時間への影響は §7
 - **切り出し解像度**は Kindle の端末幅（1072px 以上）を満たす値。`HeadingImageComposer::RENDER_WIDTH`（1400）と揃えるのが自然
 - **生成物のキャッシュ**は `GeneratedAssetCache` に内容アドレスで置く（章扉・節絵・mermaid と同じ）。鍵には「表の HTML＋scale/shift-y＋版面寸法」を混ぜる

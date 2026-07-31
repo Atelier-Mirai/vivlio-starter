@@ -183,7 +183,7 @@ EPUB 枝は「既に存在します」でスキップしているだけ（デバ
 **カバー生成は本文レンダに一切依存しない**ので、`:shared` 相へ引き上げて両枝の呼び出しを
 削るのが正解。引き上げ先は `prepare theme images` の隣が自然（同じ「資産の事前生成」）。
 
-### 3.3 `html/` への書き込みが PDF 枝に残っている【前提工程で解消】
+### 3.3 `html/` への書き込みが PDF 枝に残っている【2026-08-01 解消済み】
 
 EPUB のスパイン 36 件の末尾は `./_colophon.html` である（`entries.epub.js` を実見）。
 `EpubBuilder.stage_consumer_htmls!`（`epub_builder.rb:110`）が `html/` から読んで消費者 dir へ写す。
@@ -192,9 +192,9 @@ EPUB のスパイン 36 件の末尾は `./_colophon.html` である（`entries.
 `PdfBuilder.build_front_pages_and_tail!`**（`pdf_builder.rb:167`）である。
 つまり今のままでは **EPUB 枝が読む最中に PDF 枝が書く**。
 
-`front-back-matter-single-render-spec.md` §2.1 が、この生成を共通前段へ前倒しする。
-**あちらを先に実装すれば本項は消える。** 逆順に実装するなら、本仕様の中で同じ前倒しを
-行う必要がある——どちらにせよ前倒しは避けられない。
+`front-back-matter-single-render-spec.md` §2.1 がこの生成を共通前段へ前倒しした
+（`generate front and back matter html` ステップ）。**2026-08-01 の実装で本項は解消済み**で、
+`:pdf` 相に `html/` へ書くステップはもう無い。§7 の回帰テストでその状態を固定する。
 
 ### 3.4 進捗表示（Spinner）が TTY を奪い合う
 
@@ -283,7 +283,7 @@ EPUB 枝は PDF 枝より先に終わるので、著者から見れば「合流�
 
 ## 5. 実装の順序
 
-1. `front-back-matter-single-render-spec.md` を実装する（§3.3 が消える）
+1. ~~`front-back-matter-single-render-spec.md` を実装する（§3.3 が消える）~~ **2026-08-01 完了**
 2. カバー生成を `:shared` へ引き上げる（§3.2）
 3. `workspaceDir` を枝ごとに分ける（§3.1）
 4. ステップ表へ相を足し、逐次のまま相ごとに実行する形へ組み替える（§1.1）

@@ -8,27 +8,36 @@ module VivlioStarter
   module CLI
     module Build
       module PdfMerger
+        # 結合順に並ぶ 1 区間。qpdf の `--pages` へ「ファイル＋ページ範囲」を渡す単位で、
+        # 従来の「ファイルの列」は range が全ページの特別な場合にすぎない。
+        #
+        # role を持たせているのは、奥付前の白紙判定とアウトライン基点の算出を
+        # **パスの綴りに依存させない**ため。前付・奥付が本文 PDF に相乗りすると
+        # 3 区間すべてが同じ `_sections.pdf` を指し、ファイル名では区別できなくなる。
+        #
+        # @!attribute role [Symbol] :cover_front / :front_matter / :body / :blank / :colophon / :cover_back
+        # @!attribute range [String] qpdf のページ範囲（'1-z' でファイル全体）
+        Segment = Data.define(:role, :path, :range, :pages)
+
         module_function
 
         # ================================================================
-        # 1. 結合対象ファイルのリスト作成
+        # 1. 結合対象リストの作成
         # ================================================================
-        def cover_enhanced_files
-          # 中間 PDF はワークスペース pdf/ 内・カバー PDF は生成資産キャッシュ
-          # .cache/vs/covers/ から読む（generated-assets 移設仕様 §3.1。P4 §5.1 の
-          # 「covers/ は著者資産・不変」はマスターのみへ純化された）
-          files = %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf]
-                  .map { File.join(Common::BUILD_PDF_DIR, it) }
+
+        # 結合順の区間列。前付・奥付が本文 PDF に相乗りしていれば同じファイルの
+        # 別範囲として、していなければ個別ファイルとして並べる。どちらも同じ
+        # Segment の列になるので、以降の工程は区別しなくてよい。
+        def cover_enhanced_segments
+          segments = body_and_matter_segments
           cfg = Common::CONFIG
 
           # ターゲット判定
           targets = extract_targets(cfg.output.targets)
           pdf_selected = targets.empty? || targets.any? { it.include?('pdf') }
 
-          return files.compact unless pdf_selected
-
-          # 新しいカバー設定の取得
-          return files.compact unless Common.pdf_combined?
+          return segments unless pdf_selected
+          return segments unless Common.pdf_combined?
 
           begin
             page_use = resolve_page_use(cfg.page)
@@ -43,13 +52,55 @@ module VivlioStarter
             front = File.join(Common.cover_cache_dir, "frontcover_#{theme}_#{size}_rgb.pdf")
             back  = File.join(Common.cover_cache_dir, "backcover_#{theme}_#{size}_rgb.pdf")
 
-            files.unshift(front) if File.exist?(front)
-            files.push(back)     if File.exist?(back)
+            segments.unshift(whole_file_segment(:cover_front, front)) if File.exist?(front)
+            segments.push(whole_file_segment(:cover_back, back))      if File.exist?(back)
           rescue StandardError => e
             Common.log_warn("[Step 10] カバー結合設定の処理中にエラー: #{e.message}")
           end
 
-          files.compact
+          segments
+        end
+
+        # 本文・前付・奥付の 3 区間。中間 PDF はワークスペース pdf/ 内に置かれる。
+        #
+        # 相乗り経路では 1 本の `_sections.pdf` から 3 範囲を切り出す。分割して
+        # 別ファイルにすると各ファイルがフォントを丸ごと抱え込み、実測で最終 PDF が
+        # 約 1.9MB 太る（front-back-matter-single-render-spec.md §3.1）。
+        def body_and_matter_segments
+          sections = File.join(Common::BUILD_PDF_DIR, '_sections.pdf')
+          ranges = Build::PdfBuilder.embedded_special_page_ranges(sections)
+
+          return embedded_segments(sections, ranges) if ranges
+
+          separate_segments(front_matter: '_titlepage_legalpage.pdf', body: '_sections.pdf',
+                            colophon: '_colophon.pdf')
+        end
+
+        # 1 本の PDF に相乗りした前付・奥付を 3 区間へ割る（閲覧用・入稿用で共用）
+        def embedded_segments(path, ranges)
+          [
+            ranged_segment(:front_matter, path, ranges[:front]),
+            ranged_segment(:body,         path, ranges[:body]),
+            ranged_segment(:colophon,     path, ranges[:colophon])
+          ]
+        end
+
+        # 前付・奥付を個別レンダしたときの 3 区間（フォールバック経路・閲覧用と入稿用で
+        # ファイル名が違うため basename を受け取る）
+        def separate_segments(front_matter:, body:, colophon:)
+          { front_matter:, body:, colophon: }.map do |role, name|
+            whole_file_segment(role, File.join(Common::BUILD_PDF_DIR, name))
+          end
+        end
+
+        # ファイル全体を 1 区間として扱う
+        def whole_file_segment(role, path)
+          Segment.new(role:, path:, range: '1-z', pages: Build::Utilities.page_count(path).to_i)
+        end
+
+        # ページ範囲を 1 区間として扱う
+        def ranged_segment(role, path, range)
+          Segment.new(role:, path:, range: "#{range.first}-#{range.last}", pages: range.size)
         end
 
         # ================================================================
@@ -108,10 +159,9 @@ module VivlioStarter
         def merge_all_pdfs!(_entries_or_keep = nil)
           Common.log_action('[Step 10] 表紙、本文、奥付を結合します…')
 
-          files          = cover_enhanced_files
-          existing_files = files.select { File.exist?(it) }
+          segments = cover_enhanced_segments.select { File.exist?(it.path) }
 
-          if existing_files.empty?
+          if segments.empty?
             Common.log_error('[Step 10] 結合対象PDFがありません')
             return false
           end
@@ -119,18 +169,13 @@ module VivlioStarter
           return false unless qpdf_available?
 
           # 奥付を偶数ページ（左ページ）に配置するため、必要なら空白ページを挿入
-          existing_files = insert_blank_page_before_colophon(existing_files)
+          segments = insert_blank_page_before_colophon(segments)
 
-          # アウトライン付与の基点補正用に、本文（_titlepage_legalpage.pdf）より前に
-          # 結合される表紙 PDF のページ数を記録しておく（Step 11 で参照）。
-          @front_matter_offset = compute_front_matter_offset(existing_files)
+          # アウトライン付与の基点補正用に、前付より前に結合される表紙 PDF の
+          # ページ数を記録しておく（Step 11 で参照）。
+          @front_matter_offset = compute_front_matter_offset(segments)
 
-          # _sections.pdf があればそれをベースに、なければ最初のファイルを使用
-          # （ベース PDF のメタデータ・しおりが出力に引き継がれるため、本文を優先する）
-          sections_pdf = File.join(Common::BUILD_PDF_DIR, '_sections.pdf')
-          base_pdf = existing_files.include?(sections_pdf) ? sections_pdf : existing_files.first
-
-          if merge_pdfs_with_qpdf!(existing_files, output: merged_output_pdf, base_pdf:)
+          if merge_pdfs_with_qpdf!(segments, output: merged_output_pdf, base_pdf: base_pdf_for(segments))
             Common.log_success('[Step 10] output.pdf を生成しました')
             true
           else
@@ -139,58 +184,65 @@ module VivlioStarter
           end
         end
 
+        # メタデータ・しおりの引き継ぎ元。本文を優先する（ベース PDF の情報が
+        # 出力へ受け継がれるため、表紙 1 枚の情報で上書きされないようにする）。
+        def base_pdf_for(segments)
+          segments.find { it.role == :body }&.path || segments.first.path
+        end
+
         # 結合済み PDF のパス（ワークスペース pdf/ 内。最終リネームでルートへ出る）
         def merged_output_pdf = File.join(Common::BUILD_PDF_DIR, 'output.pdf')
 
-        # 複数 PDF を qpdf で1つに結合する（閲覧用・入稿用ビルドの共通基盤）
+        # 区間列を qpdf で 1 本の PDF に結合する（閲覧用・入稿用ビルドの共通基盤）。
         #
         # base_pdf を「結合のベース」として qpdf に渡すと、その PDF の
-        # メタデータが出力へ引き継がれる。指定がなければ先頭ファイルを使う。
+        # メタデータが出力へ引き継がれる。指定がなければ先頭区間のファイルを使う。
         #
-        # @param files [Array<String>] 結合順の PDF パス（存在確認済みであること）
+        # 同じファイルが複数区間に現れてよい（相乗り経路では 3 区間が同一ファイル）。
+        # qpdf は入力ごとに 1 度だけ読み込むため、フォントなどの共有資源は重複しない。
+        #
+        # @param segments [Array<Segment>] 結合順の区間（存在確認済みであること）
         # @param output [String] 出力 PDF パス（既存ファイルは上書き）
         # @param base_pdf [String, nil] メタデータ引き継ぎ元の PDF
         # @return [Boolean] 結合に成功し出力ファイルが存在すれば true
-        def merge_pdfs_with_qpdf!(files, output:, base_pdf: nil)
-          return false if files.empty?
+        def merge_pdfs_with_qpdf!(segments, output:, base_pdf: nil)
+          return false if segments.empty?
 
-          base_pdf ||= files.first
+          base_pdf ||= segments.first.path
           FileUtils.rm_f(output)
 
-          ranges = files.map { %("#{it}" 1-z) }.join(' ')
-          success = system(%(qpdf "#{base_pdf}" --pages #{ranges} -- "#{output}" > /dev/null))
+          pages = segments.map { %("#{it.path}" #{it.range}) }.join(' ')
+          success = system(%(qpdf "#{base_pdf}" --pages #{pages} -- "#{output}" > /dev/null))
           success && File.exist?(output)
         end
 
-        # 奥付が偶数ページ（左ページ）始まりになるよう空白ページを挿入
-        # _colophon.pdf（閲覧用）と _colophon_print.pdf（入稿用）の両方に対応
+        # 奥付が偶数ページ（左ページ）始まりになるよう空白ページを挿入する。
+        # 閲覧用・入稿用のどちらの区間列にも使う。
         #
         # page.chapter_pagebreak: any（面を問わない）では挿入しない。奥付を左ページに
         # 置くのは改丁とは別の慣習だが、「どちら側でもよい」と宣言した本で白紙だけが
         # 残るのは一貫しない（chapter-pagebreak-spec.md §2.3）。
-        def insert_blank_page_before_colophon(files)
+        #
+        # @param segments [Array<Segment>]
+        # @return [Array<Segment>]
+        def insert_blank_page_before_colophon(segments)
           if chapter_pagebreak_any?
             Common.log_debug('[Step 10] page.chapter_pagebreak: any のため奥付前の空白ページを挿入しません')
-            return files
+            return segments
           end
 
-          colophon_idx = files.index { it.include?('_colophon') }
-          return files unless colophon_idx
+          colophon_idx = segments.index { it.role == :colophon }
+          return segments unless colophon_idx
 
-          preceding = files[0...colophon_idx]
-
-          # カバーPDFはページ番号体系に含まれないため parity 計算から除外
-          body_files = preceding.grep_v(%r{covers/})
-
-          # 各PDFのページ数を個別に取得してログ出力（デバッグ時のみ）
-          page_counts = body_files.map { |f| [f, Build::Utilities.page_count(f).to_i] }
-          page_counts.each { |f, c| Common.log_debug("[Step 10] ページ数: #{f} = #{c}p") }
-          total = page_counts.sum(&:last)
+          # カバーはページ番号体系に含まれないため parity 計算から除外
+          preceding = segments[0...colophon_idx].reject { it.role == :cover_front }
+          preceding.each { Common.log_debug("[Step 10] ページ数: #{it.path} #{it.range} = #{it.pages}p") }
+          total = preceding.sum(&:pages)
           Common.log_debug("[Step 10] 奥付前の合計ページ数（カバー除外）: #{total}")
 
           if total.zero?
             Common.log_debug('[Step 10] 奥付より前のPDFページ数を取得できませんでした')
-            return files
+            return segments
           end
 
           # total が偶数 → 次ページは奇数（右） → 空白ページを挿入して偶数に
@@ -198,10 +250,10 @@ module VivlioStarter
           if total.even?
             blank = Build::Utilities.ensure_blank_page_pdf(File.join(Common::BUILD_PDF_DIR, '_blank_before_colophon.pdf'))
             Common.log_debug("[Step 10] 奥付を偶数ページに配置するため空白ページを挿入します（前方 #{total} ページ）")
-            files.dup.insert(colophon_idx, blank)
+            segments.dup.insert(colophon_idx, Segment.new(role: :blank, path: blank, range: '1-z', pages: 1))
           else
             Common.log_debug("[Step 10] 奥付は偶数ページに配置されます（前方 #{total} ページ、空白挿入なし）")
-            files
+            segments
           end
         end
 
@@ -222,19 +274,19 @@ module VivlioStarter
           false
         end
 
-        # output.pdf 先頭に結合される表紙 PDF など、_titlepage_legalpage.pdf より
-        # 前に並ぶページ数を返す。アウトラインのページ位置計算の基点
-        # （タイトルページの実ページ番号 = offset + 1）を補正するために用いる。
-        # merge_all_pdfs! 実行時に算出される。未算出時は 0（表紙なし相当）。
+        # output.pdf 先頭に結合される表紙 PDF など、前付より前に並ぶページ数を返す。
+        # アウトラインのページ位置計算の基点（本扉の実ページ番号 = offset + 1）を
+        # 補正するために用いる。merge_all_pdfs! 実行時に算出される。
+        # 未算出時は 0（表紙なし相当）。
         def front_matter_offset = @front_matter_offset || 0
 
-        # 結合ファイル列のうち、_titlepage_legalpage.pdf より前のページ数を合算する。
-        # タイトルページが見つからない場合は 0 を返す（従来挙動と互換）。
-        def compute_front_matter_offset(ordered_files)
-          idx = ordered_files.index { |f| File.basename(f) == '_titlepage_legalpage.pdf' }
+        # 区間列のうち、前付より前のページ数を合算する。
+        # 前付が見つからない場合は 0 を返す（従来挙動と互換）。
+        def compute_front_matter_offset(segments)
+          idx = segments.index { it.role == :front_matter }
           return 0 unless idx
 
-          ordered_files[0...idx].sum { |f| (Build::Utilities.page_count(f) || 0).to_i }
+          segments[0...idx].sum(&:pages)
         end
 
         # ================================================================

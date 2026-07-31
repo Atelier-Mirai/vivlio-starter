@@ -123,6 +123,10 @@ module VivlioStarter
             ['index scan and build',      -> { run_step4_index_processing },                          true],
             ['convert sections html',     -> { Build::SectionBuilder.convert_sections_html!(entries) }, true],
             ['generate part title pages', -> { Build::PartTitleGenerator.generate_all! },             true],
+            # 前付・奥付の HTML は本文レンダへ相乗りさせるため、techbook 後処理より前に置く。
+            # ここで作れば html/ の一括後処理が拾い、個別再適用が要らなくなる
+            # （front-back-matter-single-render-spec.md §2.1）。
+            ['generate front and back matter html', -> { Build::PdfBuilder.generate_front_and_back_matter_html! }, true],
             ['techbook post-process',     -> { run_techbook_post_process },                           true],
             ['generate toc html',         -> { Build::TocGenerator.generate_toc_html!(Common::BUILD_HTML_DIR, entries) }, true],
             # --- toc 後: ターゲット依存（分岐は条件列に吸収） ---
@@ -136,11 +140,10 @@ module VivlioStarter
             # EPUB/Kindle は html/ のクリーンな原本から直接展開する）。
             ['backlink dedup',      -> { Build::BacklinkDedupOrchestrator.run!(entries, rebuild_pdf: need_viewing_pdf) },
              t.any_pdf?],
-            # 前付・奥付: 閲覧用 PDF が要る経路は PDF まで、それ以外（EPUB のみ）は HTML のみ。
-            # 生成するのは扉・権利ページ（前付）と奥付（後付）。旧称の "tail" は
-            # 奥付を指す曖昧語だったため、出版用語に合わせた
+            # 前付・奥付。HTML は共通前段で作り済みなので、ここは相乗りできなかった
+            # ときのフォールバックレンダだけを持つ。生成するのは扉・権利ページ（前付）と
+            # 奥付（後付）。旧称の "tail" は奥付を指す曖昧語だったため、出版用語に合わせた
             ['build front and back matter', -> { run_step9_front_pages_and_tail },  need_viewing_pdf],
-            ['build front and back matter html', -> { run_step9_front_pages_html_only }, !need_viewing_pdf],
             ['merge all pdfs',             -> { Build::PdfMerger.merge_all_pdfs!(entries) },        t.pdf],
             ['apply outline to output pdf', -> { Build::PdfMerger.add_outline_to_output_pdf!(entries) }, t.pdf],
             # --- 終端: リネーム／入稿用／EPUB／クリーンアップ ---
@@ -306,64 +309,21 @@ module VivlioStarter
           end
         end
 
-        # Step 9: タイトル・リーガルページなど front/tail PDF を生成する
+        # 前付・奥付の PDF を用意する。
         #
-        # 設計方針: mtime 比較・キャッシュ判定は行わず、常に .md / HTML / PDF を再生成する。
-        # 詳細は book_yml_regeneration_spec.md を参照。
+        # 通常は本文レンダに相乗り済みで、ここは何もしない——vivliostyle は PDF を
+        # 吐くたび約 22 秒の固定費がかかり、3 ページのために 2 回起動するのが
+        # 実測 68 秒の無駄だった（front-back-matter-single-render-spec.md §0.1）。
+        # 相乗りできなかったときだけ、従来どおり個別にレンダする。
         def run_step9_front_pages_and_tail
-          # --- Phase: 特殊ページ .md を常に（強制）再生成 ---
-          CreateCommands.execute_titlepage(force: true)
-          CreateCommands.execute_legalpage(force: true)
-          CreateCommands.execute_colophon(force: true)
+          if Build::PdfBuilder.embedded_special_page_ranges
+            Common.log_info('[Step 9] 前付・奥付は本文 PDF に相乗り済みのため、個別レンダをスキップします')
+            return
+          end
 
-          # --- Phase: HTML と PDF の再生成（PdfBuilder 内部で常時再生成） ---
+          Build::PdfBuilder.ensure_separate_render_is_safe!
+          Common.log_warn('[Step 9] 本文 PDF に前付・奥付が見つかりません。個別にレンダします')
           Build::PdfBuilder.build_front_pages_and_tail!
-        end
-
-        # Step 9 (print_pdf only): 前付・奥付の HTML 生成のみ（PDF ビルドをスキップ）
-        # 入稿用 PDF は Step 13（print_pdf only 時は Step 10）で個別にビルドする
-        def run_step9_front_pages_html_only
-          title_md    = File.join(Common::CACHE_DIR, '_titlepage.md')
-          legal_md    = File.join(Common::CACHE_DIR, '_legalpage.md')
-          colophon_md = File.join(Common::CACHE_DIR, '_colophon.md')
-
-          ensure_special_page_exists!('titlepage', title_md)
-          ensure_special_page_exists!('legalpage', legal_md)
-          ensure_special_page_exists!('colophon', colophon_md)
-
-          CreateCommands.execute_titlepage({})
-          CreateCommands.execute_legalpage({})
-          CreateCommands.execute_colophon({})
-
-          # HTML が生成されたことを確認
-          Build::SectionBuilder.ensure_chapter_html_up_to_date!('_titlepage',
-                                                                extra_sources: File.join('config', 'book.yml'))
-          Build::SectionBuilder.ensure_chapter_html_up_to_date!('_legalpage',
-                                                                extra_sources: File.join('config', 'book.yml'))
-          Build::SectionBuilder.ensure_chapter_html_up_to_date!('_colophon',
-                                                                extra_sources: File.join('config', 'book.yml'))
-
-          special_html_files = %w[_titlepage _legalpage _colophon].map do
-            File.join(Common::BUILD_HTML_DIR, "#{it}.html")
-          end
-          Techbook::Processor.new(Common::CONFIG).post_process_html_files!(special_html_files)
-
-          Common.log_success('[build front pages html] 前付・奥付 HTML を生成しました（PDF ビルドはスキップ）')
-        end
-
-        # 特殊ページが存在しない場合は自動生成
-        def ensure_special_page_exists!(type, path)
-          return if File.exist?(path)
-
-          Common.log_info("#{type} が存在しないため自動生成します: #{path}")
-          case type
-          when 'titlepage'
-            CreateCommands.execute_titlepage({})
-          when 'legalpage'
-            CreateCommands.execute_legalpage({})
-          when 'colophon'
-            CreateCommands.execute_colophon({})
-          end
         end
 
         # Step 12: リネームと最終クリーンアップを実行

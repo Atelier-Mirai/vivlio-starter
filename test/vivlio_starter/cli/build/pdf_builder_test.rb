@@ -18,7 +18,9 @@
 # ================================================================
 
 require 'test_helper'
+require 'tmpdir'
 require 'vivlio_starter/cli/common'
+require 'vivlio_starter/cli/loader' # sections_entry_htmls は TokenResolver / IndexCommands を辿る
 require 'vivlio_starter/cli/build'
 
 module VivlioStarter
@@ -108,7 +110,7 @@ module VivlioStarter
           ]
 
           File.stub :exist?, ->(path) { existing_files.include?(path) } do
-            files = Build::PdfMerger.send(:cover_enhanced_files)
+            files = Build::PdfMerger.send(:cover_enhanced_segments).map(&:path)
             assert_equal(
               ['covers/frontcover_rgb.pdf',
                '_titlepage_legalpage.pdf',
@@ -141,7 +143,7 @@ module VivlioStarter
           set_common_config(fake_config)
 
           File.stub :exist?, true do
-            files = Build::PdfMerger.send(:cover_enhanced_files)
+            files = Build::PdfMerger.send(:cover_enhanced_segments).map(&:path)
             assert_equal(
               %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf],
               files,
@@ -167,7 +169,7 @@ module VivlioStarter
           set_common_config(fake_config)
 
           File.stub :exist?, true do
-            files = Build::PdfMerger.send(:cover_enhanced_files)
+            files = Build::PdfMerger.send(:cover_enhanced_segments).map(&:path)
             assert_equal(
               %w[_titlepage_legalpage.pdf _sections.pdf _colophon.pdf],
               files,
@@ -183,6 +185,120 @@ module VivlioStarter
             File.stub :exist?, false do
               result = PdfMerger.add_outline_to_output_pdf!(nil)
               assert_equal false, result, 'output.pdf がない場合は false を返すべき'
+            end
+          end
+        end
+      end
+
+      # ================================================================
+      # 前付・奥付の本文相乗り（front-back-matter-single-render-spec.md）
+      # ================================================================
+      class SpecialPageEmbeddingTest < Minitest::Test
+        def test_should_append_special_pages_at_the_end_of_the_spine
+          # 先頭に足すと本文のページ番号がずれて目次の target-counter が動く。
+          # 末尾であることを固定する。
+          Dir.mktmpdir do |dir|
+            %w[00-preface _toc _titlepage _legalpage _colophon].each do
+              File.write(File.join(dir, "#{it}.html"), '<html></html>')
+            end
+
+            htmls = Build::PdfBuilder.sections_entry_htmls(dir, [])
+
+            assert_equal %w[_titlepage.html _legalpage.html _colophon.html], htmls.last(3).map { File.basename(it) },
+                         '特殊ページはスパインの末尾に、綴じ順どおり並ぶこと'
+            assert_equal '00-preface.html', File.basename(htmls.first), '先頭は従来どおり前書きであること'
+          end
+        end
+
+        def test_should_not_append_special_pages_when_any_is_missing
+          # 欠けたまま相乗りさせると結合時のページ範囲を決められない。
+          Dir.mktmpdir do |dir|
+            %w[00-preface _titlepage _colophon].each do
+              File.write(File.join(dir, "#{it}.html"), '<html></html>')
+            end
+
+            assert_empty Build::PdfBuilder.special_page_htmls(dir),
+                         '3 つ揃っていなければ相乗りさせないこと'
+          end
+        end
+
+        # 「末尾 3 ページ」と決め打ちせず /Dests から実測するため、
+        # 権利ページが 2 ページに溢れても正しく割れる。
+        def test_should_split_ranges_from_measured_document_positions
+          ranges = ranges_for(first_pages: { '_titlepage' => 511, '_colophon' => 514 }, total: 515)
+
+          assert_equal (1..510),   ranges[:body],     '本扉の手前までが本文'
+          assert_equal (511..513), ranges[:front],    '本扉から奥付の手前までが前付（権利ページ 2 ページ）'
+          assert_equal (514..515), ranges[:colophon], '奥付から末尾まで'
+        end
+
+        def test_should_refuse_to_split_when_positions_are_inconsistent
+          # 順序が逆・本文が空・末尾を超える、のいずれも個別レンダへ退避する。
+          # 中途半端な範囲で切ると、静かに隣のページを切り出す壊れ方をする。
+          assert_nil ranges_for(first_pages: { '_titlepage' => 514, '_colophon' => 511 }, total: 515),
+                     '奥付が本扉より前なら相乗りとみなさないこと'
+          assert_nil ranges_for(first_pages: { '_titlepage' => 1, '_colophon' => 2 }, total: 515),
+                     '本文が空になる位置なら相乗りとみなさないこと'
+          assert_nil ranges_for(first_pages: { '_titlepage' => 511 }, total: 515),
+                     '奥付が見つからなければ相乗りとみなさないこと'
+        end
+
+        # vivliostyle が /Dests へ書き出すのは「リンクの飛び先になっている id」だけで、
+        # id を持つだけの要素は出てこない（実測: <body id> は出ず、自己参照リンクは出る）。
+        # 前付・奥付はどこからもリンクされないため、目印の自己参照リンクが要る。
+        def test_should_inject_a_self_referencing_anchor_into_staged_matter_pages
+          Dir.mktmpdir do |dir|
+            path = File.join(dir, '_colophon.html')
+            File.write(path, '<html><body class="colophon"><h1>奥付</h1></body></html>')
+
+            stub_const_build_pdf_dir(dir) { Build::PdfBuilder.inject_matter_anchors! }
+
+            html = File.read(path)
+            assert_includes html, '<a id="vs-matter-colophon" href="#vs-matter-colophon"',
+                            '自分自身を指す空リンクが埋まること'
+            assert_includes html, 'style="position:absolute"',
+                            'grid の行割り当てを崩さないよう流れから外すこと'
+            assert_match(/<body[^>]*><a id="vs-matter-colophon"/, html, 'body の直後に置かれること')
+          end
+        end
+
+        def test_should_not_inject_the_anchor_twice
+          Dir.mktmpdir do |dir|
+            path = File.join(dir, '_colophon.html')
+            File.write(path, '<html><body><h1>奥付</h1></body></html>')
+
+            stub_const_build_pdf_dir(dir) do
+              Build::PdfBuilder.inject_matter_anchors!
+              Build::PdfBuilder.inject_matter_anchors!
+            end
+
+            assert_equal 1, File.read(path).scan('<a id="vs-matter-colophon"').size,
+                         '二重ステージングでも目印は 1 つであること'
+          end
+        end
+
+        private
+
+        # BUILD_PDF_DIR を一時ディレクトリへ差し替える
+        def stub_const_build_pdf_dir(dir)
+          common = VivlioStarter::CLI::Common
+          original = common::BUILD_PDF_DIR
+          common.send(:remove_const, :BUILD_PDF_DIR)
+          common.const_set(:BUILD_PDF_DIR, dir)
+          yield
+        ensure
+          common.send(:remove_const, :BUILD_PDF_DIR)
+          common.const_set(:BUILD_PDF_DIR, original)
+        end
+
+        # document_first_pages と page_count を差し替えて範囲計算だけを検証する
+        def ranges_for(first_pages:, total:)
+          fake = Object.new
+          fake.define_singleton_method(:document_first_pages) { first_pages }
+
+          Build::PdfPageMapExtractor.stub(:new, fake) do
+            Build::Utilities.stub(:page_count, total) do
+              Build::PdfBuilder.compute_special_page_ranges('dummy.pdf')
             end
           end
         end

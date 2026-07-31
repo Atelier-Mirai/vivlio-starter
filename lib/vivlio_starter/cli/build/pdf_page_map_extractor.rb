@@ -68,6 +68,27 @@ module VivlioStarter
           build_page_mapping(anchor_to_page, reader.page_count)
         end
 
+        # スパイン文書（HTML ベース名）→ その文書が始まる通しページ番号。
+        #
+        # /Dests の名前には元 URL が丸ごと入っているため、`#` の手前を見れば
+        # その destination がどの文書由来かが分かる。vivliostyle はスパイン文書ごとに
+        # 必ず改ページするので、1 文書内の最小ページ＝その文書の開始ページになる。
+        #
+        # id を 1 つも持たない文書は結果に現れない。呼び出し側は「欲しい文書の鍵が
+        # 取れたか」で判定すること——件数では判定できない。
+        #
+        # @return [Hash{String => Integer}] 例 { '_titlepage' => 511, '_colophon' => 513 }
+        def document_first_pages
+          return {} unless File.exist?(pdf_path)
+
+          each_destination(::PDF::Reader.new(pdf_path)).each_with_object({}) do |(document, _anchor, page), first|
+            key = File.basename(document.to_s, '.html')
+            next if key.empty?
+
+            first[key] = page if first[key].nil? || page < first[key]
+          end
+        end
+
         # vivliostyle の `:XXXX`（UTF-16 コードユニットの 4 桁 hex）エスケープを復号する。
         # 元名前中の `:` や `#` はすべてエスケープされるため、区切りの取り違えは起きない。
         # 想定外の入力では復号せず元文字列を返し、呼び出し側の `#` 判定で自然に捨てられる。
@@ -97,22 +118,31 @@ module VivlioStarter
         attr_reader :pdf_path
 
         # `/Dests` 辞書を走査し「アンカー ID → 通しページ番号（1..N）」を作る。
+        # 同じアンカー ID が複数文書に現れると後勝ちになるが、dedup が扱う
+        # `gls-src-*` / `idx-*` は文書ごとに一意なので影響しない。
         # @return [Hash{String => Integer}]
         def build_anchor_page_map(reader)
+          each_destination(reader).to_h { |_document, anchor_id, page| [anchor_id, page] }
+        end
+
+        # `/Dests` を 1 件ずつ走査し、[文書 URL, アンカー ID, 通しページ番号] を返す。
+        # アンカー ID を持たない dest とページを解決できない dest は落とす。
+        # @return [Enumerator]
+        def each_destination(reader)
           objects = reader.objects
           root = objects.deref(objects.trailer[:Root])
           page_numbers = number_pages(objects, root[:Pages])
-
           dests = objects.deref(root[:Dests])
-          return {} unless dests.respond_to?(:each_pair)
 
-          dests.each_pair.with_object({}) do |(name, dest), map|
-            anchor_id = self.class.decode_destination_name(name).split('#', 2)[1]
+          return [].each unless dests.respond_to?(:each_pair)
+
+          dests.each_pair.filter_map do |name, dest|
+            document, anchor_id = self.class.decode_destination_name(name).split('#', 2)
             next if anchor_id.nil? || anchor_id.empty?
 
             page = resolve_page_number(objects, dest, page_numbers)
-            map[anchor_id] = page if page
-          end
+            [document, anchor_id, page] if page
+          end.each
         end
 
         # ページツリーを走査し、ページオブジェクト ID → 通しページ番号を得る

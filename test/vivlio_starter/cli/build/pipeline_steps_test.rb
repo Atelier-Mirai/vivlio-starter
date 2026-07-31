@@ -24,10 +24,12 @@ module VivlioStarter
   module CLI
     class PipelineStepsSnapshotTest < Minitest::Test
       # HTML 生成までの共通前処理（全ターゲットで不変）。
+      # 前付・奥付の HTML は本文レンダへ相乗りさせるため、techbook 後処理より前に作る
+      # （front-back-matter-single-render-spec.md §2.1）。
       PREFIX = [
         'clean', 'optimize images', 'prepare theme images', 'preprocess sections',
         'index scan and build', 'convert sections html', 'generate part title pages',
-        'techbook post-process', 'generate toc html'
+        'generate front and back matter html', 'techbook post-process', 'generate toc html'
       ].freeze
 
       # toc 生成後のターゲット依存テール（pre-P2 実装から採取）。
@@ -44,9 +46,10 @@ module VivlioStarter
       ]).freeze
 
       # 入稿用のみ・従来フロー（output.print_pdf.full_bleed: true）。
-      # 本文を個別レンダするため閲覧用 PDF は不要で、entries/config と HTML だけを用意する。
+      # 本文を個別レンダするため閲覧用 PDF は不要で、entries/config だけを用意する。
+      # 前付・奥付の HTML は共通前処理で作り済みなので、ここに専用ステップは無い。
       PRINT_ONLY_FULL_BLEED = (PREFIX + [
-        'generate entries.js', 'backlink dedup', 'build front and back matter html', 'print pdf', 'final clean'
+        'generate entries.js', 'backlink dedup', 'print pdf', 'final clean'
       ]).freeze
 
       PDF_PRINT = (PREFIX + [
@@ -54,7 +57,7 @@ module VivlioStarter
         'apply outline to output pdf', 'compress and rename', 'print pdf', 'final clean'
       ]).freeze
 
-      EPUB_ONLY = (PREFIX + ['build front and back matter html', 'generate epub', 'final clean']).freeze
+      EPUB_ONLY = (PREFIX + ['generate epub', 'final clean']).freeze
 
       # P4 段階 3: dedup がワークスペース pdf/ に閉じたため、EPUB 隔離用の
       # 'snapshot pre-dedup html for epub' ステップは撤去された（P4 §3.4-3）。
