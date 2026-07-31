@@ -44,6 +44,7 @@
 
 require 'open3'
 require_relative '../common'
+require_relative '../heading_segmenter'
 
 module VivlioStarter
   module CLI
@@ -75,11 +76,10 @@ module VivlioStarter
         # 読めなかった。Kindle 端末幅 1072px 換算でおよそ 8pt 相当を確保する）。
         LEAD_FONT_FLOOR   = 0.026  # 縮小の下限（画像幅比）
         LEAD_LINE_HEIGHT  = 1.70   # 行送り（フォントサイズ比）
-        LEAD_TOP_RATIO    = 0.58   # リード 1 行目のベースライン（height 比・章題が短いときの下限）
-        LEAD_BOTTOM_RATIO = 0.84   # リード最終行ベースラインの上限（height 比）。右下飾りとの干渉回避
-        # 見出しブロックの下げ量のうちリードへ効かせる割合。リードは右下飾りに近いので
-        # 見出しと同じだけ下げると飾りへ食い込む（epub_h1.png 実測）。
-        LEAD_OFFSET_SHARE = 0.4
+        LEAD_BOTTOM_RATIO = 0.88   # リード最終行ベースラインの上限（height 比）。右下飾りとの干渉回避
+
+        # 章番号のベースライン（height 比）。ここから章番号 → 章題 → リードを下へ積む。
+        FRONTISPIECE_TOP_RATIO = 0.30
 
         # 扉絵タイトルが使ってよい幅（画像幅比）。この幅を heading_chars で割って字面を決める。
         FRONTISPIECE_TITLE_WIDTH = 0.80
@@ -159,16 +159,18 @@ module VivlioStarter
           # --- Phase: 縦位置 ---
           # 章番号と章題は同じ見出しなので近づけ、章題とリードの間を空ける（近接の原則）。
           # 全体の下げ量は book.yml の theme.frontispiece.heading_offset（判型比）で追い込める。
+          # 章番号 → 章題 → リードを**上から順に積む**（PDF の章扉と同じ流れ）。
+          # 以前は章題を height の一定比に centering していたため、長い章題（4 行）が
+          # 上へ伸びて章番号と重なっていた（epub_h1_kasanari.png 実測）。
+          # 積み上げ方式なら行数がいくつでも重ならず、下へ伸びるだけになる。
           offset      = height * metrics[:heading_offset_ratio].to_f
-          number_y    = (height * 0.34 + offset).round
+          number_y    = (height * FRONTISPIECE_TOP_RATIO + offset).round
           underline_y = number_y + (number_size * 0.45).round
-          title_mid   = (height * 0.46) + offset
-          first_y     = (title_mid - ((lines.size - 1) * line_step / 2.0) + title_size * 0.34).round
-          # リードは章題の実際の下端から置く。固定比だと 2 行以上の章題と重なる
-          # （epub_h1.png 実測）。title↔lead を空けるぶんは lead_gap が持つ。
+          # 章番号と章題は同じ見出しの一部なので近づける（近接の原則）
+          first_y     = (underline_y + (title_size * 1.05)).round
           title_last_y = first_y + ((lines.size - 1) * line_step)
-          lead_top     = [(height * LEAD_TOP_RATIO) + (offset * LEAD_OFFSET_SHARE),
-                          title_last_y + (title_size * 1.15)].max
+          # 章題とリードの間は空ける
+          lead_top     = title_last_y + (title_size * 1.30)
 
           parts = [image_element(width, height, data_uri)]
           parts << frontispiece_number(number, width, number_y, underline_y, number_size, font_family) unless number.empty?
@@ -192,13 +194,13 @@ module VivlioStarter
         # リード段落の焼き込み。段落は "\n" 区切りで受け、各段落の先頭を全角 1 字下げする。
         # 基準フォントで LEAD_BOTTOM_RATIO に収まらない長文だけ 8% ずつ縮小する（下限 LEAD_FONT_FLOOR）。
         def frontispiece_lead(lead, width, height, font_family, lead_ratio, lead_chars, lead_top = nil)
-          first_y   = (lead_top || (height * LEAD_TOP_RATIO)).round
+          first_y   = (lead_top || (height * 0.62)).round
           font_size, lines = lead_layout(width, height, lead, lead_ratio, lead_chars, first_y)
           halo      = [(font_size * 0.14).round, 1].max
           step      = (font_size * LEAD_LINE_HEIGHT).round
           # リード列は中央ではなく左寄りに置く。飾りは右下にあるため、中央だと
           # 行末が飾りへ重なる（epub_h1.png 実測）。余白の 35% を左に配分する。
-          left_x    = (width * (1.0 - lead_ratio) * 0.35).round
+          left_x    = (width * (1.0 - lead_ratio) * 0.45).round
 
           tspans = lines.each_with_index.map do |line, i|
             %(<tspan x="#{left_x}" y="#{first_y + (i * step)}">#{escape_text(line)}</tspan>)
@@ -219,7 +221,7 @@ module VivlioStarter
           paragraphs = lead.split("\n")
           chars = lead_chars.to_i
           chars = DEFAULT_METRICS[:lead_chars] unless chars.positive?
-          top       = top_y || (height * LEAD_TOP_RATIO)
+          top       = top_y || (height * 0.62)
           floor     = (width * LEAD_FONT_FLOOR).round
           font_size = [((width * lead_ratio) / chars).round, floor].max
           loop do
@@ -472,15 +474,41 @@ module VivlioStarter
 
         # テキストを表示幅（全角換算 capacity）で折り返す。半角は 0.55 換算で数え、
         # Latin 語の途中では直近の空白で折る（split_by_display_width と同じ規則）。
+        # 語の境界が取れるなら語単位で詰める（PDF 側の .vs-nobr と同じ規則）。
+        # 取れない環境では従来どおり表示幅で切り、禁則等は refine_break が追い込む。
         def wrap_text_by_width(text, capacity)
           return [] if text.empty?
 
+          words = HeadingSegmenter.segment(text)
+          words.size < 2 ? wrap_by_display_width(text, capacity) : pack_words(words, capacity)
+        end
+
+        def wrap_by_display_width(text, capacity)
           lines = []
           rest = text
           until rest.empty?
             head, rest = split_by_display_width(rest, capacity)
             lines << head
           end
+          lines
+        end
+
+        # 語を順に詰め、入らなければ改行する。1 語で幅を超える語だけ表示幅で割る。
+        def pack_words(words, capacity)
+          lines = []
+          current = +''
+          words.each do |word|
+            if current.empty? && display_width(word) > capacity
+              wrap_by_display_width(word, capacity).each { lines << it }
+              current = lines.pop.to_s
+            elsif display_width(current + word) > capacity && !current.empty?
+              lines << current.rstrip
+              current = +word.dup
+            else
+              current << word
+            end
+          end
+          lines << current.rstrip unless current.strip.empty?
           lines
         end
 

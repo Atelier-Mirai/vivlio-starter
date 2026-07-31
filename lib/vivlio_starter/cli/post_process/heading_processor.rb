@@ -3,6 +3,7 @@
 require 'digest'
 require 'nokogiri'
 require_relative '../common'
+require_relative '../heading_segmenter'
 require_relative 'html_parser'
 
 module VivlioStarter
@@ -358,6 +359,10 @@ module VivlioStarter
         NOBR_CLASS = 'vs-nobr'
 
         def guard_last_character_orphan!(span, doc)
+          # 語の境界が取れるなら、各語を括って「語の途中では折らない」を保証する。
+          # 取れない環境（MeCab 不在）では末尾 2 文字だけを守る従来の縮退へ。
+          return if wrap_words_in_nobr!(span, doc)
+
           last = deepest_last_text_node(span)
           return if last.nil?
           return if last.parent['class'].to_s.split.include?(NOBR_CLASS) # 既に処理済み
@@ -370,6 +375,39 @@ module VivlioStarter
           nobr.content = text[-2..]
           last.content = text[0..-3]
           last.add_next_sibling(nobr)
+        end
+
+        # 見出し中の各テキストノードを語へ分割し、語ごとに nowrap の span で括る。
+        # 折返しは語と語の境目だけで起きるので「コマンドラインオプ／ション」のような
+        # 語中の分割が構造的に起きなくなる。
+        #
+        # テキストノード単位で処理するのは、索引語や用語集リンクの要素構造を壊さないため
+        # （要素の境目はもともと折返し候補なので、分割の質は落ちない）。
+        # @return [Boolean] 1 語でも括れたか（false なら呼び出し側が従来の縮退へ）
+        def wrap_words_in_nobr!(span, doc)
+          wrapped = false
+          span.xpath('.//text()').to_a.each do |node|
+            next if node.parent['class'].to_s.split.include?(NOBR_CLASS) # 既に処理済み
+            next if node.text.strip.empty?
+
+            words = HeadingSegmenter.segment(node.text)
+            next if words.size < 2 && node.text.strip.length < 2
+
+            replace_with_nobr_words!(node, words, doc)
+            wrapped = true
+          end
+          wrapped
+        end
+
+        def replace_with_nobr_words!(node, words, doc)
+          fragment = Nokogiri::XML::Node.new('span', doc)
+          words.each do |word|
+            nobr = Nokogiri::XML::Node.new('span', doc)
+            nobr['class'] = NOBR_CLASS
+            nobr.content = word
+            fragment.add_child(nobr)
+          end
+          node.replace(fragment.children)
         end
 
         # 文書順で最後のテキストノードまで降りる（末尾が要素なら中へ入る）

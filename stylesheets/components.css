@@ -280,6 +280,22 @@ body.vs-epub .chapter-lead {
   margin-block: 1em;
 }
 
+/* 回転テーブルは PDF の版面高さ（--rotate-table-height・mm 固定）を前提に組まれている。
+   リフローのページ高さはリーダー任せなので、mm 固定だと箱がページより高くなり、
+   ページ境界で断ち切られて次ページにも続きが出る（epub_rotate_table1/2.png 実測）。
+   1 画面に収まる高さ（vh）へ置き換え、分割禁止と前後改ページを legacy 併記で指示する
+   （Kindle KFX は modern な break-* を解さない）。 */
+body.vs-epub .rotate-table {
+  block-size: 88vh;
+  max-block-size: 88vh;
+  page-break-inside: avoid;
+  break-inside: avoid;
+  page-break-before: always;
+  break-before: page;
+  page-break-after: always;
+  break-after: page;
+}
+
 /* 節リードは見出しに近づける（PDF 側と同じ近接の扱い）。
    image-header.css の !important（margin-block-start: 0）に勝つため !important を併記する。 */
 body.vs-epub .section-lead {
