@@ -178,7 +178,11 @@ module VivlioStarter
         # 殺せないが、待てば宙ぶらりんの Chromium を残さずに済む（待ちは最長でも
         # EPUB 枝の残り時間・§3.6-2）。
         def join_epub_branch(branch, reraise: true)
-          branch[:thread].join
+          # 待つ間はスピナーを回す。**PDF 枝が先に終わる構成があり得る**——索引・用語集を
+          # 切ると本文の 2 回目のレンダが消えて PDF 枝が半分になり、EPUB 枝のほうが長くなる。
+          # 子枝のログはバッファ済みなので、ここで黙ると端末が無反応に見える。
+          # PDF 枝が長い構成では join が即座に返り、スピナーは一瞬で消える（無害）。
+          Spinner.while('ビルド中: EPUB/Kindle 枝の完了を待っています …') { branch[:thread].join }
           timings.concat(branch[:timings])
           Common.merge_vivliostyle_build_timings(branch[:vivliostyle])
           flush_branch_logs(branch[:logs])
