@@ -81,11 +81,21 @@ module VivlioStarter
         # 待っている枝を解放する。PDF 枝が例外で落ちても必ず呼ぶこと（デッドロック防止）。
         def release! = @gate&.close
 
+        # 待った時間を必ず報告する。
+        #
+        # 待っているのは**本文 PDF が組み上がること**であって、画像化そのものではない
+        # （実測 1.8 秒）。この待ちは PDF 枝が長い構成では枝の陰に隠れて壁時計に現れないが、
+        # 索引・用語集を切ると PDF 枝が半分になって臨界経路が EPUB 側へ移り、そのまま
+        # 壁時計に乗る。**ステップ計時には現れない時間**なので、ここで出さないと
+        # 「EPUB 枝が遅い」と読み違える。
         def wait_until_ready!
           return unless @gate
 
           Common.log_info('[rotate-table] 本文 PDF の完成を待っています…')
+          started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           @gate.pop
+          waited = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+          Common.log_info(format('[rotate-table] 本文 PDF を %.2f 秒待ちました', waited))
         end
 
         # =============================================================
