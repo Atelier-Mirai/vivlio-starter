@@ -141,7 +141,10 @@ pre[class*="language-"] {
 
 pre[class*="language-"].line-numbers {
 	position: relative;
-	padding-left: 3.8em;
+	/* 行番号の場所は .vs-code-line が自前の padding で確保するので、pre 側に
+	   ガター用の余白は要らない（padding-inline は code.css の既定が効く）。
+	   ここに 3.8em を残すと番号欄ぶんの余白が二重になり、コードの開始位置が
+	   版面の内側へ大きく寄る。 */
 	/* 範囲 include（data-start 付き pre）はインライン style の
 	   counter-reset: linenumber N が下記より優先され、N+1 始まりで採番される。 */
 	counter-reset: linenumber;
@@ -152,6 +155,39 @@ pre[class*="language-"].line-numbers > code {
 	white-space: inherit;
 }
 
+/* PDF の行番号は「1 論理行 = 1 span.vs-code-line」＋ぶら下げインデントで描く
+   （PdfBuilder#convert_code_lines_for_pdf! が pdf/ のコピーだけを組み直す）。
+   下の .line-numbers-rows（絶対配置ガター）は固定行高で番号を並べるため、
+   code.css の white-space: pre-wrap で長行が折り返すと番号と論理行がずれた。
+   行ブロックなら折返しはブロック内で完結し、番号は必ず論理行の先頭に付く。
+   EPUB/Kindle の .vs-code-line（code.css）と同じ F 案の構造で、寸法だけ PDF 用。 */
+pre[class*="language-"].line-numbers > code > .vs-code-line {
+	display: block;
+	padding-left: 2.4em;
+	text-indent: -2.4em;   /* 1 行目だけ左へ戻す＝番号が行頭・折返し行はコード開始位置へ揃う */
+	counter-increment: linenumber;
+}
+
+/* 番号欄の総幅は padding-left と厳密に一致させる（2.4em）。ずれると折返し行の頭が
+   1 行目の本文開始位置と揃わない。
+   **base.css が全要素に box-sizing: border-box を掛けている**ので、width は
+   padding を含んだ総幅である（width 2.4em ＝ 数字 1.8em ＋ 右余白 0.6em）。
+   ここを content-box のつもりで width:1.8em ＋ padding:0.6em と書くと総幅が
+   1.8em にしかならず、0.6em ぶん折返し行が右へずれる（実測でこれが原因だった）。
+   幅は等幅 3 桁ぶん（1 桁 ≒ 0.6em）で足りる。
+   縦罫は引かない —— ::before は各論理行の 1 行目にしか無いので、折り返すと
+   罫だけが途切れて見える。EPUB / Kindle も罫なしで、3 ターゲットで揃える。 */
+pre[class*="language-"].line-numbers > code > .vs-code-line::before {
+	content: counter(linenumber);
+	display: inline-block;
+	width: 2.4em;        /* border-box: 内訳は数字 1.8em ＋ padding-right 0.6em */
+	padding-right: 0.6em;
+	text-align: right;
+	color: #999;
+	text-indent: 0;      /* 親の負の text-indent を番号自体には効かせない */
+}
+
+/* 行ブロック化に失敗して残った pre 向けの安全網（従来の絶対配置ガター） */
 .line-numbers .line-numbers-rows {
 	position: absolute;
 	pointer-events: none;

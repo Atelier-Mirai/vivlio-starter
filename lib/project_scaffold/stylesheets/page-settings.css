@@ -159,7 +159,13 @@
 }
 
 @page {
-  size: 210mm 297mm;  /* css_updater が book.yml のプリセットに合わせて自動更新 */
+  /* 判型は book.yml の page.use（プリセット）から BookSettingsCss が
+     book-settings.css へ @page { size } をリテラルで書き出し、後段読込で上書きする。
+     ここに残す A4 は**生成 CSS が無いときだけ**効く保険（判型未定でレンダリングされる
+     よりは決め打ちのほうが被害が小さい）。かつては css_updater がこの行を毎ビルド
+     正規表現で書き換えていたが、P3 で生成方式へ移行して以降は書き換わらない——
+     ここを編集しても判型は変わらないので、変えるなら book.yml の page.use を変えること。 */
+  size: 210mm 297mm;
   margin-top: var(--page-margin-top);
   margin-bottom: var(--page-margin-bottom);
 

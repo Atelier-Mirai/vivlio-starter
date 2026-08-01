@@ -11,6 +11,12 @@
 body.titlepage {
     /* layout */
     page: titlepage;
+    /* 本扉は本文スパインの末尾に相乗りする。生成 CSS（book-settings.css）が
+       page.chapter_pagebreak: verso のとき裸の body へ break-before: verso を出すため、
+       打ち消さないと本扉の前に白紙が挟まって切り出し位置がずれる。スパイン文書は
+       必ず改ページされるので auto で足りる（front-back-matter-single-render-spec.md §3.3）。 */
+    break-before: auto;
+    page-break-before: auto; /* Kindle KFX 向け legacy 併記 */
     display: grid;
     grid-template-rows: auto auto auto 1fr auto; /* タイトル、副題、著者、空白、出版情報 */
     row-gap: 1.5rem;               /* 行間のスペース */
@@ -37,9 +43,22 @@ h2 {
     font-family: var(--font-title);
 }
 
-/* 本扉の下側余白を詰め、ノンブルを非表示に */
+/* 本扉の下側余白を詰め、ノンブルと柱を非表示に */
 @page titlepage {
+    /* 本文スパインの末尾へ相乗りさせるため、ページ位置に依存する指定をここで固定する
+       （front-back-matter-single-render-spec.md §2.4）。本扉は右ページなので
+       ノド＝左・小口＝右。@page :left / :right は実際の表裏で左右を入れ替えるが、
+       名前付きページは Paged Media の詳細度でそれに勝つため、何ページ目に組まれても
+       綴じ側がぶれない。 */
+    margin-left: var(--page-margin-inner);
+    margin-right: var(--page-margin-outer);
     margin-bottom: 0;
+
+    /* 柱。単独ドキュメントだった頃は @page :nth(1) が消していたが、本文の末尾に
+       置くと直前の章のタイトルが string() に残ったまま出るため明示的に消す。 */
+    @top-right {
+        content: none;
+    }
 
     @bottom-center {
         content: none;

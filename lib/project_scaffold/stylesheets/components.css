@@ -128,6 +128,34 @@
   display: none !important;
 }
 
+/* ---------------------------------------------------------------
+   EPUB / Kindle の脚注
+   -----------------------------------------------------------------
+   リフローには「ページ下部」が無いので、PDF が脚注領域へ降ろしている aside は
+   参照した段落の直後にそのまま残る。素のままだと .page-footnote の
+   display:inline がそのまま効き、番号も区切りも無い本文と地続きの文字列に
+   見えてしまう（どこからが脚注か読者に分からない）。一回り小さい注記ブロック
+   として、左の罫で本文と切り分ける。
+   番号は EpubBuilder#decorate_footnotes_for_epub! が実テキスト
+   （span.vs-fn-num）で注入する —— Kindle(KFX) が ::before を解さないため。
+   Kindle 互換のため物理プロパティ・具体値のみで書く（論理プロパティ・var() 不可）。
+   --------------------------------------------------------------- */
+body.vs-epub aside.page-footnote {
+  display: block;
+  margin-top: 0.5em;
+  margin-bottom: 0.2em;
+  padding-left: 0.8em;
+  border-left: 2px solid #ccc;
+  font-size: 0.85em;
+  line-height: 1.5;
+  color: #555;
+}
+
+body.vs-epub .vs-fn-num {
+  font-weight: bold;
+  color: #333;
+}
+
 /* 印刷/PDF（Vivliostyle）では文脈に応じて切替:
    - span.page-footnote: インライン（段落を分断しない）
    - aside.page-footnote: ページ下部脚注
@@ -156,6 +184,43 @@
   /* Vivliostyle が float:footnote に自動付与する ::footnote-marker を非表示にする */
   aside.page-footnote::footnote-marker {
     content: none;
+  }
+
+  /* ---------------------------------------------------------------
+     脚注は「参照位置」に固定する（footnote-same-page-anchoring-spec.md）
+     -----------------------------------------------------------------
+     aside は段落の直後に置かれるため、float:footnote の錨は段落末尾になる。
+     段落がページ末尾に掛かると 2 つ目以降の脚注が次ページへ送られていた
+     （実測: 参照は p.83・脚注本体は p.84。形式は無関係で「同じ位置の 2 つ目」
+     が送られる——参照形式とインライン形式を入れ替えても後者が送られた）。
+     参照直後の span#fnN を錨にすれば、脚注は参照のある行に紐づき、
+     入りきらない場合は行ごと次ページへ送られるので必ず同一ページに揃う。
+     --------------------------------------------------------------- */
+  span.page-footnote.page-footnote-inline {
+    display: inline !important;
+    float: footnote;
+    font-size: 0.85em;
+    line-height: 1.4;
+  }
+  span.page-footnote.page-footnote-inline::before {
+    content: attr(data-footnote-number) ". ";
+    font-weight: 700;
+  }
+  /* 参照番号は既存の <a class="footnote-ref"><sup>N</sup></a> が描く。
+     Vivliostyle が float:footnote へ自動付与する呼び出し／マーカーを消さないと
+     番号が二重になる（実測: 「11」「22」と並ぶ）。 */
+  span.page-footnote.page-footnote-inline::footnote-call,
+  span.page-footnote.page-footnote-inline::footnote-marker {
+    content: none;
+  }
+
+  /* 参照位置の span が脚注を担うぶん、控えの aside は描かない。
+     DOM に残すのは後処理（sideimage 変換・出現順の再番号付け）が aside を
+     辿るため。span を持たない aside（append_unused_footnotes_to_body! が
+     本文末尾へ足す sideimage 由来のもの）にはこの属性が付かないので、
+     そちらは従来どおり aside 自身が float:footnote で描かれる。 */
+  aside.page-footnote[data-footnote-anchored] {
+    display: none !important;
   }
 }
 
@@ -294,6 +359,29 @@ body.vs-epub .rotate-table {
   break-before: page;
   page-break-after: always;
   break-after: page;
+}
+
+/* Kindle は回転テーブルを PDF ページの画像へ差し替える（KFX は transform も
+   position:absolute も解さない・kindle-rotate-table-image-spec.md）。差し替え後の箱には
+   絶対配置の table がいないので、画像そのものを上の 88vh へ収める。
+   クリーン EPUB には .vs-rotate-table-image が現れないため、この規則は Kindle にだけ効く。 */
+body.vs-epub .rotate-table > .vs-rotate-table-image {
+  max-inline-size: 100%;
+  max-block-size: 100%;
+  /* KFX は modern な論理プロパティを解さないことがあるため legacy も併記する */
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* 差し替えた画像の水平中央寄せ。
+   **KFX では margin:auto が効かず、画像がページ左端に寄る**（実機確認・2026-08-01）。
+   `text-align: center` ＋ インライン画像という古い組み合わせが Kindle では最も確実で、
+   EPUB で画像を中央に置く定石でもある。画像を `display: block` にすると
+   `text-align` が効かなくなるため、display は既定（inline）のまま触らない。
+   クリーン EPUB の table は絶対配置（left:50% + translate）で中央に来るので、
+   この規則の影響を受けない——念のため vs-kindle に限定してある。 */
+body.vs-kindle .rotate-table {
+  text-align: center;
 }
 
 /* 節リードは見出しに近づける（PDF 側と同じ近接の扱い）。
