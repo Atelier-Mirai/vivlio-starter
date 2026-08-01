@@ -116,7 +116,7 @@ page:
   # 紙サイズ、余白、文字サイズ、行送りなど版面の物理的構造を一括指定
   # use: a5_standard  # 標準
   # use: a5_airy      # 広め
-  # use: a5_compact   # 狭め
+  use: a5_compact   # 狭め
   # use: a5_custom    # 著者独自
 
   # use: b5_standard
@@ -126,7 +126,7 @@ page:
 
   # use: a4_standard
   # use: a4_airy
-  use: a4_compact
+  # use: a4_compact
   # use: a4_custom
 
   # 節（## 見出し）をページの先頭から始めるか
@@ -139,7 +139,7 @@ page:
   #   any   … どちらでもよい。白紙が入らずページ数が減る
   #   verso … 左ページ（偶数）から
   # 原稿中の @pagebreak:recto / :verso は、この設定より優先されます
-  chapter_pagebreak: recto
+  chapter_pagebreak: any
 
 # ========================================
 # タイポグラフィ設定（書体・色・装飾）
