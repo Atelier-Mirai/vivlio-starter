@@ -7,6 +7,8 @@ Always apply the ruby-coding-rules skill when working with .rb files.
 
 When adding or extending an author-facing notation (`:::{.class}` boxes, fences like ```` ```mermaid ````, inline syntax, generated assets), follow `docs/specs/notation-implementation-guide.md` — it maps the established infrastructure (Masking, GeneratedAssetCache, doctor, EpubBuilder localize) and the per-type checklists.
 
+**Before debugging layout or build behavior, check `docs/specs/NOTES.md`** — it indexes the standing guidelines and the knowledge notes by *when to consult them*, so hard-won findings get reused instead of rediscovered. It is the fastest route to "CSS looks right but has no effect" (Vivliostyle/EPUB engine quirks), "only Kindle breaks" (KFX support table), and the cross-branch build gotchas (parallel latches, process-global APIs). Add a line there whenever you add a `*-notes.md` or guideline under `docs/specs/`.
+
 ## Referring to spec documents — filename only, never a path
 
 Specs live in `docs/specs/` while pending and move to `docs/archives/` once implemented. **Cite them by bare filename** — `` `page-break-control-spec.md` §2.1 `` — in code comments, in other specs, and in tests. Never write `docs/specs/…` or `docs/archives/…`, and don't make them relative Markdown links: a path (or link) encodes *where the file is today* and silently rots the moment the spec is archived. A bare filename is a name to grep for, so it stays correct in either directory. `docs/specs/STATUS.md` is the canonical answer to "is it implemented yet?" — that question should never be answered by reading a path.

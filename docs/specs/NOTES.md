@@ -1,0 +1,72 @@
+# NOTES（知見メモ・ガイドラインの索引）
+
+> 💡 **この索引の使い方と運用のルール**
+> - 引くときは**症状・状況から**。各項目の見出しは「いつ引くか」で書いてある。
+> - 書くのは**トリガーと状態だけで、中身は要約しない**。要約を置くと本文と二重管理になり、必ず片方が stale になる（`STATUS.md` が同じ理由で完了報告を禁じているのと同じ）。
+> - `docs/specs/` に `-notes.md` / `-guidelines.md` / 恒久ガイドを足したら、**ここへ 1 行足す**。
+> - **`docs/archives/`（158 本）は対象外**。実装済み仕様書の「実装記録」節も資産だが、数が多く索引は即座に腐る。あちらはファイル名で grep して引く（`STATUS.md` の運用ルール参照）。
+
+## 0. `docs/specs/` の役割分担
+
+| ファイル | 役割 |
+| :--- | :--- |
+| `STATUS.md` | **「実装済みか？」の正典**。実装待ちの仕様書一覧 |
+| `PLANNED.md` | まだ仕様化していないアイデア・将来対応 |
+| `KNOWN_ISSUES.md` | 未解消の不具合・既知の制限 |
+| `NOTES.md`（本ファイル） | 知見メモとガイドラインの索引 |
+| その他 `*-spec.md` | 実装待ちの仕様書（実装したら `docs/archives/` へ） |
+
+---
+
+## 1. 恒常ガイドライン（書く前に読む規範）
+
+`notation-implementation-guide.md`
+: **著者向け記法を新設・拡張するとき。** `:::{.class}` ボックス、` ```mermaid ` のようなフェンス、インライン記法、生成資産（SVG/画像）が対象。§2「共通基盤（再実装禁止リスト）」を最初に読む——同じ責務のコードを書き始めたら基盤側に API を足すサイン。Kindle 劣化の 3 点セットとパイプライン挿入位置の決め方も。
+
+`config-extension-guidelines.md`
+: **`book.yml` に設定キーを足すとき・新コマンドを作るとき。** `CONFIG` アクセスの型とテストの書き方。
+
+`ruby-development-standard.md`
+: **`.rb` を書くとき。** Ruby 4.0+ の規約。frontmatter の `fileMatch` で `**/*.rb` に自動適用される。
+
+## 2. 知見メモ（恒久参照・実測で確定した事実）
+
+`vivliostyle-css-pitfalls-notes.md`
+: **「CSS は正しいはずなのに効かない」とき、最初にここ。** Vivliostyle エンジンと EPUB 両フレーバ共通基盤の癖（`background-position` の calc+var 破棄、`keep-all` による CJK 折返し禁止、`vs-epub`/`vs-kindle` 同居、PDF 用 CSS の特異度漏れ、SVG の intrinsic size など）。
+
+`kindle-css-compatibility-notes.md`
+: **Kindle(KFX) だけ表示が崩れるとき。** `:is()` がルールごと破棄、`var()`/`calc()`/`grid`/`::before` 非対応、WebP 不可——対応状況の一覧表と、本プロジェクトで採った回避策。Kindle 固有の癖はこちらが正典。
+
+`build-pipeline-pitfalls-notes.md`
+: **ビルドの枝をまたぐ処理を書くとき。** PDF 枝と EPUB/Kindle 枝は並列に走る。ラッチは 2 段構えで解放する、プロセス全体に効く API（`Dir.chdir`・`$stdout` 直書き）を疑う、モジュール状態はテスト間で漏れて再現しない、PDF の `/Dests` に出るのはリンクの飛び先だけ。
+
+`vfm-config-flow-notes.md`
+: **VFM の設定がどこで効くのか分からなくなったとき。** 設定の流れと有効範囲の恒久記録。**V2.0 の直接ビルド（`vs build my.md --pdf`）を実装するときは §4 を必ず読む。**
+
+## 3. 検討メモ（未決・着手時の出発点）
+
+いずれも「まだ決めていない／保留した」ことの記録。着手するときはここから読む。
+
+`release-1.0-considerations.md`
+: RC 版 → 正式版（1.0.0）へ移行するときの検討事項。
+  状態: 検討メモ ／ 次: RC 版完成後に再検討
+
+`at-directive-ideas.md`
+: `@` ディレクティブ記法を今後どう広げるか。Tier 1 は 2026-07-28 実装完了（→ `at-directive-tier1-spec.md`）。
+  状態: §3 Tier 2（`@nobr`・`@fill`・`@index`）と §4 `@abbr` 代替案はブレスト段階 ／ 次: `PLANNED.md` と並ぶ「次に何を作るか」の出発点
+
+`furigana-level-spec.md`
+: 漢字レベル L0〜L4 の定義（`vs metrics` と将来の `vs furigana` で共通）。定義自体は実装・稼働済み。
+  状態: 仮（定義の記録） ／ 次: `vs furigana` を起こすときに §3 を出発点にする
+
+`epub-rotate-table-sizing-notes.md`
+: クリーン EPUB で回転テーブルをどの大きさで組むか。**一度実装して差し戻した**ときのコード・実測・失敗の原因（`vh` のリーダー依存に全体重を預けた）。
+  状態: 検討メモ（差し戻し済み） ／ 次: §5.1 のとおり、まずリーダーが `vh` をどう解釈するかを実機で確かめる
+
+`print-pdf-full-bleed-notes.md`
+: 写真集・爪見出しなど紙の端まで達する要素（`full_bleed`）への対応。導出方式と個別レンダー方式の違いの整理。
+  状態: 設計メモ・実装保留 ／ 次: フチなし要素のある本が実際に企画されるまで着手しない
+
+`kindle-fixed-layout-ideas.md`
+: `kindle.layout: fixed`（A5 PDF をページ画像化して固定レイアウト KPF に）。調査済み・**見送り**の記録。
+  状態: 検討メモ（見送り） ／ 次: 数式・図版主体の本や文庫判型向けの第 3 ターゲットとして RC 後に再検討
