@@ -21,6 +21,7 @@ require 'fileutils'
 require 'open3'
 require 'tmpdir'
 require_relative '../entries'
+require_relative '../code_line_blocks'
 require_relative '../units'
 require_relative 'vivliostyle_config_writer'
 require_relative 'heading_image_composer'
@@ -2191,56 +2192,10 @@ module VivlioStarter
 
         # <code> の中身を論理行（\n 区切り）へ分割する。各行は Prism のトークン span を
         # 保持した HTML 断片。複数行に跨るトークンは行ごとに閉じ／開き直す（行スプリットの定石）。
+        # 実装は CodeLineBlocks が正典で、PDF 側の行ブロック化と同じ意味論を共有する。
         #
         # @return [Array<String>] 各論理行の内部 HTML（末尾の空行は捨てる）
-        def split_code_into_lines(code)
-          lines = [+'']
-          collect_code_line_fragments(code, lines, [])
-          lines.pop if lines.size > 1 && lines.last.empty? # 末尾改行由来の空行を除く
-          lines
-        end
-
-        # ノードを再帰走査し、テキストの改行で行を分割しながら、祖先のトークン span を
-        # 各行で開き直して HTML 断片を組み立てる。
-        #
-        # @param node [Nokogiri::XML::Node] 走査中のノード
-        # @param lines [Array<String>] 構築中の行配列（破壊的に追記）
-        # @param open_tags [Array<String>] 現在開いている span 開始タグ（行跨ぎ復元用）
-        def collect_code_line_fragments(node, lines, open_tags)
-          node.children.each do |child|
-            if child.text?
-              append_text_with_newlines(child.content, lines, open_tags)
-            elsif child.element? && child.name == 'span'
-              open_tag = span_open_tag(child)
-              lines[-1] << open_tag
-              open_tags.push(open_tag)
-              collect_code_line_fragments(child, lines, open_tags)
-              open_tags.pop
-              lines[-1] << '</span>'
-            else
-              lines[-1] << child.to_html
-            end
-          end
-        end
-
-        # テキストを改行で分割して各行へ積む。改行ごとに、開いている span を閉じてから
-        # 改行し、次行の冒頭で同じ span を開き直す（トークンの行跨ぎを保つ）。
-        def append_text_with_newlines(text, lines, open_tags)
-          segments = text.split("\n", -1)
-          segments.each_with_index do |segment, idx|
-            lines[-1] << escape_html_text(segment)
-            next if idx == segments.length - 1
-
-            open_tags.reverse_each { lines[-1] << '</span>' }
-            lines.push(+open_tags.join)
-          end
-        end
-
-        # span 要素の開始タグ（属性つき）を組み立てる。
-        def span_open_tag(span)
-          attrs = span.attribute_nodes.map { %( #{it.name}="#{escape_attr(it.value)}") }.join
-          "<span#{attrs}>"
-        end
+        def split_code_into_lines(code) = CodeLineBlocks.split(code)
 
         # 行配列から div.vs-code-epub（1 論理行 = 1 div.vs-code-line）を構築する。
         # language-* クラスは容器と各行 <code> の両方に付け、Prism トークン色 CSS と
@@ -2299,12 +2254,6 @@ module VivlioStarter
           end
           html_files
         end
-
-        # コード行テキストの HTML エスケープ（行スプリットでテキスト断片を再構成するため）。
-        def escape_html_text(str) = str.to_s.gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;')
-
-        # span 属性値の HTML エスケープ（開始タグ再構成用）。
-        def escape_attr(str) = escape_html_text(str).gsub('"', '&quot;')
 
         # ================================================================
         # EPUB 用 CSS サニタイズ

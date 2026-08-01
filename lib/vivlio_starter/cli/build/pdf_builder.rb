@@ -3,6 +3,7 @@
 require 'fileutils'
 
 require_relative '../techbook/processor'
+require_relative '../code_line_blocks'
 require_relative 'pdf_page_map_extractor'
 require_relative 'vivliostyle_config_writer'
 
@@ -48,6 +49,7 @@ module VivlioStarter
           end
           inject_matter_anchors!
           inject_rotate_table_anchors!
+          convert_code_lines_for_pdf!
           # ビルド生成画像（数式 SVG）を pdf/ へミラーし、消費者 dir 相対の
           # images/math/… 参照を解決する（P4b §2.2）。存在すれば上書きコピー。
           images_src = File.join(Common::BUILD_HTML_DIR, 'images')
@@ -111,6 +113,53 @@ module VivlioStarter
             links = ids.map { %(<a href="##{it}" style="position:absolute"></a>) }.join
             File.write(path, html.sub(/<body[^>]*>/) { "#{it}#{links}" }, encoding: 'utf-8')
           end
+        end
+
+        # コードブロックの中身を「1 論理行 = 1 span.vs-code-line」へ組み直す。
+        #
+        # Prism の .line-numbers-rows は固定行高のガターを絶対配置で並べるだけなので、
+        # code.css が全 pre に掛ける white-space: pre-wrap で長行が折り返すと、番号と
+        # 論理行がずれる（実測: 2 行に折り返した論理行の続きが次の番号を貰い、以降が 1 つずつ
+        # 繰り上がって最終行の番号が消える）。EPUB が F 案で解いたのと同じ構造 ——
+        # 行ブロック＋ぶら下げインデント —— を PDF にも敷く。
+        # 分割の意味論は CodeLineBlocks が正典（EPUB と共有）。
+        #
+        # pre 自体は残す（枠・背景・フォントの既存 CSS をそのまま活かすため）。
+        # 書き込むのは pdf/ のコピーだけなので、html/ の原本を読む EPUB 経路は影響を受けない。
+        def convert_code_lines_for_pdf!
+          Dir.glob(File.join(Common::BUILD_PDF_DIR, '*.html')).each do |path|
+            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
+            targets = doc.css('pre.line-numbers')
+            next if targets.empty?
+
+            changed = targets.count { convert_code_pre_lines!(it, doc) }
+            next if changed.zero?
+
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+            Common.log_info("[PDF] #{File.basename(path)} のコード #{changed} 件を行ブロック化しました")
+          end
+        end
+
+        # 1 つの pre.line-numbers の中身を行ブロックへ組み直す。失敗時は変更せず false。
+        def convert_code_pre_lines!(pre, doc)
+          code = pre.at_css('code')
+          return false unless code
+
+          # 絶対配置ガターは行ブロックが番号を持つので不要
+          code.css('.line-numbers-rows').each(&:remove)
+
+          lines = CodeLineBlocks.split(code)
+          return false if lines.empty?
+
+          code.inner_html = lines.map do |line_html|
+            # 空行も 1 行ぶんの高さを保つ（空ブロックの潰れ防止）
+            body = line_html.strip.empty? ? " " : line_html
+            %(<span class="vs-code-line">#{body}</span>)
+          end.join
+          true
+        rescue StandardError => e
+          Common.log_warn("[PDF] コードの行ブロック化に失敗（元のまま維持）: #{e.message}")
+          false
         end
 
         # 特殊ページ HTML（前付・奥付）だけを html/ から pdf/ へコピーする。

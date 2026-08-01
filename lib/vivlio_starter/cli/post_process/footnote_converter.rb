@@ -124,7 +124,7 @@ module VivlioStarter
         # @param body [String] 脚注本文HTML
         def insert_print_footnote_after_paragraph!(doc, anchor, fid, body)
           sideimage = find_sideimage_container(anchor)
-          aside = build_print_footnote_node(doc, fid, body)
+          aside = build_print_footnote_node(doc, fid, body, anchored: true)
           if sideimage
             sideimage.add_next_sibling(aside)
           else
@@ -169,7 +169,7 @@ module VivlioStarter
           span = build_inline_footnote_node(doc, fid, body)
           anchor.add_next_sibling(span)
 
-          aside = build_print_footnote_node(doc, fid, body)
+          aside = build_print_footnote_node(doc, fid, body, anchored: true)
           sideimage = find_sideimage_container(anchor)
           if sideimage
             sideimage.add_next_sibling(aside)
@@ -333,6 +333,7 @@ module VivlioStarter
           span['role'] = 'doc-footnote'
           span['class'] = 'page-footnote page-footnote-inline'
           span['id'] = fid
+          span['data-footnote-number'] = fid.sub(/^fn/, '')
           span.inner_html = body
           span
         end
@@ -341,8 +342,9 @@ module VivlioStarter
         # @param doc [Nokogiri::HTML::Document] Nokogiriドキュメント
         # @param fid [String] 脚注ID
         # @param body [String] 脚注本文HTML
+        # @param anchored [Boolean] 参照位置に同内容の span#fnN が既にあるか
         # @return [Nokogiri::XML::Element] aside要素
-        def build_print_footnote_node(doc, fid, body)
+        def build_print_footnote_node(doc, fid, body, anchored: false)
           aside = Nokogiri::XML::Node.new('aside', doc)
           aside['role'] = 'doc-footnote'
           aside['class'] = 'page-footnote page-footnote-print'
@@ -350,6 +352,11 @@ module VivlioStarter
           # IDから脚注番号を抽出（例: fn5 -> 5, fnurl1 -> url1）
           footnote_number = fid.sub(/^fn/, '')
           aside['data-footnote-number'] = footnote_number
+          # 参照位置に同内容の span#fnN があるなら、脚注フロートはそちらが担う。
+          # この aside は控えなので PDF では描画しない（CSS が属性で拾う。クラスでなく
+          # data 属性にするのは img[data-vs-raster] と同じフック方式に揃えるため）。
+          # DOM に残すのは後処理（sideimage 変換・出現順の再番号付け）が aside を辿るため。
+          aside['data-footnote-anchored'] = '1' if anchored
           aside.inner_html = body
           aside
         end

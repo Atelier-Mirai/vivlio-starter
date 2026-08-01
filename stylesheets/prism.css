@@ -152,6 +152,33 @@ pre[class*="language-"].line-numbers > code {
 	white-space: inherit;
 }
 
+/* PDF の行番号は「1 論理行 = 1 span.vs-code-line」＋ぶら下げインデントで描く
+   （PdfBuilder#convert_code_lines_for_pdf! が pdf/ のコピーだけを組み直す）。
+   下の .line-numbers-rows（絶対配置ガター）は固定行高で番号を並べるため、
+   code.css の white-space: pre-wrap で長行が折り返すと番号と論理行がずれた。
+   行ブロックなら折返しはブロック内で完結し、番号は必ず論理行の先頭に付く。
+   EPUB/Kindle の .vs-code-line（code.css）と同じ F 案の構造で、寸法だけ PDF 用。 */
+pre[class*="language-"].line-numbers > code > .vs-code-line {
+	display: block;
+	padding-left: 3.8em;
+	text-indent: -3.8em;   /* 1 行目だけ左へ戻す＝番号が行頭・折返し行はコード開始位置へ揃う */
+	counter-increment: linenumber;
+}
+
+/* 番号欄の総幅は padding-left と厳密に一致させる（3em + 0.8em = 3.8em）。
+   ずれると折返し行の頭が 1 行目の本文開始位置と揃わない。 */
+pre[class*="language-"].line-numbers > code > .vs-code-line::before {
+	content: counter(linenumber);
+	display: inline-block;
+	width: 3em;
+	padding-right: 0.8em;
+	text-align: right;
+	color: #999;
+	text-indent: 0;      /* 親の負の text-indent を番号自体には効かせない */
+	border-right: 1px solid #999;
+}
+
+/* 行ブロック化に失敗して残った pre 向けの安全網（従来の絶対配置ガター） */
 .line-numbers .line-numbers-rows {
 	position: absolute;
 	pointer-events: none;
