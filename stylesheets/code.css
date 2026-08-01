@@ -208,8 +208,8 @@ figure[class*=" language-"] > figcaption + pre {
 .vs-code-epub .vs-code-line {
   white-space: pre-wrap;
   overflow-wrap: anywhere;   /* 長トークンの折返し（旧 §6 A 案の継承） */
-  padding-left: 3.1em;       /* 番号幅 2.5em ＋ 区切り余白 0.6em */
-  text-indent: -3.1em;       /* 1 行目だけ左へ戻す ＝ 番号が行頭・折返し行はコード開始位置へ揃う */
+  padding-left: 2.4em;       /* 番号欄の総幅と厳密に一致させる（PDF と同値） */
+  text-indent: -2.4em;       /* 1 行目だけ左へ戻す ＝ 番号が行頭・折返し行はコード開始位置へ揃う */
 }
 
 /* クリーン EPUB の行番号: CSS カウンタで描き、選択・コピーに混入させない。
@@ -219,10 +219,14 @@ figure[class*=" language-"] > figcaption + pre {
    ::before を描ける環境（Kindle Previewer 等）で行番号が二重表示になる。 */
 body.vs-epub:not(.vs-kindle) .vs-code-epub { counter-reset: vs-code-ln; }
 body.vs-epub:not(.vs-kindle) .vs-code-line { counter-increment: vs-code-ln; }
+/* base.css が全要素に box-sizing: border-box を掛けているので、inline-size は
+   padding を含んだ**総幅**。ここを content-box のつもりで 2.5em ＋ 0.6em と
+   書くと総幅が 2.5em にしかならず、padding-left（2.4em）と食い違って折返し行が
+   1 行目の本文開始位置と揃わない。総幅を padding-left と同値にすること。 */
 body.vs-epub:not(.vs-kindle) .vs-code-line::before {
   content: counter(vs-code-ln);
   display: inline-block;
-  inline-size: 2.5em;
+  inline-size: 2.4em;        /* border-box: 数字 1.8em ＋ padding-inline-end 0.6em */
   padding-inline-end: 0.6em;
   text-align: right;
   color: #999;

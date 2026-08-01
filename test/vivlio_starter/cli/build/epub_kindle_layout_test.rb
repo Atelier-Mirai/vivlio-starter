@@ -341,7 +341,9 @@ module VivlioStarter
         end
       end
 
-      # Kindle 行番号注入: nbsp 右詰めパディング＋末尾区切り空白（等幅で桁が揃う）
+      # Kindle 行番号注入: nbsp で 3 桁固定へ右詰め＋末尾区切り空白。
+      # 桁数をブロックごとの最大値にすると、番号欄の実幅がブロックごとに変わり、
+      # CSS の padding-left（2.4em）と食い違って折返し行のぶら下げ位置がずれる。
       def test_should_inject_right_padded_line_numbers_for_kindle
         lines = (1..10).map { "line#{it}" }.join("\n")
         html = <<~HTML
@@ -356,8 +358,8 @@ module VivlioStarter
 
         spans = doc.css('div.vs-code-epub > div.vs-code-line > span.vs-code-ln')
         assert_equal 10, spans.size, '各行の先頭に番号 span が注入されるべき'
-        assert_equal "\u00A09 ", spans[8].text, '1 桁の番号は nbsp で最大桁数へ右詰めされる'
-        assert_equal '10 ', spans[9].text, '最大桁の番号はパディングなし＋区切り空白'
+        assert_equal "\u00A0\u00A09 ", spans[8].text, '1 桁の番号は nbsp で 3 桁へ右詰めされる'
+        assert_equal "\u00A010 ", spans[9].text, '2 桁の番号も 3 桁へ右詰めされる'
         assert_equal spans[0], doc.at_css('div.vs-code-line').element_children.first,
                      '番号 span は行ブロックの先頭子要素'
       end
@@ -375,7 +377,7 @@ module VivlioStarter
           Builder.inject_code_line_numbers_for_kindle!(files)
         end
 
-        assert_equal ['22 ', '23 '], doc.css('span.vs-code-ln').map(&:text),
+        assert_equal ["\u00A022 ", "\u00A023 "], doc.css('span.vs-code-ln').map(&:text),
                      'data-start=22 なら 22 始まりで採番される'
       end
 

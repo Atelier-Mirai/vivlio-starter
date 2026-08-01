@@ -286,6 +286,8 @@ module VivlioStarter
           # epub-code-line-numbers-spec §2.1）。長行折返しでの番号ずれ（クリーン EPUB）と
           # テーブルセル起因の崩れ（Kindle）を同じ構造で解消するため、両フレーバ共通で行う。
           convert_code_blocks_for_epub!(chapter_htmls)
+          # 脚注に番号を実テキストで注入する（両フレーバ共通）。
+          decorate_footnotes_for_epub!(chapter_htmls)
 
           # --- Phase: Kindle 専用 rewrite（クリーン EPUB は無改変のまま・§1-2）---
           # Kindle(KFX) は WebP・CSS Grid・position:absolute・var()・外部 CSS の画像サイズを解さない。
@@ -1792,6 +1794,47 @@ module VivlioStarter
         end
 
         # tip / memo / column / notice / note（コラム・注記枠）に見出しラベル要素を実体注入する。
+        # EPUB / Kindle の脚注へ番号を実テキストで注入する。
+        #
+        # リフローにはページ下部が無いので、PDF が脚注領域へ降ろしている aside は
+        # 参照した段落の直後にそのまま残る。素のままだと番号も区切りも無く、本文と
+        # 地続きの文字列にしか見えない（どこからが脚注か読者に分からない）。
+        # 番号を実体で置き、CSS 側（components.css の body.vs-epub 規則）で
+        # 一回り小さい注記ブロックとして見せる。
+        #
+        # ::before ではなく実テキストにするのは Kindle(KFX) が擬似要素を解さないため。
+        # クリーン EPUB も同じ経路に揃えてフレーバ分岐を増やさない（vs-adm-label と同じ方式）。
+        #
+        # @param html_files [Array<String>] HTML ファイルパスの配列
+        # @return [Array<String>] そのままの配列（パス変更なし）
+        def decorate_footnotes_for_epub!(html_files)
+          html_files.each do |path|
+            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
+
+            changed = false
+            doc.css('aside.page-footnote-print[data-footnote-number]').each do |aside|
+              next if aside.at_css('.vs-fn-num') # 二重注入を防ぐ（冪等）
+
+              span = Nokogiri::XML::Node.new('span', doc)
+              span['class'] = 'vs-fn-num'
+              span.content = "#{aside['data-footnote-number']}. "
+              aside.prepend_child(span)
+              changed = true
+            end
+            next unless changed
+
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+            Common.log_info("[EPUB] #{File.basename(path)} の脚注に番号を注入しました")
+          end
+          html_files
+        end
+
+        # Kindle のコード行番号の桁数（実テキスト注入・nbsp で右詰め）。
+        # 3 桁あれば実用上足り、番号 3 桁＋区切り 1 文字が CSS の番号欄幅（2.4em）と
+        # 対応する。ブロックごとの最大桁に合わせると折返しのぶら下げ位置がブロック
+        # ごとにずれるため、固定にしている（pdf-code-line-numbers-spec.md §3.3）。
+        CODE_LINE_NUMBER_DIGITS = 3
+
         # PDF では ::before（position:absolute）でラベル帯を描くが、Kindle は absolute を無視して
         # ラベルが消える。実体の <p class="vs-adm-label"> を先頭に挿し、枠線は code/chapter CSS の
         # body.vs-kindle ルール（px 枠線）に委ねることで、Kindle でもラベル付きの囲み枠を保証する（§5）。
@@ -2236,13 +2279,18 @@ module VivlioStarter
               next if lines.empty?
 
               start = (container['data-start'] || 1).to_i
-              width = (start + lines.size - 1).to_s.length
               lines.each_with_index do |line, idx|
                 next if line.at_css('.vs-code-ln') # 二重注入を防ぐ（冪等）
 
                 span = Nokogiri::XML::Node.new('span', doc)
                 span['class'] = 'vs-code-ln'
-                span.content = "#{(start + idx).to_s.rjust(width, "\u00A0")} "
+                # \u756A\u53F7\u306F 3 \u6841\u56FA\u5B9A\u3067\u53F3\u8A70\u3081\uFF08\uFF0B\u533A\u5207\u308A 1 \u6587\u5B57 \uFF1D \u8A08 4 \u6587\u5B57\uFF09\u3002\u7B49\u5E45\u306A\u3089\u3053\u308C\u304C
+                # CSS \u306E padding-left\uFF082.4em\uFF09\u3068\u307B\u307C\u4E00\u81F4\u3057\u3001\u6298\u8FD4\u3057\u884C\u304C 1 \u884C\u76EE\u306E\u672C\u6587\u958B\u59CB
+                # \u4F4D\u7F6E\u3078\u63C3\u3046\u3002\u30D6\u30ED\u30C3\u30AF\u3054\u3068\u306B\u6841\u6570\u3092\u5909\u3048\u308B\u3068\u3001\u3053\u306E\u5BFE\u5FDC\u304C\u30D6\u30ED\u30C3\u30AF\u3054\u3068\u306B\u305A\u308C\u308B\u3002
+                # Kindle \u306F ::before \u3092\u89E3\u3055\u305A\u5B9F\u30C6\u30AD\u30B9\u30C8\u3067\u756A\u53F7\u3092\u51FA\u3059\u305F\u3081\u3001\u5E45\u306F CSS \u3067\u306F\u306A\u304F
+                # \u6587\u5B57\u6570\u3067\u5408\u308F\u305B\u308B\u3057\u304B\u306A\u3044\uFF08PDF\u30FB\u30AF\u30EA\u30FC\u30F3 EPUB \u304C\u5E38\u306B 2.4em \u306E\u756A\u53F7\u6B04\u3092
+                # \u78BA\u4FDD\u3059\u308B\u306E\u3068\u3082\u63C3\u3046\uFF09\u3002
+                span.content = "#{(start + idx).to_s.rjust(CODE_LINE_NUMBER_DIGITS,"\u00A0")} "
                 line.prepend_child(span)
                 changed = true
               end
