@@ -219,8 +219,15 @@ module VivlioStarter
           #    （コメント強調マーカー `[!]` のように [...] と綴る記法が、明示マーカー [用語]
           #     と誤認されて索引語化されるのを防ぐ。後段 2/3 のインラインコード保護に揃える）。
           #    トークンは [...] を含めない（含めると INDEX_TERM_PATTERN に自己マッチする）。
+          #
+          #    コード領域の解釈は Masking が唯一の実装（P1）。独自パターン /`[^`]+`/ では
+          #    N 連バッククォート対（``foo`bar`` の形）を見落とし、中身の [用語] が露出した。
+          #    退避を LineMask へ委ねないのは Regexp.last_match がフレームローカルだから——
+          #    gsub を LineMask#substitute! の中で呼ぶと $~ はそちらのフレームに立ち、
+          #    ここのブロックからは常に nil に見える（他 2 つの呼び出し元はブロック引数しか
+          #    使わないので露呈しない）。捕捉グループが要るこの経路は自前で gsub する。
           code_spans = {}
-          protected_line = line.gsub(/`[^`]+`/) do |match|
+          protected_line = line.gsub(Masking::INLINE_CODE_SPAN) do |match|
             token = "\u0000VSCODE#{code_spans.size}\u0000"
             code_spans[token] = match
             token
@@ -365,7 +372,9 @@ module VivlioStarter
           mask.protect!(TAGGED_TERM_PATTERN)  # 既にタグ付けされた索引語要素
           mask.protect!(/<[^>]+>/)            # 残りの HTML タグ（属性内の誤マッチ防止）
           mask.protect!(/\{[^{}]*\|[^{}]*\}/) # 振り仮名 {漢字|ふりがな}
-          mask.protect!(/`[^`]+`/)            # インラインコード（リテラル表示が目的）
+          # インラインコード（リテラル表示が目的）。解釈の正典は Masking（P1）——
+          # 独自パターンだと ``foo`bar`` のような N 連バッククォート対を取りこぼす。
+          mask.protect!(Masking::INLINE_CODE_SPAN)
         end
 
         # 索引語のマッチングパターン。辞書由来で不変なので初回だけ組み立てて使い回す。

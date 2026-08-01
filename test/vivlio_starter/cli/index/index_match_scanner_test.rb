@@ -191,6 +191,92 @@ module VivlioStarter
           assert_includes tagged, '# [!] この行が強調される', 'コード例の内容は保持される'
         end
 
+        # --- phase: N 連バッククォート対の保護（Masking 正典化・spec §4） ---
+
+        # ``foo`bar`` のように N 連バッククォートで囲んだコードは、内側に単独の
+        # バッククォートを持てる。独自パターン /`[^`]+`/ は単一対しか見ないため
+        # 前半 `foo` だけを保護し、残った [用語] が索引語化されていた。
+        # 解釈を Masking::INLINE_CODE_SPAN へ寄せた回帰検査（T1）。
+        def test_scan_skips_index_marker_inside_nested_backtick_code
+          File.write('16-nested-code.md', <<~MD)
+            # Test
+
+            説明: ``foo`bar[用語]`` と書きます。
+            バックティックの外の [本文用語] は検出される。
+          MD
+
+          @scanner.scan_and_tag_file!('16-nested-code.md')
+
+          term_names = @scanner.matches.map { it['term'] }
+          refute_includes term_names, '用語', 'N 連バッククォート対の内側は索引語化しない'
+          assert_includes term_names, '本文用語'
+
+          tagged = File.read('16-nested-code.md')
+          assert_includes tagged, '``foo`bar[用語]``', 'インラインコードの内容は逐語で保持される'
+        end
+
+        # T2: 単一バッククォート対（従来から通っていた形）の回帰防止。
+        def test_scan_skips_index_marker_inside_single_backtick_code
+          File.write('17-single-code.md', "# Test\n\n説明: `[用語]` です。\n")
+
+          @scanner.scan_and_tag_file!('17-single-code.md')
+
+          refute_includes @scanner.matches.map { it['term'] }, '用語'
+        end
+
+        # T3: 保護しすぎていないこと（地の文の [用語] は従来どおり拾う）。
+        def test_scan_detects_index_marker_outside_code
+          File.write('18-plain.md', "# Test\n\n説明: [用語] です。\n")
+
+          @scanner.scan_and_tag_file!('18-plain.md')
+
+          assert_includes @scanner.matches.map { it['term'] }, '用語'
+        end
+
+        # T4: 辞書由来の自動タグ付け経路（apply_auto_indexing →
+        # protect_untouchable_regions!）も同じ弱いパターンを持っていた。
+        # process_line だけを直しても落ちるので、2 箇所目の検証として要る。
+        def test_auto_indexing_skips_term_inside_nested_backtick_code
+          config_content = <<~YAML
+            terms:
+              - term: Markdown
+                yomi: まーくだうん
+                pattern: "/Markdown/"
+                flags: i
+          YAML
+          File.write('config/index_glossary_terms.yml', config_content)
+
+          scanner = IndexMatchScanner.new
+          File.write('19-auto.md', "コード例 ``a`b Markdown`` と地の文の Markdown。\n")
+
+          scanner.scan_and_tag_file!('19-auto.md')
+
+          tagged = File.read('19-auto.md')
+          assert_equal 1, tagged.scan(/class="index-term"/).size,
+                       'コード内の Markdown にはタグを付けず、地の文の 1 件だけタグ付けする'
+          assert_includes tagged, '``a`b Markdown``', 'インラインコードの内容は逐語で保持される'
+        end
+
+        # T5: 用語集のみ（flags: g）の †リンク経路も同じ保護を通る。
+        def test_glossary_only_linking_skips_term_inside_nested_backtick_code
+          config_content = <<~YAML
+            terms:
+              - term: WWW
+                yomi: WWW
+                flags: g
+          YAML
+          File.write('config/index_glossary_terms.yml', config_content)
+
+          scanner = IndexMatchScanner.new
+          File.write('20-gls.md', "コード例 ``a`b WWW`` は特別です。\n")
+
+          scanner.scan_and_tag_file!('20-gls.md')
+
+          tagged = File.read('20-gls.md')
+          refute_match(/glossary-link/, tagged, 'コード内の用語集語には †リンクを付けない')
+          assert_includes tagged, '``a`b WWW``', 'インラインコードの内容は逐語で保持される'
+        end
+
         def test_scan_handles_special_characters
           File.write('07-test.md', <<~MD)
             # Test
