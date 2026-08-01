@@ -296,6 +296,20 @@ body.vs-epub .rotate-table {
   break-after: page;
 }
 
+/* Kindle は回転テーブルを PDF ページの画像へ差し替える（KFX は transform も
+   position:absolute も解さない・kindle-rotate-table-image-spec.md）。差し替え後の箱には
+   絶対配置の table がいないので、画像そのものを上の 88vh へ収める。
+   クリーン EPUB には .vs-rotate-table-image が現れないため、この規則は Kindle にだけ効く。 */
+body.vs-epub .rotate-table > .vs-rotate-table-image {
+  display: block;
+  margin-inline: auto;
+  max-inline-size: 100%;
+  max-block-size: 100%;
+  /* KFX は modern な論理プロパティを解さないことがあるため legacy も併記する */
+  max-width: 100%;
+  max-height: 100%;
+}
+
 /* 節リードは見出しに近づける（PDF 側と同じ近接の扱い）。
    image-header.css の !important（margin-block-start: 0）に勝つため !important を併記する。 */
 body.vs-epub .section-lead {

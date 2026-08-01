@@ -155,7 +155,53 @@ module VivlioStarter
         assert_equal [:one], ran, '走っているステップは最後まで走り、次から止まるべき'
       end
 
+      # --- 枝をまたぐラッチ（kindle-rotate-table-image-spec.md §7）-----------------
+
+      # Kindle 枝は PDF 枝が作る回転テーブル画像を待つ。**待たせた以上は必ず解放する**——
+      # 抽出ステップが 1 つも登録されない構成でも、中断で 1 つも実行されなくても同じ。
+      # 解放漏れは「後続が永久に止まる」形で出るので、テストでも時間切れでしか気付けない。
+      def test_should_release_the_rotate_table_latch_even_without_an_extraction_step
+        Build::RotateTableImages.arm!(true)
+        build = pipeline(pdf: [noop('pdf')], epub: [noop('epub')])
+
+        capture_io { build.run }
+
+        assert_latch_open '抽出ステップが無い構成でもラッチを解放するべき'
+      end
+
+      # 解放は**抽出が終わった瞬間**でなければならない。PDF 枝の全終了まで持ち越すと
+      # Kindle 枝が dedup ＋ アウトライン（200 秒近く）を余分に待ち、枝の陰に収まらなくなる
+      # （実測で WALL が 359.6s → 485.7s に悪化した）。
+      def test_should_release_the_rotate_table_latch_as_soon_as_extraction_finishes
+        Build::RotateTableImages.arm!(true)
+        build = pipeline(pdf: [noop('pdf')], epub: [noop('epub')])
+
+        Build::RotateTableImages.stub(:extract!, 0) do
+          capture_io { build.send(:run_rotate_table_extraction) }
+        end
+
+        assert_latch_open '抽出が終わった時点で解放するべき（PDF 枝の全終了まで持ち越さない）'
+      end
+
+      def test_should_release_the_rotate_table_latch_when_the_pdf_branch_fails
+        Build::RotateTableImages.arm!(true)
+        build = pipeline(pdf: [['pdf', -> { raise 'PDF 枝が落ちた' }]], epub: [noop('epub')])
+
+        assert_raises(RuntimeError) { capture_io { build.run } }
+
+        assert_latch_open 'PDF 枝が落ちてもラッチを解放するべき'
+      end
+
       private
+
+      # 解放済みなら待たずに戻る。戻らなければテストごと固まるため、別スレッドで測る。
+      def assert_latch_open(message)
+        opened = Thread.new { Build::RotateTableImages.wait_until_ready! }.join(5)
+
+        refute_nil opened, message
+      ensure
+        Build::RotateTableImages.arm!(false)
+      end
 
       def noop(label) = [label, -> {}]
 

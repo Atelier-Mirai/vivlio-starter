@@ -47,6 +47,7 @@ module VivlioStarter
             FileUtils.cp(src, File.join(Common::BUILD_PDF_DIR, File.basename(src)))
           end
           inject_matter_anchors!
+          inject_rotate_table_anchors!
           # ビルド生成画像（数式 SVG）を pdf/ へミラーし、消費者 dir 相対の
           # images/math/… 参照を解決する（P4b §2.2）。存在すれば上書きコピー。
           images_src = File.join(Common::BUILD_HTML_DIR, 'images')
@@ -87,6 +88,30 @@ module VivlioStarter
 
         # 目印のアンカー ID。著者が付ける id と衝突しないよう vs- 接頭辞を持つ。
         def matter_anchor_id(basename) = "vs-matter-#{basename.delete_prefix('_')}"
+
+        # 回転テーブルのラッパ id（`rot-*`）を、リンクの飛び先にする。
+        #
+        # 前付・奥付とまったく同じ落とし穴で、**id を持つだけの要素は `/Dests` に出ない**。
+        # 回転テーブルは本文からもどこからも参照されないため、素のままでは
+        # 「この表は何ページ目に組まれたか」を PDF から引けない
+        # （kindle-rotate-table-image-spec.md §4）。
+        #
+        # 前付・奥付と違い id は前処理が既に振っているので、ここで足すのは**リンクの側だけ**。
+        # 飛び先の位置は id を持つラッパの位置なので、リンク自体はどこに置いてもよい。
+        # body 直後へまとめて置くのが、レイアウトへの干渉が最も小さい。
+        #
+        # 書き込むのは pdf/ のコピーだけ。html/ の原本はクリーンなままなので
+        # クリーン EPUB には現れない。
+        def inject_rotate_table_anchors!
+          Dir.glob(File.join(Common::BUILD_PDF_DIR, '*.html')).each do |path|
+            html = File.read(path, encoding: 'utf-8')
+            ids = html.scan(/\bid="(#{PreProcessCommands::TableConverter::ROTATE_ID_PREFIX}[^"]+)"/o).flatten.uniq
+            next if ids.empty?
+
+            links = ids.map { %(<a href="##{it}" style="position:absolute"></a>) }.join
+            File.write(path, html.sub(/<body[^>]*>/) { "#{it}#{links}" }, encoding: 'utf-8')
+          end
+        end
 
         # 特殊ページ HTML（前付・奥付）だけを html/ から pdf/ へコピーする。
         # Step 9 で html/ に再生成された特殊ページを PDF 消費者へ届ける（P4 §3.4-5）。

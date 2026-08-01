@@ -37,6 +37,7 @@ module VivlioStarter
         <p><img class="vs-math vs-math-inline" src="images/math/c.svg" style="height: 1.4ex; width: 1.4ex;" alt="$\\sqrt{2}$"></p>
         <ol class="vs-fancy-list vs-list-lower-alpha-paren2" type="a" style="counter-reset: vs-fancy 0"><li>選択肢イ</li></ol>
         <div class="outline-list"><ol><li>概要<ol><li>基本</li></ol></li></ol></div>
+        <div id="rot-11-sample-1" class="rotate-table" style="--rotate-table-scale:70%;"><table><tr><td>スキルレベル</td><td>リモート勤務</td></tr></table></div>
         </body></html>
       HTML
 
@@ -90,6 +91,41 @@ module VivlioStarter
                      'fancy list の実体マーカーが注入される（KFX は ::before を破棄する）'
         assert_equal ['1. ', '1.1. '], doc.css('.outline-list span.vs-li-marker').map(&:text),
                      'outline-list の複合番号が注入される'
+      end
+
+      # ================================================================
+      # 回転テーブル（kindle-rotate-table-image-spec.md）
+      # ================================================================
+
+      # クリーン EPUB は据え置く。あちらは CSS の 90 度回転が効いており、
+      # 画像化すると拡大時に劣化する。
+      def test_epub_flavor_keeps_the_rotate_table_as_a_real_table
+        doc = build_entries_and_parse(:epub)
+
+        refute_nil doc.at_css('div.rotate-table > table'), 'クリーン EPUB は表のまま残す'
+        assert_nil doc.at_css('div.rotate-table img'), 'クリーン EPUB は画像化しない'
+      end
+
+      # Kindle は KFX が transform も position:absolute も解さないため、PDF で組まれた
+      # ページの画像へ差し替える。alt には表のプレーンテキストを入れる（読み上げ・検索）。
+      def test_kindle_flavor_replaces_the_rotate_table_with_the_pdf_page_image
+        doc = with_rotate_table_image { build_entries_and_parse(:kindle) }
+
+        image = doc.at_css('div.rotate-table > img')
+
+        refute_nil image, 'Kindle は回転テーブルを画像へ差し替える'
+        assert_equal 'images/_epub_assets/rot-11-sample-1.png', image['src']
+        assert_equal 'スキルレベル リモート勤務', image['alt'], 'alt は表のプレーンテキスト'
+        assert_nil doc.at_css('div.rotate-table table'), '元の表は残さない'
+      end
+
+      # 画像が用意できなかった（PDF を作らないビルド等）ときは素の表のまま残す。
+      # 見た目は劣るが読めるので、ビルドは止めない。
+      def test_kindle_flavor_falls_back_to_the_plain_table_without_an_image
+        doc = build_entries_and_parse(:kindle)
+
+        refute_nil doc.at_css('div.rotate-table > table'), '画像が無ければ素の表のまま残す'
+        assert_nil doc.at_css('div.rotate-table img')
       end
 
       # 両フレーバとも body に vs-epub マーカーが付く（§6 A案・EPUB リフロー文脈の足場）。
@@ -149,6 +185,19 @@ module VivlioStarter
       # FIXTURE_HTML を 1 章として generate_epub_entries! にかけ、結果 DOM を返す。
       # collect_epub_htmls と inject_heading_images_for_epub! は環境依存（章収集・theme.css）を
       # 避けるためスタブし、フレーバ分岐そのものだけを検証する。
+      # 抽出済みの回転テーブル画像が有る状態を作る（PDF 枝が用意した体）。
+      def with_rotate_table_image
+        Dir.mktmpdir('vs-rotate-image') do |dir|
+          png = File.join(dir, 'rot-11-sample-1.png')
+          File.binwrite(png, "\x89PNG\r\n\x1a\n")
+          Build::RotateTableImages.stub(:available?, ->(id) { id == 'rot-11-sample-1' }) do
+            Build::RotateTableImages.stub(:image_path, ->(_id) { png }) do
+              return yield
+            end
+          end
+        end
+      end
+
       def build_entries_and_parse(flavor)
         Dir.mktmpdir('vs-epub-flavor') do |dir|
           path = File.join(dir, '11-sample.html')

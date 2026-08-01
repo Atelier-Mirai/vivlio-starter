@@ -421,7 +421,11 @@ module VivlioStarter
             next unless opened.positive?
 
             Common.log_success("#{klass}ブロックの事前変換が完了しました（開始:#{opened}件 終了:#{closed}件）")
-            context.content = TableConverter.convert_container_inner(context.content, klass, page_cfg: resolved_page_cfg)
+            context.content = TableConverter.convert_container_inner(
+              context.content, klass,
+              page_cfg: resolved_page_cfg,
+              source_basename: File.basename(context.filename, '.md')
+            )
           end
 
           # --- Phase: 素テーブル横取り ---

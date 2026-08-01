@@ -70,6 +70,9 @@ module VivlioStarter
           ensure_entry_files_exist!
           Common.ensure_build_workspace!
           Common.reset_vivliostyle_build_timings
+          # 回転テーブルの画像を PDF 枝が用意する構成でだけ、Kindle 枝を待たせる。
+          # 待つ相手がいないビルドで永久に待たないよう、ここで明示的に宣言する。
+          Build::RotateTableImages.arm!(mode == :full && rotate_table_images?)
           started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           run_phase(:shared)
           fork_branches? ? run_branches_in_parallel : run_branches_sequentially
@@ -117,8 +120,20 @@ module VivlioStarter
         def parallel_enabled? = ENV['VIVLIO_BUILD_PARALLEL'].to_s != '0'
 
         def run_branches_sequentially
-          run_phase(:pdf)
+          run_pdf_branch
           run_phase(:epub)
+        end
+
+        # PDF 枝を走らせ、**終わり方によらず**その成果物を待っている枝を解放する。
+        #
+        # 通常の解放は抽出ステップ自身が終わった時点で済んでいる（そちらが速い）。
+        # ここは取りこぼしの保険で、「ステップが 1 つも登録されなかった」
+        # 「中断フラグで 1 つも実行されなかった」経路を拾う——例外だけを見ていると
+        # これらを取りこぼし、待っている枝が永久に止まる。
+        def run_pdf_branch
+          run_phase(:pdf)
+        ensure
+          Build::RotateTableImages.release!
         end
 
         # 臨界経路である PDF 枝をメインスレッドで走らせ、EPUB 枝を子スレッドへ出す。
@@ -130,7 +145,7 @@ module VivlioStarter
 
           parent_error = nil
           begin
-            run_phase(:pdf)
+            run_pdf_branch
           rescue Exception => e # rubocop:disable Lint/RescueException — Interrupt も拾って子枝へ伝える
             @aborted = true
             parent_error = e
@@ -268,6 +283,11 @@ module VivlioStarter
             # いずれも html/ → pdf/ のステージングを内包する（P4 §3.4-2）。
             ['build overall pdf', -> { Build::PdfBuilder.build_overall_pdf_from_dir!(entries) },
              need_viewing_pdf, :pdf],
+            # Kindle は KFX が transform を解さず回転テーブルが素の表に戻るため、組み上がった
+            # ページを画像へ焼く。**dedup 前のこのレンダ**を使う——後段の再レンダを待つと
+            # Kindle 枝の開始が 150 秒遅れ、PDF 枝の陰に収まらなくなる
+            # （kindle-rotate-table-image-spec.md §7）。
+            ['extract rotate table images', -> { run_rotate_table_extraction }, rotate_table_images?, :pdf],
             ['generate entries.js', -> { Build::PdfBuilder.generate_entries_for_sections!(entries) },
              !t.pdf && t.print_pdf && !derive_print, :pdf],
             # dedup の破壊的書換は pdf/ 配下のコピーに閉じるため、EPUB 隔離のための
@@ -404,6 +424,22 @@ module VivlioStarter
           Common.log_info('[prepare cover assets] カバー画像の生成を完了しました')
         rescue StandardError => e
           Common.log_warn("[prepare cover assets] カバー生成中にエラー: #{e.message}")
+        end
+
+        # 回転テーブルのページ画像化を PDF 枝が担うか。Kindle を作らないビルドでは不要、
+        # 本文 PDF を作らないビルドでは不能（素の表へ縮退し、Kindle 枝が 🟡 で案内する）。
+        def rotate_table_images? = targets.kindle && (targets.pdf || derive_print?)
+
+        # 抽出ステップの本体。Kindle 枝を待たせているので、成否によらず必ず解放する。
+        # 抽出ステップの本体。**終わった瞬間に解放する**のが要点で、これを怠ると
+        # Kindle 枝は PDF 枝の全終了（dedup ＋ アウトラインで 200 秒近く先）まで待たされ、
+        # 枝の陰に収まらなくなる（実測 WALL 359.6s → 485.7s）。
+        # run_pdf_branch 側の解放は、ここへ到達しなかったときの保険。
+        def run_rotate_table_extraction
+          count = Build::RotateTableImages.extract!(File.join(Common::BUILD_PDF_DIR, '_sections.pdf'))
+          Common.log_info("[rotate-table] 回転テーブルを #{count} 件画像化しました") if count.positive?
+        ensure
+          Build::RotateTableImages.release!
         end
 
         # カバー資産を読む枝があるか（従来の各枝の実行条件をそのまま合成したもの）。

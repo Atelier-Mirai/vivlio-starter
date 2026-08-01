@@ -46,6 +46,12 @@ module VivlioStarter
         # 縮小率の下限。これ未満は可読性が失われるため止め、著者に縮小限界の判断を委ねる。
         SCALE_MIN = 0.30
 
+        # 回転テーブルのラッパへ振る内部 ID の接頭辞。Kindle では KFX が transform を
+        # 解さないため PDF の該当ページを画像へ焼いて差し替えるが、その「該当ページ」を
+        # 引く目印がこの ID になる（kindle-rotate-table-image-spec.md §4）。
+        # 本文からは参照しないので、著者に見える記法は増やさない。
+        ROTATE_ID_PREFIX = 'rot-'
+
         module_function
 
         # 拡張パイプテーブル 1 個を HTML 化する。不成立（テーブルでない）なら nil。
@@ -61,19 +67,39 @@ module VivlioStarter
         # <div class="… CLASS …">…</div> の内側テーブルを拡張変換する。
         # テーブルブロックは常に自前パーサ（不成立ブロックのみ Kramdown へフォールバック）、
         # 非テーブル区間（キャプション段落等）は Kramdown で描画し、出現順に結合する。
-        # class_name が 'rotate-table' かつ page_cfg があれば版面自動フィットを style へマージする。
-        def convert_container_inner(content, class_name, page_cfg: nil)
+        # class_name が 'rotate-table' かつ page_cfg があれば版面自動フィットを style へマージし、
+        # source_basename があれば Kindle 画像化用の内部 ID を振る。
+        # @param source_basename [String, nil] 章の basename（拡張子なし）。nil なら ID を振らない
+        def convert_container_inner(content, class_name, page_cfg: nil, source_basename: nil)
+          rotate = class_name == 'rotate-table'
+          index = 0
           pattern = %r{<div\s+([^>]*\bclass="[^"]*\b#{Regexp.escape(class_name)}\b[^"]*"[^>]*)>\s*(.*?)\s*</div>}m
           content.gsub(pattern) do
             attrs = ::Regexp.last_match(1)
             inner = ::Regexp.last_match(2)
 
             html  = render_container_inner(inner)
-            attrs = merge_rotate_style(attrs, inner, page_cfg) if class_name == 'rotate-table' && page_cfg
+            if rotate
+              attrs = merge_rotate_style(attrs, inner, page_cfg) if page_cfg
+              attrs = assign_rotate_id(attrs, source_basename, index += 1) if source_basename
+            end
 
             "<div #{attrs}>\n#{html}\n</div>"
           end
         end
+
+        # 回転テーブルのラッパに内部 ID を振る（Kindle 画像化の目印・§4）。
+        # 章 basename と章内の出現順で決まるので、原稿が動かなければ ID も動かない。
+        # 著者が既に id を書いていればそちらを尊重する。
+        def assign_rotate_id(attrs, source_basename, index)
+          return attrs if attrs.match?(/\bid\s*=/)
+
+          %(id="#{rotate_anchor_id(source_basename, index)}" #{attrs})
+        end
+
+        # @param source_basename [String] 章の basename（例 '22-extentions'）
+        # @param index [Integer] 章内での 1 始まりの出現順
+        def rotate_anchor_id(source_basename, index) = "#{ROTATE_ID_PREFIX}#{source_basename}-#{index}"
 
         # コンテナ外の素パイプテーブルのうち、拡張記法（colspan / 複数行ヘッダー）を
         # 含むものだけを横取りして生 <table> HTML へ変換する（§4）。

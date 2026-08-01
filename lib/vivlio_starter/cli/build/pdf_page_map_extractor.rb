@@ -89,6 +89,26 @@ module VivlioStarter
           end
         end
 
+        # 指定したアンカー ID の通しページ番号を引く。
+        #
+        # `document_first_pages` が「文書 → 開始ページ」を返すのに対し、こちらは
+        # 「任意の id → その id が組まれたページ」を返す。回転テーブルの画像化が
+        # 使う（kindle-rotate-table-image-spec.md §4）。
+        #
+        # **引けなかった ID は戻り値に現れない。** `/Dests` に出るのはリンクの飛び先に
+        # なっている id だけなので、呼び出し側は「欲しい ID の鍵が取れたか」で判定すること。
+        #
+        # @param ids [Array<String>] 引きたいアンカー ID
+        # @return [Hash{String => Integer}]
+        def pages_for(ids)
+          wanted = Array(ids).uniq
+          return {} if wanted.empty? || !File.exist?(pdf_path)
+
+          each_destination(::PDF::Reader.new(pdf_path)).each_with_object({}) do |(_document, anchor, page), found|
+            found[anchor] = page if wanted.include?(anchor)
+          end
+        end
+
         # vivliostyle の `:XXXX`（UTF-16 コードユニットの 4 桁 hex）エスケープを復号する。
         # 元名前中の `:` や `#` はすべてエスケープされるため、区切りの取り違えは起きない。
         # 想定外の入力では復号せず元文字列を返し、呼び出し側の `#` 判定で自然に捨てられる。

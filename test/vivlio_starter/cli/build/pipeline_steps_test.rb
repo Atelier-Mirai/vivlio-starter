@@ -81,6 +81,18 @@ module VivlioStarter
         'compress and rename', 'print pdf', 'generate epub', 'final clean'
       ]).freeze
 
+      # Kindle 用の回転テーブル画像は本文 PDF のページから切り出すため、
+      # 「Kindle を作る」かつ「閲覧用 PDF を組む」構成でだけ抽出ステップが 1 つ増える
+      # （kindle-rotate-table-image-spec.md §7）。切り出し元は dedup 前のレンダなので、
+      # 位置は必ず 'build overall pdf' の直後。
+      def self.with_rotate_extraction(steps)
+        steps.dup.insert(steps.index('build overall pdf') + 1, 'extract rotate table images').freeze
+      end
+
+      PDF_KINDLE   = with_rotate_extraction(PDF_EPUB)
+      PRINT_KINDLE = with_rotate_extraction(PRINT_EPUB)
+      ALL_KINDLE   = with_rotate_extraction(ALL)
+
       # 全 16 組（空＝既定 pdf を含む）→ 期待する操作キー列。
       FULL_MODE_CASES = {
         %w[]                          => PDF_ONLY,
@@ -92,13 +104,13 @@ module VivlioStarter
         %w[print_pdf epub]            => PRINT_EPUB,
         %w[pdf print_pdf epub]        => ALL,
         %w[kindle]                    => EPUB_ONLY,
-        %w[pdf kindle]                => PDF_EPUB,
-        %w[print_pdf kindle]          => PRINT_EPUB,
-        %w[pdf print_pdf kindle]      => ALL,
+        %w[pdf kindle]                => PDF_KINDLE,
+        %w[print_pdf kindle]          => PRINT_KINDLE,
+        %w[pdf print_pdf kindle]      => ALL_KINDLE,
         %w[epub kindle]               => EPUB_ONLY,
-        %w[pdf epub kindle]           => PDF_EPUB,
-        %w[print_pdf epub kindle]     => PRINT_EPUB,
-        %w[pdf print_pdf epub kindle] => ALL
+        %w[pdf epub kindle]           => PDF_KINDLE,
+        %w[print_pdf epub kindle]     => PRINT_KINDLE,
+        %w[pdf print_pdf epub kindle] => ALL_KINDLE
       }.freeze
 
       SINGLE_MODE = [
@@ -149,7 +161,8 @@ module VivlioStarter
         'index scan and build' => :shared, 'convert sections html' => :shared,
         'generate part title pages' => :shared, 'generate front and back matter html' => :shared,
         'techbook post-process' => :shared, 'generate toc html' => :shared,
-        'build overall pdf' => :pdf, 'generate entries.js' => :pdf, 'backlink dedup' => :pdf,
+        'build overall pdf' => :pdf, 'extract rotate table images' => :pdf,
+        'generate entries.js' => :pdf, 'backlink dedup' => :pdf,
         'build front and back matter' => :pdf, 'merge all pdfs' => :pdf,
         'apply outline to output pdf' => :pdf, 'compress, rename and final clean' => :pdf,
         'compress and rename' => :pdf, 'print pdf' => :pdf,

@@ -309,6 +309,63 @@ module VivlioStarter
           refute_includes result, 'rotate-table-height'
           assert_includes result, '<td style="text-align: left">x</td>'
         end
+
+        # -----------------------------------------------------------
+        # Kindle 画像化用の内部 ID（kindle-rotate-table-image-spec.md §4）
+        # -----------------------------------------------------------
+
+        # 章 basename と章内の出現順で決まるので、原稿が動かなければ ID も動かない
+        def test_should_number_rotate_tables_within_the_chapter
+          content = <<~HTML
+            <div class="rotate-table">
+            | a   | b   |
+            | --- | --- |
+            | x   | y   |
+            </div>
+            <div class="rotate-table">
+            | c   | d   |
+            | --- | --- |
+            | z   | w   |
+            </div>
+          HTML
+
+          result = TableConverter.convert_container_inner(content, 'rotate-table', source_basename: '22-extentions')
+
+          assert_includes result, 'id="rot-22-extentions-1"'
+          assert_includes result, 'id="rot-22-extentions-2"'
+        end
+
+        # 内部 ID は「PDF の何ページ目に組まれたか」を引くための目印にすぎないので、
+        # 著者が id を書いているならそちらを壊さない
+        def test_should_not_overwrite_an_author_supplied_id
+          content = <<~HTML
+            <div class="rotate-table" id="my-table">
+            | a   | b   |
+            | --- | --- |
+            | x   | y   |
+            </div>
+          HTML
+
+          result = TableConverter.convert_container_inner(content, 'rotate-table', source_basename: '22-extentions')
+
+          assert_includes result, 'id="my-table"'
+          refute_includes result, 'rot-22-extentions'
+        end
+
+        # long-table は画像化しない（PDF でも回転していない）ので ID も振らない
+        def test_should_not_number_other_container_classes
+          content = <<~HTML
+            <div class="long-table">
+            | a   | b   |
+            | --- | --- |
+            | x   | y   |
+            </div>
+          HTML
+
+          result = TableConverter.convert_container_inner(content, 'long-table', source_basename: '22-extentions')
+
+          refute_includes result, 'rot-'
+        end
       end
     end
   end

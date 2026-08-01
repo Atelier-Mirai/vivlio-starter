@@ -132,6 +132,37 @@ class TestPdfPageMapExtractor < Minitest::Test
                  'PDF が無い場合は例外ではなく空を返すこと（呼び出し側が個別レンダへ退避する）'
   end
 
+  # ================================================================
+  # pages_for: 任意のアンカー ID → ページ番号（回転テーブルの画像化が使う）
+  # ================================================================
+
+  def test_should_look_up_pages_for_the_requested_anchors
+    Dir.mktmpdir do |dir|
+      pdf_path = create_pdf_with_dests(dir)
+
+      assert_equal({ 'gls-src-00-preface-1' => 1, 'idx-08-web-2' => 2 },
+                   Extractor.new(pdf_path).pages_for(%w[gls-src-00-preface-1 idx-08-web-2]))
+    end
+  end
+
+  # /Dests に出るのは「リンクの飛び先になっている id」だけなので、引けない ID は必ず出る。
+  # 呼び出し側が「欲しい ID が取れたか」で判定できるよう、戻り値に含めない。
+  def test_should_omit_anchors_that_are_not_in_the_dests
+    Dir.mktmpdir do |dir|
+      pdf_path = create_pdf_with_dests(dir)
+
+      result = Extractor.new(pdf_path).pages_for(%w[gls-src-00-preface-1 rot-22-extentions-1])
+
+      assert_equal %w[gls-src-00-preface-1], result.keys
+    end
+  end
+
+  def test_should_return_empty_for_an_empty_request
+    Dir.mktmpdir do |dir|
+      assert_empty Extractor.new(create_pdf_with_dests(dir)).pages_for([])
+    end
+  end
+
   private
 
   # vivliostyle と同形の PDF を作る:
