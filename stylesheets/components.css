@@ -301,13 +301,22 @@ body.vs-epub .rotate-table {
    絶対配置の table がいないので、画像そのものを上の 88vh へ収める。
    クリーン EPUB には .vs-rotate-table-image が現れないため、この規則は Kindle にだけ効く。 */
 body.vs-epub .rotate-table > .vs-rotate-table-image {
-  display: block;
-  margin-inline: auto;
   max-inline-size: 100%;
   max-block-size: 100%;
   /* KFX は modern な論理プロパティを解さないことがあるため legacy も併記する */
   max-width: 100%;
   max-height: 100%;
+}
+
+/* 差し替えた画像の水平中央寄せ。
+   **KFX では margin:auto が効かず、画像がページ左端に寄る**（実機確認・2026-08-01）。
+   `text-align: center` ＋ インライン画像という古い組み合わせが Kindle では最も確実で、
+   EPUB で画像を中央に置く定石でもある。画像を `display: block` にすると
+   `text-align` が効かなくなるため、display は既定（inline）のまま触らない。
+   クリーン EPUB の table は絶対配置（left:50% + translate）で中央に来るので、
+   この規則の影響を受けない——念のため vs-kindle に限定してある。 */
+body.vs-kindle .rotate-table {
+  text-align: center;
 }
 
 /* 節リードは見出しに近づける（PDF 側と同じ近接の扱い）。
