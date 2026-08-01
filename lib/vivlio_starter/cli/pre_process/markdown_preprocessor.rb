@@ -26,6 +26,7 @@
 require 'fileutils'
 require_relative '../common'
 require_relative '../masking'
+require_relative '../index_markup'
 require_relative 'frontmatter_generator'
 require_relative 'issue_registry'
 require_relative 'qr_transformer'
@@ -524,14 +525,17 @@ module VivlioStarter
         # 単章ビルドでは Step 4 がスキップされるため、ここで記法を除去して
         # VFM に渡す前にプレーンテキストにしておく。
         # コードブロック・インラインコード内はスキップする。
+        #
+        # 綴りの判定は IndexMarkup が唯一の定義元。インライン脚注 `^[本文]` を
+        # 索引記法と誤認してブラケットだけ剥がすと、脚注本体が本文へ流れ込む
+        # （inline-footnote-index-collision-spec.md §3.1）。
         def strip_index_markup!
           protected_text, spans = MarkdownUtils.extract_code_spans(context.content)
 
-          # [用語|読み] → 用語、[用語] → 用語（ただしリンク記法 [text](url) は除外）
-          stripped = protected_text.gsub(/\[([^\[\]\n]+)\](?!\()/) do
+          stripped = protected_text.gsub(IndexMarkup::TERM_PATTERN) do
             inner = ::Regexp.last_match(1)
             # 脚注参照 [^id] はそのまま残す
-            if inner.start_with?('^')
+            if IndexMarkup.skip_term?(inner)
               ::Regexp.last_match(0)
             elsif inner.include?('|')
               # [用語|読み] → 用語

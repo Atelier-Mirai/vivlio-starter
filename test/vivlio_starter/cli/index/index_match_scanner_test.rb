@@ -85,6 +85,33 @@ module VivlioStarter
           assert_includes term_names, '有効な用語'
         end
 
+        def test_scan_excludes_inline_footnote_bodies
+          # `^` はブラケットの外側にあるため、参照脚注 [^1] を落とす条件では
+          # 除外できない。脚注本文が索引語として登録されるのを防ぐ
+          # （inline-footnote-index-collision-spec.md §3.2）
+          File.write('06-test.md', <<~MD)
+            # Test
+
+            本文です^[この 49 ページというずれです]。
+            [有効な用語]は検出される。
+          MD
+
+          @scanner.scan_and_tag_file!('06-test.md')
+
+          term_names = @scanner.matches.map { it['term'] }
+          refute_includes term_names, 'この 49 ページというずれです'
+          assert_includes term_names, '有効な用語'
+        end
+
+        def test_scan_leaves_inline_footnote_markup_untouched
+          File.write('07-test.md', "# Test\n\n本文です^[短い補足]。\n")
+
+          @scanner.scan_and_tag_file!('07-test.md')
+
+          assert_includes File.read('07-test.md'), '^[短い補足]',
+                          'インライン脚注の記法がタグ付けで壊されてはならない'
+        end
+
         def test_scan_tags_first_occurrence_with_dfn
           File.write('05-test.md', <<~MD)
             # Test

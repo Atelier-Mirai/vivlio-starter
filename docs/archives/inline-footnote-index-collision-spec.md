@@ -1,7 +1,7 @@
 # インライン脚注 `^[…]` と索引マークアップ `[…]` の綴り衝突
 
 > 作成日: 2026-08-01
-> ステータス: **実装待ち**（真因は特定・修正案は実測で検証済み）
+> ステータス: **実装完了**（2026-08-01）
 > 対象: インライン脚注 `^[短い補足]` が脚注にならない不具合（2026-07-30 発見）
 > 関連: `lib/vivlio_starter/cli/pre_process/markdown_preprocessor.rb`（犯人 A）, `lib/vivlio_starter/cli/index/index_match_scanner.rb`（犯人 B）, `lib/vivlio_starter/cli/index/unified_index_manager.rb`（犯人 C）, `contents/21-markdown-tutorial.md` §脚注, `contents/90-notation-cheatsheet.md`
 > 前身: `inline-footnote-collision-notes.md`（症状の一次資料。本仕様書に全内容を取り込んだので削除した）
@@ -206,8 +206,12 @@ end
 | :--- | :--- |
 | `markdown_preprocessor.rb:531` | 自前の正規表現を `IndexMarkup::TERM_PATTERN` に差し替え |
 | `index_match_scanner.rb:68` | `INDEX_TERM_PATTERN` を `IndexMarkup::TERM_PATTERN` の別名にするか撤去 |
-| `unified_index_manager.rb:580` | `[用語]` 側を `IndexMarkup::TERM_PATTERN` に差し替え |
-| `unified_index_manager.rb:570` | `[用語\|読み]` 側にも `(?<!\^)` を足す（`^[A\|B]` 対策） |
+| `unified_index_manager.rb:580` | `[用語]` 側を `IndexMarkup::TERM_ONLY_PATTERN` に差し替え（**下記の訂正を参照**） |
+| `unified_index_manager.rb:570` | `[用語\|読み]` 側を `IndexMarkup::TERM_WITH_YOMI_PATTERN` に差し替え（`^[A\|B]` 対策） |
+
+> **訂正（実装時に判明）**: 当初この表は `unified_index_manager.rb:580` を汎用の `TERM_PATTERN` へ差し替えると書いていたが、**それでは `[用語|読み]` が二重登録される**。辞書登録だけは「読み付き → 読みなし」の 2 パターンを順に当てる方式で、読みなし側の文字クラスが `[^\]|]+` と `|` を除外していることが二重登録を防いでいる。汎用パターンは `|` を許すため、同じ語が読み付きと読みなしの両方で拾われてしまう。
+>
+> よって `IndexMarkup` は 3 つのパターンを持つ——`TERM_PATTERN`（前処理・スキャナ用。`|` を許し、読みの分離は利用側）、`TERM_WITH_YOMI_PATTERN`、`TERM_ONLY_PATTERN`（辞書登録用の対）。**除外条件だけが 3 本で共有される**という形にした。回帰テスト `test_term_only_pattern_should_not_double_register_yomi_form` がこの性質を固定している。
 
 `skip_term?` の `start_with?('^')` は**残す**。パターンが `^[…]` を弾いても、`[^id]` そのものはパターンに合致し続けるため、中身側の除外は依然必要である。
 
@@ -286,3 +290,28 @@ end
    `notation-implementation-guide.md` §2 が正典と定める `MarkdownUtils.extract_code_spans` の再実装であり、しかも**弱い**——`Masking::INLINE_CODE_SPAN` が担保する「N 連バッククォート同士の対」（`` ``foo`bar`` ``）を扱えず、単一バッククォート対しか見ない。同じドメインの `CodeBlockStripper` は既に `Masking` への薄い委譲層に整理済みなので、ここだけが取り残されている。
 
    **今回は触らない**（索引のタグ付け挙動が広範囲に変わりうるため、脚注の修正と混ぜると切り分けができなくなる）。ただしこれこそが「アドホックな修正が増えていく」実例なので、記録して次に索引まわりを触るときの入口にする。
+
+## 9. 実装記録（2026-08-01）
+
+### 変更したもの
+
+| ファイル | 変更 |
+| :--- | :--- |
+| `lib/vivlio_starter/cli/index_markup.rb` | **新規**。3 パターン＋`skip_term?` の正典 |
+| `lib/vivlio_starter/cli/pre_process/markdown_preprocessor.rb` | `strip_index_markup!` を正典へ |
+| `lib/vivlio_starter/cli/index/index_match_scanner.rb` | `INDEX_TERM_PATTERN` を別名化・`skip_term?` を委譲 |
+| `lib/vivlio_starter/cli/index/unified_index_manager.rb` | 手動マークアップ抽出の 2 パターンを正典へ |
+| `notation-implementation-guide.md` | §2 再実装禁止リストへ `IndexMarkup` を追加 |
+| テスト 4 ファイル | 新規 2・追記 2（計 21 ケース増） |
+
+### 落とし穴
+
+1. **辞書登録だけはパターンが 2 本必要**（§4.3 の訂正を参照）。汎用パターンへ一本化すると `[用語|読み]` が二重登録される。「1 箇所へ集約する」は「1 つの正規表現にする」ではない——**共有すべきは除外条件であって、パターンの形ではない**。
+2. **`skip_term?` は残る**。パターンが `^[…]` を弾いても参照脚注 `[^id]` は依然パターンに一致するため、中身側の判定は消せない。ブラケットの**外**は正規表現、**中**は `skip_term?` という役割分担になる。
+
+### 検証
+
+- `rake test`: 2159 runs / 11855 assertions / **0 failures 0 errors**（実装前 2138 runs から 21 増）
+- `rubocop`: 変更 8 ファイル **no offenses**
+- 前処理パイプライン全体（25 ステップ）を通して `^[短い補足]` が中間 Markdown まで無傷で到達することを実測
+- 既存原稿の出力は不変（§7 のとおりフェンス外の実使用が無いため）

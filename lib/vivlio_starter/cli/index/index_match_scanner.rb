@@ -21,6 +21,7 @@ require 'cgi'
 require 'digest'
 require_relative '../common'
 require_relative '../masking'
+require_relative '../index_markup'
 require_relative 'yomi_inferrer'
 
 module VivlioStarter
@@ -62,10 +63,10 @@ module VivlioStarter
 
       # 索引語スキャン・タグ付けクラス
       class IndexMatchScanner
-        # 索引語マッチの正規表現
-        # [用語|読み] または [用語] 形式を検出
-        # ただし、[text](url) 形式のリンクは除外（後ろに ( が続く場合はスキップ）
-        INDEX_TERM_PATTERN = /\[([^\[\]\n]+)\](?!\()/
+        # 索引語マッチの正規表現。綴りの定義元は IndexMarkup（唯一の定義元）。
+        # [用語|読み] または [用語] 形式を検出し、リンク記法 [text](url) と
+        # インライン脚注 ^[本文] は除外される。
+        INDEX_TERM_PATTERN = IndexMarkup::TERM_PATTERN
 
         attr_reader :seen_terms, :term_occurrence, :index_data, :matches, :config_missing, :no_matches,
                     :glossary_backlinks
@@ -252,19 +253,12 @@ module VivlioStarter
           apply_glossary_only_linking(indexed_line, file_basename)
         end
 
-        # 索引対象として無効な用語かどうかを判定
+        # 索引対象として無効な用語かどうかを判定（判定の実体は IndexMarkup）。
+        # 除外するのは脚注構文 [^id] のみ。著者が意図的にマークアップした
+        # [!] [&&] [!DOCTYPE] [<h1>] などは除外しない。
         # @param term_text [String] 用語テキスト
         # @return [Boolean] スキップすべきならtrue
-        def skip_term?(term_text)
-          return true if term_text.nil? || term_text.empty?
-
-          # 脚注構文 [^id] のみ除外
-          return true if term_text.start_with?('^')
-
-          # 著者が意図的にマークアップした用語は除外しない
-          # 例: [!], [&&], [!DOCTYPE], [<h1>] など
-          false
-        end
+        def skip_term?(term_text) = IndexMarkup.skip_term?(term_text)
 
         def extract_term_and_yomi(raw_text)
           return [raw_text, nil] unless raw_text&.include?('|')

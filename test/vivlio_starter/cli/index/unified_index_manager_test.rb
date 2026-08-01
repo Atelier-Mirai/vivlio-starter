@@ -54,6 +54,29 @@ module VivlioStarter
         assert_includes content, '[手動登録]'
       end
 
+      # 回帰: インライン脚注 `^[本文]` の中身を手動マークアップとして辞書へ
+      # 登録しない。登録されると本文中の同じ文字列が全章で自動タグ付けされ、
+      # 被害が辞書に残る（inline-footnote-index-collision-spec.md §3.3）。
+      def test_auto_process_excludes_inline_footnote_bodies
+        File.write('contents/04-footnote.md', <<~MD)
+          # Inline Footnote Test
+
+          356 枚目にあたります^[この 49 ページというずれは本書での値です]。
+          読み付きの形^[アルファ|べーた]も登録しない。
+          [Ruby]は本文で使用。
+        MD
+
+        @manager.auto_process!(['04-footnote'])
+
+        content = File.read('_index_glossary_review.md')
+        terms_section = content.split('## 2.')[0]
+        # 登録語は太字で並ぶ（文脈表示には原文がそのまま出るので、そこは見ない）
+        refute_includes terms_section, '**この 49 ページというずれは本書での値です**'
+        refute_includes terms_section, '**アルファ**'
+        assert_includes terms_section, '**Ruby**'
+        assert_includes terms_section, 'Terms: 1語', '登録されるのは [Ruby] だけ'
+      end
+
       def test_auto_process_excludes_code_fences
         File.write('contents/03-code.md', <<~MD)
           # Code Fence Test

@@ -15,6 +15,7 @@
 # ================================================================
 
 require_relative '../common'
+require_relative '../index_markup'
 require_relative '../build/catalog_loader'
 require_relative '../pre_process/issue_registry'
 require_relative 'unified_terms_manager'
@@ -565,8 +566,9 @@ module VivlioStarter
           content_without_code = CodeBlockStripper.strip(content)
           chapter_name = File.basename(chapter_path, '.*')
 
-          # [用語|読み] 形式を検出（コードフェンス除外済みコンテンツから）
-          content_without_code.scan(/\[([^\]|]+)\|([^\]]+)\]/) do |term, yomi|
+          # [用語|読み] 形式を検出（コードフェンス除外済みコンテンツから）。
+          # 綴りの定義元は IndexMarkup（インライン脚注 ^[A|B] を除外する）。
+          content_without_code.scan(IndexMarkup::TERM_WITH_YOMI_PATTERN) do |term, yomi|
             next if term.nil? || term.empty?
 
             context = extract_surrounding_context(content, term)
@@ -577,13 +579,15 @@ module VivlioStarter
             }
           end
 
-          # [用語] 形式を検出（読みなし、コードフェンス除外済み）
-          # (?!\() で画像記法 ![alt](url) の alt 部分は既に除外済み
-          content_without_code.scan(/\[([^\]|]+)\](?!\()/) do |match|
+          # [用語] 形式を検出（読みなし、コードフェンス除外済み）。
+          # 綴りの定義元は IndexMarkup。パターン側でリンク・画像記法 [text](url) と
+          # インライン脚注 ^[本文] を、skip_term? で参照脚注 [^1] を落とす。
+          # ここは | を含まない語だけを見る（[用語|読み] は上の走査の担当で、
+          # 汎用の TERM_PATTERN に替えると同じ語を二重登録する）。
+          content_without_code.scan(IndexMarkup::TERM_ONLY_PATTERN) do |match|
             term = match[0]
-            next if term.nil? || term.empty?
+            next if IndexMarkup.skip_term?(term)
             next if term.match?(/^https?:/) # URL を除外
-            next if term.match?(/^\^/) # 脚注参照 [^1] を除外
 
             # R9: 単位・記号表記（[eV] [Hz] [g] 等）は登録せず、集約して後で警告
             if term.match?(ASCII_SHORT_TERM_PATTERN)

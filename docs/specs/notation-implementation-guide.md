@@ -32,6 +32,7 @@
 | 基盤 | 責務 | 正典 |
 |---|---|---|
 | `Masking` | **コード領域解釈の唯一の実装**（P1）。フェンス（可変長・入れ子・`~~~`・`include:` 除外）とインラインコードの解釈は必ずここ | `cli/masking.rb` |
+| `IndexMarkup` | **索引マークアップ `[用語]` の綴りの唯一の定義**。`[…]` と綴る記法を新設したら、衝突しないようここへ除外を 1 項目足す（前処理・索引スキャナ・辞書登録の 3 箇所が追従する） | `cli/index_markup.rb` |
 | `Masking.replace_top_level_fences` | コード保護より**前段**で特定言語のフェンスを横取りする公開 API（行番号付き・nil=原文維持） | 同上 |
 | `MarkdownUtils.extract_code_spans` / `restore_code_spans` | コード退避→処理→復元。**コード内の作例を壊さない**ための標準手順 | `cli/pre_process/markdown_utils.rb` |
 | `GeneratedAssetCache` | 生成資産の永続キャッシュ（`.cache/vs/<種別>/`・final clean を生き延びる・`vs clean --cache` が掃除） | `cli/pre_process/generated_asset_cache.rb` |
