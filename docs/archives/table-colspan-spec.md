@@ -208,9 +208,14 @@ row_h_mm     = line_height_mm * (セル内 <br> 行数の行内最大) + 2 * CEL
 table_h      = Σ row_h_mm（全行 = thead + tbody）
 
 # --- 回転後のフィット（-90°回転で幅↔高さが入れ替わる） ---
-scale = min(content_h / table_w, content_w / table_h, 1.0) * SAFETY
-scale = clamp(scale, SCALE_MIN, 1.0) を 5% 刻みへ切り捨て
+scale = min(content_h / table_w, content_w / table_h) * SAFETY
+scale = clamp(scale, SCALE_MIN, SCALE_MAX) を 5% 刻みへ切り捨て
 ```
+
+> **2026-08-01 改訂**: かつては上限を等倍（1.0）にしていたが、回転テーブルは専用ページを
+> 与えられているため版面に余白を残す理由がない。実測で版面高さの 68% しか使えていなかった
+> （7 列 4 行の表で scale 90%）。上限を外し、代わりに `SCALE_MAX` を置いた。
+> 改訂後は同じ表が 130% ＝版面高さの 96.8% を使う。
 
 **定数**（`TableConverter` 内に凍結定数として定義。根拠コメント必須）:
 
@@ -219,6 +224,7 @@ scale = clamp(scale, SCALE_MIN, 1.0) を 5% 刻みへ切り捨て
 | `CELL_PAD_MM` | 1.2 | table.css の padding clamp（0.6〜1.4mm）＋罫線幅の中庸値 |
 | `SAFETY` | 0.95 | 文字幅推定の誤差（プロポーショナル欧文等）の安全率 |
 | `SCALE_MIN` | 0.30 | これ未満は可読性がないため下限で止める（著者へ縮小限界の判断を委ねる） |
+| `SCALE_MAX` | 2.0 | 行数・列数の少ない表は版面に収めるだけだと何倍にも伸びる（実測 555%）。本文の 2 倍を超える文字で組まれた表は表よりポスターに見える |
 
 **出力**: `{ 'rotate-table-height' => "#{content_h.round(1)}mm", 'rotate-table-scale' => "#{(scale * 100).round}%" }`
 

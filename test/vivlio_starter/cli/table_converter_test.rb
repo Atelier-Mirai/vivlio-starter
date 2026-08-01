@@ -265,7 +265,32 @@ module VivlioStarter
           assert_equal '213.0mm', style['rotate-table-height']
           assert_match(/\A\d+%\z/, style['rotate-table-scale'])
           scale = style['rotate-table-scale'].to_i
-          assert scale.between?(30, 100), "scale in range: #{scale}"
+          assert scale.between?(30, 200), "scale in range: #{scale}"
+        end
+
+        # 回転テーブルは専用ページを与えられているので、版面に余白を残す理由がない。
+        # かつては等倍で頭打ちにしており、実測で版面高さの 68% しか使えていなかった。
+        def test_should_enlarge_beyond_actual_size_to_fill_the_page
+          model = TableConverter.send(:parse, <<~MD)
+            | 名前 | 年齢 | 職種 | 部署 | 勤続年数 | スキルレベル | リモート勤務 |
+            | :--- | :--- | :--- | :--- | :------- | :----------- | :----------- |
+            | 太郎 | 25   | エンジニア | 開発1課 | 2年 | ★★☆☆☆ | 可 |
+            | 花子 | 30   | デザイナー | UXデザイン部 | 5年 | ★★★★☆ | 一部可 |
+          MD
+
+          scale = TableConverter.estimate_rotate_style(model, PAGE_CFG)['rotate-table-scale'].to_i
+
+          assert_operator scale, :>, 100, '版面が余っているなら等倍を超えて拡大するべき'
+        end
+
+        # 行数・列数の少ない表は「版面に収める」だけだと何倍にでも伸びる（実測 555%）。
+        # 本文の 2 倍を超える文字で組まれた表は、表というよりポスターに見える。
+        def test_should_cap_enlargement_at_scale_max
+          tiny = TableConverter.send(:parse, "| a | b |\n| :- | :- |\n| x | y |\n")
+
+          scale = TableConverter.estimate_rotate_style(tiny, PAGE_CFG)['rotate-table-scale'].to_i
+
+          assert_equal (TableConverter::SCALE_MAX * 100).round, scale
         end
 
         def test_should_shrink_scale_for_wider_table

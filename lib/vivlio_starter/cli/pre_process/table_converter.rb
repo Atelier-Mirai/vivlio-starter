@@ -45,6 +45,11 @@ module VivlioStarter
         SAFETY = 0.95
         # 縮小率の下限。これ未満は可読性が失われるため止め、著者に縮小限界の判断を委ねる。
         SCALE_MIN = 0.30
+        # 拡大率の上限。回転テーブルは専用ページを与えられるので版面いっぱいまで拡大してよいが、
+        # 行数・列数の少ない表は「版面に収める」だけだと何倍にでも伸びてしまう
+        # （実測: 4 列 2 行の表で 555%）。本文の 2 倍を超える文字で組まれた表は、
+        # 表というよりポスターに見えるのでここで止める。
+        SCALE_MAX = 2.0
 
         # 回転テーブルのラッパへ振る内部 ID の接頭辞。Kindle では KFX が transform を
         # 解さないため PDF の該当ページを画像へ焼いて差し替えるが、その「該当ページ」を
@@ -157,8 +162,13 @@ module VivlioStarter
           return height if table_w.zero? || table_h.zero?
 
           # -90°回転で幅↔高さが入れ替わる。回転後にページ版面へ収める縮尺。
-          scale = [content_h / table_w, content_w / table_h, 1.0].min * SAFETY
-          scale = scale.clamp(SCALE_MIN, 1.0)
+          #
+          # **等倍で頭打ちにしない。** 回転テーブルは `break-before/after: page` で専用ページを
+          # 与えられているので、そこに余白を残す理由がない。かつては上限 1.0 を掛けており、
+          # 実測で版面高さの 68% しか使えていなかった（7 列 4 行の表で scale 90%・
+          # kindle-rotate-table-image-spec.md §8 の画像で判明）。
+          scale = [content_h / table_w, content_w / table_h].min * SAFETY
+          scale = scale.clamp(SCALE_MIN, SCALE_MAX)
           scale = (scale / 0.05).floor * 0.05 # 5% 刻みへ切り捨て
 
           height.merge('rotate-table-scale' => "#{(scale * 100).round}%")
