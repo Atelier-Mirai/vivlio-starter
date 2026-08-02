@@ -256,7 +256,6 @@ module VivlioStarter
         # nilでない場合のみ上書き
         merged['yomi'] = new_data['yomi'] || new_data[:yomi] || merged['yomi']
         merged['definition'] = new_data['definition'] if new_data['definition']
-        merged['score'] = new_data['score'] || new_data[:score] if new_data['score'] || new_data[:score]
         merged['contexts'] = new_data['contexts'] if new_data['contexts']
         merged['updated_at'] = Time.now.strftime('%Y-%m-%d %H:%M:%S')
         merged
@@ -275,7 +274,6 @@ module VivlioStarter
         # オプショナルフィールド
         entry['pattern'] = term['pattern'] || build_pattern(entry['term'])
         entry['auto_approved'] = term['auto_approved'] if term.key?('auto_approved')
-        entry['score'] = term['score'] if term['score']
         entry['contexts'] = term['contexts'] if term['contexts']&.any?
         entry
       end
@@ -290,9 +288,11 @@ module VivlioStarter
       def save_terms!(terms)
         FileUtils.mkdir_p(File.dirname(UNIFIED_FILE))
 
-        # R3: 廃止済みの backlink_sources（出現情報は中間 YAML へ移行済み）が
-        # 旧辞書に残置していても、保存の機会に黙って捨てる
-        sorted = terms.map { it.except('backlink_sources') }
+        # 出現情報は辞書に置かない（辞書は語彙の一次データに限る）。
+        # backlink_sources（R3）に加え score も同じ理由で捨てる——score は出現回数と
+        # 出現章数から算出される派生データで、原稿を推敲すれば古くなる。
+        # 旧辞書に残置していても、保存の機会に黙って落とす。
+        sorted = terms.map { it.except('backlink_sources', 'score') }
                       .sort_by { it['yomi'] || it['term'] || '' }
 
         data = {

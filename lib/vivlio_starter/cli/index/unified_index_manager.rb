@@ -117,7 +117,8 @@ module VivlioStarter
         end
 
         # 6. 登録済み用語（索引＋用語集すべて）に文脈を付与
-        terms_with_context = enrich_terms_with_context(@terms_manager.load_terms, chapters)
+        terms_with_context = enrich_terms_with_context(@terms_manager.load_terms, chapters,
+                                                        scores: candidate_scores_by_name(selectable, candidates))
 
         # 7. リジェクト済み用語に文脈とスコアを付与
         # candidatesからスコアを復元できるように渡す
@@ -524,6 +525,19 @@ module VivlioStarter
         [selectable, rejected_count]
       end
 
+      # 表示用のスコア表（用語 → スコア）。辞書には持たないので毎回作る。
+      #
+      # 登録済みの語は候補から外れている（selectable_candidates が落とす）ので、
+      # 候補側のスコアだけでは登録語のスコアが空になる。抽出器に同じ式で
+      # 算出させて補う——原稿に出現しない語はここでも取れず、nil のまま残る。
+      # @return [Hash{String => Float}]
+      def candidate_scores_by_name(selectable, candidates)
+        from_candidates = (candidates + selectable).to_h { [it['term'], it['score']] }
+        return from_candidates unless @extractor
+
+        @extractor.score_terms(@terms_manager.load_terms).merge(from_candidates)
+      end
+
       # 本文の分量から目安語数を得る（帯の境目に使う）
       def current_estimate(chapters)
         prose_chars = IndexCommands::IndexSizeEstimator.prose_chars_of(chapters)
@@ -752,12 +766,16 @@ module VivlioStarter
       # @param terms [Array<Hash>] 用語のリスト
       # @param chapters [Array<String>] 対象章のリスト
       # @return [Array<Hash>] 文脈付き用語のリスト
-      def enrich_terms_with_context(terms, chapters)
+      def enrich_terms_with_context(terms, chapters, scores: {})
         loaded_contents = load_squashed_chapter_contents(chapters)
 
         terms.map do |term|
           enriched = term.dup
           flags = term['flags'].to_s
+
+          # スコアは辞書に持たない（出現由来の派生データ）。表示のたびに合流させる。
+          # 原稿に出現しない語はスコアが取れない——死語として著者に見せる価値がある。
+          enriched['score'] = scores[term['term']]
 
           # flags に基づいて索引・用語集の登録状態を反映
           enriched['in_index'] = flags.include?('i')

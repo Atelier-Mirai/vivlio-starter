@@ -477,11 +477,15 @@ module VivlioStarter
         line = "- #{checkbox}"
         line += " `#{label}`" if label
         line += " **#{term_text}** (#{yomi})"
-        # 手動マークアップは「[手動登録]」、それ以外はスコア表示
+        # 手動マークアップは「[手動登録]」、それ以外はスコア表示。
+        # スコアは辞書に持たない派生データなので、原稿に出現しない語では nil になる
+        # （＝どの章にも無い死語）。黙って空欄にせず、その事実を見せる。
         if source == 'manual_markup'
           line += ' - [手動登録]'
         elsif score
           line += " - スコア: #{score.round(1)}"
+        elsif checked
+          line += ' - [原稿に出現しません]'
         end
         line += "\n"
 

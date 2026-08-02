@@ -118,15 +118,40 @@ module VivlioStarter
 
       def test_merge_preserves_metadata
         @manager.merge_terms!(
-          [{ 'term' => 'CSS', 'yomi' => 'CSS', 'score' => 250.5 }],
+          [{ 'term' => 'CSS', 'yomi' => 'CSS' }],
           flags: 'i', source: 'auto_extracted'
         )
 
         term = @manager.find_term('CSS')
         assert_equal 'auto_extracted', term['source']
         assert term['approved_at']
-        assert_equal 250.5, term['score']
         assert term['pattern']
+      end
+
+      # 辞書は語彙の一次データに限る。score は出現回数と出現章数から算出される
+      # 派生データで、原稿を推敲すれば古くなる——context が stale 化したのと
+      # 同じ構造なので、そもそも保存しない（index-term-selection-spec.md §2）。
+      def test_score_is_never_persisted
+        @manager.merge_terms!(
+          [{ 'term' => 'CSS', 'yomi' => 'CSS', 'score' => 250.5 }],
+          flags: 'i', source: 'auto_extracted'
+        )
+
+        assert_nil @manager.find_term('CSS')['score']
+        refute_includes File.read(UnifiedTermsManager::UNIFIED_FILE), 'score'
+      end
+
+      # 旧辞書に残っている score は、保存の機会に黙って捨てる
+      # （backlink_sources と同じ扱い）
+      def test_legacy_score_is_dropped_on_save
+        File.write(UnifiedTermsManager::UNIFIED_FILE, {
+          'terms' => [{ 'term' => 'CSS', 'yomi' => 'CSS', 'flags' => 'i', 'score' => 999.0 }]
+        }.to_yaml)
+        @manager.clear_cache!
+
+        @manager.merge_terms!([{ 'term' => 'HTML', 'yomi' => 'HTML' }], flags: 'i')
+
+        refute_includes File.read(UnifiedTermsManager::UNIFIED_FILE), '999.0'
       end
 
       def test_update_yomi
