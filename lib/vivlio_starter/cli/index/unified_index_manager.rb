@@ -26,6 +26,7 @@ require_relative 'index_match_scanner'
 require_relative 'code_block_stripper'
 require_relative 'unified_page_builder'
 require_relative 'index_plan_reporter'
+require_relative 'term_ranking'
 require_relative 'yomi_inferrer'
 
 module VivlioStarter
@@ -61,7 +62,7 @@ module VivlioStarter
       def plan!(chapters)
         Common.log_action('索引の現況を確認しています...')
         candidates = @config.fetch(:auto_discovery, true) ? extract_candidates(chapters) : []
-        build_plan_reporter(chapters, candidates).render(dry_run: true)
+        build_plan_reporter(chapters, candidates, extractor: @extractor).render(dry_run: true)
         0
       end
 
@@ -155,7 +156,7 @@ module VivlioStarter
         # 現況と候補の分布は vs index:plan と同じ画面を出す（§6.2）。
         # 辞書を書き換えた後なので、登録語数は更新後の値になる。
         @terms_manager.clear_cache!
-        build_plan_reporter(chapters, candidates).render
+        build_plan_reporter(chapters, candidates, extractor: @extractor).render
         report_auto_results(auto_approved, high_candidates, low_candidates, auto_threshold, review_threshold,
                             rejected_count_in_candidates)
       end
@@ -525,19 +526,37 @@ module VivlioStarter
       # @param chapters [Array<String>] 対象章
       # @param candidates [Array<Hash>] 候補（スコア付き）
       # @return [IndexPlanReporter]
-      def build_plan_reporter(chapters, candidates)
+      def build_plan_reporter(chapters, candidates, extractor: nil)
         prose_chars = IndexCommands::IndexSizeEstimator.prose_chars_of(chapters)
         estimator = IndexCommands::IndexSizeEstimator.new(prose_chars)
+        estimate = estimator.estimate(@config[:target_terms])
+        registered = @terms_manager.index_terms
 
         plan = IndexCommands::IndexPlanReporter::Plan.new(
           chapters:,
           prose_chars:,
-          registered_terms: @terms_manager.index_term_names.size,
+          registered_terms: registered.size,
           candidate_scores: candidates.map { it['score'] },
-          estimate: estimator.estimate(@config[:target_terms]),
-          all_estimates: estimator.all_presets
+          estimate:,
+          all_estimates: estimator.all_presets,
+          bands: build_bands(registered, candidates, estimate, extractor)
         )
         IndexCommands::IndexPlanReporter.new(plan)
+      end
+
+      # 登録語と候補を同じ土俵で並べて帯に分ける。
+      # 抽出器が無い（auto_discovery: false）ときは帯を作らない——候補が無いのに
+      # 「推奨候補 0 件」と出すと、設定で切っているのか語が無いのか区別できない。
+      def build_bands(registered, candidates, estimate, extractor)
+        return nil if extractor.nil? || candidates.empty?
+
+        IndexCommands::TermRanking.build(
+          registered:,
+          registered_scores: extractor.score_terms(registered),
+          candidate_scores: candidates.to_h { [it['term'], it['score'].to_f] },
+          target: estimate.range.end,
+          pool: (@config[:candidate_pool] || 3.0).to_f
+        )
       end
 
       # 候補の文脈を正規化
@@ -672,7 +691,8 @@ module VivlioStarter
       # @param chapters [Array<String>] 対象章のリスト
       # @return [Array<Hash>] 候補のリスト
       def extract_candidates(chapters)
-        extractor = IndexCandidateExtractor.new
+        # 帯の算出（build_bands）で登録語のスコア付けに使い回すため保持する
+        extractor = @extractor = IndexCandidateExtractor.new
         extractor.extract_from_chapters!(chapters)
 
         # 読み推測用

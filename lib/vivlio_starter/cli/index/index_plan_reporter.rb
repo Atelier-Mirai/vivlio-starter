@@ -39,7 +39,10 @@ module VivlioStarter
         # 表示に必要な素材。算出はすべて呼び出し側（UnifiedIndexManager）が行い、
         # ここは組み立てと出力だけを担う（責務を混ぜない）。
         Plan = Data.define(:chapters, :prose_chars, :registered_terms, :candidate_scores,
-                           :estimate, :all_estimates)
+                           :estimate, :all_estimates, :bands)
+
+        # 帯の中身を画面に出す語数。全部出すのはレビューファイルの仕事。
+        PREVIEW_COUNT = 5
 
         # 「語数を直接決める場合」の例に使う語数。現在の目安の中央に寄せると
         # 「いまと同じ値を書け」と読めてしまうので、キリのよい値へ丸める。
@@ -139,7 +142,43 @@ module VivlioStarter
         def candidate_section
           lines = ["■ 候補: #{number(scores.size)} 件"]
           lines << "    #{score_distribution_line}" if scores.any?
-          lines
+          return lines unless plan.bands
+
+          lines + band_lines(plan.bands)
+        end
+
+        # 帯は順位と件数で言う。割合は出さない（§6.4）。
+        # 名前はレビューファイルで既に使っている語をそのまま使う。
+        def band_lines(bands)
+          t = bands.target
+          lines = [
+            '',
+            "    登録済み #{number(plan.registered_terms)} 語と同じ土俵でスコア順に並べた結果:",
+            format('      推奨候補   上位 %s 位以内の未登録語      %s 件', number(t), number(bands.recommended.size)),
+            format('      一般候補   %s〜%s 位の未登録語   %s 件',
+                   number(t + 1), number(bands.pool_size), number(bands.general.size)),
+            format('      見直し候補 %s 位より下の登録済み語     %s 件', number(t), number(bands.review.size))
+          ]
+          lines + preview_lines(bands) + hidden_lines(bands)
+        end
+
+        # 帯の中身を少しだけ見せる。全部出すのはレビューファイルの仕事。
+        def preview_lines(bands)
+          [['推奨候補', bands.recommended], ['見直し候補', bands.review]].filter_map do |label, entries|
+            next if entries.empty?
+
+            names = entries.first(PREVIEW_COUNT).map(&:term)
+            more = entries.size > PREVIEW_COUNT ? " …他 #{number(entries.size - PREVIEW_COUNT)} 語" : ''
+            "      #{label}の例: #{names.join(' / ')}#{more}"
+          end
+        end
+
+        # 提示しなかったぶんは黙らせない（no silent caps）
+        def hidden_lines(bands)
+          return [] if bands.hidden_count.zero?
+
+          ["      #{number(bands.pool_size + 1)} 位以下の #{number(bands.hidden_count)} 件は提示していません",
+           '        増やすには config/book.yml の index.candidate_pool を上げてください']
         end
 
         # 分布は五数要約で示す。平均は外れ値に引きずられて実感と合わない。

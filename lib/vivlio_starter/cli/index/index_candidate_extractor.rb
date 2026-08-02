@@ -101,6 +101,47 @@ module VivlioStarter
           Common.log_success("#{@scoring.terms.size} 件の候補語を抽出しました")
         end
 
+        # 辞書に登録済みの用語へ、候補と**同じ式**でスコアを与える。
+        #
+        # 帯の判定（推奨候補・見直し候補）は登録語と未登録候補を同じ土俵で
+        # 並べて決めるので、候補として抽出されなかった語——手動マークアップや
+        # ライブラリ取込——にも順位が要る。
+        #
+        # 候補側と揃わない点が 1 つある: 定義パターンと名詞連続の性質は
+        # 本文走査で付くものなので、ここでは判定しない（語の形から分かる
+        # :technical だけ付ける）。そのぶん控えめなスコアになるため、
+        # **手動マークアップ由来の語は見直し候補へ出さない**（呼び出し側の責務）。
+        #
+        # @param terms [Array<Hash>] 辞書の用語（'term' と任意の 'pattern' を持つ）
+        # @return [Hash{String => Float}] 用語 → スコア（原稿に出現しない語は含まない）
+        def score_terms(terms)
+          return {} if @documents.empty?
+
+          engine = ScoringEngine.new
+          doc_count = @documents.size
+          contents = @documents.values
+
+          terms.each do |entry|
+            name = entry['term'].to_s
+            next if name.empty?
+
+            tf = 0
+            df = 0
+            pattern = term_regexp(entry)
+            contents.each do |content|
+              n = content.scan(pattern).size
+              next if n.zero?
+
+              tf += n
+              df += 1
+            end
+            engine.mark(name, :technical) if TECHNICAL_TERM_PATTERNS.any? { name.match?(it) }
+            engine.observe(name, tf:, df:, doc_count:)
+          end
+
+          engine.scores
+        end
+
         # 索引候補を YAML ファイルに出力
         # @param output_file [String] 出力ファイルパス
         # @param threshold [Integer] スコア閾値（この値以上の候補のみ出力）
@@ -144,6 +185,18 @@ module VivlioStarter
         end
 
         private
+
+        # 辞書エントリの照合パターン。`pattern` があればそれを、無ければ完全一致。
+        # 綴りの解釈は辞書側の約束（IndexMatchScanner と同じ形）に従う。
+        def term_regexp(entry)
+          raw = entry['pattern'].to_s
+          return Regexp.new(Regexp.escape(entry['term'].to_s)) if raw.empty?
+
+          body = raw.start_with?('/') && raw.end_with?('/') ? raw[1...-1] : raw
+          Regexp.new(body)
+        rescue StandardError
+          Regexp.new(Regexp.escape(entry['term'].to_s))
+        end
 
         # 定義パターンから候補を抽出
         def extract_definition_patterns!

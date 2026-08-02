@@ -245,7 +245,7 @@ module VivlioStarter
                             library: nil },
           index: { auto_discovery: nil, title: nil, auto_approve_threshold: nil,
                    review_threshold: nil, high_candidates_ratio: nil, backlink_dedup: nil,
-                   target_terms: nil },
+                   target_terms: nil, candidate_pool: nil },
           glossary: { title: nil, require_definition: nil, max_definition_length: nil,
                       backlink_dedup: nil },
           # ビルド対象章の絞り込み（例: "54-56" / [11, 12]）。未指定はフルビルド
