@@ -7,7 +7,7 @@
 #   テキストから索引候補語を自動抽出する。
 #   - 定義パターン検出（「〜とは」「〜を意味する」など）
 #   - 名詞連続の抽出（MeCab）
-#   - TF-IDF によるスコアリング
+#   - TF-IDF によるスコアリング（重み・係数の定義元は ScoringEngine）
 #
 # Phase 2 機能:
 #   - 自動抽出とスコアリング
@@ -19,6 +19,7 @@ require 'fileutils'
 require_relative '../common'
 require_relative 'yomi_inferrer'
 require_relative 'code_block_stripper'
+require_relative 'scoring_engine'
 
 module VivlioStarter
   module CLI
@@ -55,16 +56,17 @@ module VivlioStarter
           /[A-Z]{2,}/ # 略語（HTML, CSS など）
         ].freeze
 
-        attr_reader :documents, :term_scores, :term_contexts
+        attr_reader :documents, :term_contexts, :scoring
 
         # 全ての候補語を取得
-        def all_candidates
-          @term_scores.keys
-        end
+        def all_candidates = @scoring.terms
+
+        # 用語 → スコア。算出そのものは ScoringEngine が持つ（重みの二重管理を作らない）。
+        def term_scores = @term_scores ||= @scoring.scores
 
         def initialize
           @documents = {}
-          @term_scores = Hash.new(0.0)
+          @scoring = ScoringEngine.new
           @term_contexts = Hash.new { |h, k| h[k] = [] }
           @yomi_inferrer = YomiInferrer.new
           @context_width = load_context_width
@@ -96,7 +98,7 @@ module VivlioStarter
           # TF-IDF スコアリング
           calculate_tfidf_scores!
 
-          Common.log_success("#{@term_scores.size} 件の候補語を抽出しました")
+          Common.log_success("#{@scoring.terms.size} 件の候補語を抽出しました")
         end
 
         # 索引候補を YAML ファイルに出力
@@ -105,7 +107,7 @@ module VivlioStarter
         def export_candidates!(output_file = 'config/index_candidates.yml', threshold = 150)
           FileUtils.mkdir_p(File.dirname(output_file))
 
-          candidates = @term_scores
+          candidates = term_scores
                        .select { |_, score| score >= threshold }
                        .sort_by { |_, score| -score }
                        .map do |term, score|
@@ -153,8 +155,9 @@ module VivlioStarter
                 term = match[0]&.strip
                 next unless valid_term?(term)
 
-                # スコア加算（定義パターンは高スコア）
-                @term_scores[term] += 30
+                # 性質を記録するだけ（語ごと 1 回）。出現ごとに加算すると
+                # TF を二重に数えることになり、頻出語ほど高スコアになる。
+                @scoring.mark(term, :definition)
 
                 # コンテキストを記録
                 context = extract_context(content, term)
@@ -175,8 +178,9 @@ module VivlioStarter
                 next unless valid_term?(term)
                 next if term.length < 3
 
-                # スコア加算（専門用語は中程度のスコア）
-                @term_scores[term] += 15
+                # 語ごと 1 回。カタカナ 3 文字以上はこのパターンに当たるので、
+                # 出現ごとに加算すると「ファイル」だけで 371 回 × 15 点になっていた。
+                @scoring.mark(term, :technical)
 
                 # コンテキストを記録
                 context = extract_context(content, term)
@@ -228,37 +232,38 @@ module VivlioStarter
           return if term.length < 3 || term.length > 20
           return unless valid_term?(term)
 
-          # スコア加算（名詞連続は低～中程度のスコア）
-          @term_scores[term] += 10
+          # 語ごと 1 回（出現ごとではない）
+          @scoring.mark(term, :noun_sequence)
 
           # コンテキストを記録
           context = extract_context(content, term)
           @term_contexts[term] << { chapter: chapter, context: context }
         end
 
-        # TF-IDF スコアを計算
+        # TF-IDF スコアを計算する。式は ScoringEngine が持つ（重みの定義元は 1 箇所）。
+        #
+        # 旧実装は文書ごとに `tf * idf * 5` を合算しており、結果は
+        # `5 * idf * Σtf`——TF に線形だった。性質ボーナス 3 種も出現ごとの加算
+        # だったため、スコアは実質「出現数の写し」になっていた。
         def calculate_tfidf_scores!
           return if @documents.empty?
 
           doc_count = @documents.size
+          contents = @documents.values
 
-          # ドキュメント頻度（DF）を計算
-          df = Hash.new(0)
-          @term_scores.each_key do |term|
-            @documents.each_value do |content|
-              df[term] += 1 if content.include?(term)
+          # tf（延べ出現数）と df（出現文書数）は同じ走査で数える。
+          # 語数 × 文書数の全走査になるので、2 度回さない。
+          @scoring.terms.each do |term|
+            tf = 0
+            df = 0
+            contents.each do |content|
+              n = content.scan(term).size
+              next if n.zero?
+
+              tf += n
+              df += 1
             end
-
-            # TF-IDF を計算してスコアに加算
-            idf = Math.log((doc_count + 1.0) / (df[term] + 1.0)) + 1.0
-
-            @documents.each_value do |content|
-              tf = content.scan(term).size
-              next if tf.zero?
-
-              tfidf = tf * idf * 5 # スケーリング係数
-              @term_scores[term] += tfidf
-            end
+            @scoring.observe(term, tf:, df:, doc_count:)
           end
         end
 

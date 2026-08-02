@@ -25,6 +25,56 @@ module VivlioStarter
           FileUtils.rm_rf(@temp_dir)
         end
 
+        # --- phase: スコアは ScoringEngine に委ねる（R1・R2） ---
+
+        # ボーナスは語ごと 1 回。同じ語が何度パターンに当たっても増えない。
+        # 旧実装は出現ごとの加算で、頻出語ほど高スコアになる原因だった。
+        def test_repeated_matches_do_not_inflate_the_trait_bonus
+          File.write('contents/11-a.md', <<~MD)
+            シングルトンとは生成を 1 つに限る手法である。
+            シングルトンとは生成を 1 つに限る手法である。
+            シングルトンとは生成を 1 つに限る手法である。
+          MD
+
+          @extractor.extract_from_chapters!(%w[11-a])
+          breakdown = @extractor.scoring.breakdown('シングルトン')
+
+          assert_includes breakdown[:traits], :definition
+          # 性質は複数付きうる（カタカナ語なので :technical も付く）。要点は
+          # 「同じ性質が何度当たっても 1 回ぶん」で、合計が重みの単純和に一致すること。
+          expected = breakdown[:traits].sum { ScoringEngine::TRAIT_WEIGHTS.fetch(it) }
+
+          assert_in_delta expected, breakdown[:trait_bonus], 0.001,
+                          '3 回当たってもボーナスは各性質 1 回ぶん'
+        end
+
+        # 索引語としての価値は「稀だが特定の章に集中する」こと。
+        # 全章にばらまかれた語より高くなることを実データ相当の形で固定する。
+        def test_concentrated_term_outranks_widespread_term
+          3.times do |i|
+            File.write("contents/1#{i}-ch.md", <<~MD)
+              テキストエディタの話題はどの章にも出てきます。テキストエディタは便利です。
+              #{i.zero? ? 'ソレノイドコイルの原理をソレノイドコイルで説明します。' : ''}
+            MD
+          end
+
+          @extractor.extract_from_chapters!(%w[10-ch 11-ch 12-ch])
+          scores = @extractor.term_scores
+
+          skip 'MeCab 依存の候補が得られない環境' unless scores.key?('ソレノイドコイル') && scores.key?('テキストエディタ')
+
+          assert_operator scores['ソレノイドコイル'], :>, scores['テキストエディタ'],
+                          '1 章に集中する語が、全章に散る語より上に来ること'
+        end
+
+        def test_term_scores_comes_from_the_scoring_engine
+          File.write('contents/11-a.md', "Vivliostyle とは組版エンジンである。\n")
+          @extractor.extract_from_chapters!(%w[11-a])
+
+          assert_equal @extractor.scoring.scores, @extractor.term_scores,
+                       'スコアの算出元は ScoringEngine 一箇所であること'
+        end
+
         # --- phase: extract_from_chapters! tests ---
 
         def test_extract_from_chapters_finds_definition_patterns
