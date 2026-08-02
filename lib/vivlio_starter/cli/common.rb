@@ -189,6 +189,8 @@ module VivlioStarter
       # book.yml を読み込み、ハードコーディングされた既定値をマージして返す
       def load_config
         YAML.load_file(CONFIG_FILE, aliases: true, symbolize_names: true) => raw_config
+        # 既定値をマージすると未知キーが落ちるので、著者の記述はここで記録する
+        @authored_keys = collect_key_paths(raw_config)
         cfg = apply_page_preset(raw_config)
         merge_hardcoded_defaults(cfg)
       end
@@ -210,6 +212,66 @@ module VivlioStarter
         in [_, nil] then default
         else user
         end
+      end
+
+      # ================================================================
+      # 廃止した設定キー
+      # ================================================================
+      # キーを廃止したら**ここへ 1 行足すだけ**でよい。検出も案内もこの表が担い、
+      # 各コマンドは何も書かない。
+      #
+      # なぜ CONFIG では判定できないか:
+      #   CONFIG は既定値スキーマとマージした「実効値」の view で、スキーマに
+      #   無いキーは deep_merge_config が落とす。廃止キーはスキーマから外すので
+      #   CONFIG には載らない。ここで問うているのは「著者が book.yml に何を
+      #   書いたか」であって設定値ではないので、生の記述（authored_keys）を見る。
+      #
+      # 値は「代わりにどうするか」。著者が読んで行動できる文言にすること
+      # （警告は具体的な修正案とセットにする、が本プロジェクトの流儀）。
+      RETIRED_CONFIG_KEYS = {
+        %i[index auto_approve_threshold] =>
+          '索引語数はスコアの絶対値ではなく index.target_terms（本文の分量から導く目安語数）で決めます',
+        %i[index review_threshold] =>
+          '同上。レビュー対象は目安語数と index.candidate_pool で決まります',
+        %i[index high_candidates_ratio] =>
+          '推奨候補／一般候補の分割は目安語数が決めるため、比率の指定は不要です'
+      }.freeze
+
+      # 著者が book.yml に実際に書いたキーの集合（既定値のマージ前）。
+      # load_config が記録する。CONFIG が「実効値」を答えるのに対し、
+      # こちらは「何が書かれていたか」を答える。
+      def authored_keys = @authored_keys ||= Set[]
+
+      # 著者がそのキーを book.yml に書いたか。
+      # @param path [Array<Symbol>] 例: authored_key?(:index, :target_terms)
+      def authored_key?(*path) = authored_keys.include?(path)
+
+      # 廃止キーが書かれていたら、まとめて 1 回だけ案内する。
+      # 黙って無視すると「設定したのに効かない」という最悪の形になる。
+      def warn_retired_config_keys
+        return if @retired_keys_reported
+
+        @retired_keys_reported = true
+        found = RETIRED_CONFIG_KEYS.select { |path, _| authored_key?(*path) }
+        return if found.empty?
+
+        found.each do |path, guidance|
+          log_warn("config/book.yml の #{path.join('.')} は廃止されました", detail: guidance)
+        end
+        log_warn('上記のキーは読み込まれません。book.yml から削除してください',
+                 detail: '指定できるキーは vs doctor か各コマンドの --help で確認できます')
+      end
+
+      # ネストしたハッシュのキーパスを集合にする（authored_keys の作成用）
+      def collect_key_paths(node, prefix = [], into = Set[])
+        return into unless node.is_a?(Hash)
+
+        node.each do |key, value|
+          path = prefix + [key]
+          into << path
+          collect_key_paths(value, path, into)
+        end
+        into
       end
 
       # book.yml の全セクションの既定値スキーマ。
@@ -950,6 +1012,7 @@ module VivlioStarter
       def configured? = !CONFIG.nil?
 
       def ensure_configured!
+        warn_retired_config_keys
         return if configured?
 
         # 欠落と破損で正確な理由を出し分けるため、ファイル単位の検証に委ねて abort する
@@ -1062,6 +1125,7 @@ module VivlioStarter
 
       # エンドレスメソッド定義を module_function として明示的に公開
       module_function :abort_with_error, :appendix_number_to_letter, :apply_page_preset, :configured?, :ensure_configured!,
+                      :authored_keys, :authored_key?, :warn_retired_config_keys, :collect_key_paths,
                       :ensure_external_command!, :external_command_available?,
                       :missing_external_command_message, :run_svg_converter!, :format_converter_stderr,
                       :blank?, :cache_cfg, :cache_dir, :cache_enabled?,

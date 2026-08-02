@@ -150,3 +150,48 @@ end
 という消費漏れはここで検出されるため、キー追加とロジック実装は必ずセットで行ってください。
 （`metrics.use` の値として動的参照されるプリセット名のような例外は、
 テスト内の `ALLOWED_UNREFERENCED` に理由つきで登録します）
+## 4. キーを廃止するとき（`RETIRED_CONFIG_KEYS`）
+
+設定キーを廃止したら、**`Common::RETIRED_CONFIG_KEYS` へ 1 行足すだけ**でよい。
+検出も案内もこの表が担うので、各コマンドは何も書かない。
+
+```ruby
+RETIRED_CONFIG_KEYS = {
+  %i[index auto_approve_threshold] =>
+    '索引語数はスコアの絶対値ではなく index.target_terms（本文の分量から導く目安語数）で決めます',
+}.freeze
+```
+
+手順は 3 つ。
+
+1. `default_config_schema` から**キーを削除する**（残すと CONFIG に載り、「廃止したのに読める」状態になる）
+2. `RETIRED_CONFIG_KEYS` に「代わりにどうするか」を書いて登録する
+3. 同梱 `book.yml` からもキーを削除し、`ruby copy_to_scaffold.rb` で雛形へ同期する
+
+### なぜ CONFIG では判定できないか
+
+`CONFIG` は既定値スキーマとマージした**実効値の view** で、スキーマに無いキーは
+`deep_merge_config` が落とす。廃止キーはスキーマから外すので `CONFIG` には載らない。
+
+ここで問うているのは「**著者が `book.yml` に何を書いたか**」であって設定値ではない。
+両者は別の問いなので、答える口も分けてある。
+
+| 問い | 答える口 |
+| :--- | :--- |
+| 設定 X の実効値は？ | `Common::CONFIG.section.key`（既定値マージ済み） |
+| 著者は Y と書いたか？ | `Common.authored_key?(:section, :key)`（生の記述） |
+
+`authored_keys` は `load_config` が YAML を読んだ直後（既定値マージ前）に記録する。
+**各コマンドが `book.yml` を読み直してはいけない**——設定アクセスを `CONFIG` に
+集約した意図が損なわれるうえ、読み込みのタイミングと解釈が分散する。
+
+### いつ案内が出るか
+
+`Common.ensure_configured!` の入口で 1 度だけ発火する。ここはプロジェクトを必要と
+する全コマンドが通る関門（`root_command.rb#ensure_project_context!`）なので、
+著者はどのコマンドを叩いても気付ける。同じ実行で何度呼ばれても案内は 1 度だけ。
+
+`authored_key?` は廃止キー以外にも使える。「X を設定しているが Y が無効なので効かない」
+のような**設定どうしの噛み合わせ**を案内したいときも、既定値と区別して
+「著者が明示的に書いたか」を判定できる。
+

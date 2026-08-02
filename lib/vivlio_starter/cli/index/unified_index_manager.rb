@@ -61,7 +61,6 @@ module VivlioStarter
       # @param chapters [Array<String>] 対象章のリスト
       def plan!(chapters)
         Common.log_action('索引の現況を確認しています...')
-        warn_retired_keys
         candidates = @config.fetch(:auto_discovery, true) ? extract_candidates(chapters) : []
         build_plan_reporter(chapters, candidates, extractor: @extractor).render(dry_run: true)
         0
@@ -71,7 +70,6 @@ module VivlioStarter
       # @param chapters [Array<String>] 対象章のリスト
       def auto_process!(chapters)
         auto_discovery = @config.fetch(:auto_discovery, true)
-        warn_retired_keys
 
         Common.log_action('索引の自動処理を開始します...')
 
@@ -505,45 +503,6 @@ module VivlioStarter
       end
 
       private
-
-      # 廃止した設定キーを検出して移行を促す。読みはしない（後方互換は取らない）。
-      # 黙って無視すると「設定したのに効かない」という最悪の形になるため、
-      # 何が廃止され、代わりに何を書くのかまで示す（親切警告の流儀）。
-      #
-      # CONFIG ではなく book.yml を直接読む。廃止キーはスキーマから外したので
-      # CONFIG には載らない——ここで問うているのは「著者がそのキーを書いたか」
-      # というファイルへの問いであり、設定値ではない。
-      RETIRED_KEYS = %w[auto_approve_threshold review_threshold high_candidates_ratio].freeze
-
-      def warn_retired_keys
-        present = retired_keys_in_book_yml
-        return if present.empty?
-
-        Common.log_warn(
-          "index の設定キー #{present.join(' / ')} は廃止されました",
-          detail: <<~DETAIL.chomp
-            索引語数はスコアの絶対値ではなく、本文の分量から導いた目安語数で決めます
-            （Heaps 則。3 倍の分量でも索引語は約 2 倍にしかなりません）。
-            config/book.yml の index: から上記のキーを削除し、代わりに次を指定してください
-            （いずれも省略可・既定で動きます）:
-              target_terms: standard   # light / standard / thorough、または語数（例 260）
-              candidate_pool: 3.0      # 目安の何倍までを候補に出すか
-              auto_approve: false      # 推奨候補を自動承認するか
-            目安の確認は vs index:plan で行えます。
-          DETAIL
-        )
-      end
-
-      def retired_keys_in_book_yml
-        return [] unless File.exist?(Common::CONFIG_FILE)
-
-        index_section = YAML.load_file(Common::CONFIG_FILE, aliases: true)&.dig('index')
-        return [] unless index_section.is_a?(Hash)
-
-        RETIRED_KEYS.select { index_section.key?(it) }
-      rescue StandardError
-        [] # 設定が読めないこと自体は他所が報告する
-      end
 
 
       # 選べる候補だけを残す。既に辞書にある語とリジェクト済みの語を落とす。

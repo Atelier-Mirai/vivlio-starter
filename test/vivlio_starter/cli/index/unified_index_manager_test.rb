@@ -238,37 +238,6 @@ module VivlioStarter
         manager
       end
 
-      # 黙って無視すると「設定したのに効かない」という最悪の形になる。
-      # 何が廃止され、代わりに何を書くのかまで示す。
-      def test_auto_process_warns_about_retired_keys
-        File.write('config/book.yml', { 'index' => { 'auto_approve_threshold' => 300 } }.to_yaml)
-        File.write('contents/40-retired.md', "サンプルの本文です。\n")
-
-        out, err = capture_io { @manager.auto_process!(['40-retired']) }
-
-        assert_match(/auto_approve_threshold.*廃止/, out + err)
-        assert_match(/target_terms/, out + err, '代わりに書くキーを示す')
-      end
-
-      def test_auto_process_stays_silent_without_retired_keys
-        File.write('config/book.yml', { 'index' => { 'target_terms' => 'standard' } }.to_yaml)
-        File.write('contents/41-clean.md', "サンプルの本文です。\n")
-
-        out, err = capture_io { @manager.auto_process!(['41-clean']) }
-
-        refute_match(/廃止されました/, out + err)
-      end
-
-      def test_retired_key_check_survives_missing_book_yml
-        File.write('contents/42-nobook.md', "サンプルの本文です。\n")
-
-        out, err = capture_io { @manager.auto_process!(['42-nobook']) }
-
-        refute_match(/廃止されました/, out + err)
-      end
-
-      # 旧既定（スコア 300 以上を無条件登録）が「頻出の一般語ばかりが辞書に入る」
-      # 現状を作った。既定では辞書へ書かず、著者がレビューで選ぶ。
       def test_auto_process_does_not_auto_approve_by_default
         File.write('contents/43-auto.md', <<~MD)
           # 自動承認の確認
