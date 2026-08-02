@@ -212,53 +212,47 @@ module VivlioStarter
           lines.join
         end
 
-        # 1行を処理して索引語をタグ付け
-        def process_line(line, file_basename)
-          # 1. まず [用語|読み] または [用語] 記法を処理する。
-          #    インラインコード `...` 内はリテラル表示が目的なので保護して索引対象から外す
-          #    （コメント強調マーカー `[!]` のように [...] と綴る記法が、明示マーカー [用語]
-          #     と誤認されて索引語化されるのを防ぐ。後段 2/3 のインラインコード保護に揃える）。
-          #    トークンは [...] を含めない（含めると INDEX_TERM_PATTERN に自己マッチする）。
-          #
-          #    コード領域の解釈は Masking が唯一の実装（P1）。独自パターン /`[^`]+`/ では
-          #    N 連バッククォート対（``foo`bar`` の形）を見落とし、中身の [用語] が露出した。
-          #    退避を LineMask へ委ねないのは Regexp.last_match がフレームローカルだから——
-          #    gsub を LineMask#substitute! の中で呼ぶと $~ はそちらのフレームに立ち、
-          #    ここのブロックからは常に nil に見える（他 2 つの呼び出し元はブロック引数しか
-          #    使わないので露呈しない）。捕捉グループが要るこの経路は自前で gsub する。
-          code_spans = {}
-          protected_line = line.gsub(Masking::INLINE_CODE_SPAN) do |match|
-            token = "\u0000VSCODE#{code_spans.size}\u0000"
-            code_spans[token] = match
-            token
-          end
+# 1行を処理して索引語をタグ付け
+def process_line(line, file_basename)
+  # 1. まず [用語|読み] または [用語] 記法を処理する。
+  #    インラインコード `...` 内はリテラル表示が目的なので保護して索引対象から外す
+  #    （コメント強調マーカー `[!]` のように [...] と綴る記法が、明示マーカー [用語]
+  #     と誤認されて索引語化されるのを防ぐ。後段 2/3 のインラインコード保護に揃える）。
+  #    コード領域の解釈は Masking が唯一の実装（P1）。独自パターン /`[^`]+`/ では
+  #    N 連バッククォート対（``foo`bar`` の形）の中身が露出し、逆に `` を
+  #    「バッククォート・空白・バッククォート」と食べて地の文を飲み込んでいた。
+  #    退避トークンは [...] を含まない（含めると INDEX_TERM_PATTERN に自己マッチする）。
+  mask = LineMask.new(line)
+  mask.protect!(Masking::INLINE_CODE_SPAN)
 
-          processed_line = protected_line.gsub(INDEX_TERM_PATTERN) do |_match|
-            term_with_optional_yomi = ::Regexp.last_match(1)
-            term_text, yomi_raw = extract_term_and_yomi(term_with_optional_yomi)
+  mask.substitute_match!(INDEX_TERM_PATTERN) do |match|
+    term_text, yomi_raw = extract_term_and_yomi(match[1])
 
-            # 無効な用語をスキップ（元のテキストをそのまま返す）
-            if skip_term?(term_text)
-              ::Regexp.last_match(0)
-            else
-              # 読みの決定順序:
-              # 1. 記法で指定された読み [用語|読み]
-              # 2. config/index_glossary_terms.yml に定義された読み
-              # 3. MeCab による推測
-              yomi = yomi_raw || lookup_config_yomi(term_text) || @yomi_inferrer.infer(term_text)
+    # 無効な用語をスキップ（元のテキストをそのまま返す）
+    if skip_term?(term_text)
+      match[0]
+    else
+      # 読みの決定順序:
+      # 1. 記法で指定された読み [用語|読み]
+      # 2. config/index_glossary_terms.yml に定義された読み
+      # 3. MeCab による推測
+      yomi = yomi_raw || lookup_config_yomi(term_text) || @yomi_inferrer.infer(term_text)
 
-              process_term(term_text, yomi, file_basename)
-            end
-          end
+      process_term(term_text, yomi, file_basename)
+    end
+  end
 
-          code_spans.each { |token, original| processed_line = processed_line.gsub(token) { original } }
+  # 生成したタグは退避しない（従来と同じ粒度）。後段 2 の
+  # protect_untouchable_regions! が TAGGED_TERM_PATTERN を先頭で退避するため、
+  # 先行タグの中身へ後続の用語が食い込むことはない。
+  processed_line = mask.restore
 
-          # 2. 次に config/index_glossary_terms.yml に基づく自動タグ付け（索引用語）
-          indexed_line = apply_auto_indexing(processed_line, file_basename)
+  # 2. 次に config/index_glossary_terms.yml に基づく自動タグ付け（索引用語）
+  indexed_line = apply_auto_indexing(processed_line, file_basename)
 
-          # 3. 用語集のみの用語にバックリンク・†リンクを付与
-          apply_glossary_only_linking(indexed_line, file_basename)
-        end
+  # 3. 用語集のみの用語にバックリンク・†リンクを付与
+  apply_glossary_only_linking(indexed_line, file_basename)
+end
 
         # 索引対象として無効な用語かどうかを判定（判定の実体は IndexMarkup）。
         # 除外するのは脚注構文 [^id] のみ。著者が意図的にマークアップした
@@ -316,8 +310,16 @@ module VivlioStarter
             @text = @text.gsub(pattern) { |match| stash(match) }
           end
 
-          # 退避済みテキストに対して用語を置換する
+          # 退避済みテキストに対して用語を置換する（ブロックはマッチ文字列を受け取る）
           def substitute!(pattern, &) = @text = @text.gsub(pattern, &)
+
+          # 捕捉グループが要る置換。ブロックへ MatchData を渡す。
+          #
+          # substitute! では足りない——Regexp.last_match（$~）はフレームローカルで、
+          # gsub がここで立てる値は「呼び出し側で定義されたブロック」からは見えず常に
+          # nil になる。索引マークアップ [用語|読み] は読みの分離に捕捉グループが要る
+          # ので、MatchData を明示的に手渡してその制約を越える。
+          def substitute_match!(pattern) = @text = @text.gsub(pattern) { yield ::Regexp.last_match }
 
           # 文字列を退避してトークンを返す（生成したタグを後続の用語から隠すため）
           def stash(content)
