@@ -2,30 +2,19 @@
 
 require 'test_helper'
 require 'vivlio_starter/cli/index/index_plan_reporter'
-require 'tmpdir'
-require 'fileutils'
 
 module VivlioStarter
   module CLI
     module IndexCommands
       class IndexPlanReporterTest < Minitest::Test
-        # --- phase: setup ---
+        # 本書の実測値を既定に使う（仕様書 §6.2 の表示例と揃える）
+        BOOK_CHARS = 129_006
 
-        def setup
-          @original_dir = Dir.pwd
-          @temp_dir = Dir.mktmpdir('index_plan_test')
-          Dir.chdir(@temp_dir)
-          FileUtils.mkdir_p('contents')
-        end
-
-        def teardown
-          Dir.chdir(@original_dir)
-          FileUtils.rm_rf(@temp_dir)
-        end
-
-        def plan(chapters: %w[11-a], prose_chars: 50_000, registered: 100, scores: [])
+        def plan(chapters: %w[11-a], prose_chars: BOOK_CHARS, registered: 153, scores: [], target: 'standard')
+          estimator = IndexSizeEstimator.new(prose_chars)
           IndexPlanReporter::Plan.new(
-            chapters:, prose_chars:, registered_terms: registered, candidate_scores: scores
+            chapters:, prose_chars:, registered_terms: registered, candidate_scores: scores,
+            estimate: estimator.estimate(target), all_estimates: estimator.all_presets
           )
         end
 
@@ -34,44 +23,85 @@ module VivlioStarter
           out
         end
 
-        # --- phase: 文字数の計数は Metrics::Analyzer に委ねる（§3.3） ---
-
-        # コードブロックと Markdown 記法は地の文に数えない。
-        # 索引語はコードから拾わないので、コード量が目安語数を押し上げてはならない。
-        def test_prose_chars_excludes_code_blocks_and_markup
-          File.write('contents/11-a.md', <<~MD)
-            # 見出し
-
-            これは地の文です。
-
-            ```ruby
-            puts 'これはコードなので数えない'
-            ```
-          MD
-
-          chars = IndexPlanReporter.prose_chars_of(%w[11-a])
-
-          assert_operator chars, :>=, 8, '地の文は数える'
-          assert_operator chars, :<, 20, 'コードブロックと見出し記号は数えない'
-        end
-
-        def test_prose_chars_is_zero_for_missing_chapter
-          assert_equal 0, IndexPlanReporter.prose_chars_of(%w[99-missing])
-        end
-
-        # --- phase: 表示の作法（§6.2 / §6.3） ---
+        # --- phase: 現況の表示 ---
 
         def test_render_shows_volume_registration_and_candidates
-          out = render(plan(chapters: %w[11-a 12-b], prose_chars: 128_839, registered: 153, scores: [10, 20, 30]))
+          out = render(plan(chapters: %w[11-a 12-b], scores: [10, 20, 30]))
 
           assert_includes out, '2 章'
-          assert_includes out, '128,839 字', '3 桁区切りで表示する'
+          assert_includes out, '129,006 字', '3 桁区切りで表示する'
           assert_includes out, '索引語の登録: 153 語'
-          assert_includes out, '候補抽出: 3 件'
+          assert_includes out, '候補: 3 件'
         end
 
+        # --- phase: 操作盤であること（§6.2 の要点） ---
+
+        # 著者の問いは「260 語にしたい。どのキーをいくつにすればよいか」。
+        # 現況の羅列では答えにならないので、3 点が揃っていることを固定する。
+        def test_render_is_a_control_panel_not_a_report
+          out = render(plan)
+
+          assert_includes out, '■ いまの目安', '① いまの設定と、そこから決まる目安'
+          assert_includes out, '■ 設定を変えるとこうなります', '② 設定を変えたらどうなるか'
+          assert_includes out, 'target_terms:', '③ 書くべき YAML そのもの'
+        end
+
+        def test_render_lists_every_preset_with_its_target
+          out = render(plan)
+
+          %w[light standard thorough].each { assert_includes out, it }
+          assert_includes out, '244〜356 語', 'standard の目安（実測較正）'
+          assert_includes out, '132〜183 語', 'light の目安'
+          assert_includes out, '458〜468 語', 'thorough の目安'
+        end
+
+        def test_render_marks_the_current_preset
+          out = render(plan(target: 'light'))
+          current = out.lines.find { it.include?('← 現在') }
+
+          assert_includes current.to_s, 'light', '現在の設定に印が付く'
+        end
+
+        # 著者は「500 字に 1 語」という密度で考える。設定は語数で持つので、
+        # この列が両者をつなぐ橋になる。無くなると操作盤の意味が半減する。
+        def test_render_shows_chars_per_term_as_a_bridge
+          out = render(plan)
+
+          assert_includes out, '字に 1 語'
+          assert_includes out, '約 362〜528 字に 1 語', 'standard の密度'
+        end
+
+        def test_render_shows_gap_from_target
+          out = render(plan(registered: 153))
+
+          assert_includes out, '下回っています'
+          assert_includes out, '91 語', '244 - 153 = 91'
+        end
+
+        def test_render_reports_when_registration_exceeds_target
+          out = render(plan(registered: 500))
+
+          assert_includes out, '上回っています'
+        end
+
+        def test_render_reports_when_registration_is_within_target
+          out = render(plan(registered: 300))
+
+          assert_includes out, '範囲内です'
+        end
+
+        # 語数を直接指定したときは、幅ではなく 1 点で示す
+        def test_integer_target_is_shown_as_single_value
+          out = render(plan(target: 260))
+
+          assert_includes out, 'index.target_terms: 260'
+          assert_includes out, '260 語 ＝ 約 496 字に 1 語'
+        end
+
+        # --- phase: 表示の作法（§6.4） ---
+
         # 割合（「上位 60%」）は出さない。決まるのは語数と順位なので、
-        # 100 点満点に準えて逆の意味に読まれる表現を持ち込まない（§6.3）。
+        # 100 点満点に準えて逆の意味に読まれる表現を持ち込まない。
         def test_render_does_not_use_percentage_bands
           out = render(plan(scores: (1..100).to_a))
 
@@ -91,10 +121,10 @@ module VivlioStarter
           out = render(plan(scores: []))
 
           refute_includes out, 'スコア分布', '候補が無いときに空の分布を出さない'
-          assert_includes out, '候補抽出: 0 件'
+          assert_includes out, '候補: 0 件'
         end
 
-        # --- phase: plan と auto の差は末尾だけ（§6.2） ---
+        # --- phase: plan と auto の差は末尾だけ（§6.3） ---
 
         def test_dry_run_differs_only_in_the_footer
           data = plan(scores: [10, 20, 30])
@@ -104,7 +134,6 @@ module VivlioStarter
           assert_includes plan_out, '辞書・レビューファイルは変更していません'
           refute_includes auto_out, '辞書・レビューファイルは変更していません'
 
-          # 末尾の案内を除いた本体は一致すること
           assert_equal plan_out.lines[0..-2], auto_out.lines[0..-2],
                        'plan と auto で本体の表示が変わってはならない'
         end

@@ -526,11 +526,16 @@ module VivlioStarter
       # @param candidates [Array<Hash>] 候補（スコア付き）
       # @return [IndexPlanReporter]
       def build_plan_reporter(chapters, candidates)
+        prose_chars = IndexCommands::IndexSizeEstimator.prose_chars_of(chapters)
+        estimator = IndexCommands::IndexSizeEstimator.new(prose_chars)
+
         plan = IndexCommands::IndexPlanReporter::Plan.new(
           chapters:,
-          prose_chars: IndexCommands::IndexPlanReporter.prose_chars_of(chapters),
+          prose_chars:,
           registered_terms: @terms_manager.index_term_names.size,
-          candidate_scores: candidates.map { it['score'] }
+          candidate_scores: candidates.map { it['score'] },
+          estimate: estimator.estimate(@config[:target_terms]),
+          all_estimates: estimator.all_presets
         )
         IndexCommands::IndexPlanReporter.new(plan)
       end
