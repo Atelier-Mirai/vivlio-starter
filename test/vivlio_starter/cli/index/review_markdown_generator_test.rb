@@ -23,6 +23,72 @@ module VivlioStarter
         FileUtils.rm_rf(@temp_dir)
       end
 
+      # --- phase: 一般語のサブセクション（§3 R5.2） ---
+
+      def common_term(name, spread: '20/27 章（74%）')
+        { 'term' => name, 'yomi' => name, 'flags' => 'i', 'in_index' => true,
+          'common_term' => true, 'spread_text' => spread }
+      end
+
+      def ordinary_term(name)
+        { 'term' => name, 'yomi' => name, 'flags' => 'i', 'in_index' => true, 'score' => 300.0 }
+      end
+
+      def generate_with(terms)
+        @generator.generate!(terms:, high_candidates: [], low_candidates: [], rejected: [])
+        File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
+      end
+
+      def test_common_terms_get_their_own_subsection
+        content = generate_with([common_term('ファイル'), ordinary_term('特殊相対性理論')])
+
+        assert_includes content, '### 一般語（索引から外すことを推奨・1語）'
+        assert_includes content, '### 登録語 (1語)'
+      end
+
+      # 著者が判断できるよう、事実（どれだけ広いか）を必ず添える
+      def test_common_terms_show_how_widespread_they_are
+        content = generate_with([common_term('ファイル', spread: '23/27 章（85%）')])
+
+        assert_includes content, '一般語: 23/27 章（85%）に出現'
+      end
+
+      # 「外す」を既定にして提示する。残したい語は著者が [i] へ戻す。
+      def test_common_terms_are_prefilled_with_removal_flag
+        content = generate_with([common_term('ファイル')])
+
+        assert_match(/^- \[-i\] \*\*ファイル\*\*/, content)
+      end
+
+      # 行の書式を変えると既存パーサが軒並みマッチしなくなる。
+      # 追加情報は行末（スコアと同じ位置）に置く、という約束を固定する。
+      def test_common_term_lines_stay_parseable
+        generate_with([common_term('ファイル'), ordinary_term('特殊相対性理論')])
+
+        rejected = @generator.parse_index_rejected
+        approved = @generator.parse_index_approved
+
+        assert_equal ['ファイル'], rejected.map { it['term'] }
+        assert_equal ['特殊相対性理論'], approved.map { it['term'] }
+      end
+
+      # セクション番号を増やすと「## 4. 除外済みリスト」を境界に使う
+      # パーサの解釈がずれる。入れ子の ### で足すこと。
+      def test_does_not_introduce_a_new_numbered_section
+        content = generate_with([common_term('ファイル')])
+
+        assert_includes content, '## 1. 登録済み用語の確認'
+        assert_includes content, '## 4. 除外済みリスト'
+        refute_includes content, '## 5.'
+      end
+
+      def test_omits_the_subsection_when_no_common_terms
+        content = generate_with([ordinary_term('特殊相対性理論')])
+
+        refute_includes content, '一般語'
+        refute_includes content, '### 登録語'
+      end
+
       # --- phase: generate! tests ---
 
       def test_generate_creates_review_file

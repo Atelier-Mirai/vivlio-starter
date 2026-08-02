@@ -367,17 +367,38 @@ module VivlioStarter
         valid_terms = terms.reject { |t| should_filter_term?(t) }
         section = "## 1. 登録済み用語の確認 (Terms: #{valid_terms.size}語)\n\n"
 
-        if valid_terms.empty?
-          section += "登録済みの用語はありません。\n"
-        else
-          sorted_terms = sort_by_label_and_appearance(valid_terms)
-          sorted_terms.each do |t|
-            section += build_term_line(t, checked: true)
-          end
-        end
+        return "#{section}登録済みの用語はありません。\n" if valid_terms.empty?
 
+        common, ordinary = valid_terms.partition { it['common_term'] }
+        section += build_common_terms_subsection(common)
+        section += "### 登録語 (#{ordinary.size}語)\n\n" if common.any?
+        sort_by_label_and_appearance(ordinary).each { section += build_term_line(it, checked: true) }
         section
       end
+
+      # 一般語（広く散らばりすぎている語）のサブセクション。
+      #
+      # セクション番号を増やさないのが要点——既存のパーサは
+      # 「## 4. 除外済みリスト」を境界に使っているので、`## 5.` を足すと
+      # そこまでの解釈がずれる。`###` の入れ子なら影響しない。
+      #
+      # 行の書式は通常の登録語と同一にする。`- [-i] ` と `**用語** (読み)` の
+      # 間に何かを差し込むと、7 つのパーサの正規表現が軒並みマッチしなくなる。
+      # 追加情報は行末（スコアと同じ位置）へ置く。
+      def build_common_terms_subsection(common)
+        return '' if common.empty?
+
+        <<~HEADER + common.map { build_term_line(it, checked: true) }.join
+          ### 一般語（索引から外すことを推奨・#{common.size}語）
+
+          本の広い範囲に散らばっている語です。索引から引いても読者が「どこを読めばよいか」を
+          判断できないため、外すことを推奨します。
+          - 外す場合: [-i] のまま `vs index:apply`
+          - 残す場合: [i] に戻してください
+
+        HEADER
+      end
+
 
       # 用語をフィルタリングすべきかどうかを判定
       # 手動マークアップ用語は著者の意図があるためフィルタリングしない
@@ -487,6 +508,9 @@ module VivlioStarter
         elsif checked
           line += ' - [原稿に出現しません]'
         end
+        # 追加情報は必ず行末へ。`- [-i] ` と `**用語** (読み)` の間に差し込むと
+        # 7 つのパーサの正規表現が軒並みマッチしなくなる。
+        line += " - 一般語: #{term['spread_text']}に出現" if term['spread_text']
         line += "\n"
 
         # 文脈を最大2件表示（Candidatesと同様）
@@ -515,6 +539,8 @@ module VivlioStarter
       # @return [String] フラグ文字列
       def determine_registration_flag(term, checked)
         return '[ ]' unless checked
+        # 一般語は「外す」を既定にして提示する。著者は残したければ [i] へ戻す（R5）
+        return '[-i]' if term['common_term']
 
         in_index = term['in_index'] != false # 既定はtrue（後方互換性）
         in_glossary = term['in_glossary'] == true

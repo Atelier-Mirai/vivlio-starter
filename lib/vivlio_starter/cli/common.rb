@@ -308,7 +308,8 @@ module VivlioStarter
           # 廃止キー（auto_approve_threshold / review_threshold / high_candidates_ratio）は
           # 読まない。書かれていたら UnifiedIndexManager#warn_retired_keys が移行を促す。
           index: { auto_discovery: nil, title: nil, backlink_dedup: nil,
-                   target_terms: nil, candidate_pool: nil, auto_approve: nil },
+                   target_terms: nil, candidate_pool: nil, auto_approve: nil,
+                   common_term_ratio: nil },
           glossary: { title: nil, require_definition: nil, max_definition_length: nil,
                       backlink_dedup: nil },
           # ビルド対象章の絞り込み（例: "54-56" / [11, 12]）。未指定はフルビルド

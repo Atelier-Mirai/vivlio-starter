@@ -27,6 +27,7 @@ require_relative 'code_block_stripper'
 require_relative 'unified_page_builder'
 require_relative 'index_plan_reporter'
 require_relative 'term_ranking'
+require_relative 'term_spread'
 require_relative 'yomi_inferrer'
 
 module VivlioStarter
@@ -538,6 +539,9 @@ module VivlioStarter
         @extractor.score_terms(@terms_manager.load_terms).merge(from_candidates)
       end
 
+      # 一般語とみなす出現章数の比率（book.yml で調整可）
+      def common_term_ratio = (@config[:common_term_ratio] || 0.5).to_f
+
       # 本文の分量から目安語数を得る（帯の境目に使う）
       def current_estimate(chapters)
         prose_chars = IndexCommands::IndexSizeEstimator.prose_chars_of(chapters)
@@ -768,6 +772,9 @@ module VivlioStarter
       # @return [Array<Hash>] 文脈付き用語のリスト
       def enrich_terms_with_context(terms, chapters, scores: {})
         loaded_contents = load_squashed_chapter_contents(chapters)
+        spreads = IndexCommands::TermSpread.measure(terms, chapters)
+        common = IndexCommands::TermSpread.common_terms(spreads, ratio: common_term_ratio)
+                                          .to_h { [it.term, it] }
 
         terms.map do |term|
           enriched = term.dup
@@ -776,6 +783,13 @@ module VivlioStarter
           # スコアは辞書に持たない（出現由来の派生データ）。表示のたびに合流させる。
           # 原稿に出現しない語はスコアが取れない——死語として著者に見せる価値がある。
           enriched['score'] = scores[term['term']]
+
+          # 広く散らばりすぎている語は「一般語」として別枠で提示する（R5）。
+          # 外すか残すかは著者が決めるので、ここでは事実を添えるだけ。
+          if (spread = common[term['term']])
+            enriched['common_term'] = true
+            enriched['spread_text'] = spread.to_s
+          end
 
           # flags に基づいて索引・用語集の登録状態を反映
           enriched['in_index'] = flags.include?('i')
