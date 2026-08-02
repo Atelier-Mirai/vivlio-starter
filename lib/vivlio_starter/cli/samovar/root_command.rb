@@ -17,7 +17,7 @@
 #     - help, new, upgrade, build, clean, delete, doctor, import
 #     - create, rename, renumber, open, cover
 #     - resize
-#     - index, index:auto, index:apply
+#     - index, index:plan, index:auto, index:apply
 #     - lint, metrics
 #     - pdf:compress, pdf:pages, pdf:rasterize
 #   Internal Commands (vs --help に非表示):
@@ -58,6 +58,7 @@ module VivlioStarter
               'cover' => CoverCommand,
               'resize' => ResizeCommand,
               'index' => IndexCommand,
+              'index:plan' => IndexPlanCommand,
               'index:auto' => IndexAutoCommand,
               'index:apply' => IndexApplyCommand,
               'index:export' => IndexExportCommand,

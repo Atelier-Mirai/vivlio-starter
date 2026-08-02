@@ -9,6 +9,7 @@
 #   仕様書 indexing_implementation_spec3.md に準拠
 #
 # 公開コマンド:
+#   - index:plan: 索引語数の目安と現況を表示（読み取り専用）
 #   - index:auto: 全自動索引候補抽出 → _index_review.md 生成
 #   - index:apply: レビュー結果を適用
 #   - index:export / index:import: 用語辞書のライブラリ連携
@@ -42,12 +43,14 @@ module VivlioStarter
           puts <<~HELP
             索引機能のコマンド:
 
+              vs index:plan [章]  - 索引語数の目安と現況を表示（辞書は変更しない）
               vs index:auto [章]  - 候補抽出・分類・_index_review.md 生成（章を指定可）
               vs index:apply      - レビュー結果を index_glossary_terms.yml に適用
               vs index:export     - 用語集[g]・棄却語 を index_library.yml に書き出す
               vs index:import     - index_library.yml から用語集[g]・棄却語 を取り込む
 
             ワークフロー:
+              0. vs index:plan   → 目安語数と現況を確認する（任意）
               1. vs index:auto   → _index_review.md を生成
               2. _index_review.md を編集（[x]で承認、[r]で棄却）
               3. vs index:apply  → index_glossary_terms.yml を更新
@@ -64,6 +67,42 @@ module VivlioStarter
             詳細は各コマンドに --help を付けて確認してください。
           HELP
           0
+        end
+      end
+
+      # index:plan コマンド - 索引の下見（読み取り専用）
+      #
+      # `index:auto --dry-run` にしないのは、auto が「全自動でやる」と読める
+      # コマンドで、オプション 1 つで「実は確認用」に変わると名前の意味が
+      # ぶれるため（index-term-selection-spec.md §6.1）。
+      class IndexPlanCommand < VsCommand
+        self.description = '索引語数の目安と現況を表示（辞書は変更しない）'
+
+        options do
+          option '-h/--help', 'このコマンドの使い方を表示', key: :help
+        end
+
+        many :files, '対象ファイル（省略時は全章）'
+
+        def call
+          return print_usage if options[:help]
+
+          guard_failure = Guards.precheck(
+            Guards::ProjectRootCheck.new,
+            Guards::CatalogFileCheck.new,
+            Guards::RelaxedCheck.new(Guards::CatalogEntriesCheck.new),
+            Guards::ContentsDirCheck.new
+          )
+          return guard_failure if guard_failure
+
+          UnifiedIndexManager.new.plan!(IndexCommands.resolve_chapters(files || []))
+          0
+        rescue SystemExit => e
+          raise e
+        rescue StandardError => e
+          Common.log_error("index:plan 実行中にエラー: #{e.message}")
+          Common.log_error(e.backtrace.first(5).join("\n")) if ENV['VERBOSE']
+          1
         end
       end
 

@@ -25,6 +25,7 @@ require_relative 'index_candidate_extractor'
 require_relative 'index_match_scanner'
 require_relative 'code_block_stripper'
 require_relative 'unified_page_builder'
+require_relative 'index_plan_reporter'
 require_relative 'yomi_inferrer'
 
 module VivlioStarter
@@ -51,6 +52,17 @@ module VivlioStarter
         @markdown_generator = ReviewMarkdownGenerator.new
         @config = load_index_config
         @glossary_config = load_glossary_config
+      end
+
+      # 索引の下見（`vs index:plan`）。現況と候補の分布を表示するだけで、
+      # 辞書もレビューファイルも書かない。表示は auto_process! と同一にする
+      # ——見え方が実行ごとに変わると、下見の意味がなくなる（§6.2）。
+      # @param chapters [Array<String>] 対象章のリスト
+      def plan!(chapters)
+        Common.log_action('索引の現況を確認しています...')
+        candidates = @config.fetch(:auto_discovery, true) ? extract_candidates(chapters) : []
+        build_plan_reporter(chapters, candidates).render(dry_run: true)
+        0
       end
 
       # 全自動索引候補抽出 → _index_review.md 生成
@@ -140,6 +152,10 @@ module VivlioStarter
 
         # 10. 結果レポート
         report_dictionary_writes(dictionary_writes)
+        # 現況と候補の分布は vs index:plan と同じ画面を出す（§6.2）。
+        # 辞書を書き換えた後なので、登録語数は更新後の値になる。
+        @terms_manager.clear_cache!
+        build_plan_reporter(chapters, candidates).render
         report_auto_results(auto_approved, high_candidates, low_candidates, auto_threshold, review_threshold,
                             rejected_count_in_candidates)
       end
@@ -504,6 +520,20 @@ module VivlioStarter
       end
 
       private
+
+      # 表示用の素材を集める。算出はここで済ませ、Reporter は組み立てに徹する。
+      # @param chapters [Array<String>] 対象章
+      # @param candidates [Array<Hash>] 候補（スコア付き）
+      # @return [IndexPlanReporter]
+      def build_plan_reporter(chapters, candidates)
+        plan = IndexCommands::IndexPlanReporter::Plan.new(
+          chapters:,
+          prose_chars: IndexCommands::IndexPlanReporter.prose_chars_of(chapters),
+          registered_terms: @terms_manager.index_term_names.size,
+          candidate_scores: candidates.map { it['score'] }
+        )
+        IndexCommands::IndexPlanReporter.new(plan)
+      end
 
       # 候補の文脈を正規化
       def normalize_candidate(candidate)

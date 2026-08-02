@@ -85,6 +85,21 @@ module VivlioStarter
         # 50〜100 が標準、定番実装 quanteda の既定も 100。設定で上書き可能。
         DEFAULT_MATTR_WINDOW = 100
 
+        # 地の文（コード片と Markdown 記法を除いた本文）だけを取り出す。
+        # 索引語数の目安を本文の分量から導く経路（IndexSizeEstimator）が使う。
+        # 同じ除去処理を索引側へ書き写すと `vs metrics` の表示と黙ってずれるため、
+        # ここを唯一の実装として公開する（`index-term-selection-spec.md` §3.3）。
+        # @param content [String] Markdown 原文
+        # @return [String] 地の文
+        def self.prose_of(content) = new(content).prose
+
+        # 地の文の文字数（空白をすべて除いた長さ）。
+        # `vocabulary_stats.total_char_count` と同じ数え方——分母を揃えるため、
+        # 語彙分析（MeCab を伴う）を走らせずに分量だけ欲しいときはこちらを使う。
+        # @param content [String] Markdown 原文
+        # @return [Integer]
+        def self.prose_length(content) = prose_of(content).gsub(/\s/, '').length
+
         def initialize(content, config = {})
           @content = content
           @config = config
@@ -155,12 +170,13 @@ module VivlioStarter
           ReadabilityScore.new(score:, label:, features:)
         end
 
+        # コード片を除いた解析対象本文（文構造・語彙・読解で共通利用）。
+        # 索引の分量算出（`self.prose_length`）からも使うため公開している。
+        def prose = @prose ||= extract_prose(content)
+
         private
 
         attr_reader :content, :config, :mecab_available
-
-        # コード片を除いた解析対象本文（文構造・語彙・読解で共通利用）。
-        def prose = @prose ||= extract_prose(content)
 
         # 文単位に分割する
         def sentence_segments(text)
