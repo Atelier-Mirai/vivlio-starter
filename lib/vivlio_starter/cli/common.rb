@@ -243,9 +243,10 @@ module VivlioStarter
           index_glossary: { enabled: nil, use_mecab: nil, timezone: nil,
                             context_width: nil, smart_context_cutting: nil,
                             library: nil },
-          index: { auto_discovery: nil, title: nil, auto_approve_threshold: nil,
-                   review_threshold: nil, high_candidates_ratio: nil, backlink_dedup: nil,
-                   target_terms: nil, candidate_pool: nil },
+          # 廃止キー（auto_approve_threshold / review_threshold / high_candidates_ratio）は
+          # 読まない。書かれていたら UnifiedIndexManager#warn_retired_keys が移行を促す。
+          index: { auto_discovery: nil, title: nil, backlink_dedup: nil,
+                   target_terms: nil, candidate_pool: nil, auto_approve: nil },
           glossary: { title: nil, require_definition: nil, max_definition_length: nil,
                       backlink_dedup: nil },
           # ビルド対象章の絞り込み（例: "54-56" / [11, 12]）。未指定はフルビルド

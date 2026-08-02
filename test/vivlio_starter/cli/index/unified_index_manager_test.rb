@@ -227,6 +227,104 @@ module VivlioStarter
         assert_includes content, 'SavedTerm'
       end
 
+      # --- phase: 廃止キーと採否ロジック（§3.4 / §3.6） ---
+
+      # 設定を差し替えた manager を作る。CONFIG はプロセス全体で共有される
+      # ため触らない（他のテストへ漏れる）。ここで差し替えるのは素の Hash。
+      def manager_with(overrides)
+        manager = UnifiedIndexManager.new
+        config = manager.instance_variable_get(:@config).merge(overrides)
+        manager.instance_variable_set(:@config, config)
+        manager
+      end
+
+      # 黙って無視すると「設定したのに効かない」という最悪の形になる。
+      # 何が廃止され、代わりに何を書くのかまで示す。
+      def test_auto_process_warns_about_retired_keys
+        File.write('config/book.yml', { 'index' => { 'auto_approve_threshold' => 300 } }.to_yaml)
+        File.write('contents/40-retired.md', "サンプルの本文です。\n")
+
+        out, err = capture_io { @manager.auto_process!(['40-retired']) }
+
+        assert_match(/auto_approve_threshold.*廃止/, out + err)
+        assert_match(/target_terms/, out + err, '代わりに書くキーを示す')
+      end
+
+      def test_auto_process_stays_silent_without_retired_keys
+        File.write('config/book.yml', { 'index' => { 'target_terms' => 'standard' } }.to_yaml)
+        File.write('contents/41-clean.md', "サンプルの本文です。\n")
+
+        out, err = capture_io { @manager.auto_process!(['41-clean']) }
+
+        refute_match(/廃止されました/, out + err)
+      end
+
+      def test_retired_key_check_survives_missing_book_yml
+        File.write('contents/42-nobook.md', "サンプルの本文です。\n")
+
+        out, err = capture_io { @manager.auto_process!(['42-nobook']) }
+
+        refute_match(/廃止されました/, out + err)
+      end
+
+      # 旧既定（スコア 300 以上を無条件登録）が「頻出の一般語ばかりが辞書に入る」
+      # 現状を作った。既定では辞書へ書かず、著者がレビューで選ぶ。
+      def test_auto_process_does_not_auto_approve_by_default
+        File.write('contents/43-auto.md', <<~MD)
+          # 自動承認の確認
+
+          プロトコルスタックとは通信手順の階層である。プロトコルスタックを実装する。
+        MD
+
+        @manager.auto_process!(['43-auto'])
+
+        # 何も書かなければ辞書ファイル自体が作られない。それが最も強い「書いていない」証拠。
+        auto_extracted = if File.exist?('config/index_glossary_terms.yml')
+                           (YAML.load_file('config/index_glossary_terms.yml')['terms'] || [])
+                             .select { it['source'] == 'auto_extracted' }
+                         else
+                           []
+                         end
+
+        assert_empty auto_extracted, '既定では候補を辞書へ書かない'
+        assert_includes File.read('_index_glossary_review.md'), 'プロトコルスタック',
+                        'レビューファイルには候補として出す'
+      end
+
+      def test_auto_process_auto_approves_when_enabled
+        File.write('contents/44-approve.md', <<~MD)
+          # 自動承認の確認
+
+          プロトコルスタックとは通信手順の階層である。プロトコルスタックを実装する。
+        MD
+
+        manager_with(auto_approve: true).auto_process!(['44-approve'])
+
+        terms = YAML.load_file('config/index_glossary_terms.yml')['terms'] || []
+
+        assert(terms.any? { it['source'] == 'auto_extracted' },
+               'auto_approve: true なら推奨候補を辞書へ書く')
+      end
+
+      # 目安語数が帯の境目になる。目安を絞れば推奨候補も絞られる。
+      def test_target_terms_limits_the_recommended_band
+        File.write('contents/45-target.md', <<~MD)
+          # 目安の確認
+
+          プロトコルスタックとは通信手順の階層である。
+          レプリケーションとはデータ複製の仕組みである。
+          コンパイラとは翻訳器である。
+        MD
+
+        small = manager_with(target_terms: 1, auto_approve: true)
+        small.auto_process!(['45-target'])
+
+        approved = (YAML.load_file('config/index_glossary_terms.yml')['terms'] || [])
+                   .select { it['source'] == 'auto_extracted' }
+
+        assert_operator approved.size, :<=, 1, '目安 1 語なら推奨候補も 1 語まで'
+      end
+
       # --- phase: apply_review! tests ---
 
       def test_apply_markdown_review_approves_checked_candidates

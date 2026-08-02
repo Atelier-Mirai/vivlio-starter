@@ -388,15 +388,9 @@ index:
   # 目安語数の何倍までを候補として提示するか
   candidate_pool: 3.0
 
-  # 自動承認スコア閾値（この値以上は自動的に index_terms.yml へ追加）
-  auto_approve_threshold: 300
-
-  # レビュー対象スコア閾値（この値以上でレビュー待ちキューへ）
-  review_threshold: 150
-
-  # 推奨候補の分割比率（上位何%をHighとするか）
-  # 既定値: 0.25（25%）
-  high_candidates_ratio: 0.25
+  # 推奨候補を自動で辞書へ登録するか
+  # false（既定）… レビューファイルで著者が選ぶ
+  auto_approve: false
 
 # ========================================
 # 用語集設定

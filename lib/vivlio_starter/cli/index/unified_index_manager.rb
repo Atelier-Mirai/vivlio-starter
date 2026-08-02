@@ -61,6 +61,7 @@ module VivlioStarter
       # @param chapters [Array<String>] 対象章のリスト
       def plan!(chapters)
         Common.log_action('索引の現況を確認しています...')
+        warn_retired_keys
         candidates = @config.fetch(:auto_discovery, true) ? extract_candidates(chapters) : []
         build_plan_reporter(chapters, candidates, extractor: @extractor).render(dry_run: true)
         0
@@ -69,10 +70,8 @@ module VivlioStarter
       # 全自動索引候補抽出 → _index_review.md 生成
       # @param chapters [Array<String>] 対象章のリスト
       def auto_process!(chapters)
-        auto_threshold = @config[:auto_approve_threshold] || 300
-        review_threshold = @config[:review_threshold] || 150
-        high_ratio = @config[:high_candidates_ratio] || 0.25
         auto_discovery = @config.fetch(:auto_discovery, true)
+        warn_retired_keys
 
         Common.log_action('索引の自動処理を開始します...')
 
@@ -92,7 +91,7 @@ module VivlioStarter
           @terms_manager.record_scanned_chapters!(chapters)
           report_dictionary_writes(dictionary_writes)
           Common.log_info('auto_discovery: false のため、自動候補抽出をスキップします')
-          Common.log_info('手動マークアップ [用語|読み] のみが索引に反映されます')
+          Common.log_info('手動マークアップのみが索引に反映されます')
           return
         end
 
@@ -100,38 +99,24 @@ module VivlioStarter
         candidates = extract_candidates(chapters)
         Common.log_info("候補抽出: #{candidates.size}件")
 
-        # 3. 既存の承認済み用語（索引＋用語集）とリジェクト済み用語を除外
-        existing_terms = @terms_manager.term_names
-        rejected_terms = @queue_manager.load_rejected_terms
-        rejected_count_in_candidates = 0
+        # 3. 既に辞書にある語とリジェクト済みの語を落とす（＝選べる候補だけ残す）
+        selectable, rejected_count_in_candidates = selectable_candidates(candidates)
 
-        filtered_candidates = candidates.reject do |c|
-          term = c['term']
-          if existing_terms.include?(term)
-            true
-          elsif rejected_terms.include?(term)
-            rejected_count_in_candidates += 1
-            true
-          else
-            false
-          end
-        end
+        # 4. 登録語と同じ土俵で並べ、推奨候補／一般候補／見直し候補に分ける。
+        #    スコアの絶対値では切らない——閾値は書籍の規模で意味が変わるうえ、
+        #    「目安に達しているから推奨は 0 件」という誤った判断を生む（§3.4-1）。
+        bands = build_bands(@terms_manager.index_terms, selectable, current_estimate(chapters), @extractor)
+        by_name = selectable.to_h { [it['term'], it] }
+        high_candidates = review_entries(bands&.recommended, by_name)
+        low_candidates = review_entries(bands&.general, by_name)
 
-        # 4. 高スコア候補を自動承認
-        auto_approved = filtered_candidates
-                        .select { |c| c['score'] >= auto_threshold }
-                        .map { |candidate| normalize_candidate(candidate) }
+        # 5. 自動承認は既定で行わない。旧既定（スコア 300 以上を無条件登録）が
+        #    「頻出の一般語ばかりが辞書に入る」現状を作った張本人である。
+        auto_approved = @config[:auto_approve] == true ? high_candidates : []
         if auto_approved.any?
           added = @terms_manager.merge_terms!(auto_approved, flags: 'i', source: 'auto_extracted')
           dictionary_writes['自動承認'] = added if added.any?
         end
-
-        # 5. 中スコア候補をHigh/Lowに分割
-        review_candidates = filtered_candidates
-                            .select { |c| c['score'] >= review_threshold && c['score'] < auto_threshold }
-                            .map { |candidate| normalize_candidate(candidate).merge('is_new' => true) }
-
-        high_candidates, low_candidates = split_candidates_by_ratio(review_candidates, high_ratio)
 
         # 6. 登録済み用語（索引＋用語集すべて）に文脈を付与
         terms_with_context = enrich_terms_with_context(@terms_manager.load_terms, chapters)
@@ -153,12 +138,11 @@ module VivlioStarter
 
         # 10. 結果レポート
         report_dictionary_writes(dictionary_writes)
-        # 現況と候補の分布は vs index:plan と同じ画面を出す（§6.2）。
+        # 現況と候補の分布は vs index:plan と同じ画面を出す（§6.3）。
         # 辞書を書き換えた後なので、登録語数は更新後の値になる。
         @terms_manager.clear_cache!
-        build_plan_reporter(chapters, candidates, extractor: @extractor).render
-        report_auto_results(auto_approved, high_candidates, low_candidates, auto_threshold, review_threshold,
-                            rejected_count_in_candidates)
+        build_plan_reporter(chapters, selectable, extractor: @extractor).render
+        report_auto_results(auto_approved, high_candidates, low_candidates, rejected_count_in_candidates)
       end
 
       # Markdownから承認・リジェクトを適用
@@ -522,6 +506,84 @@ module VivlioStarter
 
       private
 
+      # 廃止した設定キーを検出して移行を促す。読みはしない（後方互換は取らない）。
+      # 黙って無視すると「設定したのに効かない」という最悪の形になるため、
+      # 何が廃止され、代わりに何を書くのかまで示す（親切警告の流儀）。
+      #
+      # CONFIG ではなく book.yml を直接読む。廃止キーはスキーマから外したので
+      # CONFIG には載らない——ここで問うているのは「著者がそのキーを書いたか」
+      # というファイルへの問いであり、設定値ではない。
+      RETIRED_KEYS = %w[auto_approve_threshold review_threshold high_candidates_ratio].freeze
+
+      def warn_retired_keys
+        present = retired_keys_in_book_yml
+        return if present.empty?
+
+        Common.log_warn(
+          "index の設定キー #{present.join(' / ')} は廃止されました",
+          detail: <<~DETAIL.chomp
+            索引語数はスコアの絶対値ではなく、本文の分量から導いた目安語数で決めます
+            （Heaps 則。3 倍の分量でも索引語は約 2 倍にしかなりません）。
+            config/book.yml の index: から上記のキーを削除し、代わりに次を指定してください
+            （いずれも省略可・既定で動きます）:
+              target_terms: standard   # light / standard / thorough、または語数（例 260）
+              candidate_pool: 3.0      # 目安の何倍までを候補に出すか
+              auto_approve: false      # 推奨候補を自動承認するか
+            目安の確認は vs index:plan で行えます。
+          DETAIL
+        )
+      end
+
+      def retired_keys_in_book_yml
+        return [] unless File.exist?(Common::CONFIG_FILE)
+
+        index_section = YAML.load_file(Common::CONFIG_FILE, aliases: true)&.dig('index')
+        return [] unless index_section.is_a?(Hash)
+
+        RETIRED_KEYS.select { index_section.key?(it) }
+      rescue StandardError
+        [] # 設定が読めないこと自体は他所が報告する
+      end
+
+
+      # 選べる候補だけを残す。既に辞書にある語とリジェクト済みの語を落とす。
+      # @return [Array(Array<Hash>, Integer)] 候補と、リジェクトで落とした件数
+      def selectable_candidates(candidates)
+        existing = @terms_manager.term_names
+        rejected = @queue_manager.load_rejected_terms
+        rejected_count = 0
+
+        selectable = candidates.reject do |candidate|
+          term = candidate['term']
+          next true if existing.include?(term)
+          next false unless rejected.include?(term)
+
+          rejected_count += 1
+          true
+        end
+
+        [selectable, rejected_count]
+      end
+
+      # 本文の分量から目安語数を得る（帯の境目に使う）
+      def current_estimate(chapters)
+        prose_chars = IndexCommands::IndexSizeEstimator.prose_chars_of(chapters)
+        IndexCommands::IndexSizeEstimator.new(prose_chars).estimate(@config[:target_terms])
+      end
+
+      # 帯の並び（TermRanking::Entry）を、レビュー md が扱う候補 Hash へ戻す。
+      # 順位の情報は Entry 側にしかないので、並び順はここで保つ。
+      def review_entries(entries, by_name)
+        return [] if entries.nil?
+
+        entries.filter_map do |entry|
+          candidate = by_name[entry.term]
+          next unless candidate
+
+          normalize_candidate(candidate).merge('is_new' => true)
+        end
+      end
+
       # 表示用の素材を集める。算出はここで済ませ、Reporter は組み立てに徹する。
       # @param chapters [Array<String>] 対象章
       # @param candidates [Array<Hash>] 候補（スコア付き）
@@ -723,30 +785,6 @@ module VivlioStarter
             'contexts' => normalized_contexts
           }
         end
-      end
-
-      # 候補をHigh/Lowに分割（仕様書 5.1.1 に準拠）
-      # @param candidates [Array<Hash>] 候補のリスト
-      # @param high_ratio [Float] High候補の割合（既定: 0.25）
-      # @return [Array<Array<Hash>>] [high_candidates, low_candidates]
-      def split_candidates_by_ratio(candidates, high_ratio)
-        return [[], []] if candidates.empty?
-
-        # スコア降順でソート
-        sorted = candidates.sort_by { |c| -(c['score'] || 0) }
-
-        # 基準位置を算出（切り上げ）
-        base_index = (sorted.size * high_ratio).ceil
-        base_index = [base_index, 1].max # 最低1件はHighに
-
-        # 境界スコアを決定
-        boundary_score = sorted[[base_index - 1, sorted.size - 1].min]['score'] || 0
-
-        # 同スコアは全てHighに含める
-        high = sorted.select { |c| (c['score'] || 0) >= boundary_score }
-        low = sorted.select { |c| (c['score'] || 0) < boundary_score }
-
-        [high, low]
       end
 
       # 登録済み用語に文脈と用語集登録状態を付与
@@ -1097,13 +1135,13 @@ module VivlioStarter
       end
 
       # 結果をレポート（auto_process!用）
-      # 総括行（候補数・レビューファイル案内）は既定ログレベルで表示する（R8）
-      def report_auto_results(auto_approved, high_candidates, low_candidates, auto_threshold, review_threshold,
-                              rejected_count)
+      # 総括行（候補数・レビューファイル案内）は既定ログレベルで表示する（R8）。
+      # 帯の内訳そのものは IndexPlanReporter が既に出しているので、ここでは繰り返さない。
+      def report_auto_results(auto_approved, high_candidates, low_candidates, rejected_count)
+        approved = auto_approved.any? ? "自動承認 #{auto_approved.size} 件・" : ''
         Common.log_summary(
-          "候補抽出完了: 自動承認 #{auto_approved.size} 件（スコア≥#{auto_threshold}）・" \
-          "推奨候補 #{high_candidates.size} 件・一般候補 #{low_candidates.size} 件" \
-          "（#{review_threshold}≤スコア<#{auto_threshold}）",
+          "レビューファイルを生成しました: #{approved}" \
+          "推奨候補 #{high_candidates.size} 件・一般候補 #{low_candidates.size} 件",
           detail: "#{ReviewMarkdownGenerator::REVIEW_FILE} を編集後、vs index:apply を実行してください"
         )
 
