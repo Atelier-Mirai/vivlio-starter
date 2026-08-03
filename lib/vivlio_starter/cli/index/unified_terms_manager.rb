@@ -228,6 +228,55 @@ module VivlioStarter
         File.write(UNIFIED_FILE, data.to_yaml, encoding: 'utf-8')
       end
 
+      # 章名の変更に辞書を追随させる（main: と scanned_chapters）。
+      #
+      # main: は著者が下した判断＝語彙の一次データなので、実在しない章を指していても
+      # 捨てられない。contexts[].chapter は表示専用の派生データで、enrich が
+      # 「実在しない章の context を捨てて本文から拾い直す」ため追随は不要
+      # （index-glossary-consistency-spec.md R5）。ここで書き換えるのは前者だけ。
+      #
+      # @param old_basename [String] 旧章名
+      # @param new_basename [String] 新章名
+      # @return [Integer] main: を書き換えた語数（0 なら書き換えなし）
+      def rename_chapter!(old_basename, new_basename)
+        changed = rename_main_references(old_basename, new_basename)
+        follow_scanned_chapters(old_basename, new_basename)
+        return 0 if changed.zero?
+
+        Common.log_info("索引辞書の主要参照を更新: #{old_basename} → #{new_basename}（#{changed} 語）")
+        changed
+      end
+
+      # main: の章名を差し替える。単一指定は単一のまま戻す（著者が書いた形を保つ）。
+      def rename_main_references(old_basename, new_basename)
+        terms = load_terms
+        changed = 0
+
+        terms.each do |term|
+          next unless term['main']
+
+          before = Array(term['main'])
+          after = before.map { it == old_basename ? new_basename : it }
+          next if after == before
+
+          term['main'] = term['main'].is_a?(Array) ? after : after.first
+          changed += 1
+        end
+
+        save_terms!(terms) if changed.positive?
+        changed
+      end
+
+      # scanned_chapters を追随させる。
+      # record_scanned_chapters! は「実在する章との積」を取るので、原稿ファイルが
+      # 移動済みなら旧章名はそこで自然に落ちる。新章名を渡すだけでよい。
+      def follow_scanned_chapters(old_basename, new_basename)
+        scanned = scanned_chapters
+        return unless scanned&.include?(old_basename)
+
+        record_scanned_chapters!([new_basename])
+      end
+
       # キャッシュをクリア
       def clear_cache!
         @cache = nil

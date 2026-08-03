@@ -185,6 +185,22 @@ RETIRED_CONFIG_KEYS = {
 **各コマンドが `book.yml` を読み直してはいけない**——設定アクセスを `CONFIG` に
 集約した意図が損なわれるうえ、読み込みのタイミングと解釈が分散する。
 
+### 章名を保持するキーを足すとき
+
+設定やデータが**章の basename**（`21-markdown-tutorial` 等）を保持する場合は、
+`ChapterRename::FOLLOWERS`（`lib/vivlio_starter/cli/chapter_rename.rb`）へ追随処理を
+登録する。登録しないと `vs rename` / `vs renumber` で**黙って壊れる**。
+
+```ruby
+FOLLOWERS = [
+  Follower.new(label: catalog.yml, handler: method(:follow_catalog)),
+  Follower.new(label: 索引辞書,     handler: method(:follow_index_dictionary))
+].freeze
+```
+
+**章番号**（`90-98` のような範囲）で書く設定は登録しない。範囲の意味を機械が
+判断できないため、改番後に案内するに留める（`chapter-rename-followers-spec.md` R4）。
+
 ### いつ案内が出るか
 
 `Common.ensure_configured!` の入口で 1 度だけ発火する。ここはプロジェクトを必要と

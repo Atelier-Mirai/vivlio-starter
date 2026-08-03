@@ -33,6 +33,7 @@
 require 'fileutils'
 require_relative 'build/catalog_loader'
 require_relative 'build/catalog_updater'
+require_relative 'chapter_rename'
 require_relative 'clean'
 require_relative 'token_resolver'
 
@@ -121,6 +122,7 @@ module VivlioStarter
 
         apply_renumber(rename_map)
         cleanup_after_renumber
+        warn_numbered_chapter_settings
         Common.log_result("#{rename_map.size} 章の連番を付け直しました", status: :success)
         exit 0
       end
@@ -278,23 +280,40 @@ module VivlioStarter
 
       # 連番付け直し計画を実ファイルと catalog へ反映する
       def apply_renumber(rename_map)
-        rename_map.each do |old_basename, info|
-          FileUtils.mv(info[:old_file], info[:new_file])
-          Build::CatalogUpdater.rename_chapter(old_basename, info[:new_basename])
+        # ファイル移動を先に全部済ませてから追随させる。21→20, 22→21 のように
+        # 玉突きで動くとき、追随を混ぜると中間状態で取り違える。
+        rename_map.each { |_old, info| FileUtils.mv(info[:old_file], info[:new_file]) }
+        rename_map.each { |old_basename, info| ChapterRename.follow!(old_basename, info[:new_basename]) }
+      end
+
+      # 章番号で書かれた設定は追随できないので、改番後に見直しを促す。
+      #
+      # `metrics.exclude_chapters: [00, 90-98, 99]` の `90-98` が「付録すべて」の
+      # 意図なのか特定の章なのかは機械に判断できない。黙って書き換えるほうが危険
+      # なので、案内に留める（chapter-rename-followers-spec.md R4）。
+      #
+      # 既定値のときは黙る——著者が明示的に書いたキーだけを対象にする
+      # （config-extension-guidelines.md §4 の authored_key?）。
+      NUMBERED_CHAPTER_SETTINGS = [
+        %i[metrics exclude_chapters],
+        %i[chapters]
+      ].freeze
+
+      def warn_numbered_chapter_settings
+        authored = NUMBERED_CHAPTER_SETTINGS.select { Common.authored_key?(*it) }
+        return if authored.empty?
+
+        lines = authored.map do |path|
+          value = Common::CONFIG.dig(*path)
+          "  #{path.join('.')}: #{value.is_a?(Array) ? value.inspect : value}"
         end
 
-        rename_map.each do |old_basename, info|
-          old_dir = File.join('images', old_basename)
-          next unless File.directory?(old_dir)
-
-          new_dir = File.join('images', info[:new_basename])
-          if File.exist?(new_dir)
-            Common.log_warn("#{new_dir} が既に存在するため、画像ディレクトリは手動で統合してください")
-            next
-          end
-
-          FileUtils.mv(old_dir, new_dir)
-        end
+        Common.log_warn(
+          '章番号で指定した設定があります。改番に合わせて見直してください',
+          detail: "#{lines.join("\n")}\n" \
+                  '範囲の意味（「付録すべて」なのか特定の章なのか）は機械には判断できないため、' \
+                  '自動では書き換えていません。'
+        )
       end
 
       # 連番付け直し後の生成物クリーニングを行う
@@ -468,19 +487,10 @@ module VivlioStarter
 
         old_basename = build_basename(old_number, old_slug)
         new_basename = build_basename(new_number, new_slug)
-        Build::CatalogUpdater.rename_chapter(old_basename, new_basename)
-
-        old_img_dir = File.join('images', old_basename)
-        new_img_dir = File.join('images', new_basename)
-        if File.directory?(old_img_dir)
-          if File.exist?(new_img_dir)
-            Common.log_warn("#{new_img_dir} が既に存在するため、画像ディレクトリは手動で統合してください")
-          else
-            FileUtils.mv(old_img_dir, new_img_dir)
-          end
-        end
+        ChapterRename.follow!(old_basename, new_basename)
 
         cleanup_generated_files(old_number, old_slug)
+        warn_numbered_chapter_settings
         # 何がどう変わったかを既定ログレベルでも 1 行で報告する（実行して無音にしない）
         Common.log_result("#{old_basename} を #{new_basename} に変更しました", status: :success)
       end
