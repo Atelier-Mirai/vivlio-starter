@@ -260,9 +260,22 @@ module VivlioStarter
           end
 
           assert_equal 0, status
-          assert_includes output, '章に紐付かない指摘'
-          assert_includes output, '🟡 警告 1 件'
           assert_includes output, '⚠️ Preflight 完了: 警告 1 件（ビルドは可能です）'
+        end
+
+        # 章に紐付かない指摘は章別サマリーに出さない。件数だけの
+        # 「章に紐付かない指摘 🟡 警告 1 件」は、何について警告されていて
+        # どう直せばよいかを著者に伝えられない——それは発生源が本文で
+        # 言い切っており、表に件数を足すと同じ 1 件を二度語ることになる。
+        def test_should_keep_the_chapter_table_about_chapters_only
+          output, = run_preflight(entries: fixture_entries('10-alpha')) do
+            PreProcessCommands::IssueRegistry.record(
+              severity: :warn, category: :guard, message: '未知のコンテナクラス .foo'
+            )
+          end
+
+          refute_includes output, '章に紐付かない'
+          assert_includes output, '✅ 全 1 章: 問題なし', '章としては問題ないと言い切る'
         end
 
         # 全章 ✅ なら表は 1 行へ短縮され、最終行は ✅・終了コード 0

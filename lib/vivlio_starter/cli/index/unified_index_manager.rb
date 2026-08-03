@@ -531,7 +531,8 @@ module VivlioStarter
           Common.log_warn("用語集語がビルド対象章に出現しません: #{name}（#{hint}）")
           # 章別サマリーへブリッジする。全章走査時にしか到達しないので（上のガード）
           # ここに来る指摘は「辞書に残った死語」＝原稿とのズレであり、集計に載せる価値がある。
-          # 特定の章の欠陥ではないため chapter は付けない（「章に紐付かない指摘」へ入る）。
+          # 特定の章の欠陥ではないため chapter は付けない（章別サマリーには出ず、
+          # 最終行の総括にだけ効く。直し方は上のメッセージが言い切っている）。
           PreProcessCommands::IssueRegistry.record(
             severity: :warn, category: :index,
             message: "用語集語が原稿に出現しません: #{name}"

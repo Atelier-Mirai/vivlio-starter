@@ -45,9 +45,6 @@ module VivlioStarter
         # 長い章タイトルは切り詰めて 🔴🟡✅ の縦位置を揃える（揃わないと表として読めない）
         CHAPTER_LABEL_WIDTH = 30
 
-        # 章に紐付かない指摘（Guard 警告など）を示す行ラベル
-        UNATTACHED_LABEL = '章に紐付かない指摘'
-
         # 章タイトル（H1）を探す行数の上限。原稿冒頭にあるため深追いしない
         TITLE_SCAN_LINES = 60
 
@@ -166,12 +163,16 @@ module VivlioStarter
         # 前処理はファイル単位（並列）で流れるため 🔴🟡 が章をまたいで混在する。
         # 「どの章に何件あるか」を最後に一覧化して読み取れるようにする。
         # 指摘ゼロの章も載せる（検査したことの証明）が、全章 ✅ なら 1 行へ短縮する。
+        # 章に紐付かない指摘（Guard 警告・索引まわり）は**この表に出さない**。
+        # 件数だけの「章に紐付かない指摘 🟡 警告 1 件」は、著者に何も伝えない
+        # ——何について警告されていて、どう直せばよいかが分からない。
+        # それらは発生源が本文で言い切っており（`vs index:auto を実行すると…`）、
+        # 表に件数を足しても同じ 1 件を二度語るだけになる。
+        # 集計としては最終行（⚠️ Preflight 完了: 警告 N 件）に効いている。
         def print_chapter_summary(entries)
-          by_chapter = PreProcessCommands::IssueRegistry.summary_by_chapter
-          rows = chapter_summary_rows(entries, by_chapter)
-          unattached = by_chapter[nil]
+          rows = chapter_summary_rows(entries, PreProcessCommands::IssueRegistry.summary_by_chapter)
 
-          if unattached.nil? && rows.all? { |_, counts| counts.clean? }
+          if rows.all? { |_, counts| counts.clean? }
             Common.log_result("全 #{rows.size} 章: 問題なし", status: :success) unless rows.empty?
             return
           end
@@ -179,10 +180,6 @@ module VivlioStarter
           Common.log_always ''
           Common.log_always '📋 章別サマリー'
           rows.each { |label, counts| Common.log_always("   #{format_label(label)} #{issue_mark(counts)}") }
-          return unless unattached
-
-          Common.log_always ''
-          Common.log_always("   #{format_label(UNATTACHED_LABEL)} #{issue_mark(unattached)}")
         end
 
         # 表の行（[ラベル, Counts]）を章番号順に組み立てる。
