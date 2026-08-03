@@ -40,13 +40,14 @@
 ## 参照・索引・書誌
 
 - [Low] **脚注・参考文献サポート**: 簡易 BibTeX / CSL 相当の仕組みを検討する。
+- [Low] **索引語数の目安（`BASE_TERMS`）を実測で見直す**: 現在の値は刊行済み技術書 10 冊の実測だが、**`thorough`（丁寧に索引を拾う本）は 2 冊しかない**（226・228）。幅が狭いのは冊数のせいで、その帯が本当に狭いことを意味しない。索引付きの技術書 PDF が増えたら追加計測して更新する。計測方法・生データ・落とし穴は `index-size-calibration-data.md`（§2 に精度の限界、§8 に「語彙リストより機構」の一般則）。
+- [Low] **索引の目安に使う文字数の基準を `vs metrics` と揃える**: 索引語数の目安は「地の文の文字数」（コード・記法を除く）から算出するが、`vs metrics` が著者に見せているのは生の文字数（コード込み・地の文の約 2 倍）で、**著者は目安の根拠になっている数字をどこにも見たことがない**状態にある。`metrics-char-count-basis-report.md` の論点 1〜3（表示と分量基準をどちらへ揃えるか）が決まったら、索引側の基準もそれに合わせる。
 
-> **索引・用語集の仕上げ（RC 対象）は仕様化済み**。次の 2 本へ移した（実装順と依存関係は `STATUS.md`）。
+> **索引・用語集の仕上げ（RC 対象）**。仕様書 3 本のうち 2 本が実装完了。
 >
-> `index-code-protection-unification-spec.md`（インラインコード保護の `Masking` 正典化）は **2026-08-02 に実装完了**。
->
-> - `index-term-selection-spec.md` — どの語を載せるか（スコアの TF 三重計上を解消・閾値を規模非依存の比率へ・一般語の除外提案）
-> - `index-main-reference-spec.md` — 参照をどう見せるか（辞書 `main:` で説明箇所を指す・太字＋先頭・ページ範囲圧縮）
+> - `index-code-protection-unification-spec.md`（インラインコード保護の `Masking` 正典化）… **2026-08-02 完了**
+> - `index-term-selection-spec.md`（どの語を載せるか）… **2026-08-03 完了・全 7 フェーズ**
+> - `index-main-reference-spec.md`（参照をどう見せるか）… **Phase 1〜2 と R3 まで実装済み**。残りは候補の自動提示・未指定の警告・`reference_style`・ページ範囲圧縮
 >
 > 「索引辞書の stale な `context:` を自動で落とす」は **2026-07-16 に実装済み**だったため削除した（`index-glossary-consistency-spec.md`。`enrich_terms_with_context` は現在 `context_live?` で stale を捨てて補充する）。
 >

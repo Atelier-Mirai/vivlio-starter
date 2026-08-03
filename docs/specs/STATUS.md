@@ -11,11 +11,10 @@
 
 ## 一覧
 
-RC に向けた索引・用語集の仕上げ。**この順に実装する**（依存関係は下記メモ）。
+RC に向けた索引・用語集の仕上げ。残り 1 本。
 
 | 仕様書 | 内容 |
 |---|---|
-| `index-term-selection-spec.md` | 「どの語を載せるか」。スコアの TF 三重計上を解消し、閾値を規模非依存の比率へ移し、一般語を `[-i]` 付きで提示する |
 | `index-main-reference-spec.md` | 「参照をどう見せるか」。辞書 `main:` で主要参照（説明箇所）を指し、太字＋先頭に置く。ページ番号の範囲圧縮を含む。**Phase 1〜2 と R3（レビューでの指定）は実装済み** |
 
 ---
@@ -32,6 +31,6 @@ RC に向けた索引・用語集の仕上げ。**この順に実装する**（�
 
 `chapter-rename-followers-spec.md` は **2026-08-03 に実装完了**し `docs/archives/` へ移した。章名を保持する設定を今後足すときは `ChapterRename::FOLLOWERS` へ登録すること（`config-extension-guidelines.md` §4 の隣）。
 
-**`index-term-selection-spec.md` は `index-main-reference-spec.md` より前。** 語が絞られてはじめて、主要参照を指定すべき語の数が現実的になる（実測で 38 語 → 一般語 20 語を外せば 30 語前後）。また後者が使う `TermSpread`（語の広がりを章数の比率で測る）は前者で新設する。
+`index-term-selection-spec.md` は **2026-08-03 に全 7 フェーズ実装完了**し `docs/archives/` へ移した。残る `index-main-reference-spec.md` は Phase 1〜2（辞書 `main:`・`is_main` のタグ付け・太字＋先頭ソート）と R3（レビューファイルでの指定）まで実装済みで、**Phase 3〜6 が未着手**——候補の自動提示・未指定の要約警告・`reference_style` / `max_sub_references`・ページ範囲圧縮。
 
 実装済みの内容は `CHANGELOG.md`、実装時に判明した落とし穴は各仕様書（`docs/archives/`）の「実装記録」節を参照してください。ビルドの枝をまたぐ処理を書くときの前提は `build-pipeline-pitfalls-notes.md` に移しました。
