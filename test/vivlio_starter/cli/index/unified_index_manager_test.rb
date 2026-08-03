@@ -415,6 +415,60 @@ module VivlioStarter
         assert_empty enriched.first['contexts']
       end
 
+      # --- phase: 主要参照の候補提示（index-main-reference-spec.md R2） ---
+
+      # 6 章のうち 3 章（0.5 >= 0.33）に出る語を作る。判定の下限は TermSpread と共通
+      def spread_project(term)
+        %w[10-a 20-b 30-c 40-d 50-e 60-f].each_with_index do |name, i|
+          body = i < 3 ? "# #{term}を使う\n\n本文。\n" : "# 別の章\n\n本文。\n"
+          File.write("contents/#{name}.md", body)
+        end
+        %w[10-a 20-b 30-c 40-d 50-e 60-f]
+      end
+
+      def test_suggests_a_chapter_for_widely_spread_terms
+        chapters = spread_project('ノンブル')
+        terms = [{ 'term' => 'ノンブル', 'flags' => 'i' }]
+
+        enriched = @manager.send(:enrich_terms_with_context, terms, chapters)
+
+        assert_equal ['10'], enriched.first['main_tokens']
+        assert enriched.first['main_suggested'], '機械の推測であることを示す'
+      end
+
+      # 著者が既に決めている語には触らない（毎回 NEW! だと新旧が読めない）
+      def test_does_not_overwrite_an_authored_main_reference
+        chapters = spread_project('ノンブル')
+        terms = [{ 'term' => 'ノンブル', 'flags' => 'i', 'main' => '30-c' }]
+
+        enriched = @manager.send(:enrich_terms_with_context, terms, chapters)
+
+        assert_equal ['30'], enriched.first['main_tokens']
+        refute enriched.first['main_suggested']
+      end
+
+      # 2〜3 章にしか出ない語は索引のページ番号がそのまま案内として働く
+      def test_no_suggestion_for_narrowly_used_terms
+        File.write('contents/10-intro.md', "# ノンブル\n\n本文。\n")
+        terms = [{ 'term' => 'ノンブル', 'flags' => 'i' }]
+
+        enriched = @manager.send(:enrich_terms_with_context, terms, ['10-intro'])
+
+        assert_nil enriched.first['main_tokens']
+      end
+
+      # reference_style: all は主要参照の扱いを丸ごと切る設定。
+      # 使わない機能の候補を出し続けるのはノイズにしかならない。
+      def test_no_suggestion_when_the_feature_is_turned_off
+        chapters = spread_project('ノンブル')
+        terms = [{ 'term' => 'ノンブル', 'flags' => 'i' }]
+        @manager.instance_variable_get(:@config)[:reference_style] = 'all'
+
+        enriched = @manager.send(:enrich_terms_with_context, terms, chapters)
+
+        assert_nil enriched.first['main_tokens']
+      end
+
       # --- phase: 未出現の用語集語警告（R4） ---
 
       # R4: 今回のスキャンに出現しない g 語は catalog 未登録の出現章名つきで警告される（掲載は維持）

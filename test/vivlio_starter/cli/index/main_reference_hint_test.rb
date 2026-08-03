@@ -81,20 +81,27 @@ module VivlioStarter
           assert_empty hint_for(main: nil, chapters: %w[10-a 20-b 30-c]).strip
         end
 
-        # 比率は book.yml で調整できる。1.0 なら全章に出る語しか promote しない
-        def test_ratio_is_configurable
-          assert_empty hint_for(main: nil, ratio: 1.0).strip
+        # 機能を切っている著者には促さない。使わない機能の未設定を促すのは筋が通らない。
+        # 促しを止める手段はこれ 1 つ——比率を 1.0 にして黙らせる形は、
+        # 意図が値から読めないので設定にしていない。
+        def test_stays_silent_when_the_feature_is_turned_off
+          assert_empty hint_for(main: nil, style: 'all').strip
+          assert_empty PreProcessCommands::IssueRegistry.issues
+        end
+
+        def test_still_warns_for_the_other_styles
+          assert_match(/1 語あります/, hint_for(main: nil, style: 'main_only'))
         end
 
         private
 
         # 「ノンブル」が appears_in の章に出る最小プロジェクトを組んで R7 だけを呼ぶ
-        def hint_for(main:, appears_in: %w[10-a 20-b 30-c], chapters: CHAPTERS, build: nil, ratio: nil)
+        def hint_for(main:, appears_in: %w[10-a 20-b 30-c], chapters: CHAPTERS, build: nil, style: nil)
           Dir.mktmpdir('vs-main-ref-hint-') do |dir|
             Dir.chdir(dir) do
               write_project(chapters, appears_in, main)
               manager = UnifiedIndexManager.new
-              manager.instance_variable_get(:@config)[:main_reference_hint_ratio] = ratio if ratio
+              manager.instance_variable_get(:@config)[:reference_style] = style if style
 
               out, err = capture_io do
                 manager.warn_missing_main_references(build || chapters)

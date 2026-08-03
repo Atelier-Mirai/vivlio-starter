@@ -466,8 +466,11 @@ module VivlioStarter
       # 部分ビルドでは黙る。出現章数の比率は全章を走査したときにしか意味を持たず、
       # 1 章だけを対象にすると全語が「広い」判定になる
       # （warn_unmatched_glossary_terms と同じ立場）。
+      # `reference_style: all` で機能を切っている著者にも促さない。
       # @param chapters [Array<String>] ビルド対象章
       def warn_missing_main_references(chapters)
+        return if main_reference_disabled?
+
         build_targets = chapters.map { File.basename(it.to_s, '.md') }
         return unless full_catalog_scope?(build_targets)
 
@@ -475,7 +478,7 @@ module VivlioStarter
         return if pending.empty?
 
         spreads = IndexCommands::TermSpread.measure(pending, chapters)
-        wide = IndexCommands::TermSpread.common_terms(spreads, ratio: main_reference_hint_ratio)
+        wide = IndexCommands::TermSpread.common_terms(spreads, ratio: MAIN_REFERENCE_HINT_RATIO)
         return if wide.empty?
 
         IndexCommands.add_post_build_message(
@@ -641,11 +644,24 @@ module VivlioStarter
         resolved
       end
 
-      # 一般語とみなす出現章数の比率（book.yml で調整可）
+      # 一般語とみなす出現章数の比率（book.yml で調整可）。
+      # 「どこから外すべきか」は本の性格で変わるので、つまみとして意味がある。
       def common_term_ratio = (@config[:common_term_ratio] || 0.5).to_f
 
-      # 主要参照の指定を促す出現章数の比率（book.yml で調整可）
-      def main_reference_hint_ratio = (@config[:main_reference_hint_ratio] || 0.33).to_f
+      # 主要参照の指定を促す語の広がり（book.yml のキーにはしない）。
+      #
+      # つまみにしなかった理由は 2 つある。(1) 著者が 0.33 を 0.4 に変えるべきかを
+      # 判断する材料が無い。(2) 唯一の実需だった「警告を止めたい」は
+      # `reference_style: all`（主要参照の機能を丸ごと切る）が担うべきで、
+      # 比率を 1.0 にして黙らせるのは意図が値から読めない。
+      #
+      # 値は実測から。本書（27 章・索引語 153 語）で 55 語が該当し、
+      # そのうち 53 語に候補を出せた（index-main-reference-spec.md §7.1）。
+      MAIN_REFERENCE_HINT_RATIO = 0.33
+
+      # 主要参照の扱いを著者が切っているか（`reference_style: all`）。
+      # 切っているなら候補も警告も出さない——使わない機能の未設定を促すのは筋が通らない。
+      def main_reference_disabled? = @config[:reference_style].to_s == 'all'
 
       # 辞書の basename を、著者が読みやすい章トークン（番号）へ落とす
       def chapter_tokens(main) = Array(main).map { it.to_s[/\A\d+/] || it.to_s }
@@ -657,7 +673,9 @@ module VivlioStarter
       # その集合はビルド時の警告（R7）と同一にしてある——警告を見た著者が
       # レビューファイルを開けば、そこに候補が並んでいる形になる。
       def suggest_main_references(terms, spreads, chapters)
-        targets = IndexCommands::TermSpread.common_terms(spreads, ratio: main_reference_hint_ratio)
+        return {} if main_reference_disabled?
+
+        targets = IndexCommands::TermSpread.common_terms(spreads, ratio: MAIN_REFERENCE_HINT_RATIO)
                                            .map(&:term).to_set
         pending = terms.select { targets.include?(it['term']) && !it['main'] }
         return {} if pending.empty?
