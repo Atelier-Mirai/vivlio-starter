@@ -96,7 +96,7 @@ module VivlioStarter
           if File.exist?(File.join('config', 'book.yml'))
             sync_scaffold!(cmd)
           else
-            Common.log_always('ℹ️ 書籍プロジェクト外のため、雛形の追従はスキップします（プロジェクト直下で再実行すると適用できます）。')
+            Common.log_always('💡 書籍プロジェクト外のため、雛形の追従はスキップします（プロジェクト直下で再実行すると適用できます）。')
             0
           end
 

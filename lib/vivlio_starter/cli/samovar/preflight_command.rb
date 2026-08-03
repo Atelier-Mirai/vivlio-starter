@@ -118,7 +118,7 @@ module VivlioStarter
           print_preflight_summary
 
           # 終了コードは 🔴 の有無だけで決める。画面に出た絵文字と CI の成否が一致し、
-          # 「⚠️ 警告 N 件（ビルドは可能です）」と言いながら 1 を返す食い違いが起きない。
+          # 「❗ 警告 N 件（ビルドは可能です）」と言いながら 1 を返す食い違いが起きない。
           # 従来は LinkImageValidator.any_issues?（severity を見ない）で判定していたため、
           # 裸 URL の警告だけでも 1 を返していた。
           PreProcessCommands::IssueRegistry.counts.errors.positive? ? 1 : 0
@@ -168,7 +168,7 @@ module VivlioStarter
         # ——何について警告されていて、どう直せばよいかが分からない。
         # それらは発生源が本文で言い切っており（`vs index:auto を実行すると…`）、
         # 表に件数を足しても同じ 1 件を二度語るだけになる。
-        # 集計としては最終行（⚠️ Preflight 完了: 警告 N 件）に効いている。
+        # 集計としては最終行（❗ Preflight 完了: 警告 N 件）に効いている。
         def print_chapter_summary(entries)
           rows = chapter_summary_rows(entries, PreProcessCommands::IssueRegistry.summary_by_chapter)
 

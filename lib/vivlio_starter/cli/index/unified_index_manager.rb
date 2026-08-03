@@ -449,9 +449,9 @@ module VivlioStarter
         return unless limitation.any?
 
         message = if limitation.style == 'main_only'
-                    "ℹ️ 索引を主要参照のみで組みました（index.reference_style: main_only・#{limitation.size} 語）"
+                    "💡 索引を主要参照のみで組みました（index.reference_style: main_only・#{limitation.size} 語）"
                   else
-                    "ℹ️ 索引の副次参照を #{limitation.size} 語で #{limitation.limit} 件までに絞りました" \
+                    "💡 索引の副次参照を #{limitation.size} 語で #{limitation.limit} 件までに絞りました" \
                     "（index.max_sub_references: #{limitation.limit}）"
                   end
         IndexCommands.add_post_build_message(message)

@@ -250,7 +250,7 @@ module VivlioStarter
           assert_match(/10 alpha\s+✅/, output)
         end
 
-        # 警告のみなら最終行は ⚠️（ビルドは可能）で終了コード 0
+        # 警告のみなら最終行は ❗（ビルドは可能）で終了コード 0
         # Guard 警告（章に紐付かない）も最終判定に反映される（§0-2 の非対称の解消）
         def test_should_report_warning_only_and_exit_0
           output, status = run_preflight(entries: fixture_entries('10-alpha')) do
@@ -260,7 +260,7 @@ module VivlioStarter
           end
 
           assert_equal 0, status
-          assert_includes output, '⚠️ Preflight 完了: 警告 1 件（ビルドは可能です）'
+          assert_includes output, '❗ Preflight 完了: 警告 1 件（ビルドは可能です）'
         end
 
         # 章に紐付かない指摘は章別サマリーに出さない。件数だけの
@@ -299,7 +299,7 @@ module VivlioStarter
           end
 
           assert_equal 0, status, '警告のみなら終了コードは 0'
-          assert_includes output, '⚠️ Preflight 完了: 警告 1 件（ビルドは可能です）'
+          assert_includes output, '❗ Preflight 完了: 警告 1 件（ビルドは可能です）'
         end
 
         # 危険スキームは 🔴 なので終了コード 1（セキュリティ検出を CI で止める）

@@ -314,7 +314,7 @@ module VivlioStarter
           return true
         end
 
-        # 「不足あり」も結末なので log_result で締める（⚠️ = 実行は成立したが要対応）
+        # 「不足あり」も結末なので log_result で締める（❗ = 実行は成立したが要対応）
         Common.log_result("不足しているツール: #{describe_missing(missing).join(', ')}（#{missing.size} 件）",
                           status: :warning)
 
@@ -1135,7 +1135,7 @@ module VivlioStarter
           Common.log_always("   実行ファイル: #{binary_path}")
           unless path_included?(paths[:bin])
             if ensure_zsh_path(paths[:bin])
-              Common.log_always('ℹ️ ~/.zshrc に PATH を追記しました。新しいシェルで有効になります')
+              Common.log_always('💡 ~/.zshrc に PATH を追記しました。新しいシェルで有効になります')
             else
               Common.log_always(path_hint_message(paths[:bin], :macos))
             end
@@ -1290,7 +1290,7 @@ module VivlioStarter
                        when :macos, :linux then '$HOME/.local/bin'
                        else bin_dir
                        end
-        "ℹ️ PATH に #{display_path} を追加すると waifu2x-ncnn-vulkan が利用可能になります"
+        "💡 PATH に #{display_path} を追加すると waifu2x-ncnn-vulkan が利用可能になります"
       end
     end
   end

@@ -89,7 +89,7 @@ module VivlioStarter
         with_host_os('linux') do
           outputs = []
 
-          # 診断の締めは log_result（⚠️ 不足あり）で出るため、両方のチャネルを拾う
+          # 診断の締めは log_result（❗ 不足あり）で出るため、両方のチャネルを拾う
           Common.stub :log_result, ->(message, **) { outputs << message } do
             Common.stub :log_always, ->(message) { outputs << message } do
               stub_logging_without_echo do

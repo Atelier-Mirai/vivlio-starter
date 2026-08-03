@@ -549,14 +549,20 @@ module VivlioStarter
         format_detail(detail).each { |line| emit("#{DETAIL_INDENT}#{line}") }
       end
 
-      # 処理の最終結果を報告する（✅/⚠️/❌/📚）。ログレベルに関わらず常に表示。
+      # 処理の最終結果を報告する（✅/❗/❌/📚）。ログレベルに関わらず常に表示。
       # :warning は「警告はあるが処理は成立した」中間の結末を表す
       # （preflight の警告のみ＝終了コード 0 のケース）。
+      #
+      # **異体字セレクタ（U+FE0F）を伴う絵文字は使わないこと。** `⚠️`（U+26A0 + FE0F）は
+      # East Asian Width が N の文字記号を VS16 で絵文字化しているだけなので、
+      # **幅の扱いが端末に委ねられ半角で描かれる**——桁が揃わず表が崩れる。
+      # ここで使う 4 つはいずれも単一コードポイントで EAW=W（全角固定）。
+      # 新しいアイコンを足すときも同じ条件を満たすものを選ぶ。
       # @param status [:success, :warning, :failure, :artifact] アイコンの種別
       def log_result(msg, status:)
         icon = case status
               when :success  then "✅"
-              when :warning  then "⚠️"
+              when :warning  then "❗"
               when :failure  then "❌"
               when :artifact then "📚"
               end
