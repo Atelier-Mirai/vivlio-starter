@@ -338,7 +338,6 @@ module VivlioStarter
           end
 
           PreProcessCommands::LinkImageValidator.print_summary
-          PreProcessCommands::LinkImageValidator.print_other_warnings_note
         end
 
         # catalog を引かずに手組みする Entry。常に本章（chapter）扱い（spec §1.1）。

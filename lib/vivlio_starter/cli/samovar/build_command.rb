@@ -226,7 +226,6 @@ module VivlioStarter
           PreProcessCommands::LinkImageValidator.check_external_urls!
           # 検証サマリーを表示
           PreProcessCommands::LinkImageValidator.print_summary
-          PreProcessCommands::LinkImageValidator.print_other_warnings_note
 
           common.log_success("単章ビルドが完了しました: #{generated_pdf}")
           created_files = [generated_pdf].compact.select { File.exist?(it) }
@@ -259,7 +258,6 @@ module VivlioStarter
           PreProcessCommands::LinkImageValidator.check_external_urls!
           # 検証サマリーを表示
           PreProcessCommands::LinkImageValidator.print_summary
-          PreProcessCommands::LinkImageValidator.print_other_warnings_note
 
           common.log_success('全ファイルのビルドが完了しました')
 

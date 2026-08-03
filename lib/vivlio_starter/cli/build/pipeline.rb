@@ -380,11 +380,18 @@ module VivlioStarter
           Common.log_action("[Timer] #{step.label} finish: #{format('%.2f', elapsed)}s")
         end
 
+        # 進行中であることを表す語。
+        # preflight は原稿を検査するだけで何も組まないので「ビルド中」とは言わない
+        # ——出力物ができると思われると、実行を止める判断を誤らせる。
+        PROGRESS_VERB = { preflight: '点検中' }.freeze
+        DEFAULT_PROGRESS_VERB = 'ビルド中'
+
         # スピナーに出す進捗の見出し。総数が分かるので「あと何段階か」が読める
         def spinner_label(step, position)
-          return "ビルド中: #{step.label}" if position.nil?
+          verb = PROGRESS_VERB.fetch(@mode, DEFAULT_PROGRESS_VERB)
+          return "#{verb}: #{step.label}" if position.nil?
 
-          "ビルド中: #{step.label} … (#{position}/#{@steps.size})"
+          "#{verb}: #{step.label} … (#{position}/#{@steps.size})"
         end
 
         # クリーンオプションに応じて中間生成物を削除する

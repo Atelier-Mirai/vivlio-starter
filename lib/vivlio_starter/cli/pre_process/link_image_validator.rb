@@ -44,10 +44,6 @@ module VivlioStarter
         # ファイル単位の検証結果
         ValidationReport = Data.define(:filename, :image_issues, :link_issues)
 
-        # このモジュール自身が IssueRegistry へ積むカテゴリ。
-        # print_other_warnings_note が「ほかの発生源の警告」を数えるために使う。
-        LINK_IMAGE_CATEGORIES = %i[image link code_include].freeze
-
         # --- グローバル蓄積用（スレッドセーフ） ---
         @monitor = Monitor.new
         @reports = []
@@ -228,23 +224,6 @@ module VivlioStarter
               end
             end
             record_to_registry(issue)
-          end
-
-          # ビルド側の 1 行（preflight-chapter-summary-spec.md §2.4）。
-          # print_summary はリンク・画像しか語らないため、他の発生源（Guard 警告・
-          # クロスリファレンス・QueryStream）の警告が埋もれないよう件数を知らせる。
-          # 章別の内訳は vs preflight に任せる（build の主役はビルド成果物の一覧）。
-          #
-          # **カテゴリ名は必ず添える。** 件数だけだと、逐次ログに本文が出ている
-          # 警告と同一なのか別物なのか読み取れず、「まだ他に何かある」と読まれる。
-          def print_other_warnings_note
-            others = IssueRegistry.issues.select do
-              it.severity == :warn && !LINK_IMAGE_CATEGORIES.include?(it.category)
-            end
-            return if others.empty?
-
-            Common.log_warn("ほか警告 #{others.size} 件（#{IssueRegistry.category_summary(others)}）" \
-                            '——詳細は vs preflight で確認できます')
           end
 
           private

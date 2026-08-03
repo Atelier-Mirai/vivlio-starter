@@ -149,6 +149,35 @@ module VivlioStarter
         assert_equal PREFLIGHT_MODE, op_keys(pipeline)
       end
 
+      # --- phase: 進行表示の語彙 ---
+
+      # preflight は原稿を検査するだけで何も組まない。「ビルド中」と出ると
+      # 出力物ができると思われ、実行を止める判断を誤らせる。
+      def test_preflight_does_not_claim_to_be_building
+        pipeline = build_pipeline(mode: :preflight, targets: targets_from(%w[pdf]))
+        label = pipeline.send(:spinner_label, steps(pipeline).first, 1)
+
+        assert_includes label, '点検中'
+        refute_includes label, 'ビルド'
+      end
+
+      def test_build_modes_still_say_building
+        %i[full single].each do |mode|
+          pipeline = build_pipeline(mode:, targets: targets_from(%w[pdf]))
+          label = pipeline.send(:spinner_label, steps(pipeline).first, 1)
+
+          assert_includes label, 'ビルド中', "#{mode} は従来どおり"
+        end
+      end
+
+      # 「あと何段階か」が読めることは進行表示の主目的
+      def test_label_carries_the_position
+        pipeline = build_pipeline(mode: :preflight, targets: targets_from(%w[pdf]))
+        total = steps(pipeline).size
+
+        assert_includes pipeline.send(:spinner_label, steps(pipeline).first, 2), "(2/#{total})"
+      end
+
       # 相の割り当て（build-target-parallelization-spec.md §2）。
       #
       # **`:pdf` 相に `html/` へ書くステップを入れてはならない**——EPUB 枝は

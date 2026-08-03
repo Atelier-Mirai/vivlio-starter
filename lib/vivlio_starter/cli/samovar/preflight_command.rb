@@ -183,24 +183,6 @@ module VivlioStarter
 
           Common.log_always ''
           Common.log_always("   #{format_label(UNATTACHED_LABEL)} #{issue_mark(unattached)}")
-          print_unattached_details
-        end
-
-        # 「章に紐付かない指摘」の中身を並べる。
-        #
-        # 章に紐付く指摘は章名と行番号が出るので発生源を辿れるが、こちらは
-        # 件数だけだと**何の話か分からないまま終わる**。build 側は
-        # 「詳細は vs preflight で確認できます」と案内しているので、
-        # ここで内訳を出さないと案内が堂々巡りになる。
-        #
-        # 全件出してよい。この枠に入るのは横断的な指摘（Guard・索引・用語集）だけで、
-        # 章ごとの指摘のように数十件へ膨らむことがない。
-        def print_unattached_details
-          PreProcessCommands::IssueRegistry.issues.reject { it.chapter }.each do |issue|
-            mark = issue.severity == :error ? '🔴' : '🟡'
-            label = PreProcessCommands::IssueRegistry.category_label(issue.category)
-            Common.log_always("      #{mark} [#{label}] #{issue.message}")
-          end
         end
 
         # 表の行（[ラベル, Counts]）を章番号順に組み立てる。

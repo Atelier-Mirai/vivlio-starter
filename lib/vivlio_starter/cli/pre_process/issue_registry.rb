@@ -34,15 +34,6 @@ module VivlioStarter
           def clean? = total.zero?
         end
 
-        # category の著者向け表示名。件数だけの要約（「ほか警告 1 件（索引）」）で使う。
-        # 集計側が「何の警告か」を一言でも言えないと、逐次ログに出ている本文と
-        # 結び付かず「まだ他に何かある」と読まれる。
-        CATEGORY_LABELS = {
-          image: '画像', link: 'リンク', code_include: 'コード取り込み',
-          cross_reference: 'クロスリファレンス', query_stream: 'データ展開',
-          notation: '記法', guard: '前提条件', index: '索引・用語集'
-        }.freeze
-
         # --- グローバル蓄積用（スレッドセーフ） ---
         @monitor = Monitor.new
         @issues = []
@@ -78,18 +69,6 @@ module VivlioStarter
           def summary_by_chapter
             issues.group_by(&:chapter).transform_values { tally(it) }
           end
-
-          # category の表示名。未知のカテゴリはシンボルをそのまま返す
-          # ——黙って隠すより名前が出たほうが発生源を辿れる。
-          # @param category [Symbol]
-          # @return [String]
-          def category_label(category) = CATEGORY_LABELS.fetch(category, category.to_s)
-
-          # 指摘の集合を「索引・用語集」「リンク・画像」のような表示名の並びにする。
-          # 出現順を保つ（記録順＝処理順なので、著者が見た逐次ログの順に近い）。
-          # @param list [Array<Issue>]
-          # @return [String]
-          def category_summary(list) = list.map { category_label(it.category) }.uniq.join('・')
 
           private
 
