@@ -32,8 +32,12 @@ module VivlioStarter
           @glossary_removed = 0
           @body_removed = 0
           @index_removed = 0
+          @index_ranges = 0
           @files_modified = []
         end
+
+        # 索引ページで範囲表記へ畳んだ箇所の数（R8・テストと進捗表示から見る）
+        attr_reader :index_ranges
 
         # 重複排除を実行するメインメソッド
         # @return [Result] 処理結果
@@ -58,6 +62,7 @@ module VivlioStarter
           unless index_anchor_to_page.empty?
             Common.log_info("[backlink-dedup] #{index_anchor_to_page.size} 件の index anchor → page マッピングを構築しました")
             deduplicate_index_page_links!(index_anchor_to_page)
+            Common.log_info("[backlink-dedup] 索引の連続ページを #{@index_ranges} 箇所で範囲表記にまとめました") if @index_ranges.positive?
           end
 
           build_result
@@ -224,6 +229,99 @@ module VivlioStarter
             link.remove
             @index_removed += 1
           end
+
+          compress_page_ranges!(dd, index_anchor_to_page)
+        end
+
+        # --- 索引ページのページ範囲圧縮（index-main-reference-spec.md R8） ---
+
+        # 「12, 13, 14, …, 38」を「12–38」へ畳む。
+        #
+        # ページ番号は本来 CSS の target-counter がレンダ時に解決するので Ruby 側は
+        # 知らない。dedup 段だけが PdfPageMapExtractor の anchor → 通しページ番号を
+        # 持っているため、連続判定はここでしかできない。
+        #
+        # 畳んだ <dd> には class="resolved" を立て、区切りをリテラルのテキストノードで
+        # 持つ形へ書き換える。従来の `a:not(:last-child)::after` によるカンマ生成は
+        # <span> でくくると兄弟の前提が壊れるため、CSS 側を `dd:not(.resolved)` へ
+        # 限定してある（§8.2）。EPUB / Kindle は dedup を通らないので従来の組み方のまま。
+        def compress_page_ranges!(dd, index_anchor_to_page)
+          minimum = page_range_min
+          return if minimum < 2
+
+          entries = dd.css('a').map { occurrence_of(it, index_anchor_to_page) }
+          return if entries.size < minimum
+
+          items = group_into_ranges(entries, minimum)
+          return if items.none? { it.size > 1 }
+
+          rebuild_dd!(dd, items)
+        end
+
+        # 索引リンク 1 本ぶんの判定材料
+        Occurrence = Data.define(:link, :page, :spine, :main, :roman)
+
+        def occurrence_of(link, lookup)
+          classes = link['class'].to_s.split
+          page_key = lookup[extract_anchor_id_from_href(link['href'].to_s)]
+          Occurrence.new(
+            link:, spine: page_key&.first, page: page_key&.last,
+            main: classes.include?('main-ref'), roman: classes.include?('frontmatter')
+          )
+        end
+
+        # 連続した並びを取り出し、minimum 未満の run は 1 件ずつへ戻す
+        def group_into_ranges(entries, minimum)
+          runs = entries.each_with_object([]) do |entry, acc|
+            if acc.last && continues?(acc.last.last, entry)
+              acc.last << entry
+            else
+              acc << [entry]
+            end
+          end
+          runs.flat_map { it.size >= minimum ? [it] : it.map { |entry| [entry] } }
+        end
+
+        # 範囲にまとめてよい隣接か。
+        # - **主要参照は含めない**。太字の一点であることに意味がある
+        # - **前付け（ローマ数字）と本文（アラビア数字）はまたがない**。
+        #   番号系が違うため「iv-12」という無意味な範囲ができる
+        def continues?(prev, curr)
+          return false if prev.main || curr.main
+          return false if prev.roman != curr.roman
+          return false if prev.page.nil? || curr.page.nil? || prev.spine != curr.spine
+
+          curr.page == prev.page + 1
+        end
+
+        def rebuild_dd!(dd, items)
+          doc = dd.document
+          dd.children.unlink
+
+          items.each_with_index do |item, position|
+            dd.add_child(doc.create_text_node(', ')) if position.positive?
+            dd.add_child(item.size == 1 ? item.first.link : build_page_range(doc, item))
+          end
+
+          dd['class'] = [dd['class'], 'resolved'].compact.reject { it.to_s.strip.empty? }.join(' ')
+          @index_ranges += items.count { it.size > 1 }
+        end
+
+        # 範囲は <span> でひとまとまりにする。ダッシュの前後で行が割れないよう
+        # CSS 側で white-space: nowrap を当てている
+        def build_page_range(doc, item)
+          span = Nokogiri::XML::Node.new('span', doc)
+          span['class'] = 'page-range'
+          span.add_child(item.first.link)
+          span.add_child(doc.create_text_node('–'))
+          span.add_child(item.last.link)
+          span
+        end
+
+        # 連続がこの数以上のときだけ範囲表記にする（2 なら "12, 13" のほうが読みやすい）
+        def page_range_min
+          value = Common::CONFIG.index.page_range_min
+          value.nil? ? 3 : value.to_i
         end
 
         # --- ヘルパーメソッド ---

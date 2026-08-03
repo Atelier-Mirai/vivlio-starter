@@ -11,11 +11,7 @@
 
 ## 一覧
 
-RC に向けた索引・用語集の仕上げ。残り 1 本。
-
-| 仕様書 | 内容 |
-|---|---|
-| `index-main-reference-spec.md` | 「参照をどう見せるか」。辞書 `main:` で主要参照（説明箇所）を指し、太字＋先頭に置く。ページ番号の範囲圧縮を含む。**Phase 1〜2 と R3（レビューでの指定）は実装済み** |
+**実装待ちの仕様書はありません。** 次の起点は `PLANNED.md` / `at-directive-ideas.md` です。
 
 ---
 
@@ -31,6 +27,6 @@ RC に向けた索引・用語集の仕上げ。残り 1 本。
 
 `chapter-rename-followers-spec.md` は **2026-08-03 に実装完了**し `docs/archives/` へ移した。章名を保持する設定を今後足すときは `ChapterRename::FOLLOWERS` へ登録すること（`config-extension-guidelines.md` §4 の隣）。
 
-`index-term-selection-spec.md` は **2026-08-03 に全 7 フェーズ実装完了**し `docs/archives/` へ移した。残る `index-main-reference-spec.md` は Phase 1〜2（辞書 `main:`・`is_main` のタグ付け・太字＋先頭ソート）と R3（レビューファイルでの指定）まで実装済みで、**Phase 3〜6 が未着手**——候補の自動提示・未指定の要約警告・`reference_style` / `max_sub_references`・ページ範囲圧縮。
+`index-term-selection-spec.md` と `index-main-reference-spec.md` は **2026-08-03 に実装完了**し `docs/archives/` へ移した。索引・用語集の仕上げ（RC 対象・仕様書 3 本）はこれで全て終わっている。残るのは**実機目視**だけで、`PLANNED.md`「Kindle Previewer 実機確認の積み残し」に 4 件たまっている。
 
 実装済みの内容は `CHANGELOG.md`、実装時に判明した落とし穴は各仕様書（`docs/archives/`）の「実装記録」節を参照してください。ビルドの枝をまたぐ処理を書くときの前提は `build-pipeline-pitfalls-notes.md` に移しました。

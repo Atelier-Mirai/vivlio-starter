@@ -110,14 +110,32 @@ body.vs-kindle .index h1 {
   content: target-counter(attr(href url), page);
 }
 
-/* 複数ページ番号をカンマ区切りで表示 */
-.index-list dd a:not(:last-child)::after {
+/* 未解決（EPUB / Kindle / dedup 無効時）は区切りを CSS が作る。
+   複数ページ番号をカンマ区切りで表示 */
+.index-list dd:not(.resolved) a:not(:last-child)::after {
   content: target-counter(attr(href url), page) ", ";
 }
 
 /* 最後のリンクはカンマなし */
-.index-list dd a:last-child::after {
+.index-list dd:not(.resolved) a:last-child::after {
   content: target-counter(attr(href url), page);
+}
+
+/* ----------------------------------------------------------------
+ * 解決済み（PDF の dedup 段でページ範囲を畳んだ dd）
+ * ----------------------------------------------------------------
+ * 「12, 13, 14, …, 38」を「12-38」へまとめる際、リンクを <span> でくくると
+ * a:not(:last-child) という兄弟の前提が壊れる。そこで区切りはマークアップが
+ * リテラルのテキストノードとして持ち、CSS はページ番号だけを描く。
+ * この class が付くのは PDF 経路だけ——EPUB / Kindle は dedup を通らない
+ * html/ の原本から作るため、上のフォールバックで組まれる。 */
+.index-list dd.resolved a::after {
+  content: target-counter(attr(href url), page);
+}
+
+/* ページ範囲のダッシュの前後で行を割らない */
+.index-list .page-range {
+  white-space: nowrap;
 }
 
 /* ----------------------------------------------------------------
@@ -137,7 +155,7 @@ body.vs-kindle .index h1 {
   content: target-counter(attr(href url), page, lower-roman);
 }
 
-.index-list dd a.frontmatter:not(:last-child)::after {
+.index-list dd:not(.resolved) a.frontmatter:not(:last-child)::after {
   content: target-counter(attr(href url), page, lower-roman) ", ";
 }
 

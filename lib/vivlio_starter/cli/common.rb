@@ -309,7 +309,10 @@ module VivlioStarter
           # 読まない。書かれていたら UnifiedIndexManager#warn_retired_keys が移行を促す。
           index: { auto_discovery: nil, title: nil, backlink_dedup: nil,
                    target_terms: nil, candidate_pool: nil, auto_approve: nil,
-                   common_term_ratio: nil },
+                   common_term_ratio: nil,
+                   # 主要参照（説明箇所）— index-main-reference-spec.md R6〜R8
+                   reference_style: nil, max_sub_references: nil,
+                   main_reference_hint_ratio: nil, page_range_min: nil },
           glossary: { title: nil, require_definition: nil, max_definition_length: nil,
                       backlink_dedup: nil },
           # ビルド対象章の絞り込み（例: "54-56" / [11, 12]）。未指定はフルビルド

@@ -28,6 +28,7 @@ require_relative 'unified_page_builder'
 require_relative 'index_plan_reporter'
 require_relative 'term_ranking'
 require_relative 'term_spread'
+require_relative 'main_reference_suggester'
 require_relative '../token_resolver'
 require_relative 'yomi_inferrer'
 
@@ -373,6 +374,7 @@ module VivlioStarter
 
         # 索引ページ生成
         builder.build_index!
+        report_reference_style(builder)
 
         # 用語集ページ生成（glossary_enabled かつ g フラグの用語がある場合）
         # スキャンは辞書を書かない（R1）ためリロード不要
@@ -386,6 +388,8 @@ module VivlioStarter
 
         # R7: 索引候補の抽出（vs index:auto）が未実施の章を検出して案内
         warn_unscanned_chapters(chapters)
+        # 主要参照が未指定で広く散らばっている語を要約 1 行で促す
+        warn_missing_main_references(chapters)
 
         return unless scanner.config_missing || scanner.no_matches
 
@@ -433,6 +437,57 @@ module VivlioStarter
             message: '索引候補の抽出が未実施です（vs index:auto を実行してください）'
           )
         end
+      end
+
+      # 参照を絞ったことをビルド末尾で報告する（R6・no silent caps）。
+      #
+      # 索引が短くなった理由が設定にあると分からないと、著者は「索引語が
+      # 消えた」と読む。何語をどの設定で絞ったかまで書く。
+      # @param builder [UnifiedPageBuilder] 生成を終えたビルダー
+      def report_reference_style(builder)
+        limitation = builder.reference_limitation
+        return unless limitation.any?
+
+        message = if limitation.style == 'main_only'
+                    "ℹ️ 索引を主要参照のみで組みました（index.reference_style: main_only・#{limitation.size} 語）"
+                  else
+                    "ℹ️ 索引の副次参照を #{limitation.size} 語で #{limitation.limit} 件までに絞りました" \
+                    "（index.max_sub_references: #{limitation.limit}）"
+                  end
+        IndexCommands.add_post_build_message(message)
+      end
+
+      # 広く散らばっているのに主要参照が未指定の索引語を促す（R7）。
+      #
+      # **要約 1 行だけ**にする。実測で該当は 30〜38 語あり、語ごとに 1 行ずつ出すと
+      # ビルドログが埋まる。しかもそこから修正には進めない——直す場は
+      # レビューファイルなので、導線はそちらへ向ける（語ごとの候補は R2 が出す）。
+      #
+      # 部分ビルドでは黙る。出現章数の比率は全章を走査したときにしか意味を持たず、
+      # 1 章だけを対象にすると全語が「広い」判定になる
+      # （warn_unmatched_glossary_terms と同じ立場）。
+      # @param chapters [Array<String>] ビルド対象章
+      def warn_missing_main_references(chapters)
+        build_targets = chapters.map { File.basename(it.to_s, '.md') }
+        return unless full_catalog_scope?(build_targets)
+
+        pending = @terms_manager.index_terms.reject { it['main'] }
+        return if pending.empty?
+
+        spreads = IndexCommands::TermSpread.measure(pending, chapters)
+        wide = IndexCommands::TermSpread.common_terms(spreads, ratio: main_reference_hint_ratio)
+        return if wide.empty?
+
+        IndexCommands.add_post_build_message(
+          "🟡 主要参照が未指定の索引語が #{wide.size} 語あります（索引が引きにくくなります）\n" \
+          '🟡  vs index:auto を実行すると、章の候補付きでレビューファイルに一覧できます'
+        )
+        # 特定の章の欠陥ではないので chapter は付けない。件数は語ごとではなく
+        # **1 件**だけ積む——30 件積むと章別サマリーが索引の話で埋まる。
+        PreProcessCommands::IssueRegistry.record(
+          severity: :warn, category: :index,
+          message: "主要参照が未指定の索引語が #{wide.size} 語あります（vs index:auto で候補を確認できます）"
+        )
       end
 
       # R4: ビルド対象章に 1 回も出現しない用語集語を警告する（掲載自体は維持）。
@@ -588,6 +643,27 @@ module VivlioStarter
 
       # 一般語とみなす出現章数の比率（book.yml で調整可）
       def common_term_ratio = (@config[:common_term_ratio] || 0.5).to_f
+
+      # 主要参照の指定を促す出現章数の比率（book.yml で調整可）
+      def main_reference_hint_ratio = (@config[:main_reference_hint_ratio] || 0.33).to_f
+
+      # 辞書の basename を、著者が読みやすい章トークン（番号）へ落とす
+      def chapter_tokens(main) = Array(main).map { it.to_s[/\A\d+/] || it.to_s }
+
+      # 主要参照が未指定で、広く散らばっている語に候補を添える（R2）。
+      #
+      # 全語には出さない。2〜3 章にしか出ない語なら索引のページ番号がそのまま
+      # 案内として働くので、指定が要るのは「ページ番号の壁」になる語だけである。
+      # その集合はビルド時の警告（R7）と同一にしてある——警告を見た著者が
+      # レビューファイルを開けば、そこに候補が並んでいる形になる。
+      def suggest_main_references(terms, spreads, chapters)
+        targets = IndexCommands::TermSpread.common_terms(spreads, ratio: main_reference_hint_ratio)
+                                           .map(&:term).to_set
+        pending = terms.select { targets.include?(it['term']) && !it['main'] }
+        return {} if pending.empty?
+
+        IndexCommands::MainReferenceSuggester.suggest(pending, chapters)
+      end
 
       # 本文の分量から目安語数を得る（帯の境目に使う）
       def current_estimate(chapters)
@@ -822,6 +898,7 @@ module VivlioStarter
         spreads = IndexCommands::TermSpread.measure(terms, chapters)
         common = IndexCommands::TermSpread.common_terms(spreads, ratio: common_term_ratio)
                                           .to_h { [it.term, it] }
+        suggestions = suggest_main_references(terms, spreads, chapters)
 
         terms.map do |term|
           enriched = term.dup
@@ -833,7 +910,14 @@ module VivlioStarter
 
           # 主要参照はレビューファイルで編集できるよう章トークンとして見せる。
           # 辞書は basename で持つが、著者に見せるのは番号のほうが読みやすい。
-          enriched['main_tokens'] = Array(term['main']).map { it.to_s[/\A\d+/] || it.to_s } if term['main']
+          # 未指定の語には候補を添える（R2）。候補は `NEW!` 付きで出し、
+          # 機械の推測であることを行の上で分かるようにする。
+          if term['main']
+            enriched['main_tokens'] = chapter_tokens(term['main'])
+          elsif (suggested = suggestions[term['term']])
+            enriched['main_tokens'] = chapter_tokens(suggested)
+            enriched['main_suggested'] = true
+          end
 
           # 広く散らばりすぎている語は「一般語」として別枠で提示する（R5）。
           # 外すか残すかは著者が決めるので、ここでは事実を添えるだけ。

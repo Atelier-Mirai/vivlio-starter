@@ -26,6 +26,7 @@
 
 require_relative '../common'
 require_relative 'code_block_stripper'
+require_relative 'term_pattern'
 
 module VivlioStarter
   module CLI
@@ -101,16 +102,8 @@ module VivlioStarter
         end
         private_class_method :resolve_path
 
-        # 辞書エントリの照合パターン（IndexMatchScanner と同じ綴りの約束）
-        def self.term_regexp(entry)
-          raw = entry['pattern'].to_s
-          return Regexp.new(Regexp.escape(entry['term'].to_s)) if raw.empty?
-
-          body = raw.start_with?('/') && raw.end_with?('/') ? raw[1...-1] : raw
-          Regexp.new(body)
-        rescue StandardError
-          Regexp.new(Regexp.escape(entry['term'].to_s))
-        end
+        # 辞書エントリの照合パターン（綴りの解釈は TermPattern が唯一の定義元）
+        def self.term_regexp(entry) = TermPattern.for(entry)
         private_class_method :term_regexp
       end
     end

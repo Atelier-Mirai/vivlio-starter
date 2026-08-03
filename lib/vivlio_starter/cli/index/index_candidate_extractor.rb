@@ -20,6 +20,7 @@ require_relative '../common'
 require_relative 'yomi_inferrer'
 require_relative 'code_block_stripper'
 require_relative 'scoring_engine'
+require_relative 'term_pattern'
 
 module VivlioStarter
   module CLI
@@ -186,17 +187,8 @@ module VivlioStarter
 
         private
 
-        # 辞書エントリの照合パターン。`pattern` があればそれを、無ければ完全一致。
-        # 綴りの解釈は辞書側の約束（IndexMatchScanner と同じ形）に従う。
-        def term_regexp(entry)
-          raw = entry['pattern'].to_s
-          return Regexp.new(Regexp.escape(entry['term'].to_s)) if raw.empty?
-
-          body = raw.start_with?('/') && raw.end_with?('/') ? raw[1...-1] : raw
-          Regexp.new(body)
-        rescue StandardError
-          Regexp.new(Regexp.escape(entry['term'].to_s))
-        end
+        # 辞書エントリの照合パターン（綴りの解釈は TermPattern が唯一の定義元）
+        def term_regexp(entry) = TermPattern.for(entry)
 
         # 定義パターンから候補を抽出
         def extract_definition_patterns!

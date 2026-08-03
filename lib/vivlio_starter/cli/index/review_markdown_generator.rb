@@ -391,6 +391,10 @@ module VivlioStarter
           # 索引・用語集レビュー
           ※ フラグ: [i]=索引のみ、[g]=用語集のみ、[ig]=両方、[r]=棄却、[-i]=索引から除外、[-g]=用語集から除外
           ※ 読みの修正は ( ) 内を編集。用語集の説明文は空行の後にインデントして記述。
+          ※ 用語の下に `- 主要参照: 21, 22` と書くと、その章での初出が索引で太字＋先頭に並びます。
+             章番号（21）・範囲（21-22）・章名（21-markdown-tutorial）のいずれでも指定できます。
+          ※ 主要参照に `NEW!` が付いているものは機械が推測した候補です。そのままだと採用されます。
+             違う章なら書き換え、指定したくなければ行ごと削除してください。
 
           #{build_terms_section(terms)}
 
@@ -441,8 +445,8 @@ module VivlioStarter
 
           - 外す場合: [-i] のまま `vs index:apply`
           - 残す場合: [i] に戻す
-          - 説明箇所を指定する場合: [i] に戻したうえで、config/index_glossary_terms.yml の
-            該当語へ `main: 21-markdown-tutorial` を書き足す（複数章ならリストで指定）
+          - 説明箇所を指定する場合: [i] に戻したうえで、その語の下の
+            `- 主要参照: 21, 22` の行を整える（行が無ければ書き足してください）
 
         HEADER
       end
@@ -562,7 +566,11 @@ module VivlioStarter
         line += "\n"
 
         # 主要参照（説明箇所）の指定。著者が編集する行なので、機械が出す文脈より先に置く。
-        line += "  - 主要参照: #{Array(term['main_tokens']).join(', ')}\n" if term['main_tokens']
+        # `NEW!` は「今回はじめて提示した候補」＝機械の推測であることの目印（R2）。
+        if term['main_tokens']
+          proposal = term['main_suggested'] ? '`NEW!` ' : ''
+          line += "  - 主要参照: #{proposal}#{Array(term['main_tokens']).join(', ')}\n"
+        end
 
         # 文脈を最大2件表示（Candidatesと同様）
         contexts = term['contexts'] || []

@@ -654,7 +654,139 @@ class TestBacklinkDeduplicator < Minitest::Test
     end
   end
 
+  # --- 索引のページ範囲圧縮テスト（index-main-reference-spec.md R8） ---
+
+  # 「ファイル」が 12〜38 ページに連続して出るとき、番号の壁ではなく範囲で示す。
+  # 連続判定に要る anchor → 通しページ番号を持つのはこの段だけ。
+  def test_should_compress_consecutive_pages_into_a_range
+    dd, = dedup_index_dd(pages: [10, 11, 12])
+
+    assert_equal 'resolved', dd['class'], '区切りをマークアップが持つ形に切り替える'
+    range = dd.css('span.page-range')
+    assert_equal 1, range.size
+    assert_equal %w[#idx-1 #idx-3], range.css('a').map { it['href'][/#.*/] }, '始点と終点だけ残す'
+    assert_includes range.text, '–'
+  end
+
+  # 2 ページなら「12, 13」のほうが読みやすい（page_range_min の既定は 3）
+  def test_should_not_compress_two_consecutive_pages
+    dd, = dedup_index_dd(pages: [10, 11])
+
+    assert_nil dd['class']
+    assert_empty dd.css('span.page-range')
+    assert_equal 2, dd.css('a').size
+  end
+
+  def test_should_leave_non_consecutive_pages_alone
+    dd, = dedup_index_dd(pages: [10, 20, 30])
+
+    assert_nil dd['class']
+    assert_equal 3, dd.css('a').size
+  end
+
+  # 範囲の外に残った参照は、リテラルのカンマで区切る（CSS は番号だけ描く）
+  def test_should_separate_items_with_literal_commas
+    dd, = dedup_index_dd(pages: [10, 11, 12, 40])
+
+    assert_equal 1, dd.css('span.page-range').size
+    assert_includes dd.text, ', '
+    assert_equal %w[#idx-1 #idx-3 #idx-4], dd.css('a').map { it['href'][/#.*/] }
+  end
+
+  # 主要参照は太字の一点であることに意味があるので、範囲に飲み込まない
+  def test_should_never_absorb_the_main_reference_into_a_range
+    dd, = dedup_index_dd(pages: [10, 11, 12, 13], main: 0)
+
+    assert_equal 'main-ref', dd.css('a').first['class'], '主要参照は単独で先頭に残る'
+    range = dd.css('span.page-range')
+    assert_equal 1, range.size
+    assert_equal %w[#idx-2 #idx-4], range.css('a').map { it['href'][/#.*/] }
+  end
+
+  # 前付けはローマ数字、本文はアラビア数字。またぐと「iv-12」という無意味な範囲になる
+  def test_should_not_span_the_frontmatter_boundary
+    dd, = dedup_index_dd(pages: [1, 2, 3], frontmatter: [0, 1])
+
+    assert_empty dd.css('span.page-range'), '番号系をまたぐ連続は範囲にしない'
+    assert_equal 3, dd.css('a').size
+  end
+
+  def test_should_count_the_ranges_it_made
+    _, deduplicator = dedup_index_dd(pages: [10, 11, 12, 20, 21, 22])
+
+    assert_equal 2, deduplicator.index_ranges
+  end
+
+  # EPUB / Kindle は dedup を通らない html/ の原本から作る。
+  # そちらに resolved が付くと、CSS のフォールバック（区切りを ::after が作る）が
+  # 効かなくなり、ページ番号がカンマ無しで並ぶ。
+  def test_should_not_touch_the_epub_source_copy
+    Dir.mktmpdir do |dir|
+      Dir.chdir(dir) do
+        page = <<~HTML
+          <!DOCTYPE html>
+          <html lang="ja"><head><meta charset="UTF-8"><title>索引</title></head>
+          <body class="index-page"><dl class="index-list">
+          <dt>ファイル</dt><dd><a href="01-life.html#idx-1"></a><a href="01-life.html#idx-2"></a><a href="01-life.html#idx-3"></a></dd>
+          </dl></body></html>
+        HTML
+        html_dir = VivlioStarter::CLI::Common::BUILD_HTML_DIR
+        FileUtils.mkdir_p(html_dir)
+        File.write(File.join(html_dir, '_indexpage.html'), page, encoding: 'utf-8')
+        File.write(pdf_path('_indexpage.html'), page, encoding: 'utf-8')
+
+        mapping = build_page_mapping(
+          index_mappings: (1..3).map { { anchor_id: "idx-#{it}", page_index: 9 + it, spine_index: 0 } }
+        )
+        Deduplicator.new(mapping).deduplicate!
+
+        epub_dd = Nokogiri::HTML5(File.read(File.join(html_dir, '_indexpage.html'))).css('.index-list dd').first
+        assert_nil epub_dd['class'], 'EPUB 側の原本は書き換えない'
+        assert_equal 3, epub_dd.css('a').size
+
+        pdf_dd = Nokogiri::HTML5(File.read(pdf_path('_indexpage.html'))).css('.index-list dd').first
+        assert_equal 'resolved', pdf_dd['class'], 'PDF 側だけが解決済みになる'
+      end
+    end
+  end
+
   private
+
+  # 索引の <dd> を 1 つだけ持つページを組んで dedup を通し、結果の <dd> を返す。
+  # @param pages [Array<Integer>] リンクの通しページ番号（この順に並べる）
+  # @param main [Integer, nil] 主要参照にする位置
+  # @param frontmatter [Array<Integer>] 前付け（ローマ数字）にする位置
+  def dedup_index_dd(pages:, main: nil, frontmatter: [])
+    Dir.mktmpdir do |dir|
+      Dir.chdir(dir) do
+        links = pages.each_with_index.map do |_, i|
+          classes = []
+          classes << 'main-ref' if main == i
+          classes << 'frontmatter' if frontmatter.include?(i)
+          attr = classes.empty? ? '' : %( class="#{classes.join(' ')}")
+          %(<a href="01-life.html#idx-#{i + 1}"#{attr}></a>)
+        end
+        File.write(pdf_path('_indexpage.html'), <<~HTML, encoding: 'utf-8')
+          <!DOCTYPE html>
+          <html lang="ja"><head><meta charset="UTF-8"><title>索引</title></head>
+          <body class="index-page"><dl class="index-list">
+          <dt>ファイル</dt><dd>#{links.join}</dd>
+          </dl></body></html>
+        HTML
+
+        mapping = build_page_mapping(
+          index_mappings: pages.each_with_index.map do |page, i|
+            { anchor_id: "idx-#{i + 1}", page_index: page, spine_index: 0 }
+          end
+        )
+
+        deduplicator = Deduplicator.new(mapping)
+        deduplicator.deduplicate!
+        doc = Nokogiri::HTML5(File.read(pdf_path('_indexpage.html')))
+        return [doc.css('.index-list dd').first, deduplicator]
+      end
+    end
+  end
 
   # dedup 対象の HTML はワークスペース pdf/ 配下に置かれる（P4 §3.4-4）
   def pdf_path(name)

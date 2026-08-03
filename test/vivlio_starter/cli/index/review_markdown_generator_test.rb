@@ -36,9 +36,11 @@ module VivlioStarter
         File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
       end
 
-      def rewrite_review(from, to)
+      # 用語の子行だけを書き換える。冒頭の凡例にも記法の例文が載っているので、
+      # 素の文字列置換だと凡例のほうに当たってしまう。
+      def rewrite_main_line(to)
         path = ReviewMarkdownGenerator::REVIEW_FILE
-        File.write(path, File.read(path, encoding: 'utf-8').sub(from, to))
+        File.write(path, File.read(path, encoding: 'utf-8').sub(/^ {2}- 主要参照: .*\n/, to))
       end
 
       # 著者が触るのはレビューファイルであって辞書 YAML ではない。
@@ -59,14 +61,14 @@ module VivlioStarter
       # `main:` も受ける（英語のキーで書きたい著者のため）
       def test_main_alias_is_accepted
         generate_main(%w[21 22])
-        rewrite_review('- 主要参照: 21, 22', '- main: 21-22')
+        rewrite_main_line("  - main: 21-22\n")
 
         assert_equal({ 'Markdown' => ['21-22'] }, @generator.parse_main_references)
       end
 
       def test_main_reference_accepts_various_separators
         generate_main(%w[21])
-        rewrite_review('- 主要参照: 21', '- 主要参照: 21、22 33')
+        rewrite_main_line("  - 主要参照: 21、22 33\n")
 
         assert_equal({ 'Markdown' => %w[21 22 33] }, @generator.parse_main_references)
       end
@@ -74,7 +76,7 @@ module VivlioStarter
       # 行を消す＝指定の解除。nil で「解除」を表す（キーが無いのとは違う）
       def test_removing_the_line_means_clearing_the_designation
         generate_main(%w[21])
-        rewrite_review(/^\s*- 主要参照: .*\n/, '')
+        rewrite_main_line('')
 
         assert_equal({ 'Markdown' => nil }, @generator.parse_main_references)
       end
@@ -84,8 +86,45 @@ module VivlioStarter
                              high_candidates: [], low_candidates: [], rejected: [])
         content = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
 
-        refute_includes content, '主要参照'
+        refute_match(/^ {2}- 主要参照:/, content, '指定が無ければ子行を出さない')
         assert_equal({ 'Ruby' => nil }, @generator.parse_main_references)
+      end
+
+      # --- phase: 候補の提示（R2） ---
+
+      # `NEW!` は「機械が推測した候補」の目印。既存の候補提示と同じラベルを使う
+      def test_suggested_main_reference_is_labeled_new
+        @generator.generate!(terms: [term_with_main(%w[33]).merge('main_suggested' => true)],
+                             high_candidates: [], low_candidates: [], rejected: [])
+        content = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
+
+        assert_includes content, '  - 主要参照: `NEW!` 33'
+      end
+
+      # ラベルは表示だけの飾りで、値の解釈には混ざらない
+      def test_new_label_is_stripped_when_parsing
+        @generator.generate!(terms: [term_with_main(%w[33]).merge('main_suggested' => true)],
+                             high_candidates: [], low_candidates: [], rejected: [])
+
+        assert_equal({ 'Markdown' => ['33'] }, @generator.parse_main_references)
+      end
+
+      # 著者が確定した指定にラベルは付けない（毎回 NEW! だと新旧が読めない）
+      def test_confirmed_main_reference_has_no_label
+        content = generate_main(%w[33])
+
+        assert_includes content, '  - 主要参照: 33'
+        refute_includes content, '主要参照: `NEW!`'
+      end
+
+      # 凡例で記法そのものを説明する。著者は辞書 YAML を開かない
+      def test_header_explains_the_notation
+        content = generate_main(%w[21])
+
+        assert_match(/※.*主要参照/, content, '記法の説明が凡例にある')
+        assert_includes content, 'NEW!', '推測であることの断りがある'
+        refute_includes content, 'config/index_glossary_terms.yml',
+                        '著者が編集するのは辞書 YAML ではなくこのファイル'
       end
 
       # 主要参照の行を足しても、既存 7 パーサの解釈は変わらない。
@@ -99,7 +138,7 @@ module VivlioStarter
           section4: @generator.parse_rejected_section_all
         }
 
-        rewrite_review(/^\s*- 主要参照: .*\n/, '')
+        rewrite_main_line('')
         without_line = {
           approved: @generator.parse_index_approved,
           rejected: @generator.parse_index_rejected,

@@ -87,6 +87,116 @@ module VivlioStarter
           refute File.exist?(INDEX_OUTPUT_FILE)
         end
 
+        # === 主要参照（index-main-reference-spec.md R5・R6） ===
+
+        # 索引の役割は所在の網羅ではなく説明の在り処への案内。
+        # 「腰を据えて説明している箇所」を先頭に立てて太字にする。
+        def occurrence(chapter, main: false)
+          { 'yomi' => 'ようごしゅう', 'link' => "#{chapter}.html#idx-#{chapter}", 'is_main' => main }
+        end
+
+        def index_links(occurrences, config: {})
+          create_index_cache({ '用語集' => occurrences })
+          builder = UnifiedPageBuilder.new(index_config: config)
+          builder.build_index!
+          [File.read(INDEX_OUTPUT_FILE).scan(/<a href="([^"]+)"(?: class="([^"]+)")?>/), builder]
+        end
+
+        # **並べ替えは dedup より前でなければならない。** BacklinkDeduplicator は
+        # 同一ページを指すリンクの DOM 上で最初の 1 本を残すため、順序が逆だと
+        # 主要参照のほうが消える。
+        def test_main_reference_comes_first_and_is_marked
+          links, = index_links([occurrence('12-quickstart'), occurrence('33-index', main: true),
+                                occurrence('41-book-yml')])
+
+          assert_equal '33-index.html#idx-33-index', links.first[0], '主要参照が先頭'
+          assert_equal 'main-ref', links.first[1]
+          assert_nil links[1][1], '副次参照にはクラスを付けない'
+        end
+
+        def test_occurrence_order_is_preserved_among_sub_references
+          links, = index_links([occurrence('12-quickstart'), occurrence('33-index', main: true),
+                                occurrence('41-book-yml')])
+
+          assert_equal %w[33-index 12-quickstart 41-book-yml],
+                       links.map { it[0][/\A[^.]+/] }
+        end
+
+        def test_main_only_drops_sub_references
+          links, = index_links([occurrence('12-quickstart'), occurrence('33-index', main: true)],
+                               config: { reference_style: 'main_only' })
+
+          assert_equal 1, links.size
+          assert_equal '33-index.html#idx-33-index', links.first[0]
+        end
+
+        # 主要参照が無い語を間引くと、代わりの案内が無いまま索引から実質消える
+        def test_terms_without_a_main_reference_are_never_thinned
+          links, = index_links([occurrence('12-quickstart'), occurrence('33-index')],
+                               config: { reference_style: 'main_only' })
+
+          assert_equal 2, links.size
+        end
+
+        def test_max_sub_references_caps_the_tail
+          occurrences = [occurrence('33-index', main: true)] +
+                        (10..14).map { occurrence("#{it}-chapter") }
+          links, = index_links(occurrences, config: { max_sub_references: 2 })
+
+          assert_equal 3, links.size, '主要参照 1 + 副次参照 2'
+          assert_equal '33-index.html#idx-33-index', links.first[0]
+        end
+
+        def test_zero_means_unlimited
+          occurrences = [occurrence('33-index', main: true)] +
+                        (10..14).map { occurrence("#{it}-chapter") }
+          links, = index_links(occurrences, config: { max_sub_references: 0 })
+
+          assert_equal 6, links.size
+        end
+
+        # `all` は主要参照の扱いを丸ごと切る逃げ道。Phase 2 以前と同じ索引になる
+        def test_all_disables_the_feature_entirely
+          links, = index_links([occurrence('12-quickstart'), occurrence('33-index', main: true)],
+                               config: { reference_style: 'all' })
+
+          assert_equal '12-quickstart.html#idx-12-quickstart', links.first[0], '並べ替えない'
+          assert_equal 2, links.size
+          assert(links.none? { it[1] == 'main-ref' }, '太字にもしない')
+        end
+
+        # 索引が短くなった理由が設定にあると分からないと「索引語が消えた」と読まれる
+        def test_thinning_is_reported_not_silent
+          occurrences = [occurrence('33-index', main: true)] +
+                        (10..14).map { occurrence("#{it}-chapter") }
+          _, builder = index_links(occurrences, config: { max_sub_references: 2 })
+
+          limitation = builder.reference_limitation
+
+          assert_predicate limitation, :any?
+          assert_equal ['用語集'], limitation.terms
+          assert_equal 2, limitation.limit
+        end
+
+        def test_nothing_reported_when_nothing_was_thinned
+          _, builder = index_links([occurrence('33-index', main: true), occurrence('12-quickstart')])
+
+          refute_predicate builder.reference_limitation, :any?
+        end
+
+        # 解釈できない値で組版を止めない。既定へ落として、直し方を添えて知らせる
+        def test_unknown_reference_style_falls_back_with_a_warning
+          out, err = capture_io do
+            links, = index_links([occurrence('12-quickstart'), occurrence('33-index', main: true)],
+                                 config: { reference_style: 'bogus' })
+
+            assert_equal '33-index.html#idx-33-index', links.first[0]
+          end
+
+          assert_match(/reference_style/, out + err)
+          assert_match(/main_and_sub/, out + err, '指定できる値を示す')
+        end
+
         # === 用語集ページ ===
 
         def test_build_glossary_returns_nil_when_no_terms

@@ -54,13 +54,21 @@ module VivlioStarter
         INDEX_OUTPUT_FILE = File.join(Common::BUILD_HTML_DIR, '_indexpage.html')
         GLOSSARY_OUTPUT_FILE = File.join(Common::BUILD_HTML_DIR, '_glossarypage.html')
 
-        attr_reader :index_data, :hierarchical_index
+        # 参照の出し方（book.yml の index.reference_style）
+        REFERENCE_STYLES = %w[main_and_sub main_only all].freeze
+        DEFAULT_REFERENCE_STYLE = 'main_and_sub'
+        DEFAULT_MAX_SUB_REFERENCES = 8
 
-        def initialize(glossary_config: {})
+        attr_reader :index_data, :hierarchical_index, :limited_reference_terms
+
+        def initialize(glossary_config: {}, index_config: nil)
           @index_data = {}
           @hierarchical_index = HierarchicalIndex.new
           @glossary_config = glossary_config
+          @index_config = index_config || Common::CONFIG.index.to_h
           @glossary_backlinks = {}
+          # 間引いた語（no silent caps: 絞ったことは呼び出し元から必ず報告する）
+          @limited_reference_terms = []
         end
 
         # --- Phase: 索引ページ生成 ---
@@ -110,6 +118,16 @@ module VivlioStarter
           File.write(GLOSSARY_OUTPUT_FILE, html, encoding: 'utf-8')
           Common.log_success("用語集ページを生成しました: #{GLOSSARY_OUTPUT_FILE}")
           GLOSSARY_OUTPUT_FILE
+        end
+
+        # 参照を絞った事実。呼び出し元が必ず報告する（no silent caps・R6）
+        Limitation = Data.define(:style, :limit, :terms) do
+          def any? = terms.any?
+          def size = terms.size
+        end
+
+        def reference_limitation
+          Limitation.new(style: reference_style, limit: max_sub_references, terms: @limited_reference_terms)
         end
 
         # 以前のビルドで残ったファイルを削除
@@ -288,11 +306,20 @@ module VivlioStarter
         # **並べ替えは dedup より前でなければならない。** BacklinkDeduplicator は
         # 同一ページを指すリンクの「DOM 上で最初の 1 本」を残すので、主要参照が
         # 先頭にあればそれが生き残る。順序が逆だと主要参照のほうが消える。
+        # `all` は主要参照の扱いを丸ごと切るための逃げ道。並べ替えも太字も
+        # 間引きもせず、Phase 2 以前とまったく同じ索引を組む。
         def generate_index_page_links(term)
-          order_occurrences(@index_data[term]).map do |occ|
+          highlight = reference_style != 'all'
+          occurrences = if highlight
+                          apply_reference_style(term, order_occurrences(@index_data[term]))
+                        else
+                          @index_data[term].to_a
+                        end
+
+          occurrences.map do |occ|
             link = occ['link'] || occ[:link]
             classes = []
-            classes << 'main-ref' if occ['is_main'] || occ[:is_main]
+            classes << 'main-ref' if highlight && main_occurrence?(occ)
             classes << 'frontmatter' if link.start_with?('00-preface')
             attr = classes.empty? ? '' : %( class="#{classes.join(' ')}")
             %(<a href="#{link}"#{attr}></a>)
@@ -301,7 +328,50 @@ module VivlioStarter
 
         # 主要参照を先頭へ。同種のなかでは元の走査順（章順）を保つ。
         def order_occurrences(occurrences)
-          occurrences.to_a.partition { it['is_main'] || it[:is_main] }.flatten(1)
+          occurrences.to_a.partition { main_occurrence?(it) }.flatten(1)
+        end
+
+        def main_occurrence?(occ) = (occ['is_main'] || occ[:is_main]) ? true : false
+
+        # 副次参照を間引く（R6）。`all` は呼び出し側で分岐済み。
+        #
+        # **主要参照が無い語は間引かない。** 「まずここを読めばよい」を示せないまま
+        # 出現箇所だけ削ると、語が索引から実質消える——絞り込みは主要参照という
+        # 代替の案内があってはじめて成立する。
+        def apply_reference_style(term, occurrences)
+          style = reference_style
+          main, sub = occurrences.partition { main_occurrence?(it) }
+          return occurrences if main.empty?
+
+          if style == 'main_only'
+            @limited_reference_terms << term if sub.any?
+            return main
+          end
+
+          limit = max_sub_references
+          return occurrences if limit.zero? || sub.size <= limit
+
+          @limited_reference_terms << term
+          main + sub.first(limit)
+        end
+
+        def reference_style
+          value = @index_config[:reference_style].to_s
+          return value if REFERENCE_STYLES.include?(value)
+
+          unless value.empty?
+            Common.log_warn(
+              "index.reference_style の値 '#{value}' は解釈できません（#{DEFAULT_REFERENCE_STYLE} として扱います）",
+              detail: "指定できるのは #{REFERENCE_STYLES.join(' / ')} です"
+            )
+          end
+          DEFAULT_REFERENCE_STYLE
+        end
+
+        # 0 は「無制限」。nil（未設定）は既定値
+        def max_sub_references
+          value = @index_config[:max_sub_references]
+          value.nil? ? DEFAULT_MAX_SUB_REFERENCES : [value.to_i, 0].max
         end
 
         # ================================================================
