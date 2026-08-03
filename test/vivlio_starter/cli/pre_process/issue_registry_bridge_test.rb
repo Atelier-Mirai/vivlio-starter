@@ -98,6 +98,26 @@ module VivlioStarter
           assert_includes out, 'vs preflight'
         end
 
+        # 件数だけだと、逐次ログに本文が出ている警告と同一なのか別物なのか
+        # 読み取れず「まだ他に何かある」と読まれる。カテゴリ名を必ず添える。
+        def test_should_name_the_category_so_it_connects_to_the_log_above
+          IssueRegistry.record(severity: :warn, category: :index, message: '主要参照が未指定です')
+
+          out, = capture_io { LinkImageValidator.print_other_warnings_note }
+
+          assert_includes out, 'ほか警告 1 件（索引・用語集）'
+        end
+
+        def test_should_list_every_category_present
+          IssueRegistry.record(severity: :warn, category: :index, message: 'a')
+          IssueRegistry.record(severity: :warn, category: :guard, message: 'b')
+          IssueRegistry.record(severity: :warn, category: :index, message: 'c')
+
+          out, = capture_io { LinkImageValidator.print_other_warnings_note }
+
+          assert_includes out, 'ほか警告 3 件（索引・用語集・前提条件）', 'カテゴリは重複を畳んで並べる'
+        end
+
         # 他の発生源の警告がなければ何も出さない
         def test_should_stay_silent_when_no_other_warnings
           LinkImageValidator.record_code_include_error('31-codes.md', 1, 'sample.rb')

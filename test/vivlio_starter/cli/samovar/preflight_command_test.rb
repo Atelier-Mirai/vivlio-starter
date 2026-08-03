@@ -265,6 +265,51 @@ module VivlioStarter
           assert_includes output, '⚠️ Preflight 完了: 警告 1 件（ビルドは可能です）'
         end
 
+        # 章に紐付く指摘は章名と行番号で辿れるが、こちらは件数だけだと
+        # 何の話か分からないまま終わる。build 側が「詳細は vs preflight で」と
+        # 案内している以上、ここで中身を出さないと堂々巡りになる。
+        def test_should_list_what_the_unattached_issues_actually_are
+          output, = run_preflight(entries: fixture_entries('10-alpha')) do
+            PreProcessCommands::IssueRegistry.record(
+              severity: :warn, category: :index, message: '主要参照が未指定の索引語が 55 語あります'
+            )
+          end
+
+          assert_includes output, '🟡 [索引・用語集] 主要参照が未指定の索引語が 55 語あります'
+        end
+
+        def test_should_mark_unattached_errors_distinctly
+          output, = run_preflight(entries: fixture_entries('10-alpha')) do
+            PreProcessCommands::IssueRegistry.record(
+              severity: :error, category: :guard, message: '未知のコンテナクラス .foo'
+            )
+          end
+
+          assert_includes output, '🔴 [前提条件] 未知のコンテナクラス .foo'
+        end
+
+        # 表示名を持たないカテゴリでもシンボルを出す。黙って隠すより発生源を辿れる
+        def test_should_fall_back_to_the_category_symbol
+          output, = run_preflight(entries: fixture_entries('10-alpha')) do
+            PreProcessCommands::IssueRegistry.record(
+              severity: :warn, category: :brand_new_source, message: 'これから増える指摘'
+            )
+          end
+
+          assert_includes output, '[brand_new_source]'
+        end
+
+        # 章に紐付く指摘は従来どおり章行だけ（ここへは降りてこない）
+        def test_should_not_duplicate_chapter_attached_issues
+          output, = run_preflight(entries: fixture_entries('10-alpha')) do
+            PreProcessCommands::IssueRegistry.record(
+              chapter: '10-alpha', severity: :warn, category: :link, message: '裸 URL: http://example.com'
+            )
+          end
+
+          refute_includes output, '[リンク] 裸 URL'
+        end
+
         # 全章 ✅ なら表は 1 行へ短縮され、最終行は ✅・終了コード 0
         def test_should_shorten_table_when_all_chapters_are_clean
           output, status = run_preflight(entries: fixture_entries('10-alpha', '21-beta'))
