@@ -383,7 +383,7 @@ index:
   #   thorough … 丁寧（初学者向けに広く拾う）
   #   260      … 語数を直接指定することもできます
   # 目安は本文の文字数から算出されます。vs index:plan で確認できます。
-  target_terms: standard
+  target_terms: light
 
   # 目安語数の何倍までを候補として提示するか
   candidate_pool: 3.0

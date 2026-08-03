@@ -22,6 +22,7 @@ require 'digest'
 require_relative '../common'
 require_relative '../masking'
 require_relative '../index_markup'
+require_relative 'term_pattern'
 require_relative 'yomi_inferrer'
 
 module VivlioStarter
@@ -63,6 +64,9 @@ module VivlioStarter
 
       # 索引語スキャン・タグ付けクラス
       class IndexMatchScanner
+        # 見出し行とそのレベル（`### 見出し` → 3）
+        HEADING_LINE = /\A(\#{1,6})[ \t]+\S/
+
         # 索引語マッチの正規表現。綴りの定義元は IndexMarkup（唯一の定義元）。
         # [用語|読み] または [用語] 形式を検出し、リンク記法 [text](url) と
         # インライン脚注 ^[本文] は除外される。
@@ -92,9 +96,11 @@ module VivlioStarter
           # 主要参照（説明箇所）の指定。辞書の main: を 用語 → 章名の集合に畳む。
           # 単一章とリストの両方を受ける（index-main-reference-spec.md §1.3）。
           @main_chapters = @unified_terms.to_h { [it['term'], Array(it['main']).map(&:to_s).to_set] }
-          # 章ごとの出現順。主要参照は「指定章での初出」と定めるので、
-          # 全体の通し番号（@term_occurrence）とは別に数える必要がある。
-          @chapter_occurrence = Hash.new(0)
+          # 主要参照の落とし先（R1）。章を読んだ時点で下見した結果を持つ。
+          @has_section_heading = {}
+          @has_prose_occurrence = {}
+          @main_decided = Set[]
+          @current_heading_level = nil
           # 用語ごとに不変な導出物のキャッシュ（1 行ごとに作り直さない）
           @index_patterns = {}
           @literal_patterns = {}
@@ -211,11 +217,64 @@ module VivlioStarter
         # 地の文行を原文行配列の同位置へ置換して再結合すれば行数・コード行は不変。
         # 可変長フェンス・入れ子・```include: 除外は Masking が一貫して保証する。
         def process_content_with_code_block_exclusion(content, file_basename)
+          survey_main_targets(content, file_basename)
+
           lines = content.lines
-          Masking.each_prose_line(content) do |_line, lineno|
+          Masking.each_prose_line(content) do |line, lineno|
+            # 行が見出しなら、そのレベル。主要参照をどこに落とすかの判断に使う（R1）
+            @current_heading_level = line[HEADING_LINE, 1]&.size
             lines[lineno - 1] = process_line(lines[lineno - 1], file_basename)
           end
+          @current_heading_level = nil
           lines.join
+        end
+
+        # 主要参照の落とし先を決めるための下見（index-main-reference-section-spec.md R1）。
+        #
+        # **章題（h1）は主要参照にしない。** 章の名前であって、その語を腰を据えて
+        # 説明している箇所ではない——「Markdown 執筆チュートリアル」を指すと索引が
+        # 章扉のページを太字にしてしまい、著者が指したい「## Markdown とは」に届かない。
+        #
+        # 落とし先は「節見出し（h2〜h6）にその語がある → そこ」「無ければ本文の初出」
+        # 「本文にも無ければ（章題にしか無い）章題」の順。これを行ごとの逐次処理で
+        # 決めることはできない——本文の初出を採るかどうかが、後に節見出しが来るかに
+        # 依るため。章を読んだ時点で先に「どちらがあるか」だけ調べておく。
+        def survey_main_targets(content, file_basename)
+          names = @main_chapters.select { |_, chapters| chapters.include?(file_basename) }.keys
+          return if names.empty?
+
+          sections = []
+          prose = []
+          Masking.each_prose_line(content) do |line, _|
+            case line[HEADING_LINE, 1]&.size
+            when nil then prose << line
+            when 1 then nil # 章題は数えない
+            else
+              sections << line
+              prose << line
+            end
+          end
+
+          names.each do |name|
+            pattern = TermPattern.for(@unified_terms.find { it['term'] == name } || { 'term' => name })
+            @has_section_heading[[name, file_basename]] = sections.any? { it.match?(pattern) }
+            @has_prose_occurrence[[name, file_basename]] = prose.any? { it.match?(pattern) }
+          end
+        end
+
+        # この出現を主要参照にするか。章ごとに 1 箇所だけ立てる。
+        def main_reference?(term, file_basename)
+          key = [term, file_basename]
+          return false unless @main_chapters.fetch(term, Set[]).include?(file_basename)
+          return false if @main_decided.include?(key)
+
+          level = @current_heading_level
+          landed = if @has_section_heading[key] then level.to_i >= 2
+                   elsif @has_prose_occurrence[key] then level.nil? || level >= 2
+                   else true # 章題にしか無い語は、その章題を指すほかない
+                   end
+          @main_decided << key if landed
+          landed
         end
 
 # 1行を処理して索引語をタグ付け
@@ -443,12 +502,8 @@ end
         def process_term(term_text, yomi, file_basename)
           @term_occurrence[term_text] += 1
           occurrence_num = @term_occurrence[term_text]
-          @chapter_occurrence[[term_text, file_basename]] += 1
 
-          # 主要参照＝辞書 main: が指す章での初出。章内の 2 回目以降は副次参照。
-          # 章の頭に着地させたいので、章内で最初に見つけた 1 箇所だけを立てる。
-          is_main = @main_chapters.fetch(term_text, Set[]).include?(file_basename) &&
-                    @chapter_occurrence[[term_text, file_basename]] == 1
+          is_main = main_reference?(term_text, file_basename)
 
           # ID の生成（決定的ダイジェストで一意性を保証）
           # String#hash はプロセス毎にシードがランダム化されるため、ビルドの度に

@@ -368,6 +368,106 @@ module VivlioStarter
           assert_equal [false], scanner.matches.map { it['is_main'] }
         end
 
+        # --- phase: 節へ降ろす（index-main-reference-section-spec.md R1） ---
+
+        # 章題は「章の名前」であって、その語を腰を据えて説明している箇所ではない。
+        # ここを指すと索引が章扉のページを太字にしてしまう。
+        def test_chapter_title_is_never_the_main_reference
+          write_dictionary(main: '33-b')
+          File.write('33-b.md', <<~MD)
+            # [用語集] 機能
+
+            ## [用語集] とは
+
+            本文で [用語集] に触れます。
+          MD
+
+          scanner = IndexMatchScanner.new
+          scanner.scan_and_tag_file!('33-b.md')
+
+          assert_equal [false, true, false], scanner.matches.map { it['is_main'] },
+                       '節見出しが主要参照になる'
+        end
+
+        # 節見出しに語があれば、本文の初出より優先する
+        def test_section_heading_wins_over_earlier_prose
+          write_dictionary(main: '33-b')
+          File.write('33-b.md', <<~MD)
+            # ある章
+
+            前置きで [用語集] に触れます。
+
+            ### [用語集] の作り方
+
+            詳しい説明。
+          MD
+
+          scanner = IndexMatchScanner.new
+          scanner.scan_and_tag_file!('33-b.md')
+
+          assert_equal [false, true], scanner.matches.map { it['is_main'] }
+        end
+
+        # 見出しに無ければ本文の初出。ただし章題は数えない
+        def test_falls_back_to_first_prose_occurrence
+          write_dictionary(main: '33-b')
+          File.write('33-b.md', <<~MD)
+            # [用語集] 機能
+
+            ## 概要
+
+            本文で [用語集] を説明します。二度目の [用語集]。
+          MD
+
+          scanner = IndexMatchScanner.new
+          scanner.scan_and_tag_file!('33-b.md')
+
+          assert_equal [false, true, false], scanner.matches.map { it['is_main'] }
+        end
+
+        # 章題にしか出ない語は、その章題を指すほかない
+        def test_chapter_title_is_used_when_nothing_else_matches
+          write_dictionary(main: '33-b')
+          File.write('33-b.md', "# [用語集] 機能\n\n本文には出てきません。\n")
+
+          scanner = IndexMatchScanner.new
+          scanner.scan_and_tag_file!('33-b.md')
+
+          assert_equal [true], scanner.matches.map { it['is_main'] }
+        end
+
+        # h4 以下も節見出しとして扱う（実測で h4 は 56 個ある）
+        def test_deep_headings_count_as_sections
+          write_dictionary(main: '33-b')
+          File.write('33-b.md', <<~MD)
+            # ある章
+
+            前置きで [用語集] に触れます。
+
+            #### [用語集] の詳細
+          MD
+
+          scanner = IndexMatchScanner.new
+          scanner.scan_and_tag_file!('33-b.md')
+
+          assert_equal [false, true], scanner.matches.map { it['is_main'] }
+        end
+
+        # 章ごとに 1 箇所だけ。節見出しが 2 つあっても最初だけ立てる
+        def test_only_one_main_reference_per_chapter
+          write_dictionary(main: '33-b')
+          File.write('33-b.md', <<~MD)
+            ## [用語集] とは
+
+            ## [用語集] の作り方
+          MD
+
+          scanner = IndexMatchScanner.new
+          scanner.scan_and_tag_file!('33-b.md')
+
+          assert_equal [true, false], scanner.matches.map { it['is_main'] }
+        end
+
         # --- phase: read_only mode tests ---
 
         def test_scan_read_only_does_not_modify_file
