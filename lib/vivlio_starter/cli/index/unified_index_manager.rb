@@ -119,9 +119,13 @@ module VivlioStarter
           dictionary_writes['自動承認'] = added if added.any?
         end
 
-        # 6. 登録済み用語（索引＋用語集すべて）に文脈を付与
-        terms_with_context = enrich_terms_with_context(@terms_manager.load_terms, chapters,
-                                                        scores: candidate_scores_by_name(selectable, candidates))
+        # 6. 登録済み用語（索引＋用語集すべて）に文脈を付与。
+        #    見直し候補（順位が目安語数の外に出た登録語）も渡し、レビューで一覧できるようにする
+        terms_with_context = enrich_terms_with_context(
+          @terms_manager.load_terms, chapters,
+          scores: candidate_scores_by_name(selectable, candidates),
+          review_terms: bands&.review&.map(&:term)&.to_set || Set[]
+        )
 
         # 7. リジェクト済み用語に文脈とスコアを付与
         # candidatesからスコアを復元できるように渡す
@@ -912,7 +916,7 @@ module VivlioStarter
       # @param terms [Array<Hash>] 用語のリスト
       # @param chapters [Array<String>] 対象章のリスト
       # @return [Array<Hash>] 文脈付き用語のリスト
-      def enrich_terms_with_context(terms, chapters, scores: {})
+      def enrich_terms_with_context(terms, chapters, scores: {}, review_terms: Set[])
         loaded_contents = load_squashed_chapter_contents(chapters)
         spreads = IndexCommands::TermSpread.measure(terms, chapters)
         common = IndexCommands::TermSpread.common_terms(spreads, ratio: common_term_ratio)
@@ -940,9 +944,15 @@ module VivlioStarter
 
           # 広く散らばりすぎている語は「一般語」として別枠で提示する（R5）。
           # 外すか残すかは著者が決めるので、ここでは事実を添えるだけ。
+          #
+          # 順位が目安語数の外に出た登録語は「見直し候補」。一般語と重なることが
+          # あるので、その場合は一般語を優先する——同じ語を 2 つの枠に出すと、
+          # どちらの助言に従えばよいのか分からなくなる。
           if (spread = common[term['term']])
             enriched['common_term'] = true
             enriched['spread_text'] = spread.to_s
+          elsif review_terms.include?(term['term'])
+            enriched['review_candidate'] = true
           end
 
           # flags に基づいて索引・用語集の登録状態を反映

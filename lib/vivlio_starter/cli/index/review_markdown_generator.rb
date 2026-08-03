@@ -414,11 +414,38 @@ module VivlioStarter
 
         return "#{section}登録済みの用語はありません。\n" if valid_terms.empty?
 
-        common, ordinary = valid_terms.partition { it['common_term'] }
+        common, rest = valid_terms.partition { it['common_term'] }
+        review, ordinary = rest.partition { it['review_candidate'] }
         section += build_common_terms_subsection(common)
-        section += "### 登録語 (#{ordinary.size}語)\n\n" if common.any?
+        section += build_review_terms_subsection(review)
+        section += "### 登録語 (#{ordinary.size}語)\n\n" if common.any? || review.any?
         sort_by_label_and_appearance(ordinary).each { section += build_term_line(it, checked: true) }
         section
+      end
+
+      # 見直し候補（順位が目安語数の外に出た登録語）のサブセクション。
+      #
+      # この一覧が無いと、著者は「見直し候補 61 件」という**件数だけ**を告げられ、
+      # どの語のことか分からないまま終わる。外すべき語を見つける場はここにしかない。
+      #
+      # 一般語と違って既定は現状維持（[i] のまま）にする。順位が低いことは
+      # 「索引に要らない」を意味しない——章を絞った本では専門語でも出現が少ない。
+      # 判断材料（順位が外に出たという事実）だけ示して、決めるのは著者に委ねる。
+      def build_review_terms_subsection(review)
+        return '' if review.empty?
+
+        <<~HEADER + sort_by_label_and_appearance(review).map { build_term_line(it, checked: true) }.join
+          ### 見直し候補（#{review.size}語）
+
+          登録済みですが、未登録の候補と同じ土俵でスコア順に並べると、目安語数の外へ
+          出た語です。索引としての優先度が低いか、より適切な語（「カラー」に対する
+          「アクセントカラー」のような、長くて意味の絞られた語）が別にあるかもしれません。
+
+          - そのままにする場合: [i] のまま `vs index:apply`
+          - 索引から外す場合: [-i] にする
+          - 二度と候補に出したくない場合: [r] にする（除外済みリストへ移ります）
+
+        HEADER
       end
 
       # 一般語（広く散らばりすぎている語）のサブセクション。

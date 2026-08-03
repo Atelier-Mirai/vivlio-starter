@@ -231,6 +231,10 @@ module VivlioStarter
 
       # 設定を差し替えた manager を作る。CONFIG はプロセス全体で共有される
       # ため触らない（他のテストへ漏れる）。ここで差し替えるのは素の Hash。
+      # 帯（推奨候補・一般候補・見直し候補）の件数を見るテストは、必ず
+      # `target_terms` を明示すること。**既定は Common::CONFIG＝プロジェクトの
+      # book.yml から来る**ので、著者が `standard` を `light` に変えただけで
+      # 目安語数が 0 になり、推奨候補が空になってテストが落ちる（実例あり）。
       def manager_with(overrides)
         manager = UnifiedIndexManager.new
         config = manager.instance_variable_get(:@config).merge(overrides)
@@ -245,7 +249,7 @@ module VivlioStarter
           プロトコルスタックとは通信手順の階層である。プロトコルスタックを実装する。
         MD
 
-        @manager.auto_process!(['43-auto'])
+        manager_with(target_terms: 1).auto_process!(['43-auto'])
 
         # 何も書かなければ辞書ファイル自体が作られない。それが最も強い「書いていない」証拠。
         auto_extracted = if File.exist?('config/index_glossary_terms.yml')
@@ -267,7 +271,7 @@ module VivlioStarter
           プロトコルスタックとは通信手順の階層である。プロトコルスタックを実装する。
         MD
 
-        manager_with(auto_approve: true).auto_process!(['44-approve'])
+        manager_with(target_terms: 1, auto_approve: true).auto_process!(['44-approve'])
 
         terms = YAML.load_file('config/index_glossary_terms.yml')['terms'] || []
 

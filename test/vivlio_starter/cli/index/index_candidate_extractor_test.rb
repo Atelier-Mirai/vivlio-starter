@@ -260,6 +260,79 @@ module VivlioStarter
           # 正常な用語は抽出される
           assert candidates.any? { it == 'HTML' }
         end
+
+        # --- phase: 記法・文の断片を候補にしない ---
+
+        # 定義パターンは「〜について」の直前を切り出すので、素の `.` で 20 文字
+        # 取ると文の途中から始まる断片が生まれる。実測（本書 27 章）では
+        # 候補 4,053 件のうち 1,355 件がこの類だった。
+        def test_definition_pattern_does_not_slice_across_sentences
+          File.write('contents/10-a.md', <<~MD)
+            索引は本の後ろに置きます。ノンブルについては次章で説明します。
+          MD
+
+          @extractor.extract_from_chapters!(['10-a'])
+
+          assert_includes @extractor.all_candidates, 'ノンブル'
+          refute(@extractor.all_candidates.any? { it.include?('。') }, '句点をまたいだ断片を拾わない')
+        end
+
+        def test_markup_fragments_are_rejected
+          File.write('contents/10-a.md', <<~MD)
+            ## テーマカラー
+
+            **強調**した箇条書き。
+
+            - `コード` を含む行
+            | 表 | の | 行 |
+          MD
+
+          @extractor.extract_from_chapters!(['10-a'])
+
+          %w[# * | ` > [ ]].each do |mark|
+            refute(@extractor.all_candidates.any? { it.include?(mark) },
+                   "記法 #{mark} を含む候補が残っています")
+          end
+        end
+
+        # --- phase: MeCab が 1 語と認識する複合語 ---
+
+        # 名詞連続は 2 語以上を対象にするため、MeCab の辞書に 1 語として載っている
+        # 専門用語が丸ごと漏れていた（「特殊相対性理論」は拾えるのに「相対性理論」は漏れる）。
+        def test_compound_noun_recognized_as_a_single_token_is_picked_up
+          skip 'MeCab が利用できない環境ではスキップ' unless YomiInferrer.new.available?
+
+          File.write('contents/10-a.md', "相対性理論を説明します。相対性理論は難しい。\n")
+
+          @extractor.extract_from_chapters!(['10-a'])
+
+          assert_includes @extractor.all_candidates, '相対性理論'
+        end
+
+        # 短い単独名詞まで拾うと「本」「方法」「場合」で埋まる
+        def test_short_single_nouns_are_not_picked_up
+          skip 'MeCab が利用できない環境ではスキップ' unless YomiInferrer.new.available?
+
+          File.write('contents/10-a.md', "本を書く方法を説明します。場合によります。\n")
+
+          @extractor.extract_from_chapters!(['10-a'])
+
+          %w[本 方法 場合].each do |word|
+            refute_includes @extractor.all_candidates, word
+          end
+        end
+
+        # 英字のみの単独名詞は CSS クラス名や記法由来が大半（実測 153 件中 136 件）
+        def test_ascii_only_single_nouns_are_not_picked_up
+          skip 'MeCab が利用できない環境ではスキップ' unless YomiInferrer.new.available?
+
+          File.write('contents/10-a.md', "section と column を並べます。\n")
+
+          @extractor.extract_from_chapters!(['10-a'])
+
+          refute_includes @extractor.all_candidates, 'section'
+          refute_includes @extractor.all_candidates, 'column'
+        end
       end
     end
   end

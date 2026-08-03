@@ -166,6 +166,54 @@ module VivlioStarter
         File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
       end
 
+      # --- phase: 見直し候補のサブセクション ---
+
+      def review_term(name)
+        { 'term' => name, 'yomi' => name, 'flags' => 'i', 'in_index' => true,
+          'review_candidate' => true, 'score' => 120.0 }
+      end
+
+      # 件数だけ告げられても、どの語のことか分からないまま終わる。
+      # 外すべき語を見つける場はここにしかない。
+      def test_review_candidates_get_their_own_subsection
+        content = generate_with([review_term('カラー'), ordinary_term('特殊相対性理論')])
+
+        assert_includes content, '### 見直し候補（1語）'
+        assert_includes content, '**カラー**'
+        assert_includes content, '### 登録語 (1語)'
+      end
+
+      # 一般語と違い、既定は現状維持。順位が低いことは「索引に要らない」を意味しない
+      def test_review_candidates_stay_registered_by_default
+        content = generate_with([review_term('カラー')])
+
+        assert_match(/^- \[i\] \*\*カラー\*\*/, content)
+      end
+
+      def test_review_subsection_shows_how_to_act
+        content = generate_with([review_term('カラー')])
+
+        assert_includes content, '[-i]', '索引から外す手段'
+        assert_includes content, '[r]', '二度と候補に出さない手段'
+      end
+
+      # 同じ語を 2 つの枠に出すと、どちらの助言に従えばよいのか分からなくなる
+      def test_a_term_appears_in_only_one_subsection
+        both = common_term('ファイル').merge('review_candidate' => true)
+        content = generate_with([both])
+
+        assert_includes content, '### 一般語（索引から外すことを推奨・1語）'
+        refute_includes content, '### 見直し候補'
+        assert_equal 1, content.scan(/\*\*ファイル\*\*/).size
+      end
+
+      def test_no_subsection_when_nothing_needs_review
+        content = generate_with([ordinary_term('特殊相対性理論')])
+
+        refute_includes content, '### 見直し候補'
+        refute_includes content, '### 登録語', '仕分けが無ければ見出しも要らない'
+      end
+
       def test_common_terms_get_their_own_subsection
         content = generate_with([common_term('ファイル'), ordinary_term('特殊相対性理論')])
 

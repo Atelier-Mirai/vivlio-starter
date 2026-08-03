@@ -41,14 +41,38 @@ module VivlioStarter
           # ================================================================
         BANNER
 
+        # 定義文から語を切り出すときに、語の一部として許す文字。
+        #
+        # 素の `.` で 20 文字を取ると、文の途中から機械的に切り出すことになり
+        # 「た章のみです。 は本の**目次（章立て）」のような**文の断片**が候補になる。
+        # 実測（本書 27 章）では候補 4,053 件のうち **1,359 件がこの類**で、
+        # スコア分布と順位を歪め、candidate_pool を上げても本物が出てこない原因だった。
+        #
+        # `/` `.` `-` は許す——`PDF/X-1a` `Terminal.app` `10-20行目` のような
+        # 正当な語を巻き込まないため。
+        TERM_CHAR = %r{[^\s。、！？…「」『』（）()\[\]{}#*|`>~:：;；,，\\]}
+
         # 定義パターン（「〜とは」「〜について」など）
         DEFINITION_PATTERNS = [
-          /(.{2,20})とは[、,]?[^。]*(?:である|です|を意味|を指|という)/,
-          /(.{2,20})(?:について|に関して)(?:は|の)/,
-          /(.{2,20})(?:を|が)(?:定義|説明|解説)/,
-          /「(.{2,20})」(?:とは|は|について)/,
-          /(.{2,20})(?:の概念|の定義|の意味)/
+          /(#{TERM_CHAR}{2,20})とは[、,]?[^。]*(?:である|です|を意味|を指|という)/,
+          /(#{TERM_CHAR}{2,20})(?:について|に関して)(?:は|の)/,
+          /(#{TERM_CHAR}{2,20})(?:を|が)(?:定義|説明|解説)/,
+          /「(#{TERM_CHAR}{2,20})」(?:とは|は|について)/,
+          /(#{TERM_CHAR}{2,20})(?:の概念|の定義|の意味)/
         ].freeze
+
+        # 語として成立しない文字列。定義文の切り出しや名詞連続に混ざる残骸を落とす。
+        # 記法の断片（`###MATTR` `**Linux` `|画像`）、句読点をまたいだ文、
+        # 記号で始まる・終わる語が対象。
+        JUNK_TERM_PATTERN = /[。、！？\r\n\t#*|`>~\[\]()（）「」『』【】]|:{3}|\A[[:space:]\-.:：]|[[:space:]\-.:：]\z/
+
+        # MeCab が 1 語と認識する複合語（「相対性理論」など）を拾う下限。
+        #
+        # 名詞連続の経路は 2 語以上を対象にするため、**MeCab の辞書に 1 語として
+        # 載っている専門用語が丸ごと漏れていた**（「特殊相対性理論」は
+        # 「特殊」＋「相対性理論」の 2 語なので拾えるのに、「相対性理論」単体は漏れる）。
+        # 短い単独名詞まで拾うと「本」「方法」「場合」で埋まるため長さで絞る。
+        SINGLE_NOUN_MIN_LENGTH = 5
 
         # 専門用語パターン（カタカナ語、英字語など）
         TECHNICAL_TERM_PATTERNS = [
@@ -249,7 +273,7 @@ module VivlioStarter
             current_nouns = []
             mecab.parse(text) do |node|
               if node.is_eos?
-                process_noun_sequence(current_nouns, chapter, content) if current_nouns.size >= 2
+                process_noun_sequence(current_nouns, chapter, content)
                 current_nouns = []
                 next
               end
@@ -260,7 +284,7 @@ module VivlioStarter
               if pos == '名詞'
                 current_nouns << node.surface
               else
-                process_noun_sequence(current_nouns, chapter, content) if current_nouns.size >= 2
+                process_noun_sequence(current_nouns, chapter, content)
                 current_nouns = []
               end
             end
@@ -269,11 +293,12 @@ module VivlioStarter
           # natto が利用できない場合はスキップ
         end
 
-        # 名詞連続を処理
+        # 名詞連続を処理。単独名詞も MeCab が 1 語と認識した複合語なら拾う。
         def process_noun_sequence(nouns, chapter, content)
-          return if nouns.size < 2 || nouns.size > 5
+          return if nouns.empty? || nouns.size > 5
 
           term = nouns.join
+          return if nouns.size == 1 && !compound_noun?(term)
           return if term.length < 3 || term.length > 20
           return unless valid_term?(term)
 
@@ -375,12 +400,27 @@ module VivlioStarter
           text
         end
 
+        # MeCab が 1 語と認識した複合語か（「相対性理論」「アイデンティティ」）。
+        #
+        # 日本語を含む長い語だけを通す。英字のみの単独名詞は `section` `table`
+        # `column` のように CSS クラス名や記法由来のものが大半で、実測 153 件中
+        # 136 件がそれだった。「・」でつないだ並び（「ヘッダー・フッター・ノンブル」）も
+        # 語ではなく列挙なので落とす。
+        def compound_noun?(term)
+          term.length >= SINGLE_NOUN_MIN_LENGTH &&
+            term.match?(/[ぁ-んァ-ヶ一-龯]/) &&
+            !term.include?('・')
+        end
+
         # 抽出された用語が有効かどうかを判定
         # @param term [String] 用語
         # @return [Boolean] 有効ならtrue
         def valid_term?(term)
           return false if term.nil? || term.empty?
           return false if term.length < 2
+
+          # 記法・文の断片を落とす（TERM_CHAR で切り出しても名詞連続からは混ざる）
+          return false if term.match?(JUNK_TERM_PATTERN)
 
           # HTMLタグの断片を除外
           return false if term.include?('<') || term.include?('>')
