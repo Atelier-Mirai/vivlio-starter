@@ -28,6 +28,7 @@ require_relative 'unified_page_builder'
 require_relative 'index_plan_reporter'
 require_relative 'term_ranking'
 require_relative 'term_spread'
+require_relative '../token_resolver'
 require_relative 'yomi_inferrer'
 
 module VivlioStarter
@@ -167,6 +168,7 @@ module VivlioStarter
         both_rejected = @markdown_generator.parse_rejected
         unreject = @markdown_generator.parse_unreject
         yomi_changes = @markdown_generator.parse_yomi_changes
+        main_references = @markdown_generator.parse_main_references
 
         changes_made = false
         index_count = 0
@@ -244,6 +246,9 @@ module VivlioStarter
           @terms_manager.update_yomi!(yomi_changes)
           changes_made = true
         end
+
+        # --- Phase: 主要参照 ---
+        changes_made = true if apply_main_references!(main_references)
 
         # --- Phase: 孤立データ除去 ---
         index_approved_names = index_approved.map { it['term'] }
@@ -539,6 +544,48 @@ module VivlioStarter
         @extractor.score_terms(@terms_manager.load_terms).merge(from_candidates)
       end
 
+      # レビューファイルの「主要参照」行を辞書へ反映する。
+      #
+      # 著者は章トークン（21 / 21,22 / 21-22）で書く。辞書へは basename で持つ
+      # ——番号だけだと改番で意味が変わり、スラッグだけだと同名章と衝突する。
+      # 解決は TokenResolver（章トークン解釈の正典）に委ねる。
+      #
+      # 行を消した語は nil が来る＝指定の解除。key? で見て明示的に nil を渡す。
+      def apply_main_references!(main_references)
+        return false if main_references.empty?
+
+        resolver = TokenResolver::Resolver.new
+        changed = false
+
+        main_references.each do |term, tokens|
+          next unless @terms_manager.term_names.include?(term)
+
+          chapters = tokens ? resolve_main_chapters(resolver, tokens, term) : nil
+          next if chapters == Array(@terms_manager.find_term(term)&.dig('main'))
+
+          @terms_manager.merge_terms!([{ 'term' => term, 'main' => chapters }], flags: '')
+          Common.log_info(chapters ? "主要参照を設定: #{term} → #{chapters.join(', ')}" : "主要参照を解除: #{term}")
+          changed = true
+        end
+
+        changed
+      end
+
+      # 章トークンを basename へ解決する。解決できないトークンは捨てずに知らせる
+      # ——黙って落とすと「書いたのに効かない」になる（警告は具体的な修正案とセットで）。
+      def resolve_main_chapters(resolver, tokens, term)
+        entries = resolver.resolve(tokens)
+        resolved = entries.select(&:valid?).map(&:basename)
+        return resolved if resolved.size == tokens.size || resolved.size >= entries.size
+
+        Common.log_warn(
+          "「#{term}」の主要参照に解決できない章があります: #{tokens.join(', ')}",
+          detail: "指定できるのは章番号（21）・範囲（21-22）・章名（21-markdown-tutorial）です。" \
+                  "解決できたのは #{resolved.empty? ? 'なし' : resolved.join(', ')} です"
+        )
+        resolved
+      end
+
       # 一般語とみなす出現章数の比率（book.yml で調整可）
       def common_term_ratio = (@config[:common_term_ratio] || 0.5).to_f
 
@@ -783,6 +830,10 @@ module VivlioStarter
           # スコアは辞書に持たない（出現由来の派生データ）。表示のたびに合流させる。
           # 原稿に出現しない語はスコアが取れない——死語として著者に見せる価値がある。
           enriched['score'] = scores[term['term']]
+
+          # 主要参照はレビューファイルで編集できるよう章トークンとして見せる。
+          # 辞書は basename で持つが、著者に見せるのは番号のほうが読みやすい。
+          enriched['main_tokens'] = Array(term['main']).map { it.to_s[/\A\d+/] || it.to_s } if term['main']
 
           # 広く散らばりすぎている語は「一般語」として別枠で提示する（R5）。
           # 外すか残すかは著者が決めるので、ここでは事実を添えるだけ。

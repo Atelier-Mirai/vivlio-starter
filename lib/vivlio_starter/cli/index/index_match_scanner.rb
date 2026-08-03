@@ -89,6 +89,12 @@ module VivlioStarter
             flags = t['flags'].to_s
             flags.include?('g') && !flags.include?('i')
           end
+          # 主要参照（説明箇所）の指定。辞書の main: を 用語 → 章名の集合に畳む。
+          # 単一章とリストの両方を受ける（index-main-reference-spec.md §1.3）。
+          @main_chapters = @unified_terms.to_h { [it['term'], Array(it['main']).map(&:to_s).to_set] }
+          # 章ごとの出現順。主要参照は「指定章での初出」と定めるので、
+          # 全体の通し番号（@term_occurrence）とは別に数える必要がある。
+          @chapter_occurrence = Hash.new(0)
           # 用語ごとに不変な導出物のキャッシュ（1 行ごとに作り直さない）
           @index_patterns = {}
           @literal_patterns = {}
@@ -437,6 +443,12 @@ end
         def process_term(term_text, yomi, file_basename)
           @term_occurrence[term_text] += 1
           occurrence_num = @term_occurrence[term_text]
+          @chapter_occurrence[[term_text, file_basename]] += 1
+
+          # 主要参照＝辞書 main: が指す章での初出。章内の 2 回目以降は副次参照。
+          # 章の頭に着地させたいので、章内で最初に見つけた 1 箇所だけを立てる。
+          is_main = @main_chapters.fetch(term_text, Set[]).include?(file_basename) &&
+                    @chapter_occurrence[[term_text, file_basename]] == 1
 
           # ID の生成（決定的ダイジェストで一意性を保証）
           # String#hash はプロセス毎にシードがランダム化されるため、ビルドの度に
@@ -455,7 +467,8 @@ end
             'yomi' => yomi,
             'link' => "#{file_basename}.html##{anchor_id}",
             'file' => file_basename,
-            'is_definition' => is_first
+            'is_definition' => is_first,
+            'is_main' => is_main
           }
 
           # マッチ情報を記録
@@ -465,6 +478,7 @@ end
             'yomi' => yomi,
             'file' => file_basename,
             'is_definition' => is_first,
+            'is_main' => is_main,
             'tag_type' => tag_name
           }
 

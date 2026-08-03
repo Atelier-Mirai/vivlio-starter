@@ -120,6 +120,18 @@ body.vs-kindle .index h1 {
   content: target-counter(attr(href url), page);
 }
 
+/* ----------------------------------------------------------------
+ * 主要参照（説明箇所）
+ * ---------------------------------------------------------------- */
+/* その語を腰を据えて説明している箇所を太字で示す。索引の役割は所在の網羅では
+   なく説明の在り処への案内なので、頻出語ほどこの目印が効く。
+   <a> は空要素で、見えている数字は ::after の target-counter が描く。
+   font-weight は ::after へ継承されるので <a> 側に置けばよい。
+   リテラル値で var() を使わないため Kindle(KFX) でもそのまま効く。 */
+.index-list a.main-ref {
+  font-weight: bold;
+}
+
 /* 前付け（00-preface等）への参照はローマ数字で表示 */
 .index-list dd a.frontmatter::after {
   content: target-counter(attr(href url), page, lower-roman);

@@ -23,6 +23,94 @@ module VivlioStarter
         FileUtils.rm_rf(@temp_dir)
       end
 
+      # --- phase: 主要参照の指定（index-main-reference-spec.md R3） ---
+
+      def term_with_main(tokens)
+        { 'term' => 'Markdown', 'yomi' => 'まーくだうん', 'flags' => 'i',
+          'in_index' => true, 'main_tokens' => tokens }
+      end
+
+      def generate_main(tokens)
+        @generator.generate!(terms: [term_with_main(tokens)],
+                             high_candidates: [], low_candidates: [], rejected: [])
+        File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
+      end
+
+      def rewrite_review(from, to)
+        path = ReviewMarkdownGenerator::REVIEW_FILE
+        File.write(path, File.read(path, encoding: 'utf-8').sub(from, to))
+      end
+
+      # 著者が触るのはレビューファイルであって辞書 YAML ではない。
+      # 用語集の説明文と同じく子ブロックで書く。
+      def test_main_reference_is_written_as_a_child_line
+        content = generate_main(%w[21 22])
+
+        assert_includes content, '  - 主要参照: 21, 22'
+        assert_match(/^- \[i\] \*\*Markdown\*\*/, content, 'フラグ欄は無傷であること')
+      end
+
+      def test_main_reference_roundtrips
+        generate_main(%w[21 22])
+
+        assert_equal({ 'Markdown' => %w[21 22] }, @generator.parse_main_references)
+      end
+
+      # `main:` も受ける（英語のキーで書きたい著者のため）
+      def test_main_alias_is_accepted
+        generate_main(%w[21 22])
+        rewrite_review('- 主要参照: 21, 22', '- main: 21-22')
+
+        assert_equal({ 'Markdown' => ['21-22'] }, @generator.parse_main_references)
+      end
+
+      def test_main_reference_accepts_various_separators
+        generate_main(%w[21])
+        rewrite_review('- 主要参照: 21', '- 主要参照: 21、22 33')
+
+        assert_equal({ 'Markdown' => %w[21 22 33] }, @generator.parse_main_references)
+      end
+
+      # 行を消す＝指定の解除。nil で「解除」を表す（キーが無いのとは違う）
+      def test_removing_the_line_means_clearing_the_designation
+        generate_main(%w[21])
+        rewrite_review(/^\s*- 主要参照: .*\n/, '')
+
+        assert_equal({ 'Markdown' => nil }, @generator.parse_main_references)
+      end
+
+      def test_main_reference_omitted_when_not_designated
+        @generator.generate!(terms: [{ 'term' => 'Ruby', 'yomi' => 'るびー', 'flags' => 'i', 'in_index' => true }],
+                             high_candidates: [], low_candidates: [], rejected: [])
+        content = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
+
+        refute_includes content, '主要参照'
+        assert_equal({ 'Ruby' => nil }, @generator.parse_main_references)
+      end
+
+      # 主要参照の行を足しても、既存 7 パーサの解釈は変わらない。
+      # 行の有無で結果が一致することを見る（絶対値ではなく差分で確かめる）。
+      def test_main_reference_line_does_not_disturb_other_parsers
+        generate_main(%w[21])
+        with_line = {
+          approved: @generator.parse_index_approved,
+          rejected: @generator.parse_index_rejected,
+          yomi: @generator.parse_yomi_changes,
+          section4: @generator.parse_rejected_section_all
+        }
+
+        rewrite_review(/^\s*- 主要参照: .*\n/, '')
+        without_line = {
+          approved: @generator.parse_index_approved,
+          rejected: @generator.parse_index_rejected,
+          yomi: @generator.parse_yomi_changes,
+          section4: @generator.parse_rejected_section_all
+        }
+
+        assert_equal without_line, with_line, '主要参照の行は他のパーサの解釈を変えない'
+        assert_equal ['Markdown'], with_line[:approved].map { it['term'] }
+      end
+
       # --- phase: 一般語のサブセクション（§3 R5.2） ---
 
       def common_term(name, spread: '20/27 章（74%）')

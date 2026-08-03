@@ -313,6 +313,61 @@ module VivlioStarter
           assert_includes term_names, '!DOCTYPE'
         end
 
+        # --- phase: 主要参照（index-main-reference-spec.md R1・R4） ---
+
+        def write_dictionary(main:)
+          entry = { 'term' => '用語集', 'yomi' => 'ようごしゅう', 'flags' => 'i', 'pattern' => '/用語集/' }
+          entry['main'] = main if main
+          File.write('config/index_glossary_terms.yml', { 'terms' => [entry] }.to_yaml)
+        end
+
+        # 主要参照＝辞書 main: が指す章での初出。章の頭に着地させたいので、
+        # 章内で最初の 1 箇所だけを立てる。
+        def test_main_reference_marks_first_occurrence_in_the_designated_chapter
+          write_dictionary(main: '33-b')
+          File.write('11-a.md', "先に触れる [用語集] です。\n")
+          File.write('33-b.md', "ここで [用語集] を説明します。二度目の [用語集] もあります。\n")
+
+          scanner = IndexMatchScanner.new
+          scanner.scan_and_tag_file!('11-a.md')
+          scanner.scan_and_tag_file!('33-b.md')
+
+          assert_equal [false, true, false], scanner.matches.map { it['is_main'] }
+        end
+
+        def test_no_main_reference_when_unspecified
+          write_dictionary(main: nil)
+          File.write('33-b.md', "ここで [用語集] を説明します。\n")
+
+          scanner = IndexMatchScanner.new
+          scanner.scan_and_tag_file!('33-b.md')
+
+          assert_equal [false], scanner.matches.map { it['is_main'] }
+        end
+
+        # 複数章を指定できる（腰を据えた説明が 2 箇所にある本のため）
+        def test_main_reference_accepts_multiple_chapters
+          write_dictionary(main: %w[11-a 33-b])
+          File.write('11-a.md', "[用語集] の話。\n")
+          File.write('33-b.md', "[用語集] の話。\n")
+
+          scanner = IndexMatchScanner.new
+          scanner.scan_and_tag_file!('11-a.md')
+          scanner.scan_and_tag_file!('33-b.md')
+
+          assert_equal [true, true], scanner.matches.map { it['is_main'] }
+        end
+
+        def test_main_reference_ignores_unrelated_chapters
+          write_dictionary(main: '99-missing')
+          File.write('33-b.md', "[用語集] の話。\n")
+
+          scanner = IndexMatchScanner.new
+          scanner.scan_and_tag_file!('33-b.md')
+
+          assert_equal [false], scanner.matches.map { it['is_main'] }
+        end
+
         # --- phase: read_only mode tests ---
 
         def test_scan_read_only_does_not_modify_file

@@ -256,6 +256,9 @@ module VivlioStarter
         # nilでない場合のみ上書き
         merged['yomi'] = new_data['yomi'] || new_data[:yomi] || merged['yomi']
         merged['definition'] = new_data['definition'] if new_data['definition']
+        # 主要参照は著者の判断＝語彙の一次データなので辞書に残す（score とは逆の扱い）。
+        # key? で見るのは、nil を明示的に渡して指定を解除できるようにするため。
+        merged['main'] = new_data['main'] if new_data.key?('main')
         merged['contexts'] = new_data['contexts'] if new_data['contexts']
         merged['updated_at'] = Time.now.strftime('%Y-%m-%d %H:%M:%S')
         merged
@@ -274,6 +277,7 @@ module VivlioStarter
         # オプショナルフィールド
         entry['pattern'] = term['pattern'] || build_pattern(entry['term'])
         entry['auto_approved'] = term['auto_approved'] if term.key?('auto_approved')
+        entry['main'] = term['main'] if term['main']
         entry['contexts'] = term['contexts'] if term['contexts']&.any?
         entry
       end

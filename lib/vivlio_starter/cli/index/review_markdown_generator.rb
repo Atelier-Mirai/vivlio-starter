@@ -229,6 +229,47 @@ module VivlioStarter
         items
       end
 
+      # 主要参照の指定を抽出する（`- 主要参照: 21, 22` / `- main: 21-22`）。
+      #
+      # 著者が触るのはこのレビューファイルであって辞書 YAML ではない。用語集の
+      # 説明文と同じく「子ブロックに書く」形に揃えてある——フラグ欄に数字を
+      # 入れる案（`[igm21,22]`）は、閉じていたフラグの語彙を開いてしまい、
+      # 7 つのパーサすべてに切り分け処理が要る（§R3）。
+      #
+      # 値は章トークン。`21` `21, 22` `21-22` のいずれも書ける（TokenResolver が解釈）。
+      # 行が無ければ nil を返す——「指定なし」と「行を消した＝解除」を同じ扱いにする。
+      #
+      # @return [Hash{String => Array<String>, nil}] 用語 → 章トークンの配列
+      MAIN_REFERENCE_LINE = /^\s*-\s*(?:主要参照|main)\s*[:：]\s*(?:`(?:NEW!|Today)`\s*)?(.+)$/
+
+      def parse_main_references
+        return {} unless exists?
+
+        content = File.read(review_file_path, encoding: 'utf-8')
+        boundary = content.index('## 4. 除外済みリスト')
+        search = boundary ? content[0...boundary] : content
+
+        result = {}
+        term_blocks(search).each do |term, body|
+          line = body[MAIN_REFERENCE_LINE, 1]
+          result[term] = line ? split_chapter_tokens(line) : nil
+        end
+        result
+      end
+
+      # 用語行とそれに続くインデント行を 1 ブロックとして切り出す。
+      # 行単位で独立に scan する他のパーサと違い、用語と子項目の対応が要るため。
+      def term_blocks(content)
+        content.to_enum(:scan, /^- \[[^\]]*\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \([^)]+\)[^\n]*\n((?:[ \t]+[^\n]*\n|\n(?=[ \t]))*)/)
+               .map { Regexp.last_match.captures }
+      end
+
+      # `21, 22` `21-22` `21 22` のいずれも章トークンの配列にする。
+      # 解決（番号 → basename）は TokenResolver の仕事なので、ここでは分割だけ。
+      def split_chapter_tokens(text)
+        text.split(/[,、\s]+/).map(&:strip).reject(&:empty?)
+      end
+
       # Termsセクションで読みが変更された用語を抽出
       # @return [Array<Hash>] 読み変更された用語のリスト
       def parse_yomi_changes
@@ -393,8 +434,15 @@ module VivlioStarter
 
           本の広い範囲に散らばっている語です。索引から引いても読者が「どこを読めばよいか」を
           判断できないため、外すことを推奨します。
+
+          ただし**本の主題そのもの**である語（Markdown の解説書における「Markdown」など）は、
+          広く出ていて当然です。その場合は外すのではなく、**説明している章を指定**してください。
+          指定した章の初出が索引で太字＋先頭に並び、「まずここを読めばよい」が読者に伝わります。
+
           - 外す場合: [-i] のまま `vs index:apply`
-          - 残す場合: [i] に戻してください
+          - 残す場合: [i] に戻す
+          - 説明箇所を指定する場合: [i] に戻したうえで、config/index_glossary_terms.yml の
+            該当語へ `main: 21-markdown-tutorial` を書き足す（複数章ならリストで指定）
 
         HEADER
       end
@@ -512,6 +560,9 @@ module VivlioStarter
         # 7 つのパーサの正規表現が軒並みマッチしなくなる。
         line += " - 一般語: #{term['spread_text']}に出現" if term['spread_text']
         line += "\n"
+
+        # 主要参照（説明箇所）の指定。著者が編集する行なので、機械が出す文脈より先に置く。
+        line += "  - 主要参照: #{Array(term['main_tokens']).join(', ')}\n" if term['main_tokens']
 
         # 文脈を最大2件表示（Candidatesと同様）
         contexts = term['contexts'] || []

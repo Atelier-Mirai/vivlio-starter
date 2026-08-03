@@ -282,13 +282,26 @@ module VivlioStarter
           end.join
         end
 
-        # 索引ページリンクの HTML を生成
+        # 索引ページリンクの HTML を生成。
+        # 主要参照（説明箇所）を先頭へ出し、太字用のクラスを付ける。
+        #
+        # **並べ替えは dedup より前でなければならない。** BacklinkDeduplicator は
+        # 同一ページを指すリンクの「DOM 上で最初の 1 本」を残すので、主要参照が
+        # 先頭にあればそれが生き残る。順序が逆だと主要参照のほうが消える。
         def generate_index_page_links(term)
-          @index_data[term].map do |occ|
+          order_occurrences(@index_data[term]).map do |occ|
             link = occ['link'] || occ[:link]
-            css_class = link.start_with?('00-preface') ? ' class="frontmatter"' : ''
-            %(<a href="#{link}"#{css_class}></a>)
+            classes = []
+            classes << 'main-ref' if occ['is_main'] || occ[:is_main]
+            classes << 'frontmatter' if link.start_with?('00-preface')
+            attr = classes.empty? ? '' : %( class="#{classes.join(' ')}")
+            %(<a href="#{link}"#{attr}></a>)
           end.join
+        end
+
+        # 主要参照を先頭へ。同種のなかでは元の走査順（章順）を保つ。
+        def order_occurrences(occurrences)
+          occurrences.to_a.partition { it['is_main'] || it[:is_main] }.flatten(1)
         end
 
         # ================================================================
