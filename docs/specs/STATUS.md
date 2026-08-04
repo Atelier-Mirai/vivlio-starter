@@ -23,10 +23,4 @@
 
 ## メモ（依存関係・実装順序）
 
-`index-code-protection-unification-spec.md`（先行実施ぶん）は **2026-08-02 に実装完了**し `docs/archives/` へ移した。索引のタグ付け結果が実際に動いた（4 章 7 件）ので、以降の 2 本で索引語数の増減を見るときは**その後の状態を基準**にすること。
-
-`chapter-rename-followers-spec.md` は **2026-08-03 に実装完了**し `docs/archives/` へ移した。章名を保持する設定を今後足すときは `ChapterRename::FOLLOWERS` へ登録すること（`config-extension-guidelines.md` §4 の隣）。
-
-`index-term-selection-spec.md` と `index-main-reference-spec.md` は **2026-08-03 に実装完了**し `docs/archives/` へ移した。索引・用語集の仕上げ（RC 対象・仕様書 3 本）はこれで全て終わっている。残るのは**実機目視**だけで、`PLANNED.md`「Kindle Previewer 実機確認の積み残し」に 4 件たまっている。
-
-実装済みの内容は `CHANGELOG.md`、実装時に判明した落とし穴は各仕様書（`docs/archives/`）の「実装記録」節を参照してください。ビルドの枝をまたぐ処理を書くときの前提は `build-pipeline-pitfalls-notes.md` に移しました。
+実装待ちの仕様書が無いため、記載はありません。

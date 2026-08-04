@@ -86,7 +86,7 @@
   - 入れ子リスト記法（`nested-list-notation-spec` §10-12）: ul のレベル別マーカー「● ○ ・」の実体注入
   - コード行番号（`epub-code-line-numbers-spec` §4）: 1 論理行＝1 行の対応とぶら下げインデント
   - `@` ディレクティブ Tier 1（`at-directive-tier1-spec` §3-4）: `@pageref` がページ番号なしのタイトルリンクへ劣化するか・`@pagebreak:recto` が単純改ページになるか・QR コードの表示
-  - 索引の主要参照（`index-main-reference-spec` §5.3）: `.main-ref` の太字が KFX で効くか。`font-weight: bold` はリテラル値で `var()` を含まないため理屈上は通るはずだが未確認。あわせて、EPUB / Kindle の索引で**ページ番号のカンマ区切りが従来どおり出ている**ことも見る（PDF 側でだけ `dd.resolved` へ切り替えたため、CSS のフォールバックが効いていないと番号が区切りなしで並ぶ）
+  - 索引の主要参照（`index-main-reference-spec` §5.3）: `.main-ref` の見た目が KFX で効くか。`font-weight: bold` に `font-family`（ゴシック）・`font-size: 1.06em`・`letter-spacing`・負の `margin-right` を重ねた（2026-08-05）。いずれもリテラル値で `var()` を含まないため理屈上は通るはずだが未確認で、とくに**フォント名は端末側で無視されうる**——ゴシックにならない場合、目印は太字だけになる。あわせて、EPUB / Kindle の索引で**ページ番号のカンマ区切りが従来どおり出ている**ことも見る（PDF 側でだけ `dd.resolved` へ切り替えたため、CSS のフォールバックが効いていないと番号が区切りなしで並ぶ）
 
 ## コード整理
 
