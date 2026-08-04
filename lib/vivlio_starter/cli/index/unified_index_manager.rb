@@ -148,7 +148,8 @@ module VivlioStarter
         # 辞書を書き換えた後なので、登録語数は更新後の値になる。
         @terms_manager.clear_cache!
         build_plan_reporter(chapters, selectable, extractor: @extractor).render
-        report_auto_results(auto_approved, high_candidates, low_candidates, rejected_count_in_candidates)
+        report_auto_results(auto_approved, high_candidates, low_candidates,
+                            rejected_count_in_candidates, rejected_with_context.size)
       end
 
       # Markdownから承認・リジェクトを適用
@@ -1290,11 +1291,14 @@ module VivlioStarter
       # 結果をレポート（auto_process!用）
       # 総括行（候補数・レビューファイル案内）は既定ログレベルで表示する（R8）。
       # 帯の内訳そのものは IndexPlanReporter が既に出しているので、ここでは繰り返さない。
-      def report_auto_results(auto_approved, high_candidates, low_candidates, rejected_count)
+      def report_auto_results(auto_approved, high_candidates, low_candidates, rejected_count, rejected_listed = 0)
         approved = auto_approved.any? ? "自動承認 #{auto_approved.size} 件・" : ''
+        # 除外済みの件数も載せる。候補の数だけを告げると「外した語はもう出てこない」
+        # と読めるが、実際は末尾に一覧があり、そこが戻す唯一の入口である。
+        listed = rejected_listed.positive? ? "・除外済み #{rejected_listed} 件（末尾から戻せます）" : ''
         Common.log_summary(
           "レビューファイルを生成しました: #{approved}" \
-          "推奨候補 #{high_candidates.size} 件・一般候補 #{low_candidates.size} 件",
+          "推奨候補 #{high_candidates.size} 件・一般候補 #{low_candidates.size} 件#{listed}",
           detail: "#{ReviewMarkdownGenerator::REVIEW_FILE} を編集後、vs index:apply を実行してください"
         )
 

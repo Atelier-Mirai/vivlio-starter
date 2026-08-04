@@ -41,6 +41,14 @@ module VivlioStarter
       HIGH_SECTION = '## 2. 推奨候補'
       REJECTED_SECTION = '## 4. 除外済みリスト'
 
+      # 見出しの位置。**行頭に限る**のが要点——本文で見出し名に触れただけで
+      # 境界がそこへ動き、以降の解釈がまるごとずれる。凡例に「4 節『除外済み
+      # リスト』」と書こうとして実際に踏んだ罠で、9 つの読み取りが一斉に壊れた。
+      # @return [Integer, nil] 見出しの開始位置。無ければ nil
+      def self.section_index(content, heading)
+        content.match(/^#{Regexp.escape(heading)}/)&.begin(0)
+      end
+
       def initialize
         @content = nil
         @config = load_index_config
@@ -96,7 +104,7 @@ module VivlioStarter
         return [] unless exists?
 
         content = File.read(review_file_path, encoding: 'utf-8')
-        boundary = content.index(REJECTED_SECTION)
+        boundary = self.class.section_index(content, REJECTED_SECTION)
         IndexCommands::TermLine.scan(boundary ? content[0...boundary] : content)
       end
 
@@ -105,7 +113,7 @@ module VivlioStarter
         return [] unless exists?
 
         content = File.read(review_file_path, encoding: 'utf-8')
-        boundary = content.index(REJECTED_SECTION)
+        boundary = self.class.section_index(content, REJECTED_SECTION)
         boundary ? IndexCommands::TermLine.scan(content[boundary..]) : []
       end
 
@@ -199,7 +207,7 @@ module VivlioStarter
         return {} unless exists?
 
         content = File.read(review_file_path, encoding: 'utf-8')
-        boundary = content.index(REJECTED_SECTION)
+        boundary = self.class.section_index(content, REJECTED_SECTION)
         search = boundary ? content[0...boundary] : content
 
         # まずフラグ欄（`[igm33]`）を読み、子行があればそちらで上書きする。
@@ -245,8 +253,8 @@ module VivlioStarter
         return [] unless exists?
 
         content = File.read(review_file_path, encoding: 'utf-8')
-        start = content.index(TERMS_SECTION) or return []
-        finish = content.index(HIGH_SECTION) || content.length
+        start = self.class.section_index(content, TERMS_SECTION) or return []
+        finish = self.class.section_index(content, HIGH_SECTION) || content.length
 
         IndexCommands::TermLine.scan(content[start...finish])
                                .select { it.index? || it.glossary? }
@@ -366,7 +374,7 @@ module VivlioStarter
              違う章なら数字を書き換え、指定したくなければ `m?33` ごと消してください。
           ※ 章名や節まで指すときは、用語の下に `- 主要参照: 21#Markdown とは` と書きます
              （子行がフラグ欄より優先されます）。
-          ※ 一度外した語は候補（2・3 節）には現れず、末尾の 4 節「除外済みリスト」に集まります。
+          ※ 一度外した語は候補（2・3 節）には現れず、末尾の 4 節「除外済みリスト」#{rejected_note(rejected)}に集まります。
              やっぱり戻すときは、そこで [i] / [g] / [ig] を入れて `vs index:apply`。
 
           #{build_terms_section(terms)}
@@ -377,6 +385,12 @@ module VivlioStarter
 
           #{build_rejected_section(rejected)}
         MARKDOWN
+      end
+
+      # 凡例に添える除外済みの語数。2,000 行を超えるファイルなので、末尾に
+      # 何語あるかを先頭で言っておかないと「無くなった」と読まれる。
+      def rejected_note(rejected)
+        rejected.empty? ? '' : "（現在 #{rejected.size} 語）"
       end
 
       # 1. 登録済み用語セクション

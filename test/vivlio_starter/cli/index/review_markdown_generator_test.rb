@@ -486,6 +486,47 @@ module VivlioStarter
         assert_equal 'ToUnreject', unreject[0]['term']
       end
 
+      # 見出し名は本文にも書かれる（凡例がまさにそう案内する）。境界の判定を
+      # 行頭に限らないと、そこから先が丸ごと除外済み扱いになり、承認も棄却も
+      # 読めなくなる。凡例に一行足しただけで 9 つの読み取りが壊れた実例がある。
+      def test_section_boundary_ignores_the_heading_name_written_in_prose
+        content = <<~MD
+          # 索引・用語集レビュー
+          ※ 外した語は ## 4. 除外済みリスト に集まります
+
+          ## 1. 登録済み用語の確認 (Terms: 1語)
+
+          - [-i] **Dropped** (どろっぷど)
+
+          ## 4. 除外済みリスト (Rejected: 1語)
+
+          - [ ] **StayRejected** (すていりじぇくてっど)
+        MD
+        File.write('_index_glossary_review.md', content)
+
+        assert_equal ['Dropped'], @generator.parse_index_rejected.map { it['term'] }
+        assert_equal ['StayRejected'], @generator.parse_rejected_section_all.map { it['term'] }
+      end
+
+      # 2,000 行を超えるファイルなので、末尾に何語あるかを先頭で言っておかないと
+      # 「除外済みリストが無くなった」と読まれる
+      def test_legend_tells_how_many_terms_are_in_the_rejected_list
+        @generator.generate!(terms: [], high_candidates: [], low_candidates: [],
+                             rejected: [{ 'term' => 'Bad', 'yomi' => 'ばっど' },
+                                        { 'term' => 'Worse', 'yomi' => 'わーす' }])
+        content = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
+
+        assert_includes content, '「除外済みリスト」（現在 2 語）に集まります'
+      end
+
+      # 0 語のときに「（現在 0 語）」と言うのは不要な念押し
+      def test_legend_omits_the_count_when_nothing_is_rejected
+        @generator.generate!(terms: [], high_candidates: [], low_candidates: [], rejected: [])
+        content = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
+
+        assert_includes content, '「除外済みリスト」に集まります'
+      end
+
       # --- phase: parse_yomi_changes tests ---
 
       def test_parse_yomi_changes_extracts_from_terms_section
