@@ -74,7 +74,7 @@
 |---|---|---|
 | `main: 33-index-glossary` | その章での**初出**を主要参照とする | ○ |
 | `main: [33-index-glossary, 41-book-yml]` | 複数章で腰を据えて説明している場合 | ○ |
-| `main: 33-index-glossary#用語集ページの生成` | 節まで指定 | **対象外**（`IndexMatchScanner` に見出し追跡の追加が要る。RC 後に検討） |
+| `main: 33-index-glossary#用語集ページの生成` | 節まで指定 | 本仕様では対象外。**`index-main-reference-section-spec.md` で実装した**（2026-08-04） |
 
 ## 2. 要件
 

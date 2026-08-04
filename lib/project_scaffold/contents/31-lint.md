@@ -343,6 +343,54 @@ Vivlio Starter では、以下の場所に設定ファイルが配置されて�
 - `config/spellcheck_dictionaries/`: 英語スペルチェック辞書
 - `config/user_words.txt`: スペルチェックのユーザー辞書（`--register` の追記先）
 
+### 表記揺れ辞書の追加
+
+「CSS 組版」と「CSS組版」、「ユーザー」と「ユーザ」のように、同じ語が違う表記で混ざることがあります。こうした揺れは `config/textlint_prh.yml` に登録すると検出できます。
+
+```yaml
+rules:
+  - expected: CSS 組版      # 揃えたい表記
+    patterns:              # そこへ直したい表記
+      - 'CSS組版'
+      - 'CSS組み版'
+      - 'CSS 組み版'
+```
+
+`expected` が正しい表記、`patterns` がそこへ寄せたい表記です。登録すると `vs lint` が指摘します。
+
+```
+📄 contents/95-further-inspiration.md  (textlint)
+    4件  [prh] CSS組版 => CSS 組版
+         行: 11, 13
+```
+
+`vs lint --fix` で一括修正できます。
+
+`patterns` には正規表現も書けます。スラッシュで囲んでください。
+
+```yaml
+  - expected: プログラミング
+    patterns:
+      - /(?<![ァ-ヶー])ログラミング/   # 先頭の「プ」が欠けたものを拾う
+```
+
+:::{.note}
+**書名や引用は直さない**
+
+書籍のタイトルや引用文に揺れた表記が含まれることがあります。それは著者の表記ではないので、直してはいけません。次項の `config/textlint_allowlist.yml` に登録して、指摘そのものを止めてください。
+
+```yaml
+# 書籍名（表記ゆれチェック除外）
+- "Web技術で「本」が作れるCSS組版Vivliostyle入門"
+```
+:::
+
+:::{.memo}
+**索引を作る前に表記を揃える**
+
+索引辞書に「CSS組版」と登録しても、原稿が「CSS 組版」なら一致せず、**登録したのに索引に出ない**語ができます。主要参照の指定も同じ理由で効きません。索引を整える前に `vs lint` で表記を揃えておくと、手戻りがありません。
+:::
+
 ### 除外リストの設定
 
 特定の語句を textlint のチェック対象から完全に外したい場合は、`config/textlint_allowlist.yml` に登録します。`disabled_terms` が「出力から消す」のに対し、allowlist は **textlint が報告そのものをしなくなる**正攻法です。
