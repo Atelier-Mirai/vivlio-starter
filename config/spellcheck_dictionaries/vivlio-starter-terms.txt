@@ -5,7 +5,7 @@
 #
 # ここに置くのは「どの技術書でも出てくる広く知られたツール名・略語」と
 # 「vivlio-starter 自身の機能・記法・コマンド名（フォークの原稿でも使う語）」。
-# 本固有の作例（サンプル画像のローマ字名・作例の識別子など）は config/user_words.txt へ。
+# 本固有の作例（サンプル画像のローマ字名・作例の識別子など）は config/spellcheck_allowlist.yml へ。
 
 # vivlio-starter 固有の機能・記法・コマンド・内部名
 querystream

@@ -45,7 +45,7 @@ module VivlioStarter
 
       # textlint 用サポート YAML（allowlist/prh）の既定パス
       TEXTLINT_ALLOWLIST_RELATIVE = File.join(Common::CONFIG_DIR, 'textlint_allowlist.yml')
-      TEXTLINT_PRH_RELATIVE       = File.join(Common::CONFIG_DIR, 'textlint_prh.yml')
+      TEXTLINT_REWRITE_RELATIVE   = File.join(Common::CONFIG_DIR, 'textlint_rewrite.yml')
 
       LINT_DESC = {
         short: 'contents/ 以下の Markdown を textlint で検査します',
@@ -70,7 +70,7 @@ module VivlioStarter
             --fix              自動修正可能なエラーを修正します。
             --textlint-only    日本語校正（textlint）のみ実行します。
             --spellcheck-only  スペルチェックのみ実行します。
-            --register         未知語を config/user_words.txt へ一括登録します（スペルチェック専用）。
+            --register         未知語を config/spellcheck_allowlist.yml へ一括登録します（スペルチェック専用）。
         DESC
       }.freeze
 
@@ -259,7 +259,7 @@ module VivlioStarter
 
         # textlint 用サポート YAML (allowlist/prh) の存在・パースを検証する
         def ensure_support_yaml_files!
-          [TEXTLINT_ALLOWLIST_RELATIVE, TEXTLINT_PRH_RELATIVE].each do |rel|
+          [TEXTLINT_ALLOWLIST_RELATIVE, TEXTLINT_REWRITE_RELATIVE].each do |rel|
             path = Common.resolve_path_from_root(rel)
             display = Common.relative_path_from_root(path) || path
 

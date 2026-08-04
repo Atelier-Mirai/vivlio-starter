@@ -1,5 +1,5 @@
 ---
-rejected_at: '2026-07-05 21:00:15'
+rejected_at: '2026-08-04 04:10:13'
 rejected_terms:
 - term: Starter
   yomi: Starter
@@ -66,3 +66,134 @@ rejected_terms:
 - term: eV
   yomi: eV
   rejected_at: '2026-07-16 20:06:30'
+- term: オプション
+  yomi: おぷしょん
+  rejected_at: '2026-08-03 23:14:32'
+- term: 技術書
+  yomi: ぎじゅつしょ
+  rejected_at: '2026-08-03 23:14:32'
+- term: コマンド
+  yomi: こまんど
+  rejected_at: '2026-08-03 23:14:32'
+- term: コード
+  yomi: こーど
+  rejected_at: '2026-08-03 23:14:32'
+- term: コードブロック
+  yomi: こーどぶろっく
+  rejected_at: '2026-08-03 23:14:32'
+- term: ツール
+  yomi: つーる
+  rejected_at: '2026-08-03 23:14:32'
+- term: ディレクトリ
+  yomi: でぃれくとり
+  rejected_at: '2026-08-03 23:14:32'
+- term: データ
+  yomi: でーた
+  rejected_at: '2026-08-03 23:14:32'
+- term: ファイル
+  yomi: ふぁいる
+  rejected_at: '2026-08-03 23:14:32'
+- term: ブロック
+  yomi: ぶろっく
+  rejected_at: '2026-08-03 23:14:32'
+- term: プロジェクト
+  yomi: ぷろじぇくと
+  rejected_at: '2026-08-03 23:14:32'
+- term: ページ
+  yomi: ぺーじ
+  rejected_at: '2026-08-03 23:14:32'
+- term: エンジン
+  yomi: えんじん
+  rejected_at: '2026-08-03 23:14:32'
+- term: システム
+  yomi: しすてむ
+  rejected_at: '2026-08-03 23:14:32'
+- term: フォーマット
+  yomi: ふぉーまっと
+  rejected_at: '2026-08-03 23:14:32'
+- term: フロー
+  yomi: ふろー
+  rejected_at: '2026-08-03 23:14:32'
+- term: 印刷用
+  yomi: いんさつよう
+  rejected_at: '2026-08-03 23:14:32'
+- term: Apple
+  yomi: Apple
+  rejected_at: '2026-08-03 23:14:32'
+- term: Books
+  yomi: Books
+  rejected_at: '2026-08-03 23:14:32'
+- term: カバー
+  yomi: かばー
+  rejected_at: '2026-08-03 23:14:32'
+- term: ステップ
+  yomi: すてっぷ
+  rejected_at: '2026-08-03 23:14:32'
+- term: Markdown
+  yomi: Markdown
+  rejected_at: '2026-08-03 23:16:08'
+- term: PDF
+  yomi: PDF
+  rejected_at: '2026-08-03 23:16:08'
+- term: インストール
+  yomi: いんすとーる
+  rejected_at: '2026-08-03 23:16:08'
+- term: ビルド
+  yomi: ビルド
+  rejected_at: '2026-08-03 23:16:08'
+- term: カスタマイズ
+  yomi: かすたまいず
+  rejected_at: '2026-08-04 03:11:20'
+- term: デフォルト
+  yomi: でふぉると
+  rejected_at: '2026-08-04 03:11:20'
+- term: レベル
+  yomi: れべる
+  rejected_at: '2026-08-04 03:11:20'
+- term: インライン
+  yomi: いんらいん
+  rejected_at: '2026-08-04 03:11:20'
+- term: スキャン
+  yomi: すきゃん
+  rejected_at: '2026-08-04 03:11:20'
+- term: カラー
+  yomi: からー
+  rejected_at: '2026-08-04 03:11:20'
+- term: Playwright
+  yomi: Playwright
+  rejected_at: '2026-08-04 03:11:20'
+- term: Samovar
+  yomi: Samovar
+  rejected_at: '2026-08-04 03:11:20'
+- term: テーマ
+  yomi: てーま
+  rejected_at: '2026-08-04 03:11:20'
+  score: 288.7
+- term: 自動生成
+  yomi: じどうせいせい
+  rejected_at: '2026-08-04 03:11:20'
+  score: 252.4
+- term: スタイル
+  yomi: すたいる
+  rejected_at: '2026-08-04 03:11:20'
+  score: 246.0
+- term: バージョン
+  yomi: ばーじょん
+  rejected_at: '2026-08-04 03:11:20'
+  score: 260.5
+- term: セクション
+  yomi: せくしょん
+  rejected_at: '2026-08-04 03:11:20'
+  score: 254.2
+- term: ファイル名
+  yomi: ふぁいるめい
+  rejected_at: '2026-08-04 03:11:20'
+  score: 260.7
+- term: ルール
+  yomi: るーる
+  rejected_at: '2026-08-04 03:11:20'
+  score: 274.1
+- term: レイアウト
+  yomi: れいあうと
+  rejected_at: '2026-08-04 03:11:20'
+  score: 251.4

@@ -76,7 +76,7 @@ module VivlioStarter
               --fix              自動修正可能なエラーを修正します
               --textlint-only    日本語校正（textlint）のみ実行します
               --spellcheck-only  スペルチェックのみ実行します
-              --register         スペルチェックの未知語を config/user_words.txt へ一括登録します
+              --register         スペルチェックの未知語を config/spellcheck_allowlist.yml へ一括登録します
                                  （スペルチェック専用。textlint は実行しません）
 
             例:

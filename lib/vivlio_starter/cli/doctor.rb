@@ -71,7 +71,7 @@ module VivlioStarter
 
       # 必須 YAML（Common::REQUIRED_YAML_FILES）以外で scaffold から復元する設定ファイル。
       # 破損判定はせず「欠落時のみ」復元する（spec §3.1）
-      OPTIONAL_CONFIG_FILES = %w[textlint_allowlist.yml textlint_prh.yml .textlintrc.yml _README.md].freeze
+      OPTIONAL_CONFIG_FILES = %w[textlint_allowlist.yml textlint_rewrite.yml .textlintrc.yml _README.md].freeze
 
       # 欠落時のみ scaffold から再帰コピーで復元する辞書ディレクトリ（中身の個別検証はしない）
       CONFIG_DIR_ENTRIES = %w[spellcheck_dictionaries textlint_dictionaries].freeze

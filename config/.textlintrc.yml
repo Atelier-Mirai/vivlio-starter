@@ -44,7 +44,7 @@ rules:
     rulePaths:
       - ./textlint_dictionaries/icsmedia.yml
       - ./textlint_dictionaries/js_primer.yml
-      - ./textlint_prh.yml
+      - ./textlint_rewrite.yml
 
   # 一般的な日本語スタイルチェックのプリセット
   preset-japanese:

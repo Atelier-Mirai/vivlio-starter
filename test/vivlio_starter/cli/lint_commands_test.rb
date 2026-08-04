@@ -396,14 +396,14 @@ module VivlioStarter
       def test_generate_runtime_config_overrides_sentence_length_max
         Dir.mktmpdir do |dir|
           base = File.join(dir, '.textlintrc.yml')
-          File.write(base, { 'rules' => { 'prh' => { 'rulePaths' => ['./textlint_prh.yml'] } } }.to_yaml)
+          File.write(base, { 'rules' => { 'prh' => { 'rulePaths' => ['./textlint_rewrite.yml'] } } }.to_yaml)
 
           runner = LintCommands::LintRunner.new([], {})
           path = runner.send(:generate_runtime_config, base, sentence_max: 80)
 
           cfg = YAML.safe_load_file(path)
           assert_equal 80, cfg.dig('rules', 'preset-ja-technical-writing', 'sentence-length', 'max')
-          assert_includes cfg.dig('rules', 'prh', 'rulePaths'), './textlint_prh.yml', '既存設定を保持'
+          assert_includes cfg.dig('rules', 'prh', 'rulePaths'), './textlint_rewrite.yml', '既存設定を保持'
           assert_equal dir, File.dirname(path), '元設定と同じディレクトリに生成（相対パス保持）'
         end
       end
@@ -432,7 +432,7 @@ module VivlioStarter
 
         File.write('config/.textlintrc.yml', "rules: {}\n")
         File.write('config/textlint_allowlist.yml', "allow: []\n")
-        File.write('config/textlint_prh.yml', "rules: []\n")
+        File.write('config/textlint_rewrite.yml', "rules: []\n")
         File.write('config/catalog.yml', "CHAPTERS:\n  - 11-install\n")
 
         File.write('config/textlint_dictionaries/prh.yml', "version: 1\nrules: []\n")

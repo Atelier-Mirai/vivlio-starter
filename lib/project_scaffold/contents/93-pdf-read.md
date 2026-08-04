@@ -162,12 +162,12 @@ Enhanced Mode では OCR 後のテキストに対して、以下の自動補正�
 1. **空白圧縮** --- 日本語文字間の不要な半角スペースを除去（例: `プ ロ グ ラ ミ ン グ` → `プログラミング`）
 2. **断片結合** --- OCR が 1 文字ずつ分割してしまった単語を再結合
 3. **括弧正規化** --- 日本語を含む半角括弧を全角括弧に変換（例: `(道具)` → `（道具）`）
-4. **prh 辞書置換** --- `config/textlint_prh.yml` に定義された表記ゆれ・誤読パターンを自動修正
+4. **prh 辞書置換** --- `config/textlint_rewrite.yml` に定義された表記ゆれ・誤読パターンを自動修正
 5. **MeCab 改行補正** --- MeCab が利用可能な場合、形態素解析に基づく改行位置の最適化
 
 ### prh 辞書によるカスタム修正
 
-`config/textlint_prh.yml` に OCR 固有の誤認識パターンを追記できます。
+`config/textlint_rewrite.yml` に OCR 固有の誤認識パターンを追記できます。
 
 ```yaml
 rules:
@@ -251,7 +251,7 @@ Standard Mode と Enhanced Mode のログ出力例です。問題が発生した
 | 画像が抽出されない | Standard Mode で実行している | `vivlio-starter-pdf` gem をインストール |
 | OCR 結果が悪い | DPI が低い / 言語設定が不適切 | `ocr.dpi` を `400` に、`languages` を確認 |
 | `Tesseract not found` | Tesseract 未インストール | `brew install tesseract tesseract-lang` |
-| 日本語の間にスペースが残る | prh 辞書で補正対象外の誤読 | `textlint_prh.yml` にパターンを追加 |
+| 日本語の間にスペースが残る | prh 辞書で補正対象外の誤読 | `textlint_rewrite.yml` にパターンを追加 |
 | 画像にテキストが混入する | イラスト領域検出のパラメータ | `inline_image_text: exclude` を試す |
 
 ### `vivlio-starter-pdf` のインストール
@@ -264,5 +264,5 @@ gem install vivlio-starter-pdf
 
 :::{.tip}
 **ヒント**  
-OCR 結果の品質を段階的に向上させるには、まず `vs pdf:read` で粗変換を行い、元の PDF と見比べながら `config/textlint_prh.yml` に誤読パターンを追記していくのが効率的です。一度辞書に登録したパターンは以降のすべての変換で自動適用されるため、プロジェクトが進むほど精度が上がります。
+OCR 結果の品質を段階的に向上させるには、まず `vs pdf:read` で粗変換を行い、元の PDF と見比べながら `config/textlint_rewrite.yml` に誤読パターンを追記していくのが効率的です。一度辞書に登録したパターンは以降のすべての変換で自動適用されるため、プロジェクトが進むほど精度が上がります。
 :::

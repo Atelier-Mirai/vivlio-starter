@@ -24,12 +24,17 @@ module VivlioStarter
 
         GLOSSARY_PATH = 'config/index_glossary_terms.yml'
 
-        # ユーザー辞書（このプロジェクト固有のスペルチェック許可語）のパス。
+        # スペルチェックの除外リスト（このプロジェクト固有の許可語）のパス。
         # プロジェクト直下の config/ に置く（隠しフォルダでなく見つけやすい。別の本でも
         # 使いたければこのファイルをコピーすればよい）。`vs lint --register` の追記先。
+        #
+        # 名前は textlint 側の `textlint_allowlist.yml` と対にしてある——接頭辞が
+        # どのツールか、後半が何をするファイルかを表す（`textlint_rewrite.yml` が
+        # 「直す」、`*_allowlist.yml` が「指摘しない」）。
+        #
         # 定数でなくメソッドにして呼び出し時の CWD を読む（テストで chdir しても追従する）。
         def user_dict_path
-          File.join('config', 'user_words.txt')
+          File.join('config', 'spellcheck_allowlist.yml')
         end
 
         # 実際に使う辞書ディレクトリ（プロジェクト優先・gem 同梱フォールバック）
@@ -77,25 +82,35 @@ module VivlioStarter
 
         private
 
-        # ユーザー辞書に登録済みの語（表示形のまま。コメント・記号は除去）
+        # 除外リストに登録済みの語。`textlint_allowlist.yml` と同じ YAML の並び。
+        # 壊れた YAML でスペルチェック全体を止めない——空として扱い、次の
+        # --register で書き直せば直る。
         def read_user_words
           return [] unless File.exist?(user_dict_path)
 
-          File.readlines(user_dict_path, chomp: true).filter_map { normalize(it) }
+          Array(YAML.safe_load_file(user_dict_path)).filter_map { normalize(it.to_s) }
+        rescue StandardError => e
+          Common.log_warn("#{user_dict_path} の読み込みに失敗しました: #{e.message}")
+          []
         end
 
-        # ヘッダ＋辞書順の語でユーザー辞書を書き直す
+        # ヘッダ＋辞書順の語で除外リストを書き直す
         def write_user_words(words)
           FileUtils.mkdir_p(File.dirname(user_dict_path))
-          File.write(user_dict_path, user_dict_header + words.join("\n") + "\n")
+          File.write(user_dict_path, user_dict_header + words.map { %(- "#{it}"\n) }.join)
         end
 
         def user_dict_header
           <<~HEADER
-            # vivlio-starter ユーザー辞書（このプロジェクトのスペルチェック許可語）
-            # 1 行 1 語。# 始まりはコメント。辞書順・重複なしで自動管理されます。
-            # `vs lint --register` を実行すると、スペルチェックで未知だった語がここへ追加されます。
-            # 別の本でも使いたい場合は、このファイルをコピーしてください。
+            # =============================================================
+            #  📝 スペルチェック除外リスト - Vivlio Starter
+            # -------------------------------------------------------------
+            #  • スペルチェックで「綴り誤り」と指摘したくない語を並べます
+            #  • 1 行 1 語。辞書順・重複なしで自動的に整えられます
+            #  • `vs lint --register` を実行すると、未知だった語がここへ追加されます
+            #  • 別の本でも使いたい場合は、このファイルをコピーしてください
+            # =============================================================
+
           HEADER
         end
 

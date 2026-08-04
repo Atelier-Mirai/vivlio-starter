@@ -13,7 +13,7 @@
 | `index_glossary_rejected.yml` | 索引・用語集の除外用語(vs indexにより生成) |
 | `.textlintrc.yml` | textlint の校正ルール設定 |
 | `textlint_allowlist.yml` | textlint の許可リスト（誤検知を除外） |
-| `textlint_prh.yml` | 表記揺れ検出の辞書設定 |
+| `textlint_rewrite.yml` | 表記揺れ検出の辞書設定 |
 | `textlint_dictionaries/` | 表記揺れ辞書ファイル群 |
 
 ## book.yml について

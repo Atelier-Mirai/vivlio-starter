@@ -211,23 +211,29 @@ htmx はサーバーとの通信を HTML 属性で記述できるライブラリ
 - コードブロック（` ``` `〜` ``` `）内は既定でチェック対象外です。
 - Vivliostyle 拡張記法（`:::{.class}` など）内の語も除外されます。
 
-### ユーザー辞書と --register
+### 除外リストと --register
 
 辞書に載っていない固有名詞や造語は「綴り誤り」として指摘されます。プロジェクト固有の語をまとめて許可語に加えたいときは、`--register` が便利です。
 
 ```bash
-# 未知語をユーザー辞書へ一括登録
+# 未知語を除外リストへ一括登録
 vs lint --register
 ```
 
-`--register` は、スペルチェックで未知だった語をすべて `config/user_words.txt`（ユーザー辞書）へ追記します。登録後、不要な語を手で削れば、以後そのプロジェクトでは指摘されなくなります。
+`--register` は、スペルチェックで未知だった語をすべて `config/spellcheck_allowlist.yml` へ追記します。登録後、不要な語を手で削れば、以後そのプロジェクトでは指摘されなくなります。
+
+```yaml
+- "ajisai"
+- "htmx"
+- "vivliostyle"
+```
 
 - `--register` は**スペルチェック専用の操作**です。`--spellcheck-only` を併記しなくても、日本語校正は実行されません。
-- ユーザー辞書は 1 行 1 語・`#` 始まりはコメント。大文字小文字は区別しません。辞書順・重複なしで自動的に整えられます。
-- このプロジェクト固有の辞書です。別の本でも使いたい場合は `config/user_words.txt` をコピーしてください。
+- 形式は textlint 側の `textlint_allowlist.yml` と同じ YAML の並びです。大文字小文字は区別せず、辞書順・重複なしで自動的に整えられます。
+- このプロジェクト固有のファイルです。別の本でも使いたい場合はコピーしてください。
 
 :::{.tip}
-想定ワークフロー: まず `vs lint --register` で大量に指摘された語を一括登録し、`config/user_words.txt` を開いて「本当に正しい語」だけを残します。残った誤記は次回の `vs lint` で改めて指摘されます。
+想定ワークフロー: まず `vs lint --register` で大量に指摘された語を一括登録し、`config/spellcheck_allowlist.yml` を開いて「本当に正しい語」だけを残します。残った誤記は次回の `vs lint` で改めて指摘されます。
 :::
 
 ### book.yml による設定
@@ -247,7 +253,7 @@ spellcheck:
   check_code_blocks: false # コードブロック内をチェックするか（既定: false）
 ```
 
-- **extra_words**: 辞書に登録されていない固有名詞や造語を許可語に加えます。`--register` がプロジェクトの作業中辞書（`user_words.txt`）であるのに対し、`extra_words` は明示的に管理したい語を `book.yml` に書く位置づけです。
+- **extra_words**: 辞書に登録されていない固有名詞や造語を許可語に加えます。`--register` が作業中に溜める除外リスト（`spellcheck_allowlist.yml`）であるのに対し、`extra_words` は明示的に管理したい語を `book.yml` に書く位置づけです。
 - **ignore_words**: 指定した語を検出後に除外します。
 - **extra_dictionaries**: 標準搭載辞書に含まれない言語・分野の辞書を追加します。初回実行時にインターネットから取得し、`.cache/spellcheck-dictionaries/` にキャッシュされます。
 - **check_code_blocks**: `true` にするとコードブロック内の英単語もチェックします。
@@ -337,15 +343,15 @@ lint:
 Vivlio Starter では、以下の場所に設定ファイルが配置されています。
 
 - `config/.textlintrc.yml`: textlint 本体の設定（フィルタ・ルール）
-- `config/textlint_prh.yml`: 表記揺れ辞書（プロジェクト固有）
+- `config/textlint_rewrite.yml`: 表記揺れ辞書（プロジェクト固有）
 - `config/textlint_allowlist.yml`: 除外リスト（VFM 記法・書籍名・資格名称など）
 - `config/textlint_dictionaries/`: 標準の `prh` 辞書ファイル
 - `config/spellcheck_dictionaries/`: 英語スペルチェック辞書
-- `config/user_words.txt`: スペルチェックのユーザー辞書（`--register` の追記先）
+- `config/spellcheck_allowlist.yml`: スペルチェックのユーザー辞書（`--register` の追記先）
 
 ### 表記揺れ辞書の追加
 
-「CSS 組版」と「CSS組版」、「ユーザー」と「ユーザ」のように、同じ語が違う表記で混ざることがあります。こうした揺れは `config/textlint_prh.yml` に登録すると検出できます。
+「CSS 組版」と「CSS組版」、「ユーザー」と「ユーザ」のように、同じ語が違う表記で混ざることがあります。こうした揺れは `config/textlint_rewrite.yml` に登録すると検出できます。
 
 ```yaml
 rules:

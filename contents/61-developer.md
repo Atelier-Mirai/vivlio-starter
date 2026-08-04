@@ -196,7 +196,7 @@ mybook/
 
 `stylesheets/` は CSS ファイル群です。`theme.css` はビルドのたびに `book.yml` の `theme` セクションから自動生成されるため直接編集しても上書きされます。カスタム CSS は `custom.css` に記述してください。`page-settings.css` がページサイズ・余白を定義し、`chapter.css`・`base.css` などが本文スタイルを担います。
 
-`config/` には各種設定ファイルが入ります。`book.yml` が書籍全体の設定（タイトル・著者・テーマ・ビルドターゲットなど）を管理するメインファイルです。`catalog.yml` が章の並び順と構成を定義します。`index_glossary_terms.yml` が索引・用語集の統合辞書です。`textlint_prh.yml` / `textlint_allowlist.yml` は lint の表記揺れ辞書と許可リストです。
+`config/` には各種設定ファイルが入ります。`book.yml` が書籍全体の設定（タイトル・著者・テーマ・ビルドターゲットなど）を管理するメインファイルです。`catalog.yml` が章の並び順と構成を定義します。`index_glossary_terms.yml` が索引・用語集の統合辞書です。`textlint_rewrite.yml` / `textlint_allowlist.yml` は lint の表記揺れ辞書と許可リストです。
 
 
 ### book.yml

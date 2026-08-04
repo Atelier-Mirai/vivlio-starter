@@ -270,7 +270,7 @@ module VivlioStarter
         FileUtils.mkdir_p('config/textlint_dictionaries')
         File.write('config/.textlintrc.yml', "rules: {}\n")
         File.write('config/textlint_allowlist.yml', "allow: []\n")
-        File.write('config/textlint_prh.yml', "rules: []\n")
+        File.write('config/textlint_rewrite.yml', "rules: []\n")
         File.write('config/catalog.yml', "CHAPTERS:\n  - 11-target\n")
         File.write('config/textlint_dictionaries/prh.yml', "version: 1\nrules: []\n")
         File.write('config/textlint_dictionaries/icsmedia.yml', "version: 1\nrules: []\n")

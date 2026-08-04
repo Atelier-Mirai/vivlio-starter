@@ -40,7 +40,7 @@ module VivlioStarter
         File.join('config', 'talk.yml'),
         File.join('config', 'index_glossary_terms.yml'),
         File.join('config', 'index_glossary_rejected.yml'),
-        File.join('config', 'user_words.txt'),
+        File.join('config', 'spellcheck_allowlist.yml'),
         File.join('config', 'textlint_allowlist.yml')
       ].freeze
 

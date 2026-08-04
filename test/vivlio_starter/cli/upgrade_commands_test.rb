@@ -171,7 +171,7 @@ module VivlioStarter
       def test_should_add_empty_dictionary_when_author_dictionary_is_missing
         within_project do |scaffold|
           write(scaffold, 'config/index_glossary_terms.yml', "terms:\n- term: 開発リポジトリの用語\n")
-          write(scaffold, 'config/user_words.txt', "vivliostyle\nkindle\n")
+          write(scaffold, 'config/spellcheck_allowlist.yml', %(- "vivliostyle"\n- "kindle"\n))
           write_lock
 
           out, = capture_io { run_upgrade(scaffold, yes: true) }
@@ -179,7 +179,8 @@ module VivlioStarter
           assert_match(/追加\s+config\/index_glossary_terms\.yml.*空の辞書/, out)
           terms = YAML.safe_load_file('config/index_glossary_terms.yml')
           assert_equal [], terms['terms'], '空の辞書が用意されるべき（雛形サンプルは配らない）'
-          refute_includes File.read('config/user_words.txt'), 'vivliostyle', 'user_words も空で用意されるべき'
+          refute_includes File.read('config/spellcheck_allowlist.yml'), 'vivliostyle',
+                          'スペルチェックの除外リストも空で用意されるべき'
         end
       end
 

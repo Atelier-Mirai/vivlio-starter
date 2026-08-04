@@ -56,17 +56,35 @@ module VivlioStarter
           # 索引候補の却下リスト（vs index:apply が管理します）
           rejected_terms: []
         YAML
-        File.join('config', 'user_words.txt') => <<~TEXT,
-          # ユーザー辞書（このプロジェクトのスペルチェック許可語）
-          # 1 行 1 語。# 始まりはコメント。辞書順・重複なしで自動管理されます。
-          # `vs lint --register` を実行すると、スペルチェックで未知だった語がここへ追加されます。
-        TEXT
+        File.join('config', 'spellcheck_allowlist.yml') => <<~YAML,
+          # スペルチェックで「綴り誤り」と指摘したくない語を並べます
+          # 1 行 1 語。`vs lint --register` を実行すると、未知だった語がここへ追加されます
+          []
+        YAML
         File.join('config', 'textlint_allowlist.yml') => <<~YAML
           # textlint-filter-rule-allowlist で使用する除外語句リスト
           # 書籍名、資格名称、専門用語など、プロジェクト固有の除外対象を記載します
           # 正規表現も使用可能（例: "/pattern/flags"）
           []
         YAML
+      }.freeze
+
+      # 改名した設定ファイル（旧名 → 新名）。著者が編集するファイルなので、
+      # 名前を変えただけでは**中身ごと読まれなくなる**——登録した表記ゆれルールや
+      # 許可語が黙って効かなくなるため、雛形追従の前に移し替える。
+      #
+      # `textlint_prh.yml` は v0.14.0（2025-11-04）から配っており、ベータ版
+      # （2026-04-26）の利用者の手元にもある。`user_words.txt` はベータの
+      # 2 か月後（2026-06-30）の実装なので既存プロジェクトには無いが、
+      # 開発中の本のために同じ経路で拾っておく。
+      RENAMED_CONFIG_FILES = {
+        File.join('config', 'textlint_prh.yml') => File.join('config', 'textlint_rewrite.yml'),
+        File.join('config', 'user_words.txt') => File.join('config', 'spellcheck_allowlist.yml')
+      }.freeze
+
+      # 改名に伴って中身の参照も書き換えるファイル（著者が編集する設定）
+      RENAMED_REFERENCES = {
+        File.join('config', '.textlintrc.yml') => { './textlint_prh.yml' => './textlint_rewrite.yml' }
       }.freeze
 
       DIFF_PREVIEW_LINES = 20
@@ -139,6 +157,9 @@ module VivlioStarter
 
       # --- Phase: 分類（三者比較）以降の雛形追従フェーズ ---
       def sync_scaffold!(cmd)
+        # --- Phase: 改名の追随（雛形と比べる前に済ませる） ---
+        follow_renames!(dry_run: cmd.options[:dry_run])
+
         # --- Phase: 分類（三者比較） ---
         Common.log_summary("雛形との差分を確認しています…（gem #{VivlioStarter::VERSION} の雛形）")
         scaffold_digests = ScaffoldLock.digest_scaffold(scaffold_source)
@@ -167,6 +188,34 @@ module VivlioStarter
       end
 
       private
+
+      # 旧名の設定ファイルを新名へ移し、参照している設定の中身も書き換える。
+      # 新名が既にあるなら触らない（著者が手で移した後の再実行を壊さない）。
+      def follow_renames!(dry_run:)
+        moved = RENAMED_CONFIG_FILES.select do |old, new|
+          File.exist?(old) && !File.exist?(new)
+        end
+        rewrites = RENAMED_REFERENCES.select do |path, pairs|
+          File.exist?(path) && pairs.any? { |from, _| File.read(path, encoding: 'utf-8').include?(from) }
+        end
+        return if moved.empty? && rewrites.empty?
+
+        moved.each { |old, new| report_rename(old, new, dry_run) }
+        rewrites.each_key { Common.log_action("設定の参照を更新します: #{it}") }
+        return if dry_run
+
+        moved.each { |old, new| FileUtils.mv(old, new) }
+        rewrites.each do |path, pairs|
+          body = File.read(path, encoding: 'utf-8')
+          pairs.each { |from, to| body = body.gsub(from, to) }
+          File.write(path, body, encoding: 'utf-8')
+        end
+      end
+
+      def report_rename(old, new, dry_run)
+        prefix = dry_run ? '[dry-run] ' : ''
+        Common.log_action("#{prefix}設定ファイルを改名します: #{old} → #{new}")
+      end
 
       def warn_missing_lock
         Common.log_warn('scaffold.lock が見つかりません（本機能導入前のプロジェクト）。現物と雛形を直接比較し、差分のあるファイルは安全側に倒してすべて「競合」として確認します。')
