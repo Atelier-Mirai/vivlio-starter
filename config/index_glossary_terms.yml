@@ -1,5 +1,5 @@
 ---
-generated_at: '2026-08-04 03:11:21'
+generated_at: '2026-08-04 04:10:13'
 terms:
 - term: "--force"
   yomi: "--force"
@@ -12,7 +12,7 @@ terms:
   - chapter: 23-chapter-management
     context: '11〜13 番の章をまとめて削除します。 ### 確認をスキップする（--force） ```bash vs delete 11-intro
       --force '
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: Amazon
   yomi: Amazon
@@ -29,7 +29,7 @@ terms:
   - chapter: 61-developer
     context: "/ Apple Books 向けのクリーン EPUB、`kindle` は Amazon Kindle 向けに調整した EPUB から変換した
       KPF を生成します。"
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: CLI
   yomi: CLI
@@ -46,7 +46,7 @@ terms:
     context:
   - chapter: 11-workflow
     context:
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 11-workflow
 - term: CMYK
@@ -59,7 +59,7 @@ terms:
   contexts:
   - chapter: 43-cover
     context: 'rontcover_cmyk.pdf # 印刷用表紙（B5/A5、CMYK、PDF/X-1a） ├── backcover_cmyk.pdf'
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: CSS
   yomi: CSS
@@ -75,7 +75,7 @@ terms:
     context:
   - chapter: 11-workflow
     context:
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 11-workflow
 - term: CSS組版
@@ -92,7 +92,7 @@ terms:
     context:
   - chapter: 95-further-inspiration
     context:
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 11-workflow
 - term: CommonMark
@@ -102,7 +102,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/\\bCommonMark\\b/"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: EPUB
   yomi: EPUB
@@ -119,7 +119,7 @@ terms:
     context:
   - chapter: 11-workflow
     context:
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 44-build
 - term: Enhanced
@@ -138,7 +138,7 @@ terms:
   - chapter: 92-pdf-read
     context: 'pdf:read` は **Standard Mode** と **Enhanced Mode** の 2 段階で機能を提供します。 |
       項目 | '
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: Ghostscript
   yomi: Ghostscript
@@ -147,7 +147,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/\\bGhostscript\\b/"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 43-cover
 - term: Git
@@ -157,7 +157,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/\\bGit\\b/"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
 - term: GitHub
   yomi: GitHub
@@ -166,7 +166,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/\\bGitHub\\b/"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
 - term: HTML
   yomi: HTML
@@ -183,7 +183,7 @@ terms:
     context:
   - chapter: 11-workflow
     context:
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 11-workflow
 - term: HexaPDF
@@ -193,7 +193,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/\\bHexaPDF\\b/"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 93-pdf-read
 - term: Homebrew
@@ -217,7 +217,7 @@ terms:
   - chapter: 91-install
     context: Xcode Command Line Tools の確認とインストール案内、Homebrew の導入、rbenv / ruby-build
       の導入、
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: ImageMagick
   yomi: ImageMagick
@@ -241,7 +241,7 @@ terms:
   - chapter: 93-import
     context: " - Ruby 4.x / Bundler - node / npm - ImageMagick, qpdf, pdfinfo, Ghostscript,
       mecab - "
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
 - term: JPEG
   yomi: JPEG
@@ -260,7 +260,7 @@ terms:
       | | 扉絵・節絵・"
   - chapter: 61-developer
     context: DFを圧縮します pdf:pages PDFをページ単位でJPEG画像に切り出します pdf:rasterize PDFをラスタライ
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 42-frontispiece
 - term: KDP
@@ -275,7 +275,7 @@ terms:
     context: '換） embed: false # false: KDP で別途アップロードするため埋め込まない（既定・推奨） layout:'
   - chapter: 44-build
     context: "`kindle` | Kindle 用 KPF | Amazon Kindle（KDP）への配信 | ## 閲覧用 PDF のビルド :::{.section-"
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: KFX
   yomi: KFX
@@ -284,7 +284,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/\\bKFX\\b/"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
 - term: KPF
   yomi: KPF
@@ -307,7 +307,7 @@ terms:
   - chapter: 91-install
     context: 'kindle-previewer` ＋ ラッパー作成 | Kindle（KPF）変換（任意・targets: kindle 用） | |
       Google Fon'
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: Kindle
   yomi: Kindle
@@ -324,7 +324,7 @@ terms:
     context:
   - chapter: 11-workflow
     context:
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 44-build
 - term: Kobo
@@ -344,7 +344,7 @@ terms:
   - chapter: 61-developer
     context: がこの値に応じて実行するステップを切り替えます。`epub` は楽天 Kobo / Apple Books 向けのクリーン EPUB、`kindle`
       は A
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: MATTR
   yomi: MATTR
@@ -357,7 +357,7 @@ terms:
   - chapter: 32-metrics
     context: '漢字比率と平均語長から文章の「硬さ」を測定 - **語彙多様度**: MATTR（移動平均 Type-Token Ratio）で表現の豊かさを評価
       - **読解'
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: MeCab
   yomi: MeCab
@@ -373,7 +373,7 @@ terms:
     context:
   - chapter: 33-index-glossary
     context:
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 32-metrics
 - term: Node.js
@@ -383,7 +383,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/Node\\.js/"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: OCR
   yomi: OCR
@@ -408,7 +408,7 @@ terms:
   - chapter: 92-pdf-read
     context: "| | 変換対象 | テキストのみ | テキスト + 画像 + OCR | | 依存ライブラリ | PDF::Reader | HexaPDF,
       ru"
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: PNG
   yomi: PNG
@@ -434,7 +434,7 @@ terms:
     context: "== :kindle` のときのみ）: WebP → JPEG/PNG への変換、Kindle 用 body マーカー付与（`mark_body_fo"
   - chapter: 93-import
     context: PDF がコピーされない | `frontcover_pdffile` が PNG など PDF 以外 | 仕様通り PDF のみに対応。
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 43-cover
 - term: Previewer
@@ -455,7 +455,7 @@ terms:
   - chapter: 91-install
     context: 'から自動取得 | AI 画像拡大（オプション） | | Kindle Previewer 3（kindlepreviewer） | `brew
       install '
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: QueryStream
   yomi: QueryStream
@@ -469,7 +469,7 @@ terms:
     context:
   - chapter: 13-new
     context:
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: RGB
   yomi: RGB
@@ -481,7 +481,7 @@ terms:
   contexts:
   - chapter: 43-cover
     context: 'frontcover_rgb.pdf # PDF用表紙（A4、RGB） ├── backcover_rgb.pdf # PDF用裏'
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 43-cover
 - term: Ruby
@@ -498,7 +498,7 @@ terms:
     context:
   - chapter: 12-quickstart
     context:
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 12-quickstart
 - term: SVG
@@ -513,7 +513,7 @@ terms:
     context:
   - chapter: 41-book-yml
     context:
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: Standard
   yomi: Standard
@@ -531,7 +531,7 @@ terms:
   - chapter: 92-pdf-read
     context: " ::: ## 概要と事前準備 `vs pdf:read` は **Standard Mode** と **Enhanced Mode**
       の 2 "
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: TTR
   yomi: TTR
@@ -547,7 +547,7 @@ terms:
   - chapter: 61-developer
     context: '漢字比率・平均語長（MeCab による形態素解析） - 語彙多様度: TTR（Type-Token Ratio）— 異なり語数 ÷ 総語数
       - 読解難度スコ'
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: URL
   yomi: URL
@@ -566,7 +566,7 @@ terms:
   - chapter: 61-developer
     context: オプションでも無効化されません。ビルド高速化のために画像存在チェックや裸 URL 検出はオフにできますが、**セキュリティ保護は明示的な選択肢から除外**
       する
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: VFM
   yomi: VFM
@@ -581,7 +581,7 @@ terms:
     context:
   - chapter: 22-extentions
     context:
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
 - term: Vivlio Starter
   yomi: Vivlio Starter
@@ -593,7 +593,7 @@ terms:
   contexts:
   - chapter: 主要参照
     context:
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 00-preface
 - term: Vivliostyle
@@ -611,7 +611,7 @@ terms:
     context:
   - chapter: 11-workflow
     context:
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 61-developer
 - term: WebP
@@ -642,7 +642,7 @@ terms:
       inkscap"
   - chapter: 93-import
     context: "**画像処理** — Starter `images/` をコピー → WebP 化 → 元画像（png/jpg/gif）は削除。`config-starter"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 45-utility
 - term: Xcode
@@ -659,7 +659,7 @@ terms:
     context: "| ツール | 用途 | |--------|------| | Xcode Command Line Tools | macOS のビルドツールチェーン（"
   - chapter: 91-install
     context: の導入をスキップ ``` このスクリプトは次の作業を自動で行います。Xcode Command Line Tools の確認とインストール案内、Homebre
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: YAML
   yomi: YAML
@@ -676,7 +676,7 @@ terms:
     context:
   - chapter: 13-new
     context:
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 42-frontispiece
 - term: text-right
@@ -689,7 +689,7 @@ terms:
   contexts:
   - chapter: 22-extentions
     context: "`.text-left` / `.text-center` / `.text-right` `.align-right` がブロック全体を右寄せにするのに対し、"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: アインシュタイン
   yomi: あいんしゅたいん
@@ -703,7 +703,7 @@ terms:
     context: "{.aki} ```markdown ![アインシュタイン](Einstein.webp){width=50% align=center}"
   - chapter: 94-sample
     context: 科学の世界に革命をもたらした{Albert Einstein|アルバート・アインシュタイン}。言葉が遅いと心配された少年が、やがて「20世紀最高の物理学者」と呼ばれるまで
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: アウトライン
   yomi: あうとらいん
@@ -722,7 +722,7 @@ terms:
     context: gem install vivlio-starter ``` PDF アウトライン・しおり機能などを使う場合は、追加の gem も導入してください（いずれも
   - chapter: 92-pdf-read
     context: 'OCR 精度を段階的に改善できます。 ## PDF アウトラインの付与 PDF ビューワの「しおり」や「ブックマーク」として表示されるアウトラ'
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: 一般相対性理論
   yomi: いっぱんそうたいせいりろん
@@ -734,7 +734,7 @@ terms:
   contexts:
   - chapter: 96-sample
     context: "・アインシュタイン（1879–1955）。20世紀を代表する理論物理学者。特殊・一般相対性理論の提唱者。1921年ノーベル物理学賞受賞。"
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: エラー
   yomi: えらー
@@ -765,7 +765,7 @@ terms:
   - chapter: 91-install
     context: install bundler` | | Node.js の依存関係エラー | `node_modules` の不整合 | `rm -rf
       node_mo
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 44-build
 - term: 拡張記法
@@ -775,7 +775,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/拡張記法/"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 22-extentions
 - term: カバー画像
@@ -800,7 +800,7 @@ terms:
   - chapter: 45-utility
     context: "# キャッシュのみ削除 vs clean --cache # 生成されたカバー画像のみ削除（マスター画像は保持） vs clean --cover
       # すべての"
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 43-cover
 - term: 画像名
@@ -813,7 +813,7 @@ terms:
   contexts:
   - chapter: 42-frontispiece
     context: 'sheets/images/bundled/` に配置されており、設定ファイルで画像名を指定するだけで使用できます。 **利用可能なバンドル画像** '
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: キャッシュ
   yomi: きゃっしゅ
@@ -839,7 +839,7 @@ terms:
     context: "# 最終PDFも含めてすべて削除 vs clean --purge # キャッシュのみ削除 vs clean --cache # 生成されたカバー画像のみ削除（"
   - chapter: 61-developer
     context: '不足ツールの自動セットアップ clean 生成物やキャッシュを削除します 執筆・編集支援: create'
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
 - term: キャプション
   yomi: きゃぷしょん
@@ -857,7 +857,7 @@ terms:
   - chapter: 61-developer
     context: 'の前処理パイプライン内で実行されます。 ### 著者向けの記法 キャプション行に `@id` を付けると、直後のブロック種別（コードブロック
       → リスト、テ'
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: クラス
   yomi: くらす
@@ -869,7 +869,7 @@ terms:
   contexts:
   - chapter: 22-extentions
     context: 'カスタムコンテナ構文を使います。 ```markdown :::{.クラス名} ここに内容を書く ::: ``` `:::` の開始行にクラス名を指定す'
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: クリーン
   yomi: くりーん
@@ -885,7 +885,7 @@ terms:
     context: 'の両方 # targets: epub # クリーン EPUB のみ # targets: kindle'
   - chapter: 61-developer
     context: '実装 clean.rb # クリーンコマンド実装 create.rb # 章作成'
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 44-build
 - term: クロスリファレンス
@@ -895,7 +895,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/クロスリファレンス/"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: 形態素解析
   yomi: けいたいそかいせき
@@ -904,7 +904,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/形態素解析/"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 32-metrics
 - term: コメント
@@ -923,7 +923,7 @@ terms:
       books | "
   - chapter: 93-import
     context: を `page.use` にマッピング）を変換。コメントは保持されます。 7. **片付け** — Vivlio 側 `temp/` と
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: 語彙多様度
   yomi: ごいたようど
@@ -932,7 +932,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/語彙多様度/"
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 32-metrics
 - term: 索引ページ
@@ -942,7 +942,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/索引ページ/"
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: 章番号
   yomi: しょうばんごう
@@ -968,7 +968,7 @@ terms:
     context: 'やファイル名（スラッグ）を変更します renumber 章番号を一括で付け直します 文章校正・統計: lint'
   - chapter: 92-pdf-read
     context: "``` PDF ファイルのパスを指定すると、空いている章番号が自動で割り当てられ、`contents/` に Markdown が出力されま"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 44-build
 - term: 実行結果
@@ -978,7 +978,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/実行結果/"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: 自動インストール
   yomi: じどういんすとーる
@@ -996,7 +996,7 @@ terms:
   - chapter: 93-import
     context: 下記が揃っているか `vs doctor --fix` で確認・自動インストールしてください。 - Ruby 4.x / Bundler
       - node / n
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 92-install
 - term: 重力
@@ -1010,7 +1010,7 @@ terms:
   - chapter: 96-sample
     context: '特殊相対性理論は等速運動のみを扱い、一般相対性理論は加速度運動と重力を含みます。アインシュタインは特殊から一般へ到達するのに10年を要しました。
       :'
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: スコア
   yomi: すこあ
@@ -1027,7 +1027,7 @@ terms:
   - chapter: 61-developer
     context: 'Ratio）— 異なり語数 ÷ 総語数 - 読解難度スコア: 日本語版 Flesch/Kincaid を応用したスコアと Easy /
       S'
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: スペル
   yomi: すぺる
@@ -1039,7 +1039,7 @@ terms:
   contexts:
   - chapter: 24-cross-reference
     context: "- 解決: 定義側のキャプション行（`@id`）のスペルを確認する #### 重複エラー - 原因: 同じIDを複数の要素で使用 -"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: スペルチェック
   yomi: すぺるちぇっく
@@ -1056,7 +1056,7 @@ terms:
       config: conf"
   - chapter: 61-developer
     context: が日本語に変換して出力します。 textlint に加えて、独自のスペルチェック（`lint/spell_checker.rb`）も並行して実行します。`con
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: スペース
   yomi: すぺーす
@@ -1081,7 +1081,7 @@ terms:
   - chapter: 92-pdf-read
     context: " 1. **空白圧縮** --- 日本語文字間の不要な半角スペースを除去（例: `プ ロ グ ラ ミ ン グ` → `プログラミング`）
       2. *"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: 設定ファイル
   yomi: せっていふぁいる
@@ -1106,7 +1106,7 @@ terms:
   - chapter: 91-install
     context: "`npm install -g textlint ...` | 文章校正。設定ファイルも `config/` に自動配置 | | qpdf
       | `brew "
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 41-book-yml
 - term: セットアップ
@@ -1134,7 +1134,7 @@ terms:
     context: 抽出します doctor 環境診断と不足ツールの自動セットアップ clean 生成物やキャッシュを削除します
   - chapter: 91-install
     context: 以降の手動インストール手順を手がかりに、お使いの環境へ読み替えてセットアップしてみてください（うまく動くことを願っています）。将来的に正式対応するかもしれま
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 51-doctor
 - term: 相対性
@@ -1147,7 +1147,7 @@ terms:
   contexts:
   - chapter: 94-sample
     context: "（1879–1955）。20世紀を代表する理論物理学者。特殊・一般相対性理論の提唱者。1921年ノーベル物理学賞受賞。 ::: アルバート・アインシュ"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: タイトル
   yomi: たいとる
@@ -1174,7 +1174,7 @@ terms:
     context: '図版が多い書籍向け | ### メタデータ EPUB のメタデータ（タイトル、著者名、言語、ISBN など）は `book` セクションから自動的に取得され'
   - chapter: 61-developer
     context: "| `create:titlepage` | タイトルページを生成 | | `create:colophon` | 奥付を生成 | |"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
 - term: テキスト
   yomi: てきすと
@@ -1205,7 +1205,7 @@ terms:
       | PDF::"
   - chapter: 92-pdf-read
     context: "`vs pdf:read` は PDF ファイルからテキストと画像を抽出し、Vivlio Starter の原稿形式（Markdown）に変"
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 93-pdf-read
 - term: テスト
@@ -1221,7 +1221,7 @@ terms:
   - chapter: 61-developer
     context: を読みたいときの入口（内部で `startup` を読み込む） 2. テストの `require 'vivlio_starter/cli'`
       の共通 `re
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 61-developer
 - term: テンプレート
@@ -1252,7 +1252,7 @@ terms:
   - chapter: 61-developer
     context: "`covers/bundled/` には gem 同梱の SVG テンプレート（light / dark テーマ）が入っています。 `data/`
       は Qu"
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 45-utility
 - term: テーブル
@@ -1272,7 +1272,7 @@ terms:
     context: "| `data/books.yml` | 書籍テーブル形式 | 新しいデータファイルを追加する場合は、対応するテンプレートをこのディ"
   - chapter: 61-developer
     context: 索引・用語集の後処理、不可視脚注 id の整理、テーブル align の正規化、絵文字復元、扉絵・節絵の見出し画像注入（`inject_
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: テーマカラー
   yomi: てーまからー
@@ -1294,7 +1294,7 @@ terms:
     context: " 1. **`theme.css`** — テーマカラーや扉絵などの基本設定（`book.yml` から自動生成） 2. **`chap"
   - chapter: 61-developer
     context: true` でバージョン番号が付与されます。 `theme` セクションでテーマカラー・章扉の背景画像（`frontispiece`）・節見出しの
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
 - term: デザイン
   yomi: でざいん
@@ -1328,7 +1328,7 @@ terms:
       を使うこともでき
   - chapter: 44-build
     context: これが原因で、特定の環境で文字化けしたり、一部の文字だけデザインが変わって見えたりすることがあります。 Vivlio Starterでは、表紙
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 42-frontispiece
 - term: 電子書籍
@@ -1338,7 +1338,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/電子書籍/"
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 11-workflow
 - term: データファイル
@@ -1360,7 +1360,7 @@ terms:
   - chapter: 61-developer
     context: "}` の構造化ハッシュを返します。 `DataResolver` がデータファイルを探索します。`books` と書けば `data/books.yml`
       を、"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: 特殊相対性理論
   yomi: とくしゅそうたいせいりろん
@@ -1372,7 +1372,7 @@ terms:
   contexts:
   - chapter: 96-sample
     context: 原子・分子の実在を統計的に裏付け 3. **特殊相対性理論** — 同時性の相対性、時間の遅れ、光速度不変を導出 4. **$E=mc^2
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: トラブルシューティング
   yomi: とらぶるしゅーてぃんぐ
@@ -1411,7 +1411,7 @@ terms:
       と '
   - chapter: 93-import
     context: Vivlio プロジェクトに移行できます。本章では前提条件から実行手順、トラブルシューティングまで、著者が自力で移行を完了できるよう手順をまとめました。
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 51-doctor
 - term: トンボ
@@ -1428,7 +1428,7 @@ terms:
     context:
   - chapter: 11-workflow
     context:
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 44-build
 - term: 読解難度
@@ -1444,7 +1444,7 @@ terms:
   - chapter: 41-book-yml
     context: 本の規模に応じて章・節の分量目安が切り替わります。語彙難度・語彙多様度・読解難度の基準は、プリセットとは独立した共通設定として調整します。
       ```yaml m
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: ニュートン
   yomi: にゅーとん
@@ -1456,7 +1456,7 @@ terms:
   contexts:
   - chapter: 96-sample
     context: " ::: 「質量が時空を曲げる」——この革命的な考えは、[ニュートン|にゅーとん]以来200年間続いた[重力|じゅうりょく]の常識を塗り替えました。"
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: 背景画像
   yomi: はいけいがぞう
@@ -1465,7 +1465,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/背景画像/"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 42-frontispiece
 - term: バックリンク
@@ -1483,7 +1483,7 @@ terms:
   - chapter: 61-developer
     context: '生成（前書き＋目次＋本文＋付録＋後書き＋索引） | | Step 8 | バックリンク重複排除 | | Step 9 | 表紙・奥付 PDF
       生成 | | '
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: バンド
   yomi: ばんど
@@ -1496,7 +1496,7 @@ terms:
   - chapter: 32-metrics
     context: 'Standard〜Professional に収まるのが自然です。バンドの境界値は `config/book.yml` で調整できます（後述）。
       ##'
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: バンドル
   yomi: ばんどる
@@ -1508,7 +1508,7 @@ terms:
   contexts:
   - chapter: 42-frontispiece
     context: 章扉と節見出しに画像を使用したデザインが適用されます。バンドル画像を使用するか、独自の画像を配置することで、書籍に華やかさを加えることができま
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: バンドル画像
   yomi: ばんどるがぞう
@@ -1520,7 +1520,7 @@ terms:
   contexts:
   - chapter: 42-frontispiece
     context: 章扉と節見出しに画像を使用したデザインが適用されます。バンドル画像を使用するか、独自の画像を配置することで、書籍に華やかさを加えることができます。
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: パターン
   yomi: ぱたーん
@@ -1538,7 +1538,7 @@ terms:
   - chapter: 92-pdf-read
     context: "`config/textlint_prh.yml` に定義された表記ゆれ・誤読パターンを自動修正 5. **MeCab 改行補正** ---
       MeCab "
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: 表記揺れ
   yomi: ひょうきゆれ
@@ -1547,7 +1547,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/表記揺れ/"
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 31-lint
 - term: フォント
@@ -1576,7 +1576,7 @@ terms:
     context: "`vs pdf:compress` は、画像解像度の調整やフォントの最適化によってサイズを削るため、印刷品質に影響を与える可能性があります。入稿に"
   - chapter: 61-developer
     context: 'df:rasterize PDFをラスタライズして再結合します（Type3フォント対策） オプション: -h, --help ヘルプを表'
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 44-build
 - term: 物理学
@@ -1592,7 +1592,7 @@ terms:
       の比率で並びます。
   - chapter: 94-sample
     context: "・アインシュタイン}。言葉が遅いと心配された少年が、やがて「20世紀最高の物理学者」と呼ばれるまでに至った背景には、型破りな発想力と、誰もが信じる「常識」に疑問"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: プレビュー
   yomi: ぷれびゅー
@@ -1601,7 +1601,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/プレビュー/"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 44-build
 - term: ページ番号
@@ -1621,7 +1621,7 @@ terms:
     context: の `target-counter` はレンダリング時にページ番号を解決するため、Ruby のビルド時点では実際のページ番号が不明です。そのため「
   - chapter: 92-pdf-read
     context: 'それぞれ適切なラベルで表示されます。 ### ページ番号の特定 アウトラインの各項目には正確なページ番号が必要です。Vivliosty'
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: マスター
   yomi: ますたー
@@ -1638,7 +1638,7 @@ terms:
   - chapter: 61-developer
     context: "/ `backcover_master.png`（高解像度マスター）を元に、`vs cover` または `vs build` が PDF
       / J"
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: マーク
   yomi: まーく
@@ -1653,7 +1653,7 @@ terms:
   - chapter: 44-build
     context: '同人印刷所に入稿するための PDF を生成します。トンボ（トリムマーク）と塗り足し（ブリード）が自動的に付与されます。 ::: ```yaml
       ou'
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: マークアップ
   yomi: まーくあっぷ
@@ -1670,7 +1670,7 @@ terms:
   - chapter: 33-index-glossary
     context: " ::: `vs index` コマンドは、原稿内の手動マークアップと自動抽出を組み合わせて、索引・用語集候補を統合管理します。TF-IDF
       スコア"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: 無効化
   yomi: むこうか
@@ -1692,7 +1692,7 @@ terms:
       - 節見出しの装飾"
   - chapter: 61-developer
     context: "-->` コメントを使うと、その範囲の lint を無効化できます。これらは実行時に textlint ネイティブの `<!-- text"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 31-lint
 - term: モード
@@ -1714,7 +1714,7 @@ terms:
   - chapter: 92-pdf-read
     context: "-003-image-01.webp)` のように参照されます。 ### 動作モードの切り替え モードは以下の優先順位で自動決定されます。
       1. 環境変数 `V"
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: ユーザー
   yomi: ゆーざー
@@ -1731,7 +1731,7 @@ terms:
     context: "# 横長バリアントを直接指定 ``` ### 画像の検索順序 画像は、ユーザー提供画像を優先し、見つからない場合はバンドル画像を検索します。この仕組みにより、"
   - chapter: 61-developer
     context: 書き込み不可時に `Errno::EACCES` が自然送出されユーザーが原因特定可能 | | 2-3-4 | `malicious_image_pat
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: 用語集
   yomi: ようごしゅう
@@ -1755,7 +1755,7 @@ terms:
   - chapter: 92-pdf-read
     context: 'な使い方 | 付録は「付録A」「付録B」の形式で、前書き・目次・後書き・索引・用語集もそれぞれ適切なラベルで表示されます。 ### ページ番号の特定
       アウトライ'
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 33-index-glossary
 - term: 用語集ページ
@@ -1765,7 +1765,7 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/用語集ページ/"
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: ラベル
   yomi: らべる
@@ -1795,7 +1795,7 @@ terms:
     context: 'Easy / Standard / Professional の評価ラベル - 章・節単位の分量可視化: `[ ]` 枠内に `#` と空白でバーを描画'
   - chapter: 92-pdf-read
     context: '前書き・目次・後書き・索引・用語集もそれぞれ適切なラベルで表示されます。 ### ページ番号の特定 アウトラインの各項目には正確なペ'
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: リスト
   yomi: りすと
@@ -1829,7 +1829,7 @@ terms:
     context: 'なくこの問題を回避できるよう、以下の対策を自動で行っています。 - **特殊なリスト記号の画像化**: 章の中で箇条書きのマークとして使われるクローバー（`♣`'
   - chapter: 61-developer
     context: 'extlint_allowlist.yml` は lint の表記揺れ辞書と許可リストです。 ### book.yml 書籍プロジェクト全体の設定を管理するメイ'
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 24-cross-reference
 - term: リンク
@@ -1855,7 +1855,7 @@ terms:
   - chapter: 61-developer
     context: '生成（前書き＋目次＋本文＋付録＋後書き＋索引） | | Step 8 | バックリンク重複排除 | | Step 9 | 表紙・奥付 PDF
       生成 | | '
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 44-build
 - term: レビュー
@@ -1875,7 +1875,7 @@ terms:
       | 圧縮 | "
   - chapter: 61-developer
     context: '換・最適化します（--high/--lowで品質変更可） ビルド・出力・プレビュー: preflight ビルド前の原稿エラーチェックを高速'
-  updated_at: '2026-08-04 03:11:19'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 33-index-glossary
 - term: ワークフロー
@@ -1900,7 +1900,7 @@ terms:
   - chapter: 61-developer
     context: 'は本文への逆引きリンク（バックリンク）も生成されます。 ### ワークフロー ```bash vs index:auto # 候補抽出
       → _ind'
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
   - 11-workflow
 - term: スラッグ
@@ -1921,7 +1921,7 @@ terms:
     context: テンプレート内の `{{TITLE}}` は章のスラッグ（`11-intro` など）に自動置換されます。 ```markdown <
   - chapter: 61-developer
     context: 像を削除します rename 章の番号やファイル名（スラッグ）を変更します renumber 章番号を一括で付け直し
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:12'
   main:
 - term: バリアント
   yomi: バリアント
@@ -1933,7 +1933,7 @@ terms:
   contexts:
   - chapter: 42-frontispiece
     context: '画像 ├── my_image_portrait.webp # 縦長バリアント（オプション） └── my_image_landscape.webp'
-  updated_at: '2026-08-04 03:11:21'
+  updated_at: '2026-08-04 04:10:13'
   main:
 - term: プリセット
   yomi: プリセット
@@ -1959,7 +1959,7 @@ terms:
       | 用途 |'
   - chapter: 61-developer
     context: " `page.use` で `page_presets.yml` のプリセット名を指定します（例: `b5_airy`）。 `output.targets`"
-  updated_at: '2026-08-04 03:11:20'
+  updated_at: '2026-08-04 04:10:13'
   main:
 scanned_chapters:
 - 00-preface

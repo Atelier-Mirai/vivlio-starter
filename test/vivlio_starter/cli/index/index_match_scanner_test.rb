@@ -453,6 +453,94 @@ module VivlioStarter
           assert_equal [false, true], scanner.matches.map { it['is_main'] }
         end
 
+        # --- phase: 節指定（index-main-reference-section-spec.md R2〜R4） ---
+
+        SECTIONED = <<~MD
+          # ある章
+
+          前置きで [用語集] に触れます。
+
+          ## [用語集] とは
+
+          説明。
+
+          ## 使い方
+
+          ここでも [用語集] を使います。
+        MD
+
+        def scan_sectioned(main:)
+          write_dictionary(main:)
+          File.write('33-b.md', SECTIONED)
+          scanner = IndexMatchScanner.new
+          out, err = capture_io { scanner.scan_and_tag_file!('33-b.md') }
+          [scanner.matches.map { it['is_main'] }, out + err]
+        end
+
+        # 節を名指しすれば、そこが主要参照になる
+        def test_section_designation_lands_inside_the_named_section
+          flags, = scan_sectioned(main: '33-b#使い方')
+
+          assert_equal [false, false, true], flags, '「使い方」節の中の出現が立つ'
+        end
+
+        def test_section_designation_can_point_at_the_heading_itself
+          flags, = scan_sectioned(main: '33-b#用語集 とは')
+
+          assert_equal [false, true, false], flags
+        end
+
+        # 語を含まない見出しでも指せる（手動指定は文言の一致だけを見る）
+        def test_section_designation_works_for_headings_without_the_term
+          flags, = scan_sectioned(main: '33-b#使い方')
+
+          assert_equal 1, flags.count(true)
+        end
+
+        # 見出しは推敲で変わる。壊れた指定を黙って無視しない
+        def test_missing_section_warns_and_falls_back_to_the_chapter
+          flags, output = scan_sectioned(main: '33-b#存在しない節')
+
+          assert_match(/見出しが見つかりません/, output)
+          assert_match(/33-b#存在しない節/, output)
+          assert_match(/章だけの指定/, output, '直し方を添える')
+          assert_equal 1, flags.count(true), '組版は止めず章単位へ落とす'
+        end
+
+        def test_missing_section_suggests_a_near_heading
+          write_dictionary(main: '33-b#使いかた')
+          File.write('33-b.md', SECTIONED)
+          out, err = capture_io { IndexMatchScanner.new.scan_and_tag_file!('33-b.md') }
+
+          assert_match(/近いもの: .*使い方/, out + err)
+        end
+
+        # 最初の 1 件を黙って採らない——意図と違えば索引が静かに間違った場所を指す
+        def test_ambiguous_section_warns_with_candidates
+          write_dictionary(main: '33-b#使い方')
+          File.write('33-b.md', <<~MD)
+            # ある章
+
+            ## 第一部
+
+            ### 使い方
+
+            [用語集] の話。
+
+            ## 第二部
+
+            ### 使い方
+
+            [用語集] の話。
+          MD
+
+          out, err = capture_io { IndexMatchScanner.new.scan_and_tag_file!('33-b.md') }
+
+          assert_match(/2 箇所あります/, out + err)
+          assert_match(/第一部#使い方/, out + err, '親を添えた形で候補を示す')
+          assert_match(/第二部#使い方/, out + err)
+        end
+
         # 章ごとに 1 箇所だけ。節見出しが 2 つあっても最初だけ立てる
         def test_only_one_main_reference_per_chapter
           write_dictionary(main: '33-b')

@@ -23,6 +23,8 @@ require_relative '../common'
 require_relative '../masking'
 require_relative '../index_markup'
 require_relative 'term_pattern'
+require_relative 'main_reference'
+require_relative 'heading_outline'
 require_relative 'yomi_inferrer'
 
 module VivlioStarter
@@ -95,12 +97,19 @@ module VivlioStarter
           end
           # 主要参照（説明箇所）の指定。辞書の main: を 用語 → 章名の集合に畳む。
           # 単一章とリストの両方を受ける（index-main-reference-spec.md §1.3）。
-          @main_chapters = @unified_terms.to_h { [it['term'], Array(it['main']).map(&:to_s).to_set] }
+          # 主要参照の指定。`21#Markdown とは` のような節指定も受ける（R2）
+          @main_refs = @unified_terms.to_h do |t|
+            [t['term'], Array(t['main']).map { MainReference.parse(it) }]
+          end
+          @main_chapters = @main_refs.transform_values { it.map(&:chapter).to_set }
           # 主要参照の落とし先（R1）。章を読んだ時点で下見した結果を持つ。
           @has_section_heading = {}
           @has_prose_occurrence = {}
+          @main_section_range = {}
           @main_decided = Set[]
+          @section_warned = Set[]
           @current_heading_level = nil
+          @current_lineno = nil
           # 用語ごとに不変な導出物のキャッシュ（1 行ごとに作り直さない）
           @index_patterns = {}
           @literal_patterns = {}
@@ -223,9 +232,11 @@ module VivlioStarter
           Masking.each_prose_line(content) do |line, lineno|
             # 行が見出しなら、そのレベル。主要参照をどこに落とすかの判断に使う（R1）
             @current_heading_level = line[HEADING_LINE, 1]&.size
+            @current_lineno = lineno
             lines[lineno - 1] = process_line(lines[lineno - 1], file_basename)
           end
           @current_heading_level = nil
+          @current_lineno = nil
           lines.join
         end
 
@@ -255,18 +266,73 @@ module VivlioStarter
             end
           end
 
+          outline = HeadingOutline.parse(content)
           names.each do |name|
+            key = [name, file_basename]
             pattern = TermPattern.for(@unified_terms.find { it['term'] == name } || { 'term' => name })
-            @has_section_heading[[name, file_basename]] = sections.any? { it.match?(pattern) }
-            @has_prose_occurrence[[name, file_basename]] = prose.any? { it.match?(pattern) }
+            @has_section_heading[key] = sections.any? { it.match?(pattern) }
+            @has_prose_occurrence[key] = prose.any? { it.match?(pattern) }
+            @main_section_range[key] = resolve_section(name, file_basename, outline)
           end
         end
+
+        # 節指定（`21#Markdown とは`）を行範囲へ解決する（R2〜R4）。
+        # 見つからない・曖昧なときは知らせるが、**組版は止めない**——推敲の途中で
+        # ビルドが通らなくなるより、章単位へ落として先へ進むほうがよい。
+        def resolve_section(name, file_basename, outline)
+          ref = @main_refs[name]&.find { it.chapter == file_basename && it.section? } or return nil
+
+          located = outline.locate(ref.path)
+          return warn_missing_section(name, ref, outline) unless located
+
+          warn_ambiguous_section(name, ref, located) if located.ambiguous
+          located.range
+        end
+
+        # 見出しの文言は推敲で変わる（「主な用途」→「さまざまな用途」）し、
+        # 節ごと消えることもある。**壊れた指定を黙って無視しない。**
+        def warn_missing_section(name, ref, outline)
+          return nil unless warn_once?(name, ref)
+
+          near = outline.nearest(ref.path)
+          Common.log_warn(
+            "「#{name}」の主要参照が指す見出しが見つかりません: #{ref}",
+            detail: ["#{ref.chapter} の見出し: #{outline.summary.join(' / ')}",
+                     near.any? ? "近いもの: #{near.join(' / ')}" : nil,
+                     '見出しを書き換えたなら主要参照も直してください。' \
+                     "章だけの指定（#{ref.chapter}）に戻すと、その章で最初に説明している節を自動で選びます"].compact.join("\n")
+          )
+          nil
+        end
+
+        # 最初の 1 件を黙って採らない——著者が意図した箇所と違えば、
+        # 索引が静かに間違った場所を指す。
+        def warn_ambiguous_section(name, ref, located)
+          return unless warn_once?(name, ref)
+
+          Common.log_warn(
+            "「#{name}」の主要参照 #{ref} は #{located.candidates.size} 箇所あります",
+            detail: "親の見出しを添えて絞ってください:\n" \
+                    "#{located.candidates.map { "  #{ref.chapter}##{it}" }.join("\n")}"
+          )
+        end
+
+        # 同じ章を 2 度スキャンしても（build と preflight）同じ警告を繰り返さない
+        def warn_once?(name, ref) = @section_warned.add?([name, ref.to_s]) ? true : false
 
         # この出現を主要参照にするか。章ごとに 1 箇所だけ立てる。
         def main_reference?(term, file_basename)
           key = [term, file_basename]
           return false unless @main_chapters.fetch(term, Set[]).include?(file_basename)
           return false if @main_decided.include?(key)
+
+          # 節を名指しされているなら、その範囲の最初の出現（見出し行を含む）
+          if (range = @main_section_range[key])
+            return false unless range.cover?(@current_lineno.to_i)
+
+            @main_decided << key
+            return true
+          end
 
           level = @current_heading_level
           landed = if @has_section_heading[key] then level.to_i >= 2
