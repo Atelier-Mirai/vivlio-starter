@@ -57,11 +57,14 @@ module VivlioStarter
         DESC
       }.freeze
 
-      # 現行機能がプロジェクトルートへ生成する作業ファイルの掃除パターン。
-      # - _index_review.md / _index_glossary_review.md: vs index:auto（著者レビュー用）の生成物
-      #   （_index_matches.yml は P4b で workspace 化、entries.js は手動フロー撤去で
-      #    いずれも LEGACY_ROOT_PATTERNS へ移動）
-      ACTIVE_ROOT_PATTERNS = %w[
+      # 索引レビューファイル。`vs index:auto` が書き出すが、そこから先は
+      # **著者が編集する入力**であって中間生成物ではない。ビルドのたびに消すと、
+      # 「除外済みリストから戻す語を選ぶ」ような途中の判断がまるごと失われ、
+      # `vs index:apply` は「ファイルが見つかりません」で終わる。
+      # 掃除するのは意図が明示された `--purge` のときだけにする。
+      # （_index_matches.yml は P4b で workspace 化、entries.js は手動フロー撤去で
+      #  いずれも LEGACY_ROOT_PATTERNS へ移動）
+      REVIEW_FILE_PATTERNS = %w[
         _index_review.md _index_glossary_review.md
       ].freeze
 
@@ -253,13 +256,15 @@ module VivlioStarter
         end
 
         Common.log_action('生成ファイルを削除中...')
-        cleanup_patterns = ACTIVE_ROOT_PATTERNS + LEGACY_ROOT_PATTERNS + LEGACY_INTERMEDIATE_PDF_PATTERNS
+        cleanup_patterns = LEGACY_ROOT_PATTERNS + LEGACY_INTERMEDIATE_PDF_PATTERNS
 
         final_pdfs = %w[output.pdf output_compressed.pdf]
 
         # --purge 指定時は最終PDFも削除対象に含める
         if purge
           cleanup_patterns.concat(final_pdfs)
+          # 索引レビューファイルもここでだけ消す（既定のビルドでは残す）
+          cleanup_patterns.concat(REVIEW_FILE_PATTERNS)
           # 単章PDF（例: 11-install.pdf, 81-install.pdf など）も削除
           # 既に個別に列挙している中間PDFと重複しても問題ない
           cleanup_patterns << '[0-9][0-9]-*.pdf'

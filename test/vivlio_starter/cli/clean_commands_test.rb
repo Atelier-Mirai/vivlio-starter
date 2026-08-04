@@ -52,6 +52,35 @@ module VivlioStarter
         end
       end
 
+      # 索引レビューファイルは著者が編集する入力なので、既定の掃除では残す。
+      # ビルドのたびに消えると、レビュー途中の判断がまるごと失われる。
+      def test_clean_preserves_the_index_review_file
+        within_temp_dir do
+          setup_generated_files
+          write_file('_index_glossary_review.md')
+          write_file('_index_review.md')
+
+          CleanCommands.execute_clean({})
+
+          assert File.exist?('_index_glossary_review.md'), 'レビュー途中の編集を消してはいけません'
+          assert File.exist?('_index_review.md')
+        end
+      end
+
+      # 掃除の意図が明示された --purge のときだけ消す
+      def test_purge_removes_the_index_review_file
+        within_temp_dir do
+          setup_generated_files
+          write_file('_index_glossary_review.md')
+          write_file('_index_review.md')
+
+          CleanCommands.execute_clean({ purge: true })
+
+          refute File.exist?('_index_glossary_review.md')
+          refute File.exist?('_index_review.md')
+        end
+      end
+
       # --cache 指定で clean 実行時、キャッシュのみ削除されることを確認
       def test_clean_cache_only_removes_cache_directory
         within_temp_dir do
