@@ -165,6 +165,13 @@ body.vs-kindle .index h1 {
      掛かって行だけ高くなるのを防ぐため。数字に descender は無い。 */
   font-size: 1.06em;
   line-height: 1;
+  /* 字送りを明朝に合わせる。数字 1 字の送りは明朝 0.615em に対しゴシックは
+     0.508em で、1.06 倍しても 0.538em にしかならない。残り 0.077em を字間で
+     埋める——letter-spacing は自要素の font-size 基準なので 0.077/1.06 ≒ 0.072em。
+     負のマージンは末尾の 1 字ぶんを戻すもの。letter-spacing は最後の字の
+     後ろにも空きを足すので、そのままだと続くカンマとの間だけ開く。 */
+  letter-spacing: 0.072em;
+  margin-right: -0.072em;
 }
 
 /* 前付け（00-preface等）への参照はローマ数字で表示 */
