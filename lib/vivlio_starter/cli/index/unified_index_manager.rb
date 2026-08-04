@@ -671,18 +671,16 @@ module VivlioStarter
       # 辞書の basename を、著者が読みやすい章トークン（番号）へ落とす
       def chapter_tokens(main) = Array(main).map { it.to_s[/\A\d+/] || it.to_s }
 
-      # 主要参照が未指定で、広く散らばっている語に候補を添える（R2）。
+      # 主要参照が未指定の語に候補を添える（R2・対象は R7）。
       #
-      # 全語には出さない。2〜3 章にしか出ない語なら索引のページ番号がそのまま
-      # 案内として働くので、指定が要るのは「ページ番号の壁」になる語だけである。
-      # その集合はビルド時の警告（R7）と同一にしてある——警告を見た著者が
-      # レビューファイルを開けば、そこに候補が並んでいる形になる。
-      def suggest_main_references(terms, spreads, chapters)
+      # **未指定の語すべてが対象。** 当初は「広く散らばっている語」に絞っていたが、
+      # フラグ欄 `[igm33]` で書けるようになり行数が増えないため、絞る理由が消えた。
+      # 除くのは「索引に出るページ番号が 1 つしかない語」だけで、その判定は
+      # 出現回数を数えている Suggester 側が持つ（実測で該当は 1 語）。
+      def suggest_main_references(terms, chapters)
         return {} if main_reference_disabled?
 
-        targets = IndexCommands::TermSpread.common_terms(spreads, ratio: MAIN_REFERENCE_HINT_RATIO)
-                                           .map(&:term).to_set
-        pending = terms.select { targets.include?(it['term']) && !it['main'] }
+        pending = terms.reject { it['main'] }
         return {} if pending.empty?
 
         IndexCommands::MainReferenceSuggester.suggest(pending, chapters)
@@ -921,7 +919,7 @@ module VivlioStarter
         spreads = IndexCommands::TermSpread.measure(terms, chapters)
         common = IndexCommands::TermSpread.common_terms(spreads, ratio: common_term_ratio)
                                           .to_h { [it.term, it] }
-        suggestions = suggest_main_references(terms, spreads, chapters)
+        suggestions = suggest_main_references(terms, chapters)
 
         terms.map do |term|
           enriched = term.dup

@@ -6,39 +6,63 @@
 # 責務:
 #   主要参照（その語を腰を据えて説明している章）の候補を 1 章だけ算出する。
 #
-# なぜ「候補」どまりなのか:
-#   見出し一致で主要参照を決める案を実測した。索引語 153 語のうち 120 語（78%）
-#   は何らかの見出しに現れるが、当たり方は偏る——「ファイル」は 42 見出しに
-#   当たり、絞り込みの役に立たない。頻出語ほど自動判定が効かないという、
-#   主要参照がいちばん要る側で外れる分布だった。
-#   よって確定は著者に委ね、ここは提示に徹する
-#   （index-main-reference-spec.md §1.2・R2）。
+# 決め方:
+#   スコア = h1 に含む数 × 3 ＋ h2 に含む数 × 2 ＋ h3 に含む数 × 1 ＋ 章内の出現回数
+#   最大の章を選び、同点なら章番号の若い方（実行ごとに順位が揺れると差分が読めない）。
 #
-# 優先順位:
-#   1. その語を含む見出し（h1〜h3）が最も多い章。同数なら章番号の若い方
-#   2. 見出しヒットが 0 なら、定義パターンが当たった章
-#   3. どちらも無ければ候補なし（レビューファイルに行を出さない）
+# なぜこの式か（実測で決めた）:
+#   著者が手で決めた 44 語を正解として突き合わせた結果である。
 #
-# 仕様: index-main-reference-spec.md R2
+#     見出しヒット数だけ（旧実装）  45%   候補を出せない語 14 語
+#     出現回数だけ                61%   0 語
+#     出現密度                   56%   0 語
+#     h1 優先＋見出し数            43%   14 語
+#     **この式**                 **65%**  **0 語**
+#
+#   旧実装が弱かったのは「見出しに出ない語には候補を出せない」ため。出現回数を
+#   足すと全語に候補を出せる——「予め設定しておく」にはこれが前提になる。
+#
+#   **定義パターンの加点はしない。** 重み 0 / 3 / 8 のいずれでも 65% で変わらず、
+#   効かない要素を残すと後から触る人が「効くはず」と誤解する。
+#
+# なぜ候補どまりなのか:
+#   65% は「候補」として十分でも、確定させるには足りない。残り 35% は著者が直す。
+#   索引語 153 語のうち「ファイル」は 42 の見出しに当たるといった偏りがあり、
+#   主要参照がいちばん必要な頻出語ほど機械には決めにくい。
+#
+# 仕様: index-main-reference-section-spec.md R5
 # ================================================================
 
 require_relative '../common'
 require_relative 'code_block_stripper'
 require_relative 'term_pattern'
-require_relative 'index_candidate_extractor'
 
 module VivlioStarter
   module CLI
     module IndexCommands
       # 主要参照の候補を算出する
       class MainReferenceSuggester
-        # 見出し行（h1〜h3）。`\#` で始めるのは式展開と読み違えないため
-        HEADING_PATTERN = /^\#{1,3}[ \t]+(.+)$/
+        # 見出し行（レベルつき）
+        HEADING = /^(\#{1,6})[ \t]+(.+)$/
 
-        # 「〜とは」の直前で捕まえた塊がこの語で終わっていれば、その章で
-        # 定義されているとみなす。DEFINITION_PATTERNS は語の前後を広めに拾うので、
-        # 部分一致にすると「ファイル」が「設定ファイル」の定義に引きずられる。
-        DEFINITION_PATTERNS = IndexCandidateExtractor::DEFINITION_PATTERNS
+        # 見出しレベル別の重み。h4 以下は重みを持たない（出現回数として数える）
+        HEADING_WEIGHTS = { 1 => 3, 2 => 2, 3 => 1 }.freeze
+
+        # 索引に出るページ番号が 1 つしかない語には主要参照が要らない。
+        # 太字にしても読者に伝わる情報が増えない（実測で該当は 1 語）。
+        MIN_OCCURRENCES = 2
+
+        # 1 章ぶんの素材
+        Chapter = Data.define(:basename, :headings, :body) do
+          def score(pattern)
+            weighted = HEADING_WEIGHTS.sum do |level, weight|
+              headings.fetch(level, []).count { it.match?(pattern) } * weight
+            end
+            weighted + body.scan(pattern).size
+          end
+
+          def number = basename[/\A\d+/].to_i
+        end
 
         # @param terms [Array<Hash>] 辞書エントリ（'term' と任意の 'pattern'）
         # @param chapters [Array<String>] 章のベースネームまたはパス
@@ -50,9 +74,7 @@ module VivlioStarter
         end
 
         def initialize(chapters)
-          @headings = {}
-          @definitions = {}
-          load_chapters(chapters)
+          @chapters = load_chapters(chapters)
         end
 
         # @return [Hash{String => String}]
@@ -61,46 +83,38 @@ module VivlioStarter
             name = entry['term'].to_s
             next if name.empty?
 
-            chapter = by_heading(entry) || by_definition(name)
+            pattern = TermPattern.for(entry)
+            next if total_occurrences(pattern) < MIN_OCCURRENCES
+
+            chapter = best_chapter(pattern)
             [name, chapter] if chapter
           end.to_h
         end
 
         private
 
-        # 章の本文から「見出し行」と「定義された語の塊」だけを取り出して持つ。
-        # 本文そのものは保持しない——判定に要るのはこの 2 つだけで、
-        # 全章ぶんの本文を抱えると索引語の数だけ再走査することになる。
         def load_chapters(chapters)
-          chapters.sort_by { File.basename(it.to_s, '.md') }.each do |chapter|
-            path = resolve_path(chapter)
-            next unless path
-
+          chapters.filter_map { resolve_path(it) }
+                  .sort_by { File.basename(it, '.md') }
+                  .map do |path|
             body = CodeBlockStripper.strip(File.read(path, encoding: 'utf-8'))
-            basename = File.basename(path, '.md')
-            @headings[basename] = body.scan(HEADING_PATTERN).flatten
-            @definitions[basename] = collect_defined_chunks(body)
+            headings = Hash.new { |h, k| h[k] = [] }
+            body.scan(HEADING) { |mark, text| headings[mark.size] << text }
+            Chapter.new(basename: File.basename(path, '.md'), headings:, body:)
           end
         end
 
-        def collect_defined_chunks(body)
-          DEFINITION_PATTERNS.flat_map { body.scan(it).flatten }.compact.map(&:strip)
-        end
+        def total_occurrences(pattern) = @chapters.sum { it.body.scan(pattern).size }
 
-        # 見出しヒットが最多の章。同数なら章番号の若い方（@headings は章順）
-        def by_heading(entry)
-          pattern = TermPattern.for(entry)
-          counts = @headings.transform_values { |lines| lines.count { it.match?(pattern) } }
-          best = counts.values.max
+        # スコア最大の章。同点なら章番号の若い方
+        def best_chapter(pattern)
+          scored = @chapters.filter_map do |chapter|
+            score = chapter.score(pattern)
+            [chapter, score] if score.positive?
+          end
+          return nil if scored.empty?
 
-          return nil if best.nil? || best.zero?
-
-          counts.find { |_, n| n == best }&.first
-        end
-
-        # 見出しに出ない語の受け皿。「〜とは」で説明している章を拾う
-        def by_definition(name)
-          @definitions.find { |_, chunks| chunks.any? { it.end_with?(name) } }&.first
+          scored.max_by { |chapter, score| [score, -chapter.number] }.first.basename
         end
 
         def resolve_path(chapter)
