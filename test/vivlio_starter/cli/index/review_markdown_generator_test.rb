@@ -332,6 +332,46 @@ module VivlioStarter
         refute_includes content, '### 登録語'
       end
 
+      # --- phase: 一般候補の圧縮 ---
+
+      # 文脈は 1 語につき 3 行を占め、311 語ならファイルの半分になる。一般候補は
+      # 眺める場所なので語だけを出し、末尾の除外済みリストが埋もれないようにする。
+      def candidate(term, yomi)
+        { 'term' => term, 'yomi' => yomi, 'score' => 150.0,
+          'contexts' => [{ 'chapter' => '21-markdown', 'context' => '記法の基本' }] }
+      end
+
+      def test_low_candidates_are_listed_without_contexts
+        @generator.generate!(terms: [], high_candidates: [],
+                             low_candidates: [candidate('Python', 'ぱいそん')], rejected: [])
+        content = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
+
+        assert_includes content, '- [ ] **Python** (ぱいそん) - スコア: 150.0'
+        refute_includes content, '21-markdown: 記法の基本', '一般候補に出現箇所は出さない'
+      end
+
+      # 推奨候補は判断する場所なので従来どおり文脈を添える
+      def test_high_candidates_keep_their_contexts
+        @generator.generate!(terms: [], high_candidates: [candidate('JavaScript', 'じゃばすくりぷと')],
+                             low_candidates: [], rejected: [])
+        content = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
+
+        assert_includes content, '  - 21-markdown: 記法の基本'
+      end
+
+      # 語ごとに空行を挟むと 311 語で 622 行になる。詰めるのが目的なので詰める
+      def test_low_candidates_are_packed_one_line_per_term
+        @generator.generate!(terms: [], high_candidates: [],
+                             low_candidates: [candidate('Python', 'ぱいそん'), candidate('Perl', 'ぱーる')],
+                             rejected: [])
+        content = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
+        lines = content.lines.map(&:chomp)
+        listed = lines.select { it.start_with?('- [ ]') }
+
+        assert_equal 2, listed.size
+        assert_equal listed.last, lines[lines.index(listed.first) + 1], '語の間に空行を置かない'
+      end
+
       # --- phase: generate! tests ---
 
       def test_generate_creates_review_file

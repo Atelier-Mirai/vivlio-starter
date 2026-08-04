@@ -522,16 +522,21 @@ module VivlioStarter
       end
 
       # 3. 一般候補セクション
+      #
+      # ここだけ文脈を出さない。目安語数の外に出た語を**眺める**場所であって、
+      # 一語ずつ判断する場所ではない——迷うほどの語なら順位が上がって推奨候補に
+      # 現れる。文脈を並べると推奨候補と同じ密度になり、「これも全部見なければ」
+      # と読めてしまううえ、後ろの除外済みリストまで遠くなる。
       def build_low_candidates_section(candidates)
-        section = "## 3. 一般候補 (Low Candidates: #{candidates.size}語)\n\n"
+        section = "## 3. 一般候補 (Low Candidates: #{candidates.size}語)\n"
+        section += "※ 目安語数の外に出た語です。眺めて、目に留まったものだけ [i] にしてください。\n"
+        section += "   一覧性を優先して出現箇所は省いています。\n\n"
 
         if candidates.empty?
           section += "一般候補はありません。\n"
         else
           sorted = sort_by_label_and_appearance(candidates)
-          sorted.each do |c|
-            section += build_candidate_line(c)
-          end
+          sorted.each { section += build_candidate_line(it, context_limit: 0) }
         end
 
         section
@@ -670,22 +675,25 @@ module VivlioStarter
       end
 
       # 候補行を構築（High/Lowセクション用）
-      def build_candidate_line(candidate)
+      # 候補行。`context_limit: 0` なら語だけの 1 行にする（一般候補で使う）。
+      # 文脈は 1 語につき 3 行を占め、311 語ならそれだけで 1,100 行——ファイルの
+      # 半分になり、末尾の除外済みリストが埋もれていた。
+      def build_candidate_line(candidate, context_limit: 2)
         term = candidate['term']
         yomi = candidate['yomi'] || term
         score = candidate['score'] || 0
         label = determine_label(candidate)
-        contexts = candidate['contexts'] || []
 
         line = '- [ ]'
         line += " `#{label}`" if label
         line += " **#{term}** (#{yomi}) - スコア: #{score.round(1)}\n"
 
-        # 文脈を最大2件表示
-        contexts.first(2).each do |ctx|
+        # 1 行に詰めるときは語の間の空行も置かない（詰めることが目的なので）
+        return line if context_limit.zero?
+
+        Array(candidate['contexts']).first(context_limit).each do |ctx|
           chapter = ctx['chapter'] || '不明'
-          context_text = extract_context(ctx['context'])
-          line += "  - #{chapter}: #{context_text}\n"
+          line += "  - #{chapter}: #{extract_context(ctx['context'])}\n"
         end
 
         "#{line}\n"
