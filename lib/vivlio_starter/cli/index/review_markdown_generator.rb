@@ -190,7 +190,10 @@ module VivlioStarter
       # 行が無ければ nil を返す——「指定なし」と「行を消した＝解除」を同じ扱いにする。
       #
       # @return [Hash{String => Array<String>, nil}] 用語 → 章トークンの配列
-      MAIN_REFERENCE_LINE = /^\s*-\s*(?:主要参照|main)\s*[:：]\s*(?:`(?:NEW!|Today)`\s*)?(.+)$/
+      # 子行の綴りはここだけで決める。出現箇所行（`  - 章名: 文脈`）と見分けが
+      # つかない形なので、値の有無に関わらず弾ける前半を切り出しておく。
+      MAIN_REFERENCE_PREFIX = /^\s*-\s*(?:主要参照|main)\s*[:：]/
+      MAIN_REFERENCE_LINE = /#{MAIN_REFERENCE_PREFIX}\s*(?:`(?:NEW!|Today)`\s*)?(.+)$/
 
       def parse_main_references
         return {} unless exists?
@@ -283,12 +286,23 @@ module VivlioStarter
             while i < lines.size && lines[i] !~ /^- \[/
               current_line = lines[i]
 
+              # 主要参照の子行は著者の指定であって出現箇所ではない。綴りが
+              # `  - ラベル: 値` で下の出現箇所行と同型なので、先に弾かないと
+              # `chapter: 主要参照` という文脈が辞書へ入る。しかもレビューを
+              # 往復するたび再出力・再取り込みされ、値が空へ潰れて残り続ける。
+              if current_line.match?(MAIN_REFERENCE_PREFIX)
+                i += 1
+                next
+              end
+
               # 出現箇所行: "  - chapter: context"
-              if current_line =~ /^  - ([^:]+): (.+)/
+              # MatchData を受けてから読む——`Regexp.last_match` のままだと、
+              # 章名を整える sub がその場で $~ を上書きし、続けて読む文脈が
+              # nil になる。辞書の contexts が軒並み空だったのはこれが原因。
+              if (occurrence = current_line.match(/^  - ([^:]+): (.+)/))
                 # 表示用の「（catalog 外）」注記は辞書へ戻さない
-                chapter = Regexp.last_match(1).sub(/（catalog 外）\z/, '')
-                context_text = Regexp.last_match(2)
-                contexts << { 'chapter' => chapter, 'context' => context_text }
+                chapter = occurrence[1].sub(/（catalog 外）\z/, '')
+                contexts << { 'chapter' => chapter, 'context' => occurrence[2] }
                 i += 1
                 next
               end
@@ -352,6 +366,8 @@ module VivlioStarter
              違う章なら数字を書き換え、指定したくなければ `m?33` ごと消してください。
           ※ 章名や節まで指すときは、用語の下に `- 主要参照: 21#Markdown とは` と書きます
              （子行がフラグ欄より優先されます）。
+          ※ 一度外した語は候補（2・3 節）には現れず、末尾の 4 節「除外済みリスト」に集まります。
+             やっぱり戻すときは、そこで [i] / [g] / [ig] を入れて `vs index:apply`。
 
           #{build_terms_section(terms)}
 
@@ -423,14 +439,17 @@ module VivlioStarter
           本の広い範囲に散らばっている語です。索引から引いても読者が「どこを読めばよいか」を
           判断できないため、外すことを推奨します。
 
-          ただし**本の主題そのもの**である語（Markdown の解説書における「Markdown」など）は、
-          広く出ていて当然です。その場合は外すのではなく、**説明している章を指定**してください。
-          指定した章の初出が索引で太字＋先頭に並び、「まずここを読めばよい」が読者に伝わります。
+          分かれ目は**その語を腰を据えて説明している箇所があるか**です。
 
-          - 外す場合: [-i] のまま `vs index:apply`
-          - 残す場合: [i] に戻す
-          - 説明箇所を指定する場合: [i] に戻したうえで、その語の下の
-            `- 主要参照: 21, 22` の行を整える（行が無ければ書き足してください）
+          - **説明箇所がある**（Markdown の解説書における「Markdown」など）
+            → [i] に戻し、`[im21]` か子行 `- 主要参照: 21` でその箇所を指してください。
+              索引で太字＋先頭に並び、「まずここを読めばよい」が読者に伝わります
+          - **説明箇所がない**（書名・副題そのものなど、本全体が主題である語）
+            → [-i] のまま。指す先のない主要参照は目印になりません。
+              フラグに `g` があれば用語集には残るので、ページ番号を並べる代わりに
+              定義文で説明を届けられます
+          - **どちらでもない一般語**
+            → [-i] のまま `vs index:apply`
 
         HEADER
       end

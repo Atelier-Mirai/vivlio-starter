@@ -116,6 +116,48 @@ module VivlioStarter
         assert_equal({ 'Ruby' => nil }, @generator.parse_main_references)
       end
 
+      # 主要参照の子行は著者の指定であって出現箇所ではない。綴りが
+      # `  - ラベル: 値` で出現箇所行と同型なので、弾かないと辞書へ
+      # `chapter: 主要参照` が入り、往復のたび再出力されて残り続ける。
+      def test_main_reference_child_line_is_not_taken_as_a_context
+        @generator.generate!(terms: [{ 'term' => 'Markdown', 'yomi' => 'まーくだうん', 'flags' => 'ig',
+                                       'in_index' => true, 'in_glossary' => true,
+                                       'main_tokens' => ['21#Markdown とは'] }],
+                             high_candidates: [], low_candidates: [], rejected: [])
+
+        contexts = @generator.parse_glossary_approved.first['contexts']
+
+        assert_empty contexts.select { it['chapter'].to_s.include?('主要参照') }
+      end
+
+      # 往復で値が空へ潰れた子行（`  - 主要参照: `）も同じく弾く。
+      # 出現箇所行のほうは従来どおり拾えていること。
+      def test_valueless_main_reference_line_is_ignored_while_contexts_survive
+        @generator.generate!(terms: [{ 'term' => 'Markdown', 'yomi' => 'まーくだうん', 'flags' => 'ig',
+                                       'in_index' => true, 'in_glossary' => true,
+                                       'contexts' => [{ 'chapter' => '21-markdown', 'context' => '記法の基本' }] }],
+                             high_candidates: [], low_candidates: [], rejected: [])
+        add_main_line("  - 主要参照: \n")
+
+        contexts = @generator.parse_glossary_approved.first['contexts']
+
+        assert_equal [{ 'chapter' => '21-markdown', 'context' => '記法の基本' }], contexts
+      end
+
+      # 表示用の「（catalog 外）」注記は章名の一部ではないので辞書へ戻さない。
+      # 剥がす sub と文脈の読み取りが同じ行に並ぶため、両方を一度に守る。
+      def test_out_of_scope_annotation_is_stripped_while_context_survives
+        @generator.generate!(terms: [{ 'term' => 'Markdown', 'yomi' => 'まーくだうん', 'flags' => 'ig',
+                                       'in_index' => true, 'in_glossary' => true,
+                                       'contexts' => [{ 'chapter' => '21-markdown', 'context' => '記法の基本',
+                                                        'out_of_scope' => true }] }],
+                             high_candidates: [], low_candidates: [], rejected: [])
+
+        contexts = @generator.parse_glossary_approved.first['contexts']
+
+        assert_equal [{ 'chapter' => '21-markdown', 'context' => '記法の基本' }], contexts
+      end
+
       # --- phase: 候補の提示（R2） ---
 
       # `NEW!` は「機械が推測した候補」の目印。既存の候補提示と同じラベルを使う

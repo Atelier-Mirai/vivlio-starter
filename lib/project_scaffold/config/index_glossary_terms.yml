@@ -1,5 +1,5 @@
 ---
-generated_at: '2026-08-04 04:10:13'
+generated_at: '2026-08-04 18:40:23'
 terms:
 - term: "--force"
   yomi: "--force"
@@ -40,8 +40,6 @@ terms:
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bCLI\\b/"
   contexts:
-  - chapter: 主要参照
-    context:
   - chapter: 00-preface
     context:
   - chapter: 11-workflow
@@ -69,8 +67,6 @@ terms:
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bCSS\\b/"
   contexts:
-  - chapter: 主要参照
-    context:
   - chapter: 00-preface
     context:
   - chapter: 11-workflow
@@ -86,8 +82,6 @@ terms:
   approved_at: '2026-07-05 21:00:15'
   pattern: "/CSS組版/"
   contexts:
-  - chapter: 主要参照
-    context:
   - chapter: 21-markdown-tutorial
     context:
   - chapter: 95-further-inspiration
@@ -113,8 +107,6 @@ terms:
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bEPUB\\b/"
   contexts:
-  - chapter: 主要参照
-    context:
   - chapter: 00-preface
     context:
   - chapter: 11-workflow
@@ -177,8 +169,6 @@ terms:
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bHTML\\b/"
   contexts:
-  - chapter: 主要参照
-    context:
   - chapter: 00-preface
     context:
   - chapter: 11-workflow
@@ -318,8 +308,6 @@ terms:
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bKindle\\b/"
   contexts:
-  - chapter: 主要参照
-    context:
   - chapter: 00-preface
     context:
   - chapter: 11-workflow
@@ -367,8 +355,6 @@ terms:
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bMeCab\\b/"
   contexts:
-  - chapter: 主要参照
-    context:
   - chapter: 32-metrics
     context:
   - chapter: 33-index-glossary
@@ -492,8 +478,6 @@ terms:
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bRuby\\b/"
   contexts:
-  - chapter: 主要参照
-    context:
   - chapter: 00-preface
     context:
   - chapter: 12-quickstart
@@ -590,9 +574,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-04 03:11:19'
   pattern: "/Vivlio\\ Starter/"
-  contexts:
-  - chapter: 主要参照
-    context:
   updated_at: '2026-08-04 04:10:12'
   main:
   - 00-preface
@@ -605,8 +586,6 @@ terms:
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bVivliostyle\\b/"
   contexts:
-  - chapter: 主要参照
-    context:
   - chapter: 00-preface
     context:
   - chapter: 11-workflow
@@ -670,8 +649,6 @@ terms:
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bYAML\\b/"
   contexts:
-  - chapter: 主要参照
-    context:
   - chapter: 12-quickstart
     context:
   - chapter: 13-new
@@ -734,7 +711,7 @@ terms:
   contexts:
   - chapter: 96-sample
     context: "・アインシュタイン（1879–1955）。20世紀を代表する理論物理学者。特殊・一般相対性理論の提唱者。1921年ノーベル物理学賞受賞。"
-  updated_at: '2026-08-04 04:10:13'
+  updated_at: '2026-08-04 18:40:23'
   main:
 - term: エラー
   yomi: えらー
@@ -1010,7 +987,7 @@ terms:
   - chapter: 96-sample
     context: '特殊相対性理論は等速運動のみを扱い、一般相対性理論は加速度運動と重力を含みます。アインシュタインは特殊から一般へ到達するのに10年を要しました。
       :'
-  updated_at: '2026-08-04 04:10:13'
+  updated_at: '2026-08-04 18:40:23'
   main:
 - term: スコア
   yomi: すこあ
@@ -1372,7 +1349,7 @@ terms:
   contexts:
   - chapter: 96-sample
     context: 原子・分子の実在を統計的に裏付け 3. **特殊相対性理論** — 同時性の相対性、時間の遅れ、光速度不変を導出 4. **$E=mc^2
-  updated_at: '2026-08-04 04:10:13'
+  updated_at: '2026-08-04 18:40:23'
   main:
 - term: トラブルシューティング
   yomi: とらぶるしゅーてぃんぐ
@@ -1422,8 +1399,6 @@ terms:
   approved_at: '2026-07-05 21:00:15'
   pattern: "/トンボ/"
   contexts:
-  - chapter: 主要参照
-    context:
   - chapter: 00-preface
     context:
   - chapter: 11-workflow
@@ -1456,7 +1431,7 @@ terms:
   contexts:
   - chapter: 96-sample
     context: " ::: 「質量が時空を曲げる」——この革命的な考えは、[ニュートン|にゅーとん]以来200年間続いた[重力|じゅうりょく]の常識を塗り替えました。"
-  updated_at: '2026-08-04 04:10:13'
+  updated_at: '2026-08-04 18:40:23'
   main:
 - term: 背景画像
   yomi: はいけいがぞう
