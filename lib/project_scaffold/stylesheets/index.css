@@ -144,10 +144,17 @@ body.vs-kindle .index h1 {
 /* その語を腰を据えて説明している箇所を太字で示す。索引の役割は所在の網羅では
    なく説明の在り処への案内なので、頻出語ほどこの目印が効く。
    <a> は空要素で、見えている数字は ::after の target-counter が描く。
-   font-weight は ::after へ継承されるので <a> 側に置けばよい。
-   リテラル値で var() を使わないため Kindle(KFX) でもそのまま効く。 */
+   font-weight/font-family は ::after へ継承されるので <a> 側に置けばよい。
+   リテラル値で var() を使わないため Kindle(KFX) でもそのまま効く。
+
+   書体をゴシックへ替えるのは、明朝の数字は太らせても他と見分けが付きにくい
+   ためで、字幅の差が小さい算用数字ではとくに効かない。索引は拾い読みされる
+   ページなので、字面そのものが変わるほうが目印として届く。
+   Zen Kaku Gothic New は 700 の実フォントを @font-face で読んでいる
+   （page-settings.css）ので、合成太字ではなく本来の Bold が出る。 */
 .index-list a.main-ref {
   font-weight: bold;
+  font-family: "Zen Kaku Gothic New", sans-serif;
 }
 
 /* 前付け（00-preface等）への参照はローマ数字で表示 */
