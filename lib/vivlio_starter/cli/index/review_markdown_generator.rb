@@ -27,6 +27,7 @@
 require 'fileutils'
 require 'time'
 require_relative '../common'
+require_relative 'term_line'
 
 module VivlioStarter
   module CLI
@@ -34,6 +35,11 @@ module VivlioStarter
       # 旧ファイル名との互換性のため、両方をチェック
       REVIEW_FILE = '_index_glossary_review.md'
       LEGACY_REVIEW_FILE = '_index_review.md'
+
+      # セクションの見出し。走査範囲の境目に使うので綴りを 1 箇所に置く
+      TERMS_SECTION = '## 1. 登録済み用語の確認'
+      HIGH_SECTION = '## 2. 推奨候補'
+      REJECTED_SECTION = '## 4. 除外済みリスト'
 
       def initialize
         @content = nil
@@ -72,18 +78,35 @@ module VivlioStarter
       # 索引として承認された候補を抽出（[i], [ig], [gi], [x] マーク）
       # @return [Array<Hash>] 索引候補のリスト
       def parse_index_approved
+        term_lines.select(&:index?).map { { 'term' => it.term, 'yomi' => it.yomi } }
+      end
+
+      # レビューファイル全体の用語行。フラグの綴りは TermLine が唯一の定義元で、
+      # ここから下のパーサはその判定（index? / reject_index? …）を使う。
+      # @return [Array<TermLine>]
+      def term_lines
+        return [] unless exists?
+
+        IndexCommands::TermLine.scan(File.read(review_file_path, encoding: 'utf-8'))
+      end
+
+      # 除外済みリスト（セクション 4）の手前までの用語行。
+      # あちらは「復帰させるか」を問う別の場なので、承認・棄却の集計には混ぜない。
+      def term_lines_before_rejected_section
         return [] unless exists?
 
         content = File.read(review_file_path, encoding: 'utf-8')
-        approved = []
+        boundary = content.index(REJECTED_SECTION)
+        IndexCommands::TermLine.scan(boundary ? content[0...boundary] : content)
+      end
 
-        # [i], [ig], [gi], [x] を索引として抽出
-        # 形式: - [i] `NEW!` **用語** (読み) - スコア: 123.5
-        content.scan(/^- \[(?:i|ig|gi|x)\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)/) do |term, yomi|
-          approved << { 'term' => term, 'yomi' => yomi }
-        end
+      # 除外済みリスト（セクション 4）の用語行
+      def term_lines_in_rejected_section
+        return [] unless exists?
 
-        approved
+        content = File.read(review_file_path, encoding: 'utf-8')
+        boundary = content.index(REJECTED_SECTION)
+        boundary ? IndexCommands::TermLine.scan(content[boundary..]) : []
       end
 
       # 用語集として承認された候補を抽出（[g], [ig], [gi] マーク）
@@ -117,116 +140,43 @@ module VivlioStarter
         parse_index_approved
       end
 
-      # リジェクト候補を抽出（High/Lowセクションから[r], [-ig]マークされたもの）
+      # リジェクト候補を抽出（[r], [-ig], [-gi] マーク）
       # @return [Array<Hash>] リジェクト候補のリスト
       def parse_rejected
-        return [] unless exists?
-
-        content = File.read(review_file_path, encoding: 'utf-8')
-        rejected = []
-
-        # Rejectedセクション以外から [r] マークを抽出
-        # Rejectedセクションの開始位置を特定
-        rejected_section_start = content.index('## 4. 除外済みリスト')
-
-        search_content = if rejected_section_start
-                           content[0...rejected_section_start]
-                         else
-                           content
-                         end
-
-        # [r], [-ig], [-gi] を両方リジェクトとして抽出
-        search_content.scan(/^- \[(?:r|-ig|-gi)\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)(?: - スコア: ([\d.]+))?/) do |term, yomi, score|
-          entry = { 'term' => term, 'yomi' => yomi, 'kind' => 'both' }
-          entry['score'] = score.to_f if score
-          rejected << entry
+        term_lines_before_rejected_section.select(&:reject_both?).map do |line|
+          entry = { 'term' => line.term, 'yomi' => line.yomi, 'kind' => 'both' }
+          entry['score'] = line.score if line.score
+          entry
         end
-
-        rejected
       end
 
-      # 索引のみリジェクト（[-i]マーク）を抽出
+      # 索引のみリジェクト（[-i] マーク）を抽出
       # @return [Array<Hash>] 索引リジェクト候補のリスト
       def parse_index_rejected
-        return [] unless exists?
-
-        content = File.read(review_file_path, encoding: 'utf-8')
-        rejected = []
-
-        rejected_section_start = content.index('## 4. 除外済みリスト')
-        search_content = rejected_section_start ? content[0...rejected_section_start] : content
-
-        search_content.scan(/^- \[-i\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)/) do |term, yomi|
-          rejected << { 'term' => term, 'yomi' => yomi, 'kind' => 'index' }
-        end
-
-        rejected
+        term_lines_before_rejected_section.select(&:reject_index?)
+                                          .map { { 'term' => it.term, 'yomi' => it.yomi, 'kind' => 'index' } }
       end
 
-      # 用語集のみリジェクト（[-g]マーク）を抽出
+      # 用語集のみリジェクト（[-g] マーク）を抽出
       # @return [Array<Hash>] 用語集リジェクト候補のリスト
       def parse_glossary_rejected
-        return [] unless exists?
-
-        content = File.read(review_file_path, encoding: 'utf-8')
-        rejected = []
-
-        rejected_section_start = content.index('## 4. 除外済みリスト')
-        search_content = rejected_section_start ? content[0...rejected_section_start] : content
-
-        search_content.scan(/^- \[-g\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)/) do |term, yomi|
-          rejected << { 'term' => term, 'yomi' => yomi, 'kind' => 'glossary' }
-        end
-
-        rejected
+        term_lines_before_rejected_section.select(&:reject_glossary?)
+                                          .map { { 'term' => it.term, 'yomi' => it.yomi, 'kind' => 'glossary' } }
       end
 
-      # Rejectedセクションで解除マークされた候補を抽出（リジェクト解除 + 直接登録）
-      # フラグに基づいて索引・用語集に直接登録する
+      # 除外済みリストで復帰マークが付いた候補を抽出（リジェクト解除＋直接登録）。
+      # フラグをそのまま持ち帰り、索引・用語集への登録先の判断に使う。
       # @return [Array<Hash>] リジェクト解除候補のリスト（flag 付き）
       def parse_unreject
-        return [] unless exists?
-
-        content = File.read(review_file_path, encoding: 'utf-8')
-        unreject = []
-
-        # Rejectedセクションを特定
-        rejected_section_start = content.index('## 4. 除外済みリスト')
-        return [] unless rejected_section_start
-
-        rejected_content = content[rejected_section_start..]
-
-        # Rejectedセクション内で [i], [g], [ig] マークされたものを抽出
-        # フラグも保持し、索引・用語集への直接登録に使用する
-        rejected_content.scan(/^- \[(i|g|ig|gi|x)\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)/) do |flag, term, yomi|
-          unreject << { 'term' => term, 'yomi' => yomi, 'flag' => flag }
-        end
-
-        unreject
+        term_lines_in_rejected_section.select(&:unrejecting?)
+                                      .map { { 'term' => it.term, 'yomi' => it.yomi, 'flag' => it.flags } }
       end
 
-      # Rejectedセクションの全項目を抽出（フラグ不問）
-      # Section 4 に存在する全用語を返す（[ ], [i], [g], [ig] 等すべて）
-      # apply 時に index_terms/glossary_terms からの除去と rejected への同期に使用
+      # 除外済みリストの全項目を抽出（フラグ不問）。
+      # apply 時に index_terms/glossary_terms からの除去と rejected への同期に使う。
       # @return [Array<Hash>] 全項目のリスト（flag 付き）
       def parse_rejected_section_all
-        return [] unless exists?
-
-        content = File.read(review_file_path, encoding: 'utf-8')
-        items = []
-
-        rejected_section_start = content.index('## 4. 除外済みリスト')
-        return [] unless rejected_section_start
-
-        rejected_content = content[rejected_section_start..]
-
-        # フラグ部分を含めて全項目を抽出
-        # [ ], [i], [g], [ig], [gi], [x], [r] 等すべてのフラグを対象
-        rejected_content.scan(/^- \[([^\]]*)\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)/) do |flag, term, yomi|
-          items << { 'term' => term, 'yomi' => yomi, 'flag' => flag.strip }
-        end
-
-        items
+        term_lines_in_rejected_section.map { { 'term' => it.term, 'yomi' => it.yomi, 'flag' => it.flags } }
       end
 
       # 主要参照の指定を抽出する（`- 主要参照: 21, 22` / `- main: 21-22`）。
@@ -246,13 +196,16 @@ module VivlioStarter
         return {} unless exists?
 
         content = File.read(review_file_path, encoding: 'utf-8')
-        boundary = content.index('## 4. 除外済みリスト')
+        boundary = content.index(REJECTED_SECTION)
         search = boundary ? content[0...boundary] : content
 
-        result = {}
+        # まずフラグ欄（`[igm33]`）を読み、子行があればそちらで上書きする。
+        # 章名や節指定のような長い値は子行にしか書けないので、後から書き足した
+        # 細かい指定が勝つ形にしてある。
+        result = IndexCommands::TermLine.scan(search).to_h { [it.term, it.main] }
         term_blocks(search).each do |term, body|
           line = body[MAIN_REFERENCE_LINE, 1]
-          result[term] = line ? split_chapter_tokens(line) : nil
+          result[term] = split_chapter_tokens(line) if line
         end
         result
       end
@@ -260,8 +213,21 @@ module VivlioStarter
       # 用語行とそれに続くインデント行を 1 ブロックとして切り出す。
       # 行単位で独立に scan する他のパーサと違い、用語と子項目の対応が要るため。
       def term_blocks(content)
-        content.to_enum(:scan, /^- \[[^\]]*\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \([^)]+\)[^\n]*\n((?:[ \t]+[^\n]*\n|\n(?=[ \t]))*)/)
-               .map { Regexp.last_match.captures }
+        blocks = []
+        current = nil
+        content.to_s.lines.each do |line|
+          if (parsed = IndexCommands::TermLine.parse(line))
+            current = [parsed.term, +'']
+            blocks << current
+          elsif current && line.match?(/\A[ \t]+\S/)
+            current[1] << line
+          elsif line.strip.empty?
+            next # 空行はブロックを切らない（説明文が続くことがある）
+          else
+            current = nil
+          end
+        end
+        blocks
       end
 
       # `21, 22` `21-22` `21 22` のいずれも章トークンの配列にする。
@@ -270,29 +236,18 @@ module VivlioStarter
         text.split(/[,、\s]+/).map(&:strip).reject(&:empty?)
       end
 
-      # Termsセクションで読みが変更された用語を抽出
+      # 登録済み用語セクションで読みが変更された用語を抽出
       # @return [Array<Hash>] 読み変更された用語のリスト
       def parse_yomi_changes
         return [] unless exists?
 
         content = File.read(review_file_path, encoding: 'utf-8')
-        changes = []
+        start = content.index(TERMS_SECTION) or return []
+        finish = content.index(HIGH_SECTION) || content.length
 
-        # Termsセクションを特定
-        terms_section_start = content.index('## 1. 登録済み用語の確認')
-        high_section_start = content.index('## 2. 推奨候補')
-
-        return [] unless terms_section_start
-
-        terms_end = high_section_start || content.length
-        terms_content = content[terms_section_start...terms_end]
-
-        # [i], [g], [ig], [x] マークされた用語の読みを抽出
-        terms_content.scan(/^- \[(?:i|g|ig|gi|x)\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)/) do |term, yomi|
-          changes << { 'term' => term, 'yomi' => yomi }
-        end
-
-        changes
+        IndexCommands::TermLine.scan(content[start...finish])
+                               .select { it.index? || it.glossary? }
+                               .map { { 'term' => it.term, 'yomi' => it.yomi } }
       end
 
       # レビューファイルを削除
@@ -313,11 +268,11 @@ module VivlioStarter
         while i < lines.size
           line = lines[i]
 
-          # 用語行を検出: - [flag] **用語** (読み) - スコア: 123.5
-          if line =~ /^- \[([^\]]+)\](?: `(?:NEW!|Today)`)? \*\*(.+?)\*\* \(([^)]+)\)/
-            flag = Regexp.last_match(1)
-            term = Regexp.last_match(2)
-            yomi = Regexp.last_match(3)
+          # 用語行を検出（綴りの定義元は TermLine）
+          if (parsed = IndexCommands::TermLine.parse(line))
+            flag = parsed.flags
+            term = parsed.term
+            yomi = parsed.yomi
 
             i += 1
             contexts = []
@@ -391,10 +346,12 @@ module VivlioStarter
           # 索引・用語集レビュー
           ※ フラグ: [i]=索引のみ、[g]=用語集のみ、[ig]=両方、[r]=棄却、[-i]=索引から除外、[-g]=用語集から除外
           ※ 読みの修正は ( ) 内を編集。用語集の説明文は空行の後にインデントして記述。
-          ※ 用語の下に `- 主要参照: 21, 22` と書くと、その章での初出が索引で太字＋先頭に並びます。
-             章番号（21）・範囲（21-22）・章名（21-markdown-tutorial）のいずれでも指定できます。
-          ※ 主要参照に `NEW!` が付いているものは機械が推測した候補です。そのままだと採用されます。
-             違う章なら書き換え、指定したくなければ行ごと削除してください。
+          ※ フラグの `m` は主要参照（その語を腰を据えて説明している章）です。[im33] なら 33 章。
+             複数章は [im21,22]。索引でその章の説明箇所が太字＋先頭に並びます。
+          ※ `m?` が付いているものは機械が推測した候補です。そのままだと採用されます。
+             違う章なら数字を書き換え、指定したくなければ `m?33` ごと消してください。
+          ※ 章名や節まで指すときは、用語の下に `- 主要参照: 21#Markdown とは` と書きます
+             （子行がフラグ欄より優先されます）。
 
           #{build_terms_section(terms)}
 
@@ -592,11 +549,12 @@ module VivlioStarter
         line += " - 一般語: #{term['spread_text']}に出現" if term['spread_text']
         line += "\n"
 
-        # 主要参照（説明箇所）の指定。著者が編集する行なので、機械が出す文脈より先に置く。
-        # `NEW!` は「今回はじめて提示した候補」＝機械の推測であることの目印（R2）。
-        if term['main_tokens']
+        # 主要参照のうち、フラグ欄へ収まらない値（章名・節指定）は子行で書く。
+        # 著者が編集する行なので、機械が出す文脈より先に置く。
+        tokens = Array(term['main_tokens'])
+        if tokens.any? && !IndexCommands::TermLine.in_flag?(tokens)
           proposal = term['main_suggested'] ? '`NEW!` ' : ''
-          line += "  - 主要参照: #{proposal}#{Array(term['main_tokens']).join(', ')}\n"
+          line += "  - 主要参照: #{proposal}#{tokens.join(', ')}\n"
         end
 
         # 文脈を最大2件表示（Candidatesと同様）
@@ -623,20 +581,26 @@ module VivlioStarter
       # @param term [Hash] 用語データ
       # @param checked [Boolean] チェック済みかどうか
       # @return [String] フラグ文字列
+      # 主要参照は章番号だけならフラグ欄へ収める（R6）。
+      # 語ごとに子行を足すと、110 語の索引で 110 行増えて一覧性が落ちる。
+      # 章名や節指定のような長い値は子行に譲る（`[igm21#Markdown とは]` は読めない）。
       def determine_registration_flag(term, checked)
         return '[ ]' unless checked
+
+        IndexCommands::TermLine.build(base_flag(term), main: Array(term['main_tokens']),
+                                                       suggested: term['main_suggested'])
+      end
+
+      def base_flag(term)
         # 一般語は「外す」を既定にして提示する。著者は残したければ [i] へ戻す（R5）
-        return '[-i]' if term['common_term']
+        return '-i' if term['common_term']
 
         in_index = term['in_index'] != false # 既定はtrue（後方互換性）
         in_glossary = term['in_glossary'] == true
 
-        if in_index && in_glossary
-          '[ig]'
-        elsif in_glossary
-          '[g]'
-        else
-          '[i]'
+        if in_index && in_glossary then 'ig'
+        elsif in_glossary then 'g'
+        else 'i'
         end
       end
 

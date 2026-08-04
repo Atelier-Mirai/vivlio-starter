@@ -36,20 +36,37 @@ module VivlioStarter
         File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
       end
 
-      # 用語の子行だけを書き換える。冒頭の凡例にも記法の例文が載っているので、
-      # 素の文字列置換だと凡例のほうに当たってしまう。
-      def rewrite_main_line(to)
+      # 用語行の直後に子行を差し込む。フラグ欄では書けない値（章名・節指定）を
+      # 著者が書き足す操作を再現する。
+      def add_main_line(to)
         path = ReviewMarkdownGenerator::REVIEW_FILE
-        File.write(path, File.read(path, encoding: 'utf-8').sub(/^ {2}- 主要参照: .*\n/, to))
+        File.write(path, File.read(path, encoding: 'utf-8')
+          .sub(/^(- \[[^\]]*\] \*\*Markdown\*\*[^\n]*\n)/) { "#{::Regexp.last_match(1)}#{to}" })
       end
 
-      # 著者が触るのはレビューファイルであって辞書 YAML ではない。
-      # 用語集の説明文と同じく子ブロックで書く。
-      def test_main_reference_is_written_as_a_child_line
+      # フラグ欄から主要参照を取り除く（＝指定の解除）
+      def clear_main_flag
+        path = ReviewMarkdownGenerator::REVIEW_FILE
+        File.write(path, File.read(path, encoding: 'utf-8').sub(/^- \[([a-z-]*)m\??[^\]]*\]/) { "- [#{::Regexp.last_match(1)}]" })
+      end
+
+      # 章番号だけならフラグ欄へ収める。語ごとに子行を足すと、110 語の索引で
+      # 110 行増えて一覧性が落ちる。
+      def test_main_reference_goes_into_the_flag_field
         content = generate_main(%w[21 22])
 
-        assert_includes content, '  - 主要参照: 21, 22'
-        assert_match(/^- \[i\] \*\*Markdown\*\*/, content, 'フラグ欄は無傷であること')
+        assert_match(/^- \[im21,22\] \*\*Markdown\*\*/, content)
+        refute_includes content, '  - 主要参照:', '子行は出さない'
+      end
+
+      # 章名や節指定はフラグ欄だと読めないので子行に譲る
+      def test_long_values_stay_on_a_child_line
+        @generator.generate!(terms: [term_with_main(['21#Markdown とは'])],
+                             high_candidates: [], low_candidates: [], rejected: [])
+        content = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
+
+        assert_includes content, '  - 主要参照: 21#Markdown とは'
+        assert_match(/^- \[i\] \*\*Markdown\*\*/, content, 'フラグ欄には入れない')
       end
 
       def test_main_reference_roundtrips
@@ -59,24 +76,32 @@ module VivlioStarter
       end
 
       # `main:` も受ける（英語のキーで書きたい著者のため）
-      def test_main_alias_is_accepted
+      # 子行はフラグ欄より優先する（後から書き足した細かい指定が勝つ）
+      def test_child_line_overrides_the_flag_field
         generate_main(%w[21 22])
-        rewrite_main_line("  - main: 21-22\n")
+        add_main_line("  - main: 21-22\n")
 
         assert_equal({ 'Markdown' => ['21-22'] }, @generator.parse_main_references)
       end
 
       def test_main_reference_accepts_various_separators
         generate_main(%w[21])
-        rewrite_main_line("  - 主要参照: 21、22 33\n")
+        add_main_line("  - 主要参照: 21、22 33\n")
 
         assert_equal({ 'Markdown' => %w[21 22 33] }, @generator.parse_main_references)
       end
 
-      # 行を消す＝指定の解除。nil で「解除」を表す（キーが無いのとは違う）
-      def test_removing_the_line_means_clearing_the_designation
+      # フラグ欄はカンマ区切りで複数章を書ける
+      def test_flag_field_accepts_multiple_chapters
+        generate_main(%w[21 22])
+
+        assert_equal({ 'Markdown' => %w[21 22] }, @generator.parse_main_references)
+      end
+
+      # フラグ欄から m を消す＝指定の解除。nil で「解除」を表す
+      def test_removing_the_flag_means_clearing_the_designation
         generate_main(%w[21])
-        rewrite_main_line('')
+        clear_main_flag
 
         assert_equal({ 'Markdown' => nil }, @generator.parse_main_references)
       end
@@ -87,6 +112,7 @@ module VivlioStarter
         content = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
 
         refute_match(/^ {2}- 主要参照:/, content, '指定が無ければ子行を出さない')
+        assert_match(/^- \[i\] \*\*Ruby\*\*/, content, 'フラグ欄にも入らない')
         assert_equal({ 'Ruby' => nil }, @generator.parse_main_references)
       end
 
@@ -98,7 +124,7 @@ module VivlioStarter
                              high_candidates: [], low_candidates: [], rejected: [])
         content = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
 
-        assert_includes content, '  - 主要参照: `NEW!` 33'
+        assert_match(/^- \[im\?33\] \*\*Markdown\*\*/, content, '? が機械の推測を表す')
       end
 
       # ラベルは表示だけの飾りで、値の解釈には混ざらない
@@ -113,8 +139,8 @@ module VivlioStarter
       def test_confirmed_main_reference_has_no_label
         content = generate_main(%w[33])
 
-        assert_includes content, '  - 主要参照: 33'
-        refute_includes content, '主要参照: `NEW!`'
+        assert_match(/^- \[im33\] \*\*Markdown\*\*/, content)
+        refute_match(/^- \[im\?/, content, '著者が確定した指定に ? は付かない')
       end
 
       # 凡例で記法そのものを説明する。著者は辞書 YAML を開かない
@@ -122,32 +148,32 @@ module VivlioStarter
         content = generate_main(%w[21])
 
         assert_match(/※.*主要参照/, content, '記法の説明が凡例にある')
-        assert_includes content, 'NEW!', '推測であることの断りがある'
+        assert_includes content, 'm?', '推測であることの断りがある'
         refute_includes content, 'config/index_glossary_terms.yml',
                         '著者が編集するのは辞書 YAML ではなくこのファイル'
       end
 
-      # 主要参照の行を足しても、既存 7 パーサの解釈は変わらない。
-      # 行の有無で結果が一致することを見る（絶対値ではなく差分で確かめる）。
-      def test_main_reference_line_does_not_disturb_other_parsers
+      # フラグ欄に m33 を足しても、既存パーサの解釈は変わらない。
+      # 有無で結果が一致することを見る（絶対値ではなく差分で確かめる）。
+      def test_main_reference_does_not_disturb_other_parsers
         generate_main(%w[21])
-        with_line = {
+        with_main = {
           approved: @generator.parse_index_approved,
           rejected: @generator.parse_index_rejected,
           yomi: @generator.parse_yomi_changes,
           section4: @generator.parse_rejected_section_all
         }
 
-        rewrite_main_line('')
-        without_line = {
+        clear_main_flag
+        without_main = {
           approved: @generator.parse_index_approved,
           rejected: @generator.parse_index_rejected,
           yomi: @generator.parse_yomi_changes,
           section4: @generator.parse_rejected_section_all
         }
 
-        assert_equal without_line, with_line, '主要参照の行は他のパーサの解釈を変えない'
-        assert_equal ['Markdown'], with_line[:approved].map { it['term'] }
+        assert_equal without_main, with_main, '主要参照はフラグの解釈を変えない'
+        assert_equal ['Markdown'], with_main[:approved].map { it['term'] }
       end
 
       # --- phase: 一般語のサブセクション（§3 R5.2） ---
