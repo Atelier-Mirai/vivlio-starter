@@ -155,6 +155,15 @@ body.vs-kindle .index h1 {
 .index-list a.main-ref {
   font-weight: bold;
   font-family: "Zen Kaku Gothic New", sans-serif;
+  /* font-size は同じでも小さく見えるので 4% だけ補う。数字のグリフが実際に
+     小さいためで、em に対する数字の高さは Zen Old Mincho が 73.9%、
+     Zen Kaku Gothic New が 71.1%（ttfunk で実測）。739/711 ≒ 1.04。
+     字幅は 61.5% 対 50.8% とさらに開くが、そちらは書体の性格そのもので、
+     埋めようとすると数字を太らせることになる。
+     line-height を打ち消すのは、継承した倍率 1.6 が拡大後の font-size に
+     掛かって行だけ 4% 高くなるのを防ぐため。数字に descender は無い。 */
+  font-size: 1.04em;
+  line-height: 1;
 }
 
 /* 前付け（00-preface等）への参照はローマ数字で表示 */
