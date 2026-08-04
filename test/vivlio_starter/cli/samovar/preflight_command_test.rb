@@ -67,7 +67,7 @@ module VivlioStarter
             pipelines = []
             with_pipeline_stub(pipelines) do
               command = PreflightCommand.new([])
-              suppress_outputs(command) { command.call }
+              run_in_isolation(command) { command.call }
             end
 
             pipeline = pipelines.last
@@ -84,7 +84,7 @@ module VivlioStarter
             pipelines = []
             with_pipeline_stub(pipelines) do
               command = PreflightCommand.new(['0'])
-              suppress_outputs(command) { command.call }
+              run_in_isolation(command) { command.call }
             end
 
             assert_equal entries, pipelines.last.entries_param
@@ -98,7 +98,7 @@ module VivlioStarter
             pipelines = []
             with_pipeline_stub(pipelines) do
               command = PreflightCommand.new(['1-10'])
-              suppress_outputs(command) { command.call }
+              run_in_isolation(command) { command.call }
             end
 
             assert_equal entries, pipelines.last.entries_param
@@ -112,7 +112,7 @@ module VivlioStarter
             pipelines = []
             with_pipeline_stub(pipelines) do
               command = PreflightCommand.new(['--no-resize'])
-              suppress_outputs(command) { command.call }
+              run_in_isolation(command) { command.call }
             end
 
             assert_equal false, pipelines.last.command_options[:resize]
@@ -127,7 +127,7 @@ module VivlioStarter
               command = PreflightCommand.new([])
               Dir.mktmpdir do |dir|
                 Dir.chdir(dir) do
-                  suppress_outputs(command) { command.call }
+                  run_in_isolation(command) { command.call }
                   html_files = Dir.glob('*.html')
                   pdf_files  = Dir.glob('*.pdf')
                   assert_empty html_files, 'preflight 後に HTML が生成されるべきではありません'
@@ -167,12 +167,24 @@ module VivlioStarter
           end
         end
 
-        def suppress_outputs(command)
-          PreProcessCommands::LinkImageValidator.stub :reset!, nil do
-            PreProcessCommands::LinkImageValidator.stub :print_summary, nil do
-              PreProcessCommands::LinkImageValidator.stub :any_issues?, false do
-                Common.stub :log_always, nil do
-                  yield
+        # 出力を抑え、ファイルシステムへの副作用を止めて実行する。
+        #
+        # `PreflightCommand#call` は最初に clean を走らせるので、素で呼ぶと
+        # **テストがカレントディレクトリの生成物を消す**。ここはプロジェクト
+        # ルートなので、実際に `_index_glossary_review.md`（著者がレビュー中の
+        # ファイル）が毎回消えていた。テストは検証の手段であって、対象の
+        # プロジェクトを書き換えてよい理由はない。
+        #
+        # ここで見たいのは resolver と pipeline に渡る値であって、掃除そのものは
+        # `clean_commands_test.rb` が一時ディレクトリで見ている。
+        def run_in_isolation(command)
+          CleanCommands.stub :execute_clean, nil do
+            PreProcessCommands::LinkImageValidator.stub :reset!, nil do
+              PreProcessCommands::LinkImageValidator.stub :print_summary, nil do
+                PreProcessCommands::LinkImageValidator.stub :any_issues?, false do
+                  Common.stub :log_always, nil do
+                    yield
+                  end
                 end
               end
             end
