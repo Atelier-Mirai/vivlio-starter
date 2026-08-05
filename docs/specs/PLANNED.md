@@ -89,12 +89,6 @@
 
 ---
 
-## コード整理
-
-- [Medium] **`contents/_README.md` が章番号を 1 つずらしている**: `_` 始まりのファイルは章から外れるはずだが、`CrossReferenceProcessor` が前処理で使う `detect_main_chapters_from_files` を素通りする。`TokenResolver` が `_README` に番号 `01` を割り当ててしまい（`match_slug_entry` → `instantiate_new_entry_from_slug`）、`main_chapter_token?` が真を返すためである。結果、本文章の並びの先頭に `_README` が居座り、**図表番号の章プレフィックスが 1 つずれる**（`11-workflow` が第 1 章ではなく第 2 章として採番される）。ビルド後半（`convert_sections_html!` 以降）は `chapter_tokens_override` が入るのでずれないが、**クロスリファレンスの採番は前処理で行われるのでこちらが効く**。`SectionBuilder.resolve_targets` は `bn.start_with?('_')` で除いているので、同じ除外を `detect_main_chapters_from_files` にも入れるのが素直（2026-08-06 に `chapters` キー撤去の検証中に発見。撤去の前後で挙動は同じなので、独立した既存バグ）。
-
----
-
 ## 開発者体験 / CLI UX
 
 - [Low] **Linux / Windows の自動セットアップ対応（やるかもしれない枠）**: 現状 `vs doctor --fix` の自動インストールは macOS + Homebrew のみで、Linux / Windows は動作検証もできていない。将来的に Linux（apt / dnf など）や Windows（winget / Scoop / Chocolatey など）でも `vs doctor --fix` でひと通り揃うようにできると望ましい。需要と検証コスト次第で、対応するかどうかも含めて将来検討する。
