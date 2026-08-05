@@ -1,13 +1,18 @@
 # frozen_string_literal: true
 
 # ================================================================
-# クロスリファレンス（相互参照）機能を提供する。
+# クロスリファレンス（相互参照）機能の部品を提供する。
 #
 # 機能:
 #   - ラベル定義の収集（** タイトル @id ** 形式）
 #   - キャプション付きブロック（図・表・コード）の HTML 変換
 #   - 本文中の @id 参照をリンクに置換
-#   - 重複チェックとレポート生成
+#   - ラベルマップ構築と重複チェック
+#
+# ここにあるのは部品だけで、章をまたぐ全体の段取り（ラベル収集 → マップ構築 →
+# HTML 化 → 参照置換 → 孤立ラベル検出）は
+# PreProcessCommands.process_cross_references_for_files（pre_process.rb）が持つ。
+# 実ビルドが通るのもそちらの 1 経路のみである。
 # ================================================================
 
 require 'cgi'
@@ -74,19 +79,6 @@ module VivlioStarter
           Masking.each_prose_line(content) { |_line, lineno| prose << lineno }
           total = content.each_line.count
           (1..total).reject { prose.include?(it) }.to_set
-        end
-
-        def process_cross_references(chapters)
-          all_labels, all_errors = collect_all_labels(chapters)
-          labels_map, duplicates = build_labels_map(all_labels)
-          log_duplicates(duplicates, all_errors)
-
-          processed = transform_all_chapters(chapters, labels_map)
-          processed, ref_errors = replace_all_references(processed, labels_map)
-          all_errors.concat(ref_errors)
-
-          { chapters: processed, report: generate_report(all_labels),
-            errors: all_errors, labels_count: all_labels.size }
         end
 
         def extract_caption_label(line)
@@ -254,9 +246,9 @@ module VivlioStarter
           ReferenceReplacer.new(content, labels_map, filename).replace
         end
 
-        # レポート生成
+        # ラベルマップ構築（重複チェック付き）
         # @return [Hash] labels_map と duplicates_by_id を含む
-        #   duplicates_by_id: { id => { first_label: Label, all_labels: [Label, ...] } }
+        #   duplicates_by_id: { id => [Label, ...] }（先勝ちで labels_map に載る）
         def build_labels_map_with_duplicates_check(all_labels)
           map = {}
           # IDごとに全ラベルを蓄積する（先勝ちで map に登録）
@@ -272,82 +264,6 @@ module VivlioStarter
         end
 
         # === Private Helpers ===
-
-        def collect_all_labels(chapters)
-          all_labels = []
-          all_errors = []
-          Common.log_info('Phase 1: ラベル定義を収集中...')
-          chapters.each do |filename, content|
-            result = collect_labels(content, filename, extract_chapter_number(filename))
-            all_labels.concat(result[:labels])
-            all_errors.concat(result[:errors])
-            Common.log_info("  #{filename}: #{result[:labels].size}個")
-          end
-          [all_labels, all_errors]
-        end
-        private_class_method :collect_all_labels
-
-        def build_labels_map(all_labels)
-          Common.log_info('Phase 2: ラベルマップ構築...')
-          result = build_labels_map_with_duplicates_check(all_labels)
-          [result[:labels_map], result[:duplicates_by_id]]
-        end
-        private_class_method :build_labels_map
-
-        def log_duplicates(duplicates_by_id, all_errors)
-          return if duplicates_by_id.empty?
-
-          duplicates_by_id.each do |_id, labels|
-            first = labels.first
-            # ファイルごとに行番号をグループ化して detail を構築する
-            by_file = labels.group_by(&:source_file)
-            detail_lines = by_file.map do |file, file_labels|
-              "#{file}: #{file_labels.map(&:line).join(', ')}"
-            end
-            Common.log_error(
-              "#{first.source_file}:#{first.line} - ラベルID '#{first.title} @#{first.id}' は重複しています",
-              detail: "重複箇所: #{detail_lines.join("\n          ")}"
-            )
-            all_errors << "ラベルID '@#{first.id}' 重複"
-          end
-        end
-        private_class_method :log_duplicates
-
-        def transform_all_chapters(chapters, labels_map)
-          Common.log_info('Phase 3: キャプション付きブロックをHTML化中...')
-          chapters.to_h do |filename, content|
-            [filename, transform_captioned_blocks(content, filename, labels_map)]
-          end
-        end
-        private_class_method :transform_all_chapters
-
-        def replace_all_references(chapters, labels_map)
-          Common.log_info('Phase 4: @id 参照を置換中...')
-          all_errors = []
-          processed = {}
-          chapters.each do |filename, content|
-            result = replace_references(content, labels_map, filename)
-            processed[filename] = result[:content]
-            log_reference_errors(filename, result[:errors])
-            all_errors.concat(result[:errors])
-          end
-          [processed, all_errors]
-        end
-        private_class_method :replace_all_references
-
-        def log_reference_errors(filename, errors)
-          return if errors.empty?
-
-          Common.log_warn("  #{filename}: #{errors.size}個の未定義参照")
-          errors.each { |err| Common.log_warn("    - #{err}") }
-        end
-        private_class_method :log_reference_errors
-
-        def format_label_line(label)
-          mode = label.auto ? 'auto' : 'manual'
-          "  - @#{label.id.ljust(25)} (#{label.full_number.ljust(10)}, #{mode}) 「#{label.title}」"
-        end
-        private_class_method :format_label_line
 
         def main_chapter_order
           hp = PostProcessCommands::HeadingProcessor

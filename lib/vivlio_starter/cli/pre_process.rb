@@ -264,12 +264,8 @@ module VivlioStarter
       module_function :ensure_variant_generated
 
       # ================================================================
-      # クロスリファレンス関連メソッド (MarkdownTransformer への委譲)
+      # クロスリファレンス
       # ================================================================
-      def process_cross_references(chapters)
-        MarkdownTransformer.process_cross_references(chapters)
-      end
-      module_function :process_cross_references
 
       # 全章ファイルのクロスリファレンス処理を一括実行
       # @param md_files [Array<String>] 処理対象ファイル（プロジェクトルート直下 .md）の配列

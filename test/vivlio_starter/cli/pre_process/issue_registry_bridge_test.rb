@@ -90,11 +90,10 @@ module VivlioStarter
       end
 
       # ----------------------------------------------------------------
-      # クロスリファレンス（ライブ経路）→ IssueRegistry
+      # クロスリファレンス → IssueRegistry
       # ----------------------------------------------------------------
-      # 実ビルドが通るのは PreProcessCommands.process_cross_references_for_files。
-      # CrossReferenceProcessor.process_cross_references は未定義メソッド
-      # generate_report を呼ぶ到達不能コードなので、そちらは検証対象にしない。
+      # 章をまたぐ段取りを持つのは PreProcessCommands.process_cross_references_for_files
+      # の 1 経路だけで、CrossReferenceProcessor は部品を提供するにとどまる。
       class CrossReferenceBridgeTest < Minitest::Test
         def setup
           IssueRegistry.reset!

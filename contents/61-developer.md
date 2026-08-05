@@ -887,7 +887,7 @@ table { border-collapse: collapse; }
 
 ### 内部処理フロー
 
-`process_cross_references` が以下を順に実行します。
+`process_cross_references_for_files` が以下を順に実行します。
 
 1. `LabelCollectorContext` が全章を走査し、`** タイトル @id **` 形式のキャプション行と `## タイトル @id` 形式の見出し行を収集してラベルマップを構築します。重複 ID はエラーとして記録します。
 2. `CaptionedBlockTransformer` がキャプション行とその直後のブロックを HTML に変換し、`id` 属性と章番号付き連番（`リスト 3-2` など）を埋め込みます。見出しラベルは行末の `@id` を取り除き、見出しの**内側**に空のアンカー `<span id="…" class="vs-sec-anchor">` を残します（見出しの前に置くと `break-before: page` でアンカーだけが前ページに落ち、ページ番号が 1 ずれるためです）。
