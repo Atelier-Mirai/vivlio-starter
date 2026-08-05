@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+# 打ち間違いの候補出しに使う。Ruby の default gem なので gemspec への追加は要らず、
+# `ruby --disable-did_you_mean` 下でも明示 require なら読める（あのフラグが切るのは
+# 例外へフックする側であって、綴り比較そのものではない）。
+require 'did_you_mean'
+
 module VivlioStarter
   module CLI
     module Guards
@@ -32,7 +37,7 @@ module VivlioStarter
 
         private
 
-        # 1 つの指定を解決し、通らなかったものを { label:, reason: } にして返す。
+        # 1 つの指定を解決し、通らなかったものを { label:, reason:, suggestion: } にして返す。
         # 通ったものは nil。
         def unresolved_labels_for(token)
           entries = TokenResolver::Resolver.new.resolve([token])
@@ -42,7 +47,33 @@ module VivlioStarter
           # contents/ に実在するのに未登録なら、直し方は「catalog.yml へ追加」になる。
           # 「そんな章はありません」と言ってしまうと、著者は在るファイルを探し続ける。
           reason = bad.all? { it.exists? } ? :uncataloged : :missing
-          { label: label_for(token, entries, bad), reason: }
+          # 候補を出すのは単一指定のときだけ。範囲（11-13）に章名を差し出しても意味がない
+          suggestion = reason == :missing && entries.size <= 1 ? suggestion_for(token) : nil
+          { label: label_for(token, entries, bad), reason:, suggestion: }
+        end
+
+        # 打ち間違いに添える「もしかして」を 1 件だけ返す。無ければ nil。
+        #
+        # **1 件に絞るのが肝心**——候補を並べると著者は結局 catalog.yml を見に行くので、
+        # それなら候補を出さずに catalog.yml へ案内するのと変わらない。
+        #
+        # 綴りが近いものを先に見て、無ければ番号だけで拾う。番号は著者が
+        # 「第 41 章」を指したことの強い証拠で、綴りが遠くても（`41-nonexistent`）
+        # 意図は読める。逆順にすると `43-cover` を差し置いて `41-book-yml` が出る。
+        def suggestion_for(token)
+          near = DidYouMean::SpellChecker.new(dictionary: catalog_basenames).correct(token).first
+          return near if near
+
+          number = token[/\A(\d+)/, 1]
+          return nil unless number
+
+          prefix = "#{format('%02d', number.to_i)}-"
+          catalog_basenames.find { it.start_with?(prefix) }
+        end
+
+        # catalog.yml に載っている本文・付録等の basename（システムページは番号を持たない）
+        def catalog_basenames
+          @catalog_basenames ||= TokenResolver::Resolver.new.resolve.select(&:number).map(&:basename)
         end
 
         # 範囲指定はどの番号が欠けているかまで言う。`11-13` とだけ返すと、
@@ -58,7 +89,16 @@ module VivlioStarter
 
           error("指定した章が見つかりません: #{missing.map { it[:label] }.join(', ')}",
                 detail: ["#{Common::CONTENTS_DIR}/ に該当する原稿がありません。",
+                         *suggestion_lines(missing),
                          '対処: 章の綴りは config/catalog.yml で確認できます（番号だけでも指定できます）'])
+        end
+
+        # 候補は before → after の形で見せる。そのまま打ち直せる並びにする。
+        def suggestion_lines(missing)
+          suggested = missing.select { it[:suggestion] }
+          return [] if suggested.empty?
+
+          ['もしかして:', *suggested.map { "  #{it[:label]} → #{it[:suggestion]}" }]
         end
 
         def uncataloged_violation(uncataloged)

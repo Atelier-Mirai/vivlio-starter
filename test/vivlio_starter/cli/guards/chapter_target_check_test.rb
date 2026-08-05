@@ -11,6 +11,7 @@
 #   - 解決できない指定が 1 つでもあれば :error（＝ vs build を止める）
 #   - 理由で文面を分ける（原稿が無い／catalog.yml 未登録）
 #   - 範囲指定は欠けている番号まで名指しする
+#   - 打ち間違いに「もしかして」を 1 件だけ添える（綴り／番号の 2 段構え）
 #   - 引数なし（フルビルド）は検査対象外
 # ================================================================
 
@@ -101,6 +102,69 @@ module VivlioStarter
           assert_equal 2, violations.size
           assert(violations.any? { it.message.include?('見つかりません') })
           assert(violations.any? { it.message.include?('登録されていません') })
+        end
+      end
+
+      # ------------------------------------------------------------
+      # もしかして（打ち間違いの候補）
+      # ------------------------------------------------------------
+
+      # 綴りが近ければ before → after で打ち直せる形にして返す
+      def test_should_suggest_the_nearest_chapter_name
+        with_project do
+          detail = validate(%w[11-instal]).first.detail
+
+          assert_includes detail, 'もしかして:'
+          assert_includes detail, '  11-instal → 11-install'
+        end
+      end
+
+      # 綴りが遠くても番号が合っていれば、著者はその章を指したかったとみてよい
+      def test_should_fall_back_to_the_chapter_with_the_same_number
+        with_project do
+          detail = validate(%w[11-nonexistent]).first.detail
+
+          assert_includes detail, '  11-nonexistent → 11-install'
+        end
+      end
+
+      # 手がかりが無ければ黙る。当てずっぽうの候補は catalog.yml を見るより手間が増える
+      def test_should_not_guess_when_nothing_is_close
+        with_project do
+          detail = validate(%w[abc]).first.detail
+
+          refute(detail.any? { it.include?('もしかして') })
+        end
+      end
+
+      # 候補は 1 件だけ。並べると著者は結局 catalog.yml を見に行く
+      def test_should_offer_at_most_one_suggestion_per_target
+        with_project do
+          detail = validate(%w[11-instal]).first.detail
+          suggestions = detail.select { it.start_with?('  11-instal →') }
+
+          assert_equal 1, suggestions.size
+        end
+      end
+
+      # 範囲指定に章名を差し出しても意味がない
+      def test_should_not_suggest_for_a_range
+        with_project do
+          detail = validate(%w[11-13]).first.detail
+
+          refute(detail.any? { it.include?('もしかして') })
+        end
+      end
+
+      # catalog.yml 未登録は綴りが合っているので、候補ではなく登録を促す
+      def test_should_not_suggest_for_uncataloged_chapter
+        with_project do
+          write_content('21-draft')
+
+          detail = validate(%w[21-draft]).first.detail
+
+          refute(detail.any? { it.include?('もしかして') })
+          assert(detail.any? { it.include?('追加してください') })
         end
       end
 
