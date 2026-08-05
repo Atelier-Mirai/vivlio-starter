@@ -81,6 +81,14 @@
   - `user_words.txt` は **YAML へ**変えた。`textlint_allowlist.yml` と同じ `- "語"` の並びになり、著者が覚える形式が 1 つ減る。`vs lint --register` の書き込みも YAML を吐く。
   - **`vs upgrade` が旧名から移行する。** `textlint_prh.yml` は v0.14.0（2025-11-04）から配っており**ベータ版（2026-04-26）の利用者の手元にもある**——改名しただけでは中身ごと読まれなくなり、登録した表記ゆれルールが黙って効かなくなる。`config/.textlintrc.yml` の `rulePaths` も併せて書き換える（こちらも著者が編集するファイルで、参照が切れると textlint がファイルを見つけられない）。
   - `user_words.txt` はベータの 2 か月後（2026-06-30）の実装なので既存プロジェクトには無いが、開発中の本のために同じ経路で拾う。
+- [Medium] **`config/book.yml` の主要キーが未設定なら、ビルド前に警告するようになった**（`dead-code-candidates-report.md` §2.1）: `book.main_title` / `book.author` / `project.name` を検査する実装は前からあったが、**呼ばれるのは module load 時の `silent: true` 経路だけで、本番では一度も走っていなかった**。タイトルが空欄の PDF ができても何も言わない状態だったので、案内を `Common.ensure_configured!`（廃止キー案内と同じ、全コマンドが通る関門）へ移した。警告には `book.yml` へそのまま貼れる記入例を添える。最小構成のプロジェクトを弾かないよう abort はしない。
+
+### Removed
+- **デッドコードを撤去した**（`dead-code-candidates-report.md` §7・`PLANNED.md`「コード整理」）: 走査で挙がった候補を 1 件ずつ確認し、設計の交代で役目を失っていた 8 箇所をテストごと削除した。挙動の変化は無い。
+  - `CrossReferenceProcessor.process_cross_references` と専用の私有ヘルパー 7 個 — **未定義の `generate_report` を呼ぶ到達不能コード**で、委譲先の `MarkdownTransformer.process_cross_references` も存在しない二重の壊れ方をしていた。実ビルドが通るのは `PreProcessCommands.process_cross_references_for_files` の 1 経路だけ。`PreProcessCommands.process_cross_references` も同じ理由で撤去。
+  - `SectionBuilder.ensure_chapter_html_up_to_date!` — mtime 比較で HTML の再生成を省く実装。「mtime 比較・キャッシュ判定は行わず常に再生成する」（`book_yml_regeneration_spec.md`）に置き換わっていた。
+  - `EpubBuilder.embed_cover?` / `IndexCandidateExtractor#export_candidates!` / `ReviewMarkdownGenerator#cleanup!` / `ScoringEngine#filter_by_threshold` / `ChapterConfig.configured_chapters` / `.all_integers?` — それぞれ `Common.epub_embed?`（フレーバ別判定）・`_index_glossary_review.md`（レビューの一本化）・`clean.rb` の `REVIEW_FILE_PATTERNS`・帯による採否（`index-term-selection-spec.md` Phase 5）・`CatalogLoader.load_existing_basenames` へ役目が移っていた。
+  - `HierarchicalIndex` は**残したうえで本番から切り離した**。唯一の参照だった `UnifiedPageBuilder` のログ 1 行（リンク数）は `@index_data` から直接数える。中途半端に繋がっていると「索引の重複排除はここ」と誤読されるため——実際の重複排除は `BacklinkDeduplicator` が PDF のページマップで行う。使い道は `index-main-reference-spec.md` §R8 で、その旨をクラス冒頭に明記した。
 
 ### Added
 - [Low] **表記揺れ辞書（prh）の使い方を `31-lint.md` に書いた**: `config/textlint_prh.yml` は「表記揺れ辞書（プロジェクト固有）」としてファイルの所在だけ挙げてあり、**登録の仕方が書かれていなかった**。`expected` / `patterns` の書き方、正規表現、`--fix` での一括修正、書名や引用は allowlist へ回すこと（著者の表記ではないので直してはいけない）を追記した。

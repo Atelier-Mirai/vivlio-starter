@@ -1,10 +1,15 @@
 # 報告書：デッドコード候補（リリース前の整理用）
 
 > 作成日: 2026-08-03
-> ステータス: **調査のみ。削除は未着手**
+> ステータス: **処置済み（2026-08-06）。§7 に何をどうしたかを記す**
 > 起票: `Common.validate_book_config!` が本番経路から呼ばれていないことが
 > `index-term-selection-spec.md` Phase 5 の実装中に判明し、他にも同種があるはずとの判断
 > 対象: `lib/vivlio_starter/**/*.rb`（`lib/project_scaffold/` は除外）
+
+**§1〜§6 は調査時点（2026-08-03）の記録である。**現在のコードの姿は §7 を見ること。
+§1〜§6 をそのまま残しているのは、走査の組み方（§5）と分類の判断（§2 の「単なる
+デッドコードより悪い」等）が次の整理で再利用できるためで、**候補一覧としては
+すでに古い**。
 
 ---
 
@@ -200,3 +205,70 @@ def def_regex(name)   = /^\s*def (?:self\.)?#{Regexp.escape(name)}#{boundary(nam
 
 **削除するときは 1 件ずつコミットを分ける。** まとめて消すと、
 何かが壊れたときにどれが原因か分からなくなる。
+
+---
+
+## 7. 処置の記録（2026-08-06）
+
+`PLANNED.md` の「クロスリファレンスの死にコードを撤去する」と合わせて実施した。
+`rake test` 2,388 件・RuboCop 428 ファイルとも通過。
+
+### 7.1 撤去したもの
+
+| 対象 | 場所 | 撤去の根拠 |
+|---|---|---|
+| `CrossReferenceProcessor.process_cross_references` と専用の私有ヘルパー 7 個 | `cross_reference_processor.rb` | 未定義の `generate_report` を呼ぶ到達不能コード。段取りは `process_cross_references_for_files` が持つ |
+| `PreProcessCommands.process_cross_references` | `pre_process.rb` | 委譲先の `MarkdownTransformer.process_cross_references` が存在しない |
+| `SectionBuilder.ensure_chapter_html_up_to_date!` | `section_builder.rb` | §4 の「呼び忘れか」は**否**。mtime 比較で再生成を省く設計は `book_yml_regeneration_spec.md` の「常に再生成する」に置き換わっている |
+| `EpubBuilder.embed_cover?` | `epub_builder.rb` | 表紙埋め込みの判定は `Common.epub_embed?` / `Common.kindle_embed?`（フレーバ別）へ移った |
+| `IndexCandidateExtractor#export_candidates!` と `BANNER` | `index_candidate_extractor.rb` | 書き出す `config/index_candidates.yml` を読む実装が無い。レビューは `_index_glossary_review.md` へ一本化 |
+| `ReviewMarkdownGenerator#cleanup!` | `review_markdown_generator.rb` | レビューファイルの削除は `clean.rb` の `REVIEW_FILE_PATTERNS` が担う |
+| `ScoringEngine#filter_by_threshold` | `scoring_engine.rb` | 採否を閾値から帯へ移して用途を失った（`index-term-selection-spec.md` Phase 5） |
+| `ChapterConfig.configured_chapters` / `.all_integers?` | `chapter_config.rb` | catalog 読み出しは `CatalogLoader.load_existing_basenames` を各所が直接呼ぶ形になった |
+
+いずれもテストを道連れに削除した。`samovar_smoke_test.rb` にあった
+`configured_chapters` のスタブは、呼ばれないメソッドを差し替えていたので外した。
+
+### 7.2 繋いだもの（§2.1・案 A）
+
+`validate_book_config!` を `missing_book_config_keys`（検査）と
+`warn_missing_book_config`（案内）に分け、**案内を `ensure_configured!` へ移した**——
+廃止キー案内と同じ関門なので全コマンドが通る。検査自体は `reload_configuration!` で
+毎回行い、結果だけを持ち越す。module load 時点で出すと、まだログレベルも決まっておらず、
+`new` / `doctor` / `help` にも無関係な警告が付くためである。
+
+警告は「直し方」を添える（`warning-messages-actionable` の方針）:
+
+```
+🟡 config/book.yml の推奨キーが未設定です: book.main_title, book.author, project.name
+        → config/book.yml に次のように書いてください。
+        book:
+          main_title: 本のタイトル
+          author: 著者名
+        project:
+          name: mybook
+        このままでも動作しますが、PDF のタイトル・著者・出力ファイル名が空欄になります。
+```
+
+### 7.3 残したもの（明示だけ加えた・§2.2・案 A）
+
+`HierarchicalIndex` は**本番から完全に切り離した上で残した**。
+それまで唯一の本番参照だった `UnifiedPageBuilder#load_index_data!` の
+`link_count`（ログ 1 行のため）は `@index_data` から直接数える形にしてある——
+残しておくと「索引の重複排除はここ」という誤読を招くためで、**中途半端に
+繋がっているより、切って所在を書くほうが読み違えない**。
+
+クラス冒頭に「本番から未接続」「使い道は `index-main-reference-spec.md` §R8」
+「同一ページの重複排除は実際には `BacklinkDeduplicator` が PDF のページマップで行う」
+を明記した。
+
+### 7.4 見送ったもの
+
+- **§3.1 の `find_term`**: 報告書は「テストからのみ参照」に分類したが、
+  **`unified_index_manager.rb:628` が本番で呼んでいる**。誤検出である
+- **§3.2 の `unsafe?` / `armed?` / `clear!`、§3.1 の `update_definition!`**:
+  小さな述語・ユーティリティで、消す利得が薄いので据え置き
+- **`ChapterConfig` の章番号パーサ 2 個**: 走査では「使われている」に見えるが、
+  実際に効いているのは `HeadingProcessor` の同名の私有コピーのほう。
+  **同名メソッドの重複という §0 の限界そのもの**なので、機械的な走査では拾えない。
+  どちらを定義元にするか決める作業として `PLANNED.md` へ送った

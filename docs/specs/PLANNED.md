@@ -91,7 +91,7 @@
 
 ## コード整理
 
-- [Medium] **クロスリファレンスの死にコードを撤去する**: `CrossReferenceProcessor.process_cross_references` は**未定義メソッド `generate_report` を呼ぶ到達不能コード**で、実ビルドが通る経路は `PreProcessCommands.process_cross_references_for_files`（`pre_process.rb`）のほう。委譲先の `MarkdownTransformer.process_cross_references` も存在せず二重に壊れている（2026-07-25 の preflight-chapter-summary 実装時に判明）。読む人を確実に誤らせるので撤去する。
+- [Low] **`Build::ChapterConfig` の章番号パーサが二重にある**: `expand_chapter_range` / `parse_chapter_numbers_from_string` を呼ぶのはモジュール内部とテストだけで、実際に使われているのは `HeadingProcessor` が持つ同名の私有コピー（`heading_processor.rb:576`）のほう。`ChapterConfig` に残るのは `htmls_for_range` の 1 メソッドだけになっている。どちらを唯一の定義元にするか決めて片方に寄せる（2026-08-06 のデッドコード整理で発見。名前が重複するため機械的な走査では検出できない類）。
 
 ---
 
