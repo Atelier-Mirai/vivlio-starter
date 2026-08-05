@@ -322,18 +322,24 @@ glossary:
 
 ```yaml
 metrics:
-  use: standard    # compact / standard / commercial / author_custom
+  use: standard    # compact / handy / standard / commercial / heavy / author_custom
+                   # relative … 絶対の目安でなく、その本自身の章の中央値と比べる
   exclude_chapters: [00, 90-98, 99]   # 評価から除外する章番号
 ```
 
-| プリセット | 想定する本の規模 |
-| :--- | :--- |
-| `compact` | 20〜50 ページ程度の薄い本 |
-| `standard` | 100〜200 ページ程度の同人誌・技術書 |
-| `commercial` | 200 ページ以上の商業出版レベル |
-| `author_custom` | 自分で基準値を定義したい場合 |
+選ぶ目安は**本全体の本文字数**（コードと記法を除いた地の文の量）です。ページ数は判型・余白・書体・図版の量で変わるため、参考値として併記しています。
 
-`use` で選んだプリセット（`compact`/`standard`/`commercial`/`author_custom`）が切り替えるのは、`chapter`/`section` の分量基準だけです。語彙難度（`kanji_ratio`・`word_length`）・語彙多様度（`mattr_window`）・読解難度（`readability`）・警告メッセージの文言（`labels`）は、プリセットの外側に置く共通設定で、どのプリセットを選んでも同じ値が使われます。詳細な基準値のカスタマイズは「Metrics」の章を参照してください。
+| プリセット | 本全体の本文字数 | 想定する本の規模 |
+| :--- | :--- | :--- |
+| `compact` | 〜3.5 万字 | 20〜50 ページ程度の薄い本 |
+| `handy` | 3.5〜6.5 万字 | 50〜100 ページ程度の手に取りやすい技術書 |
+| `standard` | 6.5〜9 万字 | 100〜200 ページ程度の同人誌・技術書 |
+| `commercial` | 9〜15 万字 | 200〜350 ページの商業出版レベル |
+| `heavy` | 15 万字〜 | 350 ページ以上の大部の本 |
+| `author_custom` | — | 自分で基準値を定義したい場合 |
+| `relative` | — | その本自身の章の中央値と比べたい場合（詳細は「Metrics」の章） |
+
+`use` で選んだプリセットが切り替えるのは、`chapter`/`section` の分量基準だけです。語彙難度（`kanji_ratio`・`word_length`）・語彙多様度（`mattr_window`）・読解難度（`readability`）・警告メッセージの文言（`labels`）は、プリセットの外側に置く共通設定で、どのプリセットを選んでも同じ値が使われます。詳細な基準値のカスタマイズは「Metrics」の章を参照してください。
 
 ### lint / spellcheck — 文章校正
 
