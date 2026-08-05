@@ -90,39 +90,6 @@ module VivlioStarter
           workers.each(&:join)
         end
 
-        # 章HTMLの最新性をチェックし、必要なら再生成
-        # _titlepage/_legalpage/_colophon/_part{N} は .cache/vs/ から参照する
-        def ensure_chapter_html_up_to_date!(basename, extra_sources: [])
-          html_path = File.join(Common::BUILD_HTML_DIR, "#{basename}.html")
-          cached = TokenResolver::Resolver::CACHED_SYSTEM_FILES.include?(basename) || basename.match?(/\A_part\d+\z/)
-          dir = cached ? Common::CACHE_DIR : Common::CONTENTS_DIR
-          md_path = File.join(dir, "#{basename}.md")
-          sources = [md_path, *Array(extra_sources)].compact
-
-          needs_regeneration = !File.exist?(html_path)
-          unless needs_regeneration
-            html_mtime = begin
-              File.mtime(html_path)
-            rescue StandardError
-              Time.at(0)
-            end
-            latest_source_mtime = sources.select { |src| File.exist?(src) }
-                                         .map do |src|
-              File.mtime(src)
-            rescue StandardError
-              Time.at(0)
-            end
-                                         .max
-            needs_regeneration = latest_source_mtime && latest_source_mtime > html_mtime
-          end
-
-          return unless needs_regeneration
-
-          Common.log_info("[HTML] 再生成します: #{basename}.html")
-          preprocess_single_chapter!(basename)
-          convert_single_chapter!(basename)
-        end
-
         # 単一章の前処理
         def preprocess_single_chapter!(basename)
           PreProcessCommands.execute_pre_process({}, [basename])
