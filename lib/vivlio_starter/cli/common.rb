@@ -951,7 +951,11 @@ module VivlioStarter
 
         # load_configの結果をDataオブジェクトにラップしてフリーズ
         raw_config = load_config
-        validate_book_config!(raw_config) unless silent
+        # 検査は毎回するが、案内は ensure_configured! まで持ち越す。
+        # ここで出すと module load 時（= まだログ level も決まっていない時点）に流れてしまい、
+        # かつ CONFIG を読まない new / doctor / help にも無関係な警告が付く。
+        @missing_book_keys = missing_book_config_keys(raw_config)
+        @missing_book_keys_reported = false
         install_configuration!(wrap_config(raw_config).freeze)
 
         puts("🧪 Configuration reloaded: #{CONFIG_FILE}") if !silent && current_log_level >= 3
@@ -987,21 +991,42 @@ module VivlioStarter
         { use: DIRECT_PAGE_PRESET }
       end
 
-      # book.yml の主要キー（book.main_title, book.author, project.name）が
-      # 欠落していないかを検査し、欠落があれば警告を出す。
-      # 既存の最小構成プロジェクトとの互換性を保つため abort はせず、
-      # PDF 生成時にタイトルが空になる等の問題にユーザーが早期に気付けるようにする。
+      # 未設定だと成果物が目に見えて欠ける主要キーと、その記入例。
+      # 記入例は警告の「直し方」としてそのまま見せるので、著者が貼って直せる形で書く。
+      REQUIRED_BOOK_KEYS = {
+        %i[book main_title] => '本のタイトル',
+        %i[book author] => '著者名',
+        %i[project name] => 'mybook'
+      }.freeze
+
+      # 主要キーのうち book.yml に書かれていないものを返す。
       # @param cfg [Hash] シンボルキー化された book.yml の内容
-      def validate_book_config!(cfg)
-        missing = []
-        missing << 'book.main_title' if blank?(cfg.dig(:book, :main_title))
-        missing << 'book.author'     if blank?(cfg.dig(:book, :author))
-        missing << 'project.name'    if blank?(cfg.dig(:project, :name))
+      # @return [Array<Array<Symbol>>] 未設定キーのパス（欠落なしなら空配列）
+      def missing_book_config_keys(cfg)
+        REQUIRED_BOOK_KEYS.keys.select { blank?(cfg.dig(*it)) }
+      end
+
+      # 主要キーの欠落を、廃止キー案内と同じ関門（ensure_configured!）で 1 回だけ案内する。
+      # 「タイトルが空欄の PDF ができてから気付く」のを避けるのが目的。
+      # 既存の最小構成プロジェクトを弾かないよう abort はしない。
+      def warn_missing_book_config
+        return if @missing_book_keys_reported
+
+        @missing_book_keys_reported = true
+        missing = Array(@missing_book_keys)
         return if missing.empty?
 
-        warn "[book.yml] 警告: 以下の推奨キーが未設定です: #{missing.join(', ')}"
-        warn "  config/book.yml を編集して値を設定してください。未設定のままでも動作しますが、"
-        warn '  PDF のタイトル・著者・出力ファイル名が空欄になります。'
+        log_warn("config/book.yml の推奨キーが未設定です: #{missing.map { it.join('.') }.join(', ')}",
+                 detail: "→ config/book.yml に次のように書いてください。\n" \
+                         "#{missing_book_config_example(missing)}\n" \
+                         'このままでも動作しますが、PDF のタイトル・著者・出力ファイル名が空欄になります。')
+      end
+
+      # 未設定キーを book.yml の記法どおり（セクションごと）に並べた記入例を組み立てる。
+      def missing_book_config_example(missing)
+        missing.group_by(&:first).flat_map do |section, paths|
+          ["#{section}:", *paths.map { "  #{it.last}: #{REQUIRED_BOOK_KEYS[it]}" }]
+        end.join("\n")
       end
 
       # 初期ロード実行（モジュール定義時は静かに）
@@ -1022,6 +1047,7 @@ module VivlioStarter
 
       def ensure_configured!
         warn_retired_config_keys
+        warn_missing_book_config
         return if configured?
 
         # 欠落と破損で正確な理由を出し分けるため、ファイル単位の検証に委ねて abort する
@@ -1164,7 +1190,8 @@ module VivlioStarter
                       :normalize_line_height, :normalize_page_size!,
                       :normalize_page_units,
                       :record_vivliostyle_build,
-                      :reload_configuration!, :relative_path_from_root, :validate_book_config!,
+                      :reload_configuration!, :relative_path_from_root,
+                      :missing_book_config_keys, :missing_book_config_example, :warn_missing_book_config,
                       :resolve_page_size, :resolve_path_from_root,
                       :reset_vivliostyle_build_timings, :stylesheets_dir, :to_roman_lower,
                       :truthy?, :vfm_command, :validate_cover_settings, :verbose?, :warn_reserved_config_keys,
