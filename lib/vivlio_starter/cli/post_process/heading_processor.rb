@@ -553,11 +553,23 @@ module VivlioStarter
         end
 
         # メイン章トークンかどうか判定
+        #
+        # `_` 始まりは章ではない——システムページ（`_titlepage` `_part1` など）か、
+        # 著者向けの説明ファイル（`contents/_README.md`）である。
+        # システムページは番号を持たないので従来も落ちていたが、**`_README` は
+        # TokenResolver が番号 `01` を割り当てるため通ってしまい**、本文章の並びの
+        # 先頭に居座って図表番号の章プレフィックスを 1 つずらしていた
+        # （`11-workflow` が第 1 章ではなく第 2 章として採番される）。
+        # 綴りではなく接頭辞で弾く——`_` の意味は「章として数えない」だからである。
         # @param token [String] トークン
         # @return [Boolean] メイン章トークンの場合true
         def main_chapter_token?(token)
+          return false if token.to_s.start_with?('_')
+
           entry = TokenResolver::Resolver.new.resolve_file(token)
-          entry.number && MAIN_CHAPTER_RANGE.include?(entry.number.to_i)
+          return false unless entry.number
+
+          MAIN_CHAPTER_RANGE.include?(entry.number.to_i)
         end
       end
     end
