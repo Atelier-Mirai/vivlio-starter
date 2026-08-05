@@ -4,7 +4,6 @@ require 'digest'
 require 'nokogiri'
 require_relative '../common'
 require_relative '../heading_segmenter'
-require_relative '../build/chapter_config'
 require_relative 'html_parser'
 
 module VivlioStarter
@@ -38,7 +37,7 @@ module VivlioStarter
         # 例: vs build 54-56 のような単章/範囲ビルド時に、
         #     そのビルド対象だけを 1,2,3... の順番で扱いたい場合に使用する。
         #
-        # - nil または空配列の場合はオーバーライドなし（従来どおり CONFIG.chapters や HTML から自動検出）
+        # - nil または空配列の場合はオーバーライドなし（ワークスペースの HTML から自動検出）
         # - 設定された場合は、その並びを優先的に main_chapter_order の候補として利用する
         def chapter_tokens_override=(tokens)
           @chapter_tokens_override = Array(tokens).compact.map(&:to_s)
@@ -489,6 +488,10 @@ module VivlioStarter
         end
 
         # メイン章の順序を取得
+        #
+        # 章構成の正典は config/catalog.yml であり、ここでは絞り込みを解釈しない。
+        # 単章/選択ビルドは chapter_tokens_override で与えられ、それ以外は
+        # ワークスペースに並んだ HTML から順序を起こす。
         # @return [Array<String>] 章トークンの配列
         def main_chapter_order
           return @main_chapter_order if @main_chapter_order
@@ -503,190 +506,7 @@ module VivlioStarter
             end
           end
 
-          configured = configured_main_chapter_tokens
-          tokens = configured&.any? ? configured : discovered_main_chapter_tokens
-          @main_chapter_order = tokens
-        end
-
-        # 設定ファイルから章トークンを取得
-        # @return [Array<String>, nil] 章トークンの配列
-        #
-        # 対応形式（config/book.yml の chapters キー）:
-        #   - nil / 'all'        → フルビルド（nil を返す）
-        #   - "54-56"            → 章番号指定（11..89 の範囲）
-        #   - "02, 11-13, 91"   → カンマ区切り + 範囲指定
-        #   - [54, 55, 56]       → 章番号配列
-        #   - "11-install\n12-tutorial" → ファイルベース名（行ごと）
-        #   - ["11-install", "12-tutorial"] → ファイルベース名配列
-        def configured_main_chapter_tokens
-          cfg = Common::CONFIG.chapters
-
-          case cfg
-          when nil
-            nil
-          when String
-            str = cfg.to_s
-            return nil if str.strip.casecmp('all').zero?
-
-            # 数字/レンジ指定（例: "54-56" や "11, 12-13"）として解釈できる場合。
-            # 番号指定でなければパーサが nil を返すので、それを合図に下へ抜ける。
-            numbers = Build::ChapterConfig.parse_chapter_numbers_from_string(str)
-            if numbers
-              return nil if numbers.empty?
-
-              return tokens_from_chapter_numbers(numbers)
-            end
-
-            # それ以外は、行ごとのトークン（ファイルベース名）として扱う
-            raw_list = str.lines.map(&:strip).reject(&:empty?)
-            return nil if raw_list.empty?
-
-            authored_chapter_tokens(raw_list)
-          when Array
-            arr = cfg.map { |s| s.to_s.strip }.reject(&:empty?)
-            return nil if arr.empty?
-
-            # 全要素が整数として解釈できる場合は章番号配列
-            if all_integer_strings?(arr)
-              numbers = arr.map(&:to_i).uniq.sort
-              return tokens_from_chapter_numbers(numbers)
-            end
-
-            # それ以外はトークン配列として扱う
-            authored_chapter_tokens(arr)
-          end
-        end
-
-        # ================================================================
-        # chapters の書き間違いの案内
-        # ================================================================
-        # chapters は「絞り込みが 1 つも効かなければ全章ビルドへ戻る」形で失敗する
-        # （main_chapter_order が discovered_main_chapter_tokens へ落ちる）。
-        # 出来上がった PDF を見ても間違いに気付けないので、効かなかった項目は
-        # 捨てるだけにせず必ず名指しで案内する。
-        #
-        # 同じ設定について 1 回だけ出す。configured_main_chapter_tokens は
-        # main_chapter_order（章ごと）と CrossReferenceProcessor の両方から呼ばれ、
-        # 素通しにすると同じ警告が章数ぶん並ぶ。
-        def report_chapters_issue_once(cfg)
-          return true if defined?(@warned_chapters_config) && @warned_chapters_config == cfg
-
-          @warned_chapters_config = cfg
-          false
-        end
-
-        # 著者が chapters に並べた項目を本文章のトークンにする。
-        # 効かなかった項目は理由と直し方つきで案内する。
-        def authored_chapter_tokens(entries)
-          tokens = normalize_and_filter_tokens(entries)
-          unusable = Array(entries).reject { chapter_entry_usable?(it) }
-          warn_unusable_chapter_entries(unusable) if unusable.any?
-          tokens
-        end
-
-        # その項目が「実在する本文章そのものの名前」か。
-        #
-        # resolve_file は "11-12, 21-images" のような綴りからも先頭の 11 を拾って
-        # 実在の章に解決してしまうので、**解決できたか**ではなく
-        # **解決結果が書いたとおりか**で判定する。これを見ないと、
-        # 章に当たらない綴りが「当たった」ことになる。
-        def chapter_entry_usable?(entry)
-          token = normalize_chapter_token(entry)
-          return false unless token
-
-          resolved = TokenResolver::Resolver.new.resolve_file(token)
-          return false unless resolved.exists? && resolved.basename == token
-
-          MAIN_CHAPTER_RANGE.include?(resolved.number.to_i)
-        end
-
-        def warn_unusable_chapter_entries(unusable)
-          return if report_chapters_issue_once(Common::CONFIG.chapters)
-
-          unusable.each do |entry|
-            message, detail = unusable_chapter_entry_guidance(entry.to_s.strip)
-            Common.log_warn("config/book.yml の chapters: #{message}", detail:)
-          end
-        end
-
-        # 効かない理由ごとに、直し方を添えたメッセージを組み立てる。
-        def unusable_chapter_entry_guidance(entry)
-          return comma_entry_guidance(entry) if entry.include?(',')
-
-          resolved = TokenResolver::Resolver.new.resolve_file(normalize_chapter_token(entry).to_s)
-          if resolved.exists? && resolved.basename == entry
-            out_of_range_entry_guidance(entry, resolved)
-          else
-            missing_entry_guidance(entry)
-          end
-        end
-
-        # カンマ区切りは番号指定のときだけ使える。章ファイル名と混ぜると、
-        # 行まるごとが 1 つの章名として扱われてどの章にも当たらない。
-        def comma_entry_guidance(entry)
-          ["'#{entry}' は章として読めません（カンマ区切りが使えるのは番号指定のときだけです）",
-           "番号でそろえるか、章ファイル名は YAML の配列で 1 行ずつ並べてください。\n" \
-           "  chapters: \"11-13, 21\"      # 番号・範囲ならカンマ区切りでよい\n" \
-           "  chapters:                   # 章ファイル名を並べるとき\n" \
-           '    - 11-install' \
-           "\n    - 21-images"]
-        end
-
-        # chapters が絞るのは本文章だけ。前後付・付録を書いても効かない。
-        def out_of_range_entry_guidance(entry, resolved)
-          ["'#{entry}' は本文章（#{MAIN_CHAPTER_RANGE.first}〜#{MAIN_CHAPTER_RANGE.last}）ではないので効きません",
-           "chapters が絞るのは本文章だけで、前書き・付録・後書きは指定にかかわらず常に組まれます" \
-           "（'#{entry}' は #{resolved.kind}）。\n" \
-           '→ 組む章そのものを変えたいときは config/catalog.yml から外してください。']
-        end
-
-        def missing_entry_guidance(entry)
-          ["'#{entry}' に当たる章がありません",
-           "#{Common::CONTENTS_DIR}/#{entry}.md がありません。\n" \
-           '→ 章の綴りは config/catalog.yml で確認できます（番号だけでも指定できます。例: chapters: "11-13"）。']
-        end
-
-        # 配列の全要素が整数文字列かどうか
-        def all_integer_strings?(arr)
-          Array(arr).all? { |s| s.to_s.strip.match?(/\A\d+\z/) }
-        end
-
-        # 章番号配列からメイン章トークンの配列を生成
-        # 対象は contents/*.md のうち MAIN_CHAPTER_RANGE に入る章
-        def tokens_from_chapter_numbers(numbers)
-          return nil unless numbers&.any?
-
-          allowed = numbers.map(&:to_i).uniq
-          resolver = TokenResolver::Resolver.new
-
-          md_tokens = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { |p| File.basename(p, '.md') }
-          candidates = normalize_and_filter_tokens(md_tokens)
-
-          selected = candidates.select do |token|
-            entry = resolver.resolve_file(token)
-            entry.number && allowed.include?(entry.number.to_i)
-          end
-          warn_unmatched_chapter_numbers(selected)
-          selected
-        end
-
-        # 番号指定がどの章にも当たらなかったときだけ案内する。
-        #
-        # **当たらなかった番号を数え上げてはいけない。** "11-89"（本文章を全部、の
-        # 慣用的な書き方）では実在しない番号が数十個できるのが普通で、列挙すると
-        # 正しい設定に対して毎ビルド警告が出る。絞り込みは効いているのだから、
-        # 端の書きすぎは黙って落としてよい。
-        # 黙ってはいけないのは 1 つも当たらなかったときで、これは絞り込みが丸ごと
-        # 消えて全章が組まれる——著者の意図と正反対の結果になる。
-        def warn_unmatched_chapter_numbers(selected)
-          return unless selected.empty?
-          return if report_chapters_issue_once(Common::CONFIG.chapters)
-
-          Common.log_warn(
-            "config/book.yml の chapters: '#{Common::CONFIG.chapters}' に当たる章が 1 つもありません",
-            detail: "絞り込みが効かないため、全章が組まれます。\n" \
-                    '→ 章番号は config/catalog.yml で確認できます。'
-          )
+          @main_chapter_order = discovered_main_chapter_tokens
         end
 
         # 発見されたHTMLファイルから章トークンを取得

@@ -273,41 +273,55 @@ def def_regex(name)   = /^\s*def (?:self\.)?#{Regexp.escape(name)}#{boundary(nam
   **同名メソッドの重複という §0 の限界そのもの**で、機械的な走査では拾えない。
   → §7.5 で片付けた
 
-### 7.5 章番号パーサの一本化（2026-08-06）
+### 7.5 章番号パーサ——一本化して、廃止済みと分かって撤去した（2026-08-06）
 
-`ChapterConfig` を唯一の定義元にし、`HeadingProcessor` から寄せた。
+**結論から言うと、寄せる前に「誰のためのパーサか」を確かめるべきだった。**
+`ChapterConfig` と `HeadingProcessor` の二重実装を前者へ一本化したが、その直後に
+**そもそも両方とも廃止済みのキーのための実装**だと判明し、丸ごと撤去した。
+一本化の作業は無駄だった。同じ失敗を避けるための記録として残す。
 
-**なぜ `ChapterConfig` 側を残したか。** 生きていたのは `HeadingProcessor` のコピーの
-ほうだが、番号指定の綴りを読むのは後処理（HTML の見出し整形）の仕事ではない。
-モジュール名も責務も `Build::ChapterConfig` が担うべきもので、寄せる向きは
-「生きているほう」ではなく「置き場所として正しいほう」で決めた。
+**何が起きていたか。** 章構成のソースは 2025-11-26 のコミット `95f9f9c5`
+「feat: catalog.yml ベースの章管理に移行しビルド系を更新」で
+`book.yml: chapters` から `config/catalog.yml` へ移り、`book.yml` からキー自体も
+消えている。ところが**読み手だけが残っていた**——`common.rb` のスキーマの
+`chapters: nil` と、それを解釈する `HeadingProcessor.configured_main_chapter_tokens`
+（6 形式）、その下請けの章番号パーサ 2 実装である。
+`Common::CONFIG.chapters` は現行のどのプロジェクトでも常に nil で、
+この分岐に入ることはない。
 
-**判定と展開を 1 本にまとめた。** 従来 `HeadingProcessor` は
-`chapter_number_string?` で「番号指定か」を判定してから
-`parse_chapter_numbers_from_string` で展開しており、**同じ綴りを同じ規則で 2 回
-走査していた**。パーサが「番号指定でなければ `nil`」を返す形にして、呼び出し側は
-その `nil` を合図に別の解釈（ファイルベース名の並び）へ進む。
-`chapter_number_string?` は不要になったので削除した。
+**なぜ走査で見つからなかったか。** §5 の走査は「メソッドが参照されているか」しか
+見ない。`configured_main_chapter_tokens` は `main_chapter_order` と
+`CrossReferenceProcessor` から**確かに呼ばれている**ので、走査上は生きて見える。
+死んでいたのは呼び出しではなく**入力**（`CONFIG.chapters` が常に nil）だった。
+**§0 の「原理的に追えない」に、もう 1 項目加えるべきである——設定キーの値が
+常に既定値のままで、分岐に入らない実装。**
 
-**`expand_chapter_range` は畳んだ。** 単一（`"11"`）と範囲（`"11-13"`）を
-`NUMBER_OR_RANGE` の 1 本で受けるようにしたので、範囲だけを切り出すヘルパーは
-要らなくなった。逆順（`"13-11"`）はその部分だけ落とす——両実装ともそうしていた
-挙動を、理由（著者が書いた向きと逆の章立てが黙ってできる）つきで残した。
+**気付く機会はあった。** `configured_main_chapter_tokens` にはテストが 1 件も
+無かった。そのとき「無テストだから固定してから移そう」と進めたが、**無テスト
+だったのは廃止済みだったから**である。「この規模の分岐に、なぜテストが無いのか」を
+先に問うべきだった。
 
-**綴りが同型の実装をあと 2 つ確認したが、寄せていない。** 担うものが違う:
+**撤去したもの**（連鎖）:
 
-| 実装 | 区切り | 数字以外 | 返り値 |
-|---|---|---|---|
-| `ChapterConfig.parse_chapter_numbers_from_string` | `,` | nil（番号指定ではない合図） | `Array<Integer>` |
-| `CatalogLoader.parse_shorthand_to_numbers` | `,` と空白 | 黙って捨てる | `Array<Integer>` |
-| `TokenResolver::Resolver#normalize` | `,` | スラグ・パスとして受ける | ゼロ埋めトークン文字列 |
+| 撤去 | 呼び出し元が消えた理由 |
+|---|---|
+| `common.rb` スキーマの `chapters: nil` | キーが `book.yml` に無い |
+| `HeadingProcessor.configured_main_chapter_tokens` | 上を読む唯一の実装 |
+| `tokens_from_chapter_numbers` / `all_integer_strings?` | 上の下請け |
+| `ChapterConfig.parse_chapter_numbers_from_string` | 同上（一本化した先） |
 
-`CatalogLoader` は著者が並べる表を読むので読めない行で全体を止めない。
-`TokenResolver` は CLI 引数を受けるので番号以外も正当な入力である。
+`main_chapter_order` は「単章ビルドの override → ワークスペースの HTML から検出」の
+2 段になり、`ChapterConfig` に残るのは `htmls_for_range` だけになった。
+
+**実害もあった。** 移行前に作ったプロジェクトの `book.yml` に `chapters:` が
+残っていれば、正典であるはずの `catalog.yml` を差し置いて章順を書き換える。
+ベータ公開（2026-04-26）より前の廃止なので実在するプロジェクトは無く、
+廃止キーの案内（`RETIRED_CONFIG_KEYS`）は置いていない。
+
+**綴りが同型の実装は `CatalogLoader` と `TokenResolver` に残っている。**
+一本化を検討したが担うものが違う——`CatalogLoader.parse_shorthand_to_numbers` は
+著者が並べる表を読むので読めない行で全体を止めず、
+`TokenResolver::Resolver#normalize` は CLI 引数を受けるので番号以外も正当な入力で、
+返すのも `Integer` ではなくゼロ埋めトークンである。
 **同じ綴りでも「読めなかったとき何をするか」が違うものは、一本化すると
 どちらかの正しさを壊す。**
-
-なお `configured_main_chapter_tokens` にはテストが 1 件も無かったので、
-`heading_processor_chapters_test.rb` を起こして 6 形式を固定してから寄せた。
-その過程で `chapters: "11-12, 21-images"` が実在しない章名 1 つに落ちて黙って
-無視されることが分かったが、**寄せる前後で同じ挙動**なので直さず `PLANNED.md` へ送った。

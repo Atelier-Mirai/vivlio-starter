@@ -86,14 +86,6 @@
   - **範囲は欠けている番号まで名指しする。** `vs build 11-13` で 13 章が無いとき、`11-13` とだけ返すと実在する 11・12 まで無いように読めるので `11-13 のうち第 13 章` と出す。
   - **打ち間違いには「もしかして」を 1 件だけ添える**（`vs build 41-cover` → `43-cover`）。綴りの比較は Ruby 同梱の `DidYouMean::SpellChecker` に任せ、当たらなければ**番号だけで拾う**（`11-nonexistent` → `11-workflow`）——番号は「第 11 章を指したかった」ことの強い証拠で、綴りが遠くても意図は読める。順序が逆だと `43-cover` を差し置いて `41-book-yml` が出る。**候補は 1 件に絞る**——並べると著者は結局 `catalog.yml` を見に行くので、それなら候補を出さないのと変わらない。手がかりが無ければ（`abc`）黙る。
   - 検証は指定 1 つずつ行う。まとめて解決すると範囲が展開されて「どの指定が悪かったか」を著者へ返せない。
-  - **`config/book.yml` の `chapters` は従来どおり警告して続行する**（下項）。置きっぱなしの設定で止めると、直すまで一切ビルドできなくなるため。止めるのは「今打った指示」だけにしている。
-- [Medium] **`config/book.yml` の `chapters` の書き間違いを案内するようになった**: `chapters` は**「絞り込みが 1 つも効かなければ全章ビルドへ黙って戻る」形で失敗する**ため、出来上がった PDF を見ても間違いに気付けなかった。効かなかった項目を名指しし、理由ごとに直し方を添える。
-  - `chapters: "11-12, 21-images"` — 番号とファイル名の混在。カンマ区切りが使えるのは番号指定のときだけで、混ぜると行まるごとが 1 つの章名として扱われどの章にも当たらない。番号でそろえる書き方と、章ファイル名を YAML 配列で並べる書き方の両方を示す。
-  - `chapters: "11-nonexistent"` — `contents/11-nonexistent.md` が無いことと、綴りを `config/catalog.yml` で確認できることを伝える。**解決できたかではなく、解決結果が書いたとおりかで判定する**——`TokenResolver` は `"11-12, 21-images"` からも先頭の `11` を拾って実在の章に解決してしまうので、これを見ないと「当たらない綴り」が当たったことになる。
-  - `chapters: "91-appendix"` — `chapters` が絞るのは本文章（01〜89）だけで、前書き・付録・後書きは指定にかかわらず常に組まれる旨を伝える。
-  - `chapters: "77"` — 番号指定がどの章にも当たらないとき。絞り込みが消えて全章が組まれることを明示する。
-  - **当たらなかった番号は数え上げない。** `"11-89"`（本文章を全部、の慣用的な書き方）では実在しない番号が数十個できるのが普通で、列挙すると正しい設定に対して毎ビルド警告が出る。絞り込みが効いている限り、端の書きすぎは黙って落とす。
-  - 案内は同じ設定について 1 回だけ出す（`configured_main_chapter_tokens` は章ごとに呼ばれるため）。選ばれるトークン自体は従来と変わらない。
 - [Medium] **`config/book.yml` の主要キーが未設定なら、ビルド前に警告するようになった**（`dead-code-candidates-report.md` §2.1）: `book.main_title` / `book.author` / `project.name` を検査する実装は前からあったが、**呼ばれるのは module load 時の `silent: true` 経路だけで、本番では一度も走っていなかった**。タイトルが空欄の PDF ができても何も言わない状態だったので、案内を `Common.ensure_configured!`（廃止キー案内と同じ、全コマンドが通る関門）へ移した。警告には `book.yml` へそのまま貼れる記入例を添える。最小構成のプロジェクトを弾かないよう abort はしない。
 
 ### Removed
@@ -101,7 +93,9 @@
   - `CrossReferenceProcessor.process_cross_references` と専用の私有ヘルパー 7 個 — **未定義の `generate_report` を呼ぶ到達不能コード**で、委譲先の `MarkdownTransformer.process_cross_references` も存在しない二重の壊れ方をしていた。実ビルドが通るのは `PreProcessCommands.process_cross_references_for_files` の 1 経路だけ。`PreProcessCommands.process_cross_references` も同じ理由で撤去。
   - `SectionBuilder.ensure_chapter_html_up_to_date!` — mtime 比較で HTML の再生成を省く実装。「mtime 比較・キャッシュ判定は行わず常に再生成する」（`book_yml_regeneration_spec.md`）に置き換わっていた。
   - `EpubBuilder.embed_cover?` / `IndexCandidateExtractor#export_candidates!` / `ReviewMarkdownGenerator#cleanup!` / `ScoringEngine#filter_by_threshold` / `ChapterConfig.configured_chapters` / `.all_integers?` — それぞれ `Common.epub_embed?`（フレーバ別判定）・`_index_glossary_review.md`（レビューの一本化）・`clean.rb` の `REVIEW_FILE_PATTERNS`・帯による採否（`index-term-selection-spec.md` Phase 5）・`CatalogLoader.load_existing_basenames` へ役目が移っていた。
-  - **章番号パーサの二重実装を `Build::ChapterConfig` へ一本化した**（`dead-code-candidates-report.md` §7.5）: 同じ綴り（`"02, 11-13, 91"`）を読む実装が `ChapterConfig` と `HeadingProcessor` の両方にあり、生きていたのは後者だった。**寄せる向きは「生きているほう」ではなく「置き場所として正しいほう」で決めた**——番号指定の綴りを読むのは HTML の見出し整形の仕事ではない。あわせて `chapter_number_string?`（判定）と `parse_chapter_numbers_from_string`（展開）が同じ綴りを 2 回走査していたのを 1 本にまとめ、`expand_chapter_range` は単一と範囲を 1 つの正規表現で受ける形に畳んだ。綴りが同型の実装が `CatalogLoader` と `TokenResolver` にもあるが、**「読めなかったとき何をするか」が違う**（片方は黙って捨て、片方はスラグとして受ける）ので寄せていない。無テストだった `configured_main_chapter_tokens` に 6 形式のテストを起こしてから移した。
+  - **廃止済みの `book.yml: chapters` を読む経路を撤去した**（`dead-code-candidates-report.md` §7.5）: 章構成のソースは 2025-11-26 に `book.yml: chapters` から `config/catalog.yml` へ移っており（コミット `95f9f9c5`）、同時に `book.yml` からキー自体も消えている。だが**読み手だけが残っていた**——`common.rb` のスキーマの `chapters: nil` と、それを解釈する `HeadingProcessor.configured_main_chapter_tokens`（`"11-13"` / `[11, 12]` / ベース名の並び、の 6 形式）である。`Common::CONFIG.chapters` は現行のどのプロジェクトでも常に nil で、この分岐に入ることはない。
+    - **黙って効きうる状態だった。** 移行前に作ったプロジェクトの `book.yml` に `chapters:` が残っていれば、正典であるはずの `catalog.yml` を差し置いて章順を書き換える。ベータ公開（2026-04-26）より前の廃止なので実在するプロジェクトは無く、廃止キーの案内は置いていない。
+    - 連鎖して `tokens_from_chapter_numbers` / `all_integer_strings?` と、`Build::ChapterConfig` の章番号パーサ（`parse_chapter_numbers_from_string` / `expand_chapter_range`）も呼び出し元を失ったので撤去した。`ChapterConfig` に残るのは `htmls_for_range` だけになり、`main_chapter_order` は「単章ビルドの override → ワークスペースの HTML から検出」の 2 段になった。
   - `HierarchicalIndex` は**残したうえで本番から切り離した**。唯一の参照だった `UnifiedPageBuilder` のログ 1 行（リンク数）は `@index_data` から直接数える。中途半端に繋がっていると「索引の重複排除はここ」と誤読されるため——実際の重複排除は `BacklinkDeduplicator` が PDF のページマップで行う。使い道は `index-main-reference-spec.md` §R8 で、その旨をクラス冒頭に明記した。
 
 ### Added

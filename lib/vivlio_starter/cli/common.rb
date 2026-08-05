@@ -314,8 +314,6 @@ module VivlioStarter
                    reference_style: nil, max_sub_references: nil, page_range_min: nil },
           glossary: { title: nil, require_definition: nil, max_definition_length: nil,
                       backlink_dedup: nil },
-          # ビルド対象章の絞り込み（例: "54-56" / [11, 12]）。未指定はフルビルド
-          chapters: nil,
           metrics: { use: nil, exclude_chapters: nil, kanji_ratio: nil, word_length: nil,
                      ttr: nil, mattr_window: nil, sentence_length: nil, clause_length: nil,
                      readability: nil, labels: nil },

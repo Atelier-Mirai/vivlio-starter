@@ -265,13 +265,13 @@ module VivlioStarter
 
         # === Private Helpers ===
 
+        # 前処理の時点ではまだ HTML が並んでいないので、HeadingProcessor の
+        # discovered_main_chapter_tokens（html/ を舐める）は使えない。
+        # 単章/選択ビルドの override があればそれを、無ければ contents/ から起こす。
         def main_chapter_order
           hp = PostProcessCommands::HeadingProcessor
           override = hp.chapter_tokens_override
           return hp.normalize_and_filter_tokens(override) if override&.any?
-
-          tokens = hp.configured_main_chapter_tokens
-          return tokens if tokens&.any?
 
           detect_main_chapters_from_files
         end
