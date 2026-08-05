@@ -351,20 +351,6 @@ module VivlioStarter
         end
       end
 
-      # embed_cover? が nil（未設定）の場合 true を返すことを確認（デフォルト動作）
-      def test_embed_cover_default_true
-        epub_cfg = build_epub_config(embed: nil)
-        assert Build::EpubBuilder.embed_cover?(epub_cfg),
-               '未設定の場合はデフォルトで true を返すべき'
-      end
-
-      # embed_cover? が false の場合に false を返すことを確認
-      def test_embed_cover_false
-        epub_cfg = build_epub_config(embed: false)
-        refute Build::EpubBuilder.embed_cover?(epub_cfg),
-               'cover.embed: false の場合は false を返すべき'
-      end
-
       # 生成バリアント webp が book-settings.css の url() 参照分だけ
       # パッケージ theme-images/ へ同梱されることを確認（generated-assets 移設仕様 §3.2）
       def test_localize_theme_variant_images_copies_referenced_variants

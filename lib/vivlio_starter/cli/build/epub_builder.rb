@@ -509,13 +509,6 @@ module VivlioStarter
         # @param config [Object] Common::CONFIG
         # @param esc [Proc] JS エスケープ用 Proc
         # @return [String] cover 設定行（末尾改行付き）
-        # EPUB 表紙埋め込みが有効かどうかを判定
-        # @param epub_cfg [Object] epub設定オブジェクト（cover.embed を持つ）
-        # @return [Boolean]
-        def embed_cover?(epub_cfg)
-          epub_cfg&.cover&.embed != false
-        end
-
         def build_cover_config_line(config, esc, flavor: :epub)
           # 表紙埋め込みはフレーバごとの設定（book.yml: output.epub.embed / output.kindle.embed）に従う。
           # kindle は二重表紙回避のため既定 false（§1-6）。
