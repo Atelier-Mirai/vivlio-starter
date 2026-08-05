@@ -32,7 +32,6 @@ module VivlioStarter
 
         def initialize(config_loader)
           @config = config_loader
-          @thresholds = config_loader.volume_thresholds
           @vocabulary = config_loader.vocabulary_thresholds
           @labels = config_loader.labels
         end
@@ -175,7 +174,11 @@ module VivlioStarter
 
         private
 
-        attr_reader :config, :thresholds, :labels
+        attr_reader :config, :labels
+
+        # 相対モードでは基準（本の章の中央値）が事前スキャンの後に決まるので、
+        # 値を抱え込まず毎回 ConfigLoader へ問い合わせる（あちらで memo 化済み）。
+        def thresholds = config.volume_thresholds
 
         # 分量の指摘（💡）と文章の質の指摘（🤔）を、系統ごとの記号を付けて 1 行にまとめる。
         # 分量は「加筆をおすすめします」という提案であって直すべき欠陥ではないため、
@@ -422,7 +425,7 @@ module VivlioStarter
         PROFESSIONAL_LABEL = 'Professional'
 
         def initialize(config_loader)
-          @thresholds = config_loader.volume_thresholds
+          @config = config_loader
           @labels = config_loader.labels
           @exclude = config_loader.exclude_chapters
           @mattr_window = config_loader.mattr_window
@@ -473,7 +476,10 @@ module VivlioStarter
 
         private
 
-        attr_reader :thresholds, :labels, :exclude, :mattr_window
+        attr_reader :config, :labels, :exclude, :mattr_window
+
+        # Formatter と同じ理由で毎回問い合わせる（相対モードの基準は後から決まる）。
+        def thresholds = config.volume_thresholds
 
         # MATTR が「表現が単調」帯（詳細分析の表示と同一バンド）。
         # 総語数が窓幅に満たない章は MATTR 自体が不安定なため判定しない。

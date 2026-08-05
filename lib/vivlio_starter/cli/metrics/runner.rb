@@ -75,6 +75,7 @@ module VivlioStarter
           puts ''
 
           placeholders = build_placeholder_chapters(files)
+          resolve_relative_basis(placeholders)
           max_chars = [placeholders.map(&:chars).max || 1, 1].max
           file_order = files.each_with_index.to_h
           pending = {}
@@ -291,23 +292,29 @@ module VivlioStarter
           ChapterAnalysis.new(chapter:, basic:, vocab:, readability:)
         end
 
-        # キャッシュデータから ChapterMetrics を再構築する
+        # キャッシュデータから ChapterMetrics を再構築する。
+        # 分量の判定はキャッシュに載せず、ここで現在のしきい値から算出し直す。
+        # 判定は文字数と book.yml の設定から決まる派生値なのに、キャッシュの鮮度は
+        # 原稿の mtime でしか見ていない——保存すると `metrics.use` を変えても
+        # 原稿を触っていない章だけ古い判定を配り続ける（相対モードでは基準が
+        # 本ごとに動くので、なおさら保存できない）。
         def rebuild_chapter_from_cache(data)
+          chapter_num = data['chapter_num']
           sections = (data['sections'] || []).map do |sec|
             SectionMetrics.new(
               title: sec['title'],
               chars: sec['chars'],
-              warning: sec['warning']
+              warning: warning_checker.section_warning(sec['chars'], chapter_num:)
             )
           end
 
           ChapterMetrics.new(
             path: data['path'],
             title: data['title'],
-            chapter_num: data['chapter_num'],
+            chapter_num:,
             chars: data['chars'],
             sections:,
-            warning: data['warning']
+            warning: warning_checker.chapter_warning(chapter_num, data['chars'])
           )
         end
 
@@ -320,10 +327,7 @@ module VivlioStarter
             'title' => chapter.title,
             'chapter_num' => chapter.chapter_num,
             'chars' => chapter.chars,
-            'warning' => chapter.warning,
-            'sections' => chapter.sections.map do |sec|
-              { 'title' => sec.title, 'chars' => sec.chars, 'warning' => sec.warning }
-            end,
+            'sections' => chapter.sections.map { { 'title' => it.title, 'chars' => it.chars } },
             'basic_stats' => basic_stats_to_hash(analysis.basic),
             'vocabulary_stats' => vocabulary_stats_to_hash(analysis.vocab),
             'readability' => readability_to_hash(analysis.readability)
@@ -437,13 +441,27 @@ module VivlioStarter
           Metrics::ReadabilityFeatures.new(**fields)
         end
 
+        # 相対モードの基準（判定対象の章の本文字数の中央値）を確定する。
+        # 全章を読むまで決まらないので、事前スキャンを終えたこの時点で一度だけ渡す。
+        # 除外章（前書き・付録・後書き）は判定されないので基準からも外す——
+        # 短い章が多く、混ぜると中央値が下へ引っ張られる。
+        def resolve_relative_basis(placeholders)
+          return unless config.relative?
+
+          judged = placeholders.reject { warning_checker.excluded_chapter?(it.chapter_num) }
+          config.resolve_relative_basis(judged.map(&:chars), placeholders.sum(&:chars))
+        end
+
         def build_placeholder_chapters(files)
           files.map { light_scan_placeholder(it) }
         end
 
+        # 事前スキャン。棒グラフの基準（最大値）と、相対モードの基準（中央値）に使う。
+        # 章別リストが表示する値と同じ本文基準で数える——生で数えると棒の縮尺だけが
+        # ずれて、いちばん長い章が半分の長さに描かれる。
         def light_scan_placeholder(file)
           content = File.read(file, encoding: 'UTF-8')
-          chars = content.delete("\r\n").length
+          chars = Analyzer.prose_length(content)
           PlaceholderChapter.new(
             path: file,
             title: extract_placeholder_title(content, file),

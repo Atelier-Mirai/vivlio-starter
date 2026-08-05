@@ -46,6 +46,47 @@ module VivlioStarter
           assert_equal({ min: 400, ideal_min: 1000, ideal_max: 2800, max: 4000 }, bands.first)
         end
 
+        # 相対モードはその本の章の中央値に倍率を掛けた帯になる
+        def test_relative_mode_derives_thresholds_from_own_median
+          loader = ConfigLoader.new({ 'metrics' => { 'use' => 'relative' } })
+          loader.resolve_relative_basis([2_000, 4_000, 5_000, 6_000, 10_000], 100_000)
+
+          chapter = loader.volume_thresholds[:chapter]
+
+          assert loader.relative?
+          # 中央値 5,000 × [0.65, 0.80, 1.20, 1.50]
+          assert_equal 3_250, chapter[:min]
+          assert_equal 4_000, chapter[:ideal_min]
+          assert_equal 6_000, chapter[:ideal_max]
+          assert_equal 7_500, chapter[:max]
+        end
+
+        # 節は相対にせず、絶対の共通帯のまま
+        def test_relative_mode_keeps_absolute_section_band
+          loader = ConfigLoader.new({ 'metrics' => { 'use' => 'relative' } })
+          loader.resolve_relative_basis([2_000, 4_000, 5_000, 6_000, 10_000], 100_000)
+
+          assert_equal({ min: 400, ideal_min: 1_000, ideal_max: 2_800, max: 4_000 },
+                       loader.volume_thresholds[:section])
+        end
+
+        # 章数が 5 未満だと中央値が 1 章の増減で動くので、絶対帯へ落とす。
+        # 行き先は総本文字数から選ぶ（9〜15 万字なら commercial）。
+        def test_relative_mode_falls_back_to_preset_chosen_by_total
+          loader = ConfigLoader.new({ 'metrics' => { 'use' => 'relative' } })
+          loader.resolve_relative_basis([4_000, 5_000, 6_000], 120_000)
+
+          assert_equal 6_400, loader.volume_thresholds[:chapter][:min]
+        end
+
+        def test_preset_for_total_covers_every_band
+          assert_equal :compact, ConfigLoader.preset_for_total(20_000)
+          assert_equal :handy, ConfigLoader.preset_for_total(50_000)
+          assert_equal :standard, ConfigLoader.preset_for_total(80_000)
+          assert_equal :commercial, ConfigLoader.preset_for_total(120_000)
+          assert_equal :heavy, ConfigLoader.preset_for_total(200_000)
+        end
+
         def test_exclude_chapters_returns_default_list
           loader = ConfigLoader.new({})
           excluded = loader.exclude_chapters

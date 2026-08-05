@@ -22,6 +22,21 @@ module VivlioStarter
     module Metrics
       # metrics 設定を読み込み解決する
       class ConfigLoader
+        # 相対モード（`use: relative`）の帯。**その本自身の章の本文字数の中央値**に
+        # 対する倍率で判定する。章立ての粒度は著者の設計判断なので、絶対値の帯では
+        # 正しく評価できない本が構造的に出る——リファレンス寄りの本ほど章が細かくなる。
+        # 倍率は 2 通りの導出（確定プリセットの形／刊行書 128 章の比の分布）が一致した
+        # 値で、min と max は互いに逆数の関係にある（1/1.5 ≒ 0.65）。刊行書に当てると
+        # 「短い」10%・「長い」10% と両裾が釣り合う（`chapter-volume-calibration-data.md` §7.2.0）。
+        RELATIVE_RATIOS = { min: 0.65, ideal_min: 0.80, ideal_max: 1.20, max: 1.50 }.freeze
+
+        # 相対モードで中央値が安定する最小章数。これを下回ると絶対帯へ落とす。
+        RELATIVE_MIN_CHAPTERS = 5
+
+        # 総本文字数からプリセットを選ぶ境界（相対モードのフォールバック先）。
+        PRESET_BY_TOTAL = [[35_000, :compact], [65_000, :handy],
+                           [90_000, :standard], [150_000, :commercial]].freeze
+
         # 節の基準はプリセット共通。刊行書 408 節の実測が 200 頁以上の本からしか
         # 採れておらず、規模別に分ける根拠が無いため
         # （`chapter-volume-calibration-data.md` §3.4）。
@@ -89,11 +104,40 @@ module VivlioStarter
           @metrics_config = metrics || {}
         end
 
-        # 選択されたプリセットの章・節しきい値を取得する
+        # 選択されたプリセットの章・節しきい値を取得する。
+        # 相対モードでは `resolve_relative_basis` が呼ばれるまで基準が決まらないため、
+        # 呼び出し側（Formatter / WarningChecker）は値を抱え込まず毎回ここへ問い合わせる。
         def volume_thresholds
-          preset_name = metrics_config[:use] || 'standard'
-          preset = resolve_preset(preset_name)
-          symbolize_thresholds(preset)
+          @volume_thresholds ||= relative_thresholds ||
+                                 symbolize_thresholds(resolve_preset(effective_preset_name))
+        end
+
+        # 相対モード（`metrics.use: relative`）か
+        def relative? = preset_name == 'relative'
+
+        # 相対モードの基準を確定する。全章を読むまで中央値が決まらないので、
+        # Runner が事前スキャンを終えた時点で一度だけ呼ぶ。
+        #
+        # 判定対象の章が少ないと中央値が 1 章の増減で動くため、
+        # RELATIVE_MIN_CHAPTERS 未満なら総本文字数から選んだ絶対帯へ落とす
+        # （`chapter-volume-calibration-data.md` §7.2.0）。
+        # @param judged_chars [Array<Integer>] 分量判定の対象となる章の本文字数
+        # @param total_prose [Integer] 本全体の本文字数（フォールバック先の選択に使う）
+        def resolve_relative_basis(judged_chars, total_prose)
+          return unless relative?
+
+          @volume_thresholds = nil
+          if judged_chars.size >= RELATIVE_MIN_CHAPTERS
+            @relative_baseline = median(judged_chars)
+          else
+            @relative_fallback = self.class.preset_for_total(total_prose)
+          end
+        end
+
+        # 総本文字数からプリセットを選ぶ。境界は実測に基づく
+        # （`chapter-volume-calibration-data.md` §7.1）。
+        def self.preset_for_total(total)
+          PRESET_BY_TOTAL.find { |limit, _| total < limit }&.last || :heavy
         end
 
         # 除外する章番号のリストを取得する
@@ -139,6 +183,29 @@ module VivlioStarter
           in Array then node.map { normalize_config(it) }
           else node.respond_to?(:to_h) ? normalize_config(node.to_h) : node
           end
+        end
+
+        # 相対モードのしきい値。基準が未確定（フォールバック中）なら nil。
+        def relative_thresholds
+          return nil unless relative? && @relative_baseline
+
+          { chapter: RELATIVE_RATIOS.transform_values { (@relative_baseline * it).round },
+            section: symbolize_range(DEFAULT_SECTION) }
+        end
+
+        # `use` に書かれたプリセット名。相対モードでフォールバックしていればその行き先。
+        def effective_preset_name
+          return @relative_fallback.to_s if relative? && @relative_fallback
+
+          preset_name
+        end
+
+        def preset_name = (metrics_config[:use] || 'standard').to_s
+
+        def median(values)
+          sorted = values.sort
+          mid = sorted.size / 2
+          sorted.size.odd? ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2.0
         end
 
         # プリセットを解決する

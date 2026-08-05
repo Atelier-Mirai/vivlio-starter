@@ -323,6 +323,7 @@ glossary:
 ```yaml
 metrics:
   use: standard    # compact / handy / standard / commercial / heavy / author_custom
+                   # relative … 絶対の目安でなく、その本自身の章の中央値と比べる
   exclude_chapters: [00, 90-98, 99]   # 評価から除外する章番号
 ```
 
@@ -336,6 +337,7 @@ metrics:
 | `commercial` | 9〜15 万字 | 200〜350 ページの商業出版レベル |
 | `heavy` | 15 万字〜 | 350 ページ以上の大部の本 |
 | `author_custom` | — | 自分で基準値を定義したい場合 |
+| `relative` | — | その本自身の章の中央値と比べたい場合（詳細は「Metrics」の章） |
 
 `use` で選んだプリセットが切り替えるのは、`chapter`/`section` の分量基準だけです。語彙難度（`kanji_ratio`・`word_length`）・語彙多様度（`mattr_window`）・読解難度（`readability`）・警告メッセージの文言（`labels`）は、プリセットの外側に置く共通設定で、どのプリセットを選んでも同じ値が使われます。詳細な基準値のカスタマイズは「Metrics」の章を参照してください。
 
