@@ -91,7 +91,7 @@
 
 ## コード整理
 
-- [Low] **`Build::ChapterConfig` の章番号パーサが二重にある**: `expand_chapter_range` / `parse_chapter_numbers_from_string` を呼ぶのはモジュール内部とテストだけで、実際に使われているのは `HeadingProcessor` が持つ同名の私有コピー（`heading_processor.rb:576`）のほう。`ChapterConfig` に残るのは `htmls_for_range` の 1 メソッドだけになっている。どちらを唯一の定義元にするか決めて片方に寄せる（2026-08-06 のデッドコード整理で発見。名前が重複するため機械的な走査では検出できない類）。
+- [Medium] **`chapters` の書き間違いが黙って通る**: `config/book.yml` の `chapters` に番号とファイルベース名を混ぜて `"11-12, 21-images"` と書くと、番号指定として読めないので**行ごとのトークン扱いに落ち、`"11-12, 21-images"` という実在しない章名 1 つ**になる。どの章にも当たらないまま、著者には何も知らされない（`heading_processor_chapters_test.rb` に現状の挙動として記録済み）。番号とベース名は混ぜられない旨を、出現箇所つきで案内したい——`ChapterConfig.parse_chapter_numbers_from_string` が nil を返したとき、「数字が混ざっているのに番号指定として読めない」ケースだけを見分ければよい。
 
 ---
 

@@ -269,6 +269,45 @@ def def_regex(name)   = /^\s*def (?:self\.)?#{Regexp.escape(name)}#{boundary(nam
 - **§3.2 の `unsafe?` / `armed?` / `clear!`、§3.1 の `update_definition!`**:
   小さな述語・ユーティリティで、消す利得が薄いので据え置き
 - **`ChapterConfig` の章番号パーサ 2 個**: 走査では「使われている」に見えるが、
-  実際に効いているのは `HeadingProcessor` の同名の私有コピーのほう。
-  **同名メソッドの重複という §0 の限界そのもの**なので、機械的な走査では拾えない。
-  どちらを定義元にするか決める作業として `PLANNED.md` へ送った
+  実際に効いていたのは `HeadingProcessor` の同名コピーのほう。
+  **同名メソッドの重複という §0 の限界そのもの**で、機械的な走査では拾えない。
+  → §7.5 で片付けた
+
+### 7.5 章番号パーサの一本化（2026-08-06）
+
+`ChapterConfig` を唯一の定義元にし、`HeadingProcessor` から寄せた。
+
+**なぜ `ChapterConfig` 側を残したか。** 生きていたのは `HeadingProcessor` のコピーの
+ほうだが、番号指定の綴りを読むのは後処理（HTML の見出し整形）の仕事ではない。
+モジュール名も責務も `Build::ChapterConfig` が担うべきもので、寄せる向きは
+「生きているほう」ではなく「置き場所として正しいほう」で決めた。
+
+**判定と展開を 1 本にまとめた。** 従来 `HeadingProcessor` は
+`chapter_number_string?` で「番号指定か」を判定してから
+`parse_chapter_numbers_from_string` で展開しており、**同じ綴りを同じ規則で 2 回
+走査していた**。パーサが「番号指定でなければ `nil`」を返す形にして、呼び出し側は
+その `nil` を合図に別の解釈（ファイルベース名の並び）へ進む。
+`chapter_number_string?` は不要になったので削除した。
+
+**`expand_chapter_range` は畳んだ。** 単一（`"11"`）と範囲（`"11-13"`）を
+`NUMBER_OR_RANGE` の 1 本で受けるようにしたので、範囲だけを切り出すヘルパーは
+要らなくなった。逆順（`"13-11"`）はその部分だけ落とす——両実装ともそうしていた
+挙動を、理由（著者が書いた向きと逆の章立てが黙ってできる）つきで残した。
+
+**綴りが同型の実装をあと 2 つ確認したが、寄せていない。** 担うものが違う:
+
+| 実装 | 区切り | 数字以外 | 返り値 |
+|---|---|---|---|
+| `ChapterConfig.parse_chapter_numbers_from_string` | `,` | nil（番号指定ではない合図） | `Array<Integer>` |
+| `CatalogLoader.parse_shorthand_to_numbers` | `,` と空白 | 黙って捨てる | `Array<Integer>` |
+| `TokenResolver::Resolver#normalize` | `,` | スラグ・パスとして受ける | ゼロ埋めトークン文字列 |
+
+`CatalogLoader` は著者が並べる表を読むので読めない行で全体を止めない。
+`TokenResolver` は CLI 引数を受けるので番号以外も正当な入力である。
+**同じ綴りでも「読めなかったとき何をするか」が違うものは、一本化すると
+どちらかの正しさを壊す。**
+
+なお `configured_main_chapter_tokens` にはテストが 1 件も無かったので、
+`heading_processor_chapters_test.rb` を起こして 6 形式を固定してから寄せた。
+その過程で `chapters: "11-12, 21-images"` が実在しない章名 1 つに落ちて黙って
+無視されることが分かったが、**寄せる前後で同じ挙動**なので直さず `PLANNED.md` へ送った。

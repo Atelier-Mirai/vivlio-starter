@@ -4,6 +4,7 @@ require 'digest'
 require 'nokogiri'
 require_relative '../common'
 require_relative '../heading_segmenter'
+require_relative '../build/chapter_config'
 require_relative 'html_parser'
 
 module VivlioStarter
@@ -527,12 +528,13 @@ module VivlioStarter
             str = cfg.to_s
             return nil if str.strip.casecmp('all').zero?
 
-            # 数字/レンジ指定（例: "54-56" や "11, 12-13"）として解釈できる場合
-            if chapter_number_string?(str)
-              numbers = parse_chapter_numbers_from_string(str)
-              return tokens_from_chapter_numbers(numbers) if numbers && !numbers.empty?
+            # 数字/レンジ指定（例: "54-56" や "11, 12-13"）として解釈できる場合。
+            # 番号指定でなければパーサが nil を返すので、それを合図に下へ抜ける。
+            numbers = Build::ChapterConfig.parse_chapter_numbers_from_string(str)
+            if numbers
+              return nil if numbers.empty?
 
-              return nil
+              return tokens_from_chapter_numbers(numbers)
             end
 
             # それ以外は、行ごとのトークン（ファイルベース名）として扱う
@@ -555,46 +557,9 @@ module VivlioStarter
           end
         end
 
-        # 文字列が「章番号/範囲」のみで構成されているか判定
-        # 例: "11, 12-13" → true / "11-install" → false
-        def chapter_number_string?(str)
-          parts = str.to_s.split(',').map(&:strip).reject(&:empty?)
-          return false if parts.empty?
-
-          parts.all? do |part|
-            part.match?(/\A\d+\z/) || part.match?(/\A\d+-\d+\z/)
-          end
-        end
-
         # 配列の全要素が整数文字列かどうか
         def all_integer_strings?(arr)
           Array(arr).all? { |s| s.to_s.strip.match?(/\A\d+\z/) }
-        end
-
-        # カンマ区切り + 範囲指定文字列から章番号配列を抽出
-        # 例: "02, 11-13, 91" → [2, 11, 12, 13, 91]
-        def parse_chapter_numbers_from_string(str)
-          parts = str.to_s.split(',').map(&:strip).reject(&:empty?)
-          numbers = []
-
-          parts.each do |part|
-            if (m = part.match(/\A(\d+)-(\d+)\z/))
-              start_num = m[1].to_i
-              end_num   = m[2].to_i
-              next if start_num > end_num
-
-              numbers.concat((start_num..end_num).to_a)
-            elsif part.match?(/\A\d+\z/)
-              numbers << part.to_i
-            else
-              # 数字以外が混在している場合は番号指定としては扱わない
-              return nil
-            end
-          end
-
-          numbers.uniq.sort
-        rescue StandardError
-          nil
         end
 
         # 章番号配列からメイン章トークンの配列を生成
