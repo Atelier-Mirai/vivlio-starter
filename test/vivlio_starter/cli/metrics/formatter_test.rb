@@ -318,38 +318,61 @@ module VivlioStarter
 
           output = @formatter.format_chapter_line(chapter, 5000, false)
 
-          assert_includes output, '🟡 加筆検討'
+          assert_includes output, '💡 加筆検討'
         end
 
-        # 分量警告と品質警告は「・」で連結し、1 つの 🟡 にまとめる
-        def test_format_chapter_line_joins_volume_and_quality_warnings
+        # 分量は 💡、文章の質は 🤔 と系統ごとに記号を分け、「／」で並べる
+        def test_format_chapter_line_separates_volume_and_quality_advice
           chapter = ChapterMetrics.new(path: 'contents/21-images.md', title: '画像',
                                        chapter_num: 21, chars: 15_890, sections: [], warning: 'やや長い')
 
           output = @formatter.format_chapter_line(chapter, 15_890, false, extra_warnings: ['表現が単調'])
 
-          assert_includes output, '🟡 やや長い・表現が単調'
-          assert_equal 1, output.scan('🟡').size
+          assert_includes output, '💡 やや長い ／ 🤔 表現が単調'
         end
 
-        # 分量警告がない章でも、品質警告だけで 🟡 行になる
-        def test_format_chapter_line_shows_quality_warning_alone
+        # 同じ系統が複数あるときは、その系統の中で「・」で連結する
+        def test_format_chapter_line_joins_same_kind_of_advice_with_nakaguro
+          chapter = ChapterMetrics.new(path: 'contents/35-math.md', title: '数式',
+                                       chapter_num: 35, chars: 4_120, sections: [], warning: nil)
+
+          output = @formatter.format_chapter_line(chapter, 15_890, false,
+                                                  extra_warnings: %w[表現が単調 やや難解])
+
+          assert_includes output, '🤔 表現が単調・やや難解'
+          refute_includes output, '💡'
+        end
+
+        # 分量の指摘がない章でも、質の指摘だけで 🤔 が出る
+        def test_format_chapter_line_shows_quality_advice_alone
           chapter = ChapterMetrics.new(path: 'contents/35-math.md', title: '数式',
                                        chapter_num: 35, chars: 4_120, sections: [], warning: nil)
 
           output = @formatter.format_chapter_line(chapter, 15_890, false, extra_warnings: ['やや難解'])
 
-          assert_includes output, '🟡 やや難解'
+          assert_includes output, '🤔 やや難解'
         end
 
-        # 品質警告なし（既定）のときは従来どおり 🟡 が出ない
-        def test_format_chapter_line_without_any_warning
+        # 指摘が何もなければ記号は出ない
+        def test_format_chapter_line_without_any_advice
           chapter = ChapterMetrics.new(path: 'contents/10-intro.md', title: 'はじめに',
                                        chapter_num: 10, chars: 8_234, sections: [], warning: nil)
 
           output = @formatter.format_chapter_line(chapter, 15_890, false, extra_warnings: [])
 
-          refute_includes output, '🟡'
+          refute_includes output, '💡'
+          refute_includes output, '🤔'
+        end
+
+        # 節の指摘は分量だけなので 💡 になる
+        def test_format_chapter_line_marks_section_volume_advice_with_bulb
+          section = SectionMetrics.new(title: '導入', chars: 120, warning: '加筆検討')
+          chapter = ChapterMetrics.new(path: 'contents/10-intro.md', title: 'はじめに',
+                                       chapter_num: 10, chars: 8_234, sections: [section], warning: nil)
+
+          output = @formatter.format_chapter_line(chapter, 15_890, true)
+
+          assert_includes output, '💡 加筆検討'
         end
 
         private

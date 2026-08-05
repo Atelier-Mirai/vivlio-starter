@@ -155,13 +155,12 @@ module VivlioStarter
         end
 
         # 章行をフォーマットする（公開メソッド）。
-        # extra_warnings は分量以外の警告（品質警告）。分量警告とは算出タイミングが
-        # 異なり章構造体に入っていないため、ここで 1 つの 🟡 に合成する
-        # （metrics-quality-warnings-spec.md §2.2）。
+        # extra_warnings は分量以外の指摘（文章の質）。分量とは算出タイミングが異なり
+        # 章構造体に入っていないため、ここで受け取って 1 行に組み立てる
+        # （metrics-quality-warnings-spec.md §2.2）。記号は系統ごとに分ける。
         def format_chapter_line(chapter, max_chars, show_sections, extra_warnings: [])
           bar = render_bar(chapter.chars, max_chars)
-          all_warnings = [chapter.warning, *extra_warnings].compact
-          warning = all_warnings.empty? ? '' : " 🟡 #{all_warnings.join('・')}"
+          warning = format_advice(chapter.warning, extra_warnings)
 
           if show_sections && chapter.sections.any?
             format_chapter_with_sections(chapter, bar, warning, max_chars)
@@ -176,6 +175,19 @@ module VivlioStarter
 
         attr_reader :config, :thresholds, :labels
 
+        # 分量の指摘（💡）と文章の質の指摘（🤔）を、系統ごとの記号を付けて 1 行にまとめる。
+        # 分量は「加筆をおすすめします」という提案であって直すべき欠陥ではないため、
+        # 警告色の 🟡 から提案の 💡 へ移し、質の指摘とも記号を分けた
+        # （`chapter-volume-calibration-data.md` §7.3）。どちらの記号も単一コードポイント・
+        # EAW=W で、`terminal-output-notes.md` §1 の桁揃えの規則を満たす。
+        # @return [String] 行末に足す表示片（先頭に空白を含む）。指摘が無ければ空文字列
+        def format_advice(volume, quality = [])
+          marks = []
+          marks << "💡 #{volume}" if volume
+          marks << "🤔 #{quality.join('・')}" if quality.any?
+          marks.empty? ? '' : " #{marks.join(' ／ ')}"
+        end
+
         # 節付きで章をフォーマットする
         def format_chapter_with_sections(chapter, _bar, warning, max_chars)
           header = truncate_label(chapter_label(chapter))
@@ -184,7 +196,7 @@ module VivlioStarter
           chapter.sections.each_with_index do |sec, idx|
             prefix = idx == chapter.sections.size - 1 ? '  └' : '  ├'
             sec_bar = render_bar(sec.chars, max_chars)
-            sec_warning = sec.warning ? " 🟡 #{sec.warning}" : ''
+            sec_warning = format_advice(sec.warning)
             sec_title = padded_section_title(sec.title)
             char_count = format_char_count(sec.chars)
             lines << "#{prefix} #{sec_title} #{sec_bar} #{char_count}#{sec_warning}"
