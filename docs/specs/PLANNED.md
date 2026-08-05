@@ -23,13 +23,13 @@
 - [Low] **画像の width 属性自動補完**: `![](foo.png)` のように幅指定なしでも、実寸やクラス指定に応じて `width=100%` 等を自動補う（大判図をページ送りにせず収めるため）。
 - [Medium] **「表1＋背＋表4 を 1 枚にくるみ表紙」の形**: 入稿先の慣習でくるみ表紙を求められる場合も有るが、結合処理を伴う別機能になるため、現状は非対応。
 
-- [Medium] $2^{1/3}$ $\sqrt{\pi r^2}$ $\pi$ などの TeX 記法を、2^(1/3)、√(πr²)、π の素の表記に改める機能（Kindle での表示を改善するため）は既に実装されています。逆に著者の書いた 、2^(1/3)、√(πr²)、π を $2^{1/3}$ $\sqrt{\pi r^2}$ $\pi$ などの TeX 記法に変換する機能の実装。
+- [Medium] **素の表記を TeX 記法へ起こす**: 著者が `2^(1/3)`・`√(πr²)`・`π` のように素で書いた数式を、`$2^{1/3}$`・`$\sqrt{\pi r^2}$`・`$\pi$` の TeX 記法へ変換し、通常の数式経路（LaTeX → SVG）に乗せる。逆向き（TeX → 素の表記。Kindle でフォントサイズに追従させるため）は `MathTextRenderer` として実装済みで、その対になる → `kindle-inline-math-textify-spec.md`
 
 ---
 
 ## 記法・置換ルール
 
-- **`@` ディレクティブ拡張**: Tier 1（`@pageref`・`@pagebreak:recto`/`:verso`・`@version`/`@today`/`@title`・`@qr`・`@hspace`）は **2026-07-28 に実装完了** → `at-directive-tier1-spec.md`。Tier 2（`@nobr`・`@fill`・`@index`）と `@abbr` の代替案（用語集統合 or 標準 `*[…]:` `<abbr>`）は引き続きブレスト段階 → `at-directive-ideas.md`
+- **`@` ディレクティブの拡張**: Tier 2（`@nobr`・`@fill`・`@index`）と `@abbr` の代替案（用語集統合 or 標準 `*[…]:` `<abbr>`）はブレスト段階 → `at-directive-ideas.md`
 
 - [Medium] **`vs furigana`（半自動ルビ付与）**: 小学生向けなど、対象読者の学年より上の漢字へ振り仮名 `{漢字|よみ}` を**半自動**で付けるコマンド。`vs metrics` の「漢字レベル（ルビ候補）」で**どの漢字が対象か**は把握できるので、その先の「本文へ実際にルビ記法を書き込む」変換を担う。
   - **対象の指定**: `book.yml` や引数で「基準レベル」を選ぶ（例: 小4向け＝小5以上／中学以上／常用外のみ、等。レベル定義は `furigana-level-spec.md` 参照＝`vs metrics` と共通の L0〜L4）。
@@ -80,16 +80,18 @@
   - `@` ディレクティブ Tier 1（`at-directive-tier1-spec` §3-4）: `@pageref` がページ番号なしのタイトルリンクへ劣化するか・`@pagebreak:recto` が単純改ページになるか・QR コードの表示
   - 索引の主要参照（`index-main-reference-spec` §5.3）: `.main-ref` の見た目が KFX で効くか。`font-weight: bold` に `font-family`（ゴシック）・`font-size: 1.06em`・`letter-spacing`・負の `margin-right` を重ねた（2026-08-05）。いずれもリテラル値で `var()` を含まないため理屈上は通るはずだが未確認で、とくに**フォント名は端末側で無視されうる**——ゴシックにならない場合、目印は太字だけになる。あわせて、EPUB / Kindle の索引で**ページ番号のカンマ区切りが従来どおり出ている**ことも見る（PDF 側でだけ `dd.resolved` へ切り替えたため、CSS のフォールバックが効いていないと番号が区切りなしで並ぶ）
 
-## コード整理
-
-- [Medium] **クロスリファレンスの死にコードを撤去する**: `CrossReferenceProcessor.process_cross_references` は**未定義メソッド `generate_report` を呼ぶ到達不能コード**で、実ビルドが通る経路は `PreProcessCommands.process_cross_references_for_files`（`pre_process.rb`）のほう。委譲先の `MarkdownTransformer.process_cross_references` も存在せず二重に壊れている（2026-07-25 の preflight-chapter-summary 実装時に判明）。読む人を確実に誤らせるので撤去する。
-
 ### 堅牢性テスト（追加候補）
 
 - [Medium] **11-3 巨大 YAML anchor の Billion Laughs 評価**: `aliases: true` 下でも Psych 5.x の制限で実害なしだが、上限値・挙動の明示的な検証余地あり。
 - [Medium] **11-4 PDF 結合時の例外で中間 PDF を残す**: 結合例外時に中間 PDF を事後調査用に保持（`pdf_merger.rb` の例外ハンドリング強化）。
 - [Medium] **12-2 / 12-3 冪等性・キャッシュ回帰**: 同一入力で複数回ビルドしても成果物が変化しないことの検証。
 - [Medium] **`vivlio-starter-pdf` の堅牢性テスト整備**: 本体と同等の堅牢性テストをプラグインにも適用する。
+
+---
+
+## コード整理
+
+- [Medium] **クロスリファレンスの死にコードを撤去する**: `CrossReferenceProcessor.process_cross_references` は**未定義メソッド `generate_report` を呼ぶ到達不能コード**で、実ビルドが通る経路は `PreProcessCommands.process_cross_references_for_files`（`pre_process.rb`）のほう。委譲先の `MarkdownTransformer.process_cross_references` も存在せず二重に壊れている（2026-07-25 の preflight-chapter-summary 実装時に判明）。読む人を確実に誤らせるので撤去する。
 
 ---
 
