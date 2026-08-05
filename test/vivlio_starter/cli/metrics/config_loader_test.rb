@@ -11,10 +11,10 @@ module VivlioStarter
           loader = ConfigLoader.new({})
           thresholds = loader.volume_thresholds
 
-          assert_equal 3000, thresholds[:chapter][:min]
-          assert_equal 5000, thresholds[:chapter][:ideal_min]
-          assert_equal 10_000, thresholds[:chapter][:ideal_max]
-          assert_equal 15_000, thresholds[:chapter][:max]
+          assert_equal 4200, thresholds[:chapter][:min]
+          assert_equal 4800, thresholds[:chapter][:ideal_min]
+          assert_equal 8500, thresholds[:chapter][:ideal_max]
+          assert_equal 9700, thresholds[:chapter][:max]
         end
 
         def test_volume_thresholds_respects_use_setting
@@ -22,8 +22,28 @@ module VivlioStarter
           loader = ConfigLoader.new(config)
           thresholds = loader.volume_thresholds
 
-          assert_equal 1000, thresholds[:chapter][:min]
-          assert_equal 5000, thresholds[:chapter][:max]
+          assert_equal 800, thresholds[:chapter][:min]
+          assert_equal 4200, thresholds[:chapter][:max]
+        end
+
+        # 薄い本と大部の本を受ける帯を足したので、5 段すべてが単調に上がる
+        def test_should_provide_five_presets_in_ascending_order
+          mins = %w[compact handy standard commercial heavy].map do |name|
+            ConfigLoader.new({ 'metrics' => { 'use' => name } }).volume_thresholds[:chapter][:min]
+          end
+
+          assert_equal [800, 2900, 4200, 6400, 9200], mins
+          assert_equal mins.sort, mins
+        end
+
+        # 節の帯はプリセット共通（規模別に分ける実測が無いため）
+        def test_should_share_the_same_section_band_across_presets
+          bands = %w[compact handy standard commercial heavy].map do |name|
+            ConfigLoader.new({ 'metrics' => { 'use' => name } }).volume_thresholds[:section]
+          end
+
+          assert_equal 1, bands.uniq.size
+          assert_equal({ min: 400, ideal_min: 1000, ideal_max: 2800, max: 4000 }, bands.first)
         end
 
         def test_exclude_chapters_returns_default_list

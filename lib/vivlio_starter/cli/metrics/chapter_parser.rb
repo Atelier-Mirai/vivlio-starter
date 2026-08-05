@@ -9,8 +9,11 @@
 # 機能:
 #   - H1 見出しから章タイトル・番号を抽出
 #   - H2 見出しから節を抽出
-#   - 各セクションの文字数を算出
+#   - 各セクションの本文字数を算出
 # ================================================================
+
+require_relative '../masking'
+require_relative 'analyzer'
 
 module VivlioStarter
   module CLI
@@ -33,11 +36,14 @@ module VivlioStarter
           blank_chapter(path)
         end
 
+        # 分量は本文（コードと記法を除いた地の文）で数える。
+        # コードが多い章ほど「分量が十分」と判定されてしまう歪みを断つため
+        # （`chapter-volume-calibration-data.md` §7.1）。
         def parse_content(path, content)
           chapter_num = extract_chapter_num(path)
           title = extract_title(content) || File.basename(path, '.md')
           sections = parse_sections(content, chapter_num)
-          total_chars = content.delete("\r\n").length
+          total_chars = Analyzer.prose_length(content)
 
           warning = warning_checker.chapter_warning(chapter_num, total_chars)
 
@@ -68,20 +74,24 @@ module VivlioStarter
           match ? match[1].strip : nil
         end
 
-        # H2 見出しから節を解析する
+        # H2 見出しから節を解析する。
+        # 見出しの判定はコードフェンスの外だけで行う。記法を解説する原稿では
+        # フェンス内に `## 見出し` の実例が現れ、そこで節を切ると閉じフェンスが
+        # 開きフェンスとして解釈され、後続の地の文がコード扱いで消えてしまう
+        # （本書の 21-markdown-tutorial で本文が 6,303 → 2,195 字に化けていた）。
         def parse_sections(content, chapter_num)
+          heading_lines = prose_heading_lines(content)
           sections = []
           current_title = nil
           current_content = []
 
-          content.each_line do |line|
-            case line
-            in H2_PATTERN
+          content.each_line.with_index(1) do |line, lineno|
+            if heading_lines.include?(lineno)
               flush_section(sections, current_title, current_content, chapter_num) if current_title
-              current_title = Regexp.last_match(1).strip
+              current_title = line[H2_PATTERN, 1].strip
               current_content = []
-            else
-              current_content << line if current_title
+            elsif current_title
+              current_content << line
             end
           end
 
@@ -89,10 +99,16 @@ module VivlioStarter
           sections
         end
 
-        # 節を確定してリストに追加する
+        # コードフェンスの外にある H2 見出しの行番号（1 始まり）。
+        # フェンス解釈は Masking（唯一の実装）へ委ねて独自の状態機械を作らない。
+        def prose_heading_lines(content)
+          Masking.each_prose_line(content)
+                 .filter_map { |line, lineno| lineno if line.match?(H2_PATTERN) }
+        end
+
+        # 節を確定してリストに追加する。分量は章と同じく本文で数える。
         def flush_section(sections, title, content_lines, chapter_num)
-          text = content_lines.join.delete("\r\n")
-          chars = text.length
+          chars = Analyzer.prose_length(content_lines.join)
           warning = warning_checker.section_warning(chars, chapter_num: chapter_num)
 
           sections << SectionMetrics.new(title:, chars:, warning:)

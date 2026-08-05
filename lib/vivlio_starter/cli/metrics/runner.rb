@@ -40,7 +40,7 @@ module VivlioStarter
 
         # キャッシュの構造バージョン。読解難度の特徴量導入や MATTR 追加など
         # 互換性を破る変更時にインクリメントし、旧バージョンのキャッシュを無効化する。
-        CACHE_SCHEMA_VERSION = 5
+        CACHE_SCHEMA_VERSION = 6
 
         # 「見直したい長い文」として挙げる下限文字数と最大件数。
         LONG_SENTENCE_MIN = 80
@@ -107,7 +107,7 @@ module VivlioStarter
           output_advice(all_analyses) if options[:all]
 
           # 長い解析結果の最後を 1 行で締める（何章を対象にしたかが読み取れる）
-          Common.log_result("#{all_analyses.size} 章を解析しました（総 #{final_basic.chars} 文字）",
+          Common.log_result("#{all_analyses.size} 章を解析しました（本文 #{final_basic.prose_chars} 文字）",
                             status: :success)
           0
         end

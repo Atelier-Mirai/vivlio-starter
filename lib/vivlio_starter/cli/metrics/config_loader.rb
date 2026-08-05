@@ -22,19 +22,40 @@ module VivlioStarter
     module Metrics
       # metrics 設定を読み込み解決する
       class ConfigLoader
-        # デフォルトのプリセット設定
+        # 節の基準はプリセット共通。刊行書 408 節の実測が 200 頁以上の本からしか
+        # 採れておらず、規模別に分ける根拠が無いため
+        # （`chapter-volume-calibration-data.md` §3.4）。
+        DEFAULT_SECTION = { min: 400, ideal: [1000, 2800], max: 4000 }.freeze
+
+        # プリセットの既定値。すべて本文（コードと記法を除いた地の文）の文字数で、
+        # 刊行済み技術書の実測から引いた（`chapter-volume-calibration-data.md` §7.1）。
+        # `min` は 10・`ideal` は 25〜75・`max` は 90 パーセンタイル。
+        # 選ぶ軸は総本文字数（頁数は判型・余白・図版量で動くため単独では決まらない）。
         DEFAULT_PRESETS = {
+          # 〜3.5 万字（20〜50 頁）／実測 3 記事 24 章
           compact: {
-            chapter: { min: 1000, ideal: [1500, 3000], max: 5000 },
-            section: { min: 300, ideal: [500, 1000], max: 1500 }
+            chapter: { min: 800, ideal: [1100, 3400], max: 4200 },
+            section: DEFAULT_SECTION
           },
+          # 3.5 万〜6.5 万字（50〜100 頁）／両隣の実測からの内挿（§7.2.1）
+          handy: {
+            chapter: { min: 2900, ideal: [3400, 5700], max: 6800 },
+            section: DEFAULT_SECTION
+          },
+          # 6.5 万〜9 万字（100〜200 頁）／実測 2 冊 16 章
           standard: {
-            chapter: { min: 3000, ideal: [5000, 10_000], max: 15_000 },
-            section: { min: 800, ideal: [1500, 3000], max: 4000 }
+            chapter: { min: 4200, ideal: [4800, 8500], max: 9700 },
+            section: DEFAULT_SECTION
           },
+          # 9 万〜15 万字（200〜350 頁）／実測 4 冊 36 章
           commercial: {
-            chapter: { min: 5000, ideal: [8000, 12_000], max: 20_000 },
-            section: { min: 1500, ideal: [2000, 4000], max: 6000 }
+            chapter: { min: 6400, ideal: [7800, 14_600], max: 17_800 },
+            section: DEFAULT_SECTION
+          },
+          # 15 万字〜（350 頁以上）／実測 3 冊 52 章
+          heavy: {
+            chapter: { min: 9200, ideal: [11_000, 16_000], max: 19_600 },
+            section: DEFAULT_SECTION
           }
         }.freeze
 
