@@ -361,6 +361,49 @@ module VivlioStarter
           refute_includes output, '🤔'
         end
 
+        # 分量が ideal 帯（standard は 4,800〜8,500）に入ると ✅ が付く
+        def test_format_chapter_line_marks_ideal_volume_with_check
+          chapter = ChapterMetrics.new(path: 'contents/31-lint.md', title: '文章校正',
+                                       chapter_num: 31, chars: 5_481, sections: [], warning: nil)
+
+          output = @formatter.format_chapter_line(chapter, 15_890, false)
+
+          assert_includes output, '✅'
+          refute_includes output, '💡'
+        end
+
+        # ideal 帯の外（min は超えているが理想ではない）なら記号は付かない
+        def test_format_chapter_line_marks_nothing_between_min_and_ideal
+          chapter = ChapterMetrics.new(path: 'contents/13-new.md', title: '新規作成',
+                                       chapter_num: 13, chars: 4_341, sections: [], warning: nil)
+
+          output = @formatter.format_chapter_line(chapter, 15_890, false)
+
+          refute_includes output, '✅'
+          refute_includes output, '💡'
+        end
+
+        # 分量判定の対象外の章（前書き・付録・後書き）には ✅ も出さない
+        def test_format_chapter_line_omits_check_for_excluded_chapter
+          chapter = ChapterMetrics.new(path: 'contents/00-preface.md', title: 'はじめに',
+                                       chapter_num: 0, chars: 5_481, sections: [], warning: nil)
+
+          output = @formatter.format_chapter_line(chapter, 15_890, false, excluded: true)
+
+          refute_includes output, '✅'
+        end
+
+        # 節も ideal 帯（400 / 1,000〜2,800 / 4,000）で ✅ が付く
+        def test_format_chapter_line_marks_ideal_section_with_check
+          section = SectionMetrics.new(title: '導入', chars: 1_800, warning: nil)
+          chapter = ChapterMetrics.new(path: 'contents/31-lint.md', title: '文章校正',
+                                       chapter_num: 31, chars: 5_481, sections: [section], warning: nil)
+
+          output = @formatter.format_chapter_line(chapter, 15_890, true)
+
+          assert_equal 2, output.scan('✅').size, '章と節の両方に付く'
+        end
+
         # 節の指摘は分量だけなので 💡 になる
         def test_format_chapter_line_marks_section_volume_advice_with_bulb
           section = SectionMetrics.new(title: '導入', chars: 120, warning: '加筆検討')

@@ -473,8 +473,11 @@ module VivlioStarter
         # 章行を出力する。品質警告は章構造体に無く analysis から毎回導出するため、
         # 表示直前にここで合成する（metrics-quality-warnings-spec §2.2）。
         def output_chapter_line(analysis, max_chars)
-          puts formatter.format_chapter_line(analysis.chapter, max_chars, show_sections?,
-                                             extra_warnings: warning_checker.quality_warnings(analysis))
+          puts formatter.format_chapter_line(
+            analysis.chapter, max_chars, show_sections?,
+            extra_warnings: warning_checker.quality_warnings(analysis),
+            excluded: warning_checker.excluded_chapter?(analysis.chapter.chapter_num)
+          )
         end
 
         # ================================================================

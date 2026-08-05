@@ -158,12 +158,14 @@ module VivlioStarter
         # extra_warnings は分量以外の指摘（文章の質）。分量とは算出タイミングが異なり
         # 章構造体に入っていないため、ここで受け取って 1 行に組み立てる
         # （metrics-quality-warnings-spec.md §2.2）。記号は系統ごとに分ける。
-        def format_chapter_line(chapter, max_chars, show_sections, extra_warnings: [])
+        # excluded は分量判定の対象外の章（前書き・付録・後書き）。✅ も出さない。
+        def format_chapter_line(chapter, max_chars, show_sections, extra_warnings: [], excluded: false)
           bar = render_bar(chapter.chars, max_chars)
-          warning = format_advice(chapter.warning, extra_warnings)
+          warning = format_advice(chapter.warning, extra_warnings) +
+                    ideal_mark(chapter.chars, thresholds[:chapter], excluded:)
 
           if show_sections && chapter.sections.any?
-            format_chapter_with_sections(chapter, bar, warning, max_chars)
+            format_chapter_with_sections(chapter, bar, warning, max_chars, excluded:)
           else
             label = padded_label(chapter_label(chapter))
             char_count = format_char_count(chapter.chars)
@@ -188,15 +190,30 @@ module VivlioStarter
           marks.empty? ? '' : " #{marks.join(' ／ ')}"
         end
 
+        # 分量が ideal 帯に収まっているときに付ける ✅。
+        # 「足りない／多すぎる」だけを伝えると、直すところが無い章に何の反応も返らず
+        # 判定されたのかどうかが分からない。**ちょうどよい**ことも伝える
+        # （`chapter-volume-calibration-data.md` §7.1）。文言を添えないのは、
+        # 💡 と 🤔 が「何を検討するか」を言う必要があるのに対し、✅ は
+        # 「することが無い」を意味するだけで語を要さないため。
+        # @param excluded [Boolean] 分量判定の対象外の章なら ✅ も出さない
+        def ideal_mark(chars, threshold, excluded: false)
+          return '' if excluded
+          return '' unless chars.between?(threshold[:ideal_min], threshold[:ideal_max])
+
+          ' ✅'
+        end
+
         # 節付きで章をフォーマットする
-        def format_chapter_with_sections(chapter, _bar, warning, max_chars)
+        def format_chapter_with_sections(chapter, _bar, warning, max_chars, excluded: false)
           header = truncate_label(chapter_label(chapter))
           lines = ["#{header} (#{number_with_comma(chapter.chars)} 文字)#{warning}"]
 
           chapter.sections.each_with_index do |sec, idx|
             prefix = idx == chapter.sections.size - 1 ? '  └' : '  ├'
             sec_bar = render_bar(sec.chars, max_chars)
-            sec_warning = format_advice(sec.warning)
+            sec_warning = format_advice(sec.warning) +
+                          ideal_mark(sec.chars, thresholds[:section], excluded:)
             sec_title = padded_section_title(sec.title)
             char_count = format_char_count(sec.chars)
             lines << "#{prefix} #{sec_title} #{sec_bar} #{char_count}#{sec_warning}"
