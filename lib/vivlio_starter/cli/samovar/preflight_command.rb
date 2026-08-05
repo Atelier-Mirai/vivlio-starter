@@ -84,7 +84,8 @@ module VivlioStarter
             Guards::ImageFilenameCheck.new,
             Guards::CodeFenceCheck.new,
             Guards::ContainerFenceCheck.new,
-            Guards::ContainerClassCheck.new
+            Guards::ContainerClassCheck.new,
+            Guards::ChapterTargetCheck.new(targets)
           )
 
           # ensure 節の execute_clean は本処理開始後のみ実行する

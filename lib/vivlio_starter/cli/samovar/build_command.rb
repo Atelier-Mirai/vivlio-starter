@@ -84,7 +84,8 @@ module VivlioStarter
             Guards::CatalogEntriesCheck.new,
             Guards::ContentsDirCheck.new,
             Guards::NodeCheck.new,
-            Guards::ImageFilenameCheck.new
+            Guards::ImageFilenameCheck.new,
+            Guards::ChapterTargetCheck.new(targets)
           )
 
           # 検証オプションをスレッドローカルに設定（LinkImageValidator が参照）
@@ -98,8 +99,11 @@ module VivlioStarter
             if targets.any?
               target_entries = resolve_target_entries
 
+              # 解決できない章指定は ChapterTargetCheck が本処理の前に止めるので、
+              # ここへ来るのは空白だけの引数（vs build ""）のような、
+              # 検査対象にすらならなかった指定に限られる。最後の網として残す。
               if target_entries.empty?
-                common.log_error('指定した章が catalog.yml に存在しません。build を中断します。')
+                common.log_error("章として読める指定がありません: #{targets.join(', ').inspect}")
                 return 1
               end
 
