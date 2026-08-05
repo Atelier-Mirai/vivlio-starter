@@ -29,7 +29,6 @@
 # ================================================================
 
 require_relative 'common'
-require 'set'
 require_relative 'token_resolver'
 require_relative 'pre_process/markdown_preprocessor'
 require_relative 'pre_process/frontmatter_generator'

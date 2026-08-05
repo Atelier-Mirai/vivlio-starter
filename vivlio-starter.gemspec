@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
   spec.homepage      = 'https://github.com/Atelier-Mirai/vivlio-starter'
   spec.license       = 'MIT'
 
-  spec.required_ruby_version = '>= 4.0'
+  spec.required_ruby_version = '>= 3.4'
 
   # 同梱物はホワイトリスト方式で最小限に絞る。
   # 実行コードは bin/ と lib/ のみ。新規プロジェクトの雛形（フォント・CSS・原稿サンプル）は

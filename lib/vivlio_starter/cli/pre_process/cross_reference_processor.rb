@@ -16,7 +16,6 @@
 # ================================================================
 
 require 'cgi'
-require 'set'
 require_relative '../common'
 require_relative '../masking'
 require_relative '../post_process/heading_processor'

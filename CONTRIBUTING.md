@@ -137,7 +137,7 @@ vs build
 
 ## アーキテクチャ概要
 
-Vivlio Starter は Vivliostyle を（かなり厚く）ラップした電子書籍執筆のための Ruby Gem です。Ruby 4.0 以降を前提として、Samovar ベースで開発されています。
+Vivlio Starter は Vivliostyle を（かなり厚く）ラップした電子書籍執筆のための Ruby Gem です。Ruby 3.4 以降を前提として、Samovar ベースで開発されています。
 
 ### ディレクトリ構造の役割
 

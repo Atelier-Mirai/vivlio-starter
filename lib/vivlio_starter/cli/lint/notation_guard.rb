@@ -34,7 +34,6 @@
 # 仕様: lint-notation-guard-spec.md §3
 # ================================================================
 
-require 'set'
 require_relative '../masking'
 
 module VivlioStarter

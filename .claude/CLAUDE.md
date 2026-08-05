@@ -17,7 +17,7 @@ Paths are still right for things that don't migrate: source files, `test/`, `con
 
 ## What This Project Is
 
-`vivlio-starter` is a Ruby gem (CLI tool `vs`) that wraps Vivliostyle (CSS typesetting engine) to generate publication-quality PDFs and EPUBs from Markdown. Requires Ruby 4.0+. The CLI framework is Samovar.
+`vivlio-starter` is a Ruby gem (CLI tool `vs`) that wraps Vivliostyle (CSS typesetting engine) to generate publication-quality PDFs and EPUBs from Markdown. Requires Ruby 3.4+. The CLI framework is Samovar.
 
 ## Commands
 
@@ -55,7 +55,7 @@ VS_DEBUG=1 vs build --no-clean --log=debug
 
 ### Configuration (`Common::CONFIG`)
 
-`config/book.yml` is loaded at module load time into `VivlioStarter::CLI::Common::CONFIG`, a frozen `Data` object (Ruby 4.0 style). Supports dot-notation (`CONFIG.book.main_title`) and bracket access. Reload with `Common.reload_configuration!`. Commands that require a project call `Common.ensure_configured!` early; `new`, `doctor`, `help` work without it.
+`config/book.yml` is loaded at module load time into `VivlioStarter::CLI::Common::CONFIG`, a frozen `Data` object. Supports dot-notation (`CONFIG.book.main_title`) and bracket access. Reload with `Common.reload_configuration!`. Commands that require a project call `Common.ensure_configured!` early; `new`, `doctor`, `help` work without it.
 
 ### Chapter / Entry Model
 
