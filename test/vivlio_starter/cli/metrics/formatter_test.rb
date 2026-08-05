@@ -368,8 +368,18 @@ module VivlioStarter
 
           output = @formatter.format_chapter_line(chapter, 15_890, false)
 
-          assert_includes output, '✅'
+          assert_includes output, '✅ 丁度良い'
           refute_includes output, '💡'
+        end
+
+        # 分量（💡 / ✅）は必ず先、文章の質（🤔）は後ろ。同じ軸の判定が動くと読めなくなる
+        def test_format_chapter_line_puts_volume_advice_before_quality
+          chapter = ChapterMetrics.new(path: 'contents/31-lint.md', title: '文章校正',
+                                       chapter_num: 31, chars: 5_481, sections: [], warning: nil)
+
+          output = @formatter.format_chapter_line(chapter, 15_890, false, extra_warnings: ['やや難解'])
+
+          assert_includes output, '✅ 丁度良い ／ 🤔 やや難解'
         end
 
         # ideal 帯の外（min は超えているが理想ではない）なら記号は付かない

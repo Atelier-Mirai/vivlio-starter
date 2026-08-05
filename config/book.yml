@@ -452,12 +452,12 @@ metrics:
   # プリセットを選択
   # use: compact
   # use: handy
-  use: standard
+  # use: standard
   # use: commercial
   # use: heavy
   # use: author_custom
   #
-  # use: relative
+  use: relative
   #   絶対の目安ではなく「その本自身の章の中央値」と比べたい場合に選びます。
   #   機能ごとに章を立てるリファレンス寄りの本では章が細かくなり、上のプリセット
   #   （刊行書の実測）にはどうしても届きません。章立ての粒度は著者の設計判断なので、
@@ -577,10 +577,14 @@ metrics:
   # 警告メッセージのカスタマイズ（オプション）
   # ----------------------------
 
-  # 警告ラベル
+  # 章別リストに添える文言
+  #   分量（💡 / ✅）… too_short / just_right / too_long の 3 状態が対になっています
+  #   文章の質（🤔）  … monotonous / too_complex
+  # 分量の判定は「直すべき欠陥」ではなく提案なので、きつくない言葉を選んでいます。
   labels:
-    too_short: "加筆検討"
-    too_long: "やや長い"
+    too_short: "加筆検討" # プリセットの min 未満
+    just_right: "丁度良い" # プリセットの ideal に収まっている
+    too_long: "やや長い" # プリセットの max 超過
     monotonous: "表現が単調"
     too_complex: "やや難解"
 

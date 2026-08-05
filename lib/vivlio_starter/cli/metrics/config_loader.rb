@@ -85,8 +85,13 @@ module VivlioStarter
         # 既定値は建石式の絶対尺度上の目安（児童書 60+／実用書 40〜60／専門書 〜40）。
         DEFAULT_READABILITY = { easy: 60, standard: 40 }.freeze
 
+        # 章別リストに添える文言。分量は too_short / just_right / too_long の 3 状態で
+        # 対になっており、文章の質は monotonous / too_complex の 2 つ。
+        # `chapter.ideal` は範囲を表す数値キーなので、こちらの語は `just_right` にして
+        # 名前の衝突を避けている。
         DEFAULT_LABELS = {
           too_short: '加筆検討',
+          just_right: '丁度良い',
           too_long: 'やや長い',
           monotonous: '表現が単調',
           too_complex: 'やや難解'

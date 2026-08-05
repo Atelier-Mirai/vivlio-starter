@@ -160,8 +160,8 @@ module VivlioStarter
         # excluded は分量判定の対象外の章（前書き・付録・後書き）。✅ も出さない。
         def format_chapter_line(chapter, max_chars, show_sections, extra_warnings: [], excluded: false)
           bar = render_bar(chapter.chars, max_chars)
-          warning = format_advice(chapter.warning, extra_warnings) +
-                    ideal_mark(chapter.chars, thresholds[:chapter], excluded:)
+          warning = format_advice(chapter.warning, extra_warnings,
+                                  just_right: just_right?(chapter.chars, thresholds[:chapter], excluded:))
 
           if show_sections && chapter.sections.any?
             format_chapter_with_sections(chapter, bar, warning, max_chars, excluded:)
@@ -185,26 +185,26 @@ module VivlioStarter
         # 警告色の 🟡 から提案の 💡 へ移し、質の指摘とも記号を分けた
         # （`chapter-volume-calibration-data.md` §7.3）。どちらの記号も単一コードポイント・
         # EAW=W で、`terminal-output-notes.md` §1 の桁揃えの規則を満たす。
-        # @return [String] 行末に足す表示片（先頭に空白を含む）。指摘が無ければ空文字列
-        def format_advice(volume, quality = [])
+        # 分量は必ず先、文章の質は後ろに置く。分量の 3 状態（💡 足りない／✅ 丁度良い／
+        # 💡 長い）は同じ軸の判定なので、位置が動くと読み手が軸を追えなくなる。
+        # @return [String] 行末に足す表示片（先頭に空白を含む）。何も無ければ空文字列
+        def format_advice(volume, quality = [], just_right: false)
           marks = []
           marks << "💡 #{volume}" if volume
+          marks << "✅ #{labels[:just_right]}" if just_right
           marks << "🤔 #{quality.join('・')}" if quality.any?
           marks.empty? ? '' : " #{marks.join(' ／ ')}"
         end
 
-        # 分量が ideal 帯に収まっているときに付ける ✅。
+        # 分量が ideal 帯に収まっているか。
         # 「足りない／多すぎる」だけを伝えると、直すところが無い章に何の反応も返らず
-        # 判定されたのかどうかが分からない。**ちょうどよい**ことも伝える
-        # （`chapter-volume-calibration-data.md` §7.1）。文言を添えないのは、
-        # 💡 と 🤔 が「何を検討するか」を言う必要があるのに対し、✅ は
-        # 「することが無い」を意味するだけで語を要さないため。
+        # 判定されたのかどうかが分からない。**丁度良い**ことも伝える
+        # （`chapter-volume-calibration-data.md` §7.1）。
         # @param excluded [Boolean] 分量判定の対象外の章なら ✅ も出さない
-        def ideal_mark(chars, threshold, excluded: false)
-          return '' if excluded
-          return '' unless chars.between?(threshold[:ideal_min], threshold[:ideal_max])
+        def just_right?(chars, threshold, excluded: false)
+          return false if excluded
 
-          ' ✅'
+          chars.between?(threshold[:ideal_min], threshold[:ideal_max])
         end
 
         # 節付きで章をフォーマットする
@@ -215,8 +215,9 @@ module VivlioStarter
           chapter.sections.each_with_index do |sec, idx|
             prefix = idx == chapter.sections.size - 1 ? '  └' : '  ├'
             sec_bar = render_bar(sec.chars, max_chars)
-            sec_warning = format_advice(sec.warning) +
-                          ideal_mark(sec.chars, thresholds[:section], excluded:)
+            sec_warning = format_advice(
+              sec.warning, just_right: just_right?(sec.chars, thresholds[:section], excluded:)
+            )
             sec_title = padded_section_title(sec.title)
             char_count = format_char_count(sec.chars)
             lines << "#{prefix} #{sec_title} #{sec_bar} #{char_count}#{sec_warning}"
