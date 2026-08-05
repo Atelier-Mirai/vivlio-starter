@@ -452,12 +452,12 @@ metrics:
   # プリセットを選択
   # use: compact
   # use: handy
-  # use: standard
+  use: standard
   # use: commercial
   # use: heavy
   # use: author_custom
   #
-  use: relative
+  # use: relative
   #   絶対の目安ではなく「その本自身の章の中央値」と比べたい場合に選びます。
   #   機能ごとに章を立てるリファレンス寄りの本では章が細かくなり、上のプリセット
   #   （刊行書の実測）にはどうしても届きません。章立ての粒度は著者の設計判断なので、
