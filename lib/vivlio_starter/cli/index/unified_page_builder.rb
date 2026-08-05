@@ -21,7 +21,6 @@ require 'yaml'
 require 'fileutils'
 require 'cgi'
 require_relative '../common'
-require_relative 'hierarchical_index'
 require_relative '../pre_process/book_settings_css'
 
 module VivlioStarter
@@ -59,11 +58,10 @@ module VivlioStarter
         DEFAULT_REFERENCE_STYLE = 'main_and_sub'
         DEFAULT_MAX_SUB_REFERENCES = 8
 
-        attr_reader :index_data, :hierarchical_index, :limited_reference_terms
+        attr_reader :index_data, :limited_reference_terms
 
         def initialize(glossary_config: {}, index_config: nil)
           @index_data = {}
-          @hierarchical_index = HierarchicalIndex.new
           @glossary_config = glossary_config
           @index_config = index_config || Common::CONFIG.index.to_h
           @glossary_backlinks = {}
@@ -149,15 +147,8 @@ module VivlioStarter
           data = YAML.load_file(Common::INDEX_MATCHES_FILE, permitted_classes: [Time, Symbol])
           @index_data = data['terms'] || {}
 
-          # HierarchicalIndex にエントリを追加（全リンクを保持、重複排除なし）
-          @index_data.each do |term, occurrences|
-            occurrences.each do |occ|
-              link = occ['link'] || occ[:link]
-              @hierarchical_index.add_entry(term, link)
-            end
-          end
-
-          Common.log_info("索引データを読み込み: #{@index_data.size} 件の用語、#{@hierarchical_index.link_count} 件のリンク")
+          link_count = @index_data.values.sum(&:size)
+          Common.log_info("索引データを読み込み: #{@index_data.size} 件の用語、#{link_count} 件のリンク")
         end
 
         # 生成物 book-settings.css への link。索引・用語集は章 HTML と違って
