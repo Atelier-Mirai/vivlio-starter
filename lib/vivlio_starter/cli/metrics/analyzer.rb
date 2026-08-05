@@ -27,10 +27,15 @@ require_relative 'content_words'
 module VivlioStarter
   module CLI
     module Metrics
-      # 基本統計情報を保持するイミュータブルデータ
+      # 基本統計情報を保持するイミュータブルデータ。
+      # chars / chars_no_newline は生の分量。prose_chars / code_chars / notation_chars は
+      # 全空白を除いた内訳で、3 つの合計が「生から全空白を除いた長さ」に一致する。
       BasicStats = Data.define(
         :chars,
         :chars_no_newline,
+        :prose_chars,
+        :code_chars,
+        :notation_chars,
         :lines,
         :sentences,
         :avg_sentence_len,
@@ -107,15 +112,26 @@ module VivlioStarter
         end
 
         # 基本統計を算出する。
-        # 文字数・行数は「分量」なので生の本文（コード込み）で数えるが、
+        # 行数と chars / chars_no_newline は生の本文（コード込み）で数えるが、
         # 文・節・読点は文章としての構造なので prose（コード除去後）で数える。
+        #
+        # 著者に見せる主役は本文（prose_chars）で、コードと記法はその外数として添える
+        # （`chapter-volume-calibration-data.md` §7.1）。内訳の 3 つは全空白を除いた基準に
+        # 揃えてあるため、合計が「生から全空白を除いた長さ」に一致する。
         def basic_stats
           sentences = sentence_segments(prose)
           clauses = clause_segments(prose)
 
+          all_chars = content.gsub(/\s/, '').length
+          without_code = Masking.strip_code(content).gsub(/\s/, '').length
+          prose_chars = prose.gsub(/\s/, '').length
+
           BasicStats.new(
             chars: content.length,
             chars_no_newline: content.delete("\r\n").length,
+            prose_chars:,
+            code_chars: all_chars - without_code,
+            notation_chars: without_code - prose_chars,
             lines: content.empty? ? 0 : content.each_line.count,
             sentences: sentences.size,
             avg_sentence_len: safe_average(sentences.sum(&:length), sentences.size),

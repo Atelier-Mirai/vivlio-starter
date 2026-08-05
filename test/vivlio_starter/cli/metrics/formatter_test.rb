@@ -24,6 +24,9 @@ module VivlioStarter
           basic = BasicStats.new(
             chars: 12_345,
             chars_no_newline: 12_000,
+            prose_chars: 7_000,
+            code_chars: 4_000,
+            notation_chars: 500,
             lines: 100,
             sentences: 50,
             avg_sentence_len: 240.0,
@@ -35,8 +38,30 @@ module VivlioStarter
           output = @formatter.format_basic_info(basic)
 
           assert_includes output, '📊 文章統計 — 基本情報'
-          assert_includes output, '12,000 文字'
+          assert_includes output, '7,000 文字'
+          assert_includes output, '（本文。ほかに コード 4,000 文字、記法 500 文字）'
           assert_includes output, '100 行'
+        end
+
+        def test_format_basic_info_omits_breakdown_without_code_or_notation
+          basic = BasicStats.new(
+            chars: 9_000,
+            chars_no_newline: 8_800,
+            prose_chars: 8_500,
+            code_chars: 0,
+            notation_chars: 0,
+            lines: 80,
+            sentences: 40,
+            avg_sentence_len: 212.5,
+            clauses: 90,
+            avg_clause_len: 94.0,
+            commas: 89
+          )
+
+          output = @formatter.format_basic_info(basic)
+
+          assert_includes output, '8,500 文字（本文）'
+          refute_includes output, 'ほかに'
         end
 
         def test_format_chapter_count_summary_shows_total_and_average
@@ -50,6 +75,9 @@ module VivlioStarter
           basic = BasicStats.new(
             chars: 12_345,
             chars_no_newline: 12_000,
+            prose_chars: 7_000,
+            code_chars: 4_000,
+            notation_chars: 500,
             lines: 100,
             sentences: 50,
             avg_sentence_len: 240.0,

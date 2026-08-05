@@ -43,11 +43,14 @@ module VivlioStarter
           "📚 合計 #{count} 章 ／ 平均 #{number_with_comma(avg)} 文字"
         end
 
-        # 基本情報セクションを生成する
+        # 基本情報セクションを生成する。
+        # 主役は本文で、コードと記法は外数としてカッコ内に添える
+        # （`chapter-volume-calibration-data.md` §7.1）。文章が主でコード・記法は従、
+        # という位置づけによる。
         def format_basic_info(basic)
           <<~OUTPUT.chomp
             📊 文章統計 — 基本情報
-            - 文字数: #{number_with_comma(basic.chars_no_newline)} 文字（改行除く）
+            - 文字数: #{number_with_comma(basic.prose_chars)} 文字#{char_breakdown(basic)}
             - 行数: #{number_with_comma(basic.lines)} 行
           OUTPUT
         end
@@ -258,6 +261,17 @@ module VivlioStarter
 
         # 数値をカンマ区切りにする
         def number_with_comma(num) = num.to_s.gsub(/(\d)(?=(\d{3})+(?!\d))/, '\\1,')
+
+        # 本文に添える内訳（コード・記法）を外数で組み立てる。
+        # コードも記法も無い原稿（小説など）では内訳を省き、行を短く保つ。
+        def char_breakdown(basic)
+          extras = []
+          extras << "コード #{number_with_comma(basic.code_chars)} 文字" if basic.code_chars.positive?
+          extras << "記法 #{number_with_comma(basic.notation_chars)} 文字" if basic.notation_chars.positive?
+          return '（本文）' if extras.empty?
+
+          "（本文。ほかに #{extras.join('、')}）"
+        end
 
         def format_char_count(num)
           formatted = number_with_comma(num)

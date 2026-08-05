@@ -40,7 +40,7 @@ module VivlioStarter
 
         # キャッシュの構造バージョン。読解難度の特徴量導入や MATTR 追加など
         # 互換性を破る変更時にインクリメントし、旧バージョンのキャッシュを無効化する。
-        CACHE_SCHEMA_VERSION = 4
+        CACHE_SCHEMA_VERSION = 5
 
         # 「見直したい長い文」として挙げる下限文字数と最大件数。
         LONG_SENTENCE_MIN = 80
@@ -138,6 +138,9 @@ module VivlioStarter
           Metrics::BasicStats.new(
             chars: basics.sum(&:chars),
             chars_no_newline: basics.sum(&:chars_no_newline),
+            prose_chars: basics.sum(&:prose_chars),
+            code_chars: basics.sum(&:code_chars),
+            notation_chars: basics.sum(&:notation_chars),
             lines: basics.sum(&:lines),
             sentences: total_sentences,
             avg_sentence_len: total_sentences.positive? ? sentence_char_sum / total_sentences : 0.0,
@@ -241,6 +244,9 @@ module VivlioStarter
           basic = Metrics::BasicStats.new(
             chars: 0,
             chars_no_newline: 0,
+            prose_chars: 0,
+            code_chars: 0,
+            notation_chars: 0,
             lines: 0,
             sentences: 0,
             avg_sentence_len: 0.0,
@@ -330,6 +336,9 @@ module VivlioStarter
           {
             'chars' => basic.chars,
             'chars_without_newline' => basic.chars_no_newline,
+            'prose_chars' => basic.prose_chars,
+            'code_chars' => basic.code_chars,
+            'notation_chars' => basic.notation_chars,
             'lines' => basic.lines,
             'sentences' => basic.sentences,
             'avg_sentence_chars' => basic.avg_sentence_len,
@@ -385,6 +394,9 @@ module VivlioStarter
           Metrics::BasicStats.new(
             chars: data['chars'],
             chars_no_newline: data['chars_without_newline'],
+            prose_chars: data['prose_chars'],
+            code_chars: data['code_chars'],
+            notation_chars: data['notation_chars'],
             lines: data['lines'],
             sentences: data['sentences'],
             avg_sentence_len: data['avg_sentence_chars'],
@@ -798,6 +810,9 @@ module VivlioStarter
             'lines' => basic.lines,
             'chars' => basic.chars,
             'chars_without_newline' => basic.chars_no_newline,
+            'prose_chars' => basic.prose_chars,
+            'code_chars' => basic.code_chars,
+            'notation_chars' => basic.notation_chars,
             'sentences' => basic.sentences,
             'avg_sentence_chars' => basic.avg_sentence_len,
             'commas' => basic.commas,
