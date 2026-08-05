@@ -28,12 +28,12 @@ module VivlioStarter
   module CLI
     module Metrics
       # 基本統計情報を保持するイミュータブルデータ。
-      # chars / chars_no_newline は生の分量。prose_chars / code_chars / notation_chars は
-      # 全空白を除いた内訳で、3 つの合計が「生から全空白を除いた長さ」に一致する。
+      # chars / chars_no_newline は生の分量。code_chars / notation_chars は全空白を
+      # 除いた内訳で、本文（`VocabularyStats#total_char_count`）と足すと
+      # 「生から全空白を除いた長さ」に一致する。
       BasicStats = Data.define(
         :chars,
         :chars_no_newline,
-        :prose_chars,
         :code_chars,
         :notation_chars,
         :lines,
@@ -115,9 +115,10 @@ module VivlioStarter
         # 行数と chars / chars_no_newline は生の本文（コード込み）で数えるが、
         # 文・節・読点は文章としての構造なので prose（コード除去後）で数える。
         #
-        # 著者に見せる主役は本文（prose_chars）で、コードと記法はその外数として添える
-        # （`chapter-volume-calibration-data.md` §7.1）。内訳の 3 つは全空白を除いた基準に
-        # 揃えてあるため、合計が「生から全空白を除いた長さ」に一致する。
+        # 著者に見せる主役は本文で、コードと記法はその外数として添える
+        # （`chapter-volume-calibration-data.md` §7.1）。本文そのものは語彙分析の分母と
+        # 同じ値なので `VocabularyStats#total_char_count` を唯一の持ち主にし、ここでは
+        # 外数だけを持つ。全空白を除いた基準に揃えてあるため、本文と足すと原文に一致する。
         def basic_stats
           sentences = sentence_segments(prose)
           clauses = clause_segments(prose)
@@ -129,7 +130,6 @@ module VivlioStarter
           BasicStats.new(
             chars: content.length,
             chars_no_newline: content.delete("\r\n").length,
-            prose_chars:,
             code_chars: all_chars - without_code,
             notation_chars: without_code - prose_chars,
             lines: content.empty? ? 0 : content.each_line.count,

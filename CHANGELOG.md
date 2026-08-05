@@ -30,7 +30,7 @@
 ### Changed
 - [High] **`vs metrics` の「文字数」を本文主体に変えた**（`chapter-volume-calibration-data.md` §7.1）: これまで見せていたのは生の Markdown（コード・記法込み）で、本書実測では**地の文の 2.03 倍**あった。文章が主役でコード・記法は脇役なのに、表示は脇役を含めた数字に寄っていた。**本文を主体に出し、コードと記法はカッコ内に外数で添える**形へ変える。
   - `- 文字数: 117,487 文字（本文。ほかに コード 79,273 文字、記法 11,208 文字）`
-  - 内訳の 3 つは**全空白を除いた基準に揃えて**あり、合計が「原文から全空白を除いた長さ」に一致する（`BasicStats#prose_chars` / `#code_chars` / `#notation_chars`）。フェンス（```` ``` ````）は `Masking.strip_code` がまとめて落とすためコード側に算入される。
+  - 外数（`BasicStats#code_chars` / `#notation_chars`）は**全空白を除いた基準**で数え、本文（`VocabularyStats#total_char_count`）と足すと「原文から全空白を除いた長さ」に一致する。本文は語彙分析の分母と同じ値なので、持ち主を `VocabularyStats` 側の 1 つに寄せている。フェンス（```` ``` ````）は `Masking.strip_code` がまとめて落とすためコード側に算入される。
   - コードも記法も無い原稿（小説など）では内訳を省き `（本文）` だけにする。
   - **この「約 2 倍」はバグではない**。両経路とも各文字を 1 回しか数えておらず、差は `Masking.strip_code` ＋ `strip_markdown` を通すかどうかという定義差だけである（`metrics-char-count-basis-report.md`）。
   - キャッシュは `CACHE_SCHEMA_VERSION` を 4 → 5 に上げて再計算させる。互換分岐は置かない。

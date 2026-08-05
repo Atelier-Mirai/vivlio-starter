@@ -107,7 +107,7 @@ module VivlioStarter
           output_advice(all_analyses) if options[:all]
 
           # 長い解析結果の最後を 1 行で締める（何章を対象にしたかが読み取れる）
-          Common.log_result("#{all_analyses.size} 章を解析しました（本文 #{final_basic.prose_chars} 文字）",
+          Common.log_result("#{all_analyses.size} 章を解析しました（本文 #{final_vocab.total_char_count} 文字）",
                             status: :success)
           0
         end
@@ -138,7 +138,6 @@ module VivlioStarter
           Metrics::BasicStats.new(
             chars: basics.sum(&:chars),
             chars_no_newline: basics.sum(&:chars_no_newline),
-            prose_chars: basics.sum(&:prose_chars),
             code_chars: basics.sum(&:code_chars),
             notation_chars: basics.sum(&:notation_chars),
             lines: basics.sum(&:lines),
@@ -244,7 +243,6 @@ module VivlioStarter
           basic = Metrics::BasicStats.new(
             chars: 0,
             chars_no_newline: 0,
-            prose_chars: 0,
             code_chars: 0,
             notation_chars: 0,
             lines: 0,
@@ -336,7 +334,6 @@ module VivlioStarter
           {
             'chars' => basic.chars,
             'chars_without_newline' => basic.chars_no_newline,
-            'prose_chars' => basic.prose_chars,
             'code_chars' => basic.code_chars,
             'notation_chars' => basic.notation_chars,
             'lines' => basic.lines,
@@ -394,7 +391,6 @@ module VivlioStarter
           Metrics::BasicStats.new(
             chars: data['chars'],
             chars_no_newline: data['chars_without_newline'],
-            prose_chars: data['prose_chars'],
             code_chars: data['code_chars'],
             notation_chars: data['notation_chars'],
             lines: data['lines'],
@@ -557,7 +553,7 @@ module VivlioStarter
 
         def output_final_summary(basic, vocab, readability)
           puts ''
-          puts formatter.format_basic_info(basic)
+          puts formatter.format_basic_info(basic, vocab)
           puts ''
           puts formatter.format_sentence_structure(basic)
           puts ''
@@ -810,7 +806,6 @@ module VivlioStarter
             'lines' => basic.lines,
             'chars' => basic.chars,
             'chars_without_newline' => basic.chars_no_newline,
-            'prose_chars' => basic.prose_chars,
             'code_chars' => basic.code_chars,
             'notation_chars' => basic.notation_chars,
             'sentences' => basic.sentences,

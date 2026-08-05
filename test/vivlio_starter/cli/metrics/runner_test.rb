@@ -13,19 +13,18 @@ module VivlioStarter
           @runner = Runner.new([], {})
         end
 
-        def test_should_aggregate_prose_code_and_notation_chars
+        def test_should_aggregate_code_and_notation_chars
           basics = [
             build_basic_stats(chars: 1_000, chars_no_newline: 900, lines: 10, sentences: 5,
                               avg_sentence_len: 200.0, clauses: 8, avg_clause_len: 120.0, commas: 3,
-                              prose_chars: 400, code_chars: 300, notation_chars: 50),
+                              code_chars: 300, notation_chars: 50),
             build_basic_stats(chars: 2_000, chars_no_newline: 1_800, lines: 20, sentences: 10,
                               avg_sentence_len: 150.0, clauses: 12, avg_clause_len: 80.0, commas: 5,
-                              prose_chars: 900, code_chars: 500, notation_chars: 100)
+                              code_chars: 500, notation_chars: 100)
           ]
 
           aggregated = @runner.send(:aggregate_basic_stats, basics)
 
-          assert_equal 1_300, aggregated.prose_chars
           assert_equal 800, aggregated.code_chars
           assert_equal 150, aggregated.notation_chars
         end
@@ -130,7 +129,7 @@ module VivlioStarter
           basic = build_basic_stats(chars: 500, chars_no_newline: 480, lines: 8,
                                     sentences: 2, avg_sentence_len: 250.0,
                                     clauses: 3, avg_clause_len: 160.0, commas: 1,
-                                    prose_chars: 300, code_chars: 150, notation_chars: 30)
+                                    code_chars: 150, notation_chars: 30)
 
           result = @runner.send(:basic_stats_to_structured_hash, basic)
 
@@ -138,7 +137,6 @@ module VivlioStarter
             'lines' => 8,
             'chars' => 500,
             'chars_without_newline' => 480,
-            'prose_chars' => 300,
             'code_chars' => 150,
             'notation_chars' => 30,
             'sentences' => 2,
@@ -253,11 +251,10 @@ module VivlioStarter
 
         def build_basic_stats(chars:, chars_no_newline:, lines:, sentences:, avg_sentence_len:,
                               clauses:, avg_clause_len:, commas:,
-                              prose_chars: 0, code_chars: 0, notation_chars: 0)
+                              code_chars: 0, notation_chars: 0)
           Metrics::BasicStats.new(
             chars:,
             chars_no_newline:,
-            prose_chars:,
             code_chars:,
             notation_chars:,
             lines:,

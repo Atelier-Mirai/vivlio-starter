@@ -46,11 +46,11 @@ module VivlioStarter
         # 基本情報セクションを生成する。
         # 主役は本文で、コードと記法は外数としてカッコ内に添える
         # （`chapter-volume-calibration-data.md` §7.1）。文章が主でコード・記法は従、
-        # という位置づけによる。
-        def format_basic_info(basic)
+        # という位置づけによる。本文は語彙分析の分母と同じ値なので vocab から採る。
+        def format_basic_info(basic, vocab)
           <<~OUTPUT.chomp
             📊 文章統計 — 基本情報
-            - 文字数: #{number_with_comma(basic.prose_chars)} 文字#{char_breakdown(basic)}
+            - 文字数: #{number_with_comma(vocab.total_char_count)} 文字#{char_breakdown(basic)}
             - 行数: #{number_with_comma(basic.lines)} 行
           OUTPUT
         end

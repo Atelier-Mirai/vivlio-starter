@@ -24,7 +24,6 @@ module VivlioStarter
           basic = BasicStats.new(
             chars: 12_345,
             chars_no_newline: 12_000,
-            prose_chars: 7_000,
             code_chars: 4_000,
             notation_chars: 500,
             lines: 100,
@@ -35,7 +34,7 @@ module VivlioStarter
             commas: 119
           )
 
-          output = @formatter.format_basic_info(basic)
+          output = @formatter.format_basic_info(basic, build_prose_vocab(7_000))
 
           assert_includes output, '📊 文章統計 — 基本情報'
           assert_includes output, '7,000 文字'
@@ -47,7 +46,6 @@ module VivlioStarter
           basic = BasicStats.new(
             chars: 9_000,
             chars_no_newline: 8_800,
-            prose_chars: 8_500,
             code_chars: 0,
             notation_chars: 0,
             lines: 80,
@@ -58,7 +56,7 @@ module VivlioStarter
             commas: 89
           )
 
-          output = @formatter.format_basic_info(basic)
+          output = @formatter.format_basic_info(basic, build_prose_vocab(8_500))
 
           assert_includes output, '8,500 文字（本文）'
           refute_includes output, 'ほかに'
@@ -75,7 +73,6 @@ module VivlioStarter
           basic = BasicStats.new(
             chars: 12_345,
             chars_no_newline: 12_000,
-            prose_chars: 7_000,
             code_chars: 4_000,
             notation_chars: 500,
             lines: 100,
@@ -376,6 +373,13 @@ module VivlioStarter
         end
 
         private
+
+        # 本文字数だけを見る表示テスト用の最小構成
+        def build_prose_vocab(total_char_count)
+          build_vocab(kanji_ratio: 0.0, avg_word_length: 0.0, ttr: 0.0, total_tokens: 0,
+                      unique_tokens: 0, total_char_count:, kanji_char_count: 0,
+                      total_word_length: 0, tokens_map: {})
+        end
 
         def build_vocab(kanji_ratio:, avg_word_length:, ttr:, total_tokens:, unique_tokens:,
                         total_char_count:, kanji_char_count:, total_word_length:, tokens_map:, mattr: 0.0,

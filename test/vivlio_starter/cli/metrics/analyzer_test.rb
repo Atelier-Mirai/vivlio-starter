@@ -17,7 +17,7 @@ module VivlioStarter
           assert_equal 2, stats.lines
         end
 
-        def test_should_split_volume_into_prose_code_and_notation
+        def test_should_split_volume_into_code_and_notation_outside_prose
           content = <<~MARKDOWN
             ## 見出しです
 
@@ -27,15 +27,17 @@ module VivlioStarter
             puts 'hello'
             ```
           MARKDOWN
-          stats = Analyzer.new(content).basic_stats
+          analyzer = Analyzer.new(content)
+          stats = analyzer.basic_stats
 
-          # 3 つの内訳は全空白を除いた基準で揃えてあり、合計が原文と一致する
+          # 外数（コード・記法）に本文を足すと原文の長さ（全空白除く）に一致する
+          prose_chars = analyzer.vocabulary_stats.total_char_count
           assert_equal content.gsub(/\s/, '').length,
-                       stats.prose_chars + stats.code_chars + stats.notation_chars
+                       prose_chars + stats.code_chars + stats.notation_chars
           # Masking.strip_code はフェンスごと落とすので、フェンスもコードに算入される
           assert_equal "```rubyputs'hello'```".length, stats.code_chars
           # 見出しは記号 `##` だけが落ち、文言は本文として数える
-          assert_equal '見出しですこれは本文の段落です。'.length, stats.prose_chars
+          assert_equal '見出しですこれは本文の段落です。'.length, prose_chars
           assert_operator stats.notation_chars, :positive?
         end
 
@@ -186,7 +188,8 @@ module VivlioStarter
             no sentence here
             ```
           MD
-          stats = Analyzer.new(content).basic_stats
+          analyzer = Analyzer.new(content)
+          stats = analyzer.basic_stats
 
           assert_equal content.length, stats.chars
           assert_equal 2, stats.sentences
