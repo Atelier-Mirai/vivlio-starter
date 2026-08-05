@@ -9,13 +9,10 @@
 #   - 名詞連続の抽出（MeCab）
 #   - TF-IDF によるスコアリング（重み・係数の定義元は ScoringEngine）
 #
-# Phase 2 機能:
-#   - 自動抽出とスコアリング
-#   - 候補 YAML ファイル生成
+# 抽出結果（term_scores / term_contexts）の見せ方は呼び出し元が決める。
+# 現在の唯一の出口は UnifiedIndexManager 経由の _index_glossary_review.md である。
 # ================================================================
 
-require 'yaml'
-require 'fileutils'
 require_relative '../common'
 require_relative 'yomi_inferrer'
 require_relative 'code_block_stripper'
@@ -27,20 +24,6 @@ module VivlioStarter
     module IndexCommands
       # 索引候補語自動抽出クラス
       class IndexCandidateExtractor
-        BANNER = <<~BANNER
-          # ================================================================
-          # 索引候補リスト（config/index_candidates.yml）
-          # ================================================================
-          # vs index:candidate（内部コマンド）によって自動生成される索引用語候補です。
-          #
-          # 使い方:
-          #   1. contexts で示される章・抜粋を参照し、索引に載せたい語を確認する
-          #   2. enabled を true/false に切り替えて採用可否を管理する
-          #   3. 採用する語は原稿に [用語|読み] でマークアップ、または index_glossary_terms.yml へ登録する
-          #   4. 読みが誤っている場合は index_glossary_terms.yml に正しい yomi を追加してから再生成する
-          # ================================================================
-        BANNER
-
         # 定義文から語を切り出すときに、語の一部として許す文字。
         #
         # 素の `.` で 20 文字を取ると、文の途中から機械的に切り出すことになり
@@ -165,48 +148,6 @@ module VivlioStarter
           end
 
           engine.scores
-        end
-
-        # 索引候補を YAML ファイルに出力
-        # @param output_file [String] 出力ファイルパス
-        # @param threshold [Integer] スコア閾値（この値以上の候補のみ出力）
-        def export_candidates!(output_file = 'config/index_candidates.yml', threshold = 150)
-          FileUtils.mkdir_p(File.dirname(output_file))
-
-          candidates = term_scores
-                       .select { |_, score| score >= threshold }
-                       .sort_by { |_, score| -score }
-                       .map do |term, score|
-            yomi = @yomi_inferrer.available? ? @yomi_inferrer.infer(term) : term
-            contexts = @term_contexts[term]
-                       .uniq { |ctx| [ctx[:chapter], ctx[:context]] }
-                       .first(3)
-
-            {
-              'term' => term,
-              'yomi' => yomi,
-              'score' => score.round(1),
-              'contexts' => contexts,
-              'enabled' => true
-            }
-          end
-
-          data = {
-            'generated_at' => Time.now.iso8601,
-            'threshold' => threshold,
-            'total_candidates' => candidates.size,
-            'candidates' => candidates
-          }
-
-          yaml = data.to_yaml(line_width: -1)
-          yaml_with_spacing = yaml
-                              .sub("candidates:\n- term:", "candidates:\n\n- term:")
-                              .gsub("\n- term:", "\n\n- term:")
-
-          File.write(output_file, "#{BANNER}#{yaml_with_spacing}", encoding: 'utf-8')
-          Common.log_success("索引候補を #{output_file} に出力しました")
-        rescue StandardError => e
-          Common.log_error("索引候補の出力に失敗しました: #{e.message}")
         end
 
         private

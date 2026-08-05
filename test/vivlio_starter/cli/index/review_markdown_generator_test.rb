@@ -587,7 +587,7 @@ module VivlioStarter
         assert_equal 'るびー・かいてい', changes[0]['yomi']
       end
 
-      # --- phase: exists? and cleanup! tests ---
+      # --- phase: exists? tests ---
 
       def test_exists_returns_false_when_file_missing
         refute @generator.exists?
@@ -597,14 +597,6 @@ module VivlioStarter
         File.write('_index_glossary_review.md', 'test')
 
         assert @generator.exists?
-      end
-
-      def test_cleanup_removes_file
-        File.write('_index_glossary_review.md', 'test')
-
-        @generator.cleanup!
-
-        refute File.exist?('_index_glossary_review.md')
       end
     end
   end

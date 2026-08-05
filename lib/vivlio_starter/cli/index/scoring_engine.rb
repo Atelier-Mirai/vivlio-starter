@@ -81,13 +81,6 @@ module VivlioStarter
         # 用語 → スコアのハッシュ
         def scores = terms.to_h { [it, score(it)] }
 
-        # 閾値以上のスコアを持つ用語を降順で取得
-        # @param threshold [Float] 閾値
-        # @return [Hash] 用語とスコアのハッシュ
-        def filter_by_threshold(threshold)
-          scores.select { |_, v| v >= threshold }.sort_by { -_2 }.to_h
-        end
-
         # スコアをリセット
         def reset!
           @traits.clear

@@ -155,57 +155,6 @@ module VivlioStarter
           refute_empty ruby_contexts
         end
 
-        # --- phase: export_candidates! tests ---
-
-        def test_export_candidates_creates_yaml_file
-          File.write('contents/05-export.md', <<~MD)
-            # Export Test
-
-            プログラミングとは、コンピュータに命令を与えることである。
-            HTMLとCSSとJavaScriptを使います。
-          MD
-
-          @extractor.extract_from_chapters!(['05-export'])
-          @extractor.export_candidates!('config/index_candidates.yml', 10)
-
-          assert File.exist?('config/index_candidates.yml')
-        end
-
-        def test_export_candidates_includes_metadata
-          File.write('contents/06-meta.md', <<~MD)
-            # Metadata Test
-
-            Pythonについては、データ分析で広く使われている。
-            JavaScriptはウェブ開発の必須技術である。
-          MD
-
-          @extractor.extract_from_chapters!(['06-meta'])
-          @extractor.export_candidates!('config/index_candidates.yml', 10)
-
-          content = File.read('config/index_candidates.yml')
-          assert_includes content, 'generated_at:'
-          assert_includes content, 'threshold:'
-          assert_includes content, 'total_candidates:'
-        end
-
-        def test_export_candidates_filters_by_threshold
-          File.write('contents/07-threshold.md', <<~MD)
-            # Threshold Test
-
-            HighScore語 HighScore語 HighScore語 HighScore語 HighScore語
-            LowScore語
-          MD
-
-          @extractor.extract_from_chapters!(['07-threshold'])
-          @extractor.export_candidates!('config/index_candidates.yml', 1000)
-
-          content = File.read('config/index_candidates.yml')
-          # 高閾値なので候補が少ない
-          yaml_data = YAML.load_file('config/index_candidates.yml')
-          # 閾値が高すぎると候補がない可能性がある
-          assert yaml_data['candidates'].is_a?(Array)
-        end
-
         # --- phase: sanitize tests (integration) ---
 
         def test_sanitize_removes_html_tags

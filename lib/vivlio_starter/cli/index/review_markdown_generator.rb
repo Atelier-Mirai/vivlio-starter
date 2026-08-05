@@ -261,12 +261,6 @@ module VivlioStarter
                                .map { { 'term' => it.term, 'yomi' => it.yomi } }
       end
 
-      # レビューファイルを削除
-      def cleanup!
-        FileUtils.rm_f(REVIEW_FILE)
-        FileUtils.rm_f(LEGACY_REVIEW_FILE)
-      end
-
       # 用語と説明文をパース
       # 出現箇所リストと説明文を区別して抽出
       # @param content [String] Markdown内容

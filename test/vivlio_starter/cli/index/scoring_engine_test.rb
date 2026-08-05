@@ -108,23 +108,6 @@ module VivlioStarter
           assert_equal %w[A B], @engine.scores.keys.sort
         end
 
-        def test_filter_by_threshold_returns_sorted_hash
-          @engine.mark('高', :definition)      # 30.0
-          @engine.mark('低', :noun_sequence)   # 10.0
-
-          result = @engine.filter_by_threshold(20)
-
-          assert_equal ['高'], result.keys
-        end
-
-        def test_filter_by_threshold_sorts_descending
-          @engine.mark('中', :technical)       # 15.0
-          @engine.mark('高', :definition)      # 30.0
-          @engine.mark('低', :noun_sequence)   # 10.0
-
-          assert_equal %w[高 中 低], @engine.filter_by_threshold(0).keys
-        end
-
         def test_reset_clears_all_scores
           @engine.mark('Ruby', :definition)
           @engine.observe('Ruby', tf: 5, df: 1, doc_count: 5)
