@@ -141,11 +141,9 @@ module VivlioStarter
           cmd.stub(:print_build_timings, nil) do
             cmd.stub(:print_outline_debug_info, nil) do
               cmd.stub(:open_pdf, nil) do
-                Build::ChapterConfig.stub(:configured_chapters, nil) do
-                  Common.stub(:log_action, nil) do
-                    Common.stub(:log_success, nil) do
-                      cmd.call
-                    end
+                Common.stub(:log_action, nil) do
+                  Common.stub(:log_success, nil) do
+                    cmd.call
                   end
                 end
               end

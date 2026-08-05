@@ -73,33 +73,6 @@ module VivlioStarter
           []
         end
 
-        # 配列が全て整数（または整数文字列）かチェック
-        def all_integers?(arr)
-          return false unless arr.is_a?(Array)
-
-          arr.all? do |item|
-            item.to_s.strip.match?(/\A\d+\z/)
-          end
-        end
-
-        # catalog.yml から対象とする章ファイル名のリストを返す
-        #
-        # catalog.yml の PREFACE / CHAPTERS / APPENDICES / POSTFACE から
-        # basename を収集し、存在するファイルのみを返す。
-        #
-        # 返り値: ファイル名配列（例: ["00-preface.md", "11-install.md", ...]）
-        #         または空配列
-        def configured_chapters
-          basenames = CatalogLoader.load_existing_basenames
-          Common.log_info("[Catalog] loaded basenames=#{basenames.inspect}")
-
-          # ファイル名配列に変換（.md 付き）
-          basenames.map { |bn| "#{bn}.md" }
-        rescue StandardError => e
-          Common.log_error("catalog.yml の読み込みに失敗しました: #{e.message}")
-          raise
-        end
-
         # ディレクトリ内の *.html から、章番号レンジと keep_numbers でフィルタ
         # 注: アンダースコア始まりのファイルは \A(\d+)- パターンにマッチしないため自動的に除外される
         def htmls_for_range(base_dir, range, keep_numbers = nil)
