@@ -267,30 +267,34 @@ module VivlioStarter
 
         # 前処理の時点ではまだ HTML が並んでいないので、HeadingProcessor の
         # discovered_main_chapter_tokens（html/ を舐める）は使えない。
-        # 単章/選択ビルドの override があればそれを、無ければ contents/ から起こす。
+        # 単章/選択ビルドの override があればそれを、無ければ catalog.yml から起こす。
         def main_chapter_order
           hp = PostProcessCommands::HeadingProcessor
           override = hp.chapter_tokens_override
           return hp.normalize_and_filter_tokens(override) if override&.any?
 
-          detect_main_chapters_from_files
+          main_chapters_from_catalog
         end
         private_class_method :main_chapter_order
 
-        def detect_main_chapters_from_files
+        # 章立ての正典は catalog.yml なので、そこから本文章の並びを起こす。
+        #
+        # **contents/ を舐めてはいけない。** `vs create 15-draft` したあと
+        # catalog.yml から外した草稿まで数に入り、**図表番号の章プレフィックスだけが
+        # 後続の章でずれる**——後処理側の並び（`discovered_main_chapter_tokens`）は
+        # 組み上がった html/ を見るので、組まれなかった草稿は入らないためである。
+        # 「章扉は第 4 章なのに図は 5-1」という食い違いは、出来上がった PDF を
+        # 眺めていても原因に辿り着けない類の壊れ方になる。
+        def main_chapters_from_catalog
           hp = PostProcessCommands::HeadingProcessor
-          resolver = TokenResolver::Resolver.new
-          seen = {}
-          tokens = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).filter_map do |path|
-            token = hp.normalize_chapter_token(File.basename(path, '.md'))
-            next unless token && hp.main_chapter_token?(token) && !seen[token]
-
-            seen[token] = true
-            token
-          end
-          tokens.sort_by { |tkn| resolver.resolve_file(tkn).number.to_i }
+          TokenResolver::Resolver.new.resolve
+                                 .select { it.in_catalog? && it.exists? }
+                                 .map(&:basename)
+                                 .select { hp.main_chapter_token?(it) }
+                                 .uniq
+                                 .sort_by { it[/\A\d+/].to_i }
         end
-        private_class_method :detect_main_chapters_from_files
+        private_class_method :main_chapters_from_catalog
 
         # キャプション付きブロック変換クラス
         # rubocop:disable Metrics/ClassLength
