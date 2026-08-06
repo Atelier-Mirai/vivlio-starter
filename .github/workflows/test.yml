@@ -1,0 +1,46 @@
+# Ruby 3.4 と 4.0 の両方で `rake test` を走らせる。
+#
+# 両方を回すのが要点である。`it`（暗黙ブロック引数）は Ruby 3.3 以下でも
+# 構文エラーにならず「it というメソッドの呼び出し」として通り、実行時に
+# NameError になる——静的解析では捕まらない類の非互換なので、
+# 対応を謳うバージョンで実際に走らせる以外に確かめる方法がない。
+#
+# ここで走るのは MIT の StandardProvider 経路である。AGPL の
+# vivlio-starter-pdf は Gemfile に含めていないため CI には入らない
+# （開発機ではプラグインが入っていて EnhancedProvider 経路になるので、
+# CI は「プラグイン無しでも壊れていないか」を見る役割を兼ねる）。
+#
+# 版面の実ビルドを伴う test:layout / test:targets は含めない。
+# Vivliostyle（Node）と Chrome の取得に時間がかかり、CI の役割に見合わない。
+name: test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ['3.4', '4.0']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 外部ツールが無いテストは自前で skip するため、これらは「skip を減らす」ための任意導入。
+      # 入らなくてもテストは通る（落とさないよう || true は付けない——入らないなら原因を見たい）。
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            imagemagick libvips mecab libmecab-dev mecab-ipadic-utf8
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+
+      - run: bundle exec rake test
