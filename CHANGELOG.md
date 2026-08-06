@@ -34,6 +34,17 @@
   - **行ごとの逐次処理では決められない**——本文の初出を採るかどうかが「後に節見出しが来るか」に依るため。章を読んだ時点で「節見出しにあるか／本文にあるか」だけ先に下見する 2 パスにした。
 
 ### Changed
+- [Medium] **雛形のキーを打ち間違えたとき、直し方を著者へ示すようにした**（`data_render.rb`・query-stream 1.4.0 と連動）: これまでは gem が `logger.error` で「利用可能なキー」を直接吐いており、`Common.log_error` を通らないため 🔴 も出所も付かない生ログが混じっていた。query-stream 1.4.0 で `UnknownKeyError` に `key_path` / `available_keys` / `template_path` / `location` が付いたので、**「もしかして」を添えた案内をこちら側で組み立てる**。ドット記法（`=author.name`）は先頭のキーだけが検証対象なので、候補もそこで探す。
+  - **直すのは雛形なので、開くべきファイルを名指しする。** `location`（記法が書かれた原稿の位置）だけでは著者はファイルに辿り着けない。
+
+```
+🔴 21-images.md:42 - 雛形に無いキーが書かれています: =titel
+        直す場所: templates/_book.md
+        → もしかして: =titel ではなく =title ではありませんか？
+        この雛形で使えるキー: title, author, desc
+```
+
+  - **`query-stream` の下限を `~> 1.4` へ上げた。** 1.3.x の `UnknownKeyError` は属性を持たないため、この経路が `NoMethodError` になる。
 - [High] **必要な Ruby を 4.0 以上から 3.4 以上へ緩めた**（`release-1.0-considerations.md` A-1）: **Ruby 4.0 固有の機能は 1 つも使っていなかった。** Prism のバージョン指定パースで全 421 ファイルを解析したところ 4.0.0 / 3.4.0 / 3.3.0 いずれも構文エラー 0 件で、実際の下限を決めていたのは `it`（暗黙ブロック引数・1,024 箇所）**単独**だった。Ruby 3.4.10 で `rake test` を実走し、2,399 件すべて通過することを確認している。
   - **本体のコード変更はゼロ**（gemspec の 1 行のみ）。`require 'set'` の追加も不要だった——Ruby 3.4 では core が `Set` を autoload する（`Object.autoload?(:Set)` が `"set"` を返し、`--disable-gems` でも通る）。むしろ既存の不要な `require 'set'` を 3 件削除した。
   - **`it` は静的解析では見つけられない類の非互換だった。** 3.3 でも構文エラーにならず「`it` というメソッドの呼び出し」として通り、実行時に `NameError` になる。Prism も 3.3 では `CallNode`、3.4 では `ItLocalVariableReadNode` と別物に解析する。**バージョン要件を動かすときは実走を必須にする**、という教訓を仕様書へ残した。

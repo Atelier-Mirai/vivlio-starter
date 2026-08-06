@@ -5,8 +5,10 @@ source 'https://rubygems.org'
 # Dependencies are defined in the gemspec to keep a single source of truth.
 gemspec
 
-# query-stream は公開済みバージョンを使用
-gem 'query-stream', '~> 1.3'
+# query-stream は公開済みバージョンを使用。
+# 下限が 1.4 なのは、UnknownKeyError の属性（key_path / available_keys / template_path）を
+# data_render.rb の「もしかして」案内が使うため。1.3.x では属性が無く NoMethodError になる。
+gem 'query-stream', '~> 1.4'
 
 # strscan を単一バージョンへ固定する（テスト flaky の恒久対策）。
 # Ruby 4.0 環境では strscan が default gem（3.1.6 = stdlib 実体）と通常 gem（3.1.8 等）で

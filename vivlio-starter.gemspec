@@ -29,7 +29,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   # Runtime dependencies
-  spec.add_dependency 'query-stream', '~> 1.3'
+  spec.add_dependency 'query-stream', '~> 1.4'
   spec.add_dependency 'combine_pdf', '~> 1.0'
   spec.add_dependency 'kramdown', '~> 2.4'
   spec.add_dependency 'mini_magick', '~> 4.12'
@@ -57,4 +57,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'rubocop', '~> 1.65'
   spec.add_development_dependency 'minitest', '~> 5.22'
   spec.metadata['rubygems_mfa_required'] = 'false'
+  # rubygems.org の gem ページに「Changelog」リンクを出す。
+  # リリースノート（要点）と変更履歴（網羅）の分担を、利用者側で完結させるため。
+  spec.metadata['changelog_uri'] = 'https://github.com/Atelier-Mirai/vivlio-starter/blob/master/CHANGELOG.md'
 end

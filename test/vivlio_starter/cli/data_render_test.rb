@@ -708,6 +708,45 @@ module VivlioStarter
           assert_includes result, 'はじめてのC'          # 3行目は展開される
         end
 
+        # 雛形のキーを打ち間違えたら、近いキーを名指しして直し方を示す。
+        # gem が持つのは「無いキー」と「使えるキー」までなので、案内を作るのはこちら側の責務
+        def test_should_suggest_a_near_key_when_template_key_is_unknown
+          error = QueryStream::UnknownKeyError.new(
+            key_path: 'titel', available_keys: %i[title author desc],
+            template_path: 'templates/_book.md', location: 'chapter.md:12'
+          )
+
+          detail = DataRender.unknown_key_detail(error)
+
+          assert_includes detail, '=titel ではなく =title'
+          assert_includes detail, 'title, author, desc'
+          # 記法の位置ではなく雛形を直すので、開くべきファイルを名指しする
+          assert_includes detail, '直す場所: templates/_book.md'
+        end
+
+        # ドット記法は先頭のキーだけが検証対象なので、候補も先頭で探す
+        def test_should_suggest_a_near_key_for_the_root_of_a_dotted_key
+          error = QueryStream::UnknownKeyError.new(
+            key_path: 'autor.name', available_keys: %i[title author], location: 'chapter.md:5'
+          )
+
+          detail = DataRender.unknown_key_detail(error)
+
+          assert_includes detail, '=autor ではなく =author'
+        end
+
+        # 近いキーが無いときは当てずっぽうを出さず、使えるキーだけを示す
+        def test_should_only_list_available_keys_when_no_near_key_exists
+          error = QueryStream::UnknownKeyError.new(
+            key_path: 'zzzz', available_keys: %i[title author], location: 'chapter.md:3'
+          )
+
+          detail = DataRender.unknown_key_detail(error)
+
+          refute_includes detail, 'もしかして'
+          assert_includes detail, 'title, author'
+        end
+
         # 一件検索で0件の場合は空文字列になる
         def test_should_return_empty_for_zero_results_single_lookup
           content = "= book | 存在しない本\n"

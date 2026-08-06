@@ -64,6 +64,11 @@ module VivlioStarter
                 "#{e.location} - データファイルが見つかりません（記法: #{e.query}）",
                 detail: "データの場所: #{e.expected_path}"
               )
+            in QueryStream::UnknownKeyError => e
+              Common.log_error(
+                "#{e.location} - 雛形に無いキーが書かれています: =#{e.key_path}",
+                detail: unknown_key_detail(e)
+              )
             else
               Common.log_error("QueryStream 展開エラー: #{error.message}")
             end
@@ -114,6 +119,25 @@ module VivlioStarter
         # @return [Integer, nil]
         def line_from_location(location)
           location.to_s[/:(\d+)\z/, 1]&.to_i
+        end
+
+        # 雛形の打ち間違いをどう直せばよいかを著者へ示す。
+        # gem が持つのは素材（無いキー・使えるキー・雛形のパス）までで、そこから
+        # 「もしかして」を組み立てられるのは、著者向けの言葉づかいを担うこちら側だけである。
+        # ドット記法（=author.name）は先頭のキーだけが検証対象なので、候補も先頭で探す。
+        # @param error [QueryStream::UnknownKeyError]
+        # @return [String]
+        def unknown_key_detail(error)
+          keys = error.available_keys.map(&:to_s)
+          root = error.key_path.to_s.split('.').first
+          near = DidYouMean::SpellChecker.new(dictionary: keys).correct(root).first
+
+          detail = []
+          # 記法の位置（見出し行の location）ではなく雛形を直すので、開くべきファイルを名指しする
+          detail << "直す場所: #{error.template_path}" if error.template_path
+          detail << "→ もしかして: =#{root} ではなく =#{near} ではありませんか？" if near
+          detail << "この雛形で使えるキー: #{keys.join(', ')}"
+          detail.join("\n")
         end
       end
     end
