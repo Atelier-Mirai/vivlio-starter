@@ -16,7 +16,7 @@ class << Rake.application
     end
 
     # 【重要】出力させたい理想の順番を明示的に指定
-    custom_order = ['test', 'test:standard', 'test:layout', 'test:targets', 'test:kindle', 'test:manual', 'test:package', 'test:release', 'test:canary', 'reinstall']
+    custom_order = ['test', 'test:standard', 'test:versions', 'test:layout', 'test:targets', 'test:kindle', 'test:manual', 'test:package', 'test:release', 'test:canary', 'reinstall']
     displayable_tasks = displayable_tasks.sort_by { |t| custom_order.index(t.name) || 999 }
 
     # 表示幅を計算して綺麗にフォーマット出力
@@ -62,6 +62,49 @@ end
 
 Rake::Task["test:standard"].comment =
   "Standard モード強制テスト（VIVLIO_PDF_PLUGIN=disable で MIT 本体経路を検証・プラグイン uninstall 不要）"
+
+# ------------------------------------------------------------------
+# 対応 Ruby 版でのテスト
+# ------------------------------------------------------------------
+# gemspec が Ruby 3.4 以上を謳う以上、それが本当かは実際に走らせないと分からない。
+# `it`（暗黙ブロック引数）は 3.3 以下でも構文エラーにならず「it というメソッドの
+# 呼び出し」として通り、実行時に NameError になる——静的解析では捕まらない。
+#
+# 通常の `rake test` には含めない。本スイートは 1 版で約 70 秒あり、書きながら回す
+# ループを倍にする価値は無い（両版で結果が割れるのは新しい構文・API を採り入れた
+# ときだけである）。push 前とリリース前に叩く想定。
+# CI（GitHub Actions）は版をマトリクスで分担するため、そちらでは各ジョブが 1 回走る。
+SUPPORTED_RUBY_VERSIONS = %w[3.4.10 4.0.6].freeze
+
+namespace :test do
+  task :versions do
+    missing = SUPPORTED_RUBY_VERSIONS - `rbenv versions --bare`.split("\n")
+    unless missing.empty?
+      abort <<~MESSAGE
+        次の Ruby が rbenv に入っていません: #{missing.join(', ')}
+          #{missing.map { "rbenv install #{it}" }.join("\n  ")}
+      MESSAGE
+    end
+
+    # 版ごとに bundle が要る。未導入なら黙って入れる（その版の初回は数分かかる）
+    failed = SUPPORTED_RUBY_VERSIONS.reject do |version|
+      puts "\n=== Ruby #{version} ==="
+      env = { 'RBENV_VERSION' => version }
+
+      unless system(env, 'rbenv exec bundle check', out: File::NULL, err: File::NULL)
+        next false unless system(env, 'rbenv exec bundle install --quiet')
+      end
+
+      system(env, 'rbenv exec bundle exec rake test')
+    end
+
+    abort "\n失敗した Ruby: #{failed.join(', ')}" unless failed.empty?
+    puts "\n全 Ruby 版で通過: #{SUPPORTED_RUBY_VERSIONS.join(' / ')}"
+  end
+end
+
+Rake::Task["test:versions"].comment =
+  "対応する全 Ruby 版（#{SUPPORTED_RUBY_VERSIONS.join(' / ')}）で通常テストを実行"
 
 # ------------------------------------------------------------------
 # 判型確認用専用テスト
