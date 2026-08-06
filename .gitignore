@@ -11,6 +11,12 @@ Thumbs.db
 *.epub
 *.kpf
 
+# Claude Code のローカル設定（settings.local.json は許可済みコマンドの
+# 端末固有リストで、共有する意味がない）。CLAUDE.md はプロジェクトの
+# 指示書なので追跡を続ける
+/.claude/*
+!/.claude/CLAUDE.md
+
 # RubyGem artifacts
 *.gem
 pkg/*.gem
