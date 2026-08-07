@@ -3,8 +3,7 @@
 # -------------------------------------------------------------
 #  このファイルは Vivlio Starter のブック全体の設定を管理します。
 #
-#  【主なセクション】
-#  ── 著者が設定するセクション ─────────────────────
+#  ── 著者が設定するセクション ───────────────
 #  • book         : 書籍情報（タイトル、著者、出版社など）
 #  • project      : プロジェクト情報（出力ファイル名、バージョン）
 #  • theme        : テーマ（アクセントカラー、扉絵、装飾スタイル）
@@ -13,7 +12,7 @@
 #  • output       : 出力設定（PDF、印刷用PDF、EPUB、表紙）
 #  • verify       : 原稿の検証（画像パス、裸URL、外部URL）
 #  • legal        : リーガル情報（免責、商標）
-#  ── 機能ごとの詳細設定 ────────────────────────
+#  ── 機能ごとの詳細設定 ──────────────────
 #  • index_glossary : 索引・用語集の共通設定
 #  • index          : 索引の詳細設定
 #  • glossary       : 用語集の詳細設定
@@ -46,16 +45,17 @@ project:
 
 # ======= テーマ =======
 theme:
-  style: image # image: 画像あり / simple: 画像なし
-
   # ------- テーマカラー -------
-  color: red # yellow / orange / red / magenta
-             # purple / indigo / navy / blue
-             # cyan / teal / green / lime から選択
-             # '#ff0000' のような HEX 記法も指定可
+  color: yellow # yellow / orange / red / magenta
+                # purple / indigo / navy / blue
+                # cyan / teal / green / lime から選択
+                # '#ff0000' のような HEX 記法も指定可
 
   preface_color: purple # 前書き/後書き専用カラー 未指定ならcolorと同色
   appendix_color: green # 付録専用カラー 未指定ならcolorと同色
+
+  style: image # image: 画像あり / simple: 画像なし
+               # image にすると下の扉絵・節絵が有効になります。（付録は常に simple）
 
   # ------- 章扉の背景画像 -------
   frontispiece:
@@ -227,7 +227,7 @@ legal:
     Copyright © Twitter, Inc and other contributors. Licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
 
 
-# ──────────────── ここから下は機能ごとの詳細設定 ────────────────
+#  ── ここから下は機能ごとの詳細設定 ────────────
 
 
 # ======= 索引・用語集共通設定 =======
@@ -367,7 +367,7 @@ metrics:
     monotonous: "表現が単調"
     too_complex: "やや難解"
 
-# ======= 文章校正（vs lint）の設定 =======
+# ======= 文章校正（vs lint）設定 =======
 lint:
   disabled_rules: # 無効化したい textlint ルール ID（集約表示で [ ] に出る名前）を、指定することにより、
                   # 該当ルールを無効化できます。
@@ -392,43 +392,46 @@ lint:
 
   allow_space_between_ja_en: true # 全角と半角（英数・記号）の間のスペースを許容する場合は true。
 
-# ======= スペルチェック（vs lint）の既定値 =======
+# ======= スペルチェック（vs lint）設定値 =======
 spellcheck:
   # 綴り誤りと指摘したくない語は config/spellcheck_allowlist.yml に置きます。
   # `vs lint --register` が未知語をそこへ自動追記し、辞書順に整列します。
 
   extra_dictionaries: # オンデマンドダウンロード辞書
-    # - ada                # 標準搭載以外の言語の綴り誤りも確認したい場合に指定
+    # - ada           # 標準搭載以外のプログラミング言語の綴り誤りも確認したい場合に指定
 
-  check_code_blocks:
-    false # コードブロック内を校正対象にするか
-    # 既定値: false (校正対象にしない)
+  check_code_blocks: false # false … コードブロック内を校正対象にしない（既定値）
+                           # true  … コードブロック内を校正対象にする
 
-# ======= pdf_read 設定 =======
+# ======= PDF 読み取り（vs pdf:read）の既定値 =======
 pdf_read:
+  # ------- 本文として拾う範囲（版面の外側を除く） -------
   text_area:
     top_margin: 18 # 上端からの除外幅(mm)
     bottom_margin: 20 # 下端からの除外幅(mm)
     inner_margin: 15 # 綴じ側（奇数ページは左、偶数ページは右）除外幅(mm)
     outer_margin: 12 # 小口側の除外幅(mm)
-  page_separator:
-    false # true:  "---" でページ区切りを行なう
-          # false: "---" でページ区切りを行なわない
+
+  page_separator: false # true  … "---" でページ区切りを行なう
+                        # false … "---" でページ区切りを行なわない
+
+  # ------- OCR（埋め込みテキストが無いページの読み取り） -------
   ocr:
-    # OCR の実行モード:
-    #   auto    : スキャンページを自動検出して必要な箇所のみ OCR
-    #   force   : 全ページを必ず OCR（埋め込みテキストを無視）
-    #   disable : OCR を無効化（埋め込みテキストのみ使用）
-    mode: auto
-    # Tesseract に渡す言語。`japanese_vertical` なども指定可
-    # 複数指定で自動的に jpn+jpn_vert を付与
-    languages:
+    mode: auto # OCR の実行モード
+               #   auto    … スキャンページを自動検出して必要な箇所のみ OCR
+               #   force   … 全ページを必ず OCR（埋め込みテキストを無視）
+               #   disable … OCR を無効化（埋め込みテキストのみ使用）
+
+    languages: # 読み取る言語。縦書きが多い本は japanese_vertical も並べます
       - japanese
-    dpi: 300 # OCR 前に生成する画像の解像度。数値を上げると精度は向上するが処理時間も増加。
+
+    dpi: 300 # OCR 前に生成する画像の解像度
+             # 上げると精度は向上するが処理時間も増加
+
     psm: 3 # Tesseract の PSM (Page Segmentation Mode)
            # 章扉などの大見出しには 6、縦書き主体なら 5/7 が目安
-    # イラスト内テキストの扱い:
-    #   include    : 本文にそのまま含める
-    #   exclude    : 画像キャプションのみ残し本文から除外
-    #   captionize : キャプション化して本文のノイズを減らす
-    inline_image_text: include
+
+    inline_image_text: include # イラスト内テキストの扱い
+                               #   include    … 本文にそのまま含める
+                               #   exclude    … 画像キャプションのみ残し本文から除外
+                               #   captionize … キャプション化して本文のノイズを減らす
