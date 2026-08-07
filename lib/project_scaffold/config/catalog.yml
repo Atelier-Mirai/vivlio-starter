@@ -34,8 +34,8 @@ CHAPTERS:
       - 45-utility
   - 【第五部：トラブルシューティング】:
       - 51-doctor
-  # - 【第六部：開発者のために】:
-      # - 61-developer
+  - 【第六部：開発者のために】:
+      - 61-developer
 
 # 付録
 APPENDICES:

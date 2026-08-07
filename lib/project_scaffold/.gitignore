@@ -11,6 +11,18 @@ Thumbs.db
 *.epub
 *.kpf
 
+# Claude Code のローカル設定（settings.local.json は許可済みコマンドの
+# 端末固有リストで、共有する意味がない）。CLAUDE.md はプロジェクトの
+# 指示書なので追跡を続ける
+/.claude/*
+!/.claude/CLAUDE.md
+
+# Zed のローカル設定（エディタの好みは各自のもの）。
+# config/ の YAML は保存時の自動整形でコメントの桁揃えが崩れるため、
+# 同じ設定が要る場合は .zed/settings.json に次を書く:
+#   { "languages": { "YAML": { "format_on_save": "off" } } }
+/.zed/
+
 # RubyGem artifacts
 *.gem
 pkg/*.gem
