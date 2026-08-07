@@ -24,12 +24,10 @@
 
 ## カスタマイズ
 
-テーマカラーや扉絵などのデザイン設定は `config/book.yml` の `theme` セクションで行います。`theme.css` はビルド時に自動生成されるため、直接編集しても次回ビルド時に上書きされます。
-
-CSS の仕組みや内部構造については「開発者向けガイド」の章を参照してください。
+テーマカラーや扉絵などのデザイン設定は `config/book.yml` の `theme` セクションで行ってください。
+**著者独自のスタイルは `custom.css` に書いてください。** 最後に読み込まれるので、他のどの CSS よりも優先されます。
 
 ## fonts/ と images/
 
-- `fonts/` — 埋め込みフォントファイル。`config/page_presets.yml`で指定されたフォントが配置されます。
+- `fonts/` — 埋め込みフォントファイル。`config/book.yml` の `typography` で指定した書体が置かれます。同梱書体（Zen 3 種・HackGen35 Console NF）以外を指定すると Google Fonts から `fonts/google/` へ自動取得されます。
 - `images/` — 扉絵・装飾画像など CSS から参照する画像。著者が独自に用意した扉絵や装飾画像を使いたい場合もここに配置します。`config/book.yml` の `theme.frontispiece` や `theme.ornament` で参照できます。
-

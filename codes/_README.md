@@ -6,11 +6,11 @@
 
 原稿のコードブロックに直接コードを書く代わりに、外部ファイルとして管理できます。
 
-```markdown
+````markdown
 ```include:sample.rb```
 
 ```include:sample.rb:10-20```
-```
+````
 
 ファイルを外部管理することで、コードの動作確認やテストがしやすくなります。
 
@@ -26,7 +26,7 @@ codes/
 
 章ごとにサブディレクトリを作成して整理することもできます。サブディレクトリ内のファイルも `include` 記法でそのまま参照できます。
 
-```markdown
+````markdown
 ```include:01-intro/hello.rb```
 ```include:01-intro/hello.rb:10-20```
-```
+````
