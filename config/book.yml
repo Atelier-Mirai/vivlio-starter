@@ -46,7 +46,6 @@ project:
 
 # ======= テーマ =======
 theme:
-  # ------- 装飾スタイル -------
   style: image # image: 画像あり / simple: 画像なし
 
   # ------- テーマカラー -------
@@ -81,8 +80,8 @@ theme:
 
 # ======= ページ設定（版面レイアウト） =======
 page:
-  # プリセットを選択（page_presets.yml から）
-  # 紙サイズ、余白、文字サイズ、行送りなど版面の物理的構造を一括指定
+  # ------- 判型プリセットを選ぶ（page_presets.yml から） -------
+  # 紙サイズ・余白・文字サイズ・行送りなど版面の物理的構造を一括で決めます
   # use: a5_standard  # 標準
   # use: a5_airy      # 広め
   use: a5_compact   # 狭め
@@ -100,10 +99,12 @@ page:
 
   section_pagebreak: false # 節（## 見出し）をページの先頭から始めるか
                            # true  … 節ごとにページを改める（既定）
-                           # false … 節を本文の流れの中に続けて組む（ページ数を抑えたい本・配布資料向け）
+                           # false … 節を本文の流れの中に続けて組む
+                           #         （ページ数を抑えたい本・配布資料向け）
 
   chapter_pagebreak: any # 章・目次・部扉・付録・用語集・後書き・索引を、どちら側の面から始めるか
-                         # recto … 右ページ（奇数）から。いわゆる改丁。必要なら白紙が 1 枚入る（既定）
+                         # recto … 右ページ（奇数）から。いわゆる改丁
+                         #         必要なら白紙が 1 枚入る（既定）
                          # any   … どちらでもよい。白紙が入らずページ数が減る
                          # verso … 左ページ（偶数）から
                          # 原稿中の @pagebreak:recto / :verso は、この設定より優先されます
@@ -146,9 +147,9 @@ output:
   # targets: pdf                          # 閲覧用PDFを指定
   # targets: pdf, print_pdf               # 閲覧用PDF, 印刷所入稿用PDFを指定
   # targets: pdf, print_pdf, epub         # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUBを指定
-  # targets: pdf, print_pdf, epub, kindle # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUB, Kindle用EPUBを指定
+  # targets: pdf, print_pdf, epub, kindle # 閲覧用PDF, 印刷所入稿用PDF,
+                                          # 電子書籍EPUB, Kindle用EPUB
 
-  # ------- 出力ファイル名にバージョンを含めるか -------
   include_version: true # true:  vivlio_starter_v1.0.0.pdf
                         # false: vivlio_starter.pdf
 
@@ -170,7 +171,8 @@ output:
     compress: false # 自動圧縮を有効にするか（処理時間が増加）
                     # vs build --compress / --no-compress で上書き可能
     techbook: true  # 技術書典向け Techbook モード（既定は無効）
-                    # カラー絵文字を Twemoji 画像へ差し替え、入稿できない Type 3 フォント化を防ぎます
+                    # カラー絵文字を Twemoji 画像へ差し替え、
+                    # 入稿できない Type 3 フォント化を防ぎます
                     # 画像を使うのでクレジット表記が要ります（legal.twemoji）
 
   # ------- 印刷所 入稿用PDF設定 -------
@@ -179,7 +181,8 @@ output:
     crop_marks: true # トンボを付ける
     full_bleed: false # 本文に紙の端まで届く画像・背景があるなら true
                       # false のまま入稿すると白フチ事故になります
-                      # （false は閲覧用 PDF から導出するぶん速い代わりに、裁たれた塗り足しを復元できません）
+                      # （false は閲覧用 PDF から導出するぶん速い代わりに、
+                      #   裁たれた塗り足しを復元できません）
     # 以下は任意
     # cover_bleed: scale # 持ち込み表紙の塗り足し。既定は scale（＝拡大して流用）
     #                    # keep にすると拡大しない（塗り足し帯は白のまま）
@@ -213,16 +216,13 @@ verify:
 
 # ======= リーガル（免責・商標など） =======
 legal:
-  # ------- 免責事項 -------
-  disclaimer: |
+  disclaimer: | # 免責事項
     本書は教育目的で作成された入門書であり、情報の提供のみを目的としています。内容の正確性には万全を期しておりますが、技術的な詳細については、専門的な文献もあわせてご参照ください。
     本書の内容を参考にした結果生じた損害や、本書の内容を実行・運用・適用したことによって発生した問題について、著者・発行者および関係者は一切の責任を負いかねます。
-  # ------- 商標に関する事項 -------
-  trademark: |
+  trademark: | # 商標に関する事項
     本書に登場するシステム名や製品名は、関係各社の商標または登録商標です。
     本書では ™、®、© などのマークは省略しています。
-  # ------- 絵文字クレジット（Twemoji） -------
-  twemoji: |
+  twemoji: | # 絵文字クレジット（Twemoji）
     本書で使用している絵文字画像は Twemoji (https://twemoji.twitter.com) を利用しています。
     Copyright © Twitter, Inc and other contributors. Licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
 
@@ -232,10 +232,8 @@ legal:
 
 # ======= 索引・用語集共通設定 =======
 index_glossary:
-  # 索引・用語集機能の有効/無効
-  enabled:
-    true # true: 索引と用語集の両方が有効
-    # false: 索引と用語集の両方が無効
+  enabled: true # true … 索引・用語集機能を共に有効にする
+                # false … 索引・用語集機能を共に無効にする
 
   use_mecab: true # MeCab による読み自動推測を使用
 
@@ -248,43 +246,39 @@ index_glossary:
   #   vs index:export [パス] … 書き出す（省略時 index_library.yml）
   #   vs index:import [パス] … 取り込む（別の本のライブラリは パスを指定）
 
-
 # ======= 索引設定 =======
 index:
-  # 手動登録以外の語句を自動的に探索・提案するか
-  auto_discovery: true # false の場合、手動で指定した語句の抽出と読み推測のみ行います
+  auto_discovery: true # true … 手動登録以外の語句を自動的に探索・提案する。
+                       # false … 手動で指定した語句の抽出と読み推測のみ行う。
 
   title: "索引" # 索引ページのタイトル
 
-  # 索引語数の目安
-  #   light    … 控えめ（主要な語だけを拾う）
-  #   standard … 標準（既定）
-  #   thorough … 丁寧（初学者向けに広く拾う）
-  #   260      … 語数を直接指定することもできます
-  # 目安は本文の文字数から算出されます。vs index:plan で確認できます。
-  target_terms: light
+  target_terms: light # 索引語数の目安
+                      #   light    … 控えめ（主要な語だけを拾う）
+                      #   standard … 標準（既定）
+                      #   thorough … 丁寧（初学者向けに広く拾う）
+                      #   260      … 語数を直接指定することもできます
+                      # 目安は本文の文字数から算出されます。vs index:plan で確認できます。
 
   candidate_pool: 3.0 # 目安語数の何倍までを候補として提示するか
 
-  # 推奨候補を自動で辞書へ登録するか
-  # false（既定）… レビューファイルで著者が選ぶ
-  auto_approve: false
+  auto_approve: false # true … 推奨候補を自動で辞書へ登録する。
+                      # false（既定）… レビューファイルで著者が選ぶ。
 
   common_term_ratio: 0.5 # この比率以上の章に出る語は「一般語」として索引から外すことを推奨する
 
-  # 参照の出し方
-  #   main_and_sub … 主要参照を太字で先頭に置き、副次参照を続ける（既定）
-  #   main_only    … 主要参照のみ（ページ単価を詰めたい本向け）
-  #   all          … 太字も間引きもしない
-  # 主要参照は _index_glossary_review.md の「- 主要参照: 21, 22」で指定します。
-  # all にすると、主要参照の候補提示とビルド時の指定の促しも止まります。
-  reference_style: main_and_sub
+  reference_style: main_and_sub # 参照の出し方
+                                # main_and_sub … 主要参照を太字で先頭に置き、
+                                #                 副次参照を続ける（既定）
+                                # main_only    … 主要参照のみ記載する
+                                # all          … 太字も間引きもしない
+                                # 主要参照は _index_glossary_review.md の
+                                # 「- 主要参照: 11, 12」のように章番号で指定します。
 
   max_sub_references: 8 # main_and_sub のときに残す副次参照の件数（0 で無制限）
 
-  # 索引のページ番号を範囲表記（12-38）にまとめる最小の連続数
-  # 2 だと「12, 13」のほうが読みやすいので、既定は 3
-  page_range_min: 3
+  page_range_min: 3 # 索引のページ番号を範囲表記（12-15）にまとめる最小の連続数
+                    # 2 だと「12, 13」のほうが読みやすいので、既定は 3
 
 # ======= 用語集設定 =======
 glossary:
@@ -293,13 +287,12 @@ glossary:
   require_definition: false # 説明文を必須にするか
                             # true の場合、[g] フラグで説明文がないとエラー
 
-  max_definition_length: 500 # 説明文の最大文字数（超過した場合は警告 Markdown装飾を除去した文字数で判定）
+  max_definition_length: 500 # 説明文の最大文字数（超過した場合は警告）
+                             # Markdown 装飾を除去した文字数で判定
 
 # ======= 文章品質メトリクスの基準値 =======
-# Web/技術書の黄金律に基づいた既定値
 metrics:
   # ------- 章・節の分量基準 -------
-
   # 「本文」＝コードと記法を除いた地の文の文字数を数えます。
   # 本全体の本文字数を目安にプリセットを選択して下さい。
   # （ページ数は判型・余白・書体・図版の量で大きく変わるため、参考として併記しています）
@@ -318,41 +311,34 @@ metrics:
   #     中央値の 0.65 倍未満 → 💡 加筆検討 ／ 0.80〜1.20 倍 → ✅ ／ 1.50 倍超 → 💡 やや長い
   #   章が 5 つに満たない本では総本文字数に基づくプリセットが適用されます。
 
-  # 薄い本（〜3.5 万字／20〜50 ページ）
-  compact:
+  compact: # 薄い本（〜3.5 万字／20〜50 ページ）
     chapter:
       min: 800            # 加筆検討ライン。これ未満だと 💡 加筆検討
       ideal: [1100, 3400] # 理想的な範囲 [下限, 上限]。この中に収まると ✅
       max: 4200           # やや長いライン。これを超えると 💡 やや長い
     section: { min: 400, ideal: [1000, 2800], max: 4000 } # 1 行に纏めても同じ意味
 
-  # 手に取りやすい技術書（3.5〜6.5 万字／50〜100 ページ）
-  handy:
+  handy: # 手に取りやすい技術書（3.5〜6.5 万字／50〜100 ページ）
     chapter: { min: 2900, ideal: [3400, 5700], max: 6800 }
     section: { min: 400, ideal: [1000, 2800], max: 4000 }
 
-  # 標準的な同人誌・技術書（6.5〜9 万字／100〜200 ページ）
-  standard:
+  standard: # 標準的な同人誌・技術書（6.5〜9 万字／100〜200 ページ）
     chapter: { min: 4200, ideal: [4800, 8500], max: 9700 }
     section: { min: 400, ideal: [1000, 2800], max: 4000 }
 
-  # 商業出版レベル（9〜15 万字／200〜350 ページ）
-  commercial:
+  commercial: # 商業出版レベル（9〜15 万字／200〜350 ページ）
     chapter: { min: 6400, ideal: [7800, 14600], max: 17800 }
     section: { min: 400, ideal: [1000, 2800], max: 4000 }
 
-  # 大部の本（15 万字以上／350 ページ以上）
-  heavy:
+  heavy: # 大部の本（15 万字以上／350 ページ以上）
     chapter: { min: 9200, ideal: [11000, 16000], max: 19600 }
     section: { min: 400, ideal: [1000, 2800], max: 4000 }
 
-  # 自作プリセット（既定は commercial と同じ。自由に書き換えてください）
-  author_custom:
+  author_custom: # 自作プリセット（既定は commercial と同じ。自由に書き換えてください）
     chapter: { min: 6400, ideal: [7800, 14600], max: 17800 }
     section: { min: 400, ideal: [1000, 2800], max: 4000 }
 
-  exclude_chapters: [00, 90-98, 99] # 分量喚起から除外する章
-                                    # 前書き、付録、後書きを除く
+  exclude_chapters: [00, 90-98, 99] # 分量喚起から除外する章（前書00、付録90-98、後書99を除く）
 
   # ------- 語彙難度の基準 -------
   # 分量とは向きが逆で、min 未満は「平易すぎる」・max 超過は「硬すぎる」の合図です。
@@ -360,24 +346,19 @@ metrics:
 
   kanji_ratio: { min: 20, ideal: [25, 35], max: 45 } # 漢字比率（%）
 
-  word_length: { min: 1.5, ideal: [2.0, 2.5], max: 3.0 } # 平均語長（文字数、MeCab 分かち書き後）。max 超過は専門用語が多すぎる可能性
+  word_length: { min: 1.5, ideal: [2.0, 2.5], max: 3.0 } # 平均語長（文字数、MeCab 分かち書き後）
+                                                         # max 超過は専門用語が多すぎる可能性
 
-  # ------- 読解難度スコア（建石式リーダビリティー RS） -------
-  #
-  # 建石由佳・小野芳彦・山田尚勇 (1988)「日本文の読みやすさの評価式」。
-  # 文長・各文字種の連の平均長・句読点比から算出します。
-  # RS は大きいほど読みやすく、上限も下限もないスコアです。
-  #
-  # 下の 2 つの数は 3 つのバンドを分ける境界です。
+  # ------- 読みやすさの基準 -------
+  # 建石由佳・小野芳彦・山田尚勇 (1988)「日本文の読みやすさの評価式」に基づき算出しています。
   #   60 以上 → Easy（小中学生向け）／ 40〜60 → Standard（一般ビジネス・実用書）
   #   40 未満 → Professional（専門家・技術者向け）… この章に 🤔 やや難解 が付きます
   # 技術書で 🤔 が頻発するなら standard を下げてください（例: 35）。
   readability: { standard: 40, easy: 60 }
 
-  # ------- 警告メッセージのカスタマイズ（オプション） -------
+  # ------- 案内メッセージの調整 -------
 
-  # 章別リストに添える文言
-  labels:
+  labels: # 章別リストに添える文言
     # 分量について
     too_short: "加筆検討" # プリセットの min 未満
     just_right: "丁度良い" # プリセットの ideal に収まっている
@@ -386,39 +367,35 @@ metrics:
     monotonous: "表現が単調"
     too_complex: "やや難解"
 
-# ======= Lint 設定（文章校正コマンドの既定値） =======
+# ======= 文章校正（vs lint）の設定 =======
 lint:
-  # vs lint 実行時に使用する textlint 設定ファイル
-  # 設定を使い分けたい場合は config/.textlintrc1.yml などを用意し、ここで切り替えます
-  config: config/.textlintrc.yml
+  disabled_rules: # 無効化したい textlint ルール ID（集約表示で [ ] に出る名前）を、指定することにより、
+                  # 該当ルールを無効化できます。
+    - arabic-kanji-numbers # 「一つ→1つ」を無効化する。
 
-  # 無効化したい textlint ルール ID（集約表示で [ ] に出る名前）。ルールごと丸ごと黙らせます。
-  # 例: ルール衝突（arabic-kanji-numbers の「一つ→1つ」と prh の「一つ→ひとつ」）の片方を切る
-  disabled_rules:
-    # - arabic-kanji-numbers
-    # - sentence-length
-
-  # 無効化したい表記揺れの指摘語。"X => Y" 形式（prh / spellcheck-tech-word など）の
-  # 指摘先頭行に含まれる語にマッチした指摘を黙らせます（「お節介」ルールの個別無効化）。
-  # 例: 「以下 => 次の」を消すなら 次の（または 以下）を指定
-  disabled_terms:
+  disabled_terms: # 無効化したい表記揺れの指摘語。"X => Y" 形式（prh / spellcheck-tech-word など）の
+                  # 指摘先頭行に含まれる語にマッチした指摘を黙らせます
+                  # （「お節介」ルールの個別無効化）
+                  # 例: 「以下 => 次の」を消すなら 次の（または 以下）を指定
     # - 次の
     # - とおり
 
-  sentence_length_max: 100 # 一文の最大文字数（sentence-length）。未指定なら既定 100。好みに応じて 80 / 120 など。
+  sentence_length_max: 100 # 一文の最大文字数（sentence-length）。未指定なら既定 100
+                           # 好みに応じて 80 / 120 など。0 を書くと長さを検査しません
 
-  # 技術者向けに「サーバ／パラメータ／フィルタ」等の末尾長音を省く文体を選ぶ場合は true。
-  # 「X => Xー」（末尾に長音を足す）系の指摘を黙らせます。
-  trim_long_vowel: true
+  trim_long_vowel: true # 技術者向けに「サーバ／パラメータ／フィルタ」等の
+                        # 末尾長音を省く文体を選ぶ場合は true
+                        # 「X => Xー」（末尾に長音を足す）系の指摘を黙らせます。
 
-  # インラインコードと和文の間のスペース（例: `vs import` コマンド）を許容する場合は true。
-  # 技術書で一般的な「和欧間スペース」を残したいとき。textlint 設定レベルで無効化するため
-  # vs lint --fix でもスペースは削除されません。
-  allow_space_around_code: true
+  allow_space_around_code: true # インラインコードと和文の間のスペース
+                                # （例: `vs import` コマンド）を許容する場合は true
+                                # 技術書で一般的な「和欧間スペース」を残したいとき
+                                # textlint 設定レベルで無効化するため
+                                # vs lint --fix でもスペースは削除されません。
 
   allow_space_between_ja_en: true # 全角と半角（英数・記号）の間のスペースを許容する場合は true。
 
-# ======= spellcheck 設定 =======
+# ======= スペルチェック（vs lint）の既定値 =======
 spellcheck:
   # 綴り誤りと指摘したくない語は config/spellcheck_allowlist.yml に置きます。
   # `vs lint --register` が未知語をそこへ自動追記し、辞書順に整列します。
@@ -446,11 +423,13 @@ pdf_read:
     #   force   : 全ページを必ず OCR（埋め込みテキストを無視）
     #   disable : OCR を無効化（埋め込みテキストのみ使用）
     mode: auto
-    # Tesseract に渡す言語。`japanese_vertical` なども指定可。複数指定で自動的に jpn+jpn_vert を付与。
+    # Tesseract に渡す言語。`japanese_vertical` なども指定可
+    # 複数指定で自動的に jpn+jpn_vert を付与
     languages:
       - japanese
     dpi: 300 # OCR 前に生成する画像の解像度。数値を上げると精度は向上するが処理時間も増加。
-    psm: 3 # Tesseract の PSM (Page Segmentation Mode)。章扉などの大見出しには 6、縦書き主体なら 5/7 が目安。
+    psm: 3 # Tesseract の PSM (Page Segmentation Mode)
+           # 章扉などの大見出しには 6、縦書き主体なら 5/7 が目安
     # イラスト内テキストの扱い:
     #   include    : 本文にそのまま含める
     #   exclude    : 画像キャプションのみ残し本文から除外
