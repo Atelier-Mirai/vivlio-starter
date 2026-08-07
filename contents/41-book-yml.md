@@ -13,7 +13,7 @@
 | 種別 | セクション | 説明 |
 | :--- | :--- | :--- |
 | 必ず設定する | `book` `project` `theme` `page` | 書籍ごとに異なる基本情報 |
-| 必要に応じて調整する | `typography` `output` `vfm` `legal` `build` | 既定値で動くが、カスタマイズしたい場合に |
+| 必要に応じて調整する | `typography` `output` `verify` `legal` | 既定値で動くが、カスタマイズしたい場合に |
 | 機能別の詳細設定 | `index_glossary` `index` `glossary` `metrics` `lint` `spellcheck` `pdf_read` | 各機能を使う場合のみ設定 |
 
 ## 必ず設定する項目
@@ -159,8 +159,7 @@ output:
   targets: pdf          # 出力形式: pdf / print_pdf / epub / kindle
                         # 複数指定: pdf, print_pdf  または  [pdf, epub, kindle]
 
-  filename:
-    include_version: true   # true: mybook_v1.0.0.pdf / false: mybook.pdf
+  include_version: true     # true: mybook_v1.0.0.pdf / false: mybook.pdf
 
   cover: light              # カバーテーマ: light / dark（標準添付 SVG）
                             # master または独自スラッグ（covers/frontcover_master.png 等、著者用意の画像）
@@ -229,20 +228,6 @@ output:
 ```
 :::
 
-### vfm — Markdown 設定
-
-VFM（Vivliostyle Flavored Markdown）の挙動を設定します。
-
-```yaml
-vfm:
-  hard_line_breaks: true # true:  エンターキーの改行をそのまま改行として処理
-                         # false: 改行はスペース扱い（空行か<br>で改行）
-```
-
-日本語の技術書では `true` が扱いやすい設定です。ここでの設定は本全体に適用されます。
-特定の章だけ変えたい場合は、その章のフロントマターに `vfm: hardLineBreaks: false` を
-書くと章単位で上書きできます（フロントマター側のキー名は VFM の仕様により camelCase です）。
-
 ### legal — 免責・商標
 
 奥付に掲載する免責事項と商標に関する文面を設定します。既定のテキストで問題なければ変更不要です。
@@ -263,18 +248,17 @@ legal:
 
 `twemoji` は、奥付にクレジット表記として挿入されるテキストです。`output.pdf.techbook: true` にして絵文字を Twemoji SVG に差し替える場合は、ライセンス表記としてここに設定してください（未設定なら何も挿入されません）。
 
-### build — ビルド時の検証
+### verify — 原稿の検証
 
-`vs build` 実行時に行う、画像パス・URL の検証設定です。
+`vs build` / `vs preflight` が行う、画像パス・URL の検証設定です。
 
 ```yaml
-build:
-  verify:
-    images: true          # 画像パスの存在チェック（既定: true）
-    bare_urls: true        # 裸 URL（Markdown リンク記法でない URL）の検出と警告（既定: true）
-    external_links: false  # 外部 URL の HTTP 到達性チェック（既定: false。--verify-links で有効化）
-    timeout: 10             # HTTP チェックのタイムアウト秒数
-    max_concurrency: 5      # HTTP チェックの最大同時接続数
+verify:
+  images: true           # 画像パスの存在チェック（既定: true）
+  bare_urls: true        # 裸 URL（Markdown リンク記法でない URL）の検出と警告（既定: true）
+  external_links: false  # 外部 URL の HTTP 到達性チェック（既定: false。--verify-links で有効化）
+  timeout: 10            # HTTP チェックのタイムアウト秒数
+  max_concurrency: 5     # HTTP チェックの最大同時接続数
 ```
 
 `images`/`bare_urls` は Markdown 前処理の中で常時チェックされます。`external_links` は `vs build --verify-links` を指定したときのみ実行される重い検証で、ここでは既定の挙動と並列数・タイムアウトだけを設定します。`vs build --no-verify` で `images`/`bare_urls`/`external_links` をまとめて無効化できます。詳細は「ビルド（vs build）」の章を参照してください。
@@ -293,20 +277,13 @@ index_glossary:
   use_mecab: true        # MeCab による読み自動推測を使用するか
   timezone: 'Asia/Tokyo'
   context_width: 40      # キーワード前後の文脈抽出幅（文字数）
-  smart_context_cutting: true   # 文脈抽出時に形態素境界を考慮して賢く切り出すか（既定: true）
-
-  # 索引ライブラリ（用語集の[g]・reject を書籍間で持ち運ぶ vs index:export/import 用）
-  library:
-    path: "index_library.yml"   # export/import 共通の既定パス
-    # export_to:   "index_library.yml"          # 書き出し先だけ変える場合（省略可）
-    # import_from: "~/vivlio/index_library.yml" # 共有ライブラリから取り込む場合（省略可）
 
 index:
   auto_discovery: true   # 手動登録以外の語句を自動で探索・提案するか
   title: '索引'
-  auto_approve_threshold: 300   # このスコア以上は自動的に承認
-  review_threshold: 150         # このスコア以上はレビュー候補に
-  high_candidates_ratio: 0.25   # レビュー候補のうちスコア上位何割を優先候補(High)にするか（既定: 0.25）
+  target_terms: light    # 索引語数の目安: light / standard / thorough / 数値で直接指定
+  candidate_pool: 3.0    # 目安語数の何倍までを候補として提示するか
+  auto_approve: false    # true: 推奨候補を自動で辞書へ登録する
 
 glossary:
   title: '用語集'
@@ -314,7 +291,11 @@ glossary:
   max_definition_length: 500
 ```
 
-詳細なワークフローは「索引・用語集機能」の章を参照してください。索引ライブラリの持ち運び（`vs index:export` / `vs index:import`）についても同章で解説しています。
+詳細なワークフローは「索引・用語集機能」の章を参照してください。
+
+索引ライブラリ（用語集の `[g]` と棄却語を書籍間で持ち運ぶ仕組み）に設定は要りません。
+`vs index:export` / `vs index:import` は既定で `index_library.yml` を読み書きし、別の場所を
+使いたいときは `vs index:export ~/vivlio/shared.yml` のように引数でパスを渡します。
 
 ### metrics — メトリクス基準値
 
@@ -339,7 +320,7 @@ metrics:
 | `author_custom` | — | 自分で基準値を定義したい場合 |
 | `relative` | — | その本自身の章の中央値と比べたい場合（詳細は「Metrics」の章） |
 
-`use` で選んだプリセットが切り替えるのは、`chapter`/`section` の分量基準だけです。語彙難度（`kanji_ratio`・`word_length`）・語彙多様度（`mattr_window`）・読解難度（`readability`）・警告メッセージの文言（`labels`）は、プリセットの外側に置く共通設定で、どのプリセットを選んでも同じ値が使われます。詳細な基準値のカスタマイズは「Metrics」の章を参照してください。
+`use` で選んだプリセットが切り替えるのは、`chapter`/`section` の分量基準だけです。語彙難度（`kanji_ratio`・`word_length`・`ttr`）・読解難度（`readability`）・警告メッセージの文言（`labels`）は、プリセットの外側に置く共通設定で、どのプリセットを選んでも同じ値が使われます。詳細な基準値のカスタマイズは「Metrics」の章を参照してください。
 
 ### lint / spellcheck — 文章校正
 
@@ -347,23 +328,26 @@ metrics:
 
 ```yaml
 lint:
-  config: config/.textlintrc.yml   # 使用する textlint 設定ファイル
   disabled_rules: []               # 丸ごと無効化したい textlint ルール ID
-  disabled_terms: []               # 無効化したい表記揺れの指摘語（prh 等の個別無効化）
-  sentence_length_max: 100         # 一文の最大文字数（sentence-length ルール）
+  sentence_length_max: 100         # 一文の最大文字数（0 で一文の長さを検査しない）
   trim_long_vowel: false           # true: 「サーバ」等、末尾長音を省く文体の指摘を黙らせる
   allow_space_around_code: false   # true: インラインコードと和文の間のスペースを許容
   allow_space_between_ja_en: false # true: 全角と半角（英数・記号）の間のスペースを許容
 
 spellcheck:
   extra_dictionaries: []   # オンデマンドダウンロード辞書（例: ada）
-  extra_words:             # プロジェクト固有の正しい語（誤検知防止）
-    - vivliostyle
-    - vivlio-starter
-  ignore_words:            # 抑制したい単語
-    - htmx
   check_code_blocks: false # コードブロック内をチェック対象にするか
 ```
+
+ここに置くのは**文体の選択**だけです。校正ルールそのものは `config/.textlintrc.yml` を直接編集し、
+個別の語を指摘させたくないときは専用の除外ファイルに書きます。
+
+| したいこと | 書く場所 |
+| :--- | :--- |
+| ルールの追加・削除、しきい値の変更 | `config/.textlintrc.yml` |
+| この語句は指摘しないでほしい（日本語校正） | `config/textlint_allowlist.yml` |
+| この語は綴り誤りではない（スペルチェック） | `config/spellcheck_allowlist.yml` |
+| この表記に統一したい | `config/textlint_rewrite.yml` |
 
 詳細は「文章校正」の章を参照してください。
 

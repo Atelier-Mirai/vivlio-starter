@@ -1395,5 +1395,5 @@ URL を QR コードの画像に変換して、その場に差し込みます。
 :::
 ```
 
-あとは `stylesheets/custom.css` に `.marker-box { background: #ffeb3b; }` のように定義すれば装飾が反映されます。ただし未知のクラス名はビルド前チェックで警告されるため、独自クラスは `config/book.yml` の `preflight.allowed_classes` に登録しておきましょう（例: `allowed_classes: ["marker-box"]`）。
+あとは `stylesheets/custom.css` に `.marker-box { background: #ffeb3b; }` のように定義すれば装飾が反映されます。**CSS を書くこと自体が登録**なので、別途どこかに宣言する必要はありません。ビルド前チェックは `stylesheets/` の中を読んでクラス名を集めており、CSS に無いクラス名を使ったときだけ「綴りを間違えていませんか」と警告します。
 :::
