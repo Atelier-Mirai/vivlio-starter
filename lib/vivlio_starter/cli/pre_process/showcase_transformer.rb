@@ -41,6 +41,7 @@ require_relative '../common'
 require_relative 'generated_asset_cache'
 require_relative 'markdown_utils'
 require_relative 'showcase_svg_builder'
+require_relative 'svg_font_embedder'
 
 module VivlioStarter
   module CLI
@@ -149,7 +150,8 @@ module VivlioStarter
             data_uri = tools.data_uri(source)
             next false unless data_uri
 
-            svg = ShowcaseSvgBuilder.build(block, orig_w:, orig_h:, data_uri:)
+            svg = ShowcaseSvgBuilder.build(block, orig_w:, orig_h:, data_uri:,
+                                           font_data: label_font_subset(block))
             raster = tools.rasterize(svg, raster_width(block, orig_w:, orig_h:), format: ext.to_sym)
             next false unless raster
 
@@ -157,6 +159,22 @@ module VivlioStarter
             File.binwrite(File.join(cache_dir, "#{key}.#{ext}"), raster)
             true
           end
+        end
+
+        # 注釈ラベルに出る字だけへ絞った見出し書体（Bold）を返す。
+        #
+        # 合成 SVG は `<img>` から参照される独立文書で、本文 HTML の @font-face が届かない。
+        # 素の sans-serif に任せると OS 既定の和文フォントへ落ち、Chromium がそれを
+        # Type 3 で埋め込んでしまう（入稿で不可）。字を SVG 自身に持たせて断ち切る。
+        # サブセットなので 8 文字で 3.3KB 程度、SVG は実質太らない。
+        # 経緯と実測は `type3-font-embedding-notes.md`。
+        #
+        # フォントが見つからない・解析できない場合は nil を返し、SVG は従来どおり
+        # sans-serif で組まれる（Type 3 は残るが、ビルドは止めない）。
+        # @return [String, nil] サブセット済み TTF のバイト列
+        def label_font_subset(block)
+          SvgFontEmbedder.subset(ShowcaseSvgBuilder.label_characters(block),
+                                 SvgFontEmbedder.heading_font_path)
         end
 
         # 永続キャッシュに残るラスターの拡張子（png/jpg）。無ければ nil（＝形式判定から決める）。

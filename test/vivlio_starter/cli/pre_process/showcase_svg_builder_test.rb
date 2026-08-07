@@ -159,4 +159,44 @@ class ShowcaseSvgBuilderTest < Minitest::Test
     assert_includes svg, %(>&lt;b&gt;&amp;x</text>)
     refute_includes svg, '<b>'
   end
+
+  # --- ラベル字面の自給（Type 3 フォント対策）---
+  #
+  # 合成 SVG は <img> 参照の独立文書で本文の @font-face が届かないため、ラベルに出る字を
+  # サブセットにして SVG 自身へ抱かせる。その母集合を返すのが label_characters。
+  # 収集漏れがあっても SVG は sans-serif で組まれて**ビルドは通る**——Type 3 が
+  # 静かに残るだけなので、ここで固定しないと退行に気づけない。
+  # 経緯は `type3-font-embedding-notes.md`。
+
+  def test_should_collect_characters_from_labels_and_badge_numbers
+    block = B.parse(%(![](a.png)\npointer:2 500, 100 {label="白髪"}\nrect:1 0, 0, 100, 100\n).lines,
+                    orig_w: ORIG_W, orig_h: ORIG_H)
+
+    # ラベルは options['label'] にあり、番号はバッジとして描かれる。両方が対象。
+    assert_equal %w[白 髪 2 1].sort, B.label_characters(block).sort
+  end
+
+  def test_should_ignore_whitespace_and_deduplicate_label_characters
+    block = B.parse(%(![](a.png)\npointer:1 500, 100 {label="あ あ い"}\n).lines,
+                    orig_w: ORIG_W, orig_h: ORIG_H)
+
+    assert_equal %w[あ い 1].sort, B.label_characters(block).sort
+  end
+
+  def test_should_embed_subset_font_as_data_uri_and_reference_it_from_text
+    block = B.parse(%(![](a.png)\npointer:1 500, 100 {label="白髪"}\n).lines, orig_w: ORIG_W, orig_h: ORIG_H)
+    svg = B.build(block, orig_w: ORIG_W, orig_h: ORIG_H, data_uri: DATA_URI, font_data: 'DUMMY')
+
+    assert_includes svg, %(@font-face{font-family:"#{B::LABEL_FONT_FAMILY}")
+    assert_includes svg, %(src:url("data:font/ttf;base64,#{['DUMMY'].pack('m0')}"))
+    assert_includes svg, %(font-family="#{B::LABEL_FONT_FAMILY}, sans-serif")
+  end
+
+  # フォントを解決できない環境（同梱フォント欠落等）でも SVG は成立する
+  def test_should_omit_font_face_when_no_font_data_given
+    svg = build(%(![](a.png)\npointer:1 500, 100 {label="白髪"}\n))
+
+    refute_includes svg, '@font-face'
+    assert_includes svg, %(font-family="#{B::LABEL_FONT_FAMILY}, sans-serif")
+  end
 end

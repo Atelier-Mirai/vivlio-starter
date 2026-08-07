@@ -195,7 +195,7 @@ module VivlioStarter
         # @param data_uri [String] 元画像の base64 data URI（<img> から参照する SVG は
         #   外部リソースを読めないため埋め込みが必須・§6.3）
         # @return [String] SVG 文字列
-        def build(block, orig_w:, orig_h:, data_uri:)
+        def build(block, orig_w:, orig_h:, data_uri:, font_data: nil)
           # --- Phase: crop を viewBox の切り出し窓へ換算（画像は無加工のまま） ---
           top, _right, _bottom, left = block.crop
           view_x = orig_w * left / 1000.0
@@ -209,7 +209,41 @@ module VivlioStarter
           parts = [image_element(orig_w, orig_h, data_uri)]
           parts.concat(block.annotations.map { render_annotation(it, orig_w:, orig_h:, u:) })
 
+          # ラベルの字面を SVG 内で自給する（font_data の説明は embedded_font_style を参照）。
+          parts.unshift(embedded_font_style(font_data))
+
           svg_wrapper(view_x, view_y, view_w, view_h, alt_text(block), parts)
+        end
+
+        # ラベルに使うフォントのファミリ名。SVG 内で完結させるため実フォント名は使わない。
+        LABEL_FONT_FAMILY = 'vs-showcase-label'
+
+        # ラベル・バッジに実際に出る字を重複なく集める（サブセットの母集合）。
+        # フォントの解決とサブセット化は ShowcaseTransformer の責務——本モジュールは
+        # 設定もファイルシステムも触らない純関数に保つ（冒頭の責務欄）。
+        def label_characters(block)
+          # ラベルは options['label']（`{label="…"}`）、番号は rect/pointer 双方のバッジに出る。
+          block.annotations.flat_map { |a| [a.options['label'].to_s, a.number.to_s] }
+               .join.chars.uniq.reject { it.match?(/\s/) }
+        end
+
+        # サブセット済みフォントを data: URI で抱かせる <style> を返す。
+        #
+        # この SVG は File へ書き出して `<img>` から参照される＝独立文書なので、
+        # 本文 HTML の @font-face も CSS 変数も届かない。font-family を素の
+        # `sans-serif` にすると OS の既定和文フォント（macOS なら Hiragino）へ落ち、
+        # Chromium がそれを **Type 3 フォント**で PDF へ埋め込む——技術書典等の入稿で不可。
+        # 全章ビルドの実測（2026-08-07）では Type 3 の全件がこの経路だった。
+        # 相対パスの @font-face は独立文書からは読めず効かないことも実測済み。
+        # 詳細は `type3-font-embedding-notes.md`。
+        #
+        # @param font_data [String, nil] サブセット済み TTF のバイト列（nil なら埋め込まない）
+        # @return [String] <style> 要素（nil のときは空文字＝従来どおり sans-serif へ落ちる）
+        def embedded_font_style(font_data)
+          return '' if font_data.nil? || font_data.empty?
+
+          %(<style>@font-face{font-family:"#{LABEL_FONT_FAMILY}";) +
+            %(src:url("data:font/ttf;base64,#{[font_data].pack('m0')}") format("truetype");}</style>)
         end
 
         def render_annotation(annotation, orig_w:, orig_h:, u:)
@@ -348,7 +382,7 @@ module VivlioStarter
         end
 
         def text_element(content, x, y, font, color, anchor)
-          %(<text x="#{fmt(x)}" y="#{fmt(y)}" text-anchor="#{anchor}" font-family="sans-serif" ) +
+          %(<text x="#{fmt(x)}" y="#{fmt(y)}" text-anchor="#{anchor}" font-family="#{LABEL_FONT_FAMILY}, sans-serif" ) +
             %(font-size="#{fmt(font)}" font-weight="700" fill="#{escape_attr(color)}">#{escape_text(content)}</text>)
         end
 

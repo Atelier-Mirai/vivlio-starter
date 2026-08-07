@@ -35,6 +35,7 @@ require_relative '../common'
 require_relative '../masking'
 require_relative 'generated_asset_cache'
 require_relative 'mermaid_renderer'
+require_relative 'svg_font_embedder'
 
 module VivlioStarter
   module CLI
@@ -103,9 +104,23 @@ module VivlioStarter
           png = renderer.render(source, format: :png, font_family:)
           return false unless svg && png
 
+          svg = embed_label_font(svg)
           File.write(File.join(cache_dir, "#{key}.svg"), svg, encoding: 'utf-8')
           File.binwrite(File.join(cache_dir, "#{key}.png"), png)
           true
+        end
+
+        # 図中に出る字だけを絞った @font-face を SVG 自身へ持たせる。
+        #
+        # この SVG は `<img>` から参照される独立文書なので、configured_font_family が
+        # 名指しした書体は解決されず OS の既定和文フォントへ落ち、Chromium がそれを
+        # Type 3 で埋め込む（入稿で不可）。SVG 側は既に書体名を書いているため、
+        # **同名**の @font-face を注ぐだけで解決する（font-family の書き換えは不要）。
+        # 詳細は `type3-font-embedding-notes.md`。
+        def embed_label_font(svg)
+          style = SvgFontEmbedder.font_face_style(SvgFontEmbedder.characters_in(svg),
+                                                  family: SvgFontEmbedder.configured_heading_font)
+          SvgFontEmbedder.inject(svg, style)
         end
 
         # --- ブロック判定・切り出し ---

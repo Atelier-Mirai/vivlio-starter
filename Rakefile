@@ -16,7 +16,7 @@ class << Rake.application
     end
 
     # 【重要】出力させたい理想の順番を明示的に指定
-    custom_order = ['test', 'test:standard', 'test:versions', 'test:layout', 'test:targets', 'test:kindle', 'test:manual', 'test:package', 'test:release', 'test:canary', 'reinstall']
+    custom_order = ['test', 'test:standard', 'test:versions', 'test:layout', 'test:targets', 'test:type3', 'test:kindle', 'test:manual', 'test:package', 'test:release', 'test:canary', 'reinstall']
     displayable_tasks = displayable_tasks.sort_by { |t| custom_order.index(t.name) || 999 }
 
     # 表示幅を計算して綺麗にフォーマット出力
@@ -36,7 +36,8 @@ Rake::TestTask.new(:test) do |t|
     "test/**/page_layout/**/*_test.rb",
     "test/**/release/**/*_test.rb",
     "test/**/targets/**/*_test.rb",
-    "test/**/kindle/**/*_test.rb"
+    "test/**/kindle/**/*_test.rb",
+    "test/**/type3/**/*_test.rb"
   )
   t.warning = false
 end
@@ -145,6 +146,21 @@ end
 
 Rake::Task["test:targets"].clear_comments
 Rake::Task["test:targets"].comment = "ターゲット整合性テスト（pdf/print_pdf/epub を単体・複合でビルドし突き合わせ）"
+
+# ------------------------------------------------------------------
+# Techbook モードの Type 3 フォント検証（techbook true/false の実ビルド比較）
+# 全章ビルドを 2 回回すため 10 分以上かかる。通常テストからは除外
+# ------------------------------------------------------------------
+namespace :test do
+  Rake::TestTask.new(:type3) do |t|
+    t.libs << "test"
+    t.pattern = "test/vivlio_starter/type3/**/*_test.rb"
+    t.warning = false
+  end
+end
+
+Rake::Task["test:type3"].clear_comments
+Rake::Task["test:type3"].comment = "Type 3 フォント検証（techbook: true/false を実ビルドし混入量を比較）"
 
 # ------------------------------------------------------------------
 # Kindle 変換検証テスト（opt-in・Mac/Win ローカル専用）

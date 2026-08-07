@@ -28,6 +28,7 @@ require 'fileutils'
 require 'net/http'
 require 'uri'
 require 'openssl'
+require_relative 'common'
 
 module VivlioStarter
   module CLI
@@ -89,9 +90,16 @@ module VivlioStarter
       def download_google_font(name)
         css = fetch_google_css(name)
         unless css && !css.strip.empty?
-          Common.log_warn("Google Fonts のCSSが取得できませんでした: #{name}")
+          Common.log_warn("Google Fonts のCSSが取得できませんでした: #{name}",
+                          detail: "→ このままだとお使いの PC のフォントで組まれ、入稿用 PDF に Type 3 フォントが混入します。\n" \
+                                  '→ 同梱書体（Zen Old Mincho / Zen Kaku Gothic New / Zen Maru Gothic）か、' \
+                                  'Google Fonts にある書体名を指定してください。')
           return []
         end
+
+        # 太さは 2 面（本文用と太字用）に絞る。全ウェイトを落とすと和文 1 書体で
+        # 数十 MB になるうえ、CSS が使うのはこの 2 面だけ。
+        css = select_weight_faces(css, name)
 
         slug = slug_for(name)
         family_dir = File.join(google_fonts_dir, slug)
@@ -141,6 +149,40 @@ module VivlioStarter
         raise "HTTP #{response.code}" unless response.is_a?(Net::HTTPSuccess)
 
         File.binwrite(dest_path, response.body)
+        warn_unless_static_truetype(dest_path)
+      end
+
+      # 落としたフォントが静的 TrueType かを検査する。
+      #
+      # Chromium は **CFF ベース（OTF）** と **可変フォント** を Type 3 として PDF へ
+      # 埋め込むため、どちらも入稿では使えない。日本語 Google Fonts 55 書体の実測
+      # （2026-08-07）では全書体とも静的 TrueType が配信されたが、それは
+      # perform_get の User-Agent がブラウザでない（＝旧来の静的 TTF 配信になる）ことに
+      # 依存している。配信方針が変わったときに静かに壊れないよう、ここで見張る。
+      def warn_unless_static_truetype(path)
+        tags = sfnt_table_tags(path)
+        return if tags.empty?
+        return if tags.include?('glyf') && !tags.include?('fvar')
+
+        reason = tags.include?('CFF ') ? 'CFF ベース（OTF）' : '可変フォント'
+        Common.log_warn("取得したフォントが静的 TrueType ではありません: #{File.basename(path)}（#{reason}）",
+                        detail: '→ Chromium がこの書体を Type 3 フォントとして PDF へ埋め込むため、' \
+                                "入稿用 PDF では使えません。\n" \
+                                '→ 同梱書体（Zen Old Mincho / Zen Kaku Gothic New / Zen Maru Gothic）をお使いください。')
+      end
+
+      # sfnt のテーブルディレクトリからタグ一覧を読む（先頭数 KB だけで足りる）。
+      def sfnt_table_tags(path)
+        header = File.binread(path, 12).to_s
+        return [] if header.bytesize < 12
+
+        count = header[4, 2].unpack1('n').to_i
+        return [] if count.zero? || count > 512
+
+        directory = File.binread(path, count * 16, 12).to_s
+        (0...count).filter_map { directory[it * 16, 4] }
+      rescue StandardError
+        []
       end
 
       def readable_filename_from(block, url, slug)
@@ -177,14 +219,82 @@ module VivlioStarter
         end
       end
 
+      # ------------------------------------------------------------------
+      # ウェイトの選定（Type 3 フォント対策の本体）
+      # ------------------------------------------------------------------
+      # かつては CSS を `family=<名前>` だけで要求していたため、Google は
+      # **既定の 400 を 1 面返すだけ**だった。見出しや強調は太字を要求するので、
+      # Bold 字面が無い書体では Chromium が faux-bold を合成し、それを
+      # **Type 3 フォント**として PDF へ埋め込む——技術書典等の入稿で不可。
+      # 実測（2026-08-07）: Noto Sans JP 指定の 1 章ビルドで Type 3 が 195 件。
+      #
+      # 日本語 Google Fonts 55 書体の調査では、配信されるのは全書体とも
+      # 静的 TrueType だが、**太字を持つのは 24 書体だけ**で残り 31 書体は 400 のみ。
+      # また太字のウェイトは書体ごとに違う（Klee One は 600・M PLUS 1p は 700 で
+      # 600 が無い）ため、700 決め打ちでは取り逃す。
+      # 詳細は `type3-font-embedding-notes.md`。
+
+      # 取得を試みるウェイト（Google は存在しないものを黙って落とす）
+      WEIGHT_QUERY = '100;200;300;400;500;600;700;800;900'
+      REGULAR_WEIGHT = 400
+      # 太字とみなす下限と、その中で最も近づけたい狙い値
+      BOLD_MIN_WEIGHT = 600
+      BOLD_TARGET_WEIGHT = 700
+
+      # 指定書体に太字（BOLD_MIN_WEIGHT 以上）の実体があるか。
+      # 同梱書体は Regular/Bold 両字面を持つので常に true。
+      # 太字が無い書体は本文強調をゴシックで代用する必要があるため、CSS 生成側が参照する。
+      # @param name [String] フォントファミリ名
+      # @return [Boolean]
+      def bold_available?(name)
+        family = name.to_s.strip
+        return false if family.empty?
+        return true if standard_font?(family)
+
+        dir = File.join(google_fonts_dir, slug_for(family))
+        Dir.glob(File.join(dir, '*')).any? { File.basename(it)[/-(\d{3})\./, 1].to_i >= BOLD_MIN_WEIGHT }
+      end
+
+      # CSS から本文用（400）と太字用の @font-face だけを残す。
+      # 太字が無ければ 400 のみを返し、著者に代用が起きることを伝える。
+      def select_weight_faces(css, name)
+        by_weight = css.scan(/@font-face\s*{[^}]+}/m).to_h { |b| [b[/font-weight:\s*(\d+)/, 1].to_i, b] }
+        # @font-face を読み取れない形（想定外の応答）はそのまま通す。
+        return css if by_weight.empty?
+
+        regular = by_weight[REGULAR_WEIGHT] || by_weight.min_by { |w, _| (w - REGULAR_WEIGHT).abs }&.last
+        bold_weight = by_weight.keys.select { it >= BOLD_MIN_WEIGHT }
+                                    .min_by { (it - BOLD_TARGET_WEIGHT).abs }
+        # 1 面しか返らない書体こそが代用の対象なので、ここは早期 return しない。
+        warn_missing_bold(name) unless bold_weight
+
+        [regular, bold_weight && by_weight[bold_weight]].compact.join("\n")
+      end
+
+      # 太字を持たない書体を選んだ著者への案内。黙って代用すると
+      # 「指定した書体と違う字が出た」に見えるため、理由と選択肢を必ず添える。
+      def warn_missing_bold(name)
+        Common.log_warn("#{name} には太字がありません（Google Fonts の配信は標準の太さのみ）",
+                        detail: "→ 本文の**強調**は見出し書体（ゴシック）で代用します。\n" \
+                                "→ 疑似太字で組むと入稿用 PDF に Type 3 フォントが混入するため、この代用は外せません。\n" \
+                                '→ 太字を含む書体にするなら Noto Sans JP / Noto Serif JP / Zen 系 / ' \
+                                'M PLUS 系 / BIZ UD 系などが該当します。')
+      end
+
+      # ウェイト指定つきで要求し、受け付けられなければ書体名だけで再試行する。
+      # 軸指定を解さない書体でも最低限 400 は取れるようにするための二段構え。
       def fetch_google_css(name)
-        params = URI.encode_www_form('family' => name, 'display' => 'swap')
+        css = request_google_css("#{name}:wght@#{WEIGHT_QUERY}")
+        css ||= request_google_css(name)
+        Common.log_warn("Google Fonts CSS の取得に失敗しました: #{name}") if css.nil?
+        css
+      end
+
+      def request_google_css(family_spec)
+        params = URI.encode_www_form('family' => family_spec, 'display' => 'swap')
         uri = URI.parse("#{GOOGLE_FONTS_ENDPOINT}?#{params}")
         response = perform_get(uri, 'Accept' => 'text/css,*/*;q=0.1')
-        return response.body if response.is_a?(Net::HTTPSuccess)
-
-        Common.log_warn("Google Fonts CSS の取得に失敗しました: #{name} (HTTP #{response&.code})")
-        nil
+        response.is_a?(Net::HTTPSuccess) ? response.body : nil
       end
 
       def update_google_bundle!(new_entries)

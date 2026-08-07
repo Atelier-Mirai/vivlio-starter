@@ -101,9 +101,41 @@ module VivlioStarter
             }
             #{section_pagebreak_rule(page_cfg)}
             #{chapter_pagebreak_rule(page_cfg)}
+            #{font_synthesis_rules(cfg)}
             #{kindle_accent_rules(cfg)}
             #{talk_class_rules(registry)}
           CSS
+        end
+
+        # ================================================================
+        # 疑似太字（faux-bold）の抑止 — Type 3 フォント対策
+        # ================================================================
+        # Bold 字面を持たない書体に太字を要求すると、Chromium は字を太らせて
+        # 合成し、それを **Type 3 フォント**として PDF へ埋め込む。Type 3 は
+        # 技術書典等の入稿で不可（実測 2026-08-07: Noto Sans JP 指定の 1 章
+        # ビルドで Type 3 が 195 件）。
+        #
+        # 対策は 2 段:
+        #   1. `font-synthesis-weight: none` で合成そのものを止める。実 Bold が
+        #      ある書体には影響しない——実体があるとき合成は起きないため。
+        #   2. それだけだと本文の **強調** が標準の太さになって埋もれるので、
+        #      本文書体に太字が無いときに限り `strong`/`b` を見出し書体（ゴシック）へ
+        #      振る。明朝の強調にゴシックを当てるのは和文組版の作法でもある。
+        #
+        # 同梱書体は Regular/Bold 両字面を持つため 2 は発動せず、見た目は変わらない。
+        # 詳細は `type3-font-embedding-notes.md`。
+        def font_synthesis_rules(cfg)
+          typo = FrontmatterGenerator.safe_config_hash(cfg&.typography) || {}
+          rules = ['/* faux-bold を禁止して Type 3 フォントの混入を断つ */',
+                   'body { font-synthesis-weight: none; }']
+          rules.concat(emphasis_fallback_rules) unless FontManager.bold_available?(typo.dig(:body, :font))
+          rules.join("\n")
+        end
+
+        # 本文書体に太字が無いときの強調（ゴシック代用）。
+        def emphasis_fallback_rules
+          ['/* 本文書体に太字が無いため、強調は見出し書体（ゴシック）で表す */',
+           'strong, b { font-family: var(--font-header); }']
         end
 
         # 生成ファイル先頭の注意書き。
