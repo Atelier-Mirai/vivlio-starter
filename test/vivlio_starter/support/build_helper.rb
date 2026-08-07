@@ -104,11 +104,17 @@ module VsTestSupport
     # `key: value` 形式のトップレベル設定行を書き換える汎用版（EPUB 切替等に使用）。
     # 例: rewrite_line(/^(\s*)targets:.*$/, '\1targets: epub') { ... }
     # ブロック終了時に必ず元の内容へ復元する。
-    def self.rewrite_line(pattern, replacement)
+    def self.rewrite_line(pattern, replacement, &) = rewrite_lines([[pattern, replacement]], &)
+
+    # 複数箇所を 1 回で書き換える版。rewrite_line の入れ子でも同じことはできるが、
+    # 3 箇所を超えると復元の入れ子が読めなくなるため、まとめて渡せるようにしてある。
+    # @param pairs [Array<Array(Regexp, String)>] [パターン, 置換文字列] の配列（先頭から順に適用）
+    def self.rewrite_lines(pairs)
       raise "#{BOOK_YML_PATH} が見つかりません" unless File.exist?(BOOK_YML_PATH)
 
       original = File.read(BOOK_YML_PATH)
-      File.write(BOOK_YML_PATH, original.sub(pattern, replacement))
+      patched = pairs.reduce(original) { |text, (pattern, replacement)| text.sub(pattern, replacement) }
+      File.write(BOOK_YML_PATH, patched)
       yield
     ensure
       File.write(BOOK_YML_PATH, original) if original

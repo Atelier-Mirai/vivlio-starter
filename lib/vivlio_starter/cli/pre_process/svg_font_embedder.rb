@@ -61,8 +61,12 @@ module VivlioStarter
           data = subset(chars, font_path || heading_font_path)
           return nil unless data
 
+          # 埋め込むのは 1 面だけ（ウェイト指定なし＝400 扱い）。図のラベルが太字を
+          # 要求すると faux-bold が合成され Type 3 になるので、独立文書のここでも
+          # 合成を止める。本文側の body ルールはこの SVG に届かない。
           %(<style>@font-face{font-family:"#{family}";) +
-            %(src:url("data:font/ttf;base64,#{[data].pack('m0')}") format("truetype");}</style>)
+            %(src:url("data:font/ttf;base64,#{[data].pack('m0')}") format("truetype");}) +
+            %(svg{font-synthesis-weight:none}</style>)
         end
 
         # SVG のルート直下へ <style> を差し込む。
@@ -73,12 +77,30 @@ module VivlioStarter
           svg.sub(/(<svg[^>]*>)/) { "#{::Regexp.last_match(1)}#{style}" }
         end
 
-        # 書籍の見出し書体（Bold）の実体。ディレクトリ名の規則は FontManager.slug_for と同じ。
+        # 書籍の見出し書体（太字優先）の実体。ディレクトリ名の規則は FontManager.slug_for と同じ。
+        #
+        # 置き場もファイル名も 2 通りある——同梱書体は `fonts/<slug>/` に
+        # `*-Bold.ttf` / `*-Regular.ttf`、Google Fonts は `fonts/google/<slug>/` に
+        # `<Slug>-700.ttf`（400 はウェイト無し）という FontManager#readable_filename_from の
+        # 規則で置かれる。**両方を探すこと。** 同梱側しか見ないと、著者が Google Fonts の
+        # 書体を指定した瞬間にサブセットを埋め込めず、SVG が OS の和文フォントへ落ちて
+        # Type 3 が再発する（`type3-font-embedding-notes.md` §5）。
         # @return [String, nil]
         def heading_font_path
-          family = configured_heading_font
-          dir = File.join(Common.stylesheets_dir, 'fonts', family.gsub(/[^A-Za-z0-9]+/, '_'))
+          slug = configured_heading_font.gsub(/[^A-Za-z0-9]+/, '_')
+          bundled_font_path(File.join(Common.stylesheets_dir, 'fonts', slug)) ||
+            google_font_path(File.join(Common.stylesheets_dir, 'fonts', 'google', slug))
+        end
+
+        # 同梱書体: Bold 字面があればそれ、無ければ辞書順で最初の 1 本。
+        def bundled_font_path(dir)
           Dir.glob(File.join(dir, '*Bold.ttf')).first || Dir.glob(File.join(dir, '*.ttf')).min
+        end
+
+        # Google Fonts: 太さはファイル名末尾のウェイト数値で表される（400 は数値なし＝0 扱い）。
+        # SVG のラベルは見出し相当で組むため最も太い面を選ぶ。
+        def google_font_path(dir)
+          Dir.glob(File.join(dir, '*.ttf')).max_by { File.basename(it)[/-(\d{3})\.ttf\z/, 1].to_i }
         end
 
         # book.yml の見出し書体名（未設定・プロジェクト外では同梱既定）。

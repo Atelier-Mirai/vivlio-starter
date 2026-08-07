@@ -183,12 +183,16 @@ module VivlioStarter
         end
 
         # 画像内容をキーに含めるため、著者がスクリーンショットを撮り直せば再生成される。
+        # v2: ラベル書体をキーに含める。SVG はサブセットを自身に抱くので、著者が
+        # typography.heading.font を変えたら作り直さないと古い書体のまま残る
+        # （mermaid 側は最初から font_family をキーに含めていた）。
         def cache_key(source, block)
           payload = [
-            'v1',
+            'v2',
             Digest::SHA256.file(source).hexdigest,
             block.crop.join(','),
-            JSON.generate(block.annotations.map(&:to_h))
+            JSON.generate(block.annotations.map(&:to_h)),
+            SvgFontEmbedder.configured_heading_font
           ].join('|')
           Digest::SHA256.hexdigest(payload)[0, 16]
         end

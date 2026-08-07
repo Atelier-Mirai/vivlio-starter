@@ -127,7 +127,7 @@ module VivlioStarter
         def font_synthesis_rules(cfg)
           typo = FrontmatterGenerator.safe_config_hash(cfg&.typography) || {}
           rules = ['/* faux-bold を禁止して Type 3 フォントの混入を断つ */',
-                   'body { font-synthesis-weight: none; }']
+                   'body, body *, body *::before, body *::after { font-synthesis-weight: none; }']
           rules.concat(emphasis_fallback_rules) unless FontManager.bold_available?(typo.dig(:body, :font))
           rules.join("\n")
         end

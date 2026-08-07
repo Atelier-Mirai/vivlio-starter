@@ -237,13 +237,20 @@ module VivlioStarter
         # 相対パスの @font-face は独立文書からは読めず効かないことも実測済み。
         # 詳細は `type3-font-embedding-notes.md`。
         #
+        # ラベルは `font-weight="700"` で組むが、埋め込むのは 1 面だけ（＝ウェイト指定なし
+        # ＝400 扱い）なので、**独立文書のここでも合成を止めないと faux-bold が起きる**。
+        # 本文側の `body { font-synthesis-weight: none }` はこの SVG には届かない。
+        # 太字を持たない書体（Google Fonts 日本語 55 書体のうち 31）を著者が選ぶと
+        # ここが Type 3 の出所になる（`type3-font-embedding-notes.md` §5.1）。
+        #
         # @param font_data [String, nil] サブセット済み TTF のバイト列（nil なら埋め込まない）
         # @return [String] <style> 要素（nil のときは空文字＝従来どおり sans-serif へ落ちる）
         def embedded_font_style(font_data)
           return '' if font_data.nil? || font_data.empty?
 
           %(<style>@font-face{font-family:"#{LABEL_FONT_FAMILY}";) +
-            %(src:url("data:font/ttf;base64,#{[font_data].pack('m0')}") format("truetype");}</style>)
+            %(src:url("data:font/ttf;base64,#{[font_data].pack('m0')}") format("truetype");}) +
+            %(svg{font-synthesis-weight:none}</style>)
         end
 
         def render_annotation(annotation, orig_w:, orig_h:, u:)
