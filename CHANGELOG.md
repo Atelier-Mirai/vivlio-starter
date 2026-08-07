@@ -6,6 +6,18 @@
 
 ## unreleased
 
+### Fixed
+- [High] **入稿用 PDF から Type 3 フォントを一掃した**（`type3-font-embedding-notes.md`）: `techbook: true` でも Type 3 が **32 件・7 ページ**残っており、技術書典等の入稿基準を満たしていなかった。原因は showcase / mermaid の生成 SVG——`<figure><img src="…svg">` で参照する SVG は**独立文書**のため本文 HTML の @font-face も CSS 変数も届かず、同梱フォントが解決できずに OS 既定の和文フォント（macOS なら Hiragino Sans）へフォールバックし、Chromium がそれを Type 3 で埋め込んでいた。**実測: 186 件（`techbook: false`）→ 32 件（同 `true`）→ 0 件**。
+  - 対策は `SvgFontEmbedder` の新設。**その SVG に出る字だけ**へ絞ったフォントを作り、@font-face の data: URI として SVG 自身に持たせる。サブセット化は **ttfunk**（Prawn 経由で既に入っている MIT ライブラリ）で行うため新規依存はない。8 文字で 3.3KB に収まり、和文フォント丸ごと（2〜4MB）と違って SVG は実質太らない。
+  - **相対パスの @font-face は効かない**（外部リソースを読めない）ことを実測で確認済み。`font-family` に書体名を書くだけでも解決しない——フォント自体が届いていないため。
+  - mermaid は SVG が既に書体名を名指ししているので**同名**の @font-face を注ぐだけで済む（テキストの書き換え不要）。showcase は `font-family` が汎用名（`sans-serif`）で @font-face を当てられないため、専用ファミリ名を与えた。
+  - フォントを解決できない環境では従来どおり組む（Type 3 は残るがビルドは止めない）。
+- [High] **Google Fonts を指定すると疑似太字が Type 3 フォントになっていた**（`type3-font-embedding-notes.md` §6）: `FontManager` が CSS を `family=<名前>` だけで要求していたため Google は**既定の 400 を 1 面返すだけ**で、見出しや `**強調**` が要求する太字に実体が無く、Chromium が faux-bold を合成してそれを Type 3 で埋め込んでいた。**実測: `body: Noto Serif JP` / `heading: Noto Sans JP` の 1 章ビルド（25 ページ）で Type 3 が 195 件・22 ページ → 0 件**。RC 以前の `book.yml` はこの設定で、当時ラスタライズで凌いだ経緯がある。
+  - `family:wght@100;…;900` で要求し、**400 と「600 以上で 700 に最も近いウェイト」の 2 面だけ**を落とす。全ウェイトを取ると和文 1 書体で数十 MB になる。**700 決め打ちは通用しない**——日本語 Google Fonts 55 書体の調査で、`Klee One` は 600 が太字（700 が無い）、`M PLUS 1p` は 600 が無い、と書体ごとに並びが違った。`wght@400;700` を要求しても Google はエラーにせず 400 だけ返すため、欠落に気づけない。
+  - 同調査では**アウトラインは 55 書体すべて静的 TrueType**だったが、**太字を持つのは 24 書体だけ**で残り 31 書体は 400 のみ（装飾書体はそもそも太さのバリエーションを持たない設計）。そこで `body { font-synthesis-weight: none; }` を常時出力して合成自体を止め、**本文書体に太字が無いときに限り** `strong, b` を見出し書体（ゴシック）へ振る。明朝の強調にゴシックを当てるのは和文組版の作法でもある。同梱書体は Regular/Bold 両字面を持つため後者は発動せず、既存の本の見た目は変わらない。
+  - 全書体が静的 TrueType なのは User-Agent がブラウザでない（Google が旧来の静的 TTF を配信する）ことに依存しているため、ダウンロード後に sfnt のテーブルを検査し、`glyf` が無い／`fvar` がある場合は警告する。配信方針が変わったときに静かに壊れないようにした。
+- [Medium] **`verify`（旧 `build.verify`）の設定が実装に届いていなかった**: `BuildCommand` / `PreflightCommand` の `setup_verify_options!` が 3 つのフラグを**常に**スレッドローカルへ立てていたため、`LinkImageValidator#resolve_config` の `cli_opts.fetch(:verify_images, 設定側の既定)` が一度も既定値へ落ちず、`verify.images` / `bare_urls` / `external_links` が丸ごと無視されていた。CLI で**明示された指定だけ**を載せる形に改め、book.yml が既定値として機能するようにした。キー名は `resolve_config` に出現するため `book_yml_consumption_test` は素通りする——「値が実際に効くか」は `verify_config_resolution_test.rb` で固定した。
+
 ### Added
 - [High] **索引が「出現箇所」ではなく「説明箇所」を指すようになった**（`index-main-reference-spec.md`・Phase 1〜6 完了）: 索引の役割は所在の網羅ではなく**説明の在り処への案内**なのに、全出現を同格のページ番号として並べていたため、頻出語ほどページ番号の壁になって索引としての価値が下がる逆転が起きていた（実測: 「用語集」は 13 章に 100 回出現し、腰を据えて説明しているのは 33 章だけ）。**その語を説明している章での初出**を主要参照として太字＋先頭に置き、副次参照はその後ろに続ける形にした。実測: `用語集 …… **196**, ii, 24, 27, 51, 102`。
   - 指定は**レビューファイル `_index_glossary_review.md`** で行う（`- 主要参照: 21, 22`）。著者が編集するのは辞書 YAML ではないため、用語集の説明文と同じく用語の子行に書く形へ揃えた。章番号・範囲（`21-22`）・章名のいずれでも書け、解決は `TokenResolver` に委ねる。行を消せば指定の解除。
