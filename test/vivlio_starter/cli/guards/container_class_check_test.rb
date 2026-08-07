@@ -114,7 +114,7 @@ module VivlioStarter
         end
       end
 
-      # book.yml の preflight.allowed_classes で追加許可したクラスは警告しない
+      # allowed_classes で追加許可したクラスは警告しない（呼び出し側からの注入）
       def test_should_not_warn_on_explicitly_allowed_class
         with_temp_project do
           File.write('contents/11-install.md', ":::{.talk}\n本文\n:::\n")

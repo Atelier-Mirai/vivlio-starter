@@ -159,7 +159,7 @@ module VivlioStarter
       # --- Phase: book.yml → Frontmatter Wiring Tests ---
 
       # book.yml の vfm.hard_line_breaks がフロントマターへ camelCase で注入されるテスト
-      # （実プロジェクトの book.yml は hard_line_breaks: true）
+      # （book.yml に記述が無くても default_vfm が hard_line_breaks: true を供給する）
       def test_should_inject_hard_line_breaks_into_base_frontmatter
         # Act
         generator = Object.new

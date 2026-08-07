@@ -293,8 +293,7 @@ module VivlioStarter
                         column: { font: nil, font_size: nil }, code: { font: nil },
                         folio: { font: nil, placement: nil } },
           legal: { disclaimer: nil, trademark: nil, twemoji: nil },
-          output: { targets: nil, cover: nil,
-                    filename: { include_version: nil },
+          output: { targets: nil, cover: nil, include_version: nil,
                     pdf_preview: { close_existing_windows: nil, window_bounds: nil },
                     pdf: { combined: nil, compress: nil, techbook: nil },
                     print_pdf: { bleed: nil, crop_marks: nil, full_bleed: nil },
@@ -849,7 +848,7 @@ module VivlioStarter
         project = CONFIG&.project
         project_name = project&.name || 'vivlio_starter'
         project_version = project&.version
-        include_version = CONFIG&.output&.filename&.include_version || false
+        include_version = CONFIG&.output&.include_version || false
 
         filename = project_name.to_s.dup
         filename += '_print' if target == 'print_pdf'
@@ -876,7 +875,7 @@ module VivlioStarter
       # @return [String]
       def generate_cover_output_filename(side)
         project = CONFIG&.project
-        include_version = CONFIG&.output&.filename&.include_version || false
+        include_version = CONFIG&.output&.include_version || false
 
         filename = "#{project&.name || 'vivlio_starter'}_#{side}cover"
         filename += "_v#{project&.version}" if include_version && !blank?(project&.version)

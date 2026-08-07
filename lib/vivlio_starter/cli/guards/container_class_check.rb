@@ -75,8 +75,8 @@ module VivlioStarter
           candidates = suggest(klass)
           detail << "候補: #{candidate_openers(directive, klass, candidates).join(', ')}" unless candidates.empty?
           detail << '→ CSS が当たらないため、枠が付かず素の段落として組まれます'
-          detail << '→ 意図したクラスであれば stylesheets/custom.css に定義を追加するか、'
-          detail << '  config/book.yml の preflight.allowed_classes に追加してください'
+          detail << '→ 意図したクラスであれば stylesheets/custom.css に定義を追加してください'
+          detail << '  （CSS を書けば、そのクラスは自動的に許可されます）'
           detail
         end
 

@@ -61,8 +61,9 @@ module VivlioStarter
               vs index:auto 21-23,25    # 範囲・複数指定も可
 
             書籍間での持ち運び（用語集[g]・棄却語 を別の本へ引き継ぐ）:
-              vs index:export           # book.yml の既定パスへ書き出す
-              vs index:import           # book.yml の既定パスから取り込む
+              vs index:export           # index_library.yml へ書き出す
+              vs index:import           # index_library.yml から取り込む
+              vs index:export mylib.yml # パスを指定して書き出す（取り込みも同様）
 
             詳細は各コマンドに --help を付けて確認してください。
           HELP
@@ -195,7 +196,7 @@ module VivlioStarter
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
-        many :args, '書き出し先パス（省略時は book.yml の既定）'
+        many :args, '書き出し先パス（省略時は index_library.yml）'
 
         def call
           return print_usage if options[:help]
@@ -224,7 +225,7 @@ module VivlioStarter
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
 
-        many :args, '取り込み元パス（省略時は book.yml の既定）'
+        many :args, '取り込み元パス（省略時は index_library.yml）'
 
         def call
           return print_usage if options[:help]

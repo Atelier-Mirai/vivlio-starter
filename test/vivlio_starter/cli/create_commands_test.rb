@@ -174,7 +174,6 @@ module VivlioStarter
           book:
             title: #{title}
           output:
-            filename:
               include_version: false
         YAML
       end
@@ -221,7 +220,6 @@ module VivlioStarter
           book:
             title: Sample
           output:
-            filename:
               include_version: false
         YAML
 
