@@ -300,8 +300,10 @@ module VivlioStarter
                     print_pdf: { bleed: nil, crop_marks: nil, full_bleed: nil },
                     epub: { embed: nil, layout: nil },
                     kindle: { embed: nil, layout: nil } },
-          build: { verify: { images: nil, bare_urls: nil, external_links: nil,
-                             timeout: nil, max_concurrency: nil } },
+          # vs build / vs preflight 共通の原稿検証。CLI の --[no]-verify / --verify-links と
+          # 対になる名前にしてある（どちらか一方のコマンド専用ではない）。
+          verify: { images: nil, bare_urls: nil, external_links: nil,
+                    timeout: nil, max_concurrency: nil },
           index_glossary: { enabled: nil, use_mecab: nil, timezone: nil,
                             context_width: nil, smart_context_cutting: nil,
                             library: nil },

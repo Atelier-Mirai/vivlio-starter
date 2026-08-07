@@ -147,15 +147,14 @@ module VivlioStarter
           entries.select(&:in_catalog?)
         end
 
-        # 検証オプションをスレッドローカルに設定する（BuildCommand と同一ロジック）
+        # 検証オプションをスレッドローカルに設定する（BuildCommand と同一ロジック）。
+        # 明示された指定だけを載せる理由は BuildCommand#setup_verify_options! を参照。
         def setup_verify_options!
           opts = {}
           if options[:verify] == false
             opts[:no_verify] = true
-          else
-            opts[:verify_images] = true
-            opts[:verify_bare_urls] = true
-            opts[:verify_external_links] = options[:verify_links] || false
+          elsif options[:verify_links]
+            opts[:verify_external_links] = true
           end
           Thread.current[:vs_verify_options] = opts
         end
