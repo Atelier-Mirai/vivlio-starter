@@ -353,11 +353,21 @@ module VivlioStarter
         end
 
         # book.yml lint.sentence_length_max（一文の最大文字数。未指定なら nil＝既定 100）
+        # book.yml lint.sentence_length_max。
+        #   未指定 … nil（textlintrc の既定 100）
+        #   0      … :off（一文の長さを検査しない）
+        #   正の数 … その値を上限にする
+        # 0 を「制限しない」に当てるのは book.yml 内の既存の流儀に揃えたもの
+        # （index.max_sub_references が「0 で無制限」）。上限を変えるのも
+        # 検査を切るのも同じキーで済み、disabled_rules を知らなくてよくなる。
         def sentence_length_max
           value = Common::CONFIG.lint.sentence_length_max
           return nil if Common.blank?(value)
 
-          value.to_i.positive? ? value.to_i : nil
+          count = value.to_i
+          return :off if count.zero?
+
+          count.positive? ? count : nil
         end
 
         # book.yml lint.allow_space_around_code（インラインコード前後のスペースを許容）
@@ -374,8 +384,11 @@ module VivlioStarter
           cfg = YAML.safe_load_file(base_path) || {}
           rules = (cfg['rules'] ||= {})
 
-          if sentence_max
-            (rules['preset-ja-technical-writing'] ||= {})['sentence-length'] = { 'max' => sentence_max }
+          # :off はルールごと切る（textlint の作法は `<rule>: false`）。
+          # 大きな上限を書いて実質無効にする手もあるが、値から意図が読めなくなる。
+          case sentence_max
+          when :off then (rules['preset-ja-technical-writing'] ||= {})['sentence-length'] = false
+          when Integer then (rules['preset-ja-technical-writing'] ||= {})['sentence-length'] = { 'max' => sentence_max }
           end
           if allow_code_space || allow_ja_en_space
             spacing = (rules['preset-ja-spacing'] ||= {})

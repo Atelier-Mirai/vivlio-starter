@@ -408,6 +408,39 @@ module VivlioStarter
         end
       end
 
+      # sentence_length_max: 0 は「長さを検査しない」。ルールごと切る（textlint の作法は false）。
+      # 上限を変えるのも検査を切るのも同じキーで済ませるための約束で、
+      # 0 を「制限しない」に当てるのは index.max_sub_references（0 で無制限）と揃えたもの。
+      # 大きな上限（10000 など）で実質無効にする手は採らない——値から意図が読めないため。
+      def test_generate_runtime_config_disables_sentence_length_when_zero
+        Dir.mktmpdir do |dir|
+          base = File.join(dir, '.textlintrc.yml')
+          File.write(base, { 'rules' => { 'prh' => { 'rulePaths' => ['./textlint_rewrite.yml'] } } }.to_yaml)
+
+          runner = LintCommands::LintRunner.new([], {})
+          path = runner.send(:generate_runtime_config, base, sentence_max: :off)
+
+          cfg = YAML.safe_load_file(path)
+          assert_equal false, cfg.dig('rules', 'preset-ja-technical-writing', 'sentence-length')
+          assert_includes cfg.dig('rules', 'prh', 'rulePaths'), './textlint_rewrite.yml', '既存設定を保持'
+        end
+      end
+
+      # book.yml の値から :off / 数値 / nil への解釈
+      def test_sentence_length_max_interprets_zero_as_off
+        runner = LintCommands::LintRunner.new([], {})
+        original = Common::CONFIG
+
+        { 0 => :off, '0' => :off, 80 => 80, '80' => 80, nil => nil, '' => nil }.each do |raw, expected|
+          merged = Common.merge_hardcoded_defaults(lint: { sentence_length_max: raw })
+          Common.install_configuration!(Common.wrap_config(merged).freeze)
+
+          assert_equal expected, runner.send(:sentence_length_max), "入力 #{raw.inspect}"
+        end
+      ensure
+        Common.install_configuration!(original)
+      end
+
       # スペース許容指定時に、preset-ja-spacing の該当ルールを設定レベルで無効化する
       def test_generate_runtime_config_allows_spacing
         Dir.mktmpdir do |dir|
