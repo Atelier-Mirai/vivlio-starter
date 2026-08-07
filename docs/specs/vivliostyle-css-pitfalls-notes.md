@@ -26,6 +26,7 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
 | EPUB で SVG 見出し画像がレイアウト箱からはみ出す | **svg ルートに width/height 属性（intrinsic size）が無い**とリーダーが縦横比を誤る | heading_image_composer.rb | §2.5 |
 | 手書き book-card が全ターゲットで崩れる（`**` 生残り） | **Masking がフェンス終端の改行ごと退避** → 閉じ `:::` がプレースホルダと同一行に癒着 → コンテナ変換が閉じを見失う | masking.rb | §2.6 |
 | flex 内のテキストが縮まず箱を突き抜ける | flex アイテムの **`min-width: auto`** ＋ inline-flex の**匿名 flex アイテム**は `min-inline-size: 0` を外から与えても縮まない | image-header.css（タイトルをブロック化） | §2.7 |
+| 太字を持たない書体を指定すると、リスト番号だけ Type 3 になる | **`font-synthesis-weight` が `::before` / `::after` の生成ボックスへ継承されない**（継承プロパティなのに届かない） | book_settings_css.rb（疑似要素まで明示） | §2.8 |
 
 ---
 
@@ -72,6 +73,22 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
 - **症状**: flex コンテナ内の長いテキストが折り返されず箱を突き抜ける。
 - **原因**: flex アイテムの既定 `min-width: auto` は内容の最小幅より縮ませない。さらに **inline-flex の中のテキストは匿名 flex アイテム**になり、外から `min-inline-size: 0` を与える対象が存在しない。
 - **修正の型**: テキストを折り返したい flex 子は `display: block` に戻して通常の行組へ＋`min-inline-size: 0`。箱側にも幅上限（`inline-size/max-inline-size: 100%` + `border-box`）を明示する（無上限だと箱自体が max-content 幅で版面を超える）。
+
+---
+
+### 2.8 `font-synthesis-weight` は疑似要素の生成ボックスへ継承されない
+
+- **症状**: 太字を持たない書体（Google Fonts の日本語 55 書体中 31）を指定すると、本文は無事なのに**リスト番号だけ Type 3 フォント**になる。入稿用 PDF で不可。
+- **原因**: `font-synthesis-weight` は継承プロパティなので `body` に一度書けば足りるはずだが、**Vivliostyle では `::before` / `::after` の生成ボックスに届かない**。`.outline-list ol > li::before` は `content: counters(…)` を `font-weight: 700` で描くため、そこだけ faux-bold が合成される。
+- **切り分け**: Type 3 フォントの `ToUnicode` を読むと描かれた文字が分かる。数字＋ピリオドならリスト番号・カウンタ系を疑う。
+  ```ruby
+  page.objects.deref(font[:ToUnicode]).unfiltered_data   # <B8> <002E> のような対応表
+  ```
+- **修正の型**: 継承に頼らず疑似要素まで明示する。
+  ```css
+  body, body *, body *::before, body *::after { font-synthesis-weight: none; }
+  ```
+- 生成 SVG（showcase / mermaid）は**独立文書なので本文の指定がそもそも届かない**。SVG 自身の `<style>` にも同じ規則を出すこと（`type3-font-embedding-notes.md` §5.2）。
 
 ---
 

@@ -103,7 +103,62 @@ showcase も mermaid も、SVG をファイルへ書き出して `<figure><img s
 
 フォントを解決できない環境では `nil` を返して**従来どおり組む**（Type 3 は残るがビルドは止めない）。
 
-### 5.1 結果
+### 5.1 書体の実体を探す場所は 2 つある（2026-08-08 に発見・修正）
+
+`heading_font_path` が `stylesheets/fonts/<slug>/` しか見ていなかった。**Google Fonts は
+`stylesheets/fonts/google/<slug>/` に置かれる**（`FontManager#google_fonts_dir`）ため、
+同梱以外の書体を指定した瞬間にサブセットを埋め込めず、生成 SVG が OS の和文フォント
+（Hiragino）へ落ちて Type 3 が戻っていた。
+
+**ファイル名の規則も違う。**
+
+| | 置き場 | ファイル名 | 太字の見分け方 |
+| :--- | :--- | :--- | :--- |
+| 同梱書体 | `fonts/<slug>/` | `ZenKakuGothicNew-Bold.ttf` | 接尾辞 `-Bold` |
+| Google Fonts | `fonts/google/<slug>/` | `Klee-One-600.ttf` | 末尾のウェイト数値（400 は数値なし） |
+
+`*Bold.ttf` の glob は Google 側に当たらないので、**両方の規則で探す**。実測（`Klee One` で
+22 章を単章ビルド）は修正前 27 件 → 修正後 22 件。残る 22 件は同梱書体でも同数出るので
+単章ビルド（`:single` モード）固有のもので、この経路とは無関係。
+
+回帰は 2 段で押さえる。`svg_font_embedder_test.rb`（実フォント不要・`rake test` に入る）が
+探索規則そのものを、`google_fonts_type3_test.rb`（`rake test:type3`）が全章ビルドでの
+Type 3 = 0 を見る。
+
+**書体をキャッシュ鍵に含めること。** showcase は画像・切り抜き・注釈だけで鍵を作っていたため、
+著者が `typography.heading.font` を変えても SVG が作り直されず、古い書体を抱えたまま残った
+（mermaid は最初から `font_family` を鍵に含めていた）。スキーマ版を `v1`→`v2` へ上げて是正済み。
+この取りこぼしは検証も歪める——書体を替えたつもりのビルドが前の書体のキャッシュを再利用し、
+「対策が効いている」ように見えてしまう。
+
+### 5.2 生成 SVG は独立文書なので合成禁止も届かない（2026-08-08）
+
+`showcase_svg_builder.rb` はラベルを `font-weight="700"` で組むが、SVG に埋め込む
+`@font-face` は 1 面だけ＝ウェイト指定なし＝**400 扱い**。本文側の
+`body { font-synthesis-weight: none }` はこの独立文書に届かないので、
+太字を持たない書体では faux-bold が合成されて Type 3 になる。
+
+対策は本文と同じ。SVG の `<style>` にも `svg{font-synthesis-weight:none}` を出す
+（showcase・mermaid の両方）。
+
+### 5.3 合成禁止は疑似要素へ継承されない（2026-08-08）
+
+`chapter-common.css` の `.outline-list ol > li::before` は
+`content: counters(vs-outline, ".") ". "` を **`font-weight: 700`** で描く。
+`font-synthesis-weight` は継承プロパティなので `body` の指定で足りるはずだが、
+**Vivliostyle では `::before` / `::after` の生成ボックスに届かなかった**。
+実測（`Yusei Magic` で 22 章を単章ビルド）で `1.` `2.` `3.` が Type 3 になっていた
+（ToUnicode で数字＋ピリオドと確認）。
+
+そこで `body` だけでなく疑似要素まで明示する。
+
+```css
+body, body *, body *::before, body *::after { font-synthesis-weight: none; }
+```
+
+「CSS は正しいのに効かない」の一例なので `vivliostyle-css-pitfalls` にも一行入れてある。
+
+### 5.4 結果
 
 | | Type 3 |
 | :--- | ---: |
