@@ -23,7 +23,14 @@
 |----------|-----------|------|
 | `_book.md` | `data/books.yml` | 書籍カード形式 |
 | `_book.table.md` | `data/books.yml` | 書籍テーブル形式 |
-| `_technical_book.table.md` | `data/technical_books.yml` | 技術書テーブル形式 |
-| `_nested.md` | `data/nesteds.yml` | ネスト構造サンプル |
+| `_physics_book.md` | `data/physics_books.yml` | 書籍カード形式（物理学の本） |
+
+### 命名規約
+
+- 先頭の `_` はパーシャル（部分テンプレート）を表します
+- データ名の**単数形**を使います（`books.yml` → `_book.md`）。複数形は自動で単数化され、
+  `books2` → `_book2`、`books_nested` → `_book_nested` のように接尾辞は保たれます
+- スタイル違いはドットで区切ります（`_book.table.md` / `_book.full.md`）
 
 新しいデータファイルを追加する場合は、対応するテンプレートをこのディレクトリに作成してください。
+詳しい書き方と対応表は 25 章「QueryStream」を参照してください。

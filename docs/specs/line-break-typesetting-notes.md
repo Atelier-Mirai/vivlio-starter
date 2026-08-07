@@ -125,14 +125,15 @@ CSS Text Level 3 §4.1.2「Segment Break Transformation Rules」には、
 
 ---
 
-## 6. 現在の実装（2026-08-07 時点）
+## 6. 現在の実装（2026-08-08 時点）
 
-- 既定値 `true` は `Common.default_vfm`（`lib/vivlio_starter/cli/common.rb`）が供給する
-- `book.yml` の `vfm.hard_line_breaks` は **2026-08-07 に削除**した（既定と同値・`false` に選ぶ理由がないため）
+- `book.yml` の `vfm.hard_line_breaks` は **2026-08-07 に削除**し、**08-08 に配線コードも撤去**した
+  （既定と同値・`false` に選ぶ理由がないため）。`Common.default_vfm` と
+  `FrontmatterGenerator#book_hard_line_breaks?` はもう無い
+- `FrontmatterGenerator#build_base_frontmatter` が literal `true` を注入する
 - 章ごとの上書きは今も可能。フロントマターに `vfm: { hardLineBreaks: false }` と書けば効く
   （`FrontmatterGenerator#merge_frontmatter` が `value.merge(existing)` で著者の記述を優先する）
-- `book.yml`（snake_case `hard_line_breaks`）と VFM フロントマター（camelCase `hardLineBreaks`）で
-  キー名が異なる。配線は `FrontmatterGenerator#book_hard_line_breaks?`
+- 旧キーを書き残したプロジェクトには `Common::RETIRED_CONFIG_KEYS` が移行先を案内する
 
 ---
 

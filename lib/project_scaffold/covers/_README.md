@@ -14,13 +14,13 @@ covers/
   frontcover_master.png ← 著者が用意するマスター画像（任意）
 ```
 
-## カバー画像の生成
+## 表紙画像の生成
 
 ```bash
-vs cover    # config/book.yml の設定に従ってカバー画像を生成
+vs cover    # config/book.yml の設定に従って表紙画像を生成
 ```
 
-`config/book.yml` の `output.cover.theme` でテーマ名を指定します。`light` / `dark` は gem 同梱テンプレートを使用しますが、`master`、`special`、`awesome` など任意のスラッグ(ファイル名)を指定することもできます。その場合は `covers/frontcover_<theme>.png` または `covers/frontcover_<theme>.svg` を著者が用意します。
+`config/book.yml` の `output.cover` でテーマ名を指定します（未指定なら `master`）。`light` / `dark` は gem 同梱テンプレートを使用しますが、`master`、`special`、`awesome` など任意のスラッグ(ファイル名)を指定することもできます。著者独自の表紙画像を用いる場合には `covers/frontcover_<theme>.png` や `covers/frontcover_<theme>.svg` を用意してください。
 
 ## ソースの優先順位
 

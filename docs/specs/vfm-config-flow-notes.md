@@ -13,33 +13,30 @@
 
 | 場所 | 実行時効果 | 理由 |
 |---|---|---|
-| **book.yml の `vfm.hard_line_breaks`** | ✅ **有効**（ビルド出力を支配） | フロントマター注入経由で `vfm` CLI が解釈する（§2） |
+| **章のフロントマター `vfm: hardLineBreaks:`** | ✅ **有効**（ビルド出力を支配） | `vfm` CLI が直接読む（§2） |
 | **vivliostyle.config.js 内の `vfm:` ブロック** | ❌ **死に設定**（一度も参照されない） | vivliostyle CLI の vfm 設定は **Markdown エントリを自前変換するときだけ**参照される。本システムの entry は全経路で変換済み HTML（§3） |
 
-この 2 つを混同しないこと。「config.js の vfm を書き換えたのに挙動が変わらない」
-「book.yml を false にしたのに config.js が true のまま」はどちらも正常
-（後者はそもそも読まれないため矛盾しない）。
+この 2 つを混同しないこと。「config.js の vfm を書き換えたのに挙動が変わらない」は正常。
+
+> **2026-08-08 追記**: book.yml の `vfm.hard_line_breaks` は廃止した。既定の `true` と
+> 同値でしか使われず、`false` を選ぶ理由もなかったため（`line-break-typesetting-notes.md`）。
+> 注入値は literal `true` になり、章ごとに変えたい場合はその章のフロントマターで上書きする。
 
 ---
 
-## 2. 有効な経路: book.yml → フロントマター注入 → `vfm` CLI
+## 2. 有効な経路: フロントマター注入 → `vfm` CLI
 
 ```
-config/book.yml (vfm: hard_line_breaks: true/false)
-  → Common::CONFIG.vfm.hard_line_breaks
-      （未設定なら true が既定。common.rb default_vfm / 判定は
-        frontmatter_generator.rb book_hard_line_breaks? = 「!= false」）
-  → FrontmatterGenerator.build_base_frontmatter（frontmatter_generator.rb:130）が
-    各章の前処理済み .md のフロントマターへ 'vfm' => { 'hardLineBreaks' => <bool> } を注入
+FrontmatterGenerator.build_base_frontmatter（frontmatter_generator.rb）が
+  各章の前処理済み .md のフロントマターへ 'vfm' => { 'hardLineBreaks' => true } を注入
   → `vfm` CLI（convert.rb:24 の `vfm "<md>" > "<html>"`）がフロントマターを読んで
     HTML 変換 ★ここで効く
   → vivliostyle CLI は完成した HTML を組版するだけ（VFM 変換は走らない）
 ```
 
 - **章ごとの上書き可**: 章の .md に自分でフロントマター `vfm: hardLineBreaks: false` を
-  書けば、その章だけ上書きされる（マージは既存フロントマター優先。
-  `frontmatter_generator.rb` の merge 規則・archives の
-  `vfm_hard_line_breaks_default.md` §2 参照）。
+  書けば、その章だけ上書きされる（`merge_frontmatter` は `vfm` について既存の記述を
+  優先する。archives の `vfm_hard_line_breaks_default.md` §2 参照）。
 
 ### 実測（2026-07-05・`vfm` CLI 単体で検証済み）
 
@@ -93,20 +90,17 @@ config の vfm 設定が**初めて実効化**する。その際:
    ```js
    entry: entries.map((entry) => ({
      ...entry,
-     vfm: { hardLineBreaks: true } // book.yml: vfm.hard_line_breaks
+     vfm: { hardLineBreaks: true }
    })),
    ```
 
 2. **二重変換に注意**: 直接ビルド経路では `vfm` CLI（§2）を通さないか、通すなら
    vivliostyle には HTML を渡す。「`vfm` CLI で HTML 化 → さらに vivliostyle にも
    .md を渡す」という混在は作らないこと。
-3. **設定の優先順位を §2 と揃える**: 既定 true（`!= false` 判定）・book.yml で全体設定・
-   フロントマターで章（ファイル）単位上書き、の 3 層を直接ビルドでも再現する。
+3. **設定の優先順位を §2 と揃える**: 常に true を注入し、フロントマターで章（ファイル）
+   単位に上書き、の 2 層を直接ビルドでも再現する。
    vivliostyle CLI 内蔵 VFM がフロントマターの `vfm:` を尊重するかは
    **実装時に必ず実測して確認する**（本システムの `vfm` CLI 単体では尊重される＝§2 実測）。
-4. **hardLineBreaks 以外の VFM オプション**を将来 book.yml に足す場合も、
-   snake_case（book.yml）→ camelCase（VFM）の変換規則は §2 の既存流儀
-   （`hard_line_breaks` → `hardLineBreaks`）に従う。
 
 ---
 

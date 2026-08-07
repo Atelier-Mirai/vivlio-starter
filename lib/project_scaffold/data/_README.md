@@ -56,7 +56,11 @@ data/
 
 データの展開テンプレートは `templates/` ディレクトリに配置します。
 
-- `data/books.yml` → `templates/_book.md`
-- `data/technical_books.yml` → `templates/_technical_book.table.md`
+- `data/books.yml` → `templates/_book.md`（テーブル形式は `_book.table.md`）
+- `data/physics_books.yml` → `templates/_physics_book.md`
+
+データ名の**単数形**に `_` を付けた名前が探索されます（`books` → `_book`）。
+テンプレートが無いデータファイルはそのままでは展開できないので、`data/` に
+yml を足したら `templates/` にも対応する雛形を作ってください。
 
 詳細は「データ展開機能の使い方」の章を参照してください。

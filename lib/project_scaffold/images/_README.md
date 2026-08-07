@@ -22,10 +22,14 @@ images/
 原稿には `.webp` 形式を推奨します。PNG/JPG は `vs resize` で WebP に変換できます。
 
 ```bash
-vs resize              # images/ 全体を標準品質で WebP 変換
-vs resize --high       # 高品質で変換（quality=90）
-vs resize 11-intro     # 特定章の画像のみ変換
+vs resize                    # images/ 全体を標準品質で WebP 変換
+vs resize --high             # 高品質で変換
+vs resize --low              # 軽量品質で変換
+vs resize images/11-intro    # 特定のディレクトリのみ変換
+vs resize --delete-originals # 変換後に元の PNG/JPG を削除（確認あり）
 ```
+
+引数は**ディレクトリ**を取ります（章名ではありません）。省略すると `images/` 全体が対象です。
 
 `vs build` 実行時にも自動で WebP 変換が行われます。既存の WebP がある場合はスキップされます。
 
