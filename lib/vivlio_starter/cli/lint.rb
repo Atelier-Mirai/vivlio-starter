@@ -155,8 +155,7 @@ module VivlioStarter
           $stderr.print(stderr) unless stderr.nil? || stderr.empty?
 
           result = TextlintFormatter.aggregate_json(
-            stdout, disabled_rules: disabled_rules, disabled_terms: disabled_terms,
-                    trim_long_vowel: trim_long_vowel?
+            stdout, disabled_rules: disabled_rules, trim_long_vowel: trim_long_vowel?
           )
           if result.nil?
             # JSON 解釈に失敗（textlint 自体のエラー等）。生出力をそのまま見せる。
@@ -174,11 +173,6 @@ module VivlioStarter
         # book.yml lint.disabled_rules（ルール ID で丸ごと無効化）
         def disabled_rules
           Array(Common::CONFIG.lint.disabled_rules).map(&:to_s)
-        end
-
-        # book.yml lint.disabled_terms（"X => Y" 表記揺れ系の指摘を語で無効化）
-        def disabled_terms
-          Array(Common::CONFIG.lint.disabled_terms).map(&:to_s)
         end
 
         # book.yml lint.trim_long_vowel（末尾長音を足す指摘を抑止：技術者向け文体）

@@ -5,8 +5,11 @@
 # ================================================================
 # 責務:
 #   textlint --format json の出力を、ルール（メッセージ先頭行）単位に集約して整形する。
-#   同じ指摘を 1 行へ畳み、book.yml の lint.disabled_rules / disabled_terms による
+#   同じ指摘を 1 行へ畳み、book.yml の lint.disabled_rules / trim_long_vowel による
 #   個別無効化も適用する（スペルチェック側 SpellChecker.aggregate と体裁を揃える）。
+#
+#   語単位で指摘を黙らせたい場合は config/textlint_allowlist.yml を使う
+#   （textlint 本来のフィルタ。原稿の語を全ルールから除外する）。
 #
 # 用途:
 #   - LintCommands（vs lint の textlint 集約表示）から呼び出される
@@ -28,21 +31,18 @@ module VivlioStarter
       # @param json_string [String] textlint --format json の生出力
       # @param base_dir [String] ファイルパスの相対化基準
       # @param disabled_rules [Array<String>] 無効化するルール ID（短縮名・完全名の両対応）
-      # @param disabled_terms [Array<String>] 無効化する指摘語（"X => Y" 表記揺れ系。先頭行に含めば除外）
       # @param trim_long_vowel [Boolean] true なら「X => Xー」（末尾長音を足す）系の指摘を抑止
       # @return [Hash, nil] { files: [{ path:, rows: }], total:, fixable: } / JSON 解釈失敗時 nil
       #   rows: [{ count:, label:, lines: }]（出現数の多い順。label は "[ルール] 指摘先頭行"）
-      def self.aggregate_json(json_string, base_dir: Dir.pwd, disabled_rules: [], disabled_terms: [],
-                              trim_long_vowel: false)
+      def self.aggregate_json(json_string, base_dir: Dir.pwd, disabled_rules: [], trim_long_vowel: false)
         data = JSON.parse(json_string.to_s)
         return nil unless data.is_a?(Array)
 
         drules = Array(disabled_rules).map(&:to_s)
-        dterms = Array(disabled_terms).map(&:to_s).reject(&:empty?)
         total = 0
         fixable = 0
         files = data.filter_map do |file|
-          messages = Array(file['messages']).reject { |m| disabled_message?(m, drules, dterms, trim_long_vowel) }
+          messages = Array(file['messages']).reject { |m| disabled_message?(m, drules, trim_long_vowel) }
           next if messages.empty?
 
           total += messages.size
@@ -54,15 +54,12 @@ module VivlioStarter
         nil
       end
 
-      # book.yml の lint.disabled_rules / disabled_terms / trim_long_vowel に該当する指摘か
-      def self.disabled_message?(message, disabled_rules, disabled_terms, trim_long_vowel = false)
+      # book.yml の lint.disabled_rules / trim_long_vowel に該当する指摘か
+      def self.disabled_message?(message, disabled_rules, trim_long_vowel = false)
         rule = message['ruleId'].to_s
         return true if disabled_rules.include?(rule) || disabled_rules.include?(short_rule(rule))
 
-        head = message_head(message['message'])
-        return true if disabled_terms.any? { |t| head.include?(t) }
-
-        trim_long_vowel && long_vowel_addition?(head)
+        trim_long_vowel && long_vowel_addition?(message_head(message['message']))
       end
 
       # 「X => Xー」（末尾に長音記号を足すだけ）の表記揺れ指摘か。

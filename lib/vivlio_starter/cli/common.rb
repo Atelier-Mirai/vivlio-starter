@@ -318,7 +318,7 @@ module VivlioStarter
           metrics: { use: nil, exclude_chapters: nil, kanji_ratio: nil, word_length: nil,
                      ttr: nil, mattr_window: nil, sentence_length: nil, clause_length: nil,
                      readability: nil, labels: nil },
-          lint: { config: nil, disabled_rules: nil, disabled_terms: nil, sentence_length_max: nil,
+          lint: { config: nil, disabled_rules: nil, sentence_length_max: nil,
                   trim_long_vowel: nil, allow_space_around_code: nil, allow_space_between_ja_en: nil },
           spellcheck: { extra_dictionaries: nil, extra_words: nil, ignore_words: nil,
                         check_code_blocks: nil },

@@ -63,15 +63,6 @@ module VivlioStarter
         assert(labels.any? { it.include?('[prh]') }, '他のルールは残る')
       end
 
-      # disabled_terms で指定した語を含む "X => Y" 指摘が除外される
-      def test_aggregate_json_disabled_terms
-        result = TextlintFormatter.aggregate_json(sample_json, base_dir: '/proj',
-                                                  disabled_terms: ['次の'])
-        labels = result[:files].first[:rows].map { it[:label] }
-        refute(labels.any? { it.include?('以下の => 次の') }, '指定語の指摘は消える')
-        assert(labels.any? { it.include?('全て => すべて') }, '別の表記揺れは残る')
-      end
-
       # trim_long_vowel で「X => Xー」（末尾長音追加）系の指摘が抑止される
       def test_aggregate_json_trim_long_vowel
         json = <<~JSON
