@@ -204,7 +204,7 @@ module VivlioStarter
           guard_failure = Guards.precheck(Guards::ProjectRootCheck.new)
           return guard_failure if guard_failure
 
-          path = IndexCommands::IndexLibrary.resolve_path((args || []).first, :export)
+          path = IndexCommands::IndexLibrary.resolve_path((args || []).first)
           Common.log_info("書き出し先: #{path}")
           IndexCommands::IndexLibrary.new.export!(path)
           0
@@ -233,7 +233,7 @@ module VivlioStarter
           guard_failure = Guards.precheck(Guards::ProjectRootCheck.new)
           return guard_failure if guard_failure
 
-          path = IndexCommands::IndexLibrary.resolve_path((args || []).first, :import)
+          path = IndexCommands::IndexLibrary.resolve_path((args || []).first)
           Common.log_info("取り込み元: #{path}")
           result = IndexCommands::IndexLibrary.new.import!(path, prefer_import: options[:prefer_import])
           result ? 0 : 1

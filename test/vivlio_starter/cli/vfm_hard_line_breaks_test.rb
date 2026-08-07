@@ -8,10 +8,9 @@
 #   FrontmatterGeneratorのマージ処理
 #
 # 検証内容:
-#   - デフォルト値（hard_line_breaks: true）が適用される（book.yml 側は snake_case、
-#     章フロントマターの VFM キーは camelCase の hardLineBreaks のまま）
-#   - book.yml の vfm.hard_line_breaks が章フロントマターの vfm: hardLineBreaks に配線される
-#   - 著者の章別フロントマター指定が book.yml 由来の値より優先される
+#   - 章フロントマターに hardLineBreaks: true が常に注入される
+#   - 著者の章別フロントマター指定が、注入された値より優先される
+#   - book.yml の vfm.hard_line_breaks は廃止済みで、書いても効かない
 #   - 日本語文章の改行が<br>タグに変換される
 #   - フロントマターでfalseに設定すると上書きされる
 #   - デフォルト値と個別設定の優先順位
@@ -36,27 +35,16 @@ module VivlioStarter
     class VfmHardLineBreaksTest < Minitest::Test
       # --- Phase: Default Value Tests ---
 
-      # デフォルト値（hard_line_breaks: true）が適用されるテスト
+      # 章フロントマターへ常に hardLineBreaks: true が注入されるテスト
+      # （book.yml に設定は無い。章ごとに変えたい場合はその章のフロントマターで上書きする）
       def test_should_apply_hard_line_breaks_true_as_default
         # Act
-        default_vfm = Common.default_vfm
+        generator = Object.new
+        generator.extend(VivlioStarter::CLI::PreProcessCommands::FrontmatterGenerator)
+        base = generator.send(:build_base_frontmatter, 'chapter.css')
 
         # Assert
-        assert_pattern do
-          default_vfm => { hard_line_breaks: true }
-        end
-      end
-
-      # Common::CONFIG経由でVFM設定にアクセスできるテスト
-      def test_should_access_vfm_settings_via_common_config
-        # Arrange
-        config = { title: 'Test Book' }
-        
-        # Act
-        merged = Common.merge_hardcoded_defaults(config)
-
-        # Assert
-        assert_equal true, merged[:vfm][:hard_line_breaks]
+        assert_equal({ 'hardLineBreaks' => true }, base['vfm'])
       end
 
       # --- Phase: Frontmatter Override Tests ---
@@ -73,29 +61,6 @@ module VivlioStarter
         merged = generator.send(:merge_frontmatter, existing_frontmatter, new_frontmatter)
         
         # Assert
-        assert_equal false, merged['vfm']['hardLineBreaks']
-      end
-
-      # デフォルト値と個別設定の優先順位テスト
-      def test_should_prioritize_frontmatter_over_defaults
-        # Arrange
-        # book.ymlの設定（デフォルト値を上書き）
-        book_config = { vfm: { hard_line_breaks: true } }
-        # フロントマターの設定（最優先）
-        frontmatter = { 'vfm' => { 'hardLineBreaks' => false } }
-        
-        # Act
-        generator = Object.new
-        generator.extend(VivlioStarter::CLI::PreProcessCommands::FrontmatterGenerator)
-        
-        # まずbook.ymlの設定を反映
-        base_config = Common.merge_hardcoded_defaults(book_config)
-        
-        # 次にフロントマターをマージ
-        merged = generator.send(:merge_frontmatter, frontmatter, {})
-        
-        # Assert
-        # フロントマターの設定が優先されること
         assert_equal false, merged['vfm']['hardLineBreaks']
       end
 
@@ -158,19 +123,7 @@ module VivlioStarter
 
       # --- Phase: book.yml → Frontmatter Wiring Tests ---
 
-      # book.yml の vfm.hard_line_breaks がフロントマターへ camelCase で注入されるテスト
-      # （book.yml に記述が無くても default_vfm が hard_line_breaks: true を供給する）
-      def test_should_inject_hard_line_breaks_into_base_frontmatter
-        # Act
-        generator = Object.new
-        generator.extend(VivlioStarter::CLI::PreProcessCommands::FrontmatterGenerator)
-        base = generator.send(:build_base_frontmatter, 'chapter.css')
-
-        # Assert
-        assert_equal true, base['vfm']['hardLineBreaks']
-      end
-
-      # 著者の章別フロントマター指定（false）が book.yml 由来の値（true）より優先されるテスト
+      # 著者の章別フロントマター指定（false）が、注入された値（true）より優先されるテスト
       def test_should_prioritize_author_frontmatter_over_book_yml_value
         # Arrange
         existing_frontmatter = { 'vfm' => { 'hardLineBreaks' => false } }
@@ -203,50 +156,22 @@ module VivlioStarter
 
       # --- Phase: Integration Tests ---
 
-      # 設定マージの統合テスト
-      def test_should_merge_vfm_settings_correctly_in_full_pipeline
-        # Arrange
-        base_config = {
-          title: 'Test Book',
-          # vfm設定なし（デフォルト値を使用）
-        }
-        
-        # Act
-        merged = Common.merge_hardcoded_defaults(base_config)
-        
-        # Assert
-        assert_equal 'Test Book', merged[:title]
-        assert_equal true, merged[:vfm][:hard_line_breaks]
-      end
-
-      # 複雑なマージシナリオのテスト
+      # 章フロントマターで true に戻せるテスト（注入値と同じでも上書き経路が働く）
       def test_should_handle_complex_merge_scenarios
         # Arrange
-        base_config = {
-          title: 'Test Book',
-          vfm: { hard_line_breaks: false }  # book.ymlで明示的にfalse
-        }
-        
-        frontmatter = {
-          'vfm' => { 'hardLineBreaks' => true }  # フロントマターでtrueに上書き
-        }
-        
+        frontmatter = { 'vfm' => { 'hardLineBreaks' => true } }
+
         # Act
-        # まずデフォルト値をマージ
-        with_defaults = Common.merge_hardcoded_defaults(base_config)
-        
-        # 次にフロントマターをマージ
         generator = Object.new
         generator.extend(VivlioStarter::CLI::PreProcessCommands::FrontmatterGenerator)
         final = generator.send(:merge_frontmatter, frontmatter, {})
-        
+
         # Assert
-        # フロントマターの設定が最優先される
         assert_equal true, final['vfm']['hardLineBreaks']
       end
     end
 
-    # book.yml で hard_line_breaks: false を設定した場合の配線テスト
+    # book.yml の vfm.hard_line_breaks は廃止済みで、書いても効かないことの回帰テスト
     # （実ファイルからの reload_configuration! を伴うため専用クラスで CONFIG を復旧する）
     class VfmHardLineBreaksBookYmlFalseTest < Minitest::Test
       def setup
@@ -263,8 +188,9 @@ module VivlioStarter
         Common.reload_configuration!(silent: true) if File.file?('config/book.yml')
       end
 
-      # book.yml の false が章フロントマターの hardLineBreaks: false として注入されるテスト
-      def test_should_inject_false_when_book_yml_disables_hard_line_breaks
+      # book.yml に false を書いても注入値は true のまま（廃止キーなので読まない）。
+      # 黙って無視されないよう、著者には RETIRED_CONFIG_KEYS 経由で移行先を案内する。
+      def test_should_ignore_retired_book_yml_key
         # Arrange
         File.write('config/book.yml', "vfm:\n  hard_line_breaks: false\n")
         Common.reload_configuration!(silent: true)
@@ -275,7 +201,9 @@ module VivlioStarter
         base = generator.send(:build_base_frontmatter, 'chapter.css')
 
         # Assert
-        assert_equal false, base['vfm']['hardLineBreaks']
+        assert_equal true, base['vfm']['hardLineBreaks']
+        assert Common.authored_key?(:vfm, :hard_line_breaks), '著者の記述は authored_keys で検出できる'
+        assert_includes Common::RETIRED_CONFIG_KEYS.keys, %i[vfm hard_line_breaks]
       end
     end
   end

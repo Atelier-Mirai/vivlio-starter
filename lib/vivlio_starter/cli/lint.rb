@@ -41,7 +41,7 @@ module VivlioStarter
   module CLI
     # textlint による文章校正コマンド
     module LintCommands
-      DEFAULT_CONFIG_FALLBACK = File.join(Common::CONFIG_DIR, '.textlintrc.yml')
+      TEXTLINT_CONFIG_PATH = File.join(Common::CONFIG_DIR, '.textlintrc.yml')
 
       # textlint 用サポート YAML（allowlist/prh）の既定パス
       TEXTLINT_ALLOWLIST_RELATIVE = File.join(Common::CONFIG_DIR, 'textlint_allowlist.yml')
@@ -75,15 +75,6 @@ module VivlioStarter
       }.freeze
 
       TEXTLINT_ENV_VAR = 'VIVLIO_TEXTLINT_BIN'
-
-      # CONFIG.lint セクションから設定ファイルパスを取得（シンボルキー前提）
-      def self.default_lint_config
-        value = Common::CONFIG.lint.config
-        value = nil if Common.blank?(value)
-        value || DEFAULT_CONFIG_FALLBACK
-      rescue StandardError
-        DEFAULT_CONFIG_FALLBACK
-      end
 
       def self.execute_lint(targets, options = {})
         LintRunner.new(targets, options).call
@@ -272,14 +263,11 @@ module VivlioStarter
           config       = Common::CONFIG.spellcheck
           dict         = Lint::DictManager.new
           word_map     = dict.build_word_map(config)
-          ignore_words = Array(config&.ignore_words).map { it.to_s.downcase }
           check_code   = Common.truthy?(config&.check_code_blocks)
 
           all_errors = {}
           files.each do |path|
-            errors = Lint::SpellChecker.check(path, word_map,
-                                              ignore_words: ignore_words,
-                                              check_code_blocks: check_code)
+            errors = Lint::SpellChecker.check(path, word_map, check_code_blocks: check_code)
             all_errors[path] = errors unless errors.empty?
           end
 
@@ -323,9 +311,9 @@ module VivlioStarter
         end
 
         def config_path
-          path = LintCommands.default_lint_config
+          path = TEXTLINT_CONFIG_PATH
           resolved = Common.resolve_path_from_root(path)
-          resolved || File.expand_path(path.to_s)
+          resolved || File.expand_path(path)
         end
 
         # 実際に textlint へ渡す設定パス。book.yml の lint.* で文体の上書きが指定されていれば、

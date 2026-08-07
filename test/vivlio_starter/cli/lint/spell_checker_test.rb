@@ -88,17 +88,6 @@ class TestSpellChecker < Minitest::Test
     end
   end
 
-  # ignore_words に指定された単語がスキップされることを確認する
-  def test_check_respects_ignore_words
-    word_map = { 'using' => 'Using' }
-    Dir.mktmpdir do |dir|
-      path = File.join(dir, 'test.md')
-      File.write(path, "Using htmx here\n")
-      errors = SC.check(path, word_map, ignore_words: %w[htmx here])
-      assert_empty errors
-    end
-  end
-
   # <!-- vs-lint-disable-next-line --> が付いた行の次の行がスキップされることを確認する
   def test_check_skips_vs_lint_disable_next_line
     word_map = {}
@@ -207,17 +196,4 @@ class TestSpellChecker < Minitest::Test
     assert_equal 1, rows.last[:count]
   end
 
-  # --- extra_words による抑制（end-to-end / #2） ---
-
-  # book.yml の extra_words に登録した語がスペルチェックで検出されないことを確認する
-  def test_extra_words_suppress_spellcheck_end_to_end
-    config = Struct.new(:extra_dictionaries, :extra_words, :ignore_words, :check_code_blocks)
-                   .new(nil, ['Mbed'], nil, false)
-    word_map = VivlioStarter::CLI::Lint::DictManager.new.build_word_map(config)
-    Dir.mktmpdir do |dir|
-      path = File.join(dir, 'test.md')
-      File.write(path, "Mbed\n")
-      assert_empty SC.check(path, word_map), 'extra_words の語は検出されない'
-    end
-  end
 end

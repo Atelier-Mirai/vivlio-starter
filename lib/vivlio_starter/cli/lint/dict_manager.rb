@@ -52,13 +52,6 @@ module VivlioStarter
             load_into_word_map(path, words) if path
           end
           load_glossary_terms(words)
-          extra_words(config).each do |w|
-            word = w.to_s
-            words[word.downcase] = word
-            next unless word.include?('-')
-
-            words[word.gsub('-', '').downcase] ||= word
-          end
           load_into_word_map(user_dict_path, words) if File.exist?(user_dict_path)
           words
         end
@@ -125,13 +118,6 @@ module VivlioStarter
         # @return [Array<String>]
         def extra_dicts(config)
           Array(config&.extra_dictionaries).map(&:to_s).reject(&:empty?)
-        end
-
-        # book.yml の extra_words から単語の配列を取り出す
-        # @param config [Object, nil] Common::CONFIG.spellcheck
-        # @return [Array<String>]
-        def extra_words(config)
-          Array(config&.extra_words).map(&:to_s).reject(&:empty?)
         end
 
         # 辞書ファイルの実パスを解決する（bundled → cached → download の順）

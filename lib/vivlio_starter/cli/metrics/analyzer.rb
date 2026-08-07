@@ -246,6 +246,9 @@ module VivlioStarter
           ratios.sum / ratios.size
         end
 
+        # 窓幅は book.yml では設定できない（変えると章どうしを比べられなくなるため固定）。
+        # ここを注入点として残してあるのは、短い窓で MATTR の性質そのものを確かめる
+        # テストのため。本番の経路は必ず DEFAULT_MATTR_WINDOW を通る。
         def mattr_window = config[:mattr_window] || DEFAULT_MATTR_WINDOW
 
         # MeCab でトークン化する（利用不可の場合は簡易分割）

@@ -156,11 +156,6 @@ module VivlioStarter
           merge_with_defaults(metrics_config, DEFAULT_VOCABULARY, %i[kanji_ratio word_length ttr])
         end
 
-        # MATTR（移動平均 TTR）の窓幅を取得する（語彙多様度の算出単位）。
-        def mattr_window
-          (metrics_config[:mattr_window] || Analyzer::DEFAULT_MATTR_WINDOW).to_i
-        end
-
         # 読解難度のしきい値を取得する
         def readability_thresholds
           config_readability = metrics_config[:readability] || {}

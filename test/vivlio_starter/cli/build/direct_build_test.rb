@@ -46,7 +46,7 @@ module VivlioStarter
           # 既定値スキーマの全セクションが存在し、ドット記法が安全であること
           assert_equal 'contents', config.directories.contents
           assert_equal '.cache/vs', config.cache.dir
-          assert_nil config.lint.config
+          assert_nil config.lint.disabled_rules
           assert config.frozen?, 'CONFIG は frozen であるべきです'
         end
 

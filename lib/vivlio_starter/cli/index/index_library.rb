@@ -39,21 +39,13 @@ module VivlioStarter
         end
 
         # export/import の対象パスを解決する。
-        # 先勝ち: コマンド引数 > library.export_to/import_from > library.path > 組み込み既定。
+        # book.yml には置かない——パスを変えたいのは「今回だけ別名で書き出す」ときで、
+        # それは vs index:export mybook.yml のように引数で言うほうが早い。
         # @param arg [String, nil] コマンド引数のパス
-        # @param mode [Symbol] :export | :import
-        def self.resolve_path(arg, mode)
+        def self.resolve_path(arg)
           return File.expand_path(arg) if arg && !arg.to_s.empty?
 
-          config = library_config
-          override = mode == :export ? config[:export_to] : config[:import_from]
-          File.expand_path((override || config[:path] || DEFAULT_PATH).to_s)
-        end
-
-        # book.yml の index_glossary.library をシンボルキーのハッシュで返す。
-        def self.library_config
-          library = Common::CONFIG.index_glossary.library
-          library.respond_to?(:to_h) ? library.to_h : {}
+          File.expand_path(DEFAULT_PATH)
         end
 
         # --- Phase: export ---

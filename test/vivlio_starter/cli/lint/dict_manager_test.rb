@@ -195,21 +195,4 @@ class TestDictManager < Minitest::Test
       assert map.key?('stm32')
     end
   end
-
-  # book.yml の extra_words が word_map に登録されることを確認する
-  def test_build_word_map_extra_words_registered
-    config = Struct.new(:extra_dictionaries, :extra_words, :ignore_words, :check_code_blocks)
-                   .new(nil, ['vivliostyle'], nil, false)
-    map = @dm.build_word_map(config)
-    assert map.key?('vivliostyle'), "extra_words が word_map に登録されること"
-  end
-
-  # extra_words のハイフン複合語が両形式で登録されることを確認する
-  def test_build_word_map_extra_words_hyphen_both_forms
-    config = Struct.new(:extra_dictionaries, :extra_words, :ignore_words, :check_code_blocks)
-                   .new(nil, ['vivlio-starter'], nil, false)
-    map = @dm.build_word_map(config)
-    assert map.key?('vivlio-starter'), 'ハイフンあり形式が登録されること'
-    assert map.key?('vivliostarter'),  'ハイフンなし形式が登録されること'
-  end
 end

@@ -429,7 +429,7 @@ module VivlioStarter
           @config = config_loader
           @labels = config_loader.labels
           @exclude = config_loader.exclude_chapters
-          @mattr_window = config_loader.mattr_window
+          @mattr_window = Analyzer::DEFAULT_MATTR_WINDOW
         end
 
         # 章の警告を判定する

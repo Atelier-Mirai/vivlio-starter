@@ -283,8 +283,7 @@ module VivlioStarter
         def compute_chapter_analysis(file)
           content = File.read(file, encoding: 'UTF-8')
           chapter = chapter_parser.parse_content(file, content)
-          analyzer = Analyzer.new(content, readability: config.readability_thresholds,
-                                           mattr_window: config.mattr_window)
+          analyzer = Analyzer.new(content, readability: config.readability_thresholds)
           basic = analyzer.basic_stats
           vocab = analyzer.vocabulary_stats
           readability = analyzer.readability

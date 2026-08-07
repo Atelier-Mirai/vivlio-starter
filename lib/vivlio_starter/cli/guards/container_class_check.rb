@@ -37,12 +37,6 @@ module VivlioStarter
         # 増えたときに候補が並びすぎないよう蓋をする。
         MAX_SUGGESTIONS = 3
 
-        # @param allowed_classes [Array<String>, nil] 追加で許可するクラス（既定は book.yml から読む）
-        def initialize(allowed_classes: nil)
-          super()
-          @extra_classes = allowed_classes || configured_allowed_classes
-        end
-
         # @return [Array<Violation>] 警告の配列（合格なら空配列）
         def validate
           markdown_files.flat_map { check_file(it) }
@@ -101,7 +95,7 @@ module VivlioStarter
         # sort するのは、SpellChecker の sort_by! が安定ソートではなく、Dir.glob 由来の
         # 辞書順が環境依存だと Jaro-Winkler 同点時の候補順がぶれるため。
         def known_classes
-          @known_classes ||= (css_classes + PREPROCESSED_CLASSES + @extra_classes).uniq.sort.freeze
+          @known_classes ||= (css_classes + PREPROCESSED_CLASSES).uniq.sort.freeze
         end
 
         def css_classes
@@ -114,9 +108,6 @@ module VivlioStarter
         # クラスセレクタとして誤って拾わないため。
         def strip_css_noise(css) = css.gsub(%r{/\*.*?\*/}m, ' ').gsub(/"[^"]*"|'[^']*'/, ' ')
 
-        def configured_allowed_classes
-          Array(Common::CONFIG&.dig(:preflight, :allowed_classes)).map(&:to_s)
-        end
       end
     end
   end

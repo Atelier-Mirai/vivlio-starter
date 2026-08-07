@@ -799,7 +799,7 @@ module VivlioStarter
         if text.length <= context_width * 2
           text
         else
-          # smart_context_cutting は抽出時に適用されているため、ここでは単純にトリム
+          # 形態素境界を考慮した切り出しは抽出時に済んでいるため、ここでは単純にトリム
           text[0..(context_width * 2)]
         end
       end

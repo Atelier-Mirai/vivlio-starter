@@ -221,10 +221,11 @@ module VivlioStarter
       # 各コマンドは何も書かない。
       #
       # なぜ CONFIG では判定できないか:
-      #   CONFIG は既定値スキーマとマージした「実効値」の view で、スキーマに
-      #   無いキーは deep_merge_config が落とす。廃止キーはスキーマから外すので
-      #   CONFIG には載らない。ここで問うているのは「著者が book.yml に何を
-      #   書いたか」であって設定値ではないので、生の記述（authored_keys）を見る。
+      #   CONFIG は既定値スキーマとマージした「実効値」の view であって、著者が
+      #   何を書いたかを答えるものではない。スキーマ外のキーは自由拡張のために
+      #   素通しするので、廃止キーも書けば CONFIG に載ってしまい、著者の独自キー
+      #   と見分けがつかない。ここで問うているのは記述の有無なので、マージ前の
+      #   生の記述（authored_keys）を見る。
       #
       # 値は「代わりにどうするか」。著者が読んで行動できる文言にすること
       # （警告は具体的な修正案とセットにする、が本プロジェクトの流儀）。
@@ -234,7 +235,26 @@ module VivlioStarter
         %i[index review_threshold] =>
           '同上。レビュー対象は目安語数と index.candidate_pool で決まります',
         %i[index high_candidates_ratio] =>
-          '推奨候補／一般候補の分割は目安語数が決めるため、比率の指定は不要です'
+          '推奨候補／一般候補の分割は目安語数が決めるため、比率の指定は不要です',
+        # --- book.yml スリム化で廃止（設定ではなく手法パラメータ・別ファイルの役割だったもの）---
+        %i[metrics mattr_window] =>
+          '語彙多様度を測る窓幅は算出方法そのもので、変えると章どうしを比べられなくなるため固定しました',
+        %i[spellcheck extra_words] =>
+          '除外したい語は config/spellcheck_allowlist.yml に書きます（vs lint --register で一括登録もできます）',
+        %i[spellcheck ignore_words] =>
+          '同上。指摘したくない語の窓口は config/spellcheck_allowlist.yml に一本化しました',
+        %i[index_glossary library] =>
+          '書き出し先・取り込み元は vs index:export mybook.yml のように引数で指定します（既定は index_library.yml）',
+        %i[index_glossary smart_context_cutting] =>
+          '文脈の切り出しは常に形態素境界を考慮します（切りたくない理由がないため選択肢をなくしました）',
+        %i[preflight allowed_classes] =>
+          'そのクラスの CSS を stylesheets/ に書けば既知クラスとして扱われます（CSS を書くことが登録です）',
+        %i[vfm hard_line_breaks] =>
+          '原稿中の改行は常に改行として組みます。章ごとに変えたい場合はその章のフロントマターに vfm: { hardLineBreaks: false } と書きます',
+        %i[lint config] =>
+          '校正ルールは config/.textlintrc.yml を直接編集します（book.yml には文体の選択だけを置きます）',
+        %i[lint disabled_terms] =>
+          '指摘したくない語句は config/textlint_allowlist.yml に書きます'
       }.freeze
 
       # 著者が book.yml に実際に書いたキーの集合（既定値のマージ前）。
@@ -303,9 +323,7 @@ module VivlioStarter
           # 対になる名前にしてある（どちらか一方のコマンド専用ではない）。
           verify: { images: nil, bare_urls: nil, external_links: nil,
                     timeout: nil, max_concurrency: nil },
-          index_glossary: { enabled: nil, use_mecab: nil, timezone: nil,
-                            context_width: nil, smart_context_cutting: nil,
-                            library: nil },
+          index_glossary: { enabled: nil, use_mecab: nil, timezone: nil, context_width: nil },
           # 廃止キー（auto_approve_threshold / review_threshold / high_candidates_ratio）は
           # 読まない。書かれていたら UnifiedIndexManager#warn_retired_keys が移行を促す。
           index: { auto_discovery: nil, title: nil, backlink_dedup: nil,
@@ -316,12 +334,11 @@ module VivlioStarter
           glossary: { title: nil, require_definition: nil, max_definition_length: nil,
                       backlink_dedup: nil },
           metrics: { use: nil, exclude_chapters: nil, kanji_ratio: nil, word_length: nil,
-                     ttr: nil, mattr_window: nil, sentence_length: nil, clause_length: nil,
+                     ttr: nil, sentence_length: nil, clause_length: nil,
                      readability: nil, labels: nil },
-          lint: { config: nil, disabled_rules: nil, sentence_length_max: nil,
+          lint: { disabled_rules: nil, sentence_length_max: nil,
                   trim_long_vowel: nil, allow_space_around_code: nil, allow_space_between_ja_en: nil },
-          spellcheck: { extra_dictionaries: nil, extra_words: nil, ignore_words: nil,
-                        check_code_blocks: nil },
+          spellcheck: { extra_dictionaries: nil, check_code_blocks: nil },
           pdf_read: { text_area: { top_margin: nil, bottom_margin: nil,
                                    inner_margin: nil, outer_margin: nil },
                       page_separator: nil,
@@ -329,8 +346,7 @@ module VivlioStarter
           directories: default_directories,
           cache: default_cache,
           commands: default_commands,
-          vivliostyle: default_vivliostyle,
-          vfm: default_vfm
+          vivliostyle: default_vivliostyle
         }
       end
 
@@ -357,15 +373,6 @@ module VivlioStarter
         {
           quiet: true,
           reading_progression: 'ltr'
-        }
-      end
-
-      # VFM (Vivliostyle Flavored Markdown) の既定値設定
-      # 日本語文章の直感的な執筆体験を提供するため、hard_line_breaks をデフォルト有効化
-      # （book.yml では snake_case。VFM 自体のフロントマターキーは camelCase の hardLineBreaks）
-      def default_vfm
-        {
-          hard_line_breaks: true
         }
       end
 
@@ -1178,7 +1185,7 @@ module VivlioStarter
                       :current_step_label, :deep_merge_config, :default_cache,
                       :build_direct_configuration, :direct_page_settings, :install_configuration!,
                       :default_commands, :default_config_schema, :default_directories,
-                      :default_vfm, :default_vivliostyle, :log_always, :ensure_cache_dir!,
+                      :default_vivliostyle, :log_always, :ensure_cache_dir!,
                       :ensure_required_yaml_files!, :required_yaml_files_loadable?,
                       :generate_compressed_pdf_filename, :generate_epub_filename,
                       :generate_kpf_filename, :generate_kindle_epub_filename,

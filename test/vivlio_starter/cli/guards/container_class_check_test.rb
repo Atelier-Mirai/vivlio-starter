@@ -11,8 +11,9 @@
 #   - stylesheets/*.css に定義されたクラスは警告しない
 #   - 経路 A（Ruby 前処理）のクラスは CSS が無くても警告しない
 #   - 複数クラスの各々を照合し、属性トークンは照合対象にしない
-#   - allowed_classes で追加許可したクラスは警告しない
 #   - 候補が無い場合は「もしかして」行を出さない
+#
+# 既知クラスの登録手段は「CSS を書くこと」だけ（book.yml の preflight.allowed_classes は廃止）。
 # ================================================================
 
 require 'test_helper'
@@ -30,7 +31,7 @@ module VivlioStarter
         with_temp_project do
           File.write('contents/11-install.md', ":::{.notion}\n本文\n:::\n")
 
-          violations = Guards::ContainerClassCheck.new(allowed_classes: []).validate
+          violations = Guards::ContainerClassCheck.new.validate
 
           assert_equal 1, violations.size
           violation = violations.first
@@ -47,7 +48,7 @@ module VivlioStarter
         with_temp_project(css:) do
           File.write('contents/11-install.md', ":::{.colunm}\n:::\n")
 
-          detail = Guards::ContainerClassCheck.new(allowed_classes: []).validate.first.detail
+          detail = Guards::ContainerClassCheck.new.validate.first.detail
 
           assert_includes detail, '候補: :::{.column}, :::{.col-num}'
         end
@@ -58,7 +59,7 @@ module VivlioStarter
         with_temp_project do
           File.write('contents/11-install.md', "::: {.notice .colunm}\n:::\n")
 
-          detail = Guards::ContainerClassCheck.new(allowed_classes: []).validate.first.detail
+          detail = Guards::ContainerClassCheck.new.validate.first.detail
 
           assert_includes detail, '現状: :::{.notice .colunm}'
           assert_includes detail, '候補: :::{.notice .column}'
@@ -70,7 +71,7 @@ module VivlioStarter
         with_temp_project do
           File.write('contents/11-install.md', ":::{.notice}\n本文\n:::\n")
 
-          assert_empty Guards::ContainerClassCheck.new(allowed_classes: []).validate
+          assert_empty Guards::ContainerClassCheck.new.validate
         end
       end
 
@@ -79,7 +80,7 @@ module VivlioStarter
         with_temp_project(css: '') do
           File.write('contents/11-install.md', ":::{.book-card}\n本文\n:::\n")
 
-          assert_empty Guards::ContainerClassCheck.new(allowed_classes: []).validate
+          assert_empty Guards::ContainerClassCheck.new.validate
         end
       end
 
@@ -89,7 +90,7 @@ module VivlioStarter
         with_temp_project(css: '') do
           File.write('contents/11-install.md', ":::{.showcase}\n![shot](a.png)\nrect:1 0,0,10,10\n:::\n")
 
-          assert_empty Guards::ContainerClassCheck.new(allowed_classes: []).validate
+          assert_empty Guards::ContainerClassCheck.new.validate
         end
       end
 
@@ -98,7 +99,7 @@ module VivlioStarter
         with_temp_project do
           File.write('contents/11-install.md', "::: {.notice .unknwn}\n:::\n")
 
-          violations = Guards::ContainerClassCheck.new(allowed_classes: []).validate
+          violations = Guards::ContainerClassCheck.new.validate
 
           assert_equal 1, violations.size
           assert_includes violations.first.message, "'.unknwn'"
@@ -110,16 +111,7 @@ module VivlioStarter
         with_temp_project do
           File.write('contents/11-install.md', ":::{.rotate-table scale=60%}\n:::\n")
 
-          assert_empty Guards::ContainerClassCheck.new(allowed_classes: []).validate
-        end
-      end
-
-      # allowed_classes で追加許可したクラスは警告しない（呼び出し側からの注入）
-      def test_should_not_warn_on_explicitly_allowed_class
-        with_temp_project do
-          File.write('contents/11-install.md', ":::{.talk}\n本文\n:::\n")
-
-          assert_empty Guards::ContainerClassCheck.new(allowed_classes: ['talk']).validate
+          assert_empty Guards::ContainerClassCheck.new.validate
         end
       end
 
@@ -128,7 +120,7 @@ module VivlioStarter
         with_temp_project do
           File.write('contents/11-install.md', ":::{.zzzzzzzzzz}\n:::\n")
 
-          detail = Guards::ContainerClassCheck.new(allowed_classes: []).validate.first.detail
+          detail = Guards::ContainerClassCheck.new.validate.first.detail
 
           refute(detail.any? { it.start_with?('候補:') })
           assert_includes detail, '現状: :::{.zzzzzzzzzz}'
@@ -145,7 +137,7 @@ module VivlioStarter
         with_temp_project(css:) do
           File.write('contents/11-install.md', ":::{.commented-out}\n:::\n")
 
-          violations = Guards::ContainerClassCheck.new(allowed_classes: []).validate
+          violations = Guards::ContainerClassCheck.new.validate
 
           assert_equal 1, violations.size
           assert_includes violations.first.message, "'.commented-out'"

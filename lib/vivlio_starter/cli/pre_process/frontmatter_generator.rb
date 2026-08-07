@@ -161,15 +161,11 @@ module VivlioStarter
           {
             'link' => hrefs.map { { 'rel' => 'stylesheet', 'href' => it } },
             'lang' => lang,
-            'vfm' => { 'hardLineBreaks' => book_hard_line_breaks? }
+            # 原稿中の改行は常に改行として組む（日本語執筆で直感的なハード改行）。
+            # 章ごとに変えたい場合は、その章のフロントマターに hardLineBreaks: false と
+            # 書けばよい——merge_frontmatter は vfm について既存の記述を優先する。
+            'vfm' => { 'hardLineBreaks' => true }
           }
-        end
-
-        # book.yml の vfm.hard_line_breaks（snake_case）を読み、VFM が解する
-        # フロントマターキー hardLineBreaks（camelCase）へ引き渡す。
-        # 未設定（nil）は既定の true（日本語執筆で直感的なハード改行）。
-        def book_hard_line_breaks?
-          Common::CONFIG.vfm.hard_line_breaks != false
         end
 
         # 既存フロントマターを併合するか新規生成して Markdown に反映する

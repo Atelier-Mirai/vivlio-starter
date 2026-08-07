@@ -13,16 +13,14 @@ module VivlioStarter
         # ファイルのスペルチェックを実行する
         # @param path [String] チェック対象のMarkdownファイルパス
         # @param word_map [Hash] { downcase_word => display_word }
-        # @param ignore_words [Array<String>] 無視する単語のリスト（downcase）
         # @param check_code_blocks [Boolean] コードブロック内もチェックするか
         # @return [Array<Hash>] { line:, word:, suggestion: } の配列
-        def check(path, word_map, ignore_words: [], check_code_blocks: false)
+        def check(path, word_map, check_code_blocks: false)
           content = File.read(path, encoding: 'UTF-8')
           tokens  = Tokenizer.tokenize(content, check_code_blocks: check_code_blocks, path: path)
 
           tokens.filter_map do |word, line_no|
             next if word_map.key?(word.downcase)
-            next if ignore_words.include?(word.downcase)
 
             { line: line_no, word: word, suggestion: find_suggestion(word, word_map) }
           end

@@ -1115,9 +1115,6 @@ module VivlioStarter
         # 改行を除去
         cleaned = text.to_s.gsub(/[\r\n]+/, ' ').strip
 
-        smart_cutting = @config[:smart_context_cutting]
-        smart_cutting = true if smart_cutting.nil?
-
         # 先頭が単語の途中（小文字カナなど）で始まっている場合、常に修正
         # これは長さに関係なく適用
         start_offset = skip_partial_word_start(cleaned)
@@ -1127,7 +1124,6 @@ module VivlioStarter
         max_length = context_width * 2
 
         return cleaned if cleaned.length <= max_length
-        return cleaned[0...max_length] unless smart_cutting
 
         # 先頭のカット: 文頭でない場合、適切な区切り位置から開始
         start_pos = find_smart_start_position(cleaned, max_length)

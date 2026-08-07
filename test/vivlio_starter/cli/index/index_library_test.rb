@@ -127,11 +127,11 @@ module VivlioStarter
         # --- resolve_path ---
 
         def test_resolve_path_prefers_explicit_arg
-          assert_equal File.expand_path('given.yml'), IndexLibrary.resolve_path('given.yml', :export)
+          assert_equal File.expand_path('given.yml'), IndexLibrary.resolve_path('given.yml')
         end
 
         def test_resolve_path_returns_absolute_yaml_path_for_default
-          path = IndexLibrary.resolve_path(nil, :import)
+          path = IndexLibrary.resolve_path(nil)
 
           assert path.start_with?('/'), "絶対パスであること: #{path}"
           assert path.end_with?('.yml')
