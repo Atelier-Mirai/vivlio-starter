@@ -195,4 +195,19 @@ class TestDictManager < Minitest::Test
       assert map.key?('stm32')
     end
   end
+
+  # 除外リストのハイフン複合語が両形式で登録されることを確認する。
+  # 回帰: 除外リストは YAML なのに辞書ファイルと同じ行単位で読んでいたため、
+  # `- "vivlio-starter"` が `-vivlio-starter` として登録され、書いた語そのものが
+  # 引けなかった（ハイフンを詰めた形だけが偶然引けていた）。
+  def test_build_word_map_allowlist_hyphen_both_forms
+    in_temp_project do
+      @dm.register_user_words(['vivlio-starter'])
+      map = @dm.build_word_map(nil)
+
+      assert map.key?('vivlio-starter'), 'ハイフンあり形式が登録されること'
+      assert map.key?('vivliostarter'),  'ハイフンなし形式が登録されること'
+      refute map.key?('-vivlio-starter'), 'YAML の「- 」を語の一部として取り込まないこと'
+    end
+  end
 end

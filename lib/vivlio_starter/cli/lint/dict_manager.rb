@@ -52,7 +52,10 @@ module VivlioStarter
             load_into_word_map(path, words) if path
           end
           load_glossary_terms(words)
-          load_into_word_map(user_dict_path, words) if File.exist?(user_dict_path)
+          # 除外リストは YAML なので read_user_words（YAML パーサ）で読む。
+          # 辞書ファイルと同じ行単位の読み方をすると `- "High-Score"` が `-High-Score`
+          # として登録され、ハイフンを含む語の除外が効かなくなる。
+          read_user_words.each { register_word(words, it) }
           words
         end
 
@@ -134,22 +137,24 @@ module VivlioStarter
         end
 
         # 辞書ファイルを1行ずつ読み込み、正規化した上で words に登録する
-        # ハイフン複合語はハイフンあり・なしの両形式で登録する
         # @param path [String] 辞書ファイルのパス
         # @param words [Hash] 登録先の word_map（破壊的操作）
         def load_into_word_map(path, words)
           File.foreach(path) do |line|
             word = normalize(line)
-            next unless word
-
-            words[word.downcase] = word
-            next unless word.include?('-')
-
-            no_hyphen = word.gsub('-', '').downcase
-            words[no_hyphen] ||= word
+            register_word(words, word) if word
           end
         rescue Errno::ENOENT, Errno::EACCES => e
           Common.log_warn("[spellcheck] 辞書ファイルを読み込めませんでした: #{path} (#{e.message})")
+        end
+
+        # word_map に 1 語を登録する。ハイフンを含む語は詰めた形でも引けるようにする
+        # （`High-Score` を書いておけば本文の `HighScore` も既知語として扱える）。
+        def register_word(words, word)
+          words[word.downcase] = word
+          return unless word.include?('-')
+
+          words[word.delete('-').downcase] ||= word
         end
 
         # 辞書ファイルの1行を正規化して単語文字列を返す
