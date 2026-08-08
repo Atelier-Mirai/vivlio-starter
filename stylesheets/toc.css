@@ -242,7 +242,9 @@ li.toc-subsection {
   margin-block-end: 0.1em;
   padding-inline-start: clamp(21mm, calc(var(--paper-scale) * 30mm), 30mm); /* 既定のインデントに戻す */
 
-  font-size: clamp(9.1Q, calc(var(--paper-scale) * 13Q), 13Q);
+  /* 章 22Q・節 16Q に対する項の段。13Q では本文より小さく、目次の中で読み取り
+     づらかったので、節との階層差は保ったまま一段上げる（16Q の 0.875 倍）。 */
+  font-size: clamp(9.8Q, calc(var(--paper-scale) * 14Q), 14Q);
   line-height: 1.25;
   font-weight: 400;
   text-indent: 0; /* ぶら下げを解除 */

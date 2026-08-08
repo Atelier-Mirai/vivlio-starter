@@ -711,6 +711,12 @@ module VivlioStarter
               )
               sup.add_next_sibling(inline_span)
 
+              # 脚注フロートは挿入した span が担う。控えの aside にも印を付けないと
+              # CSS（aside.page-footnote[data-footnote-anchored] の非表示）が効かず、
+              # 同じ脚注がページ下部へ二重に降りる。FootnoteConverter が自前で
+              # span を挿すときに anchored: true を渡しているのと同じ意味付け。
+              footnote_aside['data-footnote-anchored'] = '1'
+
               # 残りのテキストを更新
               if modified.strip.empty?
                 next_node.remove
@@ -848,9 +854,16 @@ module VivlioStarter
       end
       module_function :update_aside_footnote
 
+      # 脚注番号は data-footnote-number から ::before で描かれる（components.css）。
+      # PDF で脚注本体を担うのは参照直後の span なので、id だけ振り直して番号を
+      # 据え置くと、本体には再番号付け前の番号が出たままになる。
+      # aside 側（update_aside_footnote）と同じく両方を更新する。
       def update_inline_footnote(doc, old_fn_id, new_number)
         inline = doc.at_css("span##{old_fn_id}")
-        inline['id'] = "fn#{new_number}" if inline
+        return unless inline
+
+        inline['id'] = "fn#{new_number}"
+        inline['data-footnote-number'] = new_number.to_s
       end
       module_function :update_inline_footnote
 

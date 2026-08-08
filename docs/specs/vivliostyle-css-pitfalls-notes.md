@@ -27,6 +27,7 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
 | 手書き book-card が全ターゲットで崩れる（`**` 生残り） | **Masking がフェンス終端の改行ごと退避** → 閉じ `:::` がプレースホルダと同一行に癒着 → コンテナ変換が閉じを見失う | masking.rb | §2.6 |
 | flex 内のテキストが縮まず箱を突き抜ける | flex アイテムの **`min-width: auto`** ＋ inline-flex の**匿名 flex アイテム**は `min-inline-size: 0` を外から与えても縮まない | image-header.css（タイトルをブロック化） | §2.7 |
 | 太字を持たない書体を指定すると、リスト番号だけ Type 3 になる | **`font-synthesis-weight` が `::before` / `::after` の生成ボックスへ継承されない**（継承プロパティなのに届かない） | book_settings_css.rb（疑似要素まで明示） | §2.8 |
+| 章見出し・本文の一部の語だけが斜体になる（全章ビルドのみ） | **UA 既定の `dfn { font-style: italic }`**。打ち消しを索引ページ専用の index.css に書いており、その要素が現れる本文・目次へ届いていなかった | base.css（全ページが読む） | §2.9 |
 
 ---
 
@@ -89,6 +90,15 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
   body, body *, body *::before, body *::after { font-synthesis-weight: none; }
   ```
 - 生成 SVG（showcase / mermaid）は**独立文書なので本文の指定がそもそも届かない**。SVG 自身の `<style>` にも同じ規則を出すこと（`type3-font-embedding-notes.md` §5.2）。
+
+### 2.9 UA 既定スタイルの打ち消しは「要素が現れるページ」の CSS に置く
+
+- **症状**: 章扉「執筆**ワークフロー**とクイックスタート」の一語だけが斜体で細く組まれる。前書きの `EPUB` `CSS` `トンボ`、著者紹介の `HTML` `Ruby` も同様。**単章ビルドでは正常で、全章ビルドでのみ再現**する（`vs build 11` と `vs build` で見た目が違う、という報告の形になる）。
+- **原因**: 索引語の初出は `IndexMatchScanner` が `<dfn>` で包む。`dfn` はブラウザ既定（UA スタイルシート）で `font-style: italic` を持つ要素で、打ち消しの `dfn.index-term { font-style: normal }` は書いてあったが、置き場が**索引ページ専用の `index.css`** だった。索引ページに `<dfn>` は出ないので、規則は一度も当たっていない。全章ビルドだけで出るのは、`<dfn>` を付ける Step 4（索引スキャン）が単章ビルドでは走らないため。
+- **一般化**: 打ち消しの置き場を要素の**出自**（索引機能だから index.css）で決めると、要素が**現れる**範囲とズレる。UA 既定の打ち消しは「その要素が出うるすべてのページが読む CSS」＝ **`base.css`** に置く。本プロジェクトの @import グラフでは chapter / appendix / preface / glossary / index / toc / part-title / colophon / legalpage が `base.css` を直接読み、`postface.css` は `preface.css` 経由で読む——つまり base.css だけが全ページに届く。`chapter-common.css` は章と付録にしか届かないので、本文専用の見た目でなければここではない。
+- **和文特有の実害**: 和文書体に斜体の字面は無いので、`italic` は合成斜体になる。§2.8・`type3-font-embedding-notes.md` が潰してきた疑似太字と**同じ Type 3 混入経路**であり、見た目の問題では済まない。
+- **切り分け**: 「打ち消し CSS は書いてあるのに効かない」ときは、値や特異度（§2.4）を疑う前に **そのファイルを当該ページが読んでいるか**を @import グラフで確かめる。読んでいなければ特異度も継承も関係ない。
+- **修正**: `base.css` に `dfn { font-style: inherit; font-weight: inherit; }`。索引語は本文に埋まる透明なアンカーなので、地の文と同じ姿で組まれる必要がある。
 
 ---
 

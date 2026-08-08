@@ -477,6 +477,15 @@ end
         TAGGED_TERM_PATTERN =
           %r{(<(?:span|dfn)[^>]*class="index-term"[^>]*>.*?</(?:span|dfn)>)(\s*<a[^>]*class="glossary-link"[^>]*>.*?</a>)?}
 
+        # Markdown のリンク・画像記法 `[ラベル](URL)` / `![alt](path)`。
+        # ラベルの中で用語に当たると、用語集リンク <a>†</a> がリンクラベルへ
+        # 入れ子になる。Markdown はリンクの入れ子を許さないので外側の
+        # `[...](...)` がリンクとして成立せず、`[Vivliostyle†](https://…) [^url2]`
+        # が本文へ生のまま組まれていた（前書き「謝辞」で実際に発生）。
+        # リンクラベルは行き先を指す文字列で索引の見出しには向かないから、
+        # 記法ごと退避して当てない。
+        MARKDOWN_LINK_PATTERN = /!?\[[^\[\]\n]*\]\([^()\n]*\)/
+
         # config/index_glossary_terms.yml に基づく自動タグ付けを適用
         def apply_auto_indexing(line, file_basename)
           return line if @config_terms.empty?
@@ -505,6 +514,7 @@ end
         def protect_untouchable_regions!(mask)
           mask.protect!(TAGGED_TERM_PATTERN)  # 既にタグ付けされた索引語要素
           mask.protect!(/<[^>]+>/)            # 残りの HTML タグ（属性内の誤マッチ防止）
+          mask.protect!(MARKDOWN_LINK_PATTERN) # リンク・画像記法 [ラベル](URL)
           mask.protect!(/\{[^{}]*\|[^{}]*\}/) # 振り仮名 {漢字|ふりがな}
           # インラインコード（リテラル表示が目的）。解釈の正典は Masking（P1）——
           # 独自パターンだと ``foo`bar`` のような N 連バッククォート対を取りこぼす。

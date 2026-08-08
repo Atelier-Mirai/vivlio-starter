@@ -28,3 +28,15 @@ h6 {
     line-break: strict;   /* 日本語の行分割規則を厳しめに適用 */
     word-break: keep-all; /* 単語を分割しない */
 }
+
+/* 索引語の初出を包む <dfn>（IndexMatchScanner が付与する透明なアンカー）。
+   ブラウザ既定の font-style: italic をここで打ち消す。和文には斜体の字形が
+   無いので合成斜体になり、章見出しの「ワークフロー」だけが傾く・Type 3
+   フォントの混入源にもなる——本文・見出し・目次のどこに現れても地の文と
+   同じ姿でなければならない。
+   全ページの CSS がこの base.css を（preface.css 経由も含め）読むため、
+   打ち消しはここに置く。索引ページ専用の index.css に書いても本文へは届かない。 */
+dfn {
+    font-style: inherit;
+    font-weight: inherit;
+}

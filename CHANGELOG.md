@@ -7,6 +7,10 @@
 ## unreleased
 
 ### Fixed
+- [High] **索引語の初出が斜体で組まれていた**: `IndexMatchScanner` は初出の索引語を `<dfn>` で包むが、打ち消しの `dfn.index-term { font-style: normal }` は**索引ページ専用の `index.css`** にあり本文へ届いていなかった。ブラウザ既定の `font-style: italic` がそのまま効き、章扉「執筆**ワークフロー**とクイックスタート」や前書きの `EPUB` `CSS` `Vivliostyle` `トンボ` だけが傾いていた。和文に斜体の字形は無いので合成斜体になり、`type3-font-embedding-notes.md` が潰してきた疑似太字と同じ Type 3 混入経路でもある。全ページが（`preface.css` 経由も含め）読む `base.css` へ移した。単章ビルドは Step 4 が走らず `<dfn>` が付かないため、**全章ビルドでしか現れない**種類の不具合だった。
+- [High] **前書きで同じ脚注が二重に降り、番号もずれていた**: sideimage コンテナ内のリンク脚注が `5, 3, 3, 4` の 4 行に組まれ、うち 2 行が同じ URL だった（本文の参照は 3・4・5）。原因は 2 つ。**(1)** `process_sideimage_footnotes!` は参照直後へ脚注本体の `span` を挿すのに、控えの `aside` へ `data-footnote-anchored` を付けていなかった——非表示の条件がこの属性（`components.css`）なので、span と aside の両方がページ下部へ降りていた。**(2)** `update_inline_footnote` が再番号付けで `id` だけ更新し `data-footnote-number` を据え置いていた——番号は data 属性から `::before` で描かれるため、本体には再番号前の数字が残る（`aside` 側は両方更新しており、非対称だった）。実測: 前書き iv ページ 4 行 → `3, 4, 5` の 3 行。
+- **索引の用語集リンクが Markdown リンクを壊していた**: 索引スキャナはリンクラベルの中の用語にも当たるため、`[Vivliostyle](https://vivliostyle.org/)` が `[<dfn>Vivliostyle</dfn><a class="glossary-link">†</a>](…)` になる。Markdown はリンクの入れ子を許さないので外側の `[...](...)` がリンクとして成立せず、`[Vivliostyle†](https://vivliostyle.org/) [^url2]` と**記法が生のまま**組まれていた（前書き「謝辞」で発生）。リンク・画像記法を保護領域へ加えて当てないようにした。リンクラベルは行き先を指す文字列で、索引の見出しには向かない。
+- **目次の項（h3）が小さすぎた**: 章 22Q・節 16Q に対して項が 13Q で、階層の差というより読みづらさになっていた。節の 0.875 倍にあたる 14Q へ。
 - [High] **入稿用 PDF から Type 3 フォントを一掃した**（`type3-font-embedding-notes.md`）: `techbook: true` でも Type 3 が **32 件・7 ページ**残っており、技術書典等の入稿基準を満たしていなかった。原因は showcase / mermaid の生成 SVG——`<figure><img src="…svg">` で参照する SVG は**独立文書**のため本文 HTML の @font-face も CSS 変数も届かず、同梱フォントが解決できずに OS 既定の和文フォント（macOS なら Hiragino Sans）へフォールバックし、Chromium がそれを Type 3 で埋め込んでいた。**実測: 186 件（`techbook: false`）→ 32 件（同 `true`）→ 0 件**。
   - 対策は `SvgFontEmbedder` の新設。**その SVG に出る字だけ**へ絞ったフォントを作り、@font-face の data: URI として SVG 自身に持たせる。サブセット化は **ttfunk**（Prawn 経由で既に入っている MIT ライブラリ）で行うため新規依存はない。8 文字で 3.3KB に収まり、和文フォント丸ごと（2〜4MB）と違って SVG は実質太らない。
   - **相対パスの @font-face は効かない**（外部リソースを読めない）ことを実測で確認済み。`font-family` に書体名を書くだけでも解決しない——フォント自体が届いていないため。
