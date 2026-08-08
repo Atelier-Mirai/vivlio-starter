@@ -11,7 +11,9 @@
 
 ## 一覧
 
-**実装待ちの仕様書はありません。** 次の起点は `PLANNED.md` / `at-directive-ideas.md` です。
+| 仕様書 | 内容 | 状態 |
+| :--- | :--- | :--- |
+| `config-defaults-design-spec.md` | 既定値と廃止値の持ち方を `CONFIG_KEYS` 1 表へ寄せる | 設計確定・未実装 |
 
 ---
 
@@ -23,4 +25,10 @@
 
 ## メモ（依存関係・実装順序）
 
-実装待ちの仕様書が無いため、記載はありません。
+`config-defaults-design-spec.md` は次の 3 つを塞き止めている。着手はこれを先に。
+
+- `metrics/config_loader.rb#resolve_preset` の部分上書きバグ（§2.3）——
+  *何に対して*マージするかが決まらないと直せない
+- `config/book.yml` とコードで食い違う既定値 6 件（§2.1）——
+  表の実装後にまとめて直す。先に直すと二度手間（§7）
+- `contents/61-developer.md` の全面書き直し——設定層の説明が書けない
