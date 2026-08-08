@@ -83,7 +83,7 @@ module VivlioStarter
           targets = target_list(config)
           execute_for_size(size, nil) if targets.intersect?(%w[pdf print_pdf])
           # EPUB/Kindle 表紙の元になる JPG は常に生成する。
-          generate_epub_cover(config.directories.covers, config)
+          generate_epub_cover(Common.covers_dir, config)
         end
       end
 
@@ -110,7 +110,7 @@ module VivlioStarter
         end
 
         # master/カスタム テーマ: PNGから生成
-        covers_dir = config.directories.covers
+        covers_dir = Common.covers_dir
         page_cfg = config.page
         page_use = page_cfg[:use] || page_cfg[:preset] || page_cfg[:preset_name] || page_cfg[:size] || 'b5_standard'
         targets = target_list(config)
@@ -155,7 +155,7 @@ module VivlioStarter
         end
 
         # master/カスタム テーマ: PNGから生成
-        covers_dir = config.directories.covers
+        covers_dir = Common.covers_dir
         targets = target_list(config)
 
         unless CoverCommands.check_master_files(covers_dir)
@@ -192,7 +192,7 @@ module VivlioStarter
         end
 
         # master/カスタム テーマ: PNGから生成
-        covers_dir = config.directories.covers
+        covers_dir = Common.covers_dir
         input_file = CoverCommands.resolve_epub_cover_input(covers_dir, theme)
         unless input_file
           Common.log_error "カバー入力画像が見つかりません（テーマ: #{theme}）"
