@@ -20,7 +20,7 @@ module VivlioStarter
         'yellow' => '#f0a000', 'orange' => '#ea580c', 'red' => '#dc2626',
         'magenta' => '#e11d74', 'purple' => '#7c3aed', 'indigo' => '#4f46e5',
         'navy' => '#1d4ed8', 'blue' => '#0ea5e9', 'cyan' => '#06b6d4',
-        'teal' => '#0d9488', 'green' => '#16a34a', 'lime' => '#65a30d'
+        'teal' => '#0d9488', 'green' => '#15803d', 'lime' => '#65a30d'
       }.freeze
 
       module_function
