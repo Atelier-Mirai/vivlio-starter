@@ -12,9 +12,19 @@
 - **Markdown で執筆** — 使い慣れた記法でさくさく書ける。特別なフォーマットを覚える必要はありません
 - **コマンド一発でビルド** — `vs build` ひとつで、原稿が美しい PDF に変わります
 - **印刷入稿に対応** — トンボ・塗り足し付きの PDF を生成。印刷所にそのまま入稿できます
-- **電子書籍も出力** — EPUB 形式での出力にも対応。電子出版の道も開かれています
+- **電子書籍も出力** — EPUB（Kobo / Apple Books 向け）と Kindle 用 KPF を、配信先ごとに最適化して生成します
 - **テーマで簡単デザイン** — `book.yml` でアクセントカラーや扉絵を選ぶだけで、統一感あるデザインに
 - **環境構築も自動** — `vs new` でプロジェクトを作成し、`vs doctor` で必要なツールを自動セットアップ
+
+### 執筆を支える機能
+
+- **文章校正（`vs lint`）** — 表記揺れ・冗長表現・文体の混在を検出。英単語の綴りも 50 以上の技術辞書で確認します
+- **分量と読みやすさの分析（`vs metrics`）** — 刊行書の実測に基づく基準で、章の分量が適切かを判定。漢字比率・語彙の多様さ・読解難度も測ります
+- **索引・用語集の自動生成** — 候補を抽出してレビューし、承認した語だけを登録。「その語を説明している章」を指すページを太字で先頭に並べます
+- **図解注釈（`:::{.showcase}`）** — スクリーンショットの枠・矢印・丸数字を原稿に文字で書くと、ビルド時に画像へ焼き込まれます。画像編集ソフトは要りません
+- **ダイアグラム（` ```mermaid `）** — フローチャートやシーケンス図をテキストで描けます
+- **会話文（`:::{.talk}`）** — 「キー: 発話」を並べるだけで、話者ごとに色分けした吹き出しになります
+- **環境の一括更新（`vs upgrade`）** — 本体 gem・プロジェクトの雛形・外部ツールを 1 コマンドで最新化します
 
 ## 執筆ワークフロー
 
@@ -26,7 +36,8 @@ Vivlio Starter を使った書籍制作は、5つのステップで完結しま�
 | ② 執筆 | `vs create 10-intro` | 章ファイルを追加して Markdown で執筆 |
 | | `vs build 10-intro` | 章単位で素早く確認 |
 | ③ 整える | `vs lint` | 文章を校正（textlint） |
-| | `vs metrics` | 原稿の統計を確認 |
+| | `vs metrics` | 原稿の分量と読みやすさを確認 |
+| | `vs preflight` | ビルド前の原稿エラーを数秒で検出 |
 | ④ ビルド | `vs build` | 書籍全体をビルド（カバー未生成時は自動生成） |
 | ⑤ 入稿・配布 | — | 生成済みファイルを提出・アップロード |
 
@@ -36,7 +47,7 @@ Vivlio Starter を使った書籍制作は、5つのステップで完結しま�
 
 ### 前提条件
 
-- **Ruby**（CLI 実行に必要）
+- **Ruby 3.4 以上**（CLI 実行に必要。3.4.10 と 4.0.6 で動作確認）
 - **Node.js / npm**（Vivliostyle CLI や textlint に必要）
 
 Ruby が未導入の場合は、同梱スクリプトで自動セットアップできます。
@@ -92,21 +103,25 @@ vs build ~/notes/idea.md --theme blue  # テーマカラーを指定
 
 ```
 mybook/
-  contents/          ← 原稿（Markdown ファイル）
-  images/            ← 画像ファイル
-  covers/            ← 表紙・裏表紙用の画像ファイル
-  data/              ← QueryStream 用データ（YAML 形式）
-  templates/         ← 各種雛形ファイル
-  sources/           ← 執筆資料や PDF ファイル
-  codes/             ← 書籍内で掲載するサンプルコード
-  stylesheets/       ← CSS スタイルシート
-  config/
-    book.yml         ← 書籍の設定ファイル
-    catalog.yml      ← 章構成
-    page_presets.yml ← ページレイアウト設定
+  contents/       ← 原稿（Markdown ファイル）
+  images/         ← 画像ファイル
+  covers/         ← 表紙・裏表紙用の画像ファイル
+  data/           ← 本文へ展開するデータ（YAML 形式）
+  templates/      ← 章の雛形とデータ展開テンプレート
+  sources/        ← 執筆資料や PDF ファイル置き場
+  codes/          ← 本文へ取り込むサンプルコード
+  stylesheets/    ← CSS スタイルシート
+  config/         ← 各種設定ファイル
+    book.yml      ← 書籍の設定
+    catalog.yml   ← 章構成
+    scaffold.lock ← 雛形マニフェスト（自動生成）
+  README.md
   Gemfile
   package.json
+  .gitignore
 ```
+
+ビルドの生成物（表紙の PDF・扉絵の合成画像・キャッシュ）は `.cache/vs/` 配下に出力されるため、原稿のディレクトリと混ざりません。
 
 ## コマンド一覧
 
@@ -137,17 +152,23 @@ vs --help
     metrics          Markdownの行数・文字数を集計します
 
   索引・用語集:
+    index:plan       索引語数の目安と候補の分布を表示します
     index:auto       索引・用語集の候補を抽出し、確認用ファイルを作成します
     index:apply      確認済みの候補を、プロジェクトの索引辞書に登録・保存します
+    index:export     用語集・棄却・読みをライブラリへ書き出します
+    index:import     別の本のライブラリを取り込みます
 
   画像・カバー:
     cover            表紙・裏表紙の画像を生成します（A4/B5/A5/EPUB対応）
-    resize           images/画像をWebP形式に変換・最適化します
+    resize           images/画像をWebP形式に変換・最適化します（--high/--lowで品質変更可）
 
   ビルド・出力・プレビュー:
+    preflight        ビルド前の原稿エラーチェックを高速実行します
     build            書籍全体または指定章をビルドします
     open             生成されたPDFを開きます
     pdf:compress     生成済みPDFを圧縮します
+    pdf:pages        PDFをページ単位でJPEG画像に切り出します
+    pdf:rasterize    PDFをラスタライズして再結合します（Type3フォント対策）
 ```
 
 まずはこの3つだけで十分です。
@@ -182,8 +203,10 @@ vs build --log=error  # error（エラーのみ）
 `vs build` は端末で実行すると、いま何をしているかをスピナーで表示します。
 
 ```
-⠹ ビルド中: convert … (5/14)
+⠹ ビルド中: build overall pdf … (12/18)
 ```
+
+括弧の中は「全体の何段階目か」です。段階の数は `output.targets` の指定によって変わります。
 
 次の場合は自動的に表示されません（出力を汚さないため）。
 
@@ -208,24 +231,33 @@ Vivlio Starter は、Vivliostyle をコアエンジンとして活用する独�
 - **フロントマター生成**: book.yml の設定を各章に自動反映
 - **ソースコード読み込み**: `codes/` からコードを埋め込み、行番号を付与
 - **脚注変換**: 外部リンクをページ脚注に自動変換
+- **数式の画像化**: LaTeX 記法を MathJax で SVG へ焼き込み（PDF・EPUB・Kindle で同じ見た目）
+- **図の生成**: ` ```mermaid ` のダイアグラムと `:::{.showcase}` の図解注釈を画像化
+- **索引スキャン**: 辞書に登録した語を本文から探し、初出とそれ以降を区別してタグ付け
 - **CSS 自動更新**: テーマカラー・スタイル・マーカー・ページ設定を動的生成
 - **目次の自動生成**: `catalog.yml` に記載された各章の見出しを自動抽出
 
 ### 後処理（vivliostyle 呼び出し後）
 
 - **重複バックリンク排除**: 生成済み PDF の named destinations からページマッピングを取得し、索引・用語集の重複リンクを浄化
-- **PDF アウトライン付与**: HexaPDF により PDF にしおり（ブックマーク）を付与
+- **PDF アウトライン付与**: PDF にしおり（ブックマーク）を付与（別 gem `vivlio-starter-pdf` の導入時。本体のみでも他の処理はすべて動きます）
 - **表紙 PDF 結合**: frontcover/backcover を本文 PDF と結合
 - **奥付の偶数ページ調整**: 奥付が必ず左ページ（偶数）に来るよう空白ページを自動挿入
 - **PDF 圧縮**: Ghostscript による高品質圧縮
 - **ファイルリネーム**: `mybook_v0.1.0.pdf` のようにプロジェクト名・バージョンを反映
+- **入稿用 PDF の導出**: 閲覧用 PDF の中間成果物からトンボ・塗り足し付きの PDF を作成
+- **EPUB / Kindle の生成**: ターゲットごとに最適化した EPUB を組み、Kindle は KPF へ変換
 
 ### ビルド時間の内訳
 
+本書（508 ページ）の全章ビルドで約 5 分。大半は Vivliostyle が紙面を組む時間です。
+
 ```
-vivliostyle 本体:      約 52%（PDF レンダリング）
-vivlio-starter の処理: 約 48%（前処理・後処理）
+vivliostyle 本体:      約 85%（本文 PDF の組版・バックリンク解決の再組版）
+vivlio-starter の処理: 約 15%（前処理・後処理・PDF 結合・しおり付与）
 ```
+
+原稿の前処理は 4 秒、HTML 変換は 6 秒ほどで終わります。執筆中は `vs preflight`（数秒）と単章ビルド（約 30 秒）で確認し、仕上げに全章ビルドするのが快適です。
 
 ## 設定（config/book.yml）
 
@@ -233,17 +265,23 @@ vivlio-starter の処理: 約 48%（前処理・後処理）
 
 ```yaml
 book:
-  main_title: 'はじめての技術書づくり'
-  subtitle: 'Vivlio Starter 実践ガイド'
-  author: アトリヱ未來
-  language: ja
-vivliostyle:
-  reading_progression: ltr
-pdf:
-  output_file: output.pdf
-  close_existing_windows: true
-  window_bounds: '{3072, 0, 4096, 2160}'
+  main_title: "はじめての技術書づくり"
+  subtitle: "Vivlio Starter 実践ガイド"
+  author: "早乙女 遙香"
+  language: "ja"
+
+theme:
+  style: image      # image: 扉絵あり / simple: 扉絵なし
+  color: green      # アクセントカラー（12 色 ＋ HEX 指定）
+
+page:
+  use: b5_standard  # 判型と版面のプリセット
+
+output:
+  targets: pdf      # pdf / print_pdf / epub / kindle（併記可）
 ```
+
+設定できる項目は書籍情報・テーマ・版面・出力形式のほか、校正・分量分析・索引・PDF 読み取りまで一通り揃っています。すべて既定値を持っているので、書かなければ既定で動きます。詳しくは本書の「config/book.yml リファレンス」の章を参照してください。
 
 ## 追加ツールのインストール（PDF 操作）
 
@@ -252,15 +290,21 @@ pdf:
 導入済みツールの更新は `vs upgrade` で一括して行えます。vivlio-starter 本体の gem 更新・プロジェクト雛形の追従とあわせて、更新計画（現在版 → 最新版）を提示し、確認後に brew / npm / gem をまとめて更新して再診断します（不足ツールのインストールも同時に行われます。`--yes` で確認スキップ、`--dry-run` で計画表示のみ）。
 
 ```bash
-brew install poppler qpdf ghostscript imagemagick
+brew install poppler qpdf ghostscript imagemagick librsvg vips mecab
+npm install -g @vivliostyle/cli textlint mathjax-full @mermaid-js/mermaid-cli
 ```
 
 | ツール | 用途 |
 |---|---|
-| pdfinfo（poppler） | PDF のメタ情報取得 |
+| pdfinfo / pdftoppm（poppler） | PDF のメタ情報取得・ページの画像化 |
 | qpdf | PDF の分割・結合・ページ抽出 |
 | Ghostscript | PDF 圧縮 |
 | ImageMagick | 画像変換（WebP 等） |
+| librsvg（rsvg-convert） | 扉絵・図解注釈の合成画像のラスタライズ |
+| libvips | 高速画像処理 |
+| MeCab | 索引の読みの自動推測 |
+| mathjax-full | 数式の SVG 化 |
+| mermaid-cli（mmdc） | ダイアグラムの画像化 |
 
 ### Vivliostyle CLI / VFM
 
@@ -272,11 +316,14 @@ npm install --save-dev @vivliostyle/cli vfm
 
 ## 出力形式
 
-| 頒布先 | 使用するファイル | 設定 |
+`config/book.yml` の `output.targets` で指定します。カンマ区切りで併記できます。
+
+| 頒布先 | 指定する値 | 生成されるもの |
 | :--- | :--- | :--- |
-| 技術書典・コミケ（印刷所入稿） | `print_pdf`（トンボ付き） | `output.targets` |
-| ダウンロード販売・PDF 配布 | `pdf`（閲覧用） | `output.targets` |
-| BOOTH・Kindle 等（電子書籍） | `epub` | `output.targets` |
+| 技術書典・コミケ（印刷所入稿） | `print_pdf` | トンボ・塗り足し付き PDF（CMYK 表紙は PDF/X-1a） |
+| ダウンロード販売・PDF 配布 | `pdf` | 閲覧用 PDF（表紙結合済み） |
+| 楽天 Kobo・Apple Books・BOOTH | `epub` | クリーン EPUB |
+| Amazon Kindle（KDP） | `kindle` | KPF（Kindle Previewer 経由で自動変換） |
 
 ## ライセンス
 

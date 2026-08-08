@@ -18,10 +18,11 @@ Vivlio Starter は Markdown で書いた原稿から高品質な PDF・EPUB を�
 - **電子書籍も出力** — EPUB / Kindle 形式での出力にも対応。電子出版の道も開かれています
 - **テーマで簡単デザイン** — `book.yml` でアクセントカラーや扉絵を選ぶだけで、統一感あるデザインに
 - **環境構築も自動** — `vs new` でプロジェクトを作成し、`vs doctor` で必要なツールを自動セットアップ
+- **書いた原稿を磨く** — 文章の校正、分量と読みやすさの分析、索引・用語集の生成まで、質を上げる道具が揃っています
 
 ## この本で学べること
 
-- **Markdown で執筆する為の各種記法** — 一般的なMarkdown記法に加えて、`Vivlio Starter` 拡張の全て
+- **Markdown で執筆するための各種記法** — 一般的な Markdown 記法に加えて、Vivlio Starter が足した拡張のすべて
 - **ビルドと出力の全体像** — PDF・印刷用 PDF・EPUB・Kindle、それぞれの出力フローを理解する
 - **デザインのカスタマイズ** — テーマカラー、フォント、版面設計を `book.yml` で自在に調整する
 - **便利な執筆支援機能** — 校正 Lint、メトリクス分析、索引・用語集の自動生成を活用する
@@ -44,14 +45,14 @@ Vivlio Starter は Markdown で書いた原稿から高品質な PDF・EPUB を�
 :::{.sideimage-right}
 ![](kauplan.webp){width=20%}
 
-Vivlio Starter の開発は、[Re:VIEW Starter](https://kauplan.org/reviewstarter/) に触発されたことに始まります。Re:VIEW Starter が示した「執筆者が執筆に集中できる環境づくり」という思想は、Vivlio Starter の根幹にあり続けています。作者の kauplan さんに厚く御礼申し上げます。
+Vivlio Starter の開発は、[Re:VIEW Starter](https://kauplan.org/reviewstarter/)に触発されたことに始まります。Re:VIEW Starter が示した「執筆者が執筆に集中できる環境づくり」という思想は、Vivlio Starter の根幹にあり続けています。作者の kauplan さんに厚く御礼申し上げます。
 :::
 
 ---
 
 :::{.sideimage-right}
 ![](vivliostyle_logo.webp){width=20%}
-また、Vivlio Starter のコアエンジンである [Vivliostyle](https://vivliostyle.org/) の作者・開発チームの皆様にも、深く感謝申し上げます。CSS 組版という優れた技術と、オープンソースとしての惜しみない公開があってこそ、Vivlio Starter は生まれました。
+また、Vivlio Starter のコアエンジンである [Vivliostyle](https://vivliostyle.org/)の作者・開発チームの皆様にも、深く感謝申し上げます。CSS 組版という優れた技術と、オープンソースとしての惜しみない公開があってこそ、Vivlio Starter は生まれました。
 :::
 
 :::{.sideimage-right}
