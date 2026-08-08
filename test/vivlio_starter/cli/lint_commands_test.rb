@@ -431,7 +431,10 @@ module VivlioStarter
         runner = LintCommands::LintRunner.new([], {})
         original = Common::CONFIG
 
-        { 0 => :off, '0' => :off, 80 => 80, '80' => 80, nil => nil, '' => nil }.each do |raw, expected|
+        # nil は「書かなかった」と同じなので既定値（ConfigKeys の 100）が入る。
+        # '' は明示的な空文字なので既定値に戻らず、blank? として nil に落ちる。
+        default = ConfigKeys::KEYS[%i[lint sentence_length_max]].default
+        { 0 => :off, '0' => :off, 80 => 80, '80' => 80, nil => default, '' => nil }.each do |raw, expected|
           merged = Common.merge_hardcoded_defaults(lint: { sentence_length_max: raw })
           Common.install_configuration!(Common.wrap_config(merged).freeze)
 

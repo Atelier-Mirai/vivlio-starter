@@ -485,8 +485,8 @@ module VivlioStarter
 
           # 外部 URL にバッチで HEAD リクエストを送信する
           def check_urls_batch(url_entries, config)
-            timeout = config[:timeout] || 10
-            max_concurrency = config[:max_concurrency] || 5
+            timeout = config[:timeout] || ConfigKeys::KEYS[%i[verify timeout]].default
+            max_concurrency = config[:max_concurrency] || ConfigKeys::KEYS[%i[verify max_concurrency]].default
             results = []
             mutex = Mutex.new
 

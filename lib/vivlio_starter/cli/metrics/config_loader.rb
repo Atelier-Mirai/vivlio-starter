@@ -17,6 +17,8 @@
 require_relative 'analyzer'
 require_relative '../common'
 
+require_relative '../config_keys'
+
 module VivlioStarter
   module CLI
     module Metrics
@@ -147,7 +149,7 @@ module VivlioStarter
 
         # 除外する章番号のリストを取得する
         def exclude_chapters
-          raw = metrics_config[:exclude_chapters] || %w[00 90-98 99]
+          raw = metrics_config[:exclude_chapters] || ConfigKeys::KEYS[%i[metrics exclude_chapters]].default
           expand_chapter_ranges(raw)
         end
 
@@ -200,7 +202,7 @@ module VivlioStarter
           preset_name
         end
 
-        def preset_name = (metrics_config[:use] || 'standard').to_s
+        def preset_name = (metrics_config[:use] || ConfigKeys::KEYS[%i[metrics use]].default).to_s
 
         def median(values)
           sorted = values.sort
@@ -208,12 +210,18 @@ module VivlioStarter
           sorted.size.odd? ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2.0
         end
 
-        # プリセットを解決する
+        # プリセットを解決する。
+        #
+        # 既定値へ**深くマージ**する（Common.deep_merge_config）。かつては
+        # `custom[:chapter]` の有無で全か無かを判定しており、プリセットに `section:` だけ
+        # 書いて `chapter:` を書かないと**著者の指定が警告なく捨てられた**。
+        # 合成規則は 1 つに決め、各所で再実装しない（config-defaults-design-spec.md §4.4）。
         def resolve_preset(name)
+          fallback = DEFAULT_PRESETS[name.to_sym] || DEFAULT_PRESETS[:standard]
           custom = metrics_config[name.to_sym]
-          return custom if custom.is_a?(Hash) && custom[:chapter]
+          return fallback unless custom.is_a?(Hash)
 
-          DEFAULT_PRESETS[name.to_sym] || DEFAULT_PRESETS[:standard]
+          Common.deep_merge_config(fallback, custom)
         end
 
         # しきい値をシンボルキーに変換する

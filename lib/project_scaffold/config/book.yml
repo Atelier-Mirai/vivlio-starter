@@ -46,13 +46,13 @@ project:
 # ======= テーマ =======
 theme:
   # ------- テーマカラー -------
-  color: yellow # yellow / orange / red / magenta
+  color:  navy  # yellow / orange / red / magenta
                 # purple / indigo / navy / blue
                 # cyan / teal / green / lime から選択
                 # '#ff0000' のような HEX 記法も指定可
 
-  preface_color: purple # 前書き/後書き専用カラー 未指定ならcolorと同色
-  appendix_color: green # 付録専用カラー 未指定ならcolorと同色
+  preface_color: teal # 前書き/後書き専用カラー 未指定ならcolorと同色
+  appendix_color: cyan # 付録専用カラー 未指定ならcolorと同色
 
   style: image # image: 画像あり / simple: 画像なし
                # image にすると下の扉絵・節絵が有効になります。（付録は常に simple）
@@ -84,10 +84,10 @@ page:
   # 紙サイズ・余白・文字サイズ・行送りなど版面の物理的構造を一括で決めます
   # use: a5_standard  # 標準
   # use: a5_airy      # 広め
-  use: a5_compact   # 狭め
+  # use: a5_compact   # 狭め
   # use: a5_custom    # 著者独自
 
-  # use: b5_standard
+  use: b5_standard
   # use: b5_compact
   # use: b5_airy
   # use: b5_custom
@@ -97,17 +97,17 @@ page:
   # use: a4_compact
   # use: a4_custom
 
-  section_pagebreak: false # 節（## 見出し）をページの先頭から始めるか
-                           # true  … 節ごとにページを改める（既定）
-                           # false … 節を本文の流れの中に続けて組む
-                           #         （ページ数を抑えたい本・配布資料向け）
+  section_pagebreak: true # 節（## 見出し）をページの先頭から始めるか
+                          # true  … 節ごとにページを改める（既定）
+                          # false … 節を本文の流れの中に続けて組む
+                          #         （ページ数を抑えたい本・配布資料向け）
 
-  chapter_pagebreak: any # 章・目次・部扉・付録・用語集・後書き・索引を、どちら側の面から始めるか
-                         # recto … 右ページ（奇数）から。いわゆる改丁
-                         #         必要なら白紙が 1 枚入る（既定）
-                         # any   … どちらでもよい。白紙が入らずページ数が減る
-                         # verso … 左ページ（偶数）から
-                         # 原稿中の @pagebreak:recto / :verso は、この設定より優先されます
+  chapter_pagebreak: recto # 章・目次・部扉・付録・用語集・後書き・索引を、どちら側の面から始めるか
+                           # recto … 右ページ（奇数）から。いわゆる改丁
+                           #         必要なら白紙が 1 枚入る（既定）
+                           # any   … どちらでもよい。白紙が入らずページ数が減る
+                           # verso … 左ページ（偶数）から
+                           # 原稿中の @pagebreak:recto / :verso は、この設定より優先されます
 
 # ======= タイポグラフィ設定（書体・色・装飾） =======
 typography:

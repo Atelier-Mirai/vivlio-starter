@@ -3,6 +3,7 @@
 require 'fileutils'
 require 'json'
 require 'yaml'
+require_relative 'config_keys'
 require_relative 'units'
 require_relative 'spinner'
 
@@ -230,50 +231,7 @@ module VivlioStarter
       #
       # 値は「代わりにどうするか」。著者が読んで行動できる文言にすること
       # （警告は具体的な修正案とセットにする、が本プロジェクトの流儀）。
-      RETIRED_CONFIG_KEYS = {
-        %i[index auto_approve_threshold] =>
-          '索引語数はスコアの絶対値ではなく index.target_terms（本文の分量から導く目安語数）で決めます',
-        %i[index review_threshold] =>
-          '同上。レビュー対象は目安語数と index.candidate_pool で決まります',
-        %i[index high_candidates_ratio] =>
-          '推奨候補／一般候補の分割は目安語数が決めるため、比率の指定は不要です',
-        # --- book.yml スリム化で廃止（設定ではなく手法パラメータ・別ファイルの役割だったもの）---
-        %i[metrics mattr_window] =>
-          '語彙多様度を測る窓幅は算出方法そのもので、変えると章どうしを比べられなくなるため固定しました',
-        %i[spellcheck extra_words] =>
-          '除外したい語は config/spellcheck_allowlist.yml に書きます（vs lint --register で一括登録もできます）',
-        %i[spellcheck ignore_words] =>
-          '同上。指摘したくない語の窓口は config/spellcheck_allowlist.yml に一本化しました',
-        %i[index_glossary library] =>
-          '書き出し先・取り込み元は vs index:export mybook.yml のように引数で指定します（既定は index_library.yml）',
-        %i[index_glossary smart_context_cutting] =>
-          '文脈の切り出しは常に形態素境界を考慮します（切りたくない理由がないため選択肢をなくしました）',
-        %i[preflight allowed_classes] =>
-          'そのクラスの CSS を stylesheets/ に書けば既知クラスとして扱われます（CSS を書くことが登録です）',
-        %i[vfm hard_line_breaks] =>
-          '原稿中の改行は常に改行として組みます。章ごとに変えたい場合はその章のフロントマターに vfm: { hardLineBreaks: false } と書きます',
-        %i[lint config] =>
-          '校正ルールは config/.textlintrc.yml を直接編集します（book.yml には文体の選択だけを置きます）',
-        %i[lint disabled_terms] =>
-          '指摘したくない語句は config/textlint_allowlist.yml に書きます',
-        # --- 設定にする意味が無かったもの（2026-08-08 撤去）---
-        %i[index backlink_dedup] =>
-          'バックリンクの重複排除は常に行ないます（切っても浮くのは 0.8 秒で、用語の出現箇所すべてにダガー印が付きます）',
-        %i[glossary backlink_dedup] =>
-          '同上。用語集のバックリンクも常に重複排除します',
-        %i[directories] =>
-          'contents/ や stylesheets/ の名前は変更できません',
-        %i[cache] =>
-          'キャッシュは常に .cache/vs に置き、常に有効です',
-        %i[commands] =>
-          'vfm コマンドの名前は変更できません',
-        %i[vivliostyle] =>
-          'vivliostyle の進行表示は常に抑制します（reading_progression は元から読んでいません）',
-        %i[book title] =>
-          '書名は book.main_title に書きます（title は初期実装の名残で、main_title が空のときだけ使われていました）',
-        %i[metrics clause_length] =>
-          '節の長さの基準は使っていません（宣言だけが残っていました）'
-      }.freeze
+      RETIRED_CONFIG_KEYS = ConfigKeys.retirement_notices.freeze
 
       # 著者が book.yml に実際に書いたキーの集合（既定値のマージ前）。
       # load_config が記録する。CONFIG が「実効値」を答えるのに対し、
@@ -315,53 +273,10 @@ module VivlioStarter
       # book.yml の全セクションの既定値スキーマ。
       # コードが参照する既知キーを列挙し、未設定時のドット記法アクセスを保証する。
       # nil は「既定値なし（未設定）」を表し、実際の既定値は従来どおり参照側が決める。
-      def default_config_schema
-        {
-          book: { main_title: nil, subtitle: nil, subtitle_style: nil, series: nil,
-                  release: nil, publisher: nil, contact: nil, author: nil, language: nil, isbn: nil },
-          project: { name: nil, version: nil },
-          theme: { style: nil, color: nil, preface_color: nil, appendix_color: nil,
-                   frontispiece: nil, ornament: nil, markers: { h3: nil, h4: nil } },
-          # page の版面キー（size/width/margin_* 等）は page_presets 由来のため列挙しない。
-          # section_pagebreak / chapter_pagebreak は版面のページネーション挙動（節をページ頭
-          # から始めるか・章をどちら側の面から始めるか）で、プリセットに依らない書籍単位の
-          # 選択のためここに既定値を持つ（chapter-pagebreak-spec.md §2.1）。
-          page: { use: nil, section_pagebreak: true, chapter_pagebreak: 'recto' },
-          typography: { body: { font: nil }, heading: { font: nil },
-                        column: { font: nil, font_size: nil }, code: { font: nil },
-                        folio: { font: nil, placement: nil } },
-          legal: { disclaimer: nil, trademark: nil, twemoji: nil },
-          output: { targets: nil, cover: nil, include_version: nil,
-                    pdf_preview: { close_existing_windows: nil, window_bounds: nil },
-                    pdf: { combined: nil, compress: nil, techbook: nil },
-                    print_pdf: { bleed: nil, crop_marks: nil, full_bleed: nil },
-                    epub: { embed: nil, layout: nil },
-                    kindle: { embed: nil, layout: nil } },
-          # vs build / vs preflight 共通の原稿検証。CLI の --[no]-verify / --verify-links と
-          # 対になる名前にしてある（どちらか一方のコマンド専用ではない）。
-          verify: { images: nil, bare_urls: nil, external_links: nil,
-                    timeout: nil, max_concurrency: nil },
-          index_glossary: { enabled: nil, use_mecab: nil, timezone: nil, context_width: nil },
-          # 廃止キー（auto_approve_threshold / review_threshold / high_candidates_ratio）は
-          # 読まない。書かれていたら UnifiedIndexManager#warn_retired_keys が移行を促す。
-          index: { auto_discovery: nil, title: nil,
-                   target_terms: nil, candidate_pool: nil, auto_approve: nil,
-                   common_term_ratio: nil,
-                   # 主要参照（説明箇所）— index-main-reference-spec.md R6・R8
-                   reference_style: nil, max_sub_references: nil, page_range_min: nil },
-          glossary: { title: nil, require_definition: nil, max_definition_length: nil },
-          metrics: { use: nil, exclude_chapters: nil, kanji_ratio: nil, word_length: nil,
-                     ttr: nil, sentence_length: nil,
-                     readability: nil, labels: nil },
-          lint: { disabled_rules: nil, sentence_length_max: nil,
-                  trim_long_vowel: nil, allow_space_around_code: nil, allow_space_between_ja_en: nil },
-          spellcheck: { extra_dictionaries: nil, check_code_blocks: nil },
-          pdf_read: { text_area: { top_margin: nil, bottom_margin: nil,
-                                   inner_margin: nil, outer_margin: nil },
-                      page_separator: nil,
-                      ocr: { mode: nil, languages: nil, dpi: nil, psm: nil, inline_image_text: nil } },
-        }
-      end
+      # book.yml の全セクションの既定値スキーマ。
+      # 宣言は ConfigKeys::KEYS が持つ（config-defaults-design-spec.md）。
+      # ここは葉キーの宣言から入れ子ハッシュを組み立て直すだけで、値は持たない。
+      def default_config_schema = ConfigKeys.default_schema
 
       # --- Hardcoded Defaults (Data objects for immutability) ---
       def apply_page_preset(cfg)
@@ -987,11 +902,7 @@ module VivlioStarter
 
       # 未設定だと成果物が目に見えて欠ける主要キーと、その記入例。
       # 記入例は警告の「直し方」としてそのまま見せるので、著者が貼って直せる形で書く。
-      REQUIRED_BOOK_KEYS = {
-        %i[book main_title] => '本のタイトル',
-        %i[book author] => '著者名',
-        %i[project name] => 'mybook'
-      }.freeze
+      REQUIRED_BOOK_KEYS = ConfigKeys.authored_examples.freeze
 
       # 主要キーのうち book.yml に書かれていないものを返す。
       # @param cfg [Hash] シンボルキー化された book.yml の内容
@@ -1116,13 +1027,12 @@ module VivlioStarter
       # 塗り足しを復元できないため、入稿用 PDF を個別レンダリングする（既定 false = 導出）。
       def print_pdf_full_bleed? = truthy?(CONFIG&.output&.print_pdf&.full_bleed)
 
-      # カバー設定のバリデーション
+      # カバー設定のバリデーション。
+      # output.cover は既定値 master を持つため「未設定」の状態は存在しない
+      # （従来も cover.rb が `|| 'master'` で補っており、実際の出力は同じだった）。
+      # 画像が足りない場合は下の存在チェックが具体的に指摘する。
       def validate_cover_settings
         theme = cover_theme
-        unless theme
-          log_error('output.cover 設定が見つかりません')
-          return false
-        end
 
         # 標準テーマの場合は有効
         return true if %w[light dark].include?(theme)

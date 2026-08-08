@@ -794,7 +794,7 @@ module VivlioStarter
         # 改行を除去
         text = context_text.to_s.gsub(/[\r\n]+/, ' ').strip
 
-        context_width = @config[:context_width] || 40
+        context_width = @config[:context_width]
 
         if text.length <= context_width * 2
           text

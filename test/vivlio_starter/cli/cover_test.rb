@@ -435,11 +435,12 @@ module VivlioStarter
         setup_config_file(config_content)
         Common.reload_configuration!
         
-        # cover_themeがnilを返すことを確認
-        assert_nil Common.cover_theme
-        
+        # output.cover を書かなくても既定の master が使われる（未設定という状態は無い）
+        assert_equal 'master', Common.cover_theme
+
+        # master の画像が無いプロジェクトなので、存在チェックで弾かれる
         result = Common.validate_cover_settings
-        refute result, 'cover設定が未指定の場合は無効であるべきです'
+        refute result, 'master 画像が無い場合は無効であるべきです'
       end
 
       private

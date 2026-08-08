@@ -143,6 +143,28 @@ module VivlioStarter
           assert_equal 'SHORT!', labels[:too_short]
           assert_equal 'やや長い', labels[:too_long]
         end
+
+        # 回帰: プリセットの部分指定が捨てられないこと。
+        # かつては custom[:chapter] の有無で全か無かを判定しており、section だけ書くと
+        # 著者の指定が警告なく無視された（既定値へ深くマージする形に改めた）。
+        def test_partial_preset_override_keeps_both_sides
+          config = { metrics: { use: 'heavy',
+                                heavy: { section: { min: 777, ideal: [800, 900], max: 1000 } } } }
+          thresholds = ConfigLoader.new(config).volume_thresholds
+
+          assert_equal 777, thresholds[:section][:min], '書いた側は効く'
+          assert_equal ConfigLoader::DEFAULT_PRESETS[:heavy][:chapter][:min],
+                       thresholds[:chapter][:min], '書かなかった側は既定値のまま残る'
+        end
+
+        # 逆向き（chapter だけ書く）でも同じ
+        def test_partial_preset_override_works_for_chapter_only
+          config = { metrics: { use: 'compact', compact: { chapter: { min: 111, ideal: [200, 300], max: 400 } } } }
+          thresholds = ConfigLoader.new(config).volume_thresholds
+
+          assert_equal 111, thresholds[:chapter][:min]
+          assert_equal ConfigLoader::DEFAULT_PRESETS[:compact][:section][:min], thresholds[:section][:min]
+        end
       end
     end
   end

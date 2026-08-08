@@ -371,7 +371,7 @@ module VivlioStarter
 
         # 用語集 HTML を生成
         def generate_glossary_html(terms)
-          title = @glossary_config[:title] || '用語集'
+          title = @glossary_config[:title]
 
           <<~HTML
             <!DOCTYPE html>

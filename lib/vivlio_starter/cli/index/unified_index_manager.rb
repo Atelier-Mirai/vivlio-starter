@@ -325,7 +325,7 @@ module VivlioStarter
       # require_definition: true の場合、説明文が空ならエラー
       # max_definition_length を超過している場合は警告
       def validate_glossary_definitions!(terms)
-        max_length = @glossary_config[:max_definition_length] || 200
+        max_length = @glossary_config[:max_definition_length]
 
         # 説明文の長さチェック（Markdown装飾を除去した文字数）
         terms.each do |term|
@@ -652,7 +652,7 @@ module VivlioStarter
 
       # 一般語とみなす出現章数の比率（book.yml で調整可）。
       # 「どこから外すべきか」は本の性格で変わるので、つまみとして意味がある。
-      def common_term_ratio = (@config[:common_term_ratio] || 0.5).to_f
+      def common_term_ratio = @config[:common_term_ratio].to_f
 
       # 主要参照の指定を促す語の広がり（book.yml のキーにはしない）。
       #
@@ -739,7 +739,7 @@ module VivlioStarter
           registered_scores: extractor.score_terms(registered),
           candidate_scores: candidates.to_h { [it['term'], it['score'].to_f] },
           target: estimate.range.end,
-          pool: (@config[:candidate_pool] || 3.0).to_f
+          pool: @config[:candidate_pool].to_f
         )
       end
 
@@ -1080,7 +1080,7 @@ module VivlioStarter
       # @param term [String] 用語
       # @return [String] 文脈
       def extract_surrounding_context(content, term)
-        context_width = @config[:context_width] || 40
+        context_width = @config[:context_width]
         index = content.index(term)
         return '' unless index
 
@@ -1120,7 +1120,7 @@ module VivlioStarter
         start_offset = skip_partial_word_start(cleaned)
         cleaned = cleaned[start_offset..] if start_offset.positive?
 
-        context_width = @config[:context_width] || 40
+        context_width = @config[:context_width]
         max_length = context_width * 2
 
         return cleaned if cleaned.length <= max_length

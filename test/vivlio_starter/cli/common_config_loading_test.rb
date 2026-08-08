@@ -112,21 +112,20 @@ module VivlioStarter
 
     # 既定値スキーマ（全セクションの存在保証）と deep merge の検証
     class CommonConfigDefaultsTest < Minitest::Test
-      # 空の book.yml でも全セクション・既知キーがドット記法で安全に参照できる
+      # 空の book.yml でも全セクション・既知キーがドット記法で安全に参照でき、
+      # ConfigKeys::KEYS の既定値が入る（NoMethodError にならないことが要点）
       def test_should_provide_all_sections_for_minimal_book_yml
         cfg = Common.wrap_config(Common.merge_hardcoded_defaults({}))
 
+        # authored: のキーは既定値を持たない——著者が埋めるまで値は無い
         assert_nil cfg.book.main_title
         assert_nil cfg.project.name
-        assert_nil cfg.theme.markers.h3
-        assert_nil cfg.legal.twemoji
-        assert_nil cfg.output.cover
-        assert_nil cfg.output.pdf.combined
-        assert_nil cfg.index_glossary.enabled
-        assert_nil cfg.lint.disabled_rules
-        assert_nil cfg.spellcheck.extra_dictionaries
-        assert_nil cfg.pdf_read.ocr.mode
-        assert_equal true, cfg.page.section_pagebreak
+
+        # default: のキーは宣言どおりの値が入る
+        assert_equal ConfigKeys::KEYS[%i[theme markers h3]].default, cfg.theme.markers.h3
+        assert_equal ConfigKeys::KEYS[%i[output cover]].default, cfg.output.cover
+        assert_equal ConfigKeys::KEYS[%i[index_glossary enabled]].default, cfg.index_glossary.enabled
+        assert_equal ConfigKeys::KEYS[%i[pdf_read ocr mode]].default, cfg.pdf_read.ocr.mode
       end
 
       # deep merge: 入れ子の部分指定でも兄弟キーが既定値スキーマから残る
@@ -140,11 +139,12 @@ module VivlioStarter
 
       # 空欄キー（nil）は既定値を採用し、false は明示設定として尊重する
       def test_should_keep_default_for_nil_and_respect_explicit_false
-        nil_merged = Common.merge_hardcoded_defaults(page: { section_pagebreak: nil })
-        false_merged = Common.merge_hardcoded_defaults(page: { section_pagebreak: false })
+        default = ConfigKeys::KEYS[%i[index_glossary enabled]].default
+        nil_merged = Common.merge_hardcoded_defaults(index_glossary: { enabled: nil })
+        false_merged = Common.merge_hardcoded_defaults(index_glossary: { enabled: false })
 
-        assert_equal true, nil_merged[:page][:section_pagebreak]
-        assert_equal false, false_merged[:page][:section_pagebreak]
+        assert_equal default, nil_merged[:index_glossary][:enabled]
+        assert_equal false, false_merged[:index_glossary][:enabled]
       end
 
       # スキーマ外のセクション・キーは従来どおり素通しする（自由拡張の維持）
@@ -197,9 +197,8 @@ module VivlioStarter
         Common.reload_configuration!(silent: true)
 
         assert_equal '最小構成', Common::CONFIG.book.main_title
-        assert_nil Common::CONFIG.lint.disabled_rules
         assert_nil Common::CONFIG.project.name
-        assert_equal true, Common::CONFIG.page.section_pagebreak
+        assert_equal ConfigKeys::KEYS[%i[lint disabled_rules]].default, Common::CONFIG.lint.disabled_rules
       end
     end
 

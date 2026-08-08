@@ -308,7 +308,7 @@ module VivlioStarter
 
         # config から context_width を読み込み（既定値 40）
         def load_context_width
-          Common::CONFIG.index_glossary.context_width || 40
+          Common::CONFIG.index_glossary.context_width
         end
 
         # 抽出用にコンテンツをサニタイズ
