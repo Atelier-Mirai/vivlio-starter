@@ -22,6 +22,8 @@ module VivlioStarter
         BAR_EMPTY_CHAR = '.'
         CHAPTER_LABEL_WIDTH = 30
         SECTION_LABEL_WIDTH = 36
+        # 切り詰めを示す記号。display_width では非 ASCII なので 2 桁と数える。
+        ELLIPSIS = '…'
         CHAR_COUNT_WIDTH = 6
 
         # 「表現が単調」と評価する MATTR の上限（この値以下が単調帯）。
@@ -247,21 +249,30 @@ module VivlioStarter
           truncate_to_width(text, SECTION_LABEL_WIDTH)
         end
 
+        # 表示幅で切り詰め、末尾に ELLIPSIS を足す。
+        #
+        # 空ける枠は ELLIPSIS の「表示幅」でなければならない。1 桁で見積もると、
+        # 全角だけの見出しは 2 桁刻みで width - 1 に着地し、そこへ 2 桁の記号が
+        # 乗って 1 桁はみ出す。半角混じりの見出しは 1 桁刻みで詰められるぶん
+        # 偶然 width に収まるため、**同じ表の中で行ごとに右端がずれる**
+        # （実測: 「第11章 執筆ワークフローとクイ…」31 桁 ／
+        #   「第21章 Markdown 執筆チュート…」30 桁）。
         def truncate_to_width(text, width)
           return text if display_width(text) <= width
 
+          limit = width - display_width(ELLIPSIS)
           result = +''
           current_width = 0
 
           text.each_char do |char|
             char_width = display_width(char)
-            break if current_width + char_width > width - 1
+            break if current_width + char_width > limit
 
             result << char
             current_width += char_width
           end
 
-          result << '…'
+          result << ELLIPSIS
         end
 
         def pad_to_width(text, width)
