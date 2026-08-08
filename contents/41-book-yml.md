@@ -348,7 +348,7 @@ spellcheck:
 | この語は綴り誤りではない（スペルチェック） | `config/spellcheck_allowlist.yml` |
 | この表記に統一したい | `config/textlint_rewrite.yml` |
 
-詳細は「文章校正」の章を参照してください。
+詳細は「文章校正（vs lint）」の章を参照してください。
 
 ### pdf_read — PDF 読み取り設定
 
