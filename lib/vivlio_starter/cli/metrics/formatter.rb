@@ -22,8 +22,14 @@ module VivlioStarter
         BAR_EMPTY_CHAR = '.'
         CHAPTER_LABEL_WIDTH = 30
         SECTION_LABEL_WIDTH = 36
-        # 切り詰めを示す記号。display_width では非 ASCII なので 2 桁と数える。
+        # 切り詰めを示す記号。
         ELLIPSIS = '…'
+
+        # 非 ASCII だが端末では 1 幅で描かれる記号（East Asian Width = Ambiguous）。
+        # `fullwidth_char?` は「ASCII でなければ全角」という粗い判定なので、
+        # ここを通さないと 2 桁と数えて桁がずれる。EAW=A を 1 幅と見なすのは
+        # `terminal-output-notes.md` §1 の方針（矢印などは端末で 1 幅が期待値）に合わせたもの。
+        AMBIGUOUS_WIDTH_CHARS = %w[… → ← ↑ ↓ ⋯ ±].freeze
         CHAR_COUNT_WIDTH = 6
 
         # 「表現が単調」と評価する MATTR の上限（この値以下が単調帯）。
@@ -250,13 +256,9 @@ module VivlioStarter
         end
 
         # 表示幅で切り詰め、末尾に ELLIPSIS を足す。
-        #
-        # 空ける枠は ELLIPSIS の「表示幅」でなければならない。1 桁で見積もると、
-        # 全角だけの見出しは 2 桁刻みで width - 1 に着地し、そこへ 2 桁の記号が
-        # 乗って 1 桁はみ出す。半角混じりの見出しは 1 桁刻みで詰められるぶん
-        # 偶然 width に収まるため、**同じ表の中で行ごとに右端がずれる**
-        # （実測: 「第11章 執筆ワークフローとクイ…」31 桁 ／
-        #   「第21章 Markdown 執筆チュート…」30 桁）。
+        # 空ける枠は記号の幅を直接書かず display_width に委ねる——幅の判定を
+        # display_width_for_char 1 箇所に閉じておかないと、EAW の扱いを直した
+        # ときにこちらが取り残される。
         def truncate_to_width(text, width)
           return text if display_width(text) <= width
 
@@ -287,6 +289,8 @@ module VivlioStarter
         end
 
         def display_width_for_char(char)
+          return 1 if AMBIGUOUS_WIDTH_CHARS.include?(char)
+
           fullwidth_char?(char) ? 2 : 1
         end
 
