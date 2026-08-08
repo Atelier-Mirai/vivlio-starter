@@ -1927,8 +1927,7 @@ terms:
 scanned_chapters:
 - 00-preface
 - 11-workflow
-- 12-quickstart
-- 13-new
+- 12-new
 - 21-markdown-tutorial
 - 22-extentions
 - 23-chapter-management

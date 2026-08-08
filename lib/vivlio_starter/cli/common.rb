@@ -262,7 +262,7 @@ module VivlioStarter
         %i[glossary backlink_dedup] =>
           '同上。用語集のバックリンクも常に重複排除します',
         %i[directories] =>
-          'contents/ や stylesheets/ の名前は変更できません（コードの半分が定数を直接見ており、変えると別の場所を指します）',
+          'contents/ や stylesheets/ の名前は変更できません',
         %i[cache] =>
           'キャッシュは常に .cache/vs に置き、常に有効です',
         %i[commands] =>

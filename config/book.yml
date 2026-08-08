@@ -51,15 +51,15 @@ theme:
                 # cyan / teal / green / lime から選択
                 # '#ff0000' のような HEX 記法も指定可
 
-  preface_color: purple # 前書き/後書き専用カラー 未指定ならcolorと同色
-  appendix_color: green # 付録専用カラー 未指定ならcolorと同色
+  preface_color: cyan # 前書き/後書き専用カラー 未指定ならcolorと同色
+  appendix_color: teal # 付録専用カラー 未指定ならcolorと同色
 
   style: image # image: 画像あり / simple: 画像なし
                # image にすると下の扉絵・節絵が有効になります。（付録は常に simple）
 
   # ------- 章扉の背景画像 -------
   frontispiece:
-    image: himawari # suisen / ume / nanohana / sakura
+    image: sakura   # suisen / ume / nanohana / sakura
                     # suzuran / ajisai / asagao / himawari
                     # kikyo / kosumosu / kiku / tsubaki から選択
                     # images/内の独自画像も指定可
@@ -84,10 +84,10 @@ page:
   # 紙サイズ・余白・文字サイズ・行送りなど版面の物理的構造を一括で決めます
   # use: a5_standard  # 標準
   # use: a5_airy      # 広め
-  use: a5_compact   # 狭め
+  # use: a5_compact   # 狭め
   # use: a5_custom    # 著者独自
 
-  # use: b5_standard
+  use: b5_standard
   # use: b5_compact
   # use: b5_airy
   # use: b5_custom

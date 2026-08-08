@@ -245,18 +245,22 @@ spellcheck:
   extra_dictionaries:      # オンデマンドダウンロード辞書（初回実行時に取得）
     - ada                  # Ada 言語の用語を追加したい場合
     - elixir               # Elixir 言語の用語を追加したい場合
-  extra_words:             # プロジェクト固有語（辞書にない固有名詞など）
-    - vivliostyle
-    - vivlio-starter
-  ignore_words:            # 誤検知を抑制したい単語
-    - htmx                 # 辞書にないが正しい語として扱いたい場合
   check_code_blocks: false # コードブロック内をチェックするか（既定: false）
 ```
 
-- **extra_words**: 辞書に登録されていない固有名詞や造語を許可語に加えます。`--register` が作業中に溜める除外リスト（`spellcheck_allowlist.yml`）であるのに対し、`extra_words` は明示的に管理したい語を `book.yml` に書く位置づけです。
-- **ignore_words**: 指定した語を検出後に除外します。
 - **extra_dictionaries**: 標準搭載辞書に含まれない言語・分野の辞書を追加します。初回実行時にインターネットから取得し、`.cache/spellcheck-dictionaries/` にキャッシュされます。
 - **check_code_blocks**: `true` にするとコードブロック内の英単語もチェックします。
+
+**個別の語は `book.yml` ではなく `config/spellcheck_allowlist.yml` に書きます。** 辞書にない固有名詞や造語も、誤検知を抑えたい語も、窓口はこのファイル 1 つです。`vs lint --register` で一括登録もできます。
+
+```yaml
+# config/spellcheck_allowlist.yml
+- "vivliostyle"
+- "vivlio-starter"
+- "htmx"
+```
+
+ハイフンを含む語は、詰めた形（`vivliostarter`）でも既知語として扱われます。
 
 ### 標準搭載辞書
 
@@ -276,20 +280,12 @@ spellcheck:
 
 ```yaml
 lint:
-  # 使用する textlint 設定ファイル
-  config: config/.textlintrc.yml
-
   # ルールごと丸ごと無効化したい textlint ルール ID（集約表示の [ ] 内の名前）
   disabled_rules:
     # - arabic-kanji-numbers
     # - sentence-length
 
-  # "X => Y" 形式の指摘を語で無効化（指摘先頭行にその語を含むものを黙らせる）
-  disabled_terms:
-    # - 次
-    # - とおり
-
-  # 一文の最大文字数（未指定なら既定 100）
+  # 一文の最大文字数（0 で一文の長さを検査しない）
   sentence_length_max: 100
 
   # 「サーバ／パラメータ／フィルタ」等の末尾長音を省く文体なら true
@@ -302,22 +298,21 @@ lint:
   allow_space_between_ja_en: true
 ```
 
-### config（設定ファイルの切り替え）
+`book.yml` に置くのは**文体の選択**だけです。ルールそのものを足したり消したりするときは `config/.textlintrc.yml` を直接編集します。
 
-`vs lint` が使う textlint 設定ファイルのパスです。設定を使い分けたい場合は、`config/.textlintrc-strict.yml` などを用意してここで切り替えます。
+### disabled_rules（ルール単位の無効化）
 
-### disabled_rules / disabled_terms（指摘の個別無効化）
+集約表示に出るルール ID（`[ ]` 内の名前）を指定して、そのルールを丸ごと黙らせます。たとえば `arabic-kanji-numbers`（「一つ → 1つ」）と `prh`（「一つ → ひとつ」）のように**矛盾するルール**は、どちらかを切ると衝突が解消します。
 
-集約表示に出るルール名や語を指定して、特定の指摘だけを黙らせます。
+**出力段で該当の指摘を取り除く**方式なので、`prh` 辞書の所在に依存せず確実に効きます。無効化した分は問題件数にも数えません。
 
-- **disabled_rules**: ルール ID（`[ ]` 内の名前）で丸ごと無効化します。たとえば `arabic-kanji-numbers`（「一つ → 1つ」）と `prh`（「一つ → ひとつ」）のように**矛盾するルール**は、どちらかを切ると衝突が解消します。
-- **disabled_terms**: `"X => Y"` 形式の指摘について、先頭行にその語を含むものを無効化します。表記揺れ系の「お節介」な指摘を 1 つずつ抑制したいときに使います。
-
-これらは**出力段で該当の指摘を取り除く**方式なので、`prh` 辞書の所在に依存せず確実に効きます。無効化した分は問題件数にも数えません。
+語を選んで黙らせたいときは、ルール単位ではなく `config/textlint_allowlist.yml` を使います（後述）。
 
 ### sentence_length_max（一文の最大文字数）
 
 一文の長さを指摘する `sentence-length` ルールの上限文字数です。未指定なら既定の 100 文字。文章の好みに応じて 80 や 120 などに変更できます。指定すると、既定の設定にこの値を反映した一時設定を生成して textlint へ渡します。
+
+**`0` を指定すると、一文の長さを検査しません。** 長い文を意図的に書く文体や、他のルールと衝突する場合に使います。大きな数値を書いて実質無効にする必要はありません。
 
 ### trim_long_vowel（末尾長音の文体）
 
@@ -422,23 +417,22 @@ rules:
 - "/ゐ|ゑ/g"         # 旧仮名を全部
 ```
 
-登録した語は**どのルールからも指摘されなくなります**。ルールを選んで免除することはできないので、「この語はこのルールだけ許したい」という場合は前述の `disabled_terms` を使ってください。
+登録した語は**どのルールからも指摘されなくなります**。ルールを選んで免除することはできないので、「この語はこのルールだけ許したい」という場合は、その語ではなくルールのほうを `disabled_rules` で切ってください。
 
 #### 除外の手段の使い分け
 
-除外の方法は 4 つあり、効く範囲が違います。
+除外の方法は 3 つあり、効く範囲が違います。
 
 | やりたいこと | 使うもの | 効く範囲 |
 | :--- | :--- | :--- |
 | 書名・固有名詞を本全体で除外 | `config/textlint_allowlist.yml` | その語（すべてのルール） |
 | 原稿の特定の箇所だけ外す | `<!-- vs-lint-disable -->` | その範囲（スペルチェックにも効く） |
 | ルールを丸ごと切る | `book.yml` の `disabled_rules` | そのルール（すべての原稿） |
-| 特定の指摘だけ黙らせる | `book.yml` の `disabled_terms` | 出力からその語を含む行を除く |
-
-allowlist と `disabled_terms` は似ていますが、**allowlist は textlint に報告させない**のに対し、`disabled_terms` は**報告されたものを出力から取り除く**という違いがあります。allowlist のほうが正攻法です。ただし `disabled_terms` には、ルール名も辞書の所在も知らずに集約表示の語をそのまま書けば効く、という手軽さがあります。
 
 :::{.tip}
-迷ったら、まず `disabled_terms` で止めてみてください。それが本当に「本全体で除外してよい語」だと分かった時点で allowlist へ移せば十分です。
+語で黙らせたいなら `textlint_allowlist.yml`、ルールごと切りたいなら `disabled_rules` です。
+まず allowlist に 1 語だけ書いて試し、同じルールを何度も外していると気づいたら
+`disabled_rules` へ移す、という順序が扱いやすいでしょう。
 :::
 
 ## トラブルシューティング
@@ -477,7 +471,7 @@ vs lint --spellcheck-only
 textlint 設定ファイルが見つかりません: config/.textlintrc.yml
 ```
 
-**対処方法**: プロジェクトのルートディレクトリで実行しているか確認してください。設定ファイルのパスは `config/book.yml` の `lint.config` で指定できます。
+**対処方法**: プロジェクトのルートディレクトリで実行しているか確認してください。`vs lint` は必ず `config/.textlintrc.yml` を読みます。誤って消したり移動したりしていないか確かめてください。
 
 ### プラグインが見つからない
 
@@ -505,7 +499,7 @@ npm install -g textlint-rule-preset-ja-technical-writing \
 vs lint --register
 ```
 
-恒久的に管理したい語は、`config/book.yml` の `spellcheck.extra_words` に書いておくとよいでしょう。
+登録先は `config/spellcheck_allowlist.yml` です。手で書き足しても構いませんし、別の本でも使いたければこのファイルをコピーしてください。
 
 ## まとめ
 

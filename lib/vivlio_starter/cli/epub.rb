@@ -80,10 +80,11 @@ module VivlioStarter
 
         # quiet モードが有効かどうか返す
         def quiet_mode?
-          # 常に true。book.yml の vivliostyle.quiet は 2026-08-08 に廃止した（既定 true で
-          # 誰も false にしておらず、ENV との OR で結局いつも true だった）。
-          # 呼び出し側の else 分岐は現状到達しない——`--log=debug` に繋ぐか消すか要検討。
-          true
+          # `--log=debug` のときだけ vivliostyle の出力を通す。
+          # book.yml の vivliostyle.quiet は 2026-08-08 に廃止した（既定 true で誰も
+          # false にせず、ENV との OR で結局いつも true ＝ 出力を見る手段が無かった）。
+          # 組版エンジン側のエラーを追うのはデバッグそのものなので、ログレベルに預ける。
+          Common.current_log_level < 3
         end
 
         # EPUB ビルド用のコマンド文字列を組み立てる

@@ -74,9 +74,8 @@ project:
   version: "0.1.0"
 
 output:
-  filename:
-    include_version: true   # true:  janken_v0.1.0.pdf
-                             # false: janken.pdf
+  include_version: true   # true:  janken_v0.1.0.pdf
+                          # false: janken.pdf
 ```
 
 ### 表紙の結合
@@ -451,8 +450,7 @@ output:
   targets: pdf
 
   # ファイル名にバージョンを含めるか
-  filename:
-    include_version: true
+  include_version: true
 
   # PDF プレビュー設定（macOS のみ）
   pdf_preview:
@@ -580,13 +578,12 @@ vs build --no-verify
 プロジェクト固有の設定は `config/book.yml` で細かく制御できます。
 
 ```yaml
-build:
-  verify:
-    images: true          # 画像パスの存在チェック（既定: true）
-    bare_urls: true       # 裸 URL の検出と警告（既定: true）
-    external_links: false  # 外部 URL の HTTP 到達性チェック（既定: false）
-    timeout: 10           # HTTP チェックのタイムアウト秒数
-    max_concurrency: 5    # HTTP チェックの最大同時接続数
+verify:
+  images: true           # 画像パスの存在チェック（既定: true）
+  bare_urls: true        # 裸 URL の検出と警告（既定: true）
+  external_links: false  # 外部 URL の HTTP 到達性チェック（既定: false）
+  timeout: 10            # HTTP チェックのタイムアウト秒数
+  max_concurrency: 5     # HTTP チェックの最大同時接続数
 ```
 
 CLI オプションは `book.yml` の設定より優先されます。たとえば `book.yml` で `external_links: true` にしていても、`--no-verify` を付ければ全チェックがスキップされます。

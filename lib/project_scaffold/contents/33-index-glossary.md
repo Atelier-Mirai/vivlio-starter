@@ -559,17 +559,17 @@ vs index:import
 
 取り込んだ読みは `config/index_yomi_overrides.yml` に蓄積され、MeCab の自動推測より優先して使われます（読みの優先順位は、記法 `[用語|読み]` → `index_glossary_terms.yml` の読み → 個人辞書 → MeCab）。「碍子」を「がいし」と読ませたい、といった補正を本ごとに登録し直す手間がなくなります。
 
-書き出し先・取り込み元のパスは `book.yml` で設定でき、引数を省略すればその既定パスが使われます。
+パスに設定は要りません。引数を省略すると `index_library.yml` を読み書きし、別の場所を使いたいときは引数で渡します。
 
-```yaml
-# config/book.yml（抜粋）
-index_glossary:
-  library:
-    path: "index_library.yml" # export/import 共通の既定パス
-    # import_from: "~/vivlio/index_library.yml" # 共有ライブラリから取り込む場合
+```bash
+# 既定のパス（プロジェクト直下の index_library.yml）
+vs index:export
+vs index:import
+
+# 別名で書き出す／共有ライブラリから取り込む
+vs index:export mybook_library.yml
+vs index:import ~/vivlio/shared_library.yml
 ```
-
-引数でその都度パスを指定することもできます（`vs index:export path/to/lib.yml`）。
 
 ## 索引データの生成
 
@@ -675,34 +675,34 @@ vs build
 
 ### 索引設定
 
-```yaml
-index:
-  # 基本設定
-  enabled: true                  # 索引機能を有効化
-  auto_discovery: true           # 自動抽出を有効化（falseで手動索引用語のみ）
+索引と用語集で共通の設定は `index_glossary` に、索引だけの設定は `index` に置きます。
 
-  # スコア閾値
-  auto_approve_threshold: 300    # この値以上は自動承認
-  review_threshold: 150          # この値以上がレビュー対象
-  high_candidate_ratio: 0.25     # 推奨候補の割合（上位25%）
-  
-  # 表示設定
-  context_width: 40              # 文脈の表示幅（文字数）
-  timezone: 'Asia/Tokyo'         # タイムゾーン（ラベル判定用）
+```yaml
+index_glossary:
+  enabled: true                  # 索引・用語集の両方を有効化（false で両方無効）
+  use_mecab: true                # MeCab による読みの自動推測を使う
+  timezone: 'Asia/Tokyo'         # タイムゾーン（レビュー時の新着判定に利用）
+  context_width: 40              # 文脈の表示幅（キーワード前後の文字数）
+
+index:
+  auto_discovery: true           # 自動抽出を有効化（false で手動登録の語のみ）
+  title: '索引'                  # 索引ページのタイトル
+  target_terms: light            # 索引語数の目安（後述）
+  candidate_pool: 3.0            # 目安語数の何倍までを候補として提示するか
+  auto_approve: false            # true: 推奨候補を自動で辞書へ登録する
+  common_term_ratio: 0.5         # この比率以上の章に出る語は「一般語」として除外を推奨
 ```
 
 ### 用語集設定
 
 ```yaml
 glossary:
-  # 基本設定
-  enabled: true                  # 用語集機能を有効化
   title: '用語集'                # 用語集ページのタイトル
-
-  # 説明文設定
-  require_definition: false      # 説明文を必須にするか
-  max_definition_length: 200     # 説明文の最大文字数
+  require_definition: false      # true: [g] フラグで説明文がないとエラー
+  max_definition_length: 500     # 説明文の最大文字数（超過したら警告）
 ```
+
+用語集そのものの有効・無効は `index_glossary.enabled` で索引とまとめて切り替えます。
 
 :::{.note}
 **用語集リンクについて**
@@ -717,11 +717,15 @@ glossary:
 `Vivlio Starter`は、索引の候補となる用語の自動抽出機能を実装しています。
 技術書の索引の目安は、一般的に**1ページあたり1〜2語**程度と言われています。200ページの本であれば、最終的な索引語が 200〜300語 程度に収まっていると、読者にとって非常に使い勝手の良い、引きやすい索引になります。
 
+語数はスコアの絶対値ではなく、**本文の分量から導く目安語数**で決めます。スコアの閾値を直接指定する必要はありません。
+
 | 設定 | デフォルト | 説明 |
 |:---|:---|:---|
-| `auto_approve_threshold` | 300 | この値以上のスコアを持つ候補は自動的に承認 |
-| `review_threshold` | 150 | この値以上のスコアを持つ候補がレビュー対象 |
-| `high_candidate_ratio` | 0.25 | レビュー候補のうち、推奨候補として表示する割合 |
+| `target_terms` | `light` | 目安語数。`light` / `standard` / `thorough` から選ぶか、`260` のように直接指定する |
+| `candidate_pool` | 3.0 | 目安語数の何倍までを候補として提示するか |
+| `auto_approve` | false | true にすると推奨候補を自動で辞書へ登録する |
+
+目安語数が実際に何語になるかは `vs index:plan` で確認できます。
 
 | 目安語数 | 状態 | 説明 |
 |:---|:---|:---|

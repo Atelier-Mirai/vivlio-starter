@@ -91,6 +91,16 @@ if File.exist?(book_yml)
   # project.name: "..."（コメント付き行にも対応）
   content.gsub!(/^(\s+name:\s*)(['"].+?['"])(\s*#.*)?$/, '\1"{{PROJECT_NAME}}"\3')
 
+  # この本固有の値は空にして配る。{{ }} にしないのは vs new の質問を増やさないため
+  # （いずれも任意項目で、空でもビルドが通る）。埋め忘れより、他人の連絡先が
+  # 初期値として入っているほうが害が大きい——著者が気づかず奥付へ載せうる。
+  content.gsub!(/^(\s+series:\s*)(['"].*?['"])(\s*#.*)?$/, '\1""\3')
+  content.gsub!(/^(\s+release:\s*)(['"].*?['"])(\s*#.*)?$/, '\1""\3')
+  content.gsub!(/^(\s+contact:\s*)(['"].*?['"])(\s*#.*)?$/, '\1""\3')
+
+  # 扉絵は季節を選ばない桜を既定にする（ルートは himawari を選んでいる）
+  content.gsub!(/^(\s+image:\s*)himawari(\s*#.*)?$/, '\1sakura\2')
+
   File.write(book_yml, content, encoding: 'utf-8')
   puts "TMPL  config/book.yml -> テンプレート記法に置換しました"
 end
