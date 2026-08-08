@@ -336,6 +336,8 @@ blockquote {
 
 `vs create 11-intro` を実行すると、`templates/chapter.md` を元に `contents/11-intro.md` が生成されます。
 
+この 4 つとは別に `markdown_snippet.md` が置かれています。こちらは雛形ではなく、使える記法を実例つきで並べた見本帳です（`vs create` では使われません）。
+
 ### テンプレートの編集
 
 `templates/chapter.md` を開いて自由に編集できます。テンプレート内の `{{TITLE}}` は章のスラッグ（`11-intro` など）に自動置換されます。
