@@ -27,7 +27,7 @@ Vivlio Starter で使える記法を、実例つきで一通り並べた見本�
 
 ---
 
-## セクション見出し {#section-id}
+## セクション見出し
 
 ::: {.section-lead}
 章の中の各セクション（節）の冒頭に置かれる導入文を記述します。セクションで扱うトピックの簡潔な紹介と、読者の興味を引きつける導入部を記述してください。
@@ -248,9 +248,13 @@ $$
 
 ## 画像
 
-標準:
+1 行に単独で書くと、代替テキストがそのまま画像の下のキャプションになります:
 
 ![画像の説明](image.png)
+
+本文の途中に混ぜた画像はインライン扱いで、キャプションは付きません:
+
+文の途中に ![アイコン](icon.png) を挟みます。
 
 幅・配置指定:
 
@@ -258,43 +262,9 @@ $$
 
 ![](image.png){width=40% align=right}
 
-![](image.png){width=40% .align-right}
-
 周囲を切り落とす（上・右・下・左の時計回り。1 つなら四辺共通）:
 
 ![](image.png){crop="30 100"}
-
----
-
-## VFM 拡張記法
-
-### セクション化（カスタムID・クラス）
-
-```markdown
-# 見出し {#my-id}
-
-# 見出し {.my-class}
-
-## Not Sectionize {.just-a-heading} ##
-```
-
-### Frontmatter
-
-```markdown
----
-title: 'タイトル'
-author: '著者名'
-vfm:
-  hardLineBreaks: true
-  math: true
----
-```
-
-### 画像のキャプション（単独行）
-
-![Figure 1](fig1.png)
-
-![Figure 2](fig2.png "Figure 2"){id="fig2" data-sample="sample"}
 
 ---
 
