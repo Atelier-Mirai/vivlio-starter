@@ -157,37 +157,6 @@ module VivlioStarter
                      'catalog.yml が無くても辞書は追随する'
       end
 
-      # --- phase: 番号指定の設定は追随しない（chapter-rename-followers-spec.md R4） ---
-
-      # `metrics.exclude_chapters: [00, 90-98, 99]` の `90-98` が「付録すべて」の
-      # 意図なのか特定の章なのかは機械に判断できない。黙って書き換えるより、
-      # 案内して著者に委ねる。
-      def notice_for(authored)
-        Common.instance_variable_set(:@authored_keys, Common.collect_key_paths(authored))
-        executor = RenameCommandExecutor.allocate
-        out, err = capture_io { executor.send(:warn_numbered_chapter_settings) }
-        out + err
-      ensure
-        Common.instance_variable_set(:@authored_keys, nil)
-      end
-
-      def test_warns_when_author_wrote_numbered_chapter_settings
-        message = notice_for({ metrics: { exclude_chapters: [0, 90] } })
-
-        assert_match(/metrics\.exclude_chapters/, message)
-        assert_match(/見直してください/, message)
-        assert_match(/自動では書き換えていません/, message, '書き換えなかったことを明言する')
-      end
-
-      # 既定値のときは黙る。著者が書いていない設定を「見直せ」と言っても意味がない。
-      def test_stays_silent_when_setting_is_not_authored
-        assert_empty notice_for({ book: { author: 'x' } }).strip
-      end
-
-      def test_warns_for_chapters_key_as_well
-        assert_match(/chapters/, notice_for({ chapters: '54-56' }))
-      end
-
       # --- phase: 登録簿の健全性 ---
 
       # 追随先を足すときに label を書き忘れると、失敗しても何が落ちたか分からない

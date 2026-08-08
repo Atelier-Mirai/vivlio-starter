@@ -122,7 +122,6 @@ module VivlioStarter
 
         apply_renumber(rename_map)
         cleanup_after_renumber
-        warn_numbered_chapter_settings
         Common.log_result("#{rename_map.size} 章の連番を付け直しました", status: :success)
         exit 0
       end
@@ -284,36 +283,6 @@ module VivlioStarter
         # 玉突きで動くとき、追随を混ぜると中間状態で取り違える。
         rename_map.each { |_old, info| FileUtils.mv(info[:old_file], info[:new_file]) }
         rename_map.each { |old_basename, info| ChapterRename.follow!(old_basename, info[:new_basename]) }
-      end
-
-      # 章番号で書かれた設定は追随できないので、改番後に見直しを促す。
-      #
-      # `metrics.exclude_chapters: [00, 90-98, 99]` の `90-98` が「付録すべて」の
-      # 意図なのか特定の章なのかは機械に判断できない。黙って書き換えるほうが危険
-      # なので、案内に留める（chapter-rename-followers-spec.md R4）。
-      #
-      # 既定値のときは黙る——著者が明示的に書いたキーだけを対象にする
-      # （config-extension-guidelines.md §4 の authored_key?）。
-      NUMBERED_CHAPTER_SETTINGS = [
-        %i[metrics exclude_chapters],
-        %i[chapters]
-      ].freeze
-
-      def warn_numbered_chapter_settings
-        authored = NUMBERED_CHAPTER_SETTINGS.select { Common.authored_key?(*it) }
-        return if authored.empty?
-
-        lines = authored.map do |path|
-          value = Common::CONFIG.dig(*path)
-          "  #{path.join('.')}: #{value.is_a?(Array) ? value.inspect : value}"
-        end
-
-        Common.log_warn(
-          '章番号で指定した設定があります。改番に合わせて見直してください',
-          detail: "#{lines.join("\n")}\n" \
-                  '範囲の意味（「付録すべて」なのか特定の章なのか）は機械には判断できないため、' \
-                  '自動では書き換えていません。'
-        )
       end
 
       # 連番付け直し後の生成物クリーニングを行う
@@ -490,7 +459,6 @@ module VivlioStarter
         ChapterRename.follow!(old_basename, new_basename)
 
         cleanup_generated_files(old_number, old_slug)
-        warn_numbered_chapter_settings
         # 何がどう変わったかを既定ログレベルでも 1 行で報告する（実行して無音にしない）
         Common.log_result("#{old_basename} を #{new_basename} に変更しました", status: :success)
       end
