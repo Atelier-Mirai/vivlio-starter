@@ -19,38 +19,49 @@
 
 ---
 
-## 1. 既定値スキーマへの登録（`lib/vivlio_starter/cli/common.rb`）
+## 1. キーの宣言（`lib/vivlio_starter/cli/config_keys.rb`）
 
-新しい設定セクション（例: `furigana`）を追加する場合、ユーザーが `book.yml` にそのセクションを**書かなかったとしても安全にドット記法でアクセスできるよう**、必ず既定値スキーマに登録します。
+新しい設定キーは `ConfigKeys::KEYS` に宣言します。ユーザーが `book.yml` にそのセクションを
+**書かなかったとしても安全にドット記法でアクセスできる**ようにするためです。
 
-### 編集ファイル: `lib/vivlio_starter/cli/common.rb`
-
-スキーマは `default_config_schema` メソッドが返す Hash として定義されています。
-新セクションの構造と初期値をここに追加してください。
+**`common.rb` の `default_config_schema` は編集しません**——この表からの導出だからです
+（`config-defaults-design-spec.md`）。
 
 ```ruby
-# lib/vivlio_starter/cli/common.rb の default_config_schema 内（例）
-def default_config_schema
-  {
-    # ... 既存の 16 セクション ...
-
-    # ✅ 新設セクションの定義を追加
-    furigana: {
-      level: 0,            # 0: 小学生, 1: 中学生, 2: 高校生, 3: 全般
-      style: "ruby",       # ruby: 通常ルビ, tatechuyu: 縦中留め
-      targets: []          # 特例でルビを振る単語リスト
-    }
-  }
-end
+# lib/vivlio_starter/cli/config_keys.rb
+KEYS = {
+  # ------- furigana -------
+  %i[furigana level]   => Spec[default: 0],        # 0: 小学生 / 1: 中学生 / 2: 高校生 / 3: 全般
+  %i[furigana style]   => Spec[default: 'ruby'],   # ruby: 通常ルビ / tatechuyu: 縦中留め
+  %i[furigana targets] => Spec[default: []],       # 特例でルビを振る単語リスト
+}
 ```
+
+宣言は**葉キーの粒度**で書きます。`%i[furigana level]` のように、パスをシンボルの配列で
+与えると、既定値スキーマ側で入れ子ハッシュに組み立て直されます。
 
 マージは `merge_hardcoded_defaults` が deep merge で行い、「ユーザーがキーだけ書いて
 値を空欄にした場合（nil）」は既定値を採用、`false` は明示設定として尊重されます。
 
-スキーマ定義のルール
-第1階層（セクション名）: 必ずスネークケース（/\A[a-z_][a-zA-Z0-9_]*\z/）で定義します。
+### 3 つの状態
 
-第2階層（キー名）: コード側からドット記法で参照する可能性のあるキーは、値が未定であっても nil や空配列（[]）として明示的に列挙してください。これにより、ユーザーの環境でキーが未定義の場合でも NoMethodError を防げます。
+| 書き方 | 意味 |
+| :--- | :--- |
+| `Spec[default: 0]` | 通常のキー。`book.yml` に無ければこの値で動く |
+| `Spec[authored: '著者名']` | 著者が埋めるキー。既定値は無く、空なら記入例つきで促す |
+| `Spec[retired: '…']` | 廃止キー。読まずに移行先を案内する（`config-retirement-guidelines.md`） |
+
+`default: nil` は正当です（「値なし」が既定という意味）。`authored:` と `retired:` だけが
+排他で、どちらでもないものは既定値キーとして読まれます。
+
+### 宣言のルール
+
+- **セクション名はスネークケース**（`/\A[a-z_][a-zA-Z0-9_]*\z/`）
+- **`book.yml` にも必ず書く。** 表と `book.yml` の一致は `config_keys_test.rb` が検査するので、
+  片方だけ足すと落ちます。ルートの `config/book.yml` を編集し `ruby copy_to_scaffold.rb` で同期
+- **既定値は `book.yml` に書いた値と同じにする。** 食い違うと、著者がその行を消した瞬間だけ
+  別の値で動きます（実際に 7 件あったのがこの仕組みを作った動機）
+- **読み出し地点に `|| 既定値` を書かない。** 表が保証するのでデッドコードになります
 
 ## 2. ロジック側での設定値アクセス（The One Way）
 コマンドの実装ロジック内では、config-access-unification-spec.md で定められた正規記法のみを使用します。
@@ -165,5 +176,5 @@ end
 
 | 主題 | 文書 |
 | :--- | :--- |
-| キーを**やめる**とき（`RETIRED_CONFIG_KEYS` / `authored_key?`） | `config-retirement-guidelines.md` |
+| キーを**やめる**とき（`ConfigKeys::RETIRED` へ移す） | `config-retirement-guidelines.md` |
 | 章の basename を保持するデータを足すとき（`ChapterRename::FOLLOWERS`） | `chapter-rename-followers-guidelines.md` |

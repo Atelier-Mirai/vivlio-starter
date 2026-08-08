@@ -236,10 +236,15 @@ module VivlioStarter
       # 著者が book.yml に実際に書いたキーの集合（既定値のマージ前）。
       # load_config が記録する。CONFIG が「実効値」を答えるのに対し、
       # こちらは「何が書かれていたか」を答える。
+      #
+      # **廃止キー検出の内部実装であり、汎用 API ではない**（private_class_method）。
+      # book.yml には現役キーを全部載せる方針なので、現役キーに対する authored_key? は
+      # 全プロジェクトで常に真になり情報量がゼロである。意味を持つのは book.yml から
+      # 消してある廃止キーに対してだけ。詳細は config-retirement-guidelines.md §3。
       def authored_keys = @authored_keys ||= Set[]
 
       # 著者がそのキーを book.yml に書いたか。
-      # @param path [Array<Symbol>] 例: authored_key?(:index, :target_terms)
+      # @param path [Array<Symbol>] 例: authored_key?(:metrics, :mattr_window)
       def authored_key?(*path) = authored_keys.include?(path)
 
       # 廃止キーが書かれていたら、まとめて 1 回だけ案内する。
@@ -1067,9 +1072,13 @@ module VivlioStarter
         true
       end
 
+      # 廃止キー検出の内部実装。外から呼ぶと「記述の有無」を著者の意図の代理に
+      # 使ってしまう（config-retirement-guidelines.md §3 の失敗例）。
+      private_class_method :authored_keys, :authored_key?
+
       # エンドレスメソッド定義を module_function として明示的に公開
       module_function :abort_with_error, :appendix_number_to_letter, :apply_page_preset, :configured?, :ensure_configured!,
-                      :authored_keys, :authored_key?, :warn_retired_config_keys, :collect_key_paths,
+                      :warn_retired_config_keys, :collect_key_paths,
                       :ensure_external_command!, :external_command_available?,
                       :missing_external_command_message, :run_svg_converter!, :format_converter_stderr,
                       :blank?, :cache_dir, :cache_enabled?,

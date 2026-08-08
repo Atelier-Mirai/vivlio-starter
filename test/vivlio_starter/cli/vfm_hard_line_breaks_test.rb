@@ -202,7 +202,7 @@ module VivlioStarter
 
         # Assert
         assert_equal true, base['vfm']['hardLineBreaks']
-        assert Common.authored_key?(:vfm, :hard_line_breaks), '著者の記述は authored_keys で検出できる'
+        assert Common.send(:authored_key?, :vfm, :hard_line_breaks), '著者の記述は authored_keys で検出できる'
         assert_includes Common::RETIRED_CONFIG_KEYS.keys, %i[vfm hard_line_breaks]
       end
     end

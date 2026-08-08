@@ -30,7 +30,7 @@
 : **`book.yml` に設定キーを足すとき・新コマンドを作るとき。** `CONFIG` アクセスの型とテストの書き方。
 
 `config-retirement-guidelines.md`
-: **`book.yml` から設定キーをやめるとき。** `RETIRED_CONFIG_KEYS` への登録手順と、`authored_key?` で判定してよい対象（廃止キーのみ。現役キーは全プロジェクトで常に真になり情報量ゼロ）。
+: **`book.yml` から設定キーをやめるとき。** `ConfigKeys::KEYS` から `RETIRED` へ移す手順（テストが手順を強制する）と、`authored_key?` が答えられること・答えられないこと。
 
 `chapter-rename-followers-guidelines.md`
 : **章の basename（`21-markdown-tutorial` 等）を保持する設定・データを足すとき。** `ChapterRename::FOLLOWERS` へ登録しないと `vs rename` で黙って壊れる。章**番号**で書く設定は登録も案内も不要な理由も。

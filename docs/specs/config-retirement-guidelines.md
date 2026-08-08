@@ -1,7 +1,7 @@
 # 設定キーを廃止するときの指針
 
 対象: `config/book.yml` から設定キーを取り除く開発者
-策定日: 2026-08-08（`config-extension-guidelines.md` §4 以降を分離）
+策定日: 2026-08-08 ／ 改訂: 2026-08-08（`CONFIG_KEYS` 導入に追随）
 
 ---
 
@@ -11,38 +11,65 @@
 「各コマンドが独自に `book.yml` を読むのをやめ、`Common::CONFIG` に一本化する」ことである。
 本書はその裏返し——キーを**やめる**ときの指針を扱う。
 
-分けたのは、両者で使う道具が違うためである。足すときに触るのは `CONFIG` だけだが、
-やめるときは「著者が古い `book.yml` を持っている」という時間軸の問題が入り、
-`RETIRED_CONFIG_KEYS` と `authored_keys` という別の仕掛けが要る。
+分けたのは、やめるときだけ「**著者が古い `book.yml` を持っている**」という時間軸の
+問題が入るためである。足すときには無い関心事で、`retired:` 宣言と `authored_keys` という
+別の仕掛けが要る。
+
+**その前に**: そもそもやめてよいキーかは `config-key-criteria-guidelines.md` で問う。
+本書は「やめると決めた後、どう畳むか」だけを扱う。
 
 ---
 
 ## 1. 廃止の手順
 
-設定キーを廃止したら、**`Common::RETIRED_CONFIG_KEYS` へ 1 行足すだけ**でよい。
-検出も案内もこの表が担うので、各コマンドは何も書かない。
+宣言は `ConfigKeys::KEYS`（現役）と `ConfigKeys::RETIRED`（廃止）の 2 つだけ。
+**キーを前者から後者へ移すのが廃止である。**
 
 ```ruby
-RETIRED_CONFIG_KEYS = {
-  %i[index auto_approve_threshold] =>
-    '索引語数はスコアの絶対値ではなく index.target_terms（本文の分量から導く目安語数）で決めます',
-}.freeze
+# lib/vivlio_starter/cli/config_keys.rb
+KEYS = {
+  %i[metrics mattr_window] => Spec[default: 100],      # ← ここから
+}
+
+RETIRED = {
+  %i[metrics mattr_window] =>                           # ← ここへ移す
+    Spec[retired: '語彙多様度を測る窓幅は算出方法そのもので、変えると章どうしを比べられなくなるため固定しました'],
+}
 ```
 
 手順は 3 つ。
 
-1. `default_config_schema` から**キーを削除する**
-2. `RETIRED_CONFIG_KEYS` に「代わりにどうするか」を書いて登録する
-3. 同梱 `book.yml` からもキーを削除し、`ruby copy_to_scaffold.rb` で雛形へ同期する
+1. `ConfigKeys::KEYS` から**キーを削除**し、`ConfigKeys::RETIRED` へ移す
+2. ルートの `config/book.yml` からキーを削除し、`ruby copy_to_scaffold.rb` で雛形へ同期する
+3. 読み出し側のコードを撤去する（値が来なくなるので必ず壊れる）
+
+検出も案内も表が担うので、各コマンドは何も書かない。既定値スキーマ・
+`RETIRED_CONFIG_KEYS`・`REQUIRED_BOOK_KEYS` はすべて表からの導出である。
+
+### 案内文の書き方
 
 値は**「代わりにどうするか」**を書く。著者が読んで行動できる文言にすること
 （警告は具体的な修正案とセットにする、が本プロジェクトの流儀）。
 
-### そもそも廃止してよいキーか
+```
+🟡 config/book.yml の metrics.mattr_window は廃止されました
+        語彙多様度を測る窓幅は算出方法そのもので、変えると章どうしを比べられなくなるため固定しました
+🟡 上記のキーは読み込まれません。book.yml から削除してください
+```
 
-「実装が使っていない」は廃止の理由になるが、「著者が設定する意味があるか」は別の問いである。
-判断基準は `setting-vs-method-parameter` の記憶（そのキーを変えたとき、比較の基準まで
-動いてしまうなら、それは設定ではなく手法パラメータ）を参照する。
+**実装の内情は書かない。** 「コードの半分が定数を直接見ており」のような説明は、
+著者が読んで行動できることを 1 つも含まない。
+
+### テストが手順を強制する
+
+`config_keys_test.rb` が次を検査するので、手順を飛ばすと落ちる。
+
+| 検査 | 飛ばした手順 |
+| :--- | :--- |
+| 廃止キーが `book.yml` に残っていないか | 手順 2 |
+| `book.yml` の全キーが `KEYS` に宣言されているか | 手順 1 の消し忘れ |
+| `authored:` と `retired:` が排他か | 状態の取り違え |
+| 廃止キーが `default:` を持たないか | 「読まないのに値がある」矛盾 |
 
 ---
 
@@ -59,6 +86,7 @@ RETIRED_CONFIG_KEYS = {
 ```ruby
 @authored_keys = collect_key_paths(raw_config)   # YAML を読んだ直後・既定値マージ前
 def authored_key?(*path) = authored_keys.include?(path)
+private_class_method :authored_keys, :authored_key?
 ```
 
 答えているのは **「`book.yml` というテキストに、そのキーが書かれているか」だけ**である。
@@ -73,7 +101,7 @@ def authored_key?(*path) = authored_keys.include?(path)
 ### 現役キーには使えない
 
 `book.yml` は設定ファイルであると同時に**設定の一覧カタログ**でもあり、現役のキーは
-既定値のまま全部載せてある（2026-08-07 決定・著者がキーを知る手段が他に無いため）。
+既定値のまま全部載せてある（`config-key-criteria-guidelines.md` §1）。
 したがって現役キーに対する `authored_key?` は**全プロジェクトで常に真**になり、
 情報量がゼロである。
 
@@ -82,8 +110,10 @@ def authored_key?(*path) = authored_keys.include?(path)
 | 廃止キー | ◯ | `book.yml` から消してあるので、書いてあれば旧プロジェクトの置き土産と分かる |
 | 現役キー | ✗ | 初めから書いてあるので常に真。何も判定できない |
 
-**`authored_key?` は汎用 API ではなく、廃止キー検出器の入力である。**
-呼び出し元が `warn_retired_config_keys` の 1 箇所しかないのは、偶然ではなく本来の姿。
+**そこで `private_class_method` にしてある。** 呼び出し元は
+`warn_retired_config_keys` の 1 箇所だけで、外から呼ぼうとすると `NoMethodError` になる
+（`retired_config_keys_test.rb` がそれ自体を固定している）。文書で線を引くだけでは
+同じ誤用が再発するため、機械的に塞いだ。
 
 ### 失敗例（2026-08-08 に撤去）
 
@@ -99,7 +129,8 @@ def authored_key?(*path) = authored_keys.include?(path)
 見直す対象が無いのに毎回出るノイズだった（コミット `ee615cea`）。
 
 **現役キーについて「効かない組み合わせ」を案内したいなら、記述の有無ではなく
-値そのものを見ること。**
+値そのものを見ること。** 実例は `missing_book_config_keys`——`authored_key?` ではなく
+`blank?(cfg.dig(*path))` で「著者が埋めたか」を判定している。
 
 ---
 
@@ -111,8 +142,8 @@ def authored_key?(*path) = authored_keys.include?(path)
 スキーマ外のキーは**自由拡張のために素通しする**（`test_should_pass_through_unknown_sections_and_keys`）。
 つまり廃止キーも書けば `CONFIG` に載るので、今は `CONFIG` の形からでも記述の有無を
 言い当てられてしまう。それでも `authored_keys` を見るのは、`CONFIG` での判定が
-「そのキーがスキーマに無い」ことに寄りかかっており、同名のキーが既定値付きで復活した
-途端、誰も書いていないのに警告が出るようになるためである。
+「そのキーが宣言表に無い」ことに寄りかかっており、**同名のキーが既定値付きで復活した
+途端、誰も書いていないのに警告が出る**ようになるためである。
 
 `authored_keys` は `load_config` が YAML を読んだ直後（既定値マージ前）に記録する。
 **各コマンドが `book.yml` を読み直してはいけない**——設定アクセスを `CONFIG` に
@@ -120,9 +151,19 @@ def authored_key?(*path) = authored_keys.include?(path)
 
 ---
 
-## 5. 未整理の論点
+## 5. 廃止キーを表から消してよいか
 
-「既定値をどこに持ち、キーの状態（現役／廃止／予約）をどう宣言するか」は未決である。
-現状は目録が `default_config_schema`、廃止が `RETIRED_CONFIG_KEYS`、予約語が
-`RESERVED_CONFIG_KEYS` と 3 箇所に分かれており、既定値の入口も 4 系統ある。
-この整理が済めば、本書の §3・§4 は書き直しになる見込み。
+**消さない。** `RETIRED` は増える一方の表である。
+
+古い `book.yml` を持つプロジェクトは、著者が `vs upgrade` を回すまで残り続ける。
+案内を消すと、そのキーは「書いてあるのに黙って無視される」という最悪の形に戻る。
+
+表 1 行のコストは小さく、失うものが大きい。**判断に迷ったら残す。**
+
+---
+
+## 6. 関連
+
+- `config-key-criteria-guidelines.md` — そのキーは設定であるべきか（判断軸 5 本）
+- `config-extension-guidelines.md` — キーの足し方（`CONFIG` アクセスの型）
+- `config-defaults-design-spec.md`（archives）— `CONFIG_KEYS` を作った仕様と実装記録

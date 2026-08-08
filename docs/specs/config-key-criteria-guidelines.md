@@ -166,15 +166,14 @@
 
 ## 5. 外すと決めたら
 
-`config-retirement-guidelines.md` の手順に従う。`RETIRED_CONFIG_KEYS` へ登録しないと、
-旧 `book.yml` を持つ著者が「設定したのに効かない」という最悪の形に出会う。
+`config-retirement-guidelines.md` の手順に従う。`ConfigKeys::KEYS` から `RETIRED` へ
+移さないと、旧 `book.yml` を持つ著者が「設定したのに効かない」という最悪の形に出会う。
 
-参照側は `metrics_config[:x] || CONST` の形を残しておけば、既存プロジェクトの
-`book.yml` に値が残っていても動く。
+読み出し側のコードは撤去する。値が来なくなるので必ず壊れ、消し忘れに気づける。
 
 ---
 
-## 付録: 2026-08-08 に外した 10 件
+## 付録: 2026-08-08 に外した 28 件
 
 | キー | 該当した軸 | 移行先 |
 | :--- | :--- | :--- |
@@ -187,6 +186,15 @@
 | `index_glossary.smart_context_cutting` | 選ぶ理由がない | 常時有効 |
 | `vfm.hard_line_breaks` | 選ぶ理由がない | 常時有効・章単位で上書き可 |
 | `preflight.allowed_classes` | 警告を黙らせるだけ | CSS を書くこと自体が登録 |
+| `index.backlink_dedup` / `glossary.backlink_dedup` | 選ぶ理由がない | 常時有効（切っても浮くのは 0.8 秒） |
+| `metrics.clause_length` / `vivliostyle.reading_progression` | 死にキー | 宣言だけで誰も読んでいなかった |
+| `book.title` | 初期実装の名残 | `book.main_title` |
+| `directories.*`（9）/ `cache.*`（2）/ `commands.vfm` / `vivliostyle.quiet` | 壊れていた設定 | システム定数 |
+
+最後の群は特殊で、**設定として提供しながら半分のコードしか見ていなかった**。
+`directories` は定数直参照が 48 箇所・アクセサ経由が 43 箇所で、改名すると両者が
+別の場所を指す。「提供しているが動かない」は 5 軸のどれでもなく、**そもそも設定として
+成立していなかった**類である。実装を数えて初めて分かった。
 
 同じ作業で `build.verify.*` → `verify.*`、`output.filename.include_version` →
 `output.include_version` の階層も浅くした。こちらはキーの存在ではなく**記法の圧縮**にあたる。

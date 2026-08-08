@@ -41,12 +41,20 @@ module VivlioStarter
         assert_includes paths, %i[index target_terms]
       end
 
+      # 廃止キー検出の内部実装なので send で呼ぶ。公開 API から外してあること自体が
+      # 仕様である——現役キーに使うと常に真になり、意図の代理に使えない
+      # （config-retirement-guidelines.md §3）。
       def test_authored_key_answers_what_the_author_wrote
         authored({ index: { target_terms: 260 } })
 
-        assert Common.authored_key?(:index, :target_terms)
-        refute Common.authored_key?(:index, :candidate_pool),
+        assert Common.send(:authored_key?, :index, :target_terms)
+        refute Common.send(:authored_key?, :index, :candidate_pool),
                '書いていないキーは false（既定値が効くこととは別の問い）'
+      end
+
+      # 外から呼べないこと自体を固定する（呼べると誤用が再発する）
+      def test_authored_key_is_not_public
+        assert_raises(NoMethodError) { Common.authored_key?(:index, :target_terms) }
       end
 
       # --- phase: 廃止キーの案内 ---
