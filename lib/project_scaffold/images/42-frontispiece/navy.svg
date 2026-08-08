@@ -13,12 +13,12 @@
   <g clip-path="url(#outer-clip)">
     <rect x="0" y="0" width="680" height="80" fill="#ffffff"/>
     <rect x="0" y="0" width="680" height="80" fill="url(#hbg)"/>
-    <rect x="0" y="0" width="14" height="80" fill="#1e40af"/>
+    <rect x="0" y="0" width="14" height="80" fill="#1d4ed8"/>
   </g>
-  <rect x="0.6" y="0.6" width="678.8" height="78.8" rx="12.6" fill="none" stroke="#1e40af" stroke-width="2.2"/>
-  <rect x="48" y="16" width="102" height="48" rx="7" fill="#1e40af"/>
+  <rect x="0.6" y="0.6" width="678.8" height="78.8" rx="12.6" fill="none" stroke="#1d4ed8" stroke-width="2.2"/>
+  <rect x="48" y="16" width="102" height="48" rx="7" fill="#1d4ed8"/>
   <text x="100" y="42" font-family="'Noto Sans JP', sans-serif" font-size="24" font-weight="900" fill="#ffffff" text-anchor="middle" dominant-baseline="middle">1-7</text>
   <text x="164" y="42" font-family="'Noto Sans JP', sans-serif" font-size="28" font-weight="800" fill="#111111" dominant-baseline="middle">信頼感・公式文書</text>
-  <text x="410" y="42" font-family="'Noto Sans JP', sans-serif" font-size="24" font-weight="800" fill="#1e40af" dominant-baseline="middle">Navy</text>
-  <text x="540" y="42" font-family="'Noto Sans JP', sans-serif" font-size="24" font-weight="800" fill="#111111" dominant-baseline="middle">#1e40af</text>
+  <text x="410" y="42" font-family="'Noto Sans JP', sans-serif" font-size="24" font-weight="800" fill="#1d4ed8" dominant-baseline="middle">Navy</text>
+  <text x="540" y="42" font-family="'Noto Sans JP', sans-serif" font-size="24" font-weight="800" fill="#111111" dominant-baseline="middle">#1d4ed8</text>
 </svg>
