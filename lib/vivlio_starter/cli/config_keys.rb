@@ -59,10 +59,10 @@ module VivlioStarter
 
       # ------- project -------
       %i[project name]                                => Spec[authored: "mybook"],
-      %i[project version]                             => Spec[default: "1.0.0"],
+      %i[project version]                             => Spec[default: "0.1.0"],
 
       # ------- theme -------
-      %i[theme color]                                 => Spec[default: "navy"],
+      %i[theme color]                                 => Spec[default: "green"],
       %i[theme preface_color]                         => Spec[default: "teal"],
       %i[theme appendix_color]                        => Spec[default: "cyan"],
       %i[theme style]                                 => Spec[default: "image"],
@@ -94,7 +94,7 @@ module VivlioStarter
       %i[output targets]                              => Spec[default: "pdf"],
       %i[output include_version]                      => Spec[default: true],
       %i[output pdf_preview close_existing_windows]   => Spec[default: true],
-      %i[output pdf_preview window_bounds]            => Spec[default: "{4096, 0, 5120, 2160}"],
+      %i[output pdf_preview window_bounds]            => Spec[default: "{0, 0, 1280, 960}"],
       %i[output cover]                                => Spec[default: "master"],
       %i[output pdf combined]                         => Spec[default: true],
       %i[output pdf compress]                         => Spec[default: false],

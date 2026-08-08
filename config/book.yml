@@ -46,7 +46,7 @@ project:
 # ======= テーマ =======
 theme:
   # ------- テーマカラー -------
-  color:  navy  # yellow / orange / red / magenta
+  color:  green # yellow / orange / red / magenta
                 # purple / indigo / navy / blue
                 # cyan / teal / green / lime から選択
                 # '#ff0000' のような HEX 記法も指定可
@@ -170,7 +170,7 @@ output:
     combined: true  # true で front/backcover を結合、false で除外
     compress: false # 自動圧縮を有効にするか（処理時間が増加）
                     # vs build --compress / --no-compress で上書き可能
-    techbook: true  # 技術書典向け Techbook モード（既定は無効）
+    techbook: true  # 技術書典向け Techbook モード（既定は有効）
                     # カラー絵文字を Twemoji 画像へ差し替え、
                     # 入稿できない Type 3 フォント化を防ぎます
                     # 画像を使うのでクレジット表記が要ります（legal.twemoji）
