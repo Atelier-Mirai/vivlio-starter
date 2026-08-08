@@ -16,9 +16,25 @@
   - `family:wght@100;…;900` で要求し、**400 と「600 以上で 700 に最も近いウェイト」の 2 面だけ**を落とす。全ウェイトを取ると和文 1 書体で数十 MB になる。**700 決め打ちは通用しない**——日本語 Google Fonts 55 書体の調査で、`Klee One` は 600 が太字（700 が無い）、`M PLUS 1p` は 600 が無い、と書体ごとに並びが違った。`wght@400;700` を要求しても Google はエラーにせず 400 だけ返すため、欠落に気づけない。
   - 同調査では**アウトラインは 55 書体すべて静的 TrueType**だったが、**太字を持つのは 24 書体だけ**で残り 31 書体は 400 のみ（装飾書体はそもそも太さのバリエーションを持たない設計）。そこで `body { font-synthesis-weight: none; }` を常時出力して合成自体を止め、**本文書体に太字が無いときに限り** `strong, b` を見出し書体（ゴシック）へ振る。明朝の強調にゴシックを当てるのは和文組版の作法でもある。同梱書体は Regular/Bold 両字面を持つため後者は発動せず、既存の本の見た目は変わらない。
   - 全書体が静的 TrueType なのは User-Agent がブラウザでない（Google が旧来の静的 TTF を配信する）ことに依存しているため、ダウンロード後に sfnt のテーブルを検査し、`glyf` が無い／`fvar` がある場合は警告する。配信方針が変わったときに静かに壊れないようにした。
+- [High] **同梱以外の書体を指定すると Type 3 フォントが再発していた**（`type3-font-embedding-notes.md` §5.1〜5.3・`vivliostyle-css-pitfalls-notes.md` §2.8）: Type 3 対策は同梱書体（Zen 3 種）を前提に組んでいたため、著者が Google Fonts の書体を選ぶと素通りする経路が 3 つ残っていた。**実測（全章ビルド）: `Klee One` 5 件 / `Yusei Magic` 16 件 → いずれも 0 件**。日本語 Google Fonts 55 書体のうち **31 書体が太字を持たない**ので、著者が踏む確率は低くない。
+  - **① 書体の実体を探す場所が 1 つしかなかった。** 同梱書体は `fonts/<slug>/` に `*-Bold.ttf`、Google Fonts は `fonts/google/<slug>/` に `<Slug>-700.ttf`（400 はウェイト数値なし）と、**置き場もファイル名の規則も違う**。同梱側しか見ていなかったため生成 SVG にサブセットを埋め込めず、OS の和文フォントへ落ちていた。
+  - **② 生成 SVG は独立文書なので合成禁止が届かない。** showcase はラベルを `font-weight="700"` で組むが、埋め込む @font-face は 1 面だけ＝ウェイト指定なし＝400 扱い。本文側の `body { font-synthesis-weight: none }` は `<img>` 参照の SVG に届かないため、太字を持たない書体では faux-bold が合成される。SVG 自身の `<style>` にも同じ規則を出す（showcase・mermaid の両方）。
+  - **③ `font-synthesis-weight` が疑似要素へ継承されない。** 継承プロパティなのに、Vivliostyle では `::before` / `::after` の生成ボックスに届かなかった。`.outline-list ol > li::before` が `content: counters(…)` を `font-weight: 700` で描くため、**リスト番号だけが Type 3** になっていた（Type 3 の `ToUnicode` を読み、描かれた文字が `1.` `2.` `3.` だと特定）。`body, body *, body *::before, body *::after` と明示する。
+  - **検証を歪める不具合も直した。** showcase のキャッシュ鍵に書体が入っておらず（mermaid には入っていた）、著者が `typography.heading.font` を変えても SVG が作り直されない。**前の書体のキャッシュを再利用して「対策が効いている」ように見えて**いた。
+  - 回帰は 2 段。`svg_font_embedder_test.rb`（実フォント不要・`rake test` に入る）が探索規則を、`google_fonts_type3_test.rb`（`rake test:type3`）が全章ビルドで Type 3 = 0 を見る。検証書体は**通る道**で選んだ——`Klee One`（400/600）は太字が 700 でない実例、`Yusei Magic`（400 のみ）は合成を止める経路。
+- [Medium] **スペルチェックの除外リストで、ハイフンを含む語が効いていなかった**: `config/spellcheck_allowlist.yml` は YAML なのに、辞書ファイル（1 行 1 語のテキスト）と同じ行単位の読み方をしていた。`normalize` は記号を落とすがハイフンは残すため、YAML の並びを表す `- ` の `-` が語の一部として残る（`- "High-Score"` → `-High-Score`）。ハイフンなし形式も併せて登録する処理があるおかげで `ajisai` のような語は「詰めた形」として偶然引けており、見過ごされていた。**実測: 本リポジトリの原稿 27 章で 148 箇所 → 146 箇所**（解消: `High-Score` / `Low-Score`、新たな誤検出なし）。
+- [Medium] **`vs rename` / `vs renumber` が改番のたびに無意味な警告を出していた**: 「章番号で指定した設定があります。改番に合わせて見直してください」と `metrics.exclude_chapters` を挙げるが、見直す対象が無いのに毎回出るノイズだった。(1) 参照していたのは `vs metrics` が分量の提案を出さない章を決めるキーで改番と無関係、(2) もう 1 件の `chapters` は `book.yml` にも既定値スキーマにも無く一度も発火しない、(3) 「著者が明示的に書いたときだけ案内する」条件が成立しない——`book.yml` に現役キーを全部載せる方針なので `authored_key?` は常に真になる。`chapter-rename-followers-spec.md` R4 の撤回にあたる。区分をまたぐ改番（`80 → 90` など）は従来どおり通常の y/N 確認だけで通す。
+- **配布物にこの本固有の値が入っていた**: `copy_to_scaffold.rb` がテンプレート化していたのは 5 キーだけで、`vs new` した著者の `book.yml` に `series: "「技術書典20 新刊」"` `release: "令和八年四月二十六日"` `contact: "contact@atelier-mirai.net"` が初期値として並んでいた。いずれも任意項目なので空にして配る（`{{ }}` にしないのは `vs new` の質問を増やさないため）。埋め忘れより、他人の連絡先が初期値で入っているほうが害が大きい——著者が気づかず奥付へ載せうる。扉絵の既定も配布物側だけ `sakura` へ。
 - [Medium] **`verify`（旧 `build.verify`）の設定が実装に届いていなかった**: `BuildCommand` / `PreflightCommand` の `setup_verify_options!` が 3 つのフラグを**常に**スレッドローカルへ立てていたため、`LinkImageValidator#resolve_config` の `cli_opts.fetch(:verify_images, 設定側の既定)` が一度も既定値へ落ちず、`verify.images` / `bare_urls` / `external_links` が丸ごと無視されていた。CLI で**明示された指定だけ**を載せる形に改め、book.yml が既定値として機能するようにした。キー名は `resolve_config` に出現するため `book_yml_consumption_test` は素通りする——「値が実際に効くか」は `verify_config_resolution_test.rb` で固定した。
 
 ### Added
+- **クイックスタートを執筆ワークフローの章へ統合した**: 11 章（2,800 字）と 12 章（1,441 字）はどちらも分量の下限を下回り、内容も「Vivlio Starter で本を作るとはどういうことか」で地続きだった。概念 → 全体像 → 実際にやってみる、の順に 1 章へまとめ、13 章は 12 章へ改番した。重複していた Ruby 導入の詳細手順は付録「インストール詳細」へ寄せた。
+- **廃止したキーに追随して原稿を更新した**: 41 章（`book.yml` リファレンス）・33 章（索引・用語集）・31 章（文章校正）・22 章（拡張記法）・32 章（Metrics）・44 章（ビルド）。**著者が読んで従うと動かない記述**が主な対象で、たとえば 22 章の「独自クラスは `preflight.allowed_classes` に登録しましょう」はそのとおりにしても効かなかった（CSS を書くこと自体が登録である旨へ）。41 章・33 章は今回の削除分だけでなく、以前に廃止済みだった `auto_approve_threshold` ほか 3 キーも残っていたので実際のキー構成に直した。
+  - 32 章では、分量判定に**印の付かない帯が 2 つある**ことを「何も付かない章がある理由」として明記した。`ideal` は刊行書の実測分布の真ん中半分（25〜75 パーセンタイル）、`min`/`max` は両裾 10% で引いてあり、無印は「理想の帯からは外れているが手を入れるほどではない」という判定である。全部に印を付けると印そのものが目立たなくなる。
+- **「そのキーは設定であるべきか」の判断軸をガイドライン化した**（`config-key-criteria-guidelines.md`）: `book.yml` の減量で残ったのは行数よりも判断の型だった。5 軸（手法パラメータか／重複した入口か／CLI が一次インターフェースか／選ぶ理由のない選択肢か／正しい警告を黙らせるだけか）を、見分ける質問と「外さなかったらどうなっていたか」の実例つきで置いた。**この 5 軸は「隠すかどうか」ではなく「存在してよいか」の基準**である——載せると決めたキーは必ず `book.yml` に書く（著者がキーを知る手段は他に無い）。
+- **設定の指針を主題ごとに 3 分割した**: `config-extension-guidelines.md` の趣旨は「各コマンドが独自に `book.yml` を読むのをやめ `CONFIG` に一本化する」ことだが、§4 以降に廃止キーと改番追随の話が混ざり主題が二重三重になっていた。キーを**足す**（`config-extension-guidelines.md`）／**やめる**（`config-retirement-guidelines.md`）／**章名を保持するデータ**（`chapter-rename-followers-guidelines.md`）に分けた。
+  - 移設のついでに、事実として誤っていた記述を直した——「スキーマに無いキーは `deep_merge_config` が落とす」は**落ちない**（自由拡張のため素通しする）。`authored_keys` を見る本当の理由は「`CONFIG` での判定がスキーマの有無に寄りかかっており、同名キーが既定値付きで復活した途端に誰も書いていないのに警告が出る」ため。
+  - **`CONFIG` と `authored_key?` を対等な 2 つの問いとして並べていた表もやめた。** この並べ方が上記の無意味な警告を生んでいる。`authored_key?` は廃止キー検出器の入力であって汎用 API ではない——現役キーは `book.yml` に全部書いてあるので常に真になり、情報量がゼロである。
 - [High] **索引が「出現箇所」ではなく「説明箇所」を指すようになった**（`index-main-reference-spec.md`・Phase 1〜6 完了）: 索引の役割は所在の網羅ではなく**説明の在り処への案内**なのに、全出現を同格のページ番号として並べていたため、頻出語ほどページ番号の壁になって索引としての価値が下がる逆転が起きていた（実測: 「用語集」は 13 章に 100 回出現し、腰を据えて説明しているのは 33 章だけ）。**その語を説明している章での初出**を主要参照として太字＋先頭に置き、副次参照はその後ろに続ける形にした。実測: `用語集 …… **196**, ii, 24, 27, 51, 102`。
   - 指定は**レビューファイル `_index_glossary_review.md`** で行う（`- 主要参照: 21, 22`）。著者が編集するのは辞書 YAML ではないため、用語集の説明文と同じく用語の子行に書く形へ揃えた。章番号・範囲（`21-22`）・章名のいずれでも書け、解決は `TokenResolver` に委ねる。行を消せば指定の解除。
   - **候補は機械が下書きする**（`MainReferenceSuggester`）。「その語を含む見出し（h1〜h3）が最も多い章」を 1 章だけ提示し、見出しに出ない語は定義パターン（「〜とは」）で説明している章を探す。実測 27 章・索引語 153 語で、対象 55 語のうち **53 語に候補を出せた**。
@@ -46,6 +62,14 @@
   - **行ごとの逐次処理では決められない**——本文の初出を採るかどうかが「後に節見出しが来るか」に依るため。章を読んだ時点で「節見出しにあるか／本文にあるか」だけ先に下見する 2 パスにした。
 
 ### Changed
+- [High] **既定値の宣言を `CONFIG_KEYS` 1 表へ寄せた**（`config-defaults-design-spec.md`）: 同じ「既定値」が 4 通りの持ち方（既定値スキーマ・`default_*` メソッド・ドメイン定数・読み出し地点のリテラル）で散っており、**`book.yml` に書いてあるのに違う値で動く余地が 7 件**あった（`heading_chars` は book.yml 10 / コード 8 など）。今は `book.yml` が勝つので表には出ないが、著者がその行を消した瞬間だけ誰も宣言していない値で動きはじめる。
+  - 宣言は `lib/vivlio_starter/cli/config_keys.rb` の 1 表（現役 142 件＋廃止 20 件）。`default:` / `authored:`（著者が埋める・値は記入例）/ `retired:`（移行先の案内）の 3 状態を持ち、既定値スキーマ・`RETIRED_CONFIG_KEYS`・`REQUIRED_BOOK_KEYS` はここから導出する。宣言する表が 4 つ →1 つになった。
+  - **値はハッシュリテラルでなく `Data` で持つ。** `Spec[defualt: 500]` は `ArgumentError` になるが `{ defualt: 500 }` は静かに通り、既定値を持たないキーとして振る舞う。130 行超の表で 1 箇所やらかしたら後者は見つけようがない。
+  - **再発防止のテストが本体。** 宣言を 1 箇所にしただけでは食い違いは再発する——配布物の `book.yml` と表の `default:` が一致することを機械が見張って初めて「`book.yml` が正典」が成立する（`config_keys_test.rb`）。実際、事前調査で 6 件と見積もった食い違いは、表を作って突き合わせたら **7 件**だった。
+  - **既定値スキーマは「既定値」を名乗りながら葉キー 112 件中 97 件（87%）が `nil`** で、実体はキーの目録だった。`nil` の役割はドット記法を `NoMethodError` にしないことだけで、実際の既定値は読み出し地点かドメイン定数の側にあった。
+- [Medium] **`metrics` のプリセットを部分的に上書きできるようになった**: `resolve_preset` が `custom[:chapter]` の有無で全か無かを判定していたため、プリセットに `section:` だけ書いて `chapter:` を書かないと**著者の指定が警告なく捨てられていた**。`Common.deep_merge_config` に一本化し、書いた側は効き、書かなかった側は既定値のまま残る。合成規則は 1 つに決め、各所で再実装しない。
+- **`vs build --log=debug` で vivliostyle の出力が見えるようになった**: `quiet_mode?` が `ENV['VIVLIO_QUIET'] == '1' || CONFIG.vivliostyle.quiet` で、後者の既定が `true` だったため**常に真**——出力を見る手段が無く、呼び出し側の分岐も到達しなかった。組版エンジン側のエラーを追うのはデバッグそのものなので、ログレベルに預ける。
+- **テーマカラーの `navy` と `magenta` を調整した**: `navy` は `#1e40af` → `#1d4ed8`（黒との見分けを付けやすく）、`magenta` は `#e11d48` → `#e11d74`（`red` と近すぎたため）。`theme.css` の `--accent-*` と `ThemeColor::PALETTE`、42 章の色見本 SVG を同時に更新した。
 - [Medium] **雛形のキーを打ち間違えたとき、直し方を著者へ示すようにした**（`data_render.rb`・query-stream 1.4.0 と連動）: これまでは gem が `logger.error` で「利用可能なキー」を直接吐いており、`Common.log_error` を通らないため 🔴 も出所も付かない生ログが混じっていた。query-stream 1.4.0 で `UnknownKeyError` に `key_path` / `available_keys` / `template_path` / `location` が付いたので、**「もしかして」を添えた案内をこちら側で組み立てる**。ドット記法（`=author.name`）は先頭のキーだけが検証対象なので、候補もそこで探す。
   - **直すのは雛形なので、開くべきファイルを名指しする。** `location`（記法が書かれた原稿の位置）だけでは著者はファイルに辿り着けない。
 
@@ -123,6 +147,15 @@
 - [Medium] **`config/book.yml` の主要キーが未設定なら、ビルド前に警告するようになった**（`dead-code-candidates-report.md` §2.1）: `book.main_title` / `book.author` / `project.name` を検査する実装は前からあったが、**呼ばれるのは module load 時の `silent: true` 経路だけで、本番では一度も走っていなかった**。タイトルが空欄の PDF ができても何も言わない状態だったので、案内を `Common.ensure_configured!`（廃止キー案内と同じ、全コマンドが通る関門）へ移した。警告には `book.yml` へそのまま貼れる記入例を添える。最小構成のプロジェクトを弾かないよう abort はしない。
 
 ### Removed
+- **設定にする意味の無かった 28 キーを撤去した**（`config-key-criteria-guidelines.md`）: `book.yml` を 671 → 437 行へ減量する過程で「そのキーは設定であるべきか」を 5 軸で問い直した。いずれも `RETIRED_CONFIG_KEYS` へ登録済みで、旧 `book.yml` を持つプロジェクトには移行先が案内される。
+  - **手法パラメータ**（`metrics.mattr_window`）— 語彙多様度の窓幅は算出方法そのもの。同一原稿で窓幅だけ 50 と 100 で測ると MATTR が 0.710 と 0.589 になり、**原稿を 1 文字も変えずに評価が 2 段階動く**。比較先のバンドは定数で連動しない。
+  - **重複した入口**（`spellcheck.extra_words` / `ignore_words` / `lint.disabled_terms` / `lint.config`）— allowlist ファイルと同じ役目だった。**入口の重複は本物のほうを壊す**——`extra_words` を消して除外リストが唯一の経路になった際、そちらが壊れていたことが判明した。
+  - **CLI が一次インターフェース**（`index_glossary.library.*`）— 「今回だけ別名で書き出す」類の指定は `vs index:export mybook.yml` と引数で言うほうが早い。
+  - **選ぶ理由のない選択肢**（`index_glossary.smart_context_cutting` / `vfm.hard_line_breaks`）— もう一方を選ぶ著者を具体的に描けない。**選ばれない分岐は壊れていく**——`smart_context_cutting: false` の経路は実ビルドを一度も通っていなかった。
+  - **正しい警告を黙らせるだけ**（`preflight.allowed_classes`）— `:::{.myawesome}` が意味を持つのは CSS を書いたからで、**CSS を書けばチェックは自動的に既知と判定する**。このキーは「綴りを間違えていませんか」という正しい警告を消すだけだった。
+  - **死にキー**（`metrics.clause_length` / `vivliostyle.reading_progression`）— 宣言だけで誰も読んでいない。**初期実装の名残**（`book.title`）— `main_title` が空のときだけ効く後方互換の逃げ道。
+  - **設定として提供しながら壊れていたもの**（`directories.*` 9 件 / `cache.*` 2 件 / `commands.vfm` / `vivliostyle.quiet`）— `directories` は**半分のコードしか見ていなかった**（定数直参照 48 箇所・アクセサ経由 43 箇所）。改名すると両者が別の場所を指すうえ、`vs create` の案内文や原稿の解説がすべて嘘になる。システム定数へ戻した。
+  - **`index.backlink_dedup` / `glossary.backlink_dedup`** — 切る利点は「ビルドが速くなる」だったが、PDF named destinations 方式への高速化で前提が変わっていた。Step 8 の 107 秒はほぼ再レンダで、**dedup 判定自体は 0.8 秒**。対して失うのは可読性で、用語の出現箇所すべてにダガー印が付き数千箇所のノイズになる。
 - **デッドコードを撤去した**（`dead-code-candidates-report.md` §7・`PLANNED.md`「コード整理」）: 走査で挙がった候補を 1 件ずつ確認し、設計の交代で役目を失っていた 8 箇所をテストごと削除した。挙動の変化は無い。
   - `CrossReferenceProcessor.process_cross_references` と専用の私有ヘルパー 7 個 — **未定義の `generate_report` を呼ぶ到達不能コード**で、委譲先の `MarkdownTransformer.process_cross_references` も存在しない二重の壊れ方をしていた。実ビルドが通るのは `PreProcessCommands.process_cross_references_for_files` の 1 経路だけ。`PreProcessCommands.process_cross_references` も同じ理由で撤去。
   - `SectionBuilder.ensure_chapter_html_up_to_date!` — mtime 比較で HTML の再生成を省く実装。「mtime 比較・キャッシュ判定は行わず常に再生成する」（`book_yml_regeneration_spec.md`）に置き換わっていた。
