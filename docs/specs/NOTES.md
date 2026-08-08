@@ -26,6 +26,12 @@
 `config-extension-guidelines.md`
 : **`book.yml` に設定キーを足すとき・新コマンドを作るとき。** `CONFIG` アクセスの型とテストの書き方。
 
+`config-retirement-guidelines.md`
+: **`book.yml` から設定キーをやめるとき。** `RETIRED_CONFIG_KEYS` への登録手順と、`authored_key?` で判定してよい対象（廃止キーのみ。現役キーは全プロジェクトで常に真になり情報量ゼロ）。
+
+`chapter-rename-followers-guidelines.md`
+: **章の basename（`21-markdown-tutorial` 等）を保持する設定・データを足すとき。** `ChapterRename::FOLLOWERS` へ登録しないと `vs rename` で黙って壊れる。章**番号**で書く設定は登録も案内も不要な理由も。
+
 `ruby-development-standard.md`
 : **`.rb` を書くとき。** Ruby 4.0+ の規約。frontmatter の `fileMatch` で `**/*.rb` に自動適用される。
 

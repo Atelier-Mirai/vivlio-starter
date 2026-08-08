@@ -71,7 +71,7 @@ def reload_configuration!(silent: false)
 A なら 1 行で済む。実装・テストとも既にあるので、**費用対効果は A が明らかに高い**。
 
 > 参考: 同じ「著者の book.yml を検査して知らせる」機構は
-> `config-extension-guidelines.md` §4 に整理済み（`ensure_configured!` が関門）。
+> `config-retirement-guidelines.md` §2 に整理済み（`ensure_configured!` が関門）。
 
 ### 2.2 `HierarchicalIndex` — 機能の 8 割が未接続
 

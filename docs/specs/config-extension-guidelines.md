@@ -150,81 +150,15 @@ end
 という消費漏れはここで検出されるため、キー追加とロジック実装は必ずセットで行ってください。
 （`metrics.use` の値として動的参照されるプリセット名のような例外は、
 テスト内の `ALLOWED_UNREFERENCED` に理由つきで登録します）
-## 4. キーを廃止するとき（`RETIRED_CONFIG_KEYS`）
 
-設定キーを廃止したら、**`Common::RETIRED_CONFIG_KEYS` へ 1 行足すだけ**でよい。
-検出も案内もこの表が担うので、各コマンドは何も書かない。
+---
 
-```ruby
-RETIRED_CONFIG_KEYS = {
-  %i[index auto_approve_threshold] =>
-    '索引語数はスコアの絶対値ではなく index.target_terms（本文の分量から導く目安語数）で決めます',
-}.freeze
-```
+## 関連する指針
 
-手順は 3 つ。
+本書はキーを**足す**ときの指針で、`Common::CONFIG` の読み方に主題を絞ってある。
+次の 2 つは道具立てが違うので別文書にした。
 
-1. `default_config_schema` から**キーを削除する**（残すと CONFIG に載り、「廃止したのに読める」状態になる）
-2. `RETIRED_CONFIG_KEYS` に「代わりにどうするか」を書いて登録する
-3. 同梱 `book.yml` からもキーを削除し、`ruby copy_to_scaffold.rb` で雛形へ同期する
-
-### なぜ CONFIG では判定できないか
-
-`CONFIG` は既定値スキーマとマージした**実効値の view** で、スキーマに無いキーは
-`deep_merge_config` が落とす。廃止キーはスキーマから外すので `CONFIG` には載らない。
-
-ここで問うているのは「**著者が `book.yml` に何を書いたか**」であって設定値ではない。
-両者は別の問いなので、答える口も分けてある。
-
-| 問い | 答える口 |
+| 主題 | 文書 |
 | :--- | :--- |
-| 設定 X の実効値は？ | `Common::CONFIG.section.key`（既定値マージ済み） |
-| 著者は Y と書いたか？ | `Common.authored_key?(:section, :key)`（生の記述） |
-
-`authored_keys` は `load_config` が YAML を読んだ直後（既定値マージ前）に記録する。
-**各コマンドが `book.yml` を読み直してはいけない**——設定アクセスを `CONFIG` に
-集約した意図が損なわれるうえ、読み込みのタイミングと解釈が分散する。
-
-### 章名を保持するキーを足すとき
-
-設定やデータが**章の basename**（`21-markdown-tutorial` 等）を保持する場合は、
-`ChapterRename::FOLLOWERS`（`lib/vivlio_starter/cli/chapter_rename.rb`）へ追随処理を
-登録する。登録しないと `vs rename` / `vs renumber` で**黙って壊れる**。
-
-```ruby
-FOLLOWERS = [
-  Follower.new(label: catalog.yml, handler: method(:follow_catalog)),
-  Follower.new(label: 索引辞書,     handler: method(:follow_index_dictionary))
-].freeze
-```
-
-**章番号**（`90-98` のような範囲）で書く設定は登録しない。ただし**改番後に案内も出さない**。
-`vs renumber` は区分（`TokenResolver::KIND_RANGES` ＝ 前書 00 / 本文 1-89 / 付録 90-98 /
-後書 99）の内側でしか番号を振らないので、区分を指す範囲は改番で動きようがない。
-`chapter-rename-followers-spec.md` R4 は 2026-08-08 に撤回した（下記の理由）。
-
-### いつ案内が出るか
-
-`Common.ensure_configured!` の入口で 1 度だけ発火する。ここはプロジェクトを必要と
-する全コマンドが通る関門（`root_command.rb#ensure_project_context!`）なので、
-著者はどのコマンドを叩いても気付ける。同じ実行で何度呼ばれても案内は 1 度だけ。
-
-### `authored_key?` が答えられること・答えられないこと
-
-`authored_key?` が答えるのは「そのキーが `book.yml` に**書かれているか**」だけである。
-**「著者がそれを意図して選んだか」の代理には使えない。**
-
-`book.yml` は設定ファイルであると同時に**設定の一覧カタログ**でもあり、現役のキーは
-既定値のまま全部載せてある（2026-08-07 決定・著者がキーを知る手段が他に無いため）。
-したがって現役キーに対する `authored_key?` は**全プロジェクトで常に真**になり、
-既定値と著者の選択を区別できない。
-
-| 対象 | 使えるか | 理由 |
-| :--- | :--- | :--- |
-| 廃止キー | ◯ | `book.yml` から消してあるので、書いてあれば旧プロジェクトの置き土産と分かる |
-| 現役キー | ✗ | 初めから書いてあるので常に真。何も判定できない |
-
-`vs rename` が「`metrics.exclude_chapters` を見直してください」を改番のたびに出していたのが
-この失敗例で、2026-08-08 に撤去した。**現役キーの「効かない組み合わせ」を案内したいなら、
-記述の有無ではなく値そのものを見ること。**
-
+| キーを**やめる**とき（`RETIRED_CONFIG_KEYS` / `authored_key?`） | `config-retirement-guidelines.md` |
+| 章の basename を保持するデータを足すとき（`ChapterRename::FOLLOWERS`） | `chapter-rename-followers-guidelines.md` |
