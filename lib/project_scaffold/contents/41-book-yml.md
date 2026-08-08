@@ -161,13 +161,13 @@ output:
 
   include_version: true     # true: mybook_v1.0.0.pdf / false: mybook.pdf
 
-  cover: light              # カバーテーマ: light / dark（標準添付 SVG）
-                            # master または独自スラッグ（covers/frontcover_master.png 等、著者用意の画像）
+  cover: master             # covers/ に置いた著者用意の画像を使う（既定）
+                            # light / dark … 標準添付の SVG テンプレート
 
   pdf:
     combined: true          # true: 表紙を本文 PDF に結合する
     compress: false         # true: ビルド後に自動圧縮（処理時間が増加）
-    techbook: false         # true: 技術書典向け Techbook モード（絵文字を Twemoji SVG 画像に自動差し替え）
+    techbook: true          # true: 絵文字を Twemoji の SVG 画像へ差し替える（既定）
 
   print_pdf:                # 印刷入稿用 PDF の設定
     bleed: 3mm              # 塗り足し幅（既定: 3mm）
@@ -205,7 +205,7 @@ output:
 
 `cover` に指定するスラッグは `vs cover` コマンドで生成したカバーのテーマ名と対応します。詳細は「カバー画像の生成」の章を参照してください。
 
-`pdf.techbook` は、技術書典などの即売会向けに絵文字をカラー SVG 画像へ自動差し替えるモードです。Chromium の PDF エンジンが絵文字を Type 3 フォントとして埋め込む問題を回避し、印刷入稿に適した PDF を生成します。詳細は「ビルド（vs build）」の章を参照してください。
+`pdf.techbook` は、絵文字をカラーの SVG 画像へ自動で差し替えるモードです。Chromium の PDF エンジンは絵文字を Type 3 フォントとして埋め込んでしまい、そのままでは印刷所に入稿できません。既定で有効なので、通常は意識せずに入稿できる PDF が得られます。詳細は「ビルド（vs build）」の章を参照してください。
 
 :::{.column}
 **`print_pdf.full_bleed` — 入稿用 PDF の生成方式**
@@ -293,9 +293,7 @@ glossary:
 
 詳細なワークフローは「索引・用語集機能」の章を参照してください。
 
-索引ライブラリ（用語集の `[g]` と棄却語を書籍間で持ち運ぶ仕組み）に設定は要りません。
-`vs index:export` / `vs index:import` は既定で `index_library.yml` を読み書きし、別の場所を
-使いたいときは `vs index:export ~/vivlio/shared.yml` のように引数でパスを渡します。
+索引ライブラリ（用語集の `[g]` と棄却語を書籍間で持ち運ぶ仕組み）に設定は要りません。`vs index:export` / `vs index:import` は既定で `index_library.yml` を読み書きし、別の場所を使いたいときは `vs index:export ~/vivlio/shared.yml` のように引数でパスを渡します。
 
 ### metrics — メトリクス基準値
 
@@ -328,19 +326,20 @@ metrics:
 
 ```yaml
 lint:
-  disabled_rules: []               # 丸ごと無効化したい textlint ルール ID
-  sentence_length_max: 100         # 一文の最大文字数（0 で一文の長さを検査しない）
-  trim_long_vowel: false           # true: 「サーバ」等、末尾長音を省く文体の指摘を黙らせる
-  allow_space_around_code: false   # true: インラインコードと和文の間のスペースを許容
-  allow_space_between_ja_en: false # true: 全角と半角（英数・記号）の間のスペースを許容
+  disabled_rules: [arabic-kanji-numbers]  # 丸ごと無効化したい textlint ルール ID
+  sentence_length_max: 100                # 一文の最大文字数（0 で検査しない）
+  trim_long_vowel: true                   # 「サーバ」等、末尾長音を省く文体
+  allow_space_around_code: true           # インラインコードと和文の間のスペースを許容
+  allow_space_between_ja_en: true         # 全角と半角の間のスペースを許容
 
 spellcheck:
   extra_dictionaries: []   # オンデマンドダウンロード辞書（例: ada）
   check_code_blocks: false # コードブロック内をチェック対象にするか
 ```
 
-ここに置くのは**文体の選択**だけです。校正ルールそのものは `config/.textlintrc.yml` を直接編集し、
-個別の語を指摘させたくないときは専用の除外ファイルに書きます。
+上の値がいずれも既定です。技術書では和欧間のスペースを入れる書き方が普通なので、`allow_space_*` は最初から許容してあります。`arabic-kanji-numbers`（「一つ → 1つ」）を切ってあるのは、`prh`（「一つ → ひとつ」）と指摘がぶつかるためです。
+
+ここに置くのは**文体の選択**だけです。校正ルールそのものは `config/.textlintrc.yml` を直接編集し、個別の語を指摘させたくないときは専用の除外ファイルに書きます。
 
 | したいこと | 書く場所 |
 | :--- | :--- |
@@ -349,7 +348,7 @@ spellcheck:
 | この語は綴り誤りではない（スペルチェック） | `config/spellcheck_allowlist.yml` |
 | この表記に統一したい | `config/textlint_rewrite.yml` |
 
-詳細は「文章校正」の章を参照してください。
+詳細は「文章校正（vs lint）」の章を参照してください。
 
 ### pdf_read — PDF 読み取り設定
 

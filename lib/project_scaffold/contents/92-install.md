@@ -11,7 +11,7 @@ Vivlio Starter は Ruby で動作します。Ruby がまだインストールさ
 ```bash
 bin/install-ruby.zsh              # 対話的に最新安定版を導入
 bin/install-ruby.zsh -y           # 確認をスキップして自動導入
-bin/install-ruby.zsh -v 4.0.2     # バージョンを明示して導入
+bin/install-ruby.zsh -v 4.0.6     # バージョンを明示して導入
 bin/install-ruby.zsh --no-bundler # bundler の導入をスキップ
 ```
 
@@ -55,13 +55,14 @@ gem install query-stream        # データ展開機能
 | poppler（pdfinfo / pdftoppm） | `brew install poppler` | PDF メタデータ取得・ページ画像化 |
 | Ghostscript | `brew install ghostscript` | PDF 圧縮 |
 | ImageMagick | `brew install imagemagick` | 画像変換・WebP 変換 |
-| Inkscape | `brew install inkscape` | SVG → PDF 変換（カバー生成用） |
+| Inkscape | `brew install inkscape` | SVG ラスタライズの予備経路（任意） |
 | librsvg（rsvg-convert） | `brew install librsvg` | EPUB 扉絵・節絵の合成画像ラスタライズ |
 | libvips | `brew install vips` | 高速画像処理 |
 | Tesseract + 日本語データ | `brew install tesseract tesseract-lang` | OCR エンジン |
 | MeCab | `brew install mecab mecab-ipadic` | 索引機能の読み自動推測 |
 | rouge | `gem install rouge` | コードブロック言語推定 |
 | mathjax-full | `npm install -g mathjax-full` | 数式の SVG 化 |
+| mermaid-cli | `npm install -g @mermaid-js/mermaid-cli` | ダイアグラムの画像化 |
 | `waifu2x-ncnn-vulkan` | GitHub Releases から自動取得 | AI 画像拡大（オプション） |
 | Kindle Previewer 3（kindlepreviewer） | `brew install --cask kindle-previewer` ＋ ラッパー作成 | Kindle（KPF）変換（任意・targets: kindle 用） |
 | Google Fonts 用 SSL 証明書 | 自動設定 | Google Fonts ダウンロード（macOS のみ） |
@@ -102,8 +103,8 @@ echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.zprofile
 echo 'eval "$(rbenv init - zsh)"' >> ~/.zprofile
 source ~/.zprofile
 
-rbenv install 4.0.2
-rbenv global 4.0.2
+rbenv install 4.0.6
+rbenv global 4.0.6
 ruby -v
 ```
 
@@ -124,7 +125,7 @@ vivliostyle --version
 6) 外部ツール（PDF・画像処理）
 
 ```bash
-brew install qpdf poppler ghostscript imagemagick inkscape vips
+brew install qpdf poppler ghostscript imagemagick inkscape librsvg vips
 brew install tesseract tesseract-lang mecab mecab-ipadic
 ```
 
@@ -152,7 +153,7 @@ vs build
 ```bash
 sudo apt-get update
 sudo apt-get install -y build-essential curl git \
-  qpdf ghostscript imagemagick poppler-utils \
+  qpdf ghostscript imagemagick poppler-utils librsvg2-bin \
   tesseract-ocr tesseract-ocr-jpn libvips-tools mecab
 ```
 
@@ -171,14 +172,14 @@ node -v && npm -v
 sudo apt-get install -y libssl-dev libreadline-dev zlib1g-dev
 curl -fsSL https://github.com/rbenv/rbenv-installer/raw/main/bin/rbenv-installer | bash
 export PATH="$HOME/.rbenv/bin:$PATH" && eval "$(rbenv init - bash)"
-rbenv install 4.0.2 && rbenv global 4.0.2
+rbenv install 4.0.6 && rbenv global 4.0.6
 ruby -v
 ```
 
 4) Vivliostyle CLI と Vivlio Starter
 
 ```bash
-npm install -g @vivliostyle/cli
+npm install -g @vivliostyle/cli mathjax-full @mermaid-js/mermaid-cli
 gem install vivlio-starter
 ```
 
@@ -232,7 +233,7 @@ vs --version
 :::{.column}
 **まず `vs doctor` を試してください**
 
-ビルドや lint が突然失敗したときは、`vs doctor` で環境を診断するのが近道です。不足ツールが一覧表示されます。`vs doctor --fix` で自動修復も試みられます。詳細は「環境診断（vs doctor）」の章を参照してください。
+ビルドや lint が突然失敗したときは、`vs doctor` で環境を診断するのが近道です。不足ツールが一覧表示されます。`vs doctor --fix` で自動修復も試みられます。詳細は「環境の診断と更新」の章を参照してください。
 :::
 
 ## CI（GitHub Actions）でのビルド例
@@ -272,11 +273,11 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: PDF
-          path: output_compressed.pdf
+          path: '*.pdf' 
 ```
 
 :::{.column}
 **GitHub の 100MB 制約について**
 
-大きな PDF は Git にプッシュできません。CI では `vs build` が自動圧縮した `output_compressed.pdf` をアーティファクトとしてアップロードするのが確実です。圧縮には Ghostscript を使用しています。リポジトリに PDF を含める場合は `.gitignore` の末尾に `!*.pdf` を追記してください。
+大きな PDF は Git にプッシュできません。CI ではビルド生成物をアーティファクトとしてアップロードするのが確実です。ファイル名は `project.name` と `project.version` から決まり、`output.pdf.compress: true` のときは末尾に `_compressed` が付くため、上の例では `*.pdf` でまとめて拾っています（圧縮には Ghostscript を使用）。リポジトリに PDF を含める場合は `.gitignore` の末尾に `!*.pdf` を追記してください。
 :::

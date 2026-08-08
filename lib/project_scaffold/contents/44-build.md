@@ -117,7 +117,7 @@ output:
     techbook: true                    # true で自動的に絵文字を画像に置き換える
 ```
 
-これを `true` に設定しておくと、原稿に書かれたカラー絵文字が自動的にきれいな画像（TwemojiのSVG画像）へと置き換えられ、入稿に最適な高品質のPDFが書き出されます。
+`true` にしておくと、原稿に書かれたカラー絵文字が自動的にきれいな画像（Twemoji の SVG 画像）へ置き換えられ、入稿に適した PDF が書き出されます。**既定で有効**なので、ふだんは意識する必要はありません。
 
 ### PDF プレビュー
 
@@ -126,8 +126,8 @@ macOS では、ビルド完了後に自動的にプレビューアプリで PDF 
 ```yaml
 output:
   pdf_preview:
-    close_existing_windows: true               # 既存ウィンドウを閉じてから開く
-    window_bounds: "{4096, 0, 5120, 2160}"    # 表示位置とサイズ
+    close_existing_windows: true            # 既存ウィンドウを閉じる
+    window_bounds: "{4096, 0, 5120, 2160}"  # 表示位置とサイズ
 ```
 
 
@@ -148,19 +148,19 @@ output:
 
 本文の入稿用 PDF はトンボ・塗り足し付きで、主要な同人印刷所（ねこのしっぽ、日光企画など）に対応しています。隠しノンブルも自動的に書き込まれます。
 
-入稿用 PDF は、既定では閲覧用 PDF と同じレンダリング結果から導出されます。本文が完全に同一のため、閲覧用でチェックした内容がそのまま入稿物になり、ビルド時間も短縮されます。本文に紙端まで届く画像や背景（フチなし要素）がある場合のみ `full_bleed: true` を指定してください。塗り足し込みで個別にレンダリングされます（詳細は「設定ファイル book.yml」の章を参照）。
+入稿用 PDF は、既定では閲覧用 PDF と同じレンダリング結果から導出されます。本文が完全に同一のため、閲覧用でチェックした内容がそのまま入稿物になり、ビルド時間も短縮されます。本文に紙端まで届く画像や背景（フチなし要素）がある場合のみ `full_bleed: true` を指定してください。塗り足し込みで個別にレンダリングされます（詳細は「config/book.yml リファレンス」の章を参照）。
 
 ### 入稿用の表紙
 
-印刷入稿用の表紙は本文とは別ファイルとして出力されます。Japan Color 2001 Coated による ICC ベースの CMYK 変換を行い、出力インテントを埋め込んだ PDF/X-1a:2001 として書き出します（`@vivliostyle/cli` 同梱の ICC を自動利用。`output.print_pdf.icc_profile` で任意のプロファイルを指定可能）。
+印刷入稿用の表紙は本文とは別ファイルとして出力されます。Japan Color 2001 Coated による ICC ベースの CMYK 変換を行い、出力インテントを埋め込んだ PDF/X-1a:2001 として書き出します（`@vivliostyle/cli` 同梱の ICC を自動利用）。別のプロファイルを使いたいときだけ、パスを指定してください。
 
 ```yaml
 output:
   print_pdf:
-    cover:
-      front: frontcover_cmyk.pdf    # 表表紙（CMYK）
-      back: backcover_cmyk.pdf      # 裏表紙（CMYK）
+    icc_profile: /path/to/JapanColor2001Coated.icc
 ```
+
+出力先とファイル名は `.cache/vs/covers/frontcover_<テーマ名>_<判型>_cmyk.pdf` のように自動で決まります（「カバー画像の生成」の章を参照）。
 
 :::{.note}
 **閲覧用と入稿用の同時ビルド**
@@ -384,59 +384,69 @@ vs build --log debug
 `vs build` の内部では、複数のステップが順番に実行されます。各ステップの所要時間はビルド完了時に表示されます。
 :::
 
-### フルビルドのステップ
+### フルビルドの流れ
 
-| Step | 処理内容 |
-|:---|:---|
-| Step 0 | 中間生成物のクリーンアップ |
-| Step 1 | 画像の最適化（リサイズ・圧縮） |
-| Step 2 | テーマ画像の準備 |
-| Step 3 | Markdown の前処理（frontmatter 付加、画像パス修正） |
-| Step 4 | 索引語のスキャンと索引ページ生成 |
-| Step 5 | Markdown → HTML 変換 |
-| Step 5b | 中扉（パートタイトル）ページの生成 |
-| Step 5c | Techbook モードの後処理（絵文字の画像化。`techbook: true` 時のみ） |
-| Step 6 | 目次 HTML と PDF の生成 |
-| Step 7 | 本文 PDF の生成（Vivliostyle による組版） |
-| Step 8 | 用語集バックリンクの重複排除 |
-| Step 9 | 表紙・奥付 PDF の生成 |
-| Step 10 | 全 PDF の結合 |
-| Step 11 | PDF アウトライン（しおり）の付与 |
-| Step 12 | 圧縮・リネーム |
-| Step 13 | 印刷入稿用 PDF の生成（`print_pdf` 時のみ） |
-| Step E | EPUB の生成（`epub` / `kindle` 時のみ。Kindle はターゲットごとに専用 EPUB を生成） |
-| Step K | KPF への変換（`kindle` 時のみ。`kindlepreviewer` を使用） |
-| Step 14 | 最終クリーンアップ |
+全章ビルドの処理は、大きく 3 つのまとまりに分かれます。
+
+:::{.diagram}
+```
+共通の下ごしらえ
+  画像の最適化 → 扉絵・表紙素材 → 原稿の前処理
+  → 索引語のスキャン → HTML 変換 → 前付・後付 → 目次
+      │
+      ├── PDF の枝
+      │     本文 PDF → バックリンクの重複排除
+      │     → 表紙・奥付 → 全 PDF の結合 → しおりの付与
+      │     → 圧縮・リネーム → 入稿用 PDF
+      │
+      └── EPUB の枝
+            EPUB の生成 → KPF への変換
+      │
+最後の片付け
+```
+:::
+
+PDF と EPUB の枝は互いに独立しているため、両方を出力するときは**並列に走ります**。EPUB 側のログは合流時にまとめて出るので、途中で静かに見えても止まっているわけではありません。
+
+どの処理が動くかは `targets` の指定で決まります。`targets: pdf` だけなら EPUB の枝はまるごと省かれ、`print_pdf` を足せば入稿用 PDF の処理が加わります。**処理に通し番号は振られていません**。実行条件によって並びが変わるため、番号ではなくログに出るラベル（`build overall pdf` など）で追いかけてください。
 
 ### タイミング表示
 
 `--log=debug`オプションを付けた場合には、ビルド完了時に各ステップの所要時間が表示されます。
 
+:::{.output}
 ```
 == Build Step Timings ==
-  - Step  0 (clean)                               0.00s
-  - Step  1 (optimize images)                     0.02s
-  - Step  2 (prepare theme images)                0.00s
-  - Step  3 (preprocess sections)                 0.24s
-  - Step  4 (index scan and build)                0.09s
-  - Step  5 (generate sections / part pages)      1.26s
-  - Step  6 (generate toc and pdf)                3.40s
-    (vivliostyle build)                          (3.08s)
-  - Step  7 (build overall pdf)                  10.00s
-    (vivliostyle build)                          (9.93s)
-  - Step  8 (backlink dedup)                     17.33s
-    (vivliostyle build)                          (9.82s)
-  - Step  9 (build front and back matter)          7.05s
-    (vivliostyle build)                          (3.01s)
-    (vivliostyle build)                          (2.91s)
-  - Step 10 (merge all pdfs)                      2.91s
-  - Step 11 (apply outline to output pdf)         4.49s
-  - Step 12 (compress, rename and final clean)    0.11s
-  = TOTAL                                        46.89s
+  - clean                                  0.00s
+  - optimize images                        0.07s
+  - prepare theme images                   0.00s
+  - prepare cover assets                   0.00s
+  - preprocess sections                    4.02s
+  - index scan and build                   0.64s
+  - convert sections html                  5.98s
+  - generate part title pages              2.02s
+  - generate front and back matter html    0.97s
+  - techbook post-process                  0.49s
+  - generate toc html                      0.67s
+  - build overall pdf                    125.37s
+    (vivliostyle build)                 (124.74s)
+  - backlink dedup                       123.60s
+    (vivliostyle build)                 (123.07s)
+  - build front and back matter            0.59s
+  - merge all pdfs                         1.24s
+  - apply outline to output pdf           25.22s
+  - compress, rename and final clean       0.89s
+  = TOTAL (sum of steps)                 291.77s
+  = WALL (elapsed)                       291.77s
 ==========================
 ```
+:::
 
-一般的に、フルビルドはとても時間がかかります。`vs preflight`コマンドでのエラー確認や、`vs build 00` のように個別の章を一つ一つビルドして誤りがないか確認しながら執筆し、最後の仕上げとしてフルビルドするのがお勧めです。
+本文 PDF の組版（`build overall pdf`）とバックリンクの重複排除（`backlink dedup`）が大半を占めます。どちらも Vivliostyle が紙面を組み直す処理なので、章が増えるほど伸びます。上は本書（508 ページ）の実測で、全体で約 5 分でした。
+
+執筆中は `vs preflight` でエラーを確認し、`vs build 21` のように章を絞って体裁を見て、最後の仕上げにフルビルドする——という進め方がお勧めです。
+
+`TOTAL` は各処理の所要時間を足したもの、`WALL` は実際に経過した時間です。PDF と EPUB を並列に走らせたときは `WALL` のほうが短くなります。
 
 ## book.yml の出力関連設定
 
@@ -461,15 +471,13 @@ output:
   pdf:
     combined: true                     # 表表紙・裏表紙を結合するか
     compress: false                    # 自動圧縮を有効にするか
-    techbook: true                     # 技術書典向け Techbook モード（既定: false）
+    techbook: true                     # 絵文字を Twemoji 画像へ差し替えるか（既定: true）
 
   # 印刷入稿用 PDF
   print_pdf:
-    bleed: 3mm
-    crop_marks: true
-    cover:
-      front: frontcover_cmyk.pdf
-      back: backcover_cmyk.pdf
+    bleed: 3mm                         # 塗り足し幅
+    crop_marks: true                   # トンボを付けるか
+    full_bleed: false                  # 本文にフチなし要素があるか
 
   # クリーン EPUB（楽天 Kobo / Apple Books 向け）
   epub:
@@ -679,12 +687,12 @@ Vivlio Starterでは、表紙や本文、奥付にいたるまで、すべての
 
 | | `vs preflight` | `vs build` |
 |:---|:---|:---|
-| 実行時間 | 約6秒 | 約600秒 |
+| 実行時間 | 数秒 | 数分（本書の全章で約 5 分） |
 | PDF 生成 | しない | する |
-| エラー検出 | ⚠️ ❌ 即時報告 | ビルド後に判明 |
+| エラー検出 | その場で報告 | ビルド後に判明 |
 | 用途 | 執筆中の頻繁なチェック | 入稿・配布前の最終ビルド |
 
-`vs build` でも同じ検証は行われますが、エラーに気づくのがビルド完了後になります。`vs preflight` を先に実行しておくことで、ビルド前に問題を修正できるので、効率的に執筆することが出来ます。
+`vs build` でも同じ検証は行われますが、エラーに気づくのがビルド完了後になります。`vs preflight` を先に実行しておけば、ビルドを待たずに問題を直せます。
 
 ### 基本的な使い方
 

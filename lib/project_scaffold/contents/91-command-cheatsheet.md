@@ -10,10 +10,10 @@
 | コマンド | 機能 | 解説章 |
 |:---|:---|:---|
 | `vs new` | プロジェクトを新規作成 | 新規プロジェクトの作成 |
-| `vs upgrade` | 本体 gem・雛形・外部ツールをまとめて最新化 | 環境診断（vs doctor） |
+| `vs upgrade` | 本体 gem・雛形・外部ツールをまとめて最新化 | 環境の診断と更新 |
 | `vs import` | Re:VIEW Starter プロジェクトを取り込み | Import コマンドの使い方 |
 | `vs pdf:read` | PDF を解析して Markdown へ変換・抽出 | PDF 読み取りコマンドの使い方 |
-| `vs doctor` | 環境診断と不足ツールの自動セットアップ | 環境診断（vs doctor） |
+| `vs doctor` | 環境診断と不足ツールの自動セットアップ | 環境の診断と更新 |
 | `vs clean` | 生成物やキャッシュを削除 | ユーティリティ・コマンド集 |
 | `vs create` | 章ファイルと画像ディレクトリを生成 | 章の管理 |
 | `vs delete` | 指定した章の Markdown と画像を削除 | 章の管理 |
@@ -22,7 +22,10 @@
 | `vs lint` | Markdown を textlint・スペルチェックで検査 | 文章校正（vs lint） |
 | `vs metrics` | 行数・文字数など文章メトリクスを集計 | Metrics |
 | `vs index:auto` | 索引・用語集の候補を抽出しレビュー用ファイルを生成 | 索引・用語集機能 |
+| `vs index:plan` | 索引語数の目安と候補の分布を表示 | 索引・用語集機能 |
 | `vs index:apply` | レビュー結果を索引辞書に登録・保存 | 索引・用語集機能 |
+| `vs index:export` | 用語集・棄却・読みをライブラリへ書き出し | 索引・用語集機能 |
+| `vs index:import` | 別の本のライブラリを取り込み | 索引・用語集機能 |
 | `vs cover` | 表紙・裏表紙の画像を生成（A4/B5/A5/EPUB） | カバー画像の生成 |
 | `vs resize` | images/ の画像を WebP に変換・最適化 | ユーティリティ・コマンド集 |
 | `vs preflight` | ビルド前の原稿エラーチェックを高速実行 | ビルド（vs build） |
@@ -44,7 +47,7 @@
 :::{.long-table}
 | オプション | 説明 |
 |:---|:---|
-| `--yes` / `-y` | 対話をスキップしデフォルト設定で作成する |
+| `--yes` / `-y` | 対話をスキップし既定の設定で作成する |
 | `--add-missing` | 既存ディレクトリに不足ファイルだけを追加する（既存は保持） |
 | `--log <level>` | ログレベル（`debug` など） |
 :::
@@ -159,15 +162,25 @@
 
 ## 索引・用語集
 
+### `vs index:plan` — 索引の現況を下見する
+
+`vs index:plan [対象章]`（省略時は全章。語数の目安と候補の分布を表示するだけで、辞書もレビューファイルも書き換えません）
+
 ### `vs index:auto` — 候補の抽出
 
-`vs index:auto [対象ファイル]`（省略時は全章。候補を抽出・分類し `_index_review.md` を生成）
+`vs index:auto [対象章]`（省略時は全章。候補を抽出・分類し `_index_glossary_review.md` を生成）
 
 ### `vs index:apply` — 辞書への登録
 
 `vs index:apply`（レビュー結果を `index_glossary_terms.yml` に適用）
 
-どちらも `--verbose` / `-v` で詳細出力になります。
+`index:auto` と `index:apply` は `--verbose` / `-v` で詳細出力になります。
+
+### `vs index:export` / `vs index:import` — 索引ライブラリの持ち運び
+
+`vs index:export [パス]` / `vs index:import [パス]`（省略時は `index_library.yml`。用語集の定義・棄却の判断・読みの補正を書籍間で引き継ぐ）
+
+`import` は追記マージで、既存の語を既定で温存します（`--prefer-import` でライブラリ側を優先）。
 
 ## 画像・カバー
 

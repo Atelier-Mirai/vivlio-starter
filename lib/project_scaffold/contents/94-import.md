@@ -10,7 +10,7 @@ Vivlio Starter の `vs import` コマンドを使うと、Re:VIEW Starter プロ
 
 下記が揃っているか `vs doctor --fix` で確認・自動インストールしてください。
 
-- Ruby 4.x / Bundler
+- Ruby 3.4 以上 / Bundler
 - node / npm
 - ImageMagick, qpdf, pdfinfo, Ghostscript, mecab
 - `waifu2x-ncnn-vulkan`（任意）
@@ -58,7 +58,7 @@ vs import --force ../starter_project    # 確認を省略したい場合
    - 画像パスを `![](foo.webp)` に統一
    - コードブロックキャプション → `` ```lang:filename ``
    - 言語未指定フェンスは Rouge で自動推定（`$`/`%` で始まる行があれば強制 `zsh`）
-4. **画像処理** — Starter `images/` をコピー → WebP 化 → 元画像（png/jpg/gif）は削除。`config-starter.yml` に `frontcover_pdffile` があれば `covers/` へコピーし、`book.yml` の `output.cover.front` を更新。
+4. **画像処理** — Starter `images/` をコピー → WebP 化 → 元画像（png/jpg/gif）は削除。`config-starter.yml` に `frontcover_pdffile` があれば `covers/` へコピーし、`book.yml` の表紙設定を更新。
 5. **codes/ へのコピー** — Starter `source/` 配下をそのまま `codes/` へコピー。
 6. **YAML 変換** — `catalog.yml`（`PREDEF→PREFACE` 等のキー変換、`.re` 拡張子除去）、`config.yml`（`book.main_title` 等を `book.yml` に反映）、`config-starter.yml`（`starter.pagesize` を `page.use` にマッピング）を変換。コメントは保持されます。
 7. **片付け** — Vivlio 側 `temp/` と Starter 側 `bookname-md/` を削除。
@@ -89,7 +89,7 @@ vs import --force ../starter_project    # 確認を省略したい場合
 
 1. `contents/` に Markdown が揃っているか
 2. `.webp` 以外の画像が残っていないか
-3. `covers/` に表紙 PDF がコピーされ、`config/book.yml` の `output.cover.front` が更新されているか
+3. `covers/` に表紙 PDF がコピーされ、`config/book.yml` の表紙設定が更新されているか
 4. `config/book.yml` の `book.main_title` などが期待どおりか（コメントが消えていないか）
 5. `config/catalog.yml` の章名が `.re` を含んでいないか
 
