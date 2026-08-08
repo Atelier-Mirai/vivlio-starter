@@ -89,7 +89,7 @@ module VivlioStarter
       # title 内の ' を JS 文字列として安全にエスケープする
       # （gsub の置換文字列内 \' は後方一致と解釈されるため、ブロック形で回避している）
       def test_should_escape_single_quote_in_title
-        write_book_yml(book: { 'title' => "It's a book" })
+        write_book_yml(book: { 'main_title' => "It's a book" })
 
         content = Writer.config_content(entries_basename: 'entries.sections.js', output: 'x.pdf')
 

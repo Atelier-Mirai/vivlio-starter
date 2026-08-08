@@ -172,7 +172,7 @@ module VivlioStarter
           commands:
             vfm: vfm
           book:
-            title: #{title}
+            main_title: #{title}
           output:
               include_version: false
         YAML
@@ -218,7 +218,7 @@ module VivlioStarter
           commands:
             vfm: vfm
           book:
-            title: Sample
+            main_title: Sample
           output:
               include_version: false
         YAML

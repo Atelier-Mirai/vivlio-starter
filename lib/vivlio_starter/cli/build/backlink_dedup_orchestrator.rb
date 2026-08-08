@@ -77,23 +77,15 @@ module VivlioStarter
 
         # 重複排除機能が有効か
         # 索引・用語集機能が有効で、かつ用語集または索引の重複排除が有効な場合に true
-        def dedup_enabled?
-          # 索引・用語集自体が無効なら dedup も無効
-          return false unless IndexCommands.index_enabled?
-
-          # 用語集または索引のいずれかの dedup が有効なら実行
-          glossary_dedup_enabled? || index_dedup_enabled?
-        end
-
-        # 用語集の重複排除が有効か
-        def glossary_dedup_enabled?
-          Common::CONFIG.glossary.backlink_dedup != false
-        end
-
-        # 索引の重複排除が有効か
-        def index_dedup_enabled?
-          Common::CONFIG.index.backlink_dedup != false
-        end
+        # 重複排除は常に行なう。索引・用語集自体が無効なときだけ走らない。
+        #
+        # かつては index.backlink_dedup / glossary.backlink_dedup で切れたが、
+        # 切る利点が無いため 2026-08-08 に設定をやめた。オフにして浮くのは
+        # dedup 判定の 0.8 秒だけ（Step 8 の 107 秒はほぼ再レンダで、dedup の
+        # 有無に関わらず発生する）。対して失うのは可読性で、用語の出現箇所
+        # すべてにダガー印が付き数千箇所のノイズになる
+        # （`backlink-dedup-pdf-map-spec.md` §4.4 の実測）。
+        def dedup_enabled? = IndexCommands.index_enabled?
 
         # 重複排除対象の HTML が存在するか
         # dedup はワークスペース pdf/ 配下のコピーに閉じる（P4 §3.4-4）

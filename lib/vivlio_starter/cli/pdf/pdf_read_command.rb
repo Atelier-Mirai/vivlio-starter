@@ -266,16 +266,12 @@ module VivlioStarter
         MSG
       end
 
-      # book.yml の directories.sources または既定の "sources" ディレクトリを返す
-      # 存在しなければ自動作成する
+      # 入力 PDF の置き場。存在しなければ自動作成する。
+      # かつては book.yml の directories.sources で変更できたが、他の directories.* と
+      # ともに 2026-08-08 にシステム定数へ戻した。
       def sources_dir
         return @sources_dir if defined?(@sources_dir)
 
-        configured = CLI::Common::CONFIG.directories.sources
-        dir = configured || SOURCES_DIR
-        FileUtils.mkdir_p(dir)
-        @sources_dir = dir
-      rescue StandardError
         FileUtils.mkdir_p(SOURCES_DIR)
         @sources_dir = SOURCES_DIR
       end

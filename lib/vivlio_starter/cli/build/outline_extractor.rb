@@ -624,10 +624,7 @@ module VivlioStarter
         end
 
         def prepend_cover_item(items)
-          book_cfg = Common::CONFIG.book
-          main_title = book_cfg.main_title.to_s.strip
-          fallback_title = book_cfg.title.to_s.strip
-          cover_title = main_title.empty? ? fallback_title : main_title
+          cover_title = Common::CONFIG.book.main_title.to_s.strip
           cover_title = '表紙' if cover_title.empty?
 
           return items if items.any? { |it| it[:page].to_i == 1 && it[:text] == cover_title }

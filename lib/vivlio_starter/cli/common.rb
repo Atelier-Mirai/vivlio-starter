@@ -255,7 +255,24 @@ module VivlioStarter
         %i[lint config] =>
           '校正ルールは config/.textlintrc.yml を直接編集します（book.yml には文体の選択だけを置きます）',
         %i[lint disabled_terms] =>
-          '指摘したくない語句は config/textlint_allowlist.yml に書きます'
+          '指摘したくない語句は config/textlint_allowlist.yml に書きます',
+        # --- 設定にする意味が無かったもの（2026-08-08 撤去）---
+        %i[index backlink_dedup] =>
+          'バックリンクの重複排除は常に行ないます（切っても浮くのは 0.8 秒で、用語の出現箇所すべてにダガー印が付きます）',
+        %i[glossary backlink_dedup] =>
+          '同上。用語集のバックリンクも常に重複排除します',
+        %i[directories] =>
+          'contents/ や stylesheets/ の名前は変更できません（コードの半分が定数を直接見ており、変えると別の場所を指します）',
+        %i[cache] =>
+          'キャッシュは常に .cache/vs に置き、常に有効です',
+        %i[commands] =>
+          'vfm コマンドの名前は変更できません',
+        %i[vivliostyle] =>
+          'vivliostyle の進行表示は常に抑制します（reading_progression は元から読んでいません）',
+        %i[book title] =>
+          '書名は book.main_title に書きます（title は初期実装の名残で、main_title が空のときだけ使われていました）',
+        %i[metrics clause_length] =>
+          '節の長さの基準は使っていません（宣言だけが残っていました）'
       }.freeze
 
       # 著者が book.yml に実際に書いたキーの集合（既定値のマージ前）。
@@ -300,7 +317,7 @@ module VivlioStarter
       # nil は「既定値なし（未設定）」を表し、実際の既定値は従来どおり参照側が決める。
       def default_config_schema
         {
-          book: { main_title: nil, subtitle: nil, subtitle_style: nil, title: nil, series: nil,
+          book: { main_title: nil, subtitle: nil, subtitle_style: nil, series: nil,
                   release: nil, publisher: nil, contact: nil, author: nil, language: nil, isbn: nil },
           project: { name: nil, version: nil },
           theme: { style: nil, color: nil, preface_color: nil, appendix_color: nil,
@@ -327,15 +344,14 @@ module VivlioStarter
           index_glossary: { enabled: nil, use_mecab: nil, timezone: nil, context_width: nil },
           # 廃止キー（auto_approve_threshold / review_threshold / high_candidates_ratio）は
           # 読まない。書かれていたら UnifiedIndexManager#warn_retired_keys が移行を促す。
-          index: { auto_discovery: nil, title: nil, backlink_dedup: nil,
+          index: { auto_discovery: nil, title: nil,
                    target_terms: nil, candidate_pool: nil, auto_approve: nil,
                    common_term_ratio: nil,
                    # 主要参照（説明箇所）— index-main-reference-spec.md R6・R8
                    reference_style: nil, max_sub_references: nil, page_range_min: nil },
-          glossary: { title: nil, require_definition: nil, max_definition_length: nil,
-                      backlink_dedup: nil },
+          glossary: { title: nil, require_definition: nil, max_definition_length: nil },
           metrics: { use: nil, exclude_chapters: nil, kanji_ratio: nil, word_length: nil,
-                     ttr: nil, sentence_length: nil, clause_length: nil,
+                     ttr: nil, sentence_length: nil,
                      readability: nil, labels: nil },
           lint: { disabled_rules: nil, sentence_length_max: nil,
                   trim_long_vowel: nil, allow_space_around_code: nil, allow_space_between_ja_en: nil },
@@ -344,39 +360,10 @@ module VivlioStarter
                                    inner_margin: nil, outer_margin: nil },
                       page_separator: nil,
                       ocr: { mode: nil, languages: nil, dpi: nil, psm: nil, inline_image_text: nil } },
-          directories: default_directories,
-          cache: default_cache,
-          commands: default_commands,
-          vivliostyle: default_vivliostyle
         }
       end
 
       # --- Hardcoded Defaults (Data objects for immutability) ---
-      def default_directories
-        {
-          config: CONFIG_DIR,
-          contents: CONTENTS_DIR,
-          stylesheets: STYLESHEETS_DIR,
-          images: IMAGES_DIR,
-          data: DATA_DIR,
-          codes: CODES_DIR,
-          templates: TEMPLATES_DIR,
-          covers: COVERS_DIR,
-          # pdf:read の入力 PDF 置き場（任意設定・既定なし）
-          sources: nil
-        }
-      end
-
-      def default_cache = { dir: CACHE_DIR, enabled: true }
-      def default_commands = { vfm: VFM_COMMAND }
-
-      def default_vivliostyle
-        {
-          quiet: true,
-          reading_progression: 'ltr'
-        }
-      end
-
       def apply_page_preset(cfg)
         case cfg
         in { page: { **page_cfg } }
@@ -1068,14 +1055,20 @@ module VivlioStarter
       # ================================================================
 
       # ディレクトリ関連
-      def config_dir         = CONFIG&.directories&.config || CONFIG_DIR
+      #
+      # かつては book.yml の directories.* で改名できたが、2026-08-08 にシステム定数へ戻した。
+      # 設定として提供しながら**半分のコードしか見ていなかった**——定数直参照が 48 箇所、
+      # このメソッド経由が 43 箇所で、改名すると両者が別の場所を指す。加えて `vs create` の
+      # 案内文や原稿の解説（「contents/ に原稿を書きます」）がすべて嘘になる。
+      # メソッドは呼び出し 43 箇所のために残す（定数を返すだけ）。
+      def config_dir         = CONFIG_DIR
       def config_dir_path    = resolve_path_from_root(config_dir)
-      def contents_dir       = CONFIG&.directories&.contents || CONTENTS_DIR
-      def stylesheets_dir    = CONFIG&.directories&.stylesheets || STYLESHEETS_DIR
-      def images_dir         = CONFIG&.directories&.images || IMAGES_DIR
-      def data_dir           = CONFIG&.directories&.data || DATA_DIR
-      def templates_dir      = CONFIG&.directories&.templates || TEMPLATES_DIR
-      def covers_dir         = CONFIG&.directories&.covers || COVERS_DIR
+      def contents_dir       = CONTENTS_DIR
+      def stylesheets_dir    = STYLESHEETS_DIR
+      def images_dir         = IMAGES_DIR
+      def data_dir           = DATA_DIR
+      def templates_dir      = TEMPLATES_DIR
+      def covers_dir         = COVERS_DIR
 
       def template_path(name)
         File.join(templates_dir, "#{name}.md")
@@ -1086,10 +1079,9 @@ module VivlioStarter
       def appendix_template_path = template_path('appendix')
       def postface_template_path = template_path('postface')
 
-      # キャッシュ関連
-      def cache_cfg          = CONFIG&.cache
-      def cache_dir          = CONFIG&.cache&.dir || CACHE_DIR
-      def cache_enabled?     = CONFIG&.cache&.enabled != false
+      # キャッシュ関連（directories 同様、2026-08-08 にシステム定数へ戻した）
+      def cache_dir          = CACHE_DIR
+      def cache_enabled?     = true
 
       # 生成資産キャッシュ（covers 生成物・テーマ画像バリアント）。
       # cache.dir 設定で cache_dir が変わっても追従するようヘルパ経由で参照する。
@@ -1110,7 +1102,7 @@ module VivlioStarter
       end
 
       # コマンド関連
-      def vfm_command        = CONFIG&.commands&.vfm || VFM_COMMAND
+      def vfm_command        = VFM_COMMAND
 
       # カバー設定関連（CONFIG&. は CONFIG 未ロード（プロジェクト外）を吸収する。
       # 各セクションは既定値スキーマで存在保証されるため、以降はドットで辿れる）
@@ -1170,7 +1162,7 @@ module VivlioStarter
                       :authored_keys, :authored_key?, :warn_retired_config_keys, :collect_key_paths,
                       :ensure_external_command!, :external_command_available?,
                       :missing_external_command_message, :run_svg_converter!, :format_converter_stderr,
-                      :blank?, :cache_cfg, :cache_dir, :cache_enabled?,
+                      :blank?, :cache_dir, :cache_enabled?,
                       :cover_cache_dir, :theme_images_cache_dir, :generate_cover_output_filename,
                       :asset_prefix, :build_dir, :build_html_dir, :build_pdf_dir,
                       :index_matches_file, :ensure_build_workspace!,
@@ -1183,10 +1175,10 @@ module VivlioStarter
                       :print_pdf_full_bleed?,
                       :current_log_level, :apply_log_level!, :resolve_log_level, :log_option_value,
                       :warn_unknown_log_level,
-                      :current_step_label, :deep_merge_config, :default_cache,
+                      :current_step_label, :deep_merge_config,
                       :build_direct_configuration, :direct_page_settings, :install_configuration!,
-                      :default_commands, :default_config_schema, :default_directories,
-                      :default_vivliostyle, :log_always, :ensure_cache_dir!,
+                      :default_config_schema,
+                      :log_always, :ensure_cache_dir!,
                       :ensure_required_yaml_files!, :required_yaml_files_loadable?,
                       :generate_compressed_pdf_filename, :generate_epub_filename,
                       :generate_kpf_filename, :generate_kindle_epub_filename,

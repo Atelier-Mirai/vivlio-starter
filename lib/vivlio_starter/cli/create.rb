@@ -1107,7 +1107,7 @@ module VivlioStarter
       # config/book.yml からタイトルとサブタイトルを取得する
       def extract_title_and_subtitle
         book = Common::CONFIG.book
-        title    = (book.main_title || book.title || '').to_s
+        title    = (book.main_title || '').to_s
         subtitle = (book.subtitle || '').to_s
         [title, subtitle]
       end

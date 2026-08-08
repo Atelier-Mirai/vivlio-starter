@@ -350,7 +350,7 @@ module VivlioStarter
           esc = ->(s) { s.to_s.gsub('\\', '\\\\').gsub("'", "\\'") }
 
           # メタデータ解決は VivliostyleConfigWriter へ一本化する（P3-4 §2.6）。
-          # title は book.title 明示 → main_title + subtitle 合成 → プレースホルダ、
+          # title は main_title + subtitle 合成 → プレースホルダ、
           # author / language は空文字もプレースホルダへ寄せる（vivliostyle 11 の
           # config スキーマが 1 文字以上を要求するため）。規則の二重管理を避け、
           # ルート config・パイプライン config・EPUB config で同一値を保証する。

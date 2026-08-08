@@ -126,8 +126,7 @@ module VivlioStarter
         assert_nil cfg.lint.disabled_rules
         assert_nil cfg.spellcheck.extra_dictionaries
         assert_nil cfg.pdf_read.ocr.mode
-        assert_equal 'contents', cfg.directories.contents
-        assert_equal true, cfg.vivliostyle.quiet
+        assert_equal true, cfg.page.section_pagebreak
       end
 
       # deep merge: 入れ子の部分指定でも兄弟キーが既定値スキーマから残る
@@ -141,11 +140,11 @@ module VivlioStarter
 
       # 空欄キー（nil）は既定値を採用し、false は明示設定として尊重する
       def test_should_keep_default_for_nil_and_respect_explicit_false
-        nil_merged = Common.merge_hardcoded_defaults(vivliostyle: { quiet: nil })
-        false_merged = Common.merge_hardcoded_defaults(vivliostyle: { quiet: false })
+        nil_merged = Common.merge_hardcoded_defaults(page: { section_pagebreak: nil })
+        false_merged = Common.merge_hardcoded_defaults(page: { section_pagebreak: false })
 
-        assert_equal true, nil_merged[:vivliostyle][:quiet]
-        assert_equal false, false_merged[:vivliostyle][:quiet]
+        assert_equal true, nil_merged[:page][:section_pagebreak]
+        assert_equal false, false_merged[:page][:section_pagebreak]
       end
 
       # スキーマ外のセクション・キーは従来どおり素通しする（自由拡張の維持）
@@ -200,7 +199,7 @@ module VivlioStarter
         assert_equal '最小構成', Common::CONFIG.book.main_title
         assert_nil Common::CONFIG.lint.disabled_rules
         assert_nil Common::CONFIG.project.name
-        assert_equal true, Common::CONFIG.vivliostyle.quiet
+        assert_equal true, Common::CONFIG.page.section_pagebreak
       end
     end
 

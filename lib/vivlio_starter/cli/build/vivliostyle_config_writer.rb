@@ -115,12 +115,9 @@ module VivlioStarter
           JS
         end
 
-        # book.title（明示）→ main_title + subtitle 合成 → プレースホルダ。
+        # main_title + subtitle 合成 → プレースホルダ。
         def resolve_title
           book = Common::CONFIG.book
-          title_raw = book.title.to_s.strip
-          return title_raw unless title_raw.empty?
-
           combined = [book.main_title, book.subtitle].compact.map { it.to_s.strip }.reject(&:empty?).join(' ')
           combined.empty? ? '書籍タイトル' : combined
         end
