@@ -56,7 +56,7 @@ if Dir.exist?(covers_dir)
   puts "PRUNE covers/ の開発ローカルファイル #{removed.size} 件を除去 (#{keep_exts.join(' / ')} 以外)"
 end
 
-FILES = %w[README.md .gitignore package.json].freeze
+FILES = %w[.gitignore package.json].freeze
 
 FILES.each do |file|
   src = File.join(__dir__, file)
@@ -69,6 +69,20 @@ FILES.each do |file|
 
   FileUtils.cp(src, dst, verbose: false)
   puts "COPY  #{file} -> lib/project_scaffold/#{file}"
+end
+
+# ================================================================
+# 著者のプロジェクト用 README
+# ================================================================
+# ルートの README.md は gem のリポジトリを訪れた人へ向けたもので、ライセンスや
+# 開発者向け情報まで載っている。`vs new` した著者の手元に置かれるのは「あなたの
+# 本のプロジェクト」なので、別に用意した README を配る。
+scaffold_readme = File.join(__dir__, 'docs', 'scaffold-README.md')
+if File.exist?(scaffold_readme)
+  FileUtils.cp(scaffold_readme, File.join(SCAFFOLD, 'README.md'), verbose: false)
+  puts 'COPY  docs/scaffold-README.md -> lib/project_scaffold/README.md'
+else
+  puts 'SKIP  docs/scaffold-README.md (not found)'
 end
 
 # ================================================================
