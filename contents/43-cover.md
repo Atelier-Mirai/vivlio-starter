@@ -15,7 +15,7 @@ Vivlio Starter では、`vs cover` コマンドを使用して、カバー画像
 ```yaml
 output:
   # 開発者提供のデザインを使う場合
-  cover: light   # 明るいテーマ（デフォルト）
+  cover: light   # 明るいテーマ
   # cover: dark  # 暗いテーマ
 
   # 著者が用意した独自デザインを使う場合
@@ -26,7 +26,7 @@ output:
 
 ### テーマ別のソースファイル探索順
 
-`cover: <テーマ名>` を指定すると、以下の順でソースファイルを探索します：
+`cover: <テーマ名>` を指定すると、以下の順でソースファイルを探索します。
 
 | 優先順位 | 探索先 | 説明 |
 |:---:|:---|:---|
@@ -34,7 +34,7 @@ output:
 | 2 | `covers/frontcover_<テーマ名>.svg` | 著者が用意した SVG |
 | 3 | `covers/bundled/frontcover.svg` | 開発者提供のテンプレート SVG |
 
-例えば `cover: dark` の場合：
+例えば `cover: dark` の場合。
 1. `covers/frontcover_dark.png` があればそれを使用
 2. なければ `covers/frontcover_dark.svg` を使用
 3. どちらもなければ `covers/bundled/frontcover.svg` に dark パレットを適用して使用
@@ -88,7 +88,7 @@ output:
 
 ### 基本的な使い方
 
-最もシンプルな使い方は、引数なしで `vs cover` を実行することです：
+最もシンプルな使い方は、引数なしで `vs cover` を実行することです。
 
 ```bash
 vs cover
@@ -98,22 +98,26 @@ vs cover
 
 ### 生成されるファイル
 
-`book.yml` の設定に応じて、以下のファイルが生成されます：
+著者が置くのは `covers/` のソース画像だけです。そこから作られたカバーは、原稿と混ざらないよう `.cache/vs/covers/` に書き出されます。
 
 ```
-covers/
-├── frontcover_master.png      # マスター（手動配置）
-├── backcover_master.png       # マスター（手動配置）
-├── frontcover_rgb.pdf         # PDF用表紙（A4、RGB）
-├── backcover_rgb.pdf          # PDF用裏表紙（A4、RGB）
-├── frontcover_cmyk.pdf        # 印刷用表紙（B5/A5、CMYK、PDF/X-1a）
-├── backcover_cmyk.pdf         # 印刷用裏表紙（B5/A5、CMYK、PDF/X-1a）
-└── cover.jpg                  # EPUB用カバー（1600×2560、JPEG）
+covers/                              ← 著者が置く
+├── frontcover_master.png
+└── backcover_master.png
+
+.cache/vs/covers/                    ← vs cover が作る
+├── frontcover_master_b5_rgb.pdf     # 閲覧用表紙（RGB）
+├── backcover_master_b5_rgb.pdf      # 閲覧用裏表紙（RGB）
+├── frontcover_master_b5_cmyk.pdf    # 印刷用表紙（CMYK・PDF/X-1a）
+├── backcover_master_b5_cmyk.pdf     # 印刷用裏表紙（CMYK・PDF/X-1a）
+└── cover_master.jpg                 # EPUB 用カバー（1600×2560・JPEG）
 ```
+
+ファイル名は `<面>cover_<テーマ名>_<判型>_<色空間>.pdf` の形に決まります。テーマや判型を切り替えても前の生成物と混ざらないため、`cover: light` と `cover: dark` を行き来しながら見比べられます。名前を著者が指定することはありません。
 
 ### フォーマット別の生成
 
-特定のフォーマットのみを生成したい場合は、生成対象を引数で指定します：
+特定のフォーマットのみを生成したい場合は、生成対象を引数で指定します。
 
 ```bash
 # A4サイズのRGB版PDFのみ生成
@@ -135,32 +139,9 @@ vs cover epub
 `book.yml` でカバー画像のファイル名や出力先を自由にカスタマイズできます。
 :::
 
-### ファイル名の設定
-
-`book.yml` の `output` セクションで、各フォーマットのファイル名を指定します：
-
-```yaml
-output:
-  # PDF用カバー（RGB版）
-  pdf:
-    cover:
-      front: frontcover_rgb.pdf  # 表表紙
-      back: backcover_rgb.pdf    # 裏表紙
-  
-  # 印刷用PDF（CMYK版、PDF/X-1a）
-  print_pdf:
-    cover:
-      front: frontcover_cmyk.pdf  # 表表紙
-      back: backcover_cmyk.pdf    # 裏表紙
-  
-  # EPUB用カバー
-  epub:
-    cover: cover.jpg  # EPUBカバー画像（1600×2560推奨）
-```
-
 ### ページサイズの自動判定
 
-印刷用PDF（CMYK版）のサイズは、`book.yml` の `page.use` 設定から自動判定されます：
+印刷用PDF（CMYK版）のサイズは、`book.yml` の `page.use` 設定から自動判定されます。
 
 ```yaml
 page:
@@ -179,7 +160,7 @@ page:
 
 **用途**: PDF閲覧、電子配布
 
-- **サイズ**: A4（210 × 297 mm）
+- **サイズ**: `page.use` の判型に合わせる（B5 なら 182 × 257 mm）
 - **解像度**: 350 dpi
 - **カラーモード**: RGB
 - **ファイル形式**: PDF（通常）
@@ -234,14 +215,14 @@ PDF/X-1a は、商業印刷用の国際標準規格です。CMYK カラーモー
 vs clean --cover
 ```
 
-このコマンドは、`book.yml` の設定に基づいて、生成されたカバー画像のみを削除します：
+このコマンドは、`book.yml` の設定に基づいて、生成されたカバー画像のみを削除します。
 
-- ✅ **削除される**: 生成されたPDF、JPEG（`book.yml` で指定されたファイル）
+- ✅ **削除される**: `.cache/vs/covers/` に生成された PDF・JPEG
 - ✅ **保持される**: マスター画像（`*_master.png`）
 
 ### 複数のオプションとの組み合わせ
 
-`vs clean` コマンドは、複数のオプションを同時に指定できます：
+`vs clean` コマンドは、複数のオプションを同時に指定できます。
 
 ```bash
 # カバー画像とキャッシュを削除
@@ -262,7 +243,7 @@ vs clean --cover --cache --purge
 **症状**: コマンド実行時に警告が表示される
 
 ```
-⚠️  表紙マスターが見つかりません: covers/frontcover_master.png
+🟡 表紙マスターが見つかりません: covers/frontcover_master.png
 ```
 
 **原因**: マスター画像が指定された場所に存在しない
@@ -270,7 +251,7 @@ vs clean --cover --cache --purge
 **解決方法**:
 1. `covers/` ディレクトリが存在するか確認
 2. ファイル名が `frontcover_master.png` および `backcover_master.png` になっているか確認
-3. `book.yml` の `directories.covers` 設定を確認
+3. `book.yml` の `output.cover` に書いたテーマ名と、置いた画像の名前が合っているか確認
 
 ### 必要なツールがインストールされていない
 
@@ -288,14 +269,14 @@ vs doctor --fix
 brew install imagemagick ghostscript
 
 # 確認
-convert --version
+magick -version
 gs --version
 ```
 
 :::{.note}
 **ツールの診断**
 
-`vs doctor` コマンドで、必要なツールがインストールされているか確認できます：
+`vs doctor` コマンドで、必要なツールがインストールされているか確認できます。
 
 ```bash
 vs doctor
@@ -330,7 +311,7 @@ vs doctor
 vs cover
 
 # 3. 生成されたファイルを確認
-ls -lh covers/
+ls -lh .cache/vs/covers/
 ```
 
 ### デザインの修正と再生成
@@ -354,9 +335,9 @@ vs build
 # 1. 印刷用PDFのみを再生成
 vs cover b5  # または vs cover a5
 
-# 2. 生成されたCMYK版PDFを確認
-open covers/frontcover_cmyk.pdf
-open covers/backcover_cmyk.pdf
+# 2. 生成されたCMYK版PDFを確認（テーマが master・判型が B5 の場合）
+open .cache/vs/covers/frontcover_master_b5_cmyk.pdf
+open .cache/vs/covers/backcover_master_b5_cmyk.pdf
 
 # 3. PDF/X-1a準拠であることを確認（Adobe Acrobat推奨）
 
@@ -369,12 +350,12 @@ open covers/backcover_cmyk.pdf
 `vs cover` コマンドを活用することで、カバー画像の生成作業を大幅に効率化できます。
 :::
 
-本章で学んだ内容：
+本章で学んだ内容は次のとおりです。
 
-- ✅ マスター画像の準備方法（A4サイズ、350 dpi、PNG形式）
+- ✅ ソース画像の準備（判型に合わせたサイズ・350 dpi・PNG または SVG）
+- ✅ `book.yml` の `output.cover` によるテーマの選択
 - ✅ `vs cover` コマンドによる一括生成
 - ✅ フォーマット別の生成（RGB版、CMYK版、EPUB用）
-- ✅ `book.yml` でのカスタマイズ
 - ✅ `vs clean --cover` による削除
 - ✅ トラブルシューティング
 
