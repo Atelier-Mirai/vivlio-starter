@@ -1,7 +1,7 @@
 # 既定値と廃止値の持ち方 — 仕様
 
 対象: `lib/vivlio_starter/cli/common.rb` の設定層を整理する開発者
-策定日: 2026-08-08 / 状態: **設計確定・未実装** ／ 次: §5 の残る未決 1 点を実装時に決めて着手
+策定日: 2026-08-08 / 状態: **実装完了（2026-08-08・コミット 1e86d66e）**
 
 ---
 
@@ -358,3 +358,55 @@ Spec[defualt: 500]   # → ArgumentError: unknown keyword: :defualt
 - `config-extension-guidelines.md` — キーの足し方（`CONFIG` アクセスの型）
 - `config-retirement-guidelines.md` — キーのやめ方（`RETIRED_CONFIG_KEYS`）
 - `config-access-unification-spec.md`（archives）— 現在の `CONFIG` を作った仕様
+
+
+---
+
+## 10. 実装記録（2026-08-08）
+
+### 10.1 設計どおりに運んだこと
+
+- `Spec = Data.define(:default, :retired, :authored)` と 142+20 件の表
+  （`lib/vivlio_starter/cli/config_keys.rb`・279 行）
+- 3 表（`default_config_schema` / `RETIRED_CONFIG_KEYS` / `REQUIRED_BOOK_KEYS`）が
+  すべて導出になった
+- §2.1 の食い違いは表の導入だけで自動的に解消した（値を手で直していない）
+- `resolve_preset` を `deep_merge_config` へ寄せ、部分上書きバグが解けた
+
+### 10.2 設計の想定が崩れた点
+
+**「3 状態のうち 1 つだけを与える」という検査は成立しない。**
+`Spec[]` と `Spec[default: nil]` は Ruby の Data では同一オブジェクトで区別できず、
+かつ `nil` は正当な既定値である（`spellcheck.extra_dictionaries` は「追加辞書なし」を
+`nil` で表す）。
+
+→ `authored:` と `retired:` の排他だけを検査し、**どちらでもないものを既定値キーと読む**。
+`§5 の残る未決（authored: の CONFIG 上の表現）`は `nil` で確定した。
+
+### 10.3 実装中に見つかった 7 件目の食い違い
+
+事前調査（§2.1）は 6 件としていたが、`page.section_pagebreak` も
+スキーマ `true` / `book.yml` `false` でずれていた。**狙って探すより、
+表を作って機械に突き合わせさせるほうが速く網羅的だった**という教訓。
+
+### 10.4 フォールバック撤去の線引き
+
+`CONFIG` 由来と確認できた読み出し（`@config[:context_width] || 40` など 8 箇所）は
+リテラルごと撤去した。一方、**任意のハッシュを受け取る設計のクラス**
+（`Metrics::ConfigLoader`・`LinkImageValidator`）は seam を残す必要があるため、
+`|| ConfigKeys::KEYS[...].default` に置き換えて二重管理だけ解消した。
+
+「フォールバックを全部消す」ではなく「**リテラルの重複を消す**」が正しい目標だった。
+
+### 10.5 副次的な修正
+
+`output.cover` の既定値が `master` になり「未設定」の状態が消えたため、
+`validate_cover_settings` の未設定エラーを削除した。従来も `cover.rb` が
+`|| 'master'` で補っており実際の出力は同じで、画像が無い場合は後続の存在チェックが
+具体的に指摘する。
+
+### 10.6 残作業
+
+- `config-retirement-guidelines.md` §3・§4 は現状の説明として書いたので、
+  `CONFIG_KEYS` 前提に書き直す
+- `contents/61-developer.md` の設定層の説明（これで着手可能になった）
