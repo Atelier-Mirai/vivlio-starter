@@ -41,12 +41,12 @@ book:
 # ======= プロジェクト情報 =======
 project:
   name: "{{PROJECT_NAME}}" # 出力ファイル名のベース
-  version: "1.0.0" # 書籍のバージョン（デフォルト: 0.1.0）
+  version: "0.1.0" # 書籍のバージョン（デフォルト: 0.1.0）
 
 # ======= テーマ =======
 theme:
   # ------- テーマカラー -------
-  color:  navy  # yellow / orange / red / magenta
+  color:  green # yellow / orange / red / magenta
                 # purple / indigo / navy / blue
                 # cyan / teal / green / lime から選択
                 # '#ff0000' のような HEX 記法も指定可
@@ -156,7 +156,7 @@ output:
   # ------- PDF プレビュー設定（macOS のみ） -------
   pdf_preview:
     close_existing_windows: true # 既存PDFウィンドウを閉じる
-    window_bounds: "{4096, 0, 5120, 2160}"    # PDF表示位置とサイズ（5Kモニターの右側1/5）
+    window_bounds: "{0, 0, 1280, 960}"    # PDF を表示する位置とサイズ
     # window_bounds: "{0, 0, 1024, 768}"      # 左上角に小さなウィンドウ
     # window_bounds: "{1920, 0, 1920, 1080}"  # モニター全画面（フルHD）
 
@@ -170,7 +170,7 @@ output:
     combined: true  # true で front/backcover を結合、false で除外
     compress: false # 自動圧縮を有効にするか（処理時間が増加）
                     # vs build --compress / --no-compress で上書き可能
-    techbook: true  # 技術書典向け Techbook モード（既定は無効）
+    techbook: true  # 技術書典向け Techbook モード（既定は有効）
                     # カラー絵文字を Twemoji 画像へ差し替え、
                     # 入稿できない Type 3 フォント化を防ぎます
                     # 画像を使うのでクレジット表記が要ります（legal.twemoji）

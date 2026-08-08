@@ -224,7 +224,7 @@ output:
 output:
   pdf_preview:
     close_existing_windows: true
-    window_bounds: "{4096, 0, 5120, 2160}"
+    window_bounds: "{0, 0, 1280, 960}"
 ```
 :::
 

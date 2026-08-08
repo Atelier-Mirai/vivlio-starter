@@ -101,6 +101,17 @@ if File.exist?(book_yml)
   # 扉絵は季節を選ばない桜を既定にする（ルートは himawari を選んでいる）
   content.gsub!(/^(\s+image:\s*)himawari(\s*#.*)?$/, '\1sakura\2')
 
+  # ルートの値がそのまま配布物の既定になると具合が悪いものを、配布向けの値へ。
+  # ここを書き換えたら ConfigKeys::KEYS の default: も合わせること
+  # （config_keys_test.rb が scaffold の book.yml と突き合わせる）。
+  #   version      … 本書は 1.0.0 だが、新しく始める本は 0.1.0 から
+  #   window_bounds … ルートは 5K の外部モニタ向け。一般的な画面に収まる値へ
+  content.gsub!(/^(\s+version:\s*)(['"].+?['"])(\s*#.*)?$/, '\1"0.1.0"\3')
+  # 行末コメントごと差し替える（ルートのコメントは 5K モニタ前提の説明なので、
+  # 値だけ替えると配布物で値と説明が食い違う）
+  content.gsub!(/^(\s+window_bounds:\s*)(['"].+?['"])(\s*#.*)?$/,
+                '\1"{0, 0, 1280, 960}"    # PDF を表示する位置とサイズ')
+
   File.write(book_yml, content, encoding: 'utf-8')
   puts "TMPL  config/book.yml -> テンプレート記法に置換しました"
 end

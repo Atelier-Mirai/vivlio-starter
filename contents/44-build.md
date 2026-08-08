@@ -127,7 +127,7 @@ macOS では、ビルド完了後に自動的にプレビューアプリで PDF 
 output:
   pdf_preview:
     close_existing_windows: true            # 既存ウィンドウを閉じる
-    window_bounds: "{4096, 0, 5120, 2160}"  # 表示位置とサイズ
+    window_bounds: "{0, 0, 1280, 960}"      # 表示位置とサイズ
 ```
 
 
@@ -465,7 +465,7 @@ output:
   # PDF プレビュー設定（macOS のみ）
   pdf_preview:
     close_existing_windows: true
-    window_bounds: "{0, 0, 1024, 768}"
+    window_bounds: "{0, 0, 1280, 960}"
 
   # 閲覧用 PDF
   pdf:
