@@ -443,6 +443,13 @@ module VivlioStarter
               # 脚注定義行はスキップ
               next if line_without_inline_code.match?(/^\[\^[^\]]+\]:/)
 
+              # 参照リンクの定義行（`[ref]: https://…`）もスキップする。CommonMark の
+              # 標準記法で「本文に直書きされた裸 URL」ではない。この行の URL は
+              # `[テキスト][ref]` から参照される先なので、リンク記法への書き換えを
+              # 促しても直しようがない（雛形 templates/chapter.md がまさにこれで
+              # 毎回 🟡 を出していた）。
+              next if line_without_inline_code.match?(/^\s*\[[^\]]+\]:\s*\S/)
+
               # 裸 URL を検出（Markdown リンク記法の中にある URL は除外）
               # ](https://...) や [text](https://...) は正規のリンク記法
               line_without_inline_code.scan(%r{(?<!\]\()(?<!\()https?://[^\s)\]>]+}) do |url|

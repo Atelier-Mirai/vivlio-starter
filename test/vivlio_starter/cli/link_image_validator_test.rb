@@ -127,6 +127,31 @@ module VivlioStarter
           assert_empty report.link_issues
         end
 
+        # 参照リンクの定義行の URL は裸 URL として検出されないこと
+        def test_should_skip_reference_link_definition_urls
+          content = <<~MD
+            参照リンク: [リンクテキスト][ref]
+
+            [ref]: https://example.com
+          MD
+
+          report = LinkImageValidator.validate(content, 'test.md')
+
+          assert_empty report.link_issues
+        end
+
+        # 参照リンクの定義に見えても、本文中の裸 URL は検出されること
+        def test_should_detect_bare_url_after_bracket_text
+          content = <<~MD
+            [参考] https://example.com を見てください。
+          MD
+
+          report = LinkImageValidator.validate(content, 'test.md')
+
+          assert_equal 1, report.link_issues.size
+          assert_equal :bare_url, report.link_issues.first.issue_type
+        end
+
         # クエリパラメータ付き裸 URL が正しく検出されること
         def test_should_detect_bare_url_with_query_params
           content = <<~MD
