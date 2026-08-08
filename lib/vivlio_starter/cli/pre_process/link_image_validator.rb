@@ -58,25 +58,21 @@ module VivlioStarter
             end
           end
 
-          # ファイル単位の検証を実行し、レポートを蓄積する
-          # @param content [String] Markdown テキスト（画像パス正規化済み）
+          # 原稿に書かれたリンクを検証する。**前処理にかける前の原稿**へ適用すること。
+          #
+          # 裸 URL の対象は著者が原稿へ直に書いたものだけで、前処理が生成する要素
+          # （`@qr` の `<img alt="URL">` など）は含まない。原稿をそのまま見るので
+          # 行番号の付け替えが要らない——同じ URL が何度も出てくる原稿でも、
+          # 指摘した行がそのまま著者の手元の行になる。
+          #
+          # @param content [String] Markdown テキスト（前処理前の原稿）
           # @param filename [String] 対象ファイル名
-          # @param source_path [String, nil] 元ファイルのパス（行番号補正用）
-          # @param config [Hash] 検証設定（verify_images, verify_bare_urls, verify_external_links）
-          def validate(content, filename, source_path: nil, config: resolve_config)
-            source_content = source_path && File.exist?(source_path) ? File.read(source_path, encoding: 'utf-8') : nil
-
-            image_issues = config[:verify_images] ? scan_missing_images(content, filename) : []
+          # @param config [Hash] 検証設定（verify_bare_urls, verify_external_links）
+          # @return [Array<LinkIssue>]
+          def validate_links(content, filename, config: resolve_config)
             link_issues = config[:verify_bare_urls] ? scan_bare_urls(content, filename) : []
 
-            # 行番号を元ファイルの行番号に補正する
-            if source_content
-              image_issues = image_issues.map { correct_line_number(it, source_content) }
-              link_issues = link_issues.map { correct_link_line_number(it, source_content) }
-            end
-
-            # 補正後の行番号でログを出力
-            link_issues.select { it.issue_type == :bare_url }.each do |issue|
+            link_issues.each do |issue|
               Common.log_warn(
                 "#{issue.filename}:#{issue.line_number} - 裸 URL を検出しました",
                 detail: "URL: #{issue.url}"
@@ -94,12 +90,40 @@ module VivlioStarter
             end
 
             # 章別サマリー用の横断集計へブリッジする（preflight-chapter-summary-spec.md §2.2）。
-            # 逐次ログは上記のとおり各所で既に出しているため、ここでは記録だけ行う。
-            (image_issues + link_issues).each { record_to_registry(it) }
+            link_issues.each { record_to_registry(it) }
+            merge_into_report(filename, link_issues: link_issues)
+            link_issues
+          end
 
-            report = ValidationReport.new(filename:, image_issues:, link_issues:)
-            @monitor.synchronize { @reports << report }
-            report
+          # 画像の存在を検証する。パス正規化とデータ展開の**あと**に適用すること。
+          #
+          # 解決済みのパスでないとファイルの有無を判定できないため、この時点の行番号は
+          # 原稿とずれている。`source_path` を渡すと元ファイルから同じ画像を含む行を
+          # 引き当てて付け替える（同じ画像を何度も使う原稿では最初の行に丸まる）。
+          #
+          # @param content [String] Markdown テキスト（画像パス正規化済み）
+          # @param filename [String] 対象ファイル名
+          # @param source_path [String, nil] 元ファイルのパス（行番号の付け替え用）
+          # @param config [Hash] 検証設定（verify_images）
+          # @return [Array<ImageIssue>]
+          def validate_images(content, filename, source_path: nil, config: resolve_config)
+            image_issues = config[:verify_images] ? scan_missing_images(content, filename) : []
+
+            source_content = source_path && File.exist?(source_path) ? File.read(source_path, encoding: 'utf-8') : nil
+            image_issues = image_issues.map { correct_line_number(it, source_content) } if source_content
+
+            image_issues.each { record_to_registry(it) }
+            merge_into_report(filename, image_issues: image_issues)
+            image_issues
+          end
+
+          # リンクと画像をまとめて検証する（単発の検証向けの入口）。
+          # ビルドの前処理は、それぞれを正しい段階で呼ぶために分けて使う。
+          # @return [ValidationReport]
+          def validate(content, filename, source_path: nil, config: resolve_config)
+            image_issues = validate_images(content, filename, source_path:, config:)
+            link_issues = validate_links(content, filename, config:)
+            ValidationReport.new(filename:, image_issues:, link_issues:)
           end
 
           # 蓄積された外部 URL に対して HTTP 到達性チェックを実行する
@@ -208,22 +232,27 @@ module VivlioStarter
               image_path: code_name,
               issue_type: :missing_code
             )
+            merge_into_report(filename, image_issues: [issue])
+            record_to_registry(issue)
+          end
+
+          # 同じファイルのレポートへ issue を足し込む。
+          # 検証は段階ごとに分かれて走る（リンクは原稿、画像はパス解決後、コード
+          # インクルードはさらにあと）が、集計は 1 ファイル 1 レポートに保つ。
+          def merge_into_report(filename, image_issues: [], link_issues: [])
             @monitor.synchronize do
-              report = @reports.find { it.filename == filename }
-              if report
-                idx = @reports.index(report)
+              idx = @reports.index { it.filename == filename }
+              if idx
+                prev = @reports[idx]
                 @reports[idx] = ValidationReport.new(
-                  filename: report.filename,
-                  image_issues: report.image_issues + [issue],
-                  link_issues: report.link_issues
+                  filename: prev.filename,
+                  image_issues: prev.image_issues + image_issues,
+                  link_issues: prev.link_issues + link_issues
                 )
               else
-                # process_code_includes! は validate の後に実行されるため、
-                # レポートが存在しない場合は新規作成する
-                @reports << ValidationReport.new(filename:, image_issues: [issue], link_issues: [])
+                @reports << ValidationReport.new(filename:, image_issues:, link_issues:)
               end
             end
-            record_to_registry(issue)
           end
 
           private
@@ -432,7 +461,7 @@ module VivlioStarter
             issues = []
 
             # コードフェンスの除外は Masking（唯一の実装）に委ねる。
-            Masking.each_prose_line(content) do |line, line_number|
+            Masking.each_prose_line(blank_out_html_comments(content)) do |line, line_number|
               # インラインコード内はスキップ
               line_without_inline_code = line.gsub(/`[^`]+`/, '')
               # HTML タグの属性値（<a href="…"> / <img alt="…">）は「本文に直書きされた
@@ -451,8 +480,11 @@ module VivlioStarter
               next if line_without_inline_code.match?(/^\s*\[[^\]]+\]:\s*\S/)
 
               # 裸 URL を検出（Markdown リンク記法の中にある URL は除外）
-              # ](https://...) や [text](https://...) は正規のリンク記法
-              line_without_inline_code.scan(%r{(?<!\]\()(?<!\()https?://[^\s)\]>]+}) do |url|
+              # ](https://...) や [text](https://...) は正規のリンク記法。
+              # `@qr:https://…` は QR コード記法の引数で、著者が読ませたい URL では
+              # ないので除外する（前処理後は <img> になり上の gsub で落ちるが、
+              # この検証は原稿に対して走るため、ここで名指しで外す必要がある）。
+              line_without_inline_code.scan(%r{(?<!\]\()(?<!\()(?<!@qr:)https?://[^\s)\]>]+}) do |url|
                 # Markdown リンクの URL 部分として使われていないか再確認
                 # [text](URL) のパターンに含まれる URL は脚注化で処理済み
                 next if line.include?("](#{url})")
@@ -469,6 +501,13 @@ module VivlioStarter
             end
 
             issues
+          end
+
+          # HTML コメントの中身を空白へ潰す（改行は残して行数を保つ）。
+          # コメントアウトされた記述の URL を「裸 URL」と指摘しても直しようがない。
+          # 行数を保つのは、この検証が原稿の行番号をそのまま使うため。
+          def blank_out_html_comments(content)
+            content.gsub(/<!--.*?-->/m) { it.gsub(/[^\n]/, ' ') }
           end
 
           # --- Phase: 外部 URL 収集 ---

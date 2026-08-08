@@ -127,6 +127,39 @@ module VivlioStarter
           assert_empty report.link_issues
         end
 
+        # 同じ URL が何度も出てくる原稿でも、裸 URL の行番号が丸められないこと
+        def test_should_report_actual_line_of_bare_url
+          content = <<~MD
+            1 行目: [リンク](https://example.com) は正規の記法です。
+            2 行目
+            3 行目
+            4 行目: https://example.com が裸 URL です。
+          MD
+
+          issues = LinkImageValidator.validate_links(content, 'test.md')
+
+          assert_equal 1, issues.size
+          assert_equal 4, issues.first.line_number
+        end
+
+        # HTML コメント内の URL は裸 URL として検出されないこと
+        def test_should_skip_urls_in_html_comments
+          content = <<~MD
+            <!-- https://example.com はコメントアウトされています -->
+          MD
+
+          assert_empty LinkImageValidator.validate_links(content, 'test.md')
+        end
+
+        # QR コード記法の URL は裸 URL として検出されないこと
+        def test_should_skip_qr_directive_urls
+          content = <<~MD
+            サンプルはこちら: @qr:https://example.com
+          MD
+
+          assert_empty LinkImageValidator.validate_links(content, 'test.md')
+        end
+
         # 参照リンクの定義行の URL は裸 URL として検出されないこと
         def test_should_skip_reference_link_definition_urls
           content = <<~MD

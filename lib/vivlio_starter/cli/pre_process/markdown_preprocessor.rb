@@ -85,13 +85,14 @@ module VivlioStarter
         def run
           Common.log_info("#{context.source_path} → #{context.output_path}")
           validate_directives!
+          validate_links!
           apply_frontmatter!
           strip_html_comments!
           transform_terminal_blocks!
           process_data_streams!
           normalize_image_paths!
           transform_qr_codes!
-          validate_links_and_images!
+          validate_images!
           transform_showcases!
           transform_mermaid!
           transform_talk!
@@ -192,9 +193,20 @@ module VivlioStarter
           Common.log_success("画像パスを修正しました: #{context.filename}")
         end
 
-        # リンク・画像の自動検証を実行する
-        def validate_links_and_images!
-          LinkImageValidator.validate(context.content, context.filename, source_path: context.source_path)
+        # 原稿のリンクを検証する。
+        # `validate_directives!` と同じ理由でパイプラインの手前に置く——この時点の
+        # content は加工前の原稿と 1 行ずつ一致しており、著者に示す行番号がずれない。
+        # 前処理を経たあとに検証すると、同じ URL が複数回出てくる原稿で「最初の
+        # 出現」へ丸められてしまう（行番号の付け替えが URL 一致で行を探すため）。
+        def validate_links!
+          LinkImageValidator.validate_links(context.content, context.filename)
+        end
+
+        # 画像の存在を検証する。
+        # 相対パスの解決（normalize_image_paths!）とデータ展開のあとでなければ、
+        # 実ファイルの有無を判定できない。
+        def validate_images!
+          LinkImageValidator.validate_images(context.content, context.filename, source_path: context.source_path)
         end
 
         # 図解注釈記法 :::{.showcase} を「元画像＋注釈を焼き込んだ合成 SVG」へ変換する
