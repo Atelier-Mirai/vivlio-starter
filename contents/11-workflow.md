@@ -158,8 +158,14 @@ bin/install-ruby.zsh
 
 ```bash
 exec zsh -l
-ruby -v   # ruby 4.0.2 (2026-03-16 ...) と表示されれば OK
+ruby -v
 ```
+
+:::{.output}
+```text
+ruby 4.0.6 (2026-07-14 revision 03b6d3f889) +PRISM [arm64-darwin25]
+```
+:::
 
 macOS 以外の環境へ入れたい方や、何が導入されるのかを把握しておきたい方は、付録「インストール詳細」を参照してください。将来 Ruby を新しくするときも、同じスクリプトにバージョンを渡すだけです（`bin/install-ruby.zsh -v 4.1.0`）。
 

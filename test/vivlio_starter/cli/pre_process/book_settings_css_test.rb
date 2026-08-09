@@ -96,11 +96,11 @@ class BookSettingsCssThemeTest < Minitest::Test
   def test_should_resolve_ornament_chars_to_font_size_inversely
     a4 = { width: '210mm', height: '297mm', margin_inner: '26mm', margin_outer: '22mm', paper_scale: 1.0 }
 
-    # 版面 162mm − 飾り避け 34mm = 128mm を字数で割る
+    # 版面 162mm − 飾り避け 34mm = 128mm に余裕 4% を掛けて字数で割る
     assert_includes BSC.heading_metric_declarations({ ornament_heading_chars_value: 14 }, a4),
-                    '--section-title-font-size: 36.57Q;'
+                    '--section-title-font-size: 35.11Q;'
     assert_includes BSC.heading_metric_declarations({ ornament_heading_chars_value: 20 }, a4),
-                    '--section-title-font-size: 25.6Q;'
+                    '--section-title-font-size: 24.58Q;'
     # 極端な指定は本文との階層が壊れるため 20〜48Q に収める
     assert_includes BSC.heading_metric_declarations({ ornament_heading_chars_value: 4 }, a4),
                     '--section-title-font-size: 48Q;'
@@ -569,12 +569,36 @@ class BookSettingsCssSectionBreakSelectorTest < Minitest::Test
   # 飾り避け（padding-inline）が変わると 1 行の字数がずれるので、CSS 側の値を固定する。
   def test_should_pin_ornament_padding_that_the_font_size_conversion_assumes
     css = File.read(File.join(STYLESHEETS, 'image-header.css'))
-    assumed = BSC::SECTION_TITLE_ORNAMENT_PADDING_MM
 
     assert_match(/padding-inline:\s*clamp\(11mm,[^;]*16mm\)\s*clamp\(12mm,[^;]*18mm\)/m, css,
                  '節絵の飾り避け（padding-inline）が変わりました。' \
-                 "BookSettingsCss::SECTION_TITLE_ORNAMENT_PADDING_MM (#{assumed}) も合わせてください。")
-    assert_in_delta 34.0, assumed, 0.01, '16mm + 18mm = 34mm と一致していること'
+                 'BookSettingsCss::SECTION_TITLE_PADDING_LEFT_MM / _RIGHT_MM も合わせてください。')
+    assert_equal({ min: 11.0, base: 16.0 }, BSC::SECTION_TITLE_PADDING_LEFT_MM)
+    assert_equal({ min: 12.0, base: 18.0 }, BSC::SECTION_TITLE_PADDING_RIGHT_MM)
+  end
+
+  # 飾り避けは CSS 側が --paper-scale で縮めるので、Ruby も同じ式で求める。
+  # かつては 34.0mm（A4 の値）固定で、B5 では実際 29.4mm しか使われないのに
+  # 34.0 と見積もっていた。その差 4.6mm が字送りを小さくし「1 行 14 字」の指定に
+  # 4% の余裕を生んでいたが、A4 では見積もりが一致して余裕ゼロになり、
+  # 25 字の節題が 3 行へ落ちた（実測 2026-08-10）
+  def test_should_shrink_ornament_padding_with_the_paper_scale
+    assert_in_delta 34.0, BSC.section_title_ornament_padding_mm(1.0), 0.01, 'A4 は基準値そのまま'
+    assert_in_delta 29.42, BSC.section_title_ornament_padding_mm(0.8653), 0.01, 'B5 は用紙比で縮む'
+    assert_in_delta 23.0, BSC.section_title_ornament_padding_mm(0.5), 0.01, '下限 11 + 12 で止まる'
+  end
+
+  # 指定字数に対して意図的な余裕を持たせる。判型によらず同じ伸びしろにする
+  # ——B5 だけが偶然 4% の余裕を持っていた状態を、全判型へ明示的に配る。
+  def test_should_keep_the_same_headroom_across_paper_sizes
+    b5 = BSC.section_title_font_q(14, 137.0, 0.8653).to_f
+    a4 = BSC.section_title_font_q(14, 162.0, 1.0).to_f
+
+    b5_chars = (137.0 - BSC.section_title_ornament_padding_mm(0.8653)) / (b5 * 0.25)
+    a4_chars = (162.0 - BSC.section_title_ornament_padding_mm(1.0)) / (a4 * 0.25)
+
+    assert_in_delta b5_chars, a4_chars, 0.05, '1 行に入る字数が判型でぶれないこと'
+    assert_operator b5_chars, :>, 14.0, '指定字数より少しだけ多く入ること（余裕）'
   end
 
   # 見出しの前後の余白は「前 ≫ 後」でなければ、前節の末尾と次節の見出しが 1 つの塊に見える

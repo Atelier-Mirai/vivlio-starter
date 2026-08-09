@@ -10,13 +10,16 @@
 # 使い方（Usage）:
 #   bin/install-ruby.zsh                 # 対話モード、最新安定版を導入
 #   bin/install-ruby.zsh -y              # 非対話モード（自動確認）
-#   bin/install-ruby.zsh -v 4.0.2        # 特定の Ruby バージョンを導入
+#   bin/install-ruby.zsh -v 4.0.6        # 特定の Ruby バージョンを導入
 #   bin/install-ruby.zsh -y -v latest    # 全自動（最新安定版）
 #
 set -euo pipefail
 
-# フォールバック用の既知の安定版（ruby-lang.org で確認済み: 2026-03-16）
-FALLBACK_VERSION="4.0.2"
+# 自動解決できなかったときに入れる版。「最新版」ではなく
+# **Vivlio Starter が実際に試験している版**を置く（Rakefile の
+# SUPPORTED_RUBY_VERSIONS。install_ruby_script_test が一致を見張る）。
+# ここが外れると、解決に失敗した人だけ未検証の Ruby を掴むことになる。
+FALLBACK_VERSION="4.0.6"
 
 VERSION="latest"
 YES="false"

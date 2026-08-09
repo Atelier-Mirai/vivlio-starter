@@ -205,7 +205,7 @@ module VivlioStarter
           end
 
           if (chars = settings[:ornament_heading_chars_value])
-            lines << "--section-title-font-size: #{section_title_font_q(chars, text_mm)}Q;"
+            lines << "--section-title-font-size: #{section_title_font_q(chars, text_mm, scale)}Q;"
           end
 
           lines
@@ -236,14 +236,37 @@ module VivlioStarter
         # 節題の基準フォントサイズ（Q）。節絵の帯は版面幅から左右の飾り避け（padding-inline）を
         # 引いた幅が使える。字数を増やすほど小さく、減らすほど大きくなる。
         # 極端な指定で本文と階層が崩れないよう 20〜48Q に収める。
-        SECTION_TITLE_ORNAMENT_PADDING_MM = 34.0 # image-header.css の padding-inline 16mm + 18mm
         SECTION_TITLE_FONT_Q_RANGE = (20.0..48.0)
 
-        def section_title_font_q(chars, text_mm)
-          avail = text_mm - SECTION_TITLE_ORNAMENT_PADDING_MM
+        # 節絵の飾り避け（image-header.css の padding-inline）。左右それぞれ
+        # `clamp(下限, --paper-scale × 基準, 基準)` で用紙比に応じて縮む。
+        SECTION_TITLE_PADDING_LEFT_MM = { min: 11.0, base: 16.0 }.freeze
+        SECTION_TITLE_PADDING_RIGHT_MM = { min: 12.0, base: 18.0 }.freeze
+
+        # 行あふれの余裕。節番号（`6-3`）の幅・英数字の字幅の揺れ・禁則処理で
+        # わずかにはみ出しても、指定した字数で折り返せるようにする。
+        SECTION_TITLE_HEADROOM = 0.96
+
+        # 飾り避けの合計（mm）。CSS と同じ式で求める。
+        #
+        # かつては 34.0mm の固定値だった——`padding-inline` の基準値 16 + 18 で、
+        # これは **A4（--paper-scale が 1.0）のときの値**。CSS 側は用紙比で縮むため、
+        # B5 では実際 29.4mm しか使われず、Ruby が 4.6mm 広く見積もることで
+        # 字送りが小さくなり、1 行に 14.6 字入る余裕が**偶然**生まれていた。
+        # A4 では見積もりが一致して余裕ゼロになり、25 字の節題が 2 行に収まらず
+        # 3 行へ落ちた（実測 2026-08-10）。「判型が大きいほど溢れやすい」という
+        # 直感に反する挙動の正体がこれ。
+        def section_title_ornament_padding_mm(scale)
+          [SECTION_TITLE_PADDING_LEFT_MM, SECTION_TITLE_PADDING_RIGHT_MM].sum do
+            (scale * it[:base]).clamp(it[:min], it[:base])
+          end
+        end
+
+        def section_title_font_q(chars, text_mm, scale)
+          avail = text_mm - section_title_ornament_padding_mm(scale)
           return 36 unless avail.positive?
 
-          q = (avail / chars) / 0.25
+          q = (avail * SECTION_TITLE_HEADROOM / chars) / 0.25
           format_number(q.clamp(SECTION_TITLE_FONT_Q_RANGE.begin, SECTION_TITLE_FONT_Q_RANGE.end))
         end
 

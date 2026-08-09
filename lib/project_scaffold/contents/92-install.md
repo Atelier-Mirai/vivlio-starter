@@ -236,48 +236,8 @@ vs --version
 ビルドや lint が突然失敗したときは、`vs doctor` で環境を診断するのが近道です。不足ツールが一覧表示されます。`vs doctor --fix` で自動修復も試みられます。詳細は「環境の診断と更新」の章を参照してください。
 :::
 
-## CI（GitHub Actions）でのビルド例
-
-プロジェクトルートに `.github/workflows/build.yml` を作成します。
-
-```yaml
-name: Build PDF
-on: [push, pull_request]
-jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '4.0'
-          bundler-cache: true
-      - name: Install system deps
-        run: |
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
-            sudo apt-get update
-            sudo apt-get install -y qpdf ghostscript poppler-utils imagemagick
-          else
-            brew update
-            brew install qpdf ghostscript poppler imagemagick
-          fi
-      - run: npm ci
-      - run: bundle install --jobs 4
-      - run: vs build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: PDF
-          path: '*.pdf' 
-```
-
 :::{.column}
 **GitHub の 100MB 制約について**
 
-大きな PDF は Git にプッシュできません。CI ではビルド生成物をアーティファクトとしてアップロードするのが確実です。ファイル名は `project.name` と `project.version` から決まり、`output.pdf.compress: true` のときは末尾に `_compressed` が付くため、上の例では `*.pdf` でまとめて拾っています（圧縮には Ghostscript を使用）。リポジトリに PDF を含める場合は `.gitignore` の末尾に `!*.pdf` を追記してください。
+大きな PDF は Git にプッシュできません。ファイル名は `project.name` と `project.version` から決まり、`output.pdf.compress: true` のときは末尾に `_compressed` が付きます。リポジトリに PDF を含める場合は `.gitignore` の末尾に `!*.pdf` を追記してください。容量が心配なら、成果物はリリースページへ添付するか、手元に置いておくのが確実です。
 :::
