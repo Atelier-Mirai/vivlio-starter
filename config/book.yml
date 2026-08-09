@@ -97,12 +97,12 @@ page:
   # use: a4_compact
   # use: a4_custom
 
-  section_pagebreak: true # 節（## 見出し）をページの先頭から始めるか
+  section_pagebreak: false # 節（## 見出し）をページの先頭から始めるか
                           # true  … 節ごとにページを改める（既定）
                           # false … 節を本文の流れの中に続けて組む
                           #         （ページ数を抑えたい本・配布資料向け）
 
-  chapter_pagebreak: recto # 章・目次・部扉・付録・用語集・後書き・索引を、どちら側の面から始めるか
+  chapter_pagebreak: any # 章・目次・部扉・付録・用語集・後書き・索引を、どちら側の面から始めるか
                            # recto … 右ページ（奇数）から。いわゆる改丁
                            #         必要なら白紙が 1 枚入る（既定）
                            # any   … どちらでもよい。白紙が入らずページ数が減る
