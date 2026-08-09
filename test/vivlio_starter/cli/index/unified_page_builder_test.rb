@@ -147,6 +147,30 @@ module VivlioStarter
           assert_equal '33-index.html#idx-33-index', links.first[0]
         end
 
+        # 上限は出現回数で数えるので、先頭から機械的に切ると 1 つの章に集中した語が
+        # 他の章を丸ごと押し出す（実測: CMYK が 43 章で 12 回出た途端、44 章の 1 件が
+        # 索引から消えた）。章ごとに 1 件ずつ拾ってから枠を埋める
+        def test_thinning_keeps_at_least_one_reference_per_chapter
+          occurrences = [occurrence('43-cover', main: true)] +
+                        Array.new(5) { occurrence('43-cover') } +
+                        [occurrence('44-build')]
+          links, = index_links(occurrences, config: { max_sub_references: 2 })
+
+          chapters = links.map { it[0][/\A[^.]+/] }
+          assert_equal 3, chapters.size, '主要参照 1 + 副次参照 2'
+          assert_includes chapters, '44-build', '出現の少ない章を丸ごと落とさない'
+        end
+
+        # 章が上限より多いときは、拾える章から順に 1 件ずつ
+        def test_thinning_prefers_breadth_when_chapters_outnumber_the_limit
+          occurrences = [occurrence('10-a', main: true)] +
+                        %w[20-b 20-b 30-c 40-d].map { occurrence(it) }
+          links, = index_links(occurrences, config: { max_sub_references: 2 })
+
+          chapters = links.map { it[0][/\A[^.]+/] }
+          assert_equal %w[10-a 20-b 30-c], chapters, '同じ章の 2 件目より別の章を優先する'
+        end
+
         def test_zero_means_unlimited
           occurrences = [occurrence('33-index', main: true)] +
                         (10..14).map { occurrence("#{it}-chapter") }

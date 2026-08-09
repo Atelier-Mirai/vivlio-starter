@@ -343,8 +343,28 @@ module VivlioStarter
           return occurrences if limit.zero? || sub.size <= limit
 
           @limited_reference_terms << term
-          main + sub.first(limit)
+          main + trim_across_chapters(sub, limit)
         end
+
+        # 上限に収める。**章をまたいで公平に**残すのが要点。
+        #
+        # 上限は出現回数で数えるので（ページ番号は組版が決めるため Ruby からは
+        # 見えない）、先頭から機械的に切ると 1 つの章に集中した語が他の章を丸ごと
+        # 押し出す。実測: CMYK が 43 章で 12 回出るようになった途端、44 章の 1 件
+        # （p.292）が 8 件の枠から溢れて索引から消えた——読者からは「44 章にも
+        # 出てくるのに索引から辿れない」ことになる。
+        # まず章ごとに 1 件ずつ拾い、余った枠を先頭から埋める。並びは元のまま返す
+        # ——ページ番号は組版が振るので、ここで順序を変えると昇順が崩れる。
+        def trim_across_chapters(sub, limit)
+          # `it` は 2 引数で呼ばれるブロックの第 1 引数しか受けないので、
+          # each_with_index との組み合わせでは添字が落ちる。明示的に受ける。
+          position = sub.each_with_index.to_h { |occ, i| [occ.object_id, i] }
+          first_of_each = sub.group_by { occurrence_chapter(it) }.values.map(&:first).first(limit)
+          fill = (sub - first_of_each).first(limit - first_of_each.size)
+          (first_of_each + fill).sort_by { position[it.object_id] }
+        end
+
+        def occurrence_chapter(occ) = (occ['link'] || occ[:link]).to_s[/\A[^#]+/]
 
         def reference_style
           value = @index_config[:reference_style].to_s

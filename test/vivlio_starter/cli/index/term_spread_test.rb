@@ -66,16 +66,15 @@ module VivlioStarter
           assert_equal 1, spread.chapter_count, 'pattern の語境界が効くこと'
         end
 
-        # Ruby の \b は日本語を語構成文字として扱うため、「Rubyの話」のように
-        # 直後が日本語だと \bRuby\b はマッチしない。辞書が英数字語へ自動生成する
-        # pattern（build_pattern）はこの形なので、広さの数え方もそれに従う
-        # ——スキャナのタグ付けと判定がずれないことのほうが重要。
-        def test_word_boundary_pattern_does_not_match_adjacent_japanese
+        # 辞書の \b は ASCII の語境界として読む（TermPattern）ので、「Rubyの話」の
+        # ように日本語が続く形も数える。スキャナのタグ付けと同じ解釈でなければ、
+        # 索引に載る出現が広さの計測から漏れて一般語の判定がずれる。
+        def test_word_boundary_pattern_matches_adjacent_japanese
           chapters = write_chapters(['Rubyの話'])
 
           spread = TermSpread.measure([term('Ruby', pattern: '/\bRuby\b/')], chapters)['Ruby']
 
-          assert_equal 0, spread.chapter_count
+          assert_equal 1, spread.chapter_count
         end
 
         def test_falls_back_to_literal_match_on_broken_pattern

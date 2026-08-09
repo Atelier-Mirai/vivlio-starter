@@ -113,7 +113,6 @@ module VivlioStarter
           @current_lineno = nil
           # 用語ごとに不変な導出物のキャッシュ（1 行ごとに作り直さない）
           @index_patterns = {}
-          @literal_patterns = {}
           @term_yomis = {}
         end
 
@@ -537,27 +536,14 @@ end
         end
 
         # 索引語のマッチングパターン。辞書由来で不変なので初回だけ組み立てて使い回す。
-        # pattern が指定されていればそれを使い、無ければ用語の完全一致にする。
+        #
+        # 綴りの解釈は TermPattern が唯一の定義元。ここには「スラッシュを剥がして
+        # Regexp にする」同じ 3 行の写しがあり、TermPattern が `\b` を ASCII の語境界
+        # として読むようになったあとも本文タグ付けだけ取り残されていた——広さ計測と
+        # 主要参照の候補は TermPattern を通るので、「候補には出るのに索引には載らない」
+        # という食い違いになる。
         def index_term_pattern(config)
-          @index_patterns[config['term']] ||= begin
-            raw = config['pattern']
-            if raw
-              begin
-                body = raw.to_s
-                body = body[1...-1] if body.start_with?('/') && body.end_with?('/')
-                Regexp.new(body)
-              rescue StandardError
-                literal_term_pattern(config['term'])
-              end
-            else
-              literal_term_pattern(config['term'])
-            end
-          end
-        end
-
-        # 用語そのものの完全一致パターン（用語集のみの用語はこちらを使う）
-        def literal_term_pattern(term)
-          @literal_patterns[term] ||= Regexp.new(Regexp.escape(term))
+          @index_patterns[config['term']] ||= TermPattern.for(config)
         end
 
         # 用語の読み。辞書の指定が無ければ MeCab の推測で、いずれも用語ごとに不変。
@@ -577,8 +563,9 @@ end
 
           @glossary_only_terms.each do |config|
             term = config['term']
-            # 用語集のみの用語は辞書の pattern を使わず完全一致で当てる（従来通り）
-            mask.substitute!(literal_term_pattern(term)) do |match|
+            # 索引語と同じ解釈で当てる。完全一致のままだと `CSS` が `CSS3` の中にも
+            # †リンクを付けてしまい、索引側と挙動が食い違う
+            mask.substitute!(index_term_pattern(config)) do |match|
               next match if mask.token?(match)
 
               @term_occurrence[term] += 1

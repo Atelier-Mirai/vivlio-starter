@@ -144,11 +144,11 @@ module VivlioStarter
         # 照合は本文タグ付け（IndexMatchScanner）と同じ pattern で行う。
         # ここだけ緩めると、索引に載らない章を主要参照として勧めることになる。
         #
-        # Ruby の \b は日本語を語構成文字として扱うので、`/\bRuby\b/` は
-        # 「Rubyの基礎」に**当たらない**。本文タグ付けもそうなので揃えている。
+        # `\b` は ASCII の語境界として読む（TermPattern）ので、`Rubyist` の中の
+        # `Ruby` は数えない。本文タグ付けもそうなので揃っている。
         def test_uses_the_dictionary_pattern
           chapters = [
-            write_chapter('10-intro', "# Rubyの基礎\n\nRubyの本文。\n"),
+            write_chapter('10-intro', "# Rubyist の集い\n\nRubyist の本文。\n"),
             write_chapter('20-ruby', "# Ruby とは\n\nRuby の本文。\n")
           ]
 
