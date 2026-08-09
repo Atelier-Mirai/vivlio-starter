@@ -277,6 +277,49 @@ module VivlioStarter
           assert_includes tagged, '``a`b WWW``', 'インラインコードの内容は逐語で保持される'
         end
 
+        # 短い語が長い語の一部を先に食うと、長いほうは二度と一致しない
+        # （実測: <dfn>マスター</dfn>画像 と組まれ、用語集の「マスター画像」に
+        # 本文リンクが 1 件も付かなかった）。辞書は読み順に並ぶため順序では守れない
+        def test_longer_term_wins_over_its_prefix
+          File.write('config/index_glossary_terms.yml', <<~YAML)
+            terms:
+              - term: マスター
+                yomi: ますたー
+                flags: i
+              - term: マスター画像
+                yomi: ますたーがぞう
+                flags: ig
+          YAML
+          File.write('21-longest.md', "マスター画像を配置します。\n")
+
+          IndexMatchScanner.new.scan_and_tag_file!('21-longest.md')
+
+          tagged = File.read('21-longest.md')
+          assert_match(%r{<dfn[^>]*>マスター画像</dfn>}, tagged, '長いほうの用語がまるごとタグ付けされる')
+          assert_equal 1, tagged.scan(/class="index-term"/).size, '前半だけを別の用語として二重に拾わない'
+          assert_match(/glossary-link/, tagged, '用語集の語なので †リンクが付く')
+        end
+
+        # 長いほうを優先しても、その語が単独で出てくる箇所は従来どおり拾う
+        def test_prefix_term_still_matches_on_its_own
+          File.write('config/index_glossary_terms.yml', <<~YAML)
+            terms:
+              - term: マスター
+                yomi: ますたー
+                flags: i
+              - term: マスター画像
+                yomi: ますたーがぞう
+                flags: i
+          YAML
+          File.write('22-both.md', "マスター画像とマスターは別物です。\n")
+
+          IndexMatchScanner.new.scan_and_tag_file!('22-both.md')
+
+          tagged = File.read('22-both.md')
+          assert_match(%r{<dfn[^>]*>マスター画像</dfn>}, tagged)
+          assert_match(%r{<dfn[^>]*>マスター</dfn>は}, tagged, '単独の「マスター」は従来どおり拾う')
+        end
+
         def test_scan_handles_special_characters
           File.write('07-test.md', <<~MD)
             # Test

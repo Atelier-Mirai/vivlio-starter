@@ -88,14 +88,14 @@ module VivlioStarter
           @no_matches = false
           @defer_warnings = defer_warnings
           @unified_terms = load_unified_terms
-          @config_terms = @unified_terms.select { it['flags'].to_s.include?('i') }
+          @config_terms = longest_first(@unified_terms.select { it['flags'].to_s.include?('i') })
           @glossary_terms = @unified_terms.select { it['flags'].to_s.include?('g') }.to_h { [it['term'], it] }
           @glossary_backlinks = Hash.new { |h, k| h[k] = [] }
           # 用語集のみの用語（索引対象外だがバックリンクは必要）
-          @glossary_only_terms = @unified_terms.select do |t|
+          @glossary_only_terms = longest_first(@unified_terms.select do |t|
             flags = t['flags'].to_s
             flags.include?('g') && !flags.include?('i')
-          end
+          end)
           # 主要参照（説明箇所）の指定。辞書の main: を 用語 → 章名の集合に畳む。
           # 単一章とリストの両方を受ける（index-main-reference-spec.md §1.3）。
           # 主要参照の指定。`21#Markdown とは` のような節指定も受ける（R2）
@@ -506,6 +506,21 @@ end
           end
 
           mask.restore
+        end
+
+        # 長い用語から当てる（最長一致）。
+        #
+        # 当てた用語はタグごと退避され、後続の用語からは見えなくなる。辞書は読み順に
+        # 並ぶので、そのまま回すと短いほうが先に当たって長いほうが二度と一致しない。
+        # 実測では「マスター画像」が `<dfn>マスター</dfn>画像` と組まれ、用語集の
+        # 「マスター画像」には本文リンクが 1 件も付かなかった（同じ壊れ方が
+        # ラベルID・レビューファイル・バンドル画像でも起きていた）。
+        # 索引の見出しとしても、長いほうが語として特定的で見出しに向く。
+        #
+        # 同じ長さなら辞書の並び（読み順）を保つ——sort_by は安定ではないので
+        # 添字を第 2 キーに置き、ビルドのたびに順序が揺れないようにする。
+        def longest_first(terms)
+          terms.each_with_index.sort_by { |term, i| [-term['term'].to_s.length, i] }.map(&:first)
         end
 
         # 用語を当ててはいけない領域を退避する。
