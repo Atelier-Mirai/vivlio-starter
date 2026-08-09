@@ -28,6 +28,26 @@ h6 {
   text-spacing: no-autospace;
 }
 
+/* 見出しだけがページ末尾に取り残されるのを防ぐ。索引・前書き・目次（index.css /
+   preface.css / toc.css）には以前から入っているが本文には無かった——h2 が常に
+   改ページしていた頃は孤立しようがなかったため。
+
+   PDF ではこの宣言の有無で結果が変わらない。Vivliostyle が既に見出しを次の内容と
+   一緒に送っており、「見出しは収まるが続く 1 行が収まらない」高さを B5・spacer
+   176〜196mm の 1mm 刻みで探しても、孤立する組み合わせが無かった（実測 2026-08-10）。
+   置いておくのは EPUB / Kindle のため——組むのは読み手側のエンジンなので同じ保証が
+   無い。KFX は modern な break-* を解さないので legacy を併記する（index.css と同じ）。
+
+   h1 は章扉（扉絵＋改ページ）で別に成り立っているので対象外。 */
+h2,
+h3,
+h4,
+h5,
+h6 {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
 /* 章タイトルをページ柱用の named string にセット */
 h1 .chapter-number {
   string-set: chapter-number content(text);
