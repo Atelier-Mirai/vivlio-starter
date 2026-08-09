@@ -920,7 +920,8 @@ module VivlioStarter
       # @param chapters [Array<String>] 対象章のリスト
       # @return [Array<Hash>] 文脈付き用語のリスト
       def enrich_terms_with_context(terms, chapters, scores: {}, review_terms: Set[])
-        loaded_contents = load_squashed_chapter_contents(chapters)
+        context_sources = context_source_chapters(chapters)
+        scanned = chapters.map { File.basename(it.to_s, '.md') }.to_set
         spreads = IndexCommands::TermSpread.measure(terms, chapters)
         common = IndexCommands::TermSpread.common_terms(spreads, ratio: common_term_ratio)
                                           .to_h { [it.term, it] }
@@ -962,13 +963,11 @@ module VivlioStarter
           enriched['in_index'] = flags.include?('i')
           enriched['in_glossary'] = flags.include?('g')
 
-          # stale な context を捨て、空になったら本文から補充。
-          # 辞書は contexts を持たなくなったので、通常は 1 行目が空を返して補充へ進む。
-          # 前段が残っているのは旧辞書からの移行のため——contexts を抱えた辞書を
-          # 読んでも古い抜粋をそのまま見せず、次の保存で自然に落ちる。
-          fresh = Array(enriched['contexts']).select { context_live?(it, loaded_contents) }
-          fresh = collect_contexts_for_term(term['term'], chapters) if fresh.empty?
-          enriched['contexts'] = annotate_out_of_scope_contexts(fresh, loaded_contents)
+          # 文脈は毎回そのときの原稿から拾う。辞書に写しを持たないので古びようがない
+          # （旧辞書が contexts を抱えていても読まずに捨てる）。
+          enriched['contexts'] = annotate_out_of_scope_contexts(
+            collect_contexts_for_term(term['term'], context_sources), scanned
+          )
 
           enriched
         end
@@ -990,8 +989,8 @@ module VivlioStarter
             enriched['score'] = candidate['score'] if candidate&.dig('score')
           end
 
-          # 文脈がない場合は本文から抽出
-          enriched['contexts'] = collect_contexts_for_term(item['term'], chapters) unless enriched['contexts']&.any?
+          # 文脈は登録済み用語と同じく毎回原稿から拾う（棄却リストの写しは使わない）
+          enriched['contexts'] = collect_contexts_for_term(item['term'], chapters)
 
           enriched
         end
@@ -1025,45 +1024,30 @@ module VivlioStarter
         contexts
       end
 
-      # context が現原稿に生存しているかを判定する（stale 判定の 1 実装・§4.3）。
-      # YAML 折返し等の空白の揺れを無視するため、両者から全空白を除去して部分一致で見る。
-      # 参照章が今回読み込んだ集合に無い場合:
-      #   - contents/ 等に実在する章なら判定せず温存（R6: catalog 外・部分実行を壊さない）
-      #   - どこにも実在しない章（削除・改名）なら stale として捨てる
-      # @param ctx [Hash] 文脈情報（'chapter'/'context'）
-      # @param loaded_contents [Hash{String => String}] 今回読み込んだ章 → 空白除去済み本文
-      # @return [Boolean]
-      def context_live?(ctx, loaded_contents)
-        chapter = ctx['chapter'] || ctx[:chapter]
-        text = (ctx['context'] || ctx[:context]).to_s.gsub(/[[:space:]]+/, '')
-        return false if chapter.nil? || text.empty?
-
-        return !resolve_chapter_path(chapter).nil? unless loaded_contents.key?(chapter)
-
-        loaded_contents[chapter].include?(text)
+      # 文脈を拾う章の並び。指定章を先頭に置き、その後ろに残りの章を足す。
+      #
+      # 章を指定した実行（`vs index:auto 33`）でも、指定章に出てこない用語の文脈欄を
+      # 空にしないための順番。空欄は「原稿から消えた語」と見分けが付かず、著者は
+      # 索引に残すべきか判断できなくなる。一方で先頭に指定章を置くのは、
+      # collect_contexts_for_term が MAX_CONTEXT_CHAPTERS で打ち切るため——いま
+      # レビューしている章での使われ方を最優先で見せる。
+      # @param chapters [Array<String>] 今回走査する章のリスト
+      # @return [Array<String>] 章ベースネームの配列（指定章が先頭）
+      def context_source_chapters(chapters)
+        scanned = chapters.map { File.basename(it.to_s, '.md') }
+        others = Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).map { File.basename(it, '.md') }.sort
+        scanned + (others - scanned)
       end
 
-      # 今回読み込む章の本文を全空白除去済みで用意する（context_live? の下準備）
-      # @param chapters [Array<String>] 対象章のリスト
-      # @return [Hash{String => String}] 章ベースネーム → 空白除去済み本文
-      def load_squashed_chapter_contents(chapters)
-        chapters.each_with_object({}) do |chapter, result|
-          path = resolve_chapter_path(chapter)
-          next unless path && File.exist?(path)
-
-          result[File.basename(path, '.*')] = File.read(path, encoding: 'utf-8').gsub(/[[:space:]]+/, '')
-        end
-      end
-
-      # 今回対象外の章を参照する context に表示用マークを付ける（判断材料の誤解防止・§4.3-4）。
+      # 今回対象外の章から拾った context に表示用マークを付ける（判断材料の誤解防止・§4.3-4）。
       # レビュー md の表示にのみ使われ、apply のパース時に注記は剥がされるため辞書へは戻らない
       # @param contexts [Array<Hash>] 文脈情報のリスト
-      # @param loaded_contents [Hash{String => String}] 今回読み込んだ章の集合
+      # @param scanned [Set<String>] 今回走査した章のベースネーム
       # @return [Array<Hash>]
-      def annotate_out_of_scope_contexts(contexts, loaded_contents)
+      def annotate_out_of_scope_contexts(contexts, scanned)
         contexts.map do |ctx|
           chapter = ctx['chapter'] || ctx[:chapter]
-          loaded_contents.key?(chapter) ? ctx : ctx.merge('out_of_scope' => true)
+          scanned.include?(chapter) ? ctx : ctx.merge('out_of_scope' => true)
         end
       end
 

@@ -144,7 +144,7 @@ module VivlioStarter
         assert_equal [{ 'chapter' => '21-markdown', 'context' => '記法の基本' }], contexts
       end
 
-      # 表示用の「（catalog 外）」注記は章名の一部ではないので辞書へ戻さない。
+      # 表示用の「（走査対象外）」注記は章名の一部ではないので辞書へ戻さない。
       # 剥がす sub と文脈の読み取りが同じ行に並ぶため、両方を一度に守る。
       def test_out_of_scope_annotation_is_stripped_while_context_survives
         @generator.generate!(terms: [{ 'term' => 'Markdown', 'yomi' => 'まーくだうん', 'flags' => 'ig',
@@ -156,6 +156,21 @@ module VivlioStarter
         contexts = @generator.parse_glossary_approved.first['contexts']
 
         assert_equal [{ 'chapter' => '21-markdown', 'context' => '記法の基本' }], contexts
+      end
+
+      # スコアが取れない登録語は 2 通りある。文脈まで拾えなければ死語、
+      # 文脈だけ拾えたなら今回走査しなかった章にいる——外す/残すの判断が逆になる
+      def test_registered_term_without_score_distinguishes_dead_from_out_of_scope
+        dead = { 'term' => '幻の用語', 'yomi' => 'まぼろし', 'flags' => 'i', 'in_index' => true }
+        elsewhere = { 'term' => 'PDF/X-1a', 'yomi' => 'PDF/X-1a', 'flags' => 'i', 'in_index' => true,
+                      'contexts' => [{ 'chapter' => '61-developer', 'context' => '入稿では PDF/X-1a を求められます',
+                                       'out_of_scope' => true }] }
+
+        @generator.generate!(terms: [dead, elsewhere], high_candidates: [], low_candidates: [], rejected: [])
+        content = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
+
+        assert_match(/\*\*幻の用語\*\*.*\[原稿に出現しません\]/, content)
+        assert_match(%r{\*\*PDF/X-1a\*\*.*\[走査対象外の章に出現\]}, content)
       end
 
       # --- phase: 候補の提示（R2） ---

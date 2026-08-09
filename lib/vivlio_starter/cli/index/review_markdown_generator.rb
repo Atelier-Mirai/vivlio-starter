@@ -36,6 +36,11 @@ module VivlioStarter
       REVIEW_FILE = '_index_glossary_review.md'
       LEGACY_REVIEW_FILE = '_index_review.md'
 
+      # 今回走査しなかった章から拾った抜粋であることを示す注記。
+      # 章を指定して実行すると（`vs index:auto 33`）指定外の章の抜粋が混ざるため、
+      # どこから来た文章なのかを言う。表示専用で、apply のパース時に剥がされる。
+      OUT_OF_SCOPE_NOTE = '（走査対象外）'
+
       # セクションの見出し。走査範囲の境目に使うので綴りを 1 箇所に置く
       TERMS_SECTION = '## 1. 登録済み用語の確認'
       HIGH_SECTION = '## 2. 推奨候補'
@@ -302,8 +307,8 @@ module VivlioStarter
               # 章名を整える sub がその場で $~ を上書きし、続けて読む文脈が
               # nil になる。辞書の contexts が軒並み空だったのはこれが原因。
               if (occurrence = current_line.match(/^  - ([^:]+): (.+)/))
-                # 表示用の「（catalog 外）」注記は辞書へ戻さない
-                chapter = occurrence[1].sub(/（catalog 外）\z/, '')
+                # 表示用の注記は辞書へ戻さない（旧版の「（catalog 外）」も剥がす）
+                chapter = occurrence[1].sub(/#{OUT_OF_SCOPE_NOTE}\z|（catalog 外）\z/o, '')
                 contexts << { 'chapter' => chapter, 'context' => occurrence[2] }
                 i += 1
                 next
@@ -567,14 +572,15 @@ module VivlioStarter
         line += " `#{label}`" if label
         line += " **#{term_text}** (#{yomi})"
         # 手動マークアップは「[手動登録]」、それ以外はスコア表示。
-        # スコアは辞書に持たない派生データなので、原稿に出現しない語では nil になる
-        # （＝どの章にも無い死語）。黙って空欄にせず、その事実を見せる。
+        # スコアは辞書に持たない派生データなので、走査した章に出てこない語では nil になる。
+        # ただし「どの章にも無い死語」と「今回走査しなかった章にはある語」は別物で、
+        # 前者は外す判断へ、後者は残す判断へ導く——文脈が拾えたかどうかで見分ける。
         if source == 'manual_markup'
           line += ' - [手動登録]'
         elsif score
           line += " - スコア: #{score.round(1)}"
         elsif checked
-          line += ' - [原稿に出現しません]'
+          line += Array(term['contexts']).any? ? ' - [走査対象外の章に出現]' : ' - [原稿に出現しません]'
         end
         # 追加情報は必ず行末へ。`- [-i] ` と `**用語** (読み)` の間に差し込むと
         # 7 つのパーサの正規表現が軒並みマッチしなくなる。
@@ -593,8 +599,8 @@ module VivlioStarter
         contexts = term['contexts'] || []
         contexts.first(2).each do |ctx|
           chapter = ctx['chapter'] || '不明'
-          # 今回対象外の章の抜粋は注記する（表示のみ・apply のパースで剥がされる）
-          chapter = "#{chapter}（catalog 外）" if ctx['out_of_scope']
+          # 今回走査しなかった章の抜粋は注記する（表示のみ・apply のパースで剥がされる）
+          chapter = "#{chapter}#{OUT_OF_SCOPE_NOTE}" if ctx['out_of_scope']
           context_text = extract_context(ctx['context'])
           line += "  - #{chapter}: #{context_text}\n"
         end

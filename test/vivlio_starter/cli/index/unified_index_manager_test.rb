@@ -362,54 +362,79 @@ module VivlioStarter
         assert_match(/08-context/, content)
       end
 
-      # --- phase: context 鮮度（R5/R6） ---
+      # --- phase: context はそのつど原稿から拾う ---
+      #
+      # 辞書は contexts を持たない（UnifiedTermsManager#save_terms!）。文脈は
+      # レビューのたびに現原稿から採り直すので、古い抜粋が出る余地がない。
 
-      # R5: 現原稿に生きている context はそのまま温存される
-      def test_enrich_preserves_live_context
+      def test_enrich_takes_context_from_the_current_manuscript
         File.write('contents/10-intro.md', "この章では特殊相対性理論を丁寧に説明します。\n")
-        terms = [{ 'term' => '特殊相対性理論', 'flags' => 'i',
-                   'contexts' => [{ 'chapter' => '10-intro',
-                                    'context' => 'この章では特殊相対性理論を 丁寧に説明します。' }] }]
+        terms = [{ 'term' => '特殊相対性理論', 'flags' => 'i' }]
 
         enriched = @manager.send(:enrich_terms_with_context, terms, ['10-intro'])
 
         contexts = enriched.first['contexts']
         assert_equal 1, contexts.size
-        # 空白の揺れ（YAML 折返し）は stale とみなさない
-        assert_includes contexts.first['context'], '特殊相対性理論'
+        assert_includes contexts.first['context'], '丁寧に説明します'
       end
 
-      # R5: stale な context は捨てられ、出現する複数章から補充される
-      def test_enrich_discards_stale_context_and_refills_from_multiple_chapters
+      # 出現する章が複数あれば、そのぶん使用例を並べる（1 章で打ち切らない・報告書 §5.1）
+      def test_enrich_collects_context_from_every_chapter_where_the_term_appears
         File.write('contents/10-intro.md', "推敲後の新しい文章に特殊相対性理論が登場します。\n")
         File.write('contents/20-body.md', "この章でも特殊相対性理論を扱います。\n")
-        terms = [{ 'term' => '特殊相対性理論', 'flags' => 'i',
-                   'contexts' => [{ 'chapter' => '10-intro', 'context' => '推敲前の古い抜粋テキスト' }] }]
+        terms = [{ 'term' => '特殊相対性理論', 'flags' => 'i' }]
 
         enriched = @manager.send(:enrich_terms_with_context, terms, %w[10-intro 20-body])
 
         contexts = enriched.first['contexts']
         assert_equal %w[10-intro 20-body], contexts.map { it['chapter'] }.sort
+      end
+
+      # 旧辞書が抱えている古い抜粋は読まない——現原稿の文章に置き換わる
+      def test_enrich_ignores_legacy_contexts_carried_in_the_dictionary
+        File.write('contents/10-intro.md', "推敲後の新しい文章に特殊相対性理論が登場します。\n")
+        terms = [{ 'term' => '特殊相対性理論', 'flags' => 'i',
+                   'contexts' => [{ 'chapter' => '10-intro', 'context' => '推敲前の古い抜粋テキスト' }] }]
+
+        enriched = @manager.send(:enrich_terms_with_context, terms, ['10-intro'])
+
+        contexts = enriched.first['contexts']
+        assert_equal 1, contexts.size
+        assert_includes contexts.first['context'], '推敲後の新しい文章'
         refute(contexts.any? { it['context'].include?('推敲前の古い抜粋') })
       end
 
-      # R6: 今回対象外だが実在する章（catalog 外・部分実行）の context は判定せず温存
-      def test_enrich_preserves_context_of_chapters_outside_scope
-        File.write('contents/61-developer.md', "開発者向けの内容。\n")
+      # 章を指定した実行でも、指定外の章から文脈を拾う（欄が空だと残すか判断できない）。
+      # 指定外から拾ったことは out_of_scope の注記で分かるようにする
+      def test_enrich_falls_back_to_chapters_outside_the_scanned_set
+        File.write('contents/61-developer.md', "入稿では PDF/X-1a を求められます。\n")
         File.write('contents/10-intro.md', "本文。\n")
-        terms = [{ 'term' => 'PDF/X-1a', 'flags' => 'g',
-                   'contexts' => [{ 'chapter' => '61-developer', 'context' => '古い抜粋でも対象外章なら温存される' }] }]
+        terms = [{ 'term' => 'PDF/X-1a', 'flags' => 'g' }]
 
         enriched = @manager.send(:enrich_terms_with_context, terms, ['10-intro'])
 
         contexts = enriched.first['contexts']
         assert_equal 1, contexts.size
         assert_equal '61-developer', contexts.first['chapter']
-        assert contexts.first['out_of_scope'], 'catalog 外の表示注記フラグが付くこと'
+        assert_includes contexts.first['context'], '入稿では'
+        assert contexts.first['out_of_scope'], '指定外の章から拾ったことを示す注記が付くこと'
       end
 
-      # R5: 実在しない章（削除・改名）を参照する context は stale として捨てる
-      def test_enrich_discards_context_of_deleted_chapters
+      # 指定章に出てくる語は、指定章の使い方を先に見せる（いま推敲している章が優先）
+      def test_enrich_prefers_the_scanned_chapter_when_the_term_appears_in_both
+        File.write('contents/10-intro.md', "はじめに特殊相対性理論の輪郭を描きます。\n")
+        File.write('contents/61-developer.md', "開発者向けにも特殊相対性理論が出てきます。\n")
+        terms = [{ 'term' => '特殊相対性理論', 'flags' => 'i' }]
+
+        enriched = @manager.send(:enrich_terms_with_context, terms, ['10-intro'])
+
+        contexts = enriched.first['contexts']
+        assert_equal '10-intro', contexts.first['chapter']
+        refute contexts.first['out_of_scope'], '指定章から拾ったものに注記は付かない'
+      end
+
+      # 原稿のどこにも出てこない語は文脈を持たない（削除済み・死語として著者に見せる）
+      def test_enrich_yields_no_context_for_terms_absent_from_the_manuscript
         File.write('contents/10-intro.md', "本文にはこの語は出ません。\n")
         terms = [{ 'term' => '幻の用語', 'flags' => 'i',
                    'contexts' => [{ 'chapter' => '99-removed', 'context' => '削除済み章の抜粋' }] }]
