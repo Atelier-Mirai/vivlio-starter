@@ -17,7 +17,7 @@ module VivlioStarter
     module SamovarCommands
       # cover コマンドの Samovar 実装
       class CoverCommand < VsCommand
-        self.description = 'カバー画像を生成します（A4/B5/A5/EPUB）'
+        self.description = '表紙・裏表紙の画像を生成します（A4/B5/A5/EPUB）'
 
         options do
           option '-h/--help', 'このコマンドの使い方を表示', key: :help

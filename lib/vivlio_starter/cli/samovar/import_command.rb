@@ -26,7 +26,7 @@ module VivlioStarter
     module SamovarCommands
       # import コマンドの Samovar 実装
       class ImportCommand < VsCommand
-        self.description = 'Re:VIEW Starter プロジェクトをインポートします'
+        self.description = 'Re:VIEW Starter プロジェクトを取り込みます'
 
         many :arguments, 'Re:VIEW Starter プロジェクトのディレクトリ', default: []
 

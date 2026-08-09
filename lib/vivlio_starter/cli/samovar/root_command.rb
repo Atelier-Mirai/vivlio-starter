@@ -13,15 +13,13 @@
 #   - --verbose: 詳細ログ出力
 #
 # コマンド分類 (help_spec.md 準拠):
-#   Public Commands (vs --help に表示):
-#     - help, new, upgrade, build, clean, delete, doctor, import
-#     - create, rename, renumber, open, cover
-#     - resize
-#     - index, index:plan, index:auto, index:apply
-#     - lint, metrics
-#     - pdf:compress, pdf:pages, pdf:rasterize
-#   Internal Commands (vs --help に非表示):
-#     - create:cover, create:titlepage, create:colophon, create:legalpage
+#   Public Commands   … 利用者が直接実行する。`vs --help` に表示する
+#   Internal Commands … ビルドパイプラインが内部的に呼ぶ。`vs --help` に出さない
+#
+#   一覧はこのファイルの public_commands / internal_commands が正典。コメントや
+#   help 側で列挙し直すと必ずずれるため、ここでは列挙しない（実際に index 系 3 つが
+#   help から漏れた）。表示上の分類と並び順だけを help_command.rb が持ち、
+#   両者の一致は help_spec_test が検査する。
 # ================================================================
 
 require_relative '../../version'

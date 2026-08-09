@@ -32,7 +32,7 @@ module VivlioStarter
     module SamovarCommands
       # pdf:compress コマンドの Samovar 実装（Public コマンド）
       class PdfCompressCommand < VsCommand
-        self.description = '生成済みPDFを圧縮します'
+        self.description = '生成済みの PDF を圧縮します'
 
         # options を位置引数より先に宣言する。`Samovar::One` の既定パターンは `//`
         # （何にでもマッチ）のため、one が先だと `-h` を入力 PDF 名として食ってしまう
@@ -88,7 +88,7 @@ module VivlioStarter
 
       # pdf:pages コマンドの Samovar 実装（Public コマンド）
       class PdfPagesCommand < VsCommand
-        self.description = 'PDFをページ単位でJPEG画像に切り出します'
+        self.description = 'PDF をページ単位で JPEG 画像に切り出します'
 
         # options を位置引数より先に宣言する（§5.3 — one が先だと `-h` を食う）
         options do
@@ -138,7 +138,7 @@ module VivlioStarter
 
       # pdf:rasterize コマンドの Samovar 実装（Public コマンド）
       class PdfRasterizeCommand < VsCommand
-        self.description = 'PDFをラスタライズして再結合します（Type3フォント対策）'
+        self.description = 'PDF をラスタライズして再結合します（Type3 フォント対策）'
 
         # options を位置引数より先に宣言する（§5.3 — one が先だと `-h` を食う）
         options do

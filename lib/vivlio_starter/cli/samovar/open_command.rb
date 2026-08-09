@@ -16,7 +16,7 @@ module VivlioStarter
     module SamovarCommands
       # open コマンド - 生成されたPDFを開く
       class OpenCommand < VsCommand
-        self.description = '生成されたPDFを開く（macOS専用）'
+        self.description = '生成された PDF を開きます（macOS 専用）'
 
         # options を位置引数より先に宣言する。逆順だと Samovar が `--help` を
         # PDF ファイル名（target）として消費してしまう（契約テスト CL-01 で検出）

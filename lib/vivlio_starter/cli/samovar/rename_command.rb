@@ -29,7 +29,7 @@ module VivlioStarter
     module SamovarCommands
       # rename コマンドの Samovar 実装
       class RenameCommand < VsCommand
-        self.description = '章のスラッグ/番号を変更します'
+        self.description = '章の番号やファイル名（スラッグ）を変更します'
 
         many :arguments, 'OLD と NEW を指定。省略すると一括連番モード', default: []
 
@@ -90,7 +90,7 @@ module VivlioStarter
 
       # rename の別名コマンド（連番振り直し専用エントリ）
       class RenumberCommand < RenameCommand
-        self.description = '章番号を一括で付け直します（rename の別名）'
+        self.description = '章番号を一括で付け直します'
       end
     end
   end

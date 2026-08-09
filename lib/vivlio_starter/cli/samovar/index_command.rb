@@ -10,7 +10,7 @@
 #
 # 公開コマンド:
 #   - index:plan: 索引語数の目安と現況を表示（読み取り専用）
-#   - index:auto: 全自動索引候補抽出 → _index_review.md 生成
+#   - index:auto: 全自動索引候補抽出 → _index_glossary_review.md 生成
 #   - index:apply: レビュー結果を適用
 #   - index:export / index:import: 用語辞書のライブラリ連携
 #
@@ -33,7 +33,7 @@ module VivlioStarter
     module SamovarCommands
       # index コマンドの Samovar 実装
       class IndexCommand < VsCommand
-        self.description = '索引機能のサブコマンドを表示します'
+        self.description = '索引・用語集のサブコマンド一覧を表示します'
 
         options do
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
@@ -44,15 +44,15 @@ module VivlioStarter
             索引機能のコマンド:
 
               vs index:plan [章]  - 索引語数の目安と現況を表示（辞書は変更しない）
-              vs index:auto [章]  - 候補抽出・分類・_index_review.md 生成（章を指定可）
+              vs index:auto [章]  - 候補抽出・分類・確認用ファイル生成（章を指定可）
               vs index:apply      - レビュー結果を index_glossary_terms.yml に適用
               vs index:export     - 用語集[g]・棄却語 を index_library.yml に書き出す
               vs index:import     - index_library.yml から用語集[g]・棄却語 を取り込む
 
             ワークフロー:
               0. vs index:plan   → 目安語数と現況を確認する（任意）
-              1. vs index:auto   → _index_review.md を生成
-              2. _index_review.md を編集（[x]で承認、[r]で棄却）
+              1. vs index:auto   → _index_glossary_review.md を生成
+              2. _index_glossary_review.md を編集（[x]で承認、[r]で棄却）
               3. vs index:apply  → index_glossary_terms.yml を更新
               4. vs build        → 索引ページを含む PDF を生成
 
@@ -77,7 +77,7 @@ module VivlioStarter
       # コマンドで、オプション 1 つで「実は確認用」に変わると名前の意味が
       # ぶれるため（index-term-selection-spec.md §6.1）。
       class IndexPlanCommand < VsCommand
-        self.description = '索引語数の目安と現況を表示（辞書は変更しない）'
+        self.description = '索引語数の目安と現況を表示します（辞書は変更しません）'
 
         options do
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
@@ -109,7 +109,7 @@ module VivlioStarter
 
       # index:auto コマンド - 全自動索引候補抽出
       class IndexAutoCommand < VsCommand
-        self.description = '候補抽出・分類・_index_review.md 生成'
+        self.description = '索引・用語集の候補を抽出し、確認用ファイルを作成します'
 
         options do
           option '-v/--verbose', '詳細出力', default: false, key: :verbose
@@ -156,7 +156,7 @@ module VivlioStarter
 
       # index:apply コマンド - レビュー結果を適用
       class IndexApplyCommand < VsCommand
-        self.description = 'レビュー結果を index_glossary_terms.yml に適用'
+        self.description = '確認済みの候補を索引辞書（index_glossary_terms.yml）に登録します'
 
         options do
           option '-v/--verbose', '詳細出力', default: false, key: :verbose
@@ -190,7 +190,7 @@ module VivlioStarter
 
       # index:export コマンド - 用語集[g]・棄却語 を持ち運び用ファイルへ書き出す
       class IndexExportCommand < VsCommand
-        self.description = '用語集[g]・棄却語 を index_library.yml に書き出す'
+        self.description = '用語集・棄却語を index_library.yml へ書き出します'
 
         options do
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
@@ -218,7 +218,7 @@ module VivlioStarter
 
       # index:import コマンド - 持ち運び用ファイルから用語集[g]・棄却語 を取り込む
       class IndexImportCommand < VsCommand
-        self.description = 'index_library.yml から用語集[g]・棄却語 を取り込む'
+        self.description = 'index_library.yml から用語集・棄却語を取り込みます'
 
         options do
           option '--prefer-import', '衝突時にライブラリ側で既存を上書きする', default: false, key: :prefer_import

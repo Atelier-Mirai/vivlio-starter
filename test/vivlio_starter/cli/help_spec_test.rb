@@ -151,6 +151,42 @@ module VivlioStarter
         assert_includes output, 'create'
       end
 
+      # vs --help の一覧が public_commands と一致する（載せ忘れ・幽霊項目の検出）
+      #
+      # 一覧は HelpCommand が分類と並び順のために別途持っているため、コマンドを
+      # 追加しても自動では載らない。過去に index:plan / index:export / index:import が
+      # 漏れたまま原稿だけ先行した実績があるので、双方向で突き合わせる。
+      def test_help_listing_matches_public_commands
+        listed = SamovarCommands::HelpCommand::COMMAND_CATEGORIES.values.flatten
+        expected = SamovarCommands::RootCommand.public_commands.keys -
+                   SamovarCommands::HelpCommand::UNLISTED_COMMANDS
+
+        assert_empty (expected - listed), <<~MSG
+          vs --help の一覧に載っていない Public コマンドがあります:
+          #{(expected - listed).join(', ')}
+          HelpCommand::COMMAND_CATEGORIES の該当カテゴリへ追加してください。
+          意図的に載せない場合は理由コメント付きで UNLISTED_COMMANDS へ登録します。
+        MSG
+
+        assert_empty (listed - expected), <<~MSG
+          vs --help の一覧に、Public でないコマンドが載っています:
+          #{(listed - expected).join(', ')}
+          コマンド名の誤記か、public_commands から外れた残骸の可能性があります。
+        MSG
+
+        assert_equal listed.uniq, listed, 'カテゴリ間でコマンドが重複しています'
+      end
+
+      # 一覧の説明文がコマンドクラスの description と同一である（二重管理の防止）
+      def test_help_listing_shows_class_descriptions
+        output, = capture_io { ::VivlioStarter::CLI.start(['--help']) }
+
+        SamovarCommands::HelpCommand::COMMAND_CATEGORIES.values.flatten.each do |name|
+          description = SamovarCommands::RootCommand.public_commands.fetch(name).description
+          assert_includes output, description, "vs --help に #{name} の説明が出ていません"
+        end
+      end
+
       # Public/Internal コマンド分類の検証
       def test_command_classification
         root = SamovarCommands::RootCommand

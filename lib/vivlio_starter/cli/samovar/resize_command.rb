@@ -27,7 +27,7 @@ module VivlioStarter
     module SamovarCommands
       # resize コマンドの Samovar 実装
       class ResizeCommand < VsCommand
-        self.description = '画像をWebPに変換します（標準品質）'
+        self.description = 'images/ の画像を WebP へ変換・最適化します（--high/--low で品質変更）'
 
         options do
           option '-f/--force', '既存ファイルも強制再生成', key: :force

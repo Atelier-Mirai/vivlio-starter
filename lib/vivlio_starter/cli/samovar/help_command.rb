@@ -7,13 +7,12 @@
 #   Samovar CLI の help コマンドを実装する。
 #   Public Commands のみをカテゴリ別に表示する。
 #
-# 表示内容:
-#   - プロジェクト管理: new, upgrade, import, pdf:read, doctor, clean
-#   - 執筆・編集支援: create, delete, rename, renumber
-#   - 文章校正・統計: lint, metrics
-#   - 索引・用語集: index:auto, index:apply
-#   - 画像・カバー: cover, resize
-#   - ビルド・出力・プレビュー: build, open, pdf:compress, pdf:pages, pdf:rasterize
+# 一覧が持つのは「分類と並び順」だけ:
+#   コマンドの実在は RootCommand.public_commands が、説明文は各コマンドクラスの
+#   self.description が正典。ここで説明文を持つと二重管理になり、実際にずれた
+#   （2026-08-09 時点で 22 件中 14 件が食い違い、index:auto は旧ファイル名を案内）。
+#   分類と並び順だけは読み手のための表示上の情報なので、この表に残す。
+#   一覧の漏れは help_spec_test の一致検査が検出する。
 # ================================================================
 
 require_relative 'vs_command'
@@ -26,41 +25,18 @@ module VivlioStarter
         self.description = 'Vivlio Starter の主要コマンド一覧を表示します'
 
         COMMAND_CATEGORIES = {
-          'プロジェクト管理' => {
-            'new' => 'プロジェクトを新規作成します',
-            'upgrade' => 'プロジェクトを新しい雛形に追従させます（gem 更新後の取り込み）',
-            'import' => 'Re:VIEW Starter プロジェクトを取り込みます',
-            'pdf:read' => 'PDFを解析して Markdown 形式へ変換・抽出します',
-            'doctor' => '環境診断と不足ツールの自動セットアップ',
-            'clean' => '生成物やキャッシュを削除します'
-          },
-          '執筆・編集支援' => {
-            'create' => '章ファイルと画像ディレクトリを生成します',
-            'delete' => '指定した章の Markdown と画像を削除します',
-            'rename' => '章の番号やファイル名（スラッグ）を変更します',
-            'renumber' => '章番号を一括で付け直します'
-          },
-          '文章校正・統計' => {
-            'lint' => 'Markdownをtextlintで検査します',
-            'metrics' => 'Markdownの行数・文字数を集計します'
-          },
-          '索引・用語集' => {
-            'index:auto' => '索引・用語集の候補を抽出し、確認用ファイルを作成します',
-            'index:apply' => '確認済みの候補を、プロジェクトの索引辞書に登録・保存します'
-          },
-          '画像・カバー' => {
-            'cover' => '表紙・裏表紙の画像を生成します（A4/B5/A5/EPUB対応）',
-            'resize' => 'images/画像をWebP形式に変換・最適化します（--high/--lowで品質変更可）'
-          },
-          'ビルド・出力・プレビュー' => {
-            'preflight' => 'ビルド前の原稿エラーチェックを高速実行します',
-            'build' => '書籍全体または指定章をビルドします',
-            'open' => '生成されたPDFを開きます',
-            'pdf:compress' => '生成済みPDFを圧縮します',
-            'pdf:pages' => 'PDFをページ単位でJPEG画像に切り出します',
-            'pdf:rasterize' => 'PDFをラスタライズして再結合します（Type3フォント対策）'
-          }
+          'プロジェクト管理' => %w[new upgrade import pdf:read doctor clean],
+          '執筆・編集支援' => %w[create delete rename renumber],
+          '文章校正・統計' => %w[lint metrics],
+          '索引・用語集' => %w[index index:plan index:auto index:apply index:export index:import],
+          '画像・カバー' => %w[cover resize],
+          'ビルド・出力・プレビュー' => %w[preflight build open pdf:compress pdf:pages pdf:rasterize]
         }.freeze
+
+        # 一覧に載せない Public コマンド。
+        # help はこの一覧そのものなので、自分を項目として並べても情報にならない
+        # （マニュアルでも `vs --help` の形で案内している。contract/docs_allowlist.yml 参照）。
+        UNLISTED_COMMANDS = %w[help].freeze
 
         options do
           option '-h/--help', 'ヘルプを表示', key: :help
@@ -80,9 +56,9 @@ module VivlioStarter
 
           HEADER
 
-          COMMAND_CATEGORIES.each do |category, commands|
+          COMMAND_CATEGORIES.each do |category, names|
             puts "  #{category}:"
-            commands.each { |name, desc| puts format('    %-16s %s', name, desc) }
+            names.each { puts format('    %-16s %s', it, description_for(it)) }
             puts
           end
 
@@ -94,6 +70,13 @@ module VivlioStarter
 
             各コマンドの詳細: vs <command> --help
           FOOTER
+        end
+
+        # 説明文はコマンドクラスの self.description が正典（`vs <command> --help`
+        # の見出しと同じ文言になる）。一覧に無いコマンド名は表の書き間違いなので、
+        # 黙って空欄にせず fetch で落とす（help_spec_test が先に検出する）。
+        def description_for(name)
+          RootCommand.public_commands.fetch(name).description
         end
       end
     end
