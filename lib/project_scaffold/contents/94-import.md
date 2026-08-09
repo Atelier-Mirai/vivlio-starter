@@ -58,11 +58,22 @@ vs import --force ../starter_project    # 確認を省略したい場合
    - 画像パスを `![](foo.webp)` に統一
    - コードブロックキャプション → `` ```lang:filename ``
    - 言語未指定フェンスは Rouge で自動推定（`$`/`%` で始まる行があれば強制 `zsh`）
+   - `//sideimage` → `:::{.sideimage}`・`:::{.sideimage-right}`（`side=R` で右寄せ。幅 `30mm` は版面幅に対する比率 `{width=22%}` へ換算）
 4. **画像処理** — Starter `images/` をコピー → WebP 化 → 元画像（png/jpg/gif）は削除。
 5. **codes/ へのコピー** — Starter `source/` 配下をそのまま `codes/` へコピー。
 6. **YAML 変換** — `catalog.yml` は行単位の書き換え（`PREDEF→PREFACE` 等のキー変換と `.re` 除去だけ）。部・コメント・コメントアウトした章は原文のまま残る。`config.yml` は `book.main_title` などを `book.yml` へ反映。`config-starter.yml` の `starter.pagesize` は同じ判型の標準プリセット（`B5` なら `b5_standard`）へ対応づけ。
 7. **表紙の取り込み** — `config-starter.yml` の `frontcover_pdffile`・`backcover_pdffile` にある PDF を `covers/` へコピー。その 1 ページめを `frontcover_master.png`・`backcover_master.png` へ変換する。あわせて `book.yml` の `output.cover` を `master` に揃える。
 8. **片付け** — Vivlio 側 `temp/` と Starter 側 `bookname-md/` を削除。
+
+:::{.note}
+**サイドイメージは `.re` 原稿を読み直して復元しています**
+
+Re:VIEW の Markdown 変換は `//sideimage` を「画像 ＋ 空行 ＋ 本文」へ平坦化し、**囲みの終わりを示す印を残しません**。変換後の Markdown だけを見ても、どこまでが画像の脇に置く本文なのか決められないということです。
+
+そこで取り込みでは、章ごとに `.re` 原稿を開き直します。`//sideimage` … `//}` の囲みが何ブロックぶんの本文を抱えていたかを読み取り、同じ範囲を `:::{.sideimage}` で囲みます。推測ではなく原文の構造をそのまま移すので、段落が複数あっても箇条書きを含んでいても崩れません。
+
+画像名が原稿と一致せず置き場所を決められなかったときは、章名と画像名を挙げて 🟡 でお知らせします。その箇所だけ手で囲んでください。
+:::
 
 ### 実行中のログ例
 
@@ -114,6 +125,7 @@ vs import --force ../starter_project    # 確認を省略したい場合
 | 表紙 PDF がコピーされない | `frontcover_pdffile` が PNG など PDF 以外 | 取り込みは PDF のみ対応。`covers/frontcover_master.png` を直接置き換える |
 | 裏表紙が雛形の見本画像のまま | Starter 側に `backcover_pdffile` の指定がない | `covers/backcover_master.png` を自分の画像に置き換える |
 | 判型が雛形のまま | `starter.pagesize` が A5・B5 以外 | `config/book.yml` の `page.use` を自分で指定する |
+| サイドイメージが囲まれない | 画像名が `.re` 原稿と一致しない | 🟡 が挙げた章と画像名の箇所を `:::{.sideimage}` … `:::` で手で囲む |
 | `config/book.yml` の値が更新されない | 対応パスが見つからない | コメントやインデントが崩れていないか確認 |
 
 :::{.column}

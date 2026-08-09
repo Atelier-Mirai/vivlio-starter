@@ -9,6 +9,7 @@ require_relative 'build/catalog_updater'
 require_relative 'import/markdown_converter'
 require_relative 'import/image_processor'
 require_relative 'import/yaml_processor'
+require_relative 'import/sideimage_restorer'
 require_relative 'upgrade'
 
 module VivlioStarter
@@ -122,14 +123,14 @@ module VivlioStarter
         Common.confirm?('続行しますか？')
       end
 
-      # 既存ディレクトリの削除
+      # 取り込み先ディレクトリを空の状態で用意する。
+      #
+      # 「あれば作り直す」ではなく必ず作る——後段の move / cp は入れ物があることを
+      # 前提にしており、contents/ を持たないプロジェクトへ取り込むと
+      # `No such file or directory @ rb_file_s_rename` で落ちていた。
       def cleanup_existing_directories!
         %w[contents images codes].each do |dir|
-          next unless Dir.exist?(dir)
-
           FileUtils.rm_rf(dir)
-
-          # ディレクトリを再作成
           FileUtils.mkdir_p(dir)
         end
       end
@@ -191,6 +192,9 @@ module VivlioStarter
 
           # 追従変換を実行
           Import::MarkdownConverter.process!(temp_dir)
+
+          # //sideimage の囲みを戻す。画像パスが `![](foo.webp)` に揃ったあとに行う
+          Import::SideimageRestorer.restore!(temp_dir, @starter_dir)
 
           # contents/ に移動
           Dir.glob(File.join(temp_dir, '*.md')).each do |md_file|
