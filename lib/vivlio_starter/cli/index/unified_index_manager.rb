@@ -65,7 +65,11 @@ module VivlioStarter
       def plan!(chapters)
         Common.log_action('索引の現況を確認しています...')
         candidates = @config.fetch(:auto_discovery, true) ? extract_candidates(chapters) : []
-        build_plan_reporter(chapters, candidates, extractor: @extractor).render(dry_run: true)
+        # auto_process! と同じく「選べる候補」だけを渡す。生の候補には登録済みの語も
+        # 棄却済みの語も混ざっており、そのまま出すと下見だけが多く見え、しかも
+        # 著者が自分で外した語を推奨してしまう（実測: 2,880 件 対 2,644 件）。
+        selectable, = selectable_candidates(candidates)
+        build_plan_reporter(chapters, selectable, extractor: @extractor).render(dry_run: true)
         0
       end
 

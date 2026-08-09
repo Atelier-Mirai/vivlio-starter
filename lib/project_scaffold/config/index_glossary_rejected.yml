@@ -1,5 +1,5 @@
 ---
-rejected_at: '2026-08-05 01:14:07'
+rejected_at: '2026-08-09 17:57:19'
 rejected_terms:
 - term: Starter
   yomi: Starter
@@ -232,3 +232,36 @@ rejected_terms:
 - term: Vivlio Starter
   yomi: Vivlio Starter
   rejected_at: '2026-08-05 01:14:06'
+- term: CSS
+  yomi: CSS
+  rejected_at: '2026-08-09 03:08:17'
+- term: EPUB
+  yomi: EPUB
+  rejected_at: '2026-08-09 03:08:17'
+- term: Ruby
+  yomi: Ruby
+  rejected_at: '2026-08-09 03:08:17'
+- term: 章番号
+  yomi: しょうばんごう
+  rejected_at: '2026-08-09 03:08:17'
+- term: 用語集
+  yomi: ようごしゅう
+  rejected_at: '2026-08-09 03:08:17'
+- term: アインシュタイン
+  yomi: あいんしゅたいん
+  rejected_at: '2026-08-09 17:57:19'
+- term: 一般相対性理論
+  yomi: いっぱんそうたいせいりろん
+  rejected_at: '2026-08-09 17:57:19'
+- term: 重力
+  yomi: じゅうりょく
+  rejected_at: '2026-08-09 17:57:19'
+- term: 相対性理論
+  yomi: そうたいせいりろん
+  rejected_at: '2026-08-09 17:57:19'
+- term: 特殊相対性理論
+  yomi: とくしゅそうたいせいりろん
+  rejected_at: '2026-08-09 17:57:19'
+- term: ニュートン
+  yomi: にゅーとん
+  rejected_at: '2026-08-09 17:57:19'

@@ -1,5 +1,5 @@
 ---
-generated_at: '2026-08-09 03:08:18'
+generated_at: '2026-08-09 17:57:19'
 terms:
 - term: "--force"
   yomi: "--force"
@@ -724,21 +724,6 @@ terms:
   updated_at: '2026-08-09 03:08:17'
   main:
   - 22-extentions
-- term: アインシュタイン
-  yomi: あいんしゅたいん
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-07-05 20:49:59'
-  pattern: "/アインシュタイン/"
-  contexts:
-  - chapter: 22-extentions
-    context: "{.aki} ```markdown ![アインシュタイン](Einstein.webp){width=50% align=center}"
-  - chapter: 94-sample
-    context: 科学の世界に革命をもたらした{Albert Einstein|アルバート・アインシュタイン}。言葉が遅いと心配された少年が、やがて「20世紀最高の物理学者」と呼ばれるまで
-  updated_at: '2026-08-09 03:08:17'
-  main:
-  - 96-sample
 - term: アウトライン
   yomi: あうとらいん
   flags: i
@@ -801,19 +786,6 @@ terms:
   pattern: "/一般候補/"
   main:
   updated_at: '2026-08-09 03:08:17'
-- term: 一般相対性理論
-  yomi: いっぱんそうたいせいりろん
-  flags: i
-  definition: ''
-  source: manual_markup
-  approved_at: '2026-07-05 20:49:56'
-  pattern: "/一般相対性理論/"
-  contexts:
-  - chapter: 96-sample
-    context: "・アインシュタイン（1879–1955）。20世紀を代表する理論物理学者。特殊・一般相対性理論の提唱者。1921年ノーベル物理学賞受賞。"
-  updated_at: '2026-08-09 03:08:17'
-  main:
-  - 96-sample
 - term: 印刷用PDF
   yomi: いんさつようPDF
   flags: i
@@ -1311,20 +1283,6 @@ terms:
   pattern: "/自動抽出/"
   main:
   updated_at: '2026-08-09 03:08:17'
-- term: 重力
-  yomi: じゅうりょく
-  flags: i
-  definition: ''
-  source: manual_markup
-  approved_at: '2026-07-05 20:49:56'
-  pattern: "/重力/"
-  contexts:
-  - chapter: 96-sample
-    context: '特殊相対性理論は等速運動のみを扱い、一般相対性理論は加速度運動と重力を含みます。アインシュタインは特殊から一般へ到達するのに10年を要しました。
-      :'
-  updated_at: '2026-08-09 03:08:17'
-  main:
-  - 96-sample
 - term: 冗長表現
   yomi: じょうちょうひょうげん
   flags: i
@@ -1460,16 +1418,6 @@ terms:
   pattern: "/相互参照/"
   main:
   updated_at: '2026-08-09 03:08:18'
-- term: 相対性理論
-  yomi: そうたいせいりろん
-  flags: i
-  definition: ''
-  source: auto_extracted
-  approved_at: '2026-08-04 23:37:28'
-  pattern: "/相対性理論/"
-  main:
-  - 96-sample
-  updated_at: '2026-08-09 03:08:17'
 - term: ソート
   yomi: そーと
   flags: i
@@ -1754,19 +1702,6 @@ terms:
   pattern: "/到達性/"
   main:
   updated_at: '2026-08-09 03:08:18'
-- term: 特殊相対性理論
-  yomi: とくしゅそうたいせいりろん
-  flags: i
-  definition: ''
-  source: manual_markup
-  approved_at: '2026-07-05 20:49:56'
-  pattern: "/特殊相対性理論/"
-  contexts:
-  - chapter: 96-sample
-    context: 原子・分子の実在を統計的に裏付け 3. **特殊相対性理論** — 同時性の相対性、時間の遅れ、光速度不変を導出 4. **$E=mc^2
-  updated_at: '2026-08-09 03:08:17'
-  main:
-  - 96-sample
 - term: トラブルシューティング
   yomi: とらぶるしゅーてぃんぐ
   flags: i
@@ -1872,19 +1807,6 @@ terms:
   pattern: "/日本語校正/"
   main:
   updated_at: '2026-08-09 03:08:17'
-- term: ニュートン
-  yomi: にゅーとん
-  flags: i
-  definition: ''
-  source: manual_markup
-  approved_at: '2026-07-05 20:49:56'
-  pattern: "/ニュートン/"
-  contexts:
-  - chapter: 96-sample
-    context: " ::: 「質量が時空を曲げる」——この革命的な考えは、[ニュートン|にゅーとん]以来200年間続いた[重力|じゅうりょく]の常識を塗り替えました。"
-  updated_at: '2026-08-09 03:08:17'
-  main:
-  - 96-sample
 - term: ネスト
   yomi: ねすと
   flags: i
