@@ -36,10 +36,16 @@ module VivlioStarter
       REVIEW_FILE = '_index_glossary_review.md'
       LEGACY_REVIEW_FILE = '_index_review.md'
 
-      # 今回走査しなかった章から拾った抜粋であることを示す注記。
-      # 章を指定して実行すると（`vs index:auto 33`）指定外の章の抜粋が混ざるため、
-      # どこから来た文章なのかを言う。表示専用で、apply のパース時に剥がされる。
+      # 今回走査しなかった章から拾った抜粋であることを示す注記。表示専用で、
+      # apply のパース時に剥がされる（章名の一部と誤って辞書へ戻さないため）。
+      #
+      # 2 種類あるのは著者の判断が変わるから。走査対象外は「今回指定しなかっただけ」で
+      # 本には載る章。catalog 未登録は本に入らない章なので、その語には索引のページ番号が
+      # 付かない——章を catalog へ戻すか、語を索引から外すかを決める必要がある。
       OUT_OF_SCOPE_NOTE = '（走査対象外）'
+      OUTSIDE_CATALOG_NOTE = '（catalog 未登録）'
+      # 旧版が書いた「（catalog 外）」も剥がす（レビューファイルは版をまたいで残る）
+      CONTEXT_NOTES = [OUTSIDE_CATALOG_NOTE, OUT_OF_SCOPE_NOTE, '（catalog 外）'].freeze
 
       # セクションの見出し。走査範囲の境目に使うので綴りを 1 箇所に置く
       TERMS_SECTION = '## 1. 登録済み用語の確認'
@@ -307,8 +313,8 @@ module VivlioStarter
               # 章名を整える sub がその場で $~ を上書きし、続けて読む文脈が
               # nil になる。辞書の contexts が軒並み空だったのはこれが原因。
               if (occurrence = current_line.match(/^  - ([^:]+): (.+)/))
-                # 表示用の注記は辞書へ戻さない（旧版の「（catalog 外）」も剥がす）
-                chapter = occurrence[1].sub(/#{OUT_OF_SCOPE_NOTE}\z|（catalog 外）\z/o, '')
+                # 表示用の注記は辞書へ戻さない
+                chapter = occurrence[1].sub(/#{Regexp.union(CONTEXT_NOTES)}\z/o, '')
                 contexts << { 'chapter' => chapter, 'context' => occurrence[2] }
                 i += 1
                 next
@@ -580,7 +586,7 @@ module VivlioStarter
         elsif score
           line += " - スコア: #{score.round(1)}"
         elsif checked
-          line += Array(term['contexts']).any? ? ' - [走査対象外の章に出現]' : ' - [原稿に出現しません]'
+          line += absent_term_note(term)
         end
         # 追加情報は必ず行末へ。`- [-i] ` と `**用語** (読み)` の間に差し込むと
         # 7 つのパーサの正規表現が軒並みマッチしなくなる。
@@ -599,8 +605,9 @@ module VivlioStarter
         contexts = term['contexts'] || []
         contexts.first(2).each do |ctx|
           chapter = ctx['chapter'] || '不明'
-          # 今回走査しなかった章の抜粋は注記する（表示のみ・apply のパースで剥がされる）
-          chapter = "#{chapter}#{OUT_OF_SCOPE_NOTE}" if ctx['out_of_scope']
+          # 走査しなかった章の抜粋は出どころを注記する（表示のみ・apply のパースで剥がされる）
+          chapter += OUTSIDE_CATALOG_NOTE if ctx['outside_catalog']
+          chapter += OUT_OF_SCOPE_NOTE if ctx['out_of_scope']
           context_text = extract_context(ctx['context'])
           line += "  - #{chapter}: #{context_text}\n"
         end
@@ -697,6 +704,18 @@ module VivlioStarter
         end
 
         "#{line}\n"
+      end
+
+      # 走査した章に出てこない登録語の注記。行き先の違う 3 通りを言い分ける。
+      #   死語               … 原稿のどこにも無い。語を外すか、綴りを直す
+      #   catalog 未登録の章 … 本に入らない章にしか無い。章を戻すか、語を外す
+      #   走査対象外の章     … 本には載る章にある。今回指定しなかっただけで、直す点は無い
+      def absent_term_note(term)
+        contexts = Array(term['contexts'])
+        return ' - [原稿に出現しません]' if contexts.empty?
+        return ' - [catalog 未登録の章に出現]' if contexts.all? { it['outside_catalog'] }
+
+        ' - [走査対象外の章に出現]'
       end
 
       # ラベルを決定（NEW! または Today）

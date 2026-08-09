@@ -173,6 +173,34 @@ module VivlioStarter
         assert_match(%r{\*\*PDF/X-1a\*\*.*\[走査対象外の章に出現\]}, content)
       end
 
+      # catalog に載っていない章にしか出ない語は、走査対象外とは行き先が違う
+      # （章を catalog へ戻すか、語を索引から外すか）。注記も章名も言い分ける
+      def test_term_living_only_outside_the_catalog_is_called_out
+        term = { 'term' => 'インストルメンテーション', 'yomi' => 'いんすとるめんてーしょん',
+                 'flags' => 'i', 'in_index' => true,
+                 'contexts' => [{ 'chapter' => '61-developer', 'context' => '開発者だけが読む話',
+                                  'outside_catalog' => true }] }
+
+        @generator.generate!(terms: [term], high_candidates: [], low_candidates: [], rejected: [])
+        content = File.read(ReviewMarkdownGenerator::REVIEW_FILE, encoding: 'utf-8')
+
+        assert_match(/\[catalog 未登録の章に出現\]/, content)
+        assert_includes content, '61-developer（catalog 未登録）'
+      end
+
+      # 注記は表示専用。章名の一部として辞書へ戻ってはいけない（走査対象外と同じ扱い）
+      def test_outside_catalog_annotation_is_stripped_on_parse
+        @generator.generate!(terms: [{ 'term' => 'Markdown', 'yomi' => 'まーくだうん', 'flags' => 'ig',
+                                       'in_index' => true, 'in_glossary' => true,
+                                       'contexts' => [{ 'chapter' => '61-developer', 'context' => '開発者向け',
+                                                        'outside_catalog' => true }] }],
+                             high_candidates: [], low_candidates: [], rejected: [])
+
+        contexts = @generator.parse_glossary_approved.first['contexts']
+
+        assert_equal [{ 'chapter' => '61-developer', 'context' => '開発者向け' }], contexts
+      end
+
       # --- phase: 候補の提示（R2） ---
 
       # `NEW!` は「機械が推測した候補」の目印。既存の候補提示と同じラベルを使う

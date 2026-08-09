@@ -1040,14 +1040,34 @@ module VivlioStarter
       end
 
       # 今回対象外の章から拾った context に表示用マークを付ける（判断材料の誤解防止・§4.3-4）。
-      # レビュー md の表示にのみ使われ、apply のパース時に注記は剥がされるため辞書へは戻らない
+      # レビュー md の表示にのみ使われ、apply のパース時に注記は剥がされるため辞書へは戻らない。
+      #
+      # 「今回走査しなかっただけ」と「catalog に載っていない」は区別する。後者はその章が
+      # 本に入らないということで、索引にページ番号が付かない。著者が下す判断も変わる
+      # （章を catalog へ戻すか、語を索引から外すか）。ビルド時の警告が
+      # 「catalog 未登録の X に出現」と言い分けているのと同じ区別をレビューでも見せる。
       # @param contexts [Array<Hash>] 文脈情報のリスト
       # @param scanned [Set<String>] 今回走査した章のベースネーム
       # @return [Array<Hash>]
       def annotate_out_of_scope_contexts(contexts, scanned)
         contexts.map do |ctx|
           chapter = ctx['chapter'] || ctx[:chapter]
-          scanned.include?(chapter) ? ctx : ctx.merge('out_of_scope' => true)
+          next ctx if scanned.include?(chapter)
+
+          outside = catalog_basenames && !catalog_basenames.include?(chapter)
+          ctx.merge(outside ? { 'outside_catalog' => true } : { 'out_of_scope' => true })
+        end
+      end
+
+      # catalog.yml に載っている章。読めないときは nil を返す——判定材料が無いのに
+      # 「catalog 未登録」と決めつけず、弱いほうの注記（走査対象外）に倒すため。
+      def catalog_basenames
+        return @catalog_basenames if defined?(@catalog_basenames)
+
+        @catalog_basenames = begin
+          Build::CatalogLoader.load_existing_basenames.to_set
+        rescue StandardError
+          nil
         end
       end
 
