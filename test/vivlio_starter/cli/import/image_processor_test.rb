@@ -20,27 +20,34 @@ module VivlioStarter
           FileUtils.rm_rf(@tmpdir) if @tmpdir && Dir.exist?(@tmpdir)
         end
 
-        # ================================================================
-        # copy_front_cover! テスト
-        # ================================================================
-        def test_copy_front_cover_returns_false_for_nil
-          refute ImageProcessor.copy_front_cover!(@tmpdir, nil)
+        FRONT = CoverCommands::FRONTCOVER_MASTER
+        BACK = CoverCommands::BACKCOVER_MASTER
+
+        def import_front(starter_dir, value)
+          ImageProcessor.import_master_cover!(starter_dir, value, master: FRONT, label: '表表紙')
         end
 
-        def test_copy_front_cover_returns_false_for_non_pdf
-          refute ImageProcessor.copy_front_cover!(@tmpdir, 'cover.png')
+        # ================================================================
+        # import_master_cover! テスト
+        # ================================================================
+        def test_import_master_cover_returns_false_for_nil
+          refute import_front(@tmpdir, nil)
         end
 
-        def test_copy_front_cover_returns_false_when_file_not_found
+        def test_import_master_cover_returns_false_for_non_pdf
+          refute import_front(@tmpdir, 'cover.png')
+        end
+
+        def test_import_master_cover_returns_false_when_file_not_found
           starter_dir = File.join(@tmpdir, 'starter')
           FileUtils.mkdir_p(File.join(starter_dir, 'images'))
 
           Dir.chdir(@tmpdir) do
-            refute ImageProcessor.copy_front_cover!(starter_dir, 'hyoshi.pdf')
+            refute import_front(starter_dir, 'hyoshi.pdf')
           end
         end
 
-        def test_copy_front_cover_copies_pdf_successfully
+        def test_import_master_cover_copies_pdf_successfully
           starter_dir = File.join(@tmpdir, 'starter')
           images_dir = File.join(starter_dir, 'images')
           FileUtils.mkdir_p(images_dir)
@@ -55,21 +62,61 @@ module VivlioStarter
           convert_args = nil
 
           Dir.chdir(work_dir) do
-            stub = ->(covers_dir, filename) {
-              convert_args = [covers_dir, filename]
+            stub = ->(covers_dir, filename, master) {
+              convert_args = [covers_dir, filename, master]
               true
             }
-            result = ImageProcessor.stub(:convert_front_cover_pdf_to_master!, stub) do
-              ImageProcessor.copy_front_cover!(starter_dir, 'hyoshi.pdf')
+            result = ImageProcessor.stub(:convert_cover_pdf_to_master!, stub) do
+              import_front(starter_dir, 'hyoshi.pdf')
             end
             assert result
             assert File.exist?(File.join('covers', 'hyoshi.pdf'))
           end
 
-          assert_equal ['covers', 'hyoshi.pdf'], convert_args
+          assert_equal ['covers', 'hyoshi.pdf', FRONT], convert_args
         end
 
-        def test_convert_front_cover_pdf_to_master_invokes_imagemagick_command
+        # 裏表紙も同じ経路で取り込む（雛形の見本 backcover_master.png を置き換える）
+        def test_import_master_cover_handles_back_cover
+          starter_dir = File.join(@tmpdir, 'starter')
+          FileUtils.mkdir_p(File.join(starter_dir, 'images'))
+          File.write(File.join(starter_dir, 'images', 'ura.pdf'), '%PDF-1.4 dummy')
+
+          work_dir = File.join(@tmpdir, 'work')
+          FileUtils.mkdir_p(work_dir)
+          convert_args = nil
+
+          Dir.chdir(work_dir) do
+            stub = ->(covers_dir, filename, master) {
+              convert_args = [covers_dir, filename, master]
+              true
+            }
+            ImageProcessor.stub(:convert_cover_pdf_to_master!, stub) do
+              assert ImageProcessor.import_master_cover!(starter_dir, 'ura.pdf', master: BACK, label: '裏表紙')
+            end
+          end
+
+          assert_equal ['covers', 'ura.pdf', BACK], convert_args
+        end
+
+        # ================================================================
+        # plain_cover_filename テスト（Re:VIEW Starter 側の書き方の揺れを吸収する）
+        # ================================================================
+        def test_plain_cover_filename_strips_page_number_and_bleed_marker
+          assert_equal 'cover.pdf', ImageProcessor.plain_cover_filename('cover.pdf<2>*', label: '表表紙')
+          assert_equal 'cover.pdf', ImageProcessor.plain_cover_filename('cover.pdf<2>', label: '表表紙')
+          assert_equal 'cover.pdf', ImageProcessor.plain_cover_filename('cover.pdf*', label: '表表紙')
+        end
+
+        def test_plain_cover_filename_takes_first_of_array
+          assert_equal 'a.pdf', ImageProcessor.plain_cover_filename(['a.pdf', 'b.pdf'], label: '表表紙')
+        end
+
+        def test_plain_cover_filename_returns_empty_for_nil
+          assert_equal '', ImageProcessor.plain_cover_filename(nil, label: '表表紙')
+        end
+
+        def test_convert_cover_pdf_to_master_invokes_imagemagick_command
           work_dir = File.join(@tmpdir, 'work')
           covers_dir = File.join(work_dir, 'covers')
           FileUtils.mkdir_p(covers_dir)
@@ -83,18 +130,18 @@ module VivlioStarter
                 captured = { cmd:, label: }
                 true
               } do
-                result = ImageProcessor.convert_front_cover_pdf_to_master!(covers_dir, 'hyoshi.pdf')
+                result = ImageProcessor.convert_cover_pdf_to_master!(covers_dir, 'hyoshi.pdf', FRONT)
                 assert result
               end
             end
 
             assert_includes captured[:cmd], "#{pdf_path}[0]"
-            assert_includes captured[:cmd], "PNG32:#{File.join(covers_dir, 'frontcover_master.png')}"
-            assert_equal 'frontcover_master.png 生成', captured[:label]
+            assert_includes captured[:cmd], "PNG32:#{File.join(covers_dir, FRONT)}"
+            assert_equal "#{FRONT} 生成", captured[:label]
           end
         end
 
-        def test_convert_front_cover_pdf_to_master_returns_false_without_imagemagick
+        def test_convert_cover_pdf_to_master_returns_false_without_imagemagick
           work_dir = File.join(@tmpdir, 'work')
           covers_dir = File.join(work_dir, 'covers')
           FileUtils.mkdir_p(covers_dir)
@@ -103,7 +150,7 @@ module VivlioStarter
 
           Dir.chdir(work_dir) do
             ImageProcessor.stub :find_imagemagick_convert_command, nil do
-              refute ImageProcessor.convert_front_cover_pdf_to_master!(covers_dir, 'hyoshi.pdf')
+              refute ImageProcessor.convert_cover_pdf_to_master!(covers_dir, 'hyoshi.pdf', FRONT)
             end
           end
         end

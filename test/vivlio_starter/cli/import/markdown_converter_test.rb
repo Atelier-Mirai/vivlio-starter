@@ -65,16 +65,19 @@ module VivlioStarter
           assert_includes result, ':::{.notice}'
         end
 
+        # [centering] / [flushright] はブロックごと寄せる記法なので align-*（ブロック用）へ。
+        # かつて centering は同名の `.centering` に変換していたが、そのクラスは CSS に無く、
+        # 中央寄せが黙って効かなかった。text-* は段落内の文字揃えを変える別の記法
         def test_convert_centering_block
           input = "[centering]\n中央揃えテキスト\n[/centering]"
           result = MarkdownConverter.convert_fence_blocks(input)
-          assert_includes result, ':::{.centering}'
+          assert_includes result, ':::{.align-center}'
         end
 
         def test_convert_flushright_block
           input = "[flushright]\n右揃えテキスト\n[/flushright]"
           result = MarkdownConverter.convert_fence_blocks(input)
-          assert_includes result, ':::{.text-right}'
+          assert_includes result, ':::{.align-right}'
         end
 
         # ================================================================
@@ -107,12 +110,12 @@ module VivlioStarter
           MD
 
           expected = <<~MD
-            :::{.text-right}
+            :::{.align-right}
             早乙女遙香 さん
             :::
 
 
-            :::{.text-right}
+            :::{.align-right}
             穂髙未來 さん
             :::
 

@@ -77,33 +77,53 @@ module VivlioStarter
           end
         end
 
-        # 表紙 PDF をコピーし、frontcover_master.png を生成する
+        # 表紙 PDF をコピーし、マスター PNG を生成する
         #
         # @param starter_dir [String] Starter プロジェクトのディレクトリ
-        # @param cover_filename [String] 表紙ファイル名（例: hyoshi.pdf）
+        # @param cover_value [Object] config-starter.yml の frontcover_pdffile / backcover_pdffile
+        # @param master [String] 生成するマスター PNG（frontcover_master.png 等）
+        # @param label [String] ログでの呼び名（表表紙 / 裏表紙）
         # @return [Boolean] 成功時 true
-        def copy_front_cover!(starter_dir, cover_filename)
-          return false unless cover_filename
-          return false unless cover_filename.downcase.end_with?('.pdf')
+        def import_master_cover!(starter_dir, cover_value, master:, label:)
+          cover_filename = plain_cover_filename(cover_value, label: label)
+          return false if cover_filename.empty?
+
+          unless cover_filename.downcase.end_with?('.pdf')
+            Common.log_warn("  #{label}の指定 #{cover_filename} は PDF ではないため取り込めません。",
+                            detail: "対処: covers/#{master} を直接置き換えてください。")
+            return false
+          end
 
           src = File.join(starter_dir, 'images', cover_filename)
           unless File.exist?(src)
-            Common.log_warn("  表紙 PDF が見つかりません: #{src}")
+            Common.log_warn("  #{label}の PDF が見つかりません: #{src}")
             return false
           end
 
           dest_dir = 'covers'
           FileUtils.mkdir_p(dest_dir)
+          FileUtils.cp(src, File.join(dest_dir, cover_filename))
+          Common.log_info("  #{label}の PDF をコピーしました: #{cover_filename} → covers/")
 
-          dest = File.join(dest_dir, cover_filename)
-          FileUtils.cp(src, dest)
-          Common.log_info("  表紙 PDF をコピーしました: #{cover_filename} → covers/")
+          convert_cover_pdf_to_master!(dest_dir, cover_filename, master)
+        end
 
-          convert_front_cover_pdf_to_master!(dest_dir, cover_filename)
+        # Re:VIEW Starter の表紙指定からファイル名だけを取り出す。
+        #
+        # 配列（`[a.pdf, b.pdf]`）・ページ番号（`cover.pdf<2>`）・塗り足し除去（`cover.pdf*`）を
+        # 取りうる書き方なので、先頭 1 件の素のファイル名まで落とす。
+        def plain_cover_filename(cover_value, label:)
+          names = Array(cover_value).map { it.to_s.strip }.reject(&:empty?)
+          if names.size > 1
+            Common.log_warn("  #{label}に #{names.size} 個の PDF が指定されています。#{names.first} だけを取り込みました。",
+                            detail: '対処: 複数ページの表紙が要るなら、1 枚に結合してから取り込んでください。')
+          end
+
+          names.first.to_s.sub(/<\d+>/, '').delete_suffix('*')
         end
 
         # Re:VIEW の PDF を Vivlio マスター PNG へ変換する
-        def convert_front_cover_pdf_to_master!(covers_dir, cover_filename)
+        def convert_cover_pdf_to_master!(covers_dir, cover_filename, master)
           pdf_path = File.join(covers_dir, cover_filename)
           unless File.exist?(pdf_path)
             Common.log_warn("  コピー済みの表紙 PDF が見つかりません: #{pdf_path}")
@@ -112,11 +132,11 @@ module VivlioStarter
 
           convert_cmd = find_imagemagick_convert_command
           unless convert_cmd
-            Common.log_warn('  ImageMagick（magick/convert）が見つからないため frontcover_master.png を生成できませんでした')
+            Common.log_warn("  ImageMagick（magick/convert）が見つからないため #{master} を生成できませんでした")
             return false
           end
 
-          master_path = File.join(covers_dir, CoverCommands::FRONTCOVER_MASTER)
+          master_path = File.join(covers_dir, master)
           cmd = convert_cmd + [
             "#{pdf_path}[0]",
             '-density', '350',
@@ -125,8 +145,8 @@ module VivlioStarter
             "PNG32:#{master_path}"
           ]
 
-          if run_imagemagick_command(cmd, label: 'frontcover_master.png 生成')
-            Common.log_info("  frontcover_master.png を生成しました: #{master_path}")
+          if run_imagemagick_command(cmd, label: "#{master} 生成")
+            Common.log_info("  #{master} を生成しました: #{master_path}")
             true
           else
             FileUtils.rm_f(master_path)

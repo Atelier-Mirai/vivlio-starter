@@ -103,8 +103,10 @@ module VivlioStarter
           'tip' => { klass: 'tip' },
           'note' => { klass: 'note' },
           'notice' => { klass: 'notice' },
-          'centering' => { klass: 'centering' },
-          'flushright' => { klass: 'text-right' },
+          # [centering] / [flushright] はブロックごと寄せる記法なので align-*（ブロック用）へ。
+          # text-* は段落内の文字揃えだけを変える別の記法で、ここでは使わない。
+          'centering' => { klass: 'align-center' },
+          'flushright' => { klass: 'align-right' },
           'column' => { klass: 'column', separator: "\n" }
         }.freeze
 

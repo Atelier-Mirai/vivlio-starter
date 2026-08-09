@@ -13,11 +13,14 @@
 #
 # 依存:
 #   - YAML: YAML パース
-#   - Build::CatalogUpdater: catalog.yml 書き込み
+#   - Build::CatalogLoader: catalog.yml の場所
 #   - Common: ログ出力
 # ================================================================
 
+require 'fileutils'
 require 'yaml'
+
+require_relative '../build/catalog_loader'
 
 module VivlioStarter
   module CLI
@@ -25,6 +28,24 @@ module VivlioStarter
       # YAML 設定ファイル変換モジュール
       module YamlProcessor
         module_function
+
+        # Re:VIEW のセクション名と vivlio-starter のセクション名の対応
+        CATALOG_KEY_MAP = {
+          'PREDEF' => 'PREFACE',
+          'CHAPS' => 'CHAPTERS',
+          'APPENDIX' => 'APPENDICES',
+          'POSTDEF' => 'POSTFACE'
+        }.freeze
+
+        # 行頭のセクション名。コメントアウトされた例（`##     PREDEF:`）も同時に直す
+        CATALOG_KEY_PATTERN = /\A(\s*(?:#+\s*)?)(#{Regexp.union(CATALOG_KEY_MAP.keys)}):/
+
+        # Re:VIEW の原稿拡張子。後ろに英数字が続かないときだけ落とす
+        # （`.review` のような語を巻き込まないため）
+        RE_EXTENSION_PATTERN = /\.re(?![A-Za-z0-9_])/
+
+        # Re:VIEW Starter の判型と vivlio-starter の判型プリセットの対応
+        PAGE_PRESETS = { 'A5' => 'a5_standard', 'B5' => 'b5_standard' }.freeze
 
         # catalog.yml を変換する
         #
@@ -39,23 +60,27 @@ module VivlioStarter
             return
           end
 
-          catalog = YAML.safe_load_file(starter_catalog, permitted_classes: [Symbol])
+          catalog_file = Build::CatalogLoader::CATALOG_FILE
+          converted = File.readlines(starter_catalog, encoding: 'utf-8').map { convert_catalog_line(it) }
 
-          key_map = {
-            'PREDEF' => 'PREFACE',
-            'CHAPS' => 'CHAPTERS',
-            'APPENDIX' => 'APPENDICES',
-            'POSTDEF' => 'POSTFACE'
-          }
+          FileUtils.mkdir_p(File.dirname(catalog_file))
+          File.write(catalog_file, converted.join, encoding: 'utf-8')
+          Common.log_info("  #{catalog_file} を更新しました（部・コメントは原文のまま）")
+        end
 
-          new_catalog = {}
-          catalog.each do |key, value|
-            new_key = key_map[key] || key
-            new_catalog[new_key] = strip_re_extension(value)
+        # catalog.yml の 1 行を変換する。
+        #
+        # YAML として読み書きすると「まだ有効にしていない章」を書き残したコメント行
+        # （`# - lectures.re`）が消える。著者にとっては原稿の予定表そのものなので、
+        # 行単位で置き換えて並び・部（部タイトル）・コメントを原文のまま残す。
+        #
+        # @param line [String] Re:VIEW の catalog.yml の 1 行
+        # @return [String] 変換後の 1 行
+        def convert_catalog_line(line)
+          renamed = line.sub(CATALOG_KEY_PATTERN) do
+            "#{Regexp.last_match(1)}#{CATALOG_KEY_MAP.fetch(Regexp.last_match(2))}:"
           end
-
-          Build::CatalogUpdater.save_catalog(new_catalog)
-          Common.log_info('  config/catalog.yml を更新しました（コメント保持）')
+          renamed.gsub(RE_EXTENSION_PATTERN, '')
         end
 
         # config.yml / config-starter.yml を book.yml に変換する
@@ -89,33 +114,16 @@ module VivlioStarter
           end
         end
 
-        # 表紙設定を book.yml に反映する
+        # 取り込んだ表紙を book.yml に反映する。
         #
-        # @param cover_filename [String] 表紙ファイル名（例: hyoshi.pdf）
+        # 表紙は covers/frontcover_master.png・backcover_master.png として取り込むので、
+        # book.yml 側も master テーマを指している必要がある。master は既定値でもあるが、
+        # 著者が light/dark を選んだプロジェクトへ取り込むと持ち込んだ表紙が
+        # 黙って無視されるため、ここで明示的に書く。
+        #
         # @return [Boolean] 更新成功時 true
-        def update_cover_config!(cover_filename)
-          return false unless cover_filename
-
-          updates = [[%w[output pdf cover front], cover_filename]]
-          update_book_yaml_with_values(updates)
-        end
-
-        # .re 拡張子を再帰的に除去する
-        #
-        # @param value [Object] YAML 値
-        # @return [Object] .re を除去した値
-        def strip_re_extension(value)
-          case value
-          when Array
-            value.map { |v| strip_re_extension(v) }
-          when Hash
-            value.transform_keys { |k| k.to_s.sub(/\.re$/, '') }
-                 .transform_values { |v| strip_re_extension(v) }
-          when String
-            value.sub(/\.re$/, '')
-          else
-            value
-          end
+        def use_master_cover!
+          update_book_yaml_with_values([[%w[output cover], 'master']])
         end
 
         # config.yml / config-starter.yml から更新リストを構築する
@@ -134,8 +142,9 @@ module VivlioStarter
           subtitle = extract_text(config['subtitle']) if config['subtitle']
           updates << [%w[book subtitle], subtitle] if subtitle && !subtitle.empty?
 
-          # 言語
+          # 言語・ISBN
           updates << [%w[book language], config['language']] if config['language']
+          updates << [%w[book isbn], config['isbn']] if config['isbn']
 
           # プロジェクト名・バージョン
           if config['bookname']
@@ -165,18 +174,32 @@ module VivlioStarter
           # イベント名
           updates << [%w[book series], config['pubevent_name']] if config['pubevent_name']
 
-          # ページサイズ
-          if config_starter.dig('starter', 'pagesize')
-            pagesize = config_starter.dig('starter', 'pagesize')
-            page_use = case pagesize.to_s.upcase
-                       when 'B5' then 'b5_airy'
-                       when 'A5' then 'a5_compact'
-                       else 'a4_standard'
-                       end
-            updates << [%w[page use], page_use]
-          end
+          # 判型
+          preset = page_preset_for(config_starter.dig('starter', 'pagesize'))
+          updates << [%w[page use], preset] if preset
 
           updates
+        end
+
+        # Re:VIEW Starter の判型に対応する判型プリセットを返す。
+        #
+        # 同じ判型の standard へ寄せる。行間や余白の好み（airy / compact）は
+        # 取り込んだあとに著者が選び直すもので、Re:VIEW 側の値からは決められない。
+        #
+        # @param pagesize [String, nil] config-starter.yml の starter.pagesize
+        # @return [String, nil] 判型プリセット名。対応が無ければ nil
+        def page_preset_for(pagesize)
+          key = pagesize.to_s.strip
+          return nil if key.empty?
+
+          preset = PAGE_PRESETS[key.upcase]
+          return preset if preset
+
+          Common.log_warn("  判型 #{key} に対応する判型プリセットがありません。",
+                          detail: '対処: config/book.yml の page.use に ' \
+                                  "#{PAGE_PRESETS.values.join(' / ')} などから選んで書いてください" \
+                                  '（今回は雛形の判型のままにしました）。')
+          nil
         end
 
         # additional フィールドから発行者・連絡先を抽出

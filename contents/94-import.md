@@ -50,7 +50,7 @@ vs import --force ../starter_project    # 確認を省略したい場合
 
 `vs import` を実行すると、以下の処理が順に実行されます。
 
-1. **クリーンアップ** — Vivlio 側の `contents/`, `images/`, `codes/` を削除して作り直します。
+1. **クリーンアップ** — Vivlio 側の `contents/`, `images/`, `codes/` を削除して作り直し。索引・用語集の辞書（`config/index_glossary_terms.yml`・`config/index_glossary_rejected.yml`）も空に戻す。いま消した原稿を説明するデータのため。
 2. **Markdown 生成** — Starter 側で `rake markdown` を自動実行し、`bookname-md/` を生成（既存があれば再利用）。
 3. **Markdown 追従変換** — 生 Markdown を `temp/` にコピーし、以下の変換を適用してから `contents/` へ移動します。
    - フェンスブロック（`[abstract]` など）→ `:::{.class}`
@@ -58,10 +58,11 @@ vs import --force ../starter_project    # 確認を省略したい場合
    - 画像パスを `![](foo.webp)` に統一
    - コードブロックキャプション → `` ```lang:filename ``
    - 言語未指定フェンスは Rouge で自動推定（`$`/`%` で始まる行があれば強制 `zsh`）
-4. **画像処理** — Starter `images/` をコピー → WebP 化 → 元画像（png/jpg/gif）は削除。`config-starter.yml` に `frontcover_pdffile` があれば `covers/` へコピーし、`book.yml` の表紙設定を更新。
+4. **画像処理** — Starter `images/` をコピー → WebP 化 → 元画像（png/jpg/gif）は削除。
 5. **codes/ へのコピー** — Starter `source/` 配下をそのまま `codes/` へコピー。
-6. **YAML 変換** — `catalog.yml`（`PREDEF→PREFACE` 等のキー変換、`.re` 拡張子除去）、`config.yml`（`book.main_title` 等を `book.yml` に反映）、`config-starter.yml`（`starter.pagesize` を `page.use` にマッピング）を変換。コメントは保持されます。
-7. **片付け** — Vivlio 側 `temp/` と Starter 側 `bookname-md/` を削除。
+6. **YAML 変換** — `catalog.yml` は行単位の書き換え（`PREDEF→PREFACE` 等のキー変換と `.re` 除去だけ）。部・コメント・コメントアウトした章は原文のまま残る。`config.yml` は `book.main_title` などを `book.yml` へ反映。`config-starter.yml` の `starter.pagesize` は同じ判型の標準プリセット（`B5` なら `b5_standard`）へ対応づけ。
+7. **表紙の取り込み** — `config-starter.yml` の `frontcover_pdffile`・`backcover_pdffile` にある PDF を `covers/` へコピー。その 1 ページめを `frontcover_master.png`・`backcover_master.png` へ変換する。あわせて `book.yml` の `output.cover` を `master` に揃える。
+8. **片付け** — Vivlio 側 `temp/` と Starter 側 `bookname-md/` を削除。
 
 ### 実行中のログ例
 
@@ -77,10 +78,14 @@ vs import --force ../starter_project    # 確認を省略したい場合
   42 個の画像をコピーしました
   旧画像 (png/jpg/gif) を 42 個削除しました
 [Step 5] catalog.yml を変換します
-  config/catalog.yml を更新しました（コメント保持）
+  config/catalog.yml を更新しました（部・コメントは原文のまま）
 [Step 6] config.yml を変換します
   config/book.yml を更新しました（コメント保持）
-インポートが完了しました
+  表表紙の PDF をコピーしました: hyoshi.pdf → covers/
+  frontcover_master.png を生成しました: covers/frontcover_master.png
+🟡   裏表紙は雛形の見本画像のままです。
+        対処: covers/backcover_master.png を自分の裏表紙画像に置き換えてください。
+✅ インポートしました（contents/ に 7 章）
 ```
 
 ## インポート後の確認
@@ -89,11 +94,11 @@ vs import --force ../starter_project    # 確認を省略したい場合
 
 1. `contents/` に Markdown が揃っているか
 2. `.webp` 以外の画像が残っていないか
-3. `covers/` に表紙 PDF がコピーされ、`config/book.yml` の表紙設定が更新されているか
+3. `covers/frontcover_master.png` と `backcover_master.png` が自分の表紙になっているか
 4. `config/book.yml` の `book.main_title` などが期待どおりか（コメントが消えていないか）
 5. `config/catalog.yml` の章名が `.re` を含んでいないか
 
-確認が済んだら `vs build` を実行して、章構成・画像・表紙が意図どおりになっているか PDF で確認してください。
+確認が済んだら `vs build` を実行して、章構成・画像・表紙が意図どおりか PDF で確かめてください。索引・用語集を使う本なら、そのあと `vs index:auto` で辞書を作り直します。
 
 :::{.notice}
 画像は WebP のみ残るため、元画像が必要な場合は事前にバックアップを取ってください。
@@ -106,7 +111,9 @@ vs import --force ../starter_project    # 確認を省略したい場合
 | Starter スクリプトが見つからない | `lib/ruby/review-markdownmaker.rb` が存在しない | Starter のルートを正しく指定する |
 | `rake markdown` が失敗する | Starter 側 gem が未インストール | Starter ディレクトリで `bundle install`、または依存 gem を整える |
 | Rouge が見つからない | gem が未インストール | `vs doctor --fix` or `gem install rouge` |
-| 表紙 PDF がコピーされない | `frontcover_pdffile` が PNG など PDF 以外 | 仕様通り PDF のみに対応。Starter 側設定を修正 |
+| 表紙 PDF がコピーされない | `frontcover_pdffile` が PNG など PDF 以外 | 取り込みは PDF のみ対応。`covers/frontcover_master.png` を直接置き換える |
+| 裏表紙が雛形の見本画像のまま | Starter 側に `backcover_pdffile` の指定がない | `covers/backcover_master.png` を自分の画像に置き換える |
+| 判型が雛形のまま | `starter.pagesize` が A5・B5 以外 | `config/book.yml` の `page.use` を自分で指定する |
 | `config/book.yml` の値が更新されない | 対応パスが見つからない | コメントやインデントが崩れていないか確認 |
 
 :::{.column}

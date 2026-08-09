@@ -9,6 +9,7 @@ require_relative 'build/catalog_updater'
 require_relative 'import/markdown_converter'
 require_relative 'import/image_processor'
 require_relative 'import/yaml_processor'
+require_relative 'upgrade'
 
 module VivlioStarter
   module CLI
@@ -51,6 +52,18 @@ module VivlioStarter
         }
       }.freeze
 
+      # 取り込みで空に戻す著者辞書（原稿を入れ替えるので中身が意味を失う）
+      INDEX_DICTIONARY_FILES = [
+        File.join('config', 'index_glossary_terms.yml'),
+        File.join('config', 'index_glossary_rejected.yml')
+      ].freeze
+
+      # Re:VIEW Starter の表紙指定と、取り込み先のマスター画像の対応
+      COVER_SIDES = [
+        { key: 'frontcover_pdffile', master: CoverCommands::FRONTCOVER_MASTER, label: '表表紙' },
+        { key: 'backcover_pdffile', master: CoverCommands::BACKCOVER_MASTER, label: '裏表紙' }
+      ].freeze
+
       # メイン実行メソッド
       def execute_import(starter_dir, options = {})
         @options = options
@@ -60,6 +73,7 @@ module VivlioStarter
         return 1 unless confirm_cleanup_or_force?
 
         cleanup_existing_directories!
+        reset_index_dictionaries!
         convert_re_to_md!
         Import::ImageProcessor.convert_to_webp!(@starter_dir)
         copy_source_to_codes!
@@ -118,6 +132,21 @@ module VivlioStarter
           # ディレクトリを再作成
           FileUtils.mkdir_p(dir)
         end
+      end
+
+      # 索引・用語集の辞書を空に戻す。
+      #
+      # 辞書は「いま消した原稿」を説明するデータなので、contents/ と一緒に片付ける。
+      # 残すと雛形の見本原稿の語が取り込んだ本の用語集・索引に載り、ビルドのたびに
+      # 「原稿のどこにも出現しません」が並ぶ。空の初期形は vs upgrade が辞書の無い
+      # プロジェクトへ配るものと同じ。取り込んだ原稿からは vs index:auto で作り直す。
+      def reset_index_dictionaries!
+        INDEX_DICTIONARY_FILES.each do |relative|
+          next unless File.exist?(relative)
+
+          File.write(relative, UpgradeCommands::EMPTY_DICTIONARY_TEMPLATES.fetch(relative), encoding: 'utf-8')
+        end
+        Common.log_info('  索引・用語集の辞書を空にしました（vs index:auto で取り込んだ原稿から作り直せます）')
       end
 
       # .re → .md 変換
@@ -184,10 +213,10 @@ module VivlioStarter
         FileUtils.cp_r(Dir.glob(File.join(starter_source, '*')), 'codes/')
       end
 
-      # config.yml / config-starter.yml の変換と表紙 PDF のコピー
+      # config.yml / config-starter.yml の変換と表紙 PDF の取り込み
       #
-      # config-starter.yml に frontcover_pdffile の指定がある場合、
-      # 表紙 PDF を covers/ にコピーし、book.yml の output.cover.front を更新する
+      # config-starter.yml の frontcover_pdffile / backcover_pdffile を
+      # covers/ のマスター画像へ変換し、book.yml の output.cover を master に揃える。
       def convert_config_with_cover!
         # 基本的な設定変換
         Import::YamlProcessor.convert_config!(@starter_dir)
@@ -197,17 +226,28 @@ module VivlioStarter
         return unless File.exist?(starter_config_starter)
 
         config_starter = YAML.safe_load_file(starter_config_starter, permitted_classes: [Symbol])
-        cover_filename = config_starter.dig('starter', 'frontcover_pdffile')
-        return unless cover_filename
+        imported = COVER_SIDES.map { import_cover_side!(config_starter, it) }
+        return if imported.none?
 
-        # PDF のみ対応
-        return unless cover_filename.downcase.end_with?('.pdf')
+        Import::YamlProcessor.use_master_cover!
+      end
 
-        # 表紙 PDF をコピー
-        return unless Import::ImageProcessor.copy_front_cover!(@starter_dir, cover_filename)
+      # 表紙 1 面を取り込む。
+      #
+      # 取り込めなかった面は雛形の見本画像がそのまま本の表紙になってしまうので、
+      # 差し替え先のパスを添えて知らせる。
+      #
+      # @return [Boolean] 取り込めたら true
+      def import_cover_side!(config_starter, side)
+        imported = Import::ImageProcessor.import_master_cover!(
+          @starter_dir, config_starter.dig('starter', side[:key]),
+          master: side[:master], label: side[:label]
+        )
+        return true if imported
 
-        # book.yml の output.cover.front を Vivlio 既定の frontcover_rgb.pdf に合わせる
-        Import::YamlProcessor.update_cover_config!('frontcover_rgb.pdf')
+        Common.log_warn("  #{side[:label]}は雛形の見本画像のままです。",
+                        detail: "対処: covers/#{side[:master]} を自分の#{side[:label]}画像に置き換えてください。")
+        false
       end
 
       def cleanup_starter_markdown_dir!
