@@ -1,5 +1,9 @@
 @charset "utf-8";
 
+/* 改ページ記法（--- / @pagebreak）。本ファイルは chapter.css と appendix.css の
+   両方が読むので、ここで取り込めば本文・付録の双方に届く。 */
+@import url("pagebreak.css");
+
 /* =====================================================================
    Chapter Common (章・付録共通スタイル)
    ===================================================================== */
@@ -313,29 +317,9 @@ ol.vs-list-upper-roman-paren2 > li::before { content: "(" counter(vs-fancy, uppe
 /* -------------------------------------------------------------
    改ページ
    ------------------------------------------------------------- */
-hr.pagebreak {
-  break-after: page;
-  visibility: hidden;
-}
-
-/* @pagebreak / :recto / :verso（at-directive-tier1-spec §2.2）
-   1 行目は EPUB リーダー・Kindle 向けフォールバック（recto/verso 非対応環境は
-   単純改ページへ劣化する）。2〜3 行目が本命で、両プロパティは同一プロパティの
-   別名のため後勝ち＝ Vivliostyle は recto/verso を採る。recto/verso を解釈できない
-   リーダーは 2〜3 行目の宣言だけを破棄し 1 行目が生きる。 */
-.vs-break-page,
-.vs-break-recto,
-.vs-break-verso {
-  page-break-before: always;
-}
-
-.vs-break-recto {
-  break-before: recto;
-}
-
-.vs-break-verso {
-  break-before: verso;
-}
+/* `---`（hr.pagebreak）と `@pagebreak`（.vs-break-*）の本体は
+   page-settings.css にある——すべての章種別が読む唯一の置き場のため。
+   ここに置くのは、本文用ヘッダー CSS と噛み合う調整だけ。 */
 
 /* PageBreakNormalizer が付与する合流クラス。@pagebreak:recto 直後の h2 は
    recto 側の改ページに一本化する（page-break-control-spec §2.1-4）。

@@ -6,6 +6,7 @@
 @import url("layout-utils.css");
 @import url("components.css");
 @import url("replace-list.css");
+@import url("pagebreak.css");
 
 /* =====================================================================
    Preface (前書き)
@@ -155,32 +156,13 @@ hr {
   margin-block: clamp(17.5pt, calc(var(--paper-scale) * 25pt), 25pt);
 }
 
-/* 改ページ（--- 記法） */
+/* 改ページ（`---` 記法）。改ページの指定そのものは page-settings.css が持つ。
+   ここが受け持つのは、すぐ上の `hr` 装飾（1px の罫と前後アキ）の打ち消しだけ
+   ——この装飾は本ファイル固有なので、消す責任も本ファイルにある。 */
 hr.pagebreak {
-  break-after: page;
-  visibility: hidden;
   height: 0;
   margin: 0;
   background: none;
-}
-
-/* 改ページ（@pagebreak 記法）。chapter-common.css と同じ規則をここにも置く。
-   前書き・後書きは chapter-common.css を読み込まないため、置かないと
-   `@pagebreak` が**黙って何も起きない**（`---` は上の hr.pagebreak が
-   このファイルにあるので効いており、等価と説明している 22 章と食い違っていた）。
-   postface.css は本ファイルを @import するので後書きもここで賄える。 */
-.vs-break-page,
-.vs-break-recto,
-.vs-break-verso {
-  page-break-before: always;
-}
-
-.vs-break-recto {
-  break-before: recto;
-}
-
-.vs-break-verso {
-  break-before: verso;
 }
 
 /* セクション */

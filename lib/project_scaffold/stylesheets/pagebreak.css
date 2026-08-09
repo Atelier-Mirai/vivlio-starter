@@ -1,0 +1,49 @@
+@charset "utf-8";
+
+/* =====================================================================
+   改ページ記法（--- / @pagebreak）
+   ---------------------------------------------------------------------
+   著者が原稿に書く改ページ記法の実体。定義はこの 1 ファイルだけに置き、
+   必要な章種別の CSS から @import する。
+
+   なぜ独立したファイルにするか:
+   章ごとの CSS は読み込む顔ぶれが違い、共通なのは base.css・theme.css・
+   page-settings.css の 3 つだけ。かつて chapter-common.css にだけ置いていた
+   ころは、それを読まない前書き・後書きで `@pagebreak` が**黙って何も起きな
+   かった**（`---` のほうは preface.css が自前の hr.pagebreak を持っていたため
+   効いており、「両者は等価」と説明している 22 章と食い違っていた）。
+
+   なぜ page-settings.css（全章種別が読む）へ入れないか:
+   目次・索引・用語集・奥付・扉・部扉は**生成ページ**で、著者が改ページ記法を
+   書く場所ではない。そこへ規則が届くと、たまたま `@pagebreak` という文字列を
+   含む見出しが目次ラベルへ素のテキストで写ったときに、実際の改ページが
+   起きてしまう（実測: 22 章「改ページ `@pagebreak`」で目次が 1 ページ増えた）。
+   記法を書ける章種別にだけ配る。
+
+   見た目の打ち消し（hr の装飾を消す等）は各章 CSS の事情なので、そちらに残す。
+   ===================================================================== */
+
+/* `---` 記法 */
+hr.pagebreak {
+  break-after: page;
+  visibility: hidden;
+}
+
+/* `@pagebreak` / `:recto` / `:verso`（at-directive-tier1-spec §2.2）
+   1 行目は EPUB リーダー・Kindle 向けフォールバック（recto/verso 非対応環境は
+   単純改ページへ劣化する）。2〜3 行目が本命で、両プロパティは同一プロパティの
+   別名のため後勝ち＝ Vivliostyle は recto/verso を採る。recto/verso を解釈できない
+   リーダーは 2〜3 行目の宣言だけを破棄し 1 行目が生きる。 */
+.vs-break-page,
+.vs-break-recto,
+.vs-break-verso {
+  page-break-before: always;
+}
+
+.vs-break-recto {
+  break-before: recto;
+}
+
+.vs-break-verso {
+  break-before: verso;
+}
