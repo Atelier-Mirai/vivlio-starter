@@ -102,6 +102,26 @@
 
 ## 開発者体験 / CLI UX
 
+- [Medium] **`vs import` を `.re` 直変換にする（RC 後）**: いまは 2 段階——Re:VIEW Starter 同梱の Ruby で `.re` → Markdown へ変換させ、その Markdown を追従変換し、**さらに `.re` を読み直して失われた構造を復元**している。この形をやめ、`.re` から直接 Vivlio の Markdown を書き出す。
+
+  **なぜやるか（＝寿命）**。`lib/tasks/starter.rake` は `gem install review --version 2.5` と**バージョンを固定**しており、Re:VIEW 本体はその後もメジャーバージョンを重ねている。Re:VIEW Starter の開発は停止しているため、Ruby が進んで 2.5 が動かなくなっても直す人がいない。**`rake markdown` が動かなくなった時点で現在の `vs import` は丸ごと死ぬ。**直変換なら著者の `.re` さえあれば何年後でも取り込める。設計の美しさではなく、移行ツールとしての存続の話。
+
+  **なぜ「マーカー注入」を採らないか**。先方の builder を `prepend` で包んで構造マーカーを吐かせれば復元コードは消せるが、**Re:VIEW Starter にはライセンス表記が一切ない**（配布物にも `lib/ruby/*.rb` のヘッダにも公式ページにも記載なし。2026-08-10 確認）。作者は活動停止しており確認もできない。`prepend` は改変にも複製にもあたらないと理解しているが、疑義ゼロの領域（著者自身の原稿を読む）から不明な領域へ踏み込む理由がない。
+
+  **的は思ったより小さい**（実プロジェクト `book_c` の全原稿で実測。Re:VIEW が*定義しうる*総量は 39 インライン + 25 ブロックだが、実際に使われるのはこの程度）。
+  - ブロック 15: `//list` `//emlist` `//output` `//quote` `//table` `//image` `//footnote` `//sideimage` `//abstract` `//flushright` `//blankline` `//clearpage` `//hr` `//noindent` `//vspace`
+  - インライン **8**: `@<code>` `@<href>` `@<br>` `@<ruby>` `@<fn>` `@<b>` `@<tt>` `@<small>`
+  - 行頭 7: `=` / `==` / `===`、`====[column]` と `====[/column]`、`#@#`、箇条書き（`*` `**`）、番号（`1.`）、定義リスト（`:`）
+
+  **流用できる部品**（新規に書くのはインライン 8 種と行頭構造、ブロック 15 種の網羅。規模は 400〜700 行、いま持っている 835 行を置き換える程度）。
+  - `markdown_converter.rb`（327 行）— フェンス・`<dl>`・表・`<img>`・ルビの変換
+  - `sideimage_restorer.rb` / `verbatim_restorer.rb` / `pagebreak_restorer.rb`（508 行）— **`//sideimage` `//output` `//clearpage` のブロック構文解析は既に書いてある**。直変換になれば「復元」の部分（位置対応・アンカー照合・数が合わなければ諦める）が丸ごと不要になる
+  - `yaml_processor.rb` / `image_processor.rb` — catalog・config・画像は変換経路と無関係でそのまま使える
+
+  **今より良くなる点**。`//list[][yume.c][file=source/star2/yume.c,1]` は Re:VIEW がコードを**インライン展開**してしまうが、直変換なら Vivlio の `` ```include:star2/yume.c `` へ落とせる。`source/` は既に `codes/` へコピーしているので、**コードの単一の置き場所**が保たれ、著者がコードを直せば紙面に反映される。
+
+  **安全に作るための一点**。部分実装でよいが、**知らない記法は黙って通さず `file:line` 付きで 🔴 を出す**こと。移行ツールに要るのは 100% の忠実さではなく、(1) よくある記法を正しく変換する (2) 決して黙って壊さない (3) 直すべき箇所を著者に正確に伝える、の 3 つ。この規律があれば 30 種から始めて必要に応じて足せる。なお現在の 2 段階方式は「他人の Markdown を後処理する」構造ゆえのバグを実際に生んでいる（閉じフェンスを開きと誤認して 68 箇所を壊した件。CHANGELOG 参照）。
+
 - [Low] **Linux / Windows の自動セットアップ対応（やるかもしれない枠）**: 現状 `vs doctor --fix` の自動インストールは macOS + Homebrew のみで、Linux / Windows は動作検証もできていない。将来的に Linux（apt / dnf など）や Windows（winget / Scoop / Chocolatey など）でも `vs doctor --fix` でひと通り揃うようにできると望ましい。需要と検証コスト次第で、対応するかどうかも含めて将来検討する。
 - [Medium] **肥大化した `book.yml` を切り出す**: 671 行あり、著者が「必ず設定する項目」（`book` 22 行・`project` 7 行）へ辿り着くまでに機能別の詳細設定を延々とスクロールすることになる。内訳は `metrics` 162 行・`output` 96 行・`theme` 55 行・`typography` 47 行・`index` 44 行・`lint` 36 行で、**上位 2 節だけで 4 割**を占める。`page_presets.yml` `catalog.yml` `textlint_*.yml` のように**機能別の設定ファイルへ分ける**——どれを切り出すか（`metrics` / `lint` / `spellcheck` / `index` 系）と、`book.yml` に残す境界を決める。
   - **不要なキー・ほとんど使われないキーを先に洗う**。切り出す前に減らすほうが、分けたあとの各ファイルが小さく収まる。`dead-code-candidates-report.md` がメソッドに対してやったことの設定キー版で、**「定義はあるがコードが読んでいないキー」**（`chapter.ideal` が 2026-08-05 まで死蔵だった実例がある）と**「読んではいるが著者がまず触らないキー」**を分けて数える。
