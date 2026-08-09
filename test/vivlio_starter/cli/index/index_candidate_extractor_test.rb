@@ -282,6 +282,20 @@ module VivlioStarter
           refute_includes @extractor.all_candidates, 'section'
           refute_includes @extractor.all_candidates, 'column'
         end
+
+        # --- phase: 登録語のスコア付け（score_terms） ---
+
+        # 原稿に 1 回も出てこない語はスコアを持たない。技術用語らしい綴りだと
+        # 性質ボーナスだけが残り、死語が「スコア: 15.0」と生きて見えていた
+        def test_terms_absent_from_the_manuscript_get_no_score
+          File.write('contents/10-a.md', "Docker で環境を揃えます。\n")
+          @extractor.extract_from_chapters!(['10-a'])
+
+          scores = @extractor.score_terms([{ 'term' => 'Docker' }, { 'term' => 'Kubernetes' }])
+
+          assert_operator scores['Docker'], :>, 0, '原稿に出る語にはスコアが付く'
+          refute scores.key?('Kubernetes'), '出現しない語は技術用語らしくてもスコアを持たない'
+        end
       end
     end
   end

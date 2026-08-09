@@ -143,6 +143,12 @@ module VivlioStarter
               tf += n
               df += 1
             end
+            # 1 回も出てこない語は記録しない。observe は tf を見て黙るが mark は
+            # 語の綴りだけで通るため、性質ボーナスだけのスコアが残っていた。
+            # すると出現ゼロの語が「スコア: 15.0」と表示され、レビューで
+            # 「[原稿に出現しません]」に振り分けられない（死語が生きて見える）。
+            next if tf.zero?
+
             engine.mark(name, :technical) if TECHNICAL_TERM_PATTERNS.any? { name.match?(it) }
             engine.observe(name, tf:, df:, doc_count:)
           end
