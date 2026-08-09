@@ -187,6 +187,38 @@ module VivlioStarter
         refute_includes saved, 'backlink_sources'
       end
 
+      # contexts は辞書に書かない。レビューのたびに本文から拾い直す派生データで、
+      # 保存すると更新されないまま原稿だけが動いて食い違う（backlink_sources・score と同じ棚）
+      def test_save_terms_does_not_write_contexts
+        @manager.merge_terms!(
+          [{ 'term' => 'CSS', 'yomi' => 'しーえすえす',
+             'contexts' => [{ 'chapter' => '01-intro', 'context' => '本文からの抜粋' }] }],
+          flags: 'i'
+        )
+
+        saved = File.read('config/index_glossary_terms.yml')
+        refute_includes saved, 'contexts'
+        refute_includes saved, '本文からの抜粋'
+        assert_nil @manager.find_term('CSS')['contexts']
+      end
+
+      # 旧辞書が抱えている contexts も、次の保存の機会に黙って落ちる（移行は自動）
+      def test_legacy_contexts_are_dropped_on_save
+        legacy_data = {
+          'generated_at' => Time.now.to_s,
+          'terms' => [
+            { 'term' => 'CSS', 'yomi' => 'CSS', 'flags' => 'i', 'definition' => '',
+              'contexts' => [{ 'chapter' => '01-intro', 'context' => '推敲前の古い抜粋' }] }
+          ]
+        }
+        File.write('config/index_glossary_terms.yml', legacy_data.to_yaml)
+        @manager.clear_cache!
+
+        @manager.update_yomi!([{ 'term' => 'CSS', 'yomi' => 'しーえすえす' }])
+
+        refute_includes File.read('config/index_glossary_terms.yml'), '推敲前の古い抜粋'
+      end
+
       # --- Phase: scanned_chapters（R7） ---
 
       def test_scanned_chapters_returns_nil_for_legacy_dictionary

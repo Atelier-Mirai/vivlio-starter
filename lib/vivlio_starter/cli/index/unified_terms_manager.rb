@@ -231,9 +231,9 @@ module VivlioStarter
       # 章名の変更に辞書を追随させる（main: と scanned_chapters）。
       #
       # main: は著者が下した判断＝語彙の一次データなので、実在しない章を指していても
-      # 捨てられない。contexts[].chapter は表示専用の派生データで、enrich が
-      # 「実在しない章の context を捨てて本文から拾い直す」ため追随は不要
-      # （index-glossary-consistency-spec.md R5）。ここで書き換えるのは前者だけ。
+      # 捨てられない。contexts はそもそも辞書に持たず（save_terms! を参照）、enrich が
+      # レビューのたびに本文から拾い直すので追随の対象にならない。
+      # ここで書き換えるのは前者だけ。
       #
       # @param old_basename [String] 旧章名
       # @param new_basename [String] 新章名
@@ -308,7 +308,6 @@ module VivlioStarter
         # 主要参照は著者の判断＝語彙の一次データなので辞書に残す（score とは逆の扱い）。
         # key? で見るのは、nil を明示的に渡して指定を解除できるようにするため。
         merged['main'] = new_data['main'] if new_data.key?('main')
-        merged['contexts'] = new_data['contexts'] if new_data['contexts']
         merged['updated_at'] = Time.now.strftime('%Y-%m-%d %H:%M:%S')
         merged
       end
@@ -327,7 +326,6 @@ module VivlioStarter
         entry['pattern'] = term['pattern'] || build_pattern(entry['term'])
         entry['auto_approved'] = term['auto_approved'] if term.key?('auto_approved')
         entry['main'] = term['main'] if term['main']
-        entry['contexts'] = term['contexts'] if term['contexts']&.any?
         entry
       end
 
@@ -345,7 +343,13 @@ module VivlioStarter
         # backlink_sources（R3）に加え score も同じ理由で捨てる——score は出現回数と
         # 出現章数から算出される派生データで、原稿を推敲すれば古くなる。
         # 旧辞書に残置していても、保存の機会に黙って落とす。
-        sorted = terms.map { it.except('backlink_sources', 'score') }
+        #
+        # contexts も同じ棚へ移した。レビューファイルの文脈欄は enrich が毎回
+        # 本文から拾い直すので辞書側の写しは読まれず、apply は用語と読みしか
+        # 解析しないため更新もされない——**書いた瞬間から腐るだけのデータ**だった
+        # （実測: 321 件中 127 件が現原稿と一致しない stale。辞書の 58%・872 行を占める）。
+        # 拾い直しの費用は index:auto 全体 4.5 秒に対して +0.1 秒。
+        sorted = terms.map { it.except('backlink_sources', 'score', 'contexts') }
                       .sort_by { it['yomi'] || it['term'] || '' }
 
         data = {

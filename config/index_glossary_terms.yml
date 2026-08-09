@@ -1,5 +1,5 @@
 ---
-generated_at: '2026-08-09 18:17:24'
+generated_at: '2026-08-09 18:29:34'
 terms:
 - term: "--force"
   yomi: "--force"
@@ -8,10 +8,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\-\\-force/"
-  contexts:
-  - chapter: 23-chapter-management
-    context: '11〜13 番の章をまとめて削除します。 ### 確認をスキップする（--force） ```bash vs delete 11-intro
-      --force '
   updated_at: '2026-08-09 03:08:17'
   main:
   - 23-chapter-management
@@ -22,14 +18,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bAmazon\\b/"
-  contexts:
-  - chapter: 41-book-yml
-    context: '型は将来対応） kindle: # Amazon Kindle 向け（KPF へ自動変換） embed: false'
-  - chapter: 44-build
-    context: 閲覧用 PDF、印刷入稿用 PDF、電子書籍（EPUB）、Amazon Kindle 用ファイル（KPF）の四つの形式を、ひとつのコマンドで生成できま
-  - chapter: 61-developer
-    context: "/ Apple Books 向けのクリーン EPUB、`kindle` は Amazon Kindle 向けに調整した EPUB から変換した
-      KPF を生成します。"
   updated_at: '2026-08-09 03:08:17'
   main:
   - 44-build
@@ -41,11 +29,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bCLI\\b/"
-  contexts:
-  - chapter: 00-preface
-    context: Markdown から始まる執筆の第一歩と継続的な成長を表し、青は CLI や CSS 組版が支える技術的信頼性と出力のゴールを象徴します。シンプルな操作
-  - chapter: 11-workflow
-    context: Vivlio Starter は **CLI ツール**——ターミナルにコマンドを打ち込んで使う道具です。ボタンの並んだ画面
   updated_at: '2026-08-09 03:08:17'
   main:
   - 11-workflow
@@ -56,9 +39,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bCMYK\\b/"
-  contexts:
-  - chapter: 43-cover
-    context: 'rontcover_cmyk.pdf # 印刷用表紙（B5/A5、CMYK、PDF/X-1a） ├── backcover_cmyk.pdf'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 43-cover
@@ -69,11 +49,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bCSS\\b/"
-  contexts:
-  - chapter: 00-preface
-    context: で書いた原稿から高品質な PDF・EPUB を生成する書籍制作システムです。CSS 組版エンジン Vivliostyle をコアに据え、原稿の前処理から目次生成、
-  - chapter: 11-workflow
-    context: ":::{.chapter-lead} Vivlio Starter は「CSS 組版」という方法で本を作ります。本章では、まずそれがどのような方法なのかを押さ"
   updated_at: '2026-08-05 01:14:06'
   main:
   - 11-workflow
@@ -84,11 +59,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/CSS組版/"
-  contexts:
-  - chapter: 21-markdown-tutorial
-    context: "```markdown VivliostyleはCSS組版の先駆者です[^css]。 詳細は公式ドキュメントを参照^[簡単な補足]。 ["
-  - chapter: 31-lint
-    context: 'の追記先） ### 表記揺れ辞書の追加 「CSS 組版」と「CSS組版」、「ユーザー」と「ユーザ」のように、同じ語が違う表記で混ざることがあります。こ'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 11-workflow
@@ -110,11 +80,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bEPUB\\b/"
-  contexts:
-  - chapter: 00-preface
-    context: Starter は Markdown で書いた原稿から高品質な PDF・EPUB を生成する書籍制作システムです。CSS 組版エンジン Vivliostyle
-  - chapter: 11-workflow
-    context: "- **出力（読者に届く形）** — 閲覧用 PDF・印刷入稿用 PDF・EPUB・Kindle が生成されます **一つの原稿から複数の形式を出せる**のは、"
   updated_at: '2026-08-05 01:14:06'
   main:
   - 44-build
@@ -125,15 +90,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bEnhanced\\b/"
-  contexts:
-  - chapter: 44-build
-    context: も生成物が異なります。Kindle の表示エンジン（KFX / Enhanced Typesetting）は EPUB の一部の CSS・画像形式に対応していな
-  - chapter: 61-developer
-    context: CSS 制約 Kindle の表示エンジン（KFX / Enhanced Typesetting）は、EPUB で広く使える一部の CSS
-      をサポートし
-  - chapter: 92-pdf-read
-    context: 'pdf:read` は **Standard Mode** と **Enhanced Mode** の 2 段階で機能を提供します。 |
-      項目 | '
   updated_at: '2026-08-09 03:08:17'
   main:
   - 93-pdf-read
@@ -144,13 +100,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/\\bGFM\\b/"
-  contexts:
-  - chapter: 21-markdown-tutorial
-    context: "**2017 年**: GitHub Flavored Markdown（GFM）の仕様公開 - **2024 年**: CommonMark
-      0.31.2 リ"
-  - chapter: 22-extentions
-    context: '横結合や複数行ヘッダーを含む表だけが拡張変換の対象です。通常の表（GFM テーブル）はこれまでどおりそのまま扱われます。 ::: ###
-      `.long'
   updated_at: '2026-08-09 03:08:17'
   main:
 - term: Ghostscript
@@ -191,13 +140,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bHTML\\b/"
-  contexts:
-  - chapter: 00-preface
-    context: 未來](https://atelier-mirai.net/)」を創業。HTML 講座や Ruby 講座などプログラミングの個人指導、IT
-      パスポート講座等の資
-  - chapter: 11-workflow
-    context: Vivlio Starter の中では、原稿が **Markdown → HTML → CSS 組版 → 出力** という順に姿を変えていきます。
-      - **Ma
   updated_at: '2026-08-09 03:08:17'
   main:
   - 11-workflow
@@ -218,20 +160,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bHomebrew\\b/"
-  contexts:
-  - chapter: 12-quickstart
-    context: " - Xcode コマンドラインツールの確認・インストール案内 - Homebrew（macOS 用パッケージマネージャ）の導入 - rbenv（Ruby "
-  - chapter: 44-build
-    context: "--fix` で Kindle Previewer 3 の導入（Homebrew cask）と `kindlepreviewer` コマンドのパス通し（アプリ内"
-  - chapter: 51-doctor
-    context: 不足しているツールを自動インストールします。macOS では Homebrew 経由でインストールします。Homebrew 自体や Xcode
-      Command
-  - chapter: 61-developer
-    context: "`--fix` オプションを指定すると、macOS + Homebrew 環境で不足ツールを自動インストールします。 `targets:
-      kindle"
-  - chapter: 91-install
-    context: Xcode Command Line Tools の確認とインストール案内、Homebrew の導入、rbenv / ruby-build
-      の導入、
   updated_at: '2026-08-09 03:08:17'
   main:
   - 51-doctor
@@ -242,21 +170,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bImageMagick\\b/"
-  contexts:
-  - chapter: 11-workflow
-    context: "--fix` が自動的に呼び出され、Vivliostyle や ImageMagick など、書籍制作に必要な外部ツールが一括でセットアップされます。"
-  - chapter: 42-frontispiece
-    context: "**症状**: バリアント画像の自動生成が失敗する **原因**: ImageMagick がインストールされていない **対処法**:
-      ```bash # "
-  - chapter: 43-cover
-    context: "**症状**: カバー画像が生成されない **原因**: ImageMagick または Ghostscript がインストールされていない
-      **解決方法**"
-  - chapter: 91-install
-    context: 'install ghostscript` | PDF 圧縮 | | ImageMagick | `brew install imagemagick`
-      | '
-  - chapter: 93-import
-    context: " - Ruby 4.x / Bundler - node / npm - ImageMagick, qpdf, pdfinfo, Ghostscript,
-      mecab - "
   updated_at: '2026-08-09 03:08:17'
   main:
   - 92-install
@@ -267,16 +180,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bJPEG\\b/"
-  contexts:
-  - chapter: 42-frontispiece
-    context: " - WebP（`.webp`）- 推奨 - PNG（`.png`） - JPEG（`.jpg`, `.jpeg`） <!-- vs-lint-disable"
-  - chapter: 43-cover
-    context: 'g # EPUB用カバー（1600×2560、JPEG） ``` ### フォーマット別の生成 特定のフォーマットのみを生成したい'
-  - chapter: 44-build
-    context: "| `.kpf` | | 画像形式 | WebP をそのまま使用 | JPEG / PNG へ変換（Kindle は WebP 非対応）
-      | | 扉絵・節絵・"
-  - chapter: 61-developer
-    context: DFを圧縮します pdf:pages PDFをページ単位でJPEG画像に切り出します pdf:rasterize PDFをラスタライ
   updated_at: '2026-08-09 03:08:17'
   main:
   - 42-frontispiece
@@ -287,11 +190,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bKDP\\b/"
-  contexts:
-  - chapter: 41-book-yml
-    context: '換） embed: false # false: KDP で別途アップロードするため埋め込まない（既定・推奨） layout:'
-  - chapter: 44-build
-    context: "`kindle` | Kindle 用 KPF | Amazon Kindle（KDP）への配信 | ## 閲覧用 PDF のビルド :::{.section-"
   updated_at: '2026-08-09 03:08:17'
   main:
   - 44-build
@@ -312,20 +210,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bKPF\\b/"
-  contexts:
-  - chapter: 41-book-yml
-    context: 'e: # Amazon Kindle 向け（KPF へ自動変換） embed: false # fa'
-  - chapter: 44-build
-    context: '電子書籍（EPUB）、Amazon Kindle 用ファイル（KPF）の四つの形式を、ひとつのコマンドで生成できます。 ::: `vs
-      build'
-  - chapter: 51-doctor
-    context: "(Kindle Previewer 3) | Kindle（KPF）変換（任意・targets: kindle 用） | | Google
-      Fon"
-  - chapter: 61-developer
-    context: は Amazon Kindle 向けに調整した EPUB から変換した KPF を生成します。`output.epub` / `output.kindle`
-  - chapter: 91-install
-    context: 'kindle-previewer` ＋ ラッパー作成 | Kindle（KPF）変換（任意・targets: kindle 用） | |
-      Google Fon'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 44-build
@@ -337,12 +221,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bKindle\\b/"
-  contexts:
-  - chapter: 00-preface
-    context: 印刷所にそのまま入稿できます - **電子書籍も出力** — EPUB / Kindle 形式での出力にも対応。電子出版の道も開かれています
-      -
-  - chapter: 11-workflow
-    context: "— 閲覧用 PDF・印刷入稿用 PDF・EPUB・Kindle が生成されます **一つの原稿から複数の形式を出せる**のは、この流れを採っ"
   updated_at: '2026-08-09 03:08:17'
   main:
   - 44-build
@@ -353,16 +231,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bKobo\\b/"
-  contexts:
-  - chapter: 11-workflow
-    context: "| `print_pdf`（トンボ付き） | | Apple Books, Kobo | `epub`| | Kindle | `kindle`（専用）
-      | "
-  - chapter: 44-build
-    context: "| | `epub` | クリーン EPUB（電子書籍） | 楽天 Kobo、Apple Books への配信 | | `kindle`
-      | Kindle"
-  - chapter: 61-developer
-    context: がこの値に応じて実行するステップを切り替えます。`epub` は楽天 Kobo / Apple Books 向けのクリーン EPUB、`kindle`
-      は A
   updated_at: '2026-08-09 03:08:17'
   main:
   - 44-build
@@ -373,10 +241,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bMATTR\\b/"
-  contexts:
-  - chapter: 32-metrics
-    context: '漢字比率と平均語長から文章の「硬さ」を測定 - **語彙多様度**: MATTR（移動平均 Type-Token Ratio）で表現の豊かさを評価
-      - **読解'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 32-metrics
@@ -389,7 +253,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/\\bMathJax\\b/"
-  contexts: []
   updated_at: '2026-08-09 03:08:18'
   main:
 - term: MeCab
@@ -399,11 +262,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bMeCab\\b/"
-  contexts:
-  - chapter: 32-metrics
-    context: 記号は除外します。品詞の判定には形態素解析（MeCab）を使うため、MeCab を導入していない環境ではこのセクションは表示されません
-  - chapter: 33-index-glossary
-    context: fig/index_yomi_overrides.yml` | 読みの個人辞書（MeCab より優先。import で蓄積） | |
   updated_at: '2026-08-09 03:08:17'
   main:
   - 32-metrics
@@ -424,22 +282,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bOCR\\b/"
-  contexts:
-  - chapter: 41-book-yml
-    context: 'F 読み取り設定 `vs pdf:read` でテキストを抽出する際の範囲と OCR 設定を管理します。 ```yaml pdf_read:
-      text_are'
-  - chapter: 51-doctor
-    context: "| | pdftoppm (poppler) | PDF ページの画像化（OCR 用） | | gs (Ghostscript) | PDF
-      圧縮 | | im"
-  - chapter: 61-developer
-    context: "| | 変換対象 | テキストのみ | テキスト + 画像 + OCR | | 依存ライブラリ | PDF::Reader | HexaPDF,
-      ru"
-  - chapter: 91-install
-    context: install tesseract tesseract-lang` | OCR エンジン | | MeCab | `brew install
-      mecab me
-  - chapter: 92-pdf-read
-    context: "| | 変換対象 | テキストのみ | テキスト + 画像 + OCR | | 依存ライブラリ | PDF::Reader | HexaPDF,
-      ru"
   updated_at: '2026-08-09 03:08:17'
   main:
   - 93-pdf-read
@@ -452,9 +294,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/PDF/X\\-1a/"
-  contexts:
-  - chapter: 43-cover
-    context: 'over_master_b5_cmyk.pdf # 印刷用表紙（CMYK・PDF/X-1a） ├── backcover_master_b5_cmyk.pdf'
   updated_at: '2026-08-09 03:08:18'
   main:
 - term: PNG
@@ -464,23 +303,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bPNG\\b/"
-  contexts:
-  - chapter: 13-new
-    context: が自動生成されます。 原稿には `.webp` 形式を推奨します。PNG/JPG は `vs resize` で WebP に変換できます。`vs
-      bu
-  - chapter: 42-frontispiece
-    context: " - WebP（`.webp`）- 推奨 - PNG（`.png`） - JPEG（`.jpg`, `.jpeg`） <!-- v"
-  - chapter: 43-cover
-    context: SVG デザインをそのまま使うことも、著者が独自に用意した SVG や PNG を使うこともできます。本章では、カバー画像の準備から生成、管理までの一連のワー
-  - chapter: 44-build
-    context: "| | 画像形式 | WebP をそのまま使用 | JPEG / PNG へ変換（Kindle は WebP 非対応） | | 扉絵・節絵・数式
-      | S"
-  - chapter: 45-utility
-    context: "`vs resize` は `images/` ディレクトリ内の PNG・JPG 画像を WebP 形式に一括変換します。ビルド時にも自動実行されますが"
-  - chapter: 61-developer
-    context: "== :kindle` のときのみ）: WebP → JPEG/PNG への変換、Kindle 用 body マーカー付与（`mark_body_fo"
-  - chapter: 93-import
-    context: PDF がコピーされない | `frontcover_pdffile` が PNG など PDF 以外 | 仕様通り PDF のみに対応。
   updated_at: '2026-08-09 03:08:17'
   main:
   - 43-cover
@@ -493,10 +315,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/\\bPandoc\\b/"
-  contexts:
-  - chapter: 21-markdown-tutorial
-    context: '] CM["CommonMark<br/>＝ 標準の共通語"] PD["Pandoc''s Markdown<br/>＝ 別系統の近縁言語"]
-      GFM["GFM<'
   updated_at: '2026-08-09 03:08:17'
   main:
 - term: Previewer
@@ -506,17 +324,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bPreviewer\\b/"
-  contexts:
-  - chapter: 44-build
-    context: 'macOS の「ブック」アプリ、Calibre、Kindle Previewer などが利用できます。 ## Kindle のビルド :::{.secti'
-  - chapter: 51-doctor
-    context: "| | kindlepreviewer (Kindle Previewer 3) | Kindle（KPF）変換（任意・targets:
-      kindle 用"
-  - chapter: 61-developer
-    context: が `kindlepreviewer`（Kindle Previewer 3 同梱の CLI）を呼び出して `.kpf` を生成します。`kindlep
-  - chapter: 91-install
-    context: 'から自動取得 | AI 画像拡大（オプション） | | Kindle Previewer 3（kindlepreviewer） | `brew
-      install '
   updated_at: '2026-08-09 03:08:17'
   main:
   - 44-build
@@ -527,12 +334,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bQueryStream\\b/"
-  contexts:
-  - chapter: 11-workflow
-    context: data/              ← 書籍内で展開したいQueryStream用データ（YAML形式）   templates/         ←
-  - chapter: 12-new
-    context: 原稿内で展開する外部データ（YAML形式）を配置するディレクトリです。QueryStream 記法と組み合わせて使います。 ```markdown
-      =
   updated_at: '2026-08-09 03:08:17'
   main:
   - 25-querystream
@@ -543,9 +344,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bRGB\\b/"
-  contexts:
-  - chapter: 43-cover
-    context: 'frontcover_rgb.pdf # PDF用表紙（A4、RGB） ├── backcover_rgb.pdf # PDF用裏'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 43-cover
@@ -556,12 +354,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bRuby\\b/"
-  contexts:
-  - chapter: 00-preface
-    context: ttps://atelier-mirai.net/)」を創業。HTML 講座や Ruby 講座などプログラミングの個人指導、IT パスポート講座等の資格講座の開催
-  - chapter: 12-quickstart
-    context: '本が完成します。早速、一緒に取り組んで参りましょう。 ::: ## Ruby のインストール Vivlio Starter は Ruby
-      で動作します。す'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 12-new
@@ -572,11 +364,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bSVG\\b/"
-  contexts:
-  - chapter: 12-new
-    context: は gem 同梱テンプレートを使用します。著者が用意した PNG/SVG を使う場合は `covers/frontcover_<theme>.png`
-  - chapter: 41-book-yml
-    context: "# light / dark … 標準添付の SVG テンプレート   pdf:     combined: true"
   updated_at: '2026-08-09 03:08:17'
   main:
   - 43-cover
@@ -587,13 +374,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bTTR\\b/"
-  contexts:
-  - chapter: 32-metrics
-    context: '漢字比率と平均語長から文章の「硬さ」を測定 - **語彙多様度**: MATTR（移動平均 Type-Token Ratio）で表現の豊かさを評価
-      - **読解'
-  - chapter: 61-developer
-    context: '漢字比率・平均語長（MeCab による形態素解析） - 語彙多様度: TTR（Type-Token Ratio）— 異なり語数 ÷ 総語数
-      - 読解難度スコ'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 32-metrics
@@ -606,11 +386,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/\\bTwemoji\\b/"
-  contexts:
-  - chapter: 41-book-yml
-    context: 'techbook: true # true: 絵文字を Twemoji の SVG 画像へ差し替える（既定） print_pdf:'
-  - chapter: 44-build
-    context: 原稿に書かれたカラー絵文字が自動的にきれいな画像（Twemoji の SVG 画像）へ置き換えられ、入稿に適した PDF が書き出されます。**
   updated_at: '2026-08-09 03:08:17'
   main:
 - term: VFM
@@ -621,12 +396,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bVFM\\b/"
-  contexts:
-  - chapter: 21-markdown-tutorial
-    context: GFM["GFM<br/>＝ ＋GitHub"]   VFM["VFM<br/>＝ ＋出版（本書）"]   MD --> CM   MD
-      -
-  - chapter: 22-extentions
-    context: "::: ## 拡張記法の基本 Vivlio Starter の拡張記法は、VFM（Vivliostyle Flavored Markdown）のカスタムコンテナ"
   updated_at: '2026-08-09 03:08:17'
   main:
   - 21-markdown-tutorial
@@ -638,12 +407,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bVivliostyle\\b/"
-  contexts:
-  - chapter: 00-preface
-    context: PDF・EPUB を生成する書籍制作システムです。CSS 組版エンジン Vivliostyle をコアに据え、原稿の前処理から目次生成、表紙作成、
-  - chapter: 11-workflow
-    context: 独自の記法を覚える必要があります - **CSS 組版**（Vivliostyle） — Web の技術で紙面を設計します。原稿は Markdown
-      で書けます
   updated_at: '2026-08-09 03:08:17'
   main:
   - 61-developer
@@ -654,27 +417,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bWebP\\b/"
-  contexts:
-  - chapter: 13-new
-    context: PNG/JPG は `vs resize` で WebP に変換できます。`vs build` 実行時にも自動で WebP 変換が行われ
-  - chapter: 41-book-yml
-    context: 'EPUB）**: 楽天 Kobo・Apple Books 向け。WebP 画像・SVG 化した扉絵や数式をそのまま活かした、高品質な EPUB
-      を生成し'
-  - chapter: 42-frontispiece
-    context: "**対応している画像形式** 以下の画像形式に対応しています。 - WebP（`.webp`）- 推奨 - PNG（`.png`） -
-      JPEG（`.jpg"
-  - chapter: 44-build
-    context: "| 最終成果物 | `.epub` | `.kpf` | | 画像形式 | WebP をそのまま使用 | JPEG / PNG へ変換（Kindle
-      は "
-  - chapter: 45-utility
-    context: "| | `resize` | 画像管理 | イメージ画像をWebPに一括変換する | ## vs open — PDFを開く :::{.sec"
-  - chapter: 61-developer
-    context: "/EPUB対応） resize images/画像をWebP形式に変換・最適化します（--high/--lowで品質変更可） ビルド・"
-  - chapter: 91-install
-    context: "| `brew install imagemagick` | 画像変換・WebP 変換 | | Inkscape | `brew install
-      inkscap"
-  - chapter: 93-import
-    context: "**画像処理** — Starter `images/` をコピー → WebP 化 → 元画像（png/jpg/gif）は削除。`config-starter"
   updated_at: '2026-08-09 03:08:17'
   main:
   - 45-utility
@@ -685,13 +427,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bXcode\\b/"
-  contexts:
-  - chapter: 12-quickstart
-    context: "::: スクリプトは次の作業を自動で行います。 - Xcode コマンドラインツールの確認・インストール案内 - Homebrew（macOS"
-  - chapter: 51-doctor
-    context: "| ツール | 用途 | |--------|------| | Xcode Command Line Tools | macOS のビルドツールチェーン（"
-  - chapter: 91-install
-    context: の導入をスキップ ``` このスクリプトは次の作業を自動で行います。Xcode Command Line Tools の確認とインストール案内、Homebre
   updated_at: '2026-08-09 03:08:17'
   main:
   - 51-doctor
@@ -703,11 +438,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/\\bYAML\\b/"
-  contexts:
-  - chapter: 11-workflow
-    context: "← 書籍内で展開したいQueryStream用データ（YAML形式）   templates/         ← 各種雛形ファイル置き場"
-  - chapter: 12-new
-    context: data/           ← 本文へ展開するデータ（YAML 形式）   templates/      ← 章の雛形とデータ展開テンプレー
   updated_at: '2026-08-09 03:08:17'
   main:
   - 42-frontispiece
@@ -718,9 +448,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/text\\-right/"
-  contexts:
-  - chapter: 22-extentions
-    context: "`.text-left` / `.text-center` / `.text-right` `.align-right` がブロック全体を右寄せにするのに対し、"
   updated_at: '2026-08-09 03:08:17'
   main:
   - 22-extentions
@@ -731,16 +458,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/アウトライン/"
-  contexts:
-  - chapter: 44-build
-    context: 'Vivliostyle による組版、PDF 結合、アウトライン付与まで、書籍制作に必要な一連の工程を自動的に実行します。 ## はじめてのビ'
-  - chapter: 61-developer
-    context: '生成 | | Step 10 | PDF 結合 | | Step 11 | アウトライン付与 | | Step 12 | 圧縮・リネーム（最終クリーンは
-      Step '
-  - chapter: 91-install
-    context: gem install vivlio-starter ``` PDF アウトライン・しおり機能などを使う場合は、追加の gem も導入してください（いずれも
-  - chapter: 92-pdf-read
-    context: 'OCR 精度を段階的に改善できます。 ## PDF アウトラインの付与 PDF ビューワの「しおり」や「ブックマーク」として表示されるアウトラ'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 93-pdf-read
@@ -753,10 +470,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/アスペクト比/"
-  contexts:
-  - chapter: 42-frontispiece
-    context: '画像が使用され、章の雰囲気を演出します。 - **推奨アスペクト比**: `page.use` の版面設定に応じて動的に決まります（A
-      判・B 判'
   updated_at: '2026-08-09 03:08:17'
   main:
 - term: 改ページ
@@ -830,28 +543,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/エラー/"
-  contexts:
-  - chapter: 13-new
-    context: '同名のディレクトリがすでに存在する場合、通常はエラーになります。 ``` エラー: ディレクトリ "mybook" はすでに存在し'
-  - chapter: 22-extentions
-    context: ":::{.tip} `vs preflight` を使うと、ビルド前にエラーを素早く確認できます。 ::: ``` :::{.tip}
-      効率化やトラブル回"
-  - chapter: 24-cross-reference
-    context: " 同じIDが複数箇所で定義されていると、ビルド時に重複エラーとして検出され、次のようなメッセージが表示されます。 ``` \U0001F534
-      71-ins"
-  - chapter: 31-lint
-    context: '介します。 ::: ### textlint コマンドが見つからない 以下のエラーが表示される場合は、textlint がインストールされていません。
-      ```'
-  - chapter: 44-build
-    context: 技術書典向け（Techbook）モード 技術書典などの入稿システムでエラーになりやすい絵文字（Type 3フォントエラー）を回避するための専用モードです。
-  - chapter: 51-doctor
-    context: を参照して手動インストール | | Google Fonts の SSL エラーが解消しない | 証明書パスが未反映 | シェルを再起動して
-      `SSL_CERT
-  - chapter: 61-developer
-    context: "・出力・プレビュー: preflight ビルド前の原稿エラーチェックを高速実行します build 書籍全体また"
-  - chapter: 91-install
-    context: install bundler` | | Node.js の依存関係エラー | `node_modules` の不整合 | `rm -rf
-      node_mo
   updated_at: '2026-08-09 03:08:17'
   main:
   - 44-build
@@ -881,21 +572,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/カバー画像/"
-  contexts:
-  - chapter: 11-workflow
-    context: "```bash vs build # 書籍全体をビルドする ``` カバー画像がまだ生成されていない場合、`vs build` が内部で自動的に
-      `vs co"
-  - chapter: 41-book-yml
-    context: cover` コマンドで生成したカバーのテーマ名と対応します。詳細は「カバー画像の生成」の章を参照してください。 `pdf.techbook`
-      は、技術書典な
-  - chapter: 43-cover
-    context: カバー画像の生成 :::{.chapter-lead} Vivlio Starter では、`vs cover` コマンドを使用して、カバー画像から
-      PDF 用、
-  - chapter: 44-build
-    context: "``` ```bash vs build ``` ### カバー画像 EPUB のカバー画像は `covers/cover.jpg` を使用します"
-  - chapter: 45-utility
-    context: "# キャッシュのみ削除 vs clean --cache # 生成されたカバー画像のみ削除（マスター画像は保持） vs clean --cover
-      # すべての"
   updated_at: '2026-08-09 03:08:17'
   main:
   - 43-cover
@@ -943,9 +619,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/画像名/"
-  contexts:
-  - chapter: 42-frontispiece
-    context: 'sheets/images/bundled/` に配置されており、設定ファイルで画像名を指定するだけで使用できます。 **利用可能なバンドル画像** '
   updated_at: '2026-08-09 03:08:17'
   main:
   - 42-frontispiece
@@ -965,23 +638,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/キャッシュ/"
-  contexts:
-  - chapter: 24-cross-reference
-    context: 'IDを一意になるように変更 #### 番号がおかしい - 原因: ビルドのキャッシュ残留 - 解決: `vs clean` でクリーンアップ
-      ### '
-  - chapter: 31-lint
-    context: "`.cache/spellcheck-dictionaries/` にキャッシュされます。 - **check_code_blocks**:
-      `true` にす"
-  - chapter: 32-metrics
-    context: 出力時はライブ UI をスキップして即座に結果を返します。キャッシュされた章は再解析せず、トークン頻度マップ（語彙多様度の再集計用）や読解難度の特徴
-  - chapter: 42-frontispiece
-    context: 'と `_landscape` バリアントを生成 4. **キャッシュ**: 生成した画像は次回以降再利用される **バリアント画像の命名規則**'
-  - chapter: 44-build
-    context: "- それでも直らない場合は `vs clean --all` でキャッシュも含めて削除してからビルドする ### EPUB で索引リンクが機能しない"
-  - chapter: 45-utility
-    context: "# 最終PDFも含めてすべて削除 vs clean --purge # キャッシュのみ削除 vs clean --cache # 生成されたカバー画像のみ削除（"
-  - chapter: 61-developer
-    context: '不足ツールの自動セットアップ clean 生成物やキャッシュを削除します 執筆・編集支援: create'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 32-metrics
@@ -992,15 +648,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/キャプション/"
-  contexts:
-  - chapter: 22-extentions
-    context: 'align=center} ### 画像にキャプション（見出し）と図番号を付ける 画像の直前に `** タイトル **`（行頭・行末'
-  - chapter: 24-cross-reference
-    context: 'リンク付きで自動生成するための仕組みです。 ::: ## ラベル付きキャプションの書き方 クロスリファレンスは、次の二段階で構成されています。
-      1. **定'
-  - chapter: 61-developer
-    context: 'の前処理パイプライン内で実行されます。 ### 著者向けの記法 キャプション行に `@id` を付けると、直後のブロック種別（コードブロック
-      → リスト、テ'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 24-cross-reference
@@ -1029,9 +676,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/クラス/"
-  contexts:
-  - chapter: 22-extentions
-    context: 'カスタムコンテナ構文を使います。 ```markdown :::{.クラス名} ここに内容を書く ::: ``` `:::` の開始行にクラス名を指定す'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 22-extentions
@@ -1042,13 +686,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/クリーン/"
-  contexts:
-  - chapter: 41-book-yml
-    context: "# 楽天 Kobo / Apple Books 向けクリーン EPUB embed: true # true"
-  - chapter: 44-build
-    context: 'の両方 # targets: epub # クリーン EPUB のみ # targets: kindle'
-  - chapter: 61-developer
-    context: '実装 clean.rb # クリーンコマンド実装 create.rb # 章作成'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 44-build
@@ -1088,15 +725,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/コメント/"
-  contexts:
-  - chapter: 31-lint
-    context: '特定の箇所だけチェックを無効化したい場合は、`vs-lint` コメント記法を使用します。日本語校正・スペルチェックの両方に共通して機能します。
-      :::'
-  - chapter: 61-developer
-    context: "・更新（`frontmatter_generator.rb`） 2. HTML コメント除去 3. QueryStream 記法展開（`=
-      books | "
-  - chapter: 93-import
-    context: を `page.use` にマッピング）を変換。コメントは保持されます。 7. **片付け** — Vivlio 側 `temp/` と
   updated_at: '2026-08-09 03:08:17'
   main:
   - 22-extentions
@@ -1128,12 +756,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/語彙難度/"
-  contexts:
-  - chapter: 32-metrics
-    context: "- **基本統計**: 文字数、行数、文の数、節の数を集計 - **語彙難度**: 漢字比率と平均語長から文章の「硬さ」を測定 - **語彙多様度**:
-      M"
-  - chapter: 41-book-yml
-    context: 本の規模に応じて章・節の分量目安が切り替わります。語彙難度・語彙多様度・読解難度の基準は、プリセットとは独立した共通設定として調整します。
   updated_at: '2026-08-09 03:08:17'
   main:
 - term: 五十音順
@@ -1143,9 +765,7 @@ terms:
   source: manual_markup
   approved_at: '2026-08-09 18:17:24'
   pattern: "/五十音順/"
-  contexts:
-  - chapter: 33-index-glossary
-    context: ":::{.note} **読みの指定について** 日本語の用語は、索引で五十音順に並び替えるために読みが必要です。読みを省略した場合、MeCab（形態素解析エン"
+  updated_at: '2026-08-09 18:29:34'
 - term: 索引語
   yomi: さくいんご
   flags: i
@@ -1174,9 +794,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/集約表示/"
-  contexts:
-  - chapter: 31-lint
-    context: チェック結果は、同じ種類の指摘を 1 行にまとめた「集約表示」で出力されます。どのルールに何件・どの行で引っかかったかが一目でわかります。
   updated_at: '2026-08-09 03:08:17'
   main:
 - term: 出力形式
@@ -1197,10 +814,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/手動マークアップ/"
-  contexts:
-  - chapter: 33-index-glossary
-    context: "::: `vs index` コマンドは、原稿内の手動マークアップと自動抽出を組み合わせて、索引・用語集候補を統合管理します。TF-IDF
-      スコア"
   updated_at: '2026-08-09 03:08:17'
   main:
 - term: 主要参照
@@ -1212,11 +825,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/主要参照/"
-  contexts:
-  - chapter: 33-index-glossary
-    context: '判定はコードブロックを除いた地の文で行います。 ::: #### 主要参照の指定 一般語として提示された語でも、**本の主題そのもの**であれば外す必要'
-  - chapter: 61-developer
-    context: class="glossary-link">†</a>` | 索引の主要参照（その語を説明している章）は太字で先頭に置き、副次参照を後ろに続けます。同じペー
   updated_at: '2026-08-09 03:08:17'
   main:
 - term: シンタックスハイライト
@@ -1228,7 +836,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/シンタックスハイライト/"
-  contexts: []
   updated_at: '2026-08-09 03:08:18'
   main:
 - term: 字下げ
@@ -1249,11 +856,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/自動ID/"
-  contexts:
-  - chapter: 22-extentions
-    context: "@einstein-portrait のように図番号付きのリンクへ展開されます。自動ID・参照の書き方・重複チェックなど詳しい仕組みは「クロスリファレンス（相互参"
-  - chapter: 24-cross-reference
-    context: 'のようになります。 ## ラベルIDの扱い（手動ID・自動ID・一意性・命名規則） ### 手動ID（@id） 意味のある名前でIDを付け'
   updated_at: '2026-08-09 03:08:17'
   main:
 - term: 自動インストール
@@ -1263,15 +865,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/自動インストール/"
-  contexts:
-  - chapter: 51-doctor
-    context: '不足しているツールがあれば、`--fix` オプションで自動インストールも可能です。 ::: ## vs doctor とは :::{.sectio'
-  - chapter: 61-developer
-    context: 'macOS + Homebrew 環境で不足ツールを自動インストールします。 `targets: kindle` の KPF 変換に使う
-      `kin'
-  - chapter: 93-import
-    context: 下記が揃っているか `vs doctor --fix` で確認・自動インストールしてください。 - Ruby 4.x / Bundler
-      - node / n
   updated_at: '2026-08-09 03:08:17'
   main:
   - 92-install
@@ -1327,14 +920,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/スコア/"
-  contexts:
-  - chapter: 32-metrics
-    context: "【読解難度】 - 評価: Standard（一般的なビジネス・実用書） - スコア: 45.2 点 ``` :::{.note} **コードは分析対象から除外さ"
-  - chapter: 33-index-glossary
-    context: と自動抽出を組み合わせて、索引・用語集候補を統合管理します。TF-IDF スコアリングによる候補の優先順位付けと、Markdown ベースのレビューワークフロー
-  - chapter: 61-developer
-    context: 'Ratio）— 異なり語数 ÷ 総語数 - 読解難度スコア: 日本語版 Flesch/Kincaid を応用したスコアと Easy /
-      S'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 33-index-glossary
@@ -1345,14 +930,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/スペルチェック/"
-  contexts:
-  - chapter: 31-lint
-    context: コマンドが統合されています。日本語の校正（textlint）と英単語のスペルチェックを一度に実行し、表記揺れ・冗長表現・文体の混在・綴り誤りなどを検出して、
-  - chapter: 41-book-yml
-    context: "/ spellcheck — 文章校正 `vs lint` の既定設定とスペルチェックの辞書を管理します。 ```yaml lint:
-      config: conf"
-  - chapter: 61-developer
-    context: が日本語に変換して出力します。 textlint に加えて、独自のスペルチェック（`lint/spell_checker.rb`）も並行して実行します。`con
   updated_at: '2026-08-09 03:08:17'
   main:
   - 31-lint
@@ -1363,22 +940,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/設定ファイル/"
-  contexts:
-  - chapter: 25-querystream
-    context: 'データファイルとテンプレートを置くだけで使えるため、設定ファイルの編集は不要です。 ::: ## 概要 Vivlio Starter のデー'
-  - chapter: 31-lint
-    context: 'す。 ::: ```yaml lint: # 使用する textlint 設定ファイル config: config/.textlintrc.yml
-      # ル'
-  - chapter: 41-book-yml
-    context: は Vivlio Starter プロジェクトの中心となる設定ファイルです。書籍情報からテーマ、出力形式、各機能の詳細パラメータまで、プロジェクト全体
-  - chapter: 42-frontispiece
-    context: "`stylesheets/images/bundled/` に配置されており、設定ファイルで画像名を指定するだけで使用できます。 **利用可能なバンドル画像** "
-  - chapter: 51-doctor
-    context: 'Google Fonts ダウンロード（macOS のみ） | ### 設定ファイルの診断 外部ツールに加えて、`vs doctor`
-      はプロジェクト内の '
-  - chapter: 91-install
-    context: "`npm install -g textlint ...` | 文章校正。設定ファイルも `config/` に自動配置 | | qpdf
-      | `brew "
   updated_at: '2026-08-09 03:08:17'
   main:
   - 41-book-yml
@@ -1389,24 +950,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/セットアップ/"
-  contexts:
-  - chapter: 00-preface
-    context: "`vs doctor` で必要なツールを自動セットアップ ## この本で学べること - **Markdown で執筆する為の各種記法"
-  - chapter: 11-workflow
-    context: 'や ImageMagick など、書籍制作に必要な外部ツールが一括でセットアップされます。 ```bash vs new mybook
-      # 雛形生成 +'
-  - chapter: 12-quickstart
-    context: をインストールする場合 同梱のスクリプトを使うと、必要なツールを自動でセットアップできます。ターミナルを開いて、次のコマンドを実行してください。
-      ```bash
-  - chapter: 13-new
-    context: これにより npm パッケージのインストールなど、執筆に必要な環境が一括でセットアップされます。 万が一 `vs doctor --fix`
-      が失敗した場合は、
-  - chapter: 51-doctor
-    context: 'すべて自動で進めます。CI/CD 環境や自動セットアップスクリプトで活用できます。 ## コマンドオプション ``` doctor'
-  - chapter: 61-developer
-    context: 抽出します doctor 環境診断と不足ツールの自動セットアップ clean 生成物やキャッシュを削除します
-  - chapter: 91-install
-    context: 以降の手動インストール手順を手がかりに、お使いの環境へ読み替えてセットアップしてみてください（うまく動くことを願っています）。将来的に正式対応するかもしれま
   updated_at: '2026-08-09 03:08:17'
   main:
   - 51-doctor
@@ -1444,24 +987,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/タイトル/"
-  contexts:
-  - chapter: 13-new
-    context: "`.md` を省いたファイル名で登録します。`CHAPTERS` の下にタイトル（末尾に半角コロン `:`）を置くと、その配下がひとつの「部」にまとまり、部扉ペ"
-  - chapter: 22-extentions
-    context: " ```markdown :::{.column} **コラムタイトル** ここにコラムの内容を書きます。 ::: ``` :::{.column"
-  - chapter: 24-cross-reference
-    context: 行** を付けます。 - 行頭に太字 (`** ... **`) でタイトルを書く - タイトルの末尾に `@ラベルID` を付ける -
-      直後に続くブロック
-  - chapter: 32-metrics
-    context: " 2. **ライブプレースホルダー** — 章ごとの軽量スキャン結果（タイトル・概算文字数）をプレースホルダーとして描画し、解析完了次第リアルタイムで差し替え"
-  - chapter: 42-frontispiece
-    context: frontispiece は、各章の扉ページ（章タイトルが表示されるページ）の背景に配置される画像です。縦長（portrait）の画像が
-  - chapter: 43-cover
-    context: テンプレートに、テーマに応じたカラーパレットとタイトル・著者名などの書籍情報を自動適用して PDF を生成します。 ```yaml
-  - chapter: 44-build
-    context: '図版が多い書籍向け | ### メタデータ EPUB のメタデータ（タイトル、著者名、言語、ISBN など）は `book` セクションから自動的に取得され'
-  - chapter: 61-developer
-    context: "| `create:titlepage` | タイトルページを生成 | | `create:colophon` | 奥付を生成 | |"
   updated_at: '2026-08-09 03:08:17'
   main:
   - 24-cross-reference
@@ -1483,7 +1008,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/代替テキスト/"
-  contexts: []
   updated_at: '2026-08-09 03:08:18'
   main:
 - term: 中央寄せ
@@ -1521,28 +1045,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/テキスト/"
-  contexts:
-  - chapter: 21-markdown-tutorial
-    context: '言語です。「書きやすく、読みやすい」ことを目指して設計され、プレーンテキストで構造化された文書を作成できます。 ### 開発者と歴史 ####
-      開発者'
-  - chapter: 22-extentions
-    context: 'ge.png){align=right} # 標準の画像（拡張なし） ![代替テキスト](画像パス) ``` たとえば次のように、幅 '
-  - chapter: 24-cross-reference
-    context: 'は「図 3-2」「表 4-1」「リスト 5-3」のような番号付きのテキスト（＋リンク）に 置き換えられます。 ### 共通ルール 図・表・リストには、'
-  - chapter: 41-book-yml
-    context: "— 免責・商標 奥付に掲載する免責事項と商標に関する文面を設定します。既定のテキストで問題なければ変更不要です。 ```yaml legal:
-      disclai"
-  - chapter: 44-build
-    context: "| `reflowable` | リフロー型。端末の画面サイズに応じてテキストが自動的に折り返される。一般的な技術書向け | | `fixed`
-      | 固定レイ"
-  - chapter: 45-utility
-    context: " | | `--color-text` | `#000` | 本文テキスト色 | | `--color-link` | `#000` |
-      リンク色 | |"
-  - chapter: 61-developer
-    context: "| ライセンス | MIT | AGPL-3.0 | | 変換対象 | テキストのみ | テキスト + 画像 + OCR | | 依存ライブラリ
-      | PDF::"
-  - chapter: 92-pdf-read
-    context: "`vs pdf:read` は PDF ファイルからテキストと画像を抽出し、Vivlio Starter の原稿形式（Markdown）に変"
   updated_at: '2026-08-09 03:08:17'
   main:
   - 93-pdf-read
@@ -1553,12 +1055,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/テスト/"
-  contexts:
-  - chapter: 24-cross-reference
-    context: 表の番号を管理する手間が省けるので便利です。 ```markdown **テスト図（自動ID） @auto** ![](Einstein.png){width
-  - chapter: 61-developer
-    context: を読みたいときの入口（内部で `startup` を読み込む） 2. テストの `require 'vivlio_starter/cli'`
-      の共通 `re
   updated_at: '2026-08-09 03:08:17'
   main:
   - 61-developer
@@ -1569,27 +1065,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/テンプレート/"
-  contexts:
-  - chapter: 13-new
-    context: "`light` / `dark` は gem 同梱テンプレートを使用します。著者が用意した PNG/SVG を使う場合は `covers/fr"
-  - chapter: 22-extentions
-    context: '正の整数で制限 - **スタイル**: `:stylename` でテンプレート指定 ### データとテンプレートで展開する QueryStream
-      は *'
-  - chapter: 23-chapter-management
-    context: 'create intro setup advanced ``` ### テンプレートの自動選択 章ファイルの内容は `templates/` '
-  - chapter: 25-querystream
-    context: 気象観測データなど、繰り返し登場する情報を YAML で一元管理し、テンプレートに従って自動展開できます。データファイルとテンプレートを置くだけで使えるため、設
-  - chapter: 43-cover
-    context: "`covers/bundled/frontcover.svg` | 開発者提供のテンプレート SVG | 例えば `cover: dark`
-      の場合： 1. "
-  - chapter: 45-utility
-    context: "-frontispiece-padding: 15mm; } ``` ## 章テンプレートのカスタマイズ :::{.section-lead}
-      `vs "
-  - chapter: 51-doctor
-    context: きる値（書名・著者名など）を可能な限り救出**したうえで初期状態のテンプレートへ書き戻します。元の破損ファイルはバックアップが取得されるため、安心して復元でき
-  - chapter: 61-developer
-    context: "`covers/bundled/` には gem 同梱の SVG テンプレート（light / dark テーマ）が入っています。 `data/`
-      は Qu"
   updated_at: '2026-08-09 03:08:17'
   main:
   - 45-utility
@@ -1600,16 +1075,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/テーブル/"
-  contexts:
-  - chapter: 21-markdown-tutorial
-    context: 'ウェブ公開が容易 - **技術文書向け**: コードブロック、テーブル、リストなど技術文書に必要な要素をサポート ### 主な用途 ####
-      技術'
-  - chapter: 24-cross-reference
-    context: "`@ラベルID` を付ける - 直後に続くブロック要素（コードブロック / テーブル / 画像）がその対象になります ラベルIDは、本文中で参照するときに"
-  - chapter: 45-utility
-    context: "| `data/books.yml` | 書籍テーブル形式 | 新しいデータファイルを追加する場合は、対応するテンプレートをこのディ"
-  - chapter: 61-developer
-    context: 索引・用語集の後処理、不可視脚注 id の整理、テーブル align の正規化、絵文字復元、扉絵・節絵の見出し画像注入（`inject_
   updated_at: '2026-08-09 03:08:17'
   main:
   - 22-extentions
@@ -1620,19 +1085,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/テーマカラー/"
-  contexts:
-  - chapter: 00-preface
-    context: 'それぞれの出力フローを理解する - **デザインのカスタマイズ** — テーマカラー、フォント、版面設計を `book.yml` で自在に調整する
-      - '
-  - chapter: 13-new
-    context: CSS ファイルを配置するディレクトリです。テーマカラーや扉絵などのデザイン設定は `config/book.yml` の `theme
-  - chapter: 42-frontispiece
-    context: 'theme: style: image color: blue # テーマカラー frontispiece: image: sakura
-      # 桜の'
-  - chapter: 45-utility
-    context: " 1. **`theme.css`** — テーマカラーや扉絵などの基本設定（`book.yml` から自動生成） 2. **`chap"
-  - chapter: 61-developer
-    context: true` でバージョン番号が付与されます。 `theme` セクションでテーマカラー・章扉の背景画像（`frontispiece`）・節見出しの
   updated_at: '2026-08-09 03:08:17'
   main:
   - 42-frontispiece
@@ -1643,31 +1095,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/デザイン/"
-  contexts:
-  - chapter: 00-preface
-    context: 電子出版の道も開かれています - **テーマで簡単デザイン** — `book.yml` でアクセントカラーや扉絵を選ぶだけで、統一感ある
-  - chapter: 11-workflow
-    context: "`vs cover` を呼び出すため、別途実行する必要はありません。カバーのデザインを細かく調整したいときや、カバーだけを単独で生成・確認したい場合には
-      `vs "
-  - chapter: 13-new
-    context: "``` ### stylesheets/ 書籍のレイアウトとデザインを定義する CSS ファイルを配置するディレクトリです。テーマカラーや扉絵などの"
-  - chapter: 22-extentions
-    context: "| ★★☆☆☆ | 可 | | 花子 | 30 | デザイナー | UXデザイン部 | 5年 | ★★★★☆ | 一部可 | | 次郎
-      | 35 | マネージャ"
-  - chapter: 25-querystream
-    context: '原稿ファイルの QueryStream 記法はそのまま保持されるため、データの修正やテンプレートのデザイン変更を気軽に試すことができます。
-      :::'
-  - chapter: 41-book-yml
-    context: 'と `ornament` の設定は無視されます。扉絵なしのシンプルなデザインで十分な場合は `simple` を指定してください。 ###
-      page —'
-  - chapter: 42-frontispiece
-    context: '節見出しの装飾画像（ornament）を設定できます。画像を使った華やかなデザインと、シンプルで洗練されたデザインの2つのスタイルから選択可能です。
-      ::: #'
-  - chapter: 43-cover
-    context: 開発者が用意した `light` / `dark` テーマの SVG デザインをそのまま使うことも、著者が独自に用意した SVG や PNG
-      を使うこともでき
-  - chapter: 44-build
-    context: これが原因で、特定の環境で文字化けしたり、一部の文字だけデザインが変わって見えたりすることがあります。 Vivlio Starterでは、表紙
   updated_at: '2026-08-09 03:08:17'
   main:
   - 42-frontispiece
@@ -1688,18 +1115,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/データファイル/"
-  contexts:
-  - chapter: 22-extentions
-    context: "[並び替え] | [件数] | [スタイル] ``` - **源泉**: データファイル名（例: `books`, `prefectures`）
-      - "
-  - chapter: 25-querystream
-    context: 'YAML で一元管理し、テンプレートに従って自動展開できます。データファイルとテンプレートを置くだけで使えるため、設定ファイルの編集は不要です。
-      :::'
-  - chapter: 45-utility
-    context: "| `data/books.yml` | 書籍テーブル形式 | 新しいデータファイルを追加する場合は、対応するテンプレートをこのディレクトリに作成してください。"
-  - chapter: 61-developer
-    context: "}` の構造化ハッシュを返します。 `DataResolver` がデータファイルを探索します。`books` と書けば `data/books.yml`
-      を、"
   updated_at: '2026-08-09 03:08:17'
   main:
   - 25-querystream
@@ -1719,36 +1134,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/トラブルシューティング/"
-  contexts:
-  - chapter: 13-new
-    context: 'my/book ``` ### デバッグログ（--log debug） トラブルシューティング用に、コピー中のファイルパスやコマンドの詳細を表示できます。'
-  - chapter: 24-cross-reference
-    context: '5-1」のように正しい章番号付きのリンクになります。 ## トラブルシューティング ### よくある問題 #### IDが見つからない
-      - 原因: タイプミス'
-  - chapter: 31-lint
-    context: '「対処方法」が「対処方」と誤検出される） - "対処方法" ``` ## トラブルシューティング :::{.section-lead}
-      `vs lint` '
-  - chapter: 33-index-glossary
-    context: '含めて）PDFをビルドして確認 vs build ``` ## トラブルシューティング :::{.section-lead} 索引機能の実行時によくある問題とその'
-  - chapter: 42-frontispiece
-    context: "# 横長バリアントを直接指定 ``` ### image スタイルのトラブルシューティング **画像が表示されない** **症状**:
-      設定した画像が表示されず、"
-  - chapter: 43-cover
-    context: 'clean --cover --cache --purge ``` ## トラブルシューティング :::{.section-lead}
-      `vs cover` '
-  - chapter: 44-build
-    context: 'どの環境で開いても文字化けのない美しい表示が保証されます。 ## トラブルシューティング :::{.section-lead} ビルド時によくある問題とその解決方法を'
-  - chapter: 51-doctor
-    context: "--fix --yes ``` ### ビルドが失敗したときのトラブルシューティング ```bash # 環境を診断して原因を特定 vs
-      doctor ```"
-  - chapter: 91-install
-    context: "--version vs --version ``` ## トラブルシューティング | 症状 | 原因 | 解決策 | | :--- |
-      :--- | :---"
-  - chapter: 92-pdf-read
-    context: 'doctor --fix` でインストールできます。 ::: ## トラブルシューティング ### 実行中のログ例 Standard Mode
-      と '
-  - chapter: 93-import
-    context: Vivlio プロジェクトに移行できます。本章では前提条件から実行手順、トラブルシューティングまで、著者が自力で移行を完了できるよう手順をまとめました。
   updated_at: '2026-08-09 03:08:17'
   main:
   - 51-doctor
@@ -1769,12 +1154,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 21:00:15'
   pattern: "/トンボ/"
-  contexts:
-  - chapter: 00-preface
-    context: コアに据え、原稿の前処理から目次生成、表紙作成、トンボ付き入稿用 PDF の出力まで、執筆から入稿に至るすべての工程を自動化します。こ
-  - chapter: 11-workflow
-    context: 技術書典向けには `pdf`、印刷所入稿には `print_pdf`（トンボ・塗り足し付き）、電子書籍配信には `epub` または `kindle`
-      を選
   updated_at: '2026-08-09 03:08:17'
   main:
   - 44-build
@@ -1785,12 +1164,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/読解難度/"
-  contexts:
-  - chapter: 32-metrics
-    context: '文章品質を数値化するツールです。漢字比率、語彙の豊かさ、読解難度などを自動計算し、改善のヒントを提供します。 ::: 技術書の執筆では、内容の'
-  - chapter: 41-book-yml
-    context: 本の規模に応じて章・節の分量目安が切り替わります。語彙難度・語彙多様度・読解難度の基準は、プリセットとは独立した共通設定として調整します。
-      ```yaml m
   updated_at: '2026-08-09 03:08:17'
   main:
   - 32-metrics
@@ -1803,9 +1176,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/波ダッシュ/"
-  contexts:
-  - chapter: 44-build
-    context: Vivlio Starterでは、入力された原稿内の特殊な記号や絵文字、波ダッシュなどを自動的にお手入れします。これにより、印刷所でのフォントエラーを防ぎ、
   updated_at: '2026-08-09 03:08:18'
   main:
 - term: 日本語校正
@@ -1835,7 +1205,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/ノンブル/"
-  contexts: []
   updated_at: '2026-08-09 03:08:18'
   main:
 - term: 背景画像
@@ -1873,14 +1242,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/バックリンク/"
-  contexts:
-  - chapter: 33-index-glossary
-    context: などは、この本固有のデータ（各語の出現章・行やバックリンク）と、作者の資産（用語集の定義・棄却の判断・読みの補正）が混在しています。ライブ
-  - chapter: 44-build
-    context: による組版） | | Step 8 | 用語集バックリンクの重複排除 | | Step 9 | 表紙・奥付 PDF の生成 | | Ste
-  - chapter: 61-developer
-    context: '生成（前書き＋目次＋本文＋付録＋後書き＋索引） | | Step 8 | バックリンク重複排除 | | Step 9 | 表紙・奥付 PDF
-      生成 | | '
   updated_at: '2026-08-09 03:08:17'
   main:
   - 33-index-glossary
@@ -1900,10 +1261,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/バンド/"
-  contexts:
-  - chapter: 32-metrics
-    context: 'Standard〜Professional に収まるのが自然です。バンドの境界値は `config/book.yml` で調整できます（後述）。
-      ##'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 42-frontispiece
@@ -1914,9 +1271,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/バンドル/"
-  contexts:
-  - chapter: 42-frontispiece
-    context: 章扉と節見出しに画像を使用したデザインが適用されます。バンドル画像を使用するか、独自の画像を配置することで、書籍に華やかさを加えることができま
   updated_at: '2026-08-09 03:08:17'
   main:
   - 42-frontispiece
@@ -1927,9 +1281,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/バンドル画像/"
-  contexts:
-  - chapter: 42-frontispiece
-    context: 章扉と節見出しに画像を使用したデザインが適用されます。バンドル画像を使用するか、独自の画像を配置することで、書籍に華やかさを加えることができます。
   updated_at: '2026-08-09 03:08:17'
   main:
   - 42-frontispiece
@@ -1949,15 +1300,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/パターン/"
-  contexts:
-  - chapter: 33-index-glossary
-    context: '原稿内の `[用語]` 記法を検出 2. **候補の自動抽出** - 定義パターン、専門用語、名詞連続を検出 3. **TF-IDF スコアリング**
-      - '
-  - chapter: 61-developer
-    context: 記法 - MeCab による名詞・複合名詞の自動抽出 - 定義表現パターン（「〜とは」「〜を…と定義」など）の検出 2. `ScoringEngine`
-  - chapter: 92-pdf-read
-    context: "`config/textlint_prh.yml` に定義された表記ゆれ・誤読パターンを自動修正 5. **MeCab 改行補正** ---
-      MeCab "
   updated_at: '2026-08-09 03:08:17'
   main:
   - 93-pdf-read
@@ -1970,10 +1312,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/パーミル/"
-  contexts:
-  - chapter: 22-extentions
-    context: '表示しない環境では読者に届きます。書いておくと親切です。 ### 座標はパーミルで指定する 座標は画像のピクセル数ではなく、**画像の左上を
-      (0, 0)、右'
   updated_at: '2026-08-09 03:08:17'
   main:
 - term: 表記揺れ
@@ -2020,25 +1358,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/フォント/"
-  contexts:
-  - chapter: 00-preface
-    context: "- **デザインのカスタマイズ** — テーマカラー、フォント、版面設計を `book.yml` で自在に調整する - **便利な執筆支援機能"
-  - chapter: 22-extentions
-    context: "— 章リード 章の冒頭に配置する導入文です。本文より大きめのフォントで表示され、章の内容を簡潔に紹介します。 ```markdown :::{.c"
-  - chapter: 41-book-yml
-    context: "— タイポグラフィ設定 本文・見出し・コード・ページ番号のフォントを設定します。既定のフォントで問題なければ変更不要です。 ```yaml
-      ty"
-  - chapter: 42-frontispiece
-    context: '複数文字を設定すると、レイアウトが崩れる可能性があります。 - **フォント対応**: 使用する記号がフォントに含まれているか確認してください。一部の記号は'
-  - chapter: 43-cover
-    context: 商業印刷用の国際標準規格です。CMYK カラーモードの使用、フォント埋め込み、透明効果の禁止などが規定されており、印刷所での再現性が保証されます。
-  - chapter: 44-build
-    context: 'k）モード 技術書典などの入稿システムでエラーになりやすい絵文字（Type 3フォントエラー）を回避するための専用モードです。 ```yaml
-      output:'
-  - chapter: 45-utility
-    context: "`vs pdf:compress` は、画像解像度の調整やフォントの最適化によってサイズを削るため、印刷品質に影響を与える可能性があります。入稿に"
-  - chapter: 61-developer
-    context: 'df:rasterize PDFをラスタライズして再結合します（Type3フォント対策） オプション: -h, --help ヘルプを表'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 44-build
@@ -2051,7 +1370,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/複合番号/"
-  contexts: []
   updated_at: '2026-08-09 03:08:18'
   main:
 - term: 節見出し
@@ -2072,7 +1390,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/振り仮名/"
-  contexts: []
   updated_at: '2026-08-09 03:08:18'
   main:
 - term: フレーバー
@@ -2084,7 +1401,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/フレーバー/"
-  contexts: []
   updated_at: '2026-08-09 03:08:18'
   main:
 - term: プレビュー
@@ -2104,16 +1420,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/ページ番号/"
-  contexts:
-  - chapter: 33-index-glossary
-    context: "- **CSS target-counter 対応** - ページ番号は CSS で自動挿入 - **重複排除** - 同一ページ内の複数出現は1つに"
-  - chapter: 41-book-yml
-    context: typography — タイポグラフィ設定 本文・見出し・コード・ページ番号のフォントを設定します。既定のフォントで問題なければ変更不要です。
-      ```ya
-  - chapter: 61-developer
-    context: の `target-counter` はレンダリング時にページ番号を解決するため、Ruby のビルド時点では実際のページ番号が不明です。そのため「
-  - chapter: 92-pdf-read
-    context: 'それぞれ適切なラベルで表示されます。 ### ページ番号の特定 アウトラインの各項目には正確なページ番号が必要です。Vivliosty'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 33-index-glossary
@@ -2126,9 +1432,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/本文字数/"
-  contexts:
-  - chapter: 32-metrics
-    context: heavy / author_custom ``` **選ぶ目安は本全体の本文字数です。**ページ数は判型・余白・書体・図版の量で大きく変わるため、
   updated_at: '2026-08-09 03:08:17'
   main:
 - term: マスター
@@ -2138,14 +1441,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/マスター/"
-  contexts:
-  - chapter: 43-cover
-    context: "``` ## カバー画像の生成 :::{.section-lead} マスター画像を配置したら、`vs cover` コマンドで各フォーマットのカバー画像を生"
-  - chapter: 45-utility
-    context: 'vs clean --cache # 生成されたカバー画像のみ削除（マスター画像は保持） vs clean --cover # すべてのオプションをまとめ'
-  - chapter: 61-developer
-    context: "/ `backcover_master.png`（高解像度マスター）を元に、`vs cover` または `vs build` が PDF
-      / J"
   updated_at: '2026-08-09 03:08:17'
   main:
   - 43-cover
@@ -2158,9 +1453,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/マスター画像/"
-  contexts:
-  - chapter: 43-cover
-    context: "``` ## カバー画像の生成 :::{.section-lead} マスター画像を配置したら、`vs cover` コマンドで各フォーマットのカバー画像を"
   updated_at: '2026-08-09 03:08:18'
   main:
 - term: 丸数字
@@ -2188,14 +1480,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/マークアップ/"
-  contexts:
-  - chapter: 21-markdown-tutorial
-    context: Swartz）によって2004年に開発された軽量マークアップ言語です。「書きやすく、読みやすい」ことを目指して設計され、プレーンテキストで構
-  - chapter: 22-extentions
-    context: '索引と用語集を自動生成する機能があります。 ### 手動マークアップ 原稿中で索引や用語集に登録したい単語を明示的に指定します。 ```mark'
-  - chapter: 33-index-glossary
-    context: " ::: `vs index` コマンドは、原稿内の手動マークアップと自動抽出を組み合わせて、索引・用語集候補を統合管理します。TF-IDF
-      スコア"
   updated_at: '2026-08-09 03:08:17'
   main:
   - 33-index-glossary
@@ -2215,19 +1499,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/無効化/"
-  contexts:
-  - chapter: 31-lint
-    context: ":::{.section-lead} 特定の箇所だけチェックを無効化したい場合は、`vs-lint` コメント記法を使用します。日本語校正・スペルチ"
-  - chapter: 32-metrics
-    context: "`VIVLIO_METRICS_CACHE=0` を設定すると、読み書きともに無効化され、常にフル解析が実施されます。 ### 並列処理と再利用
-      章の解析は自動"
-  - chapter: 41-book-yml
-    context: ages`/`bare_urls`/`external_links` をまとめて無効化できます。詳細は「ビルド（vs build）」の章を参照してください。
-  - chapter: 42-frontispiece
-    context: "``` この設定だけで、以下が自動的に適用されます： - 章扉の背景画像が無効化（`--frontispiece-image: none`）
-      - 節見出しの装飾"
-  - chapter: 61-developer
-    context: "-->` コメントを使うと、その範囲の lint を無効化できます。これらは実行時に textlint ネイティブの `<!-- text"
   updated_at: '2026-08-09 03:08:17'
   main:
   - 31-lint
@@ -2240,10 +1511,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/目安語数/"
-  contexts:
-  - chapter: 33-index-glossary
-    context: "`yaml index: candidate_pool: 3.0 # 目安語数の 3 倍の順位まで候補として提示する ``` ####
-      一般語の提示 レビ"
   updated_at: '2026-08-09 03:08:17'
   main:
 - term: モード
@@ -2253,18 +1520,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/モード/"
-  contexts:
-  - chapter: 41-book-yml
-    context: ": false # true: 技術書典向け Techbook モード（絵文字を Twemoji SVG 画像に自動差し替え） print_pd"
-  - chapter: 44-build
-    context: "# 圧縮を無効にしてビルド ``` ### 技術書典向け（Techbook）モード 技術書典などの入稿システムでエラーになりやすい絵文字（Type
-      3フォントエ"
-  - chapter: 61-developer
-    context: "/ config と PDF を直接生成します（最終クリーンは単章モードでも実行）。 本文 PDF を生成する Step 7（閲覧用）・Step
-      13"
-  - chapter: 92-pdf-read
-    context: "-003-image-01.webp)` のように参照されます。 ### 動作モードの切り替え モードは以下の優先順位で自動決定されます。
-      1. 環境変数 `V"
   updated_at: '2026-08-09 03:08:17'
   main:
   - 44-build
@@ -2287,7 +1542,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/横結合/"
-  contexts: []
   updated_at: '2026-08-09 03:08:18'
   main:
 - term: ラベル
@@ -2297,27 +1551,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/ラベル/"
-  contexts:
-  - chapter: 22-extentions
-    context: 'align=center} さらにタイトルの末尾に `@ラベルID` を付けると、「**図 2-1: アインシュタインの肖像**」のように章番'
-  - chapter: 24-cross-reference
-    context: '4-1 など）とリンク付きで自動生成するための仕組みです。 ::: ## ラベル付きキャプションの書き方 クロスリファレンスは、次の二段階で構成されています。'
-  - chapter: 31-lint
-    context: "スペルチェックは `(spellcheck)` のラベルが付きます。 ``` \U0001F4C4 contents/11-install.md
-      (t"
-  - chapter: 32-metrics
-    context: "本文に頻出する内容語（名詞・固有名詞・形容動詞・動詞・形容詞）を、品詞ラベルつきで上位 15 語まで挙げます。 ``` \U0001F524
-      よく使う言葉（内容語 上位15"
-  - chapter: 33-index-glossary
-    context: "。著者は余裕がある時だけ見れば良い。 :::{.note} **新着ラベルについて** 執筆の参考となるよう、`NEW!` と `TODAY`
-      が付いて"
-  - chapter: 44-build
-    context: "| \U0001F534 | | QueryStream 雛形ファイル不在 | \U0001F534 | | ラベルID重複 | \U0001F534
-      | | 裸URL | \U0001F7E1 | | 孤立ラベル | \U0001F7E1 | 具"
-  - chapter: 61-developer
-    context: 'Easy / Standard / Professional の評価ラベル - 章・節単位の分量可視化: `[ ]` 枠内に `#` と空白でバーを描画'
-  - chapter: 92-pdf-read
-    context: '前書き・目次・後書き・索引・用語集もそれぞれ適切なラベルで表示されます。 ### ページ番号の特定 アウトラインの各項目には正確なペ'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 24-cross-reference
@@ -2330,10 +1563,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/ラベルID/"
-  contexts:
-  - chapter: 24-cross-reference
-    context: '次の二段階で構成されています。 1. **定義側**: 図・表・リストに「ラベルID（`@id`）」を付けてキャプションを記述する 2.
-      **参照側**:'
   updated_at: '2026-08-09 03:08:17'
   main:
 - term: リスト
@@ -2343,31 +1572,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/リスト/"
-  contexts:
-  - chapter: 13-new
-    context: "| | `catalog.yml` | ビルド対象の章リスト（章の順序を定義） | | `page_presets.yml` | 用紙サイズ"
-  - chapter: 21-markdown-tutorial
-    context: 'ウェブ公開が容易 - **技術文書向け**: コードブロック、テーブル、リストなど技術文書に必要な要素をサポート ### 主な用途 ####
-      技術分野 -'
-  - chapter: 22-extentions
-    context: in.webp){width=40% align=center} 図番号は表・リストにも同じ要領で付けられます。たとえば上で定義した図は、
-  - chapter: 23-chapter-management
-    context: "[^1]: 脚注の内容をここに記述します。 ``` この先には、見出し・リスト・定義リスト・表・コードブロック・数式・画像レイアウト・コラム/注記ブロック・索"
-  - chapter: 24-cross-reference
-    context: ":::{.chapter-lead} 本章では、本書で定義している **図・表・リストのナンバリングと相互参照（クロスリファレンス）**
-      の 書き方を説明します。"
-  - chapter: 31-lint
-    context: "- `config/textlint_allowlist.yml`: 除外リスト（VFM 記法・書籍名・資格名称など） - `config/textlint_d"
-  - chapter: 32-metrics
-    context: "⚠️ 加筆検討 \U0001F4DA 合計 3 章 ／ 平均 2,633 文字 ``` 章別リストの直後には、対象が全部で何章あり、1
-      章あたり平均何文字なのかをまとめた集計行が"
-  - chapter: 33-index-glossary
-    context: 'g/index_glossary_rejected.yml` | 棄却済み用語のリスト | | `index_library.yml`
-      | '
-  - chapter: 44-build
-    context: 'なくこの問題を回避できるよう、以下の対策を自動で行っています。 - **特殊なリスト記号の画像化**: 章の中で箇条書きのマークとして使われるクローバー（`♣`'
-  - chapter: 61-developer
-    context: 'extlint_allowlist.yml` は lint の表記揺れ辞書と許可リストです。 ### book.yml 書籍プロジェクト全体の設定を管理するメイ'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 24-cross-reference
@@ -2388,22 +1592,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/リンク/"
-  contexts:
-  - chapter: 22-extentions
-    context: "@einstein-portrait のように図番号付きのリンクへ展開されます。自動ID・参照の書き方・重複チェックなど詳しい仕組みは「クロスリ"
-  - chapter: 24-cross-reference
-    context: '章番号付きの 番号（図 3-2, 表 4-1 など）とリンク付きで自動生成するための仕組みです。 ::: ## ラベル付きキャプションの'
-  - chapter: 33-index-glossary
-    context: マークアップの除外 以下の記法は索引として認識されません： - `[リンクテキスト](URL)` - Markdown リンク - `[^1]`
-      - 脚注
-  - chapter: 44-build
-    context: '中間生成物を残す（デバッグ用） | | `--[no]-verify` | リンク・画像の基本検証を有効/無効にする（既定: 有効） |
-      | '
-  - chapter: 45-utility
-    context: のテーマ設定で色やフォントを簡単に切り替えられますが、「リンクの色だけ変えたい」「コードブロックの角を丸くしたい」といった細かな調整をしたい場
-  - chapter: 61-developer
-    context: '生成（前書き＋目次＋本文＋付録＋後書き＋索引） | | Step 8 | バックリンク重複排除 | | Step 9 | 表紙・奥付 PDF
-      生成 | | '
   updated_at: '2026-08-09 03:08:17'
   main:
   - 44-build
@@ -2414,16 +1602,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/レビュー/"
-  contexts:
-  - chapter: 22-extentions
-    context: "`{単語|読み}` と区別して下さい。 ::: ### 自動抽出とレビュー `vs index:auto` コマンドで、原稿から索引候補を自動的に抽出で"
-  - chapter: 33-index-glossary
-    context: 書籍の索引と用語集を効率的に作成できます。本章では、用語の登録から自動抽出、レビュー、索引・用語集ページ生成までの一連のワークフローを解説します。
-  - chapter: 45-utility
-    context: "| | :--- | :--- | :--- | | `open` | プレビュー | PDFを即座に開く | | `pdf:compress`
-      | 圧縮 | "
-  - chapter: 61-developer
-    context: '換・最適化します（--high/--lowで品質変更可） ビルド・出力・プレビュー: preflight ビルド前の原稿エラーチェックを高速'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 33-index-glossary
@@ -2461,21 +1639,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/ワークフロー/"
-  contexts:
-  - chapter: 11-workflow
-    context: '執筆ワークフロー概観 :::{.chapter-lead} Vivlio Starter を使った書籍制作は、「プロジェクト作成 → 執筆
-      → 整える → ビルド '
-  - chapter: 31-lint
-    context: 'をコピーしてください。 :::{.tip} 想定ワークフロー: まず `vs lint --register` で大量に指摘された語を一括登'
-  - chapter: 33-index-glossary
-    context: 'は、用語の登録から自動抽出、レビュー、索引・用語集ページ生成までの一連のワークフローを解説します。 ::: `vs index` コマンドは、'
-  - chapter: 41-book-yml
-    context: " max_definition_length: 500 ``` 詳細なワークフローは「索引・用語集機能」の章を参照してください。索引ライブラリの持ち運び（`vs"
-  - chapter: 43-cover
-    context: '本章では、カバー画像の準備から生成、管理までの一連のワークフローを解説します。 ::: `vs cover` コマンドは、カバーのソース画像か'
-  - chapter: 61-developer
-    context: 'は本文への逆引きリンク（バックリンク）も生成されます。 ### ワークフロー ```bash vs index:auto # 候補抽出
-      → _ind'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 11-workflow
@@ -2495,17 +1658,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/スラッグ/"
-  contexts:
-  - chapter: 23-chapter-management
-    context: に `11-intro` が追記されます。 :::{.memo} **「スラッグ」とは**：ファイル名のうち、章番号に続く短い識別名のことです。`11-intr
-  - chapter: 13-new
-    context: テンプレート内の `{{TITLE}}` は章のスラッグに自動置換されます。 章テンプレートのカスタマイズ方法や QueryStrea
-  - chapter: 41-book-yml
-    context: "# master または独自スラッグ（covers/frontcover_master.png 等、著者用意の画像）"
-  - chapter: 45-utility
-    context: テンプレート内の `{{TITLE}}` は章のスラッグ（`11-intro` など）に自動置換されます。 ```markdown <
-  - chapter: 61-developer
-    context: 像を削除します rename 章の番号やファイル名（スラッグ）を変更します renumber 章番号を一括で付け直し
   updated_at: '2026-08-09 03:08:17'
   main:
   - 23-chapter-management
@@ -2516,9 +1668,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/バリアント/"
-  contexts:
-  - chapter: 42-frontispiece
-    context: '画像 ├── my_image_portrait.webp # 縦長バリアント（オプション） └── my_image_landscape.webp'
   updated_at: '2026-08-09 03:08:17'
   main:
   - 42-frontispiece
@@ -2529,23 +1678,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/プリセット/"
-  contexts:
-  - chapter: 13-new
-    context: "| | `page_presets.yml` | 用紙サイズ等のプリセット定義 | | `index_glossary_terms.yml`
-      | 索引・用"
-  - chapter: 32-metrics
-    context: '評価基準をプロジェクトに合わせてカスタマイズできます。 ::: ### プリセットの選択 4種類のプリセットから選択できます。 ```yaml
-      metrics'
-  - chapter: 41-book-yml
-    context: '字サイズなどの版面設定を、`config/page_presets.yml` のプリセットから選択します。 ```yaml page:
-      use: b5_airy'
-  - chapter: 44-build
-    context: "`--high` / `--medium` / `--low` | 画像品質プリセットを指定 | | `--compress` / `--no-compress` "
-  - chapter: 45-utility
-    context: 'バックアップを取ってから実行することを推奨します。 ### 品質プリセットの比較 | プリセット | オプション | 品質 | 最大サイズ
-      | 用途 |'
-  - chapter: 61-developer
-    context: " `page.use` で `page_presets.yml` のプリセット名を指定します（例: `b5_airy`）。 `output.targets`"
   updated_at: '2026-08-09 03:08:17'
   main:
   - 32-metrics
@@ -2558,12 +1690,6 @@ terms:
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/ラスタライズ/"
-  contexts:
-  - chapter: 44-build
-    context: "``` --- ### 印刷エラーを確実に回避する「ラスタライズ」（vs pdf:rasterize） 一部の印刷所では、PDF内のフォントの処"
-  - chapter: 51-doctor
-    context: "| 画像変換・リサイズ | | inkscape | SVG ラスタライズの予備経路（任意） | | rsvg-convert (librsvg)
-      | E"
   updated_at: '2026-08-09 03:08:18'
   main:
 scanned_chapters:

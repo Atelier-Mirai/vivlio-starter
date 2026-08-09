@@ -962,7 +962,10 @@ module VivlioStarter
           enriched['in_index'] = flags.include?('i')
           enriched['in_glossary'] = flags.include?('g')
 
-          # stale な context を捨て、空になったら本文から補充
+          # stale な context を捨て、空になったら本文から補充。
+          # 辞書は contexts を持たなくなったので、通常は 1 行目が空を返して補充へ進む。
+          # 前段が残っているのは旧辞書からの移行のため——contexts を抱えた辞書を
+          # 読んでも古い抜粋をそのまま見せず、次の保存で自然に落ちる。
           fresh = Array(enriched['contexts']).select { context_live?(it, loaded_contents) }
           fresh = collect_contexts_for_term(term['term'], chapters) if fresh.empty?
           enriched['contexts'] = annotate_out_of_scope_contexts(fresh, loaded_contents)
