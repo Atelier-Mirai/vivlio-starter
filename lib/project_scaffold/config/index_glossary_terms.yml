@@ -1,5 +1,5 @@
 ---
-generated_at: '2026-08-09 17:57:19'
+generated_at: '2026-08-09 18:17:24'
 terms:
 - term: "--force"
   yomi: "--force"
@@ -1136,6 +1136,16 @@ terms:
     context: 本の規模に応じて章・節の分量目安が切り替わります。語彙難度・語彙多様度・読解難度の基準は、プリセットとは独立した共通設定として調整します。
   updated_at: '2026-08-09 03:08:17'
   main:
+- term: 五十音順
+  yomi: ごじゅうおんじゅん
+  flags: i
+  definition: ''
+  source: manual_markup
+  approved_at: '2026-08-09 18:17:24'
+  pattern: "/五十音順/"
+  contexts:
+  - chapter: 33-index-glossary
+    context: ":::{.note} **読みの指定について** 日本語の用語は、索引で五十音順に並び替えるために読みが必要です。読みを省略した場合、MeCab（形態素解析エン"
 - term: 索引語
   yomi: さくいんご
   flags: i
