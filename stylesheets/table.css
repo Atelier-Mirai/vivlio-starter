@@ -97,6 +97,24 @@ figure.cross-ref-figure > figcaption {
   text-align: left;
 }
 
+/* キャプションだけがページ末尾に取り残されるのを防ぐ（Re:VIEW Starter の
+   caption_needspace 相当）。見出しと違って Vivliostyle は <p> を後続の表と
+   一緒には送らないため、明示しないと割れる——B5 で「キャプションは収まるが
+   表の 1 行目は収まらない」高さでは実際に割れた（実測 2026-08-10）。
+
+   包む div（.cross-ref-table / .cross-ref-list）へ break-inside: avoid を
+   掛けないのは、版面より高い表やコードが丸ごと次ページへ押し出され、大きな
+   空きを作るため（index.css に実測済みの失敗が記録してある）。break-after:
+   avoid なら中身は途中で分割できる。
+
+   figcaption は figure の break-inside: avoid に含まれるので対象外。
+   Kindle KFX は modern な break-* を解さないので legacy を併記する。 */
+.table-caption,
+.code-caption {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
 td,
 th {
   /* 線幅とパディングを用紙スケールで調整 */
