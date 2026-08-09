@@ -585,20 +585,23 @@ class BookSettingsCssSectionBreakSelectorTest < Minitest::Test
   def test_should_shrink_ornament_padding_with_the_paper_scale
     assert_in_delta 34.0, BSC.section_title_ornament_padding_mm(1.0), 0.01, 'A4 は基準値そのまま'
     assert_in_delta 29.42, BSC.section_title_ornament_padding_mm(0.8653), 0.01, 'B5 は用紙比で縮む'
+    assert_in_delta 23.96, BSC.section_title_ornament_padding_mm(0.7048), 0.01, 'A5 も用紙比で縮む'
     assert_in_delta 23.0, BSC.section_title_ornament_padding_mm(0.5), 0.01, '下限 11 + 12 で止まる'
   end
 
   # 指定字数に対して意図的な余裕を持たせる。判型によらず同じ伸びしろにする
   # ——B5 だけが偶然 4% の余裕を持っていた状態を、全判型へ明示的に配る。
   def test_should_keep_the_same_headroom_across_paper_sizes
-    b5 = BSC.section_title_font_q(14, 137.0, 0.8653).to_f
-    a4 = BSC.section_title_font_q(14, 162.0, 1.0).to_f
+    # A5 148×210 / B5 182×257 / A4 210×297 の版面幅と用紙比（page_presets.yml の既定余白）
+    papers = { 'A5' => [108.0, 0.7048], 'B5' => [137.0, 0.8653], 'A4' => [162.0, 1.0] }
 
-    b5_chars = (137.0 - BSC.section_title_ornament_padding_mm(0.8653)) / (b5 * 0.25)
-    a4_chars = (162.0 - BSC.section_title_ornament_padding_mm(1.0)) / (a4 * 0.25)
+    chars = papers.transform_values do |text_mm, scale|
+      q = BSC.section_title_font_q(14, text_mm, scale).to_f
+      (text_mm - BSC.section_title_ornament_padding_mm(scale)) / (q * 0.25)
+    end
 
-    assert_in_delta b5_chars, a4_chars, 0.05, '1 行に入る字数が判型でぶれないこと'
-    assert_operator b5_chars, :>, 14.0, '指定字数より少しだけ多く入ること（余裕）'
+    chars.each_value { assert_operator it, :>, 14.0, '指定字数より少しだけ多く入ること（余裕）' }
+    assert_in_delta chars.values.min, chars.values.max, 0.05, '1 行に入る字数が判型でぶれないこと'
   end
 
   # 見出しの前後の余白は「前 ≫ 後」でなければ、前節の末尾と次節の見出しが 1 つの塊に見える
