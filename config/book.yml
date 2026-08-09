@@ -87,7 +87,7 @@ page:
   # use: a5_compact   # 狭め
   # use: a5_custom    # 著者独自
 
-  use: b5_standard
+  use: a4_custom
   # use: b5_compact
   # use: b5_airy
   # use: b5_custom

@@ -544,5 +544,3 @@ $$e^{i\pi} + 1 = 0$$
 
 - [Easy Copy MathJax](https://easy-copy-mathjax.nakaken88.com/) — 日本語の記号一覧。クリックするだけで記法をコピーできます
 - [MathJax 公式ドキュメント](https://docs.mathjax.org/en/latest/input/tex/macros/index.html) — 対応コマンドの一覧（英語）
-
----

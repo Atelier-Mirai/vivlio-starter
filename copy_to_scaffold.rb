@@ -122,7 +122,13 @@ if File.exist?(book_yml)
   #   window_bounds … ルートは 5K の外部モニタ向け。一般的な画面に収まる値へ
   #   *_pagebreak  … 本書はページ数を抑えるため節の改ページと改丁をやめているが、
   #                   新しく始める本には組版として整った側を渡す
+  #   page.use     … 本書は大部なので A4（a4_custom）で組んでいるが、同人誌で
+  #                   一般的なのは B5。判型は本の性格そのものなので既定は動かさない
+  #                   （a4_custom の中身は page_presets.yml ごと配る。大著を書く人の
+  #                     叩き台になるよう、行送りを広げた理由もコメントで残してある）
   content.gsub!(/^(\s+version:\s*)(['"].+?['"])(\s*#.*)?$/, '\1"0.1.0"\3')
+  # `use:` は metrics にもあるので、判型プリセットの綴りに限って当てる
+  content.gsub!(/^(\s+use:\s*)(?:a4|a5|b5)_\w+(\s*#.*)?$/, '\1b5_standard\2')
   content.gsub!(/^(\s+section_pagebreak:\s*)\S+(\s*#.*)?$/, '\1true\2')
   content.gsub!(/^(\s+chapter_pagebreak:\s*)\S+(\s*#.*)?$/, '\1recto\2')
   # 行末コメントごと差し替える（ルートのコメントは 5K モニタ前提の説明なので、
