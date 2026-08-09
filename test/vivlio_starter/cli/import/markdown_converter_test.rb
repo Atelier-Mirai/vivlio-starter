@@ -263,6 +263,33 @@ module VivlioStarter
           assert_match(/^```\w+\n/, result)
         end
 
+        # 言語付きのブロックが並ぶ原稿では、閉じフェンスを開きと誤認して
+        # ```text へ書き換えてしまっていた。以降の地の文とコードが総入れ替わりになる
+        # （実測: book_c の取り込みで 68 箇所。1 章では 105 個の開きに対し
+        # 裸の閉じが 1 個だけになっていた）
+        def test_detect_code_block_languages_keeps_closing_fences_bare
+          input = <<~MD
+            ```c:a.c
+            int a;
+            ```
+
+            ### 見出し
+
+            ```c:b.c
+            int b;
+            ```
+          MD
+
+          assert_equal input, MarkdownConverter.detect_code_block_languages(input)
+        end
+
+        # 入れ子のフェンス（```` の中の ```）は内側を独立したブロックとみなさない
+        def test_detect_code_block_languages_respects_longer_fences
+          input = "````markdown\n```\ncode\n```\n````\n"
+
+          assert_equal input, MarkdownConverter.detect_code_block_languages(input)
+        end
+
         # ================================================================
         # 統合テスト: transform メソッド
         # ================================================================

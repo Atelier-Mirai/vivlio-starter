@@ -10,6 +10,7 @@ require_relative 'import/markdown_converter'
 require_relative 'import/image_processor'
 require_relative 'import/yaml_processor'
 require_relative 'import/sideimage_restorer'
+require_relative 'import/verbatim_restorer'
 require_relative 'upgrade'
 
 module VivlioStarter
@@ -193,7 +194,10 @@ module VivlioStarter
           # 追従変換を実行
           Import::MarkdownConverter.process!(temp_dir)
 
-          # //sideimage の囲みを戻す。画像パスが `![](foo.webp)` に揃ったあとに行う
+          # Re:VIEW が落とした囲みを .re 原稿から戻す。
+          # 逐語ブロックはフェンスの並びで照合するので、sideimage より先に行う
+          # （sideimage は本文へ `:::` を差し込み、フェンスの行番号を動かす）
+          Import::VerbatimRestorer.restore!(temp_dir, @starter_dir)
           Import::SideimageRestorer.restore!(temp_dir, @starter_dir)
 
           # contents/ に移動

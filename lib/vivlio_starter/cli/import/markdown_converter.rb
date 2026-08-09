@@ -237,15 +237,55 @@ module VivlioStarter
           end
         end
 
+        # フェンスの開き（``` 以上のバッククォート ＋ 情報文字列）
+        FENCE_LINE = /\A(`{3,})(.*)\z/
+
         # コードブロック言語の自動推定（Rouge を使用）
         #
-        # 言語指定のないコードブロックに対して、内容から言語を推定して付与する
+        # 言語指定のないコードブロックに対して、内容から言語を推定して付与する。
+        #
+        # 行単位で開き／閉じを追うのは、`/^```\s*\n(.*?)^```/m` で拾うと
+        # **閉じフェンスを開きと誤認する**ため。言語付きで開いたブロック
+        # （```c:foo.c）の閉じは裸の ``` なので、そこから次の開きまでを
+        # 「言語未指定のブロック」と読み、閉じフェンスが ```text に化けていた。
+        # 以降の地の文とコードが総入れ替わりになる（実測: book_c の取り込みで
+        # 68 箇所・1 章では 105 個の開きに対し裸の閉じが 1 個だけになっていた）。
         def detect_code_block_languages(text)
-          text.gsub(/^```\s*\n(.*?)^```/m) do
-            code = Regexp.last_match(1)
-            lang = detect_lang(code)
-            "```#{lang}\n#{code}```"
+          lines = text.lines
+          result = []
+          index = 0
+
+          while index < lines.size
+            match = FENCE_LINE.match(lines[index].chomp)
+            unless match
+              result << lines[index]
+              index += 1
+              next
+            end
+
+            index = append_code_block(result, lines, index, match)
           end
+
+          result.join
+        end
+
+        # 1 ブロックぶんを result へ書き出し、次に読む行の番号を返す
+        def append_code_block(result, lines, open_index, match)
+          fence = match[1]
+          close_index = closing_fence_index(lines, open_index + 1, fence)
+          body = lines[(open_index + 1)...close_index]
+
+          result << (match[2].strip.empty? ? "#{fence}#{detect_lang(body.join)}\n" : lines[open_index])
+          result.concat(body)
+          result << lines[close_index] if close_index < lines.size
+
+          close_index + 1
+        end
+
+        # 閉じフェンス（開きと同じ長さ以上のバッククォートだけの行）を探す
+        def closing_fence_index(lines, from, fence)
+          pattern = /\A#{fence}`*\s*\z/
+          (from...lines.size).find { pattern.match?(lines[it].chomp) } || lines.size
         end
 
         # コード内容から言語を推定する
