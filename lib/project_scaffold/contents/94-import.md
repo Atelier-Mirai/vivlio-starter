@@ -60,6 +60,7 @@ vs import --force ../starter_project    # 確認を省略したい場合
    - 言語未指定フェンスは Rouge で自動推定（`$`/`%` で始まる行があれば強制 `zsh`）
    - `//sideimage` → `:::{.sideimage}`・`:::{.sideimage-right}`（`side=R` で右寄せ。幅 `30mm` は版面幅に対する比率 `{width=22%}` へ換算）
    - `//output` → `:::{.output}`、`//cmd` → `:::{.terminal}`（実行結果や端末に行番号を付けないため）
+   - `//clearpage` → `@pagebreak`（囲みの中に入らないよう、囲みの手前へ置きます）
 4. **画像処理** — Starter `images/` をコピー → WebP 化 → 元画像（png/jpg/gif）は削除。
 5. **codes/ へのコピー** — Starter `source/` 配下をそのまま `codes/` へコピー。
 6. **YAML 変換** — `catalog.yml` は行単位の書き換え（`PREDEF→PREFACE` 等のキー変換と `.re` 除去だけ）。部・コメント・コメントアウトした章は原文のまま残る。`config.yml` は `book.main_title` などを `book.yml` へ反映。`config-starter.yml` の `starter.pagesize` は同じ判型の標準プリセット（`B5` なら `b5_standard`）へ対応づけ。

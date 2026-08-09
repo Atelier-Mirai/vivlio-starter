@@ -11,6 +11,7 @@ require_relative 'import/image_processor'
 require_relative 'import/yaml_processor'
 require_relative 'import/sideimage_restorer'
 require_relative 'import/verbatim_restorer'
+require_relative 'import/pagebreak_restorer'
 require_relative 'upgrade'
 
 module VivlioStarter
@@ -199,6 +200,9 @@ module VivlioStarter
           # （sideimage は本文へ `:::` を差し込み、フェンスの行番号を動かす）
           Import::VerbatimRestorer.restore!(temp_dir, @starter_dir)
           Import::SideimageRestorer.restore!(temp_dir, @starter_dir)
+
+          # 改ページは最後に。囲みが出来上がってからでないと「囲みの外へ出す」判断ができない
+          Import::PagebreakRestorer.restore!(temp_dir, @starter_dir)
 
           # contents/ に移動
           Dir.glob(File.join(temp_dir, '*.md')).each do |md_file|

@@ -164,6 +164,25 @@ hr.pagebreak {
   background: none;
 }
 
+/* 改ページ（@pagebreak 記法）。chapter-common.css と同じ規則をここにも置く。
+   前書き・後書きは chapter-common.css を読み込まないため、置かないと
+   `@pagebreak` が**黙って何も起きない**（`---` は上の hr.pagebreak が
+   このファイルにあるので効いており、等価と説明している 22 章と食い違っていた）。
+   postface.css は本ファイルを @import するので後書きもここで賄える。 */
+.vs-break-page,
+.vs-break-recto,
+.vs-break-verso {
+  page-break-before: always;
+}
+
+.vs-break-recto {
+  break-before: recto;
+}
+
+.vs-break-verso {
+  break-before: verso;
+}
+
 /* セクション */
 section {
   margin-block-end: clamp(14pt, calc(var(--paper-scale) * 20pt), 20pt);
