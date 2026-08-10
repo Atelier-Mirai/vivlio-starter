@@ -16,6 +16,7 @@
 #   - これにより PDF ビルドへの副作用を完全に排除する。
 # ================================================================
 
+require 'cgi'
 require 'digest'
 require 'fileutils'
 require 'open3'
@@ -270,8 +271,6 @@ module VivlioStarter
           mark_body_for_epub!(chapter_htmls)
           # 生成物 book-settings.css を消費者 dir 直下へ同梱（パッケージルート内へ・§7.2 → P4 §5.4）
           bundle_book_settings_for_epub!(chapter_htmls, base_dir)
-          # 索引・用語集を EPUB 用に書き換え（空リンクに連番テキストを挿入）
-          post_process_index_glossary_for_epub!(chapter_htmls)
           # 段落内脚注 span の重複 id を除去（XHTML の id 重複 ERROR を回避）
           strip_inline_footnote_ids_for_epub!(chapter_htmls)
           # テーブルの align 属性を style へ変換（XHTML5 で廃止された属性の ERROR を回避）
@@ -288,6 +287,14 @@ module VivlioStarter
           convert_code_blocks_for_epub!(chapter_htmls)
           # 脚注に番号を実テキストで注入する（両フレーバ共通）。
           decorate_footnotes_for_epub!(chapter_htmls)
+          # 索引・用語集を EPUB 用に書き換え（空リンクに連番テキストを挿入）。
+          # 共通フェーズの最後に置く——このフェーズは「参照先 id が EPUB に実在するか」を
+          # 照合して死リンクを解除する（RSC-012 恒常対策）ので、id を消しうる処理が
+          # すべて終わったあとの DOM を見なければならない。以前は先頭に置いており、
+          # あとから走る inject_heading_images_for_epub! が見出し・章リードの中身を
+          # 合成画像へ差し替えた時点でアンカーが消え、照合をすり抜けた死リンクが
+          # そのまま残っていた（実測 102 件）。
+          post_process_index_glossary_for_epub!(chapter_htmls)
 
           # --- Phase: Kindle 専用 rewrite（クリーン EPUB は無改変のまま・§1-2）---
           # Kindle(KFX) は WebP・CSS Grid・position:absolute・var()・外部 CSS の画像サイズを解さない。
@@ -645,12 +652,27 @@ module VivlioStarter
 
             fragment = href.split('#', 2)[1]
             # フラグメントを持たないリンク・実在 id へのリンクは温存する
-            next whole if fragment.nil? || fragment.empty? || existing_ids.include?(fragment)
+            next whole if fragment.nil? || fragment.empty?
+            next whole if existing_ids.include?(decoded_fragment(fragment))
 
             removed += 1
             inner
           end
           [updated, removed]
+        end
+
+        # href のフラグメントを id 属性と同じ土俵へ戻す。
+        #
+        # href は URL エンコードされて出力される（`#gls-src-31-lint-css組版-1` は
+        # `#gls-src-31-lint-css%E7%B5%84%E7%89%88-1`）が、id 属性は素の UTF-8 のまま。
+        # 素で突き合わせると CJK を含むアンカーが必ず不一致になり、**実在するリンクまで
+        # 解除**してしまう。`+` を空白に変える unescape ではなくパーセント記号だけを解く
+        # unescapeURIComponent を使う——id に `+` は現れないが、フラグメントの意味として
+        # 正しいのはこちら。
+        def decoded_fragment(fragment)
+          CGI.unescapeURIComponent(fragment)
+        rescue ArgumentError
+          fragment # 壊れたエスケープ列は素のまま照合する（握り潰して死リンクを残さない）
         end
 
         # HTML ファイルの構成順から、ファイル名プレフィックス → 連番 のマッピングを構築
@@ -781,29 +803,42 @@ module VivlioStarter
         # EPUB 用 脚注 id 重複の解消
         # ================================================================
         # footnote_converter は段落内脚注に対し span（画面用）と aside（印刷用）へ
-        # 同一 id を意図的に付与する（PDF の脚注二重描画回避。PDF 経路では変更禁止）。
+        # 同じ本文 HTML を流し込む（PDF の脚注二重描画回避。PDF 経路では変更禁止）。
         # XHTML では同一文書内の id 重複が ERROR になるため、EPUB 経路でのみ
         # span 側の id を除去して aside 側に一意化する。
-        # 画面メディアでは span は display:none のため表示への影響はない。
+        # 残す側を aside にするのは、EPUB で読者に見えるのが aside だから
+        # （components.css の `.page-footnote-inline { display: none }` と
+        # `body.vs-epub aside.page-footnote { display: block }`）。索引・用語集の
+        # リンク先も、読者が実際に読む側に着地させる。
         # ================================================================
 
-        # 段落内脚注 span（page-footnote-inline）の id 属性のみを除去する
+        # 段落内脚注 span（page-footnote-inline）自身と、その中身から id を除去する。
+        #
+        # span 自身の id だけを外していたため、脚注本文に索引語・用語集語があると
+        # `idx-…` / `gls-src-…` が span と aside の両方に残って重複していた
+        # （実測: 22 章「CSS」・33 章「ノンブル」で epubcheck RSC-005 ERROR）。
+        # span は丸ごと aside の控えなので、中の id もすべて控え側から外す。
         #
         # @param html_files [Array<String>] HTML ファイルパスの配列
         # @return [Array<String>] そのままの配列（パス変更なし）
         def strip_inline_footnote_ids_for_epub!(html_files)
           html_files.each do |path|
-            html = File.read(path, encoding: 'utf-8')
-            stripped = html.gsub(
-              %r{(<span\b[^>]*\bpage-footnote-inline\b[^>]*?)\s+id="[^"]*"},
-              '\1'
-            )
-            next if stripped == html
+            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
+            removed = doc.css('span.page-footnote-inline').sum { strip_ids_within!(it) }
+            next if removed.zero?
 
-            File.write(path, stripped, encoding: 'utf-8')
-            Common.log_info("[EPUB] #{File.basename(path)} の脚注 span id を除去しました")
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+            Common.log_info("[EPUB] #{File.basename(path)} の脚注 span から id を #{removed} 件除去しました")
           end
           html_files
+        end
+
+        # 要素自身とその子孫から id 属性を外す。
+        # @return [Integer] 外した id の数
+        def strip_ids_within!(element)
+          targets = [element, *element.css('[id]')].select { it['id'] }
+          targets.each { it.remove_attribute('id') }
+          targets.size
         end
 
         # ================================================================
@@ -1240,7 +1275,7 @@ module VivlioStarter
             )
             next unless src
 
-            apply_image_heading!(h1, src, [number, title, lead], doc)
+            apply_image_heading!(h1, src, [number, title, lead], doc, also_from: lead_el)
             lead_el&.remove # 焼き込み成功時のみ除去（合成失敗なら実テキストのまま simple 縮退）
             changed = true
           end
@@ -1316,8 +1351,18 @@ module VivlioStarter
         # 見出し要素の中身を合成画像 <img> へ置換する。
         # 目次（nav）は各章 HTML の <title> から生成され h1 テキストに依存しないため、
         # 見出しテキストは <img alt> に格納する（読み上げ・検索・画像非表示時のフォールバック）。
-        def apply_image_heading!(heading, src, segments, doc)
+        #
+        # 中身と一緒に消える索引・用語集のアンカーは、空の <span> として見出しに残す。
+        # 索引・用語集はこの id を行き先にしているので、要素ごと失うと行き先の無い
+        # リンクになり epubcheck が RSC-012 ERROR を出す。主要参照は
+        # 「章題にしか無い語は、その章題を指すほかない」（IndexMatchScanner#main_reference?）
+        # の分岐で見出し・章リードへ着地しやすく、実測では 89 件中 27 件がここで消えていた。
+        # 見出しは章・節の入口そのものなので、着地点としても主要参照の意図と一致する。
+        #
+        # @param also_from [Nokogiri::XML::Element, nil] 見出しと一緒に消える要素（章リード）
+        def apply_image_heading!(heading, src, segments, doc, also_from: nil)
           label = segments.reject(&:empty?).join(' ')
+          anchor_ids = index_anchor_ids_within(heading, also_from)
 
           heading.children.remove
           add_class(heading, 'vs-image-heading-epub')
@@ -1327,6 +1372,29 @@ module VivlioStarter
           img['src'] = src
           img['alt'] = label
           heading.add_child(img)
+
+          anchor_ids.each { heading.add_child(index_anchor_span(it, doc)) }
+        end
+
+        # 索引・用語集がリンク先にしているアンカー id の綴り。
+        # 2 種の接頭辞に絞るのは、脚注 id のように別のフェーズが意図して外した id を
+        # ここで復活させないため（strip_inline_footnote_ids_for_epub! と競合する）。
+        INDEX_ANCHOR_ID_PATTERN = /\A(?:idx|gls-src)-/
+
+        # 消える要素の中から、索引・用語集のアンカー id を集める。
+        def index_anchor_ids_within(*nodes)
+          nodes.compact
+               .flat_map { |node| node.css('[id]').map { |el| el['id'] } }
+               .select { INDEX_ANCHOR_ID_PATTERN.match?(it) }
+               .uniq
+        end
+
+        # 中身の無いアンカー。紙面・画面の見た目には出さず、リンクの着地点だけを担う。
+        def index_anchor_span(id, doc)
+          span = Nokogiri::XML::Node.new('span', doc)
+          span['id'] = id
+          span['class'] = 'vs-epub-anchor'
+          span
         end
 
         # 節絵を入れた h2 の親 article.section-topic に EPUB 用クラスを付け、

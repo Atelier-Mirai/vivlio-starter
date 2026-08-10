@@ -83,6 +83,29 @@ module VivlioStarter
         assert_includes result, 'data-footnote-number="1"', 'data-footnote-number は残すべき'
       end
 
+      # --- EPF-03b: 脚注 span の「中身」の id も除去（RSC-005 の再発防止） ---
+      # footnote_converter は span と aside へ同じ本文 HTML を流し込む。脚注本文に
+      # 索引語・用語集語があると、本文中で採番済みの idx-… / gls-src-… が両方へ
+      # 複製されて id が重複する（実測: 22 章「CSS」・33 章「ノンブル」）。
+      # 見えるのは aside 側なので（.page-footnote-inline は display:none）、
+      # 控えである span からアンカーごと外す。
+      def test_should_strip_index_anchors_inside_inline_footnote_copy
+        html = <<~HTML
+          <p>本文<span role="doc-footnote" class="page-footnote page-footnote-inline" id="fn1">W3C の <span id="idx-abc-19" class="index-term">CSS</span><a id="gls-src-22-ext-css-19" class="glossary-link" href="_glossarypage.html#gls-css"><sup>†</sup></a> 仕様</span>続き</p>
+          <aside role="doc-footnote" class="page-footnote page-footnote-print" id="fn1" data-footnote-anchored="1">W3C の <span id="idx-abc-19" class="index-term">CSS</span><a id="gls-src-22-ext-css-19" class="glossary-link" href="_glossarypage.html#gls-css"><sup>†</sup></a> 仕様</aside>
+        HTML
+        path = File.join(@test_dir, '22-extentions.html')
+        File.write(path, html)
+
+        Build::EpubBuilder.strip_inline_footnote_ids_for_epub!([path])
+
+        result = File.read(path)
+        assert_equal 1, result.scan('id="idx-abc-19"').size, '索引アンカーは文書内で 1 つだけになるべき'
+        assert_equal 1, result.scan('id="gls-src-22-ext-css-19"').size, '用語集アンカーは文書内で 1 つだけになるべき'
+        assert_match(/page-footnote-print.*id="idx-abc-19"/m, result, '残すのは読者に見える aside 側')
+        assert_includes result, 'CSS', '本文テキストは両方に残る（id だけを外す）'
+      end
+
       # --- EPF-04: 絵文字 img の寸法は style に統合され属性は無い ---
       def test_should_emit_emoji_img_without_dimension_attributes
         replacer = Techbook::EmojiReplacer.new(EMOJI_FIXTURES_DIR)
