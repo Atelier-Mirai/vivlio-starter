@@ -251,7 +251,7 @@ Vivlio Starter は、Vivliostyle をコアエンジンとして活用する独�
 
 ### ビルド時間の内訳
 
-Vivlio Starter の使い方を解説したガイドブック『はじめての技術書づくり』（508 ページ・`contents/` に原稿があります）の全章ビルドで約 5 分。大半は Vivliostyle が紙面を組む時間です。
+Vivlio Starter の使い方を解説したガイドブック『はじめての技術書づくり』（A4・347 ページ・`contents/` に原稿があります）の全章ビルドで約 5 分。大半は Vivliostyle が紙面を組む時間です。
 
 ```
 vivliostyle 本体:      約 85%（本文 PDF の組版・バックリンク解決の再組版）
