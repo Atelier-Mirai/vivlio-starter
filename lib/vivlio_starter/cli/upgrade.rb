@@ -263,9 +263,13 @@ module VivlioStarter
         if lock_digest.nil?
           # lock なし（旧プロジェクト or 追跡外ファイル）: 一致なら最新、不一致は安全側で競合
           current_digest == scaffold_digest ? :latest : :conflict
-        elsif scaffold_digest == lock_digest then :latest
-        elsif current_digest == lock_digest  then :update
-        else                                      :conflict
+        elsif scaffold_digest == lock_digest  then :latest
+        elsif current_digest == lock_digest   then :update
+        # 双方が別経路で同じ内容に到達した（著者が手で新版を当てた等）。lock だけが
+        # 取り残されている状態で、diff は空になる。ここを競合にすると、y/n の
+        # どちらを選んでも結果が変わらない問いを著者に投げることになる
+        elsif current_digest == scaffold_digest then :latest
+        else                                        :conflict
         end
       end
 
@@ -502,26 +506,125 @@ module VivlioStarter
       # プロジェクト側が ×× ということが分からない」という声があった（2026-08-12）。
       # 標準の unified diff の `--- a/` `+++ b/` に相当する行だが、パスではなく
       # **役割**を書く——著者に必要なのはファイル名ではなく、どちらが残るかである。
+      #
+      # 行頭を「凡例」で始めるのは色付けの都合でもある。`   - …` で始めると
+      # paint_diff_line が削除行と見なして赤く塗ってしまう
       DIFF_LEGEND = [
-        '   - いまのあなたのファイル / + 新しい雛形（適用すると + の側になります）'
+        '   凡例  - いまのあなたのファイル  /  + 新しい雛形（適用すると + の側になります）'
       ].freeze
 
-      # ops（中間部）を、前後 CONTEXT_LINES 行の文脈付き表示行に整形する
+      # 表示上の 1 ハンク。start_lineno は旧ファイル（＝著者の現物）基準の 1 起点
+      Hunk = Data.define(:start_lineno, :lines)
+
+      # ops（中間部）を、ハンクに分けた表示行へ整形する（upgrade-conflict-review-spec.md §3(b)）
       def render_hunks(old_lines, prefix, ops)
-        lines = DIFF_LEGEND.dup
-        context_before = old_lines[[prefix - CONTEXT_LINES, 0].max...prefix] || []
-        lines << "   @@ #{prefix + 1} 行目付近 @@"
-        context_before.each { lines << "    #{it}" }
-        ops.each do |mark, line|
-          lines << (mark == ' ' ? "    #{line}" : "   #{mark}#{line}")
+        hunks = build_hunks(restore_full_ops(old_lines, prefix, ops))
+        return ['   （差分はありません）'] if hunks.empty?
+
+        lines = [diff_summary(hunks), *DIFF_LEGEND]
+        hunks.each do |hunk|
+          lines << "   @@ #{hunk.start_lineno} 行目付近 @@"
+          hunk.lines.each { |mark, line| lines << (mark == ' ' ? "    #{line}" : "   #{mark}#{line}") }
         end
         lines
       end
 
+      # ops（中間部）の前後に共通部分を戻し、ファイル全体の op 列へ復元する。
+      # ハンク分割は「変更の周囲だけを切り出す」操作なので、中間部だけを見ていると
+      # 先頭側の文脈（共通プレフィックスの末尾）が取れない
+      def restore_full_ops(old_lines, prefix, ops)
+        consumed = ops.count { |mark, _| mark != '+' }
+        head = old_lines[0...prefix].map { [' ', it] }
+        tail = (old_lines[(prefix + consumed)..] || []).map { [' ', it] }
+        head + ops + tail
+      end
+
+      # 各グループを前後 CONTEXT_LINES 行ぶん広げてハンクにする
+      def build_hunks(all_ops)
+        group_change_indexes(all_ops).map do |group|
+          first = [group.first - CONTEXT_LINES, 0].max
+          last  = [group.last + CONTEXT_LINES, all_ops.size - 1].min
+          Hunk.new(start_lineno: old_lineno_at(all_ops, first), lines: all_ops[first..last])
+        end
+      end
+
+      # 変更行の添字を、隙間が文脈で埋まらないところで切ってまとめる。
+      # 標準の unified diff と同じ規則で、間の無変更行が CONTEXT_LINES × 2 以下なら
+      # 1 つのハンクに残す。これを怠ると最初の変更から最後の変更までが 1 塊になり、
+      # 無変更行が肝心の変更をプレビュー外へ押し出す（2026-08-12 の事故の真因）
+      def group_change_indexes(all_ops)
+        changed = all_ops.each_index.select { all_ops[it].first != ' ' }
+        changed.each_with_object([]) do |index, groups|
+          if groups.empty? || index - groups.last.last > (CONTEXT_LINES * 2) + 1
+            groups << [index]
+          else
+            groups.last << index
+          end
+        end
+      end
+
+      # all_ops の添字が旧ファイルの何行目にあたるか（1 起点）。
+      # 追加行は旧ファイルに存在しないので行数を進めない
+      def old_lineno_at(all_ops, index)
+        1 + all_ops[0...index].count { |mark, _| mark != '+' }
+      end
+
+      # prompt の前に置く要約。`-` 行はすべて著者の現在の内容なので、
+      # この数字はそのまま「適用すると失われる行数」でもある
+      def diff_summary(hunks)
+        added   = hunks.sum { it.lines.count { |mark, _| mark == '+' } }
+        removed = hunks.sum { it.lines.count { |mark, _| mark == '-' } }
+        "   変更 #{hunks.size} 箇所（+#{added} / -#{removed} 行）"
+      end
+
       def print_diff(diff, limit:)
+        enabled = diff_color_enabled?
         shown = limit ? diff.first(limit) : diff
-        shown.each { Common.log_always(it) }
-        Common.log_always("   … 残り #{diff.size - limit} 行（[d] で全文表示）") if limit && diff.size > limit
+        shown.each { Common.log_always(paint_diff_line(it, enabled:)) }
+        return unless limit && diff.size > limit
+
+        print_truncation_notice(diff.drop(limit), enabled)
+      end
+
+      # 切り詰めたときに何を言うかが、事故を止める最後の砦になる。
+      # 「残り N 行」だけでは「読まなくてよい続き」と読めてしまい、実際に
+      # 見ていない変更が y で承認された（2026-08-12 の実測）
+      def print_truncation_notice(hidden, enabled)
+        hunks = hidden.count { it.start_with?('   @@') }
+        tail  = hunks.positive? ? "・未表示 #{hunks} 箇所" : ''
+        Common.log_always(paint("   … 残り #{hidden.size} 行#{tail}（[d] で全文表示）", :dim, enabled:))
+        Common.log_always(paint('   ⚠️ [y] は表示していない箇所にも適用されます', :yellow, enabled:))
+      end
+
+      ANSI_CODES = { red: 31, green: 32, yellow: 33, cyan: 36, dim: 2 }.freeze
+
+      def paint(text, color, enabled:)
+        enabled ? "\e[#{ANSI_CODES.fetch(color)}m#{text}\e[0m" : text
+      end
+
+      # 表示行 1 本を色付けする。
+      # 記号の判定に lstrip を使ってはならない——CSS のカスタムプロパティを含む
+      # 文脈行（"    --preface-h3-marker: …"）が削除行に化ける。render_hunks は
+      # 変更行を "   -…"、文脈行を "    …" と組み立てるので、添字 3 が記号そのものになる
+      def paint_diff_line(line, enabled:)
+        color = case line[3]
+                when '-' then :red
+                when '+' then :green
+                when '@' then :cyan
+                end
+        color ? paint(line, color, enabled:) : line
+      end
+
+      # 色を付けてよい環境か。NO_COLOR（no-color.org の事実上の標準）と TERM=dumb を
+      # 尊重し、パイプ/リダイレクト先には付けない。
+      # 色は「diff の生成」ではなく「出力」の関心事なので、ここだけに閉じ込める——
+      # unified_diff / render_hunks は素のテキストを返し続けるため、diff の中身を
+      # 検査するテストが色の有無に影響されない
+      def diff_color_enabled?(io = $stdout, env = ENV)
+        return false unless io.tty?
+        return false unless env.fetch('NO_COLOR', '').to_s.empty?
+
+        env['TERM'] != 'dumb'
       end
     end
   end

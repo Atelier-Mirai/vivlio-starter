@@ -344,7 +344,150 @@ module VivlioStarter
         refute_nil relaunched_with, '更新成功後は新しい版で再実行されるべき'
       end
 
+      # ================================================================
+      # 競合レビューの見せ方（upgrade-conflict-review-spec.md）
+      # ================================================================
+
+      # --- §3(a) 双方が同じ内容に到達したものは競合ではない ---
+
+      # lock だけが取り残された状態。diff は空になるので y/n のどちらを選んでも
+      # 結果が変わらない——問いを立てること自体が誤りである
+      def test_should_not_ask_when_current_and_scaffold_already_agree
+        within_project do |scaffold|
+          write(scaffold, 'stylesheets/custom.css', NEW_CSS)
+          write('.', 'stylesheets/custom.css', NEW_CSS)
+          write_lock(scaffold_overrides: { 'stylesheets/custom.css' => OLD_CSS })
+
+          out, = capture_io { run_upgrade(scaffold, dry_run: true) }
+
+          refute_match(/競合/, out, '中身が同じものを競合として尋ねるべきではない')
+          refute_match(%r{stylesheets/custom\.css}, out)
+        end
+      end
+
+      # --- §3(b) ハンク分割 ---
+
+      # 事故の真因。分割しないと最初の変更から最後の変更までが 1 塊になり、
+      # 間の無変更行が肝心の変更をプレビュー外へ押し出す（2026-08-12 の実測）
+      def test_should_split_distant_changes_into_separate_hunks
+        mine, theirs = two_sided_change(mine_at: 4, theirs_at: 34)
+
+        lines = diff_lines(mine, theirs)
+
+        assert_equal 2, lines.grep(/@@/).size, '離れた 2 箇所は別々のハンクになるべき'
+        refute_includes lines, '    line 20', 'ハンクの間の無変更行は出ないべき'
+        assert_includes lines, '   -わたしの 5 行目', '著者の変更が消える側として見えるべき'
+        assert_includes lines, '   +雛形の 35 行目'
+      end
+
+      # 文脈で埋まる程度の隙間なら 1 つに残す（標準の unified diff と同じ規則）
+      def test_should_merge_nearby_changes_into_one_hunk
+        mine, theirs = two_sided_change(mine_at: 9, theirs_at: 13)
+
+        lines = diff_lines(mine, theirs)
+
+        assert_equal 1, lines.grep(/@@/).size, '間が CONTEXT_LINES × 2 以下なら 1 ハンクにまとまるべき'
+      end
+
+      # ハンク見出しの行番号は著者の現物基準。追加行では行数を進めない
+      def test_should_number_hunks_by_the_authors_current_file
+        mine, theirs = two_sided_change(mine_at: 4, theirs_at: 34)
+
+        lines = diff_lines(mine, theirs)
+
+        assert_includes lines, '   @@ 3 行目付近 @@'
+        assert_includes lines, '   @@ 33 行目付近 @@'
+      end
+
+      # --- §3(c) 要約と切り詰め警告 ---
+
+      def test_should_summarize_hunk_count_and_line_delta_before_the_prompt
+        mine, theirs = two_sided_change(mine_at: 4, theirs_at: 34)
+
+        lines = diff_lines(mine, theirs)
+
+        assert_equal '   変更 2 箇所（+2 / -2 行）', lines.first, '要約は diff の先頭（prompt より前）に出るべき'
+      end
+
+      # 「残り N 行」だけでは「読まなくてよい続き」と読めてしまう。
+      # 実際に、見ていない変更が y で承認された
+      def test_should_warn_that_y_applies_to_hidden_hunks_when_truncated
+        mine   = (1..200).map { "line #{it}" }
+        theirs = mine.dup
+        (0...10).each { theirs[it * 20] = "雛形の変更 #{it}" }
+        diff = diff_lines("#{mine.join("\n")}\n", "#{theirs.join("\n")}\n")
+
+        out, = capture_io { UpgradeCommands.send(:print_diff, diff, limit: UpgradeCommands::DIFF_PREVIEW_LINES) }
+
+        assert_match(/未表示 \d+ 箇所/, out, '見えていないハンクが何箇所あるか示すべき')
+        assert_match(/\[y\] は表示していない箇所にも適用されます/, out)
+      end
+
+      def test_should_not_warn_about_hidden_changes_when_the_diff_fits
+        mine, theirs = two_sided_change(mine_at: 4, theirs_at: 34)
+        diff = diff_lines(mine, theirs)
+
+        out, = capture_io { UpgradeCommands.send(:print_diff, diff, limit: UpgradeCommands::DIFF_PREVIEW_LINES) }
+
+        refute_match(/表示していない箇所/, out, '全部見えているときに警告を出すべきではない')
+      end
+
+      # --- §3(d) 色付け ---
+
+      # 色は「diff の生成」ではなく「出力」の関心事。生成側が素のままだから、
+      # diff の中身を検査する上のテスト群が色の有無に影響されない
+      def test_should_keep_generated_diff_plain_and_colorize_only_on_output
+        mine, theirs = two_sided_change(mine_at: 4, theirs_at: 34)
+
+        diff = diff_lines(mine, theirs)
+
+        assert_empty diff.grep(/\e\[/), 'unified_diff の戻り値は色を持たないべき'
+        assert_equal "\e[31m   -x\e[0m", UpgradeCommands.send(:paint_diff_line, '   -x', enabled: true)
+        assert_equal "\e[32m   +x\e[0m", UpgradeCommands.send(:paint_diff_line, '   +x', enabled: true)
+        assert_equal '   -x', UpgradeCommands.send(:paint_diff_line, '   -x', enabled: false)
+      end
+
+      # 記号の判定に lstrip を使うと、CSS のカスタムプロパティを含む文脈行が
+      # 削除行に化けて赤く塗られる。位置（添字 3）で判定していることの回帰テスト
+      def test_should_not_mistake_a_custom_property_context_line_for_a_deletion
+        context = '    --preface-h3-marker: "📚 ";'
+
+        assert_equal context, UpgradeCommands.send(:paint_diff_line, context, enabled: true)
+      end
+
+      def test_should_respect_no_color_and_dumb_terminal_even_on_a_tty
+        tty = FakeIO.new(tty: true)
+
+        assert UpgradeCommands.send(:diff_color_enabled?, tty, {})
+        refute UpgradeCommands.send(:diff_color_enabled?, tty, { 'NO_COLOR' => '1' }), 'NO_COLOR があれば色を付けないべき'
+        refute UpgradeCommands.send(:diff_color_enabled?, tty, { 'TERM' => 'dumb' }), 'TERM=dumb では色を付けないべき'
+        refute UpgradeCommands.send(:diff_color_enabled?, FakeIO.new(tty: false), {}), 'パイプ・リダイレクト先には付けないべき'
+      end
+
       private
+
+      # 色付け判定（diff_color_enabled?）の DI 用スタブ
+      FakeIO = Data.define(:tty) do
+        def tty? = tty
+      end
+
+      # 著者と雛形が別の場所を変えた 2 つの内容を作る（添字は 0 起点）
+      def two_sided_change(mine_at:, theirs_at:, size: 40)
+        mine   = (1..size).map { "line #{it}" }
+        theirs = mine.dup
+        mine[mine_at]     = "わたしの #{mine_at + 1} 行目"
+        theirs[theirs_at] = "雛形の #{theirs_at + 1} 行目"
+        ["#{mine.join("\n")}\n", "#{theirs.join("\n")}\n"]
+      end
+
+      # 表示行を得る（unified_diff は 雛形パス・現物パス の順で受ける）
+      def diff_lines(current, scaffold_new)
+        Dir.mktmpdir do |dir|
+          File.write(File.join(dir, 'new'), scaffold_new)
+          File.write(File.join(dir, 'current'), current)
+          UpgradeCommands.send(:unified_diff, File.join(dir, 'new'), File.join(dir, 'current'))
+        end
+      end
 
       # ミニ雛形＋プロジェクトディレクトリを用意し、プロジェクト直下で yield する
       def within_project
