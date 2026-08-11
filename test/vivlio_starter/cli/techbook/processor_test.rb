@@ -77,6 +77,26 @@ module VivlioStarter
           refute_includes css, 'mask-image'
         end
 
+        # preface.css の h3::before は 📚 を CSS の content で描く。絵文字は同梱書体に無く、
+        # CSS 文字列なので EmojiReplacer（HTML しか走査しない）も届かない。techbook が
+        # 打ち消さないと入稿用 PDF に Type 3 が必ず混入する（前書きに ### を書いた全著者が踏む）。
+        def test_should_neutralize_preface_h3_emoji_marker_when_enabled
+          config = Common.wrap_config({ output: { pdf: { techbook: true } } })
+          processor = Processor.new(config)
+
+          css = processor.inject_css
+
+          prefix = Common.asset_prefix
+          assert_includes css, 'body.preface h3::before,'
+          assert_includes css, 'body.postface h3::before {'
+          assert_includes css, 'content: "" !important;'
+          # url() は :root のカスタムプロパティ側に置く（--h3-marker / --subtitle-wave-image と同型）。
+          # Kindle の strip_webp_inline_styles_for_kindle! が :root の 1 行を落とせば無害化される。
+          assert_includes css,
+                          %(--preface-h3-marker-image: url("#{prefix}stylesheets/twemoji/vs-techbook/marker-preface-h3.webp") !important;)
+          assert_includes css, 'background-image: var(--preface-h3-marker-image) !important;'
+        end
+
         def test_should_return_empty_css_when_disabled
           config = Common.wrap_config({ output: { pdf: { techbook: false } } })
           processor = Processor.new(config)
@@ -296,6 +316,36 @@ module VivlioStarter
               # "★" fallback is star: <path d="M18 2 L22 13 L34 13 L24 20 L28 32 L18 24 L8 32 L12 20 L2 13 L14 13 Z" fill="#f0a000"/>
               assert_includes h4_svg, "<path d=\"M18 2 L22 13"
               assert_includes h4_svg, 'fill="#f0a000"'
+              mock_resize.verify
+            end
+          end
+        end
+
+        # 📚 は著者が選べない固定の飾りなので、theme.markers と無関係に常に生成されること。
+        # 元の色（本の絵文字）を保つ必要があるため、アクセント色で塗り替えてはいけない。
+        def test_should_generate_preface_h3_marker_asset_without_recoloring
+          config = Common.wrap_config({ theme: { color: "blue" }, output: { pdf: { techbook: true } } })
+          processor = Processor.new(config)
+
+          Dir.mktmpdir do |dir|
+            Dir.chdir(dir) do
+              File.write('sample.html', "<html><head></head><body><p>Test</p></body></html>")
+              FileUtils.mkdir_p("stylesheets/twemoji")
+              # 📚 の codepoint は 1f4da
+              File.write("stylesheets/twemoji/1f4da.svg", %(<svg viewBox="0 0 36 36"><path fill="#A0041E" d="M18 2 L22 13"/></svg>))
+
+              mock_resize = Minitest::Mock.new
+              mock_resize.expect :call, nil, [Array]
+              ResizeCommands.stub :convert_svg_to_webp, mock_resize do
+                processor.post_process_html_files!(['sample.html'], inject_css: false)
+              end
+
+              svg_path = "stylesheets/twemoji/vs-techbook/marker-preface-h3.svg"
+              assert File.exist?(svg_path), '前書き h3 マーカーの画像が生成されていません'
+
+              svg = File.read(svg_path)
+              assert_includes svg, 'fill="#A0041E"'
+              refute_includes svg, 'fill="#0ea5e9"'
               mock_resize.verify
             end
           end

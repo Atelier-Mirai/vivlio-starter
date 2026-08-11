@@ -89,6 +89,10 @@ module VivlioStarter
         CIRCLED_NUMBER_REGEX = Regexp.union(CIRCLED_NUMBER_TEXT.keys)
         GENERATED_ASSET_DIR = File.join('stylesheets', 'twemoji', 'vs-techbook')
 
+        # 前書き・後書きの h3 マーカー（preface.css の --preface-h3-marker）。
+        # theme.markers と違い著者が選べない固定の飾りなので、ここで literal に持つ。
+        PREFACE_H3_MARKER = '📚'
+
         def replace_circled_numbers(html)
           replace_text_segments(html) do |text|
             text.gsub(CIRCLED_NUMBER_REGEX) do |char|
@@ -139,6 +143,8 @@ module VivlioStarter
           write_file_if_changed(File.join(GENERATED_ASSET_DIR, 'marker-h3.svg'), recolored_twemoji_svg(h3_codepoint, h3_char, accent))
           write_file_if_changed(File.join(GENERATED_ASSET_DIR, 'marker-h4.svg'), recolored_twemoji_svg(h4_codepoint, h4_char, accent))
           write_file_if_changed(File.join(GENERATED_ASSET_DIR, 'wave.svg'), wave_svg)
+          write_file_if_changed(File.join(GENERATED_ASSET_DIR, 'marker-preface-h3.svg'),
+                                recolored_twemoji_svg(marker_codepoint(PREFACE_H3_MARKER), PREFACE_H3_MARKER, accent))
 
           CIRCLED_NUMBER_TEXT.values.uniq.each do |number|
             write_file_if_changed(File.join(GENERATED_ASSET_DIR, "circled-#{number}.svg"), circled_number_svg(number))
@@ -331,6 +337,7 @@ module VivlioStarter
               --h3-marker: url("#{p}stylesheets/twemoji/vs-techbook/marker-h3.webp") !important;
               --h4-marker: url("#{p}stylesheets/twemoji/vs-techbook/marker-h4.webp") !important;
               --subtitle-wave-image: url("#{p}stylesheets/twemoji/vs-techbook/wave.webp") !important;
+              --preface-h3-marker-image: url("#{p}stylesheets/twemoji/vs-techbook/marker-preface-h3.webp") !important;
             }
 
             .subsection-marker,
@@ -369,6 +376,23 @@ module VivlioStarter
               margin-inline: 0.12em;
               vertical-align: -0.12em;
               background-image: var(--subtitle-wave-image);
+              background-repeat: no-repeat;
+              background-position: center;
+              background-size: contain;
+            }
+
+            /* Techbook: 前書き・後書きの h3 マーカー（preface.css の 📚）を画像化。
+               絵文字は同梱書体に無く、CSS の content 経由なので EmojiReplacer も
+               届かない。ここで打ち消さないと入稿用 PDF に Type 3 が必ず混入する。 */
+            body.preface h3::before,
+            body.postface h3::before {
+              content: "" !important;
+              display: inline-block;
+              inline-size: 1em;
+              block-size: 1em;
+              margin-inline-end: 0.25em;
+              vertical-align: -0.15em;
+              background-image: var(--preface-h3-marker-image) !important;
               background-repeat: no-repeat;
               background-position: center;
               background-size: contain;

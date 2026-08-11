@@ -18,6 +18,11 @@
   --color-preface-accent-glow-strong: color-mix(in oklab, var(--color-preface-accent) 22%, transparent);
   --color-preface-accent-glow-weak: color-mix(in oklab, var(--color-preface-accent) 8%, transparent);
   --color-link: var(--color-preface-accent);
+
+  /* 前書き・後書きの h3 マーカー。techbook モードでは Twemoji 画像へ差し替わる。
+     絵文字を CSS の content で描くと EmojiReplacer（HTML しか走査しない）の
+     射程外に落ち、Chromium が OS 絵文字フォントを Type 3 で埋め込むため。 */
+  --preface-h3-marker: "📚 ";
 }
 
 /* 基本設定 */
@@ -85,7 +90,7 @@ h3 {
 }
 
 h3::before {
-  content: "📚 ";
+  content: var(--preface-h3-marker);
   color: var(--color-preface-accent);
 }
 

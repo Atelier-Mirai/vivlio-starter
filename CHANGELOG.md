@@ -6,6 +6,12 @@
 
 ## unreleased
 
+### Fixed
+- **前書き・後書きに `###` を書くと入稿用 PDF に Type 3 フォントが混入していた**: `preface.css` の `h3::before` が目見出しの飾りを `content: "📚 "` と**CSS 文字列**で描いていた。絵文字を Type 3 から守っているのは `Techbook::EmojiReplacer` だが、これは **HTML のテキストしか走査しない**——CSS の `content` は構造上その射程外なので、Chromium が OS の絵文字フォント（AppleColorEmoji）へフォールバックし、Type 3 として埋め込まれていた。印刷所が受け付けない PDF になる。
+  - `h4::before` と同じ型に揃えた。`preface.css` は飾りを `--preface-h3-marker` に持たせ、techbook モードが `body.preface h3::before` / `body.postface h3::before` を `content: "" !important` ＋ Twemoji 画像（`vs-techbook/marker-preface-h3.webp`）の `background-image` へ差し替える。📚 は本来の色を持つ絵文字なので、`♣`/`♦` のようなアクセント色での塗り替えは行わない。見た目は変わらない。
+  - **本書の前書きに `###` 見出しが 1 つも無かったため、全章ビルドの Type 3 ラチェット（`test/vivlio_starter/type3/`・上限 0 件）を素通りしていた。** 著者が前書きに小見出しを 1 行足した瞬間に踏む、テストの死角だった。実測: `vs new` 直後のプロジェクトに `### 見出し` を 1 行足すだけで `AppleColorEmoji` が 1 件混入し、修正後は 0 件。
+  - 同じ見落としを繰り返さないため、**CSS に生の絵文字を書かせないラチェット**を新設した（`test/vivlio_starter/cli/techbook/stylesheet_emoji_guard_test.rb`）。`stylesheets/**/*.css` からコメントを除いた宣言部を走査し、絵文字の在処を既知の一覧と突き合わせる。増えたら失敗し、「打ち消し規則を書いてから登録せよ」と促す。`content:` だけでなくカスタムプロパティも拾う（今回の修正自体が飾りを変数へ移したように、絵文字は `content` 以外にも置けるため）。実ビルドを伴わないので通常の `rake test` に載る。
+
 ## [1.0.0-rc.2] - 2026-08-10
 
 ### Fixed
