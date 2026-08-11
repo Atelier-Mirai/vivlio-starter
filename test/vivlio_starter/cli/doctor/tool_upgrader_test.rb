@@ -102,6 +102,38 @@ module VivlioStarter
           refute_includes plan.updates.map(&:label), 'waifu2x'
         end
 
+        # 版を固定して指定したパッケージは、上流に新版が出ても更新対象にしない。
+        #
+        # 実測（2026-08-12）: `textlint-rule-no-doubled-conjunction@3.0.0` と固定して
+        # いたため、3.0.1 が出た後は `npm outdated` に載り続け、textlint 一式が毎回
+        # 更新対象になっていた。更新しても固定版が入り直すだけで状態は変わらず、
+        # `vs upgrade` のたびに約 20 秒の再インストールが走る無限ループだった。
+        def test_should_extract_pinned_package_names
+          pinned = ToolUpgrader.send(:pinned_names, %w[plain pkg@1.2.3 @scope/plain @scope/pkg@2.0.0])
+
+          assert_equal ['pkg', '@scope/pkg'], pinned,
+                       '版を固定したものだけを、スコープを保ったまま取り出すこと'
+        end
+
+        # 現在の一覧に固定は無い（2026-08-12 に no-doubled-conjunction@3.0.0 を解除）。
+        # 固定を足すときは、それが恒久的な意図であることを確かめてから
+        def test_managed_npm_packages_are_currently_unpinned
+          pinned = ToolUpgrader.send(:pinned_names, ToolUpgrader.const_get(:TEXTLINT_NPM_PACKAGES))
+
+          assert_empty pinned, "版を固定するなら理由をコメントに書くこと: #{pinned.join(', ')}"
+        end
+
+        # 固定していないパッケージが古ければ、従来どおり一式が更新対象になる
+        def test_should_upgrade_textlint_set_when_unpinned_package_is_outdated
+          npm_outdated = { 'textlint-rule-max-ten' => { current: '5.0.0', wanted: '5.1.0', latest: '5.1.0' } }.to_json
+          deps = stub_deps(capture: capture_map(npm_outdated:))
+
+          plan = DoctorCommands.stub(:pdf_plugin_installed?, false) { ToolUpgrader.build_plan(deps) }
+
+          textlint = plan.entries.find { it.label.start_with?('textlint') }
+          assert_equal :upgrade, textlint.action
+        end
+
         # すべて最新なら更新対象が空になる
         def test_should_produce_empty_updates_when_everything_latest
           deps = stub_deps(capture: capture_map)

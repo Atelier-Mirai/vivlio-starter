@@ -131,6 +131,24 @@ module VivlioStarter
         end
       end
 
+      # --- 競合: diff にどちらが自分のファイルか示す凡例が出る ---
+
+      # `-` / `+` だけでは「gem 側が ○○ でプロジェクト側が ××」が読み取れない。
+      # 記号の意味と「適用するとどうなるか」を毎回添える（2026-08-12 の実測より）
+      def test_should_show_which_side_is_mine_in_conflict_diff
+        within_project do |scaffold|
+          write(scaffold, 'stylesheets/custom.css', NEW_CSS)
+          write('.', 'stylesheets/custom.css', CUSTOM_CSS)
+          write_lock(scaffold_overrides: { 'stylesheets/custom.css' => OLD_CSS })
+
+          out, = with_stdin("n\n") { capture_io { run_upgrade(scaffold) } }
+
+          assert_includes out, 'いまのあなたのファイル'
+          assert_includes out, '新しい雛形'
+          assert_includes out, '適用すると + の側になります'
+        end
+      end
+
       # --- 競合: y で適用 → バックアップの上で雛形版に置き換わる ---
       def test_should_apply_conflict_with_backup_when_user_confirms
         within_project do |scaffold|

@@ -497,9 +497,18 @@ module VivlioStarter
 
       CONTEXT_LINES = 2
 
+      # diff の凡例。`-` / `+` だけでは**どちらが自分のファイルか分からない**ため、
+      # 記号の意味と「適用するとどうなるか」を毎回添える。実測で「gem 側が ○○ で
+      # プロジェクト側が ×× ということが分からない」という声があった（2026-08-12）。
+      # 標準の unified diff の `--- a/` `+++ b/` に相当する行だが、パスではなく
+      # **役割**を書く——著者に必要なのはファイル名ではなく、どちらが残るかである。
+      DIFF_LEGEND = [
+        '   - いまのあなたのファイル / + 新しい雛形（適用すると + の側になります）'
+      ].freeze
+
       # ops（中間部）を、前後 CONTEXT_LINES 行の文脈付き表示行に整形する
       def render_hunks(old_lines, prefix, ops)
-        lines = []
+        lines = DIFF_LEGEND.dup
         context_before = old_lines[[prefix - CONTEXT_LINES, 0].max...prefix] || []
         lines << "   @@ #{prefix + 1} 行目付近 @@"
         context_before.each { lines << "    #{it}" }

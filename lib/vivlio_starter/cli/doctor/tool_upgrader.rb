@@ -71,7 +71,7 @@ module VivlioStarter
           textlint-rule-no-dropping-the-ra
           textlint-rule-max-ten
           textlint-rule-ja-no-mixed-period
-          textlint-rule-no-doubled-conjunction@3.0.0
+          textlint-rule-no-doubled-conjunction
           textlint-rule-no-doubled-joshi
           textlint-rule-ja-no-successive-word
           textlint-rule-preset-ja-spacing
@@ -284,10 +284,28 @@ module VivlioStarter
           end
         end
 
+        # 版を固定して指定したパッケージ名を取り出す（`pkg@1.2.3` → `pkg`）。
+        #
+        # **こちらが版を決めているので、上流に新版が出ても更新対象にしない。**
+        # これを見ずに `npm outdated` の有無だけで判定していたため、固定した版が
+        # 毎回「古い」と報告され、更新しても状態は変わらず、`vs upgrade` のたびに
+        # 一式の再インストールが走り続けていた（実測 2026-08-12・約 20 秒/回）。
+        #
+        # スコープ付き（`@scope/pkg`）は先頭の `@` が名前の一部なので、2 文字目以降で版を切る。
+        # @param specs [Array<String>] `pkg` / `pkg@1.2.3` / `@scope/pkg` が混在した指定
+        # @return [Array<String>] 版を固定したものの名前だけ
+        def pinned_names(specs)
+          specs.select { it[1..].to_s.include?('@') }
+               .map { "#{it[0]}#{it[1..].split('@').first}" }
+        end
+
         def npm_entry(tool, versions, outdated)
-          names = tool.package == :textlint_set ? TEXTLINT_NPM_PACKAGES.map { npm_base_name(it) } : [tool.package]
+          specs = tool.package == :textlint_set ? TEXTLINT_NPM_PACKAGES : [tool.package.to_s]
+          names = specs.map { npm_base_name(it) }
+          pinned = pinned_names(specs)
           current = versions[names.first]
-          outdated_name = names.find { outdated.key?(it) }
+          # 固定したものは除いてから「更新できるものがあるか」を見る
+          outdated_name = names.find { outdated.key?(it) && !pinned.include?(it) }
           info = outdated_name ? outdated[outdated_name] : nil
           info = nil unless info.is_a?(Hash)
 
