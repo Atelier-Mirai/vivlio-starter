@@ -51,10 +51,33 @@ module VivlioStarter
         manager.build_index!(chapters)
       end
 
-      # 索引・用語集機能が有効かどうか
-      def index_enabled?
-        Common::CONFIG.index_glossary.enabled == true
+      # 章ごとの索引タグ付けだけを行う（索引ページ・用語集ページは作らない）。
+      #
+      # なぜ分けるのか（build-mode-parity-spec.md §4）:
+      #   索引処理は 2 つの性質を併せ持つ。**章ごとのタグ付け**は 1 章だけで
+      #   答えが出るが、**索引ページ・ページ番号・主要参照**は全章そろわないと
+      #   決まらない。後者を理由に前者まで単章ビルドから外していたため、
+      #   「単章では素のテキスト、全章では索引語」という食い違いが生まれ、
+      #   前処理側に埋め合わせ（strip_index_markup!）を置くことになっていた。
+      #
+      #   タグ付けだけなら章を絞っても正しく動く。全書籍を単位とする警告
+      #   （用語集語がビルド対象章に出現しません 等）は呼ばないので、章を絞った
+      #   ときの誤検知も起きない——それが full_catalog_scope? ガードの目的だった。
+      #
+      # 単章と全章で変わらないもの: タグの有無・クラス・data-yomi
+      # 単章では正しく出せないもの: 主要参照（他章の出現を知る必要がある）。
+      #   ただし index_data の中だけで完結し、出力される要素には現れない。
+      #
+      # @param chapters [Array<String>] 対象章の basename
+      def tag_chapters_for_build!(chapters)
+        return unless index_enabled?
+
+        require_relative 'index/index_match_scanner'
+        IndexMatchScanner.new(defer_warnings: true).scan_all_chapters!(chapters, read_only: false)
       end
+
+      # 索引・用語集機能が有効かどうか（実体は Common。前処理も同じ述語を見る）
+      def index_enabled? = Common.index_enabled?
 
       # 対象章を解決
       # @param tokens [Array<String>] 対象章トークン（省略時は全章）

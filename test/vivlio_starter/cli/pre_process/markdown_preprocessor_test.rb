@@ -24,19 +24,40 @@ module VivlioStarter
 
         def teardown = FileUtils.rm_rf(@temp_dir)
 
-        # 索引記法の展開だけを通した結果を返す
-        def strip(markdown)
-          pre = MarkdownPreprocessor.new(@md_path, @entry)
-          pre.context.content = markdown
-          pre.send(:strip_index_markup!)
-          pre.context.content
+        # 索引記法の展開だけを通した結果を返す。
+        # 索引・用語集が**無効**なときの経路（＝素のテキストへ落とす代替）を見る。
+        # 有効なときは索引スキャナがタグを付けるので、ここは何もしない（下の
+        # test_should_keep_index_markup_when_index_enabled が担当）。
+        def strip(markdown, index_enabled: false)
+          Common.stub(:index_enabled?, index_enabled) do
+            pre = MarkdownPreprocessor.new(@md_path, @entry)
+            pre.context.content = markdown
+            pre.send(:strip_index_markup!)
+            pre.context.content
+          end
         end
 
-        # --- phase: 索引記法はプレーンテキストへ展開する ---
+        # --- phase: 索引が有効なら記法を温存する（スキャナがタグを付ける） ---
+
+        # 前処理（Step 3）は索引スキャン（Step 4）より先に走る。ここで括弧を外すと
+        # スキャナが記法を見る前に消えてしまい、**著者が明示した索引語が 1 つも
+        # 登録されない**（index-markup-plain-fallback-spec.md §2.1）。
+        def test_should_keep_index_markup_when_index_enabled
+          source = '[Ruby]は言語です。[標準入出力|ひょうじゅん]もあります。'
+
+          assert_equal source, strip(source, index_enabled: true)
+        end
+
+        # --- phase: 索引が無効ならプレーンテキストへ展開する ---
 
         def test_should_expand_index_markup_to_plain_text
           assert_equal 'Rubyは言語です。', strip('[Ruby]は言語です。')
           assert_equal '標準入出力について。', strip('[標準入出力|ひょうじゅん]について。')
+        end
+
+        # タグの形をした語を素通しすると生 HTML として VFM に渡り、本物の見出しになる
+        def test_should_escape_tag_shaped_term_when_expanding
+          assert_equal '&lt;h1&gt;は、見出しタグです。', strip('[<h1>]は、見出しタグです。')
         end
 
         # --- phase: 他の記法のブラケットには触らない ---

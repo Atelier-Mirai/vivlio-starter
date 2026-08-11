@@ -469,6 +469,14 @@ module VivlioStarter
           end
           # 全章の前処理完了後に1回だけクロスリファレンス処理を実行する
           PreProcessCommands.execute_cross_references(entries)
+
+          # 索引タグ付け。**HTML 変換より前**でなければならない（タグは Markdown へ
+          # 埋め込まれ、その後 VFM が HTML にする）。索引ページは作らない——全章
+          # そろわないと決まらないため（build-mode-parity-spec.md §4）。
+          # これを外すと単章だけ索引語が素のテキストになり、プレビューが全章と
+          # 食い違う。
+          IndexCommands.tag_chapters_for_build!(basenames)
+
           entries.each do |entry|
             ConvertCommands.execute_convert({}, [entry])
             PostProcessCommands.execute_post_process({}, [entry])

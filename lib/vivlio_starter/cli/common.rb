@@ -1026,6 +1026,12 @@ module VivlioStarter
       def pdf_combined?      = CONFIG&.output&.pdf&.combined == true
       def pdf_compress?      = CONFIG&.output&.pdf&.compress == true
       def epub_embed?        = CONFIG&.output&.epub&.embed == true
+      # 索引・用語集機能。前処理が「`[用語]` を素のテキストへ落とすか」を決めるのに使う——
+      # 有効なら索引スキャナがタグを付けるので、前処理で括弧を外してはならない
+      # （index-markup-plain-fallback-spec.md §2.1）。IndexCommands.index_enabled? も
+      # ここへ委譲する。前処理から IndexCommands を参照すると index/* → pre_process/* の
+      # 逆向き依存と噛み合って読み込み順が壊れるため、述語だけを共通の置き場へ出す。
+      def index_enabled?     = CONFIG&.index_glossary&.enabled == true
       # Kindle 表紙の埋め込み。未設定時は false（二重表紙回避・§1-6）。
       def kindle_embed?      = CONFIG&.output&.kindle&.embed == true
       # 本文にフチなし（塗り足しまで届く）要素があるか。true の本は閲覧用 PDF から

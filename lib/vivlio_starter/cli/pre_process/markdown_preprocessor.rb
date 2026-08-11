@@ -533,9 +533,16 @@ module VivlioStarter
         end
 
         # 索引記法 [用語|読み] を用語テキストのみに展開する。
-        # IndexMatchScanner（Step 4）がフルビルド時に <dfn> タグを付与するが、
-        # 単章ビルドでは Step 4 がスキップされるため、ここで記法を除去して
-        # VFM に渡す前にプレーンテキストにしておく。
+        #
+        # **索引・用語集が無効なときだけ**走らせる。有効なときは IndexMatchScanner が
+        # <dfn> タグを付けるので、ここで括弧を外してはならない——前処理（Step 3）は
+        # 索引スキャン（Step 4）より先に走るため、外すとスキャナが記法を見る前に
+        # 消えてしまい、**著者が明示した索引語が 1 つも登録されない**
+        # （index-markup-plain-fallback-spec.md §2.1。実測: [404] [!DOCTYPE]
+        #  [基本情報技術者] がいずれも素通しになっていた）。
+        #
+        # 単章ビルドでもタグ付けは走る（build_target_sections_html が
+        # IndexCommands.tag_chapters_for_build! を呼ぶ）ので、モードによる分岐は要らない。
         # コードブロック・インラインコード内はスキップする。
         #
         # 綴りの判定は IndexMarkup が唯一の定義元。インライン脚注 `^[本文]` を
@@ -546,6 +553,8 @@ module VivlioStarter
         # ころは `CGI.escapeHTML` を通しておらず、`[<h1>]` が生タグとして VFM へ
         # 渡って**本物の章見出しになっていた**（index-markup-plain-fallback-spec.md §2.2）。
         def strip_index_markup!
+          return if Common.index_enabled?
+
           protected_text, spans = MarkdownUtils.extract_code_spans(context.content)
 
           stripped = protected_text.gsub(IndexMarkup::TERM_PATTERN) do
