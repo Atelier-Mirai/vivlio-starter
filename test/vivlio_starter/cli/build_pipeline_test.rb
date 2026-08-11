@@ -43,6 +43,19 @@ module VivlioStarter
     end
 
     # UnifiedBuildPipeline フルモードのユニットテスト
+    # 単章モードのステップは full mode の表から導出されるため、SectionBuilder を
+    # 通る。実処理を走らせずにステップ列だけを見たいテストが共有する。
+    module SectionBuilderSilencer
+      # SectionBuilder はモジュールなので define_singleton_method で潰すと復元されず、
+      # 後続のテストへ漏れる（build-pipeline-pitfalls-notes.md「モジュール状態は
+      # テスト間で漏れて再現しない」）。ブロックスコープの stub で包む。
+      def with_section_builder_silenced(&)
+        Build::SectionBuilder.stub(:preprocess_sections!, ->(*) {}) do
+          Build::SectionBuilder.stub(:convert_sections_html!, ->(*) {}, &)
+        end
+      end
+    end
+
     class UnifiedBuildPipelineFullModeTest < Minitest::Test
       include PdfOnlyTargetsHelper
       # フルビルドパイプラインが登録順にステップを実行することを確認
@@ -223,6 +236,8 @@ module VivlioStarter
     # UnifiedBuildPipeline Single Mode Tests
     # ================================================================
     class UnifiedBuildPipelineSingleModeTest < Minitest::Test
+      include SectionBuilderSilencer
+
       include PdfOnlyTargetsHelper
       def test_single_mode_executes_correct_steps
         pipeline = build_single_pipeline(targets: ['45-first-html'])
@@ -232,7 +247,9 @@ module VivlioStarter
           [pipeline, :run_step0_clean, -> { order << 'step0' }],
           [pipeline, :run_step1_optimize_images, -> { order << 'step1' }],
           [Build::ImageOptimizer, :prepare_theme_images!, -> { order << 'step2' }],
-          [pipeline, :build_target_sections_html, -> { order << 'step3' }],
+          [Build::SectionBuilder, :preprocess_sections!, ->(*) { order << 'step3a' }],
+          [pipeline, :run_step4_index_processing, -> { order << 'step3b' }],
+          [Build::SectionBuilder, :convert_sections_html!, ->(*) { order << 'step3c' }],
           [pipeline, :generate_entries_and_pdf, -> { order << 'step4' }],
           [pipeline, :rename_single_mode_pdf, -> { order << 'step5' }],
           [pipeline, :run_final_clean, -> { order << 'stepF' }]
@@ -242,7 +259,7 @@ module VivlioStarter
           pipeline.run
         end
 
-        expected_order = %w[step0 step1 step2 step3 step4 step5 stepF]
+        expected_order = %w[step0 step1 step2 step3a step3b step3c step4 step5 stepF]
         assert_equal expected_order, order
       end
 
@@ -250,15 +267,19 @@ module VivlioStarter
         pipeline = build_single_pipeline(targets: ['45-first-html'])
         stub_all_single_mode_steps(pipeline)
 
-        Build::ImageOptimizer.stub :prepare_theme_images!, -> {} do
-          pipeline.run
+        with_section_builder_silenced do
+          Build::ImageOptimizer.stub :prepare_theme_images!, -> {} do
+            pipeline.run
+          end
         end
 
         expected_labels = [
           'clean',
           'optimize images',
           'prepare theme images',
-          'build sections html',
+          'preprocess sections',
+          'index scan and build',
+          'convert sections html',
           'entries.js + pdf',
           'rename output pdfs',
           'final clean'
@@ -320,7 +341,7 @@ module VivlioStarter
       def stub_all_single_mode_steps(pipeline)
         pipeline.define_singleton_method(:run_step0_clean) {}
         pipeline.define_singleton_method(:run_step1_optimize_images) {}
-        pipeline.define_singleton_method(:build_target_sections_html) {}
+        pipeline.define_singleton_method(:run_step4_index_processing) {}
         pipeline.define_singleton_method(:generate_entries_and_pdf) {}
         pipeline.define_singleton_method(:rename_single_mode_pdf) {}
         # Step F もスタブしないと実際の CleanCommands.execute_clean が走ってしまう
@@ -491,6 +512,8 @@ module VivlioStarter
     # Timing Measurement Tests
     # ================================================================
     class BuildTimingMeasurementTest < Minitest::Test
+      include SectionBuilderSilencer
+
       include PdfOnlyTargetsHelper
       def test_timings_are_recorded_for_each_step
         pipeline = build_full_pipeline
@@ -507,16 +530,20 @@ module VivlioStarter
         end
       end
 
-      def test_single_mode_timings_has_6_entries
+      def test_single_mode_timings_has_9_entries
         pipeline = build_single_pipeline(['45-test'])
         stub_single_pipeline_steps(pipeline)
 
-        Build::ImageOptimizer.stub :prepare_theme_images!, -> {} do
-          pipeline.run
+        with_section_builder_silenced do
+          Build::ImageOptimizer.stub :prepare_theme_images!, -> {} do
+            pipeline.run
+          end
         end
 
-        # single mode は 7 ステップ（Step 0-5 + Step F）
-        assert_equal 7, pipeline.timings.length, 'single mode は 7 ステップを記録するべき'
+        # single mode は 9 ステップ。章単位の 6 つ（clean / optimize images /
+        # prepare theme images / preprocess sections / index scan and build /
+        # convert sections html）を full mode の表から導出し、単章固有の出力を 3 つ足す
+        assert_equal 9, pipeline.timings.length, 'single mode は 9 ステップを記録するべき'
       end
 
       def test_full_mode_timings_has_12_entries
@@ -582,7 +609,7 @@ module VivlioStarter
       def stub_single_pipeline_steps(pipeline)
         pipeline.define_singleton_method(:run_step0_clean) {}
         pipeline.define_singleton_method(:run_step1_optimize_images) {}
-        pipeline.define_singleton_method(:build_target_sections_html) {}
+        pipeline.define_singleton_method(:run_step4_index_processing) {}
         pipeline.define_singleton_method(:generate_entries_and_pdf) {}
         pipeline.define_singleton_method(:rename_single_mode_pdf) {}
         # Step F もスタブしないと実際の CleanCommands.execute_clean が走ってしまう

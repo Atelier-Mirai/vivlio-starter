@@ -8,12 +8,18 @@
 #   （preflight-glossary-warning-scope-report.md）
 #
 # 検証内容:
-#   - 章を絞った実行では索引処理を行わない（vs build <章> と挙動を揃える）
-#   - catalog 全章が対象なら従来どおり索引処理を実行する
+#   - 章を絞った実行では**索引ページを作らない**（全書籍を単位とするため）
+#   - ただし**章ごとのタグ付けは行う**（build-mode-parity-spec.md §4）
+#   - catalog 全章が対象なら従来どおり索引ページまで生成する
 #   - 引数なし（entries 空）のフォールバックも全章とみなす
 #
 # preflight は「vs build が報告することを先に見る」機能なので、
 # build が言わないことを言ってはならない——という契約をここで固定する。
+#
+# 2026-08-11 に契約を 1 段細かくした。以前は絞った実行で索引処理を**丸ごと**
+# 止めていたため、単章では索引語が素のテキスト・全章ではタグ付き、という
+# 食い違いが生まれていた。止めるべきは全書籍を単位とする部分（索引ページ・
+# ページ番号・主要参照）だけで、タグ付けは章を絞っても正しく動く。
 # ================================================================
 
 require 'test_helper'
@@ -28,13 +34,24 @@ module VivlioStarter
   module CLI
     module BuildCommands
       class IndexStepScopeTest < Minitest::Test
-        # 章を絞った実行では索引処理そのものを行わない
-        def test_should_skip_index_processing_for_a_subset_of_catalog
+        # 章を絞った実行では索引ページを作らない（全書籍を単位とするため）。
+        # タグ付けは走るので、単章プレビューの本文は全章ビルドと一致する。
+        def test_should_skip_index_page_generation_for_a_subset_of_catalog
           in_project do
             out = run_step4(entries: entries_for('21-images'))
 
-            assert_includes out, '章を絞った実行のためスキップします'
-            refute processed?, '部分実行で索引処理を呼んではいけません'
+            assert_includes out, '索引ページは作りません'
+            refute processed?, '部分実行で索引ページ生成（process_index_for_build!）を呼んではいけません'
+          end
+        end
+
+        # 絞った実行でも章ごとのタグ付けは走る。ここを止めていたために
+        # 「単章では素のテキスト、全章ではタグ付き」という食い違いが生まれていた
+        def test_should_still_tag_chapters_for_a_subset_of_catalog
+          in_project do
+            out = run_step4(entries: entries_for('21-images'))
+
+            assert_includes out, '索引語のスキャンを開始します'
           end
         end
 

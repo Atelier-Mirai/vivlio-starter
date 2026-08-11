@@ -24,7 +24,7 @@ module VivlioStarter
       # ------------------------------------------------
       class UnifiedBuildPipeline
         # @!attribute phase [Symbol] 実行相（PHASE_ORDER のいずれか）
-        Step = Data.define(:label, :handler, :phase)
+        Step = Data.define(:label, :handler, :phase, :unit)
 
         # 相の実行順（build-target-parallelization-spec.md §1.1）。
         # :shared = 両ターゲットが読む中間物を作る共通前段
@@ -239,9 +239,18 @@ module VivlioStarter
         # 従来の 5 分岐＋3 補助メソッドを、行ごとの実行条件（targets 依存）を持つ
         # 1 テーブルへ畳んだ（課題 A: 分岐爆発・番号矛盾の解消）。ステップ番号は撤去し、
         # 安定したラベル名をログ・計時・ドキュメントの共通語彙とする。
+        # 章単位でありながら、単章ビルドでは意図的に走らせないステップ。
+        # **ここに無い逸脱は認めない**（build-mode-parity-spec.md §3.1）。
+        # 足すときは必ず理由を書く——書けないなら、それは足し忘れであって逸脱ではない。
+        SINGLE_MODE_SKIP = {
+          # Type 3 対策は入稿用の関心事で、プレビューには要らない（著者判断・2026-08-11）。
+          # 単章では絵文字が画像化されず、囲み数字・波ダッシュも素のまま出る。
+          'techbook post-process' => 'Type 3 対策は入稿用の関心事。プレビューには不要'
+        }.freeze
+
         def register_full_mode_steps
-          full_mode_step_table.each do |label, handler, enabled, phase|
-            add_step(label, handler, phase) if enabled
+          full_mode_step_table.each do |label, handler, enabled, phase, unit|
+            add_step(label, handler, phase, unit: unit || :whole_book) if enabled
           end
         end
 
@@ -251,11 +260,20 @@ module VivlioStarter
         # プロバイダ能力には依存しない（MIT のみで完結する）。
         def derive_print? = targets.print_pdf && !Common.print_pdf_full_bleed?
 
-        # full mode のステップ表。各行 = [ラベル, ハンドラ, 実行条件, 相]。
+        # full mode のステップ表。各行 = [ラベル, ハンドラ, 実行条件, 相, 単位]。
         # 条件はビルド開始時に確定した targets から評価した真偽値（ビルド中は不変）。
         # 分岐はこの条件列に吸収され、経路の組み合わせは表を上から評価するだけで一意に定まる。
-        # 相は :shared → (:pdf ∥ :epub) → :join の順に評価される
-        # （build-target-parallelization-spec.md §1.1・§2）。
+        #
+        # **相**は :shared → (:pdf ∥ :epub) → :join の順に評価される
+        # （build-target-parallelization-spec.md §1.1・§2）。どの出力枝が必要とするか。
+        #
+        # **単位**は相と直交する第 2 の軸で、処理の**入力**が章か書籍かを表す
+        # （build-mode-parity-spec.md §2）。単章ビルドは :chapter の行だけを走らせる。
+        #   :chapter    … 1 章だけ読めば答えが出る（前処理・記法変換・HTML 変換）
+        #   :whole_book … 全章そろわないと答えが出ない（索引ページ・目次・部扉・結合）
+        # 省略時は :whole_book。**足し忘れたステップが単章へ流れ込まない側**に倒してある——
+        # 逆にすると章単位でないものが単章で動いて壊れる。
+        # 単位は「章単位か」だけを言い、単章で走らせるかは SINGLE_MODE_SKIP が最終的に決める。
         def full_mode_step_table
           t = targets
           derive_print = derive_print?
@@ -264,62 +282,62 @@ module VivlioStarter
           need_viewing_pdf = t.pdf || derive_print
           [
             # --- :shared 共通前段（HTML と共有資産を作る・両枝が読む） ---
-            ['clean',                     -> { run_step0_clean },                             true, :shared],
-            ['optimize images',           -> { run_step1_optimize_images },                   true, :shared],
-            ['prepare theme images',      -> { Build::ImageOptimizer.prepare_theme_images! }, true, :shared],
+            ['clean',                     -> { run_step0_clean },                             true, :shared, :chapter],
+            ['optimize images',           -> { run_step1_optimize_images },                   true, :shared, :chapter],
+            ['prepare theme images',      -> { Build::ImageOptimizer.prepare_theme_images! }, true, :shared, :chapter],
             # カバー資産は両枝が同じファイルを読む。分岐前に 1 回だけ作る（§3.2）。
-            ['prepare cover assets',      -> { run_prepare_cover_assets },      cover_assets_needed?, :shared],
-            ['preprocess sections',       -> { Build::SectionBuilder.preprocess_sections!(entries) }, true, :shared],
-            ['index scan and build',      -> { run_step4_index_processing },                  true, :shared],
-            ['convert sections html',     -> { Build::SectionBuilder.convert_sections_html!(entries) }, true, :shared],
-            ['generate part title pages', -> { Build::PartTitleGenerator.generate_all! },     true, :shared],
+            ['prepare cover assets',      -> { run_prepare_cover_assets },      cover_assets_needed?, :shared, :whole_book],
+            ['preprocess sections',       -> { Build::SectionBuilder.preprocess_sections!(entries) }, true, :shared, :chapter],
+            ['index scan and build',      -> { run_step4_index_processing },                  true, :shared, :chapter],
+            ['convert sections html',     -> { Build::SectionBuilder.convert_sections_html!(entries) }, true, :shared, :chapter],
+            ['generate part title pages', -> { Build::PartTitleGenerator.generate_all! },     true, :shared, :whole_book],
             # 前付・奥付の HTML は本文レンダへ相乗りさせるため、techbook 後処理より前に置く。
             # ここで作れば html/ の一括後処理が拾い、個別再適用が要らなくなる
             # （front-back-matter-single-render-spec.md §2.1）。EPUB のスパイン末尾も
             # _colophon.html を読むので、生成が :shared にあることが枝の独立を支えている（§3.3）。
             ['generate front and back matter html',
-             -> { Build::PdfBuilder.generate_front_and_back_matter_html! },                   true, :shared],
-            ['techbook post-process',     -> { run_techbook_post_process },                   true, :shared],
+             -> { Build::PdfBuilder.generate_front_and_back_matter_html! },                   true, :shared, :whole_book],
+            ['techbook post-process',     -> { run_techbook_post_process },                   true, :shared, :chapter],
             ['generate toc html',
-             -> { Build::TocGenerator.generate_toc_html!(Common::BUILD_HTML_DIR, entries) },  true, :shared],
+             -> { Build::TocGenerator.generate_toc_html!(Common::BUILD_HTML_DIR, entries) },  true, :shared, :whole_book],
             # --- :pdf 枝（臨界経路。書き換えはワークスペース pdf/ に閉じる） ---
             # 閲覧用 PDF は本文全体を、入稿用のみ経路は entries/config だけを生成する。
             # いずれも html/ → pdf/ のステージングを内包する（P4 §3.4-2）。
             ['build overall pdf', -> { Build::PdfBuilder.build_overall_pdf_from_dir!(entries) },
-             need_viewing_pdf, :pdf],
+             need_viewing_pdf, :pdf, :whole_book],
             # Kindle は KFX が transform を解さず回転テーブルが素の表に戻るため、組み上がった
             # ページを画像へ焼く。**dedup 前のこのレンダ**を使う——後段の再レンダを待つと
             # Kindle 枝の開始が 150 秒遅れ、PDF 枝の陰に収まらなくなる
             # （kindle-rotate-table-image-spec.md §7）。
-            ['extract rotate table images', -> { run_rotate_table_extraction }, rotate_table_images?, :pdf],
+            ['extract rotate table images', -> { run_rotate_table_extraction }, rotate_table_images?, :pdf, :whole_book],
             ['generate entries.js', -> { Build::PdfBuilder.generate_entries_for_sections!(entries) },
-             !t.pdf && t.print_pdf && !derive_print, :pdf],
+             !t.pdf && t.print_pdf && !derive_print, :pdf, :whole_book],
             # dedup の破壊的書換は pdf/ 配下のコピーに閉じるため、EPUB 隔離のための
             # 「dedup 前スナップショット」ステップは不要になった（P4 §3.4-3。
             # EPUB/Kindle は html/ のクリーンな原本から直接展開する）。
             ['backlink dedup', -> { Build::BacklinkDedupOrchestrator.run!(entries, rebuild_pdf: need_viewing_pdf) },
-             t.any_pdf?, :pdf],
+             t.any_pdf?, :pdf, :whole_book],
             # 前付・奥付。HTML は共通前段で作り済みなので、ここは相乗りできなかった
             # ときのフォールバックレンダだけを持つ。生成するのは扉・権利ページ（前付）と
             # 奥付（後付）。旧称の "tail" は奥付を指す曖昧語だったため、出版用語に合わせた
-            ['build front and back matter', -> { run_step9_front_pages_and_tail }, need_viewing_pdf, :pdf],
-            ['merge all pdfs', -> { Build::PdfMerger.merge_all_pdfs!(entries) },            t.pdf, :pdf],
+            ['build front and back matter', -> { run_step9_front_pages_and_tail }, need_viewing_pdf, :pdf, :whole_book],
+            ['merge all pdfs', -> { Build::PdfMerger.merge_all_pdfs!(entries) },            t.pdf, :pdf, :whole_book],
             ['apply outline to output pdf', -> { Build::PdfMerger.add_outline_to_output_pdf!(entries) },
-             t.pdf, :pdf],
+             t.pdf, :pdf, :whole_book],
             # 閲覧用 PDF 単独はリネーム＋圧縮＋クリーンを一括。この行が立つのは他ターゲットが
             # 無いときだけなので、掃除を :pdf 相に含めても EPUB 枝と競合しない。
             ['compress, rename and final clean', -> { run_step12_rename_and_clean },
-             t.pdf && !t.print_pdf && !t.epub_or_kindle?, :pdf],
+             t.pdf && !t.print_pdf && !t.epub_or_kindle?, :pdf, :whole_book],
             # 実処理は圧縮（設定次第）＋リネーム。'rename' だけでは圧縮が隠れるため明示する。
             # 他ターゲット併存時はクリーンを :join へ延期する（HTML を EPUB 枝が読むため）。
             ['compress and rename', -> { run_step12_rename_only },
-             t.pdf && (t.print_pdf || t.epub_or_kindle?), :pdf],
+             t.pdf && (t.print_pdf || t.epub_or_kindle?), :pdf, :whole_book],
             ['print pdf', -> { Build::PrintPdfBuilder.new(entries, derive: derive_print).build! },
-             t.print_pdf, :pdf],
+             t.print_pdf, :pdf, :whole_book],
             # --- :epub 枝（EPUB → Kindle。枝の中は逐次） ---
-            ['generate epub', -> { epub_flow.run! }, t.epub_or_kindle?, :epub],
+            ['generate epub', -> { epub_flow.run! }, t.epub_or_kindle?, :epub, :whole_book],
             # --- :join 合流（ワークスペースを消すので両枝の完了後） ---
-            ['final clean', -> { run_final_clean }, t.print_pdf || t.epub_or_kindle? || !t.pdf, :join]
+            ['final clean', -> { run_final_clean }, t.print_pdf || t.epub_or_kindle? || !t.pdf, :join, :whole_book]
           ]
         end
 
@@ -340,13 +358,24 @@ module VivlioStarter
         def register_single_mode_steps
           warn_single_mode_pdf_only
 
-          add_step('clean',                -> { run_step0_clean })
-          add_step('optimize images',      -> { run_step1_optimize_images })
-          add_step('prepare theme images', -> { Build::ImageOptimizer.prepare_theme_images! })
-          add_step('build sections html',  -> { build_target_sections_html })
-          add_step('entries.js + pdf',     -> { generate_entries_and_pdf })
-          add_step('rename output pdfs',   -> { rename_single_mode_pdf })
-          add_step('final clean',          -> { run_final_clean })
+          # 章単位のステップは full mode の表からそのまま引く。
+          # **モードごとの一覧を手で持たない**ので、新しいステップを足したときに
+          # 単章へ載るかどうかは表の :chapter 宣言だけで決まる。以前は 2 つの表を
+          # 手で維持しており、片方への追加がもう片方へ届かず「単章では ○○ だったが
+          # 全章では ×× だった」が繰り返し起きていた（build-mode-parity-spec.md §0）。
+          full_mode_step_table.each do |label, handler, enabled, phase, unit|
+            next unless enabled
+            next unless unit == :chapter
+            next if SINGLE_MODE_SKIP.key?(label)
+
+            add_step(label, handler, phase, unit: :chapter)
+          end
+
+          # 単章固有の出力。閲覧用 PDF のみ・ファイル名も違う（章名.pdf）ため、
+          # 全章の結合・アウトライン・リネームとは別物になる。
+          add_step('entries.js + pdf',   -> { generate_entries_and_pdf })
+          add_step('rename output pdfs', -> { rename_single_mode_pdf })
+          add_step('final clean',        -> { run_final_clean })
         end
 
         # targets に PDF 以外（print_pdf / EPUB / Kindle）が含まれていても、
@@ -359,8 +388,11 @@ module VivlioStarter
 
         # ステップを記録して順次処理できるようにする。
         # 相の既定は :shared（:single / :preflight モードは相を持たない）。
-        def add_step(label, handler, phase = :shared)
-          @steps << Step.new(label, handler, phase)
+        # 単位の既定は :whole_book——**足し忘れたステップが単章へ流れ込まない**側に倒す
+        # （build-mode-parity-spec.md §2.2。既定を :chapter にすると、章単位でないものが
+        #  単章ビルドで動いて壊れる。逆向きの事故は「単章に出ない」で済む）。
+        def add_step(label, handler, phase = :shared, unit: :whole_book)
+          @steps << Step.new(label, handler, phase, unit)
         end
 
         # 指定ステップを実行し、前後でタイマーを計測する
@@ -461,27 +493,6 @@ module VivlioStarter
             (targets.epub_or_kindle? && Common.epub_embed?)
         end
 
-        # single mode: 対象章のみ HTML をビルド
-        def build_target_sections_html
-          Common.log_action("[build sections html] 対象章をビルドします: #{basenames.join(', ')}")
-          entries.each do |entry|
-            PreProcessCommands.execute_pre_process({}, [entry])
-          end
-          # 全章の前処理完了後に1回だけクロスリファレンス処理を実行する
-          PreProcessCommands.execute_cross_references(entries)
-
-          # 索引タグ付け。**HTML 変換より前**でなければならない（タグは Markdown へ
-          # 埋め込まれ、その後 VFM が HTML にする）。索引ページは作らない——全章
-          # そろわないと決まらないため（build-mode-parity-spec.md §4）。
-          # これを外すと単章だけ索引語が素のテキストになり、プレビューが全章と
-          # 食い違う。
-          IndexCommands.tag_chapters_for_build!(basenames)
-
-          entries.each do |entry|
-            ConvertCommands.execute_convert({}, [entry])
-            PostProcessCommands.execute_post_process({}, [entry])
-          end
-        end
 
         # single mode: 用途別 entries/config を生成して PDF をビルド
         # full mode と同じ「html/ → pdf/ コピー＋生成 config」経路（E5 で成立を実証）
@@ -626,18 +637,6 @@ module VivlioStarter
             return
           end
 
-          # 索引・用語集は書籍全体を単位とする検査・生成なので、章を絞った実行では行わない。
-          # vs build <章>（single mode）が Step 4 を持たないのと揃える——preflight は
-          # 「そのビルドが何を報告するか」を先に見るための機能であり、build が言わないことを
-          # 言ってはならない（章を絞ると用語集語がほぼ全滅して誤検知になる問題も構造的に消える。
-          # 詳細 → preflight-glossary-warning-scope-report.md）
-          unless full_catalog_scope?
-            Common.log_action('[index scan and build] 章を絞った実行のためスキップします（索引・用語集は全章実行で確認できます）')
-            return
-          end
-
-          Common.log_action('[index scan and build] 索引語のスキャンと索引ページ生成を実行します…')
-
           # 対象章を取得（Entry 配列から basename を抽出）
           chapter_targets = if entries.any?
                               basenames.sort
@@ -648,6 +647,20 @@ module VivlioStarter
                                 .sort
                             end
 
+          # 索引ページ・ページ番号・主要参照は**書籍全体を単位**とするので、章を絞った
+          # 実行では作らない（章を絞ると用語集語がほぼ全滅して誤検知になる問題も構造的に
+          # 消える。詳細 → preflight-glossary-warning-scope-report.md）。
+          #
+          # **章ごとのタグ付けは絞っても走らせる。** ここを一緒に止めていたため、単章では
+          # 索引語が素のテキスト、全章ではタグ付き、という食い違いが生まれ、前処理側に
+          # 埋め合わせを置くことになっていた（build-mode-parity-spec.md §4）。
+          unless full_catalog_scope?
+            Common.log_action('[index scan and build] 章を絞った実行のため索引ページは作りません（タグ付けは行います）')
+            IndexCommands.tag_chapters_for_build!(chapter_targets)
+            return
+          end
+
+          Common.log_action('[index scan and build] 索引語のスキャンと索引ページ生成を実行します…')
           IndexCommands.process_index_for_build!(chapter_targets)
         end
 

@@ -149,19 +149,26 @@ module VivlioStarter
           conv_calls = []
           post_calls = []
 
-          # 直接メソッド呼び出しをスタブして記録
+          # 単章モードは全章と同じ SectionBuilder を通る（build-mode-parity-spec.md §2.2）。
+          # 以前は build_target_sections_html が同じ処理を独自に束ねており、それが
+          # 全章側との差分の温床だった。ここでは前処理・変換・後処理へ届く
+          # トークンが全章経路と同じであることを見る。
           PreProcessCommands.stub :execute_pre_process, ->(opts, tokens) { pre_calls << tokens } do
             ConvertCommands.stub :execute_convert, ->(opts, tokens) { conv_calls << tokens } do
               PostProcessCommands.stub :execute_post_process, ->(opts, tokens) { post_calls << tokens } do
-                pipeline.send(:build_target_sections_html)
+                Build::SectionBuilder.preprocess_sections!(pipeline.entries)
+                Build::SectionBuilder.convert_sections_html!(pipeline.entries)
               end
             end
           end
 
-          # Entry オブジェクトが渡されるので、basename を比較
-          assert_equal [['11-sample']], pre_calls.map { |c| c.map(&:basename) }
-          assert_equal [['11-sample']], conv_calls.map { |c| c.map(&:basename) }
-          assert_equal [['11-sample']], post_calls.map { |c| c.map(&:basename) }
+          # SectionBuilder は basename（文字列）で渡す。execute_* 側は Entry と
+          # 文字列の両方を受けるので、比較は型に依存しない形で行う
+          to_basenames = ->(calls) { calls.map { |c| c.map { it.respond_to?(:basename) ? it.basename : it } } }
+
+          assert_equal [['11-sample']], to_basenames.call(pre_calls)
+          assert_equal [['11-sample']], to_basenames.call(conv_calls)
+          assert_equal [['11-sample']], to_basenames.call(post_calls)
         end
       end
 

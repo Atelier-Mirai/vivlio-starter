@@ -113,8 +113,14 @@ module VivlioStarter
         %w[pdf print_pdf epub kindle] => ALL_KINDLE
       }.freeze
 
+      # 単章モードは full mode の表から `unit: :chapter` を導出して作る
+      # （build-mode-parity-spec.md §2.2）。以前は 'build sections html' が
+      # preprocess / index / convert を独自に束ねており、全章側と別実装だった——
+      # それが「単章では ○○ だったが全章では ×× だった」の温床になっていた。
+      # 'techbook post-process' は章単位だが SINGLE_MODE_SKIP で意図的に外している。
       SINGLE_MODE = [
-        'clean', 'optimize images', 'prepare theme images', 'build sections html',
+        'clean', 'optimize images', 'prepare theme images',
+        'preprocess sections', 'index scan and build', 'convert sections html',
         'entries.js + pdf', 'rename output pdfs', 'final clean'
       ].freeze
 
