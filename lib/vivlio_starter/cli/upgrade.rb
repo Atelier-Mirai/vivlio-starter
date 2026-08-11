@@ -593,6 +593,10 @@ module VivlioStarter
         hunks = hidden.count { it.start_with?('   @@') }
         tail  = hunks.positive? ? "・未表示 #{hunks} 箇所" : ''
         Common.log_always(paint("   … 残り #{hidden.size} 行#{tail}（[d] で全文表示）", :dim, enabled:))
+        # 隠れているのが文脈行だけなら、変更はすべて見えている。ここで警告を出すと
+        # 狼少年になり、本当に変更が隠れている場面での警告まで軽く扱われる
+        return if hidden.none? { ['-', '+'].include?(it[3]) }
+
         Common.log_always(paint('   ⚠️ [y] は表示していない箇所にも適用されます', :yellow, enabled:))
       end
 

@@ -423,6 +423,19 @@ module VivlioStarter
         assert_match(/\[y\] は表示していない箇所にも適用されます/, out)
       end
 
+      # 切れてはいるが、隠れているのが文脈行だけの場合。警告を出すと狼少年になり、
+      # 本当に変更が隠れている場面での警告まで軽く扱われる（実測で踏んだ: 21 行の
+      # diff がプレビュー上限 20 行を 1 行だけ超え、その 1 行が文脈行だった）
+      def test_should_not_warn_when_only_context_lines_are_hidden
+        mine, theirs = two_sided_change(mine_at: 4, theirs_at: 34)
+        diff = diff_lines(mine, theirs)
+
+        out, = capture_io { UpgradeCommands.send(:print_diff, diff, limit: diff.size - 1) }
+
+        assert_match(/残り 1 行/, out, '切り詰めたこと自体は伝えるべき')
+        refute_match(/表示していない箇所/, out, '隠れているのが文脈行だけなら警告すべきではない')
+      end
+
       def test_should_not_warn_about_hidden_changes_when_the_diff_fits
         mine, theirs = two_sided_change(mine_at: 4, theirs_at: 34)
         diff = diff_lines(mine, theirs)
