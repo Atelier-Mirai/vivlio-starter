@@ -98,6 +98,59 @@ module VivlioStarter
         assert_kind_of Enumerator, Masking.each_prose_line("a\n")
       end
 
+      # CommonMark はブロック引用の中のフェンスドコードブロックを認める。剥がさないと
+      # `> ```html` が地の文になり、索引付与などがコード内へ食い込む。
+      # 実測: 引用で示した AI との対話例のコードへ `<span class="index-term">` が注入された。
+      def test_each_prose_line_skips_fenced_code_inside_blockquote
+        md = <<~MD
+          > **あなた**: 説明文。
+          >
+          > ```html
+          > <p id="message">このテキストが赤くなるはず</p>
+          > ```
+          >
+          > 何が問題でしょうか？
+        MD
+
+        prose = Masking.each_prose_line(md).map { |line, _| line.chomp }
+
+        assert_equal ['> **あなた**: 説明文。', '>', '>', '> 何が問題でしょうか？'], prose
+      end
+
+      # 入れ子引用（`> >`）と、`>` の前の字下げも引用として扱う。
+      def test_each_prose_line_skips_fenced_code_inside_nested_blockquote
+        md = <<~MD
+          > > ```ruby
+          > > code_line
+          > > ```
+          本文
+        MD
+
+        prose = Masking.each_prose_line(md).map { |line, _| line.chomp }
+
+        assert_equal ['本文'], prose
+      end
+
+      # 引用つきフェンスの「解説」を書いた場合。外側フェンス（コード外化してはいけない）を
+      # 内側の `> ``` ` が途中で閉じてしまわないこと。開始フェンスと引用の深さが一致した
+      # 行だけを閉じフェンスと認めることで担保する。
+      def test_each_prose_line_does_not_let_quoted_fence_close_unquoted_fence
+        md = <<~MD
+          説明の前文
+          ```markdown
+          > 引用の中にコードを書く例
+          > ```js
+          > console.log("hi")
+          > ```
+          ```
+          説明の後文
+        MD
+
+        prose = Masking.each_prose_line(md).map { |line, _| line.chomp }
+
+        assert_equal %w[説明の前文 説明の後文], prose
+      end
+
       # --- strip_code -----------------------------------------------------
 
       def test_strip_code_removes_fenced_block_keeping_line_count

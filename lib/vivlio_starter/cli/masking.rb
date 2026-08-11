@@ -27,6 +27,13 @@ module VivlioStarter
       # 行頭フェンス（``` または ~~~ を 3 連以上）のマーカー。
       FENCE = /\A(?:`{3,}|~{3,})/
 
+      # 引用（`>`）の行頭記号。CommonMark はブロック引用の中のフェンスドコード
+      # ブロックを認めており、GitHub 等も描画する。剥がさないと `> ```html` が
+      # 地の文と見なされ、索引付与などがコード内へ食い込む（実測: 引用で示した
+      # AI との対話例のコードに `<span class="index-term">` が注入された）。
+      # 入れ子引用（`> >`）と、`>` 前の 3 文字までの字下げを許す。
+      BLOCKQUOTE_PREFIX = /\A[ ]{0,3}(?:>[ ]?)+/
+
       # protect_code が用いるプレースホルダの接頭辞（既存 MarkdownUtils と互換）。
       CODE_SPAN_PLACEHOLDER_PREFIX = '__VS_CODE_SPAN__'
 
@@ -132,18 +139,21 @@ module VivlioStarter
       def scan_lines(text)
         return enum_for(:scan_lines, text) unless block_given?
 
-        fence = nil # 開いているフェンスのマーカー（nil = コード外）
+        fence = nil        # 開いているフェンスのマーカー（nil = コード外）
+        fence_quoted = nil # そのフェンスが引用の内側で開かれたか
         text.each_line.with_index(1) do |line, lineno|
           marker = fence_marker(line)
+          quoted = blockquoted?(line)
 
           if fence.nil?
             if marker
               fence = marker
+              fence_quoted = quoted
               yield line, lineno, true # 開始フェンス
             else
               yield line, lineno, false # 地の文
             end
-          elsif marker && closing_fence?(marker, fence)
+          elsif marker && quoted == fence_quoted && closing_fence?(marker, fence)
             fence = nil
             yield line, lineno, true # 終了フェンス
           else
@@ -156,12 +166,19 @@ module VivlioStarter
       # 行頭（先頭空白許容）のフェンスマーカーを返す（フェンスでなければ nil）。
       # ```include: は単一行のインクルード指令でありフェンスではないので除外する。
       def fence_marker(line)
-        stripped = line.lstrip
+        stripped = line.sub(BLOCKQUOTE_PREFIX, '').lstrip
         return nil if stripped.start_with?('```include:')
 
         stripped[FENCE]
       end
       private_class_method :fence_marker
+
+      # 引用の内側の行か。開始フェンスと同じ深さの行だけを閉じフェンスとして認めるため、
+      # scan_lines が開始時の値を覚えて突き合わせる。これが無いと、フェンスの中に
+      # 書いた「引用つきフェンス」の解説（```markdown … > ``` … ```）が、外側の
+      # フェンスを途中で閉じてしまう。
+      def blockquoted?(line) = line.match?(BLOCKQUOTE_PREFIX)
+      private_class_method :blockquoted?
 
       # 閉じフェンスとして妥当か（同種・同連長以上）。
       def closing_fence?(marker, opener) = marker[0] == opener[0] && marker.length >= opener.length
