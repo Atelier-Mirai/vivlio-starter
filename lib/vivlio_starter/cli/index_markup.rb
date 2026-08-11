@@ -21,7 +21,10 @@
 #   その記法のモジュールが持つ——Lint::NotationGuard と同じ型に揃えている。
 #
 # 仕様: inline-footnote-index-collision-spec.md §4
+#       index-markup-plain-fallback-spec.md §4.1（plain_text）
 # ================================================================
+
+require 'cgi'
 
 module VivlioStarter
   module CLI
@@ -60,6 +63,24 @@ module VivlioStarter
 
         # 脚注参照 [^id]。著者が意図的にマークアップした [!] [&&] [<h1>] は除外しない
         term_text.start_with?('^')
+      end
+
+      # --- 索引タグを付けられないときの素のテキスト表現 ---------------------
+      #
+      # 索引スキャナが走らないビルド（`index_glossary.enabled: false` 等）では
+      # `[用語]` を素のテキストへ落とす。その姿をここに置くのは、**同じ「索引語を
+      # 表示する」処理が 2 箇所にあってエスケープの有無が食い違っていた**ため。
+      # 索引スキャナは `CGI.escapeHTML` を通すのに前処理は素通ししており、
+      # `[<h1>]` が生タグとして VFM に渡って**本物の章見出しになっていた**
+      # （目次と PDF アウトラインまで汚染。index-markup-plain-fallback-spec.md §2.2）。
+      #
+      # 読み（`|` 以降）を落とす規則も前処理にしか無かったので、ここへ寄せる。
+      #
+      # @param term_text [String] ブラケットの中身（`用語` または `用語|読み`）
+      # @return [String] エスケープ済みの用語部分
+      def plain_text(term_text)
+        term = term_text.include?('|') ? term_text.split('|', 2).first : term_text
+        CGI.escapeHTML(term.to_s)
       end
     end
   end

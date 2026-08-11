@@ -541,21 +541,17 @@ module VivlioStarter
         # 綴りの判定は IndexMarkup が唯一の定義元。インライン脚注 `^[本文]` を
         # 索引記法と誤認してブラケットだけ剥がすと、脚注本体が本文へ流れ込む
         # （inline-footnote-index-collision-spec.md §3.1）。
+        #
+        # 素のテキストへ落とす姿も IndexMarkup が持つ。ここで独自に剥がしていた
+        # ころは `CGI.escapeHTML` を通しておらず、`[<h1>]` が生タグとして VFM へ
+        # 渡って**本物の章見出しになっていた**（index-markup-plain-fallback-spec.md §2.2）。
         def strip_index_markup!
           protected_text, spans = MarkdownUtils.extract_code_spans(context.content)
 
           stripped = protected_text.gsub(IndexMarkup::TERM_PATTERN) do
             inner = ::Regexp.last_match(1)
             # 脚注参照 [^id] はそのまま残す
-            if IndexMarkup.skip_term?(inner)
-              ::Regexp.last_match(0)
-            elsif inner.include?('|')
-              # [用語|読み] → 用語
-              inner.split('|', 2).first
-            else
-              # [用語] → 用語（索引記法として扱う）
-              inner
-            end
+            IndexMarkup.skip_term?(inner) ? ::Regexp.last_match(0) : IndexMarkup.plain_text(inner)
           end
 
           context.content = MarkdownUtils.restore_code_spans(stripped, spans)

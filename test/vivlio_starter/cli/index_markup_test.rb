@@ -77,6 +77,35 @@ module VivlioStarter
         assert_empty '[標準入出力|ひょうじゅん]'.scan(IndexMarkup::TERM_ONLY_PATTERN)
         refute_empty '[標準入出力|ひょうじゅん]'.scan(IndexMarkup::TERM_PATTERN)
       end
+
+      # --- plain_text（索引タグを付けられないときの素のテキスト表現） -------
+
+      def test_plain_text_drops_yomi
+        assert_equal '引数', IndexMarkup.plain_text('引数|ひきすう')
+      end
+
+      def test_plain_text_keeps_term_without_yomi
+        assert_equal '基本情報技術者', IndexMarkup.plain_text('基本情報技術者')
+      end
+
+      # `[<h1>]` を素通しすると生タグとして VFM に渡り、**本物の章見出しになる**。
+      # 目次と PDF アウトラインまで汚れた（index-markup-plain-fallback-spec.md §2.2）。
+      def test_plain_text_escapes_tag_shaped_term
+        assert_equal '&lt;h1&gt;', IndexMarkup.plain_text('<h1>')
+        assert_equal '&lt;/h1&gt;', IndexMarkup.plain_text('</h1>')
+      end
+
+      # 索引スキャナ（process_term）と同じ規則であること。片方だけ変えると、
+      # 索引が有効か無効かで `&` の見え方が変わる
+      def test_plain_text_escapes_ampersand_like_the_index_scanner
+        assert_equal '&amp;&amp;', IndexMarkup.plain_text('&&')
+        assert_equal CGI.escapeHTML('&&'), IndexMarkup.plain_text('&&')
+      end
+
+      def test_plain_text_keeps_operator_terms_readable
+        assert_equal '!DOCTYPE', IndexMarkup.plain_text('!DOCTYPE')
+        assert_equal '404', IndexMarkup.plain_text('404')
+      end
     end
   end
 end
