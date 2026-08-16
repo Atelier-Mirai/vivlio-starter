@@ -25,6 +25,16 @@ module VivlioStarter
           FileUtils.rm_rf(@temp_dir)
         end
 
+        # 索引語かつ用語集語（flags: ig）を 1 語だけ持つ辞書を書く
+        def write_glossary_term(term, yomi: 'よみ')
+          File.write('config/index_glossary_terms.yml', <<~YAML)
+            terms:
+              - term: #{term}
+                yomi: #{yomi}
+                flags: ig
+          YAML
+        end
+
         # --- phase: scan_and_tag_file! tests ---
 
         def test_scan_detects_term_with_yomi
@@ -298,6 +308,46 @@ module VivlioStarter
           assert_match(%r{<dfn[^>]*>マスター画像</dfn>}, tagged, '長いほうの用語がまるごとタグ付けされる')
           assert_equal 1, tagged.scan(/class="index-term"/).size, '前半だけを別の用語として二重に拾わない'
           assert_match(/glossary-link/, tagged, '用語集の語なので †リンクが付く')
+        end
+
+        # † は章ごとの初出だけに付ける（build-mode-parity-spec.md §4.1）。
+        # 全出現に付けると技術書の慣習として過剰で、単章ビルドとの一致も妨げる。
+        # 索引タグ（index-term）のほうは全出現に付き続ける——索引のページ番号は
+        # 出現ごとに要るためで、† とは目的が違う
+        def test_glossary_link_marks_only_first_occurrence_in_chapter
+          write_glossary_term('Ruby')
+          File.write('31-first.md', <<~MD)
+            # 章題
+
+            [Ruby]は楽しい言語です。
+
+            [Ruby]の話をもう一度します。
+
+            さらに [Ruby] について。
+          MD
+
+          IndexMatchScanner.new.scan_and_tag_file!('31-first.md')
+
+          tagged = File.read('31-first.md')
+          assert_equal 1, tagged.scan(/class="glossary-link"/).size, '†は章の初出だけに付く'
+          assert_equal 3, tagged.scan(/class="index-term"/).size, '索引タグは全出現に付き続ける'
+        end
+
+        # 「書籍全体の初出」ではなく「章ごとの初出」であること。
+        # 全体の初出にすると、単章ビルドではその章が第 1 章でなくても † が付いてしまい、
+        # プレビューと本番が食い違う
+        def test_glossary_link_reappears_in_the_next_chapter
+          write_glossary_term('Ruby')
+          File.write('31-first.md', "[Ruby]の話。\n")
+          File.write('32-second.md', "別の章での [Ruby] の話。\n")
+
+          scanner = IndexMatchScanner.new
+          scanner.scan_and_tag_file!('31-first.md')
+          scanner.scan_and_tag_file!('32-second.md')
+
+          assert_equal 1, File.read('31-first.md').scan(/class="glossary-link"/).size
+          assert_equal 1, File.read('32-second.md').scan(/class="glossary-link"/).size,
+                       '章が変われば、その章の初出に †が付く'
         end
 
         # 長いほうを優先しても、その語が単独で出てくる箇所は従来どおり拾う

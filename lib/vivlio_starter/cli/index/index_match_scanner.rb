@@ -91,6 +91,8 @@ module VivlioStarter
           @config_terms = longest_first(@unified_terms.select { it['flags'].to_s.include?('i') })
           @glossary_terms = @unified_terms.select { it['flags'].to_s.include?('g') }.to_h { [it['term'], it] }
           @glossary_backlinks = Hash.new { |h, k| h[k] = [] }
+          # この章で用語集リンク（†）を付け終えた用語。章ごとにリセットする（§4.1）
+          @glossary_linked_terms = Set[]
           # 用語集のみの用語（索引対象外だがバックリンクは必要）
           @glossary_only_terms = longest_first(@unified_terms.select do |t|
             flags = t['flags'].to_s
@@ -227,6 +229,9 @@ module VivlioStarter
         # 可変長フェンス・入れ子・```include: 除外は Masking が一貫して保証する。
         def process_content_with_code_block_exclusion(content, file_basename)
           survey_main_targets(content, file_basename)
+          # † は章ごとの初出だけに付ける（§4.1）。章の走査の入口はここだけなので、
+          # 「この章で † を付けた用語」もここで開き直す
+          @glossary_linked_terms = Set[]
 
           lines = content.lines
           Masking.each_prose_line(content) do |line, lineno|
@@ -629,10 +634,19 @@ end
         # 用語集インジケータ記号（固定）
         GLOSSARY_INDICATOR = '†'
 
-        # 用語集リンクを生成
-        # 常に†記号を上付きで表示し、クリックで用語集ページへジャンプ
+        # 用語集リンクを生成する（†記号を上付きで表示し、クリックで用語集ページへ）。
+        #
+        # **付けるのは章ごとの初出だけ**（`build-mode-parity-spec.md` §4.1）。
+        # 全出現に付けると技術書の慣習として過剰で紙面が騒がしく、加えて単章ビルドとの
+        # 一致を妨げていた。「書籍全体の初出」を採らないのは、単章ビルドではその章が
+        # 第 1 章でなくても初出になり、プレビューと本番が食い違うからである。章ごとなら
+        # 両モードで一致し、第 5 章から読み始めた読者も用語集へ飛べる。
+        #
+        # `@term_occurrence` を使わないのは、あちらが**書籍全体**の通し番号で、
+        # 索引アンカー `idx-<hash>-<n>` の一意性を担っているためである（章でリセットできない）。
         def build_glossary_link(term_text, file_basename, occurrence_num)
           return nil unless @glossary_terms.key?(term_text)
+          return nil unless @glossary_linked_terms.add?(term_text)
 
           slug = generate_glossary_slug(term_text)
           # 用語集へのバックリンク情報を記録（章+用語スラッグ+出現番号で一意化）
