@@ -84,6 +84,7 @@ module VivlioStarter
             Guards::OrphanFileCheck.new,
             Guards::ImageFilenameCheck.new,
             Guards::CodeFenceCheck.new,
+            Guards::StrayPageBreakCheck.new,
             Guards::ContainerFenceCheck.new,
             Guards::ContainerClassCheck.new,
             Guards::ChapterTargetCheck.new(targets)

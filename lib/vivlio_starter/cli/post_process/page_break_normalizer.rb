@@ -167,15 +167,9 @@ module VivlioStarter
         end
 
         # 節（h2）で改ページする設定かどうか。BookSettingsCss と同じ判定
-        # （明示的に false と書かれたときだけ無効）を用いる。
-        def section_pagebreak_enabled?
-          return true unless Common.configured?
-
-          case Common::CONFIG.page.section_pagebreak.to_s.strip.downcase
-          in 'false' | 'no' | 'off' | '0' then false
-          else true
-          end
-        end
+        # （明示的に false と書かれたときだけ無効）。原稿の記法チェックも同じ判定を
+        # 要するため、実体は Common へ集約してある。
+        def section_pagebreak_enabled? = Common.section_pagebreak_enabled?
       end
     end
   end

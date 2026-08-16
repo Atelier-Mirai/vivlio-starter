@@ -1038,6 +1038,20 @@ module VivlioStarter
       # 塗り足しを復元できないため、入稿用 PDF を個別レンダリングする（既定 false = 導出）。
       def print_pdf_full_bleed? = truthy?(CONFIG&.output&.print_pdf&.full_bleed)
 
+      # 節見出し（h2）が CSS で自動改ページするか（page.section_pagebreak）。
+      # truthy? を使えないのは**既定が true** だからで、未設定は「改ページする」に倒す。
+      # 二重改ページの正規化（PostProcessCommands::PageBreakNormalizer）と、原稿の
+      # 記法チェック（Guards::StrayPageBreakCheck）が同じ判定を必要とするため、
+      # 述語をここへ集約する（index_enabled? と同じ理由・同じ置き場）。
+      def section_pagebreak_enabled?
+        return true unless configured?
+
+        case CONFIG.page.section_pagebreak.to_s.strip.downcase
+        in 'false' | 'no' | 'off' | '0' then false
+        else true
+        end
+      end
+
       # カバー設定のバリデーション。
       # output.cover は既定値 master を持つため「未設定」の状態は存在しない
       # （従来も cover.rb が `|| 'master'` で補っており、実際の出力は同じだった）。

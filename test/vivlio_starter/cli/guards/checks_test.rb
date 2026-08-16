@@ -127,6 +127,124 @@ module VivlioStarter
       end
 
       # GS-01: 章の末尾に取り残された `---` は白紙を 1 枚増やすだけなので指摘する
+      def test_should_warn_page_break_left_at_end_of_chapter
+        with_temp_project do
+          write_markdown('11-intro', <<~MD)
+            # 章題
+
+            本文です。
+
+            ---
+          MD
+
+          violations = stray_check.validate
+
+          assert_equal 1, violations.size
+          assert_predicate violations.first, :warn?
+          assert violations.first.detail.any? { it.include?('L5') }, '行番号を示すべき'
+          assert violations.first.detail.any? { it.include?('白紙') }
+        end
+      end
+
+      # GS-02: 項見出し（h3）の直前は正規化されないため、そこでページが切れる
+      def test_should_warn_page_break_before_subsection_heading_with_its_title
+        with_temp_project do
+          write_markdown('11-intro', <<~MD)
+            # 章題
+
+            本文です。
+
+            ---
+
+            ### 項の名前
+
+            続きの本文。
+          MD
+
+          violations = stray_check.validate
+
+          assert_equal 1, violations.size
+          assert violations.first.detail.any? { it.include?('### 項の名前') },
+                 'どの見出しの前で切れるかを示すべき'
+          assert violations.first.detail.any? { it.include?('@pagebreak') },
+                 '意図した改ページの書き方を案内すべき'
+        end
+      end
+
+      # GS-03: 節見出し（h2）の直前は、h2 が自動改ページする設定なら本文が
+      # 「気にせず書いてよい」と説明している箇所。警告すると説明と機能が矛盾する
+      def test_should_not_warn_before_section_heading_when_normalized
+        with_temp_project do
+          write_markdown('11-intro', <<~MD)
+            # 章題
+
+            前節の本文。
+
+            ---
+
+            ## 次の節
+
+            本文。
+          MD
+
+          assert_empty stray_check(section_pagebreak: true).validate
+        end
+      end
+
+      # GS-04: 同じ原稿でも、節を続けて組む設定（正規化されない）なら指摘する
+      def test_should_warn_before_section_heading_when_sections_are_continuous
+        with_temp_project do
+          write_markdown('11-intro', <<~MD)
+            # 章題
+
+            前節の本文。
+
+            ---
+
+            ## 次の節
+
+            本文。
+          MD
+
+          violations = stray_check(section_pagebreak: false).validate
+
+          assert_equal 1, violations.size
+          assert violations.first.detail.any? { it.include?('## 次の節') }
+        end
+      end
+
+      # GS-05: 指摘しないもの——連続した `---`（意図的な空白ページ）・後ろに本文が続く
+      # 改ページ・コードフェンス内の記法解説・見出しの下線（setext heading）
+      def test_should_not_warn_intentional_or_non_break_usages
+        with_temp_project do
+          write_markdown('11-intro', <<~MD)
+            # 章題
+
+            意図的に空白ページを入れる。
+
+            ---
+            ---
+
+            ## 節
+
+            区切りとしての改ページ。
+
+            ---
+
+            続きの本文があるので正当。
+
+            ```markdown
+            ---
+            ```
+
+            見出しの下線
+            ---
+          MD
+
+          assert_empty stray_check.validate
+        end
+      end
+
       # ProjectRootCheck: config/book.yml の有無で判定
       def test_should_detect_project_root_by_book_yml
         with_temp_project do
@@ -245,6 +363,16 @@ module VivlioStarter
 
       def write_content(basename)
         File.write("contents/#{basename}.md", "# #{basename}\n")
+      end
+
+      def write_markdown(basename, body)
+        File.write("contents/#{basename}.md", body)
+      end
+
+      # StrayPageBreakCheck は h2 の扱いが設定で変わるため、既定は「h2 が自動改ページする」
+      # 側（＝二重改ページが正規化される側）に固定してテストする
+      def stray_check(section_pagebreak: true)
+        Guards::StrayPageBreakCheck.new(section_pagebreak:)
       end
     end
   end
