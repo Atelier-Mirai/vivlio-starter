@@ -543,9 +543,9 @@ terms:
   source: auto_extracted
   approved_at: '2026-07-05 20:49:59'
   pattern: "/エラー/"
-  updated_at: '2026-08-09 03:08:17'
+  updated_at: '2026-08-16 13:40:00'
   main:
-  - 44-build
+  - 44-build#トラブルシューティング
 - term: 拡張記法
   yomi: かくちょうきほう
   flags: i
