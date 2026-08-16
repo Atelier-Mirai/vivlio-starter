@@ -90,8 +90,9 @@ module VivlioStarter
       KINDLE_PREVIEWER_APP_BIN = '/Applications/Kindle Previewer 3.app/Contents/MacOS/Kindle Previewer 3'
 
       # 機能チェック（--version 実起動）でのバージョン確認フラグ。既定は --version。
-      # poppler 系（pdfinfo / pdftoppm）は --version を解さず -v が正しい（実測 exit 差）。
-      VERSION_ARGS = { 'pdfinfo' => '-v', 'pdftoppm' => '-v' }.freeze
+      # poppler 系（pdfinfo / pdftoppm / pdftotext）は --version を解さず -v が正しい
+      # （実測 exit 差。--version では exit 1 になり「見つかりません」と誤報する）。
+      VERSION_ARGS = { 'pdfinfo' => '-v', 'pdftoppm' => '-v', 'pdftotext' => '-v' }.freeze
 
       # Enhanced Mode プラグインの gem 名（Pdf::PLUGIN_GEM_NAME と同値。
       # provider.rb は pdf/reader 等の重い require を伴うため doctor からは参照しない）
@@ -109,9 +110,10 @@ module VivlioStarter
           （存在だけでなく --version 実起動で確認し、壊れたラッパー等も検出します）:
             - Xcode Command Line Tools (macOS)
             - qpdf
-            - pdfinfo / pdftoppm (poppler)
+            - pdfinfo / pdftoppm / pdftotext (poppler)
             - node
             - vivliostyle
+            - vfm (@vivliostyle/vfm・Markdown → HTML 変換)
             - textlint
             - gs
             - imagemagick
@@ -193,9 +195,16 @@ module VivlioStarter
           'node' => 'node',
           'textlint' => 'textlint',
           'vivliostyle' => 'vivliostyle',
+          # VFM（Markdown → HTML 変換の中核）。Vivliostyle CLI とは別パッケージで、
+          # @vivliostyle/vfm を入れないと PATH に現れない。不在だと変換のリダイレクトが
+          # 0 バイトの HTML を作り、本文が空のまま本が組み上がる（Guards::VfmCheck 参照）
+          'vfm' => 'vfm',
           'qpdf' => 'qpdf',
           'pdfinfo' => 'pdfinfo',
           'pdftoppm' => 'pdftoppm',
+          # PDF のしおり（アウトライン）生成で本文の位置を引くのに使う。poppler の
+          # 同じ formula から入るが、上 2 つだけ見て 3 つ目を見ないのは検査として片手落ち
+          'pdftotext' => 'pdftotext',
           'gs' => 'gs', # Ghostscript
           'imagemagick' => nil,
           # inkscape はここには含めない。カバー SVG ラスタライズの主経路は rsvg-convert で、
@@ -438,7 +447,7 @@ module VivlioStarter
           Common.log_warn("brew 実行でエラー: #{e}")
         end
 
-        # Vivliostyle CLI（npm -g）
+        # Vivliostyle CLI / VFM（npm -g）。VFM は CLI に同梱されないため別に入れる
         begin
           if missing.include?('vivliostyle')
             if system('which npm >/dev/null 2>&1')
@@ -446,6 +455,15 @@ module VivlioStarter
               system('npm install --loglevel=error -g @vivliostyle/cli')
             else
               Common.log_always('npm が見つかりません。node のインストール後に `npm install -g @vivliostyle/cli` を実行してください。')
+            end
+          end
+
+          if missing.include?('vfm')
+            if system('which npm >/dev/null 2>&1')
+              Common.log_always('VFM(@vivliostyle/vfm) をグローバルインストールします…')
+              system('npm install --loglevel=error -g @vivliostyle/vfm')
+            else
+              Common.log_always('npm が見つかりません。node のインストール後に `npm install -g @vivliostyle/vfm` を実行してください。')
             end
           end
         rescue StandardError => e
@@ -881,10 +899,12 @@ module VivlioStarter
           'xcode-command-line-tools' => 'Xcode Command Line Tools',
           'node' => 'node',
           'vivliostyle' => 'Vivliostyle CLI',
+          'vfm' => 'VFM (@vivliostyle/vfm)',
           'textlint' => 'textlint',
           'qpdf' => 'qpdf',
           'pdfinfo' => 'pdfinfo (poppler)',
           'pdftoppm' => 'pdftoppm (poppler)',
+          'pdftotext' => 'pdftotext (poppler)',
           'gs' => 'Ghostscript',
           'imagemagick' => 'ImageMagick',
           'inkscape' => 'Inkscape',

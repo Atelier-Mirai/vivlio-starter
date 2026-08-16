@@ -47,13 +47,14 @@ Ruby 4.0 固有の機能は 1 つも使っていなかった。実際の下限�
 - Vivliostyle (npm) / Ghostscript / poppler (`pdfinfo`) / qpdf / MeCab (`natto` 経由・要 libmecab)
 - ImageMagick / librsvg / libvips / mathjax-full / mermaid-cli (`mmdc`)
 
-確認すべき点:
+確認すべき点と、2026-08-16 の点検結果:
 
-- `vs doctor` が**全依存を漏れなく検査**し、不足時に**インストール手順を提示**できているか（現在 17 種を検査）。
-- README「追加ツールのインストール」が上記を**網羅**しているか。
-- 依存が無い場合に**クラッシュではなく親切なエラー**で停止するか。
+- [x] **`vs doctor` が全依存を漏れなく検査しているか** — **漏れが 2 つあった。** ①`vfm`（Markdown → HTML 変換そのもの）②`pdftotext`（PDF のしおり生成。同じ poppler の `pdfinfo` / `pdftoppm` だけ見て 3 つ目を見ていなかった）。どちらも追加し、検査は 19 種になった。`vs upgrade` の更新計画にも `@vivliostyle/vfm` を追加し、初回の `--dry-run` で 2.7.0 → 2.7.2 の未適用更新が実際に見つかっている。
+- [x] **README が網羅しているか** — **誤りがあった。** `npm install --save-dev @vivliostyle/cli vfm` と書いていたが、npm の `vfm` は "Form Validation for Vue3" という無関係のパッケージ（本開発機に実際に入っており、この手順を踏んだ痕跡だった）。加えて `--save-dev` はローカル導入でコマンドが PATH に現れない。グローバル導入へ直し、依存表に Vivliostyle CLI / VFM / pdftotext を追加した。
+- [x] **依存が無いときクラッシュせず親切に止まるか** — **VFM だけが「静かに壊れる」経路だった。** 変換はシェルのリダイレクトなので、不在でも 0 バイトの HTML が残り、本文が空のまま本が組み上がる。`Guards::VfmCheck` を新設して 🔴 で止め、変換の成否も終了コードでなく出力の中身で判定するようにした（VFM は読み込み失敗でも exit 0 を返す）。他の主要ツール（gs / qpdf / rsvg-convert / magick / pdftotext / mmdc）は不在チェックと対処の案内をすでに持っていた。
+- [ ] **macOS + Homebrew 以外の環境での体験**をどこまで謳うか — 未決。現状は macOS 主対象、`vs doctor --fix` はこの環境でのみ動作。
 
-CLI として最も「正式版らしさ」が表れる部分。**macOS + Homebrew 以外の環境での体験**をどこまで謳うかもここで決める（現状は macOS 主対象、`vs doctor --fix` はこの環境でのみ動作）。
+**この点検自体が「1.0.0 前にやってよかった」類の作業だった**——3 つの穴（検査・導入手順・失敗時の挙動）は独立に空いており、揃っていない環境では「`vs doctor` がすべて OK と言うのにビルドが白紙になる」が成立していた。開発機は VFM が入っているため、テストでも実ビルドでも永久に露見しない。
 
 ### A-3. RubyGems.org への公開 — **公開済み。残るは MFA の判断**
 

@@ -80,6 +80,7 @@ module VivlioStarter
             Guards::CatalogEntriesCheck.new,
             Guards::ContentsDirCheck.new,
             Guards::NodeCheck.new,
+            Guards::VfmCheck.new,
             Guards::OrphanFileCheck.new,
             Guards::ImageFilenameCheck.new,
             Guards::CodeFenceCheck.new,

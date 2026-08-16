@@ -68,9 +68,10 @@ module VivlioStarter
           end
 
           # 設定ファイルを経由しない直接ビルド（vs build myawesome.md）。
-          # プロジェクト前提の Guard は通さず、PDF 生成に必須の Node だけを確認する。
+          # プロジェクト前提の Guard は通さず、PDF 生成に必須の Node と VFM だけを確認する
+          # （直接ビルドも Markdown → HTML は VFM を通る）。
           if direct_mode?
-            Guards::Guard.run!(Guards::NodeCheck.new)
+            Guards::Guard.run!(Guards::NodeCheck.new, Guards::VfmCheck.new)
             return run_direct_build
           end
 
@@ -84,6 +85,7 @@ module VivlioStarter
             Guards::CatalogEntriesCheck.new,
             Guards::ContentsDirCheck.new,
             Guards::NodeCheck.new,
+            Guards::VfmCheck.new,
             Guards::ImageFilenameCheck.new,
             Guards::ChapterTargetCheck.new(targets)
           )

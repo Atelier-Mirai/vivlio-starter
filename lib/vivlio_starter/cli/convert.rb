@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'fileutils'
+
 module VivlioStarter
   module CLI
     # ================================================================
@@ -19,16 +21,52 @@ module VivlioStarter
         base_dir = Common::BUILD_HTML_DIR
         md_files = resolve_md_files_for_convert(tokens_or_entries, base_dir)
 
-        md_files.each do |md|
-          html = md.sub(/\.md\z/, '.html')
-          cmd  = %(#{Common::VFM_COMMAND} "#{md}" > "#{html}")
-          ok = system(cmd)
-          Common.log_warn("VFM の変換に失敗しました: #{md}") unless ok
-        end
+        failed = md_files.reject { convert_markdown!(it) }
+        return report_conversion_failures(failed) unless failed.empty?
 
         Common.log_success('Markdown→HTML 変換が完了しました')
       end
       module_function :execute_convert
+
+      # 1 章を VFM で HTML へ変換する。成功したら true。
+      #
+      # **終了コードを信用しない**のが要点（実測 2026-08-16）。VFM は読み込みに失敗しても
+      # exit 0 を返し、Node のスタックトレースを標準出力へ吐く——変換はシェルの
+      # リダイレクトで行うため、それがそのまま .html として保存される。コマンド自体が
+      # 無い場合は 0 バイトの .html が残る。どちらも「中身のある章」として後続を素通りし、
+      # 本文の代わりにエラーダンプや白紙が組み上がる。
+      # 正常な出力は必ず `<!doctype html>` で始まるので、中身の頭まで見て成否を決める。
+      def convert_markdown!(md)
+        html = md.sub(/\.md\z/, '.html')
+        ok = system(%(#{Common::VFM_COMMAND} "#{md}" > "#{html}"))
+        return true if ok && html_document?(html)
+
+        # 失敗の痕跡は残さない。後続に「欠落」として気づかせるほうが、
+        # 壊れた HTML を本文と信じて組むより安い
+        FileUtils.rm_f(html)
+        false
+      end
+      module_function :convert_markdown!
+
+      # VFM の出力が HTML 文書として始まっているか（先頭だけ読めば足りる）
+      def html_document?(path)
+        File.file?(path) && File.read(path, 16).to_s.lstrip.start_with?('<')
+      end
+      module_function :html_document?
+
+      # 変換できなかった章を 🔴 で報告する。
+      # 成功メッセージは出さない——1 章でも欠ければ、そのまま組んだ本は不完全だからである。
+      def report_conversion_failures(failed)
+        Common.log_error(
+          "VFM の Markdown → HTML 変換に失敗しました（#{failed.size} 件）",
+          detail: <<~DETAIL
+            #{failed.map { "- #{File.basename(it)}" }.join("\n")}
+            対処: `#{Common::VFM_COMMAND} #{File.basename(failed.first)}` を手で実行するとエラーの内容が読めます
+            （壊れた HTML は残していません。そのまま進むと当該章が白紙で組み上がるためです）
+          DETAIL
+        )
+      end
+      module_function :report_conversion_failures
 
       def normalized_context(command_or_ctx)
         return command_or_ctx if command_or_ctx.is_a?(Hash)

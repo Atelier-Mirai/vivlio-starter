@@ -292,12 +292,14 @@ output:
 
 ```bash
 brew install poppler qpdf ghostscript imagemagick librsvg vips mecab
-npm install -g @vivliostyle/cli textlint mathjax-full @mermaid-js/mermaid-cli
+npm install -g @vivliostyle/cli @vivliostyle/vfm textlint mathjax-full @mermaid-js/mermaid-cli
 ```
 
 | ツール | 用途 |
 |---|---|
-| pdfinfo / pdftoppm（poppler） | PDF のメタ情報取得・ページの画像化 |
+| Vivliostyle CLI（vivliostyle） | CSS 組版による PDF 生成 |
+| VFM（vfm） | Markdown → HTML 変換 |
+| pdfinfo / pdftoppm / pdftotext（poppler） | PDF のメタ情報取得・ページの画像化・しおり生成 |
 | qpdf | PDF の分割・結合・ページ抽出 |
 | Ghostscript | PDF 圧縮 |
 | ImageMagick | 画像変換（WebP 等） |
@@ -309,11 +311,17 @@ npm install -g @vivliostyle/cli textlint mathjax-full @mermaid-js/mermaid-cli
 
 ### Vivliostyle CLI / VFM
 
-`package.json` の devDependencies に `@vivliostyle/cli` と `vfm` を含めています。クリーン環境から始める場合:
+Markdown → HTML の変換は VFM（Vivliostyle Flavored Markdown）が、HTML → PDF の組版は Vivliostyle CLI が担います。`vs build` は両方を**コマンドとして**呼ぶため、**グローバル（`-g`）に導入**してください（上の `npm install -g …` に含まれています）。
 
 ```bash
-npm install --save-dev @vivliostyle/cli vfm
+npm install -g @vivliostyle/cli @vivliostyle/vfm
 ```
+
+> ⚠️ **VFM のパッケージ名は `@vivliostyle/vfm` です。** npm の `vfm` は同名の**まったく別のパッケージ**（Vue 用のフォームバリデーション）なので、入れても `vs build` は動きません。
+
+`package.json` の devDependencies にも同じ 2 つを記載していますが、そちらはプロジェクトで使うバージョンを記録するためのもので、`--save-dev` によるローカル導入では `vivliostyle` / `vfm` コマンドは PATH に現れません。
+
+導入できているかは `vs doctor` が検査します（不足していれば `vs doctor --fix` で導入できます）。
 
 ## 出力形式
 

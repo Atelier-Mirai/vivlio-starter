@@ -83,11 +83,13 @@ module VivlioStarter
         TOOLS = [
           Tool.new(label: 'node', kind: :brew, package: 'node', checks: %w[node]),
           Tool.new(label: 'vivliostyle CLI', kind: :npm, package: '@vivliostyle/cli', checks: %w[vivliostyle]),
+          # VFM は Vivliostyle CLI に同梱されない別パッケージ（`vfm` コマンドの提供元）
+          Tool.new(label: 'VFM', kind: :npm, package: '@vivliostyle/vfm', checks: %w[vfm]),
           Tool.new(label: 'textlint 一式', kind: :npm, package: :textlint_set, checks: %w[textlint]),
           Tool.new(label: 'mathjax-full', kind: :npm, package: 'mathjax-full', checks: %w[mathjax]),
           Tool.new(label: 'mermaid-cli', kind: :npm, package: '@mermaid-js/mermaid-cli', checks: %w[mermaid]),
           Tool.new(label: 'qpdf', kind: :brew, package: 'qpdf', checks: %w[qpdf]),
-          Tool.new(label: 'poppler', kind: :brew, package: 'poppler', checks: %w[pdfinfo pdftoppm]),
+          Tool.new(label: 'poppler', kind: :brew, package: 'poppler', checks: %w[pdfinfo pdftoppm pdftotext]),
           Tool.new(label: 'ghostscript', kind: :brew, package: 'ghostscript', checks: %w[gs]),
           Tool.new(label: 'imagemagick', kind: :brew, package: 'imagemagick', checks: %w[imagemagick]),
           Tool.new(label: 'librsvg', kind: :brew, package: 'librsvg', checks: %w[rsvg-convert]),

@@ -13,6 +13,7 @@
 #   GC-04: OrphanFileCheck - 未登録ファイル → :warn 1 件・detail に該当パス
 #   GC-05: CatalogFileCheck - catalog.yml なし → :error 1 件
 #   GC-06: NodeCheck - node なし（runner DI） → :error 1 件
+#   GC-07: VfmCheck  - vfm なし（runner DI） → :error 1 件・正しいパッケージ名を案内
 # ================================================================
 
 require 'test_helper'
@@ -104,6 +105,28 @@ module VivlioStarter
         assert_empty Guards::NodeCheck.new(runner: passing_runner).validate
       end
 
+      # GC-07: vfm が見つからなければ :error。
+      # 案内で肝心なのはパッケージ名——npm の `vfm` は同名の別物（Vue 用）で、
+      # それを入れても変換は動かないため、@vivliostyle/vfm と明示する
+      def test_should_report_error_with_scoped_package_name_when_vfm_is_unavailable
+        failing_runner = Class.new { def system(*) = false }.new
+
+        violations = Guards::VfmCheck.new(runner: failing_runner).validate
+
+        assert_equal 1, violations.size
+        assert_predicate violations.first, :error?
+        assert_includes violations.first.message, 'VFM'
+        assert violations.first.detail.any? { it.include?('@vivliostyle/vfm') },
+               'detail に正しいパッケージ名を含むべき'
+      end
+
+      def test_should_pass_when_vfm_is_available
+        passing_runner = Class.new { def system(*) = true }.new
+
+        assert_empty Guards::VfmCheck.new(runner: passing_runner).validate
+      end
+
+      # GS-01: 章の末尾に取り残された `---` は白紙を 1 枚増やすだけなので指摘する
       # ProjectRootCheck: config/book.yml の有無で判定
       def test_should_detect_project_root_by_book_yml
         with_temp_project do
