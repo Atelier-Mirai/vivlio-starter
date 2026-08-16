@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'etc'
 require 'fileutils'
 
 module VivlioStarter
@@ -13,6 +14,27 @@ module VivlioStarter
     # ================================================================
     module ResizeCommands
       module_function
+
+      # WebP 変換のプリセット。
+      #
+      # `method` は画質ではなく「圧縮を探す徹底度」（0〜6）である。`quality` を固定して
+      # いる以上、値を上げても見た目は変わらず、縮むのはファイルサイズだけ。
+      #
+      # **6 を選んではならない**（2026-08-16 実測）。5 → 6 で時間が 22 倍に跳ねる崖があり、
+      # 見返りはサイズ 1.5% 減にとどまる。しかも遅くなるのは**透過を持つ絵**に偏る——
+      # 同じ扉絵から透過を外すと 10.89 秒 → 0.35 秒（31 倍）で、ピクセル数は関係ない
+      # （800px へ縮めても 7.24 秒）。libwebp がアルファチャンネルの探索まで徹底的に行う
+      # ためで、章扉のようなイラストを持つ本ほど初回ビルドが遅くなる。スクリーンショット
+      # （透過なし・色数が少ない）では 6 でも 0.15 秒/枚で、症状が出ないため気づきにくい。
+      #
+      # 4 は libwebp / ImageMagick の既定値。3 でもサイズは実質同じ（+0.1%）で 11% 速いが、
+      # 既定に合わせておけばエンコーダが改良されたときにそのまま追従できる。
+      # 値を動かすときは resize_test.rb の回帰テストも一緒に見ること。
+      WEBP_PRESETS = {
+        '高精細' => { quality: 90, method: 4, max_px: 2000 },
+        '標準' => { quality: 85, method: 4, max_px: 1600 },
+        '軽量' => { quality: 75, method: 4, max_px: 1200 }
+      }.freeze
 
       RESIZE_DESC = {
         high: {
@@ -121,13 +143,7 @@ module VivlioStarter
         ENV['VERBOSE'] = '1' if options[:verbose]
         ENV['FORCE'] = '1' if options[:force]
 
-        presets = {
-          '高精細' => { quality: 90, method: 6, max_px: 2000 },
-          '標準' => { quality: 85, method: 6, max_px: 1600 },
-          '軽量' => { quality: 75, method: 6, max_px: 1200 }
-        }
-
-        preset = presets[preset_name]
+        preset = WEBP_PRESETS[preset_name]
         unless preset
           Common.log_error("未知のプリセットです: #{preset_name}")
           return
@@ -155,13 +171,15 @@ module VivlioStarter
 
         converted = 0
         skipped = 0
+        failed = []
+        tally = Mutex.new
 
-        files.each do |src|
+        each_in_parallel(files) do |src|
           dst = src.sub(/\.[^.]+\z/, '.webp')
 
           if ENV['FORCE'].nil? && File.exist?(dst) && File.mtime(dst) >= File.mtime(src)
             Common.log_info("skip: up-to-date #{dst}")
-            skipped += 1
+            tally.synchronize { skipped += 1 }
             next
           end
 
@@ -177,15 +195,18 @@ module VivlioStarter
           ]
 
           Common.log_info(cmd.join(' '))
-          unless system(*cmd)
-            Common.log_error("変換に失敗しました: #{src}")
-            return ResizeSummary.new(converted: converted, skipped: skipped)
+          if system(*cmd)
+            tally.synchronize { converted += 1 }
+          else
+            tally.synchronize { failed << src }
           end
-
-          converted += 1
         end
 
-        Common.log_success('画像変換が完了しました')
+        # 1 件目で打ち切らず、失敗した画像をすべて挙げる。並列で走るので順に止められない
+        # という事情もあるが、著者にとっても「あと何枚直せばよいか」が一度で分かるほうがよい
+        report_failed_conversions(failed)
+
+        Common.log_success('画像変換が完了しました') if failed.empty?
         summary = ResizeSummary.new(converted: converted, skipped: skipped)
 
         # --delete-originals: 変換成功した元ファイルを確認後に削除
@@ -211,6 +232,65 @@ module VivlioStarter
         summary
       end
       module_function :execute_resize_with_preset
+
+      # 変換できなかった画像をまとめて 🔴 で挙げる（1 件も無ければ何もしない）。
+      def report_failed_conversions(failed)
+        return if failed.empty?
+
+        Common.log_error(
+          "画像の変換に失敗しました（#{failed.size} 件）",
+          detail: "#{failed.first(10).map { "- #{it}" }.join("\n")}\n" \
+                  '対処: 上のファイルを `magick <ファイル> out.webp` で個別に試すと理由が読めます'
+        )
+      end
+      module_function :report_failed_conversions
+
+      # 外部コマンドの起動を伴う変換を並べて走らせる。
+      #
+      # スレッドで足りるのは、1 件ごとに magick / rsvg-convert のプロセスを起こす形で、
+      # Ruby 側は待っているだけだからである（`system` の間 GVL は解放される）。
+      # 実測 2026-08-16: スクリーンショット 60 枚が 7.6 秒 → 1.6 秒（10 並列・4.75 倍）。
+      #
+      # 枚数が 1 以下、または並列度 1 のときは逐次に落とす——スレッドを起こす意味がなく、
+      # ログの順序も保たれる。
+      def each_in_parallel(items, &)
+        list = Array(items)
+        concurrency = image_concurrency
+        return list.each(&) if concurrency <= 1 || list.size <= 1
+
+        Common.log_info("[resize] 並列変換 concurrency=#{concurrency}")
+        queue = Queue.new
+        list.each { queue << it }
+        sentinel = Object.new
+        concurrency.times { queue << sentinel }
+
+        workers = Array.new(concurrency) do
+          Thread.new do
+            loop do
+              item = queue.pop
+              break if item.equal?(sentinel)
+
+              yield(item)
+            end
+          end
+        end
+        workers.each(&:join)
+      end
+      module_function :each_in_parallel
+
+      # 画像変換の並列度。既定は CPU コア数（上限 8）。
+      #
+      # 8 で頭打ちにするのは、magick が 1 プロセスあたり画像 1 枚を丸ごとメモリに載せるため。
+      # 大判の原画を多く持つ本で、コア数のぶんだけ無制限に起こすと実メモリを圧迫する。
+      # 実測が必要な場面のために VIVLIO_IMAGE_CONCURRENCY で上書きできる（1 で逐次）。
+      def image_concurrency
+        override = ENV['VIVLIO_IMAGE_CONCURRENCY'].to_i
+        return override if override.positive?
+
+        cores = Etc.respond_to?(:nprocessors) ? Etc.nprocessors : 2
+        [cores, 8].min.clamp(1, 8)
+      end
+      module_function :image_concurrency
 
       # SVG → PNG（rsvg-convert）→ lossless WebP（magick）変換
       # Chromium PDF エンジンが SVG 内の <path>/<text> を Type 3 フォントとして
@@ -244,7 +324,9 @@ module VivlioStarter
 
         # --- Phase: 変換実行 ---
         converted = 0
-        svg_files.each do |svg_path|
+        tally = Mutex.new
+
+        each_in_parallel(svg_files) do |svg_path|
           webp_path = svg_path.sub(/\.svg\z/i, '.webp')
 
           # mtime 比較でスキップ（--force 時は強制再生成）
@@ -264,6 +346,8 @@ module VivlioStarter
           end
 
           # Step 2: PNG → lossless WebP（magick で可逆圧縮）
+          # ここは非可逆側と違って method=6 のままでよい。lossless では画質が定義上変わらず、
+          # 対象の絵文字が小さいため 4 と 6 で時間もサイズも同じだった（実測 2026-08-16: 0.02 秒・472 バイト）
           magick_cmd = ['magick', png_tmp, '-define', 'webp:lossless=true', '-define', 'webp:method=6', '-strip', webp_path]
           Common.log_info("[SVG→WebP] magick lossless: #{webp_path}")
           unless system(*magick_cmd)
@@ -274,7 +358,7 @@ module VivlioStarter
 
           # 中間 PNG を削除
           FileUtils.rm_f(png_tmp)
-          converted += 1
+          tally.synchronize { converted += 1 }
         end
 
         Common.log_success("[SVG→WebP] #{converted} 件の SVG を lossless WebP に変換しました")
