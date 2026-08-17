@@ -31,6 +31,7 @@ require 'tempfile'
 require 'yaml'
 
 require_relative 'common'
+require_relative 'masking'
 require_relative 'textlint_formatter'
 require_relative 'token_resolver'
 require_relative 'lint/notation_guard'
@@ -494,11 +495,19 @@ module VivlioStarter
         end
 
         # 抑止コメントの次の行番号を集める。コメント自身の行は数えない。
+        #
+        # コード領域の中は見ない——校正の使い方を解説する原稿はフェンスの中へ
+        # コメントを書き写すので、それを本物の指示と取ると例示が抑止として働く
+        # （Tokenizer / ProseChecker と同じ扱いに揃える）。
         def next_line_suppressions(text)
           hushed  = Set.new
           pending = false
+          prose   = Set.new
+          Masking.each_prose_line(text) { |_line, lineno| prose << lineno }
 
           text.each_line.with_index(1) do |line, lineno|
+            next unless prose.include?(lineno)
+
             if pending
               hushed << lineno
               pending = false

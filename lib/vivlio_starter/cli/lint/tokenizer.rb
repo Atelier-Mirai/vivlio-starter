@@ -76,16 +76,26 @@ module VivlioStarter
         end
 
         # vs-lint コメントに基づいて除外すべき行番号のセットを構築する
+        #
+        # **コード領域の中は見ない。** 校正の使い方を解説する原稿は、フェンスの中へ
+        # `<!-- vs-lint-disable -->` を書き写す。それを本物の指示として解釈すると、
+        # 例示のつもりの 1 行がファイル末尾までの抑止になる（実測: ```markdown の中に
+        # 閉じない disable を置くと、その下の本文の綴り誤りが検出されなくなった）。
+        # 記法かどうかの判定は Masking へ委ね、ProseChecker と同じ扱いに揃える。
+        #
         # @param content [String] Markdownファイル全体の内容
         # @return [Array(Set<Integer>, Integer?)] 除外行番号セットと、
         #   未クローズ disable ブロックの開始行番号（クローズ済みなら nil）
         def build_excluded_lines(content)
           excluded_lines = Set.new
           disable_opened_at = nil
+          prose = Set.new
+          Masking.each_prose_line(content) { |_line, lineno| prose << lineno }
           line_no = 0
 
           content.each_line do |line|
             line_no += 1
+            next unless prose.include?(line_no)
 
             # vs-lint-disable コメント行自体を除外
             if line.match?(VS_LINT_DISABLE)
@@ -117,12 +127,17 @@ module VivlioStarter
 
         # vs-lint-disable が閉じられないままファイル末尾に達した場合に警告を出す。
         # 著者が誤って enable を書き忘れたケースを検知するためのガード。
+        #
+        # **`Kernel#warn` を使ってはならない。** `bin/vs` は起動時に `RUBYOPT=-W0` を
+        # 付けて自身を再実行しており、`-W0` は `Kernel#warn` の出力を丸ごと捨てる。
+        # そのため `vs lint` 経由ではこの警告が一度も著者へ届いていなかった
+        # （2026-08-18 に判明。ライブラリを直接叩くテストでは出るので気づきにくい）。
         # @param path [String, nil] ファイルパス（警告メッセージ用）
         # @param opened_at [Integer] disable が開始された行番号
         def warn_unclosed_disable(path, opened_at)
           location = path ? "#{path}:#{opened_at}" : "line #{opened_at}"
-          warn "[vs-lint] 警告: #{location} の <!-- vs-lint-disable --> が " \
-               '<!-- vs-lint-enable --> で閉じられていません。ファイル末尾まで lint が無効化されます。'
+          $stderr.puts "🟡 [vs-lint] #{location} の <!-- vs-lint-disable --> が " \
+                       '<!-- vs-lint-enable --> で閉じられていません。ファイル末尾まで lint が無効化されます。'
         end
 
         # @param line [String] 1行のMarkdownテキスト

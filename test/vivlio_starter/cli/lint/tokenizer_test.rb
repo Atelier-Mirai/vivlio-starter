@@ -157,6 +157,43 @@ class TestTokenizer < Minitest::Test
     assert_empty words
   end
 
+  # コードフェンスの中のコメントは「記法の例示」であって指示ではない。
+  # 校正の使い方を解説する原稿はフェンスへ書き写すので、それを本物の指示と取ると
+  # 例示のつもりの 1 行がファイル末尾までの抑止になる（実測で speling が消えた）
+  def test_vs_lint_comment_inside_code_fence_is_not_a_directive
+    content = <<~MD
+      ````markdown
+      <!-- vs-lint-disable -->
+      除外の例です。
+      ````
+
+      これは speling ミスです。
+    MD
+
+    out, err = capture_io { @words = T.tokenize(content, path: 'sample.md').map { _1[0] } }
+
+    assert_includes @words, 'speling', 'フェンスの外の本文は検査対象のまま'
+    refute_match(/vs-lint/, err + out, '例示を未クローズと誤解して警告しない')
+  end
+
+  # 地の文のコメントは従来どおり効く（フェンス除外で殺していないこと）
+  def test_vs_lint_comment_outside_code_fence_still_works
+    content = <<~MD
+      ````markdown
+      <!-- vs-lint-disable -->
+      ````
+
+      <!-- vs-lint-disable-next-line -->
+      これは anthoer ですが抑止されます。
+      これは mistaek なので検出されます。
+    MD
+
+    words = T.tokenize(content).map { _1[0] }
+
+    refute_includes words, 'anthoer'
+    assert_includes words, 'mistaek'
+  end
+
   # URLが除去されてURL内の単語が誤検出されないことを確認する
   def test_url_removed
     words = T.tokenize("Visit https://example.com for details\n").map { _1[0] }

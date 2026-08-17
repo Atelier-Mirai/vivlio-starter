@@ -261,6 +261,19 @@ class TestProseChecker < Minitest::Test
     assert_equal ['完ぺき => 完璧'], labels(check(body))
   end
 
+  # フェンスの中のコメントは記法の例示であって指示ではない
+  def test_should_not_treat_comments_inside_code_fences_as_directives
+    body = <<~MD
+      ````markdown
+      <!-- vs-lint-disable -->
+      ````
+
+      だ円を描きます。
+    MD
+
+    assert_equal ['だ円 => 楕円'], labels(check(body))
+  end
+
   # 抑止した行は --fix の置換対象からも外れる（指摘しないものを直すのは筋が通らない）
   def test_should_not_fix_disabled_lines
     body = "<!-- vs-lint-disable-next-line -->\nだ円は交ぜ書きです。\n完ぺきです。\n"

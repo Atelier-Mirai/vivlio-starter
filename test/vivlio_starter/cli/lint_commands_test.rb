@@ -450,6 +450,22 @@ module VivlioStarter
         assert_equal Set[4, 8], runner.send(:next_line_suppressions, text)
       end
 
+      # フェンスの中のコメントは記法の例示であって指示ではない
+      # （Tokenizer / ProseChecker と同じ扱い）
+      def test_next_line_suppression_ignores_comments_inside_code_fences
+        text = <<~MD
+          ````markdown
+          <!-- vs-lint-disable-next-line -->
+          ````
+
+          この行は抑止されない。
+        MD
+
+        runner = LintCommands::LintRunner.new([], {})
+
+        assert_empty runner.send(:next_line_suppressions, text)
+      end
+
       # 囲む形（disable / enable）は textlint 側が処理するので、こちらは拾わない
       def test_next_line_suppression_ignores_the_range_form
         text = "<!-- vs-lint-disable -->\n囲まれた行。\n<!-- vs-lint-enable -->\n"
