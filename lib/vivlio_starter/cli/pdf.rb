@@ -4,6 +4,7 @@ require 'English'
 
 require 'rbconfig'
 require 'fileutils'
+require 'open3'
 
 require_relative 'pdf/pdf_to_jpeg'
 require_relative 'pdf/jpeg_to_pdf'
@@ -170,6 +171,55 @@ module VivlioStarter
       #   - true: vs build の Step 12 から呼ばれる。PDF は生成済みのため、
       #     gs 不在・圧縮失敗でもビルドを止めず 🟡 でスキップを案内して続行する
       class PdfCompressor
+        # 入稿用 PDF かどうかを判定する（`print-pdf-compress-guard-spec.md` §3）。
+        #
+        # **2 つの手掛かりを OR で見る。** どちらか一方では取りこぼす——ファイル名は著者が
+        # リネームすると外れ、ページボックスは `crop_marks: false` の本では効かない
+        # （塗り足しが無く MediaBox = TrimBox のままになる）。両方が外れる「`crop_marks`
+        # なし ＋ リネーム済み」は検出できないが、それは仕様上の限界として受け入れる——
+        # 判定を緩めると閲覧用 PDF にまで警告が出て狼少年になる（§3.3）。
+        #
+        # 純粋関数なのでクラスメソッドに置く（インスタンス状態にも設定にも依らずテストできる）。
+        def self.print_pdf_input?(path, project_name = configured_project_name)
+          print_pdf_filename?(path, project_name) || bleed_box?(path)
+        end
+
+        # 名前で見る。
+        #
+        # **`generate_print_pdf_filename` の戻り値と厳密一致させてはならない。**
+        # `include_version: false` なら `_v1.0.0` が付かず、手元には過去のバージョンで
+        # ビルドしたものも残っている。バージョンは付いたり付かなかったりするが
+        # **`_print` は必ず付く**ので、前方一致で 3 つの場面すべてを拾う（§3.1）。
+        def self.print_pdf_filename?(path, project_name)
+          return false if project_name.to_s.empty?
+
+          File.basename(path).start_with?("#{project_name}_print")
+        end
+
+        # 設定からプロジェクト名を引く（設定が無い直接ビルド等では nil）。
+        def self.configured_project_name
+          return nil unless Common.configured?
+
+          Common::CONFIG.project&.name
+        end
+
+        # ボックスで見る。入稿用は塗り足しぶん MediaBox が広く、TrimBox が仕上がり線を指す。
+        #
+        # `Pdf.provider` を経由せず `pdfinfo -box` で足りる——入稿用かどうかを知るだけなら、
+        # プロバイダの重い依存を持ち込む必要がない（§5）。
+        def self.bleed_box?(path)
+          out, status = Open3.capture2('pdfinfo', '-box', path, err: File::NULL)
+          return false unless status.success?
+
+          media = out[/^MediaBox:\s*(.+)$/, 1]
+          trim  = out[/^TrimBox:\s*(.+)$/, 1]
+          return false unless media && trim
+
+          media.split != trim.split
+        rescue StandardError
+          false
+        end
+
         def initialize(options, cli_input = nil, cli_output = nil)
           @options = options || {}
           @cli_input = cli_input
@@ -184,6 +234,8 @@ module VivlioStarter
           apply_verbose
           determine_paths
           ensure_input_exists
+          return unless confirm_print_pdf_compression
+
           Common.log_action("PDFを圧縮しています…（入力: #{input_pdf} → 出力: #{output_pdf}）")
           compress_pdf
           report_result
@@ -242,6 +294,36 @@ module VivlioStarter
           else
             File.join(dir, "#{base}_compressed.pdf")
           end
+        end
+
+        # 入稿用 PDF を圧縮しようとしていたら引き止める（`print-pdf-compress-guard-spec.md` §4）。
+        #
+        # **止めない。尋ねる。** 出力は `_compressed` 付きで**上書きしない**ので、事故は
+        # 「圧縮版を入稿してしまう」ことであって原本の破壊ではない。加えて、入稿以外の用途で
+        # 配りたいなど、入稿用 PDF を意図して圧縮する場面もありうる。
+        #
+        # 圧縮すると Ghostscript が画像を 150 dpi へ落とし全画像を JPEG へ再エンコードする
+        # ため、印刷所が求める 300〜350 dpi を下回る（実測 2026-08-16: 97.2 MB → 10.6 MB・
+        # 中央値 564 ppi → 150 ppi）。**警告文には理由と数値を入れる**——「使わないでください」
+        # だけでは、なぜ駄目なのかが分からず著者は次も同じことをする。
+        #
+        # 判定するのは入力を明示したときだけ。引数なしは book.yml から閲覧用を解決するので、
+        # 入稿用を選びようがない（§2）。ビルド経路も三重に守られているので触らない（§1）。
+        def confirm_print_pdf_compression
+          return true if pipeline_mode? || cli_input.nil?
+          return true unless self.class.print_pdf_input?(input_pdf)
+
+          Common.log_warn(
+            "入稿用の PDF を圧縮しようとしています: #{input_pdf}",
+            detail: "圧縮すると画像が 150 dpi まで落ち、印刷所の基準（300〜350 dpi）を下回ります\n" \
+                    '入稿には圧縮していない PDF を使ってください'
+          )
+          # 非対話（パイプ・CI）では尋ねられない。原則「止めない」に従って続行する
+          return true unless $stdin.tty?
+          return true if Common.confirm?('それでも圧縮しますか？')
+
+          Common.log_info('圧縮を中止しました')
+          false
         end
 
         # 入力 PDF の存在を確認する
