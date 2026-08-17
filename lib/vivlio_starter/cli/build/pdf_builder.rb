@@ -4,6 +4,7 @@ require 'fileutils'
 
 require_relative '../techbook/processor'
 require_relative '../code_line_blocks'
+require_relative 'derived_image'
 require_relative 'pdf_page_map_extractor'
 require_relative 'vivliostyle_config_writer'
 
@@ -50,6 +51,7 @@ module VivlioStarter
           inject_matter_anchors!
           inject_rotate_table_anchors!
           convert_code_lines_for_pdf!
+          swap_images_for_pdf!
           # ビルド生成画像（数式 SVG）を pdf/ へミラーし、消費者 dir 相対の
           # images/math/… 参照を解決する（P4b §2.2）。存在すれば上書きコピー。
           images_src = File.join(Common::BUILD_HTML_DIR, 'images')
@@ -160,6 +162,64 @@ module VivlioStarter
         rescue StandardError => e
           Common.log_warn("[PDF] コードの行ブロック化に失敗（元のまま維持）: #{e.message}")
           false
+        end
+
+        # pdf/ の HTML が指す画像を、PDF 向けの派生へ差し替える。
+        #
+        # PDF は WebP を格納できないため、素材のまま渡すと Chromium がデコードして
+        # Flate へ入れ直し、写真 1 枚が 7 倍に膨らむ（`image-format-per-target-spec.md` §1.2）。
+        # 書き込むのは pdf/ のコピーだけなので、html/ の原本を読む EPUB / Kindle には
+        # 現れない——EPUB では WebP が最適なので、原本がそのままであることに意味がある（同 §3.1）。
+        #
+        # 対象は asset_prefix で始まる src だけ。data URI のプレースホルダーも、ビルド
+        # 生成物（`images/math/…` の数式 SVG）も、この条件で自然に外れる。
+        def swap_images_for_pdf!
+          staged = Dir.glob(File.join(Common::BUILD_PDF_DIR, '*.html'))
+          return if staged.empty?
+
+          # --- Phase: 参照されている素材を集める（HTML 上の src → 実ファイル） ---
+          sources = {}
+          staged.each do |path|
+            File.read(path, encoding: 'utf-8').scan(/<img\b[^>]*?\bsrc="([^"]+)"/) do
+              src = ::Regexp.last_match(1)
+              file = source_file_for(src)
+              sources[src] = file if file
+            end
+          end
+          return if sources.empty?
+
+          # --- Phase: 派生をまとめて作る（並列。キャッシュが効けば即返る） ---
+          derived = DerivedImage.prepare_all(sources.values)
+          return if derived.empty?
+
+          # --- Phase: pdf/ の HTML だけ書き換える ---
+          swapped = sources.filter_map { |src, file| [src, derived[file]] if derived[file] }.to_h
+          return if swapped.empty?
+
+          rewrite_staged_image_srcs!(staged, swapped)
+          Common.log_info("[stage] PDF 向けの画像へ差し替えました: #{swapped.size} 件")
+        end
+
+        # HTML 上の src から素材の実ファイルパスを引く。プロジェクトルート相対
+        # （asset_prefix 付き）で参照されているものだけを対象にする。
+        def source_file_for(src)
+          prefix = Common.asset_prefix
+          return nil unless src.start_with?(prefix)
+
+          path = src.delete_prefix(prefix)
+          File.file?(path) ? path : nil
+        end
+
+        # staged HTML の img src を差し替える。src 以外の属性（alt・class）は触らない。
+        def rewrite_staged_image_srcs!(staged, swapped)
+          staged.each do |path|
+            html = File.read(path, encoding: 'utf-8')
+            updated = html.gsub(/<img\b[^>]*?\bsrc="([^"]+)"/) do |tag|
+              replacement = swapped[::Regexp.last_match(1)]
+              replacement ? tag.sub(/src="[^"]+"/, %(src="#{Common.asset_prefix}#{replacement}")) : tag
+            end
+            File.write(path, updated, encoding: 'utf-8') unless updated == html
+          end
         end
 
         # 特殊ページ HTML（前付・奥付）だけを html/ から pdf/ へコピーする。
