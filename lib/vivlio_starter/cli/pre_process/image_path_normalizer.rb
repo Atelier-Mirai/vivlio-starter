@@ -113,9 +113,6 @@ module VivlioStarter
                                "images/#{chapter_dir}/#{image_path}"
                              end
 
-                # 生成物ポリシーに合わせて拡張子を .webp に寄せる（png/jpg のみ対象）
-                normalized = normalized.sub(/\.(png|jpe?g)\z/i, '.webp')
-
                 original_image_name = File.basename(image_path)
                 # 元ファイルの行番号があればそちらを使う
                 source_ln = source_line_map[original_image_name] || line_number
@@ -133,7 +130,8 @@ module VivlioStarter
         # 存在確認とログはルート基準の images/... パスで行う（著者に分かる表記のため）。
         def resolved_placeholder_or_path(alt_text, normalized_path, source_filename = nil, line_number = nil,
                                          original_image_name = nil)
-          return "![#{alt_text}](#{Common.asset_prefix}#{normalized_path})" if image_exists_for?(normalized_path)
+          resolved = resolve_existing_image(normalized_path)
+          return "![#{alt_text}](#{Common.asset_prefix}#{resolved})" if resolved
 
           image_name = original_image_name || File.basename(normalized_path)
 
@@ -171,19 +169,43 @@ module VivlioStarter
           map
         end
 
+        # 拡張子違いを探すときの順。**png / jpg を webp より先に見る**——同名の原本が
+        # 残っていれば、そちらから派生を作るほうが劣化が一段で済む
+        # （`EpubBuilder#transcode_source_for` と同じ流儀）。
+        FALLBACK_EXTENSIONS = %w[.png .jpg .jpeg .webp].freeze
+
+        # 原稿の参照を、実在するファイルへ解決する（見つからなければ nil）。
+        #
+        # **書かれた拡張子が最優先。** それが無いときだけ拡張子違いを探す——著者が
+        # `myawesome.jpg` を置いて `![](myawesome.png)` と書いても拾えるようにするためで、
+        # 形式は本仕様が機械的に決めるもので著者の関心事ではない
+        # （`image-format-per-target-spec.md` §3.1）。
+        #
+        # かつては `.png` / `.jpg` を無条件で `.webp` へ読み替えていた。存在しない webp を
+        # 指す HTML が出来上がり、`vs build` の Step 1 が `vs resize` を呼んで webp を作る
+        # ことでかろうじて成立していたが、**素材を書き換えずに派生で解く**方式にした以上、
+        # その前提は要らない。
+        def resolve_existing_image(normalized_path)
+          return normalized_path if image_file_exists?(normalized_path)
+          return nil if normalized_path.end_with?('.svg')
+
+          stem = normalized_path.sub(/\.[^.]+\z/, '')
+          FALLBACK_EXTENSIONS.each do |ext|
+            candidate = "#{stem}#{ext}"
+            return candidate if image_file_exists?(candidate)
+          end
+          nil
+        end
+
+        # images/ 基準で実ファイルがあるか。
+        def image_file_exists?(path)
+          relative_path = path.sub(%r{\Aimages/}, '')
+          File.file?(File.expand_path(relative_path, Common::IMAGES_DIR))
+        end
+
         # 画像ディレクトリ内の拡張子違いを含めて存在を確認する
         def image_exists_for?(normalized_path)
-          relative_path = normalized_path.sub(%r{\Aimages/}, '')
-          base_path = File.expand_path(relative_path, Common::IMAGES_DIR)
-
-          # SVGの場合は直接チェック
-          return File.exist?(base_path) if base_path.end_with?('.svg')
-
-          # その他の画像形式は拡張子違いをチェック
-          base_without_ext = base_path.sub(/\.webp\z/i, '')
-          %w[.webp .png .jpg .jpeg].any? do |ext|
-            File.exist?("#{base_without_ext}#{ext}")
-          end
+          !resolve_existing_image(normalized_path).nil?
         end
 
         # プレースホルダーSVGを使用してデータURIを生成する

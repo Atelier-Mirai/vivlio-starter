@@ -9,7 +9,7 @@
 | `open` | プレビュー | PDFを即座に開く |
 | `pdf:compress` | 圧縮 | PDFを軽量化する |
 | `clean` | メンテナンス | 不要な生成ファイルを削除する |
-| `resize` | 画像管理 | イメージ画像をWebPに一括変換する |
+| `resize` | 画像管理 | 手元の素材画像を WebP に一括変換する |
 
 ## vs open — PDFを開く
 
@@ -142,7 +142,7 @@ vs clean --all
 ## vs resize — 画像をWebPに変換する
 
 :::{.section-lead}
-`vs resize` は `images/` ディレクトリ内の PNG・JPG 画像を WebP 形式に一括変換します。ビルド時にも自動実行されますが、手動で変換したい場合に使います。
+`vs resize` は `images/` ディレクトリ内の PNG・JPG 画像を WebP 形式に一括変換します。**素材そのものを軽くしたいときに使うコマンドです。**
 :::
 
 ### 基本的な使い方
@@ -158,24 +158,13 @@ vs resize --high
 vs resize --low
 ```
 
-`vs build` はビルド時に WebP が存在する場合はそのままスキップします。つまり `vs resize --high` で事前に高品質の WebP を生成しておけば、`vs build` 実行時にその高品質 WebP がそのまま使われます。品質を変えたい場合は `vs resize --force` で上書き再生成してください。
+既存の WebP があればスキップします。品質を変えたい場合は `vs resize --force` で上書き再生成してください。
 
-### vs build と vs resize の関係
+### vs build との関係
 
-`vs build` は内部的に `vs resize`（標準品質）を呼んで WebP 変換を行います。既存の WebP がある場合は上書きしないのが基本仕様です。
+**`vs build` は `vs resize` を呼びません。** 素材はそのまま使い、PDF・EPUB・Kindle それぞれに適した画像をビルドが `.cache/` に用意します（次節）。したがって `vs resize` を実行してもしなくても、出来上がる本の大きさは変わりません。
 
-WebP が生成済みの状態で `vs build --high` を実行しても、既存の WebP の作成日時が元画像より新しければスキップされ、既存の WebP がそのまま使われます。
-
-画質を変更したい場合は、以下のどちらかを行ってください。
-
-```bash
-# 方法1: 先に高品質で上書き変換してからビルド
-vs resize --high --force
-vs build
-
-# 方法2: ビルド時に --force を付けて上書き
-vs build --high --force
-```
+`vs resize` を使うのは **`images/` 自体を軽くしたいとき**です。4K の写真を大量に置いていると Git リポジトリが膨らむので、そうした場合に手元の素材を縮めます。
 
 ### PDF 向けの画像は別に用意されます
 

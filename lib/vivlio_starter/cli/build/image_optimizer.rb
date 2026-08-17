@@ -11,30 +11,22 @@ module VivlioStarter
       module ImageOptimizer
         module_function
 
-        # Step 2: 画像最適化（WebP 変換/リサイズ）
+        # Step 1: ビルド前の画像準備。
+        #
+        # **かつてここで `images/` へ `.webp` を並置していたが、やめた**（2026-08-17・
+        # `image-format-per-target-spec.md` §3.1）。あれは「原稿の `.png` / `.jpg` 参照を
+        # 無条件で `.webp` へ読み替える」実装を成立させるためのもので、画質やサイズのために
+        # やっていたわけではない。読み替えを撤去し、**素材はそのまま使ってターゲットごとの
+        # 派生をビルドが作る**方式へ移したので、この変換は要らなくなった。
+        #
+        # 素材そのものを軽くしたい著者は `vs resize` を明示的に実行する（§3.5：素材を
+        # 機械が黙って書き換えないという原則の出口）。
+        #
+        # 残すのは Techbook モードの SVG ラスタライズだけ。これは Type 3 フォント対策で、
+        # 画像最適化とは別の目的を持つ。
         def optimize_images!(preset = nil)
-          p = preset&.to_sym || :medium
-          preset_task = { high: 'resize:high', low: 'resize:low' }[p] || 'resize:medium'
-
-          Common.log_action("[Step 1] 画像の最適化（WebP 変換/リサイズ）を実行します… preset=#{p}")
-          # data/ 配下の png/jpg も対象に含める（QueryStream データ画像の .webp 並置・spec §3.6）。
           dirs = [Common::IMAGES_DIR, File.join(Common::STYLESHEETS_DIR, 'images'), Common.data_dir]
-          dirs.each do |d|
-            if Dir.exist?(d)
-              Common.log_info("[Step 1] 対象ディレクトリ: #{d}（preset: #{p}）")
-              case preset_task
-              when 'resize:high'
-                ResizeCommands.execute_resize_high(d)
-              when 'resize:low'
-                ResizeCommands.execute_resize_low(d)
-              else
-                ResizeCommands.execute_resize_medium(d)
-              end
-            else
-              Common.log_info("[Step 1] スキップ（存在しません）: #{d}")
-            end
-          end
-          Common.log_success('[Step 1] 画像最適化が完了しました')
+          Common.log_info("[Step 1] 素材はそのまま使います（preset=#{preset || :medium} は SVG 変換には影響しません）")
 
           # Techbook モード: 全 SVG を rsvg-convert → lossless WebP に変換
           # Chromium PDF エンジンが SVG 内のパスを Type 3 フォントとして埋め込む問題を回避する
