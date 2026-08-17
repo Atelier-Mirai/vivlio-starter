@@ -24,9 +24,9 @@ module VivlioStarter
         #
         # 残すのは Techbook モードの SVG ラスタライズだけ。これは Type 3 フォント対策で、
         # 画像最適化とは別の目的を持つ。
-        def optimize_images!(preset = nil)
+        def optimize_images!
           dirs = [Common::IMAGES_DIR, File.join(Common::STYLESHEETS_DIR, 'images'), Common.data_dir]
-          Common.log_info("[Step 1] 素材はそのまま使います（preset=#{preset || :medium} は SVG 変換には影響しません）")
+          Common.log_info('[Step 1] 素材はそのまま使います（派生はターゲットごとにビルドが作ります）')
 
           # Techbook モード: 全 SVG を rsvg-convert → lossless WebP に変換
           # Chromium PDF エンジンが SVG 内のパスを Type 3 フォントとして埋め込む問題を回避する

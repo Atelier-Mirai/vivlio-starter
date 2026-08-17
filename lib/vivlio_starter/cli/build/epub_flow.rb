@@ -68,6 +68,12 @@ module VivlioStarter
           # --- Phase: 参照資産を消費者 dir 内へローカライズ（E2: パッケージルート＝dir） ---
           Build::EpubBuilder.localize_assets!(dir, flavor:)
 
+          # --- Phase: クリーン EPUB の PNG / JPEG を WebP へ寄せる ---
+          # **ローカライズより後**でなければならない。差し替えた元ファイルをパッケージから
+          # 落とすので、コピーが済んでいないと空振りし、未参照の重複が残る（実測で +876KB）。
+          # Kindle は WebP 非対応なので通さない。
+          Build::EpubBuilder.transcode_to_webp_for_clean_epub!(epub_htmls) unless flavor == :kindle
+
           # --- Phase: EPUB 用 vivliostyle.config.js 生成（entryContext = dir） ---
           config_path = Build::EpubBuilder.generate_epub_config!(flavor:, dir:)
 

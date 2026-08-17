@@ -12,8 +12,7 @@
 #   - 単章ビルド（章番号指定）: 指定章のみの PDF を生成
 #
 # 主要オプション:
-#   - --[no]-resize: 画像最適化の有効/無効
-#   - --high/--medium/--low: 画像品質プリセット
+#   - --[no]-resize: SVG ラスタライズ（Type 3 対策）の有効/無効
 #   - --[no]-compress: PDF 圧縮の有効/無効
 #
 # 依存:
@@ -47,10 +46,7 @@ module VivlioStarter
 
         options do
           option '--theme <color>', 'テーマカラー（.md 直接指定時のみ有効）', key: :theme
-          option '--[no]-resize', '画像最適化を行う（--no-resize で無効）', default: true, key: :resize
-          option '--high', '画像最適化プリセット: 高品質', default: false
-          option '--medium', '画像最適化プリセット: 中品質', default: false
-          option '--low', '画像最適化プリセット: 低品質', default: false
+          option '--[no]-resize', 'SVG のラスタライズを行う（--no-resize で無効）', default: true, key: :resize
           option '--[no]-compress', 'PDF圧縮を行う（--no-compress でスキップ）', key: :compress
           option '--[no]-clean', '中間生成物をクリーンアップ（--no-clean でスキップ）', default: true, key: :clean
           option '--[no]-verify', 'リンク・画像の基本検証を実行する（--no-verify でスキップ）', default: true, key: :verify
@@ -185,7 +181,6 @@ module VivlioStarter
           ignored << '--no-verify' if options[:verify] == false
           ignored << '--verify-links' if options[:verify_links]
           ignored << (options[:compress] ? '--compress' : '--no-compress') unless options[:compress].nil?
-          ignored.concat(%w[--high --medium --low].select { options[it.delete_prefix('--').to_sym] })
           return if ignored.empty?
 
           common.log_warn("直接ビルドでは次のオプションは無視されます: #{ignored.join(', ')}",

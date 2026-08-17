@@ -460,17 +460,19 @@ module VivlioStarter
         end
 
         # 画像最適化をプリセット付きで実行する
+        # ここに残っているのは Techbook モードの SVG ラスタライズだけで、画像の WebP 変換は
+        # やめた（`ImageOptimizer.optimize_images!` のコメント参照）。品質プリセット
+        # （`--high` / `--medium` / `--low`）は行き先を失ったので 2026-08-17 に撤去した。
+        #
+        # `--no-resize` はそのラスタライズを飛ばす——**入稿用 PDF では使ってはならない**。
+        # Chromium が SVG 内のパスを Type 3 フォントとして埋め込み、印刷所に断られることがある。
         def run_step1_optimize_images
           if options[:resize] == false
-            Common.log_action('[optimize images] 画像最適化をスキップします（--no-resize）')
+            Common.log_action('[optimize images] SVG のラスタライズをスキップします（--no-resize）')
             return
           end
 
-          if options.values_at(:high, :low).count(true) > 1
-            Common.log_warn('[optimize images] --high と --low が同時指定されています。--high を優先します')
-          end
-          preset = %i[high low].find { |k| options[k] } || :medium
-          Build::ImageOptimizer.optimize_images!(preset)
+          Build::ImageOptimizer.optimize_images!
         end
 
         # カバー資産（表紙 PDF・表紙 JPG）を分岐前に 1 回だけ作る。

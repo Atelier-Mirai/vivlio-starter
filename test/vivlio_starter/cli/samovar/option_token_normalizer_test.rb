@@ -38,7 +38,7 @@ module VivlioStarter
 
           assert_includes flags, '--clean'
           assert_includes flags, '--no-clean'
-          assert_includes flags, '--high'
+          assert_includes flags, '--verify-links'
           assert_includes flags, '-h'
           assert_includes flags, '--theme'
         end
@@ -125,11 +125,11 @@ module VivlioStarter
         end
 
         def test_should_keep_unrelated_options_and_their_order
-          command = BuildCommand.new(['10-intro', '--no-clean', '--high', '--log=debug'])
+          command = BuildCommand.new(['10-intro', '--no-clean', '--verify-links', '--log=debug'])
 
           assert_equal ['10-intro'], command.targets
           assert_equal false, command.options[:clean]
-          assert_equal true, command.options[:high]
+          assert_equal true, command.options[:verify_links]
           assert_equal 'debug', command.options[:log_level]
         end
 

@@ -140,12 +140,74 @@ module VivlioStarter
         end
       end
 
+      # --- クリーン EPUB 向け（Kindle とは逆向きに PNG / JPEG → WebP） ---
+
+      # PNG は WebP へ変換され、src が staging へ差し替わる
+      def test_should_transcode_png_to_webp_for_clean_epub
+        in_temp_project do
+          make_image('images/10-intro/diagram.png', 'xc:blue')
+          write_html('chapter.html', 'images/10-intro/diagram.png')
+
+          Builder.transcode_to_webp_for_clean_epub!(['chapter.html'])
+          staged = staged_src(File.read('chapter.html'))
+
+          assert_match(%r{\Aimages/_epub_assets/[0-9a-f]{16}\.webp\z}, staged)
+          assert_path_exists staged
+        end
+      end
+
+      # 差し替えた元ファイルはパッケージから落とす（未参照のまま太らせない）
+      def test_should_drop_the_packaged_original_after_transcoding
+        in_temp_project do
+          make_image('images/10-intro/diagram.png', 'xc:blue')
+          write_html('chapter.html', 'images/10-intro/diagram.png')
+
+          Builder.transcode_to_webp_for_clean_epub!(['chapter.html'])
+
+          refute_path_exists 'images/10-intro/diagram.png'
+        end
+      end
+
+      # 参照されていない画像は残す。Kindle と違い png/jpg の除去は最適化にすぎず、
+      # 著者の CSS が参照していれば壊す側に回るため、丸ごと外す手は採らない
+      def test_should_keep_images_that_are_not_referenced
+        in_temp_project do
+          make_image('images/10-intro/diagram.png', 'xc:blue')
+          make_image('images/10-intro/unreferenced.png', 'xc:green')
+          write_html('chapter.html', 'images/10-intro/diagram.png')
+
+          Builder.transcode_to_webp_for_clean_epub!(['chapter.html'])
+
+          assert_path_exists 'images/10-intro/unreferenced.png'
+        end
+      end
+
+      # 素材が既に WebP なら何も起きない（本書がこれに当たる）
+      def test_should_leave_webp_sources_untouched
+        in_temp_project do
+          make_webp('images/10-intro/photo.webp', 'xc:red')
+          write_html('chapter.html', 'images/10-intro/photo.webp')
+          before = File.read('chapter.html')
+
+          Builder.transcode_to_webp_for_clean_epub!(['chapter.html'])
+
+          assert_equal before, File.read('chapter.html')
+        end
+      end
+
       private
 
       def in_temp_project(&)
         Dir.mktmpdir('vs-webp-transcode') do |dir|
           Dir.chdir(dir, &)
         end
+      end
+
+      # magick で任意形式のフィクスチャを生成する
+      def make_image(path, color)
+        FileUtils.mkdir_p(File.dirname(path))
+        system('magick', '-size', '20x20', color, path, out: File::NULL, err: File::NULL)
+        assert File.exist?(path), "フィクスチャ生成に失敗: #{path}"
       end
 
       # magick で単色（または透過）の WebP フィクスチャを生成する

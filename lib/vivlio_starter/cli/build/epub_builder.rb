@@ -1529,6 +1529,92 @@ module VivlioStarter
           html_files
         end
 
+        # クリーン EPUB 用に、PNG / JPEG の `<img>` 参照を WebP へ変換して差し替える。
+        #
+        # **EPUB では WebP がもっとも小さい。** ZIP へ素材のまま入るうえ、同じ絵で
+        # WebP 280KB / JPEG 441KB という開きがある（実測）。EPUB 3.3 では image/webp が
+        # コアメディアタイプなので、変換して困る読者はいない。
+        #
+        # 効くのは**素材を PNG / JPEG で置いている本**だけである。素材が既に WebP なら
+        # 対象が 1 件も無く、何も起きない（本書がこれに当たる）。Kindle は WebP 非対応
+        # なので通さない——あちらは逆向きに JPEG / PNG へ落とす。
+        def transcode_to_webp_for_clean_epub!(html_files)
+          cache = {}
+          html_files.each { |path| transcode_to_webp_in_file!(path, cache) }
+          html_files
+        end
+
+        # 1 ファイル分の PNG / JPEG 参照を WebP へ差し替える。
+        def transcode_to_webp_in_file!(path, cache)
+          html = File.read(path, encoding: 'utf-8')
+          changed = false
+
+          updated = html.gsub(/<img\b[^>]*>/i) do |tag|
+            src = tag[/\ssrc="([^"]*)"/i, 1]
+            next tag unless src&.match?(/\.(png|jpe?g)\z/i)
+
+            staged = cache.fetch(src) { cache[src] = stage_webp_derivative(src, File.dirname(path)) }
+            next tag unless staged
+
+            changed = true
+            tag.sub(/(\ssrc=")[^"]*(")/i, "\\1#{staged}\\2")
+          end
+          return unless changed
+
+          File.write(path, updated, encoding: 'utf-8')
+          Common.log_info("[EPUB] #{File.basename(path)} の PNG/JPEG を WebP へ差し替えました")
+        end
+
+        # src の PNG / JPEG を WebP へ変換し、staging の相対パスを返す。できなければ nil。
+        # 置き場と鍵の作り方は Kindle 側（`stage_webp_replacement`）と揃える。
+        def stage_webp_derivative(src_attr, base_dir)
+          source = decode_html_entities(src_attr)
+          unless File.exist?(source)
+            candidate = File.join(Common::BUILD_HTML_DIR, source)
+            source = candidate if File.exist?(candidate)
+          end
+          return nil unless File.exist?(source)
+
+          key = Digest::SHA256.hexdigest(
+            [File.expand_path(source), File.mtime(source).to_i, 'webp'].join('|')
+          )[0, 16]
+          dir = File.join(base_dir, Common.images_dir, EPUB_ASSETS_REL_SUBDIR)
+          abs = File.join(dir, "#{key}.webp")
+          rel = "#{Common.images_dir}/#{EPUB_ASSETS_REL_SUBDIR}/#{key}.webp"
+          return rel if File.exist?(abs)
+
+          FileUtils.mkdir_p(dir)
+          return nil unless convert_to_webp_for_epub(source, abs)
+
+          drop_packaged_original(base_dir, decode_html_entities(src_attr))
+          rel
+        rescue StandardError => e
+          Common.log_warn("[EPUB] WebP 変換に失敗（#{src_attr}）: #{e.message}")
+          nil
+        end
+
+        # 差し替えた元ファイルを、パッケージから落とす（未参照のまま太らせない）。
+        #
+        # **`localized_image?` で png / jpg を丸ごと外す手は採らない。** Kindle が WebP を
+        # 外すのは KFX が読めないからで、外さなければ壊れる。クリーン EPUB にとって
+        # png / jpg の除去は最適化にすぎず、著者の CSS が `images/` の画像を参照していれば
+        # 壊す側に回る。**実際に差し替えたものだけ**を落とせば、その危険がない。
+        def drop_packaged_original(base_dir, relative_src)
+          packaged = File.join(base_dir, relative_src)
+          FileUtils.rm_f(packaged) if File.file?(packaged)
+        end
+
+        # PNG / JPEG → WebP。透過はそのまま保つ（EPUB は紙ではないので白へ落とさない）。
+        # 画面幅に対して過剰な画素数はここでも落とす。
+        def convert_to_webp_for_epub(source, dest)
+          edge = target_edge_for(source, EPUB_IMAGE_MAX_EDGE)
+          cmd = ['magick', source, '-resize', "#{edge}x#{edge}>", '-strip',
+                 '-quality', '85', '-define', 'webp:method=4', dest]
+          system(*cmd, out: File::NULL, err: File::NULL) && File.size?(dest)
+        rescue StandardError
+          false
+        end
+
         # 1 ファイル分の <img> WebP 参照を変換・差し替える。
         def transcode_webp_in_file!(path, cache)
           html = File.read(path, encoding: 'utf-8')
