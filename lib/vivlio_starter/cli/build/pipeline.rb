@@ -467,7 +467,11 @@ module VivlioStarter
         # （Chromium が SVG 内のパスを Type 3 フォントとして埋め込む）、節約できる時間も
         # 無い——同梱の WebP が効いて、新規プロジェクトの初回ビルドでも **0.06 秒**で終わる
         # （実測 2026-08-17: 3,746 件すべて up-to-date でスキップ）。かつてあった
-        # `--no-resize` は同日撤去した。速度より品質を選ぶ判断は `output.pdf.techbook` で行う。
+        # `--no-resize` は同日撤去した。
+        #
+        # `output.pdf.techbook: false` にすればラスタライズも止まるが、あれは**絵文字の
+        # 見せ方を決める設定**（Twemoji 画像へ差し替えるか、システムの絵文字を使うか）で、
+        # 速度のための逃げ道ではない。
         def run_step1_optimize_images
           Build::ImageOptimizer.optimize_images!
         end
