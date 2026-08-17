@@ -13,8 +13,6 @@
 
 | 仕様書 | 内容 | 状態 |
 | :--- | :--- | :--- |
-| `print-pdf-compress-guard-spec.md` | 入稿用 PDF を `vs pdf:compress` にかけようとしたら尋ねる。ビルド経路は三重に守られているが、手動コマンドだけ素通り。圧縮すると 150 dpi へ落ち入稿に耐えない | 実装待ち |
-| `image-format-per-target-spec.md` | 画像形式をターゲットごとに最適化する。**PDF は WebP を格納できず**（ISO 32000 にフィルタが無い）Flate へ展開されるため素材 286 KB が PDF 内で 2.0 MB になる。EPUB では逆に WebP が最適。あわせて解像度を紙面基準（350 ppi）にする | 実装待ち |
 | `upgrade-three-way-merge-spec.md` | `vs upgrade` の競合を 3-way マージで自動合流させ、そもそも尋ねずに済ませる。共通祖先の中身が無い（lock はハッシュのみ）ため、その調達から要る | 実装待ち（優先度低） |
 
 ---

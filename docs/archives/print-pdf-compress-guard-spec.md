@@ -110,7 +110,19 @@ vs pdf:compress vivlio_starter_print_v1.0.0.pdf   # いまは黙って圧縮す�
 6. **`include_version: false`**（`vivlio_starter_print.pdf`）→ 拾えること。`_v` の有無に依存しないことを固定する
 7. **過去バージョンの残り**（`vivlio_starter_print_v0.9.0.pdf`）→ 拾えること。現在の `project.version` と一致しなくても入稿用は入稿用である
 
-## 7. やらないこと
+## 7. 実装記録（2026-08-17 完了）
+
+実装して 3 つ分かった。
+
+**`Common.confirm?` は非対話で「No」を返す。** §4 に「非対話・`--yes` 指定時は 🟡 を出して続行する（既存の `Common.confirm?` の流儀に合わせる）」と書いたが、あれの実装は `input.gets` が nil のとき `default`（既定 false）を返すので、パイプや CI では**中止**になる。本仕様の原則は「止めない。尋ねる」なので、`$stdin.tty?` を自分で見て、非対話では警告だけ出して続行するようにした。`--yes` オプションは `vs pdf:compress` に存在せず、追加もしていない。
+
+**判定はプロジェクト名を引数で受ける形にした。** §5 の「純粋関数に切り出す」を素直にやると `Common::CONFIG` を読むことになり、テストのたびに `book.yml` / `page_presets.yml` / `catalog.yml` を書いて `reload_configuration!` する羽目になる。`print_pdf_input?(path, project_name = configured_project_name)` としたことで、名前の判定 5 ケースが設定なしで書けるようになった。
+
+**Prawn で TrimBox を作れる。** ボックス判定のテストには MediaBox ≠ TrimBox の PDF が要るが、Prawn に専用の API は無い。`pdf.state.page.dictionary.data[:TrimBox] = [9, 9, 603, 783]` で直接置ける（`pdfinfo -box` が読めることを実測で確認）。本体リポジトリのテストは AGPL の HexaPDF に依存できないので、この手が要る。
+
+検証は §6 の 7 項目を 12 のテストで固めた。実動作も確認済み——入稿用を明示指定すると 🟡 が理由と数値つきで 3 行出て、閲覧用（`vivlio_starter_v0.0.1.pdf`）では 1 行も出ない。
+
+## 8. やらないこと
 
 - **ビルド経路への変更**（§1 のとおり既に守られている）
 - **`45-utility.md` L57 の注意書きの削除。** 機械が尋ねるようになっても、なぜ駄目かを説明する文章は本の側に要る

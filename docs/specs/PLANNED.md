@@ -80,6 +80,7 @@
   - **作業は属性 2 つ**。`EpubBuilder#decorate_footnotes_for_epub!` が既に `aside.page-footnote-print[data-footnote-number]` を走査しているので、そこで `aside['epub:type'] = 'footnote'` を、対応する `a#fnrefN` に `epub:type="noteref"` を付ける。
   - **確認は実機で**。KFX のポップアップは epubcheck では検証できず、Kindle Previewer で開くしかない（`kindle-css-compatibility-notes.md` の実機確認の流儀に従う）。ポップアップ化すると `aside` は本文に出なくなるため、**CSS 側の注記ブロック体裁（`body.vs-epub aside.page-footnote`）を残すか外すか**も同時に判断する。
 
+- [Medium] **Kindle の画素数上限（1600px）**: `image-format-per-target-spec.md` §3.3 で決めたが、PDF 側の実装（97.2 → 27.3 MB）で目的をほぼ達したため見送った部分。**KDP は配信料がファイルサイズに比例する**ので、表示されない画素にコストを払うことになる。端末の画面幅は 1236px（Paperwhite 第 11 世代・1236×1648・300 ppi）で、Kindle アプリを iPad で読む場合を見て 1600px の余裕を持たせる。実装は `EpubBuilder` の Kindle 変換経路（WebP → JPEG/PNG）に縮小を足すだけで、新しいコマンドも設定キーも増えない。効き幅の目安は EPUB 内で 2048px 級の 16 件・8.6 MB。あわせて Kindle 実機で表示を確認する（素材が JPEG になっても、縮小しても KFX の表示が変わらないこと）。
 - [Low] **Kindle 固定レイアウト（`kindle.layout: fixed`・PDF ラスタライズ流用）**: A5 PDF をページ画像化して固定レイアウト KPF にする案。劣化対応不要で組版忠実だが、主力端末 6〜7″ は文庫（A6）サイズで判型が合わず、フォント可変・検索・配信料（約 ¥50〜90/冊 増）を失うため**見送り**。数式・図版主体の本や文庫判型向けの第 3 ターゲットとして RC 後に再検討。調査結果・実装スケッチ → `kindle-fixed-layout-ideas.md`
 
 ---
