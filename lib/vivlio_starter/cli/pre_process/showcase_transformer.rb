@@ -186,9 +186,11 @@ module VivlioStarter
         # v2: ラベル書体をキーに含める。SVG はサブセットを自身に抱くので、著者が
         # typography.heading.font を変えたら作り直さないと古い書体のまま残る
         # （mermaid 側は最初から font_family をキーに含めていた）。
+        # v3: 元画像の埋め込みを PNG 固定から「写真は JPEG」へ変えた（2026-08-17）。
+        # SVG が中身を抱えるため、版を上げないと既存キャッシュが PNG のまま残る。
         def cache_key(source, block)
           payload = [
-            'v2',
+            'v3',
             Digest::SHA256.file(source).hexdigest,
             block.crop.join(','),
             JSON.generate(block.annotations.map(&:to_h)),
@@ -312,12 +314,25 @@ module VivlioStarter
             false
           end
 
-          # 元画像を PNG の base64 data URI へ。EMBED_MAX_EDGE まで縮小して軽量化する
+          # 元画像を base64 data URI へ。EMBED_MAX_EDGE まで縮小して軽量化する
           # （viewBox は元画像実寸で張るため、縮小しても座標計算には影響しない）。
+          #
+          # **写真は JPEG で埋める。** PNG は可逆なので、写真を埋めると PDF 内でも
+          # Flate のまま展開され、1 枚あたり 1,849 KB を占めていた（実測 2026-08-17・
+          # 全章で 5 枚 9.2 MB。`image-format-per-target-spec.md` §4.2）。判定は EPUB 向けの
+          # ラスター形式と同じ `photographic?` を使う——同じ絵に別の基準を持つ理由がない。
+          # 透過は白へ落とす（`rasterize` の JPEG 枝と同じ流儀。SVG の地はページの白）。
           def data_uri(path)
-            png, status = Open3.capture2(
-              'magick', path, '-resize', "#{EMBED_MAX_EDGE}x#{EMBED_MAX_EDGE}>", 'png:-', binmode: true
-            )
+            resize = ['-resize', "#{EMBED_MAX_EDGE}x#{EMBED_MAX_EDGE}>"]
+
+            if photographic?(path)
+              jpg, jpg_status = Open3.capture2('magick', path, *resize,
+                                               '-background', 'white', '-alpha', 'remove', '-alpha', 'off',
+                                               '-quality', '90', 'jpg:-', binmode: true)
+              return "data:image/jpeg;base64,#{[jpg].pack('m0')}" if jpg_status.success? && !jpg.empty?
+            end
+
+            png, status = Open3.capture2('magick', path, *resize, 'png:-', binmode: true)
             return nil unless status.success? && !png.empty?
 
             # base64 は Ruby 3.4+ で default gem 外のため Array#pack('m0')（改行なし base64）で代替

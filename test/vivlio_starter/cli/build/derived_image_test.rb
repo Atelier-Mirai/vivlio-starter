@@ -7,7 +7,8 @@
 #
 # 検証すること:
 #   1. 透過が無い写真は JPEG になる（PDF が DCTDecode で無変換格納できる）
-#   2. 透過がある絵は派生を作らない（PNG にしても PDF 内では素材と同じ Flate になる）
+#   2. 透過がある絵は白へ落として PDF へ渡す（地が紙の白なので見た目は変わらない）
+#      素材そのものの透過は保たれる（EPUB / Kindle は原本を読む）
 #   3. PNG のほうが小さい図は PNG になる（色数では分けられないので実測で選ぶ）
 #   4. SVG は派生を作らない（ベクタのまま PDF へ入れるのが最善）
 #   5. 2 回目はキャッシュを使い、素材が更新されたときだけ作り直す
@@ -53,16 +54,32 @@ module VivlioStarter
         end
       end
 
-      # 透過がある絵は派生を作らない。JPEG は透過を持てず、PNG にしても PDF 内では
-      # 素材と同じ Flate になるため、変換しても 1 バイトも縮まないからである
-      def test_should_not_derive_from_transparent_image
+      # 透過がある絵は白へ落とす。PDF の地は紙の白なので見た目は変わらず、透過を抱えた
+      # まま Flate で入るより桁違いに小さくなる（EPUB / Kindle は素材の原本を読むので
+      # 影響を受けない）。拡張子は素材次第なので固定せず、透過が落ちたことだけを見る
+      def test_should_flatten_transparent_image_for_pdf
         in_temp_project do
           make_image('images/10-intro/logo.webp',
                      '-size', '200x200', 'xc:none', '-fill', 'blue', '-draw', 'circle 100,100 100,30')
 
-          assert_nil Derived.prepare('images/10-intro/logo.webp')
-          refute_path_exists '.cache/vs/derived/pdf/images/10-intro/logo.png'
-          refute_path_exists '.cache/vs/derived/pdf/images/10-intro/logo.jpg'
+          derived = Derived.prepare('images/10-intro/logo.webp')
+
+          assert_path_exists derived
+          assert_equal 'True', `magick identify -format '%[opaque]' #{derived}`.strip,
+                       'PDF 向けの派生に透過が残っている'
+        end
+      end
+
+      # 素材の透過は保たれる。EPUB / Kindle はこちらを読む
+      def test_should_keep_transparency_in_source
+        in_temp_project do
+          source = 'images/10-intro/logo.webp'
+          make_image(source, '-size', '200x200', 'xc:none', '-fill', 'blue', '-draw', 'circle 100,100 100,30')
+
+          Derived.prepare(source)
+
+          assert_equal 'False', `magick identify -format '%[opaque]' #{source}`.strip,
+                       '素材の透過が失われている'
         end
       end
 
@@ -120,8 +137,7 @@ module VivlioStarter
 
           mapping = Derived.prepare_all(sources.keys)
 
-          # 透過ありの logo は派生を作らないので 3 件中 2 件
-          assert_equal 2, mapping.size
+          assert_equal sources.size, mapping.size
           after = sources.keys.to_h { [it, [File.size(it), File.mtime(it), Digest::SHA256.file(it).hexdigest]] }
           assert_equal before, after, '素材が書き換わっている'
         end

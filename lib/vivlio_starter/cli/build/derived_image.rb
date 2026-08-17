@@ -36,6 +36,18 @@ module VivlioStarter
         # 派生の拡張子。既存キャッシュを探すときも、この順で見る。
         DERIVED_EXTENSIONS = %w[.jpg .png].freeze
 
+        # 透過を白へ落とす指定。**PDF に限って**透過を捨てる根拠は、地が紙の白だから
+        # である（`@page` に背景色の指定は無い。2026-08-17 確認）——透過部分はどのみち
+        # 白く出るので、フラット化しても 1 ピクセルも変わらない。代わりに JPEG が使えて、
+        # 本書の花の見本 12 枚は PDF 内 37.22 MB → 6.31 MB になる。
+        #
+        # **EPUB / Kindle では捨てない。** あちらは html/ の原本（素材そのもの）を読む。
+        # Kindle 端末のダークモードは背景を黒にするが画像は反転しないため、白で塗って
+        # あると矩形が浮く。テーマ素材（`stylesheets/images/`）も CSS 背景で入るので
+        # `<img>` を経由せず、この差し替えの対象に最初から入らない——章扉の生成では
+        # `-trim` が透過を「絵の範囲」の手掛かりに使っており、潰してはならない。
+        FLATTEN_OPTIONS = %w[-background white -alpha remove -alpha off].freeze
+
         module_function
 
         # 素材群の派生をまとめて用意し、{素材パス => 派生パス} を返す。
@@ -62,11 +74,8 @@ module VivlioStarter
           cached = fresh_derivative(base, source)
           return cached if cached
 
-          # --- Phase: 透過があるものは派生を作らない ---
-          # JPEG は透過を持てず、PNG にしたところで PDF 内ではどのみち Flate になる。
-          # 素材が WebP のままでも同じ Flate なので、**変換しても 1 バイトも縮まない**。
-          # 縮小（§3.6）が入るまでは素材をそのまま渡すのが最も安い。
-          return nil unless opaque?(source)
+          # --- Phase: 透過があれば白へ落とす（PDF 限定・FLATTEN_OPTIONS 参照） ---
+          flatten = opaque?(source) ? [] : FLATTEN_OPTIONS
 
           # --- Phase: JPEG と PNG を作って小さいほうを採る ---
           # 色数では分けられないことを実測で確かめた（2026-08-17・本書 78 件。色数 2,701 の
@@ -74,8 +83,8 @@ module VivlioStarter
           # ほぼ一致するので、この比較は画質の判定も兼ねている——写真は PNG で膨らみ、
           # 文字入りの図は PNG で縮むためである。
           FileUtils.mkdir_p(File.dirname(base))
-          jpg = run_magick(source, "#{base}.jpg", '-quality', JPEG_QUALITY.to_s)
-          png = run_magick(source, "#{base}.png")
+          jpg = run_magick(source, "#{base}.jpg", *flatten, '-quality', JPEG_QUALITY.to_s)
+          png = run_magick(source, "#{base}.png", *flatten)
           smaller_of(jpg, png)
         end
 
