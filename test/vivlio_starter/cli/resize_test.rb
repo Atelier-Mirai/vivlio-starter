@@ -39,7 +39,7 @@ module VivlioStarter
         presets = ResizeCommands::WEBP_PRESETS
 
         assert_equal [90, 85, 75], presets.values.map { it[:quality] }
-        assert_equal [2000, 1600, 1200], presets.values.map { it[:max_px] }
+        assert_equal [2048, 1600, 1200], presets.values.map { it[:max_px] }
         assert_equal 1, presets.values.map { it[:method] }.uniq.size,
                      'method は画質ではないので、プリセットごとに変えない'
       end

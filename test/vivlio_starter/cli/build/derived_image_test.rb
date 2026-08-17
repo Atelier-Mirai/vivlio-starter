@@ -33,12 +33,15 @@ module VivlioStarter
 
       def setup
         skip 'ImageMagick (magick) が必要です' unless system('which magick > /dev/null 2>&1')
+        # 測定結果はプロセス内にも載るので、テスト間で持ち越さない
+        Derived.reset_cache!
         @saved_logs = LOG_METHODS.to_h { [it, Common.method(it)] }
         LOG_METHODS.each { |name| Common.define_singleton_method(name) { |*, **| } }
       end
 
       def teardown
         @saved_logs&.each { |name, m| Common.define_singleton_method(name, m) }
+        Derived.reset_cache!
       end
 
       # 写真（透過なし）は JPEG。PDF はこれをそのまま格納できる
@@ -48,8 +51,8 @@ module VivlioStarter
 
           derived = Derived.prepare('images/10-intro/photo.webp')
 
-          assert_equal '.cache/vs/derived/pdf/images/10-intro/photo.jpg', derived
-          assert_path_exists derived
+          assert_equal '.cache/vs/derived/pdf/images/10-intro/photo.jpg', derived.path
+          assert_path_exists derived.path
           refute_path_exists '.cache/vs/derived/pdf/images/10-intro/photo.png'
         end
       end
@@ -64,9 +67,8 @@ module VivlioStarter
 
           derived = Derived.prepare('images/10-intro/logo.webp')
 
-          assert_path_exists derived
-          assert_equal 'True', `magick identify -format '%[opaque]' #{derived}`.strip,
-                       'PDF 向けの派生に透過が残っている'
+          assert_path_exists derived.path
+          assert_equal 'True', opaque_of(derived.path), 'PDF 向けの派生に透過が残っている'
         end
       end
 
@@ -78,8 +80,7 @@ module VivlioStarter
 
           Derived.prepare(source)
 
-          assert_equal 'False', `magick identify -format '%[opaque]' #{source}`.strip,
-                       '素材の透過が失われている'
+          assert_equal 'False', opaque_of(source), '素材の透過が失われている'
         end
       end
 
@@ -90,7 +91,7 @@ module VivlioStarter
 
           derived = Derived.prepare('images/10-intro/flat.webp')
 
-          assert_equal '.cache/vs/derived/pdf/images/10-intro/flat.png', derived
+          assert_equal '.cache/vs/derived/pdf/images/10-intro/flat.png', derived.path
           refute_path_exists '.cache/vs/derived/pdf/images/10-intro/flat.jpg'
         end
       end
@@ -111,16 +112,61 @@ module VivlioStarter
           source = 'images/10-intro/photo.webp'
           make_image(source, '-size', '200x200', 'plasma:fractal')
 
-          derived = Derived.prepare(source)
+          derived = Derived.prepare(source).path
           first_mtime = File.mtime(derived)
 
           sleep 1.1 # mtime の粒度（秒）をまたぐ
-          assert_equal derived, Derived.prepare(source)
+          assert_equal derived, Derived.prepare(source).path
           assert_equal first_mtime, File.mtime(derived), 'キャッシュがあるのに作り直している'
 
           FileUtils.touch(source)
-          assert_equal derived, Derived.prepare(source)
+          assert_equal derived, Derived.prepare(source).path
           assert_operator File.mtime(derived), :>, first_mtime, '素材が新しいのに作り直していない'
+        end
+      end
+
+      # 測った必要画素数を段階へ切り上げて縮める。1,073px 要るなら 800 ではなく 1280——
+      # 下回らせると印刷で粗さとして残り、後から取り戻せない（§3.6）
+      def test_should_shrink_to_the_step_above_what_is_needed
+        in_temp_project do
+          source = 'images/10-intro/photo.webp'
+          make_image(source, '-size', '2048x2048', 'plasma:fractal')
+          write_metrics('2048x2048' => 1073)
+
+          derived = Derived.prepare(source)
+
+          assert_equal 1280, width_of(derived.path)
+          assert_includes derived.path, '_1280'
+          # 属性へ書き出す intrinsic size は**素材の**画素数（表示サイズを動かさないため）
+          assert_equal 2048, derived.width
+        end
+      end
+
+      # 段階を超える必要があるときは必要画素数そのものへ丸める。2048px で打ち止めに
+      # すると、版面全幅に置かれた 4K 素材がそのまま運ばれてしまう
+      def test_should_use_exact_size_when_beyond_the_largest_step
+        in_temp_project do
+          source = 'images/10-intro/wide.webp'
+          make_image(source, '-size', '3840x2160', 'plasma:fractal')
+          write_metrics('3840x2160' => 2340)
+
+          derived = Derived.prepare(source)
+
+          assert_equal 2340, width_of(derived.path)
+        end
+      end
+
+      # 足りている素材は拡大しない。縮小も派生名の接尾辞も付かない
+      def test_should_not_enlarge_when_source_is_already_small
+        in_temp_project do
+          source = 'images/10-intro/small.webp'
+          make_image(source, '-size', '400x400', 'plasma:fractal')
+          write_metrics('400x400' => 1280)
+
+          derived = Derived.prepare(source)
+
+          assert_equal 400, width_of(derived.path)
+          refute_includes derived.path, '_1280'
         end
       end
 
@@ -153,6 +199,17 @@ module VivlioStarter
         FileUtils.mkdir_p(File.dirname(path))
         system('magick', *magick_args, path, out: File::NULL, err: File::NULL)
         raise "フィクスチャ生成に失敗: #{path}" unless File.size?(path)
+      end
+
+      def opaque_of(path) = `magick identify -format '%[opaque]' #{path}`.strip
+
+      def width_of(path) = `magick identify -format '%w' #{path}`.strip.to_i
+
+      # 測定結果を直に置く（実 PDF を組まずに縮小の判定だけを確かめる）
+      def write_metrics(map)
+        FileUtils.mkdir_p('.cache/vs/derived')
+        File.write('.cache/vs/derived/pdf-metrics.yml', map.to_yaml)
+        Derived.reset_cache!
       end
     end
   end

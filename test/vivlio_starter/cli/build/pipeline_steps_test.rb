@@ -37,7 +37,7 @@ module VivlioStarter
 
       # toc 生成後のターゲット依存テール（pre-P2 実装から採取）。
       PDF_ONLY = (PREFIX + [
-        'build overall pdf', 'backlink dedup', 'build front and back matter',
+        'build overall pdf', 'shrink oversized images', 'backlink dedup', 'build front and back matter',
         'merge all pdfs', 'apply outline to output pdf', 'compress, rename and final clean'
       ]).freeze
 
@@ -45,18 +45,18 @@ module VivlioStarter
       # print_pdf 単独でも 'build overall pdf' / 'build front and back matter' が入る。
       # 最終成果物（merge 以降）は t.pdf 次第なので閲覧用 output.pdf は生まれない。
       PRINT_ONLY = (PREFIX + [
-        'build overall pdf', 'backlink dedup', 'build front and back matter', 'print pdf', 'final clean'
+        'build overall pdf', 'shrink oversized images', 'backlink dedup', 'build front and back matter', 'print pdf', 'final clean'
       ]).freeze
 
       # 入稿用のみ・従来フロー（output.print_pdf.full_bleed: true）。
       # 本文を個別レンダするため閲覧用 PDF は不要で、entries/config だけを用意する。
       # 前付・奥付の HTML は共通前処理で作り済みなので、ここに専用ステップは無い。
       PRINT_ONLY_FULL_BLEED = (PREFIX + [
-        'generate entries.js', 'backlink dedup', 'print pdf', 'final clean'
+        'generate entries.js', 'shrink oversized images', 'backlink dedup', 'print pdf', 'final clean'
       ]).freeze
 
       PDF_PRINT = (PREFIX + [
-        'build overall pdf', 'backlink dedup', 'build front and back matter', 'merge all pdfs',
+        'build overall pdf', 'shrink oversized images', 'backlink dedup', 'build front and back matter', 'merge all pdfs',
         'apply outline to output pdf', 'compress and rename', 'print pdf', 'final clean'
       ]).freeze
 
@@ -65,18 +65,18 @@ module VivlioStarter
       # P4 段階 3: dedup がワークスペース pdf/ に閉じたため、EPUB 隔離用の
       # 'snapshot pre-dedup html for epub' ステップは撤去された（P4 §3.4-3）。
       PDF_EPUB = (PREFIX + [
-        'build overall pdf', 'backlink dedup',
+        'build overall pdf', 'shrink oversized images', 'backlink dedup',
         'build front and back matter', 'merge all pdfs', 'apply outline to output pdf',
         'compress and rename', 'generate epub', 'final clean'
       ]).freeze
 
       PRINT_EPUB = (PREFIX + [
-        'build overall pdf', 'backlink dedup',
+        'build overall pdf', 'shrink oversized images', 'backlink dedup',
         'build front and back matter', 'print pdf', 'generate epub', 'final clean'
       ]).freeze
 
       ALL = (PREFIX + [
-        'build overall pdf', 'backlink dedup',
+        'build overall pdf', 'shrink oversized images', 'backlink dedup',
         'build front and back matter', 'merge all pdfs', 'apply outline to output pdf',
         'compress and rename', 'print pdf', 'generate epub', 'final clean'
       ]).freeze
@@ -197,7 +197,7 @@ module VivlioStarter
         'generate part title pages' => :shared, 'generate front and back matter html' => :shared,
         'techbook post-process' => :shared, 'generate toc html' => :shared,
         'build overall pdf' => :pdf, 'extract rotate table images' => :pdf,
-        'generate entries.js' => :pdf, 'backlink dedup' => :pdf,
+        'generate entries.js' => :pdf, 'shrink oversized images' => :pdf, 'backlink dedup' => :pdf,
         'build front and back matter' => :pdf, 'merge all pdfs' => :pdf,
         'apply outline to output pdf' => :pdf, 'compress, rename and final clean' => :pdf,
         'compress and rename' => :pdf, 'print pdf' => :pdf,

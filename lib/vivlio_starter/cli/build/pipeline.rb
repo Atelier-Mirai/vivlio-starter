@@ -312,6 +312,10 @@ module VivlioStarter
             ['extract rotate table images', -> { run_rotate_table_extraction }, rotate_table_images?, :pdf, :whole_book],
             ['generate entries.js', -> { Build::PdfBuilder.generate_entries_for_sections!(entries) },
              !t.pdf && t.print_pdf && !derive_print, :pdf, :whole_book],
+            # 組み上がった PDF から実効解像度を測り、過剰な画像を縮小版へ差し替える。
+            # dedup の**直前**に置くのは、あれが浄化後に再レンダするからで、
+            # 新しいパスを増やさずに縮小版で組み直せる（`image-format-per-target-spec.md` §3.6）。
+            ['shrink oversized images', -> { run_shrink_oversized_images }, t.any_pdf?, :pdf, :whole_book],
             # dedup の破壊的書換は pdf/ 配下のコピーに閉じるため、EPUB 隔離のための
             # 「dedup 前スナップショット」ステップは不要になった（P4 §3.4-3。
             # EPUB/Kindle は html/ のクリーンな原本から直接展開する）。
@@ -436,6 +440,23 @@ module VivlioStarter
             # 前回ビルドのワークスペースを一括掃除（stale HTML の混入防止・P4 §3.4-8）
             FileUtils.rm_rf(Common::BUILD_DIR)
           end
+        end
+
+        # 組み上がった本文 PDF から実効解像度を測り、過剰な画像を縮小版へ差し替える。
+        #
+        # 差し替え先は pdf/ の HTML なので、直後の dedup が浄化後に再レンダするとき
+        # 縮小版で組まれる。索引を使わず dedup が走らない本では**次回のビルド**から効く
+        # ——測定結果は .cache/vs/derived/ に残り、ステージングがそれを読むためである。
+        def run_shrink_oversized_images
+          sections_pdf = File.join(Common::BUILD_PDF_DIR, '_sections.pdf')
+          measured = Build::DerivedImage.measure!(sections_pdf)
+          if measured.zero?
+            Common.log_info('[shrink] 実効解像度を測れませんでした（本文 PDF が未生成）')
+            return
+          end
+
+          Common.log_info("[shrink] 実効解像度を測りました: #{measured} 種類の画素数")
+          Build::PdfBuilder.swap_images_for_pdf!
         end
 
         # 画像最適化をプリセット付きで実行する

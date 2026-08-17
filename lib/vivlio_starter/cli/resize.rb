@@ -30,8 +30,13 @@ module VivlioStarter
       # 4 は libwebp / ImageMagick の既定値。3 でもサイズは実質同じ（+0.1%）で 11% 速いが、
       # 既定に合わせておけばエンコーダが改良されたときにそのまま追従できる。
       # 値を動かすときは resize_test.rb の回帰テストも一緒に見ること。
+      # 高精細の上限は 2048（2026-08-17 に 2000 から変更）。2 の冪で、PDF 向け派生の
+      # 段階（`DerivedImage::SIZE_STEPS`）の最大値と一致する——素材を段階と同じ画素数で
+      # 持てば、ビルド側の縮小が「もう小さいので不要」と判定してそのまま使える。
+      # 2000 のままだと、2048×2048 で配られている同梱のテーマ素材が `resize:high` を
+      # 通すたびに 48px だけ削られていた。
       WEBP_PRESETS = {
-        '高精細' => { quality: 90, method: 4, max_px: 2000 },
+        '高精細' => { quality: 90, method: 4, max_px: 2048 },
         '標準' => { quality: 85, method: 4, max_px: 1600 },
         '軽量' => { quality: 75, method: 4, max_px: 1200 }
       }.freeze
@@ -40,7 +45,7 @@ module VivlioStarter
         high: {
           short: '画像を高品質WebPに変換します',
           long: <<~DESC
-            画像を高品質WebPに変換します（quality=90, max_px=2000）。
+            画像を高品質WebPに変換します（quality=90, max_px=2048）。
 
             対象: .png, .jpg, .jpeg
             出力: 同ディレクトリに .webp

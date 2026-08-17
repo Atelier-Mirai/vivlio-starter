@@ -136,6 +136,7 @@ module VivlioStarter
           'techbook post-process',
           'generate toc html',
           'build overall pdf',
+          'shrink oversized images',
           'backlink dedup',
           'build front and back matter',
           'merge all pdfs',
@@ -552,11 +553,12 @@ module VivlioStarter
 
         with_build_stubs { pipeline.run }
 
-        # full mode（pdf専用）は 17 ステップ。前付・奥付の HTML 生成
+        # full mode（pdf専用）は 18 ステップ。前付・奥付の HTML 生成
         # （front-back-matter-single-render-spec.md §2.1）とカバー資産の生成
-        # （build-target-parallelization-spec.md §3.2）を共通前段へ前倒ししたぶん、
-        # 元の 15 から 2 つ増えている。
-        assert_equal 17, pipeline.timings.length, 'full mode は 17 ステップを記録するべき'
+        # （build-target-parallelization-spec.md §3.2）を共通前段へ前倒ししたぶんで
+        # 元の 15 から 2 つ、過剰解像度の縮小（image-format-per-target-spec.md §3.6）で
+        # さらに 1 つ増えている。
+        assert_equal 18, pipeline.timings.length, 'full mode は 18 ステップを記録するべき'
       end
 
       private

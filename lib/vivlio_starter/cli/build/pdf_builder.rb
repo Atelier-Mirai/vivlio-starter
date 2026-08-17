@@ -173,31 +173,40 @@ module VivlioStarter
         #
         # 対象は asset_prefix で始まる src だけ。data URI のプレースホルダーも、ビルド
         # 生成物（`images/math/…` の数式 SVG）も、この条件で自然に外れる。
+        # **二度呼べる。** 1 回目のステージングでは等倍の JPEG へ、Step 8 で実効解像度を
+        # 測ったあとは縮小版へ——同じ入口を通す。差し替え済みの img は素材を
+        # `data-vs-source` に控えてあるので、何度でも元をたどれる。
         def swap_images_for_pdf!
           staged = Dir.glob(File.join(Common::BUILD_PDF_DIR, '*.html'))
           return if staged.empty?
 
-          # --- Phase: 参照されている素材を集める（HTML 上の src → 実ファイル） ---
+          sources = collect_image_sources(staged)
+          return if sources.empty?
+
+          # 派生をまとめて作る（並列。キャッシュが効けば即返る）
+          derived = DerivedImage.prepare_all(sources.values.uniq)
+          return if derived.empty?
+
+          rewrite_staged_image_srcs!(staged, sources, derived)
+        end
+
+        # staged HTML の img から {HTML 上の src => 素材の実ファイル} を集める。
+        #
+        # 一度差し替えた img は `data-vs-source` に素材を控えてあるので、そちらを優先する。
+        # これが無いと 2 回目に派生（.cache 配下）を素材と誤認し、二重に変換してしまう。
+        def collect_image_sources(staged)
           sources = {}
           staged.each do |path|
-            File.read(path, encoding: 'utf-8').scan(/<img\b[^>]*?\bsrc="([^"]+)"/) do
-              src = ::Regexp.last_match(1)
-              file = source_file_for(src)
+            File.read(path, encoding: 'utf-8').scan(/<img\b[^>]*>/) do |tag|
+              src = tag[/\bsrc="([^"]+)"/, 1]
+              next unless src
+
+              original = tag[/\bdata-vs-source="([^"]+)"/, 1]
+              file = (original if original && File.file?(original)) || source_file_for(src)
               sources[src] = file if file
             end
           end
-          return if sources.empty?
-
-          # --- Phase: 派生をまとめて作る（並列。キャッシュが効けば即返る） ---
-          derived = DerivedImage.prepare_all(sources.values)
-          return if derived.empty?
-
-          # --- Phase: pdf/ の HTML だけ書き換える ---
-          swapped = sources.filter_map { |src, file| [src, derived[file]] if derived[file] }.to_h
-          return if swapped.empty?
-
-          rewrite_staged_image_srcs!(staged, swapped)
-          Common.log_info("[stage] PDF 向けの画像へ差し替えました: #{swapped.size} 件")
+          sources
         end
 
         # HTML 上の src から素材の実ファイルパスを引く。プロジェクトルート相対
@@ -210,16 +219,36 @@ module VivlioStarter
           File.file?(path) ? path : nil
         end
 
-        # staged HTML の img src を差し替える。src 以外の属性（alt・class）は触らない。
-        def rewrite_staged_image_srcs!(staged, swapped)
+        def rewrite_staged_image_srcs!(staged, sources, derived)
+          count = 0
           staged.each do |path|
             html = File.read(path, encoding: 'utf-8')
-            updated = html.gsub(/<img\b[^>]*?\bsrc="([^"]+)"/) do |tag|
-              replacement = swapped[::Regexp.last_match(1)]
-              replacement ? tag.sub(/src="[^"]+"/, %(src="#{Common.asset_prefix}#{replacement}")) : tag
+            updated = html.gsub(/<img\b[^>]*>/) do |tag|
+              src = tag[/\bsrc="([^"]+)"/, 1]
+              file = src && sources[src]
+              derivative = file && derived[file]
+              next tag unless derivative
+
+              count += 1
+              rewrite_img_tag(tag, derivative, file)
             end
             File.write(path, updated, encoding: 'utf-8') unless updated == html
           end
+          Common.log_info("[stage] PDF 向けの画像へ差し替えました: #{count} 件") if count.positive?
+        end
+
+        # src を派生へ向け、素材の控えと intrinsic size を書き込む。
+        #
+        # **width / height は縮小しても表示サイズを動かさないための凍結である。** 画素数を
+        # 変えてもレイアウトは動かないことを実測で確かめたが（`image-format-per-target-spec.md`
+        # §3.6）、素材の寸法が不揃いだと表の列幅配分がわずかに動く。HTML の属性で
+        # intrinsic dimensions を与えれば、その余地も消える（CSS の max-inline-size とは競合しない）。
+        def rewrite_img_tag(tag, derivative, source)
+          rest = tag.sub(/\A<img\b/, '')
+                    .sub(%r{\s*/?>\z}, '')
+                    .gsub(/\s*\b(?:src|width|height|data-vs-source)="[^"]*"/, '')
+          %(<img src="#{Common.asset_prefix}#{derivative.path}" width="#{derivative.width}" ) +
+            %(height="#{derivative.height}" data-vs-source="#{source}"#{rest}>)
         end
 
         # 特殊ページ HTML（前付・奥付）だけを html/ から pdf/ へコピーする。
