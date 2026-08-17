@@ -12,7 +12,6 @@
 #   - 単章ビルド（章番号指定）: 指定章のみの PDF を生成
 #
 # 主要オプション:
-#   - --[no]-resize: SVG ラスタライズ（Type 3 対策）の有効/無効
 #   - --[no]-compress: PDF 圧縮の有効/無効
 #
 # 依存:
@@ -46,7 +45,6 @@ module VivlioStarter
 
         options do
           option '--theme <color>', 'テーマカラー（.md 直接指定時のみ有効）', key: :theme
-          option '--[no]-resize', 'SVG のラスタライズを行う（--no-resize で無効）', default: true, key: :resize
           option '--[no]-compress', 'PDF圧縮を行う（--no-compress でスキップ）', key: :compress
           option '--[no]-clean', '中間生成物をクリーンアップ（--no-clean でスキップ）', default: true, key: :clean
           option '--[no]-verify', 'リンク・画像の基本検証を実行する（--no-verify でスキップ）', default: true, key: :verify
@@ -176,7 +174,6 @@ module VivlioStarter
         # 既定値と区別できる「明示指定」だけを拾う。
         def warn_ignored_options!
           ignored = []
-          ignored << '--no-resize' if options[:resize] == false
           ignored << '--no-clean' if options[:clean] == false
           ignored << '--no-verify' if options[:verify] == false
           ignored << '--verify-links' if options[:verify_links]

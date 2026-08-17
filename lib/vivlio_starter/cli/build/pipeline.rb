@@ -459,19 +459,16 @@ module VivlioStarter
           Build::PdfBuilder.swap_images_for_pdf!
         end
 
-        # 画像最適化をプリセット付きで実行する
         # ここに残っているのは Techbook モードの SVG ラスタライズだけで、画像の WebP 変換は
         # やめた（`ImageOptimizer.optimize_images!` のコメント参照）。品質プリセット
         # （`--high` / `--medium` / `--low`）は行き先を失ったので 2026-08-17 に撤去した。
         #
-        # `--no-resize` はそのラスタライズを飛ばす——**入稿用 PDF では使ってはならない**。
-        # Chromium が SVG 内のパスを Type 3 フォントとして埋め込み、印刷所に断られることがある。
+        # **飛ばす道は用意しない。** 選ぶと入稿できない PDF が黙って出来るうえ
+        # （Chromium が SVG 内のパスを Type 3 フォントとして埋め込む）、節約できる時間も
+        # 無い——同梱の WebP が効いて、新規プロジェクトの初回ビルドでも **0.06 秒**で終わる
+        # （実測 2026-08-17: 3,746 件すべて up-to-date でスキップ）。かつてあった
+        # `--no-resize` は同日撤去した。速度より品質を選ぶ判断は `output.pdf.techbook` で行う。
         def run_step1_optimize_images
-          if options[:resize] == false
-            Common.log_action('[optimize images] SVG のラスタライズをスキップします（--no-resize）')
-            return
-          end
-
           Build::ImageOptimizer.optimize_images!
         end
 

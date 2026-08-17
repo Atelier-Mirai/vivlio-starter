@@ -114,8 +114,8 @@ module VivlioStarter
         end
 
         assert_includes output, 'build'
-        assert_includes output, 'resize'
         assert_includes output, 'compress'
+        assert_includes output, 'clean'
       end
 
       # vs clean --help: クリーンコマンドのヘルプ（--all オプション含む）

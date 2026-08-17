@@ -8,7 +8,7 @@
 #   vs build の Step 1〜4 のみを実行し、PDF生成なしで原稿エラーを高速検出する。
 #
 # 実行内容:
-#   Step 1: 画像最適化（--no-resize でスキップ）
+#   Step 1: SVG のラスタライズ（Type 3 対策・同梱 WebP があるので実質スキップ）
 #   Step 2: テーマ画像準備
 #   Step 3: Markdown前処理（frontmatter・画像パス・QueryStream・コードインクルード・クロスリファレンス）
 #   Step 4: 索引スキャン（index_glossary.enabled かつ全章実行時のみ）
@@ -54,7 +54,6 @@ module VivlioStarter
         many :targets, 'チェック対象（章番号 / 範囲 / スラッグ）', default: []
 
         options do
-          option '--[no]-resize', '画像最適化を行う（--no-resize で無効）', default: true, key: :resize
           option '--[no]-verify', 'リンク・画像の基本検証を実行する（--no-verify でスキップ）', default: true, key: :verify
           option '--verify-links', '外部 URL の HTTP 到達性チェックを実行する', default: false, key: :verify_links
           option '--log <level>', 'ログレベルを指定（error/warn/info/debug）', key: :log_level
@@ -288,7 +287,6 @@ module VivlioStarter
               targets...          チェック対象（章番号 / 範囲 / スラッグ）。省略時は全章
 
             オプション:
-              --[no]-resize       画像最適化を行う（--no-resize で無効）         （既定: 有効）
               --[no]-verify       リンク・画像の基本検証を実行する（--no-verify でスキップ）（既定: 有効）
               --verify-links      外部 URL の HTTP 到達性チェックを実行する
               --log <level>       ログレベルを指定（error/warn/info/debug）

@@ -10,7 +10,6 @@
 #   - 引数なしで全章が対象になること
 #   - 章番号トークンが正しく解決されること
 #   - 範囲トークンが正しく解決されること
-#   - --no-resize で Step 1 がスキップされること
 #   - preflight 実行後に HTML/PDF が生成されないこと
 #   - RootCommand.public_commands に登録されていること
 #   - vs --help に preflight が表示されること
@@ -31,18 +30,6 @@ module VivlioStarter
       # オプション解析テスト
       # ----------------------------------------------------------------
       class PreflightCommandOptionTest < Minitest::Test
-        # --no-resize で options[:resize] が false になる
-        def test_should_disable_resize_when_no_resize_is_passed
-          command = PreflightCommand.new(['--no-resize'])
-          assert_equal false, command.options[:resize]
-        end
-
-        # デフォルトで resize が有効
-        def test_should_keep_resize_enabled_by_default
-          command = PreflightCommand.new([])
-          assert_equal true, command.options[:resize]
-        end
-
         # --help で options[:help] が true になる
         def test_should_set_help_option_when_help_is_passed
           command = PreflightCommand.new(['--help'])
@@ -102,20 +89,6 @@ module VivlioStarter
             end
 
             assert_equal entries, pipelines.last.entries_param
-          end
-        end
-
-        # --no-resize で pipeline の run_step1 がスキップされる（options[:resize] = false）
-        def test_should_skip_step1_when_no_resize
-          entries = sample_entries('11-sample')
-          with_resolver_stub(entries) do
-            pipelines = []
-            with_pipeline_stub(pipelines) do
-              command = PreflightCommand.new(['--no-resize'])
-              run_in_isolation(command) { command.call }
-            end
-
-            assert_equal false, pipelines.last.command_options[:resize]
           end
         end
 
@@ -427,7 +400,6 @@ module VivlioStarter
           end
           assert_includes output, 'preflight'
           assert_includes output, 'targets'
-          assert_includes output, 'resize'
         end
       end
     end
