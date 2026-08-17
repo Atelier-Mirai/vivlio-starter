@@ -27,10 +27,15 @@ module VivlioStarter
         DERIVED_ROOT = "#{Common::CACHE_DIR}/derived".freeze
         PDF_DERIVED_DIR = "#{DERIVED_ROOT}/pdf".freeze
 
-        # 組み上がった PDF から測った「画素数 → 350ppi に要る画素数」の対応表。
-        # ビルドをまたいで残す——索引を使わない本では Step 8 の再レンダが無いため、
-        # 次回のビルドのステージングで初めて効く（§3.6）。
-        METRICS_FILE = "#{DERIVED_ROOT}/pdf-metrics.yml".freeze
+        # 組み上がった PDF から測った、画素数ごとの「要る画素数」と「版面に対する表示幅の
+        # 割合」の対応表。ビルドをまたいで残す——索引を使わない本では Step 8 の再レンダが
+        # 無いため、次回のビルドのステージングで初めて効く（§3.6）。
+        #
+        # **割合は EPUB / Kindle が使う。** あちらはリフローなのでページが確定せず、
+        # 「組んでから測る」ができない。しかし版面に対する相対幅は同じなので——`width=30%`
+        # の指定も 2 列に並べた表も、PDF 側の測定に既に現れている——読者の画面幅に掛ければ
+        # 必要画素数が出る。
+        METRICS_FILE = "#{DERIVED_ROOT}/image-metrics.yml".freeze
 
         # 素材の多くが既に WebP（非可逆）で、派生はその二段目になる。ここで落とすと
         # 劣化が重なるため、resize の「高精細」と同じ 90 を採る。
@@ -130,7 +135,12 @@ module VivlioStarter
           out, status = Open3.capture2('pdfimages', '-list', pdf_path, err: File::NULL)
           return 0 unless status.success?
 
-          required = {}
+          text_width = text_area_width_mm
+          # **既存を引き継ぐ。** 2 回目以降のビルドでは 1 回目から縮小版が組まれるため、
+          # 素材の画素数のエントリ（初回にしか現れない）が測定から消える。EPUB / Kindle は
+          # 素材から派生を作るので、そちらのキーが引けなくなると縮小が効かなくなる。
+          # 素材が差し替わればキー自体が変わるので、古い値が悪さをすることはない。
+          measured = metrics.dup
           out.each_line do |line|
             cols = line.split
             next unless cols.size >= 15 && cols[2] == 'image'
@@ -139,21 +149,50 @@ module VivlioStarter
             ppi = cols[12].to_i
             next unless width.positive? && ppi.positive?
 
-            key = "#{width}x#{cols[4]}"
-            needed = (width * TARGET_PPI.to_f / ppi).ceil
-            required[key] = [required[key].to_i, needed].max
+            entry = measured["#{width}x#{cols[4]}"] ||= { 'px' => 0, 'ratio' => 0.0 }
+            entry['px'] = [entry['px'], (width * TARGET_PPI.to_f / ppi).ceil].max
+            # 版面幅が引けないときは 1.0（版面いっぱい）に倒す——縮めすぎるより素材のまま運ぶ
+            display_mm = width / ppi.to_f * 25.4
+            ratio = text_width ? (display_mm / text_width) : 1.0
+            entry['ratio'] = [entry['ratio'], ratio.clamp(0.0, 1.0)].max
           end
-          return 0 if required.empty?
+          return 0 if measured.empty?
 
           FileUtils.mkdir_p(File.dirname(METRICS_FILE))
-          File.write(METRICS_FILE, required.to_yaml)
-          @metrics = required
-          required.size
+          File.write(METRICS_FILE, measured.to_yaml)
+          @metrics = measured
+          measured.size
+        end
+
+        # 読者の画面幅（EPUB 2048px / Kindle 1024px）に対して要る画素数。
+        #
+        # PDF で測った**版面に対する割合**を掛けるだけでよい。リフローではページが確定せず
+        # 「組んでから測る」ができないが、相対幅は組版系によらないからである——版面の半分に
+        # 並べた見本は EPUB でも画面の半分を占める。測っていなければ画面幅そのもの（＝安全側）。
+        #
+        # @param viewport_px [Integer] そのターゲットの画面幅
+        # @return [Integer] 要る画素数（画面幅を超えない）
+        def viewport_target(width, height, viewport_px)
+          ratio = metrics.dig("#{width}x#{height}", 'ratio')
+          return viewport_px unless ratio&.positive?
+
+          [(viewport_px * ratio).ceil, viewport_px].min
+        end
+
+        # 版面幅（mm）。同じ計算を 2 度持たないよう `BookSettingsCss` へ委ねる。
+        # 設定が無い直接ビルドや、pre_process が読み込まれていない文脈では nil。
+        def text_area_width_mm
+          return nil unless Common.configured?
+
+          page_cfg = PreProcessCommands::BookSettingsCss.build_page_cfg(Common::CONFIG)
+          PreProcessCommands::BookSettingsCss.text_area_width_mm(page_cfg)
+        rescue StandardError
+          nil
         end
 
         # 縮小先の画素数。縮める必要が無ければ nil（素材の画素数のまま渡す）。
         def shrink_target(width, height)
-          needed = metrics["#{width}x#{height}"]
+          needed = metrics.dig("#{width}x#{height}", 'px')
           return nil unless needed&.positive?
           return nil if needed >= width
 

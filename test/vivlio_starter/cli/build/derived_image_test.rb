@@ -170,6 +170,34 @@ module VivlioStarter
         end
       end
 
+      # --- EPUB / Kindle 向け（リフローなので「組んでから測る」ができない） ---
+
+      # 版面に対する割合を画面幅へ掛ける。版面の半分に並べた見本は EPUB でも画面の半分
+      def test_should_scale_viewport_target_by_the_measured_ratio
+        in_temp_project do
+          write_metrics('2048x2048' => { 'px' => 1073, 'ratio' => 0.458 })
+
+          assert_equal 938, Derived.viewport_target(2048, 2048, 2048)  # EPUB
+          assert_equal 469, Derived.viewport_target(2048, 2048, 1024)  # Kindle
+        end
+      end
+
+      # 版面いっぱいの絵は画面幅いっぱいが要る
+      def test_should_use_full_viewport_for_full_width_image
+        in_temp_project do
+          write_metrics('2048x2048' => { 'px' => 2343, 'ratio' => 1.0 })
+
+          assert_equal 2048, Derived.viewport_target(2048, 2048, 2048)
+        end
+      end
+
+      # 測っていなければ画面幅そのもの（＝安全側。縮めすぎるより素材のまま運ぶ）
+      def test_should_fall_back_to_viewport_when_not_measured
+        in_temp_project do
+          assert_equal 2048, Derived.viewport_target(999, 999, 2048)
+        end
+      end
+
       # 素材は読むだけ。著者の images/ を書き換えてはならない（§6-9）
       def test_should_never_modify_source_images
         in_temp_project do
@@ -205,10 +233,14 @@ module VivlioStarter
 
       def width_of(path) = `magick identify -format '%w' #{path}`.strip.to_i
 
-      # 測定結果を直に置く（実 PDF を組まずに縮小の判定だけを確かめる）
+      # 測定結果を直に置く（実 PDF を組まずに縮小の判定だけを確かめる）。
+      # 値は必要画素数だけを渡せばよく、割合は既定 1.0（版面いっぱい）で埋める。
       def write_metrics(map)
         FileUtils.mkdir_p('.cache/vs/derived')
-        File.write('.cache/vs/derived/pdf-metrics.yml', map.to_yaml)
+        entries = map.transform_values do |value|
+          value.is_a?(Hash) ? value : { 'px' => value, 'ratio' => 1.0 }
+        end
+        File.write('.cache/vs/derived/image-metrics.yml', entries.to_yaml)
         Derived.reset_cache!
       end
     end

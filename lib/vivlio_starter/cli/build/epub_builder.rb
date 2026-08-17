@@ -24,6 +24,7 @@ require 'tmpdir'
 require_relative '../entries'
 require_relative '../code_line_blocks'
 require_relative '../units'
+require_relative 'derived_image'
 require_relative 'vivliostyle_config_writer'
 require_relative 'heading_image_composer'
 require_relative 'math_text_renderer'
@@ -131,13 +132,13 @@ module VivlioStarter
         # @param dir [String] 消費者 dir
         # @param flavor [Symbol] :epub / :kindle
         def localize_assets!(dir, flavor:)
-          copy_asset_tree!(Common.images_dir, dir) { localized_image?(it, flavor) }
+          copy_asset_tree!(Common.images_dir, dir, flavor:) { localized_image?(it, flavor) }
           # ビルド生成画像（数式 SVG）は workspace の html/images/ 配下から同梱する（P4b §2.3）。
           # EPUB 内の最終パスは images/math/… でルートの著者画像と同一階層に収まる。
-          copy_asset_tree!(File.join(Common::BUILD_HTML_DIR, 'images'), dir, dest_root: 'images') do
+          copy_asset_tree!(File.join(Common::BUILD_HTML_DIR, 'images'), dir, dest_root: 'images', flavor:) do
             localized_image?(it, flavor)
           end
-          copy_asset_tree!(Common.stylesheets_dir, dir) { localized_stylesheet?(it, flavor) }
+          copy_asset_tree!(Common.stylesheets_dir, dir, flavor:) { localized_stylesheet?(it, flavor) }
           localize_theme_variant_images!(dir, flavor)
           localize_cover_image!(dir, flavor)
           Common.log_info("[EPUB] 参照資産を #{dir} 内へローカライズしました（flavor: #{flavor}）")
@@ -163,7 +164,9 @@ module VivlioStarter
 
             dest = File.join(dir, rel)
             FileUtils.mkdir_p(File.dirname(dest))
-            FileUtils.cp(src, dest)
+            # 章扉・節絵も画面幅で頭打ちにする（2880px は 2048px 画面には過剰）。
+            # ページ全面に敷かれるので割合は 1.0 になり、実質は上限だけが効く。
+            copy_asset!(src, dest, flavor)
           end
         end
 
@@ -171,7 +174,7 @@ module VivlioStarter
         # dir/dest_root/ へミラーコピーする。dest_root 既定は src_root（cwd 相対の著者資産は
         # そのままの相対階層で dir 下へ接がる）。ワークスペース配下の生成物は src_root が
         # 深い絶対的相対になるため dest_root: 'images' 等で置き場を明示する（P4b §2.3）。
-        def copy_asset_tree!(src_root, dir, dest_root: src_root)
+        def copy_asset_tree!(src_root, dir, dest_root: src_root, flavor: nil)
           return unless Dir.exist?(src_root)
 
           Dir.glob(File.join(src_root, '**', '*')).each do |src|
@@ -182,8 +185,39 @@ module VivlioStarter
 
             dest = File.join(dir, dest_root, rel)
             FileUtils.mkdir_p(File.dirname(dest))
-            FileUtils.cp(src, dest)
+            copy_asset!(src, dest, flavor)
           end
+        end
+
+        # 画面幅に対して過剰な画素数を落としてコピーする。画像以外はそのまま複製する。
+        #
+        # **リフローでは「組んでから測る」ができない。** ページが確定せず、表示幅は端末・
+        # フォントサイズ・向きで変わるからである。しかし**版面に対する割合は組版系によらない**
+        # ——版面の半分に並べた見本は EPUB でも画面の半分を占める。そこで PDF 側で測った割合
+        # （`DerivedImage.viewport_target`）を画面幅に掛けて必要画素数を出す。`width=30%` の
+        # 指定も 2 列に並べた表も、PDF の測定に既に現れている。
+        #
+        # PDF を組んでいなければ画面幅そのものが上限になる（＝安全側）。
+        def copy_asset!(src, dest, flavor)
+          edge = shrink_edge_for(src, flavor)
+          return FileUtils.cp(src, dest) unless edge
+
+          shrunk = system('magick', src, '-resize', "#{edge}x#{edge}>", '-strip', dest,
+                          out: File::NULL, err: File::NULL) && File.size?(dest)
+          # 変換に失敗しても運ばないより運ぶほうがよい（画像が欠けるより重いほうがまし）
+          FileUtils.cp(src, dest) unless shrunk
+        end
+
+        # 縮小が要るなら長辺（px）を、要らなければ nil を返す。
+        def shrink_edge_for(src, flavor)
+          return nil unless src.match?(/\.(webp|png|jpe?g)\z/i)
+
+          viewport = flavor == :kindle ? KINDLE_IMAGE_MAX_EDGE : EPUB_IMAGE_MAX_EDGE
+          width, height = image_dimensions(src)
+          return nil unless width&.positive?
+
+          edge = DerivedImage.viewport_target(width, height, viewport)
+          edge < [width, height].max ? edge : nil
         end
 
         # images/ 配下でローカライズ対象とするか（rel は images/ からの相対パス）。
@@ -245,6 +279,9 @@ module VivlioStarter
 
           dest = File.join(dir, 'covers', File.basename(cover))
           FileUtils.mkdir_p(File.dirname(dest))
+          # **表紙は本文画像の上限を適用しない。** ストアが表紙に固有の寸法を求めており
+          # （KDP の推奨は長辺 2560px で、既定の 1600×2560 はまさにその値）、本文と同じ
+          # 基準で落とすと要件を割る。得られるものも 1 枚ぶんしかない。
           FileUtils.cp(cover, dest)
         end
 
@@ -1467,6 +1504,11 @@ module VivlioStarter
         # EPUB 用トランスコード出力の集約サブディレクトリ（images/ 配下）。クリーン対象（clean.rb）。
         EPUB_ASSETS_REL_SUBDIR = '_epub_assets'
 
+        # クリーン EPUB 用画像の長辺上限（px）。iPad Pro 12.9" の画面幅が 2048px で、
+        # ここを超える表示先が事実上ないため頭打ちにする。Kindle と違い Kobo / Apple Books
+        # には配信料の従量課金が無いので、上限は緩めに取る。
+        EPUB_IMAGE_MAX_EDGE = 2048
+
         # Kindle 用画像の長辺上限（px）。この変換経路は :kindle でしか呼ばれないため、
         # クリーン EPUB（iPad 等の高精細画面で読まれうる）には影響しない。
         #
@@ -1577,16 +1619,42 @@ module VivlioStarter
         end
 
         # 変換元 → 出力（JPEG は白フラット化、PNG は透過保持）。成否を返す。
+        #
+        # 縮小先は端末の画面幅そのものではなく、**紙面で占めていた割合を掛けた値**にする
+        # （`DerivedImage.viewport_target`）。版面の半分に並べた見本は Kindle でも画面の
+        # 半分を占めるので、画面幅いっぱいの画素数は要らない。PDF を組んでいなければ
+        # 従来どおり画面幅が上限になる。
         def convert_image_for_epub(source, dest, ext)
+          edge = target_edge_for(source, KINDLE_IMAGE_MAX_EDGE)
+          resize = ['-resize', "#{edge}x#{edge}>"]
           cmd = if ext == 'png'
-                  ['magick', source, '-resize', "#{KINDLE_IMAGE_MAX_EDGE}x#{KINDLE_IMAGE_MAX_EDGE}>", '-strip', dest]
+                  ['magick', source, *resize, '-strip', dest]
                 else
                   ['magick', source, '-background', 'white', '-flatten',
-                   '-resize', "#{KINDLE_IMAGE_MAX_EDGE}x#{KINDLE_IMAGE_MAX_EDGE}>", '-strip', '-quality', '90', dest]
+                   *resize, '-strip', '-quality', '90', dest]
                 end
           system(*cmd, out: File::NULL, err: File::NULL)
         rescue StandardError
           false
+        end
+
+        # 画面幅に対して要る長辺（px）。寸法が読めなければ画面幅をそのまま返す。
+        def target_edge_for(source, viewport_px)
+          width, height = image_dimensions(source)
+          return viewport_px unless width&.positive?
+
+          DerivedImage.viewport_target(width, height, viewport_px)
+        end
+
+        # 画像の寸法。読めなければ [nil, nil]。
+        def image_dimensions(path)
+          out, status = Open3.capture2('magick', 'identify', '-format', '%w %h', path, err: File::NULL)
+          return [nil, nil] unless status.success?
+
+          width, height = out.split.map(&:to_i)
+          [width, height]
+        rescue StandardError
+          [nil, nil]
         end
 
         # HTML 実体参照をデコードしてディスク上のパスへ戻す（&apos; を含む src の解決・§5-4）。
