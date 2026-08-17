@@ -55,6 +55,43 @@ module VivlioStarter
                "Markdown 未検出の警告が出力されること: #{logged_warnings.inspect}"
       end
 
+      # 独自ルール（交ぜ書き・対比）は「日本語校正」の一部なので、textlint を切ると
+      # 一緒に止まり、スペルチェックだけを求めたときには出てこない。
+      # 仕様: lint-japanese-prose-rules-spec.md §5
+      def test_prose_rules_follow_the_japanese_lint_scope
+        File.write('contents/11-install.md', "だ円の面積を求めます。\n")
+
+        stdout, = capture_io { LintCommands.execute_lint(['11-install'], { spellcheck_only: true }) }
+        refute_match(/mazegaki/, stdout, '--spellcheck-only では日本語校正を走らせない')
+
+        fake_status = Struct.new(:success?).new(true)
+        def fake_status.exitstatus = 0
+
+        with_stubbed_textlint_available do
+          Open3.stub(:capture3, ->(*_args) { ['[]', '', fake_status] }) do
+            stdout, = capture_io { LintCommands.execute_lint(['11-install'], { textlint_only: true }) }
+            assert_match(/\[mazegaki\] だ円 => 楕円/, stdout, '--textlint-only では走る')
+          end
+        end
+      end
+
+      # 交ぜ書きは 1 対 1 の置換なので --fix で直す。対比は文脈依存なので直さない。
+      def test_fix_option_rewrites_mazegaki_in_place
+        path = 'contents/11-install.md'
+        File.write(path, "だ円について、Ractor はスレッドと同様に共有しない。\n")
+
+        fake_status = Struct.new(:success?).new(true)
+        def fake_status.exitstatus = 0
+
+        with_stubbed_textlint_available do
+          Open3.stub(:capture3, ->(*_args) { ['[]', '', fake_status] }) do
+            capture_io { LintCommands.execute_lint(['11-install'], { fix: true }) }
+          end
+        end
+
+        assert_equal "楕円について、Ractor はスレッドと同様に共有しない。\n", File.read(path)
+      end
+
       def test_runner_invokes_textlint_with_resolved_targets
         FileUtils.touch('contents/11-install.md')
         FileUtils.touch('contents/21-customize.md')
@@ -393,6 +430,50 @@ module VivlioStarter
       end
 
       # sentence_length_max 指定時に、上限を上書きした一時 textlintrc を生成する
+      # `<!-- vs-lint-disable-next-line -->` は textlint 側で効かない
+      # （textlint-filter-rule-comments v1.3.0 に -next-line の実装が無い）。
+      # 原稿は「一行だけ除外」を案内しているので、出力段で行ごと落として辻褄を合わせる
+      def test_next_line_suppression_targets_only_the_following_line
+        text = <<~MD
+          # 見出し
+
+          <!-- vs-lint-disable-next-line -->
+          この行は抑止される。
+          この行は抑止されない。
+
+          <!-- vs-lint-disable-next-line -->
+          ここも抑止される。
+        MD
+
+        runner = LintCommands::LintRunner.new([], {})
+
+        assert_equal Set[4, 8], runner.send(:next_line_suppressions, text)
+      end
+
+      # 囲む形（disable / enable）は textlint 側が処理するので、こちらは拾わない
+      def test_next_line_suppression_ignores_the_range_form
+        text = "<!-- vs-lint-disable -->\n囲まれた行。\n<!-- vs-lint-enable -->\n"
+
+        runner = LintCommands::LintRunner.new([], {})
+
+        assert_empty runner.send(:next_line_suppressions, text)
+      end
+
+      # 原稿ごとに、textlint が見る一時ファイルのパスへ紐づける
+      def test_suppressed_lines_map_keys_on_the_temp_file
+        Dir.mktmpdir do |dir|
+          original = File.join(dir, '11-install.md')
+          tmp      = File.join(dir, 'textlint_tmp.md')
+          File.write(original, "<!-- vs-lint-disable-next-line -->\n抑止される行。\n")
+          FileUtils.touch(tmp)
+
+          runner = LintCommands::LintRunner.new([], {})
+          map = runner.send(:suppressed_lines_map, [original], [tmp])
+
+          assert_equal Set[2], map[File.expand_path(tmp)]
+        end
+      end
+
       def test_generate_runtime_config_overrides_sentence_length_max
         Dir.mktmpdir do |dir|
           base = File.join(dir, '.textlintrc.yml')

@@ -26,6 +26,7 @@
 require 'open3'
 require 'shellwords'
 require 'rbconfig'
+require 'set'
 require 'tempfile'
 require 'yaml'
 
@@ -36,6 +37,7 @@ require_relative 'lint/notation_guard'
 require_relative 'lint/tokenizer'
 require_relative 'lint/dict_manager'
 require_relative 'lint/spell_checker'
+require_relative 'lint/prose_checker'
 
 module VivlioStarter
   module CLI
@@ -106,14 +108,21 @@ module VivlioStarter
             return 0
           end
 
-          lint_info  = { exit: 0, lint_count: 0, fixable_count: 0, fixed_count: 0 }
+          lint_info  = { exit: 0, lint_count: 0, fixable_count: 0, fixed_files: [] }
+          prose_info = { exit: 0, prose_count: 0, fixed_files: [] }
           spell_info = { exit: 0, spell_count: 0 }
 
-          lint_info  = run_textlint(files) unless spellcheck_only?
+          unless spellcheck_only?
+            # 交ぜ書きの置換を先に済ませてから textlint を走らせる。逆順にすると
+            # textlint が見る原稿と、置換後に残る原稿が食い違う。
+            prose_fixed = options[:fix] ? apply_prose_fixes!(files) : []
+            lint_info   = run_textlint(files)
+            prose_info  = run_prose_check(files).merge(fixed_files: prose_fixed)
+          end
           spell_info = run_spellcheck(files) unless textlint_only?
 
-          print_combined_summary(lint_info, spell_info)
-          [lint_info[:exit], spell_info[:exit]].max
+          print_combined_summary(lint_info, prose_info, spell_info)
+          [lint_info[:exit], prose_info[:exit], spell_info[:exit]].max
         rescue LintError => e
           Common.log_error(e.message)
           1
@@ -128,25 +137,27 @@ module VivlioStarter
         # ガード済みの内容を原稿へ書き戻すことはできない（両立させるための 2 パス）。
         # 仕様: lint-notation-guard-spec.md §2.3
         def run_textlint(files)
-          fixed_count = options[:fix] ? apply_textlint_fixes!(files).size : 0
+          fixed_files = options[:fix] ? apply_textlint_fixes!(files) : []
 
           converted_files = convert_vs_lint_comments(files)
           # textlint は一時ファイルを検査するため、出力の一時パスを元ファイル名へ戻すマップ
           path_map = files.zip(converted_files).to_h { |orig, tmp| [File.expand_path(tmp), orig] }
-          run_textlint_aggregated(converted_files, path_map).merge(fixed_count: fixed_count)
+          hushed = suppressed_lines_map(files, converted_files)
+          run_textlint_aggregated(converted_files, path_map, hushed).merge(fixed_files: fixed_files)
         ensure
           cleanup_temp_files(converted_files) if converted_files
           @runtime_config_tmp&.unlink
         end
 
         # ルール単位で集約した独自表示（--format json で取得して整形）
-        def run_textlint_aggregated(files, path_map = {})
+        def run_textlint_aggregated(files, path_map = {}, suppressed_lines = {})
           command = build_command(files, format: 'json')
           stdout, stderr, status = Open3.capture3(*command)
           $stderr.print(stderr) unless stderr.nil? || stderr.empty?
 
           result = TextlintFormatter.aggregate_json(
-            stdout, disabled_rules: disabled_rules, trim_long_vowel: trim_long_vowel?
+            stdout, disabled_rules: disabled_rules, trim_long_vowel: trim_long_vowel?,
+                    suppressed_lines: suppressed_lines
           )
           if result.nil?
             # JSON 解釈に失敗（textlint 自体のエラー等）。生出力をそのまま見せる。
@@ -159,6 +170,47 @@ module VivlioStarter
           print_textlint_aggregated(result)
           # 無効化で除外した分は問題数に数えない（残り 0 なら成功扱い）
           { exit: result[:total].positive? ? 1 : 0, lint_count: result[:total], fixable_count: result[:fixable] }
+        end
+
+        # textlint では扱えない指摘（交ぜ書き・二通りに読める対比）を当てる。
+        # 件数は「日本語校正」へ合算する——著者から見れば textlint の指摘と区別する
+        # 理由がない。仕様: lint-japanese-prose-rules-spec.md §5
+        def run_prose_check(files)
+          findings_by_file = files.to_h { [it, check_prose(it)] }
+                                  .reject { |_path, findings| findings.empty? }
+          Lint::ProseChecker.print_errors(findings_by_file)
+
+          all = findings_by_file.values.flatten
+          { exit: all.empty? ? 0 : 1,
+            prose_count: all.size,
+            fixable_count: all.count { it.rule == Lint::ProseChecker::MAZEGAKI_RULE } }
+        end
+
+        # 交ぜ書きの置換を原稿へ適用する（--fix 指定時のみ）。
+        # 対比の指摘は自動修正しない（どちらが X するのかは著者しか知らないため）。
+        # @return [Array<String>] 実際に書き換えた原稿パス
+        def apply_prose_fixes!(files)
+          return [] if disabled_rules.include?(Lint::ProseChecker::MAZEGAKI_RULE)
+
+          files.filter_map do |path|
+            original = File.read(path, encoding: 'UTF-8')
+            fixed    = Lint::ProseChecker.fix_mazegaki(original, prose_allowlist)
+            next if fixed == original
+
+            atomic_write(path, fixed)
+            path
+          end
+        end
+
+        def check_prose(path)
+          Lint::ProseChecker.check(path, disabled_rules: disabled_rules, allowlist: prose_allowlist)
+        end
+
+        # config/textlint_allowlist.yml の語で交ぜ書きの指摘を黙らせる。
+        # textlint と同じファイルを読むので、著者が窓口を二度覚えなくて済む。
+        def prose_allowlist
+          @prose_allowlist ||=
+            Lint::ProseChecker.allowlist_from(Common.resolve_path_from_root(TEXTLINT_ALLOWLIST_RELATIVE))
         end
 
         # book.yml lint.disabled_rules（ルール ID で丸ごと無効化）
@@ -186,16 +238,17 @@ module VivlioStarter
 
         private
 
-        def print_combined_summary(lint_info, spell_info)
-          lint_count  = lint_info[:lint_count].to_i
+        def print_combined_summary(lint_info, prose_info, spell_info)
+          lint_count  = lint_info[:lint_count].to_i + prose_info[:prose_count].to_i
           spell_count = spell_info[:spell_count].to_i
-          fixable     = lint_info[:fixable_count].to_i
+          fixable     = lint_info[:fixable_count].to_i + prose_info[:fixable_count].to_i
           total       = lint_count + spell_count
 
           Common.log_always ''
           Common.log_always '✏️ 文章の品質チェックが完了しました'
-          # 修正パスが原稿を直した件数。以降のサマリーは「修正後に残った指摘」を指す。
-          fixed = lint_info[:fixed_count].to_i
+          # 修正パスが原稿を直したファイル数。以降のサマリーは「修正後に残った指摘」を指す。
+          # 和集合を取るのは、textlint と交ぜ書きが同じ原稿を直しうるため（二重に数えない）。
+          fixed = (Array(lint_info[:fixed_files]) | Array(prose_info[:fixed_files])).size
           Common.log_always "🔧 #{fixed}ファイルへ自動修正を適用しました" if fixed.positive?
           if total.positive?
             Common.log_warn("#{total}箇所に改善提案があります")
@@ -418,6 +471,42 @@ module VivlioStarter
 
         def windows_platform?
           !!(RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin|bccwin|wince|emx/i)
+        end
+
+        # `<!-- vs-lint-disable-next-line -->` の直後の行番号を、原稿ごとに集める。
+        #
+        # **textlint 側でこの記法は効かない。** 変換先の `<!-- textlint-disable-next-line -->` を
+        # `textlint-filter-rule-comments`（v1.3.0）が実装しておらず、無効なコメントとして
+        # 黙って捨てられる（囲む形の disable/enable は効く）。原稿は「一行だけ除外」を
+        # 案内しているので、**出力段で行ごと落として辻褄を合わせる**。
+        #
+        # 一時ファイルへ disable/enable を挿し込む手は採れない——行数が変わり、
+        # 報告される行番号が原稿とずれる。
+        # @return [Hash] { 一時ファイルの絶対パス => 抑止する行番号の Set }
+        def suppressed_lines_map(files, converted_files)
+          files.zip(converted_files).to_h do |original, tmp|
+            [File.expand_path(tmp), next_line_suppressions(File.read(original, encoding: 'UTF-8'))]
+          end
+        rescue StandardError => e
+          # 抑止情報が作れなくても検査は続ける（指摘が余分に出るだけで、止まるよりよい）
+          Common.log_debug("[lint] 抑止行の収集に失敗しました: #{e.message}")
+          {}
+        end
+
+        # 抑止コメントの次の行番号を集める。コメント自身の行は数えない。
+        def next_line_suppressions(text)
+          hushed  = Set.new
+          pending = false
+
+          text.each_line.with_index(1) do |line, lineno|
+            if pending
+              hushed << lineno
+              pending = false
+            end
+            pending = true if line.match?(/<!--\s*vs-lint-disable-next-line\s*-->/)
+          end
+
+          hushed
         end
 
         # vs-lint コメントを textlint ネイティブ記法に変換する

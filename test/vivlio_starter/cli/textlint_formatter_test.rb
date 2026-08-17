@@ -63,6 +63,44 @@ module VivlioStarter
         assert(labels.any? { it.include?('[prh]') }, '他のルールは残る')
       end
 
+      # 行単位の抑止（`<!-- vs-lint-disable-next-line -->` の次の行）。
+      # textlint 側の comments フィルタが -next-line を実装していないため、
+      # 出力段で落とすしかない。**集約の前に当たること**が要点で、集約後は
+      # 行番号が 1 行へ畳まれて選り分けられなくなる
+      def test_aggregate_json_suppresses_listed_lines
+        result = TextlintFormatter.aggregate_json(
+          sample_json, base_dir: '/proj',
+          suppressed_lines: { '/proj/contents/31-lint.md' => Set[39, 84] }
+        )
+
+        assert_equal 3, result[:total], '抑止した 2 件は数にも入らない'
+        rows = result[:files].first[:rows]
+        assert_equal '75', rows.find { it[:label].include?('ja-space-around-code') }[:lines],
+                     '同じルールでも抑止していない行は残る'
+        assert_equal '122', rows.find { it[:label].include?('以下の') }[:lines]
+      end
+
+      # 抑止対象が全部消えたファイルは、そもそも表示しない
+      def test_aggregate_json_drops_files_fully_suppressed
+        result = TextlintFormatter.aggregate_json(
+          sample_json, base_dir: '/proj',
+          suppressed_lines: { '/proj/contents/31-lint.md' => Set[31, 39, 75, 84, 122] }
+        )
+
+        assert_equal 0, result[:total]
+        assert_empty result[:files]
+      end
+
+      # 別ファイルの抑止行が漏れて効かないこと（パスをキーに引く）
+      def test_aggregate_json_scopes_suppression_by_file
+        result = TextlintFormatter.aggregate_json(
+          sample_json, base_dir: '/proj',
+          suppressed_lines: { '/proj/contents/99-other.md' => Set[39, 75, 84, 122, 31] }
+        )
+
+        assert_equal 5, result[:total], '他ファイルの抑止行は当てない'
+      end
+
       # trim_long_vowel で「X => Xー」（末尾長音追加）系の指摘が抑止される
       def test_aggregate_json_trim_long_vowel
         json = <<~JSON

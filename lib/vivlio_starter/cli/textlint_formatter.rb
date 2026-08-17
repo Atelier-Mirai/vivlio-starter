@@ -32,9 +32,11 @@ module VivlioStarter
       # @param base_dir [String] ファイルパスの相対化基準
       # @param disabled_rules [Array<String>] 無効化するルール ID（短縮名・完全名の両対応）
       # @param trim_long_vowel [Boolean] true なら「X => Xー」（末尾長音を足す）系の指摘を抑止
+      # @param suppressed_lines [Hash] { 絶対パス => 行番号の集合 }。その行の指摘を丸ごと落とす
       # @return [Hash, nil] { files: [{ path:, rows: }], total:, fixable: } / JSON 解釈失敗時 nil
       #   rows: [{ count:, label:, lines: }]（出現数の多い順。label は "[ルール] 指摘先頭行"）
-      def self.aggregate_json(json_string, base_dir: Dir.pwd, disabled_rules: [], trim_long_vowel: false)
+      def self.aggregate_json(json_string, base_dir: Dir.pwd, disabled_rules: [], trim_long_vowel: false,
+                              suppressed_lines: {})
         data = JSON.parse(json_string.to_s)
         return nil unless data.is_a?(Array)
 
@@ -42,7 +44,11 @@ module VivlioStarter
         total = 0
         fixable = 0
         files = data.filter_map do |file|
-          messages = Array(file['messages']).reject { |m| disabled_message?(m, drules, trim_long_vowel) }
+          # 行単位の抑止は集約より前に当てる（集約後は行番号が畳まれて選り分けられない）
+          hushed = suppressed_lines[File.expand_path(file['filePath'].to_s)] || []
+          messages = Array(file['messages']).reject do |m|
+            disabled_message?(m, drules, trim_long_vowel) || hushed.include?(m['line'])
+          end
           next if messages.empty?
 
           total += messages.size
