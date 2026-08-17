@@ -72,6 +72,35 @@ module VivlioStarter
         end
       end
 
+      # 地色を持つブロックの中に置かれた画像は透過を保つ。白く塗るとその矩形が浮く
+      def test_should_keep_alpha_when_asked
+        in_temp_project do
+          source = 'images/10-intro/logo.webp'
+          make_image(source, '-size', '200x200', 'xc:none', '-fill', 'blue', '-draw', 'circle 100,100 100,30')
+
+          derived = Derived.prepare(source, keep_alpha: true)
+
+          assert_path_exists derived.path
+          assert_equal 'False', opaque_of(derived.path), '透過が落ちている'
+        end
+      end
+
+      # フラット化したものと透過を残したものは別ファイルとして共存する。
+      # 同じ絵が地色のブロックの中と外の両方に出ることがあり、片方で上書きしてはならない
+      def test_should_keep_both_flattened_and_alpha_derivatives
+        in_temp_project do
+          source = 'images/10-intro/logo.webp'
+          make_image(source, '-size', '200x200', 'xc:none', '-fill', 'blue', '-draw', 'circle 100,100 100,30')
+
+          flattened = Derived.prepare(source, keep_alpha: false)
+          with_alpha = Derived.prepare(source, keep_alpha: true)
+
+          refute_equal flattened.path, with_alpha.path
+          assert_equal 'True', opaque_of(flattened.path)
+          assert_equal 'False', opaque_of(with_alpha.path)
+        end
+      end
+
       # 素材の透過は保たれる。EPUB / Kindle はこちらを読む
       def test_should_keep_transparency_in_source
         in_temp_project do

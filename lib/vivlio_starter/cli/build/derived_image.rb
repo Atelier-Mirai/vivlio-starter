@@ -80,33 +80,54 @@ module VivlioStarter
         #
         # 派生が要らないもの（SVG）と作れなかったものは戻り値に含めない——呼び出し側は
         # 「マップに無ければ素材のまま」と読めばよく、失敗が組版を止めない。
+        # @param sources [Hash{String => Boolean}, Array<String>] 素材パス → 透過を保つか。
+        #   配列を渡した場合はすべてフラット化の対象とする。
+        # @return [Hash{Array(String, Boolean) => Derivative}] [素材パス, 透過保持] → 派生
         def prepare_all(sources)
-          targets = Array(sources).uniq.select { derivable?(it) }
-          return {} if targets.empty?
+          requests = normalize_requests(sources)
+          return {} if requests.empty?
 
           mapping = {}
           lock = Mutex.new
-          ResizeCommands.each_in_parallel(targets) do |src|
-            derived = prepare(src)
-            lock.synchronize { mapping[src] = derived } if derived
+          ResizeCommands.each_in_parallel(requests) do |(src, keep_alpha)|
+            derived = prepare(src, keep_alpha:)
+            lock.synchronize { mapping[[src, keep_alpha]] = derived } if derived
           end
           mapping
         end
 
+        # {パス => 透過保持} を [パス, 透過保持] の一意な配列へ。同じ絵が地色のブロックの
+        # 中と外の両方に出ることがあるので、両方を作れるようキーに透過保持を含める。
+        def normalize_requests(sources)
+          pairs = case sources
+                  when Hash then sources.to_a
+                  else Array(sources).map { it.is_a?(Array) ? it : [it, false] }
+                  end
+          pairs.uniq.select { derivable?(it[0]) }
+        end
+
         # 1 件ぶんの派生を用意し、Derivative を返す（作れなければ nil）。
-        def prepare(source)
+        #
+        # @param keep_alpha [Boolean] 透過を保つか。**背景色を持つブロックの中に置かれた画像は
+        #   true にしなければならない**——白く塗ると、その矩形が地色の上に浮く（実測: コラムの
+        #   緑地に絵文字の白い四角が出た）。判定は呼び出し側が HTML の祖先を見て行う。
+        def prepare(source, keep_alpha: false)
           width, height, opaque = probe(source)
           return nil unless width.positive?
 
+          flatten = !opaque && !keep_alpha
+
           # --- Phase: 使えるキャッシュがあれば作り直さない ---
+          # フラット化したものと透過を残したものは**別のファイル**として持つ。同じ絵が
+          # 地色のブロックの中と外の両方に出ることがあり、片方で上書きしてはならない。
           shrink_to = shrink_target(width, height)
-          base = derived_base(source, shrink_to)
+          base = derived_base(source, shrink_to, alpha: !flatten && !opaque)
           cached = fresh_derivative(base, source)
           return Derivative.new(path: cached, width:, height:) if cached
 
           # --- Phase: 変換の指定を組み立てる ---
-          # 透過は白へ落とす（FLATTEN_OPTIONS 参照）。過剰な画素数は段階へ切り上げて縮める。
-          options = opaque ? [] : FLATTEN_OPTIONS.dup
+          # 過剰な画素数は段階へ切り上げて縮める。透過の扱いは FLATTEN_OPTIONS 参照。
+          options = flatten ? FLATTEN_OPTIONS.dup : []
           options += ['-resize', "#{shrink_to}x#{shrink_to}>"] if shrink_to
 
           # --- Phase: JPEG と PNG を作って小さいほうを採る ---
@@ -115,8 +136,12 @@ module VivlioStarter
           # ほぼ一致するので、この比較は画質の判定も兼ねている——写真は PNG で膨らみ、
           # 文字入りの図は PNG で縮むためである。
           FileUtils.mkdir_p(File.dirname(base))
-          jpg = run_magick(source, "#{base}.jpg", *options, '-quality', JPEG_QUALITY.to_s)
           png = run_magick(source, "#{base}.png", *options)
+
+          # 透過を残すなら JPEG は選べない（持てない）。サイズの比較をせず PNG で決める。
+          return png && Derivative.new(path: png, width:, height:) if !opaque && !flatten
+
+          jpg = run_magick(source, "#{base}.jpg", *options, '-quality', JPEG_QUALITY.to_s)
           winner = smaller_of(jpg, png)
           winner && Derivative.new(path: winner, width:, height:)
         end
@@ -218,10 +243,11 @@ module VivlioStarter
         # 素材のパス構造を派生側にも残す。ハッシュ名にすると、PDF が大きいときに
         # 「どの絵が効いているか」を人が追えなくなる。縮小したものは画素数を接尾辞に
         # 持たせ、等倍と共存させる（1 回目は等倍、Step 8 以降は縮小版を使うため）。
-        def derived_base(source, shrink_to = nil)
+        def derived_base(source, shrink_to = nil, alpha: false)
           relative = source.sub(%r{\A\./}, '').delete_prefix('/')
           stem = relative.sub(/\.[^.]+\z/, '')
           stem = "#{stem}_#{shrink_to}" if shrink_to
+          stem = "#{stem}_alpha" if alpha
           File.join(PDF_DERIVED_DIR, stem)
         end
 

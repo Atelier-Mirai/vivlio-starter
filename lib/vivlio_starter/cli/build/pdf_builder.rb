@@ -39,6 +39,17 @@ module VivlioStarter
         # 切り出して並べ替えるため。
         SPECIAL_PAGE_BASENAMES = %w[_titlepage _legalpage _colophon].freeze
 
+        # 地色を持つブロック。この中の画像は PDF 向けでも**透過を保つ**（`keep_alpha?`）。
+        #
+        # CSS から `background` / `background-color` を持つクラスを拾った（`column` `memo`
+        # `notice` `tip` `terminal` `book-card` `talk-body` `glossary-group-header`）。加えて、
+        # 原稿で使える囲み記法は地色が無いものも広く採る——**取りこぼすと紙面に白い矩形が出る**
+        # のに対し、余分に含めた損はそのブロック内の画像が JPEG にならないことだけで済む。
+        TINTED_BLOCK_CLASSES = %w[
+          column memo notice tip terminal book-card talk-body glossary-group-header
+          note hint caution warning
+        ].freeze
+
         module_function
 
         # html/ の全 HTML を pdf/ へ無加工コピーする（P4 §3.4-2）。
@@ -180,33 +191,47 @@ module VivlioStarter
           staged = Dir.glob(File.join(Common::BUILD_PDF_DIR, '*.html'))
           return if staged.empty?
 
-          sources = collect_image_sources(staged)
-          return if sources.empty?
+          docs = staged.to_h do |path|
+            [path, PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))]
+          end
 
-          # 派生をまとめて作る（並列。キャッシュが効けば即返る）
-          derived = DerivedImage.prepare_all(sources.values.uniq)
+          # --- Phase: 素材と「透過を保つか」を集める ---
+          requests = []
+          docs.each_value do |doc|
+            doc.css('img').each do |img|
+              file = source_file_for_img(img)
+              requests << [file, keep_alpha?(img)] if file
+            end
+          end
+          return if requests.empty?
+
+          # --- Phase: 派生をまとめて作る（並列。キャッシュが効けば即返る） ---
+          derived = DerivedImage.prepare_all(requests.uniq)
           return if derived.empty?
 
-          rewrite_staged_image_srcs!(staged, sources, derived)
+          rewrite_staged_images!(docs, derived)
         end
 
-        # staged HTML の img から {HTML 上の src => 素材の実ファイル} を集める。
+        # 地色を持つブロックの中にあるか。**この中の画像は透過を保たなければならない**——
+        # 白く塗るとその矩形が地色の上に浮く（実測: コラムの緑地に絵文字の白い四角が出た。
+        # 透過を落とす根拠は「PDF の地は紙の白」だったが、囲みブロックには背景色がある）。
+        def keep_alpha?(img)
+          img.ancestors.any? do |node|
+            next false unless node.element?
+
+            node['class'].to_s.split.any? { TINTED_BLOCK_CLASSES.include?(it) }
+          end
+        end
+
+        # img から素材の実ファイルパスを引く。
         #
         # 一度差し替えた img は `data-vs-source` に素材を控えてあるので、そちらを優先する。
         # これが無いと 2 回目に派生（.cache 配下）を素材と誤認し、二重に変換してしまう。
-        def collect_image_sources(staged)
-          sources = {}
-          staged.each do |path|
-            File.read(path, encoding: 'utf-8').scan(/<img\b[^>]*>/) do |tag|
-              src = tag[/\bsrc="([^"]+)"/, 1]
-              next unless src
+        def source_file_for_img(img)
+          original = img['data-vs-source']
+          return original if original && File.file?(original)
 
-              original = tag[/\bdata-vs-source="([^"]+)"/, 1]
-              file = (original if original && File.file?(original)) || source_file_for(src)
-              sources[src] = file if file
-            end
-          end
-          sources
+          source_file_for(img['src'].to_s)
         end
 
         # HTML 上の src から素材の実ファイルパスを引く。プロジェクトルート相対
@@ -219,22 +244,24 @@ module VivlioStarter
           File.file?(path) ? path : nil
         end
 
-        def rewrite_staged_image_srcs!(staged, sources, derived)
-          count = 0
-          staged.each do |path|
-            html = File.read(path, encoding: 'utf-8')
-            updated = html.gsub(/<img\b[^>]*>/) do |tag|
-              src = tag[/\bsrc="([^"]+)"/, 1]
-              file = src && sources[src]
-              derivative = file && derived[file]
-              next tag unless derivative
+        def rewrite_staged_images!(docs, derived)
+          total = 0
+          docs.each do |path, doc|
+            changed = 0
+            doc.css('img').each do |img|
+              file = source_file_for_img(img)
+              derivative = file && derived[[file, keep_alpha?(img)]]
+              next unless derivative
 
-              count += 1
-              rewrite_img_tag(tag, derivative, file)
+              apply_derivative!(img, derivative, file)
+              changed += 1
             end
-            File.write(path, updated, encoding: 'utf-8') unless updated == html
+            next if changed.zero?
+
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+            total += changed
           end
-          Common.log_info("[stage] PDF 向けの画像へ差し替えました: #{count} 件") if count.positive?
+          Common.log_info("[stage] PDF 向けの画像へ差し替えました: #{total} 件") if total.positive?
         end
 
         # src を派生へ向け、素材の控えと intrinsic size を書き込む。
@@ -243,12 +270,11 @@ module VivlioStarter
         # 変えてもレイアウトは動かないことを実測で確かめたが（`image-format-per-target-spec.md`
         # §3.6）、素材の寸法が不揃いだと表の列幅配分がわずかに動く。HTML の属性で
         # intrinsic dimensions を与えれば、その余地も消える（CSS の max-inline-size とは競合しない）。
-        def rewrite_img_tag(tag, derivative, source)
-          rest = tag.sub(/\A<img\b/, '')
-                    .sub(%r{\s*/?>\z}, '')
-                    .gsub(/\s*\b(?:src|width|height|data-vs-source)="[^"]*"/, '')
-          %(<img src="#{Common.asset_prefix}#{derivative.path}" width="#{derivative.width}" ) +
-            %(height="#{derivative.height}" data-vs-source="#{source}"#{rest}>)
+        def apply_derivative!(img, derivative, source)
+          img['src'] = "#{Common.asset_prefix}#{derivative.path}"
+          img['width'] = derivative.width.to_s
+          img['height'] = derivative.height.to_s
+          img['data-vs-source'] = source
         end
 
         # 特殊ページ HTML（前付・奥付）だけを html/ から pdf/ へコピーする。
