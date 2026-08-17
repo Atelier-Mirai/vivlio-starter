@@ -151,7 +151,13 @@ module VivlioStarter
             if src
               dir = File.dirname(src)
               Common.log_action("WebP を生成します: #{File.basename(src)} → #{File.basename(webp_abs)}")
-              system("vs resize:high #{Shellwords.escape(dir)}")
+              # かつて `system("vs resize:high …")` と書いていたが、**そんなコマンドは無い**
+              # （`vs resize --high` であって `resize:high` は登録されていない）。存在しない
+              # サブコマンドを渡すと `vs` はヘルプを出して終わるので、WebP は 1 枚も
+              # 生成されていなかった（2026-08-17 に実測して発覚）。素材が既に WebP の
+              # プロジェクトでは通らない経路のため、長く露見しなかった。
+              # 直接呼べばプロセスの起動も要らない。
+              ResizeCommands.execute_resize_high(dir)
             end
           end
 

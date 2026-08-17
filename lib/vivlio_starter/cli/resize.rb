@@ -33,86 +33,12 @@ module VivlioStarter
       # 高精細の上限は 2048（2026-08-17 に 2000 から変更）。2 の冪で、PDF 向け派生の
       # 段階（`DerivedImage::SIZE_STEPS`）の最大値と一致する——素材を段階と同じ画素数で
       # 持てば、ビルド側の縮小が「もう小さいので不要」と判定してそのまま使える。
-      # 2000 のままだと、2048×2048 で配られている同梱のテーマ素材が `resize:high` を
+      # 2000 のままだと、2048×2048 で配られている同梱のテーマ素材が `vs resize --high` を
       # 通すたびに 48px だけ削られていた。
       WEBP_PRESETS = {
         '高精細' => { quality: 90, method: 4, max_px: 2048 },
         '標準' => { quality: 85, method: 4, max_px: 1600 },
         '軽量' => { quality: 75, method: 4, max_px: 1200 }
-      }.freeze
-
-      RESIZE_DESC = {
-        high: {
-          short: '画像を高品質WebPに変換します',
-          long: <<~DESC
-            画像を高品質WebPに変換します（quality=90, max_px=2048）。
-
-            対象: .png, .jpg, .jpeg
-            出力: 同ディレクトリに .webp
-
-            引数:
-              DIR    対象ディレクトリ（省略時は images/）
-
-            使用例:
-              vs resize:high
-              vs resize:high assets/images
-          DESC
-        },
-        medium: {
-          short: '画像を標準品質WebPに変換します',
-          long: <<~DESC
-            画像を標準品質WebPに変換します（quality=85, max_px=1600）。
-
-            対象: .png, .jpg, .jpeg
-            出力: 同ディレクトリに .webp
-
-            引数:
-              DIR    対象ディレクトリ（省略時は images/）
-
-            使用例:
-              vs resize:medium
-              vs resize:medium assets/images
-          DESC
-        },
-        low: {
-          short: '画像を軽量品質WebPに変換します',
-          long: <<~DESC
-            画像を軽量品質WebPに変換します（quality=75, max_px=1200）。
-
-            対象: .png, .jpg, .jpeg
-            出力: 同ディレクトリに .webp
-
-            引数:
-              DIR    対象ディレクトリ（省略時は images/）
-
-            使用例:
-              vs resize:low
-              vs resize:low assets/images
-          DESC
-        },
-        default: {
-          short: '画像をWebPに変換します（標準品質）',
-          long: <<~DESC
-            画像をWebPに変換します（標準品質が既定）。
-
-            対象: .png, .jpg, .jpeg
-            出力: 同ディレクトリに .webp
-
-            引数:
-              DIR    対象ディレクトリ（省略時は images/）
-
-            オプション:
-              --force   既存ファイルも強制再生成
-              --high    高品質プリセットを使用
-              --low     軽量品質プリセットを使用
-
-            使用例:
-              vs resize
-              vs resize assets/images
-              vs resize --high
-              vs resize --force
-          DESC
-        }
       }.freeze
 
       def included(base); end

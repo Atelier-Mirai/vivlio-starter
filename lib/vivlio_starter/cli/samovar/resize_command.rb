@@ -8,10 +8,12 @@
 #   画像ファイルを WebP 形式に変換・リサイズする。
 #
 # 提供コマンド:
-#   - resize: 標準品質で変換（--high/--low で品質変更可）
-#   - resize:high: 高品質プリセット
-#   - resize:medium: 標準品質プリセット
-#   - resize:low: 軽量品質プリセット
+#   - resize: 画像を WebP へ変換（--high / --medium / --low で品質を選ぶ。既定は標準）
+#
+# かつてこの欄に resize:high / resize:medium / resize:low と書いてあったが、**そんな
+# サブコマンドは登録されていない**（root_command.rb にあるのは 'resize' の 1 つだけ）。
+# この記述を信じた `system("vs resize:high …")` が theme_image_resolver に残り、WebP を
+# 1 枚も生成しないまま動いていた（2026-08-17 に発覚）。
 #
 # 依存:
 #   - ResizeCommands: 実際のリサイズ処理
@@ -27,11 +29,12 @@ module VivlioStarter
     module SamovarCommands
       # resize コマンドの Samovar 実装
       class ResizeCommand < VsCommand
-        self.description = 'images/ の画像を WebP へ変換・最適化します（--high/--low で品質変更）'
+        self.description = 'images/ の画像を WebP へ変換・最適化します（--high/--medium/--low で品質変更）'
 
         options do
           option '-f/--force', '既存ファイルも強制再生成', key: :force
           option '--high', '高品質プリセットを使用', key: :high
+          option '--medium', '標準品質プリセットを使用（既定）', key: :medium
           option '--low', '軽量品質プリセットを使用', key: :low
           option '--delete-originals', '変換後に元の PNG/JPG ファイルを削除（確認あり）', default: false, key: :delete_originals
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
@@ -53,6 +56,8 @@ module VivlioStarter
           guard_failure = Guards.precheck(*checks)
           return guard_failure if guard_failure
 
+          # --medium は既定と同じだが、受け付ける。3 つのプリセットが原稿の表に並んでいるのに
+          # 「標準だけはオプションで書けない」のは著者を戸惑わせる（実際に問われた）。
           preset = if options[:high]
                      '高精細'
                    elsif options[:low]
@@ -109,6 +114,7 @@ module VivlioStarter
             オプション:
               -f, --force         既存ファイルも強制再生成
               --high              高品質プリセットを使用
+              --medium            標準品質プリセットを使用（既定）
               --low               軽量品質プリセットを使用
               --delete-originals  変換後に元の PNG/JPG ファイルを削除（確認あり）
               -h, --help          このコマンドの使い方を表示
