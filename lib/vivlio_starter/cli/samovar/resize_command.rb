@@ -31,11 +31,22 @@ module VivlioStarter
       class ResizeCommand < VsCommand
         self.description = 'images/ の画像を WebP へ変換・最適化します（--high/--medium/--low で品質変更）'
 
+        # プリセットの説明を `WEBP_PRESETS` から組む。
+        #
+        # **数値をヘルプに書き写してはならない。** プリセットを動かしたときに黙って
+        # 食い違う——`--high` の上限は 2026-08-17 に 2000 → 2048 へ変えたばかりで、
+        # そのとき原稿の 2 箇所も追いかけて直す必要があった。ここは正典を 1 つに保つ。
+        def self.preset_help(label, preset_name, note: nil)
+          preset = ResizeCommands::WEBP_PRESETS.fetch(preset_name)
+          parts = ["quality=#{preset[:quality]}", "最大 #{preset[:max_px]}px", note].compact
+          "#{label}（#{parts.join(' / ')}）"
+        end
+
         options do
           option '-f/--force', '既存ファイルも強制再生成', key: :force
-          option '--high', '高品質プリセットを使用', key: :high
-          option '--medium', '標準品質プリセットを使用（既定）', key: :medium
-          option '--low', '軽量品質プリセットを使用', key: :low
+          option '--high', ResizeCommand.preset_help('高品質', '高精細'), key: :high
+          option '--medium', ResizeCommand.preset_help('標準品質', '標準', note: '既定'), key: :medium
+          option '--low', ResizeCommand.preset_help('軽量品質', '軽量'), key: :low
           option '--delete-originals', '変換後に元の PNG/JPG ファイルを削除（確認あり）', default: false, key: :delete_originals
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end
@@ -113,9 +124,9 @@ module VivlioStarter
 
             オプション:
               -f, --force         既存ファイルも強制再生成
-              --high              高品質プリセットを使用
-              --medium            標準品質プリセットを使用（既定）
-              --low               軽量品質プリセットを使用
+              --high              #{self.class.preset_help('高品質', '高精細')}
+              --medium            #{self.class.preset_help('標準品質', '標準', note: '既定')}
+              --low               #{self.class.preset_help('軽量品質', '軽量')}
               --delete-originals  変換後に元の PNG/JPG ファイルを削除（確認あり）
               -h, --help          このコマンドの使い方を表示
 

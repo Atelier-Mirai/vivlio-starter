@@ -12,11 +12,15 @@
 #   RS-03: each_in_parallel が全要素をちょうど 1 回ずつ処理する
 #   RS-04: 並列度 1（VIVLIO_IMAGE_CONCURRENCY=1）でも全要素を処理する
 #   RS-05: image_concurrency は環境変数で上書きでき、上限 8 に収まる
+#   RS-06: オプションのヘルプ文が WEBP_PRESETS から組まれる（数値の二重管理を防ぐ）
 # ================================================================
 
 require 'test_helper'
 require 'vivlio_starter/cli/common'
 require 'vivlio_starter/cli/resize'
+# プリセットの数値がヘルプへ正しく流れるかを見るため、Samovar 側も読む
+require 'vivlio_starter/cli/samovar'
+require 'vivlio_starter/cli/samovar/resize_command'
 
 module VivlioStarter
   module CLI
@@ -42,6 +46,19 @@ module VivlioStarter
         assert_equal [2048, 1600, 1200], presets.values.map { it[:max_px] }
         assert_equal 1, presets.values.map { it[:method] }.uniq.size,
                      'method は画質ではないので、プリセットごとに変えない'
+      end
+
+      # RS-06: ヘルプの数値は WEBP_PRESETS から組む。書き写すと、プリセットを動かしたときに
+      # 黙って食い違う（`--high` の上限は 2026-08-17 に 2000 → 2048 へ変えた）
+      def test_should_build_option_help_from_the_presets
+        command_class = SamovarCommands::ResizeCommand
+
+        ResizeCommands::WEBP_PRESETS.each do |name, preset|
+          help = command_class.preset_help('見出し', name)
+
+          assert_includes help, "quality=#{preset[:quality]}", "#{name} の quality がヘルプに出ていない"
+          assert_includes help, "最大 #{preset[:max_px]}px", "#{name} の max_px がヘルプに出ていない"
+        end
       end
 
       # RS-03: 並列で走らせても、取りこぼしも二重処理も起きない
