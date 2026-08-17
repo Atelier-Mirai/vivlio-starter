@@ -80,7 +80,9 @@
   - **作業は属性 2 つ**。`EpubBuilder#decorate_footnotes_for_epub!` が既に `aside.page-footnote-print[data-footnote-number]` を走査しているので、そこで `aside['epub:type'] = 'footnote'` を、対応する `a#fnrefN` に `epub:type="noteref"` を付ける。
   - **確認は実機で**。KFX のポップアップは epubcheck では検証できず、Kindle Previewer で開くしかない（`kindle-css-compatibility-notes.md` の実機確認の流儀に従う）。ポップアップ化すると `aside` は本文に出なくなるため、**CSS 側の注記ブロック体裁（`body.vs-epub aside.page-footnote`）を残すか外すか**も同時に判断する。
 
-- [Medium] **Kindle の画素数上限（1600px）**: `image-format-per-target-spec.md` §3.3 で決めたが、PDF 側の実装（97.2 → 27.3 MB）で目的をほぼ達したため見送った部分。**KDP は配信料がファイルサイズに比例する**ので、表示されない画素にコストを払うことになる。端末の画面幅は 1236px（Paperwhite 第 11 世代・1236×1648・300 ppi）で、Kindle アプリを iPad で読む場合を見て 1600px の余裕を持たせる。実装は `EpubBuilder` の Kindle 変換経路（WebP → JPEG/PNG）に縮小を足すだけで、新しいコマンドも設定キーも増えない。効き幅の目安は EPUB 内で 2048px 級の 16 件・8.6 MB。あわせて Kindle 実機で表示を確認する（素材が JPEG になっても、縮小しても KFX の表示が変わらないこと）。
+- [Low] **クリーン EPUB の画素数上限（2048px）**: `image-format-per-target-spec.md` §3.3 で決めながら実装しないまま残った部分。**Kindle 側は既に実装済み**——`EpubBuilder::KINDLE_IMAGE_MAX_EDGE = 1024` で、仕様書が挙げた 1600px よりさらに厳しい。Amazon が入稿 KPF の画像を**すべて JPEG へ再エンコードして配信する**（実測: KFX resources 244 件すべて JPEG・透過は白へフラット化）ため、1600px でも端末表示に対して過剰という判断で、根拠つきで先に入っていた。
+  - 残っているのはクリーン EPUB のほう。実測 2026-08-17: EPUB 30.5 MB のうち 2048px を超えるのは **7 件・2.79 MB** で、章扉（2880×4153）・節絵（2880×1205）・showcase の合成（2600×1419 が 4 件）・表紙（1600×2560）。2048px へ落とせば **約 1.3 MB（EPUB の 4%）** 縮む見込み。
+  - 根拠は iPad Pro 12.9" の画面幅 2048px で、ここを超える表示先が事実上ない。Kindle と違い Kobo / Apple Books には配信料の従量課金が無いため、優先度は低い。実装は Kindle 経路と同じ仕組み（変換時に `-resize` を足す）で済む。
 - [Low] **Kindle 固定レイアウト（`kindle.layout: fixed`・PDF ラスタライズ流用）**: A5 PDF をページ画像化して固定レイアウト KPF にする案。劣化対応不要で組版忠実だが、主力端末 6〜7″ は文庫（A6）サイズで判型が合わず、フォント可変・検索・配信料（約 ¥50〜90/冊 増）を失うため**見送り**。数式・図版主体の本や文庫判型向けの第 3 ターゲットとして RC 後に再検討。調査結果・実装スケッチ → `kindle-fixed-layout-ideas.md`
 
 ---
