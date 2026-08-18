@@ -243,8 +243,10 @@ module VivlioStarter
         # @param path [String, nil] ファイルパス（警告メッセージ用）
         def warn_unclosed_frontmatter(path)
           location = path || '(unknown file)'
-          warn "[frontmatter] 警告: #{location} のフロントマター開始 `---` に対応する閉じ `---` が" \
-               'コードフェンス外に見つかりません。フロントマターは適用されず、本文として扱われます。'
+          # `Kernel#warn` は `bin/vs` の `RUBYOPT=-W0` に捨てられ著者へ届かない
+          # （`cli-warning-delivery-spec.md` §1）。
+          Common.log_warn("[frontmatter] #{location} のフロントマター開始 `---` に対応する閉じ `---` が" \
+                          'コードフェンス外に見つかりません。フロントマターは適用されず、本文として扱われます。')
         end
 
         # フロントマター解析時のエラー内容を詳細ログへ出力する

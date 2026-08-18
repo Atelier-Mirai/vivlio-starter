@@ -8,6 +8,12 @@ require_relative 'loader'
 
 module VivlioStarter
   module CLI
+    # このファイルの出力に `Kernel#warn` を使ってはならない。`bin/vs` は起動時に
+    # `RUBYOPT=-W0` を付けて自身を再実行しており、`-W0` は処理系の警告だけでなく
+    # **`Kernel#warn` の出力も丸ごと捨てる**（`ruby -W0 -e 'warn "x"'` は無出力）。
+    # 例外・シグナルのハンドラは**最後の砦**であり、`Common` が壊れている状況でも
+    # 動き、ログレベルにも左右されてはいけないので `$stderr.puts` を直に使う。
+    # 通常の警告は `Common.log_warn` へ寄せる（`cli-warning-delivery-spec.md` §5.1）。
     module_function
 
     def start(argv)
@@ -38,29 +44,29 @@ module VivlioStarter
     # 既存の ensure ブロックでの一時ファイルクリーンアップが走った後、
     # UNIX 規約（128 + SIGINT=2）で終了する。
     def handle_interrupt
-      warn "\n🟡 処理が中断されました（Ctrl+C）"
+      $stderr.puts "\n🟡 処理が中断されました（Ctrl+C）"
       130
     end
 
     # SIGTERM 等のシグナル受信時のハンドラ。
     # ensure による後片付けが走った後、128 + signo で終了する。
     def handle_signal(error)
-      warn "\n🟡 処理が中断されました（#{error.message}）"
+      $stderr.puts "\n🟡 処理が中断されました（#{error.message}）"
       128 + (Signal.list[error.signm.sub(/\ASIG/, '')] || 15)
     end
 
     # 想定外の Exception 受信時のハンドラ。
     # デバッグ用にはスタックトレースを出すが、通常はメッセージのみ表示。
     def handle_unexpected_error(error)
-      warn "🔴 #{error.class}: #{error.message}"
-      warn error.backtrace.join("\n") if ENV['VS_DEBUG']
+      $stderr.puts "🔴 #{error.class}: #{error.message}"
+      $stderr.puts error.backtrace.join("\n") if ENV['VS_DEBUG']
       1
     end
 
     def print_usage_for_invalid_input(error)
       command = error.command
 
-      warn error.message
+      $stderr.puts error.message
 
       VivlioStarter::CLI::Common.log_warn('代わりに --help を表示します。') if defined?(VivlioStarter::CLI::Common)
 
@@ -77,8 +83,8 @@ module VivlioStarter
         VivlioStarter::CLI::SamovarCommands::RootCommand.new(['--help']).print_usage
       end
     rescue StandardError => e
-      warn "🔴 #{e.class}: #{e.message}"
-      warn e.backtrace.join("\n") if ENV['VS_DEBUG']
+      $stderr.puts "🔴 #{e.class}: #{e.message}"
+      $stderr.puts e.backtrace.join("\n") if ENV['VS_DEBUG']
     end
 
     module_function :start, :print_usage_for_invalid_input,

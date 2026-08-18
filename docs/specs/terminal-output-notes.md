@@ -79,3 +79,18 @@ PY
 
 `pipeline.rb` の `PROGRESS_VERB` でモード別に切り替える（`:preflight` → 「点検中」）。
 新しいモードを足すときはここも見る。
+
+## 3. `lib/` で `Kernel#warn` を呼んではならない
+
+`bin/vs` は起動時に `RUBYOPT=-W0` を付けて自身を再実行しており、**`-W0` は処理系の
+警告だけでなく `Kernel#warn` の出力も丸ごと捨てる**（`ruby -W0 -e 'warn "x"'` は無出力）。
+`warn` で書いたメッセージは `vs` 経由で 1 行も表示されない。
+
+| 文脈 | 使うもの |
+| :--- | :--- |
+| 例外・シグナルのハンドラ（`startup.rb`） | `$stderr.puts`（**最後の砦**。`Common` が壊れていても動き、ログレベルにも左右されない） |
+| 通常の警告 | `Common.log_warn`（🟡 の体裁とログレベル制御が揃う。出力先は **stdout**） |
+
+`contract/warning_delivery_test.rb` の WD-05 が `lib/` を grep して固定している。
+**`VS_DEBUG=1` を付けると再実行がスキップされて警告が復活する**ので、手動確認は
+素の `vs` で行う。詳細は `cli-warning-delivery-spec.md`（archives）。

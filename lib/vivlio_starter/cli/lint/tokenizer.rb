@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative '../common'
 require_relative '../masking'
 require_relative 'notation_guard'
 
@@ -132,12 +133,14 @@ module VivlioStarter
         # 付けて自身を再実行しており、`-W0` は `Kernel#warn` の出力を丸ごと捨てる。
         # そのため `vs lint` 経由ではこの警告が一度も著者へ届いていなかった
         # （2026-08-18 に判明。ライブラリを直接叩くテストでは出るので気づきにくい）。
+        # `Common.log_warn` を通すことで 🟡 の体裁とログレベル制御が他の警告と揃う
+        # （`cli-warning-delivery-spec.md` §5.1）。
         # @param path [String, nil] ファイルパス（警告メッセージ用）
         # @param opened_at [Integer] disable が開始された行番号
         def warn_unclosed_disable(path, opened_at)
           location = path ? "#{path}:#{opened_at}" : "line #{opened_at}"
-          $stderr.puts "🟡 [vs-lint] #{location} の <!-- vs-lint-disable --> が " \
-                       '<!-- vs-lint-enable --> で閉じられていません。ファイル末尾まで lint が無効化されます。'
+          Common.log_warn("[vs-lint] #{location} の <!-- vs-lint-disable --> が " \
+                          '<!-- vs-lint-enable --> で閉じられていません。ファイル末尾まで lint が無効化されます。')
         end
 
         # @param line [String] 1行のMarkdownテキスト

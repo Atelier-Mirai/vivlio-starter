@@ -19,17 +19,19 @@ require 'vivlio_starter/cli/pre_process/theme_image_resolver'
 class FrontmatterGeneratorUnclosedTest < Minitest::Test
   FG = VivlioStarter::CLI::PreProcessCommands::FrontmatterGenerator
 
-  # 開始 `---` の後に閉じがない場合、警告が stderr に出て元テキストを返す
+  # 開始 `---` の後に閉じがない場合、警告が出て元テキストを返す。
+  # 出力先は stdout——他の 🟡 と同じく Common.log_warn を通すため
+  # （`cli-warning-delivery-spec.md` §5.1）。
   def test_unclosed_frontmatter_emits_warning_and_returns_original
     content = "---\ntitle: 閉じていない\nauthor: テスト\n本文はここから\n"
     result = nil
-    _out, err = capture_io do
+    out, _err = capture_io do
       result = FG.apply_frontmatter(content, 'chapter', '01', path: 'contents/99-draft.md')
     end
 
-    assert_match(/frontmatter/i, err)
-    assert_match(%r{contents/99-draft\.md}, err)
-    assert_match(/閉じ.*見つかりません/, err)
+    assert_match(/frontmatter/i, out)
+    assert_match(%r{contents/99-draft\.md}, out)
+    assert_match(/閉じ.*見つかりません/, out)
     # 元のテキストがそのまま返ること
     assert_equal content, result
   end
@@ -37,9 +39,9 @@ class FrontmatterGeneratorUnclosedTest < Minitest::Test
   # path 省略時でも警告が出る（unknown file 表記）
   def test_unclosed_frontmatter_warns_without_path
     content = "---\ntitle: foo\n"
-    _out, err = capture_io { FG.apply_frontmatter(content, 'chapter', '01') }
+    out, _err = capture_io { FG.apply_frontmatter(content, 'chapter', '01') }
 
-    assert_match(/unknown file/, err)
+    assert_match(/unknown file/, out)
   end
 end
 

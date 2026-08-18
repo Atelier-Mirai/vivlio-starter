@@ -56,12 +56,14 @@ module VivlioStarter
         end
 
         # Common.log_warn が利用可能ならそちらを使い、
-        # テスト等で Common が未ロードの場合は warn にフォールバック
+        # テスト等で Common が未ロードの場合は $stderr へ直接出す。
+        # フォールバックに `Kernel#warn` を使ってはならない——`bin/vs` の
+        # `RUBYOPT=-W0` がその出力を丸ごと捨てる（`cli-warning-delivery-spec.md` §1）。
         def log_warning(message)
           if defined?(Common) && Common.respond_to?(:log_warn)
             Common.log_warn(message)
           else
-            warn message
+            $stderr.puts message
           end
         end
       end

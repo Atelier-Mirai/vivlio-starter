@@ -24,10 +24,15 @@ $ ruby -W0 -e 'warn "警告テスト"'          # 何も出ない
 | :--- | :--- | :--- |
 | `startup.rb` `handle_unexpected_error` | **`🔴 例外クラス: メッセージ`** | **最重** |
 | `startup.rb` （同・別経路） | 同上 | **最重** |
+| `startup.rb` `print_usage_for_invalid_input` | Samovar の解析エラー本文 | **最重** |
 | `startup.rb` `handle_interrupt` | `🟡 処理が中断されました（Ctrl+C）` | 中 |
 | `startup.rb` `handle_signal` | `🟡 処理が中断されました（SIGTERM 等）` | 中 |
 | `frontmatter_generator.rb` | フロントマターの閉じ `---` 忘れ | 中 |
+| `techbook/variable_font_injector.rb` | `Common` 未ロード時のフォールバック | 低 |
 | ~~`lint/tokenizer.rb`~~ | ~~`vs-lint-disable` の未クローズ~~ | 修正済み |
+
+（末尾 2 行は実装時に見つけた追加分。当初の調査は `startup.rb` 4・`frontmatter_generator.rb`
+1・`tokenizer.rb` 1 の計 6 箇所としていた——§9.1 に経緯。）
 
 **最重の 2 件は「予期しない例外が起きても `vs` が何も表示せず終了コード 1 で
 終わる」ことを意味する。** 著者から見れば、原因の手がかりが一切ないまま失敗する。
@@ -126,3 +131,53 @@ Ruby 4.0 系では新しい警告が入る。`-W0` の役目（**処理系の警
 
 `bin/vivlio-starter`（`bin/vs` の別名）も同じ再実行を行うため同様に影響を受けるが、
 修正は `lib/` 側で完結するので個別の対応は要らない。
+
+## 9. 実装記録（2026-08-18 実装）
+
+### 9.1 調査は 2 箇所取りこぼしていた
+
+§2 の表は当初 6 箇所としていたが、実装時に **8 箇所**あった。漏れていたのは:
+
+- **`startup.rb` `print_usage_for_invalid_input` の `warn error.message`** — 表では
+  `handle_unexpected_error` を「同・別経路」として 2 行に数えていたが、実際には
+  `print_usage_for_invalid_input` の中に**別種の警告**（Samovar の解析エラー本文）が
+  もう 1 つあった。**これは最重に分類すべきものだった**——実測で `vs --bogus-option` は
+  `Could not parse token "--bogus-option"` を失い、**何が読めなかったかを伝えないまま
+  `--help` だけを出していた**。皮肉なことに、これが最も再現しやすい症例であり、
+  §6 の検証テストはこの経路を使っている。
+- **`techbook/variable_font_injector.rb` の `log_warning` フォールバック** —
+  `Common` が未ロードなら `warn` へ落ちる構造で、`grep -rn "^\s*warn"` に掛かる。
+
+**教訓**: 調査時の grep は `warn "` の形だけを見ていた。`warn error.message` のように
+**引数が変数の呼び出しを取りこぼす**。`^\s*warn[ (]` で引くこと（§7 の再発防止テストは
+この形を使っている）。
+
+### 9.2 `Common.log_warn` は stdout へ出る
+
+§6 の検証項目は「`vs lint` の **stderr** に警告が出ることを見る」と書いていたが、
+`Common.emit` は `puts` を使うので**出力先は stdout** である。§5.1 で
+`Common.log_warn` を選んだ以上、そちらが正しい——本プロジェクトの 🟡 はすべて
+stdout に出ており、そこだけ stderr にすると揃わない。
+
+そのため**既存テストの期待値を stderr から stdout へ移した**（`tokenizer_test.rb` 3 件・
+`frontmatter_generator_test.rb` 2 件）。`$stderr.puts` で応急修正した直後の状態から
+見ると出力先が動くが、応急修正のほうが暫定であって、揃えた先が本来の姿である。
+
+### 9.3 検証テストは実際に旧実装を落とす
+
+`contract/warning_delivery_test.rb` を書いたあと、**`startup.rb` だけを修正前へ戻して
+実行し、3 件が落ちることを確かめた**（WD-01・WD-02・WD-05）。「新しいテストが通る」
+だけでは、そのテストが問題を捕まえられる証拠にならない。
+
+WD-04 は `-W0` の振る舞いそのもの（`Kernel#warn` は消え `$stderr.puts` は通る）を
+実測で固定している。ここが崩れたら本仕様の前提が変わったということなので、
+テストが落ちて気づける。
+
+### 9.4 実機確認
+
+| 確認 | 結果 |
+| :--- | :--- |
+| `vs --bogus-option` の stderr | `Could not parse token "--bogus-option"`（修正前は空） |
+| 未クローズ `vs-lint-disable` を含む章に `vs lint --spellcheck-only` | 🟡 が stdout に出る（修正前は無出力） |
+| `vs --version` の stderr | 空（`-W0` は引き続き効いている） |
+| `VS_DEBUG=1` の有無 | 出力が変わらない |

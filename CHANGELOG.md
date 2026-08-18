@@ -98,6 +98,12 @@
   - `---` は**直前が空行でないと見出しの下線**（setext heading）になり改ページしないため、その形は数えない。コード領域は `Masking` に委ねる。実測: 本書の `---` は全 4 件が記法解説のフェンス内で、正しく 0 件になる（末尾に 1 つ足した複製では 1 件を検出）。
 
 ### Fixed
+- **`vs` の警告とエラーが著者へ一度も届いていなかった**（`cli-warning-delivery-spec.md`）: `bin/vs` は起動時に `RUBYOPT=-W0` を付けて自身を再実行しており、**`-W0` は処理系の警告だけでなく `Kernel#warn` の出力も丸ごと捨てる**（`ruby -W0 -e 'warn "x"'` は無出力）。そのため `lib/` の `warn` で書いたメッセージが `vs` 経由では 1 行も表示されていなかった。
+  - **いちばん重いのは、予期しない例外で `🔴 例外クラス: メッセージ` が出ないこと。** 著者から見れば、手がかりが一切ないまま終了コード 1 で落ちる。同様に `vs --bogus-option` の `Could not parse token "--bogus-option"` も消えており、**何が読めなかったのかが分からないまま `--help` だけが出ていた**。
+  - **`VS_DEBUG=1` を付けると再実行がスキップされて警告が復活する**ため、デバッグ時だけ症状が消えるという、最もたちの悪い形になっていた。
+  - **出力手段を用途で分けた。** 例外・シグナルのハンドラ（`startup.rb`）は **`$stderr.puts`**——**最後の砦**であり、`Common` が壊れている状況でも動き、ログレベルにも左右されてはいけない。通常の警告（`lint/tokenizer.rb` の `vs-lint-disable` 未クローズ・`frontmatter_generator.rb` の閉じ `---` 忘れ）は **`Common.log_warn`** へ寄せ、🟡 の体裁とログレベル制御を他の警告と揃えた（出力先は stdout になる）。
+  - **`-W0` は残す。** いま処理系の警告が 0 行でも（実測: `vs lint` / `vs doctor` / `vs preflight` いずれも 0 行）、gem 更新や Ruby の版差で復活する。`-W0` の役目自体は妥当なので、捨てられて困るものを `warn` で書かない方向で解いた。
+  - **現在のテスト構成では原理的に検出できなかった。** ユニットテストはライブラリを直接叩き、契約テストも同一プロセスで `CLI.start` を呼ぶため、どちらも再実行を経由しない——実際、未クローズ警告のテストは**通ったままだった**。**本物の `bin/vs` を子プロセスで起動して stderr を検査するテスト**（`contract/warning_delivery_test.rb`）を足し、あわせて `lib/` に `Kernel#warn` が残っていないことを grep で固定した。
 - **`<!-- vs-lint-disable-next-line -->` が textlint の指摘に効いていなかった**: 1 行だけ校正を抑止する記法が、**textlint 側にはまったく効かない**状態だった（囲む形の `vs-lint-disable` 〜 `vs-lint-enable` は効く）。原稿 `31-lint.md` が「一行だけ除外したいときは」として案内している手段が、動いていなかったことになる。
   - **原因は変換先が実装されていないこと。** `LintRunner#rewrite_vs_lint_to_textlint` は `<!-- textlint-disable-next-line -->` へ変換していたが、**`textlint-filter-rule-comments`（v1.3.0）にこの記法の実装が無い**（lib に `next-line` の文字列が 1 つもなく、README にも記載がない）。無効なコメントとして黙って捨てられていた。
   - **出力段で行ごと落とす形にした**（`TextlintFormatter.aggregate_json` に `suppressed_lines:` を渡す）。**集約より前に当てる**のが要点で、集約後は行番号が 1 行へ畳まれて選り分けられない。一時ファイルへ `disable`／`enable` を挿し込む方式は採れない——行数が変わり、報告される行番号が原稿とずれる。

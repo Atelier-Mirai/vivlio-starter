@@ -127,27 +127,29 @@ class TestTokenizer < Minitest::Test
     assert_includes words, 'before'
   end
 
-  # <!-- vs-lint-disable --> が閉じられていない場合に警告が stderr に出ることを確認する
+  # <!-- vs-lint-disable --> が閉じられていない場合に警告が出ることを確認する。
+  # 出力先は stdout——他の 🟡 と同じく Common.log_warn を通すため
+  # （`cli-warning-delivery-spec.md` §5.1）。
   def test_vs_lint_disable_unclosed_emits_warning
     content = "before\n<!-- vs-lint-disable -->\nbadword\n"
-    _out, err = capture_io { T.tokenize(content, path: 'sample.md') }
-    assert_match(/vs-lint/, err)
-    assert_match(/sample\.md:2/, err)
-    assert_match(/閉じられていません/, err)
+    out, _err = capture_io { T.tokenize(content, path: 'sample.md') }
+    assert_match(/vs-lint/, out)
+    assert_match(/sample\.md:2/, out)
+    assert_match(/閉じられていません/, out)
   end
 
   # 閉じられた disable-enable では警告が出ないことを確認する
   def test_vs_lint_disable_closed_does_not_warn
     content = "<!-- vs-lint-disable -->\nword\n<!-- vs-lint-enable -->\n"
-    _out, err = capture_io { T.tokenize(content, path: 'sample.md') }
-    refute_match(/vs-lint/, err)
+    out, err = capture_io { T.tokenize(content, path: 'sample.md') }
+    refute_match(/vs-lint/, out + err)
   end
 
   # path 省略時でも警告が出ることを確認する（ただし行番号のみ表示）
   def test_vs_lint_disable_unclosed_warns_without_path
     content = "<!-- vs-lint-disable -->\nword\n"
-    _out, err = capture_io { T.tokenize(content) }
-    assert_match(/line 1/, err)
+    out, _err = capture_io { T.tokenize(content) }
+    assert_match(/line 1/, out)
   end
 
   # vs-lint コメント行自体がスキップされることを確認する
