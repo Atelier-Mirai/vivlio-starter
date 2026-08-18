@@ -15,6 +15,11 @@
 #   - lock の生成・更新（適用分だけハッシュが進む・スキップ分は旧ハッシュのまま）
 #   - --dry-run はファイルシステムに一切書き込まない（lock 含む）
 #
+# 3-way マージ（upgrade-three-way-merge-spec.md §8）:
+#   - 別の場所を変えた競合は質問されず合流する／同じ場所なら従来どおり尋ねる
+#   - 祖先の調達 2 経路（旧版 gem・保存基準）とその不在・git 不在のフォールバック
+#   - 保存基準は lock と歩調を合わせる（スキップした競合の祖先を進めない）
+#
 # 三段オーケストレーション（upgrade-unification-spec.md）:
 #   - 自己更新: 新版なし/dry-run/非対話/更新失敗 の各分岐（exec は relaunch! を検知）
 #   - プロジェクト外では雛形追従だけをスキップし、ツール更新は実行される
@@ -29,6 +34,7 @@ require 'test_helper'
 require 'tmpdir'
 require 'fileutils'
 require 'stringio'
+require 'open3'
 require 'samovar'
 require 'vivlio_starter/cli/samovar'
 
@@ -477,6 +483,234 @@ module VivlioStarter
         refute UpgradeCommands.send(:diff_color_enabled?, FakeIO.new(tty: false), {}), 'パイプ・リダイレクト先には付けないべき'
       end
 
+      # ================================================================
+      # 3-way マージ（upgrade-three-way-merge-spec.md）
+      # ================================================================
+
+      # --- §8-1 自動合流: 別の場所を変えた競合は尋ねずに両立する ---
+      def test_should_merge_changes_on_different_places_without_asking
+        within_project do |scaffold|
+          base, mine, theirs = three_way_sources
+          write(scaffold, 'stylesheets/custom.css', theirs)
+          write('.', 'stylesheets/custom.css', mine)
+          write_base('stylesheets/custom.css', base)
+          write_lock(scaffold_overrides: { 'stylesheets/custom.css' => base })
+
+          out, = capture_io { run_upgrade(scaffold, yes: true) }
+
+          merged = File.read('stylesheets/custom.css')
+          assert_includes merged, 'わたしの 1 行目', '著者の変更が残るべき'
+          assert_includes merged, '雛形の 12 行目', '雛形の変更が取り込まれるべき'
+          assert_match(/合流\s+stylesheets\/custom\.css/, out)
+          refute_match(/競合\s+stylesheets\/custom\.css/, out, '合流できたものは競合として出さない')
+        end
+      end
+
+      # --- §8-2 真の競合: 同じ場所を変えていれば従来どおり尋ねる ---
+      def test_should_still_ask_when_both_changed_the_same_place
+        within_project do |scaffold|
+          base = "line 1\nline 2\nline 3\n"
+          write(scaffold, 'stylesheets/custom.css', "line 1\n雛形の 2 行目\nline 3\n")
+          write('.', 'stylesheets/custom.css', "line 1\nわたしの 2 行目\nline 3\n")
+          write_base('stylesheets/custom.css', base)
+          write_lock(scaffold_overrides: { 'stylesheets/custom.css' => base })
+
+          out, = with_stdin("n\n") { capture_io { run_upgrade(scaffold) } }
+
+          assert_match(/競合\s+stylesheets\/custom\.css/, out)
+          assert_includes out, '同じ場所を変えています', '合流できない理由を名指しするべき'
+          assert_equal "line 1\nわたしの 2 行目\nline 3\n", File.read('stylesheets/custom.css')
+        end
+      end
+
+      # --- §8-3 祖先の調達 A: インストール済みの旧版 gem の雛形が使われる ---
+      def test_should_use_old_gem_scaffold_as_ancestor
+        within_project do |scaffold|
+          base, mine, theirs = three_way_sources
+          write(scaffold, 'stylesheets/custom.css', theirs)
+          write('.', 'stylesheets/custom.css', mine)
+          write_lock(scaffold_overrides: { 'stylesheets/custom.css' => base })
+          gem_home = write_gem_base(File.join(Dir.tmpdir, "vs-gem-#{Process.pid}"), 'stylesheets/custom.css', base)
+
+          begin
+            capture_io { run_upgrade(scaffold, yes: true, gem_paths: [gem_home]) }
+          ensure
+            FileUtils.rm_rf(gem_home)
+          end
+
+          merged = File.read('stylesheets/custom.css')
+          assert_includes merged, 'わたしの 1 行目'
+          assert_includes merged, '雛形の 12 行目'
+        end
+      end
+
+      # --- §8-4 祖先の調達 B: 保存基準だけでも合流できる（旧 gem が消えていても） ---
+      def test_should_use_saved_base_as_ancestor_when_no_old_gem_exists
+        within_project do |scaffold|
+          base, mine, theirs = three_way_sources
+          write(scaffold, 'stylesheets/custom.css', theirs)
+          write('.', 'stylesheets/custom.css', mine)
+          write_base('stylesheets/custom.css', base)
+          write_lock(scaffold_overrides: { 'stylesheets/custom.css' => base })
+
+          capture_io { run_upgrade(scaffold, yes: true, gem_paths: []) }
+
+          assert_includes File.read('stylesheets/custom.css'), '雛形の 12 行目'
+        end
+      end
+
+      # --- 祖先の照合: 中身が lock と食い違う候補は祖先として採らない ---
+
+      # 版の取り違えや古い保存基準を、経路ごとの場合分けではなく内容そのもので弾く。
+      # 祖先を間違えたマージは「衝突なく合流した」顔で誤った中身を書く
+      def test_should_reject_ancestor_whose_digest_does_not_match_the_lock
+        within_project do |scaffold|
+          base, mine, theirs = three_way_sources
+          write(scaffold, 'stylesheets/custom.css', theirs)
+          write('.', 'stylesheets/custom.css', mine)
+          write_base('stylesheets/custom.css', "まったく別の版の中身\n")
+          write_lock(scaffold_overrides: { 'stylesheets/custom.css' => base })
+
+          out, = with_stdin("n\n") { capture_io { run_upgrade(scaffold) } }
+
+          assert_match(/競合\s+stylesheets\/custom\.css/, out, '照合できない祖先は使わず 2-way へ落とすべき')
+          refute_includes out, '同じ場所を変えています', '祖先が無い競合で「同じ場所」とは断定できない'
+          assert_equal mine, File.read('stylesheets/custom.css')
+        end
+      end
+
+      # --- §8-5 祖先なし: 例外にせず 2-way の競合へ落ちる ---
+      def test_should_fall_back_to_two_way_conflict_when_no_ancestor_is_available
+        within_project do |scaffold|
+          _base, mine, theirs = three_way_sources
+          write(scaffold, 'stylesheets/custom.css', theirs)
+          write('.', 'stylesheets/custom.css', mine)
+          write_lock(scaffold_overrides: { 'stylesheets/custom.css' => "むかしの中身\n" })
+
+          out, = with_stdin("n\n") { capture_io { run_upgrade(scaffold) } }
+
+          assert_match(/競合\s+stylesheets\/custom\.css/, out)
+          assert_equal mine, File.read('stylesheets/custom.css')
+        end
+      end
+
+      # --- §8-6 git なし: マージできない環境でも 2-way へ落ちる ---
+      def test_should_fall_back_to_two_way_conflict_when_git_is_missing
+        within_project do |scaffold|
+          base, mine, theirs = three_way_sources
+          write(scaffold, 'stylesheets/custom.css', theirs)
+          write('.', 'stylesheets/custom.css', mine)
+          write_base('stylesheets/custom.css', base)
+          write_lock(scaffold_overrides: { 'stylesheets/custom.css' => base })
+
+          out = nil
+          Open3.stub(:capture3, ->(*_args) { raise Errno::ENOENT, 'git' }) do
+            out, = with_stdin("n\n") { capture_io { run_upgrade(scaffold) } }
+          end
+
+          assert_match(/競合\s+stylesheets\/custom\.css/, out)
+          assert_equal mine, File.read('stylesheets/custom.css')
+        end
+      end
+
+      # --- 合流の適用: バックアップを取り、lock は新しい雛形まで進む ---
+      def test_should_back_up_and_advance_lock_when_merging
+        within_project do |scaffold|
+          base, mine, theirs = three_way_sources
+          write(scaffold, 'stylesheets/custom.css', theirs)
+          write('.', 'stylesheets/custom.css', mine)
+          write_base('stylesheets/custom.css', base)
+          write_lock(scaffold_overrides: { 'stylesheets/custom.css' => base })
+
+          capture_io { run_upgrade(scaffold, yes: true) }
+
+          backups = Dir.glob('.cache/vs/upgrade-backup/*/stylesheets/custom.css')
+          assert_equal 1, backups.size, '合流も上書きなので退避されるべき'
+          assert_equal mine, File.read(backups.first), '退避されるのは合流前の著者のファイル'
+
+          lock = ScaffoldLock.read('.')
+          assert_equal digest(theirs), lock[:files]['stylesheets/custom.css'], '合流分の lock は新しい雛形まで進むべき'
+          assert_equal theirs, File.read('.cache/vs/scaffold-base/stylesheets/custom.css'), '次回の祖先も新しい雛形になるべき'
+        end
+      end
+
+      # --- 保存基準は lock と歩調を合わせる ---
+
+      # スキップした競合の基準まで新版で上書きすると、次回は祖先＝新版となり、
+      # 「雛形は何も変えていない」ことになって**雛形側の変更を黙って捨てる**合流が起きる
+      def test_should_not_advance_saved_base_for_a_skipped_conflict
+        within_project do |scaffold|
+          write(scaffold, 'stylesheets/custom.css', NEW_CSS)
+          write('.', 'stylesheets/custom.css', CUSTOM_CSS)
+          write(scaffold, 'stylesheets/improved.css', NEW_CSS)
+          write('.', 'stylesheets/improved.css', OLD_CSS)
+          write_lock(scaffold_overrides: { 'stylesheets/custom.css' => OLD_CSS,
+                                           'stylesheets/improved.css' => OLD_CSS })
+
+          with_stdin("n\n") { capture_io { run_upgrade(scaffold, yes: true) } }
+
+          refute_path_exists '.cache/vs/scaffold-base/stylesheets/custom.css',
+                             'スキップした競合の基準を進めてはならない'
+          assert_equal NEW_CSS, File.read('.cache/vs/scaffold-base/stylesheets/improved.css'),
+                       '適用したファイルの基準は進むべき'
+        end
+      end
+
+      # --- §8-7 バイナリ・生成物は基準の複製対象に入らない ---
+
+      # 雛形 7,749 件のうち 7,445 件は twemoji の SVG/WebP で、著者が編集して
+      # 競合することはない。テキストだからと SVG まで抱えると保存量が桁で変わる
+      def test_should_not_copy_binaries_or_generated_assets_into_the_base
+        within_project do |scaffold|
+          write(scaffold, 'stylesheets/custom.css', OLD_CSS)
+          write(scaffold, 'stylesheets/twemoji/1f600.svg', "<svg/>\n")
+          write(scaffold, 'stylesheets/fonts/sample.ttf', "\x00\x01binary")
+          write(scaffold, 'contents/10-sample.md', "# 原稿\n")
+          write('.', 'stylesheets/custom.css', OLD_CSS)
+          write_lock
+
+          capture_io { run_upgrade(scaffold, yes: true) }
+
+          assert_path_exists '.cache/vs/scaffold-base/stylesheets/custom.css'
+          refute_path_exists '.cache/vs/scaffold-base/stylesheets/twemoji/1f600.svg'
+          refute_path_exists '.cache/vs/scaffold-base/stylesheets/fonts/sample.ttf'
+          refute_path_exists '.cache/vs/scaffold-base/contents/10-sample.md'
+        end
+      end
+
+      # --- 合流は全体確認に含める（個別の y/n/d は競合だけ） ---
+      def test_should_include_merges_in_the_single_bulk_confirmation
+        within_project do |scaffold|
+          base, mine, theirs = three_way_sources
+          write(scaffold, 'stylesheets/custom.css', theirs)
+          write('.', 'stylesheets/custom.css', mine)
+          write_base('stylesheets/custom.css', base)
+          write_lock(scaffold_overrides: { 'stylesheets/custom.css' => base })
+
+          out, = with_stdin("y\n") { capture_io { run_upgrade(scaffold) } }
+
+          assert_includes out, '合流 1 件'
+          refute_includes out, '[y]適用', '合流は個別の y/n/d を出さない'
+          assert_includes File.read('stylesheets/custom.css'), '雛形の 12 行目'
+        end
+      end
+
+      # --- --dry-run では合流も書き込まない ---
+      def test_should_not_write_merged_content_on_dry_run
+        within_project do |scaffold|
+          base, mine, theirs = three_way_sources
+          write(scaffold, 'stylesheets/custom.css', theirs)
+          write('.', 'stylesheets/custom.css', mine)
+          write_base('stylesheets/custom.css', base)
+          write_lock(scaffold_overrides: { 'stylesheets/custom.css' => base })
+
+          out, = capture_io { run_upgrade(scaffold, dry_run: true) }
+
+          assert_includes out, '合流 1 件'
+          assert_equal mine, File.read('stylesheets/custom.css'), '--dry-run は現物を書き換えないべき'
+        end
+      end
+
       private
 
       # 色付け判定（diff_color_enabled?）の DI 用スタブ
@@ -514,14 +748,39 @@ module VivlioStarter
         end
       end
 
-      # 雛形追従フェーズだけを検証する（自己更新はフラグで、ツール更新はスタブで遮断）
-      def run_upgrade(scaffold, dry_run: false, yes: false)
+      # 雛形追従フェーズだけを検証する（自己更新はフラグで、ツール更新はスタブで遮断）。
+      # gem_paths は既定で空——実際にインストール済みの gem を祖先の候補にすると、
+      # 開発機に何が入っているかでテストの結果が変わる
+      def run_upgrade(scaffold, dry_run: false, yes: false, gem_paths: [])
         UpgradeCommands.scaffold_source = scaffold
+        ScaffoldBase.gem_paths = gem_paths
         DoctorCommands::ToolUpgrader.stub(:run!, 0) do
           UpgradeCommands.run_from_command(FakeCmd.new(options: { dry_run:, yes:, skip_self_update: true }))
         end
       ensure
         UpgradeCommands.scaffold_source = nil
+        ScaffoldBase.gem_paths = nil
+      end
+
+      # 祖先・著者・雛形の 3 つを作る。著者は先頭・雛形は末尾を変える（＝離れた変更）
+      def three_way_sources(size: 12)
+        base   = (1..size).map { |n| "line #{n}" }
+        mine   = base.dup
+        theirs = base.dup
+        mine[0]          = 'わたしの 1 行目'
+        theirs[size - 1] = "雛形の #{size} 行目"
+        [base, mine, theirs].map { "#{it.join("\n")}\n" }
+      end
+
+      # 共通祖先をプロジェクト内の保存基準（経路 B）として置く
+      def write_base(relative, content)
+        write(File.join('.cache', 'vs', 'scaffold-base'), relative, content)
+      end
+
+      # 旧版 gem を模した GEM_HOME を作り、その雛形へ祖先を置く（経路 A）
+      def write_gem_base(gem_home, relative, content)
+        write(File.join(gem_home, 'gems', 'vivlio-starter-0.9.0', 'lib', 'project_scaffold'), relative, content)
+        gem_home
       end
 
       def write(root, relative, content)

@@ -8,6 +8,7 @@ require 'yaml'
 require 'fileutils'
 
 require_relative 'scaffold_lock'
+require_relative 'scaffold_base'
 require_relative '../version'
 
 module VivlioStarter
@@ -167,6 +168,12 @@ module VivlioStarter
         # 雛形マニフェストを生成（vs upgrade の三者比較の基準になる展開時点ハッシュ）
         ScaffoldLock.generate!(project_name, scaffold_source: SCAFFOLD_SOURCE, version: VivlioStarter::VERSION)
         log_debug("scaffold.lock を生成しました: #{File.join(project_name, ScaffoldLock::LOCK_RELATIVE)}")
+
+        # 展開時の雛形そのものを次回 upgrade の共通祖先として保管する。lock はハッシュ
+        # しか持たないため「どこが変わったか」は中身が無いと復元できない
+        # （upgrade-three-way-merge-spec.md §2 の案 B）
+        ScaffoldBase.sync!(project_name, scaffold_source: SCAFFOLD_SOURCE,
+                                         lock_files: ScaffoldLock.read(project_name)&.dig(:files) || {})
 
         Common.log_action("プロジェクトファイルを展開しました: #{project_name}/")
       end

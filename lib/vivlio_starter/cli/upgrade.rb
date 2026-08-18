@@ -19,8 +19,12 @@
 #   3 点から各ファイルを 追加/更新/競合/保持/最新 に分類する。
 #   - 追加: 雛形の新規ファイル → コピー
 #   - 更新: 雛形が改良・著者は未変更 → 自動適用可（--yes で無確認）
-#   - 競合: 雛形も著者も変更 → diff 提示・個別確認（y/n/d）
+#   - 合流: 雛形も著者も変更したが**別の場所** → 3-way マージで両立（尋ねない）
+#   - 競合: 雛形も著者も**同じ場所**を変更 → diff 提示・個別確認（y/n/d）
 #   - 保持: 著者データ領域（ScaffoldLock::AUTHOR_DATA_*）→ 絶対に触れない
+#
+#   合流の共通祖先は ScaffoldBase が調達する（upgrade-three-way-merge-spec.md）。
+#   祖先が得られないファイルは従来どおり競合として著者に尋ねる。
 #
 # 安全策:
 #   - 上書き前に必ず .cache/vs/upgrade-backup/<timestamp>/ へ元ファイルを退避
@@ -32,6 +36,7 @@
 require 'fileutils'
 
 require_relative 'scaffold_lock'
+require_relative 'scaffold_base'
 require_relative 'new'
 require_relative 'doctor'
 require_relative '../version'
@@ -41,8 +46,15 @@ module VivlioStarter
     module UpgradeCommands
       extend self
 
-      # 計画表の 1 行。status: :add / :add_empty / :update / :conflict / :keep
-      PlanItem = Data.define(:relative, :status)
+      # 計画表の 1 行。status: :add / :add_empty / :update / :merge / :conflict / :keep
+      #
+      # merged      … :merge のときだけ入る、3-way マージ後の中身
+      # overlapping … :conflict のうち「祖先が取れたうえで衝突した」＝双方が
+      #               本当に同じ場所を変えたもの。適用すれば著者の変更が消えるので、
+      #               そう名指しできる（祖先が取れなかった競合では断定できない）
+      PlanItem = Data.define(:relative, :status, :merged, :overlapping) do
+        def initialize(merged: nil, overlapping: false, **) = super
+      end
 
       # 著者辞書がプロジェクトに存在しない場合にだけ追加する「空の辞書」。
       # 雛形のサンプル辞書（開発リポジトリの実辞書）を配ると著者の本に無関係な
@@ -172,17 +184,17 @@ module VivlioStarter
         actionable = plan.reject { it.status == :keep }
         if actionable.empty?
           Common.log_result('プロジェクトは雛形の最新状態です。', status: :success)
-          record_lock!(scaffold_digests, lock, applied: []) unless cmd.options[:dry_run]
+          save_lock_and_base!(scaffold_digests, lock, applied: []) unless cmd.options[:dry_run]
           return 0
         end
         return finish_dry_run(actionable) if cmd.options[:dry_run]
 
-        # --- Phase: 適用（追加・更新 → 競合の個別確認） ---
+        # --- Phase: 適用（追加・更新・合流 → 競合の個別確認） ---
         applied, skipped, backup_dir = apply_plan(cmd, plan, scaffold_digests)
         return 0 if applied.nil? # 全体確認で中止
 
-        # --- Phase: lock 更新・完了報告 ---
-        record_lock!(scaffold_digests, lock, applied:)
+        # --- Phase: lock・基準の更新と完了報告 ---
+        save_lock_and_base!(scaffold_digests, lock, applied:)
         print_summary(plan, applied, skipped, backup_dir)
         0
       end
@@ -227,6 +239,7 @@ module VivlioStarter
       # @return [Array<PlanItem>] :latest（表示不要）は含まない
       def build_plan(scaffold_digests, lock)
         lock_files = lock&.dig(:files) || {}
+        roots = ScaffoldBase.ancestor_roots
 
         scaffold_digests.filter_map do |relative, scaffold_digest|
           status =
@@ -235,8 +248,26 @@ module VivlioStarter
             else
               classify_managed(relative, scaffold_digest, lock_files)
             end
-          PlanItem.new(relative:, status:) unless status.nil? || status == :latest
+          next if status.nil? || status == :latest
+
+          if status == :conflict
+            plan_for_conflict(relative, lock_files[relative], roots)
+          else
+            PlanItem.new(relative:, status:)
+          end
         end
+      end
+
+      # 競合と分類されたファイルを 3-way マージにかける。祖先が取れて衝突なく
+      # 合流できたなら :merge（尋ねない）、そうでなければ従来どおり :conflict。
+      def plan_for_conflict(relative, lock_digest, roots)
+        base = ScaffoldBase.ancestor_path(relative, lock_digest, roots)
+        return PlanItem.new(relative:, status: :conflict) if base.nil?
+
+        merged = ScaffoldBase.merge(base, relative, File.join(scaffold_source, relative))
+        return PlanItem.new(relative:, status: :merge, merged:) if merged
+
+        PlanItem.new(relative:, status: :conflict, overlapping: true)
       end
 
       # 著者データ領域の分類
@@ -277,7 +308,8 @@ module VivlioStarter
         add: ['追加', '雛形の新規ファイル'],
         add_empty: ['追加', '著者辞書が無いため空の辞書を用意'],
         update: ['更新', '雛形が改良・あなたは未変更 → 自動適用可'],
-        conflict: ['競合', '雛形もあなたも変更 → diff 確認'],
+        merge: ['合流', '雛形もあなたも変更・別の場所 → 自動で両立'],
+        conflict: ['競合', '雛形もあなたも同じ場所を変更 → diff 確認'],
         keep: ['保持', '著者データ領域 → 対象外']
       }.freeze
 
@@ -285,7 +317,7 @@ module VivlioStarter
         return if plan.empty?
 
         Common.log_always('📋 更新計画:')
-        order = %i[add add_empty update conflict keep]
+        order = %i[add add_empty update merge conflict keep]
         plan.sort_by { [order.index(it.status), it.relative] }.each do |item|
           label, note = STATUS_LABELS.fetch(item.status)
           Common.log_always(format('   %s   %-42s（%s）', label, item.relative, note))
@@ -295,7 +327,11 @@ module VivlioStarter
       def finish_dry_run(actionable)
         counts = actionable.group_by(&:status).transform_values(&:size)
         Common.log_always('')
-        Common.log_always("--dry-run のため適用しません（追加 #{counts.values_at(:add, :add_empty).compact.sum} 件・更新 #{counts[:update] || 0} 件・競合 #{counts[:conflict] || 0} 件）")
+        merged = counts[:merge] || 0
+        message = "--dry-run のため適用しません（追加 #{counts.values_at(:add, :add_empty).compact.sum} 件" \
+                  "・更新 #{counts[:update] || 0} 件"
+        message += "・合流 #{merged} 件" if merged.positive?
+        Common.log_always("#{message}・競合 #{counts[:conflict] || 0} 件）")
         0
       end
 
@@ -305,14 +341,15 @@ module VivlioStarter
       def apply_plan(cmd, plan, scaffold_digests)
         adds      = plan.select { %i[add add_empty].include?(it.status) }
         updates   = plan.select { it.status == :update }
+        merges    = plan.select { it.status == :merge }
         conflicts = plan.select { it.status == :conflict }
         applied = []
         skipped = []
         backup_dir = nil
 
-        # --- Phase: 追加＋更新（全体確認は 1 回。--yes でスキップ） ---
-        if (adds.any? || updates.any?) && !cmd.options[:yes]
-          unless Common.confirm?("適用しますか？ 追加 #{adds.size} 件・更新 #{updates.size} 件")
+        # --- Phase: 追加＋更新＋合流（全体確認は 1 回。--yes でスキップ） ---
+        if (adds.any? || updates.any? || merges.any?) && !cmd.options[:yes]
+          unless Common.confirm?("適用しますか？ #{bulk_summary(adds, updates, merges)}")
             Common.log_always('中止しました（ファイルは変更していません）。')
             return [nil, nil, nil]
           end
@@ -334,9 +371,17 @@ module VivlioStarter
           applied << item
         end
 
+        # 合流は雛形をコピーせず、マージ済みの中身を書く（著者の変更を残すため）。
+        # 中身は分類の時点で確定しているので、ここで git を呼び直さない
+        merges.each do |item|
+          backup_dir = backup!(item.relative, backup_dir)
+          File.binwrite(item.relative, item.merged)
+          applied << item
+        end
+
         # --- Phase: 競合の個別確認（--yes でも必ず確認する） ---
         conflicts.each do |item|
-          if confirm_conflict?(item.relative)
+          if confirm_conflict?(item)
             backup_dir = backup!(item.relative, backup_dir)
             FileUtils.cp(File.join(scaffold_source, item.relative), item.relative)
             applied << item
@@ -349,10 +394,22 @@ module VivlioStarter
         [applied, skipped, backup_dir]
       end
 
+      # 全体確認の文言。合流は 0 件のことが多いので、あるときだけ足す
+      def bulk_summary(adds, updates, merges)
+        summary = "追加 #{adds.size} 件・更新 #{updates.size} 件"
+        summary += "・合流 #{merges.size} 件" if merges.any?
+        summary
+      end
+
       # 競合ファイルの diff を提示して適用可否を尋ねる（y/n/d ループ）
-      def confirm_conflict?(relative)
+      def confirm_conflict?(item)
+        relative = item.relative
         Common.log_always('')
         Common.log_always("   競合 #{relative}:")
+        # 3-way を通しても合流できなかった＝双方が同じ場所を変えている。
+        # このときだけ「あなたの変更が失われる」と断定できる（祖先が取れなかった
+        # 競合では、そもそも双方が何を変えたのか分かっていない）
+        Common.log_warn('雛形とあなたが同じ場所を変えています。適用するとあなたの変更は失われます。') if item.overlapping
         diff = unified_diff(File.join(scaffold_source, relative), relative)
         print_diff(diff, limit: DIFF_PREVIEW_LINES)
 
@@ -419,12 +476,24 @@ module VivlioStarter
         end.to_h
 
         ScaffoldLock.write('.', version: VivlioStarter::VERSION, files:)
+        files
+      end
+
+      # lock を更新し、同じ内容で次回の共通祖先（雛形の基準）を保管する。
+      # **必ず lock と同時に**行う——基準だけが先に進むと、次回のマージが
+      # 祖先＝新版となって雛形側の変更を黙って捨てる（ScaffoldBase 冒頭）。
+      def save_lock_and_base!(scaffold_digests, lock, applied:)
+        files = record_lock!(scaffold_digests, lock, applied:)
+        ScaffoldBase.sync!('.', scaffold_source:, lock_files: files)
       end
 
       def print_summary(plan, applied, skipped, backup_dir)
         add_count    = applied.count { %i[add add_empty].include?(it.status) }
+        merge_count  = applied.count { it.status == :merge }
         update_count = applied.count { %i[update conflict].include?(it.status) }
-        message = "アップグレード完了: 追加 #{add_count}・更新 #{update_count}・スキップ #{skipped.size}"
+        message = "アップグレード完了: 追加 #{add_count}・更新 #{update_count}"
+        message += "・合流 #{merge_count}" if merge_count.positive?
+        message += "・スキップ #{skipped.size}"
         message += "（バックアップ: #{backup_dir}/）" if backup_dir
         Common.log_result(message, status: :success)
 
