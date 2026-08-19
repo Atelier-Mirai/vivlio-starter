@@ -23,7 +23,7 @@ Gem::Specification.new do |spec|
   spec.files = Dir.glob('{bin,lib}/**/*', File::FNM_DOTMATCH)
                   .select { |f| File.file?(f) }
                   .reject { |f| File.basename(f) == '.DS_Store' }
-  spec.files += %w[README.md LICENSE THIRD-PARTY-LICENSES.md]
+  spec.files += %w[README.md LICENSE THIRD-PARTY-LICENSES.md LICENSE-APACHE-2.0.txt]
   spec.bindir        = 'bin'
   spec.executables   = %w[vivlio-starter vs]
   spec.require_paths = ['lib']

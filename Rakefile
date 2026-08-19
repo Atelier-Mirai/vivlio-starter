@@ -245,3 +245,11 @@ task :reinstall do
 
   sh "gem install #{gem_file}"
 end
+
+namespace :mazegaki do
+  desc '交ぜ書き辞書の第 2 層（lint/data/mazegaki.tsv）を元データから作り直す'
+  task :build do
+    # 本書の原稿へ当てた実測値も一緒に出る。条件を変えたら誤検出が増えていないか見ること。
+    ruby '-Ilib lib/vivlio_starter/cli/lint/data/filter.rb'
+  end
+end

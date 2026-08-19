@@ -23,6 +23,7 @@
 # 依存:
 #   - Masking: コード領域の判定（辞書をコード例へ当てないため）
 #   - MazegakiDictionary: 交ぜ書きの語（採否の基準と、落とした語の理由もあちら側）
+#   - MazegakiScanner: MeCab があるときだけ足す第 2 層（mazegaki-two-tier-spec.md）
 # ================================================================
 
 require 'yaml'
@@ -30,6 +31,7 @@ require 'yaml'
 require_relative '../common'
 require_relative '../masking'
 require_relative 'mazegaki_dictionary'
+require_relative 'mazegaki_scanner'
 
 module VivlioStarter
   module CLI
@@ -47,7 +49,9 @@ module VivlioStarter
         # 表示する出現行番号の最大件数（超過分は … で省略。textlint 側と揃える）
         MAX_SHOWN_LINES = 10
 
-        # 交ぜ書き辞書。語の採否と、誤検出で落とした語の理由は辞書側に置く。
+        # 交ぜ書き辞書の第 1 層。MeCab が無くても動く語だけが入っている。
+        # 語の採否と、誤検出で落とした語の理由は辞書側に置く。
+        # 第 2 層（MeCab 必須の 1,921 語）は MazegakiScanner が持つ。
         MAZEGAKI = MazegakiDictionary::ALL
 
         # --- 二通りに読める対比 -----------------------------------------------
@@ -167,17 +171,30 @@ module VivlioStarter
         # 対比を黙らせるときは `<!-- vs-lint-disable -->` か `lint.disabled_rules` を使う。
         def mazegaki_findings(text, allowlist = [])
           prose_lines(text).flat_map do |lineno, line|
-            body, = Masking.protect_code(line)
+            protected_line, = Masking.protect_code(line)
+            # 辞書は**読者が見る文字列**に当てる。生の行に当てると、語の途中に入った
+            # 強調で両方向に壊れる（`結**合し**直した` の誤検出、`だ**円**` の取りこぼし）。
+            # 仕様: inline-emphasis-word-split-spec.md
+            body, = Masking.strip_emphasis(protected_line)
             hits = MAZEGAKI.filter_map do |pattern, expected|
               found = body[pattern]
               next unless found && !allowed?(found, allowlist)
 
               [found, expected]
             end
+            hits.concat(scanner_hits(body, allowlist))
 
-            drop_subsumed(hits).map do |found, expected|
+            drop_subsumed(hits.uniq).map do |found, expected|
               Finding.new(line: lineno, rule: MAZEGAKI_RULE, label: "#{found} => #{expected}")
             end
+          end
+        end
+
+        # 第 2 層（MeCab の形態素境界を見る語）の指摘。MeCab が無ければ常に空になり、
+        # 第 1 層だけで動く。仕様: mazegaki-two-tier-spec.md §2
+        def scanner_hits(body, allowlist)
+          MazegakiScanner.scan(body).filter_map do |found, expected, _start, _finish|
+            [found, expected] unless allowed?(found, allowlist)
           end
         end
 
@@ -223,10 +240,44 @@ module VivlioStarter
         # 「黙っているのに原稿が書き換わる」のは著者にとって最も分かりにくい壊れ方になる。
         def replace_mazegaki(line, allowlist = [])
           protected_line, spans = Masking.protect_code(line)
-          replaced = MAZEGAKI.reduce(protected_line) do |text, (pattern, expected)|
-            text.gsub(pattern) { allowed?(::Regexp.last_match(0), allowlist) ? ::Regexp.last_match(0) : expected }
-          end
+          plain, map = Masking.strip_emphasis(protected_line)
+          replaced = apply_edits(protected_line, map, mazegaki_edits(plain, allowlist))
           Masking.restore_code(replaced, spans)
+        end
+
+        # 記法を外した文字列の上で当たった [開始, 終了, 置換後, 見出し] を、
+        # 重なりを解いて位置の昇順で返す。長い語を優先する（`障がい者` と `障がい`）。
+        def mazegaki_edits(plain, allowlist)
+          hits = []
+          MAZEGAKI.each do |pattern, expected|
+            plain.to_enum(:scan, pattern).each do
+              matched = ::Regexp.last_match
+              hits << [matched.begin(0), matched.end(0), expected, matched[0]]
+            end
+          end
+          MazegakiScanner.scan(plain).each { |found, expected, start, finish| hits << [start, finish, expected, found] }
+
+          hits.reject { |_s, _e, _x, found| allowed?(found, allowlist) }
+              .sort_by { |start, finish, _x, _f| [start, start - finish] }
+              .each_with_object([]) do |hit, chosen|
+                chosen << hit unless chosen.any? { |kept| hit[0] < kept[1] && kept[0] < hit[1] }
+              end
+        end
+
+        # 元の行へ置換を当てる。添字がずれないよう後ろから置く。
+        #
+        # **語の内側に強調記法があるときは置換しない。** `だ**円**` を `楕円` にすると
+        # `**` が黙って消える——著者の書いた記法を lint が勝手に落とすのは、
+        # 交ぜ書きを直さないより悪い。指摘は出るので、著者が手で直せばよい。
+        # 仕様: inline-emphasis-word-split-spec.md §3
+        def apply_edits(original, map, edits)
+          edits.reverse_each.reduce(original.dup) do |text, (start, finish, expected, _found)|
+            from = map[start]
+            to   = map[finish - 1]
+            next text if from.nil? || to.nil? || to - from != finish - start - 1
+
+            text[0...from] + expected + text[(to + 1)..]
+          end
         end
 
         # --- 表示 -------------------------------------------------------------

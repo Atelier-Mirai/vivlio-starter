@@ -130,6 +130,55 @@ module VivlioStarter
         restored
       end
 
+      # --- (d) 強調記法を外した文字列を返す ---------------------------------
+
+      # 強調・打ち消し線の記号（記号のすぐ内側に非空白がある対だけ）。
+      # 長い記号を先に置く（順序が逆だと `***強***` が `*強*` になって内側が残る）。
+      #
+      # アンダースコアだけ前後に **ASCII の** 英数字を許さない。`snake_case_name` を
+      # 壊さないためで、和文は制限しない——**判断の根拠は VFM の実際の出力**である。
+      # 厳密な CommonMark なら `__太字__の語` は強調にならないが、VFM は
+      # `<strong>太字</strong>の語` を出す。仕様書ではなくレンダラに合わせる。
+      #
+      # 記号の内側に空白がある形（`2 * 3 * 4`）は外さない。VFM はここも強調と解釈するが、
+      # markdown-it の flanking 規則の再実装になるうえ、外さなくても失うのは
+      # 「まれな取りこぼし」だけで、誤って外すより安全側に倒れる。
+      EMPHASIS_PAIR = /
+        (?:(\*\*\*|\*\*|\*|~~)(?=\S)(.+?)(?<=\S)\1
+        |(?<![A-Za-z0-9_])(___|__|_)(?=\S)(.+?)(?<=\S)\3(?![A-Za-z0-9_]))
+      /xm
+
+      # 強調記法を外した文字列と、元の行への添字表を返す。
+      #
+      # **なぜ要るのか。** 校正の辞書は「読者が見る文字列」に当てなければならない。
+      # 生の行に当てると、語の途中に入った強調で両方向に壊れる——
+      # `結**合し**直した` は `合` の直前が `*` なのでガード `(?<![一-龥])合し` を
+      # すり抜けて誤検出になり、`だ**円**` は語が割れて当たらなくなる。
+      # 仕様: inline-emphasis-word-split-spec.md
+      #
+      # @param line [String] 1 行（コードは protect_code で退避済みであること）
+      # @return [Array(String, Array<Integer>)] 記法を外した文字列と、
+      #   plain[i] が元の行の何文字目だったかを表す添字の配列
+      def strip_emphasis(line)
+        plain = +''
+        map = []
+        pos = 0
+        while (matched = EMPHASIS_PAIR.match(line, pos))
+          head = matched.begin(0)
+          plain << line[pos...head]
+          map.concat((pos...head).to_a)
+          inner_group = matched[2] ? 2 : 4
+          inner_start = matched.begin(inner_group)
+          inner, inner_map = strip_emphasis(matched[inner_group])
+          plain << inner
+          map.concat(inner_map.map { it + inner_start })
+          pos = matched.end(0)
+        end
+        plain << line[pos..].to_s
+        map.concat((pos...line.size).to_a)
+        [plain, map]
+      end
+
       # --- 内部: 行単位の状態機械 -------------------------------------------
 
       # 各行を「コード（in_code=true）／地の文（false）」に分類しつつ走査する中核。
