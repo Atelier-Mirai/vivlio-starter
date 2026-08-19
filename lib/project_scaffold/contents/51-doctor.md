@@ -32,7 +32,7 @@ Vivlio Starter の動作には、いくつかの外部ツールが必要です�
 | vips (libvips) | 高速画像処理 |
 | tesseract | OCR エンジン |
 | tesseract 日本語データ | Tesseract の日本語学習データ |
-| mecab | 索引機能の読み自動推測 |
+| mecab | 索引の読み自動推測・交ぜ書き検出の第 2 層 |
 | rouge | コードブロック言語推定（Ruby gem） |
 | mathjax-full | 数式の SVG 化（npm パッケージ） |
 | mermaid (mmdc) | ダイアグラムの画像化（npm パッケージ） |

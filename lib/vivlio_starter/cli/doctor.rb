@@ -214,7 +214,7 @@ module VivlioStarter
           'tesseract' => 'tesseract',
           'tesseract-lang' => nil,
           'waifu2x' => nil,
-          'mecab' => 'mecab', # 索引機能の読み自動推測用
+          'mecab' => 'mecab', # 索引の読み自動推測・交ぜ書き検出の第 2 層
           'rouge' => nil, # コードブロック言語推定用
           'mathjax' => nil, # 数式の SVG 化用（mathjax-full・npm パッケージ）
           'mermaid' => nil, # ```mermaid の図化用（@mermaid-js/mermaid-cli・mmdc）
@@ -913,7 +913,7 @@ module VivlioStarter
           'tesseract-lang' => 'Tesseract 日本語学習データ',
           'waifu2x' => 'waifu2x-ncnn-vulkan',
           'ssl-certificates' => 'Google Fonts 用 SSL 証明書',
-          'mecab' => 'MeCab (索引機能用)',
+          'mecab' => 'MeCab (索引の読み推測・交ぜ書き検出用)',
           'rouge' => 'Rouge (コードブロック言語推定用)',
           'mathjax' => '数式SVG化 (mathjax-full)',
           'mermaid' => 'mermaid 図化 (mmdc・@mermaid-js/mermaid-cli)',
