@@ -17,6 +17,7 @@
 #   PC-08: 「少ない」を否定と取り違えない
 #   PC-09: lint.disabled_rules でルール単位に切れる
 #   PC-10: 辞書の修正後の語が、別の交ぜ書きとして再び指摘されない（--fix が収束する）
+#   PC-11: 語の途中に強調記法が入っても対比を取りこぼさない
 # ================================================================
 
 require_relative '../../../test_helper'
@@ -190,6 +191,29 @@ class TestProseChecker < Minitest::Test
     assert_equal PC::AMBIGUOUS_RULE, findings.first.rule
     assert_includes findings.first.label, 'と同様に'
     assert_equal 1, findings.first.line
+  end
+
+  # PC-11: `スレッド**と同様**に` は生の行では `と同様*` になって COMPARISON を
+  # すり抜けていた。交ぜ書きと同じ穴で、こちらは取りこぼしだけが出る
+  # （比較の型は構文なので、記号が紛れても誤検出は生まれない）。
+  def test_should_detect_comparison_split_by_emphasis
+    ['Ractor はスレッド**と同様**にメモリを共有しない。',
+     'Ractor はスレッドと**同様に**メモリを共有しない。',
+     'Ractor はスレッドと同じ**ように**共有しない。'].each do |body|
+      findings = check("#{body}\n")
+
+      assert_equal 1, findings.size, body
+      assert_equal PC::AMBIGUOUS_RULE, findings.first.rule
+      assert_equal 1, findings.first.line
+    end
+  end
+
+  # PC-11: 記法を外しても段落内の位置と行番号の対応は崩れない。
+  def test_should_keep_line_numbers_when_emphasis_is_stripped
+    findings = check("前置きの行です。\n\nRactor はスレッド**と同様**に共有しない。\n")
+
+    assert_equal 1, findings.size
+    assert_equal 3, findings.first.line
   end
 
   # PC-06: 本書の原稿は 1 文が複数行にまたがる。行で切ると取りこぼす

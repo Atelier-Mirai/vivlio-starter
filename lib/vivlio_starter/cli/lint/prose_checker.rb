@@ -358,7 +358,13 @@ module VivlioStarter
           buffer = nil
 
           prose_lines(text).each do |lineno, line|
-            body = line.strip
+            # **行ごとに強調記法を外してから段落へ積む。** 交ぜ書きと同じ理由で、
+            # 比較表現も読者の見る文字列に当てなければ当たらない——
+            # `スレッド**と同様**にメモリを共有しない` は `と同様*` になって
+            # COMPARISON をすり抜ける。行の中で外すので、段落内の位置と行番号の
+            # 対応（paragraph[:lines]）はそのまま保たれる。
+            # 仕様: inline-emphasis-word-split-spec.md §4
+            body, = Masking.strip_emphasis(line.strip)
             if body.empty? || body.match?(BLOCK_START) || (buffer && lineno != buffer[:last] + 1)
               paragraphs << buffer if buffer
               buffer = nil
