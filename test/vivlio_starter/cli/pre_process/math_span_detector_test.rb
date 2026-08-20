@@ -61,13 +61,19 @@ class MathSpanDetectorTest < Minitest::Test
     assert D.math?('exp(x)')
   end
 
-  # MD-03: 推測で拾う経路では日本語を数式にしない。数式画像にしても得るものが無く、
-  # 機械が黙って決めてよい判断でもない（§3.4）。明示的な `$…$` は別（そちらは組む）。
-  def test_should_not_detect_spans_containing_japanese
+  # MD-03: 日本語を含む綴りは、**強いしるしがあるときだけ**式と見る。
+  # `平文^e mod n` は変数名が日本語なだけの式なので組む。一方 `行計 × 列計 ÷ 総計` は
+  # `×` しか手がかりが無く、式か地の文か機械には決められない（§3.4）。
+  def test_should_detect_japanese_formulas_only_with_a_strong_marker
     [
-      '距離 × tan(仰角)', '行計 × 列計 ÷ 総計', 'ハッシュ値 mod サーバー台数',
+      '平文^e mod n', '圧力^2', 'ハッシュ値 mod サーバー台数', '距離 × tan(仰角)',
       '(実測−期待)² ÷ 期待', 'λ² − (トレース)λ + (行列式) = 0'
-    ].each { |src| refute D.math?(src), "日本語を含むので数式にしない: #{src}" }
+    ].each { |src| assert D.math?(src), "強いしるしがあるので式: #{src}" }
+
+    [
+      '行計 × 列計 ÷ 総計', 'カテゴリ数 − 1', 'サンプリング周波数 − 元の周波数',
+      '攻撃側の戦闘力 = (投入兵士数 × 訓練度)'
+    ].each { |src| refute D.math?(src), "弱いしるししか無いので式にしない: #{src}" }
   end
 
   # MD-01: 本文中のコードスパンが `$…$` になる。コードはそのまま。

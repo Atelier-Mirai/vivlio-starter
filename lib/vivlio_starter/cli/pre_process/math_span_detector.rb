@@ -56,14 +56,24 @@ module VivlioStarter
         # これも仕様 §6.3 で踏んだ）。
         MATH_FUNCTIONS = %w[arcsin arccos arctan sinh cosh tanh sin cos tan sec csc cot
                             log ln exp det gcd lim].freeze
-        MATH_MARKERS = /
+        # **強いしるし**——これがあれば、日本語を含んでいても式と見てよい。
+        # 変数を日本語で書いた式（`平文^e mod n`）は、`^` や `mod` のような
+        # 構造を持つしるしがあって初めて式と分かる。
+        STRONG_MARKERS = /
           [²³¹⁰⁴-⁹⁺⁻⁼⁽⁾ⁿⁱˣ]                            # Unicode 上付き
           | [₀-₉₊₋₌₍₎ₙₖᵢⱼ]                               # Unicode 下付き
-          | [√Σ∑∏∫≡≒≈≠≦≧≤≥×÷±∓・°−∞] | [α-ωΑ-Ω]
-          | (?<![\\\w])[\w)\]]+\s*\^                     # べき乗
-          | (?<=[\w)）])\s*\bmod\b\s*[\w(（]              # 両側に被演算子のある剰余
+          | [√Σ∑∏∫≡≒≈≠≦≧≤≥] | [α-ωΑ-Ω]
+          | (?<![\\[:alnum:]])[[:alnum:])\]]+\s*\^        # べき乗（`圧力^2` のように底が日本語でも拾う）
+          | (?<=[[:alnum:])）])\s*\bmod\b\s*[[:alnum:](（]  # 両側に被演算子のある剰余
           | (?<![\\[:alnum:]])(?:#{MATH_FUNCTIONS.join('|')})(?![[:alnum:]])\s*[(θ]
         /x
+
+        # **弱いしるし**——日本語と一緒だと式か地の文か決まらない。
+        # `行計 × 列計 ÷ 総計` は式にも読めるが、数式として組んで得るものが無く、
+        # それを機械が黙って決めてよい判断でもない（§3.4）。
+        WEAK_MARKERS = /[×÷±∓・·°−∞]/
+
+        MATH_MARKERS = Regexp.union(STRONG_MARKERS, WEAK_MARKERS)
 
         # 日本語（`・` と `〜` は数式の中で使われるので除く）。
         JAPANESE = /[ぁ-ゖァ-ヺ一-鿿]/
@@ -92,9 +102,13 @@ module VivlioStarter
           # 実測でこの規則が落とすのはコーパス全体で `λ` 1 種だけ。2 文字以上は
           # `√n` `Σx` `eˣ` `n³` `2²` のように本物の式が並ぶので、境界はここが妥当。
           return false if body.chars.size < 2
-          return false if body.match?(CODE_MARKERS) || body.match?(JAPANESE)
+          return false if body.match?(CODE_MARKERS)
+          return false unless body.match?(MATH_MARKERS)
 
-          body.match?(MATH_MARKERS)
+          # 日本語を含むときは**強いしるしがあるときだけ**式と見る。
+          # `平文^e mod n` は変数名が日本語なだけの式なので組む。
+          # `行計 × 列計 ÷ 総計` は `×` しか手がかりが無く、式か地の文か決められない。
+          body.match?(JAPANESE) ? body.match?(STRONG_MARKERS) : true
         end
 
         # 本文中のバッククォート数式を `$…$` / `$$…$$` へ起こす。
