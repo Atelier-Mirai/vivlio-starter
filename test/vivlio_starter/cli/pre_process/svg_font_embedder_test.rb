@@ -82,6 +82,38 @@ module VivlioStarter
         end
       end
 
+      # 数式の中の日本語は**本文の続き**なので、本文書体・Regular を埋める。
+      # 見出し書体だと `面積 = √(s(s−a)…)` の「面積」だけ周りと違う書体になる
+      # （本書なら本文が明朝・見出しがゴシック）。
+      def test_should_resolve_the_body_font_for_math
+        skip '同梱書体が無い環境では検証できない' unless Embedder.body_font_path
+
+        assert_equal 'ZenOldMincho-Regular.ttf', File.basename(Embedder.body_font_path)
+        refute_equal File.basename(Embedder.heading_font_path.to_s),
+                     File.basename(Embedder.body_font_path),
+                     '本文と見出しで別の実体を返す'
+      end
+
+      # 見出し相当は最も太い面、本文相当は最も細い面を選ぶ（Google Fonts の規則）。
+      def test_should_pick_the_google_font_weight_by_role
+        Dir.mktmpdir('vs-weight') do |dir|
+          %w[Klee-One-400.ttf Klee-One-600.ttf].each { FileUtils.touch(File.join(dir, it)) }
+
+          assert_equal 'Klee-One-600.ttf', File.basename(Embedder.send(:google_font_path, dir, :bold))
+          assert_equal 'Klee-One-400.ttf', File.basename(Embedder.send(:google_font_path, dir, :regular))
+        end
+      end
+
+      # 同梱書体も役割で字面を選び分ける。
+      def test_should_pick_the_bundled_face_by_role
+        Dir.mktmpdir('vs-weight') do |dir|
+          %w[Foo-Bold.ttf Foo-Regular.ttf].each { FileUtils.touch(File.join(dir, it)) }
+
+          assert_equal 'Foo-Bold.ttf', File.basename(Embedder.send(:bundled_font_path, dir, :bold))
+          assert_equal 'Foo-Regular.ttf', File.basename(Embedder.send(:bundled_font_path, dir, :regular))
+        end
+      end
+
       private
 
       # 見出し書体を name に設定し、layout の { 相対ディレクトリ => ファイル名の配列 } を
@@ -101,6 +133,7 @@ module VivlioStarter
       ensure
         Common.install_configuration!(original)
       end
+
     end
   end
 end

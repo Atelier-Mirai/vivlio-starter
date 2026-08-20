@@ -86,21 +86,38 @@ module VivlioStarter
         # 書体を指定した瞬間にサブセットを埋め込めず、SVG が OS の和文フォントへ落ちて
         # Type 3 が再発する（`type3-font-embedding-notes.md` §5）。
         # @return [String, nil]
-        def heading_font_path
-          slug = configured_heading_font.gsub(/[^A-Za-z0-9]+/, '_')
-          bundled_font_path(File.join(Common.stylesheets_dir, 'fonts', slug)) ||
-            google_font_path(File.join(Common.stylesheets_dir, 'fonts', 'google', slug))
+        def heading_font_path = font_path(configured_heading_font, weight: :bold)
+
+        # 本文書体の実体（数式の中の日本語に使う）。
+        #
+        # 見出し書体を埋めると、`面積 = √(s(s−a)…)` の「面積」だけ**周りの本文と違う書体**に
+        # なる（本書なら本文が明朝・見出しがゴシック）。図のラベルは見出し相当でよいが、
+        # 数式の中の日本語は本文の続きなので、本文書体・Regular を埋める。
+        # @return [String, nil]
+        def body_font_path = font_path(configured_body_font, weight: :regular)
+
+        # 書体名から TTF の実体を探す。置き場もファイル名の規則も同梱と Google で違う（notes §5.1）。
+        def font_path(name, weight:)
+          slug = name.gsub(/[^A-Za-z0-9]+/, '_')
+          bundled_font_path(File.join(Common.stylesheets_dir, 'fonts', slug), weight) ||
+            google_font_path(File.join(Common.stylesheets_dir, 'fonts', 'google', slug), weight)
         end
 
-        # 同梱書体: Bold 字面があればそれ、無ければ辞書順で最初の 1 本。
-        def bundled_font_path(dir)
-          Dir.glob(File.join(dir, '*Bold.ttf')).first || Dir.glob(File.join(dir, '*.ttf')).min
+        # 同梱書体: 求める字面があればそれ、無ければ辞書順で最初の 1 本。
+        def bundled_font_path(dir, weight = :bold)
+          preferred = weight == :bold ? '*Bold.ttf' : '*Regular.ttf'
+          Dir.glob(File.join(dir, preferred)).first || Dir.glob(File.join(dir, '*.ttf')).min
         end
 
         # Google Fonts: 太さはファイル名末尾のウェイト数値で表される（400 は数値なし＝0 扱い）。
-        # SVG のラベルは見出し相当で組むため最も太い面を選ぶ。
-        def google_font_path(dir)
-          Dir.glob(File.join(dir, '*.ttf')).max_by { File.basename(it)[/-(\d{3})\.ttf\z/, 1].to_i }
+        # 見出し相当は最も太い面、本文相当は最も細い面を選ぶ。
+        def google_font_path(dir, weight = :bold)
+          files = Dir.glob(File.join(dir, '*.ttf'))
+          return nil if files.empty?
+
+          files.public_send(weight == :bold ? :max_by : :min_by) do |file|
+            File.basename(file)[/-(\d{3})\.ttf\z/, 1].to_i
+          end
         end
 
         # book.yml の見出し書体名（未設定・プロジェクト外では同梱既定）。
@@ -109,7 +126,14 @@ module VivlioStarter
           name.empty? ? DEFAULT_FONT : name
         end
 
+        # book.yml の本文書体名（未設定・プロジェクト外では同梱既定）。
+        def configured_body_font
+          name = Common.configured? ? Common::CONFIG.typography.body.font.to_s.strip : ''
+          name.empty? ? DEFAULT_BODY_FONT : name
+        end
+
         DEFAULT_FONT = 'Zen Kaku Gothic New'
+        DEFAULT_BODY_FONT = 'Zen Old Mincho'
 
         # 指定の字だけを含む TTF を作る。フォントが読めない場合は nil。
         def subset(chars, path)
