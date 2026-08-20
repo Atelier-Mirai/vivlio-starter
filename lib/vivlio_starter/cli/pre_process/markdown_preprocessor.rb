@@ -34,6 +34,7 @@ require_relative 'data_render'
 require_relative 'image_path_normalizer'
 require_relative 'markdown_transformer'
 require_relative 'table_converter'
+require_relative 'math_span_detector'
 require_relative 'math_transformer'
 require_relative 'showcase_transformer'
 require_relative 'mermaid_transformer'
@@ -97,6 +98,7 @@ module VivlioStarter
           transform_mermaid!
           transform_talk!
           process_code_includes!
+          detect_plain_math!
           transform_math!
           normalize_html_block_boundaries!
           escape_inline_code_html!
@@ -261,6 +263,20 @@ module VivlioStarter
             context.content, source_filename: context.filename, source_path: context.source_path
           )
           Common.log_success('ソースコード読み込み処理が完了しました')
+        end
+
+        # バッククォートで書かれた数式を `$…$` / `$$…$$` へ起こす
+        # （plain-math-notation-spec.md §6）。数式記法を知らない著者は、等幅で本文と
+        # 区別が付くという理由でバッククォートを数式デリミタの代用に使う。
+        #
+        # **transform_math! の直前でなければならない**——`$…$` を作る側なので。
+        # process_code_includes! より後でもある（取り込んだソースを数式にしないため）。
+        def detect_plain_math!
+          before = context.content
+          context.content = MathSpanDetector.transform(before)
+          return if context.content == before
+
+          Common.log_info('バッククォートの数式を $…$ へ起こしました')
         end
 
         # LaTeX 数式（$…$ / $$…$$ / \(…\) / \[…\]）を SVG 画像へ変換し <img> 化する。
