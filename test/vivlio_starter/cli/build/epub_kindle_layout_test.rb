@@ -486,13 +486,15 @@ module VivlioStarter
       def test_should_textify_simple_inline_math_for_kindle
         html = '<html><body>' \
                '<p><img class="vs-math vs-math-inline" src="a.svg" alt="$E=mc^2$" style="height: 1.2ex"></p>' \
-               '<p><img class="vs-math vs-math-inline" src="b.svg" alt="$\sqrt{2}$" style="height: 2ex"></p>' \
+               '<p><img class="vs-math vs-math-inline" src="b.svg" alt="$x^{y^z}$" style="height: 2ex"></p>' \
                '</body></html>'
         doc = process(html) { |files| Builder.textify_simple_math_for_kindle!(files) }
 
         assert_equal 1, doc.css('span.vs-math-text').size, '単純式はテキスト span になる'
         assert_equal '<i>E</i>=<i>mc</i><sup>2</sup>', doc.at_css('span.vs-math-text').inner_html
-        assert_equal 1, doc.css('img.vs-math-inline').size, '複雑式（\sqrt）は img のまま残る'
+        # `\sqrt` は 2026-08-20 からテキスト化される（インライン画像は潰れて読めないため）。
+        # img で残るのは上下付きの 2 段入れ子のように、テキストで表しようがない式だけ。
+        assert_equal 1, doc.css('img.vs-math-inline').size, 'テキストで表せない式は img のまま残る'
       end
 
       private

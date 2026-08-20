@@ -255,7 +255,7 @@ module VivlioStarter
         File.write('30-math.html', <<~HTML)
           <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
           <p>質量エネルギー <img class="vs-math vs-math-inline" src="images/math/30/a.svg" alt="$E=mc^2$" style="height: 1.2ex" width="52" height="17"> です。</p>
-          <p>根号 <img class="vs-math vs-math-inline" src="images/math/30/b.svg" alt="$\\sqrt{2}$" style="height: 2ex" width="20" height="30"> は残る。</p>
+          <p>入れ子 <img class="vs-math vs-math-inline" src="images/math/30/b.svg" alt="$x^{y^z}$" style="height: 2ex" width="20" height="30"> は残る。</p>
           </body></html>
         HTML
 
@@ -264,10 +264,10 @@ module VivlioStarter
 
         # 単純式はテキスト span へ（img が消える）
         assert_includes html, '<span class="vs-math vs-math-text"><i>E</i>=<i>mc</i><sup>2</sup></span>'
-        # 複雑式（\sqrt）は img のまま無傷（px 属性も保持）
-        assert_includes html, 'alt="$\sqrt{2}$"'
+        # テキストで表せない式（上下付きの 2 段入れ子）は img のまま無傷（px 属性も保持）
+        assert_includes html, 'alt="$x^{y^z}$"'
         assert_includes html, 'width="20"'
-        assert_equal 1, html.scan('vs-math-inline').size, '単純式だけが img から消える'
+        assert_equal 1, html.scan('vs-math-inline').size, 'テキスト化できた式だけが img から消える'
       end
 
       # alt のデリミタは $…$ / \(…\) の 2 形式とも剥がす
@@ -322,16 +322,16 @@ module VivlioStarter
       def test_textify_falls_back_to_the_author_source_when_the_renderer_rejects
         File.write('35-math.html', <<~HTML)
           <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
-          <p><img class="vs-math vs-math-inline" src="a.svg" alt="$√(GM/R)$" data-vs-tex="\\sqrt{GM/R}"></p>
-          <p><img class="vs-math vs-math-inline" src="b.svg" alt="$Σx²$" data-vs-tex="\\sum x^{2}"></p>
+          <p><img class="vs-math vs-math-inline" src="a.svg" alt="$x^(y^z)$" data-vs-tex="x^{y^{z}}"></p>
+          <p><img class="vs-math vs-math-inline" src="b.svg" alt="$vec v$" data-vs-tex="\\vec{v}"></p>
           </body></html>
         HTML
 
         Build::EpubBuilder.textify_simple_math_for_kindle!(['35-math.html'])
         html = File.read('35-math.html')
 
-        assert_includes html, '<span class="vs-math vs-math-text vs-math-plain">√(GM/R)</span>'
-        assert_includes html, '<span class="vs-math vs-math-text vs-math-plain">Σx²</span>'
+        assert_includes html, '<span class="vs-math vs-math-text vs-math-plain">x^(y^z)</span>'
+        assert_includes html, '<span class="vs-math vs-math-text vs-math-plain">vec v</span>'
         refute_includes html, 'vs-math-inline', '原文テキストへ落ちるので img は残らない'
       end
 
@@ -339,7 +339,7 @@ module VivlioStarter
       def test_textify_keeps_svg_for_latex_authored_formulas_it_cannot_render
         File.write('36-math.html', <<~HTML)
           <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
-          <p><img class="vs-math vs-math-inline" src="a.svg" alt="$\\sqrt{2}$" width="20" height="30"></p>
+          <p><img class="vs-math vs-math-inline" src="a.svg" alt="$x^{y^z}$" width="20" height="30"></p>
           </body></html>
         HTML
 
@@ -371,7 +371,7 @@ module VivlioStarter
         File.write('38-math.html', <<~HTML)
           <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
           <p><img class="vs-math vs-math-inline" src="a.svg" alt="$平文^e mod n$" data-vs-tex="平文^{e} \\bmod n"></p>
-          <p><img class="vs-math vs-math-inline" src="b.svg" alt="$下限 = √p$" data-vs-tex="下限 = \\sqrt{p}"></p>
+          <p><img class="vs-math vs-math-inline" src="b.svg" alt="$下限 = vec p$" data-vs-tex="下限 = \\vec{p}"></p>
           </body></html>
         HTML
 
@@ -381,7 +381,7 @@ module VivlioStarter
         # 単純な日本語入りの式は真の上付き付きの HTML になる
         assert_includes html, '平文<sup><i>e</i></sup> mod <i>n</i>'
         # \sqrt を含むものは原文テキストへ
-        assert_includes html, '<span class="vs-math vs-math-text vs-math-plain">下限 = √p</span>'
+        assert_includes html, '<span class="vs-math vs-math-text vs-math-plain">下限 = vec p</span>'
         refute_includes html, 'vs-math-inline'
       end
 
@@ -389,14 +389,14 @@ module VivlioStarter
       def test_textify_escapes_html_characters_in_the_author_source
         File.write('39-math.html', <<~HTML)
           <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
-          <p><img class="vs-math vs-math-inline" src="a.svg" alt="$a<b & √c$" data-vs-tex="a&lt;b \\&amp; \\sqrt{c}"></p>
+          <p><img class="vs-math vs-math-inline" src="a.svg" alt="$a<b & vec c$" data-vs-tex="a&lt;b \\&amp; \\vec{c}"></p>
           </body></html>
         HTML
 
         Build::EpubBuilder.textify_simple_math_for_kindle!(['39-math.html'])
         html = File.read('39-math.html')
 
-        assert_includes html, 'a&lt;b &amp; √c'
+        assert_includes html, 'a&lt;b &amp; vec c'
         refute_includes html, '<b &'
       end
 

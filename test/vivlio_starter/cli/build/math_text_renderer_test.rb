@@ -57,10 +57,12 @@ module VivlioStarter
           assert_equal '<i>a</i><sub><i>ij</i></sub>', R.render('a_{ij}'), '下付きの変数もイタリック'
         end
 
-        # サブセット外は式全体を nil（＝SVG 維持）。部分変換はしない
+        # サブセット外は式全体を nil（＝SVG 維持 / 素の表記なら原文テキスト）。部分変換はしない。
+        #
+        # **`\sqrt` と `\sum` はここから外れた**（2026-08-20）。インラインの数式画像は
+        # TeX の決まりで潰れて読めないため（実測: `\sum` はインライン 2.6ex /
+        # ディスプレイ 6.4ex）、`√…` `∑` のテキストで出すほうが読める。
         def test_should_reject_out_of_subset_formulas
-          assert_nil R.render('\sqrt{2}'), '\sqrt は非対応'
-          assert_nil R.render('\sum_{i=1}^n'), '\sum は非対応'
           assert_nil R.render('x^{y^z}'), 'sup の 2 段入れ子は拒否'
           assert_nil R.render('\frac{\frac{1}{2}}{3}'), 'frac の入れ子は拒否'
           assert_nil R.render('\vec{v}'), '未知コマンドは拒否'
@@ -122,6 +124,42 @@ module VivlioStarter
     ['\sqrt{2}', '\sum x^{2}', '\int_{0}^{1} x dx', '\lim_{n→∞} x'].each do |src|
       assert_nil MathTextRenderer.render(src), "拒否されるべき: #{src}"
     end
+  end
+
+  # `\frac{a+b}{2}` を `a+b/2` と書くと `a + (b/2)` に読める——**意味が変わる**。
+  # 複合式なら括弧を付ける（単項なら付けない。`1/299,792,458` の見た目を保つため）。
+  def test_should_parenthesize_compound_fraction_operands
+    assert_equal '(<i>a</i>+<i>b</i>)/2', MathTextRenderer.render('\frac{a+b}{2}')
+    assert_equal '<i>a</i>/(<i>b</i>+<i>c</i>)', MathTextRenderer.render('\frac{a}{b+c}')
+    assert_equal '1/2', MathTextRenderer.render('\frac{1}{2}')
+    assert_equal '1/299,792,458', MathTextRenderer.render('\frac{1}{299{,}792{,}458}')
+    # 指数の符号は項の区切りではないので括弧を付けない
+    assert_equal '1/10<sup>-34</sup>', MathTextRenderer.render('\frac{1}{10^{-34}}')
+  end
+
+  # 根号・大型演算子はテキストで表す。SVG 画像はインラインだと TeX の決まりで潰れて
+  # 読めない（実測: \sum はインライン 2.6ex / ディスプレイ 6.4ex）。
+  def test_should_render_radicals_and_big_operators_as_text
+    assert_equal '√2', MathTextRenderer.render('\sqrt{2}')
+    # 中身が複合式なら括弧で範囲を示す（`√a+b` は「√a に b を足す」に読める）
+    assert_equal '√(<i>a</i><sup>2</sup>+<i>b</i><sup>2</sup>)', MathTextRenderer.render('\sqrt{a^2+b^2}')
+    assert_equal '∑<sub><i>i</i>=1</sub><sup><i>n</i></sup><i>i</i>',
+                 MathTextRenderer.render('\sum_{i=1}^{n} i')
+    assert_equal '∫<sub>0</sub><sup>1</sup><i>x</i><sup>2</sup><i>dx</i>',
+                 MathTextRenderer.render('\int_{0}^{1} x^2 dx')
+    assert_equal '<i>p</i>̂', MathTextRenderer.render('\hat{p}')
+  end
+
+  # 日本語の範囲は `ぁ-ゖ` `ァ-ヺ` では足りない——**長音符 `ー`（U+30FC）が外**にある。
+  # 「ハッシュ値 mod サーバー台数」が丸ごと拒否されていた。
+  def test_should_accept_katakana_with_a_long_vowel_mark
+    assert_equal 'ハッシュ値 mod サーバー台数', MathTextRenderer.render('ハッシュ値 \bmod サーバー台数')
+  end
+
+  # 導関数のプライム。
+  def test_should_accept_primes
+    assert_equal "<i>f</i>'(<i>x</i>)", MathTextRenderer.render("f'(x)")
+    assert_equal "<i>f</i>''(0)=2<i>c</i><sub>2</sub>", MathTextRenderer.render("f''(0) = 2c_{2}")
   end
 
 end

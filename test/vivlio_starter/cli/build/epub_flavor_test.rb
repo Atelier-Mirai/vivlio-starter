@@ -34,7 +34,7 @@ module VivlioStarter
         <div class="tip"><p>ヒント本文</p></div>
         <pre class="language-ruby line-numbers"><code class="language-ruby line-numbers">x = 1<span class="line-numbers-rows" aria-hidden="true"><span></span></span></code></pre>
         <p><img class="vs-math vs-math-inline" src="images/math/s.svg" style="height: 1.2ex;" alt="$E=mc^2$"></p>
-        <p><img class="vs-math vs-math-inline" src="images/math/c.svg" style="height: 1.4ex; width: 1.4ex;" alt="$\\sqrt{2}$"></p>
+        <p><img class="vs-math vs-math-inline" src="images/math/c.svg" style="height: 1.4ex; width: 1.4ex;" alt="$x^{y^z}$"></p>
         <ol class="vs-fancy-list vs-list-lower-alpha-paren2" type="a" style="counter-reset: vs-fancy 0"><li>選択肢イ</li></ol>
         <div class="outline-list"><ol><li>概要<ol><li>基本</li></ol></li></ol></div>
         <div id="rot-11-sample-1" class="rotate-table" style="--rotate-table-scale:70%;"><table><tr><td>スキルレベル</td><td>リモート勤務</td></tr></table></div>
@@ -79,10 +79,11 @@ module VivlioStarter
         assert_nil doc.at_css('pre.line-numbers'), '元の pre.line-numbers は残らない'
         refute_nil doc.at_css('div.vs-code-line > span.vs-code-ln'),
                    '行番号の実テキスト span が注入される（KFX は ::before を描けない）'
-        # 単純式（E=mc^2）はテキスト化され、複雑式（\sqrt）だけが img として残り ex→em を受ける
+        # 単純式はテキスト化され、テキストで表せない式（上下付きの 2 段入れ子）だけが
+        # img として残り ex→em を受ける
         assert_equal '<i>E</i>=<i>mc</i><sup>2</sup>', doc.at_css('span.vs-math-text')&.inner_html,
                      '単純式はフォント追従するテキストへ変換される'
-        assert_equal 1, doc.css('img.vs-math-inline').size, '複雑式のみ img で残る'
+        assert_equal 1, doc.css('img.vs-math-inline').size, 'テキストで表せない式のみ img で残る'
         style = doc.at_css('img.vs-math-inline')['style']
         refute_includes style, 'ex', '残った数式の ex は em へ変換される'
         assert_includes style, 'em'

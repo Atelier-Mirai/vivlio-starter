@@ -34,7 +34,11 @@ module VivlioStarter
           'le' => '≤', 'ge' => '≥', 'sim' => '∼', 'propto' => '∝',
           'infty' => '∞', 'll' => '≪', 'gg' => '≫',
           'langle' => '⟨', 'rangle' => '⟩',
-          'ldots' => '…', 'cdots' => '…', 'dots' => '…'
+          'ldots' => '…', 'cdots' => '…', 'dots' => '…',
+          # 大型演算子。直後の `_{…}^{…}` は既存の上下付き処理がそのまま拾うので、
+          # `\sum_{i=1}^{n}` は `∑` + `<sub>i=1</sub><sup>n</sup>` になる。
+          # SVG 画像より読みやすく、かつ本文のフォントサイズに追従する。
+          'sum' => '∑', 'prod' => '∏', 'int' => '∫', 'oint' => '∮'
         }.freeze
 
         # ギリシャ文字コマンド → Unicode（立体＝イタリックにしない・§3.1）。
@@ -53,7 +57,8 @@ module VivlioStarter
         }.freeze
 
         # そのまま通す演算子・区切り（§3.1）。< > & は出力時にエスケープする。
-        OPERATORS = %r{[+\-=/<>()\[\]|,.:;!]}
+        # `'` は導関数のプライム（`f'(x)`・`f''(0)`）。数式で普通に出る。
+        OPERATORS = %r{[+\-=/<>()\[\]|,.:;!']}
 
         # Unicode で直接書かれた記号・ギリシャ文字・日本語をそのまま通す。
         #
@@ -64,12 +69,14 @@ module VivlioStarter
         # 受けて出すのは同じ字を返すだけで済む。
         # これを足すと `a^(p-1) mod p` や `sin²θ + cos²θ` が**真の上付き付きの HTML**になり、
         # 原文テキストへ落とさずに済む（Kindle での見栄えが一段良くなる）。
-        PASSTHROUGH = /[×÷±∓⋅・·≈≒≡≠≤≥≦≧∼∝∞…°−→∈]|[α-ωΑ-Ω]|[ぁ-ゖァ-ヺ一-鿿]/
+        # 日本語は `ぁ-ゖ` `ァ-ヺ` の範囲だけでは足りない——**長音符 `ー`（U+30FC）が外**にあり、
+        # 「ハッシュ値 mod サーバー台数」が丸ごと拒否されていた。文字プロパティで書く。
+        PASSTHROUGH = /[×÷±∓⋅・·≈≒≡≠≤≥≦≧∼∝∞…°−→∈]|[α-ωΑ-Ω]|[\p{Hiragana}\p{Katakana}\p{Han}ー々〆]/
 
         # TeX に対応マクロがある関数名。立体（イタリックにしない）で出す。
         FUNCTIONS = %w[
           arcsin arccos arctan sinh cosh tanh
-          sin cos tan sec csc cot log ln exp det gcd max min
+          sin cos tan sec csc cot log ln exp det gcd max min lim
         ].freeze
 
         module_function
@@ -158,7 +165,19 @@ module VivlioStarter
 
             numer = consume_brace_group(scanner, upright: false, allow_script: true, allow_frac: false)
             denom = numer && consume_brace_group(scanner, upright: false, allow_script: true, allow_frac: false)
-            denom && "#{numer}/#{denom}"
+            # **括弧が要る。** `\frac{a+b}{2}` を `a+b/2` と書くと `a + (b/2)` に読める
+            # ——意味が変わる。`\frac{1}{2}` のような単項なら付けない。
+            denom && "#{parenthesize(numer)}/#{parenthesize(denom)}"
+          when 'hat'
+            # `\hat{p}` → `p̂`（結合アクセント U+0302）。統計の推定値でよく出る。
+            # HTML のテキストなので結合文字がそのまま乗る
+            base = consume_brace_group(scanner, upright: false, allow_script: false, allow_frac: false)
+            base && "#{base}\u0302"
+          when 'sqrt'
+            # 根号は横線を引けないので `√…` にする。中身が複合式なら括弧で範囲を示す
+            # ——`√a+b` は「√a に b を足す」に読めてしまう。
+            body = consume_brace_group(scanner, upright: false, allow_script: true, allow_frac: false)
+            body && "√#{parenthesize(body)}"
           when 'quad', 'qquad'
             ' '
           when 'bmod'
@@ -171,6 +190,17 @@ module VivlioStarter
           else
             SYMBOLS[name] || GREEK[name]
           end
+        end
+
+        # 複合式なら括弧で囲む。判定は**描画済み HTML から上下付きの中身を除いた**うえで、
+        # 加減算や除算が残るかを見る（`10<sup>-34</sup>` の `-` は指数の符号であって
+        # 項の区切りではない）。生成するタグは <i>/<sup>/<sub> だけなので、
+        # タグ自体に `+ - /` が現れることはない。
+        def parenthesize(html)
+          # 上下付きは中身ごと落とす（指数の符号を項の区切りと読まないため）。
+          # 残りのタグも落とす——`</i>` の `/` を除算と読まないため。
+          bare = html.gsub(%r{<su[bp]>.*?</su[bp]>}m, '').gsub(/<[^>]+>/, '')
+          bare.match?(%r{[+\-−/]}) ? "(#{html})" : html
         end
 
         # 上/下付き・\frac の引数（'{…}' グループ or 単一アトム）。先行空白は読み飛ばす。
