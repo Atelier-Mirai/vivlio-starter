@@ -35,6 +35,7 @@
 # ================================================================
 
 require_relative '../masking'
+require_relative '../pre_process/math_transformer'
 
 module VivlioStarter
   module CLI
@@ -75,7 +76,52 @@ module VivlioStarter
         # 記法を中和したテキストを返す。行数は入力と必ず一致する（I1）。
         # @param text [String] 原稿の内容
         # @return [String] 記法を中和した内容
+        # 数式の退避に使う目印。`--fix` に触られず、textlint の指摘も生まないことを実測で選んだ
+        # （インラインコード化は `spaceAroundCode` を誘発し、`X` のような 1 文字は
+        # 全角と半角の間のスペース規則に触れる）。
+        MATH_PLACEHOLDER = 'VSMATH'
+
+        # 数式の綴りは**変換器と同じ定義**を使う。ここで別に書くと、lint が守る範囲と
+        # ビルドが数式として扱う範囲がずれる。
+        MATH_PATTERNS = [
+          PreProcessCommands::MathTransformer::DISPLAY_DOLLAR,
+          PreProcessCommands::MathTransformer::DISPLAY_BRACKET,
+          PreProcessCommands::MathTransformer::INLINE_DOLLAR,
+          PreProcessCommands::MathTransformer::INLINE_PAREN
+        ].freeze
+
+        # 数式を目印へ退避する。**lint は数式を日本語の文として読むべきではない。**
+        #
+        # 放置すると、数式の中の半角括弧が prh に「全角にせよ」と指摘され、`--fix` が
+        # 当たれば `$(1/2)πr³$` が `$（1/2）πr³$` になって**数式が壊れる**（実測）。
+        # コードスパンは textlint が Code ノードとして飛ばすのに、数式は素の文として
+        # 読まれるための穴で、素の表記を数式として組む機能が入って表面化した。
+        #
+        # 行数は保存する（I1）——複数行のディスプレイ数式は、落とした改行を目印の後ろへ足す。
+        # @return [Array(String, Hash)] 退避後テキストと { 目印 => 原文 }
+        def mask_math(text)
+          protected_text, code = Masking.protect_code(text)
+          spans = {}
+          masked = MATH_PATTERNS.reduce(protected_text) do |acc, pattern|
+            acc.gsub(pattern) do
+              original = ::Regexp.last_match(0)
+              key = "#{MATH_PLACEHOLDER}#{spans.size}"
+              spans[key] = original
+              "#{key}#{"\n" * original.count("\n")}"
+            end
+          end
+          [Masking.restore_code(masked, code), spans]
+        end
+
+        # mask_math で退避した数式を戻す。
+        def restore_math(text, spans)
+          spans.reduce(text) do |acc, (key, original)|
+            acc.sub(/#{Regexp.escape(key)}\n{0,#{original.count("\n")}}/) { original }
+          end
+        end
+
         def strip_notation(text)
+          text, = mask_math(text)
           prose   = prose_lines(text)
           machine = machine_block_lines(text, prose)
 

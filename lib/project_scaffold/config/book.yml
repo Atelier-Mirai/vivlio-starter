@@ -143,7 +143,7 @@ typography:
 # ======= 出力設定 =======
 output:
   # ------- 出力フォーマット -------
-  targets: pdf # pdf / print_pdf / epub / kindleから選択可
+  targets: kindle # pdf / print_pdf / epub / kindleから選択可
   # targets: pdf                          # 閲覧用PDFを指定
   # targets: pdf, print_pdf               # 閲覧用PDF, 印刷所入稿用PDFを指定
   # targets: pdf, print_pdf, epub         # 閲覧用PDF, 印刷所入稿用PDF, 電子書籍EPUBを指定
