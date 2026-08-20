@@ -89,4 +89,39 @@ module VivlioStarter
       end
     end
   end
+  # 素の表記から起こした TeX を受理する（plain-math-notation-spec.md §3-2.3）。
+  # この変換器は LaTeX で書かれた原稿だけを見て作られたので、素の表記が入ってからは
+  # `×` や `θ`・関数マクロ・`\bmod` が届くようになった。受理しないと Kindle で
+  # 原文テキストへ落ちてしまい、真の上付きが出ない。
+  def test_should_render_tex_produced_from_plain_notation
+    assert_equal '<i>a</i><sup><i>p</i>-1</sup> mod <i>p</i>',
+                 MathTextRenderer.render('a^{p-1} \bmod p')
+    assert_equal 'sin<sup>2</sup>θ+cos<sup>2</sup>θ',
+                 MathTextRenderer.render('\sin^{2}θ + \cos^{2}θ')
+    assert_equal '<i>x</i><sup>2</sup>≡1 (mod n)',
+                 MathTextRenderer.render('x^{2} ≡ 1 \pmod{n}')
+    assert_equal '6.626×10<sup>-34</sup>', MathTextRenderer.render('6.626×10^{-34}')
+    assert_equal 'λ<sup>2</sup>−1', MathTextRenderer.render('λ^{2} − 1')
+  end
+
+  # Unicode で直接書かれた記号・ギリシャ文字・日本語をそのまま通す。
+  def test_should_pass_through_unicode_symbols_greek_and_japanese
+    assert_equal '<i>a</i>×<i>b</i>÷<i>c</i>', MathTextRenderer.render('a × b ÷ c')
+    assert_equal 'π+θ+λ', MathTextRenderer.render('π + θ + λ')
+    assert_equal '平文<sup><i>e</i></sup> mod <i>n</i>', MathTextRenderer.render('平文^{e} \bmod n')
+  end
+
+  # 関数名は立体で出す（素のままだと 1 文字ずつ斜体になる）。
+  def test_should_render_function_names_upright
+    assert_equal 'ln(<i>n</i>)', MathTextRenderer.render('\ln(n)')
+    assert_equal 'arctan(1/5)', MathTextRenderer.render('\arctan(1/5)')
+  end
+
+  # 複雑な式は今までどおり拒否する（SVG か原文テキストへ委ねる）。
+  def test_should_still_reject_complex_constructs
+    ['\sqrt{2}', '\sum x^{2}', '\int_{0}^{1} x dx', '\lim_{n→∞} x'].each do |src|
+      assert_nil MathTextRenderer.render(src), "拒否されるべき: #{src}"
+    end
+  end
+
 end

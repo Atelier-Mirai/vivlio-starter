@@ -11,6 +11,10 @@
 ```bash
 cp test/vivlio_starter/fixtures/math/math-check.md contents/97-math-check.md
 
+# config/catalog.yml に 97 を追加する（catalog に無い章は弾かれる）
+# vs は導入済み gem を使うので、リポジトリの変更を反映するには必須
+rake reinstall
+
 # config/book.yml を編集して出力形式を選ぶ
 #   output:
 #     targets: kindle        … Kindle だけ

@@ -323,7 +323,7 @@ module VivlioStarter
         File.write('35-math.html', <<~HTML)
           <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
           <p><img class="vs-math vs-math-inline" src="a.svg" alt="$√(GM/R)$" data-vs-tex="\\sqrt{GM/R}"></p>
-          <p><img class="vs-math vs-math-inline" src="b.svg" alt="$sin(x)$" data-vs-tex="\\sin(x)"></p>
+          <p><img class="vs-math vs-math-inline" src="b.svg" alt="$Σx²$" data-vs-tex="\\sum x^{2}"></p>
           </body></html>
         HTML
 
@@ -331,7 +331,7 @@ module VivlioStarter
         html = File.read('35-math.html')
 
         assert_includes html, '<span class="vs-math vs-math-text vs-math-plain">√(GM/R)</span>'
-        assert_includes html, '<span class="vs-math vs-math-text vs-math-plain">sin(x)</span>'
+        assert_includes html, '<span class="vs-math vs-math-text vs-math-plain">Σx²</span>'
         refute_includes html, 'vs-math-inline', '原文テキストへ落ちるので img は残らない'
       end
 
@@ -365,18 +365,23 @@ module VivlioStarter
         refute_includes html, 'vs-math-plain', '通る式は HTML 経路を使う'
       end
 
-      # 日本語を含む式も原文テキストになる。Kindle からは SVG（<text> 入り）が消える。
-      def test_textify_falls_back_for_formulas_containing_japanese
+      # 日本語を含む式も Kindle からは SVG（<text> 入り）が消える。単純なら HTML へ、
+      # サブセット外を含むなら原文テキストへ落ちる。どちらも画像ではないので追従する。
+      def test_textify_handles_formulas_containing_japanese
         File.write('38-math.html', <<~HTML)
           <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
           <p><img class="vs-math vs-math-inline" src="a.svg" alt="$平文^e mod n$" data-vs-tex="平文^{e} \\bmod n"></p>
+          <p><img class="vs-math vs-math-inline" src="b.svg" alt="$下限 = √p$" data-vs-tex="下限 = \\sqrt{p}"></p>
           </body></html>
         HTML
 
         Build::EpubBuilder.textify_simple_math_for_kindle!(['38-math.html'])
         html = File.read('38-math.html')
 
-        assert_includes html, '<span class="vs-math vs-math-text vs-math-plain">平文^e mod n</span>'
+        # 単純な日本語入りの式は真の上付き付きの HTML になる
+        assert_includes html, '平文<sup><i>e</i></sup> mod <i>n</i>'
+        # \sqrt を含むものは原文テキストへ
+        assert_includes html, '<span class="vs-math vs-math-text vs-math-plain">下限 = √p</span>'
         refute_includes html, 'vs-math-inline'
       end
 

@@ -15,6 +15,7 @@
 
 require_relative '../../../test_helper'
 require 'fileutils'
+require 'nokogiri'
 require 'tmpdir'
 require 'vivlio_starter/cli/pre_process/math_transformer'
 
@@ -300,6 +301,20 @@ class MathTransformerTest < Minitest::Test
 
     assert_equal plain_key, MT.send(:digest, false, 'x^{2}'), '同じ式は同じキー'
     refute_equal jp_key, Digest::SHA256.hexdigest('I:下限')[0, 16], '日本語を含む式は書体を混ぜる'
+  end
+
+  # 角括弧は alt の中で数値文字参照へ退避する。索引マークアップ `[用語]` は前処理の
+  # 最後に本文全体へ当たり、生成済みの <img alt="…"> の中まで届く。`∫[0, π/2]` のような
+  # 式をそのまま置くと**タグが壊れ**、style が本文へ漏れて数式が巨大化する（実測）。
+  def test_should_escape_brackets_in_alt_to_avoid_the_index_markup_collision
+    in_tmp do
+      result = MT.transform("$$∫[0, π/2] sin(x) dx$$\n", chapter_slug: 'br', renderer: FakeRenderer.new)
+
+      assert_includes result, '&#91;0, π/2&#93;'
+      refute_match(/alt="[^"]*\[/, result, 'alt に生の [ が残らない')
+      # Nokogiri で読み出す側（Kindle テキスト化・章扉の焼き込み）は復号された [ を受け取る
+      assert_equal '$$∫[0, π/2] sin(x) dx$$', Nokogiri::HTML5.fragment(result).at_css('img')['alt']
+    end
   end
 
   def test_should_render_with_real_mathjax_when_available

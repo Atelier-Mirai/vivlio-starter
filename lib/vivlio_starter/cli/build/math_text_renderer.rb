@@ -55,6 +55,23 @@ module VivlioStarter
         # そのまま通す演算子・区切り（§3.1）。< > & は出力時にエスケープする。
         OPERATORS = %r{[+\-=/<>()\[\]|,.:;!]}
 
+        # Unicode で直接書かれた記号・ギリシャ文字・日本語をそのまま通す。
+        #
+        # **なぜ後から足したか**: この変換器は 2026-07-19 に、LaTeX で書かれた原稿だけを見て
+        # 作られた（当時の原稿の数式は全件 `\times` `\pi` の形だった）。素の表記を組む機能が
+        # 入ってからは `×` や `θ` が直接届くようになり、受理集合が実態に追いつかなくなった。
+        # 上の SYMBOLS / GREEK は「コマンド名 → Unicode」の対応表なので、Unicode をそのまま
+        # 受けて出すのは同じ字を返すだけで済む。
+        # これを足すと `a^(p-1) mod p` や `sin²θ + cos²θ` が**真の上付き付きの HTML**になり、
+        # 原文テキストへ落とさずに済む（Kindle での見栄えが一段良くなる）。
+        PASSTHROUGH = /[×÷±∓⋅・·≈≒≡≠≤≥≦≧∼∝∞…°−→∈]|[α-ωΑ-Ω]|[ぁ-ゖァ-ヺ一-鿿]/
+
+        # TeX に対応マクロがある関数名。立体（イタリックにしない）で出す。
+        FUNCTIONS = %w[
+          arcsin arccos arctan sinh cosh tanh
+          sin cos tan sec csc cot log ln exp det gcd max min
+        ].freeze
+
         module_function
 
         # LaTeX（デリミタ除去済み）を HTML テキストへ変換する。
@@ -104,6 +121,8 @@ module VivlioStarter
             consume_command(scanner, upright:, allow_frac:)
           elsif (op = scanner.scan(OPERATORS))
             escape_html(op)
+          elsif (raw = scanner.scan(PASSTHROUGH))
+            raw # 記号・ギリシャ・日本語はそのままの字で出す（立体）
           end
         end
 
@@ -142,6 +161,13 @@ module VivlioStarter
             denom && "#{numer}/#{denom}"
           when 'quad', 'qquad'
             ' '
+          when 'bmod'
+            ' mod '
+          when 'pmod'
+            inner = consume_brace_group(scanner, upright: true, allow_script: false, allow_frac: false)
+            inner && " (mod #{inner})"
+          when *FUNCTIONS
+            name # 立体で出す（素のままだと 𝑠𝑖𝑛 と 1 文字ずつ斜体になる）
           else
             SYMBOLS[name] || GREEK[name]
           end
