@@ -143,9 +143,11 @@ module VivlioStarter
     assert_equal '√2', MathTextRenderer.render('\sqrt{2}')
     # 中身が複合式なら括弧で範囲を示す（`√a+b` は「√a に b を足す」に読める）
     assert_equal '√(<i>a</i><sup>2</sup>+<i>b</i><sup>2</sup>)', MathTextRenderer.render('\sqrt{a^2+b^2}')
-    assert_equal '∑<sub><i>i</i>=1</sub><sup><i>n</i></sup><i>i</i>',
+    # 上下限の直後には細空白（U+2009）を補う。数式の空白は TeX 流に落としているので、
+    # 補わないと `∑ᵢ₌₁ⁿi` と詰まって読みにくい
+    assert_equal "∑<sub><i>i</i>=1</sub><sup><i>n</i></sup>\u2009<i>i</i>",
                  MathTextRenderer.render('\sum_{i=1}^{n} i')
-    assert_equal '∫<sub>0</sub><sup>1</sup><i>x</i><sup>2</sup><i>dx</i>',
+    assert_equal "∫<sub>0</sub><sup>1</sup>\u2009<i>x</i><sup>2</sup><i>dx</i>",
                  MathTextRenderer.render('\int_{0}^{1} x^2 dx')
     assert_equal '<i>p</i>̂', MathTextRenderer.render('\hat{p}')
   end

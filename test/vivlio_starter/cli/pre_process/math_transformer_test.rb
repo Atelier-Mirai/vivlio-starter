@@ -317,6 +317,30 @@ class MathTransformerTest < Minitest::Test
     end
   end
 
+  # インラインの大型演算子は上下限が記号の横へ寄って潰れる（実測 2.563ex）。
+  # `\limits` を挿して上下へ開く（5.449ex）——数学書と同じ組み方。
+  # `\int` は対象外（積分は上下限を横に置くのが組版の慣習）。
+  # ディスプレイ数式は元から開いているので触らない。
+  def test_should_stack_operator_limits_for_inline_math_only
+    stack = ->(tex) { MT.send(:stack_operator_limits, tex) }
+
+    assert_equal '\\sum\\limits_{i=1}^{n} i', stack.call('\\sum_{i=1}^{n} i')
+    assert_equal '\\lim\\limits_{n} a', stack.call('\\lim_{n} a')
+    assert_equal '\\int_{0}^{1} x dx', stack.call('\\int_{0}^{1} x dx'), '積分は慣習どおり横のまま'
+    assert_equal '\\sum x^{2}', stack.call('\\sum x^{2}'), '上下限が無ければ挿さない（TeX エラーになる）'
+    assert_equal '\\sum\\nolimits_{i}^{n} i', stack.call('\\sum\\nolimits_{i}^{n} i'), '著者の指定を尊重する'
+  end
+
+  # ディスプレイ数式には挿さない（元から上下へ開いている）。
+  def test_should_not_stack_limits_for_display_math
+    in_tmp do
+      renderer = FakeRenderer.new
+      MT.transform("$$\\sum_{i=1}^{n} i$$\n", chapter_slug: 'disp', renderer:)
+
+      assert_equal '\\sum_{i=1}^{n} i', renderer.batches.flatten.first[:latex]
+    end
+  end
+
   def test_should_render_with_real_mathjax_when_available
     skip 'node / mathjax-full 未導入' unless MT.available?
 

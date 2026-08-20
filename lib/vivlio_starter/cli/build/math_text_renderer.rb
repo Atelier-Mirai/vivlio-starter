@@ -92,7 +92,15 @@ module VivlioStarter
           html = consume_run(scanner, upright: false, allow_script: true, allow_frac: true, stop_at_brace: false)
           return nil if html.nil? || !scanner.eos? # 未消費が残る＝解釈できないトークンがあった
 
-          html
+          space_after_big_operators(html)
+        end
+
+        # `∑<sub>i=1</sub><sup>n</sup><i>i</i>` は上下限と被演算子が詰まって読みにくい。
+        # 数式の空白は TeX 流に落としているので（consume_atom）、ここで細空白を補う。
+        BIG_OPERATOR_WITH_LIMITS = %r{([∑∏∫∮](?:<su[bp]>.*?</su[bp]>)*)(?=[^\s])}m
+
+        def space_after_big_operators(html)
+          html.gsub(BIG_OPERATOR_WITH_LIMITS) { "#{::Regexp.last_match(1)}\u2009" }
         end
 
         # トークン列を消費して HTML を組む。stop_at_brace 時はトップレベルの '}' で停止（消費しない）。
