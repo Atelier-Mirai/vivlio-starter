@@ -5,26 +5,24 @@
 
 ## 使い方
 
-出力形式は `config/book.yml` の `output.targets` で決まります（`vs build` に形式を渡す
-オプションはありません。`vs build <targets...>` の `targets` は**章の指定**です）。
-
 ```bash
-cp test/vivlio_starter/fixtures/math/math-check.md contents/97-math-check.md
-
-# config/catalog.yml に 97 を追加する（catalog に無い章は弾かれる）
-# vs は導入済み gem を使うので、リポジトリの変更を反映するには必須
-rake reinstall
-
-# config/book.yml を編集して出力形式を選ぶ
-#   output:
-#     targets: kindle        … Kindle だけ
-#     targets: pdf, kindle   … PDF も一緒に見る
-vs build
-
-# Kindle Previewer 3 で開き、文字の大きさを最小⇔最大に振る
-
-rm contents/97-math-check.md   # book.yml の targets も元へ戻す
+rake math:check          # contents/ へ置き直して、リポジトリ版の vs でビルドする
+# → Kindle Previewer 3 で開き、文字の大きさを最小⇔最大に振る
+rake math:check:clean    # 終わったら複製を取り除く
 ```
+
+**このページの正本はここ（`fixtures/math/math-check.md`）で、`contents/81-math-check.md` は
+使い捨ての複製**です。手でコピーして回すと正本の更新を取りこぼすので、毎回 `rake math:check`
+から置き直してください。
+
+タスクは**リポジトリの `bin/vs` を直接叩く**ので `rake reinstall` は要りません。
+PATH 上の `vs` は導入済み gem を使うため、変更が反映されないまま検証してしまいます
+（実際に一度これで空振りしました）。
+
+事前に 1 度だけ、次の 2 つを整えておきます（タスクが未設定を検知して 🟡 で知らせます）。
+
+- `config/catalog.yml` に `81-math-check` を入れる。速く回すなら他の章はコメントアウトしておく
+- `config/book.yml` の `output.targets` に `kindle`（PDF も見るなら `pdf, kindle`）
 
 ## 何を確かめるページか
 

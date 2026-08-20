@@ -63,3 +63,7 @@ vivlio_starter_v1.0.0_images/
 # book.yml の色設定が変わるたび中身が変わるため追跡しない（root/scaffold 両方）
 /stylesheets/twemoji/vs-techbook/
 /lib/project_scaffold/stylesheets/twemoji/vs-techbook/
+
+# 数式チェックページの複製（正本は test/vivlio_starter/fixtures/math/math-check.md）。
+# rake math:check が毎回置き直す使い捨てなので、追跡すると正本と乖離する。
+contents/81-math-check.md

@@ -6,14 +6,16 @@
 ::: {.note}
 **使い方**
 
-1. このファイルを `contents/97-math-check.md` として置く
-2. `config/catalog.yml` に `97` を追加する（catalog に無い章は組む順が決まらず弾かれます）
-3. `config/book.yml` の `output.targets` に `kindle` を入れる（PDF も見るなら `targets: pdf, kindle`）
-4. **`rake reinstall`**（`vs` は導入済み gem を使うので、これを忘れると変換器も判定器も動きません）
-5. `vs build` を実行する
-6. Kindle Previewer 3 で開き、**文字の大きさを最小と最大に振る**
-7. 下の各節の「見えるべきもの」と照らす
-8. 終わったら `contents/97-math-check.md` を消し、`catalog.yml` と `output.targets` を元へ戻す
+```
+rake math:check          # contents/ へ置き直してビルド（rake reinstall は要りません）
+rake math:check:clean    # 終わったら複製を取り除く
+```
+
+1. Kindle Previewer 3 で開き、**文字の大きさを最小と最大に振る**
+2. 下の各節の「見えるべきもの」と照らす
+
+事前に 1 度だけ `config/catalog.yml` に `81-math-check` を、`config/book.yml` の
+`output.targets` に `kindle` を入れておきます（未設定なら `rake math:check` が知らせます）。
 :::
 
 ## 1. インライン数式 — 文字の大きさに追従すること

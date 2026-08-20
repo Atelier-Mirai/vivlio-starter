@@ -246,6 +246,43 @@ task :reinstall do
   sh "gem install #{gem_file}"
 end
 
+# 数式表示の実機確認（Kindle Previewer / PDF）を回すための足回り。
+# 検査ページの正本は test/vivlio_starter/fixtures/math/math-check.md で、
+# contents/ 側は使い捨ての複製。手でコピーして回すと**正本の更新を取りこぼす**ので、
+# 毎回ここから置き直す。
+namespace :math do
+  MATH_CHECK_SOURCE = 'test/vivlio_starter/fixtures/math/math-check.md'
+  MATH_CHECK_TARGET = 'contents/81-math-check.md'
+
+  desc '数式チェックページを contents/ へ置き、リポジトリ版の vs でビルドする（rake reinstall 不要）'
+  task :check do
+    require 'fileutils'
+    abort "🔴 検査ページが見つかりません: #{MATH_CHECK_SOURCE}" unless File.exist?(MATH_CHECK_SOURCE)
+
+    FileUtils.cp(MATH_CHECK_SOURCE, MATH_CHECK_TARGET)
+    puts "COPY  #{MATH_CHECK_SOURCE} -> #{MATH_CHECK_TARGET}"
+
+    # 段取りの取りこぼしを先に知らせる（ビルドしてから気づくと時間を捨てる）
+    catalog = File.read('config/catalog.yml')
+    unless catalog.match?(/^\s*-\s*81-math-check/)
+      puts '🟡 config/catalog.yml に 81-math-check が見当たりません（章が組まれない可能性があります）'
+    end
+    targets = File.read('config/book.yml')[/^\s*targets:\s*(.+)$/, 1].to_s
+    puts "🟡 config/book.yml の targets が「#{targets.strip}」です（Kindle を見るなら kindle を含めてください）" unless targets.include?('kindle')
+
+    # **リポジトリの bin/vs を直接叩く**ので `rake reinstall` が要らない。
+    # PATH 上の `vs` は導入済み gem を使うため、変更が反映されないまま検証してしまう。
+    sh "#{RbConfig.ruby} -Ilib bin/vs build"
+  end
+
+  desc '数式チェックページの複製を contents/ から取り除く'
+  task 'check:clean' do
+    require 'fileutils'
+    FileUtils.rm_f(MATH_CHECK_TARGET)
+    puts "REMOVE #{MATH_CHECK_TARGET}"
+  end
+end
+
 namespace :mazegaki do
   desc '交ぜ書き辞書の第 2 層（lint/data/mazegaki.tsv）を元データから作り直す'
   task :build do
