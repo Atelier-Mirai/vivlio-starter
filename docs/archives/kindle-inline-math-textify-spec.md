@@ -133,7 +133,7 @@ Minitest。実装時は ruby-coding-rules skill を適用。
 
 ## 6. 検証（実装後）
 
-1. `vs build --target=kindle` → Kindle Previewer 3 で 94-sample 章を開き、**フォントサイズを最小⇔最大に振って**数式が本文に追従することを確認（本仕様の受け入れ条件そのもの）。
+1. `config/book.yml` の `output.targets` に `kindle` を入れて `vs build` → Kindle Previewer 3 で 94-sample 章を開き、**フォントサイズを最小⇔最大に振って**数式が本文に追従することを確認（本仕様の受け入れ条件そのもの）。
 2. 表内数式（94-sample の SI 単位表等）が崩れないこと。
 3. クリーン EPUB（epubcheck ＋ Apple Books/Kobo いずれか）が無変化であること。
 4. KPF 変換ログにエラー増が無いこと（`summarize_kpf_logs`）。
@@ -158,4 +158,4 @@ Minitest。実装時は ruby-coding-rules skill を適用。
 
 実装完了・実機確認待ち（2026-07-19 実装）。`MathTextRenderer` 新設＋`textify_simple_math_for_kindle!` を Kindle 専用フェーズへ組込。rake test 全 1808 件・rubocop クリーン。原稿の現行インライン数式 26 種が 100% テキスト化可能を実測。KNOWN_ISSUES 2 件は複雑式のみの制限へ縮小して更新済み。
 
-**次のアクション**: 実機確認（`vs build --target=kindle` → Kindle Previewer 3 で 94-sample のフォントサイズを最小⇔最大に振り数式が本文追従することを確認）。
+**次のアクション**: 実機確認（`config/book.yml` の `output.targets` に `kindle` を入れて `vs build` → Kindle Previewer 3 で 94-sample のフォントサイズを最小⇔最大に振り数式が本文追従することを確認）。

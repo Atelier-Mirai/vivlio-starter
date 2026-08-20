@@ -198,7 +198,7 @@ Minitest。実装時は ruby-coding-rules skill を適用。
 ## 6. 検証（実装後）
 
 1. `bundle exec rubocop` / `rake test` 全緑。
-2. `vs build --target=kindle`（`theme.style: image`）→ Kindle Previewer 3 で: 本文の**太字がテーマ色**・コラム/TIP 枠と【TIP】等ラベルが**テーマ色**・h3 マーカー（♣）が**テーマ色**・付録見出しの枠/バッジが**テーマ色**で出ること（黒/グレー/くすんだ金が消えること）。
+2. `config/book.yml` の `output.targets` に `kindle` を入れて `vs build`（`theme.style: image`）→ Kindle Previewer 3 で: 本文の**太字がテーマ色**・コラム/TIP 枠と【TIP】等ラベルが**テーマ色**・h3 マーカー（♣）が**テーマ色**・付録見出しの枠/バッジが**テーマ色**で出ること（黒/グレー/くすんだ金が消えること）。
    あわせて KFX 対応が不明な 2 点を実機判定する: ① `em` 下線の色（`text-decoration-color`。不発なら黒下線のまま＝許容し仕様の注記を更新）② h4 マーカーのリテラル content フォールバックを試した場合はその表示（出なければ採用しない・§2.4）。
 3. `theme.style: simple` でも同様に、全章の見出し枠・本文アクセントがテーマ色で出ること。
 4. `theme.color` を `blue` 等に変えて再ビルド → Kindle のアクセントが青へ追従すること（固定でないことの確認）。
@@ -280,4 +280,4 @@ end
 
 実装完了・実機確認待ち（2026-07-20 実装）。`ThemeColor` 新設（色名/hex→リテラル hex・color-mix 事前計算・注入耐性）＋`BookSettingsCss#kindle_accent_rules`。`techbook` の色決定も `ThemeColor` へ一元化（挙動不変）。**本文・付録・前書き/後書き（preface_color）すべて対応**。rake test 全 1819 件・rubocop クリーン。生成 CSS に `var(`/`color-mix(` が漏れないこと・theme/appendix/preface 各色の追従・クリーン EPUB 非汚染をテストで確認。付録色未指定は yellow 既定、前書き色未指定はテーマ色（どちらも PDF の実カスケードと一致）。
 
-**次のアクション**: 実機確認（`vs build --target=kindle` → Kindle Previewer 3 で strong・枠・付録見出し・前書き下線がテーマ色で出ること／各色設定の変更で追従すること）。
+**次のアクション**: 実機確認（`config/book.yml` の `output.targets` に `kindle` を入れて `vs build` → Kindle Previewer 3 で strong・枠・付録見出し・前書き下線がテーマ色で出ること／各色設定の変更で追従すること）。
