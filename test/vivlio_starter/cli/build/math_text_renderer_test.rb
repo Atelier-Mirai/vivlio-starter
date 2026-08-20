@@ -164,4 +164,14 @@ module VivlioStarter
     assert_equal "<i>f</i>''(0)=2<i>c</i><sub>2</sub>", MathTextRenderer.render("f''(0) = 2c_{2}")
   end
 
+  # `\to` が記号表に無いだけで `\lim_{n \to \infty} a_n` が式ごと拒否され、
+  # SVG のまま Kindle へ残って横に潰れていた（2026-08-20 の実機で発覚）。
+  # 記号を 1 つ落とすと式全体が落ちる——ホワイトリスト方式の副作用。
+  def test_should_render_limits_with_arrows
+    assert_equal "lim<sub><i>n</i>→∞</sub>\u2009<i>a</i><sub><i>n</i></sub>",
+                 MathTextRenderer.render('\lim_{n \to \infty} a_n')
+    assert_equal '<i>x</i>∈<i>A</i>∪<i>B</i>', MathTextRenderer.render('x \in A \cup B')
+    assert_equal '<i>f</i>∘<i>g</i>', MathTextRenderer.render('f \circ g')
+  end
+
 end

@@ -35,6 +35,14 @@ module VivlioStarter
           'infty' => '∞', 'll' => '≪', 'gg' => '≫',
           'langle' => '⟨', 'rangle' => '⟩',
           'ldots' => '…', 'cdots' => '…', 'dots' => '…',
+          # 矢印と集合。`\to` が無いだけで `\lim_{n \to \infty}` が式ごと拒否され、
+          # SVG のまま Kindle へ残って横に潰れていた（2026-08-20 の実機で発覚）。
+          'to' => '→', 'rightarrow' => '→', 'leftarrow' => '←', 'mapsto' => '↦',
+          'Rightarrow' => '⇒', 'Leftarrow' => '⇐', 'Leftrightarrow' => '⇔',
+          'in' => '∈', 'notin' => '∉', 'subset' => '⊂', 'supset' => '⊃',
+          'cup' => '∪', 'cap' => '∩', 'emptyset' => '∅',
+          'partial' => '∂', 'nabla' => '∇', 'circ' => '∘', 'perp' => '⊥',
+          'forall' => '∀', 'exists' => '∃', 'equiv' => '≡',
           # 大型演算子。直後の `_{…}^{…}` は既存の上下付き処理がそのまま拾うので、
           # `\sum_{i=1}^{n}` は `∑` + `<sub>i=1</sub><sup>n</sup>` になる。
           # SVG 画像より読みやすく、かつ本文のフォントサイズに追従する。
@@ -95,9 +103,9 @@ module VivlioStarter
           space_after_big_operators(html)
         end
 
-        # `∑<sub>i=1</sub><sup>n</sup><i>i</i>` は上下限と被演算子が詰まって読みにくい。
+        # 大型演算子と `lim` は、上下限のあとに被演算子が続くと詰まって読みにくい。
         # 数式の空白は TeX 流に落としているので（consume_atom）、ここで細空白を補う。
-        BIG_OPERATOR_WITH_LIMITS = %r{([∑∏∫∮](?:<su[bp]>.*?</su[bp]>)*)(?=[^\s])}m
+        BIG_OPERATOR_WITH_LIMITS = %r{((?:[∑∏∫∮]|\blim)(?:<su[bp]>.*?</su[bp]>)*)(?=[^\s])}m
 
         def space_after_big_operators(html)
           html.gsub(BIG_OPERATOR_WITH_LIMITS) { "#{::Regexp.last_match(1)}\u2009" }
