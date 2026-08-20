@@ -30,6 +30,7 @@ require_relative 'heading_image_composer'
 require_relative 'math_text_renderer'
 require_relative '../post_process/html_parser'
 require_relative '../pre_process/frontmatter_generator'
+require_relative '../pre_process/generated_asset_cache'
 require_relative '../pre_process/book_settings_css'
 
 module VivlioStarter
@@ -351,6 +352,10 @@ module VivlioStarter
             # 単純なインライン数式を先にテキスト化する（フォントサイズ追従）。残った複雑な式には
             # 直後の convert_math_units_for_epub! が px フォールバックを効かせる（この順序が肝）。
             textify_simple_math_for_kindle!(chapter_htmls)
+            # ディスプレイ数式は PNG で送る（テキスト化しない）。Σ・∫ を含む大きな式を
+            # 独立行に組むのがディスプレイ数式の意図なので、組版を保つ。convert_math_units_for_epub!
+            # より前に置き、差し替えた <img> にも px フォールバックが効くようにする。
+            rasterize_display_math_for_kindle!(chapter_htmls)
             convert_math_units_for_epub!(chapter_htmls)
             inject_code_line_numbers_for_kindle!(chapter_htmls)
             decorate_admonitions_for_epub!(chapter_htmls)
@@ -1768,6 +1773,16 @@ module VivlioStarter
         # ×0.5 だと単位記号が読めなくなるため、表内に限り最低この高さを確保し等比拡大する。
         MIN_TABLE_MATH_EM = 1.0
 
+        # ディスプレイ数式のラスター化（Kindle 限定・§3-2.4）。
+        # SVG は viewBox しか持たないので、焼く幅を <img> の ex 値から見積もる。
+        # 1ex ≒ 8px（本文 16px 相当）に 3 倍のスケールを掛け、高 DPI でも粗く見えないようにする。
+        DISPLAY_MATH_RASTER_KIND = 'math-png'
+        DISPLAY_MATH_EX_PX = 8
+        DISPLAY_MATH_SCALE = 3
+        DISPLAY_MATH_FALLBACK_EX = 30 # style に ex が無いとき（通常起きない）の見積もり
+        DISPLAY_MATH_MIN_PX = 200
+        DISPLAY_MATH_MAX_PX = 2000
+
         # EPUB の基準フォント px（1em の近似）。数式 SVG は固有寸法を持たないため、Kindle が
         # inline の em/ex を無視すると img 既定の 300×150px で巨大表示される。これを防ぐため
         # em 値 × この係数を width/height の HTML 属性（px）として与え、Kindle でも本文相当に固定する。
@@ -1903,10 +1918,21 @@ module VivlioStarter
         # KFX は画像を本文フォント相対サイズにできず、数式 SVG がフォントサイズ変更に追従しない
         # （KNOWN_ISSUES の 2 件）。alt に保存された元 LaTeX を MathTextRenderer のサブセットで
         # テキスト化できたものだけ <span class="vs-math vs-math-text"> へ置換し、以降フォントに
-        # 100% 追従させる。サブセット外の複雑な式は無変換で残し、直後の convert_math_units_for_epub!
-        # が px フォールバックを効かせる（kindle-inline-math-textify-spec.md §2・§4.2）。
+        # 100% 追従させる（kindle-inline-math-textify-spec.md §2・§4.2）。
         # ディスプレイ数式（figure.vs-math-display）は対象外——行占有で px 固定でも破綻しない。
         # 置換後は img.vs-math-inline が消えるため冪等。
+        #
+        # **落とし先は 3 段**（plain-math-notation-spec.md §3-2.3）:
+        #   1. MathTextRenderer が通る      → HTML（変数が斜体・真の <sup>。いちばん綺麗）
+        #   2. 通らない & 素の表記で書かれた → **著者の原文をテキストで**
+        #   3. 通らない & LaTeX で書かれた   → SVG のまま（convert_math_units_for_epub! が px を効かせる）
+        #
+        # 2 が要るのは、変換器が起こした TeX を MathTextRenderer が受理しきれないため。
+        # `sin(x)` は `\sin(x)` になるが `\sin` はあちらのホワイトリストに無い——そこで SVG へ
+        # 落とすと、変換器を入れる前より Kindle が悪くなる（実測 34 種）。**素の表記はそのまま
+        # 読める形で書かれている**ので、原文を出すのが最も素直で、かつ拒否が起きなくなる
+        # （実測: 追従率 20% → 100%）。LaTeX で書かれた式（data-vs-tex が無い）に原文は使えない
+        # ——`\sqrt{2}` と出てしまうため。
         #
         # @param html_files [Array<String>] HTML ファイルパスの配列
         # @return [Array<String>] そのままの配列（パス変更なし）
@@ -1916,26 +1942,122 @@ module VivlioStarter
             nodes = doc.css('img.vs-math-inline')
             next if nodes.empty?
 
-            textified = 0
-            nodes.each do |img|
-              latex = strip_math_delimiters(img['alt'])
-              html = MathTextRenderer.render(latex)
-              next unless html # サブセット外は SVG のまま（px フォールバックへ委ねる）
-
-              span = Nokogiri::XML::Node.new('span', doc)
-              span['class'] = 'vs-math vs-math-text'
-              span.inner_html = html
-              img.replace(span)
-              textified += 1
-            end
-            next if textified.zero?
+            counts = Hash.new(0)
+            nodes.each { |img| counts[textify_inline_math!(img, doc)] += 1 }
+            next if counts[:html].zero? && counts[:plain].zero?
 
             PostProcessCommands::HtmlParser.save_html_document(path, doc)
-            remaining = nodes.size - textified
-            Common.log_info("[EPUB] #{File.basename(path)} のインライン数式 #{textified} 件をテキスト化" \
-                            "#{remaining.positive? ? "（#{remaining} 件は SVG 維持）" : ''}")
+            Common.log_info(
+              "[EPUB] #{File.basename(path)} のインライン数式 #{counts[:html] + counts[:plain]} 件をテキスト化" \
+              "（HTML #{counts[:html]} 件 / 原文 #{counts[:plain]} 件" \
+              "#{counts[:svg].positive? ? " / SVG 維持 #{counts[:svg]} 件" : ''}）"
+            )
           end
           html_files
+        end
+
+        # <img> 1 つの落とし先を決めて置換する。戻り値は :html / :plain / :svg。
+        def textify_inline_math!(img, doc)
+          # 素の表記から起こした式は data-vs-tex に TeX が入っている（alt は著者の原文のまま）。
+          hint = img['data-vs-tex'].to_s
+          source = strip_math_delimiters(img['alt'])
+          latex = hint.empty? ? source : hint
+
+          if (html = MathTextRenderer.render(latex))
+            img.replace(math_text_span(doc, inner_html: html))
+            :html
+          elsif !hint.empty? && !source.empty?
+            img.replace(math_text_span(doc, text: source))
+            :plain
+          else
+            :svg
+          end
+        end
+
+        # テキスト化した数式を包む span。text: で渡すと Nokogiri が HTML 予約文字を退避する。
+        def math_text_span(doc, inner_html: nil, text: nil)
+          span = Nokogiri::XML::Node.new('span', doc)
+          span['class'] = text ? 'vs-math vs-math-text vs-math-plain' : 'vs-math vs-math-text'
+          text ? span.content = text : span.inner_html = inner_html
+          span
+        end
+
+        # ディスプレイ数式（figure.vs-math-display の <img>）を PNG へ差し替える。
+        # Kindle 限定（plain-math-notation-spec.md §3-2.4）。
+        #
+        # なぜテキスト化でなくラスターか: ディスプレイ数式は `Σ` や `∫` を含む大きな式を
+        # 独立行に組むための記法で、組版を保つことに意味がある。行を占有するので px 固定でも
+        # 破綻しない。加えて KFX の SVG 対応は不確実（kindle-inline-math-textify-spec.md §1-4）
+        # なので、PNG のほうが確実に運べる。日本語を含む式の `<text>` 問題もここで消える
+        # ——ラスターはビルド機で焼くのでフォントが必ず在る。
+        #
+        # **クリーン EPUB はラスター化しない。** 数式 SVG はパスだけで安全であり、
+        # Kobo・Apple では拡大に強いベクタの利点が残る（§3-2.2）。
+        # rsvg-convert 不在・変換失敗時は SVG のまま残して警告する（ビルドは止めない）。
+        def rasterize_display_math_for_kindle!(html_files)
+          return html_files unless rsvg_available?
+
+          html_files.each do |path|
+            doc = PostProcessCommands::HtmlParser.parse_html_document(File.read(path, encoding: 'utf-8'))
+            images = doc.css('figure.vs-math-display img')
+            next if images.empty?
+
+            replaced = images.count { rasterize_display_math_image!(it, path) }
+            next if replaced.zero?
+
+            PostProcessCommands::HtmlParser.save_html_document(path, doc)
+            Common.log_info("[EPUB] #{File.basename(path)} のディスプレイ数式 #{replaced} 件を PNG へ差し替えました")
+          end
+          html_files
+        end
+
+        # <img> 1 つを PNG へ差し替える。差し替えたら true。
+        def rasterize_display_math_image!(img, html_path)
+          src = img['src'].to_s
+          return false unless src.end_with?('.svg')
+
+          svg_path = File.join(Common::BUILD_HTML_DIR, src)
+          return false unless File.exist?(svg_path)
+
+          png = "#{File.basename(src, '.svg')}.png"
+          out_dir = File.dirname(svg_path)
+          ok = PreProcessCommands::GeneratedAssetCache.fetch(DISPLAY_MATH_RASTER_KIND, [png], out_dir:) do |cache|
+            write_display_math_png(svg_path, File.join(cache, png), img)
+          end
+          unless ok
+            Common.log_warn(
+              "[EPUB] ディスプレイ数式をラスター化できませんでした: #{src}",
+              detail: "→ #{File.basename(html_path)} は SVG 参照のまま出力します（Kindle で表示されない可能性があります）"
+            )
+            return false
+          end
+
+          img['src'] = "#{File.dirname(src)}/#{png}"
+          true
+        end
+
+        # SVG を PNG へ焼く。幅は <img> の style に写された ex 値から見積もる
+        # （SVG 本体は viewBox だけで固有寸法を持たないため、指定しないと既定値で小さく焼ける）。
+        def write_display_math_png(svg_path, png_path, img)
+          ex = img['style'].to_s[/width:\s*([\d.]+)ex/, 1].to_f
+          width = ((ex.positive? ? ex : DISPLAY_MATH_FALLBACK_EX) * DISPLAY_MATH_EX_PX * DISPLAY_MATH_SCALE).round
+          width = width.clamp(DISPLAY_MATH_MIN_PX, DISPLAY_MATH_MAX_PX)
+          png, status = Open3.capture2('rsvg-convert', '-w', width.to_s, '-f', 'png', svg_path, binmode: true)
+          return false unless status.success? && !png.empty?
+
+          File.binwrite(png_path, png)
+          true
+        rescue StandardError => e
+          Common.log_debug("[EPUB] rsvg-convert に失敗しました: #{e.class}: #{e.message}")
+          false
+        end
+
+        def rsvg_available?
+          return @rsvg_available unless @rsvg_available.nil?
+
+          @rsvg_available = system('rsvg-convert', '--version', out: File::NULL, err: File::NULL) || false
+          Common.log_warn('[EPUB] rsvg-convert が無いため、ディスプレイ数式は SVG のまま出力します') unless @rsvg_available
+          @rsvg_available
         end
 
         # 数式 alt から $…$ / \(…\) デリミタを剥いで LaTeX 本文を取り出す。

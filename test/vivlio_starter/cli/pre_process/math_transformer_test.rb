@@ -185,6 +185,123 @@ class MathTransformerTest < Minitest::Test
   end
 
   # node + mathjax-full が導入されていれば実エンジンでも正しい SVG を生成する
+  # 素の表記（`√n`・`x²`）は TeX へ起こしてから MathJax へ渡す
+  # （plain-math-notation-spec.md §7.5）。4 デリミタすべてで効くこと。
+  def test_should_transpile_plain_notation_before_rendering
+    in_tmp do
+      renderer = FakeRenderer.new
+      MT.transform("インライン $√n$ と $$x²+y²$$ と \\(H₂O\\) と \\[Σx²\\]\n",
+                   chapter_slug: 'plain', renderer:)
+
+      assert_equal ['\\sqrt{n}', 'x^{2}+y^{2}', 'H_{2}O', '\\sum x^{2}'].sort,
+                   renderer.batches.flatten.map { it[:latex] }.sort
+    end
+  end
+
+  # alt は**著者の原文のまま**でなければならない（§7.6）。TeX は data-vs-tex で渡す。
+  # alt を TeX にすると章扉リードの焼き込み（extract_lead_text）が `\sqrt{2}` を描いてしまう。
+  def test_should_keep_the_author_source_in_alt_and_put_tex_in_a_data_attribute
+    in_tmp do
+      result = MT.transform("面積は $√n$ です\n", chapter_slug: 'plain', renderer: FakeRenderer.new)
+
+      assert_includes result, 'alt="$√n$"'
+      assert_includes result, 'data-vs-tex="\\sqrt{n}"'
+    end
+  end
+
+  # LaTeX の構文（\command・{}）で書かれた式には data-vs-tex を付けない。
+  # 属性は「素の表記で書かれた」ことの印で、Kindle が原文テキストへ落とせるかを決める（§3-2.3）。
+  def test_should_not_add_the_tex_attribute_to_latex_authored_formulas
+    in_tmp do
+      result = MT.transform("速さは $\\frac{1}{2}gt^2$ です\n", chapter_slug: 'plain', renderer: FakeRenderer.new)
+
+      refute_includes result, 'data-vs-tex'
+    end
+  end
+
+  # 変換が要らなかった式でも、素の表記で書かれていれば印を付ける。
+  # `a × b` は記号がそのまま正しく描かれるので無変換だが、原文はそのまま読める。
+  def test_should_mark_plain_sources_even_when_no_conversion_was_needed
+    in_tmp do
+      result = MT.transform("面積は $a × b$ です\n", chapter_slug: 'plain', renderer: FakeRenderer.new)
+
+      assert_includes result, 'data-vs-tex="a × b"'
+    end
+  end
+
+  # `$x²$` と `$x^{2}$` は同じ SVG を共有する（表記のゆれでキャッシュキーが割れない）。
+  def test_should_share_the_cache_key_between_plain_and_tex_spellings
+    in_tmp do
+      renderer = FakeRenderer.new
+      MT.transform("$x²$ と $x^{2}$\n", chapter_slug: 'plain', renderer:)
+
+      assert_equal 1, renderer.batches.flatten.size
+    end
+  end
+
+  # `<text>` を含む SVG（＝日本語を含む式）には、その字だけのサブセット書体を埋め込む。
+  # <img> 参照の SVG は独立文書で @font-face が届かず、PDF に Type 3 が混入するため
+  # （plain-math-notation-spec.md §3.1・type3-font-embedding-notes.md §4）。
+  class TextBearingRenderer
+    def render_batch(items)
+      items.to_h do |item|
+        [item[:id],
+         %(<svg data-vs-valign="0ex" data-vs-width="4ex" data-vs-height="2ex" ) +
+         %(xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1">) +
+         %(<text font-family="serif">下</text></svg>)]
+      end
+    end
+  end
+
+  # 書体の実体（stylesheets/fonts/）はリポジトリ root からの相対で解決されるため、
+  # このテストだけ in_tmp を使わず、生成物を後始末する。
+  def test_should_embed_a_subset_font_into_svgs_that_contain_text_elements
+    skip '書体の実体が無い環境では埋め込みを検証できない' unless
+      VivlioStarter::CLI::PreProcessCommands::SvgFontEmbedder.send(:heading_font_path)
+
+    MT.transform("$$下限$$\n", chapter_slug: 'jp-embed', renderer: TextBearingRenderer.new)
+    body = File.read(Dir.glob(File.join(MATH_DIR, 'jp-embed', '*.svg')).first, encoding: 'utf-8')
+
+    assert_includes body, '@font-face', 'サブセット書体が抱かれている'
+    assert_includes body, 'font-family="vs-math-cjk"', '汎用名 serif から専用名へ書き換わる'
+    refute_includes body, 'font-family="serif"', '汎用名が残ると @font-face を当てられない'
+  ensure
+    FileUtils.rm_rf(File.join(MATH_DIR, 'jp-embed'))
+    FileUtils.rm_rf(VivlioStarter::CLI::PreProcessCommands::GeneratedAssetCache.dir('math'))
+  end
+
+  # 書体を解決できない環境では、**名前も書き換えない**。埋め込めないのに専用名へ変えると
+  # 存在しないファミリを指すだけで、従来（serif）より悪くなる。
+  def test_should_leave_the_family_name_alone_when_the_font_cannot_be_resolved
+    in_tmp do
+      MT.transform("$$下限$$\n", chapter_slug: 'jp', renderer: TextBearingRenderer.new)
+      body = File.read(Dir.glob(File.join(MATH_DIR, 'jp', '*.svg')).first, encoding: 'utf-8')
+
+      refute_includes body, '@font-face'
+      assert_includes body, 'font-family="serif"', '埋め込めないなら汎用名のまま残す'
+    end
+  end
+
+  # `<text>` が無い SVG（通常の数式）は 1 バイトも変えない。
+  def test_should_leave_svgs_without_text_elements_untouched
+    in_tmp do
+      MT.transform("$$x$$\n", chapter_slug: 'plain', renderer: FakeRenderer.new)
+      body = File.read(Dir.glob(File.join(MATH_DIR, 'plain', '*.svg')).first, encoding: 'utf-8')
+
+      refute_includes body, '@font-face'
+    end
+  end
+
+  # 日本語を含む式だけ、書体をキャッシュキーへ混ぜる（著者が書体を替えたら焼き直すため）。
+  # 含まない式のキーは書体に依存しない——既刊原稿のキャッシュを割らないこと。
+  def test_should_mix_the_font_into_the_cache_key_only_for_formulas_with_japanese
+    plain_key = MT.send(:digest, false, 'x^{2}')
+    jp_key    = MT.send(:digest, false, '下限')
+
+    assert_equal plain_key, MT.send(:digest, false, 'x^{2}'), '同じ式は同じキー'
+    refute_equal jp_key, Digest::SHA256.hexdigest('I:下限')[0, 16], '日本語を含む式は書体を混ぜる'
+  end
+
   def test_should_render_with_real_mathjax_when_available
     skip 'node / mathjax-full 未導入' unless MT.available?
 

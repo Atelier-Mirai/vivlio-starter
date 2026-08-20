@@ -286,6 +286,160 @@ module VivlioStarter
         refute_includes html, 'vs-math-inline', 'img は残らない'
       end
 
+      # 素の表記から起こした式は data-vs-tex の TeX を読む（plain-math-notation-spec.md §7.6）。
+      # alt は著者の原文なので、そこから読むと MathTextRenderer が `²` で式全体を拒否し、
+      # Kindle が px 固定 SVG へ落ちてフォントサイズに追従しなくなる。
+      def test_textify_simple_math_prefers_the_transpiled_tex_over_alt
+        File.write('33-math.html', <<~HTML)
+          <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
+          <p><img class="vs-math vs-math-inline" src="a.svg" alt="$x²+y²$" data-vs-tex="x^{2}+y^{2}"></p>
+          </body></html>
+        HTML
+
+        Build::EpubBuilder.textify_simple_math_for_kindle!(['33-math.html'])
+        html = File.read('33-math.html')
+
+        assert_includes html, '<i>x</i><sup>2</sup>+<i>y</i><sup>2</sup>'
+        refute_includes html, 'vs-math-inline', '素の表記でもテキスト化される'
+      end
+
+      # data-vs-tex が無ければ従来どおり alt から読む（属性の無い既存 HTML との後方互換）
+      def test_textify_simple_math_falls_back_to_alt_without_the_tex_attribute
+        File.write('34-math.html', <<~HTML)
+          <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
+          <p><img class="vs-math vs-math-inline" src="a.svg" alt="$E=mc^2$"></p>
+          </body></html>
+        HTML
+
+        Build::EpubBuilder.textify_simple_math_for_kindle!(['34-math.html'])
+
+        assert_includes File.read('34-math.html'), '<i>E</i>=<i>mc</i><sup>2</sup>'
+      end
+
+      # 素の表記で書かれた式は、MathTextRenderer が拒否しても**著者の原文テキスト**へ落とす
+      # （plain-math-notation-spec.md §3-2.3）。SVG へ落とすと Kindle でフォントサイズに
+      # 追従しなくなり、変換器を入れる前より悪くなる（実測 34 種の退行）。
+      def test_textify_falls_back_to_the_author_source_when_the_renderer_rejects
+        File.write('35-math.html', <<~HTML)
+          <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
+          <p><img class="vs-math vs-math-inline" src="a.svg" alt="$√(GM/R)$" data-vs-tex="\\sqrt{GM/R}"></p>
+          <p><img class="vs-math vs-math-inline" src="b.svg" alt="$sin(x)$" data-vs-tex="\\sin(x)"></p>
+          </body></html>
+        HTML
+
+        Build::EpubBuilder.textify_simple_math_for_kindle!(['35-math.html'])
+        html = File.read('35-math.html')
+
+        assert_includes html, '<span class="vs-math vs-math-text vs-math-plain">√(GM/R)</span>'
+        assert_includes html, '<span class="vs-math vs-math-text vs-math-plain">sin(x)</span>'
+        refute_includes html, 'vs-math-inline', '原文テキストへ落ちるので img は残らない'
+      end
+
+      # LaTeX で書かれた式には原文を使えない（`\sqrt{2}` と出てしまう）。SVG のまま残す。
+      def test_textify_keeps_svg_for_latex_authored_formulas_it_cannot_render
+        File.write('36-math.html', <<~HTML)
+          <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
+          <p><img class="vs-math vs-math-inline" src="a.svg" alt="$\\sqrt{2}$" width="20" height="30"></p>
+          </body></html>
+        HTML
+
+        Build::EpubBuilder.textify_simple_math_for_kindle!(['36-math.html'])
+        html = File.read('36-math.html')
+
+        assert_includes html, 'vs-math-inline', 'SVG のまま残る'
+        assert_includes html, 'width="20"', 'px フォールバックも保つ'
+      end
+
+      # 通る式は今までどおり HTML（変数が斜体・真の <sup>）。原文テキストへ落とさない。
+      def test_textify_prefers_html_over_the_author_source
+        File.write('37-math.html', <<~HTML)
+          <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
+          <p><img class="vs-math vs-math-inline" src="a.svg" alt="$x²+y²$" data-vs-tex="x^{2}+y^{2}"></p>
+          </body></html>
+        HTML
+
+        Build::EpubBuilder.textify_simple_math_for_kindle!(['37-math.html'])
+        html = File.read('37-math.html')
+
+        assert_includes html, '<i>x</i><sup>2</sup>+<i>y</i><sup>2</sup>'
+        refute_includes html, 'vs-math-plain', '通る式は HTML 経路を使う'
+      end
+
+      # 日本語を含む式も原文テキストになる。Kindle からは SVG（<text> 入り）が消える。
+      def test_textify_falls_back_for_formulas_containing_japanese
+        File.write('38-math.html', <<~HTML)
+          <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
+          <p><img class="vs-math vs-math-inline" src="a.svg" alt="$平文^e mod n$" data-vs-tex="平文^{e} \\bmod n"></p>
+          </body></html>
+        HTML
+
+        Build::EpubBuilder.textify_simple_math_for_kindle!(['38-math.html'])
+        html = File.read('38-math.html')
+
+        assert_includes html, '<span class="vs-math vs-math-text vs-math-plain">平文^e mod n</span>'
+        refute_includes html, 'vs-math-inline'
+      end
+
+      # HTML 予約文字は退避する（原文をそのまま流し込まない）。
+      def test_textify_escapes_html_characters_in_the_author_source
+        File.write('39-math.html', <<~HTML)
+          <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
+          <p><img class="vs-math vs-math-inline" src="a.svg" alt="$a<b & √c$" data-vs-tex="a&lt;b \\&amp; \\sqrt{c}"></p>
+          </body></html>
+        HTML
+
+        Build::EpubBuilder.textify_simple_math_for_kindle!(['39-math.html'])
+        html = File.read('39-math.html')
+
+        assert_includes html, 'a&lt;b &amp; √c'
+        refute_includes html, '<b &'
+      end
+
+      # ディスプレイ数式は Kindle で PNG へ差し替える（plain-math-notation-spec.md §3-2.4）。
+      # Σ・∫ を含む大きな式の組版を保つため、テキスト化はしない。
+      def test_rasterize_display_math_replaces_the_svg_reference
+        skip 'rsvg-convert が無い環境ではラスター化を検証できない' unless
+          system('rsvg-convert', '--version', out: File::NULL, err: File::NULL)
+
+        rel = 'images/math/90-x'
+        FileUtils.mkdir_p(File.join(VivlioStarter::CLI::Common::BUILD_HTML_DIR, rel))
+        svg = File.join(VivlioStarter::CLI::Common::BUILD_HTML_DIR, rel, 'abc.svg')
+        File.write(svg, '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 20">' \
+                        '<rect width="100" height="20" fill="black"/></svg>')
+
+        File.write('40-math.html', <<~HTML)
+          <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
+          <figure class="vs-math vs-math-display">
+          <img src="#{rel}/abc.svg" alt="$$Σx$$" style="width: 22.4ex; height: 3.2ex;">
+          </figure>
+          </body></html>
+        HTML
+
+        Build::EpubBuilder.rasterize_display_math_for_kindle!(['40-math.html'])
+        html = File.read('40-math.html')
+
+        assert_includes html, "#{rel}/abc.png", 'src が PNG を指す'
+        refute_includes html, 'abc.svg'
+        assert_includes html, 'width: 22.4ex', 'style は保つ（convert_math_units_for_epub! が px を足す）'
+        assert_path_exists File.join(VivlioStarter::CLI::Common::BUILD_HTML_DIR, rel, 'abc.png')
+      ensure
+        FileUtils.rm_rf(File.join(VivlioStarter::CLI::Common::BUILD_HTML_DIR, rel.to_s)) if rel
+        FileUtils.rm_rf(VivlioStarter::CLI::PreProcessCommands::GeneratedAssetCache.dir('math-png'))
+      end
+
+      # インライン数式は対象外（テキスト化か SVG のまま）。
+      def test_rasterize_display_math_leaves_inline_math_alone
+        File.write('41-math.html', <<~HTML)
+          <!DOCTYPE html><html><head><title>数式</title></head><body class="vs-kindle">
+          <p><img class="vs-math vs-math-inline" src="images/math/90-x/z.svg" alt="$x$"></p>
+          </body></html>
+        HTML
+
+        Build::EpubBuilder.rasterize_display_math_for_kindle!(['41-math.html'])
+
+        assert_includes File.read('41-math.html'), 'z.svg', 'インラインは触らない'
+      end
+
       # 冪等: 置換後は vs-math-inline が消えるので再実行しても変化しない
       def test_textify_simple_math_is_idempotent
         File.write('32-math.html', <<~HTML)

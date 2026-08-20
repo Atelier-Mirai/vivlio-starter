@@ -31,8 +31,6 @@
   - 出し方はビルド後の 🟡 か `vs preflight` の一部。指摘には**ページ番号と見出し／キャプション名**を添え、`@pagebreak` で個別に逃がす道を示す。
   - 関連: `page-break-control-spec.md`（`---`＋`##` の二重改ページ正規化）・`chapter-pagebreak-spec.md`
 
-- [Medium] **素の表記を TeX 記法へ起こす**: 著者が `2^(1/3)`・`√(πr²)`・`π` のように素で書いた数式を、`$2^{1/3}$`・`$\sqrt{\pi r^2}$`・`$\pi$` の TeX 記法へ変換し、通常の数式経路（LaTeX → SVG）に乗せる。逆向き（TeX → 素の表記。Kindle でフォントサイズに追従させるため）は `MathTextRenderer` として実装済みで、その対になる → `kindle-inline-math-textify-spec.md`
-
 ---
 
 ## 記法・置換ルール
