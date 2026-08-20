@@ -202,14 +202,14 @@ module VivlioStarter
     end
   end
   # 数式は日本語の文ではない。放置すると数式の中の半角括弧が prh に「全角にせよ」と
-  # 指摘され、`--fix` が当たれば `$(1/2)πr³$` が `$（1/2）πr³$` になって壊れる。
+  # 指摘され、`--fix` が当たれば `$(4/3)πr³$` が `$（4/3）πr³$` になって壊れる。
   # コードスパンは textlint が Code ノードとして飛ばすのに、数式は素の文として読まれていた。
   def test_should_mask_math_from_the_linter
-    src = "球の体積は $(1/2)πr³$ です。地の文の (1/2) は直されるべきです。\n"
+    src = "球の体積は $(4/3)πr³$ です。地の文の (4/3) は直されるべきです。\n"
     masked, spans = Guard.mask_math(src)
 
-    refute_includes masked, '(1/2)πr³', '数式は目印へ退避される'
-    assert_includes masked, '地の文の (1/2) は', '地の文の括弧は残す（本物の指摘を消さない）'
+    refute_includes masked, '(4/3)πr³', '数式は目印へ退避される'
+    assert_includes masked, '地の文の (4/3) は', '地の文の括弧は残す（本物の指摘を消さない）'
     assert_equal 1, spans.size
     assert_equal src, Guard.restore_math(masked, spans), '往復で原文に戻る'
   end
@@ -234,9 +234,9 @@ module VivlioStarter
 
   # strip_notation（解析パス）にも効いている。
   def test_strip_notation_should_neutralize_math
-    stripped = Guard.strip_notation("球の体積は $(1/2)πr³$ です。\n")
+    stripped = Guard.strip_notation("球の体積は $(4/3)πr³$ です。\n")
 
-    refute_includes stripped, '(1/2)'
+    refute_includes stripped, '(4/3)'
   end
 
 end
