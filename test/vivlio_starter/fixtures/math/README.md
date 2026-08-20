@@ -5,11 +5,21 @@
 
 ## 使い方
 
+出力形式は `config/book.yml` の `output.targets` で決まります（`vs build` に形式を渡す
+オプションはありません。`vs build <targets...>` の `targets` は**章の指定**です）。
+
 ```bash
 cp test/vivlio_starter/fixtures/math/math-check.md contents/97-math-check.md
-vs build --target=kindle     # PDF も見るなら vs build
+
+# config/book.yml を編集して出力形式を選ぶ
+#   output:
+#     targets: kindle        … Kindle だけ
+#     targets: pdf, kindle   … PDF も一緒に見る
+vs build
+
 # Kindle Previewer 3 で開き、文字の大きさを最小⇔最大に振る
-rm contents/97-math-check.md
+
+rm contents/97-math-check.md   # book.yml の targets も元へ戻す
 ```
 
 ## 何を確かめるページか
@@ -27,7 +37,7 @@ rm contents/97-math-check.md
 
 ## PDF 側も見るとき
 
-`vs build` で PDF を作り、Type 3 フォントが増えていないことを確かめます。
+`output.targets` に `pdf` を入れてビルドし、Type 3 フォントが増えていないことを確かめます。
 
 ```bash
 pdffonts <出力.pdf> | grep -c "Type 3"

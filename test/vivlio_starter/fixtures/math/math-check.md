@@ -7,10 +7,11 @@
 **使い方**
 
 1. このファイルを `contents/97-math-check.md` として置く
-2. `vs build --target=kindle`（PDF も見るなら `vs build`）
-3. Kindle Previewer 3 で開き、**文字の大きさを最小と最大に振る**
-4. 下の各節の「見えるべきもの」と照らす
-5. 終わったら `contents/97-math-check.md` を消す
+2. `config/book.yml` の `output.targets` に `kindle` を入れる（PDF も見るなら `targets: pdf, kindle`）
+3. `vs build` を実行する
+4. Kindle Previewer 3 で開き、**文字の大きさを最小と最大に振る**
+5. 下の各節の「見えるべきもの」と照らす
+6. 終わったら `contents/97-math-check.md` を消し、`output.targets` を元へ戻す
 :::
 
 ## 1. インライン数式 — 文字の大きさに追従すること
