@@ -1,5 +1,5 @@
 ---
-generated_at: '2026-08-09 19:21:52'
+generated_at: '2026-08-21 09:22:18'
 terms:
 - term: "--force"
   yomi: "--force"
@@ -92,7 +92,7 @@ terms:
   pattern: "/\\bEnhanced\\b/"
   updated_at: '2026-08-09 03:08:17'
   main:
-  - 93-pdf-read
+  - 94-pdf-read
 - term: GFM
   yomi: GFM
   flags: ig
@@ -131,7 +131,7 @@ terms:
   pattern: "/\\bGitHub\\b/"
   updated_at: '2026-08-09 03:08:17'
   main:
-  - 92-install
+  - 93-install
 - term: HTML
   yomi: HTML
   flags: ig
@@ -152,7 +152,7 @@ terms:
   pattern: "/\\bHexaPDF\\b/"
   updated_at: '2026-08-09 03:08:17'
   main:
-  - 93-pdf-read
+  - 94-pdf-read
 - term: Homebrew
   yomi: Homebrew
   flags: i
@@ -172,7 +172,7 @@ terms:
   pattern: "/\\bImageMagick\\b/"
   updated_at: '2026-08-09 03:08:17'
   main:
-  - 92-install
+  - 93-install
 - term: JPEG
   yomi: JPEG
   flags: i
@@ -274,7 +274,7 @@ terms:
   pattern: "/Node\\.js/"
   updated_at: '2026-08-09 03:08:17'
   main:
-  - 92-install
+  - 93-install
 - term: OCR
   yomi: OCR
   flags: i
@@ -284,7 +284,7 @@ terms:
   pattern: "/\\bOCR\\b/"
   updated_at: '2026-08-09 03:08:17'
   main:
-  - 93-pdf-read
+  - 94-pdf-read
 - term: PDF/X-1a
   yomi: PDF/X-1a
   flags: ig
@@ -460,7 +460,7 @@ terms:
   pattern: "/アウトライン/"
   updated_at: '2026-08-09 03:08:17'
   main:
-  - 93-pdf-read
+  - 94-pdf-read
 - term: アスペクト比
   yomi: あすぺくとひ
   flags: ig
@@ -867,7 +867,7 @@ terms:
   pattern: "/自動インストール/"
   updated_at: '2026-08-09 03:08:17'
   main:
-  - 92-install
+  - 93-install
 - term: 自動修正
   yomi: じどうしゅうせい
   flags: i
@@ -1047,7 +1047,7 @@ terms:
   pattern: "/テキスト/"
   updated_at: '2026-08-09 03:08:17'
   main:
-  - 93-pdf-read
+  - 94-pdf-read
 - term: テスト
   yomi: てすと
   flags: i
@@ -1302,7 +1302,7 @@ terms:
   pattern: "/パターン/"
   updated_at: '2026-08-09 03:08:17'
   main:
-  - 93-pdf-read
+  - 94-pdf-read
 - term: パーミル
   yomi: ぱーみる
   flags: ig
@@ -1713,9 +1713,9 @@ scanned_chapters:
 - 61-developer
 - 90-notation-cheatsheet
 - 91-command-cheatsheet
-- 92-install
-- 93-pdf-read
-- 94-import
-- 95-further-inspiration
-- 96-sample
+- 93-install
+- 94-pdf-read
+- 95-import
+- 96-further-inspiration
+- 97-sample
 - 99-postface

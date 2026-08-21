@@ -105,7 +105,9 @@ module VivlioStarter
           masked = MATH_PATTERNS.reduce(protected_text) do |acc, pattern|
             acc.gsub(pattern) do
               original = ::Regexp.last_match(0)
-              key = "#{MATH_PLACEHOLDER}#{spans.size}"
+              # **桁は固定幅にする。** `VSMATH1` は `VSMATH10` の頭に一致してしまい、
+              # 10 個以上の数式がある章で目印が食い違って残骸が出る（実測: 本書 92 章）。
+              key = format("%s%04d", MATH_PLACEHOLDER, spans.size)
               spans[key] = original
               "#{key}#{"\n" * original.count("\n")}"
             end
@@ -120,8 +122,19 @@ module VivlioStarter
           end
         end
 
+        # 解析パス用: 数式を**目印を残さず**落とす。
+        #
+        # mask_math の目印（VSMATH0）をそのまま残すと、**スペルチェックが未知語として拾う**
+        # ——`Tokenizer.tokenize` も記法判定を一本化するために strip_notation を通るため
+        # （実測: `VSMATH => smith` が本書 21 章で 5 件）。解析パスは復元しないので、
+        # 目印を置く必要がない。行数は mask_math が足した改行で保たれる。
+        def blank_math(text)
+          masked, spans = mask_math(text)
+          spans.keys.reduce(masked) { |acc, key| acc.sub(key, '') }
+        end
+
         def strip_notation(text)
-          text, = mask_math(text)
+          text = blank_math(text)
           prose   = prose_lines(text)
           machine = machine_block_lines(text, prose)
 

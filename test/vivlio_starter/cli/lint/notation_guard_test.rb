@@ -198,45 +198,45 @@ module VivlioStarter
 
           assert_equal "\n\n", result, '末尾に改行が無い最終行は空文字にして末尾の形状を変えないこと'
         end
+
+        # 数式は日本語の文ではない。放置すると数式の中の半角括弧が prh に「全角にせよ」と
+        # 指摘され、`--fix` が当たれば `$(4/3)πr³$` が `$（4/3）πr³$` になって壊れる。
+        # コードスパンは textlint が Code ノードとして飛ばすのに、数式は素の文として読まれていた。
+        def test_should_mask_math_from_the_linter
+          src = "球の体積は $(4/3)πr³$ です。地の文の (4/3) は直されるべきです。\n"
+          masked, spans = NotationGuard.mask_math(src)
+
+          refute_includes masked, '(4/3)πr³', '数式は目印へ退避される'
+          assert_includes masked, '地の文の (4/3) は', '地の文の括弧は残す（本物の指摘を消さない）'
+          assert_equal 1, spans.size
+          assert_equal src, NotationGuard.restore_math(masked, spans), '往復で原文に戻る'
+        end
+
+        # 行数を保存する（I1）。複数行のディスプレイ数式でも指摘の行番号がずれない。
+        def test_should_preserve_line_count_when_masking_multi_line_display_math
+          src = "前。\n\n$$\n面積 = π × r²\n= πr²\n$$\n\n後。\n"
+          masked, spans = NotationGuard.mask_math(src)
+
+          assert_equal src.lines.size, masked.lines.size
+          assert_equal src, NotationGuard.restore_math(masked, spans)
+        end
+
+        # コード領域の中の数式らしい綴りは触らない（記法を解説する行を壊さない）。
+        def test_should_not_mask_math_inside_code
+          src = "インライン数式は `$x^2$` と書きます。\n"
+          masked, spans = NotationGuard.mask_math(src)
+
+          assert_equal src, masked
+          assert_empty spans
+        end
+
+        # strip_notation（解析パス）にも効いている。
+        def test_strip_notation_should_neutralize_math
+          stripped = NotationGuard.strip_notation("球の体積は $(4/3)πr³$ です。\n")
+
+          refute_includes stripped, '(4/3)'
+        end
       end
     end
   end
-  # 数式は日本語の文ではない。放置すると数式の中の半角括弧が prh に「全角にせよ」と
-  # 指摘され、`--fix` が当たれば `$(4/3)πr³$` が `$（4/3）πr³$` になって壊れる。
-  # コードスパンは textlint が Code ノードとして飛ばすのに、数式は素の文として読まれていた。
-  def test_should_mask_math_from_the_linter
-    src = "球の体積は $(4/3)πr³$ です。地の文の (4/3) は直されるべきです。\n"
-    masked, spans = Guard.mask_math(src)
-
-    refute_includes masked, '(4/3)πr³', '数式は目印へ退避される'
-    assert_includes masked, '地の文の (4/3) は', '地の文の括弧は残す（本物の指摘を消さない）'
-    assert_equal 1, spans.size
-    assert_equal src, Guard.restore_math(masked, spans), '往復で原文に戻る'
-  end
-
-  # 行数を保存する（I1）。複数行のディスプレイ数式でも指摘の行番号がずれない。
-  def test_should_preserve_line_count_when_masking_multi_line_display_math
-    src = "前。\n\n$$\n面積 = π × r²\n= πr²\n$$\n\n後。\n"
-    masked, spans = Guard.mask_math(src)
-
-    assert_equal src.lines.size, masked.lines.size
-    assert_equal src, Guard.restore_math(masked, spans)
-  end
-
-  # コード領域の中の数式らしい綴りは触らない（記法を解説する行を壊さない）。
-  def test_should_not_mask_math_inside_code
-    src = "インライン数式は `$x^2$` と書きます。\n"
-    masked, spans = Guard.mask_math(src)
-
-    assert_equal src, masked
-    assert_empty spans
-  end
-
-  # strip_notation（解析パス）にも効いている。
-  def test_strip_notation_should_neutralize_math
-    stripped = Guard.strip_notation("球の体積は $(4/3)πr³$ です。\n")
-
-    refute_includes stripped, '(4/3)'
-  end
-
 end
