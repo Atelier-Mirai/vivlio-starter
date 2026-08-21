@@ -114,25 +114,40 @@ module VivlioStarter
       end
 
       # 用語を削除
+      #
+      # **削除したエントリを返す。** 呼び出し側が定義文の有無を見て著者へ知らせるため
+      # （`index-apply-rejected-consistency-spec.md` §3.4）。定義文は著者が 1 件ずつ
+      # 手で書いた資産で、機械が作り直せない。
+      #
       # @param term_name [String] 削除する用語名
+      # @return [Hash, nil] 削除したエントリ。存在しなければ nil
       def remove_term!(term_name)
-        return if term_name.nil? || term_name.empty?
+        return nil if term_name.nil? || term_name.empty?
 
         existing = load_terms.dup
-        original_size = existing.size
-        existing.reject! { it['term'] == term_name }
+        removed = existing.find { it['term'] == term_name }
+        return nil unless removed
 
-        save_terms!(existing) if existing.size < original_size
+        existing.reject! { it['term'] == term_name }
+        save_terms!(existing)
+        removed
       end
 
       # flags から特定のフラグを除去（用語自体は残す）
       # 例: flags 'ig' から 'i' を除去 → 'g' に変更
+      #
+      # **用語ごと消えたときだけそのエントリを返す。** 呼び出し側はこれを見て
+      # 「除外リストへ送るか」を決める——フラグが残る語を除外リストへ入れると、
+      # terms と rejected の両方に載る矛盾が生まれる
+      # （`index-apply-rejected-consistency-spec.md` §1.1・§3.1）。
+      #
       # @param term_name [String] 用語名
       # @param remove_flag [String] 除去するフラグ ('i' or 'g')
+      # @return [Hash, nil] フラグが空になり用語ごと削除したときそのエントリ。残ったときは nil
       def remove_flag!(term_name, remove_flag)
         existing = load_terms.dup
         term = existing.find { it['term'] == term_name }
-        return unless term
+        return nil unless term
 
         current = term['flags'] || ''
         new_flags = case remove_flag
@@ -141,14 +156,17 @@ module VivlioStarter
                     else current
                     end
 
+        dropped = nil
         if new_flags.empty?
           # フラグがなくなったら用語自体を削除
+          dropped = term
           existing.reject! { it['term'] == term_name }
         else
           term['flags'] = new_flags
         end
 
         save_terms!(existing)
+        dropped
       end
 
       # flags を更新

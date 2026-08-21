@@ -183,6 +183,9 @@ module VivlioStarter
         changes_made = false
         index_count = 0
         glossary_count = 0
+        # [-i] / [-g] でフラグを全部失い、terms から消えた語（除外リストへ送る対象）
+        dropped_i = []
+        dropped_g = []
 
         # --- Phase: 索引承認 ---
         if index_approved.any?
@@ -211,22 +214,28 @@ module VivlioStarter
         end
 
         # --- Phase: 索引のみリジェクト（[-i]） ---
+        # `[-i]` は「索引から外す／**用語集には残す**」なので、除外リストへは書かない。
+        # 書くと terms と rejected の両方に載る矛盾が生まれ、次回の apply で
+        # Section 4 同期がその語を定義文ごと消す（`index-apply-rejected-consistency-spec.md` §1）。
+        # 例外は `i` しか持たない語で、フラグが空になり terms から消える——
+        # 残す先が無いので、このときだけ除外リストへ送る（＝ `[r]` と同じ扱い）。
         if index_rejected.any?
-          index_rejected.each { @terms_manager.remove_flag!(it['term'], 'i') }
-          @queue_manager.save_rejected_terms(index_rejected)
+          dropped_i = index_rejected.filter_map { @terms_manager.remove_flag!(it['term'], 'i') }
+          @queue_manager.save_rejected_terms(dropped_i) if dropped_i.any?
           changes_made = true
         end
 
         # --- Phase: 用語集のみリジェクト（[-g]） ---
         if glossary_rejected.any?
-          glossary_rejected.each { @terms_manager.remove_flag!(it['term'], 'g') }
-          @queue_manager.save_rejected_terms(glossary_rejected)
+          dropped_g = glossary_rejected.filter_map { @terms_manager.remove_flag!(it['term'], 'g') }
+          @queue_manager.save_rejected_terms(dropped_g) if dropped_g.any?
           changes_made = true
         end
 
         # --- Phase: 両方リジェクト（[r]） ---
+        # 著者が明示的に消すと書いた唯一の経路。定義文を持つ語は黙って消さない（§3.4）。
         if both_rejected.any?
-          both_rejected.each { @terms_manager.remove_term!(it['term']) }
+          both_rejected.each { remove_term_aloud!(it['term']) }
           @queue_manager.save_rejected_terms(both_rejected)
           changes_made = true
         end
@@ -293,23 +302,30 @@ module VivlioStarter
         confirmed_rejected = rejected_section_all.select { ['', ' '].include?(it['flag']) }
                                                  .reject { unreject_names.include?(it['term']) }
 
+        # 除外リストは「候補に再提示しない語」の記録であって、削除の指示ではない（§2.2）。
+        # 登録済みの語がここにも居るなら、それは過去の書き込みが残した矛盾なので、
+        # **定義文を持つ terms の側を正として除外リストから落とす**（§2.3・§3.2）。
+        # かつては逆に terms から消しており、著者の手書きの定義文が失われていた。
+        # この向きなら、既に矛盾を抱えたプロジェクトも次の apply で黙って正しい状態へ寄る。
+        resolved = []
         if confirmed_rejected.any?
-          rejected_count = 0
           confirmed_rejected.each do |entry|
             term_name = entry['term']
             next unless @terms_manager.term_names.include?(term_name)
 
-            @terms_manager.remove_term!(term_name)
-            Common.log_info("除外済みリストに基づき登録を解除: #{term_name}")
-            rejected_count += 1
+            @queue_manager.unreject_term_by_name!(term_name)
+            Common.log_debug("除外リストの矛盾を解消: #{term_name}（登録済みのため除外リストから外す）")
+            resolved << term_name
           end
 
-          @queue_manager.save_rejected_terms(confirmed_rejected)
-          changes_made = true if rejected_count.positive? || confirmed_rejected.any?
+          # いま外した語を書き戻さない。残りは元から除外リストに居るので実質 no-op。
+          still_rejected = confirmed_rejected.reject { resolved.include?(it['term']) }
+          @queue_manager.save_rejected_terms(still_rejected) if still_rejected.any?
+          changes_made = true if resolved.any?
         end
 
         if changes_made
-          rejected_total = both_rejected.size + (confirmed_rejected&.size || 0)
+          rejected_total = both_rejected.size + dropped_i.size + dropped_g.size
           # 何をどれだけ適用したかを既定ログレベルでも 1 行で報告する
           Common.log_result("辞書を更新しました（索引 #{index_count} 件・用語集 #{glossary_count} 件・" \
                             "リジェクト #{rejected_total} 件）", status: :success)
@@ -323,6 +339,25 @@ module VivlioStarter
         # _index_glossary_review.md は残す（再編集の可能性があるため）
         # vs build の clean 処理で削除される
         changes_made
+      end
+
+      # 用語を削除する。**定義文を持つ語は黙って消さない**
+      # （`index-apply-rejected-consistency-spec.md` §3.4）。
+      #
+      # 定義文は著者が 1 件ずつ手で書いた資産で、機械が作り直せない。個別の分岐で
+      # 経路を塞ぐより、「取り返しのつかない削除は声に出す」という規律のほうが長持ちする
+      # ——`remove_term!` を呼ぶ経路が将来また増えても、そこで気づける。
+      #
+      # @param term_name [String] 削除する用語名
+      # @return [Hash, nil] 削除したエントリ
+      def remove_term_aloud!(term_name)
+        removed = @terms_manager.remove_term!(term_name)
+        return removed if removed.nil? || removed['definition'].to_s.strip.empty?
+
+        Common.log_warn("用語集の定義文ごと登録を解除しました: #{term_name}")
+        Common.log_warn("  → 戻すには #{ReviewMarkdownGenerator::REVIEW_FILE} の 4 節で " \
+                        '[g] を入れて vs index:apply')
+        removed
       end
 
       # 用語集の説明文バリデーション

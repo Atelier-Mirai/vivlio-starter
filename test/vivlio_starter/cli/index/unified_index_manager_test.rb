@@ -953,17 +953,128 @@ module VivlioStarter
         assert_empty load_glossary_terms
       end
 
+      # --- phase: terms と rejected の排他性（index-apply-rejected-consistency-spec.md） ---
+      #
+      # 発端は 2026-08-21、原稿の加筆に合わせて apply を実行したら、手書きの定義文を持つ
+      # 用語集の語が 3 件消えた事故。原因は 2 段の時限式で、1 回目の apply が矛盾
+      # （terms と rejected の両方に載る）を作り、2 回目以降がそれを「削除」で解決していた。
+
+      # IA-01: [-i] は「索引から外す／用語集には残す」。除外リストへ書いてはならない。
+      def test_index_rejection_keeps_the_glossary_entry_out_of_the_rejected_list
+        seed_unified_terms([{ name: 'CSS', flags: 'ig', definition: 'スタイルシート言語。' }])
+        write_review_with_rejected_items(terms: [{ term: 'CSS', yomi: 'CSS', flag: '-i' }], rejected: [])
+
+        @manager.apply_markdown_review!
+
+        entry = YAML.load_file('config/index_glossary_terms.yml')['terms'].first
+
+        assert_equal 'g', entry['flags'], '索引フラグだけ落ちる'
+        assert_equal 'スタイルシート言語。', entry['definition'], '定義文は保たれる'
+        refute_includes load_rejected_terms, 'CSS', '用語集に残る語を除外リストへ入れない'
+      end
+
+      # IA-02: フラグを全部失う場合だけは terms に残す先が無いので除外リストへ送る。
+      def test_index_rejection_rejects_a_term_that_loses_every_flag
+        seed_unified_terms([{ name: 'コピー', flags: 'i' }])
+        write_review_with_rejected_items(terms: [{ term: 'コピー', yomi: 'こぴー', flag: '-i' }], rejected: [])
+
+        @manager.apply_markdown_review!
+
+        refute_includes load_all_terms, 'コピー'
+        assert_includes load_rejected_terms, 'コピー'
+      end
+
+      # IA-03: [-g] も同型（索引には残す／全フラグを失えば除外リストへ）。
+      def test_glossary_rejection_is_symmetric
+        seed_unified_terms([{ name: 'CSS', flags: 'ig', definition: '定義文' }, { name: 'PDF', flags: 'g' }])
+        write_review_with_rejected_items(
+          terms: [{ term: 'CSS', yomi: 'CSS', flag: '-g' }, { term: 'PDF', yomi: 'PDF', flag: '-g' }],
+          rejected: []
+        )
+
+        @manager.apply_markdown_review!
+
+        assert_equal 'i', YAML.load_file('config/index_glossary_terms.yml')['terms']
+                              .find { it['term'] == 'CSS' }['flags']
+        refute_includes load_rejected_terms, 'CSS', 'i が残るので除外リストへ入れない'
+        refute_includes load_all_terms, 'PDF'
+        assert_includes load_rejected_terms, 'PDF', 'g しか無い語は全フラグを失う'
+      end
+
+      # IA-04: **回帰の要。** 既に矛盾を抱えた辞書（terms にも rejected にも居る）で
+      # apply しても、定義文を持つ terms 側が残り、除外リストのほうが掃除される。
+      def test_apply_resolves_the_contradiction_by_cleaning_the_rejected_list
+        seed_unified_terms([{ name: 'CSS', flags: 'g', definition: 'スタイルシート言語。' }])
+        seed_rejected_terms(['CSS'])
+        # 実際の矛盾はこの形で現れる——生成器は登録済みなので 1 節へ並べ、
+        # 除外リストにも居るので 4 節へも並べる。
+        write_review_with_rejected_items(
+          terms: [{ term: 'CSS', yomi: 'CSS', flag: 'g', definition: 'スタイルシート言語。' }],
+          rejected: [{ term: 'CSS', yomi: 'CSS', flag: ' ' }]
+        )
+
+        @manager.apply_markdown_review!
+
+        entry = YAML.load_file('config/index_glossary_terms.yml')['terms'].find { it['term'] == 'CSS' }
+
+        refute_nil entry, '登録済みの語を除外リストを根拠に消さない'
+        assert_equal 'スタイルシート言語。', entry['definition']
+        refute_includes load_rejected_terms, 'CSS', '矛盾は除外リスト側を落として解消する'
+      end
+
+      # IA-05: 著者が明示した [r] は従来どおり削除し、除外リストへ登録する。
+      def test_explicit_rejection_still_removes_the_term
+        seed_unified_terms([{ name: 'ヒント', flags: 'i' }])
+        write_review_with_rejected_items(terms: [{ term: 'ヒント', yomi: 'ひんと', flag: 'r' }], rejected: [])
+
+        @manager.apply_markdown_review!
+
+        refute_includes load_all_terms, 'ヒント'
+        assert_includes load_rejected_terms, 'ヒント'
+      end
+
+      # IA-06: 定義文ごと消すときは黙らない。個別の分岐より規律のほうが長持ちする。
+      def test_removing_a_term_with_a_definition_is_announced
+        seed_unified_terms([{ name: 'CSS', flags: 'ig', definition: 'スタイルシート言語。' }])
+        write_review_with_rejected_items(terms: [{ term: 'CSS', yomi: 'CSS', flag: 'r' }], rejected: [])
+
+        warnings = []
+        Common.stub(:log_warn, ->(msg) { warnings << msg }) { @manager.apply_markdown_review! }
+
+        assert(warnings.any? { it.include?('CSS') && it.include?('定義文') }, "警告が出ていない: #{warnings}")
+        assert(warnings.any? { it.include?('vs index:apply') }, '戻し方を添える')
+      end
+
+      # IA-07: **本丸。** 同じレビューで 2 回 apply しても 2 回目に削除が起きない。
+      # 元の不具合は「1 回目は正常に見え、2 回目で壊れる」形だったので、
+      # 1 回だけ走らせるテストでは捕まらない。
+      def test_apply_is_idempotent_for_a_term_kept_in_the_glossary
+        seed_unified_terms([{ name: 'CSS', flags: 'ig', definition: 'スタイルシート言語。' }])
+        write_review_with_rejected_items(terms: [{ term: 'CSS', yomi: 'CSS', flag: '-i' }], rejected: [])
+        review = File.read('_index_glossary_review.md')
+
+        @manager.apply_markdown_review!
+        File.write('_index_glossary_review.md', review, encoding: 'utf-8')
+        @manager.terms_manager.clear_cache!
+        @manager.apply_markdown_review!
+
+        entry = YAML.load_file('config/index_glossary_terms.yml')['terms'].find { it['term'] == 'CSS' }
+
+        refute_nil entry, '2 回目の apply で消えてはならない'
+        assert_equal 'スタイルシート言語。', entry['definition']
+      end
+
       private
 
       # --- テストヘルパー ---
 
       # 統合辞書をセットアップ
-      # @param entries [Array<Hash>] { name:, flags: } のリスト
+      # @param entries [Array<Hash>] { name:, flags:, definition: } のリスト
       def seed_unified_terms(entries)
         terms = entries.map do |e|
           {
             'term' => e[:name], 'yomi' => e[:name],
-            'flags' => e[:flags], 'definition' => '',
+            'flags' => e[:flags], 'definition' => e[:definition].to_s,
             'pattern' => "/#{e[:name]}/", 'source' => 'test',
             'approved_at' => Time.now.strftime('%Y-%m-%d %H:%M:%S')
           }
@@ -1023,6 +1134,8 @@ module VivlioStarter
           terms.each do |t|
             content += "- [#{t[:flag]}] `Today` **#{t[:term]}** (#{t[:yomi]}) - スコア: 100.0\n"
             content += "  - 01-test: テスト文脈\n\n"
+            # 用語集の説明文は空行の後にインデントして置く（実物の生成器と同じ形）
+            content += "  #{t[:definition]}\n\n" if t[:definition]
           end
         end
 
