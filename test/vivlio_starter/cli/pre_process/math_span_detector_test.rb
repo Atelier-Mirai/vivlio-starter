@@ -135,6 +135,16 @@ class MathSpanDetectorTest < Minitest::Test
     assert_includes D.transform("```math\n#{long}\n```\n"), '$$', '行数の上限を掛けない'
   end
 
+  # MD-05b: `math` で**始まる**言語名を巻き込まない。`mathematica` は実在の
+  # Prism 言語で、数式にしてしまうとソースが図に化ける。
+  def test_should_not_match_language_names_that_merely_start_with_math
+    %w[mathematica mathml matlab math-block mathematics].each do |lang|
+      md = "```#{lang}\ncos = 1 - 2\n```\n"
+
+      assert_equal md, D.transform(md), "```#{lang} はコードのまま"
+    end
+  end
+
   # MD-05b: 綴りの揺れ（大文字・チルダフェンス）も受ける。
   def test_should_accept_math_fence_spelling_variants
     ["```MATH\nx = 1\n```\n", "~~~math\nx = 1\n~~~\n", "``` math \nx = 1\n```\n"].each do |md|
