@@ -55,6 +55,17 @@ class PlainMathTranspilerTest < Minitest::Test
     assert_equal 'x\\leq y',       tex('x<=y')
   end
 
+  # PT-02: 素の `^` / `_` の引数は**数字の連なり／英字の連なり**を 1 かたまりと見る。
+  # 混ぜて取ると `H_2O` が `H_{2O}` になり O まで添字へ落ちる（実測: 早見表で `H₂ₒ` と出た）。
+  # 逆に 1 文字しか取らないと `a^560` が `a^5` の後ろに `60` を並べてしまう。
+  def test_should_not_mix_digits_and_letters_in_a_bare_script
+    assert_equal 'H_{2}O',  tex('H_2O')
+    assert_equal 'x_{1}y',  tex('x_1y')
+    assert_equal 'a^{560}', tex('a^560')
+    assert_equal 'A_{pub}', tex('A_pub')
+    assert_equal '2^{-52}', tex('2^-52'), '符号つきの指数も 1 かたまり'
+  end
+
   # PT-02: `√` は直後の 1 トークンだけに掛かる（仕様 §5.2）。
   # 数は丸ごと 1 トークン——1 文字ずつ取ると `√163` が `\sqrt{1}63` になる。
   def test_should_bind_the_radical_to_a_single_token
