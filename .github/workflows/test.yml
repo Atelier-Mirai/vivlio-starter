@@ -14,10 +14,23 @@
 # Vivliostyle（Node）と Chrome の取得に時間がかかり、CI の役割に見合わない。
 name: test
 
+# ------------------------------------------------------------------
+# 自動起動を止めている（2026-08-21）。
+#
+# 導入（2026-08-06）以来、実行はすべて 4 秒で失敗していた——
+#   The job was not started because your account is locked due to a billing issue.
+# コードではなく GitHub アカウント側の状態なので、ここを直しても動かない。
+#
+# **止めたのは「無いより悪い」から。** push のたびに赤い × が並ぶと、
+# 本当に壊れたときに気づけなくなる。ローカルの `rake test:release` は
+# CI（Ruby 2 版で `rake test`）より広く、実ビルド・epubcheck・
+# パッケージングまで通すので、当面の回帰検出はそちらが担う。
+#
+# **課金が解決したら、下の workflow_dispatch を push / pull_request へ
+# 戻すだけでよい。** ジョブの中身は妥当なので触っていない。
+# ------------------------------------------------------------------
 on:
-  push:
-    branches: [master]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   test:

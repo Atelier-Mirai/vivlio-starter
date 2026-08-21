@@ -75,10 +75,11 @@ Ruby 4.0 固有の機能は 1 つも使っていなかった。実際の下限�
 - [x] **CHANGELOG の rc.2 節を確定** — `## [1.0.0-rc.2] - 2026-08-10`。1.0.0 節は未着手。
 - [x] **ページレイアウト統合テストの実走** — `rake test:release` に `test:layout` として常設化され、2026-08-10 に実走・通過。単発の宿題ではなくなった。
 - [x] **README / コマンド一覧の最終同期** — 埋め込んだ `vs --help` が実出力と一致することを確認。ガイドブックのページ数（508 → A4 347）も修正済み。
-- [ ] **CI が実際に動いていない（要対応）** — `.github/workflows/test.yml` は 2026-08-06 に追加済みで、内容も妥当（Ruby 3.4 / 4.0 マトリクスで `rake test`、MIT 経路を検証）。しかし**導入以来 13 回すべて起動していない**。理由はコードではなくアカウント側:
+- [ ] **CI が実際に動いていない（要対応）** — `.github/workflows/test.yml` は 2026-08-06 に追加済みで、内容も妥当（Ruby 3.4 / 4.0 マトリクスで `rake test`、MIT 経路を検証）。しかし**導入以来一度も起動していない**。理由はコードではなくアカウント側:
       `The job was not started because your account is locked due to a billing issue.`
-      **GitHub の課金状態を解消しない限り CI は無いのと同じ**。1.0.0 前に片づける。
-- [ ] **gemspec メタデータの追加（任意）** — 現在あるのは `changelog_uri` のみ。`source_code_uri` / `bug_tracker_uri` を足すと RubyGems ページにリンクが並ぶ。
+      **2026-08-21 に自動起動を止めた**（`on:` を `workflow_dispatch` のみへ）。push のたびに赤い × が並ぶ状態は、本当に壊れたときに気づけなくなるぶん「無いより悪い」ため。ジョブの中身は触っていないので、**課金が解決したら `on:` を `push` / `pull_request` へ戻すだけ**でよい。
+      当面の回帰検出はローカルの `rake test:release` が担う——CI（Ruby 2 版で `rake test`）より広く、実ビルド・epubcheck・パッケージングまで通す。
+- [x] **gemspec メタデータの追加** — `source_code_uri` / `bug_tracker_uri` を追加した（2026-08-21・rc.3）。不具合の行き先と原本の在り処を gem ページから辿れる。
 - [ ] **CHANGELOG の 1.0.0 節を確定** — 日付入りで締める。あわせて**分割の判断**（下記「申し送り」参照）。
 
 ### CHANGELOG 分割の申し送り（1.0.0 で判断）
