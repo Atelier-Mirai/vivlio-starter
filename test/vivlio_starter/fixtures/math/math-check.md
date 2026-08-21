@@ -148,14 +148,14 @@ cos = 1 - 2 + 4 - 6
 sin = 0 - 3 + 5 - 7
 ```
 
-`math`{.aki}
+言語に `math` を指定{.aki}
 
 ```math
 cos = 1 - 2 + 4 - 6
 sin = 0 - 3 + 5 - 7
 ```
 
-`ruby`{.aki}
+言語に `ruby` を指定{.aki}
 
 ```ruby
 cos = 1 - 2 + 4 - 6
