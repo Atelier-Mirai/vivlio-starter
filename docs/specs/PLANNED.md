@@ -144,7 +144,6 @@
 - [Medium] **肥大化した `book.yml` を切り出す**: 671 行あり、著者が「必ず設定する項目」（`book` 22 行・`project` 7 行）へ辿り着くまでに機能別の詳細設定を延々とスクロールすることになる。内訳は `metrics` 162 行・`output` 96 行・`theme` 55 行・`typography` 47 行・`index` 44 行・`lint` 36 行で、**上位 2 節だけで 4 割**を占める。`page_presets.yml` `catalog.yml` `textlint_*.yml` のように**機能別の設定ファイルへ分ける**——どれを切り出すか（`metrics` / `lint` / `spellcheck` / `index` 系）と、`book.yml` に残す境界を決める。
   - **不要なキー・ほとんど使われないキーを先に洗う**。切り出す前に減らすほうが、分けたあとの各ファイルが小さく収まる。`dead-code-candidates-report.md` がメソッドに対してやったことの設定キー版で、**「定義はあるがコードが読んでいないキー」**（`chapter.ideal` が 2026-08-05 まで死蔵だった実例がある）と**「読んではいるが著者がまず触らないキー」**を分けて数える。
   - **後方互換に注意**。既存プロジェクトの `book.yml` からキーが消えることになるため、`vs upgrade` での移行か、両方の置き場所を読む移行期間が要る。
-  - **既定値の宣言は `config_keys.rb` の `KEYS` 表に一本化済み**（`config-defaults-design-spec.md`）。キーは `%i[metrics compact chapter min]` のように節を含むパスで書かれているので、`book.yml` から節を切り出すなら**この表の該当行も併せて動かす**こと。`config_keys_test.rb` が同梱 `book.yml` との対応を見ているので、取り残せばテストが落ちる。
 - [Medium] **ビルドログ整備**: 各ステップに要約出力とエラーヒントを追加し、失敗時の原因特定とリカバリーを容易にする。
 - [Low] **スタイルガイド整備**: 章タイプ別（preface / chapter / appendix / postface）の設計指針、ユーティリティクラス（`.aki`, `.aki2` ほか）一覧と使用例をドキュメント化する。
 
