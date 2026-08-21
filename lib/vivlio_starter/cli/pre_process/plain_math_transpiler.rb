@@ -66,11 +66,15 @@ module VivlioStarter
         SUPERSCRIPT_RUN   = /#{SUPERSCRIPT_CHARS}+/o
         SUBSCRIPT_RUN     = /#{SUBSCRIPT_CHARS}+/o
 
-        # TeX に対応するマクロがある関数名。長いものから並べる
-        # （`arctan` を `arc` + `tan` に割らないため。Regexp.union は先頭一致優先）。
+        # TeX に用意されている演算子名（38 種）。**長いものから並べる**
+        # （`arctan` を `arc` + `tan` に、`liminf` を `lim` + `inf` に割らないため。
+        # 正規表現の交替は先頭一致優先）。MathJax で全種が通ることを実測済み。
         FUNCTIONS = %w[
-          arcsin arccos arctan sinh cosh tanh
-          sin cos tan sec csc cot log ln exp det gcd max min
+          varinjlim varliminf varlimsup varprojlim arccos arcsin arctan liminf
+          limsup injlim projlim sinh cosh tanh coth sin
+          cos tan sec csc cot arg deg det
+          dim exp gcd hom inf ker lim log
+          max min sup Pr lg ln
         ].freeze
 
         # 関数名の綴り。前後が英数字・バックスラッシュのときは拾わない

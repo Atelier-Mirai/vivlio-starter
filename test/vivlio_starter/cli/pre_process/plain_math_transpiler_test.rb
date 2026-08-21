@@ -75,6 +75,17 @@ class PlainMathTranspilerTest < Minitest::Test
     assert_equal '\\sqrt{12345}',    tex('√12345')
   end
 
+  # PT-02: TeX の演算子名 38 種。`liminf` を `lim` + `inf` に割らないこと。
+  def test_should_convert_all_tex_operator_names
+    assert_equal '\\sup(x)',    tex('sup(x)')
+    assert_equal '\\inf(A)',    tex('inf(A)')
+    assert_equal '\\arg(z)',    tex('arg(z)')
+    assert_equal '\\deg(f)',    tex('deg(f)')
+    assert_equal '\\Pr(A)',     tex('Pr(A)')
+    assert_equal '\\liminf(n)', tex('liminf(n)'), '長い名前を先に見る'
+    assert_equal '\\limsup(n)', tex('limsup(n)')
+  end
+
   # PT-02: 著者が考えた上下限の記法（TeX 側に対応が無い）。
   def test_should_convert_author_written_operator_bounds
     assert_equal '\\sum_{k=0}^{∞}',   tex('Σ(k=0 to ∞)')

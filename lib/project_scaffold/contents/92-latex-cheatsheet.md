@@ -85,15 +85,30 @@
 関数名は**そのまま書けば立体（斜体でない字）で組まれます**。LaTeX ではコマンドとして書きます。
 
 ```markdown
-$sin²θ + cos²θ = 1$        素のまま
+$sin²θ + cos²θ = 1$                 素のまま
 $\sin^2\theta + \cos^2\theta = 1$   LaTeX
 ```
 
+表示結果は次のようになります。{.aki}
+
 $\sin^2\theta + \cos^2\theta = 1${.aki}
 
-使えるのは次の 19 種です。{.aki}
+使えるのは次の 38 種です。どれも**素のままでも LaTeX でも書けます**。{.aki}
 
-``sin`` ``cos`` ``tan`` ``arcsin`` ``arccos`` ``arctan`` ``sinh`` ``cosh`` ``tanh`` ``sec`` ``csc`` ``cot`` ``log`` ``ln`` ``exp`` ``det`` ``gcd`` ``max`` ``min``
+| 分類 | 関数名 |
+| :--- | :--- |
+| 三角関数 | ``sin`` ``cos`` ``tan`` ``sec`` ``csc`` ``cot`` |
+| 逆三角関数 | ``arcsin`` ``arccos`` ``arctan`` |
+| 双曲線関数 | ``sinh`` ``cosh`` ``tanh`` ``coth`` |
+| 指数・対数 | ``exp`` ``log`` ``ln`` ``lg`` |
+| 極限 | ``lim`` ``liminf`` ``limsup`` ``injlim`` ``projlim`` ``varliminf`` ``varlimsup`` ``varinjlim`` ``varprojlim`` |
+| 最大・最小・上限・下限 | ``max`` ``min`` ``sup`` ``inf`` |
+| 代数・幾何 | ``det`` ``dim`` ``deg`` ``ker`` ``hom`` ``gcd`` ``arg`` |
+| 確率 | ``Pr`` |
+
+:::{.note}
+一覧にない関数名は、`\operatorname{…}` で作れます。たとえば ``\operatorname{rank}(A)`` と書けば `rank` が立体で組まれます。何もせず ``rank(A)`` と書くと `𝑟𝑎𝑛𝑘` のように 1 文字ずつ斜体になり、`r × a × n × k` の積のように読めてしまいます。
+:::
 
 ## ディスプレイ数式にするもの
 

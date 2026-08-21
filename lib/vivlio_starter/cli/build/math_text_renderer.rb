@@ -81,10 +81,15 @@ module VivlioStarter
         # 「ハッシュ値 mod サーバー台数」が丸ごと拒否されていた。文字プロパティで書く。
         PASSTHROUGH = /[×÷±∓⋅・·≈≒≡≠≤≥≦≧∼∝∞…°−→∈]|[α-ωΑ-Ω]|[\p{Hiragana}\p{Katakana}\p{Han}ー々〆]/
 
-        # TeX に対応マクロがある関数名。立体（イタリックにしない）で出す。
+        # TeX に用意されている演算子名（38 種）。立体（イタリックにしない）で出す。
+        # 変換器（PlainMathTranspiler::FUNCTIONS）と同じ集合にしておく——あちらが
+        # `\sup` を出すのにこちらが知らないと、式ごと拒否されて Kindle が SVG へ落ちる。
         FUNCTIONS = %w[
-          arcsin arccos arctan sinh cosh tanh
-          sin cos tan sec csc cot log ln exp det gcd max min lim
+          varinjlim varliminf varlimsup varprojlim arccos arcsin arctan liminf
+          limsup injlim projlim sinh cosh tanh coth sin
+          cos tan sec csc cot arg deg det
+          dim exp gcd hom inf ker lim log
+          max min sup Pr lg ln
         ].freeze
 
         module_function

@@ -88,90 +88,92 @@ module VivlioStarter
           assert_equal '299,792', R.render('299{,}792')
           assert_equal '10<sup>-34</sup>', R.render('10^{-34}')
         end
+
+          # 素の表記から起こした TeX を受理する（plain-math-notation-spec.md §3-2.3）。
+          # この変換器は LaTeX で書かれた原稿だけを見て作られたので、素の表記が入ってからは
+          # `×` や `θ`・関数マクロ・`\bmod` が届くようになった。受理しないと Kindle で
+          # 原文テキストへ落ちてしまい、真の上付きが出ない。
+          def test_should_render_tex_produced_from_plain_notation
+            assert_equal '<i>a</i><sup><i>p</i>-1</sup> mod <i>p</i>',
+                         R.render('a^{p-1} \bmod p')
+            assert_equal 'sin<sup>2</sup>θ+cos<sup>2</sup>θ',
+                         R.render('\sin^{2}θ + \cos^{2}θ')
+            assert_equal '<i>x</i><sup>2</sup>≡1 (mod n)',
+                         R.render('x^{2} ≡ 1 \pmod{n}')
+            assert_equal '6.626×10<sup>-34</sup>', R.render('6.626×10^{-34}')
+            assert_equal 'λ<sup>2</sup>−1', R.render('λ^{2} − 1')
+          end
+
+          # Unicode で直接書かれた記号・ギリシャ文字・日本語をそのまま通す。
+          def test_should_pass_through_unicode_symbols_greek_and_japanese
+            assert_equal '<i>a</i>×<i>b</i>÷<i>c</i>', R.render('a × b ÷ c')
+            assert_equal 'π+θ+λ', R.render('π + θ + λ')
+            assert_equal '平文<sup><i>e</i></sup> mod <i>n</i>', R.render('平文^{e} \bmod n')
+          end
+
+          # 関数名は立体で出す（素のままだと 1 文字ずつ斜体になる）。
+          def test_should_render_function_names_upright
+            assert_equal 'ln(<i>n</i>)', R.render('\ln(n)')
+            assert_equal 'arctan(1/5)', R.render('\arctan(1/5)')
+          end
+
+          # テキストで表しようがない式だけを拒否する（SVG か原文テキストへ委ねる）。
+          # `\sqrt` `\sum` `\int` `\lim` は 2026-08-20 からテキスト化する側へ移った——
+          # インラインの数式画像は TeX の決まりで潰れて読めないため。
+          def test_should_still_reject_complex_constructs
+            ['x^{y^z}', '\frac{\frac{1}{2}}{3}', '\vec{v}', '\overline{AB}'].each do |src|
+              assert_nil R.render(src), "拒否されるべき: #{src}"
+            end
+          end
+
+          # `\frac{a+b}{2}` を `a+b/2` と書くと `a + (b/2)` に読める——**意味が変わる**。
+          # 複合式なら括弧を付ける（単項なら付けない。`1/299,792,458` の見た目を保つため）。
+          def test_should_parenthesize_compound_fraction_operands
+            assert_equal '(<i>a</i>+<i>b</i>)/2', R.render('\frac{a+b}{2}')
+            assert_equal '<i>a</i>/(<i>b</i>+<i>c</i>)', R.render('\frac{a}{b+c}')
+            assert_equal '1/2', R.render('\frac{1}{2}')
+            assert_equal '1/299,792,458', R.render('\frac{1}{299{,}792{,}458}')
+            # 指数の符号は項の区切りではないので括弧を付けない
+            assert_equal '1/10<sup>-34</sup>', R.render('\frac{1}{10^{-34}}')
+          end
+
+          # 根号・大型演算子はテキストで表す。SVG 画像はインラインだと TeX の決まりで潰れて
+          # 読めない（実測: \sum はインライン 2.6ex / ディスプレイ 6.4ex）。
+          def test_should_render_radicals_and_big_operators_as_text
+            assert_equal '√2', R.render('\sqrt{2}')
+            # 中身が複合式なら括弧で範囲を示す（`√a+b` は「√a に b を足す」に読める）
+            assert_equal '√(<i>a</i><sup>2</sup>+<i>b</i><sup>2</sup>)', R.render('\sqrt{a^2+b^2}')
+            # 上下限の直後には細空白（U+2009）を補う。数式の空白は TeX 流に落としているので、
+            # 補わないと `∑ᵢ₌₁ⁿi` と詰まって読みにくい
+            assert_equal "∑<sub><i>i</i>=1</sub><sup><i>n</i></sup>\u2009<i>i</i>",
+                         R.render('\sum_{i=1}^{n} i')
+            assert_equal "∫<sub>0</sub><sup>1</sup>\u2009<i>x</i><sup>2</sup><i>dx</i>",
+                         R.render('\int_{0}^{1} x^2 dx')
+            assert_equal '<i>p</i>̂', R.render('\hat{p}')
+          end
+
+          # 日本語の範囲は `ぁ-ゖ` `ァ-ヺ` では足りない——**長音符 `ー`（U+30FC）が外**にある。
+          # 「ハッシュ値 mod サーバー台数」が丸ごと拒否されていた。
+          def test_should_accept_katakana_with_a_long_vowel_mark
+            assert_equal 'ハッシュ値 mod サーバー台数', R.render('ハッシュ値 \bmod サーバー台数')
+          end
+
+          # 導関数のプライム。
+          def test_should_accept_primes
+            assert_equal "<i>f</i>'(<i>x</i>)", R.render("f'(x)")
+            assert_equal "<i>f</i>''(0)=2<i>c</i><sub>2</sub>", R.render("f''(0) = 2c_{2}")
+          end
+
+          # `\to` が記号表に無いだけで `\lim_{n \to \infty} a_n` が式ごと拒否され、
+          # SVG のまま Kindle へ残って横に潰れていた（2026-08-20 の実機で発覚）。
+          # 記号を 1 つ落とすと式全体が落ちる——ホワイトリスト方式の副作用。
+          def test_should_render_limits_with_arrows
+            assert_equal "lim<sub><i>n</i>→∞</sub>\u2009<i>a</i><sub><i>n</i></sub>",
+                         R.render('\lim_{n \to \infty} a_n')
+            assert_equal '<i>x</i>∈<i>A</i>∪<i>B</i>', R.render('x \in A \cup B')
+            assert_equal '<i>f</i>∘<i>g</i>', R.render('f \circ g')
+          end
       end
     end
   end
-  # 素の表記から起こした TeX を受理する（plain-math-notation-spec.md §3-2.3）。
-  # この変換器は LaTeX で書かれた原稿だけを見て作られたので、素の表記が入ってからは
-  # `×` や `θ`・関数マクロ・`\bmod` が届くようになった。受理しないと Kindle で
-  # 原文テキストへ落ちてしまい、真の上付きが出ない。
-  def test_should_render_tex_produced_from_plain_notation
-    assert_equal '<i>a</i><sup><i>p</i>-1</sup> mod <i>p</i>',
-                 MathTextRenderer.render('a^{p-1} \bmod p')
-    assert_equal 'sin<sup>2</sup>θ+cos<sup>2</sup>θ',
-                 MathTextRenderer.render('\sin^{2}θ + \cos^{2}θ')
-    assert_equal '<i>x</i><sup>2</sup>≡1 (mod n)',
-                 MathTextRenderer.render('x^{2} ≡ 1 \pmod{n}')
-    assert_equal '6.626×10<sup>-34</sup>', MathTextRenderer.render('6.626×10^{-34}')
-    assert_equal 'λ<sup>2</sup>−1', MathTextRenderer.render('λ^{2} − 1')
-  end
-
-  # Unicode で直接書かれた記号・ギリシャ文字・日本語をそのまま通す。
-  def test_should_pass_through_unicode_symbols_greek_and_japanese
-    assert_equal '<i>a</i>×<i>b</i>÷<i>c</i>', MathTextRenderer.render('a × b ÷ c')
-    assert_equal 'π+θ+λ', MathTextRenderer.render('π + θ + λ')
-    assert_equal '平文<sup><i>e</i></sup> mod <i>n</i>', MathTextRenderer.render('平文^{e} \bmod n')
-  end
-
-  # 関数名は立体で出す（素のままだと 1 文字ずつ斜体になる）。
-  def test_should_render_function_names_upright
-    assert_equal 'ln(<i>n</i>)', MathTextRenderer.render('\ln(n)')
-    assert_equal 'arctan(1/5)', MathTextRenderer.render('\arctan(1/5)')
-  end
-
-  # 複雑な式は今までどおり拒否する（SVG か原文テキストへ委ねる）。
-  def test_should_still_reject_complex_constructs
-    ['\sqrt{2}', '\sum x^{2}', '\int_{0}^{1} x dx', '\lim_{n→∞} x'].each do |src|
-      assert_nil MathTextRenderer.render(src), "拒否されるべき: #{src}"
-    end
-  end
-
-  # `\frac{a+b}{2}` を `a+b/2` と書くと `a + (b/2)` に読める——**意味が変わる**。
-  # 複合式なら括弧を付ける（単項なら付けない。`1/299,792,458` の見た目を保つため）。
-  def test_should_parenthesize_compound_fraction_operands
-    assert_equal '(<i>a</i>+<i>b</i>)/2', MathTextRenderer.render('\frac{a+b}{2}')
-    assert_equal '<i>a</i>/(<i>b</i>+<i>c</i>)', MathTextRenderer.render('\frac{a}{b+c}')
-    assert_equal '1/2', MathTextRenderer.render('\frac{1}{2}')
-    assert_equal '1/299,792,458', MathTextRenderer.render('\frac{1}{299{,}792{,}458}')
-    # 指数の符号は項の区切りではないので括弧を付けない
-    assert_equal '1/10<sup>-34</sup>', MathTextRenderer.render('\frac{1}{10^{-34}}')
-  end
-
-  # 根号・大型演算子はテキストで表す。SVG 画像はインラインだと TeX の決まりで潰れて
-  # 読めない（実測: \sum はインライン 2.6ex / ディスプレイ 6.4ex）。
-  def test_should_render_radicals_and_big_operators_as_text
-    assert_equal '√2', MathTextRenderer.render('\sqrt{2}')
-    # 中身が複合式なら括弧で範囲を示す（`√a+b` は「√a に b を足す」に読める）
-    assert_equal '√(<i>a</i><sup>2</sup>+<i>b</i><sup>2</sup>)', MathTextRenderer.render('\sqrt{a^2+b^2}')
-    # 上下限の直後には細空白（U+2009）を補う。数式の空白は TeX 流に落としているので、
-    # 補わないと `∑ᵢ₌₁ⁿi` と詰まって読みにくい
-    assert_equal "∑<sub><i>i</i>=1</sub><sup><i>n</i></sup>\u2009<i>i</i>",
-                 MathTextRenderer.render('\sum_{i=1}^{n} i')
-    assert_equal "∫<sub>0</sub><sup>1</sup>\u2009<i>x</i><sup>2</sup><i>dx</i>",
-                 MathTextRenderer.render('\int_{0}^{1} x^2 dx')
-    assert_equal '<i>p</i>̂', MathTextRenderer.render('\hat{p}')
-  end
-
-  # 日本語の範囲は `ぁ-ゖ` `ァ-ヺ` では足りない——**長音符 `ー`（U+30FC）が外**にある。
-  # 「ハッシュ値 mod サーバー台数」が丸ごと拒否されていた。
-  def test_should_accept_katakana_with_a_long_vowel_mark
-    assert_equal 'ハッシュ値 mod サーバー台数', MathTextRenderer.render('ハッシュ値 \bmod サーバー台数')
-  end
-
-  # 導関数のプライム。
-  def test_should_accept_primes
-    assert_equal "<i>f</i>'(<i>x</i>)", MathTextRenderer.render("f'(x)")
-    assert_equal "<i>f</i>''(0)=2<i>c</i><sub>2</sub>", MathTextRenderer.render("f''(0) = 2c_{2}")
-  end
-
-  # `\to` が記号表に無いだけで `\lim_{n \to \infty} a_n` が式ごと拒否され、
-  # SVG のまま Kindle へ残って横に潰れていた（2026-08-20 の実機で発覚）。
-  # 記号を 1 つ落とすと式全体が落ちる——ホワイトリスト方式の副作用。
-  def test_should_render_limits_with_arrows
-    assert_equal "lim<sub><i>n</i>→∞</sub>\u2009<i>a</i><sub><i>n</i></sub>",
-                 MathTextRenderer.render('\lim_{n \to \infty} a_n')
-    assert_equal '<i>x</i>∈<i>A</i>∪<i>B</i>', MathTextRenderer.render('x \in A \cup B')
-    assert_equal '<i>f</i>∘<i>g</i>', MathTextRenderer.render('f \circ g')
-  end
-
 end

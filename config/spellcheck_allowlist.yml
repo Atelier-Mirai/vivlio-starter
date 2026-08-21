@@ -10,6 +10,13 @@
 - "ajisai"
 - "asagao"
 - "bmod" # LaTeX の剰余コマンド（\bmod）
+- "injlim" # LaTeX の演算子名
+- "operatorname" # LaTeX の演算子名
+- "projlim" # LaTeX の演算子名
+- "varinjlim" # LaTeX の演算子名
+- "varliminf" # LaTeX の演算子名
+- "varlimsup" # LaTeX の演算子名
+- "varprojlim" # LaTeX の演算子名
 - "greet"
 - "High-Score"
 - "himawari"
