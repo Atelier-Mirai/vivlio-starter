@@ -134,6 +134,7 @@ kindlepreviewer <book>-kindle.epub -convert -output <out_dir> -locale <locale>
 
 - `kindlepreviewer` 未インストール時は **警告して `-kindle.epub` を残し、KPF 生成のみスキップ**（ビルド全体は失敗にしない）。
 - `-locale` は当面 `en` 固定（または `book.yml` から取得可能なら言語設定に追従。要検討）。
+  - **2026-08-21 決着: `book.language` から導出する**（`ja` → `-locale ja`）。専用キーは設けない（`config-key-criteria-guidelines.md` §2.2「重複した入口」）。`-locale` は本の言語ではなく**変換ログと Previewer UI の表示言語**なので、対応表（`en de fr it es zh ja pt nl`）に無い言語は `en` へ落とす。ja でもログ CSV のコード（`W14016` 等）は変わらず、集計は無傷。
 - 変換ログ（`Summary_Log.csv` / `Logs/*_log.csv`）の Error/Quality 件数を解析し、`log_summary` で要約表示する。
 
 ### 1-8. epubcheck ERROR 0 の回復（用語集・索引）— 両フレーバ共通
@@ -191,7 +192,7 @@ kindlepreviewer <book>-kindle.epub -convert -output <out_dir> -locale <locale>
 
 **残 TODO（本文出力が固まってから）**
 1. **Kindle 表紙の最適な渡し方**: `embed:false`=表紙なし／`embed:true`=二重、の課題を解消する方式を実機調査（§1-6）。
-2. **`-locale`**: 言語設定との連動可否（当面 `en` 固定）。
+2. ~~**`-locale`**: 言語設定との連動可否（当面 `en` 固定）。~~ → **2026-08-21 決着**（§1-7）。
 3. **`vs open` / クリーン処理**: 新規成果物（`.kpf`、`--no-clean` 時の `-kindle.epub`）のクリーン対象・open 対象への追加。
 
 ---

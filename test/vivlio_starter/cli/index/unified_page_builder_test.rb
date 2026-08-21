@@ -54,6 +54,19 @@ module VivlioStarter
           assert_includes html, 'CSS'
         end
 
+        # 索引・用語集は FrontmatterGenerator を通らないので、`<html lang>` を自前で組む。
+        # ここが `ja` のベタ書きだと、英語の本でも索引だけ日本語と申告される
+        # （読み上げ・ハイフネーションが誤る）。判型・テーマ色と同じ取り残しだった。
+        def test_generated_pages_declare_the_configured_language
+          create_index_cache({ 'CSS' => [{ 'yomi' => 'CSS', 'link' => '01.html#1' }] })
+
+          Common.stub(:book_language, 'en-US') do
+            @builder.build_index!
+          end
+
+          assert_includes File.read(INDEX_OUTPUT_FILE), '<html lang="en-US">'
+        end
+
         def test_build_index_groups_by_kana_row
           create_index_cache(
             {

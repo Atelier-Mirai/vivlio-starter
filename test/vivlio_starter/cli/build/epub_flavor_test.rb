@@ -174,6 +174,26 @@ module VivlioStarter
         refute Builder.kindlepreviewer_available?('vs-no-such-previewer-xyz')
       end
 
+      # `-locale` は book.language から導出する（専用キーは設けない）。
+      # 地域付き（ja-JP）は主要部分で解決し、kindlepreviewer が受け付けない綴りは en へ落とす
+      # ——未対応の綴りを渡すと変換自体が失敗するため、既定へ寄せてビルドを止めない。
+      def test_kpf_locale_is_derived_from_book_language
+        {
+          'ja' => 'ja', 'ja-JP' => 'ja', 'ja_JP' => 'ja',
+          'en' => 'en', 'en-US' => 'en', 'zh-Hans' => 'zh', 'DE' => 'de',
+          'ko' => 'en', 'ru' => 'en', '' => 'ja'
+        }.each do |language, expected|
+          with_book_language(language) do
+            assert_equal expected, Builder.kpf_locale, "book.language: #{language.inspect}"
+          end
+        end
+      end
+
+      # 対応表は kindlepreviewer -help の記載と一致していること（版差の検知）。
+      def test_kpf_locales_match_the_previewer_option
+        assert_equal %w[de en es fr it ja nl pt zh], Build::EpubBuilder::KPF_LOCALES.sort
+      end
+
       # 出力ファイル名: kindle → .kpf、中間は -kindle.epub
       def test_kindle_output_filenames
         assert_equal '.kpf', File.extname(Common.generate_output_filename('kindle'))
@@ -182,6 +202,13 @@ module VivlioStarter
       end
 
       private
+
+      # book.language を差し替えて実行する。CONFIG は frozen な Data なので、
+      # 参照元の Common.book_language ごとスタブする（設定の読み込み経路には触らない）。
+      def with_book_language(language)
+        resolved = language.to_s.strip.empty? ? 'ja' : language
+        Common.stub(:book_language, resolved) { yield }
+      end
 
       # FIXTURE_HTML を 1 章として generate_epub_entries! にかけ、結果 DOM を返す。
       # collect_epub_htmls と inject_heading_images_for_epub! は環境依存（章収集・theme.css）を

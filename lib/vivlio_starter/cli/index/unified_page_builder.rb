@@ -168,7 +168,7 @@ module VivlioStarter
 
           <<~HTML
             <!DOCTYPE html>
-            <html lang="ja">
+            <html lang="#{Common.book_language}">
             <head>
               <meta charset="UTF-8">
               <title>索引</title>
@@ -395,7 +395,7 @@ module VivlioStarter
 
           <<~HTML
             <!DOCTYPE html>
-            <html lang="ja">
+            <html lang="#{Common.book_language}">
             <head>
               <meta charset="UTF-8">
               <title>#{title}</title>

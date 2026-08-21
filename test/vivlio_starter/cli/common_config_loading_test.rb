@@ -128,6 +128,27 @@ module VivlioStarter
         assert_equal ConfigKeys::KEYS[%i[pdf_read ocr mode]].default, cfg.pdf_read.ocr.mode
       end
 
+      # 言語の解決は Common.book_language が唯一の実装。消費者は `<html lang>`（章・
+      # 目次・索引・用語集）・EPUB の dc:language・vivliostyle の config・
+      # kindlepreviewer の -locale と散らばっており、規則を写すと必ずどれかが取り残される。
+      def test_book_language_falls_back_to_japanese_when_unset
+        assert_equal 'ja', Common.book_language, '既定は ja'
+
+        [nil, '', '   '].each do |blank|
+          with_book_language(blank) do
+            assert_equal 'ja', Common.book_language, "空（#{blank.inspect}）は ja へ寄せる"
+          end
+        end
+      end
+
+      # 明示された言語はそのまま返す（地域付きの綴りも保つ——lang 属性・dc:language は
+      # BCP 47 なので `en-US` を `en` へ丸めてはならない）。
+      def test_book_language_keeps_the_configured_tag
+        { 'en' => 'en', 'en-US' => 'en-US', ' zh-Hans ' => 'zh-Hans' }.each do |set, expected|
+          with_book_language(set) { assert_equal expected, Common.book_language }
+        end
+      end
+
       # deep merge: 入れ子の部分指定でも兄弟キーが既定値スキーマから残る
       def test_should_preserve_sibling_keys_on_partial_override
         merged = Common.merge_hardcoded_defaults(output: { pdf: { compress: true } })
@@ -157,6 +178,20 @@ module VivlioStarter
         assert_equal 1, merged[:my_section][:foo]
         assert_equal '独自キー', merged[:book][:custom_note]
         assert merged[:book].key?(:main_title)
+      end
+
+      private
+
+      # book.language だけを差し替えた CONFIG で実行する。CONFIG は frozen な Data の
+      # 定数なので、定数ごと入れ替えて必ず戻す（既存の with_config_targets と同じ流儀）。
+      def with_book_language(language)
+        original = Common::CONFIG
+        Common.send(:remove_const, :CONFIG)
+        Common.const_set(:CONFIG, Common.wrap_config(Common.merge_hardcoded_defaults(book: { language: })))
+        yield
+      ensure
+        Common.send(:remove_const, :CONFIG)
+        Common.const_set(:CONFIG, original)
       end
     end
 

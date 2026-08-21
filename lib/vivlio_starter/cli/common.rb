@@ -905,6 +905,19 @@ module VivlioStarter
         { use: DIRECT_PAGE_PRESET }
       end
 
+      # 本の言語（`book.language`）。未設定は `ja` へ寄せる。
+      #
+      # **唯一の実装にする。** 消費者は `<html lang>`（章・目次・索引・用語集）・
+      # EPUB の `dc:language`・vivliostyle の config・kindlepreviewer の `-locale` と
+      # 散らばっており、同じ「空なら ja」の規則を各所へ写すと必ずどれかが取り残される
+      # ——実際、目次・索引・用語集は `lang="ja"` のベタ書きのまま残っていた。
+      #
+      # @return [String] BCP 47 の言語タグ（`ja` / `en-US` など）
+      def book_language
+        language = CONFIG.book.language.to_s.strip
+        language.empty? ? 'ja' : language
+      end
+
       # 未設定だと成果物が目に見えて欠ける主要キーと、その記入例。
       # 記入例は警告の「直し方」としてそのまま見せるので、著者が貼って直せる形で書く。
       REQUIRED_BOOK_KEYS = ConfigKeys.authored_examples.freeze

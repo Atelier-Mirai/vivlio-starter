@@ -2815,10 +2815,31 @@ module VivlioStarter
         # Kindle KPF 変換（§1-7）
         # ================================================================
 
-        # Kindle Previewer 3 CLI（kindlepreviewer）コマンド名と既定ロケール。
+        # Kindle Previewer 3 CLI（kindlepreviewer）コマンド名。
         KINDLEPREVIEWER_COMMAND = 'kindlepreviewer'
-        # -locale は当面 en 固定（言語設定との連動は残 TODO・§4）。
-        KPF_LOCALE = 'en'
+
+        # `-locale` が受け付ける綴り（`kindlepreviewer -help` より）。
+        # **これは本の言語ではなく、変換ログと Previewer UI の表示言語**である。
+        KPF_LOCALES = %w[en de fr it es zh ja pt nl].freeze
+
+        # 対応表に無い言語での既定。Previewer 自身の既定でもある。
+        KPF_LOCALE_FALLBACK = 'en'
+
+        # `-locale` を `book.language` から導出する。
+        #
+        # **専用のキーは設けない**（`config-key-criteria-guidelines.md` §2.2「重複した入口」）。
+        # 本の言語と工具の表示言語は概念としては別だが、`book.yml` に言語らしきキーが
+        # 2 つ並ぶと著者はどちらを設定すべきか毎回迷う。しかも実際に見える差は小さい——
+        # 変換ログ CSV は一時ディレクトリごと捨てており、著者へはこちらが日本語で
+        # 要約して見せる（`summarize_kpf_logs`）。残る効きどころは Previewer の UI だけ。
+        #
+        # `ja-JP` のような地域付きは主要部分（`ja`）で解決する。対応表に無ければ `en`。
+        #
+        # @return [String] `-locale` へ渡す綴り
+        def kpf_locale
+          primary = VivliostyleConfigWriter.resolve_language.split(/[-_]/).first.to_s.downcase
+          KPF_LOCALES.include?(primary) ? primary : KPF_LOCALE_FALLBACK
+        end
 
         # kindlepreviewer が PATH 上に存在するかを返す。テストでは本メソッドをスタブして
         # 「未導入時はスキップして継続」する経路を検証する（DI・§5-1）。
@@ -2835,10 +2856,10 @@ module VivlioStarter
         #
         # @param epub_path [String] 入力 Kindle EPUB（…-kindle.epub）
         # @param kpf_path [String] 出力 KPF（ルート直下）
-        # @param locale [String] kindlepreviewer の -locale
+        # @param locale [String] kindlepreviewer の -locale（既定は book.language 由来）
         # @param command [String] kindlepreviewer コマンド名（DI 用）
         # @return [Boolean] KPF を生成できたか
-        def convert_epub_to_kpf!(epub_path, kpf_path, locale: KPF_LOCALE, command: KINDLEPREVIEWER_COMMAND)
+        def convert_epub_to_kpf!(epub_path, kpf_path, locale: kpf_locale, command: KINDLEPREVIEWER_COMMAND)
           return false unless File.exist?(epub_path)
 
           unless kindlepreviewer_available?(command)

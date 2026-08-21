@@ -129,10 +129,9 @@ module VivlioStarter
           author.empty? ? '著者名' : author
         end
 
-        def resolve_language
-          language = Common::CONFIG.book.language.to_s.strip
-          language.empty? ? 'ja' : language
-        end
+        # 言語の解決規則は `Common.book_language` が唯一の実装（章・目次・索引・
+        # 用語集の `<html lang>` と kindlepreviewer の `-locale` も同じ規則で解く）。
+        def resolve_language = Common.book_language
       end
     end
   end

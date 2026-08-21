@@ -144,7 +144,7 @@ module VivlioStarter
                 href: "#{Common.asset_prefix}stylesheets/toc.css"
               - rel: "stylesheet"
                 href: "#{Common.asset_prefix}#{PreProcessCommands::BookSettingsCss.output_path}"
-            lang: 'ja'
+            lang: '#{Common.book_language}'
             ---
 
             # 目次
