@@ -151,6 +151,5 @@
 
 ## 後日調査
 
-- **A4 以外の判型での目次・索引・用語集**: この 3 ページは長らく `book-settings.css` を読んでおらず、`page-settings.css` の `@page { size: 210mm 297mm }` で **A4 固定**に組まれていた（`chapter-pagebreak-spec.md` §7.2 で link を追加して解消）。A5 / B5 でのビルド確認は未実施。
 - **Kindle 表紙（KDP 渡し）** の扱い。
 - **`kindlepreviewer` の `-locale`** が現在 `en` 固定（必要に応じて切り替え可能にするか検討）。
