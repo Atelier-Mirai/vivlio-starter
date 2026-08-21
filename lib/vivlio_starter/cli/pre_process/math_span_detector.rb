@@ -26,8 +26,17 @@
 #   数式画像にしても得るものは無く、それを機械が黙って決めてよい判断でもない。
 #
 # 逃げ道:
-#   確実に数式にしたい → `$…$` で明示する
+#   確実に数式にしたい → `$…$` で明示する / ```math フェンスに置く
 #   確実にコードのままにしたい → 言語付きフェンス（```ruby）に置く
+#
+# ```math は判定を通さない（仕様 §6.1）:
+#   GitHub が同じ綴りでディスプレイ数式を表すので、著者にとって学習が要らない。
+#   言語を明示した以上これは**宣言**であって推測ではないので、行数・実行結果らしさ・
+#   関係演算子・`math?` のいずれも問わずディスプレイ数式にする。
+#   `cos = 1 - 2 + 4 - 6` のように数式のしるしを 1 つも持たない綴り——素の判定では
+#   コードと区別が付かないもの——を組ませる唯一の手段でもある。
+#   Prism の言語名と衝突しない（Prism にあるのは `latex` / 別名 `tex` `context`）。
+#   ```latex は「LaTeX のソースを見せる」用途なのでコードのまま扱う。
 # ================================================================
 
 require_relative '../common'
@@ -89,6 +98,14 @@ module VivlioStarter
         # 揃えるための関係演算子（複数行を \\begin{aligned} で組むときの `&` の位置）。
         RELATION = /(?<![<>=!])[=≡≈≒](?![=])/
 
+        # 数式であることを著者が明示したフェンス（```math / ~~~math）。
+        FENCE_OPENER = /\A(?:`{3,}|~{3,})[ \t]*/
+        EXPLICIT_LANG = /#{FENCE_OPENER.source}math[ \t]*\z/i
+
+        # 著者がすでに TeX の行組みを書いている印。`\begin{aligned}` や `\\` があれば
+        # そのまま渡す（こちらで aligned を被せると二重になる）。
+        AUTHORED_ROWS = /\\\\|\\begin\{/
+
         module_function
 
         # 1 つの綴りが数式か。
@@ -135,12 +152,20 @@ module VivlioStarter
         # --- ここから下は内部 -------------------------------------------------
 
         # フェンスブロックがディスプレイ数式なら `$$…$$` を返す。違えば nil。
+        #
+        # ```math は**宣言**なので判定を通さない。素の言語なしフェンスだけが推測の対象で、
+        # そちらには行数・実行結果らしさ・関係演算子・`math?` の 4 条件が掛かる。
         def display_math(block)
           lines = block.lines.map(&:chomp)
-          return nil unless lines.first.to_s.strip.match?(/\A(?:`{3,}|~{3,})\z/) # 言語付きは常にコード
+          opener = lines.first.to_s.strip
+          explicit = opener.match?(EXPLICIT_LANG)
+          return nil unless explicit || opener.match?(/#{FENCE_OPENER.source}\z/) # 他の言語付きは常にコード
 
           body = lines[1..-2].to_a.map(&:rstrip).reject { it.strip.empty? }
-          return nil if body.empty? || body.size > MAX_DISPLAY_LINES
+          return nil if body.empty?
+          return "\n$$\n#{display_body(body)}\n$$\n" if explicit
+
+          return nil if body.size > MAX_DISPLAY_LINES
           return nil if body.any? { it.match?(OUTPUT_MARKERS) }
           return nil unless body.all? { it.match?(RELATION) && math?(it) }
 
@@ -149,8 +174,10 @@ module VivlioStarter
 
         # 複数行は `\begin{aligned}` で関係演算子の位置を揃える。
         # 1 行ずつ独立した `$$` にすると、`X = …` に続く `= …` の導出が揃わない。
+        # 著者がすでに `\\` や `\begin{…}` を書いているときは、その行組みをそのまま渡す。
         def display_body(body)
           return body.first.strip if body.size == 1
+          return body.map(&:strip).join("\n") if body.any? { it.match?(AUTHORED_ROWS) }
 
           rows = body.map { align_row(it.strip) }
           "\\begin{aligned}\n#{rows.join(" \\\\\n")}\n\\end{aligned}"

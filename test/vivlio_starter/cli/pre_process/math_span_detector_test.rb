@@ -11,7 +11,8 @@
 #   MD-02 **コードは起こさない**（拒否が優先。いちばん大事）
 #   MD-03 日本語を含む綴りは数式にしない（明示は尊重し、推測は保守的に・§3.4）
 #   MD-04 言語なしフェンスをディスプレイ数式へ起こす／複数行は aligned で揃える
-#   MD-05 言語付きフェンスは常にコード
+#   MD-05 言語付きフェンスは常にコード（```math を除く）
+#   MD-05b ```math は宣言なので判定を通さずディスプレイ数式にする
 #   MD-06 実行結果の貼り付けを弾く（`【…】` 見出し・矢印）
 #   MD-07 `$` を含む綴りは触らない（デリミタが壊れる）
 #   MD-08 フェンスの中のコードスパンを拾わない
@@ -103,10 +104,52 @@ class MathSpanDetectorTest < Minitest::Test
   end
 
   # MD-05: 言語付きフェンスは常にコード（著者が言語を明示している）。
+  # ```latex は「LaTeX のソースを見せる」用途なのでコードのまま（```math とは別物）。
   def test_should_never_touch_a_fence_with_a_language
-    md = "```ruby\nx = Σ_value ** 2\n```\n"
+    ["```ruby\nx = Σ_value ** 2\n```\n", "```latex\n\\frac{1}{2}\n```\n"].each do |md|
+      assert_equal md, D.transform(md), "言語付きはコード:\n#{md}"
+    end
+  end
 
-    assert_equal md, D.transform(md)
+  # MD-05b: ```math は**宣言**なので判定を通さない。
+  # `cos = 1 - 2 + 4 - 6` は数式のしるしを 1 つも持たず、素の判定ではコードと
+  # 区別が付かない（`cos = 1 - 2` と `total = price - tax` は同じ形）。
+  # 明示したときだけ組めるようにするのがこのフェンスの存在理由。
+  def test_should_treat_an_explicit_math_fence_as_display_math
+    out = D.transform("```math\ncos = 1 - 2 + 4 - 6\nsin = 0 - 3 + 5 - 7\n```\n")
+
+    assert_includes out, '\\begin{aligned}'
+    assert_includes out, 'cos &= 1 - 2 + 4 - 6 \\\\'
+    assert_includes out, 'sin &= 0 - 3 + 5 - 7'
+    refute D.math?('cos = 1 - 2 + 4 - 6'), '素の判定ではコード（だから明示が要る）'
+  end
+
+  # MD-05b: 宣言なので、素のフェンスに掛かる 4 条件（行数・実行結果らしさ・
+  # 関係演算子・math?）のいずれも問わない。
+  def test_should_not_apply_heuristics_to_an_explicit_math_fence
+    assert_includes D.transform("```math\n【結果】→ 3.14\n```\n"), '$$', '実行結果らしさで弾かない'
+    assert_includes D.transform("```math\nx + 1\n```\n"), '$$', '関係演算子が無くても組む'
+
+    long = (1..12).map { "a_#{it} = #{it}" }.join("\n")
+
+    assert_includes D.transform("```math\n#{long}\n```\n"), '$$', '行数の上限を掛けない'
+  end
+
+  # MD-05b: 綴りの揺れ（大文字・チルダフェンス）も受ける。
+  def test_should_accept_math_fence_spelling_variants
+    ["```MATH\nx = 1\n```\n", "~~~math\nx = 1\n~~~\n", "``` math \nx = 1\n```\n"].each do |md|
+      assert_includes D.transform(md), "$$\nx = 1\n$$", "受理されるべき:\n#{md}"
+    end
+  end
+
+  # MD-05b: 著者がすでに `\\` や `\begin{…}` で行組みを書いていたら、そのまま渡す。
+  # こちらで aligned を被せると二重になって MathJax が落ちる。
+  def test_should_pass_through_author_written_tex_rows
+    authored = "```math\n\\begin{aligned}\na &= b \\\\\n&= c\n\\end{aligned}\n```\n"
+    out = D.transform(authored)
+
+    assert_equal 1, out.scan('\\begin{aligned}').size, 'aligned を二重に被せない'
+    assert_includes D.transform("```math\na = b \\\\\nc = d\n```\n"), "a = b \\\\\nc = d"
   end
 
   # MD-06: 実行結果の貼り付けを弾く。言語なしフェンスの多く（546 件中 476 件）は
@@ -146,7 +189,7 @@ class MathSpanDetectorTest < Minitest::Test
 
   # MD-09: 冪等。前処理は再実行されうる。
   def test_should_be_idempotent
-    md = "約数は `√n` 以下。\n\n```\nπ(n) ≈ n / ln(n)\n```\n"
+    md = "約数は `√n` 以下。\n\n```\nπ(n) ≈ n / ln(n)\n```\n\n```math\ncos = 1 - 2\n```\n"
     once = D.transform(md)
 
     assert_equal once, D.transform(once)
