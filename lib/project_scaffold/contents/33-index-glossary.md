@@ -296,7 +296,7 @@ index:
 |:---|:---|
 | `config/index_glossary_terms.yml` | 承認済み用語の統合辞書（索引・用語集共通） |
 | `config/index_glossary_rejected.yml` | 棄却済み用語のリスト |
-| `index_library.yml` | 書籍間で持ち運ぶ用語集[g]・reject・読み（export/import） |
+| `index_library.yml` | 書籍間で持ち運ぶ用語集 `[g]`・reject・読み（export/import） |
 | `config/index_yomi_overrides.yml` | 読みの個人辞書（MeCab より優先。import で蓄積） |
 | `_index_glossary_review.md` | レビュー用 Markdown ファイル |
 | `_indexpage.html` | 生成された索引ページ |
