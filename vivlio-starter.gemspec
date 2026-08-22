@@ -60,4 +60,8 @@ Gem::Specification.new do |spec|
   # rubygems.org の gem ページに「Changelog」リンクを出す。
   # リリースノート（要点）と変更履歴（網羅）の分担を、利用者側で完結させるため。
   spec.metadata['changelog_uri'] = 'https://github.com/Atelier-Mirai/vivlio-starter/blob/master/CHANGELOG.md'
+  # 不具合の行き先と原本の在り処を gem ページから辿れるようにする。
+  # 利用者が「どこへ報告すればよいか」を探して回らずに済む。
+  spec.metadata['source_code_uri'] = 'https://github.com/Atelier-Mirai/vivlio-starter'
+  spec.metadata['bug_tracker_uri'] = 'https://github.com/Atelier-Mirai/vivlio-starter/issues'
 end

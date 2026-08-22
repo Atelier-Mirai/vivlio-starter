@@ -359,6 +359,10 @@ def process_line(line, file_basename)
   #    「バッククォート・空白・バッククォート」と食べて地の文を飲み込んでいた。
   #    退避トークンは [...] を含まない（含めると INDEX_TERM_PATTERN に自己マッチする）。
   mask = LineMask.new(line)
+  # HTML 化されたインラインコードを先に退避する。索引スキャンは表やコンテナが
+  # 生 HTML へ変換された**後**に走るので、<code> の中の記法見本が裸のマークアップに
+  # 見える（index-html-code-protection-spec.md §1）。
+  mask.protect!(Masking::HTML_INLINE_CODE)
   mask.protect!(Masking::INLINE_CODE_SPAN)
 
   mask.substitute_match!(INDEX_TERM_PATTERN) do |match|
@@ -532,6 +536,10 @@ end
         # 内側の HTML タグだけが個別に退避されて要素が分断される。
         def protect_untouchable_regions!(mask)
           mask.protect!(TAGGED_TERM_PATTERN)  # 既にタグ付けされた索引語要素
+          # HTML 化されたインラインコード。**中身ごと**退避する必要があるので
+          # /<[^>]+>/ より先に置く——後にすると <code> と </code> が個別に退避され、
+          # 中身を囲む対が消えて保護できない。
+          mask.protect!(Masking::HTML_INLINE_CODE)
           mask.protect!(/<[^>]+>/)            # 残りの HTML タグ（属性内の誤マッチ防止）
           mask.protect!(MARKDOWN_LINK_PATTERN) # リンク・画像記法 [ラベル](URL)
           mask.protect!(/\{[^{}]*\|[^{}]*\}/) # 振り仮名 {漢字|ふりがな}

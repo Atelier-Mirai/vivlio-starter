@@ -25,6 +25,13 @@ module VivlioStarter
           FileUtils.rm_rf(@temp_dir)
         end
 
+        # 索引語（flags: i）の辞書を書き、それを読むスキャナを返す
+        def build_scanner(terms)
+          rows = terms.map { "  - term: #{it['term']}\n    yomi: #{it['yomi']}\n    flags: #{it['flags']}" }
+          File.write('config/index_glossary_terms.yml', "terms:\n#{rows.join("\n")}\n")
+          IndexMatchScanner.new
+        end
+
         # 索引語かつ用語集語（flags: ig）を 1 語だけ持つ辞書を書く
         def write_glossary_term(term, yomi: 'よみ')
           File.write('config/index_glossary_terms.yml', <<~YAML)
@@ -951,6 +958,85 @@ module VivlioStarter
           result = @scanner.find_chapter_file('nonexistent')
 
           assert_nil result
+        end
+
+        # --- phase: HTML 化されたインラインコードの保護 ---
+        # （index-html-code-protection-spec.md）
+        #
+        # 索引スキャンは表やコンテナが生 HTML へ変換された**後**に走る。バッククォートは
+        # 残っていないので、backtick 前提の保護だけでは <code> の中の記法見本が
+        # 裸のマークアップに見える。実際、早見表のセルに書いた `[用語|読み]` が
+        # 用語「用語」・読み「読み」として索引に載り、紙面の「その他」に現れていた。
+
+        # HC-01: <code> の中の索引記法を手動マークアップとして登録しない
+        def test_scan_ignores_index_markup_inside_html_code
+          File.write('hc01.md', <<~MD)
+            # Test
+
+            <td><code>[用語|読み]</code>（読みは省略可）</td>
+          MD
+
+          @scanner.scan_and_tag_file!('hc01.md')
+
+          refute_includes @scanner.matches.map { it['term'] }, '用語'
+        end
+
+        # HC-02 / HC-03: <code> の中の辞書語は当てず、外の同じ語は従来どおり当てる
+        def test_dictionary_terms_are_tagged_outside_html_code_only
+          scanner = build_scanner([{ 'term' => 'ビルド', 'yomi' => 'びるど', 'flags' => 'i' }])
+          File.write('hc02.md', <<~MD)
+            # Test
+
+            <p><code>ビルド</code> はここではリテラルです。ビルドの説明は地の文にあります。</p>
+          MD
+
+          scanner.scan_and_tag_file!('hc02.md')
+          tagged = File.read('hc02.md')
+
+          assert_equal 1, tagged.scan('id="idx-').size,
+                       "地の文の 1 件だけがタグ付けされる:\n#{tagged}"
+          assert_includes tagged, '<code>ビルド</code>', 'code の中は無傷'
+        end
+
+        # HC-04: **要**。非貪欲でないと、1 行に複数ある <code> の間の地の文まで
+        # 保護され、索引が静かに減る。
+        def test_protection_is_not_greedy_across_multiple_code_elements
+          scanner = build_scanner([{ 'term' => 'ビルド', 'yomi' => 'びるど', 'flags' => 'i' }])
+          File.write('hc04.md', <<~MD)
+            # Test
+
+            <td><code>vs new</code> でビルドし <code>vs open</code> で開く</td>
+          MD
+
+          scanner.scan_and_tag_file!('hc04.md')
+
+          assert_includes File.read('hc04.md'), 'index-term', '<code> の間の地の文は保護しない'
+        end
+
+        # HC-05: 属性つきも保護する
+        def test_protection_covers_code_with_attributes
+          File.write('hc05.md', <<~MD)
+            # Test
+
+            <code class="language-ruby">[用語|読み]</code>
+          MD
+
+          @scanner.scan_and_tag_file!('hc05.md')
+
+          refute_includes @scanner.matches.map { it['term'] }, '用語'
+        end
+
+        # HC-06: バッククォート形式の保護が従来どおり効く（回帰）
+        def test_backtick_protection_still_works
+          File.write('hc06.md', <<~MD)
+            # Test
+
+            記法は `[用語|読み]` と書きます。
+          MD
+
+          @scanner.scan_and_tag_file!('hc06.md')
+
+          refute_includes @scanner.matches.map { it['term'] }, '用語'
         end
       end
     end

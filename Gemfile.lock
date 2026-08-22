@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    vivlio-starter (1.0.0.pre.rc.2)
+    vivlio-starter (1.0.0.pre.rc.3)
       combine_pdf (~> 1.0)
       kramdown (~> 2.4)
       mini_magick (~> 4.12)
@@ -167,7 +167,7 @@ CHECKSUMS
   ttfunk (1.8.0) sha256=a7cbc7e489cc46e979dde04d34b5b9e4f5c8f1ee5fc6b1a7be39b829919d20ca
   unicode-display_width (3.2.0) sha256=0cdd96b5681a5949cdbc2c55e7b420facae74c4aaf9a9815eee1087cb1853c42
   unicode-emoji (4.2.0) sha256=519e69150f75652e40bf736106cfbc8f0f73aa3fb6a65afe62fefa7f80b0f80f
-  vivlio-starter (1.0.0.pre.rc.2)
+  vivlio-starter (1.0.0.pre.rc.3)
 
 BUNDLED WITH
   4.0.11
