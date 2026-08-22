@@ -232,6 +232,9 @@ module VivlioStarter
           # † は章ごとの初出だけに付ける（§4.1）。章の走査の入口はここだけなので、
           # 「この章で † を付けた用語」もここで開き直す
           @glossary_linked_terms = Set[]
+          # 参照リンクのラベルは**文書ごと**に決まる。行単位の判定では引けないので
+          # ここで一度だけ集める（markdown-notation-collision-spec.md §3）。
+          @link_labels = IndexMarkup.link_labels(Masking.strip_code(content))
 
           lines = content.lines
           Masking.each_prose_line(content) do |line, lineno|
@@ -368,8 +371,12 @@ def process_line(line, file_basename)
   mask.substitute_match!(INDEX_TERM_PATTERN) do |match|
     term_text, yomi_raw = extract_term_and_yomi(match[1])
 
+    # 参照リンク（`[本文][ref]` と定義済みラベル）は索引語にしない。
+    # 外さないとリンクもリンク定義も索引タグに化けて消える（§3 T-1）。
+    if IndexMarkup.reference_link?(match, Array(@link_labels))
+      match[0]
     # 無効な用語をスキップ（元のテキストをそのまま返す）
-    if skip_term?(term_text)
+    elsif skip_term?(term_text)
       match[0]
     else
       # 読みの決定順序:

@@ -106,6 +106,56 @@ module VivlioStarter
         assert_equal '!DOCTYPE', IndexMarkup.plain_text('!DOCTYPE')
         assert_equal '404', IndexMarkup.plain_text('404')
       end
+
+      # --- 参照リンクとの共存（markdown-notation-collision-spec.md §3・T-1）------
+
+      def test_link_labels_collects_definitions
+        text = "[sample]: https://example.com\n  [Indented Label]: /foo \"title\"\n本文\n"
+        assert_equal %w[sample indented\ label], IndexMarkup.link_labels(text)
+      end
+
+      # CommonMark はラベルの大文字小文字を区別せず、連続する空白を 1 つに畳む。
+      def test_normalize_label_follows_commonmark
+        assert_equal 'foo bar', IndexMarkup.normalize_label("  Foo   BAR \n")
+      end
+
+      # 脚注定義は綴りが同じだが別の記法。拾うとラベル表が汚れる。
+      def test_link_labels_ignores_footnote_definition
+        assert_empty IndexMarkup.link_labels("[^1]: 脚注の本体です。\n")
+      end
+
+      # 行頭のインデントは 3 つまで。4 つ以上は字下げコードブロックの領域。
+      def test_link_labels_ignores_over_indented_definition
+        assert_empty IndexMarkup.link_labels("    [deep]: https://example.com\n")
+      end
+
+      # `[本文][ref]` は前半も後半も索引語にしない。定義の有無を問わない
+      # ——索引語を 2 つ区切りなしで並べる用途が存在しないため。
+      def test_reference_link_detects_adjacent_brackets
+        line = '参照リンク [完全形][undefined] です。'
+        matches = matches_in(line)
+        assert_equal 2, matches.size
+        assert(matches.all? { IndexMarkup.reference_link?(it, []) })
+      end
+
+      # 定義済みラベルの単独形（省略参照）も索引語にしない。
+      def test_reference_link_detects_shortcut_form
+        match = matches_in('省略形 [sample] です。').first
+        assert IndexMarkup.reference_link?(match, ['sample'])
+        refute IndexMarkup.reference_link?(match, ['other'])
+      end
+
+      # 定義の無い `[基本情報技術者]` は従来どおり索引マークアップ。
+      def test_reference_link_keeps_plain_index_markup
+        match = matches_in('索引語 [基本情報技術者] は残ります。').first
+        refute IndexMarkup.reference_link?(match, ['sample'])
+      end
+
+      private
+
+      def matches_in(line)
+        line.to_enum(:scan, IndexMarkup::TERM_PATTERN).map { Regexp.last_match }
+      end
     end
   end
 end

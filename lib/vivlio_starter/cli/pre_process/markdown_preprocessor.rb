@@ -573,10 +573,19 @@ module VivlioStarter
 
           protected_text, spans = MarkdownUtils.extract_code_spans(context.content)
 
+          # 参照リンクのラベルは文書ごとに決まる（markdown-notation-collision-spec.md §3）。
+          # 外さないと `[ref]: url` が `ref: url` に化けてリンク定義が静かに壊れる。
+          labels = IndexMarkup.link_labels(protected_text)
+
           stripped = protected_text.gsub(IndexMarkup::TERM_PATTERN) do
-            inner = ::Regexp.last_match(1)
-            # 脚注参照 [^id] はそのまま残す
-            IndexMarkup.skip_term?(inner) ? ::Regexp.last_match(0) : IndexMarkup.plain_text(inner)
+            match = ::Regexp.last_match
+            inner = match[1]
+            # 脚注参照 [^id] と参照リンクはそのまま残す
+            if IndexMarkup.skip_term?(inner) || IndexMarkup.reference_link?(match, labels)
+              match[0]
+            else
+              IndexMarkup.plain_text(inner)
+            end
           end
 
           context.content = MarkdownUtils.restore_code_spans(stripped, spans)

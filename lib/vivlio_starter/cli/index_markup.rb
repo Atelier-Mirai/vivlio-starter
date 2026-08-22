@@ -54,6 +54,58 @@ module VivlioStarter
       # 辞書登録が 2 パターンを順に当てる方式のため、こちらは `|` を持たない。
       TERM_ONLY_PATTERN = /(?<!\^)\[([^\]|]+)\](?!\()/
 
+      # --- 参照リンク（CommonMark）との共存 -------------------------------
+      #
+      # `[foo]` が参照リンクになるのは、**同じ文書に `[foo]: url` の定義がある
+      # ときだけ**と CommonMark が定めている。定義が無ければただの文字列である。
+      # この規則をそのまま使えば、判定の根拠が「Vivlio Starter の都合」ではなく
+      # Markdown の仕様になる。仕様: markdown-notation-collision-spec.md §3
+      #
+      # これを入れる前は、参照リンクもリンク定義も索引語に化けて**リンクが消えて
+      # いた**（実測: `[本文][ref]` が 2 つの索引語になり、`[ref]: url` の定義行も
+      # 索引語＋素の URL になっていた）。
+
+      # リンク参照定義の行。CommonMark は行頭のインデントを 3 つまで認める。
+      # **脚注定義 `[^1]: …` を除く。** 綴りは同じでも別の記法で、拾うとラベル表が
+      # 汚れる（実測: 本書 4 章と雛形 2 ファイルの脚注が入り込んでいた）。
+      LINK_DEFINITION = /\A[ \t]{0,3}\[(?!\^)([^\[\]\n]+)\]:[ \t]*\S/
+
+      # 文書に定義されたリンクラベルを集める。
+      # コード領域は呼び出し側が Masking で除いてから渡す。
+      # @param text [String] 章の内容
+      # @return [Array<String>] 正規化済みラベル
+      def link_labels(text)
+        text.to_s.each_line.filter_map do |line|
+          matched = line.match(LINK_DEFINITION)
+          normalize_label(matched[1]) if matched
+        end.uniq
+      end
+
+      # ラベルの正規化。CommonMark は大文字小文字を区別せず、連続する空白を 1 つに畳む。
+      def normalize_label(label) = label.to_s.strip.gsub(/\s+/, ' ').downcase
+
+      # そのマッチは参照リンクの一部か（＝索引マークアップではないか）。
+      #
+      # 見分けるのは 2 つの形だけでよい。
+      #   1. **隣接した `][`** … `[本文][ref]` `[ref][]`。定義の有無を問わず外す
+      #      ——索引語を 2 つ区切りなしで並べる用途は存在しないので、表を引くまでもない
+      #   2. **定義済みラベルの単独形** … `[ref]`。ここだけラベル表を引く
+      # 定義行そのもの（`[ref]: url`）は 2 に含まれる（自分のラベルは必ず表にある）。
+      #
+      # 前後 1 文字は MatchData から引く。走査対象の文字列を受け取らずに済むので、
+      # 退避（マスク）済みの行を扱う索引スキャナからも、素の本文を扱う前処理からも
+      # 同じ呼び方ができる。
+      #
+      # @param match [MatchData] TERM_PATTERN のマッチ
+      # @param labels [Array<String>] link_labels の戻り
+      # @return [Boolean] 参照リンクなら true
+      def reference_link?(match, labels)
+        return true if match.post_match.start_with?('[')  # [本文][ref] の前半・[ref][]
+        return true if match.pre_match.end_with?(']')     # 後半の [ref]
+
+        labels.include?(normalize_label(match[1]))
+      end
+
       # ブラケットの中身が索引語として無効か。
       # パターンが弾けない「中身で見分ける記法」——参照脚注 `[^id]`——を落とす。
       # @param term_text [String, nil] ブラケットの中身

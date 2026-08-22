@@ -43,7 +43,7 @@ class NotationCoverageTest < Minitest::Test
     { name: "見出し h3",          signal: /<h3[\s>]/,                                      state: :kept },
     { name: "脚注",               signal: /footnote|脚注の中身/,                           state: :kept },
     { name: "参照リンク",         signal: /<a\s[^>]*href="https:\/\/example\.com"[^>]*>(?:(?!<\/a>).)*完全形/m,
-                                  state: :known_broken, spec: "§3 T-1" },
+                                  state: :kept },
     { name: "タスクリスト",       signal: /task-list-item/,
                                   state: :known_broken, spec: "§4 T-2" }
   ].freeze
