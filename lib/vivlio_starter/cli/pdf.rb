@@ -562,12 +562,26 @@ module VivlioStarter
 
       # macOS の Preview.app で PDF を開く
       class PdfOpener
+        # 自動実行のときだけプレビューを抑える環境変数。
+        #
+        # 著者が `vs build` を打ったあとに成果物が開くのは**正しい振る舞い**なので、
+        # 既定は従来どおり開く。抑えるのはリリースゲートのように機械が検査する場面だけ
+        # ——`test:layout` と `test:targets` で 7 回ずつ、`test:manual` でも数回ビルドする
+        # ため、放っておくと 14 枚以上のプレビューが次々に開き、走行中の画面へ手を出す
+        # ことになる。Rake のテストタスクが立てる（Rakefile の test:no_preview）。
+        SUPPRESS_ENV = 'VS_NO_PDF_PREVIEW'
+
         def initialize(options, path)
           @options = options || {}
           @explicit_path = path
         end
 
         def call
+          if suppressed?
+            Common.log_info("[open] #{SUPPRESS_ENV} が設定されているためプレビューを開きません")
+            return
+          end
+
           apply_verbose
           pdf_path = resolve_pdf_path
           Common.log_action('PDFを開いています…')
@@ -589,6 +603,8 @@ module VivlioStarter
         private
 
         attr_reader :options, :explicit_path
+
+        def suppressed? = Common.truthy?(ENV.fetch(SUPPRESS_ENV, nil))
 
         def apply_verbose
           ENV['VERBOSE'] = '1' if options[:verbose]

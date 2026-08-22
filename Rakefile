@@ -226,7 +226,7 @@ namespace :test do
 
   # RC 前総点検（canary は上流要因のため含めない）
   # test（Enhanced）に加え test:standard（Standard 強制）も回し、両プロバイダ経路を保証する。
-  task release: ['test', 'test:standard', 'test:layout', 'test:targets', 'test:manual', 'test:package']
+  task release: ['test', 'test:standard', 'test:layout', 'test:targets', 'test:notation', 'test:manual', 'test:package']
 end
 
 Rake::Task["test:manual"].clear_comments
@@ -235,7 +235,25 @@ Rake::Task["test:package"].clear_comments
 Rake::Task["test:package"].comment = "パッケージング E2E（gem build → 隔離インストール → ビルド確認）"
 Rake::Task["test:canary"].clear_comments
 Rake::Task["test:canary"].comment = "依存カナリア（@vivliostyle/cli 最新版での破壊検知）"
-Rake::Task["test:release"].comment = "RC 前総点検（test → standard → layout → targets → manual → package を一括実行）"
+# ------------------------------------------------------------------
+# 実ビルドを伴うテストではプレビューを開かない
+#
+# 著者の `vs build` は従来どおり成果物を開く（目的が「見ること」だから）。
+# 抑えるのは機械が検査する場面だけ——ゲートは 14 回以上ビルドするので、
+# 放っておくと Preview が次々に開き、走行中の画面へ手を出すことになる。
+# ENV は子プロセス（Rake::TestTask が起こす ruby、その先の bin/vs）へ継がれる。
+# ------------------------------------------------------------------
+namespace :test do
+  task :no_preview do
+    ENV['VS_NO_PDF_PREVIEW'] = '1'
+  end
+end
+
+%w[layout targets notation manual package].each do |name|
+  Rake::Task["test:#{name}"].enhance(['test:no_preview'])
+end
+
+Rake::Task["test:release"].comment = "RC 前総点検（test → standard → layout → targets → notation → manual → package を一括実行）"
 
 # デフォルトタスク（rake -T には出さない）
 task default: :test
