@@ -163,6 +163,21 @@ Rake::Task["test:type3"].clear_comments
 Rake::Task["test:type3"].comment = "Type 3 フォント検証（techbook: true/false を実ビルドし混入量を比較）"
 
 # ------------------------------------------------------------------
+# 記法網羅テスト（フィクスチャを隔離プロジェクトで実ビルドし、記法の生存を見る）
+# markdown-notation-collision-spec.md §13。実ビルドを伴うため通常テストからは除外
+# ------------------------------------------------------------------
+namespace :test do
+  Rake::TestTask.new(:notation) do |t|
+    t.libs << "test"
+    t.pattern = "test/vivlio_starter/notation/**/*_test.rb"
+    t.warning = false
+  end
+end
+
+Rake::Task["test:notation"].clear_comments
+Rake::Task["test:notation"].comment = "記法網羅テスト（CommonMark/GFM の記法が実ビルドで失われないかを VFM 単体と突き合わせ）"
+
+# ------------------------------------------------------------------
 # Kindle 変換検証テスト（opt-in・Mac/Win ローカル専用）
 # Kindle Previewer 3 CLI（kindlepreviewer）で EPUB を実変換し、
 # conversionLog の画像系警告（W14015/W14012/W14010）ゼロを検証する。
