@@ -111,6 +111,9 @@ module VivlioStarter
           @main_section_range = {}
           @main_decided = Set[]
           @section_warned = Set[]
+          # 単位・記号とまぎらわしい手動マークアップ（[g] [eV]）。用語 → 出現箇所。
+          # 紙面へ出る直前の番人（markdown-notation-collision-spec.md §11-3）
+          @short_ascii_terms = Hash.new { |h, k| h[k] = [] }
           @current_heading_level = nil
           @current_lineno = nil
           # 用語ごとに不変な導出物のキャッシュ（1 行ごとに作り直さない）
@@ -162,6 +165,7 @@ module VivlioStarter
           end
 
           save_matches!
+          warn_short_ascii_terms
           Common.log_success("索引語スキャン完了: #{@matches.size} 件の索引語を検出")
         end
 
@@ -235,6 +239,7 @@ module VivlioStarter
           # 参照リンクのラベルは**文書ごと**に決まる。行単位の判定では引けないので
           # ここで一度だけ集める（markdown-notation-collision-spec.md §3）。
           @link_labels = IndexMarkup.link_labels(Masking.strip_code(content))
+          @current_chapter = file_basename
 
           lines = content.lines
           Masking.each_prose_line(content) do |line, lineno|
@@ -246,6 +251,39 @@ module VivlioStarter
           @current_heading_level = nil
           @current_lineno = nil
           lines.join
+        end
+
+        # 単位・記号とまぎらわしい手動マークアップを控える。
+        #
+        # **ここでは弾かない。** `[g]` が本当に索引語のつもりかは機械に判らず、
+        # 弾けば正しい手動マークアップまで巻き込む。`vs index:auto` の R9 は辞書を
+        # 守るが紙面は守らないので、紙面へ出る直前にも同じしきい値で見張り、
+        # **警告だけ**出す（markdown-notation-collision-spec.md §11-3）。
+        # **読みは呼び出し側から受け取る。** ここへ届く term_text は
+        # extract_term_and_yomi が読みを外した後なので、`[Hz|へるつ]` と `[Hz]` を
+        # 中身だけでは見分けられない（実測で読み付きまで警告した）。
+        # @param term_text [String] 読みを外した用語
+        # @param yomi_raw [String, nil] 記法で指定された読み（無ければ nil）
+        def note_short_ascii_term(term_text, yomi_raw)
+          return if yomi_raw # 読みを添えてあるのは索引へ載せる意思表示
+          return unless IndexMarkup.short_ascii_term?(term_text)
+
+          @short_ascii_terms[term_text] << "#{@current_chapter}:#{@current_lineno}"
+        end
+
+        # 控えた分をまとめて知らせる。語ごとに 1 行——同じ `[g]` が 30 箇所あっても
+        # 30 行並べない。直し方は R9 の文面に揃える（著者から見て同じ話なので）。
+        def warn_short_ascii_terms
+          return if @short_ascii_terms.empty?
+
+          @short_ascii_terms.each do |term, places|
+            Common.log_warn(
+              "[#{term}] を索引語として登録しました（単位・記号表記の可能性があります）",
+              detail: "意図しないなら `[#{term}]` とコードで囲んでください／" \
+                      "索引に載せるなら [#{term}|よみ] と仮名の読みを添えてください（#{places.uniq.join(', ')}）"
+            )
+          end
+          @short_ascii_terms.clear
         end
 
         # 主要参照の落とし先を決めるための下見（index-main-reference-section-spec.md R1）。
@@ -384,6 +422,7 @@ def process_line(line, file_basename)
       # 2. config/index_glossary_terms.yml に定義された読み
       # 3. MeCab による推測
       yomi = yomi_raw || lookup_config_yomi(term_text) || @yomi_inferrer.infer(term_text)
+      note_short_ascii_term(term_text, yomi_raw)
 
       process_term(term_text, yomi, file_basename)
     end
