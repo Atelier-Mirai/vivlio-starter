@@ -152,6 +152,28 @@ module VivlioStarter
         term_text.start_with?('^')
       end
 
+      # --- 単位・記号表記の見分け -------------------------------------------
+      #
+      # `[g]` `[eV]` `[Hz]` のように短い ASCII だけの綴りは、索引語のつもりで
+      # 書かれたのか、フラグ名や単位を説明する地の文なのかを機械が決められない。
+      # 索引語として登録したいなら読みを添える（`[eV|いーぶい]`）のが作法。
+      #
+      # **しきい値は 2 文字。** 3 文字へ広げると `[CSS]` `[PDF]` `[XML]` という、
+      # 意図的な索引語としてごく自然な綴りを叩き始める。`vs index:auto` の R9
+      # （UnifiedIndexManager）もこの値を使う——知識は 1 つ、しきい値も 1 つ。
+      # 仕様: markdown-notation-collision-spec.md §5
+      SHORT_ASCII_TERM = /\A[\x21-\x7E]{1,2}\z/
+
+      # 読みなしで、ASCII 可視文字 1〜2 字だけの綴りか。
+      # @param term_text [String] ブラケットの中身（`用語` または `用語|読み`）
+      # @return [Boolean]
+      def short_ascii_term?(term_text)
+        text = term_text.to_s
+        return false if text.include?('|') # 読み付きは索引へ載せる意思表示
+
+        text.match?(SHORT_ASCII_TERM)
+      end
+
       # --- 索引タグを付けられないときの素のテキスト表現 ---------------------
       #
       # 索引スキャナが走らないビルド（`index_glossary.enabled: false` 等）では

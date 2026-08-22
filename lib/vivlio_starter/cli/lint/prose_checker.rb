@@ -4,9 +4,12 @@
 # File: lib/vivlio_starter/cli/lint/prose_checker.rb
 # ================================================================
 # 責務:
-#   textlint のルールでは扱えない 2 種の指摘を、日本語の文へ直接当てる。
+#   textlint のルールでは扱えない指摘を、原稿へ直接当てる。
 #     - mazegaki             交ぜ書き（「だ円」→「楕円」）。1 対 1 の置換なので --fix できる
 #     - ambiguous-comparison 二通りに読める対比（「B は A と同じように X しない」）
+#     - stray-index-markup   索引語のつもりでない `[g]`（markdown-notation-collision-spec.md §5）
+#     - indented-code-block  非対応の 4 スペース字下げコードブロック（同 §6）
+#     - setext-heading       改ページのつもりが見出しになる `---` / `===`（同 §7）
 #
 # なぜ prh 辞書ではなく Ruby なのか:
 #   交ぜ書きは 1 対 1 の置換なので config/textlint_rewrite.yml（prh）へ書けば
@@ -29,6 +32,7 @@
 require 'yaml'
 
 require_relative '../common'
+require_relative '../index_markup'
 require_relative '../masking'
 require_relative 'mazegaki_dictionary'
 require_relative 'mazegaki_scanner'
@@ -45,6 +49,23 @@ module VivlioStarter
 
         MAZEGAKI_RULE  = 'mazegaki'
         AMBIGUOUS_RULE = 'ambiguous-comparison'
+        STRAY_INDEX_RULE   = 'stray-index-markup'
+        INDENTED_CODE_RULE = 'indented-code-block'
+        SETEXT_RULE        = 'setext-heading'
+
+        # --- 記法の取り違え -----------------------------------------------------
+
+        # 4 スペース以上の字下げで始まる行。CommonMark では字下げコードブロックだが、
+        # Vivlio Starter は非対応（§6）。
+        INDENTED_LINE = /\A {4,}\S/
+
+        # リスト項目の先頭。字下げ行がリストの続きなら指摘しない。
+        LIST_ITEM_HEAD = /\A[ \t]*(?:[-*+]|\d{1,9}[.)])[ \t]/
+
+        # Setext 見出しの下線。`=` なら h1、`-` なら h2 になる。
+        # **行末の改行まで見込む。** prose_lines が渡すのは chomp していない生の行で、
+        # `\z` だけで閉じると "---\n" に当たらず、指摘が 1 件も出ない（実測で踏んだ）。
+        SETEXT_UNDERLINE = /\A {0,3}(=+|-+)[ \t]*\r?\n?\z/
 
         # 表示する出現行番号の最大件数（超過分は … で省略。textlint 側と揃える）
         MAX_SHOWN_LINES = 10
@@ -156,8 +177,11 @@ module VivlioStarter
           rules = Array(disabled_rules).map(&:to_s)
 
           findings = []
-          findings.concat(mazegaki_findings(text, allowlist)) unless rules.include?(MAZEGAKI_RULE)
-          findings.concat(ambiguous_findings(text))           unless rules.include?(AMBIGUOUS_RULE)
+          findings.concat(mazegaki_findings(text, allowlist))  unless rules.include?(MAZEGAKI_RULE)
+          findings.concat(ambiguous_findings(text))            unless rules.include?(AMBIGUOUS_RULE)
+          findings.concat(stray_index_findings(text))          unless rules.include?(STRAY_INDEX_RULE)
+          findings.concat(indented_code_findings(text))        unless rules.include?(INDENTED_CODE_RULE)
+          findings.concat(setext_findings(text))               unless rules.include?(SETEXT_RULE)
           findings
         rescue Errno::ENOENT => e
           Common.log_warn("[lint] ファイルを読み込めませんでした: #{path} (#{e.message})")
@@ -208,6 +232,94 @@ module VivlioStarter
         def drop_subsumed(hits)
           hits.reject do |(word, _)|
             hits.any? { |(other, _)| other != word && other.include?(word) }
+          end
+        end
+
+        # --- 記法の取り違え（markdown-notation-collision-spec.md §5〜§7）--------
+
+        # 索引語のつもりでない `[g]` の指摘。
+        #
+        # **すべての `[語]` は叩けない。** 手動マークアップは正しい記法で、本書でも
+        # `[五十音順|ごじゅうおんじゅん]` が現役である。事故が起きるのは、著者が
+        # 索引語を書いたつもりのない短い綴りに限られるので、そこだけを見る。
+        # 参照リンクとタスクリストは IndexMarkup が既に除いている（T-1・T-2）。
+        def stray_index_findings(text)
+          labels = IndexMarkup.link_labels(Masking.strip_code(text))
+
+          prose_lines(text).flat_map do |lineno, line|
+            protected_line, = Masking.protect_code(line)
+            stray_terms(protected_line, labels).map do |term|
+              Finding.new(line: lineno, rule: STRAY_INDEX_RULE,
+                          label: "[#{term}] は索引語として登録されます" \
+                                 "（コードなら `[#{term}]` と囲む／索引に載せるなら [#{term}|よみ] と仮名の読みを添える）")
+            end
+          end
+        end
+
+        # 1 行から、索引語として疑わしい短い綴りだけを拾う。
+        def stray_terms(line, labels)
+          line.to_enum(:scan, IndexMarkup::TERM_PATTERN).filter_map do
+            match = ::Regexp.last_match
+            term  = match[1]
+            next if IndexMarkup.skip_term?(term)
+            next if IndexMarkup.other_notation?(match, labels)
+            next unless IndexMarkup.short_ascii_term?(term)
+
+            term
+          end
+        end
+
+        # 4 スペース字下げコードブロックの指摘（非対応・§6）。
+        #
+        # 報告するのは**ブロックの先頭 1 行だけ**にする。字下げが続くかぎり何行でも
+        # 出すと、貼り付けた 30 行のコードに 30 件並んで読めなくなる。
+        #
+        # リストの続きは指摘しない。CommonMark で字下げコードかどうかを決めるには
+        # リストの中にいるかを追う必要があり、行単位の走査では「4 スペース＝コード」と
+        # 言い切れない（実測: 本書の 4 字下げ 2 行はどちらも非コードだった）。
+        def indented_code_findings(text)
+          lines = text.lines
+
+          prose_lines(text).filter_map do |lineno, line|
+            next unless line.match?(INDENTED_LINE)
+            next if line.match?(/\A[ \t]+(?:[-*+]|\d{1,9}[.)])[ \t]/) # 字下げした箇条書き
+            next unless lines[lineno - 2].to_s.strip.empty?             # ブロックの先頭だけ
+            next if list_continuation?(lines, lineno)
+
+            Finding.new(line: lineno, rule: INDENTED_CODE_RULE,
+                        label: '4 スペースの字下げはコードブロックになりません' \
+                               '（コードならバッククォート 3 つのフェンスで囲んでください）')
+          end
+        end
+
+        # その字下げ行はリストの続きか。空行を挟んだ段落もリスト項目の一部になりうるので、
+        # **空行を読み飛ばして**直近の中身のある行を見る。
+        def list_continuation?(lines, lineno)
+          index = lineno - 2
+          index -= 1 while index >= 0 && lines[index].to_s.strip.empty?
+          return false if index.negative?
+
+          previous = lines[index].to_s
+          previous.match?(LIST_ITEM_HEAD) || previous.match?(INDENTED_LINE)
+        end
+
+        # 改ページのつもりが見出しになる `---` / `===` の指摘（§7）。
+        #
+        # 本書は「`---` は改ページ」と教えているが、直前に文が続いていると
+        # CommonMark の規則で Setext 見出しが優先される。`===` なら h1 になり、
+        # 章題と同じ階層なので目次と PDF アウトラインまで汚れる。
+        def setext_findings(text)
+          lines = text.lines
+
+          prose_lines(text).filter_map do |lineno, line|
+            next if lineno < 2
+            next unless (matched = line.match(SETEXT_UNDERLINE))
+            next if lines[lineno - 2].to_s.strip.empty? # 前が空行なら改ページ（正しい書き方）
+
+            level = matched[1].start_with?('=') ? '第 1 レベル' : '第 2 レベル'
+            Finding.new(line: lineno, rule: SETEXT_RULE,
+                        label: "直前の行に続いているため、改ページではなく#{level}の見出しになります" \
+                               '（改ページにするなら前に空行を入れる／見出しにするなら ## を使う）')
           end
         end
 

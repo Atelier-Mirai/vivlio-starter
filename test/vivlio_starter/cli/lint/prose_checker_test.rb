@@ -368,6 +368,71 @@ class TestProseChecker < Minitest::Test
     assert_empty PC.allowlist_from('/nonexistent/allow.yml')
   end
 
+  # --- 記法の取り違え（markdown-notation-collision-spec.md §5〜§7）---
+
+  # L-1: 索引語のつもりでない短い綴りだけを拾う。
+  def test_should_report_stray_index_markup_only_for_short_ascii
+    findings = check("フラグは [g] と書きます。単位は [eV] です。\n")
+
+    assert_equal %w[stray-index-markup stray-index-markup], findings.map(&:rule)
+    assert_match(/\[g\] は索引語として登録されます/, findings.first.label)
+    assert_match(/仮名の読みを添える/, findings.first.label, '直し方まで示す')
+  end
+
+  # 3 文字は叩かない。`[CSS]` `[PDF]` は意図的な索引語としてごく自然な綴り。
+  def test_should_not_report_three_letter_terms
+    assert_empty check("[CSS] と [PDF] は索引語です。\n")
+  end
+
+  # 読みを添えてあるのは索引へ載せる意思表示。
+  def test_should_not_report_terms_with_reading
+    assert_empty check("単位は [eV|いーぶい] です。\n")
+  end
+
+  # 参照リンクとタスクリストは索引マークアップではない（T-1・T-2）。
+  def test_should_not_report_other_notations_as_stray_markup
+    body = "参照 [完全形][sample] と [sample] です。\n\n[sample]: https://example.com\n\n- [x] 済み\n"
+    assert_empty check(body)
+  end
+
+  # L-2: 字下げコードブロックはブロックの先頭 1 行だけ指摘する。
+  def test_should_report_indented_code_block_once_per_block
+    findings = check("段落です。\n\n    1 行目のコード\n    2 行目のコード\n\n次の段落。\n")
+
+    assert_equal ['indented-code-block'], findings.map(&:rule)
+    assert_equal 3, findings.first.line
+    assert_match(/フェンスで囲んでください/, findings.first.label)
+  end
+
+  # リストの続きは指摘しない。空行を挟んでもリスト項目の一部でありうる。
+  def test_should_not_report_indented_lines_inside_a_list
+    assert_empty check("- 親の項目\n\n    リストの続きです。\n")
+    assert_empty check("- 親の項目\n    - 子の項目\n")
+  end
+
+  # L-3: 直前に文が続く `---` / `===` は改ページではなく見出しになる。
+  def test_should_report_setext_underline_after_a_paragraph
+    findings = check("本文の途中です\n---\n\n見出しにしたい\n===\n")
+
+    assert_equal %w[setext-heading setext-heading], findings.map(&:rule)
+    assert_match(/第 2 レベルの見出しになります/, findings.first.label)
+    assert_match(/第 1 レベルの見出しになります/, findings.last.label)
+  end
+
+  # 前を空行で挟んだ `---` は正しい改ページ。叩いてはいけない。
+  def test_should_not_report_a_proper_pagebreak
+    assert_empty check("段落です。\n\n---\n\n次の段落。\n")
+  end
+
+  # 3 ルールとも lint.disabled_rules で黙る。
+  def test_should_respect_disabled_rules_for_notation_findings
+    body = "フラグは [g] です。\n\n    字下げコード\n\n本文の途中\n---\n"
+    rules = %w[stray-index-markup indented-code-block setext-heading]
+
+    refute_empty check(body)
+    assert_empty check(body, disabled_rules: rules)
+  end
+
   # --- 表示 ---
 
   # 著者が lint.disabled_rules へ書く名前を、集約表示からそのまま読み取れること

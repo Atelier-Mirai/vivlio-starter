@@ -46,7 +46,10 @@ module VivlioStarter
       # 単位 [eV] [Hz] やフラグ解説 [g] が索引語として誤登録されるのを防ぐ
       # （[g] は pattern /\bg\b/ となり本文中の英字 g 全部にタグが付く）。
       # 意図的に登録したい場合は読み付き [eV|いーぶい] を使う。
-      ASCII_SHORT_TERM_PATTERN = /\A[\x21-\x7E]{1,2}\z/
+      #
+      # 綴りの定義元は IndexMarkup（vs lint の L-1 も同じ値を見る）。同じ「2 文字」が
+      # 2 箇所に別々の定数として立つのを避ける（markdown-notation-collision-spec.md §9）。
+      ASCII_SHORT_TERM_PATTERN = IndexMarkup::SHORT_ASCII_TERM
 
       attr_reader :terms_manager, :queue_manager, :markdown_generator
 
