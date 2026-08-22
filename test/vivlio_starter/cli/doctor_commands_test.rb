@@ -467,6 +467,57 @@ module VivlioStarter
                '存在しないコマンドは runnable でないと判定すべき'
       end
 
+      # --- phase: 非 macOS での --fix の案内（release-1.0-considerations.md A-2） ---
+      #
+      # 主対象は macOS + Homebrew だが、本体は Ruby と Node で書かれているので
+      # 外部ツールさえ揃えば動く見込みがある。「対応していません」で終わらせると
+      # その道を試す人が何を入れればよいか分からないので、不足分を種別ごとに示す。
+
+      # 不足ツールを種別ごとに並べ、npm と OS のパッケージ管理を書き分ける
+      def test_manual_install_plan_groups_missing_tools_by_kind
+        plan = DoctorCommands.manual_install_plan(%w[vivliostyle gs qpdf])
+
+        assert_equal ['@vivliostyle/cli'], plan[:npm]
+        assert_equal %w[ghostscript qpdf], plan[:brew].sort
+      end
+
+      # 検査名とパッケージ名は 1 対 1 ではない（poppler は 3 コマンドを提供する）。
+      # どれが欠けても poppler 1 件として案内する。
+      def test_manual_install_plan_maps_multiple_checks_to_one_package
+        %w[pdfinfo pdftoppm pdftotext].each do |check|
+          assert_equal ['poppler'], DoctorCommands.manual_install_plan([check])[:brew],
+                       "#{check} は poppler として案内されるべき"
+        end
+      end
+
+      # パッケージ名が Symbol のもの（textlint 一式）はラベルで案内する
+      def test_manual_install_plan_uses_label_for_symbolic_packages
+        assert_equal ['textlint 一式'], DoctorCommands.manual_install_plan(%w[textlint])[:npm]
+      end
+
+      # 不足が無ければ空（案内するものが無い）
+      def test_manual_install_plan_is_empty_when_nothing_missing
+        assert_empty DoctorCommands.manual_install_plan([])
+      end
+
+      # 案内には「何を入れるか」と「入れたあと何をするか」の両方を出す。
+      # 出現位置だけ示して次の一手が無いと、著者はそこで止まる。
+      def test_report_manual_install_plan_shows_packages_and_next_step
+        output, = capture_io { DoctorCommands.report_manual_install_plan(%w[vivliostyle gs]) }
+
+        assert_includes output, 'macOS（Homebrew）のみ対応'
+        assert_includes output, '@vivliostyle/cli'
+        assert_includes output, 'ghostscript'
+        assert_includes output, 'vs doctor', '再実行の案内を出す'
+      end
+
+      # 導入元を特定できない検査名だけなら、その旨を言って黙らない
+      def test_report_manual_install_plan_speaks_up_when_nothing_matches
+        output, = capture_io { DoctorCommands.report_manual_install_plan(%w[vs-unknown-check]) }
+
+        assert_includes output, '特定できませんでした'
+      end
+
       private
 
       # 複数の Minitest スタブをネスト（ピラミッド）にせず畳み込んで適用する。

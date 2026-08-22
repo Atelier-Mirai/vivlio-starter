@@ -337,7 +337,7 @@ module VivlioStarter
 
         # --fix: 自動インストール試行
         unless is_macos
-          Common.log_always('自動インストールは macOS(Homebrew) のみ対応です。手動でインストールしてください。')
+          report_manual_install_plan(missing)
           return false
         end
 
@@ -526,6 +526,57 @@ module VivlioStarter
         end
       end
       module_function :execute_doctor
+
+      # 非 macOS で `--fix` が呼ばれたときの案内。
+      #
+      # **自動導入は行わないが、突き放さない。** 主対象は macOS + Homebrew だが、
+      # 本体は Ruby と Node で書かれているので、外部ツールさえ揃えば動く見込みがある。
+      # 「対応していません」で終わらせると、その道を試す人が何を入れればよいか
+      # 分からない——不足しているものを種別ごとに並べ、手動導入の道しるべにする。
+      #
+      # パッケージ名の正典は ToolUpgrader::TOOLS であり、ここでは持たない
+      # （二重管理にすると、片方だけ更新されて案内が実態とずれる）。
+      #
+      # @param missing [Array<String>] 不足している検査名
+      def report_manual_install_plan(missing)
+        Common.log_always('自動インストールは macOS（Homebrew）のみ対応です。')
+        Common.log_always('  Linux / Windows は未検証ですが、下記を手動で導入すれば動作する見込みです。')
+
+        plan = manual_install_plan(missing)
+        if plan.empty?
+          Common.log_always('  （不足しているツールの導入元が特定できませんでした）')
+          return false
+        end
+
+        plan.each do |kind, packages|
+          Common.log_always("  #{MANUAL_INSTALL_LABELS.fetch(kind, kind.to_s)}: #{packages.join(' ')}")
+        end
+        Common.log_always('  導入後に `vs doctor` を再実行すると、揃ったかどうかを確認できます。')
+        false
+      end
+
+      # 手動導入の案内で使う種別名。npm と gem はどの環境でも同じコマンドで入るが、
+      # brew / cask は環境ごとに置き換えが要るので、そのことが分かる書き方にする。
+      MANUAL_INSTALL_LABELS = {
+        npm: 'npm install -g',
+        gem: 'gem install',
+        brew: 'パッケージ管理（apt / dnf / winget など）',
+        cask: 'アプリケーション（各配布元から）',
+        manual: '手動導入'
+      }.freeze
+
+      # 不足している検査名から、種別ごとのパッケージ名を組み立てる。
+      # @return [Hash<Symbol, Array<String>>]
+      def manual_install_plan(missing)
+        DoctorCommands::ToolUpgrader::TOOLS.each_with_object({}) do |tool, plan|
+          next unless tool.checks.any? { missing.include?(it) }
+
+          name = tool.package.is_a?(Symbol) ? tool.label : tool.package
+          (plan[tool.kind] ||= []) << name
+        end.transform_values(&:uniq)
+      end
+
+      module_function :report_manual_install_plan, :manual_install_plan
 
       def extract_options(command_or_ctx)
         source =
