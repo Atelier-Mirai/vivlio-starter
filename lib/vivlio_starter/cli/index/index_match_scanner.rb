@@ -371,9 +371,9 @@ def process_line(line, file_basename)
   mask.substitute_match!(INDEX_TERM_PATTERN) do |match|
     term_text, yomi_raw = extract_term_and_yomi(match[1])
 
-    # 参照リンク（`[本文][ref]` と定義済みラベル）は索引語にしない。
-    # 外さないとリンクもリンク定義も索引タグに化けて消える（§3 T-1）。
-    if IndexMarkup.reference_link?(match, Array(@link_labels))
+    # 他の記法が自分の構文として持つブラケット（参照リンク・タスクリスト）は
+    # 索引語にしない。外すとリンクもタスクリストも索引タグに化けて消える（§3・§4）。
+    if IndexMarkup.other_notation?(match, Array(@link_labels))
       match[0]
     # 無効な用語をスキップ（元のテキストをそのまま返す）
     elsif skip_term?(term_text)

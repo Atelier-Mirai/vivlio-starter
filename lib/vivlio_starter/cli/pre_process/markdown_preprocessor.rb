@@ -580,8 +580,8 @@ module VivlioStarter
           stripped = protected_text.gsub(IndexMarkup::TERM_PATTERN) do
             match = ::Regexp.last_match
             inner = match[1]
-            # 脚注参照 [^id] と参照リンクはそのまま残す
-            if IndexMarkup.skip_term?(inner) || IndexMarkup.reference_link?(match, labels)
+            # 脚注参照 [^id]・参照リンク・タスクリストはそのまま残す
+            if IndexMarkup.skip_term?(inner) || IndexMarkup.other_notation?(match, labels)
               match[0]
             else
               IndexMarkup.plain_text(inner)

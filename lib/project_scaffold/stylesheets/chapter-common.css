@@ -260,6 +260,49 @@ ul { list-style-type: disc; }            /* ● */
 ul ul { list-style-type: circle; }       /* ○ */
 ul ul ul { list-style-type: "・"; }      /* ・ */
 
+/* タスクリスト（GFM）。VFM は <input type="checkbox" disabled> を出す。
+   紙面にフォーム部品は要らないので、入力欄の見た目を消して枠を自前で描く。
+
+   **☑ ☐ の文字を使わない。** 同梱の本文書体 7 種のいずれにも無く（HackGen だけが
+   持つ）、使うとコード書体か OS 書体へ落ちて Type 3 混入の経路になる
+   （type3-font-embedding-notes.md §8）。字形に頼らず border で描けば、
+   書体にも文字サイズにも左右されない。
+
+   鉤は :checked の背景画像（インライン SVG）で描く。読めない環境でも
+   background-color の塗りつぶしが残るので「済み」は伝わる。
+   Kindle は appearance を解さないため、EpubBuilder が □ / ■ の文字へ差し替える。
+   markdown-notation-collision-spec.md §4 */
+ul.contains-task-list {
+  list-style: none;
+  padding-inline-start: 1.4em;
+}
+
+li.task-list-item > input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-block;
+  inline-size: 0.78em;
+  block-size: 0.78em;
+  margin-inline: -1.15em 0.35em;
+  vertical-align: -0.02em;
+  border: 0.09em solid currentColor;
+  border-radius: 0.12em;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 0.62em 0.62em;
+}
+
+li.task-list-item > input[type="checkbox"]:checked {
+  background-color: currentColor;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M3 8.5l3.2 3.2L13 5' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+}
+
+/* Kindle は実体の文字（□ / ■）へ差し替わる。字面が本文へ溶けないよう少しだけ空ける */
+span.vs-task-mark {
+  margin-inline-end: 0.3em;
+}
+
 /* fancy list（Pandoc fancy_lists 互換・前処理が ol へクラス付与）
    nested-list-notation-spec.md §5.1 */
 ol.vs-list-lower-alpha { list-style-type: lower-alpha; }

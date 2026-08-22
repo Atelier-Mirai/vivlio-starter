@@ -2402,12 +2402,37 @@ module VivlioStarter
 
             changed = inject_fancy_list_markers!(doc)
             changed |= inject_outline_list_markers!(doc)
+            changed |= textify_task_list_checkboxes!(doc)
             next unless changed
 
             PostProcessCommands::HtmlParser.save_html_document(path, doc)
             Common.log_info("[EPUB] #{File.basename(path)} のリストへ実体マーカーを注入しました")
           end
           html_files
+        end
+
+        # タスクリストのチェックボックスを文字へ落とす（Kindle 専用）。
+        #
+        # KFX は ::before も appearance も解さないので、CSS で描いた枠が消えて
+        # 「印の無い箇条書き」になる。実体の文字へ差し替えて意味を残す。
+        #
+        # **☑ ☐ を使わない。** 同梱の本文書体 7 種のいずれにも無く（HackGen だけが
+        # 持つ）、使うとコード書体か OS 書体へ落ちて Type 3 混入の経路になる
+        # （type3-font-embedding-notes.md §8）。□ ■ は全書体にある。
+        # 仕様: markdown-notation-collision-spec.md §4
+        TASK_CHECKBOX_GLYPHS = { checked: '■', unchecked: '□' }.freeze
+
+        def textify_task_list_checkboxes!(doc)
+          changed = false
+          doc.css('li.task-list-item > input[type="checkbox"]').each do |input|
+            glyph = input['checked'] ? TASK_CHECKBOX_GLYPHS[:checked] : TASK_CHECKBOX_GLYPHS[:unchecked]
+            span = doc.create_element('span')
+            span['class'] = 'vs-task-mark'
+            span.content = glyph
+            input.replace(span)
+            changed = true
+          end
+          changed
         end
 
         # 前処理が付与したクラス名（vs-list-<様式>[-paren|-paren2]）の解析パターン

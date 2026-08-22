@@ -421,6 +421,25 @@ module VivlioStarter
         assert_equal ['(1) '], decimal, '両括弧様式は「(1) 」形式'
       end
 
+      # タスクリストのチェックボックスは実体の文字へ落とす。
+      # KFX は appearance も ::before も解さないので、CSS で描いた枠が消えて
+      # 「印の無い箇条書き」になる（markdown-notation-collision-spec.md §4）。
+      def test_should_textify_task_list_checkboxes_for_kindle
+        html = <<~HTML
+          <html><body class="vs-kindle">
+          <ul class="contains-task-list">
+          <li class="task-list-item"><input type="checkbox" checked="checked" disabled="disabled"> 済んだ</li>
+          <li class="task-list-item"><input type="checkbox" disabled="disabled"> これから</li>
+          </ul>
+          </body></html>
+        HTML
+        doc = process(html) { |files| Builder.decorate_list_markers_for_epub!(files) }
+
+        assert_empty doc.css('li.task-list-item input'), 'フォーム部品は残さない'
+        assert_equal %w[■ □], doc.css('span.vs-task-mark').map(&:text),
+                     '済みは ■、未了は □（☑ ☐ は本文書体に無く Type 3 の経路になる）'
+      end
+
       # start 属性から開始値を復元して採番する
       def test_should_inject_fancy_markers_from_start_attribute
         html = <<~HTML

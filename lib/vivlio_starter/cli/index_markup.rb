@@ -106,6 +106,41 @@ module VivlioStarter
         labels.include?(normalize_label(match[1]))
       end
 
+      # --- GFM のタスクリストとの共存 --------------------------------------
+      #
+      # `- [ ]` `- [x]` はリスト項目の先頭に置くタスクリスト・マーカーで、GFM が
+      # 定めた記法である。VFM は最初から対応しているのに、索引スキャン（Step 4）が
+      # VFM 変換（Step 5）より前に走るため、マーカーが索引語に化けて VFM へ届いて
+      # いなかった（実測: `[ ]` の空白 1 文字にアンカーまで振られていた）。
+      # 仕様: markdown-notation-collision-spec.md §4
+
+      # マーカーの手前に置ける並び。`- ` `* ` `+ ` と番号付き（`1. ` `1) `）。
+      TASK_MARKER_PREFIX = /\A[ \t]*(?:[-*+]|\d{1,9}[.)])[ \t]+\z/
+
+      # マーカーの中身。GFM は空白・`x`・`X` を認める。
+      TASK_MARKER_STATES = [' ', 'x', 'X'].freeze
+
+      # そのマッチはタスクリストのマーカーか。
+      # **行中の `[ ]` は対象にしない**——タスクリストではないので従来どおり扱う。
+      # @param match [MatchData] TERM_PATTERN のマッチ
+      # @return [Boolean]
+      def task_list_marker?(match)
+        return false unless TASK_MARKER_STATES.include?(match[1])
+        return false unless match.pre_match.match?(TASK_MARKER_PREFIX)
+
+        # GFM はマーカーの直後に空白を求める。
+        match.post_match.empty? || match.post_match.match?(/\A[ \t\r\n]/)
+      end
+
+      # そのマッチは索引マークアップ**ではない**（他の記法が持つブラケット）か。
+      # 消費側はこれ 1 つを見ればよい——記法が増えたらここへ 1 行足す。
+      # @param match [MatchData] TERM_PATTERN のマッチ
+      # @param labels [Array<String>] link_labels の戻り
+      # @return [Boolean]
+      def other_notation?(match, labels = [])
+        reference_link?(match, labels) || task_list_marker?(match)
+      end
+
       # ブラケットの中身が索引語として無効か。
       # パターンが弾けない「中身で見分ける記法」——参照脚注 `[^id]`——を落とす。
       # @param term_text [String, nil] ブラケットの中身

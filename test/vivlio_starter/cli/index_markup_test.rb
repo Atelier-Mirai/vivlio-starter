@@ -151,6 +151,38 @@ module VivlioStarter
         refute IndexMarkup.reference_link?(match, ['sample'])
       end
 
+      # --- GFM のタスクリストとの共存（§4・T-2）------------------------------
+
+      def test_task_list_marker_detects_list_item_head
+        ['- [ ] やること', '* [x] 済んだ', '+ [X] 済んだ', '1. [ ] 番号付き', '2) [ ] 片括弧'].each do |line|
+          match = matches_in(line).first
+          assert IndexMarkup.task_list_marker?(match), "#{line} を見分けられません"
+        end
+      end
+
+      # 行中の `[ ]` はタスクリストではない。従来どおり扱う。
+      def test_task_list_marker_ignores_mid_line_brackets
+        match = matches_in('行中の [ ] は索引語のままです。').first
+        refute IndexMarkup.task_list_marker?(match)
+      end
+
+      # GFM はマーカーの直後に空白を求める。`- [x]済んだ` はタスクリストではない。
+      def test_task_list_marker_requires_trailing_space
+        refute IndexMarkup.task_list_marker?(matches_in('- [x]済んだ').first)
+      end
+
+      # 中身が空白・x・X 以外ならタスクリストではない（索引マークアップのまま）。
+      def test_task_list_marker_rejects_other_states
+        refute IndexMarkup.task_list_marker?(matches_in('- [g] フラグ').first)
+      end
+
+      # 消費側はこれ 1 つを見ればよい。
+      def test_other_notation_covers_both_forms
+        assert IndexMarkup.other_notation?(matches_in('- [ ] やること').first, [])
+        assert IndexMarkup.other_notation?(matches_in('省略形 [sample] です。').first, ['sample'])
+        refute IndexMarkup.other_notation?(matches_in('索引語 [基本情報技術者] です。').first, [])
+      end
+
       private
 
       def matches_in(line)
