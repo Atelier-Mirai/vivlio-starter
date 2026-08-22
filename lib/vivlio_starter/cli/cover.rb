@@ -16,23 +16,6 @@ module VivlioStarter
     module CoverCommands
       module_function
 
-      DESCRIPTION = 'カバー画像を生成'
-      LONG_DESCRIPTION = <<~DESC
-        マスター画像（frontcover_master.png, backcover_master.png）から
-        各フォーマット用のカバー画像を生成します。
-
-        使用例:
-          vs cover              # 自動判定して一括生成
-          vs cover a4           # A4サイズのCMYK版PDF/X-1a生成
-          vs cover b5           # B5サイズのCMYK版PDF/X-1a生成
-          vs cover a5           # A5サイズのCMYK版PDF/X-1a生成
-          vs cover epub         # EPUB用JPEG生成
-
-        必要なツール:
-          - ImageMagick (convert コマンド)
-          - Ghostscript (gs コマンド)
-      DESC
-
       # マスターファイル名
       FRONTCOVER_MASTER = 'frontcover_master.png'
       BACKCOVER_MASTER = 'backcover_master.png'

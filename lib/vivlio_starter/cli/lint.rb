@@ -50,33 +50,6 @@ module VivlioStarter
       TEXTLINT_ALLOWLIST_RELATIVE = File.join(Common::CONFIG_DIR, 'textlint_allowlist.yml')
       TEXTLINT_REWRITE_RELATIVE   = File.join(Common::CONFIG_DIR, 'textlint_rewrite.yml')
 
-      LINT_DESC = {
-        short: 'contents/ 以下の Markdown を textlint で検査します',
-        long: <<~DESC
-          contents/ ディレクトリ以下の Markdown ファイルを textlint で検査します。
-          引数を指定しない場合は全ての Markdown が対象です。章のベース名（11-install など）を
-          指定すると、そのファイルのみを検査します（拡張子や contents/ の省略可）。
-
-          章番号のみ、または範囲指定も可能です：
-            章番号のみ: vs lint 91 93      # 91-*.md と 93-*.md を検査
-            範囲指定:   vs lint 11-21      # 11-*.md から 21-*.md を検査
-
-          例:
-            vs lint                 # 全 Markdown を検査
-            vs lint 11-install      # 11-install.md のみ検査
-            vs lint 11-install 21-customize
-            vs lint 91 93           # 91-*.md と 93-*.md を検査
-            vs lint 11-21           # 11-*.md から 21-*.md の範囲を検査
-            vs lint:check           # lint のエイリアス
-
-          オプション:
-            --fix              自動修正可能なエラーを修正します。
-            --textlint-only    日本語校正（textlint）のみ実行します。
-            --spellcheck-only  スペルチェックのみ実行します。
-            --register         未知語を config/spellcheck_allowlist.yml へ一括登録します（スペルチェック専用）。
-        DESC
-      }.freeze
-
       TEXTLINT_ENV_VAR = 'VIVLIO_TEXTLINT_BIN'
 
       def self.execute_lint(targets, options = {})

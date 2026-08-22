@@ -36,25 +36,6 @@ module VivlioStarter
     module ImportCommands
       module_function
 
-      IMPORT_DESC = {
-        default: {
-          short: 'Re:VIEW Starter プロジェクトをインポートします',
-          long: <<~DESC
-            Re:VIEW Starter プロジェクトを vivlio-starter にインポートします。
-
-            引数:
-              STARTER_DIR    Re:VIEW Starter プロジェクトのディレクトリ（必須）
-
-            オプション:
-              --force    確認プロンプトをスキップ
-
-            使用例:
-              vs import ../review_starter_project
-              vs import --force ../review_starter_project
-          DESC
-        }
-      }.freeze
-
       # 取り込みで空に戻す著者辞書（原稿を入れ替えるので中身が意味を失う）
       INDEX_DICTIONARY_FILES = [
         File.join('config', 'index_glossary_terms.yml'),

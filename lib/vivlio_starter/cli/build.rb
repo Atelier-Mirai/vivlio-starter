@@ -66,21 +66,6 @@ module VivlioStarter
     #   - build/output_helpers.rb 出力・デバッグヘルパー
     # ==============================================================================
     module BuildCommands
-      BUILD_DESC = {
-        build: {
-          short: '書籍全体または指定章をビルドします',
-          long: <<~DESC
-            CLI から書籍のビルドを一括実行します。
-
-            引数を指定しない場合は、画像最適化、本文/付録の HTML 生成、目次や frontmatter/後書きの生成、
-            PDF 結合とアウトライン付与、圧縮、クリーンアップまでを順番に実行し、書籍全体の PDF を生成します。
-
-            引数として章番号や範囲（例: 54 または 54-56）を指定した場合は、その章だけを対象に
-            必要な変換処理を実行して PDF を生成します。複数章指定時は統合された 1 つの PDF を出力します。
-          DESC
-        }
-      }.freeze
-
       # NOTE: 実際のビルドコマンドは lib/vivlio_starter/cli/samovar/build_command.rb で実装されています。
       # このモジュールは UnifiedBuildPipeline や TokenExpander などのビルドロジックを提供します。
     end

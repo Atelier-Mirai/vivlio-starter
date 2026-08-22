@@ -54,23 +54,6 @@ module VivlioStarter
     module PostProcessCommands
       module_function
 
-      POST_PROCESS_DESC = {
-        short: 'HTMLファイルのポスト置換処理を行います',
-        long: <<~DESC
-          指定した HTML ファイルの後処理を行います。指定が無い場合はプロジェクトルートの全 .html を対象にします。
-
-          処理内容:
-          - <body> タグにファイルタイプクラスを付与
-          - 組み込み置換ルールによる置換処理
-          - 章末脚注をページ脚注に変換
-          - ソースコードに行番号を追加（Prism.js対応）
-
-          例:
-            vs post_process 11-install
-            vs post_process 11-install.html 12-tutorial
-        DESC
-      }.freeze
-
       def included(base); end
 
       # Samovar/直接呼び出し用エントリポイント

@@ -22,24 +22,6 @@ module VivlioStarter
     module PrismLinesCommands
       module_function
 
-      PRISM_LINES_DESC = {
-        short: 'HTMLファイル内のPrism.jsコードブロックに行番号を追加します',
-        long: <<~DESC
-          指定したHTMLファイル内のPrism.jsコードブロックに行番号を追加します。
-
-          引数:
-            INPUT_FILE     入力HTMLファイル（必須）
-            OUTPUT_FILE    出力HTMLファイル（省略可、省略時は入力ファイルを上書き）
-
-          オプション:
-            -v, --verbose  詳細な処理情報を表示
-
-          使用例:
-            vs prism:lines prime.html
-            vs prism:lines prime.html prime_with_lines.html
-        DESC
-      }.freeze
-
       def included(base); end
 
       # Samovar/直接呼び出し用エントリポイント

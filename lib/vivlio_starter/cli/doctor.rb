@@ -102,49 +102,6 @@ module VivlioStarter
       # （vs upgrade の更新と --fix のインストールで共用し、二重管理しない）
       TEXTLINT_NPM_PACKAGES = ToolUpgrader::TEXTLINT_NPM_PACKAGES
 
-      # img2pdfの依存排除に伴い、診断対象および説明からimg2pdfを削除しています。
-      DOCTOR_DESC = {
-        short: '必要ツール(Xcode Command Line Tools, qpdf, pdfinfo, pdftoppm, gs, ImageMagick, Inkscape)の診断とセットアップを行います',
-        long: <<~DESC
-          環境診断を行い、以下の外部コマンドが実際に動作するかをチェックします
-          （存在だけでなく --version 実起動で確認し、壊れたラッパー等も検出します）:
-            - Xcode Command Line Tools (macOS)
-            - qpdf
-            - pdfinfo / pdftoppm / pdftotext (poppler)
-            - node
-            - vivliostyle
-            - vfm (@vivliostyle/vfm・Markdown → HTML 変換)
-            - textlint
-            - gs
-            - imagemagick
-            - inkscape
-            - rsvg-convert (librsvg)
-            - vips / tesseract / tesseract-lang (Enhanced Mode の OCR 用)
-            - mecab
-            - rouge
-            - mathjax (mathjax-full)
-            - mermaid (mmdc・@mermaid-js/mermaid-cli)
-            - waifu2x
-            - kindlepreviewer (Kindle Previewer 3・targets: kindle の KPF 変換時のみ。任意)
-
-          役割の補足:
-            - 圧縮は Ghostscript(pdfwrite) を使用します
-            - qpdf は分割/結合・ページ抽出などの PDF 操作用に使用します（圧縮用途ではありません）。
-              入稿用 PDF の導出（--update-from-json / --overlay）にバージョン 11 以上が必要です
-
-          --fix オプション指定時、macOS かつ Homebrew が利用可能であれば
-          不足しているツールの自動インストールを試みます。
-
-          導入済みツールの一括更新は vs upgrade が担います
-          （vivlio-starter 本体・プロジェクト雛形の追従とあわせて実行されます）。
-
-          例:
-            vs doctor
-            vs doctor --fix
-            vs doctor --fix --yes
-        DESC
-      }.freeze
-
       # 後方互換用の空フック
       def included(base); end
 

@@ -80,16 +80,6 @@ module VivlioStarter
       # ルートではなくワークスペース直下へ置き、ルート無汚染を保つ（P4b §2.5）。
       INDEX_MATCHES_FILE = "#{BUILD_DIR}/_index_matches.yml"
 
-      # ------------------------------------------------------------
-      # 再生成コストの高い生成資産のキャッシュ（generated-assets 移設仕様 §2）
-      # ------------------------------------------------------------
-      # BUILD_DIR の外に置くのが要点: final clean（rm_rf BUILD_DIR）を生き延び、
-      # waifu2x を伴う高コストなバリアント生成や covers の毎ビルド再生成を避ける。
-      # 前処理の生成資産（mermaid / showcase / math）も同方針で CACHE_DIR 配下に置く
-      # （PreProcessCommands::GeneratedAssetCache が .cache/vs/<種別>/ を管理する）。
-      COVER_CACHE_DIR        = "#{CACHE_DIR}/covers"
-      THEME_IMAGES_CACHE_DIR = "#{CACHE_DIR}/theme-images"
-
       # 中間 HTML/md から著者資産（stylesheets/ images/ 等）への相対プレフィックス。
       # 生成時に正しいプレフィックスで書く（コピー時 gsub はしない）が P4 §3.3 の方針。
       # 資産参照を生成する choke point（FrontmatterGenerator / ImagePathNormalizer /

@@ -45,18 +45,6 @@ module VivlioStarter
     module CleanCommands
       module_function
 
-      CLEAN_DESC = {
-        short: '不要ファイルやキャッシュを削除します',
-        long: <<~DESC
-          生成物（HTML/中間PDF など）を削除する標準クリーンに加えて、
-          各オプションで特定のファイルのみを削除できます。
-          - `vs clean`            : 生成物（HTML / 中間PDF 等）を削除（最終PDFは保持）
-          - `vs clean --purge`    : 最終PDFも含めてすべて削除
-          - `vs clean --cache`    : キャッシュディレクトリのみ削除（生成物は保持）
-          - `vs clean --cover`    : 生成されたカバー画像のみを削除（マスターは保持）
-        DESC
-      }.freeze
-
       # 索引レビューファイル。`vs index:auto` が書き出すが、そこから先は
       # **著者が編集する入力**であって中間生成物ではない。ビルドのたびに消すと、
       # 「除外済みリストから戻す語を選ぶ」ような途中の判断がまるごと失われ、
