@@ -488,6 +488,13 @@ Kindle は `EpubBuilder#textify_task_list_checkboxes!` が `<input>` を `■` /
 `<span class="vs-task-mark">` へ差し替える。`decorate_list_markers_for_epub!` の中に置いた
 ——既に fancy list とアウトラインリストの実体注入をしている場所で、層が同じ。
 
+**落とし穴: SVG のデータ URI は必ずパーセント符号化する。** 生の `<` は URL として
+不正で、epubcheck が RSC-020 で落とす。さらに生の空白は途中で圧縮され、
+`viewBox='0 0 16 16'` が `001616` に潰れて SVG そのものが壊れていた——**PDF では
+鉤が正しく見えていたので、紙面の目視だけでは気づけない**。`%3C` / `%3E` / `%20` で
+両方とも起きない。`;utf8` は非標準なので付けない（正しくは `;charset=utf-8`）。
+2026-08-23 のリリースゲート（`test:manual` の epubcheck）が捕まえた。
+
 **実ビルドで確認済み**（小さな本を組み、済み＝白い鉤つきの黒枠／未了＝白枠で出た）。
 `pdffonts` で Type 3 は 0 件、埋め込み書体のみ。
 

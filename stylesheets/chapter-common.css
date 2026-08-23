@@ -293,9 +293,13 @@ li.task-list-item > input[type="checkbox"] {
   background-size: 0.62em 0.62em;
 }
 
+/* 鉤の SVG は**パーセント符号化する**。生の `<` は URL として不正で epubcheck が
+   RSC-020 で落とし（実測 2026-08-23）、生の空白は途中で圧縮されて `viewBox='0 0 16 16'`
+   が `001616` に潰れ、SVG そのものが壊れていた。%3C / %3E / %20 なら両方とも起きない。
+   `;utf8` も非標準（正しくは `;charset=utf-8`）なので落とした。 */
 li.task-list-item > input[type="checkbox"]:checked {
   background-color: currentColor;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M3 8.5l3.2 3.2L13 5' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%2016'%3E%3Cpath%20d='M3%208.5l3.2%203.2L13%205'%20fill='none'%20stroke='white'%20stroke-width='2.4'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 /* Kindle は実体の文字（□ / ■）へ差し替わる。字面が本文へ溶けないよう少しだけ空ける */
