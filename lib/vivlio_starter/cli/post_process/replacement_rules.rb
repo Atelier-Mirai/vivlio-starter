@@ -111,10 +111,22 @@ module VivlioStarter
           Rule.new(%r{<p>((?:(?!</p>).)*?)\{\.aki2\}\s*</p>}m, '<p class="aki2">$1</p>', :tag_aware)
         ].freeze
 
+        # 段落末の {.small} をクラス化（補足を本文より小さめに組む）。
+        # 余白ではなく文字サイズを変えるため SPACING_CLASS_RULES とは分けている。
+        #
+        # `.aki` と同じ後処理ルートを通すのは、段落内の Markdown を生かすため。
+        # VFM は段落末の `{.class}` を解釈せず（見出し末尾だけは解釈する）、
+        # `{.text-*}` は前処理が `:::{.text-*}` へ包み替えて中身を生 HTML 化する。
+        # ここへ来る時点で本文は既に HTML なので、`<code>` や `<strong>` が残る。
+        PARAGRAPH_CLASS_RULES = [
+          Rule.new(%r{<p>((?:(?!</p>).)*?)\{\.small\}\s*</p>}m, '<p class="small">$1</p>', :tag_aware)
+        ].freeze
+
         # 旧 yml の記載順そのまま（順序変更禁止: 後段ルールは前段の結果に依存する）。
         ALL = (CONTAINER_RULES + PAGEBREAK_RULES + SPACING_MACRO_RULES +
                LIST_DECORATION_RULES + CODE_HEADING_RULES +
-               KBD_RULES + PARAGRAPH_CLEANUP_RULES + SPACING_CLASS_RULES).freeze
+               KBD_RULES + PARAGRAPH_CLEANUP_RULES + SPACING_CLASS_RULES +
+               PARAGRAPH_CLASS_RULES).freeze
 
         # ビルド時定数マクロ（at-directive-tier1-spec.md §2.3）。
         # 値が CONFIG・ビルド時刻に依存するため frozen 定数 ALL には入れず、適用時に組み立てる

@@ -140,6 +140,8 @@ module VivlioStarter
           # Prism.js 行番号付与（直接呼び出し）
           PrismLinesCommands.execute_prism_lines(html_file)
 
+          mark_code_captions!(html_file)
+          mark_strong_headings!(html_file)
           wrap_cross_ref_code_blocks!(html_file)
 
           begin
@@ -230,6 +232,98 @@ module VivlioStarter
       # 旧スタイルの <p class="code-caption" data-xref-id> にも対応します。
       # 行番号付与 (prism_lines) 後に実行します。
       # ================================================================
+      # ================================================================
+      # コードブロックのキャプション判定
+      # ----------------------------------------------------------------
+      # 「段落全体が <strong> ひとつ」かつ「直後がコードブロック」の <p> に
+      # code-caption クラスを付けます。`**設定例**` と書いた行の直後へコードを
+      # 置く、原稿でのキャプションの書き方に対応します。
+      #
+      # かつては CSS の `p:has(+ pre)` が隣接だけで同じ判定をしていましたが、
+      # コードを導入するだけの普通の文章まで巻き込んでいました（本書で 403 件が
+      # 字下げ・両端揃え・本文書体を失っていた。意図した対象は 16 件）。CSS では
+      # 「段落全体が強調か」を表現できない——`:only-child` は要素の子しか見ず、
+      # 地の文を含む段落も通してしまう——ため、判定をここへ移しています。
+      #
+      # 相互参照 ID 付きのキャプションは wrap_cross_ref_code_blocks! が同じ
+      # クラスを付けるので、ここで付いていれば重複させずに素通しします。
+      # ================================================================
+      def mark_code_captions!(html_file)
+        content = File.read(html_file, encoding: 'utf-8')
+        doc = HtmlParser.parse_html_document(content)
+        changed = false
+
+        doc.css('p').each do |paragraph|
+          next unless strong_only_paragraph?(paragraph)
+          next unless code_block?(paragraph.next_element)
+
+          classes = paragraph['class'].to_s.split(/\s+/).reject(&:empty?)
+          next if classes.include?('code-caption')
+
+          paragraph['class'] = (classes + ['code-caption']).join(' ')
+          changed = true
+        end
+
+        return unless changed
+
+        HtmlParser.save_html_document(html_file, doc)
+        Common.log_success("#{html_file}: code captions marked")
+      end
+      module_function :mark_code_captions!
+
+      # ================================================================
+      # 小見出しとして書かれた段落
+      # ----------------------------------------------------------------
+      # 段落全体が <strong> ひとつで、直後がコードブロックでないものに
+      # strong-heading クラスを付けます。原稿で `**ビルド時の警告**` のように
+      # 書かれた行は、文中の強調ではなく小さな見出しとして働いています（本書で
+      # 98 件）。本文と同じ大きさで色が違うだけでは前の段落と地続きに見えるので、
+      # CSS 側で上に半行あけて塊の始まりを示します。
+      #
+      # 直後がコードのものは mark_code_captions! が code-caption として扱うため
+      # ここでは対象外です（あちらは .code-caption 自身が余白を持つ）。
+      # ================================================================
+      def mark_strong_headings!(html_file)
+        content = File.read(html_file, encoding: 'utf-8')
+        doc = HtmlParser.parse_html_document(content)
+        changed = false
+
+        doc.css('p').each do |paragraph|
+          next unless strong_only_paragraph?(paragraph)
+          next if code_block?(paragraph.next_element)
+
+          classes = paragraph['class'].to_s.split(/\s+/).reject(&:empty?)
+          next if classes.include?('strong-heading')
+
+          paragraph['class'] = (classes + ['strong-heading']).join(' ')
+          changed = true
+        end
+
+        return unless changed
+
+        HtmlParser.save_html_document(html_file, doc)
+        Common.log_success("#{html_file}: strong headings marked")
+      end
+      module_function :mark_strong_headings!
+
+      # 段落の中身が <strong> ひとつだけか。空白のみのテキストノードは無視する。
+      # 「これは<strong>重要</strong>な設定です」のような地の文つきの段落は false。
+      def strong_only_paragraph?(paragraph)
+        children = paragraph.children.reject { it.text? && it.text.strip.empty? }
+        children.size == 1 && children.first.name == 'strong'
+      end
+      module_function :strong_only_paragraph?
+
+      # <pre> 単体、または language- クラスを持つ <figure>（コード）か。
+      # 画像の <figure> を巻き込まないためクラスまで見る。
+      def code_block?(node)
+        return false unless node
+
+        node.name == 'pre' ||
+          (node.name == 'figure' && node['class'].to_s.include?('language-'))
+      end
+      module_function :code_block?
+
       def wrap_cross_ref_code_blocks!(html_file)
         content = File.read(html_file, encoding: 'utf-8')
         doc = HtmlParser.parse_html_document(content)

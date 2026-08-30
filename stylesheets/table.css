@@ -95,6 +95,8 @@ figure.cross-ref-figure > figcaption {
 
 .code-caption {
   text-align: left;
+  /* 本文の字下げ（p { text-indent: 1em }）を打ち消し、行頭を揃える。 */
+  text-indent: 0;
 }
 
 /* キャプションだけがページ末尾に取り残されるのを防ぐ（Re:VIEW Starter の

@@ -308,6 +308,20 @@ module VivlioStarter
           assert_includes out, '<p class="aki2">もっと空ける</p>'
         end
 
+        def test_should_classify_small_paragraph
+          out = apply('<p>細かい話ですが、丸めは一度で済みます{.small}</p>')
+
+          assert_includes out, '<p class="small">細かい話ですが、丸めは一度で済みます</p>'
+        end
+
+        # 後処理でクラス化する理由そのもの。ここへ来る時点で段落内の Markdown は
+        # VFM が HTML へ変換し終えているので、code / strong を保ったままクラスが付く。
+        def test_should_keep_inline_markup_in_small_paragraph
+          out = apply('<p><code>to_f</code> は<strong>先に</strong>丸めます{.small}</p>')
+
+          assert_includes out, '<p class="small"><code>to_f</code> は<strong>先に</strong>丸めます</p>'
+        end
+
         # =============================================================
         # 廃止した記法（会話記法）は変換されない
         # =============================================================
@@ -342,13 +356,15 @@ module VivlioStarter
                      ReplacementRules::CODE_HEADING_RULES +
                      ReplacementRules::KBD_RULES +
                      ReplacementRules::PARAGRAPH_CLEANUP_RULES +
-                     ReplacementRules::SPACING_CLASS_RULES
+                     ReplacementRules::SPACING_CLASS_RULES +
+                     ReplacementRules::PARAGRAPH_CLASS_RULES
 
           assert_equal expected, ReplacementRules::ALL
           # 旧 yml 34 ルールから @nega/@posi/@comment の 3 本を撤去して 31 本。
-          # そこへ @hspace（2 本）・@pagebreak（2 本）を追加して 35 本
+          # そこへ @hspace（2 本）・@pagebreak（2 本）を追加して 35 本、
+          # 段落末 {.small} の 1 本を追加して 36 本
           # （@version/@title/@today は CONFIG 依存のため ALL ではなく value_macro_rules）。
-          assert_equal 35, ReplacementRules::ALL.size
+          assert_equal 36, ReplacementRules::ALL.size
         end
 
         def test_should_apply_multiline_mode_to_all_patterns
