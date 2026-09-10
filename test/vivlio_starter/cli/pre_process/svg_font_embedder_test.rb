@@ -75,6 +75,39 @@ module VivlioStarter
         end
       end
 
+      # 同梱書体のディレクトリ名は slug と一致するとは限らない。
+      # `HackGen35 Console NF` は `fonts/hackgen35/` に置かれている——page-settings.css が
+      # 実ファイルを直に指しているだけで、Google Fonts 側の slug 規則には従っていない。
+      # slug で引けなければ中身のファイル名から引き当てないと、コード書体だけ
+      # サブセットを作れず、等幅で組んだ図が OS フォントへ落ちて Type 3 が残る。
+      def test_should_find_a_bundled_font_whose_directory_name_differs_from_the_slug
+        with_fonts('Zen Kaku Gothic New',
+                   'fonts/hackgen35' => %w[HackGen35ConsoleNF-Regular.ttf HackGen35ConsoleNF-Bold.ttf]) do
+          assert_equal 'HackGen35ConsoleNF-Bold.ttf',
+                       File.basename(Embedder.font_path('HackGen35 Console NF', weight: :bold))
+        end
+      end
+
+      # 図が太字を混ぜたときのために、Regular と Bold を別々に埋められること。
+      # 1 面しか渡さないと faux-bold が合成されて Type 3 に戻る（notes §5.2）。
+      def test_should_expose_both_faces_when_the_family_has_them
+        with_fonts('Zen Kaku Gothic New',
+                   'fonts/Zen_Kaku_Gothic_New' => %w[ZenKakuGothicNew-Regular.ttf ZenKakuGothicNew-Bold.ttf]) do
+          faces = Embedder.face_paths('Zen Kaku Gothic New')
+
+          assert_equal [400, 700], faces.keys
+          assert_equal 'ZenKakuGothicNew-Regular.ttf', File.basename(faces[400])
+          assert_equal 'ZenKakuGothicNew-Bold.ttf', File.basename(faces[700])
+        end
+      end
+
+      # 1 面しか無い書体はウェイト指定なしの 1 つに畳む（合成は font-synthesis-weight で止める）。
+      def test_should_collapse_to_a_single_face_when_only_one_exists
+        with_fonts('Klee One', 'fonts/google/Klee_One' => %w[Klee-One.ttf]) do
+          assert_equal [nil], Embedder.face_paths('Klee One').keys
+        end
+      end
+
       # 実体がどこにも無ければ nil（呼び出し側は埋め込みを諦める）
       def test_should_return_nil_when_font_is_missing
         with_fonts('Nonexistent Font') do

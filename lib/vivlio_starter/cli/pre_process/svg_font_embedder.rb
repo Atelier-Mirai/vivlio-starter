@@ -69,6 +69,62 @@ module VivlioStarter
             %(svg{font-synthesis-weight:none}</style>)
         end
 
+        # 複数の書体ぶんの @font-face を持つ <style> を組み立てる。
+        #
+        # 著者が `images/` へ置いた図版は、生成 SVG と違って**何の書体を何面使うか
+        # 決め打ちできない**——1 枚の中にゴシックのラベルと等幅の座標値が同居しうるし、
+        # 太字も混ざる。そこで図が実際に名指ししている書体を集め、面ごとに埋める。
+        #
+        # @param chars [Array<String>] 埋め込む字
+        # @param families [Array<String>] CSS 上で名乗るファミリ名
+        # @param default_family [String, nil] font-family の指定が無い字の受け皿。
+        #   独立文書では未指定＝ブラウザ既定（serif）＝OS フォントなので、ここを空けると
+        #   指定を書き忘れた字だけが Type 3 で残る。
+        # @return [String, nil] <style> 要素。1 面も埋め込めなければ nil
+        def font_faces_style(chars, families:, default_family: nil)
+          return nil if chars.empty?
+
+          faces = Array(families).compact.uniq.flat_map { face_rules(chars, it) }
+          return nil if faces.empty?
+
+          # 合成禁止は独立文書にも要る。1 面しか埋まらなかった書体に太字を要求されると
+          # faux-bold が合成され、それがまた Type 3 になる（notes §5.2）。
+          base = if default_family
+                   %(svg{font-family:"#{default_family}";font-synthesis-weight:none})
+                 else
+                   'svg{font-synthesis-weight:none}'
+                 end
+          "<style>#{faces.join}#{base}</style>"
+        end
+
+        # 書体 1 つぶんの @font-face 宣言（面ごとに 1 つ）。実体が無ければ空配列。
+        def face_rules(chars, family)
+          face_paths(family).filter_map do |weight, path|
+            data = subset(chars, path)
+            next unless data
+
+            descriptor = weight ? "font-weight:#{weight};" : ''
+            %(@font-face{font-family:"#{family}";#{descriptor}) +
+              %(src:url("data:font/ttf;base64,#{[data].pack('m0')}") format("truetype");})
+          end
+        end
+
+        # 書体 1 つぶんの、埋め込むべき字面。
+        #
+        # Regular と Bold が別ファイルで見つかったときは **400 と 700 を別々に埋める**。
+        # 生成 SVG は 1 面で足りていた（ラベルの太さが揃っているため）が、著者の図版は
+        # 本文と同じように太字を混ぜる。1 面しか渡さないと、合成が起きるか
+        # `font-synthesis-weight:none` で止めた結果すべて細く出るかのどちらかになる。
+        #
+        # @return [Hash{Integer, nil => String}] ウェイト => TTF のパス（1 面なら鍵は nil）
+        def face_paths(family)
+          regular = font_path(family, weight: :regular)
+          return {} unless regular
+
+          bold = font_path(family, weight: :bold)
+          regular == bold ? { nil => regular } : { 400 => regular, 700 => bold }
+        end
+
         # SVG のルート直下へ <style> を差し込む。
         # @return [String] 差し込み済みの SVG（style が nil ならそのまま返す）
         def inject(svg, style)
@@ -98,10 +154,46 @@ module VivlioStarter
 
         # 書体名から TTF の実体を探す。置き場もファイル名の規則も同梱と Google で違う（notes §5.1）。
         def font_path(name, weight:)
-          slug = name.gsub(/[^A-Za-z0-9]+/, '_')
-          bundled_font_path(File.join(Common.stylesheets_dir, 'fonts', slug), weight) ||
-            google_font_path(File.join(Common.stylesheets_dir, 'fonts', 'google', slug), weight)
+          dir = bundled_font_dir(name)
+          (dir && bundled_font_path(dir, weight)) ||
+            google_font_path(File.join(Common.stylesheets_dir, 'fonts', 'google', slug_for(name)), weight)
         end
+
+        # 同梱書体の置き場。**slug と一致するとは限らない。**
+        #
+        # `HackGen35 Console NF` は `fonts/hackgen35/` に置かれている——page-settings.css の
+        # @font-face が実ファイルを直に指しているだけで、Google Fonts 側の slug 規則には
+        # 従っていないためである。slug で引けなければ中身のファイル名から引き当てる。
+        # ここを外すとコード書体だけサブセットを作れず、等幅で組んだ図が OS フォントへ
+        # 落ちて Type 3 が残る。
+        # @return [String, nil]
+        def bundled_font_dir(name)
+          root = File.join(Common.stylesheets_dir, 'fonts')
+          by_slug = File.join(root, slug_for(name))
+          return by_slug if Dir.exist?(by_slug)
+
+          key = comparable(name)
+          Dir.glob(File.join(root, '*')).find do |dir|
+            next false unless File.directory?(dir) && File.basename(dir) != 'google'
+
+            comparable(File.basename(dir)) == key || bundled_faces_named?(dir, key)
+          end
+        end
+
+        # ディレクトリの中に、その書体名の字面が入っているか。
+        # ファイル名は `ZenKakuGothicNew-Bold.ttf` のように「詰めた書体名 + 字面」なので、
+        # 末尾の字面を落として突き合わせる。
+        def bundled_faces_named?(dir, key)
+          Dir.glob(File.join(dir, '*.ttf')).any? do |file|
+            comparable(File.basename(file, '.ttf').sub(/-[^-]*\z/, '')) == key
+          end
+        end
+
+        # 書体名の比較用の形（大小・空白・記号の違いを潰す）。
+        def comparable(name) = name.to_s.downcase.gsub(/[^a-z0-9]/, '')
+
+        # Google Fonts の置き場に使うディレクトリ名（FontManager.slug_for と同じ規則）。
+        def slug_for(name) = name.to_s.gsub(/[^A-Za-z0-9]+/, '_')
 
         # 同梱書体: 求める字面があればそれ、無ければ辞書順で最初の 1 本。
         def bundled_font_path(dir, weight = :bold)
@@ -132,8 +224,16 @@ module VivlioStarter
           name.empty? ? DEFAULT_BODY_FONT : name
         end
 
+        # book.yml のコード書体名（未設定・プロジェクト外では同梱既定）。
+        # 図の中の等幅——座標値・コマンド名・キー表記——の受け皿になる。
+        def configured_code_font
+          name = Common.configured? ? Common::CONFIG.typography.code.font.to_s.strip : ''
+          name.empty? ? DEFAULT_CODE_FONT : name
+        end
+
         DEFAULT_FONT = 'Zen Kaku Gothic New'
         DEFAULT_BODY_FONT = 'Zen Old Mincho'
+        DEFAULT_CODE_FONT = 'HackGen35 Console NF'
 
         # 指定の字だけを含む TTF を作る。フォントが読めない場合は nil。
         def subset(chars, path)

@@ -5,6 +5,7 @@ require 'fileutils'
 require_relative '../techbook/processor'
 require_relative '../code_line_blocks'
 require_relative 'derived_image'
+require_relative 'derived_svg'
 require_relative 'pdf_page_map_extractor'
 require_relative 'vivliostyle_config_writer'
 
@@ -207,9 +208,12 @@ module VivlioStarter
 
           # --- Phase: 派生をまとめて作る（並列。キャッシュが効けば即返る） ---
           derived = DerivedImage.prepare_all(requests.uniq)
-          return if derived.empty?
+          # SVG はベクタのまま運ぶ（ラスタ化しない）が、`<img>` 参照の独立文書には
+          # 本文の @font-face が届かないので、書体だけは SVG 自身に抱かせた複製へ回す。
+          svg_derived = DerivedSvg.prepare_all(requests.map(&:first).uniq)
+          return if derived.empty? && svg_derived.empty?
 
-          rewrite_staged_images!(docs, derived)
+          rewrite_staged_images!(docs, derived, svg_derived)
         end
 
         # 地色を持つブロックの中にあるか。**この中の画像は透過を保たなければならない**——
@@ -244,16 +248,21 @@ module VivlioStarter
           File.file?(path) ? path : nil
         end
 
-        def rewrite_staged_images!(docs, derived)
+        def rewrite_staged_images!(docs, derived, svg_derived)
           total = 0
           docs.each do |path, doc|
             changed = 0
             doc.css('img').each do |img|
               file = source_file_for_img(img)
-              derivative = file && derived[[file, keep_alpha?(img)]]
-              next unless derivative
+              next unless file
 
-              apply_derivative!(img, derivative, file)
+              if (derivative = derived[[file, keep_alpha?(img)]])
+                apply_derivative!(img, derivative, file)
+              elsif (embedded = svg_derived[file])
+                apply_svg_derivative!(img, embedded, file)
+              else
+                next
+              end
               changed += 1
             end
             next if changed.zero?
@@ -274,6 +283,16 @@ module VivlioStarter
           img['src'] = "#{Common.asset_prefix}#{derivative.path}"
           img['width'] = derivative.width.to_s
           img['height'] = derivative.height.to_s
+          img['data-vs-source'] = source
+        end
+
+        # src を書体入りの SVG へ向ける。
+        #
+        # **寸法は書かない。** ラスタの派生と違って画素数を持たず、表示の大きさは SVG 自身の
+        # viewBox と CSS が決めるためである。ここで width / height を足すと、ベクタのまま
+        # 運ぶ利点（版面に合わせて滑らかに伸縮する）を殺してしまう。
+        def apply_svg_derivative!(img, path, source)
+          img['src'] = "#{Common.asset_prefix}#{path}"
           img['data-vs-source'] = source
         end
 

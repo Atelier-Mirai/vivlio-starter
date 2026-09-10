@@ -25,6 +25,7 @@ require_relative '../entries'
 require_relative '../code_line_blocks'
 require_relative '../units'
 require_relative 'derived_image'
+require_relative 'derived_svg'
 require_relative 'vivliostyle_config_writer'
 require_relative 'heading_image_composer'
 require_relative 'math_text_renderer'
@@ -1543,6 +1544,118 @@ module VivlioStarter
         # 効くのは**素材を PNG / JPEG で置いている本**だけである。素材が既に WebP なら
         # 対象が 1 件も無く、何も起きない（本書がこれに当たる）。Kindle は WebP 非対応
         # なので通さない——あちらは逆向きに JPEG / PNG へ落とす。
+        # ================================================================
+        # 著者の SVG 図版を、書体を抱かせた派生へ差し替える（両フレーバ）
+        # ================================================================
+        # `<img>` 参照の SVG は独立文書なので、本文の @font-face も CSS 変数も届かない
+        # （`type3-font-embedding-notes.md` §4）。この事情は PDF だけの話ではなく、
+        # **EPUB でも図の書体は解決されない**。しかも EPUB は本文書体を埋め込まない
+        # （`embed_fonts?` は false・本文は読者の書体で組まれる）ので、図が拠れる書体は
+        # 図自身が持つものしかない。
+        #
+        # そこで PDF と同じ `DerivedSvg` の派生をそのまま配る。ラスタライズして逃げる手は
+        # 採らない——librsvg は data: URI の @font-face を読まず（実測: 埋め込み前後の PNG が
+        # バイト一致）、macOS では fontconfig に登録した書体も見ないため、**焼いた機械の
+        # OS 書体**が焼き付いて成果物が再現しなくなる。ベクタのまま運べば決定論で、
+        # 高精細画面でも鮮明で、しかも軽い。
+        #
+        # Kindle だけは KFX が SVG を扱えないのでここで焼く。書体が OS のものになるのは
+        # 見出し画像（`heading_image_src`）が既に受け入れている割り切りと同じで、
+        # この経路で新たに悪くなるものはない。
+        #
+        # **ローカライズより後に呼ぶこと。** 差し替えた元 SVG をパッケージから落とすので、
+        # コピーが済んでいないと空振りし、未参照の重複が残る（`transcode_to_webp_for_clean_epub!`
+        # と同じ理由）。
+        # ================================================================
+        def stage_author_svg_for_epub!(html_files, flavor:)
+          cache = {}
+          html_files.each { |path| stage_author_svg_in_file!(path, flavor, cache) }
+          html_files
+        end
+
+        # 1 ファイル分の SVG 参照を派生へ差し替える。
+        def stage_author_svg_in_file!(path, flavor, cache)
+          html = File.read(path, encoding: 'utf-8')
+          changed = false
+
+          updated = html.gsub(/<img\b[^>]*>/i) do |tag|
+            src = tag[/\ssrc="([^"]*)"/i, 1]
+            next tag unless src&.match?(/\.svg\z/i)
+
+            staged = cache.fetch(src) { cache[src] = stage_author_svg(src, File.dirname(path), flavor) }
+            next tag unless staged
+
+            changed = true
+            tag.sub(/(\ssrc=")[^"]*(")/i, "\\1#{staged}\\2")
+          end
+          return unless changed
+
+          File.write(path, updated, encoding: 'utf-8')
+          Common.log_info("[EPUB] #{File.basename(path)} の SVG 図版を書体入りの派生へ差し替えました")
+        end
+
+        # src の SVG を派生へ差し替え、staging の相対パスを返す。できなければ nil（src 据え置き）。
+        # 変換元は cwd（ルート）の著者資産を読み、出力は base_dir（消費者 dir）配下の
+        # images/_epub_assets/ に置く（著者 dir を汚さない・P4 §5.3）。
+        def stage_author_svg(src_attr, base_dir, flavor)
+          source = decode_html_entities(src_attr)
+          unless File.exist?(source)
+            candidate = File.join(Common::BUILD_HTML_DIR, source)
+            source = candidate if File.exist?(candidate)
+          end
+          return nil unless File.exist?(source)
+
+          embedded = DerivedSvg.prepare(source)
+          # 文字を持たない図・既に書体を抱えた生成 SVG は派生を作らない。素材のまま運ぶ。
+          return nil unless embedded
+
+          place_author_svg(embedded, src_attr, base_dir, flavor)
+        rescue StandardError => e
+          Common.log_warn("[EPUB] SVG 図版の差し替えに失敗（#{src_attr}）: #{e.message}")
+          nil
+        end
+
+        # 派生を消費者 dir へ置き、参照用の相対パスを返す。
+        def place_author_svg(embedded, src_attr, base_dir, flavor)
+          ext = flavor == :kindle ? 'raster' : 'svg'
+          key = Digest::SHA256.hexdigest(
+            [File.expand_path(embedded), File.mtime(embedded).to_i, ext].join('|')
+          )[0, 16]
+          dir = File.join(base_dir, Common.images_dir, EPUB_ASSETS_REL_SUBDIR)
+          FileUtils.mkdir_p(dir)
+
+          rel = flavor == :kindle ? rasterize_author_svg(embedded, dir, key) : copy_author_svg(embedded, dir, key)
+          return nil unless rel
+
+          drop_packaged_original(base_dir, decode_html_entities(src_attr))
+          rel
+        end
+
+        # クリーン EPUB: ベクタのまま置く。
+        def copy_author_svg(embedded, dir, key)
+          abs = File.join(dir, "#{key}.svg")
+          FileUtils.cp(embedded, abs) unless File.exist?(abs)
+          "#{Common.images_dir}/#{EPUB_ASSETS_REL_SUBDIR}/#{key}.svg" if File.size?(abs)
+        end
+
+        # Kindle: PNG へ焼いてから、透過の有無で PNG / JPEG を選ぶ。
+        #
+        # 形式の選び分けは WebP 経路（`epub_image_extension_for`）と同じ規則にする——
+        # Kindle 端末のダークモードは背景を黒にするが画像は反転しないため、透過を白へ
+        # 潰すと図の矩形が地の上に浮く。透過が無ければ JPEG のほうが小さい。
+        def rasterize_author_svg(embedded, dir, key)
+          png = File.join(dir, "#{key}.tmp.png")
+          return nil unless system('rsvg-convert', '-w', KINDLE_IMAGE_MAX_EDGE.to_s, '-f', 'png',
+                                   embedded, '-o', png, out: File::NULL, err: File::NULL) && File.size?(png)
+
+          ext = image_has_alpha?(png) ? 'png' : 'jpg'
+          abs = File.join(dir, "#{key}.#{ext}")
+          converted = File.exist?(abs) || convert_image_for_epub(png, abs, ext)
+          "#{Common.images_dir}/#{EPUB_ASSETS_REL_SUBDIR}/#{key}.#{ext}" if converted && File.size?(abs)
+        ensure
+          FileUtils.rm_f(png) if png
+        end
+
         def transcode_to_webp_for_clean_epub!(html_files)
           cache = {}
           html_files.each { |path| transcode_to_webp_in_file!(path, cache) }

@@ -242,11 +242,21 @@ module VivlioStarter
           end
         end
 
+        # 生成アセットの SVG 参照を、隣に焼いてある WebP へ向け直す。
+        #
+        # **対象は `stylesheets/` の生成物だけ**（絵文字マスターと vs-techbook の見出し記号）。
+        # 著者の `images/` は 2026-09-10 に外した——焼くと図の書体がそのとき使った機械の
+        # OS 書体になり、成果物が再現しないためである（`type3-font-embedding-notes.md` §9）。
+        # あちらは PDF・EPUB とも `DerivedSvg` がベクタのまま書体を抱かせて解き、Kindle は
+        # EPUB 枝が焼く。ここで拾ってしまうと、過去のビルドが残した `images/**/*.webp` を
+        # 掴んで元の挙動へ戻ってしまう。
         def rewrite_svg_references!(html_files)
           html_files.each do |html_file|
             content = File.read(html_file, encoding: 'utf-8')
             rewritten = content.gsub(/(<img\s[^>]*src=")([^"]*\.svg)(")/i) do
               prefix, svg_src, suffix = Regexp.last_match.captures
+              next "#{prefix}#{svg_src}#{suffix}" unless svg_src.include?("#{Common::STYLESHEETS_DIR}/")
+
               webp_src = svg_src.sub(/\.svg\z/i, '.webp')
               # 存在確認は src を HTML ファイル自身の位置基準で解決する（P4b §2.4）。
               # asset_prefix 付き（ルート資産）・dir 相対（数式など workspace 生成物）の

@@ -68,6 +68,11 @@ module VivlioStarter
           # --- Phase: 参照資産を消費者 dir 内へローカライズ（E2: パッケージルート＝dir） ---
           Build::EpubBuilder.localize_assets!(dir, flavor:)
 
+          # --- Phase: 著者の SVG 図版を書体入りの派生へ差し替える ---
+          # ここも**ローカライズより後**（差し替えた元 SVG をパッケージから落とすため）。
+          # クリーンはベクタのまま運び、Kindle は KFX が SVG を扱えないので PNG / JPEG へ焼く。
+          Build::EpubBuilder.stage_author_svg_for_epub!(epub_htmls, flavor:)
+
           # --- Phase: クリーン EPUB の PNG / JPEG を WebP へ寄せる ---
           # **ローカライズより後**でなければならない。差し替えた元ファイルをパッケージから
           # 落とすので、コピーが済んでいないと空振りし、未参照の重複が残る（実測で +876KB）。

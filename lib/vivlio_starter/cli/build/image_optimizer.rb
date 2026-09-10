@@ -22,20 +22,24 @@ module VivlioStarter
         # 素材そのものを軽くしたい著者は `vs resize` を明示的に実行する（§3.5：素材を
         # 機械が黙って書き換えないという原則の出口）。
         #
-        # 残すのは Techbook モードの SVG ラスタライズだけ。これは Type 3 フォント対策で、
+        # 残すのは Techbook モードの絵文字ラスタライズだけ。これは Type 3 フォント対策で、
         # 画像最適化とは別の目的を持つ。
+        #
+        # **著者の `images/` は対象から外した**（2026-09-10）。あそこを焼いていたのも
+        # Type 3 対策だったが、焼くと図の書体が**そのとき使った機械の OS 書体**になり
+        # （librsvg は同梱書体も data: URI の @font-face も見ない）、成果物が再現しなかった。
+        # PDF は `DerivedSvg` がベクタのまま書体を抱かせて解き、EPUB も同じ派生を配る。
+        # Kindle だけは KFX が SVG を扱えないので EPUB 枝が焼く——**フレーバが判る場所で
+        # 焼く**ほうが、素材の隣に形式を 1 つ置いて全ターゲットに使い回すより素直である。
+        # 副産物として、機械が `images/` へ書き込むこともなくなった（§3.5）。
         def optimize_images!
-          dirs = [Common::IMAGES_DIR, File.join(Common::STYLESHEETS_DIR, 'images'), Common.data_dir]
           Common.log_info('[Step 1] 素材はそのまま使います（派生はターゲットごとにビルドが作ります）')
+          return unless Common::CONFIG.output.pdf.techbook == true
 
-          # Techbook モード: 全 SVG を rsvg-convert → lossless WebP に変換
+          # Techbook モード: 絵文字 SVG を rsvg-convert → lossless WebP に変換
           # Chromium PDF エンジンが SVG 内のパスを Type 3 フォントとして埋め込む問題を回避する
-          if Common::CONFIG.output.pdf.techbook == true
-            # dirs には data/ も含まれるため、データ画像の SVG も Type 3 フォント問題回避の対象になる。
-            svg_dirs = dirs + [File.join(Common::STYLESHEETS_DIR, 'twemoji')]
-            Common.log_action('[Step 1] Techbook: SVG → lossless WebP 変換を実行します')
-            ResizeCommands.convert_svg_to_webp(svg_dirs)
-          end
+          Common.log_action('[Step 1] Techbook: 絵文字の SVG → lossless WebP 変換を実行します')
+          ResizeCommands.convert_svg_to_webp([File.join(Common::STYLESHEETS_DIR, 'twemoji')])
         end
 
         # Step 3: frontispiece / ornament の事前生成
