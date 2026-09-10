@@ -491,36 +491,45 @@ Kindle だけは事情が違います。KFX 形式が SVG を扱えないため�
 ```svg
 <svg xmlns="http://www.w3.org/2000/svg"
      width="100%" viewBox="0 0 640 400" role="img">
-  <title>図の内容を一文で</title>
+  <!-- 幅は全幅 640 か半幅 320 の二択。1 単位 = 0.25mm。
+       縦は中身の高さで決め、上下の余白は 12（3mm）。 -->
+  <title>図の内容を一文で。本文の alt と逐語一致させる</title>
   <style>
+    /* 字 ------------------------------------- */
     text   { font-family: "Zen Kaku Gothic New", sans-serif; }
-    .label { font-size: 14px; fill: #1a1a1a; }
-    .note  { font-size: 12px; fill: #993C1D; }
+    .label { font-size: 14px; fill: #1a1a1a; }  /* 本文相当 */
+    .note  { font-size: 12px; fill: #993c1d; }  /* 注記 */
     .title { font-size: 17px; font-weight: 700;
-             fill: #1a1a1a; }
+             fill: #1a1a1a; }                   /* 図の題 */
+
+    /* 線 ------------------------------------- */
     .rule  { stroke: #1a1a1a; stroke-width: 2; fill: none; }
-    /* 補助線は細い破線 */
-    .guide { stroke: #9AA0A6; stroke-width: 1; fill: none;
+    .frame { stroke: #9aa0a6; stroke-width: 1; fill: none; }
+    /* 背景の目盛 */
+    .guide { stroke: #9aa0a6; stroke-width: 1; fill: none;
              stroke-dasharray: 4 4; }
 
-    /* 面。plate は線の上へ部品を重ねるときの下敷き */
-    .plate     { fill: #ffffff; }
-    .area      { fill: #4E7CA1; }  /* 値の大きさを表す面 */
-    .area-pale { fill: #C9D3DA; }  /* 背景側の領域 */
+    /* 面 ------------------------------------- */
+    .plate     { fill: #ffffff; }  /* 線の上に重ねる面 */
+    .area      { fill: #4e7ca1; }  /* 値の大きさを表す面 */
+    .area-pale { fill: #c9d3da; }  /* 背景側の領域 */
 
-    /* 強調。alert は誤り・危険を指す */
-    .mark  { stroke: #993C1D; stroke-width: 2.5; fill: none; }
-    .alert { stroke: #74202C; stroke-width: 3.5; fill: none; }
+    /* 強調 ----------------------------------- */
+    .mark  { stroke: #993c1d; stroke-width: 2.5; fill: none; }
+    .alert { stroke: #74202c; stroke-width: 3.5; fill: none; }
     .mark-text { font-size: 14px; font-weight: 700;
-                 fill: #993C1D; }
+                 fill: #993c1d; }
 
-    /* 系列。明度差と線種を重ね、直接ラベルを添える */
-    .s1 { stroke: #22496B; stroke-width: 2.5; fill: none; }
-    .s2 { stroke: #4E7CA1; stroke-width: 2.5; fill: none;
+    /* 系列。明るさと線種の両方で分ける ------- */
+    .s1 { stroke: #22496b; stroke-width: 2.5; fill: none; }
+    .s2 { stroke: #4e7ca1; stroke-width: 2.5; fill: none;
           stroke-dasharray: 10 5; }
-    .s3 { stroke: #8FB0C8; stroke-width: 2.5; fill: none;
+    .s3 { stroke: #8fb0c8; stroke-width: 2.5; fill: none;
           stroke-dasharray: 2 4; stroke-linecap: round; }
+    .s4 { stroke: #6e97b5; stroke-width: 2.5; fill: none;
+          stroke-dasharray: 12 4 2 4; }
   </style>
+
   <text class="label" x="20" y="40">ラベル</text>
 </svg>
 ```
@@ -575,25 +584,29 @@ Kindle だけは事情が違います。KFX 形式が SVG を扱えないため�
 
 | クラス | 色 | グレー値 |
 | :--- | :--- | ---: |
-| `.label` | `#1a1a1a` | 32 |
-| `.alert` | `#74202C` | 65 |
-| `.s1` | `#22496B` | 72 |
-| `.note` / `.mark` | `#993C1D` | 90 |
-| `.s2` / `.area` | `#4E7CA1` | 119 |
-| `.guide` | `#9AA0A6` | 158 |
-| `.s3` | `#8FB0C8` | 170 |
-| `.area-pale` | `#C9D3DA` | 208 |
+| `.label` / `.title` | `#1a1a1a` | 32 |
+| `.alert` | `#74202c` | 65 |
+| `.s1` | `#22496b` | 72 |
+| `.note` / `.mark` / `.mark-text` | `#993c1d` | 90 |
+| `.s2` / `.area` | `#4e7ca1` | 119 |
+| `.s4` | `#6e97b5` | 145 |
+| `.guide` / `.frame` | `#9aa0a6` | 158 |
+| `.s3` | `#8fb0c8` | 170 |
+| `.area-pale` | `#c9d3da` | 208 |
 
-系列は同じ色相の明度差で作ってあるので、白黒でも順序が保たれます。ただし**明るさだけに頼れない組み合わせがふたつ**あります。`.alert`（65）と `.s1`（72）、`.guide`（158）と `.s3`（170）です。どちらも差が小さく、白黒では同じ濃さに見えます。
+系列は同じ色相の明度差で作ってあるので、白黒でも順序が保たれます。ただし**明るさだけに頼れない組み合わせが三つ**あります。`.alert`（65）と `.s1`（72）、`.s4`（145）と `.guide`（158）、`.guide`（158）と `.s3`（170）です。いずれも差が小さく、白黒ではほぼ同じ濃さに見えます。
 
-そこで**線種と太さというふたつ目の手がかり**を足してあります。`.s1` は実線、`.s2` は破線、`.s3` は点線。`.guide` は細い破線、`.alert` は他より太い実線です。色が失われても、線の見た目で区別がつきます。
+系列を四つ並べると、明度の刻みはさらに詰まります。そこで**線種と太さというふたつ目の手がかり**を足してあります。色が失われても、線の見た目で区別がつきます。
 
 | クラス | 線種 | 実寸 |
 | :--- | :--- | :--- |
 | `.s1` | 実線 | — |
 | `.s2` | 破線 | 2.5mm 描いて 1.25mm あける |
 | `.s3` | 点線 | 0.5mm 描いて 1mm あける |
+| `.s4` | 一点鎖線 | 3mm・1mm・0.5mm・1mm の繰り返し |
 | `.guide` | 細い破線 | 1mm 描いて 1mm あける |
+| `.frame` | 細い実線 | — |
+| `.alert` | 太い実線 | 他の線より 1mm 太い |
 
 :::{.memo}
 **凡例より直接ラベルを。** 凡例は「線の見た目」と「名前」を読者に突き合わせさせる作りで、白黒だとその突き合わせが難しくなります。線の終端にそのまま名前を置けば、照合そのものが要りません。
