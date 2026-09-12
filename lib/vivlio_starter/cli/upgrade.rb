@@ -666,7 +666,7 @@ module VivlioStarter
         # 狼少年になり、本当に変更が隠れている場面での警告まで軽く扱われる
         return if hidden.none? { ['-', '+'].include?(it[3]) }
 
-        Common.log_always(paint('   ⚠️ [y] は表示していない箇所にも適用されます', :yellow, enabled:))
+        Common.log_always(paint('   🟡 [y] は表示していない箇所にも適用されます', :yellow, enabled:))
       end
 
       ANSI_CODES = { red: 31, green: 32, yellow: 33, cyan: 36, dim: 2 }.freeze
