@@ -23,6 +23,16 @@
 
 - **誰からも読まれていなかった `CatalogLoader::SPECIAL_PAGES` を撤去した**。特殊ページの basename を 5 件並べた定数だが、唯一の読み手だった `special_page?` が 2026-06-11 の死んだコード掃除で消えた際に、定数だけが取り残されていた。2026-08-22 の全数調査では「最も網羅的な定義が浮いている＝他所に取りこぼしがある疑い」として残したが、追ってみると**取りこぼしは無かった**。`TokenResolver::CACHED_SYSTEM_FILES`（3 件）は「どのシステム **`.md`** が `.cache/vs/` に生成されるか」という別の問いに答えるもので、`_indexpage` / `_glossarypage` は `.md` を持たない（`UnifiedPageBuilder` が HTML を直接書き出す）ため、足すと存在しないパスを指すだけだった。`clean.rb` の一覧も P4 以前のルート残骸の掃除で、こちらも欠けは無い。
 
+### Removed
+
+- **`vs clean` の「旧バージョン残骸掃除」を V2.0 予定から前倒しで撤去した**（`clean.rb` が 520 行 → 302 行）。P4（2026-07-04/05）と generated-assets 移設（07-11）で中間生成物をワークスペースへ閉じた際、移行者のために「1 リリースだけ残す」としたルート掃除である。**その猶予はすでに 2 回過ぎている**（rc.2 = 2026-08-10・rc.3 = 08-22）。
+
+  **残すほうが危なかった。** `clean_build_artifacts` は `vs build` の Step 0 からも呼ばれるため、この掃除は**毎ビルド**走る。対象は現行版が決して作らないもので、代わりに**著者の持ち物**を薙いでいた——ルートの `*.html` と `[0-9][0-9]-*.md`、`book-settings.css`、そして `images/{math,headings,_epub_assets}` の**再帰削除**（現行の生成先は消費者 dir 内なので、ここに当たるのは著者が自分で作ったディレクトリだけ）。`--cover` では `covers/*.pdf` と `*.jpg` も消していた（著者向けの案内は png/svg しか「著者のもの」と書いていない）。しかも削除ログは `log_info` なので、既定のログ水準では**何も表示されない**。テストで実証した——撤去前のコードは、著者がルートに置いた `notes.html` をオプションなしの `vs clean` で消す。
+
+  撤去したのは `LEGACY_ROOT_PATTERNS` / `LEGACY_INTERMEDIATE_PDF_PATTERNS`、ルートの `_index_matches.yml`・`_indexpage.html`・`_glossarypage.html` の削除、`images/` 配下 3 ディレクトリの再帰削除、`clean_legacy_variant_images`、`clean_legacy_cover_files`、そして `.vivliostyle/` の削除。**ルートを掃く処理は 1 つも残っていない**——`--purge` のときだけ最終成果物へ手を伸ばす。移行者の手元には旧版の残骸が残るが、それを読むコード（撤去済みの手動フロー）はもう無いので、散らかるだけである。`.gitignore` からも、ルートに出なくなった中間物（`_toc.md` `_part[0-9]*` `_titlepage.*` `_indexpage.html` 等）の行を落とした——**ignore を外せば `git status` に現れる**ので、消すかどうかを著者が自分で決められる。
+
+  `.vivliostyle/` は現行版が作らないことを実測で確かめた。CLI 11.1.0 は `workspaceDir` を省くと今もルート直下へ作るが、当パイプラインの 4 経路はすべて `workspaceDir` をワークスペース内へ向けた生成 config を渡している（`vivliostyle_config_writer.rb` / `epub_builder.rb`）。`.gitignore` の `/.vivliostyle/` だけは残した——著者が手で `npx vivliostyle build` を叩く余地があり、その 1 行に害はないため。
+
 ### Fixed
 
 - **著者が `images/` へ置いた SVG 図版が、PDF に Type 3 フォントを持ち込んでいた不具合を修正**（`type3-font-embedding-notes.md` §9）。`<img>` 参照の SVG は独立文書で本文の @font-face が届かないため、`font-family: sans-serif` のような汎用名は解決されず OS 既定（macOS なら Hiragino）へ落ちる。showcase / mermaid の**生成** SVG は 2026-08-07 に塞いだが、**著者の図版は素通りだった**——実測（22 章の単章ビルド）で `HiraKakuProN-W3` の Type 3 が 1 ページに 17 件出ていた。新設の `DerivedSvg` が、pdf/ のステージング時に**書体を抱かせた複製**を `.cache/vs/derived/pdf/` へ作り、`<img src>` をそちらへ向ける。`DerivedImage`（ラスタの派生）と同じ流儀で**素材には触れない**。図が名指しした書体に実体があれば並べ替えず同名の @font-face を注ぐだけで、汎用名しか無いときだけ書籍の書体を先頭へ足す（`sans-serif` は見出し・`serif` は本文・`monospace` はコード書体）。**太字は 400 と 700 を別々に埋める**——生成 SVG はラベルの太さが揃うので 1 面で足りたが、著者の図版は本文と同じように太字を混ぜるため、1 面だと faux-bold の合成でまた Type 3 になる。図が文字を持たない場合と、既に書体を抱えている生成 SVG は対象外。実測は Type 3 が 40 件 → 5 件（残りはすべて絵文字で、単章ビルドが techbook 後処理を飛ばすぶん）。

@@ -7,10 +7,13 @@
 #   CleanCommands モジュール（lib/vivlio_starter/cli/clean.rb）
 #
 # 検証内容:
-#   - --purge なし: 中間生成物のみ削除、最終 PDF は保持
+#   - --purge なし: ワークスペースのみ削除、最終 PDF は保持
 #   - --purge あり: 最終 PDF も含めてすべて削除
 #   - --cache: キャッシュディレクトリのみ削除
-#   - --cover: カバー画像のみ削除（マスターは保持）
+#   - --cover: 生成キャッシュのみ削除（covers/ の著者ソースは触れない）
+#   - **ルートを掃かないこと**——中間生成物は .cache/vs/build/ に閉じており、
+#     著者が置いた *.html / NN-*.md / images/ の下位 dir は消えてはならない
+#     （2026-09-12 に legacy 掃除を撤去。以前はこれらを毎ビルド薙いでいた）
 #
 # テスト環境:
 #   - 一時ディレクトリで副作用を隔離
@@ -92,7 +95,7 @@ module VivlioStarter
           CleanCommands.execute_clean({ cache: true })
 
           refute Dir.exist?(cache_dir), 'キャッシュディレクトリは削除されるべきです'
-          assert File.exist?('11-sample.html'), '--cache では生成物を削除しないはずです'
+          assert_author_files_intact
           assert_final_pdfs_exist
           assert File.exist?('11-sample.pdf'), '単章PDFは保持されるはずです'
         end
@@ -112,23 +115,24 @@ module VivlioStarter
           # マスター画像は保持されること
           assert_master_files_exist
           # 通常の生成物は保持されること
-          assert File.exist?('11-sample.html'), '--cover では通常の生成物を削除しないはずです'
+          assert Dir.exist?(VivlioStarter::CLI::Common::BUILD_DIR),
+                 '--cover ではワークスペースを削除しないはずです'
+          assert_author_files_intact
           assert_final_pdfs_exist
         end
       end
 
-      # --cache 単独指定は clean_build_artifacts（'*.html' グロブ）を通らないため、
-      # 索引・用語集ページはここで両方を明示しないと片方だけルートに残る。
-      def test_clean_cache_removes_both_index_and_glossary_pages
+      # ビルドの Step 0 が呼ぶ形（オプションなし）。ワークスペースだけを消し、
+      # 著者がルートや images/ に置いたものには一切触れない。
+      def test_default_clean_never_touches_author_files
         within_temp_dir do
           setup_generated_files
-          write_file('_indexpage.html')
-          write_file('_glossarypage.html')
+          write_file(File.join('contents', '11-sample.md'))
 
-          CleanCommands.execute_clean({ cache: true })
+          CleanCommands.execute_clean({})
 
-          refute File.exist?('_indexpage.html'), '索引ページは --cache で削除されるべきです'
-          refute File.exist?('_glossarypage.html'), '用語集ページも同じく削除されるべきです'
+          assert_author_files_intact
+          assert File.exist?(File.join('contents', '11-sample.md')), '原稿を消してはいけません'
         end
       end
 
@@ -149,7 +153,7 @@ module VivlioStarter
           # キャッシュが削除されること
           refute Dir.exist?(cache_dir), 'キャッシュディレクトリは削除されるべきです'
           # 通常の生成物は保持されること
-          assert File.exist?('11-sample.html'), '--cover --cache では通常の生成物を削除しないはずです'
+          assert_author_files_intact
           assert_final_pdfs_exist
         end
       end
@@ -233,34 +237,23 @@ module VivlioStarter
         end
       end
 
-      # book.yml の設定に基づいてカバー画像が削除されることを確認
-      def test_clean_cover_respects_config
+      # covers/ は著者ソース専用。ファイル名も拡張子も問わず --cover で消えない。
+      # 生成物の正位置は .cache/vs/covers/ で、そちらだけが掃除の対象になる。
+      def test_clean_cover_never_touches_the_covers_directory
         within_temp_dir do
           setup_generated_files
           covers_dir = 'covers'
-          FileUtils.mkdir_p(covers_dir)
-          
-          # カスタムファイル名でカバー画像を作成
-          write_file(File.join(covers_dir, 'custom_front.pdf'))
-          write_file(File.join(covers_dir, 'custom_back.pdf'))
-          write_file(File.join(covers_dir, 'custom_cover.jpg'))
-          write_file(File.join(covers_dir, 'frontcover_master.png'))
-          
-          # カスタム設定を作成
+          %w[custom_front.pdf custom_back.pdf custom_cover.jpg frontcover_master.png].each do |name|
+            write_file(File.join(covers_dir, name))
+          end
           setup_custom_config_for_cover('custom_front.pdf', 'custom_back.pdf', 'custom_cover.jpg')
 
           CleanCommands.execute_clean({ cover: true })
 
-          # カスタムファイル名のカバー画像が削除されること
-          refute File.exist?(File.join(covers_dir, 'custom_front.pdf')),
-                 'カスタム表紙PDFは削除されるべきです'
-          refute File.exist?(File.join(covers_dir, 'custom_back.pdf')),
-                 'カスタム裏表紙PDFは削除されるべきです'
-          refute File.exist?(File.join(covers_dir, 'custom_cover.jpg')),
-                 'カスタムEPUBカバーは削除されるべきです'
-          # マスター画像は保持されること
-          assert File.exist?(File.join(covers_dir, 'frontcover_master.png')),
-                 'マスター画像は保持されるべきです'
+          %w[custom_front.pdf custom_back.pdf custom_cover.jpg frontcover_master.png].each do |name|
+            assert File.exist?(File.join(covers_dir, name)),
+                   "covers/#{name} は著者ソースなので保持されるべきです"
+          end
         end
       end
 
@@ -273,29 +266,47 @@ module VivlioStarter
         end
       end
 
-      # clean 対象となる生成物一式を用意する
+      # clean 対象となる生成物一式を用意する。中間物はワークスペース内、
+      # ルートに出るのは最終成果物と単章 PDF だけ——これが P4 以降の実態。
       def setup_generated_files
-        FileUtils.mkdir_p('.vivliostyle')
-        write_file('.vivliostyle/placeholder.txt')
+        build_dir = VivlioStarter::CLI::Common::BUILD_DIR
+        write_file(File.join(build_dir, 'html', '11-sample.html'))
+        write_file(File.join(build_dir, 'pdf', '_titlepage.pdf'))
+        write_file(File.join(build_dir, 'html', '_toc.md'))
 
-        %w[11-sample.html entries.js _toc.md 11-sample.md _titlepage.md].each do |name|
-          write_file(name)
-        end
-
-        %w[_titlepage.pdf _titlepage_legalpage.pdf output_tmp1.pdf].each { |name| write_file(name) }
         write_file('11-sample.pdf')
-
         pdf_output_files.each { |path| write_file(path) }
+
+        setup_author_owned_files
+      end
+
+      # 著者の持ち物。clean はどのオプションでもこれらに触れてはならない。
+      # ルートの *.html と NN-*.md、images/ の下位 dir は、かつて legacy 掃除が
+      # 毎ビルド薙いでいた場所そのものである。
+      def setup_author_owned_files
+        write_file('notes.html')
+        write_file('01-memo.md')
+        write_file('book-settings.css')
+        write_file(File.join('images', 'headings', 'author_drawn.webp'))
+        write_file(File.join('images', 'math', 'author_formula.svg'))
       end
 
       # 中間生成物が削除されたことを検証する
       def assert_clean_directory
-        refute Dir.exist?('.vivliostyle'), '.vivliostyle ディレクトリは削除されるべきです'
+        refute Dir.exist?(VivlioStarter::CLI::Common::BUILD_DIR),
+               'ビルドワークスペースは削除されるべきです'
+        assert_author_files_intact
+      end
 
-        %w[11-sample.html entries.js _toc.md 11-sample.md _titlepage.md
-           _titlepage.pdf _titlepage_legalpage.pdf output_tmp1.pdf].each do |name|
-          refute File.exist?(name), "#{name} は削除されるべきです"
+      # 著者の持ち物が残っていることを検証する
+      def assert_author_files_intact
+        %w[notes.html 01-memo.md book-settings.css].each do |name|
+          assert File.exist?(name), "著者がルートに置いた #{name} を消してはいけません"
         end
+        assert File.exist?(File.join('images', 'headings', 'author_drawn.webp')),
+               '著者の images/headings/ を消してはいけません'
+        assert File.exist?(File.join('images', 'math', 'author_formula.svg')),
+               '著者の images/math/ を消してはいけません'
       end
 
       # 最終出力PDFが残っていることを検証する
@@ -333,23 +344,22 @@ module VivlioStarter
         FileUtils.touch(path)
       end
 
-      # カバー画像ファイルを生成する
+      # カバーの生成物は生成キャッシュ（.cache/vs/covers/）に出る。covers/ は
+      # 著者ソース専用で、拡張子を問わず clean の対象外。
       def setup_cover_files
+        cache_dir = VivlioStarter::CLI::Common.cover_cache_dir
+        %w[frontcover_rgb.pdf backcover_rgb.pdf frontcover_cmyk.pdf
+           frontcover_light.svg cover.jpg].each do |name|
+          write_file(File.join(cache_dir, name))
+        end
+
         covers_dir = 'covers'
-        FileUtils.mkdir_p(covers_dir)
-        
-        # 生成されたカバー画像（PDF/SVG/JPG）
-        write_file(File.join(covers_dir, 'frontcover_rgb.pdf'))
-        write_file(File.join(covers_dir, 'backcover_rgb.pdf'))
-        write_file(File.join(covers_dir, 'frontcover_cmyk.pdf'))
-        write_file(File.join(covers_dir, 'backcover_cmyk.pdf'))
-        write_file(File.join(covers_dir, 'frontcover_light.svg'))
-        write_file(File.join(covers_dir, 'backcover_light.svg'))
-        write_file(File.join(covers_dir, 'cover.jpg'))
-        
-        # マスター画像
-        write_file(File.join(covers_dir, 'frontcover_master.png'))
-        write_file(File.join(covers_dir, 'backcover_master.png'))
+        # 著者ソース。png/svg だけでなく pdf/jpg を置いても消えてはならない
+        # （かつての legacy 掃除は covers/*.pdf と *.jpg を無条件に消していた）。
+        %w[frontcover_master.png backcover_master.png
+           frontcover_hand_drawn.pdf backcover_photo.jpg].each do |name|
+          write_file(File.join(covers_dir, name))
+        end
       end
 
       # カバー画像用の設定ファイルを生成
@@ -382,32 +392,20 @@ module VivlioStarter
         File.write('config/book.yml', config.to_yaml)
       end
 
-      # カバー画像が削除されたことを検証する
+      # 生成キャッシュが丸ごと消えたことを検証する
       def assert_cover_files_removed
-        covers_dir = 'covers'
-        refute File.exist?(File.join(covers_dir, 'frontcover_rgb.pdf')),
-               '表紙RGB PDFは削除されるべきです'
-        refute File.exist?(File.join(covers_dir, 'backcover_rgb.pdf')),
-               '裏表紙RGB PDFは削除されるべきです'
-        refute File.exist?(File.join(covers_dir, 'frontcover_cmyk.pdf')),
-               '表紙CMYK PDFは削除されるべきです'
-        refute File.exist?(File.join(covers_dir, 'backcover_cmyk.pdf')),
-               '裏表紙CMYK PDFは削除されるべきです'
-        refute File.exist?(File.join(covers_dir, 'frontcover_light.svg')),
-               '表紙SVGは削除されるべきです'
-        refute File.exist?(File.join(covers_dir, 'backcover_light.svg')),
-               '裏表紙SVGは削除されるべきです'
-        refute File.exist?(File.join(covers_dir, 'cover.jpg')),
-               'EPUB用JPEGは削除されるべきです'
+        refute Dir.exist?(VivlioStarter::CLI::Common.cover_cache_dir),
+               'カバー生成キャッシュは削除されるべきです'
       end
 
-      # マスター画像が保持されたことを検証する
+      # covers/ の著者ソースが 1 つも消えていないことを検証する
       def assert_master_files_exist
         covers_dir = 'covers'
-        assert File.exist?(File.join(covers_dir, 'frontcover_master.png')),
-               '表紙マスター画像は保持されるべきです'
-        assert File.exist?(File.join(covers_dir, 'backcover_master.png')),
-               '裏表紙マスター画像は保持されるべきです'
+        %w[frontcover_master.png backcover_master.png
+           frontcover_hand_drawn.pdf backcover_photo.jpg].each do |name|
+          assert File.exist?(File.join(covers_dir, name)),
+                 "covers/#{name} は著者ソースなので保持されるべきです"
+        end
       end
     end
   end

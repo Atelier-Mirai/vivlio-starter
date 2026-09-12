@@ -33,21 +33,8 @@ pkg/*.gem
 # 表紙の編集ソース（Keynote 等）は大きい作業ファイルのため追跡しない
 *.key
 
-# Vivlio Starter 中間生成ファイル（vs build が一時展開し、通常は最終 clean で削除される。
-# --no-clean 実行時やビルド中断時に残ることがあるためコミット対象から除外する）
-_toc.md
-_toc.html
-_part[0-9]*.md
-_part[0-9]*.html
-_index_matches.yml
-_colophon.md
-_colophon.html
-_titlepage.md
-_titlepage.html
-_legalpage.md
-_legalpage.html
-_indexpage.html
-_glossarypage.html
+# 索引・用語集のレビューファイル（vs index:auto が書き出し、著者が編集して
+# vs index:apply で取り込む作業ファイル。成果物ではないので追跡しない）
 _index_glossary_review.md
 
 # Vivliostyle build artifacts

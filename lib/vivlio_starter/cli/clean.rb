@@ -9,14 +9,15 @@
 #
 # 削除対象:
 #   - .cache/vs/build/: ビルドワークスペース（P4: 現行パイプラインの中間物はここに閉じる）
-#   - .vivliostyle/: Vivliostyle CLI のワークディレクトリ（旧バージョンの残骸）
-#   - _index_review.md 等: vs index:auto が著者レビュー用にルートへ出す作業ファイル
-#   - ルートの *.html / 章 .md / 中間 PDF / entries.js 等: 旧バージョン（P4 以前・
-#     撤去済み手動フロー）の残骸掃除（LEGACY_* パターン・1 リリース残して V2.0 で撤去予定）
+#   - ルートの最終成果物・_index_review.md 等: --purge のときだけ
 #   - .cache/vs/: ビルドキャッシュ（--cache オプション）
 #   - .cache/metrics/: metrics キャッシュ（--cache オプション）
 #   - .cache/vs/covers/: 生成されたカバー画像（--cover オプション。covers/ は
-#     著者マスターのみになったため触れない。旧配置の残骸掃除だけ 1 リリース残す）
+#     著者マスターのみになったため触れない）
+#
+# ルートは掃かない。中間生成物はすべて .cache/vs/build/ に閉じており、ルートに
+# 出るのは最終成果物だけなので、パターンで薙ぐ掃除は持たない（V2.0 予定を前倒しで
+# 撤去・2026-09-12）。著者が置いた *.html や NN-*.md を巻き込む事故の芽を断つ。
 #
 # 保持対象（--purge 未指定時）:
 #   - 最終 PDF: output.pdf, output_compressed.pdf（config で名称変更可）
@@ -50,58 +51,8 @@ module VivlioStarter
       # 「除外済みリストから戻す語を選ぶ」ような途中の判断がまるごと失われ、
       # `vs index:apply` は「ファイルが見つかりません」で終わる。
       # 掃除するのは意図が明示された `--purge` のときだけにする。
-      # （_index_matches.yml は P4b で workspace 化、entries.js は手動フロー撤去で
-      #  いずれも LEGACY_ROOT_PATTERNS へ移動）
       REVIEW_FILE_PATTERNS = %w[
         _index_review.md _index_glossary_review.md
-      ].freeze
-
-      # ------------------------------------------------------------
-      # 旧バージョン残骸掃除（legacy・V2.0 で撤去予定）
-      # ------------------------------------------------------------
-      # P4（ワークスペース分離）以前のビルドは中間 md/HTML/中間 PDF を
-      # プロジェクトルートへ生成していた。現行パイプラインの中間物は
-      # .cache/vs/build/ に閉じており、以下のパターンに該当するルート生成は
-      # もう起きない。旧バージョンからの移行者のために 1 リリースだけ残す
-      # （P4 §3.4-8）。
-
-      # HTML / 章 Markdown / 特殊ページ / EPUB 補助ファイルの残骸パターン
-      LEGACY_ROOT_PATTERNS = [
-        # Markdown から変換されたルート HTML（_indexpage.html 等の特殊ページ HTML を含む）
-        '*.html',
-        # 生成される一時/補助的な Markdown
-        '_toc.md',
-        # pre_process がルートへ展開していた章 Markdown のみ削除対象に限定
-        # 例: 11-install.md など（任意の *.md やドキュメントは削除しない）
-        '[0-9][0-9]-*.md',
-        # 内部 basename 方式の特殊ページ
-        '_titlepage.md', '_legalpage.md', '_colophon.md',
-        # 中扉（Part Title Page）
-        '_part*.md',
-        # EPUB 中間ファイル（P4 段階 4 で epub/・kindle/ 内生成へ移行）
-        'vivliostyle.config.epub.js',
-        'entries.epub.js',
-        # 旧手動フロー（vs entries → vs pdf・撤去済み）の生成物
-        'entries.js',
-        # EPUB 同梱用 book-settings.css 変種（正規の .cache/vs/ 版は --cache で掃除）
-        'book-settings.css',
-        # 索引スキャンのルート出力（P4b で workspace 直下へ移行・.cache/vs 側は --cache で掃除）
-        '_index_matches.yml'
-      ].freeze
-
-      # ルートの中間 PDF の残骸パターン（P4 段階 3 で pdf/ 内生成へ移行）
-      LEGACY_INTERMEDIATE_PDF_PATTERNS = [
-        # 内部名ベースの中間PDF
-        '_titlepage.pdf', '_legalpage.pdf', '_colophon.pdf',
-        '_titlepage_legalpage.pdf', '_sections.pdf',
-        # _toc.pdf は廃止済み（OutlineExtractor が注釈対象 PDF から直接算出）
-        '_toc.pdf',
-        'blank_page.pdf', 'blank_frontmatter_insert.pdf',
-        'output_tmp*.pdf',
-        # 入稿用 PDF の中間ファイル
-        '_titlepage_legalpage_print.pdf', '_sections_print.pdf',
-        '_colophon_print.pdf', '_blank_before_colophon.pdf',
-        'output_print.pdf'
       ].freeze
 
       # 削除結果の内訳。表示は呼び出し側の責務とし、ドメイン層は件数を返すだけにする。
@@ -155,7 +106,7 @@ module VivlioStarter
                          artifacts: artifacts, dictionaries: dictionaries)
       end
 
-      # キャッシュ類（.cache/vs・metrics・索引の旧ルート残骸・.vivliostyle）を削除する
+      # キャッシュ類（.cache/vs・.cache/metrics）を削除する
       #
       # @return [Integer, nil] 削除した対象の数。キャッシュディレクトリが特定できない場合は nil
       def clean_cache_files
@@ -189,36 +140,6 @@ module VivlioStarter
           Common.log_info("#{metrics_cache} を削除しました")
         end
 
-        # 索引のキャッシュ（旧ルート出力）も削除する。現行の新配置
-        # .cache/vs/build/_index_matches.yml は上の rm_rf(dir) が掃除するため、
-        # ここはルート残骸掃除として残置する（V2.0 で撤去予定・P4b §2.6）。
-        index_cache = '_index_matches.yml'
-        if File.exist?(index_cache)
-          FileUtils.rm_f(index_cache)
-          deleted += 1
-          Common.log_info("#{index_cache} を削除しました")
-        end
-
-        # 索引・用語集ページもキャッシュ削除時に削除対象とする。--cache 単独指定は
-        # clean_build_artifacts（LEGACY_ROOT_PATTERNS の '*.html'）を通らないため、
-        # ここで両方を挙げないと片方だけルートに残る。
-        %w[_indexpage.html _glossarypage.html].each do |page|
-          next unless File.exist?(page)
-
-          FileUtils.rm_f(page)
-          deleted += 1
-          Common.log_info("#{page} を削除しました")
-        end
-
-        if File.directory?('.vivliostyle')
-          Common.log_action('.vivliostyle ディレクトリを削除中...')
-          FileUtils.rm_rf('.vivliostyle')
-          deleted += 1
-          Common.log_info('.vivliostyle ディレクトリを削除しました')
-        else
-          Common.log_info('.vivliostyle ディレクトリは存在しません')
-        end
-
         deleted
       rescue StandardError => e
         Common.log_warn("clean --cache 実行中にエラー: #{e}")
@@ -232,13 +153,6 @@ module VivlioStarter
       def clean_build_artifacts(purge)
         deleted = 0
 
-        # 旧バージョンのビルド・撤去済み手動フロー（vs pdf）が残していた
-        # Vivliostyle ワークディレクトリ。パイプラインの生成 config は workspaceDir を
-        # ワークスペース内へ向けるためルートには生成しない（P4 §5.6・段階 5）。
-        Common.log_action('.vivliostyle ディレクトリを削除中...')
-        deleted += 1 if File.directory?('.vivliostyle')
-        FileUtils.rm_rf('.vivliostyle')
-
         # ビルドワークスペース（P4: 現行パイプラインの中間物はすべてここに閉じる）を一括削除
         if File.directory?(Common::BUILD_DIR)
           FileUtils.rm_rf(Common::BUILD_DIR)
@@ -246,26 +160,31 @@ module VivlioStarter
           Common.log_info("#{Common::BUILD_DIR} を削除しました")
         end
 
+        # ルートに出るのは最終成果物だけ。既定のビルド（Step 0）はそれを残し、
+        # 意図が明示された --purge のときだけ手を伸ばす。
+        deleted += purge_root_artifacts! if purge
+
+        Common.log_success('不要ファイルの削除が完了しました')
+        deleted
+      end
+
+      # --purge でルート直下の最終成果物を削除する。
+      # ここが `vs clean` がルートへ触れる唯一の場所である。
+      #
+      # @return [Integer] 削除した対象の数
+      def purge_root_artifacts!
         Common.log_action('生成ファイルを削除中...')
-        cleanup_patterns = LEGACY_ROOT_PATTERNS + LEGACY_INTERMEDIATE_PDF_PATTERNS
 
-        final_pdfs = %w[output.pdf output_compressed.pdf]
+        patterns = %w[output.pdf output_compressed.pdf]
+        # 索引レビューファイルは著者が編集する入力なので --purge でのみ消す
+        patterns.concat(REVIEW_FILE_PATTERNS)
+        # 単章 PDF / EPUB（例: 11-install.pdf, 01-life.epub）
+        patterns.push('[0-9][0-9]-*.pdf', '[0-9][0-9]-*.epub')
+        # 動的ファイル名（project.name 由来）の PDF / EPUB / KPF
+        add_dynamic_filename_patterns(patterns)
 
-        # --purge 指定時は最終PDFも削除対象に含める
-        if purge
-          cleanup_patterns.concat(final_pdfs)
-          # 索引レビューファイルもここでだけ消す（既定のビルドでは残す）
-          cleanup_patterns.concat(REVIEW_FILE_PATTERNS)
-          # 単章PDF（例: 11-install.pdf, 81-install.pdf など）も削除
-          # 既に個別に列挙している中間PDFと重複しても問題ない
-          cleanup_patterns << '[0-9][0-9]-*.pdf'
-          # 単章EPUB（例: 01-life.epub, 02-history.epub など）も削除
-          cleanup_patterns << '[0-9][0-9]-*.epub'
-          # 動的ファイル名のPDFおよびEPUBも削除対象に追加
-          add_dynamic_filename_patterns(cleanup_patterns)
-        end
-
-        cleanup_patterns.each do |pattern|
+        deleted = 0
+        patterns.each do |pattern|
           Dir.glob(pattern).each do |file|
             next if File.directory?(file)
 
@@ -274,23 +193,6 @@ module VivlioStarter
             Common.log_info("#{file} を削除しました")
           end
         end
-
-        # ビルドが images/ 配下へ生成していた派生物の残骸を削除する。いずれも現行では
-        # workspace / 消費者 dir 内生成へ移行済み。旧バージョン残骸掃除として 1 リリース残し
-        # V2.0 で撤去する:
-        #   - math: 数式 SVG（P4b で workspace html/images/ へ移行）
-        #   - headings: 扉絵・節絵の合成画像（P4 段階 4 で消費者 dir 内へ）
-        #   - _epub_assets: EPUB 用 WebP→JPEG 変換物（同上）
-        %w[math headings _epub_assets].each do |subdir|
-          legacy_dir = File.join(Common.images_dir, subdir)
-          next unless File.directory?(legacy_dir)
-
-          FileUtils.rm_rf(legacy_dir)
-          deleted += 1
-          Common.log_info("#{legacy_dir} を削除しました")
-        end
-
-        Common.log_success('不要ファイルの削除が完了しました')
         deleted
       end
 
@@ -321,7 +223,7 @@ module VivlioStarter
       # 生成されたテーマバリアント画像を削除する
       #
       # 正位置は生成キャッシュ .cache/vs/theme-images/（generated-assets 移設仕様 §2）。
-      # 丸ごと削除して次ビルドで再生成させる。旧配置の残骸掃除も 1 リリースの間だけ行う（§6）。
+      # 丸ごと削除して次ビルドで再生成させる。
       #
       # @return [Integer] 削除した対象の数
       def clean_bundled_variant_images
@@ -335,39 +237,9 @@ module VivlioStarter
           Common.log_info("テーマバリアント画像キャッシュは存在しません: #{cache_dir}")
         end
 
-        deleted + clean_legacy_variant_images
+        deleted
       rescue StandardError => e
         Common.log_warn("テーマバリアント削除中にエラー: #{e.message}")
-        deleted
-      end
-
-      # 旧配置（stylesheets/images/bundled/ 内）の生成バリアント残骸を掃除する。
-      # generated-assets 移設前のプロジェクト向けの移行掃除（§6）。次のリリースで撤去する。
-      #
-      # @return [Integer] 削除した対象の数
-      def clean_legacy_variant_images
-        images_dir = File.join(Common::STYLESHEETS_DIR, 'images', 'bundled')
-        return 0 unless Dir.exist?(images_dir)
-
-        # 最終バリアント（*_portrait/*_landscape）に加え、生成途中の中間ファイル
-        # （*_alpha* / *_color* / *_merged*、png/webp 双方）も保険として掃除対象に含める。
-        # 元画像（sakura.webp 等）には一致しないパターンに限定する。
-        patterns = %w[
-          *_portrait.webp *_landscape.webp
-          *_alpha*.webp *_color*.webp *_merged*.webp
-          *_alpha*.png *_color*.png *_merged*.png
-        ]
-        deleted = patterns.sum do |pattern|
-          Dir.glob(File.join(images_dir, pattern)).count do |file|
-            next false unless File.file?(file)
-
-            FileUtils.rm_f(file)
-            Common.log_info("#{file} を削除しました")
-            true
-          end
-        end
-
-        Common.log_success("旧配置の生成バリアント画像を削除しました（.cache へ移設済み・#{deleted}ファイル）") if deleted.positive?
         deleted
       end
 
@@ -410,7 +282,7 @@ module VivlioStarter
       #
       # 正位置は生成キャッシュ .cache/vs/covers/（generated-assets 移設仕様 §2）。
       # 丸ごと削除して次ビルド／vs cover で再生成させる。covers/ は著者ソースのみに
-      # なったため触れない。旧配置の残骸掃除だけ 1 リリースの間残す（§6）。
+      # なったため触れない。
       #
       # @return [Integer] 削除した対象の数
       def clean_cover_files
@@ -424,64 +296,9 @@ module VivlioStarter
           Common.log_info("カバー画像キャッシュは存在しません: #{cache_dir}")
         end
 
-        deleted + clean_legacy_cover_files
+        deleted
       end
 
-      # 旧配置（covers/ 内）の生成物残骸を掃除する（マスター画像・ユーザーSVGは保持）。
-      # generated-assets 移設前のプロジェクト向けの移行掃除（§6）。次のリリースで撤去する。
-      #
-      # 削除対象:
-      #   - covers/ 内の *.pdf, *.jpg（coverコマンドで生成されたファイル）
-      #   - covers/ 内の *_light.svg, *_dark.svg（bundledテンプレートから生成されたSVG）
-      #   - covers/ 内の *_rendered.svg（ユーザーSVGにプレースホルダー適用した中間ファイル）
-      #
-      # 保持対象:
-      #   - *.png（frontcover_master.png 等、利用者が用意した画像）
-      #   - *.key（Keynote ソースファイル）
-      #   - covers/bundled/ 内のファイル（テンプレート本体）
-      #   - light/dark 以外の *.svg（frontcover_floral.svg 等、利用者が用意したSVG）
-      #
-      # @return [Integer] 削除した対象の数
-      def clean_legacy_cover_files
-        covers_dir = Common.covers_dir
-        return 0 unless File.directory?(covers_dir)
-
-        deleted_count = 0
-
-        # PDF / JPG はすべて生成物として削除
-        %w[*.pdf *.jpg].each do |pattern|
-          Dir.glob(File.join(covers_dir, pattern)).each do |file_path|
-            next unless File.file?(file_path)
-
-            FileUtils.rm_f(file_path)
-            Common.log_info("  削除: #{File.basename(file_path)}")
-            deleted_count += 1
-          end
-        end
-
-        # SVG は bundled テンプレートから生成されたもの（light/dark）と
-        # プレースホルダー適用済み中間ファイル（*_rendered.svg）のみ削除
-        # 利用者が用意した SVG（floral.svg 等）は保持する
-        bundled_themes = %w[light dark]
-        Dir.glob(File.join(covers_dir, '*.svg')).each do |file_path|
-          next unless File.file?(file_path)
-
-          basename = File.basename(file_path, '.svg') # 例: frontcover_dark
-          # *_light.svg / *_dark.svg → bundled テンプレートからの生成物
-          is_bundled_generated = bundled_themes.any? { |t| basename.end_with?("_#{t}") }
-          # *_rendered.svg → apply_text_placeholders_to_svg の中間ファイル
-          is_rendered = basename.end_with?('_rendered')
-
-          next unless is_bundled_generated || is_rendered
-
-          FileUtils.rm_f(file_path)
-          Common.log_info("  削除: #{File.basename(file_path)}")
-          deleted_count += 1
-        end
-
-        Common.log_success("旧配置の生成カバー画像を削除しました（.cache へ移設済み・#{deleted_count}ファイル）") if deleted_count.positive?
-        deleted_count
-      end
     end
   end
 end
