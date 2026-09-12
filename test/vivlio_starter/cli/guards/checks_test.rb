@@ -11,6 +11,7 @@
 #   GC-02: CatalogEntriesCheck - 1 件欠落 → :error 1 件・detail に該当パス
 #   GC-03: CatalogEntriesCheck - catalog.yml なし → 違反 0 件
 #   GC-04: OrphanFileCheck - 未登録ファイル → :warn 1 件・detail に該当パス
+#   GC-04b: DuplicateNumberCheck - 章番号の重複 → :warn 1 件・重なった番号とファイルを列挙
 #   GC-05: CatalogFileCheck - catalog.yml なし → :error 1 件
 #   GC-06: NodeCheck - node なし（runner DI） → :error 1 件
 #   GC-07: VfmCheck  - vfm なし（runner DI） → :error 1 件・正しいパッケージ名を案内
@@ -338,6 +339,60 @@ module VivlioStarter
         end
         assert_includes out, '🔴 違反'
         assert_includes out, '前提条件を満たしていません'
+      end
+
+      # ------------------------------------------------------------------
+      # GC-04b: DuplicateNumberCheck
+      #
+      # vs create / vs rename / vs renumber を通していれば起きないが、著者が
+      # ファイル名を手で変えたときに起こる。番号が重なると、その番号でどちらを
+      # 指すか決められず単章ビルドが止まる。
+      # ------------------------------------------------------------------
+      def test_should_warn_when_chapter_numbers_are_duplicated
+        with_temp_project do
+          write_content('02-dltest')
+          write_content('02-vivlio')
+          write_content('03-other')
+
+          violations = Guards::DuplicateNumberCheck.new.validate
+
+          assert_equal 1, violations.size
+          assert_predicate violations.first, :warn?
+          assert violations.first.detail.any? { it.include?('contents/02-dltest.md') }
+          assert violations.first.detail.any? { it.include?('contents/02-vivlio.md') }
+          refute violations.first.detail.any? { it.include?('03-other') }, '重複していない章は挙げない'
+        end
+      end
+
+      def test_should_pass_when_chapter_numbers_are_unique
+        with_temp_project do
+          write_content('01-intro')
+          write_content('02-basic')
+
+          assert_empty Guards::DuplicateNumberCheck.new.validate
+        end
+      end
+
+      # アンダースコア始まり（システムページ）と、番号を持たないファイルは対象外
+      def test_should_ignore_system_pages_and_unnumbered_files
+        with_temp_project do
+          write_content('_titlepage')
+          write_content('_colophon')
+          write_content('appendix')
+          write_content('memo')
+
+          assert_empty Guards::DuplicateNumberCheck.new.validate
+        end
+      end
+
+      # 桁数が違えば別の番号として扱う（`02` と `020` は重ならない）
+      def test_should_not_confuse_numbers_of_different_width
+        with_temp_project do
+          write_content('02-first')
+          write_content('020-second')
+
+          assert_empty Guards::DuplicateNumberCheck.new.validate
+        end
       end
 
       private

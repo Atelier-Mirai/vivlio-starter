@@ -77,6 +77,7 @@ module VivlioStarter
             Guards::ProjectRootCheck.new,
             Guards::CatalogFileCheck.new,
             Guards::CatalogEntriesCheck.new,
+            Guards::DuplicateNumberCheck.new,
             Guards::ContentsDirCheck.new,
             Guards::NodeCheck.new,
             Guards::VfmCheck.new,
