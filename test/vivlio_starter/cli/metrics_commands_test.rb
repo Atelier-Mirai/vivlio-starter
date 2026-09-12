@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # ================================================================
-# Test: text_metrics_commands_test.rb
+# Test: metrics_commands_test.rb
 # ================================================================
 # テスト対象:
 #   MetricsCommands のエントリポイント（lib/vivlio_starter/cli/metrics.rb）

@@ -97,12 +97,12 @@ module VivlioStarter
 
         # リード内の Latin 語は語中で折れない（wrap_text_by_width 経由）
         def test_should_not_break_latin_word_in_lead
-          lead = 'コマンド --add-missing を実行します。' * 3
+          lead = 'コマンド --no-compress を実行します。' * 3
           _size, lines = HeadingImageComposer.lead_layout(2880, 4153, lead, 0.60, METRICS[:lead_chars])
 
-          assert lines.none? { |l| l.match?(/--add-\z/) || l.match?(/\A(?:missing)/) && l.length < 8 },
+          assert lines.none? { |l| l.match?(/--no-\z/) || (l.match?(/\A(?:compress)/) && l.length < 8) },
                  'Latin 語が語中で分断されない'
-          assert lines.any? { |l| l.include?('--add-missing') }, '語が 1 つの塊として残る行がある'
+          assert lines.any? { |l| l.include?('--no-compress') }, '語が 1 つの塊として残る行がある'
         end
 
         # レイアウト版数はキャッシュ鍵ソルト。コンパクト帯＋文字数指定は v3 以上。

@@ -216,7 +216,7 @@ module VivlioStarter
         end
 
         # リードのフォントサイズと行分割。折返しは既存 wrap_text_by_width（半角 0.55 換算・
-        # Latin 語は空白で折る——"--add-missing" 等の語中折れを防ぐ）を必ず使う。
+        # Latin 語は空白で折る——"--no-compress" 等の語中折れを防ぐ）を必ず使う。
         #
         # 基準の字面は「リード領域の幅 ÷ lead_chars」——リード幅比（lead_ratio）自体が
         # lead_chars × 1 字の送り ÷ 判型幅なので、これで PDF と同じ字面比になる。
