@@ -58,8 +58,6 @@ module VivlioStarter
 
           decorate_pre_tag(pre, document)
         end
-        remove_legacy_meta(document)
-
         target = output_file || input_file
         PostProcessCommands::HtmlParser.save_html_document(target, document)
         log_result(input_file, target)
@@ -143,11 +141,6 @@ module VivlioStarter
         end
 
         span
-      end
-
-      # 不要な Content-Type メタタグを除去
-      def remove_legacy_meta(document)
-        document.css('meta[http-equiv="Content-Type"]').each(&:remove)
       end
 
       # 既存クラス文字列に安全にクラスを追加

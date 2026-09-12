@@ -393,7 +393,8 @@ module VivlioStarter
             %(font-size="#{fmt(font)}" font-weight="700" fill="#{escape_attr(color)}">#{escape_text(content)}</text>)
         end
 
-        # 元画像を原寸で敷く。旧リーダー互換のため xlink:href を用いる。
+        # 元画像を原寸で敷く。xlink:href を使う理由は HeadingImageComposer#image_element
+        # と同じ（EPUB を開く WebKit 系リーダー向け）。
         def image_element(width, height, data_uri)
           %(<image xlink:href="#{data_uri}" x="0" y="0" width="#{width}" height="#{height}"/>)
         end

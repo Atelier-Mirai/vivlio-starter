@@ -25,6 +25,9 @@
 
 ### Removed
 
+- **`PrismLinesCommands#remove_legacy_meta` を撤去した**。`<meta http-equiv="Content-Type">` を消すメソッドで、実装当初は無く「古い meta が出る」と分かって後から足されたものである。**もう出ない**ことを確かめて外した。混入の経路は Nokogiri の HTML4 パーサが `to_html` 時に注入するもので（実測: HTML4 往復では混入、HTML5 往復では混入しない）、`HtmlParser` は `Nokogiri::HTML5` があればそちらを使う。gemspec の下限は `nokogiri ~> 1.16` で、HTML5 パーサは 1.12 から同梱されているため**フォールバック側へ落ちることがない**。実ビルド（`vs build 44-build`）でも、prism が確かに走った HTML（行番号 68 箇所）に `http-equiv` は 1 件も無い。`prism_lines` は Samovar コマンドを持たない内部処理で、入力は VFM の出力だけ——著者の手書き HTML が来る経路も無い。
+
+
 - **期限切れ・参照ゼロの古いコードを 10 件撤去した**。`vs clean` の legacy 掃除を撤去した流れで `lib/` 全体を「旧 / legacy / 後方互換 / 撤去予定」で洗い、参照の有無を外部 gem（`vivlio-starter-pdf` / `query-stream`）まで含めて確かめた結果である。
 
   **参照ゼロだったもの。** `LintCommands` の旧別名 `TextLintCommands`（定義行しか無かった）、空の `included(base); end` フック 4 つ（`doctor` / `post_process` / `prism_lines` / `resize`。**どのモジュールも `include` されていない**ので Ruby も呼ばない）、`UnifiedIndexManager#build_glossary!`（「後方互換 - 単独呼び出し用」。同名の `UnifiedPageBuilder#build_glossary!` が現役で、そちらとは別物）、`utilities.rb` にコメントアウトで残っていた HexaPDF 版の旧実装 2 箇所（「MIT化動作確認後に削除予定」）。

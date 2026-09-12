@@ -317,7 +317,8 @@ module VivlioStarter
           ]
         end
 
-        # 飾り 1 層。旧リーダー互換のため xlink:href を用いる（image_element と同じ理由）。
+        # 飾り 1 層。xlink:href を使う理由は image_element と同じ（EPUB を開く
+        # WebKit 系リーダー向け）。
         # width/height は元画像の縦横比どおりに与えるので meet でも歪まない。
         def ornament_layer(data_uri, x, y, w, h, clip_id)
           %(<image xlink:href="#{data_uri}" x="#{x}" y="#{y}" width="#{w}" height="#{h}" ) +
@@ -437,7 +438,11 @@ module VivlioStarter
         def char_display_width(char) = char.ascii_only? ? 0.55 : 1.0
 
         # 飾り画像を全面に敷く <image> 要素。
-        # 旧リーダー互換のため xlink:href を用いる（href 単独だと描画しない端末がある）。
+        # href 単独ではなく xlink:href を使う。この SVG は EPUB へそのまま入り、
+        # 開くのは WebKit 系リーダー（Kobo・Apple Books）——端末に載る WebKit は
+        # 古いものがあり、SVG 2 の href 単独では描画しない個体がある。xlink:href は
+        # SVG 2 でも全レンダラが解する（Chromium も librsvg 2.62 も実測で同一出力）
+        # ので、残すコストが無い側に倒している。
         def image_element(width, height, data_uri)
           %(<image xlink:href="#{data_uri}" x="0" y="0" width="#{width}" height="#{height}" ) +
             %(preserveAspectRatio="xMidYMid slice"/>)
