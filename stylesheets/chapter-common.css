@@ -494,6 +494,16 @@ figure p {
   text-indent: 0;
 }
 
+/* 画像の囲み枠（`![](x.webp){.bordered}` / `:::{.bordered}`）。
+   キャプション付きの画像（figure）には上の規則で既に枠が付くが、キャプションの
+   ない画像や `:::{.sideimage-*}` の中の画像には付かない。白背景の図版は枠が
+   無いと紙面の余白に溶けて輪郭が消えるため、明示して枠を引けるようにする
+   （Re:VIEW の `//image[…][…][border=on]` の受け先）。 */
+img.bordered,
+.bordered > img {
+  border: solid 0.5mm var(--color-figure-border);
+}
+
 /* 図解注釈（:::{.showcase}）。中身は前処理が焼いた合成画像 1 枚なので、
    置き場と分割禁止だけを面倒みる。枠・引き出し記号・丸数字はすべて画像の中に
    入っており、PDF・EPUB・Kindle が同じ生成物を共有する（explanatory-diagram-spec §6.2）。
@@ -700,11 +710,19 @@ p > img {
    版面の行グリッドを作っており、ここで変えるとこの部分だけ行位置がずれて
    隣ページと小口が揃わなくなる。文字だけ小さくすれば行数は保たれる。 */
 .small {
-  /* 上下 1 行分あけて本文から切り離す。lh（行送り）の整数倍にするのは
-     行グリッドを保つため——mm や em で半端に空けると以降の行位置がずれる。 */
+  font-size: 0.88em;
+}
+
+/* 余白はブロックのときだけ。`<span class="small">` のようにインラインへ当たると
+   margin-inline が文中に隙間を作ってしまうので、div / p に限る
+   （Re:VIEW からの取り込みで @<small>{…} が文中に来る）。
+
+   上下 1 行分あけて本文から切り離す。lh（行送り）の整数倍にするのは
+   行グリッドを保つため——mm や em で半端に空けると以降の行位置がずれる。 */
+div.small,
+p.small {
   margin-block: 1lh;
   margin-inline: 2em;
-  font-size: 0.88em;
 }
 
 /* 左右を寄せた分、字下げは打ち消す（.tip / .note / .notice と同じ扱い）。

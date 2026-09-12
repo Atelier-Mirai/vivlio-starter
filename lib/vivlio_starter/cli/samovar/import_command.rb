@@ -9,7 +9,7 @@
 #
 # 処理内容:
 #   - 既存ディレクトリの削除（確認後）
-#   - .re → .md 変換
+#   - .re → .md 直変換
 #   - 画像の WebP 変換
 #   - source/ → codes/ コピー
 #   - catalog.yml / config.yml の変換
@@ -62,7 +62,7 @@ module VivlioStarter
         def ensure_starter_dir!(starter_dir)
           return unless starter_dir.to_s.strip.empty?
 
-          raise ArgumentError, 'Error: Starter ディレクトリを指定してください。例: vs import ../review_starter_project'
+          raise ArgumentError, 'Error: 取り込み元のディレクトリを指定してください。例: vs import ../review_starter_project'
         end
       end
     end

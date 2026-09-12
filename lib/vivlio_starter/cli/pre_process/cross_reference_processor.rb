@@ -491,7 +491,7 @@ module VivlioStarter
           def build_figure_html(img, caption, label: nil)
             return '' unless img
 
-            parts = ["<figure#{id_attr(label)}#{align_class(img[:align])}#{style_attr(img[:width])}>"]
+            parts = ["<figure#{id_attr(label)}#{class_attr(img)}#{style_attr(img[:width])}>"]
             parts << "  <img src=\"#{img[:src]}\" alt=\"#{img[:alt]}\">"
             parts << "  <figcaption>#{caption}</figcaption>" if caption
             parts << '</figure>'
@@ -546,10 +546,12 @@ module VivlioStarter
             label ? " id=\"#{label.id}\"" : ''
           end
 
-          def align_class(align)
-            return '' unless align
-
-            " class=\"align-#{align}\""
+          # 配置（align-*）と著者が書いたクラス（`{.bordered}` など）をまとめて出す
+          def class_attr(img)
+            classes = []
+            classes << "align-#{img[:align]}" if img[:align]
+            classes.concat(img[:classes])
+            classes.empty? ? '' : " class=\"#{classes.join(' ')}\""
           end
 
           def style_attr(width)

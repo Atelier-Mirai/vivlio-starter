@@ -6,12 +6,12 @@ require 'yaml'
 require_relative 'common'
 require_relative 'build/catalog_loader'
 require_relative 'build/catalog_updater'
-require_relative 'import/markdown_converter'
 require_relative 'import/image_processor'
 require_relative 'import/yaml_processor'
-require_relative 'import/sideimage_restorer'
-require_relative 'import/verbatim_restorer'
-require_relative 'import/pagebreak_restorer'
+require_relative 'import/re_parser'
+require_relative 'import/re_renderer'
+require_relative 'import/re_report'
+require_relative 'units'
 require_relative 'upgrade'
 
 module VivlioStarter
@@ -24,10 +24,17 @@ module VivlioStarter
     #
     # 処理内容:
     #   1. 既存ディレクトリ（contents/, images/, codes/）の削除
-    #   2. .re → .md 変換（Starter 付属スクリプト使用）
-    #   3. 画像の WebP 変換（ResizeCommands 使用）
-    #   4. source/ → codes/ コピー
-    #   5. catalog.yml / config.yml の変換
+    #   2. .re → .md 直変換（ReParser → ReRenderer）
+    #   3. ラベル ID の一意化（Vivlio のラベルは本全体で一意）
+    #   4. 画像の WebP 変換（ResizeCommands 使用）
+    #   5. source/ → codes/ コピー
+    #   6. catalog.yml / config.yml の変換
+    #
+    # なぜ直変換か:
+    #   かつては Re:VIEW Starter 同梱の Ruby（review 2.5 固定）に `rake markdown`
+    #   させ、その出力を追従変換していた。Starter の開発は停止しており、Ruby が
+    #   進んで 2.5 が動かなくなった時点でこの経路は丸ごと死ぬ。著者の .re を直接
+    #   読めば何年後でも取り込める（re-direct-import-spec.md §0）。
     #
     # 依存:
     #   - ResizeCommands: 画像最適化
@@ -41,6 +48,11 @@ module VivlioStarter
         File.join('config', 'index_glossary_terms.yml'),
         File.join('config', 'index_glossary_rejected.yml')
       ].freeze
+
+      # 判型が読めないときの版面幅（mm）。B5 標準相当
+      DEFAULT_TEXT_WIDTH_MM = 137.0
+
+      PAGE_PRESETS_FILE = 'config/page_presets.yml'
 
       # Re:VIEW Starter の表紙指定と、取り込み先のマスター画像の対応
       COVER_SIDES = [
@@ -74,17 +86,20 @@ module VivlioStarter
         1
       end
 
-      # Starter ディレクトリの検証
+      # 取り込み元の検証。
+      #
+      # 直変換では Starter 同梱の Ruby を動かさないので、要るのは catalog.yml と
+      # 原稿ディレクトリだけ——結果として素の Re:VIEW プロジェクトも取り込める。
       def validate_starter_directory!
-        raise "Starter ディレクトリが見つかりません: #{@starter_dir}" unless Dir.exist?(@starter_dir)
+        raise "取り込み元のディレクトリが見つかりません: #{@starter_dir}" unless Dir.exist?(@starter_dir)
 
-        # 必須スクリプトの存在確認
-        markdownmaker = File.join(@starter_dir, 'lib/ruby/review-markdownmaker.rb')
-        markdownbuilder = File.join(@starter_dir, 'lib/ruby/review-markdownbuilder.rb')
+        catalog = File.join(@starter_dir, 'catalog.yml')
+        raise "catalog.yml が見つかりません: #{catalog}" unless File.exist?(catalog)
 
-        raise "変換スクリプトが見つかりません: #{markdownmaker}" unless File.exist?(markdownmaker)
+        re_dir = review_contents_dir
+        return if Dir.exist?(re_dir) && Dir.glob(File.join(re_dir, '*.re')).any?
 
-        raise "変換スクリプトが見つかりません: #{markdownbuilder}" unless File.exist?(markdownbuilder)
+        raise "原稿（.re）が見つかりません: #{re_dir}"
       end
 
       # 確認プロンプトまたは --force
@@ -133,69 +148,126 @@ module VivlioStarter
         Common.log_info('  索引・用語集の辞書を空にしました（vs index:auto で取り込んだ原稿から作り直せます）')
       end
 
-      # .re → .md 変換
+      # 章ひとつぶんの変換結果
+      Chapter = Data.define(:basename, :markdown, :labels, :lines)
+
+      # .re → .md の直変換。
+      #
+      # catalog.yml に載っている章だけを変換する。Re:VIEW では catalog に載せて
+      # いない .re は原稿ではない（書きかけ・没の章がそのまま残っている。実測:
+      # book_c は 26 個の .re のうち catalog にあるのは 7 個だけだった）。
       def convert_re_to_md!
-        # temp ディレクトリを準備
-        temp_dir = 'temp'
-        FileUtils.mkdir_p(temp_dir)
+        Common.log_action('[Step 2] 原稿（.re）を変換します')
 
-        # Starter ディレクトリで rake markdown を実行
-        Dir.chdir(@starter_dir) do
-          config_file = File.join(@starter_dir, 'config.yml')
-          raise "config.yml が見つかりません: #{config_file}" unless File.exist?(config_file)
+        report = Import::ReReport.new
+        basenames = catalog_chapters
+        raise 'catalog.yml から原稿の一覧を読み取れませんでした' if basenames.empty?
 
-          # bookname を取得して出力ディレクトリを特定
-          config = YAML.safe_load_file(config_file, permitted_classes: [Symbol])
-          bookname = config['bookname'] || 'book'
-          md_output_dir = "#{bookname}-md"
+        chapters = unify_labels(basenames.filter_map { render_chapter(it, report) }, report)
+        write_chapters!(chapters)
 
-          # 既存の md 出力ディレクトリがあればそれを使い、無ければ rake markdown を実行する
-          unless Dir.exist?(md_output_dir) && !Dir.glob(File.join(md_output_dir, '*.md')).empty?
-            # RUBYOPT をクリアして環境の競合を回避
-            env = { 'RUBYOPT' => nil, 'BUNDLE_GEMFILE' => nil }
-            system(env, 'rake', 'markdown')
+        report.emit!
+        report.summary(chapters: chapters.size, lines: chapters.sum(&:lines))
+      end
 
-            # 生成された md ファイルを確認
-            unless Dir.exist?(md_output_dir) && !Dir.glob(File.join(md_output_dir, '*.md')).empty?
-              raise "Markdown 出力ディレクトリが見つからないか空です: #{md_output_dir}\n" \
-                    "手動で `cd #{@starter_dir} && rake markdown` を実行してから再度インポートしてください。"
-            end
-          end
+      # catalog.yml に並ぶ原稿の basename（拡張子なし）を出現順に返す
+      def catalog_chapters
+        catalog = YAML.safe_load_file(File.join(@starter_dir, 'catalog.yml'), permitted_classes: [Symbol])
+        return [] unless catalog.is_a?(Hash)
 
-          @md_output_dir = md_output_dir
+        %w[PREDEF CHAPS APPENDIX POSTDEF].flat_map do |section|
+          # 部（`- 初級編:` のあとに章が並ぶ）は Hash として現れる
+          Array(catalog[section]).flat_map { it.is_a?(Hash) ? it.values.flatten : it }
+        end.compact.map { File.basename(it.to_s, '.re') }
+      end
+
+      def render_chapter(basename, report)
+        path = File.join(review_contents_dir, "#{basename}.re")
+
+        unless File.exist?(path)
+          Common.log_warn("  #{basename}.re が見つかりません（catalog.yml には載っています）。",
+                          detail: '対処: 原稿を用意するか、catalog.yml から行を外してください。')
+          return nil
         end
 
-        # vivlio-starter の temp にコピー
-        starter_md_dir = File.join(@starter_dir, @md_output_dir)
-        vivlio_root = Dir.pwd
-        Dir.chdir(vivlio_root) do
-          Dir.glob(File.join(starter_md_dir, '*.md')).each do |md_file|
-            FileUtils.cp(md_file, temp_dir)
-          end
+        nodes = Import::ReParser.parse(path, report:)
+        renderer = Import::ReRenderer.new(report:, file: "#{basename}.re", words: starter_words,
+                                          text_width_mm: text_area_width_mm)
+        Chapter.new(basename:, markdown: renderer.render(nodes), labels: renderer.labels.uniq,
+                    lines: File.foreach(path).count)
+      end
 
-          # 追従変換を実行
-          Import::MarkdownConverter.process!(temp_dir)
+      # Vivlio のラベルは本全体で一意（Re:VIEW は章内で一意ならよい）。
+      # 2 つ以上の章に現れた ID だけ、章 basename を前置して改名する
+      # ——重複しなかった ID は著者が覚えている名前のまま残す。
+      def unify_labels(chapters, report)
+        owners = Hash.new { |hash, key| hash[key] = [] }
+        chapters.each { |chapter| chapter.labels.each { |label| owners[label] << chapter.basename } }
+        duplicated = owners.select { |_, list| list.uniq.size > 1 }.keys
+        return chapters if duplicated.empty?
 
-          # Re:VIEW が落とした囲みを .re 原稿から戻す。
-          # 逐語ブロックはフェンスの並びで照合するので、sideimage より先に行う
-          # （sideimage は本文へ `:::` を差し込み、フェンスの行番号を動かす）
-          Import::VerbatimRestorer.restore!(temp_dir, @starter_dir)
-          Import::SideimageRestorer.restore!(temp_dir, @starter_dir)
+        chapters.map { rename_labels(it, duplicated, report) }
+      end
 
-          # 改ページは最後に。囲みが出来上がってからでないと「囲みの外へ出す」判断ができない
-          Import::PagebreakRestorer.restore!(temp_dir, @starter_dir)
+      def rename_labels(chapter, duplicated, report)
+        targets = chapter.labels & duplicated
+        return chapter if targets.empty?
 
-          # contents/ に移動
-          Dir.glob(File.join(temp_dir, '*.md')).each do |md_file|
-            dest = File.join('contents', File.basename(md_file))
-            FileUtils.mv(md_file, dest)
-          end
-
-          # temp を削除
-          FileUtils.rm_rf(temp_dir)
+        markdown = targets.inject(chapter.markdown) do |text, label|
+          report.count(:relabel)
+          text.gsub(/@#{Regexp.escape(label)}(?![\w-])/, "@#{chapter.basename}-#{label}")
         end
 
-        cleanup_starter_markdown_dir!
+        report.degraded('label', file: "#{chapter.basename}.re", line: 0,
+                                 message: "章をまたいで重複したラベル #{targets.join('、')} を " \
+                                          "#{chapter.basename}-… へ改名しました。",
+                                 detail: 'Vivlio のラベルは本全体で一意である必要があります（クロスリファレンスの章）。')
+        chapter.with(markdown:)
+      end
+
+      def write_chapters!(chapters)
+        chapters.each do |chapter|
+          File.write(File.join(Common::CONTENTS_DIR, "#{chapter.basename}.md"), chapter.markdown, encoding: 'utf-8')
+        end
+      end
+
+      # Re:VIEW の原稿ディレクトリ（config.yml の contentdir。既定は contents）
+      def review_contents_dir
+        config = File.join(@starter_dir, 'config.yml')
+        dir = (YAML.safe_load_file(config, permitted_classes: [Symbol])['contentdir'] if File.exist?(config))
+        File.join(@starter_dir, dir.to_s.strip.empty? ? 'contents' : dir.to_s.strip)
+      end
+
+      # `@<w>{key}` の展開に使う辞書（Starter の単語展開機能）
+      def starter_words
+        @starter_words ||= begin
+          file = File.join(@starter_dir, 'words.yml')
+          File.exist?(file) ? (YAML.safe_load_file(file) || {}) : {}
+        end
+      end
+
+      # 版面幅（mm）＝ 紙幅 − ノド − 小口。//sideimage の mm 指定を比率へ直す基準
+      def text_area_width_mm
+        @text_area_width_mm ||= begin
+          preset = target_page_preset
+          width = Units.length_to_mm(Common::PAGE_SIZES.dig(preset&.fetch('size', nil).to_s.upcase, :width))
+          inner = Units.length_to_mm(preset&.fetch('margin_inner', nil))
+          outer = Units.length_to_mm(preset&.fetch('margin_outer', nil))
+          width&.positive? && inner && outer ? [width - inner - outer, 1.0].max : DEFAULT_TEXT_WIDTH_MM
+        end
+      end
+
+      # 取り込み先で使う判型プリセットの中身
+      def target_page_preset
+        starter_config = File.join(@starter_dir, 'config-starter.yml')
+        return nil unless File.exist?(starter_config) && File.exist?(PAGE_PRESETS_FILE)
+
+        pagesize = YAML.safe_load_file(starter_config, permitted_classes: [Symbol]).dig('starter', 'pagesize')
+        name = Import::YamlProcessor::PAGE_PRESETS[pagesize.to_s.strip.upcase]
+        return nil unless name
+
+        # プリセットは YAML アンカー（`<<: *b5_std`）で共通部を引くため aliases が要る
+        YAML.safe_load_file(PAGE_PRESETS_FILE, aliases: true)[name]
       end
 
       # source/ → codes/ コピー
@@ -241,17 +313,6 @@ module VivlioStarter
         Common.log_warn("  #{side[:label]}は雛形の見本画像のままです。",
                         detail: "対処: covers/#{side[:master]} を自分の#{side[:label]}画像に置き換えてください。")
         false
-      end
-
-      def cleanup_starter_markdown_dir!
-        return unless @starter_dir && @md_output_dir
-
-        md_dir = File.join(@starter_dir, @md_output_dir)
-        return unless Dir.exist?(md_dir)
-
-        FileUtils.rm_rf(md_dir)
-      rescue StandardError => e
-        Common.log_warn("  #{@md_output_dir}/ の削除に失敗しました: #{e.message}")
       end
     end
   end
