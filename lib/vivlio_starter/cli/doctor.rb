@@ -102,9 +102,6 @@ module VivlioStarter
       # （vs upgrade の更新と --fix のインストールで共用し、二重管理しない）
       TEXTLINT_NPM_PACKAGES = ToolUpgrader::TEXTLINT_NPM_PACKAGES
 
-      # 後方互換用の空フック
-      def included(base); end
-
       # 環境診断を実行し、不足ツールを報告・インストールする
       #
       # @param command [Hash, Object, nil] コマンドコンテキスト
@@ -691,7 +688,7 @@ module VivlioStarter
 
       # 書籍プロジェクトの中かどうか（復元対象の config/ か、プロジェクトの
       # 目印である vivliostyle.config.js があれば対象とみなす）
-      def book_project_dir? = Dir.exist?(Common::CONFIG_DIR) || File.file?(Common::VIVLIOSTYLE_CONFIG_FILE)
+      def book_project_dir? = Dir.exist?(Common::CONFIG_DIR)
 
       def missing_optional_config_files
         OPTIONAL_CONFIG_FILES.reject { File.file?(File.join(Common::CONFIG_DIR, it)) }

@@ -102,7 +102,7 @@ module VivlioStarter
       end
 
       # `vs new` の展開末尾から呼ぶ生成処理。
-      # 既存の lock があれば既存エントリを優先して残す（--add-missing で重ね展開した場合、
+      # 既存の lock があれば既存エントリを優先して残す（重ね展開が起きても、
       # 著者の手元ファイルの「展開時点ハッシュ」という意味を壊さないため）。
       def generate!(project_root, scaffold_source:, version:)
         files = digest_scaffold(scaffold_source)

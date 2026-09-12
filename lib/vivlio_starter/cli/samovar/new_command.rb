@@ -16,7 +16,6 @@ module VivlioStarter
 
         options do
           option '--yes/-y', '対話をスキップしデフォルト設定で作成する', default: false, key: :yes
-          option '--add-missing', '既存ディレクトリに不足ファイルだけを追加する（既存は保持）', default: false, key: :add_missing
           option '--log <level>', 'ログレベル（debug など）', key: :log_level
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
         end

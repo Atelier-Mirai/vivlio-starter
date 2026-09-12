@@ -365,7 +365,6 @@ module VivlioStarter
         def merge_frontmatter(existing_frontmatter, new_frontmatter)
           merged = existing_frontmatter.dup
           merged.delete('stylesheet')
-          merged['link'] = filter_legacy_theme_links(merged['link']) if merged['link'].is_a?(Array)
 
           new_frontmatter.each do |key, value|
             merged[key] = case [key, merged[key]]
@@ -385,14 +384,6 @@ module VivlioStarter
             {}
           else
             obj.respond_to?(:to_h) ? obj.to_h : {}
-          end
-        end
-
-        # 古いテーマリンクを除外
-        def filter_legacy_theme_links(links)
-          links.reject do |lnk|
-            href = (lnk && lnk['href']).to_s
-            href.match(%r{stylesheets/(theme-(yellow|blue|red|accent)\.css|theme-overrides\.css)})
           end
         end
 

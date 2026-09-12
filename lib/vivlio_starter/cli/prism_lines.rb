@@ -22,8 +22,6 @@ module VivlioStarter
     module PrismLinesCommands
       module_function
 
-      def included(base); end
-
       # Samovar/直接呼び出し用エントリポイント
       def execute_prism_lines(input_file, output_file = nil)
         output_file ||= input_file

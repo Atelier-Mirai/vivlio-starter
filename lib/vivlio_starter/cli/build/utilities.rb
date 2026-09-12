@@ -37,10 +37,6 @@ module VivlioStarter
           # 新実装 (MIT版 Provider への委譲)
           require 'vivlio_starter/cli/pdf/provider'
           VivlioStarter::Pdf.provider.page_count(file)
-
-          # --- 旧実装（MIT化動作確認後に削除予定） ---
-          # doc = HexaPDF::Document.open(file)
-          # doc.pages.count
         rescue StandardError
           nil
         end
@@ -155,13 +151,6 @@ module VivlioStarter
           w_pt, h_pt = Build::Utilities.page_size_points_from_config
           require 'vivlio_starter/cli/pdf/provider'
           VivlioStarter::Pdf.provider.ensure_blank_page_pdf(path, w_pt, h_pt)
-
-          # --- 旧実装（MIT化動作確認後に削除予定） ---
-          # doc = HexaPDF::Document.new
-          # w_pt, h_pt = Build::Utilities.page_size_points_from_config
-          # doc.pages.add([0, 0, w_pt, h_pt])
-          # doc.write(path, optimize: true)
-          # path
         end
 
         # 現在の設定からページサイズ（文字列: mm/pt）を取得

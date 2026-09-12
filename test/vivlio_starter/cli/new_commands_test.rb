@@ -11,8 +11,7 @@
 #   - 不正文字を含むプロジェクト名のバリデーションエラー
 #   - --yes モードで全ファイルが展開されデフォルト値が反映される
 #   - {{PROJECT_NAME}} が引数のプロジェクト名で置換される
-#   - 既存ディレクトリ（デフォルト）でエラー終了
-#   - 既存ディレクトリ（--add-missing）で既存ファイルをスキップし不足分のみ追加
+#   - 既存ディレクトリでエラー終了し vs upgrade を案内する
 #   - vs doctor --fix 失敗時に警告を出力しファイルは残る
 #   - 対話で「n」を入力した場合の中断
 #   - 対話モードのプロンプト文言と確認サマリー（著者/発行者の振り分け）
@@ -87,8 +86,9 @@ module VivlioStarter
         end
       end
 
-      # 既存ディレクトリ（--add-missing なし）でエラー終了しディレクトリが変更されないことを確認
-      def test_should_exit_with_error_when_directory_exists_without_add_missing
+      # 既存ディレクトリではエラー終了し、ディレクトリが変更されないことを確認。
+      # 既存プロジェクトへの取り込みは vs upgrade の担当（--add-missing は撤去済み）。
+      def test_should_exit_with_error_when_directory_exists
         within_temp_dir do
           FileUtils.mkdir_p('existing')
           File.write('existing/my_file.txt', 'original', encoding: 'utf-8')
@@ -99,23 +99,6 @@ module VivlioStarter
 
           assert_equal 1, error.status
           assert_equal 'original', File.read('existing/my_file.txt')
-        end
-      end
-
-      # --add-missing で既存ファイルをスキップし不足ファイルのみ追加されることを確認
-      def test_should_add_only_missing_files_when_add_missing_option_given
-        within_temp_dir do
-          FileUtils.mkdir_p('partial/config')
-          File.write('partial/config/book.yml', 'custom content', encoding: 'utf-8')
-
-          stub_system_call do
-            capture_io { run_new_command(['partial', '--add-missing', '--yes']) }
-          end
-
-          # 既存ファイルは上書きされない
-          assert_equal 'custom content', File.read('partial/config/book.yml')
-          # 不足ファイルは追加される
-          assert File.exist?('partial/package.json'), '不足ファイルが追加されるべき'
         end
       end
 
@@ -237,21 +220,22 @@ module VivlioStarter
         end
       end
 
-      # --add-missing で非推奨警告が表示され、従来動作（不足分の追加）は維持されることを確認
-      def test_should_warn_deprecation_when_add_missing_option_given
+      # 既存ディレクトリを指すと vs upgrade を案内して止まる（撤去した --add-missing の代替）。
+      def test_should_guide_to_upgrade_when_directory_exists
         within_temp_dir do
           FileUtils.mkdir_p('legacy/config')
           File.write('legacy/config/book.yml', 'custom content', encoding: 'utf-8')
 
-          out = nil
-          stub_system_call do
-            out, = capture_io { run_new_command(['legacy', '--add-missing', '--yes']) }
+          # SystemExit が抜けると capture_io の戻り値を受け取れないため、
+          # 捕捉を外側に置いて中で raise を待つ。
+          out, err = capture_io do
+            error = assert_raises(SystemExit) { run_new_command(['legacy', '--yes']) }
+
+            assert_equal 1, error.status
           end
 
-          assert_match(/非推奨/, out, '非推奨警告が表示されるべき')
-          assert_match(/vs upgrade/, out, '代替コマンドが案内されるべき')
+          assert_match(/vs upgrade/, out + err, '代替コマンドが案内されるべき')
           assert_equal 'custom content', File.read('legacy/config/book.yml'), '既存ファイルは保持されるべき'
-          assert File.exist?('legacy/package.json'), '不足ファイルの追加は従来どおり動くべき'
         end
       end
 

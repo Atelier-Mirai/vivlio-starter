@@ -51,9 +51,7 @@ module VivlioStarter
       # 「除外済みリストから戻す語を選ぶ」ような途中の判断がまるごと失われ、
       # `vs index:apply` は「ファイルが見つかりません」で終わる。
       # 掃除するのは意図が明示された `--purge` のときだけにする。
-      REVIEW_FILE_PATTERNS = %w[
-        _index_review.md _index_glossary_review.md
-      ].freeze
+      REVIEW_FILE_PATTERNS = %w[_index_glossary_review.md].freeze
 
       # 削除結果の内訳。表示は呼び出し側の責務とし、ドメイン層は件数を返すだけにする。
       # `vs build` の Step 0 も execute_clean を呼ぶため、ここで結果報告を出すと

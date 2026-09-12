@@ -32,9 +32,7 @@ require_relative 'term_line'
 module VivlioStarter
   module CLI
     class ReviewMarkdownGenerator
-      # 旧ファイル名との互換性のため、両方をチェック
       REVIEW_FILE = '_index_glossary_review.md'
-      LEGACY_REVIEW_FILE = '_index_review.md'
 
       # 今回走査しなかった章から拾った抜粋であることを示す注記。表示専用で、
       # apply のパース時に剥がされる（章名の一部と誤って辞書へ戻さないため）。
@@ -82,17 +80,12 @@ module VivlioStarter
       # レビューファイルが存在するか
       # @return [Boolean]
       def exists?
-        File.exist?(REVIEW_FILE) || File.exist?(LEGACY_REVIEW_FILE)
+        File.exist?(REVIEW_FILE)
       end
 
       # 実際のレビューファイルパスを取得
       # @return [String]
-      def review_file_path
-        return REVIEW_FILE if File.exist?(REVIEW_FILE)
-        return LEGACY_REVIEW_FILE if File.exist?(LEGACY_REVIEW_FILE)
-
-        REVIEW_FILE
-      end
+      def review_file_path = REVIEW_FILE
 
       # 索引として承認された候補を抽出（[i], [ig], [gi], [x] マーク）
       # @return [Array<Hash>] 索引候補のリスト
@@ -151,12 +144,6 @@ module VivlioStarter
         end
 
         approved
-      end
-
-      # 後方互換性のため parse_approved も維持（索引用）
-      # @return [Array<Hash>] 承認済み候補のリスト
-      def parse_approved
-        parse_index_approved
       end
 
       # リジェクト候補を抽出（[r], [-ig], [-gi] マーク）

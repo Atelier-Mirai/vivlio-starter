@@ -58,18 +58,12 @@ module VivlioStarter
         raw
       end
 
-      def check_existing_directory!(cmd, project_name)
+      def check_existing_directory!(_cmd, project_name)
         return unless Dir.exist?(project_name)
 
-        if cmd.options[:add_missing]
-          # 非推奨（project-upgrade-command-spec.md §2.2）: 1 リリース後に削除予定
-          Common.log_warn('--add-missing は非推奨です。今後は vs upgrade を使ってください（不足追加に加え、雛形の改良取り込みもできます）。')
-          return
-        end
-
         Common.log_error("エラー: ディレクトリ \"#{project_name}\" はすでに存在します。")
-        Common.log_error('既存ディレクトリに不足ファイルだけを追加する場合は --add-missing オプションを指定してください（既存ファイルは保持されます）。')
-        Common.log_error("  vs new #{project_name} --add-missing")
+        Common.log_error('既存プロジェクトへ雛形の改良を取り込むには vs upgrade を使ってください（不足ファイルの追加もできます）。')
+        Common.log_error("  cd #{project_name} && vs upgrade")
         exit 1
       end
 
@@ -123,7 +117,8 @@ module VivlioStarter
 
       def expand_scaffold(cmd, project_name, answers)
         # クリーンアップ対象にするのは「今回作成した」ディレクトリのみ。
-        # `--add-missing` で既存ディレクトリに重ねる場合は、部分破壊を避けるため保持する。
+        # 既存ディレクトリは check_existing_directory! が弾くが、中断時の部分破壊を
+        # 避ける方針は変えない。
         created_root = !File.exist?(project_name)
         FileUtils.mkdir_p(project_name)
 

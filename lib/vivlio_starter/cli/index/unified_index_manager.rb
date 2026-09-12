@@ -11,7 +11,6 @@
 #   - auto_process!: 全自動候補抽出 → _index_glossary_review.md 生成
 #   - apply_markdown_review!: Markdownから承認・リジェクトを適用
 #   - build_index!: 索引ページを生成（内部用）
-#   - build_glossary!: 用語集ページを生成（内部用）
 # ================================================================
 
 require_relative '../common'
@@ -446,17 +445,6 @@ module VivlioStarter
           severity: :warn, category: :index,
           message: '索引語辞書がありません（vs index:auto → vs index:apply で作成できます）'
         )
-      end
-
-      # 用語集ページを生成（後方互換 - 単独呼び出し用）
-      def build_glossary!
-        return unless glossary_enabled?
-
-        @terms_manager.clear_cache!
-        glossary = @terms_manager.glossary_terms
-        builder = UnifiedPageBuilder.new(glossary_config: @glossary_config)
-        result = builder.build_glossary!(glossary)
-        Common.log_success('用語集ページを生成しました') if result
       end
 
       # 用語集機能が有効か

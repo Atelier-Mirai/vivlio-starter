@@ -25,6 +25,18 @@
 
 ### Removed
 
+- **期限切れ・参照ゼロの古いコードを 10 件撤去した**。`vs clean` の legacy 掃除を撤去した流れで `lib/` 全体を「旧 / legacy / 後方互換 / 撤去予定」で洗い、参照の有無を外部 gem（`vivlio-starter-pdf` / `query-stream`）まで含めて確かめた結果である。
+
+  **参照ゼロだったもの。** `LintCommands` の旧別名 `TextLintCommands`（定義行しか無かった）、空の `included(base); end` フック 4 つ（`doctor` / `post_process` / `prism_lines` / `resize`。**どのモジュールも `include` されていない**ので Ruby も呼ばない）、`UnifiedIndexManager#build_glossary!`（「後方互換 - 単独呼び出し用」。同名の `UnifiedPageBuilder#build_glossary!` が現役で、そちらとは別物）、`utilities.rb` にコメントアウトで残っていた HexaPDF 版の旧実装 2 箇所（「MIT化動作確認後に削除予定」）。
+
+  空フックは `dead-code-candidates-report.md` §4 が 2026-08-03 に「Ruby のフックだから走査の誤検出。消してはいけない」として残したものだが、今回 `include` 側を追って**起動され得ないこと**を確かめた。**前回は「フックかどうか」だけを見て「呼ばれるか」を見ていなかった**——参照ゼロの理由を 1 段深く追う、という `SPECIAL_PAGES` と同じ教訓がここにも当てはまる。
+
+  **テストだけが旧名を参照していたもの。** `TextMetricsCommands` 別名と `execute_text_metrics`（本番は `MetricsCommands` / `execute_metrics`）、`ReviewMarkdownGenerator#parse_approved`（実体は `parse_index_approved`）。テストを新名へ寄せてから本体を撤去した。
+
+  **期限切れの互換パス。** `vs new --add-missing` は「1 リリース後に削除予定」（`project-upgrade-command-spec.md` §2.2）のまま rc.2 / rc.3 と 2 リリース過ぎていた。既存ディレクトリを指すと `vs upgrade` を案内して止まるようになり、原稿（12 章・付録のチートシート）からも記述を落とした。`filter_legacy_theme_links` が除いていた `theme-yellow/blue/red/accent.css` `theme-overrides.css` は **2025-08 に消えており**、原稿にも scaffold にも参照が無い。索引レビューの旧ファイル名 `_index_review.md` のフォールバック（改名は 2026-02〜04）と、`clean.rb` の掃除対象に残っていた同名も落とした。`Common::VIVLIOSTYLE_CONFIG_FILE` は撤去済み手動フローのルート config 名で、唯一の読み手だった `doctor` の `book_project_dir?` では**vs 製でない素の Vivliostyle プロジェクトを本のプロジェクトと誤検出する**向きにしか働いていなかった。
+
+  一方、**名前に「旧」が付いていても現役のものは残した**。`book_settings_css.rb` の `page-break-before` 併記と `heading_image_composer.rb` の `xlink:href` は旧リーダー互換として意図的なもの、`prism_lines.rb` の `remove_legacy_meta` が消しているのは Nokogiri が付けうる meta で我々の残骸ではない、`pre_process.rb` の「後方互換のため再公開」は現役の入口でラベルが古いだけ、各所の「旧実装は〜だった」は設計経緯の説明である。
+
 - **`vs clean` の「旧バージョン残骸掃除」を V2.0 予定から前倒しで撤去した**（`clean.rb` が 520 行 → 302 行）。P4（2026-07-04/05）と generated-assets 移設（07-11）で中間生成物をワークスペースへ閉じた際、移行者のために「1 リリースだけ残す」としたルート掃除である。**その猶予はすでに 2 回過ぎている**（rc.2 = 2026-08-10・rc.3 = 08-22）。
 
   **残すほうが危なかった。** `clean_build_artifacts` は `vs build` の Step 0 からも呼ばれるため、この掃除は**毎ビルド**走る。対象は現行版が決して作らないもので、代わりに**著者の持ち物**を薙いでいた——ルートの `*.html` と `[0-9][0-9]-*.md`、`book-settings.css`、そして `images/{math,headings,_epub_assets}` の**再帰削除**（現行の生成先は消費者 dir 内なので、ここに当たるのは著者が自分で作ったディレクトリだけ）。`--cover` では `covers/*.pdf` と `*.jpg` も消していた（著者向けの案内は png/svg しか「著者のもの」と書いていない）。しかも削除ログは `log_info` なので、既定のログ水準では**何も表示されない**。テストで実証した——撤去前のコードは、著者がルートに置いた `notes.html` をオプションなしの `vs clean` で消す。

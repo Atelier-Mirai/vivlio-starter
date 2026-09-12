@@ -61,12 +61,10 @@ module VivlioStarter
         within_temp_dir do
           setup_generated_files
           write_file('_index_glossary_review.md')
-          write_file('_index_review.md')
 
           CleanCommands.execute_clean({})
 
           assert File.exist?('_index_glossary_review.md'), 'レビュー途中の編集を消してはいけません'
-          assert File.exist?('_index_review.md')
         end
       end
 
@@ -75,12 +73,10 @@ module VivlioStarter
         within_temp_dir do
           setup_generated_files
           write_file('_index_glossary_review.md')
-          write_file('_index_review.md')
 
           CleanCommands.execute_clean({ purge: true })
 
           refute File.exist?('_index_glossary_review.md')
-          refute File.exist?('_index_review.md')
         end
       end
 

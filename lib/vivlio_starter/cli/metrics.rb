@@ -17,14 +17,6 @@ module VivlioStarter
       def execute_metrics(targets, options = {})
         Metrics::Runner.new(targets, options).call
       end
-
-      # 後方互換: 旧 execute_text_metrics エントリポイントを維持
-      def execute_text_metrics(targets, options = {})
-        execute_metrics(targets, options)
-      end
     end
-
-    # 後方互換: 旧 TextMetricsCommands 定数を維持
-    TextMetricsCommands = MetricsCommands
   end
 end

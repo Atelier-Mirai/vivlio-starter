@@ -49,10 +49,6 @@ module VivlioStarter
       COVERS_DIR = 'covers'
       VFM_COMMAND = 'vfm'
       CACHE_DIR = '.cache/vs'
-      # 旧バージョン（撤去済み手動フロー）のルート config 名。
-      # doctor の旧プロジェクト検出マーカーとしてのみ参照する。
-      VIVLIOSTYLE_CONFIG_FILE = 'vivliostyle.config.js'
-
       # ------------------------------------------------------------
       # ビルドワークスペース（P4: 中間生成物の分離場所）
       # ------------------------------------------------------------

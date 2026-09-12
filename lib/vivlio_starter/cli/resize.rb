@@ -41,8 +41,6 @@ module VivlioStarter
         '軽量' => { quality: 75, method: 4, max_px: 1200 }
       }.freeze
 
-      def included(base); end
-
       # 変換実績。表示は呼び出し側の責務とし、ドメイン層は件数を返すだけにする。
       # `vs build` の Step 1 も同じ関数を対象ディレクトリごとに呼ぶため、ここで結果報告を
       # 出すとビルド中に「対象画像が見つかりませんでした」等が何行も混ざってしまう。

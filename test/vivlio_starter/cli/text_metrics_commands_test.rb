@@ -4,7 +4,7 @@
 # Test: text_metrics_commands_test.rb
 # ================================================================
 # テスト対象:
-#   TextMetricsCommands（lib/vivlio_starter/cli/text_metrics.rb）
+#   MetricsCommands のエントリポイント（lib/vivlio_starter/cli/metrics.rb）
 #
 # 検証内容:
 #   - 対象ファイル未検出時の警告出力
@@ -21,14 +21,14 @@ require 'vivlio_starter/cli/metrics'
 
 module VivlioStarter
   module CLI
-    # TextMetricsCommands のユニットテスト
-    class TextMetricsCommandsTest < Minitest::Test
+    # MetricsCommands のエントリポイントのユニットテスト
+    class MetricsCommandsEntrypointTest < Minitest::Test
       # 対象 Markdown が見つからない場合に警告を出力することを確認
       def test_text_metrics_warns_when_no_targets
         within_temp_dir do
           logged_warnings = []
           Common.stub :log_warn, ->(msg) { logged_warnings << msg } do
-            capture_io { TextMetricsCommands.execute_text_metrics(['missing']) }
+            capture_io { MetricsCommands.execute_metrics(['missing']) }
           end
 
           assert logged_warnings.any? { it.include?('見つかりません') },
@@ -41,7 +41,7 @@ module VivlioStarter
         within_temp_dir do
           write_markdown('contents/11-sample.md', "本文。テストです、はい。\n")
 
-          output = capture_io { TextMetricsCommands.execute_text_metrics([], { json: true }) }.first
+          output = capture_io { MetricsCommands.execute_metrics([], { json: true }) }.first
           parsed = JSON.parse(output)
 
           assert_equal %w[advice stats totals], parsed.keys.sort
@@ -54,7 +54,7 @@ module VivlioStarter
         within_temp_dir do
           write_markdown('contents/11-sample.md', "本文です。テストの文章を、いくつか並べます。\n")
 
-          output = capture_io { TextMetricsCommands.execute_text_metrics([], { json: true }) }.first
+          output = capture_io { MetricsCommands.execute_metrics([], { json: true }) }.first
           parsed = JSON.parse(output)
 
           advice = parsed['advice']
@@ -69,7 +69,7 @@ module VivlioStarter
         within_temp_dir do
           write_markdown('contents/11-sample.md', "本文です。テストの文章を、いくつか並べます。\n")
 
-          output = capture_io { TextMetricsCommands.execute_text_metrics([], { json: true }) }.first
+          output = capture_io { MetricsCommands.execute_metrics([], { json: true }) }.first
           totals = JSON.parse(output)['totals']
 
           assert totals.key?('readability'), "totals に readability が含まれること: #{totals.keys.inspect}"
@@ -83,7 +83,7 @@ module VivlioStarter
           write_markdown('contents/15.md', "数字だけの章です。\n")
           write_catalog(%w[15])
 
-          output = capture_io { TextMetricsCommands.execute_text_metrics(['15'], { json: true }) }.first
+          output = capture_io { MetricsCommands.execute_metrics(['15'], { json: true }) }.first
           parsed = JSON.parse(output)
 
           assert_equal ['contents/15.md'], parsed['stats'].map { it['path'] }

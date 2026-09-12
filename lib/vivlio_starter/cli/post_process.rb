@@ -54,8 +54,6 @@ module VivlioStarter
     module PostProcessCommands
       module_function
 
-      def included(base); end
-
       # Samovar/直接呼び出し用エントリポイント
       # @param context_or_options [Hash, Object] コマンドコンテキスト
       # @param entries [Array<TokenResolver::Entry>] Entry オブジェクトの配列

@@ -487,9 +487,9 @@ module VivlioStarter
         assert_includes content, 'スコア: 150.5'
       end
 
-      # --- phase: parse_approved tests ---
+      # --- phase: parse_index_approved tests ---
 
-      def test_parse_approved_extracts_checked_items
+      def test_parse_index_approved_extracts_checked_items
         content = <<~MD
           ## 2. 推奨候補 (High Candidates: 2語)
 
@@ -501,7 +501,7 @@ module VivlioStarter
         MD
         File.write('_index_glossary_review.md', content)
 
-        approved = @generator.parse_approved
+        approved = @generator.parse_index_approved
 
         assert_equal 1, approved.size
         assert_equal 'JavaScript', approved[0]['term']
