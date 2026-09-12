@@ -156,10 +156,64 @@ class NotationCoverageTest < Minitest::Test
                  "字下げコードブロックの検体が壊れています（§6 L-2 の再現に使うため、索引語を含めておくこと）"
   end
 
+  # ---------------------------------------------------------------------------
+  # 定義リスト
+  #
+  # VFM は定義リスト記法を知らず、`用語` と `: 説明` を 1 つの <p> にまとめて
+  # 出すだけである（行は <br> で区切られる）。<dl> を組むのは後処理
+  # （DefinitionListConverter）なので、**NOTATIONS の VFM 突き合わせには載せられない**
+  # ——出来上がりを直接見る。
+  # ---------------------------------------------------------------------------
+  def test_definition_list_is_assembled_after_vfm
+    refute_match(/<dl class="def-list">/, vivlio_baseline,
+                 "VFM 単体で <dl> が出るなら、後処理での組み立てはもう要りません")
+
+    assert_match(/<dl class="def-list">/, vivlio_html, "定義リストが <dl> に組まれていません")
+    assert_includes vivlio_html, "<dt>用語1</dt>"
+    assert_includes vivlio_html, "<dd>用語1の説明です。</dd>"
+  end
+
+  # 1 つの用語に説明を並べたときと、字下げで説明を続けたとき。
+  #
+  # 用語（<dt>）そのもので探さないのは、そこも索引・用語集の対象になり
+  # `<dt><dfn …>Ruby</dfn></dt>` のようにタグで包まれるため（これは正しい挙動）。
+  def test_definition_list_keeps_multiple_and_continued_definitions
+    ruby_entry = definition_lists(vivlio_html).find { it.include?("まつもとゆきひろ") }
+    refute_nil ruby_entry, "Ruby の定義リストが見つかりません（検体を足してください）"
+
+    assert_equal 2, ruby_entry.scan("<dd>").size, "1 つの用語に対する 2 つの説明が失われました"
+    assert_includes ruby_entry, "<br>動的型付けとオブジェクト指向が特徴です。",
+                    "字下げした続きの行が説明に取り込まれていません"
+  end
+
+  # **定義リストの中でも、本文と同じ記法が効くこと。**
+  # 2026-09-12 まで、前処理が Kramdown で <dl> を作っていたため、Kramdown が
+  # 知らない記法（ルビ・索引）だけが定義リストの中で死んでいた。ビルドは成功し、
+  # 紙面を見るまで気づけない壊れ方だったので、ここで番人を置く。
+  def test_inline_notation_survives_inside_definition_list
+    entry = definition_lists(vivlio_html).find { it.include?("<dt>記法の同居</dt>") }
+    refute_nil entry, "記法の同居の検体が見つかりません（検体を足してください）"
+
+    assert_includes entry, "<ruby>", "定義リストの中でルビが組まれていません"
+    assert_match(/index-term|<dfn/, entry, "定義リストの中で索引が拾われていません")
+    assert_includes entry, "<strong>", "定義リストの中で強調が効いていません"
+    assert_includes entry, "<code>", "定義リストの中でインラインコードが効いていません"
+  end
+
   private
+
+  def definition_lists(html) = html.scan(%r{<dl class="def-list">[\s\S]*?</dl>})
 
   def built_html
     @built_html ||= File.read(html_path("01-commonmark"))
+  end
+
+  def vivlio_html
+    @vivlio_html ||= File.read(html_path("02-vivlio"))
+  end
+
+  def vivlio_baseline
+    @vivlio_baseline ||= `vfm #{File.join(FIXTURE_DIR, '02-vivlio.md')} 2>/dev/null`
   end
 
   def vfm_baseline
