@@ -42,6 +42,7 @@ require_relative 'post_process/section_wrapper'
 require_relative 'post_process/footnote_converter'
 require_relative 'post_process/heading_processor'
 require_relative 'post_process/terminal_block_converter'
+require_relative 'post_process/definition_list_converter'
 require_relative 'prism_lines'
 
 module VivlioStarter
@@ -137,6 +138,14 @@ module VivlioStarter
 
           # Prism.js 行番号付与（直接呼び出し）
           PrismLinesCommands.execute_prism_lines(html_file)
+
+          # 定義リストは VFM が組んだ HTML を受け取ってから <dl> にする。
+          # Markdown 段階で HTML 化すると、中のルビ・索引が以降の処理から隠れる
+          begin
+            DefinitionListConverter.convert!(html_file)
+          rescue StandardError => e
+            Common.log_error("#{html_file}: 定義リストの組み立て中にエラー: #{e.message}")
+          end
 
           mark_code_captions!(html_file)
           mark_strong_headings!(html_file)

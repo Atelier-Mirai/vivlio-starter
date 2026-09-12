@@ -357,60 +357,30 @@ module VivlioStarter
         end
 
         # =================================================================
-        # convert_definition_lists
+        # mark_definition_continuations
         # =================================================================
-        def test_convert_definition_lists_basic
-          md = "用語1\n: 用語1の説明\n用語2\n: 用語2の説明\n"
-          out = convert_definition_lists(md)
-
-          assert_includes out, '<dl class="def-list">', '索引/奥付と衝突しない class 付きの dl になる'
-          assert_includes out, '<dt>用語1</dt>'
-          assert_includes out, '<dd>用語1の説明</dd>'
-          assert_includes out, '<dt>用語2</dt>'
-          assert_includes out, '<dd>用語2の説明</dd>'
-        end
-
-        def test_convert_definition_lists_multiple_dd_and_continuation
+        # 定義リストの組み立ては後処理が行うが、字下げの情報だけはここでしか残せない
+        # （VFM が行頭の空白を落とすため）。印は幅ゼロの WORD JOINER。
+        def test_mark_definition_continuations_marks_indented_lines
           md = "Ruby\n: 開発者は Matz です。\n  動的型付けが特徴です。\n: 宝石の名前。\n"
-          out = convert_definition_lists(md)
+          out = mark_definition_continuations(md)
 
-          # 複数の : 行 → 複数 <dd>
-          assert_equal 2, out.scan('<dd>').size, '用語に対し定義 2 つぶんの <dd> ができる'
-          # 字下げ継続行は直前の <dd> に取り込まれる
-          assert_includes out, '動的型付けが特徴です。'
-          assert_includes out, '<dd>宝石の名前。</dd>'
+          mark = MarkdownTransformer::CONTINUATION_MARK
+          assert_includes out, "#{mark}動的型付けが特徴です。", '字下げした継続行に印が付く'
+          refute_includes out, "#{mark}: ", '定義行には印を付けない'
+          assert_includes out, "Ruby\n", '用語行はそのまま'
         end
 
-        def test_convert_definition_lists_continuation_is_hard_break
-          md = "Ruby\n: 1行目の説明。\n  2行目の説明。\n"
-          out = convert_definition_lists(md)
+        def test_mark_definition_continuations_leaves_plain_prose
+          md = "これは普通の段落です。\n  字下げした続きの行です。\n"
 
-          # 本書の hardLineBreaks: true に合わせ、説明内の改行は <br> になる
-          assert_includes out, '<br', '複数行の説明は <br> で改行される'
-          assert_includes out, '1行目の説明。'
-          assert_includes out, '2行目の説明。'
+          assert_equal md, mark_definition_continuations(md), '定義行を伴わない字下げには印を付けない'
         end
 
-        def test_convert_definition_lists_renders_inline_code
-          md = "Ruby\n: `<ruby>` は振り仮名のタグです。\n"
-          out = convert_definition_lists(md)
+        def test_mark_definition_continuations_skips_code_fence
+          md = "```markdown\n用語\n: 説明\n  字下げ\n```\n"
 
-          assert_includes out, '<code>&lt;ruby&gt;</code>', '定義内のインラインコードは Kramdown が処理する'
-        end
-
-        def test_convert_definition_lists_skips_code_fence
-          md = "```markdown\n用語X\n: コード例なので変換しない\n```\n"
-          out = convert_definition_lists(md)
-
-          refute_includes out, '<dl', 'コードフェンス内の定義リスト記法は変換しない'
-          assert_includes out, ': コード例なので変換しない'
-        end
-
-        def test_convert_definition_lists_leaves_plain_prose
-          md = "これは普通の段落です。\n次の行も普通の文章です。\n"
-          out = convert_definition_lists(md)
-
-          assert_equal md, out, '定義行（: ）を伴わない地の文は変換されない'
+          assert_equal md, mark_definition_continuations(md), 'コードフェンスの中は触らない'
         end
 
         # =================================================================

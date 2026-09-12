@@ -604,46 +604,44 @@ module VivlioStarter
           [converted, opened_count, closed_count]
         end
 
-        # 標準 Markdown（pandoc / Markdown Extra 風）の定義リスト記法を <dl> に変換する。
-        #   用語           ← <dt>
-        #   : 説明         ← <dd>（複数並べれば複数 <dd>）
-        #     続き行       ← 直前 <dd> の続き（半角スペース字下げ）
-        # VFM は定義リストに未対応なので、検出ブロックを Kramdown でレンダリングして
-        # <dl class="def-list"> を生成する（class は索引/奥付の <dl> と衝突させないため）。
-        # 著者は空行なしのコンパクトな形でも書け、内部でエントリ間に空行を補ってから
-        # Kramdown に渡す。インラインコード `...` 等のインライン装飾は Kramdown が処理する。
-        # コードフェンス（``` 可変長）内は対象外。
-        def convert_definition_lists(content)
+        # 定義リストの「字下げした継続行」に印を付ける。
+        #
+        # 組み立てるのは後処理（DefinitionListConverter）だが、**字下げの情報だけは
+        # ここでしか残せない**——VFM は行頭の空白を落とすため、HTML になった時点では
+        #
+        #     Ruby              用語A
+        #     : 説明            : 説明A
+        #       続きの行        用語B          ← 字下げの有無が消え、
+        #     : 別の説明        : 説明B           どちらも <br> 区切りの 1 行になる
+        #
+        # の左右が見分けられなくなる。「次の行が定義行かどうか」では決められない
+        # （左の「続きの行」も右の「用語B」も、次は定義行）。
+        #
+        # 印は WORD JOINER（U+2060・幅ゼロ・改行禁止）。後処理が取りこぼしても
+        # 紙面には何も出ない側に倒してある。HTML 化はしないので、行の中の記法
+        # （ルビ・索引・強調）はこのあと VFM と索引スキャナが通常どおり処理する。
+        CONTINUATION_MARK = "\u2060"
+
+        def mark_definition_continuations(content)
           lines = content.lines
           code_lines = code_line_numbers(content)
-          out = []
-          i = 0
-          while i < lines.size
-            if code_lines.include?(i + 1)
-              out << lines[i]
-              i += 1
-            elsif definition_list_start?(lines, i)
-              j = definition_list_end(lines, i)
-              out << render_definition_list(lines[i...j].join)
-              i = j
-            else
-              out << lines[i]
-              i += 1
+          in_definition = false
+
+          lines.each_with_index.map do |line, index|
+            next line if code_lines.include?(index + 1)
+
+            if definition_def_line?(line)
+              in_definition = true
+              next line
             end
-          end
-          out.join
-        end
 
-        # 用語行: 行頭から始まる非空行で、定義行（: ）・継続行（字下げ）・他のブロック構文でないもの
-        def definition_term_line?(line)
-          s = line.to_s.chomp
-          return false if s.strip.empty?
-          return false if s.start_with?(' ', "\t") # 字下げ＝継続行
-          return false if s.match?(/\A:[ \t]/)      # 定義行
-          # 見出し / 引用 / 表 / コンテナ / フェンス / 生HTML / 箇条書き・番号リストは用語にしない
-          return false if s.match?(%r{\A(\#|>|\||:::|```|<|[-*+][ \t]|\d+[.)][ \t])})
+            unless in_definition && definition_continuation_line?(line)
+              in_definition = false
+              next line
+            end
 
-          true
+            "#{CONTINUATION_MARK}#{line.lstrip}"
+          end.join
         end
 
         # 定義行: 行頭が「: 」（コロン＋空白）で内容が続くもの
@@ -656,48 +654,6 @@ module VivlioStarter
           return false if line.to_s.strip.empty?
 
           line.to_s.start_with?(' ', "\t")
-        end
-
-        # 用語行の直後が定義行なら、定義リストの開始
-        def definition_list_start?(lines, idx)
-          return false unless definition_term_line?(lines[idx])
-
-          definition_def_line?(lines[idx + 1])
-        end
-
-        # 定義リストブロックの終端（排他的 index）を返す。
-        # 定義/継続/（定義が続く）用語/内部空行（ルーズ形式の区切り）を取り込む。
-        def definition_list_end(lines, idx)
-          j = idx
-          while j < lines.size
-            line = lines[j]
-            if definition_def_line?(line) || definition_continuation_line?(line)
-              j += 1
-            elsif definition_term_line?(line) && definition_def_line?(lines[j + 1])
-              j += 1
-            elsif line.to_s.strip.empty? && definition_list_start?(lines, j + 1)
-              j += 1
-            else
-              break
-            end
-          end
-          j
-        end
-
-        # 定義リストブロックを Kramdown で <dl> 化する。
-        # Kramdown はエントリ間に空行を要求するため、用語行の前へ空行を補ってから渡す。
-        # また本書全体の hardLineBreaks: true（改行＝<br>）に揃えるため、説明（dd）内の
-        # 各行末へ Markdown のハード改行（半角スペース2つ）を補い、複数行の説明が
-        # <br> で改行されるようにする（空行＝エントリ区切りはそのまま残す）。
-        def render_definition_list(block)
-          normalized = []
-          block.lines.each do |line|
-            normalized << "\n" if definition_term_line?(line) && !normalized.empty? && !normalized.last.strip.empty?
-            normalized << hard_break_line(line)
-          end
-          html = MarkdownUtils.render_markdown_to_html(normalized.join).strip
-          html = html.sub(/\A<dl>/, '<dl class="def-list">')
-          "#{html}\n\n"
         end
 
         # 非空行の末尾を Markdown のハード改行（半角スペース2つ）へ正規化する。
@@ -969,7 +925,7 @@ module VivlioStarter
 
         # マーカー行を「4 スペース/レベルの字下げ＋連番 1. 2. …（ul は -）」へ正規化する。
         # 開始値はここでは反映せず、patch_fancy_ol_attributes が start 属性で与える（§4.1-3）。
-        # hard_break_line は本書全体の hardLineBreaks: true と改行挙動を揃える措置（定義リストと同じ）。
+        # hard_break_line は本書全体の hardLineBreaks: true と改行挙動を揃える措置。
         def normalized_marker_line(marker, stack)
           top = stack.last
           head = top[:list_type] == :ul ? '-' : "#{top[:counter]}."
