@@ -1177,6 +1177,21 @@ module VivlioStarter
           Common.define_singleton_method(:log_error, saved_error)
         end
 
+        # 🟡 だけを集める版（capture_errors の警告版）。
+        def capture_warnings
+          methods = %i[log_info log_success log_error log_action]
+          saved = methods.to_h { [it, Common.method(it)] }
+          saved_warn = Common.method(:log_warn)
+          messages = []
+          methods.each { |name| Common.define_singleton_method(name) { |*, **| } }
+          Common.define_singleton_method(:log_warn) { |msg, **| messages << msg }
+          yield
+          messages
+        ensure
+          saved.each { |name, m| Common.define_singleton_method(name, m) }
+          Common.define_singleton_method(:log_warn, saved_warn)
+        end
+
         # 未定義キーは 🔴 エラー（追記例つき）で報告しつつ、表示名＝キーのフォールバックで組む。
         def test_convert_talk_blocks_undefined_key_reports_and_falls_back
           md = ":::{.talk}\nunknown: だれ？\n:::\n"
@@ -1294,6 +1309,27 @@ module VivlioStarter
 
           assert_includes with_icon, 'class="talk-icon"'
           refute_includes without, 'talk-icon'
+        ensure
+          FileUtils.rm_f(icon_path)
+        end
+
+        # avatar の綴り間違いは 🟡 で知らせ、既定のままアバターを出し続ける。
+        # 黙って :off へ倒すと「1 文字の打ち間違いでアバターが全部消える」が成立してしまう。
+        def test_talk_avatar_unknown_mode_warns_and_keeps_icon
+          icon_dir = File.join(Common::IMAGES_DIR, 'characters')
+          FileUtils.mkdir_p(icon_dir)
+          icon_path = File.join(icon_dir, 'vs_test_typo_icon.webp')
+          File.binwrite(icon_path, 'RIFFxxxxWEBP')
+          reg = TalkRegistry.from_hash({ 'a' => { 'name' => 'ア', 'avatar' => 'vs_test_typo_icon.webp' } })
+
+          html = nil
+          messages = capture_warnings do
+            html = MarkdownTransformer.convert_talk_blocks(":::{.talk avatar=onn}\na: やあ。\n:::\n",
+                                                           registry: reg, source_filename: 'ch.md')
+          end
+
+          assert_includes html, 'class="talk-icon"'
+          assert(messages.any? { it.include?('avatar') && it.include?('onn') })
         ensure
           FileUtils.rm_f(icon_path)
         end

@@ -72,6 +72,48 @@ module VivlioStarter
           assert_equal :on, Registry.from_hash({}).display.avatar, '未指定は既定の :on'
         end
 
+        # 受理する綴りを網羅する。YAML は `avatar: on` / `off` を真偽値へ解決するため、
+        # true / false も同じモードとして通ること（ここが通らないと既存の talk.yml が壊れる）。
+        def test_should_accept_every_avatar_spelling
+          { 'on' => :on, 'true' => :on, 'yes' => :on, '1' => :on, true => :on,
+            'auto' => :auto, 'AUTO' => :auto,
+            'off' => :off, 'false' => :off, 'no' => :off, '0' => :off, false => :off }.each do |raw, expected|
+            actual = Registry.from_hash({ 'display' => { 'avatar' => raw } }).display.avatar
+
+            assert_equal expected, actual, "avatar: #{raw.inspect} は #{expected} になること"
+          end
+        end
+
+        # 綴り間違いは 🟡 で知らせて既定（:on）へ戻す。黙って :off へ倒すと、
+        # `avatar: onn` の 1 文字で全話者のアバターが理由も示されず消える。
+        def test_should_warn_and_fall_back_on_unknown_avatar_mode
+          messages = capture_warnings do
+            assert_equal :on, Registry.from_hash({ 'display' => { 'avatar' => 'onn' } }).display.avatar
+          end
+
+          assert(messages.any? { it.include?('display.avatar') && it.include?('onn') })
+        end
+
+        # 正しい off は警告しない（正当な指定を叱らない）。
+        def test_should_not_warn_on_explicit_avatar_off
+          messages = capture_warnings do
+            assert_equal :off, Registry.from_hash({ 'display' => { 'avatar' => 'off' } }).display.avatar
+          end
+
+          assert_empty messages
+        end
+
+        # setup が黙らせた log_warn を、このブロックの間だけ収集器へ差し替える。
+        def capture_warnings
+          saved = Common.method(:log_warn)
+          messages = []
+          Common.define_singleton_method(:log_warn) { |msg, **| messages << msg }
+          yield
+          messages
+        ensure
+          Common.define_singleton_method(:log_warn, saved)
+        end
+
         # 未知の style は 🟡 で既定（chat）へフォールバックする。
         def test_should_fall_back_on_unknown_style
           d = Registry.from_hash({ 'display' => { 'style' => 'balloon' } }).display

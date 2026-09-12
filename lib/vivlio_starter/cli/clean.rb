@@ -199,12 +199,15 @@ module VivlioStarter
           Common.log_info("#{index_cache} を削除しました")
         end
 
-        # 索引ページもキャッシュ削除時に削除対象とする
-        index_page = '_indexpage.html'
-        if File.exist?(index_page)
-          FileUtils.rm_f(index_page)
+        # 索引・用語集ページもキャッシュ削除時に削除対象とする。--cache 単独指定は
+        # clean_build_artifacts（LEGACY_ROOT_PATTERNS の '*.html'）を通らないため、
+        # ここで両方を挙げないと片方だけルートに残る。
+        %w[_indexpage.html _glossarypage.html].each do |page|
+          next unless File.exist?(page)
+
+          FileUtils.rm_f(page)
           deleted += 1
-          Common.log_info("#{index_page} を削除しました")
+          Common.log_info("#{page} を削除しました")
         end
 
         if File.directory?('.vivliostyle')

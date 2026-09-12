@@ -137,7 +137,7 @@ module VivlioStarter
               next
             end
 
-            avatar_requested = true if key == 'avatar' && TalkRegistry.parse_avatar_mode(value) != :off
+            avatar_requested = true if key == 'avatar' && %i[on auto].include?(TalkRegistry.parse_avatar_mode(value))
             options = apply_talk_option(options, key, value, source_filename:)
           end
 
@@ -156,7 +156,13 @@ module VivlioStarter
             end
             options.with(style:)
           when 'name'      then options.with(name: Common.truthy?(value))
-          when 'avatar'    then options.with(avatar: TalkRegistry.parse_avatar_mode(value))
+          when 'avatar'
+            mode = TalkRegistry.parse_avatar_mode(value)
+            unless mode
+              warn_talk_unknown_avatar(value, source_filename)
+              return options
+            end
+            options.with(avatar: mode)
           when 'separator' then options.with(separator: value)
           end
         end
@@ -359,6 +365,15 @@ module VivlioStarter
           Common.log_warn(
             "#{source_filename}: 会話文の style '#{value}' は不明な表示形式です。既定のまま続行します",
             detail: "→ 指定できるのは #{TalkRegistry::STYLES.join(' / ')} です"
+          )
+        end
+
+        # 綴り間違いを黙って :off へ倒すと、アバターが理由も示されず消える（§1.6）。
+        def warn_talk_unknown_avatar(value, source_filename)
+          Common.log_warn(
+            "#{source_filename}: 会話文の avatar '#{value}' は不明な表示モードです。既定のまま続行します",
+            detail: "→ 指定できるのは #{TalkRegistry::AVATAR_MODES.join(' / ')} です" \
+                    '（例: :::{.talk avatar=auto}）'
           )
         end
 

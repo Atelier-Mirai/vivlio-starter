@@ -117,10 +117,6 @@
   - タスクリストのチェックボックス（`markdown-notation-collision-spec` §4・2026-08-23 追加）: PDF / EPUB は罫線で枠を描き、済みは鉤つきの塗りつぶし。KFX は `appearance` を解さないため `EpubBuilder` が `□` / `■` の**文字**へ差し替える。見るのは落差が許容できるか——枠の大きさが本文の文字と揃うか、行頭が本文とずれないか。同じリストに印の無い項目を混ぜたときの見え方も確認する（`list-style: none` が行頭記号を奪う）
   - 索引の主要参照（`index-main-reference-spec` §5.3）: `.main-ref` の見た目が KFX で効くか。`font-weight: bold` に `font-family`（ゴシック）・`font-size: 1.06em`・`letter-spacing`・負の `margin-right` を重ねた（2026-08-05）。いずれもリテラル値で `var()` を含まないため理屈上は通るはずだが未確認で、とくに**フォント名は端末側で無視されうる**——ゴシックにならない場合、目印は太字だけになる。あわせて、EPUB / Kindle の索引で**ページ番号のカンマ区切りが従来どおり出ている**ことも見る（PDF 側でだけ `dd.resolved` へ切り替えたため、CSS のフォールバックが効いていないと番号が区切りなしで並ぶ）
 
-- [Medium] **「宣言はあるが誰も読んでいない定数」を 2 件追う**（2026-08-22 の全数調査で発見・`release-1.0-considerations.md` A-2）。どちらも**死んでいるのではなく、使われるべきものが使われていない**疑いがある。
-  - **`CatalogLoader::SPECIAL_PAGES`** — 特殊ページの basename を 5 件（`_titlepage` `_legalpage` `_colophon` `_indexpage` `_glossarypage`）並べているが、**誰も読んでいない**。実際に使われているのは `token_resolver.rb` の `CACHED_SYSTEM_FILES`（3 件）と `clean.rb` のベタ書きで、**最も網羅的な定義が浮いている**。`_indexpage` / `_glossarypage` は実在する生成物なので、3 件の側に取りこぼしがある疑いがある（`vs clean` が消し残す等）。3 箇所を 1 つへ寄せるのが筋。
-  - **`TalkRegistry::AVATAR_MODES`** — アバター表示モードの取り得る値（`on` / `auto` / `off`）の宣言だが、**検証に使われていない**。`config/talk.yml` に `avatar: onn` のような誤記を書いたときに弾いているか未確認。弾いていなければバリデーションの抜けで、警告は出現位置と修正案を添える流儀に従う。
-
 ### 堅牢性テスト（追加候補）
 
 - [Medium] **11-3 巨大 YAML anchor の Billion Laughs 評価**: `aliases: true` 下でも Psych 5.x の制限で実害なしだが、上限値・挙動の明示的な検証余地あり。

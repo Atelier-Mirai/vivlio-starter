@@ -21,9 +21,6 @@ module VivlioStarter
         APPX_RANGE     = (90..98)
         POSTFACE_RANGE = (99..99)
 
-        # 特殊ページの内部 basename
-        SPECIAL_PAGES = %w[_titlepage _legalpage _colophon _indexpage _glossarypage].freeze
-
         # セクションキー
         SECTION_KEYS = %w[PREFACE CHAPTERS APPENDICES POSTFACE].freeze
 

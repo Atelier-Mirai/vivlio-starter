@@ -64,6 +64,14 @@ module VivlioStarter
         #   :off  … 表示しない
         AVATAR_MODES = %i[on auto off].freeze
 
+        # 各モードとして受理する綴り。YAML は `avatar: on` / `off` を真偽値へ解決する
+        # （Psych の YAML 1.1）ため、"true" / "false" も同じモードの綴りとして受ける。
+        AVATAR_MODE_SPELLINGS = {
+          on: %w[on true yes 1],
+          auto: %w[auto],
+          off: %w[off false no 0]
+        }.freeze
+
         # 話者の avatar: にファイル名の代わりに書くと自動生成になる値。
         AVATAR_AUTO = 'auto'
 
@@ -126,18 +134,32 @@ module VivlioStarter
           DEFAULT_DISPLAY.with(
             style: parse_style(raw['style']),
             name: parse_flag(raw, 'name', DEFAULT_DISPLAY.name),
-            avatar: raw.key?('avatar') ? parse_avatar_mode(raw['avatar']) : DEFAULT_DISPLAY.avatar,
+            avatar: raw.key?('avatar') ? parse_config_avatar_mode(raw['avatar']) : DEFAULT_DISPLAY.avatar,
             separator: raw.key?('separator') ? raw['separator'].to_s : DEFAULT_DISPLAY.separator
           )
         end
 
-        # アバターの表示モードを解決する。`auto` を先に見てから真偽解釈する
-        # （Common.truthy? は 'auto' を偽と判定するため）。
+        # アバターの表示モードを解決する。未知の綴りは nil を返し、呼び出し側が
+        # 出現位置つきで警告する（style と同じ流儀）。ここで黙って :off へ倒すと、
+        # `avatar: onn` のような綴り間違い 1 つで全話者のアバターが理由も示されず消える。
+        # @param raw [Object] talk.yml の値（YAML が真偽値へ解決済みのこともある）
+        # @return [Symbol, nil] :on / :auto / :off。未知の綴りは nil
         def parse_avatar_mode(raw)
           value = raw.to_s.strip.downcase
-          return :auto if value == AVATAR_AUTO
+          AVATAR_MODES.find { AVATAR_MODE_SPELLINGS[it].include?(value) }
+        end
 
-          Common.truthy?(value) ? :on : :off
+        # talk.yml の display.avatar を解決する。未知の綴りは 🟡 で既定へ落とす。
+        def parse_config_avatar_mode(raw)
+          parse_avatar_mode(raw) || begin
+            Common.log_warn(
+              "config/talk.yml: display.avatar '#{raw}' は不明な表示モードです。" \
+              "#{DEFAULT_DISPLAY.avatar} で続行します。",
+              detail: "指定できるのは #{AVATAR_MODES.join(' / ')} です" \
+                      '（on=画像のある話者だけ表示 / auto=無ければ自動生成 / off=表示しない）'
+            )
+            DEFAULT_DISPLAY.avatar
+          end
         end
 
         # style 値を Symbol へ。未指定は既定、未知値は 🟡 で既定へフォールバック。

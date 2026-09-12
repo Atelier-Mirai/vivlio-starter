@@ -253,16 +253,7 @@ module VivlioStarter
         def add_outline!
           return unless File.exist?(output_print_pdf)
 
-          keep_numbers = Build::Utilities.chapter_numbers_for_outline(entries)
-          special_pages = %w[_toc]
-          special_pages.push('_glossarypage', '_indexpage') if IndexCommands.index_enabled?
-
-          chapter_htmls = Dir.glob(File.join(Common::BUILD_PDF_DIR, '*.html')).select do |path|
-            bn = File.basename(path, '.html')
-            num = bn[/\A(\d+)-/, 1]&.to_i
-            (num && (keep_numbers.nil? || keep_numbers.include?(num))) ||
-              special_pages.include?(bn)
-          end
+          chapter_htmls = Build::Utilities.outline_target_htmls(entries)
 
           return if chapter_htmls.empty?
 

@@ -117,6 +117,21 @@ module VivlioStarter
         end
       end
 
+      # --cache 単独指定は clean_build_artifacts（'*.html' グロブ）を通らないため、
+      # 索引・用語集ページはここで両方を明示しないと片方だけルートに残る。
+      def test_clean_cache_removes_both_index_and_glossary_pages
+        within_temp_dir do
+          setup_generated_files
+          write_file('_indexpage.html')
+          write_file('_glossarypage.html')
+
+          CleanCommands.execute_clean({ cache: true })
+
+          refute File.exist?('_indexpage.html'), '索引ページは --cache で削除されるべきです'
+          refute File.exist?('_glossarypage.html'), '用語集ページも同じく削除されるべきです'
+        end
+      end
+
       # --cover --cache 指定で clean 実行時、カバー画像とキャッシュが削除されることを確認
       def test_clean_cover_and_cache
         within_temp_dir do

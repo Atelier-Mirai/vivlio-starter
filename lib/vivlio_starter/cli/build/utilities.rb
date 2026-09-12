@@ -107,6 +107,30 @@ module VivlioStarter
           numbers
         end
 
+        # PDF アウトライン抽出の対象 HTML を、ワークスペースの pdf/ から選ぶ。
+        # 閲覧用（PdfMerger）と入稿用（PrintPdfBuilder）が同じ選び方を共有する——
+        # 片方だけ直すと、同じ本なのに 2 つの PDF でしおりの構成が食い違う。
+        #
+        # 対象は「アウトライン対象の章番号を持つ HTML」＋「目次・用語集・索引」。
+        # 前付（_titlepage / _legalpage）と奥付は OutlineExtractor が page_range_* で
+        # 別途扱うため、ここでは拾わない。
+        #
+        # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil]
+        # @return [Array<String>] 対象 HTML のパス配列
+        def outline_target_htmls(entries_or_keep = nil)
+          # chapter_numbers_for_outline は常に配列を返すため nil 判定は不要
+          keep_numbers = chapter_numbers_for_outline(entries_or_keep)
+          special_pages = %w[_toc]
+          special_pages.push('_glossarypage', '_indexpage') if Common.index_enabled?
+
+          Dir.glob(File.join(Common::BUILD_PDF_DIR, '*.html')).select do |path|
+            bn = File.basename(path, '.html')
+            num = bn[/\A(\d+)-/, 1]&.to_i
+
+            (num && keep_numbers.include?(num)) || special_pages.include?(bn)
+          end
+        end
+
         # Entry 配列または basename 配列を Entry 配列に解決
         # @param entries_or_keep [Array<TokenResolver::Entry>, Array<String>, nil]
         # @return [Array<TokenResolver::Entry>]

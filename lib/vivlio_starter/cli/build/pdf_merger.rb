@@ -276,19 +276,8 @@ module VivlioStarter
         def add_outline_to_output_pdf!(entries_or_keep = nil)
           return false unless File.exist?(merged_output_pdf)
 
-          keep_numbers = Build::Utilities.chapter_numbers_for_outline(entries_or_keep)
-
           # 抽出対象HTMLの絞り込み（dedup 済み HTML はワークスペース pdf/ 内・P4 §5.1）
-          special_pages = %w[_toc]
-          special_pages.push('_glossarypage', '_indexpage') if IndexCommands.index_enabled?
-
-          chapter_htmls = Dir.glob(File.join(Common::BUILD_PDF_DIR, '*.html')).select do |path|
-            bn = File.basename(path, '.html')
-            num = bn[/\A(\d+)-/, 1]&.to_i
-
-            (num && (keep_numbers.nil? || keep_numbers.include?(num))) ||
-              special_pages.include?(bn)
-          end
+          chapter_htmls = Build::Utilities.outline_target_htmls(entries_or_keep)
 
           if chapter_htmls.empty?
             Common.log_info('[Step 11] 本文HTMLなし。スキップします')
