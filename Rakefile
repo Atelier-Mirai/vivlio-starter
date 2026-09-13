@@ -16,7 +16,7 @@ class << Rake.application
     end
 
     # 【重要】出力させたい理想の順番を明示的に指定
-    custom_order = ['test', 'test:standard', 'test:versions', 'test:layout', 'test:targets', 'test:type3', 'test:kindle', 'test:manual', 'test:package', 'test:release', 'test:canary', 'reinstall']
+    custom_order = ['test', 'test:standard', 'test:versions', 'test:layout', 'test:targets', 'test:type3', 'test:kindle', 'test:manual', 'test:package', 'test:release', 'test:sweep', 'test:canary', 'reinstall']
     displayable_tasks = displayable_tasks.sort_by { |t| custom_order.index(t.name) || 999 }
 
     # 表示幅を計算して綺麗にフォーマット出力
@@ -224,15 +224,41 @@ namespace :test do
     t.warning = false
   end
 
+  # 実ビルドを伴うテストが mktmpdir で作る作業ディレクトリの残骸を掃く。
+  #
+  # 各テストは at_exit で消すが、**SIGTERM では走らない**——メモリ不足で OS に
+  # 止められたときや、Ctrl-C で中断したときは残る。ゲートは 1 回で 10 数個作るので、
+  # 中断を繰り返すと静かに溜まっていく（実測: 2026-09-13 に 28 件・464MB。
+  # 8 月のものまで残っていた）。ディスクを食うだけでなく、次の実行が前回の夾雑物を
+  # 掴んで**偽の赤**を出す種にもなる。
+  #
+  # **呼ぶのは test:release の前後だけ。** 消してよいのは「いま走っていないもの」に
+  # 限られ、個別タスク（test:layout 等）の前段へ置くと、並行して回している別の
+  # テストの作業ディレクトリを奪ってしまう。ゲートは単独で回すものなので、
+  # そのとき他のテストは走っていないという前提が置ける。手で掃くときは rake test:sweep。
+  task :sweep do
+    workdirs = Dir.glob(File.join(ENV['TMPDIR'] || '/tmp', 'vs-*')).select { File.directory?(it) }
+    next if workdirs.empty?
+
+    FileUtils.rm_rf(workdirs)
+    puts "SWEEP テストの作業ディレクトリ #{workdirs.size} 件を掃除しました"
+  end
+
   # RC 前総点検（canary は上流要因のため含めない）
   # test（Enhanced）に加え test:standard（Standard 強制）も回し、両プロバイダ経路を保証する。
-  task release: ['test', 'test:standard', 'test:layout', 'test:targets', 'test:notation', 'test:manual', 'test:package']
+  # 前後で sweep する——始める前に前回の残骸を掃き、通ったあとも残さない。
+  task release: ['test:sweep', 'test', 'test:standard', 'test:layout', 'test:targets',
+                 'test:notation', 'test:manual', 'test:package'] do
+    Rake::Task['test:sweep'].reenable
+    Rake::Task['test:sweep'].invoke
+  end
 end
 
 Rake::Task["test:manual"].clear_comments
 Rake::Task["test:manual"].comment = "マニュアル実ビルド + 成果物検査（警告ゼロ / フォント / EPUB / 冪等性）"
 Rake::Task["test:package"].clear_comments
 Rake::Task["test:package"].comment = "パッケージング E2E（gem build → 隔離インストール → ビルド確認）"
+Rake::Task["test:sweep"].comment = "テストの作業ディレクトリ（$TMPDIR/vs-*）の残骸を掃除"
 Rake::Task["test:canary"].clear_comments
 Rake::Task["test:canary"].comment = "依存カナリア（@vivliostyle/cli 最新版での破壊検知）"
 # ------------------------------------------------------------------
