@@ -1,26 +1,27 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Early re-exec with RUBYOPT=-W0 to suppress warnings from process start (incl. Bundler init)
+# Early re-exec with RUBYOPT=-W0 to suppress warnings from process start.
 # Skip when debugging/warnings enabled explicitly.
+#
+# 再実行は素の ruby で行う。bundler を挟まないのは意図的である——
+# 雛形は必ず Gemfile を同梱するので、かつてここで `bundle exec` していた頃は
+# 「プロジェクト内で実行された vs は、そのプロジェクトの Gemfile.lock に従う」
+# ことになっていた。lock が古い版（とくに yank 済みの prerelease）を指していると、
+# bundler が起動時に Bundler::GemNotFound で死に、`vs doctor` も `vs upgrade` も
+# `vs build --help` すら出せなくなる——環境を直すためのコマンドが、環境が壊れた
+# ときにだけ使えなくなる。exec はプロセスを置き換えるので、ここで rescue しても
+# 子側の失敗は拾えない。
+#
+# vs はインストール済みの CLI であり、依存は RubyGems が解決する。プロジェクトの
+# Gemfile は執筆ツール一式を導入するためのもので、CLI の実行時にまで効かせる
+# 必要はない。明示的に lock へ従わせたい人は `bundle exec vs` と打てばよい。
 unless ENV['VS_DEBUG'] == '1' || ENV['VS_WARNINGS'] == '1' || ENV['VS_NO_REEXEC'] == '1'
   rubopt = (ENV['RUBYOPT'] || '')
   unless rubopt.split.include?('-W0')
     ENV['RUBYOPT'] = (['-W0'] + rubopt.split).join(' ')
     ENV['VS_NO_REEXEC'] = '1'
-    # Prefer re-exec via bundler so dependency resolution stays intact
-    # Skip if no Gemfile exists (e.g. running as installed gem)
-    gemfile_found = ENV['BUNDLE_GEMFILE'] ||
-                    File.exist?(File.join(Dir.pwd, 'Gemfile'))
-    if gemfile_found
-      begin
-        exec('bundle', 'exec', RbConfig.ruby, __FILE__, *ARGV)
-      rescue
-        exec(RbConfig.ruby, __FILE__, *ARGV)
-      end
-    else
-      exec(RbConfig.ruby, __FILE__, *ARGV)
-    end
+    exec(RbConfig.ruby, __FILE__, *ARGV)
   end
 end
 

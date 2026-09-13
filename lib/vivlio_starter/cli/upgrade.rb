@@ -7,7 +7,8 @@
 #   執筆環境をまとめて最新化する（`vs upgrade` のドメイン層）。三段構成:
 #   ① vivlio-starter 本体の gem 更新（新版があれば確認のうえ gem update →
 #      新しい版の vs で自分を再起動して続きを実行）
-#   ② プロジェクトの雛形追従（project-upgrade-command-spec.md）
+#   ② プロジェクトの雛形追従（project-upgrade-command-spec.md）と、仕上げの
+#      Gemfile.lock 追随（lock が古い版を指したままだと bundler 経由の実行が止まる）
 #   ③ 外部ツールの一括更新（DoctorCommands::ToolUpgrader へ委譲）
 #   ①を最初に行うのは、古い gem の雛形で②を済ませると本体更新後にもう一度
 #   upgrade が必要になるため。②を③より先に行うのは、対話（競合確認）を
@@ -101,6 +102,12 @@ module VivlioStarter
 
       DIFF_PREVIEW_LINES = 20
 
+      GEMFILE_LOCK = 'Gemfile.lock'
+
+      # Gemfile.lock が固定している vivlio-starter の版を拾う。specs 節と CHECKSUMS 節に
+      # 同じ綴りで現れるので先頭の 1 つだけ見る（DEPENDENCIES 節には括弧が付かない）。
+      LOCKED_SELF_VERSION = /^\s+vivlio-starter \((\d[^)]*)\)/
+
       # 比較元の雛形ディレクトリ。テストではフィクスチャ雛形に差し替える（DI）。
       attr_writer :scaffold_source
 
@@ -121,14 +128,14 @@ module VivlioStarter
         # --- Phase: ① 本体 gem 更新（--skip-self-update は再起動ループ防止も兼ねる）---
         self_result = options[:skip_self_update] ? :none : self_update!(options, tool_deps)
 
-        # --- Phase: ② 雛形追従（プロジェクト外はスキップ——③は場所を問わず有用）---
-        scaffold_code =
-          if File.exist?(File.join('config', 'book.yml'))
-            sync_scaffold!(cmd)
-          else
-            Common.log_always('💡 書籍プロジェクト外のため、雛形の追従はスキップします（プロジェクト直下で再実行すると適用できます）。')
-            0
-          end
+        # --- Phase: ② 雛形追従＋Gemfile.lock の追随（プロジェクト外はスキップ——③は場所を問わず有用）---
+        scaffold_code = 0
+        if File.exist?(File.join('config', 'book.yml'))
+          scaffold_code = sync_scaffold!(cmd)
+          refresh_gemfile_lock!(options)
+        else
+          Common.log_always('💡 書籍プロジェクト外のため、雛形の追従はスキップします（プロジェクト直下で再実行すると適用できます）。')
+        end
 
         # --- Phase: ③ 外部ツール更新 ---
         tools_code = DoctorCommands::ToolUpgrader.run!(
@@ -200,6 +207,44 @@ module VivlioStarter
       end
 
       private
+
+      # Gemfile.lock が指す vivlio-starter を、いま動いている版へ合わせる。
+      #
+      # upgrade の仕事は「プロジェクトを新しい版に合わせること」なので、雛形だけ進めて
+      # lock を置き去りにすると半端に終わる。置き去りの lock は、著者が `bundle exec vs`
+      # や `bundle install` を使う場面で「その版が無い」と言って止まる——古い版が yank
+      # 済みの prerelease だと、ネットワークがあっても解決できない（実例: rc.2 は
+      # 2026-08-22 に yank 済み）。
+      #
+      # 確認は求めない。触るのは生成物である lock だけで、入るのはプロジェクトが
+      # すでに Gemfile で宣言している gem である。upgrade を打った時点で意思は足りている。
+      def refresh_gemfile_lock!(options)
+        return unless File.exist?(GEMFILE_LOCK)
+
+        locked = locked_self_version
+        return if locked.nil? || locked == Gem::Version.new(VivlioStarter::VERSION)
+
+        if options[:dry_run]
+          Common.log_always("📣 Gemfile.lock は #{locked} を指しています（現在 #{VivlioStarter::VERSION}）。--dry-run のため更新しません。")
+          return
+        end
+
+        Common.log_always("⬆️  Gemfile.lock を追随させています（#{locked} → #{VivlioStarter::VERSION}）…")
+        if DoctorCommands::ToolUpgrader.run_gem_command('bundle update vivlio-starter', tool_deps)
+          Common.log_result("Gemfile.lock を #{VivlioStarter::VERSION} に合わせました。", status: :success)
+        else
+          Common.log_warn('Gemfile.lock の更新に失敗しました。手元で bundle update vivlio-starter を実行してください' \
+                          '（vs コマンド自体は lock を見ないため、このままでも執筆は続けられます）。')
+        end
+      end
+
+      # @return [Gem::Version, nil] lock が読めない・自分の行が無い・版が壊れていれば nil
+      def locked_self_version
+        found = File.read(GEMFILE_LOCK, encoding: 'utf-8')[LOCKED_SELF_VERSION, 1]
+        found && Gem::Version.correct?(found) ? Gem::Version.new(found) : nil
+      rescue StandardError
+        nil
+      end
 
       # 旧名の設定ファイルを新名へ移し、参照している設定の中身も書き換える。
       # 新名が既にあるなら触らない（著者が手で移した後の再実行を壊さない）。

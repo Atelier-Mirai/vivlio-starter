@@ -8,6 +8,8 @@
 
 ### Added
 
+- **`vs upgrade` が仕上げに `Gemfile.lock` を追随させるようにした**。雛形だけ新しくして lock を置き去りにすると半端に終わる——置き去りの lock は、著者が `bundle exec vs` や `bundle install` を使う場面で「その版が無い」と言って止まる（古い版が yank 済みの prerelease だと、ネットワークがあっても解決できない）。upgrade の仕事はプロジェクトを新しい版へ合わせることなので、lock もここで揃える。版が一致していれば何もせず、`--dry-run` はずれを知らせるだけにとどめる。確認は求めない——触るのは生成物である lock だけで、入るのはプロジェクトがすでに `Gemfile` で宣言している gem だからである。失敗しても 🟡 で手順を案内して続行する（`vs` 自体は lock を見ないため、執筆は止まらない）。
+
 - **`rake test:sweep` を追加し、`rake test:release` の前後で自動清掃するようにした**。実ビルドを伴うテストは `mktmpdir` で作業ディレクトリを作り `at_exit` で消すが、**SIGTERM では走らない**——メモリ不足で OS に止められたときや Ctrl-C で中断したときは残る。ゲートは 1 回で 10 数個作るので、中断を繰り返すと静かに溜まる（実測: 2026-09-13 のゲート実行時に **28 件・464MB**、8 月のものまで残っていた）。ディスクを食うだけでなく、次の実行が前回の夾雑物を掴んで**偽の赤**を出す種にもなる。呼ぶのは `test:release` の前後だけに限る——個別タスクの前段に置くと、並行して回している別のテストの作業ディレクトリを奪うため。手で掃くときは `rake test:sweep`。
 
 - **章番号の重複を `vs build` / `vs preflight` で知らせるようにした**（`DuplicateNumberCheck`）。`vs create` / `vs rename` / `vs renumber` を通しているかぎり起きないが、ファイル名を手で変えたときや、`catalog.yml` でコメントアウトを外し損ねたときに起こる。**番号は Entry の同一性の軸**なので、重なるとその番号でどちらを指すか決められず、`vs build 02-vivlio` のような単章ビルドが「catalog.yml に無い」と言って止まる——原因がファイル名にあると気づきにくいので、重なった番号とファイルを名指しする。catalog に載せるのが片方だけなら本は組めるため、停止はさせず 🟡 にとどめる。
@@ -89,6 +91,14 @@
   `.vivliostyle/` は現行版が作らないことを実測で確かめた。CLI 11.1.0 は `workspaceDir` を省くと今もルート直下へ作るが、当パイプラインの 4 経路はすべて `workspaceDir` をワークスペース内へ向けた生成 config を渡している（`vivliostyle_config_writer.rb` / `epub_builder.rb`）。`.gitignore` の `/.vivliostyle/` だけは残した——著者が手で `npx vivliostyle build` を叩く余地があり、その 1 行に害はないため。
 
 ### Fixed
+
+- **古い `Gemfile.lock` を持つプロジェクトで `vs` が起動できなかった不具合を直した**。`bin/vs` は cwd に `Gemfile` があると自分を `bundle exec` 経由で再実行していた。雛形は必ず `Gemfile` を同梱するので、これは「プロジェクト内で打った `vs` は、そのプロジェクトの `Gemfile.lock` に従う」ことを意味する。lock が手元に無い版を指していると bundler が起動時に `Bundler::GemNotFound` で落ち、**`vs doctor` も `vs upgrade` も、`vs build --help` すら出せなくなる**——環境を直すための 2 つのコマンドが、環境が壊れているときにだけ使えない。`exec` はプロセスを置き換えるため、そこに書いてあった `rescue` は子側の失敗を拾えていなかった。
+
+  **罠は著者が何もしなくても仕掛かる。** `vs new` 直後のプロジェクトに lock は無いが、**最初の `vs` コマンド**（`vs --version` でも）が `bundle exec` を通るときに bundler が lock を黙って生成し、その時点の版を固定する。あとはその版が手元から消えれば（`gem cleanup`・機材の移行・prerelease の yank）全コマンドが死ぬ。実際、rc.2 期に作った実在のプロジェクト 2 つが、この状態で固まっていた（rc.2 は 2026-08-22 に yank 済み）。
+
+  `vs` はインストール済みの CLI であり、依存は RubyGems が解決する。プロジェクトの `Gemfile` は執筆ツール一式を導入するためのもので、CLI の実行時にまで効かせる必要はない——**bundler 経由の再実行をやめ**、警告抑止（`-W0`）の再実行だけを残した。lock に従わせたい人は `bundle exec vs` と打てばよい。別名の `bin/vivlio-starter` も同じ理由で `require 'bundler/setup'` をやめている（`rescue LoadError` では `Bundler::GemNotFound` を拾えない）。
+
+  **すでに詰まっている人への案内。** この直りは古い版を起動できない人を救えない——壊れた起動コードは、その人がすでに持っている版の中にあるためである。`vs` の binstub は**インストール済みの最新版**を起動する（`version = ">= 0.a"`）ので、`gem update vivlio-starter` を一度だけ手で打てば、以後は直った `bin/vs` が走る。この案内は README と第 51 章にも置いた。
 
 - **著者が `images/` へ置いた SVG 図版が、PDF に Type 3 フォントを持ち込んでいた不具合を修正**（`type3-font-embedding-notes.md` §9）。`<img>` 参照の SVG は独立文書で本文の @font-face が届かないため、`font-family: sans-serif` のような汎用名は解決されず OS 既定（macOS なら Hiragino）へ落ちる。showcase / mermaid の**生成** SVG は 2026-08-07 に塞いだが、**著者の図版は素通りだった**——実測（22 章の単章ビルド）で `HiraKakuProN-W3` の Type 3 が 1 ページに 17 件出ていた。新設の `DerivedSvg` が、pdf/ のステージング時に**書体を抱かせた複製**を `.cache/vs/derived/pdf/` へ作り、`<img src>` をそちらへ向ける。`DerivedImage`（ラスタの派生）と同じ流儀で**素材には触れない**。図が名指しした書体に実体があれば並べ替えず同名の @font-face を注ぐだけで、汎用名しか無いときだけ書籍の書体を先頭へ足す（`sans-serif` は見出し・`serif` は本文・`monospace` はコード書体）。**太字は 400 と 700 を別々に埋める**——生成 SVG はラベルの太さが揃うので 1 面で足りたが、著者の図版は本文と同じように太字を混ぜるため、1 面だと faux-bold の合成でまた Type 3 になる。図が文字を持たない場合と、既に書体を抱えている生成 SVG は対象外。実測は Type 3 が 40 件 → 5 件（残りはすべて絵文字で、単章ビルドが techbook 後処理を飛ばすぶん）。
 

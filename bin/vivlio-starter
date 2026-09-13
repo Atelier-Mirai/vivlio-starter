@@ -1,13 +1,12 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-begin
-  require 'bundler/setup'
-rescue LoadError
-  # Fallback for running without Bundler: add local lib to load path
-  lib = File.expand_path('../lib', __dir__)
-  $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-end
+# `vs` の別名。起動の方針も `bin/vs` と揃える——bundler は挟まない。
+# かつてここは `require 'bundler/setup'` で始まっていたが、rescue できるのは
+# LoadError だけで、プロジェクトの Gemfile.lock が手元に無い版を指していると
+# Bundler::GemNotFound がそのまま抜けて起動できなかった。理由は bin/vs の冒頭に。
+lib = File.expand_path('../lib', __dir__)
+$LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 require 'vivlio_starter/cli/startup'
 

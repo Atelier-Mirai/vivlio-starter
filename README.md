@@ -71,6 +71,10 @@ bin/install-ruby.zsh -y     # 無人モード
 gem install vivlio-starter
 ```
 
+既存プロジェクトの更新は、そのプロジェクト内で `vs upgrade` を実行するだけです（本体 gem・雛形・`Gemfile.lock`・外部ツールをまとめて最新化します）。
+
+> **1.0.0 より前の版で作ったプロジェクトで、`vs` が `Bundler::GemNotFound` で起動しない場合**は、先に `gem update vivlio-starter` を一度だけ実行してください。当時の `vs` はプロジェクトの `Gemfile.lock` に従って起動していたため、そこに書かれた版が手元に無いと起動できません。1.0.0 以降の `vs` は lock を見ずに起動するので、以後は起こりません。
+
 ### プロジェクト作成からビルドまで
 
 ```bash

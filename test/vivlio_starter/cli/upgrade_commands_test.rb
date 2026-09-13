@@ -288,6 +288,75 @@ module VivlioStarter
         end
       end
 
+      # ==============================================================
+      # Gemfile.lock の追随（②の仕上げ）
+      # ==============================================================
+
+      # specs 節だけの最小 lock。%s に固定したい版を入れる
+      LOCK_TEMPLATE = <<~LOCK
+        GEM
+          remote: https://rubygems.org/
+          specs:
+            vivlio-starter (%s)
+
+        DEPENDENCIES
+          vivlio-starter
+      LOCK
+
+      # --- 古い版を指す lock は、いま動いている版へ合わせる ---
+      def test_should_refresh_gemfile_lock_when_it_pins_an_older_version
+        within_project do |scaffold|
+          File.write('Gemfile.lock', format(LOCK_TEMPLATE, '0.9.0'))
+          executed = []
+
+          out, = capture_io { run_upgrade(scaffold, yes: true, deps: stub_tool_deps(executed:)) }
+
+          assert_includes executed, 'bundle update vivlio-starter', '古い lock は bundler に追随させるべき'
+          assert_match(/Gemfile\.lock を追随させています/, out)
+        end
+      end
+
+      # --- 一致している lock には触れない（毎回 bundler を起動しない） ---
+      def test_should_leave_gemfile_lock_alone_when_it_already_matches
+        within_project do |scaffold|
+          File.write('Gemfile.lock', format(LOCK_TEMPLATE, Gem::Version.new(VivlioStarter::VERSION).to_s))
+          executed = []
+
+          capture_io { run_upgrade(scaffold, yes: true, deps: stub_tool_deps(executed:)) }
+
+          assert_empty executed, '版が一致しているなら bundler を呼ぶ必要はない'
+        end
+      end
+
+      # --- dry-run はずれを知らせるだけ。書き込みも bundler 起動もしない ---
+      def test_should_only_announce_stale_gemfile_lock_on_dry_run
+        within_project do |scaffold|
+          File.write('Gemfile.lock', format(LOCK_TEMPLATE, '0.9.0'))
+          executed = []
+
+          out, = capture_io { run_upgrade(scaffold, dry_run: true, deps: stub_tool_deps(executed:)) }
+
+          assert_empty executed, '--dry-run で bundler を走らせてはならない'
+          assert_match(/0\.9\.0 を指しています/, out)
+        end
+      end
+
+      # --- lock の無いプロジェクト（bundle install 未実施）では何もしない ---
+      def test_should_do_nothing_when_the_project_has_no_gemfile_lock
+        within_project do |scaffold|
+          executed = []
+
+          capture_io { run_upgrade(scaffold, yes: true, deps: stub_tool_deps(executed:)) }
+
+          assert_empty executed, 'lock が無ければ bundler を呼ぶ理由がない'
+          refute_path_exists 'Gemfile.lock', '無かった lock を勝手に作ってはならない'
+        end
+      end
+
+      # ==============================================================
+      # 自己更新
+      # ==============================================================
+
       # --- 自己更新: 最新なら何もしない ---
       def test_self_update_should_do_nothing_when_gem_is_latest
         deps = stub_tool_deps(fetch: { GEM_LATEST_URL => '{"version":"1.0.0"}' })
@@ -751,14 +820,16 @@ module VivlioStarter
       # 雛形追従フェーズだけを検証する（自己更新はフラグで、ツール更新はスタブで遮断）。
       # gem_paths は既定で空——実際にインストール済みの gem を祖先の候補にすると、
       # 開発機に何が入っているかでテストの結果が変わる
-      def run_upgrade(scaffold, dry_run: false, yes: false, gem_paths: [])
+      def run_upgrade(scaffold, dry_run: false, yes: false, gem_paths: [], deps: nil)
         UpgradeCommands.scaffold_source = scaffold
+        UpgradeCommands.tool_deps = deps
         ScaffoldBase.gem_paths = gem_paths
         DoctorCommands::ToolUpgrader.stub(:run!, 0) do
           UpgradeCommands.run_from_command(FakeCmd.new(options: { dry_run:, yes:, skip_self_update: true }))
         end
       ensure
         UpgradeCommands.scaffold_source = nil
+        UpgradeCommands.tool_deps = nil
         ScaffoldBase.gem_paths = nil
       end
 
