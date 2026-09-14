@@ -180,6 +180,19 @@ class TestSpellChecker < Minitest::Test
 
   # --- aggregate（語ごとの集約） ---
 
+  # 件数が同じ語は、最初の出現行の早い順に並ぶ（sort_by は安定ではないので第 2 キーが要る）
+  def test_aggregate_breaks_count_ties_by_first_line
+    errors = [
+      { line: 300, word: 'zzz', suggestion: nil },
+      { line: 10,  word: 'aaa', suggestion: nil },
+      { line: 150, word: 'mmm', suggestion: nil }
+    ]
+    rows = SC.aggregate(errors)
+
+    assert_equal [1, 1, 1], rows.map { it[:count] }, '3 つとも同数'
+    assert_equal %w[aaa mmm zzz], rows.map { it[:label] }, '同数なら出現行の早い順'
+  end
+
   # 同じ語を 1 行へ集約し、出現数の多い順に並べることを確認する
   def test_aggregate_groups_by_word_and_sorts_by_count
     errors = [

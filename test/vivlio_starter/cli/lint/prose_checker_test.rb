@@ -18,6 +18,7 @@
 #   PC-09: lint.disabled_rules でルール単位に切れる
 #   PC-10: 辞書の修正後の語が、別の交ぜ書きとして再び指摘されない（--fix が収束する）
 #   PC-11: 語の途中に強調記法が入っても対比を取りこぼさない
+#   PC-12: 集約表示は件数の多い順・同数なら最初の出現行の早い順に並ぶ
 # ================================================================
 
 require_relative '../../../test_helper'
@@ -444,5 +445,19 @@ class TestProseChecker < Minitest::Test
     assert_equal '[mazegaki] だ円 => 楕円', rows.first[:label]
     assert_equal 2, rows.first[:count]
     assert_equal '1, 2', rows.first[:lines]
+  end
+
+  # 件数が同じ指摘は、最初の出現行の早い順に並ぶ（著者は原稿を上から直すため）。
+  # sort_by は安定ではないので、第 2 キーが無いと同数の行の並びが実行ごとに変わる
+  def test_should_break_count_ties_by_first_line
+    findings = [
+      PC::Finding.new(line: 30, rule: 'mazegaki', label: 'だ円 => 楕円'),
+      PC::Finding.new(line: 5,  rule: 'mazegaki', label: 'かぎ括弧 => 鉤括弧'),
+      PC::Finding.new(line: 17, rule: 'mazegaki', label: 'あい昧 => 曖昧')
+    ]
+    rows = PC.aggregate(findings)
+
+    assert_equal [1, 1, 1], rows.map { it[:count] }, '3 つとも同数'
+    assert_equal %w[5 17 30], rows.map { it[:lines] }, '同数なら出現行の早い順'
   end
 end

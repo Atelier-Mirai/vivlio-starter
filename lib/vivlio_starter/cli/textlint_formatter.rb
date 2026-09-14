@@ -17,13 +17,12 @@
 
 require 'json'
 
+require_relative 'lint/finding_rows'
+
 module VivlioStarter
   module CLI
     # textlint --format json 出力の集約フォーマッター
     class TextlintFormatter
-      # 集約表示で出現行を並べる最大件数（超過分は … で省略）
-      MAX_SHOWN_LINES = 10
-
       # --- Public API ---
 
       # textlint --format json の出力を、メッセージ（先頭行）＋ルール単位で集約する。
@@ -34,7 +33,8 @@ module VivlioStarter
       # @param trim_long_vowel [Boolean] true なら「X => Xー」（末尾長音を足す）系の指摘を抑止
       # @param suppressed_lines [Hash] { 絶対パス => 行番号の集合 }。その行の指摘を丸ごと落とす
       # @return [Hash, nil] { files: [{ path:, rows: }], total:, fixable: } / JSON 解釈失敗時 nil
-      #   rows: [{ count:, label:, lines: }]（出現数の多い順。label は "[ルール] 指摘先頭行"）
+      #   rows: [{ count:, label:, lines: }]（件数の多い順・同数なら出現行の早い順。
+      #   label は "[ルール] 指摘先頭行"）
       def self.aggregate_json(json_string, base_dir: Dir.pwd, disabled_rules: [], trim_long_vowel: false,
                               suppressed_lines: {})
         data = JSON.parse(json_string.to_s)
@@ -86,14 +86,13 @@ module VivlioStarter
       # メッセージ配列を [集約見出し, ルール] 単位で集約する。
       # 通常はメッセージ先頭行ごと（prh の置換などは別グループ）だが、出現ごとに数値が変わる
       # ルール（sentence-length 等）は要約ラベル＋数字マスクで 1 つに畳む。
+      # 並べ替えと出現行の表示は Lint::FindingRows に任せる（3 つの検査で揃えるため）。
       def self.aggregate_messages(messages)
-        messages.group_by { |m| [grouping_head(m['message'], m['ruleId']), short_rule(m['ruleId'])] }
-                .map do |(head, rule), items|
-          lines = items.filter_map { it['line'] }.uniq.sort
-          shown = lines.first(MAX_SHOWN_LINES).join(', ')
-          shown += ', …' if lines.size > MAX_SHOWN_LINES
-          { count: items.size, label: "[#{rule}] #{head}", lines: shown }
-        end.sort_by { |row| -row[:count] }
+        rows = messages.group_by { |m| [grouping_head(m['message'], m['ruleId']), short_rule(m['ruleId'])] }
+                       .map do |(head, rule), items|
+          { count: items.size, label: "[#{rule}] #{head}", lines: items.filter_map { it['line'] } }
+        end
+        Lint::FindingRows.arrange(rows)
       end
 
       # 集約見出し：出現ごとに数値が変わるルール（sentence-length 等）は要約ラベルで 1 つに畳み、

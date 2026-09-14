@@ -34,6 +34,7 @@ require 'yaml'
 require_relative '../common'
 require_relative '../index_markup'
 require_relative '../masking'
+require_relative 'finding_rows'
 require_relative 'mazegaki_dictionary'
 require_relative 'mazegaki_scanner'
 
@@ -66,9 +67,6 @@ module VivlioStarter
         # **行末の改行まで見込む。** prose_lines が渡すのは chomp していない生の行で、
         # `\z` だけで閉じると "---\n" に当たらず、指摘が 1 件も出ない（実測で踏んだ）。
         SETEXT_UNDERLINE = /\A {0,3}(=+|-+)[ \t]*\r?\n?\z/
-
-        # 表示する出現行番号の最大件数（超過分は … で省略。textlint 側と揃える）
-        MAX_SHOWN_LINES = 10
 
         # 交ぜ書き辞書の第 1 層。MeCab が無くても動く語だけが入っている。
         # 語の採否と、誤検出で落とした語の理由は辞書側に置く。
@@ -413,16 +411,15 @@ module VivlioStarter
           true
         end
 
-        # 指摘をルール・ラベル単位で集約する（出現数の多い順）。
+        # 指摘をルール・ラベル単位で集約する。
         # ラベル先頭の [ルール ID] は、著者が lint.disabled_rules へ書く名前をそのまま
         # 読み取れるようにするため（textlint 側の表示と揃える）。
+        # 並べ替えと出現行の表示は FindingRows に任せる（3 つの検査で揃えるため）。
         def aggregate(findings)
-          findings.group_by { [it.rule, it.label] }.map do |(rule, label), items|
-            lines = items.map(&:line).uniq.sort
-            shown = lines.first(MAX_SHOWN_LINES).join(', ')
-            shown += ', …' if lines.size > MAX_SHOWN_LINES
-            { count: items.size, label: "[#{rule}] #{label}", lines: shown }
-          end.sort_by { -it[:count] }
+          rows = findings.group_by { [it.rule, it.label] }.map do |(rule, label), items|
+            { count: items.size, label: "[#{rule}] #{label}", lines: items.map(&:line) }
+          end
+          FindingRows.arrange(rows)
         end
 
         # 対比の指摘は「どう直すか」が自明でないので、直し方を 1 度だけ添える。

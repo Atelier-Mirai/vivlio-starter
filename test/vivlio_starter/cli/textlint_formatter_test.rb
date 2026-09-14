@@ -136,6 +136,25 @@ module VivlioStarter
         assert_equal '[sentence-length] 一文が長すぎます（最大文長を超過）', rows.first[:label]
       end
 
+      # 件数が同じルールは、最初の出現行の早い順に並ぶ（著者は原稿を上から直すため）。
+      # sort_by は安定ではないので、第 2 キーが無いと同数の行の並びが実行ごとに変わる
+      def test_aggregate_json_breaks_count_ties_by_first_line
+        json = <<~JSON
+          [{ "filePath": "/proj/a.md", "messages": [
+            { "ruleId": "prh", "message": "遅い => おそい", "line": 200 },
+            { "ruleId": "prh", "message": "遅い => おそい", "line": 210 },
+            { "ruleId": "prh", "message": "早い => はやい", "line": 10 },
+            { "ruleId": "prh", "message": "早い => はやい", "line": 20 },
+            { "ruleId": "prh", "message": "速い => はやい", "line": 100 },
+            { "ruleId": "prh", "message": "速い => はやい", "line": 110 }
+          ] }]
+        JSON
+        rows = TextlintFormatter.aggregate_json(json, base_dir: '/proj')[:files].first[:rows]
+
+        assert_equal [2, 2, 2], rows.map { it[:count] }, '3 つとも同数'
+        assert_equal ['10, 20', '100, 110', '200, 210'], rows.map { it[:lines] }, '同数なら出現行の早い順'
+      end
+
       # 不正な JSON は nil を返す（呼び出し側が生出力へフォールバックする）
       def test_aggregate_json_returns_nil_on_invalid
         assert_nil TextlintFormatter.aggregate_json('not json')

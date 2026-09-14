@@ -2,6 +2,7 @@
 
 require 'did_you_mean'
 require_relative '../common'
+require_relative 'finding_rows'
 
 module VivlioStarter
   module CLI
@@ -29,9 +30,6 @@ module VivlioStarter
           []
         end
 
-        # 表示する出現行番号の最大件数（超過分は … で省略）
-        MAX_SHOWN_LINES = 10
-
         # 複数ファイルのエラーを標準出力に表示する。
         # 同じ語の指摘は 1 行に集約し、出現行と件数をまとめて見やすくする。
         # @param errors_by_file [Hash] { path => [{ line:, word:, suggestion: }] }
@@ -50,16 +48,18 @@ module VivlioStarter
           true
         end
 
-        # エラー配列を語ごとに集約し、表示用の行情報へ整える
-        # @return [Array<Hash>] { count:, label:, lines: } を出現数の多い順で返す
+        # エラー配列を語ごとに集約し、表示用の行情報へ整える。
+        # **件数は語が出た行数で数える**——同じ行に同じ語が 2 回あっても、著者が直しに行く
+        # 先は 1 箇所だからである（他の 2 つの検査は指摘の個数で数える）。
+        # 並べ替えと出現行の表示は FindingRows に任せる（3 つの検査で揃えるため）。
+        # @return [Array<Hash>] { count:, label:, lines: } を件数の多い順で返す
         def aggregate(errors)
-          errors.group_by { |e| e[:word] }.map do |word, items|
-            lines = items.map { |e| e[:line] }.uniq.sort
-            shown = lines.first(MAX_SHOWN_LINES).join(', ')
-            shown += ', …' if lines.size > MAX_SHOWN_LINES
+          rows = errors.group_by { |e| e[:word] }.map do |word, items|
+            lines = items.map { |e| e[:line] }.uniq
             suggestion = items.first[:suggestion]
-            { count: lines.size, label: suggestion ? "#{word} => #{suggestion}" : word, lines: shown }
-          end.sort_by { |row| -row[:count] }
+            { count: lines.size, label: suggestion ? "#{word} => #{suggestion}" : word, lines: }
+          end
+          FindingRows.arrange(rows)
         end
 
         # Levenshtein距離で最良の候補語を返す
