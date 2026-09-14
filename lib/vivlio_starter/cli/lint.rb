@@ -535,10 +535,11 @@ module VivlioStarter
         # @return [Array<String>] 実際に書き戻した原稿パス
         def apply_textlint_fixes!(files)
           # 記法ガードは通さない。中和は非可逆で、ガード済みの内容は原稿へ書き戻せない。
-          # **数式だけは別**——退避は可逆なので、修正パスでも守る。守らないと prh が
-          # 数式の中の半角括弧を全角へ「直し」、`$(1/2)πr³$` が `$（1/2）πr³$` になって壊れる。
+          # **退避が可逆なものだけは別**——数式と値つきの属性記法は、修正パスでも守る。
+          # 守らないと prh が中の半角記号を全角へ「直し」、`$(1/2)πr³$` が `$（1/2）πr³$` に、
+          # `{width=20%}` が `{width=20％}` になって壊れる（どちらも実測）。
           converted = convert_vs_lint_comments(files, guard: false)
-          math_spans = mask_math_in_place!(converted)
+          masked_spans = mask_for_fix_in_place!(converted)
           baselines = converted.map { File.read(it, encoding: 'UTF-8') }
 
           command = [textlint_command, '--config', effective_config_path, '--fix', *converted]
@@ -547,7 +548,7 @@ module VivlioStarter
           Common.log_debug(stdout) unless stdout.nil? || stdout.empty?
           $stderr.print(stderr) unless stderr.nil? || stderr.empty?
 
-          write_back_fixes(files, converted, baselines, math_spans)
+          write_back_fixes(files, converted, baselines, masked_spans)
         ensure
           cleanup_temp_files(converted) if converted
         end
@@ -555,11 +556,11 @@ module VivlioStarter
         # textlint が実際に書き換えた一時ファイルだけを原稿へ書き戻す。
         # 未変更のファイルへは触れない（原稿の mtime とコメント書式を無用に変えない）。
         # @return [Array<String>] 書き戻した原稿パス
-        # 一時ファイルの数式を目印へ退避する（修正パス専用）。
+        # 一時ファイルの数式・属性記法を目印へ退避する（修正パス専用）。
         # @return [Array<Hash>] ファイルごとの { 目印 => 原文 }
-        def mask_math_in_place!(converted)
+        def mask_for_fix_in_place!(converted)
           converted.map do |tmp|
-            masked, spans = Lint::NotationGuard.mask_math(File.read(tmp, encoding: 'UTF-8'))
+            masked, spans = Lint::NotationGuard.mask_for_fix(File.read(tmp, encoding: 'UTF-8'))
             File.write(tmp, masked, encoding: 'UTF-8')
             spans
           end
@@ -570,7 +571,7 @@ module VivlioStarter
             fixed = File.read(tmp, encoding: 'UTF-8')
             next if fixed == baseline
 
-            restored = Lint::NotationGuard.restore_math(fixed, spans)
+            restored = Lint::NotationGuard.restore_masked(fixed, spans)
             atomic_write(original, rewrite_textlint_to_vs_lint(restored))
             original
           end

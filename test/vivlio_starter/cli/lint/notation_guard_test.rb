@@ -199,6 +199,51 @@ module VivlioStarter
           assert_equal "\n\n", result, '末尾に改行が無い最終行は空文字にして末尾の形状を変えないこと'
         end
 
+        # 値つきの属性記法は機械データであって地の文ではない（G5）。放置すると
+        # `{width=20%}` の半角 % が「全角にせよ」と指摘され、`--fix` が当たれば
+        # `{width=20％}` になって**画像の幅指定が効かなくなる**（実測: 本書の前書きで 4 件）。
+        def test_should_neutralize_value_attributes_in_the_analysis_path
+          stripped = NotationGuard.strip_notation("![](logo.webp){width=20%}\n")
+
+          refute_includes stripped, 'width=20%', '幅指定は地の文として読ませない'
+          assert_includes stripped, '![](logo.webp)', '画像記法そのものは残す'
+        end
+
+        # クラスと幅を併記した形（どちらの順でも）も対象にする
+        def test_should_neutralize_value_attributes_written_with_a_class
+          ['![](a.webp){.bordered width=20%}', '![](a.webp){width=20% .bordered}'].each do |line|
+            refute_includes NotationGuard.strip_notation("#{line}\n"), 'width=20%', line
+          end
+        end
+
+        # ふりがな `{親文字|ふりがな}` を属性と取り違えない（親文字は地の文なので残す・I3）
+        def test_should_not_mistake_furigana_for_an_attribute
+          stripped = NotationGuard.strip_notation("{難読|なんどく}な字。\n")
+
+          assert_equal "難読な字。\n", stripped
+        end
+
+        # 修正パスは退避して守る。strip_notation は非可逆なので --fix では使えず、
+        # 目印へ逃がして戻すしかない
+        def test_should_mask_and_restore_value_attributes_for_the_fix_path
+          src = "![](logo.webp){width=20%}\n地の文の 20% は直されるべきです。\n"
+          masked, spans = NotationGuard.mask_for_fix(src)
+
+          refute_includes masked, 'width=20%', '属性は目印へ退避される'
+          assert_includes masked, '地の文の 20% は', '地の文の % は残す（本物の指摘を消さない）'
+          assert_equal 1, spans.size
+          assert_equal src, NotationGuard.restore_masked(masked, spans), '往復で原文に戻る'
+        end
+
+        # 修正パスは数式と属性を同時に守る（どちらも 1 つの spans で戻せる）
+        def test_should_mask_both_math_and_attributes_for_the_fix_path
+          src = "$(4/3)πr³$ の図です。\n\n![](sphere.webp){width=50%}\n"
+          masked, spans = NotationGuard.mask_for_fix(src)
+
+          assert_equal 2, spans.size
+          assert_equal src, NotationGuard.restore_masked(masked, spans)
+        end
+
         # 数式は日本語の文ではない。放置すると数式の中の半角括弧が prh に「全角にせよ」と
         # 指摘され、`--fix` が当たれば `$(4/3)πr³$` が `$（4/3）πr³$` になって壊れる。
         # コードスパンは textlint が Code ノードとして飛ばすのに、数式は素の文として読まれていた。
@@ -209,7 +254,7 @@ module VivlioStarter
           refute_includes masked, '(4/3)πr³', '数式は目印へ退避される'
           assert_includes masked, '地の文の (4/3) は', '地の文の括弧は残す（本物の指摘を消さない）'
           assert_equal 1, spans.size
-          assert_equal src, NotationGuard.restore_math(masked, spans), '往復で原文に戻る'
+          assert_equal src, NotationGuard.restore_masked(masked, spans), '往復で原文に戻る'
         end
 
         # 行数を保存する（I1）。複数行のディスプレイ数式でも指摘の行番号がずれない。
@@ -218,7 +263,7 @@ module VivlioStarter
           masked, spans = NotationGuard.mask_math(src)
 
           assert_equal src.lines.size, masked.lines.size
-          assert_equal src, NotationGuard.restore_math(masked, spans)
+          assert_equal src, NotationGuard.restore_masked(masked, spans)
         end
 
         # コード領域の中の数式らしい綴りは触らない（記法を解説する行を壊さない）。
