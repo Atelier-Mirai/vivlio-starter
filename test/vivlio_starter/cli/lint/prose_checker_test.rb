@@ -19,6 +19,7 @@
 #   PC-10: 辞書の修正後の語が、別の交ぜ書きとして再び指摘されない（--fix が収束する）
 #   PC-11: 語の途中に強調記法が入っても対比を取りこぼさない
 #   PC-12: 集約表示は件数の多い順・同数なら最初の出現行の早い順に並ぶ
+#   PC-13: 和文どうしの並列スラッシュだけを指摘する（欧文の並列・単位は黙る）
 # ================================================================
 
 require_relative '../../../test_helper'
@@ -432,6 +433,48 @@ class TestProseChecker < Minitest::Test
 
     refute_empty check(body)
     assert_empty check(body, disabled_rules: rules)
+  end
+
+  # --- 和文どうしの並列スラッシュ（PC-13）---
+
+  # 和文どうしをスラッシュで並べたら `・` / `／` を薦める。空きの有無は問わない
+  def test_should_report_slash_between_japanese
+    ['メリット / デメリット', '有効/無効'].each do |body|
+      labels = check("#{body}を選びます。\n").map(&:label)
+
+      assert labels.any? { it.include?('和文どうしの並列') }, body
+    end
+  end
+
+  # 欧文の並列は日本語の技術書で広く使われる書き方なので叩かない（本書で 270 件）
+  def test_should_not_report_slash_between_latin
+    assert_empty check("EPUB / Kindle 形式で出力します。\n").select { it.rule == 'slash-between-japanese' }
+  end
+
+  # `しきい周波数 / Hz` は単位を表す除算。`・` にすると意味が変わる
+  def test_should_not_report_slash_used_as_a_unit
+    findings = check("| しきい周波数 / Hz | 6.0 |\n").select { it.rule == 'slash-between-japanese' }
+
+    assert_empty findings, '片側が欧文なら黙る（単位の除算を壊さないため）'
+  end
+
+  # 記法を解説する行を壊さない（コードは検査の対象外）
+  def test_should_not_report_slash_inside_code
+    assert_empty check("`有効/無効` と書きます。\n").select { it.rule == 'slash-between-japanese' }
+  end
+
+  # 表のセル境界をまたいで拾わない
+  def test_should_not_cross_table_cell_boundaries
+    findings = check("| 画像 | / | 本文 |\n").select { it.rule == 'slash-between-japanese' }
+
+    assert_empty findings
+  end
+
+  # ルール単位で切れる（他の独自ルールと同じ窓口）
+  def test_should_respect_disabled_rules_for_slash
+    findings = check("有効/無効を切り替えます。\n", disabled_rules: ['slash-between-japanese'])
+
+    assert_empty findings.select { it.rule == 'slash-between-japanese' }
   end
 
   # --- 表示 ---

@@ -345,20 +345,23 @@ module VivlioStarter
 
         # 実際に textlint へ渡す設定パス。book.yml の lint.* で文体の上書きが指定されていれば、
         # 既定 textlintrc にその上書きを反映した一時設定を生成して使う（なければ既定をそのまま）。
-        def effective_config_path
-          return config_path unless runtime_overrides?
+        # 独自ルールで置き換えた textlint のルール。**常に切る**——著者の設定に依らない。
+        #
+        # `ja-no-space-around-slash` は「スラッシュの前後に空きを入れるな」としか言えず、
+        # `EPUB / Kindle` のような欧文の並列（本書で 270 件）や `しきい周波数 / Hz` と
+        # いう単位の除算まで叩いてしまう。和文どうしのときだけ `・` / `／` を薦める
+        # `slash-between-japanese`（ProseChecker）へ寄せた。
+        SUPERSEDED_TEXTLINT_RULES = { 'preset-ja-spacing' => %w[ja-no-space-around-slash] }.freeze
 
+        # 実行時 textlintrc は常に生成する。上書きが 1 つも指定されていなくても、
+        # SUPERSEDED_TEXTLINT_RULES を切る必要があるため。
+        def effective_config_path
           @effective_config_path ||= generate_runtime_config(
             config_path,
             sentence_max: sentence_length_max,
             allow_code_space: allow_space_around_code?,
             allow_ja_en_space: allow_space_between_ja_en?
           )
-        end
-
-        # 実行時 textlintrc を生成する必要があるか（いずれかの上書きが指定されている）
-        def runtime_overrides?
-          sentence_length_max || allow_space_around_code? || allow_space_between_ja_en?
         end
 
         # book.yml lint.sentence_length_max（一文の最大文字数。未指定なら nil＝既定 100）
@@ -392,6 +395,11 @@ module VivlioStarter
         def generate_runtime_config(base_path, sentence_max: nil, allow_code_space: false, allow_ja_en_space: false)
           cfg = YAML.safe_load_file(base_path) || {}
           rules = (cfg['rules'] ||= {})
+
+          SUPERSEDED_TEXTLINT_RULES.each do |preset, names|
+            preset_rules = (rules[preset] ||= {})
+            names.each { preset_rules[it] = false }
+          end
 
           # :off はルールごと切る（textlint の作法は `<rule>: false`）。
           # 大きな上限を書いて実質無効にする手もあるが、値から意図が読めなくなる。

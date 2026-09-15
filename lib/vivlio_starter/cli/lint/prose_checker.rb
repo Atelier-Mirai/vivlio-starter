@@ -53,6 +53,7 @@ module VivlioStarter
         STRAY_INDEX_RULE   = 'stray-index-markup'
         INDENTED_CODE_RULE = 'indented-code-block'
         SETEXT_RULE        = 'setext-heading'
+        SLASH_RULE         = 'slash-between-japanese'
 
         # --- 記法の取り違え -----------------------------------------------------
 
@@ -180,6 +181,7 @@ module VivlioStarter
           findings.concat(stray_index_findings(text))          unless rules.include?(STRAY_INDEX_RULE)
           findings.concat(indented_code_findings(text))        unless rules.include?(INDENTED_CODE_RULE)
           findings.concat(setext_findings(text))               unless rules.include?(SETEXT_RULE)
+          findings.concat(slash_findings(text))                unless rules.include?(SLASH_RULE)
           findings
         rescue Errno::ENOENT => e
           Common.log_warn("[lint] ファイルを読み込めませんでした: #{path} (#{e.message})")
@@ -232,6 +234,53 @@ module VivlioStarter
             hits.any? { |(other, _)| other != word && other.include?(word) }
           end
         end
+
+        # --- 和文どうしの並列スラッシュ ----------------------------------------
+
+        # 和文の 1 文字。並列の両側が和文かどうかの判定に使う。
+        JAPANESE_CHAR = /[ぁ-んァ-ヴー々〆一-龥]/
+
+        # スラッシュで隣り合う 2 語。表のセル境界（`|`）と、括弧・句読点は越えない——
+        # 越えると地の文を巻き込み、`生成された扉絵/装飾などの画像を削除` のように
+        # どこが問題なのか読み取れない見出しになる（実測）。
+        SLASH_BOUNDARY = %r{[^\s/|（）()「」『』【】、。，．]}
+        SLASH_PAIR = /(#{SLASH_BOUNDARY}{1,6})([ \t]*\/[ \t]*)(#{SLASH_BOUNDARY}{1,6})/
+
+        # 和文どうしを半角スラッシュで並べた箇所（`メリット / デメリット`・`有効/無効`）。
+        #
+        # **両側が和文のときだけ**を見る。片側でも欧文なら黙る理由は 2 つあり、どちらも
+        # 本書の原稿から出た実例である。
+        #   - `EPUB / Kindle` のような欧文の並列は、詰めると一語に見えて読みにくい。
+        #     日本語の技術書で広く使われる書き方なので、叩くべきではない（実測 270 件）。
+        #   - `しきい周波数 / Hz` は**単位を表す除算**で、`・` に置き換えると意味が変わる。
+        # textlint の `ja-no-space-around-slash` はこの区別を持たず、空きの有無だけで
+        # 叩くため、本ルールで置き換えている（切り替えは lint.rb の SUPERSEDED_TEXTLINT_RULES）。
+        #
+        # 直し方を著者に委ねる（`--fix` しない）のは、`・` と全角 `／` のどちらが合うかが
+        # 文脈で決まるため。記法の取り違えルールと同じ方針である。
+        def slash_findings(text)
+          prose_lines(text).flat_map do |lineno, line|
+            protected_line, = Masking.protect_code(line)
+            slash_pairs(protected_line).map do |left, separator, right|
+              Finding.new(line: lineno, rule: SLASH_RULE,
+                          label: "#{left}#{separator}#{right} は和文どうしの並列です" \
+                                 '（`/` を `・` か全角 `／` に）')
+            end
+          end
+        end
+
+        # 1 行から、両側が和文のスラッシュだけを拾う
+        def slash_pairs(line)
+          pairs = []
+          line.scan(SLASH_PAIR) do
+            left, separator, right = ::Regexp.last_match(1), ::Regexp.last_match(2), ::Regexp.last_match(3)
+            next unless left[-1].match?(JAPANESE_CHAR) && right[0].match?(JAPANESE_CHAR)
+
+            pairs << [left, separator, right]
+          end
+          pairs
+        end
+        private_class_method :slash_pairs
 
         # --- 記法の取り違え（markdown-notation-collision-spec.md §5〜§7）--------
 
