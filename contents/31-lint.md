@@ -444,7 +444,7 @@ lint:
 
 **出力段で該当の指摘を取り除く**方式なので、`prh` 辞書の所在に依存せず確実に効きます。無効化した分は問題件数にも数えません。
 
-Vivlio Starter が独自に見るルール（`mazegaki` / `ambiguous-comparison` / `stray-index-markup` / `indented-code-block` / `setext-heading` / `slash-between-japanese`）も同じキーで切れます。指摘を黙らせる窓口は textlint のルールと分けていません。語単位で黙らせたいときの `config/textlint_allowlist.yml` も同じで、交ぜ書きの指摘にそのまま効きます。
+Vivlio Starter が独自に見るルール（`mazegaki` / `ambiguous-comparison` / `stray-index-markup` / `indented-code-block` / `setext-heading` / `slash-between-japanese` / `kanji-lookalike`）も同じキーで切れます。指摘を黙らせる窓口は textlint のルールと分けていません。語単位で黙らせたいときの `config/textlint_allowlist.yml` も同じで、交ぜ書きの指摘にそのまま効きます。
 
 語を選んで黙らせたいときは、ルール単位ではなく `config/textlint_allowlist.yml` を使います（後述）。
 
@@ -622,7 +622,6 @@ Failed to load plugin: textlint-rule-preset-ja-technical-writing
 ```bash
 npm install -g textlint-rule-preset-ja-technical-writing \
   textlint-rule-prh \
-  textlint-rule-preset-japanese \
   textlint-rule-preset-ja-spacing \
   textlint-rule-spellcheck-tech-word \
   textlint-filter-rule-allowlist \

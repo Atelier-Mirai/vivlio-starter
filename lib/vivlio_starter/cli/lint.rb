@@ -14,7 +14,6 @@
 #
 # 使用される textlint ルール:
 #   - textlint-rule-preset-ja-technical-writing: 技術文書向け
-#   - textlint-rule-preset-japanese: 日本語一般
 #   - textlint-rule-prh: 表記揺れ検出
 #
 # 依存:
@@ -157,18 +156,22 @@ module VivlioStarter
           all = findings_by_file.values.flatten
           { exit: all.empty? ? 0 : 1,
             prose_count: all.size,
-            fixable_count: all.count { it.rule == Lint::ProseChecker::MAZEGAKI_RULE } }
+            fixable_count: all.count { Lint::ProseChecker::FIXABLE_RULES.include?(it.rule) } }
         end
 
-        # 交ぜ書きの置換を原稿へ適用する（--fix 指定時のみ）。
+        # 交ぜ書きと康煕部首の置換を原稿へ適用する（--fix 指定時のみ）。
         # 対比の指摘は自動修正しない（どちらが X するのかは著者しか知らないため）。
         # @return [Array<String>] 実際に書き換えた原稿パス
         def apply_prose_fixes!(files)
-          return [] if disabled_rules.include?(Lint::ProseChecker::MAZEGAKI_RULE)
+          fix_mazegaki        = !disabled_rules.include?(Lint::ProseChecker::MAZEGAKI_RULE)
+          fix_kanji_lookalike = !disabled_rules.include?(Lint::ProseChecker::KANJI_LOOKALIKE_RULE)
+          return [] unless fix_mazegaki || fix_kanji_lookalike
 
           files.filter_map do |path|
             original = File.read(path, encoding: 'UTF-8')
-            fixed    = Lint::ProseChecker.fix_mazegaki(original, prose_allowlist)
+            fixed    = original
+            fixed    = Lint::ProseChecker.fix_mazegaki(fixed, prose_allowlist) if fix_mazegaki
+            fixed    = Lint::ProseChecker.fix_kanji_lookalike(fixed) if fix_kanji_lookalike
             next if fixed == original
 
             atomic_write(path, fixed)
@@ -351,7 +354,19 @@ module VivlioStarter
         # `EPUB / Kindle` のような欧文の並列（本書で 270 件）や `しきい周波数 / Hz` と
         # いう単位の除算まで叩いてしまう。和文どうしのときだけ `・` / `／` を薦める
         # `slash-between-japanese`（ProseChecker）へ寄せた。
-        SUPERSEDED_TEXTLINT_RULES = { 'preset-ja-spacing' => %w[ja-no-space-around-slash] }.freeze
+        #
+        # `no-kanji-lookalikes` は `kanji-lookalike`（ProseChecker）へ移した。雛形はもう
+        # `preset-japanese` を読まないが、`.textlintrc.yml` を更新していないプロジェクト
+        # では残っているので、二重に指摘しないよう切る。
+        SUPERSEDED_TEXTLINT_RULES = {
+          'preset-ja-spacing' => %w[ja-no-space-around-slash],
+          'preset-japanese' => %w[no-kanji-lookalikes]
+        }.freeze
+
+        # 一文の長さのルールを持つプリセット。`preset-japanese` は 1.0 より前の雛形が
+        # `preset-ja-technical-writing` と併用していたもので、同じ `sentence-length` を
+        # 別の実体として動かす。片方だけ書き換えると、もう片方の上限 100 字が残る。
+        SENTENCE_LENGTH_PRESETS = %w[preset-ja-technical-writing preset-japanese].freeze
 
         # 実行時 textlintrc は常に生成する。上書きが 1 つも指定されていなくても、
         # SUPERSEDED_TEXTLINT_RULES を切る必要があるため。
@@ -397,15 +412,20 @@ module VivlioStarter
           rules = (cfg['rules'] ||= {})
 
           SUPERSEDED_TEXTLINT_RULES.each do |preset, names|
-            preset_rules = (rules[preset] ||= {})
-            names.each { preset_rules[it] = false }
+            preset_rules = configured_preset_rules(rules, preset)
+            names.each { preset_rules[it] = false } if preset_rules
           end
 
           # :off はルールごと切る（textlint の作法は `<rule>: false`）。
           # 大きな上限を書いて実質無効にする手もあるが、値から意図が読めなくなる。
-          case sentence_max
-          when :off then (rules['preset-ja-technical-writing'] ||= {})['sentence-length'] = false
-          when Integer then (rules['preset-ja-technical-writing'] ||= {})['sentence-length'] = { 'max' => sentence_max }
+          sentence_rule = case sentence_max
+                          when :off then false
+                          when Integer then { 'max' => sentence_max }
+                          end
+          unless sentence_rule.nil?
+            SENTENCE_LENGTH_PRESETS.each do |preset|
+              configured_preset_rules(rules, preset)&.store('sentence-length', sentence_rule)
+            end
           end
           if allow_code_space || allow_ja_en_space
             spacing = (rules['preset-ja-spacing'] ||= {})
@@ -417,6 +437,16 @@ module VivlioStarter
           @runtime_config_tmp.write(cfg.to_yaml)
           @runtime_config_tmp.close
           @runtime_config_tmp.path
+        end
+
+        # 設定に書かれているプリセットのルール表を返す（`true` は空の表へ広げる）。
+        # 書かれていない・`false` のプリセットは nil を返し、呼び出し側は何も足さない——
+        # ここで表を作ると、著者が外したプリセットが丸ごと読み込まれてしまう。
+        def configured_preset_rules(rules, preset)
+          case rules[preset]
+          when Hash then rules[preset]
+          when true then rules[preset] = {}
+          end
         end
 
         def textlint_command

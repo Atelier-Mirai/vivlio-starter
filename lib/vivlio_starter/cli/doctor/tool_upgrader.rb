@@ -59,7 +59,9 @@ module VivlioStarter
           end
         end
 
-        # textlint と推奨ルール一式（npm -g）。--fix のインストールと --upgrade の更新で共用する
+        # textlint と推奨ルール一式（npm -g）。--fix のインストールと --upgrade の更新で共用する。
+        # preset-japanese は雛形の .textlintrc.yml からは外したが、導入はやめない——
+        # 設定を更新していないプロジェクトはまだ読んでおり、無いと textlint ごと止まる。
         TEXTLINT_NPM_PACKAGES = %w[
           textlint
           textlint-rule-preset-ja-technical-writing

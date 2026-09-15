@@ -493,7 +493,7 @@ module VivlioStarter
       def test_generate_runtime_config_overrides_sentence_length_max
         Dir.mktmpdir do |dir|
           base = File.join(dir, '.textlintrc.yml')
-          File.write(base, { 'rules' => { 'prh' => { 'rulePaths' => ['./textlint_rewrite.yml'] } } }.to_yaml)
+          File.write(base, { 'rules' => { 'preset-ja-technical-writing' => {}, 'prh' => { 'rulePaths' => ['./textlint_rewrite.yml'] } } }.to_yaml)
 
           runner = LintCommands::LintRunner.new([], {})
           path = runner.send(:generate_runtime_config, base, sentence_max: 80)
@@ -512,7 +512,7 @@ module VivlioStarter
       def test_generate_runtime_config_disables_sentence_length_when_zero
         Dir.mktmpdir do |dir|
           base = File.join(dir, '.textlintrc.yml')
-          File.write(base, { 'rules' => { 'prh' => { 'rulePaths' => ['./textlint_rewrite.yml'] } } }.to_yaml)
+          File.write(base, { 'rules' => { 'preset-ja-technical-writing' => {}, 'prh' => { 'rulePaths' => ['./textlint_rewrite.yml'] } } }.to_yaml)
 
           runner = LintCommands::LintRunner.new([], {})
           path = runner.send(:generate_runtime_config, base, sentence_max: :off)
@@ -521,6 +521,50 @@ module VivlioStarter
           assert_equal false, cfg.dig('rules', 'preset-ja-technical-writing', 'sentence-length')
           assert_includes cfg.dig('rules', 'prh', 'rulePaths'), './textlint_rewrite.yml', '既存設定を保持'
         end
+      end
+
+      # 1.0 より前の雛形は preset-japanese を併用していた。更新していないプロジェクトでも
+      # sentence_length_max が効くよう、同じ sentence-length を持つ両方へ当てる（KNOWN_ISSUES の解消）
+      def test_generate_runtime_config_applies_sentence_length_to_legacy_preset_japanese
+        Dir.mktmpdir do |dir|
+          base = File.join(dir, '.textlintrc.yml')
+          File.write(base, { 'rules' => { 'preset-ja-technical-writing' => {}, 'preset-japanese' => true } }.to_yaml)
+
+          runner = LintCommands::LintRunner.new([], {})
+          cfg = YAML.safe_load_file(runner.send(:generate_runtime_config, base, sentence_max: :off))
+
+          assert_equal false, cfg.dig('rules', 'preset-ja-technical-writing', 'sentence-length')
+          assert_equal false, cfg.dig('rules', 'preset-japanese', 'sentence-length')
+          assert_equal false, cfg.dig('rules', 'preset-japanese', 'no-kanji-lookalikes'),
+                       '独自ルール kanji-lookalike と二重に指摘しない'
+        end
+      end
+
+      # 設定に無いプリセットは足さない。足すと、著者が外したプリセットが丸ごと読み込まれる
+      def test_generate_runtime_config_does_not_add_unconfigured_presets
+        Dir.mktmpdir do |dir|
+          base = File.join(dir, '.textlintrc.yml')
+          File.write(base, { 'rules' => { 'preset-ja-technical-writing' => {} } }.to_yaml)
+
+          runner = LintCommands::LintRunner.new([], {})
+          cfg = YAML.safe_load_file(runner.send(:generate_runtime_config, base, sentence_max: 80))
+
+          refute cfg['rules'].key?('preset-japanese')
+          refute cfg['rules'].key?('preset-ja-spacing')
+          assert_equal 80, cfg.dig('rules', 'preset-ja-technical-writing', 'sentence-length', 'max')
+        end
+      end
+
+      # 雛形の .textlintrc.yml は preset-japanese を読まない（11 ルールが重複していたため）。
+      # 文体の混在検出は preset-ja-technical-writing 側を自動判定にして引き継ぐ
+      def test_scaffold_textlintrc_loads_each_rule_once
+        cfg = YAML.safe_load_file(File.expand_path('../../../config/.textlintrc.yml', __dir__))
+        rules = cfg['rules']
+
+        refute rules.key?('preset-japanese')
+        mix = rules.dig('preset-ja-technical-writing', 'no-mix-dearu-desumasu')
+        assert_equal %w[preferInBody preferInHeader preferInList].to_h { [it, ''] },
+                     mix.slice('preferInBody', 'preferInHeader', 'preferInList')
       end
 
       # book.yml の値から :off / 数値 / nil への解釈

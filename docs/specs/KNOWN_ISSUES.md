@@ -16,15 +16,6 @@
 
 ---
 
-### `book.yml` の `lint.sentence_length_max` が一文の長さの検査を片方しか変えない
-* **詳細:** `sentence_length_max` で上限を変えても、`0` で検査を止めても、上限 100 字の指摘が残る。`0` にしても長い文が指摘され続けることを 2026-09-15 に実測した（指摘元は `japanese/sentence-length`）。上限の変更も同じ経路なので、100 字より大きくする設定は効かない。
-* **原因:** 一文の長さのルール `sentence-length` が `preset-ja-technical-writing` と `preset-japanese` の両方に入っていて（どちらも既定の上限は 100 字）、vs lint は実行時の設定で `preset-ja-technical-writing` 側しか書き換えていない（`lint.rb` の `generate_runtime_config`）。
-* **影響:** 上限を 100 字より大きくする・検査を止める、が効かない。本書は既定の 100 のままなので、実害は出ていない。
-* **運用回避:** `config/.textlintrc.yml` の `preset-japanese:` にも `sentence-length: false`（止める）か、`sentence-length:` の下に `max: 120`（上限を変える）を書く。
-* **対応方針:** プリセットの重複そのものを解消する（`PLANNED.md` の「textlint のプリセットの重複を解消する」）。
-
----
-
 ## 要確認（軽微・検証待ち）
 
 ### EPUB の表紙画像が一回り小さく見える

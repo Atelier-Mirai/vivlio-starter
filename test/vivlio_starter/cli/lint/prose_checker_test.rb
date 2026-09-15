@@ -20,6 +20,7 @@
 #   PC-11: 語の途中に強調記法が入っても対比を取りこぼさない
 #   PC-12: 集約表示は件数の多い順・同数なら最初の出現行の早い順に並ぶ
 #   PC-13: 和文どうしの並列スラッシュだけを指摘する（欧文の並列・単位は黙る）
+#   PC-14: 康煕部首を指摘し、--fix で漢字（新字体）へ置換する
 # ================================================================
 
 require_relative '../../../test_helper'
@@ -475,6 +476,39 @@ class TestProseChecker < Minitest::Test
     findings = check("有効/無効を切り替えます。\n", disabled_rules: ['slash-between-japanese'])
 
     assert_empty findings.select { it.rule == 'slash-between-japanese' }
+  end
+
+  # --- 康煕部首（PC-14）---
+
+  # 字形が漢字と同じ康煕部首を、対応する漢字とともに示す
+  def test_should_report_kanji_lookalikes
+    labels = check("⽇本語の⽂章です。\n").select { it.rule == 'kanji-lookalike' }.map(&:label)
+
+    assert(labels.any? { it.start_with?('⽇ => 日') })
+    assert(labels.any? { it.start_with?('⽂ => 文') })
+  end
+
+  # NFKC は旧字体を返す 2 字（戶・黑）を、日本語の字形へ寄せる
+  def test_should_suggest_japanese_forms_for_kanji_lookalikes
+    labels = check("⼾棚と⿊板。\n").select { it.rule == 'kanji-lookalike' }.map(&:label)
+
+    assert(labels.any? { it.start_with?('⼾ => 戸') })
+    assert(labels.any? { it.start_with?('⿊ => 黒') })
+  end
+
+  def test_should_not_report_kanji_lookalikes_inside_code
+    assert_empty check("`⽇` と書きます。\n").select { it.rule == 'kanji-lookalike' }
+  end
+
+  # --fix は地の文だけを置換し、インラインコードと行数を保つ
+  def test_should_fix_kanji_lookalike_radicals_outside_code
+    fixed = PC.fix_kanji_lookalike("⽇本の`⽇`。\n\n```\n⽇\n```\n")
+
+    assert_equal "日本の`⽇`。\n\n```\n⽇\n```\n", fixed
+  end
+
+  def test_should_respect_disabled_rules_for_kanji_lookalike
+    assert_empty check("⽇本。\n", disabled_rules: ['kanji-lookalike']).select { it.rule == 'kanji-lookalike' }
   end
 
   # --- 表示 ---

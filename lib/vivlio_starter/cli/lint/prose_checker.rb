@@ -10,6 +10,8 @@
 #     - stray-index-markup   索引語のつもりでない `[g]`（markdown-notation-collision-spec.md §5）
 #     - indented-code-block  非対応の 4 スペース字下げコードブロック（同 §6）
 #     - setext-heading       改ページのつもりが見出しになる `---` / `===`（同 §7）
+#     - slash-between-japanese 和文どうしを半角スラッシュで並べた箇所
+#     - kanji-lookalike      漢字に見える康煕部首（`⽇本` の `⽇`）。1 対 1 の置換なので --fix できる
 #
 # なぜ prh 辞書ではなく Ruby なのか:
 #   交ぜ書きは 1 対 1 の置換なので config/textlint_rewrite.yml（prh）へ書けば
@@ -21,7 +23,7 @@
 #   仕様: lint-japanese-prose-rules-spec.md §2
 #
 # 「ら抜き言葉」はここにない:
-#   preset-japanese の no-dropping-the-ra が既に検出している（textlint 側）。
+#   preset-ja-technical-writing の no-dropping-the-ra が既に検出している（textlint 側）。
 #
 # 依存:
 #   - Masking: コード領域の判定（辞書をコード例へ当てないため）
@@ -50,10 +52,14 @@ module VivlioStarter
 
         MAZEGAKI_RULE  = 'mazegaki'
         AMBIGUOUS_RULE = 'ambiguous-comparison'
-        STRAY_INDEX_RULE   = 'stray-index-markup'
-        INDENTED_CODE_RULE = 'indented-code-block'
-        SETEXT_RULE        = 'setext-heading'
-        SLASH_RULE         = 'slash-between-japanese'
+        STRAY_INDEX_RULE     = 'stray-index-markup'
+        INDENTED_CODE_RULE   = 'indented-code-block'
+        SETEXT_RULE          = 'setext-heading'
+        SLASH_RULE           = 'slash-between-japanese'
+        KANJI_LOOKALIKE_RULE = 'kanji-lookalike'
+
+        # --fix で直せるルール。どちらも「この文字列はこう書く」が 1 つに決まる。
+        FIXABLE_RULES = [MAZEGAKI_RULE, KANJI_LOOKALIKE_RULE].freeze
 
         # --- 記法の取り違え -----------------------------------------------------
 
@@ -182,6 +188,7 @@ module VivlioStarter
           findings.concat(indented_code_findings(text))        unless rules.include?(INDENTED_CODE_RULE)
           findings.concat(setext_findings(text))               unless rules.include?(SETEXT_RULE)
           findings.concat(slash_findings(text))                unless rules.include?(SLASH_RULE)
+          findings.concat(kanji_lookalike_findings(text))      unless rules.include?(KANJI_LOOKALIKE_RULE)
           findings
         rescue Errno::ENOENT => e
           Common.log_warn("[lint] ファイルを読み込めませんでした: #{path} (#{e.message})")
@@ -281,6 +288,46 @@ module VivlioStarter
           pairs
         end
         private_class_method :slash_pairs
+
+        # --- 康煕部首 --------------------------------------------------------
+
+        # 康煕部首（U+2F00〜U+2FD5）。字形は漢字と見分けがつかないが別の文字で、
+        # 検索・索引・読み上げで漢字として扱われない。PDF からコピーした文に紛れ込む。
+        KANGXI_RADICAL = /[\u2F00-\u2FD5]/
+
+        # 対応する漢字は NFKC 正規化で得られるが、2 字だけ旧字体（戶・黑）が返る。
+        # 日本語の文では新字体が正しいので、そこだけ差し替える。
+        KANGXI_JAPANESE_FORMS = { '⼾' => '戸', '⿊' => '黒' }.freeze
+
+        # 康煕部首の指摘。もとは textlint の preset-japanese にあった no-kanji-lookalikes で、
+        # そのプリセットを外した（残り 11 ルールは preset-ja-technical-writing と重複していた）
+        # ときにこちらへ移した。単体の npm パッケージとして足さなかったのは、`vs upgrade` で
+        # 設定だけが先に届くと、未導入のルールを読めずに textlint ごと止まるため。
+        def kanji_lookalike_findings(text)
+          prose_lines(text).flat_map do |lineno, line|
+            protected_line, = Masking.protect_code(line)
+            protected_line.scan(KANGXI_RADICAL).uniq.map do |radical|
+              Finding.new(line: lineno, rule: KANJI_LOOKALIKE_RULE,
+                          label: "#{radical} => #{kangxi_ideograph(radical)}（漢字に見える康煕部首です）")
+            end
+          end
+        end
+
+        # 康煕部首を漢字へ置換したテキストを返す。行数は入力と必ず一致する。
+        # 置換は 1 文字を 1 文字へ替えるだけなので、強調記法をまたぐ心配はない。
+        def fix_kanji_lookalike(text)
+          prose = prose_lines(text).to_h
+
+          text.each_line.with_index(1).map do |line, lineno|
+            next line unless prose.key?(lineno)
+
+            protected_line, spans = Masking.protect_code(line)
+            Masking.restore_code(protected_line.gsub(KANGXI_RADICAL) { kangxi_ideograph(it) }, spans)
+          end.join
+        end
+
+        def kangxi_ideograph(radical) = KANGXI_JAPANESE_FORMS.fetch(radical) { radical.unicode_normalize(:nfkc) }
+        private_class_method :kangxi_ideograph
 
         # --- 記法の取り違え（markdown-notation-collision-spec.md §5〜§7）--------
 

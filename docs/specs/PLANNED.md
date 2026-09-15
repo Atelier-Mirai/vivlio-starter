@@ -80,21 +80,13 @@
     - 引用（`>` とカギ括弧の中）、会話文（`:::{.talk}`）
     - 体言止め、括弧書き、コード・数式
   - **現行ルールの構造（参考）**: `textlint-rule-no-mix-dearu-desumasu`（6.0.4）は、判定器を**本文・見出し・箇条書きの 3 つ別々**に持つ（`BodyMixedChecker` / `HeaderMixedChecker` / `ListMixedChecker`）。文書の要素は `Header` → 見出し、`ListItem` → 箇条書き、`Paragraph` → 本文へ振り分けられ（見出し・箇条書きの中の段落は本文に数えない）、文書の終わりに 3 つがそれぞれ**自分の集めた文だけ**で結果を出す（2026-09-15 にソースで確認）。
-    - 設定も場所ごとに 3 つある（`preferInBody` / `preferInHeader` / `preferInList`）。値を与えると決め打ち（その文体でなければ指摘）、空なら自動判定（その場所の多数派と違う文を指摘）になる。`preset-ja-technical-writing` は本文＝です・ます・箇条書き＝である と決め打ちし、`preset-japanese` はオプションなし＝3 つとも自動判定で読み込む。
+    - 設定も場所ごとに 3 つある（`preferInBody` / `preferInHeader` / `preferInList`）。値を与えると決め打ち（その文体でなければ指摘）、空なら自動判定（その場所の多数派と違う文を指摘）になる。`preset-ja-technical-writing` の既定は本文＝です・ます・箇条書き＝である の決め打ちで、雛形の `.textlintrc.yml` は 3 つとも空にして自動判定で使っている。
     - そのため**場所をまたいだ食い違いは見えない**。本文がです・ますで見出しだけ「である」でも、見出しどうしが揃っていれば指摘されない（実例: 本書の前書き 13 行目の見出しは素通りし、同じ文を本文に置いた 15 行目だけが拾われた）。
     - 本文の判定では、リンク・インラインコード・画像・引用・強調（`*…*`）の中の文字を除く。
     - 独自ルールでも、場所ごとに分けるか（箇条書きは体言止めや動詞止めが多く、本文と同じ基準では誤検出が増える）、分けたうえで場所をまたいだ食い違いも見るかを決める。
   - **判定の単位は、箇条書きならリスト 1 つ**（上の規則で決まった）。現行ルールは章の箇条書きを 1 つにまとめて判定するので、体言止めのリストと文のリストを別々に置いても混在と言われるが、独自ルールではリストごとに見る。本文と見出しの単位は引き続き決める。
   - **進め方**: 本書の原稿で候補を出し、誤検出率を実測してから既定で有効にするか決める（交ぜ書き辞書の 2 段化と同じ流儀）。自動修正はしない——敬体と常体のどちらへ揃えるかは著者が決めること。
   - **実装したら片づけるもの**: 暫定の表示文の置き換え——`TextlintFormatter::RULE_SUMMARIES` の `'no-mix-dearu-desumasu' => '「である」と「です・ます」が混在しています。'` の行を削除する。この置き換えは、判定の実態（「である」で終わる文だけ）より広く聞こえる元の文言を抑えるための暫定措置で、本物の検出が入れば役目を終える。あわせて textlint 側の `no-mix-dearu-desumasu` を `SUPERSEDED_TEXTLINT_RULES` へ入れて常に切り、二重に指摘しないようにする。
-
-- [Medium] **textlint のプリセットの重複を解消する**: `config/.textlintrc.yml` は `preset-ja-technical-writing`（22 ルール）と `preset-japanese`（12 ルール）を併用しているが、**後者の 12 ルールのうち 11 は前者と同じもの**である（`max-ten`・`no-doubled-conjunctive-particle-ga`・`no-doubled-conjunction`・`no-double-negative-ja`・`no-doubled-joshi`・`sentence-length`・`no-dropping-the-ra`・`no-mix-dearu-desumasu`・`no-nfd`・`no-invalid-control-character`・`no-zero-width-spaces`。2026-09-15 に両プリセットのソースで確認）。後者にしか無いのは `no-kangxi-radicals` だけ。同じルールが 2 つの設定で動くため、次の不具合の根になっている。
-  - **設定の上書きが片方にしか届かない。** `book.yml` の `sentence_length_max` は `preset-ja-technical-writing` 側だけを書き換えるので、`preset-japanese` 側の上限 100 字が残る（`KNOWN_ISSUES.md`）。
-  - **片方だけを切れない。** `vs lint` は ruleId を短縮名で表示し、`disabled_rules` も短縮名で照合するので、同名のルールは両方まとめて止まる。`no-mix-dearu-desumasu` では、残したい混在検出（`preset-japanese` 側）まで止まる形になり、`.textlintrc.yml` で決め打ち（`preset-ja-technical-writing` 側）だけを `false` にして回避した。
-  - **同じ名前でも振る舞いが違い、表示から区別できない。** `no-mix-dearu-desumasu` は `preset-ja-technical-writing` では「箇条書きは『である』」の決め打ち、`preset-japanese` ではオプションなし＝自動判定で読み込まれていた。
-  - **案 A（推奨）: `preset-japanese` を外す。** 重複しない `no-kangxi-radicals` は単体のルールとして足し、`no-mix-dearu-desumasu` は `preset-ja-technical-writing` 側を自動判定（3 つの `preferIn*` を空にする）にして引き継ぐ。1 ルール 1 実体になり、上書きも無効化も素直に効く。
-  - **案 B: 併用のまま、上書きを両方のプリセットへ当てる。** `generate_runtime_config` と `SUPERSEDED_TEXTLINT_RULES` を「ルール名 → 含むプリセットの一覧」で引く形にする。重複は残るので、片方だけを切れない問題は解けない。
-  - **切り替える前に確かめること**: 同名ルールの既定オプションが 2 つのプリセットで違うもの（`sentence-length` はどちらも 100 字で同じ）と、本書全体の指摘件数が切り替えの前後でどう変わるか。`.textlintrc.yml` は `vs upgrade` の管理対象なので、既存のプロジェクトにも届く。
 
 - [Low] **参考文献サポート**: 簡易 BibTeX / CSL 相当の仕組みを検討する。脚注そのものは実装済み（`footnote_converter.rb`。リンクの脚注化も前処理で入っている）ので、残るのは**文献リストと引用の対応づけ**である。
 - [Low] **索引語数の目安（`BASE_TERMS`）を実測で見直す**: 現在の値は刊行済み技術書 10 冊の実測だが、**`thorough`（丁寧に索引を拾う本）は 2 冊しかない**（226・228）。幅が狭いのは冊数のせいで、その帯が本当に狭いことを意味しない。索引付きの技術書 PDF が増えたら追加計測して更新する。計測方法・生データ・落とし穴は `index-size-calibration-data.md`（§2 に精度の限界、§8 に「語彙リストより機構」の一般則）。

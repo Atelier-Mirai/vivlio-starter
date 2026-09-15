@@ -31,11 +31,17 @@
 
 - **`no-doubled-joshi`（一文に同じ助詞が 2 回以上）を既定で切った**。本書全体の 58 件を 1 件ずつ読むと、直す価値があったのは 12 件（2 割）で、残りは並列の言い回し（「辞書**も**レビューファイル**も**」「いつ**でも**何度**でも**」）17 件、役割の違う助詞（「頭の中**に**ある…本**に**まとめ…形**に**する」）17 件、定型表現（「〜**と**考える**と**わかりやすい」）8 件などだった。このルールは助詞の役割も並列も見分けないため、本書固有の事情ではなく作りの問題である。直す価値のあった 8 文は言い換え済み。
 
-  `config/.textlintrc.yml` で切った。`book.yml` の `disabled_rules` ではなくこちらにしたのは、`vs upgrade` の管理対象で**既存のプロジェクトにも届く**ため。このルールは `preset-ja-technical-writing` と `preset-japanese` の両方に入っているので、両方に `false` を書いている。
+  `config/.textlintrc.yml` で切った。`book.yml` の `disabled_rules` ではなくこちらにしたのは、`vs upgrade` の管理対象で**既存のプロジェクトにも届く**ため。
 
 - **`no-mix-dearu-desumasu` の表示文を「「である」と「です・ます」が混在しています。」に置き換えた**。元の文言は「箇条書き: "である"調 でなければなりません」「本文: "である"調 と "ですます"調 が混在」で、2 つの点で実態とずれていた。判定を担う `analyze-desumasu-dearu` は常体を「で」＋「ある」の並びだけで数えるのに、「"である"調」と言うと「〜だ」「〜する」まで見ているように読める。先頭の「箇条書き:」は問題の文の場所を示すものだが、箇条書き専用の機能に見える。場所の区別は外し、本文と箇条書きの指摘を 1 行に畳む。**暫定の措置である**——本物の敬体・常体検出（`PLANNED.md`）を実装したら削除する。
 
-  あわせて `config/.textlintrc.yml` で `preset-ja-technical-writing` 側の `no-mix-dearu-desumasu` を切った。このルールは 2 つのプリセットから別々の設定で読み込まれており、`ja-technical-writing` 側は「箇条書きは『である』で書く」と決め打ちする規定型、`japanese` 側は多数派と違う文を指摘する混在検出型だった。本書では 142 件の指摘のうち 141 件が規定型の好みの押し付けで、です・ますで揃った箇条書きを「である調でなければならない」と叩いていた。`book.yml` の `disabled_rules` で切ると短縮名で照合するため両方が止まり、混在検出まで失われる。
+  あわせて `config/.textlintrc.yml` で `preset-ja-technical-writing` 側の `no-mix-dearu-desumasu` を切った。このルールは 2 つのプリセットから別々の設定で読み込まれており、`ja-technical-writing` 側は「箇条書きは『である』で書く」と決め打ちする規定型、`japanese` 側は多数派と違う文を指摘する混在検出型だった。本書では 142 件の指摘のうち 141 件が規定型の好みの押し付けで、です・ますで揃った箇条書きを「である調でなければならない」と叩いていた。`book.yml` の `disabled_rules` で切ると短縮名で照合するため両方が止まり、混在検出まで失われる。その後、プリセットの重複そのものを解消し、`ja-technical-writing` 側を混在検出型の設定に切り替えた（次項）。
+
+- **textlint のプリセット `preset-japanese` を読むのをやめた**（`config/.textlintrc.yml`）。このプリセットの 12 ルールのうち 11 は `preset-ja-technical-writing` と同じもので（`sentence-length`・`no-mix-dearu-desumasu`・`no-doubled-joshi` ほか）、同じルールが 2 つの設定で動いていた。そのため 3 つの不具合の根になっていた——**上書きが片方にしか届かない**（`book.yml` の `lint.sentence_length_max` が `ja-technical-writing` 側だけを書き換え、`0` にしても `japanese` 側の上限 100 字で指摘が残った）、**片方だけを切れない**（`disabled_rules` は短縮名で照合するので両方が止まる）、**同じ名前で振る舞いが違う**（`no-mix-dearu-desumasu` は片方が決め打ち、片方が自動判定）。
+
+  重複しない 1 ルール、康煕部首の検出（`⽇本` の `⽇` のように、漢字と同じ字形の別の文字）は、Vivlio Starter の独自ルール `kanji-lookalike` へ移した。`--fix` で漢字へ置き換えられるのも従来どおり。npm の単体パッケージとして足さなかったのは、`vs upgrade` で設定だけが先に届くと、未導入のルールを読めずに textlint ごと止まるためである。文体の混在検出は `ja-technical-writing` 側の `no-mix-dearu-desumasu` を自動判定（`preferInBody` / `preferInHeader` / `preferInList` を空）にして引き継いだ。
+
+  **本書全体の指摘は切り替えの前後で 1 件も変わらない**（textlint の出力で 5,533 件。ルール名・行・桁・文言まで一致することを突き合わせた）。textlint は同じ位置・同じ文言の指摘を 1 件に畳むため、重複していた 11 ルールは表示上は二重に出ていなかった。`lint.sentence_length_max: 0` では一文の長さの指摘が 67 件から 0 件になる。`.textlintrc.yml` を更新していないプロジェクトのために、実行時の設定では `preset-japanese` が書かれていればそちらにも一文の長さの上書きを当て、`no-kanji-lookalikes` を切る（書かれていないプリセットは足さない）。
 
 - **スラッシュの指摘を「和文どうしのときだけ」に絞った**（`slash-between-japanese`）。textlint の `ja-no-space-around-slash` は「スラッシュの前後に空きを入れるな」としか言えず、**本書で 270 件ある `EPUB / Kindle` のような欧文の並列**まで叩いていた。詰めると一語に見えて読みにくく、これは日本語の技術書で広く使われる書き方である。さらに `しきい周波数 / Hz` は**単位を表す除算**で、`・` に置き換えると意味が変わる。
 
@@ -107,6 +113,8 @@
   `.vivliostyle/` は現行版が作らないことを実測で確かめた。CLI 11.1.0 は `workspaceDir` を省くと今もルート直下へ作るが、当パイプラインの 4 経路はすべて `workspaceDir` をワークスペース内へ向けた生成 config を渡している（`vivliostyle_config_writer.rb` / `epub_builder.rb`）。`.gitignore` の `/.vivliostyle/` だけは残した——著者が手で `npx vivliostyle build` を叩く余地があり、その 1 行に害はないため。
 
 ### Fixed
+
+- **`book.yml` の `lint.sentence_length_max` が効かなかった**。上限を変えても `0` で検査を止めても、上限 100 字の指摘が残っていた。一文の長さのルールが 2 つのプリセットに入っていて、片方しか書き換えていなかったため。プリセットの重複を解消して直した（Changed の `preset-japanese` の項）。
 
 - **`vs lint` が画像の幅指定を「表記ゆれ」と誤って指摘し、`--fix` が記法を壊していたのを直した**。`![](logo.webp){width=20%}` の半角 `%` に `spellcheck-tech-word` が当たり、「`%}` を `％}` へ」と指摘していた。これは**自動修正を持つ指摘**なので、`vs lint --fix` をかけると `{width=20％}` に書き換わり、**幅指定が効かなくなって画像が原寸で出る**（複製で実証）。原稿には値つきの属性記法が 73 箇所あり、`{width=40% align=center}` のような併記も含む。
 

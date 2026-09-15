@@ -30,7 +30,12 @@ rules:
   preset-ja-technical-writing:
     tech-word: true
     prefer-ja-no-space-around-paren: true  # かっこの周りのスペースを禁止
-    no-mix-dearu-desumasu: false  # 箇条書き項目を、「である」のみならず、「です」も許容
+    # 文体の混在（だ・である調とです・ます調）を、本文・見出し・箇条書きごとに多数派と比べて指摘する。
+    # プリセットの既定は「本文はです・ます、箇条書きはである」の決め打ちなので、3 つとも空（自動判定）にする
+    no-mix-dearu-desumasu:
+      preferInBody: ""
+      preferInHeader: ""
+      preferInList: ""
     no-doubled-joshi: false  # 並列（AもBも）や役割の違う助詞まで指摘し、本書で 8 割が不要な指摘だったため
     ja-no-successive-word: false  # 記号の重なり（★★☆☆☆・……・○○）まで指摘し、本書で 21 件中 20 件が誤検出だったため
     max-kanji-continuous-len:
@@ -49,10 +54,8 @@ rules:
       - ./textlint_dictionaries/js_primer.yml
       - ./textlint_rewrite.yml
 
-  # 一般的な日本語スタイルチェックのプリセット
-  preset-japanese:
-    no-mix-dearu-desumasu: true  # 文体の混在（だ・である調とです・ます調）を禁止
-    no-doubled-joshi: false  # 同上（このルールは両方のプリセットに入っている）
+  # preset-japanese は読まない。12 ルールのうち 11 は preset-ja-technical-writing と同じもので、
+  # 残る康煕部首の検出は vs lint の独自ルール（kanji-lookalike）が受け持つ
 
   # 和文・欧文のスペース統一（技術書での可読性向上）
   preset-ja-spacing:
