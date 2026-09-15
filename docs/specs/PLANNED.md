@@ -88,6 +88,14 @@
   - **進め方**: 本書の原稿で候補を出し、誤検出率を実測してから既定で有効にするか決める（交ぜ書き辞書の 2 段化と同じ流儀）。自動修正はしない——敬体と常体のどちらへ揃えるかは著者が決めること。
   - **実装したら片づけるもの**: 暫定の表示文の置き換え——`TextlintFormatter::RULE_SUMMARIES` の `'no-mix-dearu-desumasu' => '「である」と「です・ます」が混在しています。'` の行を削除する。この置き換えは、判定の実態（「である」で終わる文だけ）より広く聞こえる元の文言を抑えるための暫定措置で、本物の検出が入れば役目を終える。あわせて textlint 側の `no-mix-dearu-desumasu` を `SUPERSEDED_TEXTLINT_RULES` へ入れて常に切り、二重に指摘しないようにする。
 
+- [Medium] **textlint のプリセットの重複を解消する**: `config/.textlintrc.yml` は `preset-ja-technical-writing`（22 ルール）と `preset-japanese`（12 ルール）を併用しているが、**後者の 12 ルールのうち 11 は前者と同じもの**である（`max-ten`・`no-doubled-conjunctive-particle-ga`・`no-doubled-conjunction`・`no-double-negative-ja`・`no-doubled-joshi`・`sentence-length`・`no-dropping-the-ra`・`no-mix-dearu-desumasu`・`no-nfd`・`no-invalid-control-character`・`no-zero-width-spaces`。2026-09-15 に両プリセットのソースで確認）。後者にしか無いのは `no-kangxi-radicals` だけ。同じルールが 2 つの設定で動くため、次の不具合の根になっている。
+  - **設定の上書きが片方にしか届かない。** `book.yml` の `sentence_length_max` は `preset-ja-technical-writing` 側だけを書き換えるので、`preset-japanese` 側の上限 100 字が残る（`KNOWN_ISSUES.md`）。
+  - **片方だけを切れない。** `vs lint` は ruleId を短縮名で表示し、`disabled_rules` も短縮名で照合するので、同名のルールは両方まとめて止まる。`no-mix-dearu-desumasu` では、残したい混在検出（`preset-japanese` 側）まで止まる形になり、`.textlintrc.yml` で決め打ち（`preset-ja-technical-writing` 側）だけを `false` にして回避した。
+  - **同じ名前でも振る舞いが違い、表示から区別できない。** `no-mix-dearu-desumasu` は `preset-ja-technical-writing` では「箇条書きは『である』」の決め打ち、`preset-japanese` ではオプションなし＝自動判定で読み込まれていた。
+  - **案 A（推奨）: `preset-japanese` を外す。** 重複しない `no-kangxi-radicals` は単体のルールとして足し、`no-mix-dearu-desumasu` は `preset-ja-technical-writing` 側を自動判定（3 つの `preferIn*` を空にする）にして引き継ぐ。1 ルール 1 実体になり、上書きも無効化も素直に効く。
+  - **案 B: 併用のまま、上書きを両方のプリセットへ当てる。** `generate_runtime_config` と `SUPERSEDED_TEXTLINT_RULES` を「ルール名 → 含むプリセットの一覧」で引く形にする。重複は残るので、片方だけを切れない問題は解けない。
+  - **切り替える前に確かめること**: 同名ルールの既定オプションが 2 つのプリセットで違うもの（`sentence-length` はどちらも 100 字で同じ）と、本書全体の指摘件数が切り替えの前後でどう変わるか。`.textlintrc.yml` は `vs upgrade` の管理対象なので、既存のプロジェクトにも届く。
+
 - [Low] **参考文献サポート**: 簡易 BibTeX / CSL 相当の仕組みを検討する。脚注そのものは実装済み（`footnote_converter.rb`。リンクの脚注化も前処理で入っている）ので、残るのは**文献リストと引用の対応づけ**である。
 - [Low] **索引語数の目安（`BASE_TERMS`）を実測で見直す**: 現在の値は刊行済み技術書 10 冊の実測だが、**`thorough`（丁寧に索引を拾う本）は 2 冊しかない**（226・228）。幅が狭いのは冊数のせいで、その帯が本当に狭いことを意味しない。索引付きの技術書 PDF が増えたら追加計測して更新する。計測方法・生データ・落とし穴は `index-size-calibration-data.md`（§2 に精度の限界、§8 に「語彙リストより機構」の一般則）。
   - 2026-08-05 に `n月刊ラムダノートVol3No1(2021).pdf` を追加したが、**この誌に索引は無い**（本文中の「索引語」という語に当たるだけ）ので `thorough` の冊数は増えていない。章あたりの分量の較正には使えたため、そちらは `chapter-volume-calibration-data.md` §3.3.1 に記録済み。
