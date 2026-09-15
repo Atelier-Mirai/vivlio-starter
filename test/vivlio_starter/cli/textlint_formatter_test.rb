@@ -155,6 +155,25 @@ module VivlioStarter
         assert_equal ['10, 20', '100, 110', '200, 210'], rows.map { it[:lines] }, '同数なら出現行の早い順'
       end
 
+      # no-mix-dearu-desumasu は表示文を置き換える。判定の実態は「である」で終わる文だけなのに、
+      # 元の文言は「"である"調」と広く聞こえ、先頭の「箇条書き:」で箇条書き専用にも見えるため。
+      # 場所（本文・箇条書き）とプリセットの違いは区別せず、1 行に畳む
+      def test_aggregate_json_relabels_no_mix_dearu_desumasu
+        json = <<~JSON
+          [{ "filePath": "/proj/a.md", "messages": [
+            { "ruleId": "japanese/no-mix-dearu-desumasu", "message": "本文: である調 と ですます調 が混在", "line": 3 },
+            { "ruleId": "japanese/no-mix-dearu-desumasu", "message": "箇条書き: である調 と ですます調 が混在", "line": 8 },
+            { "ruleId": "ja-technical-writing/no-mix-dearu-desumasu", "message": "箇条書き: である調 でなければなりません", "line": 9 }
+          ] }]
+        JSON
+        rows = TextlintFormatter.aggregate_json(json, base_dir: '/proj')[:files].first[:rows]
+
+        assert_equal 1, rows.size, '場所とプリセットの違いを問わず 1 行に畳む'
+        assert_equal '[no-mix-dearu-desumasu] 「である」と「です・ます」が混在しています。', rows.first[:label]
+        assert_equal 3, rows.first[:count]
+        assert_equal '3, 8, 9', rows.first[:lines]
+      end
+
       # 不正な JSON は nil を返す（呼び出し側が生出力へフォールバックする）
       def test_aggregate_json_returns_nil_on_invalid
         assert_nil TextlintFormatter.aggregate_json('not json')

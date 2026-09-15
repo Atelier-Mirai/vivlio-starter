@@ -16,10 +16,10 @@ filters:
       - CodeBlock
       - Link
       - Image
-  
+
   # HTMLコメントによる除外（<!-- textlint-disable -->と<!-- textlint-enable -->で囲んだ部分を除外）
   comments: true
-  
+
   # 除外語句リスト（外部ファイルで管理）
   allowlist:
     allowlistConfigPaths:
@@ -30,6 +30,7 @@ rules:
   preset-ja-technical-writing:
     tech-word: true
     prefer-ja-no-space-around-paren: true  # かっこの周りのスペースを禁止
+    no-mix-dearu-desumasu: false  # 箇条書き項目を、「である」のみならず、「です」も許容
     max-kanji-continuous-len:
       max: 10  # 漢字の連続を10文字まで許可（書籍名・専門用語対応）
     no-exclamation-question-mark:
