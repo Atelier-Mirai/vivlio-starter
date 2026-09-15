@@ -12,6 +12,7 @@
 #     - setext-heading       改ページのつもりが見出しになる `---` / `===`（同 §7）
 #     - slash-between-japanese 和文どうしを半角スラッシュで並べた箇所
 #     - kanji-lookalike      漢字に見える康煕部首（`⽇本` の `⽇`）。1 対 1 の置換なので --fix できる
+#     - kansuji-counter-suffix 数と「つ」の表記。数は漢数字（`2 つ` → `二つ`）、記号の個数は算用数字
 #
 # なぜ prh 辞書ではなく Ruby なのか:
 #   交ぜ書きは 1 対 1 の置換なので config/textlint_rewrite.yml（prh）へ書けば
@@ -57,6 +58,7 @@ module VivlioStarter
         SETEXT_RULE          = 'setext-heading'
         SLASH_RULE           = 'slash-between-japanese'
         KANJI_LOOKALIKE_RULE = 'kanji-lookalike'
+        KANSUJI_COUNTER_RULE = 'kansuji-counter-suffix'
 
         # --fix で直せるルール。どちらも「この文字列はこう書く」が 1 つに決まる。
         FIXABLE_RULES = [MAZEGAKI_RULE, KANJI_LOOKALIKE_RULE].freeze
@@ -189,6 +191,7 @@ module VivlioStarter
           findings.concat(setext_findings(text))               unless rules.include?(SETEXT_RULE)
           findings.concat(slash_findings(text))                unless rules.include?(SLASH_RULE)
           findings.concat(kanji_lookalike_findings(text))      unless rules.include?(KANJI_LOOKALIKE_RULE)
+          findings.concat(kansuji_counter_findings(text))      unless rules.include?(KANSUJI_COUNTER_RULE)
           findings
         rescue Errno::ENOENT => e
           Common.log_warn("[lint] ファイルを読み込めませんでした: #{path} (#{e.message})")
@@ -288,6 +291,115 @@ module VivlioStarter
           pairs
         end
         private_class_method :slash_pairs
+
+        # --- 数と助数詞「つ」 -------------------------------------------------
+
+        # 漢数字（添字が数）
+        KANSUJI = %w[〇 一 二 三 四 五 六 七 八 九].freeze
+
+        # ひらがなで開いた数。4 以上は書かれることがまず無く、`やっつける` `むっつり` の
+        # ように別の語へ紛れるので拾わない。`ひとつづき` は「一続き」という別の語。
+        WAGO_NUMERALS = { 'ひとつ' => 1, 'ふたつ' => 2, 'みっつ' => 3 }.freeze
+
+        # 数＋「つ」。算用数字（`2つ` `2 つ`）・漢数字（`二つ`）・ひらがな（`ふたつ`）の 3 通り。
+        # 直前が数字や小数点のもの（`12つ` `1.5つ`）は数え方の「つ」ではないので除く。
+        COUNTER_SUFFIX = /
+          (?<![0-9０-９.])(?<arabic>[1-9])[ \t]?つ
+          | (?<![一二三四五六七八九十〇])(?<kansuji>[一二三四五六七八九])つ
+          | (?<wago>ひとつ(?!づき)|ふたつ|みっつ)
+        /x
+
+        # 記号の名前。数の隣にあれば「記号をいくつ書くか」の話なので、算用数字で書く。
+        #
+        # **記号の意味しか持たない名前だけを載せる。** `ハッシュ`（Ruby の Hash）・`パイプ`
+        # （Unix のパイプ）・`ドット`（ドット記法）・`文字`・`記号` は、載せると記号でない
+        # 数まで黙らせる——「1 つのハッシュで」を実際に黙らせた（本書 25 章）。
+        # 文脈で決まる箇所（「直前の 1 つだけ」が `---` を指すなど）は判定できないので、
+        # 著者が `<!-- vs-lint-disable-next-line -->` で黙らせる。
+        COUNTER_SYMBOL_NAMES = %w[
+          空白 空行 改行 タブ スペース 半角スペース 全角スペース
+          バッククォート バックティック ダブルクォート シングルクォート 引用符
+          かっこ 括弧 丸かっこ 角かっこ 波かっこ 山かっこ かぎかっこ
+          丸括弧 角括弧 波括弧 山括弧 かぎ括弧 ブレース ブラケット
+          縦棒 ハイフン アスタリスク アンダースコア アンダーバー チルダ キャレット
+          コロン セミコロン スラッシュ バックスラッシュ イコール 等号
+          シャープ 感嘆符 疑問符 アットマーク
+        ].sort_by { -it.length }.freeze
+
+        # 記号だけを書いたインラインコード（`---` `**`）。記号の名前と同じく扱う。
+        # 中身に英数字があるもの（`_index_glossary_review.md`）はファイル名などなので、
+        # 「`foo.md` は 4 つのセクション」を記号の個数と取らないよう除く（本書 33 章で実際に誤った）。
+        SYMBOL_ONLY_CODE = /\A`+[^\p{Alnum}`]+`+\z/
+
+        # 記号だけのコードを置き換える目印。私用領域の 1 文字なので原稿には現れず、
+        # 強調記法の除去（strip_emphasis）にも削られない。
+        SYMBOL_CODE_MARK = 0xE000.chr(Encoding::UTF_8)
+
+        COUNTER_SYMBOL = /(?:#{COUNTER_SYMBOL_NAMES.join('|')}|#{SYMBOL_CODE_MARK})/
+
+        # 名前が数の前にある形（`空白 2 つ` `バッククォートを 2 つ`）と、後ろにある形
+        # （`3 つのバッククォート` `3 つ以上のハイフン`）
+        SYMBOL_BEFORE_COUNT = /#{COUNTER_SYMBOL}[ \t]*[をがは]?[ \t]*\z/
+        SYMBOL_AFTER_COUNT  = /\A(?:以上の|以上|の)?[ \t]*#{COUNTER_SYMBOL}/
+
+        # 数と「つ」の表記の指摘。本書の方針（数は漢数字、記号の個数は算用数字）に
+        # 合わない書き方を拾う。
+        #
+        # **--fix しない。** 記号の個数かどうかは名前が隣にあるかで見ているだけで、文の
+        # 意味は読んでいない。自動で直すと、判定を外した箇所に「空白二つ」が黙って入る。
+        #
+        # 文体の選択なので、別の方針（JTF の「1つ」など）を採る著者は `disabled_rules` で切る。
+        def kansuji_counter_findings(text)
+          prose_lines(text).flat_map do |lineno, line|
+            protected_line, spans = Masking.protect_code(line)
+            spans.each do |placeholder, code|
+              protected_line = protected_line.sub(placeholder, SYMBOL_CODE_MARK) if code.match?(SYMBOL_ONLY_CODE)
+            end
+            body, = Masking.strip_emphasis(protected_line)
+            counter_suffixes(body).filter_map do |found, value, symbol|
+              kansuji_counter_finding(lineno, found, value, symbol)
+            end
+          end
+        end
+
+        # 1 行から [書かれた形, 数, 記号の個数か] を拾う
+        def counter_suffixes(body)
+          hits = []
+          body.to_enum(:scan, COUNTER_SUFFIX).each do
+            matched = ::Regexp.last_match
+            value = counter_value(matched)
+            symbol = body[0...matched.begin(0)].match?(SYMBOL_BEFORE_COUNT) ||
+                     body[matched.end(0)..].match?(SYMBOL_AFTER_COUNT)
+            hits << [matched[0], value, symbol]
+          end
+          hits
+        end
+        private_class_method :counter_suffixes
+
+        def counter_value(matched)
+          return matched[:arabic].to_i if matched[:arabic]
+          return KANSUJI.index(matched[:kansuji]) if matched[:kansuji]
+
+          WAGO_NUMERALS.fetch(matched[:wago])
+        end
+        private_class_method :counter_value
+
+        # 方針どおりなら nil。記号の個数は算用数字、それ以外は漢数字が正しい形。
+        def kansuji_counter_finding(lineno, found, value, symbol)
+          arabic = found.match?(/\A[1-9]/)
+          if symbol
+            return nil if arabic
+
+            Finding.new(line: lineno, rule: KANSUJI_COUNTER_RULE,
+                        label: "#{found} => #{value} つ（記号の個数は算用数字で）")
+          else
+            return nil if found.start_with?(*KANSUJI)
+
+            Finding.new(line: lineno, rule: KANSUJI_COUNTER_RULE,
+                        label: "#{found} => #{KANSUJI[value]}つ（数は漢数字で）")
+          end
+        end
+        private_class_method :kansuji_counter_finding
 
         # --- 康煕部首 --------------------------------------------------------
 

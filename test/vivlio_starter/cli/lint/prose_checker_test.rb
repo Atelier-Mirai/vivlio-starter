@@ -21,6 +21,7 @@
 #   PC-12: 集約表示は件数の多い順・同数なら最初の出現行の早い順に並ぶ
 #   PC-13: 和文どうしの並列スラッシュだけを指摘する（欧文の並列・単位は黙る）
 #   PC-14: 康煕部首を指摘し、--fix で漢字（新字体）へ置換する
+#   PC-15: 数と「つ」は漢数字、記号の個数は算用数字で書くよう指摘する（--fix しない）
 # ================================================================
 
 require_relative '../../../test_helper'
@@ -509,6 +510,76 @@ class TestProseChecker < Minitest::Test
 
   def test_should_respect_disabled_rules_for_kanji_lookalike
     assert_empty check("⽇本。\n", disabled_rules: ['kanji-lookalike']).select { it.rule == 'kanji-lookalike' }
+  end
+
+  # --- 数と助数詞「つ」（PC-15）---
+
+  def counter_labels(body, **)
+    check(body, **).select { it.rule == 'kansuji-counter-suffix' }.map(&:label)
+  end
+
+  # 算用数字（空きの有無を問わない）とひらがなは、漢数字を薦める
+  def test_should_suggest_kansuji_for_counts
+    assert_equal ['2 つ => 二つ（数は漢数字で）'], counter_labels("由来は 2 つあります。\n")
+    assert_equal ['5つ => 五つ（数は漢数字で）'], counter_labels("5つの論文です。\n")
+    assert_equal ['ひとつ => 一つ（数は漢数字で）'], counter_labels("ひとつ前の節です。\n")
+  end
+
+  def test_should_accept_kansuji_counts
+    assert_empty counter_labels("一つ一つ積み重ね、もう一つ、二つ目の手がかりを足します。\n")
+  end
+
+  # 数でない「ひとつ」、数え方でない数字は拾わない
+  def test_should_not_treat_other_words_as_counts
+    assert_empty counter_labels("すべての章がひとつづきの流れとして組まれます。\n")
+    assert_empty counter_labels("12つ、1.5つとは書きません。\n")
+  end
+
+  # 記号の名前が数の前にある形
+  def test_should_keep_arabic_counts_of_symbols_named_before
+    ['半角スペースを 1 つ以上空けます。', 'マーカーの後に空白 2 つを置きます。',
+     'バッククォートを 2 つ重ねます。', '`---` を 2 つ重ねてください。',
+     '**バッククォート**を 2 つ重ねます。'].each do |body|
+      assert_empty counter_labels("#{body}\n"), body
+    end
+  end
+
+  # 記号の名前が数の後ろにある形
+  def test_should_keep_arabic_counts_of_symbols_named_after
+    ['3 つのバッククォートで囲みます。', '3 つ以上のハイフンを並べます。'].each do |body|
+      assert_empty counter_labels("#{body}\n"), body
+    end
+  end
+
+  # 記号の個数を漢数字やひらがなで書いたら、算用数字を薦める
+  def test_should_suggest_arabic_for_counts_of_symbols
+    assert_equal ['二つ => 2 つ（記号の個数は算用数字で）'], counter_labels("空白二つを置きます。\n")
+    assert_equal ['ひとつ => 1 つ（記号の個数は算用数字で）'], counter_labels("バッククォートひとつで囲みます。\n")
+  end
+
+  # 英数字を含むインラインコード（ファイル名など）は記号ではない
+  def test_should_not_treat_code_with_letters_as_symbols
+    assert_empty counter_labels("`_index_glossary_review.md` は四つのセクションで構成されます。\n")
+    assert_equal ['4 つ => 四つ（数は漢数字で）'], counter_labels("`review.md` は 4 つのセクションです。\n")
+  end
+
+  # 記号以外の意味を持つ名前（ハッシュ＝Ruby の Hash）は登録していないので、数として扱う
+  def test_should_not_treat_ambiguous_names_as_symbols
+    assert_equal ['1 つ => 一つ（数は漢数字で）'], counter_labels("1 件のデータは 1 つのハッシュです。\n")
+  end
+
+  # lint の出力を書き写したインラインコードは検査しない
+  def test_should_not_report_counts_inside_code
+    assert_empty counter_labels("`arabic-kanji-numbers`（`一つ → 1つ`）を切ります。\n")
+  end
+
+  # 判定が名前の隣接だけに頼るので、自動修正の対象にしない
+  def test_should_not_make_counter_suffix_fixable
+    refute_includes PC::FIXABLE_RULES, 'kansuji-counter-suffix'
+  end
+
+  def test_should_respect_disabled_rules_for_counter_suffix
+    assert_empty counter_labels("由来は 2 つあります。\n", disabled_rules: ['kansuji-counter-suffix'])
   end
 
   # --- 表示 ---

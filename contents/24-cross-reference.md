@@ -152,7 +152,7 @@ h1 {
 参照先を書き忘れた裸の `@pageref` は 🔴 で指摘されます（`@pageref:install` のように `:` に続けて ID を書いてください）。
 :::
 
-実際の動きは本書自身で確かめられます。ひとつ前の節 @heading-label には `@heading-label` というラベルが付けてあり、ページ番号つきで参照すると @pageref:heading-label のようになります。
+実際の動きは本書自身で確かめられます。一つ前の節 @heading-label には `@heading-label` というラベルが付けてあり、ページ番号つきで参照すると @pageref:heading-label のようになります。
 
 ## ラベルIDの扱い
 
