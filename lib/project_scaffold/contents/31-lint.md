@@ -460,7 +460,7 @@ Vivlio Starter が独自に見るルール（`mazegaki` / `ambiguous-comparison`
 
 ### `allow_space_around_code` / `allow_space_between_ja_en`（和欧間スペースの許容）
 
-技術書では、`` `vs import` コマンド `` のようにインラインコードや英数字の前後にスペースを入れる書き方がよく使われます。これらを許容したい場合に `true` にします。
+技術書では、`` `vs import` コマンド `` のようにインラインコードや英数字の前後にスペースを入れる書き方がよく使われます。これらを許容したい場合は `true` にします。
 
 - `allow_space_around_code`: インラインコードと和文の間のスペースを許容
 - `allow_space_between_ja_en`: 全角と半角（英数・記号）の間のスペースを許容

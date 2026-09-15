@@ -516,7 +516,7 @@ bundle exec rake test
 
 ### YAML の扱い
 
-すべての YAML 読み込みで `YAML.safe_load` 系のみを使い、`permitted_classes` を明示します。`catalog.yml` は空（最小）、`data/*.yml` は実用に必要な範囲に限ります。`aliases: true` はプリセットの継承に使うため許可しています。`Psych::DisallowedClass` は素通しせず、ファイルパスとタグ名を含む日本語のメッセージへ変換して通知します。
+すべての YAML 読み込みで `YAML.safe_load` 系のみを使い、`permitted_classes` を明示します。`catalog.yml` は空（最小）、`data/*.yml` は実用上必要な範囲に限ります。`aliases: true` はプリセットの継承に使うため許可しています。`Psych::DisallowedClass` は素通しせず、ファイルパスとタグ名を含む日本語のメッセージへ変換して通知します。
 
 ### 常時有効とオプトアウトの区別
 
