@@ -31,6 +31,7 @@ rules:
     tech-word: true
     prefer-ja-no-space-around-paren: true  # かっこの周りのスペースを禁止
     no-mix-dearu-desumasu: false  # 箇条書き項目を、「である」のみならず、「です」も許容
+    no-doubled-joshi: false  # 並列（AもBも）や役割の違う助詞まで指摘し、本書で 8 割が不要な指摘だったため
     max-kanji-continuous-len:
       max: 10  # 漢字の連続を10文字まで許可（書籍名・専門用語対応）
     no-exclamation-question-mark:
@@ -50,6 +51,7 @@ rules:
   # 一般的な日本語スタイルチェックのプリセット
   preset-japanese:
     no-mix-dearu-desumasu: true  # 文体の混在（だ・である調とです・ます調）を禁止
+    no-doubled-joshi: false  # 同上（このルールは両方のプリセットに入っている）
 
   # 和文・欧文のスペース統一（技術書での可読性向上）
   preset-ja-spacing:
