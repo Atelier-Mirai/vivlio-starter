@@ -22,7 +22,7 @@ bin/install-ruby.zsh --no-bundler # bundler の導入をスキップ
 
 Spotlight から: `Cmd + Space` →「Terminal」と入力 → Enter。
 Finder から: アプリケーション → ユーティリティ → Terminal.app。
-[iTerm2](https://iterm2.com/) や [Warp](https://www.warp.dev/) などの代替ターミナルも利用できます。
+[iTerm2](https://iterm2.com/)や[Warp](https://www.warp.dev/)などの代替ターミナルも利用できます。
 :::
 
 ## Vivlio Starter のインストール
@@ -220,7 +220,7 @@ vs --version
 
 | 症状 | 原因 | 解決策 |
 | :--- | :--- | :--- |
-| `brew` が見つからない | Homebrew 未インストール | `vs doctor --fix` または [brew.sh](https://brew.sh) を参照 |
+| `brew` が見つからない | Homebrew 未インストール | `vs doctor --fix` または[brew.sh](https://brew.sh)を参照 |
 | `npm` が見つからない | Node.js 未インストール | `vs doctor --fix` で Node.js をインストール後、再実行 |
 | Xcode CLT のインストールが完了しない | GUI 承認が必要 | インストーラ完了後に `vs doctor --fix` を再実行 |
 | Homebrew の PATH が通らない（Apple Silicon） | `/opt/homebrew/bin` が PATH に未追加 | `echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile && source ~/.zprofile` |

@@ -51,13 +51,13 @@ Vivlio Starter の開発は、[Re:VIEW Starter](https://kauplan.org/reviewstarte
 :::{.sideimage-right}
 ![](vivliostyle_logo.webp){width=20%}
 
-また、Vivlio Starter のコアエンジンである [Vivliostyle](https://vivliostyle.org/)の作者・開発チームの皆様にも、深く感謝申し上げます。CSS 組版という優れた技術と、オープンソースとしての惜しみない公開があってこそ、Vivlio Starter は生まれました。
+また、Vivlio Starter のコアエンジンである[Vivliostyle](https://vivliostyle.org/)の作者・開発チームの皆様にも、深く感謝申し上げます。CSS 組版という優れた技術と、オープンソースとしての惜しみない公開があってこそ、Vivlio Starter は生まれました。
 :::
 
 :::{.sideimage-right}
 ![](hayase_hiromu.webp){width=20%}
 
-表紙・裏表紙の女の子は、千葉県松戸市在住のフリーランス SD イラストレーター [早瀬ひろむ](https://hiromu-hayase.tumblr.com)さんの作品です。素敵なイラストを描いてくださり、ありがとうございます。
+表紙・裏表紙の女の子は、千葉県松戸市在住のフリーランス SD イラストレーター[早瀬ひろむ](https://hiromu-hayase.tumblr.com)さんの作品です。素敵なイラストを描いてくださり、ありがとうございます。
 :::
 
 ## 著者紹介
