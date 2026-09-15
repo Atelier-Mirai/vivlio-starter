@@ -32,6 +32,7 @@ rules:
     prefer-ja-no-space-around-paren: true  # かっこの周りのスペースを禁止
     no-mix-dearu-desumasu: false  # 箇条書き項目を、「である」のみならず、「です」も許容
     no-doubled-joshi: false  # 並列（AもBも）や役割の違う助詞まで指摘し、本書で 8 割が不要な指摘だったため
+    ja-no-successive-word: false  # 記号の重なり（★★☆☆☆・……・○○）まで指摘し、本書で 21 件中 20 件が誤検出だったため
     max-kanji-continuous-len:
       max: 10  # 漢字の連続を10文字まで許可（書籍名・専門用語対応）
     no-exclamation-question-mark:
