@@ -289,6 +289,8 @@ macOS であれば、`vs doctor --fix` で Kindle Previewer 3 の導入（Homebr
 
 手動で導入する場合は、[Amazon KDP のサイト](https://kdp.amazon.co.jp/ja_JP/help/topic/G202131170)から Kindle Previewer をダウンロードしてください。インストール後、ターミナルで `which kindlepreviewer` を実行し、コマンドにパスが通っているか確認できます。パスが通っていない場合は、Kindle Previewer のインストール先（macOS では `/Applications/Kindle Previewer 3.app` 配下）にパスを通してください。
 
+Kindle Previewer は macOS 版と Windows 版だけが配布されており、Linux（WSL を含む）では `.kpf` への変換を行えません。Linux で執筆する場合は、Kindle 用の中間 EPUB までを生成し、変換は macOS か Windows で行ってください。
+
 :::{.note}
 **生成された KPF の確認**
 
