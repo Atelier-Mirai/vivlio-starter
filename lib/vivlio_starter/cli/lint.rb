@@ -355,11 +355,15 @@ module VivlioStarter
         # いう単位の除算まで叩いてしまう。和文どうしのときだけ `・` / `／` を薦める
         # `slash-between-japanese`（ProseChecker）へ寄せた。
         #
+        # `ja-no-space-around-parentheses` はかっこの隣の空白をすべて叩き、`--fix` で削る。
+        # `**DTP ソフト**（InDesign） — 紙面を…` のような区切りの空白まで詰めてしまうので、
+        # 区切り記号の隣を許容する `space-around-brackets`（ProseChecker）へ寄せた。
+        #
         # `no-kanji-lookalikes` は `kanji-lookalike`（ProseChecker）へ移した。雛形はもう
         # `preset-japanese` を読まないが、`.textlintrc.yml` を更新していないプロジェクト
         # では残っているので、二重に指摘しないよう切る。
         SUPERSEDED_TEXTLINT_RULES = {
-          'preset-ja-spacing' => %w[ja-no-space-around-slash],
+          'preset-ja-spacing' => %w[ja-no-space-around-slash ja-no-space-around-parentheses],
           'preset-japanese' => %w[no-kanji-lookalikes]
         }.freeze
 

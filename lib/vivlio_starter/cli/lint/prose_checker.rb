@@ -11,6 +11,7 @@
 #     - indented-code-block  非対応の 4 スペース字下げコードブロック（同 §6）
 #     - setext-heading       改ページのつもりが見出しになる `---` / `===`（同 §7）
 #     - slash-between-japanese 和文どうしを半角スラッシュで並べた箇所
+#     - space-around-brackets  かっこの隣の空白。区切り記号（`） — `）や強調の閉じの隣は許容
 #     - kanji-lookalike      漢字に見える康煕部首（`⽇本` の `⽇`）。1 対 1 の置換なので --fix できる
 #     - kansuji-counter-suffix 数と「つ」の表記。数は漢数字（`2 つ` → `二つ`）、記号の個数は算用数字
 #
@@ -57,6 +58,7 @@ module VivlioStarter
         INDENTED_CODE_RULE   = 'indented-code-block'
         SETEXT_RULE          = 'setext-heading'
         SLASH_RULE           = 'slash-between-japanese'
+        BRACKET_SPACE_RULE   = 'space-around-brackets'
         KANJI_LOOKALIKE_RULE = 'kanji-lookalike'
         KANSUJI_COUNTER_RULE = 'kansuji-counter-suffix'
 
@@ -190,6 +192,7 @@ module VivlioStarter
           findings.concat(indented_code_findings(text))        unless rules.include?(INDENTED_CODE_RULE)
           findings.concat(setext_findings(text))               unless rules.include?(SETEXT_RULE)
           findings.concat(slash_findings(text))                unless rules.include?(SLASH_RULE)
+          findings.concat(bracket_space_findings(text))        unless rules.include?(BRACKET_SPACE_RULE)
           findings.concat(kanji_lookalike_findings(text))      unless rules.include?(KANJI_LOOKALIKE_RULE)
           findings.concat(kansuji_counter_findings(text))      unless rules.include?(KANSUJI_COUNTER_RULE)
           findings
@@ -291,6 +294,93 @@ module VivlioStarter
           pairs
         end
         private_class_method :slash_pairs
+
+        # --- かっこの隣の空白 -------------------------------------------------
+
+        OPENING_BRACKETS = %w[（ ［ 「 『].freeze
+        CLOSING_BRACKETS = %w[） ］ 」 』].freeze
+
+        # 空白の反対側にあれば、その空白は区切りのために置いたものと見なす記号。
+        # `**DTP ソフト**（InDesign） — 紙面を…` のダッシュ、`` `@prop-list` → 「表 4-2」 `` の矢印、
+        # `**五十音順ソート** - 「あ行」` のハイフン、`**文体の統一**: 「です・ます調」` のコロン、
+        # `高品質 / 標準（既定） / 軽量` の並列のスラッシュ（`EPUB / Kindle` と同じ書き方）。
+        # `|` は表のセル境界で、textlint（セルの文字列を切り出して見る）も指摘しなかった。
+        BRACKET_SPACE_SEPARATORS = %w[— – → - : ： / |].freeze
+
+        # 強調記法の記号。空白の手前にあれば閉じ（`**参照:** 「…」`）なので許容する。
+        # 空白の後ろにあるのは開き（`「引用」 **太字**`）で、こちらは許容しない。
+        EMPHASIS_MARKS = %w[* _ ~].freeze
+
+        # 行頭のブロック記法（字下げ・箇条書き・番号・引用・見出し・定義リスト）。
+        # ここに含まれる空白は記法の一部で、かっこの隣でも指摘しない（`- 「あ行」`）。
+        BLOCK_PREFIX = /\A[ \t　]*(?:(?:[-*+>:]|\d{1,9}[.)]|\#{1,6})[ \t　]+)*/
+
+        BRACKET_SPACE = /[ \t　]+/
+
+        # インラインコードを埋める文字。私用領域の 1 文字なので原稿には現れず、
+        # コードの長さぶん並べるので、行の中の位置は元の行とずれない。
+        BRACKET_CODE_MARK = 0xE001.chr(Encoding::UTF_8)
+
+        # かっこの隣に入った空白の指摘。
+        #
+        # textlint の `ja-no-space-around-parentheses` は「かっこの隣に空白があれば指摘」
+        # としか言えず、本書では 18 件すべてが区切りのために置いた空白だった（`） — ` `**参照:** 「`
+        # など）。しかも textlint は自動修正を持つので、`vs lint --fix` がその空白を削って
+        # `（Word・Pages）— 画面で` のように詰めてしまう。そこで本ルールで置き換え、
+        # 空白の反対側が区切り記号・強調の閉じ・行末のときは黙る（切り替えは lint.rb の
+        # SUPERSEDED_TEXTLINT_RULES）。
+        #
+        # 半角の `[` `]` は見ない。Markdown ではリンク・脚注・タスクリスト・索引語の記法で、
+        # 前後に空白が入るのが正しい書き方である。
+        #
+        # 空白を詰めるか区切り記号を足すかは文脈で決まるので、`--fix` しない。
+        def bracket_space_findings(text)
+          prose_lines(text).flat_map do |lineno, line|
+            original = line.chomp
+            masked   = original.gsub(Masking::INLINE_CODE_SPAN) { BRACKET_CODE_MARK * it.length }
+            bracket_spaces(masked).map do |start, finish|
+              before = original[0...start][/\S{1,8}\z/]
+              after  = original[finish..][/\A\S{1,8}/]
+              Finding.new(line: lineno, rule: BRACKET_SPACE_RULE,
+                          label: "#{before}#{original[start...finish]}#{after} => #{before}#{after}" \
+                                 '（かっこの隣の空白）')
+            end
+          end
+        end
+
+        # 1 行から、指摘すべき空白を [開始, 終了] で拾う
+        def bracket_spaces(line)
+          prefix_end = line[BLOCK_PREFIX].length
+          spaces = []
+          line.to_enum(:scan, BRACKET_SPACE).each do
+            matched = ::Regexp.last_match
+            next if matched.begin(0) < prefix_end
+
+            left  = matched.begin(0).positive? ? line[matched.begin(0) - 1] : nil
+            right = line[matched.end(0)]
+            spaces << [matched.begin(0), matched.end(0)] if bracket_space?(left, right)
+          end
+          spaces
+        end
+        private_class_method :bracket_spaces
+
+        # 空白の左右の文字から、指摘すべきかを決める。行末の空白（改行の手前）は見ない。
+        def bracket_space?(left, right)
+          return false if right.nil?
+
+          case [OPENING_BRACKETS.include?(left), CLOSING_BRACKETS.include?(right)]
+          in [true, true] then false # `「 」` は空白そのものを示している
+          in [true, _] | [_, true] then true # かっこの内側
+          else
+            (OPENING_BRACKETS.include?(right) && !spacing_left?(left)) ||
+              (CLOSING_BRACKETS.include?(left) && !BRACKET_SPACE_SEPARATORS.include?(right))
+          end
+        end
+        private_class_method :bracket_space?
+
+        # 開きかっこの手前の空白を許容する左側の文字（区切り記号か強調の閉じ）
+        def spacing_left?(left) = BRACKET_SPACE_SEPARATORS.include?(left) || EMPHASIS_MARKS.include?(left)
+        private_class_method :spacing_left?
 
         # --- 数と助数詞「つ」 -------------------------------------------------
 

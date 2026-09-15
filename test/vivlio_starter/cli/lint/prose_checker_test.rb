@@ -22,6 +22,7 @@
 #   PC-13: 和文どうしの並列スラッシュだけを指摘する（欧文の並列・単位は黙る）
 #   PC-14: 康煕部首を指摘し、--fix で漢字（新字体）へ置換する
 #   PC-15: 数と「つ」は漢数字、記号の個数は算用数字で書くよう指摘する（--fix しない）
+#   PC-16: かっこの隣の空白を指摘する（区切り記号・強調の閉じ・記法の空白は黙る）
 # ================================================================
 
 require_relative '../../../test_helper'
@@ -477,6 +478,58 @@ class TestProseChecker < Minitest::Test
     findings = check("有効/無効を切り替えます。\n", disabled_rules: ['slash-between-japanese'])
 
     assert_empty findings.select { it.rule == 'slash-between-japanese' }
+  end
+
+  # --- かっこの隣の空白（PC-16）---
+
+  def bracket_labels(body, **)
+    check(body, **).select { it.rule == 'space-around-brackets' }.map(&:label)
+  end
+
+  # かっこの内側の空白と、和文の中でかっこの外側に入った空白は指摘する
+  def test_should_report_space_beside_brackets_in_prose
+    assert_equal ['これは（ 補足 => これは（補足（かっこの隣の空白）', '補足 ）です。 => 補足）です。（かっこの隣の空白）'],
+                 bracket_labels("これは（ 補足 ）です。\n")
+    assert_equal ['ここで 「引用」と書く。 => ここで「引用」と書く。（かっこの隣の空白）'],
+                 bracket_labels("ここで 「引用」と書く。\n")
+    assert_equal ['文の（補足） です。 => 文の（補足）です。（かっこの隣の空白）'], bracket_labels("文の（補足） です。\n")
+  end
+
+  # 区切り記号の隣の空白は、区切りのために置いたものとして黙る（本書 11・24・31・33・91 章の実例）
+  def test_should_allow_space_between_bracket_and_separator
+    body = <<~MD
+      - **DTP ソフト**（InDesign） — 紙面を自由に設計できます。
+      - `@prop-list` → 「表 4-2」へのリンク
+      - **五十音順ソート** - 「あ行」「か行」などでグループ化
+      **文体の統一**: 「です・ます調」の混在をチェック
+      高品質 / 標準（既定） / 軽量品質プリセットを使う
+    MD
+
+    assert_empty bracket_labels(body)
+  end
+
+  # 強調の閉じの後ろは許容し、強調の開きの手前は指摘する
+  def test_should_allow_space_after_closing_emphasis_only
+    assert_empty bracket_labels("**参照:** 「インストール詳細」\n")
+    assert_empty bracket_labels("**語ごとに 1 回だけ。** 「〜とは」の文です。\n")
+    assert_equal ['「引用」 **太字** => 「引用」**太字**（かっこの隣の空白）'], bracket_labels("「引用」 **太字** です。\n")
+  end
+
+  # 行頭のブロック記法・表のセル境界・行末（ハード改行）の空白は記法の一部
+  def test_should_not_report_space_from_markdown_structure
+    body = "- 「あ行」\n1. 「か行」\n> 「引用」\n| 「セル」 | 値 |\n「改行」  \n本文。\n"
+
+    assert_empty bracket_labels(body)
+  end
+
+  # 空白だけを囲んだかっこは空白そのものを示している。コードの中も見ない
+  def test_should_not_report_space_shown_in_brackets_or_code
+    assert_empty bracket_labels("全角空白「　」を入れます。\n")
+    assert_empty bracket_labels("`（ a ）` と書きます。\n")
+  end
+
+  def test_should_respect_disabled_rules_for_space_around_brackets
+    assert_empty bracket_labels("ここで 「引用」と書く。\n", disabled_rules: ['space-around-brackets'])
   end
 
   # --- 康煕部首（PC-14）---
