@@ -128,6 +128,16 @@ rules:
     patterns: 第4引数
   - expected: 第五引数
     patterns: 第5引数
+  # 数え方の「通り」は漢数字で書く（一つ・二つ と同じ扱い）。副詞の「ひととおり」も
+  # 漢字に揃える——二通り・三通りと並べたとき、一だけ姿が変わるのを避けるため
+  - expected: 一通り
+    patterns:
+      - /ひと(通り|とおり)/
+      - /1\s*通り/
+  - expected: 二通り
+    patterns: /2\s*通り/
+  - expected: 三通り
+    patterns: /3\s*通り/
   - expected: （$1）
     pattern:  /\((.+?)\)/
     specs:

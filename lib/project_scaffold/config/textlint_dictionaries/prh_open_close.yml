@@ -144,9 +144,6 @@ rules:
   - expected: はやる
     pattern: 流行る
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
-  - expected: ひととおり
-    pattern: /(一|ひと)通り/
-    prh: ひらがなで書くと読みやすくなります（ひらく漢字）
   - expected: ほとんど
     pattern: 殆ど
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
@@ -246,8 +243,14 @@ rules:
     patterns: 付ける
   - expected: 何
     patterns: なに
-  - expected: はじめ$1
-    patterns: /始め(に|る)/
+  - expected: はじめに
+    patterns: /(始|初)めに(?!くい)/
+    specs:
+      - from: 始めに用語を決めます
+        to:   はじめに用語を決めます
+      - from: 書き始めにくい語
+        to:   書き始めにくい語
+    prh: 副詞の「はじめに」はひらく。動詞の「始める」は漢字のまま
   - expected: $1人
     patterns: /(する)ひと/
   - expected: $1方
@@ -340,9 +343,18 @@ rules:
         to:   よい
       - from: 良い例
         to:   良い例
-  - expected: とおり
-    pattern:  通り
-    prh: 漢字で書かず、ひらがなで書くと読みやすくなります。"どおり"のケースもありえます
+  - expected: $1とおり
+    pattern:  /(の|た)通り/
+    specs:
+      - from: 各行の意味は次の通りです
+        to:   各行の意味は次のとおりです
+      - from: 予想通りの結果
+        to:   予想通りの結果
+      - from: 中央大通りを東へ
+        to:   中央大通りを東へ
+      - from: 書き方は二通りあります
+        to:   書き方は二通りあります
+    prh: 形式名詞の「とおり」はひらく（次のとおり）。名詞に直接付くもの（予想通り・大通り）と数詞（二通り）はそのまま
   - expected: $1中
     pattern:  /(その)なか/
     prh: ひらがなで書かず、漢字で書くと読みやすくなります

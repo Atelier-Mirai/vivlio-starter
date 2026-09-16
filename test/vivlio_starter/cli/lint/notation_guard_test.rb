@@ -11,6 +11,7 @@
 #   - G2 コンテナのマーカー行の空行化（内部の地の文は残す）
 #   - G3 ふりがな記法（親文字は地の文なので残す）
 #   - G4 クラス属性記法の除去
+#   - G6 fancy list のマーカーを標準リストへ読み替える（字下げの保存・誤爆防止）
 #   - コード領域（フェンス・インラインコード）を 1 文字も変えないこと
 #   - I1 行数の保存
 #
@@ -141,6 +142,41 @@ module VivlioStarter
           source = "この段落は右寄せにします。{.text-right}\n"
 
           assert_equal "この段落は右寄せにします。\n", NotationGuard.strip_notation(source)
+        end
+
+        # ----------------------------------------------------------------
+        # G6: fancy list のマーカー
+        # ----------------------------------------------------------------
+        # textlint のパーサは Pandoc 由来のマーカーを知らず、リストを段落として読む。
+        # 標準の `-` へ読み替えて、箇条書きのための検査（ListItem の除外）へ載せる。
+        def test_should_rewrite_fancy_list_markers_as_standard_list_items
+          source = "(1) 括弧付き数字の項目\n(2) 二番目の項目\na. 英字の項目\n(iv) ローマ数字の項目\n"
+
+          assert_equal "- 括弧付き数字の項目\n- 二番目の項目\n- 英字の項目\n- ローマ数字の項目\n",
+                       NotationGuard.strip_notation(source)
+        end
+
+        # 入れ子は字下げで表すので、字下げを保ったまま読み替える。
+        def test_should_keep_indent_of_nested_fancy_list_markers
+          source = "1. 概要\n   (a) 選択肢イ\n   (b) 選択肢ロ\n2. インストール方法\n"
+
+          assert_equal "1. 概要\n   - 選択肢イ\n   - 選択肢ロ\n2. インストール方法\n",
+                       NotationGuard.strip_notation(source)
+        end
+
+        # 大文字＋ピリオドに空白 1 つは前処理もリストにしない（`B. Russell` 誤爆防止）。
+        # 判定に迷う行はガードしない＝素のまま渡す。
+        def test_should_not_rewrite_a_sentence_that_begins_like_an_uppercase_marker
+          source = "B. Russell は哲学者です。\n"
+
+          assert_equal source, NotationGuard.strip_notation(source)
+        end
+
+        def test_should_not_rewrite_fancy_list_markers_inside_code_fence
+          source = "書き方は次のとおりです。\n\n```markdown\n(1) 括弧付き数字の項目\n```\n"
+
+          assert_equal source, NotationGuard.strip_notation(source),
+                       'フェンス内の記法解説は 1 文字も変えないこと'
         end
 
         # ----------------------------------------------------------------

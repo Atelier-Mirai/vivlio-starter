@@ -35,6 +35,7 @@
 # ================================================================
 
 require_relative '../masking'
+require_relative '../pre_process/markdown_transformer'
 require_relative '../pre_process/math_transformer'
 
 module VivlioStarter
@@ -170,7 +171,7 @@ module VivlioStarter
             if !prose.include?(lineno)          then line          # コード領域は不変
             elsif machine.include?(lineno)      then blank(line)   # G1 機械データ・ブロック
             elsif line.match?(CONTAINER_MARKER) then blank(line)   # G2 コンテナのマーカー行
-            else neutralize_inline(line)                           # G3 ふりがな → G4 クラス属性
+            else neutralize_inline(delist_fancy_marker(line))      # G6 fancy list → G3 ふりがな → G4 クラス属性
             end
           end.join
         end
@@ -211,6 +212,28 @@ module VivlioStarter
           lines
         end
         private_class_method :machine_block_lines
+
+        # fancy list のマーカー（`(1)` `a.` `(iv)` など）を、標準リストの `-` へ読み替える。
+        #
+        # textlint の Markdown パーサは Pandoc 由来のこの記法を知らないため、**リストが
+        # 段落として読まれていた**。すると箇条書きのために外してある検査が素通りし、
+        # `ja-no-mixed-period` が項目の末尾に句点を要求する（実測: 本書 21 章で 2 件。
+        # 同ルールは 3.0.2 で `ListItem` を最初から除外しており、標準の `-` や `1.` なら黙る）。
+        # 文体の混在を見る `no-mix-dearu-desumasu` も、箇条書き用の判定器へ回らない。
+        #
+        # マーカーの綴りは**前処理の `parse_list_marker` が正典**で、ここで別に書かない
+        # ——lint が見る範囲とビルドがリストとして組む範囲がずれるため（数式と同じ流儀）。
+        # 読み替えるのは fancy マーカーだけ（標準のマーカーは textlint が解釈できる）で、
+        # 大文字＋ピリオドに空白 1 つの `B. Russell は…` は前処理もリストにしないので素のまま渡す。
+        # 本文は 1 文字も変えない（I3）。行番号も動かない（I1）。
+        def delist_fancy_marker(line)
+          transformer = PreProcessCommands::MarkdownTransformer
+          marker = transformer.parse_list_marker(line)
+          return line unless marker && transformer.fancy_marker?(marker) && transformer.acceptable_list_start?(marker)
+
+          "#{' ' * marker.indent}- #{marker.body}#{line[/\R\z/]}"
+        end
+        private_class_method :delist_fancy_marker
 
         # 行内の記法を中和する（G3 → G4 → G5）。
         # 地の文が記法を「解説している」インラインコード（例: `{.aki}` の書き方を

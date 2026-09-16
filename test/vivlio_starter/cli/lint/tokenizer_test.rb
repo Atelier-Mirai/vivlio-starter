@@ -253,6 +253,34 @@ class TestTokenizer < Minitest::Test
     refute_includes words, 'photoelectric-table'
   end
 
+  # ページ番号つきの参照 @pageref:ラベル も 1 つの記法として除外されることを確認する
+  def test_cross_reference_label_with_pageref_excluded
+    words = T.tokenize("参照すると @pageref:heading-label のようになります\n").map { _1[0] }
+    refute_includes words, 'heading-label'
+    refute_includes words, 'pageref'
+  end
+
+  # 脚注のラベルは記法なので除外し、定義行の説明文は検査対象に残すことを確認する
+  def test_footnote_label_excluded_but_definition_text_kept
+    words = T.tokenize("[^folio-offset]: この値は viewer ごとに違います\n").map { _1[0] }
+    refute_includes words, 'folio-offset'
+    assert_includes words, 'viewer'
+  end
+
+  # 可変長のコードスパン（記法の解説）で、後続の地の文までコード扱いが外れないことを確認する
+  def test_variable_length_code_span_does_not_leak
+    line = "```` ```mermaid ```` のようなフェンスは `notation-implementation-guide.md` にあります\n"
+
+    assert_empty T.tokenize(line).map { _1[0] }
+  end
+
+  # 値が URL の記法（@qr:）で、URL の中身が語として取り出されないことを確認する
+  def test_directive_with_url_value_excluded
+    words = T.tokenize("サンプルはこちら: @qr:https://github.com/Atelier-Mirai/vivlio-starter\n").map { _1[0] }
+
+    assert_empty words
+  end
+
   # メールアドレスは相互参照ラベルとして誤って分解されないことを確認する
   def test_email_address_not_treated_as_label
     words = T.tokenize("contact@example.com まで\n").map { _1[0] }

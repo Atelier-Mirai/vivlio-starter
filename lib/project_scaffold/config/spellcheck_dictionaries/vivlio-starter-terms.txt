@@ -9,6 +9,7 @@
 
 # vivlio-starter 固有の機能・記法・コマンド・内部名
 querystream
+parenthetical
 query-stream
 renumber
 add-missing
@@ -63,9 +64,14 @@ ornament
 Coated
 typography
 glossary
+recto
+verso
 
 # PDF・画像・組版ツール
 HexaPDF
+Prawn
+CombinePDF
+pdf-reader
 poppler
 pdftotext
 pdftoppm
@@ -80,6 +86,14 @@ vips
 libvips
 mathjax-full
 rasterize
+mermaid-cli
+mmdc
+
+# mermaid の図の種別
+sequenceDiagram
+classDiagram
+stateDiagram
+erDiagram
 
 # OCR・自然言語処理
 OCR
@@ -104,6 +118,7 @@ scaffold
 # 文章メトリクス・CSS
 TTR
 Type-Token
+Moving-Average
 Flesch
 Kincaid
 TF-IDF
@@ -126,8 +141,13 @@ Aaron
 Swartz
 Fireball
 
+# 本書が引用した論文の著者
+Covington
+McFall
+
 # ライセンス・略語
 AGPL
 
 # よく使うファイル拡張子・略語
 yml
+bak

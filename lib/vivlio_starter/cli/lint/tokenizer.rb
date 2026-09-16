@@ -146,14 +146,24 @@ module VivlioStarter
         # @param line [String] 1行のMarkdownテキスト
         # @return [Array<String>] 抽出された英単語の配列
         def extract_words(line)
-          cleaned = line.dup
-          cleaned.gsub!(/`[^`]*`/, ' ')                          # インラインコードを除去
+          # インラインコードの退避は Masking（コード領域解釈の唯一の実装）へ委ねる。
+          # 自前の /`[^`]*`/ はバッククォートを 1 つずつ数えるため、可変長のコードスパン
+          # （```` ```mermaid ```` のような記法の解説）で対が食い違い、**後続の地の文まで
+          # コード扱いを外して**しまっていた（実測: 61 章でファイル名が未知語になった）。
+          protected_line, = Masking.protect_code(line)
+          cleaned = protected_line.gsub(/#{Masking::CODE_SPAN_PLACEHOLDER_PREFIX}\d+__/, ' ')
           cleaned.gsub!(/<[^>]+>/, ' ')                          # HTMLタグを除去
           cleaned.gsub!(/\{[^}]*\}/, ' ')                        # Vivliostyle拡張記法 {.aki} 等
-          cleaned.gsub!(/(?<![A-Za-z0-9_])@[A-Za-z][A-Za-z0-9-]*/, ' ') # 相互参照ラベル @id（メールは除外）
+          # URL は**ラベルより先に**落とす。`@qr:https://example.com/Foo` のように
+          # 値が URL の記法があり、先にラベルを削ると `@qr:https` までが消えて
+          # 残りが URL と認識されなくなる（実測: リポジトリ名が未知語になった）
+          cleaned.gsub!(%r{https?://\S+}, ' ')                   # URLを除去
+          # 相互参照ラベル @id（メールは除外）。`@pageref:見出しラベル` のように
+          # コロンで続く形も 1 つの記法なので、まとめて落とす
+          cleaned.gsub!(/(?<![A-Za-z0-9_])@[A-Za-z][A-Za-z0-9-]*(?::[A-Za-z][A-Za-z0-9-]*)?/, ' ')
+          cleaned.gsub!(/\[\^[^\]]*\]/, ' ')                     # 脚注のラベル [^id]（定義行の説明文は残す）
           cleaned.gsub!(/!?\[([^\]]*)\]\([^)]*\)/, '\1') # Markdownリンク・画像
           cleaned.gsub!(/!?\[([^\]]*)\]\[[^\]]*\]/, '\1')        # 参照リンク
-          cleaned.gsub!(%r{https?://\S+}, ' ')                   # URLを除去
           cleaned.gsub!(/^#+\s*/, '')                            # 見出し記号を除去
 
           cleaned.scan(/[a-zA-Z]+(?:-[a-zA-Z]+)*/).select { it.length >= 2 }

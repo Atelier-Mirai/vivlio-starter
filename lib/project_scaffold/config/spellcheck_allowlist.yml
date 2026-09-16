@@ -36,3 +36,7 @@
 - "vivlio-starter"
 - "vivliostyle"
 - "Vivlio"
+
+# 会話文の話者名（本書の作例。config/talk.yml の話者キー）
+- "haruka"
+- "mirai"

@@ -141,6 +141,7 @@ Mangeia
 Manjaro
 MariaDB
 MegaLinter
+Mermaid
 Microsoft
 Miniconda
 Mint
