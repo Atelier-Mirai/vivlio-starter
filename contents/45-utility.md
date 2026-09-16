@@ -89,7 +89,7 @@ pdf:
   compress: true   # ビルド後に自動圧縮（処理時間が増加）
 ```
 
-処理時間が増えるため、普段は `false` に設定しておき、必要なときだけ `vs pdf:compress` コマンドを使うのがおすすめです。自動圧縮が有効な場合でも `vs build --no-compress` で一時的にスキップできます。
+処理時間が増えるため、普段は `false` に設定しておき、必要なときだけ `vs pdf:compress` コマンドを使うのがお勧めです。自動圧縮が有効な場合でも `vs build --no-compress` で一時的にスキップできます。
 
 :::{.column}
 **ヒント**: `vs build` で自動圧縮が有効（`pdf.compress: true`）な場合、ビルド後に `_compressed` 付きのファイルが自動生成されます。`vs pdf:compress` は既存の PDF を後から圧縮したい場合や、自動圧縮を無効にしている環境で使います。
@@ -290,7 +290,7 @@ CSS のカスケード（後から読み込まれたスタイルが優先され�
 | `--column-font-size` | `8pt` | コラムの文字サイズ |
 
 :::{.column}
-**ヒント**: `book.yml` の `theme.color` や `page.use` で設定できる項目は、まず `book.yml` で設定するのがおすすめです。`custom.css` は `book.yml` では設定できない細かな調整に使ってください。
+**ヒント**: `book.yml` の `theme.color` や `page.use` で設定できる項目は、まず `book.yml` で設定するのがお勧めです。`custom.css` は `book.yml` では設定できない細かな調整に使ってください。
 :::
 
 ### 実践例

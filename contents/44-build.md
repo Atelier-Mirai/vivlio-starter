@@ -294,7 +294,7 @@ Kindle Previewer は macOS 版と Windows 版だけが配布されており、Li
 :::{.note}
 **生成された KPF の確認**
 
-`.kpf` ファイルは Kindle Previewer 3 で開いて、実機に近いプレビューで表示を確認できます。KDP にアップロードする前に、扉絵・コード・表・数式などが意図どおり表示されるか確認することをおすすめします。
+`.kpf` ファイルは Kindle Previewer 3 で開いて、実機に近いプレビューで表示を確認できます。KDP にアップロードする前に、扉絵・コード・表・数式などが意図どおり表示されるか確認することをお勧めします。
 :::
 
 
@@ -491,7 +491,7 @@ output:
 ```
 
 :::{.column}
-**ヒント**: 執筆中は `targets: pdf` で内容を確認し、入稿前に `targets: pdf, print_pdf` に切り替えて入稿用 PDF を生成する、という使い分けがおすすめです。電子書籍も同時に生成したい場合は `targets: pdf, epub, kindle` としてください（クリーン EPUB と Kindle 用 KPF の両方が出力されます）。
+**ヒント**: 執筆中は `targets: pdf` で内容を確認し、入稿前に `targets: pdf, print_pdf` に切り替えて入稿用 PDF を生成する、という使い分けがお勧めです。電子書籍も同時に生成したい場合は `targets: pdf, epub, kindle` としてください（クリーン EPUB と Kindle 用 KPF の両方が出力されます）。
 :::
 
 

@@ -125,9 +125,6 @@ rules:
   - expected: 公算が大きい
     patterns: 公算が強い
     prh: （誤字）
-  - expected: 公算が大きい
-    patterns: 公算が強い
-    prh: （誤字）
   - expected: 最小限
     patterns: 最少限
     prh: （誤字）
@@ -259,10 +256,7 @@ rules:
     prh: （誤字）
   - expected: 愛嬌を振りまく
     patterns: 愛想を振りまく
-    prh: （誤字）
-  - expected: 愛想が良い
-    patterns: 愛想を振りまく
-    prh: （誤字）
+    prh: （誤字。「愛想が良い」と言い換えることもできます）
   - expected: 所期の目的
     patterns: 初期の目的
     prh: （誤字）
@@ -480,3 +474,46 @@ rules:
   - expected: 高嶺の花
     patterns: 高値の花
     prh: （誤字）
+
+  # --- 誤字 ---
+  - expected: オブジェクト
+    patterns:
+      - オブジェクと
+  - expected: $1進数
+    patterns:
+      - /(\d+)真数/
+  - expected: 機会が$1
+    patterns: /機械が(多い|ある|あり)/
+    specs:
+      - from: 機械がある
+        to:   機会がある
+    prh: 機械という単語が出てきたら直します
+  - expected: 状態で
+    patterns: 常体で
+  - expected: する場合は
+    patterns: する倍は
+  - expected: 宣言的
+    patterns: 宣言亭
+  - expected: コンストラクタ
+    patterns:
+      - 今ストラク
+      - コンストラスト
+  - expected: 子クラス
+    patterns:
+      - 小クラス
+  - expected: されています
+    patterns:
+      - されいます
+  - expected: 同期処理
+    patterns:
+      - 動機処理
+  - expected: 反復処理
+    patterns:
+      - 反覆処理
+  - expected: 疎な配列
+    patterns: 疎の配列
+    prh: sparse arrayのこと
+  - expected: 密な配列
+    patterns: 密の配列
+  - expected: 式文
+    patterns: 文式

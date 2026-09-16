@@ -754,9 +754,6 @@ rules:
     expected: ノーマライザー
     prh: 語尾が -er, -or, -ar で終わる語彙には長音を付けます（外来語カタカナ表記）
 
-  - pattern: /ハンドラ(?!([ーァ-ヴ]))/
-    expected: ハンドラー
-    prh: 語尾が -er, -or, -ar で終わる語彙には長音を付けます（外来語カタカナ表記）
 
   - pattern: /ハンマ(?!([ーァ-ヴ]))/
     expected: ハンマー
@@ -1253,3 +1250,36 @@ rules:
   - pattern: /ローカライザ(?!([ーァ-ヴ]))/
     expected: ローカライザー
     prh: 語尾が -er, -or, -ar で終わる語彙には長音を付けます（外来語カタカナ表記）
+
+  # --- 外来語のカタカナ表記 ---
+  - expected: プリフィックス
+    patterns:
+      - /prefix/i
+      - /プレフィックス/i
+  - expected: ローカルサーバー
+    patterns:
+      - /ローカルサーバ(?!ー)/
+  - expected: エントリー
+    patterns: /エントリ(?!ー)/
+  - expected: クォート
+    patterns: クオート
+  - expected: サーバー
+    patterns: /サーバ(?!ー)/
+  - expected: フィルタリング
+    patterns: フィルターリング
+  - expected: バッククォート
+    patterns:
+      - バックティック
+      - バッククオート
+  - expected: ガベージコレクション
+    patterns:
+      - /ガーベッジコレクション|ガーベッジコレクション|ガーベジコレクション/
+  - expected: クロージャー
+    patterns:
+      - /クロージャ(?!ー)/
+    specs:
+      - from: クロージャで
+        to:   クロージャーで
+  - expected: サーバーサイド
+    patterns:
+      - サーバサイド
