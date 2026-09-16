@@ -141,7 +141,7 @@ npm 経由のものは node が前提です。node が未導入なら先に Home
 
 - **Xcode Command Line Tools**（`xcode-select --install`）と **Homebrew**（公式インストーラ）— 未導入なら、インストール前に確認プロンプトが出ます
 - **textlint** — 日本語技術書向けのルールセットまで一括で導入し、設定ファイルも `config/` へ自動配置します
-- **waifu2x-ncnn-vulkan** — Homebrew では配布されていないため、GitHub Releases から直接ダウンロードします
+- **`waifu2x-ncnn-vulkan`** — Homebrew では配布されていないため、GitHub Releases から直接ダウンロードします
 - **Kindle Previewer 3** — `brew install --cask kindle-previewer` に加えて起動用のラッパーを作ります。`targets: kindle` で Kindle 用ファイルを作るときだけ必要な任意ツールです
 
 各ツールの詳細なインストール方法や最新の手順については、各ツールの公式サイトや最新のドキュメントを参照してください。ツールのバージョンや手順は変わることがあるため、公式情報や AI アシスタントで確認するのが確実です。
