@@ -174,6 +174,20 @@ module VivlioStarter
         assert_equal '3, 8, 9', rows.first[:lines]
       end
 
+      # 冗長表現の指摘に付く `【dict2】`（ルール内部のパターン番号）は落とす。
+      # 同じ指摘が別のパターン番号で出ることはないので、集約の単位は変わらない
+      def test_aggregate_json_drops_dictionary_tag
+        json = <<~JSON
+          [{ "filePath": "/proj/a.md", "messages": [
+            { "ruleId": "ja-technical-writing/ja-no-redundant-expression",
+              "message": "【dict2】 \\"することもできます\\"は冗長な表現です。\\n解説: https://example.com#dict2", "line": 73 }
+          ] }]
+        JSON
+        rows = TextlintFormatter.aggregate_json(json, base_dir: '/proj')[:files].first[:rows]
+
+        assert_equal '[ja-no-redundant-expression] "することもできます"は冗長な表現です。', rows.first[:label]
+      end
+
       # 不正な JSON は nil を返す（呼び出し側が生出力へフォールバックする）
       def test_aggregate_json_returns_nil_on_invalid
         assert_nil TextlintFormatter.aggregate_json('not json')

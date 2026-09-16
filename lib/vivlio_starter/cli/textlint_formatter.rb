@@ -109,8 +109,14 @@ module VivlioStarter
         RULE_SUMMARIES[short_rule(rule_id)] || message_head(message)
       end
 
+      # 指摘の頭に付くパターン番号（`ja-no-redundant-expression` の `【dict2】`）。
+      # ルールが内部で持つ 6 つのパターンの名前で、2 行目に添えられる解説 URL の
+      # アンカー（`…#dict2`）でもある。`vs lint` は先頭行だけを見せるので、
+      # 著者の手元には意味の読み取れない記号だけが残る。
+      DICTIONARY_TAG = /\A【dict\d+】[ 　]*/
+
       # メッセージの先頭行（actionable な指摘部分。prh の置換や ja-spacing の本文）
-      def self.message_head(message) = message.to_s.lines.first.to_s.strip
+      def self.message_head(message) = message.to_s.lines.first.to_s.strip.sub(DICTIONARY_TAG, '')
 
       # ルール ID を短縮（"ja-spacing/ja-space-around-code" → "ja-space-around-code"）
       def self.short_rule(rule_id) = rule_id.to_s.split('/').last.to_s
