@@ -34,11 +34,11 @@ class TestProseChecker < Minitest::Test
   MazegakiDictionary = VivlioStarter::CLI::Lint::MazegakiDictionary
 
   # 原稿を一時ファイルへ書いて検査する（check はパスを受け取るため）
-  def check(body, disabled_rules: [])
+  def check(body, disabled_rules: [], parenthetical_max: nil)
     Dir.mktmpdir do |dir|
       path = File.join(dir, 'chapter.md')
       File.write(path, body)
-      PC.check(path, disabled_rules: disabled_rules)
+      PC.check(path, disabled_rules: disabled_rules, parenthetical_max: parenthetical_max)
     end
   end
 
@@ -530,6 +530,52 @@ class TestProseChecker < Minitest::Test
 
   def test_should_respect_disabled_rules_for_space_around_brackets
     assert_empty bracket_labels("ここで 「引用」と書く。\n", disabled_rules: ['space-around-brackets'])
+  end
+
+  # --- 長すぎる補足（PC-17）---
+
+  def parenthetical_labels(body, **)
+    check(body, **).select { it.rule == 'long-parenthetical' }.map(&:label)
+  end
+
+  # 和文が 60 字を超える補足を指摘する（本書の最長は 39 字）
+  def test_should_report_long_parenthetical
+    long = 'ここで指定した値はあとから変えると版面が動いてしまうので、最初に決めておくほうが安全ですが、迷ったときは既定のままにしておいても構いません'
+    labels = parenthetical_labels("本文です（#{long}）。\n")
+
+    assert_equal 1, labels.size
+    assert_includes labels.first, '補足として長すぎます'
+    assert_includes labels.first, "和文 #{long.length} 字"
+  end
+
+  # 句点で区切って数える。短い文が並んでいるだけの補足は黙る
+  def test_should_count_each_sentence_in_parenthetical
+    body = "単位を選べます（`lh` は行の高さ、`mm` や `rem` も使えます。省略すると `mm` として扱います。" \
+           "負の値を書くと詰まります。例は次の節にあります）。\n"
+
+    assert_empty parenthetical_labels(body)
+  end
+
+  # 値の列挙は補足ではないので、欧文とインラインコードは字数に数えない
+  def test_should_not_count_latin_enumeration_in_parenthetical
+    body = "色を選べます（yellow / orange / red / magenta / purple / indigo / navy / blue / green / lime / teal / cyan）。\n"
+
+    assert_empty parenthetical_labels(body)
+  end
+
+  def test_should_respect_disabled_rules_for_long_parenthetical
+    long = 'あ' * 80
+
+    assert_empty parenthetical_labels("本文（#{long}）。\n", disabled_rules: ['long-parenthetical'])
+  end
+
+  # book.yml lint.parenthetical_length_max で上限を変えられる（0 は :off として渡る）
+  def test_should_accept_parenthetical_limit_from_config
+    body = "本文（#{'あ' * 30}）。\n"
+
+    assert_empty parenthetical_labels(body), '既定の 60 字では黙る'
+    assert_equal 1, parenthetical_labels(body, parenthetical_max: 20).size, '上限を下げると指摘する'
+    assert_empty parenthetical_labels("本文（#{'あ' * 80}）。\n", parenthetical_max: :off), '0（:off）で検査しない'
   end
 
   # --- 康煕部首（PC-14）---

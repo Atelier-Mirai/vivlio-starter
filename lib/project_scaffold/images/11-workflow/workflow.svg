@@ -27,7 +27,7 @@
 
 <!-- Step 1: プロジェクト作成 -->
 <rect x="180" y="30" width="320" height="72" rx="10" class="box-teal" stroke-width="0.5"/>
-<text class="th th-teal" x="340" y="62" text-anchor="middle" dominant-baseline="central">① プロジェクト作成</text>
+<text class="th th-teal" x="340" y="62" text-anchor="middle" dominant-baseline="central">(1) プロジェクト作成</text>
 <text class="ts ts-teal" x="340" y="86" text-anchor="middle" dominant-baseline="central">vs new mybook（内部で vs doctor --fix を自動実行）</text>
 <text class="sub" x="522" y="66" dominant-baseline="central">環境構築も自動</text>
 
@@ -36,7 +36,7 @@
 
 <!-- Step 2: 執筆 -->
 <rect x="180" y="138" width="320" height="72" rx="10" class="box-teal" stroke-width="0.5"/>
-<text class="th th-teal" x="340" y="166" text-anchor="middle" dominant-baseline="central">② 執筆</text>
+<text class="th th-teal" x="340" y="166" text-anchor="middle" dominant-baseline="central">(2) 執筆</text>
 <text class="ts ts-teal" x="340" y="190" text-anchor="middle" dominant-baseline="central">Markdown で原稿を書く（contents/*.md）</text>
 <text class="sub" x="522" y="168" dominant-baseline="central">vs create</text>
 <text class="sub" x="522" y="184" dominant-baseline="central">vs rename</text>
@@ -46,12 +46,12 @@
 
 <!-- Step 3: 整える -->
 <rect x="180" y="246" width="320" height="72" rx="10" class="box-purple" stroke-width="0.5"/>
-<text class="th th-purple" x="340" y="274" text-anchor="middle" dominant-baseline="central">③ 整える</text>
+<text class="th th-purple" x="340" y="274" text-anchor="middle" dominant-baseline="central">(3) 整える</text>
 <text class="ts ts-purple" x="340" y="298" text-anchor="middle" dominant-baseline="central">文章の品質を確認・改善する</text>
 <text class="sub" x="522" y="268" dominant-baseline="central">vs lint</text>
 <text class="sub" x="522" y="284" dominant-baseline="central">vs metrics</text>
 
-<!-- 繰り返し矢印（②↔③） -->
+<!-- 繰り返し矢印（(2)↔(3)） -->
 <path d="M 500 282 Q 548 282 548 210 Q 548 138 500 138" fill="none" stroke="#aaa" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
 <text class="sub" x="564" y="216" text-anchor="middle" dominant-baseline="central">繰り返す</text>
 
@@ -60,7 +60,7 @@
 
 <!-- Step 4: ビルド -->
 <rect x="180" y="354" width="320" height="72" rx="10" class="box-amber" stroke-width="0.5"/>
-<text class="th th-amber" x="340" y="382" text-anchor="middle" dominant-baseline="central">④ ビルド</text>
+<text class="th th-amber" x="340" y="382" text-anchor="middle" dominant-baseline="central">(4) ビルド</text>
 <text class="ts ts-amber" x="340" y="406" text-anchor="middle" dominant-baseline="central">PDF / EPUB / Kindle を生成する</text>
 <text class="sub" x="522" y="376" dominant-baseline="central">vs build</text>
 <text class="sub" x="522" y="392" dominant-baseline="central">vs cover *</text>
@@ -70,7 +70,7 @@
 
 <!-- Step 5: 入稿・配布 -->
 <rect x="180" y="462" width="320" height="72" rx="10" class="box-coral" stroke-width="0.5"/>
-<text class="th th-coral" x="340" y="490" text-anchor="middle" dominant-baseline="central">⑤ 入稿・配布</text>
+<text class="th th-coral" x="340" y="490" text-anchor="middle" dominant-baseline="central">(5) 入稿・配布</text>
 <text class="ts ts-coral" x="340" y="514" text-anchor="middle" dominant-baseline="central">印刷所入稿 / 電子書籍配信</text>
 <text class="sub" x="522" y="482" dominant-baseline="central">print_pdf</text>
 <text class="sub" x="522" y="498" dominant-baseline="central">epub</text>
@@ -88,6 +88,6 @@
 <line x1="160" y1="390" x2="178" y2="390" stroke="#aaa" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
 
 <!-- 下部ノート -->
-<text class="sub" x="340" y="556" text-anchor="middle" dominant-baseline="central">②〜③は何度でも繰り返せます。④は章単位でも実行できます（vs build 10-intro）。</text>
+<text class="sub" x="340" y="556" text-anchor="middle" dominant-baseline="central">(2)〜(3) は何度でも繰り返せます。(4) は章単位でも実行できます（vs build 10-intro）。</text>
 <text class="sub" x="340" y="574" text-anchor="middle" dominant-baseline="central">* vs cover はカバー個別生成用。未生成時は vs build が自動で呼び出します。</text>
 </svg>

@@ -197,6 +197,7 @@ module VivlioStarter
       # ------- lint -------
       %i[lint disabled_rules]                         => Spec[default: ["arabic-kanji-numbers"]],
       %i[lint sentence_length_max]                    => Spec[default: 100],
+      %i[lint parenthetical_length_max]               => Spec[default: 60],
       %i[lint trim_long_vowel]                        => Spec[default: true],
       %i[lint allow_space_around_code]                => Spec[default: true],
       %i[lint allow_space_between_ja_en]              => Spec[default: true],

@@ -379,6 +379,12 @@ lint:
 
   sentence_length_max: 100 # 一文の最大文字数（sentence-length）。未指定なら既定 100
                            # 好みに応じて 80 / 120 など。0 を書くと長さを検査しません
+                           # 丸かっこの中は数えません（補足は読み飛ばせるため）。
+                           # 補足の長さは次の parenthetical_length_max が見ます
+
+  parenthetical_length_max: 60 # かっこ内の補足の最大文字数（long-parenthetical）。未指定なら既定 60
+                               # 句点で区切り、インラインコードと欧文を除いた和文で数えます
+                               # 0 を書くと補足の長さを検査しません
 
   trim_long_vowel: true # 技術者向けに「サーバ／パラメータ／フィルタ」等の
                         # 末尾長音を省く文体を選ぶ場合は true

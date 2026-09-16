@@ -40,11 +40,6 @@ rules:
   - expected: うまく
     pattern: 巧く
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
-  - patterns:
-      - お勧め
-      - おすすめ
-    expected: オススメ
-    prh: カタカナで書くと読みやすくなります（ひらく漢字）
   - pattern: 面白い
     expected: おもしろい
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
@@ -61,9 +56,6 @@ rules:
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
   - pattern: 下さい
     expected: ください
-    prh: ひらがなで書くと読みやすくなります（ひらく漢字）
-  - expected: さきほど
-    pattern: 先程
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
   - expected: さまざま
     pattern: 様々
@@ -93,9 +85,6 @@ rules:
   - expected: すべて
     pattern: /(全て|総て)/
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
-  - pattern: 全て
-    expected: すべて
-    prh: ひらがなで書くと読みやすくなります（ひらく漢字）
   - pattern: そう言う
     expected: そういう
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
@@ -114,14 +103,12 @@ rules:
   - expected: ちょうど
     pattern: /(丁度|調度)/
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
+  # 開くのは可能の「できる」だけ。完成を表す「出来上がる」は「出来栄え」と同じく漢字で書く
   - expected: でき$1
-    pattern: /出来(る|て|た|ま|上が)/
+    pattern: /出来(る|て|た|ま)/
     specs:
-      - from: 出来上がった
-        to: でき上がった
-    prh: ひらがなで書くと読みやすくなります（ひらく漢字）
-  - pattern: 出来る
-    expected: できる
+      - from: 出来ました
+        to: できました
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
   - expected: どういうとき
     pattern: どういう時
@@ -140,9 +127,6 @@ rules:
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
   - expected: なぜ
     pattern: 何故
-    prh: ひらがなで書くと読みやすくなります（ひらく漢字）
-  - pattern: 何故か
-    expected: なぜか
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
   - expected: ならびに
     pattern: /([横縦])?並びに/
@@ -165,9 +149,6 @@ rules:
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
   - expected: ほとんど
     pattern: 殆ど
-    prh: ひらがなで書くと読みやすくなります（ひらく漢字）
-  - pattern: 殆ど
-    expected: ほとんど
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
   - pattern: 真面目に
     expected: まじめに
@@ -210,3 +191,183 @@ rules:
   - pattern: 電話を掛ける
     expected: 電話をかける
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
+
+  # --- ひらく漢字・閉じる漢字と送り仮名 ---
+  - expected: $1ずつ
+    patterns: /(\d+[個つ]?)づつ/
+    specs:
+      - from: 2個づつ
+        to  : 2個ずつ
+      - from: 2つづつ
+        to  : 2つずつ
+  - expected: 箇所
+    patterns: /[ヶか]所/
+    specs:
+      - from: 一ヶ所
+        to  : 一箇所
+      - from: 2か所
+        to  : 2箇所
+  - expected: $1個
+    patterns: /([0-9]+)コ/i
+    prh: "https://github.com/asciidwango/js-primer/issues/979"
+  - expected: 呼び出す
+    patterns: 呼びだす
+  - expected: 見てい$1
+    patterns: /見て行(く|き)/
+    specs:
+      - from: では、実際にどのように書くかの例を見て行きたいと思います。
+        to:   では、実際にどのように書くかの例を見ていきたいと思います。
+  - expected: どのような
+    patterns: /どういう(?!こと)/
+    specs:
+      - from: どういうものがthenableなのか
+        to:   どのようなものがthenableなのか
+  - expected: $1とき
+    pattern:  /(の)時(?!点|代|々|間|刻|期)/
+  - expected: 明らか
+    patterns: あきらか
+  - expected: カッコ
+    patterns: かっこ
+  - expected: カッコ
+    patterns: 括弧
+  - expected: 疑似
+    patterns: 擬似
+  - expected: ループごと
+    patterns: ループ毎
+    prh: 毎 -> ごと
+  - expected: $1際
+    patterns: /(する)さい/
+    prh: さい -> 際
+  - expected: 先程
+    patterns:
+      - さきほど
+      - 先ほど
+  - expected: つける
+    patterns: 付ける
+  - expected: 何
+    patterns: なに
+  - expected: はじめ$1
+    patterns: /始め(に|る)/
+  - expected: $1人
+    patterns: /(する)ひと/
+  - expected: $1方
+    patterns: /(する)かた/
+    prh: かたと読む場合は方にする
+  - expected: 元々
+    patterns: もともと
+    prh: もと -> 元に統一。基づくは例外
+  - expected: 基づく
+    patterns: もとづく
+  - expected: やり取り
+    patterns: やりとり
+  - expected: リンゴ
+    patterns: りんご
+  - expected: あるわけ
+    patterns: ある訳
+    prh: 〜する訳 -> 〜するわけ
+  - expected: あてはめる
+    patterns: 当てはめる
+  - expected: あふれる
+    patterns: 溢れる
+  - expected: 表す
+    patterns: あらわす
+  - expected: 入れる
+    patterns: いれる
+  - expected: 受け取り
+    patterns: 受けとり
+  - expected: 行う
+    patterns: おこなう
+  - expected: を押す
+    patterns: をおす
+    prh: 〜をおす -> 〜を押す
+  - expected: 終わる
+    patterns: おわる
+    prh: おわりに -> 終わりに
+  - expected: 関わる
+    patterns: かかわる
+  - expected: 気づく
+    patterns: 気付く
+  - expected: 異なる
+    patterns: ことなる
+  - expected: 過ぎる
+    prh: 「〜にすぎない」はひらがな、「〜過ぎる」などは漢字にします。
+    patterns: すぎる
+  - expected: すぎない
+    prh: 「〜にすぎない」はひらがな、「〜過ぎる」などは漢字にします。
+    patterns: 過ぎない
+  - expected: たどる
+    patterns: 辿る
+  - expected: つなぐ
+    patterns: 繋ぐ
+  - expected: 取り出す
+    patterns: 取りだす
+    prh: だす -> 出す
+  - expected: 入る
+    patterns: はいる
+  - expected: 開く
+    patterns: ひらく
+  - expected: 待つこと
+    patterns: まつこと
+    prh: まつ -> 待つ
+  - expected: 呼びます
+    patterns: よびます
+    prh: よぶ -> 呼ぶ
+  - expected: 分ける
+    patterns: わける
+  - expected: 渡す
+    patterns: わたす
+  - expected: うま$
+    patterns: /上手(く|い)/
+  - expected: うれしい
+    patterns: 嬉しい
+  - expected: すばらしい
+    patterns: 素晴らしい
+  - expected: 難しい
+    patterns: むずかしい
+  - expected: 改めて
+    patterns: あらためて
+  - expected: 必ず
+    patterns: かならず
+  - expected: 再び
+    patterns: ふたたび
+  - expected: という
+    patterns: と言う
+  - expected: よい
+    pattern:  /良い(?!例)/
+    prh: 良し悪しを評価する表現は"良い"、しなくていい、など評価でない表現は"よい"を使います
+    specs:
+      - from: 良い
+        to:   よい
+      - from: 良い例
+        to:   良い例
+  - expected: とおり
+    pattern:  通り
+    prh: 漢字で書かず、ひらがなで書くと読みやすくなります。"どおり"のケースもありえます
+  - expected: $1中
+    pattern:  /(その)なか/
+    prh: ひらがなで書かず、漢字で書くと読みやすくなります
+  - expected: きれい
+    pattern:  綺麗
+    prh: 漢字で書かず、ひらがなで書くと読みやすくなります
+  - expected: $1ように
+    pattern:  /(の)様に/
+    prh: 漢字で書かず、ひらがなで書くと読みやすくなります
+  - expected: 次$1
+    pattern:  /(?:下記|以下)(の|に)/
+    specs:
+      - from: 以下の
+        to:   次の
+      - from: 以下に
+        to:   次に
+      - from: 次回
+        to:   次回
+      - from: 下記の
+        to:   次の
+    prh: 書籍の場合は、以下ではなく次を利用します（常に下にあるとは限らないため）
+  - expected: お勧め
+    patterns:
+      - おすすめ
+      - オススメ
+    prh: ひらがなで書かず、漢字で書くと読みやすくなります
+  - expected: うるう年
+    patterns: 閏年

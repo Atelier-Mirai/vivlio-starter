@@ -12,6 +12,7 @@
 #     - setext-heading       改ページのつもりが見出しになる `---` / `===`（同 §7）
 #     - slash-between-japanese 和文どうしを半角スラッシュで並べた箇所
 #     - space-around-brackets  かっこの隣の空白。区切り記号（`） — `）や強調の閉じの隣は許容
+#     - long-parenthetical   長すぎる補足（丸かっこの中の和文が 60 字を超える）
 #     - kanji-lookalike      漢字に見える康煕部首（`⽇本` の `⽇`）。1 対 1 の置換なので --fix できる
 #     - kansuji-counter-suffix 数と「つ」の表記。数は漢数字（`2 つ` → `二つ`）、記号の個数は算用数字
 #
@@ -59,6 +60,7 @@ module VivlioStarter
         SETEXT_RULE          = 'setext-heading'
         SLASH_RULE           = 'slash-between-japanese'
         BRACKET_SPACE_RULE   = 'space-around-brackets'
+        LONG_PARENTHETICAL_RULE = 'long-parenthetical'
         KANJI_LOOKALIKE_RULE = 'kanji-lookalike'
         KANSUJI_COUNTER_RULE = 'kansuji-counter-suffix'
 
@@ -180,8 +182,9 @@ module VivlioStarter
         # @param path [String] 対象の原稿パス
         # @param disabled_rules [Array<String>] book.yml lint.disabled_rules
         # @param allowlist [Array<Regexp>] allowlist_from が返す除外パターン
+        # @param parenthetical_max [Integer, :off, nil] book.yml lint.parenthetical_length_max
         # @return [Array<Finding>]
-        def check(path, disabled_rules: [], allowlist: [])
+        def check(path, disabled_rules: [], allowlist: [], parenthetical_max: nil)
           text  = File.read(path, encoding: 'UTF-8')
           rules = Array(disabled_rules).map(&:to_s)
 
@@ -193,6 +196,9 @@ module VivlioStarter
           findings.concat(setext_findings(text))               unless rules.include?(SETEXT_RULE)
           findings.concat(slash_findings(text))                unless rules.include?(SLASH_RULE)
           findings.concat(bracket_space_findings(text))        unless rules.include?(BRACKET_SPACE_RULE)
+          unless rules.include?(LONG_PARENTHETICAL_RULE) || parenthetical_max == :off
+            findings.concat(long_parenthetical_findings(text, parenthetical_max || PARENTHETICAL_MAX))
+          end
           findings.concat(kanji_lookalike_findings(text))      unless rules.include?(KANJI_LOOKALIKE_RULE)
           findings.concat(kansuji_counter_findings(text))      unless rules.include?(KANSUJI_COUNTER_RULE)
           findings
@@ -294,6 +300,59 @@ module VivlioStarter
           pairs
         end
         private_class_method :slash_pairs
+
+        # --- 長すぎる補足 -----------------------------------------------------
+
+        # 丸かっこの中身（入れ子は追わない。原稿では入れ子のかっこを使わない）
+        PARENTHETICAL = /（([^（）]*)）/
+
+        # 補足として許す和文の長さの既定値（book.yml の lint.parenthetical_length_max で変えられる）。
+        # **本書での最長は 39 字**なので、60 字は「読みながら本筋を見失う」ほど
+        # 伸びた補足だけに当たる高さである。
+        PARENTHETICAL_MAX = 60
+
+        # 和文の長さを測るときに落とすもの。インラインコードの目印と、欧文の連なり。
+        # `（yellow / orange / red / magenta / …）` のような値の列挙は**補足ではなく一覧**で、
+        # 字数で叩いても直しようがない（実測: 生の長さで並べると上位はすべてこの形だった）。
+        LATIN_RUN = %r{[A-Za-z0-9_.:#@%\-/ ]+}
+
+        # 長すぎる補足の指摘。
+        #
+        # `sentence-length` は丸かっこの中を数えない設定にしてある（`.textlintrc.yml`）。
+        # 読者はかっこを読み飛ばして本筋を追えるので、一文の読みにくさを測るには外すのが
+        # 実態に合う——本書では 66 件の指摘のうち 30 件が、補足のぶんで上限を超えていた。
+        # そのぶん「かっこの中だけが伸びる」書き方を見張る役がいるので、こちらで受ける。
+        #
+        # **句点で区切って数える。** `（…など。単位を省略すると mm 扱い）` のように、
+        # 補足の中に 2 文入ることがある。まとめて数えると、短い文の集まりが長い補足に見える。
+        def long_parenthetical_findings(text, limit = PARENTHETICAL_MAX)
+          prose_lines(text).flat_map do |lineno, line|
+            protected_line, spans = Masking.protect_code(line)
+            long_parentheticals(protected_line, limit).map do |part, length|
+              snippet = Masking.restore_code(part, spans).strip[0, 20]
+              Finding.new(line: lineno, rule: LONG_PARENTHETICAL_RULE,
+                          label: "（#{snippet}…）は補足として長すぎます" \
+                                 "（和文 #{length} 字。文を分けるか、かっこの外へ出してください）")
+            end
+          end
+        end
+
+        # 1 行から、上限を超える補足を [文, 和文の長さ] で拾う
+        def long_parentheticals(line, limit)
+          line.to_enum(:scan, PARENTHETICAL).flat_map do
+            ::Regexp.last_match(1).split('。').filter_map do |part|
+              length = japanese_length(part)
+              [part, length] if length > limit
+            end
+          end
+        end
+        private_class_method :long_parentheticals
+
+        # 和文としての長さ。コードと欧文は読む負担が字数に比例しないので数えない。
+        def japanese_length(part)
+          part.gsub(/#{Masking::CODE_SPAN_PLACEHOLDER_PREFIX}\d+__/, '').gsub(LATIN_RUN, '').length
+        end
+        private_class_method :japanese_length
 
         # --- かっこの隣の空白 -------------------------------------------------
 

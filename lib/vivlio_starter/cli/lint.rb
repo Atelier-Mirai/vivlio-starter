@@ -180,7 +180,8 @@ module VivlioStarter
         end
 
         def check_prose(path)
-          Lint::ProseChecker.check(path, disabled_rules: disabled_rules, allowlist: prose_allowlist)
+          Lint::ProseChecker.check(path, disabled_rules: disabled_rules, allowlist: prose_allowlist,
+                                         parenthetical_max: parenthetical_length_max)
         end
 
         # config/textlint_allowlist.yml の語で交ぜ書きの指摘を黙らせる。
@@ -401,6 +402,18 @@ module VivlioStarter
           count.positive? ? count : nil
         end
 
+        # book.yml lint.parenthetical_length_max。読み方は sentence_length_max と同じで、
+        # 0 は「補足の長さを検査しない」、未指定は ProseChecker の既定（60 字）。
+        def parenthetical_length_max
+          value = Common::CONFIG.lint.parenthetical_length_max
+          return nil if Common.blank?(value)
+
+          count = value.to_i
+          return :off if count.zero?
+
+          count.positive? ? count : nil
+        end
+
         # book.yml lint.allow_space_around_code（インラインコード前後のスペースを許容）
         def allow_space_around_code? = Common.truthy?(Common::CONFIG.lint.allow_space_around_code)
 
@@ -422,13 +435,16 @@ module VivlioStarter
 
           # :off はルールごと切る（textlint の作法は `<rule>: false`）。
           # 大きな上限を書いて実質無効にする手もあるが、値から意図が読めなくなる。
-          sentence_rule = case sentence_max
-                          when :off then false
-                          when Integer then { 'max' => sentence_max }
-                          end
-          unless sentence_rule.nil?
+          #
+          # 上限を書き換えるときは、**`max` だけを差し替える**。設定ごと置き換えると、
+          # `.textlintrc.yml` に書いた `skipPatterns`（丸かっこの中を数えない指定）が
+          # `lint.sentence_length_max` を書いた著者の手元でだけ消える。
+          unless sentence_max.nil?
             SENTENCE_LENGTH_PRESETS.each do |preset|
-              configured_preset_rules(rules, preset)&.store('sentence-length', sentence_rule)
+              preset_rules = configured_preset_rules(rules, preset)
+              next unless preset_rules
+
+              preset_rules['sentence-length'] = sentence_length_rule(preset_rules['sentence-length'], sentence_max)
             end
           end
           if allow_code_space || allow_ja_en_space
@@ -446,6 +462,14 @@ module VivlioStarter
         # 設定に書かれているプリセットのルール表を返す（`true` は空の表へ広げる）。
         # 書かれていない・`false` のプリセットは nil を返し、呼び出し側は何も足さない——
         # ここで表を作ると、著者が外したプリセットが丸ごと読み込まれてしまう。
+        # 既定の設定を残したまま一文の上限だけを差し替える（:off はルールごと切る）。
+        def sentence_length_rule(current, sentence_max)
+          return false if sentence_max == :off
+
+          options = current.is_a?(Hash) ? current.dup : {}
+          options.merge('max' => sentence_max)
+        end
+
         def configured_preset_rules(rules, preset)
           case rules[preset]
           when Hash then rules[preset]

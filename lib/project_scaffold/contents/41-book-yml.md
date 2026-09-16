@@ -327,7 +327,8 @@ metrics:
 ```yaml
 lint:
   disabled_rules: [arabic-kanji-numbers]  # 丸ごと無効化したい textlint ルール ID
-  sentence_length_max: 100                # 一文の最大文字数（0 で検査しない）
+  sentence_length_max: 100                # 一文の最大文字数（0 で検査しない。かっこの中は数えない）
+  parenthetical_length_max: 60            # かっこ内の補足の最大文字数（0 で検査しない）
   trim_long_vowel: true                   # 「サーバ」等、末尾長音を省く文体
   allow_space_around_code: true           # インラインコードと和文の間のスペースを許容
   allow_space_between_ja_en: true         # 全角と半角の間のスペースを許容

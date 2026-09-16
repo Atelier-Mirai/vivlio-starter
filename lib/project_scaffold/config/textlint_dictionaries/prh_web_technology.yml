@@ -90,9 +90,6 @@ rules:
   - expected: Hyper-V
     patterns: HyperV
     prh: （技術用語）
-  - expected: Hyper-V
-    patterns: HyperV
-    prh: （技術用語）
   - expected: iPhone XR
     pattern: iPhone Xr
     prh: （技術用語）
@@ -143,6 +140,7 @@ rules:
       - Mac OS X
       - OS X
       - MacOS
+      - OSX
     prh: （技術用語）
   - expected: Mbps
     patterns: MBps
@@ -188,6 +186,14 @@ rules:
     prh: （技術用語）
   - expected: Remote Desktop Services
     patterns: Remote Desktop Service
+    prh: （技術用語）
+  - expected: Re:VIEW
+    pattern: /ReVIEW/
+    specs:
+      - from: ReVIEW
+        to:   Re:VIEW
+      - from: review
+        to:   review
     prh: （技術用語）
   - expected: TrueType
     pattern: True Type
@@ -266,7 +272,9 @@ rules:
       - You Tube
       - you tube
     prh: （技術用語）
-  - pattern: インターフェース
+  - patterns:
+      - インターフェース
+      - インタフェース
     expected: インターフェイス
     prh: （技術用語）
   - expected: ソフトウェア
@@ -276,5 +284,37 @@ rules:
     pattern: ディフォルト
     prh: （技術用語）
   - expected: ハードウェア
-    pattern: ハードウェアー
+    patterns:
+      - ハードウェアー
+      - ハードウエアー
+      - ハードウエア
     prh: （技術用語）
+
+  # --- 一般の技術用語・製品名 ---
+  - expected: Cookie
+  - expected: Markdown
+  - expected: Unicode
+    patterns: ユニコード
+  - expected: UTF-16
+    patterns: /UTF16/i
+  - expected: API Level
+    pattern:  API level
+    prh: APIドキュメントでも揺れてますが、Levelで統一してます
+  - expected: superset
+    pattern: super set
+  - expected: $1ソフトウェア
+    pattern:  /([^経])ソフトウエア/
+    specs:
+      # 普通に変換
+      - from: 広義のソフトウエア
+        to:   広義のソフトウェア
+      # 日経ソフトウエア(書名)は変換しない
+      - from: 日経ソフトウエア
+        to:   日経ソフトウエア
+  - expected: 浮動小数点数$1
+    patterns:
+      - /浮動小数点([ぁ-ん])/
+    prh: "浮動小数点ではなく浮動小数点数を使ってください"
+  - expected: 空文字列
+    pattern:
+      - /空文字(?!列)/

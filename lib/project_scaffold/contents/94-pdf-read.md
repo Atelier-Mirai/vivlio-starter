@@ -15,7 +15,7 @@
 | 依存ライブラリ | PDF::Reader | HexaPDF, ruby-vips, Tesseract |
 | 主な用途 | 参考資料の粗変換 | 出版クオリティの再利用 |
 
-Standard Mode は vivlio-starter 本体に組み込まれており、追加インストール不要で動作します。Enhanced Mode を利用するには `vivlio-starter-pdf` gem が必要です。
+Standard Mode は `vivlio-starter` 本体に組み込まれており、追加インストール不要で動作します。Enhanced Mode を利用するには `vivlio-starter-pdf` gem が必要です。
 
 ### 必須ツール
 

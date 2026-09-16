@@ -505,6 +505,23 @@ module VivlioStarter
         end
       end
 
+      # 上限を変えても、雛形が書いている他の設定（丸かっこを数えない skipPatterns）は残す。
+      # 設定ごと置き換えると、sentence_length_max を書いた著者の手元でだけ除外が消える
+      def test_generate_runtime_config_keeps_sentence_length_options
+        Dir.mktmpdir do |dir|
+          base = File.join(dir, '.textlintrc.yml')
+          preset = { 'sentence-length' => { 'skipPatterns' => ['/（[^）]*）/'] } }
+          File.write(base, { 'rules' => { 'preset-ja-technical-writing' => preset } }.to_yaml)
+
+          runner = LintCommands::LintRunner.new([], {})
+          path = runner.send(:generate_runtime_config, base, sentence_max: 80)
+
+          rule = YAML.safe_load_file(path).dig('rules', 'preset-ja-technical-writing', 'sentence-length')
+          assert_equal 80, rule['max']
+          assert_equal ['/（[^）]*）/'], rule['skipPatterns'], '雛形の除外指定を残す'
+        end
+      end
+
       # sentence_length_max: 0 は「長さを検査しない」。ルールごと切る（textlint の作法は false）。
       # 上限を変えるのも検査を切るのも同じキーで済ませるための約束で、
       # 0 を「制限しない」に当てるのは index.max_sub_references（0 で無制限）と揃えたもの。

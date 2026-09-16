@@ -289,10 +289,12 @@ macOS であれば、`vs doctor --fix` で Kindle Previewer 3 の導入（Homebr
 
 手動で導入する場合は、[Amazon KDP のサイト](https://kdp.amazon.co.jp/ja_JP/help/topic/G202131170)から Kindle Previewer をダウンロードしてください。インストール後、ターミナルで `which kindlepreviewer` を実行し、コマンドにパスが通っているか確認できます。パスが通っていない場合は、Kindle Previewer のインストール先（macOS では `/Applications/Kindle Previewer 3.app` 配下）にパスを通してください。
 
+Kindle Previewer は macOS 版と Windows 版だけが配布されており、Linux（WSL を含む）では `.kpf` への変換を行えません。Linux で執筆する場合は、Kindle 用の中間 EPUB までを生成し、変換は macOS か Windows で行ってください。
+
 :::{.note}
 **生成された KPF の確認**
 
-`.kpf` ファイルは Kindle Previewer 3 で開いて、実機に近いプレビューで表示を確認できます。KDP にアップロードする前に、扉絵・コード・表・数式などが意図どおり表示されるか確認することをおすすめします。
+`.kpf` ファイルは Kindle Previewer 3 で開いて、実機に近いプレビューで表示を確認できます。KDP にアップロードする前に、扉絵・コード・表・数式などが意図どおり表示されるか確認することをお勧めします。
 :::
 
 
@@ -489,7 +491,7 @@ output:
 ```
 
 :::{.column}
-**ヒント**: 執筆中は `targets: pdf` で内容を確認し、入稿前に `targets: pdf, print_pdf` に切り替えて入稿用 PDF を生成する、という使い分けがおすすめです。電子書籍も同時に生成したい場合は `targets: pdf, epub, kindle` としてください（クリーン EPUB と Kindle 用 KPF の両方が出力されます）。
+**ヒント**: 執筆中は `targets: pdf` で内容を確認し、入稿前に `targets: pdf, print_pdf` に切り替えて入稿用 PDF を生成する、という使い分けがお勧めです。電子書籍も同時に生成したい場合は `targets: pdf, epub, kindle` としてください（クリーン EPUB と Kindle 用 KPF の両方が出力されます）。
 :::
 
 

@@ -17,6 +17,7 @@
 - "varliminf" # LaTeX の演算子名
 - "varlimsup" # LaTeX の演算子名
 - "varprojlim" # LaTeX の演算子名
+- "DTP"
 - "greet"
 - "High-Score"
 - "himawari"

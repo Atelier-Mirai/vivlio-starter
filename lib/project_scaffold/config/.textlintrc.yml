@@ -37,6 +37,12 @@ rules:
       preferInHeader: ""
       preferInList: ""
     no-doubled-joshi: false  # 並列（AもBも）や役割の違う助詞まで指摘し、本書で 8 割が不要な指摘だったため
+    # 一文の長さ。上限は book.yml の lint.sentence_length_max で変えられます
+    # 丸かっこの中は数えません。読者は補足を読み飛ばして本筋を追えるためです
+    # （かっこの中だけが伸びる書き方は、vs lint の独自ルール long-parenthetical が見ます）
+    sentence-length:
+      skipPatterns:
+        - "/（[^）]*）/"
     ja-no-successive-word: false  # 記号の重なり（★★☆☆☆・……・○○）まで指摘し、本書で 21 件中 20 件が誤検出だったため
     max-kanji-continuous-len:
       max: 10  # 漢字の連続を10文字まで許可（書籍名・専門用語対応）
@@ -48,11 +54,19 @@ rules:
 
   # 固有名詞や特定の用語の表記揺れをチェック（辞書ファイルの指定）
   # ※ 辞書ファイルは `config/textlint_dictionaries/` 配下に配置
+  # 使う辞書はここに全部並べます。要らない辞書は行ごと消してください
+  # prh_*.yml は「ics.media」「テキスト校正くん」の校正辞書（作成者: 池田 泰延）。
+  # 一部の項目は「JavaScript Primer」（https://jsprimer.net）の校正辞書に由来します
   prh:
     rulePaths:
-      - ./textlint_dictionaries/icsmedia.yml
-      - ./textlint_dictionaries/js_primer.yml
-      - ./textlint_rewrite.yml
+      - ./textlint_dictionaries/prh_idiom.yml          # 誤字
+      - ./textlint_dictionaries/prh_open_close.yml     # ひらく漢字・閉じる漢字
+      - ./textlint_dictionaries/prh_redundancy.yml     # 冗長な言い回し
+      - ./textlint_dictionaries/prh_duplicate.yml      # 重言
+      - ./textlint_dictionaries/prh_cho_on.yml         # 外来語のカタカナ表記
+      - ./textlint_dictionaries/prh_corporation.yml    # 固有名詞
+      - ./textlint_dictionaries/prh_web_technology.yml # 技術用語
+      - ./textlint_rewrite.yml                         # この本の表記（自由に書き足せます）
 
   # preset-japanese は読まない。12 ルールのうち 11 は preset-ja-technical-writing と同じもので、
   # 残る康煕部首の検出は vs lint の独自ルール（kanji-lookalike）が受け持つ

@@ -18,26 +18,31 @@ rules:
       - 'VivlioStarter'   # スペースなし（キャメルケースのような形式）
       - 'vivliostarter'   # 完全な小文字・スペースなし
       - 'VIVLIO STARTER'  # 全て大文字
+      - 'vivlio_starter'  # アンダースコア
 
   # ----------------------------------------------
-  # ルール2: コマンド名（vivlio-starter）の統一
+  # ルール2: コマンド名（vivlio-starter）は地の文に置かない
   # ----------------------------------------------
-  - expected: vivlio-starter
-    patterns:
-      - 'vivlio_starter'
-      - 'vivliostarter'
-
+  # コマンド名・gem 名は `vivlio-starter` とインラインコードで書く（コードは検査対象外）。
+  # 地の文の綴りだけをブランド名へ直す。別 gem の vivlio-starter-pdf は対象外
   - expected: Vivlio Starter
     patterns:
-      - /vivlio-starter/
+      - /vivlio-starter(?!-)/
 
   # ----------------------------------------------
   # ルール3: よくある一般的な表記ゆれ（例: ユーザ vs ユーザー）
   # ----------------------------------------------
   - expected: ユーザー
     patterns:
-      - 'ユーザ'
+      # 長音が続くものは除く。素の「ユーザ」だと「ユーザーさん」の頭にも当たり、
+      # 敬称の指摘が「ユーザ => ユーザー」という的外れな見出しに変わってしまう
+      - /ユーザ(?!ー)/
       - 'ユーザーさん' # ユーザーの後に続く不要な敬称を修正したい場合
+
+  # ハンドラは長音を付けない（prh_cho_on.yml の「語尾が -er なら長音」の例外）
+  - expected: ハンドラ
+    patterns:
+      - 'ハンドラー'
   
   # ----------------------------------------------
   # ルール4: 技術用語の表記ゆれ（例: javascript vs JavaScript）
@@ -102,3 +107,36 @@ rules:
   - expected: 語彙
     patterns:
       - '語芸'
+
+  # --- 数と記号の表記 ---
+  - expected: 一度
+    patterns:
+      - 1度
+  - expected: 第一部
+    patterns:
+      - /第1部/
+  - expected: 第二部
+    patterns:
+      - /第2部/
+  - expected: 第一引数
+    patterns: 第1引数
+  - expected: 第二引数
+    patterns: 第2引数
+  - expected: 第三引数
+    patterns: 第3引数
+  - expected: 第四引数
+    patterns: 第4引数
+  - expected: 第五引数
+    patterns: 第5引数
+  - expected: （$1）
+    pattern:  /\((.+?)\)/
+    specs:
+      - from: そうですね(笑)
+        to:   そうですね（笑）
+      - from: (@<fn>{test})
+        to:   （@<fn>{test}）
+      - from: "(ほげ)ほげ)"
+        to:   "（ほげ）ほげ)"
+    prh: 半角カッコの代わりに全角カッコを使うこと。文字のバランスが崩れるためです
+  - expected: →
+    pattern: /->/

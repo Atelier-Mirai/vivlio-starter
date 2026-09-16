@@ -38,7 +38,7 @@ Vivlio Starter は Markdown で書いた原稿から高品質な PDF・EPUB を�
 
 コンピュータの基本操作ができる方を想定しています。はじめて技術書を書く方から、より効率的な執筆環境を求めている方まで、Vivlio Starter を活用して素敵な書籍を作り上げたい方の一助となれば幸いです。[^1]
 
-[^1]: 本書は、macOS をお使いの方を対象に執筆しています。Linux や Windows では、コマンド操作等、一部異なる箇所があるかもしれませんが、適宜読み替えていただければ幸いです。
+[^1]: 本書は、macOS をお使いの方を対象に執筆しています。Linux や Windows で異なる点は、該当する各章で補足しています。
 
 ## 謝辞
 
@@ -72,6 +72,7 @@ Vivlio Starter の開発は、[Re:VIEW Starter](https://kauplan.org/reviewstarte
 
 いま、この本を開いたあなたは、もう Vivlio Starter の世界に足を踏み入れています。この本そのものが Vivlio Starter で作られた一冊の実例です。
 
+<!-- vs-lint-disable-next-line -->
 ページをめくりながら、ぜひ手を動かしてみてください。`vs new` でプロジェクトを作り、`vs build` で PDF を生成する——その瞬間のワクワク感を、あなたにも味わっていただけたら嬉しく思います。
 
 :::{.text-center}

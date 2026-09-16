@@ -50,9 +50,6 @@ rules:
   - expected: 日本コロムビア
     patterns: 日本コロンビア
     prh: （固有名詞）
-  - expected: 日本コロムビア
-    patterns: 日本コロンビア
-    prh: （固有名詞）
   - expected: 暮しの手帖
     patterns:
       - 暮らしの手帳

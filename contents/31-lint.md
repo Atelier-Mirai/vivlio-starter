@@ -423,8 +423,11 @@ lint:
     # - arabic-kanji-numbers
     # - sentence-length
 
-  # 一文の最大文字数（0 で一文の長さを検査しない）
+  # 一文の最大文字数（0 で一文の長さを検査しない）。丸かっこの中は数えません
   sentence_length_max: 100
+
+  # かっこ内の補足の最大文字数（0 で補足の長さを検査しない）
+  parenthetical_length_max: 60
 
   # 「サーバ／パラメータ／フィルタ」等の末尾長音を省く文体なら true
   trim_long_vowel: true
@@ -444,7 +447,7 @@ lint:
 
 **出力段で該当の指摘を取り除く**方式なので、`prh` 辞書の所在に依存せず確実に効きます。無効化した分は問題件数にも数えません。
 
-Vivlio Starter が独自に見るルール（`mazegaki` / `ambiguous-comparison` / `stray-index-markup` / `indented-code-block` / `setext-heading` / `slash-between-japanese` / `space-around-brackets` / `kanji-lookalike` / `kansuji-counter-suffix`）も同じキーで切れます。指摘を黙らせる窓口は textlint のルールと分けていません。語単位で黙らせたいときの `config/textlint_allowlist.yml` も同じで、交ぜ書きの指摘にそのまま効きます。
+Vivlio Starter が独自に見るルール（`mazegaki` / `ambiguous-comparison` / `stray-index-markup` / `indented-code-block` / `setext-heading` / `slash-between-japanese` / `space-around-brackets` / `long-parenthetical` / `kanji-lookalike` / `kansuji-counter-suffix`）も同じキーで切れます。指摘を黙らせる窓口は textlint のルールと分けていません。語単位で黙らせたいときの `config/textlint_allowlist.yml` も同じで、交ぜ書きの指摘にそのまま効きます。
 
 語を選んで黙らせたいときは、ルール単位ではなく `config/textlint_allowlist.yml` を使います（後述）。
 
@@ -453,6 +456,14 @@ Vivlio Starter が独自に見るルール（`mazegaki` / `ambiguous-comparison`
 一文の長さを指摘する `sentence-length` ルールの上限文字数です。未指定なら既定の 100 文字。文章の好みに応じて 80 や 120 などに変更できます。指定すると、既定の設定にこの値を反映した一時設定を生成して textlint へ渡します。
 
 **`0` を指定すると、一文の長さを検査しません。**長い文を意図的に書く文体や、他のルールと衝突する場合に使います。大きな数値を書いて実質無効にする必要はありません。
+
+**丸かっこの中は数えません。**読者は補足を読み飛ばして本筋を追えるので、一文の読みにくさを測るときは外すほうが実態に合います。かっこの中だけが伸びる書き方は、次の `parenthetical_length_max` が見ます。
+
+### parenthetical_length_max（かっこ内の補足の最大文字数）
+
+独自ルール `long-parenthetical` の上限です。未指定なら既定の 60 文字。**句点で区切り、インラインコードと欧文を除いた和文**で数えます。`（yellow / orange / red / …）` のような値の列挙は補足ではなく一覧なので、字数に数えません。
+
+**`0` を指定すると、補足の長さを検査しません。**
 
 ### trim_long_vowel（末尾長音の文体）
 
