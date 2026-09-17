@@ -1069,22 +1069,22 @@ mermaid の描画には `mmdc`（`@mermaid-js/mermaid-cli`）が必要です。�
 
 ```markdown
 :::{.column .align-right}
-align-right：枠が内容の幅に縮んで右端へ寄ります
+align-right：枠が内容の幅に縮んで右端へ寄ります。
 :::
 
 :::{.column .text-right}
-text-right：本文の全幅のまま、文字だけ右端へ揃います
+text-right：本文の全幅のまま、文字だけ右端へ揃います。
 :::
 ```
 
 実行結果は次のようになります。{.aki}
 
 :::{.column .align-right}
-align-right：枠が内容の幅に縮んで右端へ寄ります
+align-right：枠が内容の幅に縮んで右端へ寄ります。
 :::
 
 :::{.column .text-right}
-text-right：本文の全幅のまま、文字だけ右端へ揃います
+text-right：本文の全幅のまま、文字だけ右端へ揃います。
 :::
 
 :::{.tip}
@@ -1624,6 +1624,7 @@ Kindle では、画像を本文のフォントサイズへ追従させる手段�
 
 ### 節の直前の `---` は自動で無効になる
 
+<!-- vs-lint-disable-next-line -->
 節見出し（`##`）は既定ではページの先頭から始まります。そのため「節の前に区切りを書く」という自然な習慣で
 
 ```markdown
