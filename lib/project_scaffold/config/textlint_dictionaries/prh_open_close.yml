@@ -237,10 +237,6 @@ rules:
     pattern:  /(の)時(?!点|代|々|間|刻|期)/
   - expected: 明らか
     patterns: あきらか
-  - expected: カッコ
-    patterns: かっこ
-  - expected: カッコ
-    patterns: 括弧
   - expected: 疑似
     patterns: 擬似
   - expected: ループごと
@@ -292,9 +288,6 @@ rules:
     patterns: 受けとり
   - expected: 行う
     patterns: おこなう
-  - expected: を押す
-    patterns: をおす
-    prh: 〜をおす -> 〜を押す
   - expected: 終わる
     patterns: おわる
     prh: おわりに -> 終わりに
