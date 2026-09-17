@@ -14,6 +14,14 @@
 
   あわせて、`textlint_dictionaries/js_primer.yml` の `一つ → ひとつ`・`二つ → ふたつ` を外した。数の表記は本ごとの方針で、辞書が一方を強制するものではなく、三つ以降の項目は元から無かった。本書の原稿は数を漢数字へ揃え（26 行）、`ひとつづき` は「一続き」に直した。
 
+- **`textlint_rewrite.yml` を、看板どおり「この本の表記」だけにした**。`vs new` はこのファイルを雛形として配るので、他の本の著者にも渡る。そこに**本ツールの名前**（`vivlio starter => Vivlio Starter` ほか 2 項目）と**どの本にも当てはまる一般則**（`javascript => JavaScript`・`GitHubActions => GitHub Actions`・`想います => 思います`）が同居していた。料理本を書く人の「この本の表記」に本ツールの名前があるのはおかしい。
+
+  移し先は既にある。`config/textlint_dictionaries/` は `_README.md` が「同梱の言い換え辞書｜触らない」と書いている、ツールが配り著者が保守しない辞書の置き場で、`vs upgrade` がダイジェスト比較で追随させる。**製品名 2 項目は `prh_corporation.yml`**（「社名やブランド名などの固有名詞ルール」）、**技術用語 2 項目は `prh_web_technology.yml`**、**誤字 1 項目は `prh_idiom.yml`** へ入れた。辞書を新設していない——`Vivliostyle` は本書が製品名の `Vivliostyle` とコマンド名の `vivliostyle` を意図して使い分けており（実測 37 対 27）、直すべき揺れが無かったため、ブランド名 2 項目のために 1 ファイル起こす必要は無かった。
+
+  `javascript => JavaScript` は**半分が重複**だった。`prh_web_technology.yml` に既に `Javascript` / `JAVASCRIPT` / `Java Script` の項目があり、独自に足していたのは小文字の `javascript` だけである。既存項目へ統合した。
+
+  **lint.rb には入れない。** `BUILTIN_ALLOWLIST` は文字列をフィルタへ渡す抑止リストで、`expected`／`patterns` を持ち指摘と修正を生む言い換えは構造的に入らない（入れるなら辞書 YAML を合成して `rulePaths` へ足す機構の新設になる）。加えて `vivlio-starter` の規則は実測で `vivlio-starter.gemspec` を `Vivlio Starter.gemspec` に、`gem install vivlio-starter` を `gem install Vivlio Starter` にする——**自動修正つきで文を壊す**以上、著者が見て `rulePaths` から 1 行外せる状態を保つほうが安全である。
+
 - **OCR の誤認識補正を校正辞書から切り離し、`config/ocr_corrections.yml` へ移した**（`vivlio-starter-pdf` 1.1.3 と対）。`textlint_rewrite.yml` に置いていた 6 項目は `vs pdf:read` の読み取り結果を直すためのものだったが、校正辞書は**全原稿**に当たるため、自分で書いた文章まで巻き添えにしていた。実測すると `Al => AI`（OCR が AI をエルの小文字と読み違える補正）が**アルミニウムの元素記号 `Al` と人名 `Al Gore` を書き換え**、`語芸 => 語彙` が**「言語芸術」を「言語彙術」に**していた。prh 由来の指摘は自動修正を持つので、`vs lint --fix` が黙って壊す種類の不具合である。雛形に入っていたため、新しい本すべてが抱えていた。
 
   **しかも補正は 2026-08-04 から一度も効いていなかった。** プラグイン側の読み込み先が `config/textlint_prh.yml` と決め打ちで、`6bbc2007`「校正まわりの設定ファイル名を対にする」でこのファイルが `textlint_rewrite.yml` へ改名された際に取り残されていた。ファイルが無ければ空の表を当てて素通りするので、例外も警告も出ない。つまり**校正の側でだけ当たり、肝心の読み取りには当たっていなかった**。

@@ -15,6 +15,9 @@ rules:
   - expected: いやがうえにも
     patterns: いやがおうにも
     prh: （誤字）
+  - expected: 思います
+    patterns: 想います
+    prh: （誤字）
   - expected: ウオツカ
     patterns: ウオッカ
     prh: （誤字）

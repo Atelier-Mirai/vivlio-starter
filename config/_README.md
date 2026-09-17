@@ -15,8 +15,8 @@
 | `talk.yml` | 会話文記法 `:::{.talk}` の話者と表示設定 | 使うときだけ書く（任意） |
 | `.textlintrc.yml` | textlint の校正ルール本体 | 必要なら書く |
 | `textlint_allowlist.yml` | 校正の対象から外す語 | 著者が書く |
-| `textlint_rewrite.yml` | 表記揺れの言い換え辞書（prh） | 著者が書く |
-| `textlint_dictionaries/` | 同梱の言い換え辞書（9 ファイル） | 触らない |
+| `textlint_rewrite.yml` | **この本の**表記を決める言い換え辞書（prh） | 著者が書く |
+| `textlint_dictionaries/` | 同梱の言い換え辞書（7 ファイル） | 触らない |
 | `ocr_corrections.yml` | `vs pdf:read` が読み取った直後に直す誤認識の表 | 紙面を読み取るときだけ書く（任意） |
 | `spellcheck_allowlist.yml` | 綴り誤りと指摘しない語 | `vs lint --register` が書く |
 | `spellcheck_dictionaries/` | 同梱の英単語辞書（53 ファイル） | 触らない |

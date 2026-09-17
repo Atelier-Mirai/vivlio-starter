@@ -80,6 +80,9 @@ rules:
       - Git Hub
       - git hub
     prh: （技術用語）
+  - expected: GitHub Actions
+    patterns: GitHubActions
+    prh: （技術用語）
   - expected: Google Maps
     patterns:
       - /Google Map(?!([s]))/
@@ -104,6 +107,7 @@ rules:
       - Javascript
       - JAVASCRIPT
       - Java Script
+      - javascript
     prh: （技術用語）
   - expected: Jetpack
     patterns:

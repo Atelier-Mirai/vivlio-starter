@@ -61,3 +61,23 @@ rules:
   - expected: 青春18きっぷ
     patterns: 青春18切符
     prh: （固有名詞）
+  # 本ツールの名前。大文字・小文字やスペースが崩れた綴りを直す
+  - expected: Vivlio Starter
+    patterns:
+      - vivlio starter   # 小文字とスペース
+      - VivlioStarter    # スペースなし
+      - vivliostarter    # 完全な小文字・スペースなし
+      - VIVLIO STARTER   # すべて大文字
+      - vivlio_starter   # アンダースコア
+    prh: （固有名詞）
+  # コマンド名・gem 名は `vivlio-starter` とインラインコードで書く（コードは検査対象外）。
+  # 地の文の綴りだけをブランド名へ直す。別 gem の vivlio-starter-pdf は対象外
+  - expected: Vivlio Starter
+    patterns:
+      - /vivlio-starter(?!-)/
+    specs:
+      - from: vivlio-starter で組みました
+        to:   Vivlio Starter で組みました
+      - from: 別 gem の vivlio-starter-pdf を入れます
+        to:   別 gem の vivlio-starter-pdf を入れます
+    prh: （固有名詞）
