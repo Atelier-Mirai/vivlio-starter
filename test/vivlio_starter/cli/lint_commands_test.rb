@@ -673,6 +673,38 @@ module VivlioStarter
         end
       end
 
+      # 上流ルールの取りこぼしは、著者の allowlist ではなく実行時 textlintrc の
+      # filters.allowlist.allow で打ち消す。著者の指定は残したまま合算する
+      def test_generate_runtime_config_adds_builtin_allowlist
+        Dir.mktmpdir do |dir|
+          base = File.join(dir, '.textlintrc.yml')
+          filters = { 'allowlist' => { 'allowlistConfigPaths' => ['./textlint_allowlist.yml'],
+                                       'allow' => ['既定'] } }
+          File.write(base, { 'filters' => filters, 'rules' => {} }.to_yaml)
+
+          runner = LintCommands::LintRunner.new([], {})
+          allowlist = YAML.safe_load_file(runner.send(:generate_runtime_config, base)).dig('filters', 'allowlist')
+
+          assert_equal ['./textlint_allowlist.yml'], allowlist['allowlistConfigPaths'], '著者の指定は触らない'
+          assert_includes allowlist['allow'], '既定', '著者の allow も残す'
+          assert_includes allowlist['allow'], '/[0-9]+%/', '半角 % を全角へ促す上流ルールを打ち消す'
+        end
+      end
+
+      # 著者が allowlist フィルタごと外していても、ツール側の打ち消しは効かせる
+      def test_generate_runtime_config_creates_allowlist_filter_when_missing
+        Dir.mktmpdir do |dir|
+          base = File.join(dir, '.textlintrc.yml')
+          File.write(base, { 'filters' => { 'comments' => true }, 'rules' => {} }.to_yaml)
+
+          runner = LintCommands::LintRunner.new([], {})
+          filters = YAML.safe_load_file(runner.send(:generate_runtime_config, base))['filters']
+
+          assert_equal LintCommands::LintRunner::BUILTIN_ALLOWLIST, filters.dig('allowlist', 'allow')
+          assert_equal true, filters['comments'], '既存のフィルタは保持'
+        end
+      end
+
       private
 
       def setup_project_structure

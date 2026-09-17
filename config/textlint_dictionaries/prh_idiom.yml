@@ -2,8 +2,15 @@ meta:
   - title: 間違いやすい慣用表現ルール
   - memo: 手動更新で管理してます
 rules:
+  # アボガドロ定数（Avogadro）は「アボガド」を含むが果物ではない。理科系の本なら出る語なので、
+  # 見出し語の直後に「ロ」が来る形を先読みで外す
   - expected: アボカド
-    patterns: アボガド
+    patterns: /アボガド(?!ロ)/
+    specs:
+      - from: アボガドを食べる
+        to:   アボカドを食べる
+      - from: アボガドロ定数
+        to:   アボガドロ定数
     prh: （誤字）
   - expected: いやがうえにも
     patterns: いやがおうにも

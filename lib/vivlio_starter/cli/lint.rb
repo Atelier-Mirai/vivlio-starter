@@ -409,6 +409,40 @@ module VivlioStarter
           'preset-ja-technical-writing' => %w[ja-no-mixed-period sentence-length]
         }.freeze
 
+        # 上流ルールの取りこぼしを打ち消す、vs lint 自身の除外リスト。
+        #
+        # `config/textlint_allowlist.yml` は**著者が「この本ではこう書く」と決めた語**を並べる
+        # 場所で、ツールの不具合を書く場所ではない。新しい本を作るたび同じ 1 行を書き写させる
+        # のもおかしい。そこでツール側の打ち消しはここに持ち、実行時 textlintrc の
+        # `filters.allowlist.allow` へ注ぐ。**フィルタ経由なので `--fix` にも効く**
+        # （textlint はフィルタで消えた指摘の修正を当てない）。
+        #
+        # 辞書の項目そのものが誤っているなら、まず辞書を直す——ここへ書くのは、
+        # `spellcheck-tech-word` のように**項目単位で切れないルール**に限る。
+        # このルールは `context.options` を読まないため、設定では手が届かない。
+        # ここに並ぶのは「上流が間違っている」もので、**本の方針は書かない**。
+        # `マスター => マスタ` のような長音の扱いは、逆の方針を採る本が実在するので
+        # 著者の `textlint_allowlist.yml` の側に置く（ツールが決めてよい話ではない）。
+        #
+        # 継ぎ目の誤検出が多いのは、prh も spellcheck-tech-word も**語の切れ目を見ずに
+        # 部分文字列で照合する**ため。日本語は語を空白で区切らないので、複合語の継ぎ目に
+        # 見出し語と同じ並びが偶然現れる。語を 1 つずつ足しても追いつかないので、
+        # **継ぎ目の形**で書く。
+        BUILTIN_ALLOWLIST = [
+          # `%([^0-9]) => ％$1`（technical-word-rules）。直後が和文のときだけ全角を促されるが、
+          # 技術書では半角 % が普通で、`shift-y=N%` のように CSS の値でもある。
+          # 直後に何が続くかは見ない——`10%・` `0%（` のほか `**両裾の 10%**から` のように
+          # 強調の閉じが挟まる形もあり、綴りを数え上げてもきりがないため
+          '/[0-9]+%/',
+          # `対処方 => 対処法`。「対処方法」はごく普通の日本語で、その中の 3 字に当たる
+          '/対処方法/',
+          # `レビューア|レビューワー|… => レビュア`（校閲者の意）。
+          # 「プレビュー＋アプリ」「レビュー＋ワークフロー」の継ぎ目に当たる。
+          # どちらも校閲者とは関係が無い
+          '/プレビューア/',
+          '/レビューワーク/'
+        ].freeze
+
         # 実行時 textlintrc は常に生成する。上書きが 1 つも指定されていなくても、
         # SUPERSEDED_TEXTLINT_RULES を切る必要があるため。
         def effective_config_path
@@ -467,6 +501,7 @@ module VivlioStarter
             names.each { preset_rules[it] = false } if preset_rules
           end
 
+          apply_builtin_allowlist!(cfg)
           trim_long_vowel_dictionaries!(rules, File.dirname(base_path)) if trim_long_vowel?
           if allow_code_space || allow_ja_en_space
             spacing = (rules['preset-ja-spacing'] ||= {})
@@ -478,6 +513,16 @@ module VivlioStarter
           @runtime_config_tmp.write(cfg.to_yaml)
           @runtime_config_tmp.close
           @runtime_config_tmp.path
+        end
+
+        # BUILTIN_ALLOWLIST を実行時 textlintrc の `filters.allowlist.allow` へ足す。
+        # 著者が allowlist フィルタごと消していても打ち消しは要るので、無ければ作る。
+        # 著者の `allowlistConfigPaths` は触らない（両者は合算される）。
+        def apply_builtin_allowlist!(cfg)
+          filters = (cfg['filters'] ||= {})
+          filters['allowlist'] = {} unless filters['allowlist'].is_a?(Hash)
+          allow = filters['allowlist']['allow']
+          filters['allowlist']['allow'] = Array(allow) | BUILTIN_ALLOWLIST
         end
 
         # 末尾長音を足す項目（`サーバ => サーバー`）を落とした辞書の写しを作り、そちらを読ませる。
