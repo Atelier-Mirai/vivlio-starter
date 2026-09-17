@@ -52,7 +52,8 @@ rules:
   # 固有名詞や特定の用語の表記揺れをチェック（辞書ファイルの指定）
   # ※ 辞書ファイルは `config/textlint_dictionaries/` 配下に配置
   # 使う辞書はここに全部並べます。要らない辞書は行ごと消してください
-  # prh_*.yml は「ics.media」「テキスト校正くん」の校正辞書（作成者: 池田 泰延）
+  # prh_*.yml は「ics.media」「テキスト校正くん」の校正辞書（作成者: 池田 泰延）。
+  # 一部の項目は「JavaScript Primer」（https://jsprimer.net）の校正辞書に由来します
   prh:
     rulePaths:
       - ./textlint_dictionaries/prh_idiom.yml          # 誤字
