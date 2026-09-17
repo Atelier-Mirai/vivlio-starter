@@ -186,7 +186,8 @@ module VivlioStarter
 
         def check_prose(path)
           Lint::ProseChecker.check(path, disabled_rules: disabled_rules, allowlist: prose_allowlist,
-                                         parenthetical_max: parenthetical_length_max)
+                                         parenthetical_max: parenthetical_length_max,
+                                         sentence_max: sentence_length_max)
         end
 
         # config/textlint_allowlist.yml の語で交ぜ書きの指摘を黙らせる。
@@ -394,31 +395,29 @@ module VivlioStarter
         # `**用途**: PDF閲覧、電子配布` のような定義、図に添えるキャプション、読点で終えて
         # 次のブロックへ続ける書き方まで「句点を付けよ」と言う（実測: 本書 39 件のうち 12 件）。
         # 末尾が用言か体言かを見る `missing-period`（ProseChecker）へ寄せた。
+        #
+        # `sentence-length` は**記法を外したあとの素の文字数**を数える。バッククォートは
+        # 落ちるのに中身は残るため、`:::{.sideimage-right}` のようなインラインコードが
+        # 21 字として効いていた。設定の `skipPatterns` では届かない——数える時点で
+        # コードだった痕跡が無いため。和文で測る同名の独自ルール（ProseChecker）へ寄せた。
         SUPERSEDED_TEXTLINT_RULES = {
           'preset-ja-spacing' => %w[ja-no-space-around-slash ja-no-space-around-parentheses],
-          'preset-japanese' => %w[no-kanji-lookalikes],
-          'preset-ja-technical-writing' => %w[ja-no-mixed-period]
+          'preset-japanese' => %w[no-kanji-lookalikes sentence-length],
+          'preset-ja-technical-writing' => %w[ja-no-mixed-period sentence-length]
         }.freeze
-
-        # 一文の長さのルールを持つプリセット。`preset-japanese` は 1.0 より前の雛形が
-        # `preset-ja-technical-writing` と併用していたもので、同じ `sentence-length` を
-        # 別の実体として動かす。片方だけ書き換えると、もう片方の上限 100 字が残る。
-        SENTENCE_LENGTH_PRESETS = %w[preset-ja-technical-writing preset-japanese].freeze
 
         # 実行時 textlintrc は常に生成する。上書きが 1 つも指定されていなくても、
         # SUPERSEDED_TEXTLINT_RULES を切る必要があるため。
         def effective_config_path
           @effective_config_path ||= generate_runtime_config(
             config_path,
-            sentence_max: sentence_length_max,
             allow_code_space: allow_space_around_code?,
             allow_ja_en_space: allow_space_between_ja_en?
           )
         end
 
-        # book.yml lint.sentence_length_max（一文の最大文字数。未指定なら nil＝既定 100）
         # book.yml lint.sentence_length_max。
-        #   未指定 … nil（textlintrc の既定 100）
+        #   未指定 … nil（ProseChecker の既定 100 字）
         #   0      … :off（一文の長さを検査しない）
         #   正の数 … その値を上限にする
         # 0 を「制限しない」に当てるのは book.yml 内の既存の流儀に揃えたもの
@@ -456,7 +455,7 @@ module VivlioStarter
         # 設定レベルで無効化するため、隠すだけの出力フィルタと違い --fix でも変更されない。
         # 相対パス（prh.rulePaths / allowlistConfigPaths）が壊れないよう、元の設定と同じ
         # ディレクトリへ書き出す。後始末は run_textlint の ensure で行う。
-        def generate_runtime_config(base_path, sentence_max: nil, allow_code_space: false, allow_ja_en_space: false)
+        def generate_runtime_config(base_path, allow_code_space: false, allow_ja_en_space: false)
           cfg = YAML.safe_load_file(base_path) || {}
           rules = (cfg['rules'] ||= {})
 
@@ -465,20 +464,6 @@ module VivlioStarter
             names.each { preset_rules[it] = false } if preset_rules
           end
 
-          # :off はルールごと切る（textlint の作法は `<rule>: false`）。
-          # 大きな上限を書いて実質無効にする手もあるが、値から意図が読めなくなる。
-          #
-          # 上限を書き換えるときは、**`max` だけを差し替える**。設定ごと置き換えると、
-          # `.textlintrc.yml` に書いた `skipPatterns`（丸かっこの中を数えない指定）が
-          # `lint.sentence_length_max` を書いた著者の手元でだけ消える。
-          unless sentence_max.nil?
-            SENTENCE_LENGTH_PRESETS.each do |preset|
-              preset_rules = configured_preset_rules(rules, preset)
-              next unless preset_rules
-
-              preset_rules['sentence-length'] = sentence_length_rule(preset_rules['sentence-length'], sentence_max)
-            end
-          end
           if allow_code_space || allow_ja_en_space
             spacing = (rules['preset-ja-spacing'] ||= {})
             spacing['ja-space-around-code'] = false if allow_code_space
@@ -494,14 +479,6 @@ module VivlioStarter
         # 設定に書かれているプリセットのルール表を返す（`true` は空の表へ広げる）。
         # 書かれていない・`false` のプリセットは nil を返し、呼び出し側は何も足さない——
         # ここで表を作ると、著者が外したプリセットが丸ごと読み込まれてしまう。
-        # 既定の設定を残したまま一文の上限だけを差し替える（:off はルールごと切る）。
-        def sentence_length_rule(current, sentence_max)
-          return false if sentence_max == :off
-
-          options = current.is_a?(Hash) ? current.dup : {}
-          options.merge('max' => sentence_max)
-        end
-
         def configured_preset_rules(rules, preset)
           case rules[preset]
           when Hash then rules[preset]

@@ -515,65 +515,37 @@ module VivlioStarter
         end
       end
 
-      def test_generate_runtime_config_overrides_sentence_length_max
+      # 独自ルールで置き換えた textlint のルールは、著者の設定に依らず常に切る。
+      # 上限（lint.sentence_length_max）は ProseChecker が book.yml から直接受け取るので、
+      # 実行時 textlintrc へ書き戻すものは無い
+      def test_generate_runtime_config_disables_superseded_rules
         Dir.mktmpdir do |dir|
           base = File.join(dir, '.textlintrc.yml')
-          File.write(base, { 'rules' => { 'preset-ja-technical-writing' => {}, 'prh' => { 'rulePaths' => ['./textlint_rewrite.yml'] } } }.to_yaml)
+          preset = { 'sentence-length' => { 'max' => 80 } }
+          File.write(base, { 'rules' => { 'preset-ja-technical-writing' => preset,
+                                          'prh' => { 'rulePaths' => ['./textlint_rewrite.yml'] } } }.to_yaml)
 
           runner = LintCommands::LintRunner.new([], {})
-          path = runner.send(:generate_runtime_config, base, sentence_max: 80)
+          path = runner.send(:generate_runtime_config, base)
 
           cfg = YAML.safe_load_file(path)
-          assert_equal 80, cfg.dig('rules', 'preset-ja-technical-writing', 'sentence-length', 'max')
+          assert_equal false, cfg.dig('rules', 'preset-ja-technical-writing', 'sentence-length'),
+                       '著者が上限を書いていても切る（独自ルールと二重に指摘しない）'
+          assert_equal false, cfg.dig('rules', 'preset-ja-technical-writing', 'ja-no-mixed-period')
           assert_includes cfg.dig('rules', 'prh', 'rulePaths'), './textlint_rewrite.yml', '既存設定を保持'
           assert_equal dir, File.dirname(path), '元設定と同じディレクトリに生成（相対パス保持）'
         end
       end
 
-      # 上限を変えても、雛形が書いている他の設定（丸かっこを数えない skipPatterns）は残す。
-      # 設定ごと置き換えると、sentence_length_max を書いた著者の手元でだけ除外が消える
-      def test_generate_runtime_config_keeps_sentence_length_options
-        Dir.mktmpdir do |dir|
-          base = File.join(dir, '.textlintrc.yml')
-          preset = { 'sentence-length' => { 'skipPatterns' => ['/（[^）]*）/'] } }
-          File.write(base, { 'rules' => { 'preset-ja-technical-writing' => preset } }.to_yaml)
-
-          runner = LintCommands::LintRunner.new([], {})
-          path = runner.send(:generate_runtime_config, base, sentence_max: 80)
-
-          rule = YAML.safe_load_file(path).dig('rules', 'preset-ja-technical-writing', 'sentence-length')
-          assert_equal 80, rule['max']
-          assert_equal ['/（[^）]*）/'], rule['skipPatterns'], '雛形の除外指定を残す'
-        end
-      end
-
-      # sentence_length_max: 0 は「長さを検査しない」。ルールごと切る（textlint の作法は false）。
-      # 上限を変えるのも検査を切るのも同じキーで済ませるための約束で、
-      # 0 を「制限しない」に当てるのは index.max_sub_references（0 で無制限）と揃えたもの。
-      # 大きな上限（10000 など）で実質無効にする手は採らない——値から意図が読めないため。
-      def test_generate_runtime_config_disables_sentence_length_when_zero
-        Dir.mktmpdir do |dir|
-          base = File.join(dir, '.textlintrc.yml')
-          File.write(base, { 'rules' => { 'preset-ja-technical-writing' => {}, 'prh' => { 'rulePaths' => ['./textlint_rewrite.yml'] } } }.to_yaml)
-
-          runner = LintCommands::LintRunner.new([], {})
-          path = runner.send(:generate_runtime_config, base, sentence_max: :off)
-
-          cfg = YAML.safe_load_file(path)
-          assert_equal false, cfg.dig('rules', 'preset-ja-technical-writing', 'sentence-length')
-          assert_includes cfg.dig('rules', 'prh', 'rulePaths'), './textlint_rewrite.yml', '既存設定を保持'
-        end
-      end
-
       # 1.0 より前の雛形は preset-japanese を併用していた。更新していないプロジェクトでも
-      # sentence_length_max が効くよう、同じ sentence-length を持つ両方へ当てる（KNOWN_ISSUES の解消）
-      def test_generate_runtime_config_applies_sentence_length_to_legacy_preset_japanese
+      # 二重に指摘されないよう、同じルールを持つ両方のプリセットへ当てる
+      def test_generate_runtime_config_disables_superseded_rules_in_legacy_preset
         Dir.mktmpdir do |dir|
           base = File.join(dir, '.textlintrc.yml')
           File.write(base, { 'rules' => { 'preset-ja-technical-writing' => {}, 'preset-japanese' => true } }.to_yaml)
 
           runner = LintCommands::LintRunner.new([], {})
-          cfg = YAML.safe_load_file(runner.send(:generate_runtime_config, base, sentence_max: :off))
+          cfg = YAML.safe_load_file(runner.send(:generate_runtime_config, base))
 
           assert_equal false, cfg.dig('rules', 'preset-ja-technical-writing', 'sentence-length')
           assert_equal false, cfg.dig('rules', 'preset-japanese', 'sentence-length')
@@ -589,11 +561,11 @@ module VivlioStarter
           File.write(base, { 'rules' => { 'preset-ja-technical-writing' => {} } }.to_yaml)
 
           runner = LintCommands::LintRunner.new([], {})
-          cfg = YAML.safe_load_file(runner.send(:generate_runtime_config, base, sentence_max: 80))
+          cfg = YAML.safe_load_file(runner.send(:generate_runtime_config, base))
 
           refute cfg['rules'].key?('preset-japanese')
           refute cfg['rules'].key?('preset-ja-spacing')
-          assert_equal 80, cfg.dig('rules', 'preset-ja-technical-writing', 'sentence-length', 'max')
+          assert_equal false, cfg.dig('rules', 'preset-ja-technical-writing', 'sentence-length')
         end
       end
 

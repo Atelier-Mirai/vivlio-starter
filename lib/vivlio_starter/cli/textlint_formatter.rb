@@ -76,23 +76,21 @@ module VivlioStarter
         m[2].strip == "#{m[1].strip}ー"
       end
 
-      # ルールの表示文を固定の見出しへ置き換える。理由は 2 種類ある。
+      # ルールの表示文を固定の見出しへ置き換える。
       #
-      # - sentence-length … 出現ごとに文字数が変わり、そのままでは 1 つに畳めない
-      # - no-mix-dearu-desumasu … 表示文が判定の実態より広く聞こえる。判定を担う
-      #   analyze-desumasu-dearu は常体を「で」＋「ある」の並びだけで数えるのに、
-      #   「"である"調」と言うと「〜だ」「〜する」まで見ているように読める。先頭の
-      #   「箇条書き:」「本文:」も外す——場所の区別を残すと、箇条書き専用の機能に見えるため。
-      #   **本物の敬体・常体検出を実装したら、この行ごと削除する**（PLANNED.md の
-      #   「文体（敬体・常体）の混在を実際に見張る独自ルール」）。
+      # `no-mix-dearu-desumasu` は表示文が判定の実態より広く聞こえる。判定を担う
+      # analyze-desumasu-dearu は常体を「で」＋「ある」の並びだけで数えるのに、
+      # 「"である"調」と言うと「〜だ」「〜する」まで見ているように読める。先頭の
+      # 「箇条書き:」「本文:」も外す——場所の区別を残すと、箇条書き専用の機能に見えるため。
+      # **本物の敬体・常体検出を実装したら、この行ごと削除する**（PLANNED.md の
+      # 「文体（敬体・常体）の混在を実際に見張る独自ルール」）。
       RULE_SUMMARIES = {
-        'sentence-length' => '一文が長すぎます（最大文長を超過）',
         'no-mix-dearu-desumasu' => '「である」と「です・ます」が混在しています。'
       }.freeze
 
       # メッセージ配列を [集約見出し, ルール] 単位で集約する。
-      # 通常はメッセージ先頭行ごと（prh の置換などは別グループ）だが、出現ごとに数値が変わる
-      # ルール（sentence-length 等）は要約ラベル＋数字マスクで 1 つに畳む。
+      # 通常はメッセージ先頭行ごと（prh の置換などは別グループ）だが、RULE_SUMMARIES に
+      # 載せたルールは固定の見出しで 1 つに畳む。
       # 並べ替えと出現行の表示は呼び出し側（Lint::FindingRows）に任せる。
       def self.aggregate_messages(messages)
         messages.group_by { |m| [grouping_head(m['message'], m['ruleId']), short_rule(m['ruleId'])] }
@@ -101,7 +99,7 @@ module VivlioStarter
         end
       end
 
-      # 集約見出し：出現ごとに数値が変わるルール（sentence-length 等）は要約ラベルで 1 つに畳み、
+      # 集約見出し：RULE_SUMMARIES のルールは要約ラベルで 1 つに畳み、
       # それ以外は先頭行そのまま（"一つ => 1つ" の数字など、意味のある数値を保つ）。
       def self.grouping_head(message, rule_id)
         RULE_SUMMARIES[short_rule(rule_id)] || message_head(message)

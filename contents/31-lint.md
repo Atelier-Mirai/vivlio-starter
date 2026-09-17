@@ -475,17 +475,17 @@ lint:
 
 **出力段で該当の指摘を取り除く**方式なので、`prh` 辞書の所在に依存せず確実に効きます。無効化した分は問題件数にも数えません。
 
-Vivlio Starter が独自に見るルール（`mazegaki` / `ambiguous-comparison` / `stray-index-markup` / `indented-code-block` / `setext-heading` / `slash-between-japanese` / `space-around-brackets` / `long-parenthetical` / `kanji-lookalike` / `kansuji-counter-suffix` / `missing-period`）も同じキーで切れます。指摘を黙らせる窓口は textlint のルールと分けていません。語単位で黙らせたいときの `config/textlint_allowlist.yml` も同じで、交ぜ書きの指摘にそのまま効きます。
+Vivlio Starter が独自に見るルール（`mazegaki` / `ambiguous-comparison` / `stray-index-markup` / `indented-code-block` / `setext-heading` / `slash-between-japanese` / `space-around-brackets` / `long-parenthetical` / `kanji-lookalike` / `kansuji-counter-suffix` / `missing-period` / `sentence-length`）も同じキーで切れます。指摘を黙らせる窓口は textlint のルールと分けていません。語単位で黙らせたいときの `config/textlint_allowlist.yml` も同じで、交ぜ書きの指摘にそのまま効きます。
 
 語を選んで黙らせたいときは、ルール単位ではなく `config/textlint_allowlist.yml` を使います（後述）。
 
 ### sentence_length_max（一文の最大文字数）
 
-一文の長さを指摘する `sentence-length` ルールの上限文字数です。未指定なら既定の 100 文字。文章の好みに応じて 80 や 120 などに変更できます。指定すると、既定の設定にこの値を反映した一時設定を生成して textlint へ渡します。
+一文の長さを指摘する `sentence-length` ルールの上限文字数です。未指定なら既定の 100 文字。文章の好みに応じて 80 や 120 などに変更できます。
+
+**数えるのは和文だけです。**インラインコード・丸かっこの中・欧文は字数に入れません。読む負担が字数に比例しないためで、`` `:::{.sideimage-right}` `` のような記法は読み手にとって一つの塊です。丸かっこの中を外すのも同じ理由で、読者は補足を読み飛ばして本筋を追えます。かっこの中だけが伸びる書き方は、次の `parenthetical_length_max` が見ます。
 
 **`0` を指定すると、一文の長さを検査しません。**長い文を意図的に書く文体や、他のルールと衝突する場合に使います。大きな数値を書いて実質無効にする必要はありません。
-
-**丸かっこの中は数えません。**読者は補足を読み飛ばして本筋を追えるので、一文の読みにくさを測るときは外すほうが実態に合います。かっこの中だけが伸びる書き方は、次の `parenthetical_length_max` が見ます。
 
 ### parenthetical_length_max（かっこ内の補足の最大文字数）
 

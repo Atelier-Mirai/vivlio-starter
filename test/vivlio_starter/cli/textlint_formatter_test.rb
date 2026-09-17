@@ -127,20 +127,6 @@ module VivlioStarter
         refute TextlintFormatter.long_vowel_addition?('インラインコードの後にスペースを入れません。')
       end
 
-      # 出現ごとに数値が変わるルール（sentence-length）は要約ラベルで 1 つに畳む
-      def test_aggregate_json_summarizes_sentence_length
-        json = <<~JSON
-          [{ "filePath": "/proj/a.md", "messages": [
-            { "ruleId": "sentence-length", "message": "Line 1 sentence length(156) exceeds the maximum sentence length of 100.", "line": 5 },
-            { "ruleId": "sentence-length", "message": "Line 2 sentence length(102) exceeds the maximum sentence length of 100.", "line": 9 }
-          ] }]
-        JSON
-        rows = TextlintFormatter.aggregate_json(json, base_dir: '/proj')[:files].first[:rows]
-        assert_equal 1, rows.size, '1 行に集約される'
-        assert_equal 2, rows.first[:count]
-        assert_equal '[sentence-length] 一文が長すぎます（最大文長を超過）', rows.first[:label]
-      end
-
       # 集約した行が FindingRows.arrange とかみ合うこと（表示の順序はそちらが決める）。
       # 件数が同じルールは、最初の出現行の早い順に並ぶ（著者は原稿を上から直すため）
       def test_aggregate_json_rows_sort_by_first_line_through_finding_rows

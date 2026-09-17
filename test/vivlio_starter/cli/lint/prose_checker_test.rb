@@ -24,6 +24,7 @@
 #   PC-15: 数と「つ」は漢数字、記号の個数は算用数字で書くよう指摘する（--fix しない）
 #   PC-16: かっこの隣の空白を指摘する（区切り記号・強調の閉じ・記法の空白は黙る）
 #   PC-17: 文末の句点の打ち忘れを指摘する（体言止め・小見出し・箇条書き・出力例は黙る）
+#   PC-18: 一文の長さを和文で測る（インラインコード・丸かっこ・欧文は数えない）
 # ================================================================
 
 require_relative '../../../test_helper'
@@ -36,11 +37,12 @@ class TestProseChecker < Minitest::Test
   MazegakiDictionary = VivlioStarter::CLI::Lint::MazegakiDictionary
 
   # 原稿を一時ファイルへ書いて検査する（check はパスを受け取るため）
-  def check(body, disabled_rules: [], parenthetical_max: nil)
+  def check(body, disabled_rules: [], parenthetical_max: nil, sentence_max: nil)
     Dir.mktmpdir do |dir|
       path = File.join(dir, 'chapter.md')
       File.write(path, body)
-      PC.check(path, disabled_rules: disabled_rules, parenthetical_max: parenthetical_max)
+      PC.check(path, disabled_rules: disabled_rules, parenthetical_max: parenthetical_max,
+                     sentence_max: sentence_max)
     end
   end
 
@@ -777,6 +779,75 @@ class TestProseChecker < Minitest::Test
   # 句点を足すのか体言止めに直すのかは著者しか決められないので、自動修正の対象にしない
   def test_should_not_make_missing_period_fixable
     refute_includes PC::FIXABLE_RULES, 'missing-period'
+  end
+
+  # --- 一文の長さ（PC-18）---
+
+  def length_lines(body, **)
+    check(body, **).select { it.rule == 'sentence-length' }.map(&:line)
+  end
+
+  # 上限を超える文だけを指摘する
+  def test_should_report_only_the_sentence_over_the_limit
+    body = "#{'あ' * 40}。#{'い' * 120}。#{'う' * 30}。\n"
+
+    assert_equal [1], length_lines(body)
+    assert_empty length_lines("#{'あ' * 99}。\n")
+  end
+
+  # インラインコードは読む負担が字数に比例しないので数えない。
+  # textlint の sentence-length はバッククォートだけを落として中身を数えていた
+  def test_should_not_count_inline_code
+    body = "これは`:::{.sideimage-right}`と`:::{.sideimage-left}`と`--color-figure-border`を#{'あ' * 60}並べた文です。\n"
+
+    assert_empty length_lines(body)
+  end
+
+  # 丸かっこの中も数えない（読者は補足を読み飛ばして本筋を追える）
+  def test_should_not_count_parentheticals
+    body = "#{'あ' * 80}（#{'い' * 60}）#{'う' * 15}。\n"
+
+    assert_empty length_lines(body)
+  end
+
+  # 欧文の連なりも数えない（値の列挙が字数を占めても読みにくさとは別）
+  def test_should_not_count_latin_runs
+    body = "色は yellow orange red magenta cyan blue green violet indigo を#{'あ' * 60}指定します。\n"
+
+    assert_empty length_lines(body)
+  end
+
+  # book.yml の lint.sentence_length_max で上限を変えられる
+  def test_should_honor_the_configured_limit
+    body = "#{'あ' * 70}。\n"
+
+    assert_empty length_lines(body)
+    assert_equal [1], length_lines(body, sentence_max: 50)
+  end
+
+  # 0（:off）は「一文の長さを検査しない」。上限を変えるのも切るのも同じキーで済ませる約束で、
+  # parenthetical_length_max・index.max_sub_references と揃えたもの
+  def test_should_treat_off_as_no_check
+    assert_empty length_lines("#{'あ' * 200}。\n", sentence_max: :off)
+  end
+
+  # PC-09: ルール単位で切れる
+  def test_should_respect_disabled_rules_for_sentence_length
+    assert_empty length_lines("#{'あ' * 200}。\n", disabled_rules: ['sentence-length'])
+  end
+
+  # 段落内改行で折り返した文も 1 文として測り、指摘は文の**始まり**の行を指す。
+  # 長い文は頭から読み直して切り所を探すため（`ambiguous-comparison` と同じ指し方。
+  # 句点の打ち忘れは直す場所が末尾なので、あちらだけ終わりの行を指す）
+  def test_should_read_across_soft_wrapped_lines_and_point_at_the_start
+    body = "#{'あ' * 60}\n#{'い' * 60}。\n"
+
+    assert_equal [1], length_lines(body)
+  end
+
+  # 文を切るかどうかは著者が決めることなので、自動修正の対象にしない
+  def test_should_not_make_sentence_length_fixable
+    refute_includes PC::FIXABLE_RULES, 'sentence-length'
   end
 
   # --- 表示 ---

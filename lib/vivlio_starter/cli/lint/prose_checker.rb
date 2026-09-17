@@ -64,6 +64,7 @@ module VivlioStarter
         KANJI_LOOKALIKE_RULE = 'kanji-lookalike'
         KANSUJI_COUNTER_RULE = 'kansuji-counter-suffix'
         MISSING_PERIOD_RULE  = 'missing-period'
+        SENTENCE_LENGTH_RULE = 'sentence-length'
 
         # --fix で直せるルール。どちらも「この文字列はこう書く」が 1 つに決まる。
         FIXABLE_RULES = [MAZEGAKI_RULE, KANJI_LOOKALIKE_RULE].freeze
@@ -203,7 +204,7 @@ module VivlioStarter
         # @param allowlist [Array<Regexp>] allowlist_from が返す除外パターン
         # @param parenthetical_max [Integer, :off, nil] book.yml lint.parenthetical_length_max
         # @return [Array<Finding>]
-        def check(path, disabled_rules: [], allowlist: [], parenthetical_max: nil)
+        def check(path, disabled_rules: [], allowlist: [], parenthetical_max: nil, sentence_max: nil)
           text  = File.read(path, encoding: 'UTF-8')
           rules = Array(disabled_rules).map(&:to_s)
 
@@ -218,6 +219,9 @@ module VivlioStarter
           findings.concat(missing_period_findings(text))       unless rules.include?(MISSING_PERIOD_RULE)
           unless rules.include?(LONG_PARENTHETICAL_RULE) || parenthetical_max == :off
             findings.concat(long_parenthetical_findings(text, parenthetical_max || PARENTHETICAL_MAX))
+          end
+          unless rules.include?(SENTENCE_LENGTH_RULE) || sentence_max == :off
+            findings.concat(sentence_length_findings(text, sentence_max || SENTENCE_LENGTH_MAX))
           end
           findings.concat(kanji_lookalike_findings(text))      unless rules.include?(KANJI_LOOKALIKE_RULE)
           findings.concat(kansuji_counter_findings(text))      unless rules.include?(KANSUJI_COUNTER_RULE)
@@ -336,6 +340,11 @@ module VivlioStarter
         # 字数で叩いても直しようがない（実測: 生の長さで並べると上位はすべてこの形だった）。
         LATIN_RUN = %r{[A-Za-z0-9_.:#@%\-/ ]+}
 
+        # 一文として許す和文の長さの既定値（book.yml の lint.sentence_length_max で変えられる）。
+        # 本書 3041 文の和文の長さは中央 27 字・平均 29 字・最大 94 字なので、100 字は
+        # 「これまで書いてきたどの文よりも長い」ところに立つ歯止めになる。
+        SENTENCE_LENGTH_MAX = 100
+
         # 長すぎる補足の指摘。
         #
         # `sentence-length` は丸かっこの中を数えない設定にしてある（`.textlintrc.yml`）。
@@ -409,11 +418,47 @@ module VivlioStarter
         end
         private_class_method :long_parentheticals
 
-        # 和文としての長さ。コードと欧文は読む負担が字数に比例しないので数えない。
+        # 和文としての長さ。インラインコード・丸かっこの中・欧文は、読む負担が字数に
+        # 比例しないので数えない。退避済みの目印（`long-parenthetical` の経路）と、
+        # 生のバッククォート（`sentence-length` の経路）の両方を落とす。
         def japanese_length(part)
-          part.gsub(/#{Masking::CODE_SPAN_PLACEHOLDER_PREFIX}\d+__/, '').gsub(LATIN_RUN, '').length
+          part.gsub(/#{Masking::CODE_SPAN_PLACEHOLDER_PREFIX}\d+__/, '')
+              .gsub(Masking::INLINE_CODE_SPAN, '')
+              .gsub(PARENTHETICAL, '')
+              .gsub(LATIN_RUN, '')
+              .length
         end
         private_class_method :japanese_length
+
+        # --- 一文の長さ ---------------------------------------------------------
+
+        # 上限を超える文を指摘する。textlint の `sentence-length` の置き換え。
+        #
+        # **あちらは記法を外したあとの素の文字数を数える。** バッククォートは落ちるのに
+        # 中身は残るため、`:::{.sideimage-right}` のような記法が 21 字として効いていた。
+        # 設定の `skipPatterns` では届かない——数えられる時点でコードだった痕跡が無いため、
+        # ルールごとこちらへ移した（実測: 本書の指摘 24 件を和文で測り直すと 69・65・52…
+        # で、どれも読んで長い文ではなかった）。
+        #
+        # 丸かっこの中を数えないのは textlint 側の設定から引き継いだもの。読者は補足を
+        # 読み飛ばして本筋を追えるので、一文の読みにくさを測るには外すほうが実態に合う
+        # （かっこの中だけが伸びる書き方は `long-parenthetical` が受ける）。
+        #
+        # `--fix` はしない（どこで文を切るかは著者が決めること）。
+        def sentence_length_findings(text, limit = SENTENCE_LENGTH_MAX)
+          prose_paragraphs(NotationGuard.strip_notation(text)).flat_map do |paragraph|
+            offset = 0
+
+            paragraph[:text].split(SENTENCE_BREAK).filter_map do |sentence|
+              start   = offset
+              offset += sentence.length
+              next if japanese_length(sentence) <= limit
+
+              Finding.new(line: line_at(paragraph, start), rule: SENTENCE_LENGTH_RULE,
+                          label: "一文が長すぎます（和文 #{limit} 字を超過）")
+            end
+          end
+        end
 
         # --- かっこの隣の空白 -------------------------------------------------
 

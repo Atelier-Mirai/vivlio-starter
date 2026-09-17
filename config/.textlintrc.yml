@@ -37,12 +37,9 @@ rules:
       preferInHeader: ""
       preferInList: ""
     no-doubled-joshi: false  # 並列（AもBも）や役割の違う助詞まで指摘し、本書で 8 割が不要な指摘だったため
-    # 一文の長さ。上限は book.yml の lint.sentence_length_max で変えられます
-    # 丸かっこの中は数えません。読者は補足を読み飛ばして本筋を追えるためです
-    # （かっこの中だけが伸びる書き方は、vs lint の独自ルール long-parenthetical が見ます）
-    sentence-length:
-      skipPatterns:
-        - "/（[^）]*）/"
+    # 一文の長さ（sentence-length）と文末の句点（ja-no-mixed-period）は、vs lint の
+    # 独自ルールが同じ名前で受け持つため、ここに書いても効きません（常に無効化されます）。
+    # 上限は book.yml の lint.sentence_length_max で変えられます
     ja-no-successive-word: false  # 記号の重なり（★★☆☆☆・……・○○）まで指摘し、本書で 21 件中 20 件が誤検出だったため
     max-kanji-continuous-len:
       max: 10  # 漢字の連続を10文字まで許可（書籍名・専門用語対応）
@@ -76,5 +73,4 @@ rules:
     spaceAroundCode: true
 
   # 技術用語のスペルチェック（誤記防止）
-  spellcheck-tech-word:
-    skip: []  # プロジェクト固有の例外語があれば追記
+  spellcheck-tech-word: true
