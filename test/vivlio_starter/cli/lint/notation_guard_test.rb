@@ -7,7 +7,7 @@
 #   Lint::NotationGuard（lib/vivlio_starter/cli/lint/notation_guard.rb）
 #
 # 検証内容:
-#   - G1 機械データ・ブロック（:::{.showcase}）の空行化と、未終了時の据え置き
+#   - G1 機械データ・ブロック（:::{.showcase} / .output / .terminal）の空行化と、未終了時の据え置き
 #   - G2 コンテナのマーカー行の空行化（内部の地の文は残す）
 #   - G3 ふりがな記法（親文字は地の文なので残す）
 #   - G4 クラス属性記法の除去
@@ -71,6 +71,39 @@ module VivlioStarter
           assert_match NotationGuard::MACHINE_BLOCK_OPEN, "::: { .showcase }\n"
           refute_match NotationGuard::MACHINE_BLOCK_OPEN, ":::{.showcase} 説明文\n",
                        '行末に本文が続く形は ShowcaseTransformer が消費しないためブロック扱いしない'
+        end
+
+        # 実行結果・ログは機械が出した文字列なので、著者が直せる指摘にならない。
+        # 同じ文字列がすぐ上のフェンスにも書かれることが多く（記法とその表示例）、
+        # 外さないと**フェンスの外に置いた片方だけ**が指摘される
+        def test_should_blank_out_output_and_terminal_blocks
+          source = <<~MD
+            次のように表示されます。
+
+            :::{.output}
+            @ruby-sample は、Ruby で画面表示を行うサンプルコードです
+            :::
+
+            :::{.terminal}
+            $ vs build
+            :::
+
+            以上です。
+          MD
+
+          result = NotationGuard.strip_notation(source)
+
+          refute_includes result, 'サンプルコード', '出力例は地の文として読ませない'
+          refute_includes result, 'vs build', 'ターミナルの入力例も同じ'
+          assert_includes result, '次のように表示されます。', '地の文はそのまま残す'
+          assert_equal source.lines.size, result.lines.size, 'I1 行数の保存'
+        end
+
+        # 普通の文章を書く囲みは対象外。一律に外すと本物の誤りを見逃す
+        def test_should_keep_prose_containers_visible
+          source = ":::{.column}\nここは普通の文章です。\n:::\n"
+
+          assert_includes NotationGuard.strip_notation(source), 'ここは普通の文章です。'
         end
 
         # ----------------------------------------------------------------

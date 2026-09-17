@@ -17,8 +17,6 @@
 
 require 'json'
 
-require_relative 'lint/finding_rows'
-
 module VivlioStarter
   module CLI
     # textlint --format json 出力の集約フォーマッター
@@ -33,8 +31,9 @@ module VivlioStarter
       # @param trim_long_vowel [Boolean] true なら「X => Xー」（末尾長音を足す）系の指摘を抑止
       # @param suppressed_lines [Hash] { 絶対パス => 行番号の集合 }。その行の指摘を丸ごと落とす
       # @return [Hash, nil] { files: [{ path:, rows: }], total:, fixable: } / JSON 解釈失敗時 nil
-      #   rows: [{ count:, label:, lines: }]（件数の多い順・同数なら出現行の早い順。
-      #   label は "[ルール] 指摘先頭行"）
+      #   rows: [{ count:, label:, lines: [Integer] }]（label は "[ルール] 指摘先頭行"）。
+      #   **並べ替えも行番号の整形もここではしない**——独自校正の指摘と混ぜて 1 つの表へ
+      #   並べるため、順序が決まるのは両方が揃ってから（Lint::FindingRows.arrange）。
       def self.aggregate_json(json_string, base_dir: Dir.pwd, disabled_rules: [], trim_long_vowel: false,
                               suppressed_lines: {})
         data = JSON.parse(json_string.to_s)
@@ -94,13 +93,12 @@ module VivlioStarter
       # メッセージ配列を [集約見出し, ルール] 単位で集約する。
       # 通常はメッセージ先頭行ごと（prh の置換などは別グループ）だが、出現ごとに数値が変わる
       # ルール（sentence-length 等）は要約ラベル＋数字マスクで 1 つに畳む。
-      # 並べ替えと出現行の表示は Lint::FindingRows に任せる（3 つの検査で揃えるため）。
+      # 並べ替えと出現行の表示は呼び出し側（Lint::FindingRows）に任せる。
       def self.aggregate_messages(messages)
-        rows = messages.group_by { |m| [grouping_head(m['message'], m['ruleId']), short_rule(m['ruleId'])] }
-                       .map do |(head, rule), items|
+        messages.group_by { |m| [grouping_head(m['message'], m['ruleId']), short_rule(m['ruleId'])] }
+                .map do |(head, rule), items|
           { count: items.size, label: "[#{rule}] #{head}", lines: items.filter_map { it['line'] } }
         end
-        Lint::FindingRows.arrange(rows)
       end
 
       # 集約見出し：出現ごとに数値が変わるルール（sentence-length 等）は要約ラベルで 1 つに畳み、

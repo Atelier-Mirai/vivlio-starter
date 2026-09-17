@@ -149,12 +149,13 @@ class TestSpellChecker < Minitest::Test
     assert_equal false, SC.print_errors({})
   end
 
-  # 候補語がある場合に「語 => 候補」形式で出力され、ヘッダに (spellcheck) が付くことを確認する
+  # 候補語がある場合に「語 => 候補」形式で出力されることを確認する。
+  # ヘッダのラベルは完了サマリーの内訳（日本語校正／スペルチェック）と同じ語にする
   def test_print_errors_with_suggestion_shows_arrow
     errors = { 'test.md' => [{ line: 5, word: 'bandle', suggestion: 'bundle' }] }
     out, = capture_io { SC.print_errors(errors) }
     assert_includes out, 'bandle => bundle'
-    assert_includes out, '(spellcheck)'
+    assert_includes out, '(スペルチェック)'
   end
 
   # 候補語がない場合は単語のみ表示され '=>' が含まれないことを確認する
@@ -163,6 +164,19 @@ class TestSpellChecker < Minitest::Test
     out, = capture_io { SC.print_errors(errors) }
     assert_includes out, 'xyzzy'
     refute_includes out, '=>'
+  end
+
+  # `行:` の位置はその表の最長ラベルに合わせる。桁を決め打ちにしていた頃は、
+  # 28 桁を超える語が来た行だけ右へずれて列が崩れた（綴り誤りの語は長さを見越せない）
+  def test_print_errors_aligns_the_line_column_across_long_labels
+    errors = { 'test.md' => [
+      { line: 23, word: 'bandle', suggestion: 'bundle' },
+      { line: 88, word: 'notation-implemention-guide', suggestion: 'notation-implementation-guide' }
+    ] }
+    out, = capture_io { SC.print_errors(errors) }
+
+    columns = out.lines.filter_map { it.index('行:') }.uniq
+    assert_equal 1, columns.size, "`行:` の桁が揃うこと:\n#{out}"
   end
 
   # エラー出力にファイルパスが含まれることを確認する

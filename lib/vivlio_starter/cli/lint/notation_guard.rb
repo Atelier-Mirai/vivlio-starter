@@ -45,9 +45,18 @@ module VivlioStarter
       module NotationGuard
         module_function
 
-        # 機械データ（座標・オプション）を本文として持つコンテナ名。
-        # 記法を追加するときはここへ 1 語加えればガードが追従する。
-        MACHINE_DATA_CONTAINERS = %w[showcase].freeze
+        # 中身が地の文でないコンテナ名。記法を追加するときはここへ 1 語加えればガードが追従する。
+        #
+        # `showcase` は機械データ（座標・オプション）を本文として持つ。`output`（実行結果・ログ）と
+        # `terminal`（`$ コマンド`）は**機械が出した文字列**で、著者が書いた日本語ではない。
+        # 校正の指摘は「著者が直せること」でなければ意味がないが、出力例の句点や表記を著者が
+        # 直すわけにはいかない（実測: 本書で 3 件。`:::{.output}` に置いた変換結果の例が
+        # `ruby => Ruby`・`"表示を行う"は冗長` と叩かれていた。しかも同じ文字列がすぐ上の
+        # フェンスにも書いてあり、そちらは除外されるので、**片方だけ指摘される**状態だった）。
+        #
+        # 囲みでも `column` / `note` / `tip` などは入れない——普通の文章を書く場所であり、
+        # 一律に外すと本物の誤りを見逃す。用途が「機械の出力」に限られるものだけを並べる。
+        MACHINE_DATA_CONTAINERS = %w[showcase output terminal].freeze
 
         # 機械データ・ブロックの開始行（例: `:::{.showcase}`）。
         # ShowcaseTransformer::BLOCK_PATTERN の開始側と揃える（行末に本文が続く

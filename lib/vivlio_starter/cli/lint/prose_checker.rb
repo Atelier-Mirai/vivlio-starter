@@ -39,7 +39,7 @@ require 'yaml'
 require_relative '../common'
 require_relative '../index_markup'
 require_relative '../masking'
-require_relative 'finding_rows'
+require_relative 'notation_guard'
 require_relative 'mazegaki_dictionary'
 require_relative 'mazegaki_scanner'
 
@@ -63,6 +63,7 @@ module VivlioStarter
         LONG_PARENTHETICAL_RULE = 'long-parenthetical'
         KANJI_LOOKALIKE_RULE = 'kanji-lookalike'
         KANSUJI_COUNTER_RULE = 'kansuji-counter-suffix'
+        MISSING_PERIOD_RULE  = 'missing-period'
 
         # --fix で直せるルール。どちらも「この文字列はこう書く」が 1 つに決まる。
         FIXABLE_RULES = [MAZEGAKI_RULE, KANJI_LOOKALIKE_RULE].freeze
@@ -108,6 +109,24 @@ module VivlioStarter
         # 「複数章は `主要参照: …`（カンマ区切り）」という比較表現の無い行が、前の項目の
         # 「と同様の」と繋がって挙がっていた）。表のセルどうしでも同じことが起きる。
         BLOCK_START = /\A[ \t]*(?:[-*+][ \t]|\d+[.)][ \t]|\||\#+[ \t]|>)/
+
+        # --- 文末の句点 ---------------------------------------------------------
+
+        # 段落がひらがなで終わっている＝用言（動詞・形容詞・助動詞）の終止形で終わっている。
+        #
+        # 日本語の用言は終止形が必ずひらがなになる（`…する` `…ない` `…した` `…です` `…ます`）。
+        # 逆に体言止めは名詞で終わるので、漢字・カタカナ・英数字・閉じかっこになる。
+        # **末尾 1 文字の種類だけで、句点を求めるべき文と、求めてはいけない書き方が分かれる。**
+        #
+        # 長音記号 `ー` を入れてはならない——`…のメンバー` のようなカタカナ語の末尾に付き、
+        # 体言止めを用言と読み違える。範囲は U+3041〜U+3096 に限る。
+        HIRAGANA_END = /[ぁ-ゖ]\z/
+
+        # 小見出しとして書かれた段落（`**独自の装飾を追加する**` のように、段落全体が強調ひとつ）。
+        # 組版でも小見出しとして組まれるもので（`PostProcess.mark_strong_headings!` が
+        # strong-heading クラスを付ける。本書で 98 件）、見出しに句点は付けない。
+        # **強調を外す前の行で判定する**——外すと地の文と見分けが付かなくなる。
+        STRONG_HEADING = /\A\*\*[^*\n]+\*\*\z/
 
         # 文の区切り。句点のほかに表のセル境界（`|`）でも切る——1 行の中で隣り合う
         # だけのセルが 1 文として読まれ、「Kindle と同じく PDF ページを切り出す」と
@@ -196,6 +215,7 @@ module VivlioStarter
           findings.concat(setext_findings(text))               unless rules.include?(SETEXT_RULE)
           findings.concat(slash_findings(text))                unless rules.include?(SLASH_RULE)
           findings.concat(bracket_space_findings(text))        unless rules.include?(BRACKET_SPACE_RULE)
+          findings.concat(missing_period_findings(text))       unless rules.include?(MISSING_PERIOD_RULE)
           unless rules.include?(LONG_PARENTHETICAL_RULE) || parenthetical_max == :off
             findings.concat(long_parenthetical_findings(text, parenthetical_max || PARENTHETICAL_MAX))
           end
@@ -336,6 +356,47 @@ module VivlioStarter
             end
           end
         end
+
+        # 文末に句点が無い段落を指摘する。textlint の `ja-no-mixed-period` の置き換え。
+        #
+        # **体言止めは指摘しない。** あちらは段落の末尾が句点でなければ一律に叩くが、
+        # 日本語には句点を付けない書き方がある。実測（本書 39 件）では 12 件がそれで、
+        # `**用途**: PDF閲覧、電子配布` のような定義、図に添えるキャプション、読点で
+        # 終えて次のブロックへ続ける書き方まで「句点を付けよ」と言っていた。見分けは
+        # 末尾 1 文字で付く（HIRAGANA_END）。
+        #
+        # 記法を先に中和するのは、`:::{.output}` の実行結果を文として読ませないため
+        # （G1。機械が出した文字列に句点を求めても著者は直しようがない）。行数は
+        # 保存されるので、指摘の行番号は原稿のままになる。
+        #
+        # 箇条書き・見出し・表・引用で始まる段落は見ない。項目や見出しに句点を付けない
+        # のは一般の作法で、textlint 側も `ListItem` を最初から除外している。
+        #
+        # 助詞で終わる形（`…という自然な習慣で` `…用語集へ`）は残る。文ではないので
+        # 指摘は正しくないが、助詞の一覧を抱えるより `<!-- vs-lint-disable-next-line -->`
+        # で抑えるほうが軽いと判断した（実測で本書 2 件）。
+        #
+        # `--fix` はしない——句点を足すのか体言止めに直すのかは、著者にしか決められない。
+        def missing_period_findings(text)
+          guarded = NotationGuard.strip_notation(text)
+          sources = prose_lines(guarded).to_h { |lineno, line| [lineno, line.strip] }
+
+          prose_paragraphs(guarded).filter_map do |paragraph|
+            body = paragraph[:text]
+            next if body.match?(BLOCK_START) || !body.match?(HIRAGANA_END)
+            next if strong_heading?(paragraph, sources)
+
+            Finding.new(line: paragraph[:last], rule: MISSING_PERIOD_RULE,
+                        label: '文末に句点「。」がありません')
+          end
+        end
+
+        # 段落が小見出し（`**…**` 1 行）か。強調を外す前の原文で見る。
+        def strong_heading?(paragraph, sources)
+          paragraph[:start] == paragraph[:last] &&
+            STRONG_HEADING.match?(sources[paragraph[:last]].to_s)
+        end
+        private_class_method :strong_heading?
 
         # 1 行から、上限を超える補足を [文, 和文の長さ] で拾う
         def long_parentheticals(line, limit)
@@ -749,34 +810,19 @@ module VivlioStarter
 
         # --- 表示 -------------------------------------------------------------
 
-        # 複数ファイルの指摘を表示する（textlint 側の集約表示と同じ体裁）。
-        # @param findings_by_file [Hash] { path => [Finding] }
-        # @return [Boolean] 指摘があれば true
-        def print_errors(findings_by_file)
-          return false if findings_by_file.empty?
-
-          findings_by_file.each do |path, findings|
-            Common.log_always "📄 #{path}  (校正)"
-            aggregate(findings).each do |row|
-              Common.log_always format('  %3d件  %s', row[:count], row[:label])
-              Common.log_always format('         行: %s', row[:lines])
-            end
-            Common.log_always ''
-          end
-
-          print_ambiguous_hint(findings_by_file)
-          true
-        end
-
         # 指摘をルール・ラベル単位で集約する。
         # ラベル先頭の [ルール ID] は、著者が lint.disabled_rules へ書く名前をそのまま
         # 読み取れるようにするため（textlint 側の表示と揃える）。
-        # 並べ替えと出現行の表示は FindingRows に任せる（3 つの検査で揃えるため）。
+        #
+        # **並べ替えも行番号の整形もここではしない。** 著者から見れば textlint の指摘と
+        # 区別する理由がないので、表示は 1 つの表へ混ぜる（LintRunner#print_prose_report）。
+        # 順序が決まるのは両方が揃ってからで、それを決めるのは FindingRows.arrange。
+        # @param findings [Array<Finding>]
+        # @return [Array<Hash>] { count:, label:, lines: [Integer] }
         def aggregate(findings)
-          rows = findings.group_by { [it.rule, it.label] }.map do |(rule, label), items|
+          findings.group_by { [it.rule, it.label] }.map do |(rule, label), items|
             { count: items.size, label: "[#{rule}] #{label}", lines: items.map(&:line) }
           end
-          FindingRows.arrange(rows)
         end
 
         # 対比の指摘は「どう直すか」が自明でないので、直し方を 1 度だけ添える。

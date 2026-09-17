@@ -92,6 +92,31 @@ module VivlioStarter
         assert_equal "楕円について、Ractor はスレッドと同様に共有しない。\n", File.read(path)
       end
 
+      # 検査の実装が textlint と独自ルールに分かれているのは都合であって、著者から見れば
+      # 同じ「日本語校正」。1 ファイル 1 ブロックにまとめ、件数順に混ぜて並べる
+      # （分けて出すと同じ原稿の見出しが 2 度現れ、どちらを先に直すのか読み取れない）
+      def test_prose_findings_share_one_block_with_textlint
+        path = 'contents/11-install.md'
+        File.write(path, "だ円を描きます。\nだ円を測ります。\n全て正しい。\n")
+
+        json = JSON.generate([{ 'filePath' => File.expand_path(path),
+                                'messages' => [{ 'ruleId' => 'prh', 'message' => '全て => すべて', 'line' => 3 }] }])
+        fake_status = Struct.new(:success?).new(false)
+        def fake_status.exitstatus = 1
+
+        stdout = nil
+        with_stubbed_textlint_available do
+          Open3.stub(:capture3, ->(*_args) { [json, '', fake_status] }) do
+            stdout, = capture_io { LintCommands.execute_lint(['11-install'], { textlint_only: true }) }
+          end
+        end
+
+        assert_equal 1, stdout.scan("📄 #{path}").size, '同じ原稿の見出しは 1 度だけ'
+        assert_match(/📄 .*\(日本語校正\)/, stdout, 'ラベルは完了サマリーの内訳と同じ語')
+        assert_operator stdout.index('[mazegaki]'), :<, stdout.index('[prh]'),
+                        '2 件の独自校正が 1 件の textlint より先に出る（混ぜて件数順に並ぶ）'
+      end
+
       def test_runner_invokes_textlint_with_resolved_targets
         FileUtils.touch('contents/11-install.md')
         FileUtils.touch('contents/21-customize.md')

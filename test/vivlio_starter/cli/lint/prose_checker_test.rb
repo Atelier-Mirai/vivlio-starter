@@ -18,16 +18,18 @@
 #   PC-09: lint.disabled_rules でルール単位に切れる
 #   PC-10: 辞書の修正後の語が、別の交ぜ書きとして再び指摘されない（--fix が収束する）
 #   PC-11: 語の途中に強調記法が入っても対比を取りこぼさない
-#   PC-12: 集約表示は件数の多い順・同数なら最初の出現行の早い順に並ぶ
+#   PC-12: 集約は畳むだけ（並べ替えは FindingRows。textlint の指摘と混ぜて並べるため）
 #   PC-13: 和文どうしの並列スラッシュだけを指摘する（欧文の並列・単位は黙る）
 #   PC-14: 康煕部首を指摘し、--fix で漢字（新字体）へ置換する
 #   PC-15: 数と「つ」は漢数字、記号の個数は算用数字で書くよう指摘する（--fix しない）
 #   PC-16: かっこの隣の空白を指摘する（区切り記号・強調の閉じ・記法の空白は黙る）
+#   PC-17: 文末の句点の打ち忘れを指摘する（体言止め・小見出し・箇条書き・出力例は黙る）
 # ================================================================
 
 require_relative '../../../test_helper'
 require 'tmpdir'
 require 'vivlio_starter/cli/lint/prose_checker'
+require 'vivlio_starter/cli/lint/finding_rows'
 
 class TestProseChecker < Minitest::Test
   PC = VivlioStarter::CLI::Lint::ProseChecker
@@ -681,6 +683,102 @@ class TestProseChecker < Minitest::Test
     assert_empty counter_labels("由来は 2 つあります。\n", disabled_rules: ['kansuji-counter-suffix'])
   end
 
+  # --- 文末の句点（PC-17）---
+
+  def period_lines(body, **)
+    check(body, **).select { it.rule == 'missing-period' }.map(&:line)
+  end
+
+  # 用言（動詞・形容詞・助動詞）の終止形はひらがなで終わる。句点の打ち忘れを拾う
+  def test_should_report_a_sentence_that_forgot_its_period
+    body = "スクリーンショットでは示せない図は、自分で描くことになります\n"
+
+    assert_equal [1], period_lines(body)
+  end
+
+  # 体言止めには句点を求めない。名詞で終わるので漢字・カタカナ・英数字・閉じかっこになる
+  def test_should_stay_silent_on_a_noun_ending
+    body = <<~MD
+      **用途**: PDF閲覧、電子配布
+
+      **用途**: 電子書籍（EPUB）
+
+      対応する形式は WebP
+
+      小さな余白（0.5rem）で配置
+    MD
+
+    assert_empty period_lines(body)
+  end
+
+  # 長音記号で終わるカタカナ語を用言と読み違えない（`ー` は U+30FC でひらがなではない）
+  def test_should_not_mistake_a_long_vowel_for_a_verb
+    assert_empty period_lines("担当するのはプロジェクトマネージャー\n")
+  end
+
+  # 句点で終わっていれば黙る。感嘆符・疑問符・閉じかっこも文末として扱う
+  def test_should_stay_silent_when_the_sentence_is_closed
+    body = <<~MD
+      図は自分で描くことになります。
+
+      本当にそれでよいのでしょうか？
+
+      詳しくは「図版の作り方」を参照してください（91 章）
+    MD
+
+    assert_empty period_lines(body)
+  end
+
+  # 箇条書き・見出し・表・引用は項目であって文ではない。句点を付けないのが一般の作法で、
+  # textlint 側も ListItem を最初から除外している
+  def test_should_skip_list_and_heading_blocks
+    body = <<~MD
+      ## 図版の作り方
+
+      - **サイズ**: 判型に合わせる
+      1. 画像を用意する
+
+      | ヘッダー | 値 |
+      | --- | --- |
+      | 余白 | 広げる |
+
+      > 引用した文を置く
+    MD
+
+    assert_empty period_lines(body)
+  end
+
+  # 段落全体が強調ひとつの行は小見出しとして組まれる（strong-heading）。見出しに句点は付けない
+  def test_should_skip_strong_heading_paragraphs
+    body = "**独自の装飾を追加する**\n\n本章で紹介していない装飾も実現できます。\n"
+
+    assert_empty period_lines(body)
+  end
+
+  # 実行結果・ターミナルの中身は機械が出した文字列なので、句点を求めても直しようがない
+  def test_should_skip_machine_output_containers
+    body = ":::{.output}\n✅ ビルドが完了しました\n:::\n"
+
+    assert_empty period_lines(body)
+  end
+
+  # 複数行にわたる段落は、句点を置くべき最後の行を指す
+  def test_should_point_at_the_last_line_of_a_paragraph
+    body = "図版の作り方はいくつかあります。スクリーンショットで\n示せないものは、自分で描くことになります\n"
+
+    assert_equal [2], period_lines(body)
+  end
+
+  # PC-09: ルール単位で切れる
+  def test_should_respect_disabled_rules_for_missing_period
+    assert_empty period_lines("自分で描くことになります\n", disabled_rules: ['missing-period'])
+  end
+
+  # 句点を足すのか体言止めに直すのかは著者しか決められないので、自動修正の対象にしない
+  def test_should_not_make_missing_period_fixable
+    refute_includes PC::FIXABLE_RULES, 'missing-period'
+  end
+
   # --- 表示 ---
 
   # 著者が lint.disabled_rules へ書く名前を、集約表示からそのまま読み取れること
@@ -691,18 +789,19 @@ class TestProseChecker < Minitest::Test
     assert_equal 1, rows.size, '同じ指摘は 1 行へ畳む'
     assert_equal '[mazegaki] だ円 => 楕円', rows.first[:label]
     assert_equal 2, rows.first[:count]
-    assert_equal '1, 2', rows.first[:lines]
+    assert_equal [1, 2], rows.first[:lines], '出現行は整形せず、行番号のまま返す'
   end
 
-  # 件数が同じ指摘は、最初の出現行の早い順に並ぶ（著者は原稿を上から直すため）。
-  # sort_by は安定ではないので、第 2 キーが無いと同数の行の並びが実行ごとに変わる
-  def test_should_break_count_ties_by_first_line
+  # 独自校正の指摘は textlint の指摘と混ぜて 1 つの表に並べる。順序を決めるのは
+  # 両方が揃ったあとの FindingRows なので、集約した行がそれとかみ合うことを確かめる。
+  # 件数が同じ指摘は、最初の出現行の早い順に並ぶ（著者は原稿を上から直すため）
+  def test_should_leave_ordering_to_finding_rows
     findings = [
       PC::Finding.new(line: 30, rule: 'mazegaki', label: 'だ円 => 楕円'),
       PC::Finding.new(line: 5,  rule: 'mazegaki', label: 'かぎ括弧 => 鉤括弧'),
       PC::Finding.new(line: 17, rule: 'mazegaki', label: 'あい昧 => 曖昧')
     ]
-    rows = PC.aggregate(findings)
+    rows = VivlioStarter::CLI::Lint::FindingRows.arrange(PC.aggregate(findings))
 
     assert_equal [1, 1, 1], rows.map { it[:count] }, '3 つとも同数'
     assert_equal %w[5 17 30], rows.map { it[:lines] }, '同数なら出現行の早い順'

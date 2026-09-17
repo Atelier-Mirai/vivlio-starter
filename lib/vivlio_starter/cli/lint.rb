@@ -33,6 +33,7 @@ require_relative 'common'
 require_relative 'masking'
 require_relative 'textlint_formatter'
 require_relative 'token_resolver'
+require_relative 'lint/finding_rows'
 require_relative 'lint/notation_guard'
 require_relative 'lint/tokenizer'
 require_relative 'lint/dict_manager'
@@ -91,6 +92,8 @@ module VivlioStarter
             prose_fixed = options[:fix] ? apply_prose_fixes!(files) : []
             lint_info   = run_textlint(files)
             prose_info  = run_prose_check(files).merge(fixed_files: prose_fixed)
+            # 表示は 2 つの検査が揃ってから。混ぜて並べるので、片方だけでは順序が決まらない
+            print_prose_report(files, lint_info, prose_info)
           end
           spell_info = run_spellcheck(files) unless textlint_only?
 
@@ -135,28 +138,30 @@ module VivlioStarter
           if result.nil?
             # JSON 解釈に失敗（textlint 自体のエラー等）。生出力をそのまま見せる。
             $stdout.print(stdout) unless stdout.nil? || stdout.empty?
-            return { exit: textlint_exit(status), lint_count: 0, fixable_count: 0 }
+            return { exit: textlint_exit(status), lint_count: 0, fixable_count: 0, rows_by_file: {} }
           end
 
           # 一時ファイルのパスを元ファイル名へ戻す
           result[:files].each { |f| f[:path] = path_map[File.expand_path(f[:path])] || f[:path] }
-          print_textlint_aggregated(result)
           # 無効化で除外した分は問題数に数えない（残り 0 なら成功扱い）
-          { exit: result[:total].positive? ? 1 : 0, lint_count: result[:total], fixable_count: result[:fixable] }
+          { exit: result[:total].positive? ? 1 : 0, lint_count: result[:total], fixable_count: result[:fixable],
+            rows_by_file: result[:files].to_h { [it[:path], it[:rows]] } }
         end
 
         # textlint では扱えない指摘（交ぜ書き・二通りに読める対比）を当てる。
         # 件数は「日本語校正」へ合算する——著者から見れば textlint の指摘と区別する
-        # 理由がない。仕様: lint-japanese-prose-rules-spec.md §5
+        # 理由がない。表示も同じ理由で 1 つの表へ混ぜる（print_prose_report）。
+        # 仕様: lint-japanese-prose-rules-spec.md §5
         def run_prose_check(files)
           findings_by_file = files.to_h { [it, check_prose(it)] }
                                   .reject { |_path, findings| findings.empty? }
-          Lint::ProseChecker.print_errors(findings_by_file)
 
           all = findings_by_file.values.flatten
           { exit: all.empty? ? 0 : 1,
             prose_count: all.size,
-            fixable_count: all.count { Lint::ProseChecker::FIXABLE_RULES.include?(it.rule) } }
+            fixable_count: all.count { Lint::ProseChecker::FIXABLE_RULES.include?(it.rule) },
+            rows_by_file: findings_by_file.transform_values { Lint::ProseChecker.aggregate(it) },
+            findings_by_file: findings_by_file }
         end
 
         # 交ぜ書きと康煕部首の置換を原稿へ適用する（--fix 指定時のみ）。
@@ -201,15 +206,36 @@ module VivlioStarter
           Common.truthy?(Common::CONFIG.lint.trim_long_vowel)
         end
 
-        def print_textlint_aggregated(result)
-          result[:files].each do |file|
-            Common.log_always "📄 #{file[:path]}  (textlint)"
-            file[:rows].each do |row|
+        # 日本語校正の指摘を、原稿 1 ファイルにつき 1 つの表で出す。
+        #
+        # **textlint と独自校正を混ぜる。** 検査の実装が 2 つに分かれているのは
+        # 都合であって、著者にとっては同じ「日本語校正」である（完了サマリーでも
+        # 1 つの件数へ合算している）。分けて出すと同じ原稿の見出しが 2 度現れ、
+        # どちらを先に直すのか・全部でいくつあるのかが読み取れなくなる。
+        #
+        # 並べ替えは混ぜたあとで一度だけ行う。だから両検査は畳んだ行を返すだけにして、
+        # 順序と行番号の整形は FindingRows へ預けてある。
+        def print_prose_report(files, lint_info, prose_info)
+          merge_rows(files, lint_info[:rows_by_file], prose_info[:rows_by_file]).each do |path, rows|
+            Common.log_always "📄 #{path}  (日本語校正)"
+            Lint::FindingRows.arrange(rows).each do |row|
               Common.log_always format('  %3d件  %s', row[:count], row[:label])
               Common.log_always format('         行: %s', row[:lines])
             end
             Common.log_always ''
           end
+
+          Lint::ProseChecker.print_ambiguous_hint(prose_info[:findings_by_file] || {})
+        end
+
+        # 検査ごとの { パス => 行 } を 1 つに畳む。並びは検査対象の順（＝章の順）。
+        # files に無いパスも落とさない——textlint が返すパスは一時ファイル経由で
+        # 戻したものなので、取りこぼすと指摘が黙って消える。
+        def merge_rows(files, *sources)
+          collected = sources.compact.each_with_object({}) do |rows_by_file, memo|
+            rows_by_file.each { |path, rows| (memo[path] ||= []).concat(rows) }
+          end
+          (files + collected.keys).uniq.filter_map { |path| [path, collected[path]] if collected[path] }.to_h
         end
 
         def textlint_exit(status) = status.success? ? 0 : (status.exitstatus || 1)
@@ -363,9 +389,15 @@ module VivlioStarter
         # `no-kanji-lookalikes` は `kanji-lookalike`（ProseChecker）へ移した。雛形はもう
         # `preset-japanese` を読まないが、`.textlintrc.yml` を更新していないプロジェクト
         # では残っているので、二重に指摘しないよう切る。
+        #
+        # `ja-no-mixed-period` は段落の末尾が句点でなければ一律に叩き、**体言止めを知らない**。
+        # `**用途**: PDF閲覧、電子配布` のような定義、図に添えるキャプション、読点で終えて
+        # 次のブロックへ続ける書き方まで「句点を付けよ」と言う（実測: 本書 39 件のうち 12 件）。
+        # 末尾が用言か体言かを見る `missing-period`（ProseChecker）へ寄せた。
         SUPERSEDED_TEXTLINT_RULES = {
           'preset-ja-spacing' => %w[ja-no-space-around-slash ja-no-space-around-parentheses],
-          'preset-japanese' => %w[no-kanji-lookalikes]
+          'preset-japanese' => %w[no-kanji-lookalikes],
+          'preset-ja-technical-writing' => %w[ja-no-mixed-period]
         }.freeze
 
         # 一文の長さのルールを持つプリセット。`preset-japanese` は 1.0 より前の雛形が

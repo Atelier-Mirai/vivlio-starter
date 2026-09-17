@@ -8,10 +8,15 @@
 #
 # 検証内容:
 #   - aggregate_json: textlint --format json のルール単位集約・無効化・sentence-length 要約
+#
+# 集約は「畳む」までで、並べ替えと出現行の整形はしない（独自校正の指摘と混ぜて
+# 1 つの表へ並べるため、順序は Lint::FindingRows.arrange が最後に決める）。
+# 並び順を見るテストは arrange を通してから確かめる。
 # ================================================================
 
 require 'test_helper'
 require 'vivlio_starter/cli/textlint_formatter'
+require 'vivlio_starter/cli/lint/finding_rows'
 
 module VivlioStarter
   module CLI
@@ -35,7 +40,7 @@ module VivlioStarter
         JSON
       end
 
-      # 同じ指摘（メッセージ先頭行＋ルール）を 1 行へ集約し、件数降順に並べる
+      # 同じ指摘（メッセージ先頭行＋ルール）を 1 行へ集約し、出現行をそのまま添える
       def test_aggregate_json_groups_and_sorts
         result = TextlintFormatter.aggregate_json(sample_json, base_dir: '/proj')
 
@@ -44,10 +49,10 @@ module VivlioStarter
         file = result[:files].first
         assert_equal 'contents/31-lint.md', file[:path], 'base_dir 相対のパス'
 
-        top = file[:rows].first
-        assert_equal 2, top[:count], '件数の多い指摘が先頭'
-        assert_equal '[ja-space-around-code] インラインコードの後にスペースを入れません。', top[:label]
-        assert_equal '39, 75', top[:lines]
+        code_row = file[:rows].find { it[:label].include?('ja-space-around-code') }
+        assert_equal 2, code_row[:count], '同じ指摘は 1 行へ畳む'
+        assert_equal '[ja-space-around-code] インラインコードの後にスペースを入れません。', code_row[:label]
+        assert_equal [39, 75], code_row[:lines], '出現行は整形せず、行番号のまま返す'
         # prh は置換（先頭行）単位で別グループ
         labels = file[:rows].map { it[:label] }
         assert_includes labels, '[prh] 以下の => 次の'
@@ -75,9 +80,9 @@ module VivlioStarter
 
         assert_equal 3, result[:total], '抑止した 2 件は数にも入らない'
         rows = result[:files].first[:rows]
-        assert_equal '75', rows.find { it[:label].include?('ja-space-around-code') }[:lines],
+        assert_equal [75], rows.find { it[:label].include?('ja-space-around-code') }[:lines],
                      '同じルールでも抑止していない行は残る'
-        assert_equal '122', rows.find { it[:label].include?('以下の') }[:lines]
+        assert_equal [122], rows.find { it[:label].include?('以下の') }[:lines]
       end
 
       # 抑止対象が全部消えたファイルは、そもそも表示しない
@@ -136,9 +141,9 @@ module VivlioStarter
         assert_equal '[sentence-length] 一文が長すぎます（最大文長を超過）', rows.first[:label]
       end
 
-      # 件数が同じルールは、最初の出現行の早い順に並ぶ（著者は原稿を上から直すため）。
-      # sort_by は安定ではないので、第 2 キーが無いと同数の行の並びが実行ごとに変わる
-      def test_aggregate_json_breaks_count_ties_by_first_line
+      # 集約した行が FindingRows.arrange とかみ合うこと（表示の順序はそちらが決める）。
+      # 件数が同じルールは、最初の出現行の早い順に並ぶ（著者は原稿を上から直すため）
+      def test_aggregate_json_rows_sort_by_first_line_through_finding_rows
         json = <<~JSON
           [{ "filePath": "/proj/a.md", "messages": [
             { "ruleId": "prh", "message": "遅い => おそい", "line": 200 },
@@ -150,6 +155,7 @@ module VivlioStarter
           ] }]
         JSON
         rows = TextlintFormatter.aggregate_json(json, base_dir: '/proj')[:files].first[:rows]
+        rows = Lint::FindingRows.arrange(rows)
 
         assert_equal [2, 2, 2], rows.map { it[:count] }, '3 つとも同数'
         assert_equal ['10, 20', '100, 110', '200, 210'], rows.map { it[:lines] }, '同数なら出現行の早い順'
@@ -171,7 +177,7 @@ module VivlioStarter
         assert_equal 1, rows.size, '場所とプリセットの違いを問わず 1 行に畳む'
         assert_equal '[no-mix-dearu-desumasu] 「である」と「です・ます」が混在しています。', rows.first[:label]
         assert_equal 3, rows.first[:count]
-        assert_equal '3, 8, 9', rows.first[:lines]
+        assert_equal [3, 8, 9], rows.first[:lines]
       end
 
       # 冗長表現の指摘に付く `【dict2】`（ルール内部のパターン番号）は落とす。

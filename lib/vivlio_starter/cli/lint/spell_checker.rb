@@ -32,15 +32,29 @@ module VivlioStarter
 
         # 複数ファイルのエラーを標準出力に表示する。
         # 同じ語の指摘は 1 行に集約し、出現行と件数をまとめて見やすくする。
+        #
+        # **出現行を同じ行へ置くのは、ラベルが語だからである。** 日本語校正の表は
+        # 指摘が文（`"することもできます"は冗長な表現です。…`）なので横に伸び、
+        # 出現行を次の行へ送るしかない（実測: 本書 161 件のラベルは中央 36 桁・最大 164 桁で、
+        # 同じ行に置くと 177 桁に達する）。綴りの指摘は `bandle => bundle` のように
+        # 語の長さで頭打ちになるため、1 行に収まる。**形をどちらかへ揃えない**——
+        # 揃えると、行数が倍になるか、読めない幅になるかのどちらかにしかならない。
+        #
+        # 揃えるのは表の中の列で、`行:` の位置はその表の最長ラベルに合わせる。
+        # 桁数を決め打ちにすると、`notation-implemention-guide => …` のような長い語が
+        # 来た行だけ右へずれて列が崩れる（語は綴り誤りなので、長さを見越せない）。
         # @param errors_by_file [Hash] { path => [{ line:, word:, suggestion: }] }
         # @return [Boolean] エラーがあれば true
         def print_errors(errors_by_file)
           return false if errors_by_file.empty?
 
           errors_by_file.each do |path, errors|
-            Common.log_always "📄 #{path}  (spellcheck)"
-            aggregate(errors).each do |row|
-              Common.log_always format('  %3d件  %-28s 行: %s', row[:count], row[:label], row[:lines])
+            Common.log_always "📄 #{path}  (スペルチェック)"
+            rows  = aggregate(errors)
+            # ラベルは英単語だけで組み立てるため、文字数がそのまま表示幅になる
+            width = rows.map { it[:label].length }.max
+            rows.each do |row|
+              Common.log_always format('  %3d件  %-*s  行: %s', row[:count], width, row[:label], row[:lines])
             end
             Common.log_always ''
           end
