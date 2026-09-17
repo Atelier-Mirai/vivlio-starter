@@ -18,6 +18,7 @@
 - "varlimsup" # LaTeX の演算子名
 - "varprojlim" # LaTeX の演算子名
 - "DTP"
+- "Gore" # 人名（Al Gore）。94 章で OCR の Al/AI 誤読の例に使っている
 - "greet"
 - "High-Score"
 - "himawari"

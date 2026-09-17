@@ -17,6 +17,7 @@
 | `textlint_allowlist.yml` | 校正の対象から外す語 | 著者が書く |
 | `textlint_rewrite.yml` | 表記揺れの言い換え辞書（prh） | 著者が書く |
 | `textlint_dictionaries/` | 同梱の言い換え辞書（9 ファイル） | 触らない |
+| `ocr_corrections.yml` | `vs pdf:read` が読み取った直後に直す誤認識の表 | 紙面を読み取るときだけ書く（任意） |
 | `spellcheck_allowlist.yml` | 綴り誤りと指摘しない語 | `vs lint --register` が書く |
 | `spellcheck_dictionaries/` | 同梱の英単語辞書（53 ファイル） | 触らない |
 | `index_glossary_terms.yml` | 索引・用語集の登録語 | `vs index` が書く |
@@ -39,6 +40,7 @@
 | **この語は直さなくてよい**と決める | `textlint_allowlist.yml` |
 | **この語は綴り誤りではない**と決める | `spellcheck_allowlist.yml` |
 | 独自の言い換えを決める（「ユーザ」→「ユーザー」など） | `textlint_rewrite.yml` |
+| **OCR の読み違い**を直す（「入工知能」→「人工知能」など） | `ocr_corrections.yml` |
 
 ## book.yml について
 
