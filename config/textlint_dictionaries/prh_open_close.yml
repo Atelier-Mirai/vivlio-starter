@@ -128,10 +128,6 @@ rules:
   - expected: なぜ
     pattern: 何故
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
-  - expected: ならびに
-    pattern: /([横縦])?並びに/
-    regexpMustEmpty: $1
-    prh: ひらがなで書くと読みやすくなります（ひらく漢字）
   - expected: なる
     pattern: 成る
     prh: ひらがなで書くと読みやすくなります（ひらく漢字）
