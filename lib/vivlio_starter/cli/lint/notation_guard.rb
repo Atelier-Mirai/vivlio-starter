@@ -142,6 +142,11 @@ module VivlioStarter
         # 属性の退避に使う目印。数式（VSMATH）と同じ作りにする。
         ATTRIBUTE_PLACEHOLDER = 'VSATTR'
 
+        # `<!-- vs-lint-disable-next-line -->` が守る行の退避に使う目印
+        # （退避と復元は LintRunner#mask_hushed_lines! が行う。restore_masked で戻せるよう、
+        # 目印の作り方だけをここで揃えている）。
+        HUSHED_PLACEHOLDER = 'VSHUSH'
+
         # 修正パスで守る記法をまとめて退避する。`--fix` は textlint に原稿を直接
         # 直させるので、**解析パスの中和（strip_notation）は効かない**——守りたいものは
         # ここで目印へ逃がすしかない。守る対象は「地の文ではないのに素の文として

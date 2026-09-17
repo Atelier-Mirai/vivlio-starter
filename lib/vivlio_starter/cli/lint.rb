@@ -63,6 +63,7 @@ module VivlioStarter
         def initialize(targets, options)
           @targets = Array(targets)
           @options = normalize_options(options)
+          @trimmed_dictionaries = []
         end
 
         # --spellcheck-only / --textlint-only / --register による実行範囲。
@@ -123,6 +124,8 @@ module VivlioStarter
         ensure
           cleanup_temp_files(converted_files) if converted_files
           @runtime_config_tmp&.unlink
+          @trimmed_dictionaries.each(&:unlink)
+          @trimmed_dictionaries.clear
         end
 
         # ルール単位で集約した独自表示（--format json で取得して整形）
@@ -464,6 +467,7 @@ module VivlioStarter
             names.each { preset_rules[it] = false } if preset_rules
           end
 
+          trim_long_vowel_dictionaries!(rules, File.dirname(base_path)) if trim_long_vowel?
           if allow_code_space || allow_ja_en_space
             spacing = (rules['preset-ja-spacing'] ||= {})
             spacing['ja-space-around-code'] = false if allow_code_space
@@ -474,6 +478,54 @@ module VivlioStarter
           @runtime_config_tmp.write(cfg.to_yaml)
           @runtime_config_tmp.close
           @runtime_config_tmp.path
+        end
+
+        # 末尾長音を足す項目（`サーバ => サーバー`）を落とした辞書の写しを作り、そちらを読ませる。
+        #
+        # **表示段の抑止だけでは `--fix` に効かない。** textlint はフィルタで消えた指摘の
+        # 修正を当てないが、`trim_long_vowel` はフィルタではなく独自の出力段の判定なので、
+        # `--fix` が素通りして `ベクタ` を `ベクター` へ、`コンテナ` を `コンテナー` へ
+        # 直していた（実測）。辞書から落とせば解析と修正のどちらにも同じように効く。
+        #
+        # 落とすのは「X => Xー」の形だけで、綴りの誤りを直す項目は残す——実測では
+        # `prh_cho_on.yml` の 321 項目のうち 314 件が該当し、残る 7 件（`プリフィックス`・
+        # `クォート`・`ガベージコレクション` など）は末尾長音の話ではない。
+        def trim_long_vowel_dictionaries!(rules, dir)
+          prh = rules['prh']
+          return unless prh.is_a?(Hash)
+
+          prh['rulePaths'] = Array(prh['rulePaths']).map { trimmed_dictionary(it, dir) || it }
+        end
+
+        # 1 つの辞書から末尾長音の項目を落とした写しを作り、設定へ書く相対パスを返す。
+        # 該当が無い辞書・読めない辞書は nil（呼び出し側が元のパスをそのまま使う）。
+        def trimmed_dictionary(rule_path, dir)
+          source = File.expand_path(rule_path.to_s, dir)
+          data   = YAML.safe_load_file(source)
+          entries = data.is_a?(Hash) ? data['rules'] : nil
+          return nil unless entries.is_a?(Array)
+
+          kept = entries.reject { long_vowel_entry?(it) }
+          return nil if kept.size == entries.size
+
+          tmp = Tempfile.new(['prh-trimmed-', '.yml'], dir)
+          tmp.write(data.merge('rules' => kept).to_yaml)
+          tmp.close
+          @trimmed_dictionaries << tmp
+          "./#{File.basename(tmp.path)}"
+        rescue StandardError => e
+          Common.log_debug("[lint] 辞書を絞り込めませんでした: #{rule_path} (#{e.message})")
+          nil
+        end
+
+        # 「X => Xー」（末尾に長音を足すだけ）の項目か。
+        # 正規表現で書かれた綴り（`/アクセサ(?!([ーァ-ヴ]))/`）は、囲みと後読みを外して比べる。
+        def long_vowel_entry?(rule)
+          expected = rule['expected'].to_s
+          Array(rule['patterns'] || rule['pattern']).any? do |pattern|
+            base = pattern.to_s.sub(%r{\A/}, '').sub(%r{/[imx]*\z}, '').sub(/\(\?!.*\)\z/, '')
+            expected == "#{base}ー"
+          end
         end
 
         # 設定に書かれているプリセットのルール表を返す（`true` は空の表へ広げる）。
@@ -615,6 +667,7 @@ module VivlioStarter
           # `{width=20%}` が `{width=20％}` になって壊れる（どちらも実測）。
           converted = convert_vs_lint_comments(files, guard: false)
           masked_spans = mask_for_fix_in_place!(converted)
+          files.zip(converted, masked_spans).each { |path, tmp, spans| mask_hushed_lines!(path, tmp, spans) }
           baselines = converted.map { File.read(it, encoding: 'UTF-8') }
 
           command = [textlint_command, '--config', effective_config_path, '--fix', *converted]
@@ -631,6 +684,35 @@ module VivlioStarter
         # textlint が実際に書き換えた一時ファイルだけを原稿へ書き戻す。
         # 未変更のファイルへは触れない（原稿の mtime とコメント書式を無用に変えない）。
         # @return [Array<String>] 書き戻した原稿パス
+        # `<!-- vs-lint-disable-next-line -->` が守る行を、修正パスの間だけ目印へ退避する。
+        #
+        # **textlint のコメントフィルタは `-next-line` を実装していない**
+        # （textlint-filter-rule-comments v1.3.0）。解析パスは出力段で行ごと落として辻褄を
+        # 合わせているが（`next_line_suppressions`）、`--fix` にはその段が無いため、
+        # 著者が「ここは直すな」と書いた行がそのまま書き換えられていた（実測: 丸数字を
+        # 守るコメントを置いた行が `①` → `（1）` にされた。図に描かれた丸バッジと
+        # 本文の呼び名が食い違う）。
+        #
+        # 行を丸ごと目印へ逃がせば textlint は中身を見られず、書き戻しで元へ戻る。
+        # 数式・属性記法と同じ仕掛けなので、復元は `restore_masked` が一括で行う。
+        # 行数は保たれる（目印の後ろに元の改行を残すため）。
+        # @param spans [Hash] 退避表。ここへ書き足す（呼び出し側が復元に使う）
+        def mask_hushed_lines!(path, tmp, spans)
+          hushed = next_line_suppressions(File.read(path, encoding: 'UTF-8'))
+          return if hushed.empty?
+
+          lines = File.readlines(tmp, encoding: 'UTF-8')
+          hushed.each do |lineno|
+            original = lines[lineno - 1]
+            next if original.nil?
+
+            key = format('%s%04d', Lint::NotationGuard::HUSHED_PLACEHOLDER, spans.size)
+            spans[key] = original
+            lines[lineno - 1] = "#{key}#{original[/\R\z/]}"
+          end
+          File.write(tmp, lines.join, encoding: 'UTF-8')
+        end
+
         # 一時ファイルの数式・属性記法を目印へ退避する（修正パス専用）。
         # @return [Array<Hash>] ファイルごとの { 目印 => 原文 }
         def mask_for_fix_in_place!(converted)

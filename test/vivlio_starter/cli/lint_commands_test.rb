@@ -500,6 +500,64 @@ module VivlioStarter
         assert_empty runner.send(:next_line_suppressions, text)
       end
 
+      # textlint のコメントフィルタは -next-line を実装していないため、--fix は
+      # 著者が「ここは直すな」と書いた行をそのまま書き換えていた（実測: 丸数字を守る
+      # コメントを置いた行が ① → （1） にされた）。行ごと目印へ逃がして守る
+      def test_fix_pass_hides_lines_protected_by_a_next_line_comment
+        Dir.mktmpdir do |dir|
+          path = File.join(dir, 'chapter.md')
+          tmp  = File.join(dir, 'textlint_tmp.md')
+          body = "前の行です。\n<!-- vs-lint-disable-next-line -->\n①が愛器「リナ」です。\n後の行です。\n"
+          File.write(path, body)
+          File.write(tmp, body)
+
+          runner = LintCommands::LintRunner.new([], {})
+          spans = {}
+          runner.send(:mask_hushed_lines!, path, tmp, spans)
+          masked = File.read(tmp, encoding: 'UTF-8')
+
+          refute_includes masked, '①が愛器', '守る行は textlint から隠す'
+          assert_includes masked, '前の行です。', '他の行には触れない'
+          assert_equal body.lines.size, masked.lines.size, '行数を変えない'
+          assert_equal body, Lint::NotationGuard.restore_masked(masked, spans), '書き戻しで元へ戻る'
+        end
+      end
+
+      # trim_long_vowel は表示段の判定なので、--fix には効かず `ベクタ` が `ベクター` に
+      # されていた。辞書から落とせば解析と修正の両方に同じように効く。
+      # 落とすのは「X => Xー」の形だけで、綴りの誤りを直す項目は残す
+      def test_trimmed_dictionary_drops_only_long_vowel_entries
+        Dir.mktmpdir do |dir|
+          File.write(File.join(dir, 'cho_on.yml'), {
+            'version' => 1,
+            'rules' => [
+              { 'expected' => 'アクセサー', 'patterns' => ['/アクセサ(?!([ーァ-ヴ]))/'] },
+              { 'expected' => 'サーバー', 'patterns' => ['サーバ'] },
+              { 'expected' => 'プリフィックス', 'patterns' => ['プレフィックス'] }
+            ]
+          }.to_yaml)
+
+          runner = LintCommands::LintRunner.new([], {})
+          written = runner.send(:trimmed_dictionary, './cho_on.yml', dir)
+          kept = YAML.safe_load_file(File.join(dir, File.basename(written)))['rules']
+
+          assert_equal ['プリフィックス'], kept.map { it['expected'] }, '綴りの誤りを直す項目だけ残す'
+          assert_match(%r{\A\./}, written, '設定と同じディレクトリを相対パスで指す')
+        end
+      end
+
+      # 該当が無い辞書は写しを作らない（元のパスをそのまま読ませる）
+      def test_trimmed_dictionary_returns_nil_when_nothing_to_drop
+        Dir.mktmpdir do |dir|
+          File.write(File.join(dir, 'idiom.yml'),
+                     { 'version' => 1, 'rules' => [{ 'expected' => '汎用', 'patterns' => ['汎用的'] }] }.to_yaml)
+
+          runner = LintCommands::LintRunner.new([], {})
+
+          assert_nil runner.send(:trimmed_dictionary, './idiom.yml', dir)
+        end
+      end
+
       # 原稿ごとに、textlint が見る一時ファイルのパスへ紐づける
       def test_suppressed_lines_map_keys_on_the_temp_file
         Dir.mktmpdir do |dir|
