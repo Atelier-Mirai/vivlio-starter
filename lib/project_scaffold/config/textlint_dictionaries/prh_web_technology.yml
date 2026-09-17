@@ -83,6 +83,10 @@ rules:
   - expected: GitHub Actions
     patterns: GitHubActions
     prh: （技術用語）
+  # ツールチェーン・ブロックチェーン・デイジーチェーンはいずれも長音で定着している
+  - expected: チェーン
+    patterns: チェイン
+    prh: （技術用語）
   - expected: Google Maps
     patterns:
       - /Google Map(?!([s]))/
