@@ -523,6 +523,26 @@ module VivlioStarter
         end
       end
 
+      # 守る行に数式があると、数式の目印の上から行ごと退避が重なる。復元を退避の順に行うと、
+      # 数式の目印が行の退避に隠れたまま空振りし、原稿に `VSMATH0000` が残っていた（実測:
+      # 「面積は $\pi r^2$ です」が「面積は VSMATH0000 です」になった）
+      def test_fix_pass_restores_math_inside_a_line_protected_by_a_next_line_comment
+        Dir.mktmpdir do |dir|
+          path = File.join(dir, 'chapter.md')
+          tmp  = File.join(dir, 'textlint_tmp.md')
+          body = "<!-- vs-lint-disable-next-line -->\n面積は $\\pi r^2$ です。\n"
+          File.write(path, body)
+          masked, spans = Lint::NotationGuard.mask_for_fix(body)
+          File.write(tmp, masked)
+
+          runner = LintCommands::LintRunner.new([], {})
+          runner.send(:mask_hushed_lines!, path, tmp, spans)
+          restored = Lint::NotationGuard.restore_masked(File.read(tmp, encoding: 'UTF-8'), spans)
+
+          assert_equal body, restored
+        end
+      end
+
       # trim_long_vowel は表示段の判定なので、--fix には効かず `ベクタ` が `ベクター` に
       # されていた。辞書から落とせば解析と修正の両方に同じように効く。
       # 落とすのは「X => Xー」の形だけで、綴りの誤りを直す項目は残す
@@ -671,6 +691,36 @@ module VivlioStarter
           assert_equal false, spacing['ja-space-between-half-and-full-width']
           assert_equal true, spacing['jaSpacing'], '既存の設定は保持'
         end
+      end
+
+      # book.yml の disabled_rules は実行時 textlintrc でも切る。表示から落とすだけだと
+      # --fix には効かず、「一つ」が「1つ」へ書き換わっていた（arabic-kanji-numbers・実測）
+      def test_generate_runtime_config_disables_book_disabled_rules
+        original = Common::CONFIG
+        names = %w[arabic-kanji-numbers ja-spacing/ja-space-around-code spellcheck-tech-word]
+        Common.install_configuration!(
+          Common.wrap_config(Common.merge_hardcoded_defaults(lint: { disabled_rules: names })).freeze
+        )
+
+        Dir.mktmpdir do |dir|
+          base = File.join(dir, '.textlintrc.yml')
+          File.write(base, { 'rules' => { 'preset-ja-technical-writing' => { 'no-doubled-joshi' => false },
+                                          'preset-ja-spacing' => true,
+                                          'spellcheck-tech-word' => true } }.to_yaml)
+
+          runner = LintCommands::LintRunner.new([], {})
+          rules = YAML.safe_load_file(runner.send(:generate_runtime_config, base))['rules']
+
+          assert_equal false, rules.dig('preset-ja-technical-writing', 'arabic-kanji-numbers'),
+                       '短縮名は読み込んでいるプリセットで切る'
+          assert_equal false, rules.dig('preset-ja-spacing', 'ja-space-around-code'), '完全名はそのプリセットで切る'
+          refute rules['preset-ja-technical-writing'].key?('ja-space-around-code'), '完全名を他のプリセットへ広げない'
+          assert_equal false, rules['spellcheck-tech-word'], 'プリセットの外のルールはルールごと切る'
+          assert_equal false, rules.dig('preset-ja-technical-writing', 'no-doubled-joshi'), '既存の設定は保持'
+          refute rules.key?('preset-japanese'), '読み込んでいないプリセットは足さない'
+        end
+      ensure
+        Common.install_configuration!(original)
       end
 
       # 上流ルールの取りこぼしは、著者の allowlist ではなく実行時 textlintrc の

@@ -133,8 +133,14 @@ module VivlioStarter
         end
 
         # 退避した記法を戻す（目印の作り方が同じなので、数式・属性の区別なく戻せる）。
+        #
+        # **退避した逆の順に剥がす。** 退避は重なる——数式を目印にしたあとで、その行ごと
+        # 出力例の囲みや `vs-lint-disable-next-line` の行として退避する。退避した順に戻すと、
+        # 内側の数式の目印は外側の退避に隠れていて空振りし、外側を戻した時点で原稿に
+        # 目印が残る（実測: 守る行の「面積は $\pi r^2$ です」が「面積は VSMATH0000 です」に
+        # なって書き戻された）。spans は退避した順に積まれているので、末尾から戻せばよい。
         def restore_masked(text, spans)
-          spans.reduce(text) do |acc, (key, original)|
+          spans.to_a.reverse.reduce(text) do |acc, (key, original)|
             acc.sub(/#{Regexp.escape(key)}\n{0,#{original.count("\n")}}/) { original }
           end
         end
@@ -147,10 +153,20 @@ module VivlioStarter
         # 目印の作り方だけをここで揃えている）。
         HUSHED_PLACEHOLDER = 'VSHUSH'
 
+        # 出力例の囲み（G1）の行の退避に使う目印
+        MACHINE_PLACEHOLDER = 'VSMACH'
+
         # 修正パスで守る記法をまとめて退避する。`--fix` は textlint に原稿を直接
         # 直させるので、**解析パスの中和（strip_notation）は効かない**——守りたいものは
         # ここで目印へ逃がすしかない。守る対象は「地の文ではないのに素の文として
-        # 読まれるもの」＝数式と、値つきの属性記法。
+        # 読まれるもの」＝数式、値つきの属性記法、出力例の囲み（G1）。
+        #
+        # **出力例の囲みを守らないと、見えない指摘が当たる。** 解析パスは G1 を中和するので
+        # 指摘は表示に出ないが、`--fix` は textlint の修正をそのまま当てる（実測:
+        # `:::{.output}` の中の `@ruby-sample` が `@Ruby-sample` にされ、相互参照の
+        # ラベルが壊れた）。出力例は実物の出力と一字一句合っていなければならない。
+        #
+        # spans は退避した順に積む（restore_masked が逆順に剥がす前提）。
         # @return [Array(String, Hash)] 退避後テキストと { 目印 => 原文 }
         def mask_for_fix(text)
           masked, math = mask_math(text)
@@ -162,8 +178,32 @@ module VivlioStarter
             attributes[key] = original
             key
           end
-          [Masking.restore_code(replaced, code), math.merge(attributes)]
+          guarded, machine = mask_machine_blocks(Masking.restore_code(replaced, code), blank_math(text))
+          [guarded, math.merge(attributes).merge(machine)]
         end
+
+        # 出力例の囲み（G1）の地の文の行を、行ごと目印へ退避する。
+        #
+        # 囲みの判定は解析パス（strip_notation）と同じ machine_block_lines に任せる。
+        # 判定には数式を落とした原文（layout）を使う——目印を入れた後の本文では
+        # 行の中身が変わっているが、数式の退避は改行を保つので行番号は揃っている。
+        # 囲みの中のコードフェンスは退避しない（prose_lines に入らない）。フェンスの行まで
+        # 目印にすると、textlint がコードブロックと認識できず中身を地の文として直しにかかる。
+        def mask_machine_blocks(text, layout)
+          targets = machine_block_lines(layout, prose_lines(layout))
+          return [text, {}] if targets.empty?
+
+          spans = {}
+          lines = text.each_line.with_index(1).map do |line, lineno|
+            next line unless targets.include?(lineno)
+
+            key = format('%s%04d', MACHINE_PLACEHOLDER, spans.size)
+            spans[key] = line
+            "#{key}#{line[/\R\z/]}"
+          end
+          [lines.join, spans]
+        end
+        private_class_method :mask_machine_blocks
 
         # 解析パス用: 数式を**目印を残さず**落とす。
         #

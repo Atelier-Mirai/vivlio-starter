@@ -1,6 +1,6 @@
 # 校正辞書の誤検出の知見メモ
 
-> 対象: `vs lint` が出す誤った指摘と、その真偽の確かめ方
+> 対象: `vs lint` が出す誤った指摘と、その真偽の確かめ方。`--fix` が表示と食い違うとき（§7）
 > 位置づけ: 実測で確定した事実を残す恒久メモ。仕様書ではないので archives へは移さない
 
 ## 1. 誤検出のほとんどは「複合語の継ぎ目」で起きる
@@ -181,3 +181,63 @@ OCR 補正は `config/ocr_corrections.yml` が受け持つ（`vivlio-starter-pdf
 製品名は `prh_corporation.yml`、技術用語は `prh_web_technology.yml`、誤字は `prh_idiom.yml`
 ——同梱辞書（`config/textlint_dictionaries/`）は `vs upgrade` が追随させるので、
 ツール側で保守するものはそちらへ置く。
+
+## 7. 表示で黙らせたものは、`--fix` でも黙らせる
+
+### 症状
+
+`vs lint` は無指摘なのに、`vs lint --fix` が原稿を書き換える。直後の `vs lint` で
+指摘が復活したり、目印（`VSMATH0000`）が原稿に残ったりする。
+
+### 原因
+
+`vs lint` の解析パスと修正パスは**経路が違う**。
+
+| | 解析パス（表示） | 修正パス（`--fix`） |
+|---|---|---|
+| 誰が原稿を読むか | textlint → 出力を vs lint が整形 | textlint が一時ファイルを直接書き換える |
+| 抑止できる段 | 設定・フィルタ・**出力段** | 設定・フィルタ・**退避**だけ |
+
+出力段（`TextlintFormatter` で指摘を落とす、`NotationGuard.strip_notation` で中和する）で
+黙らせたものは、**修正パスには効かない**。textlint はフィルタで消えた指摘の修正は当てないが、
+出力段は textlint の外にあるので、修正はそのまま当たる。
+
+2026-09 に同じ型が 5 回見つかった。
+
+| 抑止していたもの | 表示だけで効いていた仕掛け | 直し方 |
+|---|---|---|
+| `lint.trim_long_vowel` | 出力段で「X => Xー」を落とす | 辞書の写しから項目を落として読ませる |
+| `<!-- vs-lint-disable-next-line -->` | 出力段で行ごと落とす（フィルタは `-next-line` 未実装） | 修正パスの間だけ行を目印へ退避（`mask_hushed_lines!`） |
+| `lint.disabled_rules` | 出力段でルールを落とす | 実行時 textlintrc でルールを `false` に（`apply_disabled_rules!`） |
+| 出力例の囲み（`:::{.output}` など） | `strip_notation` が中和 | `mask_for_fix` で行ごと目印へ退避 |
+| 退避の復元順 | —（修正パスだけの不具合） | 退避した逆順に剥がす（`restore_masked`） |
+
+### 規則
+
+- **新しく何かを黙らせるときは、表示と修正の両方に効くかを最初に問う。** 効かせる手段は
+  二つしかない——**設定で切る**（ルール・辞書・フィルタ）か、**可逆な退避で守る**
+  （`mask_for_fix` に足し、`restore_masked` で戻す）。出力段で落とすだけなら、それは
+  `--fix` に対して無防備である
+- **退避は重なる。** 数式の目印を入れた行を、さらに行ごと退避することがある。
+  `restore_masked` は spans を**退避した逆順**に剥がすので、退避を足すときは
+  spans へ**退避した順に**積むこと
+- **中和（`strip_notation`）は非可逆なので修正パスには使えない。** 修正パスで守りたい
+  ものは、必ず目印へ逃がして戻す
+
+### 確かめ方
+
+捨て章（`contents/98-tmpprobe.md` など）に書いて、表示と修正を突き合わせる。
+**`--fix` の差分が、表示された「自動修正可能」の指摘と一致すれば正しい。**
+表示に出ていない行が変わったら、この型の穴である。
+
+```bash
+cp contents/24-cross-reference.md contents/98-tmpprobe.md
+cp contents/98-tmpprobe.md /tmp/before.md
+vs lint 98                          # 表示された指摘を控える
+vs lint 98 --fix >/dev/null
+diff /tmp/before.md contents/98-tmpprobe.md   # 差分 ＝ 表示された指摘 か
+rm contents/98-tmpprobe.md
+```
+
+**`lib/` を直したら `rake reinstall` してから確かめる。** `vs` はインストール済みの gem を
+読むので、`bin/vs` で緑でも著者の `vs` は古いままである。

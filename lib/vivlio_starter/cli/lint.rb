@@ -515,6 +515,7 @@ module VivlioStarter
             names.each { preset_rules[it] = false } if preset_rules
           end
 
+          apply_disabled_rules!(rules)
           apply_builtin_allowlist!(cfg)
           trim_long_vowel_dictionaries!(rules, File.dirname(base_path)) if trim_long_vowel?
           if allow_code_space || allow_ja_en_space
@@ -527,6 +528,39 @@ module VivlioStarter
           @runtime_config_tmp.write(cfg.to_yaml)
           @runtime_config_tmp.close
           @runtime_config_tmp.path
+        end
+
+        # book.yml lint.disabled_rules を実行時 textlintrc でも切る。
+        #
+        # **表示段の抑止だけでは `--fix` に効かない。** TextlintFormatter は切ったルールの指摘を
+        # 表示から落とすが、`--fix` は textlint に原稿を直接直させるので、設定で切っていない
+        # ルールの修正はそのまま当たる。実測: disabled_rules に arabic-kanji-numbers を書いた
+        # 本で、`vs lint` は無指摘なのに `vs lint --fix` が「一つ」を「1つ」へ書き換えていた。
+        # trim_long_vowel と同じ型の穴である（trim_long_vowel_dictionaries! を参照）。
+        #
+        # 名前の読み方は表示側（TextlintFormatter.disabled_message?）に合わせる。
+        #   - `ja-technical-writing/arabic-kanji-numbers` … そのプリセットのルールだけを切る
+        #   - `arabic-kanji-numbers`（短縮名）… 読み込んでいる全プリセットで切る
+        #   - `prh`・`spellcheck-tech-word`（プリセットの外のルール）… ルールごと切る
+        # プリセットに無い名前を書いても textlint は黙って無視する（実測）ので、独自ルールの
+        # 名前（mazegaki など）がここを通っても害は無い。
+        def apply_disabled_rules!(rules)
+          presets = rules.keys.select { it.start_with?('preset-') }
+
+          disabled_rules.each do |name|
+            preset_prefix, rule = name.split('/', 2)
+            if rule
+              preset_rules = configured_preset_rules(rules, "preset-#{preset_prefix}")
+              preset_rules[rule] = false if preset_rules
+            elsif rules.key?(name)
+              rules[name] = false
+            else
+              presets.each do |preset|
+                preset_rules = configured_preset_rules(rules, preset)
+                preset_rules[name] = false if preset_rules
+              end
+            end
+          end
         end
 
         # BUILTIN_ALLOWLIST を実行時 textlintrc の `filters.allowlist.allow` へ足す。

@@ -304,6 +304,52 @@ module VivlioStarter
           assert_equal src, NotationGuard.restore_masked(masked, spans), '往復で原文に戻る'
         end
 
+        # 出力例の囲み（G1）は解析パスで中和されるので指摘が出ない。修正パスでも守らないと、
+        # 見えない指摘が --fix で当たり、出力例が書き換わる（実測: `:::{.output}` の中の
+        # `@ruby-sample` が `@Ruby-sample` にされ、相互参照のラベルが壊れた）
+        def test_should_mask_machine_data_blocks_for_the_fix_path
+          src = <<~MD
+            地の文の ruby は直されるべきです。
+
+            :::{.output}
+            @ruby-sample は、Ruby で画面表示を行うサンプルコードです。
+            :::
+
+            :::{.terminal}
+            概念が無い
+            :::
+          MD
+          masked, spans = NotationGuard.mask_for_fix(src)
+
+          refute_includes masked, '@ruby-sample', '出力例の中は目印へ退避される'
+          refute_includes masked, '概念が無い'
+          assert_includes masked, '地の文の ruby は', '囲みの外の地の文は残す（本物の指摘を消さない）'
+          assert_equal src.lines.size, masked.lines.size, '行数を変えない'
+          assert_equal src, NotationGuard.restore_masked(masked, spans), '往復で原文に戻る'
+        end
+
+        # 囲みの中のコードフェンスは退避しない。フェンスの行まで目印にすると、textlint が
+        # コードブロックと認識できなくなり、中身を地の文として直しにかかる
+        def test_should_leave_code_fences_inside_machine_blocks_alone
+          src = ":::{.output}\n```ruby\nputs 'hello'\n```\n:::\n"
+          masked, spans = NotationGuard.mask_for_fix(src)
+
+          assert_includes masked, "```ruby\nputs 'hello'\n```", 'フェンスとその中身はそのまま'
+          assert_equal src, NotationGuard.restore_masked(masked, spans)
+        end
+
+        # 退避は重なる（数式を目印にした後で、その行ごと出力例として退避する）。
+        # 復元は重ねた逆の順で剥がさないと、外側を戻した時点で内側の目印が原稿に残る
+        def test_should_restore_nested_masks_in_reverse_order
+          src = ":::{.output}\n面積は $\\pi r^2$ です。![](a.webp){width=20%}\n:::\n"
+          masked, spans = NotationGuard.mask_for_fix(src)
+
+          restored = NotationGuard.restore_masked(masked, spans)
+
+          assert_equal src, restored
+          refute_match(/VS(?:MATH|ATTR|MACH)\d{4}/, restored, '目印を原稿に残さない')
+        end
+
         # 修正パスは数式と属性を同時に守る（どちらも 1 つの spans で戻せる）
         def test_should_mask_both_math_and_attributes_for_the_fix_path
           src = "$(4/3)πr³$ の図です。\n\n![](sphere.webp){width=50%}\n"
