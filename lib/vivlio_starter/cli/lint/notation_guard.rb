@@ -37,6 +37,7 @@
 require_relative '../masking'
 require_relative '../pre_process/markdown_transformer'
 require_relative '../pre_process/math_transformer'
+require_relative '../pre_process/cross_reference_processor'
 
 module VivlioStarter
   module CLI
@@ -89,6 +90,18 @@ module VivlioStarter
         # `{width=20％}` になって**幅指定が効かなくなる**（実測: 本書の前書きで 4 件）。
         # ふりがな `{親文字|ふりがな}` と食い違わないよう、`|` を含む波括弧は対象外にする。
         VALUE_ATTRIBUTE = /\{[^{}|\n]*=[^{}|\n]*\}/
+
+        # 相互参照のラベル（`@ruby-sample`・`@pageref:heading-label`）。識別子であって地の文ではない。
+        # 放っておくと `@ruby-sample` の `ruby` が「Ruby」へ、`@pageref:javascript-intro` の
+        # `javascript` が「JavaScript」へ直され、**参照先が見つからなくなる**（実測）。
+        #
+        # 綴りは**ビルドの置換器と同じ定義**を使う（数式と同じ流儀）。ここで別に書くと、lint が
+        # 守る範囲とビルドが参照として扱う範囲がずれる。`@pageref:` を先に置くのは、汎用の参照が
+        # コロンの手前までしか見ないため（ReferenceReplacer と同じ順序）。
+        LABEL_REFERENCE = Regexp.union(
+          PreProcessCommands::CrossReferenceProcessor::ReferenceReplacer::PAGEREF_PATTERN,
+          PreProcessCommands::CrossReferenceProcessor::ReferenceReplacer::REFERENCE_PATTERN
+        )
 
         # 記法を中和したテキストを返す。行数は入力と必ず一致する（I1）。
         # @param text [String] 原稿の内容
@@ -156,41 +169,63 @@ module VivlioStarter
         # 出力例の囲み（G1）の行の退避に使う目印
         MACHINE_PLACEHOLDER = 'VSMACH'
 
+        # ふりがな（G3）と相互参照のラベルの退避に使う目印
+        FURIGANA_PLACEHOLDER = 'VSRUBY'
+        LABEL_PLACEHOLDER    = 'VSLABL'
+
         # 修正パスで守る記法をまとめて退避する。`--fix` は textlint に原稿を直接
         # 直させるので、**解析パスの中和（strip_notation）は効かない**——守りたいものは
         # ここで目印へ逃がすしかない。守る対象は「地の文ではないのに素の文として
-        # 読まれるもの」＝数式、値つきの属性記法、出力例の囲み（G1）。
+        # 読まれるもの」＝数式、値つきの属性記法、ふりがな、相互参照のラベル、出力例の囲み（G1）。
         #
         # **出力例の囲みを守らないと、見えない指摘が当たる。** 解析パスは G1 を中和するので
         # 指摘は表示に出ないが、`--fix` は textlint の修正をそのまま当てる（実測:
         # `:::{.output}` の中の `@ruby-sample` が `@Ruby-sample` にされ、相互参照の
         # ラベルが壊れた）。出力例は実物の出力と一字一句合っていなければならない。
         #
+        # **ふりがなは記法ごと守る。** 解析パスは親文字を地の文として残すので（I3）、
+        # 「沢山 => たくさん」のような指摘は表示に出る。だが修正を記法の内側へ当てると
+        # `{沢山|たくさん}` が `{たくさん|たくさん}` になる（実測）。ふりがなを振った時点で
+        # 著者は漢字を選んでいるので、直すなら著者が記法ごと書き換えるしかない。
+        #
         # spans は退避した順に積む（restore_masked が逆順に剥がす前提）。
         # @return [Array(String, Hash)] 退避後テキストと { 目印 => 原文 }
         def mask_for_fix(text)
           masked, math = mask_math(text)
           protected_text, code = Masking.protect_code(masked)
-          attributes = {}
-          replaced = protected_text.gsub(VALUE_ATTRIBUTE) do
+          inline = {}
+          stash = lambda do |prefix|
             original = ::Regexp.last_match(0)
-            key = format('%s%04d', ATTRIBUTE_PLACEHOLDER, attributes.size)
-            attributes[key] = original
+            key = format('%s%04d', prefix, inline.size)
+            inline[key] = original
             key
           end
-          guarded, machine = mask_machine_blocks(Masking.restore_code(replaced, code), blank_math(text))
-          [guarded, math.merge(attributes).merge(machine)]
+          replaced = protected_text
+                     .gsub(VALUE_ATTRIBUTE) { stash.call(ATTRIBUTE_PLACEHOLDER) }
+                     .gsub(FURIGANA)        { stash.call(FURIGANA_PLACEHOLDER) }
+                     .gsub(LABEL_REFERENCE) { stash.call(LABEL_PLACEHOLDER) }
+          guarded, machine = mask_machine_blocks(Masking.restore_code(replaced, code), text)
+          [guarded, math.merge(inline).merge(machine)]
+        end
+
+        # 出力例の囲み（G1）の中にある地の文の行番号。
+        #
+        # 解析パス（strip_notation）・修正パス（mask_for_fix）・独自校正（ProseChecker の
+        # 自動修正を持つ規則）が同じ答えを使うために公開している。判定には数式を落とした
+        # 原文を使う——数式の退避は改行を保つので、行番号は原文と揃っている。
+        # @return [Set<Integer>]
+        def machine_data_lines(text)
+          layout = blank_math(text)
+          machine_block_lines(layout, prose_lines(layout))
         end
 
         # 出力例の囲み（G1）の地の文の行を、行ごと目印へ退避する。
         #
-        # 囲みの判定は解析パス（strip_notation）と同じ machine_block_lines に任せる。
-        # 判定には数式を落とした原文（layout）を使う——目印を入れた後の本文では
-        # 行の中身が変わっているが、数式の退避は改行を保つので行番号は揃っている。
-        # 囲みの中のコードフェンスは退避しない（prose_lines に入らない）。フェンスの行まで
-        # 目印にすると、textlint がコードブロックと認識できず中身を地の文として直しにかかる。
-        def mask_machine_blocks(text, layout)
-          targets = machine_block_lines(layout, prose_lines(layout))
+        # 行番号は退避前の原文（original）で決める。囲みの中のコードフェンスは退避しない
+        # （prose_lines に入らない）。フェンスの行まで目印にすると、textlint がコードブロックと
+        # 認識できず中身を地の文として直しにかかる。
+        def mask_machine_blocks(text, original)
+          targets = machine_data_lines(original)
           return [text, {}] if targets.empty?
 
           spans = {}
@@ -289,15 +324,20 @@ module VivlioStarter
         end
         private_class_method :delist_fancy_marker
 
-        # 行内の記法を中和する（G3 → G4 → G5）。
+        # 行内の記法を中和する（G3 → G4 → G5 → ラベル）。
         # 地の文が記法を「解説している」インラインコード（例: `{.aki}` の書き方を
         # 説明する行）を壊さないよう、コードを退避してから置換する。
+        #
+        # ラベルは識別子なので丸ごと落とす（I3 の「地の文」ではない）。落とさないと
+        # `@ruby-sample` が「ruby => Ruby」と指摘され、著者が直せば参照が壊れる。
+        # 修正パスは mask_for_fix が同じ定義で守るので、表示と修正は食い違わない。
         def neutralize_inline(line)
           protected_line, spans = Masking.protect_code(line)
           neutralized = protected_line
                         .gsub(FURIGANA) { ::Regexp.last_match(1) } # 親文字は地の文なので残す（I3）
                         .gsub(CLASS_ATTRIBUTE, '')
                         .gsub(VALUE_ATTRIBUTE, '')
+                        .gsub(LABEL_REFERENCE, '')
           Masking.restore_code(neutralized, spans)
         end
         private_class_method :neutralize_inline

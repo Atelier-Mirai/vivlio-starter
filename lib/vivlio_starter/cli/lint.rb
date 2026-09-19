@@ -134,10 +134,9 @@ module VivlioStarter
           stdout, stderr, status = Open3.capture3(*command)
           $stderr.print(stderr) unless stderr.nil? || stderr.empty?
 
-          result = TextlintFormatter.aggregate_json(
-            stdout, disabled_rules: disabled_rules, trim_long_vowel: trim_long_vowel?,
-                    suppressed_lines: suppressed_lines
-          )
+          # ルールの無効化と末尾長音の抑止は、実行時 textlintrc（generate_runtime_config）が
+          # 担う。ここで落とすのは次行抑止の行だけ——修正パスも同じ行を退避している
+          result = TextlintFormatter.aggregate_json(stdout, suppressed_lines: suppressed_lines)
           if result.nil?
             # JSON 解釈に失敗（textlint 自体のエラー等）。生出力をそのまま見せる。
             $stdout.print(stdout) unless stdout.nil? || stdout.empty?
@@ -457,6 +456,25 @@ module VivlioStarter
           '/チェーン/'
         ].freeze
 
+        # 上流（technical-word-rules）の「末尾に長音を足す」項目を、`lint.trim_long_vowel` が
+        # 有効なときに打ち消す。
+        #
+        # 末尾長音の抑止は、prh の同梱辞書なら写しから項目を落とせる（trimmed_dictionary）が、
+        # 上流は辞書に手が届かない。以前はここを表示の段（出力のメッセージが「X => Xー」の形か）
+        # で落としていたため、**表示に出ないのに `--fix` だけが直していた**（実測:
+        # `ディレクタ` → `ディレクター`、`ベンダ` → `ベンダー`。既定で有効な設定なので全書籍が該当）。
+        # しかも `メンバ([^ー]) => メンバー$1` は後続の 1 字を巻き込むので「X => Xー」の形に
+        # ならず、長音を省く文体を選んでいても指摘・修正されていた。
+        #
+        # 上流 22 項目のうち、末尾（-er / -or）の長音を足すものはこの 3 つだけ。`スタンドアロン` →
+        # `スタンドアローン` や `パタン` → `パターン` のような語中の綴りの違いは、長音の文体の話では
+        # ないので入れない
+        TRIM_LONG_VOWEL_ALLOWLIST = [
+          '/ディレクタ(?!ー)/',
+          '/ベンダ(?!ー)/',
+          '/メンバ(?!ー)/'
+        ].freeze
+
         # 実行時 textlintrc は常に生成する。上書きが 1 つも指定されていなくても、
         # SUPERSEDED_TEXTLINT_RULES を切る必要があるため。
         def effective_config_path
@@ -532,13 +550,14 @@ module VivlioStarter
 
         # book.yml lint.disabled_rules を実行時 textlintrc でも切る。
         #
-        # **表示段の抑止だけでは `--fix` に効かない。** TextlintFormatter は切ったルールの指摘を
-        # 表示から落とすが、`--fix` は textlint に原稿を直接直させるので、設定で切っていない
-        # ルールの修正はそのまま当たる。実測: disabled_rules に arabic-kanji-numbers を書いた
-        # 本で、`vs lint` は無指摘なのに `vs lint --fix` が「一つ」を「1つ」へ書き換えていた。
-        # trim_long_vowel と同じ型の穴である（trim_long_vowel_dictionaries! を参照）。
+        # **表示段の抑止だけでは `--fix` に効かない。** 以前は TextlintFormatter が切ったルールの
+        # 指摘を表示から落としていたが、`--fix` は textlint に原稿を直接直させるので、設定で
+        # 切っていないルールの修正はそのまま当たった。実測: disabled_rules に arabic-kanji-numbers
+        # を書いた本で、`vs lint` は無指摘なのに `vs lint --fix` が「一つ」を「1つ」へ書き換えて
+        # いた。いまは**ここだけ**で切る（表示の段の除外は撤去した。残すと、ここの取りこぼしを
+        # 隠して `--fix` との食い違いを見えなくするため）。
         #
-        # 名前の読み方は表示側（TextlintFormatter.disabled_message?）に合わせる。
+        # 名前の読み方は、指摘の `[ ]` に出るルール名に合わせる。
         #   - `ja-technical-writing/arabic-kanji-numbers` … そのプリセットのルールだけを切る
         #   - `arabic-kanji-numbers`（短縮名）… 読み込んでいる全プリセットで切る
         #   - `prh`・`spellcheck-tech-word`（プリセットの外のルール）… ルールごと切る
@@ -563,15 +582,20 @@ module VivlioStarter
           end
         end
 
-        # BUILTIN_ALLOWLIST を実行時 textlintrc の `filters.allowlist.allow` へ足す。
+        # BUILTIN_ALLOWLIST（と、trim_long_vowel が有効なら TRIM_LONG_VOWEL_ALLOWLIST）を
+        # 実行時 textlintrc の `filters.allowlist.allow` へ足す。
         # 著者が allowlist フィルタごと消していても打ち消しは要るので、無ければ作る。
         # 著者の `allowlistConfigPaths` は触らない（両者は合算される）。
         def apply_builtin_allowlist!(cfg)
           filters = (cfg['filters'] ||= {})
           filters['allowlist'] = {} unless filters['allowlist'].is_a?(Hash)
           allow = filters['allowlist']['allow']
-          filters['allowlist']['allow'] = Array(allow) | BUILTIN_ALLOWLIST
+          builtin = trim_long_vowel? ? BUILTIN_ALLOWLIST + TRIM_LONG_VOWEL_ALLOWLIST : BUILTIN_ALLOWLIST
+          filters['allowlist']['allow'] = Array(allow) | builtin
         end
+
+        # 同梱の辞書の置き場（config/ からの相対）。trim_long_vowel が項目を落とすのはここだけ
+        BUNDLED_DICTIONARY_DIR = 'textlint_dictionaries'
 
         # 末尾長音を足す項目（`サーバ => サーバー`）を落とした辞書の写しを作り、そちらを読ませる。
         #
@@ -583,11 +607,21 @@ module VivlioStarter
         # 落とすのは「X => Xー」の形だけで、綴りの誤りを直す項目は残す——実測では
         # `prh_cho_on.yml` の 321 項目のうち 314 件が該当し、残る 7 件（`プリフィックス`・
         # `クォート`・`ガベージコレクション` など）は末尾長音の話ではない。
+        #
+        # **落とすのは同梱の辞書だけ。** 著者の `textlint_rewrite.yml` まで落とすと、著者が
+        # 意図して書いた規則が黙って消える（実測: 本書の `ユーザ => ユーザー` が落ち、同じ項目の
+        # `ユーザーさん`（敬称）の検出まで巻き添えになっていた）。この設定が黙らせたいのは
+        # 同梱の長音辞書の一般則で、著者が「この本ではこう書く」と決めた表記ではない。
         def trim_long_vowel_dictionaries!(rules, dir)
           prh = rules['prh']
           return unless prh.is_a?(Hash)
 
-          prh['rulePaths'] = Array(prh['rulePaths']).map { trimmed_dictionary(it, dir) || it }
+          bundled = File.join(File.expand_path(dir), BUNDLED_DICTIONARY_DIR, '')
+          prh['rulePaths'] = Array(prh['rulePaths']).map do |rule_path|
+            next rule_path unless File.expand_path(rule_path.to_s, dir).start_with?(bundled)
+
+            trimmed_dictionary(rule_path, dir) || rule_path
+          end
         end
 
         # 1 つの辞書から末尾長音の項目を落とした写しを作り、設定へ書く相対パスを返す。

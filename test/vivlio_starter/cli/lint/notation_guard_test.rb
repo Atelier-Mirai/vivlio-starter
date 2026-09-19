@@ -350,6 +350,44 @@ module VivlioStarter
           refute_match(/VS(?:MATH|ATTR|MACH)\d{4}/, restored, '目印を原稿に残さない')
         end
 
+        # ふりがなは記法ごと退避する。解析パスは親文字を残すので「沢山 => たくさん」は表示に
+        # 出るが、修正を記法の内側へ当てると `{たくさん|たくさん}` になる（実測）
+        def test_should_mask_furigana_for_the_fix_path
+          src = "{沢山|たくさん}の案があります。\n"
+          masked, spans = NotationGuard.mask_for_fix(src)
+
+          refute_includes masked, '{沢山|', 'ふりがなは記法ごと目印へ退避される'
+          assert_includes masked, 'の案があります。', '地の文は残す'
+          assert_equal src, NotationGuard.restore_masked(masked, spans)
+        end
+
+        # 相互参照のラベルは識別子。修正パスでは退避し、`@ruby-sample` の `ruby` を
+        # 「Ruby」へ直させない（実測で参照が壊れた）。`@pageref:` は引数ごと守る
+        def test_should_mask_label_references_for_the_fix_path
+          src = "@ruby-sample と @pageref:javascript-intro を参照します。連絡は a@example.com へ。\n"
+          masked, spans = NotationGuard.mask_for_fix(src)
+
+          refute_includes masked, 'ruby-sample'
+          refute_includes masked, 'javascript-intro', '@pageref: の引数まで守る'
+          assert_includes masked, 'a@example.com', 'メールアドレスはラベルではない（ビルドと同じ定義）'
+          assert_equal src, NotationGuard.restore_masked(masked, spans)
+        end
+
+        # 解析パスではラベルを落とす。残すと `ruby => Ruby` と指摘され、著者が直せば参照が壊れる
+        def test_should_drop_label_references_when_linting
+          stripped = NotationGuard.strip_notation("@ruby-sample は Ruby のサンプルです。\n")
+
+          refute_includes stripped, 'ruby-sample'
+          assert_includes stripped, 'は Ruby のサンプルです。', '地の文は 1 文字も落とさない'
+        end
+
+        # 出力例の囲みの行番号は、解析・修正・独自校正が同じ答えを使う
+        def test_should_report_machine_data_lines
+          src = "地の文\n\n:::{.output}\n出力 1\n\n```\ncode\n```\n:::\n後の文\n"
+
+          assert_equal Set[3, 4, 5, 9], NotationGuard.machine_data_lines(src), 'フェンスの行は含めない'
+        end
+
         # 修正パスは数式と属性を同時に守る（どちらも 1 つの spans で戻せる）
         def test_should_mask_both_math_and_attributes_for_the_fix_path
           src = "$(4/3)πr³$ の図です。\n\n![](sphere.webp){width=50%}\n"

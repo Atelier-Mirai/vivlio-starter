@@ -59,13 +59,19 @@ module VivlioStarter
         assert_includes labels, '[prh] 全て => すべて'
       end
 
-      # disabled_rules で指定したルールの指摘が除外される
-      def test_aggregate_json_disabled_rules
-        result = TextlintFormatter.aggregate_json(sample_json, base_dir: '/proj',
-                                                  disabled_rules: ['ja-space-around-code'])
-        labels = result[:files].first[:rows].map { it[:label] }
-        refute(labels.any? { it.include?('ja-space-around-code') }, '無効化したルールは出ない')
-        assert(labels.any? { it.include?('[prh]') }, '他のルールは残る')
+      # ルールや語で指摘を落とさない。disabled_rules・trim_long_vowel は実行時 textlintrc が
+      # 効かせる。表示の段で落とすと --fix に効かず、「表示に出ないのに --fix が直す」
+      # 食い違いを生んだ（6 例）。設定が取りこぼしたものは、隠さずに表示へ出す
+      def test_aggregate_json_does_not_filter_by_rule_or_wording
+        json = <<~JSON
+          [{ "filePath": "/p/a.md", "messages": [
+            { "ruleId": "ja-technical-writing/arabic-kanji-numbers", "message": "一つ => 1つ", "line": 3 },
+            { "ruleId": "spellcheck-tech-word", "message": "ディレクタ => ディレクター", "line": 5 }
+          ] }]
+        JSON
+        result = TextlintFormatter.aggregate_json(json, base_dir: '/p')
+
+        assert_equal 2, result[:total], 'textlint が出した指摘はすべて表示する'
       end
 
       # 行単位の抑止（`<!-- vs-lint-disable-next-line -->` の次の行）。
@@ -104,27 +110,6 @@ module VivlioStarter
         )
 
         assert_equal 5, result[:total], '他ファイルの抑止行は当てない'
-      end
-
-      # trim_long_vowel で「X => Xー」（末尾長音追加）系の指摘が抑止される
-      def test_aggregate_json_trim_long_vowel
-        json = <<~JSON
-          [{ "filePath": "/p/a.md", "messages": [
-            { "ruleId": "prh", "message": "パラメータ => パラメーター", "line": 5 },
-            { "ruleId": "prh", "message": "以下の => 次の", "line": 9 }
-          ] }]
-        JSON
-        labels = TextlintFormatter.aggregate_json(json, base_dir: '/p', trim_long_vowel: true)[:files].first[:rows].map { it[:label] }
-        refute(labels.any? { it.include?('パラメーター') }, '末尾長音を足す指摘は抑止される')
-        assert(labels.any? { it.include?('以下の => 次の') }, '長音以外の表記揺れは残る')
-      end
-
-      # 「X => Xー」判定の境界
-      def test_long_vowel_addition_detection
-        assert TextlintFormatter.long_vowel_addition?('サーバ => サーバー')
-        assert TextlintFormatter.long_vowel_addition?('パラメータ => パラメーター')
-        refute TextlintFormatter.long_vowel_addition?('以下の => 次の')
-        refute TextlintFormatter.long_vowel_addition?('インラインコードの後にスペースを入れません。')
       end
 
       # 集約した行が FindingRows.arrange とかみ合うこと（表示の順序はそちらが決める）。

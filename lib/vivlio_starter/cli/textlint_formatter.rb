@@ -5,8 +5,14 @@
 # ================================================================
 # 責務:
 #   textlint --format json の出力を、ルール（メッセージ先頭行）単位に集約して整形する。
-#   同じ指摘を 1 行へ畳み、book.yml の lint.disabled_rules / trim_long_vowel による
-#   個別無効化も適用する（スペルチェック側 SpellChecker.aggregate と体裁を揃える）。
+#   同じ指摘を 1 行へ畳む（スペルチェック側 SpellChecker.aggregate と体裁を揃える）。
+#
+#   **ルールや語で指摘を落とすのは、ここの仕事ではない。** book.yml の lint.disabled_rules と
+#   lint.trim_long_vowel は、実行時 textlintrc（LintRunner#generate_runtime_config）が効かせる。
+#   以前はここでも落としていたが、表示から落とすだけでは `vs lint --fix` に効かず、「表示には
+#   出ないのに --fix が直す」食い違いを 6 回生んだ（lint-false-positive-notes.md §7）。設定で
+#   取りこぼしたものは、ここで隠さずに表示へ出す——出れば --fix と一致し、著者が気づける。
+#   ここで落とすのは次行抑止の行だけで、これは修正パスも同じ行を退避している。
 #
 #   語単位で指摘を黙らせたい場合は config/textlint_allowlist.yml を使う
 #   （textlint 本来のフィルタ。原稿の語を全ルールから除外する）。
@@ -27,27 +33,21 @@ module VivlioStarter
       # スペルチェック側（SpellChecker.aggregate）と同様、同じ指摘を 1 行へ畳んで見やすくする。
       # @param json_string [String] textlint --format json の生出力
       # @param base_dir [String] ファイルパスの相対化基準
-      # @param disabled_rules [Array<String>] 無効化するルール ID（短縮名・完全名の両対応）
-      # @param trim_long_vowel [Boolean] true なら「X => Xー」（末尾長音を足す）系の指摘を抑止
       # @param suppressed_lines [Hash] { 絶対パス => 行番号の集合 }。その行の指摘を丸ごと落とす
       # @return [Hash, nil] { files: [{ path:, rows: }], total:, fixable: } / JSON 解釈失敗時 nil
       #   rows: [{ count:, label:, lines: [Integer] }]（label は "[ルール] 指摘先頭行"）。
       #   **並べ替えも行番号の整形もここではしない**——独自校正の指摘と混ぜて 1 つの表へ
       #   並べるため、順序が決まるのは両方が揃ってから（Lint::FindingRows.arrange）。
-      def self.aggregate_json(json_string, base_dir: Dir.pwd, disabled_rules: [], trim_long_vowel: false,
-                              suppressed_lines: {})
+      def self.aggregate_json(json_string, base_dir: Dir.pwd, suppressed_lines: {})
         data = JSON.parse(json_string.to_s)
         return nil unless data.is_a?(Array)
 
-        drules = Array(disabled_rules).map(&:to_s)
         total = 0
         fixable = 0
         files = data.filter_map do |file|
           # 行単位の抑止は集約より前に当てる（集約後は行番号が畳まれて選り分けられない）
           hushed = suppressed_lines[File.expand_path(file['filePath'].to_s)] || []
-          messages = Array(file['messages']).reject do |m|
-            disabled_message?(m, drules, trim_long_vowel) || hushed.include?(m['line'])
-          end
+          messages = Array(file['messages']).reject { |m| hushed.include?(m['line']) }
           next if messages.empty?
 
           total += messages.size
@@ -57,23 +57,6 @@ module VivlioStarter
         { files: files, total: total, fixable: fixable }
       rescue JSON::ParserError
         nil
-      end
-
-      # book.yml の lint.disabled_rules / trim_long_vowel に該当する指摘か
-      def self.disabled_message?(message, disabled_rules, trim_long_vowel = false)
-        rule = message['ruleId'].to_s
-        return true if disabled_rules.include?(rule) || disabled_rules.include?(short_rule(rule))
-
-        trim_long_vowel && long_vowel_addition?(message_head(message['message']))
-      end
-
-      # 「X => Xー」（末尾に長音記号を足すだけ）の表記揺れ指摘か。
-      # 技術者向けに「サーバ／パラメータ／フィルタ」等の末尾長音を省く文体を選べるようにする。
-      def self.long_vowel_addition?(head)
-        m = head.match(/\A(.+?)\s*=>\s*(.+)\z/)
-        return false unless m
-
-        m[2].strip == "#{m[1].strip}ー"
       end
 
       # ルールの表示文を固定の見出しへ置き換える。

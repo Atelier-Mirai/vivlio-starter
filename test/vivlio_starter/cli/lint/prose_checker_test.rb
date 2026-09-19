@@ -163,6 +163,25 @@ class TestProseChecker < Minitest::Test
 
   # --- 自動修正 ---
 
+  # 出力例の囲み（`:::{.output}` など）の中は、指摘も修正もしない。出力例は機械が出した
+  # 文字列で、実物と一字一句合っていなければならない。textlint 側は囲みを中和・退避するのに、
+  # 独自校正だけが中を直していた（実測: 「だ円」→「楕円」）
+  def test_should_leave_machine_data_blocks_alone
+    body = <<~MD
+      だ円を描きます。
+
+      :::{.output}
+      だ円を描きました（⽇時）
+      :::
+    MD
+
+    assert_equal [1], check(body).map(&:line).uniq, '囲みの外だけを指摘する'
+
+    fixed = PC.fix_kanji_lookalike(PC.fix_mazegaki(body))
+    assert_includes fixed, '楕円を描きます。'
+    assert_includes fixed, "だ円を描きました（⽇時）\n", '囲みの中は書き換えない'
+  end
+
   # PC-03: 置換はするが、コード領域と行数には触れない
   def test_should_fix_mazegaki_outside_code_only
     body = <<~MD

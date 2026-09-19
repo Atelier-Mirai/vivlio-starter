@@ -237,7 +237,7 @@ module VivlioStarter
         # 語彙の宣言なので、構文の指摘（二通りに読める対比）には当てはまらない。
         # 対比を黙らせるときは `<!-- vs-lint-disable -->` か `lint.disabled_rules` を使う。
         def mazegaki_findings(text, allowlist = [])
-          prose_lines(text).flat_map do |lineno, line|
+          authored_prose_lines(text).flat_map do |lineno, line|
             protected_line, = Masking.protect_code(line)
             # 辞書は**読者が見る文字列**に当てる。生の行に当てると、語の途中に入った
             # 強調で両方向に壊れる（`結**合し**直した` の誤検出、`だ**円**` の取りこぼし）。
@@ -692,7 +692,7 @@ module VivlioStarter
         # ときにこちらへ移した。単体の npm パッケージとして足さなかったのは、`vs upgrade` で
         # 設定だけが先に届くと、未導入のルールを読めずに textlint ごと止まるため。
         def kanji_lookalike_findings(text)
-          prose_lines(text).flat_map do |lineno, line|
+          authored_prose_lines(text).flat_map do |lineno, line|
             protected_line, = Masking.protect_code(line)
             protected_line.scan(KANGXI_RADICAL).uniq.map do |radical|
               Finding.new(line: lineno, rule: KANJI_LOOKALIKE_RULE,
@@ -704,7 +704,7 @@ module VivlioStarter
         # 康煕部首を漢字へ置換したテキストを返す。行数は入力と必ず一致する。
         # 置換は 1 文字を 1 文字へ替えるだけなので、強調記法をまたぐ心配はない。
         def fix_kanji_lookalike(text)
-          prose = prose_lines(text).to_h
+          prose = authored_prose_lines(text).to_h
 
           text.each_line.with_index(1).map do |line, lineno|
             next line unless prose.key?(lineno)
@@ -819,7 +819,7 @@ module VivlioStarter
         # 1 箇所に留めたい（中断時に半端な原稿を残さないため）。
         # @return [String] 置換後のテキスト（対象が無ければ入力と等しい）
         def fix_mazegaki(text, allowlist = [])
-          prose = prose_lines(text).to_h
+          prose = authored_prose_lines(text).to_h
 
           text.each_line.with_index(1).map do |line, lineno|
             prose.key?(lineno) ? replace_mazegaki(line, allowlist) : line
@@ -927,6 +927,19 @@ module VivlioStarter
           lines
         end
         private_class_method :prose_lines
+
+        # 地の文の行のうち、出力例の囲み（`:::{.output}` など・G1）の外にあるもの。
+        #
+        # **自動修正を持つ規則（交ぜ書き・康煕部首）はこちらを使う。** 出力例は機械が出した
+        # 文字列で、実物の出力と一字一句合っていなければならない。textlint 側は NotationGuard が
+        # 囲みを中和・退避するので指摘も修正もしないのに、独自校正だけが中を直していた
+        # （実測: `:::{.output}` の中の「だ円」が --fix で「楕円」になった）。
+        # 判定は NotationGuard と同じ答え（machine_data_lines）を使い、両者を食い違わせない。
+        def authored_prose_lines(text)
+          machine = NotationGuard.machine_data_lines(text)
+          prose_lines(text).reject { |lineno, _line| machine.include?(lineno) }
+        end
+        private_class_method :authored_prose_lines
 
         # 地の文を段落へまとめる。切れ目は空行・コード領域による行番号の飛び・
         # Markdown のブロック開始（箇条書き／表／見出し／引用）の 3 つ。

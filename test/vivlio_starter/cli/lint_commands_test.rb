@@ -750,8 +750,53 @@ module VivlioStarter
           runner = LintCommands::LintRunner.new([], {})
           filters = YAML.safe_load_file(runner.send(:generate_runtime_config, base))['filters']
 
-          assert_equal LintCommands::LintRunner::BUILTIN_ALLOWLIST, filters.dig('allowlist', 'allow')
+          assert_empty LintCommands::LintRunner::BUILTIN_ALLOWLIST - filters.dig('allowlist', 'allow')
           assert_equal true, filters['comments'], '既存のフィルタは保持'
+        end
+      end
+
+      # trim_long_vowel が有効なときだけ、上流の「末尾に長音を足す」項目を打ち消す。
+      # 以前は表示の段で落としていたため、`ディレクタ` が表示に出ないのに --fix で
+      # `ディレクター` にされていた（実測）
+      def test_generate_runtime_config_adds_trim_allowlist_only_when_trim_long_vowel
+        original = Common::CONFIG
+        trim = LintCommands::LintRunner::TRIM_LONG_VOWEL_ALLOWLIST
+
+        { true => true, false => false }.each do |setting, expected|
+          Common.install_configuration!(
+            Common.wrap_config(Common.merge_hardcoded_defaults(lint: { trim_long_vowel: setting })).freeze
+          )
+          Dir.mktmpdir do |dir|
+            base = File.join(dir, '.textlintrc.yml')
+            File.write(base, { 'rules' => {} }.to_yaml)
+
+            runner = LintCommands::LintRunner.new([], {})
+            allow = YAML.safe_load_file(runner.send(:generate_runtime_config, base)).dig('filters', 'allowlist', 'allow')
+
+            assert_equal expected, (trim - allow).empty?, "trim_long_vowel: #{setting}"
+          end
+        end
+      ensure
+        Common.install_configuration!(original)
+      end
+
+      # trim_long_vowel が項目を落とすのは同梱の辞書だけ。著者の textlint_rewrite.yml まで落とすと、
+      # 著者が意図して書いた `ユーザ => ユーザー` が黙って消え、同じ項目の敬称の検出も巻き添えになる
+      def test_trim_long_vowel_dictionaries_leaves_the_author_dictionary
+        Dir.mktmpdir do |dir|
+          FileUtils.mkdir_p(File.join(dir, 'textlint_dictionaries'))
+          long_vowel = { 'version' => 1, 'rules' => [{ 'expected' => 'サーバー', 'patterns' => ['サーバ'] }] }
+          File.write(File.join(dir, 'textlint_dictionaries', 'cho_on.yml'), long_vowel.to_yaml)
+          author = { 'version' => 1, 'rules' => [{ 'expected' => 'ユーザー', 'patterns' => ['/ユーザ(?!ー)/'] }] }
+          File.write(File.join(dir, 'textlint_rewrite.yml'), author.to_yaml)
+          rules = { 'prh' => { 'rulePaths' => ['./textlint_dictionaries/cho_on.yml', './textlint_rewrite.yml'] } }
+
+          runner = LintCommands::LintRunner.new([], {})
+          runner.send(:trim_long_vowel_dictionaries!, rules, dir)
+          bundled, rewrite = rules.dig('prh', 'rulePaths')
+
+          refute_equal './textlint_dictionaries/cho_on.yml', bundled, '同梱の辞書は写しへ差し替える'
+          assert_equal './textlint_rewrite.yml', rewrite, '著者の辞書はそのまま読ませる'
         end
       end
 
