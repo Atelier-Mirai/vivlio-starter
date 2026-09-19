@@ -360,9 +360,9 @@ vs build --help     # ヘルプを表示
 
 | オプション | 説明 |
 |:---|:---|
-| `--compress` / `--no-compress` | PDF 圧縮の有効/無効 |
+| `--compress` / `--no-compress` | PDF 圧縮の有効 / 無効 |
 | `--no-clean` | 中間生成物を残す（デバッグ用） |
-| `--[no]-verify` | リンク・画像の基本検証を有効/無効にする（既定: 有効） |
+| `--[no]-verify` | リンク・画像の基本検証を有効 / 無効にする（既定: 有効） |
 | `--verify-links` | 外部 URL の HTTP 到達性チェックを有効にする |
 | `--theme <color>` | テーマカラーを指定（`.md` ファイルの直接指定時のみ有効） |
 | `--log <level>` | ログレベルを指定（error / warn / info / debug） |
