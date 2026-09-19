@@ -373,12 +373,15 @@ module VivlioStarter
           assert_equal src, NotationGuard.restore_masked(masked, spans)
         end
 
-        # 解析パスではラベルを落とす。残すと `ruby => Ruby` と指摘され、著者が直せば参照が壊れる
-        def test_should_drop_label_references_when_linting
-          stripped = NotationGuard.strip_notation("@ruby-sample は Ruby のサンプルです。\n")
+        # 解析パスではラベルの中身を見せない。見せると `ruby => Ruby` と指摘され、著者が直せば
+        # 参照が壊れる。**消さずに形の同じ語へ置き換える**——消すと `（@auto / @omakase）` が
+        # `（ /  ）` になり、かっこの前の空白という原稿に無い指摘が生まれた（実測）
+        def test_should_replace_label_references_with_a_stand_in_when_linting
+          stripped = NotationGuard.strip_notation("@ruby-sample は Ruby のサンプルです。自動ID（@auto / @omakase）\n")
 
           refute_includes stripped, 'ruby-sample'
-          assert_includes stripped, 'は Ruby のサンプルです。', '地の文は 1 文字も落とさない'
+          assert_includes stripped, '@label は Ruby のサンプルです。', '地の文は 1 文字も落とさない'
+          assert_includes stripped, '（@label / @label）', '空白とかっこの形は原稿のまま'
         end
 
         # 出力例の囲みの行番号は、解析・修正・独自校正が同じ答えを使う

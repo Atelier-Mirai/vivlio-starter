@@ -151,6 +151,28 @@ module VivlioStarter
         assert_equal [3, 8, 9], rows.first[:lines]
       end
 
+      # 「実際 => 期待」の違いが空白や字幅だけのときは、違いを見える形にして注記を添える。
+      # 実測: 上流の「全角かっこの前の空白を消せ」が、先頭の空白を切り詰められて
+      # 「） => ）」と表示され、何を直せばよいか読めなかった
+      def test_message_head_shows_differences_that_look_identical
+        {
+          ' ） => ）' => '␣） => ）（空白を削除）',
+          'CSS組版 => CSS 組版' => 'CSS組版 => CSS␣組版（空白を追加）',
+          '(2026年) => （2026年）' => '(2026年) => （2026年）（半角 → 全角）',
+          # 実際側にも ` => ` がある。区切りの候補を順に試し、説明のつく切り方を採る
+          '(token => count) => （token => count）' => '(token => count) => （token => count）（半角 → 全角）'
+        }.each do |message, expected|
+          assert_equal expected, TextlintFormatter.message_head(message), message
+        end
+      end
+
+      # 違いが見て分かる言い換えには注記を付けない（見出しが騒がしくなるだけ）
+      def test_message_head_leaves_visible_rewrites_plain
+        assert_equal 'ユーザ => ユーザー', TextlintFormatter.message_head('ユーザ => ユーザー')
+        assert_equal 'インラインコードの後にスペースを入れません。',
+                     TextlintFormatter.message_head('インラインコードの後にスペースを入れません。')
+      end
+
       # 冗長表現の指摘に付く `【dict2】`（ルール内部のパターン番号）は落とす。
       # 同じ指摘が別のパターン番号で出ることはないので、集約の単位は変わらない
       def test_aggregate_json_drops_dictionary_tag

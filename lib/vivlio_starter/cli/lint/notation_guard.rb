@@ -103,6 +103,9 @@ module VivlioStarter
           PreProcessCommands::CrossReferenceProcessor::ReferenceReplacer::REFERENCE_PATTERN
         )
 
+        # 解析パスでラベルの代わりに置く語。消さずに形の同じ語へ置き換える理由は neutralize_inline に
+        LABEL_STAND_IN = '@label'
+
         # 記法を中和したテキストを返す。行数は入力と必ず一致する（I1）。
         # @param text [String] 原稿の内容
         # @return [String] 記法を中和した内容
@@ -328,16 +331,21 @@ module VivlioStarter
         # 地の文が記法を「解説している」インラインコード（例: `{.aki}` の書き方を
         # 説明する行）を壊さないよう、コードを退避してから置換する。
         #
-        # ラベルは識別子なので丸ごと落とす（I3 の「地の文」ではない）。落とさないと
-        # `@ruby-sample` が「ruby => Ruby」と指摘され、著者が直せば参照が壊れる。
-        # 修正パスは mask_for_fix が同じ定義で守るので、表示と修正は食い違わない。
+        # ラベルは識別子なので中身を見せない。見せると `@ruby-sample` が「ruby => Ruby」と
+        # 指摘され、著者が直せば参照が壊れる。修正パスは mask_for_fix が同じ定義で守るので、
+        # 表示と修正は食い違わない。
+        #
+        # **消さずに、形の同じ無害な語へ置き換える。** 消すと周りの空白の形が変わり、原稿に
+        # 無い指摘が生まれる（実測: `（@auto / @omakase）` が `（ /  ）` になり、上流の
+        # 「全角かっこの前の空白を消せ」に当たった）。`@` で始まる半角の 1 語という形を保てば、
+        # 空白やかっこの規則から見た姿は原稿と同じになる。`label` はどの辞書にも当たらない。
         def neutralize_inline(line)
           protected_line, spans = Masking.protect_code(line)
           neutralized = protected_line
                         .gsub(FURIGANA) { ::Regexp.last_match(1) } # 親文字は地の文なので残す（I3）
                         .gsub(CLASS_ATTRIBUTE, '')
                         .gsub(VALUE_ATTRIBUTE, '')
-                        .gsub(LABEL_REFERENCE, '')
+                        .gsub(LABEL_REFERENCE, LABEL_STAND_IN)
           Masking.restore_code(neutralized, spans)
         end
         private_class_method :neutralize_inline

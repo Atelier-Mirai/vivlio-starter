@@ -94,8 +94,68 @@ module VivlioStarter
       # 著者の手元には意味の読み取れない記号だけが残る。
       DICTIONARY_TAG = /\A【dict\d+】[ 　]*/
 
-      # メッセージの先頭行（actionable な指摘部分。prh の置換や ja-spacing の本文）
-      def self.message_head(message) = message.to_s.lines.first.to_s.strip.sub(DICTIONARY_TAG, '')
+      # メッセージの先頭行（actionable な指摘部分。prh の置換や ja-spacing の本文）。
+      # 「実際 => 期待」の違いが空白や字幅だけのものは、違いを見える形にして注記を添える。
+      # **先に切り詰めない**——先頭の空白こそが直す対象のことがある（difference_head）。
+      def self.message_head(message)
+        line = message.to_s.lines.first.to_s.chomp
+        difference_head(line) || line.strip.sub(DICTIONARY_TAG, '')
+      end
+
+      # 「実際 => 期待」の区切り
+      ARROW = ' => '
+
+      # 違いとして数える空白（半角・全角・タブ）
+      BLANKS = " 　\t"
+
+      # 「実際 => 期待」の違いが空白や字幅だけで、端末では同じ字が並んで見えてしまう指摘に
+      # 注記を添えた見出しを返す。当たらなければ nil（呼び出し側が素の見出しを使う）。
+      #
+      # 実測: 上流の「全角かっこの前後の空白を消せ」は `" ） => ）"` を出すが、先頭の空白が
+      # 切り詰められて「） => ）」と表示され、何を直せばよいか読めなかった。半角かっこを
+      # 全角へ直す指摘も、`(2026年) => （2026年）` の違いが字幅だけで見分けにくい。
+      #
+      # 実際側にも ` => ` が現れうる（`(token => count) => （token => count）`）ので、
+      # 区切りの候補を順に試し、空白か字幅の違いとして説明がつく切り方を採る。
+      def self.difference_head(line)
+        arrow_positions(line).each do |at|
+          actual   = line[0...at]
+          expected = line[(at + ARROW.size)..]
+
+          if blank_only_difference?(actual, expected)
+            note = actual.count(BLANKS) > expected.count(BLANKS) ? '空白を削除' : '空白を追加'
+            return "#{show_blanks(actual)}#{ARROW}#{show_blanks(expected)}（#{note}）"
+          end
+          if width_only_difference?(actual, expected)
+            note = fullwidth_count(expected) > fullwidth_count(actual) ? '半角 → 全角' : '全角 → 半角'
+            return "#{actual.strip}#{ARROW}#{expected.strip}（#{note}）"
+          end
+        end
+        nil
+      end
+
+      def self.arrow_positions(line)
+        positions = []
+        at = -1
+        positions << at while (at = line.index(ARROW, at + 1))
+        positions
+      end
+
+      def self.blank_only_difference?(actual, expected)
+        actual != expected && !actual.delete(BLANKS).empty? && actual.delete(BLANKS) == expected.delete(BLANKS)
+      end
+
+      # 互換分解（NFKC）で同じになる＝違いは字幅だけ
+      def self.width_only_difference?(actual, expected)
+        actual.strip != expected.strip &&
+          actual.strip.unicode_normalize(:nfkc) == expected.strip.unicode_normalize(:nfkc)
+      end
+
+      # 全角の英数記号（NFKC で半角に畳まれる字）の数
+      def self.fullwidth_count(text) = text.each_char.count { it != it.unicode_normalize(:nfkc) }
+
+      # 空白を見える記号にする（半角 `␣`・全角 `□`）
+      def self.show_blanks(text) = text.gsub(' ', '␣').gsub("　", '□').gsub("\t", '→')
 
       # ルール ID を短縮（"ja-spacing/ja-space-around-code" → "ja-space-around-code"）
       def self.short_rule(rule_id) = rule_id.to_s.split('/').last.to_s
