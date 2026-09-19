@@ -19,7 +19,7 @@
 #   PC-10: 辞書の修正後の語が、別の交ぜ書きとして再び指摘されない（--fix が収束する）
 #   PC-11: 語の途中に強調記法が入っても対比を取りこぼさない
 #   PC-12: 集約は畳むだけ（並べ替えは FindingRows。textlint の指摘と混ぜて並べるため）
-#   PC-13: 和文どうしの空きなしスラッシュだけを指摘する（欧文の並列・単位・空きありの ` / ` は黙る）
+#   PC-13: 和文どうしの空きなしスラッシュだけを指摘する（欧文の並列・単位・空きありの ` / `・`・` の並びの中は黙る）
 #   PC-14: 康煕部首を指摘し、--fix で漢字（新字体）へ置換する
 #   PC-15: 数と「つ」は漢数字、記号の個数は算用数字で書くよう指摘する（--fix しない）
 #   PC-16: かっこの隣の空白を指摘する（区切り記号・強調の閉じ・記法の空白は黙る）
@@ -470,11 +470,30 @@ class TestProseChecker < Minitest::Test
     assert_includes label, 'どれか一つなら'
   end
 
-  # 同じ並びの中で `・` と `/` が混ざるのは表記の不統一。引き続き拾う
-  def test_should_report_slash_mixed_with_nakaguro
-    findings = check("文字数・行数・文/節統計を出します。\n").select { it.rule == 'slash-between-japanese' }
+  # `・` の並びの中の `/` は、`・` より強く結ぶ書き分け（「文字数」「行数」「文/節統計」の 3 項目）
+  def test_should_not_report_slash_inside_nakaguro_list
+    ['文字数・行数・文/節統計を出します。',
+     '`book.yml`・索引/用語集辞書・ユーザー辞書は対象外です。',
+     '記法を足す・設定キーを足す/やめる・章名を保持するときの規範です。'].each do |body|
+      assert_empty check("#{body}\n").select { it.rule == 'slash-between-japanese' }, body
+    end
+  end
+
+  # 判定は左右 6 字の窓に限る。文単位に広げると、無関係な `・` と同居しただけの `/` まで
+  # 黙る——この文の `リンク・画像` は「基本検証」に掛かるだけで、`有効/無効` とは関係が無い
+  def test_should_report_slash_near_an_unrelated_nakaguro
+    findings = check("リンク・画像の基本検証を有効/無効にします。\n").select { it.rule == 'slash-between-japanese' }
 
     assert_equal 1, findings.size
+  end
+
+  # 窓の外にある `・` の並びは見えないので指摘する。**意図した誤検出**である——
+  # 見逃すより検出して著者に委ね、まれな誤検出は vs-lint-disable-next-line で受ける。
+  # 文単位の判定へ「直す」前に、上の見逃しが生じることを確かめること
+  def test_should_report_slash_when_nakaguro_is_beyond_the_window
+    body = "運転免許・IT資格（基本情報技術者/応用情報技術者）などを持っています。\n"
+
+    assert_equal 1, check(body).count { it.rule == 'slash-between-japanese' }
   end
 
   # 欧文の並列は日本語の技術書で広く使われる書き方なので叩かない（本書で 270 件）

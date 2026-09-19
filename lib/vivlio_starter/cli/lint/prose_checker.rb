@@ -309,6 +309,15 @@ module VivlioStarter
         # 前後に空きがあれば半角でも間合いが取れる。欧文の `EPUB / Kindle` を見逃すのと
         # 同じ理由である。詰まって見えるのは空きのない形（片側だけ空いた形を含む）に限る。
         #
+        # **`・` の並びの中の `/` も黙る。** `文字数・行数・文/節統計` は「文字数」「行数」
+        # 「文/節統計」の 3 項目で、`・` より `/` を強く結ぶ書き分けである（`索引/用語集辞書`・
+        # `設定キーを足す/やめる` も同じ形）。判定は左右の捕獲（各 6 字まで）に `・` があるか
+        # だけを見る。文単位に広げると「リンク・画像の基本検証を有効/無効にする」のように
+        # 無関係な `・` と同居しただけの `/` まで黙ってしまう。窓の外にある `・`
+        # （`運転免許・IT資格（基本情報技術者/応用情報技術者）`）は指摘されるが、
+        # **検出して著者に委ねる**ほうを採る——lint の役目は候補を示すことで、まれな誤検出は
+        # `<!-- vs-lint-disable-next-line -->` で受ければよい（本書での誤検出は 0 件）。
+        #
         # 直し方を著者に委ねる（`--fix` しない）のは、`・` と ` / ` のどちらが合うかが
         # 意味で決まるため。見出しで両方を示す。
         def slash_findings(text)
@@ -322,13 +331,14 @@ module VivlioStarter
           end
         end
 
-        # 1 行から、両側が和文で、空きなしのスラッシュだけを拾う
+        # 1 行から、両側が和文で、空きなしで、`・` の並びの外にあるスラッシュだけを拾う
         def slash_pairs(line)
           pairs = []
           line.scan(SLASH_PAIR) do
             left, separator, right = ::Regexp.last_match(1), ::Regexp.last_match(2), ::Regexp.last_match(3)
             next unless left[-1].match?(JAPANESE_CHAR) && right[0].match?(JAPANESE_CHAR)
             next if separator.match?(SPACED_SLASH)
+            next if "#{left}#{right}".include?('・')
 
             pairs << [left, separator, right]
           end
