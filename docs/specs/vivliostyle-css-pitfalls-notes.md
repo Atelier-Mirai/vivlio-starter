@@ -100,6 +100,13 @@ EPUB/Kindle/PDF の実機確認フィードバック（スクリーンショッ�
 - **切り分け**: 「打ち消し CSS は書いてあるのに効かない」ときは、値や特異度（§2.4）を疑う前に **そのファイルを当該ページが読んでいるか**を @import グラフで確かめる。読んでいなければ特異度も継承も関係ない。
 - **修正**: `base.css` に `dfn { font-style: inherit; font-weight: inherit; }`。索引語は本文に埋まる透明なアンカーなので、地の文と同じ姿で組まれる必要がある。
 
+### 2.10 `<pre>` を `pre-wrap` にしても、中の `<code>` が `white-space: pre` だと折り返さない
+
+- **症状**: `:::{.output}` の中の長い行が、枠の右端で**黙って切り落とされる**（31 章の lint の出力例で、行末の「…になりま」の「す」が紙面から消えた）。PDF の本文テキストにも残らないので、読者は欠けたことにすら気づけない。
+- **原因**: `prism.css`（上流のハイライト用 CSS）は `pre[class*="language-"]` だけでなく、**中の `code[class*="language-"]` にも `white-space: pre` と `word-wrap: normal`** を指定する。`code.css` は `pre` 側を `pre-wrap` に直していたが、`white-space` は子が自分で宣言していれば継承されないので、`<code>` は折り返さないまま。はみ出した分は `pre` の `overflow: auto` で切れる。行番号付きのコードブロックは `figure` と行ブロック（`.vs-code-line`）で組まれるのでこの経路を通らず、**出力例の枠の中の素の `<pre><code>` だけ**が引っかかっていた。
+- **切り分け**: 「`pre` に `pre-wrap` を当てたのに折り返さない」ときは、**折り返しを止めているのが子要素ではないか**を見る。`--no-clean` でビルドすると `.cache/vs/build/pdf/*.html` が残るので、実際の入れ子（`<div class="output"><pre class="language-text"><code class="language-text">`）を確かめてから、その各段に効いている宣言を追う。
+- **修正**: `chapter-common.css` で `.output pre[class*="language-"]` に `white-space: pre-wrap; overflow-wrap: anywhere; overflow: visible;`、`> code` に `white-space: inherit; overflow-wrap: inherit;`（特異度 (0,2,2) で prism の (0,1,1) に勝つ）。`.terminal`・`.diagram` は導入時から `pre-wrap` だったので、`.output` だけが付け忘れていた形。`pre-wrap` は連続空白を保ち、はみ出すときだけ折り返すので、収まっている行の桁揃えは変わらない（44 章のビルド時間の表で確認）。
+
 ---
 
 ## 3. 今回確立した実装パターン

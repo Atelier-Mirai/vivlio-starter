@@ -758,6 +758,21 @@ p.small {
   margin: 0;
   background: none;
   border: none;
+  /* 長い行は枠内で折り返す（.terminal・.diagram と同じ）。折り返さないと、はみ出した分が
+     黙って切り落とされる（実測: 31 章の lint の出力例で、行末の数文字が紙面から消えた）。
+     連続空白は桁揃えのため pre-wrap で保つ */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow: visible;
+}
+
+/* prism.css は <pre> だけでなく中の <code> にも white-space: pre と word-wrap: normal を
+   指定する。<pre> を折り返しにしても <code> が折り返さないので、ここで親に従わせる。
+   行番号付きのコードブロックは figure と行ブロックで組まれ、この規則の対象ではない。
+   特異度 (0,2,2) で prism.css の code[class*="language-"] (0,1,1) に勝つ */
+.output pre[class*="language-"] > code {
+  white-space: inherit;
+  overflow-wrap: inherit;
 }
 
 /* .diagram の中身はインデントで描いた図（class なしの <pre>）が主。code.css の pre 既定
