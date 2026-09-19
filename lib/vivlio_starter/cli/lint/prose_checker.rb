@@ -10,7 +10,7 @@
 #     - stray-index-markup   索引語のつもりでない `[g]`（markdown-notation-collision-spec.md §5）
 #     - indented-code-block  非対応の 4 スペース字下げコードブロック（同 §6）
 #     - setext-heading       改ページのつもりが見出しになる `---` / `===`（同 §7）
-#     - slash-between-japanese 和文どうしを半角スラッシュで並べた箇所
+#     - slash-between-japanese 和文どうしを空きなしの半角スラッシュで並べた箇所
 #     - space-around-brackets  かっこの隣の空白。区切り記号（`） — `）や強調の閉じの隣は許容
 #     - long-parenthetical   長すぎる補足（丸かっこの中の和文が 60 字を超える）
 #     - kanji-lookalike      漢字に見える康煕部首（`⽇本` の `⽇`）。1 対 1 の置換なので --fix できる
@@ -289,7 +289,10 @@ module VivlioStarter
         SLASH_BOUNDARY = %r{[^\s/|（）()「」『』【】、。，．]}
         SLASH_PAIR = /(#{SLASH_BOUNDARY}{1,6})([ \t]*\/[ \t]*)(#{SLASH_BOUNDARY}{1,6})/
 
-        # 和文どうしを半角スラッシュで並べた箇所（`メリット / デメリット`・`有効/無効`）。
+        # 前後の両方に空きのある区切り（`コードブロック / テーブル`）
+        SPACED_SLASH = %r{\A[ \t]+/[ \t]+\z}
+
+        # 和文どうしを、空きなしの半角スラッシュで並べた箇所（`有効/無効`）。
         #
         # **両側が和文のときだけ**を見る。片側でも欧文なら黙る理由は 2 つあり、どちらも
         # 本書の原稿から出た実例である。
@@ -299,25 +302,33 @@ module VivlioStarter
         # textlint の `ja-no-space-around-slash` はこの区別を持たず、空きの有無だけで
         # 叩くため、本ルールで置き換えている（切り替えは lint.rb の SUPERSEDED_TEXTLINT_RULES）。
         #
-        # 直し方を著者に委ねる（`--fix` しない）のは、`・` と全角 `／` のどちらが合うかが
-        # 文脈で決まるため。記法の取り違えルールと同じ方針である。
+        # **前後に空きのある ` / ` も黙る。** 本書では「・」が「と」、「 / 」が「どれか一つ」を
+        # 表している（実測: 和文の並列は中黒 544 件、空きありのスラッシュは全件が
+        # 「どれか一つ」——`（コードブロック / テーブル / 画像）` は直後に来るどれかが対象）。
+        # `・` に直すと「全部」の意味に変わってしまう。全角 `／` との違いは字幅だけで、
+        # 前後に空きがあれば半角でも間合いが取れる。欧文の `EPUB / Kindle` を見逃すのと
+        # 同じ理由である。詰まって見えるのは空きのない形（片側だけ空いた形を含む）に限る。
+        #
+        # 直し方を著者に委ねる（`--fix` しない）のは、`・` と ` / ` のどちらが合うかが
+        # 意味で決まるため。見出しで両方を示す。
         def slash_findings(text)
           prose_lines(text).flat_map do |lineno, line|
             protected_line, = Masking.protect_code(line)
             slash_pairs(protected_line).map do |left, separator, right|
               Finding.new(line: lineno, rule: SLASH_RULE,
                           label: "#{left}#{separator}#{right} は和文どうしの並列です" \
-                                 '（`/` を `・` か全角 `／` に）')
+                                 '（並べるなら `・`、どれか一つなら前後に空きを入れた ` / ` か全角 `／` に）')
             end
           end
         end
 
-        # 1 行から、両側が和文のスラッシュだけを拾う
+        # 1 行から、両側が和文で、空きなしのスラッシュだけを拾う
         def slash_pairs(line)
           pairs = []
           line.scan(SLASH_PAIR) do
             left, separator, right = ::Regexp.last_match(1), ::Regexp.last_match(2), ::Regexp.last_match(3)
             next unless left[-1].match?(JAPANESE_CHAR) && right[0].match?(JAPANESE_CHAR)
+            next if separator.match?(SPACED_SLASH)
 
             pairs << [left, separator, right]
           end

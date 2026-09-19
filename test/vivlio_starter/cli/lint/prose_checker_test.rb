@@ -19,7 +19,7 @@
 #   PC-10: 辞書の修正後の語が、別の交ぜ書きとして再び指摘されない（--fix が収束する）
 #   PC-11: 語の途中に強調記法が入っても対比を取りこぼさない
 #   PC-12: 集約は畳むだけ（並べ替えは FindingRows。textlint の指摘と混ぜて並べるため）
-#   PC-13: 和文どうしの並列スラッシュだけを指摘する（欧文の並列・単位は黙る）
+#   PC-13: 和文どうしの空きなしスラッシュだけを指摘する（欧文の並列・単位・空きありの ` / ` は黙る）
 #   PC-14: 康煕部首を指摘し、--fix で漢字（新字体）へ置換する
 #   PC-15: 数と「つ」は漢数字、記号の個数は算用数字で書くよう指摘する（--fix しない）
 #   PC-16: かっこの隣の空白を指摘する（区切り記号・強調の閉じ・記法の空白は黙る）
@@ -444,13 +444,37 @@ class TestProseChecker < Minitest::Test
 
   # --- 和文どうしの並列スラッシュ（PC-13）---
 
-  # 和文どうしをスラッシュで並べたら `・` / `／` を薦める。空きの有無は問わない
+  # 和文どうしを空きなしのスラッシュで並べたら指摘する。片側だけ空いた形も詰まって見えるので拾う
   def test_should_report_slash_between_japanese
-    ['メリット / デメリット', '有効/無効'].each do |body|
+    ['有効/無効', '有効 /無効', '有効/ 無効'].each do |body|
       labels = check("#{body}を選びます。\n").map(&:label)
 
       assert labels.any? { it.include?('和文どうしの並列') }, body
     end
+  end
+
+  # 前後に空きのある ` / ` は指摘しない。本書では「・」が「と」、「 / 」が「どれか一つ」を表し
+  # （実測: 中黒 544 件、空きありスラッシュは全件が「どれか一つ」）、`・` に直すと意味が変わる。
+  # 空きがあれば半角でも字幅が足りる——欧文の `EPUB / Kindle` を見逃すのと同じ理由
+  def test_should_not_report_spaced_slash_between_japanese
+    body = "直後に続くブロック要素（コードブロック / テーブル / 画像）が対象です。\n"
+
+    assert_empty check(body).select { it.rule == 'slash-between-japanese' }
+  end
+
+  # 直し方は意味で分かれるので、見出しで両方を示す
+  def test_should_explain_both_fixes_for_slash
+    label = check("有効/無効を選びます。\n").find { it.rule == 'slash-between-japanese' }.label
+
+    assert_includes label, '並べるなら `・`'
+    assert_includes label, 'どれか一つなら'
+  end
+
+  # 同じ並びの中で `・` と `/` が混ざるのは表記の不統一。引き続き拾う
+  def test_should_report_slash_mixed_with_nakaguro
+    findings = check("文字数・行数・文/節統計を出します。\n").select { it.rule == 'slash-between-japanese' }
+
+    assert_equal 1, findings.size
   end
 
   # 欧文の並列は日本語の技術書で広く使われる書き方なので叩かない（本書で 270 件）
