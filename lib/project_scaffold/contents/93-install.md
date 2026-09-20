@@ -6,7 +6,7 @@
 
 ## Ruby のインストール
 
-Vivlio Starter は Ruby で動作します。Ruby がまだインストールされていない場合は、同梱のスクリプトを使うのが最も簡単です。
+Vivlio Starter は Ruby で動作します。Ruby がまだインストールされていない場合は、同梱のスクリプトを使うのがもっとも簡単です。
 
 ```bash
 bin/install-ruby.zsh              # 対話的に最新安定版を導入
