@@ -15,6 +15,7 @@
 #     - long-parenthetical   長すぎる補足（丸かっこの中の和文が 60 字を超える）
 #     - kanji-lookalike      漢字に見える康煕部首（`⽇本` の `⽇`）。1 対 1 の置換なので --fix できる
 #     - kansuji-counter-suffix 数と「つ」の表記。数は漢数字（`2 つ` → `二つ`）、記号の個数は算用数字
+#     - ja-no-weak-phrase    断定を避ける言い回し（「かもしれません」「思います」）
 #
 # なぜ prh 辞書ではなく Ruby なのか:
 #   交ぜ書きは 1 対 1 の置換なので config/textlint_rewrite.yml（prh）へ書けば
@@ -65,6 +66,7 @@ module VivlioStarter
         KANSUJI_COUNTER_RULE = 'kansuji-counter-suffix'
         MISSING_PERIOD_RULE  = 'missing-period'
         SENTENCE_LENGTH_RULE = 'sentence-length'
+        WEAK_PHRASE_RULE     = 'ja-no-weak-phrase'
 
         # --fix で直せるルール。どちらも「この文字列はこう書く」が 1 つに決まる。
         FIXABLE_RULES = [MAZEGAKI_RULE, KANJI_LOOKALIKE_RULE].freeze
@@ -225,6 +227,7 @@ module VivlioStarter
           end
           findings.concat(kanji_lookalike_findings(text))      unless rules.include?(KANJI_LOOKALIKE_RULE)
           findings.concat(kansuji_counter_findings(text))      unless rules.include?(KANSUJI_COUNTER_RULE)
+          findings.concat(weak_phrase_findings(text))          unless rules.include?(WEAK_PHRASE_RULE)
           findings
         rescue Errno::ENOENT => e
           Common.log_warn("[lint] ファイルを読み込めませんでした: #{path} (#{e.message})")
@@ -679,6 +682,37 @@ module VivlioStarter
           end
         end
         private_class_method :kansuji_counter_finding
+
+# --- 弱い表現 ---------------------------------------------------------
+
+# 断定を避ける言い回し。上流の ja-no-weak-phrase を置き換える（lint.rb の
+# SUPERSEDED_TEXTLINT_RULES）。上流は形態素の並びで見るため、**同じ
+# 「かもしれません」でも直前の語形で当たったり外れたりする**——MeCab は
+# 「したかもしれません」を `かも`（副助詞）と切るが、「するかもしれません」は
+# `か`＋`も` に割るので、1 語の `かも` を探す上流の規則から漏れる（実測）。
+# 文字列で見れば語形に左右されない。
+#
+# **--fix しない。** 言い切れるかどうかは書き手にしか分からない。謝辞の
+# 「生まれていなかったかもしれません」のように、弱さが意図されている文もある。
+WEAK_PHRASES = [
+  [/かもしれ/,        'かもしれない'],
+  [/かも[。、！？]/,   'かも'],
+  [/思います/,        '思います'],
+  [/思う[。、]/,      '思う'],
+  [/可能性を示唆/,    '可能性を示唆している']
+].freeze
+
+def weak_phrase_findings(text)
+  prose_lines(text).flat_map do |lineno, line|
+    body, = Masking.protect_code(line)
+    WEAK_PHRASES.filter_map do |pattern, name|
+      next unless body.match?(pattern)
+
+      Finding.new(line: lineno, rule: WEAK_PHRASE_RULE,
+                  label: "「#{name}」は弱い表現です（言い切れるなら言い切る）")
+    end
+  end
+end
 
         # --- 康煕部首 --------------------------------------------------------
 

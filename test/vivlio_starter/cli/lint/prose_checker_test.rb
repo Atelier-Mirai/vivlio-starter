@@ -747,6 +747,41 @@ class TestProseChecker < Minitest::Test
     assert_empty counter_labels("由来は 2 つあります。\n", disabled_rules: ['kansuji-counter-suffix'])
   end
 
+# --- 弱い表現（上流 ja-no-weak-phrase の置き換え）---
+
+def weak_labels(body, **)
+  check(body, **).select { it.rule == 'ja-no-weak-phrase' }.map(&:label)
+end
+
+# **上流が落とす形をここで拾う。** MeCab は「したかもしれません」を `かも`（副助詞）と
+# 切るが、「するかもしれません」は `か`＋`も` に割る。1 語の `かも` を探す上流の規則は
+# 後者から漏れ、同じ言い回しなのに章によって指摘が出たり出なかったりしていた
+def test_should_catch_weak_phrases_regardless_of_the_preceding_form
+  assert_equal ['「かもしれない」は弱い表現です（言い切れるなら言い切る）'],
+               weak_labels("将来的に正式対応するかもしれません。\n")
+  assert_equal ['「かもしれない」は弱い表現です（言い切れるなら言い切る）'],
+               weak_labels("本書は生まれていなかったかもしれません。\n")
+end
+
+def test_should_catch_the_other_weak_phrases
+  assert_equal ['「思います」は弱い表現です（言い切れるなら言い切る）'], weak_labels("よい本になると思います。\n")
+  assert_equal ['「かも」は弱い表現です（言い切れるなら言い切る）'], weak_labels("それは難しいかも。\n")
+end
+
+# 「思うように動かない」の「思う」は弱い表現ではない。句点か読点が続く形だけを見る
+def test_should_not_treat_other_uses_of_omou_as_weak
+  assert_empty weak_labels("思うように動かないときは設定を見直します。\n")
+end
+
+# 判断は書き手にしかできない（謝辞の「かもしれません」のように、弱さが意図された文もある）
+def test_should_not_make_weak_phrase_fixable
+  refute_includes PC::FIXABLE_RULES, 'ja-no-weak-phrase'
+end
+
+def test_should_respect_disabled_rules_for_weak_phrase
+  assert_empty weak_labels("対応するかもしれません。\n", disabled_rules: ['ja-no-weak-phrase'])
+end
+
   # --- 文末の句点（PC-17）---
 
   def period_lines(body, **)

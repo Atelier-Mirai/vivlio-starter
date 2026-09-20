@@ -405,7 +405,7 @@ module VivlioStarter
         SUPERSEDED_TEXTLINT_RULES = {
           'preset-ja-spacing' => %w[ja-no-space-around-slash ja-no-space-around-parentheses],
           'preset-japanese' => %w[no-kanji-lookalikes sentence-length],
-          'preset-ja-technical-writing' => %w[ja-no-mixed-period sentence-length]
+          'preset-ja-technical-writing' => %w[ja-no-mixed-period sentence-length ja-no-weak-phrase]
         }.freeze
 
         # 上流ルールの取りこぼしを打ち消す、vs lint 自身の除外リスト。

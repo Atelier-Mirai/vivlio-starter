@@ -72,8 +72,9 @@ rules:
       allowHalfWidthExclamation: true  # 半角の !
       allowHalfWidthQuestion: true     # 半角の ?
 
-    # 一文の長さ（sentence-length）と文末の句点（ja-no-mixed-period）は vs lint の独自ルールが
-    # 受け持つため、ここに書いても効きません。上限は book.yml の lint.sentence_length_max です
+    # 一文の長さ（sentence-length）・文末の句点（ja-no-mixed-period）・弱い表現
+    # （ja-no-weak-phrase）は vs lint の独自ルールが受け持つため、ここに書いても効きません。
+    # 一文の長さの上限は book.yml の lint.sentence_length_max です
 
   # 表記揺れの辞書。使う辞書はここに並べ、要らない辞書は行ごと消してください
   # prh_*.yml は「ics.media」「テキスト校正くん」の校正辞書（作成者: 池田 泰延）で、
