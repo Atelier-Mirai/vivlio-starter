@@ -189,7 +189,7 @@ module VivlioStarter
       %i[metrics readability standard]                => Spec[default: 40],
       %i[metrics readability easy]                    => Spec[default: 60],
       %i[metrics labels too_short]                    => Spec[default: "加筆検討"],
-      %i[metrics labels just_right]                   => Spec[default: "丁度良い"],
+      %i[metrics labels just_right]                   => Spec[default: "ちょうどよい"],
       %i[metrics labels too_long]                     => Spec[default: "やや長い"],
       %i[metrics labels monotonous]                   => Spec[default: "表現が単調"],
       %i[metrics labels too_complex]                  => Spec[default: "やや難解"],

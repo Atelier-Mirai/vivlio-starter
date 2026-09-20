@@ -368,7 +368,7 @@ module VivlioStarter
 
           output = @formatter.format_chapter_line(chapter, 15_890, false)
 
-          assert_includes output, '✅ 丁度良い'
+          assert_includes output, '✅ ちょうどよい'
           refute_includes output, '💡'
         end
 
@@ -379,7 +379,7 @@ module VivlioStarter
 
           output = @formatter.format_chapter_line(chapter, 15_890, false, extra_warnings: ['やや難解'])
 
-          assert_includes output, '✅ 丁度良い ／ 🤔 やや難解'
+          assert_includes output, '✅ ちょうどよい ／ 🤔 やや難解'
         end
 
         # ideal 帯の外（min は超えているが理想ではない）なら記号は付かない

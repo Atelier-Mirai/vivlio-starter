@@ -131,7 +131,7 @@ module VivlioStarter
           labels = loader.labels
 
           assert_equal '加筆検討', labels[:too_short]
-          assert_equal '丁度良い', labels[:just_right]
+          assert_equal 'ちょうどよい', labels[:just_right]
           assert_equal 'やや長い', labels[:too_long]
         end
 

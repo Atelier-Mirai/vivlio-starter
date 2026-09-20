@@ -93,7 +93,7 @@ module VivlioStarter
         # 名前の衝突を避けている。
         DEFAULT_LABELS = {
           too_short: '加筆検討',
-          just_right: '丁度良い',
+          just_right: 'ちょうどよい',
           too_long: 'やや長い',
           monotonous: '表現が単調',
           too_complex: 'やや難解'

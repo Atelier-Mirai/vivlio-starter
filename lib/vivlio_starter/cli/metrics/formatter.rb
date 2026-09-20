@@ -193,7 +193,7 @@ module VivlioStarter
         # 警告色の 🟡 から提案の 💡 へ移し、質の指摘とも記号を分けた
         # （`chapter-volume-calibration-data.md` §7.3）。どちらの記号も単一コードポイント・
         # EAW=W で、`terminal-output-notes.md` §1 の桁揃えの規則を満たす。
-        # 分量は必ず先、文章の質は後ろに置く。分量の 3 状態（💡 足りない／✅ 丁度良い／
+        # 分量は必ず先、文章の質は後ろに置く。分量の 3 状態（💡 足りない／✅ ちょうどよい／
         # 💡 長い）は同じ軸の判定なので、位置が動くと読み手が軸を追えなくなる。
         # @return [String] 行末に足す表示片（先頭に空白を含む）。何も無ければ空文字列
         def format_advice(volume, quality = [], just_right: false)
@@ -206,7 +206,7 @@ module VivlioStarter
 
         # 分量が ideal 帯に収まっているか。
         # 「足りない／多すぎる」だけを伝えると、直すところが無い章に何の反応も返らず
-        # 判定されたのかどうかが分からない。**丁度良い**ことも伝える
+        # 判定されたのかどうかが分からない。**ちょうどよい**ことも伝える
         # （`chapter-volume-calibration-data.md` §7.1）。
         # @param excluded [Boolean] 分量判定の対象外の章なら ✅ も出さない
         def just_right?(chars, threshold, excluded: false)
