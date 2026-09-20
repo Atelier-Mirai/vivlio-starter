@@ -332,6 +332,7 @@ lint:
   trim_long_vowel: true                   # 「サーバ」等、末尾長音を省く文体
   allow_space_around_code: true           # インラインコードと和文の間のスペースを許容
   allow_space_between_ja_en: true         # 全角と半角の間のスペースを許容
+  line_links: compact                     # 指摘の「行:」をクリックで開く（compact / path / off）
 
 spellcheck:
   extra_dictionaries: []   # オンデマンドダウンロード辞書（例: ada）
@@ -344,7 +345,7 @@ spellcheck:
 
 | したいこと | 書く場所 |
 | :--- | :--- |
-| ルールの追加・削除、しきい値の変更 | `config/.textlintrc.yml` |
+| ルールの追加・削除、閾値の変更 | `config/.textlintrc.yml` |
 | この語句は指摘しないでほしい（日本語校正） | `config/textlint_allowlist.yml` |
 | この語は綴り誤りではない（スペルチェック） | `config/spellcheck_allowlist.yml` |
 | この表記に統一したい | `config/textlint_rewrite.yml` |

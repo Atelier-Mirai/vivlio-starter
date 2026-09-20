@@ -14,6 +14,9 @@
 #   同じように直す必要があり、片方だけ直して食い違う余地があった。
 # ================================================================
 
+require_relative '../common'
+require_relative 'line_link'
+
 module VivlioStarter
   module CLI
     module Lint
@@ -34,18 +37,24 @@ module VivlioStarter
         # （スペルチェックは語の出現行数、他は指摘の個数）、ここで決めてよいものではない。
         #
         # @param rows [Array<Hash>] { count:, label:, lines: [Integer] }
+        # @param path [String, nil] 原稿のパス（出現行をクリックで開けるようにする。
+        #   省くと素の数字で出る——飛び先が無いため）
         # @return [Array<Hash>] { count:, label:, lines: String }
-        def arrange(rows)
+        def arrange(rows, path: nil)
           rows.map { it.merge(lines: it[:lines].compact.uniq.sort) }
               .sort_by { [-it[:count], it[:lines].first || 0] }
-              .map { it.merge(lines: format_lines(it[:lines])) }
+              .map { it.merge(lines: format_lines(it[:lines], path)) }
         end
 
         # 出現行の並びを表示用の文字列にする（超過分は末尾の … に畳む）
+        #
+        # 畳むのはリンクにする前——省略した分をリンクにしても誰も押せないし、
+        # 見えない行にエスケープだけが残る。
         # @param lines [Array<Integer>] 昇順に整列済みの出現行
+        # @param path [String, nil] 原稿のパス
         # @return [String]
-        def format_lines(lines)
-          shown = lines.first(MAX_SHOWN_LINES).join(', ')
+        def format_lines(lines, path = nil)
+          shown = lines.first(MAX_SHOWN_LINES).map { LineLink.render(it, path: path) }.join(', ')
           lines.size > MAX_SHOWN_LINES ? "#{shown}, …" : shown
         end
       end

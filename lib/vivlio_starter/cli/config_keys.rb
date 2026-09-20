@@ -201,6 +201,7 @@ module VivlioStarter
       %i[lint trim_long_vowel]                        => Spec[default: true],
       %i[lint allow_space_around_code]                => Spec[default: true],
       %i[lint allow_space_between_ja_en]              => Spec[default: true],
+      %i[lint line_links]                             => Spec[default: "compact"],
 
       # ------- spellcheck -------
       %i[spellcheck extra_dictionaries]               => Spec[default: nil],

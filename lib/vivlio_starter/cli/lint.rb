@@ -221,7 +221,7 @@ module VivlioStarter
         def print_prose_report(files, lint_info, prose_info)
           merge_rows(files, lint_info[:rows_by_file], prose_info[:rows_by_file]).each do |path, rows|
             Common.log_always "📄 #{path}  (日本語校正)"
-            Lint::FindingRows.arrange(rows).each do |row|
+            Lint::FindingRows.arrange(rows, path: path).each do |row|
               Common.log_always format('  %3d件  %s', row[:count], row[:label])
               Common.log_always format('         行: %s', row[:lines])
             end

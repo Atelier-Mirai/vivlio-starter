@@ -9,35 +9,34 @@
 
 - "ajisai"
 - "asagao"
-- "bmod" # LaTeX の剰余コマンド（\bmod）
-- "injlim" # LaTeX の演算子名
-- "operatorname" # LaTeX の演算子名
-- "projlim" # LaTeX の演算子名
-- "varinjlim" # LaTeX の演算子名
-- "varliminf" # LaTeX の演算子名
-- "varlimsup" # LaTeX の演算子名
-- "varprojlim" # LaTeX の演算子名
+- "bmod"
 - "DTP"
-- "Gore" # 人名（Al Gore）。94 章で OCR の Al/AI 誤読の例に使っている
+- "Gore"
 - "greet"
+- "haruka"
 - "High-Score"
 - "himawari"
 - "htmx"
+- "injlim"
 - "kauplan"
 - "kiku"
 - "kikyo"
 - "kosumosu"
 - "Low-Score"
+- "mirai"
 - "nanohana"
+- "operatorname"
+- "OSC"
+- "projlim"
 - "sakura"
 - "suisen"
 - "suzuran"
 - "tsubaki"
 - "ume"
+- "varinjlim"
+- "varliminf"
+- "varlimsup"
+- "varprojlim"
+- "Vivlio"
 - "vivlio-starter"
 - "vivliostyle"
-- "Vivlio"
-
-# 会話文の話者名（本書の作例。config/talk.yml の話者キー）
-- "haruka"
-- "mirai"

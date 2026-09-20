@@ -50,7 +50,7 @@ module VivlioStarter
 
           errors_by_file.each do |path, errors|
             Common.log_always "📄 #{path}  (スペルチェック)"
-            rows  = aggregate(errors)
+            rows  = aggregate(errors, path: path)
             # ラベルは英単語だけで組み立てるため、文字数がそのまま表示幅になる
             width = rows.map { it[:label].length }.max
             rows.each do |row|
@@ -67,13 +67,13 @@ module VivlioStarter
         # 先は 1 箇所だからである（他の 2 つの検査は指摘の個数で数える）。
         # 並べ替えと出現行の表示は FindingRows に任せる（3 つの検査で揃えるため）。
         # @return [Array<Hash>] { count:, label:, lines: } を件数の多い順で返す
-        def aggregate(errors)
+        def aggregate(errors, path: nil)
           rows = errors.group_by { |e| e[:word] }.map do |word, items|
             lines = items.map { |e| e[:line] }.uniq
             suggestion = items.first[:suggestion]
             { count: lines.size, label: suggestion ? "#{word} => #{suggestion}" : word, lines: }
           end
-          FindingRows.arrange(rows)
+          FindingRows.arrange(rows, path: path)
         end
 
         # Levenshtein距離で最良の候補語を返す
