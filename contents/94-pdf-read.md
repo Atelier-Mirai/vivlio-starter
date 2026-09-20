@@ -60,7 +60,7 @@ PDF ファイルのパスを指定すると、空いている章番号が自動�
 vs pdf:read three-elements
 ```
 
-`sources/` ディレクトリに `three-elements.pdf` を配置しておき、章トークンで指定する方法です。既に `catalog.yml` に登録済みの章であれば、対応する PDF を自動的に探索します。
+`sources/` ディレクトリに `three-elements.pdf` を配置しておき、章トークンで指定する方法です。すでに `catalog.yml` に登録済みの章であれば、対応する PDF を自動的に探索します。
 
 ### 実行例
 
@@ -279,5 +279,5 @@ gem install vivlio-starter-pdf
 
 :::{.tip}
 **ヒント**  
-OCR 結果の品質を段階的に向上させるには、まず `vs pdf:read` で粗変換を行い、元の PDF と見比べながら `config/ocr_corrections.yml` に誤読パターンを追記していくのが効率的です。一度書いたパターンは以降のすべての読み取りに当たるため、読み進めるほど精度が上がります。
+OCR 結果の品質を段階的に向上させるには、まず `vs pdf:read` による粗変換から始め、元の PDF と見比べながら `config/ocr_corrections.yml` に誤読パターンを追記していくのが効率的です。一度書いたパターンは以降のすべての読み取りに当たるため、読み進めるほど精度が上がります。
 :::
