@@ -6,7 +6,9 @@
 
 ## 全体像
 
-Vivlio Starter は Vivliostyle CLI を厚くラップした Ruby gem です。CLI フレームワークには Samovar を採用しています。
+Vivlio Starter は、Markdown の原稿から閲覧用 PDF・印刷入稿用 PDF・EPUB・Kindle 用 KPF までを作る**電子書籍執筆システム**です。**組版エンジンとして Vivliostyle を採用**し、その前後——原稿の前処理、文章校正、索引・用語集、画像の最適化、表紙の生成、PDF の後処理——を自前で持ちます。六つの領域に分かれた 26 のコマンドが、執筆から入稿までの工程を覆います。
+
+実装は Ruby gem 一つにまとまっており、CLI フレームワークには Samovar を採用しています。
 
 ```
 bin/vs / bin/vivlio-starter
