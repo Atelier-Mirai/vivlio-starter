@@ -196,7 +196,7 @@ module VivlioStarter
           context.report.unsupported(
             "@<#{name}>",
             file: context.file, line: context.line,
-            message: "@<#{name}>（#{UNSUPPORTED[name]}）は Vivlio に対応する記法がありません。原文をそのまま残しました。",
+            message: "@<#{name}>（#{UNSUPPORTED[name]}）は Vivlio Starter に対応する記法がありません。原文をそのまま残しました。",
             detail: '対処: 該当箇所を書き換えてください（拡張記法リファレンスの章を参照）。'
           )
           command[:raw]
@@ -234,7 +234,7 @@ module VivlioStarter
           context.report.note('@<b>',
                               file: context.file, line: context.line,
                               message: '@<b>（太字だけの指定）は強調（**…**）にしました。' \
-                                       'Vivlio の強調は太字に色も付きます。')
+                                       'Vivlio Starter の強調は太字に色も付きます。')
         end
 
         def degrade(name, arg, context)

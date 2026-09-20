@@ -1,7 +1,7 @@
 # Import コマンドの使い方
 
 :::{.chapter-lead}
-Vivlio Starter の `vs import` コマンドを使うと、Re:VIEW Starter で書いた本を丸ごと Vivlio プロジェクトへ移せます。原稿（`.re`）を直接読んで変換するので、Re:VIEW Starter を動かす必要はありません。本章では前提条件から実行手順、変換されなかった記法の直し方まで、自力で移行を完了できるよう手順をまとめました。
+Vivlio Starter の `vs import` コマンドを使うと、Re:VIEW Starter で書いた本を丸ごと Vivlio Starter のプロジェクトへ移せます。原稿（`.re`）を直接読んで変換するので、Re:VIEW Starter を動かす必要はありません。本章では前提条件から実行手順、変換されなかった記法の直し方まで、自力で移行を完了できるよう手順をまとめました。
 :::
 
 ## 事前準備と実行
@@ -17,7 +17,7 @@ Vivlio Starter の `vs import` コマンドを使うと、Re:VIEW Starter で書
 - Rouge（コードブロック言語推定用 gem）
 
 :::{.memo}
-**Re:VIEW の実行環境は要りません**
+**Re:VIEW Starter の実行環境は要りません**
 
 取り込みは `.re` を直接読みます。Re:VIEW の gem も、Re:VIEW Starter に同梱された変換スクリプトも動かしません。何年も前に書いた原稿でも、`.re` さえ手元にあれば取り込めます。
 
@@ -38,7 +38,7 @@ Vivlio Starter の `vs import` コマンドを使うと、Re:VIEW Starter で書
 | `source/` | 任意 | 本文から読み込むコード |
 | `words.yml` | 任意 | `@<w>{…}` の単語展開に使う辞書 |
 
-**`catalog.yml` に載っている章だけを取り込みます。** Re:VIEW では `contents/` に置いただけの `.re` は原稿として扱われません。書きかけや没にした章がそのまま残っていても、本に混ざる心配はありません。
+**`catalog.yml` に載っている章だけを取り込みます。** Re:VIEW Starter では `contents/` に置いただけの `.re` は原稿として扱われません。書きかけや没にした章がそのまま残っていても、本に混ざる心配はありません。
 
 ### 実行コマンド
 
@@ -62,9 +62,9 @@ vs import --force ../review_project    # 確認を省略したい場合
 
 `vs import` を実行すると、以下の処理が順に走ります。
 
-1. **クリーンアップ** — Vivlio 側の `contents/`・`images/`・`codes/` を削除して作り直します。索引・用語集の辞書（`config/index_glossary_terms.yml`・`config/index_glossary_rejected.yml`）も空に戻します。いま消した原稿を説明するデータだからです。
-2. **原稿の変換** — `catalog.yml` に並ぶ `.re` を順に読み、Vivlio の Markdown へ書き出します。
-3. **ラベル ID の一意化** — Re:VIEW のラベルは章の中で一意ならよいのですが、Vivlio では本全体で一意である必要があります。章をまたいで重複した ID だけ、章名を前に付けて改名します（`tbl1` → `01-intro-tbl1`）。参照している箇所もあわせて書き換わります。
+1. **クリーンアップ** — Vivlio Starter 側の `contents/`・`images/`・`codes/` を削除して作り直します。索引・用語集の辞書（`config/index_glossary_terms.yml`・`config/index_glossary_rejected.yml`）も空に戻します。いま消した原稿を説明するデータだからです。
+2. **原稿の変換** — `catalog.yml` に並ぶ `.re` を順に読み、Vivlio Starter の Markdown へ書き出します。
+3. **ラベル ID の一意化** — Re:VIEW Starter のラベルは章の中で一意ならよいのですが、Vivlio Starter では本全体で一意である必要があります。章をまたいで重複した ID だけ、章名を前に付けて改名します（`tbl1` → `01-intro-tbl1`）。参照している箇所もあわせて書き換わります。
 4. **画像処理** — 取り込み元の `images/` をコピーして WebP 化し、元画像（png/jpg/gif）は削除します。
 5. **codes/ へのコピー** — `source/` 配下をそのまま `codes/` へコピーします。
 6. **YAML 変換** — `catalog.yml` は行単位で書き換えます（`PREDEF`→`PREFACE` などのキー変換と `.re` の除去だけ）。部・コメント・コメントアウトした章は原文のまま残ります。`config.yml` は `book.main_title` などを `book.yml` へ反映し、`config-starter.yml` の `starter.pagesize` は同じ判型の標準プリセット（`B5` なら `b5_standard`）へ対応づけます。
@@ -91,7 +91,7 @@ vs import --force ../review_project    # 確認を省略したい場合
 | `//clearpage` / `//vspace[latex][7mm]` / `//blankline` | `@pagebreak` / `@vspace:7mm` / 段落末の `{.aki}` |
 | `@<code>` / `@<B>` / `@<href>` / `@<ruby>` | `` `…` `` / `**…**` / `[…](…)` / `{漢字\|よみ}` |
 
-コードフェンスの言語名は、`file=` のパスかキャプションの拡張子から決めます。どちらも無いときは Rouge が内容から推定します（`$`・`%` で始まる行があれば `zsh`）。
+コードフェンスの言語名は、`file=` のパスかキャプションの拡張子から決めます。どちらもないときは Rouge が内容から推定します（`$`・`%` で始まる行があれば `zsh`）。
 
 :::{.note}
 **コードは `codes/` に置いたまま参照します**
@@ -101,10 +101,10 @@ Re:VIEW Starter の `//list[][hello.c][file=source/star1/hello.c,1]` は、ビ�
 
 ### 段落の改行
 
-Re:VIEW は段落の中の改行を連結して組みますが、Vivlio は改行をそのまま紙面の改行にします。そのまま移すと改行が増えてしまうので、**行の終わりを見て分けています**。
+Re:VIEW Starter は段落の中の改行を連結して組みますが、Vivlio Starter は改行をそのまま紙面の改行にします。そのまま移すと改行が増えてしまうので、**行の終わりを見て分けています**。
 
 - `。`・`？`・`」` などで終わる行 — 改行をそのまま残します（一文一行で書いた原稿の形が保たれます）
-- 文の途中で折り返している行 — 次の行と連結します（Re:VIEW での組み上がりに戻ります）
+- 文の途中で折り返している行 — 次の行と連結します（Re:VIEW Starter での組み上がりに戻ります）
 
 ## 変換されなかった記法
 
@@ -112,7 +112,7 @@ Re:VIEW は段落の中の改行を連結して組みますが、Vivlio は改�
 
 | 記号 | 意味 | 原文の扱い |
 | :---: | --- | --- |
-| 🔴 | Vivlio に対応する記法がない。**手で直す必要があります** | そのまま残ります |
+| 🔴 | Vivlio Starter に対応する記法がない。**手で直す必要があります** | そのまま残ります |
 | 🟡 | 変換はしたが、指定や装飾が落ちた | 変換後の形になります |
 | 🔵 | 見た目が変わりうるが、作業は要りません | 変換後の形になります |
 
@@ -120,17 +120,17 @@ Re:VIEW は段落の中の改行を連結して組みますが、Vivlio は改�
 
 ```
 🔴 07-git.re:189、07-git.re:190、07-git.re:247 ほか 42 箇所: @<balloon>（コード内の吹き出し）は
-   Vivlio に対応する記法がありません。原文をそのまま残しました。（計 45 箇所）
+   Vivlio Starter に対応する記法がありません。原文をそのまま残しました。（計 45 箇所）
         対処: 該当箇所を書き換えてください（拡張記法リファレンスの章を参照）。
 ```
 
-対応する記法が無いのは次の 11 種です。
+対応する記法がないのは次の 11 種です。
 
 | 記法 | 理由 |
 | --- | --- |
 | `//embed` `//raw` `@<embed>` `@<raw>` | 出力形式ごとの生データ（LaTeX / HTML）。移行先では意味を持ちません |
-| `//graph` | 外部ツールでの作図。Vivlio では `mermaid` フェンスか生成済みの画像を使います |
-| `//hr` | 水平線。Vivlio の `---` は**改ページ**なので当てられません |
+| `//graph` | 外部ツールでの作図。Vivlio Starter では `mermaid` フェンスか生成済みの画像を使います |
+| `//hr` | 水平線。Vivlio Starter の `---` は**改ページ**なので当てられません |
 | `@<balloon>` | コード内の吹き出し |
 | `@<big>` `@<large>` `@<xlarge>` `@<xxlarge>` | 文字を大きくする指定 |
 
@@ -165,7 +165,7 @@ Re:VIEW は段落の中の改行を連結して組みますが、Vivlio は改�
 
 | 症状 | 原因 | 解決策 |
 | --- | --- | --- |
-| `catalog.yml が見つかりません` | 取り込み元の指定が 1 階層ずれている | Re:VIEW プロジェクトのルート（`catalog.yml` のある場所）を指定する |
+| `catalog.yml が見つかりません` | 取り込み元の指定が 1 階層ずれている | Re:VIEW Starter プロジェクトのルート（`catalog.yml` のある場所）を指定する |
 | `原稿（.re）が見つかりません` | `config.yml` の `contentdir` が既定と違う | `contentdir` の指すディレクトリに `.re` があるか確認する |
 | 章が足りない | `catalog.yml` に載っていない | 取り込みたい章を `catalog.yml` へ追加してから実行する |
 | 会話に話者の色が付かない | `book.yml` に話者が未登録 | 🟡 が挙げた話者キーを `book.yml` の `characters` に登録する |

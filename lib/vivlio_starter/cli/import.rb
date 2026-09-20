@@ -221,7 +221,7 @@ module VivlioStarter
         report.degraded('label', file: "#{chapter.basename}.re", line: 0,
                                  message: "章をまたいで重複したラベル #{targets.join('、')} を " \
                                           "#{chapter.basename}-… へ改名しました。",
-                                 detail: 'Vivlio のラベルは本全体で一意である必要があります（クロスリファレンスの章）。')
+                                 detail: 'Vivlio Starter のラベルは本全体で一意である必要があります（クロスリファレンスの章）。')
         chapter.with(markdown:)
       end
 

@@ -43,11 +43,11 @@ module VivlioStarter
 
         # 落とすだけ。紙面に出ない指示なので著者の作業は要らない（🔵）
         SILENT_COMMANDS = {
-          'noindent' => '字下げの抑制（Vivlio では CSS が持ちます）',
+          'noindent' => '字下げの抑制（Vivlio Starter では CSS が持ちます）',
           'paragraphend' => '段の終わりの空き',
           'subparagraphend' => '小段の終わりの空き',
           'parasep' => '段落の区切り',
-          'tsize' => '表の列幅指定（Vivlio では列幅は自動です）',
+          'tsize' => '表の列幅指定（Vivlio Starter では列幅は自動です）',
           'comment' => 'コメント'
         }.freeze
 
@@ -64,7 +64,7 @@ module VivlioStarter
 
         # 対応概念が無い（🔴）
         UNSUPPORTED_BLOCKS = {
-          'hr' => '水平線（Vivlio の --- は改ページです）',
+          'hr' => '水平線（Vivlio Starter の --- は改ページです）',
           'graph' => '外部ツールによる作図',
           'embed' => '出力形式ごとの生データ',
           'raw' => '出力形式ごとの生データ'
@@ -525,7 +525,7 @@ module VivlioStarter
           return unless opts.key?('pos')
 
           @report.degraded("//#{node.name}", file: @file, line: node.line,
-                                             message: '画像の pos 指定は移せないため落としました（Vivlio は浮動体を使いません）。',
+                                             message: '画像の pos 指定は移せないため落としました（Vivlio Starter は浮動体を使いません）。',
                                              detail: '対処: 置きたい位置に画像を書いてください。')
         end
 
@@ -621,7 +621,7 @@ module VivlioStarter
 
         def unsupported(node)
           @report.unsupported("//#{node.name}", file: @file, line: node.line,
-                                                message: "//#{node.name}（#{UNSUPPORTED_BLOCKS[node.name]}）は Vivlio に対応する記法がありません。原文を残しました。",
+                                                message: "//#{node.name}（#{UNSUPPORTED_BLOCKS[node.name]}）は Vivlio Starter に対応する記法がありません。原文を残しました。",
                                                 detail: '対処: 該当箇所を書き換えてください（拡張記法リファレンスの章）。')
           original(node)
         end

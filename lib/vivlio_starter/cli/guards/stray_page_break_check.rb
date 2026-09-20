@@ -65,7 +65,7 @@ module VivlioStarter
           warning(
             "改ページになる区切り記法が取り残されています（#{strays.size} 件）: #{path}",
             detail: strays.flat_map { stray_detail(it) } + [
-              '→ 区切り線のつもりなら削除してください（Vivlio では `---` は水平線ではなく改ページです）',
+              '→ 区切り線のつもりなら削除してください（Vivlio Starter では `---` は水平線ではなく改ページです）',
               '→ 意図した改ページなら `@pagebreak` と書くと、あとから読んでも意図が分かります'
             ]
           )
