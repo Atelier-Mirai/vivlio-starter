@@ -456,7 +456,14 @@ module VivlioStarter
           # 「チェーン」が定着している（外来語の表記としても長音を添えるのが原則）。
           # 打ち消すだけでなく、逆向きの `チェイン => チェーン` を prh_web_technology.yml
           # に置いて正しい綴りを主張している。ここはその一方の口を塞ぐためのもの
-          '/チェーン/'
+          '/チェーン/',
+          # `パソコン => PC`。綴りの誤りでも表記ゆれでもなく、**語の言い換え**である。
+          # 二つの語は指す範囲も語感も違う——「パソコン教室」（街の学習教室）と
+          # 「PC 教室」（学校の特別教室）は別のものを指し、「パソコン・スマホ」を
+          # 「PC・スマホ」にすると読者に向けた語り口が変わる。
+          # どちらを使うかは本の読者層で決まるので、上流が一律に寄せてよい話ではない。
+          # チェーンと違って**正しい綴りが一方に決まらない**ため、逆向きの規則は置かない
+          '/パソコン/'
         ].freeze
 
         # 上流（technical-word-rules）の「末尾に長音を足す」項目を、`lint.trim_long_vowel` が
@@ -545,16 +552,29 @@ module VivlioStarter
           apply_disabled_rules!(rules)
           apply_builtin_allowlist!(cfg)
           trim_long_vowel_dictionaries!(rules, File.dirname(base_path)) if trim_long_vowel?
-          if allow_code_space || allow_ja_en_space
-            spacing = (rules['preset-ja-spacing'] ||= {})
-            spacing['ja-space-around-code'] = false if allow_code_space
-            spacing['ja-space-between-half-and-full-width'] = false if allow_ja_en_space
-          end
+          apply_spacing_allowances!(rules, allow_code_space, allow_ja_en_space)
 
           @runtime_config_tmp = Tempfile.new(['.textlintrc-runtime-', '.yml'], File.dirname(base_path))
           @runtime_config_tmp.write(cfg.to_yaml)
           @runtime_config_tmp.close
           @runtime_config_tmp.path
+        end
+
+        # book.yml の allow_space_* を、preset-ja-spacing の該当ルールを切る形で反映する。
+        #
+        # **プリセットが有効なときだけ書き込む。** 著者が `.textlintrc.yml` から
+        # preset-ja-spacing を消したり `false` にしたりしてプリセットごと止めている場合、
+        # 入れ子のルールを書き込むとプリセットが復活する（textlint は rules に名前が
+        # あるプリセットを読み込む）。2 つのルールを切るつもりで、残る 10 ルールを
+        # 黙って点け直すことになる——切ってあるなら、切るものは無い。
+        def apply_spacing_allowances!(rules, allow_code_space, allow_ja_en_space)
+          return unless allow_code_space || allow_ja_en_space
+
+          spacing = configured_preset_rules(rules, 'preset-ja-spacing')
+          return unless spacing
+
+          spacing['ja-space-around-code'] = false if allow_code_space
+          spacing['ja-space-between-half-and-full-width'] = false if allow_ja_en_space
         end
 
         # book.yml lint.disabled_rules を実行時 textlintrc でも切る。

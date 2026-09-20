@@ -593,6 +593,19 @@ module VivlioStarter
         end
       end
 
+      # generate_runtime_config は、元設定と同じディレクトリに一時ファイルを作る
+      # （相対パスの辞書を解決させるため）。本番は run_textlint の ensure が消すが、
+      # テストはそこを通らない。消さずに Dir.mktmpdir を抜けると、後始末と Tempfile の
+      # ファイナライザが同じファイルを消しにいき、まれに Errno::ENOENT で落ちる。
+      # 生成したパスは @runtime_config_path に残す（生成先を確かめるテストが使う）。
+      def runtime_config(base, **options)
+        runner = LintCommands::LintRunner.new([], {})
+        @runtime_config_path = runner.send(:generate_runtime_config, base, **options)
+        YAML.safe_load_file(@runtime_config_path)
+      ensure
+        runner&.instance_variable_get(:@runtime_config_tmp)&.unlink
+      end
+
       # 独自ルールで置き換えた textlint のルールは、著者の設定に依らず常に切る。
       # 上限（lint.sentence_length_max）は ProseChecker が book.yml から直接受け取るので、
       # 実行時 textlintrc へ書き戻すものは無い
@@ -603,15 +616,12 @@ module VivlioStarter
           File.write(base, { 'rules' => { 'preset-ja-technical-writing' => preset,
                                           'prh' => { 'rulePaths' => ['./textlint_rewrite.yml'] } } }.to_yaml)
 
-          runner = LintCommands::LintRunner.new([], {})
-          path = runner.send(:generate_runtime_config, base)
-
-          cfg = YAML.safe_load_file(path)
+          cfg = runtime_config(base)
           assert_equal false, cfg.dig('rules', 'preset-ja-technical-writing', 'sentence-length'),
                        '著者が上限を書いていても切る（独自ルールと二重に指摘しない）'
           assert_equal false, cfg.dig('rules', 'preset-ja-technical-writing', 'ja-no-mixed-period')
           assert_includes cfg.dig('rules', 'prh', 'rulePaths'), './textlint_rewrite.yml', '既存設定を保持'
-          assert_equal dir, File.dirname(path), '元設定と同じディレクトリに生成（相対パス保持）'
+          assert_equal dir, File.dirname(@runtime_config_path), '元設定と同じディレクトリに生成（相対パス保持）'
         end
       end
 
@@ -622,8 +632,7 @@ module VivlioStarter
           base = File.join(dir, '.textlintrc.yml')
           File.write(base, { 'rules' => { 'preset-ja-technical-writing' => {}, 'preset-japanese' => true } }.to_yaml)
 
-          runner = LintCommands::LintRunner.new([], {})
-          cfg = YAML.safe_load_file(runner.send(:generate_runtime_config, base))
+          cfg = runtime_config(base)
 
           assert_equal false, cfg.dig('rules', 'preset-ja-technical-writing', 'sentence-length')
           assert_equal false, cfg.dig('rules', 'preset-japanese', 'sentence-length')
@@ -638,8 +647,7 @@ module VivlioStarter
           base = File.join(dir, '.textlintrc.yml')
           File.write(base, { 'rules' => { 'preset-ja-technical-writing' => {} } }.to_yaml)
 
-          runner = LintCommands::LintRunner.new([], {})
-          cfg = YAML.safe_load_file(runner.send(:generate_runtime_config, base))
+          cfg = runtime_config(base)
 
           refute cfg['rules'].key?('preset-japanese')
           refute cfg['rules'].key?('preset-ja-spacing')
@@ -683,13 +691,51 @@ module VivlioStarter
           base = File.join(dir, '.textlintrc.yml')
           File.write(base, { 'rules' => { 'preset-ja-spacing' => { 'jaSpacing' => true } } }.to_yaml)
 
-          runner = LintCommands::LintRunner.new([], {})
-          path = runner.send(:generate_runtime_config, base, allow_code_space: true, allow_ja_en_space: true)
-
-          spacing = YAML.safe_load_file(path).dig('rules', 'preset-ja-spacing')
+          spacing = runtime_config(base, allow_code_space: true, allow_ja_en_space: true)
+                    .dig('rules', 'preset-ja-spacing')
           assert_equal false, spacing['ja-space-around-code']
           assert_equal false, spacing['ja-space-between-half-and-full-width']
           assert_equal true, spacing['jaSpacing'], '既存の設定は保持'
+        end
+      end
+
+      # プリセットを `true` で有効にしている設定でも、入れ子のルールを切れる
+      def test_generate_runtime_config_allows_spacing_when_preset_is_true
+        Dir.mktmpdir do |dir|
+          base = File.join(dir, '.textlintrc.yml')
+          File.write(base, { 'rules' => { 'preset-ja-spacing' => true } }.to_yaml)
+
+          spacing = runtime_config(base, allow_code_space: true, allow_ja_en_space: true)
+                    .dig('rules', 'preset-ja-spacing')
+          assert_equal false, spacing['ja-space-around-code']
+          assert_equal false, spacing['ja-space-between-half-and-full-width']
+        end
+      end
+
+      # 著者がプリセットごと切っている（`false` にした・行ごと消した）なら、触らない。
+      # 入れ子のルールを書き込むと、textlint は rules に名前のあるプリセットを読むので、
+      # 2 つを切るつもりで残る 10 ルールを点け直してしまう
+      def test_generate_runtime_config_keeps_disabled_spacing_preset_off
+        Dir.mktmpdir do |dir|
+          base = File.join(dir, '.textlintrc.yml')
+          File.write(base, { 'rules' => { 'preset-ja-spacing' => false, 'prh' => true } }.to_yaml)
+
+          cfg = runtime_config(base, allow_code_space: true, allow_ja_en_space: true)
+
+          assert_equal false, cfg.dig('rules', 'preset-ja-spacing'),
+                       '切ってあるプリセットを書き戻して復活させない'
+        end
+      end
+
+      def test_generate_runtime_config_does_not_add_absent_spacing_preset
+        Dir.mktmpdir do |dir|
+          base = File.join(dir, '.textlintrc.yml')
+          File.write(base, { 'rules' => { 'prh' => true } }.to_yaml)
+
+          cfg = runtime_config(base, allow_code_space: true, allow_ja_en_space: true)
+
+          refute cfg['rules'].key?('preset-ja-spacing'),
+                 '読み込んでいないプリセットに、切る対象は無い'
         end
       end
 
@@ -708,8 +754,7 @@ module VivlioStarter
                                           'preset-ja-spacing' => true,
                                           'spellcheck-tech-word' => true } }.to_yaml)
 
-          runner = LintCommands::LintRunner.new([], {})
-          rules = YAML.safe_load_file(runner.send(:generate_runtime_config, base))['rules']
+          rules = runtime_config(base)['rules']
 
           assert_equal false, rules.dig('preset-ja-technical-writing', 'arabic-kanji-numbers'),
                        '短縮名は読み込んでいるプリセットで切る'
@@ -732,8 +777,7 @@ module VivlioStarter
                                        'allow' => ['既定'] } }
           File.write(base, { 'filters' => filters, 'rules' => {} }.to_yaml)
 
-          runner = LintCommands::LintRunner.new([], {})
-          allowlist = YAML.safe_load_file(runner.send(:generate_runtime_config, base)).dig('filters', 'allowlist')
+          allowlist = runtime_config(base).dig('filters', 'allowlist')
 
           assert_equal ['./textlint_allowlist.yml'], allowlist['allowlistConfigPaths'], '著者の指定は触らない'
           assert_includes allowlist['allow'], '既定', '著者の allow も残す'
@@ -747,8 +791,7 @@ module VivlioStarter
           base = File.join(dir, '.textlintrc.yml')
           File.write(base, { 'filters' => { 'comments' => true }, 'rules' => {} }.to_yaml)
 
-          runner = LintCommands::LintRunner.new([], {})
-          filters = YAML.safe_load_file(runner.send(:generate_runtime_config, base))['filters']
+          filters = runtime_config(base)['filters']
 
           assert_empty LintCommands::LintRunner::BUILTIN_ALLOWLIST - filters.dig('allowlist', 'allow')
           assert_equal true, filters['comments'], '既存のフィルタは保持'
@@ -770,8 +813,7 @@ module VivlioStarter
             base = File.join(dir, '.textlintrc.yml')
             File.write(base, { 'rules' => {} }.to_yaml)
 
-            runner = LintCommands::LintRunner.new([], {})
-            allow = YAML.safe_load_file(runner.send(:generate_runtime_config, base)).dig('filters', 'allowlist', 'allow')
+            allow = runtime_config(base).dig('filters', 'allowlist', 'allow')
 
             assert_equal expected, (trim - allow).empty?, "trim_long_vowel: #{setting}"
           end

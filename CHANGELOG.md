@@ -138,6 +138,12 @@
 
 ### Fixed
 
+- **`パソコン => PC` を出さないようにした**（`BUILTIN_ALLOWLIST`）。上流の `technical-word-rules`（555 項目）にある条件なしの置換だが、これは綴りの誤りでも表記ゆれでもなく**語の言い換え**である。二つの語は指す範囲も語感も違う——「パソコン教室」（街の学習教室）と「PC 教室」（学校の特別教室）は別のものを指し、「パソコン・スマホ」を「PC・スマホ」にすると読者に向けた語り口が変わる。どちらを使うかは本の読者層で決まるので、上流が一律に寄せてよい話ではない。
+
+  `spellcheck-tech-word` は `context.options` を読まないため項目単位で切れず、ルールごと切ると `mecab => MeCab`・`imagemagick => ImageMagick` という本物の指摘まで失う。そこでツール側の除外に置いた。**チェーンと違い正しい綴りが一方に決まらない**ので、逆向きの規則は置かない。
+
+- **`book.yml` の `allow_space_*` が、切ってあるスペース用プリセットを黙って復活させていた**（`lint.rb`）。著者が `.textlintrc.yml` で `preset-ja-spacing: false` と書いたり行ごと消したりしていても、`rules['preset-ja-spacing'] ||= {}` が入れ子のルールを書き込み、textlint は `rules` に名前のあるプリセットを読み込む。**2 つのルールを切るつもりで、残る 10 ルールを点け直していた。** 同じファイルにある `configured_preset_rules`（`Hash` / `true` / それ以外を見分ける）へ寄せ、プリセットが有効なときだけ書き込むようにした。切ってあるなら、切るものは無い。
+
 - **`config/.textlintrc.yml` から、効いていない 4 行を削除した**。`tech-word`・`prefer-ja-no-space-around-paren`（`preset-ja-technical-writing` に無い）と `jaSpacing`・`spaceAroundCode`（`preset-ja-spacing` の規則名ではない）で、textlint は知らないキーを黙って捨てるため、でたらめな名前を混ぜても指摘は変わらない。とくに `prefer-ja-no-space-around-paren: true  # かっこの周りのスペースを禁止` は逆で、実在する `ja-no-space-around-parentheses` は `SUPERSEDED_TEXTLINT_RULES` により**常に切られている**（独自ルール `space-around-brackets` が受け持つ）。あわせてコメントの粒度を揃え、`comments: true` の説明を著者が書く記法（`vs-lint-disable`）の語彙に直した。
 
 - **同梱辞書の「プレフィックス => プリフィックス」を逆向きに直した**（`textlint_dictionaries/prh_cho_on.yml`）。IT 分野の慣用は「プレフィックス」で、IT 用語辞典の見出し語も、IPv6 の「プレフィックス長」も、CSS の「ベンダープレフィックス」もこちらである（「プリフィックス」は電話のプリフィックス番号の文脈で生きている表記）。辞書は 2018 年の生成元をそのまま引き継いでいて、本書の原稿を少数派の側へ引き寄せていた。**黙らせるのではなく向きを逆にした**——正しい綴りを主張するのが辞書の仕事だからである。
