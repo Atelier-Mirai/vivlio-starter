@@ -19,25 +19,25 @@ Vivlio Starter の動作には、いくつかの外部ツールが必要です�
 | ツール | 用途 |
 |--------|------|
 | Xcode Command Line Tools | macOS のビルドツールチェーン（macOS のみ） |
-| node / npm | JavaScript ランタイム（Vivliostyle CLI の前提） |
-| vivliostyle | PDF 生成エンジン |
-| textlint | 文章校正ツール |
-| qpdf | PDF 分割・結合・ページ操作 |
-| pdfinfo (poppler) | PDF メタデータ取得 |
-| pdftoppm (poppler) | PDF ページの画像化（OCR 用） |
-| gs (Ghostscript) | PDF 圧縮 |
-| imagemagick | 画像変換・リサイズ |
-| inkscape | SVG ラスタライズの予備経路（任意） |
-| rsvg-convert (librsvg) | EPUB 扉絵・節絵の合成画像ラスタライズ |
-| vips (libvips) | 高速画像処理 |
-| tesseract | OCR エンジン |
+| `node` / `npm` | JavaScript ランタイム（Vivliostyle CLI の前提） |
+| `vivliostyle` | PDF 生成エンジン |
+| `textlint` | 文章校正ツール |
+| `qpdf` | PDF 分割・結合・ページ操作 |
+| `pdfinfo` (poppler) | PDF メタデータ取得 |
+| `pdftoppm` (poppler) | PDF ページの画像化（OCR 用） |
+| `gs` (Ghostscript) | PDF 圧縮 |
+| `imagemagick` | 画像変換・リサイズ |
+| `inkscape` | SVG ラスタライズの予備経路（任意） |
+| `rsvg-convert` (librsvg) | EPUB 扉絵・節絵の合成画像ラスタライズ |
+| `vips` (libvips) | 高速画像処理 |
+| `tesseract` | OCR エンジン |
 | tesseract 日本語データ | Tesseract の日本語学習データ |
-| mecab | 索引の読み自動推測・交ぜ書き検出の第 2 層 |
-| rouge | コードブロック言語推定（Ruby gem） |
-| mathjax-full | 数式の SVG 化（npm パッケージ） |
-| mermaid (mmdc) | ダイアグラムの画像化（npm パッケージ） |
+| `mecab` | 索引の読み自動推測・交ぜ書き検出の第 2 層 |
+| `rouge` | コードブロック言語推定（Ruby gem） |
+| `mathjax-full` | 数式の SVG 化（npm パッケージ） |
+| `mermaid` (`mmdc`) | ダイアグラムの画像化（npm パッケージ） |
 | `waifu2x-ncnn-vulkan` | AI 画像拡大（オプション） |
-| kindlepreviewer (Kindle Previewer 3) | Kindle（KPF）変換（任意・targets: kindle 用） |
+| `kindlepreviewer` (Kindle Previewer 3) | Kindle（KPF）変換（任意・targets: kindle 用） |
 | Google Fonts 用 SSL 証明書 | Google Fonts ダウンロード（macOS のみ） |
 
 ### 設定ファイルの診断
@@ -131,9 +131,9 @@ macOS では、ツールの種類に応じて三つの経路のいずれかで�
 
 | 導入経路 | ツール |
 |------|------|
-| `brew install` | node・qpdf・pdfinfo・pdftoppm・gs・imagemagick・inkscape・librsvg・vips・tesseract・mecab |
-| `npm install -g` | vivliostyle・textlint と推奨ルール・mathjax-full・mermaid-cli |
-| `gem install` | rouge |
+| `brew install` | `node`・`qpdf`・`pdfinfo`・`pdftoppm`・`gs`・`imagemagick`・`inkscape`・`librsvg`・`vips`・`tesseract`・`mecab` |
+| `npm install -g` | `vivliostyle`・`textlint` と推奨ルール・`mathjax-full`・`mermaid-cli` |
+| `gem install` | `rouge` |
 
 npm 経由のものは node が前提です。node が未導入なら先に Homebrew で入れてから続けてインストールされるため、順番を気にする必要はありません。
 
@@ -260,8 +260,8 @@ gem update vivlio-starter
 
 迷ったら次の一言で選べます。
 
-- **調子が悪い・初めての環境** → `vs doctor`（必要なら `--fix`）
-- **元気だけど新しくしたい** → `vs upgrade`
+- **調子が悪い・はじめての環境** → `vs doctor`（必要なら `--fix`）
+- **不具合はないが最新にしたい** → `vs upgrade`
 
 ビルドが失敗したとき、原因が分からないまま `vs upgrade` で最新化するのは、診断せずに手術するようなものです。バージョンが動くと問題の切り分けがかえって難しくなることもあるため、まず `vs doctor` で「何が壊れているか」を確認してから対処するのが近道です。
 

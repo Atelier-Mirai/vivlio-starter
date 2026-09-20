@@ -1,7 +1,7 @@
 # Import コマンドの使い方
 
 :::{.chapter-lead}
-Vivlio Starter の `vs import` コマンドを使うと、Re:VIEW Starter で書いた本を丸ごと Vivlio プロジェクトへ移せます。原稿（`.re`）を直接読んで変換するので、Re:VIEW も Re:VIEW Starter も動かす必要がありません。本章では前提条件から実行手順、変換されなかった記法の直し方まで、自力で移行を完了できるよう手順をまとめました。
+Vivlio Starter の `vs import` コマンドを使うと、Re:VIEW Starter で書いた本を丸ごと Vivlio プロジェクトへ移せます。原稿（`.re`）を直接読んで変換するので、Re:VIEW Starter を動かす必要はありません。本章では前提条件から実行手順、変換されなかった記法の直し方まで、自力で移行を完了できるよう手順をまとめました。
 :::
 
 ## 事前準備と実行
@@ -12,7 +12,7 @@ Vivlio Starter の `vs import` コマンドを使うと、Re:VIEW Starter で書
 
 - Ruby 3.4 以上 / Bundler
 - node / npm
-- ImageMagick, qpdf, pdfinfo, Ghostscript, mecab
+- ImageMagick / qpdf / pdfinfo / Ghostscript / MeCab
 - `waifu2x-ncnn-vulkan`（任意）
 - Rouge（コードブロック言語推定用 gem）
 
@@ -72,7 +72,7 @@ vs import --force ../review_project    # 確認を省略したい場合
 
 ### 主な記法の行き先
 
-| Re:VIEW | Vivlio |
+| Re:VIEW Starter | Vivlio Starter|
 | --- | --- |
 | `= 見出し` / `=={id} 見出し` | `# 見出し` / `## 見出し @id` |
 | `===[column]` … `===[/column]` | `:::{.column}` … `:::` |
@@ -96,7 +96,7 @@ vs import --force ../review_project    # 確認を省略したい場合
 :::{.note}
 **コードは `codes/` に置いたまま参照します**
 
-Re:VIEW の `//list[][hello.c][file=source/star1/hello.c,1]` は、ビルドのたびにコードの中身を紙面へ展開していました。取り込みではこれを ```` ```include:star1/hello.c ```` に変えます。コードの置き場所が `codes/` の 1 箇所に保たれるので、**コードを直せば紙面にそのまま反映されます**。
+Re:VIEW Starter の `//list[][hello.c][file=source/star1/hello.c,1]` は、ビルドのたびにコードの中身を紙面へ展開していました。取り込みではこれを ```` ```include:star1/hello.c ```` に変えます。コードの置き場所が `codes/` の 1 箇所に保たれるので、**コードを直せば紙面にそのまま反映されます**。
 :::
 
 ### 段落の改行
