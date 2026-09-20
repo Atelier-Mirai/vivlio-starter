@@ -151,6 +151,39 @@ module VivlioStarter
         assert_equal [3, 8, 9], rows.first[:lines]
       end
 
+      # 英文のまま返るルールは日本語へ差し替える。上限値は持ち越す——「多すぎます」に
+      # 丸めると、あと何個減らせばよいのかが分からなくなる
+      def test_aggregate_json_translates_english_messages
+        json = <<~JSON
+          [{ "filePath": "/proj/a.md", "messages": [
+            { "ruleId": "ja-technical-writing/max-comma",
+              "message": "This sentence exceeds the maximum count of comma. Maximum is 3.", "line": 201 },
+            { "ruleId": "max-comma",
+              "message": "This sentence exceeds the maximum count of comma. Maximum is 5.", "line": 15 }
+          ] }]
+        JSON
+        rows = TextlintFormatter.aggregate_json(json, base_dir: '/proj')[:files].first[:rows]
+
+        assert_equal 2, rows.size, '上限が違えば別の指摘なので畳まない'
+        assert_includes rows.map { it[:label] },
+                        '[max-comma] 一つの文に半角カンマが多すぎます（上限 3 個）。' \
+                        '読点「、」で区切るか文を分けてください（数字の桁区切りも数えます）'
+        assert(rows.any? { it[:label].include?('上限 5 個') }, '上限値は文面から持ち越す')
+      end
+
+      # 上流が文面を変えたら訳せないが、そのときも指摘は落とさない——
+      # 訳し損ねた英文が出るほうが、指摘そのものを取り落とすよりずっとよい
+      def test_aggregate_json_passes_through_unknown_english_messages
+        json = <<~JSON
+          [{ "filePath": "/proj/a.md", "messages": [
+            { "ruleId": "max-comma", "message": "Upstream reworded this message.", "line": 9 }
+          ] }]
+        JSON
+        rows = TextlintFormatter.aggregate_json(json, base_dir: '/proj')[:files].first[:rows]
+
+        assert_equal '[max-comma] Upstream reworded this message.', rows.first[:label]
+      end
+
       # 「実際 => 期待」の違いが空白や字幅だけのときは、違いを見える形にして注記を添える。
       # 実測: 上流の「全角かっこの前の空白を消せ」が、先頭の空白を切り詰められて
       # 「） => ）」と表示され、何を直せばよいか読めなかった

@@ -71,6 +71,28 @@ module VivlioStarter
         'no-mix-dearu-desumasu' => '「である」と「です・ます」が混在しています。'
       }.freeze
 
+      # 上流ルールの英文メッセージを日本語に差し替える表（ルール => [照合, 差し替え文]）。
+      #
+      # 日本語の原稿を書いている著者に英文だけが返るのは、それだけで指摘が読み飛ばされる。
+      # 上限値のような**意味のある数値は差し替え文へ持ち越す**——`Maximum is 3` を
+      # 「多すぎます」に丸めると、あと何個減らせばよいのかが分からなくなるためである。
+      #
+      # max-comma が数えるのは半角カンマだけで、和文の読点は max-ten が別に見ている。
+      # 和文に半角カンマが並ぶのは数字の桁区切り（`2,894 × 4,092 px`）か欧文の語の並びで、
+      # 実際この 2 つしか本書では当たらない。何を数えられたのか著者には分からないので、
+      # 桁区切りも数に入ることを文言へ書いた（warning-messages-actionable）。
+      #
+      # ここは**表示だけ**を差し替える。指摘そのものは消さないので、--fix との食い違いは
+      # 起きない（lint-false-positive-notes.md §7 が戒めているのは、表示の段で
+      # 黙らせて --fix に効かない状態を作ることである）。
+      MESSAGE_TRANSLATIONS = {
+        'max-comma' => [
+          /\AThis sentence exceeds the maximum count of comma\. Maximum is (\d+)\.?\z/,
+          '一つの文に半角カンマが多すぎます（上限 %<max>s 個）。' \
+          '読点「、」で区切るか文を分けてください（数字の桁区切りも数えます）'
+        ]
+      }.freeze
+
       # メッセージ配列を [集約見出し, ルール] 単位で集約する。
       # 通常はメッセージ先頭行ごと（prh の置換などは別グループ）だが、RULE_SUMMARIES に
       # 載せたルールは固定の見出しで 1 つに畳む。
@@ -84,8 +106,20 @@ module VivlioStarter
 
       # 集約見出し：RULE_SUMMARIES のルールは要約ラベルで 1 つに畳み、
       # それ以外は先頭行そのまま（"一つ => 1つ" の数字など、意味のある数値を保つ）。
+      # 英文のまま返ってくるルールは、ここで日本語へ差し替える。
       def self.grouping_head(message, rule_id)
-        RULE_SUMMARIES[short_rule(rule_id)] || message_head(message)
+        rule = short_rule(rule_id)
+        RULE_SUMMARIES[rule] || translate_message(rule, message_head(message))
+      end
+
+      # 英文メッセージを MESSAGE_TRANSLATIONS の文言へ差し替える。
+      # 表に無いルールと、表にあっても文面が変わった（上流の更新）ものは素通しにする——
+      # 訳し損ねた英文が出るほうが、指摘そのものを取り落とすよりずっとよい。
+      def self.translate_message(rule, head)
+        pattern, template = MESSAGE_TRANSLATIONS[rule]
+        return head unless pattern && (m = pattern.match(head))
+
+        format(template, max: m[1])
       end
 
       # 指摘の頭に付くパターン番号（`ja-no-redundant-expression` の `【dict2】`）。

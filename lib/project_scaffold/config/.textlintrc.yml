@@ -9,7 +9,7 @@
 plugins: []
 
 filters:
-  # コードブロックやインラインコードなどを校正対象から除外するための設定。
+  # 校正の対象から外す要素
   node-types:
     nodeTypes:
       - Code
@@ -17,31 +17,32 @@ filters:
       - Link
       - Image
 
-  # HTMLコメントによる除外（<!-- textlint-disable -->と<!-- textlint-enable -->で囲んだ部分を除外）
+  # <!-- vs-lint-disable --> と <!-- vs-lint-enable --> で囲んだ範囲を校正の対象から外す
+  # （この設定を消すと、囲みが効かなくなります）
   comments: true
 
-  # 除外語句リスト（外部ファイルで管理）
+  # 指摘したくない語句の一覧（VFM 記法・書名・資格名称など）
   allowlist:
     allowlistConfigPaths:
-      - ./textlint_allowlist.yml  # VFM記法、書籍名、資格名称などを定義
+      - ./textlint_allowlist.yml
 
 rules:
   # 技術文書のスタイルをチェックする標準プリセット
   preset-ja-technical-writing:
-    tech-word: true
-    prefer-ja-no-space-around-paren: true  # かっこの周りのスペースを禁止
-    # 文体の混在（だ・である調とです・ます調）を、本文・見出し・箇条書きごとに多数派と比べて指摘する。
-    # プリセットの既定は「本文はです・ます、箇条書きはである」の決め打ちなので、3 つとも空（自動判定）にする
+    # 「である」調と「です・ます」調の混在。3 つとも空にすると、本文・見出し・箇条書きの
+    # それぞれで多数派を自動判定します（"ですます" / "である" と書けば決め打ちになります）
     no-mix-dearu-desumasu:
       preferInBody: ""
       preferInHeader: ""
       preferInList: ""
-    no-doubled-joshi: false  # 並列（AもBも）や役割の違う助詞まで指摘し、本書で 8 割が不要な指摘だったため
-    # 「することができる」→「できる」の冗長さを指摘する辞書は、が・は・もを同じ扱いにしている。
-    # 冗長なのは「が」だけで、「も」は「別のやり方として、こうもできる」の意味を運び
-    # （「明示的に指定することもできます」を「指定できます」にすると唯一の方法に読める）、
-    # 「は」は否定の焦点を示す（「両方で定義することはできません」）。本書では「は」「も」の
-    # 10 件がいずれも削ると意味か文の形が崩れ、正しい指摘は「が」の 1 件だけだった
+
+    # 一文に同じ助詞が 2 回以上。並列（A も B も）や役割の違う助詞まで指摘するため切っています
+    no-doubled-joshi: false
+
+    # 同じ語の連続。記号の重なり（★★☆☆☆・……）まで指摘するため切っています
+    ja-no-successive-word: false
+
+    # 「することができる」の冗長さ。「することも」「することは」は意味を運ぶので許容します
     ja-no-redundant-expression:
       dictOptions:
         dict1:              # 〜することが可能
@@ -51,22 +52,31 @@ rules:
           allows:
             - "/^することも/"
             - "/^することは/"
-    # 一文の長さ（sentence-length）と文末の句点（ja-no-mixed-period）は、vs lint の
-    # 独自ルールが同じ名前で受け持つため、ここに書いても効きません（常に無効化されます）。
-    # 上限は book.yml の lint.sentence_length_max で変えられます
-    ja-no-successive-word: false  # 記号の重なり（★★☆☆☆・……・○○）まで指摘し、本書で 21 件中 20 件が誤検出だったため
-    max-kanji-continuous-len:
-      max: 10  # 漢字の連続を10文字まで許可（書籍名・専門用語対応）
-    no-exclamation-question-mark:
-      allowFullWidthExclamation: true  # 全角の！を許可
-      allowFullWidthQuestion: true     # 全角の？を許可
-      allowHalfWidthExclamation: true  # 半角の!を許可
-      allowHalfWidthQuestion: true     # 半角の?を許可
 
-  # 固有名詞や特定の用語の表記揺れをチェック（辞書ファイルの指定）
-  # ※ 辞書ファイルは `config/textlint_dictionaries/` 配下に配置
-  # 使う辞書はここに全部並べます。要らない辞書は行ごと消してください
-  # prh_*.yml は「ics.media」「テキスト校正くん」の校正辞書（作成者: 池田 泰延）。
+    # 一文に打てる読点「、」の上限
+    max-ten:
+      max: 3
+
+    # 一文に打てる半角カンマ「,」の上限（和文の読点は上の max-ten が見ます）
+    max-comma:
+      max: 3
+
+    # 連続して書ける漢字の上限（書籍名・専門用語に合わせて緩めています）
+    max-kanji-continuous-len:
+      max: 10
+
+    # ！と？の使用を許可する
+    no-exclamation-question-mark:
+      allowFullWidthExclamation: true  # 全角の！
+      allowFullWidthQuestion: true     # 全角の？
+      allowHalfWidthExclamation: true  # 半角の !
+      allowHalfWidthQuestion: true     # 半角の ?
+
+    # 一文の長さ（sentence-length）と文末の句点（ja-no-mixed-period）は vs lint の独自ルールが
+    # 受け持つため、ここに書いても効きません。上限は book.yml の lint.sentence_length_max です
+
+  # 表記揺れの辞書。使う辞書はここに並べ、要らない辞書は行ごと消してください
+  # prh_*.yml は「ics.media」「テキスト校正くん」の校正辞書（作成者: 池田 泰延）で、
   # 一部の項目は「JavaScript Primer」（https://jsprimer.net）の校正辞書に由来します
   prh:
     rulePaths:
@@ -79,13 +89,11 @@ rules:
       - ./textlint_dictionaries/prh_web_technology.yml # 技術用語
       - ./textlint_rewrite.yml                         # この本の表記（自由に書き足せます）
 
-  # preset-japanese は読まない。12 ルールのうち 11 は preset-ja-technical-writing と同じもので、
-  # 残る康煕部首の検出は vs lint の独自ルール（kanji-lookalike）が受け持つ
+  # preset-japanese は読み込みません。11 ルールが上のプリセットと重複し、同じ名前で
+  # 二重に動くためです（康煕部首の検出は vs lint の独自ルール kanji-lookalike が受け持ちます）
 
-  # 和文・欧文のスペース統一（技術書での可読性向上）
-  preset-ja-spacing:
-    jaSpacing: true
-    spaceAroundCode: true
+  # 和文と欧文の間のスペース
+  preset-ja-spacing: true
 
-  # 技術用語のスペルチェック（誤記防止）
+  # 技術用語のスペルチェック
   spellcheck-tech-word: true

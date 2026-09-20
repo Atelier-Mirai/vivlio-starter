@@ -594,6 +594,36 @@ Vivlio Starter では、以下の場所に設定ファイルが配置されて�
 - `config/spellcheck_dictionaries/`: 英語スペルチェック辞書
 - `config/spellcheck_allowlist.yml`: スペルチェックのユーザー辞書（`--register` の追記先）
 
+### 読点・半角カンマの上限を変える
+
+一文に打てる読点「、」と半角カンマ「,」の上限は `config/.textlintrc.yml` に書いてあります。どちらも既定は 3 個です。
+
+```yaml
+rules:
+  preset-ja-technical-writing:
+    max-ten:
+      max: 3    # 一文の読点「、」
+    max-comma:
+      max: 3    # 一文の半角カンマ「,」
+```
+
+読点が多い文は、句点で切るか語順を組み替えると読みやすくなります。上限を上げる前に、まず文を割ることを試してみてください。
+
+`max-comma` が数えるのは**半角カンマだけ**で、和文の読点は `max-ten` が別に見ています。そのため和文でこの指摘に当たるのは、数字の桁区切り（`2,894 × 4,092 px`）か欧文の語の並び（`ImageMagick, qpdf, pdfinfo, Ghostscript`）のどちらかです。
+
+:::{.output}
+```
+    1件  [max-comma] 一つの文に半角カンマが多すぎます（上限 3 個）。読点「、」で区切るか文を分けてください（数字の桁区切りも数えます）
+         行: 201
+```
+:::
+
+桁区切りの数字が多い本では、上限を 4 や 5 に上げるより、`book.yml` の `disabled_rules` に `max-comma` と書いて規則ごと切るほうが筋が通ります。桁区切りは文の読みやすさと関係がないので、いくつまで許すかを決める意味がないためです。読点の見張りは `max-ten` が続けるので、和文の読みやすさの監視は落ちません。
+
+:::{.notice}
+一文の長さ（`sentence-length`）だけは `.textlintrc.yml` ではなく `book.yml` の `lint.sentence_length_max` で変えます。この項目は Vivlio Starter の独自ルールが受け持っており、`.textlintrc.yml` に書いても効きません。
+:::
+
 ### 表記揺れ辞書の追加
 
 `CSS 組版` と `CSS組版`、`ユーザー` と `ユーザ` のように、同じ語が違う表記で混ざることがあります。こうした揺れは `config/textlint_rewrite.yml` に登録すると検出できます。
