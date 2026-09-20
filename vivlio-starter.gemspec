@@ -8,8 +8,8 @@ Gem::Specification.new do |spec|
   spec.authors       = ['Atelier Mirai']
   spec.email         = ['contact@atelier-mirai.net']
 
-  spec.summary       = 'Markdown で書いた原稿から高品質な PDF・EPUB・Kindle を生成する書籍制作 CLI'
-  spec.description   = 'CSS 組版エンジン Vivliostyle をコアに据え、前処理（QueryStream 展開・画像最適化・クロスリファレンス）からビルド、後処理（PDF しおり・表紙結合・圧縮）まで、執筆から入稿に至る工程を自動化する CLI ツールです。閲覧用・印刷入稿用 PDF に加え、Kobo / Apple Books 向けのクリーン EPUB と Amazon Kindle 向けの KPF を出力できます。'
+  spec.summary       = 'Markdown で書いた原稿から高品質な PDF・EPUB・Kindle を生成する電子書籍執筆システム'
+  spec.description   = '組版エンジンに CSS 組版の Vivliostyle を採用した、執筆から入稿までを一貫して支える電子書籍執筆システムです。章ファイルの作成・改名といった原稿管理、textlint と独自ルールによる日本語校正・英語スペルチェック、索引と用語集の自動抽出、分量と読みやすさのメトリクス、画像の最適化と表紙の生成、そして前処理（QueryStream 展開・クロスリファレンス）から後処理（PDF しおり・表紙結合・圧縮）までを、六つの領域に分かれた 26 のコマンドで覆います。出力は閲覧用 PDF、トンボと塗り足しを備えた印刷入稿用 PDF、Kobo / Apple Books 向けのクリーン EPUB、Amazon Kindle 向けの KPF。Re:VIEW Starter プロジェクトの取り込みと、PDF から Markdown への読み取りも備えています。'
   spec.homepage      = 'https://github.com/Atelier-Mirai/vivlio-starter'
   spec.license       = 'MIT'
 

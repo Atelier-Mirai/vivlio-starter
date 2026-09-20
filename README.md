@@ -1,6 +1,6 @@
 # はじめての技術書づくり ～Vivlio Starter 実践ガイド～
 
-「自分の本を作ってみたい」——そう思ったことはありませんか。日々の仕事で培った技術的な知見、趣味で深めた専門知識、あるいは誰かに伝えたい物語。Vivlio Starter は、Markdown で書いた原稿から高品質な PDF・EPUB を生成する書籍制作システムです。CSS 組版エンジン Vivliostyle をコアに据え、執筆から入稿に至るすべての工程を自動化します。
+「自分の本を作ってみたい」——そう思ったことはありませんか。日々の仕事で培った技術的な知見、趣味で深めた専門知識、あるいは誰かに伝えたい物語。Vivlio Starter は、Markdown で書いた原稿から高品質な PDF・EPUB・Kindle を生成する電子書籍執筆システムです。組版エンジンには CSS 組版の Vivliostyle を採用し、原稿を書くところから印刷所へ入稿するところまでを支えます。
 
 ![Vivlio Starter ロゴ](docs/logos/vs_vivlio_starter_logo_outline.svg)
 
@@ -234,7 +234,9 @@ VS_NO_SPINNER=1 vs build
 
 ## Vivlio Starter のしくみ
 
-Vivlio Starter は、Vivliostyle をコアエンジンとして活用する独自ビルドシステムです。単なるラッパーではなく、執筆から入稿まで必要な処理の約半分を独自に担っています。
+Vivlio Starter は、Vivliostyle を組版エンジンとして据えた独自ビルドシステムです。単なるラッパーではありません。`vs build` は 24 の工程からなり、そのうち Vivliostyle に組版を任せるのは PDF と EPUB を書き出す工程です。残る二十余りの工程——原稿の前処理と出力の後処理——は Vivlio Starter が自前で担っています。
+
+何をしているかは、次の一覧がそのまま答えになります。
 
 ### 前処理（vivliostyle 呼び出し前）
 
