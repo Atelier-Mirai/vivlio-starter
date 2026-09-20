@@ -66,6 +66,7 @@ module VivlioStarter
         KANSUJI_COUNTER_RULE = 'kansuji-counter-suffix'
         MISSING_PERIOD_RULE  = 'missing-period'
         SENTENCE_LENGTH_RULE = 'sentence-length'
+        UNCLOSED_SUPPRESSION_RULE = 'unclosed-suppression'
         WEAK_PHRASE_RULE     = 'ja-no-weak-phrase'
 
         # --fix で直せるルール。どちらも「この文字列はこう書く」が 1 つに決まる。
@@ -136,12 +137,11 @@ module VivlioStarter
         # 「文字が選択できず…」が繋がって挙がっていた（実測 1 件）。
         SENTENCE_BREAK = /(?<=。)|(?<=\|)/
 
-        # 指摘を抑止するコメント（textlint 側と同じ vs-lint 記法）。
-        # `-next-line` を先に判定する必要はない——`vs-lint-disable` のパターンは直後に
-        # `-->` を求めるため、`vs-lint-disable-next-line` には当たらない。
-        DISABLE_NEXT_LINE   = /<!--\s*vs-lint-disable-next-line\s*-->/
-        DISABLE_RANGE_OPEN  = /<!--\s*vs-lint-disable\s*-->/
-        DISABLE_RANGE_CLOSE = /<!--\s*vs-lint-enable\s*-->/
+        # 指摘を抑止するコメント。正典は NotationGuard 側に一本化してある
+        # （短い `no-lint` 系と、後方互換の `vs-lint-*` 系の両方を受ける）。
+        DISABLE_NEXT_LINE   = NotationGuard::SUPPRESS_NEXT_LINE
+        DISABLE_RANGE_OPEN  = NotationGuard::SUPPRESS_START
+        DISABLE_RANGE_CLOSE = NotationGuard::SUPPRESS_END
 
         # 「ない」で終わるが否定ではない語。先に落としてから NEGATION を当てる。
         NOT_NEGATION = /少ない|危ない|もったいない|情けない|切ない|はかない|あどけない|
@@ -228,6 +228,7 @@ module VivlioStarter
           findings.concat(kanji_lookalike_findings(text))      unless rules.include?(KANJI_LOOKALIKE_RULE)
           findings.concat(kansuji_counter_findings(text))      unless rules.include?(KANSUJI_COUNTER_RULE)
           findings.concat(weak_phrase_findings(text))          unless rules.include?(WEAK_PHRASE_RULE)
+          findings.concat(unclosed_suppression_findings(text)) unless rules.include?(UNCLOSED_SUPPRESSION_RULE)
           findings
         rescue Errno::ENOENT => e
           Common.log_warn("[lint] ファイルを読み込めませんでした: #{path} (#{e.message})")
@@ -683,36 +684,57 @@ module VivlioStarter
         end
         private_class_method :kansuji_counter_finding
 
-# --- 弱い表現 ---------------------------------------------------------
+        # --- 抑止コメントの閉じ忘れ -------------------------------------------
 
-# 断定を避ける言い回し。上流の ja-no-weak-phrase を置き換える（lint.rb の
-# SUPERSEDED_TEXTLINT_RULES）。上流は形態素の並びで見るため、**同じ
-# 「かもしれません」でも直前の語形で当たったり外れたりする**——MeCab は
-# 「したかもしれません」を `かも`（副助詞）と切るが、「するかもしれません」は
-# `か`＋`も` に割るので、1 語の `かも` を探す上流の規則から漏れる（実測）。
-# 文字列で見れば語形に左右されない。
-#
-# **--fix しない。** 言い切れるかどうかは書き手にしか分からない。謝辞の
-# 「生まれていなかったかもしれません」のように、弱さが意図されている文もある。
-WEAK_PHRASES = [
-  [/かもしれ/,        'かもしれない'],
-  [/かも[。、！？]/,   'かも'],
-  [/思います/,        '思います'],
-  [/思う[。、]/,      '思う'],
-  [/可能性を示唆/,    '可能性を示唆している']
-].freeze
+        # `<!-- no-lint-start -->` を閉じ忘れると、そこから先の指摘が**すべて黙る**。
+        # 黙っていることは指摘が出ないという形でしか現れないので、著者は気づけない。
+        # 開いたまま原稿が終わっていたら、開いた行を挙げる。
+        #
+        # 抑止された区間の中にあっても報告する——prose_lines は抑止行を落とすので、
+        # この検査だけは原文を直接数える。
+        def unclosed_suppression_findings(text)
+          open_line = nil
+          Masking.each_prose_line(text) do |line, lineno|
+            open_line = lineno if NotationGuard::SUPPRESS_START.match?(line)
+            open_line = nil    if NotationGuard::SUPPRESS_END.match?(line)
+          end
+          return [] unless open_line
 
-def weak_phrase_findings(text)
-  prose_lines(text).flat_map do |lineno, line|
-    body, = Masking.protect_code(line)
-    WEAK_PHRASES.filter_map do |pattern, name|
-      next unless body.match?(pattern)
+          [Finding.new(line: open_line, rule: UNCLOSED_SUPPRESSION_RULE,
+                       label: '`<!-- no-lint-start -->` が閉じられていません' \
+                              '（`<!-- no-lint-end -->` を置くまで、以降の指摘がすべて止まります）')]
+        end
 
-      Finding.new(line: lineno, rule: WEAK_PHRASE_RULE,
-                  label: "「#{name}」は弱い表現です（言い切れるなら言い切る）")
-    end
-  end
-end
+        # --- 弱い表現 ---------------------------------------------------------
+
+        # 断定を避ける言い回し。上流の ja-no-weak-phrase を置き換える（lint.rb の
+        # SUPERSEDED_TEXTLINT_RULES）。上流は形態素の並びで見るため、**同じ
+        # 「かもしれません」でも直前の語形で当たったり外れたりする**——MeCab は
+        # 「したかもしれません」を `かも`（副助詞）と切るが、「するかもしれません」は
+        # `か`＋`も` に割るので、1 語の `かも` を探す上流の規則から漏れる（実測）。
+        # 文字列で見れば語形に左右されない。
+        #
+        # **--fix しない。** 言い切れるかどうかは書き手にしか分からない。謝辞の
+        # 「生まれていなかったかもしれません」のように、弱さが意図されている文もある。
+        WEAK_PHRASES = [
+          [/かもしれ/,        'かもしれない'],
+          [/かも[。、！？]/,   'かも'],
+          [/思います/,        '思います'],
+          [/思う[。、]/,      '思う'],
+          [/可能性を示唆/,    '可能性を示唆している']
+        ].freeze
+
+        def weak_phrase_findings(text)
+          prose_lines(text).flat_map do |lineno, line|
+            body, = Masking.protect_code(line)
+            WEAK_PHRASES.filter_map do |pattern, name|
+              next unless body.match?(pattern)
+
+              Finding.new(line: lineno, rule: WEAK_PHRASE_RULE,
+                          label: "「#{name}」は弱い表現です（言い切れるなら言い切る）")
+            end
+          end
+        end
 
         # --- 康煕部首 --------------------------------------------------------
 

@@ -164,6 +164,36 @@ module VivlioStarter
         # 属性の退避に使う目印。数式（VSMATH）と同じ作りにする。
         ATTRIBUTE_PLACEHOLDER = 'VSATTR'
 
+        # 指摘を抑止するコメント。**短い形が正典**で、`vs-lint-*` は後方互換のために残す。
+        #
+        # いちばん書く「次の行だけ」をいちばん短い形にした（本書の実績で 24 回に対し
+        # 範囲指定は 7 回）。区間の指定は Prettier と同じ `-start` / `-end` で揃える——
+        # `disable` / `enable` は状態の切り替えに読め、閉じ忘れても名前が違和感を残さない。
+        #
+        # **行全体がマーカーのときだけ効かせる。** 部分一致で見ていた頃は、記法を説明する
+        # 文の中の `` `<!-- vs-lint-disable -->` ``（インラインコードの例示）を本物と
+        # 取り違え、31 章の 201 行から先で独自ルールが黙っていた（実測）。
+        SUPPRESS_NEXT_LINE = /\A\s*<!--\s*(?:no-lint|vs-lint-disable-next-line)\s*-->\s*\R?\z/
+        SUPPRESS_START     = /\A\s*<!--\s*(?:no-lint-start|vs-lint-disable)\s*-->\s*\R?\z/
+        SUPPRESS_END       = /\A\s*<!--\s*(?:no-lint-end|vs-lint-enable)\s*-->\s*\R?\z/
+
+        # textlint へ渡す間だけ使う変換表（著者の記法 => textlint ネイティブ記法）。
+        # 多対一の変換なので、書き戻すときは文字列からは戻せない——原稿の該当行を
+        # 行番号で控えておき、そちらから戻す（LintRunner#restore_marker_lines）。
+        SUPPRESS_TO_TEXTLINT = {
+          SUPPRESS_NEXT_LINE => '<!-- textlint-disable-next-line -->',
+          SUPPRESS_START     => '<!-- textlint-disable -->',
+          SUPPRESS_END       => '<!-- textlint-enable -->'
+        }.freeze
+
+        # textlint ネイティブ記法のマーカー行（書き戻しで元の綴りへ戻す目印）
+        TEXTLINT_MARKER_LINE = /\A\s*<!--\s*textlint-(?:disable-next-line|disable|enable)\s*-->\s*\R?\z/
+
+        # 行全体が抑止コメントか
+        def suppression_marker?(line)
+          SUPPRESS_NEXT_LINE.match?(line) || SUPPRESS_START.match?(line) || SUPPRESS_END.match?(line)
+        end
+
         # `<!-- vs-lint-disable-next-line -->` が守る行の退避に使う目印
         # （退避と復元は LintRunner#mask_hushed_lines! が行う。restore_masked で戻せるよう、
         # 目印の作り方だけをここで揃えている）。

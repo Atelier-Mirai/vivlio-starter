@@ -167,9 +167,9 @@ theme:
 - PNG（`.png`）
 - JPEG（`.jpg`, `.jpeg`）
 
-<!-- vs-lint-disable -->
+<!-- no-lint-start -->
 **推奨**: WebP 形式は、高画質を保ちながらファイルサイズを小さくできるため、推奨されます。
-<!-- vs-lint-enable -->
+<!-- no-lint-end -->
 
 ### 画像の自動生成
 

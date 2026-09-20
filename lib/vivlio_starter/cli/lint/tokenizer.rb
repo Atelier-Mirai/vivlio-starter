@@ -13,10 +13,11 @@ module VivlioStarter
 
         FRONTMATTER_SEP  = /^---\s*$/
 
-        # vs-lint コメント記法の定義
-        VS_LINT_DISABLE           = /^\s*<!--\s*vs-lint-disable\s*-->\s*$/
-        VS_LINT_ENABLE            = /^\s*<!--\s*vs-lint-enable\s*-->\s*$/
-        VS_LINT_DISABLE_NEXT_LINE = /^\s*<!--\s*vs-lint-disable-next-line\s*-->\s*$/
+        # 抑止コメントの定義。正典は NotationGuard 側に一本化してある
+        # （短い `no-lint` 系と、後方互換の `vs-lint-*` 系の両方を受ける）。
+        VS_LINT_DISABLE           = NotationGuard::SUPPRESS_START
+        VS_LINT_ENABLE            = NotationGuard::SUPPRESS_END
+        VS_LINT_DISABLE_NEXT_LINE = NotationGuard::SUPPRESS_NEXT_LINE
 
         # @param content [String] Markdownファイル全体の内容
         # @param check_code_blocks [Boolean] コードブロック内もチェックするか

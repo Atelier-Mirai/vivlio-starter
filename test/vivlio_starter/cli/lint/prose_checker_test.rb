@@ -747,40 +747,83 @@ class TestProseChecker < Minitest::Test
     assert_empty counter_labels("由来は 2 つあります。\n", disabled_rules: ['kansuji-counter-suffix'])
   end
 
-# --- 弱い表現（上流 ja-no-weak-phrase の置き換え）---
+  # --- 抑止コメント（no-lint / 旧 vs-lint-*）---
 
-def weak_labels(body, **)
-  check(body, **).select { it.rule == 'ja-no-weak-phrase' }.map(&:label)
-end
+  # 短い形が正典。いちばん書く「次の行だけ」をいちばん短い形にした
+  def test_should_honour_the_short_suppression_markers
+    assert_empty check("<!-- no-lint -->\nだ円を描きます。\n")
+    assert_empty check("<!-- no-lint-start -->\nだ円を描きます。\n<!-- no-lint-end -->\n")
+  end
 
-# **上流が落とす形をここで拾う。** MeCab は「したかもしれません」を `かも`（副助詞）と
-# 切るが、「するかもしれません」は `か`＋`も` に割る。1 語の `かも` を探す上流の規則は
-# 後者から漏れ、同じ言い回しなのに章によって指摘が出たり出なかったりしていた
-def test_should_catch_weak_phrases_regardless_of_the_preceding_form
-  assert_equal ['「かもしれない」は弱い表現です（言い切れるなら言い切る）'],
-               weak_labels("将来的に正式対応するかもしれません。\n")
-  assert_equal ['「かもしれない」は弱い表現です（言い切れるなら言い切る）'],
-               weak_labels("本書は生まれていなかったかもしれません。\n")
-end
+  # 旧記法も受け続ける（既存の原稿を書き換えさせない）
+  def test_should_honour_the_legacy_suppression_markers
+    assert_empty check("<!-- vs-lint-disable-next-line -->\nだ円を描きます。\n")
+    assert_empty check("<!-- vs-lint-disable -->\nだ円を描きます。\n<!-- vs-lint-enable -->\n")
+    assert_empty check("<!-- no-lint-start -->\nだ円を描きます。\n<!-- vs-lint-enable -->\n"),
+                 '新旧が混ざっても対になる'
+  end
 
-def test_should_catch_the_other_weak_phrases
-  assert_equal ['「思います」は弱い表現です（言い切れるなら言い切る）'], weak_labels("よい本になると思います。\n")
-  assert_equal ['「かも」は弱い表現です（言い切れるなら言い切る）'], weak_labels("それは難しいかも。\n")
-end
+  # **記法を説明した文で lint を止めない。** 部分一致で見ていた頃は、インラインコードの
+  # 例示を本物と取り違え、31 章の 201 行から先で独自ルールが黙っていた（実測）
+  def test_should_ignore_markers_written_inside_prose
+    findings = check("`<!-- no-lint-start -->` と書きます。\nだ円を描きます。\n")
 
-# 「思うように動かない」の「思う」は弱い表現ではない。句点か読点が続く形だけを見る
-def test_should_not_treat_other_uses_of_omou_as_weak
-  assert_empty weak_labels("思うように動かないときは設定を見直します。\n")
-end
+    assert_equal [2], findings.select { it.rule == 'mazegaki' }.map(&:line)
+  end
 
-# 判断は書き手にしかできない（謝辞の「かもしれません」のように、弱さが意図された文もある）
-def test_should_not_make_weak_phrase_fixable
-  refute_includes PC::FIXABLE_RULES, 'ja-no-weak-phrase'
-end
+  # 閉じ忘れは、そこから原稿の終わりまで指摘を黙らせる。黙っていることは指摘が
+  # 出ないという形でしか現れないので、開いた行を挙げて知らせる
+  def test_should_report_an_unclosed_range
+    findings = check("本文です。\n\n<!-- no-lint-start -->\nだ円を描きます。\n")
+                 .select { it.rule == 'unclosed-suppression' }
 
-def test_should_respect_disabled_rules_for_weak_phrase
-  assert_empty weak_labels("対応するかもしれません。\n", disabled_rules: ['ja-no-weak-phrase'])
-end
+    assert_equal [3], findings.map(&:line), '開いた行を指す'
+    assert_includes findings.first.label, '閉じられていません'
+  end
+
+  def test_should_not_report_a_closed_range
+    assert_empty check("<!-- no-lint-start -->\n本文です。\n<!-- no-lint-end -->\n")
+                   .select { it.rule == 'unclosed-suppression' }
+  end
+
+  def test_should_respect_disabled_rules_for_unclosed_suppression
+    assert_empty check("<!-- no-lint-start -->\n本文です。\n", disabled_rules: ['unclosed-suppression'])
+  end
+
+  # --- 弱い表現（上流 ja-no-weak-phrase の置き換え）---
+
+  def weak_labels(body, **)
+    check(body, **).select { it.rule == 'ja-no-weak-phrase' }.map(&:label)
+  end
+
+  # **上流が落とす形をここで拾う。** MeCab は「したかもしれません」を `かも`（副助詞）と
+  # 切るが、「するかもしれません」は `か`＋`も` に割る。1 語の `かも` を探す上流の規則は
+  # 後者から漏れ、同じ言い回しなのに章によって指摘が出たり出なかったりしていた
+  def test_should_catch_weak_phrases_regardless_of_the_preceding_form
+    assert_equal ['「かもしれない」は弱い表現です（言い切れるなら言い切る）'],
+                 weak_labels("将来的に正式対応するかもしれません。\n")
+    assert_equal ['「かもしれない」は弱い表現です（言い切れるなら言い切る）'],
+                 weak_labels("本書は生まれていなかったかもしれません。\n")
+  end
+
+  def test_should_catch_the_other_weak_phrases
+    assert_equal ['「思います」は弱い表現です（言い切れるなら言い切る）'], weak_labels("よい本になると思います。\n")
+    assert_equal ['「かも」は弱い表現です（言い切れるなら言い切る）'], weak_labels("それは難しいかも。\n")
+  end
+
+  # 「思うように動かない」の「思う」は弱い表現ではない。句点か読点が続く形だけを見る
+  def test_should_not_treat_other_uses_of_omou_as_weak
+    assert_empty weak_labels("思うように動かないときは設定を見直します。\n")
+  end
+
+  # 判断は書き手にしかできない（謝辞の「かもしれません」のように、弱さが意図された文もある）
+  def test_should_not_make_weak_phrase_fixable
+    refute_includes PC::FIXABLE_RULES, 'ja-no-weak-phrase'
+  end
+
+  def test_should_respect_disabled_rules_for_weak_phrase
+    assert_empty weak_labels("対応するかもしれません。\n", disabled_rules: ['ja-no-weak-phrase'])
+  end
 
   # --- 文末の句点（PC-17）---
 

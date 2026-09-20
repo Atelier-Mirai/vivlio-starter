@@ -72,7 +72,7 @@ Vivlio Starter の開発は、[Re:VIEW Starter](https://kauplan.org/reviewstarte
 
 いま、この本を開いたあなたは、もう Vivlio Starter の世界に足を踏み入れています。この本そのものが Vivlio Starter で作られた一冊の実例です。
 
-<!-- vs-lint-disable-next-line -->
+<!-- no-lint -->
 ページをめくりながら、ぜひ手を動かしてみてください。`vs new` でプロジェクトを作り、`vs build` で PDF を生成する——その瞬間のワクワク感を、あなたにも味わっていただけたら嬉しく思います。
 
 :::{.text-center}

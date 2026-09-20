@@ -774,7 +774,8 @@ module VivlioStarter
               hushed << lineno
               pending = false
             end
-            pending = true if line.match?(/<!--\s*vs-lint-disable-next-line\s*-->/)
+            # 行全体がマーカーのときだけ効かせる（ProseChecker の DISABLE_* と同じ理由）
+            pending = true if Lint::NotationGuard::SUPPRESS_NEXT_LINE.match?(line)
           end
 
           hushed
@@ -809,10 +810,14 @@ module VivlioStarter
         # @return [String] 変換後のMarkdown内容
         def rewrite_vs_lint_to_textlint(source, guard: true)
           source = Lint::NotationGuard.strip_notation(source) if guard
-          source
-            .gsub(/<!--\s*vs-lint-disable-next-line\s*-->/, '<!-- textlint-disable-next-line -->')
-            .gsub(/<!--\s*vs-lint-disable\s*-->/, '<!-- textlint-disable -->')
-            .gsub(/<!--\s*vs-lint-enable\s*-->/, '<!-- textlint-enable -->')
+          source.lines.map { convert_suppression_line(it) }.join
+        end
+
+        # 抑止コメントの行を textlint ネイティブ記法へ置き換える（マーカー以外はそのまま）。
+        # 改行は元の行から引き継ぐ——行数が変わると、書き戻しの行番号がずれる。
+        def convert_suppression_line(line)
+          _, native = Lint::NotationGuard::SUPPRESS_TO_TEXTLINT.find { |pattern, _| pattern.match?(line) }
+          native ? "#{native}#{line[/\R\z/]}" : line
         end
 
         # --- 修正パス（--fix） ------------------------------------------------
@@ -891,9 +896,34 @@ module VivlioStarter
             next if fixed == baseline
 
             restored = Lint::NotationGuard.restore_masked(fixed, spans)
+            restored = restore_marker_lines(original, restored)
             atomic_write(original, rewrite_textlint_to_vs_lint(restored))
             original
           end
+        end
+
+        # 抑止コメントを、著者が書いた綴りへ戻す。
+        #
+        # **文字列だけでは戻せない。** 変換は多対一で（`no-lint-start` も `vs-lint-disable` も
+        # `textlint-disable` になる）、逆変換では新しい短い記法が古い記法へ書き換わってしまう。
+        # 著者の原稿を勝手に別の綴りへ直すことになるので、原稿側の行を控えて行番号で戻す。
+        #
+        # 置き換えるのは、書き換え後もマーカー行のままの行だけにする——`--fix` が行数を
+        # 変えた場合でも、本文を潰さない側に倒す。
+        # @param original_path [String] 原稿のパス（著者が書いた綴りの出どころ）
+        # @param fixed [String] textlint が修正した内容
+        # @return [String]
+        def restore_marker_lines(original_path, fixed)
+          authored = File.readlines(original_path, encoding: 'UTF-8')
+                         .each_with_index
+                         .select { |line, _| Lint::NotationGuard.suppression_marker?(line) }
+          return fixed if authored.empty?
+
+          lines = fixed.lines
+          authored.each do |line, index|
+            lines[index] = line if Lint::NotationGuard::TEXTLINT_MARKER_LINE.match?(lines[index].to_s)
+          end
+          lines.join
         end
 
         # textlint ネイティブ記法を vs-lint コメントへ戻す（rewrite_vs_lint_to_textlint の逆）。
