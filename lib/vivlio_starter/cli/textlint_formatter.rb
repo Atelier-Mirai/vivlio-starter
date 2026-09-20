@@ -59,17 +59,43 @@ module VivlioStarter
         nil
       end
 
-      # ルールの表示文を固定の見出しへ置き換える。
+      # ルールの表示文を固定の見出しへ置き換える表。
       #
       # `no-mix-dearu-desumasu` は表示文が判定の実態より広く聞こえる。判定を担う
       # analyze-desumasu-dearu は常体を「で」＋「ある」の並びだけで数えるのに、
       # 「"である"調」と言うと「〜だ」「〜する」まで見ているように読める。先頭の
       # 「箇条書き:」「本文:」も外す——場所の区別を残すと、箇条書き専用の機能に見えるため。
+      # ここに置いた文は**挙がった語を読み取れなかったときの受け皿**で、ふだんは
+      # mixed_style_head が語を添えた見出しを組み立てる。
       # **本物の敬体・常体検出を実装したら、この行ごと削除する**（PLANNED.md の
       # 「文体（敬体・常体）の混在を実際に見張る独自ルール」）。
+      MIXED_STYLE_RULE = 'no-mix-dearu-desumasu'
+
       RULE_SUMMARIES = {
-        'no-mix-dearu-desumasu' => '「である」と「です・ます」が混在しています。'
+        MIXED_STYLE_RULE => '「である」と「です・ます」が混在しています。'
       }.freeze
+
+      # no-mix-dearu-desumasu の 2 行目から、挙がった語と多数派の文体を取り出す。上流はこう書く:
+      #   => "ですます"調 の文体に、次の "である"調 の箇所があります: "である。"
+      #
+      # **どの語が挙がったのかを落とさない。** 固定の要約に畳んでいた頃は「混在しています」と
+      # しか出ず、直す手がかりを得るのに textlint --format json を手で叩く必要があった（実測）。
+      # 上流が最初から持っている情報を、要約の段で捨てていたことになる。
+      #
+      # 多数派と少数派を文言から読むので、逆向き（である調の中の「です。」）も同じ形で出る。
+      # 読み取れなければ固定文に戻す——上流が文言を変えても、指摘そのものは落とさない。
+      MIXED_STYLE_DETAIL = /"(?<majority>[^"]+)"調 の文体に、次の "[^"]+"調 の箇所があります: "(?<found>[^"]+)"/
+
+      # 文体の名前。上流の「ですます」は、本書の書き方（です・ます）へ直して見せる。
+      MIXED_STYLE_NAMES = { 'ですます' => 'です・ます' }.freeze
+
+      def self.mixed_style_head(message)
+        matched = MIXED_STYLE_DETAIL.match(message.to_s)
+        return RULE_SUMMARIES[MIXED_STYLE_RULE] unless matched
+
+        majority = MIXED_STYLE_NAMES.fetch(matched[:majority], matched[:majority])
+        "「#{matched[:found]}」が「#{majority}」の中に混在しています"
+      end
 
       # 上流ルールの英文メッセージを日本語に差し替える表（ルール => [照合, 差し替え文]）。
       #
@@ -109,6 +135,8 @@ module VivlioStarter
       # 英文のまま返ってくるルールは、ここで日本語へ差し替える。
       def self.grouping_head(message, rule_id)
         rule = short_rule(rule_id)
+        return mixed_style_head(message) if rule == MIXED_STYLE_RULE
+
         RULE_SUMMARIES[rule] || translate_message(rule, message_head(message))
       end
 

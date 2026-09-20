@@ -151,6 +151,29 @@ module VivlioStarter
         assert_equal [3, 8, 9], rows.first[:lines]
       end
 
+      # 文体の混在は、**挙がった語を見出しに残す**。固定文に畳んでいた頃は「混在しています」と
+      # しか出ず、どこを直すのか調べるのに textlint --format json を手で叩く必要があった
+      def mixed_style_label(majority, minority, found)
+        message = %(本文: "#{minority}"調 と "#{majority}"調 が混在\n) +
+                  %(=> "#{majority}"調 の文体に、次の "#{minority}"調 の箇所があります: "#{found}"\nTotal:)
+        json = JSON.generate([{ 'filePath' => '/proj/a.md',
+                                'messages' => [{ 'ruleId' => 'ja-technical-writing/no-mix-dearu-desumasu',
+                                                 'message' => message, 'line' => 394 }] }])
+        TextlintFormatter.aggregate_json(json, base_dir: '/proj')[:files].first[:rows].first[:label]
+      end
+
+      def test_aggregate_json_names_the_mixed_style_word
+        assert_equal '[no-mix-dearu-desumasu] 「である。」が「です・ます」の中に混在しています',
+                     mixed_style_label('ですます', 'である', 'である。'),
+                     '上流の「ですます」は本書の書き方へ直して見せる'
+      end
+
+      # 逆向き（である調の中の「です。」）も、文言から読むので同じ形で出る
+      def test_aggregate_json_names_the_mixed_style_word_in_reverse
+        assert_equal '[no-mix-dearu-desumasu] 「です。」が「である」の中に混在しています',
+                     mixed_style_label('である', 'ですます', 'です。')
+      end
+
       # 英文のまま返るルールは日本語へ差し替える。上限値は持ち越す——「多すぎます」に
       # 丸めると、あと何個減らせばよいのかが分からなくなる
       def test_aggregate_json_translates_english_messages
