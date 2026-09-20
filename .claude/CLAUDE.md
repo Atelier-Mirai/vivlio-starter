@@ -5,6 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Coding Rules
 Always apply the ruby-coding-rules skill when working with .rb files.
 
+**Throwaway scripting is Ruby too — not python3/perl/awk.** This is a Ruby gem, so Ruby is guaranteed to be present and is the language the maintainer reads. That applies to one-off edits made while working: bulk search-and-replace across files, reshaping a YAML or JSON file, counting occurrences, probing a regex. Write `ruby -e '...'`, or put a `.rb` in the scratchpad directory and run it. Single-purpose shell tools (`grep`, `sed -n`, `find`, `wc`, `jq`) stay fine for what they are — the rule targets *scripts*, where another language would otherwise sneak in. If a task genuinely resists Ruby, use what fits and say why in the same message.
+
 When adding or extending an author-facing notation (`:::{.class}` boxes, fences like ```` ```mermaid ````, inline syntax, generated assets), follow `docs/specs/notation-implementation-guide.md` — it maps the established infrastructure (Masking, GeneratedAssetCache, doctor, EpubBuilder localize) and the per-type checklists.
 
 **Before debugging layout or build behavior, check `docs/specs/NOTES.md`** — it indexes the standing guidelines and the knowledge notes by *when to consult them*, so hard-won findings get reused instead of rediscovered. It is the fastest route to "CSS looks right but has no effect" (Vivliostyle/EPUB engine quirks), "only Kindle breaks" (KFX support table), and the cross-branch build gotchas (parallel latches, process-global APIs). Add a line there whenever you add a `*-notes.md` or guideline under `docs/specs/`.
