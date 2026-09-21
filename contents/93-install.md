@@ -1,12 +1,12 @@
 # インストール詳細
 
 :::{.chapter-lead}
-本章は、`vs new` が自動で行う環境構築の内訳を知りたい方、macOS 以外の環境に手動でインストールしたい方、CI/CD 環境を構築したい方のための補足資料です。通常の macOS 環境であれば、本章を読まなくてもすぐに執筆を始められます。
+本章では、`vs new` が行う環境構築の内容、macOS 以外での手動インストール、CI/CD 環境の構築を補足します。通常の macOS 環境では、`vs new` を実行すれば執筆を始められます。
 :::
 
 ## Ruby のインストール
 
-Vivlio Starter は Ruby で動作します。Ruby がまだインストールされていない場合は、同梱のスクリプトを使うのがもっとも簡単です。
+Vivlio Starter は Ruby で動作します。Ruby が未インストールの場合は、同梱スクリプトを使う方法が手軽です。
 
 ```bash
 bin/install-ruby.zsh              # 対話的に最新安定版を導入
@@ -15,7 +15,7 @@ bin/install-ruby.zsh -v 4.0.6     # バージョンを明示して導入
 bin/install-ruby.zsh --no-bundler # bundler の導入をスキップ
 ```
 
-このスクリプトは次の作業を自動で行います。Xcode Command Line Tools の確認とインストール案内、Homebrew の導入、rbenv / ruby-build の導入、Ruby 本体のインストールと `rbenv global` 設定、bundler の導入。
+このスクリプトは、Xcode Command Line Tools の確認とインストール案内、Homebrew、rbenv / ruby-build、Ruby 本体、bundler の導入を順に行います。Ruby の導入後には `rbenv global` も設定します。
 
 :::{.column}
 **ターミナルの開き方（macOS）**
@@ -42,7 +42,7 @@ gem install query-stream        # データ展開機能
 
 ## 自動インストールの内訳
 
-`vs new mybook` を実行すると、内部で `vs doctor --fix` が呼び出され、次のツール群が自動でインストールされます。何が導入されるかを把握しておきたい方のための一覧です。
+`vs new mybook` を実行すると、内部で `vs doctor --fix` が呼び出され、次のツール群を自動インストールします。導入対象を確認するための一覧です。
 
 | ツール | インストール方法 | 用途 |
 | :--- | :--- | :--- |
@@ -67,10 +67,10 @@ gem install query-stream        # データ展開機能
 | Kindle Previewer 3（kindlepreviewer） | `brew install --cask kindle-previewer` ＋ ラッパー作成 | Kindle（KPF）変換（任意・targets: kindle 用） |
 | Google Fonts 用 SSL 証明書 | 自動設定 | Google Fonts ダウンロード（macOS のみ） |
 
-Xcode Command Line Tools と Homebrew のインストール時のみ確認プロンプトが表示されます。`--yes` オプションで省略できます。
+Xcode Command Line Tools と Homebrew のインストール時だけは、確認プロンプトが表示されます。`--yes` オプションで省略できます。
 
 <!-- no-lint -->
-**自動インストール（`vs doctor --fix`）が対応しているのは macOS + Homebrew 環境のみです。** Linux や Windows については、現時点で動作検証を行えておらず、公式のサポート対象外です。必要なツールさえ揃えば動作する見込みはありますので、以降の手動インストール手順を手がかりに、お使いの環境へ読み替えてセットアップしてみてください（うまく動くことを願っています）。将来的に正式対応するかもしれません。
+**自動インストール（`vs doctor --fix`）に対応しているのは macOS + Homebrew 環境だけです。** Linux と Windows は動作検証をしておらず、公式サポートの対象外です。必要なツールがそろえば動作する可能性はあるため、以降の手動インストール手順を環境に合わせて利用してください。対応状況は今後変わることがあります。
 
 ## 手動インストール
 
@@ -192,11 +192,11 @@ cd mybook
 vs build
 ```
 
-ヘッドレス環境では PDF ビューアーの自動起動は行われません。`mybook_v0.1.0.pdf` を任意のビューアーで確認してください。
+ヘッドレス環境では PDF ビューアーを自動起動しません。`mybook_v0.1.0.pdf` を任意のビューアーで確認してください。
 
 ### Windows
 
-WSL2 + Ubuntu の利用を推奨します（上記 Linux / WSL の手順を参照）。どうしてもネイティブ環境で行う場合の最小手順です。
+WSL2 + Ubuntu の利用を推奨します（上記の Linux / WSL の手順を参照）。以下はネイティブ環境で導入する場合の最小手順です。
 
 **Chocolatey の場合**（管理者 PowerShell）
 
@@ -234,11 +234,11 @@ vs --version
 :::{.column}
 **まず `vs doctor` を試してください**
 
-ビルドや lint が突然失敗したときは、`vs doctor` で環境を診断するのが近道です。不足ツールが一覧表示されます。`vs doctor --fix` で自動修復も試みられます。詳細は「環境の診断と更新」の章を参照してください。
+ビルドや lint が失敗したときは、まず `vs doctor` で環境を診断してください。不足ツールが一覧表示されます。`vs doctor --fix` では自動修復も試せます。詳細は「環境の診断と更新」の章を参照してください。
 :::
 
 :::{.column}
 **GitHub の 100MB 制約について**
 
-大きな PDF は Git にプッシュできません。ファイル名は `project.name` と `project.version` から決まり、`output.pdf.compress: true` のときは末尾に `_compressed` が付きます。リポジトリに PDF を含める場合は `.gitignore` の末尾に `!*.pdf` を追記してください。容量が心配なら、成果物はリリースページへ添付するか、手元に置いておくのが確実です。
+大きな PDF は Git にプッシュできません。ファイル名は `project.name` と `project.version` で決まり、`output.pdf.compress: true` のときは末尾に `_compressed` が付きます。リポジトリに PDF を含める場合は、`.gitignore` の末尾に `!*.pdf` を追記してください。容量が気になる場合は、成果物をリリースページへ添付するか、手元で管理します。
 :::

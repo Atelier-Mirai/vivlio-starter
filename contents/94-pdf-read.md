@@ -1,12 +1,12 @@
 # PDF 読み取りコマンドの使い方
 
 :::{.chapter-lead}
-`vs pdf:read` は PDF ファイルからテキストと画像を抽出し、Vivlio Starter の原稿形式（Markdown）に変換するコマンドです。既存の書籍 PDF や配布資料を執筆素材として再利用したい場合に活用できます。
+`vs pdf:read` は、PDF からテキストと画像を取り出し、Vivlio Starter の原稿形式である Markdown に変換するコマンドです。既存の書籍 PDF や配布資料を、執筆用の素材として取り込めます。
 :::
 
 ## 概要と事前準備
 
-`vs pdf:read` は **Standard Mode** と **Enhanced Mode** の 2 段階で機能を提供します。
+`vs pdf:read` には、**Standard Mode** と **Enhanced Mode** の二つの動作モードがあります。
 
 | 項目 | Standard Mode | Enhanced Mode |
 | --- | --- | --- |
@@ -15,7 +15,7 @@
 | 依存ライブラリ | PDF::Reader | HexaPDF, ruby-vips, Tesseract |
 | 主な用途 | 参考資料の粗変換 | 出版クオリティの再利用 |
 
-Standard Mode は `vivlio-starter` 本体に組み込まれており、追加インストール不要で動作します。Enhanced Mode を利用するには `vivlio-starter-pdf` gem が必要です。
+Standard Mode は `vivlio-starter` 本体に含まれており、追加インストールなしで利用できます。Enhanced Mode には `vivlio-starter-pdf` gem が必要です。
 
 ### 必須ツール
 
@@ -23,7 +23,7 @@ Standard Mode は `vivlio-starter` 本体に組み込まれており、追加イ
 vs doctor --fix
 ```
 
-`vs doctor` が以下を自動で確認・案内します。
+`vs doctor` は次の項目を確認し、必要に応じて案内します。
 
 - **Ruby 4.x** / Bundler
 - **pdftotext**（poppler に同梱）
@@ -52,7 +52,7 @@ brew install tesseract tesseract-lang poppler vips
 vs pdf:read path/to/document.pdf
 ```
 
-PDF ファイルのパスを指定すると、空いている章番号が自動で割り当てられ、`contents/` に Markdown が出力されます。
+PDF ファイルのパスを指定すると、空いている章番号を自動で割り当て、`contents/` に Markdown を出力します。
 
 ### 章トークンで指定する
 
@@ -60,7 +60,7 @@ PDF ファイルのパスを指定すると、空いている章番号が自動�
 vs pdf:read three-elements
 ```
 
-`sources/` ディレクトリに `three-elements.pdf` を配置しておき、章トークンで指定する方法です。すでに `catalog.yml` に登録済みの章であれば、対応する PDF を自動的に探索します。
+`sources/` ディレクトリに `three-elements.pdf` を置き、章トークンで指定する方法です。すでに `catalog.yml` に登録されている章なら、対応する PDF を自動で探索します。
 
 ### 実行例
 
@@ -94,7 +94,7 @@ images/
 
 ### 動作モードの切り替え
 
-モードは以下の優先順位で自動決定されます。
+動作モードは次の優先順位で決まります。
 
 1. 環境変数 `VIVLIO_PDF_PLUGIN=disable` が設定されている場合は強制的に Standard Mode
 2. `vivlio-starter-pdf` gem がインストール済みなら Enhanced Mode
@@ -107,7 +107,7 @@ VIVLIO_PDF_PLUGIN=disable vs pdf:read document.pdf
 
 ### 既存ファイルの保護
 
-`vs pdf:read` を同じ章トークンで複数回実行した場合、既存の Markdown ファイルや画像ディレクトリは**上書きされません**。代わりに新しい章番号が自動で割り当てられます。これにより、著者の加筆・修正した既存原稿が誤って消えることを防ぎます。
+同じ章トークンで `vs pdf:read` を複数回実行しても、既存の Markdown ファイルや画像ディレクトリは**上書きされません**。代わりに新しい章番号が自動で割り当てられます。加筆・修正済みの原稿を誤って失わないためです。
 
 ## 設定とカスタマイズ
 
@@ -134,7 +134,7 @@ pdf_read:
 
 ### テキスト領域（`text_area`）
 
-PDF のページ端にあるヘッダー・フッター・ノンブルを除外するための余白設定です。値は mm 単位で指定します。
+PDF のページ端にあるヘッダー・フッター・ノンブルを除外するための余白です。値は mm 単位で指定します。
 
 | 項目 | 説明 | 既定値 |
 | --- | --- | --- |
@@ -157,7 +157,7 @@ PDF のページ端にあるヘッダー・フッター・ノンブルを除外�
 
 ### OCR テキスト品質の向上
 
-Enhanced Mode では OCR 後のテキストに対して、以下の自動補正パイプラインが適用されます。
+Enhanced Mode では、OCR 後のテキストに次の自動補正を順に適用します。
 
 1. **空白圧縮** --- 日本語文字間の不要な半角スペースを除去（例: `プ ロ グ ラ ミ ン グ` → `プログラミング`）
 2. **断片結合** --- OCR が 1 文字ずつ分割してしまった単語を再結合
@@ -167,7 +167,7 @@ Enhanced Mode では OCR 後のテキストに対して、以下の自動補正�
 
 ### 誤認識を直す
 
-OCR は字形の似た文字を取り違えます。読み取った本ごとに癖が違うので、気づいたものを `config/ocr_corrections.yml` に書き足してください。書き方は校正辞書（`config/textlint_rewrite.yml`）と同じで、`patterns` には文字列か正規表現（`/pattern/` 形式）を指定します。
+OCR では字形の似た文字を取り違えることがあります。誤認識の傾向は PDF ごとに異なるため、見つけたものを `config/ocr_corrections.yml` に追加してください。書式は校正辞書（`config/textlint_rewrite.yml`）と同じで、`patterns` には文字列または正規表現（`/pattern/` 形式）を指定します。
 
 ```yaml
 version: 1
@@ -188,7 +188,7 @@ rules:
       - /(?<![ァ-ヶー])ログラミング/
 ```
 
-この表が当たるのは**読み取ったページのテキストだけ**で、自分で書いた原稿は巻き添えになりません。校正辞書（`textlint_rewrite.yml`）の側に書いてはいけません——あちらは全原稿に当たるので、`Al` を `AI` に直す規則を置くと、アルミニウムの元素記号も人名の Al Gore も書き換わってしまいます。
+この表を適用するのは**PDF から読み取ったページのテキストだけ**で、自分で書いた原稿には影響しません。校正辞書（`textlint_rewrite.yml`）には書かないでください。こちらは全原稿に適用されるため、`Al` を `AI` に直す規則を置くと、アルミニウムの元素記号や人名の Al Gore まで書き換えてしまいます。
 
 :::{.notice}
 **一字だけの置き換えは書かないでください。**
@@ -202,11 +202,11 @@ OCR がよく取り違えるのは `ロ` と `口`、`力` と `カ`、`一` と
 ```
 :::
 
-`Al` と `AI` のように、**どちらが正しいか文脈でしか決まらない組**は表に入れないでください。既定の `ocr_corrections.yml` にも入れていません。機械に任せず、読み直して判断する場所です。
+`Al` と `AI` のように、**どちらが正しいかを文脈でしか判断できない組**は、表に追加しないでください。既定の `ocr_corrections.yml` にも含めていません。機械的に置換せず、原稿を読み直して判断します。
 
 ## PDF アウトラインの付与
 
-PDF ビューアの「しおり」や「ブックマーク」として表示されるアウトライン（Outlines）は、書籍の読みやすさを大きく左右する機能です。`vivlio-starter-pdf` gem がインストールされている場合、`vs build` の仕上げで自動的にアウトラインが付与されます。
+PDF ビューアで「しおり」や「ブックマーク」として表示されるアウトライン（Outlines）は、書籍内を移動するための重要な機能です。`vivlio-starter-pdf` gem がインストールされている場合、`vs build` の仕上げで自動的に付与されます。
 
 ### アウトラインの構造
 
@@ -241,7 +241,7 @@ PDF ビューアの「しおり」や「ブックマーク」として表示さ�
 
 ### 実行中のログ例
 
-Standard Mode と Enhanced Mode のログ出力例です。問題が発生した場合は、ログの内容から原因を特定できます。
+Standard Mode と Enhanced Mode のログ出力例です。問題が起きた場合は、ログから原因を確認できます。
 
 ```
 # Standard Mode
@@ -279,5 +279,5 @@ gem install vivlio-starter-pdf
 
 :::{.tip}
 **ヒント**  
-OCR 結果の品質を段階的に向上させるには、まず `vs pdf:read` による粗変換から始め、元の PDF と見比べながら `config/ocr_corrections.yml` に誤読パターンを追記していくのが効率的です。一度書いたパターンは以降のすべての読み取りに当たるため、読み進めるほど精度が上がります。
+OCR 結果の品質を上げるには、まず `vs pdf:read` で粗変換し、元の PDF と見比べながら `config/ocr_corrections.yml` に誤読パターンを追加します。追加したパターンは以降の読み取りにも適用されます。
 :::
