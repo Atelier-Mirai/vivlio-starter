@@ -282,9 +282,9 @@ rules:
   - expected: 明るみに出る　
     patterns: 明るみになる
     prh: （誤字）
-  - expected: 未だに
-    patterns: 今だに
-    prh: （誤字）
+  # 「今だに」は prh_open_close.yml の「いまだに」へまとめた。ここに同じ expected を
+  # 書くと、**先に読まれるこちらが勝ち、あちらの「未だに」が黙って消える**
+  # （prh は expected の同じ規則をファイルをまたいで統合し、後のパターンを捨てる）。
   - expected: 極め付き
     patterns: 極めつけ
     prh: （誤字）
