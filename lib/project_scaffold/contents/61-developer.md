@@ -504,11 +504,11 @@ AGPL のライブラリを本体から切り離すための構造です。`vivli
 
 ### スキャフォールドを同期する
 
-`lib/project_scaffold/` は `vs new` が展開する雛形です。**その正本はプロジェクトルートにあります。** `contents/`・`stylesheets/`・`images/`・`config/`・`templates/` などはルート側で開発・検証し、`ruby copy_to_scaffold.rb` で雛形へ複製します。
+`lib/project_scaffold/` は `vs new` が展開する雛形です。**その正本はプロジェクトルートにあります。** `contents/`・`stylesheets/`・`images/`・`config/`・`templates/` などはルート側で開発・検証し、`ruby scripts/copy_to_scaffold.rb` で雛形へ複製します。
 
 ```bash
 # ルートの stylesheets/ を編集してから
-ruby copy_to_scaffold.rb
+ruby scripts/copy_to_scaffold.rb
 ```
 
 `lib/project_scaffold/` を直接編集した内容は、次回の同期で上書きされます。逆に、ルート側を編集して同期しなければ、著者には古い雛形が配布されます。CSS を変更したら同期を実行してください。

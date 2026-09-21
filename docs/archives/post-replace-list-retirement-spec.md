@@ -83,7 +83,7 @@
 **config / scaffold**
 
 - `config/post_replace_list.yml`（削除対象）
-- `lib/project_scaffold/config/post_replace_list.yml`（`ruby copy_to_scaffold.rb` が config/ ディレクトリを `rm_rf`→`cp_r` するため、root 削除後の同期で自動消滅）
+- `lib/project_scaffold/config/post_replace_list.yml`（`ruby scripts/copy_to_scaffold.rb` が config/ ディレクトリを `rm_rf`→`cp_r` するため、root 削除後の同期で自動消滅）
 
 **stylesheets**
 
@@ -247,7 +247,7 @@ end
 ### 3.4 会話記法の廃止
 
 - yml #13 の 2 ルールは移植**しない**。
-- `stylesheets/replace-list.css` の `.kaiwa` / `.kaiwa::before` / `.kaiwa.sensei::before` / `.kaiwa.seito::before`（30–52 行）を削除し、ヘッダコメント（1–18 行）を「post_process の組み込み置換ルールが付与する隠れクラス」の説明に書き換え、定義クラス一覧から `.kaiwa` 系を除く。→ `ruby copy_to_scaffold.rb` で同期。
+- `stylesheets/replace-list.css` の `.kaiwa` / `.kaiwa::before` / `.kaiwa.sensei::before` / `.kaiwa.seito::before`（30–52 行）を削除し、ヘッダコメント（1–18 行）を「post_process の組み込み置換ルールが付与する隠れクラス」の説明に書き換え、定義クラス一覧から `.kaiwa` 系を除く。→ `ruby scripts/copy_to_scaffold.rb` で同期。
 - `contents/22-extentions.md` の会話文節は既に HTML コメントアウト済み（`container_scanner.rb:50-52` が前提にしている）ため本文変更は不要。**コメントアウトブロックは残す**（guards の `comment_state` テスト前提を崩さない）。
 - `PLANNED.md:46` の「現状」を更新（§1.3 参照）。
 
@@ -279,7 +279,7 @@ end
 
 ### 3.8 ドキュメント・コメント整備
 
-§1.3 の contents / docs / stylesheets / guards コメントを一括更新する。contents を触った後は `ruby copy_to_scaffold.rb` で scaffold 同期（config/ の削除も同時に同期される）。索引辞書（`index_glossary_terms.yml`）は `vs index:auto` → 差分確認 → apply の通常フローに任せる。
+§1.3 の contents / docs / stylesheets / guards コメントを一括更新する。contents を触った後は `ruby scripts/copy_to_scaffold.rb` で scaffold 同期（config/ の削除も同時に同期される）。索引辞書（`index_glossary_terms.yml`）は `vs index:auto` → 差分確認 → apply の通常フローに任せる。
 
 ### 3.9 変更しないもの（スコープ外）
 
@@ -351,7 +351,7 @@ end
 - [ ] `grep -rn "post_replace" lib test config contents stylesheets *.rb` のヒットが 0 件（`docs/`（本仕様書・archives）と `index_glossary_terms.yml` の自動生成コンテキストを除く）。
 - [ ] §5 の自動テストが全件パスし、既存テストにリグレッションがない。
 - [ ] §5.5-1 の HTML diff が空（または差分の全件が本仕様で説明可能）。
-- [ ] `ruby copy_to_scaffold.rb` 実行済みで、scaffold から yml が消え、CSS/contents 変更が同期されている。
+- [ ] `ruby scripts/copy_to_scaffold.rb` 実行済みで、scaffold から yml が消え、CSS/contents 変更が同期されている。
 - [ ] `PLANNED.md` の 3 箇所（会話記法・@comment・Post-processing テスト整備）が更新されている。
 - [ ] `CHANGELOG.md` の unreleased に Removed（yml・著者拡張機能・会話記法）と Changed（ルールのコード化・`[!]` の prism_lines 移設）を記載。
 

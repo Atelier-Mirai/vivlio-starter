@@ -1,20 +1,23 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# copy_to_scaffold.rb
+# scripts/copy_to_scaffold.rb
 # contents/, stylesheets/, config/, codes/, data/, templates/ を
 # lib/project_scaffold/ 以下に上書きコピーする。
 #
-# 使い方: ruby copy_to_scaffold.rb
+# 使い方: ruby scripts/copy_to_scaffold.rb
 
 require 'fileutils'
 
-SCAFFOLD = File.join(__dir__, 'lib/project_scaffold')
+# 複製元はプロジェクトルート（scripts/ の一つ上）。どこから起動しても同じ結果に
+# なるよう、カレントディレクトリではなくこのファイルの位置から辿る。
+ROOT = File.expand_path('..', __dir__)
+SCAFFOLD = File.join(ROOT, 'lib/project_scaffold')
 
 DIRS = %w[contents stylesheets images config codes data templates covers].freeze
 
 DIRS.each do |dir|
-  src = File.join(__dir__, dir)
+  src = File.join(ROOT, dir)
   dst = File.join(SCAFFOLD, dir)
 
   unless Dir.exist?(src)
@@ -59,7 +62,7 @@ end
 FILES = %w[.gitignore package.json].freeze
 
 FILES.each do |file|
-  src = File.join(__dir__, file)
+  src = File.join(ROOT, file)
   dst = File.join(SCAFFOLD, file)
 
   unless File.exist?(src)
@@ -77,7 +80,7 @@ end
 # ルートの README.md は gem のリポジトリを訪れた人へ向けたもので、ライセンスや
 # 開発者向け情報まで載っている。`vs new` した著者の手元に置かれるのは「あなたの
 # 本のプロジェクト」なので、別に用意した README を配る。
-scaffold_readme = File.join(__dir__, 'docs', 'scaffold-README.md')
+scaffold_readme = File.join(ROOT, 'docs', 'scaffold-README.md')
 if File.exist?(scaffold_readme)
   FileUtils.cp(scaffold_readme, File.join(SCAFFOLD, 'README.md'), verbose: false)
   puts 'COPY  docs/scaffold-README.md -> lib/project_scaffold/README.md'

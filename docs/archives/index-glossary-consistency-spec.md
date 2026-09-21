@@ -174,7 +174,7 @@ print_pdf は**閲覧用 PDF からの導出**（`pipeline.rb:106` `derive_print
    出現しません（語の変更・削除？）」と添える）。
 5. root/scaffold 同梱の `config/index_glossary_terms.yml` から `backlink_sources` を
    実装時に除去し（`vs index:auto` 一回で自然に消えるが、配布物は明示的に綺麗にする）、
-   `ruby copy_to_scaffold.rb` で同期する。
+   `ruby scripts/copy_to_scaffold.rb` で同期する。
 
 ### 4.3 Phase 3: context 鮮度（報告書 案 A ＋ §5.1） — R5, R6
 
@@ -261,7 +261,7 @@ print_pdf は**閲覧用 PDF からの導出**（`pipeline.rb:106` `derive_print
 - [x] 実原稿での stale 率 0%（報告書 §6.3 の照合スクリプトで検証。2026-07-16 実測: 707 context 中 stale 0 件）。
 - [x] `vs index:auto` 実行で、辞書へ書いた語がコンソールに必ず表示される。
 - [x] 同梱原稿の誤登録（`g`）を棄却済みにし、`[eV]`/`[Hz]` が再登録されないことを確認（eV/Hz も棄却リストへ移動済み）。
-- [x] root 辞書・scaffold 辞書から `backlink_sources` が除去され、`ruby copy_to_scaffold.rb` 同期済み。
+- [x] root 辞書・scaffold 辞書から `backlink_sources` が除去され、`ruby scripts/copy_to_scaffold.rb` 同期済み。
 - [x] CHANGELOG（Fixed: 幽霊バックリンク・context stale・誤登録／Changed: ビルドの辞書読み取り専用化・auto の可視化）。
 
 ## 8. スコープ外（将来）

@@ -261,7 +261,7 @@ end
    **5 エントリとその節見出しコメントを削除**する。書籍名・資格名称・専門用語の節は残す。
 2. ファイル冒頭の説明コメントは現状のまま（「書籍名、資格名称、専門用語など」）で、
    実態と一致する状態に戻る。
-3. **scaffold 同期**: root を編集したら `ruby copy_to_scaffold.rb` を実行する
+3. **scaffold 同期**: root を編集したら `ruby scripts/copy_to_scaffold.rb` を実行する
    （`lib/project_scaffold/config/textlint_allowlist.yml` を直接編集しない）。
 
 撤去は**ガード実装・検証（§3.9 手順 1）の後**に行うこと。順序を守れば、撤去による
@@ -319,7 +319,7 @@ end
 | `lib/vivlio_starter/cli/lint/notation_guard.rb` | 新設 | 1 |
 | `lib/vivlio_starter/cli/lint/tokenizer.rb` | `strip_notation` を読み込み直後に適用 | 1 |
 | `test/vivlio_starter/cli/lint/notation_guard_test.rb` | 新設（§3.8） | 1 |
-| `config/textlint_allowlist.yml` | VFM 5 エントリ撤去（root 編集 → `ruby copy_to_scaffold.rb`） | 1 |
+| `config/textlint_allowlist.yml` | VFM 5 エントリ撤去（root 編集 → `ruby scripts/copy_to_scaffold.rb`） | 1 |
 | `explanatory-diagram-spec.md` | 冒頭の「未解決（要判断）: textlint が showcase を…」注記を本仕様への参照に差し替え | 1 |
 
 ## 5. 報告書 §7（未決事項）の決定一覧
@@ -330,7 +330,7 @@ end
 | 2 | 置き場所 | `Lint::NotationGuard` 新設。`Masking` は据え置き（§3.1 の波及調査が根拠） |
 | 3 | ガードの粒度 | 宣言的一覧 `MACHINE_DATA_CONTAINERS`。記法追加時の変更は 1 語 |
 | 4 | allowlist の撤去範囲 | 5 エントリ全撤去。残渣は §3.9 手順 2 で実測して判定（記法由来ならガード修正・正当なら受け入れ） |
-| 5 | scaffold 同期 | root 編集 → `ruby copy_to_scaffold.rb`（直接編集禁止） |
+| 5 | scaffold 同期 | root 編集 → `ruby scripts/copy_to_scaffold.rb`（直接編集禁止） |
 | 6 | 著者向けの逃げ道 | `<!-- vs-lint-disable -->` 系を維持（変更不要） |
 
 ## 6. スコープ外（将来）

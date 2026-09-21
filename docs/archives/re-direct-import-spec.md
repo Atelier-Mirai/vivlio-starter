@@ -684,7 +684,7 @@ Vivlio は**ファイル名の番号帯**で種別を決める（00 = 前書き 
 
 1. 新経路を実装し、`vs import` を差し替える（旧経路は残さない——2 つの変換経路を保守する理由がない）
 2. `validate_starter_directory!` の必須ファイルを `catalog.yml` ＋ 原稿ディレクトリへ変える（§5.4）
-3. **CSS を 2 箇所直す。** どちらも `stylesheets/` をルートで直してから `ruby copy_to_scaffold.rb` を実行する（scaffold 同期が要る）。
+3. **CSS を 2 箇所直す。** どちらも `stylesheets/` をルートで直してから `ruby scripts/copy_to_scaffold.rb` を実行する（scaffold 同期が要る）。
    - `.small` の整理（§3.3.1）。`chapter-common.css` の `.small` から余白（`margin-block` / `margin-inline`）を `div.small` / `p.small` へ移し、`.small` 共通には `font-size` だけを残す
    - `.bordered` の新設（§3.2）。`figure.bordered img` と `div.bordered` に細い罫を引く。あわせて `cross_reference_processor.rb` の `build_figure_html` が `img[:classes]` を `<figure>` の class へ出すようにする（`extract_classes` は既にあるが結果が捨てられている）
 4. `95-import.md`（著者向け章）を書き換える。**`rake markdown` の事前実行・Ruby 2.5・Starter 同梱スクリプトの記述がすべて不要になる**ので、前提条件の節が短くなる

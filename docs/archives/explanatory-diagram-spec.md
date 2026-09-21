@@ -3,7 +3,7 @@
 > **ステータス（2026-07-16）: Phase 0〜3 実装済み。Phase 4 は掲載まで完了。**
 > 原稿は `22-extentions.md`「図解注釈の方法」（リファレンス）と `94-sample.md`（バイオリンの
 > 逸話に沿った作例）へ掲載済み。§7.7 の視覚定数は実測レイアウトで妥当と判断し初期値のまま。
-> scaffold 同期（`copy_to_scaffold.rb`）は 2026-07-16 に実行済み（lint 記法ガードのコミット `766851f8` に同梱）。
+> scaffold 同期（`scripts/copy_to_scaffold.rb`）は 2026-07-16 に実行済み（lint 記法ガードのコミット `766851f8` に同梱）。
 > 実測での確認: PDF は単章ビルドで枠・破線枠・引き出し記号・丸数字の描画を確認。
 > EPUB はフルビルドで「PNG のみ同梱・src が .png へ差し替わる」ことと、epubcheck が
 > showcase 起因のエラーを出さないこと（既存の索引 RSC-005/012 のみ）を確認。
@@ -482,7 +482,7 @@ MathTransformer の経路をそのまま踏襲する:
 | `pre_process/showcase_transformer.rb` | 新規（§7.1） |
 | `pre_process/showcase_svg_builder.rb` | 新規（§7.1） |
 | `build/epub_builder.rb` | `localize_showcase_images!` を追加し、inject_heading_images_for_epub! と同じ呼び出し列（epub / kindle 両フレーバー）に組み込む（§7.9） |
-| `stylesheets/chapter-common.css` | `figure.vs-showcase { margin: 1em 0; text-align: center; break-inside: avoid; }` `figure.vs-showcase img { max-width: 100%; }` 程度の最小スタイル。**Kindle 用 `body.vs-kindle` 節は不要**（§6.2）。root のみ編集し、scaffold 同期は copy_to_scaffold.rb（ユーザー実行）に委ねる |
+| `stylesheets/chapter-common.css` | `figure.vs-showcase { margin: 1em 0; text-align: center; break-inside: avoid; }` `figure.vs-showcase img { max-width: 100%; }` 程度の最小スタイル。**Kindle 用 `body.vs-kindle` 節は不要**（§6.2）。root のみ編集し、scaffold 同期は scripts/copy_to_scaffold.rb（ユーザー実行）に委ねる |
 | `cli/doctor.rb`（該当箇所） | magick / rsvg の任意ツール案内文に「図解注釈（showcase）」を用途として追記（既に章扉用に検出済みなら文言のみ） |
 | `CHANGELOG.md` | 機能追加を記載 |
 
@@ -521,7 +521,7 @@ Minitest。`test/vivlio_starter/cli/pre_process/` 配下に新設。DAMP・DI �
 4. **Phase 3 — 仕上げ**: chapter-common.css・doctor 文言・CHANGELOG・
    本仕様書のステータス更新。
 5. **Phase 4 — 調整**: サンプル章での目視レイアウト確認 → §7.7 の視覚定数を調整。
-   copy_to_scaffold.rb 実行（ユーザー）で scaffold へ同期。
+   scripts/copy_to_scaffold.rb 実行（ユーザー）で scaffold へ同期。
 
 ## 11. スコープ外（将来拡張の余地）
 

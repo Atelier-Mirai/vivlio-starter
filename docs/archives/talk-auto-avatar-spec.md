@@ -161,7 +161,7 @@ magick -size 400x400 xc:<地色> -gravity center -fill <文字色> \
 4. `TalkAvatarGenerator`（生成・キャッシュ・縮退）＋テスト
 5. `talk_avatar_tag` の分岐＋テスト
 6. EPUB 同梱の確認（必要なら Kindle 除外）
-7. `config/talk.yml` のコメントと原稿 22 章へ `auto` の解説を追記 → `ruby copy_to_scaffold.rb`
+7. `config/talk.yml` のコメントと原稿 22 章へ `auto` の解説を追記 → `ruby scripts/copy_to_scaffold.rb`
 8. `rake test` ＋ PDF / EPUB / Kindle の実機確認
 
 ## 5. スコープ外・未決事項

@@ -4,11 +4,11 @@
 > ステータス: **提案（未実装・レビュー待ち）**
 > 対象: PLANNED.md:19 [Low]「既存プロジェクトのアップグレード専用コマンド（`vs sync` / `vs upgrade`）」。`vs new <既存> --add-missing` の役割を引き継ぎ、さらに「既存ファイルが新しい雛形で更新された場合の取り込み（diff 提示・選択適用）」まで行う
 > 決定事項（本仕様の提案）:
-> - コマンド名は **`vs upgrade`**。著者の意図（「gem を新しくしたのでプロジェクトも追従させたい」）に直結する語。`vs sync` は開発側の scaffold 同期（copy_to_scaffold.rb）と語が衝突するため不採用。doctor 統合も不採用（doctor は環境診断、upgrade はプロジェクト資産の更新——PLANNED の判断どおり別コマンド。なお外部**ツール**の更新は `vs doctor --upgrade`＝doctor-tool-upgrade-spec.md が担い、責務が重ならない）
+> - コマンド名は **`vs upgrade`**。著者の意図（「gem を新しくしたのでプロジェクトも追従させたい」）に直結する語。`vs sync` は開発側の scaffold 同期（scripts/copy_to_scaffold.rb）と語が衝突するため不採用。doctor 統合も不採用（doctor は環境診断、upgrade はプロジェクト資産の更新——PLANNED の判断どおり別コマンド。なお外部**ツール**の更新は `vs doctor --upgrade`＝doctor-tool-upgrade-spec.md が担い、責務が重ならない）
 > - **「著者が触ったか」の判定に雛形マニフェスト（`config/scaffold.lock`）を導入**する。展開時点の各ファイルのハッシュを記録し、三者比較（雛形の旧版/新版/プロジェクト現物）を可能にする——これが無いと「雛形が変わった」と「著者が変えた」を区別できず、diff 提示が全ファイル手動確認になってしまう
 > - **著者データ領域には絶対に触れない**（§1.3 の除外リスト。ハッシュ判定以前の一律除外）
 > - `vs new --add-missing` は **1 リリース間は残して非推奨警告**、その後削除
-> 関連: `lib/vivlio_starter/cli/new.rb:16,57,118`（`SCAFFOLD_SOURCE`・`--add-missing` の現行実装・`expand_scaffold`）, `lib/vivlio_starter/cli/samovar/new_command.rb:18`, `lib/vivlio_starter/cli/doctor/config_salvager.rb`（設定ファイル復元の既存機構——壊れた必須 YAML の復旧は引き続き doctor の責務）, `copy_to_scaffold.rb`（開発側同期。scaffold の `{{PLACEHOLDER}}` テンプレート化）
+> 関連: `lib/vivlio_starter/cli/new.rb:16,57,118`（`SCAFFOLD_SOURCE`・`--add-missing` の現行実装・`expand_scaffold`）, `lib/vivlio_starter/cli/samovar/new_command.rb:18`, `lib/vivlio_starter/cli/doctor/config_salvager.rb`（設定ファイル復元の既存機構——壊れた必須 YAML の復旧は引き続き doctor の責務）, `scripts/copy_to_scaffold.rb`（開発側同期。scaffold の `{{PLACEHOLDER}}` テンプレート化）
 
 ## 0. 背景・問題
 
@@ -93,7 +93,7 @@ files:
 
 ### 2.3 雛形側の対応（開発側）
 
-- `copy_to_scaffold.rb` は変更不要（雛形の中身を作る側。lock は展開時に作られる）
+- `scripts/copy_to_scaffold.rb` は変更不要（雛形の中身を作る側。lock は展開時に作られる）
 - ただし雛形の `book.yml` テンプレート化（`{{PLACEHOLDER}}`）と同様、**gem リリースごとに雛形が確定**する前提が lock の「scaffold_version」の意味を支える——リリース手順（vivlio-starter-release skill）に変更なし
 
 ## 3. テスト
@@ -111,7 +111,7 @@ files:
 2. `vs upgrade` コマンド（計画表示 → 適用 → バックアップ → lock 更新）
 3. `--dry-run` / `--yes`・競合の diff 表示
 4. `vs new --add-missing` の非推奨警告
-5. README・`contents/` 該当章（プロジェクト運用）にアップグレード手順を追記 → `ruby copy_to_scaffold.rb`
+5. README・`contents/` 該当章（プロジェクト運用）にアップグレード手順を追記 → `ruby scripts/copy_to_scaffold.rb`
 6. `rake test`
 
 ## 5. スコープ外・留意点

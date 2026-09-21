@@ -105,7 +105,7 @@ KFX の既知欠陥（セル `width`/`nowrap` 不尊重）は回避策の当て�
   ```
   ※ セレクタを `body.vs-epub`/`body.vs-kindle` 配下に限定するか素で書くかは実装時に判断（この div は EPUB 経路でしか生成されず PDF に現れないため素でも安全だが、明示する方が既存流儀に合う）。
 - 旧 §6 A 案の `body.vs-epub pre[class*="language-"] { pre-wrap … }`（`code.css:241-248`）は、**変換失敗時のフォールバック残存 pre への安全網として温存**する（コメントで役割変更を注記）。
-- 編集後 `ruby copy_to_scaffold.rb` で同期。
+- 編集後 `ruby scripts/copy_to_scaffold.rb` で同期。
 
 ### 2.4 触らないもの
 

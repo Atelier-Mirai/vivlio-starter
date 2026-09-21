@@ -97,7 +97,7 @@
   - `execute_post_process` 内、`BodyClassInjector.inject_body_class` と同じループ位置（`HtmlReplacer` より前）で呼ぶ。
   - `HtmlReplacer` は `:tag_aware` / `:text_only` の双方で `<pre>…</pre>` を退避するため、変換後の中身は後続の置換ルール（`<hr>` → `pagebreak` 等）から保護される。
 
-### 3. CSS（**root で編集し `ruby copy_to_scaffold.rb` で同期**）
+### 3. CSS（**root で編集し `ruby scripts/copy_to_scaffold.rb` で同期**）
 
 - `stylesheets/chapter-common.css`
   - `.terminal p { … }` を廃し、`.terminal pre` を追加:

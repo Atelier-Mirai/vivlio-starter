@@ -172,7 +172,7 @@ CSS 抽出の詳細:
 - 小数（`0.5em`）や `nth-child()` を誤検出しないよう `(?<![\w.\-])\.([a-zA-Z_][\w-]*)` を用いる。
 - プロセス内で一度だけ構築しメモ化する。
 
-`config/book.yml` は **root で編集し `ruby copy_to_scaffold.rb` で scaffold へ同期する。** `Common::CONFIG` は再帰的 Data ラッパーのためスキーマ変更は不要。
+`config/book.yml` は **root で編集し `ruby scripts/copy_to_scaffold.rb` で scaffold へ同期する。** `Common::CONFIG` は再帰的 Data ラッパーのためスキーマ変更は不要。
 
 ## テスト
 

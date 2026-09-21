@@ -383,7 +383,7 @@ EPUB 側も現状は前後が対称かむしろ逆で、同じ「一体化して
 
 ### Phase 1: PDF
 
-1. **§1-1 `padding` → `edge_inset`** 単独で入る。旧キーは残さない（後方互換を持たない方針）。`book.yml` コメント・42 章・`copy_to_scaffold.rb` 同期まで一括
+1. **§1-1 `padding` → `edge_inset`** 単独で入る。旧キーは残さない（後方互換を持たない方針）。`book.yml` コメント・42 章・`scripts/copy_to_scaffold.rb` 同期まで一括
 2. **§1-2 文字数指定**（`heading_chars` / `lead_chars` ＋ `max-inline-size` ＋ 既定の版面導出 ＋ 🟡 警告）。**あわせて §5-1 の EPUB 追随を必ず同時に入れる**（改名だけ入れると `frontispiece_lead_ratio` が参照先を失って EPUB の扉絵リードが崩れる）
 3. **§2-1 `auto-phrase`** 2 段書きを `.chapter-title` / `.section-title` へ
 4. **§3 コンパクト帯**（`aspect-ratio` ＋ 2 層スプライト ＋ `padding-inline`）
@@ -438,7 +438,7 @@ Phase 1 の 1〜5 はどれも**既存書籍の PDF 組版を変える**（章�
 
 1. **`theme.ornament` をマッピングにすると `ThemeValidator` が壊れる**。`resolve_ornament_path` は `raw.to_s` を見るので Data を渡すと画像名の代わりに `#<data …>` を検証し、**毎ビルド必ず「画像が見つかりません」の 🟡 が出る**（`frontispiece` 側には既に `frontispiece_source` があったが ornament には無かった）。両方を `image_source` で扱うよう共通化した。
 2. **`Data` は `dig` を持たない**が、`Common.wrap_config` が生成する Data クラスは `dig` を定義しているため設定オブジェクトでは使える。素の `Data.define` で書いた最小再現では動かないので混乱しやすい。
-3. **`book_yml_consumption_test` は scaffold の `book.yml` を読む**。キーを改名したら `lib/project_scaffold/config/book.yml` 側も同時に更新しないとテストが落ちる（`copy_to_scaffold.rb` の実行を待たない）。
+3. **`book_yml_consumption_test` は scaffold の `book.yml` を読む**。キーを改名したら `lib/project_scaffold/config/book.yml` 側も同時に更新しないとテストが落ちる（`scripts/copy_to_scaffold.rb` の実行を待たない）。
 
 ### 9-4 Phase 2 に持ち越した前提
 

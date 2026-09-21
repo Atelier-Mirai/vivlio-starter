@@ -282,5 +282,5 @@ Phase 1 の検証で「章題に落ちる語が 4 件ある」と読み違えた
 
 - 本ファイルを `docs/archives/` へ `git mv` し、`STATUS.md` の該当行を削除する
 - `contents/33-index-glossary.md` に節指定の書き方と `[igm33]` を追記し、
-  `ruby copy_to_scaffold.rb` で雛形へ同期する
+  `ruby scripts/copy_to_scaffold.rb` で雛形へ同期する
 - `docs/archives/index-main-reference-spec.md` §1.3 に「節指定は本仕様で実装した」旨を追記する

@@ -10,7 +10,7 @@
 きっかけは「キーを 1 つ廃止するだけで触る場所が増え続けている」ことだった。
 2026-08-08 に 9 キーを廃止した際、`default_config_schema` から消し、
 `RETIRED_CONFIG_KEYS` へ登録し、読み出し側のフォールバックを直し、
-`book.yml` を編集し、`copy_to_scaffold.rb` を回す——という手順になった。
+`book.yml` を編集し、`scripts/copy_to_scaffold.rb` を回す——という手順になった。
 
 個々は正しく動く。だが同じ「既定値」という概念が 4 通りの持ち方で散っており、
 **そのせいで「book.yml に書いてあるのに違う値で動く」余地が実際に 6 件ある**（§2.1）。
@@ -143,7 +143,7 @@ DEFAULT_PRESETS[name.to_sym] || DEFAULT_PRESETS[:standard]
    （2026-08-07 決定・`config-key-criteria-guidelines.md` §1）
 2. **スキーマ外のキーは素通しする。** 自由拡張として意図した仕様
    （`test_should_pass_through_unknown_sections_and_keys`）
-3. **`book.yml` はコメントを保ったまま扱う。** `copy_to_scaffold.rb` も `doctor` の
+3. **`book.yml` はコメントを保ったまま扱う。** `scripts/copy_to_scaffold.rb` も `doctor` の
    `config_salvager` も `gsub` のテキスト置換で、YAML の読み書きを経由しない
 
 ---

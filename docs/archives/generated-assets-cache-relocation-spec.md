@@ -25,7 +25,7 @@ P4/P4b で中間生成物は `.cache/vs/` へ集約されたが、**著者ディ
 - **clean.rb の分類ヒューリスティクス**: 「`*_light.svg` は生成物、他の SVG は著者の物、
   PDF/JPG は全部生成物」というパターン推測（`clean_cover_files` /
   `clean_bundled_variant_images`）が不要になる。
-- **copy_to_scaffold.rb の PRUNE**: バリアント webp・covers 内生成物の除去ロジックが不要になる。
+- **scripts/copy_to_scaffold.rb の PRUNE**: バリアント webp・covers 内生成物の除去ロジックが不要になる。
 - **著者プロジェクトの untracked 汚染**: ビルドすると `stylesheets/images/bundled/` に
   生成 webp が湧き、git status を汚す（本 repo では `.git/info/exclude` で局所回避している
   ＝共有されない回避策で恒久解でない）。
@@ -69,7 +69,7 @@ create.rb が生成する**生成物**（→ cache へ）だが、カスタム�
 ＋対角線分割クロップ。現行は `base_dir = File.dirname(source_path)`＝**ソース画像の隣**に
 生成される）。基画像（`bundled/sakura.webp` 等・ユーザー配置画像）はソースとして残す。
 生成途中の中間ファイル（`*_alpha*` / `*_color*` / `*_merged*`）は tmpdir 隔離済みで
-本仕様の対象外（clean.rb / copy_to_scaffold.rb の保険掃除だけが言及している）。
+本仕様の対象外（clean.rb / scripts/copy_to_scaffold.rb の保険掃除だけが言及している）。
 
 ## 2. 移設先レイアウト
 
@@ -228,9 +228,9 @@ CMYK カバー PDF は入稿物（成果品）であり、最終 print PDF（`�
 | theme_image_resolver.rb | `find_existing_theme_variant` の探索先を cache へ、`theme_relative_path` を 2 形返却へ（§3.1）。`theme_image_available?` も同基準 |
 | book_settings_css.rb | `rebase_relative` に `theme-images/` 素通しガード追加（§3.1） |
 | clean.rb | `clean_cover_files` / `clean_bundled_variant_images` → cache dir の `rm_rf` へ縮退（＋§6 の移行掃除） |
-| theme.css | 既定 2 行の削除（§3.3）。**scaffold 同期対象**（copy_to_scaffold.rb 実行） |
+| theme.css | 既定 2 行の削除（§3.3）。**scaffold 同期対象**（scripts/copy_to_scaffold.rb 実行） |
 | .gitignore | `/covers/` ＋ `!/covers/*.svg` を撤去（`*.pdf` グローバル無視は既存のまま）。**scaffold 同期対象** |
-| copy_to_scaffold.rb | バリアント webp PRUNE・covers PRUNE を撤去（`*_alpha*` 等の保険掃除は残してよい） |
+| scripts/copy_to_scaffold.rb | バリアント webp PRUNE・covers PRUNE を撤去（`*_alpha*` 等の保険掃除は残してよい） |
 | `vivlioverso-p4-investigation.md` | §1.3/§5.1 に本仕様への参照を追記 |
 
 テスト影響: cover 系・clean 系・theme_image_resolver 系・epub cover 系ユニットのパス期待値

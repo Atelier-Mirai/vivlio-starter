@@ -58,7 +58,7 @@ KEYS = {
 
 - **セクション名はスネークケース**（`/\A[a-z_][a-zA-Z0-9_]*\z/`）
 - **`book.yml` にも必ず書く。** 表と `book.yml` の一致は `config_keys_test.rb` が検査するので、
-  片方だけ足すと落ちます。ルートの `config/book.yml` を編集し `ruby copy_to_scaffold.rb` で同期
+  片方だけ足すと落ちます。ルートの `config/book.yml` を編集し `ruby scripts/copy_to_scaffold.rb` で同期
 - **既定値は `book.yml` に書いた値と同じにする。** 食い違うと、著者がその行を消した瞬間だけ
   別の値で動きます（実際に 7 件あったのがこの仕組みを作った動機）
 - **読み出し地点に `|| 既定値` を書かない。** 表が保証するのでデッドコードになります
@@ -161,7 +161,7 @@ end
 `test/vivlio_starter/cli/book_yml_consumption_test.rb` が、**scaffold の book.yml に
 定義された全キーが lib コードから参照されていること**を自動検査します。
 新しい設定キーを scaffold の book.yml（＝ルートの `config/book.yml` を編集して
-`ruby copy_to_scaffold.rb` で同期）に追加したのに実装が消費していない場合、
+`ruby scripts/copy_to_scaffold.rb` で同期）に追加したのに実装が消費していない場合、
 このテストが失敗します。「book.yml にキーを書いたが実装はハードコーディングのまま」
 という消費漏れはここで検出されるため、キー追加とロジック実装は必ずセットで行ってください。
 （`metrics.use` の値として動的参照されるプリセット名のような例外は、

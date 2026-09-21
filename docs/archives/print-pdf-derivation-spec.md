@@ -213,7 +213,7 @@ output:
 - 命名は「導出するか」ではなく**著者が自分の本について知っている事実**（フチなし要素の有無）にする。
 - 閲覧用 PDF はトリムで裁たれており塗り足しを復元できないため、`full_bleed: true` の本を
   導出すると白フチ裁ち落とし事故になる——この関係を book.yml コメントと 41-book-yml 章に明記する。
-- ルート `config/book.yml` を編集後、`ruby copy_to_scaffold.rb` で雛形へ同期（CLAUDE.md）。
+- ルート `config/book.yml` を編集後、`ruby scripts/copy_to_scaffold.rb` で雛形へ同期（CLAUDE.md）。
 
 ### 2.7 Phase 0（独立の即効修正・先行コミット可）
 
@@ -365,7 +365,7 @@ TrimBox を持つため、ノンブル overlay 時に同じ縮小が起きる。
 4. **ビルダー・パイプライン**: `PrintPdfBuilder` に導出フロー追加・`derive_print` 分岐、
    `pipeline.rb` ステップ表の条件変更（§2.5）。
 5. **設定**: CONFIG 既定値（`common.rb:207` 付近の `print_pdf:` に `full_bleed: nil` 追加）、
-   `config/book.yml` コメント、`copy_to_scaffold.rb` 同期、原稿 41-book-yml / 44-build 章の追記、
+   `config/book.yml` コメント、`scripts/copy_to_scaffold.rb` 同期、原稿 41-book-yml / 44-build 章の追記、
    `vs doctor` の qpdf 要件（11 以上）明記。
 6. **②との連動**（[backlink-dedup-pdf-map-spec.md](backlink-dedup-pdf-map-spec.md) §7）:
    dedup 再レンダ条件を `t.pdf || derive_print` にする。

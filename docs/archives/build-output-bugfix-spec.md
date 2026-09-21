@@ -58,7 +58,7 @@ return if keep_intermediate
 **(2) scaffold にも同じ遺物が混入している。** `lib/project_scaffold/stylesheets/images/bundled/`
 にも同じ中間 WebP がコミットされており、加えて最終バリアント
 （`sakura_portrait.webp` / `sakura_landscape.webp`）まで追跡されている。
-`copy_to_scaffold.rb` の prune は `*_portrait.webp` / `*_landscape.webp` の 2 種のみを
+`scripts/copy_to_scaffold.rb` の prune は `*_portrait.webp` / `*_landscape.webp` の 2 種のみを
 除去するため、`*_alpha*` / `*_color*` / `*_merged*` は scaffold へ運ばれ続ける。
 
 **(3) クリーンパターンが中間生成物を網羅していない。**
@@ -81,7 +81,7 @@ waifu2x / ImageMagick が途中で失敗し例外が送出されると（`genera
      lib/project_scaffold/stylesheets/images/bundled/ 内の同名群
      ```
    - scaffold 側の最終バリアント `sakura_portrait.webp` / `sakura_landscape.webp` も
-     生成物のため `git rm`（`copy_to_scaffold.rb` が今後 prune するので再混入しない）。
+     生成物のため `git rm`（`scripts/copy_to_scaffold.rb` が今後 prune するので再混入しない）。
 
 2. **再発防止：中間ファイルを tmpdir に隔離（コード修正）**
    - `generate_variant_output` の `alpha_path` / `alpha_scaled_path` / `color_path` /

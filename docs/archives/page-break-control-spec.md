@@ -199,7 +199,7 @@ Minitest・ruby-coding-rules skill 適用。
 1. §2.2 (c) 設定キー＋生成 CSS ＋テスト（(b) と独立・単独コミット可）
 2. §2.1 (b) `PageBreakNormalizer`（まず `hr.pagebreak` のみ）＋合流 CSS ＋テスト
 3. at-directive-tier1-spec 実装後に `vs-break-*` 対応を追加（Tier 1 が先に入っていれば 2. と同時でよい）
-4. ドキュメント: `contents/` の改ページ解説（`---` の章）へ「h2 直前の `---` は自動正規化」「空白ページは `---` 連打」「`page.section_page_break`」を追記。book.yml コメント → `ruby copy_to_scaffold.rb`
+4. ドキュメント: `contents/` の改ページ解説（`---` の章）へ「h2 直前の `---` は自動正規化」「空白ページは `---` 連打」「`page.section_page_break`」を追記。book.yml コメント → `ruby scripts/copy_to_scaffold.rb`
 5. `rake test` → §3-4/5 の実機確認
 
 ## 5. スコープ外

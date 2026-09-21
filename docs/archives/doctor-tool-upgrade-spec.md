@@ -155,7 +155,7 @@ end
 2. バージョン取得（§2.2）→ 計画提示 → 実行・集計（§2.3）
 3. `doctor_command.rb` のオプションとヘルプ文言
 4. テスト（§3）→ `rake test`
-5. ドキュメント: README の doctor 節・`contents/` の環境構築章に追記 → `ruby copy_to_scaffold.rb`
+5. ドキュメント: README の doctor 節・`contents/` の環境構築章に追記 → `ruby scripts/copy_to_scaffold.rb`
 
 ## 5. スコープ外
 

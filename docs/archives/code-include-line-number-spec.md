@@ -186,7 +186,7 @@ flowchart TD
 
 - **ルール変更は不要**（インライン style が既存の `counter-reset: linenumber` を上書きする）。
 - `pre[class*="language-"].line-numbers` のルールに「`data-start` 付きの pre はインライン style の `counter-reset` が優先される」旨のコメントを 1 行追記する（挙動を CSS だけ読んだ人が誤解しないため）。
-- コメントを追記した場合は `ruby copy_to_scaffold.rb` で `lib/project_scaffold/stylesheets/prism.css` へ同期すること（scaffold は手動同期）。
+- コメントを追記した場合は `ruby scripts/copy_to_scaffold.rb` で `lib/project_scaffold/stylesheets/prism.css` へ同期すること（scaffold は手動同期）。
 
 ### 3.5 `--code-font` の解消（`stylesheets/code.css`・§1.6 の付随バグ）
 
@@ -198,7 +198,7 @@ flowchart TD
   - `code.css:193`（`body.vs-kindle table.vs-code-epub`） → Kindle(KFX) は `var()` を解さないため、Kindle 劣化規約（`terminal-literal-spec.md` / `epub-kindle-layout-spec.md` と同方針）に従い**具体名で** `font-family: "HackGen35 Console NF", monospace;` と書く。
     - **読み替え（2026-07-12 追記）**: `epub-code-line-numbers-spec.md`（F 案）が先に実装済みの場合、このセレクタは `.vs-code-epub`（div 容器）へ置き換わっており、あちらの新 CSS が最初から具体名＋`monospace` で書かれているはず。その場合この項目は「新セレクタのフォント指定を確認して完了」とする。
 - `lib/vivlio_starter/cli/techbook/processor.rb:346` の `--code-font: var(--font-code);` 注入は本修正後は不要になるので**削除する**。同ブロックの `code, pre, … { font-family: var(--font-code), monospace !important; text-shadow: none !important; }` は Type 3 フォント対策なので**残す**。
-- 修正後は `ruby copy_to_scaffold.rb` で `lib/project_scaffold/stylesheets/code.css` へ同期する。
+- 修正後は `ruby scripts/copy_to_scaffold.rb` で `lib/project_scaffold/stylesheets/code.css` へ同期する。
 
 ### 3.6 変更しないもの（スコープ外）
 
@@ -260,7 +260,7 @@ flowchart TD
 - [ ] §5 の自動テストが全件パスし、既存テストにリグレッションがない。
 - [ ] pdf / print_pdf / epub / kindle の 4 ターゲットがビルドエラーなく完走する。
 - [ ] `stylesheets/code.css` と `lib/project_scaffold/stylesheets/code.css` から `--code-font` が消え、Techbook の別名注入も削除されている。
-- [ ] `contents/22-extentions.md`（コードインクルード節・行番号節）に「範囲指定時は元ファイルの行番号で表示される」旨と手書きマーカー記法（R9）を追記し、`ruby copy_to_scaffold.rb` で scaffold へ同期する。
+- [ ] `contents/22-extentions.md`（コードインクルード節・行番号節）に「範囲指定時は元ファイルの行番号で表示される」旨と手書きマーカー記法（R9）を追記し、`ruby scripts/copy_to_scaffold.rb` で scaffold へ同期する。
 - [ ] `CHANGELOG.md` の unreleased / Added に記載する。
 
 ### 将来拡張（本タスクではやらない）

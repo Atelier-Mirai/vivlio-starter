@@ -3,7 +3,8 @@
 
 require 'pathname'
 
-ROOT = Pathname.new(__dir__)
+# 集計の基準はプロジェクトルート（scripts/ の一つ上）。
+ROOT = Pathname.new(File.expand_path('..', __dir__))
 
 # 1ファイル分の行数集計結果。総計行にも同じ構造を流用する（path にラベルを入れる）。
 FileStat = Data.define(:path, :total, :code, :comment) do

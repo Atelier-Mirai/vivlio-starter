@@ -40,7 +40,7 @@ P4 個票 [vivlioverso-p4b-workspace-remnants-spec.md](vivlioverso-p4b-workspace
 
 | 経路 | 所在 | 実態 |
 |---|---|---|
-| `vs new` | `lib/project_scaffold/vivliostyle.config.js` | scaffold 同梱コピー。**copy_to_scaffold.rb の管理外**（DIRS/FILES に含まれず・`copy_to_scaffold.rb:14,60`）で、現物は別書籍の古い title を保持したまま（初回ビルドの sync で自己修復する前提） |
+| `vs new` | `lib/project_scaffold/vivliostyle.config.js` | scaffold 同梱コピー。**scripts/copy_to_scaffold.rb の管理外**（DIRS/FILES に含まれず・`scripts/copy_to_scaffold.rb:14,60`）で、現物は別書籍の古い title を保持したまま（初回ビルドの sync で自己修復する前提） |
 | 毎ビルド | `BookSettingsCss.generate!` → `sync_vivliostyle_config!`（`book_settings_css.rb:66-68, 277-282`） → `CssUpdater.sync_vivliostyle_config_size!` / `title!`（`css_updater.rb:38-103`） | size と title の 2 プロパティだけを正規表現 sub で書換（size 行が無ければ language 行の後に挿入）。'prepare theme images' ステップ経由で **full/preflight/single 全モード**で実行 |
 | 手動 | 著者の直接編集 | 現行では size/title 以外の編集は保持される（暗黙の自由） |
 
@@ -191,7 +191,7 @@ export default vivliostyleConfig;
   （さもないと `workspace_structure_test` の git 無差分検査（WS-04・`GENERATED_FILES` は
   ビルド後に復元して検査する方式）で毎回差分となる。生成が決定的なら、コミット後は
   ビルドしても無差分になる）。
-- copy_to_scaffold.rb は現状どおり本ファイルを管理対象外のままとする（root 側も
+- scripts/copy_to_scaffold.rb は現状どおり本ファイルを管理対象外のままとする（root 側も
   scaffold 側も「生成形」で安定するため同期の必要がない）。
 
 ### 2.6 メタデータ解決の一本化（同時にやると安い・任意）

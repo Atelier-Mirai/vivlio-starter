@@ -21,7 +21,7 @@
 #
 #   見るのは **root の config/book.yml**（`book_yml_consumption_test.rb` が scaffold を
 #   見るのとは対象が違う）。ガイドは開発者が root で書くものであり、scaffold は
-#   `copy_to_scaffold.rb` による機械的な複製なので、root が整っていれば同期後の
+#   `scripts/copy_to_scaffold.rb` による機械的な複製なので、root が整っていれば同期後の
 #   scaffold も整う。scaffold を直接見ると「同期し忘れ」で落ち、直す場所も
 #   root なので、失敗の指す先がぶれる。
 # ================================================================

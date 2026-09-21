@@ -314,7 +314,7 @@ body.vs-kindle .talk-c-mirai .talk-sep  { color: #0ea5e9; }
 6. Kindle 対応（`decorate_talk_for_kindle!` を inline 組み替えへ全面差し替え・旧 Kindle CSS 撤去・生成 CSS）＋`epub_kindle_layout_test`
 7. 吹き出しの尻尾（CSS）＋ PDF 実測で寸法調整
 8. `style=inline name=off` の 🟡 ＋テスト
-9. 原稿 22 章「会話文（対話）」へ表示オプションの解説を追記 → `ruby copy_to_scaffold.rb`
+9. 原稿 22 章「会話文（対話）」へ表示オプションの解説を追記 → `ruby scripts/copy_to_scaffold.rb`
 10. `rake test` ＋ PDF / EPUB / Kindle の実機確認
 
 ## 5. スコープ外・未決事項

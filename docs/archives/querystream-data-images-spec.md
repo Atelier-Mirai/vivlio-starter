@@ -266,7 +266,7 @@ Minitest・`test/vivlio_starter/` 配下（fixtures は `test/vivlio_starter/fix
 3. §3.2〜§3.6 を実装（root のみ編集。`lib/project_scaffold/` は触らない）
 4. `rake test` ＋ §4 の結合確認（`rake reinstall` 後に実プロジェクトで `vs build` / `vs epub` / `vs kindle`）
 5. ドキュメント: `data/_README.md` に配置規約（§2）を追記、`contents/25-querystream.md`（データ画像の節を新設）・`contents/61-developer.md:189` 付近（data/ の説明）を更新
-6. `ruby copy_to_scaffold.rb` でスキャフォールド同期
+6. `ruby scripts/copy_to_scaffold.rb` でスキャフォールド同期
 7. query-stream を RubyGems へ公開し、Gemfile.lock を公開版で確定
 
 ## 6. スコープ外・補足

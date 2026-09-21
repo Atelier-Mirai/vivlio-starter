@@ -521,6 +521,6 @@ Ruby の `\b` が日本語を語構成文字として扱う（`/\bRuby\b/` が�
 - `PLANNED.md` の「索引を『出現箇所』でなく『説明箇所』を指すものにする」項目を削除する
 - 本ファイルを `docs/archives/` へ `git mv` し、`STATUS.md` の該当行を削除する
 - `contents/33-index-glossary.md` に `main:` の書き方・レビューでの指定方法・
-  `reference_style` の解説を追記し、`ruby copy_to_scaffold.rb` で雛形へ同期する
+  `reference_style` の解説を追記し、`ruby scripts/copy_to_scaffold.rb` で雛形へ同期する
 - 節指定（`main: 章#見出し`）と原稿記法は本仕様の対象外。必要になったら
   `PLANNED.md` へ改めて起こす

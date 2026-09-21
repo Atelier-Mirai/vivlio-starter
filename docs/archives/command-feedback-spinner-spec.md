@@ -177,7 +177,7 @@ end
 | 2 | ログ出力との干渉処理（§2.1 の消去フック） | ✅ `Common#emit` を新設し、全 log_* をそこへ集約。出力前に `Spinner.clear_active_line` を呼ぶ |
 | 3 | Public コマンド応答監査 → 是正 | ✅ §1.2 のとおり（26 種監査・5 コマンド是正） |
 | 4 | `rake test` | ✅ 1986 runs, 0 failures／RuboCop 396 files, no offenses。**実端末での目視確認は未実施**（§3-4） |
-| 5 | ドキュメント | ✅ README に「ビルド中の進捗表示（スピナー）」節を追加 → `ruby copy_to_scaffold.rb` 実行済み |
+| 5 | ドキュメント | ✅ README に「ビルド中の進捗表示（スピナー）」節を追加 → `ruby scripts/copy_to_scaffold.rb` 実行済み |
 
 ### 実装時の補足
 

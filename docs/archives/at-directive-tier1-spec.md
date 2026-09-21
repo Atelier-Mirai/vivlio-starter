@@ -127,7 +127,7 @@ SPACING_MACRO_RULES = [
 ].freeze
 ```
 
-CSS（`stylesheets/chapter-common.css` に追加。root のみ編集 → `copy_to_scaffold.rb` 同期）:
+CSS（`stylesheets/chapter-common.css` に追加。root のみ編集 → `scripts/copy_to_scaffold.rb` 同期）:
 
 ```css
 /* @pagebreak / :recto / :verso（at-directive-tier1-spec §2.2）
@@ -286,7 +286,7 @@ Minitest・ruby-coding-rules skill 適用。
 3. §2.3 `@version`/`@today`/`@title`（`value_macro_rules`）→ テスト 1
 4. §2.4 見出しラベル＋`@pageref`（VFM 見出し内 span の実ビルド検証を最初に行い、NG なら直後行方式へ切替）＋ CSS → テスト 2
 5. §2.5 `@qr`（gemspec 追加 → transformer → 配線）→ テスト 3
-6. ドキュメント: `contents/22-extentions.md`（`@vspace` の節の並びに 5 記法を追記）・`contents/61-developer.md` の記法一覧 → `ruby copy_to_scaffold.rb`
+6. ドキュメント: `contents/22-extentions.md`（`@vspace` の節の並びに 5 記法を追記）・`contents/61-developer.md` の記法一覧 → `ruby scripts/copy_to_scaffold.rb`
 7. `rake test` → §3-4 の実機確認 → at-directive-ideas.md の Tier 1 表へ「実装済み → 本仕様書」の注記、PLANNED/STATUS 更新
 
 ## 5. スコープ外・将来拡張（策定時）

@@ -135,7 +135,7 @@ Minitest・ruby-coding-rules skill 適用。
 3. ワークスペース組み立て（§2.3–2.4）と PDF 回収
 4. テスト（§3）→ `rake test`
 5. ドキュメント: `README.md` のビルド節・`contents/` の該当章（build コマンド解説）に直接モードを追記。ヘルプ文言（`many :targets` の説明）更新
-6. `ruby copy_to_scaffold.rb`（README 更新分の同期）
+6. `ruby scripts/copy_to_scaffold.rb`（README 更新分の同期）
 
 ## 5. 実装との差分（2026-07-21）
 

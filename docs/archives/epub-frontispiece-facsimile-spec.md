@@ -89,7 +89,7 @@ HTML 側の `div.chapter-lead` は（焼き込み成功時のみ）除去する�
 | `lib/vivlio_starter/cli/build/epub_builder.rb` | `inject_heading_images_for_epub!`(L887) / `inject_frontispiece_headings!`(L1121) / `inject_frontispiece_tail!`(L1145) / `apply_image_heading!`(L1189) / `heading_image_src`(L1216) / `epub_heading_font_family`(L1079) | h1 注入・裾帯注入・キャッシュ・フォント |
 | `lib/vivlio_starter/cli/pre_process/frontmatter_generator.rb` | `parse_theme_settings`(L44) | `frontispiece_path`（portrait）・`lead_width_value` 等を返す |
 | `stylesheets/components.css` | `img.vs-frontispiece-tail`(L227 付近) | 裾帯 CSS |
-| `lib/project_scaffold/stylesheets/components.css` | 同上 | scaffold 側（**直接編集禁止**・`ruby copy_to_scaffold.rb` で同期） |
+| `lib/project_scaffold/stylesheets/components.css` | 同上 | scaffold 側（**直接編集禁止**・`ruby scripts/copy_to_scaffold.rb` で同期） |
 
 補足事実（実装時に前提としてよい）:
 
@@ -382,7 +382,7 @@ RENDER_WIDTH = { frontispiece: 1400, ornament: 1400 }.freeze
 1. `stylesheets/components.css` の `img.vs-frontispiece-tail { ... }` ルールと直前コメントを削除。
    h1 側 `.vs-image-heading-epub` 系は無変更（`width:100%; height:auto` は縦長画像でも正しい。
    Kindle が 1 画面へ自動縮小する）。
-2. **scaffold 同期**: `ruby copy_to_scaffold.rb` を実行（`lib/project_scaffold/` の直接編集は禁止）。
+2. **scaffold 同期**: `ruby scripts/copy_to_scaffold.rb` を実行（`lib/project_scaffold/` の直接編集は禁止）。
 
 ImageGenerator / ThemeImageResolver は**無変更**（本方式は PDF と同じ portrait をそのまま使う）。
 
@@ -459,7 +459,7 @@ ImageGenerator / ThemeImageResolver は**無変更**（本方式は PDF と同�
 ## 10. 完了条件チェックリスト
 
 - [ ] `grep -rn "frontispiece_tail\|FRONTISPIECE_SPLIT\|vs-frontispiece-tail" lib stylesheets` が 0 件
-      （scaffold 側も `ruby copy_to_scaffold.rb` で同期済み）
+      （scaffold 側も `ruby scripts/copy_to_scaffold.rb` で同期済み）
 - [ ] リードが合成画像に焼き込まれ、HTML から `div.chapter-lead` が除去されている
       （合成失敗時は除去されず simple 縮退）
 - [ ] `LAYOUT_VERSION`・リード本文がキャッシュキーに入っている

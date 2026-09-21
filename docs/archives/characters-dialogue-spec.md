@@ -137,7 +137,7 @@ Kindle は `::before` ラベルと `var()` を無視するため:
 3. `MarkdownTransformer` の `.talk` 変換＋ `ContainerClassCheck` 登録＋テスト
 4. `components.css`（吹き出しレイアウト）＋ `BookSettingsCss` 拡張＋テスト
 5. Kindle 劣化（EpubBuilder＋生成 CSS＋ epub_kindle_layout_test）
-6. `config/characters.yml` 雛形・`images/characters/` の `_README.md` を root に追加 → 原稿 22 章の会話文節を書き直し → `ruby copy_to_scaffold.rb`
+6. `config/characters.yml` 雛形・`images/characters/` の `_README.md` を root に追加 → 原稿 22 章の会話文節を書き直し → `ruby scripts/copy_to_scaffold.rb`
 7. `rake test` ＋ 実機 3 ターゲット確認
 
 ## 5. スコープ外・未決事項

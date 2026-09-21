@@ -692,4 +692,4 @@ Phase 1〜6 は辞書の内容を変えない（表示と保存形式のみ）�
 - **文字数の基準は `metrics-char-count-basis-report.md` の結論待ち**（§3.3）。
   あちらが決まったら本仕様の基準もそれへ合わせる
 - `contents/33-index-glossary.md` に「索引語数の目安」「一般語の提示」「スコアの意味」の解説を追記し、
-  `ruby copy_to_scaffold.rb` で雛形へ同期する
+  `ruby scripts/copy_to_scaffold.rb` で雛形へ同期する

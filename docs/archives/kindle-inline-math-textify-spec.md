@@ -98,7 +98,7 @@ MathTextRenderer.render(latex)
 
 ### 4.3 CSS
 
-追加不要（span は本文のフォント・サイズをそのまま継承するのが正しい動作）。見た目の調整が必要になった場合のみ `body.vs-kindle .vs-math-text { … }` を `chapter-common.css` へ追記する（`:is()`/`var()` 禁止・root 編集→ `copy_to_scaffold.rb` 同期）。
+追加不要（span は本文のフォント・サイズをそのまま継承するのが正しい動作）。見た目の調整が必要になった場合のみ `body.vs-kindle .vs-math-text { … }` を `chapter-common.css` へ追記する（`:is()`/`var()` 禁止・root 編集→ `scripts/copy_to_scaffold.rb` 同期）。
 
 ### 4.4 触らないもの
 

@@ -127,7 +127,7 @@ EPUB/Kindle はラスター化で焼き込むためこの問題は出ない（�
 
 ## 7. CSS・レイアウト
 
-`stylesheets/chapter-common.css` に `.vs-mermaid` の最小スタイル（中央寄せ・最大幅・上下マージン）を追加。SVG の intrinsic size 落とし穴（`vivliostyle-css-pitfalls-notes`）に留意し、`img.vs-mermaid { max-width: 100%; height: auto; }` を基本とする。root 編集 → `copy_to_scaffold.rb` 同期（[[scaffold-sync-workflow]]）。
+`stylesheets/chapter-common.css` に `.vs-mermaid` の最小スタイル（中央寄せ・最大幅・上下マージン）を追加。SVG の intrinsic size 落とし穴（`vivliostyle-css-pitfalls-notes`）に留意し、`img.vs-mermaid { max-width: 100%; height: auto; }` を基本とする。root 編集 → `scripts/copy_to_scaffold.rb` 同期（[[scaffold-sync-workflow]]）。
 
 ## 8. 制限事項（ドキュメント記載予定）
 

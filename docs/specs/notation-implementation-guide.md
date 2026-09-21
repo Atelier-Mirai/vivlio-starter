@@ -45,7 +45,7 @@
 
 ## 3.【A】CSS 型の手順
 
-1. **root の CSS を編集**する（`stylesheets/chapter-common.css` 等）。`lib/project_scaffold/` は直接編集しない（同期で消える）。編集後 `ruby copy_to_scaffold.rb`。
+1. **root の CSS を編集**する（`stylesheets/chapter-common.css` 等）。`lib/project_scaffold/` は直接編集しない（同期で消える）。編集後 `ruby scripts/copy_to_scaffold.rb`。
 2. **クラスの許可は自動**: `ContainerClassCheck` は `stylesheets/**/*.css` のクラスセレクタを自動抽出して許可リストにする。**CSS にクラスを書けば警告は出ない**。前処理がブロックごと消費して CSS に痕跡が残らないクラス（showcase 型）だけ `PREPROCESSED_CLASSES` へ明示登録する（`cli/guards/container_class_check.rb`）。
 3. **Kindle 劣化対策 3 点セット**（枠＋ラベル付きの囲みボックスを作るとき。正典は CLAUDE.md）:
    - `EpubBuilder::ADMONITION_LABELS` に `'class' => '【LABEL】'` を追加（Kindle のみ実ラベル `<p class="vs-adm-label">` 注入）
@@ -184,7 +184,7 @@ Minitest・DI スタブ（外部ツールは実行しない）。定番の検証
 | `contents/90-cheatsheet.md` | 記法早見表へ 1 行追加 |
 | `docs/specs/<name>-spec.md` | 新規実装は仕様書を書いてから。完了後は `docs/archives/` へ |
 
-原稿更新後は `ruby copy_to_scaffold.rb` で雛形へ同期する。
+原稿更新後は `ruby scripts/copy_to_scaffold.rb` で雛形へ同期する。
 
 ## 9. チェックリスト（コピペ用）
 
@@ -196,7 +196,7 @@ Minitest・DI スタブ（外部ツールは実行しない）。定番の検証
 [ ] 警告に 出現位置＋修正案＋doctor 導線 がある
 [ ] rake test 全緑・rubocop クリーン・実ビルドで紙面確認
 【A: CSS 型】
-[ ] root の CSS を編集し copy_to_scaffold.rb で同期した
+[ ] root の CSS を編集し scripts/copy_to_scaffold.rb で同期した
 [ ] （囲みボックスなら）Kindle 劣化 3 点セット
 [ ] （前処理が消費するクラスなら）ContainerClassCheck::PREPROCESSED_CLASSES
 【B: 変換型】

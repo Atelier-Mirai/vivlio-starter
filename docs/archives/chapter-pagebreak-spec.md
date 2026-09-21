@@ -187,7 +187,7 @@ def insert_blank_page_before_colophon(files)
 | コード | `common.rb:218`（スキーマ） |
 | | `book_settings_css.rb`（`section_page_break_rule` / `section_page_break_disabled?` / `page_cfg[:section_page_break]`） |
 | | `page_break_normalizer.rb`（`section_page_break_enabled?` / `CONFIG.page.section_page_break`） |
-| 設定 | `config/book.yml:135` → `ruby copy_to_scaffold.rb` |
+| 設定 | `config/book.yml:135` → `ruby scripts/copy_to_scaffold.rb` |
 | 原稿 | `contents/41-book-yml.md:99,104`・`contents/22-extentions.md:1311` → 同期 |
 | テスト | `book_settings_css_test.rb`・`page_break_normalizer_test.rb` |
 
@@ -199,7 +199,7 @@ def insert_blank_page_before_colophon(files)
 - **`contents/41-book-yml.md`** — `page` セクションの解説に `chapter_pagebreak` を追加。§1.4 の「PDF 専用」を明記し、白紙 20 枚 / 368 ページの実測値を添えて効果の目安を示す
 - **`contents/22-extentions.md`** — `@pagebreak` の節（1264 行〜）に「本全体の既定は `page.chapter_pagebreak` で変えられる。原稿の `@pagebreak:recto` はそれより優先される」を 1 段落追加。1311 行の `section_page_break` を改名
 - **`contents/90-notation-cheatsheet.md`** — 変更不要（記法の表であり book.yml の表ではない）
-- いずれも `ruby copy_to_scaffold.rb` で scaffold へ同期する
+- いずれも `ruby scripts/copy_to_scaffold.rb` で scaffold へ同期する
 
 ## 4. テスト
 

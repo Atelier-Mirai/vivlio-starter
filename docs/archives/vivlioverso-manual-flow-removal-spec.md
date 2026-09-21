@@ -36,7 +36,7 @@ workspace 化（`vs pdf` を workspace の sections config へ向ける案）も
 | `EntriesCommands.execute_entries` 系 | 削除。`build_entry` / `extract_html_title` は `VivliostyleConfigWriter` / `EpubBuilder` が利用するため残置 |
 | `VivliostyleConfigWriter.write_root_config!` 系 | `root_config_content` / `backup_unmanaged_root_config!` / `ROOT_CONFIG_MARKER` ごと削除。メタデータリゾルバ（`resolve_title` 等）は用途別 config / EPUB config が共用するため残置 |
 | `BookSettingsCss` からの呼び出し | `write_root_config!` 呼び出しを削除 |
-| ルート / scaffold の `vivliostyle.config.js` | ファイル削除（scaffold は copy_to_scaffold.rb の同期対象外のため直接削除） |
+| ルート / scaffold の `vivliostyle.config.js` | ファイル削除（scaffold は scripts/copy_to_scaffold.rb の同期対象外のため直接削除） |
 | `package.json` の `build:pdf` 系 script | 削除（ルート config 前提のため） |
 | `.gitignore` の `/entries.js` | 削除 |
 | book.yml スキーマ `vivliostyle.entries_file` / `config_file` | 既定値・README 記載を削除（コード上の消費者なし） |

@@ -73,7 +73,7 @@
 | コード | `markdown_preprocessor.rb`（メソッド名・ログ文言）・`markdown_transformer.rb`・`pre_process.rb` 委譲 |
 | マニュアル | `contents/22-extentions.md`「`.table-rotate` — 表を90度回転」節・`contents/61-developer.md` 手順 9 |
 | spellcheck 辞書 | `config/spellcheck_dictionaries/vivlio-starter-terms.txt` の `table-rotate` 行を `rotate-table` へ |
-| scaffold | `lib/project_scaffold/` 配下の同名ファイル（`ruby copy_to_scaffold.rb` で同期） |
+| scaffold | `lib/project_scaffold/` 配下の同名ファイル（`ruby scripts/copy_to_scaffold.rb` で同期） |
 | テスト | `markdown_transformer_test.rb` の `table-rotate` 参照（`test_convert_container_blocks_*` 4 件） |
 
 CHANGELOG に **Breaking** として明記する（旧 `:::{.table-rotate}` は変換されず素通しになる）。
@@ -406,7 +406,7 @@ td[colspan] {
   - `.table-rotate` 節を `.rotate-table` へ改名し、**scale/shift-y が自動算出されること**・手動指定は微調整用であること・`shift-y` の新しい意味（中央からのオフセット・既定 0%）を記載。
 - `contents/61-developer.md` 手順 9 を「book-card / テーブル変換（コンテナ＋拡張テーブル横取り）」へ更新。
 - `config/spellcheck_dictionaries/vivlio-starter-terms.txt`: `table-rotate` → `rotate-table`。
-- scaffold 側（`lib/project_scaffold/`）は `ruby copy_to_scaffold.rb` で同期。
+- scaffold 側（`lib/project_scaffold/`）は `ruby scripts/copy_to_scaffold.rb` で同期。
 - `CHANGELOG.md`（unreleased）: Added（拡張テーブル・自動フィット）＋ **Breaking 3 点**を明記 — (1) `:::{.table-rotate}` → `:::{.rotate-table}`（旧記法は変換されない）、(2) テーブル内 `||` の意味変更（空セル→結合。空セルは `| |`）、(3) `shift-y` の意味変更（センタリング補正値→中央からの追加オフセット。既定 +25% → 自動センタリング）。本仕様書への参照リンクを付ける。
 - `PLANNED.md` の該当項目（[Low] テーブルの横結合）を消化としてマーク（または削除）。
 

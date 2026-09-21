@@ -18,7 +18,7 @@
 3. **Phase C（任意・推奨）**: PDF 系 5 ファイルに散在する `72.0 / 25.4` を `Units` の定数参照に差し替える（挙動不変）。
 
 テストは §7 の表をそのまま実装する（従来の「中核設定テスト」タスク③を包含）。
-検証は §8 のコマンドで行う。**変更は `lib/` と `test/` のみで、scaffold 同期（`copy_to_scaffold.rb`）は不要**（`config/page_presets.yml`・`stylesheets/` は変更しない）。
+検証は §8 のコマンドで行う。**変更は `lib/` と `test/` のみで、scaffold 同期（`scripts/copy_to_scaffold.rb`）は不要**（`config/page_presets.yml`・`stylesheets/` は変更しない）。
 
 ---
 

@@ -190,7 +190,7 @@
 
 ### 5.3 リリース同期
 
-リリース時は `copy_to_scaffold.rb` が root のアセットを scaffold へ複製するため、**root を正**として編集し、scaffold 側 CSS は同値に保つ（§5.1 の対）。
+リリース時は `scripts/copy_to_scaffold.rb` が root のアセットを scaffold へ複製するため、**root を正**として編集し、scaffold 側 CSS は同値に保つ（§5.1 の対）。
 
 ---
 

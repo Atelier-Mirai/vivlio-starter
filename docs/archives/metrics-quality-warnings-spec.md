@@ -157,7 +157,7 @@ Minitest・ruby-coding-rules skill 適用。`test/vivlio_starter/cli/metrics/` �
 1. `MATTR_MONOTONOUS_MAX` 定数抽出（挙動不変・単独コミット可）
 2. `WarningChecker#quality_warnings` ＋テスト 1
 3. 表示合成（§2.2）・`--warn`（§2.3）・構造化出力（§2.4）＋テスト 2
-4. ドキュメント: `contents/` の metrics 章（警告の種類一覧に 2 ラベルを追記・発火条件と調整キーを明記）→ `ruby copy_to_scaffold.rb`
+4. ドキュメント: `contents/` の metrics 章（警告の種類一覧に 2 ラベルを追記・発火条件と調整キーを明記）→ `ruby scripts/copy_to_scaffold.rb`
 5. `rake test` ＋ 実プロジェクトで `vs metrics` / `vs metrics --warn` / `--json` の目視確認
 
 ## 5. スコープ外・設計判断の記録

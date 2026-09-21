@@ -118,7 +118,7 @@
 
 ## 5. 実装設計②: CSS（PDF・クリーン EPUB）
 
-`stylesheets/chapter-common.css` の「リスト」セクション（208 行付近）へ追記する。**root を編集し `ruby copy_to_scaffold.rb` で同期**（[[scaffold-sync-workflow]]・`lib/project_scaffold/` 直編集禁止）。
+`stylesheets/chapter-common.css` の「リスト」セクション（208 行付近）へ追記する。**root を編集し `ruby scripts/copy_to_scaffold.rb` で同期**（[[scaffold-sync-workflow]]・`lib/project_scaffold/` 直編集禁止）。
 
 ### 5.1 fancy list
 
@@ -253,7 +253,7 @@ Minitest。実装時は ruby-coding-rules skill を適用。
 
 - `contents/21-markdown-tutorial.md` のリスト節（110〜130 行）: ネストのインデント規則（§7-5）、fancy list 記法の基本、ul のレベル別デフォルトマーカー「● ○ ・」（Kindle では第 3 レベルが ■ になる旨も一言）。
 - `contents/22-extentions.md` の「リスト装飾」節（663 行〜）: fancy list 全様式の一覧・`:::{.outline-list}`・制限事項（§7）。
-- 更新後 `ruby copy_to_scaffold.rb` で scaffold へ同期（CSS 変更分も同時に同期される）。
+- 更新後 `ruby scripts/copy_to_scaffold.rb` で scaffold へ同期（CSS 変更分も同時に同期される）。
 
 ## 10. 実装手順（Opus 4.8 向けチェックリスト）
 
@@ -266,7 +266,7 @@ Minitest。実装時は ruby-coding-rules skill を適用。
 7. [x] `chapter-common.css` の `body.vs-kindle` セクションへ §6.2 を追記
 8. [x] §8-2・§8-3 のテストを追加して通す
 9. [x] `contents/21` / `contents/22` を更新（§9）
-10. [x] `ruby copy_to_scaffold.rb` で scaffold 同期
+10. [x] `ruby scripts/copy_to_scaffold.rb` で scaffold 同期
 11. [x] `rake test` / `bundle exec rubocop` / `rake test:layout`（余力があれば）
 12. [ ] **Kindle Previewer 3 で実機確認**（epubcheck 合格では KFX 表示を保証しない。`kindle-css-compatibility-notes.md` §6 チェックリスト遵守）
 

@@ -66,7 +66,7 @@ ruby -Itest -Ilib test/vivlio/starter/cli/techbook/emoji_replacer_test.rb
 `config/`、`contents/`、`stylesheets/` 等を編集した後、scaffold テンプレートに反映するには:
 
 ```bash
-ruby copy_to_scaffold.rb
+ruby scripts/copy_to_scaffold.rb
 ```
 
 `config/book.yml` は自動的にプレースホルダー記法（`{{MAIN_TITLE}}` 等）に置換される。

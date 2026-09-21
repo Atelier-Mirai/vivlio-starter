@@ -176,7 +176,7 @@ body.preface.vs-kindle a, body.postface.vs-kindle a { color: PREF; border-bottom
 | `stylesheets/simple-header.css` | **無変更でよい**（`#b8860b` は book-settings.css 未生成時の安全網として残す。book-settings.css が後勝ちで上書きする）。ただし左罫（`border-left: 4px solid #b8860b`）を色だけ上書きする都合上、生成規則側で `border-left-color` を明示すること |
 | `stylesheets/chapter-common.css` | **無変更でよい**（`#888` は安全網として残す。book-settings.css が上書き）。ただし §2.4 の「実セレクタ確定」で必要なら最小修正 |
 
-`lib/project_scaffold/` は直接編集しない。root を編集して `ruby copy_to_scaffold.rb` で同期する（CLAUDE.md）。
+`lib/project_scaffold/` は直接編集しない。root を編集して `ruby scripts/copy_to_scaffold.rb` で同期する（CLAUDE.md）。
 
 ## 4. 検討した代替案（不採用）
 

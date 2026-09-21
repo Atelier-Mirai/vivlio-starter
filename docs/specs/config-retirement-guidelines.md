@@ -40,7 +40,7 @@ RETIRED = {
 手順は 3 つ。
 
 1. `ConfigKeys::KEYS` から**キーを削除**し、`ConfigKeys::RETIRED` へ移す
-2. ルートの `config/book.yml` からキーを削除し、`ruby copy_to_scaffold.rb` で雛形へ同期する
+2. ルートの `config/book.yml` からキーを削除し、`ruby scripts/copy_to_scaffold.rb` で雛形へ同期する
 3. 読み出し側のコードを撤去する（値が来なくなるので必ず壊れる）
 
 検出も案内も表が担うので、各コマンドは何も書かない。既定値スキーマ・
