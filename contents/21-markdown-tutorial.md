@@ -97,7 +97,7 @@ Vivlio Starter が扱う Markdown は、**CommonMark 仕様**（バージョン 
 
 ### 改行と段落
 
-Vivlio Starter では、**Enter キーで改行した位置が紙面にも反映されます**（ハード改行）。多くの Markdown 処理系では、改行のために行末へスペース二つや `<br>` を書きますが、Vivlio Starter では不要です。
+Vivlio Starter では、**Enter キーで改行した位置が紙面にも反映されます**（ハード改行）。多くの Markdown 処理系では、改行のために行末へスペース 2 つや `<br>` を書きますが、Vivlio Starter では不要です。
 
 ```markdown
 はじめまして。
