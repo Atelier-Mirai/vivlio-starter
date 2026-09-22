@@ -374,10 +374,22 @@ module VivlioStarter
         end
       end
 
+      # Kindle Previewer 4 は専用の CLI 実行ファイル（KindlePreviewer4CLI）を持ち、
+      # 3 とはアプリ名も実行ファイル名も違う。**新しい版を先に見る**——3 のパスを
+      # 決め打ちにしていたため、4 へ上げた機械でラッパーが存在しないパスを指し、
+      # KPF 変換だけが No such file or directory で落ちていた（実測）。
+      def test_kindle_previewer_app_bins_prefer_the_newer_version
+        bins = DoctorCommands::KINDLE_PREVIEWER_APP_BINS
+
+        assert_includes bins.first, 'Kindle Previewer 4'
+        assert_includes bins.first, 'KindlePreviewer4CLI'
+        assert(bins.any? { it.include?('Kindle Previewer 3') }, '3 系も引き続き使えること')
+      end
+
       # kindlepreviewer ラッパーを bin_dir に実行可能な sh シムとして作成する
       def test_create_kindlepreviewer_wrapper_writes_executable_shim
         Dir.mktmpdir do |bin_dir|
-          app_bin = DoctorCommands::KINDLE_PREVIEWER_APP_BIN
+          app_bin = DoctorCommands::KINDLE_PREVIEWER_APP_BINS.first
           wrapper = nil
           stub_logging do
             wrapper = DoctorCommands.create_kindlepreviewer_wrapper!(app_bin, bin_dir)

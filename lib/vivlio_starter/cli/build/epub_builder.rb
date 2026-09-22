@@ -141,9 +141,36 @@ module VivlioStarter
             localized_image?(it, flavor)
           end
           copy_asset_tree!(Common.stylesheets_dir, dir, flavor:) { localized_stylesheet?(it, flavor) }
+          drop_unresolvable_font_imports!(dir)
           localize_theme_variant_images!(dir, flavor)
           localize_cover_image!(dir, flavor)
           Common.log_info("[EPUB] 参照資産を #{dir} 内へローカライズしました（flavor: #{flavor}）")
+        end
+
+        # 運ばなかった fonts/ を指す @import を、ローカライズ後の CSS から外す。
+        #
+        # **Vivliostyle へ渡す前に外す必要がある。** 同じ除去を EPUB 内の CSS に対しても
+        # sanitize_epub_css! が行うが、あちらが走るのは vivliostyle build の**後**である。
+        # 11.0.2 までは解決できない @import を黙って無視していたので後片付けで足りていたが、
+        # 11.3.3 は build の時点で解決を試み、失敗すると EPUB 生成ごと止める（実測）。
+        #
+        #   ERROR Failed to resolve the CSS imports: …/stylesheets/page-settings.css
+        #   Could not resolve the CSS import: fonts/google-fonts.css
+        #
+        # フォントを埋め込む設定なら fonts/ ごと運んでいるので、外す必要はない。
+        #
+        # @param dir [String] ローカライズ先ディレクトリ
+        def drop_unresolvable_font_imports!(dir)
+          return if embed_fonts?
+
+          Dir.glob(File.join(dir, 'stylesheets', '**', '*.css')).each do |css|
+            source = File.read(css)
+            stripped = source.gsub(FONT_IMPORT_PATTERN, '')
+            next if stripped == source
+
+            File.write(css, stripped)
+            Common.log_debug("[EPUB] 参照切れの @import を外しました: #{css}")
+          end
         end
 
         # 生成バリアント webp（.cache/vs/theme-images/）を dir/theme-images/ へ同梱する。
@@ -2953,7 +2980,7 @@ module VivlioStarter
         # Kindle KPF 変換（§1-7）
         # ================================================================
 
-        # Kindle Previewer 3 CLI（kindlepreviewer）コマンド名。
+        # Kindle Previewer CLI（kindlepreviewer）コマンド名。3 系・4 系のどちらでもよい。
         KINDLEPREVIEWER_COMMAND = 'kindlepreviewer'
 
         # `-locale` が受け付ける綴り（`kindlepreviewer -help` より）。
@@ -2988,6 +3015,29 @@ module VivlioStarter
           system('which', command, out: File::NULL, err: File::NULL) || false
         end
 
+        # オプションの接頭辞を、導入されている Kindle Previewer の版から決める。
+        #
+        # **4.0.0 で綴りが変わった。** 3 は `-convert -output -locale`、4 は
+        # `--convert --output --locale` である（option 名と locale の綴りは同じ）。
+        # 版を決め打ちにすると、どちらかの利用者で KPF 変換が黙って失敗する——
+        # 変換だけ落ちて中間 EPUB が残るため、成果物を見るまで気づきにくい。
+        #
+        # `-help` はどちらの版も受け付けるので、その出力に `--convert` があるかで見分ける。
+        # 版そのものを解析しないのは、4.1 以降で表記が変わっても綴りを直接見るほうが
+        # 壊れにくいためである。判定は 1 ビルドにつき 1 回だけ行う。
+        #
+        # @param command [String] kindlepreviewer コマンド名
+        # @return [String] '-' または '--'
+        def kpf_option_prefix(command = KINDLEPREVIEWER_COMMAND)
+          @kpf_option_prefix ||= {}
+          @kpf_option_prefix[command] ||= begin
+            help = `#{command} -help 2>&1`
+            help.include?('--convert') ? '--' : '-'
+          rescue StandardError
+            '-'
+          end
+        end
+
         # Kindle 用中間 EPUB を kindlepreviewer で KPF へ変換し、kpf_path へ回収する（§1-7）。
         # 変換ログ（Summary_Log.csv / Logs/*_log.csv）の Error/Quality 件数を log_summary で要約する。
         # 未導入・変換失敗時は false を返し（中間 EPUB は残す）、ビルド全体は止めない。
@@ -3002,14 +3052,15 @@ module VivlioStarter
 
           unless kindlepreviewer_available?(command)
             Common.log_warn("[KPF] #{command} が見つかりません。KPF 変換をスキップし、中間 EPUB を残します: #{epub_path}")
-            Common.log_warn('  → Kindle Previewer 3 を導入するか、中間 EPUB を手動で変換してください。')
+            Common.log_warn('  → Kindle Previewer を導入するか、中間 EPUB を手動で変換してください。')
             return false
           end
 
           Common.log_action("[KPF] #{File.basename(epub_path)} を KPF へ変換しています…")
+          prefix = kpf_option_prefix(command)
           Dir.mktmpdir('vs-kpf') do |outdir|
-            ok = system(command, File.expand_path(epub_path), '-convert', '-output', outdir, '-locale', locale,
-                        out: File::NULL, err: File::NULL)
+            ok = system(command, File.expand_path(epub_path), "#{prefix}convert", "#{prefix}output", outdir,
+                        "#{prefix}locale", locale, out: File::NULL, err: File::NULL)
             summarize_kpf_logs(outdir)
 
             kpf = Dir.glob(File.join(outdir, '**', '*.kpf')).max_by { File.mtime(it) }

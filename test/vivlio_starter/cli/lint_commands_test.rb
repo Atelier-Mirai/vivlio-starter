@@ -679,7 +679,14 @@ module VivlioStarter
           merged = Common.merge_hardcoded_defaults(lint: { sentence_length_max: raw })
           Common.install_configuration!(Common.wrap_config(merged).freeze)
 
-          assert_equal expected, runner.send(:sentence_length_max), "入力 #{raw.inspect}"
+          actual = runner.send(:sentence_length_max)
+          # Minitest 6 は assert_equal に nil を期待させると失敗する（5 では警告どまり）。
+          # 期待値の表に nil が混ざっているので、そこだけ assert_nil へ振り分ける
+          if expected.nil?
+            assert_nil actual, "入力 #{raw.inspect}"
+          else
+            assert_equal expected, actual, "入力 #{raw.inspect}"
+          end
         end
       ensure
         Common.install_configuration!(original)

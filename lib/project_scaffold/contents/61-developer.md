@@ -613,9 +613,9 @@ Vivliostyle 関連のパッケージは `package.json` で管理しています�
 
 | パッケージ | バージョン | 役割 |
 |-----------|-----------|------|
-| `@vivliostyle/cli` | 11.0.2 | CSS 組版エンジン CLI。`vs build` から呼び出す |
-| `@vivliostyle/vfm` | 2.7.0 | Markdown から HTML への変換 |
-| `@vivliostyle/core` | 2.43.2 | レンダリングエンジン（CLI に内包） |
+| `@vivliostyle/cli` | 11.3.3 | CSS 組版エンジン CLI。`vs build` から呼び出す |
+| `@vivliostyle/vfm` | 2.7.2 | Markdown から HTML への変換 |
+| `@vivliostyle/core` | 2.45.1 | レンダリングエンジン（CLI に内包） |
 
 `vs build` はグローバルに導入された `vivliostyle` コマンドを呼びます（`vs doctor --fix` が導入します）。11 系では脚注まわりの組版が大きく改善されています。最新版は[npmjs.com/@vivliostyle/cli](https://www.npmjs.com/package/@vivliostyle/cli)で確認できます。
 

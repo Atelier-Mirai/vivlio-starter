@@ -31,7 +31,7 @@
 #   - rouge: コードブロック言語推定（Ruby gem）
 #   - mathjax (mathjax-full): 数式の SVG 化（npm パッケージ）
 #   - waifu2x-ncnn-vulkan: AI 画像拡大（オプション）
-#   - kindlepreviewer (Kindle Previewer 3): Kindle(KPF) 変換（任意・targets: kindle 用）
+#   - kindlepreviewer (Kindle Previewer 3 / 4): Kindle(KPF) 変換（任意・targets: kindle 用）
 #   - Google Fonts 用 SSL 証明書 (macOS): Web フォント取得
 #
 # 自動インストール:
@@ -81,13 +81,23 @@ module VivlioStarter
       # poppler（pdfinfo / pdftoppm）は本体のビルドでも使うため含めない
       OCR_OPTIONAL_TOOLS = %w[tesseract tesseract-lang vips].freeze
 
-      # Kindle Previewer 3 同梱の CLI（targets: kindle の KPF 変換専用の任意ツール）。
+      # Kindle Previewer 同梱の CLI（targets: kindle の KPF 変換専用の任意ツール）。
       # Build::EpubBuilder::KINDLEPREVIEWER_COMMAND と同値だが、doctor を軽量に保つため
       # epub_builder を require せず独立に持つ。kindle を使わない利用者には不足を
       # ハードエラーにせず 🟡 注記に回す。
       KINDLEPREVIEWER_COMMAND = 'kindlepreviewer'
-      # macOS の Kindle Previewer 3 アプリ内 CLI 実行ファイル（ラッパーが呼ぶ実体）。
-      KINDLE_PREVIEWER_APP_BIN = '/Applications/Kindle Previewer 3.app/Contents/MacOS/Kindle Previewer 3'
+      # macOS の Kindle Previewer アプリ内 CLI 実行ファイル（ラッパーが呼ぶ実体）。
+      #
+      # **4.0.0 でアプリ名も実行ファイル名も変わった。** 3 はアプリ本体を直接呼んでいたが、
+      # 4 は `KindlePreviewer4CLI` という専用の実行ファイルを同梱する。3 のパスを決め打ちに
+      # していたため、4 へ上げた機械ではラッパーが存在しないパスを指し、
+      # `No such file or directory` で KPF 変換だけが落ちていた（実測）。
+      #
+      # 新しい版を先に見る。両方あれば新しいほうを採る。
+      KINDLE_PREVIEWER_APP_BINS = [
+        '/Applications/Kindle Previewer 4.app/Contents/MacOS/KindlePreviewer4CLI',
+        '/Applications/Kindle Previewer 3.app/Contents/MacOS/Kindle Previewer 3'
+      ].freeze
 
       # 機能チェック（--version 実起動）でのバージョン確認フラグ。既定は --version。
       # poppler 系（pdfinfo / pdftoppm / pdftotext）は --version を解さず -v が正しい
@@ -216,11 +226,11 @@ module VivlioStarter
         inkscape_ok = command_runnable?('inkscape')
         Common.log_always('✅ inkscape: OK') if inkscape_ok
 
-        # kindlepreviewer（Kindle Previewer 3）は targets: kindle 専用の任意ツール。
+        # kindlepreviewer（Kindle Previewer 3 / 4）は targets: kindle 専用の任意ツール。
         # 存在すれば ✅、無ければ後段で 🟡 案内（ハードエラーにはしない）。
         # シムだけ残って .app 本体が消えた inkscape 型の半壊を見抜くため機能チェックする。
         kindle_previewer_present = kindlepreviewer_functional?
-        Common.log_always('✅ kindlepreviewer (Kindle Previewer 3): OK') if kindle_previewer_present
+        Common.log_always("✅ kindlepreviewer (#{kindle_previewer_label}): OK") if kindle_previewer_present
 
         if is_macos
           if ssl_certificate_configured?
@@ -393,7 +403,7 @@ module VivlioStarter
             end
           end
 
-          # Kindle Previewer 3（kindlepreviewer）: cask 導入＋アプリ内 CLI への PATH ラッパー作成
+          # Kindle Previewer（kindlepreviewer）: cask 導入＋アプリ内 CLI への PATH ラッパー作成
           install_kindlepreviewer_macos! if missing.include?(KINDLEPREVIEWER_COMMAND)
 
           install_ssl_certificates! if missing.include?('ssl-certificates')
@@ -798,7 +808,7 @@ module VivlioStarter
                  else
                    'Amazon KDP のサイトから Kindle Previewer 3 を導入し、kindlepreviewer に PATH を通してください。'
                  end
-        Common.log_warn('任意ツール kindlepreviewer（Kindle Previewer 3・targets: kindle の KPF 変換時のみ必要）:',
+        Common.log_warn('任意ツール kindlepreviewer（Kindle Previewer・targets: kindle の KPF 変換時のみ必要）:',
                         detail:)
       end
 
@@ -855,11 +865,12 @@ module VivlioStarter
           return false
         end
 
-        Common.log_always('Kindle Previewer 3（kindlepreviewer）を導入します（Homebrew cask）…')
+        Common.log_always('Kindle Previewer（kindlepreviewer）を導入します（Homebrew cask）…')
         system('brew install --cask kindle-previewer')
 
-        unless File.exist?(KINDLE_PREVIEWER_APP_BIN)
-          Common.log_warn("Kindle Previewer 3 の実行ファイルが見つかりません: #{KINDLE_PREVIEWER_APP_BIN}")
+        app_bin = kindle_previewer_app_bin
+        unless app_bin
+          Common.log_warn("Kindle Previewer の実行ファイルが見つかりません: #{KINDLE_PREVIEWER_APP_BINS.join(' / ')}")
           return false
         end
 
@@ -869,7 +880,7 @@ module VivlioStarter
           return false
         end
 
-        !create_kindlepreviewer_wrapper!(KINDLE_PREVIEWER_APP_BIN, bin_dir).nil?
+        !create_kindlepreviewer_wrapper!(app_bin, bin_dir).nil?
       end
 
       # アプリ内 CLI（app_bin）を引数透過で呼ぶ kindlepreviewer ラッパーを bin_dir に作成する。
@@ -971,7 +982,20 @@ module VivlioStarter
       def kindlepreviewer_functional?
         return false unless command_exists?(KINDLEPREVIEWER_COMMAND)
 
-        File.exist?(KINDLE_PREVIEWER_APP_BIN)
+        !kindle_previewer_app_bin.nil?
+      end
+
+      # 導入済みの Kindle Previewer を人が読む名前で返す（診断表示用）。
+      def kindle_previewer_label
+        bin = kindle_previewer_app_bin
+        return 'Kindle Previewer' unless bin
+
+        bin.include?('Previewer 4') ? 'Kindle Previewer 4' : 'Kindle Previewer 3'
+      end
+
+      # 導入済みの Kindle Previewer の実行ファイルを返す（新しい版を優先）。無ければ nil。
+      def kindle_previewer_app_bin
+        KINDLE_PREVIEWER_APP_BINS.find { File.exist?(it) }
       end
 
       def rouge_gem_available?

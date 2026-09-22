@@ -54,8 +54,11 @@ Gem::Specification.new do |spec|
 
   # Development dependencies
   spec.add_development_dependency 'rake', '~> 13.2'
-  spec.add_development_dependency 'rubocop', '~> 1.65'
-  spec.add_development_dependency 'minitest', '~> 5.22'
+  spec.add_development_dependency 'rubocop', '>= 1.65'
+  spec.add_development_dependency 'minitest', '>= 5.22'
+  # Minitest 6 は minitest/mock を本体から外し、この gem へ分離した。
+  # 187 箇所の Object#stub がこれに依存している
+  spec.add_development_dependency 'minitest-mock', '~> 5.27'
   spec.metadata['rubygems_mfa_required'] = 'false'
   # rubygems.org の gem ページに「Changelog」リンクを出す。
   # リリースノート（要点）と変更履歴（網羅）の分担を、利用者側で完結させるため。
