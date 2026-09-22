@@ -79,6 +79,12 @@ module VivlioStarter
           # Kindle は WebP 非対応なので通さない。
           Build::EpubBuilder.transcode_to_webp_for_clean_epub!(epub_htmls) unless flavor == :kindle
 
+          # --- Phase: Kindle パッケージから参照の切れた SVG を回収する ---
+          # **差し替えを全部終えた後**でなければならない。参照の有無で判断するので、
+          # 数式のテキスト化・PNG 化や図版のラスタ化より前に呼ぶと、まだ使われている
+          # SVG を落としてしまう。Previewer 4 は SVG が 1 枚でもあると KPF を作らない。
+          Build::EpubBuilder.sweep_unreferenced_svg!(dir, flavor:)
+
           # --- Phase: EPUB 用 vivliostyle.config.js 生成（entryContext = dir） ---
           config_path = Build::EpubBuilder.generate_epub_config!(flavor:, dir:)
 

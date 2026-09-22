@@ -169,6 +169,30 @@ module VivlioStarter
         end
       end
 
+      # KPF ではなく Mobi が出たときは、ツールが落ちたときと別の文面で伝える。
+      # 引き金は同梱された SVG で、「変換に失敗しました」と流すと原因に辿り着けない。
+      def test_missing_kpf_is_reported_as_enhanced_typesetting_when_a_mobi_appeared
+        errors = capture_log_errors do
+          Dir.mktmpdir('vs-kpf-mobi') do |dir|
+            File.write(File.join(dir, 'book_epub.mobi'), 'dummy')
+            Builder.report_missing_kpf(dir, 'book-kindle.epub')
+          end
+        end
+
+        assert_equal 1, errors.size
+        assert_includes errors.first, 'Enhanced Typesetting'
+      end
+
+      # Mobi すら出ていなければ、従来どおり「変換に失敗」と伝える。
+      def test_missing_kpf_is_reported_as_a_failure_when_nothing_was_produced
+        errors = capture_log_errors do
+          Dir.mktmpdir('vs-kpf-none') { Builder.report_missing_kpf(it, 'book-kindle.epub') }
+        end
+
+        assert_equal 1, errors.size
+        assert_includes errors.first, 'Kindle 変換に失敗しました'
+      end
+
       # kindlepreviewer_available? は存在しないコマンドに false を返す（DI 用の存在チェック）
       def test_kindlepreviewer_available_is_false_for_missing_command
         refute Builder.kindlepreviewer_available?('vs-no-such-previewer-xyz')
@@ -202,6 +226,17 @@ module VivlioStarter
       end
 
       private
+
+      # log_error の呼び出しを捕まえる。差し替えは必ず元へ戻す（他のテストへ漏らさない）。
+      def capture_log_errors
+        messages = []
+        saved = Common.method(:log_error)
+        Common.define_singleton_method(:log_error) { |msg, **| messages << msg }
+        yield
+        messages
+      ensure
+        Common.define_singleton_method(:log_error, saved)
+      end
 
       # book.language を差し替えて実行する。CONFIG は frozen な Data なので、
       # 参照元の Common.book_language ごとスタブする（設定の読み込み経路には触らない）。

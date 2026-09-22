@@ -180,6 +180,23 @@
 
 ### Fixed
 
+- **Kindle Previewer 4 で KPF が作れなくなっていた**。`.kpf` ではなく `.mobi` が出て、ビルドは「Kindle 変換に失敗しました」で終わる。原因は**同梱していた SVG**で、Previewer 4 は SVG があると Enhanced Typesetting（ET）ごと無効にする。本文が参照しているかは問わない——`content.opf` の manifest に載っているだけで落ちる。
+
+  **道具の側が変わった。** 6 月に作った KPF から `book.epub` を取り出し、1 バイトも変えずに両方の版へ通して確かめた。Previewer 3 では `Supported` → `.kpf`、Previewer 4.0.1 では `Not Supported` → `.mobi` になる。変換器には `yjsvgtokvg`（SVG → Kindle Vector Graphics）が新たに入っており、ベクタのまま KFX へ持ち込む処理で躓いたものが ET から外れる、という筋に見える（変換ログには何も出ないので推測）。
+
+  直しは 2 つに分かれる。
+
+  1. **参照の切れた SVG を Kindle パッケージから外す**（`sweep_unreferenced_svg!`）。ディスプレイ数式は PNG へ、インライン数式はテキストへ移った後も、元の SVG がパッケージに残っていた。実測で **102 枚中 98 枚が孤児**（数式 58・twemoji 25・絵文字 13・その他 2）。落としても紙面は一切変わらない。
+  2. **参照されている SVG は焼く**（`stage_author_svg_for_epub!`）。文字を持たない図——ロゴと QR——は `DerivedSvg` が派生を作らないため素通りしていた。Kindle では原本をラスタ化する。
+
+  **画質は落ちない。** Previewer 3 が作った KPF も、SVG 82 枚を含む本でリソース 57 件すべて JPEG だった。ベクタで読者に届いたことは一度もない。変わるのは、焼く解像度を Previewer に委ねるか、こちらで決めるかだけである。
+
+  全 36 章の実測で `ET=Supported / Error=0 / Quality=0`、`.kpf` 29.9MB を確認した。経緯と切り分けの実測値は `kindle-css-compatibility-notes.md` §5.5 に置いた。
+
+- **Kindle 向けの CSS から `data:` URI の宣言を落とすようにした**（`DATA_URI_DECL_PATTERN`）。Kindle Previewer が `W14224: 無効な datauri` を出していた。当たっていたのはチェックボックスの鉤 1 件（`chapter-common.css`）だけで、**Kindle ではそもそも実体の文字（□ / ■）へ差し替わるので描画されない**——警告だけが残っていた。除去の境界の取り方は WebP 宣言の除去と揃えてある。
+
+- **EPUB に空ディレクトリが残ると、Kindle Previewer 4 は変換そのものに失敗する**（`prune_empty_dirs!`）。1 秒で `Book Conversion failed` が返り、ログも出ない。**epubcheck は `PKG-014` の警告で通してしまう**ので、検証を足しても気づけない。上の SVG 回収で空になったディレクトリを畳む過程で踏んだ。入れ子で空になる場合があるため、変化がなくなるまで繰り返す。
+
 - **同じ `expected` を二つの辞書が宣言すると、後から読むほうの規則が黙って死ぬ**。prh は `expected` の同じ規則をファイルをまたいで統合し、**後のパターンを捨てる**（同じファイルの中なら両方とも残る）。エラーも警告も出ないので、辞書を読んでも気づけない。
 
   `DC-01` を作る過程で自分で踏んだ。`prh_idiom.yml` の「`今だに` → `未だに`」を「→ `いまだに`」へ直した途端、`prh_open_close.yml` の「`未だに` → `いまだに`」が一切鳴らなくなった。最小構成で再現して確かめている。いまは両方のパターンを `prh_open_close.yml` の 1 項目へまとめ、`specs` で自己検査させている。検査の 3 番目はこの現象を見張るためのもので、わざと重複を作ると赤くなることを確かめた。

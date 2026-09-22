@@ -89,6 +89,15 @@ module VivlioStarter
         # `[^;{}]*` で宣言境界を跨がず、`url(...)` 内は `[^)]*` で 1 つの url に限定する。
         WEBP_URL_PATTERN = /[a-zA-Z-]+\s*:\s*[^;{}]*url\([^)]*\.webp[^)]*\)[^;}]*;?/i
 
+        # `url("data:…")` を含む CSS 宣言を 1 つ検出する正規表現（1 宣言＝1 マッチ）。
+        # Kindle Previewer は同梱 CSS の data URI を `W14224: 無効な datauri` として拾う。
+        # 本書で唯一これに当たるのはチェックボックスの鉤（`chapter-common.css`）だが、
+        # **Kindle ではそもそも実体の文字（□ / ■）へ差し替わるので描画されない**。
+        # 警告だけが残るので、Kindle 向けの CSS からは宣言ごと落とす。
+        # 境界の取り方は WEBP_URL_PATTERN と同じ（宣言を跨がず、url は 1 つに限定）。
+        # `%r{…}` は使わない——`[^;}]` の `}` が区切りとして閉じてしまい、正規表現が途中で切れる。
+        DATA_URI_DECL_PATTERN = /[a-zA-Z-]+\s*:\s*[^;{}]*url\(["']?data:[^)]*\)[^;}]*;?/i
+
         # techbook の絵文字画像 <img class="... vs-emoji ...">  を検出する正規表現。
         # 絵文字画像化（twemoji SVG 差し替え）は Chromium が PDF で絵文字を Type 3 化する
         # 障害への対策で、PDF 専用。EPUB はリフロー型で Type 3 が存在せず、リーダーの
@@ -1618,7 +1627,9 @@ module VivlioStarter
           return unless changed
 
           File.write(path, updated, encoding: 'utf-8')
-          Common.log_info("[EPUB] #{File.basename(path)} の SVG 図版を書体入りの派生へ差し替えました")
+          # Kindle は文字を持たない図も焼くので、「書体入りの派生」では言い過ぎになる。
+          kind = flavor == :kindle ? 'ラスタ' : '書体入りの派生'
+          Common.log_info("[EPUB] #{File.basename(path)} の SVG 図版を#{kind}へ差し替えました")
         end
 
         # src の SVG を派生へ差し替え、staging の相対パスを返す。できなければ nil（src 据え置き）。
@@ -1633,10 +1644,16 @@ module VivlioStarter
           return nil unless File.exist?(source)
 
           embedded = DerivedSvg.prepare(source)
-          # 文字を持たない図・既に書体を抱えた生成 SVG は派生を作らない。素材のまま運ぶ。
-          return nil unless embedded
+          # 文字を持たない図・既に書体を抱えた生成 SVG は派生を作らない。
+          # クリーン EPUB は素材のまま運ぶ（ベクタの利点が残る）。
+          #
+          # **Kindle は派生が無くても原本を焼く。** Previewer 4 は同梱された SVG を
+          # KVG へ変換しようとし、1 枚でも躓くと Enhanced Typesetting ごと無効にして
+          # KPF ではなく Mobi を出す（`kindle-css-compatibility-notes.md` §5.5）。
+          # 文字が無い図——ロゴや QR——も例外ではない。
+          return nil if embedded.nil? && flavor != :kindle
 
-          place_author_svg(embedded, src_attr, base_dir, flavor)
+          place_author_svg(embedded || source, src_attr, base_dir, flavor)
         rescue StandardError => e
           Common.log_warn("[EPUB] SVG 図版の差し替えに失敗（#{src_attr}）: #{e.message}")
           nil
@@ -1747,6 +1764,76 @@ module VivlioStarter
         def drop_packaged_original(base_dir, relative_src)
           packaged = File.join(base_dir, relative_src)
           FileUtils.rm_f(packaged) if File.file?(packaged)
+        end
+
+        # ================================================================
+        # Kindle パッケージから、参照の切れた SVG を回収する
+        # ================================================================
+        # **Kindle Previewer 4 は同梱された SVG を KVG へ変換しようとし、1 枚でも
+        # 躓くと Enhanced Typesetting ごと無効にして KPF ではなく Mobi を出す。**
+        # 参照されているかどうかは問わない——manifest に載っているだけで落ちる
+        # （実測 2026-09-22。同じ EPUB が Previewer 3 では KPF になっていた）。
+        #
+        # 本文からの参照は、この時点で既に他の形式へ移っている。
+        #
+        #   ディスプレイ数式 → PNG   （`rasterize_display_math_for_kindle!`）
+        #   インライン数式   → テキスト（`textify_simple_math_for_kindle!`）
+        #   図版・ロゴ・QR   → ラスタ （`stage_author_svg_for_epub!`）
+        #
+        # 残るのは「ローカライズが運んだが、誰も見ていない」SVG である。実測では
+        # 102 枚中 98 枚がこれだった（数式 58・twemoji 25・絵文字 13・その他 2）。
+        #
+        # **ローカライズと差し替えの両方より後に呼ぶこと。** 参照の有無で判断するので、
+        # HTML の書き換えが終わっていないと、まだ使われている SVG を落としてしまう。
+        # ================================================================
+        def sweep_unreferenced_svg!(dir, flavor:)
+          return unless flavor == :kindle
+
+          svgs = Dir.glob(File.join(dir, '**', '*.svg'))
+          return if svgs.empty?
+
+          text = svg_reference_text(dir)
+          kept, orphans = svgs.partition { text.include?(File.basename(it)) }
+
+          orphans.each { FileUtils.rm_f(it) }
+          prune_empty_dirs!(dir)
+          Common.log_info("[EPUB] 参照の切れた SVG を Kindle パッケージから外しました: #{orphans.size} 件") if orphans.any?
+          warn_svg_left_in_kindle_package(kept)
+        end
+
+        # 参照元になりうるテキスト（章 HTML と CSS）をひとまとめにする。
+        def svg_reference_text(dir)
+          Dir.glob(File.join(dir, '**', '*.{html,xhtml,css}'))
+             .map { File.read(it, encoding: 'utf-8') }
+             .join("\n")
+        end
+
+        # 落とせなかった SVG は、そのまま出すと KPF にならない。黙って通さない。
+        def warn_svg_left_in_kindle_package(kept)
+          return if kept.empty?
+
+          names = kept.first(5).map { File.basename(it) }.join('、')
+          names += "、ほか #{kept.size - 5} 件" if kept.size > 5
+          Common.log_warn(
+            "[EPUB] Kindle パッケージに SVG が #{kept.size} 件残りました: #{names}",
+            detail: '→ Kindle Previewer は SVG があると Enhanced Typesetting を無効にし、KPF ではなく Mobi を出します。' \
+                    '`vs doctor` で rsvg-convert（librsvg）が入っているかを確かめてください。'
+          )
+        end
+
+        # 空になったディレクトリを畳む。
+        #
+        # **Kindle Previewer 4 は、空ディレクトリを含む EPUB の変換に失敗する**
+        # （実測 2026-09-22: `Book Conversion failed` が 1 秒で返り、ログも出ない）。
+        # epubcheck は PKG-014 の**警告**で通してしまうので、検証を足しても気づけない。
+        # 入れ子で空になる場合があるため、変化がなくなるまで繰り返す。
+        def prune_empty_dirs!(dir)
+          loop do
+            empty = Dir.glob(File.join(dir, '**', '*')).select { File.directory?(it) && Dir.children(it).empty? }
+            break if empty.empty?
+
+            empty.each { Dir.rmdir(it) }
+          end
         end
 
         # PNG / JPEG → WebP。透過はそのまま保つ（EPUB は紙ではないので白へ落とさない）。
@@ -2827,7 +2914,7 @@ module VivlioStarter
         def sanitize_epub_css!(epub_path, flavor: :epub)
           abs_epub = File.expand_path(epub_path)
           patterns = [MARGIN_BOX_PATTERN]
-          patterns << WEBP_URL_PATTERN if flavor == :kindle
+          patterns += [WEBP_URL_PATTERN, DATA_URI_DECL_PATTERN] if flavor == :kindle
           patterns << FONT_IMPORT_PATTERN unless embed_fonts?
 
           Dir.mktmpdir('vs-epub-css') do |tmpdir|
@@ -3065,7 +3152,7 @@ module VivlioStarter
 
             kpf = Dir.glob(File.join(outdir, '**', '*.kpf')).max_by { File.mtime(it) }
             unless ok && kpf
-              Common.log_error("[KPF] Kindle 変換に失敗しました。中間 EPUB を残します: #{epub_path}")
+              report_missing_kpf(outdir, epub_path)
               return false
             end
 
@@ -3074,6 +3161,25 @@ module VivlioStarter
             Common.log_success("[KPF] KPF を生成しました: #{kpf_path}")
             true
           end
+        end
+
+        # KPF が出なかった理由を、次に何をすればよいか分かる形で伝える。
+        #
+        # 紛らわしいのは「変換は成功したのに Mobi が出た」形である。Kindle Previewer が
+        # Enhanced Typesetting を無効と判定したときで、引き金は**同梱された SVG**
+        # （`kindle-css-compatibility-notes.md` §5.5）。ツールが落ちたときと同じ文面で
+        # 流すと、原因に辿り着けないまま中間 EPUB だけが残る。
+        def report_missing_kpf(outdir, epub_path)
+          unless Dir.glob(File.join(outdir, '**', '*.mobi')).any?
+            Common.log_error("[KPF] Kindle 変換に失敗しました。中間 EPUB を残します: #{epub_path}")
+            return
+          end
+
+          Common.log_error(
+            '[KPF] Enhanced Typesetting が無効と判定され、KPF ではなく Mobi が出ました',
+            detail: '→ 同梱された SVG が引き金になることがあります（Kindle Previewer 4 は SVG が 1 枚でもあると ET を落とします）。' \
+                    "次で中身を確かめてください: unzip -l #{epub_path} | grep '\\.svg'"
+          )
         end
 
         # kindlepreviewer のログ CSV から Kindle のエラー/警告コード件数を集計して要約表示する。

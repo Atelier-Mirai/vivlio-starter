@@ -43,6 +43,12 @@ module VivlioStarter
         <text x="10" y="40" font-family="sans-serif" font-size="14">座標</text></svg>
       SVG
 
+      # 文字を持たない図（ロゴ・QR のたぐい）。`DerivedSvg` は派生を作らない。
+      SHAPES = <<~SVG
+        <svg xmlns="http://www.w3.org/2000/svg" width="200" height="80" viewBox="0 0 200 80">
+        <rect x="10" y="10" width="60" height="60" fill="#4a86e8"/></svg>
+      SVG
+
       def setup
         skip 'ImageMagick (magick) が必要です' unless system('which magick > /dev/null 2>&1')
         skip 'librsvg (rsvg-convert) が必要です' unless system('which rsvg-convert > /dev/null 2>&1')
@@ -118,6 +124,23 @@ module VivlioStarter
 
           assert_equal 'images/22-ext/shapes.svg', staged_src(File.read(html))
           assert_path_exists 'epub/images/22-ext/shapes.svg', 'パッケージから落としてはいけない'
+        end
+      end
+
+      # 文字が無くても、Kindle は焼く。SVG を 1 枚でも残すと Previewer が
+      # Enhanced Typesetting を無効にし、KPF ではなく Mobi になる。
+      def test_should_rasterize_a_figure_without_text_for_kindle
+        in_temp_project do
+          write_svg('images/22-ext/logo.svg', SHAPES)
+          html = stage_html('images/22-ext/logo.svg')
+
+          Builder.stage_author_svg_for_epub!([html], flavor: :kindle)
+
+          staged = staged_src(File.read(html))
+
+          assert_match %r{\Aimages/_epub_assets/[0-9a-f]{16}\.(png|jpg)\z}, staged
+          assert File.size?(File.join('epub', staged)), 'ラスタが空'
+          refute_path_exists 'epub/images/22-ext/logo.svg', 'パッケージに元 SVG が残っている'
         end
       end
 

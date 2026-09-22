@@ -115,6 +115,39 @@ Kindle で CSS による装飾が信頼できない箇所は、**合成画像に
 - `vs doctor` は `kindlepreviewer` を**任意ツールとして診断**する（導入済みは `✅`、未導入は 🟡 案内でハードエラーにはしない）。macOS では `vs doctor --fix` が Homebrew cask `kindle-previewer` を導入し、アプリ内 CLI を呼ぶラッパーを Homebrew の bin へ作成して PATH を通す。
 - 表紙は `kindle.embed: false`（既定）。Kindle は本文に表紙を埋めると KDP 側表紙と二重化するため、表紙は KDP 管理画面でアップロードする運用。
 
+### 5.5 Kindle Previewer 4 は SVG を 1 枚でも許さない
+
+**Previewer 4.0.1 は、同梱された SVG があると Enhanced Typesetting（ET）を無効にし、`.kpf` ではなく `.mobi` を出す。** 本文が参照しているかは問わない——`content.opf` の manifest に載っているだけで落ちる。
+
+同一ファイルで版をまたいで測った結果（2026-09-22）。入力は 6 月に作った KPF から取り出した `book.epub` で、1 バイトも違わない。
+
+| | Previewer 3（2026-06-18） | Previewer 4.0.1（2026-09-22） |
+|---|---|---|
+| Enhanced Typesetting | Supported | **Not Supported** |
+| 出力 | `.kpf` | `.mobi` |
+
+変換器に `com/amazon/language/resources/yjsvgtokvg/`（SVG → KVG＝Kindle Vector Graphics）が入っており、`SVG_PATH_PARSE_ERROR` などのエラー定義を持つ。ベクタのまま KFX へ持ち込む新機能で躓いたものが ET から外れる、という筋に見える（**変換ログには何も出ないので、ここは推測**）。
+
+切り分けの実測値。spine を 1 章に固定し、要素を外しながら測った。
+
+| 変えたこと | 結果 |
+|---|---|
+| CSS を全部外す / 埋め込みフォントを外す | Mobi |
+| ラスタ画像だけ外す（SVG は残す） | Mobi |
+| **SVG だけ外す（ラスタは残す）** | **KPF** |
+| SVG を QR コード 1 枚だけにする | Mobi |
+
+**ベクタで届いたことは一度もない。** Previewer 3 が作った KPF の中身は、SVG 82 枚を含む本でもリソース 57 件すべて JPEG だった。だからラスタ化しても読者が受け取るものは変わらない。変わるのは、焼く解像度を Previewer に委ねるか、こちらで決めるかだけである。
+
+対処は 2 つに分かれる（`sweep_unreferenced_svg!` と `stage_author_svg_for_epub!`）。
+
+- **参照されていない SVG を同梱しない。** 数式はディスプレイが PNG・インラインがテキストへ移った後も、SVG がパッケージに残っていた。実測で 102 枚中 **98 枚が孤児**（数式 58・twemoji 25・絵文字 13・その他 2）。落としても見た目は一切変わらない。
+- **参照されている SVG は焼く。** 文字を持たない図（ロゴ・QR）は `DerivedSvg` が派生を作らないため素通りしていた。Kindle では原本をラスタ化する。
+
+**空ディレクトリを残すと、変換そのものが失敗する。** SVG を外した跡に空のディレクトリが残ると、Previewer 4 は 1 秒で `Book Conversion failed` を返し、ログも出さない。epubcheck は `PKG-014` の**警告**で通してしまうので、検証を足しても気づけない（`prune_empty_dirs!`）。
+
+**素の EPUB（表紙あり）は Previewer 4 で変換が止まる。** ET 経路に入ったあと 24 分間まったく進まず CPU も 0% だった。Kindle 経路には関わらないため未解明のまま。
+
 ---
 
 ## 6. 今後の開発ガイドライン（チェックリスト）
@@ -128,7 +161,8 @@ Kindle 向けに CSS / 画像処理を追加・変更するときは:
 - [ ] CSS で確実性が出ないなら、**画像化（合成 SVG→JPEG）**を検討したか。
 - [ ] WebP を扱う正規表現は `/.../` リテラル・`[\w-]+`（プロパティ名を丸ごと）になっているか。
 - [ ] フレーバ依存の除外/サニタイズは `flavor:` 引数で分岐し、クリーン EPUB を壊していないか。
-- [ ] **Kindle Previewer 3／実機**で表示確認したか（epubcheck 合格だけで判断しない）。
+- [ ] **Kindle パッケージに SVG を 1 枚も残していない**か（§5.5。参照の有無を問わず ET を失う）。
+- [ ] **Kindle Previewer／実機**で表示確認したか（epubcheck 合格だけで判断しない。空ディレクトリのように、epubcheck が警告で通すのに Previewer が落ちる例がある）。
 
 ---
 

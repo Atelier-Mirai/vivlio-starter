@@ -356,6 +356,25 @@ module VivlioStarter
         assert_includes result, '--vs-plain-color: #333', 'webp を含まない宣言は残る'
       end
 
+      # Kindle 向け CSS からは data URI の宣言を落とす。Kindle はチェックボックスを
+      # 実体の文字（□ / ■）へ差し替えるので描画されず、`W14224` の警告だけが残る。
+      def test_should_strip_data_uri_declarations_only_for_kindle
+        css = <<~CSS
+          li.task-list-item > input[type="checkbox"]:checked {
+            background-color: currentColor;
+            background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%3E%3C/svg%3E");
+          }
+          .keep { color: #333; }
+        CSS
+
+        kindle = css.gsub(Build::EpubBuilder::DATA_URI_DECL_PATTERN, '')
+
+        refute_includes kindle, 'data:', 'data URI が残っている'
+        refute_includes kindle, 'background-image', '宣言ごと落とす'
+        assert_includes kindle, 'background-color: currentColor', '同じ規則の他の宣言は残る'
+        assert_includes kindle, '.keep { color: #333; }', '無関係な規則は残る'
+      end
+
       private
 
       # ローカライズ検証用の stylesheets/ ソースツリーを作る。
