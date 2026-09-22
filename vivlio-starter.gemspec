@@ -32,12 +32,12 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'query-stream', '~> 1.4'
   spec.add_dependency 'combine_pdf', '~> 1.0'
   spec.add_dependency 'kramdown', '~> 2.4'
-  spec.add_dependency 'mini_magick', '~> 4.12'
+  spec.add_dependency 'mini_magick', '>= 4.12'
   spec.add_dependency 'nokogiri', '~> 1.16'
   spec.add_dependency 'pdf-reader', '~> 2.12'
   spec.add_dependency 'prawn', '~> 2.5'
   spec.add_dependency 'samovar', '~> 2.1'
-  spec.add_dependency 'rouge', '~> 4.7'
+  spec.add_dependency 'rouge', '>= 4.7'
   # @qr:URL の QR コード生成（pure Ruby・MIT。ネイティブ拡張なし）
   spec.add_dependency 'rqrcode', '~> 3.2'
 
