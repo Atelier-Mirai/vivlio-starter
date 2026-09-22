@@ -139,7 +139,7 @@ Vivlio Starter は Ruby で動作します。まず、Ruby が入っているか
 ruby -v
 ```
 
-`ruby 4.0.6` のようにバージョンが表示されれば、次の「Vivlio Starter をインストールする」へ進めます。
+`ruby 4.0.7` のようにバージョンが表示されれば、次の「Vivlio Starter をインストールする」へ進めます。
 
 表示されない場合は、同梱のスクリプトで必要なものを導入します。Xcode コマンドラインツール、Homebrew、rbenv、Ruby 本体、bundler を順に導入します。
 
@@ -163,7 +163,7 @@ ruby -v
 
 :::{.output}
 ```text
-ruby 4.0.6 (2026-07-14 revision 03b6d3f889) +PRISM [arm64-darwin25]
+ruby 4.0.7 (2026-09-15 revision 229531a6cf) +PRISM [arm64-darwin27]
 ```
 :::
 

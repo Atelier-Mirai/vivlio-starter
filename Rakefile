@@ -75,7 +75,7 @@ Rake::Task["test:standard"].comment =
 # ループを倍にする価値は無い（両版で結果が割れるのは新しい構文・API を採り入れた
 # ときだけである）。push 前とリリース前に叩く想定。
 # CI（GitHub Actions）は版をマトリクスで分担するため、そちらでは各ジョブが 1 回走る。
-SUPPORTED_RUBY_VERSIONS = %w[3.4.10 4.0.6].freeze
+SUPPORTED_RUBY_VERSIONS = %w[3.4.10 4.0.7].freeze
 
 # 別の Ruby を子プロセスで起動する以上、親の bundler 環境は必ず捨てる。
 # `bundle exec rake test:versions` から呼ばれると、親（現在の Ruby）の bundler を

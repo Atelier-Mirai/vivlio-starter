@@ -11,7 +11,7 @@ Vivlio Starter は Ruby で動作します。Ruby が未インストールの場
 ```bash
 bin/install-ruby.zsh              # 対話的に最新安定版を導入
 bin/install-ruby.zsh -y           # 確認をスキップして自動導入
-bin/install-ruby.zsh -v 4.0.6     # バージョンを明示して導入
+bin/install-ruby.zsh -v 4.0.7     # バージョンを明示して導入
 bin/install-ruby.zsh --no-bundler # bundler の導入をスキップ
 ```
 
@@ -104,8 +104,8 @@ echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.zprofile
 echo 'eval "$(rbenv init - zsh)"' >> ~/.zprofile
 source ~/.zprofile
 
-rbenv install 4.0.6
-rbenv global 4.0.6
+rbenv install 4.0.7
+rbenv global 4.0.7
 ruby -v
 ```
 
@@ -173,7 +173,7 @@ node -v && npm -v
 sudo apt-get install -y libssl-dev libreadline-dev zlib1g-dev
 curl -fsSL https://github.com/rbenv/rbenv-installer/raw/main/bin/rbenv-installer | bash
 export PATH="$HOME/.rbenv/bin:$PATH" && eval "$(rbenv init - bash)"
-rbenv install 4.0.6 && rbenv global 4.0.6
+rbenv install 4.0.7 && rbenv global 4.0.7
 ruby -v
 ```
 

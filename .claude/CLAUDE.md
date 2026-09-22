@@ -84,12 +84,12 @@ Applied to HTML after Vivliostyle: footnote conversion, heading processor, body 
 
 ### PDF low-level operations (providers)
 
-Low-level PDF operations (hidden nombre stamping, PDF outline/bookmarks) go through `VivlioStarter::Pdf.provider` (`lib/vivlio_starter/cli/pdf/provider.rb`), which selects one of **two implementations**:
+A few low-level PDF operations (page count, blank-page creation, PDF outline/bookmarks) go through `VivlioStarter::Pdf.provider` (`lib/vivlio_starter/cli/pdf/provider.rb`), which selects one of **two implementations**:
 
-- **`StandardProvider`** (`standard_provider.rb`, in this repo, **MIT**, Prawn + CombinePDF) — nombre only; outline is a no-op warning.
-- **`EnhancedProvider`** (in a **separate gem `vivlio-starter-pdf`**, HexaPDF) — full nombre + outline.
+- **`StandardProvider`** (`standard_provider.rb`, in this repo, **MIT**) — `page_count` and `ensure_blank_page_pdf`; outline is a no-op warning.
+- **`EnhancedProvider`** (in a **separate gem `vivlio-starter-pdf`**, HexaPDF) — the same two, plus a working `add_outline!`.
 
-Selection: `VIVLIO_PDF_PLUGIN=disable` forces standard; otherwise, if `vivlio-starter-pdf` is **gem-installed** (even when absent from the Gemfile — `provider.rb` injects its load paths and picks the newest installed version), the enhanced provider is used. **A developer machine with the plugin installed runs builds through `EnhancedProvider`**, so a fix to `StandardProvider` alone won't change real builds — change both, and `gem build` + bump version + `gem install` the plugin to apply it. Unit-test `StandardProvider` directly (not via `NombreStamper.stamp!`, which routes to whichever provider is active); the plugin has its own test suite.
+Selection: `VIVLIO_PDF_PLUGIN=disable` forces standard; otherwise, if `vivlio-starter-pdf` is **gem-installed** (even when absent from the Gemfile — `provider.rb` injects its load paths and picks the newest installed version), the enhanced provider is used. **A developer machine with the plugin installed runs builds through `EnhancedProvider`**, so a fix to `StandardProvider` alone won't change real builds — change both, and `gem build` + bump version + `gem install` the plugin to apply it. Only these three calls cross the boundary: `page_count`, `ensure_blank_page_pdf`, `add_outline!`. **Hidden nombre does not** — `NombreStamper` draws it with Prawn and overlays it with `qpdf`, in this repo, identically in both modes (CombinePDF used to lose named destinations). Do not route new work through the provider unless the plugin genuinely does it better; anything that goes there changes behaviour depending on whether the plugin is installed. Unit-test `StandardProvider` directly; the plugin has its own test suite.
 
 ### Logging
 
