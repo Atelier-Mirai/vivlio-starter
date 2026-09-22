@@ -20,6 +20,7 @@ iPadOS
 watchOS
 tvOS
 visionOS
+Rosetta
 Safari
 Xcode
 TestFlight
