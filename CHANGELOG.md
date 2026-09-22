@@ -289,6 +289,22 @@
 
 ### Changed
 
+- **Kindle(KFX) の CSS 対応状況を Previewer 4.0.1 で測り直した**（`scripts/kfx_probe.rb` 新設・`kindle-css-compatibility-notes.md` §2）。4 になったのだから劣化処理を減らせるのではないか、という見込みで測ったが、**緩められたのは 1 つだけ**だった。
+
+  | 機能 | 結果 |
+  |---|---|
+  | `::before` の `content` | **✅ 4 で効くようになった**。実体の `<span>` として注入され、`display:block`・`background-color`・`padding` も描かれる |
+  | `calc()` / `linear-gradient()` | ❌ 前処理は値を保つが、**描画側が捨てる** |
+  | `var()` / `color-mix()` / `clamp()` / `:is()` / `grid` / `flex` | ❌ 従来どおり |
+  | WebP | ❌ **悪化した。** 画像が破棄されるだけでなく、Enhanced Typesetting ごと落ちて `.mobi` になる |
+  | MathML | ✅ 通る（Previewer 内の MathJax が SVG へ描き起こす） |
+
+  **クリーン EPUB をそのまま Kindle へ渡すことはできない。** WebP 128 枚と SVG 266 枚が入っており、そのどちらもが Enhanced Typesetting を落とす。
+
+  測り方も記録した。CLI は描画結果を書き出せないので、変換の中間生成物（`cTemp/conv_temp/preprocessed/*.xhtml`）を走行中に写し取って読む。ただし**中間生成物だけでは判断できない**——前処理は Chromium でページを組むため `calc(2mm + 2mm)` は `15.118px` と正しく計算されるが、KFX の描画側はそれを捨てる。実際、中間生成物だけを見て「`calc()` と `linear-gradient()` は通った」と誤って判断し、画面で見て取り消した。**最終判定は Previewer の画面で行う。**
+
+  `::before` が効くようになったことで、`ADMONITION_LABELS` の実体ラベル注入と `body.vs-kindle` の `content: none` は畳める見込みが立った（Mobi 経路でも同じ span が注入されるので、出力形式には依存しない）。ただし**今回は畳まない**。いまの方式は変換器の挙動に依存しないという利点があり、擬似要素へ寄せると Previewer 5 で方針が戻ったときに気づきにくい。
+
 - **`vs doctor` が Kindle Previewer の「版」と「動く環境か」も見るようにした。** これまでは在るか無いかだけを見ていたが、今回の KPF 不具合は**在るのに版が違う**／**在るのに変換部分が動かない**という形で出た。どちらも ✅ の後ろに 🟡 の注記として出し、不足扱いにはしない（ビルドは止めない）。
 
   - **Previewer 3 のままなら 4 への更新を促す。** Amazon が推奨するのも読者が入手できるのも 4 で、しかも 3 と 4 では Enhanced Typesetting の判定が変わる。手元が 3 のままだと、確かめたつもりのものが確かめられていないことになる。更新すると 3 の実行ファイルが消えて `kindlepreviewer` ラッパーが宙に浮くので、`vs doctor --fix` の再実行も併せて案内する。

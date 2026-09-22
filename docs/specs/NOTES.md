@@ -44,7 +44,7 @@
 : **「CSS は正しいはずなのに効かない」とき、最初にここ。** Vivliostyle エンジンと EPUB 両フレーバ共通基盤の癖（`background-position` の calc+var 破棄、`keep-all` による CJK 折返し禁止、`vs-epub`/`vs-kindle` 同居、PDF 用 CSS の特異度漏れ、SVG の intrinsic size、`<pre>` を折り返しにしても中の `<code>` が折り返さない（§2.10）など）。
 
 `kindle-css-compatibility-notes.md`
-: **Kindle(KFX) だけ表示が崩れるとき。** `:is()` がルールごと破棄、`var()`/`calc()`/`grid`/`::before` 非対応、WebP 不可——対応状況の一覧表と、本プロジェクトで採った回避策。Kindle 固有の癖はこちらが正典。
+: **Kindle(KFX) だけ表示が崩れるとき。** `:is()` がルールごと破棄、`var()`/`calc()`/`grid` 非対応、WebP・SVG は Enhanced Typesetting ごと落とす（`::before` は Previewer 4 で効くようになった）——対応状況の一覧表と、本プロジェクトで採った回避策。Kindle 固有の癖はこちらが正典。版が上がったら `scripts/kfx_probe.rb` で測り直す。
 
 `build-pipeline-pitfalls-notes.md`
 : **ビルドの枝をまたぐ処理を書くとき・記法を HTML へ落とす位置を決めるとき。** PDF 枝と EPUB/Kindle 枝は並列に走る。ラッチは 2 段構えで解放する、プロセス全体に効く API（`Dir.chdir`・`$stdout` 直書き）を疑う、モジュール状態はテスト間で漏れて再現しない、PDF の `/Dests` に出るのはリンクの飛び先だけ、**前処理で生 HTML にすると中の記法が後段から隠れる**（§5）。

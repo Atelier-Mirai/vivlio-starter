@@ -25,23 +25,47 @@ Kindle 対応（クリーン EPUB と Kindle 用 KPF のターゲット分離）
 
 ---
 
-## 2. CSS 対応状況一覧（今回判明分）
+## 2. CSS 対応状況一覧
 
-「Kindle」列は KFX / Enhanced Typesetting での挙動。「クリーン EPUB（Kobo/Apple Books）」では下記はいずれも問題なく解される。
+「Kindle」列は KFX / Enhanced Typesetting での挙動。「クリーン EPUB（Kobo/Apple Books）」では下記はいずれも問題なく解される。**下表は Kindle Previewer 4.0.1 で測り直したもの**（2026-09-23・測り方は §2.1）。3 から変わった行には印を付けた。
 
 | CSS 機能 | Kindle(KFX) | 症状 | 本プロジェクトの回避策 |
 |:---|:---:|:---|:---|
 | `:is()` セレクタ | ❌ | **ルールごと丸ごと破棄**される | `body.vs-kindle` 用は明示セレクタへ展開（`a::before, b::before, …`） |
 | `var()`（カスタムプロパティ） | ❌ | 値が解決されず無効化 | `body.vs-kindle` フォールバックは**具体値**で記述 |
-| `calc()` / `clamp()` | ❌ | 無効化 | 具体値で記述 |
-| `display: grid` | ❌ | グリッドにならず縦積み | `display: block` 等の素直なフローに縮退 |
-| `::before` / `::after`（特に `position:absolute`） | ❌ | ラベル帯・装飾が出ない／重複ラベル化 | Kindle では擬似要素を抑止し、**実体要素を EpubBuilder が先頭注入** |
-| `linear-gradient()` | ❌ | 背景が出ない | 単色 `background` / `border` で代替 |
-| WebP 画像（`<img>` / CSS `url()`） | ❌ | 画像が表示されない・参照切れ | JPEG/PNG へトランスコード＋インライン WebP 宣言を除去 |
+| `calc()` / `clamp()` | ❌ | 無効化。**`calc()` は前処理が計算するが、描画側が捨てる**（§2.1） | 具体値で記述 |
+| `color-mix()` | ❌ | 宣言ごと消える | `ThemeColor.mix_with_white` で事前計算 |
+| `display: grid` / `display: flex` | ❌ | `block` に潰れる | `display: block` 等の素直なフローに縮退 |
+| `::before` / `::after` の `content` | **✅ 4 で変わった** | **実体の `<span>` として本文へ注入される。`display:block`・`background-color`・`padding`・`color`・`font-weight` も効く** | 回避策は現状維持（§2.2） |
+| `::before` の `position: absolute` | ❌ | 位置指定は効かない | 通常フローで組む |
+| `linear-gradient()` | ❌ | 宣言は前処理を通るが、描画されない | 単色 `background` / `border` で代替 |
+| WebP 画像（`<img>` / CSS `url()`） | ❌ | 画像が破棄される（`W14012` / `W14015`）。**4 では Enhanced Typesetting ごと落ち、本が `.mobi` になる** | JPEG/PNG へトランスコード＋インライン WebP 宣言を除去 |
+| SVG 画像 | ❌ | **同梱されているだけで Enhanced Typesetting が落ちる**（§5.5） | 参照ぶんはラスタ化し、参照の切れたものは同梱しない |
+| MathML | ✅ | Previewer 内の MathJax が SVG へ描き起こす。ET は落ちない | （本プロジェクトは素の表記→SVG／テキスト化の経路を使う） |
 | modern 改ページ `break-before: page` | △ | 効かないことがある | legacy `page-break-before: always` を**併記** |
 | テーブルセルの `width` / `white-space:nowrap` | △ | 尊重されず、2桁行番号が縦に折れる等 | テーブル方式のレイアウトに依存しない（行番号は別仕様で検討） |
 
 > ❌＝非対応（解されない）、△＝不安定（端末/状況で挙動が変わる）。
+
+### 2.1 測り方と、間違えやすい観測点
+
+`kindlepreviewer` の CLI は描画結果を書き出せない。観測できるのは 3 つだけである。
+
+1. **Enhanced Typesetting の判定**（`Summary_Log.csv`。Supported なら `.kpf`、でなければ `.mobi`）
+2. **変換ログのコード**（`W14012` など）
+3. **変換の中間生成物**。走行中の `cTemp/conv_temp/preprocessed/*.xhtml` に、KFXGen が解決した CSS が `style` と `computedstyle` として書き戻される
+
+検査は `scripts/kfx_probe.rb` が行う。機能ごとに目印を入れた小さな EPUB を組み、変換し、中間生成物を採取して判定する。Previewer は終了時に作業ディレクトリを消すので、**走行中に写し取る**必要がある。
+
+**中間生成物だけで判断してはいけない。** ここが今回いちばん間違えやすかった点である。前処理は Chromium（同梱の phantomjs）でページを組むため、`calc(2mm + 2mm)` は `padding-left:15.118px` と正しく計算され、`linear-gradient()` も宣言のまま残る。**それでも KFX の描画側は両方とも捨てる。** 中間生成物は「変換器が値を保った」ことしか示さない。**最終判定は Previewer の画面で行うこと。**
+
+### 2.2 `::before` は効くようになったが、置き換えは急がない
+
+Previewer 4 は `::before` の `content` を実体の `<span amzn-isaddedcontent="true" amzn-selector="before">` として本文へ注入する。囲みボックスに近い形で測ったところ、ラベルは独立した行に出て、帯（背景色＋余白）も描かれた。**Enhanced Typesetting が落ちた Mobi 経路でも同じ span が注入される**ので、出力形式には依存しない。
+
+つまり `ADMONITION_LABELS` の実体ラベル注入と、`body.vs-kindle` 側の `content: none` は、**どちらも畳める**。ラベルの文言と装飾が CSS の一箇所に集まり、囲みボックスを増やすときの手順が 3 つから 1 つに減る。
+
+**ただし現状維持でいる。** いまの方式は実体の要素なので、変換器の挙動に依存しない。擬似要素に頼ると、Previewer 5 で方針が戻ったときに気づきにくい。畳むなら、**畳んだ状態を Previewer の画面で確かめる手順**を併せて決めること。
 
 ### 補足: なぜ `:is()` が一番危険か
 
@@ -52,6 +76,8 @@ Kindle 対応（クリーン EPUB と Kindle 用 KPF のターゲット分離）
 ## 3. 画像形式（WebP 非対応）の扱い
 
 Kindle は WebP を表示できない。`vs build` の画像最適化は WebP を生成するため、Kindle フレーバでは二段構えで対処する。
+
+**Previewer 4 では、失うものが「画像 1 枚」では済まなくなった。** WebP が 1 枚でも混じると、その画像が破棄される（`W14012` / `W14015`）だけでなく、**Enhanced Typesetting ごと落ちて本が `.mobi` になる**（実測 2026-09-23。同じ絵を JPEG に替えた対照では `Supported` になるので、画像の中身ではなく形式が効いている）。除外は「画質のため」ではなく「KPF を作るため」の必須処理である。
 
 1. **実体のトランスコード**（`transcode_webp_images_for_epub!`）: `<img>` が参照する WebP を JPEG/PNG に変換し、参照を貼り替える。
 2. **インライン CSS 宣言の除去**（`strip_webp_inline_styles_for_kindle!`）: techbook テーマが `<head>` に注入する `<style>` 内の `--h3-marker: url(...webp)` 系を削除。
@@ -172,6 +198,7 @@ Kindle 向けに CSS / 画像処理を追加・変更するときは:
 
 ## 7. 参考
 
+- `scripts/kfx_probe.rb` — §2 の対応表を測り直す検査スクリプト。Previewer の版が上がったら回す。
 - `lib/vivlio_starter/cli/build/epub_builder.rb` — フレーバ分離・WebP 処理・マーカー・KPF 変換の実装本体。
 - `lib/vivlio_starter/cli/build/heading_image_composer.rb` — 見出し合成画像（`compose`=SVG / `render`=JPEG）。
 - `lib/vivlio_starter/cli/build/pipeline.rb` — スナップショット方式（方式B）とステップ登録。
