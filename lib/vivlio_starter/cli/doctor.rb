@@ -99,6 +99,14 @@ module VivlioStarter
         '/Applications/Kindle Previewer 3.app/Contents/MacOS/Kindle Previewer 3'
       ].freeze
 
+      # Rosetta 2（macOS の x86_64 変換ランタイム）の実体。
+      #
+      # **同じディレクトリに入る `RosettaLinux` は Linux VM 用の別物**で、これだけあっても
+      # Intel のアプリは動かない。実体はこのランタイムなので、その有無で判定する。
+      # 新しい Apple Silicon 機では既定で入っていないことがあり、`softwareupdate` に
+      # `--install-rosetta` は残っている（実測 2026-09-22・macOS 27）。
+      ROSETTA_RUNTIME = '/Library/Apple/usr/libexec/oah/libRosettaRuntime'
+
       # 機能チェック（--version 実起動）でのバージョン確認フラグ。既定は --version。
       # poppler 系（pdfinfo / pdftoppm / pdftotext）は --version を解さず -v が正しい
       # （実測 exit 差。--version では exit 1 になり「見つかりません」と誤報する）。
@@ -230,7 +238,13 @@ module VivlioStarter
         # 存在すれば ✅、無ければ後段で 🟡 案内（ハードエラーにはしない）。
         # シムだけ残って .app 本体が消えた inkscape 型の半壊を見抜くため機能チェックする。
         kindle_previewer_present = kindlepreviewer_functional?
-        Common.log_always("✅ kindlepreviewer (#{kindle_previewer_label}): OK") if kindle_previewer_present
+        if kindle_previewer_present
+          Common.log_always("✅ kindlepreviewer (#{kindle_previewer_label}): OK")
+          # 「在るが古い」「在るが動かない」は ✅ の後に注記する。不足ではないので
+          # missing には積まず、ビルドも止めない。
+          report_kindle_previewer_outdated if kindle_previewer_outdated?
+          report_rosetta_missing unless rosetta_ready?(is_macos)
+        end
 
         if is_macos
           if ssl_certificate_configured?
@@ -806,10 +820,44 @@ module VivlioStarter
         detail = if is_macos
                    'macOS では vs doctor --fix で自動導入できます（Homebrew cask kindle-previewer ＋ PATH ラッパー作成）。'
                  else
-                   'Amazon KDP のサイトから Kindle Previewer 3 を導入し、kindlepreviewer に PATH を通してください。'
+                   'Amazon KDP のサイトから Kindle Previewer 4 を導入し、kindlepreviewer に PATH を通してください。'
                  end
         Common.log_warn('任意ツール kindlepreviewer（Kindle Previewer・targets: kindle の KPF 変換時のみ必要）:',
                         detail:)
+      end
+
+      # Kindle Previewer 3 のままなら 4 への更新を促す。
+      #
+      # Amazon が推奨するのも、読者が入手できるのも 4 である。加えて **4 は SVG の
+      # 扱いが変わっており、3 で KPF になっていた本が 4 では Enhanced Typesetting を
+      # 失う**（`kindle-css-compatibility-notes.md` §5.5）。手元と読者で版が違うと、
+      # 確かめたはずのものが確かめられていないことになる。
+      #
+      # 更新するとラッパーの向き先（3 の実行ファイル）が消えるため、`--fix` の再実行も
+      # 併せて案内する。
+      def report_kindle_previewer_outdated
+        Common.log_warn(
+          'Kindle Previewer 3 が入っています（Amazon の推奨と読者の入手版は 4 です）',
+          detail: "→ brew reinstall --cask kindle-previewer\n" \
+                  "  更新後に vs doctor --fix を実行してください" \
+                  "（kindlepreviewer ラッパーの向き先が 3 の実行ファイルのままになります）。"
+        )
+      end
+
+      # Apple Silicon で Rosetta 2 が無ければ導入を促す。
+      #
+      # **Kindle Previewer は外側だけが Apple Silicon 対応で、変換の実体は Intel のまま
+      # である**（4.0.1 の実測: バンドル内の実行ファイル 122 本のうち 114 本が x86_64 専用。
+      # `Server_KRF4`・同梱 JRE・`kindlegen`・`phantomjs` がここに含まれる）。Rosetta が
+      # 無いと `bad CPU type in executable` で KPF 変換だけが落ちる。
+      #
+      # 導入は管理者権限を要して対話が入るため、`--fix` でも自動実行しない。
+      def report_rosetta_missing
+        Common.log_warn(
+          'Rosetta 2 が入っていません（Kindle Previewer の変換部分は Intel 版のままです）',
+          detail: "→ sudo softwareupdate --install-rosetta --agree-to-license\n" \
+                  '  入れないと KPF 変換が `bad CPU type in executable` で失敗します。'
+        )
       end
 
       # inkscape 不在/破損時の 🟡 案内（任意ツール）。
@@ -855,10 +903,10 @@ module VivlioStarter
         system('brew reinstall --cask --force inkscape')
       end
 
-      # Kindle Previewer 3（kindlepreviewer）を macOS へ導入する。
+      # Kindle Previewer（kindlepreviewer）を macOS へ導入する。
       # cask でアプリ本体（Pkg・管理者パスワードを求められることがある）を入れた後、
       # 単体では PATH に乗らない CLI を呼ぶラッパーを Homebrew の bin へ作成する
-      # （アプリ内 "Kindle Previewer 3" 実行ファイルを引数透過で呼ぶ定石を自動化）。
+      # （アプリ内の CLI 実行ファイルを引数透過で呼ぶ定石を自動化）。
       def install_kindlepreviewer_macos!
         unless system('which brew >/dev/null 2>&1')
           Common.log_warn('Homebrew が見つからないため kindlepreviewer を導入できません。')
@@ -933,7 +981,7 @@ module VivlioStarter
           'rouge' => 'Rouge (コードブロック言語推定用)',
           'mathjax' => '数式SVG化 (mathjax-full)',
           'mermaid' => 'mermaid 図化 (mmdc・@mermaid-js/mermaid-cli)',
-          'kindlepreviewer' => 'Kindle Previewer 3 (kindlepreviewer・targets: kindle 用)'
+          'kindlepreviewer' => 'Kindle Previewer (kindlepreviewer・targets: kindle 用)'
         }
         keys.uniq.map { |key| label_map[key] || key }
       end
@@ -975,7 +1023,7 @@ module VivlioStarter
       # 「見つかりません」として拾える（presence だけの command_exists? では素通りしていた）。
       def cli_tool_ok?(cmd) = command_runnable?(cmd, version_arg: VERSION_ARGS.fetch(cmd, '--version'))
 
-      # kindlepreviewer（Kindle Previewer 3）が実際に使えるかを機能チェックする。
+      # kindlepreviewer（Kindle Previewer）が実際に使えるかを機能チェックする。
       # kindlepreviewer は GUI アプリ（.app）を呼ぶラッパーシムなので、inkscape 同様
       # 「シムだけ残って .app 本体が消えた」半壊がある。--version は GUI を起動しかねないため
       # 実起動はせず、シムの存在に加えてシムが呼ぶ .app 実体の存在まで確認する。
@@ -997,6 +1045,24 @@ module VivlioStarter
       def kindle_previewer_app_bin
         KINDLE_PREVIEWER_APP_BINS.find { File.exist?(it) }
       end
+
+      # Kindle Previewer 3 のままか（4 が入っていない）。
+      # app_bin は新しい版を先に見るので、3 のパスが返るのは 4 が無いときだけである。
+      def kindle_previewer_outdated?
+        kindle_previewer_app_bin.to_s.include?('Previewer 3')
+      end
+
+      # Apple Silicon で Rosetta 2 が使えるか。Intel Mac と非 macOS では常に true
+      # （そもそも x86_64 の変換が要らない）。
+      def rosetta_ready?(is_macos)
+        return true unless is_macos && apple_silicon?
+
+        File.exist?(ROSETTA_RUNTIME)
+      end
+
+      # Ruby 自身が Rosetta 下で動いていれば host_cpu は x86_64 になるが、
+      # その場合 Rosetta は当然入っているので、判定を飛ばして差し支えない。
+      def apple_silicon? = RbConfig::CONFIG['host_cpu'].to_s.start_with?('arm')
 
       def rouge_gem_available?
         require 'rouge'

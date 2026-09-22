@@ -289,6 +289,14 @@
 
 ### Changed
 
+- **`vs doctor` が Kindle Previewer の「版」と「動く環境か」も見るようにした。** これまでは在るか無いかだけを見ていたが、今回の KPF 不具合は**在るのに版が違う**／**在るのに変換部分が動かない**という形で出た。どちらも ✅ の後ろに 🟡 の注記として出し、不足扱いにはしない（ビルドは止めない）。
+
+  - **Previewer 3 のままなら 4 への更新を促す。** Amazon が推奨するのも読者が入手できるのも 4 で、しかも 3 と 4 では Enhanced Typesetting の判定が変わる。手元が 3 のままだと、確かめたつもりのものが確かめられていないことになる。更新すると 3 の実行ファイルが消えて `kindlepreviewer` ラッパーが宙に浮くので、`vs doctor --fix` の再実行も併せて案内する。
+  - **Apple Silicon で Rosetta 2 が無ければ導入を促す。** Kindle Previewer は**外側だけが Apple Silicon 対応で、変換の実体は Intel のまま**である（4.0.1 の実測: バンドル内の実行ファイル 122 本のうち 114 本が x86_64 専用。`Server_KRF4`・同梱 JRE・`kindlegen`・`phantomjs` がここに含まれる）。入っていないと `bad CPU type in executable` で KPF 変換だけが落ちる。判定は `libRosettaRuntime` の有無で行う——同じディレクトリに入る `RosettaLinux` は Linux VM 用の別物で、これがあっても Intel のアプリは動かない。導入は管理者権限を要して対話が入るため、`--fix` でも自動実行せず、貼れるコマンドだけを示す。
+
+  あわせて、案内文の「Kindle Previewer 3 を導入してください」という版を名指しした言い回しを改めた。
+
+
 - **補助スクリプトを `scripts/` へ集めた**（`copy_to_scaffold.rb`・`count_lines.rb`）。`dict_conflicts.rb` を足すにあたって置き場を決めた。今後は `ruby scripts/copy_to_scaffold.rb` と綴る。
 
   リポジトリ直下は `Rakefile`・`Gemfile`・`*.gemspec`・`package.json` のように**そこにしか置けないもの**と、`README.md`・`LICENSE` のような定番の文書のために空けておく。スクリプトは増えていく一方なので、増える側をまとめた。

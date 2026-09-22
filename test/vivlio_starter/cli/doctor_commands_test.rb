@@ -425,6 +425,66 @@ module VivlioStarter
         assert_includes captured[1], 'KDP'
       end
 
+      # Previewer 3 だけが入っているときは「古い」と判定する。
+      # app_bin は新しい版を先に見るので、3 のパスが返る＝4 が無い、と読める。
+      def test_kindle_previewer_is_outdated_only_when_version_three_is_the_newest
+        {
+          '/Applications/Kindle Previewer 3.app/Contents/MacOS/Kindle Previewer 3' => true,
+          '/Applications/Kindle Previewer 4.app/Contents/MacOS/KindlePreviewer4CLI' => false,
+          nil => false
+        }.each do |bin, expected|
+          DoctorCommands.stub :kindle_previewer_app_bin, bin do
+            assert_equal expected, DoctorCommands.kindle_previewer_outdated?, "app_bin: #{bin.inspect}"
+          end
+        end
+      end
+
+      # 更新の案内は、コマンドと「ラッパーの張り直し」の両方を示す。
+      # 4 へ上げると 3 の実行ファイルが消え、ラッパーが宙に浮くため。
+      def test_report_kindle_previewer_outdated_shows_both_steps
+        captured = nil
+        Common.stub :log_warn, ->(msg, **kw) { captured = [msg, kw[:detail].to_s] } do
+          DoctorCommands.report_kindle_previewer_outdated
+        end
+
+        assert_includes captured[0], 'Kindle Previewer 3'
+        assert_includes captured[1], 'brew reinstall --cask kindle-previewer'
+        assert_includes captured[1], 'vs doctor --fix'
+      end
+
+      # Rosetta の判定が要るのは Apple Silicon の macOS だけ。
+      # それ以外は x86_64 の変換自体が要らないので、常に「よし」とする。
+      def test_rosetta_is_only_required_on_apple_silicon_macos
+        DoctorCommands.stub :apple_silicon?, true do
+          File.stub :exist?, false do
+            refute DoctorCommands.rosetta_ready?(true), 'Apple Silicon の macOS では実体を見る'
+          end
+          File.stub :exist?, true do
+            assert DoctorCommands.rosetta_ready?(true), '実体があれば導入済み'
+          end
+          refute_path_exists '/no/such/path' # File.stub を抜けたことの確認
+          assert DoctorCommands.rosetta_ready?(false), 'macOS 以外では判定しない'
+        end
+
+        DoctorCommands.stub :apple_silicon?, false do
+          File.stub :exist?, false do
+            assert DoctorCommands.rosetta_ready?(true), 'Intel Mac では判定しない'
+          end
+        end
+      end
+
+      # Rosetta の案内は、そのまま貼れるコマンドと、入れないと何が起きるかを示す。
+      def test_report_rosetta_missing_shows_the_command_and_the_symptom
+        captured = nil
+        Common.stub :log_warn, ->(msg, **kw) { captured = [msg, kw[:detail].to_s] } do
+          DoctorCommands.report_rosetta_missing
+        end
+
+        assert_includes captured[0], 'Rosetta 2'
+        assert_includes captured[1], 'softwareupdate --install-rosetta'
+        assert_includes captured[1], 'bad CPU type in executable'
+      end
+
       # inkscape が起動不能（不在・半壊ラッパー）でも、他が揃っていれば
       # 🔴 ハードエラーにせず 🟡 任意ツール注記に留め、🎉 成功で終わることを確認する
       # （カバー SVG の主経路は rsvg-convert のため inkscape は任意）。

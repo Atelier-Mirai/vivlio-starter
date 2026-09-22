@@ -18,8 +18,9 @@ Kindle 対応（クリーン EPUB と Kindle 用 KPF のターゲット分離）
 ## 1. Kindle の表示エンジンと前提
 
 - Kindle の現行レンダリングは **KFX / Enhanced Typesetting**。KDP に EPUB（や本プロジェクトの KPF）をアップロードすると、Amazon 側で KFX へ再変換される。
-- 本プロジェクトは中間 EPUB を生成し、**Kindle Previewer 3 同梱の `kindlepreviewer` CLI** で `.kpf` に変換する（`convert_epub_to_kpf!`）。実機・Previewer での表示が「正」であり、epubcheck が通っても Kindle で崩れることは普通にある。
-- **検証は必ず Kindle Previewer 3／実機で行う。** epubcheck の合格は KFX での正しい表示を保証しない（別レイヤーの検証）。
+- 本プロジェクトは中間 EPUB を生成し、**Kindle Previewer 同梱の `kindlepreviewer` CLI** で `.kpf` に変換する（`convert_epub_to_kpf!`）。実機・Previewer での表示が「正」であり、epubcheck が通っても Kindle で崩れることは普通にある。
+- **検証は必ず Kindle Previewer／実機で行う。** epubcheck の合格は KFX での正しい表示を保証しない（別レイヤーの検証）。
+- **版を読者に揃える。** Previewer 3 と 4 では判定が変わる（§5.5）。3 で KPF になっていた本が 4 では Mobi になるので、古い版で確かめても確かめたことにならない。
 - KPF 変換ログのエラー/警告コード（`E####` / `W####`）は `summarize_kpf_logs` が内訳集計する。例: `W14016`＝`embed:false` 時の "Cover not specified" 通知（表紙は KDP 側で付けるため想定内）。
 
 ---
@@ -114,6 +115,9 @@ Kindle で CSS による装飾が信頼できない箇所は、**合成画像に
 - `kindlepreviewer_available?`（`which` で存在確認）が false なら、中間 EPUB を残して変換をスキップし警告（ビルド自体は止めない）。
 - `vs doctor` は `kindlepreviewer` を**任意ツールとして診断**する（導入済みは `✅`、未導入は 🟡 案内でハードエラーにはしない）。macOS では `vs doctor --fix` が Homebrew cask `kindle-previewer` を導入し、アプリ内 CLI を呼ぶラッパーを Homebrew の bin へ作成して PATH を通す。
 - 表紙は `kindle.embed: false`（既定）。Kindle は本文に表紙を埋めると KDP 側表紙と二重化するため、表紙は KDP 管理画面でアップロードする運用。
+- `vs doctor` は導入の有無に加えて、**版と実行環境**も見る。
+  - **Previewer 3 のままなら 4 への更新を促す。** §5.5 のとおり版で判定が変わるので、読者と違う版で確かめても意味がない。更新すると 3 の実行ファイルが消えてラッパーが宙に浮くため、`vs doctor --fix` の再実行も併せて案内する。
+  - **Apple Silicon で Rosetta 2 が無ければ導入を促す。** Previewer は外側だけが arm64 で、変換の実体は Intel のまま（4.0.1 実測: 実行ファイル 122 本中 114 本が x86_64 専用。`Server_KRF4`・同梱 JRE・`kindlegen`・`phantomjs`）。無いと `bad CPU type in executable` で KPF 変換だけが落ちる。導入は管理者権限を要するので `--fix` でも自動実行せず、コマンドだけ示す。
 
 ### 5.5 Kindle Previewer 4 は SVG を 1 枚でも許さない
 
