@@ -386,6 +386,26 @@ module VivlioStarter
           assert_includes stripped, '（@label / @label）', '空白とかっこの形は原稿のまま'
         end
 
+        # QR コードの記法は URL と大きさの指定ごと 1 語として扱う（改善案.md #57）。
+        # `@qr` だけを置き換えると残った URL がリンクとして読まれ、直後の空白が指摘される。
+        # 指摘に従って空白を消すと、後ろの「です」まで URL として QR コードになる
+        def test_should_replace_qr_directives_with_a_stand_in_when_linting
+          stripped = NotationGuard.strip_notation("サンプルは @qr:https://example.com/repo{width=25mm} です。\n")
+
+          refute_includes stripped, 'example.com'
+          refute_includes stripped, 'width'
+          assert_includes stripped, 'サンプルは @label です。', '空白の形は原稿のまま'
+        end
+
+        def test_should_mask_qr_directives_for_the_fix_path
+          src = "サンプルは @qr:https://example.com/repo{width=25mm} です。@qr:https://example.com/b です。\n"
+          masked, spans = NotationGuard.mask_for_fix(src)
+
+          refute_includes masked, 'example.com'
+          assert_includes masked, ' です。', '記法は目印へ退避し、後ろの空白と地の文は原稿のまま残す'
+          assert_equal src, NotationGuard.restore_masked(masked, spans)
+        end
+
         # 出力例の囲みの行番号は、解析・修正・独自校正が同じ答えを使う
         def test_should_report_machine_data_lines
           src = "地の文\n\n:::{.output}\n出力 1\n\n```\ncode\n```\n:::\n後の文\n"

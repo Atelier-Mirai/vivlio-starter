@@ -39,6 +39,7 @@ require_relative '../masking'
 require_relative '../pre_process/markdown_transformer'
 require_relative '../pre_process/math_transformer'
 require_relative '../pre_process/cross_reference_processor'
+require_relative '../pre_process/qr_transformer'
 
 module VivlioStarter
   module CLI
@@ -114,6 +115,13 @@ module VivlioStarter
           PreProcessCommands::CrossReferenceProcessor::ReferenceReplacer::PAGEREF_PATTERN,
           PreProcessCommands::CrossReferenceProcessor::ReferenceReplacer::REFERENCE_PATTERN
         )
+
+        # QR コードの記法 `@qr:URL{width=25mm}`（改善案.md #57）。URL と大きさの指定は機械データ。
+        # 放っておくと LABEL_REFERENCE が `@qr` だけを置き換え、残った URL が textlint にリンクとして
+        # 読まれて「リンクの後にスペースを入れません」と指摘される。指摘に従って空白を消すと、`@qr:` の URL は
+        # 空白の手前まで読まれるので「です」まで URL になり、別の QR コードができる。
+        # 綴りはビルドの変換器と同じ定義を使う（LABEL_REFERENCE と同じ流儀）。
+        QR_DIRECTIVE = PreProcessCommands::QrTransformer::QR_PATTERN
 
         # 解析パスでラベルの代わりに置く語。消さずに形の同じ語へ置き換える理由は neutralize_inline に
         LABEL_STAND_IN = '@label'
@@ -218,10 +226,13 @@ module VivlioStarter
         FURIGANA_PLACEHOLDER = 'VSRUBY'
         LABEL_PLACEHOLDER    = 'VSLABL'
 
+        # QR コードの記法（@qr:URL{…}）の退避に使う目印
+        QR_PLACEHOLDER = 'VSQRCD'
+
         # 修正パスで守る記法をまとめて退避する。`--fix` は textlint に原稿を直接
         # 直させるので、**解析パスの中和（strip_notation）は効かない**——守りたいものは
         # ここで目印へ逃がすしかない。守る対象は「地の文ではないのに素の文として
-        # 読まれるもの」＝数式、値つきの属性記法、ふりがな、相互参照のラベル、出力例の囲み（G1）。
+        # 読まれるもの」＝数式、QR コードの記法、値つきの属性記法、ふりがな、相互参照のラベル、出力例の囲み（G1）。
         #
         # **出力例の囲みを守らないと、見えない指摘が当たる。** 解析パスは G1 を中和するので
         # 指摘は表示に出ないが、`--fix` は textlint の修正をそのまま当てる（実測:
@@ -245,6 +256,7 @@ module VivlioStarter
             key
           end
           replaced = protected_text
+                     .gsub(QR_DIRECTIVE)    { stash.call(QR_PLACEHOLDER) }
                      .gsub(VALUE_ATTRIBUTE) { stash.call(ATTRIBUTE_PLACEHOLDER) }
                      .gsub(FURIGANA)        { stash.call(FURIGANA_PLACEHOLDER) }
                      .gsub(LABEL_REFERENCE) { stash.call(LABEL_PLACEHOLDER) }
@@ -368,7 +380,7 @@ module VivlioStarter
         end
         private_class_method :delist_fancy_marker
 
-        # 行内の記法を中和する（G3 → G4 → G5 → ラベル）。
+        # 行内の記法を中和する（QR → G3 → G4 → G5 → ラベル）。
         # 地の文が記法を「解説している」インラインコード（例: `{.aki}` の書き方を
         # 説明する行）を壊さないよう、コードを退避してから置換する。
         #
@@ -383,6 +395,7 @@ module VivlioStarter
         def neutralize_inline(line)
           protected_line, spans = Masking.protect_code(line)
           neutralized = protected_line
+                        .gsub(QR_DIRECTIVE, LABEL_STAND_IN)
                         .gsub(FURIGANA, FURIGANA_STAND_IN)
                         .gsub(CLASS_ATTRIBUTE, '')
                         .gsub(VALUE_ATTRIBUTE, '')
