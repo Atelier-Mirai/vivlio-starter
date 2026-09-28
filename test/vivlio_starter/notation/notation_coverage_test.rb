@@ -81,6 +81,15 @@ class NotationCoverageTest < Minitest::Test
       Dir[File.join(FIXTURE_DIR, "*.md")].each { FileUtils.cp(it, contents) }
       FileUtils.rm_f(File.join(contents, "README.md"))
       write_catalog(contents)
+      install_index_dictionary
+    end
+
+    # 本書の索引辞書を入れる。コード領域に索引タグが入らないことを確かめるには、
+    # フィクスチャに出てくる語（「索引」「コードブロック」など）が辞書に要る。
+    # `vs new` の雛形は辞書を空で配るので（改善案.md #51）、ここで補う。
+    def install_index_dictionary
+      FileUtils.cp(File.join(REPO_ROOT, "config", "index_glossary_terms.yml"),
+                   File.join(@project_dir, "config", "index_glossary_terms.yml"))
     end
 
     # フィクスチャのファイル名から catalog を起こす（番号の約束は Entry と同じ）。
