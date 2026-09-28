@@ -473,7 +473,7 @@ EPR 論文の問いにも、答えが出ています。1964年にジョン・ベ
 
 ### メートル——地球から光の速さへ
 
-![メートル原器](prototype_meter.webp){width=40% .align-right}
+![メートル原器](prototype_meter.webp){width=40% align=right}
 
 メートルの基準は、かつて地球の大きさに求められました。1792年、天文学者{Pierre Méchain|ピエール・メシャン}と{Jean-Baptiste Delambre|ジャン・バティスト・ドランブル}は、北極点から赤道までの距離をもとに 1 メートルを定めるため、長い測量に出発します。目指したのは、その距離の 1,000 万分の 1 でした。
 
@@ -575,7 +575,7 @@ $$
 | `:::{.showcase}` | 図解注釈（枠・引き出し記号・丸数字） |
 | `:::{.long-table}` | 長い表 |
 | `:::{.text-2dan}` | 二段組テキスト |
-| `{width=40% .align-right}` | 画像の幅と右寄せ |
+| `{width=40% align=right}` | 画像の幅と右寄せ |
 | `:::{.text-right}` | 右寄せ |
 | `` ```ruby:file.rb `` | ファイル名付きコード |
 | `` ```include:file.rb``` `` | コードインクルード |
