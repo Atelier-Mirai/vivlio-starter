@@ -15,12 +15,16 @@ module VivlioStarter
           super()
         end
 
+        # 拡張子を省いた指定（`vs pdf:pages 97-sample`）は、コマンド本体と同じく
+        # `.pdf` を補ってから探す。補わずに調べると、本体なら開けるファイルをここで止めてしまう。
         def validate
           return [] if @path.empty?
-          return [] if File.file?(@path)
+
+          pdf_path = @path.downcase.end_with?('.pdf') ? @path : "#{@path}.pdf"
+          return [] if File.file?(pdf_path)
 
           [error(
-            "対象の PDF が見つかりません: #{@path}",
+            "対象の PDF が見つかりません: #{pdf_path}",
             detail: '対処: vs build で PDF を生成するか、既存 PDF のパスを指定してください'
           )]
         end

@@ -308,6 +308,19 @@ module VivlioStarter
         end
       end
 
+      # PdfArtifactCheck: 拡張子を省いた指定は、コマンド本体と同じく .pdf を補って探す
+      def test_should_find_pdf_artifact_given_without_extension
+        Dir.mktmpdir('vs-guards') do |dir|
+          Dir.chdir(dir) do
+            File.write('97-sample.pdf', '%PDF-1.4')
+            assert_empty Guards::PdfArtifactCheck.new('97-sample').validate
+
+            violations = Guards::PdfArtifactCheck.new('98-missing').validate
+            assert_includes violations.first.message, '98-missing.pdf'
+          end
+        end
+      end
+
       # RelaxedCheck: :error を :warn に格下げする（○=推奨 の表現）
       def test_should_downgrade_error_to_warn_with_relaxed_check
         failing = Class.new(Guards::BaseCheck) do

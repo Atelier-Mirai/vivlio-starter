@@ -184,6 +184,7 @@
 
 ### Fixed
 
+- **`vs pdf:pages` / `vs pdf:rasterize` / `vs pdf:compress` に、拡張子を省いて PDF を指定すると「対象の PDF が見つかりません」で止まっていた**（`vs pdf:pages 97-sample`）。コマンド本体は `.pdf` を補って開くが、その手前の前提条件の確認が入力をそのまま調べていた。確認でも `.pdf` を補うようにした。
 - **`vs pdf:pages` が「name token is longer than …」の警告を大量に出していた**。Vivliostyle が PDF に書くリンク先の名前はビルド時の URL を丸ごと含み、PDF 1.7 の実装上限 127 バイトを超える。poppler の `pdftoppm` はリンク先 1 個ごとにこれを警告する。紙面にもリンクの動作にも関係しないので、`vs pdf:pages` はこの警告だけを表示しないようにした（ほかの警告は表示する）。PDF 自体は変えていない。
 - **`vs lint --fix` が、ふりがなの親文字の交ぜ書きを書き換えていた**。`{子ども|こども}` が `{子供|こども}` になっていた。textlint 側の修正は記法ごと守っていたが、交ぜ書きの置換は別の経路で、ふりがなを守っていなかった。
 - **`vs doctor --fix` が、Vivliostyle の動かない古い Node.js を入れようとしていた**。Node.js が無いとき `brew install node@20` を先に試していたが、Vivliostyle CLI は Node 22.12 以上を要求するので node@20 では足りない。しかも Homebrew の node@20 は `node` コマンドを PATH に出さない形で入り、2026-10-28 には Homebrew で無効化される。版を固定せず `brew install node` で最新を入れるように直した。93 章（インストール）の手順も同じく直した。
