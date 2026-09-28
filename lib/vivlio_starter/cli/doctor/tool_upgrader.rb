@@ -50,7 +50,7 @@ module VivlioStarter
         # brew formula / npm パッケージ名の正典はこの表であり、--fix のインストール処理も
         # brew_install_packages 経由でここを参照する（doctor.rb 側と二重管理しない・spec §4-1）。
         Tool = Data.define(:label, :kind, :package, :checks) do
-          # brew の導入記録との突き合わせ。node はバージョン付き別名（node@20 等）で
+          # brew の導入記録との突き合わせ。node はバージョン付き別名（node@22 等）で
           # 導入されていることがあるため前方一致相当で拾う
           def matches_formula?(name)
             return name.match?(/\Anode(@\d+)?\z/) if package == 'node'
@@ -364,7 +364,7 @@ module VivlioStarter
 
         # --fix（不足分の新規インストール）が使う brew formula 名の対応表。
         # doctor.rb 側にパッケージ名を再列挙せず、この TOOLS を正典とする（spec §4-1）。
-        # node は node@20 優先の特例があるため対象外（doctor.rb 側で個別処理）。
+        # node は対象外。npm で入れるツールの前提なので、doctor.rb 側で最初に個別に入れる。
         # @param missing [Array<String>] doctor 診断ラベルの不足一覧
         # @return [Array<String>] インストールすべき brew formula 名
         def brew_install_packages(missing)

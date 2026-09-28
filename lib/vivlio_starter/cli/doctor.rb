@@ -375,11 +375,12 @@ module VivlioStarter
 
         Common.log_always('🛠 Homebrew による不足ツールのインストールを実行します…')
         begin
-          # Node.js（node@20 を優先）
+          # Node.js。npm で入れるツール（vivliostyle・textlint など）の前提なので最初に入れる。
+          # 版を固定せず最新の node を入れる——Vivliostyle CLI は Node 22.12 以上を要求し、
+          # 以前優先していた node@20 はこれを満たさないうえ、Homebrew で無効化される。
           if missing.include?('node')
-            Common.log_always('node をインストールします（node@20 優先）…')
-            ok = system('brew install node@20')
-            ok ||= system('brew install node')
+            Common.log_always('node をインストールします…')
+            ok = system('brew install node')
             Common.log_always('node の Homebrew インストールに失敗しました。手動インストールをご検討ください。') unless ok
           end
 

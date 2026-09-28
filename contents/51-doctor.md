@@ -135,7 +135,7 @@ vs doctor --fix
 
 診断で不足が見つかったツールをインストールします。macOS では主に Homebrew を使います。Homebrew 自体や Xcode Command Line Tools が入っていない場合は、その導入前に確認を求められます。
 
-Node.js（node@20 優先）も対象です。vivliostyle や textlint など、npm で導入するツールは Node.js の準備が済んでからインストールされます。
+Node.js も対象です。vivliostyle や textlint など、npm で導入するツールは Node.js の準備が済んでからインストールされます。
 
 ```
 🛠 Homebrew による不足ツールのインストールを実行します…

@@ -48,7 +48,7 @@ gem install query-stream        # データ展開機能
 | :--- | :--- | :--- |
 | Xcode Command Line Tools | `xcode-select --install` | macOS のビルド基盤 |
 | Homebrew | 公式インストーラ | macOS 用パッケージマネージャ |
-| Node.js（node@20 優先）/ npm | `brew install node@20` | Vivliostyle CLI の前提 |
+| Node.js / npm | `brew install node` | Vivliostyle CLI の前提（Node 22.12 以上） |
 | Vivliostyle CLI | `npm install -g @vivliostyle/cli` | PDF 生成エンジン |
 | textlint と推奨ルール | `npm install -g textlint ...` | 文章校正。設定ファイルも `config/` に自動配置 |
 | qpdf | `brew install qpdf` | PDF 分割・結合・ページ操作 |
@@ -114,7 +114,7 @@ ruby -v
 4) Node.js
 
 ```bash
-brew install node@20 || brew install node
+brew install node
 node -v && npm -v
 ```
 
