@@ -105,10 +105,10 @@ module VivlioStarter
         # 回帰: 値の続かない --log の直後にあるオプションを取りこぼさない
         # （preflight には 2026-04-13 の複製以来このバグが残っていた）
         def test_should_not_swallow_the_option_following_a_bare_log
-          preflight = PreflightCommand.new(['--log', '--no-verify'])
+          preflight = PreflightCommand.new(['--log', '--verify-links'])
 
           assert_equal 'info', preflight.options[:log_level]
-          assert_equal false, preflight.options[:verify], '--log の次のオプションが失われないはずです'
+          assert_equal true, preflight.options[:verify_links], '--log の次のオプションが失われないはずです'
 
           build = BuildCommand.new(['10-intro', '--log', '--no-clean'])
 

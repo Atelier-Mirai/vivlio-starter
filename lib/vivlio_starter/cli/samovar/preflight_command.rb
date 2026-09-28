@@ -54,7 +54,6 @@ module VivlioStarter
         many :targets, 'チェック対象（章番号 / 範囲 / スラッグ）', default: []
 
         options do
-          option '--[no]-verify', 'リンク・画像の基本検証を実行する（--no-verify でスキップ）', default: true, key: :verify
           option '--verify-links', '外部 URL の HTTP 到達性チェックを実行する', default: false, key: :verify_links
           option '--log <level>', 'ログレベルを指定（error/warn/info/debug）', key: :log_level
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
@@ -153,11 +152,7 @@ module VivlioStarter
         # 明示された指定だけを載せる理由は BuildCommand#setup_verify_options! を参照。
         def setup_verify_options!
           opts = {}
-          if options[:verify] == false
-            opts[:no_verify] = true
-          elsif options[:verify_links]
-            opts[:verify_external_links] = true
-          end
+          opts[:verify_external_links] = true if options[:verify_links]
           Thread.current[:vs_verify_options] = opts
         end
 
@@ -288,7 +283,6 @@ module VivlioStarter
               targets...          チェック対象（章番号 / 範囲 / スラッグ）。省略時は全章
 
             オプション:
-              --[no]-verify       リンク・画像の基本検証を実行する（--no-verify でスキップ）（既定: 有効）
               --verify-links      外部 URL の HTTP 到達性チェックを実行する
               --log <level>       ログレベルを指定（error/warn/info/debug）
               -h, --help          このコマンドの使い方を表示

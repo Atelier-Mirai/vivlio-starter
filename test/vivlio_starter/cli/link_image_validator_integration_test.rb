@@ -8,7 +8,6 @@
 #
 # 検証内容:
 #   - vs build でのサマリー出力（問題あり・問題なし）
-#   - --no-verify で検証がスキップされること
 #   - --verify-links で HTTP 到達性チェックが実行されること（モックサーバー使用）
 #   - 問題なし時の出力
 #
@@ -192,52 +191,6 @@ module VivlioStarter
           # Assert: スキップメッセージが含まれる
           assert_output(/外部URL到達性チェック: スキップ/) do
             LinkImageValidator.print_summary
-          end
-        end
-      end
-
-      # ================================================================
-      # 統合テスト: --no-verify（全検証スキップ）
-      # ================================================================
-      class LinkImageValidatorNoVerifyIntegrationTest < Minitest::Test
-        def setup
-          LinkImageValidator.reset!
-        end
-
-        def teardown
-          Thread.current[:vs_verify_options] = nil
-        end
-
-        # --no-verify 時は画像・裸URL・外部URLすべてスキップされること
-        def test_should_skip_all_validations_when_no_verify_is_set
-          # Arrange: --no-verify に相当するスレッドローカル設定
-          Thread.current[:vs_verify_options] = { no_verify: true }
-
-          content = <<~MD
-            ![欠落画像](data:image/svg+xml;charset=utf-8,%3Csvg%3E%3Ctext%3E%3Ctspan%3Emissing.webp%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fsvg%3E)
-            https://example.com/bare
-            [リンク](https://example.com/page)
-          MD
-
-          # Act
-          report = LinkImageValidator.validate(content, 'test.md')
-
-          # Assert: すべての issue が空
-          assert_pattern do
-            report => { image_issues: [], link_issues: [] }
-          end
-        end
-
-        # --no-verify 時は print_summary が何も出力しないこと
-        def test_should_produce_no_output_when_no_verify_is_set
-          # Arrange
-          Thread.current[:vs_verify_options] = { no_verify: true }
-          LinkImageValidator.validate("https://example.com/bare\n", 'test.md')
-
-          # Assert: reset! 後と同様に何も出力されない
-          # （レポートは蓄積されるが issue が空のため「問題なし」が出る）
-          assert_output(/良好な状態です/) do
-            Common.stub(:log_info, ->(msg) { puts "ℹ️  #{msg}" }) { LinkImageValidator.print_summary }
           end
         end
       end

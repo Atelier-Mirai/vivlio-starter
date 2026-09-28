@@ -321,15 +321,14 @@ module VivlioStarter
         # クリーン指定を受け付けないため・spec §1.4）。resize: false は必須——
         # symlink 先である著者の stylesheets/images を書き換えさせないため。
         def run_pipeline
-          Thread.current[:vs_verify_options] = { verify_images: true, verify_bare_urls: true,
-                                                 verify_external_links: false }
+          Thread.current[:vs_verify_options] = { verify_external_links: false }
           PreProcessCommands::LinkImageValidator.reset!
           PreProcessCommands::IssueRegistry.reset!
           PostProcessCommands::HeadingProcessor.chapter_tokens_override = [basename]
 
           BuildLock.with_lock do
             pipeline = UnifiedBuildPipeline.new(
-              PipelineCommand.new(options: { resize: false, compress: false, verify: true, clean: !debug? }),
+              PipelineCommand.new(options: { resize: false, compress: false, clean: !debug? }),
               entries: [entry], mode: :single
             )
             pipeline.run

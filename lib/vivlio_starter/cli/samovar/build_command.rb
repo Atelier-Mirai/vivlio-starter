@@ -47,7 +47,6 @@ module VivlioStarter
           option '--theme <color>', 'テーマカラー（.md 直接指定時のみ有効）', key: :theme
           option '--[no]-compress', 'PDF圧縮を行う（--no-compress でスキップ）', key: :compress
           option '--[no]-clean', '中間生成物をクリーンアップ（--no-clean でスキップ）', default: true, key: :clean
-          option '--[no]-verify', 'リンク・画像の基本検証を実行する（--no-verify でスキップ）', default: true, key: :verify
           option '--verify-links', '外部 URL の HTTP 到達性チェックを実行する', default: false, key: :verify_links
           option '--log <level>', 'ログレベルを指定（error/warn/info/debug）', key: :log_level
           option '-h/--help', 'このコマンドの使い方を表示', key: :help
@@ -176,7 +175,6 @@ module VivlioStarter
         def warn_ignored_options!
           ignored = []
           ignored << '--no-clean' if options[:clean] == false
-          ignored << '--no-verify' if options[:verify] == false
           ignored << '--verify-links' if options[:verify_links]
           ignored << (options[:compress] ? '--compress' : '--no-compress') unless options[:compress].nil?
           return if ignored.empty?
@@ -371,20 +369,16 @@ module VivlioStarter
           end
         end
 
-        # CLI の --verify / --verify-links オプションをスレッドローカルに設定する
+        # CLI の --verify-links オプションをスレッドローカルに設定する
         # LinkImageValidator が resolve_config で参照する
         #
         # **明示された指定だけを載せる。** resolve_config は
         # `cli_opts.fetch(:verify_images, 設定側の既定)` の形で book.yml をフォールバックに
-        # 置くため、キーを常に立てると既定値が一度も発火せず verify.images /
-        # bare_urls / external_links が丸ごと無視される（2026-08-07 修正）。
+        # 置くため、キーを常に立てると既定値が一度も発火せず verify.external_links が
+        # 丸ごと無視される（2026-08-07 修正）。
         def setup_verify_options!
           opts = {}
-          if options[:verify] == false
-            opts[:no_verify] = true
-          elsif options[:verify_links]
-            opts[:verify_external_links] = true
-          end
+          opts[:verify_external_links] = true if options[:verify_links]
           Thread.current[:vs_verify_options] = opts
         end
 

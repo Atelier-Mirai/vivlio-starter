@@ -385,7 +385,6 @@ vs build --help     # ヘルプを表示
 |:---|:---|
 | `--compress` / `--no-compress` | PDF 圧縮の有効 / 無効 |
 | `--no-clean` | 中間生成物を残す（デバッグ用） |
-| `--[no]-verify` | リンク・画像の基本検証を有効 / 無効にする（既定: 有効） |
 | `--verify-links` | 外部 URL の HTTP 到達性チェックを有効にする |
 | `--theme <color>` | テーマカラーを指定（`.md` ファイルの直接指定時のみ有効） |
 | `--log <level>` | ログレベルを指定（error / warn / info / debug） |
@@ -597,35 +596,18 @@ vs build --verify-links
 | 5xx | 警告（サーバーエラー） |
 | タイムアウト | 警告（到達不能） |
 
-### 検証を無効にする
-
-検証を省いてビルドしたい場合は、`--no-verify` を使います。原稿を直したあとには、検証を有効にして再確認してください。
-
-```bash
-vs build --no-verify
-```
-
 ### book.yml での設定
 
-プロジェクト固有の設定は `config/book.yml` で細かく制御できます。
+外部 URL を毎回確かめるかどうかは、`config/book.yml` で決めます。画像と裸 URL の確認は常に行うので、設定はありません。
 
 ```yaml
 verify:
-  images: true           # 画像パスの存在チェック（既定: true）
-  bare_urls: true        # 裸 URL の検出と警告（既定: true）
   external_links: false  # 外部 URL の HTTP 到達性チェック（既定: false）
   timeout: 10            # HTTP チェックのタイムアウト秒数
   max_concurrency: 5     # HTTP チェックの最大同時接続数
 ```
 
-CLI オプションは `book.yml` の設定より優先されます。たとえば `book.yml` で `external_links: true` にしていても、`--no-verify` を付ければ全チェックがスキップされます。
-
-| 状況 | 結果 |
-|:---|:---|
-| `book.yml: external_links: true` + CLI オプションなし | HTTP チェック実行 |
-| `book.yml: external_links: true` + `--no-verify` | 全チェックスキップ |
-| `book.yml: external_links: false` + `--verify-links` | HTTP チェック実行 |
-| `book.yml: images: false` + CLI オプションなし | 画像チェックのみスキップ |
+`external_links: false` のままでも、`--verify-links` を付けたビルドでは外部 URL を確かめます。
 
 :::{.note}
 **コードブロック内は検証対象外**
@@ -879,7 +861,7 @@ vs pdf:rasterize --clean
 - **クリーン EPUB**（`targets: epub`）— 楽天 Kobo / Apple Books への配信に
 - **Kindle 用 KPF**（`targets: kindle`）— Amazon Kindle（KDP）への配信に
 - **単章ビルド**（`vs build 1`）— 執筆中のすばやい確認に
-- **リンク・画像検証**（`--verify-links` / `--no-verify`）— リンク切れ・欠落画像の早期発見に
+- **リンク・画像検証**（`--verify-links`）— リンク切れ・欠落画像の早期発見に
 - **ビルド前チェック**（`vs preflight`）— 組版を待たずに原稿の問題を見つける
 - **特殊記号・絵文字の対策** — Type 3 フォントや波ダッシュに起因する問題を抑える
 - **ページの画像化**（`vs pdf:pages`）— SNSでの見本公開用などに特定のページを画像として書き出し

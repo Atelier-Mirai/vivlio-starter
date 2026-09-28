@@ -5,7 +5,7 @@
 # ================================================================
 # テスト対象:
 #   LinkImageValidator.resolve_config — book.yml の verify.* と
-#   CLI オプション（--no-verify / --verify-links）の優先順位
+#   CLI オプション（--verify-links）の優先順位
 #
 # 背景:
 #   BuildCommand / PreflightCommand の setup_verify_options! が
@@ -14,6 +14,9 @@
 #   `cli_opts.fetch(:verify_images, 設定側の既定)` が一度も既定値に落ちず、
 #   book.yml の verify.images / bare_urls / external_links が
 #   丸ごと無視されていた（2026-08-07 修正）。
+#
+#   その後、verify.images / bare_urls と --no-verify は撤去した（改善案.md #41）。
+#   画像の実在と裸 URL は常に検査し、選べるのは外部 URL の検査だけになった。
 #
 #   キー名は resolve_config に出現するため book_yml_consumption_test は
 #   素通りする。「値が実際に効くか」はここで固定する。
@@ -30,26 +33,35 @@ module VivlioStarter
   module CLI
     module PreProcessCommands
       class VerifyConfigResolutionTest < Minitest::Test
-        # setup_verify_options! が実際に載せる 3 通り
+        # setup_verify_options! が実際に載せる 2 通り
         NO_OPTIONS    = {}.freeze                              # 素の vs build / vs preflight
         VERIFY_LINKS  = { verify_external_links: true }.freeze # --verify-links
-        NO_VERIFY     = { no_verify: true }.freeze             # --no-verify
 
         def teardown
           Thread.current[:vs_verify_options] = nil
           CLI::Common.reload_configuration!(silent: true)
         end
 
-        # book.yml の verify.* が CLI 無指定時に効くこと（回帰の本体）
+        # book.yml の verify.external_links が CLI 無指定時に効くこと（回帰の本体）
         def test_should_apply_book_yml_values_when_no_cli_option_given
-          with_verify_config(images: false, bare_urls: false, external_links: true)
+          with_verify_config(external_links: true)
           Thread.current[:vs_verify_options] = NO_OPTIONS
 
           config = LinkImageValidator.send(:resolve_config)
 
-          assert_equal false, config[:verify_images], 'verify.images: false が効くはずです'
-          assert_equal false, config[:verify_bare_urls], 'verify.bare_urls: false が効くはずです'
           assert_equal true, config[:verify_external_links], 'verify.external_links: true が効くはずです'
+        end
+
+        # 撤去した verify.images / bare_urls が古い book.yml に false で残っていても、
+        # 画像と裸 URL は検査する（読まれないキーは Common が廃止として案内する）
+        def test_should_always_check_images_and_bare_urls
+          with_verify_config(images: false, bare_urls: false)
+          Thread.current[:vs_verify_options] = NO_OPTIONS
+
+          config = LinkImageValidator.send(:resolve_config)
+
+          assert_equal true, config[:verify_images]
+          assert_equal true, config[:verify_bare_urls]
         end
 
         # 未設定時の既定（images/bare_urls は有効、external_links は無効）
@@ -83,18 +95,6 @@ module VivlioStarter
           Thread.current[:vs_verify_options] = VERIFY_LINKS
 
           assert_equal true, LinkImageValidator.send(:resolve_config)[:verify_external_links]
-        end
-
-        # --no-verify は book.yml の指定によらず全無効
-        def test_should_disable_everything_with_no_verify_option
-          with_verify_config(images: true, bare_urls: true, external_links: true)
-          Thread.current[:vs_verify_options] = NO_VERIFY
-
-          config = LinkImageValidator.send(:resolve_config)
-
-          assert_equal false, config[:verify_images]
-          assert_equal false, config[:verify_bare_urls]
-          assert_equal false, config[:verify_external_links]
         end
 
         private

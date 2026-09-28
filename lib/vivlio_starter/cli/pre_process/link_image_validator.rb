@@ -15,8 +15,9 @@
 # 設計方針:
 #   - ビルドを止めない（警告のみ）
 #   - ImagePathNormalizer が置換済みの data: URI を検出する方式（方式 A）
+#   - 画像の実在と裸 URL は常に検査する（止める設定は持たない。警告の原因を直せば消える）
 #   - 外部 URL チェックはオプション（--verify-links / book.yml）
-#   - 危険スキームの検出はセキュリティ保護であり、--no-verify でも無効化できない
+#   - 危険スキームの検出はセキュリティ保護であり、常に有効
 #
 # セキュリティ観点（堅牢性仕様 11-1）:
 #   原稿内の `<img src="file:///etc/passwd">` 等によるローカルファイル漏洩を
@@ -80,7 +81,7 @@ module VivlioStarter
             end
 
             # セキュリティ検証（11-1）: 危険スキームの検出は常時有効
-            # file:// / javascript: 等は --no-verify でも無効化しない
+            # file:// / javascript: 等はどの設定でも無効化しない
             link_issues += scan_dangerous_schemes(content, filename)
 
             # 外部 URL チェック用に URL を蓄積（後でバッチ実行）
@@ -329,20 +330,17 @@ module VivlioStarter
           # book.yml + CLI オプションから検証設定を解決する。
           # cli_opts に載るのは CLI で**明示された**指定だけ（`setup_verify_options!`）。
           # ここの fetch 第 2 引数が book.yml の既定として効くのは、その前提があってこそ。
+          #
+          # 画像の実在と裸 URL は常に検査する。以前は `--no-verify` と `verify.images` /
+          # `verify.bare_urls` で止められたが、どちらも正しい警告を黙らせるだけで原因は
+          # 直らないため撤去した（改善案.md #41）。
           def resolve_config
             verify_cfg = Common::CONFIG.verify
             cli_opts = Thread.current[:vs_verify_options] || {}
 
-            # --no-verify で全無効
-            if cli_opts[:no_verify]
-              return { verify_images: false, verify_bare_urls: false, verify_external_links: false,
-                       timeout: 10, max_concurrency: 5 }
-            end
-
-            # 未設定（nil）時の既定: images/bare_urls は有効、external_links は無効
             {
-              verify_images: cli_opts.fetch(:verify_images, verify_cfg.images != false),
-              verify_bare_urls: cli_opts.fetch(:verify_bare_urls, verify_cfg.bare_urls != false),
+              verify_images: true,
+              verify_bare_urls: true,
               verify_external_links: cli_opts.fetch(:verify_external_links, verify_cfg.external_links == true),
               timeout: verify_cfg.timeout || 10,
               max_concurrency: verify_cfg.max_concurrency || 5

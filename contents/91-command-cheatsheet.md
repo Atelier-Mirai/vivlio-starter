@@ -210,7 +210,6 @@
 :::{.long-table}
 | オプション | 説明 |
 |:---|:---|
-| `--no-verify` | リンク・画像の基本検証をスキップする（既定: 実行） |
 | `--verify-links` | 外部 URL の HTTP 到達性チェックも実行する |
 | `--log <level>` | ログレベルを指定する（`error` / `warn` / `info` / `debug`） |
 :::
@@ -224,7 +223,6 @@
 |:---|:---|
 | `--no-compress` | PDF 圧縮をスキップする |
 | `--no-clean` | 中間生成物のクリーンアップをスキップする（既定: 実行） |
-| `--no-verify` | リンク・画像の基本検証をスキップする（既定: 実行） |
 | `--verify-links` | 外部 URL の HTTP 到達性チェックも実行する |
 | `--log <level>` | ログレベルを指定する（`error` / `warn` / `info` / `debug`） |
 :::

@@ -425,6 +425,7 @@
 
 ### Removed
 
+- **`vs build` / `vs preflight` の `--no-verify` と、`book.yml` の `verify.images`・`verify.bare_urls` を撤去した**。画像の実在と裸 URL は常に確かめる。どちらの設定も、警告の原因（画像のパス、リンク記法で書いていない URL）を直さずに警告だけを消すものだった。古い `book.yml` にキーが残っていると、廃止の案内が出る。外部 URL の確認（`--verify-links`・`verify.external_links`）はそのまま。
 - **`@omakase`（`@auto` の別名）を撤去した**。キャプションに `@omakase` と書くと、いまは普通のラベル ID として扱われる。自動採番には `@auto` を使う。
 - **Markdown 段階の定義リスト変換（96 行）を撤去した**。`MarkdownTransformer.convert_definition_lists` とその補助（`definition_term_line?` ほか 5 メソッド）、`MarkdownPreprocessor#transform_definition_lists!`。後処理の `DefinitionListConverter`（120 行）へ置き換わり、Kramdown への依存も定義リストからは外れた。
 

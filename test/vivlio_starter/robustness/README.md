@@ -41,7 +41,7 @@ bundle exec ruby -Ilib -Itest test/vivlio_starter/robustness/<filename>_test.rb
 | [8-1](../../../../docs/archives/vivlio_starter_robustness_test_spec.md#L275) | `interrupt_handling_test.rb` | SIGINT 受信時に `⚠️ 処理が中断されました` を表示し、終了コード 130（128+SIGINT）で終わる | ✅ |
 | [8-2](../../../../docs/archives/vivlio_starter_robustness_test_spec.md#L276) | `interrupt_handling_test.rb` | SIGTERM 受信時に `⚠️ 処理が中断されました` を表示し、終了コード 143（128+SIGTERM）で終わる | ✅ |
 | [9-7](../../../../docs/archives/vivlio_starter_robustness_test_spec.md#L289) | `catalog_yaml_safety_test.rb` | `catalog.yml` の `!ruby/object` 等のタグを `Psych::DisallowedClass` として拒否し、人間向けメッセージに変換する | ✅ |
-| [11-1](../../../../docs/archives/vivlio_starter_robustness_test_spec.md#L306) | `dangerous_scheme_detection_test.rb` | 原稿内の `<img src="file:///etc/passwd">` / `javascript:` スキームを `LinkImageValidator.scan_dangerous_schemes` で検出し警告（`--no-verify` でも常時有効） | ✅ |
+| [11-1](../../../../docs/archives/vivlio_starter_robustness_test_spec.md#L306) | `dangerous_scheme_detection_test.rb` | 原稿内の `<img src="file:///etc/passwd">` / `javascript:` スキームを `LinkImageValidator.scan_dangerous_schemes` で検出し警告（ほかの検証を切っても常時有効） | ✅ |
 | [11-2](../../../../docs/archives/vivlio_starter_robustness_test_spec.md#L307) | `data_render_yaml_safety_test.rb` | `data/*.yml` の `!ruby/object` タグを `QueryStream::DataLoadError` に変換して通知（query-stream 1.2.1 以降の `safe_load_file`） | ✅ |
 
 **凡例**:

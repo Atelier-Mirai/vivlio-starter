@@ -250,18 +250,16 @@ legal:
 
 ### verify — 原稿の検証
 
-`vs build` と `vs preflight` で、画像の参照先や URL をどう確認するかを設定します。原稿を移動したあとや、公開前のリンク確認に関わる項目です。
+`vs build` と `vs preflight` は、画像の参照先と裸 URL（Markdown のリンク記法で書いていない URL）を毎回確かめます。ここで選べるのは、外部 URL に実際にアクセスして確かめるかどうかです。公開前のリンク確認に使います。
 
 ```yaml
 verify:
-  images: true           # 画像パスの存在チェック（既定: true）
-  bare_urls: true        # 裸 URL（Markdown リンク記法でない URL）の検出と警告（既定: true）
   external_links: false  # 外部 URL の HTTP 到達性チェック（既定: false。--verify-links で有効化）
   timeout: 10            # HTTP チェックのタイムアウト秒数
   max_concurrency: 5     # HTTP チェックの最大同時接続数
 ```
 
-`images`/`bare_urls` は Markdown 前処理の中で常時チェックされます。`external_links` は `vs build --verify-links` を指定したときのみ実行される重い検証で、ここでは既定の挙動と並列数・タイムアウトだけを設定します。`vs build --no-verify` で `images`/`bare_urls`/`external_links` をまとめて無効化できます。詳細は「ビルド（vs build）」の章を参照してください。
+外部 URL の確認は時間がかかるので、既定では行いません。毎回確かめるなら `external_links: true` にします。その場かぎり確かめるときは `vs build --verify-links` を使います。詳細は「ビルド（vs build）」の章を参照してください。
 
 ## 機能別の詳細設定
 

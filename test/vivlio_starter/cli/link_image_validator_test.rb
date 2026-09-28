@@ -265,25 +265,6 @@ module VivlioStarter
         end
 
         # =================================================================
-        # --no-verify（全無効化）
-        # =================================================================
-
-        # 検証が全無効時は何も検出されないこと
-        def test_should_skip_all_checks_when_no_verify
-          Thread.current[:vs_verify_options] = { no_verify: true }
-
-          content = <<~MD
-            ![テスト](data:image/svg+xml;charset=utf-8,%3Csvg%3E%3Ctext%3E%3Ctspan%3Emissing.webp%3C%2Ftspan%3E%3C%2Ftext%3E%3C%2Fsvg%3E)
-            https://example.com/bare
-          MD
-
-          report = LinkImageValidator.validate(content, 'test.md')
-
-          assert_empty report.image_issues
-          assert_empty report.link_issues
-        end
-
-        # =================================================================
         # reset!
         # =================================================================
 

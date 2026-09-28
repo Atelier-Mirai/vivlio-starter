@@ -18,7 +18,7 @@
 #   E. コードブロック内の例示は無視する（誤検出防止）
 #   F. インラインコード内の例示は無視する
 #   G. 検出結果が print_summary で表示される
-#   H. --no-verify 指定下でも危険スキーム検出は無効化されない（常時有効）
+#   H. ほかの検証を全部切った設定でも危険スキーム検出は無効化されない（常時有効）
 # ================================================================
 
 require 'test_helper'
@@ -161,9 +161,9 @@ module VivlioStarter
       end
 
       # ----------------------------------------------------------------
-      # H. --no-verify 指定下でも危険スキーム検出は常時有効
+      # H. ほかの検証を全部切った設定でも危険スキーム検出は常時有効
       # ----------------------------------------------------------------
-      def test_dangerous_scheme_detection_is_not_disabled_by_no_verify
+      def test_dangerous_scheme_detection_is_not_disabled_by_other_settings
         md = %(<img src="file:///etc/passwd">\n)
         no_verify_config = {
           verify_images: false,
@@ -176,7 +176,7 @@ module VivlioStarter
           report = LinkImageValidator.validate(md, 'ch.md', config: no_verify_config)
           dangerous = report.link_issues.select { it.issue_type == :dangerous_scheme }
           assert_equal 1, dangerous.size,
-                       'セキュリティ検証は --no-verify でも無効化されないこと'
+                       'セキュリティ検証はほかの検証を切っても無効化されないこと'
         end
       end
 
