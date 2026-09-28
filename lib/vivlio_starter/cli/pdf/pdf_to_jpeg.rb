@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'fileutils'
+require 'open3'
 
 module VivlioStarter
   module Pdf
@@ -9,6 +10,12 @@ module VivlioStarter
     module PdfToJpeg
       class Error < StandardError
       end
+
+      # pdftoppm の標準エラーのうち、表示しない警告。
+      # Vivliostyle が PDF に書くリンク先の名前（viv-id-http:…）はビルド時の URL を丸ごと
+      # 含むため、PDF 1.7 の実装上限 127 バイトを超える。poppler はリンク先 1 個ごとに
+      # これを警告し、1 章で百行を超える。ページの画像化には関係しない（改善案.md #44）。
+      IGNORED_WARNING = /name token is longer than what the specification says it can be/
 
       module_function
 
@@ -19,9 +26,9 @@ module VivlioStarter
       # 1 起点に振り直され、元 PDF のページ番号と一致しなくなるため。
       #
       # @param pages [String, nil] ページ指定（例: "3", "1-5", "1,3,7-9"）
-      # @param command_runner [#system] テストで外部コマンドを差し替えるための DI
+      # @param command_runner [#capture3] テストで外部コマンドを差し替えるための DI
       # @return [Array<String>] ページ番号順の JPEG パス
-      def convert(pdf_path, output_dir:, dpi: 350, quality: 95, pages: nil, command_runner: Kernel)
+      def convert(pdf_path, output_dir:, dpi: 350, quality: 95, pages: nil, command_runner: Open3)
         validate_options!(dpi:, quality:)
 
         FileUtils.mkdir_p(output_dir)
@@ -58,9 +65,13 @@ module VivlioStarter
         ]
       end
 
-      # コマンドを実行し、失敗時は Error を送出する
-      def execute!(command, command_runner: Kernel)
-        return if command_runner.system(*command)
+      # コマンドを実行し、失敗時は Error を送出する。
+      # 標準エラーは IGNORED_WARNING の行だけを捨て、残りはそのまま表示する。
+      def execute!(command, command_runner: Open3)
+        _stdout, stderr, status = command_runner.capture3(*command)
+        remaining = stderr.each_line.grep_v(IGNORED_WARNING).join
+        $stderr.print(remaining) unless remaining.empty?
+        return if status.success?
 
         raise Error, "pdftoppm の実行に失敗しました: #{command.join(' ')}"
       end
