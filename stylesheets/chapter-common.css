@@ -341,6 +341,20 @@ ol.vs-list-upper-alpha-paren2 > li::before { content: "(" counter(vs-fancy, uppe
 ol.vs-list-lower-roman-paren2 > li::before { content: "(" counter(vs-fancy, lower-roman) ") "; }
 ol.vs-list-upper-roman-paren2 > li::before { content: "(" counter(vs-fancy, upper-roman) ") "; }
 
+/* 空行を挟んだ項目（中身が <p> で包まれる）でも、番号を本文の 1 行目に並べる（改善案.md #59）。
+   ::before は行内の文字なので、後ろにブロックの <p> が来ると番号だけが 1 行を占める。
+   float で段落の 1 行目の横へ置く。詰めた項目（<p> なし）の見た目は変わらない。
+   float の中では末尾の空白が消えるので、番号と本文の間は margin であける。 */
+ol[class*="-paren"] > li::before {
+  float: inline-start;
+  margin-inline-end: 0.3em;
+}
+
+/* 段落の字下げ（p の text-indent: 1em）が番号の後ろに空きを作るので、最初の段落だけ外す */
+ol[class*="-paren"] > li > p:first-child {
+  text-indent: 0;
+}
+
 /* :::{.outline-list} — ネスト番号リストを 1. / 1.1 / 1.2 の複合番号で表示
    （counters() のネスト連結は Vivliostyle ネイティブサポート・§5.2） */
 .outline-list ol { list-style: none; counter-reset: vs-outline; }
