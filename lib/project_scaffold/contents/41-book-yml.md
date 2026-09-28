@@ -203,7 +203,7 @@ output:
 
 `cover` に指定するスラッグは `vs cover` コマンドで生成したカバーのテーマ名と対応します。詳細は「カバー画像の生成」の章を参照してください。
 
-PDF を作るとき、Vivlio Starter は Vivliostyle で原稿を組版し、Vivliostyle は Chromium（ブラウザ）を使って PDF に書き出します。その過程で、絵文字が Type 3 フォント[^type3-font]として埋め込まれることがあります。`pdf.techbook` を有効にすると、絵文字をカラーの SVG 画像へ差し替えるので、「技術書典」など Type 3 を受け付けない入稿先への納入も可能になります。既定で有効ですが、詳細は「ビルド（vs build）」の章を参照してください。
+PDF を作るとき、Vivlio Starter は Vivliostyle で原稿を組版し、Vivliostyle は Chromium（ブラウザ）を使って PDF に書き出します。その過程で、絵文字が Type 3 フォント[^type3-font]として埋め込まれることがあります。`pdf.techbook` を有効にすると、絵文字をカラーの SVG 画像へ差し替えるので、「技術書典」など Type 3 を受け付けない入稿先への納入も可能になります。既定で有効ですが、詳細は「ビルド」の章を参照してください。
 
 [^type3-font]: Type 3 は、文字の形を PDF 内の描画命令で定義するフォント形式です。
 
@@ -259,7 +259,7 @@ verify:
   max_concurrency: 5     # HTTP チェックの最大同時接続数
 ```
 
-外部 URL の確認は時間がかかるので、既定では行いません。毎回確かめるなら `external_links: true` にします。その場かぎり確かめるときは `vs build --verify-links` を使います。詳細は「ビルド（vs build）」の章を参照してください。
+外部 URL の確認は時間がかかるので、既定では行いません。毎回確かめるなら `external_links: true` にします。その場かぎり確かめるときは `vs build --verify-links` を使います。詳細は「ビルド」の章を参照してください。
 
 ## 機能別の詳細設定
 
@@ -314,9 +314,9 @@ metrics:
 | `commercial` | 9〜15 万字 | 200〜350 ページの商業出版レベル |
 | `heavy` | 15 万字〜 | 350 ページ以上の大部の本 |
 | `author_custom` | — | 自分で基準値を定義したい場合 |
-| `relative` | — | その本自身の章の中央値と比べたい場合（詳細は「Metrics」の章） |
+| `relative` | — | その本自身の章の中央値と比べたい場合（詳細は「原稿の分量と難度の計測」の章） |
 
-`use` で選んだプリセットが切り替えるのは、`chapter`/`section` の分量基準だけです。語彙難度（`kanji_ratio`・`word_length`・`ttr`）・読解難度（`readability`）・警告メッセージの文言（`labels`）は、プリセットの外側に置く共通設定で、どのプリセットを選んでも同じ値が使われます。詳細な基準値のカスタマイズは「Metrics」の章を参照してください。
+`use` で選んだプリセットが切り替えるのは、`chapter`/`section` の分量基準だけです。語彙難度（`kanji_ratio`・`word_length`・`ttr`）・読解難度（`readability`）・警告メッセージの文言（`labels`）は、プリセットの外側に置く共通設定で、どのプリセットを選んでも同じ値が使われます。詳細な基準値のカスタマイズは「原稿の分量と難度の計測」の章を参照してください。
 
 ### lint / spellcheck — 文章校正
 
@@ -348,7 +348,7 @@ spellcheck:
 | この語は綴り誤りではない（スペルチェック） | `config/spellcheck_allowlist.yml` |
 | この表記に統一したい | `config/textlint_rewrite.yml` |
 
-詳細は「文章校正（vs lint）」の章を参照してください。
+詳細は「文章校正」の章を参照してください。
 
 ### pdf_read — PDF 読み取り設定
 
@@ -372,4 +372,4 @@ pdf_read:
     inline_image_text: include   # include / exclude / captionize（イラスト内テキストの扱い）
 ```
 
-詳細は「PDF 読み取りコマンドの使い方」の章を参照してください。
+詳細は「PDF からの原稿の取り出し」の章を参照してください。

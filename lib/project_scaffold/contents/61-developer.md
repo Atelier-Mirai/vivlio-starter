@@ -446,7 +446,7 @@ Kindle だけは KFX が SVG を扱えないので、EPUB 枝の `stage_author_s
 
 テンプレートは `templates/_<単数形>.<スタイル>.md` の規約で解決されるため、`_book.mystyle.md` を置くだけで `= books | :mystyle` が有効になります。`data/elements.yml` と `templates/_element.md` を置けば、設定を変えずに `= elements` が使えます。新しいデータ種別を足すのに、コードを書く必要はありません。
 
-記法の詳しい説明は「データ展開機能の使い方」の章にあります。
+記法の詳しい説明は「データ展開機能」の章にあります。
 
 ### CrossReference
 
