@@ -54,6 +54,10 @@ module VivlioStarter
           RESERVED_MACRO_IDS.include?(label_id)
         end
         IMAGE_PATTERN = /^!\[[^\]]*\]\([^)]+\)(?:\{[^}]+\})?$/
+        # showcase（図解注釈）が前処理で組んだ図の開始行（ShowcaseTransformer#figure の出力）。
+        # 図番号を振るのは全章の前処理の後なので、この時点で showcase はすでに HTML になっている。
+        # 画像の行の代わりにこれを図として扱い、キャプションと図番号を差し込む（改善案.md #58）。
+        SHOWCASE_FIGURE_OPEN = /\A<figure class="vs-showcase"/
         # 画像の幅（`{width=30%}` / `{width=2em}` / `{width=48}`）。CSS の長さか割合で、
         # 単位のない整数は px とみなす。文中の画像（post_process の apply_inline_image_widths!）と
         # 書ける値をそろえる（改善案.md #55）。
@@ -115,7 +119,7 @@ module VivlioStarter
         def detect_type_from_line(line)
           return :list if line.start_with?('```')
           return :table if line.start_with?('|') && line.count('|') > 1
-          return :fig if line.start_with?('![')
+          return :fig if line.start_with?('![') || line.match?(SHOWCASE_FIGURE_OPEN)
 
           nil
         end
@@ -380,7 +384,13 @@ module VivlioStarter
             return nil unless match
 
             next_idx = skip_empty_lines(idx + 1)
-            return nil unless next_idx < @lines.size && @lines[next_idx].strip.match?(IMAGE_PATTERN)
+            return nil unless next_idx < @lines.size
+
+            if showcase_figure?(next_idx)
+              output << showcase_figure_html(next_idx, match[1].strip, label: nil)
+              return showcase_figure_end(next_idx) + 1
+            end
+            return nil unless @lines[next_idx].strip.match?(IMAGE_PATTERN)
 
             output << build_figure_html(parse_image(@lines[next_idx].strip), match[1].strip)
             next_idx + 1
@@ -452,7 +462,8 @@ module VivlioStarter
             case type
             when :table then find_table_end(start_idx)
             when :list then find_code_end(start_idx)
-            else start_idx # :fig and unknown types
+            when :fig then showcase_figure?(start_idx) ? showcase_figure_end(start_idx) : start_idx
+            else start_idx # unknown types
             end
           end
 
@@ -524,9 +535,27 @@ module VivlioStarter
           end
 
           def figure_html(block_start, info, label)
-            img = parse_image(@lines[block_start].strip) || { src: '', alt: '' }
             caption = label ? "#{label.full_number}: #{info[:title]}" : info[:title]
+            return showcase_figure_html(block_start, caption, label:) if showcase_figure?(block_start)
+
+            img = parse_image(@lines[block_start].strip) || { src: '', alt: '' }
             build_figure_html(img, caption, label: label)
+          end
+
+          def showcase_figure?(idx) = @lines[idx].to_s.strip.match?(SHOWCASE_FIGURE_OPEN)
+
+          # showcase の図の閉じ（</figure>）の行。見つからなければ開始行（図を 1 行とみなす）。
+          def showcase_figure_end(start_idx)
+            end_idx = (start_idx...@lines.size).find { @lines[it].strip == '</figure>' }
+            end_idx || start_idx
+          end
+
+          # showcase が組んだ図へ、ラベルの id とキャプションを差し込む。図の中身（合成画像）は変えない。
+          def showcase_figure_html(start_idx, caption, label:)
+            lines = @lines[start_idx..showcase_figure_end(start_idx)].map(&:dup)
+            lines[0] = lines[0].sub('<figure', "<figure#{id_attr(label)}")
+            lines.insert(lines.size > 1 ? -2 : -1, "<figcaption>#{caption}</figcaption>\n")
+            lines.join
           end
 
           def table_html(block_start, info, label, wrapper)

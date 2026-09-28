@@ -234,3 +234,47 @@ class CrossReferenceCroppedImageTest < Minitest::Test
     assert_empty calls
   end
 end
+
+# showcase（図解注釈）の直前のキャプションで、図番号とキャプションを付ける（改善案.md #58）。
+# 図番号を振る時点で showcase はすでに <figure class="vs-showcase"> の HTML になっている
+class CrossReferenceShowcaseCaptionTest < Minitest::Test
+  XR = VivlioStarter::CLI::PreProcessCommands::CrossReferenceProcessor
+
+  SHOWCASE = <<~HTML
+
+
+    <figure class="vs-showcase">
+    <img class="vs-showcase" src="images/showcase/11-install/k.svg" data-vs-raster="images/showcase/11-install/k.png" alt="画面" style="width: 100%;">
+    </figure>
+
+  HTML
+
+  def test_should_number_and_caption_showcase_with_label
+    content = "** 設定画面 @fig-settings **\n#{SHOWCASE}本文は @fig-settings を参照します。\n"
+    labels = XR.collect_labels(content, '11-install.md', '1')[:labels]
+    labels_map = XR.build_labels_map_with_duplicates_check(labels)[:labels_map]
+
+    out = XR.transform_captioned_blocks(content, '11-install.md', labels_map)
+
+    assert_equal 1, labels.size
+    assert_equal :fig, labels.first.type
+    assert_includes out, '<figure id="fig-settings" class="vs-showcase">'
+    assert_includes out, "<figcaption>図 1-1: 設定画面</figcaption>\n</figure>"
+    assert_includes out, 'data-vs-raster="images/showcase/11-install/k.png"', '合成画像はそのまま'
+    refute_includes out, '** 設定画面'
+  end
+
+  def test_should_caption_showcase_without_label
+    out = XR.transform_captioned_blocks("** 設定画面 **\n#{SHOWCASE}", '11-install.md', {})
+
+    assert_includes out, '<figure class="vs-showcase">'
+    assert_includes out, "<figcaption>設定画面</figcaption>\n</figure>"
+    assert_equal 1, out.scan('</figure>').size
+  end
+
+  def test_should_leave_showcase_without_caption_untouched
+    content = "本文\n#{SHOWCASE}"
+
+    assert_equal content, XR.transform_captioned_blocks(content, '11-install.md', {})
+  end
+end
