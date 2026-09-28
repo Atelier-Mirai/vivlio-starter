@@ -124,6 +124,12 @@ module VivlioStarter
             Common.log_error("#{html_file}: 文中の画像の幅の反映中にエラー: #{e.message}")
           end
 
+          begin
+            split_kbd_combinations!(html_file)
+          rescue StandardError => e
+            Common.log_error("#{html_file}: キーの組み合わせの分割中にエラー: #{e.message}")
+          end
+
           content = File.read(html_file, encoding: 'utf-8')
           converted = FootnoteConverter.convert_endnotes_to_page_footnotes!(content)
           if converted != content
@@ -711,6 +717,35 @@ module VivlioStarter
         HtmlParser.save_html_document(html_file, doc)
       end
       module_function :apply_inline_image_widths!
+
+      # ================================================================
+      # 組み合わせのキーを 1 つずつのキーキャップに分ける（改善案.md #9）
+      # ================================================================
+      # `<kbd>Ctrl + S</kbd>` を `<kbd>Ctrl</kbd> + <kbd>S</kbd>` と同じに組む。キーごとに
+      # `<kbd>` を閉じて開き直すのは入力が煩雑なので、ひとまとめに書けるようにする。
+      # 〘 〙 は置換規則で先に `<kbd>` になっているので、`〘Ctrl + S〙` も同じく分かれる。
+      #
+      # `+` の前後の空白は著者の書いたとおりに残す。区切りとみなす `+` は、前後を空白で
+      # 挟んだものか、前後が空白以外の文字に接したものだけ。`<kbd>+</kbd>`（`+` のキー
+      # そのもの）や `Ctrl + +`・`Ctrl++`（`+` のキーとの組み合わせ）は、最後の `+` をキーとして残す。
+      KBD_SEPARATOR = /(\s+\+\s+|(?<=[^\s+])\+(?=\S))/
+
+      def split_kbd_combinations!(html_file)
+        doc = HtmlParser.parse_html_document(File.read(html_file, encoding: 'utf-8'))
+        combinations = doc.css('kbd').select { it.element_children.empty? && it.text.match?(KBD_SEPARATOR) }
+        return if combinations.empty?
+
+        combinations.each do |kbd|
+          parts = kbd.text.split(KBD_SEPARATOR)
+          html = parts.each_slice(2).map do |key, separator|
+            kbd.dup.tap { it.content = key }.to_html + separator.to_s
+          end
+          kbd.replace(Nokogiri::HTML::DocumentFragment.new(doc, html.join))
+        end
+
+        HtmlParser.save_html_document(html_file, doc)
+      end
+      module_function :split_kbd_combinations!
 
       # image-group 内の先頭画像から width 指定（%）を取り出し、
       # 0.0〜1.0 の範囲の比率として返す
