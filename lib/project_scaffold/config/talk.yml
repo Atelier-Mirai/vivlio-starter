@@ -76,3 +76,16 @@ mirai:
   color: blue
   avatar: mirai.webp
   side: right
+
+# 97 章（アインシュタインの物語）で使う話者
+einstein:
+  name: アインシュタイン
+  color: navy
+  avatar: auto
+  side: left
+
+bohr:
+  name: ボーア
+  color: teal
+  avatar: auto
+  side: right

@@ -1,12 +1,12 @@
 # インストール詳細
 
 :::{.chapter-lead}
-本章では、`vs new` が行う環境構築の内容、macOS 以外での手動インストール、CI/CD 環境の構築を補足します。通常の macOS 環境では、`vs new` を実行すれば執筆を始められます。
+通常の macOS 環境では、`vs new` が執筆に必要なツールを揃えます。この章は、その処理の内訳を確かめたいときや、macOS 以外の環境・CI/CD 環境を自分で整えたいときのための資料です。すぐに書き始めたい方は、必要になったところから参照してください。
 :::
 
 ## Ruby のインストール
 
-Vivlio Starter は Ruby で動作します。Ruby が未インストールの場合は、同梱スクリプトを使う方法が手軽です。
+Vivlio Starter を動かすには Ruby が必要です。まだ入っていなければ、同梱のスクリプトで導入できます。
 
 ```bash
 bin/install-ruby.zsh              # 対話的に最新安定版を導入
@@ -15,7 +15,7 @@ bin/install-ruby.zsh -v 4.0.7     # バージョンを明示して導入
 bin/install-ruby.zsh --no-bundler # bundler の導入をスキップ
 ```
 
-このスクリプトは、Xcode Command Line Tools の確認とインストール案内、Homebrew、rbenv / ruby-build、Ruby 本体、bundler の導入を順に行います。Ruby の導入後には `rbenv global` も設定します。
+スクリプトは Xcode Command Line Tools の確認と導入案内から始め、Homebrew、rbenv / ruby-build、Ruby 本体、bundler の順に準備します。Ruby の導入後は `rbenv global` も設定します。
 
 :::{.column}
 **ターミナルの開き方（macOS）**
@@ -27,13 +27,13 @@ Finder から: アプリケーション → ユーティリティ → Terminal.a
 
 ## Vivlio Starter のインストール
 
-Ruby の準備ができたら、gem をインストールします。
+Ruby が使えるようになったら、Vivlio Starter の gem を入れます。
 
 ```bash
 gem install vivlio-starter
 ```
 
-PDF アウトライン・しおり機能などを使う場合は、追加の gem も導入してください（いずれも任意）。
+PDF のアウトライン・しおり機能やデータ展開を使う場合は、対応する gem を追加します。どちらも必要になってから導入できます。
 
 ```bash
 gem install vivlio-starter-pdf  # AGPL のため本体とは別 gem
@@ -42,13 +42,13 @@ gem install query-stream        # データ展開機能
 
 ## 自動インストールの内訳
 
-`vs new mybook` を実行すると、内部で `vs doctor --fix` が呼び出され、次のツール群を自動インストールします。導入対象を確認するための一覧です。
+`vs new mybook` の途中では `vs doctor --fix` が呼び出され、必要なツールを導入します。どのツールが何に使われるか、ここで確認できます。
 
 | ツール | インストール方法 | 用途 |
 | :--- | :--- | :--- |
 | Xcode Command Line Tools | `xcode-select --install` | macOS のビルド基盤 |
 | Homebrew | 公式インストーラ | macOS 用パッケージマネージャ |
-| Node.js（node@20 優先）/ npm | `brew install node@20` | Vivliostyle CLI の前提 |
+| Node.js / npm | `brew install node` | Vivliostyle CLI の前提（Node 22.12 以上） |
 | Vivliostyle CLI | `npm install -g @vivliostyle/cli` | PDF 生成エンジン |
 | textlint と推奨ルール | `npm install -g textlint ...` | 文章校正。設定ファイルも `config/` に自動配置 |
 | qpdf | `brew install qpdf` | PDF 分割・結合・ページ操作 |
@@ -64,13 +64,15 @@ gem install query-stream        # データ展開機能
 | mathjax-full | `npm install -g mathjax-full` | 数式の SVG 化 |
 | mermaid-cli | `npm install -g @mermaid-js/mermaid-cli` | ダイアグラムの画像化 |
 | `waifu2x-ncnn-vulkan` | GitHub Releases から自動取得 | AI 画像拡大（オプション） |
-| Kindle Previewer 3（kindlepreviewer） | `brew install --cask kindle-previewer` ＋ ラッパー作成 | Kindle（KPF）変換（任意・targets: kindle 用） |
+| Kindle Previewer（kindlepreviewer） | `brew install --cask kindle-previewer` ＋ ラッパー作成 | Kindle（KPF）変換（任意・targets: kindle 用） |
 | Google Fonts 用 SSL 証明書 | 自動設定 | Google Fonts ダウンロード（macOS のみ） |
 
-Xcode Command Line Tools と Homebrew のインストール時だけは、確認プロンプトが表示されます。`--yes` オプションで省略できます。
+Xcode Command Line Tools と Homebrew を導入するときは確認が表示されます。対話せずに進めたい場合は `--yes` で省略できます。
+
+Kindle Previewer を使う場合、Apple Silicon の Mac では **Rosetta 2 も必要**です。アプリは Apple Silicon に対応していますが、変換に使う部分には Intel 版が含まれます。Rosetta がないと `.kpf` への変換時に `bad CPU type in executable` と表示されます。`vs doctor` で導入状況を確認し、必要なら `sudo softwareupdate --install-rosetta --agree-to-license` を実行してください。
 
 <!-- no-lint -->
-**自動インストール（`vs doctor --fix`）に対応しているのは macOS + Homebrew 環境だけです。** Linux と Windows は動作検証をしておらず、公式サポートの対象外です。必要なツールがそろえば動作する可能性はあるため、以降の手動インストール手順を環境に合わせて利用してください。対応状況は今後変わることがあります。
+**`vs doctor --fix` による自動インストールは、macOS と Homebrew の組み合わせに対応しています。** Linux と Windows は現時点で動作検証を行えておらず、公式のサポート対象外です。手動で環境を整えたい場合は、以降の手順をお使いの環境に読み替えてください。必要なツールが揃えば動作する見込みはありますが、手順や結果は環境によって異なります。
 
 ## 手動インストール
 
@@ -88,7 +90,7 @@ xcode-select --install
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-インストール後、PATH を設定します。
+Homebrew を導入したら、使っている Mac に合わせて PATH を設定します。
 
 ```bash
 echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile   # Apple Silicon
@@ -112,7 +114,7 @@ ruby -v
 4) Node.js
 
 ```bash
-brew install node@20 || brew install node
+brew install node
 node -v && npm -v
 ```
 
@@ -145,7 +147,7 @@ cd mybook
 vs build
 ```
 
-`mybook_v0.1.0.pdf` が生成されれば成功です。
+`mybook_v0.1.0.pdf` が生成されれば、基本的な動作を確認できています。
 
 ### Linux / WSL（Ubuntu / Debian の例）
 
@@ -192,11 +194,11 @@ cd mybook
 vs build
 ```
 
-ヘッドレス環境では PDF ビューアーを自動起動しません。`mybook_v0.1.0.pdf` を任意のビューアーで確認してください。
+画面のない環境では PDF ビューアーは自動で開きません。生成された `mybook_v0.1.0.pdf` を、別の環境に移すなどして確認してください。
 
 ### Windows
 
-WSL2 + Ubuntu の利用を推奨します（上記の Linux / WSL の手順を参照）。以下はネイティブ環境で導入する場合の最小手順です。
+Windows では WSL2 と Ubuntu の組み合わせを推奨します。手順は上の「Linux / WSL」を参照してください。Windows ネイティブで試す場合は、次の導入例を手がかりにできます。
 
 **Chocolatey の場合**（管理者 PowerShell）
 
@@ -234,11 +236,11 @@ vs --version
 :::{.column}
 **まず `vs doctor` を試してください**
 
-ビルドや lint が失敗したときは、まず `vs doctor` で環境を診断してください。不足ツールが一覧表示されます。`vs doctor --fix` では自動修復も試せます。詳細は「環境の診断と更新」の章を参照してください。
+ビルドや lint が急に失敗したら、まず `vs doctor` で不足しているツールを確認できます。macOS では `vs doctor --fix` で導入も試せます。使い分けは「環境の診断と更新」の章で説明しています。
 :::
 
 :::{.column}
 **GitHub の 100MB 制約について**
 
-大きな PDF は Git にプッシュできません。ファイル名は `project.name` と `project.version` で決まり、`output.pdf.compress: true` のときは末尾に `_compressed` が付きます。リポジトリに PDF を含める場合は、`.gitignore` の末尾に `!*.pdf` を追記してください。容量が気になる場合は、成果物をリリースページへ添付するか、手元で管理します。
+GitHub には 100MB を超えるファイルを通常の Git でプッシュできません。生成する PDF の名前は `project.name` と `project.version` で決まり、`output.pdf.compress: true` の場合は末尾に `_compressed` が付きます。PDF をリポジトリに含めるなら、`.gitignore` の末尾に `!*.pdf` を追記します。容量が大きくなる場合は、リリースページへの添付や手元での保管も検討してください。
 :::

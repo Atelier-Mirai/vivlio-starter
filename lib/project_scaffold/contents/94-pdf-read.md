@@ -1,12 +1,12 @@
 # PDF 読み取りコマンドの使い方
 
 :::{.chapter-lead}
-`vs pdf:read` は、PDF からテキストと画像を取り出し、Vivlio Starter の原稿形式である Markdown に変換するコマンドです。既存の書籍 PDF や配布資料を、執筆用の素材として取り込めます。
+`vs pdf:read` は PDF から文字や画像を取り出して Vivlio Starter の Markdown に変換するコマンドです。既刊の書籍や配布資料をもとに書き直す場合に役立ちます。
 :::
 
 ## 概要と事前準備
 
-`vs pdf:read` には、**Standard Mode** と **Enhanced Mode** の二つの動作モードがあります。
+`vs pdf:read` には、テキストを取り出す **Standard Mode** と、画像抽出・OCR も行う **Enhanced Mode** があります。
 
 | 項目 | Standard Mode | Enhanced Mode |
 | --- | --- | --- |
@@ -15,7 +15,7 @@
 | 依存ライブラリ | PDF::Reader | HexaPDF, ruby-vips, Tesseract |
 | 主な用途 | 参考資料の粗変換 | 出版クオリティの再利用 |
 
-Standard Mode は `vivlio-starter` 本体に含まれており、追加インストールなしで利用できます。Enhanced Mode には `vivlio-starter-pdf` gem が必要です。
+Standard Mode は `vivlio-starter` 本体に含まれます。画像の抽出や OCR が必要なら、`vivlio-starter-pdf` gem をインストールして Enhanced Mode を使います。
 
 ### 必須ツール
 
@@ -23,14 +23,14 @@ Standard Mode は `vivlio-starter` 本体に含まれており、追加インス
 vs doctor --fix
 ```
 
-`vs doctor` は次の項目を確認し、必要に応じて案内します。
+必要な環境は `vs doctor` で確認できます。ここで関係するのは次のツールです。
 
-- **Ruby 4.x** / Bundler
+- **Ruby 3.4.x, 4.x, Bundler**
 - **pdftotext**（poppler に同梱）
 
 ### Enhanced Mode の追加要件
 
-Enhanced Mode（画像抽出・OCR 付き）を利用する場合は、以下を追加でインストールしてください。
+画像抽出と OCR を使う場合は、追加の gem とツールを導入します。
 
 ```zsh
 gem install vivlio-starter-pdf
@@ -52,49 +52,49 @@ brew install tesseract tesseract-lang poppler vips
 vs pdf:read path/to/document.pdf
 ```
 
-PDF ファイルのパスを指定すると、空いている章番号を自動で割り当て、`contents/` に Markdown を出力します。
+PDF のパスを直接渡すと、空いている章番号が割り当てられ、変換した Markdown が `contents/` に作られます。
 
-### 章トークンで指定する
+### ファイル名で指定する
 
 ```zsh
 vs pdf:read three-elements
 ```
 
-`sources/` ディレクトリに `three-elements.pdf` を置き、章トークンで指定する方法です。すでに `catalog.yml` に登録されている章なら、対応する PDF を自動で探索します。
+PDF を `sources/three-elements.pdf` に置いた場合は、ファイル名の `three-elements` で指定できます。すでに `catalog.yml` に登録した章なら、対応する PDF が自動で探されます。
 
 ### 実行例
 
 ```
-$ vs pdf:read three-elements-ocr
-[pdf:read] PDF からテキストを抽出します (12-three-elements-ocr, mode=enhanced)
+$ vs pdf:read three-elements
+[pdf:read] PDF からテキストを抽出します (12-three-elements, mode=enhanced)
 [pdf:read] ページ数: 7
-[pdf:read] 変換が完了しました -> contents/12-three-elements-ocr.md
+[pdf:read] 変換が完了しました -> contents/12-three-elements.md
 ```
 
 ### 出力されるファイル
 
-Standard Mode ではテキストのみ、Enhanced Mode ではテキストと画像が出力されます。
+出力先は次のとおりです。Standard Mode では Markdown、Enhanced Mode では画像も作られます。
 
 ```
 # Standard Mode
 contents/
-  └── 12-three-elements-ocr.md
+  └── 12-three-elements.md
 
 # Enhanced Mode
 contents/
-  └── 12-three-elements-ocr.md
+  └── 12-three-elements.md
 images/
-  └── 12-three-elements-ocr/
+  └── 12-three-elements/
       ├── page-003-image-01.webp
       ├── page-004-image-01.webp
       └── ...
 ```
 
-画像は Markdown 内で `![](page-003-image-01.webp)` のように参照されます。
+取り出した画像は、Markdown から `![](page-003-image-01.webp)` のように参照されます。変換後は原本と見比べ、本文と画像の位置を確かめてください。
 
 ### 動作モードの切り替え
 
-動作モードは次の優先順位で決まります。
+どちらのモードで動くかは、次の順で決まります。
 
 1. 環境変数 `VIVLIO_PDF_PLUGIN=disable` が設定されている場合は強制的に Standard Mode
 2. `vivlio-starter-pdf` gem がインストール済みなら Enhanced Mode
@@ -107,13 +107,13 @@ VIVLIO_PDF_PLUGIN=disable vs pdf:read document.pdf
 
 ### 既存ファイルの保護
 
-同じ章トークンで `vs pdf:read` を複数回実行しても、既存の Markdown ファイルや画像ディレクトリは**上書きされません**。代わりに新しい章番号が自動で割り当てられます。加筆・修正済みの原稿を誤って失わないためです。
+同じ章トークンで再実行しても、既存の Markdown や画像ディレクトリは**上書きされません**。新しい章番号が割り当てられるため、前回の変換結果に加筆していても、その原稿は残ります。
 
 ## 設定とカスタマイズ
 
 ### `book.yml` の設定
 
-`config/book.yml` の `pdf_read` セクションで変換の挙動を細かく制御できます。
+変換時の余白や OCR の動作は、`config/book.yml` の `pdf_read` で調整できます。
 
 ```yaml
 pdf_read:
@@ -134,7 +134,7 @@ pdf_read:
 
 ### テキスト領域（`text_area`）
 
-PDF のページ端にあるヘッダー・フッター・ノンブルを除外するための余白です。値は mm 単位で指定します。
+ページ端のヘッダー、フッター、ノンブルを本文として取り込まないための設定です。除外する幅を mm 単位で指定します。
 
 | 項目 | 説明 | 既定値 |
 | --- | --- | --- |
@@ -143,7 +143,7 @@ PDF のページ端にあるヘッダー・フッター・ノンブルを除外�
 | `inner_margin` | 綴じ側（ノド）から除外する幅 | 15mm |
 | `outer_margin` | 小口側から除外する幅 | 12mm |
 
-`page_separator` を `true` にするとページ境界に Markdown の水平線 `---` が挿入されます。`false` の場合はテキストが連結されます。
+`page_separator: true` にすると、元の PDF のページ境界に `---` が挿入されます。この記法は Vivlio Starter では改ページになるので、ページを分けて残したい場合に使います。`false` ならページ間のテキストは連結されます。
 
 ### OCR 設定（Enhanced Mode のみ）
 
@@ -157,7 +157,7 @@ PDF のページ端にあるヘッダー・フッター・ノンブルを除外�
 
 ### OCR テキスト品質の向上
 
-Enhanced Mode では、OCR 後のテキストに次の自動補正を順に適用します。
+Enhanced Mode では、OCR で読み取った文字に次の補正を順に適用します。
 
 1. **空白圧縮** --- 日本語文字間の不要な半角スペースを除去（例: `プ ロ グ ラ ミ ン グ` → `プログラミング`）
 2. **断片結合** --- OCR が 1 文字ずつ分割してしまった単語を再結合
@@ -167,7 +167,7 @@ Enhanced Mode では、OCR 後のテキストに次の自動補正を順に適�
 
 ### 誤認識を直す
 
-OCR では字形の似た文字を取り違えることがあります。誤認識の傾向は PDF ごとに異なるため、見つけたものを `config/ocr_corrections.yml` に追加してください。書式は校正辞書（`config/textlint_rewrite.yml`）と同じで、`patterns` には文字列または正規表現（`/pattern/` 形式）を指定します。
+OCR では、形の似た文字を取り違えることがあります。原本と見比べて繰り返し見つかる誤読は、`config/ocr_corrections.yml` に登録できます。校正辞書（`config/textlint_rewrite.yml`）と同じ形式で、`patterns` に文字列か正規表現（`/pattern/` 形式）を書きます。
 
 ```yaml
 version: 1
@@ -188,12 +188,12 @@ rules:
       - /(?<![ァ-ヶー])ログラミング/
 ```
 
-この表を適用するのは**PDF から読み取ったページのテキストだけ**で、自分で書いた原稿には影響しません。校正辞書（`textlint_rewrite.yml`）には書かないでください。こちらは全原稿に適用されるため、`Al` を `AI` に直す規則を置くと、アルミニウムの元素記号や人名の Al Gore まで書き換えてしまいます。
+この補正が適用されるのは**PDF から読み取ったテキストだけ**です。自分で書いた原稿には影響しません。OCR 固有の誤読を校正辞書（`textlint_rewrite.yml`）に登録すると、全原稿が対象になります。たとえば `Al` を `AI` に直す規則は、アルミニウムの元素記号や人名の Al Gore まで書き換えてしまいます。
 
 :::{.notice}
 **一字だけの置き換えは書かないでください。**
 
-OCR がよく取り違えるのは `ロ` と `口`、`力` と `カ`、`一` と `ー` のような字形の近い一字です。しかしこれを表に書くと、正しく読めている箇所まで巻き添えにします（`力 => カ` と書けば「力学」が「カ学」になります）。必ず**語の形**で書いてください。
+`ロ` と `口`、`力` と `カ`、`一` と `ー` は、OCR で混同しやすい文字です。ただし、一字だけを補正対象にすると、正しく読めた箇所も変わります。`力 => カ` なら「力学（りきがく）」が「カ学（かがく）」になってしまうため、**語の形**で登録してください。
 
 ```yaml
 - expected: 協力
@@ -202,15 +202,15 @@ OCR がよく取り違えるのは `ロ` と `口`、`力` と `カ`、`一` と
 ```
 :::
 
-`Al` と `AI` のように、**どちらが正しいかを文脈でしか判断できない組**は、表に追加しないでください。既定の `ocr_corrections.yml` にも含めていません。機械的に置換せず、原稿を読み直して判断します。
+`Al` と `AI` のように、**文脈を読まないと正誤を決められない組**は登録しません。既定の `ocr_corrections.yml` にも含めていません。こうした箇所は、原本と照らして判断してください。
 
 ## PDF アウトラインの付与
 
-PDF ビューアで「しおり」や「ブックマーク」として表示されるアウトライン（Outlines）は、書籍内を移動するための重要な機能です。`vivlio-starter-pdf` gem がインストールされている場合、`vs build` の仕上げで自動的に付与されます。
+PDF ビューアーで「しおり」や「ブックマーク」として見える項目を、アウトライン（Outlines）と呼びます。章や節へ移動しやすくなる機能です。`vivlio-starter-pdf` gem が入っていれば、`vs build` の仕上げに自動で付けられます。
 
 ### アウトラインの構造
 
-生成されるアウトラインは、HTML の見出し要素（`h1` ～ `h3`）を解析して階層的に構築されます。
+アウトラインは、HTML の見出し要素（`h1` ～ `h3`）を読み取り、章・節・小節の階層で作られます。
 
 | 見出しレベル | アウトラインでの表示 | 例 |
 |---|---|---|
@@ -218,13 +218,13 @@ PDF ビューアで「しおり」や「ブックマーク」として表示さ�
 | `h2` | 節見出し | 1-1 インストール |
 | `h3` | 小節見出し | ♣ 基本的な使い方 |
 
-付録は「付録A」「付録B」の形式で、前書き・目次・後書き・索引・用語集もそれぞれ適切なラベルで表示されます。
+付録には「付録A」「付録B」のような名前が付きます。前書き、目次、後書き、索引、用語集もそれぞれの名前で表示されます。
 
 ### ページ番号の特定
 
-アウトラインの各項目には正確なページ番号が必要です。Vivliostyle が生成する PDF にはページ番号のメタデータが含まれないため、`pdftotext` で各ページのテキストを抽出し、見出しテキストを検索してページ番号を特定しています。
+アウトラインから該当ページへ移動するには、見出しのページ位置を特定する必要があります。Vivliostyle の PDF にはその情報が含まれないため、`pdftotext` でページごとの文字を取り出し、見出しを探して位置を決めます。
 
-見出しテキストが見つからない場合は、章の先頭ページにフォールバックします。`--log=debug` を付けてビルドすると、フォールバックが発生した見出しの一覧が表示されます。
+見出しが見つからなければ、その章の先頭ページを指定します。`--log=debug` を付けてビルドすると、先頭ページを代わりに使った見出しを一覧で確認できます。
 
 ### ビルドログの例
 
@@ -241,7 +241,7 @@ PDF ビューアで「しおり」や「ブックマーク」として表示さ�
 
 ### 実行中のログ例
 
-Standard Mode と Enhanced Mode のログ出力例です。問題が起きた場合は、ログから原因を確認できます。
+変換中は、処理の進み具合がログに表示されます。Standard Mode と Enhanced Mode で出る内容の違いも、次の例で確かめられます。
 
 ```
 # Standard Mode
@@ -250,11 +250,11 @@ Standard Mode と Enhanced Mode のログ出力例です。問題が起きた場
 [pdf:read] 変換が完了しました -> contents/01-intro.md
 
 # Enhanced Mode（OCR あり）
-[pdf:read] PDF からテキストを抽出します (12-three-elements-ocr, mode=enhanced)
+[pdf:read] PDF からテキストを抽出します (12-three-elements, mode=enhanced)
 [Reader] ページ 1: テキスト埋め込みなし。OCR を実行します (dpi=300, psm=3)
 [Reader] ページ 2: テキスト品質不良。OCR で補完します
 [Reader] 画像抽出: page-003-image-01.webp (524x381)
-[pdf:read] 変換が完了しました -> contents/12-three-elements-ocr.md
+[pdf:read] 変換が完了しました -> contents/12-three-elements.md
 ```
 
 ### よくある問題と解決策
@@ -275,9 +275,9 @@ Standard Mode と Enhanced Mode のログ出力例です。問題が起きた場
 gem install vivlio-starter-pdf
 ```
 
-インストール後、`vs pdf:read` は自動的に Enhanced Mode で動作します。
+インストール後は、`vs pdf:read` が自動で Enhanced Mode を選びます。
 
 :::{.tip}
 **ヒント**  
-OCR 結果の品質を上げるには、まず `vs pdf:read` で粗変換し、元の PDF と見比べながら `config/ocr_corrections.yml` に誤読パターンを追加します。追加したパターンは以降の読み取りにも適用されます。
+最初の変換結果を元の PDF と見比べ、繰り返し出る誤読を `config/ocr_corrections.yml` に追加すると、次の読み取りにも補正を使えます。一度にすべて直そうとせず、原稿を確認しながら辞書を育てていけます。
 :::
