@@ -245,9 +245,9 @@ PDF ビューアーで「しおり」や「ブックマーク」として見え�
 
 ```
 # Standard Mode
-[pdf:read] PDF からテキストを抽出します (01-intro, mode=standard)
+[pdf:read] PDF からテキストを抽出します (11-intro, mode=standard)
 [pdf:read] ページ数: 12
-[pdf:read] 変換が完了しました -> contents/01-intro.md
+[pdf:read] 変換が完了しました -> contents/11-intro.md
 
 # Enhanced Mode（OCR あり）
 [pdf:read] PDF からテキストを抽出します (12-three-elements, mode=enhanced)

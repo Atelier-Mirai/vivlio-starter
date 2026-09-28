@@ -64,7 +64,7 @@ vs import --force ../review_project    # 確認を省略したい場合
 
 1. **クリーンアップ** — 移行先の `contents/`・`images/`・`codes/` を削除して作り直します。索引・用語集の辞書（`config/index_glossary_terms.yml`・`config/index_glossary_rejected.yml`）も、入れ替わる原稿に合わせて空に戻します。
 2. **原稿の変換** — `catalog.yml` に並ぶ `.re` を順に読み、Vivlio Starter の Markdown へ書き出します。
-3. **ラベル ID の一意化** — Re:VIEW Starter では章内で重複しなければよかったラベルを、本全体で一意になるよう確認します。章をまたいで重なる ID だけ、章名を付けて改名し（`tbl1` → `01-intro-tbl1`）、参照箇所も合わせて直します。
+3. **ラベル ID の一意化** — Re:VIEW Starter では章内で重複しなければよかったラベルを、本全体で一意になるよう確認します。章をまたいで重なる ID だけ、章名を付けて改名し（`tbl1` → `11-intro-tbl1`）、参照箇所も合わせて直します。
 4. **画像処理** — 取り込み元の `images/` をコピーして WebP 化し、元画像（png/jpg/gif）は削除します。
 5. **codes/ へのコピー** — `source/` 配下をそのまま `codes/` へコピーします。
 6. **YAML 変換** — `catalog.yml` では `PREDEF`→`PREFACE` などのキーを変え、章名から `.re` を外します。部、コメント、コメントアウトした章は残します。`config.yml` の `book.main_title` などは `book.yml` に反映し、`config-starter.yml` の `starter.pagesize` は同じ判型の標準プリセット（`B5` なら `b5_standard`）へ対応づけます。
@@ -175,7 +175,6 @@ Re:VIEW Starter は段落内の改行をつなげて組みます。一方、Vivl
 | 判型が雛形のまま | `starter.pagesize` が A5・B5 以外 | `config/book.yml` の `page.use` を自分で指定する |
 | `config/book.yml` の値が更新されない | 対応パスが見つからない | コメントやインデントが崩れていないか確認 |
 
-:::{.column}
-**ヒント**  
+:::{.tip}
 原因が分からない場合は `VS_DEBUG=1 vs import ...` で詳細なログを確認できます。再実行すると移行先のファイルが作り直されるため、先に残したい変更を退避してください。
 :::

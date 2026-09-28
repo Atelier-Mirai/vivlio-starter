@@ -147,8 +147,8 @@ ruby -v
 bin/install-ruby.zsh
 ```
 
-:::{.column}
-**💡 ターミナルの開き方（macOS）**
+:::{.memo}
+**ターミナルの開き方（macOS）**
 
 - Spotlight から: `Cmd + Space` →「Terminal」と入力 → `Enter`
 - Finder から: アプリケーション → ユーティリティ → Terminal.app

@@ -48,7 +48,7 @@ macOS 専用のコマンドです。
 
 圧縮が役立つのは、主にネットワーク経由でファイルを共有するときです。
 
-- サンプル原稿の公開: 執筆中の章を `vs build 01-intro` などで個別にビルドし、レビュー担当者へ送付したり、SNSやブログで公開したりする際の転送量を抑えます。
+- サンプル原稿の公開: 執筆中の章を `vs build 11-intro` などで個別にビルドし、レビュー担当者へ送付したり、SNSやブログで公開したりする際の転送量を抑えます。
 
 :::{.memo}
 **印刷所へ入稿する PDF**
@@ -63,8 +63,8 @@ macOS 専用のコマンドです。
 vs pdf:compress
 
 # 入力ファイル名を指定（拡張子 .pdf は省略可）
-vs pdf:compress 01-intro
-vs pdf:compress 01-intro.pdf
+vs pdf:compress 11-intro
+vs pdf:compress 11-intro.pdf
 
 # 入出力ファイル名を明示指定
 vs pdf:compress input.pdf output.pdf
@@ -75,8 +75,8 @@ vs pdf:compress input.pdf output.pdf
 ファイル名を指定した場合、出力ファイルは自動的に `_compressed` が接尾語として付いたファイル名になります。
 
 ```bash
-vs build 01-intro        # → 01-intro.pdf が生成される
-vs pdf:compress 01-intro # → 01-intro_compressed.pdf が生成される
+vs build 11-intro        # → 11-intro.pdf が生成される
+vs pdf:compress 11-intro # → 11-intro_compressed.pdf が生成される
 ```
 
 ### 自動圧縮の設定
