@@ -142,6 +142,7 @@ Yukihiro
 
 # Internet / Web Pioneers
 Berners-Lee
+Wium
 Cerf
 Kahn
 Postel
