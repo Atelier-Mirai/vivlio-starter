@@ -844,7 +844,7 @@ module VivlioStarter
         renumber_map = build_renumber_map(footnote_refs)
 
         if needs_renumbering?(renumber_map)
-          update_footnote_refs(footnote_refs)
+          update_footnote_refs(footnote_refs, renumber_map)
           update_footnote_definitions(doc, renumber_map)
           sort_footnotes_in_sections(doc)
         end
@@ -875,13 +875,12 @@ module VivlioStarter
       end
       module_function :collect_footnote_refs
 
+      # 番号は脚注ごとに、初めて参照された順で振る。同じ脚注ラベルを複数回
+      # 参照すると同じ href が並ぶので、参照ごとに数えると番号が進んでしまい、
+      # 存在しない #fnN を指す参照ができる。
+      # @return [Hash<String, Integer>] 旧脚注ID => 新しい番号
       def build_renumber_map(footnote_refs)
-        renumber_map = {}
-        footnote_refs.each_with_index do |ref, idx|
-          old_fn_id = ref['href'].sub('#', '')
-          renumber_map[old_fn_id] = idx + 1
-        end
-        renumber_map
+        footnote_refs.map { it['href'].delete_prefix('#') }.uniq.each.with_index(1).to_h
       end
       module_function :build_renumber_map
 
@@ -890,11 +889,17 @@ module VivlioStarter
       end
       module_function :needs_renumbering?
 
-      def update_footnote_refs(footnote_refs)
-        footnote_refs.each_with_index do |ref, idx|
-          new_number = idx + 1
+      # 同じ脚注への 2 回目以降の参照は、id を VFM と同じ fnrefN-K の形にして
+      # 重複を避ける（番号と href は 1 回目と同じ）。
+      def update_footnote_refs(footnote_refs, renumber_map)
+        repeats = Hash.new(0)
+        footnote_refs.each do |ref|
+          new_number = renumber_map.fetch(ref['href'].delete_prefix('#'))
+          repeat = repeats[new_number]
+          repeats[new_number] += 1
+
           ref['href'] = "#fn#{new_number}"
-          ref['id'] = "fnref#{new_number}" if ref['id']
+          ref['id'] = repeat.zero? ? "fnref#{new_number}" : "fnref#{new_number}-#{repeat}" if ref['id']
           update_footnote_ref_text(ref, new_number)
         end
       end
