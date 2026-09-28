@@ -512,10 +512,10 @@ module VivlioStarter
           [caption_for(name, caption), markup].compact.join("\n\n")
         end
 
-        # `border=on` は .bordered へ。白背景の図版は枠が無いと輪郭が消える
+        # `border=on` はそのまま border=on へ（Vivlio Starter も同じ書き方）。白背景の図版は枠が無いと輪郭が消える
         def image_attrs(opts)
           attrs = []
-          attrs << '.bordered' if opts['border'] == 'on'
+          attrs << 'border=on' if opts['border'] == 'on'
           attrs << "width=#{opts['width']}" if opts['width']
           attrs << "width=#{(opts['scale'].to_f * 100).round}%" if opts['scale'] && !opts['width']
           attrs.empty? ? '' : "{#{attrs.join(' ')}}"
@@ -544,7 +544,7 @@ module VivlioStarter
           @report.count(:block)
 
           klass = opts['side'] == 'R' ? 'sideimage-right' : 'sideimage-left'
-          attrs = [('.bordered' if opts['border'] == 'on'), width_attr(width)].compact
+          attrs = [('border=on' if opts['border'] == 'on'), width_attr(width)].compact
           markup = "![](#{ImageFilenameSanitizer.sanitize(name.to_s.strip)}.webp)"
           markup += "{#{attrs.join(' ')}}" if attrs.any?
 

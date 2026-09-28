@@ -8,6 +8,7 @@
 
 ### Added
 
+- **画像の枠を `border=off` で外せるようにした**。段落に単独で置いた画像には、キャプションの有無によらず既定で枠が付く。ロゴや透過画像のように枠が邪魔なときに `{border=off}` と書く。文中に置いた画像に枠を付けるときは `{border=on}`。
 - **`vs doctor` が Node.js の版を確かめるようになった**。ビルドで実際に使われる Vivliostyle CLI の要求（`package.json` の `engines.node`。11 系なら 22.12 以上）を読み、それより古い Node が入っていると、✅ のあとに更新の方法を案内する。要求を固定値で持たないので、Vivliostyle が要求を上げても Vivlio Starter のリリースを待たずに追随する。以前は `node` コマンドが在るかしか見ておらず、nvm などで古い Node を使っていると診断は ✅ のままだった。
 - **配る辞書そのものをリリースゲートで見張るようにした**（`DC-01`・`scripts/dict_conflicts.rb`・`rake test:manual` → `rake test:release`）。`ML-01` が「この本の原稿に指摘が無い」を見るのに対し、こちらは**辞書の側**を見る。辞書は scaffold に載って全ての本へ渡るので、矛盾を抱えたまま出荷すると著者は消せない指摘を踏む——直すと別のルールが鳴り、戻すと元のルールが鳴る。この本に用例の無い語でも刺さるため、原稿の検査では捕まらない。所要 2 秒。
 
@@ -428,6 +429,7 @@
 
 ### Removed
 
+- **画像の `{.bordered}` と `:::{.bordered}` を撤去した**。枠は `border=on` / `border=off` で指定する（`{width=30% align=right border=off}` のように、ほかの値つきの属性とそろう）。原稿に残っていると、行番号と直し方を添えて知らせる。画像には既定で枠が付くので、たいていは `.bordered` を消すだけで足りる。既存のプロジェクトは `vs upgrade` で `stylesheets/` を更新すると `border=off` が効く。
 - **`vs build` / `vs preflight` の `--no-verify` と、`book.yml` の `verify.images`・`verify.bare_urls` を撤去した**。画像の実在と裸 URL は常に確かめる。どちらの設定も、警告の原因（画像のパス、リンク記法で書いていない URL）を直さずに警告だけを消すものだった。古い `book.yml` にキーが残っていると、廃止の案内が出る。外部 URL の確認（`--verify-links`・`verify.external_links`）はそのまま。
 - **`@omakase`（`@auto` の別名）を撤去した**。キャプションに `@omakase` と書くと、いまは普通のラベル ID として扱われる。自動採番には `@auto` を使う。
 - **Markdown 段階の定義リスト変換（96 行）を撤去した**。`MarkdownTransformer.convert_definition_lists` とその補助（`definition_term_line?` ほか 5 メソッド）、`MarkdownPreprocessor#transform_definition_lists!`。後処理の `DefinitionListConverter`（120 行）へ置き換わり、Kramdown への依存も定義リストからは外れた。

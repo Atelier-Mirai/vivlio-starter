@@ -67,6 +67,18 @@ module VivlioStarter
         # マッチしないため、放置すると生テキストのまま紙面に出る（§2.2 の否定先読みの裏面）。
         INVALID_PAGEBREAK_PATTERN = /@pagebreak:(?!(?:recto|verso)\b)([\w-]*)/
 
+        # 画像の属性ブロック `![…](…){…}`。1 = 画像、2 = 属性の中身
+        IMAGE_WITH_ATTRIBUTES = /(!\[[^\]]*\]\([^)]*\))\{([^{}\n]*)\}/
+
+        # 画像の枠 `border=on` / `border=off` の読み替え先（stylesheets/chapter-common.css）。
+        # 著者が書くのは値つきの属性で、クラス名は内部のもの（vs- を付けて区別する）。
+        BORDER_CLASSES = { 'on' => '.vs-bordered', 'off' => '.vs-borderless' }.freeze
+        BORDER_ATTRIBUTE = /(?<!\S)border=(\S+)/
+
+        # 撤去したクラス `.bordered`（画像の属性・囲みの両方）
+        RETIRED_BORDERED = /(?<![\w-])\.bordered(?![\w-])/
+        RETIRED_BORDERED_CONTAINER = /\A\s*:{3,}\s*\{[^}]*#{RETIRED_BORDERED.source}[^}]*\}\s*\z/
+
         # @param md_file [String] Markdown ファイルパス
         # @param entry [TokenResolver::Entry] 章情報を持つ Entry オブジェクト
         def initialize(md_file, entry)
@@ -86,12 +98,14 @@ module VivlioStarter
         def run
           Common.log_info("#{context.source_path} → #{context.output_path}")
           validate_directives!
+          validate_image_borders!
           validate_links!
           apply_frontmatter!
           strip_html_comments!
           transform_terminal_blocks!
           process_data_streams!
           normalize_image_paths!
+          transform_image_borders!
           transform_qr_codes!
           validate_images!
           transform_showcases!
@@ -139,6 +153,72 @@ module VivlioStarter
               )
             end
           end
+        end
+
+        # 画像の枠の書き方を点検する（validate_directives! と同じく、原稿そのままの行番号で）。
+        #
+        # `.bordered` は撤去した。値つきの属性（`{width=30% align=right}`）の中にクラスが
+        # 混ざるのを避け、`border=on` / `border=off` にそろえたため。黙って効かなくなると
+        # 著者は枠が消えた理由を探せないので、見つけたら直し方を添えて知らせる。
+        # 画像には既定で枠が付く（VFM が単独の画像を figure で包む）ので、たいていは消すだけで済む。
+        def validate_image_borders!
+          Masking.each_prose_line(context.content) do |line, line_number|
+            prose = line.gsub(/`[^`]+`/, '') # インラインコード内の例示は対象外
+            warn_retired_bordered_container(line_number) if prose.match?(RETIRED_BORDERED_CONTAINER)
+
+            prose.scan(IMAGE_WITH_ATTRIBUTES) do |_image, attributes|
+              warn_retired_bordered(line_number, attributes) if attributes.match?(RETIRED_BORDERED)
+              attributes.scan(BORDER_ATTRIBUTE) do |(value)|
+                warn_invalid_border(line_number, value) unless BORDER_CLASSES.key?(value)
+              end
+            end
+          end
+        end
+
+        def warn_retired_bordered(line_number, attributes)
+          rewritten = attributes.sub(RETIRED_BORDERED, 'border=on').squeeze(' ').strip
+          record_notation_warning(
+            line_number, '画像の枠は {.bordered} ではなく border=on / border=off で指定します',
+            detail: "画像には既定で枠が付くので、たいていは .bordered を消すだけで足ります。\n" \
+                    "→ 文中の画像などに枠を付けるときは {#{attributes}} を {#{rewritten}} に直してください。"
+          )
+        end
+
+        def warn_retired_bordered_container(line_number)
+          record_notation_warning(
+            line_number, ':::{.bordered} は撤去しました',
+            detail: "中の画像には既定で枠が付きます。\n" \
+                    '→ :::{.bordered} の行と、対応する閉じの ::: の行を消してください。'
+          )
+        end
+
+        def warn_invalid_border(line_number, value)
+          record_notation_warning(
+            line_number, "画像の border の値が不正です（border=#{value}）",
+            detail: '→ 枠を付けるなら border=on、既定の枠を外すなら border=off と書いてください。'
+          )
+        end
+
+        def record_notation_warning(line_number, message, detail:)
+          Common.log_warn("#{context.filename}:#{line_number} - #{message}", detail:)
+          IssueRegistry.record(chapter: context.filename, line: line_number, severity: :warn,
+                               category: :notation, message:)
+        end
+
+        # 画像の属性の `border=on` / `border=off` を、枠を付ける／外す内部クラスへ読み替える。
+        # コード領域（記法を解説するフェンスやインラインコード）は書き換えない。
+        # 読み替えたクラスは、キャプション付き画像なら CrossReferenceProcessor が figure へ、
+        # それ以外は VFM が img へ載せる。不正な値は validate_image_borders! が知らせ、ここでは触らない。
+        def transform_image_borders!
+          protected_text, spans = Masking.protect_code(context.content)
+          transformed = protected_text.gsub(IMAGE_WITH_ATTRIBUTES) do
+            image = ::Regexp.last_match(1)
+            attributes = ::Regexp.last_match(2).gsub(BORDER_ATTRIBUTE) do |original|
+              BORDER_CLASSES.fetch(::Regexp.last_match(1), original)
+            end
+            "#{image}{#{attributes}}"
+          end
+          context.content = Masking.restore_code(transformed, spans)
         end
 
         # @qr:URL を QR コード SVG（ビルド生成物）の <img> へ変換する。

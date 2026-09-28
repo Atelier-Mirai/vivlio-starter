@@ -494,14 +494,21 @@ figure p {
   text-indent: 0;
 }
 
-/* 画像の囲み枠（`![](x.webp){.bordered}` / `:::{.bordered}`）。
-   キャプション付きの画像（figure）には上の規則で既に枠が付くが、キャプションの
-   ない画像や `:::{.sideimage-*}` の中の画像には付かない。白背景の図版は枠が
-   無いと紙面の余白に溶けて輪郭が消えるため、明示して枠を引けるようにする
-   （Re:VIEW の `//image[…][…][border=on]` の受け先）。 */
-img.bordered,
-.bordered > img {
+/* 画像の枠の有無（`![](x.webp){border=on}` / `{border=off}`）。前処理が属性を
+   下のクラスへ読み替える（クラスは内部のもので、著者は書かない）。
+   単独の画像は、キャプションの有無によらず VFM が figure で包むので、上の規則で
+   既定で枠が付く。border=off はその枠を外す（ロゴ・透過画像など、枠が邪魔な図版）。
+   border=on は figure に包まれない画像（文中に置いた画像）にも枠を引く
+   （Re:VIEW の `//image[…][…][border=on]` の受け先）。
+   クラスは、キャプション付きなら figure に、それ以外なら img に載るので両方を見る。 */
+img.vs-bordered,
+figure.vs-bordered :is(img, svg) {
   border: solid 0.5mm var(--color-figure-border);
+}
+
+img.vs-borderless,
+figure.vs-borderless :is(img, svg) {
+  border: none;
 }
 
 /* 図解注釈（:::{.showcase}）。中身は前処理が焼いた合成画像 1 枚なので、

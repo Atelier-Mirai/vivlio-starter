@@ -123,7 +123,7 @@ module VivlioStarter
           result = convert("//image[fig1][図の説明][width=40%,border=on]\n")
 
           assert_includes result, '** 図の説明 @fig1 **'
-          assert_includes result, '![](fig1.webp){.bordered width=40%}'
+          assert_includes result, '![](fig1.webp){border=on width=40%}'
         end
 
         # Re:VIEW の mm 指定は版面幅に対する比率へ直す
