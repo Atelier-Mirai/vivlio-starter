@@ -105,6 +105,20 @@ module VivlioStarter
           figure(svg_rel, raster_rel, ShowcaseSvgBuilder.alt_text(block), block.width)
         end
 
+        # 注釈のない画像を crop のとおりに切り抜いた SVG とラスターを用意する（改善案.md #54）。
+        # 段落に単独で置いた画像の `{crop="…"}` は、CrossReferenceProcessor が図を組むときに
+        # ここを呼んで画像の参照だけを差し替える。キャプション・図番号・align・border・幅は
+        # 普通の図の処理がそのまま引き継ぐ。作れなければ nil（警告は compose が出す）。
+        # @return [Array(String, String), nil] [SVG 参照パス, ラスター参照パス]
+        def crop_assets(image_line, chapter_slug:, source_filename:, tools: default_tools)
+          lines = [image_line]
+          image = ShowcaseSvgBuilder.scan_image(lines)
+          return nil unless image
+
+          _block, svg_rel, raster_rel = compose(image, lines, chapter_slug:, source_filename:, tools:)
+          svg_rel && [svg_rel, raster_rel]
+        end
+
         # 合成 SVG とラスターを（必要なら）生成し、参照パスを返す。縮退すべき場合は nil。
         # @return [Array(ShowcaseSvgBuilder::ShowcaseBlock, String, String), nil]
         #   [ブロック, SVG 参照パス, ラスター参照パス]

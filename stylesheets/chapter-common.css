@@ -491,6 +491,13 @@ figure :is(img, svg) {
   border: solid 0.5mm var(--color-figure-border);
 }
 
+/* crop で切り抜いた画像（改善案.md #54）。PDF では前処理が作った SVG を参照するため、
+   後段の img[src$=".svg"] { border: none } に既定の枠を消されないよう、クラスで付け直す。
+   border=off（下の figure.vs-borderless、同じ特異度で後ろに置く）はこれより優先される。 */
+figure img.vs-cropped {
+  border: solid 0.5mm var(--color-figure-border);
+}
+
 figure p {
   text-indent: 0;
 }

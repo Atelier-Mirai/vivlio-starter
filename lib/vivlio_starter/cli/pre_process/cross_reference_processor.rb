@@ -21,6 +21,7 @@ require_relative '../masking'
 require_relative '../post_process/heading_processor'
 require_relative 'issue_registry'
 require_relative 'markdown_utils'
+require_relative 'showcase_transformer'
 
 module VivlioStarter
   module CLI
@@ -479,6 +480,7 @@ module VivlioStarter
             { alt: Regexp.last_match(1), src: Regexp.last_match(2),
               align: extract_attr(attrs, /align=["']?(left|center|right)/),
               width: image_width(attrs),
+              crop: attrs&.match?(/(?<![\w-])crop=/), line:,
               classes: extract_classes(attrs) }
           end
 
@@ -501,10 +503,24 @@ module VivlioStarter
             return '' unless img
 
             parts = ["<figure#{id_attr(label)}#{class_attr(img)}#{style_attr(img[:width])}>"]
-            parts << "  <img src=\"#{img[:src]}\" alt=\"#{img[:alt]}\">"
+            parts << "  #{img_tag(img)}"
             parts << "  <figcaption>#{caption}</figcaption>" if caption
             parts << '</figure>'
             "#{parts.join("\n")}\n"
+          end
+
+          # crop のある画像は、切り抜いた SVG（PDF 用）とラスター（EPUB 用・data-vs-raster）へ
+          # 差し替える。切り抜けなければ元の画像のまま出す（警告は ShowcaseTransformer が出す）。
+          def img_tag(img)
+            svg, raster = img[:crop] && cropped_sources(img)
+            return %(<img src="#{img[:src]}" alt="#{img[:alt]}">) unless svg
+
+            %(<img class="vs-cropped" src="#{svg}" data-vs-raster="#{raster}" alt="#{img[:alt]}">)
+          end
+
+          def cropped_sources(img)
+            ShowcaseTransformer.crop_assets(img[:line], chapter_slug: File.basename(@filename.to_s, '.*'),
+                                                        source_filename: File.basename(@filename.to_s))
           end
 
           def figure_html(block_start, info, label)

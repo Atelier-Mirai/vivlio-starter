@@ -184,3 +184,53 @@ class CrossReferenceImageWidthTest < Minitest::Test
     assert_equal '<figure>', figure_for('max-width=30%')
   end
 end
+
+# crop を付けた普通の画像は、図の組み立てで画像だけを切り抜いた SVG／ラスターへ差し替える。
+# キャプション・図番号・align・border・幅は普通の図のまま引き継ぐ（改善案.md #54）
+class CrossReferenceCroppedImageTest < Minitest::Test
+  XR = VivlioStarter::CLI::PreProcessCommands::CrossReferenceProcessor
+  ST = VivlioStarter::CLI::PreProcessCommands::ShowcaseTransformer
+  ASSETS = ['images/showcase/11-install/k.svg', 'images/showcase/11-install/k.jpg'].freeze
+
+  # crop_assets に渡った画像の行を集めつつ、生成物の参照を返す
+  def transform(content, assets: ASSETS)
+    calls = []
+    out = ST.stub(:crop_assets, lambda { |line, chapter_slug:, source_filename:|
+      calls << [line, chapter_slug, source_filename]
+      assets
+    }) do
+      XR.transform_captioned_blocks(content, '11-install.md', {})
+    end
+    [out, calls]
+  end
+
+  def test_should_swap_image_for_cropped_assets_and_keep_figure_attributes
+    out, calls = transform(%(本文\n\n![肖像](a.webp){width=40% align=right crop="30 100" .vs-borderless}\n))
+
+    assert_includes out, '<figure class="align-right vs-borderless" style="width: 40%">'
+    assert_includes out, '<img class="vs-cropped" src="images/showcase/11-install/k.svg" ' \
+                         'data-vs-raster="images/showcase/11-install/k.jpg" alt="肖像">'
+    assert_equal [[%(![肖像](a.webp){width=40% align=right crop="30 100" .vs-borderless}), '11-install', '11-install.md']],
+                 calls
+  end
+
+  def test_should_keep_caption_on_cropped_image
+    out, = transform(%(** アインシュタインの肖像 **\n\n![肖像](a.webp){crop="50"}\n))
+
+    assert_includes out, '<figcaption>アインシュタインの肖像</figcaption>'
+    assert_includes out, 'class="vs-cropped"'
+  end
+
+  # 切り抜けなければ元の画像のまま出す（警告は ShowcaseTransformer が出す）
+  def test_should_fall_back_to_original_image_when_cropping_fails
+    out, = transform(%(![肖像](a.webp){crop="50"}\n), assets: nil)
+
+    assert_includes out, '<img src="a.webp" alt="肖像">'
+  end
+
+  def test_should_not_call_crop_for_images_without_crop
+    _out, calls = transform("![肖像](a.webp){width=40%}\n")
+
+    assert_empty calls
+  end
+end
