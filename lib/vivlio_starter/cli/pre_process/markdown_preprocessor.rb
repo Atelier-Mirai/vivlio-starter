@@ -99,6 +99,7 @@ module VivlioStarter
           Common.log_info("#{context.source_path} → #{context.output_path}")
           validate_directives!
           validate_image_borders!
+          validate_qr_codes!
           validate_links!
           apply_frontmatter!
           strip_html_comments!
@@ -171,6 +172,21 @@ module VivlioStarter
               attributes.scan(BORDER_ATTRIBUTE) do |(value)|
                 warn_invalid_border(line_number, value) unless BORDER_CLASSES.key?(value)
               end
+            end
+          end
+        end
+
+        # `@qr:URL{…}` の大きさの指定を点検する。変換（transform_qr_codes!）はフロントマターを
+        # 足した後に動き、原稿の行番号を出せないので、読めない指定はここで知らせる。
+        def validate_qr_codes!
+          Masking.each_prose_line(context.content) do |line, line_number|
+            line.gsub(/`[^`]+`/, '').scan(QrTransformer::QR_PATTERN) do |_url, attributes|
+              next if attributes.nil? || QrTransformer.width_from(attributes)
+
+              record_notation_warning(
+                line_number, "QR コードの大きさの指定 {#{attributes}} を読めません（既定の大きさで出力します）",
+                detail: "→ {#{attributes}} を {width=25mm} のように、width に単位つきの長さ（mm・em など）か % で書いてください。"
+              )
             end
           end
         end

@@ -5,7 +5,8 @@
 # ================================================================
 # 責務:
 #   本文中の `@qr:URL` を QR コードの SVG 画像（ビルド生成物）へ変換する
-#   （at-directive-tier1-spec.md §2.5）。
+#   （at-directive-tier1-spec.md §2.5）。`@qr:URL{width=25mm}` で 1 個ずつ大きさを変えられる
+#   （改善案.md #12）。
 #
 # なぜ前処理なのか:
 #   置換に画像ファイルの生成が伴うため、ReplacementRules（純粋な文字列置換）では
@@ -46,8 +47,12 @@ module VivlioStarter
         # 生成物の出力先（images/ 配下）。
         REL_BASE = 'qr'
 
-        # `@qr:` に続く URL。空白か `)` の手前まで（§1.4）。
-        QR_PATTERN = %r{@qr:(https?://[^\s)]+)}
+        # `@qr:` に続く URL。空白か `)` か `{` の手前まで（§1.4）。続く `{…}` は属性。
+        # URL は `{` を生のまま含められない（RFC 3986）ので、境目を取り違えない。
+        QR_PATTERN = %r{@qr:(https?://[^\s)\{]+)(?:\{([^\{\}\n]*)\})?}
+
+        # 属性に書ける幅（`{width=25mm}`）。CSS の長さか割合。
+        WIDTH_ATTRIBUTE = /\A\s*width=["']?(\d+(?:\.\d+)?(?:mm|cm|Q|in|pt|px|em|rem|%))["']?\s*\z/
 
         # QR の 1 モジュール（黒白の 1 マス）の辺長 px。印刷 18mm 角でも読み取れる解像度。
         MODULE_SIZE = 4
@@ -67,8 +72,9 @@ module VivlioStarter
           out_dir = File.join(Common::BUILD_HTML_DIR, 'images', REL_BASE)
           replace_in_prose(content) do |line, lineno|
             line.gsub(QR_PATTERN) do
-              url = Regexp.last_match(1)
-              render_one(url, out_dir) || warn_render_failed(source_filename, lineno, url)
+              url, attributes = Regexp.last_match.captures
+              width = attributes && width_from(attributes)
+              render_one(url, out_dir, width:) || warn_render_failed(source_filename, lineno, url)
             end
           end
         end
@@ -90,8 +96,14 @@ module VivlioStarter
           lines.join
         end
 
+        # `{width=25mm}` の中身から幅を取り出す。読めなければ nil（既定の大きさに任せる）。
+        # 読めない指定を知らせるのは MarkdownPreprocessor#validate_qr_codes!。ここはフロントマターを
+        # 足した後に動くので、原稿の行番号を出せない。
+        def width_from(attributes) = attributes[WIDTH_ATTRIBUTE, 1]
+
         # URL 1 件を SVG 化して <img> タグ文字列を返す。生成できなければ nil。
-        def render_one(url, out_dir)
+        # width があれば style で既定の大きさ（CSS の .vs-qr）を上書きする。
+        def render_one(url, out_dir, width: nil)
           name = "#{Digest::SHA1.hexdigest(url)[0, 12]}.svg"
           path = File.join(out_dir, name)
 
@@ -103,7 +115,8 @@ module VivlioStarter
             File.write(path, svg, encoding: 'utf-8')
           end
 
-          %(<img class="vs-qr" src="images/#{REL_BASE}/#{name}" alt="#{CGI.escapeHTML(url)}">)
+          style = width ? %( style="width: #{width}") : ''
+          %(<img class="vs-qr" src="images/#{REL_BASE}/#{name}" alt="#{CGI.escapeHTML(url)}"#{style}>)
         end
 
         # rqrcode で SVG 本体を組み立て、intrinsic size と viewBox の両方を備えさせる。

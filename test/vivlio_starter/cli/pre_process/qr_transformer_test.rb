@@ -62,6 +62,30 @@ class QrTransformerTest < Minitest::Test
     end
   end
 
+  # {width=25mm} で 1 個だけ大きさを変える。属性は URL に含めない（改善案.md #12）
+  def test_should_apply_width_attribute_without_folding_it_into_url
+    in_tmp do
+      out = QT.transform("@qr:https://example.com/repo{width=25mm} を読み取る。\n", source_filename: '31-usage.md')
+
+      assert_match(%r{<img class="vs-qr" src="images/qr/[0-9a-f]{12}\.svg" alt="https://example\.com/repo" style="width: 25mm">}, out)
+      assert_includes out, '> を読み取る。'
+      # 属性の有無で QR の中身（URL）は変わらない
+      QT.transform("@qr:https://example.com/repo\n", source_filename: '31-usage.md')
+
+      assert_equal 1, Dir.glob(File.join(QR_DIR, '*.svg')).size
+    end
+  end
+
+  # 読めない指定は捨てて既定の大きさで出す（知らせるのは前処理の validate_qr_codes!）
+  def test_should_drop_unreadable_attribute_and_keep_default_size
+    in_tmp do
+      out = QT.transform("@qr:https://example.com/repo{size=25}\n", source_filename: '31-usage.md')
+
+      assert_match(%r{alt="https://example\.com/repo">}, out)
+      refute_includes out, '{size=25}'
+    end
+  end
+
   def test_should_not_convert_inside_code_fence
     in_tmp do
       content = "```markdown\n@qr:https://example.com/repo\n```\n"

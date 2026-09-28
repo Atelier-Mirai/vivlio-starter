@@ -1697,8 +1697,8 @@ URL を QR コードの画像に変換して、その場に差し込みます。
 
 サンプルコードはこちら: @qr:https://github.com/Atelier-Mirai/vivlio-starter
 
-- 既定のサイズは 18mm 角です。変えたいときは `stylesheets/custom.css` に `.vs-qr { width: 25mm; }` のように書きます。
-- URL は `http://` / `https://` で始め、空白か `)` の手前までが読み取られます。
+- 既定のサイズは 18mm 角です。一つだけ大きさを変えるときは、URL の直後に `{width=25mm}` と書きます（`@qr:https://example.com/{width=25mm}`）。本の中の QR をまとめて変えるときは、`stylesheets/custom.css` に `.vs-qr { width: 25mm; }` のように書きます。
+- URL は `http://` / `https://` で始め、空白か `)` か `{` の手前までが読み取られます。
 - 行の途中に書けば文と並び、単独の行に書けば単独で表示されます。
 - 同じ URL は何度書いても画像 1 枚を共有します。
 - 印刷では URL の文字列も併記しておくと、QR を読めない読者にも親切です（自動では併記しません）。
