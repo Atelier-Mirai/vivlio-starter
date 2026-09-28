@@ -1,4 +1,4 @@
-# Import コマンドの使い方
+# Re:VIEW Starter からの移行
 
 :::{.chapter-lead}
 Re:VIEW Starter で書いた本を Vivlio Starter へ移すには、`vs import` を使います。原稿（`.re`）を直接読み取るため、以前の執筆環境を動かす必要はありません。この章では、取り込み元の確認から変換後の点検まで、移行の順に沿って説明します。

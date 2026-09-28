@@ -1,4 +1,4 @@
-# PDF 読み取りコマンドの使い方
+# PDF からの原稿の取り出し
 
 :::{.chapter-lead}
 `vs pdf:read` は PDF から文字や画像を取り出して Vivlio Starter の Markdown に変換するコマンドです。既刊の書籍や配布資料をもとに書き直す場合に役立ちます。

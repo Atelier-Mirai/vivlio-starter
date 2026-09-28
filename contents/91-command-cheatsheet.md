@@ -11,28 +11,28 @@
 |:---|:---|:---|
 | `vs new` | プロジェクトを新規作成 | 新規プロジェクトの作成 |
 | `vs upgrade` | 本体 gem・雛形・外部ツールをまとめて最新化 | 環境の診断と更新 |
-| `vs import` | Re:VIEW Starter プロジェクトを取り込み | Import コマンドの使い方 |
-| `vs pdf:read` | PDF を解析して Markdown へ変換・抽出 | PDF 読み取りコマンドの使い方 |
+| `vs import` | Re:VIEW Starter プロジェクトを取り込み | Re:VIEW Starter からの移行 |
+| `vs pdf:read` | PDF を解析して Markdown へ変換・抽出 | PDF からの原稿の取り出し |
 | `vs doctor` | 環境診断と不足ツールの自動セットアップ | 環境の診断と更新 |
-| `vs clean` | 生成物やキャッシュを削除 | ユーティリティ・コマンド集 |
+| `vs clean` | 生成物やキャッシュを削除 | 補助コマンドとカスタマイズ |
 | `vs create` | 章ファイルと画像ディレクトリを生成 | 章の管理 |
 | `vs delete` | 指定した章の Markdown と画像を削除 | 章の管理 |
 | `vs rename` | 章の番号やスラッグを変更 | 章の管理 |
 | `vs renumber` | 章番号を一括で付け直す（rename の別名） | 章の管理 |
-| `vs lint` | Markdown を textlint・スペルチェックで検査 | 文章校正（vs lint） |
-| `vs metrics` | 行数・文字数など文章メトリクスを集計 | Metrics |
+| `vs lint` | Markdown を textlint・スペルチェックで検査 | 文章校正 |
+| `vs metrics` | 行数・文字数など文章メトリクスを集計 | 原稿の分量と難度の計測 |
 | `vs index:auto` | 索引・用語集の候補を抽出しレビュー用ファイルを生成 | 索引・用語集機能 |
 | `vs index:plan` | 索引語数の目安と候補の分布を表示 | 索引・用語集機能 |
 | `vs index:apply` | レビュー結果を索引辞書に登録・保存 | 索引・用語集機能 |
 | `vs index:export` | 用語集・棄却・読みをライブラリへ書き出し | 索引・用語集機能 |
 | `vs index:import` | 別の本のライブラリを取り込み | 索引・用語集機能 |
 | `vs cover` | 表紙・裏表紙の画像を生成（A4/B5/A5/EPUB） | カバー画像の生成 |
-| `vs preflight` | ビルド前の原稿エラーチェックを高速実行 | ビルド（vs build） |
-| `vs build` | 書籍全体または指定章をビルド | ビルド（vs build） |
-| `vs open` | 生成された PDF を開く（macOS 専用） | ユーティリティ・コマンド集 |
-| `vs pdf:compress` | 生成済み PDF を圧縮 | ユーティリティ・コマンド集 |
-| `vs pdf:pages` | PDF をページ単位で JPEG 画像に切り出し | ビルド（vs build） |
-| `vs pdf:rasterize` | PDF をラスタライズして再結合（Type3 フォント対策） | ビルド（vs build） |
+| `vs preflight` | ビルド前の原稿エラーチェックを高速実行 | ビルド |
+| `vs build` | 書籍全体または指定章をビルド | ビルド |
+| `vs open` | 生成された PDF を開く（macOS 専用） | 補助コマンドとカスタマイズ |
+| `vs pdf:compress` | 生成済み PDF を圧縮 | 補助コマンドとカスタマイズ |
+| `vs pdf:pages` | PDF をページ単位で JPEG 画像に切り出し | ビルド |
+| `vs pdf:rasterize` | PDF をラスタライズして再結合（Type3 フォント対策） | ビルド |
 :::
 
 グローバルオプション: `-h` / `--help`（ヘルプ）・`-v` / `--verbose`（冗長出力）・`--version`（バージョン表示）。
