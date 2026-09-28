@@ -1,18 +1,18 @@
 # 扉絵と装飾画像
 
 :::{.chapter-lead}
-Vivlio Starter では、章の扉ページに表示する背景画像（frontispiece）と、節見出しの装飾画像（ornament）を設定できます。画像を使った華やかなデザインと、シンプルで洗練されたデザインの二つのスタイルから選択可能です。
+章の始まりと節見出しは、読者がいま本のどこにいるかを確かめる目印になります。Vivlio Starter では、章扉の背景画像（frontispiece）と節見出しの装飾画像（ornament）を使う `image`、色と文字を中心に組む `simple` の二つのスタイルを選べます。本章では、それぞれの設定と画像の用意のしかたを見ていきます。
 :::
 
 ## frontispiece と ornament とは
 
 :::{.section-lead}
-frontispiece は章の扉ページに表示される縦長の背景画像、ornament は節見出しに表示される横長の装飾画像です。これらを設定することで、書籍全体に統一感のあるビジュアルデザインを実現できます。
+frontispiece は章扉に置く縦長の画像、ornament は節見出しに添える横長の画像です。同じ絵柄を使っても、別の画像を組み合わせても構いません。章と節の見え方を揃えたいときに設定します。
 :::
 
 ### frontispiece（扉絵）
 
-frontispiece は、各章の扉ページ（章タイトルが表示されるページ）の背景に配置される画像です。縦長（portrait）の画像が使用され、章の雰囲気を演出します。
+frontispiece は、章タイトルが載る扉ページの背景です。縦長（portrait）の画像を使い、読者が新しい章へ入るときの印象を作ります。
 
 - **推奨アスペクト比**: `page.use` の版面設定に応じて動的に決まります（A 判・B 判はいずれも √2:1 ≒ 1.414）。この比率と異なる画像を指定しても、自動生成（後述）でページ比率に合わせてクロップされます。
 - **推奨サイズ**: 幅 2880px 程度
@@ -20,7 +20,7 @@ frontispiece は、各章の扉ページ（章タイトルが表示されるペ�
 
 ### ornament（装飾画像）
 
-ornament は、節見出し（`## 見出し`）の背景に配置される装飾画像です。横長（landscape）の画像が使用され、見出しを視覚的に強調します。
+ornament は、節見出し（`## 見出し`）の背景に添える横長（landscape）の画像です。章扉の絵柄と揃えると、ページをめくっても同じ本のデザインが続いていると分かります。
 
 - **推奨アスペクト比**: 2.39:1（シネマスコープ）
 - **推奨サイズ**: 幅 2880px 程度
@@ -29,7 +29,7 @@ ornament は、節見出し（`## 見出し`）の背景に配置される装飾
 ## テーマスタイルの選択
 
 :::{.section-lead}
-Vivlio Starter では、`theme.style` の設定により、画像を使った `image` スタイルと、画像を使わない `simple` スタイルの二つのデザインから選択できます。
+最初に `theme.style` を選びます。画像を章扉と節見出しへ使うなら `image`、画像を使わず色と文字で組むなら `simple` です。どちらも同じ原稿で切り替えられるので、仕上がりを見ながら選べます。
 :::
 
 ### image と simple の比較
@@ -53,12 +53,11 @@ Vivlio Starter では、`theme.style` の設定により、画像を使った `i
 **simple スタイルが向いている場合**
 - コンテンツの可読性を最優先したい
 - ミニマルで洗練されたデザインにしたい
-- ビルド時間を短縮したい
 
 ## image スタイルの設定
 
 :::{.section-lead}
-`theme.style: image` を指定することで、章扉と節見出しに画像を使用したデザインが適用されます。バンドル画像を使用するか、独自の画像を配置することで、書籍に華やかさを加えることができます。
+`theme.style: image` にすると、章扉には frontispiece、節見出しには ornament が使われます。まずは同梱画像で仕上がりを確かめ、必要なら本の内容に合った独自画像へ差し替えられます。
 :::
 
 ### 基本的な設定方法
@@ -69,8 +68,8 @@ Vivlio Starter では、`theme.style` の設定により、画像を使った `i
 theme:
   style: image  # image スタイルを使用
   frontispiece:
-    image: himawari  # ひまわりの画像を使用
-  ornament: himawari  # ひまわりの装飾を使用
+    image: sakura  # 桜の画像を使用
+  ornament: sakura  # 桜の装飾を使用
 ```
 
 **詳細な設定**
@@ -78,7 +77,7 @@ theme:
 ```yaml
 theme:
   style: image
-  color: blue  # テーマカラー
+  color: teal  # テーマカラー
   frontispiece:
     image: sakura  # 桜の画像を使用
     edge_inset: 10mm  # 扉絵を紙の端から引っ込める量
@@ -91,11 +90,11 @@ theme:
 
 ### バンドル画像の使用
 
-Vivlio Starter には、すぐに使える花の画像が 12 種類バンドルされています。これらの画像は `stylesheets/images/bundled/` に配置されており、設定ファイルで画像名を指定するだけで使用できます。
+花を題材にした画像が 12 種類同梱されています。`stylesheets/images/bundled/` にある画像の名前を設定へ書けば、そのまま章扉や節見出しに使えます。画像をまだ用意していない段階でも、紙面の見え方を試せます。
 
 **利用可能なバンドル画像**
 
-以下の花の画像が利用可能です。画像名は日本語の花の名前（ローマ字表記）です。
+選べる画像は次のとおりです。設定には花の名前をローマ字で書きます。
 
 | 画像名 | 画像名 |
 |:---:|:---:|
@@ -114,7 +113,7 @@ Vivlio Starter には、すぐに使える花の画像が 12 種類バンドル�
 
 **バンドル画像の指定方法**
 
-バンドル画像を使用する場合は、画像名をそのまま指定します。
+同梱画像を使うには、設定に画像名を書きます。frontispiece と ornament に同じ名前を指定すれば、縦長と横長の画像がそれぞれ選ばれます。
 
 ```yaml
 theme:
@@ -123,7 +122,7 @@ theme:
   ornament: sakura  # 桜の装飾
 ```
 
-または、`bundled/` プレフィックスを付けて明示的に指定することもできます。
+独自画像に`sakura`がある場合に、同梱画像を選びたいときは、`bundled/` を付けて指定することもできます。
 
 ```yaml
 theme:
@@ -134,23 +133,23 @@ theme:
 
 ### 独自画像の使用
 
-バンドル画像ではなく、独自の画像を使用したい場合は、`stylesheets/images/` ディレクトリに画像ファイルを配置します。
+本の題材に合わせて画像を用意したら、`stylesheets/images/` に置きます。縦長と横長を別々に作ることも、一枚の元画像から生成することもできます。
 
 **画像の配置場所**
 
-独自の画像は、以下のディレクトリに配置します。
+元画像は次の場所に置きます。切り抜き方を自分で決めている場合は、縦長・横長の画像も同じ場所に置けます。
 
 ```
 stylesheets/
 └── images/
     ├── my_image.webp        # 独自画像
-    ├── my_image_portrait.webp   # 縦長バリアント（オプション）
-    └── my_image_landscape.webp  # 横長バリアント（オプション）
+    ├── my_image_portrait.webp   # 縦長の派生画像（オプション）
+    └── my_image_landscape.webp  # 横長の派生画像（オプション）
 ```
 
 **画像の指定方法**
 
-配置した画像を使用する場合は、拡張子を省略して画像名を指定します。
+設定には拡張子を除いた画像名を書きます。
 
 ```yaml
 theme:
@@ -168,84 +167,84 @@ theme:
 - JPEG（`.jpg`, `.jpeg`）
 
 <!-- no-lint-start -->
-**推奨**: WebP 形式は、高画質を保ちながらファイルサイズを小さくできるため、推奨されます。
+WebP は、画質を保ちながらファイルサイズを抑えやすい形式です。新しく画像を用意する場合の第一候補になります。
 <!-- no-lint-end -->
 
 ### 画像の自動生成
 
-Vivlio Starter は、元画像から frontispiece 用の縦長画像と ornament 用の横長画像を自動生成する機能を備えています。
+元画像を一枚指定すると、章扉用の縦長画像と節見出し用の横長画像が必要に応じて生成されます。切り抜く位置まで自分で決めたい場合は、縦長・横長の派生画像を先に用意できます。
 
 **自動生成の仕組み**
 
-元画像（例: `himawari.webp`）を指定すると、以下の処理が自動的に行われます。
+たとえば `sakura.webp` を指定すると、次の順に画像が準備されます。
 
 1. **画像の検索**: `stylesheets/images/` と `stylesheets/images/bundled/` から画像を検索
 2. **アスペクト比の確認**: 画像のアスペクト比が適切かチェック
-3. **バリアントの生成**: 必要に応じて `_portrait` と `_landscape` バリアントを生成
+3. **派生画像の生成**: 必要に応じて `_portrait` と `_landscape` の画像を生成
 4. **キャッシュ**: 生成した画像は次回以降再利用される
 
-**バリアント画像の命名規則**
+**派生画像の命名規則**
 
-自動生成される画像は、以下の命名規則に従います。
+生成される画像の名前には、用途を示す接尾語が付きます。
 
-- **縦長バリアント**: `画像名_portrait.webp`
-- **横長バリアント**: `画像名_landscape.webp`
+- **縦長の派生画像**: `画像名_portrait.webp`
+- **横長の派生画像**: `画像名_landscape.webp`
 
-たとえば、`himawari.webp` から以下の画像が生成されます。
+たとえば、`sakura.webp` から以下の画像が生成されます。
 
-- `himawari_portrait.webp` - frontispiece 用
-- `himawari_landscape.webp` - ornament 用
+- `sakura_portrait.webp` - frontispiece 用
+- `sakura_landscape.webp` - ornament 用
 
-**既存のバリアント画像の優先**
+**用意した派生画像を優先する**
 
-`_portrait` や `_landscape` のバリアント画像がすでに存在する場合は、自動生成をスキップしてそれらを使用します。
+切り抜き位置を指定したい場合は、`_portrait` や `_landscape` の画像を先に用意してください。用意した派生画像が使われ、元画像からの自動生成は行われません。
 
 ```yaml
 theme:
   frontispiece:
-    image: himawari  # himawari_portrait.webp が存在すればそれを使用
-  ornament: himawari  # himawari_landscape.webp が存在すればそれを使用
+    image: sakura  # sakura_portrait.webp が存在すればそれを使用
+  ornament: sakura  # sakura_landscape.webp が存在すればそれを使用
 ```
 
-**明示的なバリアント指定**
+**派生画像を直接指定する**
 
-バリアント画像を直接指定することもできます。
+設定で派生画像の名前を直接指定する方法もあります。
 
 ```yaml
 theme:
   frontispiece:
-    image: himawari_portrait  # 縦長バリアントを直接指定
-  ornament: himawari_landscape  # 横長バリアントを直接指定
+    image: sakura_portrait  # 縦長の派生画像を直接指定
+  ornament: sakura_landscape  # 横長の派生画像を直接指定
 ```
 
 ### 画像の検索順序
 
-画像は、ユーザー提供画像を優先し、見つからない場合はバンドル画像を検索します。この仕組みにより、バンドル画像は独自画像で上書きできます。
+画像は、まず `stylesheets/images/` に置いた独自画像から探し、見つからなければ同梱画像を探します。同じ名前を付けると独自画像が優先されるため、設定名を変えずに絵柄だけを差し替えられます。
 
 **検索の優先順位**
 
-画像の検索は、以下の順序で行われます。
+検索順は次のとおりです。
 
 1. **ユーザー提供画像**: `stylesheets/images/` 内を検索
 2. **バンドル画像**: `stylesheets/images/bundled/` 内を検索
 
 **上書きの例**
 
-バンドル画像 `himawari` を独自の画像で上書きしたい場合は、`stylesheets/images/himawari.webp` を配置します。
+バンドル画像 `sakura` を独自の画像で上書きしたい場合は、`stylesheets/images/sakura.webp` を配置します。
 
 ```
 stylesheets/
 └── images/
-    ├── himawari.webp  # この画像が優先される
+    ├── sakura.webp  # この画像が優先される
     └── bundled/
-        └── himawari.webp  # バンドル画像（使用されない）
+        └── sakura.webp  # バンドル画像（使用されない）
 ```
 
-この場合、`config/book.yml` で `himawari` を指定すると、ユーザー提供の `himawari.webp` が使用されます。
+この場合、`config/book.yml` で `sakura` を指定すると、ユーザー提供の `sakura.webp` が使用されます。
 
 ### frontispiece の詳細設定
 
-frontispiece には、扉絵の引っ込み量や見出しの字数などの詳細な設定オプションがあります。
+扉絵と文字の重なり具合は、画像の構図によって変わります。余白や見出し幅が合わないときは、次の項目で少しずつ調整できます。
 
 **設定可能な項目**
 
@@ -261,11 +260,11 @@ theme:
 
 **edge_inset（扉絵を紙の端から引っ込める量）**
 
-扉絵をページの端からどれだけ内側に置くかを指定します。値を大きくすると扉絵が小さくなり、紙の周囲に白い余白が広く残ります。
+扉絵をページの端からどれだけ内側へ置くかを指定します。余白を広げると画像は小さくなり、扉が少し落ち着いた印象になります。章題との釣り合いを PDF で見ながら調整してください。
 
 ```yaml
 frontispiece:
-  image: himawari
+  image: sakura
   edge_inset: 15mm  # 紙の端から 15mm 内側に扉絵を配置
 ```
 
@@ -277,7 +276,7 @@ frontispiece:
 
 ```yaml
 frontispiece:
-  image: himawari
+  image: sakura
   heading_offset: 20mm  # 見出しのまとまりを 20mm 下げる
 ```
 
@@ -289,7 +288,7 @@ frontispiece:
 
 ```yaml
 frontispiece:
-  image: himawari
+  image: sakura
   heading_chars: 10  # 章題を 1 行 10 文字ぶんの幅で組む
 ```
 
@@ -304,17 +303,17 @@ mm ではなく**文字数**で指定するのは、判型を変えても指定�
 
 **lead_chars（リード文の字数）**
 
-章のリード文（`:::{.chapter-lead}`）を 1 行に何文字入れるかを指定します。
+章のリード文（`:::{.chapter-lead}`）に、1 行あたり何文字ぶんの幅を与えるかを指定します。章題だけでなくリード文の折り返しも、扉の印象に関わります。
 
 ```yaml
 frontispiece:
-  image: himawari
+  image: sakura
   lead_chars: 24  # リード文を 1 行 24 文字ぶんの幅で組む
 ```
 
 **ornament の heading_chars（節題の字数）**
 
-節見出し（`##`）の字数も同じように指定できます。画像名だけを書く短縮形に加えて、次のように書けます。
+節見出し（`##`）にも字数を指定できます。画像名だけで十分な場合は短縮形を使い、見出しの幅を整えたいときは次の形にします。
 
 ```yaml
 theme:
@@ -327,7 +326,7 @@ theme:
 
 ### 画像が見つからない場合
 
-指定した画像が見つからない場合、警告を表示したうえで、既定画像（`sakura`）に自動でフォールバックしてビルドを続行します。無効な色名が既定色（yellow）にフォールバックするのと同じ考え方です。
+指定した画像が見つからない場合は警告が出て、既定画像の `sakura` に切り替えてビルドが続きます。紙面が作れた場合も、意図した絵柄になっているかは警告とあわせて確認してください。
 
 **ビルド時の警告**
 
@@ -338,7 +337,7 @@ theme:
         stylesheets/images/fuji.webp を配置するか、バンドル画像名（sakura・himawari など）またはスペルを確認してください。
 ```
 
-この警告を確認したら、画像名のスペルミスや、`stylesheets/images/` / `stylesheets/images/bundled/` への配置場所を確認してください。ビルド前にまとめて確認したい場合は `vs preflight` が手軽です。
+警告が出たら、まず画像名の綴りと `stylesheets/images/` / `stylesheets/images/bundled/` への配置を確かめます。組版前に画像の指定をまとめて調べるなら、`vs preflight` を使えます。
 
 **プレースホルダーの表示（最終手段）**
 
@@ -356,12 +355,12 @@ theme:
 
 **例1: バンドル画像を使用する**
 
-もっともシンプルな設定です。バンドル画像をそのまま使用します。
+同梱画像だけで紙面を確かめる例です。まずこの形でビルドすれば、画像を準備する前に配置を見られます。
 
 ```yaml
 theme:
   style: image
-  color: blue
+  color: teal
   frontispiece:
     image: sakura
   ornament: sakura
@@ -369,12 +368,12 @@ theme:
 
 **例2: 独自画像を使用する**
 
-独自の画像を使用し、余白と幅を調整します。
+独自画像に替え、扉絵の余白と文字の幅も調整する例です。
 
 ```yaml
 theme:
   style: image
-  color: green
+  color: teal
   frontispiece:
     image: my_cover  # stylesheets/images/my_cover.webp
     edge_inset: 12mm
@@ -385,27 +384,27 @@ theme:
 
 **例3: 異なる画像を使用する**
 
-frontispiece と ornament で異なる画像を使用します。
+章扉と節見出しに別々の絵柄を使うこともできます。組み合わせた結果は紙面で確かめてください。
 
 ```yaml
 theme:
   style: image
-  color: purple
+  color: teal
   frontispiece:
-    image: himawari  # ひまわりの扉絵
-  ornament: sakura  # 桜の装飾
+    image: sakura  # 桜の扉絵
+  ornament: ume  # 梅の装飾
 ```
 
-**例4: バリアントを明示的に指定する**
+**例4: 派生画像を直接指定する**
 
-すでに生成済みのバリアント画像を直接指定します。
+切り抜き済みの縦長・横長画像を直接選ぶ例です。
 
 ```yaml
 theme:
   style: image
   frontispiece:
-    image: cosmos_portrait  # 縦長バリアントを直接指定
-  ornament: cosmos_landscape  # 横長バリアントを直接指定
+    image: my_awesome_portrait  # 縦長の派生画像を直接指定
+  ornament: my_awesome_landscape  # 横長の派生画像を直接指定
 ```
 
 ### image スタイルのトラブルシューティング
@@ -440,10 +439,11 @@ theme:
 
 - ユーザー提供画像が優先されるため、意図的な上書きでない場合は削除
 - または、異なる画像名を使用
+- 同梱画像を使いたい場合は、`image: bundled/sakura` のように `bundled/` を付けて明示的に指定
 
 **画像生成に失敗する**
 
-**症状**: バリアント画像の自動生成が失敗する。
+**症状**: 派生画像の自動生成が失敗する。
 
 **原因**: ImageMagick がインストールされていない。
 
@@ -460,7 +460,7 @@ magick -version
 ## simple スタイルの設定
 
 :::{.section-lead}
-`theme.style: simple` を設定することで、章扉や節見出しに背景画像を使わず、色とタイポグラフィを中心とした洗練されたデザインを実現できます。読みやすさを重視し、コンテンツに集中できる環境を提供します。
+`theme.style: simple` は、背景画像を使わず、テーマカラーと書体で章扉や節見出しを組むスタイルです。画像の用意に時間をかけず、本文の見え方から先に確かめたいときにも向いています。
 :::
 
 ### 基本的な設定方法
@@ -473,11 +473,11 @@ theme:
   color: teal    # テーマカラーを指定
 ```
 
-この設定だけで、章扉と節見出しから背景画像が外れ、テーマカラーを基調としたグラデーションとボーダーのデザインに切り替わります。frontispiece や ornament の設定は無視されるので、書いたまま残しておいても構いません。
+この設定で、章扉と節見出しはテーマカラーを基調としたグラデーションとボーダーのデザインに変わります。frontispiece や ornament の設定は使われないため、あとで `image` に戻すつもりなら残しておいても構いません。
 
 ### テーマカラーの選択
 
-シンプルスタイルでは、テーマカラーが章扉や節見出しの主要な装飾要素となります。書籍のジャンルやご自身の好みに応じて設定してください。
+`simple` では、テーマカラーが章扉と節見出しの印象を大きく左右します。好きな色を選んだら、文字との見分けやすさも PDF で確かめてください。
 
 ### 利用可能な色とジャンル例
 
@@ -519,12 +519,12 @@ A: `book.yml` の `theme.color` 設定を確認し、有効な色名（yellow / 
 ## 見出し記号のカスタマイズ
 
 :::{.section-lead}
-Vivlio Starter では、目見出し（h3）と号見出し（h4）の前に表示される記号をカスタマイズできます。`config/book.yml` の `markers` セクションで記号を設定することで、書籍のテーマに合わせた装飾を追加できます。
+目見出し（h3）と号見出し（h4）の前には、それぞれ記号を置けます。章扉や節見出しと見た目を揃えたいときは、`config/book.yml` の `markers` で選んでください。
 :::
 
 ### 見出し記号の設定
 
-`config/book.yml` の `markers` セクションで、目見出しと号見出しの記号を設定できます。
+目見出しと号見出しの記号は、`config/book.yml` の `markers` に書きます。二つの階層を見分けられる組み合わせを選んでください。
 
 ```yaml
 # 目や号の見出し記号
