@@ -242,7 +242,7 @@ module VivlioStarter
         # 対比を黙らせるときは `<!-- vs-lint-disable -->` か `lint.disabled_rules` を使う。
         def mazegaki_findings(text, allowlist = [])
           authored_prose_lines(text).flat_map do |lineno, line|
-            protected_line, = Masking.protect_code(line)
+            protected_line, = protect_furigana(Masking.protect_code(line).first)
             # 辞書は**読者が見る文字列**に当てる。生の行に当てると、語の途中に入った
             # 強調で両方向に壊れる（`結**合し**直した` の誤検出、`だ**円**` の取りこぼし）。
             # 仕様: inline-emphasis-word-split-spec.md
@@ -891,12 +891,30 @@ module VivlioStarter
         #
         # 除外リストの語は置換もしない。指摘しないと決めた語を直すのは筋が通らないうえ、
         # 「黙っているのに原稿が書き換わる」のは著者にとって最も分かりにくい壊れ方になる。
+        # ふりがなの親文字を置換しないのも同じ理由（指摘もしない・protect_furigana）。
         def replace_mazegaki(line, allowlist = [])
           protected_line, spans = Masking.protect_code(line)
+          protected_line, furigana = protect_furigana(protected_line)
           plain, map = Masking.strip_emphasis(protected_line)
           replaced = apply_edits(protected_line, map, mazegaki_edits(plain, allowlist))
-          Masking.restore_code(replaced, spans)
+          Masking.restore_code(Masking.restore_code(replaced, furigana), spans)
         end
+
+        # ふりがな記法 `{親文字|よみ}` を目印へ退避する。読みを添えた時点で著者はその字を
+        # 選んでいるので、交ぜ書きの指摘も置換もしない（textlint 側は NotationGuard が同じ
+        # 扱いをする）。かつては `--fix` が `{子ども|こども}` を `{子供|こども}` に書き換えていた。
+        # 目印は NotationGuard と同じ作り（辞書に当たらない英字＋固定幅の番号）。
+        # @return [Array(String, Hash)] 退避後の行と { 目印 => 原文 }（Masking.restore_code で戻す）
+        def protect_furigana(line)
+          spans = {}
+          masked = line.gsub(NotationGuard::FURIGANA) do
+            key = format('%s%04d', NotationGuard::FURIGANA_PLACEHOLDER, spans.size)
+            spans[key] = ::Regexp.last_match(0)
+            key
+          end
+          [masked, spans]
+        end
+        private_class_method :protect_furigana
 
         # 記法を外した文字列の上で当たった [開始, 終了, 置換後, 見出し] を、
         # 重なりを解いて位置の昇順で返す。長い語を優先する（`障がい者` と `障がい`）。

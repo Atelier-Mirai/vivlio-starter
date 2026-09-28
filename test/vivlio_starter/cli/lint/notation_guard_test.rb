@@ -9,7 +9,7 @@
 # 検証内容:
 #   - G1 機械データ・ブロック（:::{.showcase} / .output / .terminal）の空行化と、未終了時の据え置き
 #   - G2 コンテナのマーカー行の空行化（内部の地の文は残す）
-#   - G3 ふりがな記法（親文字は地の文なので残す）
+#   - G3 ふりがな記法（親文字は指摘しないので、無害な語へ置き換える）
 #   - G4 クラス属性記法の除去
 #   - G6 fancy list のマーカーを標準リストへ読み替える（字下げの保存・誤爆防止）
 #   - コード領域（フェンス・インラインコード）を 1 文字も変えないこと
@@ -162,10 +162,12 @@ module VivlioStarter
         # ----------------------------------------------------------------
         # G3: ふりがな記法
         # ----------------------------------------------------------------
-        def test_should_keep_base_text_of_furigana
+        # 親文字は指摘しない（読みを添えた時点で著者はその字を選んでいる）。消さずに
+        # 無害な語へ置き換え、文の形を保つ
+        def test_should_replace_furigana_with_stand_in
           source = "{Albert Einstein|アルバート・アインシュタイン}が語った言葉です。\n"
 
-          assert_equal "Albert Einsteinが語った言葉です。\n", NotationGuard.strip_notation(source)
+          assert_equal "語が語った言葉です。\n", NotationGuard.strip_notation(source)
         end
 
         # ----------------------------------------------------------------
@@ -285,11 +287,11 @@ module VivlioStarter
           end
         end
 
-        # ふりがな `{親文字|ふりがな}` を属性と取り違えない（親文字は地の文なので残す・I3）
+        # ふりがな `{親文字|ふりがな}` を属性と取り違えない（属性なら消えて「な字。」になる）
         def test_should_not_mistake_furigana_for_an_attribute
           stripped = NotationGuard.strip_notation("{難読|なんどく}な字。\n")
 
-          assert_equal "難読な字。\n", stripped
+          assert_equal "語な字。\n", stripped
         end
 
         # 修正パスは退避して守る。strip_notation は非可逆なので --fix では使えず、
@@ -350,8 +352,8 @@ module VivlioStarter
           refute_match(/VS(?:MATH|ATTR|MACH)\d{4}/, restored, '目印を原稿に残さない')
         end
 
-        # ふりがなは記法ごと退避する。解析パスは親文字を残すので「沢山 => たくさん」は表示に
-        # 出るが、修正を記法の内側へ当てると `{たくさん|たくさん}` になる（実測）
+        # ふりがなは記法ごと退避する。修正を記法の内側へ当てると `{たくさん|たくさん}` に
+        # なる（実測）
         def test_should_mask_furigana_for_the_fix_path
           src = "{沢山|たくさん}の案があります。\n"
           masked, spans = NotationGuard.mask_for_fix(src)

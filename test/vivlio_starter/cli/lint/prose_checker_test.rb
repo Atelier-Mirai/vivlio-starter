@@ -25,6 +25,7 @@
 #   PC-16: かっこの隣の空白を指摘する（区切り記号・強調の閉じ・記法の空白は黙る）
 #   PC-17: 文末の句点の打ち忘れを指摘する（体言止め・小見出し・箇条書き・出力例は黙る）
 #   PC-18: 一文の長さを和文で測る（インラインコード・丸かっこ・欧文は数えない）
+#   PC-19: ふりがなの親文字は交ぜ書きとして指摘も置換もしない（読みを添えた時点で著者が字を選んでいる）
 # ================================================================
 
 require_relative '../../../test_helper'
@@ -200,6 +201,21 @@ class TestProseChecker < Minitest::Test
     assert_includes fixed, '完璧です。'
     assert_includes fixed, "puts 'だ円'", 'コードブロックの中は書き換えない'
     assert_equal body.lines.size, fixed.lines.size, '行数を変えてはならない'
+  end
+
+  # PC-19: ふりがなの親文字は指摘しない。ふりがなの外にある同じ語は指摘する
+  # （指摘は行ごとにまとまるので、内と外を別の行に置いて見分ける）
+  def test_should_not_flag_mazegaki_in_furigana_base
+    findings = check("{子ども|こども}たちが遊びます。\n子どもの話をします。\n")
+
+    assert_equal [2], findings.map(&:line), 'ふりがなの外の 2 行目だけを指摘する'
+  end
+
+  # PC-19: --fix も親文字を書き換えない（かつては {子ども|こども} が {子供|こども} になった）
+  def test_should_not_rewrite_furigana_base
+    fixed = PC.fix_mazegaki("{子ども|こども}たちと子どもの話をします。\n")
+
+    assert_equal "{子ども|こども}たちと子供の話をします。\n", fixed
   end
 
   # 直すものが無ければ 1 文字も変えない（原稿の mtime を無用に動かさないため）
