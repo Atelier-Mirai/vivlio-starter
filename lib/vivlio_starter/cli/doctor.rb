@@ -99,10 +99,17 @@ module VivlioStarter
         '/Applications/Kindle Previewer 3.app/Contents/MacOS/Kindle Previewer 3'
       ].freeze
 
-      # Vivliostyle CLI が要求する Node.js の下限（@vivliostyle/cli の package.json の engines.node）。
-      # Vivliostyle を上げて要求が変わったら追随する。doctor_node_version_test が
-      # node_modules の engines と突き合わせるので、ずれればテストで気づく。
+      # Vivliostyle CLI が要求する Node.js の下限の**予備**。
+      #
+      # 本来の下限は、ビルドで実際に使われる Vivliostyle の package.json（engines.node）から
+      # 読む（node_requirement）。著者の Vivliostyle は `npm install -g` で最新が入り、
+      # Vivlio Starter のリリースとは別に新しくなるので、固定値では追随できない。
+      # これは package.json が見つからない・読めないときにだけ使う。
+      # doctor_node_version_test がリポジトリの node_modules の engines と突き合わせる。
       NODE_MIN_VERSION = '22.12.0'
+
+      # Node.js の下限と、それを求めているもの（案内に「誰の要求か」を添えるため）。
+      NodeRequirement = Data.define(:min_version, :requester)
 
       # Rosetta 2（macOS の x86_64 変換ランタイム）の実体。
       #
@@ -234,8 +241,11 @@ module VivlioStarter
 
         # node は「在る」だけでは足りない。古い版だと ✅ のまま vivliostyle が動かない。
         # 不足ではないので missing には積まず、ビルドも止めない（Kindle Previewer の版と同じ扱い）。
-        installed_node = missing.include?('node') ? nil : node_version
-        report_node_outdated(installed_node) if node_too_old?(installed_node)
+        unless missing.include?('node')
+          installed_node = node_version
+          requirement = node_requirement
+          report_node_outdated(installed_node, requirement) if node_too_old?(installed_node, requirement)
+        end
 
         # inkscape は任意ツール（カバー SVG ラスタライズの主経路は rsvg-convert。inkscape は
         # ImageMagick の SVG フォールバックでしか使われない）。存在＋起動可能なら ✅、
@@ -1069,16 +1079,62 @@ module VivlioStarter
         nil
       end
 
-      # Vivliostyle の要求より古いか。版が分からないときは言い立てない（false）。
-      def node_too_old?(version) = !version.nil? && version < Gem::Version.new(NODE_MIN_VERSION)
+      # ビルドで実際に使われる Vivliostyle が求める Node.js の下限。
+      #
+      # engines.node が `>=22.12.0` の形なら、その値を使う。package.json が見つからない、
+      # または書式が想定外（`^20 || >=22` のような範囲）なら、予備の NODE_MIN_VERSION に戻る。
+      # @return [NodeRequirement]
+      def node_requirement
+        fallback = NodeRequirement.new(min_version: Gem::Version.new(NODE_MIN_VERSION), requester: 'Vivliostyle')
+        path = vivliostyle_package_json
+        return fallback unless path
+
+        package = JSON.parse(File.read(path, encoding: 'utf-8'))
+        minimum = package.dig('engines', 'node').to_s[/\A>=\s*(\d+(?:\.\d+){0,2})\s*\z/, 1]
+        return fallback unless minimum
+
+        NodeRequirement.new(min_version: Gem::Version.new(minimum),
+                            requester: "Vivliostyle CLI #{package['version']}".strip)
+      rescue StandardError
+        fallback
+      end
+
+      # ビルドで実際に使われる Vivliostyle CLI の package.json。探す順はビルドの
+      # `npx vivliostyle` と同じで、プロジェクトの node_modules が先、無ければ PATH 上の
+      # `vivliostyle` の実体から親をたどる（グローバル導入なら実体は
+      # `<npm root -g>/@vivliostyle/cli/dist/cli.js`）。見つからなければ nil。
+      def vivliostyle_package_json
+        local = File.join('node_modules', '@vivliostyle', 'cli', 'package.json')
+        return local if File.file?(local)
+
+        bin = ENV.fetch('PATH', '').split(File::PATH_SEPARATOR)
+                 .map { File.join(it, 'vivliostyle') }
+                 .find { File.file?(it) && File.executable?(it) }
+        return nil unless bin
+
+        dir = File.dirname(File.realpath(bin))
+        until dir == File.dirname(dir)
+          candidate = File.join(dir, 'package.json')
+          return candidate if File.file?(candidate) && JSON.parse(File.read(candidate))['name'] == '@vivliostyle/cli'
+
+          dir = File.dirname(dir)
+        end
+        nil
+      rescue StandardError
+        nil
+      end
+
+      # 下限より古いか。版が分からないときは言い立てない（false）。
+      def node_too_old?(version, requirement) = !version.nil? && version < requirement.min_version
 
       # 古い Node.js の更新を案内する。**`--fix` でも自動では更新しない。** nvm などで
       # 入れた Node を Homebrew が上書きすると、どちらが使われるか分かりにくくなるため。
-      def report_node_outdated(version)
+      def report_node_outdated(version, requirement)
+        minimum = requirement.min_version
         Common.log_warn(
-          "Node.js #{version} は Vivliostyle の要求を満たしません（#{NODE_MIN_VERSION} 以上が必要です）",
+          "Node.js #{version} は #{requirement.requester} の要求を満たしません（#{minimum} 以上が必要です）",
           detail: "→ brew upgrade node\n" \
-                  "  Homebrew 以外（nvm など）で入れた場合は、その道具で #{NODE_MIN_VERSION} 以上へ更新してください。"
+                  "  Homebrew 以外（nvm など）で入れた場合は、その道具で #{minimum} 以上へ更新してください。"
         )
       end
 
