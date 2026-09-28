@@ -140,7 +140,8 @@ module VivlioStarter
           text.scan(OPTION_TOKEN).to_h { |key, quoted, bare| [key, quoted || bare] }
         end
 
-        # crop 値（CSS shorthand 準拠で 1/2/4 個）を [top, right, bottom, left]（パーミル）へ。
+        # crop 値（CSS shorthand 準拠で 1〜4 個）を [top, right, bottom, left]（パーミル）へ。
+        # 3 個は CSS の margin と同じく「上・左右・下」と読む。
         def parse_crop(value, orig_w:, orig_h:, on_warn: nil)
           tokens = value.to_s.split
           top, right, bottom, left =
@@ -148,6 +149,7 @@ module VivlioStarter
             when 0 then return [0.0, 0.0, 0.0, 0.0]
             when 1 then [tokens[0]] * 4
             when 2 then [tokens[0], tokens[1], tokens[0], tokens[1]]
+            when 3 then [tokens[0], tokens[1], tokens[2], tokens[1]]
             when 4 then tokens
             else
               on_warn&.call(%(crop="#{value}"))

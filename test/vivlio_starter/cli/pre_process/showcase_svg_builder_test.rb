@@ -47,6 +47,24 @@ class ShowcaseSvgBuilderTest < Minitest::Test
     assert_includes svg, %(<rect x="190" y="15" width="360" height="45")
   end
 
+  # 3 値は CSS の margin と同じく「上・左右・下」（改善案.md #6）
+  def test_should_read_three_crop_values_as_top_horizontal_bottom
+    # 上 50px / 左右 100px / 下 25px を切り落とす
+    svg = build(%(![](a.png){crop="50px 100px 25px"}\n))
+
+    # 窓は原点 (100, 50)、寸法は 1000-100-100 = 800 × 500-50-25 = 425
+    assert_includes svg, %(viewBox="100 50 800 425" width="800" height="425")
+  end
+
+  # 5 値以上は CSS にも無い書き方なので、切り落とさずに知らせる
+  def test_should_warn_and_skip_cropping_for_five_values
+    warned = []
+    block = B.parse([%(![](a.png){crop="1 2 3 4 5"}\n)], orig_w: ORIG_W, orig_h: ORIG_H, on_warn: ->(line) { warned << line })
+
+    assert_equal [0.0, 0.0, 0.0, 0.0], block.crop
+    assert_equal [%(crop="1 2 3 4 5")], warned
+  end
+
   def test_should_convert_rect_permille_coordinates_to_original_image_pixels
     svg = build("![](a.png)\nrect 190, 30, 360, 90\n")
 
