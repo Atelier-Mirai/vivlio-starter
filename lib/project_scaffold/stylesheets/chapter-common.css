@@ -341,6 +341,20 @@ ol.vs-list-upper-alpha-paren2 > li::before { content: "(" counter(vs-fancy, uppe
 ol.vs-list-lower-roman-paren2 > li::before { content: "(" counter(vs-fancy, lower-roman) ") "; }
 ol.vs-list-upper-roman-paren2 > li::before { content: "(" counter(vs-fancy, upper-roman) ") "; }
 
+/* 空行を挟んだ項目（中身が <p> で包まれる）でも、番号を本文の 1 行目に並べる（改善案.md #59）。
+   ::before は行内の文字なので、後ろにブロックの <p> が来ると番号だけが 1 行を占める。
+   float で段落の 1 行目の横へ置く。詰めた項目（<p> なし）の見た目は変わらない。
+   float の中では末尾の空白が消えるので、番号と本文の間は margin であける。 */
+ol[class*="-paren"] > li::before {
+  float: inline-start;
+  margin-inline-end: 0.3em;
+}
+
+/* 段落の字下げ（p の text-indent: 1em）が番号の後ろに空きを作るので、最初の段落だけ外す */
+ol[class*="-paren"] > li > p:first-child {
+  text-indent: 0;
+}
+
 /* :::{.outline-list} — ネスト番号リストを 1. / 1.1 / 1.2 の複合番号で表示
    （counters() のネスト連結は Vivliostyle ネイティブサポート・§5.2） */
 .outline-list ol { list-style: none; counter-reset: vs-outline; }
@@ -411,7 +425,8 @@ a.pageref::after {
 }
 
 /* @qr:URL が挿入する QR コード（at-directive-tier1-spec §1.4）。
-   サイズ変更は custom.css で .vs-qr { width: 25mm; } のように上書きする。 */
+   本全体のサイズ変更は custom.css で .vs-qr { width: 25mm; } のように上書きする。
+   1 個だけなら原稿で @qr:URL{width=25mm} と書く（前処理が img の style に入れる）。 */
 .vs-qr {
   width: 18mm;
   height: auto;
@@ -487,6 +502,13 @@ figcaption {
 }
 
 figure :is(img, svg) {
+  border: solid 0.5mm var(--color-figure-border);
+}
+
+/* crop で切り抜いた画像（改善案.md #54）。PDF では前処理が作った SVG を参照するため、
+   後段の img[src$=".svg"] { border: none } に既定の枠を消されないよう、クラスで付け直す。
+   border=off（下の figure.vs-borderless、同じ特異度で後ろに置く）はこれより優先される。 */
+figure img.vs-cropped {
   border: solid 0.5mm var(--color-figure-border);
 }
 
