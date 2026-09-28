@@ -430,6 +430,7 @@
 
 ### Removed
 
+- **使われていなかった `pre_process/data_render/` の 3 ファイルを消した**（`query_stream_parser.rb`・`singularize.rb`・`template_compiler.rb`）。QueryStream を gem に切り出す前の写しで、どこからも読み込まれていなかった。記法の処理は gem の `QueryStream.render` が担う。
 - **画像の `{.bordered}` と `:::{.bordered}` を撤去した**。枠は `border=on` / `border=off` で指定する（`{width=30% align=right border=off}` のように、ほかの値つきの属性とそろう）。原稿に残っていると、行番号と直し方を添えて知らせる。画像には既定で枠が付くので、たいていは `.bordered` を消すだけで足りる。既存のプロジェクトは `vs upgrade` で `stylesheets/` を更新すると `border=off` が効く。
 - **`vs build` / `vs preflight` の `--no-verify` と、`book.yml` の `verify.images`・`verify.bare_urls` を撤去した**。画像の実在と裸 URL は常に確かめる。どちらの設定も、警告の原因（画像のパス、リンク記法で書いていない URL）を直さずに警告だけを消すものだった。古い `book.yml` にキーが残っていると、廃止の案内が出る。外部 URL の確認（`--verify-links`・`verify.external_links`）はそのまま。
 - **`@omakase`（`@auto` の別名）を撤去した**。キャプションに `@omakase` と書くと、いまは普通のラベル ID として扱われる。自動採番には `@auto` を使う。
