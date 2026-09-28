@@ -268,7 +268,7 @@ module VivlioStarter
               Common.log_always '💡 表記揺れや文法上の改善点を修正してからもう一度実行してください。'
             end
           else
-            Common.log_result('文章チェックで問題は見つかりませんでした。', status: :success)
+            Common.log_result('文章チェックで課題は見つかりませんでした。', status: :success)
           end
         end
 
