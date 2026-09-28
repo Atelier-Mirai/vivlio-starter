@@ -12,6 +12,7 @@
 #   - 簡易 Markdown→HTML 変換
 # ================================================================
 
+require 'cgi'
 require_relative '../masking'
 
 module VivlioStarter
@@ -79,14 +80,47 @@ module VivlioStarter
         # 空行区切りの段落境界・リスト・表には作用しない（\S に挟まれた改行のみ対象）。
         def apply_hard_line_breaks(md_text) = md_text.to_s.gsub(/(?<=\S)\n(?=\S)/, "  \n")
 
+        # 属性つきの画像（VFM の `![alt](src){width=10% .cls #id}`）。
+        IMAGE_WITH_ATTRIBUTES = /!\[([^\]]*)\]\(([^)\s]+)\)\{([^{}\n]*)\}/
+        # 属性の 1 語（`key=value` / `key="a b"` / `.cls` / `#id`）。
+        IMAGE_ATTRIBUTE_TOKEN = /([\w-]+)=(?:"([^"]*)"|'([^']*)'|(\S+))|([.#])([\w-]+)/
+
         # 簡易Markdown→HTML 変換
         def render_markdown_to_html(md_text)
           # まずはKramdownを試す
           require 'kramdown'
-          Kramdown::Document.new(md_text, syntax_highlighter: nil).to_html
+          Kramdown::Document.new(images_with_attributes_to_html(md_text), syntax_highlighter: nil).to_html
         rescue LoadError
           # フォールバック: 最小限のMarkdownをHTMLへ
           render_markdown_fallback(md_text)
+        end
+
+        # 属性つきの画像を、VFM と同じ属性を持つ <img> の HTML へ直す（改善案.md #56）。
+        # Kramdown はこの書き方を知らず、`{width=10%}` が文字のまま紙面に出る。fancy list・会話・
+        # 表など、Kramdown で HTML にしてから本文へ埋め込む箇所すべてがここを通る。
+        # VFM と同じく key=value は属性、.cls は class、#id は id にする（幅は後処理が style へ移す）。
+        # 記法を解説するコードの中は書き換えない。
+        def images_with_attributes_to_html(md_text)
+          protected_text, spans = Masking.protect_code(md_text.to_s)
+          converted = protected_text.gsub(IMAGE_WITH_ATTRIBUTES) do
+            alt, src, attributes = Regexp.last_match.captures
+            image_tag(alt, src, attributes)
+          end
+          Masking.restore_code(converted, spans)
+        end
+
+        def image_tag(alt, src, attributes)
+          html_attributes = { 'src' => src, 'alt' => alt }
+          classes = []
+          attributes.scan(IMAGE_ATTRIBUTE_TOKEN) do |key, double_quoted, single_quoted, bare, sigil, name|
+            case sigil
+            when '.' then classes << name
+            when '#' then html_attributes['id'] = name
+            else html_attributes[key] = double_quoted || single_quoted || bare
+            end
+          end
+          html_attributes['class'] = classes.join(' ') unless classes.empty?
+          "<img #{html_attributes.map { |key, value| %(#{key}="#{CGI.escapeHTML(value)}") }.join(' ')}>"
         end
 
         # Kramdown が使えない場合のフォールバック実装

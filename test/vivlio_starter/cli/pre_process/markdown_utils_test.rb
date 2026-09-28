@@ -54,6 +54,33 @@ module VivlioStarter
           assert_includes html, '<table>'
           assert_includes html, '<td>1</td>'
         end
+
+        # =================================================================
+        # 属性つきの画像（改善案.md #56）
+        # Kramdown は VFM の `{width=10%}` を知らないので、渡す前に <img> へ直す
+        # =================================================================
+
+        def test_should_turn_image_attributes_into_img_attributes
+          html = MarkdownUtils.render_markdown_to_html('項目 ![a](x.webp){width=10% .vs-bordered #pic} です。')
+
+          assert_includes html, '<img src="x.webp" alt="a" width="10%" id="pic" class="vs-bordered" />'
+          refute_includes html, '{width'
+        end
+
+        def test_should_keep_quoted_attribute_values_and_escape_them
+          html = MarkdownUtils.render_markdown_to_html(%(![a&b](x.webp){crop="30 100" title='x"y'}))
+
+          assert_includes html, 'alt="a&amp;b"'
+          assert_includes html, 'crop="30 100"'
+          assert_includes html, 'title="x&quot;y"'
+        end
+
+        # 記法を解説するインラインコードの中は書き換えない
+        def test_should_leave_image_attributes_in_inline_code_untouched
+          html = MarkdownUtils.render_markdown_to_html('書き方は `![a](x.webp){width=10%}` です。')
+
+          assert_includes html, '<code>![a](x.webp){width=10%}</code>'
+        end
       end
     end
   end

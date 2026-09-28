@@ -267,6 +267,18 @@ module VivlioStarter
 
           assert_equal md, convert(md), '複数英字＋ピリオドは対象外（§2.2-4）'
         end
+
+        # =================================================================
+        # 項目の中の属性つき画像（改善案.md #56）
+        # fancy list は Kramdown で HTML にするため、属性が文字のまま残っていた
+        # =================================================================
+        def test_should_keep_image_attributes_inside_fancy_list_items
+          html = convert("(1) 文中の画像 ![a](x.webp){width=10%} です。\n\n- 項目 ![b](y.webp){width=10%} です。\n")
+
+          assert_includes html, '<img src="x.webp" alt="a" width="10%" />'
+          assert_includes html, '<img src="y.webp" alt="b" width="10%" />'
+          refute_includes html, '{width=10%}'
+        end
       end
     end
   end
