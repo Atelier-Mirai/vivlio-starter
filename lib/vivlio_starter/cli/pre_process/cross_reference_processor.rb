@@ -35,8 +35,8 @@ module VivlioStarter
         # 見出し行末の ` @id`（見出しラベル）。紙面には出さずアンカーだけを残す。
         HEADING_LABEL_PATTERN = /^(\#{1,6})\s+(.+?)\s+@([-\w]+)\s*$/
 
-        # 自動採番用の予約ID（キャプションで @auto / @omakase / @id と書くと type-chapter-N 形式に採番される）
-        RESERVED_IDS = %w[auto omakase id].freeze
+        # 自動採番用の予約ID（キャプションで @auto / @id と書くと type-chapter-N 形式に採番される）
+        RESERVED_IDS = %w[auto id].freeze
 
         # 組み込み置換ルール（ReplacementRules）・ビルド生成物（QrTransformer）の
         # マクロ名（完全一致で予約）。これは @ID 参照ではなくシステム予約のマクロなので、
@@ -45,7 +45,7 @@ module VivlioStarter
         RESERVED_MACRO_IDS = %w[vspace hspace pagebreak pageref version today title qr].freeze
 
         # 予約IDの判定を一元化する。
-        # RESERVED_IDS: auto / omakase / id
+        # RESERVED_IDS: auto / id
         # RESERVED_MACRO_IDS: vspace / hspace / pagebreak / …（完全一致）
         def self.reserved_id?(label_id)
           return true if RESERVED_IDS.include?(label_id)
@@ -206,7 +206,7 @@ module VivlioStarter
 
           # 予約マクロ名（@version 等）は ラベルID に使えない。使うと本文のマクロ展開と
           # ラベル参照が衝突して解決不能になるため、収集時に 🔴 で弾く
-          # （at-directive-tier1-spec.md §2.1）。自動採番の @auto / @omakase / @id は
+          # （at-directive-tier1-spec.md §2.1）。自動採番の @auto / @id は
           # 予約 *ID* であって予約マクロではないので、ここでは弾かない。
           def reserved_macro_id?(label_id, line_number)
             return false unless CrossReferenceProcessor::RESERVED_MACRO_IDS.include?(label_id)

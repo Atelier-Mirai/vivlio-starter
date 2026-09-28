@@ -901,7 +901,7 @@ terms:
   yomi: じどうID
   flags: ig
   definition: |-
-    キャプションに `@auto` または `@omakase` と書くと割り当てられる内部的なラベル。
+    キャプションに `@auto` と書くと割り当てられる内部的なラベル。
     図表番号は振られるが、本文からは参照できない。「番号は要るが参照はしない」要素に向く。
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'

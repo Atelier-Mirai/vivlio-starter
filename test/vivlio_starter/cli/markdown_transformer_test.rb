@@ -608,12 +608,14 @@ module VivlioStarter
           assert result[:auto]
         end
 
-        def test_extract_caption_label_omakase_id
+        # @omakase は @auto の別名だったが撤去した（改善案.md #15）。いまは普通のラベルID
+        def test_extract_caption_label_treats_omakase_as_ordinary_id
           line = '** おまかせID @omakase **'
           result = extract_caption_label(line)
 
           assert result
-          assert result[:auto]
+          assert_equal 'omakase', result[:id]
+          refute result[:auto]
         end
 
         def test_extract_caption_label_no_match
@@ -913,13 +915,12 @@ module VivlioStarter
         def test_replace_references_preserves_reserved_ids
           labels_map = {}
 
-          content = '手動IDは @id、自動IDは @auto または @omakase を使います。'
+          content = '手動IDは @id、自動IDは @auto を使います。'
           result = replace_references(content, labels_map, 'test.md')
 
           # 予約IDはそのまま残り、エラーにもならない
           assert_includes result[:content], '@id'
           assert_includes result[:content], '@auto'
-          assert_includes result[:content], '@omakase'
           assert_empty result[:errors]
         end
 
@@ -937,13 +938,13 @@ module VivlioStarter
 
         def test_reserved_id_helper
           # 完全一致グループ
-          %w[auto omakase id].each do |id|
+          %w[auto id].each do |id|
             assert CrossReferenceProcessor.reserved_id?(id), "#{id} は予約ID"
           end
           # 予約マクロは @vspace のみ
           assert CrossReferenceProcessor.reserved_id?('vspace'), 'vspace は予約マクロID'
           # 非予約ID は false を返す（@nega/@posi/@comment/@commend・旧ガイド線接頭辞は撤去済み）
-          %w[foo bar einstein ruby-sample prop-list nega posi comment commend lu ld lu25].each do |id|
+          %w[foo bar einstein ruby-sample prop-list nega posi comment commend lu ld lu25 omakase].each do |id|
             refute CrossReferenceProcessor.reserved_id?(id), "#{id} は予約IDではない"
           end
         end

@@ -425,6 +425,7 @@
 
 ### Removed
 
+- **`@omakase`（`@auto` の別名）を撤去した**。キャプションに `@omakase` と書くと、いまは普通のラベル ID として扱われる。自動採番には `@auto` を使う。
 - **Markdown 段階の定義リスト変換（96 行）を撤去した**。`MarkdownTransformer.convert_definition_lists` とその補助（`definition_term_line?` ほか 5 メソッド）、`MarkdownPreprocessor#transform_definition_lists!`。後処理の `DefinitionListConverter`（120 行）へ置き換わり、Kramdown への依存も定義リストからは外れた。
 
 - **`vs import` の 2 段階変換に使っていた 4 ファイル（835 行）を撤去した**。`markdown_converter.rb`（327 行・Re:VIEW が出した Markdown の追従変換）と、`sideimage_restorer.rb` / `verbatim_restorer.rb` / `pagebreak_restorer.rb`（508 行・`.re` を読み直して囲みと改ページを復元）。直変換では原文に構造がそのまま残っているので、「復元」という工程自体が要らない。`yaml_processor.rb` と `image_processor.rb` は変換経路と無関係なのでそのまま使っている。
