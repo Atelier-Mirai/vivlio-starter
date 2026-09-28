@@ -59,6 +59,31 @@ if Dir.exist?(covers_dir)
   puts "PRUNE covers/ の開発ローカルファイル #{removed.size} 件を除去 (#{keep_exts.join(' / ')} 以外)"
 end
 
+# ================================================================
+# 索引辞書は空にして配る
+# ================================================================
+# ルートの辞書はこのマニュアルの語（175 語ほど）で、著者が原稿を自分のものに
+# 入れ替えると辞書だけが残る——用語集の語が原稿に出ないという警告が語の数だけ出て、
+# レビューにもマニュアルの語が並ぶ（改善案.md #51）。`vs upgrade` と `vs import` が
+# 辞書を足すときと同じ空の初期形にそろえる（中身は UpgradeCommands::EMPTY_DICTIONARY_TEMPLATES
+# と同じ。このスクリプトは lib を読み込まずに動かしたいので写している）。
+# 雛形のマニュアル原稿を組むと索引・用語集は空になるが、`vs index:auto` を一度実行すれば作れる。
+EMPTY_DICTIONARIES = {
+  'index_glossary_terms.yml' => <<~YAML,
+    # 索引・用語集の統合辞書（vs index:auto → vs index:apply が管理します）
+    terms: []
+  YAML
+  'index_glossary_rejected.yml' => <<~YAML
+    # 索引候補の却下リスト（vs index:apply が管理します）
+    rejected_terms: []
+  YAML
+}.freeze
+
+EMPTY_DICTIONARIES.each do |basename, content|
+  File.write(File.join(SCAFFOLD, 'config', basename), content, encoding: 'utf-8')
+  puts "EMPTY config/#{basename}（索引辞書は空で配る）"
+end
+
 FILES = %w[.gitignore package.json].freeze
 
 FILES.each do |file|
