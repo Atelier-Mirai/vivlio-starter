@@ -438,6 +438,39 @@ Kindle だけは KFX が SVG を扱えないので、EPUB 枝の `stage_author_s
 
 章の解析は並列で走ります。既定の並列度は **CPU コア数と 4 の小さいほう**で、`VIVLIO_METRICS_CONCURRENCY` で上書きできます。**表示は章番号順に整列する**ので、解析の終わった順に出ることはありません。
 
+画面への出力は次の順で進みます。
+
+1. **章別リストの逐次出力**: 章の解析は並列でも、表示は章番号順です。先に終わった章があっても前の章を追い越しません。`--sections`・`--warn`・章指定の絞り込みはこの段階で当て、対象が 1 章もなければ「対象章がありません」と表示します。
+2. **全体集計**: 全章の解析が終わってから、基本情報・文構造・詳細分析をまとめて表示します。
+3. **推敲用の参考資料**: `--all` のときだけ、章間のばらつき以降を続けて出します。
+
+棒グラフの縮尺は、解析の前に文字数を概算して先に決めます。章が出るたびに横幅が変わることはありません。
+
+`--json` / `--yaml` は逐次出力を省き、次の形で一括して返します。
+
+```json
+{
+  "stats": [
+    { "path": "contents/11-intro.md", "chars": 1200, "warnings": [], ... }
+  ],
+  "totals": {
+    "chars": 2400,
+    "avg_sentence_chars": 210.5,
+    "vocabulary": { "mattr": 0.586, "kanji_ratio": 27.1, ... },
+    "readability": { "score": 42.1, "label": "Standard" }
+  },
+  "advice": {
+    "consistency": [ { "label": "漢字比率", "mean": 27.38, "high": [...], "low": [...] } ],
+    "long_sentences": [ { "chapter_num": 3, "line": 274, "length": 118, "text": "…" } ],
+    "sentence_rhythm": { "distribution": {...}, "monotone_runs": [...] },
+    "content_words": [ { "word": "画像", "pos": "名詞", "count": 306 } ],
+    "kanji_levels": { "ratios": [...], "lists": {...}, "locations": [...] }
+  }
+}
+```
+
+`totals` は上で述べた素の値から組み立てた全体値なので、外部ツールで平均を計算し直す必要はありません。`advice` は画面の `--all`（推敲用の参考資料）を構造化したものです。どちらもキャッシュから組み立てるので、章を再解析せずに返せます。
+
 ### QueryStream
 
 `data/*.yml` のデータと `templates/_book.md` などのテンプレートを組み合わせ、原稿の 1 行を一覧へ展開する機能です。実装は `query-stream` gem として独立しており、`cli/pre_process/data_render.rb` が呼び出します。
