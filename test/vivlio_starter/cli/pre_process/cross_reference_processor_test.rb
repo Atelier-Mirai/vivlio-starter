@@ -157,3 +157,30 @@ class CrossReferencePagerefTest < Minitest::Test
     refute_includes result[:content], '<a href'
   end
 end
+
+# 単独で置いた画像の幅は、% のほかに CSS の長さも受け付ける（改善案.md #55）
+class CrossReferenceImageWidthTest < Minitest::Test
+  XR = VivlioStarter::CLI::PreProcessCommands::CrossReferenceProcessor
+
+  def figure_for(attributes)
+    XR.transform_captioned_blocks("本文\n\n![a](a.webp){#{attributes}}\n", '11-install.md', {})[/<figure[^>]*>/]
+  end
+
+  def test_should_accept_percentage_and_css_lengths
+    assert_equal '<figure style="width: 30%">', figure_for('width=30%')
+    assert_equal '<figure style="width: 2em">', figure_for('width=2em')
+    assert_equal '<figure class="align-right" style="width: 40mm">', figure_for('width=40mm align=right')
+    assert_equal '<figure style="width: 12.5rem">', figure_for('width="12.5rem"')
+  end
+
+  # 単位のない整数は、HTML の width 属性の意味どおり px とみなす
+  def test_should_treat_bare_integer_as_pixels
+    assert_equal '<figure style="width: 300px">', figure_for('width=300')
+  end
+
+  # 幅として読めない値は付けない（既定の大きさ）
+  def test_should_ignore_unreadable_width
+    assert_equal '<figure>', figure_for('width=big')
+    assert_equal '<figure>', figure_for('max-width=30%')
+  end
+end

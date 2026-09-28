@@ -53,6 +53,10 @@ module VivlioStarter
           RESERVED_MACRO_IDS.include?(label_id)
         end
         IMAGE_PATTERN = /^!\[[^\]]*\]\([^)]+\)(?:\{[^}]+\})?$/
+        # 画像の幅（`{width=30%}` / `{width=2em}` / `{width=48}`）。CSS の長さか割合で、
+        # 単位のない整数は px とみなす。文中の画像（post_process の apply_inline_image_widths!）と
+        # 書ける値をそろえる（改善案.md #55）。
+        IMAGE_WIDTH = /(?<![\w-])width=["']?(\d+(?:\.\d+)?(?:%|mm|cm|Q|in|pt|px|em|rem)?)(?=["'\s]|\z)/
         MAIN_CHAPTER_RANGE = PostProcessCommands::HeadingProcessor::MAIN_CHAPTER_RANGE
 
         # ラベル定義情報を保持する構造体
@@ -474,8 +478,13 @@ module VivlioStarter
             attrs = Regexp.last_match(3)
             { alt: Regexp.last_match(1), src: Regexp.last_match(2),
               align: extract_attr(attrs, /align=["']?(left|center|right)/),
-              width: extract_attr(attrs, /width=["']?(\d+%)/),
+              width: image_width(attrs),
               classes: extract_classes(attrs) }
+          end
+
+          def image_width(attrs)
+            width = extract_attr(attrs, IMAGE_WIDTH)
+            width&.match?(/\A[\d.]+\z/) ? "#{width}px" : width
           end
 
           def extract_attr(attrs, pattern)
