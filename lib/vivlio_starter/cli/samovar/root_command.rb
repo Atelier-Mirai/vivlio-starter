@@ -54,7 +54,6 @@ module VivlioStarter
               'renumber' => RenumberCommand,
               'open' => OpenCommand,
               'cover' => CoverCommand,
-              'resize' => ResizeCommand,
               'index' => IndexCommand,
               'index:plan' => IndexPlanCommand,
               'index:auto' => IndexAutoCommand,
@@ -79,7 +78,10 @@ module VivlioStarter
               'create:cover' => CreateCoverCommand,
               'create:titlepage' => CreateTitlepageCommand,
               'create:colophon' => CreateColophonCommand,
-              'create:legalpage' => CreateLegalpageCommand
+              'create:legalpage' => CreateLegalpageCommand,
+              # ビルドが出力形式ごとに画像を用意するので、著者が素材を変換する必要はない。
+              # 手元の画像を一括で WebP にしたいときのために残す（改善案.md #45）
+              'resize' => ResizeCommand
             }.freeze
           end
 

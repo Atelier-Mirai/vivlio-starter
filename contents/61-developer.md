@@ -70,7 +70,7 @@ lib/vivlio_starter/
 | `preflight` | `preflight_command.rb` ＋ `cli/build/pipeline.rb` |
 | `build` | `build_command.rb` ＋ `cli/build/` 配下 |
 
-`create:titlepage`・`create:colophon`・`create:legalpage`・`create:cover` は、ビルドパイプラインから呼ばれる内部コマンドです。通常は直接実行しません。
+`create:titlepage`・`create:colophon`・`create:legalpage`・`create:cover` は、ビルドパイプラインから呼ばれる内部コマンドです。通常は直接実行しません。`resize`（`images/` の PNG・JPG を WebP へ一括変換する）も内部コマンドです。ビルドが出力形式ごとに画像を用意するため、著者が素材を変換する必要はなく、`vs --help` とマニュアルからは外しています。
 
 ### ワークスペース
 

@@ -27,7 +27,6 @@
 | `vs index:export` | 用語集・棄却・読みをライブラリへ書き出し | 索引・用語集機能 |
 | `vs index:import` | 別の本のライブラリを取り込み | 索引・用語集機能 |
 | `vs cover` | 表紙・裏表紙の画像を生成（A4/B5/A5/EPUB） | カバー画像の生成 |
-| `vs resize` | images/ の画像を WebP に変換・最適化 | ユーティリティ・コマンド集 |
 | `vs preflight` | ビルド前の原稿エラーチェックを高速実行 | ビルド（vs build） |
 | `vs build` | 書籍全体または指定章をビルド | ビルド（vs build） |
 | `vs open` | 生成された PDF を開く（macOS 専用） | ユーティリティ・コマンド集 |
@@ -188,18 +187,6 @@
 ### `vs cover` — カバー画像の生成
 
 `vs cover [対象]`（`auto` / `a4` / `b5` / `a5` / `epub`。既定: `auto`）
-
-### `vs resize` — 画像の WebP 変換
-
-`vs resize [ディレクトリ]`（省略時は `images/` 全体。`vs resize 01-intro` のように章だけも可）
-
-:::{.long-table}
-| オプション | 説明 |
-|:---|:---|
-| `--force` / `-f` | 既存ファイルも強制再生成する |
-| `--high` / `--medium` / `--low` | 高品質 / 標準（既定） / 軽量品質プリセットを使う |
-| `--delete-originals` | 変換後に元の PNG/JPG ファイルを削除する（確認あり） |
-:::
 
 ## ビルド・出力・プレビュー
 

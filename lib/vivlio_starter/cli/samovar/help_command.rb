@@ -29,7 +29,7 @@ module VivlioStarter
           '執筆・編集支援' => %w[create delete rename renumber],
           '文章校正・統計' => %w[lint metrics],
           '索引・用語集' => %w[index index:plan index:auto index:apply index:export index:import],
-          '画像・カバー' => %w[cover resize],
+          '画像・カバー' => %w[cover],
           'ビルド・出力・プレビュー' => %w[preflight build open pdf:compress pdf:pages pdf:rasterize]
         }.freeze
 
