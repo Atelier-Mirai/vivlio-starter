@@ -24,7 +24,7 @@ Vivlio Starter gem の導入や Ruby 環境の構築については、「イン�
 | `textlint` | 文章校正ツール |
 | `qpdf` | PDF 分割・結合・ページ操作 |
 | `pdfinfo` (poppler) | PDF メタデータ取得 |
-| `pdftoppm` (poppler) | PDF ページの画像化（OCR 用） |
+| `pdftoppm` (poppler) | PDF ページの画像化（`vs pdf:pages`・OCR） |
 | `gs` (Ghostscript) | PDF 圧縮 |
 | `imagemagick` | 画像変換・リサイズ |
 | `inkscape` | SVG ラスタライズの予備経路（任意） |
@@ -33,7 +33,7 @@ Vivlio Starter gem の導入や Ruby 環境の構築については、「イン�
 | `tesseract` | OCR エンジン |
 | tesseract 日本語データ | Tesseract の日本語学習データ |
 | `mecab` | 索引の読み自動推測・交ぜ書き検出の第 2 層 |
-| `rouge` | コードブロック言語推定（Ruby gem） |
+| `rouge` | `vs import` でのコードの言語推定（Ruby gem） |
 | `mathjax-full` | 数式の SVG 化（npm パッケージ） |
 | `mermaid` (`mmdc`) | ダイアグラムの画像化（npm パッケージ） |
 | `waifu2x-ncnn-vulkan` | AI 画像拡大（オプション） |
@@ -42,27 +42,25 @@ Vivlio Starter gem の導入や Ruby 環境の構築については、「イン�
 
 ### あるのに動かない場合を見つける
 
-ツールが見つかっても、その版や呼び出し方によっては正しく動かないことがあります。Kindle Previewer はその一例です。
+ツールが入っていても、版が古いと正しく動かないことがあります。`vs doctor` は、見つかったツールの版も確かめます。
 
-Kindle Previewer は、バージョン 3 と 4 でコマンドからの呼び出し方が異なります。3 ではアプリ本体を呼び出せましたが、4 では専用の実行ファイル `KindlePreviewer4CLI` を使います。3 の実行ファイルを指す設定が残っていると、`kindlepreviewer` コマンドは見つかるのに変換は失敗します。
+**Kindle Previewer は 4 を使います。** 3 が入っていると、`vs doctor` が更新を案内します。
 
-出力も同じとは限りません。**同じ EPUB から、3 では `.kpf`、4 では `.mobi` が作られることがあります。** 変換結果を確認するときは、使用する版も確かめてください。
-
-`vs doctor` は、見つかった版が 3 の場合に更新を案内します。
-
-```
+:::{.output}
+```text
 ✅ kindlepreviewer (Kindle Previewer 3): OK
 🟡 Kindle Previewer 3 が入っています（Amazon の推奨と読者の入手版は 4 です）
         → brew reinstall --cask kindle-previewer
           更新後に vs doctor --fix を実行してください
 ```
+:::
 
-4 へ更新すると 3 の実行ファイルがなくなり、それまで使っていたラッパーは古い場所を指したままになります。そのため、更新後に `vs doctor --fix` を実行して、4 の実行ファイルを指すラッパーを作り直します。
+案内どおりに更新したら、`vs doctor --fix` を実行してください。`kindlepreviewer` コマンドが新しい版を呼ぶように整えます。
 
-Node.js も版を確かめます。Vivliostyle は版ごとに必要な Node.js の版を決めています（Vivliostyle CLI 11 なら 22.12 以上）。`vs doctor` は、ビルドで実際に使われる Vivliostyle の要求を読み、それより古い Node.js が入っていると、✅ のあとに更新を案内します。
+**Node.js は、Vivliostyle が求める版以上を使います。** Vivliostyle は版ごとに必要な Node.js の版を決めています（Vivliostyle CLI 11 なら 22.12 以上）。`vs doctor` は、ビルドで実際に使われる Vivliostyle の要求を読み、それより古い Node.js が入っていると更新を案内します。
 
 :::{.output}
-```
+```text
 ✅ node: OK
 🟡 Node.js 20.19.0 は Vivliostyle CLI 11.3.3 の要求を満たしません（22.12.0 以上が必要です）
         → brew upgrade node
@@ -72,26 +70,18 @@ Node.js も版を確かめます。Vivliostyle は版ごとに必要な Node.js 
 
 ### Apple Silicon では Rosetta も要る
 
-Kindle Previewer 4 のアプリ自体は Apple Silicon に対応していますが、**変換に使う実行ファイルには Intel 版が含まれます。** アプリ内の実行ファイルを調べると、122 本のうち 114 本が Intel 専用でした。変換エンジンや同梱の Java、画像処理ツールも含まれます。
+Kindle Previewer 4 の変換部分は Intel 向けのプログラムです。Apple Silicon の Mac で Kindle 用のファイルを作るには、Intel 向けのプログラムを動かす Rosetta 2 が必要です。入っていないと、Kindle への変換で `bad CPU type in executable` というエラーが出ます。
 
-そのため、Apple Silicon の Mac で Kindle 用ファイルを作るには、Intel 用のプログラムを動かす Rosetta 2 が必要です。入っていない場合、Kindle への変換時に次のエラーが出ます。
+`vs doctor` は、Apple Silicon の Mac で Kindle Previewer を見つけると、Rosetta の有無も確かめ、入っていなければ導入のコマンドを表示します。
 
-```
-bad CPU type in executable
-```
-
-新しい Mac では Rosetta が未導入のこともあります。`vs doctor` は、Apple Silicon の macOS で Kindle Previewer を見つけると、Rosetta の有無も確認します。
-
-```
+:::{.output}
+```text
 🟡 Rosetta 2 が入っていません（Kindle Previewer の変換部分は Intel 版のままです）
         → sudo softwareupdate --install-rosetta --agree-to-license
 ```
-
-Rosetta の導入は `--fix` では行わず、必要なコマンドを表示します。管理者パスワードの入力が必要なため、案内を確認して実行してください。
-
-:::{.memo}
-Rosetta の導入状況は、`/Library/Apple/usr/libexec/oah/` にある `libRosettaRuntime` の有無で判定します。同じ場所にある `RosettaLinux` は Linux の仮想環境向けです。こちらが存在しても Intel 版の macOS アプリは動かないため、判定には使いません。
 :::
+
+Rosetta の導入には管理者パスワードの入力が要るので、`--fix` では行いません。表示されたコマンドを実行してください。
 
 ### 設定ファイルの診断
 
@@ -102,9 +92,11 @@ Rosetta の導入状況は、`/Library/Apple/usr/libexec/oah/` にある `libRos
 
 必要なファイルが揃っていれば、次のように表示されます。
 
-```
+:::{.output}
+```text
 ✅ config/ 設定ファイル: OK
 ```
+:::
 
 `--fix` を付けると、不足している設定ファイルや辞書を `vs new` の雛形から補います。`book.yml` が破損して読み込めない場合は、**書名や著者名など、取り出せる値をできるだけ残して**テンプレートから作り直します。元のファイルはバックアップされるので、復元後に内容を確認できます。
 
@@ -122,7 +114,8 @@ vs doctor
 
 ツールの状態を一覧で表示します。このコマンドだけではインストールや設定の変更は行いません。
 
-```
+:::{.output}
+```text
 🔎 環境診断を開始します…
 ✅ config/ 設定ファイル: OK
 ✅ Xcode Command Line Tools: OK
@@ -137,6 +130,7 @@ vs doctor
 不足しているツール: pdfinfo (poppler)
 ヒント: macOS の場合は `vs doctor --fix` で自動インストールを試行できます
 ```
+:::
 
 ### 自動インストール（--fix）
 
@@ -148,11 +142,13 @@ vs doctor --fix
 
 Node.js も対象です。vivliostyle や textlint など、npm で導入するツールは Node.js の準備が済んでからインストールされます。
 
-```
+:::{.output}
+```text
 🛠 Homebrew による不足ツールのインストールを実行します…
 🔁 インストール後の再診断…
 ✅ すべてのツールがインストールされました
 ```
+:::
 
 ### 確認プロンプトをスキップ（--yes）
 
@@ -230,7 +226,8 @@ vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
 | 競合 | 雛形と手元で**同じ箇所**を変更 | diff を示し、1 件ずつ確認します（y/n/d） |
 | 保持 | 著者データ領域 | 変更しません |
 
-```
+:::{.output}
+```text
 🔍 雛形との差分を確認しています…（gem 1.2.0 の雛形）
 📋 更新計画:
    追加   stylesheets/talk.css
@@ -239,6 +236,7 @@ vs upgrade --skip-self-update # 本体 gem の更新だけ行わない
    競合   stylesheets/custom.css
    保持   config/book.yml
 ```
+:::
 
 たとえば、自分でスタイルシートの末尾に規則を加え、新しい雛形では先頭が改良された場合は「合流」です。**変更箇所が離れていれば、両方を残して取り込めます。** 同じ箇所を変更していた場合は「競合」となり、差分を見て適用するか選びます。適用すると自分の変更が失われることも、その場で示されます。元のファイルは退避されるため、必要なら戻せます。
 
@@ -276,7 +274,8 @@ gem update vivlio-starter
 
 雛形を取り込んだあと、導入済みの外部ツールを調べます。更新計画には、対象のツール、現在と更新後の版、導入経路が表示されます。内容を確認してから更新を進めます。
 
-```
+:::{.output}
+```text
 🔍 外部ツールのバージョンを確認しています…
 📋 更新計画:
    qpdf              12.1.0  → 12.2.1   (brew)
@@ -289,6 +288,7 @@ gem update vivlio-starter
 🩺 更新後の診断を実行します…
 ✅ 更新完了: 2 件成功 / 0 件失敗
 ```
+:::
 
 外部ツールの更新には、次のような扱いがあります。
 
@@ -363,7 +363,6 @@ vs upgrade
 | `waifu2x` が Linux / Windows で自動インストールされない | macOS のみ対応 | 各ツールの公式サイトを参照して手動インストール |
 | Google Fonts の SSL エラーが解消しない | 証明書パスが未反映 | シェルを再起動して `SSL_CERT_FILE` が有効になっているか確認 |
 
-:::{.column}
-**ヒント**  
+:::{.tip}
 `vs doctor` は繰り返し実行できます。ツールを手動で導入したあとも、もう一度実行すれば正しく認識されているか確認できます。
 :::
