@@ -117,6 +117,13 @@ module VivlioStarter
             Common.log_error("#{html_file}: img-text ラップ中にエラー: #{e.message}")
           end
 
+          # sideimage / image-group が img の width を読んで消したあとに行う
+          begin
+            apply_inline_image_widths!(html_file)
+          rescue StandardError => e
+            Common.log_error("#{html_file}: 文中の画像の幅の反映中にエラー: #{e.message}")
+          end
+
           content = File.read(html_file, encoding: 'utf-8')
           converted = FootnoteConverter.convert_endnotes_to_page_footnotes!(content)
           if converted != content
@@ -680,6 +687,30 @@ module VivlioStarter
         Common.log_success("#{html_file}: img-text コンテナを正規化しました")
       end
       module_function :wrap_img_text_blocks!
+
+      # ================================================================
+      # 文中の画像の幅を効かせる（改善案.md #53）
+      # ================================================================
+      # 段落・箇条書き・表の中に置いた画像の `{width=10%}` は、VFM が <img width="10%"> と
+      # 出す。HTML の width 属性が取るのは整数（px）だけなので、Vivliostyle は 10% も 2em も
+      # 幅として扱わず、画像は元の大きさ（最大で本文幅）のまま組まれて行を押し広げる。
+      # そこで style の width へ移す。整数だけの値は、HTML の意味どおり px とみなす。
+      #
+      # 単独で置いた画像は前処理が <figure style="width: …"> に組むので、figure の中は見ない。
+      def apply_inline_image_widths!(html_file)
+        doc = HtmlParser.parse_html_document(File.read(html_file, encoding: 'utf-8'))
+        images = doc.css('img[width]').reject { it.ancestors('figure').any? }
+        return if images.empty?
+
+        images.each do |img|
+          width = img.remove_attribute('width').value.strip
+          width = "#{width}px" if width.match?(/\A\d+\z/)
+          img['style'] = ["width: #{width}", img['style']].compact.reject(&:empty?).join('; ')
+        end
+
+        HtmlParser.save_html_document(html_file, doc)
+      end
+      module_function :apply_inline_image_widths!
 
       # image-group 内の先頭画像から width 指定（%）を取り出し、
       # 0.0〜1.0 の範囲の比率として返す
