@@ -99,6 +99,11 @@ module VivlioStarter
         '/Applications/Kindle Previewer 3.app/Contents/MacOS/Kindle Previewer 3'
       ].freeze
 
+      # Vivliostyle CLI が要求する Node.js の下限（@vivliostyle/cli の package.json の engines.node）。
+      # Vivliostyle を上げて要求が変わったら追随する。doctor_node_version_test が
+      # node_modules の engines と突き合わせるので、ずれればテストで気づく。
+      NODE_MIN_VERSION = '22.12.0'
+
       # Rosetta 2（macOS の x86_64 変換ランタイム）の実体。
       #
       # **同じディレクトリに入る `RosettaLinux` は Linux VM 用の別物**で、これだけあっても
@@ -226,6 +231,11 @@ module VivlioStarter
             missing << label
           end
         end
+
+        # node は「在る」だけでは足りない。古い版だと ✅ のまま vivliostyle が動かない。
+        # 不足ではないので missing には積まず、ビルドも止めない（Kindle Previewer の版と同じ扱い）。
+        installed_node = missing.include?('node') ? nil : node_version
+        report_node_outdated(installed_node) if node_too_old?(installed_node)
 
         # inkscape は任意ツール（カバー SVG ラスタライズの主経路は rsvg-convert。inkscape は
         # ImageMagick の SVG フォールバックでしか使われない）。存在＋起動可能なら ✅、
@@ -1045,6 +1055,31 @@ module VivlioStarter
       # 導入済みの Kindle Previewer の実行ファイルを返す（新しい版を優先）。無ければ nil。
       def kindle_previewer_app_bin
         KINDLE_PREVIEWER_APP_BINS.find { File.exist?(it) }
+      end
+
+      # 導入済みの Node.js の版。`node --version` の `v26.9.0` から取り出す。取れなければ nil。
+      def node_version
+        require 'open3'
+        out, status = Open3.capture2('node', '--version')
+        return nil unless status.success?
+
+        text = out.strip.delete_prefix('v')
+        Gem::Version.correct?(text) ? Gem::Version.new(text) : nil
+      rescue StandardError
+        nil
+      end
+
+      # Vivliostyle の要求より古いか。版が分からないときは言い立てない（false）。
+      def node_too_old?(version) = !version.nil? && version < Gem::Version.new(NODE_MIN_VERSION)
+
+      # 古い Node.js の更新を案内する。**`--fix` でも自動では更新しない。** nvm などで
+      # 入れた Node を Homebrew が上書きすると、どちらが使われるか分かりにくくなるため。
+      def report_node_outdated(version)
+        Common.log_warn(
+          "Node.js #{version} は Vivliostyle の要求を満たしません（#{NODE_MIN_VERSION} 以上が必要です）",
+          detail: "→ brew upgrade node\n" \
+                  "  Homebrew 以外（nvm など）で入れた場合は、その道具で #{NODE_MIN_VERSION} 以上へ更新してください。"
+        )
       end
 
       # Kindle Previewer 3 のままか（4 が入っていない）。
