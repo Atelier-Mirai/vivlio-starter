@@ -51,6 +51,10 @@ module VivlioStarter
         # URL は `{` を生のまま含められない（RFC 3986）ので、境目を取り違えない。
         QR_PATTERN = %r{@qr:(https?://[^\s)\{]+)(?:\{([^\{\}\n]*)\})?}
 
+        # URL の直後の `{` が同じ行で閉じていない（`@qr:URL{width=25`）。QR_PATTERN は属性なしとして
+        # URL だけを変換し、`{width=25` は文字のまま紙面に残るので、点検で知らせる。
+        UNCLOSED_ATTRIBUTE = %r{@qr:https?://[^\s)\{]+(\{[^\s\{\}]*)(?![^\{\}\n]*\})}
+
         # 属性に書ける幅（`{width=25mm}`）。CSS の長さか割合。
         WIDTH_ATTRIBUTE = /\A\s*width=["']?(\d+(?:\.\d+)?(?:mm|cm|Q|in|pt|px|em|rem|%))["']?\s*\z/
 

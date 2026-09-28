@@ -180,7 +180,15 @@ module VivlioStarter
         # 足した後に動き、原稿の行番号を出せないので、読めない指定はここで知らせる。
         def validate_qr_codes!
           Masking.each_prose_line(context.content) do |line, line_number|
-            line.gsub(/`[^`]+`/, '').scan(QrTransformer::QR_PATTERN) do |_url, attributes|
+            prose = line.gsub(/`[^`]+`/, '')
+            prose.scan(QrTransformer::UNCLOSED_ATTRIBUTE) do |(opening)|
+              record_notation_warning(
+                line_number, "QR コードの指定 #{opening} が } で閉じていません（#{opening} は文字のまま残ります）",
+                detail: "→ @qr:URL{width=25mm} のように、指定の終わりに } を書いてください。"
+              )
+            end
+
+            prose.scan(QrTransformer::QR_PATTERN) do |_url, attributes|
               next if attributes.nil? || QrTransformer.width_from(attributes)
 
               record_notation_warning(

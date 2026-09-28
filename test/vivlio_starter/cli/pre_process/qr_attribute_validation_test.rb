@@ -41,6 +41,26 @@ module VivlioStarter
           assert_includes detail, '{size=25} を {width=25mm} のように'
         end
 
+        # } の閉じ忘れは、QR は既定の大きさで作られるが `{width=25` が文字のまま残るので知らせる
+        def test_should_warn_unclosed_brace
+          warnings = validate("本文\n@qr:https://example.com/x{width=25 です。\n")
+
+          assert_equal 1, warnings.size
+          message, detail = warnings.first
+
+          assert_includes message, '50-sample.md:2'
+          assert_includes message, '{width=25 が } で閉じていません'
+          assert_includes detail, '@qr:URL{width=25mm}'
+        end
+
+        # 閉じていれば閉じ忘れとはみなさない（中身が読めなければ、読めない指定として 1 件だけ）
+        def test_should_not_treat_closed_brace_as_unclosed
+          warnings = validate("@qr:https://example.com/x{width=25 mm} です。\n")
+
+          assert_equal 1, warnings.size
+          assert_includes warnings.first[0], '読めません'
+        end
+
         def test_should_not_warn_readable_width_or_code_examples
           source = <<~MD
             @qr:https://example.com/a{width=25mm}
