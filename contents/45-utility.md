@@ -21,8 +21,8 @@
 vs open
 
 # ファイル名を指定して開く（拡張子は省略可）
-vs open 01-quickstart
-vs open 01-quickstart.pdf
+vs open 11-intro
+vs open 11-intro.pdf
 ```
 
 引数を省略した場合は、通常版・圧縮版の更新日時を比較して新しいほうを自動選択します。
@@ -91,7 +91,7 @@ output:
 
 処理時間が増えるため、普段は `false` に設定しておき、必要なときだけ `vs pdf:compress` コマンドを使うのがお勧めです。自動圧縮が有効な場合でも `vs build --no-compress` で一時的にスキップできます。
 
-:::{.column}
+:::{.memo}
 `output.pdf.compress: true` なら、ビルド後に `_compressed` 付きのファイルが生成されます。既存の PDF をあとから圧縮したい場合は、`vs pdf:compress` を使います。
 :::
 
@@ -135,7 +135,7 @@ vs clean --all
 | `--all` | `--index-dictionaries` を除く上記すべてをまとめて実行 |
 | `--index-dictionaries` | 索引・用語集辞書データを削除（確認あり） |
 
-:::{.column}
+:::{.tip}
 ビルド結果が更新されないなど、キャッシュが原因と思われるときは `vs clean --cache` を試せます。次のビルドでは必要なデータが作り直されます。
 :::
 
@@ -210,8 +210,8 @@ vs clean --all
 | `--font-code` | `"hackgen35"` | コードフォント |
 | `--column-font-size` | `8pt` | コラムの文字サイズ |
 
-:::{.column}
-**ヒント**: `book.yml` の `theme.color` や `page.use` で設定できる項目は、まず `book.yml` で設定するのがお勧めです。`custom.css` は `book.yml` では設定できない細かな調整に使ってください。
+:::{.tip}
+`book.yml` の `theme.color` や `page.use` で設定できる項目は、まず `book.yml` で設定するのがお勧めです。`custom.css` は `book.yml` では設定できない細かな調整に使ってください。
 :::
 
 ### 実践例
@@ -266,7 +266,7 @@ blockquote {
 
 ### テンプレートの編集
 
-`templates/chapter.md` を開いて自由に編集できます。テンプレート内の `{{TITLE}}` は章のスラッグ（`11-intro` など）に自動置換されます。
+`templates/chapter.md` を開いて自由に編集できます。テンプレート内の `{{TITLE}}` は、章のスラッグ（`11-intro` なら `intro`）に置き換わります。
 
 ```markdown
 <!-- templates/chapter.md の例 -->
