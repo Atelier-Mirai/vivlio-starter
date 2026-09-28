@@ -279,6 +279,17 @@ module VivlioStarter
           assert_includes html, '<img src="y.webp" alt="b" width="10%" />'
           refute_includes html, '{width=10%}'
         end
+
+        # =================================================================
+        # 項目の 2 段落目（改善案.md #60）
+        # 空行が残ると、VFM が後続の字下げした <p> をコードブロックとして読む
+        # =================================================================
+        def test_should_not_leave_blank_lines_inside_fancy_list_html
+          html = convert("(a) 一段落目です。\n\n    二段落目です。\n\n(b) 次の項目です。\n")
+
+          assert_includes html, '<p>二段落目です。</p>'
+          refute_match(/\n[ \t]*\n[ \t]+</, html.strip)
+        end
       end
     end
   end

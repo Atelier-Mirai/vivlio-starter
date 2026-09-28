@@ -89,10 +89,22 @@ module VivlioStarter
         def render_markdown_to_html(md_text)
           # まずはKramdownを試す
           require 'kramdown'
-          Kramdown::Document.new(images_with_attributes_to_html(md_text), syntax_highlighter: nil).to_html
+          html = Kramdown::Document.new(images_with_attributes_to_html(md_text), syntax_highlighter: nil).to_html
+          remove_blank_lines_outside_pre(html)
         rescue LoadError
           # フォールバック: 最小限のMarkdownをHTMLへ
           render_markdown_fallback(md_text)
+        end
+
+        # Kramdown が組んだ HTML を Markdown の本文へ埋め込めるよう、空行を取り除く（改善案.md #60）。
+        # VFM（CommonMark）では HTML のブロックが空行で終わる。Kramdown は HTML を字下げして整形し、
+        # 段落のあいだに空行を入れるので、空行の後の `    <p>…</p>` が 4 字下げのコードブロックとして
+        # 読まれ、タグが文字のまま紙面に出ていた（fancy list の項目の 2 段落目など）。
+        # <pre> の中の空行はコードの一部なので残す。HTML の意味は空行の有無で変わらない。
+        def remove_blank_lines_outside_pre(html)
+          html.split(%r{(<pre\b.*?</pre>)}m).map.with_index do |part, index|
+            index.odd? ? part : part.gsub(/\n[ \t]*(?=\n)/, '')
+          end.join
         end
 
         # 属性つきの画像を、VFM と同じ属性を持つ <img> の HTML へ直す（改善案.md #56）。

@@ -81,6 +81,26 @@ module VivlioStarter
 
           assert_includes html, '<code>![a](x.webp){width=10%}</code>'
         end
+
+        # =================================================================
+        # 本文へ埋め込む HTML の空行（改善案.md #60）
+        # VFM では HTML のブロックが空行で終わり、続く字下げした行がコードブロックになる
+        # =================================================================
+
+        def test_should_remove_blank_lines_between_blocks
+          html = MarkdownUtils.render_markdown_to_html("- 一つ目。\n\n  二段落目。\n")
+
+          refute_match(/\n[ \t]*\n/, html)
+          assert_includes html, '<p>二段落目。</p>'
+        end
+
+        # <pre> の中の空行はコードの一部なので残す
+        def test_should_keep_blank_lines_inside_pre
+          html = MarkdownUtils.render_markdown_to_html("前\n\n    code 1\n\n    code 2\n\n後\n")
+
+          assert_includes html, "<pre><code>code 1\n\ncode 2\n</code></pre>"
+          refute_match(%r{</p>\n[ \t]*\n}, html)
+        end
       end
     end
   end
