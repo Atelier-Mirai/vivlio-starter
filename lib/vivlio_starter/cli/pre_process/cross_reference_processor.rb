@@ -29,12 +29,20 @@ module VivlioStarter
       # クロスリファレンス処理モジュール
       # rubocop:disable Metrics/ModuleLength
       module CrossReferenceProcessor
-        # ラベル種別の日本語名（sec は見出しラベル・at-directive-tier1-spec.md §2.4.1）
-        LABEL_TYPE_NAMES = { list: 'リスト', table: '表', fig: '図', sec: '節' }.freeze
+        # ラベル種別の日本語名（sec は見出しラベル・at-directive-tier1-spec.md §2.4.1、
+        # chap はファイル名から付く暗黙の章ラベル・chapter-reference-spec.md §1.1）
+        LABEL_TYPE_NAMES = { list: 'リスト', table: '表', fig: '図', sec: '節', chap: '章' }.freeze
         CAPTION_PATTERN = /^\*\*\s*(.+?)\s+@([-\w]+)\s*\*\*\s*$/
 
         # 見出し行末の ` @id`（見出しラベル）。紙面には出さずアンカーだけを残す。
         HEADING_LABEL_PATTERN = /^(\#{1,6})\s+(.+?)\s+@([-\w]+)\s*$/
+
+        # 章題（第 1 レベルの見出し）。暗黙の章ラベルの飛び先と表示文字列になる。
+        CHAPTER_HEADING_PATTERN = /^#[ \t]+(.+?)\s*$/
+
+        # 暗黙の章ラベルの接頭辞。著者が手で付けるラベルと名前がぶつからないよう、
+        # この接頭辞は予約にする（chapter-reference-spec.md §2.1・§2.5）。
+        CHAPTER_LABEL_PREFIX = 'ch-'
 
         # 自動採番用の予約ID（キャプションで @auto / @id と書くと type-chapter-N 形式に採番される）
         RESERVED_IDS = %w[auto id].freeze
@@ -43,7 +51,7 @@ module VivlioStarter
         # マクロ名（完全一致で予約）。これは @ID 参照ではなくシステム予約のマクロなので、
         # 未定義のラベルIDとして警告せず後段（post_process / pre_process）へ素通しする。
         # （@nega/@posi の後方互換別名・@comment/@commend の編集者コメントは廃止済み）
-        RESERVED_MACRO_IDS = %w[vspace hspace pagebreak pageref version today title qr].freeze
+        RESERVED_MACRO_IDS = %w[vspace hspace pagebreak pageref chapref version today title qr].freeze
 
         # 予約IDの判定を一元化する。
         # RESERVED_IDS: auto / id
@@ -151,17 +159,58 @@ module VivlioStarter
           Common.appendix_number_to_letter(num)&.upcase
         end
 
+        # --- 暗黙の章ラベル（chapter-reference-spec.md） ---
+
+        # 章ファイルの暗黙のラベル ID（`44-build.md` → `ch-build`）。スラッグのない章
+        # （`11.md`）には付けない。番号でラベルを作ると改番のたびに参照が切れるため（§2.4）。
+        def chapter_label_id_for(filename)
+          slug = File.basename(filename.to_s, '.*')[/\A\d+-(.+)\z/, 1]
+          slug && "#{CHAPTER_LABEL_PREFIX}#{slug}"
+        end
+
+        # `@chapref:` が章題の前に置く章番号の文字（「第7章」「付録 A」）。前書き・後書きは nil。
+        #
+        # 文字の形は章扉と同じ build_h1_number_text に任せる。番号は単章ビルドの絞り込みを見ず、
+        # 常に catalog.yml の全体から数える。参照先の章は単章ビルドの対象に入っていないので、
+        # 絞り込みで数えると全章ビルドと違う番号になる（§2.11）。
+        def chapter_number_text_for(filename)
+          basename = File.basename(filename.to_s, '.*')
+          number = extract_chapter_number(basename).to_i
+          context = { file_type: nil, chapter_display_number: nil, appendix_letter: nil }
+          if MAIN_CHAPTER_RANGE.include?(number)
+            index = main_chapters_from_catalog.index(basename)
+            context[:chapter_display_number] = index && (index + 1)
+          elsif (90..98).cover?(number)
+            context[:file_type] = 'appendix'
+            context[:appendix_letter] = Common.appendix_number_to_letter(number)&.upcase
+          end
+          PostProcessCommands::HeadingProcessor.build_h1_number_text(context)
+        end
+
+        # 章題の表示文字列。タグ（97 章の `<br>`）と強調・コードの記号、手書きの見出しラベルを除き、
+        # 目次に出る文字とそろえる（§2.8）。
+        def plain_chapter_title(heading_text)
+          heading_text.to_s
+                      .sub(/\s+@[-\w]+\s*\z/, '')
+                      .gsub(/<[^>]+>/, '')
+                      .gsub(/\*\*|__|`/, '')
+                      .strip
+        end
+
         # ラベル収集
-        def collect_labels(content, source_file, chapter_number)
-          collector = LabelCollectorContext.new(source_file, chapter_number)
+        # @param chapter_number_text [String, nil] 章ラベルの章番号の文字（chapter_number_text_for の値）
+        def collect_labels(content, source_file, chapter_number, chapter_number_text: nil)
+          collector = LabelCollectorContext.new(source_file, chapter_number, chapter_number_text)
           collector.collect(content)
         end
 
         # ラベル収集用コンテキスト
         class LabelCollectorContext
-          def initialize(source_file, chapter_number)
+          def initialize(source_file, chapter_number, chapter_number_text = nil)
             @source_file = source_file
             @chapter_number = chapter_number
+            @chapter_number_text = chapter_number_text
+            @chapter_label_id = CrossReferenceProcessor.chapter_label_id_for(source_file)
             @labels = []
             @errors = []
             @counters = Hash.new(0)
@@ -180,6 +229,8 @@ module VivlioStarter
           def process_line(line, idx, lines, code_lines)
             return if code_lines.include?(idx + 1)
 
+            add_chapter_label(line, idx) if @chapter_label_id
+
             if (heading = CrossReferenceProcessor.extract_heading_label(line))
               add_heading_label(heading, idx)
               return
@@ -191,8 +242,20 @@ module VivlioStarter
             add_label(info, idx, lines)
           end
 
+          # 最初の章題に暗黙の章ラベル（type :chap）を 1 つだけ付ける。number には
+          # `@chapref:` が使う章番号の文字（「第7章」）を持たせる。
+          def add_chapter_label(line, idx)
+            match = line.match(CHAPTER_HEADING_PATTERN)
+            return unless match
+
+            @labels << Label.new(@chapter_label_id, :chap, @chapter_number, @chapter_number_text,
+                                 CrossReferenceProcessor.plain_chapter_title(match[1]), @source_file, idx + 1, false)
+            @chapter_label_id = nil
+          end
+
           def add_label(info, idx, lines)
             return if reserved_macro_id?(info[:id], idx + 1)
+            return if reserved_chapter_prefix?(info[:id], idx + 1)
 
             type = CrossReferenceProcessor.detect_block_type(lines, idx)
             unless type
@@ -208,6 +271,7 @@ module VivlioStarter
           # 「見出しテキスト」をかぎ括弧で括る（at-directive-tier1-spec.md §2.4.2）。
           def add_heading_label(heading, idx)
             return if reserved_macro_id?(heading[:id], idx + 1)
+            return if reserved_chapter_prefix?(heading[:id], idx + 1)
 
             @labels << Label.new(heading[:id], :sec, @chapter_number, @chapter_number,
                                  heading[:title], @source_file, idx + 1, false)
@@ -233,6 +297,24 @@ module VivlioStarter
             true
           end
 
+          # `ch-` で始まるラベルは暗黙の章ラベルの予約。手で付けると暗黙のラベルとぶつかり、
+          # どちらが参照されるかが章の並び順で決まって気づけないため、🔴 で弾く（§2.5）。
+          def reserved_chapter_prefix?(label_id, line_number)
+            return false unless label_id.start_with?(CHAPTER_LABEL_PREFIX)
+
+            Common.log_error(
+              "#{@source_file}:#{line_number} - '@#{label_id}' の '#{CHAPTER_LABEL_PREFIX}' は章のラベル用の予約です",
+              detail: "章にはファイル名から @#{CHAPTER_LABEL_PREFIX}<スラッグ> のラベルが自動で付きます。\n" \
+                      "→ 別の ID に変更してください（例: @#{label_id} → @#{label_id.delete_prefix(CHAPTER_LABEL_PREFIX)}）。"
+            )
+            IssueRegistry.record(
+              chapter: @source_file, line: line_number, severity: :error,
+              category: :cross_reference, message: "'@#{label_id}' の '#{CHAPTER_LABEL_PREFIX}' は章のラベル用の予約です"
+            )
+            @errors << "#{@source_file}:#{line_number} - 章ラベルの予約をラベルIDに使用: @#{label_id}"
+            true
+          end
+
           def create_label(info, type, line_number)
             count = @counters[type]
             # 付録は章番号ではなく付録レター（A..I）を番号プレフィックスに使う。
@@ -250,8 +332,10 @@ module VivlioStarter
         end
 
         # 参照置換
-        def replace_references(content, labels_map, filename = nil)
-          ReferenceReplacer.new(content, labels_map, filename).replace
+        # @param chapter_order [Array<String>, nil] catalog.yml の章の basename の並び。
+        #   渡したときだけ「前の章 @ch-x」の x が隣の章かを確かめる（chapter-reference-spec.md §2.10）
+        def replace_references(content, labels_map, filename = nil, chapter_order: nil)
+          ReferenceReplacer.new(content, labels_map, filename, chapter_order:).replace
         end
 
         # ラベルマップ構築（重複チェック付き）
@@ -312,6 +396,9 @@ module VivlioStarter
             @filename = filename
             @labels_map = labels_map
             @counters = Hash.new(0)
+            # 章ラベルを集めた章（catalog.yml に載った章）だけ、章題にアンカーを置く
+            chapter_id = CrossReferenceProcessor.chapter_label_id_for(filename)
+            @pending_chapter_anchor = chapter_id if labels_map[chapter_id]&.type == :chap
           end
 
           def transform
@@ -348,6 +435,9 @@ module VivlioStarter
           end
 
           def handle_non_caption(output, idx)
+            result = try_chapter_heading(output, idx)
+            return result if result
+
             result = try_heading_label(output, idx)
             return result if result
 
@@ -368,6 +458,28 @@ module VivlioStarter
 
             marks = '#' * heading[:level]
             output << %(#{marks} #{heading[:title]} <span id="#{heading[:id]}" class="vs-sec-anchor"></span>\n)
+            idx + 1
+          end
+
+          # 最初の章題の内側に暗黙の章ラベルのアンカーを置く（chapter-reference-spec.md §3.2）。
+          # 見出しラベルと同じく内側に置くのは、改ページでアンカーだけが前のページに落ちないため。
+          # 章題に手書きの見出しラベルもあれば、両方のアンカーを並べる。
+          def try_chapter_heading(output, idx)
+            return nil unless @pending_chapter_anchor
+
+            match = @lines[idx].match(CHAPTER_HEADING_PATTERN)
+            return nil unless match
+
+            title = match[1]
+            anchors = []
+            if (heading = CrossReferenceProcessor.extract_heading_label(@lines[idx]))
+              title = heading[:title]
+              anchors << heading[:id]
+            end
+            anchors << @pending_chapter_anchor
+            @pending_chapter_anchor = nil
+            spans = anchors.map { %(<span id="#{it}" class="vs-sec-anchor"></span>) }.join
+            output << "# #{title} #{spans}\n"
             idx + 1
           end
 
@@ -615,16 +727,27 @@ module VivlioStarter
         # rubocop:enable Metrics/ClassLength
 
         # 参照置換クラス
+        # rubocop:disable Metrics/ClassLength
         class ReferenceReplacer
           REFERENCE_PATTERN = /(?<![a-zA-Z0-9_.])@([\w-]+)/
 
-          # ページ番号つき参照（at-directive-tier1-spec.md §2.4.2）。
+          # ページ番号つき参照。`@pageref:id`（at-directive-tier1-spec.md §2.4.2）と、章番号も添える
+          # `@chapref:ch-slug`（chapter-reference-spec.md §2.11）。
           # generic の REFERENCE_PATTERN はコロンの手前までしか見ない（= `@pageref` だけを拾う）ため、
           # 必ず generic より先に処理する。
-          PAGEREF_PATTERN = /@pageref:([\w-]+)/
-          # 引数を書き忘れた裸の @pageref。generic 側では予約語として黙って素通しされるので、
+          PAGED_REFERENCE_PATTERN = /@(pageref|chapref):([\w-]+)/
+          # 引数を書き忘れた裸の @pageref / @chapref。generic 側では予約語として黙って素通しされるので、
           # ここで捕まえて書式を案内する。
-          BARE_PAGEREF_PATTERN = /@pageref\b(?!:)/
+          BARE_PAGED_REFERENCE_PATTERN = /@(pageref|chapref)\b(?!:)/
+          BARE_EXAMPLES = { 'pageref' => '@pageref:install', 'chapref' => '@chapref:ch-build' }.freeze
+
+          # 「前の章 @ch-x」のように、隣の章を指す言葉の直後の参照（chapter-reference-spec.md §2.10）
+          ADJACENT_CHAPTER_WORD = /(前の章|前章|次の章|次章)\s*\z/
+
+          # 段落の区切りとみなす行（chapter-reference-spec.md §2.9）。空行のほか、箇条書きの項目と
+          # 表の行は読者が一つずつ読むので、それぞれを別のまとまりとして扱う。前処理で HTML に
+          # なった箇条書き・表（fancy list など）も同じに扱う。
+          PARAGRAPH_START = /\A\s*(?:\z|[-*+]\s|\d+[.)]\s|\||#+\s|<(?:li|tr|td|th|dt|dd|p)[\s>])/
 
           # 参照走査から除外するスパン（インライン code 以外の正当な @ 出現箇所）:
           # - Markdown リンク/画像 [text](url): リンクテキスト・URL とも @ は正当な表現
@@ -634,12 +757,14 @@ module VivlioStarter
           #   角括弧の外に現れる URL 内の @
           MASKED_SPAN_PATTERN = %r{`+[^`]*`+|!?\[[^\]]*\](?:\([^)]*\))?|https?://[^\s)]+}
 
-          def initialize(content, labels_map, filename)
+          def initialize(content, labels_map, filename, chapter_order: nil)
             @content = content
             @labels_map = labels_map
             @filename = filename
+            @chapter_order = chapter_order
             @errors = []
             @used_ids = Set.new
+            @paged_in_paragraph = Set.new
           end
 
           def replace
@@ -647,6 +772,7 @@ module VivlioStarter
             code_lines = CrossReferenceProcessor.code_line_numbers(@content)
             result = @content.lines.map.with_index(1) do |line, num|
               in_code = code_lines.include?(num)
+              @paged_in_paragraph.clear if in_code || line.match?(PARAGRAPH_START)
               # 定義行（キャプション `** タイトル @id **` / 見出し `## タイトル @id`）は
               # 参照としてカウントしない（孤立ラベル検出が定義行を「使用済み」と誤認するため）
               next line if !in_code && definition_line?(line)
@@ -683,46 +809,112 @@ module VivlioStarter
           end
 
           def replace_refs(text, line_num)
-            text = text.gsub(PAGEREF_PATTERN) { replace_pageref(Regexp.last_match(1), line_num) }
-            text = text.gsub(BARE_PAGEREF_PATTERN) { report_bare_pageref(line_num) }
+            text = text.gsub(PAGED_REFERENCE_PATTERN) do
+              match = Regexp.last_match
+              replace_paged(match[1], match[2], match.pre_match, line_num)
+            end
+            text = text.gsub(BARE_PAGED_REFERENCE_PATTERN) { report_bare_paged(Regexp.last_match(1), line_num) }
             text.gsub(REFERENCE_PATTERN) do
-              label_id = Regexp.last_match(1)
-              replace_single_ref(label_id, line_num)
+              match = Regexp.last_match
+              replace_single_ref(match[1], match.pre_match, line_num)
             end
           end
 
-          # @pageref:id → ページ番号つきリンク。ページ番号自体は CSS の target-counter が
-          # 組版時に注入するため（chapter-common.css の a.pageref::after）、ここでは
-          # class="pageref" を付けたリンクを置くだけでよい。EPUB/Kindle は target-counter を
+          # @pageref:id / @chapref:ch-slug → ページ番号つきリンク。ページ番号自体は CSS の
+          # target-counter が組版時に注入するため（chapter-common.css の a.pageref::after）、
+          # ここでは class="pageref" を付けたリンクを置くだけでよい。EPUB/Kindle は target-counter を
           # 解さず宣言ごと破棄するので、自動的にタイトルのみのリンクへ劣化する。
-          def replace_pageref(label_id, line_num)
+          #
+          # 同じ段落で同じラベルを二度引いたら、二度目以降は pageref クラスを付けない
+          # （chapter-reference-spec.md §2.9）。著者が段落の組み立てを気にせずに済むよう、
+          # 省くかどうかは書き手ではなくこちらで決める。
+          def replace_paged(kind, label_id, pre_text, line_num)
+            raw = "@#{kind}:#{label_id}"
             label = @labels_map[label_id]
-            unless label
-              @errors << "#{@filename}:#{line_num} - 未定義のラベルID: @pageref:#{label_id}"
-              return "@pageref:#{label_id}"
-            end
+            return report_undefined(raw, label_id, line_num) unless label
+            return report_chapref_to_non_chapter(raw, line_num) if kind == 'chapref' && label.type != :chap
 
+            check_adjacent_chapter(label, pre_text, line_num)
             @used_ids << label_id
-            %(<a href="#{build_href(label)}" class="cross-ref-link pageref">#{link_text(label)}</a>)
+            text = kind == 'chapref' ? chapref_text(label) : link_text(label)
+            %(<a href="#{build_href(label)}" class="#{paged_classes(label)}">#{text}</a>)
           end
 
-          # 引数を書き忘れた裸の @pageref。そのままでは紙面に生テキストが出るため書式を案内する。
-          def report_bare_pageref(line_num)
-            @errors << "#{@filename}:#{line_num} - @pageref には参照先が必要です（書式例: @pageref:install）"
-            '@pageref'
+          # 二度目以降は pageref を付けない。前付け（00-）への参照には frontmatter を付け、
+          # 前付けのローマ数字のノンブル（p.iii）で出す（索引の frontmatter と同じ扱い）。
+          def paged_classes(label)
+            return 'cross-ref-link' unless @paged_in_paragraph.add?(label.id)
+
+            front = File.basename(label.source_file.to_s).start_with?('00-')
+            front ? 'cross-ref-link pageref frontmatter' : 'cross-ref-link pageref'
           end
 
-          def replace_single_ref(label_id, line_num)
+          # 引数を書き忘れた裸の @pageref / @chapref。そのままでは紙面に生テキストが出るため書式を案内する。
+          def report_bare_paged(kind, line_num)
+            @errors << "#{@filename}:#{line_num} - @#{kind} には参照先が必要です（書式例: #{BARE_EXAMPLES[kind]}）"
+            "@#{kind}"
+          end
+
+          def report_chapref_to_non_chapter(raw, line_num)
+            @errors << "#{@filename}:#{line_num} - #{raw}: @chapref: には章のラベル" \
+                       "（#{CHAPTER_LABEL_PREFIX}…）を指定してください。見出しや図表には @pageref: を使います"
+            raw
+          end
+
+          def replace_single_ref(label_id, pre_text, line_num)
             return "@#{label_id}" if CrossReferenceProcessor.reserved_id?(label_id)
 
             label = @labels_map[label_id]
-            if label
-              @used_ids << label_id
-              return render_link(label)
+            return report_undefined("@#{label_id}", label_id, line_num) unless label
+
+            check_adjacent_chapter(label, pre_text, line_num)
+            @used_ids << label_id
+            render_link(label)
+          end
+
+          # 未定義のラベルは文字のまま残し、直し方の手がかりを 1 つ添える（chapter-reference-spec.md
+          # §2.4・§2.7）。候補を 1 件に絞る理由は ChapterTargetCheck#suggestion_for と同じ。
+          def report_undefined(raw, label_id, line_num)
+            @errors << "#{@filename}:#{line_num} - 未定義のラベルID: #{raw}#{undefined_hint(raw, label_id)}"
+            raw
+          end
+
+          def undefined_hint(raw, label_id)
+            if (number = label_id[/\A#{CHAPTER_LABEL_PREFIX}(\d+)\z/o, 1])
+              return "（スラッグのない章には章ラベルが付きません。" \
+                     "vs rename #{number} #{number}-<スラッグ> で名前を付けられます）"
             end
 
-            @errors << "#{@filename}:#{line_num} - 未定義のラベルID: @#{label_id}"
-            "@#{label_id}"
+            near = DidYouMean::SpellChecker.new(dictionary: @labels_map.keys).correct(label_id).first
+            near ? "（もしかして: #{raw.delete_suffix(label_id)}#{near}）" : ''
+          end
+
+          # 「前の章 @ch-x」の x が本当に前の章か（「次の章」なら次の章か）を catalog.yml の並びで
+          # 確かめる（chapter-reference-spec.md §2.10）。章を入れ替えると章題は参照から差し替わるが、
+          # 「前の」は著者が書いた文字なので追随せず、読み返しても食い違いに気づきにくい。
+          def check_adjacent_chapter(label, pre_text, line_num)
+            return unless @chapter_order && @filename && label.type == :chap
+
+            word = pre_text[ADJACENT_CHAPTER_WORD, 1]
+            return unless word
+
+            index = @chapter_order.index(File.basename(@filename, '.*'))
+            return unless index
+
+            direction = word.start_with?('前') ? '前' : '次'
+            expected_index = index + (direction == '前' ? -1 : 1)
+            expected = @chapter_order[expected_index] if expected_index >= 0
+            return if File.basename(label.source_file.to_s, '.*') == expected
+
+            @errors << "#{@filename}:#{line_num} - 「#{word}」の参照先 @#{label.id}（「#{label.title}」）は、" \
+                       "この章の#{direction}の章ではありません#{adjacent_hint(direction, expected)}"
+          end
+
+          def adjacent_hint(direction, expected)
+            return "（この章の#{direction}に章はありません）" unless expected
+
+            expected_id = CrossReferenceProcessor.chapter_label_id_for(expected)
+            expected_id ? "（#{direction}の章は #{expected}。→ @#{expected_id}）" : "（#{direction}の章は #{expected}）"
           end
 
           def render_link(label)
@@ -730,12 +922,17 @@ module VivlioStarter
             %(<a href="#{href}" class="cross-ref-link">#{link_text(label)}</a>)
           end
 
-          # 参照リンクの文言。見出しラベル（:sec）は「タイトル」をかぎ括弧で括り、
-          # 図・表・リストは従来どおり「図 3」形式にする（:sec に full_number は使わない）。
+          # 参照リンクの文言。見出しラベル（:sec）と章ラベル（:chap）は「タイトル」をかぎ括弧で括り、
+          # 図・表・リストは従来どおり「図 3」形式にする（:sec・:chap に full_number は使わない）。
           def link_text(label)
-            return "「#{CGI.escapeHTML(label.title.to_s)}」" if label.type == :sec
+            return "「#{CGI.escapeHTML(label.title.to_s)}」" if %i[sec chap].include?(label.type)
 
             CGI.escapeHTML(label.full_number)
+          end
+
+          # `@chapref:` の文言。章扉と同じ章番号の文字を「章題」の前に置く（前書き・後書きは章題だけ）。
+          def chapref_text(label)
+            "#{CGI.escapeHTML(label.number.to_s)}#{link_text(label)}"
           end
 
           def build_href(label)
@@ -744,6 +941,7 @@ module VivlioStarter
             "#{File.basename(label.source_file, '.*')}.html##{label.id}"
           end
         end
+        # rubocop:enable Metrics/ClassLength
       end
       # rubocop:enable Metrics/ModuleLength
     end

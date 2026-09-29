@@ -290,8 +290,9 @@ module VivlioStarter
           filename = File.basename(md_path)
           content = File.read(md_path, encoding: 'utf-8')
           chapter_number = CrossReferenceProcessor.display_chapter_number_for_filename(filename)
+          chapter_number_text = CrossReferenceProcessor.chapter_number_text_for(filename)
 
-          result = CrossReferenceProcessor.collect_labels(content, filename, chapter_number)
+          result = CrossReferenceProcessor.collect_labels(content, filename, chapter_number, chapter_number_text:)
           all_labels.concat(result[:labels])
           all_errors.concat(result[:errors])
         end
@@ -329,6 +330,8 @@ module VivlioStarter
         # （前処理済み中間 .md の置き場・P4 §3.4-1）
         # ------------------------------------------------
         processed_chapters = {}
+        # 「前の章 @ch-x」の検査に使う章の並び（chapter-reference-spec.md §2.10）
+        chapter_order = catalog_entries.map { File.basename(it.path, '.*') }
 
         md_files.each do |md_file|
           filename = File.basename(md_file)
@@ -344,12 +347,13 @@ module VivlioStarter
           # - 実際の置換はワークスペース内（html/）の .md に対して実行
           # - 警告用の行番号は contents/ 配下の元Markdownに対して計算してログ出力する
 
-          # 1) contents/ 側で未定義参照を検出（警告・行番号用）
+          # 1) contents/ 側で参照の問題（未定義のラベル・「前の章」の食い違いなど）を検出（警告・行番号用）
           contents_path = File.join(Common::CONTENTS_DIR, filename)
           logging_errors = []
           if File.exist?(contents_path)
             source_content = File.read(contents_path, encoding: 'utf-8')
-            logging_result = CrossReferenceProcessor.replace_references(source_content, labels_map, contents_path)
+            logging_result = CrossReferenceProcessor.replace_references(source_content, labels_map, contents_path,
+                                                                          chapter_order:)
             logging_errors = logging_result[:errors]
           end
 
@@ -362,14 +366,14 @@ module VivlioStarter
 
           next unless logging_errors.any?
 
-          Common.log_warn(" #{filename}: #{logging_errors.size}個の未定義参照を検出")
+          Common.log_warn(" #{filename}: 参照の問題を #{logging_errors.size} 件検出")
           logging_errors.each do |msg|
             Common.log_warn("    - #{msg}")
             # 章別サマリーへブリッジする（同 spec §2.2）。行番号は contents/ 側の
             # メッセージに埋まっているため、ここでは章単位の件数として積む
             IssueRegistry.record(
               chapter: filename, severity: :warn,
-              category: :cross_reference, message: "未定義の参照: #{msg}"
+              category: :cross_reference, message: "参照の問題: #{msg}"
             )
           end
         end
@@ -385,7 +389,10 @@ module VivlioStarter
           all_used_ids.merge(result[:used_ids])
         end
 
-        orphan_labels = labels_map.values.reject { |label| all_used_ids.include?(label.id) || label.auto }
+        # 暗黙の章ラベルは全章に付くので、参照されていなくても知らせない（chapter-reference-spec.md §2.6）
+        orphan_labels = labels_map.values.reject do |label|
+          all_used_ids.include?(label.id) || label.auto || label.type == :chap
+        end
         orphan_labels.each do |label|
           Common.log_warn(
             "#{label.source_file}:#{label.line} - 孤立ラベル '#{label.title} @#{label.id}' は未参照です"

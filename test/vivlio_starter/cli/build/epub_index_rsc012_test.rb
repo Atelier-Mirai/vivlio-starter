@@ -167,6 +167,19 @@ module VivlioStarter
                      '索引・用語集以外の id は復活させない（別フェーズが意図して外した id と競合するため）'
       end
 
+      # 章題の中の相互参照のアンカー（暗黙の章ラベル・見出しラベル）も残す。
+      # 残さないと、章扉を画像にした章への @chapref:ch-… がすべて行き先を失う（chapter-reference-spec.md §6）
+      def test_image_heading_keeps_cross_reference_anchors
+        doc = Nokogiri::HTML(<<~HTML)
+          <h1><span class="chapter-title">ビルド<span id="ch-build" class="vs-sec-anchor"></span></span></h1>
+        HTML
+        h1 = doc.css('h1').first
+
+        Builder.apply_image_heading!(h1, 'images/headings/x.svg', %w[第7章 ビルド], doc)
+
+        assert_equal %w[ch-build], h1.css('span.vs-epub-anchor').map { it['id'] }
+      end
+
       private
 
       def write_file(name, content)

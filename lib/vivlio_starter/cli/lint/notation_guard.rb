@@ -104,15 +104,15 @@ module VivlioStarter
         # ふりがな `{親文字|ふりがな}` と食い違わないよう、`|` を含む波括弧は対象外にする。
         VALUE_ATTRIBUTE = /\{[^{}|\n]*=[^{}|\n]*\}/
 
-        # 相互参照のラベル（`@ruby-sample`・`@pageref:heading-label`）。識別子であって地の文ではない。
+        # 相互参照のラベル（`@ruby-sample`・`@pageref:heading-label`・`@chapref:ch-build`）。識別子であって地の文ではない。
         # 放っておくと `@ruby-sample` の `ruby` が「Ruby」へ、`@pageref:javascript-intro` の
         # `javascript` が「JavaScript」へ直され、**参照先が見つからなくなる**（実測）。
         #
         # 綴りは**ビルドの置換器と同じ定義**を使う（数式と同じ流儀）。ここで別に書くと、lint が
-        # 守る範囲とビルドが参照として扱う範囲がずれる。`@pageref:` を先に置くのは、汎用の参照が
+        # 守る範囲とビルドが参照として扱う範囲がずれる。`@pageref:`・`@chapref:` を先に置くのは、汎用の参照が
         # コロンの手前までしか見ないため（ReferenceReplacer と同じ順序）。
         LABEL_REFERENCE = Regexp.union(
-          PreProcessCommands::CrossReferenceProcessor::ReferenceReplacer::PAGEREF_PATTERN,
+          PreProcessCommands::CrossReferenceProcessor::ReferenceReplacer::PAGED_REFERENCE_PATTERN,
           PreProcessCommands::CrossReferenceProcessor::ReferenceReplacer::REFERENCE_PATTERN
         )
 

@@ -1438,10 +1438,14 @@ module VivlioStarter
         # の分岐で見出し・章リードへ着地しやすく、実測では 89 件中 27 件がここで消えていた。
         # 見出しは章・節の入口そのものなので、着地点としても主要参照の意図と一致する。
         #
+        # 相互参照のアンカー（見出しラベル・暗黙の章ラベルの span.vs-sec-anchor）も同じ理由で残す。
+        # `@chapref:ch-build` は章題の中のアンカーを行き先にしているので、章扉を画像にすると
+        # 章への参照がすべて行き先を失う（chapter-reference-spec.md §6）。
+        #
         # @param also_from [Nokogiri::XML::Element, nil] 見出しと一緒に消える要素（章リード）
         def apply_image_heading!(heading, src, segments, doc, also_from: nil)
           label = segments.reject(&:empty?).join(' ')
-          anchor_ids = index_anchor_ids_within(heading, also_from)
+          anchor_ids = link_anchor_ids_within(heading, also_from)
 
           heading.children.remove
           add_class(heading, 'vs-image-heading-epub')
@@ -1452,7 +1456,7 @@ module VivlioStarter
           img['alt'] = label
           heading.add_child(img)
 
-          anchor_ids.each { heading.add_child(index_anchor_span(it, doc)) }
+          anchor_ids.each { heading.add_child(link_anchor_span(it, doc)) }
         end
 
         # 索引・用語集がリンク先にしているアンカー id の綴り。
@@ -1460,16 +1464,18 @@ module VivlioStarter
         # ここで復活させないため（strip_inline_footnote_ids_for_epub! と競合する）。
         INDEX_ANCHOR_ID_PATTERN = /\A(?:idx|gls-src)-/
 
-        # 消える要素の中から、索引・用語集のアンカー id を集める。
-        def index_anchor_ids_within(*nodes)
+        # 消える要素の中から、リンクの行き先になっているアンカー id を集める
+        # （索引・用語集のアンカーと、相互参照の span.vs-sec-anchor）。
+        def link_anchor_ids_within(*nodes)
           nodes.compact
-               .flat_map { |node| node.css('[id]').map { |el| el['id'] } }
-               .select { INDEX_ANCHOR_ID_PATTERN.match?(it) }
+               .flat_map { |node| node.css('[id]').to_a }
+               .select { INDEX_ANCHOR_ID_PATTERN.match?(it['id']) || it['class'].to_s.split.include?('vs-sec-anchor') }
+               .map { it['id'] }
                .uniq
         end
 
         # 中身の無いアンカー。紙面・画面の見た目には出さず、リンクの着地点だけを担う。
-        def index_anchor_span(id, doc)
+        def link_anchor_span(id, doc)
           span = Nokogiri::XML::Node.new('span', doc)
           span['id'] = id
           span['class'] = 'vs-epub-anchor'

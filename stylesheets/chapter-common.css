@@ -412,18 +412,6 @@ h2.vs-break-merged {
   width: 0;
 }
 
-/* @pageref のページ番号（PDF のみ）。EPUB リーダーは target-counter を解釈できず
-   content 宣言ごと破棄・Kindle は ::after 自体を無視するため、リフローでは自動的に
-   「タイトルのみのリンク」へ劣化する（at-directive-tier1-spec §1.1）。 */
-a.pageref::after {
-  content: "（p." target-counter(attr(href url), page) "）";
-}
-
-/* 見出しラベル（`## タイトル @id`）が残すアンカー。紙面には何も出さない。 */
-.vs-sec-anchor {
-  display: inline;
-}
-
 /* @qr:URL が挿入する QR コード（at-directive-tier1-spec §1.4）。
    本全体のサイズ変更は custom.css で .vs-qr { width: 25mm; } のように上書きする。
    1 個だけなら原稿で @qr:URL{width=25mm} と書く（前処理が img の style に入れる）。 */

@@ -25,6 +25,8 @@
 require_relative 'common'
 require_relative 'build/catalog_updater'
 require_relative 'index/unified_terms_manager'
+require_relative 'masking'
+require_relative 'pre_process/cross_reference_processor'
 
 module VivlioStarter
   module CLI
@@ -62,11 +64,43 @@ module VivlioStarter
         UnifiedTermsManager.new.rename_chapter!(old_basename, new_basename)
       end
 
+      # 本文の章参照（`@ch-slug`・`@pageref:ch-slug`・`@chapref:ch-slug`）を新しいスラッグへ
+      # 書き換える（chapter-reference-spec.md §2.2）。章ラベルはスラッグから付くので、
+      # 改番だけ（スラッグが変わらない）なら何もしない。参照は著者が書いたものだが、
+      # 旧ラベルは改名で消えて指す先がなくなるので、索引辞書の main: と同じく機械的に書き換える。
+      def follow_chapter_references(old_basename, new_basename)
+        old_id = PreProcessCommands::CrossReferenceProcessor.chapter_label_id_for(old_basename)
+        new_id = PreProcessCommands::CrossReferenceProcessor.chapter_label_id_for(new_basename)
+        return if old_id.nil? || new_id.nil? || old_id == new_id
+
+        count = rewrite_chapter_references(old_id, new_id)
+        return if count.zero?
+
+        Common.log_result("本文の章参照 #{count} 箇所を @#{old_id} から @#{new_id} へ書き換えました", status: :success)
+      end
+
+      # contents/*.md の章参照を書き換え、書き換えた数を返す。コードブロックとインラインコードの
+      # 中（記法の説明に書いた例）は書き換えない。write: false なら数えるだけ（改名の確認の画面用）。
+      def rewrite_chapter_references(old_id, new_id, write: true)
+        pattern = /(?<![a-zA-Z0-9_.])@((?:pageref:|chapref:)?)#{Regexp.escape(old_id)}(?![\w-])/
+        Dir.glob(File.join(Common::CONTENTS_DIR, '*.md')).sum do |path|
+          text = File.read(path, encoding: 'utf-8')
+          protected_text, spans = Masking.protect_code(text)
+          count = protected_text.scan(pattern).size
+          if write && count.positive?
+            replaced = protected_text.gsub(pattern) { "@#{Regexp.last_match(1)}#{new_id}" }
+            File.write(path, Masking.restore_code(replaced, spans))
+          end
+          count
+        end
+      end
+
       # 追随先の登録簿。**ここへ 1 行足すだけ**で rename / renumber の両方に効く。
       FOLLOWERS = [
         Follower.new(label: 'catalog.yml', handler: method(:follow_catalog)),
         Follower.new(label: '画像ディレクトリ', handler: method(:follow_image_dir)),
-        Follower.new(label: '索引辞書', handler: method(:follow_index_dictionary))
+        Follower.new(label: '索引辞書', handler: method(:follow_index_dictionary)),
+        Follower.new(label: '本文の章参照', handler: method(:follow_chapter_references))
       ].freeze
 
       # 章名の変更を全追随先へ伝える。

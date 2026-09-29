@@ -361,6 +361,7 @@ module VivlioStarter
         # y/N に答えることにならないように）
         Common.log_always("章名・番号変更: #{chapter_label(old_number, old_slug)} →  " \
                           "#{chapter_label(new_number, new_slug)}")
+        announce_chapter_reference_rewrite(build_basename(old_number, old_slug), build_basename(new_number, new_slug))
 
         confirm_or_exit('章名・番号変更') unless options[:force]
 
@@ -461,6 +462,20 @@ module VivlioStarter
         cleanup_generated_files(old_number, old_slug)
         # 何がどう変わったかを既定ログレベルでも 1 行で報告する（実行して無音にしない）
         Common.log_result("#{old_basename} を #{new_basename} に変更しました", status: :success)
+      end
+
+      # スラッグが変わると本文の章参照も書き換わるので、その数を確認の画面に出す
+      # （chapter-reference-spec.md §2.2）。書き換えるのは ChapterRename の追随処理。
+      def announce_chapter_reference_rewrite(old_basename, new_basename)
+        xref = PreProcessCommands::CrossReferenceProcessor
+        old_id = xref.chapter_label_id_for(old_basename)
+        new_id = xref.chapter_label_id_for(new_basename)
+        return if old_id.nil? || new_id.nil? || old_id == new_id
+
+        count = ChapterRename.rewrite_chapter_references(old_id, new_id, write: false)
+        return if count.zero?
+
+        Common.log_always("本文の章参照: @#{old_id} の #{count} 箇所を @#{new_id} へ書き換えます")
       end
 
       # 章リネーム後に残る生成物 (HTML) を削除する
