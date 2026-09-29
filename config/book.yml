@@ -183,12 +183,12 @@ output:
                       # false のまま入稿すると白フチ事故になります
                       # （false は閲覧用 PDF から導出するぶん速い代わりに、
                       #   裁たれた塗り足しを復元できません）
-    # 以下は任意
-    # cover_bleed: scale # 持ち込み表紙の塗り足し。既定は scale（＝拡大して流用）
-    #                    # keep にすると拡大しない（塗り足し帯は白のまま）
-    #                    # covers/frontcover_master_bleed.png があればそちらが優先されます
-    # icc_profile: /path/to/JapanColor2001Coated.icc # CMYK 変換用
-    #                    # 未指定なら press-ready 同梱の Japan Color 2001 Coated
+    cover_bleed: scale # 持ち込み表紙の塗り足し。scale は拡大して流用
+                       # keep にすると拡大しない（塗り足し帯は白のまま）
+                       # covers/frontcover_master_bleed.png があればそちらが優先されます
+    icc_profile: # CMYK 変換用の ICC プロファイルのパス
+                 # 空なら press-ready 同梱の Japan Color 2001 Coated
+                 # 例: icc_profile: /path/to/JapanColor2001Coated.icc
 
   # ------- EPUB設定（楽天Kobo / Apple Books 向けクリーン EPUB） -------
   epub:

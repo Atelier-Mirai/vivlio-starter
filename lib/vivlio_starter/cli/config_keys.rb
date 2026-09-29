@@ -102,6 +102,8 @@ module VivlioStarter
       %i[output print_pdf bleed]                      => Spec[default: "3mm"],
       %i[output print_pdf crop_marks]                 => Spec[default: true],
       %i[output print_pdf full_bleed]                 => Spec[default: false],
+      %i[output print_pdf cover_bleed]                => Spec[default: "scale"],
+      %i[output print_pdf icc_profile]                => Spec[default: nil],
       %i[output epub embed]                           => Spec[default: true],
       %i[output epub layout]                          => Spec[default: "reflowable"],
       %i[output kindle embed]                         => Spec[default: false],

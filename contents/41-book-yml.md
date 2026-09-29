@@ -171,6 +171,8 @@ output:
     bleed: 3mm              # 塗り足し幅（既定: 3mm）
     crop_marks: true        # トンボを付けるか（既定: true）
     full_bleed: false       # 本文にフチなし（塗り足しまで届く）要素があるか（既定: false）
+    cover_bleed: scale      # 表紙の塗り足し: scale（拡大して流用・既定）/ keep（拡大しない）
+    icc_profile:            # CMYK 変換の ICC プロファイル（空なら同梱の Japan Color 2001 Coated）
 
   epub:                     # 楽天 Kobo / Apple Books 向けクリーン EPUB
     embed: true             # true: 表紙を埋め込む（楽天/Apple Books 推奨）
