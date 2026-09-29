@@ -236,7 +236,7 @@ vs --version
 :::{.tip}
 **まず `vs doctor` を試してください**
 
-ビルドや lint が急に失敗したら、まず `vs doctor` で不足しているツールを確認できます。macOS では `vs doctor --fix` で導入も試せます。使い分けは「環境の診断と更新」の章で説明しています。
+ビルドや lint が急に失敗したら、まず `vs doctor` で不足しているツールを確認できます。macOS では `vs doctor --fix` で導入も試せます。使い分けは @chapref:ch-doctor で説明しています。
 :::
 
 :::{.note}

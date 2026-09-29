@@ -49,7 +49,7 @@ targets: [pdf, epub, kindle]      # 配列形式
 | `kindle` | Kindle 用 KPF | Amazon Kindle（KDP）への配信 |
 
 :::{.tip}
-執筆中は `targets: pdf` で内容を確認し、入稿前に `targets: pdf, print_pdf` に切り替えて入稿用 PDF を作る、という使い分けができます。電子書籍も同時に作るなら `targets: pdf, epub, kindle` です。`output` セクションの設定の一覧は「config/book.yml リファレンス」の章にあります。
+執筆中は `targets: pdf` で内容を確認し、入稿前に `targets: pdf, print_pdf` に切り替えて入稿用 PDF を作る、という使い分けができます。電子書籍も同時に作るなら `targets: pdf, epub, kindle` です。`output` セクションの設定の一覧は @chapref:ch-book-yml にあります。
 :::
 
 
@@ -152,11 +152,11 @@ output:
 
 本文の入稿用 PDF はトンボ・塗り足し付きで、主要な同人印刷所（ねこのしっぽ、日光企画など）に対応しています。隠しノンブルも自動的に書き込まれます。
 
-入稿用 PDF は、既定では閲覧用 PDF と同じレンダリング結果から導出されます。本文が完全に同一のため、閲覧用でチェックした内容がそのまま入稿物になり、ビルド時間も短縮されます。本文に紙端まで届く画像や背景（フチなし要素）がある場合のみ `full_bleed: true` を指定してください。塗り足し込みで個別にレンダリングされます（詳細は「config/book.yml リファレンス」の章を参照）。
+入稿用 PDF は、既定では閲覧用 PDF と同じレンダリング結果から導出されます。本文が完全に同一のため、閲覧用でチェックした内容がそのまま入稿物になり、ビルド時間も短縮されます。本文に紙端まで届く画像や背景（フチなし要素）がある場合のみ `full_bleed: true` を指定してください。塗り足し込みで個別にレンダリングされます（詳細は @chapref:ch-book-yml を参照）。
 
 ### 入稿用の表紙
 
-印刷入稿用の表紙は、本文とは別のファイルとしてプロジェクト直下に `janken_frontcover_v0.1.0.pdf` のような名前で出力されます（「カバー画像の生成」の章）。Japan Color 2001 Coated の ICC プロファイルで CMYK に変換し、出力インテントを埋め込んだ PDF/X-1a:2001 として書き出します（`@vivliostyle/cli` 同梱の ICC を自動利用）。別のプロファイルを使いたいときだけ、パスを指定してください。
+印刷入稿用の表紙は、本文とは別のファイルとしてプロジェクト直下に `janken_frontcover_v0.1.0.pdf` のような名前で出力されます（@chapref:ch-cover）。Japan Color 2001 Coated の ICC プロファイルで CMYK に変換し、出力インテントを埋め込んだ PDF/X-1a:2001 として書き出します（`@vivliostyle/cli` 同梱の ICC を自動利用）。別のプロファイルを使いたいときだけ、パスを指定してください。
 
 ```yaml
 output:
@@ -191,7 +191,7 @@ vs build
 
 ### カバー画像
 
-EPUB の表紙は、ビルドのときに `output.cover` のテーマの表紙画像（既定では `covers/frontcover_master.png`）から 1,600 × 2,560 px の JPEG を作って使います。左右が切り落とされるので、文字は中央寄りに置いてください（「カバー画像の生成」の章）。
+EPUB の表紙は、ビルドのときに `output.cover` のテーマの表紙画像（既定では `covers/frontcover_master.png`）から 1,600 × 2,560 px の JPEG を作って使います。左右が切り落とされるので、文字は中央寄りに置いてください（@chapref:ch-cover）。
 
 | 設定 | 説明 |
 |:---|:---|
@@ -321,7 +321,7 @@ vs build 11-13          # 11 章から 13 章までをビルド
 vs build 11-intro       # ファイル名で指定
 ```
 
-章の書き方は「章の管理」の章の「コマンドで章を指定する」で説明しています。
+章の書き方は @ch-chapter-management の章の @pageref:chapter-targets で説明しています。
 
 単章ビルドでは、`output.targets` の指定にかかわらず**閲覧用 PDF のみ**が生成されます（印刷入稿用 PDF・EPUB・Kindle は作られません）。目次や索引などの全体構成ページも生成されません。原稿の体裁をすばやく確認するための用途に絞った仕様です。印刷入稿用 PDF や EPUB・Kindle が必要なときは、章を指定せずに `vs build`（全章ビルド）を実行してください。
 
@@ -559,7 +559,7 @@ vs preflight 21-24   # 21〜24章をチェック
 vs preflight intro   # スラッグが intro の章をチェック
 ```
 
-章の書き方は `vs build` と同じです（「章の管理」の章の「コマンドで章を指定する」）。
+章の書き方は `vs build` と同じです（@ch-chapter-management の章の @pageref:chapter-targets）。
 
 ### 実行結果の見方
 

@@ -174,7 +174,7 @@ h1 {
 
 | 書き方 | PDF | EPUB / Kindle |
 | :--- | :--- | :--- |
-| `@chapref:ch-build` | 第7章「ビルド」（p.123） | 第7章「ビルド」 |
+| `@chapref:ch-build` | 第14章「ビルド」（p.123） | 第14章「ビルド」 |
 | `@pageref:ch-build` | 「ビルド」（p.123） | 「ビルド」 |
 | `@ch-build` | 「ビルド」 | 「ビルド」 |
 
@@ -251,7 +251,7 @@ end
 | `@today` | ビルドを実行した日付を差し込む |
 | `@qr` | QR コード画像の挿入（`@qr:https://example.com/`） |
 
-`@hspace` 以降のマクロは「拡張記法リファレンス」の章で解説しています。
+`@hspace` 以降のマクロは @chapref:ch-extensions で解説しています。
 
 :::{.tip}
 **著者が新しいラベルIDを付けるときの注意**

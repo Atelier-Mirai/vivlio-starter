@@ -1,7 +1,7 @@
 # 章への相互参照（暗黙の章ラベル）仕様書
 
 > 作成日: 2026-09-29
-> ステータス: **決定版**（2026-09-29。§2 はすべて推奨どおり決定）
+> ステータス: **実装済み**（2026-09-29。§2 はすべて推奨どおり決定）
 > 対象: 改善案.md #1「章の相互参照にページ番号を添える」
 > 関連: `at-directive-tier1-spec.md`（見出しラベルと `@pageref:id`）, `at-directive-ideas.md`（章参照が `@pageref` の主用途という整理）, `chapter-rename-followers-guidelines.md`（章名を持つデータの追随）, `lib/vivlio_starter/cli/pre_process/cross_reference_processor.rb`, `contents/24-cross-reference.md`
 
@@ -279,3 +279,11 @@
 
 - 節（第 2 レベル以下の見出し）への暗黙のラベル。節は数が多く、見出しの文字の変更も多いので、いまの手書きの見出しラベルのままとする。
 - 早見表の「解説章」の列の参照化（§4）。
+
+## 8. 実装記録（2026-09-29）
+
+- **前後の半角空白**: 実ビルドで、鉤括弧で出す参照の前後の空白が紙面に出て間延びすることが分かった。和文と接する側の空白を取り除くことにした（§1.2、`ReferenceReplacer#join_spaces`）。
+- **スラッグを外す改名**: `vs rename` はスラッグを外す改名を受け付けないと分かり、§2.2 を訂正した。
+- **前書きのページ番号・画像の章扉の EPUB**: §6 の結果のとおり、既存の不具合を二つ直した（CSS を `components.css` へ移す・`apply_image_heading!` でアンカーを残す）。
+- **原稿の移行**: 19 章・63 行。参照先が節のものは、節の見出しにラベルを付けて `@pageref:` で指した（`@chapter-targets`・`@list-decoration`・`@code-and-output`・`@showcase-howto`・`@math-notation`・`@metrics-json`）。見出しの文字にコード記号を含む節（`` `include` — … ``）は、参照の表示に記号が出るので、それを含む節を指した。
+- **確かめたこと**: 本書の全章ビルドで参照の警告 0 件、EPUB は epubcheck でエラー・警告とも 0 件。部扉のない本でノンブルがずれる既存の不具合は改善案.md #71 に記録した。

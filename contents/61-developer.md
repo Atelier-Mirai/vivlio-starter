@@ -276,7 +276,7 @@ Vivliostyle の `target-counter` はレンダリング時にページ番号を�
 
 索引の主要参照（その語を説明している章）は太字で先頭に置き、副次参照を後ろに続けます。同じページを指す重複は `backlink dedup` が排除します。組み上がった PDF の named destinations を読んで「アンカー ID からページ番号」を得るので、章が複数ページにまたがっても正確です。
 
-著者向けの記法と運用は「索引・用語集機能」の章にあります。
+著者向けの記法と運用は @chapref:ch-index-glossary にあります。
 
 :::{.note}
 索引語は本文に埋め込まれる透明なアンカーです。初出を包む `<dfn>` はブラウザ既定で斜体になるため、打ち消しを `stylesheets/base.css` に置いています。索引語が現れるのは本文・見出し・目次のすべてなので、全ページが読む CSS でなければ届きません。
@@ -421,7 +421,7 @@ Kindle だけは KFX が SVG を扱えないので、EPUB 枝の `stage_author_s
 
 **記法の知識を `Masking` へ置いてはいけません。** あちらは索引・メトリクス・前処理など 20 箇所以上が通る共通基盤なので、記法の知識を混ぜると lint と無関係な処理まで意味が変わります。
 
-### メトリクス
+### メトリクス @metrics-json
 
 `vs metrics` は章ごとに解析し、結果を `.cache/metrics/{basename}.yml` へ残します。**鮮度は章ファイル自身の mtime と比べ、章ごとに独立して判定します**。1 章だけ直したときに解析し直すのは、その章だけです。
 
@@ -479,7 +479,7 @@ Kindle だけは KFX が SVG を扱えないので、EPUB 枝の `stage_author_s
 
 テンプレートは `templates/_<単数形>.<スタイル>.md` の規約で解決されるため、`_book.mystyle.md` を置くだけで `= books | :mystyle` が有効になります。`data/elements.yml` と `templates/_element.md` を置けば、設定を変えずに `= elements` が使えます。新しいデータ種別を足すのに、コードを書く必要はありません。
 
-記法の詳しい説明は「データ展開機能」の章にあります。
+記法の詳しい説明は @chapref:ch-querystream にあります。
 
 ### CrossReference
 

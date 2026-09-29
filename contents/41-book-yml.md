@@ -201,9 +201,9 @@ output:
 両方を同時に出力したい場合は `targets: epub, kindle` のように指定します。
 :::
 
-`cover` に指定するスラッグは `vs cover` コマンドで生成したカバーのテーマ名と対応します。詳細は「カバー画像の生成」の章を参照してください。
+`cover` に指定するスラッグは `vs cover` コマンドで生成したカバーのテーマ名と対応します。詳細は @chapref:ch-cover を参照してください。
 
-PDF を作るとき、Vivlio Starter は Vivliostyle で原稿を組版し、Vivliostyle は Chromium（ブラウザ）を使って PDF に書き出します。その過程で、絵文字が Type 3 フォント[^type3-font]として埋め込まれることがあります。`pdf.techbook` を有効にすると、絵文字をカラーの SVG 画像へ差し替えるので、「技術書典」など Type 3 を受け付けない入稿先への納入も可能になります。既定で有効ですが、詳細は「ビルド」の章を参照してください。
+PDF を作るとき、Vivlio Starter は Vivliostyle で原稿を組版し、Vivliostyle は Chromium（ブラウザ）を使って PDF に書き出します。その過程で、絵文字が Type 3 フォント[^type3-font]として埋め込まれることがあります。`pdf.techbook` を有効にすると、絵文字をカラーの SVG 画像へ差し替えるので、「技術書典」など Type 3 を受け付けない入稿先への納入も可能になります。既定で有効ですが、詳細は @chapref:ch-build を参照してください。
 
 [^type3-font]: Type 3 は、文字の形を PDF 内の描画命令で定義するフォント形式です。
 
@@ -257,7 +257,7 @@ verify:
   max_concurrency: 5     # HTTP チェックの最大同時接続数
 ```
 
-外部 URL の確認は時間がかかるので、既定では行いません。毎回確かめるなら `external_links: true` にします。その場かぎり確かめるときは `vs build --verify-links` を使います。詳細は「ビルド」の章を参照してください。
+外部 URL の確認は時間がかかるので、既定では行いません。毎回確かめるなら `external_links: true` にします。その場かぎり確かめるときは `vs build --verify-links` を使います。詳細は @chapref:ch-build を参照してください。
 
 ## 機能別の詳細設定
 
@@ -265,7 +265,7 @@ verify:
 
 ### index_glossary / index / glossary — 索引・用語集
 
-索引・用語集を有効にするか、候補をどの程度拾うかを指定します。主な設定は次のとおりです。主要参照の出し方などを含む全体と、索引語の選び方は「索引・用語集機能」の章で説明しています。
+索引・用語集を有効にするか、候補をどの程度拾うかを指定します。主な設定は次のとおりです。主要参照の出し方などを含む全体と、索引語の選び方は @chapref:ch-index-glossary で説明しています。
 
 ```yaml
 index_glossary:
@@ -309,9 +309,9 @@ metrics:
 | `commercial` | 9〜15 万字 | 200〜350 ページの商業出版レベル |
 | `heavy` | 15 万字〜 | 350 ページ以上の大部の本 |
 | `author_custom` | — | 自分で基準値を定義したい場合 |
-| `relative` | — | その本自身の章の中央値と比べたい場合（詳細は「原稿の分量と難度の計測」の章） |
+| `relative` | — | その本自身の章の中央値と比べたい場合（詳細は @chapref:ch-metrics） |
 
-`use` で選んだプリセットが切り替えるのは、`chapter`/`section` の分量基準だけです。語彙難度（`kanji_ratio`・`word_length`・`ttr`）・読解難度（`readability`）・警告メッセージの文言（`labels`）は、プリセットの外側に置く共通設定で、どのプリセットを選んでも同じ値が使われます。詳細な基準値のカスタマイズは「原稿の分量と難度の計測」の章を参照してください。
+`use` で選んだプリセットが切り替えるのは、`chapter`/`section` の分量基準だけです。語彙難度（`kanji_ratio`・`word_length`・`ttr`）・読解難度（`readability`）・警告メッセージの文言（`labels`）は、プリセットの外側に置く共通設定で、どのプリセットを選んでも同じ値が使われます。詳細な基準値のカスタマイズは @chapref:ch-metrics を参照してください。
 
 `exclude_chapters` に挙げた章は、分量の警告（✅ 💡）と文章の質の警告（🤔）、章間のばらつきの比較から外れます。章別の一覧には表示されますが、印は付きません。前書き・付録・後書きのように、短いことに意味がある章を外すための設定です。既定は `[00, 90-98, 99]`（前書き・付録・後書き）で、章番号と `90-98` のような範囲で書きます。本文の章を外したいときも、ここへ番号を足します。
 
@@ -345,7 +345,7 @@ spellcheck:
 | この語は綴り誤りではない（スペルチェック） | `config/spellcheck_allowlist.yml` |
 | この表記に統一したい | `config/textlint_rewrite.yml` |
 
-詳細は「文章校正」の章を参照してください。
+詳細は @chapref:ch-lint を参照してください。
 
 ### pdf_read — PDF 読み取り設定
 
@@ -369,4 +369,4 @@ pdf_read:
     inline_image_text: include   # include / exclude / captionize（イラスト内テキストの扱い）
 ```
 
-詳細は「PDF からの原稿の取り出し」の章を参照してください。
+詳細は @chapref:ch-pdf-read を参照してください。
