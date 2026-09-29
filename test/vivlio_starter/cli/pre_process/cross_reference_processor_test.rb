@@ -185,6 +185,33 @@ class CrossReferenceImageWidthTest < Minitest::Test
   end
 end
 
+# 図・表を HTML にしたあと、続く本文との間に空行を補う（改善案.md #68）。
+# `<figure>` の HTML のかたまりは空行まで続くので、補わないと直後の本文の `**太字**` が効かない
+class CrossReferenceFigureSeparationTest < Minitest::Test
+  XR = VivlioStarter::CLI::PreProcessCommands::CrossReferenceProcessor
+
+  def test_should_insert_blank_line_between_image_and_following_text
+    out = XR.transform_captioned_blocks(":::{.img-text2}\n![時計](c.webp)\n考案した**光格子時計**は\n:::\n", '97-sample.md', {})
+
+    assert_includes out, "</figure>\n\n考案した**光格子時計**は\n"
+  end
+
+  def test_should_insert_blank_line_after_captioned_figure
+    labels = { 'clock' => XR::Label.new('clock', :fig, '1', '1-1', '時計', '97-sample.md', 1, false) }
+    out = XR.transform_captioned_blocks("** 時計 @clock **\n![時計](c.webp)\n本文。\n", '97-sample.md', labels)
+
+    assert_includes out, "</figure>\n\n本文。\n"
+  end
+
+  # もともと空行があれば増やさない
+  def test_should_not_add_blank_line_when_one_exists
+    out = XR.transform_captioned_blocks("![時計](c.webp)\n\n本文。\n", '97-sample.md', {})
+
+    assert_includes out, "</figure>\n\n本文。\n"
+    refute_includes out, "</figure>\n\n\n"
+  end
+end
+
 # crop を付けた普通の画像は、図の組み立てで画像だけを切り抜いた SVG／ラスターへ差し替える。
 # キャプション・図番号・align・border・幅は普通の図のまま引き継ぐ（改善案.md #54）
 class CrossReferenceCroppedImageTest < Minitest::Test

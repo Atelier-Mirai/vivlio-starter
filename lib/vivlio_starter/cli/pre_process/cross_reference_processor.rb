@@ -500,19 +500,28 @@ module VivlioStarter
 
             if showcase_figure?(next_idx)
               output << showcase_figure_html(next_idx, match[1].strip, label: nil)
-              return showcase_figure_end(next_idx) + 1
+              return separate_from_next(output, showcase_figure_end(next_idx) + 1)
             end
             return nil unless @lines[next_idx].strip.match?(IMAGE_PATTERN)
 
             output << build_figure_html(parse_image(@lines[next_idx].strip), match[1].strip)
-            next_idx + 1
+            separate_from_next(output, next_idx + 1)
           end
 
           def try_standalone_image(output, line, idx)
             return nil unless line.strip.match?(IMAGE_PATTERN)
 
             output << build_figure_html(parse_image(line.strip), nil)
-            idx + 1
+            separate_from_next(output, idx + 1)
+          end
+
+          # 図・表を HTML にしたあと、次の行が空行でなければ空行を 1 つ補う（改善案.md #68）。
+          # `<figure>` や `<div>` で始まる HTML のかたまりは、Markdown では空行まで続く。
+          # `![図](a.webp)` の直後の行に本文を続けて書くと（`:::{.img-text}` でよく書く形）、
+          # 本文まで HTML のかたまりに入り、`**太字**` などの記法が記号のまま紙面に出ていた。
+          def separate_from_next(output, next_idx)
+            output << "\n" if next_idx < @lines.size && !@lines[next_idx].strip.empty?
+            next_idx
           end
 
           def transform_block(output, idx, info, type)
@@ -522,7 +531,7 @@ module VivlioStarter
 
             html = render_block(type, block_start, info, label, wrapper)
             output << html
-            find_block_end(block_start, type, wrapper) + 1
+            separate_from_next(output, find_block_end(block_start, type, wrapper) + 1)
           end
 
           def render_block(type, block_start, info, label, wrapper)
