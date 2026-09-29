@@ -430,10 +430,21 @@ module VivlioStarter
           )
         end
 
+        # 参照リンクの定義の行（`[vs]: https://vivliostyle.org/ "タイトル"`）。URL は `< >` で囲んでもよい。
+        LINK_REFERENCE_DEFINITION = /^ {0,3}\[([^\]^][^\]]*)\]:[ \t]*<?(https?:[^\s>]+)>?/
+        # 参照リンクの使う側（`[Vivliostyle][vs]` と、文字をそのまま ID にする `[Vivliostyle][]`）。
+        # `[vs]` だけの省略形は、索引の `[用語]` と見分けられないので扱わない。
+        LINK_REFERENCE_USE = /(?<!!)\[([^\]]+)\]\[([^\]]*)\]/
+
         # Markdown内のリンク記法を脚注化
+        #
+        # 印刷した本ではリンクをたどれないので、URL を脚注に書き出す。参照リンクは、先に
+        # インラインリンクの形へ直してから同じ処理に通す（改善案.md #62）。同じ URL は同じ
+        # 脚注を共有する。自動リンク `<https://…>` は紙面に URL がそのまま出るので脚注にしない。
         def transform_links_to_footnotes(md_text)
           original = md_text.to_s
           text, code_spans = MarkdownUtils.extract_code_spans(original)
+          text = inline_reference_links(text)
 
           max_n = 0
           text.scan(/\[\^url(\d+)\]:/).each do |m|
@@ -474,6 +485,23 @@ module VivlioStarter
 
           MarkdownUtils.restore_code_spans(result, code_spans)
         end
+
+        # 参照リンク `[文字][id]` を、定義の URL を使ってインラインリンク `[文字](URL)` に直す。
+        # ID の照合は CommonMark と同じく大文字・小文字と空白の違いを区別しない。定義が
+        # 見つからない（または http(s) でない）参照は書いたとおりに残す。
+        def inline_reference_links(text)
+          definitions = {}
+          text.scan(LINK_REFERENCE_DEFINITION) { |id, url| definitions[normalize_link_id(id)] ||= url }
+          return text if definitions.empty?
+
+          text.gsub(LINK_REFERENCE_USE) do |whole|
+            label, id = Regexp.last_match.captures
+            url = definitions[normalize_link_id(id.empty? ? label : id)]
+            url ? "[#{label}](#{url})" : whole
+          end
+        end
+
+        def normalize_link_id(id) = id.strip.gsub(/\s+/, ' ').downcase
 
         # book-card 内のMarkdownを事前整形
         def normalize_book_card_md(md_text)

@@ -195,6 +195,34 @@ module VivlioStarter
           assert_equal md, result.strip
         end
 
+        # 参照リンクも URL を脚注に書き出す（改善案.md #62）。同じ URL はインラインリンクと脚注を共有する
+        def test_transform_links_to_footnotes_reference_links
+          md = <<~MD
+            [Vivliostyle][vs] と [Ruby][] と [公式](https://vivliostyle.org/)。
+
+            [VS]: https://vivliostyle.org/ "公式サイト"
+            [ruby]: <https://www.ruby-lang.org/>
+          MD
+          result = transform_links_to_footnotes(md)
+
+          assert_includes result, '[Vivliostyle](https://vivliostyle.org/) [^url1]'
+          assert_includes result, '[Ruby](https://www.ruby-lang.org/) [^url2]'
+          assert_includes result, '[公式](https://vivliostyle.org/) [^url1]'
+          assert_equal 1, result.scan('[^url1]:').size
+        end
+
+        # 定義の無い参照・脚注参照・コードの中・自動リンクは書いたとおりに残す
+        def test_transform_links_to_footnotes_leaves_unresolved_references
+          md = "[未定義][zzz]、注[^1]、`[x][vs]`、<https://example.com/>。\n\n[vs]: https://vivliostyle.org/\n[^1]: 注。\n"
+          result = transform_links_to_footnotes(md)
+
+          assert_includes result, '[未定義][zzz]'
+          assert_includes result, '注[^1]'
+          assert_includes result, '`[x][vs]`'
+          assert_includes result, '<https://example.com/>'
+          refute_includes result, '[^url'
+        end
+
         # =================================================================
         # normalize_book_card_md
         # =================================================================
