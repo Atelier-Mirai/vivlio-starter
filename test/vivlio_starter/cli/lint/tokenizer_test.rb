@@ -287,4 +287,11 @@ class TestTokenizer < Minitest::Test
     assert_includes words, 'example'  # @ 直前が単語文字なのでラベル除去は発動しない
     assert_includes words, 'contact'
   end
+
+  # アクセント記号の付いた文字で単語を割らない（改善案.md #63）。全角英字や × は拾わない
+  def test_accented_latin_letters_stay_in_one_word
+    words = T.tokenize("CSS は Håkon Wium Lie、Poincaré と Erdős、ＡＢＣ と 2×3\n").map { _1[0] }
+
+    assert_equal %w[CSS Håkon Wium Lie Poincaré Erdős], words
+  end
 end

@@ -144,6 +144,13 @@ module VivlioStarter
                           '<!-- vs-lint-enable --> で閉じられていません。ファイル末尾まで lint が無効化されます。')
         end
 
+        # 欧文の単語。アクセント記号の付いた文字（Latin-1 補助と拡張 A・B。× と ÷ は除く）も
+        # 単語の一部として扱う（改善案.md #63）。ASCII の英字だけで切ると `Håkon` が `kon` に、
+        # `Poincaré` が `Poincar` に割れ、辞書に正しい綴りを載せても割れた後の断片が指摘されていた。
+        # `\p{Latin}` にしないのは、和文の中の全角英字（Ａ〜Ｚ）まで拾ってしまうため。
+        WORD_LETTER = "a-zA-ZÀ-ÖØ-öø-ɏ"
+        WORD = /[#{WORD_LETTER}]+(?:-[#{WORD_LETTER}]+)*/
+
         # @param line [String] 1行のMarkdownテキスト
         # @return [Array<String>] 抽出された英単語の配列
         def extract_words(line)
@@ -167,7 +174,7 @@ module VivlioStarter
           cleaned.gsub!(/!?\[([^\]]*)\]\[[^\]]*\]/, '\1')        # 参照リンク
           cleaned.gsub!(/^#+\s*/, '')                            # 見出し記号を除去
 
-          cleaned.scan(/[a-zA-Z]+(?:-[a-zA-Z]+)*/).select { it.length >= 2 }
+          cleaned.scan(WORD).select { it.length >= 2 }
         end
       end
     end

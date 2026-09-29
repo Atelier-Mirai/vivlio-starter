@@ -43,6 +43,12 @@ class TestDictManager < Minitest::Test
     assert_equal 'hello', @dm.send(:normalize, 'hello')
   end
 
+  # アクセント記号の付いた文字を落とさない（改善案.md #63。`Håkon` が `Hkon` になっていた）
+  def test_normalize_keeps_accented_latin_letters
+    assert_equal 'Håkon', @dm.send(:normalize, 'Håkon')
+    assert_equal 'Poincaré', @dm.send(:normalize, 'Poincaré # 数学者')
+  end
+
   # 記号のみの行が nil を返すことを確認する
   def test_normalize_returns_nil_for_symbol_only
     assert_nil @dm.send(:normalize, '***')

@@ -3,6 +3,7 @@
 require 'fileutils'
 require 'open-uri'
 require 'yaml'
+require_relative 'tokenizer'
 
 module VivlioStarter
   module CLI
@@ -140,7 +141,7 @@ module VivlioStarter
         # @param path [String] 辞書ファイルのパス
         # @param words [Hash] 登録先の word_map（破壊的操作）
         def load_into_word_map(path, words)
-          File.foreach(path) do |line|
+          File.foreach(path, encoding: 'UTF-8') do |line|
             word = normalize(line)
             register_word(words, word) if word
           end
@@ -158,7 +159,8 @@ module VivlioStarter
         end
 
         # 辞書ファイルの1行を正規化して単語文字列を返す
-        # コメント行・空行・Hunspellフラグ・記号をすべて除去する
+        # コメント行・空行・Hunspellフラグ・記号をすべて除去する。アクセント記号の付いた文字は、
+        # 本文の単語の切り出し（Tokenizer::WORD_LETTER）と同じ範囲を残す（`Håkon` を `Hkon` にしない）
         # @param line [String] 辞書ファイルの1行
         # @return [String, nil] 正規化後の単語。除外対象なら nil
         def normalize(line)
@@ -167,7 +169,7 @@ module VivlioStarter
 
           line = line.split('#').first.strip
           line = line.split('/').first.strip
-          line = line.gsub(/[^a-zA-Z0-9-]/, '').strip
+          line = line.gsub(/[^#{Tokenizer::WORD_LETTER}0-9-]/o, '').strip
           line.empty? ? nil : line
         end
 
