@@ -135,7 +135,7 @@ module VivlioStarter
           # auto_discovery 設定を確認（未設定 nil は true 扱い、false のみ無効化）
           unless Common::CONFIG.index.auto_discovery != false
             Common.log_info('index.auto_discovery: false のため、自動候補抽出は無効です')
-            Common.log_info('手動マークアップ [用語|読み] のみが索引に反映されます')
+            Common.log_info('手動登録 [用語|読み] の語のみが索引に反映されます')
             Common.log_info('自動抽出を有効にするには book.yml で auto_discovery: true を設定してください')
             return 0
           end

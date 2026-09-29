@@ -89,8 +89,8 @@ module VivlioStarter
         manual_terms = extract_manual_markup_terms(chapters)
         if manual_terms.any?
           added = @terms_manager.merge_terms!(manual_terms, flags: 'i', source: 'manual_markup')
-          dictionary_writes['手動マークアップ'] = added if added.any?
-          Common.log_info("手動マークアップから #{manual_terms.size} 件の用語を登録しました")
+          dictionary_writes['手動登録'] = added if added.any?
+          Common.log_info("手動登録（[用語|読み]）から #{manual_terms.size} 件の用語を登録しました")
         end
 
         # auto_discovery が無効の場合、自動候補抽出をスキップ
@@ -98,7 +98,7 @@ module VivlioStarter
           @terms_manager.record_scanned_chapters!(chapters)
           report_dictionary_writes(dictionary_writes)
           Common.log_info('auto_discovery: false のため、自動候補抽出をスキップします')
-          Common.log_info('手動マークアップのみが索引に反映されます')
+          Common.log_info('手動登録の語のみが索引に反映されます')
           return
         end
 

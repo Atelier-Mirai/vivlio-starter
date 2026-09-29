@@ -851,15 +851,15 @@ terms:
   main:
   - 44-build
   updated_at: '2026-08-21 19:10:01'
-- term: 手動マークアップ
-  yomi: しゅどうまーくあっぷ
+- term: 手動登録
+  yomi: しゅどうとうろく
   flags: ig
   definition: |-
-    原稿に `[用語|読み]` と書いて索引・用語集へ明示的に登録する方法。
-    自動抽出と違って著者の意図がそのまま反映されるため、一般語として外す候補にも挙がらない。
+    原稿に `[用語|読み]` と書いて、索引・用語集へ著者自身が語を載せる方法。
+    自動抽出と違って著者の意図がそのまま反映されるため、スコアにかかわらず必ず索引に載り、見直し候補にも挙がらない。
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
-  pattern: "/手動マークアップ/"
+  pattern: "/手動登録/"
   updated_at: '2026-08-21 19:10:01'
   main:
   - 33-index-glossary
@@ -931,8 +931,10 @@ terms:
   updated_at: '2026-08-21 19:10:01'
 - term: 自動抽出
   yomi: じどうちゅうしゅつ
-  flags: i
-  definition: ''
+  flags: ig
+  definition: |-
+    `vs index:auto` が原稿を解析して、索引に載せる語の候補を拾うこと。
+    拾った候補は著者が見直し、`vs index:apply` で承認してから辞書に載る（既定では自動で登録されない）。
   source: auto_extracted
   approved_at: '2026-08-09 03:08:17'
   pattern: "/自動抽出/"
