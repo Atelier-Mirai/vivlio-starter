@@ -83,6 +83,34 @@ module VivlioStarter
         end
 
         # =================================================================
+        # ルビ（改善案.md #64）
+        # Kramdown はルビを知らず `|` を表の区切りと読むので、渡す前に <ruby> へ直す
+        # =================================================================
+
+        def test_should_turn_ruby_notation_into_ruby_element
+          html = MarkdownUtils.render_markdown_to_html("{漢字|かんじ}のルビと{Albert Einstein|アルバート・アインシュタイン}")
+
+          assert_includes html, "<ruby>漢字<rt>かんじ</rt></ruby>のルビ"
+          assert_includes html, "<ruby>Albert Einstein<rt>アルバート・アインシュタイン</rt></ruby>"
+          refute_includes html, "<table"
+        end
+
+        # 同じ行の属性 `{width=30%}` から読み始めて、次のルビまで一続きに取らない
+        def test_should_not_swallow_attributes_before_ruby
+          html = MarkdownUtils.render_markdown_to_html("![a](x.webp){width=30%} と {親|おや}")
+
+          assert_includes html, 'width="30%"'
+          assert_includes html, "<ruby>親<rt>おや</rt></ruby>"
+        end
+
+        # 記法を解説するインラインコードの中は書き換えない
+        def test_should_leave_ruby_notation_in_inline_code_untouched
+          html = MarkdownUtils.render_markdown_to_html("書き方は `{漢字|かんじ}` です。")
+
+          assert_includes html, "<code>{漢字|かんじ}</code>"
+        end
+
+        # =================================================================
         # 本文へ埋め込む HTML の空行（改善案.md #60）
         # VFM では HTML のブロックが空行で終わり、続く字下げした行がコードブロックになる
         # =================================================================

@@ -82,6 +82,11 @@ module VivlioStarter
 
         # 属性つきの画像（VFM の `![alt](src){width=10% .cls #id}`）。
         IMAGE_WITH_ATTRIBUTES = /!\[([^\]]*)\]\(([^)\s]+)\)\{([^{}\n]*)\}/
+
+        # ルビ `{親文字|ルビ}`。VFM（@vivliostyle/remark-ruby）と同じく、`\|` でない最初の `|` で
+        # 親文字とルビを分ける。親文字とルビに `{` `}` を含めないのは、同じ行の `{width=30%}` などの
+        # 属性から読み始めて、次のルビの `}` まで一続きに取らないため。
+        RUBY_NOTATION = /\{([^{}\n]+?)(?<=[^\|])\|([^{}\n]+?)\}/
         # 属性の 1 語（`key=value` / `key="a b"` / `.cls` / `#id`）。
         IMAGE_ATTRIBUTE_TOKEN = /([\w-]+)=(?:"([^"]*)"|'([^']*)'|(\S+))|([.#])([\w-]+)/
 
@@ -89,7 +94,8 @@ module VivlioStarter
         def render_markdown_to_html(md_text)
           # まずはKramdownを試す
           require 'kramdown'
-          html = Kramdown::Document.new(images_with_attributes_to_html(md_text), syntax_highlighter: nil).to_html
+          source = ruby_to_html(images_with_attributes_to_html(md_text))
+          html = Kramdown::Document.new(source, syntax_highlighter: nil).to_html
           remove_blank_lines_outside_pre(html)
         rescue LoadError
           # フォールバック: 最小限のMarkdownをHTMLへ
@@ -117,6 +123,19 @@ module VivlioStarter
           converted = protected_text.gsub(IMAGE_WITH_ATTRIBUTES) do
             alt, src, attributes = Regexp.last_match.captures
             image_tag(alt, src, attributes)
+          end
+          Masking.restore_code(converted, spans)
+        end
+
+        # ルビを、VFM と同じ <ruby>親文字<rt>ルビ</rt></ruby> の HTML へ直す（改善案.md #64）。
+        # Kramdown はルビの書き方を知らず、`|` を表の区切りと読む。fancy list の項目に書くと、
+        # ルビにならないうえ項目全体が表に化けていた。会話・書籍カードなど、Kramdown で HTML に
+        # してから本文へ埋め込む箇所すべてがここを通る。記法を解説するコードの中は書き換えない。
+        def ruby_to_html(md_text)
+          protected_text, spans = Masking.protect_code(md_text.to_s)
+          converted = protected_text.gsub(RUBY_NOTATION) do
+            base, reading = Regexp.last_match.captures
+            "<ruby>#{base}<rt>#{CGI.escapeHTML(reading)}</rt></ruby>"
           end
           Masking.restore_code(converted, spans)
         end
