@@ -582,7 +582,7 @@ vs preflight intro   # スラッグが intro の章をチェック
         コードの場所: codes/sample.rb
 🔴 11-workflow.md:20 - 画像 'workflow.svg' が見つかりません（代替画像を使用します）
         画像の場所: images/11-workflow/workflow.svg
-🔴 22-extentions.md:427 - 雛形ファイル '_book.full.md' が見つかりません（記法: = books | :full）
+🔴 22-extensions.md:427 - 雛形ファイル '_book.full.md' が見つかりません（記法: = books | :full）
         雛形の場所: templates/_book.full.md
         ヒント: templates/_book.md は存在します。スタイル名を確認してください。
 🔴 24-cross-reference.md:361 - ラベルID '画像(左寄せ) @img-left' は重複しています

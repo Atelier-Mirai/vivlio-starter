@@ -240,7 +240,7 @@ module VivlioStarter
         # 「フェンス入りコンテナの直後の book-card」が正しく変換される回帰テスト。
         # 旧 Masking はフェンス終端の改行までプレースホルダへ飲み込み、直後の閉じ ::: が
         # 同一行へ癒着 → 前のコンテナの閉じを見失った変換が book-card ごと飲み込んで
-        # 素通ししていた（22-extentions の実バグ・EPUB/PDF 全ターゲットで崩れ）。
+        # 素通ししていた（22-extensions の実バグ・EPUB/PDF 全ターゲットで崩れ）。
         def test_convert_book_card_after_container_holding_code_fence
           md = <<~MD
             :::{.output}

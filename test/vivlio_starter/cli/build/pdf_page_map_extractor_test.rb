@@ -151,7 +151,7 @@ class TestPdfPageMapExtractor < Minitest::Test
     Dir.mktmpdir do |dir|
       pdf_path = create_pdf_with_dests(dir)
 
-      result = Extractor.new(pdf_path).pages_for(%w[gls-src-00-preface-1 rot-22-extentions-1])
+      result = Extractor.new(pdf_path).pages_for(%w[gls-src-00-preface-1 rot-22-extensions-1])
 
       assert_equal %w[gls-src-00-preface-1], result.keys
     end

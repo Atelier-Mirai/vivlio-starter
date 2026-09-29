@@ -33,7 +33,7 @@
 | `11-workflow` | `@ch-workflow` | 執筆ワークフローとクイックスタート |
 | `12-new` | `@ch-new` | 新規プロジェクトの作成 |
 | `21-markdown-tutorial` | `@ch-markdown-tutorial` | Markdown 執筆チュートリアル |
-| `22-extentions` | `@ch-extentions` | 拡張記法リファレンス |
+| `22-extensions` | `@ch-extensions` | 拡張記法リファレンス |
 | `23-chapter-management` | `@ch-chapter-management` | 章の管理 |
 | `24-cross-reference` | `@ch-cross-reference` | 相互参照（クロスリファレンス） |
 | `25-querystream` | `@ch-querystream` | データ展開機能 |
@@ -56,8 +56,6 @@
 | `96-further-inspiration` | `@ch-further-inspiration` | 参考書籍のご紹介 |
 | `97-sample` | `@ch-sample` | 挑戦することの贈り物 |
 | `99-postface` | `@ch-postface` | 終わりに |
-
-22 章のファイル名は `extentions`（extensions の綴り違い）なので、ラベルも `@ch-extentions` になる。ファイル名を直すかは §2.1 の注記を参照。
 
 ### 1.2 参照の書き方と表示
 
@@ -100,7 +98,7 @@
 
 - A を推す。改番（`vs renumber`）はスラッグの変更よりずっと多く行われ、B はそのたびに参照が切れる。C は §0 のとおり手間と揺れが出る。
 - `ch-` を付けるのは、見出しや図表の手書きラベル（`@install` など）と名前がぶつからないようにするため。24 章の例の `@install` と、93 章の暗黙のラベル `@ch-install` が共存できる。
-- 22 章の `extentions` のように、ファイル名の綴りがそのままラベルに出る。直すなら `vs rename 22-extentions 22-extensions` を先に行う（§2.2 が参照を追随させるなら、参照を書いたあとでもよい）。
+- ファイル名の綴りがそのままラベルに出る。22 章は綴りの誤り（`extentions`）があったので、2026-09-29 に `22-extensions` へ改名した。
 
 ### 2.2 `vs rename` でスラッグを変えたとき
 

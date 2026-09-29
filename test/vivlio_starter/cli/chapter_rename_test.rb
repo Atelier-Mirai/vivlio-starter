@@ -54,11 +54,11 @@ module VivlioStarter
       # main: は著者の判断＝一次データなので、実在しない章を指していても捨てられない。
       # contexts のように「捨てて拾い直す」ことができないため書き換える。
       def test_main_reference_follows_the_rename
-        write_dictionary(terms: [term('Markdown', main: [OLD, '22-extentions'])])
+        write_dictionary(terms: [term('Markdown', main: [OLD, '22-extensions'])])
 
         rename_with_file_move
 
-        assert_equal [NEW, '22-extentions'], dictionary['terms'].first['main']
+        assert_equal [NEW, '22-extensions'], dictionary['terms'].first['main']
       end
 
       # 著者が書いた形を保つ（単一指定を配列にしない）

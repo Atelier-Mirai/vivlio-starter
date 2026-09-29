@@ -79,7 +79,7 @@ module VivlioStarter
       # それを指す索引リンクは解除される（実 DOM を見ない正規表現収集の偽陽性回帰・本番 RSC-012 残存の真因）
       def test_index_unlinks_link_to_escaped_id_in_code
         # idx-eee-1 は実要素ではなく、コードブロック内のエスケープテキストとしてのみ存在する
-        write_file('22-extentions.html', <<~HTML)
+        write_file('22-extensions.html', <<~HTML)
           <html><body>
           <pre><code>puts "Hello" # &lt;span id="idx-eee-1" class="index-term"&gt;用語E&lt;/span&gt;</code></pre>
           </body></html>
@@ -87,7 +87,7 @@ module VivlioStarter
         index_path = write_file('_indexpage.html', <<~HTML)
           <section class="index">
           <dl class="index-list">
-          <dt>用語E</dt><dd><a href="22-extentions.html#idx-eee-1"></a></dd>
+          <dt>用語E</dt><dd><a href="22-extensions.html#idx-eee-1"></a></dd>
           </dl>
           </section>
         HTML
@@ -95,7 +95,7 @@ module VivlioStarter
         Builder.post_process_index_glossary_for_epub!(html_files)
         result = File.read(index_path, encoding: 'utf-8')
 
-        refute_includes result, 'href="22-extentions.html#idx-eee-1"',
+        refute_includes result, 'href="22-extensions.html#idx-eee-1"',
                         'エスケープ済みコード内の id を指す索引リンクは実在しない扱いで解除される'
       end
 

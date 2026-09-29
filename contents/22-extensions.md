@@ -824,7 +824,7 @@ $ cp *.png *.bak
 
 ## 画像レイアウト
 
-画像ファイルは、章ごとに `images/<章のファイル名>/` へ置きます（`22-extentions.md` なら `images/22-extentions/`）。原稿にはファイル名だけを書けば、ビルド時にその章のディレクトリから探します。ほかの章の画像を使うときは、`images/11-workflow/logo.webp` のように `images/` から書きます。画像ディレクトリは `vs create` で章を作ると一緒に作られます。
+画像ファイルは、章ごとに `images/<章のファイル名>/` へ置きます（`22-extensions.md` なら `images/22-extensions/`）。原稿にはファイル名だけを書けば、ビルド時にその章のディレクトリから探します。ほかの章の画像を使うときは、`images/11-workflow/logo.webp` のように `images/` から書きます。画像ディレクトリは `vs create` で章を作ると一緒に作られます。
 
 ### `{width=… align=…}` — 画像の幅と配置を指定する
 

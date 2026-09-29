@@ -94,7 +94,7 @@ module VivlioStarter
           <p>本文<span role="doc-footnote" class="page-footnote page-footnote-inline" id="fn1">W3C の <span id="idx-abc-19" class="index-term">CSS</span><a id="gls-src-22-ext-css-19" class="glossary-link" href="_glossarypage.html#gls-css"><sup>†</sup></a> 仕様</span>続き</p>
           <aside role="doc-footnote" class="page-footnote page-footnote-print" id="fn1" data-footnote-anchored="1">W3C の <span id="idx-abc-19" class="index-term">CSS</span><a id="gls-src-22-ext-css-19" class="glossary-link" href="_glossarypage.html#gls-css"><sup>†</sup></a> 仕様</aside>
         HTML
-        path = File.join(@test_dir, '22-extentions.html')
+        path = File.join(@test_dir, '22-extensions.html')
         File.write(path, html)
 
         Build::EpubBuilder.strip_inline_footnote_ids_for_epub!([path])

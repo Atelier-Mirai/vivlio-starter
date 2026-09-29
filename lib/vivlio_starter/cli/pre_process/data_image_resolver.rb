@@ -46,7 +46,7 @@ module VivlioStarter
         #
         # @param text [String] QueryStream 1 記法の展開結果
         # @param context [Hash] QueryStream post_render コンテキスト（:data_file :query :location を使う）
-        # @param chapter_slug [String] 章スラッグ（例: "22-extentions"）
+        # @param chapter_slug [String] 章スラッグ（例: "22-extensions"）
         # @return [String] 画像参照を書き換えた展開結果
         def rewrite(text, context, chapter_slug:)
           data_base = File.basename(context[:data_file].to_s, '.*')

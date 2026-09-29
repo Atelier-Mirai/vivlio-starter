@@ -102,7 +102,7 @@ module VivlioStarter
           %(id="#{rotate_anchor_id(source_basename, index)}" #{attrs})
         end
 
-        # @param source_basename [String] 章の basename（例 '22-extentions'）
+        # @param source_basename [String] 章の basename（例 '22-extensions'）
         # @param index [Integer] 章内での 1 始まりの出現順
         def rotate_anchor_id(source_basename, index) = "#{ROTATE_ID_PREFIX}#{source_basename}-#{index}"
 

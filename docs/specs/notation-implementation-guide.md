@@ -180,7 +180,7 @@ Minitest・DI スタブ（外部ツールは実行しない）。定番の検証
 | 対象 | 内容 |
 |---|---|
 | `contents/21-markdown-tutorial.md` | 標準 Markdown に由来する基本記法ならここ |
-| `contents/22-extentions.md` | 拡張記法のリファレンス節（記法・実レンダリング例・制限・縮退の memo） |
+| `contents/22-extensions.md` | 拡張記法のリファレンス節（記法・実レンダリング例・制限・縮退の memo） |
 | `contents/90-cheatsheet.md` | 記法早見表へ 1 行追加 |
 | `docs/specs/<name>-spec.md` | 新規実装は仕様書を書いてから。完了後は `docs/archives/` へ |
 

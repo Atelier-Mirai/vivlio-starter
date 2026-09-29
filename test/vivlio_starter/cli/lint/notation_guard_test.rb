@@ -218,7 +218,7 @@ module VivlioStarter
         # コード領域の保全
         # ----------------------------------------------------------------
         def test_should_not_touch_notation_inside_code_fence
-          # 22-extentions.md は ```markdown フェンスの中に showcase の「書き方の例」を含む。
+          # 22-extensions.md は ```markdown フェンスの中に showcase の「書き方の例」を含む。
           source = <<~MD
             書き方は次のとおりです。
 

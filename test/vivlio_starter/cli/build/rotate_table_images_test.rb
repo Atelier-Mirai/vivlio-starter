@@ -24,7 +24,7 @@ module VivlioStarter
   module CLI
     module Build
       class RotateTableImagesTest < Minitest::Test
-        WRAPPER = '<div id="rot-22-extentions-1" class="rotate-table"><table></table></div>'
+        WRAPPER = '<div id="rot-22-extensions-1" class="rotate-table"><table></table></div>'
 
         def teardown
           RotateTableImages.arm!(false)
@@ -34,10 +34,10 @@ module VivlioStarter
 
         def test_should_collect_rotate_ids_from_workspace_html
           Dir.mktmpdir do |dir|
-            File.write(File.join(dir, '22-extentions.html'), "<html><body>#{WRAPPER}</body></html>")
+            File.write(File.join(dir, '22-extensions.html'), "<html><body>#{WRAPPER}</body></html>")
             File.write(File.join(dir, '11-workflow.html'), '<html><body><p>回転テーブルなし</p></body></html>')
 
-            assert_equal %w[rot-22-extentions-1], RotateTableImages.collect_anchor_ids(dir).keys
+            assert_equal %w[rot-22-extensions-1], RotateTableImages.collect_anchor_ids(dir).keys
           end
         end
 
@@ -89,7 +89,7 @@ module VivlioStarter
         def test_should_warn_with_a_concrete_fix_when_the_source_pdf_is_missing
           warnings = []
           Common.stub :log_warn, ->(msg, detail: nil) { warnings << [msg, detail].compact.join("\n") } do
-            RotateTableImages.stub :collect_anchor_ids, { 'rot-22-extentions-1' => 'x.html' } do
+            RotateTableImages.stub :collect_anchor_ids, { 'rot-22-extensions-1' => 'x.html' } do
               assert_equal 0, RotateTableImages.extract!('/nonexistent/_sections.pdf')
             end
           end
@@ -135,8 +135,8 @@ module VivlioStarter
 
             html = File.read(path)
 
-            assert_includes html, '<a href="#rot-22-extentions-1" style="position:absolute"></a>'
-            assert_equal 1, html.scan('id="rot-22-extentions-1"').size, 'id は増やさない（リンクだけ足す）'
+            assert_includes html, '<a href="#rot-22-extensions-1" style="position:absolute"></a>'
+            assert_equal 1, html.scan('id="rot-22-extensions-1"').size, 'id は増やさない（リンクだけ足す）'
           end
         end
 
@@ -153,7 +153,7 @@ module VivlioStarter
 
         def with_staged_html(html)
           Dir.mktmpdir do |dir|
-            path = File.join(dir, '22-extentions.html')
+            path = File.join(dir, '22-extensions.html')
             File.write(path, html)
             with_build_pdf_dir(dir) { yield path }
           end

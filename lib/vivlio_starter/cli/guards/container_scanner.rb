@@ -46,7 +46,7 @@ module VivlioStarter
         end
 
         # HTML コメント（`<!-- … -->`）内かどうかを 1 行ずつ遷移させる。
-        # 会話文記法の TODO（contents/22-extentions.md）が `:::{.talk}` をコメント内に抱えており、
+        # 会話文記法の TODO（contents/22-extensions.md）が `:::{.talk}` をコメント内に抱えており、
         # これを実在の記法として数えると偽陽性になる。
         # @return [Array(Boolean, Boolean)] 次行へ持ち越す状態と、この行を読み飛ばすか
         def comment_state(in_comment, line)

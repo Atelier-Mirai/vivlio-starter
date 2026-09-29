@@ -354,10 +354,10 @@ module VivlioStarter
             </div>
           HTML
 
-          result = TableConverter.convert_container_inner(content, 'rotate-table', source_basename: '22-extentions')
+          result = TableConverter.convert_container_inner(content, 'rotate-table', source_basename: '22-extensions')
 
-          assert_includes result, 'id="rot-22-extentions-1"'
-          assert_includes result, 'id="rot-22-extentions-2"'
+          assert_includes result, 'id="rot-22-extensions-1"'
+          assert_includes result, 'id="rot-22-extensions-2"'
         end
 
         # 内部 ID は「PDF の何ページ目に組まれたか」を引くための目印にすぎないので、
@@ -371,10 +371,10 @@ module VivlioStarter
             </div>
           HTML
 
-          result = TableConverter.convert_container_inner(content, 'rotate-table', source_basename: '22-extentions')
+          result = TableConverter.convert_container_inner(content, 'rotate-table', source_basename: '22-extensions')
 
           assert_includes result, 'id="my-table"'
-          refute_includes result, 'rot-22-extentions'
+          refute_includes result, 'rot-22-extensions'
         end
 
         # long-table は画像化しない（PDF でも回転していない）ので ID も振らない
@@ -387,7 +387,7 @@ module VivlioStarter
             </div>
           HTML
 
-          result = TableConverter.convert_container_inner(content, 'long-table', source_basename: '22-extentions')
+          result = TableConverter.convert_container_inner(content, 'long-table', source_basename: '22-extensions')
 
           refute_includes result, 'rot-'
         end
