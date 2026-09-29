@@ -146,6 +146,33 @@ module VivlioStarter
         assert_match(/@chapref:ch-build/, result[:errors].first)
       end
 
+      # --- 前後の空白（§1.2） ---
+
+      # 鉤括弧で出す参照は、和文と接する側の半角空白を紙面に残さない
+      def test_should_drop_spaces_between_bracketed_reference_and_japanese
+        content = replace("次の章 @ch-new では、@pageref:ch-build と @install を見る。\n")[:content]
+
+        assert_includes content, '次の章<a href="12-new.html#ch-new" class="cross-ref-link">「新規プロジェクトの作成」</a>では'
+        assert_includes content, '「ビルド」</a>と<a href="93-install.html#install"'
+        assert_includes content, '「インストール」</a>を見る'
+      end
+
+      # 英数字と接する側と行頭の空白は残す（語の区切りとして要る）
+      def test_should_keep_spaces_next_to_ascii
+        content = replace("Ruby @ch-build の章\n")[:content]
+
+        assert_includes content, 'Ruby <a href="44-build.html#ch-build"'
+        assert_includes content, '</a>の章'
+      end
+
+      # 図表の参照（「図 11-2 を」）と、置き換えなかった参照は書いたとおりに残す
+      def test_should_keep_spaces_for_figures_and_unresolved_references
+        content = replace("これは @fig-flow を見る。未定義 @ch-zzz です。\n")[:content]
+
+        assert_includes content, 'これは <a href="21-images.html#fig-flow" class="cross-ref-link">図 11-2</a> を見る'
+        assert_includes content, '未定義 @ch-zzz です'
+      end
+
       # --- 同じ段落の二度目（§2.9） ---
 
       def test_should_drop_page_number_on_second_reference_in_same_paragraph

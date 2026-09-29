@@ -741,6 +741,11 @@ module VivlioStarter
           BARE_PAGED_REFERENCE_PATTERN = /@(pageref|chapref)\b(?!:)/
           BARE_EXAMPLES = { 'pageref' => '@pageref:install', 'chapref' => '@chapref:ch-build' }.freeze
 
+          # 前後の半角空白ごと捕まえる形（join_spaces が和文と接する側の空白を取り除く）。
+          # 番号つきの捕獲: PAGED は 1=前の空白 2=種別 3=ID 4=後の空白、REFERENCE は 1=前 2=ID 3=後。
+          PAGED_WITH_SPACES = /([ \t]*)#{PAGED_REFERENCE_PATTERN}([ \t]*)/
+          REFERENCE_WITH_SPACES = /([ \t]*)#{REFERENCE_PATTERN}([ \t]*)/
+
           # 「前の章 @ch-x」のように、隣の章を指す言葉の直後の参照（chapter-reference-spec.md §2.10）
           ADJACENT_CHAPTER_WORD = /(前の章|前章|次の章|次章)\s*\z/
 
@@ -809,16 +814,32 @@ module VivlioStarter
           end
 
           def replace_refs(text, line_num)
-            text = text.gsub(PAGED_REFERENCE_PATTERN) do
+            text = text.gsub(PAGED_WITH_SPACES) do
               match = Regexp.last_match
-              replace_paged(match[1], match[2], match.pre_match, line_num)
+              html = replace_paged(match[2], match[3], match.pre_match, line_num)
+              join_spaces(match, match[1], html, match[4], @labels_map[match[3]])
             end
             text = text.gsub(BARE_PAGED_REFERENCE_PATTERN) { report_bare_paged(Regexp.last_match(1), line_num) }
-            text.gsub(REFERENCE_PATTERN) do
+            text.gsub(REFERENCE_WITH_SPACES) do
               match = Regexp.last_match
-              replace_single_ref(match[1], match.pre_match, line_num)
+              html = replace_single_ref(match[2], match.pre_match, line_num)
+              join_spaces(match, match[1], html, match[3], @labels_map[match[2]])
             end
           end
+
+          # 章題・見出しを鉤括弧で出す参照（:chap・:sec）は、和文と接する側の半角空白を取り除く
+          # （chapter-reference-spec.md §1.2）。原稿は `次の章 @ch-new では` と区切って書くほうが
+          # 読みやすいが、鉤括弧にはもともとアキがあるので、空白が残ると「「新規」 では」と間延びする。
+          # 図表の参照（「図 4-1 を」）と、置き換えなかった参照（未定義など）は書いたとおりに残す。
+          def join_spaces(match, lead, html, trail, label)
+            return "#{lead}#{html}#{trail}" unless html.start_with?('<a') && %i[sec chap].include?(label&.type)
+
+            lead = '' if japanese_char?(match.pre_match[-1])
+            trail = '' if japanese_char?(match.post_match[0])
+            "#{lead}#{html}#{trail}"
+          end
+
+          def japanese_char?(char) = !char.nil? && !char.ascii_only?
 
           # @pageref:id / @chapref:ch-slug → ページ番号つきリンク。ページ番号自体は CSS の
           # target-counter が組版時に注入するため（chapter-common.css の a.pageref::after）、
