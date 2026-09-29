@@ -20,8 +20,14 @@
 # 候補の言語:
 #   同じ章で著者が明示している言語 → 本全体で明示している言語 → 既定の 16 言語の順に絞る
 #   （仕様 §3.4）。Ruby の章の言語名なしのコードは、まず Ruby である。
+#
+# 知らせるかどうか:
+#   Guesslang の確信度が 0.3 以上のとき、または自前の「言語のしるし」（LANGUAGE_HINTS）と
+#   Guesslang の推定が一致したとき（仕様 §8.5）。数行のコードは確信度が上がらないため、
+#   独立した二つの手がかりの一致で補う。
 # ================================================================
 
+require 'json'
 require 'set'
 require_relative '../masking'
 require_relative '../pre_process/math_span_detector'
@@ -66,6 +72,44 @@ module VivlioStarter
         # 行頭が日本語の行（地の文）。コメントは `#`・`//` で始まるので数えられない。
         JAPANESE_LINE = /\A\s*[^\x00-\x7F]/
 
+        # Guesslang の推定をそのまま知らせる確信度。0.3 以上なら、本書と練習帳の実行結果・
+        # 木・盤面に 1 件も言語が付かなかった（仕様 §1.5）。0.1〜0.3 は誤りが多い。
+        MIN_CONFIDENCE = 0.3
+
+        # 言語のしるし。Guesslang の推定がこの言語と一致すれば、確信度が低くても知らせる。
+        #
+        # 数行のコードは、Guesslang の確信度が 0.3 に届かない（`let x = …` や `console.log(x)` は
+        # Kotlin・Swift・Dart にも似た形があり、54 言語に確信度が薄く割り振られる）。
+        # 一方、候補の中の 1 位なら当たっていることが多い。独立した二つの手がかりが一致したときに
+        # 限れば、確信度を問わなくても本書と練習帳の実行結果に言語が付かなかった
+        # （ai_web_starter で知らせる数は 107 → 254。仕様 §8.5）。
+        # しるしは手がかりが 1 言語だけに当たったときに使う。
+        LANGUAGE_HINTS = {
+          'html' => lambda { |body, lines|
+            lines.first.lstrip.start_with?('<') &&
+              body.match?(%r{</[a-zA-Z][\w-]*>|<!DOCTYPE|<(?:link|meta|img|input|br|hr)\b[^>]*>}i)
+          },
+          'css' => lambda { |body, _lines|
+            body.match?(/^[^{}\n]*\{\s*(?:$|[\w-]+\s*:)/) && body.match?(/^\s*[\w-]+\s*:\s*[^;{}]+;/) &&
+              body.count('{') == body.count('}')
+          },
+          'javascript' => lambda { |body, _lines|
+            body.match?(/\b(?:const|let|var)\s+\w+\s*=|\bfunction\s*\w*\s*\(|=>\s*[{(\w]|console\.log|
+                         document\.\w|addEventListener|\$\(["']/x)
+          },
+          'ruby' => lambda { |body, _lines|
+            (body.match?(/^\s*def \w+[^:]*$/) && body.match?(/^\s*end\s*$/)) ||
+              body.match?(/^\s*(?:puts|require|require_relative) /)
+          },
+          'python' => ->(body, _lines) { body.match?(/^\s*def \w+\(.*\):\s*$|^\s*(?:import \w+|from \w+ import )/) },
+          'c' => ->(body, _lines) { body.match?(/#include\s*[<"]|\bint main\s*\(/) },
+          'json' => lambda do |body, _lines|
+            body.lstrip.start_with?('{', '[') && JSON.parse(body)
+          rescue JSON::ParserError
+            false
+          end
+        }.freeze
+
         # 言語名のないフェンス 1 つ。line は開始行の行番号（1 始まり）。
         BareFence = Data.define(:line, :body)
 
@@ -97,9 +141,12 @@ module VivlioStarter
               case classify(fence.body)
               in :skip then next
               in :guess
-                request = CodeLanguageGuesser::Request.new(id: pending.size, body: fence.body,
-                                                           candidates: candidates(chapter.languages, book_languages))
-                pending[request.id] = [path, fence.line, request]
+                # 言語のしるしが示す言語は候補に加える。章の言語が css だけでも、JavaScript の
+                # しるしがあるコードを JavaScript と見分けられるように（一致は二段目の推定で確かめる）
+                hint = language_hint(fence.body)
+                choices = (candidates(chapter.languages, book_languages) | [hint].compact).sort
+                request = CodeLanguageGuesser::Request.new(id: pending.size, body: fence.body, candidates: choices)
+                pending[request.id] = [path, fence.line, request, hint]
               in String => language
                 found[path] << Finding.new(line: fence.line, language:)
               end
@@ -110,8 +157,10 @@ module VivlioStarter
           unguessed = 0
           if pending.any?
             if guesser&.available?
-              guesser.guess(pending.values.map(&:last)).each do |id, guess|
-                path, line, = pending.fetch(id)
+              guesser.guess(pending.values.map { it[2] }).each do |id, guess|
+                path, line, _request, hint = pending.fetch(id)
+                next unless report?(guess, hint)
+
                 found[path] << Finding.new(line:, language: guess.language)
               end
             else
@@ -170,6 +219,22 @@ module VivlioStarter
           return :skip if PreProcessCommands::MathSpanDetector.display_math("```\n#{body}```\n")
 
           :guess
+        end
+
+        # Guesslang の推定を知らせるか。確信度が十分か、言語のしるしと一致したとき。
+        def report?(guess, hint) = guess.confidence >= MIN_CONFIDENCE || guess.language == hint
+
+        # 言語のしるし（LANGUAGE_HINTS）が 1 言語だけに当たれば、その言語。
+        # HTML は <script>・<style> の中身で JavaScript・CSS にも当たるので、HTML を優先する。
+        # @return [String, nil]
+        def language_hint(body)
+          lines = body.lines.map(&:chomp).reject { it.strip.empty? }
+          return nil if lines.empty?
+
+          hits = LANGUAGE_HINTS.select { |_language, rule| rule.call(body, lines) }.keys
+          return 'html' if hits.include?('html')
+
+          hits.one? ? hits.first : nil
         end
 
         # 推定の候補。同じ章 → 本全体 → 既定の順に、空でない最初のものを使う（仕様 §3.4）。

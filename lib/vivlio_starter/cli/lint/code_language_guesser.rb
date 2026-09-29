@@ -30,13 +30,11 @@ module VivlioStarter
         PACKAGE = '@vscode/vscode-languagedetection'
         SCRIPT = File.expand_path('guess_code_language.mjs', __dir__)
 
-        # これより確信度の低い推定は知らせない。0.3 以上なら、本書と練習帳の実行結果・
-        # 木・盤面に 1 件も言語が付かなかった（仕様 §1.5）。0.1〜0.3 は誤りが多い。
-        MIN_CONFIDENCE = 0.3
-
         # Guesslang の言語 ID → Prism の言語名（仕様 §4.3）。ここに無い言語は推定の結果にしない。
+        # xml を html とするのは、HTML コメントで始まる HTML を Guesslang が xml と判定するため。
+        # Prism では xml も html も同じ文法（markup）なので、色分けは変わらない。
         GUESSLANG_TO_PRISM = {
-          'html' => 'html', 'css' => 'css', 'js' => 'javascript', 'ts' => 'typescript',
+          'html' => 'html', 'xml' => 'html', 'css' => 'css', 'js' => 'javascript', 'ts' => 'typescript',
           'rb' => 'ruby', 'py' => 'python', 'c' => 'c', 'cpp' => 'cpp', 'java' => 'java',
           'go' => 'go', 'rs' => 'rust', 'json' => 'json', 'yaml' => 'yaml', 'sql' => 'sql',
           'sh' => 'bash', 'md' => 'markdown'
@@ -52,8 +50,10 @@ module VivlioStarter
         # node と Guesslang の両方が見つかるか
         def available? = node? && !package_dir.nil?
 
+        # 候補の中で確信度がいちばん高い言語を返す。知らせるかどうか（確信度の閾値）は
+        # 呼び出し側（CodeLanguageDetector）が決める。
         # @param requests [Array<Request>]
-        # @return [Hash{Object => Guess}] 確信度が MIN_CONFIDENCE 以上だったものだけ
+        # @return [Hash{Object => Guess}] 候補の言語が 1 つも返らなかった依頼（20 文字未満など）は含まない
         def guess(requests)
           return {} if requests.empty?
 
@@ -62,11 +62,9 @@ module VivlioStarter
           stdout, stderr, status = Open3.capture3('node', SCRIPT, stdin_data: payload)
           raise Error, "Guesslang の実行に失敗しました: #{stderr.lines.last&.strip}" unless status.success?
 
-          JSON.parse(stdout).filter_map do |result|
-            next if result['confidence'] < MIN_CONFIDENCE
-
+          JSON.parse(stdout).to_h do |result|
             [result['id'], Guess.new(language: result['language'], confidence: result['confidence'])]
-          end.to_h
+          end
         end
 
         # Guesslang の置き場所（パッケージのディレクトリ）。見つからなければ nil。

@@ -160,11 +160,36 @@ module VivlioStarter
 
           result = detector.findings(texts, book_languages: Set['ruby', 'css'], guesser:)
 
-          assert_equal [%w[ruby], %w[css ruby]], guesser.requests.map(&:candidates)
+          # 2 章目の `let a = 1` は JavaScript のしるしに当たるので、候補に javascript が加わる
+          assert_equal [%w[ruby], %w[css javascript ruby]], guesser.requests.map(&:candidates)
           assert_equal [[5, 'ruby']], result.findings['contents/11-a.md'].map { [it.line, it.language] }
           assert_equal [[1, 'shell-session'], [5, 'ruby']],
                        result.findings['contents/12-b.md'].map { [it.line, it.language] }
           assert_equal 0, result.unguessed
+        end
+
+        def test_should_report_low_confidence_guesses_only_when_the_hint_agrees
+          texts = { 'contents/11-a.md' => "```\nlet height = 50\nconsole.log(height)\n```\n\n" \
+                                          "```\nx = 1\ny = 2\nz = 3\nw = 4\n```\n" }
+          # 確信度の低い推定（数行のコードでよく起きる）。しるしと一致したほうだけを知らせる
+          low = FakeGuesser.new(language: 'javascript')
+          def low.guess(requests)
+            requests.to_h { [it.id, CodeLanguageGuesser::Guess.new(language: 'javascript', confidence: 0.03)] }
+          end
+
+          result = detector.findings(texts, book_languages: Set.new, guesser: low)
+
+          assert_equal [[1, 'javascript']], result.findings['contents/11-a.md'].map { [it.line, it.language] }
+        end
+
+        def test_should_find_a_single_language_hint
+          assert_equal 'javascript', detector.language_hint("let a = 1\nconsole.log(a)\n")
+          assert_equal 'css', detector.language_hint(".box {\n  color: red;\n}\n")
+          assert_equal 'ruby', detector.language_hint("def hello\n  puts 1\nend\n")
+          assert_equal 'json', detector.language_hint(%({\n  "name": "x"\n}\n))
+          # <script> の中の JavaScript にも当たるが、HTML を優先する
+          assert_equal 'html', detector.language_hint("<script>\n  const a = 1\n</script>\n")
+          assert_nil detector.language_hint("x = 1\ny = 2\n")
         end
 
         def test_should_count_unguessed_fences_when_the_guesser_is_missing
