@@ -39,6 +39,7 @@ require_relative 'lint/tokenizer'
 require_relative 'lint/dict_manager'
 require_relative 'lint/spell_checker'
 require_relative 'lint/prose_checker'
+require_relative 'lint/code_language_detector'
 
 module VivlioStarter
   module CLI
@@ -86,6 +87,7 @@ module VivlioStarter
           lint_info  = { exit: 0, lint_count: 0, fixable_count: 0, fixed_files: [] }
           prose_info = { exit: 0, prose_count: 0, fixed_files: [] }
           spell_info = { exit: 0, spell_count: 0 }
+          code_info  = { exit: 0, code_count: 0, fixed_files: [] }
 
           unless spellcheck_only?
             # 交ぜ書きの置換を先に済ませてから textlint を走らせる。逆順にすると
@@ -97,9 +99,10 @@ module VivlioStarter
             print_prose_report(files, lint_info, prose_info)
           end
           spell_info = run_spellcheck(files) unless textlint_only?
+          code_info  = run_code_language_check(files) unless spellcheck_only? || textlint_only?
 
-          print_combined_summary(lint_info, prose_info, spell_info)
-          [lint_info[:exit], prose_info[:exit], spell_info[:exit]].max
+          print_combined_summary(lint_info, prose_info, spell_info, code_info)
+          [lint_info[:exit], prose_info[:exit], spell_info[:exit], code_info[:exit]].max
         rescue LintError => e
           Common.log_error(e.message)
           1
@@ -243,24 +246,93 @@ module VivlioStarter
 
         def textlint_exit(status) = status.success? ? 0 : (status.exitstatus || 1)
 
+        # 言語名のないコードブロックの言語を推定して知らせる（code-language-detection-spec.md）。
+        # --fix なら推定した言語名を原稿の開始行へ書き込む。
+        # 候補の言語は本全体の明示からも決めるので、検査の対象が一部の章でも全章を読む。
+        def run_code_language_check(files)
+          texts  = files.to_h { [it, File.read(it, encoding: 'UTF-8')] }
+          result = Lint::CodeLanguageDetector.findings(texts, book_languages: book_code_languages(texts),
+                                                              guesser: Lint::CodeLanguageGuesser.new)
+          fixed_files = options[:fix] ? write_code_languages!(texts, result.findings) : []
+          print_code_language_report(result)
+
+          count = options[:fix] ? 0 : result.findings.values.sum(&:size)
+          { exit: count.positive? ? 1 : 0, code_count: count, fixed_files: fixed_files }
+        rescue Lint::CodeLanguageGuesser::Error => e
+          Common.log_warn("[コードブロック] #{e.message}")
+          { exit: 0, code_count: 0, fixed_files: [] }
+        end
+
+        # 本全体（catalog.yml の全章）で明示されている言語。読めなければ検査対象の章だけで決める。
+        # TargetResolver を通さないのは、見つからない章の警告が検査対象の解決と二重に出るため。
+        def book_code_languages(texts)
+          checked = texts.keys.to_set { File.expand_path(it) }
+          others = TokenResolver::Resolver.new.resolve([])
+                                          .select { it.path.start_with?(Common::CONTENTS_DIR) && it.exists? }
+                                          .map(&:path).reject { checked.include?(File.expand_path(it)) }
+          Lint::CodeLanguageDetector.book_languages(texts.values + others.map { File.read(it, encoding: 'UTF-8') })
+        rescue StandardError
+          Lint::CodeLanguageDetector.book_languages(texts.values)
+        end
+
+        # 推定した言語名を原稿へ書き込む
+        # @return [Array<String>] 書き込んだ原稿のパス
+        def write_code_languages!(texts, findings)
+          findings.map do |path, list|
+            atomic_write(path, Lint::CodeLanguageDetector.write_languages(texts[path], list.to_h { [it.line, it.language] }))
+            path
+          end
+        end
+
+        # 章ごとに、推定した言語と開始行を表で出す（スペルチェックと同じ形）
+        def print_code_language_report(result)
+          verb = options[:fix] ? 'を書き込みました' : 'と推定'
+          result.findings.each do |path, list|
+            Common.log_always "📄 #{path}  (コードブロックの言語名)"
+            rows = list.group_by(&:language).map do |language, found|
+              { count: found.size, label: "#{language} #{verb}", lines: found.map(&:line) }
+            end
+            arranged = Lint::FindingRows.arrange(rows, path: path)
+            width = arranged.map { it[:label].length }.max
+            arranged.each do |row|
+              Common.log_always format('  %3d件  %-*s  行: %s', row[:count], width, row[:label], row[:lines])
+            end
+            Common.log_always ''
+          end
+
+          if result.findings.any? && !options[:fix]
+            Common.log_always '💡 コードブロックに言語名を書くと色分けされます（vs lint --fix で書き込めます）'
+            Common.log_always '   色を付けない文字（実行結果・ディレクトリの木など）は ```text と書くと、指摘は出なくなります'
+            Common.log_always ''
+          end
+          return unless result.unguessed.positive?
+
+          Common.log_always "💡 言語名のないコードブロックが #{result.unguessed} 個あります。" \
+                            'vs doctor --fix で Guesslang を入れると、言語を推定して知らせます'
+          Common.log_always ''
+        end
+
         private
 
-        def print_combined_summary(lint_info, prose_info, spell_info)
+        def print_combined_summary(lint_info, prose_info, spell_info, code_info)
           lint_count  = lint_info[:lint_count].to_i + prose_info[:prose_count].to_i
           spell_count = spell_info[:spell_count].to_i
-          fixable     = lint_info[:fixable_count].to_i + prose_info[:fixable_count].to_i
-          total       = lint_count + spell_count
+          code_count  = code_info[:code_count].to_i
+          fixable     = lint_info[:fixable_count].to_i + prose_info[:fixable_count].to_i + code_count
+          total       = lint_count + spell_count + code_count
 
           Common.log_always ''
           Common.log_always '✏️ 文章の品質チェックが完了しました'
           # 修正パスが原稿を直したファイル数。以降のサマリーは「修正後に残った指摘」を指す。
-          # 和集合を取るのは、textlint と交ぜ書きが同じ原稿を直しうるため（二重に数えない）。
-          fixed = (Array(lint_info[:fixed_files]) | Array(prose_info[:fixed_files])).size
+          # 和集合を取るのは、textlint・交ぜ書き・言語名が同じ原稿を直しうるため（二重に数えない）。
+          fixed = (Array(lint_info[:fixed_files]) | Array(prose_info[:fixed_files]) |
+                   Array(code_info[:fixed_files])).size
           Common.log_always "🔧 #{fixed}ファイルへ自動修正を適用しました" if fixed.positive?
           if total.positive?
             Common.log_warn("#{total}箇所に改善提案があります")
             Common.log_always "   - 日本語校正: #{lint_count}箇所" if lint_count.positive?
             Common.log_always "   - スペルチェック: #{spell_count}箇所" if spell_count.positive?
+            Common.log_always "   - コードブロックの言語名: #{code_count}箇所" if code_count.positive?
             if fixable.positive? && !options[:fix]
               Common.log_always "💡 そのうち#{fixable}箇所は自動修正可能です。"
               Common.log_always '   vs lint --fix'

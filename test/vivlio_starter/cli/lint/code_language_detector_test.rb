@@ -1,0 +1,208 @@
+# frozen_string_literal: true
+
+require 'minitest/autorun'
+require 'set'
+require_relative '../../../../lib/vivlio_starter/cli/lint/code_language_detector'
+
+module VivlioStarter
+  module CLI
+    module Lint
+      # 言語名のないコードブロックの言語推定（code-language-detection-spec.md）の一段目と、
+      # 二段目への依頼のまとめ方。二段目は差し替えて Node なしで走らせる。
+      class CodeLanguageDetectorTest < Minitest::Test
+        # 依頼を記録し、決めた言語を返す推定器
+        class FakeGuesser
+          attr_reader :requests
+
+          def initialize(language: 'javascript', available: true)
+            @language = language
+            @available = available
+            @requests = []
+          end
+
+          def available? = @available
+
+          def guess(requests)
+            @requests.concat(requests)
+            requests.to_h { [it.id, CodeLanguageGuesser::Guess.new(language: @language, confidence: 0.9)] }
+          end
+        end
+
+        def detector = CodeLanguageDetector
+
+        # --- 走査 ------------------------------------------------------------
+
+        def test_should_collect_bare_fences_and_explicit_languages
+          text = <<~MD
+            # 章
+
+            ```ruby:hello.rb
+            puts 1
+            ```
+
+            ```
+            let a = 1
+            ```
+
+            ~~~js {.small}
+            let b = 2
+            ~~~
+
+            ```text
+            出力
+            ```
+          MD
+
+          scan = detector.scan(text)
+
+          assert_equal [7], scan.bare_fences.map(&:line)
+          assert_equal "let a = 1\n", scan.bare_fences.first.body
+          assert_equal Set['ruby', 'javascript'], scan.languages
+        end
+
+        def test_should_skip_fences_inside_output_terminal_and_diagram_boxes
+          text = <<~MD
+            :::{.output}
+            ```
+            let a = 1
+            ```
+            :::
+
+            :::{.diagram}
+            ```
+            +---+
+            ```
+            :::
+
+            ```
+            let b = 2
+            ```
+          MD
+
+          assert_equal [13], detector.scan(text).bare_fences.map(&:line)
+        end
+
+        def test_should_ignore_fences_nested_in_a_markdown_example
+          text = <<~MD
+            ````markdown
+            ```
+            let a = 1
+            ```
+            ````
+          MD
+
+          scan = detector.scan(text)
+
+          assert_empty scan.bare_fences
+          assert_equal Set['markdown'], scan.languages
+        end
+
+        # --- 一段目の分け方 ------------------------------------------------------
+
+        def test_should_send_plain_code_to_the_second_stage
+          assert_equal :guess, detector.classify("const a = 1\nconsole.log(a)\n")
+          assert_equal :guess, detector.classify("# コメントは日本語でもよい\nputs 1\n")
+        end
+
+        def test_should_mark_terminal_transcripts_as_shell_session
+          body = "$ vs pdf:read three-elements\n[pdf:read] PDF からテキストを抽出します\n"
+
+          assert_equal 'shell-session', detector.classify(body)
+          assert_equal 'shell-session', detector.classify("% ls -la\n")
+        end
+
+        def test_should_skip_trees_logs_boards_and_compiler_output
+          not_code = {
+            'ディレクトリの木' => "mybook/\n  contents/   ← 原稿\n",
+            '木の罫線' => "lib/\n  └─ cli.rb\n",
+            'ログの絵文字' => "🔴 05-references.md:123 - 雛形ファイルが見つかりません\n",
+            'ログの接頭辞' => "[Step 11] PDF ブックマークを付与します…\n",
+            '見出しの括弧' => "【最短経路】\n  #S**#\n",
+            'コンパイラの出力' => "error[E0382]: borrow of moved value: `s1`\n",
+            '入れ子のフェンス' => "**タイトル**\n\n```ruby\nputs 1\n```\n"
+          }
+
+          not_code.each { |name, body| assert_equal :skip, detector.classify(body), name }
+        end
+
+        def test_should_skip_prose_and_display_math
+          prose = "このサイトのようなカード型のレイアウトを作りたいです。\n同じ見た目を CSS Grid で作れますか？\n"
+
+          assert_equal :skip, detector.classify(prose)
+          assert_equal :skip, detector.classify("E = mc²\n")
+          assert_equal :skip, detector.classify("\n  \n")
+        end
+
+        # --- 候補の言語 --------------------------------------------------------
+
+        def test_should_prefer_chapter_then_book_then_default_candidates
+          assert_equal %w[ruby yaml], detector.candidates(Set['yaml', 'ruby'], Set['css'])
+          assert_equal %w[css], detector.candidates(Set.new, Set['css'])
+          assert_equal CodeLanguageDetector::SUPPORTED_LANGUAGES.sort, detector.candidates(Set.new, Set.new)
+        end
+
+        def test_should_normalize_aliases_and_drop_unsupported_languages
+          assert_equal 'javascript', detector.normalize_language('js')
+          assert_equal 'bash', detector.normalize_language('zsh:setup.sh')
+          assert_equal 'ruby', detector.normalize_language('ruby:foo.rb#L5')
+          assert_nil detector.normalize_language('text')
+          assert_nil detector.normalize_language('mermaid')
+        end
+
+        # --- 結果のまとめ方 ------------------------------------------------------
+
+        def test_should_batch_requests_with_chapter_candidates_and_map_results_back
+          texts = {
+            'contents/11-a.md' => "```ruby\nputs 1\n```\n\n```\nputs 2\nputs 3\n```\n",
+            'contents/12-b.md' => "```\n$ vs build\n```\n\n```\nlet a = 1\n```\n"
+          }
+          guesser = FakeGuesser.new(language: 'ruby')
+
+          result = detector.findings(texts, book_languages: Set['ruby', 'css'], guesser:)
+
+          assert_equal [%w[ruby], %w[css ruby]], guesser.requests.map(&:candidates)
+          assert_equal [[5, 'ruby']], result.findings['contents/11-a.md'].map { [it.line, it.language] }
+          assert_equal [[1, 'shell-session'], [5, 'ruby']],
+                       result.findings['contents/12-b.md'].map { [it.line, it.language] }
+          assert_equal 0, result.unguessed
+        end
+
+        def test_should_count_unguessed_fences_when_the_guesser_is_missing
+          texts = { 'contents/11-a.md' => "```\nlet a = 1\n```\n\n```\n$ vs build\n```\n" }
+
+          result = detector.findings(texts, book_languages: Set.new, guesser: FakeGuesser.new(available: false))
+
+          assert_equal 1, result.unguessed
+          # 端末の記録は推定器が無くても言語名が決まる
+          assert_equal ['shell-session'], result.findings['contents/11-a.md'].map(&:language)
+        end
+
+        def test_should_not_call_the_guesser_when_nothing_needs_guessing
+          guesser = FakeGuesser.new
+          texts = { 'contents/11-a.md' => "```\nmybook/\n  contents/  ← 原稿\n```\n" }
+
+          result = detector.findings(texts, book_languages: Set.new, guesser:)
+
+          assert_empty guesser.requests
+          assert_empty result.findings
+        end
+
+        # --- 書き込み（--fix） ---------------------------------------------------
+
+        def test_should_write_languages_only_into_bare_opening_lines
+          text = "```\nlet a = 1\n```\n\n  ~~~~\nputs 1\n  ~~~~\n\n```ruby\nputs 2\n```\n"
+
+          result = detector.write_languages(text, { 1 => 'javascript', 5 => 'ruby', 9 => 'css' })
+
+          assert_equal "```javascript\nlet a = 1\n```\n\n  ~~~~ruby\nputs 1\n  ~~~~\n\n```ruby\nputs 2\n```\n", result
+        end
+
+        def test_should_count_explicit_languages_across_the_book
+          texts = ["```ruby\nputs 1\n```\n", "```yml\na: 1\n```\n", "```text\nx\n```\n"]
+
+          assert_equal Set['ruby', 'yaml'], detector.book_languages(texts)
+        end
+      end
+    end
+  end
+end

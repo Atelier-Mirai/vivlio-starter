@@ -92,6 +92,76 @@ module VivlioStarter
         assert_equal "楕円について、Ractor はスレッドと同様に共有しない。\n", File.read(path)
       end
 
+      # 言語名のないコードブロックの言語推定（code-language-detection-spec.md）。
+      # 推定器（Guesslang）は差し替えて Node なしで走らせる。
+      class FakeCodeGuesser
+        def available? = true
+
+        def guess(requests)
+          requests.to_h { [it.id, Lint::CodeLanguageGuesser::Guess.new(language: 'ruby', confidence: 0.9)] }
+        end
+      end
+
+      def test_code_language_findings_are_reported_then_written_with_fix
+        path = 'contents/11-install.md'
+        File.write(path, "```\nputs 1\nputs 2\n```\n")
+        fake_status = Struct.new(:success?).new(true)
+        def fake_status.exitstatus = 0
+
+        stdout = status = nil
+        with_stubbed_textlint_available do
+          Open3.stub(:capture3, ->(*_args) { ['[]', '', fake_status] }) do
+            Lint::CodeLanguageGuesser.stub(:new, FakeCodeGuesser.new) do
+              stdout, = capture_io { status = LintCommands.execute_lint(['11-install'], {}) }
+              capture_io { LintCommands.execute_lint(['11-install'], { fix: true }) }
+            end
+          end
+        end
+
+        assert_match(%r{📄 contents/11-install\.md  \(コードブロックの言語名\)}, stdout)
+        assert_match(/1件  ruby と推定  行: /, stdout)
+        assert_match(/コードブロックの言語名: 1箇所/, stdout)
+        assert_equal 1, status
+        assert_equal "```ruby\nputs 1\nputs 2\n```\n", File.read(path)
+      end
+
+      def test_code_language_check_points_to_doctor_when_guesslang_is_missing
+        File.write('contents/11-install.md', "```\nputs 1\nputs 2\n```\n")
+        fake_status = Struct.new(:success?).new(true)
+        def fake_status.exitstatus = 0
+        missing = Object.new
+        def missing.available? = false
+
+        stdout = nil
+        with_stubbed_textlint_available do
+          Open3.stub(:capture3, ->(*_args) { ['[]', '', fake_status] }) do
+            Lint::CodeLanguageGuesser.stub(:new, missing) do
+              stdout, = capture_io { LintCommands.execute_lint(['11-install'], {}) }
+            end
+          end
+        end
+
+        assert_match(/言語名のないコードブロックが 1 個あります。vs doctor --fix で Guesslang を入れると/, stdout)
+        refute_match(/コードブロックの言語名: /, stdout, '推定していないものは指摘に数えない')
+      end
+
+      def test_code_language_check_is_skipped_with_textlint_only
+        File.write('contents/11-install.md', "```\nputs 1\nputs 2\n```\n")
+        fake_status = Struct.new(:success?).new(true)
+        def fake_status.exitstatus = 0
+
+        stdout = nil
+        with_stubbed_textlint_available do
+          Open3.stub(:capture3, ->(*_args) { ['[]', '', fake_status] }) do
+            Lint::CodeLanguageGuesser.stub(:new, FakeCodeGuesser.new) do
+              stdout, = capture_io { LintCommands.execute_lint(['11-install'], { textlint_only: true }) }
+            end
+          end
+        end
+
+        refute_match(/コードブロックの言語名/, stdout)
+      end
+
       # 検査の実装が textlint と独自ルールに分かれているのは都合であって、著者から見れば
       # 同じ「日本語校正」。1 ファイル 1 ブロックにまとめ、件数順に混ぜて並べる
       # （分けて出すと同じ原稿の見出しが 2 度現れ、どちらを先に直すのか読み取れない）

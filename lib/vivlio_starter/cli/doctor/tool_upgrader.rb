@@ -90,6 +90,7 @@ module VivlioStarter
           Tool.new(label: 'textlint 一式', kind: :npm, package: :textlint_set, checks: %w[textlint]),
           Tool.new(label: 'mathjax-full', kind: :npm, package: 'mathjax-full', checks: %w[mathjax]),
           Tool.new(label: 'mermaid-cli', kind: :npm, package: '@mermaid-js/mermaid-cli', checks: %w[mermaid]),
+          Tool.new(label: 'Guesslang', kind: :npm, package: '@vscode/vscode-languagedetection', checks: %w[guesslang]),
           Tool.new(label: 'qpdf', kind: :brew, package: 'qpdf', checks: %w[qpdf]),
           Tool.new(label: 'poppler', kind: :brew, package: 'poppler', checks: %w[pdfinfo pdftoppm pdftotext]),
           Tool.new(label: 'ghostscript', kind: :brew, package: 'ghostscript', checks: %w[gs]),

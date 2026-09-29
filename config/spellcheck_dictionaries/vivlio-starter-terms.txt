@@ -88,6 +88,7 @@ mathjax-full
 rasterize
 mermaid-cli
 mmdc
+Guesslang
 
 # mermaid の図の種別
 sequenceDiagram

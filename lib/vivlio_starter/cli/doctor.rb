@@ -59,6 +59,7 @@ require 'json'
 require_relative 'guards'
 require_relative 'doctor/config_salvager'
 require_relative 'doctor/tool_upgrader'
+require_relative 'lint/code_language_guesser'
 
 module VivlioStarter
   module CLI
@@ -199,9 +200,10 @@ module VivlioStarter
           'tesseract-lang' => nil,
           'waifu2x' => nil,
           'mecab' => 'mecab', # 索引の読み自動推測・交ぜ書き検出の第 2 層
-          'rouge' => nil, # コードブロック言語推定用
+          'rouge' => nil, # vs import の言語推定用
           'mathjax' => nil, # 数式の SVG 化用（mathjax-full・npm パッケージ）
           'mermaid' => nil, # ```mermaid の図化用（@mermaid-js/mermaid-cli・mmdc）
+          'guesslang' => nil, # vs lint のコードブロックの言語推定用（@vscode/vscode-languagedetection）
           # EPUB 扉絵/節絵・図解注釈（showcase）の合成画像ラスタライズ用（librsvg）
           'rsvg-convert' => 'rsvg-convert'
         }
@@ -221,6 +223,8 @@ module VivlioStarter
                  rouge_gem_available?
                when 'mathjax'
                  mathjax_full_available?
+               when 'guesslang'
+                 guesslang_available?
                when 'mermaid'
                  mmdc_available?
                else
@@ -412,9 +416,9 @@ module VivlioStarter
           # Inkscape（任意・カバー SVG フォールバック用）。半壊 cask も復旧できるよう force 対応。
           install_inkscape_macos! if missing.include?('inkscape')
 
-          # Rouge（コードブロック言語推定用）
+          # Rouge（vs import の言語推定用）
           if missing.include?('rouge')
-            Common.log_always('Rouge（コードブロック言語推定用）をインストールします…')
+            Common.log_always('Rouge（vs import の言語推定用）をインストールします…')
             system('gem install rouge')
           end
 
@@ -435,6 +439,17 @@ module VivlioStarter
               system('npm install --loglevel=error -g @mermaid-js/mermaid-cli')
             else
               Common.log_always('npm が見つかりません。node のインストール後に `npm install -g @mermaid-js/mermaid-cli` を実行してください。')
+            end
+          end
+
+          # Guesslang（vs lint のコードブロックの言語推定用・npm パッケージ）
+          if missing.include?('guesslang')
+            if system('which npm >/dev/null 2>&1')
+              Common.log_always('コードブロックの言語推定用 Guesslang（@vscode/vscode-languagedetection）をインストールします…')
+              system("npm install --loglevel=error -g #{Lint::CodeLanguageGuesser::PACKAGE}")
+            else
+              Common.log_always('npm が見つかりません。node のインストール後に ' \
+                                "`npm install -g #{Lint::CodeLanguageGuesser::PACKAGE}` を実行してください。")
             end
           end
 
@@ -499,6 +514,8 @@ module VivlioStarter
                  rouge_gem_available?
                when 'mathjax'
                  mathjax_full_available?
+               when 'guesslang'
+                 guesslang_available?
                when 'mermaid'
                  mmdc_available?
                else
@@ -999,9 +1016,10 @@ module VivlioStarter
           'waifu2x' => 'waifu2x-ncnn-vulkan',
           'ssl-certificates' => 'Google Fonts 用 SSL 証明書',
           'mecab' => 'MeCab (索引の読み推測・交ぜ書き検出用)',
-          'rouge' => 'Rouge (コードブロック言語推定用)',
+          'rouge' => 'Rouge (vs import の言語推定用)',
           'mathjax' => '数式SVG化 (mathjax-full)',
           'mermaid' => 'mermaid 図化 (mmdc・@mermaid-js/mermaid-cli)',
+          'guesslang' => 'Guesslang (vs lint のコードブロックの言語推定・@vscode/vscode-languagedetection)',
           'kindlepreviewer' => 'Kindle Previewer (kindlepreviewer・targets: kindle 用)'
         }
         keys.uniq.map { |key| label_map[key] || key }
@@ -1229,6 +1247,11 @@ module VivlioStarter
       rescue StandardError
         false
       end
+
+      # Guesslang（vs lint のコードブロックの言語推定用）が使えるか。
+      # 探す場所は vs lint と同じ（プロジェクトの node_modules → npm のグローバル）。
+      # 未導入時は、言語名のないコードブロックの言語推定だけが飛ばされる（lint は止まらない）。
+      def guesslang_available? = Lint::CodeLanguageGuesser.new.available?
 
       # mmdc（@mermaid-js/mermaid-cli）が解決でき起動できるか。
       # ```mermaid の図化は前処理で mmdc を呼ぶため、node の存在に加え mmdc 本体を見る。
