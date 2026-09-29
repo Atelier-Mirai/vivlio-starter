@@ -35,8 +35,19 @@ module VivlioStarter
       # EPUB用サイズ
       EPUB_SIZE = { width: 1600, height: 2560 }.freeze
 
-      # 標準テーマかどうかを判定
-      STANDARD_THEMES = %w[light dark].freeze
+      # 表紙の元を SVG で作るテーマか（改善案.md #65）。
+      #
+      # `covers/frontcover_<テーマ>.png` があるテーマは PNG の処理（入稿用は PDF/X-1a、塗り足しの
+      # `_bleed.png` と `cover_bleed` を扱う）へ回す。無ければ SVG の処理（CreateCommands.execute_cover）
+      # へ回し、著者の `frontcover_<テーマ>.svg`、それも無ければ同梱テンプレートから作る。
+      # 以前は light / dark だけを SVG の処理へ回していたので、`cover: floral` と書いて SVG を
+      # 置いても master 用の処理に入り、`frontcover_master.png` が無いと止まっていた。
+      # master は PNG だけを使うテーマ。
+      def self.svg_source?(theme)
+        return false if theme == 'master'
+
+        !File.exist?(File.join(Common.covers_dir, "frontcover_#{theme}.png"))
+      end
 
       # ================================================================
       # ビルドパイプライン用統合エントリポイント
@@ -44,8 +55,8 @@ module VivlioStarter
 
       # テーマに応じたカバーファイルを確実に生成する
       #
-      # - light/dark: SVGテンプレートから生成し PDF/JPG に変換
-      # - master/カスタム: 既存PNGから PDF/JPG に変換
+      # - PNG の無いテーマ（light/dark・SVG を置いた独自テーマ）: SVG から生成し PDF/JPG に変換
+      # - PNG を置いたテーマ（master・独自テーマ）: PNG から PDF/JPG に変換（svg_source? を参照）
       #
       # @return [void]
       def self.ensure_cover_files_for_build!
@@ -53,7 +64,7 @@ module VivlioStarter
         return unless theme
         return unless Common.validate_cover_settings
 
-        if STANDARD_THEMES.include?(theme)
+        if svg_source?(theme)
           require_relative 'create' unless defined?(CreateCommands)
           CreateCommands.execute_cover({})
         else
@@ -85,14 +96,14 @@ module VivlioStarter
           return
         end
 
-        # light/dark テーマ: SVGテンプレートから一括生成
-        if STANDARD_THEMES.include?(theme)
+        # PNG の無いテーマ: 著者の SVG か同梱テンプレートから一括生成
+        if svg_source?(theme)
           require_relative 'create' unless defined?(CreateCommands)
           CreateCommands.execute_cover({})
           return
         end
 
-        # master/カスタム テーマ: PNGから生成
+        # PNG を置いたテーマ（master と独自テーマ）: PNGから生成
         covers_dir = Common.covers_dir
         page_cfg = config.page
         page_use = page_cfg[:use] || page_cfg[:preset] || page_cfg[:preset_name] || page_cfg[:size] || 'b5_standard'
@@ -100,7 +111,7 @@ module VivlioStarter
         page_size = CoverCommands.detect_page_size(page_use)
         Common.log_info "ページサイズ: #{page_size.upcase} (#{page_use})"
 
-        unless CoverCommands.check_master_files(covers_dir)
+        unless CoverCommands.check_master_files(covers_dir, theme)
           Common.log_error 'マスターファイルが見つかりません。処理を中断します。'
           return
         end
@@ -130,18 +141,18 @@ module VivlioStarter
         config = Common::CONFIG
         theme = config.output.cover || 'master'
 
-        # light/dark テーマ: SVGテンプレートから生成
-        if STANDARD_THEMES.include?(theme)
+        # PNG の無いテーマ: 著者の SVG か同梱テンプレートから生成
+        if svg_source?(theme)
           require_relative 'create' unless defined?(CreateCommands)
           CreateCommands.execute_cover({})
           return
         end
 
-        # master/カスタム テーマ: PNGから生成
+        # PNG を置いたテーマ（master と独自テーマ）: PNGから生成
         covers_dir = Common.covers_dir
         targets = target_list(config)
 
-        unless CoverCommands.check_master_files(covers_dir)
+        unless CoverCommands.check_master_files(covers_dir, theme)
           Common.log_error 'マスターファイルが見つかりません'
           return
         end
@@ -166,15 +177,15 @@ module VivlioStarter
           return
         end
 
-        # light/dark テーマ: SVGテンプレートから生成（SVG→JPG変換含む）
-        if STANDARD_THEMES.include?(theme)
+        # PNG の無いテーマ: 著者の SVG か同梱テンプレートから生成（SVG→JPG変換含む）
+        if svg_source?(theme)
           require_relative 'create' unless defined?(CreateCommands)
           CreateCommands.execute_cover({})
           Common.log_success '✅ EPUB用JPEGの生成が完了しました'
           return
         end
 
-        # master/カスタム テーマ: PNGから生成
+        # PNG を置いたテーマ（master と独自テーマ）: PNGから生成
         covers_dir = Common.covers_dir
         input_file = CoverCommands.resolve_epub_cover_input(covers_dir, theme)
         unless input_file
@@ -239,10 +250,10 @@ module VivlioStarter
         end
       end
 
-      # マスターファイルの存在確認
-      def self.check_master_files(covers_dir)
-        frontcover = File.join(covers_dir, FRONTCOVER_MASTER)
-        backcover = File.join(covers_dir, BACKCOVER_MASTER)
+      # 表紙の元の PNG（master または独自テーマ）の存在確認
+      def self.check_master_files(covers_dir, theme = 'master')
+        frontcover = File.join(covers_dir, "frontcover_#{theme}.png")
+        backcover = File.join(covers_dir, "backcover_#{theme}.png")
 
         front_exists = File.exist?(frontcover)
         back_exists = File.exist?(backcover)

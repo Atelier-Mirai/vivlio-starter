@@ -279,7 +279,10 @@ module VivlioStarter
 
         # 3. covers/bundled/<side>cover.svg
         bundled_path = bundled_template_path("#{side}cover")
-        return { type: :bundled_svg, path: bundled_path } if File.exist?(bundled_path)
+        if File.exist?(bundled_path)
+          warn_custom_theme_fallback(side, theme, png_path, user_svg_path)
+          return { type: :bundled_svg, path: bundled_path }
+        end
 
         # ソースが一切見つからない場合
         Common.log_error(<<~MSG)
@@ -290,6 +293,18 @@ module VivlioStarter
               #{bundled_path}
         MSG
         { type: :missing, path: nil }
+      end
+
+      # 独自テーマ（light / dark 以外）の画像が無くて同梱テンプレートで作ったことを知らせる（改善案.md #65）。
+      # 黙って同梱のデザインで作ると、`cover: floral` の書き誤りやファイル名の食い違いに気づけない。
+      def warn_custom_theme_fallback(side, theme, png_path, user_svg_path)
+        return if %w[light dark].include?(theme)
+
+        Common.log_warn(
+          "#{side}cover_#{theme} の画像が見つからないため、同梱のテンプレート（light）で作りました",
+          detail: "探した場所: #{png_path}\n          #{user_svg_path}\n" \
+                  "→ book.yml の output.cover のテーマ名と、covers/ に置いたファイル名が合っているか確かめてください"
+        )
       end
 
       # gem同梱テンプレートのパスを返す

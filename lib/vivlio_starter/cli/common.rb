@@ -1079,16 +1079,17 @@ module VivlioStarter
           return false
         end
 
-        # カスタムテーマの場合はPNGファイルの存在を確認
-        front_path = File.join(covers_dir, "frontcover_#{theme}.png")
-        back_path  = File.join(covers_dir, "backcover_#{theme}.png")
-
-        unless File.exist?(front_path) && File.exist?(back_path)
-          log_error("カスタム画像 '#{theme}' のPNGファイルが見つかりません")
-          return false
+        # カスタムテーマは、表・裏それぞれに PNG か SVG があればよい（改善案.md #65）。
+        # 絵を PNG で描くのが苦手な著者が、SVG を編集して独自の表紙を作れるようにするため。
+        missing = %w[front back].reject do |side|
+          %w[png svg].any? { File.exist?(File.join(covers_dir, "#{side}cover_#{theme}.#{it}")) }
         end
+        return true if missing.empty?
 
-        true
+        log_error("カスタム画像 '#{theme}' のPNGファイルもSVGファイルも見つかりません",
+                  detail: missing.map { "covers/#{it}cover_#{theme}.png または .svg" }.join("\n") +
+                          "\n→ book.yml の output.cover のテーマ名と、covers/ に置いたファイル名が合っているか確かめてください")
+        false
       end
 
       # 廃止キー検出の内部実装。外から呼ぶと「記述の有無」を著者の意図の代理に

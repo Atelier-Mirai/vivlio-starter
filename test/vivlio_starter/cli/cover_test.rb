@@ -403,6 +403,29 @@ module VivlioStarter
         assert result, 'PNGファイルが存在するカスタムテーマは有効であるべきです'
       end
 
+      # カバー設定バリデーション：カスタムテーマは SVG だけでも有効（改善案.md #65）
+      def test_should_validate_custom_theme_with_svg_files
+        setup_basic_config('floral')
+        File.write('covers/frontcover_floral.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>')
+        File.write('covers/backcover_floral.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>')
+        Common.reload_configuration!
+
+        assert Common.validate_cover_settings, 'SVG を置いたカスタムテーマは有効であるべきです'
+      end
+
+      # 表紙の元を SVG で作るかは PNG の有無で決まる。master は常に PNG（改善案.md #65）
+      def test_should_route_theme_to_svg_only_without_png
+        setup_basic_config('floral')
+        File.write('covers/frontcover_floral.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>')
+
+        assert CoverCommands.svg_source?('floral')
+        assert CoverCommands.svg_source?('dark')
+        refute CoverCommands.svg_source?('master')
+
+        create_custom_theme_files('floral')
+        refute CoverCommands.svg_source?('floral'), 'PNG があれば PNG の処理（PDF/X-1a・塗り足し）へ回す'
+      end
+
       # カバー設定バリデーション：カスタムテーマ（PNGファイルなし）が無効であることを確認
       def test_should_fail_validation_for_custom_theme_without_png_files
         setup_basic_config('my_custom')

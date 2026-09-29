@@ -32,12 +32,16 @@ output:
 |:---:|:---|:---|
 | 1 | `covers/frontcover_<テーマ名>.png` | 著者が用意した PNG |
 | 2 | `covers/frontcover_<テーマ名>.svg` | 著者が用意した SVG |
-| 3 | `covers/bundled/frontcover.svg` | 同梱のテンプレート SVG |
+| 3 | `covers/bundled/frontcover.svg` | 同梱のテンプレート SVG（`light` / `dark` のみ） |
 
 たとえば `cover: dark` なら、次の順に探します。
 1. `covers/frontcover_dark.png` があればそれを使用
 2. なければ `covers/frontcover_dark.svg` を使用
 3. どちらもなければ `covers/bundled/frontcover.svg` に dark パレットを適用して使用
+
+`floral` のような独自のテーマ名で PNG も SVG も見つからないときは、同梱のテンプレートには切り替えず、ビルドが 🔴 で知らせます。テーマ名やファイル名の書き誤りに気づけるようにするためです。
+
+PNG と SVG では、印刷所へ渡す入稿用の表紙の作り方が異なります。PNG は、塗り足しまで描いた `_bleed` 付きの画像や `cover_bleed` の設定（後述）が使えます。SVG は、仕上がりの大きさで描いた絵に、トンボを付けて書き出します。
 
 ### light / dark テーマ
 
@@ -237,11 +241,21 @@ ImageMagick や Ghostscript などのツールがない・動かないときは�
 ```
 :::
 
-**原因**: マスター画像が指定された場所に存在しない。
+独自のテーマ名で PNG も SVG も見つからないときは、次のように表示されます。
+
+:::{.output}
+```text
+🔴 カスタム画像 'floral' のPNGファイルもSVGファイルも見つかりません
+        covers/frontcover_floral.png または .svg
+        covers/backcover_floral.png または .svg
+```
+:::
+
+**原因**: 表紙の画像が指定された場所に存在しない。
 
 **解決方法**:
 1. `covers/` ディレクトリが存在するか確認
-2. ファイル名が `frontcover_master.png` および `backcover_master.png` になっているか確認
+2. ファイル名が `frontcover_<テーマ名>` と `backcover_<テーマ名>` に拡張子（`.png` か `.svg`）を付けた名前になっているか確認（`master` なら `frontcover_master.png` と `backcover_master.png`）
 3. `book.yml` の `output.cover` に書いたテーマ名と、置いた画像の名前が合っているか確認
 
 ### CMYK変換で色が変わる
