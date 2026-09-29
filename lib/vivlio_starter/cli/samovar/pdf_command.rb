@@ -66,8 +66,11 @@ module VivlioStarter
             Usage: vs pdf:compress [INPUT] [OUTPUT]
 
             引数:
-              INPUT   入力PDFファイル（省略時: output/book.pdf）
-              OUTPUT  出力PDFファイル（省略時: output/book_compressed.pdf）
+              INPUT   入力PDFファイル（拡張子 .pdf は省略可）
+                      省略時: 書籍全体の閲覧用 PDF（例: mybook_v1.0.0.pdf。
+                      book.yml の project.name と project.version から決まる）
+              OUTPUT  出力PDFファイル（省略時: 入力名に _compressed を付けたもの。
+                      例: mybook_v1.0.0_compressed.pdf）
 
             例:
               vs pdf:compress                           # デフォルトファイルを圧縮
