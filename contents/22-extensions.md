@@ -537,7 +537,7 @@ Kindle（KFX）は吹き出しのレイアウトを描けないため、**どの
 | `css` | CSS |
 | `sql` | SQL |
 | `yaml` | YAML |
-| `bash`, `sh` | シェルスクリプト |
+| `bash`, `sh`, `zsh` | シェルスクリプト |
 | `json` | JSON |
 | `c`, `cpp` | C / C++ |
 | `java` | Java |

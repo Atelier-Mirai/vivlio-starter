@@ -1027,6 +1027,65 @@ module VivlioStarter
         end
 
         # =================================================================
+        # normalize_code_languages
+        # -----------------------------------------------------------------
+        # Prism に定義の無い zsh と、bash の別名に入っていない sh を bash へ読み替える。
+        # =================================================================
+
+        def test_should_read_zsh_and_sh_as_bash
+          md = <<~MD
+            ```zsh
+            vs build
+            ```
+
+            ```sh
+            ls -la
+            ```
+
+            ~~~ZSH
+            echo hi
+            ~~~
+          MD
+
+          result = MarkdownTransformer.normalize_code_languages(md)
+
+          assert_equal 3, result.scan(/^(?:```|~~~)bash$/).size
+          refute_match(/zsh|```sh/i, result)
+          assert_includes result, "vs build\n"
+        end
+
+        def test_should_keep_filename_and_attributes_when_reading_as_bash
+          md = "```zsh:setup.sh\nbrew install qpdf\n```\n\n```sh {.small}\nls\n```\n"
+
+          result = MarkdownTransformer.normalize_code_languages(md)
+
+          assert_includes result, "```bash:setup.sh\n"
+          assert_includes result, "```bash {.small}\n"
+        end
+
+        def test_should_not_rewrite_other_languages_or_nested_examples
+          md = <<~MD
+            ```shell-session
+            $ vs build
+            ```
+
+            ```shell
+            ls
+            ```
+
+            ````markdown
+            ```zsh
+            vs build
+            ```
+            ````
+          MD
+
+          result = MarkdownTransformer.normalize_code_languages(md)
+
+          assert_equal md, result
+        end
+
+        # =================================================================
         # convert_terminal_blocks
         # -----------------------------------------------------------------
         # :::{.terminal} は「端末の逐語転写」であり、中身は Markdown ではない。

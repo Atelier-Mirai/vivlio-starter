@@ -113,6 +113,7 @@ module VivlioStarter
           transform_mermaid!
           transform_talk!
           process_code_includes!
+          normalize_code_languages!
           detect_plain_math!
           transform_math!
           normalize_html_block_boundaries!
@@ -367,6 +368,11 @@ module VivlioStarter
             context.content, source_filename: context.filename, source_path: context.source_path
           )
           Common.log_success('ソースコード読み込み処理が完了しました')
+        end
+
+        # Prism が色分けできない言語名（zsh・sh）を bash へ読み替える。
+        def normalize_code_languages!
+          context.content = MarkdownTransformer.normalize_code_languages(context.content)
         end
 
         # バッククォートで書かれた数式を `$…$` / `$$…$$` へ起こす

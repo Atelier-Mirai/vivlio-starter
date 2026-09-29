@@ -76,6 +76,26 @@ module VivlioStarter
         end
 
         # =================================================================
+        # コードブロックの言語名の読み替え
+        # =================================================================
+
+        # Prism（VFM が使う refractor）に定義が無く、そのままでは色分けされない言語名と、
+        # 読み替え先。`zsh` は Prism に言語定義が無く、`sh` は `bash` の別名に入っていない
+        # （別名は `shell` だけ）。どちらも著者が普通に書く名前なので、bash として色を付ける。
+        LANGUAGE_ALIASES = { 'zsh' => 'bash', 'sh' => 'bash' }.freeze
+
+        # フェンスの開始行の言語名。`zsh:setup.sh`（ファイル名つき）・`zsh {…}`（属性つき）も拾う。
+        ALIASED_FENCE_OPENER = /\A([ \t]*(?:`{3,}|~{3,})[ \t]*)(#{LANGUAGE_ALIASES.keys.join('|')})(?=[:\s{]|\z)/i
+
+        # 言語名を Prism が色分けできる名前へ読み替える。
+        # 最上位のフェンスだけを見るので、記法の説明（```markdown の中の ```zsh）は書き換えない。
+        def normalize_code_languages(content)
+          Masking.replace_top_level_fences(content) do |block, _lineno|
+            block.sub(ALIASED_FENCE_OPENER) { "#{::Regexp.last_match(1)}#{LANGUAGE_ALIASES[::Regexp.last_match(2).downcase]}" }
+          end
+        end
+
+        # =================================================================
         # 会話文（対話）記法 :::{.talk}
         # characters-dialogue-spec.md §2.2 / talk-display-options-spec.md §2.2-2.3
         # =================================================================
