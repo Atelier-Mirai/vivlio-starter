@@ -42,7 +42,7 @@ module VivlioStarter
           YAML
         end
 
-        # --- phase: 単位・記号とまぎらわしい手動マークアップ（§11-3）---
+        # --- phase: 単位・記号とまぎらわしい手動登録（§11-3）---
 
         # 紙面へ出る直前の番人。弾かずに警告だけ出す
         # （markdown-notation-collision-spec.md §11-3）。
@@ -1007,7 +1007,7 @@ module VivlioStarter
         # 裸のマークアップに見える。実際、早見表のセルに書いた `[用語|読み]` が
         # 用語「用語」・読み「読み」として索引に載り、紙面の「その他」に現れていた。
 
-        # HC-01: <code> の中の索引記法を手動マークアップとして登録しない
+        # HC-01: <code> の中の索引記法を手動登録の語として扱わない
         def test_scan_ignores_index_markup_inside_html_code
           File.write('hc01.md', <<~MD)
             # Test

@@ -387,7 +387,7 @@ module VivlioStarter
 
       # 1. 登録済み用語セクション
       def build_terms_section(terms)
-        # 無効な用語をフィルタリング（手動マークアップは除外しない）
+        # 無効な用語をフィルタリング（手動登録は除外しない）
         valid_terms = terms.reject { |t| should_filter_term?(t) }
         section = "## 1. 登録済み用語の確認 (Terms: #{valid_terms.size}語)\n\n"
 
@@ -462,11 +462,11 @@ module VivlioStarter
 
 
       # 用語をフィルタリングすべきかどうかを判定
-      # 手動マークアップ用語は著者の意図があるためフィルタリングしない
+      # 手動登録の用語は著者の意図があるためフィルタリングしない
       # @param term [Hash] 用語データ
       # @return [Boolean] フィルタリングすべきならtrue
       def should_filter_term?(term)
-        # 手動マークアップは著者の意図があるのでフィルタリングしない
+        # 手動登録は著者の意図があるのでフィルタリングしない
         return false if term['source'] == 'manual_markup'
 
         # 自動抽出された用語のみフィルタリング
@@ -564,7 +564,7 @@ module VivlioStarter
         line = "- #{checkbox}"
         line += " `#{label}`" if label
         line += " **#{term_text}** (#{yomi})"
-        # 手動マークアップは「[手動登録]」、それ以外はスコア表示。
+        # 手動登録の語は「[手動登録]」、それ以外はスコア表示。
         # スコアは辞書に持たない派生データなので、走査した章に出てこない語では nil になる。
         # ただし「どの章にも無い死語」と「今回走査しなかった章にはある語」は別物で、
         # 前者は外す判断へ、後者は残す判断へ導く——文脈が拾えたかどうかで見分ける。

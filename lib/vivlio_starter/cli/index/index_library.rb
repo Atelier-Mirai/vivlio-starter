@@ -99,7 +99,7 @@ module VivlioStarter
         end
 
         # 読みの個人辞書（term => yomi）を term 昇順で抽出する。
-        # 作者由来の語（用語集[g]・手動マークアップ）の実読みと、これまでに
+        # 作者由来の語（用語集[g]・手動登録）の実読みと、これまでに
         # 蓄積した overrides をまとめる（作者の語の読みを優先）。
         def export_yomi
           from_terms = @terms_manager.load_terms

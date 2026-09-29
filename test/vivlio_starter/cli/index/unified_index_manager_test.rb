@@ -54,7 +54,7 @@ module VivlioStarter
         assert_includes content, '[手動登録]'
       end
 
-      # 回帰: インライン脚注 `^[本文]` の中身を手動マークアップとして辞書へ
+      # 回帰: インライン脚注 `^[本文]` の中身を手動登録として辞書へ
       # 登録しない。登録されると本文中の同じ文字列が全章で自動タグ付けされ、
       # 被害が辞書に残る（inline-footnote-index-collision-spec.md §3.3）。
       def test_auto_process_excludes_inline_footnote_bodies
@@ -91,7 +91,7 @@ module VivlioStarter
         @manager.auto_process!(['03-code'])
 
         content = File.read('_index_glossary_review.md')
-        # コードフェンス内の [codeVariable] は手動マークアップとして抽出されない
+        # コードフェンス内の [codeVariable] は手動登録として抽出されない
         # （Termsセクションに **codeVariable** が含まれていない）
         terms_section = content.split('## 2.')[0]
         refute_includes terms_section, '**codeVariable**'
@@ -100,7 +100,7 @@ module VivlioStarter
       end
 
       # 回帰: 地の文中のインライン ``` があっても、後続コードブロック内の
-      # [###] や [00, 90-98, 99] を手動マークアップとして誤検出しない。
+      # [###] や [00, 90-98, 99] を手動登録として誤検出しない。
       def test_auto_process_excludes_code_even_with_inline_backticks
         File.write('contents/03b-metrics.md', <<~MD)
           # Metrics
@@ -141,7 +141,7 @@ module VivlioStarter
         @manager.auto_process!(['04-special'])
 
         content = File.read('_index_glossary_review.md')
-        # 特殊文字を含む手動マークアップが表示される
+        # 特殊文字を含む手動登録の語が表示される
         # （ASCII のみ 2 文字以下（[!] [&&] 等）は R9 により登録対象外・下の R9 テスト参照）
         assert_includes content, '**||**'
         assert_includes content, '**404**'

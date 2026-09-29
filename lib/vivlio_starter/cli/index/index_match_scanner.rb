@@ -111,7 +111,7 @@ module VivlioStarter
           @main_section_range = {}
           @main_decided = Set[]
           @section_warned = Set[]
-          # 単位・記号とまぎらわしい手動マークアップ（[g] [eV]）。用語 → 出現箇所。
+          # 単位・記号とまぎらわしい手動登録の語（[g] [eV]）。用語 → 出現箇所。
           # 紙面へ出る直前の番人（markdown-notation-collision-spec.md §11-3）
           @short_ascii_terms = Hash.new { |h, k| h[k] = [] }
           @current_heading_level = nil
@@ -253,10 +253,10 @@ module VivlioStarter
           lines.join
         end
 
-        # 単位・記号とまぎらわしい手動マークアップを控える。
+        # 単位・記号とまぎらわしい手動登録の語を控える。
         #
         # **ここでは弾かない。** `[g]` が本当に索引語のつもりかは機械に判らず、
-        # 弾けば正しい手動マークアップまで巻き込む。`vs index:auto` の R9 は辞書を
+        # 弾けば正しい手動登録まで巻き込む。`vs index:auto` の R9 は辞書を
         # 守るが紙面は守らないので、紙面へ出る直前にも同じしきい値で見張り、
         # **警告だけ**出す（markdown-notation-collision-spec.md §11-3）。
         # **読みは呼び出し側から受け取る。** ここへ届く term_text は

@@ -85,7 +85,7 @@ module VivlioStarter
         # R8: 辞書へ書いた登録内容を種別ごとに集め、既定ログレベルで要約表示する
         dictionary_writes = {}
 
-        # 1. 手動マークアップを検出して統合辞書に登録
+        # 1. 手動登録の語を検出して統合辞書に登録
         manual_terms = extract_manual_markup_terms(chapters)
         if manual_terms.any?
           added = @terms_manager.merge_terms!(manual_terms, flags: 'i', source: 'manual_markup')
@@ -813,9 +813,9 @@ module VivlioStarter
         Common::CONFIG.index_glossary.to_h
       end
 
-      # 手動マークアップ用語を抽出
+      # 手動登録の用語を抽出
       # @param chapters [Array<String>] 対象章のリスト（ベースネームまたはフルパス）
-      # @return [Array<Hash>] 手動マークアップ用語のリスト
+      # @return [Array<Hash>] 手動登録の用語のリスト
       def extract_manual_markup_terms(chapters)
         terms = []
         yomi_inferrer = YomiInferrer.new
