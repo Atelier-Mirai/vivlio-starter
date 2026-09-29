@@ -64,7 +64,7 @@ PDF を `sources/three-elements.pdf` に置いた場合は、ファイル名の 
 
 ### 実行例
 
-```
+```shell-session
 $ vs pdf:read three-elements
 [pdf:read] PDF からテキストを抽出します (12-three-elements, mode=enhanced)
 [pdf:read] ページ数: 7

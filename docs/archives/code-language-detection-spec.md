@@ -1,7 +1,7 @@
 # 言語名のないコードブロックの言語推定 仕様書
 
 > 作成日: 2026-09-29（同日改訂: 推定器を Guesslang の二段構えに決定）
-> ステータス: **方針決定・実装待ち**（§3 は決定済み。§3.8 の 2 点は実装時に実測で決める）
+> ステータス: **実装済み**（2026-09-30。§3.8 は §8 の実測で決めた）
 > 対象: 改善案.md #70「言語名のないコードブロックの言語を推定する」
 > 関連: `plain-math-notation-spec.md` §6（言語名のないフェンスの数式判定）, `notation-implementation-guide.md`, `lib/vivlio_starter/cli/pre_process/math_span_detector.rb`, `lib/vivlio_starter/cli/import/re_renderer.rb`（`guess_language`）, `lib/vivlio_starter/cli/lint.rb`, `contents/21-markdown-tutorial.md`, `contents/22-extensions.md`, `contents/31-lint.md`
 
@@ -169,7 +169,7 @@ Rouge は中身から当てられず（§1.2）、highlight.js は関連度で�
 - **確信度の閾値**: 0.3 から始める（§1.5 で本書・練習帳の誤りが 0 件）。候補の中だけで確信度を割り直す（候補の確信度の合計で割る）と、短い断片も拾える見込みがある。§4.5 の基準を満たす範囲で下げる。
 - **一段目の除外のしるしの過不足**: §4.5 の 3 冊で目視して足す。
 
-## 4. 実装（案）
+## 4. 実装
 
 ### 4.1 一段目 — `CodeLanguageDetector`
 
@@ -227,3 +227,32 @@ Guesslang の言語 ID を、Prism の言語名へ読み替える。
 
 - **`vs import` の言語推定の置き換え**: Rouge による `guess_language` は §1.2 のとおりほぼ `text` を返す。二段構えの推定器ができたら差し替えられるが、別の作業にする。
 - **```` ```zsh ```` に色が付かない**: 対応済み（2026-09-29）。Prism（refractor 3.6）には `zsh` の言語定義がなく、`sh` も `bash` の別名に入っていなかった。前処理（`MarkdownTransformer.normalize_code_languages`）で両方を `bash` へ読み替える。
+
+## 8. 実装記録（2026-09-30）
+
+### 8.1 置き場所
+
+| ファイル | 役目 |
+| :--- | :--- |
+| `lib/vivlio_starter/cli/lint/code_language_detector.rb` | 一段目（§3.5・§3.6）、候補の決め方（§3.4）、二段目への依頼のまとめ、`--fix` の書き込み |
+| `lib/vivlio_starter/cli/lint/code_language_guesser.rb` | 二段目。Guesslang の置き場所の解決と node の起動、確信度の閾値 |
+| `lib/vivlio_starter/cli/lint/guess_code_language.mjs` | node 側。日本語の置き換え（§3.3）と、候補の中の最上位の選択 |
+| `lib/vivlio_starter/cli/lint.rb` | 検査の順序（スペルチェックの後）、表示、`--fix`、完了サマリーの内訳 |
+| `lib/vivlio_starter/cli/doctor.rb`・`doctor/tool_upgrader.rb` | Guesslang の診断・導入・更新 |
+
+### 8.2 §3.8 の決定
+
+- **確信度の閾値は 0.3 のまま。** 3 冊で一段目と二段目を通して測ると、本書・練習帳で二段目が言語を付けたのは 0 件（付いたのは端末の記録だけで、本書 1 件・練習帳 3 件とも正しい）。ai_web_starter は 104 件（HTML 43・CSS 40・JavaScript 17・Ruby 3・JSON 1）で、JavaScript・Ruby・JSON はすべて、HTML・CSS は抜き出して目視し、誤りは見つからなかった。
+- **候補の中で割り直した確信度（占有率）は使わない。** 候補が 1 言語だけの章では、何を渡しても占有率が 1.0 になる。練習帳（章ごとに Ruby だけを明示）では 0.8 以上でも 122 件に付いた。
+- **除外のしるしは §3.5 のまま足さなかった。** 閾値 0.3 と組み合わせて、本書・練習帳の誤りが 0 件になったため。
+
+### 8.3 仕様から変えた点
+
+- **Guesslang が無くても `shell-session` は知らせる**（§3.7 では検査ごと飛ばすとしていた）。端末の記録の判定は一段目の規則だけで決まり、Guesslang を使わないため。案内は、推定を見送ったフェンスがあるときだけ出す。
+- **引用（`>`）の中のフェンスは推定しない。** 本文の各行に `> ` が付き、推定器にそのまま渡せないため。
+
+### 8.4 実装して分かったこと
+
+- **短いコードは拾えない。** Guesslang は 20 文字未満を判定しない。10 行ほどのきちんとした JavaScript でも確信度は 0.24 で、閾値に届かなかった（Ruby は 0.65、CSS は 0.43）。ai_web_starter の JavaScript は、言語名を書き忘れた約 220 件のうち 17 件しか拾えない。31 章には「知らせなかったコードブロックには、言語名を手で書く」と書いた。
+- **`vs lint` の所要時間はほぼ変わらない。** 推定待ちが 478 件ある ai_web_starter でも、node の起動からモデルの読み込み・判定まで数秒で終わる。
+- **本書では `94-pdf-read.md` の端末の記録 1 件だけが知らせられた。** 言語名 `shell-session` を書き込んだ。残る言語名なしフェンス 23 件（木・ログ・画面の文言）には何も付かない。

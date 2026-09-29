@@ -60,9 +60,10 @@ gem install query-stream        # データ展開機能
 | libvips | `brew install vips` | 高速画像処理 |
 | Tesseract + 日本語データ | `brew install tesseract tesseract-lang` | OCR エンジン |
 | MeCab | `brew install mecab mecab-ipadic` | 索引機能の読み自動推測 |
-| rouge | `gem install rouge` | コードブロック言語推定 |
+| rouge | `gem install rouge` | `vs import` でのコードの言語推定 |
 | mathjax-full | `npm install -g mathjax-full` | 数式の SVG 化 |
 | mermaid-cli | `npm install -g @mermaid-js/mermaid-cli` | ダイアグラムの画像化 |
+| Guesslang | `npm install -g @vscode/vscode-languagedetection` | `vs lint` でのコードブロックの言語推定 |
 | `waifu2x-ncnn-vulkan` | GitHub Releases から自動取得 | AI 画像拡大（オプション） |
 | Kindle Previewer（kindlepreviewer） | `brew install --cask kindle-previewer` ＋ ラッパー作成 | Kindle（KPF）変換（任意・targets: kindle 用） |
 | Google Fonts 用 SSL 証明書 | 自動設定 | Google Fonts ダウンロード（macOS のみ） |
@@ -182,7 +183,7 @@ ruby -v
 4) Vivliostyle CLI と Vivlio Starter
 
 ```bash
-npm install -g @vivliostyle/cli mathjax-full @mermaid-js/mermaid-cli
+npm install -g @vivliostyle/cli mathjax-full @mermaid-js/mermaid-cli @vscode/vscode-languagedetection
 gem install vivlio-starter
 ```
 

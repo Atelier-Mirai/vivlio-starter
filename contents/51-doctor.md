@@ -36,6 +36,7 @@ Vivlio Starter gem の導入や Ruby 環境の構築については、@chapref:c
 | `rouge` | `vs import` でのコードの言語推定（Ruby gem） |
 | `mathjax-full` | 数式の SVG 化（npm パッケージ） |
 | `mermaid` (`mmdc`) | ダイアグラムの画像化（npm パッケージ） |
+| `guesslang` | `vs lint` でのコードブロックの言語推定（npm パッケージ `@vscode/vscode-languagedetection`） |
 | `waifu2x-ncnn-vulkan` | AI 画像拡大（オプション） |
 | `kindlepreviewer` (Kindle Previewer) | Kindle（KPF）変換（任意・targets: kindle 用） |
 | Google Fonts 用 SSL 証明書 | Google Fonts ダウンロード（macOS のみ） |
@@ -181,7 +182,7 @@ macOS では、ツールに応じて次の経路で導入します。
 | 導入経路 | ツール |
 |------|------|
 | `brew install` | `node`・`qpdf`・`pdfinfo`・`pdftoppm`・`gs`・`imagemagick`・`inkscape`・`librsvg`・`vips`・`tesseract`・`mecab` |
-| `npm install -g` | `vivliostyle`・`textlint` と推奨ルール・`mathjax-full`・`mermaid-cli` |
+| `npm install -g` | `vivliostyle`・`textlint` と推奨ルール・`mathjax-full`・`mermaid-cli`・Guesslang |
 | `gem install` | `rouge` |
 
 npm で導入するツールには Node.js が必要です。まだ入っていなければ、Homebrew で Node.js を導入してから npm の処理へ進みます。
